@@ -153,7 +153,7 @@ echo $spk_prefix | perl -e '
     for (my $i=0; $i < $num_parts; $i++) {
       $filled = sprintf "%02d", $i;
       if ($newrecolist{"$prefix$reco-$filled"} ne "") {
-        print WO "$prefix$reco-$filled $reco2pipe{$reco} apply-filter \"ark:echo $reco2spk{$reco} $reco2filt{$reco} | \" - - | apply-filter --inverse=true \"ark:echo $newreco2perturbspk{$reco.$i} $newreco2perturbfilt{$reco.$i} | \" - - |\n";
+        print WO "$prefix$reco-$filled $reco2pipe{$reco} apply-filter \"scp:echo $reco2spk{$reco} $reco2filt{$reco} |\" - - | apply-filter --inverse=true \"scp:echo $newreco2perturbspk{$reco.$i} $newreco2perturbfilt{$reco.$i} |\" - - |\n";
       }
     }
   }

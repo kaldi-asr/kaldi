@@ -46,13 +46,14 @@ void AccStatsForCorrelation(const VectorBase<BaseFloat> &wave,
   acc_corr_stats->samp_sum += wave.Sum();
   acc_corr_stats->num_samp += wave.Dim();
   int32 corr_window_size = wave.Dim() - lpc_order;
-  SubVector<BaseFloat> sub_vec1(wave, 0, corr_window_size);
+  Vector<BaseFloat> norm_wave(wave);
+  SubVector<BaseFloat> sub_vec1(norm_wave, 0, corr_window_size);
   BaseFloat local_l2_norm = VecVec(sub_vec1, sub_vec1), sum;
 
   acc_corr_stats->inner_prod(0) += local_l2_norm;
 
   for (int32 lag = 1; lag < lpc_order; lag++) {
-    SubVector<BaseFloat> sub_vec2(wave, lag, corr_window_size);
+    SubVector<BaseFloat> sub_vec2(norm_wave, lag, corr_window_size);
     int32 last_ind = corr_window_size + lag - 1;
     local_l2_norm += (wave(last_ind) * wave(last_ind) - 
       wave(lag - 1) * wave(lag - 1));
@@ -79,10 +80,12 @@ void ComputeCorrelation(const CorrelationStats &acc_corr_stats,
 
   int32 lpc_order = acc_corr_stats.inner_prod.Dim();
   autocorr->Resize(lpc_order);
-  BaseFloat ballast = 1000;
   for (int32 lag = 0; lag < lpc_order; lag++)
-    (*autocorr)(lag) = acc_corr_stats.inner_prod(lag) / 
-      pow(acc_corr_stats.l2_norms(0) * acc_corr_stats.l2_norms(lag)+ballast, 0.5);
+    (*autocorr)(lag) = acc_corr_stats.inner_prod(lag);
+
+  // scale outocorrelation between 0 and 1 using autocorr(0)
+  autocorr->Scale(1.0 / (*autocorr)(0));
+  
 }
 /*
    Durbin's recursion - converts autocorrelation coefficients to the LPC
@@ -90,34 +93,55 @@ void ComputeCorrelation(const CorrelationStats &acc_corr_stats,
    pAC - autocorrelation coefficients [n + 1]
    pLP - linear prediction coefficients [n] (predicted_sn = sum_1^P{a[i] * s[n-i]}})
 */
-double DurbinInternal(int32 n, const double *pAC, double *pLP, double *pTmp) {
+double DurbinInternal(int32 n, double *pAC, double *pLP, double *pTmp) {
   double ki;                // reflection coefficient
 
+  // we add this bias term to pAC[0].
+  // Adding bias term is equivalent to t = teoplitz(pAC) + diag(bias)
+  // which is like shifting eigenvalues of teoplitz(pAC) using bias term
+  // and we can make sure t is convertible.
+  double durbin_bias = 1e-2;
+  int32 max_repeats = 20;
+
   double E = pAC[0];
-  for (int32 i = 0; i < n; i++) {
+  pLP[0] = 1.0;
+  for (int32 i = 1; i <= n; i++) {
     // next reflection coefficient
-    ki = pAC[i + 1];
-    for (int32 j = 0; j < i; j++)
+    ki = pAC[i];
+    for (int32 j = 1; j < i; j++)
       ki += pLP[j] * pAC[i - j];
     ki = ki / E;
-    if (ki > 1) 
-      KALDI_LOG << "i, ki = " << i << " "<< ki;
+
+    if (abs(ki) > 1) {
+      int32 num_repeats = int((pAC[0] - 1.0) / durbin_bias);
+      KALDI_LOG << " warning: In Durbin algorithm, abs(ki) > 1 "
+                << " for iteration = " << i 
+                << " ki = " << ki
+                << " autocorr[0] = " << pAC[0]
+                << " num_repeats = " << num_repeats
+                << "; the bias added";
+      pAC[0] += durbin_bias;
+      if (num_repeats < max_repeats)
+        return -1;
+    }
     // new error
-    BaseFloat c = 1 - ki * ki;
+    double c = 1 - ki * ki;
+    if (c < 1.0e-5) // remove NaNs for constan signal 
+      c = 1.0e-5;
+   
     E *= c;
     // new LP coefficients
     pTmp[i] = -ki;
-    for (int32 j = 0; j < i; j++)
-      pTmp[j] = pLP[j] - ki * pLP[i - j - 1];
+    for (int32 j = 1; j < i; j++)
+      pTmp[j] = pLP[j] - ki * pLP[i - j];
 
-    for (int32 j = 0; j <= i; j++)
+    for (int32 j = 1; j <= i; j++)
       pLP[j] = pTmp[j];
   }
   return E;
 }
-
 /*
-   This function computes coefficients of forward linear predictor
+  This function computes coefficients of forward linear predictor
    w.r.t autocorrelation coefficients by minimizing the prediction
    error using MSE.
    Durbin used to compute LP coefficients using autocorrelation coefficients.
@@ -131,17 +155,24 @@ double DurbinInternal(int32 n, const double *pAC, double *pLP, double *pTmp) {
 */
 void ComputeFilters(const VectorBase<BaseFloat> &autocorr, 
                     Vector<BaseFloat> *lp_filter) {
-  int32 n = autocorr.Dim()-1;
-  lp_filter->Resize(n+1);
+  int32 n = autocorr.Dim();
+  lp_filter->Resize(n);
   // compute lpc coefficients using autocorrelation coefficients
   // with Durbin algorithm
   Vector<double> d_autocorr(autocorr),
-   d_lpc_coeffs(n), d_tmp(n+1);
-  DurbinInternal(n, d_autocorr.Data(),
+   d_lpc_coeffs(n), d_tmp(n);
+
+  KALDI_LOG << "compute lpc using correlations ";
+  while (DurbinInternal(n, d_autocorr.Data(),
                  d_lpc_coeffs.Data(),
-                 d_tmp.Data());
-  (*lp_filter)(0) = 1.0;
-  lp_filter->Range(1,n).CopyFromVec(d_lpc_coeffs);
+                 d_tmp.Data()) < 0);
+  lp_filter->CopyFromVec(d_lpc_coeffs);
+  if (KALDI_ISNAN(lp_filter->Sum())) {
+    KALDI_WARN << "NaN encountered in lpc coefficients derived from Durbin algorithm.";
+    lp_filter->Set(0.0);
+    (*lp_filter)(0) = 1.0;
+  }
+
 }
 
 } // namescape kaldi
@@ -210,7 +241,8 @@ int main(int argc, char *argv[]) {
               continue;
             }
           }
-          SubVector<BaseFloat> waveform(wav_data.Data(), this_chan);
+          Vector<BaseFloat> waveform(wav_data.Data().Row(this_chan));
+          waveform.Scale(1.0 / (1 << 15));
           AccStatsForCorrelation(waveform, lpc_order,
                                  &acc_corr_stats);
         }
@@ -242,15 +274,17 @@ int main(int argc, char *argv[]) {
             continue;
           }
         }
-        SubVector<BaseFloat> waveform(wave_data.Data(), this_chan);
+        Vector<BaseFloat> waveform(wave_data.Data().Row(this_chan));
         Vector<BaseFloat> autocorr, filter;
+        waveform.Scale(1.0 / (1 << 15));
+        KALDI_ASSERT(waveform.Max() <=1 && waveform.Min() >= -1);
         CorrelationStats acc_corr_stats(lpc_order);
+
         AccStatsForCorrelation(waveform, lpc_order,
                                &acc_corr_stats);
-
         ComputeCorrelation(acc_corr_stats,
                            &autocorr);
-        KALDI_LOG << "autocorr = " << autocorr;
+        //KALDI_LOG << "autocorr = " << autocorr;
         ComputeFilters(autocorr, &filter);
         writer.Write(spk, filter);
         num_done++;
