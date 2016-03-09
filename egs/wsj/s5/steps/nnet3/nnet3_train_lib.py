@@ -24,6 +24,14 @@ def SendMail(message, subject, email_id):
         logger.info(" Unable to send mail due to error:\n {error}".format(error = str(e)))
         pass
 
+def StrToBool(values):
+    if values == "true":
+        return True
+    elif values == "false":
+        return False
+    else
+        raise ValueError
+
 class StrToBoolAction(argparse.Action):
     """ A custom action to convert bools from shell format i.e., true/false
         to python format i.e., True/False """
@@ -180,6 +188,10 @@ def ParseModelConfigVarsFile(var_file):
         var_file_handle = open(var_file, 'r')
         for line in var_file_handle:
             parts = line.split('=')
+            if len(parts) == 0:
+                continue
+            if len(parts) != 2:
+                break
             field_name = parts[0].strip()
             field_value = parts[1].strip()
             if field_name in ['model_left_context', 'left_context']:
@@ -188,6 +200,8 @@ def ParseModelConfigVarsFile(var_file):
                 variables['model_right_context'] = int(field_value)
             elif field_name == 'num_hidden_layers':
                 variables['num_hidden_layers'] = int(field_value)
+            elif field_name == 'add_lda':
+                variables['add_lda'] = StrToBool(field_value)
             else:
                 variables[field_name] = field_value
         return variables
