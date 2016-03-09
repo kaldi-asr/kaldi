@@ -355,7 +355,7 @@ int32 ComputeFstStateTimes(const fst::StdVectorFst &fst,
 /// all the same it will only append Supervision objects where successive ones
 /// have the same weight and num-frames, and if 'compactify' is true.  The
 /// normal use-case for this is when you are combining neural-net examples for
-/// training; appending them like this helps to simplify the decoding process.
+/// training; appending them like this helps to simplify the training process.
 
 /// This function will crash if the values of label_dim in the inputs are not
 /// all the same.
