@@ -4,7 +4,6 @@
 #           2014-2015  Vimal Manohar
 # Apache 2.0.
 
-set -e
 set -o pipefail
 
 # This script does MPE or MMI or state-level minimum bayes risk (sMBR) training
@@ -196,7 +195,7 @@ if [ $stage -le -1 ]; then
 fi
 
 
-rm -f $dir/.error 2>/dev/null || true 
+rm $dir/.error 2>/dev/null
 
 x=0   
 
@@ -311,7 +310,7 @@ while [ $x -lt $num_iters ]; do
       fi
       (
         e=${iter_to_epoch[$x]}
-        rm -f $dir/.error 2> /dev/null || true
+        rm $dir/.error 2> /dev/null
 
         steps/nnet3/adjust_priors.sh --egs-type priors_egs \
           --num-jobs-compute-prior $num_archives_priors \
@@ -328,7 +327,7 @@ while [ $x -lt $num_iters ]; do
   num_archives_processed=$[num_archives_processed+num_jobs_nnet]
 done
 
-rm -f $dir/final.mdl 2>/dev/null || true
+rm $dir/final.mdl 2>/dev/null
 cp $dir/$x.mdl $dir/final.mdl
 ln -sf final.mdl $dir/epoch$[num_epochs*frame_subsampling_factor].mdl
 

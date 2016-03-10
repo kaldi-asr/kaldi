@@ -352,7 +352,7 @@ echo $frame_subsampling_factor > $dir/info/frame_subsampling_factor
 
 if [ $stage -le 4 ]; then
   echo "$0: Getting validation and training subset examples."
-  rm $dir/.error 2>/dev/null || true
+  rm $dir/.error 2>/dev/null
   echo "$0: ... extracting validation and training-subset alignments."
 
   #utils/filter_scp.pl <(cat $dir/valid_uttlist $dir/train_subset_uttlist) \
@@ -453,7 +453,7 @@ if [ $stage -le 7 ]; then
   rm $dir/lat.*
   echo "$0: removing temporary alignments and transforms"
   # Ignore errors below because trans.* might not exist.
-  rm $dir/{ali,trans}.{ark,scp} 2>/dev/null || true
+  rm $dir/{ali,trans}.{ark,scp} 2>/dev/null
 fi
 
 wait
