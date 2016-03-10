@@ -317,43 +317,37 @@ echo $priors_right_context > $dir/info/priors_right_context
 echo $frame_subsampling_factor > $dir/info/frame_subsampling_factor
 
 (
+  if $adjust_priors && [ $stage -le 10 ]; then
+    if [ ! -f $dir/ali.scp ]; then
+      nj_ali=$(cat $alidir/num_jobs)
+      all_ids=$(seq -s, $nj_ali)
+      $cmd $dir/log/copy_alignments.log \
+        copy-int-vector "ark:gunzip -c $alidir/ali.{$all_ids}.gz|" \
+        ark,scp:$dir/ali.ark,$dir/ali.scp || exit 1;
+    fi
 
-if $adjust_priors && [ $stage -le 10 ]; then
-  
-if [ ! -f $dir/ali.scp ]; then
-  nj_ali=$(cat $alidir/num_jobs)
-  all_ids=$(seq -s, $nj_ali)
-  $cmd $dir/log/copy_alignments.log \
-    copy-int-vector "ark:gunzip -c $alidir/ali.{$all_ids}.gz|" \
-    ark,scp:$dir/ali.ark,$dir/ali.scp || exit 1;
-fi
+    priors_egs_list=
+    for y in `seq $num_archives_priors`; do
+      utils/create_data_link.pl $dir/priors_egs.$y.ark
+      priors_egs_list="$priors_egs_list ark:$dir/priors_egs.$y.ark"
+    done
 
-priors_egs_list=
-for y in `seq $num_archives_priors`; do
-  utils/create_data_link.pl $dir/priors_egs.$y.ark
-  priors_egs_list="$priors_egs_list ark:$dir/priors_egs.$y.ark"
-done
+    echo "$0: dumping egs for prior adjustment in the background."
 
-echo "$0: dumping egs for prior adjustment in the background."
+    num_pdfs=`am-info $alidir/final.mdl | grep pdfs | awk '{print $NF}' 2>/dev/null` || exit 1
 
-num_pdfs=`am-info $alidir/final.mdl | grep pdfs | awk '{print $NF}' 2>/dev/null` || exit 1
+    $cmd $dir/log/create_priors_subset.log \
+      nnet3-get-egs --num-pdfs=$num_pdfs $priors_ivector_opt $priors_egs_opts "$priors_feats" \
+      "$prior_ali_rspecifier ali-to-post ark:- ark:- |" \
+      ark:- \| nnet3-copy-egs ark:- $priors_egs_list || \
+      { touch $dir/.error; echo "Error in creating priors subset. See $dir/log/create_priors_subset.log"; exit 1; }
 
-$cmd $dir/log/create_priors_subset.log \
-  nnet3-get-egs --num-pdfs=$num_pdfs $priors_ivector_opt $priors_egs_opts "$priors_feats" \
-  "$prior_ali_rspecifier ali-to-post ark:- ark:- |" \
-  ark:- \| nnet3-copy-egs ark:- $priors_egs_list || \
-  { touch $dir/.error; echo "Error in creating priors subset. See $dir/log/create_priors_subset.log"; exit 1; }
+    sleep 3;
 
-sleep 3;
-
-echo $num_archives_priors >$dir/info/num_archives_priors
-
-else
-
-echo 0 > $dir/info/num_archives_priors
-
-fi
-
+    echo $num_archives_priors >$dir/info/num_archives_priors
+  else
+    echo 0 > $dir/info/num_archives_priors
+  fi
 ) &
 
 if [ $stage -le 4 ]; then

@@ -17,28 +17,31 @@ stage=0
 train_stage=-10 # can be used to start training in the middle.
 get_egs_stage=-10
 use_gpu=true  # for training
-srcdir=exp/chain/tdnn_5e_sp
-degs_dir=
-lats_dir=
+cleanup=false  # run with --cleanup true --stage 6 to clean up (remove large things like denlats,
+               # alignments and degs).
+## Decode options
+decode_start_epoch=1 # can be used to avoid decoding all epochs, e.g. if we decided to run more.
+
+set -e
+. cmd.sh
+. ./path.sh
+. ./utils/parse_options.sh
+
+use_gpu=true  # for training
+srcdir=exp/nnet3/nnet_ms_a
 train_data_dir=data/train_nodup_sp_hires
 online_ivector_dir=exp/nnet3/ivectors_train_nodup_sp
+degs_dir=
+lats_dir=
 
 ## Objective options
 criterion=smbr
-drop_frames=false  # only matters for MMI.
 one_silence_class=true
 
 ## Egs options
 frames_per_eg=150
 frames_overlap_per_eg=30
-cleanup=false  # run with --cleanup true --stage 6 to clean up (remove large things like denlats,
-               # alignments and degs).
 truncate_deriv_weights=10
-determinize=true
-minimize=true
-remove_output_symbols=true
-remove_epsilons=true
-collapse_transition_ids=true
 
 ## Nnet training options
 effective_learning_rate=0.0000125
@@ -50,15 +53,6 @@ minibatch_size=64
 adjust_priors=true
 modify_learning_rates=true
 last_layer_factor=1.0
-
-## Decode options
-decode_start_epoch=1 # can be used to avoid decoding all epochs, e.g. if we decided to run more.
-
-set -e
-. cmd.sh
-. ./path.sh
-. ./utils/parse_options.sh
-
 
 if $use_gpu; then
   if ! cuda-compiled; then
@@ -99,8 +93,9 @@ fi
 if [ -z "$lats_dir" ]; then
   lats_dir=${srcdir}_denlats
   if [ $stage -le 2 ]; then
-    nj=50  # this doesn't really affect anything strongly, except the num-jobs for one of
-    # the phases of get_egs_discriminative2.sh below.
+    nj=50  
+    # this doesn't really affect anything strongly, except the num-jobs for one of
+    # the phases of get_egs_discriminative.sh below.
     num_threads_denlats=6
     subsplit=40 # number of jobs that run per job (but 2 run at a time, so total jobs is 80, giving
     # total slots = 80 * 6 = 480.
@@ -123,22 +118,7 @@ fi
 cmvn_opts=`cat $srcdir/cmvn_opts` || exit 1
 
 if [ -z "$degs_dir" ]; then
-  degs_dir=${srcdir}_degs_n${frames_per_eg}_o${frames_overlap_per_eg}_f
-  if $determinize; then
-    degs_dir=${degs_dir}d
-  fi
-  if $minimize; then
-    degs_dir=${degs_dir}m
-  fi
-  if $remove_output_symbols; then
-    degs_dir=${degs_dir}r
-  fi
-  if $remove_epsilons; then
-    degs_dir=${degs_dir}e
-  fi
-  if $collapse_transition_ids; then
-    degs_dir=${degs_dir}c
-  fi
+  degs_dir=${srcdir}_degs
 
   if [ $stage -le 3 ]; then
     if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d ${srcdir}_degs/storage ]; then
@@ -160,22 +140,10 @@ if [ -z "$degs_dir" ]; then
 fi
 
 d=`basename $degs_dir`
-dir=${srcdir}_${criterion}_${effective_learning_rate}_degs${d##*degs}_ms${minibatch_size}
-
-if $one_silence_class; then
-  dir=${dir}_onesil
-fi
-
-if $modify_learning_rates; then
-  dir=${dir}_modify
-fi
-
-if [ "$last_layer_factor" != "1.0" ]; then
-  dir=${dir}_llf$last_layer_factor
-fi
+dir=${srcdir}_${criterion}
 
 if [ $stage -le 4 ]; then
-  bash -x steps/nnet3/train_discriminative.sh --cmd "$decode_cmd" \
+  steps/nnet3/train_discriminative.sh --cmd "$decode_cmd" \
     --stage $train_stage \
     --effective-lrate $effective_learning_rate --max-param-change $max_param_change \
     --criterion $criterion --drop-frames $drop_frames --acoustic-scale 1.0 \

@@ -42,7 +42,7 @@ minibatch_size=64  # This is the number of examples rather than the number of ou
 modify_learning_rates=false
 last_layer_factor=1.0  # relates to modify-learning-rates
 first_layer_factor=1.0 # relates to modify-learning-rates
-shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of the samples
+shuffle_buffer_size=1000 # This "buffer_size" variable controls randomization of the samples
                 # on each iter.  You could set it to 0 or to a large value for complete
                 # randomization, but this would both consume memory and cause spikes in
                 # disk I/O.  Smaller is easier on disk and memory but less random.  It's
@@ -156,9 +156,6 @@ num_iters=$[$num_archives_to_process/$num_jobs_nnet]
 
 echo "$0: Will train for $num_epochs epochs = $num_iters iterations"
 
-prior_gpu_opt="--use-gpu=no"
-prior_queue_opt=""
-
 if $use_gpu; then
   parallel_suffix=""
   train_queue_opt="--gpu 1"
@@ -172,8 +169,6 @@ if $use_gpu; then
 else
   echo "$0: without using a GPU this will be very slow.  nnet3 does not yet support multiple threads."
   parallel_train_opts="--use-gpu=no"
-  prior_gpu_opt="--use-gpu=no"
-  prior_queue_opt=""
 fi
 
 for e in $(seq 1 $[num_epochs*frame_subsampling_factor]); do
@@ -315,14 +310,14 @@ while [ $x -lt $num_iters ]; do
         exit 1
       fi
       (
-      e=${iter_to_epoch[$x]}
-      rm -f $dir/.error 2> /dev/null || true
+        e=${iter_to_epoch[$x]}
+        rm -f $dir/.error 2> /dev/null || true
 
-      steps/nnet3/adjust_priors.sh --egs-type priors_egs \
-        --num-jobs-compute-prior $num_archives_priors \
-        --cmd "$cmd $prior_queue_opt" --use-gpu false \
-        --raw false --iter epoch$e $dir $degs_dir \
-        || { touch $dir/.error; echo "Error in adjusting priors. See $dir/log/adjust_priors.epoch$e.log"; exit 1; }
+        steps/nnet3/adjust_priors.sh --egs-type priors_egs \
+          --num-jobs-compute-prior $num_archives_priors \
+          --cmd "$cmd" --use-gpu false \
+          --use-raw-nnet false --iter epoch$e $dir $degs_dir \
+          || { touch $dir/.error; echo "Error in adjusting priors. See $dir/log/adjust_priors.epoch$e.log"; exit 1; }
       ) &
     fi
 
