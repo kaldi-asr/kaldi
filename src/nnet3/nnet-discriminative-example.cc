@@ -1,4 +1,4 @@
-// nnet3/nnet-chain-example.cc
+// nnet3/nnet-discriminative-example.cc
 
 // Copyright      2015    Johns Hopkins University (author: Daniel Povey)
 
@@ -18,48 +18,43 @@
 // limitations under the License.
 
 #include <cmath>
-#include "nnet3/nnet-chain-example.h"
+#include "nnet3/nnet-discriminative-example.h"
 #include "nnet3/nnet-example-utils.h"
 
 namespace kaldi {
 namespace nnet3 {
 
 
-void NnetChainSupervision::Write(std::ostream &os, bool binary) const {
+void NnetDiscriminativeSupervision::Write(std::ostream &os, bool binary) const {
   CheckDim();
-  WriteToken(os, binary, "<NnetChainSup>");
+  WriteToken(os, binary, "<NnetDiscriminativeSup>");
   WriteToken(os, binary, name);
   WriteIndexVector(os, binary, indexes);
   supervision.Write(os, binary);
   WriteToken(os, binary, "<DW>");  // for DerivWeights.  Want to save space.
   WriteVectorAsChar(os, binary, deriv_weights);
-  WriteToken(os, binary, "</NnetChainSup>");
+  WriteToken(os, binary, "</NnetDiscriminativeSup>");
 }
 
-bool NnetChainSupervision::operator == (const NnetChainSupervision &other) const {
+bool NnetDiscriminativeSupervision::operator == (const NnetDiscriminativeSupervision &other) const {
   return name == other.name && indexes == other.indexes &&
       supervision == other.supervision &&
       deriv_weights.ApproxEqual(other.deriv_weights);
 }
 
-void NnetChainSupervision::Read(std::istream &is, bool binary) {
-  ExpectToken(is, binary, "<NnetChainSup>");
+void NnetDiscriminativeSupervision::Read(std::istream &is, bool binary) {
+  ExpectToken(is, binary, "<NnetDiscriminativeSup>");
   ReadToken(is, binary, &name);
   ReadIndexVector(is, binary, &indexes);
   supervision.Read(is, binary);
-  std::string token;
-  ReadToken(is, binary, &token);
-  // in the future this back-compatibility code can be reworked.
-  if (token != "</NnetChainSup>") {
-    KALDI_ASSERT(token == "<DW>");
-    ReadVectorAsChar(is, binary, &deriv_weights);
-    ExpectToken(is, binary, "</NnetChainSup>");
-  }
+  ExpectToken(is, binary, "<DW>");
+  ReadVectorAsChar(is, binary, &deriv_weights);
+  ExpectToken(is, binary, "</NnetDiscriminativeSup>");
   CheckDim();
 }
 
 
-void NnetChainSupervision::CheckDim() const {
+void NnetDiscriminativeSupervision::CheckDim() const {
   if (supervision.frames_per_sequence == -1) {
     // this object has not been set up.
     KALDI_ASSERT(indexes.empty());
@@ -87,24 +82,15 @@ void NnetChainSupervision::CheckDim() const {
   }
 }
 
-NnetChainSupervision::NnetChainSupervision(const NnetChainSupervision &other):
+NnetDiscriminativeSupervision::NnetDiscriminativeSupervision(const NnetDiscriminativeSupervision &other):
     name(other.name),
     indexes(other.indexes),
     supervision(other.supervision),
     deriv_weights(other.deriv_weights) { CheckDim(); }
 
-void NnetChainSupervision::Swap(NnetChainSupervision *other) {
-  name.swap(other->name);
-  indexes.swap(other->indexes);
-  supervision.Swap(&(other->supervision));
-  deriv_weights.Swap(&(other->deriv_weights));
-  if (RandInt(0, 5) == 0)
-    CheckDim();
-}
-
-NnetChainSupervision::NnetChainSupervision(
+NnetDiscriminativeSupervision::NnetDiscriminativeSupervision(
     const std::string &name,
-    const chain::Supervision &supervision,
+    const discriminative::DiscriminativeSupervision &supervision,
     const Vector<BaseFloat> &deriv_weights,
     int32 first_frame,
     int32 frame_skip):
@@ -126,15 +112,24 @@ NnetChainSupervision::NnetChainSupervision(
   CheckDim();
 }
 
+void NnetDiscriminativeSupervision::Swap(NnetDiscriminativeSupervision *other) {
+  name.swap(other->name);
+  indexes.swap(other->indexes);
+  supervision.Swap(&(other->supervision));
+  deriv_weights.Swap(&(other->deriv_weights));
+  if (RandInt(0, 5) == 0)
+    CheckDim();
+}
 
-void NnetChainExample::Write(std::ostream &os, bool binary) const {
+
+void NnetDiscriminativeExample::Write(std::ostream &os, bool binary) const {
   // Note: weight, label, input_frames and spk_info are members.  This is a
   // struct.
-  WriteToken(os, binary, "<Nnet3ChainEg>");
+  WriteToken(os, binary, "<Nnet3DiscriminativeEg>");
   WriteToken(os, binary, "<NumInputs>");
   int32 size = inputs.size();
   WriteBasicType(os, binary, size);
-  KALDI_ASSERT(size > 0 && "Attempting to write NnetChainExample with no inputs");
+  KALDI_ASSERT(size > 0 && "Attempting to write NnetDiscriminativeExample with no inputs");
   if (!binary) os << '\n';
   for (int32 i = 0; i < size; i++) {
     inputs[i].Write(os, binary);
@@ -143,17 +138,17 @@ void NnetChainExample::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<NumOutputs>");
   size = outputs.size();
   WriteBasicType(os, binary, size);
-  KALDI_ASSERT(size > 0 && "Attempting to write NnetChainExample with no outputs");
+  KALDI_ASSERT(size > 0 && "Attempting to write NnetDiscriminativeExample with no outputs");
   if (!binary) os << '\n';
   for (int32 i = 0; i < size; i++) {
     outputs[i].Write(os, binary);
     if (!binary) os << '\n';
   }
-  WriteToken(os, binary, "</Nnet3ChainEg>");
+  WriteToken(os, binary, "</Nnet3DiscriminativeEg>");
 }
 
-void NnetChainExample::Read(std::istream &is, bool binary) {
-  ExpectToken(is, binary, "<Nnet3ChainEg>");
+void NnetDiscriminativeExample::Read(std::istream &is, bool binary) {
+  ExpectToken(is, binary, "<Nnet3DiscriminativeEg>");
   ExpectToken(is, binary, "<NumInputs>");
   int32 size;
   ReadBasicType(is, binary, &size);
@@ -169,30 +164,27 @@ void NnetChainExample::Read(std::istream &is, bool binary) {
   outputs.resize(size);
   for (int32 i = 0; i < size; i++)
     outputs[i].Read(is, binary);
-  ExpectToken(is, binary, "</Nnet3ChainEg>");
+  ExpectToken(is, binary, "</Nnet3DiscriminativeEg>");
 }
 
-void NnetChainExample::Swap(NnetChainExample *other) {
+void NnetDiscriminativeExample::Swap(NnetDiscriminativeExample *other) {
   inputs.swap(other->inputs);
   outputs.swap(other->outputs);
 }
 
-void NnetChainExample::Compress() {
+void NnetDiscriminativeExample::Compress() {
   std::vector<NnetIo>::iterator iter = inputs.begin(), end = inputs.end();
   // calling features.Compress() will do nothing if they are sparse or already
   // compressed.
   for (; iter != end; ++iter) iter->features.Compress();
 }
 
-NnetChainExample::NnetChainExample(const NnetChainExample &other):
+NnetDiscriminativeExample::NnetDiscriminativeExample(const NnetDiscriminativeExample &other):
     inputs(other.inputs), outputs(other.outputs) { }
 
-
-// called from MergeChainExamplesInternal, this function merges the Supervision
-// objects into one.  Requires (and checks) that they all have the same name.
-static void MergeSupervision(
-    const std::vector<const NnetChainSupervision*> &inputs,
-    NnetChainSupervision *output) {
+void MergeSupervision(
+    const std::vector<const NnetDiscriminativeSupervision*> &inputs,
+    NnetDiscriminativeSupervision *output) {
   int32 num_inputs = inputs.size(),
       num_indexes = 0;
   for (int32 n = 0; n < num_inputs; n++) {
@@ -200,17 +192,17 @@ static void MergeSupervision(
     num_indexes += inputs[n]->indexes.size();
   }
   output->name = inputs[0]->name;
-  std::vector<const chain::Supervision*> input_supervision;
+  std::vector<const discriminative::DiscriminativeSupervision*> input_supervision;
   input_supervision.reserve(inputs.size());
   for (int32 n = 0; n < num_inputs; n++)
     input_supervision.push_back(&(inputs[n]->supervision));
-  std::vector<chain::Supervision> output_supervision;
+  std::vector<discriminative::DiscriminativeSupervision> output_supervision;
   bool compactify = true;
-  AppendSupervision(input_supervision,
+  discriminative::AppendSupervision(input_supervision,
                          compactify,
                          &output_supervision);
   if (output_supervision.size() != 1)
-    KALDI_ERR << "Failed to merge 'chain' examples-- inconsistent lengths "
+    KALDI_ERR << "Failed to merge discriminative examples-- inconsistent lengths "
               << "or weights?";
   output->supervision.Swap(&(output_supervision[0]));
 
@@ -226,7 +218,7 @@ static void MergeSupervision(
     // change the 'n' index to correspond to the index into 'input'.
     // Each example gets a different 'n' value, starting from 0.
     for (; iter != end; ++iter) {
-      KALDI_ASSERT(iter->n == 0 && "Merging already-merged chain egs");
+      KALDI_ASSERT(iter->n == 0 && "Merging already-merged discriminative egs");
       iter->n = n;
     }
   }
@@ -234,6 +226,7 @@ static void MergeSupervision(
   // OK, at this point the 'indexes' will be in the wrong order,
   // because they should be first sorted by 't' and next by 'n'.
   // 'sort' will fix this, due to the operator < on type Index.
+  // TODO: Is this required?
   std::sort(output->indexes.begin(), output->indexes.end());
 
   // merge the deriv_weights.
@@ -256,9 +249,9 @@ static void MergeSupervision(
 }
 
 
-void MergeChainExamples(bool compress,
-                        std::vector<NnetChainExample> *input,
-                        NnetChainExample *output) {
+void MergeDiscriminativeExamples(bool compress,
+                        std::vector<NnetDiscriminativeExample> *input,
+                        NnetDiscriminativeExample *output) {
   int32 num_examples = input->size();
   KALDI_ASSERT(num_examples > 0);
   // we temporarily make the input-features in 'input' look like regular NnetExamples,
@@ -274,13 +267,13 @@ void MergeChainExamples(bool compress,
   // write to 'output->inputs'
   eg_output.io.swap(output->inputs);
 
-  // Now deal with the chain-supervision 'outputs'.  There will
+  // Now deal with the discriminative-supervision 'outputs'.  There will
   // normally be just one of these, with name "output", but we
   // handle the more general case.
   int32 num_output_names = (*input)[0].outputs.size();
   output->outputs.resize(num_output_names);
   for (int32 i = 0; i < num_output_names; i++) {
-    std::vector<const NnetChainSupervision*> to_merge(num_examples);
+    std::vector<const NnetDiscriminativeSupervision*> to_merge(num_examples);
     for (int32 j = 0; j < num_examples; j++) {
       KALDI_ASSERT((*input)[j].outputs.size() == num_output_names);
       to_merge[j] = &((*input)[j].outputs[i]);
@@ -291,9 +284,9 @@ void MergeChainExamples(bool compress,
 }
 
 void TruncateDerivWeights(int32 truncate,
-                          NnetChainExample *eg) {
+                          NnetDiscriminativeExample *eg) {
   for (size_t i = 0; i < eg->outputs.size(); i++) {
-    NnetChainSupervision &supervision = eg->outputs[i];
+    NnetDiscriminativeSupervision &supervision = eg->outputs[i];
     Vector<BaseFloat> &deriv_weights = supervision.deriv_weights;
     if (deriv_weights.Dim() == 0) {
       deriv_weights.Resize(supervision.indexes.size());
@@ -312,24 +305,24 @@ void TruncateDerivWeights(int32 truncate,
   }
 }
 
-void GetChainComputationRequest(const Nnet &nnet,
-                                const NnetChainExample &eg,
-                                bool need_model_derivative,
-                                bool store_component_stats,
-                                bool use_xent_regularization,
-                                bool use_xent_derivative,
-                                ComputationRequest *request) {
+void GetDiscriminativeComputationRequest(const Nnet &nnet,
+                                         const NnetDiscriminativeExample &eg,
+                                         bool need_model_derivative,
+                                         bool store_component_stats,
+                                         bool use_xent_regularization,
+                                         bool use_xent_derivative,
+                                         ComputationRequest *request) {
   request->inputs.clear();
   request->inputs.reserve(eg.inputs.size());
   request->outputs.clear();
-  request->outputs.reserve(eg.outputs.size() * 2);
+  request->outputs.reserve(eg.outputs.size());
   request->need_model_derivative = need_model_derivative;
   request->store_component_stats = store_component_stats;
   for (size_t i = 0; i < eg.inputs.size(); i++) {
     const NnetIo &io = eg.inputs[i];
     const std::string &name = io.name;
     int32 node_index = nnet.GetNodeIndex(name);
-    if (node_index == -1 ||
+    if (node_index == -1 &&
         !nnet.IsInputNode(node_index))
       KALDI_ERR << "Nnet example has input named '" << name
                 << "', but no such input node is in the network.";
@@ -342,7 +335,7 @@ void GetChainComputationRequest(const Nnet &nnet,
   }
   for (size_t i = 0; i < eg.outputs.size(); i++) {
     // there will normally be exactly one output , named "output"
-    const NnetChainSupervision &sup = eg.outputs[i];
+    const NnetDiscriminativeSupervision &sup = eg.outputs[i];
     const std::string &name = sup.name;
     int32 node_index = nnet.GetNodeIndex(name);
     if (node_index == -1 &&
@@ -354,7 +347,7 @@ void GetChainComputationRequest(const Nnet &nnet,
     io_spec.name = name;
     io_spec.indexes = sup.indexes;
     io_spec.has_deriv = need_model_derivative;
-
+    
     if (use_xent_regularization) {
       size_t cur_size = request->outputs.size();
       request->outputs.resize(cur_size + 1);
@@ -375,9 +368,9 @@ void GetChainComputationRequest(const Nnet &nnet,
     KALDI_ERR << "No outputs in computation request.";
 }
 
-void ShiftChainExampleTimes(int32 frame_shift,
+void ShiftDiscriminativeExampleTimes(int32 frame_shift,
                             const std::vector<std::string> &exclude_names,
-                            NnetChainExample *eg) {
+                            NnetDiscriminativeExample *eg) {
   std::vector<NnetIo>::iterator input_iter = eg->inputs.begin(),
       input_end = eg->inputs.end();
   for (; input_iter != input_end; ++input_iter) {
@@ -397,7 +390,7 @@ void ShiftChainExampleTimes(int32 frame_shift,
   // note: we'll normally choose a small enough shift that the output-data
   // shift will be zero after dividing by frame_subsampling_factor
   // (e.g. frame_subsampling_factor == 3 and shift = 0 or 1.
-  std::vector<NnetChainSupervision>::iterator
+  std::vector<NnetDiscriminativeSupervision>::iterator
       sup_iter = eg->outputs.begin(),
       sup_end = eg->outputs.end();
   for (; sup_iter != sup_end; ++sup_iter) {
@@ -423,3 +416,4 @@ void ShiftChainExampleTimes(int32 frame_shift,
 
 } // namespace nnet3
 } // namespace kaldi
+

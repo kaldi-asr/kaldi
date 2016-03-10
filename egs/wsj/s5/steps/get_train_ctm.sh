@@ -7,6 +7,7 @@
 
 # begin configuration section.
 cmd=run.pl
+frame_shift=0.01
 stage=0
 use_segments=true # if we have a segments file, use it to convert
                   # the segments to be relative to the original files.
@@ -28,6 +29,8 @@ if [ $# -ne 3 ]; then
   echo "                                    # to produce a ctm relative to the original audio"
   echo "                                    # files, with channel information (typically needed"
   echo "                                    # for NIST scoring)."
+  echo "    --frame-shift (default=0.01)    # specify this if your alignments have a frame-shift"
+  echo "                                    # not equal to 0.01 seconds"
   echo "e.g.:"
   echo "$0 data/train data/lang exp/tri3a_ali"
   echo "Produces ctm in: exp/tri3a_ali/ctm"
@@ -60,7 +63,7 @@ if [ $stage -le 0 ]; then
       "ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt < $sdata/JOB/text |" \
       '' '' ark:- \| \
       lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- \| \
-      nbest-to-ctm --print-silence=$print_silence ark:- - \| \
+      nbest-to-ctm --frame-shift=$frame_shift --print-silence=$print_silence ark:- - \| \
       utils/int2sym.pl -f 5 $lang/words.txt \| \
       gzip -c '>' $dir/ctm.JOB.gz || exit 1
   else
@@ -73,7 +76,7 @@ if [ $stage -le 0 ]; then
       "ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt < $sdata/JOB/text |" \
       '' '' ark:- \| \
       lattice-align-words-lexicon $lang/phones/align_lexicon.int $model ark:- ark:- \| \
-      nbest-to-ctm --print-silence=$print_silence ark:- - \| \
+      nbest-to-ctm --frame-shift=$frame_shift --print-silence=$print_silence ark:- - \| \
       utils/int2sym.pl -f 5 $lang/words.txt \| \
       gzip -c '>' $dir/ctm.JOB.gz || exit 1
   fi

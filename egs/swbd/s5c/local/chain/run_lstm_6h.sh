@@ -1,67 +1,49 @@
 #!/bin/bash
 
-# _6v is as _6h, but moving to a TDNN+ReLU recipe instead of using jesus-layer.
-# Otherwise we make everything as similar as possible to 6h.
-# The ReLU dimension, at 576, is chosen to make the number of parameters about
-# the same as 6h.
+# based on run_tdnn_6h.sh
 
-# great improvement!
-# local/chain/compare_wer.sh 6h 6v
-# System                       6h        6v
-# WER on train_dev(tg)      15.46     15.00
-# WER on train_dev(fg)      14.28     13.91
-# WER on eval2000(tg)        17.4      17.2
-# WER on eval2000(fg)        15.7      15.7
+# %WER 15.6 | 4459 42989 | 86.1 9.2 4.7 1.8 15.6 52.1 | exp/chain/lstm_6h_ld5_sp/decode_eval2000_sw1_fsh_fg/score_10_1.0/eval2000_hires.ctm.filt.sys
+# %WER 10.3 | 1831 21395 | 90.9 6.1 3.0 1.3 10.3 44.7 | exp/chain/lstm_6h_ld5_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
+# %WER 20.7 | 2628 21594 | 82.0 12.8 5.3 2.7 20.7 56.7 | exp/chain/lstm_6h_ld5_sp/decode_eval2000_sw1_fsh_fg/score_8_0.0/eval2000_hires.ctm.callhm.filt.sys
 
-# the following objf values are computed on the last iter (323), because due to
-# a script bug, now fixed, the 'final' ones were not computed in 6v.
-# note: in this run the xent learning rate was too slow.
-# 323 train prob        -0.129285     -0.120026
-# 323 valid prob        -0.151648     -0.140628
-# 323 train prob (xent)  -1.4443      -1.5431
-# 323 valid prob (xent)  -1.51731     -1.56975
-
+# if right-tolerance was 10 (these are old results)
+#---------------------------
+# %WER 15.8 | 4459 42989 | 86.0 9.3 4.8 1.8 15.8 52.0 | exp/chain/lstm_6h_ld5_sp/decode_eval2000_sw1_fsh_fg/score_10_0.5/eval2000_hires.ctm.filt.sys
+# %WER 10.6 | 1831 21395 | 90.6 6.2 3.2 1.2 10.6 45.2 | exp/chain/lstm_6h_ld5_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
+# %WER 21.0 | 2628 21594 | 81.4 12.4 6.3 2.4 21.0 56.8 | exp/chain/lstm_6h_ld5_sp/decode_eval2000_sw1_fsh_fg/score_10_0.5/eval2000_hires.ctm.callhm.filt.sys
 
 set -e
 
 # configs for 'chain'
-affix=
 stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_6v  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/lstm_6h  # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
+decode_dir_affix=
 
-# TDNN options
-# this script uses the new tdnn config generator so it needs a final 0 to reflect that the final layer input has no splicing
-# smoothing options
-pool_window=
-pool_type='none'
-pool_lpfilter_width=
-self_repair_scale=0.00001
 # training options
-num_epochs=4
-initial_effective_lrate=0.001
-final_effective_lrate=0.0001
 leftmost_questions_truncate=-1
-max_param_change=2.0
-final_layer_normalize_target=0.5
-num_jobs_initial=3
-num_jobs_final=16
-minibatch_size=128
-relu_dim=576
-frames_per_eg=150
+chunk_width=150
+chunk_left_context=40
+chunk_right_context=0
+xent_regularize=0.025
+
+label_delay=5
+# decode options
+extra_left_context=
+extra_right_context=
+frames_per_chunk=
+
 remove_egs=false
 common_egs_dir=
-xent_regularize=0.1
 
-
-
+affix=
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -82,7 +64,9 @@ if [ "$speed_perturb" == "true" ]; then
   suffix=_sp
 fi
 
-dir=${dir}${affix:+_$affix}$suffix
+dir=$dir${affix:+_$affix}
+if [ $label_delay -gt 0 ]; then dir=${dir}_ld$label_delay; fi
+dir=${dir}$suffix
 train_set=train_nodup$suffix
 ali_dir=exp/tri4_ali_nodup$suffix
 treedir=exp/chain/tri5_2y_tree$suffix
@@ -128,35 +112,25 @@ fi
 
 if [ $stage -le 12 ]; then
   echo "$0: creating neural net configs";
-  if [ ! -z "$relu_dim" ]; then
-    dim_opts="--relu-dim $relu_dim"
-  else
-    dim_opts="--pnorm-input-dim $pnorm_input_dim --pnorm-output-dim  $pnorm_output_dim"
-  fi
 
-  # create the config files for nnet initialization
-  pool_opts=
-  pool_opts=$pool_opts${pool_type:+" --pool-type $pool_type "}
-  pool_opts=$pool_opts${pool_window:+" --pool-window $pool_window "}
-  pool_opts=$pool_opts${pool_lpfilter_width:+" --pool-lpfilter-width $pool_lpfilter_width "}
-  repair_opts=${self_repair_scale:+" --self-repair-scale $self_repair_scale "}
-
-  steps/nnet3/tdnn/make_configs.py $pool_opts \
-    $repair_opts \
+  steps/nnet3/lstm/make_configs.py  \
     --feat-dir data/${train_set}_hires \
     --ivector-dir exp/nnet3/ivectors_${train_set} \
     --tree-dir $treedir \
-    $dim_opts \
-    --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -3,0,3 -3,0,3 -6,-3,0 0" \
-    --use-presoftmax-prior-scale false \
+    --splice-indexes="-2,-1,0,1,2 0 0" \
+    --lstm-delay=" -3 -3 -3 " \
     --xent-regularize $xent_regularize \
-    --xent-separate-forward-affine true \
     --include-log-softmax false \
-    --final-layer-normalize-target $final_layer_normalize_target \
-    $dir/configs || exit 1;
+    --num-lstm-layers 3 \
+    --cell-dim 1024 \
+    --hidden-dim 1024 \
+    --recurrent-projection-dim 256 \
+    --non-recurrent-projection-dim 256 \
+    --label-delay $label_delay \
+    --self-repair-scale 0.00001 \
+   $dir/configs || exit 1;
+
 fi
-
-
 
 if [ $stage -le 13 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
@@ -175,27 +149,31 @@ if [ $stage -le 13 ]; then
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
-    --egs.dir exp/chain/tdnn_2y_sp/egs \
+    --chain.left-deriv-truncate 0 \
+    --trainer.num-chunk-per-minibatch 64 \
+    --trainer.frames-per-iter 1200000 \
+    --trainer.max-param-change 2.0 \
+    --trainer.num-epochs 4 \
+    --trainer.optimization.shrink-value 0.99 \
+    --trainer.optimization.num-jobs-initial 3 \
+    --trainer.optimization.num-jobs-final 16 \
+    --trainer.optimization.initial-effective-lrate 0.001 \
+    --trainer.optimization.final-effective-lrate 0.0001 \
+    --trainer.optimization.momentum 0.0 \
     --egs.stage $get_egs_stage \
     --egs.opts "--frames-overlap-per-eg 0" \
-    --egs.chunk-width $frames_per_eg \
-    --trainer.num-chunk-per-minibatch $minibatch_size \
-    --trainer.frames-per-iter 1200000 \
-    --trainer.num-epochs $num_epochs \
-    --trainer.optimization.num-jobs-initial $num_jobs_initial \
-    --trainer.optimization.num-jobs-final $num_jobs_final \
-    --trainer.optimization.initial-effective-lrate $initial_effective_lrate \
-    --trainer.optimization.final-effective-lrate $final_effective_lrate \
-    --trainer.max-param-change $max_param_change \
+    --egs.chunk-width $chunk_width \
+    --egs.chunk-left-context $chunk_left_context \
+    --egs.chunk-right-context $chunk_right_context \
+    --egs.dir "$common_egs_dir" \
     --cleanup.remove-egs $remove_egs \
     --feat-dir data/${train_set}_hires \
     --tree-dir $treedir \
     --lat-dir exp/tri4_lats_nodup$suffix \
     --dir $dir  || exit 1;
-
 fi
 
-if [ $stage -le 13 ]; then
+if [ $stage -le 14 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
@@ -204,7 +182,10 @@ fi
 
 decode_suff=sw1_tg
 graph_dir=$dir/graph_sw1_tg
-if [ $stage -le 14 ]; then
+if [ $stage -le 15 ]; then
+  [ -z $extra_left_context ] && extra_left_context=$chunk_left_context;
+  [ -z $extra_right_context ] && extra_right_context=$chunk_right_context;
+  [ -z $frames_per_chunk ] && frames_per_chunk=$chunk_width;
   iter_opts=
   if [ ! -z $decode_iter ]; then
     iter_opts=" --iter $decode_iter "
@@ -212,13 +193,16 @@ if [ $stage -le 14 ]; then
   for decode_set in train_dev eval2000; do
       (
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-          --nj 50 --cmd "$decode_cmd" $iter_opts \
+          --nj 250 --cmd "$decode_cmd" $iter_opts \
+          --extra-left-context $extra_left_context  \
+          --extra-right-context $extra_right_context  \
+          --frames-per-chunk "$frames_per_chunk" \
           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
-          $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_${decode_suff} || exit 1;
+         $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}${decode_dir_affix:+_$decode_dir_affix}_${decode_suff} || exit 1;
       if $has_fisher; then
           steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
             data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
-            $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_sw1_{tg,fsh_fg} || exit 1;
+            $dir/decode_${decode_set}${decode_dir_affix:+_$decode_dir_affix}_sw1_{tg,fsh_fg} || exit 1;
       fi
       ) &
   done

@@ -22,4 +22,8 @@ ones to look at right now:
      about the same results.  I'm hoping to use this setup, going forward.
   6i is like 6i but with a separate last-but-one affine layer for the xent output
      (marginally better than 6g).
+  6z is probably the thing I currently recommend to run-- it's a TDNN+ReLU based
+     setup that's quite fast to train and gives better results than our old
+     jesus-layer-based system.
+
 

@@ -7,6 +7,18 @@
 # the baseline in 6w.
 # We're reusing the 6x egs.
 
+# no clear benefit; if anything, it's slightly worse.
+# local/chain/compare_wer.sh  6w 6x
+# System                       6w        6x
+# WER on train_dev(tg)      15.33     15.30
+# WER on train_dev(fg)      14.27     14.35
+# WER on eval2000(tg)        17.3      17.4
+# WER on eval2000(fg)        15.6      15.7
+# Final train prob       -0.10287 -0.103078
+# Final valid prob      -0.120451 -0.122477
+# Final train prob (xent)      -1.63586  -1.73292
+# Final valid prob (xent)      -1.67173  -1.75042
+
 # 6w is as 6v (a new tdnn-based recipe), but using 1.5 million not 1.2 million
 # frames per iter (and of course re-dumping the egs).
 

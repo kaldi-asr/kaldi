@@ -11,7 +11,7 @@
 # and 6s is using 3 million which at the normal frame rate would be
 # 1.5 million, and 1.2 != 1.5.
 
-# 6r is no better than 6h, and maybe slightly worse.  Certainly it's worse than
+# 6u is no better than 6h, and maybe slightly worse.  Certainly it's worse than
 # 6t.  In addition, the train-valid difference is bigger with 6h and 6u than
 # with 6t.  This is all consistent with the notion that the higher-frame-rate
 # input, with with we can generate more shifted versions, does really make a
