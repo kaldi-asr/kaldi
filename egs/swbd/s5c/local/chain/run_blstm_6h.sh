@@ -2,6 +2,11 @@
 
 # based on run_tdnn_6h.sh
 
+#%WER 9.6 | 1831 21395 | 91.6 5.8 2.6 1.2 9.6 44.2 | exp/chain/blstm_6h_sp/decode_eval2000_sw1_fsh_fg/score_10_1.0/eval2000_hires.ctm.swbd.filt.sys
+#%WER 14.5 | 4459 42989 | 87.4 8.9 3.7 1.9 14.5 50.5 | exp/chain/blstm_6h_sp/decode_eval2000_sw1_fsh_fg/score_9_0.0/eval2000_hires.ctm.filt.sys
+#%WER 19.3 | 2628 21594 | 83.3 11.8 4.9 2.5 19.3 54.8 | exp/chain/blstm_6h_sp/decode_eval2000_sw1_fsh_fg/score_9_0.0/eval2000_hires.ctm.callhm.filt.sys
+#%WER 13.32 [ 6554 / 49204, 830 ins, 1696 del, 4028 sub ] exp/chain/blstm_6h_sp/decode_train_dev_sw1_fsh_fg/wer_10_0.0
+
 set -e
 
 # configs for 'chain'
