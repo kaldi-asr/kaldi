@@ -19,8 +19,6 @@ get_egs_stage=-10
 use_gpu=true  # for training
 cleanup=false  # run with --cleanup true --stage 6 to clean up (remove large things like denlats,
                # alignments and degs).
-## Decode options
-decode_start_epoch=1 # can be used to avoid decoding all epochs, e.g. if we decided to run more.
 
 set -e
 . cmd.sh
@@ -52,7 +50,10 @@ regularization_opts=
 minibatch_size=64
 adjust_priors=true
 modify_learning_rates=true
-last_layer_factor=1.0
+last_layer_factor=0.1
+
+## Decode options
+decode_start_epoch=1 # can be used to avoid decoding all epochs, e.g. if we decided to run more.
 
 if $use_gpu; then
   if ! cuda-compiled; then
