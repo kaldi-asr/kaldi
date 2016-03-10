@@ -73,6 +73,8 @@ int main(int argc, char *argv[]) {
         "nnet3-compute-from-egs, but works with discriminative egs. \n"
         "If --apply-exp=true, apply the Exp() function to the output before writing\n"
         "it out.\n"
+        "Note: This program uses only the input; it does not do forward-backward\n"
+        "over the lattice. See nnet3-discriminative-compute-objf for that.\n"
         "\n"
         "Usage:  nnet3-discriminative-compute-from-egs [options] <raw-nnet-in> <training-examples-in> <matrices-out>\n"
         "e.g.:\n"

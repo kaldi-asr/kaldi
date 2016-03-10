@@ -25,7 +25,6 @@ set -e
 . ./path.sh
 . ./utils/parse_options.sh
 
-use_gpu=true  # for training
 srcdir=exp/nnet3/nnet_ms_a
 train_data_dir=data/train_nodup_sp_hires
 online_ivector_dir=exp/nnet3/ivectors_train_nodup_sp
@@ -35,6 +34,8 @@ lats_dir=
 ## Objective options
 criterion=smbr
 one_silence_class=true
+
+dir=${srcdir}_${criterion}
 
 ## Egs options
 frames_per_eg=150
@@ -83,9 +84,8 @@ if [ $stage -le 1 ]; then
   nj=350 # have a high number of jobs because this could take a while, and we might
          # have some stragglers.
   use_gpu=no
-  gpu_opts=
 
-  steps/nnet3/align.sh  --cmd "$decode_cmd $gpu_opts" --use-gpu "$use_gpu" \
+  steps/nnet3/align.sh  --cmd "$decode_cmd" --use-gpu "$use_gpu" \
      --online-ivector-dir $online_ivector_dir \
      --nj $nj $train_data_dir data/lang $srcdir ${srcdir}_ali || exit 1;
 
@@ -100,7 +100,7 @@ if [ -z "$lats_dir" ]; then
     num_threads_denlats=6
     subsplit=40 # number of jobs that run per job (but 2 run at a time, so total jobs is 80, giving
     # total slots = 80 * 6 = 480.
-    steps/nnet3/make_denlats.sh --cmd "$decode_cmd --mem 1G --num-threads $num_threads_denlats" \
+    steps/nnet3/make_denlats.sh --cmd "$decode_cmd" \
       --online-ivector-dir $online_ivector_dir --determinize true \
       --nj $nj --sub-split $subsplit --num-threads "$num_threads_denlats" --config conf/decode.config \
       $train_data_dir data/lang $srcdir ${lats_dir} || exit 1;
@@ -138,9 +138,6 @@ if [ -z "$degs_dir" ]; then
       $train_data_dir data/lang ${srcdir}_ali $lats_dir $srcdir/final.mdl $degs_dir || exit 1;
   fi
 fi
-
-d=`basename $degs_dir`
-dir=${srcdir}_${criterion}
 
 if [ $stage -le 4 ]; then
   steps/nnet3/train_discriminative.sh --cmd "$decode_cmd" \

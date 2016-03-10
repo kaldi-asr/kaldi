@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
         "Usage:  nnet3-discriminative-subset-egs [options] <degs-rspecifier> [<degs-wspecifier2> ...]\n"
         "\n"
         "e.g.\n"
-        "nnet3-discriminative-subset-egs [args] ark:- | nnet-discriminative-subset-egs --n=1000 ark:- ark:subset.degs\n";
+        "nnet3-discriminative-copy-egs [args] ark:degs.1.ark ark:- | nnet-discriminative-subset-egs --n=1000 ark:- ark:subset.egs\n";
     
     int32 srand_seed = 0;
     int32 n = 1000;

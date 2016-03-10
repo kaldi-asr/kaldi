@@ -46,7 +46,7 @@ function filter_text {
   perl -e 'foreach $w (@ARGV) { $bad{$w} = 1; }
    while(<STDIN>) { @A  = split(" ", $_); $id = shift @A; print "$id ";
      foreach $a (@A) { if (!defined $bad{$a}) { print "$a "; }} print "\n"; }' \
-   '[NOISE]' '[LAUGHTER]' '[VOCALIZED-NOISE]' '<UNK>' '%HESITATION' '[noise]' '[laughter]' '[vocalized-noise]' '<unk>' '%hesitation'
+   '[noise]' '[laughter]' '[vocalized-noise]' '<unk>' '%hesitation'
 }
 
 for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
