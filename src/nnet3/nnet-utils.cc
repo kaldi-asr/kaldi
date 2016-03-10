@@ -203,9 +203,13 @@ static void ComputeSimpleNnetContextForShift(
   }
   // push the indexes for ivector(s)
   int32 t_modulus = GetTModulusForIvector(nnet);
-  if (t_modulus == 0) // case 1: single ivector for the entire chunk
+  if (t_modulus == 0)
+    // single ivector for the entire chunk
+    // the assumption here is that the network just requires the ivector at time
+    // t=0
     ivector.indexes.push_back(Index(n, 0));
-  else { // case 2: multiple ivectors
+  else {
+    // multiple ivectors, so push multiple indexes
     int32 t_begin = std::floor(1.0 * input_start / t_modulus);
     int32 t_end = std::floor((input_end - 1.0) / t_modulus);
     for (int32 t = t_begin; t <= t_end; t++)

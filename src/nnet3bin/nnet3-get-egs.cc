@@ -30,11 +30,11 @@ namespace kaldi {
 namespace nnet3 {
 
 static void GetIvectorsForEgs(int32 t, int32 left_context,
-                                  int32 right_context, int32 frames_per_eg,
-                                  int32 actual_frames_per_eg,
-                                  int32 ivector_interval,
-                                  const MatrixBase<BaseFloat> *ivector_feats,
-                                  NnetExample *eg) {
+                              int32 right_context, int32 frames_per_eg,
+                              int32 actual_frames_per_eg,
+                              int32 ivector_interval,
+                              const MatrixBase<BaseFloat> *ivector_feats,
+                              NnetExample *eg) {
   // try to get a representative iVector every ivector_interval frames
   // in an eg.
   KALDI_ASSERT(ivector_feats->NumRows() > 0);

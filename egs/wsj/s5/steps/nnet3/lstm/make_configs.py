@@ -126,7 +126,6 @@ def CheckArgs(args):
     if not args.ivector_interval >= 0:
         raise Exception("ivector-interval has to be a non-negative")
 
-
     if (args.num_lstm_layers < 1):
         sys.exit("--num-lstm-layers has to be a positive integer")
     if (args.clipping_threshold < 0):

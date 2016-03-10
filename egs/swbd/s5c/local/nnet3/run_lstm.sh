@@ -127,6 +127,7 @@ if [ $stage -le 10 ]; then
     --egs.chunk-width=$chunk_width \
     --egs.chunk-left-context=$chunk_left_context \
     --egs.chunk-right-context=$chunk_right_context \
+    --egs.ivector-interval $ivector_interval \
     --egs.dir="$common_egs_dir" \
     --cleanup.remove-egs=$remove_egs \
     --cleanup.preserve-model-interval=100 \
