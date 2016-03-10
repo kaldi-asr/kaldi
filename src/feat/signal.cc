@@ -38,7 +38,7 @@ void ConvolveSignals(const Vector<BaseFloat> &filter, Vector<BaseFloat> *signal)
   signal_padded.SetZero();
   for (int32 i = 0; i < signal_length; i++) {
     for (int32 j = 0; j < filter_length; j++) {
-        signal_padded(i + j) += (*signal)(i) * filter(j);
+        signal_padded(i+j) += (*signal)(i) * filter(j);
     }
   }
   signal->CopyFromVec(signal_padded.Range(0, signal_length));
@@ -70,7 +70,8 @@ void FFTbasedConvolveSignals(const Vector<BaseFloat> &filter, Vector<BaseFloat> 
   signal->CopyFromVec(signal_padded.Range(0, signal_length));
 }
 
-void FFTbasedBlockConvolveSignals(const Vector<BaseFloat> &filter, Vector<BaseFloat> *signal) {
+void FFTbasedBlockConvolveSignals(const Vector<BaseFloat> &filter, Vector<BaseFloat> *signal,
+  bool apply_inverse) {
   int32 signal_length = signal->Dim();
   int32 filter_length = filter.Dim();
 
@@ -86,6 +87,30 @@ void FFTbasedBlockConvolveSignals(const Vector<BaseFloat> &filter, Vector<BaseFl
   Vector<float> filter_padded(fft_length);
   filter_padded.Range(0, filter_length).CopyFromVec(filter);
   srfft.Compute(filter_padded.Data(), true);
+  
+  // If true, inverse of filter is computed and 
+  // input signal is convolved with inverse of filter.
+  // The inverse of filter H_inv(w) is estimated as 
+  // conj(H(w))/( abs(H(w))^2 + const) 
+  if (apply_inverse) {
+    BaseFloat abs_Hw, const_val = 0.0;
+    int32 half_N = filter_padded.Dim() / 2;
+    Vector<float> inv_filter_padded(filter_padded);
+    inv_filter_padded(0) = 
+      filter_padded(0) / (filter_padded(0) * filter_padded(0) + const_val);
+    inv_filter_padded(1) = 
+      filter_padded(1) / (filter_padded(1) * filter_padded(1) + const_val);
+    for (int32 bin = 1; bin < half_N; bin++) {
+      int32 w_real_ind = 2 * bin,
+       w_im_ind = 2 * bin + 1;
+      abs_Hw = filter_padded(w_real_ind) * filter_padded(w_real_ind) +
+               filter_padded(w_im_ind) * filter_padded(w_im_ind);
+
+      inv_filter_padded(w_real_ind) /= (abs_Hw + const_val);
+      inv_filter_padded(w_im_ind) *= -1.0 / (abs_Hw + const_val);
+    }
+    filter_padded.CopyFromVec(inv_filter_padded);
+  }
 
   Vector<float> temp_pad(filter_length - 1);
   temp_pad.SetZero();
