@@ -50,7 +50,11 @@ if $reverse; then
   reorder_opt="--reorder=false"
 fi
 
-if [ -f $dir/../frame_subsampling_factor ]; then
+
+if [ -f $dir/../frame_shift ]; then
+  frame_shift_opt="--frame-shift=$(cat $dir/../frame_shift)"
+  echo "$0: $dir/../frame_shift exists, using $frame_shift_opt"
+elif [ -f $dir/../frame_subsampling_factor ]; then
   factor=$(cat $dir/../frame_subsampling_factor) || exit 1
   frame_shift_opt="--frame-shift=0.0$factor"
   echo "$0: $dir/../frame_subsampling_factor exists, using $frame_shift_opt"

@@ -121,7 +121,7 @@ int main(int argc, char *argv[]) {
     }
 
     BaseFloat tot_weight_float = tot_weight.Value1() + tot_weight.Value2();
-    KALDI_LOG << "Overall score per frame is " << (tot_weight_float/n_frame)
+    KALDI_LOG << "Overall cost per frame is " << (tot_weight_float/n_frame)
               << " = " << (tot_weight.Value1()/n_frame) << " [graph]"
               << " + " << (tot_weight.Value2()/n_frame) << " [acoustic]"
               << " over " << n_frame << " frames.";

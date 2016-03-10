@@ -931,15 +931,15 @@ static void _add_diag_mat_mat(
   int v_idx = i / threads_per_element,   // v_idx is the index into v that we are supposed to
       sub_idx = i % threads_per_element; // add to; 0 <= sub_idx < threads_per_element tells
                                          // us which block of elements we sum up.
-  if (v_idx >= v_dim) return;
-
-  Real sum = 0.0;
-  for (int j = sub_idx; j < M_cols; j += threads_per_element) {
-    int M_index = v_idx * M_row_stride + j * M_col_stride,
-        N_index = j * N_row_stride + v_idx * N_col_stride;
-    sum += M[M_index] * N[N_index];
+  if (v_idx < v_dim) {
+    Real sum = 0.0;
+    for (int j = sub_idx; j < M_cols; j += threads_per_element) {
+      int M_index = v_idx * M_row_stride + j * M_col_stride,
+          N_index = j * N_row_stride + v_idx * N_col_stride;
+      sum += M[M_index] * N[N_index];
+    }
+    temp_data[threadIdx.x] = sum;
   }
-  temp_data[threadIdx.x] = sum;
 
   // start_idx = threadIdx.x - sub_idx; // start of the position in temp_data
                                      // that we want to sum up.
@@ -959,7 +959,7 @@ static void _add_diag_mat_mat(
     __syncthreads();
     num_total_threads = half_point;
   }
-  if (sub_idx == 0) {
+  if (sub_idx == 0 && v_idx < v_dim) {
     v[v_idx] = beta * v[v_idx] + alpha * temp_data[threadIdx.x];
   }
 }
@@ -1152,7 +1152,6 @@ __global__
 static void _pvec_sum(Real* v, Real* g, int dim, int size) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int start = size * i;
-  if (start >= dim) return;
   int end = start + size;
   if (end > dim) end = dim;
   __shared__ Real row_data[CU1DBLOCK];
@@ -1754,6 +1753,19 @@ static void _diff_tanh(Real*eout, const Real*e, const Real*y, MatrixDim d, int e
 
 template<typename Real>
 __global__
+static void _heaviside(Real*y, const Real*x, MatrixDim d, int src_stride) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  int dst_index = i + j*d.stride, src_index = i + j*src_stride;
+  if(i < d.cols && j < d.rows) {
+    Real res = (x[src_index] > 0.0 ? 1.0 : 0.0);
+    y[dst_index] = res;
+  }
+}
+
+
+template<typename Real>
+__global__
 static void _softmax_reduce(Real*y, const Real*x, MatrixDim d, int src_stride) {
   int j = blockIdx.x;
   int THREADS = blockDim.x;
@@ -2145,7 +2157,6 @@ void cudaF_apply_pow_abs(dim3 Gr, dim3 Bl, float* mat, float power, bool include
 
 void cudaF_apply_heaviside(dim3 Gr, dim3 Bl, float* mat, MatrixDim d) {
   _apply_heaviside<<<Gr,Bl>>>(mat, d);
-
 }
 
 void cudaF_copy_cols(dim3 Gr, dim3 Bl, float* dst, const float* src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride) {
@@ -2469,6 +2480,10 @@ void cudaF_tanh (dim3 Gr, dim3 Bl, float* y, const float* x, MatrixDim d, int sr
 
 void cudaF_diff_tanh (dim3 Gr, dim3 Bl, float* eout, const float* e, const float* y, MatrixDim d, int e_stride, int y_stride) {
   _diff_tanh<<<Gr,Bl>>>(eout, e, y, d, e_stride, y_stride);
+}
+
+void cudaF_heaviside (dim3 Gr, dim3 Bl, float* y, const float* x, MatrixDim d, int src_stride) {
+  _heaviside<<<Gr,Bl>>>(y, x, d, src_stride);
 }
 
 void cudaF_softmax_reduce (size_t Gr, size_t Bl, float* y, const float* x, MatrixDim d, int src_stride) {
@@ -2928,6 +2943,10 @@ void cudaD_tanh (dim3 Gr, dim3 Bl, double* y, const double* x, MatrixDim d, int 
 
 void cudaD_diff_tanh (dim3 Gr, dim3 Bl, double* eout, const double* e, const double* y, MatrixDim d, int e_stride, int y_stride) {
   _diff_tanh<<<Gr,Bl>>>(eout, e, y, d, e_stride, y_stride);
+}
+
+void cudaD_heaviside (dim3 Gr, dim3 Bl, double* y, const double* x, MatrixDim d, int src_stride) {
+  _heaviside<<<Gr,Bl>>>(y, x, d, src_stride);
 }
 
 void cudaD_softmax_reduce (size_t Gr, size_t Bl, double* y, const double* x, MatrixDim d, int src_stride) {

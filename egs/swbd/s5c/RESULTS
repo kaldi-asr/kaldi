@@ -105,6 +105,9 @@ exit 0
 %WER 14.5 | 1831 21395 | 86.8 8.5 4.6 1.3 14.5 52.4 | exp/nnet2_online/nnet_ms_b_online/decode_eval2000_hires_sw1_tg/score_12/eval2000_hires.ctm.swbd.filt.sys
 %WER 14.8 | 1831 21395 | 86.7 9.0 4.3 1.6 14.8 52.8 | exp/nnet2_online/nnet_ms_b_online/decode_eval2000_hires_sw1_tg_per_utt/score_10/eval2000_hires.ctm.swbd.filt.sys
 
+
+(
+# old results with 25 million parameter model. We do not want to use such a big model. So see the new results below
 # local/nnet3/run_lstm.sh
 # these are results with nnet3 LSTMs cell_dim=1280, recurrent_dim=384, lstm_delay=-1 -2 -3, label_delay=5 num_params=25010228 (8 epoch training on speed-perturbed
 # and volume perturbed data)
@@ -114,6 +117,21 @@ exit 0
 %WER 18.1 | 4459 42989 | 84.0 11.2 4.8 2.0 18.1 54.9 | exp/nnet3/lstm_ld5_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.filt.sys
 %WER 22.0 | 2628 21594 | 80.5 13.9 5.6 2.5 22.0 57.3 | exp/nnet3/lstm_ld5_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.callhm.filt.sys
 %WER 23.3 | 2628 21594 | 79.4 14.7 6.0 2.7 23.3 59.2 | exp/nnet3/lstm_ld5_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.callhm.filt.sys
+)
+
+
+# local/nnet3/run_lstm.sh
+# these are results with nnet3 LSTMs cell_dim=1024, recurrent_dim=256, nonrecurrent_projection_dim=256, lstm_delay=-1 -2 -3, label_delay=5 num_params=14.6M (8 epoch training on speed-perturbed
+# this setup has the newly introduced feature self-repair, in addition to shrink
+%WER 11.6 | 1831 21395 | 89.7 6.9 3.4 1.3 11.6 46.9 | exp/nnet3/lstm_ld5_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 12.6 | 1831 21395 | 88.7 7.6 3.7 1.4 12.6 49.6 | exp/nnet3/lstm_ld5_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 21.3 | 2628 21594 | 81.0 13.2 5.8 2.4 21.3 57.3 | exp/nnet3/lstm_ld5_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.callhm.filt.sys
+%WER 23.1 | 2628 21594 | 79.5 14.7 5.8 2.6 23.1 59.6 | exp/nnet3/lstm_ld5_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.callhm.filt.sys
+%WER 16.5 | 4459 42989 | 85.3 10.1 4.6 1.8 16.5 53.0 | exp/nnet3/lstm_ld5_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.filt.sys
+%WER 17.9 | 4459 42989 | 84.1 11.2 4.8 2.0 17.9 55.5 | exp/nnet3/lstm_ld5_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.filt.sys
+%WER 15.17 [ 7466 / 49204, 993 ins, 1937 del, 4536 sub ] exp/nnet3/lstm_ld5_sp/decode_train_dev_sw1_fsh_fg/wer_12_0.0
+%WER 16.12 [ 7931 / 49204, 1072 ins, 1910 del, 4949 sub ] exp/nnet3/lstm_ld5_sp/decode_train_dev_sw1_tg/wer_11_0.0
+
 
 # bidirectional LSTM
 # -----------------------
@@ -142,7 +160,11 @@ exit 0
 %WER 11.3 | 1831 21395 | 90.0 6.8 3.2 1.3 11.3 46.6 | exp/chain/tdnn_2o_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
 %WER 13.0 | 1831 21395 | 88.6 7.9 3.6 1.6 13.0 50.4 | exp/chain/tdnn_2o_sp/decode_eval2000_sw1_tg/score_10_0.5/eval2000_hires.ctm.swbd.filt.sys
 
-
+# current best 'chain' models with LSTM (see local/chain/run_lstm_d.sh)
+%WER 10.5 | 1831 21395 | 90.8 6.4 2.9 1.3 10.5 44.3 | exp/chain/lstm_d_ld5_sp/decode_eval2000_sw1_fsh_fg/score_10_1.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 15.9 | 4459 42989 | 86.0 9.6 4.3 2.0 15.9 51.7 | exp/chain/lstm_d_ld5_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.filt.sys
+%WER 21.2 | 2628 21594 | 81.4 12.8 5.9 2.6 21.2 56.7 | exp/chain/lstm_d_ld5_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.callhm.filt.sys
+%WER 13.88 [ 6829 / 49204, 935 ins, 1690 del, 4204 sub ] exp/chain/lstm_d_ld5_sp/decode_train_dev_sw1_fsh_fg/wer_9_0.0
 
 # these are results with nnet3 LSTMs with CTC training : local/ctc/run_lstm.sh
 %WER 17.4 | 1831 21395 | 85.3 10.1 4.6 2.7 17.4 57.8 | exp/ctc/lstm_sp/decode_eval2000_sw1_fsh_fg_0.15/score_12_0.0/eval2000_hires.ctm.swbd.filt.sys

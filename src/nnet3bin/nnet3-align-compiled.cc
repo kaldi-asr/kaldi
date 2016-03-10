@@ -1,8 +1,9 @@
 // nnet2bin/nnet-align-compiled.cc
 
-// Copyright 2009-2012  Microsoft Corporation
-//                      Johns Hopkins University (author: Daniel Povey)
-//                2015  Vijayaditya Peddinti
+// Copyright 2009-2012     Microsoft Corporation
+//                         Johns Hopkins University (author: Daniel Povey)
+//                2015     Vijayaditya Peddinti
+//                2015-16  Vimal Manohar
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -41,7 +42,8 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Align features given nnet3 neural net model\n"
-        "Usage:   nnet3-align-compiled [options] <nnet-in> <graphs-rspecifier> <features-rspecifier> <alignments-wspecifier>\n"
+        "Usage:   nnet3-align-compiled [options] <nnet-in> <graphs-rspecifier> "
+        "<features-rspecifier> <alignments-wspecifier>\n"
         "e.g.: \n"
         " nnet3-align-compiled 1.mdl ark:graphs.fsts scp:train.scp ark:1.ali\n"
         "or:\n"
@@ -81,6 +83,8 @@ int main(int argc, char *argv[]) {
     po.Register("online-ivector-period", &online_ivector_period, "Number of frames "
                 "between iVectors in matrices supplied to the --online-ivectors "
                 "option");
+    po.Register("use-gpu", &use_gpu,
+                "yes|no|optional|wait, only has effect if compiled with CUDA");
     po.Read(argc, argv);
 
     if (po.NumArgs() < 4 || po.NumArgs() > 5) {

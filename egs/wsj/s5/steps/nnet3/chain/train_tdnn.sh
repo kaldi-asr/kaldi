@@ -23,21 +23,33 @@ truncate_deriv_weights=0  # can be used to set to zero the weights of derivs fro
 apply_deriv_weights=true
 initial_effective_lrate=0.0002
 final_effective_lrate=0.00002
+extra_left_context=0  # actually for recurrent setups.
 pnorm_input_dim=3000
 pnorm_output_dim=300
 relu_dim=  # you can use this to make it use ReLU's instead of p-norms.
+
+jesus_opts=  # opts to steps/nnet3/make_jesus_configs.py.
+             # If nonempty, assumes you want to use the jesus nonlinearity,
+             # and you should supply various options to that script in
+             # this string.
 rand_prune=4.0 # Relates to a speedup we do for LDA.
 minibatch_size=512  # This default is suitable for GPU-based training.
                     # Set it to 128 for multi-threaded CPU-based training.
 lm_opts=   # options to chain-est-phone-lm
+l2_regularize=0.0
+leaky_hmm_coefficient=0.00001
+xent_regularize=0.0
 frames_per_iter=800000  # each iteration of training, see this many [input]
                         # frames per job.  This option is passed to get_egs.sh.
                         # Aim for about a minute of training time
-right_tolerance=10
-denominator_scale=1.0 # relates to tombsone stuff.
+right_tolerance=5  # tolerance at the same frame-rate as the alignment directory.
+left_tolerance=5    # tolerance at the same frame-rate as the alignment directory.
 num_jobs_initial=1  # Number of neural net jobs to run in parallel at the start of training
 num_jobs_final=8   # Number of neural net jobs to run in parallel at the end of training
-frame_subsampling_factor=3  # controls reduced frame-rate at the output.
+frame_subsampling_factor=3  # ratio of frames-per-second of features we train
+                            # on, to chain model's output
+alignment_subsampling_factor=3  # ratio of frames-per-second of input alignments
+                                # to chain model's output
 get_egs_stage=0    # can be used for rerunning after partial
 online_ivector_dir=
 max_param_change=2.0
@@ -66,6 +78,10 @@ exit_stage=-100 # you can set this to terminate the training early.  Exits befor
 
 # count space-separated fields in splice_indexes to get num-hidden-layers.
 splice_indexes="-4,-3,-2,-1,0,1,2,3,4  0  -2,2  0  -4,4 0"
+pool_type='none'
+pool_window=
+pool_lpfilter_width=
+
 # Format : layer<hidden_layer>/<frame_indices>....layer<hidden_layer>/<frame_indices> "
 # note: hidden layers which are composed of one or more components,
 # so hidden layer indexing is different from component count
@@ -87,7 +103,7 @@ right_deriv_truncate=  # number of time-steps to avoid using the deriv of, on th
 
 # End configuration section.
 
-trap 'for pid in $(jobs -pr); do kill -KILL $pid; done' INT QUIT TERM
+trap 'for pid in $(jobs -pr); do kill -TERM $pid; done' INT QUIT TERM
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -197,23 +213,44 @@ num_leaves=$(am-info $dir/0.trans_mdl | grep -w pdfs | awk '{print $NF}') || exi
 
 if [ $stage -le -5 ]; then
   echo "$0: creating neural net configs";
-  if [ ! -z "$relu_dim" ]; then
-    dim_opts="--relu-dim $relu_dim"
-  else
-    dim_opts="--pnorm-input-dim $pnorm_input_dim --pnorm-output-dim  $pnorm_output_dim"
-  fi
 
-  # create the config files for nnet initialization
-  python steps/nnet3/make_tdnn_configs.py \
-    --include-log-softmax=false \
-    --final-layer-normalize-target $final_layer_normalize_target \
-    --splice-indexes "$splice_indexes"  \
-    --feat-dim $feat_dim \
-    --ivector-dim $ivector_dim  \
-     $dim_opts \
-    --num-targets $num_leaves \
-    --use-presoftmax-prior-scale false \
-   $dir/configs || exit 1;
+  if [ ! -z "$jesus_opts" ]; then
+    $cmd $dir/log/make_configs.log \
+       python steps/nnet3/make_jesus_configs.py \
+      --xent-regularize=$xent_regularize \
+      --include-log-softmax=false \
+      --splice-indexes "$splice_indexes"  \
+      --feat-dim $feat_dim \
+      --ivector-dim $ivector_dim  \
+       $jesus_opts \
+      --num-targets $num_leaves \
+      $dir/configs || exit 1;
+  else
+    [ $xent_regularize != "0.0" ] && \
+      echo "$0: --xent-regularize option not supported by tdnn/make_configs.py." && exit 1;
+    if [ ! -z "$relu_dim" ]; then
+      dim_opts="--relu-dim $relu_dim"
+    else
+      dim_opts="--pnorm-input-dim $pnorm_input_dim --pnorm-output-dim  $pnorm_output_dim"
+    fi
+
+    # create the config files for nnet initialization
+    pool_opts=
+    pool_opts=$pool_opts${pool_type:+" --pool-type $pool_type "}
+    pool_opts=$pool_opts${pool_window:+" --pool-window $pool_window "}
+    pool_opts=$pool_opts${pool_lpfilter_width:+" --pool-lpfilter-width $pool_lpfilter_width "}
+
+    python steps/nnet3/tdnn/make_configs.py $pool_opts \
+      --include-log-softmax=false \
+      --final-layer-normalize-target $final_layer_normalize_target \
+      --splice-indexes "$splice_indexes"  \
+      --feat-dim $feat_dim \
+      --ivector-dim $ivector_dim  \
+      $dim_opts \
+      --num-targets $num_leaves \
+      --use-presoftmax-prior-scale false \
+      $dir/configs || exit 1;
+  fi
 
   # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
   # matrix.  This first config just does any initial splicing that we do;
@@ -229,6 +266,12 @@ fi
 # num_hidden_layers=(something)
 . $dir/configs/vars || exit 1;
 
+# the next 2 lines are in case the configs were created by an older
+# config-generating script, which writes to left_context and right_context
+# instead of model_left_context and model_right_context.
+[ -z $model_left_context ] && model_left_context=$left_context
+[ -z $model_right_context ] && model_right_context=$right_context
+
 ! [ "$num_hidden_layers" -gt 0 ] && echo \
  "$0: Expected num_hidden_layers to be defined" && exit 1;
 
@@ -242,14 +285,17 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   extra_opts+=(--transform-dir $transform_dir)
   # we need a bit of extra left-context and right-context to allow for frame
   # shifts (we use shifted version of the data for more variety).
-  extra_opts+=(--left-context $[$left_context+$frame_subsampling_factor/2])
-  extra_opts+=(--right-context $[$right_context+$frame_subsampling_factor/2])
+  extra_opts+=(--left-context $[$model_left_context+$frame_subsampling_factor/2+$extra_left_context])
+  extra_opts+=(--right-context $[$model_right_context+$frame_subsampling_factor/2])
   echo "$0: calling get_egs.sh"
   steps/nnet3/chain/get_egs.sh $egs_opts "${extra_opts[@]}" \
       --frames-per-iter $frames_per_iter --stage $get_egs_stage \
       --cmd "$cmd" \
+      --right-tolerance "$right_tolerance" \
+      --left-tolerance "$left_tolerance" \
       --frames-per-eg $frames_per_eg \
       --frame-subsampling-factor $frame_subsampling_factor \
+      --alignment-subsampling-factor $alignment_subsampling_factor \
       $data $dir $latdir $dir/egs || exit 1;
 fi
 
@@ -271,8 +317,8 @@ cp $egs_dir/{cmvn_opts,splice_opts,final.mat} $dir 2>/dev/null
 # the --egs-dir option was used on the command line).
 egs_left_context=$(cat $egs_dir/info/left_context) || exit -1
 egs_right_context=$(cat $egs_dir/info/right_context) || exit -1
-( [ $egs_left_context -lt $left_context ] || \
-  [ $egs_right_context -lt $right_context ] ) && \
+( [ $egs_left_context -lt $model_left_context ] || \
+  [ $egs_right_context -lt $model_right_context ] ) && \
    echo "$0: egs in $egs_dir have too little context" && exit -1;
 
 frames_per_eg=$(cat $egs_dir/info/frames_per_eg) || { echo "error: no such file $egs_dir/info/frames_per_eg"; exit 1; }
@@ -414,11 +460,11 @@ while [ $x -lt $num_iters ]; do
     # Set off jobs doing some diagnostics, in the background.
     # Use the egs dir from the previous iteration for the diagnostics
     $cmd $dir/log/compute_prob_valid.$x.log \
-      nnet3-chain-compute-prob  \
+      nnet3-chain-compute-prob --l2-regularize=$l2_regularize --leaky-hmm-coefficient=$leaky_hmm_coefficient --xent-regularize=$xent_regularize \
           "nnet3-am-copy --raw=true $dir/$x.mdl -|" $dir/den.fst \
           "ark:nnet3-chain-merge-egs ark:$egs_dir/valid_diagnostic.cegs ark:- |" &
     $cmd $dir/log/compute_prob_train.$x.log \
-      nnet3-chain-compute-prob \
+      nnet3-chain-compute-prob --l2-regularize=$l2_regularize --leaky-hmm-coefficient=$leaky_hmm_coefficient  --xent-regularize=$xent_regularize \
           "nnet3-am-copy --raw=true $dir/$x.mdl -|" $dir/den.fst \
           "ark:nnet3-chain-merge-egs ark:$egs_dir/train_diagnostic.cegs ark:- |" &
 
@@ -440,10 +486,12 @@ while [ $x -lt $num_iters ]; do
       cur_num_hidden_layers=$[1+$x/$add_layers_period]
       config=$dir/configs/layer$cur_num_hidden_layers.config
       mdl="nnet3-am-copy --raw=true --learning-rate=$this_learning_rate $dir/$x.mdl - | nnet3-init --srand=$x - $config - |"
+      cache_io_opts=""
     else
       do_average=true
       if [ $x -eq 0 ]; then do_average=false; fi # on iteration 0, pick the best, don't average.
       mdl="nnet3-am-copy --raw=true --learning-rate=$this_learning_rate $dir/$x.mdl -|"
+      cache_io_opts="--read-cache=$dir/cache.$x"
     fi
     if $do_average; then
       this_minibatch_size=$minibatch_size
@@ -461,7 +509,9 @@ while [ $x -lt $num_iters ]; do
     rm $dir/.error 2>/dev/null
 
 
-    ( # this sub-shell is so that when we "wait" below,
+    (
+      trap 'for pid in $(jobs -pr); do kill -TERM $pid; done' INT QUIT TERM
+      # this sub-shell is so that when we "wait" below,
       # we only wait for the training jobs that we just spawned,
       # not the diagnostic jobs that we spawned above.
 
@@ -473,10 +523,16 @@ while [ $x -lt $num_iters ]; do
                                                # the other indexes from.
         archive=$[($k%$num_archives)+1]; # work out the 1-based archive index.
         frame_shift=$[($k/$num_archives)%$frame_subsampling_factor];
-
+        if [ $n -eq 1 ]; then
+          # opts for computation cache (storing compiled computation).
+          this_cache_io_opts="$cache_io_opts --write-cache=$dir/cache.$[$x+1]"
+        else
+          this_cache_io_opts="$cache_io_opts"
+        fi
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
           nnet3-chain-train --apply-deriv-weights=$apply_deriv_weights \
-              $parallel_train_opts $deriv_time_opts \
+             --l2-regularize=$l2_regularize --leaky-hmm-coefficient=$leaky_hmm_coefficient --xent-regularize=$xent_regularize \
+              $this_cache_io_opts $parallel_train_opts $deriv_time_opts \
              --max-param-change=$this_max_param_change \
             --print-interval=10 "$mdl" $dir/den.fst \
           "ark:nnet3-chain-copy-egs --truncate-deriv-weights=$truncate_deriv_weights --frame-shift=$frame_shift ark:$egs_dir/cegs.$archive.ark ark:- | nnet3-chain-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-chain-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
@@ -518,6 +574,7 @@ while [ $x -lt $num_iters ]; do
       rm $dir/$[$x-1].mdl
     fi
   fi
+  rm $dir/cache.$x 2>/dev/null
   x=$[$x+1]
   num_archives_processed=$[$num_archives_processed+$this_num_jobs]
 done
@@ -543,7 +600,7 @@ if [ $stage -le $num_iters ]; then
   # num-threads to 8 to speed it up (this isn't ideal...)
 
   $cmd $combine_queue_opt $dir/log/combine.log \
-    nnet3-chain-combine --num-iters=40 \
+    nnet3-chain-combine --num-iters=40  --l2-regularize=$l2_regularize --leaky-hmm-coefficient=$leaky_hmm_coefficient \
        --enforce-sum-to-one=true --enforce-positive-weights=true \
        --verbose=3 $dir/den.fst "${nnets_list[@]}" "ark:nnet3-chain-merge-egs --minibatch-size=$minibatch_size ark:$egs_dir/combine.cegs ark:-|" \
        "|nnet3-am-copy --set-raw-nnet=- $dir/$first_model_combine.mdl $dir/final.mdl" || exit 1;
@@ -553,11 +610,11 @@ if [ $stage -le $num_iters ]; then
   # the same subset we used for the previous compute_probs, as the
   # different subsets will lead to different probs.
   $cmd $dir/log/compute_prob_valid.final.log \
-    nnet3-chain-compute-prob \
+    nnet3-chain-compute-prob --l2-regularize=$l2_regularize --leaky-hmm-coefficient=$leaky_hmm_coefficient --xent-regularize=$xent_regularize \
            "nnet3-am-copy --raw=true $dir/final.mdl - |" $dir/den.fst \
     "ark:nnet3-chain-merge-egs ark:$egs_dir/valid_diagnostic.cegs ark:- |" &
   $cmd $dir/log/compute_prob_train.final.log \
-    nnet3-chain-compute-prob \
+    nnet3-chain-compute-prob --l2-regularize=$l2_regularize --leaky-hmm-coefficient=$leaky_hmm_coefficient --xent-regularize=$xent_regularize \
       "nnet3-am-copy --raw=true $dir/final.mdl - |" $dir/den.fst \
     "ark:nnet3-chain-merge-egs ark:$egs_dir/train_diagnostic.cegs ark:- |" &
 fi

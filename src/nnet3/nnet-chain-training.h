@@ -43,7 +43,7 @@ struct NnetChainTrainingOptions {
     chain_config.Register(opts);
     opts->Register("apply-deriv-weights", &apply_deriv_weights,
                    "If true, apply the per-frame derivative weights stored with "
-                   "the example (you'll normally want to leave this as true.");
+                   "the example");
   }
 };
 

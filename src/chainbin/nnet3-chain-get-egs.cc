@@ -25,6 +25,7 @@
 #include "hmm/posterior.h"
 #include "nnet3/nnet-example.h"
 #include "nnet3/nnet-chain-example.h"
+#include "nnet3/nnet-example-utils.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -48,6 +49,7 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
                         int32 frames_per_eg,
                         int32 frames_overlap_per_eg,
                         int32 frame_subsampling_factor,
+                        int32 cut_zero_frames,
                         int64 *num_frames_written,
                         int64 *num_egs_written,
                         NnetChainExampleWriter *example_writer) {
@@ -57,13 +59,36 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
       num_feature_frames_subsampled =
                              (num_feature_frames + frame_subsampling_factor - 1)/
                              frame_subsampling_factor;
-  if (num_output_frames != num_feature_frames_subsampled)
-    KALDI_ERR << "Mismatch in num-frames: chain supervision has "
-              << num_output_frames
-              << " versus features/frame_subsampling_factor = "
-              << num_feature_frames << " / " << frame_subsampling_factor
-              << ": check that --frame-subsampling-factor option is set "
-              << "the same as to chain-get-supervision.";
+  if (num_output_frames != num_feature_frames_subsampled) {
+    // we tolerate deviations in the num-frames if they are very small (1 output
+    // frame).
+
+    if (abs(num_output_frames - num_feature_frames_subsampled) > 1) {
+      KALDI_ERR << "Mismatch in num-frames: chain supervision has "
+                << num_output_frames
+                << " versus features/frame_subsampling_factor = "
+                << num_feature_frames << " / " << frame_subsampling_factor
+                << " = " << num_feature_frames_subsampled
+                << ": check that --frame-subsampling-factor option is set "
+                << "the same as to chain-get-supervision.";
+    }
+    int32 new_num_feature_frames =
+        num_output_frames * frame_subsampling_factor;
+    // add a few frames at the end to make it match up.
+    Matrix<BaseFloat> feats_new(new_num_feature_frames, feats.NumCols(),
+                                kUndefined);
+    int32 min_feature_frames = std::min<int32>(num_feature_frames,
+                                               new_num_feature_frames);
+    feats_new.RowRange(0, min_feature_frames).CopyFromMat(
+        feats.RowRange(0, min_feature_frames));
+    for (int32 i = num_feature_frames; i < new_num_feature_frames; i++)
+      feats_new.Row(i).CopyFromVec(feats.Row(num_feature_frames - 1));
+    return ProcessFile(normalization_fst, feats_new, ivector_feats,
+                       supervision, utt_id, compress, left_context, right_context,
+                       frames_per_eg, frames_overlap_per_eg, frame_subsampling_factor,
+                       cut_zero_frames, num_frames_written, num_egs_written,
+                       example_writer);
+  }
 
   KALDI_ASSERT(frames_per_eg % frame_subsampling_factor == 0);
 
@@ -88,9 +113,15 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
   // to the edge are not as accurate as they could be, because when we split we
   // don't know the correct alphas and betas).
   std::vector<Vector<BaseFloat> > deriv_weights;
-  chain::GetWeightsForRanges(frames_per_eg_subsampled,
-                             range_starts_subsampled,
-                             &deriv_weights);
+  if (cut_zero_frames >= 0)
+    chain::GetWeightsForRangesNew(frames_per_eg_subsampled,
+                                  cut_zero_frames / frame_subsampling_factor,
+                                  range_starts_subsampled,
+                                  &deriv_weights);
+  else
+    chain::GetWeightsForRanges(frames_per_eg_subsampled,
+                               range_starts_subsampled,
+                               &deriv_weights);
 
   if (range_starts_subsampled.empty()) {
     KALDI_WARN << "No output for utterance " << utt_id
@@ -177,35 +208,6 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
   return true;
 }
 
-void RoundUpNumFrames(int32 frame_subsampling_factor,
-                      int32 *num_frames,
-                      int32 *num_frames_overlap) {
-  if (*num_frames % frame_subsampling_factor != 0) {
-    int32 new_num_frames = frame_subsampling_factor *
-        (*num_frames / frame_subsampling_factor + 1);
-    KALDI_LOG << "Rounding up --num-frames=" << (*num_frames)
-              << " to a multiple of --frame-subsampling-factor="
-              << frame_subsampling_factor
-              << ", now --num-frames=" << new_num_frames;
-    *num_frames = new_num_frames;
-  }
-  if (*num_frames_overlap % frame_subsampling_factor != 0) {
-    int32 new_num_frames_overlap = frame_subsampling_factor *
-        (*num_frames_overlap / frame_subsampling_factor + 1);
-    KALDI_LOG << "Rounding up --num-frames-overlap=" << (*num_frames_overlap)
-              << " to a multiple of --frame-subsampling-factor="
-              << frame_subsampling_factor
-              << ", now --num-frames-overlap=" << new_num_frames_overlap;
-    *num_frames_overlap = new_num_frames_overlap;
-  }
-  if (*num_frames_overlap < 0 || *num_frames_overlap >= *num_frames) {
-    KALDI_ERR << "--num-frames-overlap=" << (*num_frames_overlap) << " < "
-              << "--num-frames=" << (*num_frames);
-  }
-
-}
-
-
 } // namespace nnet2
 } // namespace kaldi
 
@@ -237,6 +239,7 @@ int main(int argc, char *argv[]) {
     bool compress = true;
     int32 left_context = 0, right_context = 0, num_frames = 1,
         num_frames_overlap = 0, length_tolerance = 100,
+        cut_zero_frames = -1,
         frame_subsampling_factor = 1;
 
     std::string ivector_rspecifier;
@@ -244,6 +247,10 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     po.Register("compress", &compress, "If true, write egs in "
                 "compressed format (recommended)");
+    po.Register("cut-zero-frames", &cut_zero_frames, "Number of frames "
+                "(measured before subsampling) to zero the derivative on each "
+                "side of a cut point (if set, activates new-style derivative "
+                "weights)");
     po.Register("left-context", &left_context, "Number of frames of left "
                 "context the neural net requires.");
     po.Register("right-context", &right_context, "Number of frames of right "
@@ -333,14 +340,15 @@ int main(int argc, char *argv[]) {
              || ivector_feats->NumRows() == 0)) {
           KALDI_WARN << "Length difference between feats " << feats.NumRows()
                      << " and iVectors " << ivector_feats->NumRows()
-                     << "exceeds tolerance " << length_tolerance;
+                     << " exceeds tolerance " << length_tolerance;
           num_err++;
           continue;
         }
         if (ProcessFile(normalization_fst, feats, ivector_feats, supervision,
-                        key, compress, left_context, right_context, num_frames,
+                        key, compress,
+                        left_context, right_context, num_frames,
                         num_frames_overlap, frame_subsampling_factor,
-                        &num_frames_written, &num_egs_written,
+                        cut_zero_frames, &num_frames_written, &num_egs_written,
                         &example_writer))
           num_done++;
         else

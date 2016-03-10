@@ -1,30 +1,31 @@
-# "queue.pl" uses qsub.  The options to it are
-# options to qsub.  If you have GridEngine installed,
-# change this to a queue you have access to.
-# Otherwise, use "run.pl", which will run jobs locally
-# (make sure your --num-jobs options are no more than
-# the number of cpus on your machine.
+# you can change cmd.sh depending on what type of queue you are using.
+# If you have no queueing system and want to run on a local machine, you
+# can change all instances 'queue.pl' to run.pl (but be careful and run
+# commands one by one: most recipes will exhaust the memory on your
+# machine).  queue.pl works with GridEngine (qsub).  slurm.pl works
+# with slurm.  Different queues are configured differently, with different
+# queue names and different ways of specifying things like memory;
+# to account for these differences you can create and edit the file
+# conf/queue.conf to match your queue's configuration.  Search for
+# conf/queue.conf in http://kaldi-asr.org/doc/queue.html for more information,
+# or search for the string 'default_config' in utils/queue.pl or utils/slurm.pl.
 
-train_cmd="queue.pl -l arch=*64"
-decode_cmd="queue.pl -l arch=*64"
+export train_cmd=queue.pl
+export decode_cmd=queue.pl
+export mkgraph_cmd=queue.pl
+export cuda_cmd="queue.pl --gpu 1"
 
-# cuda_cmd is used for nnet1 scripts e.g. local/run_dnn.sh, but
-# in the nnet2 scripts e.g. local/run_nnet2.sh, this is not
-# used and we append options to train_cmd.
-cuda_cmd="queue.pl -l arch=*64 -l gpu=1"
 
-#train_cmd="run.pl"
-# with run.pl we do training locally.  Note: for jobs on smallish subsets,
-# it's way faster to run on a single machine with a handful of CPUs, as
-# you avoid the latency of starting GridEngine jobs.
-
+# The rest of this file is here for historical reasons.  For cluster-specific
+# configuration it's generally better to use conf/queue.conf, see
+# http://kaldi-asr.org/doc/queue.html.
 
 # BUT cluster:
 if [ "$(hostname -d)" == "fit.vutbr.cz" ]; then
   queue="all.q@@blade,all.q@@speech"
-  gpu_queue="long.q@supergpu*,long.q@dellgpu*,long.q@pcspeech-gpu,long.q@pcgpu*"
+  gpu_queue="long.q@@gpu"
   storage="matylda5"
   export train_cmd="queue.pl -q $queue -l ram_free=1500M,mem_free=1500M,${storage}=1"
   export decode_cmd="queue.pl -q $queue -l ram_free=2500M,mem_free=2500M,${storage}=0.5"
-  export cuda_cmd="queue.pl -q $gpu_queue -l gpu=1" 
+  export cuda_cmd="queue.pl -q $gpu_queue -l gpu=1"
 fi

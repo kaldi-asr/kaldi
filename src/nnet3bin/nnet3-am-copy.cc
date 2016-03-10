@@ -1,6 +1,7 @@
 // nnet3bin/nnet3-am-copy.cc
 
 // Copyright 2012-2015  Johns Hopkins University (author:  Daniel Povey)
+//           2016 Daniel Galvez
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -46,7 +47,9 @@ int main(int argc, char *argv[]) {
     bool binary_write = true,
         raw = false;
     BaseFloat learning_rate = -1;
+    BaseFloat learning_rate_scale = 1;
     std::string set_raw_nnet = "";
+    bool convert_repeated_to_block = false;
     BaseFloat scale = 1.0;
 
     ParseOptions po(usage);
@@ -57,9 +60,16 @@ int main(int argc, char *argv[]) {
                 "Set the raw nnet inside the model to the one provided in "
                 "the option string (interpreted as an rxfilename).  Done "
                 "before the learning-rate is changed.");
+    po.Register("convert-repeated-to-block", &convert_repeated_to_block,
+                "Convert all RepeatedAffineComponents and "
+                "NaturalGradientRepeatedAffineComponents to "
+                "BlockAffineComponents in the model. Done after set-raw-nnet.");
     po.Register("learning-rate", &learning_rate,
                 "If supplied, all the learning rates of updatable components"
                 " are set to this value.");
+    po.Register("learning-rate-scale", &learning_rate_scale,
+                "Scales the learning rate of updatable components by this "
+                "factor");
     po.Register("scale", &scale, "The parameter matrices are scaled"
                 " by the specified value.");
 
@@ -89,8 +99,16 @@ int main(int argc, char *argv[]) {
       am_nnet.SetNnet(nnet);
     }
 
+    if(convert_repeated_to_block)
+      ConvertRepeatedToBlockAffine(&(am_nnet.GetNnet()));
+
     if (learning_rate >= 0)
       SetLearningRate(learning_rate, &(am_nnet.GetNnet()));
+    
+    KALDI_ASSERT(learning_rate_scale >= 0.0);
+
+    if (learning_rate_scale != 1.0)
+      ScaleLearningRate(learning_rate_scale, &(am_nnet.GetNnet()));
 
     if (scale != 1.0)
       ScaleNnet(scale, &(am_nnet.GetNnet()));

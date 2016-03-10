@@ -40,9 +40,9 @@ __device__ inline void atomic_add_thresholded(Real* address, Real value) {
   // threshold itself with probability (value / threshold).  This preserves
   // expectations.  Note: we assume that value >= 0.
 
-  // you can choose any value for the threshold, but powers of 2 are nice
-  // because they will exactly preserve the precision of the value.
-  const Real threshold = 1.0 / (1 << 14);
+  // kThresholdingPowerOfTwo is defined in chain-datastruct.h; it defines
+  // the threshold for randomized posterior pruning.
+  const Real threshold = 1.0 / (1 << kThresholdingPowerOfTwo);
   if (value >= threshold) {
     atomic_add(address, value);
   } else {
@@ -67,7 +67,6 @@ __device__ inline void atomic_add_thresholded(Real* address, Real value) {
     if ((x >> 12) > (x & 4095))
       atomic_add(address, threshold);
   }
-
 }
 
 // one iteration of the forward computation in the 'tombstone' CTC HMM computation.
@@ -82,7 +81,6 @@ __global__
 static void _cuda_chain_hmm_forward(const Int32Pair *backward_transitions,
                                     const DenominatorGraphTransition *transitions,
                                     int32_cuda num_sequences,
-                                    int32_cuda special_hmm_state,
                                     const BaseFloat *probs,
                                     int32_cuda prob_stride,
                                     const BaseFloat *prev_alpha,
@@ -137,15 +135,18 @@ static void _cuda_chain_hmm_forward(const Int32Pair *backward_transitions,
     this_tot_alpha += this_prev_alpha0 * transition_prob0 * pseudo_loglike0;
   }
 
-  // Let arbitrary_scale be the inverse of the alpha value for the
-  // hmm-state indexed special_hmm_state_ on the previous frame (for this
-  // sequence); we multiply this into all the transition-probabilities
-  // from the previous frame to this frame, in both the forward and
-  // backward passes, in order to keep the alphas in a good numeric range.
-  // This won't affect the posteriors, but when computing the total
-  // likelihood we'll need to compensate for it later on.
+  int32_cuda num_hmm_states = gridDim.y;
+  // Let arbitrary_scale be the inverse of the sum of all alpha values on-- the
+  // previous frame this sum of all the alpha values is stored in the place that
+  // we'd store the previous alpha for state-index equal to num_hmm_states
+  // (i.e. one past the end).  We multiply this into all the
+  // transition-probabilities from the previous frame to this frame, in both the
+  // forward and backward passes, in order to keep the alphas in a good numeric
+  // range.  This won't affect the posteriors, as it's just a constant factor
+  // for each frame, but when computing the total likelihood we'll need to
+  // compensate for it later on.
   BaseFloat arbitrary_scale =
-      1.0 / prev_alpha[special_hmm_state * num_sequences + s];
+      1.0 / prev_alpha[num_hmm_states * num_sequences + s];
   this_alpha[h * num_sequences + s] = this_tot_alpha * arbitrary_scale;
 }
 
@@ -154,7 +155,6 @@ __global__
 static void _cuda_chain_hmm_backward(const Int32Pair *forward_transitions,
                                      const DenominatorGraphTransition *transitions,
                                      int32_cuda num_sequences,
-                                     int32_cuda special_hmm_state,
                                      const BaseFloat *probs, int32_cuda prob_stride,
                                      const BaseFloat *this_alpha, const BaseFloat *next_beta,
                                      BaseFloat *this_beta, BaseFloat *log_prob_deriv,
@@ -179,10 +179,14 @@ static void _cuda_chain_hmm_backward(const Int32Pair *forward_transitions,
   if (s >= num_sequences)
     return;
 
+  // below, you can read 'gridDim.y' as 'num_hmm_states'.  See where
+  // arbitrary_scale is defined in the forward computation above, for more
+  // explanation.
   BaseFloat this_alpha_prob = this_alpha[h * num_sequences + s],
       inv_arbitrary_scale =
-      this_alpha[special_hmm_state * num_sequences + s];
+      this_alpha[gridDim.y * num_sequences + s];
   double tot_variable_factor = 0.0;
+
   BaseFloat occupation_factor = this_alpha_prob / inv_arbitrary_scale;
   const DenominatorGraphTransition
       *trans_iter = transitions + forward_transitions[h].first,
@@ -223,7 +227,8 @@ static void _cuda_chain_hmm_backward(const Int32Pair *forward_transitions,
     atomic_add_thresholded(log_prob_deriv + (pdf_id0 * log_prob_deriv_stride + s),
                            occupation_prob0);
   }
-  this_beta[h * num_sequences + s] = tot_variable_factor / inv_arbitrary_scale;
+  BaseFloat beta = tot_variable_factor / inv_arbitrary_scale;
+  this_beta[h * num_sequences + s] = beta;
 }
 
 
@@ -231,28 +236,26 @@ void cuda_chain_hmm_forward(dim3 Gr, dim3 Bl,
                             const Int32Pair *backward_transitions,
                             const DenominatorGraphTransition *transitions,
                             int32_cuda num_sequences,
-                            int32_cuda special_hmm_state,
                             const BaseFloat *probs, int32_cuda prob_stride,
                             const BaseFloat *prev_alpha,
                             BaseFloat *this_alpha) {
   _cuda_chain_hmm_forward<<<Gr,Bl>>>(backward_transitions, transitions,
-                                     num_sequences, special_hmm_state,
-                                     probs, prob_stride, prev_alpha, this_alpha);
+                                     num_sequences, probs, prob_stride,
+                                     prev_alpha, this_alpha);
 }
 
 void cuda_chain_hmm_backward(dim3 Gr, dim3 Bl,
                              const Int32Pair *forward_transitions,
                              const DenominatorGraphTransition *transitions,
                              int32_cuda num_sequences,
-                             int32_cuda special_hmm_state,
                              const BaseFloat *probs, int32_cuda prob_stride,
                              const BaseFloat *this_alpha, const BaseFloat *next_beta,
                              BaseFloat *this_beta,
                              BaseFloat *log_prob_deriv,
                              int32_cuda log_prob_deriv_stride) {
   _cuda_chain_hmm_backward<<<Gr,Bl>>>(forward_transitions, transitions,
-                                      num_sequences, special_hmm_state,
-                                      probs, prob_stride, this_alpha, next_beta,
+                                      num_sequences, probs, prob_stride,
+                                      this_alpha, next_beta,
                                       this_beta, log_prob_deriv,
                                       log_prob_deriv_stride);
 }

@@ -195,18 +195,28 @@ void TestSimpleComponentPropagateProperties(const Component &c) {
     c_copy_scaled = c.Copy();  // This will test backprop with an updatable component.
     c_copy_scaled->Scale(0.5);
   }
+  MatrixStrideType input_stride_type = (c.Properties()&kInputContiguous) ?
+      kStrideEqualNumCols : kDefaultStride;
+  MatrixStrideType output_stride_type = (c.Properties()&kOutputContiguous) ?
+      kStrideEqualNumCols : kDefaultStride;
+
   int32 input_dim = c.InputDim(),
       output_dim = c.OutputDim(),
       num_rows = RandInt(1, 100);
-  CuMatrix<BaseFloat> input_data(num_rows, input_dim);
+  CuMatrix<BaseFloat> input_data(num_rows, input_dim, kUndefined,
+                                 input_stride_type);
   input_data.SetRandn();
+  CuMatrix<BaseFloat> input_data_scaled(num_rows, input_dim, kUndefined,
+                                        input_stride_type),
+      output_data3(num_rows, input_dim, kSetZero,
+                   output_stride_type);
+  input_data_scaled.CopyFromMat(input_data);
+  output_data3.CopyFromMat(input_data);
   CuMatrix<BaseFloat>
-      input_data_scaled(input_data),
-      output_data1(num_rows, output_dim),
-      output_data2(num_rows, output_dim),
-      output_data3(input_data),
-      output_data4(num_rows, output_dim),
-      output_data5(num_rows, output_dim);
+      output_data1(num_rows, output_dim, kSetZero, output_stride_type),
+      output_data2(num_rows, output_dim, kSetZero, output_stride_type),
+      output_data4(num_rows, output_dim, kSetZero, output_stride_type),
+      output_data5(num_rows, output_dim, kSetZero, output_stride_type);
   output_data2.Add(1.0);
   input_data_scaled.Scale(2.0);
 
@@ -240,11 +250,13 @@ void TestSimpleComponentPropagateProperties(const Component &c) {
   }
 
 
-  CuMatrix<BaseFloat> output_deriv(num_rows, output_dim);
+  CuMatrix<BaseFloat> output_deriv(num_rows, output_dim, kSetZero, output_stride_type);
   output_deriv.SetRandn();
-  CuMatrix<BaseFloat> input_deriv1(num_rows, input_dim),
-      input_deriv2(num_rows, input_dim),
-      input_deriv3(output_deriv);
+  CuMatrix<BaseFloat> input_deriv1(num_rows, input_dim, kSetZero, input_stride_type),
+      input_deriv2(num_rows, input_dim, kSetZero, input_stride_type);
+  CuMatrix<BaseFloat> input_deriv3(num_rows, output_dim, kSetZero, input_stride_type);
+  input_deriv3.CopyFromMat(output_deriv);
+
   input_deriv2.Add(1.0);
   CuMatrix<BaseFloat> empty_mat;
 
@@ -283,19 +295,25 @@ void TestSimpleComponentPropagateProperties(const Component &c) {
 
 bool TestSimpleComponentDataDerivative(const Component &c,
                                        BaseFloat perturb_delta) {
+  MatrixStrideType input_stride_type = (c.Properties()&kInputContiguous) ?
+      kStrideEqualNumCols : kDefaultStride;
+  MatrixStrideType output_stride_type = (c.Properties()&kOutputContiguous) ?
+      kStrideEqualNumCols : kDefaultStride;
+
   int32 input_dim = c.InputDim(),
       output_dim = c.OutputDim(),
       num_rows = RandInt(1, 100);
   int32 properties = c.Properties();
-  CuMatrix<BaseFloat> input_data(num_rows, input_dim),
-      output_data(num_rows, output_dim),
-      output_deriv(num_rows, output_dim);
+  CuMatrix<BaseFloat> input_data(num_rows, input_dim, kSetZero, input_stride_type),
+      output_data(num_rows, output_dim, kSetZero, output_stride_type),
+      output_deriv(num_rows, output_dim, kSetZero, output_stride_type);
   input_data.SetRandn();
   output_deriv.SetRandn();
 
   c.Propagate(NULL, input_data, &output_data);
 
-  CuMatrix<BaseFloat> input_deriv(num_rows, input_dim), empty_mat;
+  CuMatrix<BaseFloat> input_deriv(num_rows, input_dim, kSetZero, input_stride_type),
+      empty_mat;
   c.Backprop("foobar", NULL,
              ((properties & kBackpropNeedsInput) ? input_data : empty_mat),
              ((properties & kBackpropNeedsOutput) ? output_data : empty_mat),
@@ -306,8 +324,10 @@ bool TestSimpleComponentDataDerivative(const Component &c,
   Vector<BaseFloat> measured_objf_change(test_dim),
       predicted_objf_change(test_dim);
   for (int32 i = 0; i < test_dim; i++) {
-    CuMatrix<BaseFloat> perturbed_input_data(num_rows, input_dim),
-        perturbed_output_data(num_rows, output_dim);
+    CuMatrix<BaseFloat> perturbed_input_data(num_rows, input_dim,
+                                             kSetZero, input_stride_type),
+        perturbed_output_data(num_rows, output_dim,
+                              kSetZero, output_stride_type);
     perturbed_input_data.SetRandn();
     perturbed_input_data.Scale(perturb_delta);
     // at this point, perturbed_input_data contains the offset at the input data.
@@ -353,10 +373,14 @@ bool TestSimpleComponentModelDerivative(const Component &c,
     // nothing to test.
     return true;
   }
+  MatrixStrideType input_stride_type = (c.Properties()&kInputContiguous) ?
+      kStrideEqualNumCols : kDefaultStride;
+  MatrixStrideType output_stride_type = (c.Properties()&kOutputContiguous) ?
+      kStrideEqualNumCols : kDefaultStride;
 
-  CuMatrix<BaseFloat> input_data(num_rows, input_dim),
-      output_data(num_rows, output_dim),
-      output_deriv(num_rows, output_dim);
+  CuMatrix<BaseFloat> input_data(num_rows, input_dim, kSetZero, input_stride_type),
+      output_data(num_rows, output_dim, kSetZero, output_stride_type),
+      output_deriv(num_rows, output_dim, kSetZero, output_stride_type);
   input_data.SetRandn();
   output_deriv.SetRandn();
 
@@ -374,7 +398,9 @@ bool TestSimpleComponentModelDerivative(const Component &c,
     uc_copy->SetZero(is_gradient);
   }
 
-  CuMatrix<BaseFloat> input_deriv(num_rows, input_dim), empty_mat;
+  CuMatrix<BaseFloat> input_deriv(num_rows, input_dim,
+                                  kSetZero, input_stride_type),
+      empty_mat;
   c.Backprop("foobar", NULL,
              ((properties & kBackpropNeedsInput) ? input_data : empty_mat),
              ((properties & kBackpropNeedsOutput) ? output_data : empty_mat),
@@ -382,7 +408,8 @@ bool TestSimpleComponentModelDerivative(const Component &c,
              (RandInt(0, 1) == 0 ? &input_deriv : NULL));
 
   if (!test_derivative) { // Just testing that the model update is downhill.
-    CuMatrix<BaseFloat> new_output_data(num_rows, output_dim);
+    CuMatrix<BaseFloat> new_output_data(num_rows, output_dim,
+                                        kSetZero, output_stride_type);
     c_copy->Propagate(NULL, input_data, &new_output_data);
 
     BaseFloat new_objf = TraceMatMat(output_deriv, new_output_data, kTrans);
@@ -400,7 +427,8 @@ bool TestSimpleComponentModelDerivative(const Component &c,
     Vector<BaseFloat> measured_objf_change(test_dim),
         predicted_objf_change(test_dim);
     for (int32 i = 0; i < test_dim; i++) {
-      CuMatrix<BaseFloat> perturbed_output_data(num_rows, output_dim);
+      CuMatrix<BaseFloat> perturbed_output_data(num_rows, output_dim,
+                                                kSetZero, output_stride_type);
       Component *c_perturbed = c.Copy();
       UpdatableComponent *uc_perturbed =
           dynamic_cast<UpdatableComponent*>(c_perturbed);

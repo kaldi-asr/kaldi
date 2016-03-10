@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 
 # Copyright 2013  Johns Hopkins University (author: Daniel Povey)
 #           2014  Tom Ko
@@ -36,7 +36,7 @@ which sox &>/dev/null
 ! [ $? -eq 0 ] && echo "sox: command not found" && exit 1;
 
 if [ ! -f $srcdir/utt2spk ]; then
-  echo "$0: no such file $srcdir/utt2spk" 
+  echo "$0: no such file $srcdir/utt2spk"
   exit 1;
 fi
 
@@ -65,18 +65,18 @@ if [ -f $srcdir/segments ]; then
 
   utils/apply_map.pl -f 1 $destdir/reco_map <$srcdir/wav.scp | sed 's/| *$/ |/' | \
     awk -v factor=$factor \
-        '{wid=$1; $1=""; if ($NF=="|") {print wid $_ " sox -t wav - -t wav - speed " factor " |"} 
+        '{wid=$1; $1=""; if ($NF=="|") {print wid $_ " sox -t wav - -t wav - speed " factor " |"}
           else {print wid " sox -t wav" $_ " -t wav - speed " factor " |"}}' > $destdir/wav.scp
   if [ -f $srcdir/reco2file_and_channel ]; then
     utils/apply_map.pl -f 1 $destdir/reco_map <$srcdir/reco2file_and_channel >$destdir/reco2file_and_channel
   fi
-  
+
   rm $destdir/reco_map 2>/dev/null
 else # no segments->wav indexed by utterance.
   if [ -f $srcdir/wav.scp ]; then
     utils/apply_map.pl -f 1 $destdir/utt_map <$srcdir/wav.scp | sed 's/| *$/ |/' | \
      awk -v factor=$factor \
-       '{wid=$1; $1=""; if ($NF=="|") {print wid $_ " sox -t wav - -t wav - speed " factor " |"} 
+       '{wid=$1; $1=""; if ($NF=="|") {print wid $_ " sox -t wav - -t wav - speed " factor " |"}
          else {print wid " sox -t wav" $_ " -t wav - speed " factor " |"}}' > $destdir/wav.scp
   fi
 fi
@@ -88,6 +88,10 @@ if [ -f $srcdir/spk2gender ]; then
   utils/apply_map.pl -f 1 $destdir/spk_map <$srcdir/spk2gender >$destdir/spk2gender
 fi
 
+if [ -f $srcdir/utt2dur ]; then
+  cat $srcdir/utt2dur | utils/apply_map.pl -f 1 $destdir/utt_map  | \
+    awk -v factor=$factor '{print $1, $2/factor;}' >$destdir/utt2dur
+fi
 
 rm $destdir/spk_map $destdir/utt_map 2>/dev/null
 echo "$0: generated speed-perturbed version of data in $srcdir, in $destdir"

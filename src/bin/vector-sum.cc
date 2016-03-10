@@ -101,7 +101,8 @@ int32 TypeOneUsage(const ParseOptions &po) {
 }
 
 int32 TypeTwoUsage(const ParseOptions &po,
-                   bool binary) {
+                   bool binary,
+                   bool average = false) {
   KALDI_ASSERT(po.NumArgs() == 2);
   KALDI_ASSERT(ClassifyRspecifier(po.GetArg(1), NULL, NULL) != kNoRspecifier &&
                "vector-sum: first argument must be an rspecifier");
@@ -133,6 +134,8 @@ int32 TypeTwoUsage(const ParseOptions &po,
       }
     }
   }
+  
+  if (num_done > 0 && average) sum.Scale(1.0 / num_done);
 
   Vector<BaseFloat> sum_float(sum);
   WriteKaldiObject(sum_float, po.GetArg(2), binary);
@@ -199,12 +202,13 @@ int main(int argc, char *argv[]) {
         " e.g.: vector-sum --binary=false 1.vec 2.vec 3.vec sum.vec\n"
         "See also: copy-vector, dot-weights\n";
         
-    bool binary;
+    bool binary, average = false;
     
     ParseOptions po(usage);
 
     po.Register("binary", &binary, "If true, write output as binary (only "
                 "relevant for usage types two or three");
+    po.Register("average", &average, "Do average instead of sum");
     
     po.Read(argc, argv);
 
@@ -219,7 +223,7 @@ int main(int argc, char *argv[]) {
                ClassifyWspecifier(po.GetArg(N), NULL, NULL, NULL) ==
                kNoWspecifier) {
       // input from a single table, output not to table.
-      exit_status = TypeTwoUsage(po, binary);
+      exit_status = TypeTwoUsage(po, binary, average);
     } else if (po.NumArgs() >= 2 &&
                ClassifyRspecifier(po.GetArg(1), NULL, NULL) == kNoRspecifier &&
                ClassifyWspecifier(po.GetArg(N), NULL, NULL, NULL) == 

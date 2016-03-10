@@ -50,9 +50,11 @@ NnetChainTrainer::NnetChainTrainer(const NnetChainTrainingOptions &opts,
 void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
   bool need_model_derivative = true;
   const NnetTrainerOptions &nnet_config = opts_.nnet_config;
+  bool use_xent_regularization = (opts_.chain_config.xent_regularize != 0.0);
   ComputationRequest request;
   GetChainComputationRequest(*nnet_, chain_eg, need_model_derivative,
                              nnet_config.store_component_stats,
+                             use_xent_regularization, need_model_derivative,
                              &request);
   const NnetComputation *computation = compiler_.Compile(request);
 
@@ -108,23 +110,50 @@ void NnetChainTrainer::ProcessOutputs(const NnetChainExample &eg,
                                           nnet_output.NumCols(),
                                           kUndefined);
 
-    BaseFloat tot_objf, tot_weight;
+    bool use_xent = (opts_.chain_config.xent_regularize != 0.0);
+    std::string xent_name = sup.name + "-xent";  // typically "output-xent".
+    CuMatrix<BaseFloat> xent_deriv;
+    if (use_xent)
+      xent_deriv.Resize(nnet_output.NumRows(), nnet_output.NumCols(),
+                        kUndefined);
+
+    BaseFloat tot_objf, tot_l2_term, tot_weight;
 
     ComputeChainObjfAndDeriv(opts_.chain_config, den_graph_,
                              sup.supervision, nnet_output,
-                             &tot_objf, &tot_weight,
-                             &nnet_output_deriv);
+                             &tot_objf, &tot_l2_term, &tot_weight,
+                             &nnet_output_deriv,
+                             (use_xent ? &xent_deriv : NULL));
+
+    if (use_xent) {
+      // this block computes the cross-entropy objective.
+      const CuMatrixBase<BaseFloat> &xent_output = computer->GetOutput(
+          xent_name);
+      // at this point, xent_deriv is posteriors derived from the numerator
+      // computation.  note, xent_objf has a factor of '.supervision.weight'
+      BaseFloat xent_objf = TraceMatMat(xent_output, xent_deriv, kTrans);
+      objf_info_[xent_name].UpdateStats(xent_name, opts_.nnet_config.print_interval,
+                                        num_minibatches_processed_,
+                                        tot_weight, xent_objf);
+    }
 
     if (opts_.apply_deriv_weights && sup.deriv_weights.Dim() != 0) {
       CuVector<BaseFloat> cu_deriv_weights(sup.deriv_weights);
       nnet_output_deriv.MulRowsVec(cu_deriv_weights);
+      if (use_xent)
+        xent_deriv.MulRowsVec(cu_deriv_weights);
     }
 
     computer->AcceptOutputDeriv(sup.name, &nnet_output_deriv);
 
     objf_info_[sup.name].UpdateStats(sup.name, opts_.nnet_config.print_interval,
                                      num_minibatches_processed_++,
-                                     tot_weight, tot_objf);
+                                     tot_weight, tot_objf, tot_l2_term);
+
+    if (use_xent) {
+      xent_deriv.Scale(opts_.chain_config.xent_regularize);
+      computer->AcceptOutputDeriv(xent_name, &xent_deriv);
+    }
   }
 }
 
@@ -137,7 +166,7 @@ bool NnetChainTrainer::PrintTotalStats() const {
   for (; iter != end; ++iter) {
     const std::string &name = iter->first;
     const ObjectiveFunctionInfo &info = iter->second;
-    ans = ans || info.PrintTotalStats(name);
+    ans = info.PrintTotalStats(name) || ans;
   }
   return ans;
 }

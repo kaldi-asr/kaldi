@@ -226,6 +226,39 @@ int main(int argc, char *argv[]) {
         // apply optional feature transform
         nnet_transf.Feedforward(CuMatrix<BaseFloat>(mat), &feats_transf);
 
+        // remove frames with '0' weight from training,
+        {
+          // are there frames to be removed?
+          if (!weights.Min() > 0.0) { 
+            // create vector with frame-indices to keep,
+            std::vector<MatrixIndexT> keep_frames;
+            for (int32 i=0; i<weights.Dim(); i++) {
+              if (weights(i) > 0.0) 
+                keep_frames.push_back(i);
+            }
+            if (keep_frames.size() == 0) continue; // all frames removed, skip sentence,
+ 
+            // filter feature-frames,
+            CuMatrix<BaseFloat> tmp_feats(keep_frames.size(), feats_transf.NumCols());
+            tmp_feats.CopyRows(feats_transf, CuArray<MatrixIndexT>(keep_frames));
+            tmp_feats.Swap(&feats_transf);
+
+            // filter targets,
+            Posterior tmp_targets;
+            for (int32 i=0; i<keep_frames.size(); i++) {
+              tmp_targets.push_back(targets[keep_frames[i]]);
+            }
+            tmp_targets.swap(targets);
+
+            // filter weights,
+            Vector<BaseFloat> tmp_weights(keep_frames.size());
+            for (int32 i=0; i<keep_frames.size(); i++) {
+              tmp_weights(i) = weights(keep_frames[i]);
+            }
+            tmp_weights.Swap(&weights);
+          }
+        }
+
         // pass data to randomizers
         KALDI_ASSERT(feats_transf.NumRows() == targets.size());
         feature_randomizer.AddData(feats_transf);

@@ -38,6 +38,8 @@ namespace nnet3 {
 struct NnetSimpleComputationOptions {
   int32 extra_left_context;
   int32 extra_right_context;
+  int32 extra_left_context_initial;
+  int32 extra_right_context_final;
   int32 frame_subsampling_factor;
   int32 frames_per_chunk;
   BaseFloat acoustic_scale;
@@ -47,7 +49,9 @@ struct NnetSimpleComputationOptions {
 
   NnetSimpleComputationOptions():
       extra_left_context(0),
-      extra_right_context(0),      
+      extra_right_context(0),
+      extra_left_context_initial(-1),
+      extra_right_context_final(-1),
       frame_subsampling_factor(1),
       frames_per_chunk(50),
       acoustic_scale(0.1),
@@ -58,14 +62,20 @@ struct NnetSimpleComputationOptions {
                    "Number of frames of additional left-context to add on top "
                    "of the neural net's inherent left context (may be useful in "
                    "recurrent setups");
-    opts->Register("frame-subsampling-factor", &frame_subsampling_factor,
-                   "Required if the frame-rate of the output (e.g. in 'chain' "
-                   "models) is less than the frame-rate of the original "
-                   "alignment.");
     opts->Register("extra-right-context", &extra_right_context,
                    "Number of frames of additional right-context to add on top "
                    "of the neural net's inherent right context (may be useful in "
                    "recurrent setups");
+    opts->Register("extra-left-context-initial", &extra_left_context_initial,
+                   "If >0, overrides the --extra-left-context value at the start "
+                   "of an utterance.");
+    opts->Register("extra-right-context-final", &extra_right_context_final,
+                   "If >0, overrides the --extra-right-context value at the end "
+                   "of an utterance.");
+    opts->Register("frame-subsampling-factor", &frame_subsampling_factor,
+                   "Required if the frame-rate of the output (e.g. in 'chain' "
+                   "models) is less than the frame-rate of the original "
+                   "alignment.");
     opts->Register("acoustic-scale", &acoustic_scale,
                    "Scaling factor for acoustic log-likelihoods");
     opts->Register("frames-per-chunk", &frames_per_chunk,

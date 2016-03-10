@@ -177,11 +177,21 @@ void TruncateDerivWeights(int32 truncate,
      can create the ComputationRequest manually.  Assumes that if
      need_model_derivative is true, you will be supplying derivatives w.r.t. all
      outputs.
+
+     If use_xent_regularization == true, then it assumes that for each output
+     name (e.g. "output" in the eg, there is another output with the same
+     dimension and with the suffix "-xent" on its name, e.g. named
+     "output-xent".  The derivative w.r.t. the xent objective will only be
+     supplied to the nnet computation if 'use_xent_derivative' is true (we
+     propagate back the xent derivative to the model only in training, not in
+     model-combination in nnet3-chain-combine).
 */
 void GetChainComputationRequest(const Nnet &nnet,
                                 const NnetChainExample &eg,
                                 bool need_model_derivative,
                                 bool store_component_stats,
+                                bool use_xent_regularization,
+                                bool use_xent_derivative,
                                 ComputationRequest *computation_request);
 
 

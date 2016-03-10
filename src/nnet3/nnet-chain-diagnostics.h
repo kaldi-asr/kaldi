@@ -33,9 +33,23 @@ namespace kaldi {
 namespace nnet3 {
 
 
+struct ChainObjectiveInfo {
+  double tot_weight;
+  double tot_like;
+  double tot_l2_term;
+  ChainObjectiveInfo(): tot_weight(0.0),
+                        tot_like(0.0),
+                        tot_l2_term(0.0) { }
+};
 
-/** This class is for computing objective-function values in a nnet3+chain setup,
-    for diagnostics.  It also supports computing model derivatives.
+
+/** This class is for computing objective-function values in a nnet3+chain
+    setup, for diagnostics.  It also supports computing model derivatives.
+    Note: if the --xent-regularization option is nonzero, the cross-entropy
+    objective will be computed, and displayed when you call PrintTotalStats(),
+    but it will not contribute to model derivatives (there is no code to compute
+    the regularized objective function, and anyway it's not clear that we really
+    need this regularization in the combination phase).
  */
 class NnetChainComputeProb {
  public:
@@ -56,7 +70,7 @@ class NnetChainComputeProb {
 
   // returns the objective-function info for this output name (e.g. "output"),
   // or NULL if there is no such info.
-  const SimpleObjectiveInfo *GetObjective(const std::string &output_name) const;
+  const ChainObjectiveInfo *GetObjective(const std::string &output_name) const;
 
   // if config.compute_deriv == true, returns a reference to the
   // computed derivative.  Otherwise crashes.
@@ -75,7 +89,7 @@ class NnetChainComputeProb {
   Nnet *deriv_nnet_;
   int32 num_minibatches_processed_;  // this is only for diagnostics
 
-  unordered_map<std::string, SimpleObjectiveInfo, StringHasher> objf_info_;
+  unordered_map<std::string, ChainObjectiveInfo, StringHasher> objf_info_;
 
 };
 

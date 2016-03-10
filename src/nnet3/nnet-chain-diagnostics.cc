@@ -65,9 +65,18 @@ void NnetChainComputeProb::Compute(const NnetChainExample &chain_eg) {
   bool need_model_derivative = nnet_config_.compute_deriv,
       store_component_stats = false;
   ComputationRequest request;
+  // if the options specify cross-entropy regularization, we'll be computing
+  // this objective (not interpolated with the regular objective-- we give it a
+  // separate name), but currently we won't make it contribute to the
+  // derivative-- we just compute the derivative of the regular output.
+  // This is because in the place where we use the derivative (the
+  // model-combination code) we decided to keep it simple and just use the
+  // regular objective.
+  bool use_xent_regularization = (chain_config_.xent_regularize != 0.0),
+      use_xent_derivative = false;
   GetChainComputationRequest(nnet_, chain_eg, need_model_derivative,
-                             store_component_stats,
-                             &request);
+                             store_component_stats, use_xent_regularization,
+                             use_xent_derivative, &request);
   const NnetComputation *computation = compiler_.Compile(request);
   NnetComputer computer(nnet_config_.compute_config, *computation,
                         nnet_, deriv_nnet_);
@@ -93,19 +102,24 @@ void NnetChainComputeProb::ProcessOutputs(const NnetChainExample &eg,
       KALDI_ERR << "Network has no output named " << sup.name;
 
     const CuMatrixBase<BaseFloat> &nnet_output = computer->GetOutput(sup.name);
-    CuMatrix<BaseFloat> nnet_output_deriv;
+    bool use_xent = (chain_config_.xent_regularize != 0.0);
+    std::string xent_name = sup.name + "-xent";  // typically "output-xent".
+    CuMatrix<BaseFloat> nnet_output_deriv, xent_deriv;
     if (nnet_config_.compute_deriv)
       nnet_output_deriv.Resize(nnet_output.NumRows(), nnet_output.NumCols(),
                                kUndefined);
-
-    BaseFloat tot_objf, tot_weight;
-
+    if (use_xent)
+      xent_deriv.Resize(nnet_output.NumRows(), nnet_output.NumCols(),
+                        kUndefined);
+      
+    BaseFloat tot_like, tot_l2_term, tot_weight;
+    
     ComputeChainObjfAndDeriv(chain_config_, den_graph_,
                              sup.supervision, nnet_output,
-                             &tot_objf, &tot_weight,
-                             (nnet_config_.compute_deriv ?
-                              &nnet_output_deriv : NULL));
-
+                             &tot_like, &tot_l2_term, &tot_weight,
+                             (nnet_config_.compute_deriv ? &nnet_output_deriv :
+                              NULL), (use_xent ? &xent_deriv : NULL));
+    
     // note: in this context we don't want to apply 'sup.deriv_weights' because
     // this code is used only in combination, where it's part of an L-BFGS
     // optimization algorithm, and in that case if there is a mismatch between
@@ -114,20 +128,33 @@ void NnetChainComputeProb::ProcessOutputs(const NnetChainExample &eg,
     // and conjugate gradient descent both rely on the derivatives being
     // accurate, and don't fail gracefully if the derivatives are not accurate).
 
-    SimpleObjectiveInfo &totals = objf_info_[sup.name];
+    ChainObjectiveInfo &totals = objf_info_[sup.name];
     totals.tot_weight += tot_weight;
-    totals.tot_objective += tot_objf;
+    totals.tot_like += tot_like;
+    totals.tot_l2_term += tot_l2_term;
 
     if (nnet_config_.compute_deriv)
       computer->AcceptOutputDeriv(sup.name, &nnet_output_deriv);
 
+    if (use_xent) {
+      ChainObjectiveInfo &xent_totals = objf_info_[xent_name];
+      // this block computes the cross-entropy objective.
+      const CuMatrixBase<BaseFloat> &xent_output = computer->GetOutput(
+          xent_name);
+      // at this point, xent_deriv is posteriors derived from the numerator
+      // computation.  note, xent_deriv has a factor of '.supervision.weight',
+      // but so does tot_weight.
+      BaseFloat xent_objf = TraceMatMat(xent_output, xent_deriv, kTrans);
+      xent_totals.tot_weight += tot_weight;
+      xent_totals.tot_like += xent_objf;
+    }
     num_minibatches_processed_++;
   }
 }
 
 bool NnetChainComputeProb::PrintTotalStats() const {
   bool ans = false;
-  unordered_map<std::string, SimpleObjectiveInfo, StringHasher>::const_iterator
+  unordered_map<std::string, ChainObjectiveInfo, StringHasher>::const_iterator
       iter, end;
   iter = objf_info_.begin();
   end = objf_info_.end();
@@ -135,11 +162,21 @@ bool NnetChainComputeProb::PrintTotalStats() const {
     const std::string &name = iter->first;
     int32 node_index = nnet_.GetNodeIndex(name);
     KALDI_ASSERT(node_index >= 0);
-    const SimpleObjectiveInfo &info = iter->second;
-    KALDI_LOG << "Overall log-probability for '"
-              << name << "' is "
-              << (info.tot_objective / info.tot_weight) << " per frame"
-              << ", over " << info.tot_weight << " frames.";
+    const ChainObjectiveInfo &info = iter->second;
+    BaseFloat like = (info.tot_like / info.tot_weight),
+        l2_term = (info.tot_l2_term / info.tot_weight),
+        tot_objf = like + l2_term;
+    if (info.tot_l2_term == 0.0) {
+      KALDI_LOG << "Overall log-probability for '"
+                << name << "' is "
+                << like << " per frame"
+                << ", over " << info.tot_weight << " frames.";
+    } else {
+      KALDI_LOG << "Overall log-probability for '"
+                << name << "' is "
+                << like << " + " << l2_term << " = " << tot_objf << " per frame"
+                << ", over " << info.tot_weight << " frames.";
+    }
     if (info.tot_weight > 0)
       ans = true;
   }
@@ -147,9 +184,9 @@ bool NnetChainComputeProb::PrintTotalStats() const {
 }
 
 
-const SimpleObjectiveInfo* NnetChainComputeProb::GetObjective(
+const ChainObjectiveInfo* NnetChainComputeProb::GetObjective(
     const std::string &output_name) const {
-  unordered_map<std::string, SimpleObjectiveInfo, StringHasher>::const_iterator
+  unordered_map<std::string, ChainObjectiveInfo, StringHasher>::const_iterator
       iter = objf_info_.find(output_name);
   if (iter != objf_info_.end())
     return &(iter->second);

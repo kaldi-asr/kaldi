@@ -26,6 +26,10 @@ num_threads=1 # if >1, will use gmm-latgen-faster-parallel
 parallel_opts=  # ignored now.
 scoring_opts=
 skip_scoring=false
+extra_left_context=0
+extra_right_context=0
+extra_left_context_initial=-1
+extra_right_context_final=-1
 feat_type=
 online_ivector_dir=
 minimize=false
@@ -132,7 +136,7 @@ if [ ! -z "$online_ivector_dir" ]; then
 fi
 
 if [ "$post_decode_acwt" == 1.0 ]; then
-  lat_wspecifier="ark|gzip -c >$dir/lat.JOB.gz"
+  lat_wspecifier="ark:|gzip -c >$dir/lat.JOB.gz"
 else
   lat_wspecifier="ark:|lattice-scale --acoustic-scale=$post_decode_acwt ark:- ark:- | gzip -c >$dir/lat.JOB.gz"
 fi
@@ -146,6 +150,10 @@ if [ $stage -le 1 ]; then
   $cmd --num-threads $num_threads JOB=1:$nj $dir/log/decode.JOB.log \
     nnet3-latgen-faster$thread_string $ivector_opts $frame_subsampling_opt \
      --frames-per-chunk=$frames_per_chunk \
+     --extra-left-context=$extra_left_context \
+     --extra-right-context=$extra_right_context \
+     --extra-left-context-initial=$extra_left_context_initial \
+     --extra-right-context-final=$extra_right_context_final \
      --minimize=$minimize --max-active=$max_active --min-active=$min_active --beam=$beam \
      --lattice-beam=$lattice_beam --acoustic-scale=$acwt --allow-partial=true \
      --word-symbol-table=$graphdir/words.txt "$model" \

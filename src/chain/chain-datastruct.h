@@ -45,7 +45,8 @@ extern "C" {
   };
 
 
-
+  // Search for this in chain-kernels.cu for an explanation.
+  enum { kThresholdingPowerOfTwo = 14 };
 
 }
 

@@ -279,7 +279,6 @@ Real CuVectorBase<Real>::Sum() const {
       CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
       return tmp.Sum();
     } else {
-      if (dim_ == 0) return 0.0;
       CuVector<Real> tmp(1, kUndefined);
       int dimBlock(CU1DBLOCK);
       int dimGrid = 1; // only 1 block here. we have loops in each thread.
