@@ -139,7 +139,7 @@ if [ -z "$degs_dir" ]; then
       --left-context $left_context --right-context $right_context \
       --valid-left-context $valid_left_context --valid-right-context $valid_right_context \
       --priors-left-context $valid_left_context --priors-right-context $valid_right_context $frame_subsampling_opt \
-      --criterion $criterion --frames-per-eg $frames_per_eg --frames-overlap-per-eg $frames_overlap_per_eg ${degs_opts} \
+      --frames-per-eg $frames_per_eg --frames-overlap-per-eg $frames_overlap_per_eg ${degs_opts} \
       $train_data_dir $lang ${srcdir}_ali $lats_dir $srcdir/final.mdl $degs_dir ;
   fi
 fi

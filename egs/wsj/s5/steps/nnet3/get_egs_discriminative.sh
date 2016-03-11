@@ -44,8 +44,6 @@ remove_epsilons=true
 collapse_transition_ids=true
 acwt=0.1
 
-criterion=smbr
-
 stage=0
 max_jobs_run=15
 max_shuffle_jobs_run=50 
@@ -80,10 +78,8 @@ if [ $# != 6 ]; then
   echo "                                                   # process."
   echo "  --stage <stage|-8>                               # Used to run a partially-completed training process from somewhere in"
   echo "                                                   # the middle."
-  echo "  --criterion <criterion|smbr>                     # Training criterion: may be smbr, mmi or mpfe"
   echo "  --online-ivector-dir <dir|"">                    # Directory for online-estimated iVectors, used in the"
-  echo "                                                   # online-neural-net setup.  (but you may want to use"
-  echo "                                                   # steps/online/nnet2/get_egs_discriminative2.sh instead)"
+  echo "                                                   # online-neural-net setup."
   exit 1;
 fi
 
