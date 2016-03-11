@@ -321,16 +321,26 @@ def Main():
     args = GetArgs()
     [left_context, right_context, num_hidden_layers, splice_indexes] = ProcessSpliceIndexes(args.config_dir, args.splice_indexes, args.label_delay, args.num_lstm_layers)
 
-    MakeConfigs(args.config_dir,
-                args.feat_dim, args.ivector_dim, args.ivector_interval, args.num_targets,
-                splice_indexes, args.lstm_delay, args.cell_dim,
-                args.recurrent_projection_dim, args.non_recurrent_projection_dim,
-                args.num_lstm_layers, num_hidden_layers,
-                args.norm_based_clipping,
-                args.clipping_threshold,
-                args.ng_per_element_scale_options, args.ng_affine_options,
-                args.label_delay, args.include_log_softmax, args.xent_regularize,
-                args.self_repair_scale)
+    MakeConfigs(config_dir = args.config_dir,
+                feat_dim = args.feat_dim,
+                ivector_dim = args.ivector_dim,
+                ivector_interval = args.ivector_interval,
+                num_targets = args.num_targets,
+                splice_indexes = splice_indexes,
+                lstm_delay = args.lstm_delay,
+                cell_dim = args.cell_dim,
+                recurrent_projection_dim = args.recurrent_projection_dim,
+                non_recurrent_projection_dim = args.non_recurrent_projection_dim,
+                num_lstm_layers = args.num_lstm_layers,
+                num_hidden_layers = num_hidden_layers,
+                norm_based_clipping = args.norm_based_clipping,
+                clipping_threshold = args.clipping_threshold,
+                ng_per_element_scale_options = args.ng_per_element_scale_options,
+                ng_affine_options = args.ng_affine_options,
+                label_delay = args.label_delay,
+                include_log_softmax = args.include_log_softmax,
+                xent_regularize = args.xent_regularize,
+                self_repair_scale = args.self_repair_scale)
 
 if __name__ == "__main__":
     Main()

@@ -80,7 +80,7 @@ dir=${dir}$suffix
 train_set=train_nodup$suffix
 ali_dir=exp/tri4_ali_nodup$suffix
 
-local/nnet3/run_ivector_common.sh --stage $stage --ivector-period $ivector_interval \
+local/nnet3/run_ivector_common.sh --stage $stage \
   --speed-perturb $speed_perturb || exit 1;
 
 

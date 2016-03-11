@@ -168,7 +168,7 @@ class OffsetForwardingDescriptor: public ForwardingDescriptor {
   virtual ~OffsetForwardingDescriptor() { delete src_; }
 
   // defined in nnet-utils.h
-  friend void IntoForwardingDescriptor(const Nnet &Nnet,
+  friend void ExtractDescriptorValuesFromForwardingDescriptor(const Nnet &Nnet,
                                   const ForwardingDescriptor &this_descriptor,
                                   const std::vector<std::string> &node_names,
                                   std::vector<int32> *offsets);
@@ -200,7 +200,7 @@ class SwitchingForwardingDescriptor: public ForwardingDescriptor {
   virtual ~SwitchingForwardingDescriptor() { DeletePointers(&src_); }
 
   // defined in nnet-utils.h
-  friend void IntoForwardingDescriptor(const Nnet &Nnet,
+  friend void ExtractDescriptorValuesFromForwardingDescriptor(const Nnet &Nnet,
                                   const ForwardingDescriptor &this_descriptor,
                                   const std::vector<std::string> &node_names,
                                   std::vector<int32> *offsets);
@@ -237,7 +237,7 @@ class RoundingForwardingDescriptor: public ForwardingDescriptor {
   virtual ~RoundingForwardingDescriptor() { delete src_; }
 
   // defined in nnet-utils.h
-  friend void IntoForwardingDescriptor(const Nnet &Nnet,
+  friend void ExtractDescriptorValuesFromForwardingDescriptor(const Nnet &Nnet,
                                   const ForwardingDescriptor &this_descriptor,
                                   const std::vector<std::string> &node_names,
                                   std::vector<int32> *offsets);
@@ -273,7 +273,7 @@ class ReplaceIndexForwardingDescriptor: public ForwardingDescriptor {
   virtual ~ReplaceIndexForwardingDescriptor() { delete src_; }
 
   // defined in nnet-utils.h
-  friend void IntoForwardingDescriptor(const Nnet &Nnet,
+  friend void ExtractDescriptorValuesFromForwardingDescriptor(const Nnet &Nnet,
                                   const ForwardingDescriptor &this_descriptor,
                                   const std::vector<std::string> &node_names,
                                   std::vector<int32> *offsets);
@@ -377,7 +377,7 @@ class OptionalSumDescriptor: public SumDescriptor {
   virtual ~OptionalSumDescriptor() { delete src_; }
 
   // defined in nnet-utils.h
-  friend void IntoSumDescriptor(const Nnet &nnet,
+  friend void ExtractDescriptorValuesFromSumDescriptor(const Nnet &nnet,
                                 const SumDescriptor &this_descriptor,
                                 const std::vector<std::string> &node_names,
                                 std::vector<int32> *offsets);
@@ -410,7 +410,7 @@ class SimpleSumDescriptor: public SumDescriptor {
   virtual ~SimpleSumDescriptor() { delete src_; }
 
   // defined in nnet-utils.h
-  friend void IntoSumDescriptor(const Nnet &nnet,
+  friend void ExtractDescriptorValuesFromSumDescriptor(const Nnet &nnet,
                                 const SumDescriptor &this_descriptor,
                                 const std::vector<std::string> &node_names,
                                 std::vector<int32> *offsets);
@@ -453,7 +453,7 @@ class BinarySumDescriptor: public SumDescriptor {
   virtual ~BinarySumDescriptor() { delete src1_; delete src2_; }
 
   // defined in nnet-utils.h
-  friend void IntoSumDescriptor(const Nnet &nnet,
+  friend void ExtractDescriptorValuesFromSumDescriptor(const Nnet &nnet,
                                 const SumDescriptor &this_descriptor,
                                 const std::vector<std::string> &node_names,
                                 std::vector<int32> *offsets);

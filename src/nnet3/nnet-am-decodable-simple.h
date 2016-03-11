@@ -219,8 +219,9 @@ class NnetDecodableBase {
   // online_ivector_period_ helps us interpret online_ivector_feats_; it's the
   // number of frames the rows of ivector_feats are separated by.
   int32 online_ivector_period_;
-  // interval between two consecutive frames that we want to get ivectors
-  // for, so that we can dump multiple ivectors for a chunk.
+  // In the multiple ivectors case, it is the interval between two consecutive
+  // frames that we want to get ivectors for, so that we can dump multiple
+  // ivectors for a chunk. In the single ivector case, its value is just 0.
   int32 ivector_interval_;
 
   CachingOptimizingCompiler compiler_;

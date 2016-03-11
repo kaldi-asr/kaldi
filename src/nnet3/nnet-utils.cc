@@ -40,56 +40,66 @@ int32 NumInputNodes(const Nnet &nnet) {
   return ans;
 }
 
-int32 GetTModulusForIvector(const Nnet &nnet) {
+int32 GetTimePeriodForIvector(const Nnet &nnet) {
   std::vector<std::string> name;
   name.push_back("ivector");
-  std::vector<int32> value;
-  value.resize(name.size(), 0);
+  std::vector<int32> modulus;
+  // initialize with 0, so that if modulus is not found this function will
+  // return 0
+  modulus.resize(name.size(), 0);
   for (int32 i = 0; i < nnet.NumNodes(); i++) {
     const NetworkNode &node = nnet.GetNode(i);
-    // skip output node to circumvent the problem when a recurrent output 
-    // is "label delayed" and thus also contain keyword "Offset", which is not
-    // what we are trying to look at for our "offset"  
     if (node.node_type == kDescriptor) {
       for (int32 p = 0; p < node.descriptor.NumParts(); p++) {
         const SumDescriptor &this_part = node.descriptor.Part(p);
-        IntoSumDescriptor(nnet, this_part, name, &value);
+        ExtractDescriptorValuesFromSumDescriptor(nnet, this_part, name,
+                                                 &modulus);
       }
     }
   }
-  return value[0]; 
+  return modulus[0]; 
 }
 
-void IntoSumDescriptor(const Nnet &nnet,
+// see nnet-utils.h for descriptions
+void ExtractDescriptorValuesFromSumDescriptor(const Nnet &nnet,
                        const SumDescriptor &this_descriptor,
                        const std::vector<std::string> &node_names,
                        std::vector<int32> *values) {
   const OptionalSumDescriptor *ptr_optional =
       dynamic_cast<const OptionalSumDescriptor*>(&this_descriptor);
   if (ptr_optional != NULL) {
-    IntoSumDescriptor(nnet, *(ptr_optional->src_), node_names, values);
-    return;
-  }
-  const SimpleSumDescriptor *ptr_simple =
-      dynamic_cast<const SimpleSumDescriptor*>(&this_descriptor);
-  if (ptr_simple != NULL) {
-    IntoForwardingDescriptor(nnet, *(ptr_simple->src_), node_names, values);
+    ExtractDescriptorValuesFromSumDescriptor(nnet, *(ptr_optional->src_),
+                                             node_names, values);
     return;
   }
   const BinarySumDescriptor *ptr_binary =
       dynamic_cast<const BinarySumDescriptor*>(&this_descriptor);
   if (ptr_binary != NULL) {
-    IntoSumDescriptor(nnet, *(ptr_binary->src1_), node_names, values);
-    IntoSumDescriptor(nnet, *(ptr_binary->src2_), node_names, values);
+    ExtractDescriptorValuesFromSumDescriptor(nnet, *(ptr_binary->src1_),
+                                             node_names, values);
+    ExtractDescriptorValuesFromSumDescriptor(nnet, *(ptr_binary->src2_),
+                                             node_names, values);
+    return;
+  }
+  const SimpleSumDescriptor *ptr_simple =
+      dynamic_cast<const SimpleSumDescriptor*>(&this_descriptor);
+  if (ptr_simple != NULL) {
+    ExtractDescriptorValuesFromForwardingDescriptor(nnet, *(ptr_simple->src_),
+                                                    node_names, values);
     return;
   }
   KALDI_ERR << "Unidentified SumDescriptor.";
 }
 
-void IntoForwardingDescriptor(const Nnet &nnet,
+// see nnet-utils.h for descriptions
+void ExtractDescriptorValuesFromForwardingDescriptor(const Nnet &nnet,
                               const ForwardingDescriptor &this_descriptor,
                               const std::vector<std::string> &node_names,
                               std::vector<int32> *values) {
+  // base case 1: if we arrive at a descriptor of class
+  // RoundingForwardingDescriptor, check if its src_ is of class
+  // SimpleForwardingDescriptor*; If yes, further check if its node dependency
+  // is what we are looking for; If yes, extract t_modulus_
   const RoundingForwardingDescriptor *ptr_rounding =
       dynamic_cast<const RoundingForwardingDescriptor*>(&this_descriptor);
   if (ptr_rounding != NULL) {
@@ -108,34 +118,38 @@ void IntoForwardingDescriptor(const Nnet &nnet,
       if (iter != end)
         (*values)[iter - begin] = ptr_rounding->t_modulus_;
     } else {
-      IntoForwardingDescriptor(nnet, *(ptr_rounding->src_), node_names, values);
+      ExtractDescriptorValuesFromForwardingDescriptor(nnet,
+          *(ptr_rounding->src_), node_names, values);
     }
+    return;
+  }
+  // base case 2: no further recursion
+  const SimpleForwardingDescriptor *ptr_simple =
+      dynamic_cast<const SimpleForwardingDescriptor*>(&this_descriptor);
+  if (ptr_simple != NULL) {
+    // do nothing
     return;
   }
   const OffsetForwardingDescriptor *ptr_offset =
       dynamic_cast<const OffsetForwardingDescriptor*>(&this_descriptor);
   if (ptr_offset != NULL) {
-    IntoForwardingDescriptor(nnet, *(ptr_offset->src_), node_names, values);
+    ExtractDescriptorValuesFromForwardingDescriptor(nnet, *(ptr_offset->src_),
+                                                    node_names, values);
     return;
   }
   const ReplaceIndexForwardingDescriptor *ptr_replace =
       dynamic_cast<const ReplaceIndexForwardingDescriptor*>(&this_descriptor);
   if (ptr_replace != NULL) {
-    IntoForwardingDescriptor(nnet, *(ptr_replace->src_), node_names, values);
+    ExtractDescriptorValuesFromForwardingDescriptor(nnet, *(ptr_replace->src_),
+                                                    node_names, values);
     return;
   }
   const SwitchingForwardingDescriptor *ptr_switching =
       dynamic_cast<const SwitchingForwardingDescriptor*>(&this_descriptor);
   if (ptr_switching != NULL) {
     for (int32 i = 0; i < ptr_switching->src_.size(); i++)
-      IntoForwardingDescriptor(nnet, *(ptr_switching->src_[i]),
-                               node_names, values);
-    return;
-  }
-  const SimpleForwardingDescriptor *ptr_simple =
-      dynamic_cast<const SimpleForwardingDescriptor*>(&this_descriptor);
-  if (ptr_simple != NULL) {
-    // do nothing
+      ExtractDescriptorValuesFromForwardingDescriptor(nnet,
+          *(ptr_switching->src_[i]), node_names, values);
     return;
   }
   KALDI_ERR << "Unidentified ForwardingDescriptor.";
@@ -202,7 +216,7 @@ static void ComputeSimpleNnetContextForShift(
     output.indexes.push_back(Index(n, t));
   }
   // push the indexes for ivector(s)
-  int32 t_modulus = GetTModulusForIvector(nnet);
+  int32 t_modulus = GetTimePeriodForIvector(nnet);
   if (t_modulus == 0)
     // single ivector for the entire chunk
     // the assumption here is that the network just requires the ivector at time
@@ -599,7 +613,7 @@ std::string NnetInfo(const Nnet &nnet) {
   }
   ostr << "input-dim: " << nnet.InputDim("input") << "\n";
   ostr << "ivector-dim: " << nnet.InputDim("ivector") << "\n";
-  ostr << "ivector-interval: " << GetTModulusForIvector(nnet) << "\n";
+  ostr << "ivector-interval: " << GetTimePeriodForIvector(nnet) << "\n";
   ostr << "output-dim: " << nnet.OutputDim("output") << "\n";
   ostr << "# Nnet info follows.\n";
   ostr << nnet.Info();

@@ -53,23 +53,25 @@ int32 NumOutputNodes(const Nnet &nnet);
 /// returns the number of input nodes of this nnet.
 int32 NumInputNodes(const Nnet &nnet);
 
-/// get RoundingForwardingDescriptor::t_modulus_ for ivector
-int32 GetTModulusForIvector(const Nnet &nnet);
+/// get RoundingForwardingDescriptor::t_modulus_ for ivector. If it is a single
+/// ivector case (which means the config file use  ReplaceIndex descriptor for
+/// ivector), this function return 0.
+int32 GetTimePeriodForIvector(const Nnet &nnet);
 
 /// goes into SumDescriptor recursively for extracting some values
 /// (e.g., OffsetForwardingDescriptor::offset_,
-/// RoundingForwardingDescriptor::t_modulus_ ) of nodes in <node_names>,
-/// and save them in <values>
-void IntoSumDescriptor(const Nnet &nnet,
+/// RoundingForwardingDescriptor::t_modulus_ ) describing some operation
+/// on nodes in node_names, and save them in *values, one for each node
+void ExtractDescriptorValuesFromSumDescriptor(const Nnet &nnet,
                        const SumDescriptor &this_descriptor,
                        const std::vector<std::string> &node_names,
                        std::vector<int32> *values);
 
 /// goes into ForwardingDescriptor recursively for extracting some values
 /// (e.g., OffsetForwardingDescriptor::offset_,
-/// RoundingForwardingDescriptor::t_modulus_ ) of nodes in <node_names>,
-/// and save them in <values>
-void IntoForwardingDescriptor(const Nnet &nnet,
+/// RoundingForwardingDescriptor::t_modulus_ ) describing some operation
+/// on nodes in node_names, and save them in *values, one for each node
+void ExtractDescriptorValuesFromForwardingDescriptor(const Nnet &nnet,
                               const ForwardingDescriptor &this_descriptor,
                               const std::vector<std::string> &node_names,
                               std::vector<int32> *values);

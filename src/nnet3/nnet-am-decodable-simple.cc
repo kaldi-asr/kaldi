@@ -44,7 +44,7 @@ NnetDecodableBase::NnetDecodableBase(
   num_subsampled_frames_ =
       (feats_.NumRows() + opts_.frame_subsampling_factor - 1) /
       opts_.frame_subsampling_factor;
-    ivector_interval_ = GetTModulusForIvector(nnet);
+    ivector_interval_ = GetTimePeriodForIvector(nnet);
   KALDI_ASSERT(IsSimpleNnet(nnet));
   ComputeSimpleNnetContext(nnet, &nnet_left_context_, &nnet_right_context_);
   KALDI_ASSERT(!(ivector != NULL && online_ivectors != NULL));
@@ -180,9 +180,12 @@ void NnetDecodableBase::GetCurrentIvector(int32 frame_to_search,
   if (ivector_ != NULL) {
     ivector->CopyFromVec(*ivector_);
     return;
-  } else if (online_ivector_feats_ == NULL) {
-    return;
   }
+  // The case that ivector_ == NULL && online_ivector_feats_ == NULL
+  // has been handled from the caller of this function GetIvectorsForFrames(),
+  // so we make this assert here and will extract an ivector for frame at
+  // frame_to_search
+  KALDI_ASSERT(online_ivector_feats_ != NULL);
   KALDI_ASSERT(online_ivector_period_ > 0);
   int32 ivector_frame = frame_to_search / online_ivector_period_;
   if (ivector_frame >= online_ivector_feats_->NumRows()) {
@@ -205,43 +208,40 @@ void NnetDecodableBase::GetCurrentIvector(int32 frame_to_search,
 void NnetDecodableBase::GetIvectorsForFrames(int32 output_t_start,
                                              int32 num_output_frames,
                                              Matrix<BaseFloat> *ivectors) {
+  // if no ivectors have been specified either as online ivectors or as ivector
+  // for utterance, just return and leave the size of ivectors matrix as 0 
+  if (ivector_ == NULL && online_ivector_feats_ == NULL)
+    return;
   const int32 left_context = nnet_left_context_ + opts_.extra_left_context,
         right_context = nnet_right_context_ + opts_.extra_right_context;
   // frame_to_search is the frame that we want to get the most recent iVector
-  // for.  We choose a point near the middle of the current window, the concept
-  // being that this is the fairest comparison to nnet2.   Obviously we could do
-  // better by always taking the last frame's iVector, but decoding with
-  // 'online' ivectors is only really a mechanism to simulate online operation.
+  // for. In single ivector case, We choose a point near the middle of the
+  // current window, the concept being that this is the fairest comparison to
+  // nnet2. In multiple ivectors case, we just choose frames at whole multiples
+  // of ivector_interval. Obviously we could do better by always taking the
+  // last frame's iVector, but decoding with 'online' ivectors is only really
+  // a mechanism to simulate online operation.
   if (ivector_interval_ == 0) { // single ivector case
-    ivectors->Resize(1, online_ivector_feats_->NumCols(), kUndefined);
+    ivectors->Resize(1, online_ivector_feats_->NumCols());
     int32 frame_to_search = output_t_start + num_output_frames / 2;
     SubVector<BaseFloat> sub_ivector = ivectors->Row(0);
     GetCurrentIvector(frame_to_search, &sub_ivector);
   } else { // multiple ivectors case
     // num_ivectors_in_left_context is the num of ivectors for frames
-    // whose "t" index < 0.
+    // whose "t" index < 0. It is used to compute the initial value of
+    // frame_to_search, which is the frame that we get the left-most ivector for
     // num_ivectors is the num of ivectors for the entire chunk.
-    // They are computed according to how Round descriptor works, which
+    // Both of them are computed according to how Round descriptor works, which
     // basically returns floor(t / <t-modulus>) * <t-modulus>.
     // (The assumption is that the t index of the first outptut frame is 0)
     int32 num_ivectors_in_left_context =
         std::ceil(1.0 * left_context / ivector_interval_);
     int32 num_ivectors = num_ivectors_in_left_context +
         (num_output_frames + right_context - 1) / ivector_interval_ + 1;
-    ivectors->Resize(num_ivectors, online_ivector_feats_->NumCols(), kUndefined);
-    // the position the right-most ivector in left context is at the middle of
-    // the interval, which is computed as
-    // output_t_start - 1 - std::min(ivector_interval_, left_context) / 2.
-    // Then we compute the left-most ivector to start as frames_to_search 
-    int32 frame_to_search = output_t_start - 1 -
-        std::min(ivector_interval_, left_context) / 2 -
-        (num_ivectors_in_left_context - 1) * ivector_interval_;
+    ivectors->Resize(num_ivectors, online_ivector_feats_->NumCols());
+    int32 frame_to_search = output_t_start -
+                            num_ivectors_in_left_context * ivector_interval_;
     for (int32 n = 0; n < num_ivectors; n++) {
-      if (n == num_ivectors_in_left_context)
-        // the position of the left-most ivector when t>=0 is at the middle of
-        // the interval
-        frame_to_search = output_t_start +
-                          std::min(ivector_interval_, num_output_frames) / 2;
       SubVector<BaseFloat> sub_ivector = ivectors->Row(n);
       GetCurrentIvector(frame_to_search, &sub_ivector);
       frame_to_search += ivector_interval_;
@@ -257,10 +257,10 @@ void NnetDecodableBase::GenerateIndexesForIvectors(
     int32 left_context = nnet_left_context_ + opts_.extra_left_context;
     int32 num_ivectors_in_left_context = std::ceil(1.0 * left_context /
         ivector_interval_);
-    for (int32 n = 0, t = -num_ivectors_in_left_context; n < num_ivectors; n++, t++)
-      // multiplied each t by the factor ivector_interval`
-      // according to the definition of the Round descriptor
-      indexes->push_back(Index(0, t * ivector_interval_, 0));
+    for (int32 t = 0; t < num_ivectors; t++)
+      // generate indexes according to the definition of the Round descriptor
+      indexes->push_back(Index(0, (t - num_ivectors_in_left_context) *
+                                  ivector_interval_, 0));
   }
 }
 

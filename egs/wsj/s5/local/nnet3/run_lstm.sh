@@ -64,7 +64,7 @@ dir=exp/nnet3/lstm
 dir=$dir${affix:+_$affix}
 if [ $label_delay -gt 0 ]; then dir=${dir}_ld$label_delay; fi
 
-local/nnet3/run_ivector_common.sh --stage $stage --ivector-period $ivector_interval || exit 1;
+local/nnet3/run_ivector_common.sh --stage $stage || exit 1;
 
 if [ $stage -le 8 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
