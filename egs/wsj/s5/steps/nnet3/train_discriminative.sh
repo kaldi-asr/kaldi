@@ -73,12 +73,7 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 if [ $# != 2 ]; then
   echo "Usage: $0 [opts] <degs-dir> <exp-dir>"
-  echo " e.g.: $0 exp/tri4_mpe_degs exp/tri4_mpe"
-  echo ""
-  echo "You have to first call get_egs_discriminative2.sh to dump the egs."
-  echo "Caution: the options 'drop-frames' and 'criterion' are taken here"
-  echo "even though they were required also by get_egs_discriminative2.sh,"
-  echo "and they should normally match."
+  echo " e.g.: $0 exp/nnet3/tdnn_sp_degs exp/nnet3/tdnn_sp_smbr"
   echo ""
   echo "Main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config file containing options"
