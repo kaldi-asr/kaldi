@@ -8,9 +8,15 @@
 
 
 $skip_det_check = 0;
+$skip_disambig_check = 0;
 
 if (@ARGV > 0 && $ARGV[0] eq "--skip-determinization-check") {
   $skip_det_check = 1;
+  shift @ARGV;
+}
+
+if (@ARGV > 0 && $ARGV[0] eq "--skip-disambig-check") {
+  $skip_disambig_check = 1;
   shift @ARGV;
 }
 
@@ -19,6 +25,7 @@ if (@ARGV != 1) {
   print "e.g.:  $0 data/lang\n";
   print "Options:\n";
   print " --skip-determinization-check             (this flag causes it to skip a time consuming check).\n";
+  print " --skip-disambig-check                    (this flag causes it to skip a disambig check in phone bigram models).\n";
   exit(1);
 }
 
@@ -279,7 +286,7 @@ sub check_disjoint {
   if (!open(N, "<$lang/phones/nonsilence.txt")) {
     $exit = 1; return print "--> ERROR: fail to open $lang/phones/nonsilence.txt\n";
   }
-  if (!open(D, "<$lang/phones/disambig.txt")) {
+  if (!$skip_disambig_check && !open(D, "<$lang/phones/disambig.txt")) {
     $exit = 1; return print "--> ERROR: fail to open $lang/phones/disambig.txt\n";
   }
 
@@ -374,7 +381,7 @@ sub check_summation {
   if (scalar(keys %nonsilence) == 0) {
     $exit = 1; return print "--> ERROR: $lang/phones/nonsilence.txt is empty or does not exist\n";
   }
-  if (scalar(keys %disambig) == 0) {
+  if (!$skip_disambig_check && scalar(keys %disambig) == 0) {
     $warning = 1; print "--> WARNING: $lang/phones/disambig.txt is empty or does not exist\n";
   }
 
@@ -419,8 +426,11 @@ sub check_summation {
 check_disjoint; print "\n";
 check_summation; print "\n";
 
-@list1 = ("context_indep", "disambig", "nonsilence", "silence", "optional_silence");
+@list1 = ("context_indep", "nonsilence", "silence", "optional_silence");
 @list2 = ("roots", "sets");
+if (!$skip_disambig_check) {
+    push(@list1, "disambig");
+}
 foreach (@list1) {
   check_txt_int_csl("$lang/phones/$_", \%psymtab); print "\n";
 }
@@ -431,10 +441,7 @@ if ((-s "$lang/phones/extra_questions.txt") || (-s "$lang/phones/extra_questions
   check_txt_int("$lang/phones/extra_questions", \%psymtab, 0); print "\n";
 } else {
   print "Checking $lang/phones/extra_questions.\{txt, int\} ...\n";
-  if ((-f "$lang/phones/extra_questions.txt") && (-f "$lang/phones/extra_questions.int")) {
-    print "--> WARNING: the optional $lang/phones/extra_questions.\{txt, int\} are empty!\n\n";
-    $warning = 1;
-  } else {
+  if (!((-f "$lang/phones/extra_questions.txt") && (-f "$lang/phones/extra_questions.int"))) {
     print "--> ERROR: $lang/phones/extra_questions.\{txt, int\} do not exist (they may be empty, but should be present)\n\n";
     $exit = 1;
   }
@@ -468,19 +475,21 @@ close(OS);
 $success == 0 || print "--> $lang/phones/optional_silence.txt is OK\n";
 print "\n";
 
-# Check disambiguation symbols -------------------------------
-print "Checking disambiguation symbols: #0 and #1\n";
-if (scalar(keys %disambig) == 0) {
-  $warning = 1; print "--> WARNING: $lang/phones/disambig.txt is empty or does not exist\n";
-}
-if (exists $disambig{"#0"} and exists $disambig{"#1"}) {
-  print "--> $lang/phones/disambig.txt has \"#0\" and \"#1\"\n";
-  print "--> $lang/phones/disambig.txt is OK\n\n";
-} else {
-  print "--> WARNING: $lang/phones/disambig.txt doesn't have \"#0\" or \"#1\";\n";
-  print "-->          this would not be OK with a conventional ARPA-type language\n";
-  print "-->          model or a conventional lexicon (L.fst)\n";
-  $warning = 1;
+if (!$skip_disambig_check) {
+  # Check disambiguation symbols -------------------------------
+  print "Checking disambiguation symbols: #0 and #1\n";
+  if (scalar(keys %disambig) == 0) {
+    $warning = 1; print "--> WARNING: $lang/phones/disambig.txt is empty or does not exist\n";
+  }
+  if (exists $disambig{"#0"} and exists $disambig{"#1"}) {
+    print "--> $lang/phones/disambig.txt has \"#0\" and \"#1\"\n";
+    print "--> $lang/phones/disambig.txt is OK\n\n";
+  } else {
+    print "--> WARNING: $lang/phones/disambig.txt doesn't have \"#0\" or \"#1\";\n";
+    print "-->          this would not be OK with a conventional ARPA-type language\n";
+    print "-->          model or a conventional lexicon (L.fst)\n";
+    $warning = 1;
+  }
 }
 
 

@@ -49,6 +49,9 @@ rm $lang_out/phones/wdisambig* 2>/dev/null  # ditto this.
 echo -n > $lang_out/phones/disambig.txt
 echo -n > $lang_out/phones/disambig.int
 echo -n > $lang_out/phones/disambig.csl
+echo -n > $lang_out/phones/wdisambig.txt
+echo -n > $lang_out/phones/wdisambig_phones.int
+echo -n > $lang_out/phones/wdisambig_words.int
 
 # Let OOV symbol be the first phone.  This is arbitrary, it's just
 # so that validate_lang.pl succeeds.  We should never actually use
@@ -117,5 +120,4 @@ utils/sym2int.pl $lang_out/phones.txt <$lang_out/phones/align_lexicon.txt >$lang
 # L and L_disambig are the same.
 cp $lang_out/L.fst $lang_out/L_disambig.fst
 
-utils/validate_lang.pl $lang_out || exit 1;
-echo "$0: ignore warnings RE disambiguation symbols from validate_lang.pl (these are expected)"
+utils/validate_lang.pl --skip-disambig-check $lang_out || exit 1;
