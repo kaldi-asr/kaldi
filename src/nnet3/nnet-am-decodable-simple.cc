@@ -246,7 +246,6 @@ void NnetDecodableBase::GetIvectorsForFrames(int32 output_t_start,
       GetCurrentIvector(frame_to_search, &sub_ivector);
       frame_to_search += ivector_interval_;
     }
-    }
   }
 }
 
@@ -258,8 +257,8 @@ void NnetDecodableBase::GenerateIndexesForIvectors(
     int32 left_context = nnet_left_context_ + opts_.extra_left_context;
     int32 num_ivectors_in_left_context = std::ceil(1.0 * left_context /
         ivector_interval_);
-    for (int32 n = 0, t = -num_ivectors_left; n < num_ivectors; n++, t++)
-      // multiplied each t by the factor ivector_interval
+    for (int32 n = 0, t = -num_ivectors_in_left_context; n < num_ivectors; n++, t++)
+      // multiplied each t by the factor ivector_interval`
       // according to the definition of the Round descriptor
       indexes->push_back(Index(0, t * ivector_interval_, 0));
   }
