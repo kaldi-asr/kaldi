@@ -229,11 +229,17 @@ void NnetDecodableBase::GetIvectorsForFrames(int32 output_t_start,
     int32 num_ivectors = num_ivectors_in_left_context +
         (num_output_frames + right_context - 1) / ivector_interval_ + 1;
     ivectors->Resize(num_ivectors, online_ivector_feats_->NumCols(), kUndefined);
+    // the position the right-most ivector in left context is at the middle of
+    // the interval, which is computed as
+    // output_t_start - 1 - std::min(ivector_interval_, left_context) / 2.
+    // Then we compute the left-most ivector to start as frames_to_search 
     int32 frame_to_search = output_t_start - 1 -
         std::min(ivector_interval_, left_context) / 2 -
         (num_ivectors_in_left_context - 1) * ivector_interval_;
     for (int32 n = 0; n < num_ivectors; n++) {
       if (n == num_ivectors_in_left_context)
+        // the position of the left-most ivector when t>=0 is at the middle of
+        // the interval
         frame_to_search = output_t_start +
                           std::min(ivector_interval_, num_output_frames) / 2;
       SubVector<BaseFloat> sub_ivector = ivectors->Row(n);
