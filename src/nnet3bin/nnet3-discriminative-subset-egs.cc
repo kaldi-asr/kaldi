@@ -1,4 +1,4 @@
-// nnet3bin/nnet3-subset-egs.cc
+// nnet3bin/nnet3-discriminative-subset-egs.cc
 
 // Copyright 2012-2015  Johns Hopkins University (author:  Daniel Povey)
 //                2014  Vimal Manohar
@@ -20,7 +20,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "nnet3/nnet-example.h"
+#include "nnet3/nnet-discriminative-example.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -33,10 +33,10 @@ int main(int argc, char *argv[]) {
         "Creates a random subset of the input examples, of a specified size.\n"
         "Uses no more memory than the size of the subset.\n"
         "\n"
-        "Usage:  nnet3-subset-egs [options] <egs-rspecifier> [<egs-wspecifier2> ...]\n"
+        "Usage:  nnet3-discriminative-subset-egs [options] <degs-rspecifier> [<degs-wspecifier2> ...]\n"
         "\n"
         "e.g.\n"
-        "nnet3-copy-egs [args] ark:egs.1.ark ark:- | nnet-subset-egs --n=1000 ark:- ark:subset.egs\n";
+        "nnet3-discriminative-copy-egs [args] ark:degs.1.ark ark:- | nnet-discriminative-subset-egs --n=1000 ark:- ark:subset.egs\n";
     
     int32 srand_seed = 0;
     int32 n = 1000;
@@ -59,10 +59,10 @@ int main(int argc, char *argv[]) {
     std::string examples_rspecifier = po.GetArg(1),
         examples_wspecifier = po.GetArg(2);
 
-    std::vector<std::pair<std::string, NnetExample> > egs;
+    std::vector<std::pair<std::string, NnetDiscriminativeExample> > egs;
     egs.reserve(n);
     
-    SequentialNnetExampleReader example_reader(examples_rspecifier);
+    SequentialNnetDiscriminativeExampleReader example_reader(examples_rspecifier);
 
     int64 num_read = 0;
     for (; !example_reader.Done(); example_reader.Next()) {
@@ -83,13 +83,13 @@ int main(int argc, char *argv[]) {
     if (randomize_order)
       std::random_shuffle(egs.begin(), egs.end());
 
-    NnetExampleWriter writer(examples_wspecifier);
+    NnetDiscriminativeExampleWriter writer(examples_wspecifier);
     for (size_t i = 0; i < egs.size(); i++) {
       writer.Write(egs[i].first, egs[i].second);
     }
     
     KALDI_LOG << "Selected a subset of " << egs.size() << " out of " << num_read
-              << " neural-network training examples ";
+              << " neural-network discriminative training examples ";
     
     return (num_read != 0 ? 0 : 1);
   } catch(const std::exception &e) {
@@ -97,5 +97,6 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
+
 
 
