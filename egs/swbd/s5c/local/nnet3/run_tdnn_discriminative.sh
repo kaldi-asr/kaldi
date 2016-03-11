@@ -80,9 +80,7 @@ if [ $stage -le 1 ]; then
   # get excellent GPU utilization though.]
   nj=350 # have a high number of jobs because this could take a while, and we might
          # have some stragglers.
-  use_gpu=no
-
-  steps/nnet3/align.sh  --cmd "$decode_cmd" --use-gpu "$use_gpu" \
+  steps/nnet3/align.sh  --cmd "$decode_cmd" --use-gpu false \
     --online-ivector-dir $online_ivector_dir \
      --nj $nj $train_data_dir data/lang $srcdir ${srcdir}_ali ;
 
