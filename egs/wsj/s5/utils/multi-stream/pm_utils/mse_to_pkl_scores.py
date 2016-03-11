@@ -7,8 +7,6 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from io_funcs import kaldi_io, utils
 
-import mkl
-mkl.set_num_threads(1)
 import numexpr
 numexpr.set_num_threads(1)
 

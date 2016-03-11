@@ -27,6 +27,9 @@
 . ./path.sh ## Source the tools/utils (import the queue.pl)
 
 ### Config:
+njdec=60
+
+
 train_id=train_nodup
 test_id=eval2000
 
@@ -42,26 +45,29 @@ strm_indices="0:30:60:90:120:150:180:210:246:276"
 
 set -euxo pipefail
 
+num_streams=`echo $strm_indices | awk -F ":" '{print NF-1}'`
+all_stream_combn=`echo 2^$num_streams -1|bc`
+
+
 # Extract multistream filterbank features
 if [ $stage -le 0 ]; then
   ####
   # create multistream-fbank-config
-  mkdir -p local/multi-stream/conf
+  mkdir -p data-multistream-fbank/conf
+  echo "--window-type=hamming" >data-multistream-fbank/conf/fbank_multistream.conf
+  echo "--use-energy=false" >>data-multistream-fbank/conf/fbank_multistream.conf
+  echo "--sample-frequency=8000" >>data-multistream-fbank/conf/fbank_multistream.conf
 
-  echo "--window-type=hamming" >local/multi-stream/conf/fbank_multistream.conf
-  echo "--use-energy=false" >>local/multi-stream/conf/fbank_multistream.conf
-  echo "--sample-frequency=8000" >>local/multi-stream/conf/fbank_multistream.conf
+  echo "--dither=1" >>data-multistream-fbank/conf/fbank_multistream.conf
 
-  echo "--dither=1" >>local/multi-stream/conf/fbank_multistream.conf
-
-  echo "--num-mel-bins=46" >>local/multi-stream/conf/fbank_multistream.conf
-  echo "--htk-compat=true" >>local/multi-stream/conf/fbank_multistream.conf
+  echo "--num-mel-bins=46" >>data-multistream-fbank/conf/fbank_multistream.conf
+  echo "--htk-compat=true" >>data-multistream-fbank/conf/fbank_multistream.conf
   ####
 
   c="$test_id"
   mkdir -p data-multistream-fbank/${c}; 
   cp data/${c}/{glm,reco2file_and_channel,segments,spk2utt,stm,stm.filt,text,utt2spk,wav.scp} data-multistream-fbank/${c}/
-  steps/make_fbank.sh --fbank-config local/multi-stream/conf/fbank_multistream.conf \
+  steps/make_fbank.sh --fbank-config data-multistream-fbank/conf/fbank_multistream.conf \
     data-multistream-fbank/$c data-multistream-fbank/$c/log data-multistream-fbank/$c/data || exit 1
   steps/compute_cmvn_stats.sh \
     data-multistream-fbank/$c data-multistream-fbank/$c/log data-multistream-fbank/$c/data || exit 1
@@ -69,7 +75,7 @@ if [ $stage -le 0 ]; then
   c="$train_id"
   mkdir -p data-multistream-fbank/${c}; 
   cp data/${c}/{reco2file_and_channel,segments,spk2utt,text,utt2spk,wav.scp} data-multistream-fbank/${c}/
-  steps/make_fbank.sh --fbank-config local/multi-stream/conf/fbank_multistream.conf \
+  steps/make_fbank.sh --fbank-config data-multistream-fbank/conf/fbank_multistream.conf \
     data-multistream-fbank/$c data-multistream-fbank/$c/log data-multistream-fbank/$c/data || exit 1
   steps/compute_cmvn_stats.sh \
     data-multistream-fbank/$c data-multistream-fbank/$c/log data-multistream-fbank/$c/data || exit 1
@@ -91,10 +97,34 @@ if [ $stage -le 2 ]; then
     --nnet-dir exp/dnn5b_multistream_bottleneck_featureXtractor \
     --aann-dir exp/aann_tandem_dnn5b_multistream_bottleneck_featureXtractor || exit 1;
 fi
+
+# Get multi-stream masks
+mask_dir=strm-mask/dnn5b_multistream_bottleneck_featureXtractor
+train_mask_dir=$mask_dir/Comb${all_stream_combn}/${train_id}
+test_mask_dir=$mask_dir/autoencoder_pm/${test_id}
+
+if [ $stage -le 3 ]; then
+  # train, no PM
+  local/multi-stream/get-CombX_strm-mask.sh \
+    --strm-indices "$strm_indices" --comb-num $all_stream_combn \
+    --mask-dir $train_mask_dir --test data-multistream-fbank/${train_id} || exit 1;
+
+  # test
+  local/multi-stream/get_autoencoder-pm_strm-mask.sh --njdec $njdec \
+    --test data-multistream-fbank/${test_id} \
+    --strm-indices $strm_indices --tandem-transf-dir tandem_feats/dnn5b_multistream_bottleneck_featureXtractor_tandem_dim120/pca_transf \
+    --aann-dir exp/aann_tandem_dnn5b_multistream_bottleneck_featureXtractor/aann \
+    --mask-dir $test_mask_dir || exit 1;
+
+fi
+
 exit 0;
+
 # Extract multistream bottleneck features
 if [ $stage -le 3 ]; then
+# train, 
 
+# test
 fi
 
 # train GMM BNF
