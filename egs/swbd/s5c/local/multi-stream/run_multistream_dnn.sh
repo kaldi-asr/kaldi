@@ -28,12 +28,20 @@
 
 ### Config:
 njdec=60
-
+scratch=/mnt/scratch03/tmp/$USER/
 
 train_id=train_nodup
 test_id=eval2000
 
+lang=data/lang
+lang_test=data/lang_sw1_tg
+
 gmmdir=exp/tri4
+ali_src=exp/tri4_ali_nodup
+graph_src=exp/tri4/graph_sw1_tg
+
+decode_bottleneck_featureXtractor=true
+
 stage=0 # resume training with --stage=N
 has_fisher=true
 
@@ -85,7 +93,7 @@ fi
 # This can take a lot of time
 if [ $stage -le 1 ]; then
   local/multi-stream/multi-stream_bnfeats_train.sh \
-    --ali ${gmmdir}_ali_nodup --train data-multistream-fbank/${train_id} \
+    --ali $ali_src --train data-multistream-fbank/${train_id} \
     --strm-indices $strm_indices --iters-per-epoch 5 --dir exp/dnn5b_multistream_bottleneck_featureXtractor || exit 1;
 fi
 
@@ -118,24 +126,212 @@ if [ $stage -le 3 ]; then
 
 fi
 
-exit 0;
-
 # Extract multistream bottleneck features
-if [ $stage -le 3 ]; then
-# train, 
+train=data-multistream-fbank/$train_id
+train_bn=data-multistream-fbank-bn/$train_id
 
-# test
+test=data-multistream-fbank/$test_id
+test_bn=data-multistream-fbank-bn/$test_id
+
+## decode test
+# for logging
+if [ $stage -le 4 ]; then
+
+  if $decode_bottleneck_featureXtractor == "true"; then
+    dir=exp/dnn5b_multistream_bottleneck_featureXtractor
+    graph=$graph_src
+    test=data-multistream-fbank/${test_id}
+
+    multi_stream_opts="--cross-validate=true --stream-mask=scp:${test_mask_dir}/feats.scp $strm_indices"
+    steps/multi-stream-nnet/decode.sh --nj $njdec --cmd "${decode_cmd}" --num-threads 3 \
+      $graph $test "$multi_stream_opts" $dir/decode_$(basename $test)_$(basename $graph)_autoencoder_pm || exit 1;
+  fi
+
+  nnet_dir=exp/dnn5b_multistream_bottleneck_featureXtractor
+  # train, 
+  steps/multi-stream-nnet/make_bn_feats.sh --nj $njdec --cmd "$decode_cmd" \
+    --remove-last-components 2 \
+  $train_bn $train "--cross-validate=true --stream-mask=scp:${train_mask_dir}/feats.scp $strm_indices" $nnet_dir $train_bn/log $train_bn/data || exit 1
+  steps/compute_cmvn_stats.sh $train_bn $train_bn/log $train_bn/data || exit 1;
+
+  # test
+  steps/multi-stream-nnet/make_bn_feats.sh --nj $njdec --cmd "$decode_cmd" \
+    --remove-last-components 2 \
+  $test_bn $test "--cross-validate=true --stream-mask=scp:${test_mask_dir}/feats.scp $strm_indices" $nnet_dir $test_bn/log $test_bn/data || exit 1
+  steps/compute_cmvn_stats.sh $test_bn $test_bn/log $test_bn/data || exit 1;
+
 fi
 
 # train GMM BNF
+dir=exp/dnn5b_multistream_bn-gmm
+ali=$ali_src
+if [ $stage -le 5 ]; then
+  #Train
+  # gmm on bn features, no cmvn, no lda-mllt,
+  false && {  
+  steps/train_deltas.sh --power 0.5 --boost-silence 1.5 --cmd "$train_cmd" \
+    --delta-opts "--delta-order=0" \
+    --cmvn-opts "--norm-means=false --norm-vars=false" \
+    --beam 20 --retry-beam 80 \
+    6000 26000 $train_bn $lang $ali $dir || exit 1  
+  }
+  utils/mkgraph.sh $lang_test $dir $dir/$(basename $graph_src) || exit 1;
+  steps/decode.sh --nj $njdec --cmd "$decode_cmd" \
+    --num-threads 3 --parallel-opts "-pe smp 3" \
+    --acwt 0.1 --beam 15.0 --lattice-beam 8.0 \
+    $dir/$(basename $graph_src) $test_bn $dir/decode_$(basename $test_bn)_$(basename $graph_src) || exit 1
 
-# train GMM BNF fMLLR
+  # Align,
+  steps/align_fmllr.sh --boost-silence 1.5 --nj 40 --cmd "$train_cmd" \
+    --beam 20 --retry-beam 80 \
+    $train_bn $lang $dir ${dir}_ali || exit 1;
 
-# RBM
+fi
 
-# DNN_XE
+# Train SAT-adapted GMM on bottleneck features,
+dir=exp/dnn5c_multistream_bn_fmllr-gmm
+ali=exp/dnn5b_multistream_bn-gmm_ali
 
-# DNN_XE_sMBR
+if [ $stage -le 6 ]; then
+  # Train,
+  # fmllr-gmm system on bottleneck features, 
+  # - no cmvn, put fmllr to the features directly (no lda),
+  # - note1 : we don't need cmvn, similar effect has diagonal of fmllr transform,
+  # - note2 : lda+mllt was causing a small hit <0.5%,
+  steps/train_sat.sh --power 0.5 --boost-silence 1.5 --cmd "$train_cmd" \
+    --beam 20 --retry-beam 80 \
+    6000 26000 $train_bn $lang $ali $dir || exit 1
+  # Decode,
+  utils/mkgraph.sh $lang_test $dir $dir/$(basename $graph_src) || exit 1;
+  steps/decode_fmllr.sh --nj $njdec --cmd "$decode_cmd" \
+    --num-threads 3 --parallel-opts "-pe smp 3" \
+    --acwt 0.1 --beam 15.0 --lattice-beam 8.0 \
+    $dir/$(basename $graph_src) $test_bn $dir/decode_$(basename $test_bn)_$(basename $graph_src) || exit 1
+
+  # Align,
+  steps/align_fmllr.sh --boost-silence 1.5 --nj 40 --cmd "$train_cmd" \
+    --beam 20 --retry-beam 80 \
+    $train_bn $lang $dir ${dir}_ali || exit 1;
+fi
+
+# Store the bottleneck-FMLLR features
+gmm=exp/dnn5c_multistream_bn_fmllr-gmm # fmllr-feats, dnn-targets,
+graph=$gmm/$(basename $graph_src)
+
+train_bn_fmllr=data-multistream-fbank-bn_fmllr/$train_id
+test_bn_fmllr=data-multistream-fbank-bn_fmllr/$test_id
+if [ $stage -le 7 ]; then
+
+  # Test set
+  steps/nnet/make_fmllr_feats.sh --nj $njdec --cmd "$train_cmd" \
+     --transform-dir $gmm/decode_$(basename $test_bn)_$(basename $graph_src) \
+     $test_bn_fmllr $test_bn $gmm $test_bn_fmllr/log $test_bn_fmllr/data || exit 1;
+
+  # Training set
+  steps/nnet/make_fmllr_feats.sh --nj 30 --cmd "$train_cmd -tc 10" \
+     --transform-dir ${gmm}_ali \
+     $train_bn_fmllr $train_bn $gmm $train_bn_fmllr/log $train_bn_fmllr/data || exit 1;
+fi
+
+
+#------------------------------------------------------------------------------------
+# Pre-train stack of RBMs (6 layers, 2048 units)
+dir=exp/dnn5d_multistream_bn_pretrain-dbn
+if [ $stage -le 8 ]; then
+  # Create input transform, splice 13 frames [ -10 -5..+5 +10 ],
+  mkdir -p $dir
+  echo "<NnetProto>
+        <Splice> <InputDim> 40 <OutputDim> 520 <BuildVector> -10 -5:1:5 10 </BuildVector>
+        </NnetProto>" >$dir/proto.main
+  # Do CMVN first, then frame pooling:
+  nnet-concat "compute-cmvn-stats scp:${train_bn_fmllr}/feats.scp - | cmvn-to-nnet - - |" "nnet-initialize $dir/proto.main - |" $dir/transf.init || exit 1
+  $cuda_cmd $dir/log/pretrain_dbn.log \
+    steps/nnet/pretrain_dbn.sh --feature-transform $dir/transf.init $train_bn_fmllr $dir || exit 1
+fi
+
+#------------------------------------------------------------------------------------
+# Train the DNN optimizing cross-entropy.
+dir=exp/dnn5e_multistream_bn_pretrain-dbn_dnn
+feature_transform=exp/dnn5d_multistream_bn_pretrain-dbn/final.feature_transform # re-use
+dbn=exp/dnn5d_multistream_bn_pretrain-dbn/6.dbn
+
+ali=${gmm}_ali
+graph=${gmm}/$(basename $graph_src)
+
+if [ $stage -le 9 ]; then
+  # Split the training set
+  utils/subset_data_dir_tr_cv.sh --cv-spk-percent 10 $train_bn_fmllr ${train_bn_fmllr}_tr90 ${train_bn_fmllr}_cv10 
+  # Train
+  $cuda_cmd $dir/log/train_nnet.log \
+    steps/nnet/train.sh --feature-transform $feature_transform --dbn $dbn --hid-layers 0 \
+    ${train_bn_fmllr}_tr90 ${train_bn_fmllr}_cv10 $lang $ali $ali $dir || exit 1;
+  
+  # Decode
+  steps/nnet/decode.sh --nj $njdec --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.10 \
+    --num-threads 3 --parallel-opts "-pe smp 2" --max-mem 150000000 \
+    $graph $test_bn_fmllr $dir/decode_$(basename $test_bn_fmllr)_$(basename $graph) || exit 1
+fi
+
+#------------------------------------------------------------------------------------
+# Finally we optimize sMBR criterion, we do Stochastic-GD with per-utterance updates. 
+# For faster convergence, we re-generate the lattices after 1st epoch.
+dir=exp/dnn5f_multistream_bn_pretrain-dbn_dnn_smbr
+srcdir=exp/dnn5e_multistream_bn_pretrain-dbn_dnn
+acwt=0.1
+graph=${gmm}/$(basename $graph_src)
+#
+if [ $stage -le 10 ]; then
+  # Generate lattices and alignments
+  steps/nnet/align.sh --nj 30 --cmd "$train_cmd" \
+    $train_bn_fmllr $lang $srcdir ${srcdir}_ali || exit 1;
+  local/make_symlink_dir.sh --tmp-root $scratch ${srcdir}_denlats || exit 1
+  steps/nnet/make_denlats.sh --nj 30 --cmd "$decode_cmd" --acwt $acwt \
+    $train_bn_fmllr $lang $srcdir ${srcdir}_denlats  || exit 1;
+fi
+if [ $stage -le 11 ]; then
+  # Train DNN by single iteration of sMBR (leaving out all silence frames), 
+  steps/nnet/train_mpe.sh --cmd "$cuda_cmd" --num-iters 1 --acwt $acwt --do-smbr true \
+      $train_bn_fmllr $lang $srcdir ${srcdir}_ali ${srcdir}_denlats $dir || exit 1
+
+  # Decode conversational.dev
+  steps/nnet/decode.sh --nj $njdec --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.10 \
+    --num-threads 3 --parallel-opts "-pe smp 2" --max-mem 150000000 \
+    $graph $test_bn_fmllr $dir/decode_$(basename $test_bn_fmllr)_$(basename $graph) || exit 1
+
+fi 
+
+#------------------------------------------------------------------------------------
+# Run 4 mode sMBR epochs after rebuilding lattices, alignment.
+dir=exp/dnn5g_multistream_bn_pretrain-dbn_dnn_smbr_run2
+srcdir=exp/dnn5f_multistream_bn_pretrain-dbn_dnn_smbr
+acwt=0.1
+#
+if [ $stage -le 12 ]; then
+  # Generate lattices and alignments
+  steps/nnet/align.sh --nj 30 --cmd "$train_cmd" \
+    $train_bn_fmllr $lang $srcdir ${srcdir}_ali || exit 1;
+  local/make_symlink_dir.sh --tmp-root $scratch ${srcdir}_denlats || exit 1
+  steps/nnet/make_denlats.sh --nj 30 --cmd "$decode_cmd" --acwt $acwt \
+    $train_bn_fmllr $lang $srcdir ${srcdir}_denlats  || exit 1;
+fi
+if [ $stage -le 13 ]; then
+  # Train DNN by 4 epochs of sMBR (leaving out all "unk" frames), 
+  steps/nnet/train_mpe.sh --cmd "$cuda_cmd" --num-iters 4 --acwt $acwt --do-smbr true \
+    --unkphonelist $unkphonelist \
+    $train_bn_fmllr $lang $srcdir ${srcdir}_ali ${srcdir}_denlats $dir || exit 1
+
+  # Decode conversational.dev
+  for ITER in 4 3 2 1; do
+    steps/nnet/decode.sh --nj $njdec --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.10 \
+      --nnet $dir/${ITER}.nnet \
+      --num-threads 3 --parallel-opts "-pe smp 2" --max-mem 150000000 \
+      $graph $test_bn_fmllr $dir/decode_$(basename $test_bn_fmllr)_$(basename $graph) || exit 1
+  done
+
+fi
+
+
+exit 0;
 
 
 if [ $stage -le 0 ]; then
