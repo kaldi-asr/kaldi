@@ -29,8 +29,7 @@ For cygwin installation, see the instructions in `../INSTALL`.
 
 ## Steps
 
-1. Checkout Kaldi trunk, either using the svn from the url https://svn.code.sf.net/p/kaldi/code/trunk
-   or using git from https://github.com/kaldi-asr/kaldi.git
+1. Checkout Kaldi trunk, using [git](https://git-for-windows.github.io/) from https://github.com/kaldi-asr/kaldi.git
 
    Example:
    
@@ -121,7 +120,8 @@ for their processors. It isn't free, but you can get [Community Licensing for In
          (kaldi)/tools/openfst$ cd ../../windows
          (kaldi)/windows $ pwd
 
-11. Modify the file `variables.props` to reflect
+11. Copy `variables.props.dev` to `variables.props`.
+    Then modify the file `variables.props` to reflect
     the correct paths, using your favorite text editor.
     Don't worry, it's a text file, even though you have to be
     careful to keep the structure itself intact
@@ -134,9 +134,7 @@ for their processors. It isn't free, but you can get [Community Licensing for In
     variables correctly
 
 12. For OpenBLAS support, copy the file `kaldiwin_openblas.props` to `kaldiwin.props`
-13. For MKL support, you don't have to do anything, it should work out of the box.
-    When you need to switch from OpenBLAS to MKL, copy the `kaldiwin_mkl.props`
-    to `kaldiwin.props`
+13. For MKL support, copy the `kaldiwin_mkl.props` to `kaldiwin.props`
 
 14. Call the script that generates the MSVC solution
 
