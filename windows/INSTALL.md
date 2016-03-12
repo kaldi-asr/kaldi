@@ -138,9 +138,9 @@ for their processors. It isn't free, but you can get [Community Licensing for In
 
 14. Call the script that generates the MSVC solution
 
-         generate_solution.pl --vsver <default|vs2013|vs2015> [--enable-cuda] [--enable-openblas] [--enable-mlk]
+         ./generate_solution.pl --vsver <default|vs2013|vs2015> [--enable-cuda] [--enable-openblas] [--enable-mkl]
 
-    `--enable-mlk` is the default so you shouldn't need to use it. If `--enable-openblas` is passed it disables MLK support.
+    `--enable-mkl` is the default so you shouldn't need to use it. If `--enable-openblas` is passed it disables MKL support.
     CUDA is disabled by default. The default Visual Studio version is 11.0 (Visual Studio 2012).
 
     For example, for a build using OpenBLAS and VS 2015 you would run:
