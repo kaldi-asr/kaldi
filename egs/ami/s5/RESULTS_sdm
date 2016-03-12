@@ -77,11 +77,6 @@ for x in exp/$mic/nnet2_online/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && gr
 %WER 46.1 | 15377 94333 | 59.1 25.8 15.0 5.2 46.1 65.6 | -24.026 | exp/sdm1/nnet3/tdnn_sp/decode_dev/ascore_11/dev_hires_o4.ctm.filt.sys
 %WER 50.9 | 13867 89975 | 53.6 27.9 18.5 4.5 50.9 70.1 | -23.332 | exp/sdm1/nnet3/tdnn_sp/decode_eval/ascore_11/eval_hires_o4.ctm.filt.sys
 
-#chain+TDNN
-# local/chain/run_tdnn_py.sh --mic sdm1 --use-sat-alignments false
-%WER 46.1 | 14535 94492 | 56.6 17.4 26.0 2.6 46.1 71.5 | 0.610 | exp/chain/sdm1/tdnn_4200_sp/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
-%WER 49.5 | 13353 89970 | 53.2 18.7 28.1 2.7 49.5 73.4 | 0.579 | exp/chain/sdm1/tdnn_4200_sp/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
-
 #LSTM
 #Total training time is 21:34:06
 %WER 44.2 | 14069 94507 | 61.3 25.8 12.9 5.5 44.2 70.7 | -24.180 | exp/sdm1/nnet3/lstm_sp_ld5/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys
@@ -104,7 +99,7 @@ for x in exp/$mic/nnet2_online/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && gr
 
 # BLSTM + clean alignments
 #  local/nnet3/run_blstm.sh --mic sdm1 \
-#    --chunk-right-context 20 \ 
+#    --chunk-right-context 20 \
 #    --use-sat-alignments true \
 #    --use-ihm-ali true
 # Note: Chunk right context of 20 limits the latency of the acoustic model to
@@ -112,6 +107,14 @@ for x in exp/$mic/nnet2_online/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && gr
 
 %WER 38.5 | 14828 94514 | 66.6 22.7 10.6 5.2 38.5 63.7 | -25.569 | exp/sdm1_cleanali/nnet3/lstm_sp_bidirectional_ld0/decode_dev/ascore_11/dev_hires_o4.ctm.filt.sys
 %WER 41.8 | 12828 89977 | 62.5 24.6 12.9 4.3 41.8 70.8 | -24.813 | exp/sdm1_cleanali/nnet3/lstm_sp_bidirectional_ld0/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys
+
+##################################
+# chain model results
+# local/chain/run_tdnn_6z.sh --mic sdm1 (3/12/2016)
+# Total training time is 4:21:29
+%WER 44.6 | 13985 94494 | 58.9 19.0 22.1 3.4 44.6 74.2 | 0.583 | exp/sdm1/chain/tdnn_sp/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
+%WER 48.7 | 13870 89941 | 54.7 20.3 25.0 3.4 48.7 71.0 | 0.552 | exp/sdm1/chain/tdnn_sp/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
+
 
 #--------------------------------------------------------------------------------------------------------------------------------------------
 # Karel, JSALT 2015, (28.7.2015)
