@@ -1,5 +1,7 @@
 #!/bin/bash
 
+#adapted from swbd's local/chain/6z.sh script. We change the TDNN config
+
 set -e
 
 # configs for 'chain'
@@ -8,16 +10,12 @@ train_stage=-10
 get_egs_stage=-10
 mic=ihm
 use_ihm_ali=false
-use_sat_alignments=true
 affix=
 speed_perturb=true
 common_egs_dir=
-splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -7,2 -3,3 0 0"
+splice_indexes="-1,0,1 -1,0,1,2 -3,0,3 -3,0,3 -3,0,3 -6,-3,0 0"
 subset_dim=0
-relu_dim=850
-pnorm_input_dim=3000
-pnorm_output_dim=300
-include_log_softmax=true
+relu_dim=450
 
 # TDNN options
 # this script uses the new tdnn config generator so it needs a final 0 to reflect that the final layer input has no splicing
@@ -67,45 +65,40 @@ fi
 dir=exp/$mic/chain/tdnn${affix:+_$affix} # Note: _sp will get added to this if $speed_perturb == true.
 dir=${dir}$suffix
 train_set=train$suffix
-treedir=exp/$mic/chain/train_tree$suffix
-lang=data/lang_chain
+treedir=exp/$mic/chain/tri5_2y_tree$suffix
+lang=data/lang_chain_2y
 
 # if we are using the speed-perturbed data we need to generate
 # alignments for it.
 local/nnet3/run_ivector_common.sh --stage $stage \
                                   --mic $mic \
                                   --use-ihm-ali $use_ihm_ali \
-                                  --use-sat-alignments $use_sat_alignments || exit 1;
+                                  --use-sat-alignments true || exit 1;
 
-# we still support this option as all the TDNN, LSTM, BLSTM systems were built
-# using tri3a alignments
-if [ $use_sat_alignments == "true" ]; then
-  gmm=tri4a
-else
-  gmm=tri3a
-fi
-
+gmm=tri4a
 if [ $use_ihm_ali == "true" ]; then
   gmm_dir=exp/ihm/$gmm
   mic=${mic}_cleanali
   ali_dir=${gmm_dir}_${mic}_train_parallel_sp_ali
+  lat_dir=${gmm_dir}_${mic}_train_parallel_sp_lats
 else
   gmm_dir=exp/$mic/$gmm
   ali_dir=${gmm_dir}_${mic}_train_sp_ali
+  lat_dir=${gmm_dir}_${mic}_train_sp_lats
 fi
 
 final_lm=`cat data/local/lm/final_lm`
 LM=$final_lm.pr1-7
-graph_dir=$dir/graph_${LM} 
+graph_dir=$dir/graph_${LM}
 
 
 if [ $stage -le 10 ]; then
-  # Get the alignments as lattices (gives the CTC training more freedom).
+  # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
   nj=$(cat $ali_dir/num_jobs) || exit 1;
   steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" data/$mic/$train_set \
-    data/lang $gmm_dir exp/$mic/train_lats$suffix
-  rm exp/$mic/train_lats$suffix/fsts.*.gz # save space
+    data/lang $gmm_dir $lat_dir
+  rm $lat_dir/fsts.*.gz # save space
 fi
 
 
@@ -156,7 +149,7 @@ if [ $stage -le 13 ]; then
     --use-presoftmax-prior-scale false \
     --xent-regularize $xent_regularize \
     --xent-separate-forward-affine true \
-    --include-log-softmax $include_log_softmax \
+    --include-log-softmax false \
     --final-layer-normalize-target $final_layer_normalize_target \
    $dir/configs || exit 1;
 fi
@@ -183,7 +176,7 @@ if [ $stage -le 14 ]; then
     --egs.opts "--frames-overlap-per-eg 0" \
     --egs.chunk-width $frames_per_eg \
     --trainer.num-chunk-per-minibatch $minibatch_size \
-    --trainer.frames-per-iter 1200000 \
+    --trainer.frames-per-iter 1500000 \
     --trainer.num-epochs $num_epochs \
     --trainer.optimization.num-jobs-initial $num_jobs_initial \
     --trainer.optimization.num-jobs-final $num_jobs_final \
@@ -193,7 +186,7 @@ if [ $stage -le 14 ]; then
     --cleanup.remove-egs $remove_egs \
     --feat-dir data/$mic/${train_set}_hires \
     --tree-dir $treedir \
-    --lat-dir exp/$mic/train_lats$suffix \
+    --lat-dir $lat_dir \
     --dir $dir  || exit 1;
 fi
 
@@ -207,8 +200,8 @@ fi
 if [ $stage -le 16 ]; then
   for decode_set in dev eval; do
       (
-      num_jobs=`cat data/$mic/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l` 
-      
+      num_jobs=`cat data/$mic/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
+
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
          --extra-left-context 20 \
           --nj $num_jobs --cmd "$decode_cmd" \
