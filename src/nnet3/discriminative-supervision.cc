@@ -412,6 +412,7 @@ void AppendSupervision(const std::vector<const DiscriminativeSupervision*> &inpu
     (*output_supervision)[0] = *(input[0]);
     return;
   }
+  std::vector<bool> output_was_merged;
   output_supervision->clear();
   output_supervision->reserve(input.size());
   for (int32 i = 0; i < input.size(); i++) {
@@ -430,14 +431,20 @@ void AppendSupervision(const std::vector<const DiscriminativeSupervision*> &inpu
           src.num_ali.begin(), src.num_ali.end());
 
       output_supervision->back().num_sequences++;
+      output_was_merged.back() = true;
     } else {
       output_supervision->resize(output_supervision->size() + 1);
       output_supervision->back() = src;
+      output_was_merged.push_back(false);
     }
-
-    if (compactify)
-      fst::TopSort(&output_supervision->back().den_lat);
-    output_supervision->back().Check();
+  }
+  KALDI_ASSERT(output_was_merged.size() == output_supervision->size());
+  for (size_t i = 0; i < output_supervision->size(); i++) {
+    if (output_was_merged[i]) {
+      DiscriminativeSupervision &out_sup = (*output_supervision)[i];
+      fst::TopSort(&(out_sup.den_lat));
+      out_sup.Check();
+    }
   }
 }
 
