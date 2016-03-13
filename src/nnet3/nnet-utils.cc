@@ -283,7 +283,7 @@ void SetLearningRate(BaseFloat learning_rate,
 void SetLearningRates(const Vector<BaseFloat> &learning_rates,
                      Nnet *nnet) {
   int32 i = 0;
-  for (int32 c = 0, i = 0; c < nnet->NumComponents(); c++) {
+  for (int32 c = 0; c < nnet->NumComponents(); c++) {
     Component *comp = nnet->GetComponent(c);
     if (comp->Properties() & kUpdatableComponent) {
       // For now all updatable components inherit from class UpdatableComponent.

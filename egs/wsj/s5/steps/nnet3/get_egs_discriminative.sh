@@ -46,7 +46,7 @@ acwt=0.1
 
 stage=0
 max_jobs_run=15
-max_shuffle_jobs_run=50 
+max_shuffle_jobs_run=15
 
 transform_dir= # If this is a SAT system, directory for transforms
 online_ivector_dir=
