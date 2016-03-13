@@ -436,9 +436,10 @@ void AppendSupervision(const std::vector<const DiscriminativeSupervision*> &inpu
     }
   }
   
-  if (compactify)
+  if (compactify) {
     fst::TopSort(&output_supervision->back().den_lat);
-  output_supervision->back().Check();
+    output_supervision->back().Check();
+  }
 }
 
 } // namespace discriminative 
