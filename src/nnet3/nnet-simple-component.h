@@ -1466,8 +1466,8 @@ class ConvolutionComponent: public UpdatableComponent {
     const CuMatrixBase<BaseFloat> &filter_params,
     const CuVectorBase<BaseFloat> &bias_params,
     int32 input_x_dim, int32 input_y_dim, int32 input_z_dim,
-    int32 filt_x_dim, int32 filt_y_dim,
-    int32 filt_x_step, int32 filt_y_step,
+    int32 filt_x_dim, int32 filt_y_dim, int32 filt_z_dim,
+    int32 filt_x_step, int32 filt_y_step, int32 filt_z_step,
     TensorVectorizationType input_vectorization,
     BaseFloat learning_rate);
 
@@ -1520,15 +1520,16 @@ class ConvolutionComponent: public UpdatableComponent {
   const CuVector<BaseFloat> &BiasParams() { return bias_params_; }
   const CuMatrix<BaseFloat> &LinearParams() { return filter_params_; }
   void Init(int32 input_x_dim, int32 input_y_dim, int32 input_z_dim,
-            int32 filt_x_dim, int32 filt_y_dim,
-            int32 filt_x_step, int32 filt_y_step, int32 num_filters,
+            int32 filt_x_dim, int32 filt_y_dim, int32 filt_z_dim,
+            int32 filt_x_step, int32 filt_y_step, int32 filt_z_step,
+            int32 num_filters,
             TensorVectorizationType input_vectorization,
             BaseFloat param_stddev, BaseFloat bias_stddev);
   // there is no filt_z_dim parameter as the length of the filter along
   // z-dimension is same as the input
   void Init(int32 input_x_dim, int32 input_y_dim, int32 input_z_dim,
-            int32 filt_x_dim, int32 filt_y_dim,
-            int32 filt_x_step, int32 filt_y_step,
+            int32 filt_x_dim, int32 filt_y_dim, int32 filt_z_dim,
+            int32 filt_x_step, int32 filt_y_step, int32 filt_z_step,
             TensorVectorizationType input_vectorization,
             std::string matrix_filename);
 
@@ -1556,6 +1557,8 @@ class ConvolutionComponent: public UpdatableComponent {
 
   int32 filt_y_dim_;    // size of the filter along y-axis
 
+  int32 filt_z_dim_;    // size of the filter along z-axis
+
   // there is no filt_z_dim_ as it is always assumed to be
   // the same as input_z_dim_
 
@@ -1564,6 +1567,10 @@ class ConvolutionComponent: public UpdatableComponent {
                         //  of filter and input
 
   int32 filt_y_step_;   // the number of steps taken along y-axis of input
+                        // before computing the next dot-product of the filter
+                        // and input
+
+  int32 filt_z_step_;   // the number of steps taken along z-axis of input
                         // before computing the next dot-product of the filter
                         // and input
 

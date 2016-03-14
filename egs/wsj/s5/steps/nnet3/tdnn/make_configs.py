@@ -179,14 +179,117 @@ def CheckArgs(args):
 
     return args
 
+def AddPerDimAffineLayer(config_lines, name, input, input_window):
+    filter_context = int((input_window - 1) / 2)
+    filter_input_splice_indexes = range(-1 * filter_context, filter_context + 1)
+    list = [('Offset({0}, {1})'.format(input['descriptor'], n) if n != 0 else input['descriptor']) for n in filter_input_splice_indexes]
+    filter_input_descriptor = 'Append({0})'.format(' , '.join(list))
+    filter_input_descriptor = {'descriptor':filter_input_descriptor,
+                               'dimension':len(filter_input_splice_indexes) * input['dimension']}
+
+
+    # add permute component to shuffle the feature columns of the Append
+    # descriptor output so that columns corresponding to the same feature index
+    # are contiguous add a block-affine component to collapse all the feature
+    # indexes across time steps into a single value
+    num_feats = input['dimension']
+    num_times = len(filter_input_splice_indexes)
+    column_map = []
+    for i in range(num_feats):
+        for j in range(num_times):
+            column_map.append(j * num_feats + i)
+    permuted_output_descriptor = nodes.AddPermuteLayer(config_lines,
+            name, filter_input_descriptor, column_map)
+
+    # add a block-affine component
+    output_descriptor = nodes.AddBlockAffineLayer(config_lines, name,
+                                                  permuted_output_descriptor,
+                                                  num_feats, num_feats)
+
+    return [output_descriptor, filter_context, filter_context]
+
+def AddMultiDimAffineLayer(config_lines, name, input, input_window, block_input_dim, block_output_dim):
+    assert(block_input_dim % input_window== 0)
+    filter_context = int((input_window - 1) / 2)
+    filter_input_splice_indexes = range(-1 * filter_context, filter_context + 1)
+    list = [('Offset({0}, {1})'.format(input['descriptor'], n) if n != 0 else input['descriptor']) for n in filter_input_splice_indexes]
+    filter_input_descriptor = 'Append({0})'.format(' , '.join(list))
+    filter_input_descriptor = {'descriptor':filter_input_descriptor,
+                               'dimension':len(filter_input_splice_indexes) * input['dimension']}
+
+
+    # add permute component to shuffle the feature columns of the Append
+    # descriptor output so that columns corresponding to the same feature index
+    # are contiguous add a block-affine component to collapse all the feature
+    # indexes across time steps into a single value
+    num_feats = input['dimension']
+    num_times = len(filter_input_splice_indexes)
+    column_map = []
+    for i in range(num_feats):
+        for j in range(num_times):
+            column_map.append(j * num_feats + i)
+    permuted_output_descriptor = nodes.AddPermuteLayer(config_lines,
+            name, filter_input_descriptor, column_map)
+    # add a block-affine component
+    output_descriptor = nodes.AddBlockAffineLayer(config_lines, name,
+                                                  permuted_output_descriptor,
+                                                  num_feats / (block_input_dim / input_window) * block_output_dim, num_feats / (block_input_dim/ input_window))
+
+    return [output_descriptor, filter_context, filter_context]
+
+def AddLpFilter(config_lines, name, input, rate, num_lpfilter_taps, lpfilt_filename, is_updatable = False):
+    try:
+        import scipy.signal as signal
+        import numpy as np
+    except ImportError:
+        raise Exception(" This recipe cannot be run without scipy."
+                        " You can install it using the command \n"
+                        " pip install scipy\n"
+                        " If you do not have admin access on the machine you are"
+                        " trying to run this recipe, you can try using"
+                        " virtualenv")
+    # low-pass smoothing of input was specified. so we will add a low-pass filtering layer
+    lp_filter = signal.firwin(num_lpfilter_taps, rate, width=None, window='hamming', pass_zero=True, scale=True, nyq=1.0)
+    lp_filter = list(np.append(lp_filter, 0))
+    nnet3_train_lib.WriteKaldiMatrix(lpfilt_filename, [lp_filter])
+    filter_context = int((num_lpfilter_taps - 1) / 2)
+    filter_input_splice_indexes = range(-1 * filter_context, filter_context + 1)
+    list = [('Offset({0}, {1})'.format(input['descriptor'], n) if n != 0 else input['descriptor']) for n in filter_input_splice_indexes]
+    filter_input_descriptor = 'Append({0})'.format(' , '.join(list))
+    filter_input_descriptor = {'descriptor':filter_input_descriptor,
+                               'dimension':len(filter_input_splice_indexes) * input['dimension']}
+
+    input_x_dim = len(filter_input_splice_indexes)
+    input_y_dim = input['dimension']
+    input_z_dim = 1
+    filt_x_dim = len(filter_input_splice_indexes)
+    filt_y_dim = 1
+    filt_z_dim = 1
+    filt_x_step = 1
+    filt_y_step = 1
+    filt_z_step = 1
+    input_vectorization = 'zyx'
+
+    tdnn_input_descriptor = nodes.AddConvolutionLayer(config_lines, name,
+                                                     filter_input_descriptor,
+                                                     input_x_dim, input_y_dim, input_z_dim,
+                                                     filt_x_dim, filt_y_dim, filt_z_dim,
+                                                     filt_x_step, filt_y_step, filt_z_step,
+                                                     1, input_vectorization,
+                                                     filter_bias_file = lpfilt_filename,
+                                                     is_updatable = is_updatable)
+
+
+    return [tdnn_input_descriptor, filter_context, filter_context]
+
 def AddConvMaxpLayer(config_lines, name, input, args):
     if '3d-dim' not in input:
         raise Exception("The input to AddConvMaxpLayer() needs '3d-dim' parameters.")
 
     input = nodes.AddConvolutionLayer(config_lines, name, input,
                               input['3d-dim'][0], input['3d-dim'][1], input['3d-dim'][2],
-                              args.filt_x_dim, args.filt_y_dim,
-                              args.filt_x_step, args.filt_y_step,
+                              args.filt_x_dim, args.filt_y_dim, args.filt_z_dim,
+                              args.filt_x_step, args.filt_y_step, args.filt_z_step,
                               args.num_filters, input['vectorization'])
 
     if args.pool_x_size > 1 or args.pool_y_size > 1 or args.pool_z_size > 1:
@@ -194,6 +297,9 @@ def AddConvMaxpLayer(config_lines, name, input, args):
                                 input['3d-dim'][0], input['3d-dim'][1], input['3d-dim'][2],
                                 args.pool_x_size, args.pool_y_size, args.pool_z_size,
                                 args.pool_x_step, args.pool_y_step, args.pool_z_step)
+    else:
+      output = nodes.AddRelNormLayer(config_lines, name, input, norm_target_rms = 1.0)
+      input['descriptor'] = output['descriptor']
 
     return input
 
@@ -243,8 +349,10 @@ def ParseCnnString(cnn_param_string_list):
 
     cnn_parser.add_argument("--filt-x-dim", required=True, type=int)
     cnn_parser.add_argument("--filt-y-dim", required=True, type=int)
+    cnn_parser.add_argument("--filt-z-dim", type=int, default = 0)
     cnn_parser.add_argument("--filt-x-step", type=int, default = 1)
     cnn_parser.add_argument("--filt-y-step", type=int, default = 1)
+    cnn_parser.add_argument("--filt-z-step", type=int, default = 0)
     cnn_parser.add_argument("--num-filters", required=True, type=int)
     cnn_parser.add_argument("--pool-x-size", type=int, default = 1)
     cnn_parser.add_argument("--pool-y-size", type=int, default = 1)
