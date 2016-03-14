@@ -10,13 +10,13 @@ mic=ihm
 stage=0
 . utils/parse_options.sh
 
-# Set bash to 'debug' mode, it prints the commands (option '-x') and exits on : 
+# Set bash to 'debug' mode, it prints the commands (option '-x') and exits on :
 # -e 'error', -u 'undefined variable', -o pipefail 'error in pipeline',
 set -euxo pipefail
 
 # Path where AMI gets downloaded (or where locally available):
-AMI_DIR=$PWD/wav_db # Default, 
-case $(hostname -d) in 
+AMI_DIR=$PWD/wav_db # Default,
+case $(hostname -d) in
   fit.vutbr.cz) AMI_DIR=/mnt/scratch05/iveselyk/KALDI_AMI_WAV ;; # BUT,
   clsp.jhu.edu) AMI_DIR=/export/corpora4/ami/amicorpus ;; # JHU,
   cstr.ed.ac.uk) AMI_DIR= ;; # Edinburgh,
@@ -86,7 +86,7 @@ if [ $stage -le 5 ]; then
     data/$mic/train data/lang exp/$mic/tri2a exp/$mic/tri2_ali
   # Decode,
   graph_dir=exp/$mic/tri2a/graph_${LM}
-  $highmem_cmd $graph_dir/mkgraph.log \
+  $cmd --mem 4G $graph_dir/mkgraph.log \
     utils/mkgraph.sh data/lang_${LM} exp/$mic/tri2a $graph_dir
   steps/decode.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
     $graph_dir data/$mic/dev exp/$mic/tri2a/decode_dev_${LM}
@@ -104,26 +104,26 @@ if [ $stage -le 6 ]; then
     data/$mic/train data/lang exp/$mic/tri3a exp/$mic/tri3a_ali
   # Decode,
   graph_dir=exp/$mic/tri3a/graph_${LM}
-  $highmem_cmd $graph_dir/mkgraph.log \
+  $cmd --mem 4G $graph_dir/mkgraph.log \
     utils/mkgraph.sh data/lang_${LM} exp/$mic/tri3a $graph_dir
   steps/decode.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
-    $graph_dir data/$mic/dev exp/$mic/tri3a/decode_dev_${LM} 
+    $graph_dir data/$mic/dev exp/$mic/tri3a/decode_dev_${LM}
   steps/decode.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
     $graph_dir data/$mic/eval exp/$mic/tri3a/decode_eval_${LM}
-fi 
+fi
 
 if [ $stage -le 7 ]; then
   # Train tri4a, which is LDA+MLLT+SAT,
   steps/train_sat.sh  --cmd "$train_cmd" \
     5000 80000 data/$mic/train data/lang exp/$mic/tri3a_ali exp/$mic/tri4a
-  # Decode,  
+  # Decode,
   graph_dir=exp/$mic/tri4a/graph_${LM}
   $highmem_cmd $graph_dir/mkgraph.log \
     utils/mkgraph.sh data/lang_${LM} exp/$mic/tri4a $graph_dir
   steps/decode_fmllr.sh --nj $nj --cmd "$decode_cmd"  --config conf/decode.conf \
-    $graph_dir data/$mic/dev exp/$mic/tri4a/decode_dev_${LM} 
+    $graph_dir data/$mic/dev exp/$mic/tri4a/decode_dev_${LM}
   steps/decode_fmllr.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
-    $graph_dir data/$mic/eval exp/$mic/tri4a/decode_eval_${LM} 
+    $graph_dir data/$mic/eval exp/$mic/tri4a/decode_eval_${LM}
 fi
 
 nj_mmi=80
@@ -160,11 +160,11 @@ if [ $stage -le 11 ]; then
     decode_dir=exp/$mic/tri4a_mmi_b0.1/decode_dev_${i}.mdl_${LM}
     steps/decode.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
       --transform-dir exp/$mic/tri4a/decode_dev_${LM} --iter $i \
-      $graph_dir data/$mic/dev $decode_dir 
+      $graph_dir data/$mic/dev $decode_dir
     decode_dir=exp/$mic/tri4a_mmi_b0.1/decode_eval_${i}.mdl_${LM}
     steps/decode.sh --nj $nj --cmd "$decode_cmd"  --config conf/decode.conf \
       --transform-dir exp/$mic/tri4a/decode_eval_${LM} --iter $i \
-      $graph_dir data/$mic/eval $decode_dir 
+      $graph_dir data/$mic/eval $decode_dir
   done
 fi
 
@@ -181,7 +181,7 @@ if [ $stage -le 13 ]; then
     --hidden-dim 950 \
     --splice-indexes "layer0/-2:-1:0:1:2 layer1/-1:2 layer2/-3:3 layer3/-7:2 layer4/-3:3" \
     --use-sat-alignments true
-  
+
   local/online/run_nnet2_ms_sp_disc.sh  \
     --mic $mic  \
     --gmm-dir exp/$mic/tri4a \

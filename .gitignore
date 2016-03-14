@@ -6,11 +6,12 @@
 !/src/*/Makefile
 !/src/*/README
 
-# Compiled Object files
+# Compiled Object files and python ciles
 *.slo
 *.lo
 *.o
 *.obj
+*.pyc
 
 # Compiled Dynamic libraries
 *.so

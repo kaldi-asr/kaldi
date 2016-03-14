@@ -155,6 +155,18 @@ int32 MergePosteriors(const Posterior &post1,
                       bool drop_frames,
                       Posterior *post);
 
+// comparator object that can be used to sort from greatest to
+// least posterior.
+struct CompareReverseSecond {
+  // view this as an "<" operator used for sorting, except it behaves like
+  // a ">" operator on the .second field of the pair because we want the
+  // sort to be in reverse order (greatest to least) on posterior.
+  bool operator() (const std::pair<int32, BaseFloat> &a,
+                   const std::pair<int32, BaseFloat> &b) {
+    return (a.second > b.second);
+  }
+};
+
 /// Given a vector of log-likelihoods (typically of Gaussians in a GMM
 /// but could be of pdf-ids), a number gselect >= 1 and a minimum posterior
 /// 0 <= min_post < 1, it gets the posterior for each element of log-likes

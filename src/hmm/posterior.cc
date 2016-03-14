@@ -429,18 +429,6 @@ void WeightSilencePostDistributed(const TransitionModel &trans_model,
   }
 }
 
-// comparator object that can be used to sort from greatest to
-// least posterior.
-struct CompareReverseSecond {
-  // view this as an "<" operator used for sorting, except it behaves like
-  // a ">" operator on the .second field of the pair because we want the
-  // sort to be in reverse order (greatest to least) on posterior.
-  bool operator() (const std::pair<int32, BaseFloat> &a,
-                   const std::pair<int32, BaseFloat> &b) {
-    return (a.second > b.second);
-  }
-};
-
 BaseFloat VectorToPosteriorEntry(
     const VectorBase<BaseFloat> &log_likes,
     int32 num_gselect,

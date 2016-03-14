@@ -118,6 +118,11 @@ class Compiler {
                       std::vector<std::vector<int32> > *by_step,
                       NnetComputation *computation);
 
+  // Gets the stride type, kDefaultStride or kStrideEqualNumCols,
+  // at the output of this node: interrogates component flags
+  // looking for kInputContiguous or kOutputContiguous.
+  MatrixStrideType GetStrideType(int32 node_index) const;
+
 
   // Miscellaneous info pertaining to various steps of the computation.  Indexed
   // by step-index.

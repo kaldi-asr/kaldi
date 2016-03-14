@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
@@ -81,7 +81,7 @@ if [ -f $data/segments ]; then
   for n in $(seq $nj); do
     split_segments="$split_segments $logdir/segments.$n"
   done
- 
+
   utils/split_scp.pl $data/segments $split_segments || exit 1;
   rm $logdir/.error 2>/dev/null
 
@@ -127,8 +127,8 @@ done > $data/feats.scp
 
 rm $logdir/wav_${name}.*.scp  $logdir/segments.* 2>/dev/null
 
-nf=`cat $data/feats.scp | wc -l` 
-nu=`cat $data/utt2spk | wc -l` 
+nf=`cat $data/feats.scp | wc -l`
+nu=`cat $data/utt2spk | wc -l`
 if [ $nf -ne $nu ]; then
   echo "It seems not all of the feature files were successfully processed ($nf != $nu);"
   echo "consider using utils/fix_data_dir.sh $data"

@@ -2,7 +2,7 @@
 
 // Copyright 2009-2012  Karel Vesely
 //                2013  Johns Hopkins University (author: Daniel Povey)
-//                2013  Hainan Xu    
+//                2013  Hainan Xu
 //                2013  Xiaohui Zhang
 //           2013-2015  Guoguo Chen
 
@@ -44,7 +44,7 @@ void cudaI32_set_const(dim3 Gr, dim3 Bl, int32_cuda *mat, int32_cuda value, Matr
  */
 
 /*
- * CuMatrix 
+ * CuMatrix
  */
 void cudaF_copy_upp_low(dim3 Gr, dim3 Bl, float* A, MatrixDim dimA);
 void cudaF_copy_low_upp(dim3 Gr, dim3 Bl, float* A, MatrixDim dimA);
@@ -58,7 +58,7 @@ void cudaFD_copy_from_tp(dim3 Gr, dim3 Bl, float* A, const double* B, MatrixDim 
 void cudaF_apply_exp(dim3 Gr, dim3 Bl, float* mat, MatrixDim d);
 void cudaF_apply_pow(dim3 Gr, dim3 Bl, float* mat, float power, MatrixDim d);
 void cudaF_apply_pow_abs(dim3 Gr, dim3 Bl, float* mat, float power, bool include_sign,  MatrixDim d);
-void cudaF_apply_heaviside(dim3 Gr, dim3 Bl, float* mat, MatrixDim d);  
+void cudaF_apply_heaviside(dim3 Gr, dim3 Bl, float* mat, MatrixDim d);
 void cudaF_apply_floor(dim3 Gr, dim3 Bl, float* mat, float floor_val, MatrixDim d);
 void cudaF_copy_cols(dim3 Gr, dim3 Bl, float* dst, const float* src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride);
 void cudaF_add_cols(dim3 Gr, dim3 Bl, float* dst, const float* src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride);
@@ -108,9 +108,9 @@ void cudaF_vec_min(const float* v, float* value, int dim);
 void cudaF_vec_max(const float* v, float* value, int dim);
 void cudaF_trace_mat_mat_trans(const float* A, const float* B, MatrixDim dA, int B_stride, float* value);
 void cudaF_trace_mat_mat(const float* A, const float* B, MatrixDim dA, int B_stride, float* value);
-void cudaF_add_diag_mat_mat(int Gr, int Bl, float alpha, float* v, int v_dim, const float* M, 
-                            int M_cols, int M_row_stride, int M_col_stride, const float *N, int N_row_stride, 
-                            int N_col_stride, int threads_per_element, float beta);  
+void cudaF_add_diag_mat_mat(int Gr, int Bl, float alpha, float* v, int v_dim, const float* M,
+                            int M_cols, int M_row_stride, int M_col_stride, const float *N, int N_row_stride,
+                            int N_col_stride, int threads_per_element, float beta);
 void cudaF_add_vec_vec(int Gr, int Bl, float alpha, float* v, const float* x, const float* y, float beta, int dim);
 void cudaF_copy_col_from_mat_df(int Gr, int Bl, double* v, int col, const float* mat, MatrixDim dmat, int dim);
 void cudaF_copy_col_from_mat_fd(int Gr, int Bl, float* v, int col, const float* mat, MatrixDim dmat, int dim);
@@ -141,6 +141,7 @@ void cudaF_soft_hinge(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, i
 void cudaF_group_pnorm(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride, int group_size, float power);
 void cudaF_group_max(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride, int group_size);
 void cudaF_sigmoid(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride);
+void cudaF_heaviside(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride);
 void cudaF_diff_sigmoid(dim3 Gr, dim3 Bl, float *eout, const float *e, const float *y, MatrixDim d, int e_stride, int y_stride);
 void cudaF_tanh(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride);
 void cudaF_diff_tanh(dim3 Gr, dim3 Bl, float *eout, const float *e, const float *y, MatrixDim d, int e_stride, int y_stride);
@@ -161,15 +162,15 @@ void cudaF_take_mean(dim3 Gr, dim3 Bl, const float* x, float* y, MatrixDim d_in)
 void cudaF_matrix_add_elements(dim3 Gr, dim3 Bl, float *data, MatrixDim dim, float alpha, MatrixElement<float>* x, int num_elements);
 void cudaF_matrix_add_indexed_values(dim3 Gr, dim3 Bl, MatrixDim dim, float alpha, const Int32Pair* indices, const float* x, int s, float* data);
 void cudaF_comp_obj_deriv(dim3 Gr,dim3 Bl, MatrixElement<float>* x, int s, const float* z, MatrixDim d, float* z2, MatrixDim d2, float* t);
-void cudaF_transpose_matrix(dim3 Gr, dim3 Bl, float* mat, MatrixDim d);  
+void cudaF_transpose_matrix(dim3 Gr, dim3 Bl, float* mat, MatrixDim d);
 void cudaF_sy_add_tr2(dim3 Gr, dim3 Bl, float alpha, float beta, const float* T, MatrixDim tdim,
                       float *S, MatrixDim sdim);
 void cudaF_sum_column_ranges(dim3 Gr, dim3 Bl, float *data, MatrixDim dim,
                              const float *src_data, MatrixDim src_dim,
-                             const Int32Pair *indices);  
+                             const Int32Pair *indices);
 void cudaF_add_row_ranges(dim3 Gr, dim3 Bl, float *data, MatrixDim dim,
                           const float *src_data, MatrixDim src_dim,
-                          const Int32Pair *indexes);  
+                          const Int32Pair *indexes);
 void cudaF_matrix_lookup(dim3 Gr, dim3 Bl, const float *data, MatrixDim dim,
                          const Int32Pair *indices, int indices_size,
                          float *output);
@@ -177,19 +178,19 @@ void cudaF_matrix_lookup(dim3 Gr, dim3 Bl, const float *data, MatrixDim dim,
 void cudaF_equal_element_mask(dim3 Gr, dim3 Bl, const float *mat1,
                               const float *mat2, float *mask, MatrixDim mat1_dim,
                               int mat2_stride, int mask_stride);
-  
+
 /*********************************************************
  * double CUDA kernel calls
  */
 
 /*
- * CuMatrix 
+ * CuMatrix
  */
 void cudaD_copy_upp_low(dim3 Gr, dim3 Bl, double* A, MatrixDim dimB);
 void cudaD_copy_low_upp(dim3 Gr, dim3 Bl, double* A, MatrixDim dimA);
 void cudaD_add_diag_vec_mat(dim3 Gr, dim3 Bl, double alpha, double *mat, MatrixDim mat_dim,
                             const double *vec, const double *mat2, int mat2_row_stride,
-                            int mat2_col_stride, double beta);  
+                            int mat2_col_stride, double beta);
 void cudaD_copy_from_tp_trans(dim3 Gr, dim3 Bl, double* A, const double* B, MatrixDim dmat);
 void cudaDF_copy_from_tp_trans(dim3 Gr, dim3 Bl, double* A, const float* B, MatrixDim dmat);
 void cudaD_copy_from_tp(dim3 Gr, dim3 Bl, double* A, const double* B, MatrixDim dmat);
@@ -197,7 +198,7 @@ void cudaDF_copy_from_tp(dim3 Gr, dim3 Bl, double* A, const float* B, MatrixDim 
 void cudaD_apply_exp(dim3 Gr, dim3 Bl, double* mat, MatrixDim d);
 void cudaD_apply_pow(dim3 Gr, dim3 Bl, double* mat, double power, MatrixDim d);
 void cudaD_apply_pow_abs(dim3 Gr, dim3 Bl, double* mat, double power, bool include_sign, MatrixDim d);
-void cudaD_apply_heaviside(dim3 Gr, dim3 Bl, double* mat, MatrixDim d);  
+void cudaD_apply_heaviside(dim3 Gr, dim3 Bl, double* mat, MatrixDim d);
 void cudaD_apply_floor(dim3 Gr, dim3 Bl, double* mat, double floor_val, MatrixDim d);
 void cudaD_copy_cols(dim3 Gr, dim3 Bl, double* dst, const double* src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride);
 void cudaD_add_cols(dim3 Gr, dim3 Bl, double* dst, const double* src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride);
@@ -248,9 +249,9 @@ void cudaD_vec_min(const double* v, double* value, int dim);
 void cudaD_vec_max(const double* v, double* value, int dim);
 void cudaD_trace_mat_mat_trans(const double* A, const double* B, MatrixDim dA, int B_stride, double* value);
 void cudaD_trace_mat_mat(const double* A, const double* B, MatrixDim dA, int B_stride, double* value);
-void cudaD_add_diag_mat_mat(int Gr, int Bl, double alpha, double* v, int v_dim, const double* M, 
-                            int M_cols, int M_row_stride, int M_col_stride, const double *N, int N_row_stride, 
-                            int N_col_stride, int threads_per_element, double beta);  
+void cudaD_add_diag_mat_mat(int Gr, int Bl, double alpha, double* v, int v_dim, const double* M,
+                            int M_cols, int M_row_stride, int M_col_stride, const double *N, int N_row_stride,
+                            int N_col_stride, int threads_per_element, double beta);
 void cudaD_add_vec_vec(int Gr, int Bl, double alpha, double* v, const double* x, const double* y, double beta, int dim);
 void cudaD_copy_col_from_mat_df(int Gr, int Bl, double* v, int col, const double* mat, MatrixDim dmat, int dim);
 void cudaD_copy_col_from_mat_fd(int Gr, int Bl, float* v, int col, const double* mat, MatrixDim dmat, int dim);
@@ -271,7 +272,7 @@ void cudaD_add_mat_blockmat(dim3 Gr, dim3 Bl, double *data, MatrixDim d, const d
 void cudaD_block_add_mat_mat(dim3 Gr, dim3 Bl, CuBlockMatrixData *B_cu_data, int num_blocks,
                              const double *C_data, int C_num_cols, int C_row_stride, int C_col_stride,
                              const double *D_data, int D_row_stride, int D_col_stride,
-                             double alpha, double beta);  
+                             double alpha, double beta);
 
 
 /*
@@ -283,6 +284,7 @@ void cudaD_soft_hinge(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d,
 void cudaD_group_pnorm(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d, int src_stride, int group_size, double power);
 void cudaD_group_max(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d, int src_stride, int group_size);
 void cudaD_sigmoid(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d, int src_stride);
+void cudaD_heaviside(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d, int src_stride);
 void cudaD_diff_sigmoid(dim3 Gr, dim3 Bl, double *eout, const double *e, const double *y, MatrixDim d, int e_stride, int y_stride);
 void cudaD_tanh(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d, int src_stride);
 void cudaD_diff_tanh(dim3 Gr, dim3 Bl, double *eout, const double *e, const double *y, MatrixDim d, int e_stride, int y_stride);
@@ -342,14 +344,14 @@ void cudaD_add_row_ranges(dim3 Gr, dim3 Bl, double *data, MatrixDim dim,
 void cudaD_matrix_lookup(dim3 Gr, dim3 Bl, const double *data, MatrixDim dim,
                          const Int32Pair *indices, int indices_size,
                          double *output);
- 
-void cudaD_equal_element_mask(dim3 Gr, dim3 Bl, const double *mat1,
-                              const double *mat2, double *mask, MatrixDim mat1_dim, 
-                              int mat2_stride, int mask_stride);
-  
 
-  
-} // extern "C" 
+void cudaD_equal_element_mask(dim3 Gr, dim3 Bl, const double *mat1,
+                              const double *mat2, double *mask, MatrixDim mat1_dim,
+                              int mat2_stride, int mask_stride);
+
+
+
+} // extern "C"
 
 #endif // HAVE_CUDA
 

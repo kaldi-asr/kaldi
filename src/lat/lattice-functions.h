@@ -45,7 +45,7 @@ int32 LatticeStateTimes(const Lattice &lat, std::vector<int32> *times);
 
 /// As LatticeStateTimes, but in the CompactLattice format.  Note: must
 /// be topologically sorted.  Returns length of the utterance in frames, which
-/// may not be the same as the maximum time in the lattice, due to frames
+/// might not be the same as the maximum time in the lattice, due to frames
 /// in the final-prob.
 int32 CompactLatticeStateTimes(const CompactLattice &clat,
                                std::vector<int32> *times);
@@ -64,7 +64,7 @@ BaseFloat LatticeForwardBackward(const Lattice &lat,
                                  double *acoustic_like_sum = NULL);
 
 // This function is something similar to LatticeForwardBackward(), but it is on
-// the CompactLattice lattice format. Also we only need the alpha in the forward 
+// the CompactLattice lattice format. Also we only need the alpha in the forward
 // path, not the posteriors.
 bool ComputeCompactLatticeAlphas(const CompactLattice &lat,
                                  vector<double> *alpha);
@@ -73,6 +73,18 @@ bool ComputeCompactLatticeAlphas(const CompactLattice &lat,
 // the backward path here.
 bool ComputeCompactLatticeBetas(const CompactLattice &lat,
                                 vector<double> *beta);
+
+
+// Computes (normal or Viterbi) alphas and betas; returns (total-prob, or
+// best-path negated cost) Note: in either case, the alphas and betas are
+// negated costs.  Requires that lat be topologically sorted.  This code
+// will work for either CompactLattice or Latice.
+template<typename LatticeType>
+double ComputeLatticeAlphasAndBetas(const LatticeType &lat,
+                                    bool viterbi,
+                                    vector<double> *alpha,
+                                    vector<double> *beta);
+
 
 /// Topologically sort the compact lattice if not already topologically sorted.
 /// Will crash if the lattice cannot be topologically sorted.
