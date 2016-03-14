@@ -268,15 +268,17 @@ def AddLpFilter(config_lines, name, input, rate, num_lpfilter_taps, lpfilt_filen
     input_z_dim = 1
     filt_x_dim = len(filter_input_splice_indexes)
     filt_y_dim = 1
+    filt_z_dim = 1
     filt_x_step = 1
     filt_y_step = 1
+    filt_z_step = 1
     input_vectorization = 'zyx'
 
     tdnn_input_descriptor = nodes.AddConvolutionLayer(config_lines, name,
                                                      filter_input_descriptor,
                                                      input_x_dim, input_y_dim, input_z_dim,
-                                                     filt_x_dim, filt_y_dim,
-                                                     filt_x_step, filt_y_step,
+                                                     filt_x_dim, filt_y_dim, filt_z_dim,
+                                                     filt_x_step, filt_y_step, filt_z_step,
                                                      1, input_vectorization,
                                                      filter_bias_file = lpfilt_filename,
                                                      is_updatable = is_updatable)
@@ -290,8 +292,8 @@ def AddConvMaxpLayer(config_lines, name, input, args):
 
     input = nodes.AddConvolutionLayer(config_lines, name, input,
                               input['3d-dim'][0], input['3d-dim'][1], input['3d-dim'][2],
-                              args.filt_x_dim, args.filt_y_dim,
-                              args.filt_x_step, args.filt_y_step,
+                              args.filt_x_dim, args.filt_y_dim, args.filt_z_dim,
+                              args.filt_x_step, args.filt_y_step, args.filt_z_step,
                               args.num_filters, input['vectorization'])
 
     if args.pool_x_size > 1 or args.pool_y_size > 1 or args.pool_z_size > 1:
@@ -299,6 +301,9 @@ def AddConvMaxpLayer(config_lines, name, input, args):
                                 input['3d-dim'][0], input['3d-dim'][1], input['3d-dim'][2],
                                 args.pool_x_size, args.pool_y_size, args.pool_z_size,
                                 args.pool_x_step, args.pool_y_step, args.pool_z_step)
+    else:
+      output = nodes.AddRelNormLayer(config_lines, name, input, norm_target_rms = 1.0)
+      input['descriptor'] = output['descriptor']
 
     return input
 
@@ -348,8 +353,10 @@ def ParseCnnString(cnn_param_string_list):
 
     cnn_parser.add_argument("--filt-x-dim", required=True, type=int)
     cnn_parser.add_argument("--filt-y-dim", required=True, type=int)
+    cnn_parser.add_argument("--filt-z-dim", type=int, default = 0)
     cnn_parser.add_argument("--filt-x-step", type=int, default = 1)
     cnn_parser.add_argument("--filt-y-step", type=int, default = 1)
+    cnn_parser.add_argument("--filt-z-step", type=int, default = 0)
     cnn_parser.add_argument("--num-filters", required=True, type=int)
     cnn_parser.add_argument("--pool-x-size", type=int, default = 1)
     cnn_parser.add_argument("--pool-y-size", type=int, default = 1)
