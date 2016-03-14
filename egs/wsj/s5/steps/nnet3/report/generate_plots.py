@@ -78,12 +78,14 @@ class LatexReport:
         title = "\\texttt{"+re.sub("_","\_", title)+"}"
         fig_latex = """
 %...
-\\begin{figure}[t]
+\\newpage
+\\begin{figure}[h]
   \\begin{center}
     \caption{""" + title + """}
     \includegraphics[width=\\textwidth]{""" + figure_pdf + """}
   \end{center}
 \end{figure}
+\clearpage
 %...
 """
         self.document.append(fig_latex)
@@ -99,6 +101,7 @@ class LatexReport:
         lat_file = open(latex_file, "w")
         lat_file.write("\n".join(self.document))
         lat_file.close()
+        logger.info("Compiling the latex report.")
         try:
             proc = subprocess.Popen(['pdflatex', '-output-directory='+str(dir_name), latex_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             proc.communicate()
