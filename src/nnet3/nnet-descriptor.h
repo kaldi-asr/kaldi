@@ -171,7 +171,7 @@ class OffsetForwardingDescriptor: public ForwardingDescriptor {
   friend void ExtractDescriptorValuesFromForwardingDescriptor(const Nnet &Nnet,
                                   const ForwardingDescriptor &this_descriptor,
                                   const std::vector<std::string> &node_names,
-                                  std::vector<int32> *offsets);
+                                  std::vector<int32> *values);
  private:
   ForwardingDescriptor *src_;  // Owned here.
   Index offset_;  // The index-offset to be added to the index.
@@ -203,7 +203,7 @@ class SwitchingForwardingDescriptor: public ForwardingDescriptor {
   friend void ExtractDescriptorValuesFromForwardingDescriptor(const Nnet &Nnet,
                                   const ForwardingDescriptor &this_descriptor,
                                   const std::vector<std::string> &node_names,
-                                  std::vector<int32> *offsets);
+                                  std::vector<int32> *values);
  private:
   // Pointers are owned here.
   std::vector<ForwardingDescriptor*> src_;
@@ -240,7 +240,7 @@ class RoundingForwardingDescriptor: public ForwardingDescriptor {
   friend void ExtractDescriptorValuesFromForwardingDescriptor(const Nnet &Nnet,
                                   const ForwardingDescriptor &this_descriptor,
                                   const std::vector<std::string> &node_names,
-                                  std::vector<int32> *offsets);
+                                  std::vector<int32> *values);
  private:
   ForwardingDescriptor *src_;
   int32 t_modulus_;
@@ -276,7 +276,7 @@ class ReplaceIndexForwardingDescriptor: public ForwardingDescriptor {
   friend void ExtractDescriptorValuesFromForwardingDescriptor(const Nnet &Nnet,
                                   const ForwardingDescriptor &this_descriptor,
                                   const std::vector<std::string> &node_names,
-                                  std::vector<int32> *offsets);
+                                  std::vector<int32> *values);
  private:
   ForwardingDescriptor *src_;
   VariableName variable_name_;
@@ -380,7 +380,7 @@ class OptionalSumDescriptor: public SumDescriptor {
   friend void ExtractDescriptorValuesFromSumDescriptor(const Nnet &nnet,
                                 const SumDescriptor &this_descriptor,
                                 const std::vector<std::string> &node_names,
-                                std::vector<int32> *offsets);
+                                std::vector<int32> *values);
  private:
   SumDescriptor *src_;
 };
@@ -413,7 +413,7 @@ class SimpleSumDescriptor: public SumDescriptor {
   friend void ExtractDescriptorValuesFromSumDescriptor(const Nnet &nnet,
                                 const SumDescriptor &this_descriptor,
                                 const std::vector<std::string> &node_names,
-                                std::vector<int32> *offsets);
+                                std::vector<int32> *values);
  private:
   ForwardingDescriptor *src_;
 };
@@ -456,7 +456,7 @@ class BinarySumDescriptor: public SumDescriptor {
   friend void ExtractDescriptorValuesFromSumDescriptor(const Nnet &nnet,
                                 const SumDescriptor &this_descriptor,
                                 const std::vector<std::string> &node_names,
-                                std::vector<int32> *offsets);
+                                std::vector<int32> *values);
  private:
   Operation op_;
   SumDescriptor *src1_;

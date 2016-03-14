@@ -56,7 +56,7 @@ int32 NumInputNodes(const Nnet &nnet);
 /// get RoundingForwardingDescriptor::t_modulus_ for ivector. If it is a single
 /// ivector case (which means the config file use  ReplaceIndex descriptor for
 /// ivector), this function return 0.
-int32 GetTimePeriodForIvector(const Nnet &nnet);
+int32 GetTimeIntervalForIvectors(const Nnet &nnet);
 
 /// goes into SumDescriptor recursively for extracting some values
 /// (e.g., OffsetForwardingDescriptor::offset_,

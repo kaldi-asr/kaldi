@@ -888,20 +888,20 @@ void ComputeExampleComputationRequestSimple(
   request->outputs.clear();
   inputs->clear();
 
-  int32 t_modulus = GetTimePeriodForIvector(nnet);
+  int32 ivector_interval = GetTimeIntervalForIvectors(nnet);
   std::vector<Index> input_indexes, ivector_indexes, output_indexes;
   for (int32 n = n_offset; n < n_offset + num_examples; n++) {
     for (int32 t = input_start_frame; t < input_end_frame; t++)
       input_indexes.push_back(Index(n, t, 0));
     for (int32 t = output_start_frame; t < output_end_frame; t++)
       output_indexes.push_back(Index(n, t, 0));
-    if (t_modulus == 0) // case 1: single ivector for the entire chunk
+    if (ivector_interval == 0) // case 1: single ivector for the entire chunk
       ivector_indexes.push_back(Index(n, 0, 0));
     else { // case 2: multiple ivectors
-      int32 t_begin = std::floor(1.0 * input_start_frame / t_modulus);
-      int32 t_end = std::floor((input_end_frame - 1.0) / t_modulus);
+      int32 t_begin = std::floor(1.0 * input_start_frame / ivector_interval);
+      int32 t_end = std::floor((input_end_frame - 1.0) / ivector_interval);
       for (int32 t = t_begin; t <= t_end; t++)
-        ivector_indexes.push_back(Index(n, t * t_modulus, 0));
+        ivector_indexes.push_back(Index(n, t * ivector_interval, 0));
     }
   }
   request->outputs.push_back(IoSpecification("output", output_indexes));

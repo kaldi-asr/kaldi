@@ -83,7 +83,7 @@ std::string AmNnetSimple::Info() const {
   ostr << "right-context: " << right_context_ << "\n";
   ostr << "input-dim: " << nnet_.InputDim("input") << "\n";
   ostr << "ivector-dim: " << nnet_.InputDim("ivector") << "\n";
-  ostr << "ivector-interval: " << GetTimePeriodForIvector(nnet_) << "\n";
+  ostr << "ivector-interval: " << GetTimeIntervalForIvectors(nnet_) << "\n";
   ostr << "num-pdfs: " << nnet_.OutputDim("output") << "\n";
   ostr << "prior-dimension: " << priors_.Dim() << "\n";
   if (priors_.Dim() != 0) {

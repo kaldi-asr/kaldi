@@ -44,7 +44,7 @@ NnetDecodableBase::NnetDecodableBase(
   num_subsampled_frames_ =
       (feats_.NumRows() + opts_.frame_subsampling_factor - 1) /
       opts_.frame_subsampling_factor;
-    ivector_interval_ = GetTimePeriodForIvector(nnet);
+    ivector_interval_ = GetTimeIntervalForIvectors(nnet);
   KALDI_ASSERT(IsSimpleNnet(nnet));
   ComputeSimpleNnetContext(nnet, &nnet_left_context_, &nnet_right_context_);
   KALDI_ASSERT(!(ivector != NULL && online_ivectors != NULL));
@@ -210,8 +210,10 @@ void NnetDecodableBase::GetIvectorsForFrames(int32 output_t_start,
                                              Matrix<BaseFloat> *ivectors) {
   // if no ivectors have been specified either as online ivectors or as ivector
   // for utterance, just return and leave the size of ivectors matrix as 0 
-  if (ivector_ == NULL && online_ivector_feats_ == NULL)
+  if (ivector_ == NULL && online_ivector_feats_ == NULL) {
+    KALDI_ASSERT(ivectors->NumCols() == 0);
     return;
+  }
   const int32 left_context = nnet_left_context_ + opts_.extra_left_context,
         right_context = nnet_right_context_ + opts_.extra_right_context;
   // frame_to_search is the frame that we want to get the most recent iVector
@@ -251,6 +253,8 @@ void NnetDecodableBase::GetIvectorsForFrames(int32 output_t_start,
 
 void NnetDecodableBase::GenerateIndexesForIvectors(
     int32 num_ivectors, std::vector<Index> *indexes) {
+  KALDI_ASSERT(num_ivectors > 0);
+  KALDI_ASSERT(indexes != NULL);
   if (ivector_interval_ == 0)
     indexes->push_back(Index(0, 0, 0));
   else {
