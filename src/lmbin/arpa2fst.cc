@@ -44,9 +44,9 @@ int main(int argc, char *argv[]) {
     po.Register("natural-base", &natural_base,
                 "Use natural log (not log10)");
     po.Register("bos-symbol", &bos_symbol,
-                "Beginning of sentence symbol, default <s>");
+                "Beginning of sentence symbol");
     po.Register("eos-symbol", &eos_symbol,
-                "End of sentence symbol, default </s>");
+                "End of sentence symbol");
     po.Register("disambig-symbol", &disambig_symbol,
                 "Disambiguator. If provided (e. g. #0), used on input side of "
                 "backoff links, and <s> and </s> are replaced with epsilons.");
@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
     po.Register("write-symbol-table", &write_syms_filename,
                 "Write generated symbol table to a file");
     po.Register("keep-symbols", &keep_symbols,
-                "Store symbol table with FST, default false. Forced true if "
+                "Store symbol table with FST. Forced true if "
                 "symbol tables are neiter read or written");
 
     po.Read(argc, argv);
