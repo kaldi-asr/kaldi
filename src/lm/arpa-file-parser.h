@@ -65,7 +65,7 @@ struct NGram {
 /**
     ArpaFileParser is an abstract base class for ARPA LM file conversion.
 
-    See ConstArpaLmBuilder for a usage example.
+    See ConstArpaLmBuilder and ArpaLmCompiler for usage examples.
 */
 class ArpaFileParser {
  public:

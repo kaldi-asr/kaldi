@@ -41,17 +41,26 @@ namespace {
 typedef int32 StateId;
 typedef int32 Symbol;
 
+// GeneralHistKey can represent state history in an arbitrarily large n
+// n-gram model with symbol ids fitting int32.
 class GeneralHistKey {
  public:
+  // Construct key from being and end iterators.
   template<class InputIt>
   GeneralHistKey(InputIt begin, InputIt end) : vector_(begin, end) { }
+  // Construct empty history key.
   GeneralHistKey() : vector_() { }
+  // Return tails of the key as a GeneralHistKey. The tails of an n-gram
+  // w[1..n] is the sequence w[2..n] (and the heads is w[1..n-1], but the
+  // key class does not need this operartion).
   GeneralHistKey Tails() const {
     return GeneralHistKey(vector_.begin() + 1, vector_.end());
   }
+  // Keys are equal if represent same state.
   friend bool operator==(const GeneralHistKey& a, const GeneralHistKey& b) {
     return a.vector_ == b.vector_;
   }
+  // Public typename HashType for hashing.
   struct HashType : public std::unary_function<GeneralHistKey, size_t> {
     size_t operator()(const GeneralHistKey& key) const {
       return VectorHasher<Symbol>().operator()(key.vector_);
@@ -62,6 +71,13 @@ class GeneralHistKey {
   std::vector<Symbol> vector_;
 };
 
+// OptimizedHistKey combiness 3 21-bit symbol ID values into one 64-bit
+// machine word. allowing significant memory reduction and some runtime
+// benefit over GeneralHistKey. Since 3 symbolss are enough to track history
+// in a 4-gram model, this optimized key is used for smalled models with up
+// to 4-gram and symbol values up to 2^21-1.
+//
+// See GeneralHistKey for interface requrements of a key class.
 class OptimizedHistKey {
  public:
   enum {
@@ -259,18 +275,39 @@ ArpaLmCompiler::~ArpaLmCompiler() {
 
 void ArpaLmCompiler::HeaderAvailable() {
   KALDI_ASSERT(impl_ == NULL);
-  // FIXME: Use symbol table, it may be way bigger or smaller.
-  if (false && NgramCounts().size() <= 4
-      && NgramCounts()[0] < OptimizedHistKey::kMaxData - 1)
+  // Use optimized implementation if the grammar is 4-gram or less, and the
+  // maximum attained symbol id will fit into the optimized range.
+  int64 max_symbol = 0;
+  if (Symbols() != NULL)
+    max_symbol = Symbols()->AvailableKey() - 1;
+  // If augmenting the symbol table, assume the wors case when all words in
+  // the model being read are novel.
+  if (Options().oov_handling == ArpaParseOptions::kAddToSymbols)
+    max_symbol += NgramCounts()[0];
+
+  if (NgramCounts().size() <= 4 && max_symbol < OptimizedHistKey::kMaxData) {
     impl_ = new ArpaLmCompilerImpl<OptimizedHistKey>(
         &fst_, Options().bos_symbol, Options().eos_symbol, sub_eps_);
-  else
+  } else {
     impl_ = new ArpaLmCompilerImpl<GeneralHistKey>(
         &fst_, Options().bos_symbol, Options().eos_symbol, sub_eps_);
+    KALDI_LOG << "Reverting to slower state tracking because model is large: "
+              << NgramCounts().size() << "-gram with symbols up to "
+              << max_symbol;
+  }
 }
 
 void ArpaLmCompiler::ConsumeNGram(const NGram& ngram) {
-  //TODO: Verify no <s> in tail and no </s> in heads.
+  // <s> is invalid in tails, </s> in heads of an n-gram.
+  for (int i = 0; i < ngram.words.size(); ++i) {
+    if ((i > 0 && ngram.words[i] == Options().bos_symbol) ||
+        (i + 1 < ngram.words.size()
+         && ngram.words[i] == Options().eos_symbol)) {
+      KALDI_WARN << "In line " << LineNumber()
+                 << ": Skipping n-gram with invalid BOS/EOS placement";
+      return;
+    }
+  }
 
   bool is_highest = ngram.words.size() == NgramCounts().size();
   impl_->ConsumeNGram(ngram, is_highest);
@@ -280,6 +317,5 @@ void ArpaLmCompiler::ReadComplete() {
   fst_.SetInputSymbols(Symbols());
   fst_.SetOutputSymbols(Symbols());
 }
-
 
 }  // namespace kaldi

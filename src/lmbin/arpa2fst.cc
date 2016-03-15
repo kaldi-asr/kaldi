@@ -96,6 +96,7 @@ int main(int argc, char *argv[]) {
                     << " has no symbol for " << disambig_symbol;
       }
     } else {
+      // Create a new symbol table and populate it from ARPA file.
       symbols = new fst::SymbolTable(PrintableWxfilename(fst_wxfilename));
       options.oov_handling = ArpaParseOptions::kAddToSymbols;
       symbols->AddSymbol("<eps>", 0);
