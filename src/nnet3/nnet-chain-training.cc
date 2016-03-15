@@ -1,6 +1,7 @@
 // nnet3/nnet-chain-training.cc
 
 // Copyright      2015    Johns Hopkins University (author: Daniel Povey)
+//                2016    Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -100,11 +101,6 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
     AddNnet(*delta_nnet_, scale, nnet_);
     ScaleNnet(nnet_config.momentum, delta_nnet_);
   }
-  if (nnet_config.write_cache != "") {
-    Output ko(nnet_config.write_cache, nnet_config.binary_write_cache);
-    compiler_.WriteCache(ko.Stream(), nnet_config.binary_write_cache);
-    KALDI_LOG << "Wrote computation cache to " << nnet_config.write_cache;
-  } 
 }
 
 
@@ -189,6 +185,11 @@ bool NnetChainTrainer::PrintTotalStats() const {
 
 
 NnetChainTrainer::~NnetChainTrainer() {
+  if (opts_.nnet_config.write_cache != "") {
+    Output ko(opts_.nnet_config.write_cache, opts_.nnet_config.binary_write_cache);
+    compiler_.WriteCache(ko.Stream(), opts_.nnet_config.binary_write_cache);
+    KALDI_LOG << "Wrote computation cache to " << opts_.nnet_config.write_cache;
+  } 
   delete delta_nnet_;
 }
 

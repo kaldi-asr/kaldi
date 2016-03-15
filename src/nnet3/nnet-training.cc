@@ -94,11 +94,6 @@ void NnetTrainer::Train(const NnetExample &eg) {
     AddNnet(*delta_nnet_, scale, nnet_);
     ScaleNnet(config_.momentum, delta_nnet_);
   }
-  if (config_.write_cache != "") {
-    Output ko(config_.write_cache, config_.binary_write_cache);
-    compiler_.WriteCache(ko.Stream(), config_.binary_write_cache);
-    KALDI_LOG << "Wrote computation cache to " << config_.write_cache;
-  } 
 }
 
 void NnetTrainer::ProcessOutputs(const NnetExample &eg,
@@ -203,6 +198,11 @@ bool ObjectiveFunctionInfo::PrintTotalStats(const std::string &name) const {
 }
 
 NnetTrainer::~NnetTrainer() {
+  if (config_.write_cache != "") {
+    Output ko(config_.write_cache, config_.binary_write_cache);
+    compiler_.WriteCache(ko.Stream(), config_.binary_write_cache);
+    KALDI_LOG << "Wrote computation cache to " << config_.write_cache;
+  } 
   delete delta_nnet_;
 }
 
