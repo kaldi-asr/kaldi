@@ -36,24 +36,29 @@ enum {
   kBos,kEos,
 };
 
-// Random path coverage test parameters.
-static const int kMaxSentenceLenght = 1000;
-static const int kRandomPaths = 20;
+// Number of random sentences for coverage test.
+static const int kRandomSentences = 50;
 
 // Creates an FST that generates any sequence of symbols taken from given
 // symbol table. The FST is then associated with the symbol table.
-static fst::StdVectorFst* CreateGenFst(const fst::SymbolTable* pst) {
+static fst::StdVectorFst* CreateGenFst(bool seps, const fst::SymbolTable* pst) {
   fst::StdVectorFst* genFst = new fst::StdVectorFst;
   genFst->SetInputSymbols(pst);
   genFst->SetOutputSymbols(pst);
 
-  fst::StdArc::StateId initId  = genFst->AddState();
   fst::StdArc::StateId midId   = genFst->AddState();
-  fst::StdArc::StateId finalId = genFst->AddState();
-  genFst->SetStart(initId);
-  genFst->SetFinal(finalId, fst::StdArc::Weight::One());
-  genFst->AddArc(initId, fst::StdArc(kBos, kBos, 0, midId));
-  genFst->AddArc(midId,  fst::StdArc(kEos, kEos, 0, finalId));
+  if (!seps) {
+    fst::StdArc::StateId initId  = genFst->AddState();
+    fst::StdArc::StateId finalId = genFst->AddState();
+    genFst->SetStart(initId);
+    genFst->SetFinal(finalId, fst::StdArc::Weight::One());
+    genFst->AddArc(initId, fst::StdArc(kBos, kBos, 0, midId));
+    genFst->AddArc(midId,  fst::StdArc(kEos, kEos, 0, finalId));
+  } else {
+    genFst->SetStart(midId);
+    genFst->SetFinal(midId, fst::StdArc::Weight::One());
+  }
+
   // Add a loop for each symbol except epsilon, BOS and EOS.
   fst::SymbolTableIterator si(*pst);
   for (si.Reset(); !si.Done(); si.Next()) {
@@ -66,64 +71,11 @@ static fst::StdVectorFst* CreateGenFst(const fst::SymbolTable* pst) {
   return genFst;
 }
 
-// Randomly generates num_paths paths with uniform distribution.
-static fst::StdVectorFst* CreateRandPathFst(
-    int num_paths, const fst::StdVectorFst* genFst) {
-  typedef fst::UniformArcSelector<fst::StdArc> UniformSelector;
-
-  const int num_trials = 50;
-  UniformSelector uniform_sel;
-  fst::RandGenOptions<UniformSelector> opts(uniform_sel,
-                                            kMaxSentenceLenght,
-                                            num_paths);
-  for (int i = 0; i < num_trials; i++) {
-    fst::StdVectorFst* tmpFst = new fst::StdVectorFst;
-    RandGen(*genFst, tmpFst, opts);
-    if (tmpFst->Properties(fst::kCoAccessible, true)) {
-      return tmpFst;
-    }
-    // not good, try another
-    delete tmpFst;
-  }
-  // couldn't generate it within allowed trials
-  std::cerr << " Warning: couldn't generate complete paths within "
-            << num_trials << " trials and " << kMaxSentenceLenght
-            << " max length\n";
-  return NULL;
-}
-
-// Tests if all paths generated from genFst are included in testFst.
-static bool VerifyCoverage(const fst::StdVectorFst* testFst) {
-  // Create an FST that generates any sequence of symbols taken from
-  // the grammar output.
-  fst::StdVectorFst* genFst = CreateGenFst(testFst->OutputSymbols());
-
-  // Generate kRandomPaths random paths with uniform distribution.
-  fst::StdVectorFst* pathFst = CreateRandPathFst(kRandomPaths, genFst);
-  if (!pathFst) {
-    delete genFst;
-    return false;
-  }
-
-  // Compose paths with language model fst.
-  fst::StdVectorFst outFst;
-  Compose(*pathFst, *testFst, &outFst);
-
-  // Composition result must have ntests arcs out of initial state
-  int narcs = outFst.NumArcs(outFst.Start());
-  bool success = narcs == kRandomPaths;
-
-  delete genFst;
-  delete pathFst;
-
-  return success;
-}
-
 // Compile given ARPA file.
-ArpaLmCompiler* Compile(const string &infile) {
+ArpaLmCompiler* Compile(bool seps, const string &infile) {
   ArpaParseOptions options;
   fst::SymbolTable symbols;
-  // Use spaces on special symbols, so we never read them by mistake.
+  // Use spaces on special symbols, so we rather fail than read them by mistake.
   symbols.AddSymbol(" <eps>", kEps);
   symbols.AddSymbol(" #0", kDisambig);
   options.bos_symbol = symbols.AddSymbol("<s>", kBos);
@@ -134,44 +86,92 @@ ArpaLmCompiler* Compile(const string &infile) {
   // random path is also fitted with a #0-transducing self-loop.
   ArpaLmCompiler* lm_compiler =
       new ArpaLmCompiler(options,
-                         0,  // No epslilon substitution.
+                         seps ? kDisambig : 0,
                          &symbols);
   ReadKaldiObject(infile, lm_compiler);
   return lm_compiler;
 }
 
-// Compiles infile and runs num_paths random coverage tests on the compiled FST.
-bool CoverageTest(const string &infile) {
-  ArpaLmCompiler* lm_compiler = Compile(infile);
-
-  // See if path generated in this FST are covered by the LM FST.
-  bool success = VerifyCoverage(&lm_compiler->Fst());
-  delete lm_compiler;
-
-  std::cout << "CoverageTests on " << infile << ": "
-            << kRandomPaths << " random paths - "
-            << (success ? "PASSED" : "FAILED") << '\n';
-
-  return success;
+// Add a state to an FSA after last_state, add a form last_state to the new
+// atate, and return the new state.
+fst::StdArc::StateId AddToChainFsa(fst::StdMutableFst* fst,
+                                   fst::StdArc::StateId last_state,
+                                   int64 symbol) {
+  fst::StdArc::StateId next_state  = fst->AddState();
+  fst->AddArc(last_state, fst::StdArc(symbol, symbol, 0, next_state));
+  return next_state;
 }
 
-bool ScoringTest(const string &infile, const string& sentence, float expected) {
-  ArpaLmCompiler* lm_compiler = Compile(infile);
+// Add a disambiguator-generating self loop to every state of an FST.
+void AddSelfLoops(fst::StdMutableFst* fst) {
+  for (fst::StateIterator<fst::StdMutableFst> siter(*fst);
+       !siter.Done(); siter.Next()) {
+    fst->AddArc(siter.Value(),
+                fst::StdArc(kEps, kDisambig, 0, siter.Value()));
+  }
+}
+
+// Compiles infile and then runs kRandomSentences random coverage tests on the
+// compiled FST.
+bool CoverageTest(bool seps, const string &infile) {
+  // Compile ARPA model.
+  ArpaLmCompiler* lm_compiler = Compile(seps, infile);
+
+  // Create an FST that generates any sequence of symbols taken from the model
+  // output.
+  fst::StdVectorFst* genFst =
+      CreateGenFst(seps, lm_compiler->Fst().OutputSymbols());
+
+  int num_successes = 0;
+  for (int32 i = 0; i < kRandomSentences; ++i) {
+    // Generate a random sentence FST.
+    fst::StdVectorFst sentence;
+    RandGen(*genFst, &sentence);
+    if (seps)
+      AddSelfLoops(&sentence);
+
+    // The past must successfullycompose with the LM FST.
+    fst::StdVectorFst composition;
+    Compose(sentence, lm_compiler->Fst(), &composition);
+    if (composition.Start() != fst::kNoStateId)
+      ++num_successes;
+  }
+
+  delete genFst;
+  delete lm_compiler;
+
+  bool ok = num_successes == kRandomSentences;
+  if (!ok) {
+    KALDI_WARN << "Coverage test failed on " << infile << ": composed "
+               << num_successes << "/" << kRandomSentences;
+  }
+  return ok;
+}
+
+bool ScoringTest(bool seps, const string &infile, const string& sentence,
+                 float expected) {
+  ArpaLmCompiler* lm_compiler = Compile(seps, infile);
   const fst::SymbolTable* symbols = lm_compiler->Fst().InputSymbols();
 
   // Create a sentence FST for scoring.
   fst::StdVectorFst sentFst;
   fst::StdArc::StateId state = sentFst.AddState();
   sentFst.SetStart(state);
-
+  if (!seps) {
+    state = AddToChainFsa(&sentFst, state, kBos);
+  }
   std::stringstream ss(sentence);
   string word;
   while (ss >> word) {
     int64 word_sym = symbols->Find(word);
     KALDI_ASSERT(word_sym != -1);
-    fst::StdArc::StateId next_state  = sentFst.AddState();
-    sentFst.AddArc(state, fst::StdArc(0, word_sym, 0, next_state));
-    state = next_state;
+    state = AddToChainFsa(&sentFst, state, word_sym);
+  }
+  if (!seps) {
+    state = AddToChainFsa(&sentFst, state, kEos);
+  }
+  if (seps) {
+    AddSelfLoops(&sentFst);
   }
   sentFst.SetFinal(state, 0);
   sentFst.SetOutputSymbols(symbols);
@@ -179,31 +179,55 @@ bool ScoringTest(const string &infile, const string& sentence, float expected) {
   // Do the composition and extract final weight.
   fst::StdVectorFst composed;
   fst::Compose(sentFst, lm_compiler->Fst(), &composed);
+  delete lm_compiler;
+
+  if (composed.Start() == fst::kNoStateId) {
+    KALDI_WARN << "Test sentence " << sentence << " did not compose "
+               << "with the language model FST\n";
+    return false;
+  }
 
   std::vector<fst::StdArc::Weight> shortest;
   fst::ShortestDistance(composed, &shortest, true);
   float actual = shortest[composed.Start()].Value();
 
-  std::cout << "Scored " << sentence << " in " << infile
-            << ": Expected=" << expected << " actual=" << actual << "\n";
-  bool success = ApproxEqual(expected, actual);
-
-  delete lm_compiler;
-
-  return success;
+  bool ok = ApproxEqual(expected, actual);
+  if (!ok) {
+    KALDI_WARN << "Scored " << sentence << " in " << infile
+               << ": Expected=" << expected << " actual=" << actual;
+  }
+  return ok;
 }
 
 }  // namespace kaldi
 
+bool RunAllTests(bool seps) {
+  bool ok = true;
+  ok &= kaldi::CoverageTest(seps, "test_data/missing_backoffs.arpa");
+  ok &= kaldi::CoverageTest(seps, "test_data/unused_backoffs.arpa");
+  ok &= kaldi::CoverageTest(seps, "test_data/input.arpa");
+
+  ok &= kaldi::ScoringTest(seps, "test_data/input.arpa", "b b b a", 59.2649);
+  ok &= kaldi::ScoringTest(seps, "test_data/input.arpa", "a b", 4.36082);
+  if (!ok) {
+    KALDI_WARN << "Tests " << (seps ? "with" : "without")
+               << " epsilon substitution FAILED";
+  }
+  return ok;
+}
 
 int main(int argc, char *argv[]) {
   bool ok = true;
-  ok &= kaldi::CoverageTest("test_data/missing_backoffs.arpa");
-  ok &= kaldi::CoverageTest("test_data/unused_backoffs.arpa");
-  ok &= kaldi::CoverageTest("test_data/input.arpa");
 
-  ok &= kaldi::ScoringTest("test_data/input.arpa", "<s> b b b a </s>", 59.2649);
-  ok &= kaldi::ScoringTest("test_data/input.arpa", "<s> a b </s>", 4.36082);
+  ok &= RunAllTests(false);
+  ok &= RunAllTests(true);
 
-  return ok ? 0 : 1;
+  if (ok) {
+    KALDI_LOG << "All tests passed";
+    return 0;
+  }
+  else {
+    KALDI_WARN << "Test FAILED";
+    return 1;
+  }
 }
