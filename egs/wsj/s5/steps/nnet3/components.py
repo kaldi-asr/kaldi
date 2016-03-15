@@ -142,10 +142,10 @@ def AddConvolutionLayer(config_lines, name, input,
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
 
-    # if filt_z_dim is zero we assume it equals to the input
-    if filt_z_dim == 0:
+    # if filt_z_dim is None we assume it equals to the input
+    if filt_z_dim is None:
       filt_z_dim = input_z_dim
-    if filt_z_step == 0:
+    if filt_z_step is None:
       filt_z_step = filt_z_dim
 
     conv_init_string = ("component name={0}_conv type=ConvolutionComponent "
@@ -166,6 +166,7 @@ def AddConvolutionLayer(config_lines, name, input,
     num_x_steps = (1 + (input_x_dim - filt_x_dim) / filt_x_step)
     num_y_steps = (1 + (input_y_dim - filt_y_dim) / filt_y_step)
     num_z_steps = (1 + (input_z_dim - filt_z_dim) / filt_z_step)
+    # The output is actually a vectorized 4d-tensor but we ignore the 4th dimension and fold it into the 3rd dimension
     output_dim = num_x_steps * num_y_steps * num_z_steps * num_filters;
     return {'descriptor':  '{0}_conv_t'.format(name),
             'dimension': output_dim,

@@ -661,18 +661,23 @@ void GenerateConfigSequenceCnn(
 
   int32 input_x_dim = 10 + Rand() % 20,
         input_y_dim = 10 + Rand() % 20,
-        input_z_dim = 3 + Rand() % 10,
+        input_z_dim = 10 + Rand() % 20,
         filt_x_dim = 1 + Rand() % input_x_dim,
         filt_y_dim = 1 + Rand() % input_y_dim,
+        filt_z_dim = 1 + Rand() % input_z_dim,
         num_filters = 10 + Rand() % 20,
         filt_x_step = (1 + Rand() % filt_x_dim),
-        filt_y_step = (1 + Rand() % filt_y_dim);
+        filt_y_step = (1 + Rand() % filt_y_dim),
+        filt_z_step = (1 + Rand() % filt_z_dim);
   int32 remainder = (input_x_dim - filt_x_dim) % filt_x_step;
   // adjusting input_x_dim to ensure divisibility
   input_x_dim = input_x_dim - remainder;
   remainder = (input_y_dim - filt_y_dim) % filt_y_step;
   // adjusting input_x_dim to ensure divisibility
   input_y_dim = input_y_dim - remainder;
+  remainder = (input_z_dim - filt_z_dim) % filt_z_step;
+  // adjusting input_z_dim to ensure divisibility
+  input_z_dim = input_z_dim - remainder;
 
   int32 input_vectorization = Rand() % 2;
   std::string vectorization;
@@ -688,15 +693,17 @@ void GenerateConfigSequenceCnn(
      << " input-z-dim=" << input_z_dim
      << " filt-x-dim=" << filt_x_dim
      << " filt-y-dim=" << filt_y_dim
+     << " filt-z-dim=" << filt_z_dim
      << " filt-x-step=" << filt_x_step
      << " filt-y-step=" << filt_y_step
+     << " filt-z-step=" << filt_z_step
      << " num-filters=" << num_filters
      << " input-vectorization-order=" << vectorization
      << std::endl;
 
   int32 conv_output_x_dim = (1 + (input_x_dim - filt_x_dim) / filt_x_step);
   int32 conv_output_y_dim = (1 + (input_y_dim - filt_y_dim) / filt_y_step);
-  int32 conv_output_z_dim = num_filters;
+  int32 conv_output_z_dim = num_filters * (1 + (input_z_dim - filt_z_dim) / filt_z_step);
   int32 pool_x_size = 1 + Rand() % conv_output_x_dim;
   int32 pool_y_size = 1 + Rand() % conv_output_y_dim;
   int32 pool_z_size = 1 + Rand() % conv_output_z_dim;
@@ -1054,23 +1061,30 @@ static void GenerateRandomComponentConfig(std::string *component_type,
             input_z_dim = 3 + Rand() % 10,
             filt_x_dim = 1 + Rand() % input_x_dim,
             filt_y_dim = 1 + Rand() % input_y_dim,
+            filt_z_dim = 1 + Rand() % input_z_dim,
             num_filters = 1 + Rand() % 10,
             filt_x_step = (1 + Rand() % filt_x_dim),
-            filt_y_step = (1 + Rand() % filt_y_dim);
+            filt_y_step = (1 + Rand() % filt_y_dim),
+            filt_z_step = (1 + Rand() % filt_z_dim);
       int32 remainder = (input_x_dim - filt_x_dim) % filt_x_step;
       // adjusting input_x_dim to ensure divisibility
       input_x_dim = input_x_dim - remainder;
       remainder = (input_y_dim - filt_y_dim) % filt_y_step;
       // adjusting input_x_dim to ensure divisibility
       input_y_dim = input_y_dim - remainder;
+      remainder = (input_z_dim - filt_z_dim) % filt_z_step;
+      // adjusting input_z_dim to ensure divisibility
+      input_z_dim = input_z_dim - remainder;
 
       os << "input-x-dim=" << input_x_dim
          << " input-y-dim=" << input_y_dim
          << " input-z-dim=" << input_z_dim
          << " filt-x-dim=" << filt_x_dim
          << " filt-y-dim=" << filt_y_dim
+         << " filt-z-dim=" << filt_z_dim
          << " filt-x-step=" << filt_x_step
          << " filt-y-step=" << filt_y_step
+         << " filt-z-step=" << filt_z_step
          << " num-filters=" << num_filters
          << " input-vectorization-order=" << vectorization
          << " learning-rate=" << learning_rate;
