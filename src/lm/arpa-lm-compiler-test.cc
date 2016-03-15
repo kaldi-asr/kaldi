@@ -59,7 +59,7 @@ static fst::StdVectorFst* CreateGenFst(bool seps, const fst::SymbolTable* pst) {
     genFst->SetFinal(midId, fst::StdArc::Weight::One());
   }
 
-  // Add a loop for each symbol except epsilon, BOS and EOS.
+  // Add a loop for each symbol in the table except the four special ones.
   fst::SymbolTableIterator si(*pst);
   for (si.Reset(); !si.Done(); si.Next()) {
     if (si.Value() == kBos || si.Value() == kEos ||
@@ -219,8 +219,8 @@ bool RunAllTests(bool seps) {
 int main(int argc, char *argv[]) {
   bool ok = true;
 
-  ok &= RunAllTests(false);
-  ok &= RunAllTests(true);
+  ok &= RunAllTests(false);  // Without disambiguators (old behavior).
+  ok &= RunAllTests(true);   // With epsilon substitution (new behavior).
 
   if (ok) {
     KALDI_LOG << "All tests passed";

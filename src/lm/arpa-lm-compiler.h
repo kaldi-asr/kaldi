@@ -21,16 +21,9 @@
 #ifndef KALDI_LM_ARPA_LM_COMPILER_H_
 #define KALDI_LM_ARPA_LM_COMPILER_H_
 
-//#include <algorithm>
-//#include <limits>
-//#include <sstream>
-//#include <utility>
 #include <fst/fstlib.h>
 
 #include "lm/arpa-file-parser.h"
-//#include "lm/const-arpa-lm.h"
-//#include "util/stl-utils.h"
-//#include "util/text-utils.h"
 
 namespace kaldi {
 
