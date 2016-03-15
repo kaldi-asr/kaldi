@@ -888,7 +888,7 @@ void ComputeExampleComputationRequestSimple(
   request->outputs.clear();
   inputs->clear();
 
-  int32 ivector_interval = GetTimeIntervalForIvectors(nnet);
+  int32 ivector_interval = GetInputInterval(nnet, "ivector");
   std::vector<Index> input_indexes, ivector_indexes, output_indexes;
   for (int32 n = n_offset; n < n_offset + num_examples; n++) {
     for (int32 t = input_start_frame; t < input_end_frame; t++)

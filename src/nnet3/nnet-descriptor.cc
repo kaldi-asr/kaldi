@@ -786,7 +786,10 @@ void GeneralDescriptor::Print(const std::vector<std::string> &node_names,
     case kSwitch: os << "Switch("; break;
       // now handle the exceptions.
     case kOffset: case kRound: {
-      os << "Offset(";
+      if (descriptor_type_ == kOffset)
+        os << "Offset(";
+      else
+        os << "Round(";
       KALDI_ASSERT(descriptors_.size() == 1);
       descriptors_[0]->Print(node_names, os);
       os << ", " << value1_;

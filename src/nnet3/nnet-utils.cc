@@ -40,120 +40,177 @@ int32 NumInputNodes(const Nnet &nnet) {
   return ans;
 }
 
-int32 GetTimeIntervalForIvectors(const Nnet &nnet) {
-  std::vector<std::string> name;
-  name.push_back("ivector");
-  std::vector<int32> modulus;
-  // initialize with 0, so that if modulus is not found this function will
-  // return 0
-  modulus.resize(name.size(), 0);
+int32 GetInputInterval(const Nnet &nnet, std::string input_name) {
+  const std::vector<std::string> &node_names = nnet.GetNodeNames();
+  int32 interval = -1;
   for (int32 i = 0; i < nnet.NumNodes(); i++) {
     const NetworkNode &node = nnet.GetNode(i);
     if (node.node_type == kDescriptor) {
-      for (int32 p = 0; p < node.descriptor.NumParts(); p++) {
-        const SumDescriptor &this_part = node.descriptor.Part(p);
-        ExtractDescriptorValuesFromSumDescriptor(nnet, this_part, name,
-                                                 &modulus);
+      std::ostringstream ostr;
+      node.descriptor.WriteConfig(ostr, node_names);
+      std::vector<std::string> tokens;
+      DescriptorTokenize(ostr.str(), &tokens);
+      tokens.push_back("end of input");
+      const std::string *next_token = &(tokens[0]);
+      GeneralDescriptor *gen_desc = GeneralDescriptor::Parse(node_names,
+                                                             &next_token);
+      if (*next_token != "end of input")
+        KALDI_ERR << "Parsing Descriptor, expected end of input but got "
+                  << "'" <<  *next_token << "'";
+      int32 new_interval =
+          GetInputIntervalInternal(*gen_desc, node_names, input_name);
+      if (new_interval != -1) {
+        if (new_interval == 0) {
+          if (interval > 0) {
+            // if input is used only at t=0 from the arg we are looking at, and
+            // is used from previous args at some interval > 0, set interval to
+            // 1 as a "hard" case
+            interval = 1;
+          } else {
+            // if input is used only at t=0 from the arg we are looking at, and
+            // input has not been used from the previous args) or was used only
+            // at t=0, set interval to 0
+            interval = 0;
+          }
+        } else if (interval == 0) {
+          // if input is used at some interval > 0 from the arg we are looking
+          // at, and is used only at t=0 from previous args, set interval to 1
+          // as a "hard" case
+          interval = 1;
+        } else if (interval == -1) {
+          // if input is used at some interval > 0 from the arg we are looking
+          // at, and is not used from previous args, set interval to that
+          // interval
+          interval = new_interval;
+        } else {
+          // if input is used at some interval > 0 from the arg we are looking
+          // at and is also used from prvious args at another interval > 0, set
+          // interval to GCD of the two
+          interval = Gcd(interval, new_interval);
+        }
+      } 
+      delete gen_desc;
+    }
+  }
+  return interval;
+}
+
+int32 GetInputIntervalInternal(const GeneralDescriptor &gen_desc,
+                               const std::vector<std::string> &node_names,
+                               const std::string &input_name) {
+  switch (gen_desc.descriptor_type_) {
+    case GeneralDescriptor::kAppend: case GeneralDescriptor::kSum:
+    case GeneralDescriptor::kFailover: case GeneralDescriptor::kIfDefined:
+    case GeneralDescriptor::kSwitch: {
+      int32 interval = -1;
+      for (size_t i = 0; i < gen_desc.descriptors_.size(); i++) {
+        int32 new_interval =
+            GetInputIntervalInternal(*(gen_desc.descriptors_[i]), node_names,
+                                     input_name);
+        if (new_interval != -1) {
+          if (new_interval == 0) {
+            if (interval > 0) {
+              // if input is used only at t=0 from the arg we are looking at,
+              // and is used from previous args at some interval > 0, set
+              // interval to 1 as a "hard" case
+              interval = 1;
+            } else {
+              // if input is used only at t=0 from the arg we are looking at,
+              // and input has not been used from the previous args) or was used
+              // only at t=0, set interval to 0
+              interval = 0;
+            }
+          } else if (interval == 0) {
+            // if input is used at some interval > 0 from the arg we are looking
+            // at, and is used only at t=0 from previous args, set interval to 1
+            // as a "hard" case
+            interval = 1;
+          } else if (interval == -1) {
+            // if input is used at some interval > 0 from the arg we are looking
+            // at, and is not used from previous args, set interval to that
+            // interval
+            interval = new_interval;
+          } else {
+            // if input is used at some interval > 0 from the arg we are looking
+            // at and is also used from prvious args at another interval > 0,
+            // set interval to GCD of the two
+            interval = Gcd(interval, new_interval);
+          }
+        }
+      }
+      return interval;
+    }
+    case GeneralDescriptor::kOffset: {
+      KALDI_ASSERT(gen_desc.descriptors_.size() == 1);
+      int32 interval =
+          GetInputIntervalInternal(*(gen_desc.descriptors_[0]), node_names,
+                                   input_name);
+      if (interval == 0) {
+        // in the case where input is used only at t=0 from the arg of "Offset",
+        // if offset by 0, return 0; otherwise return 1 as a "hard" case
+        return gen_desc.value1_ == 0 ? 0 : 1;
+      } else if (interval > 0 && gen_desc.value1_ % interval != 0) {
+        // if input is used from the arg at some interval > 0 and offset by
+        // other than multiple of interval, return 1 as a "hard" case
+        return 1;
+      } else {
+        // if input is used from the arg at some interval > 0 and offset by a
+        // multiple of interval, or input is not used from the arg, just keep
+        // interval 
+        return interval;
       }
     }
-  }
-  return modulus[0]; 
-}
-
-// see nnet-utils.h for descriptions
-void ExtractDescriptorValuesFromSumDescriptor(const Nnet &nnet,
-                       const SumDescriptor &this_descriptor,
-                       const std::vector<std::string> &node_names,
-                       std::vector<int32> *values) {
-  const OptionalSumDescriptor *ptr_optional =
-      dynamic_cast<const OptionalSumDescriptor*>(&this_descriptor);
-  if (ptr_optional != NULL) {
-    ExtractDescriptorValuesFromSumDescriptor(nnet, *(ptr_optional->src_),
-                                             node_names, values);
-    return;
-  }
-  const BinarySumDescriptor *ptr_binary =
-      dynamic_cast<const BinarySumDescriptor*>(&this_descriptor);
-  if (ptr_binary != NULL) {
-    ExtractDescriptorValuesFromSumDescriptor(nnet, *(ptr_binary->src1_),
-                                             node_names, values);
-    ExtractDescriptorValuesFromSumDescriptor(nnet, *(ptr_binary->src2_),
-                                             node_names, values);
-    return;
-  }
-  const SimpleSumDescriptor *ptr_simple =
-      dynamic_cast<const SimpleSumDescriptor*>(&this_descriptor);
-  if (ptr_simple != NULL) {
-    ExtractDescriptorValuesFromForwardingDescriptor(nnet, *(ptr_simple->src_),
-                                                    node_names, values);
-    return;
-  }
-  KALDI_ERR << "Unidentified SumDescriptor.";
-}
-
-// see nnet-utils.h for descriptions
-void ExtractDescriptorValuesFromForwardingDescriptor(const Nnet &nnet,
-                              const ForwardingDescriptor &this_descriptor,
-                              const std::vector<std::string> &node_names,
-                              std::vector<int32> *values) {
-  // base case 1: if we arrive at a descriptor of class
-  // RoundingForwardingDescriptor, check if its src_ is of class
-  // SimpleForwardingDescriptor*; If yes, further check if its node dependency
-  // is what we are looking for; If yes, extract t_modulus_
-  const RoundingForwardingDescriptor *ptr_rounding =
-      dynamic_cast<const RoundingForwardingDescriptor*>(&this_descriptor);
-  if (ptr_rounding != NULL) {
-    const SimpleForwardingDescriptor *ptr_simple =
-        dynamic_cast<const SimpleForwardingDescriptor*>(ptr_rounding->src_);
-    if (ptr_simple != NULL) {
-      std::vector<int32> node_index;
-      ptr_simple->GetNodeDependencies(&node_index);
-      KALDI_ASSERT(node_index.size() == 1);
-      const std::string &node_name = nnet.GetNodeName(node_index[0]);
-      std::vector<std::string>::const_iterator iter,
-            begin = node_names.begin(),
-            end = node_names.end();
-      iter = find(begin, end, node_name);
-      // if it is the one that we are looking for, get its t_modulus_
-      if (iter != end)
-        (*values)[iter - begin] = ptr_rounding->t_modulus_;
-    } else {
-      ExtractDescriptorValuesFromForwardingDescriptor(nnet,
-          *(ptr_rounding->src_), node_names, values);
+    case GeneralDescriptor::kRound: {
+      KALDI_ASSERT(gen_desc.descriptors_.size() == 1);
+      int32 interval =
+          GetInputIntervalInternal(*(gen_desc.descriptors_[0]), node_names,
+                                   input_name);
+      if (interval > 0)
+        if (gen_desc.value1_ >= interval) {
+          // if t is rounded with a larger modulus than interval from the arg,
+          // we will instead have t at all multiples of that larger number
+          return gen_desc.value1_;
+        } else {
+          // if the modulus is smaller than interval from the arg, we will no
+          // longer have t at all multiples of either number of the two, then
+          // return 1 as a "hard" case
+          return 1;
+        } else {
+        // if interval <= 0, just keep interval as "Round" has no effect on it
+        return interval;
+      }
     }
-    return;
+    case GeneralDescriptor::kReplaceIndex: {
+      KALDI_ASSERT(gen_desc.descriptors_.size() == 1);
+      int32 interval =
+          GetInputIntervalInternal(*(gen_desc.descriptors_[0]), node_names,
+                                   input_name);
+      if (gen_desc.value1_ == int32(ReplaceIndexForwardingDescriptor::kT) &&
+          interval >= 0) {
+        // in the case where the input is used at least once from the arg of
+        // "ReplaceIndex" and the replacement takes place on t, if replace t
+        // with 0, then return 0; otherwise, i.e. if replace t with other
+        // values, return 1 as a "hard" case 
+        return gen_desc.value2_ == 0 ? 0 : 1;
+      } else {
+        // if replacement is on x, or input is not used from the arg,
+        // just keep interval
+        return interval;
+      }
+    }
+    case GeneralDescriptor::kNodeName: {
+      // if the input is used as NodeName, return 1, otherwise -1 
+      if (node_names[gen_desc.value1_] == input_name)
+        return 1;
+      else
+        return -1;
+    }
+    default:
+      KALDI_ERR << "Invalid descriptor type.";
+      return -1;
   }
-  // base case 2: no further recursion
-  const SimpleForwardingDescriptor *ptr_simple =
-      dynamic_cast<const SimpleForwardingDescriptor*>(&this_descriptor);
-  if (ptr_simple != NULL) {
-    // do nothing
-    return;
-  }
-  const OffsetForwardingDescriptor *ptr_offset =
-      dynamic_cast<const OffsetForwardingDescriptor*>(&this_descriptor);
-  if (ptr_offset != NULL) {
-    ExtractDescriptorValuesFromForwardingDescriptor(nnet, *(ptr_offset->src_),
-                                                    node_names, values);
-    return;
-  }
-  const ReplaceIndexForwardingDescriptor *ptr_replace =
-      dynamic_cast<const ReplaceIndexForwardingDescriptor*>(&this_descriptor);
-  if (ptr_replace != NULL) {
-    ExtractDescriptorValuesFromForwardingDescriptor(nnet, *(ptr_replace->src_),
-                                                    node_names, values);
-    return;
-  }
-  const SwitchingForwardingDescriptor *ptr_switching =
-      dynamic_cast<const SwitchingForwardingDescriptor*>(&this_descriptor);
-  if (ptr_switching != NULL) {
-    for (int32 i = 0; i < ptr_switching->src_.size(); i++)
-      ExtractDescriptorValuesFromForwardingDescriptor(nnet,
-          *(ptr_switching->src_[i]), node_names, values);
-    return;
-  }
-  KALDI_ERR << "Unidentified ForwardingDescriptor.";
 }
+
 
 bool IsSimpleNnet(const Nnet &nnet) {
   // check that we have an output node and called "output".
@@ -216,7 +273,7 @@ static void ComputeSimpleNnetContextForShift(
     output.indexes.push_back(Index(n, t));
   }
   // push the indexes for ivector(s)
-  int32 ivector_interval = GetTimeIntervalForIvectors(nnet);
+  int32 ivector_interval = GetInputInterval(nnet,"ivector");
   if (ivector_interval == 0)
     // single ivector for the entire chunk
     // the assumption here is that the network just requires the ivector at time
@@ -613,7 +670,7 @@ std::string NnetInfo(const Nnet &nnet) {
   }
   ostr << "input-dim: " << nnet.InputDim("input") << "\n";
   ostr << "ivector-dim: " << nnet.InputDim("ivector") << "\n";
-  ostr << "ivector-interval: " << GetTimeIntervalForIvectors(nnet) << "\n";
+  ostr << "ivector-interval: " << GetInputInterval(nnet, "ivector") << "\n";
   ostr << "output-dim: " << nnet.OutputDim("output") << "\n";
   ostr << "# Nnet info follows.\n";
   ostr << nnet.Info();
