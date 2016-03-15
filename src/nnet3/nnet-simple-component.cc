@@ -3932,8 +3932,7 @@ void ConvolutionComponent::Update(const std::string &debug_info,
 
 void ConvolutionComponent::SetZero(bool treat_as_gradient) {
   if (treat_as_gradient) {
-    learning_rate_ = 1.0;  // don't call SetLearningRate, that would apply the
-                           // learning rate factor.
+    SetActualLearningRate(1.0);
     is_gradient_ = true;
   }
   filter_params_.SetZero();

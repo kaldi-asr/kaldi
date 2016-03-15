@@ -349,10 +349,10 @@ def ParseCnnString(cnn_param_string_list):
 
     cnn_parser.add_argument("--filt-x-dim", required=True, type=int)
     cnn_parser.add_argument("--filt-y-dim", required=True, type=int)
-    cnn_parser.add_argument("--filt-z-dim", type=int, default = 0)
+    cnn_parser.add_argument("--filt-z-dim", type=int, default = None)
     cnn_parser.add_argument("--filt-x-step", type=int, default = 1)
     cnn_parser.add_argument("--filt-y-step", type=int, default = 1)
-    cnn_parser.add_argument("--filt-z-step", type=int, default = 0)
+    cnn_parser.add_argument("--filt-z-step", type=int, default = None)
     cnn_parser.add_argument("--num-filters", required=True, type=int)
     cnn_parser.add_argument("--pool-x-size", type=int, default = 1)
     cnn_parser.add_argument("--pool-y-size", type=int, default = 1)
