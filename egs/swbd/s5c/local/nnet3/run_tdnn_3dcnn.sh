@@ -58,6 +58,9 @@ if [ "$use_cnn" == "true" ]; then
   cnn_bottleneck_dim=  # remove this option if you don't want to add the bottleneck affine
   cepstral_lifter=  # have to fill this in if you are not using the default lifter value in the production of MFCC
                     # Here we assume your are using the default lifter value (22.0)
+
+  # When --filt-z-dim is not specified it will be equal to input-z-dim
+  # and when --filt-z-step is not specified it will be equal to --filt-z-dim
   cnn_layer="--filt-x-dim=4 --filt-y-dim=4 --num-filters=1024"
   cnn_opts+=(--cnn.layer "$cnn_layer")
   cnn_layer="--filt-x-dim=2 --filt-y-dim=4 --filt-z-dim=16 --num-filters=1"
@@ -75,7 +78,7 @@ if [ "$use_cnn" == "true" ]; then
   cmvn_opts="--norm-means=true --norm-vars=false"
 fi
 
-dir=exp/nnet3/tdnn_testminibatch
+dir=exp/nnet3/tdnn
 dir=$dir${affix:+_$affix}
 dir=${dir}$suffix
 train_set=train_nodup$suffix

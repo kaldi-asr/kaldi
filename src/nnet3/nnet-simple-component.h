@@ -1501,9 +1501,6 @@ class ConvolutionComponent: public UpdatableComponent {
 
   int32 filt_z_dim_;    // size of the filter along z-axis
 
-  // there is no filt_z_dim_ as it is always assumed to be
-  // the same as input_z_dim_
-
   int32 filt_x_step_;   // the number of steps taken along x-axis of input
                         //  before computing the next dot-product
                         //  of filter and input
@@ -1515,8 +1512,6 @@ class ConvolutionComponent: public UpdatableComponent {
   int32 filt_z_step_;   // the number of steps taken along z-axis of input
                         // before computing the next dot-product of the filter
                         // and input
-
-  // there is no filt_z_step_ as only dot product is possible along this axis
 
   TensorVectorizationType input_vectorization_; // type of vectorization of the
   // input 3D tensor. Accepts zyx and yzx formats
