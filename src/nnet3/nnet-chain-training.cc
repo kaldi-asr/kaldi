@@ -44,6 +44,17 @@ NnetChainTrainer::NnetChainTrainer(const NnetChainTrainingOptions &opts,
                                // natural-gradient updates.
     SetZero(is_gradient, delta_nnet_);
   }
+  if (opts.nnet_config.read_cache != "") {
+    bool binary;
+    try {
+      Input ki(opts.nnet_config.read_cache, &binary);
+      compiler_.ReadCache(ki.Stream(), binary);
+      KALDI_LOG << "Read computation cache from " << opts.nnet_config.write_cache;
+    } catch (...) {
+      KALDI_WARN << "Could not open cached computation. "
+                    "Probably this is the first training iteration.";
+    }
+  } 
 }
 
 
@@ -89,6 +100,11 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
     AddNnet(*delta_nnet_, scale, nnet_);
     ScaleNnet(nnet_config.momentum, delta_nnet_);
   }
+  if (nnet_config.write_cache != "") {
+    Output ko(nnet_config.write_cache, nnet_config.binary_write_cache);
+    compiler_.WriteCache(ko.Stream(), nnet_config.binary_write_cache);
+    KALDI_LOG << "Wrote computation cache to " << nnet_config.write_cache;
+  } 
 }
 
 

@@ -47,6 +47,7 @@ NnetTrainer::NnetTrainer(const NnetTrainerOptions &config,
     try {
       Input ki(config_.read_cache, &binary);
       compiler_.ReadCache(ki.Stream(), binary);
+      KALDI_LOG << "Read computation cache from " << config_.read_cache;
     } catch (...) {
       KALDI_WARN << "Could not open cached computation. "
                     "Probably this is the first training iteration.";
@@ -96,6 +97,7 @@ void NnetTrainer::Train(const NnetExample &eg) {
   if (config_.write_cache != "") {
     Output ko(config_.write_cache, config_.binary_write_cache);
     compiler_.WriteCache(ko.Stream(), config_.binary_write_cache);
+    KALDI_LOG << "Wrote computation cache to " << config_.write_cache;
   } 
 }
 
