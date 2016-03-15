@@ -1,25 +1,25 @@
 #!/bin/bash
 
-# 7b is as 6z, but increasing the relu-dim slightly from 576 to 625.
+# 7c is as 6z, but reducing the left and right tolerance from 5 to 4.
 
-# there is very little change.  looks like we were close to the optimum.
-# local/chain/compare_wer.sh 6z 7b
-# System                       6z        7b
-# WER on train_dev(tg)      15.18     15.15
-# WER on train_dev(fg)      14.06     14.19
+# No clear difference.
+
+# I reran the scoring of train_dev for 6z because the scoring script
+# has had a bug fixed.
+# local/score.sh  data/train_dev exp/chain/tdnn_6z_sp/graph_sw1_tg exp/chain/tdnn_6z_sp/decode_train_dev_sw1_tg
+# local/score.sh  data/train_dev exp/chain/tdnn_6z_sp/graph_sw1_tg exp/chain/tdnn_6z_sp/decode_train_dev_sw1_fsh_fg;
+# local/chain/compare_wer.sh 6z 7c
+# System                       6z        7c
+# WER on train_dev(tg)      14.88     14.89
+# WER on train_dev(fg)      13.66     13.69
 # WER on eval2000(tg)        17.2      17.2
 # WER on eval2000(fg)        15.6      15.5
-# Final train prob      -0.106268 -0.102617
-# Final valid prob      -0.126726 -0.126529
-# Final train prob (xent)       -1.4556  -1.43802
-# Final valid prob (xent)      -1.50136   -1.4964
+# Final train prob      -0.106268 -0.107003
+# Final valid prob      -0.126726 -0.133782
+# Final train prob (xent)       -1.4556  -1.40549
+# Final valid prob (xent)      -1.50136  -1.47833
 
-# 6z is as 6y, but fixing the right-tolerance in the scripts to default to 5 (as
-# the default is in the code), rather than the previous script default value of
-# 10 which I seem to have added to the script around Feb 9th.
-# definitely better than 6y- not clear if we have managed to get the same
-# results as 6v (could indicate that the larger frames-per-iter is not helpful?
-# but I'd rather not decrease it as it would hurt speed).
+
 
 # local/chain/compare_wer.sh 6v 6y 6z
 # System                       6v        6y        6z
@@ -49,7 +49,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_7b  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_7c  # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
 
 # TDNN options
@@ -69,7 +69,7 @@ final_layer_normalize_target=0.5
 num_jobs_initial=3
 num_jobs_final=16
 minibatch_size=128
-relu_dim=625
+relu_dim=576
 frames_per_eg=150
 remove_egs=false
 common_egs_dir=
@@ -186,12 +186,12 @@ if [ $stage -le 13 ]; then
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train.py --stage $train_stage \
-    --egs.dir exp/chain/tdnn_6z_sp/egs \
     --cmd "$decode_cmd" \
     --feat.online-ivector-dir exp/nnet3/ivectors_${train_set} \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient 0.1 \
+    --chain.left-tolerance 4 --chain.right-tolerance 4 \
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
