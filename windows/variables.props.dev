@@ -2,11 +2,11 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros">
-    <MKLDIR>C:\Program Files (x86)\IntelSWTools\compilers_and_libraries\windows\mkl</MKLDIR>
-    <OPENBLASDIR>C:\Users\ceefour\git\kaldi-trunk\tools\OpenBLAS-v0.2.14-Win64-int32</OPENBLASDIR>
-    <PTHREADW>C:\Users\ceefour\git\kaldi-trunk\tools\pthreads\Pre-built.2</PTHREADW>
-    <OPENFST>C:\Users\ceefour\git\kaldi-trunk\tools\openfst\</OPENFST>
-    <OPENFSTLIB>C:\Users\ceefour\git\kaldi-trunk\openfst\MSVC14\x64\</OPENFSTLIB>
+    <MKLDIR>C:\Program Files (x86)\Intel\Composer XE\mkl</MKLDIR>
+    <OPENBLASDIR>C:\Users\Yenda\Downloads\kaldi-svn\tools\OpenBLAS-v0.2.14-Win64-int32</OPENBLASDIR>
+    <PTHREADW>C:\Users\Yenda\Downloads\kaldi-svn\tools\pthread-win32\Pre-built.2</PTHREADW>
+    <OPENFST>C:\Users\Yenda\Downloads\kaldi-svn\tools\openfstwin-1.3.4\</OPENFST>
+    <OPENFSTLIB>C:\Users\Yenda\Downloads\kaldi-svn\tools\openfstwin-1.3.4\MSVC12\x64\</OPENFSTLIB>
   </PropertyGroup>
   <PropertyGroup />
   <ItemDefinitionGroup />
