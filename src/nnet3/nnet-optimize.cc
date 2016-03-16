@@ -533,6 +533,7 @@ void CachingOptimizingCompiler::ReadCache(std::istream &is, bool binary) {
 }
 
 void CachingOptimizingCompiler::WriteCache(std::ostream &os, bool binary) const {
+  opt_config_.Write(os, binary);
   WriteToken(os, binary, "<ComputationCacheSize>");
   WriteBasicType(os, binary, static_cast<int32>(computation_cache_.size()));
   WriteToken(os, binary, "<ComputationCache>");
