@@ -29,6 +29,8 @@
 #include "util/kaldi-io.h"
 #include "util/text-utils.h"
 #include "util/stl-utils.h"  // for StringHasher.
+#include "thread/kaldi-thread.h"
+#include "thread/kaldi-semaphore.h"
 
 
 namespace kaldi {
@@ -39,17 +41,39 @@ namespace kaldi {
 template<class Holder> class SequentialTableReaderImplBase {
  public:
   typedef typename Holder::T T;
-  // note that Open takes rxfilename not rspecifier.
+  // note that Open takes rxfilename not rspecifier.  Open will only be
+  // called on a just-allocated object.
   virtual bool Open(const std::string &rxfilename) = 0;
+  // Done() should be called on a successfully opened, not-closed object.
+  // only throws if called a the wrong time (i.e. code error).
   virtual bool Done() const = 0;
+  // Returns true if the reader is open [i.e. Open() succeeded and
+  // the user has not called Close()]
   virtual bool IsOpen() const = 0;
+  // Returns the current key; it is valid to call this if Done() returned false.
+  // Only throws on code error (i.e. called at the wrong time).
   virtual std::string Key() = 0;
+  // Returns the value associated with the current key.  Valid to call it if
+  // Done() returned false.  It throws if the value could not be read.  [However
+  // if you use the ,p modifier it will never throw, unless you call it at the
+  // wrong time, i.e. unless there is a code error.]
   virtual const T &Value() = 0;
   virtual void FreeCurrent() = 0;
+  // move to the next object.  This won't throw unless called wrongly (e.g. on
+  // non-open archive.]
   virtual void Next() = 0;
+  // Close the table.  Returns its status as bool so it won't throw, unless
+  // called wrongly [i.e. on non-open archive.]
   virtual bool Close() = 0;
+  // SwapHolder() is not part of the public interface of SequentialTableReader.
+  // It should be called when it would be valid to call Value() or FreeCurrent()
+  // (i.e. when a value is stored), and after this it's not valid to get the
+  // value any more until you call Next().  It swaps the contents of
+  // this->holder_ with those of 'other_holder'.  It's needed as part of how
+  // we implement SequentialTableReaderBackgroundImpl.
+  virtual void SwapHolder(Holder *other_holder) = 0;
   SequentialTableReaderImplBase() { }
-  virtual ~SequentialTableReaderImplBase() { }
+  virtual ~SequentialTableReaderImplBase() { }  // throws.
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(SequentialTableReaderImplBase);
 };
@@ -57,7 +81,7 @@ template<class Holder> class SequentialTableReaderImplBase {
 
 // This is the implementation for SequentialTableReader
 // when it's actually a script file.
-  template<class Holder>  class SequentialTableReaderScriptImpl:
+template<class Holder>  class SequentialTableReaderScriptImpl:
       public SequentialTableReaderImplBase<Holder> {
  public:
   typedef typename Holder::T T;
@@ -67,7 +91,7 @@ template<class Holder> class SequentialTableReaderImplBase {
   virtual bool Open(const std::string &rspecifier) {
     if (state_ != kUninitialized)
       if (!Close())  // call Close() yourself to suppress this exception.
-        KALDI_ERR << "TableReader::Open, error closing previous input: "
+        KALDI_ERR << "Error closing previous input: "
                   << "rspecifier was " << rspecifier_;
     bool binary;
     rspecifier_ = rspecifier;
@@ -146,17 +170,17 @@ template<class Holder> class SequentialTableReaderImplBase {
       // a file listed in an scp file not existing, or
       // read failure, failure of a command, etc.
       if (orig_state == kHaveScpLine)
-        KALDI_ERR << "TableReader: failed to load object from "
+        KALDI_ERR << "Failed to load object from "
                   << PrintableRxfilename(data_rxfilename_)
                   << " (to suppress this error, add the permissive "
                   << "(p, ) option to the rspecifier.";
 
       else  // orig_state_ was kLoadFailed, which only could have happened
         // if the user called FreeCurrent().
-        KALDI_ERR << "TableReader: you called Value() after FreeCurrent().";
+        KALDI_ERR << "You called Value() after FreeCurrent().";
     } else if (state_ != kLoadSucceeded) {
       // This would be a coding error.
-      KALDI_ERR << "TableReader: Value() called at the wrong time.";
+      KALDI_ERR << "Value() called at the wrong time.";
     }
     return holder_.Value();
   }
@@ -165,7 +189,19 @@ template<class Holder> class SequentialTableReaderImplBase {
       holder_.Clear();
       state_ = kLoadFailed;
     } else {
-      KALDI_WARN << "TableReader: FreeCurrent called at the wrong time.";
+      KALDI_WARN << "FreeCurrent called at the wrong time.";
+    }
+  }
+  void SwapHolder(Holder *other_holder) {
+    // call Value() to ensure we have a value, and ignore its return value while
+    // suppressing compiler warnings by casting to void.
+    (void) Value();
+    if (state_ == kLoadSucceeded) {
+      holder_.Swap(other_holder);
+      state_ = kLoadFailed;
+    } else {
+      KALDI_ERR << "SwapHolder called at the wrong time "
+                   "(error related to ',bg' modifier).";
     }
   }
   void Next() {
@@ -213,7 +249,7 @@ template<class Holder> class SequentialTableReaderImplBase {
 
   virtual ~SequentialTableReaderScriptImpl() {
     if (state_ == kError)
-      KALDI_ERR << "TableReader: reading script file failed: from scp "
+      KALDI_ERR << "Reading script file failed: from scp "
                 << PrintableRxfilename(script_rxfilename_);
     // If you don't want this exception to be thrown you can
     // call Close() and check the status.
@@ -224,7 +260,7 @@ template<class Holder> class SequentialTableReaderImplBase {
   bool LoadCurrent() {
     // Attempts to load object whose rxfilename is on the current scp line.
     if (state_ != kHaveScpLine)
-      KALDI_ERR << "TableReader: LoadCurrent() called at the wrong time.";
+      KALDI_ERR << "LoadCurrent() called at the wrong time.";
     bool ans;
     // note, NULL means it doesn't read the binary-mode header
     if (Holder::IsReadInBinary()) {
@@ -234,7 +270,7 @@ template<class Holder> class SequentialTableReaderImplBase {
     }
     if (!ans) {
       // May want to make this warning a VLOG at some point
-      KALDI_WARN << "TableReader: failed to open file "
+      KALDI_WARN << "Failed to open file "
                  << PrintableRxfilename(data_rxfilename_);
       state_ = kLoadFailed;
       return false;
@@ -243,7 +279,7 @@ template<class Holder> class SequentialTableReaderImplBase {
         state_ = kLoadSucceeded;
         return true;
       } else {  // holder_ will not contain data.
-        KALDI_WARN << "TableReader: failed to load object from "
+        KALDI_WARN << "Failed to load object from "
                    << PrintableRxfilename(data_rxfilename_);
         state_ = kLoadFailed;
         return false;
@@ -320,7 +356,7 @@ template<class Holder> class SequentialTableReaderImplBase {
 // The archive itself does not care whether it is in binary
 // or text mode, for reading purposes.
 
-  template<class Holder>  class SequentialTableReaderArchiveImpl:
+template<class Holder>  class SequentialTableReaderArchiveImpl:
       public SequentialTableReaderImplBase<Holder> {
  public:
   typedef typename Holder::T T;
@@ -331,10 +367,10 @@ template<class Holder> class SequentialTableReaderImplBase {
     if (state_ != kUninitialized) {
       if (!Close()) {  // call Close() yourself to suppress this exception.
         if (opts_.permissive)
-          KALDI_WARN << "TableReader::Open, error closing previous input "
+          KALDI_WARN << "Error closing previous input "
               "(only warning, since permissive mode).";
         else
-          KALDI_ERR << "TableReader::Open, error closing previous input.";
+          KALDI_ERR << "Error closing previous input.";
       }
     }
     rspecifier_ = rspecifier;
@@ -350,7 +386,7 @@ template<class Holder> class SequentialTableReaderImplBase {
     else
       ans = input_.OpenTextMode(archive_rxfilename_);
     if (!ans) {  // header.
-      KALDI_WARN << "TableReader: failed to open stream "
+      KALDI_WARN << "Failed to open stream "
                  << PrintableRxfilename(archive_rxfilename_);
       state_ = kUninitialized;  // Failure on Open
       return false;  // User should print the error message.
@@ -376,7 +412,7 @@ template<class Holder> class SequentialTableReaderImplBase {
       case kFileStart: case kFreedObject:
         break;
       default:
-        KALDI_ERR << "TableReader: Next() called wrongly.";
+        KALDI_ERR << "Next() called wrongly.";
     }
     std::istream &is = input_.Stream();
     is.clear();  // Clear any fail bits that may have been set... just in case
@@ -466,10 +502,21 @@ template<class Holder> class SequentialTableReaderImplBase {
       holder_.Clear();
       state_ = kFreedObject;
     } else {
-      KALDI_WARN << "TableReader: FreeCurernt called at the wrong time.";
+      KALDI_WARN << "FreeCurrent called at the wrong time.";
     }
   }
-
+  void SwapHolder(Holder *other_holder) {
+    // call Value() to ensure we have a value, and ignore its return value while
+    // suppressing compiler warnings by casting to void.
+    (void) Value();
+    if (state_ == kHaveObject) {
+      holder_.Swap(other_holder);
+      state_ = kFreedObject;
+    } else {
+      KALDI_ERR << "SwapHolder called at the wrong time "
+                   "(error related to ',bg' modifier).";
+    }
+  }
   virtual bool Close() {
     if (!this->IsOpen())
       KALDI_ERR << "Close() called on TableReader twice or otherwise wrongly.";
@@ -500,7 +547,7 @@ template<class Holder> class SequentialTableReaderImplBase {
                    << " but ignoring "
                    << "it as permissive mode specified.";
       else
-        KALDI_ERR << "TableReader: error detected closing archive "
+        KALDI_ERR << "Error detected closing archive "
                   << PrintableRxfilename(archive_rxfilename_);
     }
     // If you don't want this exception to be thrown you can
@@ -526,6 +573,178 @@ template<class Holder> class SequentialTableReaderImplBase {
   } state_;
 };
 
+// this is for when someone adds the 'th' modifier; it wraps around the basic
+// implementation and allows it to do the reading in a background thread.
+template<class Holder>
+class SequentialTableReaderBackgroundImpl:
+      public SequentialTableReaderImplBase<Holder> {
+ public:
+  typedef typename Holder::T T;
+
+  SequentialTableReaderBackgroundImpl(
+      SequentialTableReaderImplBase<Holder> *base_reader):
+      base_reader_(base_reader) {}
+
+  // This function ignores the rxfilename argument.
+  // We use the same function signature as the regular Open(),
+  // for convenience.
+  virtual bool Open(const std::string &rxfilename) {
+    KALDI_ASSERT(base_reader_ != NULL &&
+                 base_reader_->IsOpen());  // or code error.
+    {
+      pthread_attr_t pthread_attr;
+      pthread_attr_init(&pthread_attr);
+      int32 ret = pthread_create(
+          &thread_,
+          &pthread_attr,
+          SequentialTableReaderBackgroundImpl<Holder>::run,
+          static_cast<void*>(this));
+      if (ret != 0) {
+        const char *c = strerror(ret);
+        KALDI_WARN << "Error creating thread, errno was: " << c;
+        return false;
+      }
+    }
+
+    if (!base_reader_->Done())
+      Next();
+    return true;
+  }
+
+  virtual bool IsOpen() const {
+    // Close() sets base_reader_ to NULL, and we never initialize this object
+    // with a non-open base_reader_, so no need to check if it's open.
+    return base_reader_ != NULL;
+  }
+
+  void RunInBackground() {
+    try {
+      // This function is called in the background thread.  The whole point of
+      // the background thread is that we don't want to do the actual reading
+      // (inside Next()) in the foreground.
+      while (base_reader_ != NULL && !base_reader_->Done()) {
+        consumer_sem_.Signal();
+        // Here is where the consumer process (parent thread) gets to do its
+        // stuff.  Principally it calls SwapHolder()-- a shallow swap that is
+        // cheap.
+        producer_sem_.Wait();
+        // we check that base_reader_ is not NULL in case Close() was
+        // called in the main thread.
+        if (base_reader_ != NULL)
+          base_reader_->Next();   //  here is where the work happens.
+      }
+      // this signal will be waited on in the Next() function of the foreground
+      // thread if it is still running, or Close() otherwise.
+      consumer_sem_.Signal();
+      // this signal may be waited on in Close().
+      consumer_sem_.Signal();
+    } catch (...) {
+      // There is nothing we called above that could potentially throw due to
+      // user data.  So we treat reaching this point as a code-error condition.
+      // Closing base_reader_ will trigger an exception in Next() in the main
+      // thread when it checks that base_reader_->IsOpen().
+      if (base_reader_->IsOpen()) {
+        base_reader_->Close();
+        delete base_reader_;
+        base_reader_ = NULL;
+      }
+      consumer_sem_.Signal();
+      return;
+    }
+  }
+  static void* run(void *object_in) {
+    SequentialTableReaderBackgroundImpl<Holder> *object =
+        reinterpret_cast<SequentialTableReaderBackgroundImpl<Holder>*>(object_in);
+    object->RunInBackground();
+    return NULL;
+  }
+  virtual bool Done() const {
+    return key_.empty();
+  }
+  virtual std::string Key() {
+    if (key_.empty())
+      KALDI_ERR << "Calling Key() at the wrong time.";
+    return key_;
+  }
+  virtual const T &Value() {
+    if (key_.empty())
+      KALDI_ERR << "Calling Value() at the wrong time.";
+    return holder_.Value();
+  }
+  void SwapHolder(Holder *other_holder) {
+    KALDI_ERR << "SwapHolder() should not be called on this class.";
+  }
+  virtual void FreeCurrent() {
+    if (key_.empty())
+      KALDI_ERR << "Calling FreeCurrent() at the wrong time.";
+    // note: ideally a call to Value() should crash if you have just called
+    // FreeCurrent().  For typical holders such as KaldiObjectHolder this will
+    // happen inside the holder_.Value() call.  This won't be the case for all
+    // holders, but it's not a great loss (just a missed opportunity to spot a
+    // code error).
+    holder_.Clear();
+  }
+  virtual void Next() {
+    consumer_sem_.Wait();
+    if (base_reader_ == NULL || !base_reader_->IsOpen())
+      KALDI_ERR << "Error detected (likely code error) in background "
+                << "reader (',bg' option)";
+    if (base_reader_->Done()) {
+      // there is nothing else to read.
+      key_ = "";
+    } else {
+      key_ = base_reader_->Key();
+      base_reader_->SwapHolder(&holder_);
+    }
+    // this Signal() tells the producer thread, in the background,
+    // that it's now safe to read the next value.
+    producer_sem_.Signal();
+  }
+
+  // note: we can be sure that Close() won't be called twice, as the TableReader
+  // object will delete this object after calling Close.
+  virtual bool Close() {
+    KALDI_ASSERT(base_reader_ != NULL && KALDI_PTHREAD_PTR(thread_) != 0);
+    // wait until the producer thread is idle.
+    consumer_sem_.Wait();
+    bool ans = true;
+    try {
+      ans = base_reader_->Close();
+    } catch (...) {
+      ans = false;
+    }
+    delete base_reader_;
+    // setting base_reader_ to NULL will cause the loop in the producer thread
+    // to exit.
+    base_reader_ = NULL;
+    producer_sem_.Signal();
+
+    if (pthread_join(thread_, NULL) != 0) {
+      KALDI_WARN << "Error rejoining thread.";
+      return false;
+    }
+    return ans;
+  }
+  ~SequentialTableReaderBackgroundImpl() {
+    if (base_reader_) {
+      if (!Close()) {
+        KALDI_ERR << "Error detected closing background reader "
+                  << "(relates to ',bg' modifier)";
+      }
+    }
+  }
+ private:
+  std::string key_;
+  Holder holder_;
+  // I couldn't figure out what to call these semaphores.  consumer_sem_ is the
+  // one that the consumer (main thread) waits on; producer_sem_ is the one
+  // that the producer (background thread) waits on.
+  Semaphore consumer_sem_;
+  Semaphore producer_sem_;
+  pthread_t thread_;
+  SequentialTableReaderImplBase<Holder> *base_reader_;
+
+};
 
 template<class Holder>
 SequentialTableReader<Holder>::SequentialTableReader(const std::string
@@ -541,7 +760,8 @@ bool SequentialTableReader<Holder>::Open(const std::string &rspecifier) {
       KALDI_ERR << "Could not close previously open object.";
   // now impl_ will be NULL.
 
-  RspecifierType wt = ClassifyRspecifier(rspecifier, NULL, NULL);
+  RspecifierOptions opts;
+  RspecifierType wt = ClassifyRspecifier(rspecifier, NULL, &opts);
   switch (wt) {
     case kArchiveRspecifier:
       impl_ = new SequentialTableReaderArchiveImpl<Holder>();
@@ -557,9 +777,17 @@ bool SequentialTableReader<Holder>::Open(const std::string &rspecifier) {
     delete impl_;
     impl_ = NULL;
     return false;  // sub-object will have printed warnings.
-  } else {
-    return true;
   }
+  if (opts.background) {
+    impl_ = new SequentialTableReaderBackgroundImpl<Holder>(
+        impl_);
+    if (!impl_->Open("")) {
+      // the rxfilename is ignored in that Open() call.
+      // It should only return false on code error.
+      return false;
+    }
+  }
+  return true;
 }
 
 template<class Holder>
@@ -667,13 +895,11 @@ class TableWriterArchiveImpl: public TableWriterImplBase<Holder> {
       case kUninitialized:
         break;
       case kWriteError:
-        KALDI_ERR << "TableWriter: opening stream, already open with write"
-                     " error.";
+        KALDI_ERR << "Opening stream, already open with write error.";
       case kOpen: default:
         if (!Close())  // throw because this error may not have been previously
           // detected by the user.
-          KALDI_ERR << "TableWriter: opening stream, error closing previously"
-                       " open stream.";
+          KALDI_ERR << "Opening stream, error closing previously open stream.";
     }
     wspecifier_ = wspecifier;
     WspecifierType ws = ClassifyWspecifier(wspecifier,
@@ -711,17 +937,17 @@ class TableWriterArchiveImpl: public TableWriterImplBase<Holder> {
       case kWriteError:
         // user should have known from the last
         // call to Write that there was a problem.
-        KALDI_WARN << "TableWriter: attempting to write to invalid stream.";
+        KALDI_WARN << "Attempting to write to invalid stream.";
         return false;
       case kUninitialized: default:
-        KALDI_ERR << "TableWriter: Write called on invalid stream";
+        KALDI_ERR << "Write called on invalid stream";
     }
     // state is now kOpen or kWriteError.
     if (!IsToken(key))  // e.g. empty string or has spaces...
-      KALDI_ERR << "TableWriter: using invalid key " << key;
+      KALDI_ERR << "Using invalid key " << key;
     output_.Stream() << key << ' ';
     if (!Holder::Write(output_.Stream(), opts_.binary, value)) {
-      KALDI_WARN << "TableWriter: write failure to "
+      KALDI_WARN << "Write failure to "
                  << PrintableWxfilename(archive_wxfilename_);
       state_ = kWriteError;
       return false;
@@ -743,23 +969,22 @@ class TableWriterArchiveImpl: public TableWriterImplBase<Holder> {
         output_.Stream().flush();  // Don't check error status.
         return;
       default:
-        KALDI_WARN << "TableWriter: Flush called on not-open writer.";
+        KALDI_WARN << "Flush called on not-open writer.";
     }
   }
 
   virtual bool Close() {
     if (!this->IsOpen() || !output_.IsOpen())
-      KALDI_ERR << "TableWriter: Close called on a stream that was not open."
+      KALDI_ERR << "Close called on a stream that was not open."
                 << this->IsOpen() << ", " << output_.IsOpen();
     bool close_success = output_.Close();
     if (!close_success) {
-      KALDI_WARN << "TableWriter: error closing stream: wspecifier is "
-                 << wspecifier_;
+      KALDI_WARN << "Error closing stream: wspecifier is " << wspecifier_;
       state_ = kUninitialized;
       return false;
     }
     if (state_ == kWriteError) {
-      KALDI_WARN << "TableWriter: closing writer in error state: wspecifier is "
+      KALDI_WARN << "Closing writer in error state: wspecifier is "
                  << wspecifier_;
       state_ = kUninitialized;
       return false;
@@ -858,10 +1083,10 @@ class TableWriterScriptImpl: public TableWriterImplBase<Holder> {
   // some errors may not be detected till we call Close().
   virtual bool Write(const std::string &key, const T &value) {
     if (!IsOpen())
-      KALDI_ERR << "TableWriter: Write called on invalid stream";
+      KALDI_ERR << "Write called on invalid stream";
 
     if (!IsToken(key))  // e.g. empty string or has spaces...
-      KALDI_ERR << "TableWriter: using invalid key " << key;
+      KALDI_ERR << "Using invalid key " << key;
 
     std::string wxfilename;
     if (!LookupFilename(key, &wxfilename)) {
@@ -869,7 +1094,7 @@ class TableWriterScriptImpl: public TableWriterImplBase<Holder> {
         return true;  // In permissive mode, it's as if we're writing to
                      // /dev/null for missing keys.
       } else {
-        KALDI_WARN << "TableWriter: script file "
+        KALDI_WARN << "Script file "
                    << PrintableRxfilename(script_rxfilename_)
                    << " has no entry for key " <<key;
         return false;
@@ -880,14 +1105,15 @@ class TableWriterScriptImpl: public TableWriterImplBase<Holder> {
       // Open in the text/binary mode (on Windows) given by member var. "binary"
       // (obtained from wspecifier), but do not put the binary-mode header (it
       // will be written, if needed, by the Holder::Write function.)
-      KALDI_WARN << "TableWriter: failed to open stream: "
+      KALDI_WARN << "Failed to open stream: "
                  << PrintableWxfilename(wxfilename);
       return false;
     }
     if (!Holder::Write(output.Stream(), opts_.binary, value)
         || !output.Close()) {
-      KALDI_WARN << "TableWriter: failed to write data to "
+      KALDI_WARN << "Failed to write data to "
                  << PrintableWxfilename(wxfilename);
+
       return false;
     }
     return true;
@@ -962,13 +1188,11 @@ class TableWriterBothImpl: public TableWriterImplBase<Holder> {
       case kUninitialized:
         break;
       case kWriteError:
-        KALDI_ERR << "TableWriter: opening stream, already open with write"
-                     " error.";
+        KALDI_ERR << "Opening stream, already open with write error.";
       case kOpen: default:
         if (!Close())  // throw because this error may not have been previously
                        // detected by user.
-          KALDI_ERR << "TableWriter: opening stream, error closing previously"
-                       " open stream.";
+          KALDI_ERR << "Opening stream, error closing previously open stream.";
     }
     wspecifier_ = wspecifier;
     WspecifierType ws = ClassifyWspecifier(wspecifier,
@@ -1027,14 +1251,14 @@ class TableWriterBothImpl: public TableWriterImplBase<Holder> {
       case kWriteError:
         // user should have known from the last
         // call to Write that there was a problem.  Warn about it.
-        KALDI_WARN << "TableWriter: writing to non-open TableWriter object.";
+        KALDI_WARN << "Writing to non-open TableWriter object.";
         return false;
       case kUninitialized: default:
-        KALDI_ERR << "TableWriter: Write called on invalid stream";
+        KALDI_ERR << "Write called on invalid stream";
     }
     // state is now kOpen or kWriteError.
     if (!IsToken(key))  // e.g. empty string or has spaces...
-      KALDI_ERR << "TableWriter: using invalid key " << key;
+      KALDI_ERR << "Using invalid key " << key;
     std::ostream &archive_os = archive_output_.Stream();
     archive_os << key << ' ';
     typename std::ostream::pos_type archive_os_pos = archive_os.tellp();
@@ -1051,21 +1275,21 @@ class TableWriterBothImpl: public TableWriterImplBase<Holder> {
     script_output_.Stream() << key << ' ' << offset_rxfilename << '\n';
 
     if (!Holder::Write(archive_output_.Stream(), opts_.binary, value)) {
-      KALDI_WARN << "TableWriter: write failure to"
+      KALDI_WARN << "Write failure to"
                  << PrintableWxfilename(archive_wxfilename_);
       state_ = kWriteError;
       return false;
     }
 
     if (script_os.fail()) {
-      KALDI_WARN << "TableWriter: write failure to script file detected: "
+      KALDI_WARN << "Write failure to script file detected: "
                  << PrintableWxfilename(script_wxfilename_);
       state_ = kWriteError;
       return false;
     }
 
     if (archive_os.fail()) {
-      KALDI_WARN << "TableWriter: write failure to archive file detected: "
+      KALDI_WARN << "Write failure to archive file detected: "
                  << PrintableWxfilename(archive_wxfilename_);
       state_ = kWriteError;
       return false;
@@ -1089,13 +1313,13 @@ class TableWriterBothImpl: public TableWriterImplBase<Holder> {
         script_output_.Stream().flush();  // Don't check error status.
         return;
       default:
-        KALDI_WARN << "TableWriter: Flush called on not-open writer.";
+        KALDI_WARN << "Flush called on not-open writer.";
     }
   }
 
   virtual bool Close() {
     if (!this->IsOpen())
-      KALDI_ERR << "TableWriter: Close called on a stream that was not open.";
+      KALDI_ERR << "Close called on a stream that was not open.";
     bool close_success = true;
     if (archive_output_.IsOpen())
       if (!archive_output_.Close()) close_success = false;
@@ -1113,8 +1337,8 @@ class TableWriterBothImpl: public TableWriterImplBase<Holder> {
   virtual ~TableWriterBothImpl() {
     if (!IsOpen()) return;
     else if (!Close())
-      KALDI_ERR << "At TableWriter destructor: Write failed or stream close"
-                   " failed: " << wspecifier_;
+      KALDI_ERR << "Write failed or stream close failed: "
+                << wspecifier_;
   }
 
  private:
@@ -1134,10 +1358,8 @@ class TableWriterBothImpl: public TableWriterImplBase<Holder> {
 
 template<class Holder>
 TableWriter<Holder>::TableWriter(const std::string &wspecifier): impl_(NULL) {
-  if (wspecifier != "" && !Open(wspecifier)) {
-    KALDI_ERR << "TableWriter: failed to write to "
-              << wspecifier;
-  }
+  if (wspecifier != "" && !Open(wspecifier))
+    KALDI_ERR << "Failed to write to " << wspecifier;
 }
 
 template<class Holder>
@@ -1150,7 +1372,7 @@ template<class Holder>
 bool TableWriter<Holder>::Open(const std::string &wspecifier) {
   if (IsOpen()) {
     if (!Close())  // call Close() yourself to suppress this exception.
-      KALDI_ERR << "TableWriter::Open, failed to close previously open writer.";
+      KALDI_ERR << "Failed to close previously open writer.";
   }
   KALDI_ASSERT(impl_ == NULL);
   WspecifierType wtype = ClassifyWspecifier(wspecifier, NULL, NULL, NULL);
@@ -1260,8 +1482,8 @@ template<class Holder> class RandomAccessTableReaderImplBase {
 // Note: the code for this this class is similar to TableWriterScriptImpl:
 // try to keep them in sync.
 template<class Holder>
-class RandomAccessTableReaderScriptImpl:public \
-                                       RandomAccessTableReaderImplBase<Holder> {
+class RandomAccessTableReaderScriptImpl:
+      public RandomAccessTableReaderImplBase<Holder> {
  public:
   typedef typename Holder::T T;
 
@@ -1512,8 +1734,9 @@ class RandomAccessTableReaderScriptImpl:public \
 // class and the actual Impl classes.
 // The child classes vary in the assumptions regarding sorting, etc.
 
-template<class Holder>  class RandomAccessTableReaderArchiveImplBase:public \
-                                       RandomAccessTableReaderImplBase<Holder> {
+template<class Holder>
+class RandomAccessTableReaderArchiveImplBase:
+      public RandomAccessTableReaderImplBase<Holder> {
  public:
   typedef typename Holder::T T;
 
@@ -1523,7 +1746,7 @@ template<class Holder>  class RandomAccessTableReaderArchiveImplBase:public \
   virtual bool Open(const std::string &rspecifier) {
     if (state_ != kUninitialized) {
       if (!this->Close())  // call Close() yourself to suppress this exception.
-        KALDI_ERR << "TableReader::Open, error closing previous input.";
+        KALDI_ERR << "Error closing previous input.";
     }
     rspecifier_ = rspecifier;
     RspecifierType rs = ClassifyRspecifier(rspecifier, &archive_rxfilename_,
@@ -1537,7 +1760,7 @@ template<class Holder>  class RandomAccessTableReaderArchiveImplBase:public \
     else
       ans = input_.OpenTextMode(archive_rxfilename_);
     if (!ans) {  // header.
-      KALDI_WARN << "TableReader: failed to open stream "
+      KALDI_WARN << "Failed to open stream "
                  << PrintableRxfilename(archive_rxfilename_);
       state_ = kUninitialized;  // Failure on Open
       return false;  // User should print the error message.
@@ -1554,7 +1777,7 @@ template<class Holder>  class RandomAccessTableReaderArchiveImplBase:public \
   // it sets the state to kError or kEof.
   void ReadNextObject() {
     if (state_ != kNoObject)
-      KALDI_ERR << "TableReader: ReadNextObject() called from wrong state.";
+      KALDI_ERR << "ReadNextObject() called from wrong state.";
     // Code error somewhere in this class or a child class.
     std::istream &is = input_.Stream();
     is.clear();  // Clear any fail bits that may have been set... just in case
@@ -1667,8 +1890,9 @@ template<class Holder>  class RandomAccessTableReaderArchiveImplBase:public \
 // RandomAccessTableReaderArchiveImplBase which implements the common parts of
 // RandomAccessTableReader that are used when it's an archive we're reading from
 
-template<class Holder>  class RandomAccessTableReaderDSortedArchiveImpl:public \
-                                RandomAccessTableReaderArchiveImplBase<Holder> {
+template<class Holder>
+class RandomAccessTableReaderDSortedArchiveImpl:
+      public RandomAccessTableReaderArchiveImplBase<Holder> {
   using RandomAccessTableReaderArchiveImplBase<Holder>::kUninitialized;
   using RandomAccessTableReaderArchiveImplBase<Holder>::kHaveObject;
   using RandomAccessTableReaderArchiveImplBase<Holder>::kNoObject;
@@ -1784,8 +2008,9 @@ template<class Holder>  class RandomAccessTableReaderDSortedArchiveImpl:public \
 // RandomAccessTableReaderSortedArchiveImpl is for random-access reading of
 // archives when the user specified the sorted (s) option but not the
 // called-sorted (cs) options.
-template<class Holder>  class RandomAccessTableReaderSortedArchiveImpl:public \
-                                RandomAccessTableReaderArchiveImplBase<Holder> {
+template<class Holder>
+class RandomAccessTableReaderSortedArchiveImpl:
+      public RandomAccessTableReaderArchiveImplBase<Holder> {
   using RandomAccessTableReaderArchiveImplBase<Holder>::kUninitialized;
   using RandomAccessTableReaderArchiveImplBase<Holder>::kHaveObject;
   using RandomAccessTableReaderArchiveImplBase<Holder>::kNoObject;
@@ -1976,8 +2201,9 @@ template<class Holder>  class RandomAccessTableReaderSortedArchiveImpl:public \
 // order.  However, if you ask it for a key that's not present it will have to
 // read the archive till the end and store it all in memory.
 
-template<class Holder>  class RandomAccessTableReaderUnsortedArchiveImpl:public\
-                                RandomAccessTableReaderArchiveImplBase<Holder> {
+template<class Holder>
+class RandomAccessTableReaderUnsortedArchiveImpl:
+      public RandomAccessTableReaderArchiveImplBase<Holder> {
   using RandomAccessTableReaderArchiveImplBase<Holder>::kUninitialized;
   using RandomAccessTableReaderArchiveImplBase<Holder>::kHaveObject;
   using RandomAccessTableReaderArchiveImplBase<Holder>::kNoObject;
@@ -2161,14 +2387,13 @@ bool RandomAccessTableReader<Holder>::Open(const std::string &rspecifier) {
                  << rspecifier;
       return false;
   }
-  if (impl_->Open(rspecifier)) {
-    return true;
-  } else {
-    // Warning will already have been printed.
+  if (!impl_->Open(rspecifier)) {
+    // A warning will already have been printed.
     delete impl_;
     impl_ = NULL;
     return false;
   }
+  return true;
 }
 
 template<class Holder>

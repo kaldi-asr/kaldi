@@ -152,8 +152,8 @@ bin fstbin gmmbin fgmmbin sgmmbin sgmm2bin featbin nnetbin nnet2bin nnet3bin cha
 #2)The libraries have inter-dependencies
 base:
 matrix : base
-util: base matrix
-thread: util matrix base
+thread : base
+util: base matrix thread
 feat: base matrix util gmm transform tree thread
 tree: base util matrix
 optimization: base matrix
