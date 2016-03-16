@@ -20,6 +20,7 @@ use_gpu=true
 truncate_deriv_weights=0  # can be used to set to zero the weights of derivs from frames
                           # near the edges.  (counts subsampled frames).
 apply_deriv_weights=true
+use_frame_shift=true
 run_diagnostics=true
 learning_rate=0.00002
 max_param_change=2.0
@@ -230,6 +231,8 @@ while [ $x -lt $num_iters ]; do
 
 
     echo "Training neural net (pass $x)"
+      
+    cache_read_opt="--read-cache=$dir/cache.$x"
     
     ( # this sub-shell is so that when we "wait" below,
       # we only wait for the training jobs that we just spawned,
@@ -242,11 +245,23 @@ while [ $x -lt $num_iters ]; do
         k=$[$num_archives_processed + $n - 1]; # k is a zero-based index that we'll derive
                                                # the other indexes from.
         archive=$[($k%$num_archives)+1]; # work out the 1-based archive index.
-
-        if [ $[num_archives % frame_subsampling_factor] -ne 0 ]; then
-          frame_shift=$[k % frame_subsampling_factor]
+        
+        if [ $n -eq 1 ]; then
+          # an option for writing cache (storing pairs of nnet-computations and
+          # computation-requests) during training.
+          cache_write_opt=" --write-cache=$dir/cache.$[$x+1]"
         else
-          frame_shift=$[(k + k/num_archives) % frame_subsampling_factor]
+          cache_write_opt=""
+        fi
+
+        if $use_frame_shift; then
+          if [ $[num_archives % frame_subsampling_factor] -ne 0 ]; then
+            frame_shift=$[k % frame_subsampling_factor]
+          else
+            frame_shift=$[(k + k/num_archives) % frame_subsampling_factor]
+          fi
+        else
+          frame_shift=0
         fi
 
         #archive=$[(($n+($x*$num_jobs_nnet))%$num_archives)+1]
@@ -257,7 +272,7 @@ while [ $x -lt $num_iters ]; do
         fi
 
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
-          nnet3-discriminative-train \
+          nnet3-discriminative-train $cache_read_opt $cache_write_opt \
           --apply-deriv-weights=$apply_deriv_weights \
           $parallel_train_opts $deriv_time_opts \
           --max-param-change=$this_max_param_change \

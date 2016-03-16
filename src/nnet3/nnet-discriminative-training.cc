@@ -46,6 +46,16 @@ NnetDiscriminativeTrainer::NnetDiscriminativeTrainer(
                                // natural-gradient updates.
     SetZero(is_gradient, delta_nnet_);
   }
+  if (opts.nnet_config.read_cache != "") {
+    bool binary;
+    try {
+      Input ki(opts.nnet_config.read_cache, &binary);
+      compiler_.ReadCache(ki.Stream(), binary);
+    } catch (...) {
+      KALDI_WARN << "Could not open cached computation. "
+                    "Probably this is the first training iteration.";
+    }
+  } 
   log_priors_.ApplyLog();
 }
 
@@ -123,16 +133,16 @@ void NnetDiscriminativeTrainer::ProcessOutputs(const NnetDiscriminativeExample &
                                kUndefined);
 
     discriminative::DiscriminativeObjectiveInfo stats(opts_.discriminative_config);
-    
+
     if (objf_info_.count(sup.name) == 0) {
       objf_info_[sup.name].stats.Configure(opts_.discriminative_config);
       objf_info_[sup.name].stats.Reset();
     }
-
+    
     ComputeDiscriminativeObjfAndDeriv(opts_.discriminative_config, 
                                       tmodel_, log_priors_,
                                       sup.supervision, nnet_output,
-                                      &(objf_info_[sup.name].stats), 
+                                      &stats, 
                                       &nnet_output_deriv,
                                       (use_xent ? &xent_deriv : NULL));
     
@@ -239,6 +249,11 @@ bool DiscriminativeObjectiveFunctionInfo::PrintTotalStats(const std::string &nam
 
 NnetDiscriminativeTrainer::~NnetDiscriminativeTrainer() {
   delete delta_nnet_;
+  
+  if (opts_.nnet_config.write_cache != "") {
+    Output ko(opts_.nnet_config.write_cache, opts_.nnet_config.binary_write_cache);
+    compiler_.WriteCache(ko.Stream(), opts_.nnet_config.binary_write_cache);
+  } 
 }
 
 
