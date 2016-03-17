@@ -101,5 +101,9 @@ GSYMS
 /tools/mpg123
 /tools/mpg123-1.21.0.tar.bz2
 /tools/mpg123-1.21.0
+/tools/pthreads
+/tools/pthreads*.zip
 /tools/sequitur
 /tools/srilm.tgz
+
+/kaldiwin_vs*
