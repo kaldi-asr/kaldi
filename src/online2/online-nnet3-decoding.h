@@ -1,6 +1,7 @@
 // online2/online-nnet3-decoding.h
 
 // Copyright 2014  Johns Hopkins University (author: Daniel Povey)
+//           2016  Api.ai (Author: Ilya Platonov)
 
 // See ../../COPYING for clarification regarding multiple authors
 //

@@ -1,6 +1,7 @@
 // nnet3/online-nnet3-decodable.h
 
 // Copyright  2014  Johns Hopkins Universithy (author: Daniel Povey)
+//            2016  Api.ai (Author: Ilya Platonov)
 
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -59,7 +60,7 @@ struct DecodableNnet3OnlineOptions {
                    "Maximum batch size we use in neural-network decodable object, "
                    "in cases where we are not constrained by currently available "
                    "frames (this will rarely make a difference)");
-    // copy-paste from nnet3 decoder
+
     opts->Register("frame-subsampling-factor", &frame_subsampling_factor,
                        "Required if the frame-rate of the output (e.g. in 'chain' "
                        "models) is less than the frame-rate of the original "

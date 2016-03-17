@@ -109,11 +109,12 @@ fi
 
 
 if $threaded; then
-  decoder=online2-wav-nnet2-latgen-threaded
+  echo "No threaded support" && exit 1;
+#  decoder=online2-wav-nnet2-latgen-threaded
     # note: the decoder actually uses 4 threads, but the average usage will normally
     # be more like 2.
-  parallel_opts="--num-threads 2"
-  opts="--modify-ivector-config=$modify_ivector_config --verbose=1"
+#  parallel_opts="--num-threads 2"
+#  opts="--modify-ivector-config=$modify_ivector_config --verbose=1"
 else
   decoder=online2-wav-nnet3-latgen-faster
   parallel_opts=

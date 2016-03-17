@@ -1,6 +1,7 @@
 // online2bin/online2-wav-nnet3-latgen-faster.cc
 
 // Copyright 2014  Johns Hopkins University (author: Daniel Povey)
+//           2016  Api.ai (Author: Ilya Platonov)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -81,16 +82,14 @@ int main(int argc, char *argv[]) {
     
     const char *usage =
         "Reads in wav file(s) and simulates online decoding with neural nets\n"
-        "(nnet2 setup), with optional iVector-based speaker adaptation and\n"
+        "(nnet3 setup), with optional iVector-based speaker adaptation and\n"
         "optional endpointing.  Note: some configuration values and inputs are\n"
         "set via config files whose filenames are passed as options\n"
         "\n"
-        "Usage: online2-wav-nnet2-latgen-faster [options] <nnet2-in> <fst-in> "
+        "Usage: online2-wav-nnet3-latgen-faster [options] <nnet3-in> <fst-in> "
         "<spk2utt-rspecifier> <wav-rspecifier> <lattice-wspecifier>\n"
         "The spk2utt-rspecifier can just be <utterance-id> <utterance-id> if\n"
-        "you want to decode utterance by utterance.\n"
-        "See egs/rm/s5/local/run_online_decoding_nnet2.sh for example\n"
-        "See also online2-wav-nnet2-latgen-threaded\n";
+        "you want to decode utterance by utterance.\n";
     
     ParseOptions po(usage);
     
