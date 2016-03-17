@@ -1465,7 +1465,9 @@ SubMatrix<Real>::SubMatrix(const MatrixBase<Real> &M,
   MatrixBase<Real>::num_rows_ = r;
   MatrixBase<Real>::num_cols_ = c;
   MatrixBase<Real>::stride_ = M.Stride();
-  MatrixBase<Real>::data_ = M.Data_workaround() + co + ro * M.Stride();
+  MatrixBase<Real>::data_ = M.Data_workaround() +
+      static_cast<size_t>(co) +
+      static_cast<size_t>(ro) * static_cast<size_t>(M.Stride());
 }
 
 
