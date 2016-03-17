@@ -182,7 +182,7 @@ inline void ReadIntegerPairVector(std::istream &is, bool binary,
         is >> next_t2 >> std::ws;
         if (is.fail()) goto bad;
         else
-            tmp_v.push_back(std::make_pair<T, T>((T)next_t1, (T)next_t2));
+            tmp_v.push_back(std::pair<T, T>((T)next_t1, (T)next_t2));
       }
     }
     is.get();  // get the final ']'.
