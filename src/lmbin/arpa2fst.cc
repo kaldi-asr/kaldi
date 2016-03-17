@@ -82,16 +82,9 @@ int main(int argc, char *argv[]) {
                   << read_syms_filename;
 
       options.oov_handling = ArpaParseOptions::kSkipNGram;
-      const int64 kNoSymbol = fst::SymbolTable::kNoSymbol;
-      if ((options.bos_symbol = symbols->Find(bos_symbol)) == kNoSymbol)
-        KALDI_ERR << "Symbol table " << read_syms_filename
-                  << " has no symbol for " << bos_symbol;
-      if ((options.eos_symbol = symbols->Find(eos_symbol)) == kNoSymbol)
-        KALDI_ERR << "Symbol table " << read_syms_filename
-                  << " has no symbol for " << eos_symbol;
       if (!disambig_symbol.empty()) {
         disambig_symbol_id = symbols->Find(disambig_symbol);
-        if (disambig_symbol_id == kNoSymbol)
+        if (disambig_symbol_id == fst::SymbolTable::kNoSymbol)
           KALDI_ERR << "Symbol table " << read_syms_filename
                     << " has no symbol for " << disambig_symbol;
       }
@@ -103,9 +96,11 @@ int main(int argc, char *argv[]) {
       if (!disambig_symbol.empty()) {
         disambig_symbol_id = symbols->AddSymbol(disambig_symbol);
       }
-      options.bos_symbol = symbols->AddSymbol(bos_symbol);
-      options.eos_symbol = symbols->AddSymbol(eos_symbol);
     }
+
+    // Add or use existing BOS and EOS.
+    options.bos_symbol = symbols->AddSymbol(bos_symbol);
+    options.eos_symbol = symbols->AddSymbol(eos_symbol);
 
     // If producing new (not reading existing) symbols and not saving them,
     // need to keep symbols with FST, otherwise they would be lost.
