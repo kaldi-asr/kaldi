@@ -87,7 +87,7 @@ class OptimizedHistKey {
   template<class InputIt>
   OptimizedHistKey(InputIt begin, InputIt end) : data_(0) {
     for (uint32 shift = 0; begin != end; ++begin, shift += kShift) {
-      data_ |= *begin << shift;
+      data_ |= static_cast<uint64>(*begin) << shift;
     }
   }
   OptimizedHistKey() : data_(0) { }
