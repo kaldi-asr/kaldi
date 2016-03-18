@@ -25,7 +25,11 @@ OBJFILES = nnet-common.o nnet-compile.o nnet-component-itf.o \
   nnet-diagnostics.o nnet-combine.o nnet-am-decodable-simple.o \
   nnet-optimize-utils.o nnet-chain-example.o \
   nnet-chain-training.o nnet-chain-diagnostics.o nnet-chain-combine.o \
-  online-nnet3-decodable.o
+	discriminative-supervision.o nnet-discriminative-example.o \
+	nnet-discriminative-diagnostics.o \
+	discriminative-training.o nnet-discriminative-training.o \
+	online-nnet3-decodable.o
+
 
 LIBNAME = kaldi-nnet3
 
@@ -33,6 +37,6 @@ ADDLIBS = ../chain/kaldi-chain.a ../thread/kaldi-thread.a \
        ../lat/kaldi-lat.a ../gmm/kaldi-gmm.a \
       ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a ../transform/kaldi-transform.a \
       ../cudamatrix/kaldi-cudamatrix.a ../matrix/kaldi-matrix.a \
-      ../base/kaldi-base.a  ../util/kaldi-util.a
+      ../util/kaldi-util.a ../thread/kaldi-thread.a ../base/kaldi-base.a
 
 include ../makefiles/default_rules.mk

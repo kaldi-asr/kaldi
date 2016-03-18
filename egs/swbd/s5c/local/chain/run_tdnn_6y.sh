@@ -4,6 +4,19 @@
 # a higher learning-rate factor for the final xent layer (it was otherwise
 # training too slowly).
 
+# WER results are inconclusive, but objective values are encouraging.
+# We'll keep the change as it makes sense.
+# local/chain/compare_wer.sh 6w 6y
+# System                       6w        6y
+# WER on train_dev(tg)      15.33     15.36
+# WER on train_dev(fg)      14.27     14.19
+# WER on eval2000(tg)        17.3      17.2
+# WER on eval2000(fg)        15.6      15.8
+# Final train prob       -0.10287 -0.102139
+# Final valid prob      -0.120451 -0.119654
+# Final train prob (xent)      -1.63586  -1.55598
+# Final valid prob (xent)      -1.67173  -1.58821
+
 # 6w is as 6v (a new tdnn-based recipe), but using 1.5 million not 1.2 million
 # frames per iter (and of course re-dumping the egs).
 

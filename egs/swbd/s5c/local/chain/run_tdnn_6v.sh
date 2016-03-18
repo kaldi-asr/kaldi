@@ -4,9 +4,24 @@
 # Otherwise we make everything as similar as possible to 6h.
 # The ReLU dimension, at 576, is chosen to make the number of parameters about
 # the same as 6h.
-#
-# this is same as v2 script but with xent-regularization
-# it has a different splicing configuration
+
+# great improvement!
+# local/chain/compare_wer.sh 6h 6v
+# System                       6h        6v
+# WER on train_dev(tg)      15.46     15.00
+# WER on train_dev(fg)      14.28     13.91
+# WER on eval2000(tg)        17.4      17.2
+# WER on eval2000(fg)        15.7      15.7
+
+# the following objf values are computed on the last iter (323), because due to
+# a script bug, now fixed, the 'final' ones were not computed in 6v.
+# note: in this run the xent learning rate was too slow.
+# 323 train prob        -0.129285     -0.120026
+# 323 valid prob        -0.151648     -0.140628
+# 323 train prob (xent)  -1.4443      -1.5431
+# 323 valid prob (xent)  -1.51731     -1.56975
+
+
 set -e
 
 # configs for 'chain'

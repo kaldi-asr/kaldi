@@ -93,7 +93,7 @@ def GetArgs():
                         help="Weight of regularization function which is the"
                         " cross-entropy cost the outputs.")
     parser.add_argument("--chain.right-tolerance", type=int, dest='right_tolerance',
-                        default = 10, help="")
+                        default = 5, help="")
     parser.add_argument("--chain.left-tolerance", type=int, dest='left_tolerance',
                         default = 5, help="")
     parser.add_argument("--chain.leaky-hmm-coefficient", type=float, dest='leaky_hmm_coefficient',
@@ -362,7 +362,7 @@ def TrainNewModels(dir, iter, num_jobs, num_archives_processed, num_archives,
   --print-interval=10 --momentum={momentum} \
   --max-param-change={max_param_change} \
    "{raw_model}" {dir}/den.fst \
-  "ark:nnet3-chain-copy-egs --truncate-deriv-weights={trunc_deriv} --frame-shift={fr_shft} ark:{egs_dir}/cegs.{archive_index}.ark ark:- | nnet3-chain-shuffle-egs --buffer-size={shuffle_buffer_size} --srand={iter} ark:- ark:-| nnet3-chain-merge-egs --minibatch-size={num_chunk_per_minibatch} ark:- ark:- |" \
+  "ark,bg:nnet3-chain-copy-egs --truncate-deriv-weights={trunc_deriv} --frame-shift={fr_shft} ark:{egs_dir}/cegs.{archive_index}.ark ark:- | nnet3-chain-shuffle-egs --buffer-size={shuffle_buffer_size} --srand={iter} ark:- ark:-| nnet3-chain-merge-egs --minibatch-size={num_chunk_per_minibatch} ark:- ark:- |" \
   {dir}/{next_iter}.{job}.raw
           """.format(command = run_opts.command,
                      train_queue_opt = run_opts.train_queue_opt,
@@ -387,7 +387,7 @@ def TrainNewModels(dir, iter, num_jobs, num_archives_processed, num_archives,
     for process in processes:
         process.wait()
         [stdout_value, stderr_value] = process.communicate()
-        if stderr_value != '':
+        if stderr_value.strip() != '':
             print(stderr_value)
         if process.returncode != 0:
             all_success = False

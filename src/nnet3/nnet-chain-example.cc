@@ -25,49 +25,6 @@ namespace kaldi {
 namespace nnet3 {
 
 
-// writes compressed as unsigned char a vector 'vec' that is required to have
-// values between 0 and 1.
-static inline void WriteVectorAsChar(std::ostream &os,
-                                     bool binary,
-                                     const VectorBase<BaseFloat> &vec) {
-  if (binary) {
-    int32 dim = vec.Dim();
-    std::vector<unsigned char> char_vec(dim);
-    const BaseFloat *data = vec.Data();
-    for (int32 i = 0; i < dim; i++) {
-      BaseFloat value = data[i];
-      KALDI_ASSERT(value >= 0.0 && value <= 1.0);
-      // below, the adding 0.5 is done so that we round to the closest integer
-      // rather than rounding down (since static_cast will round down).
-      char_vec[i] = static_cast<unsigned char>(255.0 * value + 0.5);
-    }
-    WriteIntegerVector(os, binary, char_vec);
-  } else {
-    // the regular floating-point format will be more readable for text mode.
-    vec.Write(os, binary);
-  }
-}
-
-// reads data written by WriteVectorAsChar.
-static inline void ReadVectorAsChar(std::istream &is,
-                                    bool binary,
-                                    Vector<BaseFloat> *vec) {
-  if (binary) {
-    BaseFloat scale = 1.0 / 255.0;
-    std::vector<unsigned char> char_vec;
-    ReadIntegerVector(is, binary, &char_vec);
-    int32 dim = char_vec.size();
-    vec->Resize(dim, kUndefined);
-    BaseFloat *data = vec->Data();
-    for (int32 i = 0; i < dim; i++)
-      data[i] = scale * char_vec[i];
-  } else {
-    vec->Read(is, binary);
-  }
-}
-
-
-
 void NnetChainSupervision::Write(std::ostream &os, bool binary) const {
   CheckDim();
   WriteToken(os, binary, "<NnetChainSup>");

@@ -316,7 +316,7 @@ void ComputationGraphBuilder::ExplainWhyAllOutputsNotComputable() const {
   for (int32 cindex_id = 0; iter != end; ++iter,++cindex_id) {
     int32 network_node = iter->first;
     ComputableInfo c = static_cast<ComputableInfo>(computable_info_[cindex_id]);
-    if (!nnet_.IsOutputNode(network_node)) {
+    if (nnet_.IsOutputNode(network_node)) {
       num_outputs_total++;
       if (c != kComputable)
         outputs_not_computable.push_back(cindex_id);

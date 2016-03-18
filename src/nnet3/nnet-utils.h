@@ -110,15 +110,39 @@ void ComputeSimpleNnetContext(const Nnet &nnet,
                               int32 *right_context);
 
 
-/// Sets the learning rate for all the components in the nnet to this value.
+/// Sets the underlying learning rate for all the components in the nnet to this
+/// value.  this will get multiplied by the individual learning-rate-factors to
+/// produce the actual learning rates.
 void SetLearningRate(BaseFloat learning_rate,
                      Nnet *nnet);
 
+/// Scales the actual learning rate for all the components in the nnet
+/// by this factor
+void ScaleLearningRate(BaseFloat learning_rate_scale,
+                       Nnet *nnet);
+
+/// Sets the actual learning rates for all the updatable components in the
+/// neural net to the values in 'learning_rates' vector
+/// (one for each updatable component).
+void SetLearningRates(const Vector<BaseFloat> &learning_rates,
+                      Nnet *nnet);
+
+/// Get the learning rates for all the updatable components in the neural net 
+/// (the output must have dim equal to the number of updatable components).
+void GetLearningRates(const Nnet &nnet,
+                      Vector<BaseFloat> *learning_rates);
+
 /// Scales the nnet parameters and stats by this scale.
 void ScaleNnet(BaseFloat scale, Nnet *nnet);
+  
+/// Scales the parameters of each of the updatable components.
+/// Here, scales is a vector of size equal to the number of updatable
+/// components
+void ScaleNnetComponents(const Vector<BaseFloat> &scales,
+                         Nnet *nnet);
 
 /// Does *dest += alpha * src (affects nnet parameters and
-///  stored stats).
+/// stored stats).
 void AddNnet(const Nnet &src, BaseFloat alpha, Nnet *dest);
 
 /// Returns the total of the number of parameters in the updatable components of

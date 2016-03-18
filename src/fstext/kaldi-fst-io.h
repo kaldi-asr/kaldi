@@ -110,6 +110,10 @@ class VectorFstTplHolder {
     }
   }
 
+  void Swap(VectorFstTplHolder<Arc> *other) {
+    std::swap(t_, other->t_);
+  }
+
   ~VectorFstTplHolder() { Clear(); }
   // No destructor.  Assignment and
   // copy constructor take their default implementations.

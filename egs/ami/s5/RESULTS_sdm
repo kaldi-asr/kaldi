@@ -99,7 +99,7 @@ for x in exp/$mic/nnet2_online/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && gr
 
 # BLSTM + clean alignments
 #  local/nnet3/run_blstm.sh --mic sdm1 \
-#    --chunk-right-context 20 \ 
+#    --chunk-right-context 20 \
 #    --use-sat-alignments true \
 #    --use-ihm-ali true
 # Note: Chunk right context of 20 limits the latency of the acoustic model to
@@ -107,6 +107,14 @@ for x in exp/$mic/nnet2_online/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && gr
 
 %WER 38.5 | 14828 94514 | 66.6 22.7 10.6 5.2 38.5 63.7 | -25.569 | exp/sdm1_cleanali/nnet3/lstm_sp_bidirectional_ld0/decode_dev/ascore_11/dev_hires_o4.ctm.filt.sys
 %WER 41.8 | 12828 89977 | 62.5 24.6 12.9 4.3 41.8 70.8 | -24.813 | exp/sdm1_cleanali/nnet3/lstm_sp_bidirectional_ld0/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys
+
+##################################
+# chain model results
+# local/chain/run_tdnn_6z.sh --mic sdm1 (3/12/2016)
+# Total training time is 4:21:29
+%WER 44.6 | 13985 94494 | 58.9 19.0 22.1 3.4 44.6 74.2 | 0.583 | exp/sdm1/chain/tdnn_sp/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
+%WER 48.7 | 13870 89941 | 54.7 20.3 25.0 3.4 48.7 71.0 | 0.552 | exp/sdm1/chain/tdnn_sp/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
+
 
 #--------------------------------------------------------------------------------------------------------------------------------------------
 # Karel, JSALT 2015, (28.7.2015)

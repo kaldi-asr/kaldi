@@ -86,7 +86,7 @@ class MultiThreadable {
     // function so the one in the child class will be called.
     return NULL;
   }
-  
+
  public:
   // Do not redeclare thread_id_ and num_threads_ in derived classes.
   int32 thread_id_;  // 0 <= thread_id_ < num_threads_
@@ -101,13 +101,13 @@ class ExampleClass: public MultiThreadable {
  public:
   ExampleClass(int32 *foo); // Typically there will be an initializer that
   // takes arguments.
-  
+
   ExampleClass(const ExampleClass &other); // A copy constructor is also needed;
   // some example classes use the default version of this.
 
   void operator() () {
     // Does the main function of the class.  This
-    // function will typically want to look at the values of the 
+    // function will typically want to look at the values of the
     // member variables thread_id_ and num_threads_, inherited
     // from MultiThreadable.
   }

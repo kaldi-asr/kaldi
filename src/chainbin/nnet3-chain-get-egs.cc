@@ -25,6 +25,7 @@
 #include "hmm/posterior.h"
 #include "nnet3/nnet-example.h"
 #include "nnet3/nnet-chain-example.h"
+#include "nnet3/nnet-example-utils.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -206,35 +207,6 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
   }
   return true;
 }
-
-void RoundUpNumFrames(int32 frame_subsampling_factor,
-                      int32 *num_frames,
-                      int32 *num_frames_overlap) {
-  if (*num_frames % frame_subsampling_factor != 0) {
-    int32 new_num_frames = frame_subsampling_factor *
-        (*num_frames / frame_subsampling_factor + 1);
-    KALDI_LOG << "Rounding up --num-frames=" << (*num_frames)
-              << " to a multiple of --frame-subsampling-factor="
-              << frame_subsampling_factor
-              << ", now --num-frames=" << new_num_frames;
-    *num_frames = new_num_frames;
-  }
-  if (*num_frames_overlap % frame_subsampling_factor != 0) {
-    int32 new_num_frames_overlap = frame_subsampling_factor *
-        (*num_frames_overlap / frame_subsampling_factor + 1);
-    KALDI_LOG << "Rounding up --num-frames-overlap=" << (*num_frames_overlap)
-              << " to a multiple of --frame-subsampling-factor="
-              << frame_subsampling_factor
-              << ", now --num-frames-overlap=" << new_num_frames_overlap;
-    *num_frames_overlap = new_num_frames_overlap;
-  }
-  if (*num_frames_overlap < 0 || *num_frames_overlap >= *num_frames) {
-    KALDI_ERR << "--num-frames-overlap=" << (*num_frames_overlap) << " < "
-              << "--num-frames=" << (*num_frames);
-  }
-
-}
-
 
 } // namespace nnet2
 } // namespace kaldi

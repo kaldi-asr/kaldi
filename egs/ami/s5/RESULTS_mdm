@@ -36,7 +36,7 @@ for x in exp/$mic/nnet2_online/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && gr
   #dev
     %WER 40.9 | 15965 94490 | 64.6 19.9 15.5 5.5 40.9 61.9 | -26.104 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch4_dev_utt/ascore_12/dev_hires_o4.ctm.filt.sys
     %WER 40.7 | 13961 94495 | 64.4 18.8 16.8 5.0 40.7 70.4 | -26.622 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch4_dev_utt_offline/ascore_13/dev_hires_o4.ctm.filt.sys
-  #eval  
+  #eval
     %WER 44.2 | 13577 89767 | 61.1 22.3 16.6 5.3 44.2 68.9 | -25.003 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch4_eval_utt/ascore_11/eval_hires_o4.ctm.filt.sys
     %WER 44.0 | 13448 89769 | 60.8 21.4 17.8 4.9 44.0 69.6 | -25.331 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch4_eval_utt_offline/ascore_12/eval_hires_o4.ctm.filt.sys
 
@@ -58,8 +58,8 @@ for x in exp/$mic/nnet2_online/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && gr
     %WER 40.9 | 15965 94490 | 64.6 19.9 15.5 5.5 40.9 61.9 | -26.104 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch4_dev_utt/ascore_12/dev_hires_o4.ctm.filt.sys
     %WER 40.7 | 13961 94495 | 64.4 18.8 16.8 5.0 40.7 70.4 | -26.622 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch4_dev_utt_offline/ascore_13/dev_hires_o4.ctm.filt.sys
 
-  #eval 
-    # epoch 0 
+  #eval
+    # epoch 0
     %WER 45.4 | 13992 89799 | 60.1 26.4 13.5 5.5 45.4 67.3 | -23.969 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch0_eval_utt/ascore_12/eval_hires_o4.ctm.filt.sys
     %WER 45.1 | 13893 89804 | 60.3 25.9 13.9 5.4 45.1 67.9 | -24.110 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch0_eval_utt_offline/ascore_12/eval_hires_o4.ctm.filt.sys
     # epoch 1
@@ -74,14 +74,14 @@ for x in exp/$mic/nnet2_online/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && gr
     # epoch 4
     %WER 44.2 | 13577 89767 | 61.1 22.3 16.6 5.3 44.2 68.9 | -25.003 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch4_eval_utt/ascore_11/eval_hires_o4.ctm.filt.sys
     %WER 44.0 | 13448 89769 | 60.8 21.4 17.8 4.9 44.0 69.6 | -25.331 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch4_eval_utt_offline/ascore_12/eval_hires_o4.ctm.filt.sys
-   
+
 
 #------------------------------------------------------------------------------------------------------------------------------------
 # Nnet3 systems
 
 # BLSTM + clean alignments
 #  local/nnet3/run_blstm.sh --mic mdm8\
-#    --chunk-right-context 20 \ 
+#    --chunk-right-context 20 \
 #    --use-sat-alignments true \
 #    --use-ihm-ali true
 # Note: Chunk right context of 20 limits the latency of the acoustic model to
@@ -89,7 +89,14 @@ for x in exp/$mic/nnet2_online/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && gr
 
 
   %WER 35.5 | 15221 94509 | 69.9 21.0 9.1 5.4 35.5 61.4 | -26.440 | exp/mdm8_cleanali/nnet3/lstm_bidirectional_ld0/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys
-  %WER 38.3 | 13423 89786 | 65.8 22.0 12.2 4.1 38.3 66.3 | -26.016 | exp/mdm8_cleanali/nnet3/lstm_bidirectional_ld0/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys 
+  %WER 38.3 | 13423 89786 | 65.8 22.0 12.2 4.1 38.3 66.3 | -26.016 | exp/mdm8_cleanali/nnet3/lstm_bidirectional_ld0/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys
+
+
+################################# Chain Systems ######################
+# TDNN + clean alignments
+#  local/chain/run_tdnn_6z.sh --mic mdm8 --use-ihm-ali true
+  %WER 39.9 | 14631 94488 | 63.6 17.3 19.1 3.5 39.9 68.4 | 0.613 | exp/mdm8_cleanali/chain/tdnn_sp/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
+  %WER 43.8 | 14091 89968 | 59.3 17.8 23.0 3.0 43.8 67.3 | 0.589 | exp/mdm8_cleanali/chain/tdnn_sp/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
 #--------------------------------------------------------------------------------------------------------------------------------------------
 # Karel, JSALT 2015, (31.7.2015)
 # nnet1, MFCC-LDA-MLLT-DNN system (local/nnet/run_dnn_lda_mllt.sh),

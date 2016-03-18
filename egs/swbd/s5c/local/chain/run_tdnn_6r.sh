@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 # _6r is as _6q, but adding --self-repair-scale 0.00001
 # --xent-separate-forward-affine=true.  the appropriate normal-frame-rate
 # baseline for this is 6h (since it has --xent-separate-forward-affine=true),
