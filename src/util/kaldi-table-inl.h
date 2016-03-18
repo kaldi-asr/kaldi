@@ -2,6 +2,7 @@
 
 // Copyright 2009-2011    Microsoft Corporation
 //                2013    Johns Hopkins University (author: Daniel Povey)
+//                2016    Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -221,11 +222,13 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
   }
 
   virtual bool Close() {
-    // Close() will succeed if the stream was not in an error
-    // state.  To clean up, it also closes the Input objects if
-    // they're open.
+    // To clean up, Close() also closes the Input objects if
+    // they're open. It will succeed if the stream was not in an error state,
+    // and the script_input isn't in an error state, 
+    // if we've found eof in the script file.
+    int32 status = 0;
     if (script_input_.IsOpen())
-      script_input_.Close();
+      status = script_input_.Close();
     if (data_input_.IsOpen())
       data_input_.Close();
     if (state_ == kLoadSucceeded)
@@ -234,7 +237,7 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
       KALDI_ERR << "Close() called on input that was not open.";
     StateType old_state = state_;
     state_ = kUninitialized;
-    if (old_state == kError) {
+    if (old_state == kError || (old_state == kEof && status != 0)) {
       if (opts_.permissive) {
         KALDI_WARN << "Close() called on scp file with read error, ignoring the"
             " error because permissive mode specified.";
@@ -248,13 +251,9 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
   }
 
   virtual ~SequentialTableReaderScriptImpl() {
-    if (state_ == kError)
-      KALDI_ERR << "Reading script file failed: from scp "
-                << PrintableRxfilename(script_rxfilename_);
-    // If you don't want this exception to be thrown you can
-    // call Close() and check the status.
-    if (state_ == kLoadSucceeded)
-      holder_.Clear();
+    if (!Close())
+      KALDI_ERR << "TableReader: reading script file failed: from scp "
+                      << PrintableRxfilename(script_rxfilename_);
   }
  private:
   bool LoadCurrent() {
@@ -517,43 +516,39 @@ template<class Holder>  class SequentialTableReaderArchiveImpl:
                    "(error related to ',bg' modifier).";
     }
   }
+  
   virtual bool Close() {
+    // To clean up, Close() also closes the Input object if
+    // it's open. It will succeed if the stream was not in an error state,
+    // and the Input object isn't in an error state if we've found eof in the archive.
     if (!this->IsOpen())
       KALDI_ERR << "Close() called on TableReader twice or otherwise wrongly.";
+    int32 status = 0;
     if (input_.IsOpen())
-      input_.Close();
+      status = input_.Close();
     if (state_ == kHaveObject)
       holder_.Clear();
-    bool ans;
-    if (opts_.permissive) {
-      ans = true;  // always return success.
-      if (state_ == kError)
+    StateType old_state = state_;
+    state_ = kUninitialized;
+    if (old_state == kError || (old_state == kEof && status != 0)) {
+      if (opts_.permissive) {
         KALDI_WARN << "Error detected closing TableReader for archive "
                    << PrintableRxfilename(archive_rxfilename_)
                    << " but ignoring "
                    << "it as permissive mode specified.";
+        return true;
+      } else {
+        return false;
+      }
     } else {
-      ans = (state_ != kError);  // If error state, user should detect it.
+      return true;
     }
-    state_ = kUninitialized;
-    return ans;
   }
 
   virtual ~SequentialTableReaderArchiveImpl() {
-    if (state_ == kError) {
-      if (opts_.permissive)
-        KALDI_WARN << "Error detected closing TableReader for archive "
-                   << PrintableRxfilename(archive_rxfilename_)
-                   << " but ignoring "
-                   << "it as permissive mode specified.";
-      else
-        KALDI_ERR << "Error detected closing archive "
-                  << PrintableRxfilename(archive_rxfilename_);
-    }
-    // If you don't want this exception to be thrown you can
-    // call Close() and check the status.
-    if (state_ == kHaveObject)
-      holder_.Clear();
+    if (!Close())    
+      KALDI_ERR << "TableReader: error detected closing archive "
+                << PrintableRxfilename(archive_rxfilename_);
   }
  private:
   Input input_;  // Input object for the archive
@@ -562,7 +557,7 @@ template<class Holder>  class SequentialTableReaderArchiveImpl:
   std::string rspecifier_;
   std::string archive_rxfilename_;
   RspecifierOptions opts_;
-  enum {  //  [The state of the reading process]        [does holder_ [is input_
+  enum StateType {  //  [The state of the reading process]        [does holder_ [is input_
     //                                                     have object]   open]
     kUninitialized,  // Uninitialized or closed.                  no         no
     kFileStart,      // [state we use internally: just opened.]   no         yes
