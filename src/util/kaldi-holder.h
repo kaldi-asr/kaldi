@@ -132,7 +132,7 @@ template<class SomeType> class GenericHolder {
   /// This swaps the objects held by *this and *other (preferably a shallow
   /// swap).  Note, this is just an example.  The swap is with the *same type*
   /// of holder, not with some nonexistent base-class.
-  void Swap(GenericHolder<T> *other) { std::swap(t_, other.t_); }
+  void Swap(GenericHolder<T> *other) { std::swap(t_, other->t_); }
 
   /// If the object held pointers, the destructor would free them.
   ~GenericHolder() { }
