@@ -5,13 +5,13 @@ For cygwin installation, see the instructions in `../INSTALL`.
 
 ## Notes
 
-* These instructions are valid June 2015, [Intel® MKL](https://software.intel.com/en-us/intel-mkl) and OpenBLAS are supported
+* These instructions are valid January 2016, [Intel® MKL](https://software.intel.com/en-us/intel-mkl) and OpenBLAS are supported
 * ATLAS is not supported and I personally have no intention to work on supporting
   it, as it requires whole cygwin environment
 * We now (20150613) support CUDA on Windows as well. The build was
   tested on CUDA 7.0. It is possible that the compilation fails
   for significantly older CUDA SDK (less than, say, 5.0)
-  Please not that CUDA support for windows is not really that usefull,
+  Please note that CUDA support for windows is not really that usefull,
   because, the speed benefit during decoding is not large. And for training
   one would have to re-implement the while training pipeline (as the
   bash script wouldn't most probably work)
