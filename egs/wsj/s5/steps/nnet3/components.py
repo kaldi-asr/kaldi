@@ -213,8 +213,9 @@ def AddSigmoidLayer(config_lines, name, input, self_repair_scale = None):
     return {'descriptor':  '{0}_sigmoid'.format(name),
             'dimension': input['dimension']}
 
-def AddPerDimAffineLayer(config_lines, name, input, input_window):
-    filter_context = int((input_window - 1) / 2)
+def AddPerDimAffineLayer(config_lines, name, input, input_window_length):
+    assert(input_window_length > 0 and input_window_length % 2 != 0)
+    filter_context = int((input_window_length - 1) / 2)
     filter_input_splice_indexes = range(-1 * filter_context, filter_context + 1)
     list = [('Offset({0}, {1})'.format(input['descriptor'], n) if n != 0 else input['descriptor']) for n in filter_input_splice_indexes]
     filter_input_descriptor = 'Append({0})'.format(' , '.join(list))
@@ -232,42 +233,13 @@ def AddPerDimAffineLayer(config_lines, name, input, input_window):
     for i in range(num_feats):
         for j in range(num_times):
             column_map.append(j * num_feats + i)
-    permuted_output_descriptor = nodes.AddPermuteLayer(config_lines,
+    permuted_output_descriptor = AddPermuteLayer(config_lines,
             name, filter_input_descriptor, column_map)
 
     # add a block-affine component
-    output_descriptor = nodes.AddBlockAffineLayer(config_lines, name,
-                                                  permuted_output_descriptor,
-                                                  num_feats, num_feats)
-
-    return [output_descriptor, filter_context, filter_context]
-
-def AddMultiDimAffineLayer(config_lines, name, input, input_window, block_input_dim, block_output_dim):
-    assert(block_input_dim % input_window== 0)
-    filter_context = int((input_window - 1) / 2)
-    filter_input_splice_indexes = range(-1 * filter_context, filter_context + 1)
-    list = [('Offset({0}, {1})'.format(input['descriptor'], n) if n != 0 else input['descriptor']) for n in filter_input_splice_indexes]
-    filter_input_descriptor = 'Append({0})'.format(' , '.join(list))
-    filter_input_descriptor = {'descriptor':filter_input_descriptor,
-                               'dimension':len(filter_input_splice_indexes) * input['dimension']}
-
-
-    # add permute component to shuffle the feature columns of the Append
-    # descriptor output so that columns corresponding to the same feature index
-    # are contiguous add a block-affine component to collapse all the feature
-    # indexes across time steps into a single value
-    num_feats = input['dimension']
-    num_times = len(filter_input_splice_indexes)
-    column_map = []
-    for i in range(num_feats):
-        for j in range(num_times):
-            column_map.append(j * num_feats + i)
-    permuted_output_descriptor = nodes.AddPermuteLayer(config_lines,
-            name, filter_input_descriptor, column_map)
-    # add a block-affine component
-    output_descriptor = nodes.AddBlockAffineLayer(config_lines, name,
-                                                  permuted_output_descriptor,
-                                                  num_feats / (block_input_dim / input_window) * block_output_dim, num_feats / (block_input_dim/ input_window))
+    output_descriptor = AddBlockAffineLayer(config_lines, name,
+                                            permuted_output_descriptor,
+                                            num_feats, num_feats)
 
     return [output_descriptor, filter_context, filter_context]
 
@@ -304,11 +276,11 @@ def AddFinalLayer(config_lines, input, output_dim,
     prev_layer_output = AddAffineLayer(config_lines,
             final_node_prefix , input, output_dim,
             ng_affine_options)
+    # the frame window length for mixture of final softmaxes (or final layer outputs). The window will be symmetric around the center frame.
+    # It is used to force different output HMM state to attend differently to different positions within the input window
     if final_mixture_window_length is not None:
-        [prev_layer_output, cur_left_context, cur_right_context] = AddPerDimAffineLayer(config_lines,
-                                                                                        final_node_prefix,
-                                                                                        prev_layer_output,
-                                                                                        final_mixture_window_length)
+        [prev_layer_output, cur_left_context, cur_right_context] = AddPerDimAffineLayer(config_lines, final_node_prefix, prev_layer_output,
+                                                                                        input_window_length = final_mixture_window_length)
 
     if include_log_softmax:
         if use_presoftmax_prior_scale :

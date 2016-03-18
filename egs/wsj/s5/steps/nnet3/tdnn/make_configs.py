@@ -184,10 +184,39 @@ def CheckArgs(args):
         warnings.warn("--add-lda is set to false as CNN layers are used.")
     
     if args.final_mixture_window_length is not None:
-      if args.final_mixture_window_length <= 0 or rgs.final_mixture_window_length % 2 == 0:
+      if args.final_mixture_window_length <= 0 or args.final_mixture_window_length % 2 == 0:
           raise Exception("--final-mixture-window-length supports only positive odd values.")
 
     return args
+
+def AddMultiDimAffineLayer(config_lines, name, input, input_window_length, block_input_dim, block_output_dim):
+    assert(block_input_dim % input_window_length== 0)
+    filter_context = int((input_window_length - 1) / 2)
+    filter_input_splice_indexes = range(-1 * filter_context, filter_context + 1)
+    list = [('Offset({0}, {1})'.format(input['descriptor'], n) if n != 0 else input['descriptor']) for n in filter_input_splice_indexes]
+    filter_input_descriptor = 'Append({0})'.format(' , '.join(list))
+    filter_input_descriptor = {'descriptor':filter_input_descriptor,
+                               'dimension':len(filter_input_splice_indexes) * input['dimension']}
+
+
+    # add permute component to shuffle the feature columns of the Append
+    # descriptor output so that columns corresponding to the same feature index
+    # are contiguous add a block-affine component to collapse all the feature
+    # indexes across time steps into a single value
+    num_feats = input['dimension']
+    num_times = len(filter_input_splice_indexes)
+    column_map = []
+    for i in range(num_feats):
+        for j in range(num_times):
+            column_map.append(j * num_feats + i)
+    permuted_output_descriptor = nodes.AddPermuteLayer(config_lines,
+            name, filter_input_descriptor, column_map)
+    # add a block-affine component
+    output_descriptor = nodes.AddBlockAffineLayer(config_lines, name,
+                                                  permuted_output_descriptor,
+                                                  num_feats / (block_input_dim / input_window) * block_output_dim, num_feats / (block_input_dim/ input_window))
+
+    return [output_descriptor, filter_context, filter_context]
 
 def AddLpFilter(config_lines, name, input, rate, num_lpfilter_taps, lpfilt_filename, is_updatable = False):
     try:
@@ -358,7 +387,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
                 add_final_sigmoid,
                 xent_regularize,
                 xent_separate_forward_affine,
-                final_mixture_window,
+                final_mixture_window_length,
                 self_repair_scale,
                 objective_type):
 
@@ -432,12 +461,12 @@ def MakeConfigs(config_dir, splice_indexes_string,
                 [prev_layer_output, cur_left_context, cur_right_context] = nodes.AddPerDimAffineLayer(config_lines,
                                                                                             'Tdnn_input_PDA_{0}'.format(i),
                                                                                             prev_layer_output,
-                                                                                            pool_window)
+                                                                                            input_window_length = pool_window)
 
                 left_context += cur_left_context
                 right_context += cur_right_context
             elif pool_type == "multi-dim-weighted-average":
-                [prev_layer_output, cur_left_context, cur_right_context] = nodes.AddMultiDimAffineLayer(config_lines,
+                [prev_layer_output, cur_left_context, cur_right_context] = AddMultiDimAffineLayer(config_lines,
                                                                                                   'Tdnn_input_PDA_{0}'.format(i),
                                                                                                    prev_layer_output,
                                                                                                    pool_window,
@@ -483,6 +512,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
                                                     prev_layer_output, nonlin_output_dim,
                                                     self_repair_scale = self_repair_scale,
                                                     norm_target_rms = final_layer_normalize_target)
+
 
             nodes.AddFinalLayer(config_lines, prev_layer_output_chain, num_targets,
                                use_presoftmax_prior_scale = use_presoftmax_prior_scale,
@@ -544,8 +574,8 @@ def MakeConfigs(config_dir, splice_indexes_string,
 
     # write the files used by other scripts like steps/nnet3/get_egs.sh
     f = open(config_dir + "/vars", "w")
-    print('model_left_context=' + str(left_context + (0 if final_mixture_window is None else (final_mixture_window - 1) / 2)), file=f)
-    print('model_right_context=' + str(right_context + (0 if final_mixture_window is None else (final_mixture_window - 1) / 2)), file=f)
+    print('model_left_context=' + str(left_context + (0 if final_mixture_window_length is None else (final_mixture_window_length - 1) / 2)), file=f)
+    print('model_right_context=' + str(right_context + (0 if final_mixture_window_length is None else (final_mixture_window_length - 1) / 2)), file=f)
     print('num_hidden_layers=' + str(num_hidden_layers), file=f)
     print('num_targets=' + str(num_targets), file=f)
     print('add_lda=' + ('true' if add_lda else 'false'), file=f)

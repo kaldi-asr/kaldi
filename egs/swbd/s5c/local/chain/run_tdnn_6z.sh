@@ -60,6 +60,7 @@ frames_per_eg=150
 remove_egs=false
 common_egs_dir=
 xent_regularize=0.1
+final_mixture_window_length=7
 
 
 
@@ -158,6 +159,7 @@ if [ $stage -le 12 ]; then
     --xent-separate-forward-affine true \
     --include-log-softmax false \
     --final-layer-normalize-target $final_layer_normalize_target \
+    --final-mixture-window-length $final_mixture_window_length \
     $dir/configs || exit 1;
 fi
 
