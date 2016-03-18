@@ -103,6 +103,8 @@ def GetArgs():
                         help="output dimension of p-norm nonlinearities")
     parser.add_argument("--relu-dim", type=int,
                         help="dimension of ReLU nonlinearities")
+    parser.add_argument("--final-mixture-window", type=int, default = None,
+                        help="the frame window size for mixture of final softmaxes")
 
     parser.add_argument("--self-repair-scale", type=float,
                         help="A non-zero value activates the self-repair mechanism in the sigmoid and tanh non-linearities of the LSTM", default=None)
@@ -180,6 +182,10 @@ def CheckArgs(args):
     if args.add_lda and args.cnn_layer is not None:
         args.add_lda = False
         warnings.warn("--add-lda is set to false as CNN layers are used.")
+    
+    if args.final_mixture_window is not None:
+      if args.final_mixture_window <= 0 or rgs.final_mixture_window % 2 == 0:
+          raise Exception("--final-mixture-window should only be None or positive odd values.")
 
     return args
 
@@ -410,6 +416,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
                 add_final_sigmoid,
                 xent_regularize,
                 xent_separate_forward_affine,
+                final_mixture_window,
                 self_repair_scale,
                 objective_type):
 
@@ -535,6 +542,11 @@ def MakeConfigs(config_dir, splice_indexes_string,
                                                     self_repair_scale = self_repair_scale,
                                                     norm_target_rms = final_layer_normalize_target)
 
+            if final_mixture_window is not None and include_log_softmax:
+                [prev_layer_output_chain, cur_left_context, cur_right_context] = AddPerDimAffineLayer(config_lines,
+                                                                                            'Final',
+                                                                                            prev_layer_output_chain,
+                                                                                            final_mixture_window)
 
             nodes.AddFinalLayer(config_lines, prev_layer_output_chain, num_targets,
                                use_presoftmax_prior_scale = use_presoftmax_prior_scale,
@@ -546,6 +558,12 @@ def MakeConfigs(config_dir, splice_indexes_string,
                                                     prev_layer_output, nonlin_output_dim,
                                                     self_repair_scale = self_repair_scale,
                                                     norm_target_rms = final_layer_normalize_target)
+
+            if final_mixture_window is not None:
+                [prev_layer_output_xent, cur_left_context, cur_right_context] = AddPerDimAffineLayer(config_lines,
+                                                                                            'Final-xent',
+                                                                                            prev_layer_output_xent,
+                                                                                            final_mixture_window)
 
             nodes.AddFinalLayer(config_lines, prev_layer_output_xent, num_targets,
                                 ng_affine_options = " param-stddev=0 bias-stddev=0 learning-rate-factor={0} ".format(
@@ -559,6 +577,15 @@ def MakeConfigs(config_dir, splice_indexes_string,
                                                         prev_layer_output, nonlin_output_dim,
                                                         self_repair_scale = self_repair_scale,
                                                         norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
+
+            # make a copyof prev_layer_output for xent if xent_regularize != 0.0
+            prev_layer_output_xent = prev_layer_output;
+
+            if final_mixture_window is not None and include_log_softmax:
+                [prev_layer_output, cur_left_context, cur_right_context] = AddPerDimAffineLayer(config_lines,
+                                                                                            'Final',
+                                                                                            prev_layer_output,
+                                                                                            final_mixture_window)
 
             # a final layer is added after each new layer as we are generating
             # configs for layer-wise discriminative training
@@ -576,6 +603,12 @@ def MakeConfigs(config_dir, splice_indexes_string,
                                add_final_sigmoid = add_final_sigmoid,
                                objective_type = objective_type)
             if xent_regularize != 0.0:
+                if final_mixture_window is not None:
+                [prev_layer_output, cur_left_context, cur_right_context] = AddPerDimAffineLayer(config_lines,
+                                                                                            'Final-xent',
+                                                                                            prev_layer_output_xent,
+                                                                                            final_mixture_window)
+
                 nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
                                     ng_affine_options = " param-stddev=0 bias-stddev=0 learning-rate-factor={0} ".format(
                                           0.5 / xent_regularize),
@@ -592,8 +625,8 @@ def MakeConfigs(config_dir, splice_indexes_string,
 
     # write the files used by other scripts like steps/nnet3/get_egs.sh
     f = open(config_dir + "/vars", "w")
-    print('model_left_context=' + str(left_context), file=f)
-    print('model_right_context=' + str(right_context), file=f)
+    print('model_left_context=' + str(left_context + (0 if final_mixture_window is None else (final_mixture_window - 1) / 2)), file=f)
+    print('model_right_context=' + str(right_context + (0 if final_mixture_window is None else (final_mixture_window - 1) / 2)), file=f)
     print('num_hidden_layers=' + str(num_hidden_layers), file=f)
     print('num_targets=' + str(num_targets), file=f)
     print('add_lda=' + ('true' if add_lda else 'false'), file=f)
@@ -628,6 +661,7 @@ def Main():
                 add_final_sigmoid = args.add_final_sigmoid,
                 xent_regularize = args.xent_regularize,
                 xent_separate_forward_affine = args.xent_separate_forward_affine,
+                final_mixture_window = args.final_mixture_window,
                 self_repair_scale = args.self_repair_scale,
                 objective_type = args.objective_type)
 
