@@ -217,6 +217,48 @@ void UnitTestGeneralDescriptorSpecial() {
   KALDI_ASSERT(NormalizeTextDescriptor(names, "Offset(a, 0)") == "a");
 }
 
+int32 GetInputIntervalFromString(const std::vector<std::string> &node_names,
+                                 const std::string &desc_str,
+                                 const std::string &input_name) {
+  std::vector<std::string> tokens;
+  DescriptorTokenize(desc_str, &tokens);
+  tokens.push_back("end of input");
+  const std::string *next_token = &(tokens[0]);
+  GeneralDescriptor *gen_desc = GeneralDescriptor::Parse(node_names,
+                                                         &next_token);
+  if (*next_token != "end of input") 
+    KALDI_ERR << "Parsing Descriptor, expected end of input but got "
+              << "'" <<  *next_token << "'";
+  return GetInputIntervalInternal(*gen_desc, node_names, input_name);
+}
+
+void UnitTestGetInputIntervalSpecial() {
+  std::vector<std::string> names;
+  names.push_back("a");
+  names.push_back("b");
+  names.push_back("c");
+  names.push_back("d");
+  KALDI_ASSERT(GetInputIntervalFromString(names, "ReplaceIndex(a, t, 0)", "a")
+               == 0);
+  KALDI_ASSERT(GetInputIntervalFromString(names, "ReplaceIndex(a, t, 10)", "a")
+               == 1);
+  KALDI_ASSERT(GetInputIntervalFromString(names, "Round(a, 10)", "a") == 10);
+  KALDI_ASSERT(GetInputIntervalFromString(names, "Round(Round(a, 10), 5)", "a")
+               == 10);
+  KALDI_ASSERT(GetInputIntervalFromString(names, "Round(Round(a, 10), 6)", "a")
+               == 1);
+  KALDI_ASSERT(GetInputIntervalFromString(names, "Round(Round(a, 5), 10)", "a")
+               == 10);
+  KALDI_ASSERT(GetInputIntervalFromString(names, "Offset(Round(a, 10), -20)",
+               "a") == 10);
+  KALDI_ASSERT(GetInputIntervalFromString(names, "Offset(Round(a, 10), -6)",
+               "a") == 1);
+  KALDI_ASSERT(GetInputIntervalFromString(names, "Append(Round(a, 20), "
+                                          "Round(a, 15))", "a") == 5);
+  KALDI_ASSERT(GetInputIntervalFromString(names, "Round(a, 10)", "b") == -1);
+
+}
+
 } // namespace nnet3
 } // namespace kaldi
 
@@ -228,6 +270,7 @@ int main() {
   UnitTestGeneralDescriptorSpecial();
   UnitTestGeneralDescriptor();
   UnitTestDescriptorIo();
+  UnitTestGetInputIntervalSpecial();
 
 
   KALDI_LOG << "Nnet descriptor tests succeeded.";

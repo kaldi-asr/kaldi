@@ -171,10 +171,18 @@ int32 GetInputIntervalInternal(const GeneralDescriptor &gen_desc,
           // we will instead have t at all multiples of that larger number
           return gen_desc.value1_;
         } else {
-          // if the modulus is smaller than interval from the arg, we will no
-          // longer have t at all multiples of either number of the two, then
-          // return 1 as a "hard" case
-          return 1;
+          if (interval % gen_desc.value1_ == 0) {
+            // if the modulus is smaller than interval from the arg,
+            // and interval is a multiple of the modulus, we will still have
+            // interval
+            return interval;
+          } else {
+            // if the modulus is smaller than interval from the arg,
+            // and interval is not a multiple of the modulus,  we will no
+            // longer have t at all multiples of either number of the two, then
+            // return 1 as a "hard" case
+            return 1;
+          }
         } else {
         // if interval <= 0, just keep interval as "Round" has no effect on it
         return interval;

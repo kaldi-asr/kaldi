@@ -37,7 +37,7 @@ def AddInputLayer(config_lines, feat_dim, splice_indexes=[0], ivector_dim=0, ive
         components.append('input-node name=ivector dim=' + str(ivector_dim))
         if ivector_interval == 0:
             list.append('ReplaceIndex(ivector, t, 0)')
-            warnings.warn('You are using a single ivector for the entire chunk.')
+            warnings.warn('A single ivector will be used for the entire chunk as ivector_interval is 0. We recommend using an ivector interval of 10.')
         else:
             list.append('Round(ivector, {0})'.format(ivector_interval))
         output_dim += ivector_dim
