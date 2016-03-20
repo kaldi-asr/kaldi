@@ -13,6 +13,7 @@ min_lmwt=5
 max_lmwt=20
 use_segments=true # if we have a segments file, use it to convert
                   # the segments to be relative to the original files.
+print_silence=false
 #end configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -66,7 +67,7 @@ if [ $stage -le 0 ]; then
       set -o pipefail '&&' mkdir -p $dir/score_LMWT/ '&&' \
       lattice-1best --lm-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
       lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- \| \
-      nbest-to-ctm --frame-shift=$frame_shift ark:- - \| \
+      nbest-to-ctm --frame-shift=$frame_shift --print-silence=$print_silence ark:- - \| \
       utils/int2sym.pl -f 5 $lang/words.txt \| \
       $filter_cmd '>' $dir/score_LMWT/$name.ctm || exit 1;
   else
@@ -79,7 +80,7 @@ if [ $stage -le 0 ]; then
       set -o pipefail '&&' mkdir -p $dir/score_LMWT/ '&&' \
       lattice-1best --lm-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
       lattice-align-words-lexicon $lang/phones/align_lexicon.int $model ark:- ark:- \| \
-      nbest-to-ctm --frame-shift=$frame_shift ark:- - \| \
+      nbest-to-ctm --frame-shift=$frame_shift --print-silence=$print_silence ark:- - \| \
       utils/int2sym.pl -f 5 $lang/words.txt \| \
       $filter_cmd '>' $dir/score_LMWT/$name.ctm || exit 1;
   fi
