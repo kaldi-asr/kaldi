@@ -1,0 +1,5 @@
+
+CUDA_INCLUDE += -I$(CUDNNROOT)/include
+CXXFLAGS += -I$(CUDNNROOT)/include
+CUDA_LDFLAGS += -L$(CUDNNROOT)/lib64 -Wl,-rpath,$(CUDNNROOT)/lib64
+CUDA_LDLIBS += -lcudnn

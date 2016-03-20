@@ -61,6 +61,7 @@ fi
 MATHLIB='ATLAS'
 ATLASROOT=`rel2abs ../tools/ATLAS/`
 FSTROOT=`rel2abs ../tools/openfst`
+CUDNNROOT=`rel2abs ../tools/cudnn`
 
 # Avoid using any variables that are set in the shell.
 unset MKLROOT
@@ -72,7 +73,7 @@ function usage {
   echo 'Usage: ./configure [--static|--shared] [--threaded-atlas={yes|no}] [--atlas-root=ATLASROOT] [--fst-root=FSTROOT]
   [--openblas-root=OPENBLASROOOT] [--clapack-root=CLAPACKROOT] [--mkl-root=MKLROOT] [--mkl-libdir=MKLLIBDIR]
   [--omp-libdir=OMPDIR] [--static-fst={yes|no}] [--static-math={yes|no}] [--threaded-math={yes|no}] [--mathlib=ATLAS|MKL|CLAPACK|OPENBLAS]
-  [--use-cuda={yes|no}] [--cudatk-dir=CUDATKDIR][--mkl-threading=sequential|iomp|tbb|gomp]';
+  [--use-cuda={yes|no}] [--cudatk-dir=CUDATKDIR] [--cudnn-root=CUDNNROOT] [--mkl-threading=sequential|iomp|tbb|gomp]';
 }
 
 threaded_atlas=false #  By default, use the un-threaded version of ATLAS.
@@ -182,6 +183,9 @@ do
   --cudatk-dir=*)
     CUDATKDIR=`read_dirname $1`;
     shift ;; #CUDA is used in src/cudamatrix and src/nnet{,bin} only
+  --cudnn-root=*)
+    CUDNNROOT=`read_dirname $1`;
+    shift ;; #CUDNN is used in src/cudamatrix and src/nnet{,bin} only
   *)  echo "Unknown argument: $1, exiting"; usage; exit 1 ;;
   esac
 done
@@ -436,6 +440,14 @@ function configure_cuda {
     echo "#Next section enables CUDA for compilation" >> kaldi.mk
     echo CUDA = true >> kaldi.mk
     echo CUDATKDIR = $CUDATKDIR >> kaldi.mk
+    # check for cuDNN library in the system 
+    if [ $CUDNNROOT ]; then
+      if [ ! -f $CUDNNROOT/include/cudnn.h ]; then
+        failure "Could not find file $CUDNNROOT/include/cudnn.h:
+        you may not have installed cuDNN. See ../tools/INSTALL"
+      fi
+      echo CUDNNROOT = $CUDNNROOT >> kaldi.mk
+    fi
 
     # Determine 'CUDA_ARCH',
     CUDA_VERSION=$($CUDATKDIR/bin/nvcc -V | tr '.,' '_ ' | awk '/release/{sub(/.*release/,""); print $1;}') # MAJOR_MINOR,
@@ -459,6 +471,9 @@ function configure_cuda {
         sed 's/lib64/lib/g' < makefiles/cuda_64bit.mk >> kaldi.mk
       else
         cat makefiles/cuda_64bit.mk >> kaldi.mk
+        if [ $CUDNNROOT ]; then                                                     
+          cat makefiles/cudnn_64bit.mk >> kaldi.mk
+        fi
       fi
     else
       cat makefiles/cuda_32bit.mk >> kaldi.mk
