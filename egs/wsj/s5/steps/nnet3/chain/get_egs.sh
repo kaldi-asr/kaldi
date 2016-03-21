@@ -129,10 +129,18 @@ mkdir -p $dir/log $dir/info
 num_lat_jobs=$(cat $latdir/num_jobs) || exit 1;
 
 # Get list of validation utterances.
-awk '{print $1}' $data/utt2spk | utils/shuffle_list.pl | head -$num_utts_subset \
-    > $dir/valid_uttlist || exit 1;
+feat-to-len scp:$data/feats.scp ark,t:-| \
+  awk -v min_len=$frames_per_eg '{if ($2 >= min_len) print $1}' | \
+  utils/shuffle_list.pl | head -$num_utts_subset > $dir/valid_uttlist || exit 1;
+
+len_uttlist=`wc -l $dir/valid_uttlist | awk '{print $1}'`
+if [ $len_uttlist -lt $num_utts_subset ]; then
+  echo "Number of utterances which have length at least $frames_per_eg is really low. Please check your data." && exit 1;
+fi
 
 if [ -f $data/utt2uniq ]; then  # this matters if you use data augmentation.
+  # because of this stage we can again have utts with lengths less than
+  # frames_per_eg
   echo "File $data/utt2uniq exists, so augmenting valid_uttlist to"
   echo "include all perturbed versions of the same 'real' utterances."
   mv $dir/valid_uttlist $dir/valid_uttlist.tmp
@@ -143,8 +151,12 @@ if [ -f $data/utt2uniq ]; then  # this matters if you use data augmentation.
   rm $dir/uniq2utt $dir/valid_uttlist.tmp
 fi
 
-awk '{print $1}' $data/utt2spk | utils/filter_scp.pl --exclude $dir/valid_uttlist | \
+feat-to-len scp:$data/feats.scp ark,t:-| awk -v min_len=$frames_per_eg '{if ($2 >= min_len) print $1}' | utils/filter_scp.pl --exclude $dir/valid_uttlist | \
    utils/shuffle_list.pl | head -$num_utts_subset > $dir/train_subset_uttlist || exit 1;
+len_uttlist=`wc -l $dir/train_subset_uttlist | awk '{print $1}'`
+if [ $len_uttlist -lt $num_utts_subset ]; then
+  echo "Number of utterances which have length at least $frames_per_eg is really low. Please check your data." && exit 1;
+fi
 
 [ -z "$transform_dir" ] && transform_dir=$latdir
 
