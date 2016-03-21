@@ -38,12 +38,49 @@ namespace nnet3 {
    you should do it later with nnet3-chain-normalize-egs.
 */
 
+static void GetIvectorsForEgs(int32 t, int32 left_context,
+                              int32 right_context, int32 frames_per_eg,
+                              int32 ivector_interval,
+                              const MatrixBase<BaseFloat> *ivector_feats,
+                              NnetChainExample *eg) {
+  // try to get a representative iVector every ivector_interval frames
+  // in an eg.
+  KALDI_ASSERT(ivector_feats->NumRows() > 0);
+  // num_ivectors_in_left_context is the num of ivectors for frames whose t < 0.
+  // It is used to compute the initial value of closest_frame
+  // num_ivectors is the num of ivectors for frames whose t >= 0.
+  // Both of them are computed according to how Round descriptor works, which
+  // basically returns floor(t / <t-modulus>) * <t-modulus>.
+  int32 num_ivectors_in_left_context =
+      std::ceil(1.0 * left_context / ivector_interval); 
+  int32 num_ivectors = num_ivectors_in_left_context +
+      (frames_per_eg + right_context - 1) / ivector_interval + 1;
+  Matrix<BaseFloat> ivectors(num_ivectors, ivector_feats->NumCols());
+  // closest_frame is the frame at whole multiples of ivector_interval
+  int32 closest_frame = t - num_ivectors_in_left_context * ivector_interval;
+  for (int32 n = 0; n < num_ivectors; n++) {
+    if (closest_frame < 0)
+      closest_frame = 0;
+    else if (closest_frame >= ivector_feats->NumRows())
+      closest_frame = ivector_feats->NumRows() - 1;
+    ivectors.Row(n).CopyFromVec(ivector_feats->Row(closest_frame));
+    closest_frame += ivector_interval;
+  }
+  NnetIo ivector_io("ivector", -num_ivectors_in_left_context, ivectors);
+  eg->inputs[1].Swap(&ivector_io);
+  // multiplied each t by the factor ivector_interval
+  // according to the definition of the Round descriptor
+  for (int32 n = 0; n < eg->inputs.back().indexes.size(); n++)
+    eg->inputs.back().indexes[n].t *= ivector_interval;
+}
+
 static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
                         const MatrixBase<BaseFloat> &feats,
                         const MatrixBase<BaseFloat> *ivector_feats,
                         const chain::Supervision &supervision,
                         const std::string &utt_id,
                         bool compress,
+                        int32 ivector_interval,
                         int32 left_context,
                         int32 right_context,
                         int32 frames_per_eg,
@@ -84,7 +121,8 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
     for (int32 i = num_feature_frames; i < new_num_feature_frames; i++)
       feats_new.Row(i).CopyFromVec(feats.Row(num_feature_frames - 1));
     return ProcessFile(normalization_fst, feats_new, ivector_feats,
-                       supervision, utt_id, compress, left_context, right_context,
+                       supervision, utt_id, compress, ivector_interval, 
+                       left_context, right_context,
                        frames_per_eg, frames_overlap_per_eg, frame_subsampling_factor,
                        cut_zero_frames, num_frames_written, num_egs_written,
                        example_writer);
@@ -182,17 +220,22 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
     nnet_chain_eg.inputs[0].Swap(&input_io);
 
     if (ivector_feats != NULL) {
-      // if applicable, add the iVector feature.
-      // try to get closest frame to middle of window to get
-      // a representative iVector.
-      int32 closest_frame = range_start + frames_per_eg / 2;
-      KALDI_ASSERT(ivector_feats->NumRows() > 0);
-      if (closest_frame >= ivector_feats->NumRows())
-        closest_frame = ivector_feats->NumRows() - 1;
-      Matrix<BaseFloat> ivector(1, ivector_feats->NumCols());
-      ivector.Row(0).CopyFromVec(ivector_feats->Row(closest_frame));
-      NnetIo ivector_io("ivector", 0, ivector);
-      nnet_chain_eg.inputs[1].Swap(&ivector_io);
+      if (ivector_interval == 0) {
+        // if applicable, add the iVector feature.
+        // try to get closest frame to middle of window to get
+        // a representative iVector.
+        int32 closest_frame = range_start + frames_per_eg / 2;
+        KALDI_ASSERT(ivector_feats->NumRows() > 0);
+        if (closest_frame >= ivector_feats->NumRows())
+          closest_frame = ivector_feats->NumRows() - 1;
+        Matrix<BaseFloat> ivector(1, ivector_feats->NumCols());
+        ivector.Row(0).CopyFromVec(ivector_feats->Row(closest_frame));
+        NnetIo ivector_io("ivector", 0, ivector);
+        nnet_chain_eg.inputs[1].Swap(&ivector_io);
+      } else {
+        GetIvectorsForEgs(range_start, left_context, right_context, frames_per_eg,
+                          ivector_interval, ivector_feats, &nnet_chain_eg);
+      }
     }
 
     if (compress)
@@ -241,7 +284,7 @@ int main(int argc, char *argv[]) {
 
     bool compress = true;
     int32 left_context = 0, right_context = 0, num_frames = 1,
-        num_frames_overlap = 0, length_tolerance = 100,
+        num_frames_overlap = 0, length_tolerance = 100, ivector_interval = 10,
         cut_zero_frames = -1,
         frame_subsampling_factor = 1;
 
@@ -272,6 +315,11 @@ int main(int argc, char *argv[]) {
     po.Register("frame-subsampling-factor", &frame_subsampling_factor, "Used "
                 "if the frame-rate at the output will be less than the "
                 "frame-rate of the input");
+    po.Register("ivector-interval", &ivector_interval, "0 means having "
+                "only one ivector for each example. If non-zero, this value is "
+                "the interval between two consecutive ivectors to be dumped in "
+                "the example. It is recommended to have an ivector-interval of "
+                "at most 10, for good results.");
 
     po.Read(argc, argv);
 
@@ -279,6 +327,9 @@ int main(int argc, char *argv[]) {
       po.PrintUsage();
       exit(1);
     }
+
+    if (ivector_interval < 0)
+      KALDI_ERR << "--ivector-interval should be non-negative.";
 
     if (num_frames <= 0 || left_context < 0 || right_context < 0 ||
         length_tolerance < 0 || frame_subsampling_factor <= 0)
@@ -348,7 +399,7 @@ int main(int argc, char *argv[]) {
           continue;
         }
         if (ProcessFile(normalization_fst, feats, ivector_feats, supervision,
-                        key, compress,
+                        key, compress, ivector_interval,
                         left_context, right_context, num_frames,
                         num_frames_overlap, frame_subsampling_factor,
                         cut_zero_frames, &num_frames_written, &num_egs_written,

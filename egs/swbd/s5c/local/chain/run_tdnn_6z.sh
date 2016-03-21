@@ -45,6 +45,7 @@ pool_window=
 pool_type='none'
 pool_lpfilter_width=
 self_repair_scale=0.00001
+ivector_interval=10
 # training options
 num_epochs=4
 initial_effective_lrate=0.001
@@ -158,6 +159,7 @@ if [ $stage -le 12 ]; then
     --xent-separate-forward-affine true \
     --include-log-softmax false \
     --final-layer-normalize-target $final_layer_normalize_target \
+    --ivector-interval $ivector_interval \
     $dir/configs || exit 1;
 fi
 
@@ -183,6 +185,7 @@ if [ $stage -le 13 ]; then
     --egs.stage $get_egs_stage \
     --egs.opts "--frames-overlap-per-eg 0" \
     --egs.chunk-width $frames_per_eg \
+    --egs.ivector-interval $ivector_interval \
     --trainer.num-chunk-per-minibatch $minibatch_size \
     --trainer.frames-per-iter 1500000 \
     --trainer.num-epochs $num_epochs \
