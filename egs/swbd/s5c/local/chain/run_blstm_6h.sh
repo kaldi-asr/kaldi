@@ -24,6 +24,7 @@ chunk_width=150
 chunk_left_context=40
 chunk_right_context=40
 xent_regularize=0.025
+final_mixture_window_length=7
 
 label_delay=0
 # decode options
@@ -116,6 +117,7 @@ if [ $stage -le 12 ]; then
     --lstm-delay=" [-3,3] [-3,3] [-3,3] " \
     --xent-regularize $xent_regularize \
     --include-log-softmax false \
+    --final-mixture-window-length $final_mixture_window_length \
     --num-lstm-layers 3 \
     --cell-dim 1024 \
     --hidden-dim 1024 \
