@@ -52,6 +52,7 @@ else
   }' >$output_dir/feats.length
 fi
 
+utils/data/get_utt2dur.sh $input_dir
 # The following perl script is the core part.
 # It looks for segments with length shorter than the specified length
 # and concatenates them with other segments to make sure every combined segments are
@@ -60,16 +61,18 @@ fi
 
 echo $min_seg_len |  perl -e '
   $min_seg_len = <STDIN>;
-  ($u2s_in, $s2u_in, $text_in, $feat_in, $len_in,
-    $u2s_out, $text_out, $feat_out) = @ARGV;
+  ($u2s_in, $s2u_in, $text_in, $feat_in, $len_in, $dur_in,
+    $u2s_out, $text_out, $feat_out, $dur_out) = @ARGV;
   open(UI, "<$u2s_in") || die "Error: fail to open $u2s_in\n";
   open(SI, "<$s2u_in") || die "Error: fail to open $s2u_in\n";
   open(TI, "<$text_in") || die "Error: fail to open $text_in\n";
   open(FI, "<$feat_in") || die "Error: fail to open $feat_in\n";
   open(LI, "<$len_in") || die "Error: fail to open $len_in\n";
+  open(DI, "<$dur_in") || die "Error: fail to open $dur_in\n";
   open(UO, ">$u2s_out") || die "Error: fail to open $u2s_out\n";
   open(TO, ">$text_out") || die "Error: fail to open $text_out\n";
   open(FO, ">$feat_out") || die "Error: fail to open $feat_out\n";
+  open(DO, ">$dur_out") || die "Error: fail to open $dur_out\n";
   while (<UI>) {
     chomp;
     @col = split;
@@ -99,6 +102,13 @@ echo $min_seg_len |  perl -e '
     $utt2len{$utt_id} = $len;
     $utt2item{$utt_id} = 1;  #utt2item stores no of utterances that combined
   }
+  while (<DI>) {
+    chomp;
+    @col = split;
+    @col == 2 || die "Error: bad line $_\n";
+    ($utt_id, $dur) = @col;
+    $utt2dur{$utt_id} = $dur;
+  }
   while (<TI>) {
     chomp;
     @col = split;
@@ -119,6 +129,9 @@ echo $min_seg_len |  perl -e '
           $sum = $utt2len{$seg} + $utt2len{$seg2};
           $utt2len{$seg} = $sum;
           $utt2len{$seg2} = -1;
+          $dur_sum = $utt2dur{$seg} + $utt2dur{$seg2};
+          $utt2dur{$seg} = $dur_sum;
+          $utt2dur{$seg2} = -1;
           $uttlist{$seg} = $uttlist{$seg} . "-" . $uttlist{$seg2};
           $utt2feat{$seg} = $utt2feat{$seg} . " " . $utt2feat{$seg2};
           $utt2text{$seg} = $utt2text{$seg} . " " . $utt2text{$seg2};
@@ -136,6 +149,9 @@ echo $min_seg_len |  perl -e '
             $sum = $utt2len{$seg} + $utt2len{$seg2};
             $utt2len{$seg} = $sum;
             $utt2len{$seg2} = -1;
+            $dur_sum = $utt2dur{$seg} + $utt2dur{$seg2};
+            $utt2dur{$seg} = $dur_sum;
+            $utt2dur{$seg2} = -1;
             $uttlist{$seg} = $uttlist{$seg} . "-" . $uttlist{$seg2};
             $utt2feat{$seg} = $utt2feat{$seg} . " " . $utt2feat{$seg2};
             $utt2text{$seg} = $utt2text{$seg} . " " . $utt2text{$seg2};
@@ -160,15 +176,17 @@ echo $min_seg_len |  perl -e '
       print UO "$uttlist{$seg}-appended $utt2spk{$seg}\n";
       print FO "$uttlist{$seg}-appended concat-feats --print-args=false $utt2feat{$seg} - |\n";
       print TO "$uttlist{$seg}-appended $utt2text{$seg}\n";
+      print DO "$uttlist{$seg}-appended $utt2dur{$seg}\n";
     } elsif ($utt2item{$seg} == 1) {
       print UO "$uttlist{$seg} $utt2spk{$seg}\n";
       print FO "$uttlist{$seg} $utt2feat{$seg}\n" ;
       print TO "$uttlist{$seg} $utt2text{$seg}\n";
+      print DO "$uttlist{$seg} $utt2dur{$seg}\n";
     }
   }
 
-' $input_dir/utt2spk $input_dir/spk2utt $input_dir/text $input_dir/feats.scp \
-$output_dir/feats.length $output_dir/utt2spk $output_dir/text $output_dir/feats.scp
+' $input_dir/utt2spk $input_dir/spk2utt $input_dir/text $input_dir/feats.scp $input_dir/utt2dur \
+$output_dir/feats.length $output_dir/utt2spk $output_dir/text $output_dir/feats.scp $output_dir/utt2dur
 
 utils/utt2spk_to_spk2utt.pl $output_dir/utt2spk > $output_dir/spk2utt
 
