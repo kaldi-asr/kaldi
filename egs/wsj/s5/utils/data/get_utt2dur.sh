@@ -24,6 +24,10 @@ export LC_ALL=C
 
 data=$1
 
+if [ -f $data/utt2dur ]; then
+  echo "$0: $data/utt2dur file already exists. The script is not going to be executed."
+  exit 0;
+fi
 
 if [ -f $data/segments ]; then
   echo "$0: working out $data/utt2dur from $data/segments"
