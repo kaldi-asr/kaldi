@@ -38,7 +38,8 @@ inline CuSubMatrix<Real>::CuSubMatrix(const CuMatrixBase<Real> &mat,
     KALDI_ASSERT(row_offset >= 0 && col_offset >= 0 &&
                  row_offset + num_rows <= mat.num_rows_ &&
                  col_offset + num_cols <= mat.num_cols_);
-    this->data_ = mat.data_ + (row_offset * mat.stride_) + col_offset;
+    this->data_ = mat.data_ + static_cast<size_t>(col_offset) +
+        static_cast<size_t>(row_offset) * static_cast<size_t>(mat.stride_);
     this->num_cols_ = num_cols;
     this->num_rows_ = num_rows;
     this->stride_ = mat.stride_;

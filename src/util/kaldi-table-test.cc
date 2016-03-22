@@ -347,7 +347,7 @@ void UnitTestTableSequentialInt32(bool binary) {
   ans = bw.Close();
   KALDI_ASSERT(ans);
 
-  SequentialInt32Reader sbr("ark:tmpf");
+  SequentialInt32Reader sbr(RandInt(0, 1) == 0 ? "ark:tmpf" : "ark,bg:tmpf");
   std::vector<std::string> k2;
   std::vector<int32> v2;
   for (; !sbr.Done(); sbr.Next()) {
@@ -380,7 +380,7 @@ void UnitTestTableSequentialBool(bool binary) {
   ans = bw.Close();
   KALDI_ASSERT(ans);
 
-  SequentialBoolReader sbr("ark:tmpf");
+  SequentialBoolReader sbr(RandInt(0, 1) == 0 ? "ark:tmpf" : "ark,bg:tmpf");
   std::vector<std::string> k2;
   std::vector<bool> v2;
   for (; !sbr.Done(); sbr.Next()) {
@@ -414,7 +414,7 @@ void UnitTestTableSequentialDouble(bool binary) {
   ans = bw.Close();
   KALDI_ASSERT(ans);
 
-  SequentialDoubleReader sbr("ark:tmpf");
+  SequentialDoubleReader sbr(RandInt(0, 1) == 0 ? "ark:tmpf" : "ark,bg:tmpf");
   std::vector<std::string> k2;
   std::vector<double> v2;
   for (; !sbr.Done(); sbr.Next()) {
@@ -456,7 +456,9 @@ void UnitTestTableSequentialDoubleBoth(bool binary, bool read_scp) {
   ans = bw.Close();
   KALDI_ASSERT(ans);
 
-  SequentialDoubleReader sbr(read_scp ? "scp:tmpf.scp" : "ark:tmpf");
+  SequentialDoubleReader sbr(RandInt(0, 1) == 0 ?
+                             (read_scp ? "scp:tmpf.scp" : "ark:tmpf") :
+                             (read_scp ? "scp,bg:tmpf.scp" : "ark,bg:tmpf"));
   std::vector<std::string> k2;
   std::vector<double> v2;
   for (; !sbr.Done(); sbr.Next()) {
@@ -503,7 +505,9 @@ void UnitTestTableSequentialInt32VectorBoth(bool binary, bool read_scp) {
   ans = bw.Close();
   KALDI_ASSERT(ans);
 
-  SequentialInt32VectorReader sbr(read_scp ? "scp:tmpf.scp" : "ark:tmpf");
+  SequentialInt32VectorReader sbr(RandInt(0, 1) == 0 ?
+                                  (read_scp ? "scp:tmpf.scp" : "ark:tmpf") :
+                                  (read_scp ? "scp,bg:tmpf.scp" : "ark,bg:tmpf"));
   std::vector<std::string> k2;
   std::vector<std::vector<int32> > v2;
   for (; !sbr.Done(); sbr.Next()) {
@@ -541,7 +545,9 @@ void UnitTestTableSequentialInt32PairVectorBoth(bool binary, bool read_scp) {
   ans = bw.Close();
   KALDI_ASSERT(ans);
 
-  SequentialInt32PairVectorReader sbr(read_scp ? "scp:tmpf.scp" : "ark:tmpf");
+  SequentialInt32PairVectorReader sbr(RandInt(0, 1) == 0 ?
+                                      (read_scp ? "scp:tmpf.scp" : "ark:tmpf") :
+                                      (read_scp ? "scp,bg:tmpf.scp" : "ark,bg:tmpf"));
   std::vector<std::string> k2;
   std::vector<std::vector<std::pair<int32, int32> > > v2;
   for (; !sbr.Done(); sbr.Next()) {
@@ -630,7 +636,8 @@ void UnitTestTableSequentialInt32Script(bool binary) {
   ans = bw.Close();
   KALDI_ASSERT(ans);
 
-  SequentialInt32Reader sbr("scp:tmp.scp");
+  SequentialInt32Reader sbr(RandInt(0, 1) == 0 ?
+                            "scp:tmp.scp" : "scp,bg:tmp.scp");
   std::vector<std::string> k2;
   std::vector<int32> v2;
   for (; !sbr.Done(); sbr.Next()) {
@@ -724,7 +731,10 @@ void UnitTestTableSequentialBaseFloatVectorBoth(bool binary, bool read_scp) {
   ans = bw.Close();
   KALDI_ASSERT(ans);
 
-  SequentialBaseFloatVectorReader sbr(read_scp ? "scp:tmpf.scp" : "ark:tmpf");
+  SequentialBaseFloatVectorReader sbr(
+      RandInt(0, 1) == 0 ?
+      (read_scp ? "scp:tmpf.scp" : "ark:tmpf") :
+      (read_scp ? "scp,bg:tmpf.scp" : "ark,bg:tmpf"));
   std::vector<std::string> k2;
   std::vector<Vector<BaseFloat>* > v2;
   for (; !sbr.Done(); sbr.Next()) {

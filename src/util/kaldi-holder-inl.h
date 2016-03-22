@@ -68,7 +68,7 @@ template<class KaldiType> class KaldiObjectHolder {
   bool Read(std::istream &is) {
     delete t_;
     t_ = new T;
-    // Don't want any existing state to complicate the read functioN: get new
+    // Don't want any existing state to complicate the read function: get new
     // object.
     bool is_binary;
     if (!InitKaldiInputStream(is, &is_binary)) {
@@ -95,6 +95,10 @@ template<class KaldiType> class KaldiObjectHolder {
     // code error if !t_.
     if (!t_) KALDI_ERR << "KaldiObjectHolder::Value() called wrongly.";
     return *t_;
+  }
+
+  void Swap(KaldiObjectHolder<T> *other) {
+    std::swap(t_, other->t_);
   }
 
   ~KaldiObjectHolder() { delete t_; }
@@ -184,6 +188,10 @@ template<class BasicType> class BasicHolder {
 
   const T &Value() const {
     return t_;
+  }
+
+  void Swap(BasicHolder<T> *other) {
+    std::swap(t_, other->t_);
   }
 
   ~BasicHolder() { }
@@ -296,6 +304,10 @@ template<class BasicType> class BasicVectorHolder {
   static bool IsReadInBinary() { return true; }
 
   const T &Value() const {  return t_; }
+
+  void Swap(BasicVectorHolder<BasicType> *other) {
+    t_.swap(other->t_);
+  }
 
   ~BasicVectorHolder() { }
  private:
@@ -440,6 +452,10 @@ template<class BasicType> class BasicVectorVectorHolder {
 
   const T &Value() const {  return t_; }
 
+  void Swap(BasicVectorVectorHolder<BasicType> *other) {
+    t_.swap(other->t_);
+  }
+
   ~BasicVectorVectorHolder() { }
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(BasicVectorVectorHolder);
@@ -577,6 +593,10 @@ template<class BasicType> class BasicPairVectorHolder {
 
   const T &Value() const {  return t_; }
 
+  void Swap(BasicPairVectorHolder<BasicType> *other) {
+    t_.swap(other->t_);
+  }
+
   ~BasicPairVectorHolder() { }
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(BasicPairVectorHolder);
@@ -627,6 +647,11 @@ class TokenHolder {
   const T &Value() const { return t_; }
 
   ~TokenHolder() { }
+
+  void Swap(TokenHolder *other) {
+    t_.swap(other->t_);
+  }
+
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(TokenHolder);
   T t_;
@@ -680,6 +705,10 @@ class TokenVectorHolder {
 
   const T &Value() const { return t_; }
 
+  void Swap(TokenVectorHolder *other) {
+    t_.swap(other->t_);
+  }
+
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(TokenVectorHolder);
   T t_;
@@ -718,6 +747,10 @@ class HtkMatrixHolder {
 
   const T &Value() const { return t_; }
 
+  void Swap(HtkMatrixHolder *other) {
+    t_.first.Swap(&(other->t_.first));
+    std::swap(t_.second, other->t_.second);
+  }
 
   // No destructor.
  private:
@@ -819,6 +852,10 @@ template<int kFeatDim> class SphinxMatrixHolder {
   static bool IsReadInBinary() { return true; }
 
   const T &Value() const { return feats_; }
+
+  void Swap(SphinxMatrixHolder *other) {
+    feats_.Swap(&(other->feats_));
+  }
 
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(SphinxMatrixHolder);

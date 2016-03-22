@@ -1,6 +1,13 @@
 #!/bin/bash
 
 # based on run_tdnn_6h.sh
+
+# %WER 15.6 | 4459 42989 | 86.1 9.2 4.7 1.8 15.6 52.1 | exp/chain/lstm_6h_ld5_sp/decode_eval2000_sw1_fsh_fg/score_10_1.0/eval2000_hires.ctm.filt.sys
+# %WER 10.3 | 1831 21395 | 90.9 6.1 3.0 1.3 10.3 44.7 | exp/chain/lstm_6h_ld5_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
+# %WER 20.7 | 2628 21594 | 82.0 12.8 5.3 2.7 20.7 56.7 | exp/chain/lstm_6h_ld5_sp/decode_eval2000_sw1_fsh_fg/score_8_0.0/eval2000_hires.ctm.callhm.filt.sys
+
+# if right-tolerance was 10 (these are old results)
+#---------------------------
 # %WER 15.8 | 4459 42989 | 86.0 9.3 4.8 1.8 15.8 52.0 | exp/chain/lstm_6h_ld5_sp/decode_eval2000_sw1_fsh_fg/score_10_0.5/eval2000_hires.ctm.filt.sys
 # %WER 10.6 | 1831 21395 | 90.6 6.2 3.2 1.2 10.6 45.2 | exp/chain/lstm_6h_ld5_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
 # %WER 21.0 | 2628 21594 | 81.4 12.4 6.3 2.4 21.0 56.8 | exp/chain/lstm_6h_ld5_sp/decode_eval2000_sw1_fsh_fg/score_10_0.5/eval2000_hires.ctm.callhm.filt.sys

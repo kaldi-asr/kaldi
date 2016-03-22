@@ -293,6 +293,8 @@ RspecifierType ClassifyRspecifier(const std::string &rspecifier,
       if (opts) opts->called_sorted = true;
     } else if (!strcmp(c, "ncs")) {
       if (opts) opts->called_sorted = false;
+    } else if (!strcmp(c, "bg")) {
+      if (opts) opts->background = true;
     } else if (!strcmp(c, "ark")) {
       if (rs == kNoRspecifier) rs = kArchiveRspecifier;
       else

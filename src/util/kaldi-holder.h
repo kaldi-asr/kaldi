@@ -1,6 +1,7 @@
 // util/kaldi-holder.h
 
 // Copyright 2009-2011     Microsoft Corporation
+//                2016     Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -84,7 +85,7 @@ template<class SomeType> class GenericHolder {
   /// Must have a constructor that takes no arguments.
   GenericHolder() { }
 
-  /// Write writes this object of type T.  Possibly also writes a binary-mode
+  /// Write() writes this object of type T.  Possibly also writes a binary-mode
   /// header so that the Read function knows which mode to read in (since the
   /// Read function does not get this information).  It's a static member so we
   /// can write those not inside this class (can use this function with Value()
@@ -127,6 +128,11 @@ template<class SomeType> class GenericHolder {
   /// The Clear() function doesn't have to do anything.  Its purpose is to
   /// allow the object to free resources if they're no longer needed.
   void Clear() { }
+
+  /// This swaps the objects held by *this and *other (preferably a shallow
+  /// swap).  Note, this is just an example.  The swap is with the *same type*
+  /// of holder, not with some nonexistent base-class.
+  void Swap(GenericHolder<T> *other) { std::swap(t_, other->t_); }
 
   /// If the object held pointers, the destructor would free them.
   ~GenericHolder() { }

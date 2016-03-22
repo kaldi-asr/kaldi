@@ -507,7 +507,7 @@ def ComputeTrainCvProbabilities(dir, iter, egs_dir, run_opts, wait = False):
     RunKaldiCommand("""
 {command} {dir}/log/compute_prob_valid.{iter}.log \
   nnet3-compute-prob "nnet3-am-copy --raw=true {model} - |" \
-        "ark:nnet3-merge-egs ark:{egs_dir}/valid_diagnostic.egs ark:- |"
+        "ark,bg:nnet3-merge-egs ark:{egs_dir}/valid_diagnostic.egs ark:- |"
     """.format(command = run_opts.command,
                dir = dir,
                iter = iter,
@@ -517,7 +517,7 @@ def ComputeTrainCvProbabilities(dir, iter, egs_dir, run_opts, wait = False):
     RunKaldiCommand("""
 {command} {dir}/log/compute_prob_train.{iter}.log \
   nnet3-compute-prob "nnet3-am-copy --raw=true {model} - |" \
-       "ark:nnet3-merge-egs ark:{egs_dir}/train_diagnostic.egs ark:- |"
+       "ark,bg:nnet3-merge-egs ark:{egs_dir}/train_diagnostic.egs ark:- |"
     """.format(command = run_opts.command,
                dir = dir,
                iter = iter,
@@ -533,7 +533,7 @@ def ComputeProgress(dir, iter, egs_dir, run_opts, wait=False):
 {command} {dir}/log/progress.{iter}.log \
 nnet3-info "nnet3-am-copy --raw=true {model} - |" '&&' \
 nnet3-show-progress --use-gpu=no "nnet3-am-copy --raw=true {prev_model} - |" "nnet3-am-copy --raw=true {model} - |" \
-"ark:nnet3-merge-egs --minibatch-size=256 ark:{egs_dir}/train_diagnostic.egs ark:-|"
+"ark,bg:nnet3-merge-egs --minibatch-size=256 ark:{egs_dir}/train_diagnostic.egs ark:-|"
     """.format(command = run_opts.command,
                dir = dir,
                iter = iter,
@@ -565,7 +565,7 @@ def CombineModels(dir, num_iters, num_iters_combine, egs_dir,
 {command} {combine_queue_opt} {dir}/log/combine.log \
 nnet3-combine --num-iters=40 \
    --enforce-sum-to-one=true --enforce-positive-weights=true \
-   --verbose=3 {raw_models} "ark:nnet3-merge-egs --measure-output-frames=false --minibatch-size={mbsize} ark:{egs_dir}/combine.egs ark:-|" \
+   --verbose=3 {raw_models} "ark,bg:nnet3-merge-egs --measure-output-frames=false --minibatch-size={mbsize} ark:{egs_dir}/combine.egs ark:-|" \
 "|nnet3-am-copy --set-raw-nnet=- {dir}/{num_iters}.mdl {dir}/combined.mdl"
     """.format(command = run_opts.command,
                combine_queue_opt = run_opts.combine_queue_opt,
@@ -655,4 +655,39 @@ def RemoveModel(nnet_dir, iter, num_iters, num_iters_combine = None,
     file_name = '{0}/{1}.mdl'.format(nnet_dir, iter)
     if os.path.isfile(file_name):
         os.remove(file_name)
+
+def ComputeLifterCoeffs(lifter, dim):
+    coeffs = [0] * dim
+    for i in range(0, dim):
+        coeffs[i] = 1.0 + 0.5 * lifter * math.sin(math.pi * i / float(lifter));
+
+    return coeffs
+
+def ComputeIdctMatrix(K, N, cepstral_lifter=0):
+    matrix = [[0] * K for i in range(N)]
+    # normalizer for X_0
+    normalizer = math.sqrt(1.0 / float(N));
+    for j in range(0, N):
+        matrix[j][0] = normalizer;
+    # normalizer for other elements
+    normalizer = math.sqrt(2.0 / float(N));
+    for k in range(1, K):
+      for n in range(0, N):
+        matrix[n][k] = normalizer * math.cos(math.pi / float(N) * (n + 0.5) * k);
+
+    if cepstral_lifter != 0:
+        lifter_coeffs = ComputeLifterCoeffs(cepstral_lifter, K)
+        for k in range(0, K):
+          for n in range(0, N):
+            matrix[n][k] = matrix[n][k] / lifter_coeffs[k];
+
+    return matrix
+
+def WriteIdctMatrix(feat_dim, cepstral_lifter, file_path):
+    # generate the IDCT matrix and write to the file
+    idct_matrix = ComputeIdctMatrix(feat_dim, feat_dim, cepstral_lifter)
+    # append a zero column to the matrix, this is the bias of the fixed affine component
+    for k in range(0, feat_dim):
+        idct_matrix[k].append(0)
+    WriteKaldiMatrix(file_path, idct_matrix)
 

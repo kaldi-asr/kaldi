@@ -62,7 +62,7 @@ cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.
 frames_per_eg=8 # to be passed on to get_egs.sh
 
 # Raw nnet training options i.e. without transition model
-nj=4  
+nj=4
 dense_targets=true        # Use dense targets instead of sparse targets
 
 # End configuration section.
@@ -119,10 +119,6 @@ dir=$3
 for f in $data/feats.scp $targets_scp; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
-
-if $add_final_sigmoid && $include_log_softmax; then
-  echo "add-final-sigmoid and include-log-softmax cannot both be true"
-fi
 
 # in this dir we'll have just one job.
 sdata=$data/split$nj
@@ -363,15 +359,15 @@ while [ $x -lt $num_iters ]; do
     # Use the egs dir from the previous iteration for the diagnostics
     $cmd $dir/log/compute_prob_valid.$x.log \
       nnet3-compute-prob --compute-accuracy=$compute_accuracy $dir/$x.raw \
-      "ark:nnet3-merge-egs ark:$egs_dir/valid_diagnostic.egs ark:- |" &
+      "ark,bg:nnet3-merge-egs ark:$egs_dir/valid_diagnostic.egs ark:- |" &
     $cmd $dir/log/compute_prob_train.$x.log \
       nnet3-compute-prob --compute-accuracy=$compute_accuracy $dir/$x.raw \
-      "ark:nnet3-merge-egs ark:$egs_dir/train_diagnostic.egs ark:- |" &
+      "ark,bg:nnet3-merge-egs ark:$egs_dir/train_diagnostic.egs ark:- |" &
 
     if [ $x -gt 0 ]; then
       $cmd $dir/log/progress.$x.log \
         nnet3-show-progress --use-gpu=no $dir/$[x-1].raw $dir/$x.raw \
-        "ark:nnet3-merge-egs ark:$egs_dir/train_diagnostic.egs ark:-|" '&&' \
+        "ark,bg:nnet3-merge-egs ark:$egs_dir/train_diagnostic.egs ark:-|" '&&' \
         nnet3-info $dir/$x.raw &
     fi
 
@@ -423,7 +419,7 @@ while [ $x -lt $num_iters ]; do
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
           nnet3-train $parallel_train_opts \
           --max-param-change=$max_param_change "$raw" \
-          "ark:nnet3-copy-egs --frame=$frame $context_opts ark:$egs_dir/egs.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_minibatch_size --discard-partial-minibatches=true ark:- ark:- |" \
+          "ark,bg:nnet3-copy-egs --frame=$frame $context_opts ark:$egs_dir/egs.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_minibatch_size --discard-partial-minibatches=true ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
       done
       wait
@@ -486,7 +482,7 @@ if [ $stage -le $num_iters ]; then
   $cmd $combine_queue_opt $dir/log/combine.log \
     nnet3-combine --num-iters=40 \
     --enforce-sum-to-one=true --enforce-positive-weights=true \
-    --verbose=3 "${nnets_list[@]}" "ark:nnet3-merge-egs --minibatch-size=1024 ark:$egs_dir/combine.egs ark:-|" \
+    --verbose=3 "${nnets_list[@]}" "ark,bg:nnet3-merge-egs --minibatch-size=1024 ark:$egs_dir/combine.egs ark:-|" \
     $dir/final.raw || exit 1;
 
   # Compute the probability of the final, combined model with
@@ -494,10 +490,10 @@ if [ $stage -le $num_iters ]; then
   # different subsets will lead to different probs.
   $cmd $dir/log/compute_prob_valid.final.log \
     nnet3-compute-prob --compute-accuracy=$compute_accuracy $dir/final.raw \
-    "ark:nnet3-merge-egs ark:$egs_dir/valid_diagnostic.egs ark:- |" &
+    "ark,bg:nnet3-merge-egs ark:$egs_dir/valid_diagnostic.egs ark:- |" &
   $cmd $dir/log/compute_prob_train.final.log \
     nnet3-compute-prob --compute-accuracy=$compute_accuracy $dir/final.raw \
-    "ark:nnet3-merge-egs ark:$egs_dir/train_diagnostic.egs ark:- |" &
+    "ark,bg:nnet3-merge-egs ark:$egs_dir/train_diagnostic.egs ark:- |" &
 fi
 
 if $include_log_softmax && [ $stage -le $[$num_iters+1] ]; then

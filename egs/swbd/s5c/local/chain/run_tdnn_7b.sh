@@ -2,6 +2,18 @@
 
 # 7b is as 6z, but increasing the relu-dim slightly from 576 to 625.
 
+# there is very little change.  looks like we were close to the optimum.
+# local/chain/compare_wer.sh 6z 7b
+# System                       6z        7b
+# WER on train_dev(tg)      15.18     15.15
+# WER on train_dev(fg)      14.06     14.19
+# WER on eval2000(tg)        17.2      17.2
+# WER on eval2000(fg)        15.6      15.5
+# Final train prob      -0.106268 -0.102617
+# Final valid prob      -0.126726 -0.126529
+# Final train prob (xent)       -1.4556  -1.43802
+# Final valid prob (xent)      -1.50136   -1.4964
+
 # 6z is as 6y, but fixing the right-tolerance in the scripts to default to 5 (as
 # the default is in the code), rather than the previous script default value of
 # 10 which I seem to have added to the script around Feb 9th.

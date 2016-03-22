@@ -34,17 +34,17 @@ while(<S>) {
   }
   my @col = split(" ", $_);
   if (@col == 0) {
-    set_to_fail(); 
-    print "--> ERROR: empty line in $dict/silence_phones.txt (line $idx)\n"; 
+    set_to_fail();
+    print "--> ERROR: empty line in $dict/silence_phones.txt (line $idx)\n";
   }
   foreach(0 .. @col-1) {
     my $p = $col[$_];
     if($silence{$p}) {set_to_fail(); print "--> ERROR: phone \"$p\" duplicates in $dict/silence_phones.txt (line $idx)\n"; }
     else {$silence{$p} = 1;}
-    if ($p =~ m/_$/ || $p =~ m/#/ || $p =~ m/_[BESI]$/){
+    if ($p =~ m/#(\d)+/ || $p =~ m/_[BESI]$/){
       set_to_fail();
-      print "--> ERROR: phone \"$p\" has disallowed written form";
-      
+      print "--> ERROR: phone \"$p\" has disallowed written form\n";
+
     }
   }
   $idx ++;
@@ -64,9 +64,9 @@ while(<OS>) {
   chomp;
   my @col = split(" ", $_);
   if ($idx > 1 or @col > 1) {
-    set_to_fail(); print "--> ERROR: only 1 phone expected in $dict/optional_silence.txt\n"; 
+    set_to_fail(); print "--> ERROR: only 1 phone expected in $dict/optional_silence.txt\n";
   } elsif (!$silence{$col[0]}) {
-    set_to_fail(); print "--> ERROR: phone $col[0] not found in $dict/silence_phones.txt\n"; 
+    set_to_fail(); print "--> ERROR: phone $col[0] not found in $dict/silence_phones.txt\n";
   }
   $idx ++;
 }
@@ -89,17 +89,17 @@ while(<NS>) {
   }
   my @col = split(" ", $_);
   if (@col == 0) {
-    set_to_fail(); 
-    print "--> ERROR: empty line in $dict/nonsilence_phones.txt (line $idx)\n"; 
+    set_to_fail();
+    print "--> ERROR: empty line in $dict/nonsilence_phones.txt (line $idx)\n";
   }
   foreach(0 .. @col-1) {
     my $p = $col[$_];
     if($nonsilence{$p}) {set_to_fail(); print "--> ERROR: phone \"$p\" duplicates in $dict/nonsilence_phones.txt (line $idx)\n"; }
     else {$nonsilence{$p} = 1;}
-    if ($p =~ m/_$/ || $p =~ m/#/ || $p =~ m/_[BESI]$/){
+    if ($p =~ m/#(\d)+/ || $p =~ m/_[BESI]$/){
       set_to_fail();
-      print "--> ERROR: phone \"$p\" has disallowed written form";
-      
+      print "--> ERROR: phone \"$p\" has disallowed written form\n";
+
     }
   }
   $idx ++;
@@ -157,7 +157,7 @@ sub check_lexicon {
     }
     for ($n = 0; $n < $num_prob_cols; $n++) {
       $prob = shift @col;
-      if (!($prob > 0.0 && $prob <= 1.0)) { 
+      if (!($prob > 0.0 && $prob <= 1.0)) {
         print "--> ERROR: bad pron-prob in lexicon-line '$_', in $lex\n";
         set_to_fail();
       }
@@ -171,7 +171,7 @@ sub check_lexicon {
     foreach (0 .. @col-1) {
       if (!$silence{@col[$_]} and !$nonsilence{@col[$_]}) {
         print "--> ERROR: phone \"@col[$_]\" is not in {, non}silence.txt ";
-        print "(line $idx)\n"; 
+        print "(line $idx)\n";
         set_to_fail();
       }
     }
@@ -195,12 +195,12 @@ if (-f "$dict/lexiconp_silprob.txt") {
       chomp; my @col = split;
       @col != 2 && die "--> ERROR: bad line \"$_\"\n" && set_to_fail();
       if ($col[0] eq "<s>" || $col[0] eq "overall") {
-        if (!($col[1] > 0.0 && $col[1] <= 1.0)) { 
+        if (!($col[1] > 0.0 && $col[1] <= 1.0)) {
           set_to_fail();
           print "--> ERROR: bad probability in $dir/silprob.txt \"$_\"\n";
         }
       } elsif ($col[0] eq "</s>_s" || $col[0] eq "</s>_n") {
-        if ($col[1] <= 0.0) { 
+        if ($col[1] <= 0.0) {
           set_to_fail();
           print "--> ERROR: bad correction term in $dir/silprob.txt \"$_\"\n";
         }
@@ -302,7 +302,7 @@ if (-s "$dict/extra_questions.txt") {
     }
     foreach (0 .. @col-1) {
       if(!$silence{@col[$_]} and !$nonsilence{@col[$_]}) {
-        set_to_fail();  print "--> ERROR: phone \"@col[$_]\" is not in {, non}silence.txt (line $idx, block ", $_+1, ")\n"; 
+        set_to_fail();  print "--> ERROR: phone \"@col[$_]\" is not in {, non}silence.txt (line $idx, block ", $_+1, ")\n";
       }
       $idx ++;
     }
@@ -336,7 +336,7 @@ $num_warn_nosplit = 0;
 $num_warn_nosplit_limit = 10;
 while(<NS>) {
   my @col = split(" ", $_);
-  foreach $p1 (@col) { 
+  foreach $p1 (@col) {
     foreach $p2 (@col) {
       if ($p1 ne $p2 && ! $distinguished{$p1,$p2}) {
         set_to_fail();

@@ -184,7 +184,7 @@ def CombineModels(dir, num_iters, num_iters_combine, num_chunk_per_minibatch,
 nnet3-chain-combine --num-iters=40 \
    --l2-regularize={l2} --leaky-hmm-coefficient={leaky} \
    --enforce-sum-to-one=true --enforce-positive-weights=true \
-   --verbose=3 {dir}/den.fst {raw_models} "ark:nnet3-chain-merge-egs --minibatch-size={num_chunk_per_minibatch} ark:{egs_dir}/combine.cegs ark:-|" \
+   --verbose=3 {dir}/den.fst {raw_models} "ark,bg:nnet3-chain-merge-egs --minibatch-size={num_chunk_per_minibatch} ark:{egs_dir}/combine.cegs ark:-|" \
 "|nnet3-am-copy --set-raw-nnet=- {dir}/{num_iters}.mdl {dir}/final.mdl"
     """.format(command = run_opts.command,
                combine_queue_opt = run_opts.combine_queue_opt,
@@ -209,7 +209,7 @@ def ComputeTrainCvProbabilities(dir, iter, egs_dir, l2_regularize, xent_regulari
   nnet3-chain-compute-prob --l2-regularize={l2} --leaky-hmm-coefficient={leaky} \
   --xent-regularize={xent_reg} \
   "nnet3-am-copy --raw=true {model} - |" {dir}/den.fst \
-        "ark:nnet3-chain-merge-egs ark:{egs_dir}/valid_diagnostic.cegs ark:- |"
+        "ark,bg:nnet3-chain-merge-egs ark:{egs_dir}/valid_diagnostic.cegs ark:- |"
     """.format(command = run_opts.command,
                dir = dir, iter = iter, model = model,
                l2 = l2_regularize, leaky = leaky_hmm_coefficient,
@@ -221,7 +221,7 @@ def ComputeTrainCvProbabilities(dir, iter, egs_dir, l2_regularize, xent_regulari
   nnet3-chain-compute-prob --l2-regularize={l2} --leaky-hmm-coefficient={leaky} \
   --xent-regularize={xent_reg} \
   "nnet3-am-copy --raw=true {model} - |" {dir}/den.fst \
-        "ark:nnet3-chain-merge-egs ark:{egs_dir}/train_diagnostic.cegs ark:- |"
+        "ark,bg:nnet3-chain-merge-egs ark:{egs_dir}/train_diagnostic.cegs ark:- |"
     """.format(command = run_opts.command,
                dir = dir,
                iter = iter,

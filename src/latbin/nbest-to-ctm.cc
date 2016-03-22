@@ -53,7 +53,9 @@ int main(int argc, char *argv[]) {
                 "(<eps>) arcs");
     po.Register("frame-shift", &frame_shift, "Time in seconds between frames.\n");
     po.Register("precision", &precision,
-                "Number of decimal places for start duration times\n");
+                "Number of decimal places for start duration times (note: we "
+                "may use a higher value than this if it's obvious from "
+                "--frame-shift that this value is too small");
 
     po.Read(argc, argv);
 
@@ -64,6 +66,12 @@ int main(int argc, char *argv[]) {
 
     std::string lats_rspecifier = po.GetArg(1),
         ctm_wxfilename = po.GetArg(2);
+
+    if (frame_shift < 0.01 && precision <= 2)
+      precision = 3;
+    if (frame_shift < 0.001 && precision <= 3)
+      precision = 4;
+
 
     SequentialCompactLatticeReader clat_reader(lats_rspecifier);
 

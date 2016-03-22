@@ -157,10 +157,11 @@ class NnetTrainer {
 
   const NnetTrainerOptions config_;
   Nnet *nnet_;
-  Nnet *delta_nnet_;  // Only used if momentum != 0.0.  nnet representing
-                      // accumulated parameter-change (we'd call this
-                      // gradient_nnet_, but due to natural-gradient update,
-                      // it's better to consider it as a delta-parameter nnet.
+  Nnet *delta_nnet_;  // Only used if momentum != 0.0 or max-param-change !=
+                      // 0.0.  nnet representing accumulated parameter-change
+                      // (we'd call this gradient_nnet_, but due to
+                      // natural-gradient update, it's better to consider it as
+                      // a delta-parameter nnet.
   CachingOptimizingCompiler compiler_;
 
   // This code supports multiple output layers, even though in the

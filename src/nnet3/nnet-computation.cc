@@ -742,7 +742,7 @@ void NnetComputation::Read(std::istream &is, bool binary) {
     ReadBasicType(is, binary, &key);
     ReadBasicType(is, binary, &(val.first));
     ReadBasicType(is, binary, &(val.second));
-    input_output_info.insert(std::make_pair<int32, std::pair<int32, int32> >(key, val));
+    input_output_info.insert(std::pair<int32, std::pair<int32, int32> >(key, val));
   }
 
   size_t num_commands;

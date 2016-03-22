@@ -62,18 +62,21 @@ class PosteriorHolder {
   PosteriorHolder() { }
 
   static bool Write(std::ostream &os, bool binary, const T &t);
-  
+
   void Clear() { Posterior tmp; std::swap(tmp, t_); }
 
   // Reads into the holder.
   bool Read(std::istream &is);
-  
+
   // Kaldi objects always have the stream open in binary mode for
   // reading.
   static bool IsReadInBinary() { return true; }
 
   const T &Value() const { return t_; }
-  
+
+  void Swap(PosteriorHolder *other) {
+    t_.swap(other->t_);
+  }
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(PosteriorHolder);
   T t_;
@@ -97,19 +100,22 @@ class GaussPostHolder {
 
   GaussPostHolder() { }
 
-  static bool Write(std::ostream &os, bool binary, const T &t);  
+  static bool Write(std::ostream &os, bool binary, const T &t);
 
   void Clear() {  GaussPost tmp;  std::swap(tmp, t_); }
 
   // Reads into the holder.
   bool Read(std::istream &is);
-  
+
   // Kaldi objects always have the stream open in binary mode for
   // reading.
   static bool IsReadInBinary() { return true; }
 
   const T &Value() const { return t_; }
-  
+
+  void Swap(GaussPostHolder *other) {
+    t_.swap(other->t_);
+  }
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(GaussPostHolder);
   T t_;
