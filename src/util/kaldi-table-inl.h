@@ -200,10 +200,10 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
                    << PrintableRxfilename(data_rxfilename_) 
                    << "within range " << range_;
       }
+      return object_;
     } else {
-      object_ = holder_.Value();
+      return holder_.Value();
     }
-    return object_;
   }
   void FreeCurrent() {
     if (state_ == kLoadSucceeded) {
@@ -298,7 +298,6 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
       return false;
     } else {
       if (holder_.Read(data_input_.Stream())) {
-        object_ = holder_.Value();
         state_ = kLoadSucceeded;
         data_rxfilename_last_ = data_rxfilename_;
         return true;
@@ -1637,10 +1636,10 @@ class RandomAccessTableReaderScriptImpl:
       if (!ExtractObjectRange(holder_.Value(), range_, &object_)) {
         KALDI_ERR  << "Failed to load object within range " << range_;
       }
+      return object_;
     } else {
-      object_ = holder_.Value();
+      return holder_.Value();
     }
-    return object_;
   }
 
   virtual ~RandomAccessTableReaderScriptImpl() {
