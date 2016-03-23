@@ -363,6 +363,7 @@ int main(int argc, char *argv[]) {
               << "]";  
 
     if (objective_function == "xent") {
+      KALDI_LOG << xent.ReportPerClass();
       KALDI_LOG << xent.Report();
     } else if (objective_function == "mse") {
       KALDI_LOG << mse.Report();
