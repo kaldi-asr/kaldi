@@ -134,9 +134,12 @@ for their processors. It isn't free, but you can get [Community Licensing for In
     variables correctly
 
 12. For OpenBLAS support, copy the file `kaldiwin_openblas.props` to `kaldiwin.props`
-13. For MKL support, copy the `kaldiwin_mkl.props` to `kaldiwin.props`
 
-14. Call the script that generates the MSVC solution
+    For MKL support, copy the `kaldiwin_mkl.props` to `kaldiwin.props`
+
+    _Known issue with Visual Studio 2015:_ Add `;HAVE_STRUCT_TIMESPEC` inside `<PreprocessorDefinitions>` as workaround, otherwise you'll get `error C2011: 'timespec': 'struct' type redefinition`. Known issue is being investigated in [issue #595](https://github.com/kaldi-asr/kaldi/issues/595).
+
+13. Call the script that generates the MSVC solution
 
          ./generate_solution.pl --vsver <default|vs2013|vs2015> [--enable-cuda] [--enable-openblas] [--enable-mkl]
 
@@ -151,17 +154,20 @@ for their processors. It isn't free, but you can get [Community Licensing for In
 
          (kaldi)/tools$ generate_solution.pl --vsver vs2013 --enable-cuda --enable-openblas
 
-15. Open the generated solution in the visual studio and switch to **Debug|x64** (or **Release|x64**) and build.
-   Expect 10 projects to fail, majority of them will fail because of missing include `portaudio.h`
+14. Open the generated solution in the visual studio and switch to **Debug|x64** (or **Release|x64**) and build.
+    Expect 10 projects to fail, majority of them will fail because of missing include `portaudio.h`.
+
+    _Known issue in Visual Studio 2015_: Error building `kaldi-nnet3` in Visual Studio 2015: `error C2664: 'std::pair<kaldi::int32,kaldi::int32> std::make_pair<T,T>(_Ty1 &&,_Ty2 &&)': cannot convert argument 1 from 'kaldi::int32' to 'kaldi::int32 &&'`
+    Workaround is being investigated in [issue #596](https://github.com/kaldi-asr/kaldi/issues/596).
 
 ------
 NOTE: I'm leaving the information about ATLAS here, for reference (also do not forget to consult the `README.ATLAS`)
 
-(B) either
+(A) either
    (i) compile ATLAS under cygwin [see INSTALL.atlas] and copy
   `kaldiwin_atlas.props` to `kaldiwin.props`
 
-(D)
+(B)
 If you had installed ATLAS, you next have to do this:
 [assuming you are one level above this directory]
 
