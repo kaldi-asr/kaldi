@@ -99,11 +99,27 @@ void DenominatorComputation::AlphaGeneralFrame(int32 t) {
     dim3 dimBlock(std::min<int32>(CU1DBLOCK, num_sequences), 1, 1);
     dim3 dimGrid(n_blocks(num_sequences, dimBlock.x), num_hmm_states, 1);
 
-    cuda_chain_hmm_forward(dimGrid, dimBlock, backward_transitions, transitions,
-                           num_sequences, prob_data, probs.Stride(),
-                           prev_alpha_dash, this_alpha);
-
-    CU_SAFE_CALL(cudaGetLastError());
+    while (1) {
+      if (dimGrid.y > 65535)  // the hardware doesn't allow more than this.
+        dimGrid.y = 65535;
+      cuda_chain_hmm_forward(dimGrid, dimBlock,
+                             backward_transitions, transitions,
+                             num_sequences, den_graph_.NumStates(),
+                             prob_data, probs.Stride(), prev_alpha_dash,
+                             this_alpha);
+      CU_SAFE_CALL(cudaGetLastError());
+      if (dimGrid.y == num_hmm_states) {
+        break;  // this is the normal case.
+      } else {
+        // We reach this code only in the unusual case where num_hmm_states >
+        // 65535.  We can compute the alphas for the remaining HMM states by
+        // moving some of the array pointers and making the call again.
+        backward_transitions += dimGrid.y;
+        this_alpha += dimGrid.y * num_sequences;
+        num_hmm_states -= dimGrid.y;
+        dimGrid.y = num_hmm_states;
+      }
+    }
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
@@ -312,11 +328,29 @@ void DenominatorComputation::BetaDashGeneralFrame(int32 t) {
     Timer tim;
     dim3 dimBlock(std::min<int32>(CU1DBLOCK, num_sequences), 1, 1);
     dim3 dimGrid(n_blocks(num_sequences, dimBlock.x), num_hmm_states, 1);
-    cuda_chain_hmm_backward(dimGrid, dimBlock, forward_transitions, transitions,
-                            num_sequences, probs.Data(), probs.Stride(),
-                            this_alpha_dash, next_beta, this_beta_dash,
-                            log_prob_deriv.Data(), log_prob_deriv.Stride());
-    CU_SAFE_CALL(cudaGetLastError());
+    while (1) {
+      if (dimGrid.y > 65535)  // the hardware doesn't allow more than this.
+        dimGrid.y = 65535;
+      cuda_chain_hmm_backward(dimGrid, dimBlock, forward_transitions, transitions,
+                              num_sequences, num_hmm_states,
+                              probs.Data(), probs.Stride(),
+                              this_alpha_dash, next_beta, this_beta_dash,
+                              log_prob_deriv.Data(), log_prob_deriv.Stride());
+      CU_SAFE_CALL(cudaGetLastError());
+      if (dimGrid.y == num_hmm_states) {
+        break;  // this is the normal case.
+      } else {
+        // We reach this code only in the unusual case where num_hmm_states >
+        // 65535.  We can compute the betas (and log-prob derivatives) for the
+        // remaining HMM states by moving some of the array pointers and making
+        // the call again.
+        forward_transitions += dimGrid.y;
+        this_alpha_dash += dimGrid.y * num_sequences;
+        this_beta_dash += dimGrid.y * num_sequences;
+        num_hmm_states -= dimGrid.y;
+        dimGrid.y = num_hmm_states;
+      }
+    }
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
