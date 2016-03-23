@@ -55,7 +55,7 @@ final_layer_normalize_target=0.5
 num_jobs_initial=3
 num_jobs_final=16
 minibatch_size=128
-relu_dim=576
+relu_dim=1024
 frames_per_eg=150
 remove_egs=false
 common_egs_dir=
@@ -152,7 +152,7 @@ if [ $stage -le 12 ]; then
     --ivector-dir exp/nnet3/ivectors_${train_set} \
     --tree-dir $treedir \
     $dim_opts \
-    --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -3,0,3 -3,0,3 -6,-3,0 0" \
+    --splice-indexes "-2,-1,0,1,2 -1,2 -3,3 -7,2 0" \
     --use-presoftmax-prior-scale false \
     --xent-regularize $xent_regularize \
     --xent-separate-forward-affine true \
