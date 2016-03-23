@@ -22,6 +22,7 @@ if (@ARGV != 1) {
   exit(1);
 }
 
+print "$0 " . join(" ", @ARGV) . "\n";
 
 $lang = shift @ARGV;
 $exit = 0;
@@ -751,10 +752,9 @@ sub check_wdisambig {
       $wdisambig_words_hash{$wsymtab{"#0"}} = 1;
       $wdisambig_words_string = $wsymtab{"#0"};
     } else {
-      print "--> ERROR: $lang/words.txt doesn't have \"#0\"\n";
+      print "--> WARNING: $lang/words.txt doesn't have \"#0\"\n";
       print "-->          (if you are using ARPA-type language models, you will normally\n";
       print "-->           need the disambiguation symbol \"#0\" to ensure determinizability)\n";
-      $exit = 1;
     }
   } else {
    print "--> $lang/phones/wdisambig.txt exists (newer prepare_lang.sh)\n";

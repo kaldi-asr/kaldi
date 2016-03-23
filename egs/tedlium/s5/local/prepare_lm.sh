@@ -22,7 +22,6 @@ gunzip -c "$arpa_lm" | \
    grep -v '<s> <s>' | \
    grep -v '</s> <s>' | \
    grep -v '</s> </s>' | \
-   sed "s=<unk>=<UNK>=g" | \
    arpa2fst - | fstprint | \
    utils/remove_oovs.pl /dev/null | \
    utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=data/lang_nosp_test/words.txt \

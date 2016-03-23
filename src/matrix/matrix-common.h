@@ -38,6 +38,12 @@ typedef enum {
   kCopyData
 } MatrixResizeType;
 
+
+typedef enum {
+  kDefaultStride,
+  kStrideEqualNumCols,
+} MatrixStrideType;
+
 typedef enum {
   kTakeLower,
   kTakeUpper,

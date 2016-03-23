@@ -52,7 +52,7 @@ if [ $stage -le 4 ]; then
   # Get the alignments as lattices (gives the CTC training more freedom).
   # use the same num-jobs as the alignments
   nj=$(cat exp/tri3b_ali/num_jobs) || exit 1;
-  steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd -l q=all.q" data/train \
+  steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" data/train \
     data/lang exp/tri3b exp/tri3b_lats
   rm exp/tri3b_lats/fsts.*.gz # save space
 fi
@@ -74,7 +74,7 @@ if [ $stage -le 6 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
     --leftmost-questions-truncate $leftmost_questions_truncate \
-    --cmd "$train_cmd -l q=all.q" 1200 data/train $lang $ali_dir $treedir
+    --cmd "$train_cmd" 1200 data/train $lang $ali_dir $treedir
 fi
 
 if [ $stage -le 7 ]; then

@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     typedef kaldi::int32 int32;
-    
+
     const char *usage =
         "Determinize lattices, keeping only the best path (sequence of acoustic states)\n"
         "for each input-symbol sequence.  This version does pruning as part of the\n"
@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
         "\n"
         "Usage: lattice-determinize-pruned [options] lattice-rspecifier lattice-wspecifier\n"
         " e.g.: lattice-determinize-pruned --acoustic-scale=0.1 --beam=6.0 ark:in.lats ark:det.lats\n";
-    
+
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 1.0;
     BaseFloat beam = 10.0;
@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
     // being more part of "fst world", so we register its elements independently.
     opts.max_mem = 50000000;
     opts.max_loop = 0; // was 500000;
-    
+
     po.Register("acoustic-scale", &acoustic_scale,
                 "Scaling factor for acoustic likelihoods");
     po.Register("beam", &beam, "Pruning beam [applied after acoustic scaling].");
@@ -68,9 +68,9 @@ int main(int argc, char *argv[]) {
     // Read as regular lattice-- this is the form the determinization code
     // accepts.
     SequentialLatticeReader lat_reader(lats_rspecifier);
-    
+
     // Write as compact lattice.
-    CompactLatticeWriter compact_lat_writer(lats_wspecifier); 
+    CompactLatticeWriter compact_lat_writer(lats_wspecifier);
 
     int32 n_done = 0, n_warn = 0;
 

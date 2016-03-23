@@ -3,6 +3,7 @@ import logging
 import math
 import re
 import time
+import argparse
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -12,6 +13,38 @@ formatter = logging.Formatter('%(asctime)s [%(filename)s:%(lineno)s - %(funcName
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
+
+def SendMail(message, subject, email_id):
+    try:
+        subprocess.Popen('echo "{message}" | mail -s "{subject}" {email} '.format(
+            message = message,
+            subject = subject,
+            email = email_id), shell=True)
+    except Exception as e:
+        logger.info(" Unable to send mail due to error:\n {error}".format(error = str(e)))
+        pass
+
+class StrToBoolAction(argparse.Action):
+    """ A custom action to convert bools from shell format i.e., true/false
+        to python format i.e., True/False """
+    def __call__(self, parser, namespace, values, option_string=None):
+        if values == "true":
+            setattr(namespace, self.dest, True)
+        elif values == "false":
+            setattr(namespace, self.dest, False)
+        else:
+            raise Exception("Unknown value {0} for --{1}".format(values, self.dest))
+
+class NullstrToNoneAction(argparse.Action):
+    """ A custom action to convert empty strings passed by shell
+        to None in python. This is necessary as shell scripts print null strings
+        when a variable is not specified. We could use the more apt None
+        in python. """
+    def __call__(self, parser, namespace, values, option_string=None):
+            if values.strip() == "":
+                setattr(namespace, self.dest, None)
+            else:
+                setattr(namespace, self.dest, values)
 
 
 def CheckIfCudaCompiled():
@@ -104,7 +137,7 @@ def ReadKaldiMatrix(matrix_file):
         if not (first_field == "[" and last_field == "]"):
             raise Exception("Kaldi matrix file has incorrect format, only text format matrix files can be read by this script")
         for i in range(len(lines)):
-            lines[i] = map(lambda x: int(x), lines[i])
+            lines[i] = map(lambda x: int(float(x)), lines[i])
         return lines
     except IOError:
         raise Exception("Error while reading the kaldi matrix file {0}".format(matrix_file))
@@ -113,10 +146,13 @@ def WriteKaldiMatrix(output_file, matrix):
     # matrix is a list of lists
     file = open(output_file, 'w')
     file.write("[ ")
-    row_len = len(matrix[0])
     num_rows = len(matrix)
+    if num_rows == 0:
+        raise Exception("Matrix is empty")
+    num_cols = len(matrix[0])
+
     for row_index in range(len(matrix)):
-        if row_len != len(matrix[row_index]):
+        if num_cols != len(matrix[row_index]):
             raise Exception("All the rows of a matrix are expected to have the same length")
         file.write(" ".join(map(lambda x: str(x), matrix[row_index])))
         if row_index != num_rows - 1:
@@ -141,20 +177,19 @@ def SplitData(data, num_jobs):
 def ParseModelConfigVarsFile(var_file):
     try:
         var_file_handle = open(var_file, 'r')
-        valid_fields = set(['model_left_context', 'model_right_context', 'num_hidden_layers'])
         model_left_context = None
         model_right_context = None
         num_hidden_layers = None
         for line in var_file_handle:
             parts = line.split('=')
             field_name = parts[0].strip()
-            field_value = int(parts[1])
-            if field_name == 'model_left_context':
-                model_left_context = field_value
-            elif field_name == 'model_right_context':
-                model_right_context = field_value
+            field_value = parts[1]
+            if field_name in ['model_left_context', 'left_context']:
+                model_left_context = int(field_value)
+            elif field_name in ['model_right_context', 'right_context']:
+                model_right_context = int(field_value)
             elif field_name == 'num_hidden_layers':
-                num_hidden_layers = field_value
+                num_hidden_layers = int(field_value)
 
         if model_left_context is not None and model_right_context is not None and num_hidden_layers is not None:
             return [model_left_context, model_right_context, num_hidden_layers]
@@ -282,7 +317,7 @@ def ComputePresoftmaxPriorScale(dir, alidir, num_jobs, run_opts,
 {command} JOB=1:{num_jobs} {dir}/log/acc_pdf.JOB.log \
 ali-to-post "ark:gunzip -c {alidir}/ali.JOB.gz|" ark:- \| \
 post-to-tacc --per-pdf=true  {alidir}/final.mdl ark:- {dir}/pdf_counts.JOB
-     """.format(command = run_opts.train_command,
+     """.format(command = run_opts.command,
                 num_jobs = num_jobs,
                 dir = dir,
                 alidir = alidir))
@@ -290,24 +325,25 @@ post-to-tacc --per-pdf=true  {alidir}/final.mdl ark:- {dir}/pdf_counts.JOB
     RunKaldiCommand("""
 {command} {dir}/log/sum_pdf_counts.log \
 vector-sum --binary=false {dir}/pdf_counts.* {dir}/pdf_counts
-       """.format(command = run_opts.train_command,  dir = dir))
+       """.format(command = run_opts.command,  dir = dir))
 
     import glob
     for file in glob.glob('{0}/pdf_counts.*'.format(dir)):
         os.remove(file)
 
     smooth=0.01
-    pdf_counts = ReadKaldiMatrix('{0}/pdf_counts'.format(dir))
+    pdf_counts = ReadKaldiMatrix('{0}/pdf_counts'.format(dir))[0]
     total = sum(pdf_counts)
     average_count = total/len(pdf_counts)
     scales = []
     for i in range(len(pdf_counts)):
         scales.append(math.pow(pdf_counts[i] + smooth * average_count, presoftmax_prior_scale_power))
+    num_pdfs = len(pdf_counts)
     scaled_counts = map(lambda x: x * float(num_pdfs) / sum(scales), scales)
 
     output_file = "{0}/presoftmax_prior_scale.vec".format(dir)
     WriteKaldiMatrix(output_file, [scaled_counts])
-    ForceSymLink("../presoftmax_prior_scale.vec", "{0}/configs/presoftmax_prior_scale.vec".format(dir))
+    ForceSymlink("../presoftmax_prior_scale.vec", "{0}/configs/presoftmax_prior_scale.vec".format(dir))
 
 def PrepareInitialAcousticModel(dir, alidir, run_opts):
     """ Adds the first layer; this will also add in the lda.mat and
@@ -471,7 +507,7 @@ def ComputeTrainCvProbabilities(dir, iter, egs_dir, run_opts, wait = False):
     RunKaldiCommand("""
 {command} {dir}/log/compute_prob_valid.{iter}.log \
   nnet3-compute-prob "nnet3-am-copy --raw=true {model} - |" \
-        "ark:nnet3-merge-egs ark:{egs_dir}/valid_diagnostic.egs ark:- |"
+        "ark,bg:nnet3-merge-egs ark:{egs_dir}/valid_diagnostic.egs ark:- |"
     """.format(command = run_opts.command,
                dir = dir,
                iter = iter,
@@ -481,7 +517,7 @@ def ComputeTrainCvProbabilities(dir, iter, egs_dir, run_opts, wait = False):
     RunKaldiCommand("""
 {command} {dir}/log/compute_prob_train.{iter}.log \
   nnet3-compute-prob "nnet3-am-copy --raw=true {model} - |" \
-       "ark:nnet3-merge-egs ark:{egs_dir}/train_diagnostic.egs ark:- |"
+       "ark,bg:nnet3-merge-egs ark:{egs_dir}/train_diagnostic.egs ark:- |"
     """.format(command = run_opts.command,
                dir = dir,
                iter = iter,
@@ -497,7 +533,7 @@ def ComputeProgress(dir, iter, egs_dir, run_opts, wait=False):
 {command} {dir}/log/progress.{iter}.log \
 nnet3-info "nnet3-am-copy --raw=true {model} - |" '&&' \
 nnet3-show-progress --use-gpu=no "nnet3-am-copy --raw=true {prev_model} - |" "nnet3-am-copy --raw=true {model} - |" \
-"ark:nnet3-merge-egs --minibatch-size=256 ark:{egs_dir}/train_diagnostic.egs ark:-|"
+"ark,bg:nnet3-merge-egs --minibatch-size=256 ark:{egs_dir}/train_diagnostic.egs ark:-|"
     """.format(command = run_opts.command,
                dir = dir,
                iter = iter,
@@ -505,8 +541,8 @@ nnet3-show-progress --use-gpu=no "nnet3-am-copy --raw=true {prev_model} - |" "nn
                prev_model = prev_model,
                egs_dir = egs_dir), wait = wait)
 
-def CombineModels(dir, num_iters, num_iters_combine, chunk_width, egs_dir,
-                  run_opts):
+def CombineModels(dir, num_iters, num_iters_combine, egs_dir,
+                  run_opts, chunk_width = None):
     # Now do combination.  In the nnet3 setup, the logic
     # for doing averaging of subsets of the models in the case where
     # there are too many models to reliably esetimate interpolation
@@ -519,18 +555,22 @@ def CombineModels(dir, num_iters, num_iters_combine, chunk_width, egs_dir,
           raise Exception('Model file {0} missing'.format(model_file))
       raw_model_strings.append('"nnet3-am-copy --raw=true {0} -|"'.format(model_file))
 
-    combine_num_chunk_per_minibatch = int(1024.0/(chunk_width))
+    if chunk_width is not None:
+        # this is an RNN model
+        mbsize = int(1024.0/(chunk_width))
+    else:
+        mbsize = 1024
 
     RunKaldiCommand("""
 {command} {combine_queue_opt} {dir}/log/combine.log \
 nnet3-combine --num-iters=40 \
    --enforce-sum-to-one=true --enforce-positive-weights=true \
-   --verbose=3 {raw_models} "ark:nnet3-merge-egs --measure-output-frames=false --minibatch-size={combine_num_chunk_per_minibatch} ark:{egs_dir}/combine.egs ark:-|" \
+   --verbose=3 {raw_models} "ark,bg:nnet3-merge-egs --measure-output-frames=false --minibatch-size={mbsize} ark:{egs_dir}/combine.egs ark:-|" \
 "|nnet3-am-copy --set-raw-nnet=- {dir}/{num_iters}.mdl {dir}/combined.mdl"
     """.format(command = run_opts.command,
                combine_queue_opt = run_opts.combine_queue_opt,
                dir = dir, raw_models = " ".join(raw_model_strings),
-               combine_num_chunk_per_minibatch = combine_num_chunk_per_minibatch,
+               mbsize = mbsize,
                num_iters = num_iters,
                egs_dir = egs_dir))
 
@@ -615,4 +655,39 @@ def RemoveModel(nnet_dir, iter, num_iters, num_iters_combine = None,
     file_name = '{0}/{1}.mdl'.format(nnet_dir, iter)
     if os.path.isfile(file_name):
         os.remove(file_name)
+
+def ComputeLifterCoeffs(lifter, dim):
+    coeffs = [0] * dim
+    for i in range(0, dim):
+        coeffs[i] = 1.0 + 0.5 * lifter * math.sin(math.pi * i / float(lifter));
+
+    return coeffs
+
+def ComputeIdctMatrix(K, N, cepstral_lifter=0):
+    matrix = [[0] * K for i in range(N)]
+    # normalizer for X_0
+    normalizer = math.sqrt(1.0 / float(N));
+    for j in range(0, N):
+        matrix[j][0] = normalizer;
+    # normalizer for other elements
+    normalizer = math.sqrt(2.0 / float(N));
+    for k in range(1, K):
+      for n in range(0, N):
+        matrix[n][k] = normalizer * math.cos(math.pi / float(N) * (n + 0.5) * k);
+
+    if cepstral_lifter != 0:
+        lifter_coeffs = ComputeLifterCoeffs(cepstral_lifter, K)
+        for k in range(0, K):
+          for n in range(0, N):
+            matrix[n][k] = matrix[n][k] / lifter_coeffs[k];
+
+    return matrix
+
+def WriteIdctMatrix(feat_dim, cepstral_lifter, file_path):
+    # generate the IDCT matrix and write to the file
+    idct_matrix = ComputeIdctMatrix(feat_dim, feat_dim, cepstral_lifter)
+    # append a zero column to the matrix, this is the bias of the fixed affine component
+    for k in range(0, feat_dim):
+        idct_matrix[k].append(0)
+    WriteKaldiMatrix(file_path, idct_matrix)
 

@@ -11,10 +11,13 @@
 # --num-threads 16 and --minibatch-size 128.
 
 stage=0
+affix=
 train_stage=-10
 has_fisher=true
 speed_perturb=true
-
+common_egs_dir=
+reporting_email=
+remove_egs=true
 
 . cmd.sh
 . ./path.sh
@@ -41,26 +44,52 @@ ali_dir=exp/tri4_ali_nodup$suffix
 
 local/nnet3/run_ivector_common.sh --stage $stage \
 	--speed-perturb $speed_perturb || exit 1;
+
 if [ $stage -le 9 ]; then
+  echo "$0: creating neural net configs";
+
+  # create the config files for nnet initialization
+  python steps/nnet3/tdnn/make_configs.py  \
+    --feat-dir data/${train_set}_hires \
+    --ivector-dir exp/nnet3/ivectors_${train_set} \
+    --ali-dir $ali_dir \
+    --relu-dim 1024 \
+    --splice-indexes "-2,-1,0,1,2 -1,2 -3,3 -7,2 0"  \
+    --use-presoftmax-prior-scale true \
+   $dir/configs || exit 1;
+fi
+
+
+
+if [ $stage -le 10 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
 
-  steps/nnet3/train_tdnn.sh --stage $train_stage \
-    --num-epochs 2 --num-jobs-initial 3 --num-jobs-final 16 \
-    --splice-indexes "-2,-1,0,1,2 -1,2 -3,3 -7,2 0" \
-    --feat-type raw \
-    --online-ivector-dir exp/nnet3/ivectors_${train_set} \
-    --cmvn-opts "--norm-means=false --norm-vars=false" \
-    --initial-effective-lrate 0.0017 --final-effective-lrate 0.00017 \
-    --cmd "$decode_cmd" \
-    --relu-dim 1024 \
-    data/${train_set}_hires data/lang $ali_dir $dir  || exit 1;
+  steps/nnet3/train_dnn.py --stage=$train_stage \
+    --cmd="$decode_cmd" \
+    --feat.online-ivector-dir exp/nnet3/ivectors_${train_set} \
+    --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
+    --trainer.num-epochs 2 \
+    --trainer.optimization.num-jobs-initial 3 \
+    --trainer.optimization.num-jobs-final 16 \
+    --trainer.optimization.initial-effective-lrate 0.0017 \
+    --trainer.optimization.final-effective-lrate 0.00017 \
+    --egs.dir "$common_egs_dir" \
+    --cleanup.remove-egs $remove_egs \
+    --cleanup.preserve-model-interval 100 \
+    --use-gpu true \
+    --feat-dir=data/${train_set}_hires \
+    --ali-dir $ali_dir \
+    --lang data/lang \
+    --reporting.email="$reporting_email" \
+    --dir=$dir  || exit 1;
+
 fi
 
 graph_dir=exp/tri4/graph_sw1_tg
-if [ $stage -le 10 ]; then
+if [ $stage -le 11 ]; then
   for decode_set in train_dev eval2000; do
     (
     num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`

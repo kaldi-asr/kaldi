@@ -19,17 +19,6 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef _MSC_VER
-#include <unordered_map>
-using std::unordered_map;
-#elif __cplusplus > 199711L || defined(__GXX_EXPERIMENTAL_CXX0X__)
-#include <unordered_map>
-using std::unordered_map;
-#else
-#include <tr1/unordered_map>
-using std::tr1::unordered_map;
-#endif
-
 #include <vector>
 #include <climits>
 #include "fstext/determinize-lattice.h" // for LatticeStringRepository

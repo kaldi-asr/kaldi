@@ -11,7 +11,7 @@
 # language-id.
 
 
-# We might later have options here; if not, I'llr emove this.
+# We might later have options here; if not, I'll emove this.
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -42,6 +42,8 @@ rm -r $lang_out/phones 2>/dev/null
 cp -r $lang/phones/ $lang_out/
 rm $lang_out/phones/word_boundary.* 2>/dev/null # these would
   # no longer be valid.
+rm $lang_out/phones/wdisambig* 2>/dev/null  # ditto this.
+
 # List of disambig symbols will be empty: not needed, since G.fst and L.fst * G.fst
 # are determinizable without any.
 echo -n > $lang_out/phones/disambig.txt
@@ -81,7 +83,7 @@ ali-to-phones $alidir/final.mdl "ark:gunzip -c $alidir/ali.*.gz|" ark,t:- | \
   foreach $p (@phones) {
     $src = $phn2state{$p};
     $hist = $histcount{$p};
-    $hist > 0 || die;    
+    $hist > 0 || die;
     foreach $q (@phones) {
       $c = $count{$p,$q};
       if (defined $c) {
@@ -92,7 +94,7 @@ ali-to-phones $alidir/final.mdl "ark:gunzip -c $alidir/ali.*.gz|" ark,t:- | \
     }
     $c = $count{$p,"</s>"};
     if (defined $c) {
-      $cost = -log($c / $hist); # cost on FST arc.      
+      $cost = -log($c / $hist); # cost on FST arc.
       print "$src $cost\n"; # final-prob.
     }
   } ' | fstcompile --acceptor=true | \
@@ -101,7 +103,7 @@ ali-to-phones $alidir/final.mdl "ark:gunzip -c $alidir/ali.*.gz|" ark,t:- | \
 # symbols for phones and words are the same.
 # Neither has disambig symbols.
 cp $lang_out/phones.txt $lang_out/words.txt
-  
+
 grep -v '<eps>' $lang_out/phones.txt | awk '{printf("0 0 %s %s\n", $2, $2);} END{print("0 0.0");}' | \
    fstcompile  > $lang_out/L.fst
 

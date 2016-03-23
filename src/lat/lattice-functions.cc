@@ -405,15 +405,11 @@ static inline double LogAddOrMax(bool viterbi, double a, double b) {
     return LogAdd(a, b);
 }
 
-// Computes (normal or Viterbi) alphas and betas; returns (total-prob, or
-// best-path negated cost) Note: in either case, the alphas and betas are
-// negated costs.  Requires that lat be topologically sorted.  This code
-// will work for either CompactLattice or Latice.
 template<typename LatticeType>
-static double ComputeLatticeAlphasAndBetas(const LatticeType &lat,
-                                           bool viterbi,
-                                           vector<double> *alpha,
-                                           vector<double> *beta) {
+double ComputeLatticeAlphasAndBetas(const LatticeType &lat,
+                                    bool viterbi,
+                                    vector<double> *alpha,
+                                    vector<double> *beta) {
   typedef typename LatticeType::Arc Arc;
   typedef typename Arc::Weight Weight;
   typedef typename Arc::StateId StateId;
@@ -461,6 +457,19 @@ static double ComputeLatticeAlphasAndBetas(const LatticeType &lat,
   // Split the difference when returning... they should be the same.
   return 0.5 * (tot_backward_prob + tot_forward_prob);
 }
+
+// instantiate the template for Lattice and CompactLattice
+template 
+double ComputeLatticeAlphasAndBetas(const Lattice &lat,
+                                    bool viterbi,
+                                    vector<double> *alpha,
+                                    vector<double> *beta);
+
+template 
+double ComputeLatticeAlphasAndBetas(const CompactLattice &lat,
+                                    bool viterbi,
+                                    vector<double> *alpha,
+                                    vector<double> *beta);
 
 
 

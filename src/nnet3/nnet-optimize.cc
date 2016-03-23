@@ -1,6 +1,7 @@
 // nnet3/nnet-optimize.cc
 
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
+//                2015  Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -23,6 +24,83 @@
 namespace kaldi {
 namespace nnet3 {
 
+void NnetOptimizeOptions::Read(std::istream &is, bool binary) {
+  ExpectToken(is, binary, "<NnetOptimizeOptions>");
+  ExpectToken(is, binary, "<Optimize>");
+  ReadBasicType(is, binary, &optimize);
+  ExpectToken(is, binary, "<ConsolidateModelUpdate>");
+  ReadBasicType(is, binary, &consolidate_model_update);
+  ExpectToken(is, binary, "<PropagateInPlace>");
+  ReadBasicType(is, binary, &propagate_in_place);
+  ExpectToken(is, binary, "<BackpropInPlace>");
+  ReadBasicType(is, binary, &backprop_in_place);
+  ExpectToken(is, binary, "<ConvertAddition>");
+  ReadBasicType(is, binary, &convert_addition);
+  ExpectToken(is, binary, "<RemoveAssignments>");
+  ReadBasicType(is, binary, &remove_assignments);
+  ExpectToken(is, binary, "<AllowLeftMerge>");
+  ReadBasicType(is, binary, &allow_left_merge);
+  ExpectToken(is, binary, "<AllowRightMerge>");
+  ReadBasicType(is, binary, &allow_right_merge);
+  ExpectToken(is, binary, "<InitializeUndefined>");
+  ReadBasicType(is, binary, &initialize_undefined);
+  ExpectToken(is, binary, "<MoveSizingCommands>");
+  ReadBasicType(is, binary, &move_sizing_commands);
+  ExpectToken(is, binary, "<AllocateFromOther>");
+  ReadBasicType(is, binary, &allocate_from_other);
+  ExpectToken(is, binary, "<MinDerivTime>");
+  ReadBasicType(is, binary, &min_deriv_time);
+  ExpectToken(is, binary, "<MaxDerivTime>");
+  ReadBasicType(is, binary, &max_deriv_time);
+  ExpectToken(is, binary, "</NnetOptimizeOptions>");
+}
+
+void NnetOptimizeOptions::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<NnetOptimizeOptions>");
+  WriteToken(os, binary, "<Optimize>");
+  WriteBasicType(os, binary, optimize);
+  WriteToken(os, binary, "<ConsolidateModelUpdate>");
+  WriteBasicType(os, binary, consolidate_model_update);
+  WriteToken(os, binary, "<PropagateInPlace>");
+  WriteBasicType(os, binary, propagate_in_place);
+  WriteToken(os, binary, "<BackpropInPlace>");
+  WriteBasicType(os, binary, backprop_in_place);
+  WriteToken(os, binary, "<ConvertAddition>");
+  WriteBasicType(os, binary, convert_addition);
+  WriteToken(os, binary, "<RemoveAssignments>");
+  WriteBasicType(os, binary, remove_assignments);
+  WriteToken(os, binary, "<AllowLeftMerge>");
+  WriteBasicType(os, binary, allow_left_merge);
+  WriteToken(os, binary, "<AllowRightMerge>");
+  WriteBasicType(os, binary, allow_right_merge);
+  WriteToken(os, binary, "<InitializeUndefined>");
+  WriteBasicType(os, binary, initialize_undefined);
+  WriteToken(os, binary, "<MoveSizingCommands>");
+  WriteBasicType(os, binary, move_sizing_commands);
+  WriteToken(os, binary, "<AllocateFromOther>");
+  WriteBasicType(os, binary, allocate_from_other);
+  WriteToken(os, binary, "<MinDerivTime>");
+  WriteBasicType(os, binary, min_deriv_time);
+  WriteToken(os, binary, "<MaxDerivTime>");
+  WriteBasicType(os, binary, max_deriv_time);
+  WriteToken(os, binary, "</NnetOptimizeOptions>");
+}
+
+bool NnetOptimizeOptions::operator == (const NnetOptimizeOptions &other) const {
+  return (other.propagate_in_place == propagate_in_place &&
+          other.optimize == optimize &&
+          other.consolidate_model_update == consolidate_model_update &&
+          other.backprop_in_place == backprop_in_place &&
+          other.convert_addition == convert_addition &&
+          other.remove_assignments == remove_assignments &&
+          other.allow_left_merge == allow_left_merge &&
+          other.allow_right_merge == allow_right_merge &&
+          other.initialize_undefined == initialize_undefined &&
+          other.move_sizing_commands == move_sizing_commands &&
+          other.allocate_from_other == allocate_from_other &&
+          other.min_deriv_time == min_deriv_time &&
+          other.max_deriv_time == max_deriv_time);
+}
 
 // move commands that resize matrices to as late/early as possible.
 void MoveSizingCommands(const Nnet &nnet, NnetComputation *computation) {
@@ -83,7 +161,6 @@ void MoveSizingCommands(const Nnet &nnet, NnetComputation *computation) {
     reordered_commands[c] = *(commands[c].second);
   computation->commands = reordered_commands;
 }
-
 
 // This command replaces commands of type kAllocMatrixZeroed with commands of
 // type kAllocMatrixUndefined, where possible.
@@ -184,7 +261,8 @@ static void ComputeCommandPairs(
 
 void RemoveUnnecessaryAllocation(const Nnet &nnet,
                                  NnetComputation *computation) {
-  // For each size of matrix (i.e. each pair<int32,int32>), we
+  // For each size of matrix and stride-type, represented as a pair<int32,int32>
+  // (the num-rows, and the num-cols * (stride-type == kDefaultStride ? 1 : -1), we
   // accumulate a list of indexes of deallocation commands that
   // are for that size, and a list of indexes of allocation commands
   // for that size.
@@ -206,8 +284,10 @@ void RemoveUnnecessaryAllocation(const Nnet &nnet,
         command.command_type == kAllocMatrixUndefined ||
         command.command_type == kDeallocMatrix) {
       int32 m = command.arg1, num_rows = computation->matrices[m].num_rows,
-          num_cols = computation->matrices[m].num_cols;
-      std::pair<int32,int32> p(num_rows, num_cols);
+          num_cols = computation->matrices[m].num_cols,
+          num_cols_mod = num_cols * (
+              computation->matrices[m].stride_type == kDefaultStride ? 1 : -1);
+      std::pair<int32,int32> p(num_rows, num_cols_mod);
       std::pair<std::vector<int32>,std::vector<int32> > &lists = pair_map[p];
       if (command.command_type == kDeallocMatrix)
         lists.first.push_back(command_index);
@@ -426,6 +506,42 @@ void CachingOptimizingCompiler::UpdateCache(const ComputationRequest *request,
   AqType::iterator ait = access_queue_.insert(access_queue_.end(), request);
   computation_cache_.insert(std::make_pair(request,
                             std::make_pair(computation, ait)));
+}
+
+void CachingOptimizingCompiler::ReadCache(std::istream &is, bool binary) {
+  NnetOptimizeOptions opt_config_cached;
+  opt_config_cached.Read(is, binary);
+  // we won't read cached computations if any optimize option has been changed.
+  bool read_cache = (opt_config_ == opt_config_cached);
+
+  if (read_cache) {
+    size_t computation_cache_size;
+    ExpectToken(is, binary, "<ComputationCacheSize>");
+    ReadBasicType(is, binary, &computation_cache_size);
+    KALDI_ASSERT(computation_cache_size >= 0);
+    computation_cache_.clear();
+    access_queue_.clear();
+    ExpectToken(is, binary, "<ComputationCache>");
+    for (size_t c = 0; c < computation_cache_size; c++) {
+      ComputationRequest *request = new ComputationRequest();
+      request->Read(is, binary);
+      NnetComputation *computation = new NnetComputation();
+      computation->Read(is, binary);
+      UpdateCache(request, computation);
+    }
+  }
+}
+
+void CachingOptimizingCompiler::WriteCache(std::ostream &os, bool binary) const {
+  opt_config_.Write(os, binary);
+  WriteToken(os, binary, "<ComputationCacheSize>");
+  WriteBasicType(os, binary, static_cast<int32>(computation_cache_.size()));
+  WriteToken(os, binary, "<ComputationCache>");
+  for (CacheType::const_iterator iter = computation_cache_.begin();
+           iter != computation_cache_.end(); ++iter) {
+    iter->first->Write(os, binary);
+    iter->second.first->Write(os, binary);
+  }
 }
 
 void CachingOptimizingCompiler::UpdateAccessQueue(CacheType::iterator &cit) {

@@ -34,11 +34,12 @@ if [ $stage -le 0 ]; then
   local/prepare_dict.sh || exit 1
 
   utils/prepare_lang.sh data/local/dict_nosp \
-    "<UNK>" data/local/lang_nosp data/lang_nosp || exit 1
+    "<unk>" data/local/lang_nosp data/lang_nosp || exit 1
 
   local/prepare_lm.sh || exit 1
 
 fi
+
 # Feature extraction
 feat_dir=$pwd/data/mfcc_features
 if [ $stage -le 1 ]; then
@@ -101,7 +102,7 @@ if [ $stage -le 5 ]; then
     exp/tri2/sil_counts_nowb.txt \
     exp/tri2/pron_bigram_counts_nowb.txt data/local/dict
 
-  utils/prepare_lang.sh data/local/dict "<UNK>" data/local/lang data/lang
+  utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
   cp -rT data/lang data/lang_test
   cp -rT data/lang data/lang_rescore
   cp data/lang_nosp_test/G.fst data/lang_test
@@ -134,7 +135,7 @@ if [ $stage -le 6 ]; then
     exp/tri3/graph data/test exp/tri3/decode_test || exit 1
 fi
 
-# steps/cleanup/debug_lexicon.sh --nj 30 --cmd "$train_cmd" data/train data/lang exp/tri3 data/local/dict/lexicon.txt exp/tri3_debug_lexicon &
+# steps/cleanup/debug_lexicon.sh --nj 100 --alidir exp/tri3 --cmd "$train_cmd" data/train data/lang exp/tri3 data/local/dict/lexicon.txt exp/tri3_debug_lexicon &
 
 if [ $stage -le 7 ]; then
   steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \

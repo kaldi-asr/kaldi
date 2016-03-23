@@ -190,7 +190,8 @@ def GetArgs():
                         help="Specifies the stage of the experiment to execution from")
     parser.add_argument("--exit-stage", type=int, default=None,
                         help="If specified, training exits before running this stage")
-    parser.add_argument("--command", type=str, action = NullstrToNoneAction,
+    parser.add_argument("--cmd", type=str, action = NullstrToNoneAction,
+                        dest = "command",
                         help="""Specifies the script to launch jobs.
                         e.g. queue.pl for launching on SGE cluster
                              run.pl for launching on local machine
@@ -358,7 +359,7 @@ def TrainNewModels(dir, iter, num_jobs, num_archives_processed, num_archives,
   --print-interval=10 --momentum={momentum} \
   --max-param-change={max_param_change} \
   --optimization.min-deriv-time={min_deriv_time} "{raw_model}" \
-  "ark:nnet3-copy-egs {context_opts} ark:{egs_dir}/egs.{archive_index}.ark ark:- | nnet3-shuffle-egs --buffer-size={shuffle_buffer_size} --srand={iter} ark:- ark:-| nnet3-merge-egs --minibatch-size={num_chunk_per_minibatch} --measure-output-frames=false --discard-partial-minibatches=true ark:- ark:- |" \
+  "ark,bg:nnet3-copy-egs {context_opts} ark:{egs_dir}/egs.{archive_index}.ark ark:- | nnet3-shuffle-egs --buffer-size={shuffle_buffer_size} --srand={iter} ark:- ark:-| nnet3-merge-egs --minibatch-size={num_chunk_per_minibatch} --measure-output-frames=false --discard-partial-minibatches=true ark:- ark:- |" \
   {dir}/{next_iter}.{job}.raw
           """.format(command = run_opts.command,
                      train_queue_opt = run_opts.train_queue_opt,
@@ -644,8 +645,8 @@ def Train(args, run_opts):
 
     if args.stage <= num_iters:
         logger.info("Doing final combination to produce final.mdl")
-        CombineModels(args.dir, num_iters, num_iters_combine, args.chunk_width,
-                      egs_dir, run_opts)
+        CombineModels(args.dir, num_iters, num_iters_combine, egs_dir, run_opts,
+                chunk_width = args.chunk_width)
 
     if args.stage <= num_iters + 1:
         logger.info("Getting average posterior for purposes of adjusting the priors.")

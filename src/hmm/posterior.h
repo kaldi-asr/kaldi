@@ -62,18 +62,21 @@ class PosteriorHolder {
   PosteriorHolder() { }
 
   static bool Write(std::ostream &os, bool binary, const T &t);
-  
+
   void Clear() { Posterior tmp; std::swap(tmp, t_); }
 
   // Reads into the holder.
   bool Read(std::istream &is);
-  
+
   // Kaldi objects always have the stream open in binary mode for
   // reading.
   static bool IsReadInBinary() { return true; }
 
   const T &Value() const { return t_; }
-  
+
+  void Swap(PosteriorHolder *other) {
+    t_.swap(other->t_);
+  }
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(PosteriorHolder);
   T t_;
@@ -97,19 +100,22 @@ class GaussPostHolder {
 
   GaussPostHolder() { }
 
-  static bool Write(std::ostream &os, bool binary, const T &t);  
+  static bool Write(std::ostream &os, bool binary, const T &t);
 
   void Clear() {  GaussPost tmp;  std::swap(tmp, t_); }
 
   // Reads into the holder.
   bool Read(std::istream &is);
-  
+
   // Kaldi objects always have the stream open in binary mode for
   // reading.
   static bool IsReadInBinary() { return true; }
 
   const T &Value() const { return t_; }
-  
+
+  void Swap(GaussPostHolder *other) {
+    t_.swap(other->t_);
+  }
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(GaussPostHolder);
   T t_;
@@ -154,6 +160,18 @@ int32 MergePosteriors(const Posterior &post1,
                       bool merge,
                       bool drop_frames,
                       Posterior *post);
+
+// comparator object that can be used to sort from greatest to
+// least posterior.
+struct CompareReverseSecond {
+  // view this as an "<" operator used for sorting, except it behaves like
+  // a ">" operator on the .second field of the pair because we want the
+  // sort to be in reverse order (greatest to least) on posterior.
+  bool operator() (const std::pair<int32, BaseFloat> &a,
+                   const std::pair<int32, BaseFloat> &b) {
+    return (a.second > b.second);
+  }
+};
 
 /// Given a vector of log-likelihoods (typically of Gaussians in a GMM
 /// but could be of pdf-ids), a number gselect >= 1 and a minimum posterior

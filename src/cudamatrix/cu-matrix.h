@@ -254,6 +254,11 @@ class CuMatrixBase {
   /// element by element, x = 1 / (1 + exp(-x))
   void Sigmoid(const CuMatrixBase<Real> &src);
 
+  /// Set each element to the Heaviside function of the corresponding element
+  /// of "src", which we define as the function (x > 0 ? 1.0 : 0.0) [note:
+  /// in general, there are different ways to deal with the situation when x==0.]
+  void Heaviside(const CuMatrixBase<Real> &src);
+
   /// Apply the function y = log(1 + exp(x)), to each element.
   /// Note: the derivative of this function is the sigmoid function.
   /// This is like a soft ReLU.
@@ -336,7 +341,9 @@ class CuMatrixBase {
   ///< The output will be set zero. If include_sign is true, it will
   ///< multiply the result by the sign of the input.
   void ApplyPowAbs(Real power, bool include_sign=false);
-  void ApplyHeaviside(); ///< For each element, sets x = (x > 0 ? 1.0 : 0.0)
+  /// For each element, sets x = (x > 0 ? 1.0 : 0.0).
+  /// See also Heaviside().
+  void ApplyHeaviside();
   void ApplyFloor(Real floor_val);
   void ApplyCeiling(Real ceiling_val);
   void ApplyExp();
@@ -425,9 +432,9 @@ class CuMatrixBase {
 
   /// *this = beta * *this + alpha * A .* B (.* element by element multiplication)
   void AddMatMatElements(const Real alpha,
-                    const CuMatrixBase<Real>& A,
-                    const CuMatrixBase<Real>& B,
-                    const Real beta);
+                         const CuMatrixBase<Real>& A,
+                         const CuMatrixBase<Real>& B,
+                         const Real beta);
 
   /// this <-- beta*this + alpha*A*B
   void AddMatSp(const Real alpha,
@@ -619,8 +626,9 @@ class CuMatrix: public CuMatrixBase<Real> {
 
   /// Constructor with memory initialisation
   CuMatrix(MatrixIndexT rows, MatrixIndexT cols,
-           MatrixResizeType resize_type = kSetZero) {
-    Resize(rows, cols, resize_type);
+           MatrixResizeType resize_type = kSetZero,
+           MatrixStrideType stride_type = kDefaultStride) {
+    Resize(rows, cols, resize_type, stride_type);
   }
 
   // Note: we had to remove the "explicit" keyword due
@@ -679,7 +687,8 @@ class CuMatrix: public CuMatrixBase<Real> {
 
   /// Allocate the memory
   void Resize(MatrixIndexT rows, MatrixIndexT cols,
-              MatrixResizeType resize_type = kSetZero);
+              MatrixResizeType resize_type = kSetZero,
+              MatrixStrideType stride_type = kDefaultStride);
 
   void Swap(Matrix<Real> *mat);
   void Swap(CuMatrix<Real> *mat);
@@ -782,8 +791,8 @@ template<typename Real>
 template<typename OtherReal>
 Matrix<Real>::Matrix(const CuMatrixBase<OtherReal> &M,
                      MatrixTransposeType trans) {
-  if (trans == kNoTrans) Init(M.NumRows(), M.NumCols());
-  else Init(M.NumCols(), M.NumRows());
+  if (trans == kNoTrans) Init(M.NumRows(), M.NumCols(), kDefaultStride);
+  else Init(M.NumCols(), M.NumRows(), kDefaultStride);
   M.CopyToMat(this, trans);
 }
 

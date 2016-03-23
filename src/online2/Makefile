@@ -13,10 +13,12 @@ OBJFILES = online-gmm-decodable.o online-feature-pipeline.o online-ivector-featu
 LIBNAME = kaldi-online2
 
 ADDLIBS = ../gmm/kaldi-gmm.a ../transform/kaldi-transform.a ../feat/kaldi-feat.a \
-     ../matrix/kaldi-matrix.a ../util/kaldi-util.a ../base/kaldi-base.a \
      ../lat/kaldi-lat.a ../decoder/kaldi-decoder.a ../hmm/kaldi-hmm.a \
-     ../thread/kaldi-thread.a ../ivector/kaldi-ivector.a \
-     ../cudamatrix/kaldi-cudamatrix.a ../nnet2/kaldi-nnet2.a
+     ../nnet2/kaldi-nnet2.a ../ivector/kaldi-ivector.a \
+     ../cudamatrix/kaldi-cudamatrix.a ../matrix/kaldi-matrix.a \
+     ../util/kaldi-util.a ../thread/kaldi-thread.a ../base/kaldi-base.a
+
+
 
 
 include ../makefiles/default_rules.mk

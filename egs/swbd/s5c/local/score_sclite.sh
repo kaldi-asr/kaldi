@@ -7,6 +7,7 @@ stage=0
 min_lmwt=5
 max_lmwt=20
 reverse=false
+iter=final
 word_ins_penalty=0.0,0.5,1.0
 #end configuration section.
 
@@ -28,7 +29,7 @@ data=$1
 lang=$2 # Note: may be graph directory not lang directory, but has the necessary stuff copied.
 dir=$3
 
-model=$dir/../final.mdl # assume model one level up from decoding dir.
+model=$dir/../$iter.mdl # assume model one level up from decoding dir.
 
 hubscr=$KALDI_ROOT/tools/sctk/bin/hubscr.pl
 [ ! -f $hubscr ] && echo "Cannot find scoring program at $hubscr" && exit 1;
@@ -50,7 +51,11 @@ if $reverse; then
   reorder_opt="--reorder=false"
 fi
 
-if [ -f $dir/../frame_subsampling_factor ]; then
+
+if [ -f $dir/../frame_shift ]; then
+  frame_shift_opt="--frame-shift=$(cat $dir/../frame_shift)"
+  echo "$0: $dir/../frame_shift exists, using $frame_shift_opt"
+elif [ -f $dir/../frame_subsampling_factor ]; then
   factor=$(cat $dir/../frame_subsampling_factor) || exit 1
   frame_shift_opt="--frame-shift=0.0$factor"
   echo "$0: $dir/../frame_subsampling_factor exists, using $frame_shift_opt"

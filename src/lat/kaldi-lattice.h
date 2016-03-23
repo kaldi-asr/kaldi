@@ -90,8 +90,11 @@ class CompactLatticeHolder {
 
   void Clear() { delete t_; t_ = NULL; }
 
-  ~CompactLatticeHolder() { Clear(); }
+  void Swap(CompactLatticeHolder *other) {
+    std::swap(t_, other->t_);
+  }
 
+  ~CompactLatticeHolder() { Clear(); }
  private:
   T *t_;
 };
@@ -120,8 +123,11 @@ class LatticeHolder {
 
   void Clear() {  delete t_; t_ = NULL; }
 
-  ~LatticeHolder() { Clear(); }
+  void Swap(LatticeHolder *other) {
+    std::swap(t_, other->t_);
+  }
 
+  ~LatticeHolder() { Clear(); }
  private:
   T *t_;
 };
