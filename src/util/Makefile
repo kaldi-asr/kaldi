@@ -10,7 +10,7 @@ TESTFILES = const-integer-set-test stl-utils-test text-utils-test \
     kaldi-table-test simple-options-test
 
 OBJFILES = text-utils.o kaldi-io.o \
-         kaldi-table.o parse-options.o simple-options.o simple-io-funcs.o
+        kaldi-holder.o  kaldi-table.o parse-options.o simple-options.o simple-io-funcs.o
 
 LIBNAME = kaldi-util
 
