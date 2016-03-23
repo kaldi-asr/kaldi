@@ -28,8 +28,10 @@ int main(int argc, char *argv[]) {
   using namespace kaldi;
   try {
     const char *usage  =
-        "Converts an ARPA format language model into a FST\n"
-        "Usage: arpa2fst [opts] (input_arpa|-)  [output_fst|-]\n";
+        "Convert an ARPA format language model into an FST\n"
+        "Usage: arpa2fst [opts] <input_arpa> <output_fst>\n"
+        " e.g.: arpa2fst --disambig-symbol=#0 --read-symbol-table="
+        "data/lang/words.txt lm/input.arpa G.fst\n";
     ParseOptions po(usage);
 
     // Option flags.
