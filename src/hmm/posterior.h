@@ -77,6 +77,11 @@ class PosteriorHolder {
   void Swap(PosteriorHolder *other) {
     t_.swap(other->t_);
   }
+
+  bool ExtractRange(PosteriorHolder *other, const std::string &range) {
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
+    return false;
+  }
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(PosteriorHolder);
   T t_;
@@ -115,6 +120,11 @@ class GaussPostHolder {
 
   void Swap(GaussPostHolder *other) {
     t_.swap(other->t_);
+  }
+
+  bool ExtractRange(GaussPostHolder *other, const std::string &range) {
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
+    return false;
   }
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(GaussPostHolder);
