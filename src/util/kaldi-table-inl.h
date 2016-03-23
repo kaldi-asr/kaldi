@@ -88,8 +88,7 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
  public:
   typedef typename Holder::T T;
 
-  SequentialTableReaderScriptImpl(): data_rxfilename_last_(""), range_(""), 
-                                     state_(kUninitialized) { }
+  SequentialTableReaderScriptImpl():state_(kUninitialized) { }
 
   virtual bool Open(const std::string &rspecifier) {
     if (state_ != kUninitialized)
@@ -142,8 +141,9 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
 
   virtual bool Done() const {
     switch (state_) {
-      case kHaveScpLine: return false;
-      case kLoadSucceeded: case kLoadFailed: return false;
+      case kHaveScpLine: case kObjectLoaded: 
+      case kLoadSucceeded: case kLoadFailed:
+      case kRangeExtracted: case kRangeExtractionFailed: return false;
         // These cases are because we want LoadCurrent()
         // to be callable after Next() and to not change the Done() status
         // [only Next() should change the Done() status].
@@ -158,7 +158,8 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
   virtual std::string Key() {
     // Valid to call this whenever Done() returns false.
     switch (state_) {
-      case kHaveScpLine: case kLoadSucceeded: case kLoadFailed: break;
+      case kHaveScpLine: case kLoadSucceeded: case kLoadFailed:
+      case kObjectLoaded: case kRangeExtracted: case kRangeExtractionFailed: break;
       default:
         // coding error.
         KALDI_ERR << "Key() called on TableReader object at the wrong time.";
@@ -169,14 +170,10 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
     StateType orig_state = state_;
     // we only need to update holder_ if data_rxfilename is different
     // from last time. Otherwise we just set state_ to kLoadSucceeded.
-    if (state_ == kHaveScpLine) {
-      if (data_rxfilename_ != data_rxfilename_last_) {
-        LoadCurrent();  // Takes state_ to kLoadSucceeded or kLoadFailed.
-      } else {
-        state_ = kLoadSucceeded;
-      }
+    if (state_ == kHaveScpLine || state_ == kObjectLoaded) {
+      LoadCurrent();  // Takes state_ to kLoadSucceeded or kLoadFailed.
     }
-    if (state_ == kLoadFailed) {  // this can happen due to
+    if (state_ == kLoadFailed) {
       // a file listed in an scp file not existing, or
       // read failure, failure of a command, etc.
       if (orig_state == kHaveScpLine)
@@ -188,39 +185,37 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
       else  // orig_state_ was kLoadFailed, which only could have happened
         // if the user called FreeCurrent().
         KALDI_ERR << "You called Value() after FreeCurrent().";
-    } else if (state_ != kLoadSucceeded) {
+    } else if (state_ == kRangeExtractionFailed) {
+      KALDI_ERR << "Failed to load object from "
+                << PrintableRxfilename(data_rxfilename_) 
+                << " within range " << range_
+                << " (to suppress this error, add the permissive "
+                << "(p, ) option to the rspecifier.";
+    } else if (state_ != kLoadSucceeded && state_ != kRangeExtracted) {
       // This would be a coding error.
       KALDI_ERR << "Value() called at the wrong time.";
     }
-    if (!range_.empty()) {
-      // we extract the object from holder_ according to the range_ specifier,
-      // e.g. [1:3,4:8].
-      if (!ExtractObjectRange(holder_.Value(), range_, &object_)) {
-        KALDI_ERR  << "Failed to load object from "
-                   << PrintableRxfilename(data_rxfilename_) 
-                   << "within range " << range_;
-      }
+    if (state_ == kRangeExtracted) {
       return object_;
     } else {
       return holder_.Value();
     }
   }
+
   void FreeCurrent() {
-    if (state_ == kLoadSucceeded) {
-      // Actually we don't do anything meaningful in this function,
-      // since holder_ is likely to be used in the next scp line.
-      if (data_rxfilename_last_ == "")
-        holder_.Clear();
+    if (state_ == kLoadSucceeded || state_ == kObjectLoaded) {
+      holder_.Clear();
       state_ = kLoadFailed;
     } else {
       KALDI_WARN << "FreeCurrent called at the wrong time.";
     }
   }
+
   void SwapHolder(Holder *other_holder) {
     // call Value() to ensure we have a value, and ignore its return value while
     // suppressing compiler warnings by casting to void.
     (void) Value();
-    if (state_ == kLoadSucceeded) {
+    if (state_ == kLoadSucceeded || state_ == kRangeExtracted) {
       holder_.Swap(other_holder);
       state_ = kLoadFailed;
     } else {
@@ -228,6 +223,7 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
                    "(error related to ',bg' modifier).";
     }
   }
+
   void Next() {
     while (1) {
       NextScpLine();
@@ -254,7 +250,8 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
       status = script_input_.Close();
     if (data_input_.IsOpen())
       data_input_.Close();
-    if (state_ == kLoadSucceeded)
+    if (state_ == kLoadSucceeded || state_ == kRangeExtracted ||
+        state_ == kRangeExtractionFailed)
       holder_.Clear();
     if (!this->IsOpen())
       KALDI_ERR << "Close() called on input that was not open.";
@@ -281,39 +278,59 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
  private:
   bool LoadCurrent() {
     // Attempts to load object whose rxfilename is on the current scp line.
-    if (state_ != kHaveScpLine)
-      KALDI_ERR << "LoadCurrent() called at the wrong time.";
-    bool ans;
-    // note, NULL means it doesn't read the binary-mode header
-    if (Holder::IsReadInBinary()) {
-      ans = data_input_.Open(data_rxfilename_, NULL);
-    } else {
-      ans = data_input_.OpenTextMode(data_rxfilename_);
-    }
-    if (!ans) {
-      // May want to make this warning a VLOG at some point
-      KALDI_WARN << "Failed to open file "
-                 << PrintableRxfilename(data_rxfilename_);
-      state_ = kLoadFailed;
-      return false;
-    } else {
-      if (holder_.Read(data_input_.Stream())) {
-        state_ = kLoadSucceeded;
-        data_rxfilename_last_ = data_rxfilename_;
-        return true;
-      } else {  // holder_ will not contain data.
-        KALDI_WARN << "Failed to load object from "
+   
+    if (state_ != kObjectLoaded) {
+      if (state_ != kHaveScpLine)
+        KALDI_ERR << "LoadCurrent() called at the wrong time.";
+      bool ans;
+      // note, NULL means it doesn't read the binary-mode header
+      if (Holder::IsReadInBinary()) {
+        KALDI_LOG << data_rxfilename_;
+        ans = data_input_.Open(data_rxfilename_, NULL);
+      } else {
+        ans = data_input_.OpenTextMode(data_rxfilename_);
+      }
+      if (!ans) {
+        // May want to make this warning a VLOG at some point
+        KALDI_WARN << "Failed to open file "
                    << PrintableRxfilename(data_rxfilename_);
         state_ = kLoadFailed;
         return false;
+      } else {
+        if (holder_.Read(data_input_.Stream())) {
+          if (range_.empty()) {
+            state_ = kLoadSucceeded;
+            return true;
+          } // o.w. we'll go ahead to extract the partial object.
+        } else {  // holder_ will not contain data.
+          KALDI_WARN << "Failed to load object from "
+                     << PrintableRxfilename(data_rxfilename_);
+          state_ = kLoadFailed;
+          return false;
+        }
       }
+    }
+    
+    // The needed object has been loaded last time. Here we just 
+    // extract the object from holder_ according to the range_ specifier,
+    // e.g. [1:3,4:8].
+    if (!ExtractObjectRange(holder_.Value(), range_, &object_)) {
+      KALDI_WARN  << "Failed to load object from "
+                  << PrintableRxfilename(data_rxfilename_) 
+                  << "within range " << range_;
+      state_ = kRangeExtractionFailed;
+      return false;
+    } else {
+      state_ = kRangeExtracted;
+      return true;
     }
   }
   // Reads the next line in the script file.
   void NextScpLine() {
     StateType old_state = state_;
     switch (state_) {
-      case kLoadSucceeded: 
+      case kLoadSucceeded: case kObjectLoaded:
+      case kRangeExtracted: case kRangeExtractionFailed:
       case kHaveScpLine: case kLoadFailed: case kFileStart: break;
       default:
         // No other states are valid to call Next() from.
@@ -321,28 +338,38 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
     }
     std::string line;
     if (getline(script_input_.Stream(), line)) {
-      SplitStringOnFirstSpace(line, &key_, &data_rxfilename_);
-      if (!key_.empty() && !data_rxfilename_.empty()) {
+      std::string data_rxfilename_next, rest;
+      // rest: a temp string which may contain the range specifier.
+      SplitStringOnFirstSpace(line, &key_, &rest);
+      if (!key_.empty() && !rest.empty()) {
         // Got a valid line.
         state_ = kHaveScpLine;
         // Here we "peel off" the range_ specifer (if any, e.g. [1:2,2:10])
         // from data_rxfilename_ (e.g. 1.ark:100).
-        if (data_rxfilename_.find_last_of("]") == data_rxfilename_.length() - 1) {
+        if (rest[rest.size()-1] == ']') {
           std::vector<std::string> splits;
-          SplitStringToVector(data_rxfilename_, "[]", true, &splits);
+          SplitStringToVector(rest, "[", true, &splits);
           if (splits.size() == 2) {
-            data_rxfilename_ = splits[0];
-            range_ = splits[1];
+            data_rxfilename_next = splits[0];
+            range_.assign(splits[1], 0, splits[1].size()-1) ;
           } else {
-            KALDI_ERR << "TableReader: fail to parse file name "
-                      << PrintableRxfilename(data_rxfilename_);
+            // Got an invalid line.
+            state_ = kError;  // we can't make sense of this
+            // scp file and will now die.
           }
         } else {
+          data_rxfilename_next = rest;
           range_ = "";
         }
-        if (old_state == kLoadSucceeded && data_rxfilename_ != data_rxfilename_last_) {
-          holder_.Clear();
+        if (old_state == kLoadSucceeded || old_state == kRangeExtracted ||
+            old_state == kRangeExtractionFailed) {
+          if (data_rxfilename_ == data_rxfilename_next) {
+            state_ = kObjectLoaded;
+          } else {
+            holder_.Clear();
+          }
         }
+        data_rxfilename_ = data_rxfilename_next;
       } else {
         // Got an invalid line.
         state_ = kError;  // we can't make sense of this
@@ -362,19 +389,19 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
   // the script file.
   Holder holder_;  // Holds the object.
   T object_; // the object extracted from holder_.
+  // this is only used when the object range is specified. 
   bool binary_;  // Binary-mode archive.
   std::string key_;
   std::string rspecifier_;
   std::string script_rxfilename_;  // of the script file.
   RspecifierOptions opts_;  // options.
   std::string data_rxfilename_;  // of the file we're reading.
-  std::string data_rxfilename_last_;  // of the file we're reading last time.
   std::string range_; // range within which we read the object from holder_.
   enum StateType {
     //       [The state of the reading process]    [does holder_ [is script_inp_
     //                                                      have object]   open]
-    kUninitialized,  // Uninitialized or closed.                   no         no
-    kEof,     // We did Next() and found eof in script file.       no         no
+    kUninitialized,  // Uninitialized or closed.                  no          no
+    kEof,     // We did Next() and found eof in script file.      no          no
     kError,   // Some other error                                 no         yes
     kHaveScpLine,  // Just called Open() or Next() and have a     no         yes
     // line of the script file but no data.
@@ -383,6 +410,12 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
     // or the user called FreeCurrent().. note,
     // if when called by user we are in this state,
     // it means the user called FreeCurrent().
+    kObjectLoaded, // Called NextScpLine() and found the next    yes         yes
+    // object we need was alreay loaded in the last line.
+    kRangeExtracted, // we successfully extracte the partial     yes         yes
+    // object.
+    kRangeExtractionFailed, // we failed to extract the partial  yes         yes
+    // object.
     kFileStart,        // [state we only use internally]          no         yes
   } state_;
  private:
@@ -530,6 +563,7 @@ template<class Holder>  class SequentialTableReaderArchiveImpl:
     }
     return key_;
   }
+
   const T &Value() {
     switch (state_) {
       case kHaveObject:
@@ -540,6 +574,7 @@ template<class Holder>  class SequentialTableReaderArchiveImpl:
     }
     return holder_.Value();
   }
+
   virtual void FreeCurrent() {
     if (state_ == kHaveObject) {
       holder_.Clear();
@@ -548,6 +583,7 @@ template<class Holder>  class SequentialTableReaderArchiveImpl:
       KALDI_WARN << "FreeCurrent called at the wrong time.";
     }
   }
+
   void SwapHolder(Holder *other_holder) {
     // call Value() to ensure we have a value, and ignore its return value while
     // suppressing compiler warnings by casting to void.
@@ -1526,8 +1562,7 @@ class RandomAccessTableReaderScriptImpl:
  public:
   typedef typename Holder::T T;
 
-  RandomAccessTableReaderScriptImpl(): range_(""),
-                                       data_rxfilename_last_(""), last_found_(0), state_(kUninitialized) {}
+  RandomAccessTableReaderScriptImpl(): last_found_(0), state_(kUninitialized) {}
 
   virtual bool Open(const std::string &rspecifier) {
     switch (state_) {
@@ -1682,17 +1717,20 @@ class RandomAccessTableReaderScriptImpl:
         return true;  // we have the key.
       } else {  // preload specified, so we have to pre-load the object before
               // returning true.
-        std::string data_rxfilename(""); // We will split filename script_[key_pos].second
-        // into data_rxfilename (e.g. 1.ark:100) and range_(e.g. [1:2,2:10]).
-        if (script_[key_pos].second.find_last_of("]") == script_[key_pos].second.length() - 1) {
+        std::string data_rxfilename(""); // We will split filename 
+        // script_[key_pos].second into data_rxfilename (e.g. 1.ark:100) 
+        // and range_(if any, e.g. [1:2,2:10]).
+        
+        if (script_[key_pos].second[script_[key_pos].second.size()-1] == ']') {
           std::vector<std::string> splits;
-          SplitStringToVector(script_[key_pos].second, "[]", true, &splits);
+          SplitStringToVector(script_[key_pos].second, "[", true, &splits);
           if (splits.size() == 2) {
             data_rxfilename = splits[0];
-            range_ = splits[1];
+            range_.assign(splits[1], 0, splits[1].size()-1);
           } else {
-            KALDI_ERR << "TableReader: fail to parse file name "
-                      << PrintableRxfilename(script_[key_pos].second);
+            KALDI_WARN << "TableReader: fail to parse file name "
+                       << PrintableRxfilename(script_[key_pos].second);
+            return false;
           }
         } else {
           data_rxfilename = script_[key_pos].second;
@@ -1774,6 +1812,7 @@ class RandomAccessTableReaderScriptImpl:
   std::string current_key_;  // Key of object in holder_
   Holder holder_;
   T object_; // the object extracted from holder_.
+  // this is only used when the object range is specified. 
   std::string range_; // range within which we read the object from holder_.
   std::string data_rxfilename_last_;  // file name we were reading last time.
 

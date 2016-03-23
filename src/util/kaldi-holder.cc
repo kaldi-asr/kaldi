@@ -23,11 +23,13 @@
 
 namespace kaldi {
 
-template bool ExtractObjectRange(const Matrix<double> &, const std::string &, Matrix<double> *);
-template bool ExtractObjectRange(const Matrix<BaseFloat> &, const std::string &, Matrix<BaseFloat> *);
 template<class Real>
-bool ExtractObjectRange(const Matrix<Real> &input, const std::string &range, Matrix<Real> *output) {
-  KALDI_ASSERT(!range.empty());
+bool ExtractObjectRange(const Matrix<Real> &input, const std::string &range,
+                        Matrix<Real> *output) {
+  if (range.empty()) {
+    output->CopyFromMat(input);
+    return true;
+  }
   std::vector<std::string> splits;
   SplitStringToVector(range, ",", true, &splits);  
   if (splits.size() > 2) {
@@ -57,10 +59,16 @@ bool ExtractObjectRange(const Matrix<Real> &input, const std::string &range, Mat
   int32 row_offset = row_range[1] - row_range[0] + 1,
         col_offset = col_range[1] - col_range[0] + 1;
   output->Resize(row_offset, col_offset);
-  output->CopyFromMat(input.Range(row_range[0], row_offset, col_range[0], col_offset));
+  output->CopyFromMat(input.Range(row_range[0], row_offset,
+                                  col_range[0], col_offset));
   return true;
 }
 
+// template instantiation
+template bool ExtractObjectRange(const Matrix<double> &, const std::string &,
+                                 Matrix<double> *);
+template bool ExtractObjectRange(const Matrix<BaseFloat> &, const std::string &,
+                                 Matrix<BaseFloat> *);
 
 
 }  // end namespace kaldi

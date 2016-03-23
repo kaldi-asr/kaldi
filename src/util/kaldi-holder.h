@@ -223,7 +223,8 @@ bool ExtractObjectRange(const T &input, const std::string &range, T *output) {
 }
 
 template <class Real>
-bool ExtractObjectRange(const Matrix<Real> &input, const std::string &range, Matrix<Real> *output);
+bool ExtractObjectRange(const Matrix<Real> &input, const std::string &range,
+                        Matrix<Real> *output);
 
 /// @} end "addtogroup holders"
 
