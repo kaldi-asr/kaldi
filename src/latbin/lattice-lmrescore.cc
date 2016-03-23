@@ -25,7 +25,6 @@
 #include "fstext/kaldi-fst-io.h"
 #include "lat/kaldi-lattice.h"
 
-
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;

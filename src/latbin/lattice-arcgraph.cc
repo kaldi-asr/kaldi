@@ -108,7 +108,7 @@ void MapTransitionIdsToTransitionStates(kaldi::CompactLattice *lat,
       }
       kaldi::LatticeWeight new_w(w_final.Weight());
       if (!keep_weights) new_w = kaldi::LatticeWeight::One();
-      kaldi::CompactLatticeWeight newwgt(new_w, syms); 
+      kaldi::CompactLatticeWeight newwgt(new_w, syms);
       lat->SetFinal(s, newwgt);
     }
 
@@ -126,7 +126,7 @@ void MapTransitionIdsToTransitionStates(kaldi::CompactLattice *lat,
       }
       kaldi::LatticeWeight new_w(w.Weight());
       if (!keep_weights) new_w = kaldi::LatticeWeight::One();
-      kaldi::CompactLatticeWeight newwgt(new_w, syms); 
+      kaldi::CompactLatticeWeight newwgt(new_w, syms);
       arc.weight = newwgt;
       aiter.SetValue(arc);
     }
@@ -226,7 +226,7 @@ int main(int argc, char *argv[]) {
       if (lattice_wspecifier != "") lat_writer.Write(key, lat_composed);
 
       CompactLattice clat_determinized;
-      if (DeterminizeLattice(lat_composed, &clat_determinized, lat_opts, NULL)) { 
+      if (DeterminizeLattice(lat_composed, &clat_determinized, lat_opts, NULL)) {
         // now we can forget about the weights
         ScaleLattice(fst::LatticeScale(0.0, 0.0), &clat_determinized);
         Lattice lat_det;

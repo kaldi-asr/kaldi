@@ -1,20 +1,26 @@
-diff --git a/src/include/fst/fst.h b/src/include/fst/fst.h
-index 5ad3b52..d9c0ca6 100644
---- a/src/include/fst/fst.h
-+++ b/src/include/fst/fst.h
-@@ -45,6 +45,12 @@ DECLARE_bool(fst_align);
- 
- namespace fst {
- 
-+	typedef ::int64 int64;
-+	typedef ::uint64 uint64;
-+	typedef ::int32 int32;
-+	typedef ::uint32 uint32;
-+
-+
- bool OPENFSTDLL IsFstHeader(istream &, const string &); //ChangedPD
- 
- class FstHeader;
+diff --git a/src/include/fst/compat.h b/src/include/fst/compat.h
+index 00e2dba..ff8bacc 100644
+--- a/src/include/fst/compat.h
++++ b/src/include/fst/compat.h
+@@ -23,7 +23,9 @@
+ #ifdef _MSC_VER //AddedPD
+ #include <BaseTsd.h>
+ typedef SSIZE_T ssize_t;
++#if _MSC_VER < 1900 //AddedYT -- Visual Studio 2016 already has snprintf
+ #define snprintf _snprintf
++#endif  // _MSC_VER < 1900
+ #define strtoll _strtoi64
+ #ifndef OPENFSTEXPORT
+ 	#ifdef _DEBUG
+@@ -37,7 +39,7 @@ typedef SSIZE_T ssize_t;
+ 		  #pragma comment (lib, "openfst64.lib")
+     #else
+       #pragma comment (lib, "openfst.lib")
+-    #endif		
++    #endif
+ 	#endif
+ #endif
+ #else
 diff --git a/src/include/fst/interval-set.h b/src/include/fst/interval-set.h
 index c4362f2..58cad44 100644
 --- a/src/include/fst/interval-set.h

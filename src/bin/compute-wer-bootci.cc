@@ -29,16 +29,16 @@
 
 namespace kaldi {
 
-void GetEditsSingleHyp( const std::string &hyp_rspecifier, 
+void GetEditsSingleHyp( const std::string &hyp_rspecifier,
       const std::string &ref_rspecifier,
       const std::string &mode,
       std::vector<std::pair<int32, int32> > & edit_word_per_hyp) {
-    
+
     // Both text and integers are loaded as vector of strings,
     SequentialTokenVectorReader ref_reader(ref_rspecifier);
     RandomAccessTokenVectorReader hyp_reader(hyp_rspecifier);
     int32 num_words = 0, word_errs = 0, num_ins = 0, num_del = 0, num_sub = 0;
-    
+
     // Main loop, store WER stats per hyp,
     for (; !ref_reader.Done(); ref_reader.Next()) {
       std::string key = ref_reader.Key();
@@ -54,36 +54,36 @@ void GetEditsSingleHyp( const std::string &hyp_rspecifier,
         hyp_sent = hyp_reader.Value(key);
       }
       num_words = ref_sent.size();
-      word_errs = LevenshteinEditDistance(ref_sent, hyp_sent, 
+      word_errs = LevenshteinEditDistance(ref_sent, hyp_sent,
                                             &num_ins, &num_del, &num_sub);
       edit_word_per_hyp.push_back(std::pair<int32, int32>(word_errs, num_words));
     }
 }
 
-void GetEditsDualHyp(const std::string &hyp_rspecifier, 
-      const std::string &hyp_rspecifier2, 
+void GetEditsDualHyp(const std::string &hyp_rspecifier,
+      const std::string &hyp_rspecifier2,
       const std::string &ref_rspecifier,
       const std::string &mode,
       std::vector<std::pair<int32, int32> > & edit_word_per_hyp,
       std::vector<std::pair<int32, int32> > & edit_word_per_hyp2) {
-    
+
     // Both text and integers are loaded as vector of strings,
     SequentialTokenVectorReader ref_reader(ref_rspecifier);
     RandomAccessTokenVectorReader hyp_reader(hyp_rspecifier);
     RandomAccessTokenVectorReader hyp_reader2(hyp_rspecifier2);
-    int32 num_words = 0, word_errs = 0, 
+    int32 num_words = 0, word_errs = 0,
             num_ins = 0, num_del = 0, num_sub = 0;
-    
+
     // Main loop, store WER stats per hyp,
     for (; !ref_reader.Done(); ref_reader.Next()) {
       std::string key = ref_reader.Key();
       const std::vector<std::string> &ref_sent = ref_reader.Value();
       std::vector<std::string> hyp_sent, hyp_sent2;
-      if (mode == "strict" && 
+      if (mode == "strict" &&
               (!hyp_reader.HasKey(key) || !hyp_reader2.HasKey(key))) {
           KALDI_ERR << "No hypothesis for key " << key << " in both transcripts "
               "comparison is not possible.";
-      } else if (mode == "present" && 
+      } else if (mode == "present" &&
               (!hyp_reader.HasKey(key) || !hyp_reader2.HasKey(key)))
           continue;
 
@@ -92,16 +92,16 @@ void GetEditsDualHyp(const std::string &hyp_rspecifier,
       //all mode, if a hypothesis is not present, consider as an error
       if(hyp_reader.HasKey(key)){
         hyp_sent = hyp_reader.Value(key);
-        word_errs = LevenshteinEditDistance(ref_sent, hyp_sent, 
+        word_errs = LevenshteinEditDistance(ref_sent, hyp_sent,
                                             &num_ins, &num_del, &num_sub);
-      } 
+      }
       else
         word_errs = num_words;
       edit_word_per_hyp.push_back(std::pair<int32, int32>(word_errs, num_words));
 
       if(hyp_reader2.HasKey(key)){
         hyp_sent2 = hyp_reader2.Value(key);
-        word_errs = LevenshteinEditDistance(ref_sent, hyp_sent2, 
+        word_errs = LevenshteinEditDistance(ref_sent, hyp_sent2,
                                             &num_ins, &num_del, &num_sub);
       }
       else
@@ -112,7 +112,7 @@ void GetEditsDualHyp(const std::string &hyp_rspecifier,
 
 void GetBootstrapWERInterval(
       const std::vector<std::pair<int32, int32> > & edit_word_per_hyp,
-      int32 replications, 
+      int32 replications,
       BaseFloat *mean, BaseFloat *interval) {
     BaseFloat wer_accum = 0.0, wer_mult_accum = 0.0;
 
@@ -144,7 +144,7 @@ void GetBootstrapWERTwoSystemComparison(
       int32 word_errs = 0;
       for (int32 j = 0; j <= edit_word_per_hyp.size(); ++j) {
         int32 random_pos = kaldi::RandInt(0, edit_word_per_hyp.size());
-        word_errs += edit_word_per_hyp[random_pos].first - 
+        word_errs += edit_word_per_hyp[random_pos].first -
                         edit_word_per_hyp2[random_pos].first;
         }
       if(word_errs > 0)
@@ -166,7 +166,7 @@ int main(int argc, char *argv[]) {
       "Take a reference and a transcription file, in integer or text format,\n"
       "and outputs overall WER statistics to standard output along with its\n"
       "confidence interval using the bootstrap methos of Bisani and Ney.\n"
-      "If a second transcription file corresponding to the same reference is\n" 
+      "If a second transcription file corresponding to the same reference is\n"
       "provided, a bootstrap comparison of the two transcription is performed\n"
       "to estimate the probability of improvement.\n"
       "\n"
@@ -185,7 +185,7 @@ int main(int argc, char *argv[]) {
                 "  \"strict\" means die if all in ref not also in hyp");
 
     int32 replications = 10000;
-    po.Register("replications", &replications, 
+    po.Register("replications", &replications,
             "Number of replications to compute the intervals");
 
     po.Read(argc, argv);
@@ -200,7 +200,7 @@ int main(int argc, char *argv[]) {
     std::string hyp2_rspecifier = (po.NumArgs() == 3?po.GetArg(3):"");
 
     if (mode != "strict" && mode != "present" && mode != "all") {
-      KALDI_ERR << 
+      KALDI_ERR <<
           "--mode option invalid: expected \"present\"|\"all\"|\"strict\", got "
           << mode;
     }
@@ -213,17 +213,17 @@ int main(int argc, char *argv[]) {
       GetEditsDualHyp(hyp_rspecifier, hyp2_rspecifier, ref_rspecifier, mode,
               edit_word_per_hyp, edit_word_per_hyp2);
 
-    //Extract WER for a number of replications of the same size 
+    //Extract WER for a number of replications of the same size
     //as the hypothesis extracted
-    BaseFloat mean_wer = 0.0, interval = 0.0, 
-              mean_wer2 = 0.0, interval2 = 0.0, 
+    BaseFloat mean_wer = 0.0, interval = 0.0,
+              mean_wer2 = 0.0, interval2 = 0.0,
               p_improv = 0.0;
 
-    GetBootstrapWERInterval(edit_word_per_hyp, replications, 
+    GetBootstrapWERInterval(edit_word_per_hyp, replications,
             &mean_wer, &interval);
 
     if(!hyp2_rspecifier.empty()) {
-      GetBootstrapWERInterval(edit_word_per_hyp2, replications, 
+      GetBootstrapWERInterval(edit_word_per_hyp2, replications,
               &mean_wer2, &interval2);
 
       GetBootstrapWERTwoSystemComparison(edit_word_per_hyp, edit_word_per_hyp2,
@@ -233,18 +233,18 @@ int main(int argc, char *argv[]) {
     // Print the output,
     std::cout.precision(2);
     std::cerr.precision(2);
-    std::cout << "Set1: %WER " << std::fixed << 100*mean_wer << 
-              " 95\% Conf Interval [ " << 100*mean_wer-100*interval << 
-              ", " << 100*mean_wer+100*interval << " ]" << '\n'; 
+    std::cout << "Set1: %WER " << std::fixed << 100*mean_wer <<
+              " 95\% Conf Interval [ " << 100*mean_wer-100*interval <<
+              ", " << 100*mean_wer+100*interval << " ]" << '\n';
 
     if(!hyp2_rspecifier.empty()) {
-        std::cout << "Set2: %WER " << std::fixed << 100*mean_wer2 << 
-            " 95\% Conf Interval [ " << 100*mean_wer2-100*interval2 << 
+        std::cout << "Set2: %WER " << std::fixed << 100*mean_wer2 <<
+            " 95\% Conf Interval [ " << 100*mean_wer2-100*interval2 <<
             ", " << 100*mean_wer2+100*interval2 << " ]" << '\n';
 
-        std::cout << "Probability of Set2 improving Set1: " << std::fixed << 
+        std::cout << "Probability of Set2 improving Set1: " << std::fixed <<
             100*p_improv << '\n';
-    } 
+    }
 
     return 0;
   } catch(const std::exception &e) {

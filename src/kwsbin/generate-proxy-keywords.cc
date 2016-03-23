@@ -246,7 +246,7 @@ int main(int argc, char *argv[]) {
     delete L1;
     delete L2xE;
     KALDI_LOG << "Done " << n_done << " keywords";
-    return (n_done != 0 ? 0 : 1);    
+    return (n_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
