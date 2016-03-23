@@ -33,7 +33,6 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
 
     // Option flags.
-    bool natural_base = true;
     std::string bos_symbol = "<s>";
     std::string eos_symbol = "</s>";
     std::string disambig_symbol;
@@ -41,8 +40,6 @@ int main(int argc, char *argv[]) {
     std::string write_syms_filename;
     bool keep_symbols = false;
 
-    po.Register("natural-base", &natural_base,
-                "Use natural log (not log10)");
     po.Register("bos-symbol", &bos_symbol,
                 "Beginning of sentence symbol");
     po.Register("eos-symbol", &eos_symbol,
@@ -69,7 +66,6 @@ int main(int argc, char *argv[]) {
 
     ArpaParseOptions options;
     int64 disambig_symbol_id = 0;
-    options.use_log10 = !natural_base;
 
     fst::SymbolTable* symbols;
     if (!read_syms_filename.empty()) {
