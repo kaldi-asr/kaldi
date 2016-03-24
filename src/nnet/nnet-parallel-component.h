@@ -50,11 +50,11 @@ class ParallelComponent : public UpdatableComponent {
     std::string token; 
     while (!is.eof()) {
       ReadToken(is, false, &token); 
-      /**/ if (token == "<NestedNnetFilename>") {
+      /**/ if (token == "<NestedNnet>" || token == "<NestedNnetFilename>") {
         while(!is.eof()) {
           std::string file_or_end;
           ReadToken(is, false, &file_or_end);
-          if (file_or_end == "</NestedNnetFilename>") break;
+          if (file_or_end == "</NestedNnet>" || file_or_end == "</NestedNnetFilename>") break;
           nested_nnet_filename.push_back(file_or_end);
         }
       } else if (token == "<NestedNnetProto>") {
@@ -65,7 +65,7 @@ class ParallelComponent : public UpdatableComponent {
           nested_nnet_proto.push_back(file_or_end);
         }
       } else KALDI_ERR << "Unknown token " << token << ", typo in config?"
-                       << " (NestedNnetFilename|NestedNnetProto)";
+                       << " (NestedNnet|NestedNnetFilename|NestedNnetProto)";
       is >> std::ws; // eat-up whitespace
     }
     // initialize
