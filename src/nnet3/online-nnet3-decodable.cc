@@ -120,8 +120,25 @@ void DecodableNnet3Online::ComputeForFrame(int32 subsampled_frame) {
 
   int32 num_subsampled_frames = subsampling(input_frame_end - input_frame_begin -
           left_context_ - right_context_);
+  // I'm not checking if the input feature vector is ok.
+  // It should be done, but I'm not sure if it is the best place. 
+  // Maybe a new "nnet3 feature pipeline"?
+  int32 mfcc_dim = nnet_.GetNnet().InputDim("input");
+  int32 ivector_dim = nnet_.GetNnet().InputDim("ivector");
+  // MFCCs in the left chunk
+  SubMatrix<BaseFloat> mfcc_mat = features.ColRange(0,mfcc_dim);
+  
+  Vector<BaseFloat> input_ivector;
+  if(ivector_dim != -1){
+    // iVectors in the right chunk
+    SubMatrix<BaseFloat> ivector_mat = features.ColRange(mfcc_dim,ivector_dim);
+    // Get last ivector... not sure if GetCurrentIvector is needed in the online context
+    // I think it should work fine just getting the last row for testing
+    input_ivector = ivector_mat.Row(ivector_mat.NumRows() - 1);  
+  }
+  
   DoNnetComputation(input_frame_begin,
-      features, subsampled_frame * subsample, num_subsampled_frames);
+    mfcc_mat, input_ivector, subsampled_frame * subsample, num_subsampled_frames);
 
   begin_frame_ = subsampled_frame;
 }
@@ -129,6 +146,7 @@ void DecodableNnet3Online::ComputeForFrame(int32 subsampled_frame) {
 void DecodableNnet3Online::DoNnetComputation(
     int32 input_t_start,
     const MatrixBase<BaseFloat> &input_feats,
+    const VectorBase<BaseFloat> &ivector,
     int32 output_t_start,
     int32 num_subsampled_frames) {
   ComputationRequest request;
@@ -145,6 +163,11 @@ void DecodableNnet3Online::DoNnetComputation(
   request.inputs.push_back(
       IoSpecification("input", time_offset + input_t_start,
                       time_offset + input_t_start + input_feats.NumRows()));
+  if (ivector.Dim() != 0) {
+    std::vector<Index> indexes;
+    indexes.push_back(Index(0, 0, 0));
+    request.inputs.push_back(IoSpecification("ivector", indexes));
+  }
   IoSpecification output_spec;
   output_spec.name = "output";
   output_spec.has_deriv = false;
@@ -164,6 +187,11 @@ void DecodableNnet3Online::DoNnetComputation(
   CuMatrix<BaseFloat> input_feats_cu(input_feats);
   computer.AcceptInput("input", &input_feats_cu);
   CuMatrix<BaseFloat> ivector_feats_cu;
+  if (ivector.Dim() > 0) {
+    ivector_feats_cu.Resize(1, ivector.Dim());
+    ivector_feats_cu.Row(0).CopyFromVec(ivector);
+    computer.AcceptInput("ivector", &ivector_feats_cu);
+  }
   computer.Forward();
   CuMatrix<BaseFloat> cu_output;
   computer.GetOutputDestructive("output", &cu_output);

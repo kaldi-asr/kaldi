@@ -113,6 +113,7 @@ class DecodableNnet3Online: public DecodableInterface {
   void DoNnetComputation(
       int32 input_t_start,
       const MatrixBase<BaseFloat> &input_feats,
+      const VectorBase<BaseFloat> &ivector,
       int32 output_t_start,
       int32 num_subsampled_frames);
 
