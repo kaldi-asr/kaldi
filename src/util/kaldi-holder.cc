@@ -27,8 +27,8 @@ template<class Real>
 bool ExtractObjectRange(const Matrix<Real> &input, const std::string &range,
                         Matrix<Real> *output) {
   if (range.empty()) {
-    output->CopyFromMat(input);
-    return true;
+    KALDI_ERR << "Empty range specifier."; 
+    return false;
   }
   std::vector<std::string> splits;
   SplitStringToVector(range, ",", true, &splits);  
@@ -49,7 +49,7 @@ bool ExtractObjectRange(const Matrix<Real> &input, const std::string &range,
     col_range.push_back(0);
     col_range.push_back(input.NumCols() - 1);
   }
-  if (!(row_range.size() ==2 && col_range.size() == 2 && 
+  if (!(row_range.size() == 2 && col_range.size() == 2 && 
         row_range[0] >= 0 && row_range[0] < row_range[1] &&
         row_range[1] < input.NumRows() && col_range[0] >=0 &&
         col_range[0] < col_range[1] && col_range[1] < input.NumCols())) {
@@ -58,7 +58,7 @@ bool ExtractObjectRange(const Matrix<Real> &input, const std::string &range,
   }
   int32 row_offset = row_range[1] - row_range[0] + 1,
         col_offset = col_range[1] - col_range[0] + 1;
-  output->Resize(row_offset, col_offset);
+  output->Resize(row_offset, col_offset, kUndefined);
   output->CopyFromMat(input.Range(row_range[0], row_offset,
                                   col_range[0], col_offset));
   return true;
