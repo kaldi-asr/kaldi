@@ -85,7 +85,6 @@ std::string MomentStatistics(const VectorBase<Real> &vec) {
   std::ostringstream ostr;
   ostr << " ( min " << vec.Min() << ", max " << vec.Max()
        << ", mean " << mean 
-       << ", variance " << variance 
        << ", stddev " << sqrt(variance)
        << ", skewness " << skewness
        << ", kurtosis " << kurtosis

@@ -49,11 +49,11 @@ void ConvertLattice(
     Invert(&invfst);
     Factor(invfst, &ffst,  &labels);
   }
-    
+
   TopSort(&ffst); // Put the states in ffst in topological order, which is
   // easier on the eye when reading the text-form lattices and corresponds to
   // what we get when we generate the lattices in the decoder.
-  
+
   ofst->DeleteStates();
 
   // The states will be numbered exactly the same as the original FST.
@@ -145,10 +145,10 @@ void ConvertLattice(
           olabel = (string_length > 0 ? arc.weight.String()[string_length-1] : 0);
       Weight weight = (string_length <= 1 ? arc.weight.Weight() : Weight::One());
       Arc new_arc(ilabel, olabel, weight, arc.nextstate);
-      if (invert) std::swap(new_arc.ilabel, new_arc.olabel);      
+      if (invert) std::swap(new_arc.ilabel, new_arc.olabel);
       ofst->AddArc(cur_state, new_arc);
     }
-  }    
+  }
 }
 
 // This function converts lattices between float and double;

@@ -65,7 +65,7 @@ struct NGram {
 /**
     ArpaFileParser is an abstract base class for ARPA LM file conversion.
 
-    See ConstArpaLmBuilder for a usage example.
+    See ConstArpaLmBuilder and ArpaLmCompiler for usage examples.
 */
 class ArpaFileParser {
  public:
@@ -85,6 +85,7 @@ class ArpaFileParser {
   /// supported.
   void Read(std::istream &is, bool binary);
 
+  /// Parser options.
   const ArpaParseOptions& Options() const { return options_; }
 
  protected:
@@ -104,7 +105,7 @@ class ArpaFileParser {
   /// Override function called after the last n-gram has been consumed.
   virtual void ReadComplete() { }
 
-  /// Read-only access to symbol table.
+  /// Read-only access to symbol table. Not owned, do not make public.
   const fst::SymbolTable* Symbols() const { return symbols_; }
 
   /// Inside ConsumeNGram(), provides the current line number.
