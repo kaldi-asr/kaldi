@@ -333,6 +333,7 @@ while [ $x -lt $num_iters ]; do
     [ -f $dir/.error ] && { echo "Found $dir/.error. Error on iteration $x"; exit 1; }
   fi
 
+  rm $dir/cache.$x 2>/dev/null || true
   x=$[$x+1]
   num_archives_processed=$[num_archives_processed+num_jobs_nnet]
 done
@@ -351,7 +352,7 @@ if $adjust_priors && [ $stage -le $num_iters ]; then
   steps/nnet3/adjust_priors.sh --egs-type priors_egs \
     --num-jobs-compute-prior $num_archives_priors \
     --cmd "$cmd $prior_queue_opt" --use-gpu false \
-    --raw false --iter epoch$[num_epochs*frame_subsampling_factor] \
+    --use-raw-nnet false --iter epoch$[num_epochs*frame_subsampling_factor] \
     $dir $degs_dir || exit 1
 fi
 
