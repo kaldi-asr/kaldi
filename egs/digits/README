@@ -1,0 +1,29 @@
+These files are a audio corpus suitable for use with Wit Zieliński's 
+
+CREATING A SIMPLE ASR SYSTEM IN KALDI TOOLKIT FROM 
+SCRATCH USING SMALL DIGITS CORPORA
+IN OTHER WORDS: KALDI FOR DUMMIES
+
+tutorial, as seen at https://groups.google.com/d/msg/kaldi-help/tzyCwt7zgMQ/wvCLpVVpBgAJ
+
+The audio in this corpus was compiled by cutting spoken digits out of English-
+language recitations of pi found on Youtube.*
+
+This corpus was obtained by following Chapters 5 and 6 in Kaldi for Dummies.  If you
+want to use it, you must do all the other steps yourself.
+
+It is very nearly exactly as described in the tutorial's Exemplary Project.  There
+are only two changes:
+
+1) I've added 'o' to the lexicon because some participants say 'oh' instead of 'zero'.
+2) The audio is sampled at 44.1kHz, and the default in the project tools is 16kHz,  
+   so to use this audio you will need to add this line to your mfcc.conf:
+
+   --sample-frequency 44100 
+
+Using this audio, I've managed to successfully run the tutorial, getting word 
+error rates of 30%ish.
+
+* This corpus isn't super compatible with the Youtube Standard License, 
+which permits streaming only, so if you think about republishing it somewhere, 
+please consider that.
