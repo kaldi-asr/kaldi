@@ -14,7 +14,7 @@ In addition to the audio, this dataset contains all the langugage model and
 acoustic data files referenced by Chapters 5 and 6 in Kaldi for Dummies. If you
 want to use it, you must do all the other steps yourself.
 
-It is very nearly exactly as described in the tutorial's Exemplary Project.  There
+This dataset complies nearly exactly with the tutorial's Exemplary Project.  There
 are only two changes:
 
 1) I've added 'o' to the lexicon because some participants say 'oh' instead of 'zero'.
