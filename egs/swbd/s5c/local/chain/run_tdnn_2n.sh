@@ -190,8 +190,9 @@ if [ $stage -le 9 ]; then
   # get more iVector diversity.
   for s in "${suffix}" "${suffix}_hires"; do
 
-    steps/cleanup/combine_short_segments.sh ${min_segment_length} data/train_nodup${s} \
-      data/train_nodup${s}_ml${min_segment_length}
+    steps/cleanup/combine_short_segments.py --minimum-duration ${min_segment_length} \
+      --input-data-dir data/train_nodup${s} \
+      --output-data-dir data/train_nodup${s}_ml${min_segment_length} \
 
     steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 1 data/train_nodup${s}_ml${min_segment_length} \
       data/train_nodup${s}_ml${min_segment_length}_max1
