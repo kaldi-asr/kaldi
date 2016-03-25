@@ -281,18 +281,18 @@ static void ComputeSimpleNnetContextForShift(
     output.indexes.push_back(Index(n, t));
   }
   // push the indexes for ivector(s)
-  int32 ivector_interval = GetInputInterval(nnet,"ivector");
-  if (ivector_interval == 0)
+  int32 ivector_period = GetInputInterval(nnet,"ivector");
+  if (ivector_period == 0)
     // single ivector for the entire chunk
     // the assumption here is that the network just requires the ivector at time
     // t=0
     ivector.indexes.push_back(Index(n, 0));
   else {
     // multiple ivectors, so push multiple indexes
-    int32 t_begin = std::floor(1.0 * input_start / ivector_interval);
-    int32 t_end = std::floor((input_end - 1.0) / ivector_interval);
+    int32 t_begin = std::floor(1.0 * input_start / ivector_period);
+    int32 t_end = std::floor((input_end - 1.0) / ivector_period);
     for (int32 t = t_begin; t <= t_end; t++)
-      ivector.indexes.push_back(Index(n, t * ivector_interval));
+      ivector.indexes.push_back(Index(n, t * ivector_period));
   }
 
   ComputationRequest request;
@@ -678,7 +678,7 @@ std::string NnetInfo(const Nnet &nnet) {
   }
   ostr << "input-dim: " << nnet.InputDim("input") << "\n";
   ostr << "ivector-dim: " << nnet.InputDim("ivector") << "\n";
-  ostr << "ivector-interval: " << GetInputInterval(nnet, "ivector") << "\n";
+  ostr << "ivector-period: " << GetInputInterval(nnet, "ivector") << "\n";
   ostr << "output-dim: " << nnet.OutputDim("output") << "\n";
   ostr << "# Nnet info follows.\n";
   ostr << nnet.Info();

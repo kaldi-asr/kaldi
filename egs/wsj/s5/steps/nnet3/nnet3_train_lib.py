@@ -207,7 +207,6 @@ def GenerateEgs(data, alidir, egs_dir,
                 run_opts, stage = 0,
                 feat_type = 'raw', online_ivector_dir = None,
                 samples_per_iter = 20000, frames_per_eg = 20,
-                ivector_interval = 10,
                 egs_opts = None, cmvn_opts = None, transform_dir = None):
 
     RunKaldiCommand("""
@@ -223,7 +222,6 @@ steps/nnet3/get_egs.sh {egs_opts} \
   --stage {stage} \
   --samples-per-iter {samples_per_iter} \
   --frames-per-eg {frames_per_eg} \
-  --ivector-interval {ivector_interval} \
   {data} {alidir} {egs_dir}
       """.format(command = run_opts.command,
           cmvn_opts = cmvn_opts if cmvn_opts is not None else '',
@@ -235,24 +233,20 @@ steps/nnet3/get_egs.sh {egs_opts} \
           valid_right_context = valid_right_context,
           stage = stage, samples_per_iter = samples_per_iter,
           frames_per_eg = frames_per_eg, data = data, alidir = alidir,
-          ivector_interval = ivector_interval,
           egs_dir = egs_dir,
           egs_opts = egs_opts if egs_opts is not None else '' ))
 
-def VerifyEgsDir(egs_dir, feat_dim, ivector_dim, left_context, right_context, ivector_interval):
+def VerifyEgsDir(egs_dir, feat_dim, ivector_dim, left_context, right_context):
     try:
         egs_feat_dim = int(open('{0}/info/feat_dim'.format(egs_dir)).readline())
         egs_ivector_dim = int(open('{0}/info/ivector_dim'.format(egs_dir)).readline())
         egs_left_context = int(open('{0}/info/left_context'.format(egs_dir)).readline())
         egs_right_context = int(open('{0}/info/right_context'.format(egs_dir)).readline())
-        egs_ivector_interval = int(open('{0}/info/ivector_interval'.format(egs_dir)).readline())
         if (feat_dim != egs_feat_dim) or (ivector_dim != egs_ivector_dim):
             raise Exception('There is mismatch between featdim/ivector_dim of the current experiment and the provided egs directory')
 
         if (egs_left_context < left_context) or (egs_right_context < right_context):
             raise Exception('The egs have insufficient context')
-        if (ivector_interval != egs_ivector_interval) and (ivector_interval % egs_ivector_interval != 0):
-            raise Exception('ivector interval mismatch with egs (should be a multiple of)')
 
         frames_per_eg = int(open('{0}/info/frames_per_eg'.format(egs_dir)).readline())
         num_archives = int(open('{0}/info/num_archives'.format(egs_dir)).readline())

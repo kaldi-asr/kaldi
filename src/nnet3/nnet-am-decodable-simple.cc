@@ -44,7 +44,7 @@ NnetDecodableBase::NnetDecodableBase(
   num_subsampled_frames_ =
       (feats_.NumRows() + opts_.frame_subsampling_factor - 1) /
       opts_.frame_subsampling_factor;
-    ivector_interval_ = GetInputInterval(nnet, "ivector");
+    ivector_period_ = GetInputInterval(nnet, "ivector");
   KALDI_ASSERT(IsSimpleNnet(nnet));
   ComputeSimpleNnetContext(nnet, &nnet_left_context_, &nnet_right_context_);
   KALDI_ASSERT(!(ivector != NULL && online_ivectors != NULL));
@@ -220,10 +220,10 @@ void NnetDecodableBase::GetIvectorsForFrames(int32 output_t_start,
   // for. In single ivector case, We choose a point near the middle of the
   // current window, the concept being that this is the fairest comparison to
   // nnet2. In multiple ivectors case, we just choose frames at whole multiples
-  // of ivector_interval. Obviously we could do better by always taking the
+  // of ivector_period_. Obviously we could do better by always taking the
   // last frame's iVector, but decoding with 'online' ivectors is only really
   // a mechanism to simulate online operation.
-  if (ivector_interval_ == 0) { // single ivector case
+  if (ivector_period_ == 0) { // single ivector case
     ivectors->Resize(1, online_ivector_feats_->NumCols());
     int32 frame_to_search = output_t_start + num_output_frames / 2;
     SubVector<BaseFloat> sub_ivector = ivectors->Row(0);
@@ -237,16 +237,16 @@ void NnetDecodableBase::GetIvectorsForFrames(int32 output_t_start,
     // basically returns floor(t / <t-modulus>) * <t-modulus>.
     // (The assumption is that the t index of the first outptut frame is 0)
     int32 num_ivectors_in_left_context =
-        std::ceil(1.0 * left_context / ivector_interval_);
+        std::ceil(1.0 * left_context / ivector_period_);
     int32 num_ivectors = num_ivectors_in_left_context +
-        (num_output_frames + right_context - 1) / ivector_interval_ + 1;
+        (num_output_frames + right_context - 1) / ivector_period_ + 1;
     ivectors->Resize(num_ivectors, online_ivector_feats_->NumCols());
     int32 frame_to_search = output_t_start -
-                            num_ivectors_in_left_context * ivector_interval_;
+                            num_ivectors_in_left_context * ivector_period_;
     for (int32 n = 0; n < num_ivectors; n++) {
       SubVector<BaseFloat> sub_ivector = ivectors->Row(n);
       GetCurrentIvector(frame_to_search, &sub_ivector);
-      frame_to_search += ivector_interval_;
+      frame_to_search += ivector_period_;
     }
   }
 }
@@ -255,16 +255,16 @@ void NnetDecodableBase::GenerateIndexesForIvectors(
     int32 num_ivectors, std::vector<Index> *indexes) {
   KALDI_ASSERT(num_ivectors > 0);
   KALDI_ASSERT(indexes != NULL);
-  if (ivector_interval_ == 0)
+  if (ivector_period_ == 0)
     indexes->push_back(Index(0, 0, 0));
   else {
     int32 left_context = nnet_left_context_ + opts_.extra_left_context;
     int32 num_ivectors_in_left_context = std::ceil(1.0 * left_context /
-        ivector_interval_);
+        ivector_period_);
     for (int32 t = 0; t < num_ivectors; t++)
       // generate indexes according to the definition of the Round descriptor
       indexes->push_back(Index(0, (t - num_ivectors_in_left_context) *
-                                  ivector_interval_, 0));
+                                  ivector_period_, 0));
   }
 }
 

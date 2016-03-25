@@ -50,8 +50,9 @@ def GetArgs():
                         default=0.0)
     parser.add_argument("--include-log-softmax", type=str, action=nnet3_train_lib.StrToBoolAction,
                         help="add the final softmax layer ", default=True, choices = ["false", "true"])
-    parser.add_argument("--ivector-interval", type=int,
-                        help="If positive, Round descriptor will be used for ivector instead of ReplaceIndex descriptor, and the value will be the value of <t-modulus>.", default=10)
+    parser.add_argument("--ivector-period", type=int,
+                        help="If positive, it is the period with which ivectors are supplied for a chunk. "
+                        "If zero, a single ivector will be used for the entire chunk.", default=10)
 
 
     # LSTM options
@@ -123,8 +124,8 @@ def CheckArgs(args):
     if not args.ivector_dim >= 0:
         raise Exception("ivector-dim has to be non-negative")
 
-    if not args.ivector_interval >= 0:
-        raise Exception("ivector-interval has to be a non-negative")
+    if not args.ivector_period >= 0:
+        raise Exception("ivector-period has to be non-negative")
 
     if (args.num_lstm_layers < 1):
         sys.exit("--num-lstm-layers has to be a positive integer")
@@ -210,7 +211,7 @@ def ParseLstmDelayString(lstm_delay):
     return lstm_delay_array
 
 
-def MakeConfigs(config_dir, feat_dim, ivector_dim, ivector_interval, num_targets,
+def MakeConfigs(config_dir, feat_dim, ivector_dim, ivector_period, num_targets,
                 splice_indexes, lstm_delay, cell_dim,
                 recurrent_projection_dim, non_recurrent_projection_dim,
                 num_lstm_layers, num_hidden_layers,
@@ -221,7 +222,7 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, ivector_interval, num_targets
     config_lines = {'components':[], 'component-nodes':[]}
 
     config_files={}
-    prev_layer_output = nodes.AddInputLayer(config_lines, feat_dim, splice_indexes[0], ivector_dim, ivector_interval)
+    prev_layer_output = nodes.AddInputLayer(config_lines, feat_dim, splice_indexes[0], ivector_dim, ivector_period)
 
     # Add the init config lines for estimating the preconditioning matrices
     init_config_lines = copy.deepcopy(config_lines)
@@ -324,7 +325,7 @@ def Main():
     MakeConfigs(config_dir = args.config_dir,
                 feat_dim = args.feat_dim,
                 ivector_dim = args.ivector_dim,
-                ivector_interval = args.ivector_interval,
+                ivector_period = args.ivector_period,
                 num_targets = args.num_targets,
                 splice_indexes = splice_indexes,
                 lstm_delay = args.lstm_delay,

@@ -34,7 +34,6 @@ non_recurrent_projection_dim=256
 chunk_width=20
 chunk_left_context=40
 chunk_right_context=0
-ivector_interval=10
 
 
 # training options
@@ -86,8 +85,12 @@ local/nnet3/run_ivector_common.sh --stage $stage \
 
 if [ $stage -le 9 ]; then
   echo "$0: creating neural net configs";
+  if [ -d "exp/nnet3/ivectors_${train_set}" ]; then
+    ivector_period=$(cat exp/nnet3/ivectors_${train_set}/ivector_period) || exit 1;
+  fi
   config_extra_opts=()
   [ ! -z "$lstm_delay" ] && config_extra_opts+=(--lstm-delay "$lstm_delay")
+  [ ! -z $ivector_period ] && config_extra_opts+=(--ivector-period $ivector_period)
   steps/nnet3/lstm/make_configs.py  "${config_extra_opts[@]}" \
     --feat-dir data/${train_set}_hires \
     --ivector-dir exp/nnet3/ivectors_${train_set} \
@@ -100,7 +103,6 @@ if [ $stage -le 9 ]; then
     --non-recurrent-projection-dim $non_recurrent_projection_dim \
     --label-delay $label_delay \
     --self-repair-scale 0.00001 \
-    --ivector-interval $ivector_interval \
    $dir/configs || exit 1;
 
 fi
@@ -127,7 +129,6 @@ if [ $stage -le 10 ]; then
     --egs.chunk-width=$chunk_width \
     --egs.chunk-left-context=$chunk_left_context \
     --egs.chunk-right-context=$chunk_right_context \
-    --egs.ivector-interval $ivector_interval \
     --egs.dir="$common_egs_dir" \
     --cleanup.remove-egs=$remove_egs \
     --cleanup.preserve-model-interval=100 \

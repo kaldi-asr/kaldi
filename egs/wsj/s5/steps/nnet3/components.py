@@ -26,7 +26,7 @@ def GetSumDescriptor(inputs):
     return sum_descriptors
 
 # adds the input nodes and returns the descriptor
-def AddInputLayer(config_lines, feat_dim, splice_indexes=[0], ivector_dim=0, ivector_interval=10):
+def AddInputLayer(config_lines, feat_dim, splice_indexes=[0], ivector_dim=0, ivector_period=10):
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
     output_dim = 0
@@ -35,11 +35,11 @@ def AddInputLayer(config_lines, feat_dim, splice_indexes=[0], ivector_dim=0, ive
     output_dim += len(splice_indexes) * feat_dim
     if ivector_dim > 0:
         components.append('input-node name=ivector dim=' + str(ivector_dim))
-        if ivector_interval == 0:
+        if ivector_period == 0:
             list.append('ReplaceIndex(ivector, t, 0)')
-            warnings.warn('A single ivector will be used for the entire chunk as ivector_interval is 0. We recommend using an ivector interval of 10.')
+            warnings.warn('A single ivector will be used for the entire chunk as ivector_period is 0. We recommend using an ivector period of 10.')
         else:
-            list.append('Round(ivector, {0})'.format(ivector_interval))
+            list.append('Round(ivector, {0})'.format(ivector_period))
         output_dim += ivector_dim
     if len(list) > 1:
         splice_descriptor = "Append({0})".format(", ".join(list))

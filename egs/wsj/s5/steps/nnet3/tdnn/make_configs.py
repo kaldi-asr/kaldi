@@ -81,9 +81,9 @@ def GetArgs():
                         "like probabilities between 0 and 1. Typically the nnet "
                         "is trained with an objective such as quadratic",
                         default=False, choices = ["false", "true"])
-    parser.add_argument("--ivector-interval", type=int,
-                        help="If positive, Round descriptor will be used for ivector instead of ReplaceIndex "
-                        "descriptor, and the value will be the value of <t-modulus>.", default=10)
+    parser.add_argument("--ivector-period", type=int,
+                        help="If positive, it is the period with which ivectors are supplied for a chunk. "
+                        "If zero, a single ivector will be used for the entire chunk.", default=10)
 
     parser.add_argument("--objective-type", type=str,
                         help = "the type of objective; i.e. quadratic or linear",
@@ -156,8 +156,8 @@ def CheckArgs(args):
     if not args.ivector_dim >= 0:
         raise Exception("ivector-dim has to be non-negative")
 
-    if not args.ivector_interval >= 0:
-        raise Exception("ivector-interval has to be a non-negative")
+    if not args.ivector_period >= 0:
+        raise Exception("ivector-period has to be non-negative")
 
     if (args.subset_dim < 0):
         raise Exception("--subset-dim has to be non-negative")
@@ -407,7 +407,7 @@ def ParseSpliceString(splice_indexes):
 # The function signature of MakeConfigs is changed frequently as it is intended for local use in this script.
 def MakeConfigs(config_dir, splice_indexes_string,
                 cnn_layer, cnn_bottleneck_dim, cepstral_lifter,
-                feat_dim, ivector_dim, ivector_interval, num_targets, add_lda,
+                feat_dim, ivector_dim, ivector_period, num_targets, add_lda,
                 nonlin_input_dim, nonlin_output_dim, subset_dim,
                 pool_type, pool_window, pool_lpfilter_width,
                 use_presoftmax_prior_scale,
@@ -436,7 +436,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
     config_lines = {'components':[], 'component-nodes':[]}
 
     config_files={}
-    prev_layer_output = nodes.AddInputLayer(config_lines, feat_dim, splice_indexes[0], ivector_dim, ivector_interval)
+    prev_layer_output = nodes.AddInputLayer(config_lines, feat_dim, splice_indexes[0], ivector_dim, ivector_period)
 
     # Add the init config lines for estimating the preconditioning matrices
     init_config_lines = copy.deepcopy(config_lines)
@@ -618,7 +618,7 @@ def Main():
     MakeConfigs(config_dir = args.config_dir,
                 splice_indexes_string = args.splice_indexes,
                 feat_dim = args.feat_dim, ivector_dim = args.ivector_dim,
-                ivector_interval = args.ivector_interval,
+                ivector_period = args.ivector_period,
                 num_targets = args.num_targets,
                 add_lda = args.add_lda,
                 cnn_layer = args.cnn_layer,

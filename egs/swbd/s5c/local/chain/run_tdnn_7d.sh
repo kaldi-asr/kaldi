@@ -1,32 +1,5 @@
 #!/bin/bash
 
-# 6z is as 6y, but fixing the right-tolerance in the scripts to default to 5 (as
-# the default is in the code), rather than the previous script default value of
-# 10 which I seem to have added to the script around Feb 9th.
-# definitely better than 6y- not clear if we have managed to get the same
-# results as 6v (could indicate that the larger frames-per-iter is not helpful?
-# but I'd rather not decrease it as it would hurt speed).
-
-# local/chain/compare_wer.sh 6v 6y 6z
-# System                       6v        6y        6z
-# WER on train_dev(tg)      15.00     15.36     15.18
-# WER on train_dev(fg)      13.91     14.19     14.06
-# WER on eval2000(tg)        17.2      17.2      17.2
-# WER on eval2000(fg)        15.7      15.8      15.6
-# Final train prob      -0.105012 -0.102139 -0.106268
-# Final valid prob      -0.125877 -0.119654 -0.126726
-# Final train prob (xent)      -1.54736  -1.55598  -1.4556
-# Final valid prob (xent)      -1.57475  -1.58821  -1.50136
-
-# 6y is as 6w, but after fixing the config-generation script to use
-# a higher learning-rate factor for the final xent layer (it was otherwise
-# training too slowly).
-
-# 6w is as 6v (a new tdnn-based recipe), but using 1.5 million not 1.2 million
-# frames per iter (and of course re-dumping the egs).
-
-# this is same as v2 script but with xent-regularization
-# it has a different splicing configuration
 set -e
 
 # configs for 'chain'
@@ -35,7 +8,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_6z  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_7d  # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
 
 # TDNN options
@@ -133,6 +106,11 @@ fi
 
 if [ $stage -le 12 ]; then
   echo "$0: creating neural net configs";
+  if [ -d "exp/nnet3/ivectors_${train_set}" ]; then
+    ivector_period=$(cat exp/nnet3/ivectors_${train_set}/ivector_period) || exit 1;
+  fi
+  ivector_period_opts=$ivector_period_opts${ivector_period:+" --ivector-period=$ivector_period"} 
+
   if [ ! -z "$relu_dim" ]; then
     dim_opts="--relu-dim $relu_dim"
   else
@@ -146,7 +124,7 @@ if [ $stage -le 12 ]; then
   pool_opts=$pool_opts${pool_lpfilter_width:+" --pool-lpfilter-width $pool_lpfilter_width "}
   repair_opts=${self_repair_scale:+" --self-repair-scale $self_repair_scale "}
 
-  steps/nnet3/tdnn/make_configs.py $pool_opts \
+  steps/nnet3/tdnn/make_configs.py $ivector_period_opts $pool_opts \
     $repair_opts \
     --feat-dir data/${train_set}_hires \
     --ivector-dir exp/nnet3/ivectors_${train_set} \
@@ -158,6 +136,7 @@ if [ $stage -le 12 ]; then
     --xent-separate-forward-affine true \
     --include-log-softmax false \
     --final-layer-normalize-target $final_layer_normalize_target \
+    --ivector-period $ivector_period \
     $dir/configs || exit 1;
 fi
 

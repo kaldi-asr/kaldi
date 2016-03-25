@@ -78,10 +78,6 @@ def GetArgs():
                         will be used rather than extracting egs""")
     parser.add_argument("--egs.stage", type=int, dest='egs_stage',
                         default = 0, help="Stage at which get_egs.sh should be restarted")
-    parser.add_argument("--egs.ivector-interval", type=int, dest='ivector_interval',
-                        default = 10, help="""0 means having only one ivector for each example. If non-zero, this
-                        value is the interval between two consecutive ivectors to be dumped in the example.
-                        It is recommended to have an ivector-interval of at most 10, for good results.""")
     parser.add_argument("--egs.opts", type=str, dest='egs_opts',
                         default = None, action = NullstrToNoneAction,
                         help="""String to provide options directly to steps/nnet3/get_egs.sh script""")
@@ -252,9 +248,6 @@ def ProcessArgs(args):
 
     if args.chunk_right_context < 0:
         raise Exception("--egs.chunk-right-context should be positive")
-
-    if args.ivector_interval < 0 or args.ivector_interval > args.chunk_width:
-        raise Exception("--egs.ivector-interval should be non-negative and should not be greater than egs.chunk-width")
 
     if (not os.path.exists(args.dir)) or (not os.path.exists(args.dir+"/configs")):
         raise Exception("""This scripts expects {0} to exist and have a configs
@@ -546,7 +539,6 @@ def Train(args, run_opts):
                     args.chunk_width + left_context,
                     args.chunk_width + right_context, run_opts,
                     frames_per_eg = args.chunk_width,
-                    ivector_interval = args.ivector_interval,
                     egs_opts = args.egs_opts,
                     cmvn_opts = args.cmvn_opts,
                     online_ivector_dir = args.online_ivector_dir,
@@ -559,7 +551,7 @@ def Train(args, run_opts):
     else:
         egs_dir = args.egs_dir
 
-    [egs_left_context, egs_right_context, frames_per_eg, num_archives] = VerifyEgsDir(egs_dir, feat_dim, ivector_dim, left_context, right_context, args.ivector_interval)
+    [egs_left_context, egs_right_context, frames_per_eg, num_archives] = VerifyEgsDir(egs_dir, feat_dim, ivector_dim, left_context, right_context)
     assert(args.chunk_width == frames_per_eg)
 
     if (args.num_jobs_final > num_archives):

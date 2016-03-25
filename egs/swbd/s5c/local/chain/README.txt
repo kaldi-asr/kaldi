@@ -25,5 +25,8 @@ ones to look at right now:
   6z is probably the thing I currently recommend to run-- it's a TDNN+ReLU based
      setup that's quite fast to train and gives better results than our old
      jesus-layer-based system.
+  7d the only difference of this from 6z is that, instead of using a single
+     ivector for a chunk, in this recipe we use multiple ivectors with some period
+     for a chunk.
 
 

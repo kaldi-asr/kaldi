@@ -24,7 +24,6 @@ non_recurrent_projection_dim=256
 chunk_width=20
 chunk_left_context=40
 chunk_right_context=0
-ivector_interval=10
 
 
 # training options
@@ -72,7 +71,13 @@ if [ $stage -le 8 ]; then
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/wsj-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
 
-  steps/nnet3/lstm/train.sh --stage $train_stage \
+  if [ -d "exp/nnet3/ivectors_train_si284" ]; then
+    ivector_period=$(cat exp/nnet3/ivectors_train_si284/ivector_period) || exit 1;
+  fi
+  ivector_period_opts=$ivector_period_opts${ivector_period:+" --ivector-period=$ivector_period"}
+
+  steps/nnet3/lstm/train.sh $ivector_period_opts \
+    --stage $train_stage \
     --label-delay $label_delay \
     --lstm-delay "$lstm_delay" \
     --num-epochs $num_epochs --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
@@ -95,7 +100,6 @@ if [ $stage -le 8 ]; then
     --chunk-right-context $chunk_right_context \
     --egs-dir "$common_egs_dir" \
     --remove-egs $remove_egs \
-    --ivector-interval $ivector_interval \
     data/train_si284_hires data/lang exp/tri4b_ali_si284 $dir  || exit 1;
 fi
 
