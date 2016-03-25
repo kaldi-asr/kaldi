@@ -186,7 +186,7 @@ fi
 
 train_set=${train_set}_min${min_seg_len}
 latgen_train_set=${latgen_train_set}_min${min_seg_len}
-ivector_dir=exp/$mic/nnet3/ivectors_${train_set}_min${min_seg_len}
+ivector_dir=exp/$mic/nnet3/ivectors_${train_set}
 ali_dir=${ali_dir}_min${min_seg_len}
 lat_dir=${lat_dir}_min${min_seg_len}
 if [ $stage -le 13 ]; then
