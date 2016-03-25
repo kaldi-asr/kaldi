@@ -1,6 +1,7 @@
-// chain/chain-denominator.h
+// chain/chain-denominator-smbr.h
 
 // Copyright       2015  Johns Hopkins University (Author: Daniel Povey)
+//                 2016  Vimal Manohar
 
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -19,27 +20,13 @@
 // limitations under the License.
 
 
-#ifndef KALDI_CHAIN_CHAIN_DENOMINATOR_H_
-#define KALDI_CHAIN_CHAIN_DENOMINATOR_H_
+#ifndef KALDI_CHAIN_CHAIN_DENOMINATOR_SMBR_H_
+#define KALDI_CHAIN_CHAIN_DENOMINATOR_SMBR_H_
 
-#include <vector>
-#include <map>
-
-#include "base/kaldi-common.h"
-#include "util/common-utils.h"
-#include "fstext/fstext-lib.h"
-#include "tree/context-dep.h"
-#include "lat/kaldi-lattice.h"
-#include "matrix/kaldi-matrix.h"
-#include "hmm/transition-model.h"
-#include "cudamatrix/cu-matrix.h"
-#include "cudamatrix/cu-array.h"
-#include "chain/chain-den-graph.h"
-#include "chain/chain-training.h"
+#include "chain/chain-denominator.h"
 
 namespace kaldi {
 namespace chain {
-
 
 /*
   This extended comment describes how we implement forward-backward without log
@@ -75,11 +62,15 @@ namespace chain {
     - For t = 1 ... T:
         for i = 0 ... I-1:
            alpha(t, i) = 0
+           alpha_r(t, i) = 0
            for (j, p, n) in pred(i):  # note: j is preceding-state.
-              alpha(t, i) += x(t-1, n) * alpha(t-1, j) * p.
+              alpha(t, i) += x(t-1, n) * alpha(t-1, j) * p
+              alpha_r(t, i) += alpha_r(t-1, j) * alpha(t-1, j) + x(t-1, n) * p * (ref_pdf == pdf ? 1.0 : 0.0)
+           alpha_r(t, i) /= alpha(t, i)
 
     - total-prob = \sum_i alpha(T, i).  # note, we take the final-probs of all states
                                         # to be 1.0.
+    - total-objf = \sum_i alpha(T, i) * alpha_r(T, i) / total-prob
 
   * Backward computation (version 1)
 
@@ -97,11 +88,14 @@ namespace chain {
 
     - for the final frame:
        for each i, beta(T, i) = 1 / total-prob.
+       for each i, beta_r(T, i) = 0
     - for t = T-1 ... 0:
         for i = 0 ... I-1:
            beta(t, i) = 0
+           beta_r(t, i) = 0
            for (j, p, n) in foll(i):  # note: j is following-state.
               beta(t, i) += x(t, n) * beta(t+1, j) * p.
+              beta_r(t, i) += (ref_pdf == pdf ? x(t, n) * beta(t+1, j) * p : 0) + x(t, n) * p * beta_r(t+1, j).
               gamma(t, n) += alpha(t, i) * x(t, n) * beta(t+1, j) * p.
 
   ** Version 2 of the computation (renormalized version) **
@@ -187,10 +181,7 @@ namespace chain {
 
  */
 
-
-// This does forward-backward in parallel on a number of sequences, using a
-// single HMM.
-class DenominatorComputation {
+class DenominatorSmbrComputation : DenominatorComputation {
  public:
   /*
     Constructor.  'nnet_output' is the raw nnet output (which we'll treat as
@@ -205,21 +196,21 @@ class DenominatorComputation {
                        The rows must be ordered as (first frame of all sequences)
                        (second frame of all sequences), etc.
   */
-  DenominatorComputation(const ChainTrainingOptions &opts,
-                         const DenominatorGraph &den_graph,
-                         int32 num_sequences,
-                         const CuMatrixBase<BaseFloat> &nnet_output);
+  DenominatorSmbrComputation(const ChainTrainingOptions &opts,
+                             const DenominatorGraph &den_graph,
+                             int32 num_sequences,
+                             const CuMatrixBase<BaseFloat> &nnet_output);
 
   // Does the forward computation, and returns the total negated log-like summed
   // over all sequences.  You will have to scale this by any supervision
   // weighting factor, manually.
-  BaseFloat Forward();
+  BaseFloat ForwardSmbr();
 
   // this adds deriv_weight times (the derivative of the log-prob w.r.t. the
   // nnet output), to 'nnet_output_deriv'.
   // returns true if everything seemed OK, false if a failure was detected.
-  bool Backward(BaseFloat deriv_weight,
-                CuMatrixBase<BaseFloat> *nnet_output_deriv);
+  bool BackwardSmbr(BaseFloat deriv_weight,
+                    CuMatrixBase<BaseFloat> *nnet_output_deriv);
 
  private:
   // Defining this constant as an enum is easier.  it controls a memory/speed
@@ -229,87 +220,37 @@ class DenominatorComputation {
   enum { kMaxDerivTimeSteps = 8 };
 
   // sets up the alpha for frame t = 0.
-  void AlphaFirstFrame();
+  void AlphaSmbrFirstFrame();
   // the alpha computation for some 0 < t <= num_time_steps_.
-  void AlphaGeneralFrame(int32 t);
+  void AlphaSmbrGeneralFrame(int32 t);
   // does the 'alpha-dash' computation for time t.  this relates to
   // 'leaky hmm'.
-  void AlphaDash(int32 t);
+  void AlphaSmbrDash(int32 t);
 
   // done after all the alphas, this function computes and returns the total
-  // log-likelihood summed over all the sequences, and sets tot_prob_ (if we're
+  // smbr objective summed over all the sequences, and sets tot_prob_ (if we're
   // doing correction) log_correction_term_.  Note, this won't be scaled by
   // 'deriv_scale' (which of course we haven't seen by the time this is called,
   // from the Forward() computation).
-  BaseFloat ComputeTotLogLike();
+  BaseFloat ComputeTotObjf();
 
-  void BetaDashLastFrame();
+
+  void BetaSmbrDashLastFrame();
   // beta computation for 0 <= beta < num_time_steps_.
-  void BetaDashGeneralFrame(int32 t);
+  void BetaSmbrDashGeneralFrame(int32 t);
   // compute the beta quantity from the beta-dash quantity (relates to leaky hmm).
-  void Beta(int32 t);
+  void BetaSmbr(int32 t);
 
   // some checking that we can do if debug mode is activated, or on frame zero.
   // Sets ok_ to false if a bad problem is detected.
-  void BetaGeneralFrameDebug(int32 t);
+  void BetaSmbrGeneralFrameDebug(int32 t);
 
-  const ChainTrainingOptions &opts_;
-  const DenominatorGraph &den_graph_;
+  CuMatrix<BaseFloat> alpha_smbr_;
 
-  // number of separate frame sequences
-  int32 num_sequences_;
-  // number of frames per sequence.  nnet_output_.NumRows() equals
-  // num_sequences_ * frames_per_sequence.
-  int32 frames_per_sequence_;
+  CuMatrix<BaseFloat> beta_smbr_;
 
-  // The transpose of the exp() of the nnet output (the transpose is more
-  // convenient for memory locality, and the exp() avoids us having to
-  // exponentiate in the forward-backward).
-  //
-  // The row-index is the pdf-id; and the column index equals (frame_index *
-  // num_sequences + sequence_index).
-  CuMatrix<BaseFloat> exp_nnet_output_transposed_;
-
-  // the derivs w.r.t. the nnet outputs (transposed)
-  CuMatrix<BaseFloat> nnet_output_deriv_transposed_;
-
-  // the (temporarily) alpha and (more permanently) alpha-dash probabilities;
-  // dimension is (frames_per_sequence + 1) by (num-hmm-states * num-sequences +
-  // num_sequences).  Note, they are not logs.  The last 'num_sequences'
-  // columns, where the alpha for the state indexed 'num_hmm_states' would live,
-  // are for the alpha-sums, which relates to leaky HMM.
-  CuMatrix<BaseFloat> alpha_;
-
-  // the beta (also beta-dash) probabilities (rolling buffer); dimension is 2 *
-  // (num-hmm-states * num-sequences + num_sequences).  [the last
-  // 'num_sequences' columns are for the beta-sums, which relates to leaky HMM.]
-  // Note: for efficiency and to simplify the equations, these are actually the
-  // beta / tot_prob_.
-  CuMatrix<BaseFloat> beta_;
-
-  // the total probability for each sequence, excluding the product of
-  // correction terms.  [the correction terms refer to the fact that we multiply
-  // on each frame by 1/alpha of hmm-state 0 of the previous frame.].
-  // After the correction terms the total probability is fairly close to 1,
-  // which is why we can store it as non-log.
-  CuVector<BaseFloat> tot_prob_;
-
-  // the log of tot_prob_.
-  CuVector<BaseFloat> tot_log_prob_;
-
-  // the log of the total correction term for each sequence, which is the
-  // product of the alpha-sums [used in the leaky-hmm computation] over all the
-  // frames.  The 'correction terms' are terms that we divide the alphas and
-  // betas by in order to keep them in a good dynamic range.  The product of
-  // them must be included in the total likelihood.
-  CuVector<BaseFloat> log_correction_term_;
-
-  bool ok_;
-
-  friend DenominatorSmbrComputation;
+  CuVector<BaseFloat> tot_smbr_;
 };
-
-
 
 }  // namespace chain
 }  // namespace kaldi
