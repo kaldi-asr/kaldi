@@ -27,7 +27,7 @@
 #include "fstext/fstext-lib.h"
 
 // Create FST that accepts the phone sequence, with any number
-// of word-start and word-end symbol in between each phone. 
+// of word-start and word-end symbol in between each phone.
 void CreatePhonesAltFst(const std::vector<int32> &phones,
                         int32 word_start_sym,
                         int32 word_end_sym,
@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
         "e.g.: \n"
         " ali-to-phones 1.mdl ark:1.ali ark:- | \\\n"
         "  phones-to-prons L_align.fst 46 47 ark:- 1.tra ark:1.prons\n";
-    
+
     ParseOptions po(usage);
     po.Read(argc, argv);
 
@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
         prons_wspecifier = po.GetArg(6);
 
     int32 word_start_sym, word_end_sym;
-    
+
     if (!ConvertStringToInteger(word_start_sym_str, &word_start_sym)
         || word_start_sym <= 0)
       KALDI_ERR << "Invalid word start symbol (expecting integer >= 0): "
@@ -117,15 +117,15 @@ int main(int argc, char *argv[]) {
       fst::OLabelCompare<StdArc> olabel_comp;
       ArcSort(L, olabel_comp);
     }
-                
+
     SequentialInt32VectorReader phones_reader(phones_rspecifier);
     RandomAccessInt32VectorReader words_reader(words_rspecifier);
-    
+
     int32 n_done = 0, n_err = 0;
-    
+
     std::string empty;
     Int32VectorVectorWriter prons_writer(prons_wspecifier);
-    
+
     for (; !phones_reader.Done(); phones_reader.Next()) {
       std::string key = phones_reader.Key();
       const std::vector<int32> &phones = phones_reader.Value();
@@ -163,7 +163,7 @@ int main(int argc, char *argv[]) {
       // on the input side, and words on the output side.
       VectorFst<StdArc> phnx2word;
       Compose(phones_alt_fst, phn2word, &phnx2word);
-      
+
       if (phnx2word.Start() == fst::kNoStateId) {
         KALDI_WARN << "phnx2word FST for utterance " << key
                    << "is empty (either decoding for this utterance did "
@@ -196,7 +196,7 @@ int main(int argc, char *argv[]) {
         KALDI_ERR << "phnx2word is not a linear transducer (code error?)";
       if (words2 != words)
         KALDI_ERR << "words have changed! (code error?)";
-      
+
       // Now, "phnx" should be the phone sequence with start and end
       // symbols included.  At this point we break it up into segments,
       // and try to match it up with words.
@@ -211,7 +211,7 @@ int main(int argc, char *argv[]) {
         continue;
       }
       prons_writer.Write(key, prons);
-      n_done++;      
+      n_done++;
     }
     KALDI_LOG << "Done " << n_done << " utterances; " << n_err << " had errors.";
   } catch(const std::exception &e) {

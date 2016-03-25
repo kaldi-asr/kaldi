@@ -33,6 +33,18 @@ __device__ inline void atomic_add(Real* address, Real value) {
   }
 }
 
+template<>
+__device__ inline void atomic_add(double* address, double val) {
+  unsigned long long int* address_as_ull =
+    reinterpret_cast<unsigned long long int*>(address);
+  unsigned long long int old = *address_as_ull, assumed;
+  do {
+    assumed = old;
+    old = atomicCAS(address_as_ull, assumed,
+                    __double_as_longlong(val + __longlong_as_double(assumed)));
+  } while (assumed != old);
+}
+
 template <typename Real>
 __device__ inline void atomic_add_thresholded(Real* address, Real value) {
   // This function uses a randomized algorithm to only do atomic adds for values

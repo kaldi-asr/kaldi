@@ -418,8 +418,8 @@ class ConstArpaLmDeterministicFst
 // Reads in an Arpa format language model and converts it into ConstArpaLm
 // format. We assume that the words in the input Arpa format language model have
 // been converted into integers.
-bool BuildConstArpaLm(const bool natural_base, const int32 bos_symbol,
-                      const int32 eos_symbol, const int32 unk_symbol,
+bool BuildConstArpaLm(const int32 bos_symbol, const int32 eos_symbol,
+                      const int32 unk_symbol,
                       const std::string& arpa_rxfilename,
                       const std::string& const_arpa_wxfilename);
 

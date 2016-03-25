@@ -96,8 +96,11 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
       frames_overlap_subsampled = frames_overlap_per_eg / frame_subsampling_factor,
       frames_shift_subsampled = frames_per_eg_subsampled - frames_overlap_subsampled;
 
-  if (num_feature_frames_subsampled < frames_per_eg_subsampled)
+  if (num_feature_frames_subsampled < frames_per_eg_subsampled) {
+    KALDI_WARN << "Length of features for utterance " << utt_id
+               << " is less than than the frames_per_eg (after sub-sampling).";
     return false;
+  }
 
   // we don't do any padding, as it would be a bit tricky to pad the 'chain' supervision.
   // Instead we select ranges of frames that fully fit within the file;  these

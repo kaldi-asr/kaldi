@@ -58,8 +58,7 @@ class LossItf {
 
 class Xent : public LossItf {
  public:
-  Xent() : frames_(0.0), correct_(0.0), loss_(0.0), entropy_(0.0), 
-           frames_progress_(0.0), loss_progress_(0.0), entropy_progress_(0.0) { }
+  Xent() : frames_progress_(0.0), xentropy_progress_(0.0), entropy_progress_(0.0) { }
   ~Xent() { }
 
   /// Evaluate cross entropy using target-matrix (supports soft labels),
@@ -77,20 +76,24 @@ class Xent : public LossItf {
   /// Generate string with error report,
   std::string Report();
 
+  /// Generate string with per-class error report,
+  std::string ReportPerClass();
+
   /// Get loss value (frame average),
   BaseFloat AvgLoss() {
-    return (loss_ - entropy_) / frames_;
+    return (xentropy_.Sum() - entropy_.Sum()) / frames_.Sum();
   }
 
- private: 
-  double frames_;
-  double correct_;
-  double loss_;
-  double entropy_;
+ private:
+  // main stats collected per target-class,
+  CuVector<double> frames_;
+  Vector<double> correct_;
+  CuVector<double> xentropy_;
+  CuVector<double> entropy_;
 
-  // partial results during training
+  // partial results during training,
   double frames_progress_;
-  double loss_progress_;
+  double xentropy_progress_;
   double entropy_progress_;
   std::vector<float> loss_vec_;
 
@@ -98,8 +101,9 @@ class Xent : public LossItf {
   CuVector<BaseFloat> frame_weights_;
   CuVector<BaseFloat> target_sum_;
 
-  // loss computation buffers
+  // loss computation buffers,
   CuMatrix<BaseFloat> tgt_mat_;
+  CuMatrix<BaseFloat> frames_aux_;
   CuMatrix<BaseFloat> xentropy_aux_;
   CuMatrix<BaseFloat> entropy_aux_;
 

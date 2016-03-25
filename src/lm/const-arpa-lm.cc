@@ -1062,15 +1062,14 @@ bool ConstArpaLmDeterministicFst::GetArc(StateId s,
   return true;
 }
 
-bool BuildConstArpaLm(const bool natural_base, const int32 bos_symbol,
-                      const int32 eos_symbol, const int32 unk_symbol,
+bool BuildConstArpaLm(const int32 bos_symbol, const int32 eos_symbol,
+                      const int32 unk_symbol,
                       const std::string& arpa_rxfilename,
                       const std::string& const_arpa_wxfilename) {
   ArpaParseOptions options;
   options.bos_symbol = bos_symbol;
   options.eos_symbol = eos_symbol;
   options.unk_symbol = unk_symbol;
-  options.use_log10 = !natural_base;
 
   ConstArpaLmBuilder lm_builder(options);
   KALDI_LOG << "Reading " << arpa_rxfilename;

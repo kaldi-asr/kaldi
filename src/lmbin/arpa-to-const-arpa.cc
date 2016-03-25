@@ -44,12 +44,9 @@ int main(int argc, char *argv[]) {
 
     kaldi::ParseOptions po(usage);
 
-    bool natural_base = true;
     int32 unk_symbol = -1;
     int32 bos_symbol = -1;
     int32 eos_symbol = -1;
-    po.Register("natural-base", &natural_base,
-                "If true, use log-base e instead of log-base 10.");
     po.Register("unk-symbol", &unk_symbol,
                 "Integer corresponds to unknown-word in language model. -1 if "
                 "no such word is provided.");
@@ -75,10 +72,8 @@ int main(int argc, char *argv[]) {
     std::string arpa_rxfilename = po.GetArg(1),
         const_arpa_wxfilename = po.GetOptArg(2);
 
-    bool ans = BuildConstArpaLm(natural_base, bos_symbol,
-                                eos_symbol, unk_symbol,
+    bool ans = BuildConstArpaLm(bos_symbol, eos_symbol, unk_symbol,
                                 arpa_rxfilename, const_arpa_wxfilename);
-
     if (ans)
       return 0;
     else

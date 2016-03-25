@@ -1,5 +1,6 @@
 
 all:
+	-rm -f arpa2fst
 EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
@@ -7,7 +8,7 @@ BINFILES = align-equal align-equal-compiled acc-tree-stats \
         show-alignments compile-questions cluster-phones \
         compute-wer compute-wer-bootci make-h-transducer \
         add-self-loops convert-ali \
-        compile-train-graphs compile-train-graphs-fsts arpa2fst \
+        compile-train-graphs compile-train-graphs-fsts \
         make-pdf-to-tid-transducer make-ilabel-transducer show-transitions \
         ali-to-phones ali-to-post weight-silence-post acc-lda est-lda \
         ali-to-pdf est-mllt build-tree build-tree-two-level decode-faster \
@@ -37,4 +38,3 @@ ADDLIBS = ../lm/kaldi-lm.a ../decoder/kaldi-decoder.a ../lat/kaldi-lat.a \
 TESTFILES =
 
 include ../makefiles/default_rules.mk
-

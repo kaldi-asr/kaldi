@@ -27,8 +27,9 @@
 #include <string>
 #include <sstream>
 #include <vector>
-#include "lm/kaldi-lm.h"
 
+#include "base/kaldi-common.h"
+#include "fst/fstlib.h"
 #include "lm/arpa-file-parser.h"
 
 namespace kaldi {
