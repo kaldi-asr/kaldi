@@ -207,7 +207,7 @@ train_data_dir=data/$mic/${train_set}_hires
 if [ ! -z $max_wer ]; then
   if [ $stage -le 15 ]; then
     bad_utts_dir=${gmm_dir}_${mic}_${train_set}_bad_utts # added mic in name as this can be ihm directory where parallel mdm and sdm utts are written
-    if [ ! -f $bad_utt_dir/all_info.sorted.txt ]; then
+    if [ ! -f $bad_utts_dir/all_info.sorted.txt ]; then
       # This stage takes a lot of time ~7hrs, so run only if file is not available already
       steps/cleanup/find_bad_utts.sh --cmd "$decode_cmd" --nj 100 data/$mic/$latgen_train_set data/lang $ali_dir $bad_utts_dir
     fi
