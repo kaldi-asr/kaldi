@@ -162,11 +162,12 @@ fi
 
 # combining the segments in training data to have a minimum length of frames_per_eg + tolerance
 # this is critical stage in AMI (gives 1% absolute improvement)
+min_seg_len=$(python -c "print ($frames_per_eg+5)/100.0")
 if [ $stage -le 12 ]; then
-  min_seg_len=$(python -c "print ($frames_per_eg+5)/100.0")
+  rm -rf data/$mic/${train_set}_min${min_seg_len}_hires
   steps/cleanup/combine_short_segments.py --minimum-duration $min_seg_len \
     --input-data-dir data/$mic/${train_set}_hires \
-    --output-data-dirdata/$mic/${train_set}_min${min_seg_len}_hires
+    --output-data-dir data/$mic/${train_set}_min${min_seg_len}_hires
 
   #extract ivectors for the new data
   steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 \
@@ -177,8 +178,10 @@ if [ $stage -le 12 ]; then
     exp/$mic/nnet3/ivectors_${train_set}_min${min_seg_len} || exit 1;
 
  # combine the non-hires features for alignments/lattices
- steps/cleanup/combine_short_segments.sh $min_seg_len data/$mic/${latgen_train_set} data/$mic/${latgen_train_set}_min${min_seg_len}
-
+ rm -rf data/$mic/${latgen_train_set}_min${min_seg_len}
+ steps/cleanup/combine_short_segments.py --minimum-duration $min_seg_len \
+                   --input-data-dir data/$mic/${latgen_train_set} \
+                   --output-data-dir data/$mic/${latgen_train_set}_min${min_seg_len}
 fi
 
 train_set=${train_set}_min${min_seg_len}
@@ -202,10 +205,12 @@ fi
 mkdir -p $dir
 train_data_dir=data/$mic/${train_set}_hires
 if [ ! -z $max_wer ]; then
-  # This stage takes a lot of time ~7hrs
   if [ $stage -le 15 ]; then
-    bad_utts_dir=${gmm_dir}_${train_set}_bad_utts
-    steps/cleanup/find_bad_utts.sh --cmd "$decode_cmd" --nj 100 data/$mic/${train_set} data/lang $ali_dir $bad_utts_dir
+    bad_utts_dir=${gmm_dir}_${mic}_${train_set}_bad_utts # added mic in name as this can be ihm directory where parallel mdm and sdm utts are written
+    if [ ! -f $bad_utt_dir/all_info.sorted.txt ]; then
+      # This stage takes a lot of time ~7hrs, so run only if file is not available already
+      steps/cleanup/find_bad_utts.sh --cmd "$decode_cmd" --nj 100 data/$mic/$latgen_train_set data/lang $ali_dir $bad_utts_dir
+    fi
     python local/sort_bad_utts.py --bad-utt-info-file $bad_utts_dir/all_info.sorted.txt --max-wer $max_wer --output-file $dir/wer_sorted_utts_${max_wer}wer
     utils/copy_data_dir.sh --validate-opts "--no-wav"  data/$mic/${train_set}_hires data/$mic/${train_set}_${max_wer}wer_hires
     utils/filter_scp.pl $dir/wer_sorted_utts_${max_wer}wer data/$mic/${train_set}_hires/feats.scp  > data/$mic/${train_set}_${max_wer}wer_hires/feats.scp
