@@ -160,10 +160,9 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
 
   virtual bool Done() const {
     switch (state_) {
-      case kHaveScpLine: case kObjectLoaded: 
-      case kLoadSucceeded: case kLoadFailed:
+      case kHaveScpLine: case kLoadSucceeded: case kLoadFailed:
       case kRangeExtracted: case kRangeExtractionFailed: return false;
-        // These cases are because we want LoadCurrent()
+        // These cases are because we want EnsureObjectLoaded()
         // to be callable after Next() and to not change the Done() status
         // [only Next() should change the Done() status].
       case kEof: case kError: return true;  // Error condition, like Eof, counts
@@ -178,7 +177,7 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
     // Valid to call this whenever Done() returns false.
     switch (state_) {
       case kHaveScpLine: case kLoadSucceeded: case kLoadFailed:
-      case kObjectLoaded: case kRangeExtracted: case kRangeExtractionFailed: break;
+      case kRangeExtracted: case kRangeExtractionFailed: break;
       default:
         // coding error.
         KALDI_ERR << "Key() called on TableReader object at the wrong time.";
@@ -187,10 +186,8 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
   }
   const T &Value() {
     StateType orig_state = state_;
-    if (state_ == kHaveScpLine || state_ == kObjectLoaded) {
-      LoadCurrent();  // Takes state_ to kLoadSucceeded/kRangeExtracted
-      // or kLoadFailed/kRangeExtractionFailed/kObjectLoaded.
-    }
+    EnsureObjectLoaded();  // Takes state_ to kLoadSucceeded/kRangeExtracted
+    // or kLoadFailed/kRangeExtractionFailed.
     if (state_ == kLoadFailed) {
       // a file listed in an scp file not existing, or
       // read failure, failure of a command, etc.
@@ -206,24 +203,23 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
     } else if (state_ == kRangeExtractionFailed) {
       KALDI_ERR << "Failed to load object from "
                 << PrintableRxfilename(data_rxfilename_) 
-                << " within range " << range_
+                << " [" << range_ << "] "
                 << " (to suppress this error, add the permissive "
                 << "(p, ) option to the rspecifier.";
-    } else if (state_ != kLoadSucceeded && state_ != kRangeExtracted &&
-               state_ != kObjectLoaded) {
+    } else if (state_ != kLoadSucceeded && state_ != kRangeExtracted) {
       // This would be a coding error.
       KALDI_ERR << "Value() called at the wrong time.";
     }
     if (state_ == kRangeExtracted) {
       return object_;
     } else {
-      // Here state_ is either kLoadSucceeded or kObjectLoaded.
+      // Here state_ is kLoadSucceeded.
       return holder_.Value();
     }
   }
 
   void FreeCurrent() {
-    if (state_ == kLoadSucceeded || state_ == kObjectLoaded || 
+    if (state_ == kLoadSucceeded || 
         state_ == kRangeExtracted || state_ == kRangeExtractionFailed) {
       holder_.Clear();
       state_ = kLoadFailed;
@@ -236,7 +232,7 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
     // call Value() to ensure we have a value, and ignore its return value while
     // suppressing compiler warnings by casting to void.
     (void) Value();
-    if (state_ == kLoadSucceeded || state_ == kObjectLoaded ||
+    if (state_ == kLoadSucceeded ||
         state_ == kRangeExtracted || state_ == kRangeExtractionFailed) {
       holder_.Swap(other_holder);
       state_ = kLoadFailed;
@@ -253,7 +249,7 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
       if (opts_.permissive) {
         // Permissive mode means, when reading scp files, we treat keys whose
         // scp entry cannot be read as nonexistent.  This means trying to read.
-        if (LoadCurrent()) return;  // Success.
+        if (EnsureObjectLoaded()) return;  // Success.
         // else try the next scp line.
       } else {
         return;  // We go the next key; Value() will crash if we can't
@@ -272,7 +268,7 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
       status = script_input_.Close();
     if (data_input_.IsOpen())
       data_input_.Close();
-    if (state_ == kLoadSucceeded || state_ == kObjectLoaded ||
+    if (state_ == kLoadSucceeded ||
         state_ == kRangeExtracted || state_ == kRangeExtractionFailed)
       holder_.Clear();
     if (!this->IsOpen())
@@ -296,7 +292,7 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
     // kError (if !opts_.permissive)                            false
     // kEof (if script_input_.Close() && !opts.permissive)      false     
     // kEof (if !script_input_.Close() || opts.permissive)      true     
-    // kUninitialized/kFileStart/kHaveScpLine/kObjectLoaded     true
+    // kUninitialized/kFileStart/kHaveScpLine                   true
     // kUnitialized                                             true
   }
 
@@ -306,11 +302,11 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
                       << PrintableRxfilename(script_rxfilename_);
   }
  private:
-  bool LoadCurrent() {
+  bool EnsureObjectLoaded() {
     // Attempts to load object whose rxfilename is on the current scp line.
-    if (state_ != kObjectLoaded) {
+    if (state_ != kLoadSucceeded) {
       if (state_ != kHaveScpLine)
-        KALDI_ERR << "LoadCurrent() called at the wrong time.";
+        KALDI_ERR << "EnsureObjectLoaded() called at the wrong time.";
       bool ans;
       // note, NULL means it doesn't read the binary-mode header
       if (Holder::IsReadInBinary()) {
@@ -339,8 +335,8 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
         }
       }
     }
-    
-    // The needed object has been loaded. Here we just 
+      
+    // Here state_ == kLoadSucceeded, we will just 
     // extract the object from holder_ according to the range_ specifier,
     // e.g. [1:3,4:8], or just return true if range_ is empty.
     if (range_.empty()) return true;
@@ -355,14 +351,14 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
       return true;
     }
     // Possible states                              Return value
-    // kLoadSucceeded/kObjectLoaded/kRangeExtracted true
+    // kLoadSucceeded/kRangeExtracted true
     // kLoadFailed/kRangeExtractionFailed           false
   }
   // Reads the next line in the script file.
   void NextScpLine() {
     StateType old_state = state_;
     switch (state_) {
-      case kLoadSucceeded: case kObjectLoaded:
+      case kLoadSucceeded:      
       case kRangeExtracted: case kRangeExtractionFailed:
       case kHaveScpLine: case kLoadFailed: case kFileStart: break;
       default:
@@ -393,7 +389,7 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
         if (old_state == kLoadSucceeded || old_state == kRangeExtracted ||
             old_state == kRangeExtractionFailed) {
           if (data_rxfilename_ == data_rxfilename_next) {
-            state_ = kObjectLoaded;
+            state_ = kLoadSucceeded;
           } else {
             holder_.Clear();
           }
@@ -436,14 +432,12 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
     kError,   // Some other error                                 no         yes
     kHaveScpLine,  // Just called Open() or Next() and have a     no         yes
     // line of the script file but no data.
-    kLoadSucceeded,  // Called LoadCurrent() and it succeeded.   yes         yes
-    kLoadFailed,  // Called LoadCurrent() and it failed,          no         yes
+    kLoadSucceeded,  // Called EnsureObjectLoaded() and 
+    // it succeeded.                                             yes         yes
+    kLoadFailed,  // Called EnsureObjectLoaded() and it failed,   no         yes
     // or the user called FreeCurrent().. note,
     // if when called by user we are in this state,
     // it means the user called FreeCurrent().
-    kObjectLoaded, // Called NextScpLine() and found we already  yes         yes
-    // have the object corresponding to data_rxfilename_ in the
-    // next line s.t. we don't have to load next time.
     kRangeExtracted, // we successfully extracte the partial     yes         yes
     // object.
     kRangeExtractionFailed, // we failed to extract the partial  yes         yes
@@ -933,7 +927,7 @@ template<class Holder>
 const typename SequentialTableReader<Holder>::T &
 SequentialTableReader<Holder>::Value() {
   CheckImpl();
-  return impl_->Value();  // This may throw (if LoadCurrent() returned false you
+  return impl_->Value();  // This may throw (if EnsureObjectLoaded() returned false you
                           // are safe.).
 }
 
