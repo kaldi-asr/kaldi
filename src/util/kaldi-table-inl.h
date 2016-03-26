@@ -41,23 +41,14 @@ namespace kaldi {
 /// @{
 
 // In SequentialTableReaderScriptImpl and RandomAccessTableReaderScriptImple,
-// We use this function to separate the input string "line"
-// into the range specifier (e.g. [1:2,2:10]) and the data_rxfilename
-// (e.g. 1.ark:100). It returns true if successful.
-static bool ExtractRangeSpecifier(const std::string &line, 
-                                  std::string *data_rxfilename,
-                                  std::string *range) {
-  if (line.empty() || line[line.size()-1] != ']') 
-    return false;
-  std::vector<std::string> splits;
-  SplitStringToVector(line, "[", true, &splits);
-  if (splits.size() == 2) {
-    *data_rxfilename = splits[0];
-    range->assign(splits[1], 0, splits[1].size()-1);
-    return true;
-  }
-  return false;
-}
+// We use this function to separate the input string 'line'
+// (e.g "1.ark:100[1:2,2:10]"), or (e.g. "sph2pipe -f wav -p -c 1 1.sph |")
+// into the data_rxfilename (e.g. "1.ark:100") and the optional range specifier
+// (valid cases are: row range e.g. [1:2], column range e.g. [:,2:10], or both
+// e.g. [1:2,2:10].) It returns true if successful. 
+bool ExtractRangeSpecifier(const std::string &line, 
+                                 std::string *data_rxfilename,
+                                 std::string *range);
 
 template<class Holder> class SequentialTableReaderImplBase {
  public:
