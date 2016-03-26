@@ -38,6 +38,16 @@ int32 RoundUpToNearestPowerOfTwo(int32 n) {
   return n+1;
 }
 
+int32 DivideRoundingDown(int32 a, int32 b) {
+  KALDI_ASSERT(b != 0);
+  if (a * b >= 0)
+    return a / b;
+  else if (a < 0)
+    return (a - b + 1) / b;
+  else
+    return (-a + b + 1) / b;
+}
+
 #ifndef _MSC_VER
 static pthread_mutex_t _RandMutex = PTHREAD_MUTEX_INITIALIZER;
 #endif

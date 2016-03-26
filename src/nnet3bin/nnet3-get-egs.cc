@@ -29,39 +29,56 @@
 namespace kaldi {
 namespace nnet3 {
 
+/** add iVectors to Egs.
+*/
 static void GetIvectorsForEgs(int32 t, int32 left_context,
                               int32 right_context, int32 frames_per_eg,
-                              int32 ivector_period,
+                              int32 actual_frames_per_eg, int32 ivector_period,
                               const MatrixBase<BaseFloat> *ivector_feats,
                               NnetExample *eg) {
-  // try to get a representative iVector every ivector_period frames
-  // in an eg.
   KALDI_ASSERT(ivector_feats->NumRows() > 0);
-  // num_ivectors_in_left_context is the num of ivectors for frames whose t < 0.
-  // It is used to compute the initial value of closest_frame
-  // num_ivectors is the num of ivectors for frames whose t >= 0.
-  // Both of them are computed according to how Round descriptor works, which
-  // basically returns floor(t / <t-modulus>) * <t-modulus>.
-  int32 num_ivectors_in_left_context =
-      std::ceil(1.0 * left_context / ivector_period); 
-  int32 num_ivectors = num_ivectors_in_left_context +
-      (frames_per_eg + right_context - 1) / ivector_period + 1;
-  Matrix<BaseFloat> ivectors(num_ivectors, ivector_feats->NumCols());
-  // closest_frame is the frame at whole multiples of ivector_period
-  int32 closest_frame = t - num_ivectors_in_left_context * ivector_period;
-  for (int32 n = 0; n < num_ivectors; n++) {
-    if (closest_frame < 0)
-      closest_frame = 0;
-    else if (closest_frame >= ivector_feats->NumRows())
+  if (ivector_period == 0) {
+    // signle ivector case.
+    // try to get closest frame to middle of window to get
+    // a representative iVector.
+    int32 closest_frame = t + (actual_frames_per_eg / 2);
+    KALDI_ASSERT(ivector_feats->NumRows() > 0);
+    if (closest_frame >= ivector_feats->NumRows())
       closest_frame = ivector_feats->NumRows() - 1;
-    ivectors.Row(n).CopyFromVec(ivector_feats->Row(closest_frame));
-    closest_frame += ivector_period;
+    Matrix<BaseFloat> ivector(1, ivector_feats->NumCols());
+    ivector.Row(0).CopyFromVec(ivector_feats->Row(closest_frame));
+    eg->io.push_back(NnetIo("ivector", 0, ivector));
+  } else {
+    // multiple ivectors case.
+    // try to get a representative iVector every ivector_period frames
+    // in an eg.
+    // num_ivectors_in_left_context is the num of ivectors for frames whose
+    // t < 0. It is used to compute the initial value of closest_frame
+    // num_ivectors is the num of ivectors for frames whose t >= 0.
+    // Both of them are computed according to how Round descriptor works, which
+    // basically returns floor(t / <t-modulus>) * <t-modulus>.
+    int32 num_ivectors_in_left_context =
+        -1 * DivideRoundingDown(-left_context, ivector_period); 
+    int32 num_ivectors = num_ivectors_in_left_context + 1 +
+        DivideRoundingDown(frames_per_eg + right_context - 1, ivector_period);
+    Matrix<BaseFloat> ivectors(num_ivectors, ivector_feats->NumCols());
+    for (int32 n = 0; n < num_ivectors; n++) {
+      // closest_frame is the frame at whole multiples of ivector_period
+      int32 closest_frame = t -
+          (n - num_ivectors_in_left_context) * ivector_period;
+      int32 ivector_frame = closest_frame;
+      if (closest_frame < 0)
+        ivector_frame = 0;
+      else if (closest_frame >= ivector_feats->NumRows())
+        ivector_frame = ivector_feats->NumRows() - 1;
+      ivectors.Row(n).CopyFromVec(ivector_feats->Row(ivector_frame));
+    }
+    eg->io.push_back(NnetIo("ivector", -num_ivectors_in_left_context, ivectors));
+    // multiplied each t by the factor ivector_period
+    // according to the definition of the Round descriptor
+    for (int32 n = 0; n < eg->io.back().indexes.size(); n++)
+      eg->io.back().indexes[n].t *= ivector_period;
   }
-  eg->io.push_back(NnetIo("ivector", -num_ivectors_in_left_context, ivectors));
-  // multiplied each t by the factor ivector_period
-  // according to the definition of the Round descriptor
-  for (int32 n = 0; n < eg->io.back().indexes.size(); n++)
-    eg->io.back().indexes[n].t *= ivector_period;
 }
 
 static void ProcessFile(const MatrixBase<BaseFloat> &feats,
@@ -110,22 +127,10 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
                            input_frames));
 
     // if applicable, add the iVector feature.
-    if (ivector_feats != NULL) {
-      if (ivector_period == 0) {
-        // try to get closest frame to middle of window to get
-        // a representative iVector.
-        int32 closest_frame = t + (actual_frames_per_eg / 2);
-        KALDI_ASSERT(ivector_feats->NumRows() > 0);
-        if (closest_frame >= ivector_feats->NumRows())
-          closest_frame = ivector_feats->NumRows() - 1;
-        Matrix<BaseFloat> ivector(1, ivector_feats->NumCols());
-        ivector.Row(0).CopyFromVec(ivector_feats->Row(closest_frame));
-        eg.io.push_back(NnetIo("ivector", 0, ivector));
-      } else {
+    if (ivector_feats != NULL)
         GetIvectorsForEgs(t, left_context, right_context, frames_per_eg,
-                          ivector_period, ivector_feats, &eg);
-      }
-    }
+                          actual_frames_per_eg, ivector_period, ivector_feats,
+                          &eg);
 
     // add the labels.
     Posterior labels(frames_per_eg);

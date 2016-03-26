@@ -109,7 +109,7 @@ if [ $stage -le 12 ]; then
   if [ -d "exp/nnet3/ivectors_${train_set}" ]; then
     ivector_period=$(cat exp/nnet3/ivectors_${train_set}/ivector_period) || exit 1;
   fi
-  ivector_period_opts=$ivector_period_opts${ivector_period:+" --ivector-period=$ivector_period"} 
+  ivector_period_opt=${ivector_period:+" --ivector-period=$ivector_period"} 
 
   if [ ! -z "$relu_dim" ]; then
     dim_opts="--relu-dim $relu_dim"
@@ -124,7 +124,7 @@ if [ $stage -le 12 ]; then
   pool_opts=$pool_opts${pool_lpfilter_width:+" --pool-lpfilter-width $pool_lpfilter_width "}
   repair_opts=${self_repair_scale:+" --self-repair-scale $self_repair_scale "}
 
-  steps/nnet3/tdnn/make_configs.py $ivector_period_opts $pool_opts \
+  steps/nnet3/tdnn/make_configs.py $ivector_period_opt $pool_opts \
     $repair_opts \
     --feat-dir data/${train_set}_hires \
     --ivector-dir exp/nnet3/ivectors_${train_set} \

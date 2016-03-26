@@ -229,7 +229,14 @@ int32 GetInputIntervalFromString(const std::vector<std::string> &node_names,
   if (*next_token != "end of input") 
     KALDI_ERR << "Parsing Descriptor, expected end of input but got "
               << "'" <<  *next_token << "'";
-  return GetInputIntervalInternal(*gen_desc, node_names, input_name);
+  int32 node_index = -1;
+  for (size_t i = 0; i < node_names.size(); i++) {
+    if (node_names[i] == input_name) {
+      node_index = static_cast<int32>(i);
+      break;
+    }
+  }
+  return GetDescriptorInputInterval(*gen_desc, node_index);
 }
 
 void UnitTestGetInputIntervalSpecial() {

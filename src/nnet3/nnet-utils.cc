@@ -40,7 +40,10 @@ int32 NumInputNodes(const Nnet &nnet) {
   return ans;
 }
 
-int32 GetInputInterval(const Nnet &nnet, std::string input_name) {
+int32 GetInputInterval(const Nnet &nnet, const std::string input_name) {
+  int32 node_index = nnet.GetNodeIndex(input_name);
+  if (node_index == -1)
+    return -1;
   const std::vector<std::string> &node_names = nnet.GetNodeNames();
   int32 interval = -1;
   for (int32 i = 0; i < nnet.NumNodes(); i++) {
@@ -58,7 +61,7 @@ int32 GetInputInterval(const Nnet &nnet, std::string input_name) {
         KALDI_ERR << "Parsing Descriptor, expected end of input but got "
                   << "'" <<  *next_token << "'";
       int32 new_interval =
-          GetInputIntervalInternal(*gen_desc, node_names, input_name);
+          GetDescriptorInputInterval(*gen_desc, node_index);
       if (new_interval != -1) {
         if (new_interval == 0) {
           if (interval > 0) {
@@ -95,9 +98,8 @@ int32 GetInputInterval(const Nnet &nnet, std::string input_name) {
   return interval;
 }
 
-int32 GetInputIntervalInternal(const GeneralDescriptor &gen_desc,
-                               const std::vector<std::string> &node_names,
-                               const std::string &input_name) {
+int32 GetDescriptorInputInterval(const GeneralDescriptor &gen_desc,
+                                 int32 input_node_index) {
   switch (gen_desc.descriptor_type_) {
     case GeneralDescriptor::kAppend: case GeneralDescriptor::kSum:
     case GeneralDescriptor::kFailover: case GeneralDescriptor::kIfDefined:
@@ -105,8 +107,8 @@ int32 GetInputIntervalInternal(const GeneralDescriptor &gen_desc,
       int32 interval = -1;
       for (size_t i = 0; i < gen_desc.descriptors_.size(); i++) {
         int32 new_interval =
-            GetInputIntervalInternal(*(gen_desc.descriptors_[i]), node_names,
-                                     input_name);
+            GetDescriptorInputInterval(*(gen_desc.descriptors_[i]),
+                                       input_node_index);
         if (new_interval != -1) {
           if (new_interval == 0) {
             if (interval > 0) {
@@ -143,8 +145,8 @@ int32 GetInputIntervalInternal(const GeneralDescriptor &gen_desc,
     case GeneralDescriptor::kOffset: {
       KALDI_ASSERT(gen_desc.descriptors_.size() == 1);
       int32 interval =
-          GetInputIntervalInternal(*(gen_desc.descriptors_[0]), node_names,
-                                   input_name);
+          GetDescriptorInputInterval(*(gen_desc.descriptors_[0]),
+                                     input_node_index);
       if (interval == 0) {
         // in the case where input is used only at t=0 from the arg of "Offset",
         // if offset by 0, return 0; otherwise return 1 as a "hard" case
@@ -163,8 +165,8 @@ int32 GetInputIntervalInternal(const GeneralDescriptor &gen_desc,
     case GeneralDescriptor::kRound: {
       KALDI_ASSERT(gen_desc.descriptors_.size() == 1);
       int32 interval =
-          GetInputIntervalInternal(*(gen_desc.descriptors_[0]), node_names,
-                                   input_name);
+          GetDescriptorInputInterval(*(gen_desc.descriptors_[0]),
+                                     input_node_index);
       if (interval > 0)
         if (gen_desc.value1_ >= interval) {
           // if t is rounded with a larger modulus than interval from the arg,
@@ -191,8 +193,8 @@ int32 GetInputIntervalInternal(const GeneralDescriptor &gen_desc,
     case GeneralDescriptor::kReplaceIndex: {
       KALDI_ASSERT(gen_desc.descriptors_.size() == 1);
       int32 interval =
-          GetInputIntervalInternal(*(gen_desc.descriptors_[0]), node_names,
-                                   input_name);
+          GetDescriptorInputInterval(*(gen_desc.descriptors_[0]),
+                                     input_node_index);
       if (gen_desc.value1_ == int32(ReplaceIndexForwardingDescriptor::kT) &&
           interval >= 0) {
         // in the case where the input is used at least once from the arg of
@@ -208,7 +210,7 @@ int32 GetInputIntervalInternal(const GeneralDescriptor &gen_desc,
     }
     case GeneralDescriptor::kNodeName: {
       // if the input is used as NodeName, return 1, otherwise -1 
-      if (node_names[gen_desc.value1_] == input_name)
+      if (gen_desc.value1_ == input_node_index)
         return 1;
       else
         return -1;
@@ -281,7 +283,7 @@ static void ComputeSimpleNnetContextForShift(
     output.indexes.push_back(Index(n, t));
   }
   // push the indexes for ivector(s)
-  int32 ivector_period = GetInputInterval(nnet,"ivector");
+  int32 ivector_period = GetInputInterval(nnet, "ivector");
   if (ivector_period == 0)
     // single ivector for the entire chunk
     // the assumption here is that the network just requires the ivector at time
@@ -289,8 +291,8 @@ static void ComputeSimpleNnetContextForShift(
     ivector.indexes.push_back(Index(n, 0));
   else {
     // multiple ivectors, so push multiple indexes
-    int32 t_begin = std::floor(1.0 * input_start / ivector_period);
-    int32 t_end = std::floor((input_end - 1.0) / ivector_period);
+    int32 t_begin = DivideRoundingDown(input_start, ivector_period);
+    int32 t_end = DivideRoundingDown(input_end - 1, ivector_period);
     for (int32 t = t_begin; t <= t_end; t++)
       ivector.indexes.push_back(Index(n, t * ivector_period));
   }

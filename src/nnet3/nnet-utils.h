@@ -59,12 +59,12 @@ int32 NumInputNodes(const Nnet &nnet);
 /// if it is potentially used on every frame (every "t" value) it returns 1
 /// if it is only used on frame 0 it returns 0; and if it is used only
 /// on multiples of n frames with n > 1, it returns n.
-int32 GetInputInterval(const Nnet &nnet, std::string input_name);
+int32 GetInputInterval(const Nnet &nnet, const std::string input_name);
 
-/// internal function called in GetInputInterval().
-int32 GetInputIntervalInternal(const GeneralDescriptor &gen_desc,               
-                               const std::vector<std::string> &node_names,      
-                               const std::string &input_name); 
+/// Get input interval from a descriptor. This function called from
+/// GetInputInterval().
+int32 GetDescriptorInputInterval(const GeneralDescriptor &gen_desc,               
+                                 int32 input_node_index); 
 
 /// Calls SetZero (with the given is_gradient parameter) on all updatable
 /// components of the nnet.

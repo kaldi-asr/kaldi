@@ -74,9 +74,9 @@ if [ $stage -le 8 ]; then
   if [ -d "exp/nnet3/ivectors_train_si284" ]; then
     ivector_period=$(cat exp/nnet3/ivectors_train_si284/ivector_period) || exit 1;
   fi
-  ivector_period_opts=$ivector_period_opts${ivector_period:+" --ivector-period=$ivector_period"}
+  ivector_period_opt=${ivector_period:+" --ivector-period=$ivector_period"}
 
-  steps/nnet3/lstm/train.sh $ivector_period_opts \
+  steps/nnet3/lstm/train.sh $ivector_period_opt \
     --stage $train_stage \
     --label-delay $label_delay \
     --lstm-delay "$lstm_delay" \

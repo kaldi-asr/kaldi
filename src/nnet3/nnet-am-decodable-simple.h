@@ -167,8 +167,9 @@ class NnetDecodableBase {
   // cached in current_log_post_.
   void EnsureFrameIsComputed(int32 subsampled_frame);
 
-  // Generates proper Indexes for ivectors. It is called from DoNnetComputation().
-  void GenerateIndexesForIvectors(int32 num_ivectors,
+  // Generates Indexes for ivectors corresponding each row of ivectors matrix.
+  // This function is called from DoNnetComputation().
+  void GenerateIndexesForIvectors(const ComputationRequest &request,
                                   std::vector<Index> *indexes);
 
   // This function does the actual nnet computation; it is called from
