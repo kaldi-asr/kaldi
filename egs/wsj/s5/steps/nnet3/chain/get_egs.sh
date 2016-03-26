@@ -290,14 +290,14 @@ if [ $stage -le 2 ]; then
 fi
 
 
-egs_opts="--left-context=$left_context --right-context=$right_context --num-frames=$frames_per_eg --num-frames-overlap=$frames_overlap_per_eg --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress --cut-zero-frames=$cut_zero_frames --ivector-period=$ivector_period"
+egs_opts="--left-context=$left_context --right-context=$right_context --num-frames=$frames_per_eg --num-frames-overlap=$frames_overlap_per_eg --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress --cut-zero-frames=$cut_zero_frames"
 egs_opts=$egs_opts${ivector_period:+" --ivector-period=$ivector_period"}
 
 
 [ -z $valid_left_context ] &&  valid_left_context=$left_context;
 [ -z $valid_right_context ] &&  valid_right_context=$right_context;
 # don't do the overlap thing for the validation data.
-valid_egs_opts="--left-context=$valid_left_context --right-context=$valid_right_context --num-frames=$frames_per_eg --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress --ivector-period=$ivector_period"
+valid_egs_opts="--left-context=$valid_left_context --right-context=$valid_right_context --num-frames=$frames_per_eg --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress"
 valid_egs_opts=$valid_egs_opts${ivector_period:+" --ivector-period=$ivector_period"}
 
 ctc_supervision_all_opts="--lattice-input=true --frame-subsampling-factor=$alignment_subsampling_factor"

@@ -137,7 +137,7 @@ void NnetDecodableBase::EnsureFrameIsComputed(int32 subsampled_frame) {
       num_input_frames = last_input_frame + 1 - first_input_frame;
   Matrix<BaseFloat> ivectors;
   GetIvectorsForFrames(first_output_frame,
-                       last_output_frame - first_output_frame,
+                       last_output_frame - first_output_frame + 1,
                        &ivectors);
 
   Matrix<BaseFloat> input_feats;
@@ -243,7 +243,7 @@ void NnetDecodableBase::GetIvectorsForFrames(int32 output_t_start,
                            ivector_period_) + 1;
     ivectors->Resize(num_ivectors, online_ivector_feats_->NumCols());
     for (int32 n = 0; n < num_ivectors; n++) {
-      int32 frame_to_search = output_t_start -
+      int32 frame_to_search = output_t_start +
           (n - num_ivectors_in_left_context) * ivector_period_;
       SubVector<BaseFloat> sub_ivector(*ivectors, n);
       GetCurrentIvector(frame_to_search, &sub_ivector);

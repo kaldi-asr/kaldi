@@ -31,8 +31,8 @@ namespace nnet3 {
 
 /** add iVectors to Egs.
 */
-static void GetIvectorsForEgs(int32 t, int32 left_context,
-                              int32 right_context, int32 frames_per_eg,
+static void GetIvectorsForEgs(int32 chunk_start, int32 left_context,
+                              int32 right_context, int32 chunk_size,
                               int32 actual_frames_per_eg, int32 ivector_period,
                               const MatrixBase<BaseFloat> *ivector_feats,
                               NnetExample *eg) {
@@ -41,7 +41,7 @@ static void GetIvectorsForEgs(int32 t, int32 left_context,
     // signle ivector case.
     // try to get closest frame to middle of window to get
     // a representative iVector.
-    int32 closest_frame = t + (actual_frames_per_eg / 2);
+    int32 closest_frame = chunk_start + (actual_frames_per_eg / 2);
     KALDI_ASSERT(ivector_feats->NumRows() > 0);
     if (closest_frame >= ivector_feats->NumRows())
       closest_frame = ivector_feats->NumRows() - 1;
@@ -53,23 +53,22 @@ static void GetIvectorsForEgs(int32 t, int32 left_context,
     // try to get a representative iVector every ivector_period frames
     // in an eg.
     // num_ivectors_in_left_context is the num of ivectors for frames whose
-    // t < 0. It is used to compute the initial value of closest_frame
+    // t < 0. It is used to compute the initial value of ivector_frame
     // num_ivectors is the num of ivectors for frames whose t >= 0.
     // Both of them are computed according to how Round descriptor works, which
     // basically returns floor(t / <t-modulus>) * <t-modulus>.
     int32 num_ivectors_in_left_context =
         -1 * DivideRoundingDown(-left_context, ivector_period); 
     int32 num_ivectors = num_ivectors_in_left_context + 1 +
-        DivideRoundingDown(frames_per_eg + right_context - 1, ivector_period);
+        DivideRoundingDown(chunk_size + right_context - 1, ivector_period);
     Matrix<BaseFloat> ivectors(num_ivectors, ivector_feats->NumCols());
     for (int32 n = 0; n < num_ivectors; n++) {
-      // closest_frame is the frame at whole multiples of ivector_period
-      int32 closest_frame = t -
+      // ivector_frame is the frame at whole multiples of ivector_period
+      int32 ivector_frame = chunk_start +
           (n - num_ivectors_in_left_context) * ivector_period;
-      int32 ivector_frame = closest_frame;
-      if (closest_frame < 0)
+      if (ivector_frame < 0)
         ivector_frame = 0;
-      else if (closest_frame >= ivector_feats->NumRows())
+      else if (ivector_frame >= ivector_feats->NumRows())
         ivector_frame = ivector_feats->NumRows() - 1;
       ivectors.Row(n).CopyFromVec(ivector_feats->Row(ivector_frame));
     }

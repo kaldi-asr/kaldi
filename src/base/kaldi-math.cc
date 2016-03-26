@@ -45,7 +45,7 @@ int32 DivideRoundingDown(int32 a, int32 b) {
   else if (a < 0)
     return (a - b + 1) / b;
   else
-    return (-a + b + 1) / b;
+    return (a - b - 1) / b;
 }
 
 #ifndef _MSC_VER
