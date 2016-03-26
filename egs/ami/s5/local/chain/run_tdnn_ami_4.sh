@@ -13,25 +13,58 @@
 # these are results with a slighly different min_seg_len=2secs and an older steps/cleanup/combine_short_segments.sh script
 # also the trees for these results were built with min_seg_len=2 utterances, I moved tree building stage prior to segment
 # combination, as I don't think it is affected by the minor change in alignments.
+# Current experiments show that max-wer setting is not helpful when --use-ihm-ali=true
 #---------------------------
-# %WER 22.6 | 13098 94486 | 80.3 10.6 9.1 2.9 22.6 54.9 | 0.086 | exp/ihm/chain/tdnn_min_seg_len2_sp/decode_dev/ascore_10/dev_hires.ctm.filt.sys
-# %WER 22.5 | 12643 89975 | 80.2 12.3 7.4 2.7 22.5 52.8 | 0.153 | exp/ihm/chain/tdnn_min_seg_len2_sp/decode_eval/ascore_10/eval_hires.ctm.filt.sys
+##################### Systems with alignments from same acoustic data as features ###########################
+  # Individual headset microphone systems
+  #----------------------------------------
+  # local/chain/run_tdnn_ami_4.sh  --mic ihm --affix min_seg_len2 (built with min-seg-len 2 secs, but script now just supports (frames_per_eg+5)/100)
+  # %WER 22.6 | 13098 94486 | 80.3 10.6 9.1 2.9 22.6 54.9 | 0.086 | exp/ihm/chain/tdnn_min_seg_len2_sp/decode_dev/ascore_10/dev_hires.ctm.filt.sys
+  # %WER 22.5 | 12643 89975 | 80.2 12.3 7.4 2.7 22.5 52.8 | 0.153 | exp/ihm/chain/tdnn_min_seg_len2_sp/decode_eval/ascore_10/eval_hires.ctm.filt.sys
 
-# %WER 40.0 | 15332 94473 | 63.1 15.8 21.0 3.2 40.0 63.9 | 0.604 | exp/mdm8/chain/tdnn_min_seg_len2_sp/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
-# %WER 43.2 | 13630 89954 | 59.8 16.5 23.8 3.0 43.2 68.0 | 0.587 | exp/mdm8/chain/tdnn_min_seg_len2_sp/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
+  # local/chain/run_tdnn_ami_4.sh  --mic ihm --max-wer 50 --affix min_seg_len2_50wer (built with min-seg-len 2 secs, but script now just supports (frames_per_eg+5)/100)
+  # %WER 22.4 | 13098 94484 | 80.5 10.7 8.8 3.0 22.4 54.8 | 0.091 | exp/ihm/chain/tdnn_min_seg_len2_50wer_sp/decode_dev/ascore_10/dev_hires.ctm.filt.sys
+  # %WER 22.4 | 12643 89973 | 80.3 12.6 7.1 2.8 22.4 53.2 | 0.155 | exp/ihm/chain/tdnn_min_seg_len2_50wer_sp/decode_eval/ascore_10/eval_hires.ctm.filt.sys
 
-# %WER 38.2 | 14638 94499 | 65.3 17.1 17.6 3.5 38.2 65.7 | 0.616 | exp/mdm8_cleanali/chain/tdnn_min_seg_len2_sp/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
-# %WER 42.0 | 14054 89957 | 61.0 17.6 21.4 3.0 42.0 64.8 | 0.596 | exp/mdm8_cleanali/chain/tdnn_min_seg_len2_sp/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
+  # Multiple distant microphone systems
+  #----------------------------------------
+  # local/chain/run_tdnn_ami_4.sh  --mic mdm8 --affix min_seg_len2 (built with min-seg-len 2 secs, but script now just supports (frames_per_eg+5)/100)
+  # %WER 40.0 | 15332 94473 | 63.1 15.8 21.0 3.2 40.0 63.9 | 0.604 | exp/mdm8/chain/tdnn_min_seg_len2_sp/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
+  # %WER 43.2 | 13630 89954 | 59.8 16.5 23.8 3.0 43.2 68.0 | 0.587 | exp/mdm8/chain/tdnn_min_seg_len2_sp/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
 
-# %WER 43.5 | 14629 94479 | 59.5 17.6 22.9 3.0 43.5 67.8 | 0.577 | exp/sdm1/chain/tdnn_min_seg_len2_sp/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
-# %WER 47.3 | 13210 89956 | 55.9 19.1 25.1 3.2 47.3 71.8 | 0.555 | exp/sdm1/chain/tdnn_min_seg_len2_sp/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
+  # local/chain/run_tdnn_ami_4.sh  --mic mdm8 --max-wer 50 --affix min_seg_len2_50wer (built with min-seg-len 2 secs, but script now just supports (frames_per_eg+5)/100)
+  # %WER 38.8 | 14180 94493 | 65.1 17.2 17.7 3.8 38.8 69.4 | 0.617 | exp/mdm8/chain/tdnn_min_seg_len2_50wer_sp/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
+  # %WER 42.1 | 13960 89974 | 61.4 18.0 20.6 3.4 42.1 66.2 | 0.591 | exp/mdm8/chain/tdnn_min_seg_len2_50wer_sp/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
 
-# %WER 41.3 | 14041 94506 | 62.1 19.4 18.5 3.4 41.3 69.2 | 0.587 | exp/sdm1_cleanali/chain/tdnn_min_seg_len2_sp/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
-# %WER 45.3 | 14052 89969 | 57.9 20.9 21.2 3.2 45.3 66.2 | 0.563 | exp/sdm1_cleanali/chain/tdnn_min_seg_len2_sp/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
+  # Single distant microphone systems
+  #----------------------------------------
+  # local/chain/run_tdnn_ami_4.sh  --mic sdm1 --affix min_seg_len2 (built with min-seg-len 2 secs, but script now just supports (frames_per_eg+5)/100)
+  # %WER 43.5 | 14629 94479 | 59.5 17.6 22.9 3.0 43.5 67.8 | 0.577 | exp/sdm1/chain/tdnn_min_seg_len2_sp/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
+  # %WER 47.3 | 13210 89956 | 55.9 19.1 25.1 3.2 47.3 71.8 | 0.555 | exp/sdm1/chain/tdnn_min_seg_len2_sp/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
 
-# if max_wer=50 this would be the result
-# %WER 42.8 | 14535 94491 | 60.7 18.7 20.6 3.6 42.8 68.4 | 0.583 | exp/sdm1/chain/tdnn_min_seg_len2_50wer_sp/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
-# %WER 46.4 | 13101 89971 | 57.0 20.3 22.6 3.4 46.4 72.1 | 0.555 | exp/sdm1/chain/tdnn_min_seg_len2_50wer_sp/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
+  # local/chain/run_tdnn_ami_4.sh  --mic sdm1 --max-wer 50 --affix min_seg_len2_50wer (built with min-seg-len 2 secs, but script now just supports (frames_per_eg+5)/100)
+  # %WER 42.8 | 14535 94491 | 60.7 18.7 20.6 3.6 42.8 68.4 | 0.583 | exp/sdm1/chain/tdnn_min_seg_len2_50wer_sp/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
+  # %WER 46.4 | 13101 89971 | 57.0 20.3 22.6 3.4 46.4 72.1 | 0.555 | exp/sdm1/chain/tdnn_min_seg_len2_50wer_sp/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
+
+##################### Systems with alignments from individual head-set microphone data ###########################
+  # Multiple distant microphone systems
+  #----------------------------------------
+  # local/chain/run_tdnn_ami_4.sh  --mic mdm8 --use-ihm-ali true --affix min_seg_len2 (built with min-seg-len 2 secs, but script now just supports (frames_per_eg+5)/100)
+  # %WER 38.2 | 14638 94499 | 65.3 17.1 17.6 3.5 38.2 65.7 | 0.616 | exp/mdm8_cleanali/chain/tdnn_min_seg_len2_sp/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
+  # %WER 42.0 | 14054 89957 | 61.0 17.6 21.4 3.0 42.0 64.8 | 0.596 | exp/mdm8_cleanali/chain/tdnn_min_seg_len2_sp/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
+
+  # local/chain/run_tdnn_ami_4.sh  --mic mdm8 --use-ihm-ali true --max-wer 50
+  # running
+
+  # Single distant microphone systems
+  #----------------------------------------
+  # local/chain/run_tdnn_ami_4.sh  --mic sdm1 --use-ihm-ali true --affix min_seg_len2 (built with min-seg-len 2 secs, but script now just supports (frames_per_eg+5)/100)
+  # %WER 41.3 | 14041 94506 | 62.1 19.4 18.5 3.4 41.3 69.2 | 0.587 | exp/sdm1_cleanali/chain/tdnn_min_seg_len2_sp/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
+  # %WER 45.3 | 14052 89969 | 57.9 20.9 21.2 3.2 45.3 66.2 | 0.563 | exp/sdm1_cleanali/chain/tdnn_min_seg_len2_sp/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
+
+  # local/chain/run_tdnn_ami_4.sh  --mic sdm1 --use-ihm-ali true --max-wer 50 --affix msl1.5_50wer (built with min-seg-len (frames_per_eg+5)/100)
+  # %WER 41.6 | 14793 94504 | 61.8 19.3 18.9 3.4 41.6 65.3 | 0.591 | exp/sdm1_cleanali/chain/tdnn_ami4_msl1.5_50wer_sp/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
+  # %WER 45.4 | 14141 89972 | 57.9 20.7 21.4 3.3 45.4 64.8 | 0.567 | exp/sdm1_cleanali/chain/tdnn_ami4_msl1.5_50wer_sp/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
 
 
 set -e
@@ -43,34 +76,12 @@ get_egs_stage=-10
 mic=ihm
 use_ihm_ali=false
 affix=
-speed_perturb=true
 common_egs_dir=
-splice_indexes="-1,0,1 -1,0,1,2 -3,0,3 -3,0,3 -3,0,3 -6,-3,0 0"
-subset_dim=0
-relu_dim=450
 exp_name=tdnn_ami4
 
-# TDNN options
-# this script uses the new tdnn config generator so it needs a final 0 to reflect that the final layer input has no splicing
-# smoothing options
-pool_window=
-pool_type='none'
-pool_lpfilter_width=
-self_repair_scale=0.00001
 
 # training options
-num_epochs=4
-initial_effective_lrate=0.001
-final_effective_lrate=0.0001
-num_jobs_initial=2
-num_jobs_final=12
-minibatch_size=128
-remove_egs=true
-
 # chain options
-leftmost_questions_truncate=-1
-max_param_change=2.0
-final_layer_normalize_target=1.0
 frames_per_eg=150
 xent_regularize=0.1
 max_wer=
@@ -151,7 +162,7 @@ fi
 if [ $stage -le 11 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
-      --leftmost-questions-truncate $leftmost_questions_truncate \
+      --leftmost-questions-truncate -1 \
       --cmd "$train_cmd" 4200 data/$mic/$latgen_train_set $lang $ali_dir $treedir
 
   # this is done to prevent accidental overwrites of the tree
@@ -224,32 +235,18 @@ fi
 if [ $stage -le 16 ]; then
   echo "$0: creating neural net configs";
 
-  if [ ! -z "$relu_dim" ]; then
-    dim_opts="--relu-dim $relu_dim"
-  else
-    dim_opts="--pnorm-input-dim $pnorm_input_dim --pnorm-output-dim  $pnorm_output_dim"
-  fi
-
-  # create the config files for nnet initialization
-  pool_opts=
-  pool_opts=$pool_opts${pool_type:+" --pool-type $pool_type "}
-  pool_opts=$pool_opts${pool_window:+" --pool-window $pool_window "}
-  pool_opts=$pool_opts${pool_lpfilter_width:+" --pool-lpfilter-width $pool_lpfilter_width "}
-  repair_opts=${self_repair_scale:+" --self-repair-scale $self_repair_scale "}
-
   steps/nnet3/tdnn/make_configs.py $pool_opts \
-    $repair_opts \
-    --subset-dim "$subset_dim" \
+    --self_repair_scale 0.00001 \
     --feat-dir $train_data_dir \
     --ivector-dir $ivector_dir \
     --tree-dir $treedir \
-    $dim_opts \
-    --splice-indexes "$splice_indexes"  \
+    --relu-dim 450 \
+    --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -3,0,3 -3,0,3 -6,-3,0 0" \
     --use-presoftmax-prior-scale false \
     --xent-regularize $xent_regularize \
     --xent-separate-forward-affine true \
     --include-log-softmax false \
-    --final-layer-normalize-target $final_layer_normalize_target \
+    --final-layer-normalize-target 1.0 \
    $dir/configs || exit 1;
 fi
 
@@ -259,7 +256,8 @@ if [ $stage -le 17 ]; then
      /export/b0{5,6,7,8}/$USER/kaldi-data/egs/ami-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
 
- touch $dir/egs/.nodelete # keep egs around when that run dies.
+
+touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train.py --stage $train_stage \
     --cmd "$decode_cmd" \
@@ -274,15 +272,15 @@ if [ $stage -le 17 ]; then
     --egs.stage $get_egs_stage \
     --egs.opts "--frames-overlap-per-eg 0" \
     --egs.chunk-width $frames_per_eg \
-    --trainer.num-chunk-per-minibatch $minibatch_size \
+    --trainer.num-chunk-per-minibatch 128 \
     --trainer.frames-per-iter 1500000 \
-    --trainer.num-epochs $num_epochs \
-    --trainer.optimization.num-jobs-initial $num_jobs_initial \
-    --trainer.optimization.num-jobs-final $num_jobs_final \
-    --trainer.optimization.initial-effective-lrate $initial_effective_lrate \
-    --trainer.optimization.final-effective-lrate $final_effective_lrate \
-    --trainer.max-param-change $max_param_change \
-    --cleanup.remove-egs $remove_egs \
+    --trainer.num-epochs 4 \
+    --trainer.optimization.num-jobs-initial 2 \
+    --trainer.optimization.num-jobs-final 12 \
+    --trainer.optimization.initial-effective-lrate 0.001 \
+    --trainer.optimization.final-effective-lrate 0.0001 \
+    --trainer.max-param-change 2.0 \
+    --cleanup.remove-egs true \
     --feat-dir $train_data_dir \
     --tree-dir $treedir \
     --lat-dir $lat_dir \
