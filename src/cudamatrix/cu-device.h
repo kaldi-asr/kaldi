@@ -26,6 +26,9 @@
 #if HAVE_CUDA == 1
 
 #include <cublas_v2.h>
+#if HAVE_CUDNN == 1 
+#include "cudnn.h"
+#endif
 #include <map>
 #include <string>
 #include <iostream>
@@ -47,6 +50,8 @@ class CuDevice {
   static inline CuDevice& Instantiate() { return global_device_; }
 
   inline cublasHandle_t GetHandle() { return handle_; }
+  
+  inline cudnnHandle_t GetCudnnHandle() { return cudnn_; }
 
   // We provide functions Malloc, MallocPitch and Free which replace cudaMalloc,
   // cudaMallocPitch and cudaFree.  Their function is to cache the results of
@@ -114,6 +119,9 @@ class CuDevice {
 
   static CuDevice global_device_;
   cublasHandle_t handle_;
+#if HAVE_CUDNN == 1
+  cudnnHandle_t cudnn_;
+#endif
 
   /// Check if the GPU run in compute exclusive mode Returns true if it is
   /// running in compute exclusive mode and we have a GPU.  Returns false
@@ -158,7 +166,9 @@ class CuDevice {
 // This function is declared as a more convenient way to get the CUDA device handle for use
 // in the CUBLAS v2 API, since we so frequently need to access it.
 inline cublasHandle_t GetCublasHandle() { return CuDevice::Instantiate().GetHandle(); }
-
+#if HAVE_CUDNN == 1
+inline cudnnHandle_t GetCudnnHandle() { return CuDevice::Instantiate().GetCudnnHandle(); }
+#endif
 
 }  // namespace
 
