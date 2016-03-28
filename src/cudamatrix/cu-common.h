@@ -32,6 +32,9 @@
 #if HAVE_CUDA == 1
 #include <cublas_v2.h>
 #include <cuda_runtime_api.h>
+#if HAVE_CUDNN == 1
+#include "cudnn.h"
+#endif
 
 
 
@@ -51,6 +54,17 @@
   } \
   cudaDeviceSynchronize(); \
 }
+
+#if HAVE_CUDNN == 1
+#define CUDNN_SAFE_CALL(fun) \
+{ \
+    cudnnStatus_t ret; \
+    if ((ret = (fun)) != CUDNN_STATUS_SUCCESS) { \
+          KALDI_ERR << "cudnnStatus_t " << ret << " : \"" << cudnnGetErrorString(ret) << "\" returned from '" << #fun << "'"; \
+        } \
+    cudaDeviceSynchronize(); \
+}
+#endif
 
 namespace kaldi {
 

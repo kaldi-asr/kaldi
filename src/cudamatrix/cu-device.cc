@@ -216,7 +216,10 @@ void CuDevice::FinalizeActiveGpu() {
     active_gpu_id_ = act_gpu_id; // CuDevice::Enabled() is true from now on
     // Initialize the CUBLAS
     CU_SAFE_CALL(cublasCreate(&handle_));
-
+  #if HAVE_CUDNN == 1
+    // Initialize CUDNN
+    CUDNN_SAFE_CALL(cudnnCreate(&cudnn_));
+  #endif
     // Notify user which GPU is finally used
     char name[128];
     DeviceGetName(name,128,act_gpu_id);
@@ -570,6 +573,9 @@ CuDevice::CuDevice(): active_gpu_id_(-1), verbose_(true),
 CuDevice::~CuDevice() {
   if (Enabled()) {
     cublasDestroy(handle_);
+  #if HAVE_CUDNN == 1
+    cudnnDestroy(cudnn_);
+  #endif
     cudaDeviceReset();
   }
 }
