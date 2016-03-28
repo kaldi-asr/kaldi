@@ -107,3 +107,8 @@ GSYMS
 /tools/srilm.tgz
 
 /kaldiwin_vs*
+
+*.DS_Store
+/egs/dkt/
+*.idea
+
