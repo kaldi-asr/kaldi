@@ -23,8 +23,8 @@
 namespace kaldi {
 
 bool ExtractRangeSpecifier(const std::string &line, 
-                                  std::string *data_rxfilename,
-                                  std::string *range) {
+                           std::string *data_rxfilename,
+                           std::string *range) {
   if (line.empty() || line[line.size()-1] != ']') 
     return false;
   std::vector<std::string> splits;

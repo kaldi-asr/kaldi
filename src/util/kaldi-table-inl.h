@@ -47,8 +47,8 @@ namespace kaldi {
 // (valid cases are: row range e.g. [1:2], column range e.g. [:,2:10], or both
 // e.g. [1:2,2:10].) It returns true if successful. 
 bool ExtractRangeSpecifier(const std::string &line, 
-                                 std::string *data_rxfilename,
-                                 std::string *range);
+                           std::string *data_rxfilename,
+                           std::string *range);
 
 template<class Holder> class SequentialTableReaderImplBase {
  public:
