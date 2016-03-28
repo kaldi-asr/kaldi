@@ -202,7 +202,7 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
       KALDI_ERR << "Value() called at the wrong time.";
     }
     if (state_ == kRangeExtracted) {
-      return object_;
+      return range_holder_.Value();
     } else {
       // Here state_ is kLoadSucceeded.
       return holder_.Value();
@@ -213,6 +213,7 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
     if (state_ == kLoadSucceeded || 
         state_ == kRangeExtracted || state_ == kRangeExtractionFailed) {
       holder_.Clear();
+      range_holder_.Clear();
       state_ = kLoadFailed;
     } else {
       KALDI_WARN << "FreeCurrent called at the wrong time.";
@@ -223,9 +224,11 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
     // call Value() to ensure we have a value, and ignore its return value while
     // suppressing compiler warnings by casting to void.
     (void) Value();
-    if (state_ == kLoadSucceeded ||
-        state_ == kRangeExtracted || state_ == kRangeExtractionFailed) {
+    if (state_ == kLoadSucceeded) {
       holder_.Swap(other_holder);
+      state_ = kLoadFailed;
+    } else if (state_ == kRangeExtracted) {
+      range_holder_.Swap(other_holder);
       state_ = kLoadFailed;
     } else {
       KALDI_ERR << "SwapHolder called at the wrong time "
@@ -260,8 +263,10 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
     if (data_input_.IsOpen())
       data_input_.Close();
     if (state_ == kLoadSucceeded ||
-        state_ == kRangeExtracted || state_ == kRangeExtractionFailed)
+        state_ == kRangeExtracted || state_ == kRangeExtractionFailed) {
+      range_holder_.Clear();
       holder_.Clear();
+    }
     if (!this->IsOpen())
       KALDI_ERR << "Close() called on input that was not open.";
     StateType old_state = state_;
@@ -317,7 +322,8 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
           if (range_.empty()) {
             state_ = kLoadSucceeded;
             return true;
-          } // o.w. we'll go ahead to extract the partial object.
+          } // o.w. we'll go ahead to extract the partial object
+            // into range_holder_.
         } else {  // holder_ will not contain data.
           KALDI_WARN << "Failed to load object from "
                      << PrintableRxfilename(data_rxfilename_);
@@ -326,15 +332,15 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
         }
       }
     }
-      
+ 
     // Here state_ == kLoadSucceeded, we will just 
-    // extract the object from holder_ according to the range_ specifier,
+    // extract the range_holder_ from holder_ according to the range_ specifier,
     // e.g. [1:3,4:8], or just return true if range_ is empty.
     if (range_.empty()) return true;
-    if (!ExtractObjectRange(holder_.Value(), range_, &object_)) {
+    if (!holder_.ExtractRange(&range_holder_, range_)) {
       KALDI_WARN  << "Failed to load object from "
                   << PrintableRxfilename(data_rxfilename_) 
-                  << "within range " << range_;
+                  << "[" << range_ << "]";
       state_ = kRangeExtractionFailed;
       return false;
     } else {
@@ -377,6 +383,7 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
           data_rxfilename_next = rest;
           range_ = "";
         }
+        range_holder_.Clear();
         if (old_state == kLoadSucceeded || old_state == kRangeExtracted ||
             old_state == kRangeExtractionFailed) {
           if (data_rxfilename_ == data_rxfilename_next) {
@@ -406,15 +413,15 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
   Input data_input_;   // Input object for the entries in
   // the script file.
   Holder holder_;  // Holds the object.
-  T object_; // the object extracted from holder_.
-  // this is only used when the object range is specified. 
+  Holder range_holder_; // Holds the partial object corresponding to the object
+  // range specifier 'range_'. this is only used when 'range_' is specified. 
   bool binary_;  // Binary-mode archive.
   std::string key_;
   std::string rspecifier_;
   std::string script_rxfilename_;  // of the script file.
   RspecifierOptions opts_;  // options.
   std::string data_rxfilename_;  // of the file we're reading.
-  std::string range_; // range within which we read the object from holder_.
+  std::string range_; // range with which we extract range_holder_ from holder_.
   enum StateType {
     //       [The state of the reading process]    [does holder_ [is script_inp_
     //                                                      have object]   open]
@@ -1681,12 +1688,12 @@ class RandomAccessTableReaderScriptImpl:
                   << "is used: rspecifier is " << rspecifier_;
     }
     if (!range_.empty()) {
-      // we extract the object from holder_ according to the range_ specifier,
+      // we extract range_holder_ from holder_ according to the range_ specifier,
       // e.g. [1:3,4:8].
-      if (!ExtractObjectRange(holder_.Value(), range_, &object_)) {
-        KALDI_ERR  << "Failed to load object within range " << range_;
+      if (!holder_.ExtractRange(&range_holder_, range_)) {
+        KALDI_ERR  << "Failed to extract partial object with range " << range_;
       }
-      return object_;
+      return range_holder_.Value();
     } else {
       return holder_.Value();
     }
@@ -1822,8 +1829,8 @@ class RandomAccessTableReaderScriptImpl:
 
   std::string current_key_;  // Key of object in holder_
   Holder holder_;
-  T object_; // the object extracted from holder_.
-  // this is only used when the object range is specified. 
+  Holder range_holder_; // Holds the partial object corresponding to the object
+  // range specifier 'range_'. this is only used when 'range_' is specified. 
   std::string range_; // range within which we read the object from holder_.
   std::string data_rxfilename_last_;  // file name we were reading the object 
   // from last time. It's needed since we can skip loading the object from disk

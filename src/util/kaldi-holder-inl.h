@@ -1,6 +1,7 @@
 // util/kaldi-holder-inl.h
 
 // Copyright 2009-2011     Microsoft Corporation
+//                2016     Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -101,6 +102,12 @@ template<class KaldiType> class KaldiObjectHolder {
     std::swap(t_, other->t_);
   }
 
+  bool ExtractRange(KaldiObjectHolder<T> *other, std::string range) {
+    delete other->t_;
+    other->t_ = new T;
+    return ExtractObjectRange(*t_, range, other->t_);
+  }
+  
   ~KaldiObjectHolder() { delete t_; }
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(KaldiObjectHolder);
@@ -192,6 +199,11 @@ template<class BasicType> class BasicHolder {
 
   void Swap(BasicHolder<T> *other) {
     std::swap(t_, other->t_);
+  }
+
+  bool ExtractRange(BasicHolder<T> *other, std::string range) {
+    KALDI_ERR << "ExtracRange is not defined for this type of holder.";
+    return false;
   }
 
   ~BasicHolder() { }
@@ -307,6 +319,11 @@ template<class BasicType> class BasicVectorHolder {
 
   void Swap(BasicVectorHolder<BasicType> *other) {
     t_.swap(other->t_);
+  }
+
+  bool ExtractRange(BasicVectorHolder<BasicType> *other, std::string range) {
+    KALDI_ERR << "ExtracRange is not defined for this type of holder.";
+    return false;
   }
 
   ~BasicVectorHolder() { }
@@ -456,6 +473,12 @@ template<class BasicType> class BasicVectorVectorHolder {
     t_.swap(other->t_);
   }
 
+  bool ExtractRange(BasicVectorVectorHolder<BasicType> *other,
+                    std::string range) {
+    KALDI_ERR << "ExtracRange is not defined for this type of holder.";
+    return false;
+  }
+
   ~BasicVectorVectorHolder() { }
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(BasicVectorVectorHolder);
@@ -597,6 +620,12 @@ template<class BasicType> class BasicPairVectorHolder {
     t_.swap(other->t_);
   }
 
+  bool ExtractRange(BasicPairVectorHolder<BasicType> *other,
+                    std::string range) {
+    KALDI_ERR << "ExtracRange is not defined for this type of holder.";
+    return false;
+  }
+
   ~BasicPairVectorHolder() { }
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(BasicPairVectorHolder);
@@ -650,6 +679,11 @@ class TokenHolder {
 
   void Swap(TokenHolder *other) {
     t_.swap(other->t_);
+  }
+
+  bool ExtractRange(TokenHolder *other, std::string range) {
+    KALDI_ERR << "ExtracRange is not defined for this type of holder.";
+    return false;
   }
 
  private:
@@ -709,6 +743,11 @@ class TokenVectorHolder {
     t_.swap(other->t_);
   }
 
+  bool ExtractRange(TokenVectorHolder *other, std::string range) {
+    KALDI_ERR << "ExtracRange is not defined for this type of holder.";
+    return false;
+  }
+
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(TokenVectorHolder);
   T t_;
@@ -750,6 +789,11 @@ class HtkMatrixHolder {
   void Swap(HtkMatrixHolder *other) {
     t_.first.Swap(&(other->t_.first));
     std::swap(t_.second, other->t_.second);
+  }
+
+  bool ExtractRange(HtkMatrixHolder *other, std::string range) {
+    KALDI_ERR << "ExtracRange is not defined for this type of holder.";
+    return false;
   }
 
   // No destructor.
@@ -855,6 +899,11 @@ template<int kFeatDim> class SphinxMatrixHolder {
 
   void Swap(SphinxMatrixHolder *other) {
     feats_.Swap(&(other->feats_));
+  }
+
+  bool ExtractRange(SphinxMatrixHolder *other, std::string range) {
+    KALDI_ERR << "ExtracRange is not defined for this type of holder.";
+    return false;
   }
 
  private:

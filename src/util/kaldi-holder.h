@@ -135,6 +135,15 @@ template<class SomeType> class GenericHolder {
   /// of holder, not with some nonexistent base-class.
   void Swap(GenericHolder<T> *other) { std::swap(t_, other->t_); }
 
+  /// This is only defined for KaldiObjectHolder holding matrix objects,
+  /// in order to extract a holder holding a sub-matrix specified by 'range',
+  /// e.g. [1:2,2:10]. It returns true with successful extraction.
+  /// For other types of holder it just throws an error.
+  bool ExtractRange(GenericHolder<T> *other, std::string range) {
+    KALDI_ERR << "ExtracRange is not defined for this type of holder.";
+    return false;
+  }
+
   /// If the object held pointers, the destructor would free them.
   ~GenericHolder() { }
 
@@ -219,7 +228,7 @@ template<int kFeatDim = 13> class SphinxMatrixHolder;
 template <class T>
 bool ExtractObjectRange(const T &input, const std::string &range, T *output) {
   KALDI_ERR << "Ranges not supported for objects of this type.";
-  return false;  
+  return false; 
 }
 
 template <class Real>
