@@ -18,13 +18,23 @@ def GetArgs():
     " the segments in the output_data_dir have a specified minimum length.",
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument("--minimum-duration", type=float, required = True,
-                        help="Minimum duration of the segments in the output directory")
+    mapping_group = parser.add_mutually_exclusive_group(required = True)
+
+    mapping_group.add_argument("--old2new-map", type=str,
+                               help="""Read mapping from old to new utterance id
+                               from file and combine utterances based on that.
+                               Requires a map file generated in the output-data-dir
+                               from a previous run of this scripts.
+                               Useful when you need to combine hires data-dir
+                               utterances the same way as the non-hires data-dir""")
+    mapping_group.add_argument("--minimum-duration", type=float,
+                               help="Minimum duration of the segments in the output directory")
     parser.add_argument("--input-data-dir", type=str, required = True)
     parser.add_argument("--output-data-dir", type=str, required = True)
 
     print(' '.join(sys.argv))
     args = parser.parse_args()
+
     return args
 
 def RunKaldiCommand(command, wait = True):
@@ -42,13 +52,12 @@ def RunKaldiCommand(command, wait = True):
     else:
         return p
 
-def MakeDir(dir):
+def MakeDir(path):
     try:
-        os.mkdir(dir)
+        os.makedirs(path)
     except OSError as exc:
-        if exc.errno != errno.EEXIST:
+        if exc.errno != errno.EEXIST or not os.path.isdir(path):
             raise exc
-        raise Exception("Directory {0} already exists".format(dir))
         pass
 
 def CheckFiles(input_data_dir):
@@ -171,12 +180,16 @@ def GetCombinedUttIndexRange(utt_index, utts, utt_durs, minimum_duration):
 def WriteCombinedDirFiles(output_dir, utt2spk, spk2utt, text, feat, utt2dur, utt2uniq):
     out_dir_file = lambda file_name: '{0}/{1}'.format(output_dir, file_name)
     total_combined_utt_list = []
+    old2new_map = dict()
+    total_not_combined_utt_list = []
     for speaker in spk2utt.keys():
         utts = spk2utt[speaker]
         for utt in utts:
             if type(utt) is tuple:
                 #this is a combined utt
                 total_combined_utt_list.append((speaker, utt))
+            else:
+                old2new_map[utt] = utt
 
     for speaker, combined_utt_tuple in total_combined_utt_list:
         combined_utt_list = list(combined_utt_tuple)
@@ -186,6 +199,7 @@ def WriteCombinedDirFiles(output_dir, utt2spk, spk2utt, text, feat, utt2dur, utt
         # updating the utt2spk dict
         for utt in combined_utt_list:
             spk_name = utt2spk.pop(utt)
+            old2new_map[utt] = new_utt_name
         utt2spk[new_utt_name] = spk_name
 
         # updating the spk2utt dict
@@ -233,7 +247,7 @@ def WriteCombinedDirFiles(output_dir, utt2spk, spk2utt, text, feat, utt2dur, utt
     if utt2uniq is not None:
         WriteDictToFile(utt2uniq, out_dir_file('utt2uniq'))
     WriteDictToFile(utt2dur, out_dir_file('utt2dur'))
-
+    WriteDictToFile(old2new_map, out_dir_file('old2new_utt_map'))
 
 def CombineSegments(input_dir, output_dir, minimum_duration):
     utt2spk, spk2utt, text, feat, utt2dur, utt2uniq = ParseDataDirInfo(input_dir)
@@ -262,6 +276,8 @@ def CombineSegments(input_dir, output_dir, minimum_duration):
                 if not cur_utt_dur >= minimum_duration:
                     # this is a rare occurrence, better make the user aware of this
                     # situation and let them deal with it
+                    utt_index = utt_index + 1
+                    continue
                     raise Exception('Speaker {0} does not have enough utterances to satisfy the minimum duration constraint'.format(speaker))
 
                 combined_duration = 0
@@ -289,6 +305,32 @@ def CombineSegments(input_dir, output_dir, minimum_duration):
             utt_index = utt_index + 1
     WriteCombinedDirFiles(output_dir, utt2spk, spk2utt, text, feat, utt2dur, utt2uniq)
 
+def CombineSegmentsUsingMap(input_dir, output_dir, old2new_utt_map):
+    utt2spk, spk2utt, text, feat, utt2dur, utt2uniq = ParseDataDirInfo(input_dir)
+
+    for utt in utt2spk:
+        if utt not in old2new_utt_map:
+            raise Exception("Could not find utterance {0} in old2new_utt_map".format(utt))
+
+    combined_utt_map = dict()
+    for old_utt, new_utt in old2new_utt_map.iteritems():
+        if old_utt in utt2spk:
+            combined_utt_map.setdefault(new_utt, []).append(old_utt)
+
+    utt2spk_new = copy.deepcopy(utt2spk)
+
+    for combined_utt_name, combined_utts in combined_utt_map.iteritems():
+        if len(combined_utts) > 1:
+            for utt in combined_utts:
+                del utt2spk_new[utt]
+            utt2spk_new[tuple(combined_utts)] = utt2spk[combined_utts[0]]
+
+    spk2utt_new = dict()
+    for utt,spk in utt2spk_new.iteritems():
+        spk2utt_new.setdefault(spk, []).append(utt)
+
+    WriteCombinedDirFiles(output_dir, utt2spk, spk2utt_new, text, feat, utt2dur, utt2uniq)
+
 def Main():
     args = GetArgs()
 
@@ -299,7 +341,10 @@ def Main():
 
     RunKaldiCommand("utils/data/get_utt2dur.sh {0}".format(args.input_data_dir))
 
-    CombineSegments(args.input_data_dir, args.output_data_dir, args.minimum_duration)
+    if args.old2new_map is not None:
+        CombineSegmentsUsingMap(args.input_data_dir, args.output_data_dir, ParseFileToDict(args.old2new_map))
+    else:
+        CombineSegments(args.input_data_dir, args.output_data_dir, args.minimum_duration)
 
     RunKaldiCommand("utils/utt2spk_to_spk2utt.pl {od}/utt2spk > {od}/spk2utt".format(od = args.output_data_dir))
     if os.path.exists('{0}/cmvn.scp'.format(args.input_data_dir)):

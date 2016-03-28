@@ -84,8 +84,8 @@ if [ $stage -le 1 ]; then
 # - we remove hesitations here, otherwise the CTM would have a bug!
 #   (confidences in place of the removed hesitations),
   for x in $dir/ascore_*/${name}.ctm; do
-    cp $x $dir/tmpf;
-    cat $dir/tmpf | grep -i -v -E '\[noise|laughter|vocalized-noise\]' | \
+    cp $x $x.tmpf;
+    cat $x.tmpf | grep -i -v -E '\[noise|laughter|vocalized-noise\]' | \
       grep -i -v -E ' (ACH|AH|EEE|EH|ER|EW|HA|HEE|HM|HMM|HUH|MM|OOF|UH|UM) ' | \
       grep -i -v -E '<unk>' > $x;
 #      grep -i -v -E '<UNK>|%HESITATION' > $x;

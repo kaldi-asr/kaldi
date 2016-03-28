@@ -6,12 +6,13 @@
 # At this script level we don't support not running on GPU, as it would be painfully slow.
 # If you want to run without GPU you'd have to call train_tdnn.sh with --gpu false,
 # --num-threads 16 and --minibatch-size 128.
-set -e
+set -e -o pipefail
 
 stage=0
 train_stage=-10
 has_fisher=true
 mic=ihm
+use_ihm_ali=false
 use_sat_alignments=true
 affix=
 speed_perturb=true
@@ -21,6 +22,11 @@ subset_dim=0
 remove_egs=true
 relu_dim=850
 num_epochs=3
+
+cleanup_affix=
+min_seg_len=1.55
+
+extractor=
 
 . cmd.sh
 . ./path.sh
@@ -37,7 +43,10 @@ fi
 local/nnet3/run_ivector_common.sh --stage $stage \
                                   --mic $mic \
                                   --use-ihm-ali $use_ihm_ali \
-                                  --use-sat-alignments $use_sat_alignments || exit 1;
+                                  --use-sat-alignments $use_sat_alignments \
+                                  --min-seg-len $min_seg_len \
+                                  --extractor "$extractor" \
+                                  --affix "${cleanup_affix:+_$cleanup_affix}" || exit 1;
 
 # we still support this option as all the TDNN, LSTM, BLSTM systems were built
 # using tri3a alignments
@@ -47,20 +56,25 @@ else
   gmm=tri3a
 fi
 
+gmm=${gmm}${cleanup_affix:+_$cleanup_affix}
+train_set=train${cleanup_affix:+_$cleanup_affix}_sp_min$min_seg_len
+
 if [ $use_ihm_ali == "true" ]; then
   gmm_dir=exp/ihm/$gmm
   mic=${mic}_cleanali
-  ali_dir=${gmm_dir}_train_parallel_sp_ali
+  ali_dir=${gmm_dir}_${mic}_${train_set}_parallel_ali
 else
   gmm_dir=exp/$mic/$gmm
-  ali_dir=${gmm_dir}_train_sp_ali
+  ali_dir=${gmm_dir}_${mic}_${train_set}_ali
 fi
+
+train_data_dir=data/$mic/${train_set}_hires
+train_ivector_dir=exp/$mic/nnet3${cleanup_affix:+_$cleanup_affix}/ivectors_${train_set}_hires
 
 final_lm=`cat data/local/lm/final_lm`
 LM=$final_lm.pr1-7
 graph_dir=$gmm_dir/graph_${LM}
-dir=exp/$mic/nnet3/tdnn${speed_perturb:+_sp}${affix:+_$affix}
-
+dir=exp/$mic/nnet3${cleanup_affix:+_$cleanup_affix}/tdnn${speed_perturb:+_sp}${affix:+_$affix}
 
 
 if [ $stage -le 10 ]; then
@@ -74,14 +88,14 @@ if [ $stage -le 10 ]; then
     --splice-indexes "$splice_indexes" \
     --subset-dim "$subset_dim" \
     --feat-type raw \
-    --online-ivector-dir exp/$mic/nnet3/ivectors_${train_set}_hires \
+    --online-ivector-dir exp/$mic/nnet3${cleanup_affix:+_$cleanup_affix}/ivectors_${train_set}_hires \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --egs-dir "$common_egs_dir" \
     --initial-effective-lrate 0.0015 --final-effective-lrate 0.00015 \
     --cmd "$decode_cmd" \
     --relu-dim "$relu_dim" \
     --remove-egs "$remove_egs" \
-    data/$mic/train_sp_hires data/lang $ali_dir $dir  || exit 1;
+    $train_data_dir data/lang $ali_dir $dir  || exit 1;
 fi
 
 if [ $stage -le 11 ]; then
@@ -93,10 +107,11 @@ if [ $stage -le 11 ]; then
       decode_dir=${dir}/decode_${decode_set}
 
       steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" \
-          --online-ivector-dir exp/$mic/nnet3/ivectors_${decode_set} \
+          --online-ivector-dir exp/$mic/nnet3${cleanup_affix:+_$cleanup_affix}/ivectors_${decode_set} \
          $graph_dir data/$mic/${decode_set}_hires $decode_dir || exit 1;
       ) &
   done
 fi
 wait;
 exit 0;
+
