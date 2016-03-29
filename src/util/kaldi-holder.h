@@ -139,7 +139,7 @@ template<class SomeType> class GenericHolder {
   /// in order to extract a holder holding a sub-matrix specified by 'range',
   /// e.g. [1:2,2:10]. It returns true with successful extraction.
   /// For other types of holder it just throws an error.
-  bool ExtractRange(GenericHolder<T> *other, std::string range) {
+  bool ExtractRange(GenericHolder<T> *other, const std::string &range) {
     KALDI_ERR << "ExtracRange is not defined for this type of holder.";
     return false;
   }

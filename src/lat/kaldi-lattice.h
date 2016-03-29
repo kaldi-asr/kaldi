@@ -94,7 +94,7 @@ class CompactLatticeHolder {
     std::swap(t_, other->t_);
   }
 
-  bool ExtractRange(CompactLatticeHolder *other, std::string range) {
+  bool ExtractRange(CompactLatticeHolder *other, const std::string &range) {
     KALDI_ERR << "ExtracRange is not defined for this type of holder.";
     return false;
   }
@@ -132,7 +132,7 @@ class LatticeHolder {
     std::swap(t_, other->t_);
   }
 
-  bool ExtractRange(LatticeHolder *other, std::string range) {
+  bool ExtractRange(LatticeHolder *other, const std::string &range) {
     KALDI_ERR << "ExtracRange is not defined for this type of holder.";
     return false;
   }

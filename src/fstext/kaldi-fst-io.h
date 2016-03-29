@@ -114,7 +114,7 @@ class VectorFstTplHolder {
     std::swap(t_, other->t_);
   }
 
-  bool ExtractRange(VectorFstTplHolder<Arc> *other, std::string range) {
+  bool ExtractRange(VectorFstTplHolder<Arc> *other, const std::string &range) {
     KALDI_ERR << "ExtracRange is not defined for this type of holder.";
     return false;
   }

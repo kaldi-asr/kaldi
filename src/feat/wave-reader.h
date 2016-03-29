@@ -172,7 +172,7 @@ class WaveHolder {
     t_.Swap(&(other->t_));
   }
 
-  bool ExtractRange(WaveHolder *other, std::string range) {
+  bool ExtractRange(WaveHolder *other, const std::string &range) {
     KALDI_ERR << "ExtracRange is not defined for this type of holder.";
     return false;
   }
@@ -223,7 +223,7 @@ class WaveInfoHolder {
     t_.Swap(&(other->t_));
   }
   
-  bool ExtractRange(WaveInfoHolder *other, std::string range) {
+  bool ExtractRange(WaveInfoHolder *other, const std::string &range) {
     KALDI_ERR << "ExtracRange is not defined for this type of holder.";
     return false;
   }

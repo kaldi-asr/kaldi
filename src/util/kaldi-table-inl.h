@@ -210,26 +210,28 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
   }
 
   void FreeCurrent() {
-    if (state_ == kLoadSucceeded || 
-        state_ == kRangeExtracted || state_ == kRangeExtractionFailed) {
+    if (state_ == kLoadSucceeded) {
       holder_.Clear();
-      range_holder_.Clear();
       state_ = kLoadFailed;
+    } else if (state_ == kRangeExtracted) {
+      range_holder_.Clear();
+      state_ = kRangeExtractionFailed;
     } else {
       KALDI_WARN << "FreeCurrent called at the wrong time.";
     }
   }
 
   void SwapHolder(Holder *other_holder) {
-    // call Value() to ensure we have a value, and ignore its return value while
-    // suppressing compiler warnings by casting to void.
+    // call Value() to ensure we have a value, and ignore its return value
+    // while suppressing compiler warnings by casting to void.
     (void) Value();
     if (state_ == kLoadSucceeded) {
       holder_.Swap(other_holder);
       state_ = kLoadFailed;
     } else if (state_ == kRangeExtracted) {
       range_holder_.Swap(other_holder);
-      state_ = kLoadFailed;
+      state_ = kLoadSucceeded;
+      // This indicates that we still have the base object (but no range).
     } else {
       KALDI_ERR << "SwapHolder called at the wrong time "
                    "(error related to ',bg' modifier).";
@@ -299,10 +301,15 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
   }
  private:
   bool EnsureObjectLoaded() {
+    // state_ == kRangeExtracted or kRangeExtractionFailed means
+    // everything that needs to be done has been already done.
+    if (state_ == kRangeExtracted)
+      return true;
+    if (state_ == kRangeExtractionFailed)
+      return false;
+
     // Attempts to load object whose rxfilename is on the current scp line.
-    if (state_ != kLoadSucceeded) {
-      if (state_ != kHaveScpLine)
-        KALDI_ERR << "EnsureObjectLoaded() called at the wrong time.";
+    if (state_ == kHaveScpLine) {
       bool ans;
       // note, NULL means it doesn't read the binary-mode header
       if (Holder::IsReadInBinary()) {
@@ -331,8 +338,10 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
           return false;
         }
       }
+    } else if (state_ != kLoadSucceeded) {
+      KALDI_ERR << "EnsureObjectLoaded() called at the wrong time.";
     }
- 
+
     // Here state_ == kLoadSucceeded, we will just 
     // extract the range_holder_ from holder_ according to the range_ specifier,
     // e.g. [1:3,4:8], or just return true if range_ is empty.
