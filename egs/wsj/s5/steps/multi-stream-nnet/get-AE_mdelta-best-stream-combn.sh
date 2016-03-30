@@ -159,7 +159,7 @@ fi
 
 ### find best combination
 ## call this python function
-python local/multi-stream/get-best-stream-combn_perspk.py --alpha=${alpha} --topN=${topN} $outdir $num_streams $tmpdir/feat_to_len_list $srcdata/spk2utt $outdir/compute_stream_combn_scores.task $outdir/ | copy-feats ark:- ark,scp:$outdir/strm_mask.ark,$outdir/strm_mask.scp || exit 1;
+python utils/multi-stream/pm_utils/get-best-stream-combn_perspk.py --alpha=${alpha} --topN=${topN} $outdir $num_streams $tmpdir/feat_to_len_list $srcdata/spk2utt $outdir/compute_stream_combn_scores.task $outdir/ | copy-feats ark:- ark,scp:$outdir/strm_mask.ark,$outdir/strm_mask.scp || exit 1;
 
 exit 0;
 
