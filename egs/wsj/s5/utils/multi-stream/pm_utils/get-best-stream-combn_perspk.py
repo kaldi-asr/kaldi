@@ -16,7 +16,8 @@ def keep_topN(score_list, topN=1):
   if topN == -1:
     return score_list
   
-  topN_ind = np.argpartition(score_list, -topN)[-topN:]
+  # topN_ind = np.argpartition(score_list, -topN)[-topN:]
+  topN_ind = np.argsort(score_list)[::-1][:topN]
   
   for ind in xrange(0, len(score_list)):
     if ind not in topN_ind:
