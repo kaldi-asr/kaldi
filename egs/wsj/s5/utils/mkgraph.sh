@@ -7,7 +7,7 @@
 # all the language-model, pronunciation dictionary (lexicon), context-dependency,
 # and HMM structure in our model.  The output is a Finite State Transducer
 # that has word-ids on the output, and pdf-ids on the input (these are indexes
-# that resolve to Gaussian Mixture Models).  
+# that resolve to Gaussian Mixture Models).
 # See
 #  http://kaldi.sourceforge.net/graph_recipe_test.html
 # (this is compiled from this repository using Doxygen,
@@ -20,11 +20,13 @@ tscale=1.0
 loopscale=0.1
 
 reverse=false
+remove_oov=false
 
-for x in `seq 5`; do 
+for x in `seq 6`; do
   [ "$1" == "--mono" ] && N=1 && P=0 && shift;
   [ "$1" == "--quinphone" ] && N=5 && P=2 && shift;
   [ "$1" == "--reverse" ] && reverse=true && shift;
+  [ "$1" == "--remove-oov" ] && remove_oov=true && shift;
   [ "$1" == "--transition-scale" ] && tscale=$2 && shift 2;
   [ "$1" == "--self-loop-scale" ] && loopscale=$2 && shift 2;
 done
@@ -57,7 +59,7 @@ for f in $required; do
 done
 
 mkdir -p $lang/tmp
-# Note: [[ ]] is like [ ] but enables certain extra constructs, e.g. || in 
+# Note: [[ ]] is like [ ] but enables certain extra constructs, e.g. || in
 # place of -o
 if [[ ! -s $lang/tmp/LG.fst || $lang/tmp/LG.fst -ot $lang/G.fst || \
       $lang/tmp/LG.fst -ot $lang/L_disambig.fst ]]; then
@@ -95,7 +97,12 @@ fi
 
 if [[ ! -s $dir/HCLGa.fst || $dir/HCLGa.fst -ot $dir/Ha.fst || \
       $dir/HCLGa.fst -ot $clg ]]; then
-  fsttablecompose $dir/Ha.fst $clg | fstdeterminizestar --use-log=true \
+  if $remove_oov; then
+    [ ! -f $lang/oov.int ] && \
+      echo "$0: --remove-oov option: no file $lang/oov.int" && exit 1;
+    clg="fstrmsymbols --remove-arcs=true $lang/oov.int $clg|"
+  fi
+  fsttablecompose $dir/Ha.fst "$clg" | fstdeterminizestar --use-log=true \
     | fstrmsymbols $dir/disambig_tid.int | fstrmepslocal | \
      fstminimizeencoded > $dir/HCLGa.fst || exit 1;
   fstisstochastic $dir/HCLGa.fst || echo "HCLGa is not stochastic"
@@ -106,7 +113,7 @@ if [[ ! -s $dir/HCLG.fst || $dir/HCLG.fst -ot $dir/HCLGa.fst ]]; then
     $model < $dir/HCLGa.fst > $dir/HCLG.fst || exit 1;
 
   if [ $tscale == 1.0 -a $loopscale == 1.0 ]; then
-    # No point doing this test if transition-scale not 1, as it is bound to fail. 
+    # No point doing this test if transition-scale not 1, as it is bound to fail.
     fstisstochastic $dir/HCLG.fst || echo "[info]: final HCLG is not stochastic."
   fi
 fi
