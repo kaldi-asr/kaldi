@@ -100,7 +100,7 @@ if [[ ! -s $dir/HCLGa.fst || $dir/HCLGa.fst -ot $dir/Ha.fst || \
   if $remove_oov; then
     [ ! -f $lang/oov.int ] && \
       echo "$0: --remove-oov option: no file $lang/oov.int" && exit 1;
-    clg="fstrmsymbols --remove-arcs=true $lang/oov.int $clg|"
+    clg="fstrmsymbols --remove-arcs=true --apply-to-output=true $lang/oov.int $clg|"
   fi
   fsttablecompose $dir/Ha.fst "$clg" | fstdeterminizestar --use-log=true \
     | fstrmsymbols $dir/disambig_tid.int | fstrmepslocal | \
