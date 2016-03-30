@@ -85,7 +85,7 @@ for x in exp/*/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && grep WER $x/wer_* 
 %WER 29.55 [ 5398 / 18266, 421 ins, 1477 del, 3500 sub ] exp/RU/sgmm2_4a_mmi_b0.1/decode_eval_tgpr_sri_it4/wer_11
 
 
-# these RESULTS were obtained with Arnab Ghoshal version established in 2012.
+# these RESULTS were obtained with Arnab Ghoshal version of the script established in 2012.
 $ for L in $GP_LANGUAGES; do grep WER exp/$L/mono/decode_dev_tgpr_sri/wer_* | ./utils/best_wer.sh ; done
 
 exp/CZ/mono/decode_dev_tgpr_sri/wer_9:%WER 35.13 [ 5820 / 16568, 486 ins, 1116 del, 4218 sub ]
