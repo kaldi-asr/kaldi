@@ -27,6 +27,7 @@ max_state_duration=40 # This only has an effect if you are doing silence
   # weighting.  This default is probably reasonable.  transition-ids repeated
   # more than this many times in an alignment are treated as silence.
 iter=final
+online_config=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -43,6 +44,7 @@ if [ $# != 3 ]; then
    echo ""
    echo "main options (for others, see top of script file)"
    echo "  --config <config-file>                           # config containing options"
+   echo "  --online-config <config-file>                    # online decoder options"
    echo "  --nj <nj>                                        # number of parallel jobs"
    echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
    echo "  --acwt <float>                                   # acoustic scale used for lattice generation "
@@ -66,11 +68,15 @@ dir=$3
 srcdir=`dirname $dir`; # The model directory is one level up from decoding directory.
 sdata=$data/split$nj;
 
+if [ "$online_config" == "" ]; then
+  online_config=$srcdir/online.conf;
+fi
+
 mkdir -p $dir/log
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 echo $nj > $dir/num_jobs
 
-for f in $srcdir/conf/online_nnet2_decoding.conf $srcdir/${iter}.mdl \
+for f in $online_config $srcdir/${iter}.mdl \
     $graphdir/HCLG.fst $graphdir/words.txt $data/wav.scp; do
   if [ ! -f $f ]; then
     echo "$0: no such file $f"
@@ -136,7 +142,7 @@ fi
 if [ $stage -le 0 ]; then
   $cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
     $decoder $opts $silence_weighting_opts --do-endpointing=$do_endpointing $frame_subsampling_opt \
-     --config=$srcdir/conf/online_nnet2_decoding.conf \
+     --config=$online_config \
      --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
      --acoustic-scale=$acwt --word-symbol-table=$graphdir/words.txt \
      $srcdir/${iter}.mdl $graphdir/HCLG.fst $spk2utt_rspecifier "$wav_rspecifier" \
