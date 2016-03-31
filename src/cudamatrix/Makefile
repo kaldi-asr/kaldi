@@ -48,14 +48,19 @@ ifeq ($(CUDA), true)
   ifeq ($(CUDA_VER_GT_6_0), true)
     CUDA_ARCH += -gencode arch=compute_50,code=sm_50
   endif
-  #For toolkit older than 6.5, add the compute capability 1.0
-  CUDA_VER_GT_6_5 := $(shell [ $(CUDA_VERSION) -ge 65 ] && echo true)
-  ifneq ($(CUDA_VER_GT_6_5), true)
+  #For toolkit 7.0 or newer, add the compute capability 5.2
+  CUDA_VER_GT_7_0 := $(shell [ $(CUDA_VERSION) -ge 70 ] && echo true)
+  ifeq ($(CUDA_VER_GT_7_0), true)
+    CUDA_ARCH += -gencode arch=compute_52,code=sm_52 -gencode arch=compute_52,code=compute_52
+  endif
+  #For toolkit older than 4.2, add the compute capability 1.0
+  CUDA_VER_LT_4_2 := $(shell [ $(CUDA_VERSION) -lt 42 ] && echo true)
+  ifeq ($(CUDA_VER_LT_4_2), true)
     CUDA_ARCH += -gencode arch=compute_13,code=sm_13 \
                  -gencode arch=compute_10,code=sm_10
   endif
-endif
 
+endif
 
 #implicit rule for kernel compilation
 %.o : %.cu
