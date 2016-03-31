@@ -6,7 +6,7 @@ set -o pipefail
 . ./lang.conf || exit 1;
 
 
-dir=dev10h.pem
+dir=dev10h.phn.pem
 kind=
 data_only=false
 fast_path=true
@@ -24,12 +24,12 @@ extra_left_context=0
 extra_right_context=0
 frames_per_chunk=0
 
-echo "run-4-test.sh $@"
+echo $0 "$@"
 
 . utils/parse_options.sh
 
 if [ $# -ne 0 ]; then
-  echo "Usage: $(basename $0) --type (dev10h|dev2h|eval|shadow)"
+  echo "Usage: $(basename $0) --type (dev10h.phn|dev2h.phn|eval.phn|shadow.phn)"
   exit 1
 fi
 
@@ -53,7 +53,7 @@ fi
 dataset_segments=${dir##*.}
 dataset_dir=data/$dir
 dataset_id=$dir
-dataset_type=${dir%%.*}
+dataset_type=${dir%%.phn.*}
 #By default, we want the script to accept how the dataset should be handled,
 #i.e. of  what kind is the dataset
 if [ -z ${kind} ] ; then
@@ -101,6 +101,7 @@ if [ -z "$my_nj" ]; then
   echo >&2 "You didn't specify the number of jobs -- variable \"${dataset_type}_nj\" not defined."
   exit 1
 fi
+my_nj=$(($my_nj * 2))
 
 my_subset_ecf=false
 eval ind=\${${dataset_type}_subset_ecf+x}
@@ -255,21 +256,14 @@ if [ -f exp/nnet3/extractor/final.ie ] && [ ! -f ${dataset_dir}_hires/.mfcc.done
   echo "Preparing ${dataset_kind} MFCC features in  ${dataset_dir}_hires and corresponding iVectors in exp/nnet3/ivectors_$dataset on" `date`
   echo ---------------------------------------------------------------------
   if [ ! -d ${dataset_dir}_hires ]; then
-    utils/copy_data_dir.sh data/$dataset data/${dataset}_hires
+    utils/copy_data_dir.sh data/${dataset_type}.${dataset_segments}_hires data/${dataset}_hires
   fi
-
-  mfccdir=mfcc_hires
-  steps/make_mfcc.sh --nj $my_nj --mfcc-config conf/mfcc_hires.conf \
-      --cmd "$train_cmd" ${dataset_dir}_hires exp/make_hires/$dataset $mfccdir;
-  steps/compute_cmvn_stats.sh data/${dataset}_hires exp/make_hires/${dataset} $mfccdir;
-  utils/fix_data_dir.sh ${dataset_dir}_hires;
-  touch ${dataset_dir}_hires/.mfcc.done
-
-  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj $my_nj \
-    ${dataset_dir}_hires exp/nnet3/extractor exp/nnet3/ivectors_$dataset || exit 1;
-
+  ln -sf ivectors_${dataset_type}.${dataset_segments} exp/nnet3/ivectors_${dataset} || true
   touch ${dataset_dir}_hires/.done
 fi
+set -x
+ln -sf ivectors_${dataset_type}.${dataset_segments} exp/nnet3/ivectors_${dataset} || true
+set +x
 
 #####################################################################
 #
@@ -279,10 +273,10 @@ fi
 echo ---------------------------------------------------------------------
 echo "Preparing kws data files in ${dataset_dir} on" `date`
 echo ---------------------------------------------------------------------
-lang=data/lang
+lang=data/lang.phn
 if ! $skip_kws ; then
   if  $extra_kws ; then
-    L1_lex=data/local/lexiconp.txt
+    L1_lex=data/local/dict.phn/lexiconp.txt
     . ./local/datasets/extra_kws.sh || exit 1
   fi
   if  $vocab_kws ; then
@@ -300,10 +294,9 @@ fi
 ## FMLLR decoding
 ##
 ####################################################################
-if [ ! -f data/langp_test/.done ]; then
-  cp -R data/langp/tri5_ali/ data/langp_test
-  cp data/lang/G.fst data/langp_test
-  touch data/langp_test/.done
+if [ ! -f data/langp_test.phn//.done ]; then
+  ln -sf lang.phn data/langp_test.phn || true
+  touch data/langp_test.phn/.done
 fi
 
 decode=exp/tri5/decode_${dataset_id}
@@ -312,29 +305,29 @@ if [ ! -f ${decode}/.done ]; then
   echo "Spawning decoding with SAT models  on" `date`
   echo ---------------------------------------------------------------------
   utils/mkgraph.sh \
-    data/langp_test exp/tri5 exp/tri5/graph |tee exp/tri5/mkgraph.log
+    data/langp_test.phn exp/tri5 exp/tri5/graph.phn |tee exp/tri5/mkgraph.phn.log
 
   mkdir -p $decode
   #By default, we do not care about the lattices for this step -- we just want the transforms
   #Therefore, we will reduce the beam sizes, to reduce the decoding times
   steps/decode_fmllr_extra.sh --skip-scoring true --beam 10 --lattice-beam 4\
     --nj $my_nj --cmd "$decode_cmd" "${decode_extra_opts[@]}"\
-    exp/tri5/graph ${dataset_dir} ${decode} |tee ${decode}/decode.log
+    exp/tri5/graph.phn ${dataset_dir} ${decode} |tee ${decode}/decode.log
   touch ${decode}/.done
 fi
 
 if ! $fast_path ; then
-  local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
+  local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt \
     "${lmwt_plp_extra_opts[@]}" \
-    ${dataset_dir} data/langp_test ${decode}
+    ${dataset_dir} data/langp_test.phn ${decode}
 
-  local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
+  local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
     "${lmwt_plp_extra_opts[@]}" \
-    ${dataset_dir} data/langp_test ${decode}.si
+    ${dataset_dir} data/langp_test.phn ${decode}.si
 fi
 
 if $tri5_only; then
@@ -354,20 +347,20 @@ if [ -f exp/sgmm5/.done ]; then
     echo "Spawning $decode on" `date`
     echo ---------------------------------------------------------------------
     utils/mkgraph.sh \
-      data/langp_test exp/sgmm5 exp/sgmm5/graph |tee exp/sgmm5/mkgraph.log
+      data/langp_test.phn exp/sgmm5 exp/sgmm5/graph.phn |tee exp/sgmm5/mkgraph.phn.log
 
     mkdir -p $decode
     steps/decode_sgmm2.sh --skip-scoring true --use-fmllr true --nj $my_nj \
       --cmd "$decode_cmd" --transform-dir exp/tri5/decode_${dataset_id} "${decode_extra_opts[@]}"\
-      exp/sgmm5/graph ${dataset_dir} $decode |tee $decode/decode.log
+      exp/sgmm5/graph.phn ${dataset_dir} $decode |tee $decode/decode.log
     touch $decode/.done
 
     if ! $fast_path ; then
-      local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
+      local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
         --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
         --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
         "${lmwt_plp_extra_opts[@]}" \
-        ${dataset_dir} data/langp_test  exp/sgmm5/decode_fmllr_${dataset_id}
+        ${dataset_dir} data/langp_test.phn  exp/sgmm5/decode_fmllr_${dataset_id}
     fi
   fi
 
@@ -385,7 +378,7 @@ if [ -f exp/sgmm5/.done ]; then
       mkdir -p $decode
       steps/decode_sgmm2_rescore.sh  --skip-scoring true \
         --cmd "$decode_cmd" --iter $iter --transform-dir exp/tri5/decode_${dataset_id} \
-        data/langp_test ${dataset_dir} exp/sgmm5/decode_fmllr_${dataset_id} $decode | tee ${decode}/decode.log
+        data/langp_test.phn ${dataset_dir} exp/sgmm5/decode_fmllr_${dataset_id} $decode | tee ${decode}/decode.log
 
       touch $decode/.done
     fi
@@ -397,11 +390,11 @@ if [ -f exp/sgmm5/.done ]; then
   for iter in 1 2 3 4; do
     # Decode SGMM+MMI (via rescoring).
     decode=exp/sgmm5_mmi_b0.1/decode_fmllr_${dataset_id}_it$iter
-      local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
+      local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
         --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
         --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
       "${lmwt_plp_extra_opts[@]}" \
-      ${dataset_dir} data/langp_test $decode
+      ${dataset_dir} data/langp_test.phn $decode
   done
 fi
 
@@ -421,15 +414,15 @@ if [ -f exp/tri6_nnet/.done ]; then
       --beam $dnn_beam --lattice-beam $dnn_lat_beam \
       --skip-scoring true "${decode_extra_opts[@]}" \
       --transform-dir exp/tri5/decode_${dataset_id} \
-      exp/tri5/graph ${dataset_dir} $decode | tee $decode/decode.log
+      exp/tri5/graph.phn ${dataset_dir} $decode | tee $decode/decode.log
 
     touch $decode/.done
   fi
-  local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
+  local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
     "${lmwt_dnn_extra_opts[@]}" \
-    ${dataset_dir} data/langp_test $decode
+    ${dataset_dir} data/langp_test.phn $decode
 fi
 
 ####################################################################
@@ -438,7 +431,7 @@ fi
 ##
 ####################################################################
 if [ -f exp/nnet3/lstm_bidirectional_sp/.done ]; then
-  decode=exp/nnet3/lstm_bidirectional_sp/decode_${dataset_id}
+  decode=exp/nnet3/lstm_bidirectional_sp/decode_${dataset_id}.phn
   rnn_opts=" --extra-left-context 40 --extra-right-context 40  --frames-per-chunk 20 "
   decode_script=steps/nnet3/lstm/decode.sh
   if [ ! -f $decode/.done ]; then
@@ -447,20 +440,20 @@ if [ -f exp/nnet3/lstm_bidirectional_sp/.done ]; then
           --beam $dnn_beam --lattice-beam $dnn_lat_beam \
           --skip-scoring true  \
           --online-ivector-dir exp/nnet3/ivectors_${dataset_id} \
-          exp/tri5/graph ${dataset_dir}_hires $decode | tee $decode/decode.log
+          exp/tri5/graph.phn ${dataset_dir}_hires $decode | tee $decode/decode.log
 
     touch $decode/.done
   fi
 
-  local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
+  local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
     "${lmwt_dnn_extra_opts[@]}" \
-    ${dataset_dir} data/langp_test $decode
+    ${dataset_dir} data/langp_test.phn $decode
 fi
 
 if [ -f exp/nnet3/lstm_sp/.done ]; then
-  decode=exp/nnet3/lstm_sp/decode_${dataset_id}
+  decode=exp/nnet3/lstm_sp/decode_${dataset_id}.phn
   rnn_opts=" --extra-left-context 40 --extra-right-context 0  --frames-per-chunk 20 "
   decode_script=steps/nnet3/lstm/decode.sh
   if [ ! -f $decode/.done ]; then
@@ -469,20 +462,20 @@ if [ -f exp/nnet3/lstm_sp/.done ]; then
           --beam $dnn_beam --lattice-beam $dnn_lat_beam \
           --skip-scoring true  \
           --online-ivector-dir exp/nnet3/ivectors_${dataset_id} \
-          exp/tri5/graph ${dataset_dir}_hires $decode | tee $decode/decode.log
+          exp/tri5/graph.phn ${dataset_dir}_hires $decode | tee $decode/decode.log
 
     touch $decode/.done
   fi
 
-  local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
+  local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
     "${lmwt_dnn_extra_opts[@]}" \
-    ${dataset_dir} data/langp_test $decode
+    ${dataset_dir} data/langp_test.phn $decode
 fi
 
 if [ -f exp/$nnet3_model/.done ]; then
-  decode=exp/$nnet3_model/decode_${dataset_id}
+  decode=exp/$nnet3_model/decode_${dataset_id}.phn
   rnn_opts=
   decode_script=steps/nnet3/decode.sh
   if [ "$is_rnn" == "true" ]; then
@@ -495,16 +488,16 @@ if [ -f exp/$nnet3_model/.done ]; then
           --beam $dnn_beam --lattice-beam $dnn_lat_beam \
           --skip-scoring true  \
           --online-ivector-dir exp/nnet3/ivectors_${dataset_id} \
-          exp/tri5/graph ${dataset_dir}_hires $decode | tee $decode/decode.log
+          exp/tri5/graph.phn ${dataset_dir}_hires $decode | tee $decode/decode.log
 
     touch $decode/.done
   fi
 
-  local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
+  local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
     "${lmwt_dnn_extra_opts[@]}" \
-    ${dataset_dir} data/langp_test $decode
+    ${dataset_dir} data/langp_test.phn $decode
 fi
 
 
@@ -522,16 +515,16 @@ if [ -f exp/tri6a_nnet/.done ]; then
       --beam $dnn_beam --lattice-beam $dnn_lat_beam \
       --skip-scoring true "${decode_extra_opts[@]}" \
       --transform-dir exp/tri5/decode_${dataset_id} \
-      exp/tri5/graph ${dataset_dir} $decode | tee $decode/decode.log
+      exp/tri5/graph.phn ${dataset_dir} $decode | tee $decode/decode.log
 
     touch $decode/.done
   fi
 
-  local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
+  local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
     "${lmwt_dnn_extra_opts[@]}" \
-    ${dataset_dir} data/langp_test $decode
+    ${dataset_dir} data/langp_test.phn $decode
 fi
 
 
@@ -549,16 +542,16 @@ if [ -f exp/tri6b_nnet/.done ]; then
       --beam $dnn_beam --lattice-beam $dnn_lat_beam \
       --skip-scoring true "${decode_extra_opts[@]}" \
       --transform-dir exp/tri5/decode_${dataset_id} \
-      exp/tri5/graph ${dataset_dir} $decode | tee $decode/decode.log
+      exp/tri5/graph.phn ${dataset_dir} $decode | tee $decode/decode.log
 
     touch $decode/.done
   fi
 
-  local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
+  local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
     "${lmwt_dnn_extra_opts[@]}" \
-    ${dataset_dir} data/langp_test $decode
+    ${dataset_dir} data/langp_test.phn $decode
 fi
 ####################################################################
 ##
@@ -575,16 +568,16 @@ if [ -f exp/tri6_nnet_mpe/.done ]; then
         --beam $dnn_beam --lattice-beam $dnn_lat_beam \
         --skip-scoring true "${decode_extra_opts[@]}" \
         --transform-dir exp/tri5/decode_${dataset_id} \
-        exp/tri5/graph ${dataset_dir} $decode | tee $decode/decode.log
+        exp/tri5/graph.phn ${dataset_dir} $decode | tee $decode/decode.log
 
       touch $decode/.done
     fi
 
-    local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
+    local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
       --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
       --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
       "${lmwt_dnn_extra_opts[@]}" \
-      ${dataset_dir} data/langp_test $decode
+      ${dataset_dir} data/langp_test.phn $decode
   done
 fi
 
@@ -604,16 +597,16 @@ for dnn in tri6_nnet_semi_supervised tri6_nnet_semi_supervised2 \
         --beam $dnn_beam --lattice-beam $dnn_lat_beam \
         --skip-scoring true "${decode_extra_opts[@]}" \
         --transform-dir exp/tri5/decode_${dataset_id} \
-        exp/tri5/graph ${dataset_dir} $decode | tee $decode/decode.log
+        exp/tri5/graph.phn ${dataset_dir} $decode | tee $decode/decode.log
 
       touch $decode/.done
     fi
 
-    local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
+    local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
       --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
       --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
       "${lmwt_dnn_extra_opts[@]}" \
-      ${dataset_dir} data/langp_test $decode
+      ${dataset_dir} data/langp_test.phn $decode
   fi
 done
 echo "Everything looking good...."

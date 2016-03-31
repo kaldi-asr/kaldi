@@ -1,10 +1,10 @@
-#!/bin/bash                                                                        
+#!/bin/bash
 # Copyright (c) 2015, Johns Hopkins University ( Yenda Trmal <jtrmal@gmail.com> )
 # License: Apache 2.0
 
-# Begin configuration section.  
+# Begin configuration section.
 # End configuration section
-set -e -o pipefail 
+set -e -o pipefail
 set -o nounset                              # Treat unset variables as an error
 
 . ./cmd.sh
