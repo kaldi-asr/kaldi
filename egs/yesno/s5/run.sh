@@ -26,6 +26,7 @@ local/prepare_lm.sh
 for x in train_yesno test_yesno; do 
  steps/make_mfcc.sh --nj 1 data/$x exp/make_mfcc/$x mfcc
  steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x mfcc
+ utils/fix_data_dir.sh data/$x
 done
 
 # Mono training
