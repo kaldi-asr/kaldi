@@ -71,15 +71,24 @@ fi
 if ! $skip_kws ; then
   [ ! -f $data_dir/extra_kws_tasks ] && exit 0
 
-  for extraid in `cat $data_dir/extra_kws_tasks` ; do
-    if [ ! -f $decode_dir/.done.kws.$extraid ] ; then
-      local/kws_search.sh --cmd "$cmd" --extraid $extraid  \
-        --max-states ${max_states} --min-lmwt ${min_lmwt} --skip-scoring true\
-         --max-lmwt ${max_lmwt} --indices-dir $decode_dir/kws_indices \
-        $lang_dir $data_dir $decode_dir
-      touch $decode_dir/.done.kws.$extraid
-    fi
-    if [[ ! $extraid =~ .*oov.* ]] &&  [ ! -f $decode_dir/.done.kwset.$extraid ] ; then
+  syll_data_dir=$(echo $data_dir | perl -pe 's/\.(pem|seg)$/.syll.$1/g' )
+  if [ -d ${syll_data_dir} ] && [ ! -f ${decode_dir}/syllabs/.done ] ; then
+    local/syllab/lattice_word2syll.sh --cmd "$cmd --mem 8G" \
+      $data_dir $lang_dir ${lang_dir}.syll $decode_dir ${decode_dir}/syllabs
+    touch ${decode_dir}/syllabs/.done
+  fi
+
+  phn_data_dir=$(echo $data_dir | perl -pe 's/\.(pem|seg)$/.phn.$1/g' )
+  if [ -d ${phn_data_dir} ] && [ ! -f ${decode_dir}/phones/.done ] ; then
+    local/syllab/lattice_word2syll.sh --cmd "$cmd --mem 8G" \
+      $data_dir $lang_dir ${lang_dir}.phn $decode_dir ${decode_dir}/phones
+    touch ${decode_dir}/phones/.done
+  fi
+
+
+
+  for extraid in `cat $data_dir/extra_kws_tasks | grep -v oov` ; do
+    if [ ! -f $decode_dir/.done.kwset.$extraid ] ; then
       local/search/search.sh --cmd "$decode_cmd"  --extraid ${extraid} \
         --max-states ${max_states} --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt} \
         --indices-dir $decode_dir/kws_indices --skip-scoring $skip_scoring \
@@ -87,13 +96,29 @@ if ! $skip_kws ; then
       touch $decode_dir/.done.kwset.$extraid
     fi
 
-    if ! $skip_scoring ; then
-      [ -f $decode_dir/.done.kws.${extraid}.scored ] && continue;
-      local/kws_search.sh --cmd "$cmd" --extraid $extraid  --stage 4 \
-        --max-states ${max_states} --min-lmwt ${min_lmwt} --skip-scoring false\
-         --max-lmwt ${max_lmwt} --indices-dir $decode_dir/kws_indices \
-        $lang_dir $data_dir $decode_dir
-      touch $decode_dir/.done.kws.${extraid}.scored
+    if [ -f ${decode_dir}/syllabs/kwset_kwlist_${min_lmwt}/f4de/metrics.txt ]; then
+      touch $decode_dir/syllabs/.done.kwset.$extraid
+    fi
+
+    if [ -f ${decode_dir}/phones/kwset_kwlist_${min_lmwt}/f4de/metrics.txt ]; then
+      touch $decode_dir/phones/.done.kwset.$extraid
+    fi
+
+    if [ -f ${decode_dir}/syllabs/.done ] && [ ! -f $decode_dir/syllabs/.done.kwset.$extraid ] ; then
+      local/search/search.sh --cmd "$cmd"  --extraid ${extraid} --model $decode_dir/../final.mdl\
+        --max-states ${max_states} --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt} \
+        --indices-dir $decode_dir/syllabs/kws_indices --skip-scoring $skip_scoring \
+        ${lang_dir}.syll $syll_data_dir $decode_dir/syllabs
+      touch $decode_dir/syllabs/.done.kwset.$extraid
+    fi
+
+
+    if [ -f ${decode_dir}/phones/.done ] && [ ! -f $decode_dir/phones/.done.kwset.$extraid ] ; then
+      local/search/search.sh --cmd "$cmd"  --extraid ${extraid} --model $decode_dir/../final.mdl\
+          --max-states ${max_states} --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt} \
+          --indices-dir $decode_dir/phones/kws_indices --skip-scoring $skip_scoring \
+          ${lang_dir}.phn $phn_data_dir $decode_dir/phones
+      touch $decode_dir/phones/.done.kwset.$extraid
     fi
   done
 fi

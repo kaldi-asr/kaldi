@@ -71,7 +71,7 @@ done
 fi
 
 if [ $stage -le 1 ] ; then
-  run.pl LMWT=$min_lmwt:$max_lmwt $kwsoutputdir/log/normalize.LMWT.log \
+  $cmd LMWT=$min_lmwt:$max_lmwt $kwsoutputdir/log/normalize.LMWT.log \
     cat ${kwsoutputdir}_LMWT/results \|\
       local/search/normalize_results_kst.pl --trials $trials --ntrue-scale \$\(cat ${kwsoutputdir}_LMWT/details/ntrue\)\
       \> ${kwsoutputdir}_LMWT/details/results
@@ -82,7 +82,7 @@ if [ $stage -le 1 ] ; then
       ${kwsoutputdir}_LMWT/details/alignment.csv \> ${kwsoutputdir}_LMWT/details/score.txt  '&&' \
     cp ${kwsoutputdir}_LMWT/details/score.txt ${kwsoutputdir}_LMWT/score.txt
 
-  run.pl LMWT=$min_lmwt:$max_lmwt $kwsoutputdir/log/per-category-stats.LMWT.log \
+  $cmd LMWT=$min_lmwt:$max_lmwt $kwsoutputdir/log/per-category-stats.LMWT.log \
     cat ${kwsoutputdir}_LMWT/details/alignment.csv \|\
       perl local/search/per_category_stats.pl --sweep-step 0.005  $trials \
       $kwsdatadir/categories \> ${kwsoutputdir}_LMWT/details/per-category-score.txt
@@ -99,11 +99,11 @@ if [ -f $kwsdatadir/f4de_attribs ] ; then
   rttm=$kwsdatadir/rttm
   kwlist=$kwsdatadir/kwlist.xml
 
-  run.pl LMWT=$min_lmwt:$max_lmwt $kwsoutputdir/log/f4de_prepare.LMWT.log \
+  $cmd LMWT=$min_lmwt:$max_lmwt $kwsoutputdir/log/f4de_prepare.LMWT.log \
     mkdir -p ${kwsoutputdir}_LMWT/f4de/ '&&' cat $kwlist \| \
     local/search/annotate_kwlist.pl $kwsdatadir/categories \> ${kwsoutputdir}_LMWT/f4de/kwlist.xml
 
-  run.pl LMWT=$min_lmwt:$max_lmwt $kwsoutputdir/log/f4de_write_kwslist.LMWT.log \
+  $cmd LMWT=$min_lmwt:$max_lmwt $kwsoutputdir/log/f4de_write_kwslist.LMWT.log \
     cat ${kwsoutputdir}_LMWT/details/results \| \
       utils/int2sym.pl -f 2 $kwsdatadir/utt.map \| \
       local/search/utt_to_files.pl --flen $flen $kwsdatadir/../segments \|\
@@ -117,7 +117,7 @@ if [ -f $kwsdatadir/f4de_attribs ] ; then
       -O -B -q 'OOV:regex=.*' -q 'BaseOOV:regex=.*' \
       -s ${kwsoutputdir}_LMWT/f4de/kwslist.xml -c -o -b -d -f  ${kwsoutputdir}_LMWT/f4de/
 
-  run.pl LMWT=$min_lmwt:$max_lmwt $kwsoutputdir/log/f4de_report.LMWT.log \
+  $cmd LMWT=$min_lmwt:$max_lmwt $kwsoutputdir/log/f4de_report.LMWT.log \
     local/kws_oracle_threshold.pl --duration $trials \
       ${kwsoutputdir}_LMWT/f4de/alignment.csv \> ${kwsoutputdir}_LMWT/f4de/metrics.txt
 fi

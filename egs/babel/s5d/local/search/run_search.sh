@@ -61,7 +61,7 @@ if [ $stage -le 3 ] ; then
 fi
 
 
-
+exit
 
 if [ $stage -le 4 ] ; then
   for set in $kwsets ; do
@@ -78,17 +78,16 @@ if [ $stage -le 5 ] ; then
   for set in $kwsets ; do
     system=exp/nnet3/lstm_bidirectional_sp/decode_dev10h.pem
     local/search/search.sh --cmd "$decode_cmd" --min-lmwt 9 --max-lmwt 12  \
-      --extraid ${set} --indices-dir $system/kws_index \
+      --extraid ${set} --indices-dir $system/kws_indices \
       data/lang data/dev10h.pem $system
   done
 fi
 
 if [ $stage -le 6 ] ; then
   for set in $kwsets ; do
-    system=exp/nnet3/lstm_bidirectional_sp/decode_dev10h.pem_17_8.5/
-    local/search/search.sh --cmd "$decode_cmd" --min-lmwt 9 --max-lmwt 12  \
-      --extraid ${set} --indices-dir $system/kws_index \
+    system=exp/nnet3/lstm_sp/decode_dev10h.pem
+    local/search/search.sh --cmd "$decode_cmd" --min-lmwt 10 --max-lmwt 12  \
+      --extraid ${set} --indices-dir $system/kws_indices \
       data/lang data/dev10h.pem $system
   done
 fi
-

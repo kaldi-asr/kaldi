@@ -68,6 +68,10 @@ if [ $stage -le 3 ] ; then
   done
 fi
 
+
+echo "Directories are set up -- running run-4-syll-anydecode.sh will take care of the rest"
+exit 0
+
 if [ $stage -le 4 ] ; then
   for set in $kwsets ; do
     for it in $(seq 1 4); do

@@ -18,7 +18,13 @@ vocab_kws=false
 tri5_only=false
 wip=0.5
 
-echo "run-4-test.sh $@"
+nnet3_model=nnet3/tdnn_sp
+is_rnn=false
+extra_left_context=0
+extra_right_context=0
+frames_per_chunk=0
+
+echo $0 "$@"
 
 . utils/parse_options.sh
 
@@ -33,6 +39,8 @@ fi
 # Let shell functions inherit ERR trap.  Same as `set -E'.
 set -o errtrace
 trap "echo Exited!; exit;" SIGINT SIGTERM
+
+./local/check_tools.sh || exit 1
 
 # Set proxy search parameters for the extended lexicon case.
 if [ -f data/.extlex ]; then
@@ -49,7 +57,7 @@ dataset_type=${dir%%.syll.*}
 #By default, we want the script to accept how the dataset should be handled,
 #i.e. of  what kind is the dataset
 if [ -z ${kind} ] ; then
-  if [ "$dataset_type" == "dev2h" ] || [ "$dataset_type" == "dev10h" ] ; then
+  if [ "$dataset_type" == "dev2h" ] || [ "$dataset_type" == "dev10h" ]; then
     dataset_kind=supervised
   else
     dataset_kind=unsupervised
@@ -68,7 +76,6 @@ if [ -z $dataset_segments ]; then
   echo "\tseg   #UEM segmentation (kaldi-native)"
 fi
 
-set -x
 if [ -z "${skip_scoring}" ] ; then
   if [ "$dataset_kind" == "unsupervised" ]; then
     skip_scoring=true
@@ -76,7 +83,6 @@ if [ -z "${skip_scoring}" ] ; then
     skip_scoring=false
   fi
 fi
-set +x
 
 #The $dataset_type value will be the dataset name without any extrension
 eval my_data_dir=( "\${${dataset_type}_data_dir[@]}" )
@@ -95,6 +101,7 @@ if [ -z "$my_nj" ]; then
   echo >&2 "You didn't specify the number of jobs -- variable \"${dataset_type}_nj\" not defined."
   exit 1
 fi
+my_nj=$(($my_nj * 2))
 
 my_subset_ecf=false
 eval ind=\${${dataset_type}_subset_ecf+x}
@@ -103,12 +110,14 @@ if [ "$ind" == "x" ] ; then
 fi
 
 declare -A my_kwlists=()
-eval my_kwlist_keys="\${!${dataset_type}_kwlists[@]}"
-for key in $my_kwlist_keys  # make sure you include the quotes there
+eval my_kwlists_keys="\${!${dataset_type}_kwlists[@]}"
+for key in $my_kwlists_keys  # make sure you include the quotes there
 do
-  eval my_kwlist_val="\${${dataset_type}_kwlists[$key]}"
-  my_kwlists["$key"]="${my_kwlist_val}"
+  eval my_kwlists_val="\${${dataset_type}_kwlists[$key]}"
+  my_kwlists["$key"]="${my_kwlists_val}"
 done
+declare -p my_kwlists
+export my_kwlists
 
 #Just a minor safety precaution to prevent using incorrect settings
 #The dataset_* variables should be used.
@@ -240,6 +249,22 @@ if [ ! -f  $dataset_dir/.done ] ; then
   fi
   touch $dataset_dir/.done
 fi
+
+if [ -f exp/nnet3/extractor/final.ie ] && [ ! -f ${dataset_dir}_hires/.mfcc.done ]; then
+  dataset=$(basename $dataset_dir)
+  echo ---------------------------------------------------------------------
+  echo "Preparing ${dataset_kind} MFCC features in  ${dataset_dir}_hires and corresponding iVectors in exp/nnet3/ivectors_$dataset on" `date`
+  echo ---------------------------------------------------------------------
+  if [ ! -d ${dataset_dir}_hires ]; then
+    utils/copy_data_dir.sh data/${dataset_type}.${dataset_segments}_hires data/${dataset}_hires
+  fi
+  ln -sf ivectors_${dataset_type}.${dataset_segments} exp/nnet3/ivectors_${dataset} || true
+  touch ${dataset_dir}_hires/.done
+fi
+set -x
+ln -sf ivectors_${dataset_type}.${dataset_segments} exp/nnet3/ivectors_${dataset} || true
+set +x
+
 #####################################################################
 #
 # KWS data directory preparation
@@ -269,13 +294,18 @@ fi
 ## FMLLR decoding
 ##
 ####################################################################
+if [ ! -f data/langp_test.syll//.done ]; then
+  ln -sf lang.syll data/langp_test.syll || true
+  touch data/langp_test.syll/.done
+fi
+
 decode=exp/tri5/decode_${dataset_id}
 if [ ! -f ${decode}/.done ]; then
   echo ---------------------------------------------------------------------
   echo "Spawning decoding with SAT models  on" `date`
   echo ---------------------------------------------------------------------
   utils/mkgraph.sh \
-    data/lang.syll exp/tri5 exp/tri5/graph.syll |tee exp/tri5/mkgraph.syll.log
+    data/langp_test.syll exp/tri5 exp/tri5/graph.syll |tee exp/tri5/mkgraph.syll.log
 
   mkdir -p $decode
   #By default, we do not care about the lattices for this step -- we just want the transforms
@@ -291,13 +321,13 @@ if ! $fast_path ; then
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt \
     "${lmwt_plp_extra_opts[@]}" \
-    ${dataset_dir} data/lang.syll ${decode}
+    ${dataset_dir} data/langp_test.syll ${decode}
 
   local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
     "${lmwt_plp_extra_opts[@]}" \
-    ${dataset_dir} data/lang.syll ${decode}.si
+    ${dataset_dir} data/langp_test.syll ${decode}.si
 fi
 
 if $tri5_only; then
@@ -317,7 +347,7 @@ if [ -f exp/sgmm5/.done ]; then
     echo "Spawning $decode on" `date`
     echo ---------------------------------------------------------------------
     utils/mkgraph.sh \
-      data/lang.syll exp/sgmm5 exp/sgmm5/graph.syll |tee exp/sgmm5/mkgraph.syll.log
+      data/langp_test.syll exp/sgmm5 exp/sgmm5/graph.syll |tee exp/sgmm5/mkgraph.syll.log
 
     mkdir -p $decode
     steps/decode_sgmm2.sh --skip-scoring true --use-fmllr true --nj $my_nj \
@@ -330,7 +360,7 @@ if [ -f exp/sgmm5/.done ]; then
         --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
         --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
         "${lmwt_plp_extra_opts[@]}" \
-        ${dataset_dir} data/lang.syll  exp/sgmm5/decode_fmllr_${dataset_id}
+        ${dataset_dir} data/langp_test.syll  exp/sgmm5/decode_fmllr_${dataset_id}
     fi
   fi
 
@@ -348,7 +378,7 @@ if [ -f exp/sgmm5/.done ]; then
       mkdir -p $decode
       steps/decode_sgmm2_rescore.sh  --skip-scoring true \
         --cmd "$decode_cmd" --iter $iter --transform-dir exp/tri5/decode_${dataset_id} \
-        data/lang.syll ${dataset_dir} exp/sgmm5/decode_fmllr_${dataset_id} $decode | tee ${decode}/decode.log
+        data/langp_test.syll ${dataset_dir} exp/sgmm5/decode_fmllr_${dataset_id} $decode | tee ${decode}/decode.log
 
       touch $decode/.done
     fi
@@ -364,9 +394,11 @@ if [ -f exp/sgmm5/.done ]; then
         --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
         --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
       "${lmwt_plp_extra_opts[@]}" \
-      ${dataset_dir} data/lang.syll $decode
+      ${dataset_dir} data/langp_test.syll $decode
   done
 fi
+
+
 
 ####################################################################
 ##
@@ -390,7 +422,82 @@ if [ -f exp/tri6_nnet/.done ]; then
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
     "${lmwt_dnn_extra_opts[@]}" \
-    ${dataset_dir} data/lang.syll $decode
+    ${dataset_dir} data/langp_test.syll $decode
+fi
+
+####################################################################
+##
+## nnet3 model decoding
+##
+####################################################################
+if [ -f exp/nnet3/lstm_bidirectional_sp/.done ]; then
+  decode=exp/nnet3/lstm_bidirectional_sp/decode_${dataset_id}.syll
+  rnn_opts=" --extra-left-context 40 --extra-right-context 40  --frames-per-chunk 20 "
+  decode_script=steps/nnet3/lstm/decode.sh
+  if [ ! -f $decode/.done ]; then
+    mkdir -p $decode
+    $decode_script --nj $my_nj --cmd "$decode_cmd" $rnn_opts \
+          --beam $dnn_beam --lattice-beam $dnn_lat_beam \
+          --skip-scoring true  \
+          --online-ivector-dir exp/nnet3/ivectors_${dataset_id} \
+          exp/tri5/graph.syll ${dataset_dir}_hires $decode | tee $decode/decode.log
+
+    touch $decode/.done
+  fi
+
+  local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
+    --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
+    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
+    "${lmwt_dnn_extra_opts[@]}" \
+    ${dataset_dir} data/langp_test.syll $decode
+fi
+
+if [ -f exp/nnet3/lstm_sp/.done ]; then
+  decode=exp/nnet3/lstm_sp/decode_${dataset_id}.syll
+  rnn_opts=" --extra-left-context 40 --extra-right-context 0  --frames-per-chunk 20 "
+  decode_script=steps/nnet3/lstm/decode.sh
+  if [ ! -f $decode/.done ]; then
+    mkdir -p $decode
+    $decode_script --nj $my_nj --cmd "$decode_cmd" $rnn_opts \
+          --beam $dnn_beam --lattice-beam $dnn_lat_beam \
+          --skip-scoring true  \
+          --online-ivector-dir exp/nnet3/ivectors_${dataset_id} \
+          exp/tri5/graph.syll ${dataset_dir}_hires $decode | tee $decode/decode.log
+
+    touch $decode/.done
+  fi
+
+  local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
+    --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
+    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
+    "${lmwt_dnn_extra_opts[@]}" \
+    ${dataset_dir} data/langp_test.syll $decode
+fi
+
+if [ -f exp/$nnet3_model/.done ]; then
+  decode=exp/$nnet3_model/decode_${dataset_id}.syll
+  rnn_opts=
+  decode_script=steps/nnet3/decode.sh
+  if [ "$is_rnn" == "true" ]; then
+    rnn_opts=" --extra-left-context $extra_left_context --extra-right-context $extra_right_context  --frames-per-chunk $frames_per_chunk "
+    decode_script=steps/nnet3/lstm/decode.sh
+  fi
+  if [ ! -f $decode/.done ]; then
+    mkdir -p $decode
+    $decode_script --nj $my_nj --cmd "$decode_cmd" $rnn_opts \
+          --beam $dnn_beam --lattice-beam $dnn_lat_beam \
+          --skip-scoring true  \
+          --online-ivector-dir exp/nnet3/ivectors_${dataset_id} \
+          exp/tri5/graph.syll ${dataset_dir}_hires $decode | tee $decode/decode.log
+
+    touch $decode/.done
+  fi
+
+  local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
+    --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
+    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
+    "${lmwt_dnn_extra_opts[@]}" \
+    ${dataset_dir} data/langp_test.syll $decode
 fi
 
 
@@ -417,7 +524,7 @@ if [ -f exp/tri6a_nnet/.done ]; then
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
     "${lmwt_dnn_extra_opts[@]}" \
-    ${dataset_dir} data/lang.syll $decode
+    ${dataset_dir} data/langp_test.syll $decode
 fi
 
 
@@ -444,7 +551,7 @@ if [ -f exp/tri6b_nnet/.done ]; then
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
     "${lmwt_dnn_extra_opts[@]}" \
-    ${dataset_dir} data/lang.syll $decode
+    ${dataset_dir} data/langp_test.syll $decode
 fi
 ####################################################################
 ##
@@ -470,7 +577,7 @@ if [ -f exp/tri6_nnet_mpe/.done ]; then
       --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
       --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
       "${lmwt_dnn_extra_opts[@]}" \
-      ${dataset_dir} data/lang.syll $decode
+      ${dataset_dir} data/langp_test.syll $decode
   done
 fi
 
@@ -499,7 +606,7 @@ for dnn in tri6_nnet_semi_supervised tri6_nnet_semi_supervised2 \
       --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
       --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
       "${lmwt_dnn_extra_opts[@]}" \
-      ${dataset_dir} data/lang.syll $decode
+      ${dataset_dir} data/langp_test.syll $decode
   fi
 done
 echo "Everything looking good...."

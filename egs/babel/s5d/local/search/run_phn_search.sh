@@ -67,7 +67,11 @@ if [ $stage -le 3 ] ; then
       ark,t:"|gzip -c >${data}/kwset_${set}/keywords.fsts.gz"
   done
 fi
-exit
+
+
+echo "Directories are set up -- running run-4-phn-anydecode.sh will take care of the rest"
+exit 0
+
 if [ $stage -le 4 ] ; then
   for set in $kwsets ; do
     for it in $(seq 1 4); do
