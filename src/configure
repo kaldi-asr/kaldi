@@ -164,6 +164,15 @@ do
   --mkl-libdir=*)
     MKLLIBDIR=`read_dirname $1`;
     shift ;;
+  --speex-root=*)
+    SPEEXROOT=`read_dirname $1`;
+    shift ;;
+  --speex-libdir=*)
+    SPEEXLIBDIR=`read_dirname $1`;
+    shift ;;
+  --speex-includedir=*)
+    SPEEXINCLUDEDIR=`read_dirname $1`;
+    shift ;;
   --omp-libdir=*)
     OMPLIBDIR=`read_dirname $1`;
     shift ;;
@@ -462,7 +471,9 @@ function configure_cuda {
 
 function linux_configure_speex {
   #check whether the user has called tools/extras/install_speex.sh or not
-  SPEEXROOT=`pwd`/../tools/speex
+  [ ! -z "$SPEEXROOT" ] || SPEEXROOT=`pwd`/../tools/speex
+  [ ! -z "$SPEEXLIBDIR" ] || SPEEXLIBDIR="$SPEEXROOT"/lib
+  [ ! -z "$SPEEXINCLUDEDIR" ] || SPEEXINCLUDEDIR="$SPEEXROOT"/include
   static_speex=$1
   if [ "foo"$static_speex == "foo" ]; then
     static_speex=false
@@ -473,20 +484,20 @@ function linux_configure_speex {
   else
     spx_type=so
   fi
-  if [ ! -f "$SPEEXROOT/lib/libspeex.${spx_type}" ];then
+  if [ ! -f "$SPEEXLIBDIR/libspeex.${spx_type}" ];then
     echo "Static=[$static_speex] Speex library not found: You can still build Kaldi without Speex."
     return
   fi
 
-  if [ -f $SPEEXROOT/include/speex/speex.h ]; then
+  if [ -f $SPEEXINCLUDEDIR/speex/speex.h ]; then
     echo >> kaldi.mk
-    echo CXXFLAGS += -DHAVE_SPEEX -I${SPEEXROOT}/include >> kaldi.mk
+    echo CXXFLAGS += -DHAVE_SPEEX -I${SPEEXINCLUDEDIR} >> kaldi.mk
 
     if $static_speex; then
-      echo LDLIBS += $SPEEXROOT/lib/libspeex.a
+      echo LDLIBS += $SPEEXLIBDIR/libspeex.a
     else
-      echo LDLIBS += -L${SPEEXROOT}/lib -lspeex >> kaldi.mk
-      echo LDFLAGS += -Wl,-rpath=${SPEEXROOT}/lib >> kaldi.mk
+      echo LDLIBS += -L${SPEEXLIBDIR} -lspeex >> kaldi.mk
+      echo LDFLAGS += -Wl,-rpath=${SPEEXLIBDIR} >> kaldi.mk
     fi
 
     echo "Successfully configured with Speex at $SPEEXROOT, (static=[$static_speex])"
