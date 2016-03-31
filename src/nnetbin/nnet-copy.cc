@@ -20,6 +20,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "nnet/nnet-nnet.h"
+#include "nnet/nnet-parallel-component.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -45,6 +46,10 @@ int main(int argc, char *argv[]) {
     po.Register("remove-first-components", &remove_first_components, "Remove N first Components from the Nnet");
     po.Register("remove-last-components", &remove_last_components, "Remove N last layers Components from the Nnet");
 
+    std::string from_parallel_component;
+    po.Register("from-parallel-component", &from_parallel_component, 
+        "Extract nested network from parallel component (3 = 3rd network, component is found; 1:3 = 3nd network from 1st component).");
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
@@ -61,6 +66,37 @@ int main(int argc, char *argv[]) {
       bool binary_read;
       Input ki(model_in_filename, &binary_read);
       nnet.Read(ki.Stream(), binary_read);
+    }
+
+    // eventually replace 'nnet' by nested network from <ParallelComponent>,
+    if (from_parallel_component != "") {
+      std::vector<int32> component_id_nested_id;
+      kaldi::SplitStringToIntegers(from_parallel_component, ":", false, &component_id_nested_id);
+      // parse the argument,
+      int32 component_id = 0, nested_id = 0;
+      switch (component_id_nested_id.size()) {
+        case 1: 
+          nested_id = component_id_nested_id[0]; 
+          break;
+        case 2: 
+          component_id = component_id_nested_id[0];
+          nested_id = component_id_nested_id[1]; 
+          break;
+        default: 
+          KALDI_ERR << "Check csl in '--from-parallel-component', must be 1 or 2 elements.";
+      }
+      // locate 1st parallel component, if not specified by the arg,
+      if (component_id == 0) {
+        for (int32 i=0; i<nnet.NumComponents(); i++) {
+          if (nnet.GetComponent(i).GetType() == Component::kParallelComponent) {
+            component_id = i+1;
+          }
+        }
+      }
+      // replace the nnet,
+      KALDI_ASSERT(nnet.GetComponent(component_id-1).GetType() == Component::kParallelComponent);
+      Nnet nnet_tmp(dynamic_cast<ParallelComponent&>(nnet.GetComponent(component_id-1)).GetNestedNnet(nested_id-1));
+      nnet = nnet_tmp;
     }
 
     // optionally remove N first layers
