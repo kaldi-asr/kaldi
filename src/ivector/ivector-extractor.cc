@@ -1388,6 +1388,17 @@ double IvectorExtractorStats::UpdateVariances(
 
   var_floor.Scale(opts.variance_floor_factor / var_floor_count);
 
+  // var_floor should not be singular in any normal case, but previously
+  // we've had situations where cholesky on it failed (perhaps due to
+  // people using linearly dependent features).  So we floor its
+  // singular values.
+  int eig_floored = var_floor.ApplyFloor(var_floor.MaxAbsEig() * 1.0e-04);
+  if (eig_floored > 0) {
+    KALDI_WARN << "Floored " << eig_floored << " eigenvalues of the "
+               << "variance floor matrix.  This is not expected.  Maybe your "
+               << "feature data is linearly dependent.";
+  }
+
   int32 tot_num_floored = 0;
   for (int32 i = 0; i < num_gauss; i++) {
     SpMatrix<double> &S(raw_variances[i]); // un-floored variance.
