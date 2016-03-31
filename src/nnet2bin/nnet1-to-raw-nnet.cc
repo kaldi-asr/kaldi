@@ -166,8 +166,7 @@ nnet2::Nnet *ConvertNnet1ToNnet2(const nnet1::Nnet &nnet1,
 
   nnet2::Nnet *res = new nnet2::Nnet();
   res->Init(components);
-  // not de-allocate the memory for components
-  // since the nnet takes the ownership
+  delete components;
   return res;
 }
 
