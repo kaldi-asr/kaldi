@@ -111,10 +111,8 @@ while read line; do
       if (invoc[$x]) { printf("%s ", $x); } else { printf("%s ", oov); } }
       printf("\n"); }' > $wdir/text
     ngram-count -text $wdir/text -order $ngram_order "$srilm_options" -lm - |\
-      arpa2fst - | fstprint | utils/eps2disambig.pl | utils/s2eps.pl |\
-      fstcompile --isymbols=$lang/words.txt --osymbols=$lang/words.txt  \
-      --keep_isymbols=false --keep_osymbols=false |\
-      fstrmepsilon | fstarcsort --sort_type=ilabel > $wdir/G.fst || exit 1;
+      arpa2fst --disambig-symbol=#0 \
+             --read-symbol-table=$lang/words.txt - > $wdir/G.fst || exit 1;
   fi
   fstisstochastic $wdir/G.fst || echo "$0: $uttid/G.fst not stochastic."
 
@@ -134,7 +132,7 @@ while read line; do
 
   make-h-transducer --disambig-syms-out=$wdir/disambig_tid.int \
     --transition-scale=$tscale $wdir/ilabels_${N}_${P} \
-    $model_dir/tree $model_dir/final.mdl > $wdir/Ha.fst 
+    $model_dir/tree $model_dir/final.mdl > $wdir/Ha.fst
 
   # Builds HCLGa.fst
   fsttablecompose $wdir/Ha.fst $wdir/CLG.fst | \
@@ -143,10 +141,10 @@ while read line; do
     fstminimizeencoded > $wdir/HCLGa.fst
   fstisstochastic $wdir/HCLGa.fst ||\
     echo "$0: $uttid/HCLGa.fst is not stochastic"
-  
+
   add-self-loops --self-loop-scale=$loopscale --reorder=true \
     $model_dir/final.mdl < $wdir/HCLGa.fst > $wdir/HCLG.fst
-  
+
   if [ $tscale == 1.0 -a $loopscale == 1.0 ]; then
     fstisstochastic $wdir/HCLG.fst ||\
       echo "$0: $uttid/HCLG.fst is not stochastic."
