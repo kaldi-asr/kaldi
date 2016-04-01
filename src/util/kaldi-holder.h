@@ -2,6 +2,7 @@
 
 // Copyright 2009-2011     Microsoft Corporation
 //                2016     Johns Hopkins University (author: Daniel Povey)
+//                2016     Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -134,6 +135,15 @@ template<class SomeType> class GenericHolder {
   /// of holder, not with some nonexistent base-class.
   void Swap(GenericHolder<T> *other) { std::swap(t_, other->t_); }
 
+  /// This is only defined for KaldiObjectHolder holding matrix objects,
+  /// in order to extract a holder holding a sub-matrix specified by 'range',
+  /// e.g. [1:2,2:10]. It returns true with successful extraction.
+  /// For other types of holder it just throws an error.
+  bool ExtractRange(GenericHolder<T> *other, const std::string &range) {
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
+    return false;
+  }
+
   /// If the object held pointers, the destructor would free them.
   ~GenericHolder() { }
 
@@ -205,6 +215,25 @@ class HtkMatrixHolder;
 /// A class for reading/writing Sphinx format matrices.
 template<int kFeatDim = 13> class SphinxMatrixHolder;
 
+/// This templated function exists so that we can write .scp files with
+/// 'object ranges' specified: the canonical example is a [first:last] range
+/// of rows of a matrix, or [first-row:last-row,first-column,last-column]
+/// of a matrix.  We can also support [begin-time:end-time] of a wave
+/// file.  The string 'range' is whatever is in the square brackets; it is
+/// parsed inside this function.
+/// This function returns true if the partial object was successfully extracted,
+/// and false if there was an error such as an invalid range.
+/// The generic version of this function just fails; we overload the template
+/// whenever we need it for a specific class.
+template <class T>
+bool ExtractObjectRange(const T &input, const std::string &range, T *output) {
+  KALDI_ERR << "Ranges not supported for objects of this type.";
+  return false; 
+}
+
+template <class Real>
+bool ExtractObjectRange(const Matrix<Real> &input, const std::string &range,
+                        Matrix<Real> *output);
 
 /// @} end "addtogroup holders"
 

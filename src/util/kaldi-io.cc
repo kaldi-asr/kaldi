@@ -1,6 +1,7 @@
 // util/kaldi-io.cc
 
 // Copyright 2009-2011  Microsoft Corporation;  Jan Silovsky
+//                2016  Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -352,7 +353,8 @@ class InputImplBase {
   // is for non-Kaldi files.
   virtual bool Open(const std::string &filename, bool binary) = 0;
   virtual std::istream &Stream() = 0;
-  virtual void Close() = 0;  // don't bother checking failure
+  virtual int32 Close() = 0;  // We only need to check failure in the case of 
+                              // kPipeInput.
   // on close for input streams.
   virtual InputType MyType() = 0;  // Because if it's kOffsetFileInput, we may
                                    // call Open twice
@@ -379,12 +381,13 @@ class FileInputImpl: public InputImplBase {
     return is_;
   }
 
-  virtual void Close() {
+  virtual int32 Close() {
     if (!is_.is_open())
       KALDI_ERR << "FileInputImpl::Close(), file is not open.";
     // I believe this error can only arise from coding error.
     is_.close();
     // Don't check status.
+    return 0;
   }
 
   virtual InputType MyType() { return kFileInput; }
@@ -422,9 +425,10 @@ class StandardInputImpl: public InputImplBase {
 
   virtual InputType MyType() { return kStandardInput; }
 
-  virtual void Close() {
+  virtual int32 Close() {
     if (!is_open_) KALDI_ERR << "StandardInputImpl::Close(), file is not open.";
     is_open_ = false;
+    return 0;
   }
   virtual ~StandardInputImpl() { }
  private:
@@ -481,12 +485,12 @@ class PipeInputImpl: public InputImplBase {
     return *is_;
   }
 
-  virtual void Close() {
+  virtual int32 Close() {
     if (is_ == NULL)
       KALDI_ERR << "PipeInputImpl::Close(), file is not open.";
     delete is_;
     is_ = NULL;
-    int status;
+    int32 status;
 #ifdef _MSC_VER
     status = _pclose(f_);
 #else
@@ -500,6 +504,7 @@ class PipeInputImpl: public InputImplBase {
     delete fb_;
     fb_ = NULL;
 #endif
+    return status;
   }
   virtual ~PipeInputImpl() {
     if (is_)
@@ -620,12 +625,13 @@ class OffsetFileInputImpl: public InputImplBase {
     return is_;
   }
 
-  virtual void Close() {
+  virtual int32 Close() {
     if (!is_.is_open())
       KALDI_ERR << "FileInputImpl::Close(), file is not open.";
     // I believe this error can only arise from coding error.
     is_.close();
     // Don't check status.
+    return 0;
   }
 
   virtual InputType MyType() { return kOffsetFileInput; }
@@ -737,10 +743,14 @@ Input::Input(const std::string &rxfilename, bool *binary): impl_(NULL) {
   }
 }
 
-void Input::Close() {
+int32 Input::Close() {
   if (impl_) {
+    int32 ans = impl_->Close();
     delete impl_;
     impl_ = NULL;
+    return ans;
+  } else {
+    return 0;
   }
 }
 
