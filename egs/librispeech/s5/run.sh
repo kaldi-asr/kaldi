@@ -52,7 +52,7 @@ local/prepare_dict.sh --stage 3 --nj 30 --cmd "$train_cmd" \
    data/local/lm data/local/lm data/local/dict_nosp
 
 utils/prepare_lang.sh data/local/dict_nosp \
-  "<SPOKEN_NOISE>" data/local/lang_tmp_nosp data/lang_nosp
+  "<UNK>" data/local/lang_tmp_nosp data/lang_nosp
 
 local/format_lms.sh --src-dir data/lang_nosp data/local/lm
 
@@ -208,7 +208,7 @@ utils/dict_dir_add_pronprobs.sh --max-normalize true \
   exp/tri4b/pron_bigram_counts_nowb.txt data/local/dict
 
 utils/prepare_lang.sh data/local/dict \
-  "<SPOKEN_NOISE>" data/local/lang_tmp data/lang
+  "<UNK>" data/local/lang_tmp data/lang
 local/format_lms.sh --src-dir data/lang data/local/lm
 
 utils/build_const_arpa_lm.sh \
