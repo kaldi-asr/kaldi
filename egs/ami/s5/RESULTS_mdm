@@ -93,10 +93,15 @@ for x in exp/$mic/nnet2_online/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && gr
 
 
 ################################# Chain Systems ######################
-# TDNN + clean alignments
-#  local/chain/run_tdnn_6z.sh --mic mdm8 --use-ihm-ali true
-  %WER 39.9 | 14631 94488 | 63.6 17.3 19.1 3.5 39.9 68.4 | 0.613 | exp/mdm8_cleanali/chain/tdnn_sp/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
-  %WER 43.8 | 14091 89968 | 59.3 17.8 23.0 3.0 43.8 67.3 | 0.589 | exp/mdm8_cleanali/chain/tdnn_sp/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
+
+  # local/chain/run_tdnn_ami_5.sh  --mic mdm8 --affix msl1.5_45wer
+   %WER 38.5 | 14761 94496 | 65.5 17.6 16.9 4.0 38.5 66.5 | 0.620 | exp/mdm8/chain/tdnn_ami5_msl1.5_45wer_sp/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
+   %WER 41.5 | 14219 89974 | 62.2 18.5 19.2 3.7 41.5 65.6 | 0.596 | exp/mdm8/chain/tdnn_ami5_msl1.5_45wer_sp/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
+
+  # local/chain/run_tdnn_ami_5.sh  --mic mdm8 --use-ihm-ali true --affix msl1.5_45wer
+   %WER 38.1 | 15296 94487 | 65.7 17.9 16.4 3.8 38.1 62.5 | 0.617 | exp/mdm8_cleanali/chain/tdnn_ami5_msl1.5_45wer_sp/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
+   %WER 41.5 | 13795 89975 | 62.6 20.4 17.0 4.1 41.5 66.9 | 0.628 | exp/mdm8_cleanali/chain/tdnn_ami5_msl1.5_45wer_sp/decode_eval/ascore_8/eval_hires_o4.ctm.filt.sys
+
 #--------------------------------------------------------------------------------------------------------------------------------------------
 # Karel, JSALT 2015, (31.7.2015)
 # nnet1, MFCC-LDA-MLLT-DNN system (local/nnet/run_dnn_lda_mllt.sh),
