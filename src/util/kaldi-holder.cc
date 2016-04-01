@@ -31,15 +31,18 @@ bool ExtractObjectRange(const Matrix<Real> &input, const std::string &range,
     return false;
   }
   std::vector<std::string> splits;
-  SplitStringToVector(range, ",", true, &splits);  
-  if (splits.size() > 2) {
+  SplitStringToVector(range, ",", false, &splits);  
+  if (!((splits.size() == 1 && !splits[0].empty()) ||
+        (splits.size() == 2  && !splits[0].empty() && !splits[1].empty()))) {
     KALDI_ERR << "Invalid range specifier: " << range;
     return false;
   }
   std::vector<int32> row_range, col_range;
-  SplitStringToIntegers(splits[0], ":", true, &row_range);
-  if (splits.size() == 2) {
-    SplitStringToIntegers(splits[1], ":", true, &col_range);
+  bool status = true;
+  if (splits[0] != ":")
+    status = SplitStringToIntegers(splits[0], ":", false, &row_range);
+  if (splits.size() == 2 && splits[1] != ":") {
+    status = status && SplitStringToIntegers(splits[1], ":", false, &col_range);
   }
   if (row_range.size() == 0) {
     row_range.push_back(0);
@@ -49,18 +52,18 @@ bool ExtractObjectRange(const Matrix<Real> &input, const std::string &range,
     col_range.push_back(0);
     col_range.push_back(input.NumCols() - 1);
   }
-  if (!(row_range.size() == 2 && col_range.size() == 2 && 
+  if (!(status && row_range.size() == 2 && col_range.size() == 2 &&
         row_range[0] >= 0 && row_range[0] < row_range[1] &&
         row_range[1] < input.NumRows() && col_range[0] >=0 &&
         col_range[0] < col_range[1] && col_range[1] < input.NumCols())) {
     KALDI_ERR << "Invalid range specifier: " << range;
     return false;
   }
-  int32 row_offset = row_range[1] - row_range[0] + 1,
-        col_offset = col_range[1] - col_range[0] + 1;
-  output->Resize(row_offset, col_offset, kUndefined);
-  output->CopyFromMat(input.Range(row_range[0], row_offset,
-                                  col_range[0], col_offset));
+  int32 row_size = row_range[1] - row_range[0] + 1,
+        col_size = col_range[1] - col_range[0] + 1;
+  output->Resize(row_size, col_size, kUndefined);
+  output->CopyFromMat(input.Range(row_range[0], row_size,
+                                  col_range[0], col_size));
   return true;
 }
 

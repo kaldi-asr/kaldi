@@ -79,7 +79,7 @@ class PosteriorHolder {
   }
 
   bool ExtractRange(PosteriorHolder *other, const std::string &range) {
-    KALDI_ERR << "ExtracRange is not defined for this type of holder.";
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
     return false;
   }
  private:
@@ -123,7 +123,7 @@ class GaussPostHolder {
   }
 
   bool ExtractRange(GaussPostHolder *other, const std::string &range) {
-    KALDI_ERR << "ExtracRange is not defined for this type of holder.";
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
     return false;
   }
  private:

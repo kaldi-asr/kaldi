@@ -28,8 +28,8 @@ bool ExtractRangeSpecifier(const std::string &line,
   if (line.empty() || line[line.size()-1] != ']') 
     return false;
   std::vector<std::string> splits;
-  SplitStringToVector(line, "[", true, &splits);
-  if (splits.size() == 2) {
+  SplitStringToVector(line, "[", false, &splits);
+  if (splits.size() == 2 && !splits[0].empty() && !splits[1].empty()) {
     *data_rxfilename = splits[0];
     range->assign(splits[1], 0, splits[1].size()-1);
     return true;

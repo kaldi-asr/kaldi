@@ -140,7 +140,7 @@ template<class SomeType> class GenericHolder {
   /// e.g. [1:2,2:10]. It returns true with successful extraction.
   /// For other types of holder it just throws an error.
   bool ExtractRange(GenericHolder<T> *other, const std::string &range) {
-    KALDI_ERR << "ExtracRange is not defined for this type of holder.";
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
     return false;
   }
 

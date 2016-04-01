@@ -1653,12 +1653,13 @@ class RandomAccessTableReaderScriptImpl:
       KALDI_ERR << "Close() called on RandomAccessTableReader that was not"
                    " open.";
     holder_.Clear();
+    range_holder_.Clear();
     state_ = kUninitialized;
     last_found_ = 0;
     script_.clear();
     current_key_ = "";
     range_ = "";
-    data_rxfilename_last_ = "";
+    data_rxfilename_ = "";
     // This one cannot fail because any errors of a "global"
     // nature would have been detected when we did Open().
     // With archives it's different.
@@ -1709,8 +1710,10 @@ class RandomAccessTableReaderScriptImpl:
   }
 
   virtual ~RandomAccessTableReaderScriptImpl() {
-    if (state_ == kHaveObject || state_ == kGaveObject)
+    if (state_ == kHaveObject || state_ == kGaveObject) {
       holder_.Clear();
+      data_rxfilename_ = "";
+    }
   }
 
  private:
@@ -1753,7 +1756,8 @@ class RandomAccessTableReaderScriptImpl:
         // and range_(if any, e.g. [1:2,2:10]).
         
         if (script_[key_pos].second[script_[key_pos].second.size()-1] == ']') {
-          if(!ExtractRangeSpecifier(script_[key_pos].second, &data_rxfilename,
+          if(!ExtractRangeSpecifier(script_[key_pos].second,
+                                    &data_rxfilename,
                                     &range_)) {
             KALDI_WARN << "TableReader: fail to parse file name "
                        << PrintableRxfilename(script_[key_pos].second);
@@ -1761,20 +1765,20 @@ class RandomAccessTableReaderScriptImpl:
           }
         } else {
           data_rxfilename = script_[key_pos].second;
-          range_ = "";
+          if (!range_.empty()) {
+            range_ = "";
+            range_holder_.Clear(); 
+          }
         }
-        // we only need to update holder_ if data_rxfilename is different
-        // from last time.
-        if (data_rxfilename != data_rxfilename_last_) {
+        // we only need to update holder_ if the new data_rxfilename is
+        // different from the current data_rxfilename we have.
+        if (data_rxfilename != data_rxfilename_) {
           if (!input_.Open(data_rxfilename)) {
             KALDI_WARN << "Error opening stream "
                        << PrintableRxfilename(data_rxfilename);
             return false;
           } else {
-            data_rxfilename_last_ = data_rxfilename;
-            // Make sure holder empty.
-            if (state_ == kHaveObject || state_ == kGaveObject)
-              holder_.Clear();
+            data_rxfilename_ = data_rxfilename;
             if (holder_.Read(input_.Stream())) {
               state_ = kHaveObject;
               current_key_ = key;
@@ -1841,9 +1845,8 @@ class RandomAccessTableReaderScriptImpl:
   Holder range_holder_; // Holds the partial object corresponding to the object
   // range specifier 'range_'. this is only used when 'range_' is specified. 
   std::string range_; // range within which we read the object from holder_.
-  std::string data_rxfilename_last_;  // file name we were reading the object 
-  // from last time. It's needed since we can skip loading the object from disk
-  // if it's the same as before.
+  std::string data_rxfilename_;  // the rxfilename that's used to read the
+  // object into holder_, and will be nonempty whenever holder_ is nonempty.
 
   // the script_ variable contains pairs of (key, filename), sorted using
   // std::sort.  This can be used with binary_search to look up filenames for
@@ -1857,9 +1860,9 @@ class RandomAccessTableReaderScriptImpl:
 
   enum {  //           [Do we have          [Does holder_
     //                script_ set up?]      contain object?]
-    kUninitialized,  //     no                     no
-    kNotReadScript,  //     no                     no
-    kNotHaveObject,  //     yes                    no
+    kUninitialized,  //    no                     no
+    kNotReadScript,  //    no                     no
+    kNotHaveObject,  //   yes                     no
     kHaveObject,   //     yes                    yes
     kGaveObject,   //     yes                    yes
     // [kGaveObject is as kHaveObject but we note that the

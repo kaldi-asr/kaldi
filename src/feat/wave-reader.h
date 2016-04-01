@@ -173,7 +173,7 @@ class WaveHolder {
   }
 
   bool ExtractRange(WaveHolder *other, const std::string &range) {
-    KALDI_ERR << "ExtracRange is not defined for this type of holder.";
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
     return false;
   }
 
@@ -224,7 +224,7 @@ class WaveInfoHolder {
   }
   
   bool ExtractRange(WaveInfoHolder *other, const std::string &range) {
-    KALDI_ERR << "ExtracRange is not defined for this type of holder.";
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
     return false;
   }
  private:

@@ -202,7 +202,7 @@ template<class BasicType> class BasicHolder {
   }
 
   bool ExtractRange(BasicHolder<T> *other, const std::string &range) {
-    KALDI_ERR << "ExtracRange is not defined for this type of holder.";
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
     return false;
   }
 
@@ -323,7 +323,7 @@ template<class BasicType> class BasicVectorHolder {
 
   bool ExtractRange(BasicVectorHolder<BasicType> *other,
                     const std::string &range) {
-    KALDI_ERR << "ExtracRange is not defined for this type of holder.";
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
     return false;
   }
 
@@ -476,7 +476,7 @@ template<class BasicType> class BasicVectorVectorHolder {
 
   bool ExtractRange(BasicVectorVectorHolder<BasicType> *other,
                     const std::string &range) {
-    KALDI_ERR << "ExtracRange is not defined for this type of holder.";
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
     return false;
   }
 
@@ -623,7 +623,7 @@ template<class BasicType> class BasicPairVectorHolder {
 
   bool ExtractRange(BasicPairVectorHolder<BasicType> *other,
                     const std::string &range) {
-    KALDI_ERR << "ExtracRange is not defined for this type of holder.";
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
     return false;
   }
 
@@ -683,7 +683,7 @@ class TokenHolder {
   }
 
   bool ExtractRange(TokenHolder *other, const std::string &range) {
-    KALDI_ERR << "ExtracRange is not defined for this type of holder.";
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
     return false;
   }
 
@@ -745,7 +745,7 @@ class TokenVectorHolder {
   }
 
   bool ExtractRange(TokenVectorHolder *other, const std::string &range) {
-    KALDI_ERR << "ExtracRange is not defined for this type of holder.";
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
     return false;
   }
 
@@ -793,7 +793,7 @@ class HtkMatrixHolder {
   }
 
   bool ExtractRange(HtkMatrixHolder *other, const std::string &range) {
-    KALDI_ERR << "ExtracRange is not defined for this type of holder.";
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
     return false;
   }
 
@@ -903,7 +903,7 @@ template<int kFeatDim> class SphinxMatrixHolder {
   }
 
   bool ExtractRange(SphinxMatrixHolder *other, const std::string &range) {
-    KALDI_ERR << "ExtracRange is not defined for this type of holder.";
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
     return false;
   }
 
