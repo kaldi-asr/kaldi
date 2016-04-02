@@ -46,12 +46,12 @@ fi
 # not work for LMs generated from all toolkits.
 gunzip -c $lm_srcdir_3g/lm_pr6.0.gz | \
   arpa2fst --disambig-symbol=#0 \
-           --read-symbol-table=$lang/words.txt - > data/lang${lang_suffix}_test_bd_tgpr/G.fst || exit 1;
+           --read-symbol-table=$lang/words.txt - data/lang${lang_suffix}_test_bd_tgpr/G.fst || exit 1;
   fstisstochastic data/lang${lang_suffix}_test_bd_tgpr/G.fst
 
 gunzip -c $lm_srcdir_3g/lm_unpruned.gz | \
   arpa2fst --disambig-symbol=#0 \
-           --read-symbol-table=$lang/words.txt - > data/lang${lang_suffix}_test_bd_tg/G.fst || exit 1;
+           --read-symbol-table=$lang/words.txt - data/lang${lang_suffix}_test_bd_tg/G.fst || exit 1;
   fstisstochastic data/lang${lang_suffix}_test_bd_tg/G.fst
 
 # Build ConstArpaLm for the unpruned language model.
@@ -62,7 +62,7 @@ gunzip -c $lm_srcdir_3g/lm_unpruned.gz | \
 
 gunzip -c $lm_srcdir_4g/lm_unpruned.gz | \
   arpa2fst --disambig-symbol=#0 \
-           --read-symbol-table=$lang/words.txt - > data/lang${lang_suffix}_test_bd_fg/G.fst || exit 1;
+           --read-symbol-table=$lang/words.txt - data/lang${lang_suffix}_test_bd_fg/G.fst || exit 1;
   fstisstochastic data/lang${lang_suffix}_test_bd_fg/G.fst
 
 # Build ConstArpaLm for the unpruned language model.
@@ -73,7 +73,7 @@ gunzip -c $lm_srcdir_4g/lm_unpruned.gz | \
 
 gunzip -c $lm_srcdir_4g/lm_pr7.0.gz | \
   arpa2fst --disambig-symbol=#0 \
-           --read-symbol-table=$lang/words.txt - > data/lang${lang_suffix}_test_bd_fgpr/G.fst || exit 1;
+           --read-symbol-table=$lang/words.txt - data/lang${lang_suffix}_test_bd_fgpr/G.fst || exit 1;
   fstisstochastic data/lang${lang_suffix}_test_bd_fgpr/G.fst
 
 exit 0;

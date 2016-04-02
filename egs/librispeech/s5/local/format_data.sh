@@ -30,7 +30,7 @@ for lm_suffix in tgpr; do
   done
   gunzip -c $lm_dir/lm_${lm_suffix}.arpa.gz | \
     arpa2fst --disambig-symbol=#0 \
-             --read-symbol-table=$test/words.txt - > $test/G.fst
+             --read-symbol-table=$test/words.txt - $test/G.fst
 
   utils/validate_lang.pl $test || exit 1;
 done

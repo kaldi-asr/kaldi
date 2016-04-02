@@ -17,7 +17,7 @@ cp -r data/lang data/lang_test
 
 gunzip -c "$arpa_lm" | \
   arpa2fst --disambig-symbol=#0 \
-           --read-symbol-table=data/lang_test/words.txt - >data/lang_test/G.fst
+           --read-symbol-table=data/lang_test/words.txt - data/lang_test/G.fst
 
 echo  "Checking how stochastic G is (the first of these numbers should be small):"
 fstisstochastic data/lang_test/G.fst

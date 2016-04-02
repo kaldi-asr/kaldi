@@ -112,7 +112,7 @@ while read line; do
       printf("\n"); }' > $wdir/text
     ngram-count -text $wdir/text -order $ngram_order "$srilm_options" -lm - |\
       arpa2fst --disambig-symbol=#0 \
-             --read-symbol-table=$lang/words.txt - > $wdir/G.fst || exit 1;
+             --read-symbol-table=$lang/words.txt - $wdir/G.fst || exit 1;
   fi
   fstisstochastic $wdir/G.fst || echo "$0: $uttid/G.fst not stochastic."
 

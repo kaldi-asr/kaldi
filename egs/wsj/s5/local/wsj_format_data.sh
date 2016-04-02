@@ -50,7 +50,7 @@ for lm_suffix in bg tgpr tg bg_5k tgpr_5k tg_5k; do
 
   gunzip -c $lmdir/lm_${lm_suffix}.arpa.gz | \
     arpa2fst --disambig-symbol=#0 \
-             --read-symbol-table=$test/words.txt - > $test/G.fst
+             --read-symbol-table=$test/words.txt - $test/G.fst
 
   utils/validate_lang.pl --skip-determinization-check $test || exit 1;
 done
