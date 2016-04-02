@@ -132,14 +132,17 @@ template<class SomeType> class GenericHolder {
 
   /// This swaps the objects held by *this and *other (preferably a shallow
   /// swap).  Note, this is just an example.  The swap is with the *same type*
-  /// of holder, not with some nonexistent base-class.
+  /// of holder, not with some nonexistent base-class (remember, GenericHolder is
+  /// an example for documentation, not a base-class).
   void Swap(GenericHolder<T> *other) { std::swap(t_, other->t_); }
 
-  /// This is only defined for KaldiObjectHolder holding matrix objects,
-  /// in order to extract a holder holding a sub-matrix specified by 'range',
-  /// e.g. [1:2,2:10]. It returns true with successful extraction.
-  /// For other types of holder it just throws an error.
-  bool ExtractRange(GenericHolder<T> *other, const std::string &range) {
+  /// At the time of writing this will only do something meaningful
+  /// KaldiObjectHolder holding matrix objects, in order to extract a holder
+  /// holding a sub-matrix specified by 'range', e.g. [0:3,2:10], like in Matlab
+  /// but with zero-based indexing. It returns true with successful extraction
+  /// of the range, false if the range was invalid or outside the bounds of the
+  /// matrix.  For other types of holder it just throws an error.
+  bool ExtractRange(const GenericHolder<T> &other, const std::string &range) {
     KALDI_ERR << "ExtractRange is not defined for this type of holder.";
     return false;
   }
@@ -228,9 +231,13 @@ template<int kFeatDim = 13> class SphinxMatrixHolder;
 template <class T>
 bool ExtractObjectRange(const T &input, const std::string &range, T *output) {
   KALDI_ERR << "Ranges not supported for objects of this type.";
-  return false; 
+  return false;
 }
 
+/// The template is specialized with a version that actually does something,
+/// for types Matrix<float> and Matrix<double>.  We can later add versions of
+/// this template for other types, such as Vector, which can meaningfully
+/// have ranges extracted.
 template <class Real>
 bool ExtractObjectRange(const Matrix<Real> &input, const std::string &range,
                         Matrix<Real> *output);

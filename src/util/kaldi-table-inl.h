@@ -40,13 +40,15 @@ namespace kaldi {
 /// \addtogroup table_impl_types
 /// @{
 
-// In SequentialTableReaderScriptImpl and RandomAccessTableReaderScriptImple,
-// We use this function to separate the input string 'line'
-// (e.g "1.ark:100[1:2,2:10]"), or (e.g. "sph2pipe -f wav -p -c 1 1.sph |")
-// into the data_rxfilename (e.g. "1.ark:100") and the optional range specifier
-// (valid cases are: row range e.g. [1:2], column range e.g. [:,2:10], or both
-// e.g. [1:2,2:10].) It returns true if successful. 
-bool ExtractRangeSpecifier(const std::string &line, 
+// In SequentialTableReaderScriptImpl and RandomAccessTableReaderScriptImpl, for
+// cases where the scp contained 'range specifiers' (things in square brackets
+// identifying parts of objects like matrices), use this function to separate
+// the input string 'line' (e.g "1.ark:100[1:2,2:10]") into the data_rxfilename
+// (e.g. "1.ark:100") and the optional range specifier which will be everything
+// inside the square brackets.  It returns true if everything seems OK, and
+// false if for example the string contained more than one '['.  This function
+// should only be called if 'line' ends in '[', otherwise it is an error.
+bool ExtractRangeSpecifier(const std::string &line,
                            std::string *data_rxfilename,
                            std::string *range);
 
@@ -99,8 +101,10 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
 
   SequentialTableReaderScriptImpl(): state_(kUninitialized) { }
 
+  // You may call Open from states kUninitialized and kError.
+  // It may leave the object in any of the states.
   virtual bool Open(const std::string &rspecifier) {
-    if (state_ != kUninitialized)
+    if (state_ != kUninitialized && state_ != kError)
       if (!Close())  // call Close() yourself to suppress this exception.
         KALDI_ERR << "Error closing previous input: "
                   << "rspecifier was " << rspecifier_;
@@ -117,49 +121,40 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
     } else {  // Open succeeded.
       if (binary) {
         KALDI_WARN << "Script file should not be binary file.";
-        state_ = kError;  // bad script file.
-        script_input_.Close();
+        SetErrorState();
         return false;
       } else {
         state_ = kFileStart;
         Next();
-        if (state_ == kError) {
-          script_input_.Close();
+        if (state_ == kError)
           return false;
-        }
-        if (opts_.permissive) {  // Next() will have preloaded.
-          KALDI_ASSERT(state_ == kLoadSucceeded || state_ == kEof);
-        } else {
-          KALDI_ASSERT(state_ == kHaveScpLine || state_ == kEof);
-        }
-        return true;  // Success.
+        // any other status, including kEof, is OK from the point of view of
+        // the 'open' function (empty scp file is not inherently an error).
+        return true;
       }
     }
   }
 
   virtual bool IsOpen() const {
     switch (state_) {
-      case kEof: case kError: case kHaveScpLine: case kLoadSucceeded:
-      case kLoadFailed: return true;
-      case kUninitialized:  return false;
-      default: KALDI_ERR << "IsOpen() called on invalid object.";  // kFileStart
-                                                                 // is not valid
-        // state for user to call something on.
+      case kEof: case kHaveScpLine: case kHaveObject: case kHaveRange:
+        return true;
+      case kUninitialized: case kError:
+        return false;
+      default: KALDI_ERR << "IsOpen() called on invalid object.";
+        // note: kFileStart is not a valid state for the user to call a member
+        // function (we never return from a public function in this state).
         return false;
     }
   }
 
   virtual bool Done() const {
     switch (state_) {
-      case kHaveScpLine: case kLoadSucceeded: case kLoadFailed:
-      case kRangeExtracted: case kRangeExtractionFailed: return false;
-        // These cases are because we want EnsureObjectLoaded()
-        // to be callable after Next() and to not change the Done() status
-        // [only Next() should change the Done() status].
+      case kHaveScpLine: case kHaveObject: case kHaveRange: return false;
       case kEof: case kError: return true;  // Error condition, like Eof, counts
         // as Done(); the destructor/Close() will inform the user of the error.
       default: KALDI_ERR << "Done() called on TableReader object at the wrong"
-                            " time.";
+          " time.";
         return false;
     }
   }
@@ -167,77 +162,75 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
   virtual std::string Key() {
     // Valid to call this whenever Done() returns false.
     switch (state_) {
-      case kHaveScpLine: case kLoadSucceeded: case kLoadFailed:
-      case kRangeExtracted: case kRangeExtractionFailed: break;
+      case kHaveScpLine: case kHaveObject: case kHaveRange: break;
       default:
         // coding error.
         KALDI_ERR << "Key() called on TableReader object at the wrong time.";
     }
     return key_;
   }
-  const T &Value() {
-    StateType orig_state = state_;
-    EnsureObjectLoaded();  // Takes state_ to kLoadSucceeded/kRangeExtracted
-    // or kLoadFailed/kRangeExtractionFailed.
-    if (state_ == kLoadFailed) {
-      // a file listed in an scp file not existing, or
-      // read failure, failure of a command, etc.
-      if (orig_state == kHaveScpLine)
-        KALDI_ERR << "Failed to load object from "
-                  << PrintableRxfilename(data_rxfilename_)
-                  << " (to suppress this error, add the permissive "
-                  << "(p, ) option to the rspecifier.";
 
-      else  // orig_state_ was kLoadFailed, which only could have happened
-        // if the user called FreeCurrent().
-        KALDI_ERR << "You called Value() after FreeCurrent().";
-    } else if (state_ == kRangeExtractionFailed) {
+  const T &Value() {
+    if (!EnsureObjectLoaded())
       KALDI_ERR << "Failed to load object from "
-                << PrintableRxfilename(data_rxfilename_) 
-                << " [" << range_ << "] "
+                << PrintableRxfilename(data_rxfilename_)
                 << " (to suppress this error, add the permissive "
                 << "(p, ) option to the rspecifier.";
-    } else if (state_ != kLoadSucceeded && state_ != kRangeExtracted) {
-      // This would be a coding error.
-      KALDI_ERR << "Value() called at the wrong time.";
-    }
-    if (state_ == kRangeExtracted) {
+    // Because EnsureObjectLoaded() returned with success, we know
+    // that if range_ is nonempty (i.e. a range was requested), the
+    // state will be kHaveRange.
+    if (state_ == kHaveRange) {
       return range_holder_.Value();
     } else {
-      // Here state_ is kLoadSucceeded.
+      KALDI_ASSERT(state_ == kHaveObject);
       return holder_.Value();
     }
   }
 
   void FreeCurrent() {
-    if (state_ == kLoadSucceeded) {
+    if (state_ == kHaveObject) {
       holder_.Clear();
-      state_ = kLoadFailed;
-    } else if (state_ == kRangeExtracted) {
+      state_ = kHaveScpLine;
+    } else if (state_ == kHaveRange) {
       range_holder_.Clear();
-      state_ = kRangeExtractionFailed;
+      state_ = kHaveObject;
     } else {
       KALDI_WARN << "FreeCurrent called at the wrong time.";
     }
   }
 
   void SwapHolder(Holder *other_holder) {
-    // call Value() to ensure we have a value, and ignore its return value
-    // while suppressing compiler warnings by casting to void.
+    // call Value() to ensure we have a value, and ignore its return value while
+    // suppressing compiler warnings by casting to void.  It will cause the
+    // program to die with KALDI_ERR if we couldn't get a value.
     (void) Value();
-    if (state_ == kLoadSucceeded) {
+    // At this point we know that we successfully loaded an object,
+    // and if there was a range specified, it's in range_holder_.
+    if (state_ == kHaveObject) {
       holder_.Swap(other_holder);
-      state_ = kLoadFailed;
-    } else if (state_ == kRangeExtracted) {
+      state_ = kHaveScpLine;
+    } else if (state_ == kHaveRange) {
       range_holder_.Swap(other_holder);
-      state_ = kLoadSucceeded;
+      state_ = kHaveObject;
       // This indicates that we still have the base object (but no range).
     } else {
-      KALDI_ERR << "SwapHolder called at the wrong time "
-                   "(error related to ',bg' modifier).";
+      KALDI_ERR << "Code error";
     }
+    // Note: after this call there may be some junk left in range_holder_ or
+    // holder_, but it won't matter.  We avoid calling Clear() on them, as this
+    // function needs to be lightweight for the 'bg' feature to work well.
   }
 
+  // Next goes to the next object.
+  // It can leave the object in most of the statuses, but
+  // the only circumstances under which it will return are:
+  //  either:
+  //  - if Done() returned true, i.e. kError or kEof.
+  //  or:
+  //  - in non-permissive mode, status kHaveScpLine or kHaveObjecct
+  //  - in permissive mode, only when we successfully have an object,
+  //    which means either (kHaveObject and range_.empty()), or
+  //    kHaveRange.
   void Next() {
     while (1) {
       NextScpLine();
@@ -248,27 +241,25 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
         if (EnsureObjectLoaded()) return;  // Success.
         // else try the next scp line.
       } else {
-        return;  // We go the next key; Value() will crash if we can't
-        // read the scp line.
+        return;  // We go the next key; Value() will crash if we can't read the
+                 // object on the scp line.
       }
     }
   }
 
+  // This function may be entered at in any state.  At exit, the object will be
+  // in state kUninitialized.  It only returns false in the situation where we
+  // were at the end of the stream (kEof) and the script_input_ was a pipe and
+  // it ended with error status; this is so that we can catch errors from
+  // programs that we invoked via a pipe.
   virtual bool Close() {
-    // To clean up, Close() also closes the Input objects if
-    // they're open. It will succeed if the stream was not in an error state,
-    // and the script_input isn't in an error state, 
-    // if we've found eof in the script file.
     int32 status = 0;
     if (script_input_.IsOpen())
       status = script_input_.Close();
     if (data_input_.IsOpen())
       data_input_.Close();
-    if (state_ == kLoadSucceeded ||
-        state_ == kRangeExtracted || state_ == kRangeExtractionFailed) {
-      range_holder_.Clear();
-      holder_.Clear();
-    }
+    range_holder_.Clear();
+    holder_.Clear();
     if (!this->IsOpen())
       KALDI_ERR << "Close() called on input that was not open.";
     StateType old_state = state_;
@@ -285,11 +276,11 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
       return true;
     }
     // Possible states                                          Return value
-    // kLoadedSucceeded/kRangeExtracted/kRangeExtractionFailed  true
+    // kLoadSucceeded/kRangeSucceeded/kRangeFailed              true
     // kError (if opts_.permissive)                             true
     // kError (if !opts_.permissive)                            false
-    // kEof (if script_input_.Close() && !opts.permissive)      false     
-    // kEof (if !script_input_.Close() || opts.permissive)      true     
+    // kEof (if script_input_.Close() && !opts.permissive)      false
+    // kEof (if !script_input_.Close() || opts.permissive)      true
     // kUninitialized/kFileStart/kHaveScpLine                   true
     // kUnitialized                                             true
   }
@@ -300,158 +291,193 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
                       << PrintableRxfilename(script_rxfilename_);
   }
  private:
-  bool EnsureObjectLoaded() {
-    // state_ == kRangeExtracted or kRangeExtractionFailed means
-    // everything that needs to be done has been already done.
-    if (state_ == kRangeExtracted)
-      return true;
-    if (state_ == kRangeExtractionFailed)
-      return false;
 
-    // Attempts to load object whose rxfilename is on the current scp line.
-    if (state_ == kHaveScpLine) {
+  // Function EnsureObjectLoaded() ensures that we have fully loaded any object
+  // (including object range) associated with the current key, and returns true
+  // on success (i.e. we have the object) and false on failure.
+  //
+  // Possible entry states: kHaveScpLine, kLoadSucceeded, kRangeSucceeded
+  //
+  // Possible exit states: kHaveScpLine, kLoadSucceeded, kRangeSucceeded.
+  //
+  // Note: the return status has information that cannot be deduced from
+  // just the exit state.  If the object could not be loaded we go to state
+  // kHaveScpLine but return false; and if the range was requested but
+  // could not be extracted, we go to state kLoadSucceeded but return false.
+  bool EnsureObjectLoaded() {
+    if (!(state_ == kHaveScpLine || state_ == kHaveObject ||
+          state_ == kHaveRange))
+      KALDI_ERR << "Invalid state (code error)";
+
+    if (state_ == kHaveScpLine) {  // need to load the object into holder_.
       bool ans;
       // note, NULL means it doesn't read the binary-mode header
       if (Holder::IsReadInBinary()) {
-        KALDI_LOG << data_rxfilename_;
         ans = data_input_.Open(data_rxfilename_, NULL);
       } else {
         ans = data_input_.OpenTextMode(data_rxfilename_);
       }
       if (!ans) {
-        // May want to make this warning a VLOG at some point
         KALDI_WARN << "Failed to open file "
                    << PrintableRxfilename(data_rxfilename_);
-        state_ = kLoadFailed;
         return false;
       } else {
         if (holder_.Read(data_input_.Stream())) {
-          if (range_.empty()) {
-            state_ = kLoadSucceeded;
-            return true;
-          } // o.w. we'll go ahead to extract the partial object
-            // into range_holder_.
+          state_ = kHaveObject;
         } else {  // holder_ will not contain data.
           KALDI_WARN << "Failed to load object from "
                      << PrintableRxfilename(data_rxfilename_);
-          state_ = kLoadFailed;
           return false;
         }
       }
-    } else if (state_ != kLoadSucceeded) {
-      KALDI_ERR << "EnsureObjectLoaded() called at the wrong time.";
     }
-
-    // Here state_ == kLoadSucceeded, we will just 
-    // extract the range_holder_ from holder_ according to the range_ specifier,
-    // e.g. [1:3,4:8], or just return true if range_ is empty.
-    if (range_.empty()) return true;
-    if (!holder_.ExtractRange(&range_holder_, range_)) {
-      KALDI_WARN  << "Failed to load object from "
-                  << PrintableRxfilename(data_rxfilename_) 
-                  << "[" << range_ << "]";
-      state_ = kRangeExtractionFailed;
-      return false;
-    } else {
-      state_ = kRangeExtracted;
+    // OK, at this point the state must be either
+    // kHaveObject or kHaveRange.
+    if (range_.empty()) {
+      // if range_ is the empty string, we should not be in the state
+      // kHaveRange.
+      KALDI_ASSERT(state_ == kHaveObject);
       return true;
     }
-    // Possible states                              Return value
-    // kLoadSucceeded/kRangeExtracted true
-    // kLoadFailed/kRangeExtractionFailed           false
+    // range_ is nonempty.
+    if (state_ == kHaveRange) {
+      // range was already extracted, so there nothing to do.
+      return true;
+    }
+    // OK, range_ is nonempty and state_ is kHaveObject.  We attempt to extract
+    // the range object.  Note: ExtractRange() will throw with KALDI_ERR if the
+    // object type doesn't support ranges.
+    if (!range_holder_.ExtractRange(holder_, range_)) {
+      KALDI_WARN  << "Failed to load object from "
+                  << PrintableRxfilename(data_rxfilename_)
+                  << "[" << range_ << "]";
+      return false;
+    } else {
+      state_ = kHaveRange;
+      return true;
+    }
   }
+
+  void SetErrorState() {
+    state_ = kError;
+    script_input_.Close();
+    data_input_.Close();
+    holder_.Clear();
+    range_holder_.Clear();
+  }
+
   // Reads the next line in the script file.
+  // Possible entry states: kHaveObject, kHaveRange, kHaveScpLine, kFileStart.
+  // Possible exit states: kEof, kError, kHaveScpLine, kHaveObject.
   void NextScpLine() {
-    StateType old_state = state_;
-    switch (state_) {
-      case kLoadSucceeded:      
-      case kRangeExtracted: case kRangeExtractionFailed:
-      case kHaveScpLine: case kLoadFailed: case kFileStart: break;
+    switch (state_) {  // Check and simplify the state.
+      case kHaveRange:
+        range_holder_.Clear();
+        state_ = kHaveObject;
+        break;
+      case kHaveScpLine: case kHaveObject: case kFileStart: break;
       default:
         // No other states are valid to call Next() from.
         KALDI_ERR << "Reading script file: Next called wrongly.";
     }
+    // at this point the state will be kHaveObject, kHaveScpLine, or kFileStart.
     std::string line;
     if (getline(script_input_.Stream(), line)) {
       // After extracting "key" from "line", we put the rest
-      // of "line" into "rest", and then extract data_rxfilename_ 
+      // of "line" into "rest", and then extract data_rxfilename_
       // (e.g. 1.ark:100) and possibly the range_ specifer
       // (e.g. [1:2,2:10]) from "rest".
-      std::string data_rxfilename_next, rest;
+      std::string data_rxfilename, rest;
       SplitStringOnFirstSpace(line, &key_, &rest);
       if (!key_.empty() && !rest.empty()) {
         // Got a valid line.
-        state_ = kHaveScpLine;
         if (rest[rest.size()-1] == ']') {
-          if(!ExtractRangeSpecifier(rest, &data_rxfilename_next, &range_)) {
-            // Got an invalid line.
-            state_ = kError;  // we can't make sense of this
-            // scp file and will now die.
+          if(!ExtractRangeSpecifier(rest, &data_rxfilename, &range_)) {
+            KALDI_WARN << "Reading rspecifier '" << rspecifier_
+                       << ", cannot make sense of scp line "
+                       << line;
+            SetErrorState();
+            return;
           }
         } else {
-          data_rxfilename_next = rest;
+          data_rxfilename = rest;
           range_ = "";
         }
-        range_holder_.Clear();
-        if (old_state == kLoadSucceeded || old_state == kRangeExtracted ||
-            old_state == kRangeExtractionFailed) {
-          if (data_rxfilename_ == data_rxfilename_next) {
-            state_ = kLoadSucceeded;
-          } else {
+        bool filenames_equal = (data_rxfilename_ == data_rxfilename);
+        if (!filenames_equal)
+          data_rxfilename_ = data_rxfilename;
+        if (state_ == kHaveObject) {
+          if (!filenames_equal) {
             holder_.Clear();
+            state_ = kHaveScpLine;
           }
+          // else leave state_ at kHaveObject and leave the object in the
+          // holder.
+        } else {
+          state_ = kHaveScpLine;
         }
-        data_rxfilename_ = data_rxfilename_next;
       } else {
         KALDI_WARN << "We got an invalid line in the scp file. "
-                   << "(it should be like: some_key 1.ark:10)";
-        // Got an invalid line.
-        state_ = kError;  // we can't make sense of this
-        // scp file and will now die.
+                   << "It should look like: some_key 1.ark:10, got: "
+                   << line;
+        SetErrorState();
       }
     } else {
-      state_ = kEof;  // nothing more in the scp file.
-      // Might as well close the input streams as don't need them.
+      state_ = kEof;  // there is nothing more in the scp file.  Might as well
+                      // close input streams as we don't need them.
       script_input_.Close();
       if (data_input_.IsOpen())
         data_input_.Close();
+      holder_.Clear();  // clear the holder if it was nonempty.
+      range_holder_.Clear();  // clear the range holder if it was nonempty.
     }
   }
 
-  Input script_input_;  // Input object for the .scp file
-  Input data_input_;   // Input object for the entries in
-  // the script file.
-  Holder holder_;  // Holds the object.
-  Holder range_holder_; // Holds the partial object corresponding to the object
-  // range specifier 'range_'. this is only used when 'range_' is specified. 
-  bool binary_;  // Binary-mode archive.
-  std::string key_;
-  std::string rspecifier_;
-  std::string script_rxfilename_;  // of the script file.
+  std::string rspecifier_;  // the rspecifier that this class was opened with.
   RspecifierOptions opts_;  // options.
-  std::string data_rxfilename_;  // of the file we're reading.
-  std::string range_; // range with which we extract range_holder_ from holder_.
+  std::string script_rxfilename_;  // rxfilename of the script file.
+
+  Input script_input_;  // Input object for the .scp file
+  Input data_input_;   // Input object for the entries in the script file;
+                       // we make this a class member instead of a local variable,
+                       // so that rspecifiers of the form filename:byte-offset,
+                       // e.g. foo.ark:12345, can be handled using fseek().
+
+  Holder holder_;       // Holds the object.
+  Holder range_holder_; // Holds the partial object corresponding to the object
+                        // range specifier 'range_'; this is only used when
+                        // 'range_' is specified, i.e. when the .scp file
+                        // contains lines of the form rspecifier[range], like
+                        // foo.ark:242[0:9] (representing a row range of a
+                        // matrix).
+
+
+  std::string key_;  // the key of the current scp line we're processing
+  std::string data_rxfilename_;  // the rxfilename corresponding to the current key
+  std::string range_;  // the range of object corresponding to the current key, if an
+                       // object range was specified in the script file, else "".
+
   enum StateType {
-    //       [The state of the reading process]    [does holder_ [is script_inp_
-    //                                                      have object]   open]
-    kUninitialized,  // Uninitialized or closed.                  no          no
-    kEof,     // We did Next() and found eof in script file.      no          no
-    kError,   // Some other error                                 no         yes
-    kHaveScpLine,  // Just called Open() or Next() and have a     no         yes
-    // line of the script file but no data.
-    kLoadSucceeded,  // Called EnsureObjectLoaded() and 
-    // it succeeded.                                             yes         yes
-    kLoadFailed,  // Called EnsureObjectLoaded() and it failed,   no         yes
-    // or the user called FreeCurrent().. note,
-    // if when called by user we are in this state,
-    // it means the user called FreeCurrent().
-    kRangeExtracted, // we successfully extracte the partial     yes         yes
-    // object.
-    kRangeExtractionFailed, // we failed to extract the partial  yes         yes
-    // object.
-    kFileStart,        // [state we only use internally]          no         yes
+    //  Summary of the states this object can be in (state_).
+    //
+    //                (*) Does holder_ contain the object corresponding to
+    //                    data_rxfilename_ ?
+    //                    (*) Does range_holder_ contain a range object?
+    //                         (*) is script_input_ open?
+    //                             (*) are key_, data_rxfilename_ and range_ [if applicable] set?
+    //
+    kUninitialized, // no  no  no  no            Uninitialized or closed object.
+    kFileStart,     // no  no  yes no            We just opened the .scp file (we'll never be in this
+                    //                           state when a user-visible function is called.)
+    kEof,           // no  no  no  no            We did Next() and found eof in script file.
+    kError,         // no  no  no  no            Error reading or parsing script file.
+    kHaveScpLine,   // no  no  yes yes           Have a line of the script file but nothing else.
+    kHaveObject,    // yes no  yes yes           holder_ contains an object but range_holder_ does not.
+    kHaveRange,     // yes yes yes yes           we have the range object in range_holder_ (implies
+                    //                           range_ nonempty).
   } state_;
- private:
+
+
 };
 
 
@@ -629,7 +655,7 @@ template<class Holder>  class SequentialTableReaderArchiveImpl:
                    "(error related to ',bg' modifier).";
     }
   }
-  
+
   virtual bool Close() {
     // To clean up, Close() also closes the Input object if
     // it's open. It will succeed if the stream was not in an error state,
@@ -659,7 +685,7 @@ template<class Holder>  class SequentialTableReaderArchiveImpl:
   }
 
   virtual ~SequentialTableReaderArchiveImpl() {
-    if (this->IsOpen() && !Close())    
+    if (this->IsOpen() && !Close())
       KALDI_ERR << "TableReader: error detected closing archive "
                 << PrintableRxfilename(archive_rxfilename_);
   }
@@ -1599,7 +1625,7 @@ class RandomAccessTableReaderScriptImpl:
 
   virtual bool Open(const std::string &rspecifier) {
     switch (state_) {
-      case kNotHaveObject: case kHaveObject: case kGaveObject:
+      case kNotHaveObject: case kHaveObject: case kHaveRange:
         KALDI_ERR << " Opening already open RandomAccessTableReader:"
                      " call Close first.";
       case kUninitialized: case kNotReadScript:
@@ -1627,7 +1653,7 @@ class RandomAccessTableReaderScriptImpl:
     // archive rather than a script.
     if (!opts_.sorted)
       std::sort(script_.begin(), script_.end());
-    for (size_t i = 0; i+1 < script_.size(); i++) {
+    for (size_t i = 0; i + 1 < script_.size(); i++) {
       if (script_[i].first.compare(script_[i+1].first) >= 0) {
         // script[i] not < script[i+1] in lexical order...
         bool same = (script_[i].first == script_[i+1].first);
@@ -1640,12 +1666,13 @@ class RandomAccessTableReaderScriptImpl:
       }
     }
     state_ = kNotHaveObject;
+    key_ = "";  // make sure we don't have a key set
     return true;
   }
 
   virtual bool IsOpen() const {
     return  (state_ == kNotHaveObject || state_ == kHaveObject ||
-             state_ == kGaveObject);
+             state_ == kHaveRange);
   }
 
   virtual bool Close() {
@@ -1657,12 +1684,11 @@ class RandomAccessTableReaderScriptImpl:
     state_ = kUninitialized;
     last_found_ = 0;
     script_.clear();
-    current_key_ = "";
+    key_ = "";
     range_ = "";
     data_rxfilename_ = "";
-    // This one cannot fail because any errors of a "global"
-    // nature would have been detected when we did Open().
-    // With archives it's different.
+    // This cannot fail because any errors of a "global" nature would have been
+    // detected when we did Open().  With archives it's different.
     return true;
   }
 
@@ -1677,133 +1703,128 @@ class RandomAccessTableReaderScriptImpl:
   // Write returns true on success, false on failure, but
   // some errors may not be detected till we call Close().
   virtual const T&  Value(const std::string &key) {
-    if (!IsOpen())
-      KALDI_ERR << "Value() called on non-open object.";
-
-    if (!((state_ == kHaveObject || state_ == kGaveObject) &&
-           key == current_key_)) {  // Not already stored...
-      bool has_key = HasKeyInternal(key, true);  // preload.
-      if (!has_key)
-        KALDI_ERR << "Could not get item for key " << key
-                  << ", rspecifier is " << rspecifier_ << "[to ignore this, "
-                  << "add the p, (permissive) option to the rspecifier.";
-      KALDI_ASSERT(state_ == kHaveObject && key == current_key_);
-    }
+    if (!HasKeyInternal(key, true)) // true == preload.
+      KALDI_ERR << "Could not get item for key " << key
+                << ", rspecifier is " << rspecifier_ << "[to ignore this, "
+                << "add the p, (permissive) option to the rspecifier.";
+    KALDI_ASSERT(key_ == key);
     if (state_ == kHaveObject) {
-      state_ = kGaveObject;
-      if (opts_.once) MakeTombstone(key);  // make sure that future lookups fail
-    } else {  // state_ == kGaveObject
-      if (opts_.once)
-        KALDI_ERR << "Value called twice for the same key and ,o (once) option "
-                  << "is used: rspecifier is " << rspecifier_;
-    }
-    if (!range_.empty()) {
-      // we extract range_holder_ from holder_ according to the range_ specifier,
-      // e.g. [1:3,4:8].
-      if (!holder_.ExtractRange(&range_holder_, range_)) {
-        KALDI_ERR  << "Failed to extract partial object with range " << range_;
-      }
-      return range_holder_.Value();
-    } else {
       return holder_.Value();
+    } else {
+      KALDI_ASSERT(state_ == kHaveRange);
+      return range_holder_.Value();
     }
   }
 
-  virtual ~RandomAccessTableReaderScriptImpl() {
-    if (state_ == kHaveObject || state_ == kGaveObject) {
-      holder_.Clear();
-      data_rxfilename_ = "";
-    }
-  }
+  virtual ~RandomAccessTableReaderScriptImpl() { }
 
  private:
+
   // HasKeyInternal when called with preload == false just tells us whether the
   // key is in the scp.  With preload == true, which happens when the ,p
-  // (permissive) option is given in the rspecifier, it will also check that we
-  // can preload the object from disk (loading from the rxfilename in the scp),
-  // and only return true if we can.  This function is called both from HasKey
-  // and from Value().
+  // (permissive) option is given in the rspecifier (or when called from
+  // Value()), it will also check that we can preload the object from disk
+  // (loading from the rxfilename in the scp), and only return true if we can.
+  // This function is called both from HasKey and from Value().
   virtual bool HasKeyInternal(const std::string &key, bool preload) {
     switch (state_) {
       case kUninitialized: case kNotReadScript:
         KALDI_ERR << "HasKey called on RandomAccessTableReader object that is"
                      " not open.";
-      case kHaveObject: case kGaveObject:
-        if (key == current_key_)
+      case kHaveObject:
+        if (key == key_ && range_.empty())
           return true;
         break;
-      default: break;
+      case kHaveRange:
+        if (key == key_)
+          return true;
+        break;
+      case kNotHaveObject: default: break;
     }
     KALDI_ASSERT(IsToken(key));
-    size_t key_pos = 0;  // set to zero to suppress warning
-    bool ans = LookupKey(key, &key_pos);
-    if (!ans) {
+    size_t key_pos = 0;
+    if (!LookupKey(key, &key_pos)) {
       return false;
     } else {
-      // First do a check regarding the "once" option.
-      if (opts_.once && script_[key_pos].second == "") {  // A "tombstone";
-        // user is asking about already-read key.
-        KALDI_ERR << "HasKey called on key whose value was already read, and "
-            " you specified the \"once\" option (o, ): try removing o, or "
-            "adding no, : rspecifier is " << rspecifier_;
-      }
       if (!preload) {
-        return true;  // we have the key.
-      } else {  // preload specified, so we have to pre-load the object before
-              // returning true.
-        std::string data_rxfilename; // We will split filename 
-        // script_[key_pos].second into data_rxfilename (e.g. 1.ark:100) 
-        // and range_(if any, e.g. [1:2,2:10]).
-        
+        return true;  // we have the key, and were not asked to verify that the
+                      // object could be read.
+      } else {  // preload specified, so we have to attempt to pre-load the
+                // object before returning.
+        std::string data_rxfilename, range; // We will split
+        // script_[key_pos].second (e.g. "1.ark:100[0:2]" into data_rxfilename
+        // (e.g. "1.ark:100") and range (if any), e.g. "0:2".
         if (script_[key_pos].second[script_[key_pos].second.size()-1] == ']') {
           if(!ExtractRangeSpecifier(script_[key_pos].second,
                                     &data_rxfilename,
-                                    &range_)) {
-            KALDI_WARN << "TableReader: fail to parse file name "
-                       << PrintableRxfilename(script_[key_pos].second);
-            return false;
+                                    &range)) {
+            KALDI_ERR << "TableReader: failed to parse range in '"
+                      << script_[key_pos].second << "'";
           }
         } else {
           data_rxfilename = script_[key_pos].second;
-          if (!range_.empty()) {
-            range_ = "";
-            range_holder_.Clear(); 
+        }
+        if (state_ == kHaveRange) {
+          if (data_rxfilename_ == data_rxfilename && range_ == range) {
+            // the odd situation where two keys had the same rxfilename and range:
+            // just change the key and keep the object.
+            key_ = key;
+            return true;
+          } else {
+            range_holder_.Clear();
+            state_ = kHaveObject;
           }
         }
-        // we only need to update holder_ if the new data_rxfilename is
-        // different from the current data_rxfilename we have.
-        if (data_rxfilename != data_rxfilename_) {
+        // OK, at this point the state will be kHaveObject or kNotHaveObject.
+        if (state_ == kHaveObject) {
+          if (data_rxfilename_ != data_rxfilename) {
+            // clear out the object.
+            state_ = kNotHaveObject;
+            holder_.Clear();
+          }
+        }
+        // At this point we can safely switch to the new key, data_rxfilename
+        // and range, and we know that if we have an object, it will already be
+        // the correct one.  The state is now kHaveObject or kNotHaveObject.
+        key_ = key;
+        data_rxfilename_ = data_rxfilename;
+        range_ = range;
+        if (state_ == kNotHaveObject) {
+          // we need to read the object.
           if (!input_.Open(data_rxfilename)) {
             KALDI_WARN << "Error opening stream "
                        << PrintableRxfilename(data_rxfilename);
             return false;
           } else {
-            data_rxfilename_ = data_rxfilename;
             if (holder_.Read(input_.Stream())) {
               state_ = kHaveObject;
-              current_key_ = key;
-              return true;
             } else {
               KALDI_WARN << "Error reading object from "
-                  "stream " << PrintableRxfilename(script_[key_pos].second);
-              state_ = kNotHaveObject;
+                  "stream " << PrintableRxfilename(data_rxfilename);
               return false;
             }
           }
         }
-        current_key_ = key;
-        state_ = kHaveObject;
-        return true;
+        // At this point the state is kHaveObject.
+        if (range.empty())
+          return true;  // we're done: no range was requested.
+        if (range_holder_.ExtractRange(holder_, range)) {
+          state_ = kHaveRange;
+          return true;
+        } else {
+          KALDI_WARN  << "Failed to load object from "
+                      << PrintableRxfilename(data_rxfilename)
+                      << "[" << range << "]";
+          // leave state at kHaveObject.
+          return false;
+        }
       }
     }
   }
-  void MakeTombstone(const std::string &key) {
-    size_t offset;
-    if (!LookupKey(key, &offset))
-      KALDI_ERR << "RandomAccessTableReader object in inconsistent state.";
-    else
-      script_[offset].second = "";
-  }
+
+  // This function attempts to look up the key "key" in the sorted array
+  // script_.  If it was found it returns true and puts the array offset into
+  // 'script_offset'; otherwise it returns false.
   bool LookupKey(const std::string &key, size_t *script_offset) {
     // First, an optimization: if we're going consecutively, this will
     // make the lookup very fast.  Since we may call HasKey and then
@@ -1834,19 +1855,26 @@ class RandomAccessTableReaderScriptImpl:
 
 
   Input input_;  // Use the same input_ object for reading each file, in case
-  // the scp specifies offsets in an archive so we can keep the same file open.
+                 // the scp specifies offsets in an archive so we can keep the
+                 // same file open.
   RspecifierOptions opts_;
-  std::string rspecifier_;  // rspecifier used to open it; used in debug
-                            // messages
-  std::string script_rxfilename_;  // filename of script.
+  std::string rspecifier_;  // rspecifier used to open this object; used in
+                            // debug messages
+  std::string script_rxfilename_;  // rxfilename of script file that we read.
 
-  std::string current_key_;  // Key of object in holder_
+  std::string key_;  // The current key of the object that we have, but see the
+                     // notes regarding states_ for more explanation of the
+                     // semantics.
+
   Holder holder_;
   Holder range_holder_; // Holds the partial object corresponding to the object
-  // range specifier 'range_'. this is only used when 'range_' is specified. 
+                        // range specifier 'range_'. this is only used when
+                        // 'range_' is specified.
   std::string range_; // range within which we read the object from holder_.
-  std::string data_rxfilename_;  // the rxfilename that's used to read the
-  // object into holder_, and will be nonempty whenever holder_ is nonempty.
+                      // If key_ is set, always correspond to the key.
+  std::string data_rxfilename_;  // the rxfilename corresponding to key_,
+                                 // always set when key_ is set.
+
 
   // the script_ variable contains pairs of (key, filename), sorted using
   // std::sort.  This can be used with binary_search to look up filenames for
@@ -1858,17 +1886,23 @@ class RandomAccessTableReaderScriptImpl:
   std::vector<std::pair<std::string, std::string> > script_;
   size_t last_found_;  // This is for an optimization used in FindFilename.
 
-  enum {  //           [Do we have          [Does holder_
-    //                script_ set up?]      contain object?]
-    kUninitialized,  //    no                     no
-    kNotReadScript,  //    no                     no
-    kNotHaveObject,  //   yes                     no
-    kHaveObject,   //     yes                    yes
-    kGaveObject,   //     yes                    yes
-    // [kGaveObject is as kHaveObject but we note that the
-    //  user has already read it; this is for checking that
-    // if "once" is specified, the user actually only reads
-    // it once.
+  enum {
+    //                   (*) is script_ set up?
+    //                          (*) does holder_ contain an object?
+    //                               (*) does range_holder_ contain and object?
+    //
+    //
+    kUninitialized,  //    no    no    no
+    kNotReadScript,  //    no    no    no
+    kNotHaveObject,  //    yes   no    no
+    kHaveObject,     //    yes   yes   no
+    kHaveRange,      //    yes   yes   yes
+
+    // If we are in a state where holder_ contains an object, it always contains
+    // the object from 'key_', and the corresponding rxfilename is always
+    // 'data_rxfilename_'.  If range_holder_ contains an object, it always
+    // corresponds to the range 'range_' of the object in 'holder_', and always
+    // corresponds to the current key.
   } state_;
 };
 

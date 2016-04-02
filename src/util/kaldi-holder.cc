@@ -27,11 +27,11 @@ template<class Real>
 bool ExtractObjectRange(const Matrix<Real> &input, const std::string &range,
                         Matrix<Real> *output) {
   if (range.empty()) {
-    KALDI_ERR << "Empty range specifier."; 
+    KALDI_ERR << "Empty range specifier.";
     return false;
   }
   std::vector<std::string> splits;
-  SplitStringToVector(range, ",", false, &splits);  
+  SplitStringToVector(range, ",", false, &splits);
   if (!((splits.size() == 1 && !splits[0].empty()) ||
         (splits.size() == 2  && !splits[0].empty() && !splits[1].empty()))) {
     KALDI_ERR << "Invalid range specifier: " << range;
@@ -53,10 +53,12 @@ bool ExtractObjectRange(const Matrix<Real> &input, const std::string &range,
     col_range.push_back(input.NumCols() - 1);
   }
   if (!(status && row_range.size() == 2 && col_range.size() == 2 &&
-        row_range[0] >= 0 && row_range[0] < row_range[1] &&
+        row_range[0] >= 0 && row_range[0] <= row_range[1] &&
         row_range[1] < input.NumRows() && col_range[0] >=0 &&
-        col_range[0] < col_range[1] && col_range[1] < input.NumCols())) {
-    KALDI_ERR << "Invalid range specifier: " << range;
+        col_range[0] <= col_range[1] && col_range[1] < input.NumCols())) {
+    KALDI_ERR << "Invalid range specifier: " << range
+              << " for matrix of size " << input.NumRows()
+              << "x" << input.NumCols();
     return false;
   }
   int32 row_size = row_range[1] - row_range[0] + 1,
