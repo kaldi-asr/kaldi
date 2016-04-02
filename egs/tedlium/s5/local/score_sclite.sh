@@ -48,6 +48,15 @@ nj=$(cat $dir/num_jobs)
 
 mkdir -p $dir/scoring/log
 
+if [ -f $dir/../frame_shift ]; then
+  frame_shift_opt="--frame-shift=$(cat $dir/../frame_shift)"
+  echo "$0: $dir/../frame_shift exists, using $frame_shift_opt"
+elif [ -f $dir/../frame_subsampling_factor ]; then
+  factor=$(cat $dir/../frame_subsampling_factor) || exit 1
+  frame_shift_opt="--frame-shift=0.0$factor"
+  echo "$0: $dir/../frame_subsampling_factor exists, using $frame_shift_opt"
+fi
+
 if [ $stage -le 0 ]; then
   for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
     $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.${wip}.log \
@@ -58,7 +67,7 @@ if [ $stage -le 0 ]; then
       lattice-prune --beam=$beam ark:- ark:- \| \
       lattice-align-words-lexicon --output-error-lats=true --max-expand=10.0 --test=false \
        $lang/phones/align_lexicon.int $model ark:- ark:- \| \
-      lattice-to-ctm-conf --decode-mbr=$decode_mbr ark:- - \| \
+      lattice-to-ctm-conf --decode-mbr=$decode_mbr $frame_shift_opt ark:- - \| \
       utils/int2sym.pl -f 5 $lang/words.txt \| \
       utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \| \
       sort -k1,1 -k2,2 -k3,3nb '>' $dir/score_LMWT_${wip}/ctm || exit 1;
