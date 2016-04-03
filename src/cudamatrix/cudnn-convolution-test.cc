@@ -37,7 +37,7 @@ static void UnitTestCudnnConvolutionForward() {
   CuDnnConvolution<Real> cudnnConv;
   // input tensor
   size_t nbDimsX = 5;
-  MatrixIndexT n_x = 100, c_x = 10, d_x = 50, h_x = 50, w_x = 50;
+  MatrixIndexT n_x = 50, c_x = 10, d_x = 50, h_x = 50, w_x = 50;
   MatrixIndexT dimX[] = {n_x, c_x, d_x, h_x, w_x};
   MatrixIndexT sizeX = 1;
   for (int32 i = 0; i < nbDimsX; i++) {
@@ -114,7 +114,7 @@ static void UnitTestCudnnConvolutionBackwardData() {
   CuDnnConvolution<Real> cudnnConv;
   // gradient w.r.t. input tensor
   size_t nbDimsX = 5;
-  MatrixIndexT n_x = 100, c_x = 10, d_x = 50, h_x = 50, w_x = 50;
+  MatrixIndexT n_x = 50, c_x = 10, d_x = 50, h_x = 50, w_x = 50;
   MatrixIndexT dimX[] = {n_x, c_x, d_x, h_x, w_x};
   MatrixIndexT sizeX = 1;
   for (int32 i = 0; i < nbDimsX; i++) {
@@ -191,7 +191,7 @@ static void UnitTestCudnnConvolutionBackwardFilter() {
   CuDnnConvolution<Real> cudnnConv;
   // input tensor
   size_t nbDimsX = 5;
-  MatrixIndexT n_x = 100, c_x = 10, d_x = 50, h_x = 50, w_x = 50;
+  MatrixIndexT n_x = 50, c_x = 10, d_x = 50, h_x = 50, w_x = 50;
   MatrixIndexT dimX[] = {n_x, c_x, d_x, h_x, w_x};
   MatrixIndexT sizeX = 1;
   for (int32 i = 0; i < nbDimsX; i++) {
