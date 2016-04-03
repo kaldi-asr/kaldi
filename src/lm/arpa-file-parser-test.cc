@@ -205,6 +205,14 @@ ngram 3=2\n\
 
 // \xCE\xB2 = UTF-8 for Greek beta, to churn some UTF-8 cranks.
 static std::string symbolic_lm = "\
+We also allow random text coming before the \\data\\\n\
+section marker. Even this is ok:\n\
+\n\
+\\1-grams:\n\
+\n\
+and should be ignored before the \\data\\ marker\n\
+is seen alone by itself on a line.\n\
+\n\
 \\data\\\n\
 ngram 1=4\n\
 ngram 2=2\n\
@@ -241,16 +249,16 @@ class TestSymbolTable : public fst::SymbolTable {
 // Full expected result shared between ReadSymbolicLmNoOovImpl and
 // ReadSymbolicLmWithOovAddToSymbols().
 NGramTestData expect_symbolic_full[] = {
-  {  7, -5.2, { 4, 0, 0 }, -3.3 },
-  {  8, -3.4, { 5, 0, 0 },  0.0 },
-  {  9,  0.0, { 1, 0, 0 }, -2.5 },
-  { 10, -4.3, { 2, 0, 0 },  0.0 },
+  { 15, -5.2, { 4, 0, 0 }, -3.3 },
+  { 16, -3.4, { 5, 0, 0 },  0.0 },
+  { 17,  0.0, { 1, 0, 0 }, -2.5 },
+  { 18, -4.3, { 2, 0, 0 },  0.0 },
 
-  { 13, -1.5, { 4, 5, 0 }, -3.2 },
-  { 14, -1.3, { 1, 4, 0 }, -4.2 },
+  { 21, -1.5, { 4, 5, 0 }, -3.2 },
+  { 22, -1.3, { 1, 4, 0 }, -4.2 },
 
-  { 17, -0.3, { 1, 4, 5 },  0.0 },
-  { 18, -0.2, { 1, 4, 2 },  0.0 } };
+  { 25, -0.3, { 1, 4, 5 },  0.0 },
+  { 26, -0.2, { 1, 4, 2 },  0.0 } };
 
 // This is run with all possible oov setting and yields same result.
 void ReadSymbolicLmNoOovImpl(ArpaParseOptions::OovHandling oov) {
@@ -312,16 +320,16 @@ void ReadSymbolicLmWithOovAddToSymbols() {
 
 void ReadSymbolicLmWithOovReplaceWithUnk() {
   NGramTestData expect_symbolic_unk_b[] = {
-    {  7, -5.2, { 4, 0, 0 }, -3.3 },
-    {  8, -3.4, { 3, 0, 0 },  0.0 },
-    {  9,  0.0, { 1, 0, 0 }, -2.5 },
-    { 10, -4.3, { 2, 0, 0 },  0.0 },
+    { 15, -5.2, { 4, 0, 0 }, -3.3 },
+    { 16, -3.4, { 3, 0, 0 },  0.0 },
+    { 17,  0.0, { 1, 0, 0 }, -2.5 },
+    { 18, -4.3, { 2, 0, 0 },  0.0 },
 
-    { 13, -1.5, { 4, 3, 0 }, -3.2 },
-    { 14, -1.3, { 1, 4, 0 }, -4.2 },
+    { 21, -1.5, { 4, 3, 0 }, -3.2 },
+    { 22, -1.3, { 1, 4, 0 }, -4.2 },
 
-    { 17, -0.3, { 1, 4, 3 },  0.0 },
-    { 18, -0.2, { 1, 4, 2 },  0.0 } };
+    { 25, -0.3, { 1, 4, 3 },  0.0 },
+    { 26, -0.2, { 1, 4, 2 },  0.0 } };
 
   TestSymbolTable symbols;
   ReadSymbolicLmWithOovImpl(ArpaParseOptions::kReplaceWithUnk,
@@ -332,13 +340,13 @@ void ReadSymbolicLmWithOovReplaceWithUnk() {
 
 void ReadSymbolicLmWithOovSkipNGram() {
   NGramTestData expect_symbolic_no_b[] = {
-    {  7, -5.2, { 4, 0, 0 }, -3.3 },
-    {  9,  0.0, { 1, 0, 0 }, -2.5 },
-    { 10, -4.3, { 2, 0, 0 },  0.0 },
+    { 15, -5.2, { 4, 0, 0 }, -3.3 },
+    { 17,  0.0, { 1, 0, 0 }, -2.5 },
+    { 18, -4.3, { 2, 0, 0 },  0.0 },
 
-    { 14, -1.3, { 1, 4, 0 }, -4.2 },
+    { 22, -1.3, { 1, 4, 0 }, -4.2 },
 
-    { 18, -0.2, { 1, 4, 2 },  0.0 } };
+    { 26, -0.2, { 1, 4, 2 },  0.0 } };
 
   TestSymbolTable symbols;
   ReadSymbolicLmWithOovImpl(ArpaParseOptions::kSkipNGram,
