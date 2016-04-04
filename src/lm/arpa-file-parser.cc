@@ -128,12 +128,10 @@ void ArpaFileParser::Read(std::istream &is, bool binary) {
   // Processes "\N-grams:" section.
   for (int32 cur_order = 1; cur_order <= ngram_counts_.size(); ++cur_order) {
     // Skips n-grams with zero count.
-    if (ngram_counts_[cur_order - 1] == 0) {
+    if (ngram_counts_[cur_order - 1] == 0)
       KALDI_WARN << "Zero ngram count in ngram order " << cur_order
                  << "(look for 'ngram " << cur_order << "=0' in the \\data\\ "
                  << " section). There is possibly a problem with the file.";
-      continue;
-    }
 
     // Must be looking at a \k-grams: directive at this point.
     std::ostringstream keyword;
