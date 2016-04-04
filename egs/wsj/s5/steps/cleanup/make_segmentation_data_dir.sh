@@ -164,6 +164,7 @@ steps/cleanup/create_segments_from_ctm.pl \
   --min-sil-length $min_sil_length \
   --separator $separator --special-symbol $special_symbol \
   --wer-cutoff $wer_cutoff \
+  --aligned-ctm-filename $new_data_dir/tmp/aligned_ctm \
   $new_data_dir/tmp/ctm $new_data_dir/tmp/aligned.txt \
   $new_data_dir/segments $new_data_dir/text
 

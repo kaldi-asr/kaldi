@@ -325,7 +325,7 @@ sub ProcessWav {
   # Save the aligned CTM if needed
   if(defined($ACT)){
     for (my $i=0; $i<=$#aligned_ctm; $i++) {
-      print $ACT "$aligned_ctm[$i][0] $aligned_ctm[$i][1] ";
+      print $ACT "$wav_id $aligned_ctm[$i][0] $aligned_ctm[$i][1] ";
       print $ACT "$aligned_ctm[$i][2] $aligned_ctm[$i][3]\n";
     }
   }
