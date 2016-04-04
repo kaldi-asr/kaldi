@@ -3,7 +3,9 @@
 # Apache 2.0
 
 # This script demonstrates kaldi decoding using pretrained model. It will decode list of wav files.
-# YOU MUST USE 16000 S16_LE format wav files.
+#
+# IMPORTANT: wav files must be in 16kHz, 16 bit little-endian format.
+#
 # This script tries to follow with what other scripts are doing in terms of directory structures and data handling.
 # 
 # Use ./download-model.sh script to download asr model
@@ -12,6 +14,10 @@
 . path.sh
 MODEL_DIR="exp/api.ai-model"
 DATA_DIR="data/test-corpus"
+
+echo "///////"
+echo "// IMPORTANT: wav files must be in 16kHz, 16 bit little-endian format."
+echo "//////";
 
 for file in final.mdl HCLG.fst words.txt frame_subsampling_factor; do
 	if [ ! -f $MODEL_DIR/$file ]; then
@@ -31,7 +37,7 @@ echo "// Computing mfcc and cmvn (cmvn is not really used)"
 echo "//////";
 
  steps/make_mfcc.sh --nj 1 --mfcc-config $MODEL_DIR/mfcc.conf \
-      --cmd "run.pl" $DATA_DIR exp/make_mfcc exp/mfcc || { echo "Unable to calculate mfcc, ensure 16000 S16_LE wav format or see log"; exit 1; };
+      --cmd "run.pl" $DATA_DIR exp/make_mfcc exp/mfcc || { echo "Unable to calculate mfcc, ensure 16kHz, 16 bit little-endian wav format or see log"; exit 1; };
     steps/compute_cmvn_stats.sh $DATA_DIR exp/make_mfcc/ exp/mfcc || exit 1;
 
 echo "///////"
