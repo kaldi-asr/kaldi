@@ -34,6 +34,9 @@ int main(int argc, char *argv[]) {
         "data/lang/words.txt lm/input.arpa G.fst\n";
     ParseOptions po(usage);
 
+    ArpaParseOptions options;
+    options.Register(&po);
+
     // Option flags.
     std::string bos_symbol = "<s>";
     std::string eos_symbol = "</s>";
@@ -66,7 +69,6 @@ int main(int argc, char *argv[]) {
     std::string arpa_rxfilename = po.GetArg(1),
         fst_wxfilename = po.GetOptArg(2);
 
-    ArpaParseOptions options;
     int64 disambig_symbol_id = 0;
 
     fst::SymbolTable* symbols;

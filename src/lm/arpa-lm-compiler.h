@@ -50,6 +50,7 @@ class ArpaLmCompiler : public ArpaFileParser {
   int sub_eps_;
   ArpaLmCompilerImplInterface* impl_;  // Owned.
   fst::StdVectorFst fst_;
+  template <class HistKey> friend class ArpaLmCompilerImpl;
 };
 
 }  // namespace kaldi
