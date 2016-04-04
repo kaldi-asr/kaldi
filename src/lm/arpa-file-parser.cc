@@ -83,18 +83,16 @@ void ArpaFileParser::Read(std::istream &is, bool binary) {
   while (++line_number_, getline(is, line) && !is.eof()) {
     if (line.empty()) continue;
 
-    // The section keywords starts with backslash. We terminate the while loop
-    // if a new section is found.
-    if (line[0] == '\\') {
-      if (!keyword_found && line == "\\data\\") {
+    // Continue skipping lines until the \data\ marker alone on a line is found.
+    if (!keyword_found) {
+      if (line == "\\data\\") {
         KALDI_LOG << "Reading \\data\\ section.";
         keyword_found = true;
-        continue;
       }
-      break;
+      continue;
     }
 
-    if (!keyword_found) continue;
+    if (line[0] == '\\') break;
 
     // Enters "\data\" section, and looks for patterns like "ngram 1=1000",
     // which means there are 1000 unigrams.
@@ -130,12 +128,10 @@ void ArpaFileParser::Read(std::istream &is, bool binary) {
   // Processes "\N-grams:" section.
   for (int32 cur_order = 1; cur_order <= ngram_counts_.size(); ++cur_order) {
     // Skips n-grams with zero count.
-    if (ngram_counts_[cur_order - 1] == 0) {
+    if (ngram_counts_[cur_order - 1] == 0)
       KALDI_WARN << "Zero ngram count in ngram order " << cur_order
                  << "(look for 'ngram " << cur_order << "=0' in the \\data\\ "
                  << " section). There is possibly a problem with the file.";
-      continue;
-    }
 
     // Must be looking at a \k-grams: directive at this point.
     std::ostringstream keyword;
