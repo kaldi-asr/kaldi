@@ -103,6 +103,7 @@ class WaveData {
     data_.Swap(&(other->data_));
     std::swap(samp_freq_, other->samp_freq_);
   }
+
  private:
   static const uint32 kBlockSize = 1024 * 1024;  // Use 1M bytes.
   Matrix<BaseFloat> data_;
@@ -171,6 +172,11 @@ class WaveHolder {
     t_.Swap(&(other->t_));
   }
 
+  bool ExtractRange(const WaveHolder &other, const std::string &range) {
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
+    return false;
+  }
+
  private:
   T t_;
 };
@@ -215,6 +221,11 @@ class WaveInfoHolder {
 
   void Swap(WaveInfoHolder *other) {
     t_.Swap(&(other->t_));
+  }
+
+  bool ExtractRange(const WaveInfoHolder &other, const std::string &range) {
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
+    return false;
   }
  private:
   T t_;
