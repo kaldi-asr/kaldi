@@ -46,7 +46,7 @@ if len(args) != 2:
   parser.print_help()
   sys.exit(1)
 
-(post_scp, out_pkl) = (args[0], args[2])
+(post_scp, out_pkl) = (args[0], args[1])
 
 ## Create log file
 logging.basicConfig(stream=sys.stderr, format='%(asctime)s: %(message)s', level=logging.INFO)
