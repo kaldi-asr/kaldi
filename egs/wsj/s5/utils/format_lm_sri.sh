@@ -104,6 +104,27 @@ awk '{print $1}' $out_dir/words.txt > $tmpdir/voc || exit 1;
 change-lm-vocab -vocab $tmpdir/voc -lm $tmpdir/lm.gz -write-lm $tmpdir/out_lm \
   $srilm_opts || exit 1;
 
+# change-lm-vocab introduces error in out_lm when lm.gz has an order
+# lower than 3 (i.e. on unigrams and bigrams). An empty trigram (and
+# potentially bigram) is created in the lm file. This leads arpa2fst
+# to fail in the next step with a message "Zero ngram count in ngram
+# order [...] There is possibly a problem with the file". The
+# following code looks for empty ngrams (can be of any order) and
+# delete them from the file.
+empty_ngrams=$(sed -rn "s/^ngram +([[:digit:]]+)=0$/\1/p" $tmpdir/out_lm)
+if [ ! -z "$empty_ngrams" ]; then
+    # filter out empty data fields
+    for n in $empty_ngrams
+    do
+        sed "/${n}-grams:/d" $tmpdir/out_lm > $tmpdir/tmp_lm
+        mv $tmpdir/tmp_lm $tmpdir/out_lm
+    done
+
+    # filter out empty headers
+    sed '/^ngram.*=0$/d' $tmpdir/out_lm > $tmpdir/tmp_lm
+    mv $tmpdir/tmp_lm $tmpdir/out_lm
+fi
+
 arpa2fst $tmpdir/out_lm | fstprint \
   | utils/eps2disambig.pl | utils/s2eps.pl \
   | fstcompile --isymbols=$out_dir/words.txt --osymbols=$out_dir/words.txt \
