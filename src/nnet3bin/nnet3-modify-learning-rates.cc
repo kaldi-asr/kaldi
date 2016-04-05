@@ -46,6 +46,7 @@ int main(int argc, char *argv[]) {
     BaseFloat average_learning_rate = 0.0;
     BaseFloat first_layer_factor = 1.0;
     BaseFloat last_layer_factor = 1.0;
+    BaseFloat epsilon = 1e-20;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
@@ -58,6 +59,9 @@ int main(int argc, char *argv[]) {
                 "reduces the target relative learning rate for last layer.");
     po.Register("retroactive", &retroactive, "If true, scale the parameter "
                 "differences as well.");
+    po.Register("epsilon", &epsilon, "Ignore updatable components with "
+                "relative parameter change below this value when computing the "
+                "average_learning_rate");
 
     po.Read(argc, argv);
 
@@ -106,18 +110,22 @@ int main(int argc, char *argv[]) {
 
     // If relative parameter difference for a certain is zero, set it to the
     // mean of the rest values.
+  
+    Vector<BaseFloat> dot_prod_nonzero(num_updatable);
     int32 num_zero = 0;
     for (int32 i = 0; i < num_updatable; i++) {
-      if (dot_prod(i) == 0.0) {
+      if (dot_prod(i) <= epsilon) {
+        dot_prod_nonzero(i) = 1.0;
         num_zero++;
-      }
+      } else 
+        dot_prod_nonzero(i) = dot_prod(i);
     }
     
     if (num_zero > 0) {
-      BaseFloat average_diff = dot_prod.Sum()
-        / static_cast<BaseFloat>(num_updatable - num_zero);
+      BaseFloat average_diff = Exp(dot_prod_nonzero.SumLog()
+        / static_cast<BaseFloat>(num_updatable - num_zero));
       for (int32 i = 0; i < num_updatable; i++) {
-        if (dot_prod(i) == 0.0) {
+        if (dot_prod(i) <= epsilon) {
           dot_prod(i) = average_diff;
         }
       }
