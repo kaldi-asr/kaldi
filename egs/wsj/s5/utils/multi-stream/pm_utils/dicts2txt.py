@@ -25,6 +25,7 @@ d = pickle.load(bz2.BZ2File(inp_scores_pklz, "rb"))
 
 fp = open(out_scores_txt, "w")
 for k in d.keys():
+  fp.write(k+" ")
   for v in d[k]:
     fp.write(str(v)+" ")
   fp.write("\n")
