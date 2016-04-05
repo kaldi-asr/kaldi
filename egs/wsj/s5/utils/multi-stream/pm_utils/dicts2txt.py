@@ -23,7 +23,7 @@ out_scores_txt = args[1]
 
 d = pickle.load(bz2.BZ2File(inp_scores_pklz, "rb"))
 
-fp = open(scores.out.txt, "w")
+fp = open(out_scores_txt, "w")
 for k in d.keys():
   for v in d[k]:
     fp.write(str(v)+" ")
