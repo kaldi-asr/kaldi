@@ -44,8 +44,7 @@ struct ArpaParseOptions {
 
   ArpaParseOptions()
       : bos_symbol(-1), eos_symbol(-1), unk_symbol(-1),
-        oov_handling(kRaiseError), use_log10(false),
-        max_warnings(30) { }
+        oov_handling(kRaiseError), max_warnings(30) { }
 
   void Register(OptionsItf *opts) {
     // Registering only the max_warnings count, since other options are
@@ -60,7 +59,6 @@ struct ArpaParseOptions {
   int32 eos_symbol;  ///< Symbol for </s>, Required non-epsilon.
   int32 unk_symbol;  ///< Symbol for <unk>, Required for kReplaceWithUnk.
   OovHandling oov_handling;  ///< How to handle OOV words in the file.
-  bool use_log10;    ///< Use log10 for prob and backoff weight, not ln.
   int32 max_warnings; ///< Maximum warnings to report, <0 unlimited.
 };
 
