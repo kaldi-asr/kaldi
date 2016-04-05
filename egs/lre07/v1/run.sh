@@ -4,7 +4,7 @@
 # Apache 2.0.
 #
 # This script runs the NIST 2007 General Language Recognition Closed-Set
-# evaluation. 
+# evaluation.
 
 . cmd.sh
 . path.sh
@@ -70,9 +70,9 @@ echo "**Language count in i-Vector extractor training (after splitting long utte
 awk '{print $2}' data/train/utt2lang | sort | uniq -c | sort -nr
 
 # This commented script is an alternative to the above utterance
-# splitting method. Here we split the utterance based on the number of 
+# splitting method. Here we split the utterance based on the number of
 # frames which are voiced, rather than the total number of frames.
-# max_voiced=3000 
+# max_voiced=3000
 # local/vad_split_utts.sh --max-voiced $max_voiced data/train_unsplit $mfccdir data/train
 
 use_vtln=true
@@ -81,7 +81,7 @@ if $use_vtln; then
     cp -r data/${t} data/${t}_novtln
     rm -r data/${t}_novtln/{split,.backup,spk2warp} 2>/dev/null || true
     steps/make_mfcc.sh --mfcc-config conf/mfcc_vtln.conf --nj 100 --cmd "$train_cmd" \
-       data/${t}_novtln exp/make_mfcc $mfccdir 
+       data/${t}_novtln exp/make_mfcc $mfccdir
     lid/compute_vad_decision.sh data/${t}_novtln exp/make_mfcc $mfccdir
   done
 
@@ -137,7 +137,7 @@ lid/train_full_ubm.sh --nj 30 --cmd "$train_cmd" data/train \
 # Alternatively, a diagonal UBM can replace the full UBM used above.
 # The preceding calls to train_diag_ubm.sh and train_full_ubm.sh
 # can be commented out and replaced with the following lines.
-# 
+#
 # This results in a slight degradation but could improve error rate when
 # there is less training data than used in this example.
 #
@@ -167,7 +167,7 @@ lid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=3G,ram_free=3G" --nj 50 \
    exp/extractor_2048 data/lre07 exp/ivectors_lre07
 
 lid/run_logistic_regression.sh --prior-scale 0.70 \
-  --conf conf/logistic-regression.conf 
+  --conf conf/logistic-regression.conf
 # Training error-rate
 # ER (%): 5.15
 
