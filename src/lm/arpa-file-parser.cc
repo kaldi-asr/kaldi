@@ -168,11 +168,9 @@ void ArpaFileParser::Read(std::istream &is, bool binary) {
         if (!ConvertStringToReal(col[cur_order + 1], &ngram.backoff))
           PARSE_ERR << "invalid backoff weight '" << col[cur_order + 1] << "'";
       }
-      // Convert to natural log unless the option is set not to.
-      if (!options_.use_log10) {
-        ngram.logprob *= M_LN10;
-        ngram.backoff *= M_LN10;
-      }
+      // Convert to natural log.
+      ngram.logprob *= M_LN10;
+      ngram.backoff *= M_LN10;
 
       ngram.words.resize(cur_order);
       bool skip_ngram = false;
