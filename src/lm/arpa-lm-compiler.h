@@ -39,6 +39,7 @@ class ArpaLmCompiler : public ArpaFileParser {
   ~ArpaLmCompiler();
 
   const fst::StdVectorFst& Fst() const { return fst_; }
+  fst::StdVectorFst* MutableFst() { return &fst_; }
 
  protected:
   // ArpaFileParser overrides.
