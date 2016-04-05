@@ -27,6 +27,7 @@
 #include <fst/fst-decl.h>
 
 #include "base/kaldi-types.h"
+#include "itf/options-itf.h"
 
 namespace kaldi {
 
@@ -43,13 +44,24 @@ struct ArpaParseOptions {
 
   ArpaParseOptions()
       : bos_symbol(-1), eos_symbol(-1), unk_symbol(-1),
-        oov_handling(kRaiseError), use_log10(false) { }
+        oov_handling(kRaiseError), use_log10(false),
+        max_warnings(30) { }
+
+  void Register(OptionsItf *opts) {
+    // Registering only the max_warnings count, since other options are
+    // treated differently by client programs: some want integer symbols,
+    // while other are passed words in their command line.
+    opts->Register("max-arpa-warnings", &max_warnings,
+                   "Maximum warnings to report on ARPA parsing, "
+                   "0 to disable, -1 to show all");
+  }
 
   int32 bos_symbol;  ///< Symbol for <s>, Required non-epsilon.
   int32 eos_symbol;  ///< Symbol for </s>, Required non-epsilon.
   int32 unk_symbol;  ///< Symbol for <unk>, Required for kReplaceWithUnk.
   OovHandling oov_handling;  ///< How to handle OOV words in the file.
   bool use_log10;    ///< Use log10 for prob and backoff weight, not ln.
+  int32 max_warnings; ///< Maximum warnings to report, <0 unlimited.
 };
 
 /**
@@ -111,6 +123,14 @@ class ArpaFileParser {
   /// Inside ConsumeNGram(), provides the current line number.
   int32 LineNumber() const { return line_number_; }
 
+  /// Inside ConsumeNGram(), returns a formatted reference to the line being
+  /// compiled, to print out as part of diagnostics.
+  std::string LineReference() const;
+
+  /// Increments warning count, and returns true if a warning should be
+  /// printed or false if the count has exceeded the set maximum.
+  bool ShouldWarn();
+
   /// N-gram counts. Valid in and after a call to HeaderAvailable().
   const std::vector<int32>& NgramCounts() const { return ngram_counts_; }
 
@@ -118,6 +138,8 @@ class ArpaFileParser {
   ArpaParseOptions options_;
   fst::SymbolTable* symbols_;  // Not owned.
   int32 line_number_;
+  uint32 warning_count_;
+  std::string current_line_;
   std::vector<int32> ngram_counts_;
 };
 

@@ -44,7 +44,7 @@ struct NGramTestData {
   float backoff;
 };
 
-std::ostream& operator<<(std::ostream& os, const NGramTestData& data) {
+std::ostream& operator<<(std::ostream &os, const NGramTestData &data) {
   std::ios::fmtflags saved_state(os.flags());
   os << std::fixed << std::setprecision(6);
 
@@ -62,7 +62,7 @@ template <class T>
 struct CountedArray {
   template <size_t N>
   CountedArray(T(&array)[N]) : array(array), count(N) { }
-  const T* array;
+  const T *array;
   const size_t count;
 };
 
@@ -73,7 +73,7 @@ inline CountedArray<T> MakeCountedArray(T(&array)[N]) {
 
 class TestableArpaFileParser : public ArpaFileParser {
  public:
-  TestableArpaFileParser(ArpaParseOptions options, fst::SymbolTable* symbols)
+  TestableArpaFileParser(ArpaParseOptions options, fst::SymbolTable *symbols)
       : ArpaFileParser(options, symbols),
         header_available_(false),
         read_complete_(false),
@@ -121,8 +121,8 @@ void TestableArpaFileParser::ReadComplete() {
 }
 
 //
-bool CompareNgrams(const NGramTestData& actual,
-                   const NGramTestData& expected) {
+bool CompareNgrams(const NGramTestData &actual,
+                   const NGramTestData &expected) {
   if (actual.line_number != expected.line_number
       || !std::equal(actual.words, actual.words + kMaxOrder,
                      expected.words)
@@ -231,7 +231,6 @@ ngram 3=2\n\
 \\3-grams:\n\
 -0.3	<s> a \xCE\xB2\n\
 -0.2	<s> a </s>\n\
-\n\
 \\end\\";
 
 // Symbol table that is created with predefined test symbols, "a" but no "b".
