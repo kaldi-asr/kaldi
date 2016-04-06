@@ -304,8 +304,9 @@ void ArpaLmCompiler::ConsumeNGram(const NGram &ngram) {
     if ((i > 0 && ngram.words[i] == Options().bos_symbol) ||
         (i + 1 < ngram.words.size()
          && ngram.words[i] == Options().eos_symbol)) {
-      KALDI_WARN << LineReference()
-                 << " skipped: n-gram has invalid BOS/EOS placement";
+      if (ShouldWarn())
+        KALDI_WARN << LineReference()
+                   << " skipped: n-gram has invalid BOS/EOS placement";
       return;
     }
   }
