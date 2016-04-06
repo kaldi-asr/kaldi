@@ -42,11 +42,11 @@ Allowed options:
                       (default = "<***>")
   --wer-cutoff      : Ignore segments with WER higher than the specified value.
                       -1 means no segment will be ignored. (default = -1)
-  --use-silence-midpoints : Set to 1 if you want to use silence midpoints 
+  --use-silence-midpoints : Set to 1 if you want to use silence midpoints
                       instead of min_sil_length for silence overhang.(default 0)
-  --force-correct-boundary-words : Set to zero if the segments will not be 
+  --force-correct-boundary-words : Set to zero if the segments will not be
                       required to have boundary words to be correct. Default 1
-  --aligned-ctm-filename : If set, the intermediate aligned ctm 
+  --aligned-ctm-filename : If set, the intermediate aligned ctm
                       is saved to this file
 EOU
 
@@ -56,7 +56,7 @@ my $min_sil_length = 0.5;
 my $separator = ";";
 my $special_symbol = "<***>";
 my $wer_cutoff = -1;
-my $use_silence_midpoints = 0; 
+my $use_silence_midpoints = 0;
 my $force_correct_boundary_words = 1;
 my $aligned_ctm_filename = "";
 GetOptions(
@@ -122,13 +122,13 @@ sub PrintSegment {
 
   # Works out the surrounding silence.
   my $index = $seg_start_index - 1;
-  while ($index >= 0 && $aligned_ctm->[$index]->[0] eq 
+  while ($index >= 0 && $aligned_ctm->[$index]->[0] eq
          "<eps>" && $aligned_ctm->[$index]->[3] == 0) {
     $index -= 1;
   }
-  my $left_of_segment_has_deletion = "false"; 
-  $left_of_segment_has_deletion = "true" 
-      if ($index > 0 && $aligned_ctm->[$index-1]->[0] ne "<eps>" 
+  my $left_of_segment_has_deletion = "false";
+  $left_of_segment_has_deletion = "true"
+      if ($index > 0 && $aligned_ctm->[$index-1]->[0] ne "<eps>"
           && $aligned_ctm->[$index-1]->[3] == 0);
 
   my $pad_start_sil = ($aligned_ctm->[$seg_start_index]->[1] -
@@ -141,11 +141,11 @@ sub PrintSegment {
   my $right_of_segment_has_deletion = "false";
   $index = $seg_end_index + 1;
   while ($index < scalar(@{$aligned_ctm}) &&
-         $aligned_ctm->[$index]->[0] eq "<eps>" && 
+         $aligned_ctm->[$index]->[0] eq "<eps>" &&
          $aligned_ctm->[$index]->[3] == 0) {
     $index += 1;
   }
-  $right_of_segment_has_deletion = "true" 
+  $right_of_segment_has_deletion = "true"
       if ($index < scalar(@{$aligned_ctm})-1 && $aligned_ctm->[$index+1]->[0] ne
           "<eps>" && $aligned_ctm->[$index - 1]->[3] > 0);
   my $pad_end_sil = ($aligned_ctm->[$index - 1]->[1] +
@@ -155,7 +155,7 @@ sub PrintSegment {
   if (($right_of_segment_has_deletion eq "true") || !$use_silence_midpoints) {
       if ($pad_end_sil > $min_sil_length / 2.0) {
           $pad_end_sil = $min_sil_length / 2.0;
-      } 
+      }
   }
 
   my $seg_start = $aligned_ctm->[$seg_start_index]->[1] - $pad_start_sil;
@@ -270,6 +270,7 @@ sub ProcessWav {
       $current_ctm, $current_align, $SO, $TO, $ACT) = @_;
 
   my $wav_id = $current_ctm->[0]->[0];
+  my $channel_id = $current_ctm->[0]->[1];
   defined($wav_id) || die "Error: empty wav section\n";
 
   # First, we have to align the ctm file to the Levenshtein alignment.
@@ -324,8 +325,8 @@ sub ProcessWav {
 
   # Save the aligned CTM if needed
   if(defined($ACT)){
-    for (my $i=0; $i<=$#aligned_ctm; $i++) {
-      print $ACT "$aligned_ctm[$i][0] $aligned_ctm[$i][1] ";
+    for (my $i = 0; $i <= $#aligned_ctm; $i++) {
+      print $ACT "$wav_id $channel_id $aligned_ctm[$i][0] $aligned_ctm[$i][1] ";
       print $ACT "$aligned_ctm[$i][2] $aligned_ctm[$i][3]\n";
     }
   }
@@ -346,8 +347,8 @@ sub ProcessWav {
     # length, and if there are no alignment error around it. We also make sure
     # that segment contains actual words, instead of pure silence.
     if ($aligned_ctm[$x]->[0] eq "<eps>" &&
-        $aligned_ctm[$x]->[2] >= $min_sil_length 
-       && (($force_correct_boundary_words && $lcorrect eq "true" && 
+        $aligned_ctm[$x]->[2] >= $min_sil_length
+       && (($force_correct_boundary_words && $lcorrect eq "true" &&
             $rcorrect eq "true") || !$force_correct_boundary_words)) {
       if ($current_seg_length <= $max_seg_length &&
           $current_seg_length >= $min_seg_length) {
@@ -379,7 +380,7 @@ sub ProcessWav {
 # 011 A 3.39 0.23 SELL
 # 011 A 3.62 0.18 OFF
 # 011 A 3.83 0.45 ASSETS
-# 
+#
 # Output ctm:
 # 011 A 3.39 0.23 SELL
 # 011 A 3.62 0.18 OFF
