@@ -44,7 +44,7 @@ struct NGramTestData {
   float backoff;
 };
 
-std::ostream& operator<<(std::ostream& os, const NGramTestData& data) {
+std::ostream& operator<<(std::ostream &os, const NGramTestData &data) {
   std::ios::fmtflags saved_state(os.flags());
   os << std::fixed << std::setprecision(6);
 
@@ -62,7 +62,7 @@ template <class T>
 struct CountedArray {
   template <size_t N>
   CountedArray(T(&array)[N]) : array(array), count(N) { }
-  const T* array;
+  const T *array;
   const size_t count;
 };
 
@@ -73,7 +73,7 @@ inline CountedArray<T> MakeCountedArray(T(&array)[N]) {
 
 class TestableArpaFileParser : public ArpaFileParser {
  public:
-  TestableArpaFileParser(ArpaParseOptions options, fst::SymbolTable* symbols)
+  TestableArpaFileParser(ArpaParseOptions options, fst::SymbolTable *symbols)
       : ArpaFileParser(options, symbols),
         header_available_(false),
         read_complete_(false),
@@ -120,9 +120,10 @@ void TestableArpaFileParser::ReadComplete() {
   read_complete_ = true;
 }
 
-//
-bool CompareNgrams(const NGramTestData& actual,
-                   const NGramTestData& expected) {
+bool CompareNgrams(const NGramTestData &actual,
+                   NGramTestData expected) {
+  expected.logprob *= Log(10.0);
+  expected.backoff *= Log(10.0);
   if (actual.line_number != expected.line_number
       || !std::equal(actual.words, actual.words + kMaxOrder,
                      expected.words)
@@ -164,33 +165,33 @@ ngram 2=2\n\
 ngram 3=2\n\
 \n\
 \\1-grams:\n\
--5.234679	4 -3.3\n\
--3.456783	5\n\
-0.0000000	1 -2.5\n\
--4.333333	2\n\
+-5.2      4 -3.3\n\
+-3.4      5\n\
+0         1 -2.5\n\
+-4.3      2\n\
 \n\
 \\2-grams:\n\
--1.45678	4 5 -3.23\n\
--1.30490	1 4 -4.2\n\
+-1.4       4 5 -3.2\n\
+-1.3       1 4 -4.2\n\
 \n\
 \\3-grams:\n\
--0.34958	1 4 5\n\
--0.23940	4 5 2\n\
+-0.3       1 4 5\n\
+-0.2       4 5 2\n\
 \n\
 \\end\\";
 
   int32 expect_counts[] = { 4, 2, 2 };
   NGramTestData expect_ngrams[] = {
-    {  7, -12.05329, { 4, 0, 0 }, -7.598531 },
-    {  8, -7.959537, { 5, 0, 0 },  0.0      },
-    {  9,  0.0,      { 1, 0, 0 }, -5.756463 },
-    { 10, -9.977868, { 2, 0, 0 },  0.0      },
+    {  7, -5.2, { 4, 0, 0 }, -3.3 },
+    {  8, -3.4, { 5, 0, 0 },  0.0 },
+    {  9,  0.0, { 1, 0, 0 }, -2.5 },
+    { 10, -4.3, { 2, 0, 0 },  0.0 },
 
-    { 13, -3.354360, { 4, 5, 0 }, -7.437350 },
-    { 14, -3.004643, { 1, 4, 0 }, -9.670857 },
+    { 13, -1.4, { 4, 5, 0 }, -3.2 },
+    { 14, -1.3, { 1, 4, 0 }, -4.2 },
 
-    { 17, -0.804938, { 1, 4, 5 },  0.0      },
-    { 18, -0.551239, { 4, 5, 2 },  0.0      } };
+    { 17, -0.3, { 1, 4, 5 },  0.0 },
+    { 18, -0.2, { 4, 5, 2 },  0.0 } };
 
   ArpaParseOptions options;
   options.bos_symbol = 1;
@@ -231,7 +232,6 @@ ngram 3=2\n\
 \\3-grams:\n\
 -0.3	<s> a \xCE\xB2\n\
 -0.2	<s> a </s>\n\
-\n\
 \\end\\";
 
 // Symbol table that is created with predefined test symbols, "a" but no "b".
@@ -270,7 +270,6 @@ void ReadSymbolicLmNoOovImpl(ArpaParseOptions::OovHandling oov) {
   options.bos_symbol = 1;
   options.eos_symbol = 2;
   options.unk_symbol = 3;
-  options.use_log10 = true;
   options.oov_handling = oov;
   TestableArpaFileParser parser(options, &symbols);
   std::istringstream stm(symbolic_lm, std::ios_base::in);
@@ -301,7 +300,6 @@ void ReadSymbolicLmWithOovImpl(
   options.bos_symbol = 1;
   options.eos_symbol = 2;
   options.unk_symbol = 3;
-  options.use_log10 = true;
   options.oov_handling = oov;
   TestableArpaFileParser parser(options, symbols);
   std::istringstream stm(symbolic_lm, std::ios_base::in);

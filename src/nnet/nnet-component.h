@@ -220,8 +220,9 @@ inline void Component::Propagate(const CuMatrixBase<BaseFloat> &in,
                                  CuMatrix<BaseFloat> *out) {
   // Check the dims
   if (input_dim_ != in.NumCols()) {
-    KALDI_ERR << "Non-matching dims! " << TypeToMarker(GetType()) 
-              << " input-dim : " << input_dim_ << " data : " << in.NumCols();
+    KALDI_ERR << "Non-matching dims on the input of " << TypeToMarker(GetType())
+              << " component. The input-dim is " << input_dim_
+              << ", the data had " << in.NumCols() << " dims.";
   }
   // Allocate target buffer
   out->Resize(in.NumRows(), output_dim_, kSetZero); // reset

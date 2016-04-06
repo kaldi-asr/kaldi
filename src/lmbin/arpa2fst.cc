@@ -34,6 +34,9 @@ int main(int argc, char *argv[]) {
         "data/lang/words.txt lm/input.arpa G.fst\n";
     ParseOptions po(usage);
 
+    ArpaParseOptions options;
+    options.Register(&po);
+
     // Option flags.
     std::string bos_symbol = "<s>";
     std::string eos_symbol = "</s>";
@@ -41,6 +44,7 @@ int main(int argc, char *argv[]) {
     std::string read_syms_filename;
     std::string write_syms_filename;
     bool keep_symbols = false;
+    bool ilabel_sort = true;
 
     po.Register("bos-symbol", &bos_symbol,
                 "Beginning of sentence symbol");
@@ -56,6 +60,8 @@ int main(int argc, char *argv[]) {
     po.Register("keep-symbols", &keep_symbols,
                 "Store symbol table with FST. Forced true if "
                 "symbol tables are neiter read or written");
+    po.Register("ilabel-sort", &ilabel_sort,
+                "Ilabel-sort the output FST");
 
     po.Read(argc, argv);
 
@@ -66,7 +72,6 @@ int main(int argc, char *argv[]) {
     std::string arpa_rxfilename = po.GetArg(1),
         fst_wxfilename = po.GetOptArg(2);
 
-    ArpaParseOptions options;
     int64 disambig_symbol_id = 0;
 
     fst::SymbolTable* symbols;
@@ -109,6 +114,11 @@ int main(int argc, char *argv[]) {
     KALDI_ASSERT (symbols != NULL);
     ArpaLmCompiler lm_compiler(options, disambig_symbol_id, symbols);
     ReadKaldiObject(arpa_rxfilename, &lm_compiler);
+
+    // Sort the FST in-place if requested by options.
+    if (ilabel_sort) {
+      fst::ArcSort(lm_compiler.MutableFst(), fst::StdILabelCompare());
+    }
 
     // Write symbols if requested.
     if (!write_syms_filename.empty()) {

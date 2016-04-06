@@ -338,7 +338,7 @@ def TrainNewModels(dir, iter, num_jobs, num_archives_processed, num_archives,
                    left_context, right_context, min_deriv_time,
                    momentum, max_param_change,
                    shuffle_buffer_size, num_chunk_per_minibatch,
-                   run_opts):
+                   cache_read_opt, run_opts):
       # We cannot easily use a single parallel SGE job to do the main training,
       # because the computation of which archive and which --frame option
       # to use for each job is a little complex, so we spawn each one separately.
@@ -353,9 +353,15 @@ def TrainNewModels(dir, iter, num_jobs, num_archives_processed, num_archives,
                                                # the other indexes from.
         archive_index = (k % num_archives) + 1 # work out the 1-based archive index.
 
+        cache_write_opt = ""
+        if job == 1:
+          # an option for writing cache (storing pairs of nnet-computations and
+          # computation-requests) during training.
+          cache_write_opt="--write-cache={dir}/cache.{iter}".format(dir=dir, iter=iter+1)
+
         process_handle = RunKaldiCommand("""
 {command} {train_queue_opt} {dir}/log/train.{iter}.{job}.log \
-  nnet3-train {parallel_train_opts} \
+  nnet3-train {parallel_train_opts} {cache_read_opt} {cache_write_opt} \
   --print-interval=10 --momentum={momentum} \
   --max-param-change={max_param_change} \
   --optimization.min-deriv-time={min_deriv_time} "{raw_model}" \
@@ -365,6 +371,7 @@ def TrainNewModels(dir, iter, num_jobs, num_archives_processed, num_archives,
                      train_queue_opt = run_opts.train_queue_opt,
                      dir = dir, iter = iter, next_iter = iter + 1, job = job,
                      parallel_train_opts = run_opts.parallel_train_opts,
+                     cache_read_opt = cache_read_opt, cache_write_opt = cache_write_opt,
                      momentum = momentum, max_param_change = max_param_change,
                      min_deriv_time = min_deriv_time,
                      raw_model = raw_model_string, context_opts = context_opts,
@@ -387,7 +394,6 @@ def TrainNewModels(dir, iter, num_jobs, num_archives_processed, num_archives,
         open('{0}/.error'.format(dir), 'w').close()
         raise Exception("There was error during training iteration {0}".format(iter))
 
-
 def TrainOneIteration(dir, iter, egs_dir,
                       num_jobs, num_archives_processed, num_archives,
                       learning_rate, shrinkage_value, num_chunk_per_minibatch,
@@ -404,17 +410,21 @@ def TrainOneIteration(dir, iter, egs_dir,
     if iter > 0:
         ComputeProgress(dir, iter, egs_dir, run_opts)
 
+    # an option for writing cache (storing pairs of nnet-computations
+    # and computation-requests) during training.
+    cache_read_opt = ""
     if iter > 0 and (iter <= (num_hidden_layers-1) * add_layers_period) and (iter % add_layers_period == 0):
-
         do_average = False # if we've just mixed up, don't do averaging but take the
                            # best.
         cur_num_hidden_layers = 1 + iter / add_layers_period
         config_file = "{0}/configs/layer{1}.config".format(dir, cur_num_hidden_layers)
-        raw_model_string = "nnet3-am-copy --raw=true --learning-rate={lr} {dir}/{iter}.mdl - | nnet3-init --srand={iter} - {config} - |".format(lr=learning_rate, dir=dir, iter=iter, config=config_file )
+        raw_model_string = "nnet3-am-copy --raw=true --learning-rate={lr} {dir}/{iter}.mdl - | nnet3-init --srand={iter} - {config} - |".format(lr=learning_rate, dir=dir, iter=iter, config=config_file)
     else:
         do_average = True
         if iter == 0:
             do_average = False   # on iteration 0, pick the best, don't average.
+        else:
+            cache_read_opt = "--read-cache={dir}/cache.{iter}".format(dir=dir, iter=iter)
         raw_model_string = "nnet3-am-copy --raw=true --learning-rate={0} {1}/{2}.mdl - |".format(learning_rate, dir, iter)
 
     if do_average:
@@ -437,7 +447,7 @@ def TrainOneIteration(dir, iter, egs_dir,
                    left_context, right_context, min_deriv_time,
                    momentum, max_param_change,
                    shuffle_buffer_size, cur_num_chunk_per_minibatch,
-                   run_opts)
+                   cache_read_opt, run_opts)
     [models_to_average, best_model] = GetSuccessfulModels(num_jobs, '{0}/log/train.{1}.%.log'.format(dir,iter))
     nnets_list = []
     for n in models_to_average:
@@ -477,6 +487,12 @@ nnet3-am-copy --scale={shrink} --set-raw-nnet=- {dir}/{iter}.mdl {dir}/{new_iter
         raise Exception("Could not find {0}, at the end of iteration {1}".format(new_model, iter))
     elif os.stat(new_model).st_size == 0:
         raise Exception("{0} has size 0. Something went wrong in iteration {1}".format(new_model, iter))
+    try:
+        if cache_read_opt:
+            os.remove("{dir}/cache.{iter}".format(dir=dir, iter=iter))
+    except OSError:
+        raise Exception("Error while trying to delete the cache file")
+
 
 # args is a Namespace with the required parameters
 def Train(args, run_opts):

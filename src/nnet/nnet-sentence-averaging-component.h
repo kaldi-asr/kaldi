@@ -41,7 +41,7 @@ namespace nnet1 {
 class SimpleSentenceAveragingComponent : public Component {
  public:
   SimpleSentenceAveragingComponent(int32 dim_in, int32 dim_out) 
-    : Component(dim_in, dim_out), gradient_boost_(100.0)
+    : Component(dim_in, dim_out), gradient_boost_(100.0), shrinkage_(0.0), only_summing_(false)
   { }
   ~SimpleSentenceAveragingComponent()
   { }
@@ -56,7 +56,9 @@ class SimpleSentenceAveragingComponent : public Component {
     while (!is.eof()) {
       ReadToken(is, false, &token);
       if (token == "<GradientBoost>") ReadBasicType(is, false, &gradient_boost_);
-      else KALDI_ERR << "Unknown token " << token << ", a typo in config? (GradientBoost)";
+      else if (token == "<Shrinkage>") ReadBasicType(is, false, &shrinkage_);
+      else if (token == "<OnlySumming>") ReadBasicType(is, false, &only_summing_);
+      else KALDI_ERR << "Unknown token " << token << ", a typo in config? (GradientBoost|Shrinkage|OnlySumming)";
       is >> std::ws; // eat-up whitespace
     }
   }
@@ -64,15 +66,29 @@ class SimpleSentenceAveragingComponent : public Component {
   void ReadData(std::istream &is, bool binary) {
     ExpectToken(is, binary, "<GradientBoost>");
     ReadBasicType(is, binary, &gradient_boost_);
+    if(PeekToken(is, binary) == 'S') {
+      ExpectToken(is, binary, "<Shrinkage>");
+      ReadBasicType(is, binary, &shrinkage_);
+    }
+    if(PeekToken(is, binary) == 'O') {
+      ExpectToken(is, binary, "<OnlySumming>");
+      ReadBasicType(is, binary, &only_summing_);
+    }
   }
 
   void WriteData(std::ostream &os, bool binary) const {
     WriteToken(os, binary, "<GradientBoost>");
     WriteBasicType(os, binary, gradient_boost_);
+    WriteToken(os, binary, "<Shrinkage>");
+    WriteBasicType(os, binary, shrinkage_);
+    WriteToken(os, binary, "<OnlySumming>");
+    WriteBasicType(os, binary, only_summing_);
   }
 
   std::string Info() const {
-    return std::string("\n  gradient-boost ") + ToString(gradient_boost_);
+    return std::string("\n  gradient-boost ") + ToString(gradient_boost_) +
+      ", shrinkage: " + ToString(shrinkage_) + 
+      ", only summing: " + ToString(only_summing_);
   }
   std::string InfoGradient() const {
     return Info();
@@ -81,7 +97,11 @@ class SimpleSentenceAveragingComponent : public Component {
   void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
     // get the average row-vector,
     average_row_.Resize(InputDim());
-    average_row_.AddRowSumMat(1.0/in.NumRows(), in, 0.0);
+    if (only_summing_) {
+      average_row_.AddRowSumMat(1.0, in, 0.0);
+    } else {
+      average_row_.AddRowSumMat(1.0/(in.NumRows()+shrinkage_), in, 0.0);
+    }
     // copy it on the output,
     out->AddVecToRows(1.0, average_row_, 0.0);
   }
@@ -97,7 +117,11 @@ class SimpleSentenceAveragingComponent : public Component {
     //
     // getting the average output diff,
     average_diff_.Resize(OutputDim());
-    average_diff_.AddRowSumMat(1.0/out_diff.NumRows(), out_diff, 0.0);
+    if (only_summing_) {
+      average_diff_.AddRowSumMat(1.0, out_diff, 0.0);
+    } else {
+      average_diff_.AddRowSumMat(1.0/(out_diff.NumRows()+shrinkage_), out_diff, 0.0);
+    }
     // copy the derivative into the input diff, (applying gradient-boost!!)
     in_diff->AddVecToRows(gradient_boost_, average_diff_, 0.0);
   }
@@ -106,6 +130,9 @@ class SimpleSentenceAveragingComponent : public Component {
   CuVector<BaseFloat> average_row_; ///< auxiliary buffer for forward propagation,
   CuVector<BaseFloat> average_diff_; ///< auxiliary buffer for backpropagation,
   BaseFloat gradient_boost_; ///< increase of gradient applied in backpropagation,
+  BaseFloat shrinkage_; ///< Number of 'imaginary' zero-vectors in the average 
+                        ///< (shrinks the average vector for shorter sentences),
+  bool only_summing_;   ///< Removes normalization term from arithmetic mean (when true).
 };
 
 
