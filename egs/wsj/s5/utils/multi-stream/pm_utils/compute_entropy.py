@@ -13,8 +13,11 @@ try:
 except ImportError:
   pass
 
-import numexpr
-numexpr.set_num_threads(1)
+try:
+  import numexpr
+  numexpr.set_num_threads(1)
+except ImportError:
+  pass
 
 import scipy.stats
 
