@@ -29,7 +29,7 @@ DecodableNnet3Online::DecodableNnet3Online(
     const TransitionModel &trans_model,
     const DecodableNnet3OnlineOptions &opts,
     OnlineFeatureInterface *input_feats):
-    compiler_(nnet.GetNnet(), opts_.optimize_config),
+    compiler_(nnet.GetNnet(), opts.optimize_config),
     features_(input_feats),
     nnet_(nnet),
     trans_model_(trans_model),

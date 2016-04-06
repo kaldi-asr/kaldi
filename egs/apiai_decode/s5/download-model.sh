@@ -19,6 +19,6 @@ if [ -d exp/api.ai-model ]; then
 	rm -rf exp/api.ai-model/
 fi
 
-mv api.ai-kaldi-asr-model exp/api.ai-model/ || ( echo "Unable to move model to exp/" && exit 1 )
+mv api.ai-kaldi-asr-model exp/api.ai-model || ( echo "Unable to move model to exp/" && exit 1 )
 
 echo "Model is ready to use use recognize-wav.sh to do voice recognition"

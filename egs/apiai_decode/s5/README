@@ -1,9 +1,15 @@
-This is example script on how to use pretrained chain model and kaldi base code to recognize banch of wav files (16000 S16_LE format). 
+Example scripts on how to use a pre-trained chain enlgish model and kaldi base code to recognize any number of wav files.
 
-Pretrained model was released by Api.ai under Creative Commons Attribution-ShareAlike 4.0 International Public License. For more details about it visit https://github.com/api-ai/api-ai-english-asr-model
+IMPORTANT: wav files must be in 16kHz, 16 bit little-endian format.
+
+Model:
+English pretrained model were released by Api.ai under Creative Commons Attribution-ShareAlike 4.0 International Public License. 
+- Acustic data is mostly mobile recorded data
+- Language model is based on Assistant.ai logs and good for understanding short commands, like "Wake me up at 7 am"
+For more details, visit https://github.com/api-ai/api-ai-english-asr-model
 
 Usage:
-- Ensure kaldi is compiled and this scripts are inside kaldi/egs/<subfolder/ directory
+- Ensure kaldi is compiled and this scripts are inside kaldi/egs/<subfolder>/ directory
 - Run ./download-model.sh - to download pretrained chain model
 - Run ./recognize-wav.sh test1.wav test2.wav to do recognition
 - See output for recognition results

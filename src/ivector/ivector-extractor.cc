@@ -340,6 +340,21 @@ double IvectorExtractor::GetAuxf(const IvectorExtractorUtteranceStats &utt_stats
   return acoustic_auxf + prior_auxf;
 }
 
+// gets logdet of a matrix while suppressing exceptions; always returns finite
+// value even if there was a problem.
+static double GetLogDetNoFailure(const SpMatrix<double> &var) {
+  try {
+    return var.LogPosDefDet();
+  } catch (...) {
+    Vector<double> eigs(var.NumRows());
+    var.Eig(&eigs);
+    int32 floored = eigs.ApplyFloor(1.0e-20);
+    if (floored > 0)
+      KALDI_WARN << "Floored " << floored << " eigenvalues of variance.";
+    eigs.ApplyLog();
+    return eigs.Sum();
+  }
+}
 
 /*
   Get the prior-related part of the auxiliary function.  Suppose
@@ -387,10 +402,9 @@ double IvectorExtractor::GetPriorAuxf(
     // = -0.5 ( trace(var I) - trace(var^{-1} var) + 0.0 - logdet(var))
     // = -0.5 ( trace(var) - dim(var) - logdet(var))
 
-
     KALDI_ASSERT(var->NumRows() == IvectorDim());
     return -0.5 * (VecVec(offset, offset) + var->Trace() -
-                   IvectorDim() - var->LogPosDefDet());
+                   IvectorDim() - GetLogDetNoFailure(*var));
   }
 }
 
@@ -1387,6 +1401,17 @@ double IvectorExtractorStats::UpdateVariances(
                opts.variance_floor_factor <= 1.0);
 
   var_floor.Scale(opts.variance_floor_factor / var_floor_count);
+
+  // var_floor should not be singular in any normal case, but previously
+  // we've had situations where cholesky on it failed (perhaps due to
+  // people using linearly dependent features).  So we floor its
+  // singular values.
+  int eig_floored = var_floor.ApplyFloor(var_floor.MaxAbsEig() * 1.0e-04);
+  if (eig_floored > 0) {
+    KALDI_WARN << "Floored " << eig_floored << " eigenvalues of the "
+               << "variance floor matrix.  This is not expected.  Maybe your "
+               << "feature data is linearly dependent.";
+  }
 
   int32 tot_num_floored = 0;
   for (int32 i = 0; i < num_gauss; i++) {
