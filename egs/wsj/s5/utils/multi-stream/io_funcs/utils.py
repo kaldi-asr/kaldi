@@ -3,7 +3,7 @@
 import os, errno, sys
 import numpy as np
 import scipy.linalg as spl
-import numexpr as ne
+# import numexpr as ne
 import logging
 import kaldi_io
 import itertools
@@ -12,6 +12,11 @@ import Queue
 from threading import Thread
 
 from optparse import OptionParser
+
+try:
+  import numexpr as ne
+except ImportError:
+  pass
 
 def mkdir_p(path):
     try:
