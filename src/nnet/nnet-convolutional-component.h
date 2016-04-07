@@ -66,7 +66,7 @@ class ConvolutionalComponent : public UpdatableComponent {
   ConvolutionalComponent(int32 dim_in, int32 dim_out) 
     : UpdatableComponent(dim_in, dim_out),
       patch_dim_(0), patch_step_(0), patch_stride_(0), 
-      learn_rate_coef_(1.0), bias_learn_rate_coef_(1.0), max_norm_(0.0)  
+      max_norm_(0.0)  
   { }
   ~ConvolutionalComponent()
   { }
@@ -220,7 +220,10 @@ class ConvolutionalComponent : public UpdatableComponent {
 
   std::string Info() const {
     return std::string("\n  filters") + MomentStatistics(filters_) +
-           "\n  bias" + MomentStatistics(bias_);
+           ", lr-coef " + ToString(learn_rate_coef_) +
+           ", max-norm " + ToString(max_norm_) +
+           "\n  bias" + MomentStatistics(bias_) +
+           ", lr-coef " + ToString(bias_learn_rate_coef_);
   }
   std::string InfoGradient() const {
     return std::string("\n  filters_grad") + MomentStatistics(filters_grad_) +
@@ -432,8 +435,6 @@ class ConvolutionalComponent : public UpdatableComponent {
   CuMatrix<BaseFloat> filters_grad_; ///< gradient of filters
   CuVector<BaseFloat> bias_grad_; ///< gradient of biases
 
-  BaseFloat learn_rate_coef_; ///< weight learn rate
-  BaseFloat bias_learn_rate_coef_; ///< bias learn rate
   BaseFloat max_norm_; ///< limit L2 norm of a neuron weights to positive value
 
   /** Buffer of reshaped inputs:

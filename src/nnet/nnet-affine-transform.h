@@ -35,7 +35,7 @@ class AffineTransform : public UpdatableComponent {
     : UpdatableComponent(dim_in, dim_out), 
       linearity_(dim_out, dim_in), bias_(dim_out),
       linearity_corr_(dim_out, dim_in), bias_corr_(dim_out),
-      learn_rate_coef_(1.0), bias_learn_rate_coef_(1.0), max_norm_(0.0) 
+      max_norm_(0.0) 
   { }
   ~AffineTransform()
   { }
@@ -130,8 +130,11 @@ class AffineTransform : public UpdatableComponent {
   }
   
   std::string Info() const {
-    return std::string("\n  linearity") + MomentStatistics(linearity_) +
-           "\n  bias" + MomentStatistics(bias_);
+    return std::string("\n  linearity") + MomentStatistics(linearity_) + 
+           ", lr-coef " + ToString(learn_rate_coef_) +
+           ", max-norm " + ToString(max_norm_) +
+           "\n  bias" + MomentStatistics(bias_) + 
+           ", lr-coef " + ToString(bias_learn_rate_coef_);
   }
   std::string InfoGradient() const {
     return std::string("\n  linearity_grad") + MomentStatistics(linearity_corr_) + 
@@ -139,9 +142,7 @@ class AffineTransform : public UpdatableComponent {
            ", max-norm " + ToString(max_norm_) +
            "\n  bias_grad" + MomentStatistics(bias_corr_) + 
            ", lr-coef " + ToString(bias_learn_rate_coef_);
-           
   }
-
 
   void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
     // precopy bias
@@ -231,8 +232,6 @@ class AffineTransform : public UpdatableComponent {
   CuMatrix<BaseFloat> linearity_corr_;
   CuVector<BaseFloat> bias_corr_;
 
-  BaseFloat learn_rate_coef_;
-  BaseFloat bias_learn_rate_coef_;
   BaseFloat max_norm_;
 };
 

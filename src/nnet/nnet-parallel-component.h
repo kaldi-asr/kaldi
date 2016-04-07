@@ -42,6 +42,28 @@ class ParallelComponent : public UpdatableComponent {
   Component* Copy() const { return new ParallelComponent(*this); }
   ComponentType GetType() const { return kParallelComponent; }
 
+  void SetLearnRateCoef(BaseFloat val) {
+    for (int32 i=0; i<nnet_.size(); i++) {
+      for (int32 j=0; j<nnet_[i].NumComponents(); j++) {
+        if (nnet_[i].GetComponent(j).IsUpdatable()) {
+          UpdatableComponent& comp = dynamic_cast<UpdatableComponent&>(nnet_[i].GetComponent(j));
+          comp.SetLearnRateCoef(val);
+        }
+      }
+    }
+  }
+
+  void SetBiasLearnRateCoef(BaseFloat val) {
+    for (int32 i=0; i<nnet_.size(); i++) {
+      for (int32 j=0; j<nnet_[i].NumComponents(); j++) {
+        if (nnet_[i].GetComponent(j).IsUpdatable()) {
+          UpdatableComponent& comp = dynamic_cast<UpdatableComponent&>(nnet_[i].GetComponent(j));
+          comp.SetBiasLearnRateCoef(val);
+        }
+      }
+    }
+  }
+
   void InitData(std::istream &is) {
     // define options
     std::vector<std::string> nested_nnet_proto;

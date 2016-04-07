@@ -72,7 +72,16 @@ class SimpleSentenceAveragingComponent : public Component {
     }
     if(PeekToken(is, binary) == 'O') {
       ExpectToken(is, binary, "<OnlySumming>");
-      ReadBasicType(is, binary, &only_summing_);
+      // compatibility trick, 
+      // in some models 'only_summing_' was float '0.0',
+      // from now 'only_summing_' is 'bool':
+      try {
+        ReadBasicType(is, binary, &only_summing_);
+      } catch(const std::exception &e) {
+        KALDI_WARN << "ERROR was handled by exception!";
+        BaseFloat dummy_float;
+        ReadBasicType(is, binary, &dummy_float);
+      }
     }
   }
 
@@ -137,7 +146,7 @@ class SimpleSentenceAveragingComponent : public Component {
 
 
 
-/** Deprecated, keeping it as Katka Zmolikova used it in JSALT 2015 */
+/** Deprecated!!!, keeping it as Katka Zmolikova used it in JSALT 2015 */
 class SentenceAveragingComponent : public UpdatableComponent {
  public:
   SentenceAveragingComponent(int32 dim_in, int32 dim_out) 

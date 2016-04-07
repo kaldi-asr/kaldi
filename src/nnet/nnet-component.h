@@ -93,7 +93,7 @@ class Component {
   /// Convert component type to marker
   static const char* TypeToMarker(ComponentType t);
   /// Convert marker to component type (case insensitive)
-  static ComponentType MarkerToType(const std::string &s);  
+  static ComponentType MarkerToType(const std::string &s);
  
  /// General interface of a component  
  public:
@@ -183,7 +183,8 @@ class Component {
 class UpdatableComponent : public Component {
  public: 
   UpdatableComponent(int32 input_dim, int32 output_dim)
-    : Component(input_dim, output_dim) { }
+    : Component(input_dim, output_dim), 
+      learn_rate_coef_(1.0), bias_learn_rate_coef_(1.0) { }
   virtual ~UpdatableComponent() { }
 
   /// Check if contains trainable parameters 
@@ -208,11 +209,24 @@ class UpdatableComponent : public Component {
     return opts_; 
   }
 
+  /// Sets the learn-rate coefficient,
+  virtual void SetLearnRateCoef(BaseFloat val) { 
+    learn_rate_coef_ = val; 
+  }
+  /// Sets the learn-rate coefficient for bias,
+  virtual void SetBiasLearnRateCoef(BaseFloat val) { 
+    bias_learn_rate_coef_ = val; 
+  }
+
   virtual void InitData(std::istream &is) = 0;
 
  protected:
   /// Option-class with training hyper-parameters
-  NnetTrainOptions opts_; 
+  NnetTrainOptions opts_;
+  /// Scalar applied to learning rate (for weight matrices, to be used in ::Update function),
+  BaseFloat learn_rate_coef_;
+  /// Scalar applied to learning rate (for bias, to be used in ::Update function),
+  BaseFloat bias_learn_rate_coef_;
 };
 
 

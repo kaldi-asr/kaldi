@@ -33,7 +33,7 @@ class LinearTransform : public UpdatableComponent {
  public:
   LinearTransform(int32 dim_in, int32 dim_out) 
     : UpdatableComponent(dim_in, dim_out), 
-      linearity_(dim_out, dim_in), linearity_corr_(dim_out, dim_in), learn_rate_coef_(1.0)
+      linearity_(dim_out, dim_in), linearity_corr_(dim_out, dim_in)
   { }
   ~LinearTransform()
   { }
@@ -110,7 +110,8 @@ class LinearTransform : public UpdatableComponent {
   }
   
   std::string Info() const {
-    return std::string("\n  linearity") + MomentStatistics(linearity_);
+    return std::string("\n  linearity") + MomentStatistics(linearity_) +
+           ", lr-coef " + ToString(learn_rate_coef_);
   }
   std::string InfoGradient() const {
     return std::string("\n  linearity_grad") + MomentStatistics(linearity_corr_) +
@@ -170,8 +171,6 @@ class LinearTransform : public UpdatableComponent {
  private:
   CuMatrix<BaseFloat> linearity_;
   CuMatrix<BaseFloat> linearity_corr_;
-  
-  BaseFloat learn_rate_coef_;
 };
 
 } // namespace nnet1

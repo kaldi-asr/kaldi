@@ -340,7 +340,7 @@ class LengthNormComponent: public Component {
 class AddShift : public UpdatableComponent {
  public:
   AddShift(int32 dim_in, int32 dim_out)
-    : UpdatableComponent(dim_in, dim_out), shift_data_(dim_in), learn_rate_coef_(1.0)
+    : UpdatableComponent(dim_in, dim_out), shift_data_(dim_in)
   { }
   ~AddShift()
   { }
@@ -390,7 +390,8 @@ class AddShift : public UpdatableComponent {
   }
    
   std::string Info() const {
-    return std::string("\n  shift_data") + MomentStatistics(shift_data_);
+    return std::string("\n  shift_data") + MomentStatistics(shift_data_) +
+           ", lr-coef " + ToString(learn_rate_coef_);
   }
 
   std::string InfoGradient() const {
@@ -406,7 +407,7 @@ class AddShift : public UpdatableComponent {
 
   void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
                         const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
-    //derivative of additive constant is zero...
+    // derivative of additive constant is zero...
     in_diff->CopyFromMat(out_diff);
   }
 
@@ -435,7 +436,6 @@ class AddShift : public UpdatableComponent {
  protected:
   CuVector<BaseFloat> shift_data_;
   CuVector<BaseFloat> shift_data_grad_;
-  BaseFloat learn_rate_coef_;
 };
 
 
@@ -447,7 +447,7 @@ class AddShift : public UpdatableComponent {
 class Rescale : public UpdatableComponent {
  public:
   Rescale(int32 dim_in, int32 dim_out)
-    : UpdatableComponent(dim_in, dim_out), scale_data_(dim_in), learn_rate_coef_(1.0)
+    : UpdatableComponent(dim_in, dim_out), scale_data_(dim_in)
   { }
   ~Rescale()
   { }
@@ -497,7 +497,8 @@ class Rescale : public UpdatableComponent {
   }
  
   std::string Info() const {
-    return std::string("\n  scale_data") + MomentStatistics(scale_data_);
+    return std::string("\n  scale_data") + MomentStatistics(scale_data_) +
+           ", lr-coef " + ToString(learn_rate_coef_);
   }
   
   std::string InfoGradient() const {
@@ -545,7 +546,6 @@ class Rescale : public UpdatableComponent {
  protected:
   CuVector<BaseFloat> scale_data_;
   CuVector<BaseFloat> scale_data_grad_;
-  BaseFloat learn_rate_coef_;
 };
 
 
