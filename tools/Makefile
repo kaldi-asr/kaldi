@@ -25,7 +25,7 @@ else
   endif
 endif
 
-all: check_required_programs sph2pipe atlas sclite openfst
+all: check_required_programs sph2pipe atlas sclite openfst googletest
 	@echo -e "\n\n"
 	@echo "Warning: IRSTLM is not installed by default anymore. If you need IRSTLM"
 	@echo "Warning: use the script extras/install_irstlm.sh"
@@ -58,7 +58,7 @@ distclean:
 	rm -rf openfst-$(OPENFST_VERSION).tar.gz
 	rm -f openfst
 	rm -rf libsndfile-1.0.25{,.tar.gz} BeamformIt-3.51{,.tgz}
-
+	rm -rf googletest googletest-*.tar.gz
 
 .PHONY: openfst # so target will be made even though "openfst" exists.
 openfst: openfst_compiled openfst-$(OPENFST_VERSION)/lib
@@ -170,4 +170,30 @@ openblas_compiled:
 	# $(MAKE) PREFIX=`pwd`/OpenBLAS/install FC=gfortran $(fortran_opt) DEBUG=1 USE_THREAD=1 NUM_THREADS=64 -C OpenBLAS all install
 	$(MAKE) PREFIX=`pwd`/OpenBLAS/install FC=gfortran $(fortran_opt) DEBUG=1 USE_THREAD=0 -C OpenBLAS all install
 
+GTEST_REVISION=d225acc
 
+.PHONY: googletest
+googletest: googletest-$(GTEST_REVISION).tar.gz googletest/googletest.a
+
+# Invariant: googletest-nnn.tar.gz exists <=> googletest/ contents corresponds
+# to the revision nnn. This way we can change GTEST_REVISION and automatically
+# upgrade and rebuild googletest code.
+googletest-$(GTEST_REVISION).tar.gz :
+	rm -rf googletest googletest-*.tar.gz $(GTEST_REVISION).tar.gz
+	wget https://github.com/google/googletest/archive/$(GTEST_REVISION).tar.gz
+	mv $(GTEST_REVISION).tar.gz googletest-$(GTEST_REVISION).tar.gz
+	mkdir googletest
+	cd googletest && \
+	 tar xf ../googletest-$(GTEST_REVISION).tar.gz --strip-components=1
+
+# Goolge test comes without a functional makefile but with clear instructions
+# instead, and is too tiny to worry about efficiency when compiling anyway.
+googletest/googletest.a :
+	cd googletest \
+ && $(CXX) $(CPPFLAGS) -isystem googletest/include -isystem googlemock/include \
+      $(CXXFLAGS) -g -Wall -Wextra -pthread -I googletest -I googlemock -c \
+      googlemock/src/gmock-all.cc \
+      googletest/src/gtest-all.cc \
+      googletest/src/gtest_main.cc \
+ && $(AR) $(ARFLAGS) googletest.a gmock-all.o gtest-all.o gtest_main.o
+	@echo >&2 "Googletest built successfully."

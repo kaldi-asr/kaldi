@@ -51,7 +51,7 @@ LDF="$LDFLAGS $(addsw -L $LIBDIRS)"
 CCC="$(mtoken CC $CXX) $(mtoken CXX $CXX)"
 
 runvx cd tools
-runvx make openfst $CCC CXXFLAGS="$CF" -j$MAXPAR
+runvx make googletest openfst $CCC CXXFLAGS="$CF" -j$MAXPAR
 cd ..
 runvx cd src
 runvx ./configure --use-cuda=no  --mathlib=OPENBLAS --openblas-root=$XROOT/usr
