@@ -228,8 +228,8 @@ sub SplitLongSegment {
                            $aligned_ctm->[$seg_end_index]->[2] -
                            $aligned_ctm->[$seg_start_index]->[1];
   my $current_seg_index = $seg_start_index;
-  my $aligned_ctm_size = keys($aligned_ctm);
-  while ($current_seg_length > 1.5 * $max_seg_length && $current_seg_index < $aligned_ctm_size) {
+  my $aligned_ctm_size = keys($aligned_ctm);    
+  while ($current_seg_length > 1.5 * $max_seg_length && $current_seg_index < $aligned_ctm_size-1) {
     my $split_point = GetSplitPoint($aligned_ctm, $current_seg_index,
                                     $seg_end_index, $max_seg_length);
     my $ans = PrintSegment($aligned_ctm, $wav_id, $min_sil_length,
@@ -240,6 +240,14 @@ sub SplitLongSegment {
     $current_seg_length = $aligned_ctm->[$seg_end_index]->[1] +
                           $aligned_ctm->[$seg_end_index]->[2] -
                           $aligned_ctm->[$current_seg_index]->[1];
+  }
+
+  if ($current_seg_index eq $aligned_ctm_size-1) {
+      my $ans = PrintSegment($aligned_ctm, $wav_id, $min_sil_length,
+                             $min_seg_length, $current_seg_index, $current_seg_index,
+                             $current_seg_count, $SO, $TO);
+      $current_seg_count += 1 if ($ans != -1);
+      return ($current_seg_count, $current_seg_index);
   }
 
   if ($current_seg_length > $max_seg_length) {
@@ -310,7 +318,7 @@ sub ProcessWav {
             $aligned_ctm[-1]->[3] += 1;
           } else {
             push(@aligned_ctm, ["<eps>", $start, $dur, 1]);
-          }
+          } 
         } else {
           # Case 2.3: substitution.
           push(@aligned_ctm, [$ref_word, $start, $dur, 1]);
@@ -326,8 +334,8 @@ sub ProcessWav {
   # Save the aligned CTM if needed
   if(defined($ACT)){
     for (my $i = 0; $i <= $#aligned_ctm; $i++) {
-      print $ACT "$wav_id $channel_id $aligned_ctm[$i][0] $aligned_ctm[$i][1] ";
-      print $ACT "$aligned_ctm[$i][2] $aligned_ctm[$i][3]\n";
+      print $ACT "$wav_id $channel_id $aligned_ctm[$i][1] $aligned_ctm[$i][2] ";
+      print $ACT "$aligned_ctm[$i][0] $aligned_ctm[$i][3]\n";
     }
   }
 
@@ -393,7 +401,7 @@ sub InsertSilence {
 
     my $new_start = sprintf("%.2f",
                             $ctm_in->[$x - 1]->[2] + $ctm_in->[$x - 1]->[3]);
-    if ($new_start <= $ctm_in->[$x]->[2]) {
+    if ($new_start < $ctm_in->[$x]->[2]) {
       my $new_dur = sprintf("%.2f", $ctm_in->[$x]->[2] - $new_start);
       push(@{$ctm_out}, [$ctm_in->[$x - 1]->[0], $ctm_in->[$x - 1]->[1],
                          $new_start, $new_dur, "<eps>"]);
