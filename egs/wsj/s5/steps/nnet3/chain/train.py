@@ -493,6 +493,11 @@ nnet3-am-copy --scale={shrink} --set-raw-nnet=- {dir}/{iter}.mdl {dir}/{new_iter
     elif os.stat(new_model).st_size == 0:
         raise Exception("{0} has size 0. Something went wrong in iteration {1}".format(new_model, iter))
 
+    try:
+        os.remove("{dir}/cache.{iter}".format(dir = dir, iter = iter))
+    except OSError:
+        pass
+
 def CheckForRequiredFiles(feat_dir, tree_dir, lat_dir):
     for file in ['{0}/feats.scp'.format(feat_dir), '{0}/ali.1.gz'.format(tree_dir),
                  '{0}/final.mdl'.format(tree_dir), '{0}/tree'.format(tree_dir),
