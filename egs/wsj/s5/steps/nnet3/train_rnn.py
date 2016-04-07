@@ -487,11 +487,8 @@ nnet3-am-copy --scale={shrink} --set-raw-nnet=- {dir}/{iter}.mdl {dir}/{new_iter
         raise Exception("Could not find {0}, at the end of iteration {1}".format(new_model, iter))
     elif os.stat(new_model).st_size == 0:
         raise Exception("{0} has size 0. Something went wrong in iteration {1}".format(new_model, iter))
-    try:
-        if cache_read_opt:
-            os.remove("{dir}/cache.{iter}".format(dir=dir, iter=iter))
-    except OSError:
-        raise Exception("Error while trying to delete the cache file")
+    if cache_read_opt and os.path.exists("{0}/cache.{1}".format(dir, iter)):
+        os.remove("{0}/cache.{1}".format(dir, iter))
 
 
 # args is a Namespace with the required parameters
