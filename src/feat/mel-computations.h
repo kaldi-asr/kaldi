@@ -109,14 +109,19 @@ class MelBanks {
   /// Compute Mel energies (note: not log enerties).
   /// At input, "fft_energies" contains the FFT energies (not log).
   void Compute(const VectorBase<BaseFloat> &fft_energies,
-               Vector<BaseFloat> *mel_energies_out) const;
+               VectorBase<BaseFloat> *mel_energies_out) const;
 
   int32 NumBins() const { return bins_.size(); }
 
   // returns vector of central freq of each bin; needed by plp code.
   const Vector<BaseFloat> &GetCenterFreqs() const { return center_freqs_; }
 
+  // Copy constructor
+  MelBanks(const MelBanks &other);
  private:
+  // Disallow assignment
+  MelBanks &operator = (const MelBanks &other);
+
   // center frequencies of bins, numbered from 0 ... num_bins-1.
   // Needed by GetCenterFreqs().
   Vector<BaseFloat> center_freqs_;
@@ -127,7 +132,6 @@ class MelBanks {
 
   bool debug_;
   bool htk_mode_;
-  KALDI_DISALLOW_COPY_AND_ASSIGN(MelBanks);
 };
 
 
@@ -142,9 +146,11 @@ void ComputeLifterCoeffs(BaseFloat Q, VectorBase<BaseFloat> *coeffs);
 // pAC - autocorrelation coefficients [n + 1]
 // pLP - linear prediction coefficients [n] (predicted_sn = sum_1^P{a[i] * s[n-i]}})
 //       F(z) = 1 / (1 - A(z)), 1 is not stored in the demoninator
+// Returns log energy of residual (I think)
 BaseFloat Durbin(int n, const BaseFloat *pAC, BaseFloat *pLP, BaseFloat *pTmp);
 
 // Compute LP coefficients from autocorrelation coefficients.
+// Returns log energy of residual (I think)
 BaseFloat ComputeLpc(const VectorBase<BaseFloat> &autocorr_in,
                      Vector<BaseFloat> *lpc_out);
 

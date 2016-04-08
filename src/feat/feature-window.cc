@@ -149,7 +149,7 @@ void ExtractWindow(const VectorBase<BaseFloat> &wave,
 
   if (log_energy_pre_window != NULL) {
     BaseFloat energy = std::max(VecVec(window_part, window_part),
-                                std::numeric_limits<BaseFloat>::min());
+                                std::numeric_limits<float>::min());
     *log_energy_pre_window = Log(energy);
   }
 

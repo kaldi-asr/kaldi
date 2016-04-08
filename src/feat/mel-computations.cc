@@ -142,6 +142,12 @@ MelBanks::MelBanks(const MelBanksOptions &opts,
   }
 }
 
+MelBanks::MelBanks(const MelBanks &other):
+    center_freqs_(other.center_freqs_),
+    bins_(other.bins_),
+    debug_(other.debug_),
+    htk_mode_(other.htk_mode_) { }
+
 BaseFloat MelBanks::VtlnWarpFreq(BaseFloat vtln_low_cutoff,  // upper+lower frequency cutoffs for VTLN.
                                  BaseFloat vtln_high_cutoff,
                                  BaseFloat low_freq,  // upper+lower frequency cutoffs in mel computation
@@ -219,10 +225,9 @@ BaseFloat MelBanks::VtlnWarpMelFreq(BaseFloat vtln_low_cutoff,  // upper+lower f
 
 // "power_spectrum" contains fft energies.
 void MelBanks::Compute(const VectorBase<BaseFloat> &power_spectrum,
-                       Vector<BaseFloat> *mel_energies_out) const {
+                       VectorBase<BaseFloat> *mel_energies_out) const {
   int32 num_bins = bins_.size();
-  if (mel_energies_out->Dim() != num_bins)
-    mel_energies_out->Resize(num_bins);
+  KALDI_ASSERT(mel_energies_out->Dim() == num_bins);
 
   for (int32 i = 0; i < num_bins; i++) {
     int32 offset = bins_[i].first;

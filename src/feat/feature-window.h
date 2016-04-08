@@ -94,6 +94,8 @@ struct FrameExtractionOptions {
 struct FeatureWindowFunction {
   FeatureWindowFunction() {}
   explicit FeatureWindowFunction(const FrameExtractionOptions &opts);
+  FeatureWindowFunction(const FeatureWindowFunction &other):
+      window(other.window) { }
   Vector<BaseFloat> window;
 };
 
