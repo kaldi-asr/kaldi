@@ -178,7 +178,7 @@ googletest: googletest-$(GTEST_REVISION).tar.gz googletest/googletest.a
 # Invariant: googletest-nnn.tar.gz exists <=> googletest/ contents corresponds
 # to the revision nnn. This way we can change GTEST_REVISION and automatically
 # upgrade and rebuild googletest code.
-googletest-$(GTEST_REVISION).tar.gz :
+googletest-$(GTEST_REVISION).tar.gz:
 	rm -rf googletest googletest-*.tar.gz $(GTEST_REVISION).tar.gz
 	wget https://github.com/google/googletest/archive/$(GTEST_REVISION).tar.gz
 	mv $(GTEST_REVISION).tar.gz googletest-$(GTEST_REVISION).tar.gz
@@ -188,7 +188,7 @@ googletest-$(GTEST_REVISION).tar.gz :
 
 # Goolge test comes without a functional makefile but with clear instructions
 # instead, and is too tiny to worry about efficiency when compiling anyway.
-googletest/googletest.a :
+googletest/googletest.a: googletest-$(GTEST_REVISION).tar.gz
 	cd googletest \
  && $(CXX) $(CPPFLAGS) -isystem googletest/include -isystem googlemock/include \
       $(CXXFLAGS) -g -Wall -Wextra -pthread -I googletest -I googlemock -c \
