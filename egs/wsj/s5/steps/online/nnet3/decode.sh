@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Copyright 2014  Johns Hopkins University (Author: Daniel Povey)
+#           2016  Api.ai (Author: Ilya Platonov)
 # Apache 2.0
 
 # Begin configuration section.  
@@ -38,8 +39,8 @@ echo "$0 $@"  # Print the command line for logging
 if [ $# != 3 ]; then
    echo "Usage: $0 [options] <graph-dir> <data-dir> <decode-dir>"
    echo "... where <decode-dir> is assumed to be a sub-directory of the directory"
-   echo " where the models are, as prepared by steps/online/nnet2/prepare_online_decoding.sh"
-   echo "e.g.: $0 exp/tri3b/graph data/test exp/tri3b_online/decode/"
+   echo " where the models are, as prepared by steps/online/nnet3/prepare_online_decoding.sh"
+   echo "e.g.: $0 exp/chain/tdnn/graph data/test exp/chain/tdnn_online/decode/"
    echo ""
    echo ""
    echo "main options (for others, see top of script file)"
@@ -69,7 +70,7 @@ srcdir=`dirname $dir`; # The model directory is one level up from decoding direc
 sdata=$data/split$nj;
 
 if [ "$online_config" == "" ]; then
-  online_config=$srcdir/online.conf;
+  online_config=$srcdir/conf/online.conf;
 fi
 
 mkdir -p $dir/log
@@ -116,11 +117,6 @@ fi
 
 if $threaded; then
   echo "No threaded support" && exit 1;
-#  decoder=online2-wav-nnet2-latgen-threaded
-    # note: the decoder actually uses 4 threads, but the average usage will normally
-    # be more like 2.
-#  parallel_opts="--num-threads 2"
-#  opts="--modify-ivector-config=$modify_ivector_config --verbose=1"
 else
   decoder=online2-wav-nnet3-latgen-faster
   parallel_opts=
