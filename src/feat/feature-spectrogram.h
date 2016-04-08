@@ -25,16 +25,15 @@
 #include <string>
 
 #include "feat/feature-functions.h"
+#include "feat/feature-window.h"
 
 namespace kaldi {
 /// @addtogroup  feat FeatureExtraction
 /// @{
 
 
-/// SpectrogramOptions contains basic options for computing SPECTROGRAM features
-/// It only includes things that can be done in a "stateless" way, i.e.
-/// it does not include energy max-normalization.
-/// It does not include delta computation.
+/// SpectrogramOptions contains basic options for computing spectrogram
+/// features.
 struct SpectrogramOptions {
   FrameExtractionOptions frame_opts;
   BaseFloat energy_floor;

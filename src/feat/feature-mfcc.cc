@@ -44,7 +44,7 @@ Mfcc::Mfcc(const MfccOptions &opts)
   int32 padded_window_size = opts.frame_opts.PaddedWindowSize();
   if ((padded_window_size & (padded_window_size-1)) == 0)  // Is a power of two...
     srfft_ = new SplitRadixRealFft<BaseFloat>(padded_window_size);
-  
+
   // We'll definitely need the filterbanks info for VTLN warping factor 1.0.
   // [note: this call caches it.]  The reason we call this here is to
   // improve the efficiency of the "const" version of Compute().
@@ -96,7 +96,7 @@ void Mfcc::Compute(const VectorBase<BaseFloat> &wave,
                    Matrix<BaseFloat> *output,
                    Vector<BaseFloat> *wave_remainder) {
   const MelBanks *this_mel_banks = GetMelBanks(vtln_warp);
-  ComputeInternal(wave, *this_mel_banks, output, wave_remainder);  
+  ComputeInternal(wave, *this_mel_banks, output, wave_remainder);
 }
 
 void Mfcc::Compute(const VectorBase<BaseFloat> &wave,
@@ -105,10 +105,10 @@ void Mfcc::Compute(const VectorBase<BaseFloat> &wave,
                    Vector<BaseFloat> *wave_remainder) const {
   bool must_delete_mel_banks;
   const MelBanks *mel_banks = GetMelBanks(vtln_warp,
-                                               &must_delete_mel_banks);
-  
+                                          &must_delete_mel_banks);
+
   ComputeInternal(wave, *mel_banks, output, wave_remainder);
-  
+
   if (must_delete_mel_banks)
     delete mel_banks;
 }

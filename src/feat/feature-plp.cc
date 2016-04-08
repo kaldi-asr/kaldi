@@ -19,6 +19,8 @@
 
 
 #include "feat/feature-plp.h"
+#include "feat/mel-computations.h"
+#include "feat/feature-window.h"
 #include "util/parse-options.h"
 
 
@@ -133,7 +135,7 @@ void Plp::Compute(const VectorBase<BaseFloat> &wave,
   const Vector<BaseFloat> *equal_loudness = GetEqualLoudness(vtln_warp);
   ComputeInternal(wave, *mel_banks,
                   *equal_loudness,
-                  output, wave_remainder);  
+                  output, wave_remainder);
 }
 
 void Plp::Compute(const VectorBase<BaseFloat> &wave,
@@ -153,7 +155,7 @@ void Plp::Compute(const VectorBase<BaseFloat> &wave,
   if (must_delete_mel_banks)
     delete mel_banks;
   if (must_delete_equal_loudness)
-    delete equal_loudness;  
+    delete equal_loudness;
 }
 
 
@@ -184,7 +186,7 @@ void Plp::ComputeInternal(const VectorBase<BaseFloat> &wave,
   // and size may differ from final size.
   Vector<BaseFloat> final_cepstrum(opts_.num_ceps);
   std::vector<BaseFloat> temp_buffer;  // used by srfft.
-  
+
   KALDI_ASSERT(opts_.num_ceps <= opts_.lpc_order+1);  // our num-ceps includes C0.
   for (int32 r = 0; r < rows_out; r++) {  // r is frame index..
     BaseFloat log_energy;
@@ -209,9 +211,9 @@ void Plp::ComputeInternal(const VectorBase<BaseFloat> &wave,
     mel_banks.Compute(power_spectrum, &mel_energies);
 
     mel_energies.MulElements(equal_loudness);
-    
+
     mel_energies.ApplyPow(opts_.compress_factor);
-    
+
     // duplicate first and last elements.
     {
       SubVector<BaseFloat> v(mel_energies_duplicated, 1, num_mel_bins);
@@ -222,12 +224,12 @@ void Plp::ComputeInternal(const VectorBase<BaseFloat> &wave,
 
     autocorr_coeffs.AddMatVec(1.0, idft_bases_, kNoTrans,
                               mel_energies_duplicated,  0.0);
-    
+
     BaseFloat energy = ComputeLpc(autocorr_coeffs, &lpc_coeffs);
 
     energy = std::max(energy,
                       std::numeric_limits<BaseFloat>::min());
-    
+
     Lpc2Cepstrum(opts_.lpc_order, lpc_coeffs.Data(), raw_cepstrum.Data());
     {
       SubVector<BaseFloat> dst(final_cepstrum, 1, opts_.num_ceps-1);

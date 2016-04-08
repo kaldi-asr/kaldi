@@ -24,6 +24,8 @@
 #include <string>
 
 #include "feat/feature-functions.h"
+#include "feat/feature-window.h"
+#include "feat/mel-computations.h"
 
 namespace kaldi {
 /// @addtogroup  feat FeatureExtraction
@@ -77,6 +79,18 @@ struct MfccOptions {
   }
 };
 
+
+/*
+ */
+template<class Computer> class FeatureComputer {
+};
+
+// This is the new-style interface to the MFCC computation.
+class MfccComputer {
+
+};
+
+
 class MelBanks;
 
 
@@ -104,19 +118,19 @@ class Mfcc {
                BaseFloat vtln_warp,
                Matrix<BaseFloat> *output,
                Vector<BaseFloat> *wave_remainder = NULL) const;
-  
+
   typedef MfccOptions Options;
  private:
   void ComputeInternal(const VectorBase<BaseFloat> &wave,
                        const MelBanks &mel_banks,
                        Matrix<BaseFloat> *output,
                        Vector<BaseFloat> *wave_remainder = NULL) const;
-  
+
   const MelBanks *GetMelBanks(BaseFloat vtln_warp);
 
   const MelBanks *GetMelBanks(BaseFloat vtln_warp,
                               bool *must_delete) const;
-  
+
   MfccOptions opts_;
   Vector<BaseFloat> lifter_coeffs_;
   Matrix<BaseFloat> dct_matrix_;  // matrix we left-multiply by to perform DCT.

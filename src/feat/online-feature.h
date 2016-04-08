@@ -69,7 +69,7 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
   // expected in the options.
   virtual void AcceptWaveform(BaseFloat sampling_rate,
                               const VectorBase<BaseFloat> &waveform);
-  
+
 
   // InputFinished() tells the class you won't be providing any
   // more waveform.  This will help flush out the last few frames
@@ -78,7 +78,7 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
 
 
  private:
-  C mfcc_or_plp_;  // class that does the MFCC or PLP computation
+  C mfcc_or_plp_;  // class that does the MFCC or PLP or filterbank computation
 
   // features_ is the Mfcc or Plp or Fbank features that we have already computed.
   Matrix<BaseFloat> features_;
@@ -120,7 +120,7 @@ class OnlineMatrixFeature: public OnlineFeatureInterface {
   virtual int32 Dim() const { return mat_.NumCols(); }
 
   virtual int32 NumFramesReady() const { return mat_.NumRows(); }
-  
+
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {
     feat->CopyFromVec(mat_.Row(frame));
   }
@@ -156,7 +156,7 @@ struct OnlineCmvnOptions {
                            // buffer used for caching CMVN stats.
   std::string skip_dims; // Colon-separated list of dimensions to skip normalization
                          // of, e.g. 13:14:15.
-  
+
   OnlineCmvnOptions():
       cmn_window(600),
       speaker_frames(600),
@@ -166,7 +166,7 @@ struct OnlineCmvnOptions {
       modulus(20),
       ring_buffer_size(20),
       skip_dims("") { }
-  
+
   void Check() {
     KALDI_ASSERT(speaker_frames <= cmn_window && global_frames <= speaker_frames
                  && modulus > 0);
@@ -225,11 +225,11 @@ struct OnlineCmvnState {
       global_cmvn_stats(global_stats) { }
 
   // Copy constructor
-  OnlineCmvnState(const OnlineCmvnState &other); 
+  OnlineCmvnState(const OnlineCmvnState &other);
 
   void Write(std::ostream &os, bool binary) const;
   void Read(std::istream &is, bool binary);
-  
+
   // Use the default assignment operator.
 };
 
@@ -242,7 +242,7 @@ struct OnlineCmvnState {
    We normally only do so in the "online" GMM-based decoding, e.g.  in
    online2bin/online2-wav-gmm-latgen-faster.cc; see also the script
    steps/online/prepare_online_decoding.sh and steps/online/decode.sh.
-   
+
    In the steady state (in the middle of a long utterance), this class
    accumulates CMVN statistics from the previous "cmn_window" frames (default 600
    frames, or 6 seconds), and uses these to normalize the mean and possibly

@@ -24,6 +24,8 @@
 #include <string>
 
 #include "feat/feature-functions.h"
+#include "feat/feature-window.h"
+#include "feat/mel-computations.h"
 #include "itf/options-itf.h"
 #include "matrix/kaldi-matrix-inl.h"
 
@@ -136,7 +138,7 @@ class Plp {
   const Vector<BaseFloat> *GetEqualLoudness(BaseFloat vtln_warp,
                                             const MelBanks &mel_banks,
                                             bool *must_delete) const;
-  
+
   PlpOptions opts_;
   Vector<BaseFloat> lifter_coeffs_;
   Matrix<BaseFloat> idft_bases_;

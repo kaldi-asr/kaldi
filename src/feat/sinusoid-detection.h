@@ -55,7 +55,7 @@ class SinusoidDetector {
  public:
   SinusoidDetector(BaseFloat samp_freq,
                     int32 num_samp);
-  
+
 
   // Detect the dominant sinusoid component in the signal, as long as the
   // energy-reduction of the signal from subtracting that sinuoid would be >=
@@ -65,7 +65,7 @@ class SinusoidDetector {
   BaseFloat DetectSinusoid(BaseFloat min_energy_change,
                            const VectorBase<BaseFloat> &signal,
                            Sinusoid *sinusoid);
-  
+
   // This function does quadratic interpolation for a function that is known at
   // three equally spaced points [x0 x1 x2] = [0 1 2], and we want the x-value
   // and corresponding y-value at the maximum of the function within the range
@@ -89,7 +89,7 @@ class SinusoidDetector {
   static BaseFloat QuadraticInterpolate(
     BaseFloat x1, BaseFloat y0, BaseFloat y1, BaseFloat y2,
     BaseFloat x);
-  
+
 
  private:
   BaseFloat samp_freq_;
@@ -121,14 +121,14 @@ class SinusoidDetector {
   // containing the values x y z of a symmetric matrix [ a b; b c ].  There is
   // one of these matrices for each frequency, sampled at one quarter the
   // spacing of the FFT bins.  There is a long comment next to the definition of
-  // ComputeCoefficients that describes this. 
+  // ComputeCoefficients that describes this.
   Matrix<BaseFloat> M_;
 
   // Minv_ is the coefficients in the same format as M_, but containing the
   // corresponding coefficients of the inverse matrix.  There is a long comment
   // next to the definition of ComputeCoefficients that describes this.
   Matrix<BaseFloat> Minv_;
-  
+
 
   struct InfoForBin {
     bool valid;
@@ -146,9 +146,9 @@ class SinusoidDetector {
     BaseFloat cos_coeff;
     BaseFloat sin_coeff;
   };
-  
+
   // Compute the coefficients and energies at the original FFT bins (every
-  // fourth entry in "info"). 
+  // fourth entry in "info").
   void ComputeCoarseInfo(const Vector<BaseFloat> &fft,
                          std::vector<InfoForBin> *info) const;
 
@@ -164,11 +164,11 @@ class SinusoidDetector {
                           const std::vector<InfoForBin> &info,
                           std::vector<int32> *bins) const;
 
-  
+
   void ComputeBinInfo(const VectorBase<BaseFloat> &signal,
                       int32 bin, InfoForBin *info) const;
 
-  
+
   // For each bin b such that we have valid "info" data for bins b, b+1 and b+2,
   // does quadratic interpolation to find the maximum predicted energy in the
   // range [b, b+2].  The location of the maximum predicted energy is output to
@@ -186,7 +186,7 @@ class SinusoidDetector {
       const std::vector<InfoForBin> &info,
       int32 *bin_out,
       BaseFloat *offset_out) const;
-  
+
 
   // This function does
   // (*cos)(t) = cos(2 pi t freq / samp_freq)
@@ -195,7 +195,7 @@ class SinusoidDetector {
                               BaseFloat freq,
                               VectorBase<BaseFloat> *cos,
                               VectorBase<BaseFloat> *sin);
-  
+
   // Do fine optimization of the frequency within a bin, given a reasonable
   // approximate position within it based on interpolation (that should be close
   // to the optimum).
@@ -205,7 +205,7 @@ class SinusoidDetector {
       BaseFloat offset,
       std::vector<InfoForBin> *info,
       OptimizedInfo *opt_info) const;
-  
+
   // Computes the coefficients cos_, sin_, and Minv_.
   void ComputeCoefficients();
 
@@ -263,7 +263,7 @@ struct MultiSinusoidDetectorConfig {
   // the following is not critical and is not exported to the
   // command line.
   int32 subsample_filter_zeros;
-  
+
   MultiSinusoidDetectorConfig():
       frame_length_ms(20), frame_shift_ms(10),
       two_freq_min_energy(0.2), two_freq_min_total_energy(0.6),
@@ -313,8 +313,8 @@ struct MultiSinusoidDetectorConfig {
     KALDI_ASSERT(fabs(samples_per_frame_shift -
                       static_cast<int32>(samples_per_frame_shift)) <
                  0.001);
-                      
-  }             
+
+  }
 };
 
 struct MultiSinusoidDetectorOutput {
@@ -338,19 +338,19 @@ class MultiSinusoidDetector {
 
   // Initialize sinusoid detector.  Sampling frequency must be integer.
   MultiSinusoidDetector(const MultiSinusoidDetectorConfig &config,
-                        int32 sampling_freq);    
+                        int32 sampling_freq);
 
   /// This is how the class acccepts its input.  You can put the waveform in
   /// piece by piece, if it's an online application.
   void AcceptWaveform(const VectorBase<BaseFloat> &waveform);
-  
+
   /// The user calls this to announce to the class that the waveform has ended;
   /// this forces any pending data to be flushed.
   void WaveformFinished();
 
   /// Resets the state of the class so you can start processing another waveform.
-  void Reset(); 
-  
+  void Reset();
+
   /// This returns true if the class currently has no more data ready to output.
   bool Done() const;
 
@@ -362,7 +362,7 @@ class MultiSinusoidDetector {
   BaseFloat FrameShiftSecs() const { return 0.001 * config_.frame_shift_ms; }
 
   BaseFloat SamplingFrequency() const { return sample_freq_; }
-  
+
  private:
   // Gets the next frame of subsampled signal, and consumes the appropriate
   // amount of stored data.  It is an error to call this if Done() returned
@@ -386,23 +386,21 @@ class MultiSinusoidDetector {
                             const Sinusoid &sinusoid2,
                             BaseFloat energy2,
                             MultiSinusoidDetectorOutput *output);
-  
-  
+
+
   // Returns std::min(max_samp, sum-of-samples-in-subsampled_signal_).
   // (the std::min is for efficiency so we don't have to visit the
   //  whole list).
   int32 NumSubsampledSamplesReady(int32 max_samp) const;
-  
+
   MultiSinusoidDetectorConfig config_;
   int32 sample_freq_;
   int32 samples_per_frame_subsampled_;  // (samples per frame at subsampled
                                         // rate).
-  int32 samples_shift_subsampled_;  // (samples per frame-shift at subsampled
-                                    // rate).
 
   // True if the user has called WaveformFinished().
   bool waveform_finished_;
-  
+
   // Pieces of the subsampled signal that are awaiting processing.
   // Normally there will be just one element here, but if someone calls
   // AcceptWaveform multiple times before getting output, there could
@@ -414,12 +412,12 @@ class MultiSinusoidDetector {
   // (subsampled_signal_.empty() && samples_consumed_ == 0) or
   // samples_consumed_ < subsampled_signal_[0]->Dim().
   int32 samples_consumed_;
-  
-  
+
+
   // This object is used to subsample the signal.
   LinearResample resampler_;
 
-  // This object is used to detect sinusoids in the subsampled 
+  // This object is used to detect sinusoids in the subsampled
   // frames.
   SinusoidDetector detector_;
 };
