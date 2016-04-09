@@ -99,24 +99,88 @@ struct FeatureWindowFunction {
   Vector<BaseFloat> window;
 };
 
-int32 NumFrames(int32 wave_length,
-                const FrameExtractionOptions &opts);
+
+/**
+   This function returns the number of frames that we can extract from a wave
+   file with the given number of samples in it (assumed to have the same
+   sampling rate as specified in 'opts').
+
+      @param [in] wave_length  The number of samples in the wave file.
+      @param [in] opts     The frame-extraction options class
+
+      @param [in] flush   True if we are asserting that this number of samples is
+             'all there is', false if we expecting more data to possibly come
+             in.  This only makes a difference to the answer if opts.snips_edges
+             == false.  For offline feature extraction you always want flush ==
+             true.  In an online-decoding context, once you know (or decide) that
+             no more data is coming in, you'd call it with flush == true at the
+             end to flush out any remaining data.
+*/
+int32 NumFrames(int64 num_samples,
+                const FrameExtractionOptions &opts,
+                bool flush = true);
+
+/*
+   This function returns the index of the first sample of the frame indexed
+   'frame'.  If snip-edges=true, it just returns frame * opts.WindowShift(); if
+   snip-edges=false, the formula is a little more complicated and the result may
+   be negative.
+*/
+int64 FirstSampleOfFrame(int32 frame,
+                         const FrameExtractionOptions &opts);
+
 
 
 void Dither(VectorBase<BaseFloat> *waveform, BaseFloat dither_value);
 
 void Preemphasize(VectorBase<BaseFloat> *waveform, BaseFloat preemph_coeff);
 
+/**
+  This function does all the windowing steps after actually
+  extracting the windowed signal: depeding on the
+  configuration, it does dithering, dc offset removal,
+  preemphasis, and multiplication by the windowing function.
+   @param [in] opts  The options class to be used
+   @param [in] window_function  The windowing function-- should have
+                    been initialized using 'opts'.
+   @param [in,out] window  A vector of size opts.WindowSize().  Note:
+      it will typically be a sub-vector of a larger vector of size
+      opts.PaddedWindowSize(), with the remaining samples zero,
+      as the FFT code is more efficient if it operates on data with
+      power-of-two size.
+   @param [out]   log_energy_pre_window If non-NULL, then after dithering and
+      DC offset removal, this function will write to this pointer the log of
+      the total energy (i.e. sum-squared) of the frame.
+ */
+void ProcessWindow(const FrameExtractionOptions &opts,
+                   const FeatureWindowFunction &window_function,
+                   VectorBase<BaseFloat> *window,
+                   BaseFloat *log_energy_pre_window = NULL);
 
-// ExtractWindow extracts a windowed frame of waveform with a power-of-two,
-// padded size. If log_energy_pre_window != NULL, outputs the log of the
-// sum-of-squared samples before preemphasis and windowing
+
+/*
+  ExtractWindow() extracts a windowed frame of waveform (possibly with a
+  power-of-two, padded size, depending on the config), including all the
+  proessing done by ProcessWindow().
+
+  @param [in] wave  The entire waveform
+  @param [in] f     The frame index to be extracted
+  @param [in] opts  The options class to be used
+  @param [in] window_function  The windowing function, as derived from the
+                    options class.
+  @param [out] window  The windowed, possibly-padded waveform to be
+                     extracted.  Will be resized as needed.
+  @param [out] log_energy_pre_window  If non-NULL, the log-energy of
+                   the signal prior to pre-emphasis and multiplying by
+                   the windowing function will be written to here.
+*/
 void ExtractWindow(const VectorBase<BaseFloat> &wave,
                    int32 f,  // with 0 <= f < NumFrames(wave.Dim(), opts)
                    const FrameExtractionOptions &opts,
                    const FeatureWindowFunction &window_function,
                    Vector<BaseFloat> *window,
                    BaseFloat *log_energy_pre_window = NULL);
+
 
 // ExtractWaveformRemainder is useful if the waveform is coming in segments.
 // It extracts the bit of the waveform at the end of this block that you

@@ -26,24 +26,63 @@
 
 namespace kaldi {
 
-int32 NumFrames(int32 nsamp,
-                const FrameExtractionOptions &opts) {
-  int32 frame_shift = opts.WindowShift();
-  int32 frame_length = opts.WindowSize();
-  KALDI_ASSERT(frame_shift != 0 && frame_length != 0);
+
+int64 FirstSampleOfFrame(int32 frame,
+                         const FrameExtractionOptions &opts) {
+  int64 frame_shift = opts.WindowShift();
   if (opts.snip_edges) {
-    if (static_cast<int32>(nsamp) < frame_length)
+    return frame * frame_shift;
+  } else {
+    int64 midpoint_of_frame = frame_shift * frame  +  frame_shift / 2,
+        beginning_of_frame = midpoint_of_frame  -  opts.WindowSize() / 2;
+    return beginning_of_frame;
+  }
+}
+
+int32 NumFrames(int64 num_samples,
+                const FrameExtractionOptions &opts,
+                bool flush) {
+  int64 frame_shift = opts.WindowShift();
+  int64 frame_length = opts.WindowSize();
+  if (opts.snip_edges) {
+    // with --snip-edges=true (the default), we use a HTK-like approach to
+    // determining the number of frames-- all frames have to fit completely into
+    // the waveform, and the first frame begins at sample zero.
+    if (num_samples < frame_length)
       return 0;
     else
-      return (1 + ((nsamp - frame_length) / frame_shift));
-      // view the expression above as: nsamp-frame_length is how much room we
-      // have to shift the frame within the waveform; frame_shift is how much
-      // we shift it each time and the ratio is how many times we can shift
-      // it (integer arithmetic rounds down).
+      return (1 + ((num_samples - frame_length) / frame_shift));
+    // You can understand the expression above as follows: 'num_samples -
+    // frame_length' is how much room we have to shift the frame within the
+    // waveform; 'frame_shift' is how much we shift it each time; and the ratio
+    // is how many times we can shift it (integer arithmetic rounds down).
   } else {
-    return (int32)(nsamp * 1.0f / frame_shift + 0.5f);
-    // if --snip-edges=false, the number of frames would be determined by
-    // rounding the (file-length / frame-shift) to the nearest integer
+    // if --snip-edges=false, the number of frames is determined by rounding the
+    // (file-length / frame-shift) to the nearest integer.  The point of this
+    // formula is to make the number of frames an obvious and predictable
+    // function of the frame shift and signal length, which makes many
+    // segmentation-related questions simpler.
+    //
+    // Because integer division in C++ rounds toward zero, we add (half the
+    // frame-shift minus epsilon) before dividing, to have the effect of
+    // rounding towards the closest integer.
+    int32 num_frames = (num_samples + (frame_shift / 2)) / frame_shift;
+
+    if (flush)
+      return num_frames;
+
+    // note: 'end' always means the last plus one, i.e. one past the last.
+    int64 end_sample_of_last_frame = FirstSampleOfFrame(num_frames - 1, opts)
+        + frame_length;
+
+    // the following code is optimized more for clarity than efficiency.
+    // If flush == false, we can't output frames that extend past the end
+    // of the signal.
+    while (num_frames > 0 && end_sample_of_last_frame > num_samples) {
+      num_frames--;
+      end_sample_of_last_frame -= frame_shift;
+    }
+    return num_frames;
   }
 }
 
@@ -81,6 +120,32 @@ FeatureWindowFunction::FeatureWindowFunction(const FrameExtractionOptions &opts)
     }
   }
 }
+
+void ProcessWindow(const FrameExtractionOptions &opts,
+                   const FeatureWindowFunction &window_function,
+                   VectorBase<BaseFloat> *window,
+                   BaseFloat *log_energy_pre_window) {
+  int32 frame_length = opts.WindowSize();
+  KALDI_ASSERT(window->Dim() == frame_length);
+
+  if (opts.dither != 0.0)
+    Dither(window, opts.dither);
+
+  if (opts.remove_dc_offset)
+    window->Add(-window->Sum() / frame_length);
+
+  if (log_energy_pre_window != NULL) {
+    BaseFloat energy = std::max(VecVec(*window, *window),
+                                std::numeric_limits<float>::epsilon());
+    *log_energy_pre_window = Log(energy);
+  }
+
+  if (opts.preemph_coeff != 0.0)
+    Preemphasize(window, opts.preemph_coeff);
+
+  window->MulElements(window_function.window);
+}
+
 
 // ExtractWindow extracts a windowed frame of waveform with a power-of-two,
 // padded size.  It does mean subtraction, pre-emphasis and dithering as
@@ -142,21 +207,7 @@ void ExtractWindow(const VectorBase<BaseFloat> &wave,
   SubVector<BaseFloat> window_part(*window, 0, frame_length);
   window_part.CopyFromVec(wave_part);
 
-  if (opts.dither != 0.0) Dither(&window_part, opts.dither);
-
-  if (opts.remove_dc_offset)
-    window_part.Add(-window_part.Sum() / frame_length);
-
-  if (log_energy_pre_window != NULL) {
-    BaseFloat energy = std::max(VecVec(window_part, window_part),
-                                std::numeric_limits<float>::min());
-    *log_energy_pre_window = Log(energy);
-  }
-
-  if (opts.preemph_coeff != 0.0)
-    Preemphasize(&window_part, opts.preemph_coeff);
-
-  window_part.MulElements(window_function.window);
+  ProcessWindow(opts, window_function, &window_part, log_energy_pre_window);
 
   if (frame_length != frame_length_padded)
     SubVector<BaseFloat>(*window, frame_length,
