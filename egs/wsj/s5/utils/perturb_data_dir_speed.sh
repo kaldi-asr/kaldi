@@ -88,10 +88,13 @@ if [ -f $srcdir/spk2gender ]; then
   utils/apply_map.pl -f 1 $destdir/spk_map <$srcdir/spk2gender >$destdir/spk2gender
 fi
 
-if [ -f $srcdir/utt2dur ]; then
-  cat $srcdir/utt2dur | utils/apply_map.pl -f 1 $destdir/utt_map  | \
-    awk -v factor=$factor '{print $1, $2/factor;}' >$destdir/utt2dur
+if [ ! -f $srcdir/utt2dur ]; then
+  # generate utt2dur if it does not exist in srcdir
+  utils/data/get_utt2dur.sh $srcdir
 fi
+
+cat $srcdir/utt2dur | utils/apply_map.pl -f 1 $destdir/utt_map  | \
+  awk -v factor=$factor '{print $1, $2/factor;}' >$destdir/utt2dur
 
 rm $destdir/spk_map $destdir/utt_map 2>/dev/null
 echo "$0: generated speed-perturbed version of data in $srcdir, in $destdir"
