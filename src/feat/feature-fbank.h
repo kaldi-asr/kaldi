@@ -24,9 +24,9 @@
 #include<map>
 #include <string>
 
+#include "feat/feature-common.h"
 #include "feat/feature-functions.h"
 #include "feat/feature-window.h"
-#include "feat/feature-common.h"
 #include "feat/mel-computations.h"
 
 namespace kaldi {
@@ -134,7 +134,7 @@ class FbankComputer {
   FbankComputer &operator =(const FbankComputer &other);
 };
 
-typedef FeatureTpl<FbankComputer> Fbank;
+typedef OfflineFeatureTpl<FbankComputer> Fbank;
 
 /// @} End of "addtogroup feat"
 }  // namespace kaldi

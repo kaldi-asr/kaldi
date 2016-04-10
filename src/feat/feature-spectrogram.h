@@ -24,9 +24,9 @@
 
 #include <string>
 
+#include "feat/feature-common.h"
 #include "feat/feature-functions.h"
 #include "feat/feature-window.h"
-#include "feat/feature-common.h"
 
 namespace kaldi {
 /// @addtogroup  feat FeatureExtraction
@@ -53,13 +53,14 @@ struct SpectrogramOptions {
   }
 };
 
-/// Class for computing spectrogram features
+/// Class for computing spectrogram features.
 class SpectrogramComputer {
  public:
+  typedef SpectrogramOptions Options;
   explicit SpectrogramComputer(const SpectrogramOptions &opts);
   SpectrogramComputer(const SpectrogramComputer &other);
 
-  const FrameExtractionOptions &GetFrameOptions() const {
+  const FrameExtractionOptions& GetFrameOptions() const {
     return opts_.frame_opts;
   }
 
@@ -69,7 +70,7 @@ class SpectrogramComputer {
 
 
   /**
-     Function that computes one frame of features from
+     Function that computes one frame of spectrogram features from
      one frame of signal.
 
      @param [in] signal_raw_log_energy The log-energy of the frame of the signal
@@ -77,11 +78,8 @@ class SpectrogramComputer {
          log(numeric_limits<float>::min()), whichever is greater.  Must be
          ignored by this function if this class returns false from
          this->NeedsRawLogEnergy().
-     @param [in] vtln_warp  The VTLN warping factor that the user wants
-         to be applied when computing features for this utterance.  Will
-         normally be 1.0, meaning no warping is to be done.  The value will
-         be ignored for feature types that don't support VLTN, such as
-         spectrogram features.
+     @param [in] vtln_warp  This is ignored by this function, it's only
+         needed for interface compatibility.
      @param [in] signal_frame  One frame of the signal,
        as extracted using the function ExtractWindow() using the options
        returned by this->GetFrameOptions().  The function will use the
@@ -105,7 +103,7 @@ class SpectrogramComputer {
   SpectrogramComputer &operator=(const SpectrogramComputer &other);
 };
 
-typedef FeatureTpl<SpectrogramComputer> Spectrogram;
+typedef OfflineFeatureTpl<SpectrogramComputer> Spectrogram;
 
 
 /// @} End of "addtogroup feat"

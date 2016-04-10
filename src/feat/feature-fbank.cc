@@ -21,7 +21,6 @@
 
 #include "feat/feature-fbank.h"
 
-
 namespace kaldi {
 
 FbankComputer::FbankComputer(const FbankOptions &opts):
@@ -81,7 +80,7 @@ void FbankComputer::Compute(BaseFloat signal_log_energy,
                feature->Dim() == this->Dim());
 
 
-  // Compute energy after window function (not the raw one)
+  // Compute energy after window function (not the raw one).
   if (opts_.use_energy && !opts_.raw_energy)
     signal_log_energy = Log(std::max(VecVec(*signal_frame, *signal_frame),
                                      std::numeric_limits<BaseFloat>::min()));
@@ -104,7 +103,7 @@ void FbankComputer::Compute(BaseFloat signal_log_energy,
   // Sum with mel fiterbanks over the power spectrum
   mel_banks.Compute(power_spectrum, &mel_energies);
   if (opts_.use_log_fbank) {
-    // avoid log of zero (which should be prevented anyway by dithering).
+    // Avoid log of zero (which should be prevented anyway by dithering).
     mel_energies.ApplyFloor(std::numeric_limits<BaseFloat>::epsilon());
     mel_energies.ApplyLog();  // take the log.
   }

@@ -24,82 +24,91 @@
 
 namespace kaldi {
 
-
 template<class C>
 void OnlineGenericBaseFeature<C>::GetFrame(int32 frame,
                                            VectorBase<BaseFloat> *feat) {
-  KALDI_ASSERT(frame >= 0 && frame < num_frames_);
-  KALDI_ASSERT(feat->Dim() == Dim());
-  feat->CopyFromVec(features_.Row(frame));
+  // 'at' does size checking.
+  feat->CopyFromVec(*(features_.at(frame)));
 };
 
 template<class C>
-bool OnlineGenericBaseFeature<C>::IsLastFrame(int32 frame) const {
-  return (frame == num_frames_ - 1 && input_finished_);
-}
-
-template<class C>
 OnlineGenericBaseFeature<C>::OnlineGenericBaseFeature(
-    const typename C::Options &opts)
-    :mfcc_or_plp_(opts), input_finished_(false), num_frames_(0),
-    sampling_frequency_(opts.frame_opts.samp_freq) { }
+    const typename C::Options &opts):
+    computer_(opts), window_function_(computer_.GetFrameOptions()),
+    input_finished_(false), waveform_offset_(0) { }
 
 template<class C>
 void OnlineGenericBaseFeature<C>::AcceptWaveform(BaseFloat sampling_rate,
-                                        const VectorBase<BaseFloat> &waveform) {
-  if (waveform.Dim() == 0) {
-    return;  // Nothing to do.
-  }
-  if (input_finished_) {
-    KALDI_ERR << "AcceptWaveform called after InputFinished() was called.";
-  }
-  if (sampling_rate != sampling_frequency_) {
+                                                 const VectorBase<BaseFloat> &waveform) {
+  BaseFloat expected_sampling_rate = computer_.GetFrameOptions().samp_freq;
+  if (sampling_rate != expected_sampling_rate)
     KALDI_ERR << "Sampling frequency mismatch, expected "
-              << sampling_frequency_ << ", got " << sampling_rate;
-  }
-
-  Vector<BaseFloat> appended_wave;
-
-  const VectorBase<BaseFloat> &wave_to_use = (waveform_remainder_.Dim() != 0 ?
-                                              appended_wave : waveform);
-  if (waveform_remainder_.Dim() != 0) {
-    appended_wave.Resize(waveform_remainder_.Dim() +
-                         waveform.Dim());
+              << expected_sampling_rate << ", got " << sampling_rate;
+  if (waveform.Dim() == 0)
+    return;  // Nothing to do.
+  if (input_finished_)
+    KALDI_ERR << "AcceptWaveform called after InputFinished() was called.";
+  // append 'waveform' to 'waveform_remainder_.'
+  Vector<BaseFloat> appended_wave(waveform_remainder_.Dim() + waveform.Dim());
+  if (waveform_remainder_.Dim() != 0)
     appended_wave.Range(0, waveform_remainder_.Dim()).CopyFromVec(
         waveform_remainder_);
-    appended_wave.Range(waveform_remainder_.Dim(),
-                        waveform.Dim()).CopyFromVec(waveform);
-  }
-  waveform_remainder_.Resize(0);
+  appended_wave.Range(waveform_remainder_.Dim(), waveform.Dim()).CopyFromVec(
+      waveform);
+  waveform_remainder_.Swap(&appended_wave);
+  ComputeFeatures();
+}
 
-  Matrix<BaseFloat> feats;
-  BaseFloat vtln_warp = 1.0;  // We don't support VTLN warping in this wrapper.
-  mfcc_or_plp_.Compute(wave_to_use, vtln_warp, &feats, &waveform_remainder_);
+template<class C>
+void OnlineGenericBaseFeature<C>::ComputeFeatures() {
+  const FrameExtractionOptions &frame_opts = computer_.GetFrameOptions();
+  int64 num_samples_total = waveform_offset_ + waveform_remainder_.Dim();
+  int32 num_frames_old = features_.size(),
+      num_frames_new = NumFrames(num_samples_total, frame_opts,
+                                 input_finished_);
+  KALDI_ASSERT(num_frames_new >= num_frames_old);
+  features_.resize(num_frames_new, NULL);
 
-  if (feats.NumRows() == 0) {
-    // Presumably we got a very small waveform and could output no whole
-    // features.  The waveform will have been appended to waveform_remainder_.
-    return;
+  Vector<BaseFloat> window;
+  bool need_raw_log_energy = computer_.NeedRawLogEnergy();
+  for (int32 frame = num_frames_old; frame < num_frames_new; frame++) {
+    BaseFloat raw_log_energy = 0.0;
+    ExtractWindow(waveform_offset_, waveform_remainder_, frame,
+                  frame_opts, window_function_, &window,
+                  need_raw_log_energy ? &raw_log_energy : NULL);
+    Vector<BaseFloat> *this_feature = new Vector<BaseFloat>(computer_.Dim(),
+                                                            kUndefined);
+    // note: this online feature-extraction code does not support VTLN.
+    BaseFloat vtln_warp = 1.0;
+    computer_.Compute(raw_log_energy, vtln_warp, &window, this_feature);
+    features_[frame] = this_feature;
   }
-  int32 new_num_frames = num_frames_ + feats.NumRows();
-  BaseFloat increase_ratio = 1.5;  // This is a tradeoff between memory and
-                                   // compute; it's the factor by which we
-                                   // increase the memory used each time.
-  if (new_num_frames > features_.NumRows()) {
-    int32 new_num_rows = std::max<int32>(new_num_frames,
-                                         features_.NumRows() * increase_ratio);
-    // Increase the size of the features_ matrix and copy over any existing
-    // data.
-    features_.Resize(new_num_rows, Dim(), kCopyData);
+  // OK, we will now discard any portion of the signal that will not be
+  // necessary to compute frames in the future.
+  int64 first_sample_of_next_frame = FirstSampleOfFrame(num_frames_new,
+                                                        frame_opts);
+  int32 samples_to_discard = first_sample_of_next_frame - waveform_offset_;
+  if (samples_to_discard > 0) {
+    // discard the leftmost part of the waveform that we no longer need.
+    int32 new_num_samples = waveform_remainder_.Dim() - samples_to_discard;
+    if (new_num_samples <= 0) {
+      // odd, but we'll try to handle it.
+      waveform_offset_ += waveform_remainder_.Dim();
+      waveform_remainder_.Resize(0);
+    } else {
+      Vector<BaseFloat> new_remainder(new_num_samples);
+      new_remainder.CopyFromVec(waveform_remainder_.Range(samples_to_discard,
+                                                          new_num_samples));
+      waveform_offset_ += samples_to_discard;
+      waveform_remainder_.Swap(&new_remainder);
+    }
   }
-  features_.Range(num_frames_, feats.NumRows(), 0, Dim()).CopyFromMat(feats);
-  num_frames_ = new_num_frames;
 }
 
 // instantiate the templates defined here for MFCC, PLP and filterbank classes.
-template class OnlineGenericBaseFeature<Mfcc>;
-template class OnlineGenericBaseFeature<Plp>;
-template class OnlineGenericBaseFeature<Fbank>;
+template class OnlineGenericBaseFeature<MfccComputer>;
+template class OnlineGenericBaseFeature<PlpComputer>;
+template class OnlineGenericBaseFeature<FbankComputer>;
 
 
 OnlineCmvnState::OnlineCmvnState(const OnlineCmvnState &other):
@@ -317,7 +326,7 @@ void OnlineCmvn::GetFrame(int32 frame,
 
   if (!skip_dims_.empty())
     FakeStatsForSomeDims(skip_dims_, &stats);
-  
+
   // call the function ApplyCmvn declared in ../transform/cmvn.h, which
   // requires a matrix.
   Matrix<BaseFloat> feat_mat(1, dim);

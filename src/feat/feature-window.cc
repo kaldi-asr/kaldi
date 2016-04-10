@@ -150,68 +150,64 @@ void ProcessWindow(const FrameExtractionOptions &opts,
 // ExtractWindow extracts a windowed frame of waveform with a power-of-two,
 // padded size.  It does mean subtraction, pre-emphasis and dithering as
 // requested.
-void ExtractWindow(const VectorBase<BaseFloat> &wave,
+void ExtractWindow(int64 sample_offset,
+                   const VectorBase<BaseFloat> &wave,
                    int32 f,  // with 0 <= f < NumFrames(feats, opts)
                    const FrameExtractionOptions &opts,
                    const FeatureWindowFunction &window_function,
                    Vector<BaseFloat> *window,
                    BaseFloat *log_energy_pre_window) {
-  int32 frame_shift = opts.WindowShift();
-  int32 frame_length = opts.WindowSize();
-  KALDI_ASSERT(window_function.window.Dim() == frame_length);
-  KALDI_ASSERT(frame_shift != 0 && frame_length != 0);
+  KALDI_ASSERT(sample_offset >= 0 && wave.Dim() != 0);
+  int32 frame_length = opts.WindowSize(),
+      frame_length_padded = opts.PaddedWindowSize();
+  int64 num_samples = sample_offset + wave.Dim(),
+      start_sample = FirstSampleOfFrame(f, opts),
+      end_sample = start_sample + frame_length;
 
-  Vector<BaseFloat> wave_part(frame_length);
   if (opts.snip_edges) {
-    int32 start = frame_shift*f, end = start + frame_length;
-    KALDI_ASSERT(start >= 0 && end <= wave.Dim());
-    wave_part.CopyFromVec(wave.Range(start, frame_length));
+    KALDI_ASSERT(start_sample >= sample_offset &&
+                 end_sample <= num_samples);
   } else {
-    // If opts.snip_edges = false, we allow the frames to go slightly over the
-    // edges of the file; we'll extend the data by reflection.
-    int32 mid = frame_shift * (f + 0.5),
-        begin = mid - frame_length / 2,
-        end = begin + frame_length,
-        begin_limited = std::max<int32>(0, begin),
-        end_limited = std::min(end, wave.Dim()),
-        length_limited = end_limited - begin_limited;
-
-    // Copy the main part.  Usually this will be the entire window.
-    wave_part.Range(begin_limited - begin, length_limited).
-        CopyFromVec(wave.Range(begin_limited, length_limited));
-
-    // Deal with any end effects by reflection, if needed.  This code will
-    // rarely be reached, so we don't concern ourselves with efficiency.
-    for (int32 f = begin; f < 0; f++) {
-      int32 reflected_f = -f;
-      // The next statement will only have an effect in the case of files
-      // shorter than a single frame, it's to avoid a crash in those cases.
-      reflected_f = reflected_f % wave.Dim();
-      wave_part(f - begin) = wave(reflected_f);
-    }
-    for (int32 f = wave.Dim(); f < end; f++) {
-      int32 distance_to_end = f - wave.Dim();
-      // The next statement will only have an effect in the case of files
-      // shorter than a single frame, it's to avoid a crash in those cases.
-      distance_to_end = distance_to_end % wave.Dim();
-      int32 reflected_f = wave.Dim() - 1 - distance_to_end;
-      wave_part(f - begin) = wave(reflected_f);
-    }
+    KALDI_ASSERT(sample_offset == 0 || start_sample >= sample_offset);
   }
-  KALDI_ASSERT(window != NULL);
-  int32 frame_length_padded = opts.PaddedWindowSize();
 
   if (window->Dim() != frame_length_padded)
-    window->Resize(frame_length_padded);
+    window->Resize(frame_length_padded, kUndefined);
 
-  SubVector<BaseFloat> window_part(*window, 0, frame_length);
-  window_part.CopyFromVec(wave_part);
+  // wave_start and wave_end are start and end indexes into 'wave', for the
+  // piece of wave that we're trying to extract.
+  int32 wave_start = int32(start_sample - sample_offset),
+      wave_end = wave_start + frame_length;
+  if (wave_start >= 0 && wave_end <= wave.Dim()) {
+    // the normal case-- no edge effects to consider.
+    window->Range(0, frame_length).CopyFromVec(
+        wave.Range(wave_start, frame_length));
+  } else {
+    // Deal with any end effects by reflection, if needed.  This code will only
+    // be reached for about two frames per utterance, so we don't concern
+    // ourselves excessively with efficiency.
+    int32 wave_dim = wave.Dim();
+    for (int32 s = 0; s < frame_length; s++) {
+      int32 s_in_wave = s + wave_start;
+      while (s_in_wave < 0 || s_in_wave >= wave_dim) {
+        // reflect around the beginning or end of the wave.
+        // e.g. -1 -> 0, -2 -> 1.
+        // dim -> dim - 1, dim + 1 -> dim - 2.
+        // the code supports repeated reflections, although this
+        // would only be needed in pathological cases.
+        if (s_in_wave < 0) s_in_wave = - s_in_wave - 1;
+        else s_in_wave = 2 * wave_dim - 1 - s_in_wave;
+      }
+      (*window)(s) = wave(s_in_wave);
+    }
+  }
 
-  ProcessWindow(opts, window_function, &window_part, log_energy_pre_window);
+  if (frame_length_padded > frame_length)
+    window->Range(frame_length, frame_length_padded - frame_length).SetZero();
 
-  if (frame_length != frame_length_padded)
-    SubVector<BaseFloat>(*window, frame_length,
-                         frame_length_padded-frame_length).SetZero();
+  SubVector<BaseFloat> frame(*window, 0, frame_length);
+
+  ProcessWindow(opts, window_function, &frame, log_energy_pre_window);
 }
 
 void ExtractWaveformRemainder(const VectorBase<BaseFloat> &wave,

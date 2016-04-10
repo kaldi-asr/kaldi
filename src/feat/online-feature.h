@@ -41,26 +41,31 @@ namespace kaldi {
 /// @{
 
 
-
+/// This is a templated class for online feature extraction;
+/// it's templated on a class like MfccComputer or PlpComputer
+/// that does the basic feature extraction.
 template<class C>
 class OnlineGenericBaseFeature: public OnlineBaseFeature {
  public:
   //
   // First, functions that are present in the interface:
   //
-  virtual int32 Dim() const { return mfcc_or_plp_.Dim(); }
+  virtual int32 Dim() const { return computer_.Dim(); }
 
-  // Note: this will only ever return true if you call InputFinished(), which
-  // isn't really necessary to do unless you want to make sure to flush out the
-  // last few frames of delta or LDA features to exactly match a non-online
-  // decode of some data.
-  virtual bool IsLastFrame(int32 frame) const;
-  virtual int32 NumFramesReady() const { return num_frames_; }
+  // Note: IsLastFrame() will only ever return true if you have called
+  // InputFinished() (and this frame is the last frame).
+  virtual bool IsLastFrame(int32 frame) const {
+    return input_finished_ && frame == NumFramesReady() - 1;
+  }
+
+  virtual int32 NumFramesReady() const { return features_.size(); }
+
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
 
-  //
   // Next, functions that are not in the interface.
-  //
+
+
+  // Constructor from options class
   explicit OnlineGenericBaseFeature(const typename C::Options &opts);
 
   // This would be called from the application, when you get
@@ -72,29 +77,45 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
 
 
   // InputFinished() tells the class you won't be providing any
-  // more waveform.  This will help flush out the last few frames
-  // of delta or LDA features.
-  virtual void InputFinished() { input_finished_= true; }
+  // more waveform.  This will help flush out the last frame or two
+  // of features, in the case where snip-edges == false; it also
+  // affects the return value of IsLastFrame().
+  virtual void InputFinished() {
+    input_finished_ = true;
+    ComputeFeatures();
+  }
 
+  ~OnlineGenericBaseFeature() {
+    DeletePointers(&features_);
+  }
 
  private:
-  C mfcc_or_plp_;  // class that does the MFCC or PLP or filterbank computation
+  // This function computes any additional feature frames that it is possible to
+  // compute from 'waveform_remainder_', which at this point may contain more
+  // than just a remainder-sized quantity (because AcceptWaveform() appends to
+  // waveform_remainder_ before calling this function).  It adds these feature
+  // frames to features_, and shifts off any now-unneeded samples of input from
+  // waveform_remainder_ while incrementing waveform_offset_ by the same amount.
+  void ComputeFeatures();
+
+  C computer_;  // class that does the MFCC or PLP or filterbank computation
+
+  FeatureWindowFunction window_function_;
 
   // features_ is the Mfcc or Plp or Fbank features that we have already computed.
-  Matrix<BaseFloat> features_;
+
+  std::vector<Vector<BaseFloat>*> features_;
 
   // True if the user has called "InputFinished()"
   bool input_finished_;
 
-  // num_frames_ is the number of frames of MFCC features we have
-  // already computed.  It may be less than the size of features_,
-  // because when we resize that matrix we leave some extra room,
-  // so that we don't spend too much time resizing.
-  int32 num_frames_;
-
   // The sampling frequency, extracted from the config.  Should
   // be identical to the waveform supplied.
   BaseFloat sampling_frequency_;
+
+  // waveform_offset_ is the number of samples of waveform that we have
+  // already discarded, i.e. thatn were prior to 'waveform_remainder_'.
+  int64 waveform_offset_;
 
   // waveform_remainder_ is a short piece of waveform that we may need to keep
   // after extracting all the whole frames we can (whatever length of feature
@@ -102,9 +123,9 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
   Vector<BaseFloat> waveform_remainder_;
 };
 
-typedef OnlineGenericBaseFeature<Mfcc> OnlineMfcc;
-typedef OnlineGenericBaseFeature<Plp> OnlinePlp;
-typedef OnlineGenericBaseFeature<Fbank> OnlineFbank;
+typedef OnlineGenericBaseFeature<MfccComputer> OnlineMfcc;
+typedef OnlineGenericBaseFeature<PlpComputer> OnlinePlp;
+typedef OnlineGenericBaseFeature<FbankComputer> OnlineFbank;
 
 
 /// This class takes a Matrix<BaseFloat> and wraps it as an

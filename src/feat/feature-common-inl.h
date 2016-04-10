@@ -25,10 +25,11 @@
 namespace kaldi {
 
 template <class F>
-void FeatureTpl<F>::Compute(const VectorBase<BaseFloat> &wave,
-                            BaseFloat vtln_warp,
-                            Matrix<BaseFloat> *output,
-                            Vector<BaseFloat> *deprecated_wave_remainder) {
+void OfflineFeatureTpl<F>::Compute(
+    const VectorBase<BaseFloat> &wave,
+    BaseFloat vtln_warp,
+    Matrix<BaseFloat> *output,
+    Vector<BaseFloat> *deprecated_wave_remainder) {
   KALDI_ASSERT(output != NULL);
   int32 rows_out = NumFrames(wave.Dim(), computer_.GetFrameOptions()),
       cols_out = computer_.Dim();
@@ -44,9 +45,9 @@ void FeatureTpl<F>::Compute(const VectorBase<BaseFloat> &wave,
                              deprecated_wave_remainder);
   Vector<BaseFloat> window;  // windowed waveform.
   bool use_raw_log_energy = computer_.NeedRawLogEnergy();
-  for (int32 r = 0; r < rows_out; r++) {  // r is frame index..
+  for (int32 r = 0; r < rows_out; r++) {  // r is frame index.
     BaseFloat raw_log_energy = 0.0;
-    ExtractWindow(wave, r, computer_.GetFrameOptions(),
+    ExtractWindow(0, wave, r, computer_.GetFrameOptions(),
                   feature_window_function_, &window,
                   (use_raw_log_energy ? &raw_log_energy : NULL));
 
@@ -56,11 +57,12 @@ void FeatureTpl<F>::Compute(const VectorBase<BaseFloat> &wave,
 }
 
 template <class F>
-void FeatureTpl<F>::Compute(const VectorBase<BaseFloat> &wave,
-                            BaseFloat vtln_warp,
-                            Matrix<BaseFloat> *output,
-                            Vector<BaseFloat> *deprecated_wave_remainder) const {
-  FeatureTpl<F> temp(*this);
+void OfflineFeatureTpl<F>::Compute(
+    const VectorBase<BaseFloat> &wave,
+    BaseFloat vtln_warp,
+    Matrix<BaseFloat> *output,
+    Vector<BaseFloat> *deprecated_wave_remainder) const {
+  OfflineFeatureTpl<F> temp(*this);
   // call the non-const version of Compute() on a temporary copy of this object.
   // This is a workaround for const-ness that may sometimes be useful in
   // multi-threaded code, although it's not optimally efficient.

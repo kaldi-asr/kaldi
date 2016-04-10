@@ -23,9 +23,9 @@
 #include <map>
 #include <string>
 
+#include "feat/feature-common.h"
 #include "feat/feature-functions.h"
 #include "feat/feature-window.h"
-#include "feat/feature-common.h"
 #include "feat/mel-computations.h"
 #include "itf/options-itf.h"
 
@@ -164,7 +164,7 @@ class PlpComputer {
   PlpComputer &operator =(const PlpComputer &other);
 };
 
-typedef FeatureTpl<PlpComputer> Plp;
+typedef OfflineFeatureTpl<PlpComputer> Plp;
 
 /// @} End of "addtogroup feat"
 

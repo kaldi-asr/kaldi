@@ -1,7 +1,7 @@
 // feat/feature-mfcc.h
 
 // Copyright 2009-2011  Karel Vesely;  Petr Motlicek;  Saarland University
-//                2014  Johns Hopkins University (author: Daniel Povey)
+//           2014-2016  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -24,9 +24,9 @@
 #include <map>
 #include <string>
 
+#include "feat/feature-common.h"
 #include "feat/feature-functions.h"
 #include "feat/feature-window.h"
-#include "feat/feature-common.h"
 #include "feat/mel-computations.h"
 
 namespace kaldi {
@@ -140,7 +140,7 @@ class MfccComputer {
   Vector<BaseFloat> mel_energies_;
 };
 
-typedef FeatureTpl<MfccComputer> Mfcc;
+typedef OfflineFeatureTpl<MfccComputer> Mfcc;
 
 
 /// @} End of "addtogroup feat"

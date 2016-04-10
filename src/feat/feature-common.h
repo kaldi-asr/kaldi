@@ -19,9 +19,9 @@
 
 #ifndef KALDI_FEAT_FEATURE_COMMON_H_
 #define KALDI_FEAT_FEATURE_COMMON_H_
+
 #include <map>
 #include <string>
-
 #include "feat/feature-window.h"
 
 namespace kaldi {
@@ -39,7 +39,7 @@ struct ExampleFeatureComputerOptions {
 
 /// This class is only added for documentation, it is not intended to ever be
 /// used.  It documents the interface of the *Computer classes which wrap the
-/// low-level feature extraction.  The template argument F of FeatureTpl must
+/// low-level feature extraction.  The template argument F of OfflineFeatureTpl must
 /// follow this interface.  This interface is intended for features such as
 /// MFCCs and PLPs which can be computed frame by frame.
 class ExampleFeatureComputer {
@@ -108,11 +108,13 @@ class ExampleFeatureComputer {
 /// feature-computation code for greater modularity and to have correct support
 /// for the snip-edges=false option.
 template <class F>
-class FeatureTpl {
+class OfflineFeatureTpl {
  public:
   typedef typename F::Options Options;
 
-  FeatureTpl(const Options &opts):
+  // Note: feature_window_function_ is the windowing function, which initialized
+  // using the options class, that we cache at this level.
+  OfflineFeatureTpl(const Options &opts):
       computer_(opts),
       feature_window_function_(computer_.GetFrameOptions()) { }
 
@@ -138,13 +140,13 @@ class FeatureTpl {
 
   int32 Dim() const { return computer_.Dim(); }
 
-  // Copy constructor
-  FeatureTpl(const FeatureTpl<F> &other):
+  // Copy constructor.
+  OfflineFeatureTpl(const OfflineFeatureTpl<F> &other):
       computer_(other.computer),
       feature_window_function_(other.feature_window_function_) { }
   private:
   // Disallow assignment.
-  FeatureTpl<F> &operator =(const FeatureTpl<F> &other);
+  OfflineFeatureTpl<F> &operator =(const OfflineFeatureTpl<F> &other);
 
   F computer_;
   FeatureWindowFunction feature_window_function_;

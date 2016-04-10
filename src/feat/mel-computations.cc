@@ -23,9 +23,9 @@
 #include <algorithm>
 #include <iostream>
 
-#include "feat/mel-computations.h"
 #include "feat/feature-functions.h"
 #include "feat/feature-window.h"
+#include "feat/mel-computations.h"
 
 namespace kaldi {
 
@@ -107,7 +107,8 @@ MelBanks::MelBanks(const MelBanksOptions &opts,
     Vector<BaseFloat> this_bin(num_fft_bins);
     int32 first_index = -1, last_index = -1;
     for (int32 i = 0; i < num_fft_bins; i++) {
-      BaseFloat freq = (fft_bin_width * i);  // center freq of this fft bin.
+      BaseFloat freq = (fft_bin_width * i);  // Center frequency of this fft
+                                             // bin.
       BaseFloat mel = MelScale(freq);
       if (mel > left_mel && mel < right_mel) {
         BaseFloat weight;
@@ -312,7 +313,7 @@ void Lpc2Cepstrum(int n, const BaseFloat *pLPC, BaseFloat *pCepst) {
 void GetEqualLoudnessVector(const MelBanks &mel_banks,
                             Vector<BaseFloat> *ans) {
   int32 n = mel_banks.NumBins();
-  // central freq of each mel bin
+  // Central frequency of each mel bin.
   const Vector<BaseFloat> &f0 = mel_banks.GetCenterFreqs();
   ans->Resize(n);
   for (int32 i = 0; i < n; i++) {
@@ -329,12 +330,12 @@ BaseFloat ComputeLpc(const VectorBase<BaseFloat> &autocorr_in,
   int32 n = autocorr_in.Dim() - 1;
   KALDI_ASSERT(lpc_out->Dim() == n);
   Vector<BaseFloat> tmp(n);
-  BaseFloat ans =  Durbin(n, autocorr_in.Data(),
-                          lpc_out->Data(),
-                          tmp.Data());
+  BaseFloat ans = Durbin(n, autocorr_in.Data(),
+                         lpc_out->Data(),
+                         tmp.Data());
   if (ans <= 0.0)
     KALDI_WARN << "Zero energy in LPC computation";
-  return -Log((double)1.0/ans);  // forms the C0 value
+  return -Log(1.0 / ans);  // forms the C0 value
 }
 
 

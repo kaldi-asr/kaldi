@@ -163,8 +163,16 @@ void ProcessWindow(const FrameExtractionOptions &opts,
   power-of-two, padded size, depending on the config), including all the
   proessing done by ProcessWindow().
 
-  @param [in] wave  The entire waveform
-  @param [in] f     The frame index to be extracted
+  @param [in] sample_offset  If 'wave' is not the entire waveform, but
+                   part of it to the left has been discarded, then the
+                   number of samples prior to 'wave' that we have
+                   already discarded.  Set this to zero if you are
+                   processing the entire waveform in one piece, or
+                   if you get 'no matching function' compilation
+                   errors when updating the code.
+  @param [in] wave  The waveform
+  @param [in] f     The frame index to be extracted, with
+                    0 <= f < NumFrames(sample_offset + wave.Dim(), opts, true)
   @param [in] opts  The options class to be used
   @param [in] window_function  The windowing function, as derived from the
                     options class.
@@ -174,8 +182,9 @@ void ProcessWindow(const FrameExtractionOptions &opts,
                    the signal prior to pre-emphasis and multiplying by
                    the windowing function will be written to here.
 */
-void ExtractWindow(const VectorBase<BaseFloat> &wave,
-                   int32 f,  // with 0 <= f < NumFrames(wave.Dim(), opts)
+void ExtractWindow(int64 sample_offset,
+                   const VectorBase<BaseFloat> &wave,
+                   int32 f,
                    const FrameExtractionOptions &opts,
                    const FeatureWindowFunction &window_function,
                    Vector<BaseFloat> *window,

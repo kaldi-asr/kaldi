@@ -20,10 +20,6 @@
 
 
 #include "feat/feature-plp.h"
-#include "feat/mel-computations.h"
-#include "feat/feature-window.h"
-#include "util/parse-options.h"
-
 
 namespace kaldi {
 
