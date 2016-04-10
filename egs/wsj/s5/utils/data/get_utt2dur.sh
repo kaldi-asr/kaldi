@@ -10,8 +10,6 @@
 # first tries interrogating the headers, and if this fails, it reads the wave
 # files in entirely.)
 
-read_entire_file=false
-
 . utils/parse_options.sh
 . ./path.sh
 
@@ -70,9 +68,13 @@ else
       echo  "$0: wav-to-duration is not on your path"
       exit 1;
     fi
-    if $read_entire_file; then
-      echo "$0: reading from the entire wav file to get the durations. It is going to  be slow."
+
+    read_entire_file=false
+    if [ `cat $data/wav.scp | sed -n '/sox.*speed/p' | wc -l` -gt 0 ]; then
+      read_entire_file=true
+      echo "$0: reading from the entire wav file to fix the problem caused by sox commands with speed perturbation. It is going to be slow."
     fi
+    
     if ! wav-to-duration --read-entire-file=$read_entire_file scp:$data/wav.scp ark,t:$data/utt2dur 2>&1 | grep -v 'nonzero return status'; then
       echo "$0: there was a problem getting the durations; moving $data/utt2dur to $data/.backup/"
       mkdir -p $data/.backup/
