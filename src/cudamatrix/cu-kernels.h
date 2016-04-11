@@ -255,6 +255,10 @@ inline void cuda_sigmoid(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d
 inline void cuda_diff_sigmoid(dim3 Gr, dim3 Bl, float *eout, const float *e, const float *y, MatrixDim d, int e_stride, int y_stride) { cudaF_diff_sigmoid(Gr,Bl,eout,e,y,d,e_stride,y_stride); }
 inline void cuda_tanh(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride) { cudaF_tanh(Gr,Bl,y,x,d,src_stride); }
 inline void cuda_diff_tanh(dim3 Gr, dim3 Bl, float *eout, const float *e, const float *y, MatrixDim d, int e_stride, int y_stride) { cudaF_diff_tanh(Gr,Bl,eout,e,y,d,e_stride,y_stride); }
+inline void cuda_relu(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride) { cudaF_relu(Gr,Bl,y,x,d,src_stride); }
+inline void cuda_diff_relu(dim3 Gr, dim3 Bl, float *eout, const float *e, const float *y, MatrixDim d, int e_stride, int y_stride) { cudaF_diff_relu(Gr,Bl,eout,e,y,d,e_stride,y_stride); }
+
+
 /*
 Bl: dimBlock value is fixed min(d.col, CU1DBLOCK), represent CU1DBLOCK threads reduce a row at the same time.
 Gr: the number of rows
@@ -439,6 +443,10 @@ inline void cuda_sigmoid(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim
 inline void cuda_diff_sigmoid(dim3 Gr, dim3 Bl, double *eout, const double *e, const double *y, MatrixDim d, int e_stride, int y_stride) { cudaD_diff_sigmoid(Gr,Bl,eout,e,y,d,e_stride,y_stride); }
 inline void cuda_tanh(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d, int src_stride) { cudaD_tanh(Gr,Bl,y,x,d,src_stride); }
 inline void cuda_diff_tanh(dim3 Gr, dim3 Bl, double *eout, const double *e, const double *y, MatrixDim d, int e_stride, int y_stride) { cudaD_diff_tanh(Gr,Bl,eout,e,y,d,e_stride,y_stride); }
+inline void cuda_relu(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d, int src_stride) { cudaD_relu(Gr,Bl,y,x,d,src_stride); }
+inline void cuda_diff_relu(dim3 Gr, dim3 Bl, double *eout, const double *e, const double *y, MatrixDim d, int e_stride, int y_stride) { cudaD_diff_relu(Gr,Bl,eout,e,y,d,e_stride,y_stride); }
+
+
 inline void cuda_softmax_reduce(size_t Gr, size_t Bl, double *y, const double *x, MatrixDim d, int src_stride) { cudaD_softmax_reduce(Gr,Bl,y,x,d,src_stride); }
 inline void cuda_log_softmax_reduce(size_t Gr, size_t Bl, double *y, const double *x, MatrixDim d, int src_stride) { cudaD_log_softmax_reduce(Gr,Bl,y,x,d,src_stride); }
 

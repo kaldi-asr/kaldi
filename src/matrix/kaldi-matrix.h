@@ -488,6 +488,12 @@ class MatrixBase {
   /// Set each element to the tanh of the corresponding element of "src".
   void Tanh(const MatrixBase<Real> &src);
 
+
+  /// Compute the rectified linear unit function; element by element,
+  /// *this = relu(src).
+  void ReLU(const MatrixBase<Real> &src);
+
+
   // Function used in backpropagating derivatives of the sigmoid function:
   // element-by-element, set *this = diff * value * (1.0 - value).
   void DiffSigmoid(const MatrixBase<Real> &value,
@@ -497,7 +503,14 @@ class MatrixBase {
   // element-by-element, set *this = diff * (1.0 - value^2).
   void DiffTanh(const MatrixBase<Real> &value,
                 const MatrixBase<Real> &diff);
-  
+
+
+   /// Differentiate backward through the relu function.  Here, "value" is the
+  /// tanh output.  Does, element-by-element, *this = diff * (x > 0: 1).
+  void DiffReLU(const MatrixBase<Real> &value,
+                const MatrixBase<Real> &diff);
+
+
   /** Uses Svd to compute the eigenvalue decomposition of a symmetric positive
    * semi-definite matrix: (*this) = rP * diag(rS) * rP^T, with rP an
    * orthogonal matrix so rP^{-1} = rP^T.   Throws exception if input was not

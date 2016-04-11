@@ -2745,6 +2745,43 @@ void MatrixBase<Real>::DiffTanh(const MatrixBase<Real> &value,
 
 
 template<typename Real>
+void MatrixBase<Real>::ReLU(const MatrixBase<Real> &src) {
+  KALDI_ASSERT(SameDim(*this, src));
+
+  if (num_cols_ == stride_ && src.num_cols_ == src.stride_) {
+    SubVector<Real> src_vec(src.data_, num_rows_ * num_cols_),
+        dst_vec(this->data_, num_rows_ * num_cols_);
+    dst_vec.ReLU(src_vec);
+  } else {
+    for (MatrixIndexT r = 0; r < num_rows_; r++) {
+      SubVector<Real> src_vec(src, r), dest_vec(*this, r);
+      dest_vec.ReLU(src_vec);
+    }
+  }
+}
+
+
+template<typename Real>
+void MatrixBase<Real>::DiffReLU(const MatrixBase<Real> &value,
+                                   const MatrixBase<Real> &diff) {
+  KALDI_ASSERT(SameDim(*this, value) && SameDim(*this, diff));
+  MatrixIndexT num_rows = num_rows_, num_cols = num_cols_,
+      stride = stride_, value_stride = value.stride_, diff_stride = diff.stride_;
+  Real *data = data_;
+  const Real *value_data = value.data_, *diff_data = diff.data_;
+  for (MatrixIndexT r = 0; r < num_rows; r++) {
+    for (MatrixIndexT c = 0; c < num_cols; c++)
+      data[c] = diff_data[c] * (1.0 - (value_data[c] * value_data[c]));
+    data += stride;
+    value_data += value_stride;
+    diff_data += diff_stride;
+  }
+}
+
+
+
+
+template<typename Real>
 template<typename OtherReal>
 void MatrixBase<Real>::AddVecToRows(const Real alpha, const VectorBase<OtherReal> &v) {
   const MatrixIndexT num_rows = num_rows_, num_cols = num_cols_,

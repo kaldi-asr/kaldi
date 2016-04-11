@@ -936,6 +936,33 @@ void VectorBase<Real>::Sigmoid(const VectorBase<Real> &src) {
 }
 #endif
 
+#ifdef HAVE_MKL
+template<>
+void VectorBase<float>::ReLU(const VectorBase<float> &src) {
+  KALDI_ASSERT(dim_ == src.dim_);
+  vsReLU(dim_, src.data_, data_);
+}
+template<>
+void VectorBase<double>::ReLU(const VectorBase<double> &src) {
+  KALDI_ASSERT(dim_ == src.dim_);
+  vdReLU(dim_, src.data_, data_);
+}
+#else
+template<typename Real>
+void VectorBase<Real>::ReLU(const VectorBase<Real> &src) {
+  KALDI_ASSERT(dim_ == src.dim_);
+  for (MatrixIndexT i = 0; i < dim_; i++) {
+    Real x = src.data_[i];
+    if (x > 0.0) {
+      x = x;
+    } else {
+      x = 0.0;
+    }
+    data_[i] = x;
+  }
+}
+#endif
+
 
 template<typename Real>
 void VectorBase<Real>::Add(Real c) {

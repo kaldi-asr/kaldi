@@ -155,6 +155,9 @@ class VectorBase {
   /// Sets each element of *this to the tanh of the corresponding element of "src".
   void Tanh(const VectorBase<Real> &src);
 
+  /// Sets each element of *this to the tanh of the corresponding element of "src".
+  void ReLU(const VectorBase<Real> &src);
+
   /// Sets each element of *this to the sigmoid function of the corresponding
   /// element of "src".
   void Sigmoid(const VectorBase<Real> &src);

@@ -290,6 +290,10 @@ class CuMatrixBase {
   /// *this = tanh(src).
   void Tanh(const CuMatrixBase<Real> &src);
 
+  /// Compute the rectified linear unit function; element by element,
+  /// *this = relu(src).
+  void ReLU(const CuMatrixBase<Real> &src);
+
   /// Differentiate backward through the sigmoid function.  Here, "value" is the
   /// sigmoid output.  Does, element-by-element, *this = diff * value * (1 - value).
   void DiffSigmoid(const CuMatrixBase<Real> &value,
@@ -298,6 +302,11 @@ class CuMatrixBase {
   /// Differentiate backward through the tanh function.  Here, "value" is the
   /// tanh output.  Does, element-by-element, *this = diff * (1 - value^2).
   void DiffTanh(const CuMatrixBase<Real> &value,
+                const CuMatrixBase<Real> &diff);
+
+  /// Differentiate backward through the relu function.  Here, "value" is the
+  /// tanh output.  Does, element-by-element, *this = diff * (x > 0: 1).
+  void DiffReLU(const CuMatrixBase<Real> &value,
                 const CuMatrixBase<Real> &diff);
 
   /// Differentiate the block [softmax+cross-entropy] :
