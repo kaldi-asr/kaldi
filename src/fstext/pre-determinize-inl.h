@@ -696,7 +696,7 @@ typename Arc::StateId CreateSuperFinal(MutableFst<Arc> *fst) {
   StateId num_states = fst->NumStates();
   StateId num_final = 0;
   vector<StateId> final_states;
-  for (StateId s = 0;s < num_states;s++) {
+  for (StateId s = 0; s < num_states; s++) {
     if (fst->Final(s) != Weight::Zero()) {
       num_final++;
       final_states.push_back(s);
@@ -705,7 +705,9 @@ typename Arc::StateId CreateSuperFinal(MutableFst<Arc> *fst) {
   if (final_states.size() == 1) {
     if (fst->Final(final_states[0]) == Weight::One()) {
       ArcIterator<MutableFst<Arc> > iter(*fst, final_states[0]);
-      if (iter.Done()) {  // already have a final state w/ no transitions out and unit weight.  So don.
+      if (iter.Done()) {
+        // We already have a final state w/ no transitions out and unit weight.
+        // So we're done.
         return final_states[0];
       }
     }
@@ -713,7 +715,7 @@ typename Arc::StateId CreateSuperFinal(MutableFst<Arc> *fst) {
 
   StateId final_state = fst->AddState();
   fst->SetFinal(final_state, Weight::One());
-  for (size_t idx = 0;idx < final_states.size();idx++) {
+  for (size_t idx = 0;idx < final_states.size(); idx++) {
     StateId s = final_states[idx];
     Weight weight = fst->Final(s);
     fst->SetFinal(s, Weight::Zero());
