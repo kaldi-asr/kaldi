@@ -26,10 +26,10 @@
 #include <vector>
 #include <deque>
 
+#include "../nnet3/online-nnet3-decodable-simple.h"
 #include "matrix/matrix-lib.h"
 #include "util/common-utils.h"
 #include "base/kaldi-error.h"
-#include "nnet3/online-nnet3-decodable.h"
 #include "online2/online-nnet2-feature-pipeline.h"
 #include "online2/online-endpoint.h"
 #include "decoder/lattice-faster-online-decoder.h"
@@ -71,7 +71,7 @@ class SingleUtteranceNnet3Decoder {
   // class, it's owned externally.
   SingleUtteranceNnet3Decoder(const OnlineNnet3DecodingConfig &config,
                               const TransitionModel &tmodel,
-                              const nnet3::AmNnetSimple &model,
+                              const nnet3::AmNnetSimple &am_model,
                               const fst::Fst<fst::StdArc> &fst,
                               OnlineNnet2FeaturePipeline *feature_pipeline);
   
@@ -116,7 +116,7 @@ class SingleUtteranceNnet3Decoder {
 
   const TransitionModel &tmodel_;
   
-  nnet3::DecodableNnet3Online decodable_;
+  nnet3::DecodableNnet3SimpleOnline decodable_;
   
   LatticeFasterOnlineDecoder decoder_;
   

@@ -18,37 +18,37 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "nnet3/online-nnet3-decodable.h"
+#include <nnet3/online-nnet3-decodable-simple.h>
 #include "nnet3/nnet-utils.h"
 
 namespace kaldi {
 namespace nnet3 {
 
-DecodableNnet3Online::DecodableNnet3Online(
-    const AmNnetSimple &nnet,
+DecodableNnet3SimpleOnline::DecodableNnet3SimpleOnline(
+    const AmNnetSimple &am_nnet,
     const TransitionModel &trans_model,
     const DecodableNnet3OnlineOptions &opts,
     OnlineFeatureInterface *input_feats):
-    compiler_(nnet.GetNnet(), opts.optimize_config),
+    compiler_(am_nnet.GetNnet(), opts.optimize_config),
     features_(input_feats),
-    nnet_(nnet),
+    am_nnet_(am_nnet),
     trans_model_(trans_model),
     opts_(opts),
     feat_dim_(input_feats->Dim()),
-    num_pdfs_(nnet.GetNnet().OutputDim("output")),
+    num_pdfs_(am_nnet.GetNnet().OutputDim("output")),
     begin_frame_(-1) {
   KALDI_ASSERT(opts_.max_nnet_batch_size > 0);
-  log_priors_ = nnet_.Priors();
+  log_priors_ = am_nnet_.Priors();
   KALDI_ASSERT((log_priors_.Dim() == 0 || log_priors_.Dim() == trans_model_.NumPdfs()) &&
                "Priors in neural network must match with transition model (if exist).");
 
-  ComputeSimpleNnetContext(nnet_.GetNnet(), &left_context_, &right_context_);
+  ComputeSimpleNnetContext(am_nnet_.GetNnet(), &left_context_, &right_context_);
   log_priors_.ApplyLog();
 }
 
 
 
-BaseFloat DecodableNnet3Online::LogLikelihood(int32 frame, int32 index) {
+BaseFloat DecodableNnet3SimpleOnline::LogLikelihood(int32 frame, int32 index) {
   ComputeForFrame(frame);
   int32 pdf_id = trans_model_.TransitionIdToPdf(index);
   KALDI_ASSERT(frame >= begin_frame_ &&
@@ -57,12 +57,12 @@ BaseFloat DecodableNnet3Online::LogLikelihood(int32 frame, int32 index) {
 }
 
 
-bool DecodableNnet3Online::IsLastFrame(int32 frame) const {
+bool DecodableNnet3SimpleOnline::IsLastFrame(int32 frame) const {
   KALDI_ASSERT(false && "Method is not imlemented");
   return false;
 }
 
-int32 DecodableNnet3Online::NumFramesReady() const {
+int32 DecodableNnet3SimpleOnline::NumFramesReady() const {
   int32 features_ready = features_->NumFramesReady();
   if (features_ready == 0)
     return 0;
@@ -70,18 +70,18 @@ int32 DecodableNnet3Online::NumFramesReady() const {
   if (opts_.pad_input) {
     // normal case... we'll pad with duplicates of first + last frame to get the
     // required left and right context.
-    if (input_finished) return subsampling(features_ready);
-    else return std::max<int32>(0, subsampling(features_ready - right_context_));
+    if (input_finished) return NumSubsampledFrames(features_ready);
+    else return std::max<int32>(0, NumSubsampledFrames(features_ready - right_context_));
   } else {
-    return std::max<int32>(0, subsampling(features_ready - right_context_ - left_context_));
+    return std::max<int32>(0, NumSubsampledFrames(features_ready - right_context_ - left_context_));
   }
 }
 
-int32 DecodableNnet3Online::subsampling(int32 num_frames) const {
+int32 DecodableNnet3SimpleOnline::NumSubsampledFrames(int32 num_frames) const {
   return (num_frames) / opts_.frame_subsampling_factor;
 }
 
-void DecodableNnet3Online::ComputeForFrame(int32 subsampled_frame) {
+void DecodableNnet3SimpleOnline::ComputeForFrame(int32 subsampled_frame) {
   int32 features_ready = features_->NumFramesReady();
   bool input_finished = features_->IsLastFrame(features_ready - 1);  
   KALDI_ASSERT(subsampled_frame >= 0);
@@ -118,13 +118,13 @@ void DecodableNnet3Online::ComputeForFrame(int32 subsampled_frame) {
     features_->GetFrame(t_modified, &row);
   }
 
-  int32 num_subsampled_frames = subsampling(input_frame_end - input_frame_begin -
+  int32 num_subsampled_frames = NumSubsampledFrames(input_frame_end - input_frame_begin -
           left_context_ - right_context_);
   // I'm not checking if the input feature vector is ok.
   // It should be done, but I'm not sure if it is the best place. 
   // Maybe a new "nnet3 feature pipeline"?
-  int32 mfcc_dim = nnet_.GetNnet().InputDim("input");
-  int32 ivector_dim = nnet_.GetNnet().InputDim("ivector");
+  int32 mfcc_dim = am_nnet_.GetNnet().InputDim("input");
+  int32 ivector_dim = am_nnet_.GetNnet().InputDim("ivector");
   // MFCCs in the left chunk
   SubMatrix<BaseFloat> mfcc_mat = features.ColRange(0,mfcc_dim);
   
@@ -143,7 +143,7 @@ void DecodableNnet3Online::ComputeForFrame(int32 subsampled_frame) {
   begin_frame_ = subsampled_frame;
 }
 
-void DecodableNnet3Online::DoNnetComputation(
+void DecodableNnet3SimpleOnline::DoNnetComputation(
     int32 input_t_start,
     const MatrixBase<BaseFloat> &input_feats,
     const VectorBase<BaseFloat> &ivector,
@@ -182,7 +182,7 @@ void DecodableNnet3Online::DoNnetComputation(
   const NnetComputation *computation = compiler_.Compile(request);
   Nnet *nnet_to_update = NULL;  // we're not doing any update.
   NnetComputer computer(opts_.compute_config, *computation,
-                        nnet_.GetNnet(), nnet_to_update);
+                        am_nnet_.GetNnet(), nnet_to_update);
 
   CuMatrix<BaseFloat> input_feats_cu(input_feats);
   computer.AcceptInput("input", &input_feats_cu);

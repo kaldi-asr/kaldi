@@ -151,12 +151,12 @@ int main(int argc, char *argv[]) {
     }
     
     TransitionModel trans_model;
-    nnet3::AmNnetSimple nnet;
+    nnet3::AmNnetSimple am_nnet;
     {
       bool binary;
       Input ki(nnet3_rxfilename, &binary);
       trans_model.Read(ki.Stream(), binary);
-      nnet.Read(ki.Stream(), binary);
+      am_nnet.Read(ki.Stream(), binary);
     }
     
     fst::Fst<fst::StdArc> *decode_fst = ReadFstKaldi(fst_rxfilename);
@@ -203,7 +203,7 @@ int main(int argc, char *argv[]) {
         
         SingleUtteranceNnet3Decoder decoder(nnet3_decoding_config,
                                             trans_model,
-                                            nnet,
+                                            am_nnet,
                                             *decode_fst,
                                             &feature_pipeline);
         OnlineTimer decoding_timer(utt);

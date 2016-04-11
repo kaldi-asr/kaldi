@@ -1,4 +1,4 @@
-// nnet3/online-nnet3-decodable.h
+// nnet3/online-nnet3-decodable-simple.h
 
 // Copyright  2014  Johns Hopkins Universithy (author: Daniel Povey)
 //            2016  Api.ai (Author: Ilya Platonov)
@@ -62,9 +62,9 @@ struct DecodableNnet3OnlineOptions {
                    "frames (this will rarely make a difference)");
 
     opts->Register("frame-subsampling-factor", &frame_subsampling_factor,
-                       "Required if the frame-rate of the output (e.g. in 'chain' "
-                       "models) is less than the frame-rate of the original "
-                       "alignment.");
+                   "Required if the frame-rate of the output (e.g. in 'chain' "
+                   "models) is less than the frame-rate of the original "
+                   "alignment.");
 
     // register the optimization options with the prefix "optimization".
     ParseOptions optimization_opts("optimization", opts);
@@ -84,9 +84,9 @@ struct DecodableNnet3OnlineOptions {
    feature input from a matrix.
 */
 
-class DecodableNnet3Online: public DecodableInterface {
+class DecodableNnet3SimpleOnline: public DecodableInterface {
  public:
-  DecodableNnet3Online(const AmNnetSimple &nnet,
+  DecodableNnet3SimpleOnline(const AmNnetSimple &am_nnet,
                        const TransitionModel &trans_model,
                        const DecodableNnet3OnlineOptions &opts,
                        OnlineFeatureInterface *input_feats);
@@ -108,7 +108,7 @@ class DecodableNnet3Online: public DecodableInterface {
   /// them (and possibly for some succeeding frames)
   void ComputeForFrame(int32 frame);
   // corrects number of frames by frame_subsampling_factor;
-  int32 subsampling(int32) const;
+  int32 NumSubsampledFrames(int32) const;
   
   void DoNnetComputation(
       int32 input_t_start,
@@ -120,7 +120,7 @@ class DecodableNnet3Online: public DecodableInterface {
   CachingOptimizingCompiler compiler_;
 
   OnlineFeatureInterface *features_;
-  const AmNnetSimple &nnet_;
+  const AmNnetSimple &am_nnet_;
   const TransitionModel &trans_model_;
   DecodableNnet3OnlineOptions opts_;
   CuVector<BaseFloat> log_priors_;  // log-priors taken from the model.
@@ -143,7 +143,7 @@ class DecodableNnet3Online: public DecodableInterface {
   // opts_.max_nnet_batch_size.
   Matrix<BaseFloat> scaled_loglikes_;
 
-  KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableNnet3Online);
+  KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableNnet3SimpleOnline);
 };
 
 } // namespace nnet3

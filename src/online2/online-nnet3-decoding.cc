@@ -27,13 +27,13 @@ namespace kaldi {
 SingleUtteranceNnet3Decoder::SingleUtteranceNnet3Decoder(
     const OnlineNnet3DecodingConfig &config,
     const TransitionModel &tmodel,
-    const nnet3::AmNnetSimple &model,
+    const nnet3::AmNnetSimple &am_model,
     const fst::Fst<fst::StdArc> &fst,
     OnlineNnet2FeaturePipeline *feature_pipeline):
     config_(config),
     feature_pipeline_(feature_pipeline),
     tmodel_(tmodel),
-    decodable_(model, tmodel, config.decodable_opts, feature_pipeline),
+    decodable_(am_model, tmodel, config.decodable_opts, feature_pipeline),
     decoder_(fst, config.decoder_opts) {
   decoder_.InitDecoding();
 }
