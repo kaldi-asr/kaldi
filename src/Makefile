@@ -146,6 +146,7 @@ install: all
 	find $(SUBDIRS_BIN) -type f -executable -exec cp -v {} $(INSTALLPREFIX)/bin/ ';'
 	cp -av ../tools/sph2pipe_v2.5/sph2pipe $(INSTALLPREFIX)/bin/
 	# copying libs to $(INSTALLPREFIX)/lib
+	cp -av $(KALDILIBDIR)/*.so $(INSTALLPREFIX)/lib/
 	cp -av ../tools/openfst/lib/* $(INSTALLPREFIX)/lib/
 
 ### Dependency list ###
