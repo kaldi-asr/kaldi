@@ -19,6 +19,7 @@ import shutil
 import math
 
 train_lib = imp.load_source('ntl', 'steps/nnet3/nnet3_train_lib.py')
+get_egs = imp.load_source('nge', 'steps/nnet3/chain/get_egs.py')
 chain_lib = imp.load_source('ncl', 'steps/nnet3/chain/nnet3_chain_lib.py')
 nnet3_log_parse = imp.load_source('nlp', 'steps/nnet3/report/nnet3_log_parse_lib.py')
 
@@ -30,7 +31,6 @@ formatter = logging.Formatter('%(asctime)s [%(filename)s:%(lineno)s - %(funcName
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 logger.info('Starting chain model trainer (train.py)')
-
 
 def GetArgs():
     # we add compulsary arguments as named arguments for readability
@@ -325,7 +325,6 @@ class RunOpts:
         self.combine_queue_opt = None
         self.parallel_train_opts = None
 
-
 def TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archives,
                    raw_model_string, egs_dir,
                    apply_deriv_weights,
@@ -424,9 +423,9 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
             raise Exception('Exception while reading the random seed for training')
         if srand != saved_srand:
             logger.warning("The random seed provided to this iteration (srand={0}) is different from the one saved last time (srand={1}). Using srand={0}.".format(srand, saved_srand))
-    else: 
-        f = open('{0}/srand'.format(dir), 'w')                              
-        f.write(str(srand))                                                      
+    else:
+        f = open('{0}/srand'.format(dir), 'w')
+        f.write(str(srand))
         f.close()
 
     chain_lib.ComputeTrainCvProbabilities(dir, iter, egs_dir,
@@ -574,22 +573,20 @@ def Train(args, run_opts):
     if (args.stage <= -3) and args.egs_dir is None:
         logger.info("Generating egs")
         # this is where get_egs.sh is called.
-        chain_lib.GenerateChainEgs(args.dir, args.feat_dir, args.lat_dir, default_egs_dir,
-                                    left_context + args.frame_subsampling_factor/2,
-                                    right_context + args.frame_subsampling_factor/2,
-                                    run_opts,
-                                    left_tolerance = args.left_tolerance,
-                                    right_tolerance = args.right_tolerance,
-                                    frame_subsampling_factor = args.frame_subsampling_factor,
-                                    alignment_subsampling_factor = args.alignment_subsampling_factor,
-                                    frames_per_eg = args.chunk_width,
-                                    egs_opts = args.egs_opts,
-                                    cmvn_opts = args.cmvn_opts,
-                                    online_ivector_dir = args.online_ivector_dir,
-                                    frames_per_iter = args.frames_per_iter,
-                                    srand = args.srand,
-                                    transform_dir = args.transform_dir,
-                                    stage = args.egs_stage)
+        get_egs.GenerateChainEgs(args.dir, args.lat_dir,
+                                 default_egs_dir, args.feat_dir,
+                                 online_ivector_dir = args.online_ivector_dir,
+                                 chunk_left_context = left_context + args.frame_subsampling_factor/2,
+                                 chunk_right_context = right_context + args.frame_subsampling_factor/2,
+                                 cmd = run_opts.command,
+                                 left_tolerance = args.left_tolerance,
+                                 right_tolerance = args.right_tolerance,
+                                 frame_subsampling_factor = args.frame_subsampling_factor,
+                                 alignment_subsampling_factor = args.alignment_subsampling_factor,
+                                 chunk_width = [args.chunk_width],
+                                 cmvn_opts = args.cmvn_opts,
+                                 frames_per_iter = args.frames_per_iter,
+                                 stage = args.egs_stage)
 
     if args.egs_dir is None:
         egs_dir = default_egs_dir
