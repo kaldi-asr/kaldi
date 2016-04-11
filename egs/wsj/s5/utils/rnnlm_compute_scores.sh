@@ -18,6 +18,7 @@
 # has, on each line, "word prob".
 
 rnnlm_ver=rnnlm-0.3e
+machine_w_gpu_cmd="queue.pl -q all.q@b*.clsp.jhu.edu"
 
 . ./path.sh || exit 1;
 . utils/parse_options.sh
@@ -62,8 +63,18 @@ cat $tempdir/text | awk -v voc=$dir/wordlist.rnn -v unk=$dir/unk.probs \
 # OK, now we compute the scores on the text with OOVs replaced
 # with <RNN_UNK>
 
-$rnnlm -independent -rnnlm $dir/rnnlm -test $tempdir/text.nounk -nbest -debug 0 | \
-   awk '{print $1*log(10);}' > $tempdir/loglikes.rnn
+if [ "$rnnlm_ver" == "cuedrnnlm" ]; then
+  set -x
+  cat $tempdir/text | awk '{print NR,0,0,"<s>",$0,"</s>"}' > $tempdir/text.s
+  $rnnlm.eval -nbest -independent 1 -readmodel $dir/rnnlm \
+    -testfile $tempdir/text.s  \
+    -inputwlist $dir/wordlist.rnn.id -outputwlist $dir/wordlist.rnn.id \
+    -debug 0  > $tempdir/loglikes.rnn  
+#    | tail -n 1 | awk '{print $4}' > $tempdir/loglikes.rnn
+else
+  $rnnlm -independent -rnnlm $dir/rnnlm -test $tempdir/text.nounk -nbest -debug 0 | \
+     awk '{print $1*log(10);}' > $tempdir/loglikes.rnn
+fi
 
 [ `cat $tempdir/loglikes.rnn | wc -l` -ne `cat $tempdir/loglikes.oov | wc -l` ] && \
   echo "rnnlm rescoring failed" && exit 1;

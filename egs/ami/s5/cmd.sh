@@ -17,6 +17,7 @@ export decode_cmd="queue.pl -l arch=*64* --mem 2G"
 export highmem_cmd="queue.pl -l arch=*64* --mem 4G"
 export scoring_cmd="queue.pl -l arch=*64*"
 export cuda_cmd="queue.pl --gpu 1 -l mem_free=20G,ram_free=20G"
+export cuda_mem_cmd="queue.pl --gpu 1 -l mem_free=42G,ram_free=42G"
 export cntk_decode_cmd="queue.pl -l arch=*64* --mem 1G -pe smp 2"
 
 # To run locally, use:
