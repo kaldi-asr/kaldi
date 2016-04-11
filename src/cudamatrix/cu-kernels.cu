@@ -1857,7 +1857,7 @@ static void _diff_relu(Real*eout, const Real*e, const Real*y, MatrixDim d, int e
   int e_index   = i + j*e_stride;
   int y_index   = i + j*y_stride;
   if (i < d.cols  && j < d.rows )
-    eout[dst_index] = (y[y_index] > 0.0) ? e[e_index] : 0.0;
+    eout[dst_index] = (y[y_index] > 0.0) * e[e_index];
 }
 
 
