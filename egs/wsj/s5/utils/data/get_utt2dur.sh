@@ -70,7 +70,7 @@ else
     fi
 
     read_entire_file=false
-    if [ `cat $data/wav.scp | sed -n '/sox.*speed/p' | wc -l` -gt 0 ]; then
+    if cat $data/wav.scp | grep -q 'sox.*speed'; then
       read_entire_file=true
       echo "$0: reading from the entire wav file to fix the problem caused by sox commands with speed perturbation. It is going to be slow."
     fi
