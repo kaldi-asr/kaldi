@@ -39,14 +39,8 @@ destdir=$3
 mkdir $destdir 2>/dev/null || true
 
 gunzip -c $lmfile | \
-    grep -v '<s> <s>' | grep -v '</s> <s>' |  grep -v '</s> </s>' | \
-    arpa2fst - | \
-    fstprint | \
-    utils/eps2disambig.pl | \
-    utils/s2eps.pl | \
-    fstcompile --isymbols=$langdir/words.txt \
-    --osymbols=$langdir/words.txt  --keep_isymbols=false --keep_osymbols=false | \
-    fstrmepsilon | fstarcsort --sort_type=ilabel > $destdir/G.fst || exit 1
+    arpa2fst --disambig-symbol=#0 \
+             --read-symbol-table=$langdir/words.txt - $destdir/G.fst || exit 1
 fstisstochastic $destdir/G.fst || true
 
 exit 0

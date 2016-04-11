@@ -61,8 +61,8 @@ fi
 
 
 # Checks if espeak is available on the system. espeak is necessary to extend
-# the setup because the original transcriptions were created with espeak and 
-# filtered 
+# the setup because the original transcriptions were created with espeak and
+# filtered
 
 if ! which espeak >&/dev/null; then
   echo "espeak is not available on your system. You must install espeak before proceeding."
@@ -95,7 +95,7 @@ if [ ! -f $extdict/lexicon.txt ];
 
 
   # Filter transcription
-  # Remove diacritics, language annotation ((da), (en), (fr) etc.), insert space between symbols, remove 
+  # Remove diacritics, language annotation ((da), (en), (fr) etc.), insert space between symbols, remove
   # initial and trailing spaces and collapse 2 or more spaces to one space
 
   cat $dir/plist.txt | perl -pe 's/\([[a-z]{2}\)//g' | perl -pe 's// /g' | perl -pe 's/ a I / aI /g' | perl -pe 's/ d Z / dZ /g' | perl -pe 's/ \? / /g' | perl -pe 's/ ([\#]) /\+ /g' | perl -pe 's/([\@n3]) \- /\1\- /g' | perl -pe "s/[\_\:\!\'\,\|2]//g" | perl -pe 's/ \- / /g' | tr -s ' ' | perl -pe 's/^ +| +$//g' > $dir/plist2.txt
@@ -128,7 +128,7 @@ if [ ! -f $lmdir/extra4.ngt ];
 
   grep -P -v '^[\s?|\.|\!]*$' $newtext | \
   awk '{if(NF>=4){ printf("%s\n",$0); }}' > $lmdir/text.filt
-    
+
   # Envelop LM training data in context cues
   add-start-end.sh < $lmdir/text.filt > $lmdir/lm_input
 
@@ -151,22 +151,8 @@ mkdir -p $test
 cp -r $extlang $test
 
 cat $lmdir/extra${N}$lm_suffix | \
-utils/find_arpa_oovs.pl $test/words.txt  > $lmdir/oovs_${lm_suffix}.txt
-
-  # grep -v '<s> <s>' because the LM seems to have some strange and useless
-  # stuff in it with multiple <s>'s in the history.  Encountered some other similar
-  # things in a LM from Geoff.  Removing all "illegal" combinations of <s> and </s>,
-  # which are supposed to occur only at being/end of utt.  These can cause 
-  # determinization failures of CLG [ends up being epsilon cycles].
-cat $lmdir/extra${N}$lm_suffix | \
-  grep -v '<s> <s>' | \
-  grep -v '</s> <s>' | \
-  grep -v '</s> </s>' | \
-  arpa2fst - | fstprint | \
-  utils/remove_oovs.pl $lmdir/oovs_${lm_suffix}.txt | \
-  utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=$test/words.txt \
-    --osymbols=$test/words.txt  --keep_isymbols=false --keep_osymbols=false | \
-   fstrmepsilon | fstarcsort --sort_type=ilabel > $test/G.fst
+  arpa2fst --disambig-symbol=#0 \
+           --read-symbol-table=$test/words.txt - $test/G.fst
 
 utils/validate_lang.pl $test || exit 1;
 
