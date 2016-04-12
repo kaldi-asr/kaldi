@@ -46,4 +46,15 @@ def GetNumFrames(data_dir, utts = None):
     return int(float(total_duration)/frame_shift)
 
 def CreateDataLinks(file_names):
+    # if file_names already exist create_data_link.pl returns with code 1
+    # so we just delete them before calling create_data_link.pl
+    for file_name in file_names:
+        TryToDelete(file_name)
     train_lib.RunKaldiCommand(" utils/create_data_link.pl {0}".format(" ".join(file_names)))
+
+def TryToDelete(file_name):
+    try:
+        os.remove(file_name)
+    except OSError:
+        pass
+

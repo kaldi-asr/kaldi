@@ -68,20 +68,31 @@ Generates training examples used to train the 'chain' system (and also the"""
     parser.add_argument("--alignment-subsampling-factor", type=int, default=3,
                         help="Frames-per-second of input alignments."
                         " Divided by frames-per-second at output of the chain model.")
-    parser.add_argument("--chunk-width", type=int, default = [150], action=append,
-                        help="Number of output labels in each example.")
+    parser.add_argument("--chunk-widths", type=str, default = "150",
+                        help="A string specifying the number of output labels in each example.")
     parser.add_argument("--chunk-overlap-per-eg", type=int, default = 0,
                         help="Number of supervised frames of overlap that we"
                         " aim per eg. It can be used to avoid data wastage when"
                         " using --left-deriv-truncate and --right-deriv-truncat"
                         " options in the training script")
-    parser.add_argument("--chunk-left-context", type=int, default = 4,
+    parser.add_argument("--min-chunk-left-context", type=int, default = 4,
                         help="Number of additional frames of input to the left"
                         " of the input chunk. This extra context will be used"
                         " in the estimation of RNN state before prediction of"
                         " the first label. In the case of FF-DNN this extra"
                         " context will be used to allow for frame-shifts")
-    parser.add_argument("--chunk-right-context", type=int, default = 4,
+    parser.add_argument("--min-chunk-right-context", type=int, default = 4,
+                        help="Number of additional frames of input to the right"
+                        " of the input chunk. This extra context will be used"
+                        " in the estimation of bidirectional RNN state before"
+                        " prediction of the first label.")
+    parser.add_argument("--max-chunk-left-context", type=int, default = 4,
+                        help="Number of additional frames of input to the left"
+                        " of the input chunk. This extra context will be used"
+                        " in the estimation of RNN state before prediction of"
+                        " the first label. In the case of FF-DNN this extra"
+                        " context will be used to allow for frame-shifts")
+    parser.add_argument("--max-chunk-right-context", type=int, default = 4,
                         help="Number of additional frames of input to the right"
                         " of the input chunk. This extra context will be used"
                         " in the estimation of bidirectional RNN state before"
@@ -147,19 +158,17 @@ Generates training examples used to train the 'chain' system (and also the"""
 
 def ProcessArgs(args):
     # process the options
-    if args.chunk_width < 1:
-        raise Exception("--egs.chunk-width should have a minimum value of 1")
+    for chunk_width in args.chunk_widths.split():
+        if int(chunk_width) < 1:
+            raise Exception("--egs.chunk-widths should have a minimum value of 1")
 
-    if args.chunk_left_context < 0:
-        raise Exception("--egs.chunk-left-context should be non-negative")
+    if ((args.min_chunk_left_context < 0) or (args.min_chunk_right_context < 0)
+        or (args.max_chunk_left_context < 0) or (args.max_chunk_right_context < 0)):
+        raise Exception("--egs.{min,max}-chunk-{left-right}-context should be non-negative")
 
-    if args.chunk_right_context < 0:
-        raise Exception("--egs.chunk-right-context should be non-negative")
-
-    if args.valid_left_context is None:
-        args.valid_left_context = args.chunk_left_context
-    if args.valid_right_context is None:
-        args.valid_right_context = args.chunk_right_context
+    if ((args.min_chunk_left_context > args.max_chunk_left_context) or
+        (args.min_chunk_right_context > args.max_chunk_right_context)):
+        raise Exception("--egs.{min,max}-chunk-{left-right}-context ranges not properly specified")
 
     return args
 
@@ -207,7 +216,7 @@ def SampleUtts(feat_dir, num_utts_subset, min_duration, exclude_list=None):
 
     if len(sampled_utts) < num_utts_subset:
         raise Exception("Number of utterances which have duration of at least "
-                "{md} seconds is really low. Please check your data.".format(md = min_duration))
+                "{md} seconds is really low (required={rl}, available={al}). Please check your data.".format(md = min_duration, al=len(sampled_utts), rl=num_utts_subset))
     sampled_utts_durs = []
     for utt in sampled_utts:
         sampled_utts_durs.append([utt, utt2durs_dict[utt]])
@@ -252,21 +261,21 @@ def GetFeatIvectorStrings(dir, feat_dir, split_feat_dir, cmvn_opt_string, ivecto
         valid_ivector_opt = ''
         train_subset_ivector_opt = ''
 
-    return {'train_feats_function':train_feats_function, 'valid_feats':valid_feats, 'train_subset_feats':train_subset_feats,
-            'ivector_opts':ivector_opt, 'valid_ivector_opts':valid_ivector_opt, 'train_subset_ivector_opts':train_subset_ivector_opt}
+    return {'train_feats_function':train_feats_function,
+            'valid_feats':valid_feats,
+            'train_subset_feats':train_subset_feats,
+            'ivector_opts':ivector_opt,
+            'valid_ivector_opts':valid_ivector_opt,
+            'train_subset_ivector_opts':train_subset_ivector_opt,
+            'feat_dim':train_lib.GetFeatDim(feat_dir),
+            'ivector_dim':train_lib.GetIvectorDim(ivector_dir)}
 
-def GetEgsOptions(left_context, right_context,
-                  valid_left_context, valid_right_context,
+def GetEgsOptions(valid_left_context, valid_right_context,
                   chunk_width, frames_overlap_per_eg,
                   frame_subsampling_factor, alignment_subsampling_factor,
                   left_tolerance, right_tolerance, compress, cut_zero_frames):
 
-    if valid_left_context is None:
-        valid_left_context = left_context
-    if valid_right_context is None:
-        valid_right_context = right_context
-
-    train_egs_opts_func = lambda chunk_width:  "--left-context={lc} --right-context={rc} --num-frames={cw} --num-frames-overlap={fope} --frame-subsampling-factor={fsf} --compress={comp} --cut-zero-frames={czf}".format(lc = left_context, rc = right_context,
+    train_egs_opts_func = lambda chunk_width, left_context, right_context:  "--left-context={lc} --right-context={rc} --num-frames={cw} --num-frames-overlap={fope} --frame-subsampling-factor={fsf} --compress={comp} --cut-zero-frames={czf}".format(lc = left_context, rc = right_context,
               cw = chunk_width, fope = frames_overlap_per_eg,
               fsf = frame_subsampling_factor, comp = compress,
               czf = cut_zero_frames)
@@ -305,8 +314,10 @@ def GenerateValidTrainSubsetEgs(dir, lat_dir, chain_dir,
     file_handle.write('\n'.join(lat_scp_special))
     file_handle.close()
 
+    wait_pids = []
+
     logger.info("Creating validation subset examples.")
-    train_lib.RunKaldiCommand("""
+    valid_pid = train_lib.RunKaldiCommand("""
   {cmd} {dir}/log/create_valid_subset.log \
     lattice-align-phones --replace-output-symbols=true {ldir}/final.mdl scp:{dir}/lat_special.scp ark:- \| \
     chain-get-supervision {sup_opt} {cdir}/tree {cdir}/0.trans_mdl \
@@ -317,10 +328,11 @@ def GenerateValidTrainSubsetEgs(dir, lat_dir, chain_dir,
           sup_opt = egs_opts['supervision_opts'],
           v_egs_opt = egs_opts['valid_egs_opts'],
           v_iv_opt = feat_ivector_strings['valid_ivector_opts'],
-          v_feats = feat_ivector_strings['valid_feats']))
+          v_feats = feat_ivector_strings['valid_feats']), wait = False)
+    wait_pids.append(valid_pid)
 
     logger.info("Creating train subset examples.")
-    train_lib.RunKaldiCommand("""
+    train_pid = train_lib.RunKaldiCommand("""
   {cmd} {dir}/log/create_train_subset.log \
     lattice-align-phones --replace-output-symbols=true {ldir}/final.mdl scp:{dir}/lat_special.scp ark:- \| \
     chain-get-supervision {sup_opt} \
@@ -331,33 +343,48 @@ def GenerateValidTrainSubsetEgs(dir, lat_dir, chain_dir,
           sup_opt = egs_opts['supervision_opts'],
           v_egs_opt = egs_opts['valid_egs_opts'],
           t_iv_opt = feat_ivector_strings['train_subset_ivector_opts'],
-          t_feats = feat_ivector_strings['train_subset_feats']))
+          t_feats = feat_ivector_strings['train_subset_feats']), wait = False)
+    wait_pids.append(train_pid)
 
+    for pid in wait_pids:
+        stdout, stderr = pid.communicate()
+        if pid.returncode != 0:
+            raise Exception(stderr)
+
+    wait_pids = []
     logger.info("... Getting subsets of validation examples for diagnostics and combination.")
-    train_lib.RunKaldiCommand("""
+    pid = train_lib.RunKaldiCommand("""
   {cmd} {dir}/log/create_valid_subset_combine.log \
     nnet3-chain-subset-egs --n={nve_combine} ark:{dir}/valid_all.cegs \
     ark:{dir}/valid_combine.cegs""".format(
-        cmd = cmd, dir = dir, nve_combine = num_valid_egs_combine))
+        cmd = cmd, dir = dir, nve_combine = num_valid_egs_combine), wait = False)
+    wait_pids.append(pid)
 
-
-    train_lib.RunKaldiCommand("""
+    pid = train_lib.RunKaldiCommand("""
   {cmd} {dir}/log/create_valid_subset_diagnostic.log \
     nnet3-chain-subset-egs --n={ne_diagnostic} ark:{dir}/valid_all.cegs \
     ark:{dir}/valid_diagnostic.cegs""".format(
-        cmd = cmd, dir = dir, ne_diagnostic = num_egs_diagnostic))
+        cmd = cmd, dir = dir, ne_diagnostic = num_egs_diagnostic), wait = False)
+    wait_pids.append(pid)
 
-    train_lib.RunKaldiCommand("""
+    pid = train_lib.RunKaldiCommand("""
   {cmd} {dir}/log/create_train_subset_combine.log \
     nnet3-chain-subset-egs --n={nte_combine} ark:{dir}/train_subset_all.cegs \
     ark:{dir}/train_combine.cegs""".format(
-        cmd = cmd, dir = dir, nte_combine = num_train_egs_combine))
+        cmd = cmd, dir = dir, nte_combine = num_train_egs_combine), wait = False)
+    wait_pids.append(pid)
 
-    train_lib.RunKaldiCommand("""
+    pid = train_lib.RunKaldiCommand("""
   {cmd} {dir}/log/create_train_subset_diagnostic.log \
     nnet3-chain-subset-egs --n={ne_diagnostic} ark:{dir}/train_subset_all.cegs \
     ark:{dir}/train_diagnostic.cegs""".format(
-        cmd = cmd, dir = dir, ne_diagnostic = num_egs_diagnostic))
+        cmd = cmd, dir = dir, ne_diagnostic = num_egs_diagnostic), wait = False)
+    wait_pids.append(pid)
+
+    for pid in wait_pids:
+        stdout, stderr = pid.communicate()
+        if pid.returncode != 0:
+            raise Exception(stderr)
 
     train_lib.RunKaldiCommand(""" cat {dir}/valid_combine.cegs {dir}/train_combine.cegs > {dir}/combine.cegs""".format(dir = dir))
 
@@ -377,7 +404,7 @@ def GetTrainUttPartitions(chunk_widths, frame_shift, train_utts_durs, feat_dir, 
     utt_partition_preference = {}
     for item in train_utts_durs:
         utt_name = item[0]
-        width = int(item[1] * frame_shift)
+        width = int(item[1] / frame_shift)
 
         # get the partition preference order
         # get distances different chunk boundaries
@@ -386,11 +413,8 @@ def GetTrainUttPartitions(chunk_widths, frame_shift, train_utts_durs, feat_dir, 
         for cw in chunk_widths:
             distance_from_left_boundary = width % cw
             distance_from_right_boundary = cw - distance_from_left_boundary
-            if distance_from_left_boundary > distance_from_right_boundary:
-                distance = distance_from_right_boundary
-            else:
-                distance = distance_from_left_boundary + additional_cost
-            distances.append([cw, distance])
+            distance_from_left_boundary = distance_from_left_boundary + additional_cost
+            distances.append([cw, min(distance_from_left_boundary, distance_from_right_boundary)])
         distances = sorted(distances, key = lambda x:x[1])
         utt_partition_preference[utt_name] = map(lambda x: x[0], distances)
 
@@ -405,8 +429,8 @@ def GetTrainUttPartitions(chunk_widths, frame_shift, train_utts_durs, feat_dir, 
     # merge partitions until each of them has atleast frames_per_iter frames
     for iteration in xrange(len(chunk_widths) - 1):
         has_min_num_frames = True
-        for chunk_width in chunk_widths:
-            if GetNumFrames(feat_dir, utts_per_chunk_width[chunk_width]) <= frames_per_iter:
+        for chunk_width in utts_per_chunk_width.keys():
+            if data_lib.GetNumFrames(feat_dir, utts_per_chunk_width[chunk_width]) <= frames_per_iter:
                 has_min_num_frames = False
                 # we don't want to use this chunk_width if there are less
                 # than frames_per_iter frames as there will not be sufficient
@@ -421,6 +445,10 @@ def GetTrainUttPartitions(chunk_widths, frame_shift, train_utts_durs, feat_dir, 
 
         if has_min_num_frames:
             break
+    info_string = ''
+    for key in utts_per_chunk_width.keys():
+        info_string = info_string + " chunk-width {0} -- num-frames {1}\n".format(key, data_lib.GetNumFrames(feat_dir, utts_per_chunk_width[key]))
+    logger.info("Generating egs with {0} different chunk width(s):\n{1}".format(len(utts_per_chunk_width.keys()), info_string))
     return utts_per_chunk_width
 
 def GenerateTrainingExamplesFromUtts(dir, lat_dir, chain_dir, feat_dir,
@@ -452,7 +480,7 @@ def GenerateTrainingExamplesFromUtts(dir, lat_dir, chain_dir, feat_dir,
     if egs_per_archive > frames_per_iter:
         raise Exception("egs_per_archive({epa}) > frames_per_iter({fpi}). This is an error in the logic for determining egs_per_archive".format(epa = egs_per_achive, fpi = frames_per_iter))
 
-    logger.info("Splitting a total of {nf} frames into {na} archives, each with {epa} egs.".format(nf = num_frames, na = num_archives, epa = egs_per_archive))
+    logger.info("Splitting a total of {nf} frames into {na} archives, each with {epa} egs of chunk-width {cw}.".format(nf = num_frames, na = num_archives, epa = egs_per_archive, cw = chunk_width))
 
     if os.path.isdir('{0}/storage'.format(dir)):
         # this is a striped directory, so create the softlinks
@@ -477,7 +505,6 @@ def GenerateTrainingExamplesFromUtts(dir, lat_dir, chain_dir, feat_dir,
             sup_opts = supervision_opts, iv_opts = ivector_opts, egs_opts = train_egs_opts_string,
             feats = train_feats_string, egs_list = egs_list))
 
-
     logger.info("Recombining and shuffling order of archives on disk")
     egs_list = ' '.join(['{dir}/cegs_orig.{n}.JOB.ark'.format(dir=dir, n = x) for x in range(1, num_jobs + 1)])
     if archives_multiple == 1:
@@ -494,6 +521,14 @@ def GenerateTrainingExamplesFromUtts(dir, lat_dir, chain_dir, feat_dir,
         # there are intermediate archives so we shuffle egs across jobs
         # and split them into archives_multiple output archives
         output_archives = ' '.join(["ark:{dir}/cegs/JOB.{ark_num}.ark".format(dir = dir, ark_num = x) for x in range(1, archives_multple)])
+        # archives were created as cegs.x.y.ark
+        # linking them to cegs.i.ark format which is expected by the training
+        # scripts
+        for i in range(1, num_archives_intermediate):
+            for j in range(1, archives_multiple):
+                archive_index = (i-1) * archive_multiple + j
+                ForceSymLink("cegs.{0}.ark".format(archive_index),
+                             "{dir}/cegs.{i}.{j}.ark".format(dir = dir, i = i, j = j))
 
         train_lib.RunKaldiCommand("""
     {cmd} --max-jobs-run {msjr} --mem 8G JOB=1:{nai} {dir}/log/shuffle.JOB.log \
@@ -504,41 +539,29 @@ def GenerateTrainingExamplesFromUtts(dir, lat_dir, chain_dir, feat_dir,
           nai = num_archives_intermediate, cdir = chain_dir,
           dir = dir, egs_list = egs_list, oarks = output_archives))
 
-        # archives were created as cegs.x.y.ark
-        # linking them to cegs.i.ark format which is expected by the training
-        # scripts
-        for i in range(1, num_archives_intermediate):
-            for j in range(1, archives_multiple):
-                archive_index = (i-1) * archive_multiple + j
-                ForceSymLink("cegs.{0}.ark".format(archive_index),
-                             "{dir}/cegs.{i}.{j}.ark".format(dir = dir, i = i, j = j))
+    Cleanup(dir, archives_multiple)
+    return {'num_frames':num_frames,
+            'num_archives':num_archives,
+            'chunk_width':chunk_width,
+            'egs_per_archive':egs_per_archive}
 
-        Cleanup(dir, archive_multiple)
-
-def ForceSymLink(source, target):
-    import os, errno
+import os, errno
+def ForceSymLink(source, dest):
     try:
-        os.symlink(source, target)
+        os.symlink(source, dest)
     except OSError, e:
         if e.errno == errno.EEXIST:
-            os.remove(target)
-            os.symlink(source, target)
+            os.remove(dest)
+            os.symlink(source, dest)
         else:
             raise e
 
 def Cleanup(dir, archive_multiple):
-    logger.info("Removing temporary lattices")
-    for lat_file in glob.glob('{0}/lat.*'.format(dir)):
-        os.remove(lat_file)
-
-    logger.info("Removing temporary alignments")
-    for file_name in '{0}/ali.ark {0}/ali.scp'.format(dir).split():
-        os.remove(file_name)
-    for file_name in '{0}/trans.ark {0}/trans.scp'.format(dir).split():
-        try:
-            os.remove(file_name)
-        except OSError:
-            pass
+    logger.info("Removing temporary archives in {0}.".format(dir))
+    for file_name in glob.glob("{0}/cegs_orig*".format(dir)):
+        real_path = os.path.realpath(file_name)
+        data_lib.TryToDelete(real_path)
+        data_lib.TryToDelete(file_name)
 
     if archive_multiple > 1:
         # there will be some extra soft links we want to delete
@@ -556,6 +579,8 @@ def CreateDirectory(dir):
 def GenerateTrainingExamples(dir, lat_dir, chain_dir, feat_dir,
                              feat_ivector_strings, egs_opts,
                              train_utts_durs, chunk_widths,
+                             min_left_context, min_right_context,
+                             max_left_context, max_right_context,
                              frame_shift, frames_per_iter,
                              cmd, num_jobs, max_shuffle_jobs_run, only_shuffle):
 
@@ -565,11 +590,9 @@ def GenerateTrainingExamples(dir, lat_dir, chain_dir, feat_dir,
     cur_dir_info = []
     total_ark_list = []
     for chunk_width in utt_partitions.keys():
-        logger.info("Generating training examples for chunk width {0}".format(chunk_width))
         utts = utt_partitions[chunk_width]
         cur_dir = '{0}/cw{1}'.format(dir.strip("/"), chunk_width)
         CreateDirectory(cur_dir)
-        cur_dir_info.append([chunk_width, cur_dir])
         utt_list_file = '{0}/train_uttlist'.format(cur_dir)
         handle = open(utt_list_file, 'w')
         handle.write("\n".join(utts))
@@ -577,7 +600,11 @@ def GenerateTrainingExamples(dir, lat_dir, chain_dir, feat_dir,
 
         # generate the training options string with the given chunk_width
         train_egs_opt_func = egs_opts['train_egs_opts_function']
-        train_egs_opts_string = train_egs_opt_func(chunk_width)
+        left_context = random.randrange(min_left_context, max_left_context+1)
+        right_context = random.randrange(min_right_context, max_right_context+1)
+        logger.info("Generating training examples for chunk width {0}"
+                    " with left context {1} and right context {2}.".format(chunk_width, left_context, right_context))
+        train_egs_opts_string = train_egs_opt_func(chunk_width, left_context, right_context)
         # generate the feature vector string with the utt list for the
         # current chunk width
         train_feats_func = feat_ivector_strings['train_feats_function']
@@ -590,13 +617,14 @@ def GenerateTrainingExamples(dir, lat_dir, chain_dir, feat_dir,
             train_lib.RunKaldiCommand("""
                 utils/create_split_dir.pl {target_dirs} {dir}/storage""".format(target_dirs = " ".join(cur_real_paths), dir = cur_dir))
 
-        GenerateTrainingExamplesFromUtts(cur_dir, lat_dir, chain_dir, feat_dir,
-                                         utts, chunk_width,
-                                         train_feats_string, train_egs_opts_string,
-                                         egs_opts['supervision_opts'],
-                                         feat_ivector_strings['ivector_opts'],
-                                         num_jobs, max_shuffle_jobs_run,
-                                         frames_per_iter, cmd, only_shuffle)
+        info = GenerateTrainingExamplesFromUtts(cur_dir, lat_dir, chain_dir, feat_dir,
+                                                utts, chunk_width,
+                                                train_feats_string, train_egs_opts_string,
+                                                egs_opts['supervision_opts'],
+                                                feat_ivector_strings['ivector_opts'],
+                                                num_jobs, max_shuffle_jobs_run,
+                                                frames_per_iter, cmd, only_shuffle)
+        cur_dir_info.append([chunk_width, cur_dir, info])
 
         total_ark_list = total_ark_list + glob.glob(cur_dir+'/cegs.*.ark')
 
@@ -608,16 +636,29 @@ def GenerateTrainingExamples(dir, lat_dir, chain_dir, feat_dir,
         ForceSymLink(relative_path, '{dir}/cegs.{ai}.ark'.format(dir = dir, ai = ark_index))
 
     # write the info about the individual partition egs_dirs
-    partition_file = open(dir.strip()+'/utt_partition_info', 'w')
-    for chunk_width,cur_dir in cur_dir_info:
-        partition_file.write("--chunk_width {0} --egs-dir {1}".format(chunk_width, cur_dir))
+    # see GetUttPartitionInfoParser() in steps/nnet3/chain/nnet3_chain_lib.py
+    # for info on fields to be written
+    partition_file = open(dir.strip()+'/info/utt_partition_info', 'w')
+    for chunk_width, cur_dir, info in cur_dir_info:
+        partition_file.write("--chunk_width {cw} --egs-dir {ed}"
+                             " --num-frames {nf} --egs-per-archive {epa}"
+                             " --num-archives {na}"
+                             " --left-context {lc} --right-context {rc}"
+                             " --feat-dim {fd} --ivector-dim {id}\n".format(cw=chunk_width, ed=cur_dir,
+                             nf=info['num_frames'], na=info['num_archives'],
+                             epa=info['egs_per_archive'], lc = left_context,
+                             rc = right_context,
+                             fd = feat_ivector_strings['feat_dim'],
+                             id = feat_ivector_strings['ivector_dim']))
     partition_file.close()
 
 def GenerateChainEgs(chain_dir, lat_dir, egs_dir, feat_dir,
                     online_ivector_dir = None,
-                    chunk_width = [150],
-                    chunk_left_context = 4,
-                    chunk_right_context = 4,
+                    chunk_widths = [150],
+                    min_chunk_left_context = 4,
+                    max_chunk_left_context = 4,
+                    min_chunk_right_context = 4,
+                    max_chunk_right_context = 4,
                     valid_left_context = None,
                     valid_right_context = None,
                     chunk_overlap_per_eg = 0,
@@ -638,15 +679,15 @@ def GenerateChainEgs(chain_dir, lat_dir, egs_dir, feat_dir,
                     frame_subsampling_factor = 3,
                     alignment_subsampling_factor = 3):
 
+    WriteList('{0}/cmvn_opts', cmvn_opts if cmvn_opts is not None else '')
     # Check files
     CheckForRequiredFiles(feat_dir, chain_dir, lat_dir, online_ivector_dir)
 
     for directory in '{0}/log {0}/info'.format(egs_dir).split():
-        if not os.path.exists(directory):
-            os.makedirs(directory)
+            CreateDirectory(directory)
 
     frame_shift = data_lib.GetFrameShift(feat_dir)
-    min_duration = float(max(chunk_width)) * frame_shift
+    min_duration = float(max(chunk_widths)) * frame_shift
     valid_utts = SampleUtts(feat_dir, num_utts_subset, min_duration)[0]
     train_subset_utts = SampleUtts(feat_dir, num_utts_subset, min_duration, exclude_list = valid_utts)[0]
     train_utts, train_utts_durs = SampleUtts(feat_dir, None, -1, exclude_list = valid_utts)
@@ -666,9 +707,14 @@ def GenerateChainEgs(chain_dir, lat_dir, egs_dir, feat_dir,
     feat_ivector_strings = GetFeatIvectorStrings(egs_dir, feat_dir,
             split_feat_dir, cmvn_opts, ivector_dir = online_ivector_dir)
 
-    egs_opts = GetEgsOptions(chunk_left_context, chunk_right_context,
-                             valid_left_context, valid_right_context,
-                             chunk_width[0], frames_overlap_per_eg,
+    if valid_left_context is None:
+        valid_left_context = int((min_chunk_left_context + max_chunk_left_context)/2)
+    if valid_right_context is None:
+        valid_right_context = int((min_chunk_right_context + max_chunk_right_context)/2)
+
+    egs_opts = GetEgsOptions(valid_left_context, valid_right_context,
+                             int(sum(chunk_widths)/len(chunk_widths)),
+                             frames_overlap_per_eg,
                              frame_subsampling_factor,
                              alignment_subsampling_factor,
                              left_tolerance, right_tolerance,
@@ -692,18 +738,26 @@ def GenerateChainEgs(chain_dir, lat_dir, egs_dir, feat_dir,
         logger.info("Generating training examples on disk.")
         GenerateTrainingExamples(egs_dir, lat_dir, chain_dir, feat_dir,
                                  feat_ivector_strings, egs_opts,
-                                 train_utts_durs, chunk_width,
+                                 train_utts_durs, chunk_widths,
+                                 min_chunk_left_context, min_chunk_right_context,
+                                 max_chunk_left_context, max_chunk_right_context,
                                  frame_shift, frames_per_iter,
                                  cmd, num_jobs, max_shuffle_jobs_run,
                                  only_shuffle)
+
+    logger.info("Removing temporary lattices")
+    for lat_file in glob.glob('{0}/lat.*'.format(egs_dir)):
+        os.remove(lat_file)
 
 def Main():
     args = GetArgs()
     GenerateChainEgs(args.chain_dir, args.lat_dir, args.dir, args.feat_dir,
                      online_ivector_dir = args.online_ivector_dir,
                      chunk_width = args.chunk_width,
-                     chunk_left_context = args.chunk_left_context,
-                     chunk_right_context = args.chunk_right_context,
+                     min_chunk_left_context = args.min_chunk_left_context,
+                     max_chunk_left_context = args.max_chunk_left_context,
+                     min_chunk_right_context = args.min_chunk_right_context,
+                     max_chunk_right_context = args.max_chunk_right_context,
                      valid_left_context = args.valid_left_context,
                      valid_right_context = args.valid_right_context,
                      chunk_overlap_per_eg = args.chunk_overlap_per_eg,
