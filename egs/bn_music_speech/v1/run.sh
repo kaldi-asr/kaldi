@@ -17,8 +17,9 @@ set -e
 mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
 
-local/make_bn.sh /export/corpora/NIST/96HUB4/h4eng_sp \
-  /export/corpora/LDC/LDC97T22/ data
+local/make_bn.sh /export/corpora5/LDC/LDC97S44 \
+                 /export/corpora/LDC/LDC97T22 data
+
 local/make_musan.sh /export/corpora/JHU/musan data
 
 steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 30 --cmd "$train_cmd" \
