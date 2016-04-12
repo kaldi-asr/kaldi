@@ -10,13 +10,18 @@
 # first tries interrogating the headers, and if this fails, it reads the wave
 # files in entirely.)
 
+frame_shift=0.01
+
 . utils/parse_options.sh
 . ./path.sh
 
 if [ $# != 1 ]; then
-  echo "Usage: $0 <datadir>"
+  echo "Usage: $0 [options] <datadir>"
   echo "e.g.:"
   echo " $0 data/train"
+  echo " Options:"
+  echo " --frame-shift      # frame shift in seconds. Only relevant when we are"
+  echo "                    # getting duration from feats.scp (default: 0.01). "
   exit 1
 fi
 
@@ -32,12 +37,8 @@ fi
 if [ -f $data/segments ]; then
   echo "$0: working out $data/utt2dur from $data/segments"
   cat $data/segments | awk '{len=$4-$3; print $1, len;}' > $data/utt2dur
-else
+elif [ -f $data/wav.scp ]; then
   echo "$0: segments file does not exist so getting durations from wave files"
-  if [ ! -f $data/wav.scp ]; then
-    echo "$0: Expected $data/wav.scp or $data/segments to exist"
-    exit 1
-  fi
 
   # if the wav.scp contains only lines of the form
   # utt1  /foo/bar/sph2pipe -f wav /baz/foo.sph |
@@ -81,6 +82,12 @@ else
       mv $data/utt2dur $data/.backup/
     fi
   fi
+elif [ -f $data/feats.scp ]; then
+  echo "$0: wave file does not exist so getting durations from feats files"
+  feat-to-len scp:$data/feats.scp ark,t:- | awk -v frame_shift=$frame_shift '{print $1, $2*frame_shift;}' >$data/utt2dur
+else
+  echo "$0: Expected $data/wav.scp, $data/segments or $data/feats.scp to exist"
+  exit 1
 fi
 
 len1=$(cat $data/utt2spk | wc -l)
