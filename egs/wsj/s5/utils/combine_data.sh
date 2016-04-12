@@ -65,7 +65,7 @@ fi
 # some of the old scripts might provide utt2uniq as an extrafile, so just remove it
 extra_files=$(echo "$extra_files"|sed -e "s/utt2uniq//g")
 
-for file in utt2spk utt2lang feats.scp text cmvn.scp segments reco2file_and_channel wav.scp spk2gender $extra_files; do
+for file in utt2spk utt2lang utt2dur feats.scp text cmvn.scp segments reco2file_and_channel wav.scp spk2gender $extra_files; do
   if [ -f $first_src/$file ]; then
     ( for f in $*; do cat $f/$file; done ) | sort -k1 > $dest/$file || exit 1;
     echo "$0: combined $file"
