@@ -42,7 +42,10 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
-
+    
+    NnetPhoneDurationModelOptions opts;
+    opts.Register(&po);
+    
     po.Read(argc, argv);
     if (po.NumArgs() != 3) {
       po.PrintUsage();
@@ -58,7 +61,7 @@ int main(int argc, char *argv[]) {
     Nnet nnet;
     ReadKaldiObject(in_nnet_filename, &nnet);
 
-    NnetPhoneDurationModel nnet_dur_model(durmodel, nnet);
+    NnetPhoneDurationModel nnet_dur_model(opts, durmodel, nnet);
     WriteKaldiObject(nnet_dur_model, out_model_filename, binary_write);
 
     KALDI_LOG << "Done writing the model.";

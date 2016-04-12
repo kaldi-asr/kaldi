@@ -42,10 +42,11 @@ int main(int argc, char *argv[]) {
       "ark:lat.1 ark:rescored_lat.1\n";
 
     BaseFloat duration_model_scale = 1.0;
+    std::string avg_logprobs_file;
     ParseOptions po(usage);
     po.Register("duration-model-scale", &duration_model_scale, "Scaling factor "
                 "for duration model costs");
-
+    po.Register("avg-logprobs-file", &avg_logprobs_file, "File containing avg logprobs to be subtracted from scores.");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 4) {
@@ -62,8 +63,12 @@ int main(int argc, char *argv[]) {
     ReadKaldiObject(model_filename, &trans_model);
     NnetPhoneDurationModel nnet_durmodel;
     ReadKaldiObject(nnet_durmodel_filename, &nnet_durmodel);
-
-    NnetPhoneDurationScoreComputer durmodel_scorer(nnet_durmodel);
+    
+    AvgPhoneLogProbs avg_logprobs;
+    if (!avg_logprobs_file.empty()) {
+      ReadKaldiObject(avg_logprobs_file, &avg_logprobs);
+    }
+    NnetPhoneDurationScoreComputer durmodel_scorer(nnet_durmodel, avg_logprobs);
 
     // Read and write as compact lattice.
     SequentialCompactLatticeReader compact_lattice_reader(lats_rspecifier);

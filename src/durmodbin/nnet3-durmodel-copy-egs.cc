@@ -41,9 +41,12 @@ int main(int argc, char *argv[]) {
 
     int32 srand_seed = 0;
     BaseFloat noise_magnitude = 0.1;
+    bool always_perturb = false;
 
     ParseOptions po(usage);
     po.Register("srand", &srand_seed, "Seed for random number generator ");
+    po.Register("always-perturb", &always_perturb, "If true, a minimum noise "
+                "of +-1 is always added even for small duration values.");
     po.Register("noise-magnitude", &noise_magnitude, "Relative magnitude of "
                 "noise to be added to duration values.");
 
@@ -69,27 +72,44 @@ int main(int argc, char *argv[]) {
       NnetExample eg_out(eg);
 
       if (noise_magnitude != 0.0) {
-        SparseMatrix<BaseFloat> output_smat(
-                                       eg_out.io[1].features.GetSparseMatrix());
-        int32 num_rows = output_smat.NumRows();
-        for (int32 row = 0; row < num_rows; row++) {
-          int32 duration = output_smat.Row(row).GetElement(0).first + 1;
-          int32 num_cols = eg_out.io[1].features.NumCols();
-
-          int32 duration_lower = 0.5 + duration * (1.0 - noise_magnitude),
-                duration_upper = 0.5 + duration * (1.0 + noise_magnitude),
+        Matrix<BaseFloat> output(eg_out.io[1].features.NumRows(),
+                                 eg_out.io[1].features.NumCols(),
+                                 kUndefined);
+        eg_out.io[1].features.CopyToMat(&output);
+        if (output.NumCols() == 1) {  // the objective type is log-normal
+          int32 duration = static_cast<int32>(output(0, 0));
+          int32 duration_lower =  (always_perturb ? 0.0 : 0.5) + 
+                                  duration * (1.0 - noise_magnitude),
+                duration_upper =  duration * 2 - duration_lower,
                 new_duration = RandInt(duration_lower, duration_upper);
-          if (new_duration < 1)
-            new_duration = 1;
-          if (new_duration > num_cols)
-            new_duration = num_cols;
+            if (new_duration < 1)
+              new_duration = 1;
+          output(0, 0) = new_duration;
+          eg_out.io[1].features = output;
+        } else {
+          SparseMatrix<BaseFloat> output_smat(
+                                         eg_out.io[1].features.GetSparseMatrix());
+          int32 num_rows = output_smat.NumRows();
+          for (int32 row = 0; row < num_rows; row++) {
+            int32 duration = output_smat.Row(row).GetElement(0).first + 1;
+            int32 num_cols = eg_out.io[1].features.NumCols();
 
-          std::vector<std::pair<MatrixIndexT, BaseFloat> > output_elements;
-          output_elements.push_back(std::make_pair(new_duration - 1, 1.0f));
-          SparseVector<BaseFloat> output(num_cols, output_elements);
-          output_smat.SetRow(row, output);
+            int32 duration_lower =  (always_perturb ? 0.0 : 0.5) + 
+                                    duration * (1.0 - noise_magnitude),
+                  duration_upper =  duration * 2 - duration_lower,
+                  new_duration = RandInt(duration_lower, duration_upper);
+            if (new_duration < 1)
+              new_duration = 1;
+            if (new_duration > num_cols)
+              new_duration = num_cols;
+
+            std::vector<std::pair<MatrixIndexT, BaseFloat> > output_elements;
+            output_elements.push_back(std::make_pair(new_duration - 1, 1.0f));
+            SparseVector<BaseFloat> output(num_cols, output_elements);
+            output_smat.SetRow(row, output);
+          }
+          eg_out.io[1].features = output_smat;
         }
-        eg_out.io[1].features = output_smat;
       }
       example_writer.Write(key, eg_out);
       num_written++;

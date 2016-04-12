@@ -38,10 +38,10 @@ fi
 alidir=$1
 dir=$2
 
-durmodel=$dir/durmodel.mdl
+nnetdurmodel=$dir/0.mdl
 transmodel=$alidir/final.mdl
 
-for f in $transmodel $alidir/ali.1.gz; do
+for f in $nnetdurmodel $transmodel $alidir/ali.1.gz; do
   [ ! -f $f ] && echo "$0: Required file not found: $f" && exit 1;
 done
 
@@ -49,15 +49,15 @@ numparts=$[100/$validation_ratio]
 all_parts=$(for i in $(seq -s ' ' $numparts); do echo -n "ark,t:$dir/$i.egs.tmp "; done)
 
 $cmd $dir/log/durmod_make_examples.log \
-     nnet3-durmodel-make-egs $durmodel $transmodel "ark:gunzip -c $alidir/ali.*.gz|" ark:- \
-     \| nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size ark:- ark:- \| nnet3-copy-egs ark:- $all_parts
+     nnet3-durmodel-make-egs $nnetdurmodel $transmodel "ark:gunzip -c $alidir/ali.*.gz|" ark:- \
+     \| nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size ark:- ark:- \| nnet3-copy-egs ark:- $all_parts || exit 1;
 
-grep -o "Wrote.*" $dir/log/durmod_make_examples.log | awk '{ print $2 }' > $dir/num_examples
+grep -o "Wrote.*" $dir/log/durmod_make_examples.log | awk '{ print $2 }' > $dir/num_examples || exit 1;
 
 train_parts=$(for i in $(seq -s ' ' 2 $numparts); do echo -n "$dir/$i.egs.tmp "; done)
 validation_parts=$dir/1.egs.tmp
-cat $train_parts >$dir/train.egs
-cat $validation_parts >$dir/val.egs
+cat $train_parts >$dir/train.egs || exit 1;
+cat $validation_parts >$dir/val.egs || exit 1;
 rm $dir/*.tmp
 
 echo "$0: Done"

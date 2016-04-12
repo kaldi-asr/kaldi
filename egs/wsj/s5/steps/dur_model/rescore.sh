@@ -9,8 +9,9 @@
 
 
 # Begin configuration section.
-duration_model_scale=0.5             # The scale with which the duration model scores are added to lm-scores of a lattice
+duration_model_scale=0.3             # The scale with which the duration model scores are added to lm-scores of a lattice
 cmd=run.pl
+avg_logprobs_file=
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;
@@ -40,5 +41,7 @@ mkdir -p $dir/log || exit 1;
 $cmd JOB=1:$nj $dir/log/rescore.JOB.log \
       lattice-align-phones --remove-epsilon=false \
       $srcdir/final.mdl "ark:gunzip -c $latdir/lat.JOB.gz |" ark:- \| \
-      nnet3-durmodel-rescore-lattice --duration-model-scale=$duration_model_scale $nnet_durmodel $srcdir/final.mdl \
+      nnet3-durmodel-rescore-lattice --duration-model-scale=$duration_model_scale \
+      --avg-logprobs-file=$avg_logprobs_file \
+      $nnet_durmodel $srcdir/final.mdl \
       ark:- "ark,t:|gzip -c >$dir/lat.JOB.gz" || exit 1;

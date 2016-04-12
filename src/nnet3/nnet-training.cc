@@ -173,7 +173,7 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
                               BaseFloat *tot_objf) {
   const CuMatrixBase<BaseFloat> &output = computer->GetOutput(output_name);
 
-  if (output.NumCols() != supervision.NumCols())
+  if (output.NumCols() != supervision.NumCols() && objective_type != kLognormal)
     KALDI_ERR << "Nnet versus example output dimension (num-classes) "
               << "mismatch for '" << output_name << "': " << output.NumCols()
               << " (nnet) vs. " << supervision.NumCols() << " (egs)\n";
@@ -233,6 +233,45 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
       *tot_objf = -0.5 * TraceMatMat(diff, diff, kTrans);
       if (supply_deriv)
         computer->AcceptOutputDeriv(output_name, &diff);
+      break;
+    }
+    case kLognormal: {
+      // objective is log(LogNorm(x; y))
+      CuSubMatrix<BaseFloat> o1(output, 0, output.NumRows(), 0, 1);
+      CuSubMatrix<BaseFloat> o2(output, 0, output.NumRows(), 1, 1);
+      CuMatrix<BaseFloat> durations(supervision.NumRows(),
+                                    supervision.NumCols(),
+                                    kUndefined);
+      durations.CopyFromGeneralMat(supervision);
+      durations.ApplyLog();
+      BaseFloat logdurations_sum = durations.Sum();
+
+      
+      CuMatrix<BaseFloat> zeromean_logdurs(durations);
+      zeromean_logdurs.AddMat(-1.0, o1);
+      
+      BaseFloat o2_sum = o2.Sum();
+      o2.ApplyExp();
+      o2.ApplyPow(2.0);
+      
+      CuMatrix<BaseFloat> deriv_col1(zeromean_logdurs);
+      deriv_col1.DivElements(o2);
+      
+      CuMatrix<BaseFloat> deriv_col2(deriv_col1);
+      deriv_col2.MulElements(zeromean_logdurs);
+      BaseFloat lognorm_exponent_sum = deriv_col2.Sum() / 2.0;
+      deriv_col2.Add(-1.0);
+            
+      *tot_objf = -logdurations_sum -
+                          (durations.NumRows() * Log(sqrtf(2.0 * M_PI))) - 
+                          o2_sum - lognorm_exponent_sum;
+      *tot_weight = supervision.NumRows();
+      if (supply_deriv) {
+        CuMatrix<BaseFloat> deriv(output.NumRows(), output.NumCols(), kUndefined);
+        deriv.ColRange(0, 1).CopyFromMat(deriv_col1);
+        deriv.ColRange(1, 1).CopyFromMat(deriv_col2);
+        computer->AcceptOutputDeriv(output_name, &deriv);
+      }
       break;
     }
     default:

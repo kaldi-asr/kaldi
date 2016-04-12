@@ -51,9 +51,58 @@ void UnitTestNnetContext() {
 int main() {
   using namespace kaldi;
   using namespace kaldi::nnet3;
-  SetVerboseLevel(2);
 
-  UnitTestNnetContext();
+#if HAVE_CUDA==1
+    CuDevice::Instantiate().SelectGpuId("yes");
+#endif
+
+
+  Matrix<BaseFloat> mat1(1000, 500, kUndefined);
+  mat1.SetRandn();
+  Matrix<BaseFloat> mat2(1000, 800, kUndefined);
+  mat2.SetRandn();
+  Matrix<BaseFloat> mat3(800, 500, kUndefined);
+  mat3.SetRandn();
+
+  CuMatrix<BaseFloat> cmat1(mat1);
+  CuMatrix<BaseFloat> cmat2(mat2);
+  CuMatrix<BaseFloat> cmat3(mat3);
+
+  mat1.AddMatMat(1.5, mat2, kNoTrans, mat3, kNoTrans, 1.0);
+  cmat1.AddMatMat(1.5, cmat2, kNoTrans, cmat3, kNoTrans, 1.0);
+
+  KALDI_LOG << mat1.Sum();
+  KALDI_LOG << cmat1.Sum();
+
+  int m = 50, n = 100;
+  Matrix<BaseFloat> a(m, n);
+  Matrix<BaseFloat> b(n ,m);
+  a.SetRandn();
+  b.SetRandUniform();
+  // multiply 2 small matrices in CPU:
+  Matrix<BaseFloat> c(m, m);
+  c.AddMatMat(1.0, a, kNoTrans, b, kNoTrans, 0.0);
+  // multiply same matrices in GPU:
+  CuMatrix<BaseFloat> c1(m, m);
+  c1.AddMatMat(1.0, CuMatrix<BaseFloat>(a), kNoTrans, CuMatrix<BaseFloat>(b), kNoTrans, 0.0);
+  // check that relative differnence is <1%
+  KALDI_LOG << "Diffing...";
+  Matrix<BaseFloat> ok(c1);
+  ok.AddMat(-1.0, c);
+  KALDI_LOG << ok.Sum();
+  KALDI_LOG << ok.Min();
+  KALDI_LOG << ok.Max();
+
+
+#if HAVE_CUDA==1
+    CuDevice::Instantiate().PrintProfile();
+#endif
+
+//  SetVerboseLevel(2);
+
+//  UnitTestNnetContext();
+//  UnitTestConvertRepeatedToBlockAffine();
+//  UnitTestConvertRepeatedToBlockAffineComposite();
 
   KALDI_LOG << "Nnet tests succeeded.";
 

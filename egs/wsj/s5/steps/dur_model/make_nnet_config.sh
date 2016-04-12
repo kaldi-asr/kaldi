@@ -8,6 +8,7 @@ natural_gradient=true        # If true, use natural gradient for the affine comp
 hidden_dim1=                 # The dimension of the first hidden layer
 hidden_dim2=                 # The dimension of the second hidden layer
 bottleneck=true              # If true, hidden_dim2 will be small
+lognormal_objective=false
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;
@@ -38,8 +39,16 @@ if $natural_gradient; then
 else
   affine_comp="AffineComponent"
 fi
-
-
+if $lognormal_objective; then
+  softmax_comp_line=
+  softmax_node_line=
+  output_line="output-node name=output input=affine3_node objective=lognormal"
+else
+  softmax_comp_line="component name=softmax type=LogSoftmaxComponent dim=$output_dim"
+  softmax_node_line="component-node name=softmax_node component=softmax input=affine3_node"
+  output_line="output-node name=output input=softmax_node"
+fi
+  
 printf "\
 component name=affine1 type=$affine_comp learning-rate=$learning_rate \
           param-stddev=0.01 bias-stddev=0 input-dim=$feat_dim output-dim=$hidden_dim1\n\
@@ -51,7 +60,7 @@ component name=relu2 type=RectifiedLinearComponent dim=$hidden_dim2\n\
 component name=norm2 type=NormalizeComponent dim=$hidden_dim2\n\
 component name=affine3 type=$affine_comp learning-rate=$learning_rate \
           param-stddev=0.01 bias-stddev=0 input-dim=$hidden_dim2 output-dim=$output_dim\n\
-component name=softmax type=LogSoftmaxComponent dim=$output_dim\n\
+$softmax_comp_line\n\
 input-node name=input dim=$feat_dim\n\
 component-node name=affine1_node component=affine1 input=input\n\
 component-node name=relu1_node component=relu1 input=affine1_node\n\
@@ -60,5 +69,5 @@ component-node name=affine2_node component=affine2 input=norm1_node\n\
 component-node name=relu2_node component=relu2 input=affine2_node\n\
 component-node name=norm2_node component=norm2 input=relu2_node\n\
 component-node name=affine3_node component=affine3 input=norm2_node\n\
-component-node name=softmax_node component=softmax input=affine3_node\n\
-output-node name=output input=softmax_node\n"
+$softmax_node_line\n\
+$output_line\n"

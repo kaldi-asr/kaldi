@@ -43,14 +43,12 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
     std::string model_filename = po.GetArg(1);
-    NnetPhoneDurationModel durmodel;
-    ReadKaldiObject(model_filename, &durmodel);
-    PhoneDurationFeatureMaker feat_maker(durmodel.GetDurationModel());
+    NnetPhoneDurationModel nnet_durmodel;
+    ReadKaldiObject(model_filename, &nnet_durmodel);
+    PhoneDurationFeatureMaker feat_maker(nnet_durmodel.GetDurationModel());
 
-    std::cout << durmodel.GetDurationModel().Info()
-              << feat_maker.Info() << std::endl
-              << "# Nnet3 info follows." << std::endl
-              << durmodel.GetNnet().Info() << std::endl;
+    std::cout << feat_maker.Info() << std::endl
+              << nnet_durmodel.Info() << std::endl;
 
     KALDI_LOG << "Done.";
   } catch(const std::exception &e) {

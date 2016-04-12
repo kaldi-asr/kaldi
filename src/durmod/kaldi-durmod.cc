@@ -21,24 +21,12 @@
 
 namespace kaldi {
 
-void PhoneDurationModelOptions::Register(OptionsItf *opts) {
-  opts->Register("left-context", &left_context,
-                 "Number of left context frames");
-  opts->Register("right-context", &right_context,
-                 "Number of right context frames");
-  opts->Register("max-duration", &max_duration,
-                 "Max phone duration in frames. Durations longer than this will"
-                 "be mapped to this value.");
-}
-
 void PhoneDurationModel::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<PhoneDurationModel>");
   ExpectToken(is, binary, "<LeftContext>");
   ReadBasicType(is, binary, &left_context_);
   ExpectToken(is, binary, "<RightContext>");
   ReadBasicType(is, binary, &right_context_);
-  ExpectToken(is, binary, "<MaxDuration>");
-  ReadBasicType(is, binary, &max_duration_);
   ExpectToken(is, binary, "<Roots>");
   int32 size;
   ReadBasicType(is, binary, &size);
@@ -61,8 +49,6 @@ void PhoneDurationModel::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, left_context_);
   WriteToken(os, binary, "<RightContext>");
   WriteBasicType(os, binary, right_context_);
-  WriteToken(os, binary, "<MaxDuration>");
-  WriteBasicType(os, binary, max_duration_);
   WriteToken(os, binary, "<Roots>");
   WriteBasicType(os, binary, static_cast<int32>(roots_.size()));
   for (int i = 0; i < roots_.size(); i++)
@@ -78,9 +64,7 @@ void PhoneDurationModel::Write(std::ostream &os, bool binary) const {
 
 std::string PhoneDurationModel::Info() const {
   std::ostringstream os;
-  os << "max-duration: " << MaxDuration()
-     << std::endl
-     << "left-context: " << LeftContext()
+  os << "left-context: " << LeftContext()
      << std::endl
      << "right-context: " << RightContext()
      << std::endl
@@ -109,9 +93,6 @@ BaseFloat PhoneDurationFeatureMaker::NormalizeDuration(
                                                int32 duration_in_frames) const {
   BaseFloat normalized_duration =
                           2.0 / (1.0 + Exp(-0.01f * duration_in_frames)) - 1;
-  // normalized_duration = sqrt(duration_in_frames / max_duration_);
-  // the above commented normalization resulted in much faster convergence.
-  // TODO(hhadian): should be tested in practice
   return normalized_duration;
 }
 
@@ -177,7 +158,6 @@ void PhoneDurationFeatureMaker::InitFeatureMaker(
                                                     // which occur at edges).
   left_context_ = model.left_context_;
   right_context_ = model.right_context_;
-  max_duration_ = model.max_duration_;
   int input_dim_phones = num_phone_identities_ *
                                            (left_context_ + right_context_ + 1);
   int input_dim_durations = left_context_;
@@ -211,6 +191,10 @@ void NnetPhoneDurationModel::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<NnetPhoneDurationModel>");
   dur_model_.Read(is, binary);
   nnet_.Read(is, binary);
+  ExpectToken(is, binary, "<MaxDuration>");
+  ReadBasicType(is, binary, &opts_.max_duration);
+  ExpectToken(is, binary, "<NumComponents>");
+  ReadBasicType(is, binary, &opts_.num_mixture_components);
   ExpectToken(is, binary, "</NnetPhoneDurationModel>");
 }
 
@@ -218,7 +202,26 @@ void NnetPhoneDurationModel::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<NnetPhoneDurationModel>");
   dur_model_.Write(os, binary);
   nnet_.Write(os, binary);
+  WriteToken(os, binary, "<MaxDuration>");
+  WriteBasicType(os, binary, opts_.max_duration);
+  WriteToken(os, binary, "<NumComponents>");
+  WriteBasicType(os, binary, opts_.num_mixture_components);
   WriteToken(os, binary, "</NnetPhoneDurationModel>");
+}
+
+std::string NnetPhoneDurationModel::Info() const {
+  std::ostringstream os;
+  os << GetDurationModel().Info()
+     << "lognormal-objective: "
+     << (IsNnetObjectiveLogNormal() ? "true" : "false")
+     << std::endl
+     << "max-duration: " << MaxDuration()
+     << std::endl
+     << "num-mixture-components: " << NumMixtureComponents()
+     << std::endl
+     << "# Nnet3 info follows." << std::endl
+     << GetNnet().Info();
+  return os.str();
 }
 
 void NnetPhoneDurationScoreComputer::ComputeOutputForExample(
@@ -244,40 +247,80 @@ BaseFloat NnetPhoneDurationScoreComputer::GetLogProb(
                const std::vector<std::pair<int32, int32> > &phone_dur_context) {
   KALDI_ASSERT(phone_dur_context.size() == model_.FullContextSize());
   NnetExample eg;
-  MakeNnetExample(feature_maker_, phone_dur_context, model_.LeftContext(), &eg);
+  MakeNnetExample(model_, feature_maker_,
+                  phone_dur_context, model_.LeftContext(), &eg);
   Matrix<BaseFloat> output;
   ComputeOutputForExample(eg, &output);
   int32 phone_duration = phone_dur_context[model_.LeftContext()].second;
   // Please refer to MakeNnetExample() to see what the output nodes of the
   // network show.
-  int32 duration_id = (phone_duration > model_.MaxDuration()) ?
-                                                (model_.MaxDuration() - 1):
-                                                (phone_duration - 1);
+  BaseFloat logprob;
+  if (model_.IsNnetObjectiveLogNormal()) {
+    BaseFloat mu = output(0, 0);
+    BaseFloat sigma = Exp(output(0, 1));
+    
+    BaseFloat zeromean_logduration = Log(
+                                   static_cast<BaseFloat>(phone_duration)) - mu;
+    logprob = -Log(phone_duration * sigma * sqrtf(2.0 * M_PI)) -
+               KALDI_SQR(zeromean_logduration) /
+               (2 * KALDI_SQR(sigma));
+  } else {
+    int32 duration_id = (phone_duration > model_.MaxDuration()) ?
+                                                  (model_.MaxDuration() - 1):
+                                                  (phone_duration - 1);
 
-  // Now we estimate the probabilities for the durations longer than
-  // max_duration. To do this we distribute the probability mass at the last
-  // node (i.e. the probability for duration==max_duration) to all the durations
-  // equal to and longer than max_duration. We assume a geometric form for this
-  // distribution and scale the probabilities such that the whole distribution
-  // sums to 1. So assuming the probability mass at duration==max_duration is
-  // P, then the probabilities for some duration >= max_duration will be
-  // P/norm_sum * alpha^(duration-max_duration+1) where norm_sum is
-  // equal to alpha/(1-alpha). We set alpha to exp(-1.0/max_duration) so
-  // that the probabilities do not decline too rapidly.
+    // Now we estimate the probabilities for the durations longer than
+    // max_duration. To do this we distribute the probability mass at the last
+    // node (i.e. the probability for duration==max_duration) to all the
+    // durations equal to and longer than max_duration. We assume a geometric
+    // form for this distribution and scale the probabilities such that the
+    // whole distribution sums to 1. So assuming the probability mass at
+    // duration==max_duration is P, then the probabilities
+    // for some duration >= max_duration will be 
+    // P/norm_sum * alpha^(duration-max_duration+1) where norm_sum is
+    // equal to alpha/(1-alpha). We set alpha to exp(-1.0/max_duration) so
+    // that the probabilities do not decline too rapidly.
 
-  int32 actual_duration_id = phone_duration - 1;  // in case max duration was
-                                                  // infinity (i.e. we
-                                                  // had infinitely many nodes
-                                                  // at the output of the
-                                                  // network)
-  BaseFloat logprob = output(0, duration_id);
+    int32 actual_duration_id = phone_duration - 1;  // in case max duration was
+                                                    // infinity (i.e. we
+                                                    // had infinitely many nodes
+                                                    // at the output of the
+                                                    // network)
+    logprob = output(0, duration_id);
 
-  // make sure the distribution over all durations (1 to inf) sums to 1
-  BaseFloat alpha = Exp(-1.0f / model_.MaxDuration());
-  BaseFloat probability_normalization_sum = alpha / (1 - alpha);
-  if (phone_duration >= model_.MaxDuration())
-    logprob += Log(pow(alpha, actual_duration_id - duration_id + 1) /
-                                                 probability_normalization_sum);
+    // make sure the distribution over all durations (1 to inf) sums to 1
+    BaseFloat alpha = Exp(-1.0f / model_.MaxDuration());
+    BaseFloat probability_normalization_sum = alpha / (1 - alpha);
+    if (phone_duration >= model_.MaxDuration())
+      logprob += (actual_duration_id - duration_id + 1) * Log(alpha) -
+                                             Log(probability_normalization_sum);
+  }
+
+  unordered_map<std::vector<int32>,
+                      BaseFloat,
+                      VectorHasher<int32> >& phonecontext_to_avglogprob_map =
+                                        avg_logprobs_.GetPhoneToAvgLogprobMap();
+  if (phonecontext_to_avglogprob_map.size() != 0) {
+    // logprob -= phone_avg_training_logprobs(phone);
+    std::vector<int32> phone_context(avg_logprobs_.LeftContext() +
+                                     avg_logprobs_.RightContext() + 1);
+    for (int j = model_.LeftContext() - avg_logprobs_.LeftContext();
+         j <= model_.LeftContext() + avg_logprobs_.RightContext(); j++) {
+      phone_context[j - (model_.LeftContext() - avg_logprobs_.LeftContext())] =
+                                                     phone_dur_context[j].first;
+    }
+    int32 phone = phone_dur_context[model_.LeftContext()].first;
+    std::vector<int32> single_phone_context(1, phone);  // for back-off
+    if (phonecontext_to_avglogprob_map[phone_context] != 0.0) {
+      logprob -= phonecontext_to_avglogprob_map[phone_context];
+    } else {  // back off
+      KALDI_LOG << "WARNING: no logprob for phone context "
+                << AvgPhoneLogProbs::PhoneContext2Str(phone_context)
+                << ". Backing off to "
+                << phonecontext_to_avglogprob_map[single_phone_context] + 2;
+      logprob -= phonecontext_to_avglogprob_map[single_phone_context] + 2;
+    }
+  }
   return logprob;
 }
 
@@ -324,11 +367,6 @@ bool PhoneDurationModelDeterministicFst::GetArc(StateId s,
 
   oarc->ilabel = ilabel;
   oarc->olabel = ilabel;
-  if (ilabel == 0) {  // if this is an epsilon arc, move on
-    oarc->nextstate = s;
-    oarc->weight = Weight::One();
-    return true;
-  }
 
   // Update state info if the label is not epsilon
   seq.push_back(ilabel);
@@ -370,6 +408,7 @@ BaseFloat PhoneDurationModelDeterministicFst::GetLogProb(
 }
 
 void MakeNnetExample(
+                 const NnetPhoneDurationModel &nnet_durmodel,
                  const PhoneDurationFeatureMaker &feat_maker,
                  const std::vector<std::pair<int32, int32> > &phone_dur_context,
                  int phone_index,
@@ -379,34 +418,40 @@ void MakeNnetExample(
   int32 phone_duration = phone_dur_context[phone_index].second;
   SparseMatrix<BaseFloat> feat_mat(1, feat.Dim());
   feat_mat.SetRow(0, feat);
-  int32 output_dim = feat_maker.OutputDim();
-  Posterior output_elements(1);
-
-  // The nodes at the output of the network are indexed from
-  // 0 to (max_duration_ - 1). Index 0 is for duration = 1.
-  int32 duration_id = (phone_duration > output_dim) ?
-                                                     (output_dim - 1):
-                                                     (phone_duration - 1);
-  output_elements[0].push_back(std::make_pair(duration_id, 1.0));
-  SparseMatrix<BaseFloat> output_mat(output_dim, output_elements);
 
   NnetIo input, output;
   input.name = "input";
   input.features = feat_mat;
   input.indexes.resize(1);
   output.name = "output";
-  output.features = output_mat;
   output.indexes.resize(1);
+  if (nnet_durmodel.IsNnetObjectiveLogNormal()) {
+    Matrix<BaseFloat> output_mat(1, 1);
+    output_mat(0, 0) = phone_duration;
+    output.features = output_mat;
+  } else {
+    int32 output_dim = nnet_durmodel.MaxDuration();
+    Posterior output_elements(1);
+    // The nodes at the output of the network are indexed from
+    // 0 to (max_duration_ - 1). Index 0 is for duration = 1.
+    int32 duration_id = (phone_duration > output_dim) ?
+                                                       (output_dim - 1):
+                                                       (phone_duration - 1);
+    output_elements[0].push_back(std::make_pair(duration_id, 1.0));
+    SparseMatrix<BaseFloat> output_mat(output_dim, output_elements);
+    output.features = output_mat;
+  }
   eg->io.push_back(input);
   eg->io.push_back(output);
 }
 
-void AlignmentToNnetExamples(const PhoneDurationFeatureMaker &feat_maker,
+void AlignmentToNnetExamples(const NnetPhoneDurationModel &nnet_durmodel,
+                         const PhoneDurationFeatureMaker &feat_maker,
                          const std::vector<std::pair<int32, int32> > &alignment,
                          std::vector<NnetExample> *egs) {
   for (int i = 0; i < alignment.size(); i++) {
     NnetExample eg;
-    MakeNnetExample(feat_maker, alignment, i, &eg);
+    MakeNnetExample(nnet_durmodel, feat_maker, alignment, i, &eg);
     egs->push_back(eg);
   }
 }

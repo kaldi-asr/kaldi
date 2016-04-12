@@ -46,14 +46,35 @@ namespace kaldi {
 
 struct PhoneDurationModelOptions {
   int32 left_context, right_context;
-  int32 max_duration;
 
-  void Register(OptionsItf *po);
-
+  void Register(OptionsItf *opts) {
+    opts->Register("left-context", &left_context,
+                   "Number of left context frames");
+    opts->Register("right-context", &right_context,
+                   "Number of right context frames");
+  }
   PhoneDurationModelOptions():
     left_context(4),
-    right_context(2),
-    max_duration(60) {}
+    right_context(2) {}
+};
+
+struct NnetPhoneDurationModelOptions {
+  int32 num_mixture_components;
+  int32 max_duration;
+
+  void Register(OptionsItf *opts) {
+    opts->Register("num-mixture-components", &num_mixture_components,
+                   "Number of mixture components to be used in the output " 
+                   "log-normal distribution of the network.");
+    opts->Register("max-duration", &max_duration,
+                   "Max phone duration in frames. Durations longer than this "
+                   "will be mapped to this value. Set it to 0 to enable "
+                   "log-normal objective for the neural net instead of "
+                   "cross-entropy.");
+  }
+  NnetPhoneDurationModelOptions():
+    num_mixture_components(1),
+    max_duration(50) {}
 };
 
 class PhoneDurationModel {
@@ -70,10 +91,8 @@ class PhoneDurationModel {
     left_context_(opts.left_context),
     right_context_(opts.right_context),
     roots_(roots),
-    questions_(questions),
-    max_duration_(opts.max_duration) {}
+    questions_(questions) {}
 
-  inline int32 MaxDuration() const { return max_duration_; }
   inline int32 RightContext() const { return right_context_; }
   inline int32 LeftContext() const { return left_context_; }
   inline int32 FullContextSize() const {
@@ -85,7 +104,6 @@ class PhoneDurationModel {
   int32 left_context_, right_context_;
   std::vector<std::vector<int32> > roots_;
   std::vector<std::vector<int32> > questions_;
-  int32 max_duration_;
 };
 
 class PhoneDurationFeatureMaker {
@@ -112,7 +130,6 @@ class PhoneDurationFeatureMaker {
   int32 FeatureDim() const { return feature_dim_; }
   int32 NumBinaryFeatures() const { return num_binary_features_; }
   int32 NumPhoneIdentities() const { return num_phone_identities_; }
-  int32 OutputDim() const { return max_duration_; }
 
   std::string Info() const;
 
@@ -122,7 +139,6 @@ class PhoneDurationFeatureMaker {
   int32 num_binary_features_;
   int32 num_phone_identities_;
   int32 left_context_, right_context_;
-  int32 max_duration_;
   int32 feature_dim_;
 
   /// Normalizes a duration (measured in number of frames) to a float in the
@@ -136,16 +152,25 @@ class NnetPhoneDurationModel {
   void Write(std::ostream &os, bool binary) const;
 
   NnetPhoneDurationModel() {}
-  NnetPhoneDurationModel(const PhoneDurationModel &duration_model,
+  NnetPhoneDurationModel(const NnetPhoneDurationModelOptions &opts,
+                         const PhoneDurationModel &duration_model,
                          const Nnet &nnet):
                          dur_model_(duration_model),
-                         nnet_(nnet) {}
+                         nnet_(nnet),
+                         opts_(opts) {}
 
-  inline int32 MaxDuration() const { return dur_model_.MaxDuration(); }
   inline int32 RightContext() const { return dur_model_.RightContext(); }
   inline int32 LeftContext() const { return dur_model_.LeftContext(); }
   inline int32 FullContextSize() const { return dur_model_.FullContextSize(); }
+  inline bool IsNnetObjectiveLogNormal() const {
+    return opts_.max_duration == 0;
+  }
+  inline int32 MaxDuration() const { return opts_.max_duration; }
+  inline int32 NumMixtureComponents() const {
+    return opts_.num_mixture_components;
+  }
 
+  std::string Info() const;
   const PhoneDurationModel &GetDurationModel() const { return dur_model_; }
   PhoneDurationModel &GetDurationModel() { return dur_model_; }
 
@@ -156,6 +181,72 @@ class NnetPhoneDurationModel {
  private:
   PhoneDurationModel dur_model_;
   Nnet nnet_;
+  NnetPhoneDurationModelOptions opts_;
+};
+
+class AvgPhoneLogProbs {
+ public:
+  AvgPhoneLogProbs
+  (int32 left_context, int32 right_context,
+   const unordered_map<std::vector<int32>, BaseFloat, VectorHasher<int32> >
+                                                      &context_to_avglogprob): 
+  left_context_(left_context), right_context_(right_context),
+  context_to_avglogprob_(context_to_avglogprob) {}
+  AvgPhoneLogProbs() {}
+
+  static std::string PhoneContext2Str(const std::vector<int32>& ctx) {
+    std::stringstream ss;
+    ss << "[";
+    for (int i = 0; i < ctx.size(); i++) {
+      ss << ctx[i];
+      if (i < ctx.size() - 1)
+        ss << ",";
+    }
+    ss << "]";
+    return ss.str();
+  }
+  void Write(std::ostream &os, bool binary) const {
+    WriteToken(os, binary, "<AvgPhoneLogProbs>");
+    WriteBasicType(os, binary, static_cast<int32>(context_to_avglogprob_.size()));
+    for (unordered_map<std::vector<int32>, BaseFloat, VectorHasher<int32> >::const_iterator
+          it = context_to_avglogprob_.begin(); it != context_to_avglogprob_.end(); ++it) {
+      WriteIntegerVector(os, binary, it->first);
+      WriteBasicType(os, binary, it->second);
+    }
+    WriteToken(os, binary, "<LeftContext>");
+    WriteBasicType(os, binary, left_context_);
+    WriteToken(os, binary, "<RightContext>");
+    WriteBasicType(os, binary, right_context_);
+    WriteToken(os, binary, "</AvgPhoneLogProbs>");
+  }
+  void Read(std::istream &is, bool binary) {
+    ExpectToken(is, binary, "<AvgPhoneLogProbs>");
+    int32 size;
+    ReadBasicType(is, binary, &size);
+    for (int i = 0; i < size; i++) {
+      std::vector<int32> ctx;
+      BaseFloat avglogprob;
+      ReadIntegerVector(is, binary, &ctx);
+      ReadBasicType(is, binary, &avglogprob);
+      context_to_avglogprob_[ctx] = avglogprob;
+    }
+    ExpectToken(is, binary, "<LeftContext>");
+    ReadBasicType(is, binary, &left_context_);
+    ExpectToken(is, binary, "<RightContext>");
+    ReadBasicType(is, binary, &right_context_);
+    ExpectToken(is, binary, "</AvgPhoneLogProbs>");
+  }
+  unordered_map<std::vector<int32>, BaseFloat, VectorHasher<int32> >&
+  GetPhoneToAvgLogprobMap() {
+    return context_to_avglogprob_;
+  }
+  int32 LeftContext() { return left_context_; }
+  int32 RightContext() { return right_context_; }
+
+ private:
+  int32 left_context_, right_context_;
+  unordered_map<std::vector<int32>, BaseFloat, VectorHasher<int32> >
+                                                         context_to_avglogprob_;
 };
 
 class NnetPhoneDurationScoreComputer {
@@ -164,6 +255,13 @@ class NnetPhoneDurationScoreComputer {
       model_(model),
       compiler_(model.GetNnet()),
       feature_maker_(model.GetDurationModel()) {}
+  explicit NnetPhoneDurationScoreComputer(
+                                      const NnetPhoneDurationModel &model,
+                                      const AvgPhoneLogProbs &avg_logprobs):
+      model_(model),
+      compiler_(model.GetNnet()),
+      feature_maker_(model.GetDurationModel()),
+      avg_logprobs_(avg_logprobs) {}
 
   void ComputeOutputForExample(const NnetExample &eg,
                                Matrix<BaseFloat> *output);
@@ -178,6 +276,7 @@ class NnetPhoneDurationScoreComputer {
   const NnetPhoneDurationModel &model_;
   CachingOptimizingCompiler compiler_;
   PhoneDurationFeatureMaker feature_maker_;
+  AvgPhoneLogProbs avg_logprobs_;
 };
 
 class PhoneDurationModelDeterministicFst
@@ -230,14 +329,16 @@ class PhoneDurationModelDeterministicFst
 /// This function uses a feature maker to convert a phone duration context (for
 /// definition, please refer to PhoneDurationFeatureMaker::MakeFeatureVector)
 /// into an Nnet3 example.
-void MakeNnetExample(const PhoneDurationFeatureMaker &feat_maker,
+void MakeNnetExample(const NnetPhoneDurationModel &nnet_durmodel,
+                 const PhoneDurationFeatureMaker &feat_maker,
                  const std::vector<std::pair<int32, int32> > &phone_dur_context,
                  int phone_index,
                  NnetExample *eg);
 
 /// This function uses MakeNnetExample to convert a sequence of (phone,duration)
 /// pairs (i.e. alignment) into a set of Nnet3 examples
-void AlignmentToNnetExamples(const PhoneDurationFeatureMaker &feat_maker,
+void AlignmentToNnetExamples(const NnetPhoneDurationModel &nnet_durmodel,
+                         const PhoneDurationFeatureMaker &feat_maker,
                          const std::vector<std::pair<int32, int32> > &alignment,
                          std::vector<NnetExample> *egs);
 

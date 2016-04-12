@@ -30,30 +30,30 @@ int main(int argc, char *argv[]) {
   try {
     const char *usage =
         "Prepare nnet3 training examples for the phone duration model.\n"
-        "Usage:  nnet3-durmodel-make-egs [options] <dur-model> "
+        "Usage:  nnet3-durmodel-make-egs [options] <nnet-dur-model> "
         "<trans-model> <alignments-rspecifier> <egs-wspecifier>\n"
         "e.g.: \n"
-        "  nnet3-durmodel-make-egs durmodel.mdl final.mdl egs:ali.1 ark:1.egs";
+        "  nnet3-durmodel-make-egs 0.mdl final.mdl egs:ali.1 ark:1.egs";
     ParseOptions po(usage);
     po.Read(argc, argv);
     if (po.NumArgs() != 4) {
       po.PrintUsage();
       exit(1);
     }
-    std::string durmodel_filename = po.GetArg(1),
+    std::string nnet_durmodel_filename = po.GetArg(1),
                 transmodel_filename = po.GetArg(2),
                 alignments_rspecifier = po.GetArg(3),
                 examples_wspecifier = po.GetArg(4);
     TransitionModel trans_model;
     ReadKaldiObject(transmodel_filename, &trans_model);
-    PhoneDurationModel durmodel;
-    ReadKaldiObject(durmodel_filename, &durmodel);
+    NnetPhoneDurationModel nnet_durmodel;
+    ReadKaldiObject(nnet_durmodel_filename, &nnet_durmodel);
     SequentialInt32VectorReader reader(alignments_rspecifier);
     TableWriter<KaldiObjectHolder<NnetExample> >
                                            example_writer(examples_wspecifier);
     int32 n_done = 0;
     int32 n_egs_done = 0;
-    PhoneDurationFeatureMaker feature_maker(durmodel);
+    PhoneDurationFeatureMaker feature_maker(nnet_durmodel.GetDurationModel());
 
 
     for (; !reader.Done(); reader.Next()) {
@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
       }
 
       std::vector<NnetExample> egs;
-      AlignmentToNnetExamples(feature_maker, pairs, &egs);
+      AlignmentToNnetExamples(nnet_durmodel, feature_maker, pairs, &egs);
       n_egs_done += egs.size();
       for (int i = 0; i < egs.size(); i++)
         example_writer.Write(key, egs[i]);

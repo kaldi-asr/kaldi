@@ -49,7 +49,7 @@ namespace nnet3 {
 ///    - Objective type kQuadratic is used to mean the objective function
 ///      f(x, y) = -0.5 (x-y).(x-y), which is to be maximized, as in the kLinear
 ///      case.
-enum ObjectiveType { kLinear, kQuadratic };
+enum ObjectiveType { kLinear, kQuadratic, kLognormal };
 
 
 enum NodeType { kInput, kDescriptor, kComponent, kDimRange, kNone };

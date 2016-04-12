@@ -87,7 +87,7 @@ void NnetComputeProb::ProcessOutputs(const NnetExample &eg,
     ObjectiveType obj_type = nnet_.GetNode(node_index).u.objective_type;
     if (nnet_.IsOutputNode(node_index)) {
       const CuMatrixBase<BaseFloat> &output = computer->GetOutput(io.name);
-      if (output.NumCols() != io.features.NumCols()) {
+      if (output.NumCols() != io.features.NumCols() && obj_type != kLognormal) {
         KALDI_ERR << "Nnet versus example output dimension (num-classes) "
                   << "mismatch for '" << io.name << "': " << output.NumCols()
                   << " (nnet) vs. " << io.features.NumCols() << " (egs)\n";

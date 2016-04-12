@@ -74,7 +74,8 @@ std::string Nnet::GetAsConfigLine(int32 node_index, bool include_dim) const {
       if (include_dim)
         ans << " dim=" << node.Dim(*this);
       ans << " objective=" << (node.u.objective_type == kLinear ? "linear" :
-                               "quadratic");
+                            (node.u.objective_type == kLognormal ? "lognormal" :
+                            "quadratic"));
       break;
     case kComponent:
       ans << "component-node name=" << name << " component="
@@ -379,6 +380,8 @@ void Nnet::ProcessOutputNodeConfigLine(
         nodes_[node_index].u.objective_type = kLinear;
       } else if (objective_type == "quadratic") {
         nodes_[node_index].u.objective_type = kQuadratic;
+      } else if (objective_type == "lognormal") {
+        nodes_[node_index].u.objective_type = kLognormal;
       } else {
         KALDI_ERR << "Invalid objective type: " << objective_type;
       }
