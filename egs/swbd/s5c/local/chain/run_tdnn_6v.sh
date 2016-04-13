@@ -223,5 +223,54 @@ if [ $stage -le 14 ]; then
       ) &
   done
 fi
+
+if [ $stage -le 15 ]; then
+  # If this setup used PLP features, we'd have to give the option --feature-type plp
+  # to the script below.
+  steps/online/nnet3/prepare_online_decoding.sh --mfcc-config conf/mfcc_hires.conf \
+      data/lang exp/nnet3/extractor "$dir" ${dir}_online || exit 1;
+fi
+
+
+
+if [ $stage -le 16 ]; then
+  iter_opts=
+  if [ ! -z $decode_iter ]; then
+    iter_opts=" --iter $decode_iter "
+  fi
+  for decode_set in train_dev eval2000; do
+      (
+      steps/online/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
+          --nj 50 --cmd "$decode_cmd" $iter_opts --config conf/decode_online.config \
+          $graph_dir data/${decode_set}_hires ${dir}_online/decode_${decode_set}${decode_iter:+_$decode_iter}_${decode_suff} || exit 1;
+      if $has_fisher; then
+          steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+            data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
+            ${dir}_online/decode_${decode_set}${decode_iter:+_$decode_iter}_sw1_{tg,fsh_fg} || exit 1;
+      fi
+      ) &
+  done
+fi
+
+if [ $stage -le 17 ]; then
+  iter_opts=
+  if [ ! -z $decode_iter ]; then
+    iter_opts=" --iter $decode_iter "
+  fi
+  for decode_set in train_dev eval2000; do
+      (
+      steps/online/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 --config conf/decode_online.config \
+          --nj 50 --cmd "$decode_cmd" $iter_opts --per-utt true \
+          $graph_dir data/${decode_set}_hires ${dir}_online/decode_${decode_set}${decode_iter:+_$decode_iter}_${decode_suff}_per_utt || exit 1;
+      if $has_fisher; then
+          steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+            data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
+            ${dir}_online/decode_${decode_set}${decode_iter:+_$decode_iter}_sw1_{tg,fsh_fg}_per_utt || exit 1;
+      fi
+      ) &
+  done
+fi
+
 wait;
+
 exit 0;
