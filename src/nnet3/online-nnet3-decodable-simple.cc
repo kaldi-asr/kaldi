@@ -97,7 +97,7 @@ void DecodableNnet3SimpleOnline::ComputeForFrame(int32 subsampled_frame) {
     input_frame_begin = subsampled_frame * subsample  - left_context_;
   else
     input_frame_begin = subsampled_frame * subsample;
-  int32 max_possible_input_frame_end = features_ready /* - ( features_ready - right_context_) % subsample */;
+  int32 max_possible_input_frame_end = features_ready;
   if (input_finished && opts_.pad_input)
     max_possible_input_frame_end += right_context_;
   int32 input_frame_end = std::min<int32>(max_possible_input_frame_end,
@@ -126,12 +126,13 @@ void DecodableNnet3SimpleOnline::ComputeForFrame(int32 subsampled_frame) {
   int32 mfcc_dim = am_nnet_.GetNnet().InputDim("input");
   int32 ivector_dim = am_nnet_.GetNnet().InputDim("ivector");
   // MFCCs in the left chunk
-  SubMatrix<BaseFloat> mfcc_mat = features.ColRange(0,mfcc_dim);
+  SubMatrix<BaseFloat> mfcc_mat(features.ColRange(0, mfcc_dim));
   
   Vector<BaseFloat> input_ivector;
   if(ivector_dim != -1){
     // iVectors in the right chunk
-    SubMatrix<BaseFloat> ivector_mat = features.ColRange(mfcc_dim,ivector_dim);
+    KALDI_ASSERT(features.NumCols() == mfcc_dim + ivector_dim && "Mismatch in features dim");
+    SubMatrix<BaseFloat> ivector_mat(features.ColRange(mfcc_dim, ivector_dim));
     // Get last ivector... not sure if GetCurrentIvector is needed in the online context
     // I think it should work fine just getting the last row for testing
     input_ivector = ivector_mat.Row(ivector_mat.NumRows() - 1);  
@@ -203,7 +204,6 @@ void DecodableNnet3SimpleOnline::DoNnetComputation(
   scaled_loglikes_.Resize(0, 0);
   // the following statement just swaps the pointers if we're not using a GPU.
   cu_output.Swap(&scaled_loglikes_);
-//  current_log_post_subsampled_offset_ = output_t_start / subsample;
 }
 
 } // namespace nnet3

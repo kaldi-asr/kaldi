@@ -142,7 +142,7 @@ if [ $stage -le 0 ]; then
      --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
      --acoustic-scale=$acwt --word-symbol-table=$graphdir/words.txt \
      $srcdir/${iter}.mdl $graphdir/HCLG.fst $spk2utt_rspecifier "$wav_rspecifier" \
-      $lat_wspecifier || exit 1;
+      "$lat_wspecifier" || exit 1;
 fi
 
 if ! $skip_scoring ; then
