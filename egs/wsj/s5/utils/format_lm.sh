@@ -40,8 +40,8 @@ done
 
 lm_base=$(basename $lm '.gz')
 gunzip -c $lm \
-  arpa2fst --disambig-symbol=#0 \
-           --read-symbol-table=$out_dir/words.txt - $out_dir/G.fst
+  | arpa2fst --disambig-symbol=#0 \
+             --read-symbol-table=$out_dir/words.txt - $out_dir/G.fst
 set +e
 fstisstochastic $out_dir/G.fst
 set -e
