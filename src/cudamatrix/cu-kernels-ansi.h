@@ -100,6 +100,10 @@ void cudaF_add_mat_mat_elements(dim3 Gr, dim3 Bl, float *data, const float *srcA
  */
 void cudaF_replace_value(int Gr, int Bl, float *v, int dim, float orig, float changed);
 void cudaF_set_bias_params(int Gr, int Bl, float* v, const float* a, float param_1, float param_2, float param_3, int* flag, int dim);
+void cublas_copy_kaldi_fd(int Gr, int Bl, int n, const float* x, 
+		int incx, double* y, int incy);
+void cublas_copy_kaldi_df(int Gr, int Bl, int n, const double* x, 
+		int incx, float* y, int incy);
 void cudaF_copy_from_vec_df(int Gr, int Bl, double* v_out, const float* v_in, int dim);
 void cudaF_copy_from_vec_fd(int Gr, int Bl, float* v_out, const float* v_in, int dim);
 void cudaF_vec_mul_elements(int Gr, int Bl, float* v, const float* a, int dim);
@@ -354,6 +358,5 @@ void cudaD_equal_element_mask(dim3 Gr, dim3 Bl, const double *mat1,
 } // extern "C"
 
 #endif // HAVE_CUDA
-
 
 #endif

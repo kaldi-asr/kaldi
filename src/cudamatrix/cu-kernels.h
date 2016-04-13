@@ -186,6 +186,14 @@ inline void cuda_add_mat_mat_elements(dim3 Gr, dim3 Bl, float *data, const float
 inline void cuda_replace_value(int Gr, int Bl, float *v, int dim, float orig, float changed) {cudaF_replace_value(Gr, Bl, v, dim, orig, changed); }
 inline void cuda_div_rows_vec(dim3 Gr, dim3 Bl, float *mat, const float *vec_div, MatrixDim d) { cudaF_div_rows_vec(Gr,Bl,mat,vec_div,d); }
 inline void cuda_set_bias_params(int Gr, int Bl, float* v, const float* a, float param_1, float param_2, float param_3, int* flag, int dim) { cudaF_set_bias_params(Gr,Bl,v,a,param_1,param_2,param_3,flag,dim); }
+inline void cublas_copy(int Gr, int Bl, int n, const float* x, 
+		int incx, double* y, int incy) {
+   cublas_copy_kaldi_fd(Gr, Bl, n, x, incx, y, incy);
+}
+inline void cublas_copy(int Gr, int Bl, int n, const double* x, 
+		int incx, float* y, int incy) {
+   cublas_copy_kaldi_df(Gr, Bl, n, x, incx, y, incy);
+}
 inline void cuda_copy_from_vec_df(int Gr, int Bl, double* v_out, const float* v_in, int dim) { cudaF_copy_from_vec_df(Gr,Bl,v_out,v_in,dim); }
 inline void cuda_copy_from_vec_fd(int Gr, int Bl, float* v_out, const float* v_in, int dim) { cudaF_copy_from_vec_fd(Gr,Bl,v_out,v_in,dim); }
 inline void cuda_vec_mul_elements(int Gr, int Bl, float* v, const float* a, int dim) { cudaF_vec_mul_elements(Gr,Bl,v,a,dim); }

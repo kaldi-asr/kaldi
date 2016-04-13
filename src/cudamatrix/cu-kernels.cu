@@ -741,6 +741,16 @@ static void _set_bias_params(Real* v, const Real* a, Real param_1, Real param_2,
   }
 }
 
+template<typename Real, typename OtherReal>
+__global__
+static void _copy_from_vec(int n, const Real* x, int incx, OtherReal* y, int incy) {
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+   // if (blockIdx.y > 0) return;
+
+  if (i < n) {
+    y[1+(i-1)*incy] = (OtherReal) x[1+(i-1)*incx];
+  }
+}
 
 template<typename Real>
 __global__
@@ -753,6 +763,17 @@ static void _copy_from_vec_df(double* v_out, const Real* v_in, int dim) {
   }
 }
 
+
+template<typename Real,typename OtherReal>
+__global__
+static void _copy_from_vec(OtherReal* v_out, const Real* v_in, int dim) {
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  //  if (blockIdx.y > 0) return;
+
+  if (i < dim) {
+    v_out[i] = (OtherReal) v_in[i];
+  }
+}
 
 // This kernel writes a copy of the vector "v_in" to each row of the matrix
 // "m_out".  the dimension of v_in should be equal to the #columns of m_out.
@@ -2336,7 +2357,14 @@ void cudaF_replace_value(int Gr, int Bl, float *v, int dim, float orig, float ch
 void cudaF_set_bias_params(int Gr, int Bl, float* v, const float* a, float param_1, float param_2, float param_3, int* flag, int dim) {
   _set_bias_params<<<Gr,Bl>>>(v,a,param_1,param_2,param_3,flag,dim);
 }
-
+void cublas_copy_kaldi_fd(int Gr, int Bl, int n, const float* x, 
+		int incx, double* y, int incy){
+  _copy_from_vec<<<Gr,Bl>>>(n,x,incx,y,incy);
+}
+void cublas_copy_kaldi_df(int Gr, int Bl, int n, const double* x, 
+		int incx, float* y, int incy){
+  _copy_from_vec<<<Gr,Bl>>>(n,x,incx,y,incy);
+}
 void cudaF_copy_from_vec_df(int Gr, int Bl, double* v_out, const float* v_in, int dim) {
   _copy_from_vec_df<<<Gr,Bl>>>(v_out,v_in,dim);
 }
