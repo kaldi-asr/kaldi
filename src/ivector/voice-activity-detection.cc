@@ -51,7 +51,7 @@ void ComputeVadEnergy(const VadEnergyOptions &opts,
     for (int32 t2 = t - context; t2 <= t + context; t2++) {
       if (t2 >= 0 && t2 < T) {
         den_count++;
-        if (log_energy_data[t] > energy_threshold)
+        if (log_energy_data[t2] > energy_threshold)
           num_count++;
       }
     }
