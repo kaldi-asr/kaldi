@@ -20,7 +20,7 @@ use_gpu=true
 truncate_deriv_weights=0  # can be used to set to zero the weights of derivs from frames
                           # near the edges.  (counts subsampled frames).
 apply_deriv_weights=true
-use_frame_shift=true
+use_frame_shift=false
 run_diagnostics=true
 learning_rate=0.00002
 max_param_change=2.0
@@ -137,7 +137,11 @@ frame_subsampling_factor=$(cat $degs_dir/info/frame_subsampling_factor)
 
 echo $frame_subsampling_factor > $dir/frame_subsampling_factor
 
-num_archives_expanded=$[$num_archives*$frame_subsampling_factor]
+if $use_frame_shift; then
+  num_archives_expanded=$[$num_archives*$frame_subsampling_factor]
+else
+  num_archives_expanded=$num_archives
+fi
 
 if [ $num_jobs_nnet -gt $num_archives_expanded ]; then
   echo "$0: num-jobs-nnet $num_jobs_nnet exceeds number of archives $num_archives_expanded,"
@@ -166,7 +170,13 @@ else
   parallel_train_opts="--use-gpu=no"
 fi
 
-for e in $(seq 1 $[num_epochs*frame_subsampling_factor]); do
+if $use_frame_shift; then
+  num_epochs_expanded=$[num_epochs*frame_subsampling_factor]
+else
+  num_epochs_expanded=$num_epochs
+fi
+
+for e in $(seq 1 $num_epochs_expanded); do
   x=$[($e*$num_archives)/$num_jobs_nnet] # gives the iteration number.
   iter_to_epoch[$x]=$e
 done
@@ -340,7 +350,7 @@ done
 
 rm $dir/final.mdl 2>/dev/null
 cp $dir/$x.mdl $dir/final.mdl
-ln -sf final.mdl $dir/epoch$[num_epochs*frame_subsampling_factor].mdl
+ln -sf final.mdl $dir/epoch$num_epochs_expanded.mdl
 
 if $adjust_priors && [ $stage -le $num_iters ]; then
   if [ ! -f $degs_dir/priors_egs.1.ark ]; then
@@ -352,7 +362,7 @@ if $adjust_priors && [ $stage -le $num_iters ]; then
   steps/nnet3/adjust_priors.sh --egs-type priors_egs \
     --num-jobs-compute-prior $num_archives_priors \
     --cmd "$cmd $prior_queue_opt" --use-gpu false \
-    --use-raw-nnet false --iter epoch$[num_epochs*frame_subsampling_factor] \
+    --use-raw-nnet false --iter epoch$num_epochs_expanded \
     $dir $degs_dir || exit 1
 fi
 
