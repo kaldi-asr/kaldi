@@ -13,9 +13,8 @@
 # (this is compiled from this repository using Doxygen,
 # the source for this part is in src/doc/graph_recipe_test.dox)
 
+set -o pipefail
 
-N=3
-P=1
 tscale=1.0
 loopscale=0.1
 
@@ -23,8 +22,8 @@ reverse=false
 remove_oov=false
 
 for x in `seq 6`; do
-  [ "$1" == "--mono" ] && N=1 && P=0 && shift;
-  [ "$1" == "--quinphone" ] && N=5 && P=2 && shift;
+  [ "$1" == "--mono" ] && context=mono && shift;
+  [ "$1" == "--quinphone" ] && context=quinphone && shift;
   [ "$1" == "--reverse" ] && reverse=true && shift;
   [ "$1" == "--remove-oov" ] && remove_oov=true && shift;
   [ "$1" == "--transition-scale" ] && tscale=$2 && shift 2;
@@ -57,6 +56,14 @@ required="$lang/L.fst $lang/G.fst $lang/phones.txt $lang/words.txt $lang/phones/
 for f in $required; do
   [ ! -f $f ] && echo "mkgraph.sh: expected $f to exist" && exit 1;
 done
+
+N=$(tree-info $tree | grep "context-width" | cut -d' ' -f2) || { echo "Error when getting context-width"; exit 1; }
+P=$(tree-info $tree | grep "central-position" | cut -d' ' -f2) || { echo "Error when getting central-position"; exit 1; }
+if [[ $context == mono && ($N != 1 || $P != 0) || \
+      $context == quinphone && ($N != 5 || $P != 2) ]]; then
+  echo "mkgraph.sh: mismatch between the specified context (--$context) and the one in the tree: N=$N, P=$P"
+  exit 1
+fi
 
 mkdir -p $lang/tmp
 # Note: [[ ]] is like [ ] but enables certain extra constructs, e.g. || in
