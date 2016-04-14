@@ -1,5 +1,5 @@
 #!/bin/bash
-# This script contain online decoding.
+# This script contains online decoding using chain + nnet3 setup.
 # _6v is as _6h, but moving to a TDNN+ReLU recipe instead of using jesus-layer.
 # Otherwise we make everything as similar as possible to 6h.
 # The ReLU dimension, at 576, is chosen to make the number of parameters about
