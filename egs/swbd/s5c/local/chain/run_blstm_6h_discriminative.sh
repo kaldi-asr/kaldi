@@ -48,14 +48,12 @@ frames_overlap_per_eg=30
 truncate_deriv_weights=10
 
 ## Nnet training options
-effective_learning_rate=0.00000125
+effective_learning_rate=0.000000125
 max_param_change=1
 num_jobs_nnet=4
 num_epochs=4
 regularization_opts="--xent-regularize=0.1 --l2-regularize=0.00005"          # Applicable for providing --xent-regularize and --l2-regularize options 
 minibatch_size=64
-modify_learning_rates=true    
-last_layer_factor=0.1         
 
 ## Decode options
 decode_start_epoch=1 # can be used to avoid decoding all epochs, e.g. if we decided to run more.
@@ -201,14 +199,14 @@ if [ $stage -le 4 ]; then
     --num-jobs-nnet $num_jobs_nnet --num-threads $num_threads \
     --regularization-opts "$regularization_opts" --use-frame-shift false \
     --truncate-deriv-weights $truncate_deriv_weights --adjust-priors false \
-    --modify-learning-rates $modify_learning_rates --last-layer-factor $last_layer_factor \
+    --modify-learning-rates false \
       ${degs_dir} $dir ;
 fi
 
 graph_dir=$srcdir/graph_sw1_tg
 if [ $stage -le 5 ]; then
   for x in `seq $decode_start_epoch $num_epochs`; do
-    for decode_set in train_dev eval2000; do
+    for decode_set in train_dev eval2000 rt03; do
       (
       num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
       iter=epoch$x.adj
