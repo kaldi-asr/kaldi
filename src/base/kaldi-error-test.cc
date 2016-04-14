@@ -17,37 +17,63 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "base/kaldi-common.h"
 
-// testing that we get the stack trace.
 namespace kaldi {
+namespace {
 
-void MyFunction2() {
-  KALDI_ERR << "Ignore this error";
+using namespace ::testing;
+
+TEST(DefaultLoggingTest, Exceptions) {
+  EXPECT_NO_THROW(KALDI_LOG << "Test");
+  EXPECT_NO_THROW(KALDI_WARN << "Test");
+  EXPECT_ANY_THROW(KALDI_ERR << "Test");
+  EXPECT_ANY_THROW(KALDI_ASSERT(4 + 2 == 42));
 }
 
-void MyFunction1() {
-  MyFunction2();
+TEST(DefaultLoggingTest, WarninigStderrPrefix) {
+  testing::internal::CaptureStderr();
+  KALDI_WARN << "Twas brillig";
+  std::string stderr_log = testing::internal::GetCapturedStderr();
+  EXPECT_THAT(stderr_log, StartsWith("WARNING "));
+  EXPECT_THAT(stderr_log, HasSubstr(" Twas brillig"));
 }
 
-void UnitTestError() {
-  {
-    std::cerr << "Ignore next error:\n";
-    MyFunction1();
-  }
-}
-
-
-}  // end namespace kaldi.
-
-int main() {
-  kaldi::g_program_name = "/foo/bar/kaldi-error-test";
+TEST(DefaultLoggingTest, ErrorStderrPrefix) {
+  testing::internal::CaptureStderr();
   try {
-    kaldi::UnitTestError();
-    KALDI_ASSERT(0);  // should not happen.
-  } catch(std::runtime_error &r) {
-    std::cout << "UnitTestError: the error we generated was: " << r.what();
+    KALDI_ERR << "Twas brillig";
+  } catch (...) {
   }
+  std::string stderr_log = testing::internal::GetCapturedStderr();
+  EXPECT_THAT(stderr_log, StartsWith("ERROR "));
+  EXPECT_THAT(stderr_log, HasSubstr(" Twas brillig"));
 }
 
+TEST(DefaultLoggingTest, AssertStderrMessage) {
+  testing::internal::CaptureStderr();
+  try {
+    KALDI_ASSERT(4 + 2 == 42);
+  } catch (...) {
+  }
+  std::string stderr_log = testing::internal::GetCapturedStderr();
+  EXPECT_THAT(stderr_log, HasSubstr("4 + 2 == 42"));
+}
+
+// Keep this test near the end as it messes up with the compiler line number.
+TEST(DefaultLoggingTest, LogStderrPrefixFileLine) {
+  testing::internal::CaptureStderr();
+#line 1234 "foo.cc"
+  KALDI_LOG << "Twas brillig";
+#line 10000 "kaldi-error-test.cc"
+  std::string stderr_log = testing::internal::GetCapturedStderr();
+  EXPECT_THAT(stderr_log, StartsWith("LOG "));
+  EXPECT_THAT(stderr_log, HasSubstr(":foo.cc:1234)"));
+  EXPECT_THAT(stderr_log, HasSubstr(" Twas brillig"));
+}
+
+}  // namespace
+}  // namespace kaldi

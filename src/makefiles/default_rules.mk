@@ -29,6 +29,9 @@ else
   XDEPENDS = $(ADDLIBS)
 endif
 
+# Installed and compiled by tools/Makefile.
+GOOGLETEST = ../../tools/googletest
+
 all: $(LIBFILE) $(BINFILES)
 
 $(LIBFILE): $(OBJFILES)
@@ -67,7 +70,10 @@ $(BINFILES): $(LIBFILE) $(XDEPENDS)
 clean:
 	-rm -f *.o *.a *.so $(TESTFILES) $(BINFILES) $(TESTOUTPUTS) tmp* *.tmp *.testlog
 
-$(TESTFILES): $(LIBFILE) $(XDEPENDS)
+$(TESTFILES): %: %.cc $(LIBFILE) $(XDEPENDS)
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -isystem $(GOOGLETEST)/googletest/include -isystem $(GOOGLETEST)/googlemock/include $(LDFLAGS) $+ $(LDLIBS) $(GOOGLETEST)/googletest.a -o $@
+
+.PHONY: test_compile test
 
 test_compile: $(TESTFILES)
 
