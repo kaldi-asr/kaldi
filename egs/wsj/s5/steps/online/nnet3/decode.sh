@@ -9,8 +9,6 @@ stage=0
 nj=4
 cmd=run.pl
 max_active=7000
-threaded=false
-modify_ivector_config=false #  only relevant to threaded decoder.
 beam=15.0
 lattice_beam=6.0
 acwt=0.1   # note: only really affects adaptation and pruning (scoring is on
@@ -115,13 +113,10 @@ else
 fi
 
 
-if $threaded; then
-  echo "No threaded support" && exit 1;
-else
-  decoder=online2-wav-nnet3-latgen-faster
-  parallel_opts=
-  opts="--online=$online"
-fi
+decoder=online2-wav-nnet3-latgen-faster
+parallel_opts=
+opts="--online=$online"
+
 
 if [ "$post_decode_acwt" == 1.0 ]; then
   lat_wspecifier="ark:|gzip -c >$dir/lat.JOB.gz"
