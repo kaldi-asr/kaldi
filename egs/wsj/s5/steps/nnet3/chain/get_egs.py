@@ -206,14 +206,20 @@ def SampleUtts(feat_dir, num_utts_subset, min_duration, exclude_list=None):
                 utts2add = uniq2utt[uniq_id]
             else:
                 utts2add = [utt2durs[index][0]]
-            for utt in utts2add:
-                if exclude_list is not None and utt in exclude_list:
-                    continue
-            for utt in utts2add:
-                sampled_utts.append(utt)
+            exclude_utt = False
+            if exclude_list is not None:
+                for utt in utts2add:
+                    if utt in exclude_list:
+                        exclude_utt = True
+                        break
+            if not exclude_utt:
+                for utt in utts2add:
+                    sampled_utts.append(utt)
+
             index = index + 1
         num_trials = num_trials + 1
-
+    if exclude_list is not None:
+        assert(len(set(exclude_list).intersection(sampled_utts)) == 0)
     if len(sampled_utts) < num_utts_subset:
         raise Exception("Number of utterances which have duration of at least "
                 "{md} seconds is really low (required={rl}, available={al}). Please check your data.".format(md = min_duration, al=len(sampled_utts), rl=num_utts_subset))
@@ -507,6 +513,7 @@ def GenerateTrainingExamplesFromUtts(dir, lat_dir, chain_dir, feat_dir,
 
     logger.info("Recombining and shuffling order of archives on disk")
     egs_list = ' '.join(['{dir}/cegs_orig.{n}.JOB.ark'.format(dir=dir, n = x) for x in range(1, num_jobs + 1)])
+    output_list = []
     if archives_multiple == 1:
         # there are no intermediate archives so just shuffle egs across
         # jobs and dump them into a single output
@@ -624,6 +631,8 @@ def GenerateTrainingExamples(dir, lat_dir, chain_dir, feat_dir,
                                                 feat_ivector_strings['ivector_opts'],
                                                 num_jobs, max_shuffle_jobs_run,
                                                 frames_per_iter, cmd, only_shuffle)
+        info['left_context'] = left_context
+        info['right_context'] = right_context
         cur_dir_info.append([chunk_width, cur_dir, info])
 
         total_ark_list = total_ark_list + glob.glob(cur_dir+'/cegs.*.ark')
@@ -640,14 +649,14 @@ def GenerateTrainingExamples(dir, lat_dir, chain_dir, feat_dir,
     # for info on fields to be written
     partition_file = open(dir.strip()+'/info/utt_partition_info', 'w')
     for chunk_width, cur_dir, info in cur_dir_info:
-        partition_file.write("--chunk_width {cw} --egs-dir {ed}"
+        partition_file.write("--chunk-width {cw} --egs-dir {ed}"
                              " --num-frames {nf} --egs-per-archive {epa}"
                              " --num-archives {na}"
-                             " --left-context {lc} --right-context {rc}"
+                             " --chunk-left-context {lc} --chunk-right-context {rc}"
                              " --feat-dim {fd} --ivector-dim {id}\n".format(cw=chunk_width, ed=cur_dir,
                              nf=info['num_frames'], na=info['num_archives'],
-                             epa=info['egs_per_archive'], lc = left_context,
-                             rc = right_context,
+                             epa=info['egs_per_archive'], lc = info['left_context'],
+                             rc = info['right_context'],
                              fd = feat_ivector_strings['feat_dim'],
                              id = feat_ivector_strings['ivector_dim']))
     partition_file.close()
@@ -694,6 +703,7 @@ def GenerateChainEgs(chain_dir, lat_dir, egs_dir, feat_dir,
 
     WriteList(valid_utts, '{0}/valid_uttlist'.format(egs_dir))
     WriteList(train_subset_utts, '{0}/train_subset_uttlist'.format(egs_dir))
+    WriteList(train_utts, '{0}/train_uttlist'.format(egs_dir))
 
     num_lat_jobs = train_lib.GetNumberOfJobs(lat_dir)
     if stage <= 1:
