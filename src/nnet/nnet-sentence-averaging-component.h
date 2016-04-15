@@ -64,23 +64,33 @@ class SimpleSentenceAveragingComponent : public Component {
   }
 
   void ReadData(std::istream &is, bool binary) {
-    ExpectToken(is, binary, "<GradientBoost>");
-    ReadBasicType(is, binary, &gradient_boost_);
-    if(PeekToken(is, binary) == 'S') {
-      ExpectToken(is, binary, "<Shrinkage>");
-      ReadBasicType(is, binary, &shrinkage_);
-    }
-    if(PeekToken(is, binary) == 'O') {
-      ExpectToken(is, binary, "<OnlySumming>");
-      // compatibility trick, 
-      // in some models 'only_summing_' was float '0.0',
-      // from now 'only_summing_' is 'bool':
-      try {
-        ReadBasicType(is, binary, &only_summing_);
-      } catch(const std::exception &e) {
-        KALDI_WARN << "ERROR was handled by exception!";
-        BaseFloat dummy_float;
-        ReadBasicType(is, binary, &dummy_float);
+    bool end_loop = false;
+    while (!end_loop && '<' == Peek(is, binary)) {
+      std::string token;
+      int first_char = PeekToken(is, binary);
+      switch (first_char) {
+        case 'G': ExpectToken(is, binary, "<GradientBoost>");
+          ReadBasicType(is, binary, &gradient_boost_);
+          break;
+        case 'S': ExpectToken(is, binary, "<Shrinkage>");
+          ReadBasicType(is, binary, &shrinkage_);
+          break;
+        case 'O': ExpectToken(is, binary, "<OnlySumming>");
+          // compatibility trick,
+          // in some models 'only_summing_' was float '0.0',
+          // from now 'only_summing_' is 'bool':
+          try {
+            ReadBasicType(is, binary, &only_summing_);
+          } catch(const std::exception &e) {
+            KALDI_WARN << "ERROR was handled by exception!";
+            BaseFloat dummy_float;
+            ReadBasicType(is, binary, &dummy_float);
+          }
+          break;
+        case '!':
+          ExpectToken(is, binary, "<!EndOfComponent>");
+        default:
+          end_loop = true;
       }
     }
   }

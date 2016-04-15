@@ -124,6 +124,7 @@ class AffineTransform : public UpdatableComponent {
     WriteBasicType(os, binary, bias_learn_rate_coef_);
     WriteToken(os, binary, "<MaxNorm>");
     WriteBasicType(os, binary, max_norm_);
+    if(!binary) os << "\n";
     // weights
     linearity_.Write(os, binary);
     bias_.Write(os, binary);

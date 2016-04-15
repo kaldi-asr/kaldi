@@ -151,9 +151,11 @@ class ParallelComponent : public UpdatableComponent {
     //
     WriteToken(os, binary, "<NestedNnetCount>");
     WriteBasicType(os, binary, nnet_count);
+    if(!binary) os << "\n";
     for (int32 i=0; i<nnet_count; i++) {
       WriteToken(os, binary, "<NestedNnet>");
       WriteBasicType(os, binary, i+1);
+      if(!binary) os << "\n";
       nnet_[i].Write(os, binary);
     }
     WriteToken(os, binary, "</ParallelComponent>");

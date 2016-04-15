@@ -109,6 +109,7 @@ class LinearTransform : public UpdatableComponent {
   void WriteData(std::ostream &os, bool binary) const {
     WriteToken(os, binary, "<LearnRateCoef>");
     WriteBasicType(os, binary, learn_rate_coef_);
+    if(!binary) os << "\n";
     linearity_.Write(os, binary);
   }
 

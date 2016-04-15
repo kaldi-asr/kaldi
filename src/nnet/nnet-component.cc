@@ -221,20 +221,30 @@ Component* Component::Read(std::istream &is, bool binary) {
   if (first_char == EOF) return NULL;
 
   ReadToken(is, binary, &token);
-  // Skip optional initial token
+  // Skip the optional initial token,
   if(token == "<Nnet>") {
-    ReadToken(is, binary, &token); // Next token is a Component
+    ReadToken(is, binary, &token); 
   }
-  // Finish reading when optional terminal token appears
+  // Network ends after terminal token appears,
   if(token == "</Nnet>") {
     return NULL;
   }
 
+  // Read the dims,
   ReadBasicType(is, binary, &dim_out); 
   ReadBasicType(is, binary, &dim_in);
 
+  // Create the component,
   Component *ans = NewComponentOfType(MarkerToType(token), dim_in, dim_out);
+  
+  // Read the content,
   ans->ReadData(is, binary);
+
+  // 'Eat' the component separtor (can be already consumed by 'ReadData(.)'),
+  if ('<' == Peek(is, binary) && '!' == PeekToken(is, binary)) {
+    ExpectToken(is, binary, "<!EndOfComponent>");
+  }
+
   return ans;
 }
 
@@ -245,6 +255,8 @@ void Component::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, InputDim());
   if(!binary) os << "\n";
   this->WriteData(os, binary);
+  WriteToken(os, binary, "<!EndOfComponent>"); // Introduce component separator.
+  if(!binary) os << "\n";
 }
 
 

@@ -136,7 +136,7 @@ class ConvolutionalComponent : public UpdatableComponent {
   }
 
   void ReadData(std::istream &is, bool binary) {
-    // convolution hyperparameters
+    // convolution hyperparameters,
     ExpectToken(is, binary, "<PatchDim>");
     ReadBasicType(is, binary, &patch_dim_);
     ExpectToken(is, binary, "<PatchStep>");
@@ -144,15 +144,23 @@ class ConvolutionalComponent : public UpdatableComponent {
     ExpectToken(is, binary, "<PatchStride>");
     ReadBasicType(is, binary, &patch_stride_);
 
-    // re-scale learn rate
-    ExpectToken(is, binary, "<LearnRateCoef>");
-    ReadBasicType(is, binary, &learn_rate_coef_);
-    ExpectToken(is, binary, "<BiasLearnRateCoef>");
-    ReadBasicType(is, binary, &bias_learn_rate_coef_);
-    
-    // max-norm regualrization
-    ExpectToken(is, binary, "<MaxNorm>");
-    ReadBasicType(is, binary, &max_norm_);
+    // variant-length list of parameters,
+    bool end_loop = false;
+    while (!end_loop) {
+      int first_char = PeekToken(is, binary);
+      switch (first_char) {
+        case 'L': ExpectToken(is, binary, "<LearnRateCoef>");
+          ReadBasicType(is, binary, &learn_rate_coef_);
+          break;
+        case 'B': ExpectToken(is, binary, "<BiasLearnRateCoef>");
+          ReadBasicType(is, binary, &bias_learn_rate_coef_);  
+          break;
+        case 'M': ExpectToken(is, binary, "<MaxNorm>");
+          ReadBasicType(is, binary, &max_norm_);
+          break;
+        default: end_loop = true;
+      }
+    }
 
     // trainable parameters
     ExpectToken(is, binary, "<Filters>");
@@ -189,21 +197,24 @@ class ConvolutionalComponent : public UpdatableComponent {
     WriteBasicType(os, binary, patch_step_);
     WriteToken(os, binary, "<PatchStride>");
     WriteBasicType(os, binary, patch_stride_);
+    if(!binary) os << "\n";
 
     // re-scale learn rate
     WriteToken(os, binary, "<LearnRateCoef>");
     WriteBasicType(os, binary, learn_rate_coef_);
     WriteToken(os, binary, "<BiasLearnRateCoef>");
     WriteBasicType(os, binary, bias_learn_rate_coef_);
-
     // max-norm regularization
     WriteToken(os, binary, "<MaxNorm>");
     WriteBasicType(os, binary, max_norm_);
+    if(!binary) os << "\n";
 
     // trainable parameters
     WriteToken(os, binary, "<Filters>");
+    if(!binary) os << "\n";
     filters_.Write(os, binary);
     WriteToken(os, binary, "<Bias>");
+    if(!binary) os << "\n";
     bias_.Write(os, binary);
   }
 
