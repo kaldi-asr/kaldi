@@ -32,6 +32,10 @@ newlm=$newlang/G.fst
 [ ! -f $newlm ] && echo Missing file $newlm && exit 1;
 ! ls $indir/lat.*.gz >/dev/null && echo "No lattices input directory $indir" && exit 1;
 
+if ! cmp -s $oldlang/words.txt $newlang/words.txt; then
+  echo "$0: $oldlang/words.txt and $newlang/words.txt differ: make sure you know what you are doing.";
+fi
+
 oldlmcommand="fstproject --project_output=true $oldlm |"
 newlmcommand="fstproject --project_output=true $newlm |"
 
@@ -75,7 +79,7 @@ case "$mode" in
       gzip -c \>$outdir/lat.JOB.gz || exit 1;
     ;;
   3) # 3 is "exact" in that we remove the old LM scores accepting any path
-     # through G.fst (which is what we want as that happened in lattice 
+     # through G.fst (which is what we want as that happened in lattice
      # generation), but we add the new one with "phi matcher", only taking
      # backoff arcs if an explicit arc did not exist.
     $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \

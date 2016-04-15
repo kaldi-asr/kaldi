@@ -38,25 +38,13 @@ mkdir -p $outdir
 for f in phones.txt words.txt L.fst L_disambig.fst phones/; do
   cp -r $langdir/$f $outdir
 done
-gunzip -c $lm | utils/find_arpa_oovs.pl $outdir/words.txt  > $tmpdir/oovs.txt
 
-# grep -v '<s> <s>' because the LM seems to have some strange and useless
-# stuff in it with multiple <s>'s in the history.  Encountered some other similar
-# things in a LM from Geoff.  Removing all "illegal" combinations of <s> and </s>,
-# which are supposed to occur only at being/end of utt.  These can cause 
-# determinization failures of CLG [ends up being epsilon cycles].
-gunzip -c $lm | \
-  grep -v '<s> <s>' | \
-  grep -v '</s> <s>' | \
-  grep -v '</s> </s>' > $outdir/forward.arpa
+gunzip -c $lm > $outdir/forward.arpa
 echo "Mapping ARPA to reverse ARPA"
 python utils/reverse_arpa.py $outdir/forward.arpa > $outdir/reverse.arpa
-arpa2fst $outdir/reverse.arpa | fstprint | \
-  grep -v "230258.5" | \
-  utils/remove_oovs.pl $tmpdir/oovs.txt | \
-  utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=$outdir/words.txt \
-    --osymbols=$outdir/words.txt  --keep_isymbols=false --keep_osymbols=false \
-    | fstrmepsilon > $outdir/G_org.fst
+arpa2fst --disambig-symbol=#0 --read-symbol-table=$outdir/words.txt \
+         $outdir/reverse.arpa | \
+  fstprint | fgrep -v '230258.5' | fstcompile > $outdir/G_org.fst
 #--arc_type=log
 
 echo "Push weights to make it stochastic (log semi-ring)"
@@ -84,7 +72,7 @@ if [ -f $lexicon ]; then
     < "$lexicon"  >$tmpdir/g/select_empty.fst.txt
   fstcompile --isymbols=$outdir/words.txt --osymbols=$outdir/words.txt $tmpdir/g/select_empty.fst.txt | \
     fstarcsort --sort_type=olabel | fstcompose - $outdir/G.fst > $tmpdir/g/empty_words.fst
-  fstinfo $tmpdir/g/empty_words.fst | grep cyclic | grep -w 'y' && 
+  fstinfo $tmpdir/g/empty_words.fst | grep cyclic | grep -w 'y' &&
   echo "Language model has cycles with empty words" && exit 1
   rm -r $tmpdir/g
 fi

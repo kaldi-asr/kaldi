@@ -41,6 +41,10 @@ newlm=$newlang/G.carpa
 ! ls $indir/lat.*.gz >/dev/null &&\
   echo "$0: No lattices input directory $indir" && exit 1;
 
+if ! cmp -s $oldlang/words.txt $newlang/words.txt; then
+  echo "$0: $oldlang/words.txt and $newlang/words.txt differ: make sure you know what you are doing.";
+fi
+
 oldlmcommand="fstproject --project_output=true $oldlm |"
 
 mkdir -p $outdir/log
