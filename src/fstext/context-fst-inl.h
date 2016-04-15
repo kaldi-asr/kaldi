@@ -149,7 +149,7 @@ typename ContextFstImpl<Arc, LabelT>::Weight ContextFstImpl<Arc, LabelT>::Final(
   assert(static_cast<size_t>(s) < state_seqs_.size());  // make sure state exists already.
   if (!this->HasFinal(s)) {  // Work out final-state weight.
     const vector<LabelT> &seq = state_seqs_[s];
-    
+
     bool final_ok;
     assert(static_cast<int32>(seq.size()) == N_-1);
 
@@ -198,8 +198,8 @@ size_t ContextFstImpl<Arc, LabelT>::NumArcs(StateId s) {
   } else {
     // For normal states, in general there is potentially an arc for each phone and an arc
     // for each disambiguation symbol, plus one for the subsequential symbol.
-    return phone_syms_.size() + disambig_syms_.size() + 1; 
-  }  
+    return phone_syms_.size() + disambig_syms_.size() + 1;
+  }
 }
 
 template<class Arc, class LabelT>
@@ -310,9 +310,9 @@ bool ContextFstImpl<Arc, LabelT>::CreateArc(StateId s,
     // the output arcs, just 0.
     return CreatePhoneOrEpsArc(s, nextstate, olabel, phoneseq, oarc);
   } else {
-    std::cerr << "ContextFst: CreateArc, invalid olabel supplied [confusion about phone list or disambig symbols?]: "<<(olabel);
-    exit(1);
- }
+    KALDI_ERR << "ContextFst: CreateArc, invalid olabel supplied [confusion "
+              << "about phone list or disambig symbols?]: " << olabel;
+  }
   return false;  // won't get here.  suppress compiler error.
 }
 
@@ -531,7 +531,7 @@ inline void ComposeContext(const vector<int32> &disambig_syms_in,
     if (!std::binary_search(disambig_syms.begin(),
                             disambig_syms.end(), all_syms[i]))
       phones.push_back(all_syms[i]);
-  
+
   // Get subsequential symbol that does not clash with
   // any disambiguation symbol or symbol in the FST.
   int32 subseq_sym = 1;
@@ -539,7 +539,7 @@ inline void ComposeContext(const vector<int32> &disambig_syms_in,
     subseq_sym = std::max(subseq_sym, all_syms.back() + 1);
   if (!disambig_syms.empty())
     subseq_sym = std::max(subseq_sym, disambig_syms.back() + 1);
-  
+
   // if P == N-1, it's left-context, and no subsequential symbol needed.
   if (P != N-1)
     AddSubsequentialLoop(subseq_sym, ifst);
