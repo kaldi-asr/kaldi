@@ -26,7 +26,7 @@
 #include <vector>
 #include <deque>
 
-#include "../nnet3/online-nnet3-decodable-simple.h"
+#include "nnet3/online-nnet3-decodable-simple.h"
 #include "matrix/matrix-lib.h"
 #include "util/common-utils.h"
 #include "base/kaldi-error.h"
