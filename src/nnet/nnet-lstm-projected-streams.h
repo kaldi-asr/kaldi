@@ -189,6 +189,7 @@ class LstmProjectedStreams : public UpdatableComponent {
     WriteToken(os, binary, "<BiasLearnRateCoef>");
     WriteBasicType(os, binary, bias_learn_rate_coef_);
 
+    if(!binary) os << "\n";
     w_gifo_x_.Write(os, binary);
     w_gifo_r_.Write(os, binary);
     bias_.Write(os, binary);
