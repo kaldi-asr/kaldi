@@ -60,7 +60,6 @@ class AffineTransform : public UpdatableComponent {
       else if (token == "<MaxNorm>") ReadBasicType(is, false, &max_norm);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                      << " (ParamStddev|BiasMean|BiasRange|LearnRateCoef|BiasLearnRateCoef)";
-      is >> std::ws; // eat-up whitespace
     }
 
     //
@@ -88,19 +87,29 @@ class AffineTransform : public UpdatableComponent {
   }
 
   void ReadData(std::istream &is, bool binary) {
-    // optional learning-rate coefs
-    if ('<' == Peek(is, binary)) {
-      ExpectToken(is, binary, "<LearnRateCoef>");
-      ReadBasicType(is, binary, &learn_rate_coef_);
-      ExpectToken(is, binary, "<BiasLearnRateCoef>");
-      ReadBasicType(is, binary, &bias_learn_rate_coef_);
+    // Read all the '<Tokens>' in arbitrary order,
+    while ('<' == Peek(is, binary)) {
+      std::string token;
+      int first_char = PeekToken(is, binary);
+      switch (first_char) {
+        case 'L': ExpectToken(is, binary, "<LearnRateCoef>"); 
+          ReadBasicType(is, binary, &learn_rate_coef_);
+          break;
+        case 'B': ExpectToken(is, binary, "<BiasLearnRateCoef>"); 
+          ReadBasicType(is, binary, &bias_learn_rate_coef_);
+          break;
+        case 'M': ExpectToken(is, binary, "<MaxNorm>");
+          ReadBasicType(is, binary, &max_norm_);
+          break;
+        default: ReadToken(is, false, &token);
+          KALDI_ERR << "Unknown token: " << token;
+      }
     }
-    if ('<' == Peek(is, binary)) {
-      ExpectToken(is, binary, "<MaxNorm>");
-      ReadBasicType(is, binary, &max_norm_);
-    }
-    // weights
+    // Read the data (data follow the tokens),
+
+    // weight matrix,
     linearity_.Read(is, binary);
+    // bias vector,
     bias_.Read(is, binary);
 
     KALDI_ASSERT(linearity_.NumRows() == output_dim_);

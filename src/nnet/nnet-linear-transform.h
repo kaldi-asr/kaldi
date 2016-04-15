@@ -85,9 +85,20 @@ class LinearTransform : public UpdatableComponent {
   }
 
   void ReadData(std::istream &is, bool binary) {
-    // learning-rate coefficien
-    ExpectToken(is, binary, "<LearnRateCoef>");
-    ReadBasicType(is, binary, &learn_rate_coef_);
+    // Read all the '<Tokens>' in arbitrary order,
+    while ('<' == Peek(is, binary)) {
+      std::string token;
+      int first_char = PeekToken(is, binary);
+      switch (first_char) {
+        case 'L': ExpectToken(is, binary, "<LearnRateCoef>"); 
+          ReadBasicType(is, binary, &learn_rate_coef_);
+          break;
+        default: ReadToken(is, false, &token);
+          KALDI_ERR << "Unknown token: " << token;
+      }
+    }
+    // Read the data (data follow the tokens),
+    
     // weights
     linearity_.Read(is, binary);
 
