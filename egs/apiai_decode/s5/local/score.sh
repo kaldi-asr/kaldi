@@ -1,1 +1,1 @@
-../../wsj/s5/local/score.sh
+../steps/score_kaldi.sh
