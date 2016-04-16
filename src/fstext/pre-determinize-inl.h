@@ -543,9 +543,8 @@ void PreDeterminize(MutableFst<Arc> *fst,
     for (typename map<pair<StateId, ArcId>, size_t>::iterator m_iter = m_map.begin();
         m_iter != m_map.end();
         ++m_iter) {
-      pair<StateId, ArcId> m_pr = m_iter->first;
-      StateId state = m_pr.first;
-      ArcId arcpos = m_pr.second;
+      StateId state = m_iter->first.first;
+      ArcId arcpos = m_iter->first.second;
       size_t m_a = m_iter->second;
 
       MutableArcIterator<MutableFst<Arc> > aiter(fst, state);
@@ -556,16 +555,16 @@ void PreDeterminize(MutableFst<Arc> *fst,
       if (arc.ilabel == 0)
         arc.ilabel = (*symsOut)[m_a];
       else {
-        pair<StateId, size_t> h_pr(arc.nextstate, m_a);
-        if (!h_map.count(h_pr)) {
+        pair<StateId, size_t> pr(arc.nextstate, m_a);
+        if (!h_map.count(pr)) {
           n_states_added++;
           StateId newstate = fst->AddState();
           assert(newstate>=0);
           Arc new_arc( (*symsOut)[m_a], (Label)0, Weight::One(), arc.nextstate);
           fst->AddArc(newstate, new_arc);
-          h_map[h_pr] = newstate;
+          h_map[pr] = newstate;
         }
-        arc.nextstate = h_map[h_pr];
+        arc.nextstate = h_map[pr];
       }
       aiter.SetValue(arc);
     }
