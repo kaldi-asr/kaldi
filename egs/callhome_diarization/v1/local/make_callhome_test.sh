@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Copyright 2016  Matthew Maciejewski
+# Apache 2.0.
+
 if [ $# -ne 3 ]; then
   echo "Usage: make_callhome_test.sh <sph-dir> <seg-dir> <data-dir>"
   echo "  eg: make_callhome_test.sh /home/dpovey/diarization/data /home/dpovey/diarization/chome.v0 data/callhome"
@@ -34,6 +37,6 @@ done
 # Create spk2utt from utt2spk
 cat $dir/utt2spk | utt2spk_to_spk2utt.pl > $dir/spk2utt || exit 1;
 
-
-
-
+# Verify completion
+utils/validate_data_dir.sh --no-text --no-feats $dir
+utils/fix_data_dir.sh $dir
