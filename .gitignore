@@ -105,5 +105,6 @@ GSYMS
 /tools/pthreads*.zip
 /tools/sequitur
 /tools/srilm.tgz
+/tools/cudnn
 
 /kaldiwin_vs*
