@@ -88,8 +88,8 @@ template<class Arc, class LabelT>
 ContextFstImpl<Arc, LabelT>::ContextFstImpl(const ContextFstImpl &other):
     phone_syms_(other.phone_syms_),
     disambig_syms_(other.disambig_syms_) {
-  std::cerr << "ContextFst copying not yet supported [not hard, but would have to test.]";
-  exit(1);
+  KALDI_ERR << "ContextFst copying not yet supported "
+            << "[not hard, but would have to test.]";
 }
 
 
@@ -149,7 +149,7 @@ typename ContextFstImpl<Arc, LabelT>::Weight ContextFstImpl<Arc, LabelT>::Final(
   assert(static_cast<size_t>(s) < state_seqs_.size());  // make sure state exists already.
   if (!this->HasFinal(s)) {  // Work out final-state weight.
     const vector<LabelT> &seq = state_seqs_[s];
-    
+
     bool final_ok;
     assert(static_cast<int32>(seq.size()) == N_-1);
 
@@ -198,8 +198,8 @@ size_t ContextFstImpl<Arc, LabelT>::NumArcs(StateId s) {
   } else {
     // For normal states, in general there is potentially an arc for each phone and an arc
     // for each disambiguation symbol, plus one for the subsequential symbol.
-    return phone_syms_.size() + disambig_syms_.size() + 1; 
-  }  
+    return phone_syms_.size() + disambig_syms_.size() + 1;
+  }
 }
 
 template<class Arc, class LabelT>
@@ -310,9 +310,9 @@ bool ContextFstImpl<Arc, LabelT>::CreateArc(StateId s,
     // the output arcs, just 0.
     return CreatePhoneOrEpsArc(s, nextstate, olabel, phoneseq, oarc);
   } else {
-    std::cerr << "ContextFst: CreateArc, invalid olabel supplied [confusion about phone list or disambig symbols?]: "<<(olabel);
-    exit(1);
- }
+    KALDI_ERR << "ContextFst: CreateArc, invalid olabel supplied [confusion "
+              << "about phone list or disambig symbols?]: " << olabel;
+  }
   return false;  // won't get here.  suppress compiler error.
 }
 
@@ -462,30 +462,26 @@ SymbolTable *CreateILabelInfoSymbolTable(const vector<vector<I> > &info,
   assert(s == 0);
   for (size_t i = 1; i < info.size(); i++) {
     if (info[i].size() == 0) {
-      std::cerr << "CreateILabelInfoSymbolTable: invalid ilabel-info";
-      exit(1);
+      KALDI_ERR << "Invalid ilabel-info";
     }
     if (info[i].size() == 1 &&
        info[i][0] <= 0) {
       if (info[i][0] == 0) {  // special symbol at start that we want to call #-1.
         s = ans->AddSymbol(initial_disambig);
         if (s != i) {
-          std::cerr << "Disambig symbol " << initial_disambig
-                    << " already in vocab\n";
-          exit(1);
+          KALDI_ERR << "Disambig symbol " << initial_disambig
+                    << " already in vocab";
         }
       } else {
         std::string disambig_sym = phones_symtab.Find(-info[i][0]);
         if (disambig_sym == "") {
-          std::cerr << "CreateILabelInfoSymbolTable: disambig symbol "
-                    << -info[i][0] << " not in phone symbol-table.";
-          exit(1);
+          KALDI_ERR << "Disambig symbol " << -info[i][0]
+                    << " not in phone symbol-table";
         }
         s = ans->AddSymbol(disambig_sym);
         if (s != i) {
-          std::cerr << "Disambig symbol " << disambig_sym
-                    << " already in vocab\n";
-          exit(1);
+          KALDI_ERR << "Disambig symbol " << disambig_sym
+                    << " already in vocab";
         }
       }
     } else {
@@ -494,17 +490,15 @@ SymbolTable *CreateILabelInfoSymbolTable(const vector<vector<I> > &info,
       for (size_t j = 0; j < info[i].size(); j++) {
         std::string phonesym = phones_symtab.Find(info[i][j]);
         if (phonesym == "") {
-          std::cerr << "CreateILabelInfoSymbolTable: symbol "
-                    << info[i][j] << " not in phone symbol-table.";
-          exit(1);
+          KALDI_ERR << "Symbol " << info[i][j]
+                    << " not in phone symbol-table";
         }
         if (j != 0) newsym += separator;
         newsym += phonesym;
       }
       int64 s = ans->AddSymbol(newsym);
       if (s != static_cast<int64>(i)) {
-        std::cerr << "CreateILabelInfoSymbolTable: some problem with duplicate symbols.";
-        exit(1);
+        KALDI_ERR << "Some problem with duplicate symbols";
       }
     }
   }
@@ -531,7 +525,7 @@ inline void ComposeContext(const vector<int32> &disambig_syms_in,
     if (!std::binary_search(disambig_syms.begin(),
                             disambig_syms.end(), all_syms[i]))
       phones.push_back(all_syms[i]);
-  
+
   // Get subsequential symbol that does not clash with
   // any disambiguation symbol or symbol in the FST.
   int32 subseq_sym = 1;
@@ -539,7 +533,7 @@ inline void ComposeContext(const vector<int32> &disambig_syms_in,
     subseq_sym = std::max(subseq_sym, all_syms.back() + 1);
   if (!disambig_syms.empty())
     subseq_sym = std::max(subseq_sym, disambig_syms.back() + 1);
-  
+
   // if P == N-1, it's left-context, and no subsequential symbol needed.
   if (P != N-1)
     AddSubsequentialLoop(subseq_sym, ifst);
@@ -550,8 +544,8 @@ inline void ComposeContext(const vector<int32> &disambig_syms_in,
 
 ///
 
-} // end namespace fst
+}  // namespace fst
 
 
 
-#endif
+#endif  // KALDI_FSTEXT_CONTEXT_FST_INL_H_
