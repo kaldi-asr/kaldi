@@ -1,0 +1,362 @@
+// doc/examples.dox
+
+// Copyright 2016 Fred Richardson
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+/**
+ \page examples Examples included with Kaldi
+
+ This is a summary of existing Kaldi recipes and their corresponding corpora.
+
+ <table><tr><th>Name</th><th>BW</th><th>Lang</th><th>Train Domain</th><th>Train Hours</th><th>Train Speakers</th><th>License and Availability</th><th>Year Released</th><th>Speech Style</th><th>Test Domain</th><th>Kaldi Aprox Perf</th><th>LM Data</th><th>Lexicon</th></tr>
+<tr>
+  <td>AMI</td>
+  <td>16k</td>
+  <td>English<br>(+non-native)</td>
+  <td>Microphone: head-mike,<br>single and multiple<br>distance mikes</td>
+  <td>100</td>
+  <td>123 M<br>66 F</td>
+  <td>Free /<br>Download<br>http://groups.inf.ed.ac.uk/ami/corpus/</td>
+  <td>2014</td>
+  <td>Meeting room</td>
+  <td>Same as train<br>no overlap(?)</td>
+  <td>~25% WER head (T)DNN<br>~45% WER distant (B)LSTM</td>
+  <td>AMI + (opt) Fisher</td>
+  <td>50K (CMU dict +<br>kaldi sources)</td>
+</tr>
+<tr>
+  <td>Aspire</td>
+  <td></td>
+  <td>English</td>
+  <td>Conversational microphone<br>developed on telephone</td>
+  <td>see Fisher</td>
+  <td></td>
+  <td></td>
+  <td>2015</td>
+  <td></td>
+  <td></td>
+  <td>30.8% WER (dev or eval?)</td>
+  <td></td>
+  <td></td>
+</tr>
+<tr>
+  <td>WSJ</td>
+  <td>16k</td>
+  <td>English</td>
+  <td>Clean close-mic<br>read speech</td>
+  <td>80</td>
+  <td></td>
+  <td>LDC<br>LDC93S6B (WSJ0) and LDC94S13B (WSJ1)</td>
+  <td>1993</td>
+  <td>Read speech</td>
+  <td>Same</td>
+  <td>6-7% WER</td>
+  <td>same as train</td>
+  <td>20k (CMU dict)</td>
+</tr>
+<tr>
+  <td>RM</td>
+  <td></td>
+  <td>English</td>
+  <td>read transcript<br>limited vocab and grammar</td>
+  <td></td>
+  <td></td>
+  <td>LDC<br>LDC93S3A</td>
+  <td>1987-1989</td>
+  <td>read speech</td>
+  <td>same</td>
+  <td>1-2% WER</td>
+  <td>predefined grammar</td>
+  <td>&lt;1K<br>RM dict</td>
+</tr>
+<tr>
+  <td>Timit</td>
+  <td>16k</td>
+  <td>English</td>
+  <td>read transcript<br>very limited grammar</td>
+  <td></td>
+  <td>630</td>
+  <td></td>
+  <td>1986</td>
+  <td>read speech</td>
+  <td>same</td>
+  <td>~30-40% PER</td>
+  <td>none</td>
+  <td>~47 phones</td>
+</tr>
+<tr>
+  <td>fisher_english</td>
+  <td>8k</td>
+  <td>English</td>
+  <td>Telephone speech<br>Auto-transcribed<br>(errorful transcriptions)</td>
+  <td>1,600</td>
+  <td>5203 M<br>7198 F</td>
+  <td>LDC<br>speech: LDC2004S13, LDC2005S13<br>transcript: LDC2004T19, LDC2005T19</td>
+  <td>2004/2005</td>
+  <td>CTS</td>
+  <td>Fisher (may<br>overlap witb<br>train)</td>
+  <td>~22% WER (DNN)</td>
+  <td>LDC Fisher</td>
+  <td>CMU dict<br>Size UNK</td>
+</tr>
+<tr>
+  <td>Switchboard 1</td>
+  <td>8k</td>
+  <td>English</td>
+  <td>CTS</td>
+  <td>300</td>
+  <td></td>
+  <td>LDC<br>Train: LDC97S62<br>Mississippi State transcriptions<br>Eval: LDC2002S09 and LDC2002T43</td>
+  <td>1993/1997/2000</td>
+  <td>CTS</td>
+  <td>CTS<br>eval2000 (hub5)</td>
+  <td>~10% WER (LSTM)</td>
+  <td>Mississippi Trans<br>+ (opt) Fisher</td>
+  <td>30K (CMU dict)</td>
+</tr>
+<tr>
+  <td>Switchboard 1<br>+ Fisher</td>
+  <td>8k</td>
+  <td>English</td>
+  <td>CTS</td>
+  <td>see above</td>
+  <td>see above</td>
+  <td>see above</td>
+  <td>see above</td>
+  <td>CTS</td>
+  <td>eval2000<br>rt03</td>
+  <td>~12% eval2000<br>~19% rt03</td>
+  <td>see above</td>
+  <td>see above</td>
+</tr>
+<tr>
+  <td>Callhome<br>Egyptian</td>
+  <td></td>
+  <td>Egyptian<br>Colloquial<br>Arabic</td>
+  <td>CTS</td>
+  <td>120 conv</td>
+  <td></td>
+  <td>LDC<br>Speech : LDC97S45<br>Transcripts : LDC97T19<br>Lexicon : LDC99L22</td>
+  <td>1997</td>
+  <td>CTS</td>
+  <td>hub5 arabic<br>LDC2002S22<br>LDC2002T39</td>
+  <td>50-60% WER</td>
+  <td>Train trans</td>
+  <td>LDC dict</td>
+</tr>
+<tr>
+  <td>Corpus of<br>Spontaneous<br>Japanese</td>
+  <td></td>
+  <td>Japanese</td>
+  <td>Mixed style<br>Close-talking mic</td>
+  <td>650 hours<br>(240 hr train)</td>
+  <td>&gt;1,400</td>
+  <td>Unclear how to get this<br>http://www.ninjal.ac.jp/english/products/csj/<br>http://pj.ninjal.ac.jp/corpus_center/csj/</td>
+  <td>2004</td>
+  <td>Mixed</td>
+  <td></td>
+  <td>9-10% WER</td>
+  <td>UNK</td>
+  <td>UNK</td>
+</tr>
+<tr>
+  <td>Fisher Spanish<br>Callhome Spanish</td>
+  <td></td>
+  <td>Caribbean<br>Spanish</td>
+  <td>CTS</td>
+  <td>Fisher: 163 hrs<br>Callhome: 60 hrs?<br>120 30min conv</td>
+  <td>Fisher: 136<br>Callhome:</td>
+  <td>LDC<br>Fisher speech : LDC96S35<br>Fisher transcripts : LDC96T17<br>Callhome Speech : LDC96S35<br>Callhome Transcripts : LDC96T17</td>
+  <td>Fisher: 2010<br>Callhome: 1996</td>
+  <td>CTS</td>
+  <td>Kaldi subset<br>of Fisher</td>
+  <td>29-30% WER</td>
+  <td>Fisher trans</td>
+  <td>LDC96L16</td>
+</tr>
+<tr>
+  <td>Gale Arabic<br>Phase 2</td>
+  <td>16K</td>
+  <td>Arabic</td>
+  <td>Broadcast<br>Conversational/Report</td>
+  <td>320 train<br>9.3 test</td>
+  <td></td>
+  <td>LDC2013S02  LDC2014S07<br>LDC2013S07  LDC2014T17<br>LDC2013T17<br>LDC2013T04</td>
+  <td>Collected<br>2006/2007</td>
+  <td>Broadcast<br>Conversational<br>and Report</td>
+  <td></td>
+  <td>Report: 13% WER (LSTM)<br>Conver: 28% WER (LSTM)<br>Comb: 24% WER (LSTM)</td>
+  <td>LDC2013T17<br>LDC2013T04<br>LDC2014T17</td>
+  <td>http://alt.qcri.org/</td>
+</tr>
+<tr>
+  <td>Gale Mandarin</td>
+  <td>16K</td>
+  <td>Mandarin<br>Chinese</td>
+  <td>Broadcast</td>
+  <td>126</td>
+  <td></td>
+  <td>LDC2013S08  LDC2013T20</td>
+  <td>2006-2007</td>
+  <td>Broadcast</td>
+  <td>Same as train</td>
+  <td>17.5% WER [1]</td>
+  <td>LDC2013S08<br>LDC2013T20</td>
+  <td>Same as HKUST below</td>
+</tr>
+<tr>
+  <td>hkust<br>EARS RT04F data<br>dev and train [2]</td>
+  <td>8K</td>
+  <td>Mandarin<br>Chinese</td>
+  <td>Telephone Conversational</td>
+  <td>~145</td>
+  <td>~873</td>
+  <td>LDC2005S15  LDC2005T32</td>
+  <td>2004</td>
+  <td>Conversational</td>
+  <td>Same as train</td>
+  <td>33.5% CER</td>
+  <td>Acoustic trans<br>(very little)</td>
+  <td>Both Eng and Man.<br>CMU dict use for Eng<br>mdbg dict use for Man<br>http://www.mdbg.net</td>
+</tr>
+<tr>
+  <td>librispeech [3]</td>
+  <td>16K</td>
+  <td>English</td>
+  <td>Read transcription</td>
+  <td>100 - 960<br>(460 </td>
+  <td>F: 125-1128<br>M: 126-1167</td>
+  <td>http://www.openslr.org/12/</td>
+  <td>2015</td>
+  <td>Read trans</td>
+  <td>Librispeech<br></td>
+  <td>~5% </td>
+  <td>Large (books)</td>
+  <td>cmu (with sequitur)<br>G2P)</td>
+</tr>
+<tr>
+  <td>reverb</td>
+  <td></td>
+  <td></td>
+  <td></td>
+  <td></td>
+  <td></td>
+  <td></td>
+  <td></td>
+  <td></td>
+  <td></td>
+  <td></td>
+  <td></td>
+  <td></td>
+</tr>
+<tr>
+  <td>sprakbanken</td>
+  <td></td>
+  <td>Danish</td>
+  <td>Read transcript?</td>
+  <td>350</td>
+  <td></td>
+  <td>Free download<br>http://www.nb.no/sprakbanken/#ticketsfrom?lang=en</td>
+  <td>2012</td>
+  <td>Read/Dictation</td>
+  <td>Same as train</td>
+  <td>14% WER</td>
+  <td>NST Provided</td>
+  <td>NST Provided?</td>
+</tr>
+<tr>
+  <td>vystadial_en [4]</td>
+  <td>8Khz</td>
+  <td>English</td>
+  <td>Telephone, dialog system</td>
+  <td>41</td>
+  <td>unk</td>
+  <td>Free</td>
+  <td>2014</td>
+  <td>Dialog sys</td>
+  <td>Same as train</td>
+  <td>~11% WER (GMM/HMM)</td>
+  <td>Train trans</td>
+  <td>CMU + 250</td>
+</tr>
+<tr>
+  <td>vystadial_cz [4]</td>
+  <td>8Khz</td>
+  <td>Czech</td>
+  <td>Telephone, dialog system</td>
+  <td>15</td>
+  <td>unk</td>
+  <td>Free</td>
+  <td>2014</td>
+  <td>Dialog sys</td>
+  <td>Same as train</td>
+  <td>~50% WER (GMM/HMM)</td>
+  <td>Train trans</td>
+  <td>Rule derived</td>
+</tr>
+<tr>
+  <td>chime3</td>
+  <td>16Khz</td>
+  <td>English</td>
+  <td>Read trans, simulated<br>and real noise</td>
+  <td>18</td>
+  <td>WSJ0 + 4</td>
+  <td>Not clear (Chime performers)</td>
+  <td>2015</td>
+  <td>Read<br>transcript</td>
+  <td>Same as train<br>(same channels!)</td>
+  <td>~12% WER real (4 spkrs)<br>~12% WER simu</td>
+  <td>Official WSJ0 5K<br>trans</td>
+  <td>WSJ0</td>
+</tr>
+<tr>
+  <td>voxforge</td>
+  <td>16Khz</td>
+  <td>English</td>
+  <td>Read trans</td>
+  <td>&gt;75hrs</td>
+  <td>unk</td>
+  <td>Free GPL</td>
+  <td>2008?</td>
+  <td>Read trans</td>
+  <td>unk</td>
+  <td>unk</td>
+  <td>Train</td>
+  <td>cmu + g2p for oov</td>
+</tr>
+<tr>
+  <td>Tedlium</td>
+  <td>16KHz</td>
+  <td>English</td>
+  <td>Presentation/talk</td>
+  <td>118</td>
+  <td>666</td>
+  <td>Free download</td>
+  <td>2014?</td>
+  <td>Presentation</td>
+  <td>Same as train</td>
+  <td>~10% WER</td>
+  <td>Cantab provided LM</td>
+  <td>Cantab provided dict</td>
+</tr>
+</table>
+
+[1] "Audio Augmentation for Speech Recognition" Tom Ko, Vijayaditya Peddinti, Daniel Povey, Sanjeev Khudanpur.<br>
+[2] There should be more Mandarin data from rt04f - 50 hours of dev data I believe (see LDC2004E67, LDC2004E68).  There should also be eval data. See https://www.ldc.upenn.edu/collaborations/past-projects/gale/data/gale-pubs.<br>
+[3] See http://www.danielpovey.com/files/2015_icassp_librispeech.pdf for details.  Acoustic and language models are available online.<br>
+[4] See http://www.lrec-conf.org/proceedings/lrec2014/pdf/535_Paper.pdf.
+*/
