@@ -23,7 +23,22 @@
  This is a summary of existing Kaldi recipes and their corresponding corpora.
  These recipes can be found in the <code>egs/</code> directory. (See \ref install for instructions on how to download Kaldi.)
 
- <table><tr><th>Name</th><th>BW</th><th>Lang</th><th>Train Domain</th><th>Train Hours</th><th>Train Speakers</th><th>License and Availability</th><th>Year Released</th><th>Speech Style</th><th>Test Domain</th><th>Kaldi Aprox Perf</th><th>LM Data</th><th>Lexicon</th></tr>
+<table><tr>
+  <th>Name</th>
+  <th>BW</th>
+  <th>Lang</th>
+  <th>Train Domain</th>
+  <th>Train Hours</th>
+  <th>Train Speakers</th>
+  <th>License and Availability</th>
+  <th>Year Released</th>
+  <th>Speech Style</th>
+  <th>Test Domain</th>
+  <th>Kaldi Aprox Perf</th>
+  <th>Model Type</th>
+  <th>LM Data</th>
+  <th>Lexicon</th>
+</tr>
 <tr>
   <!-- Name                 --> <td>AMI</td>
   <!-- BW                   --> <td>16k</td>
@@ -36,6 +51,7 @@
   <!-- Speech Style         --> <td>Meeting room</td>
   <!-- Test Domain          --> <td>Same as train<br>no overlap(?)</td>
   <!-- Kaldi Aprox Perf     --> <td>~25% WER head (T)DNN<br>~45% WER distant (B)LSTM</td>
+  <!-- Model Type           --> <td></td>
   <!-- LM Data              --> <td>AMI + (opt) Fisher</td>
   <!-- Lexicon              --> <td>50K (CMU dict +<br>kaldi sources)</td>
 </tr>
@@ -51,6 +67,7 @@
   <!-- Speech Style         --> <td></td>
   <!-- Test Domain          --> <td></td>
   <!-- Kaldi Aprox Perf     --> <td>30.8% WER (dev or eval?)</td>
+  <!-- Model Type           --> <td></td>
   <!-- LM Data              --> <td></td>
   <!-- Lexicon              --> <td></td>
 </tr>
@@ -66,6 +83,7 @@
   <!-- Speech Style         --> <td>Read speech</td>
   <!-- Test Domain          --> <td>Same</td>
   <!-- Kaldi Aprox Perf     --> <td>6-7% WER</td>
+  <!-- Model Type           --> <td></td>
   <!-- LM Data              --> <td>same as train</td>
   <!-- Lexicon              --> <td>20k (CMU dict)</td>
 </tr>
@@ -81,6 +99,7 @@
   <!-- Speech Style         --> <td>read speech</td>
   <!-- Test Domain          --> <td>same</td>
   <!-- Kaldi Aprox Perf     --> <td>1-2% WER</td>
+  <!-- Model Type           --> <td></td>
   <!-- LM Data              --> <td>predefined grammar</td>
   <!-- Lexicon              --> <td>&lt;1K<br>RM dict</td>
 </tr>
@@ -96,6 +115,7 @@
   <!-- Speech Style         --> <td>read speech</td>
   <!-- Test Domain          --> <td>same</td>
   <!-- Kaldi Aprox Perf     --> <td>~30-40% PER</td>
+  <!-- Model Type           --> <td></td>
   <!-- LM Data              --> <td>none</td>
   <!-- Lexicon              --> <td>~47 phones</td>
 </tr>
@@ -111,6 +131,7 @@
   <!-- Speech Style         --> <td>CTS</td>
   <!-- Test Domain          --> <td>Fisher (may<br>overlap witb<br>train)</td>
   <!-- Kaldi Aprox Perf     --> <td>~22% WER (DNN)</td>
+  <!-- Model Type           --> <td></td>
   <!-- LM Data              --> <td>LDC Fisher</td>
   <!-- Lexicon              --> <td>CMU dict<br>Size UNK</td>
 </tr>
@@ -126,6 +147,7 @@
   <!-- Speech Style         --> <td>CTS</td>
   <!-- Test Domain          --> <td>CTS<br>eval2000 (hub5)</td>
   <!-- Kaldi Aprox Perf     --> <td>~10% WER (LSTM)</td>
+  <!-- Model Type           --> <td></td>
   <!-- LM Data              --> <td>Mississippi Trans<br>+ (opt) Fisher</td>
   <!-- Lexicon              --> <td>30K (CMU dict)</td>
 </tr>
@@ -141,6 +163,7 @@
   <!-- Speech Style         --> <td>CTS</td>
   <!-- Test Domain          --> <td>eval2000<br>rt03</td>
   <!-- Kaldi Aprox Perf     --> <td>~12% eval2000<br>~19% rt03</td>
+  <!-- Model Type           --> <td></td>
   <!-- LM Data              --> <td>see above</td>
   <!-- Lexicon              --> <td>see above</td>
 </tr>
@@ -156,6 +179,7 @@
   <!-- Speech Style         --> <td>CTS</td>
   <!-- Test Domain          --> <td>hub5 arabic<br>LDC2002S22<br>LDC2002T39</td>
   <!-- Kaldi Aprox Perf     --> <td>50-60% WER</td>
+  <!-- Model Type           --> <td></td>
   <!-- LM Data              --> <td>Train trans</td>
   <!-- Lexicon              --> <td>LDC dict</td>
 </tr>
@@ -171,6 +195,7 @@
   <!-- Speech Style         --> <td>Mixed</td>
   <!-- Test Domain          --> <td></td>
   <!-- Kaldi Aprox Perf     --> <td>9-10% WER</td>
+  <!-- Model Type           --> <td></td>
   <!-- LM Data              --> <td>UNK</td>
   <!-- Lexicon              --> <td>UNK</td>
 </tr>
@@ -186,6 +211,7 @@
   <!-- Speech Style         --> <td>CTS</td>
   <!-- Test Domain          --> <td>Kaldi subset<br>of Fisher</td>
   <!-- Kaldi Aprox Perf     --> <td>29-30% WER</td>
+  <!-- Model Type           --> <td></td>
   <!-- LM Data              --> <td>Fisher trans</td>
   <!-- Lexicon              --> <td>LDC96L16</td>
 </tr>
@@ -201,6 +227,7 @@
   <!-- Speech Style         --> <td>Broadcast<br>Conversational<br>and Report</td>
   <!-- Test Domain          --> <td></td>
   <!-- Kaldi Aprox Perf     --> <td>Report: 13% WER (LSTM)<br>Conver: 28% WER (LSTM)<br>Comb: 24% WER (LSTM)</td>
+  <!-- Model Type           --> <td></td>
   <!-- LM Data              --> <td>LDC2013T17<br>LDC2013T04<br>LDC2014T17</td>
   <!-- Lexicon              --> <td>http://alt.qcri.org/</td>
 </tr>
@@ -216,6 +243,7 @@
   <!-- Speech Style         --> <td>Broadcast</td>
   <!-- Test Domain          --> <td>Same as train</td>
   <!-- Kaldi Aprox Perf     --> <td>17.5% WER [1]</td>
+  <!-- Model Type           --> <td></td>
   <!-- LM Data              --> <td>LDC2013S08<br>LDC2013T20</td>
   <!-- Lexicon              --> <td>Same as HKUST below</td>
 </tr>
@@ -231,6 +259,7 @@
   <!-- Speech Style         --> <td>Conversational</td>
   <!-- Test Domain          --> <td>Same as train</td>
   <!-- Kaldi Aprox Perf     --> <td>33.5% CER</td>
+  <!-- Model Type           --> <td></td>
   <!-- LM Data              --> <td>Acoustic trans<br>(very little)</td>
   <!-- Lexicon              --> <td>Both Eng and Man.<br>CMU dict use for Eng<br>mdbg dict use for Man<br>http://www.mdbg.net</td>
 </tr>
@@ -246,6 +275,7 @@
   <!-- Speech Style         --> <td>Read trans</td>
   <!-- Test Domain          --> <td>Librispeech<br></td>
   <!-- Kaldi Aprox Perf     --> <td>~5% </td>
+  <!-- Model Type           --> <td></td>
   <!-- LM Data              --> <td>Large (books)</td>
   <!-- Lexicon              --> <td>cmu (with sequitur)<br>G2P)</td>
 </tr>
@@ -261,6 +291,7 @@
   <!-- Speech Style         --> <td></td>
   <!-- Test Domain          --> <td></td>
   <!-- Kaldi Aprox Perf     --> <td></td>
+  <!-- Model Type           --> <td></td>
   <!-- LM Data              --> <td></td>
   <!-- Lexicon              --> <td></td>
 </tr>
@@ -276,6 +307,7 @@
   <!-- Speech Style         --> <td>Read/Dictation</td>
   <!-- Test Domain          --> <td>Same as train</td>
   <!-- Kaldi Aprox Perf     --> <td>14% WER</td>
+  <!-- Model Type           --> <td></td>
   <!-- LM Data              --> <td>NST Provided</td>
   <!-- Lexicon              --> <td>NST Provided?</td>
 </tr>
@@ -291,6 +323,7 @@
   <!-- Speech Style         --> <td>Dialog sys</td>
   <!-- Test Domain          --> <td>Same as train</td>
   <!-- Kaldi Aprox Perf     --> <td>~11% WER (GMM/HMM)</td>
+  <!-- Model Type           --> <td></td>
   <!-- LM Data              --> <td>Train trans</td>
   <!-- Lexicon              --> <td>CMU + 250</td>
 </tr>
@@ -306,6 +339,7 @@
   <!-- Speech Style         --> <td>Dialog sys</td>
   <!-- Test Domain          --> <td>Same as train</td>
   <!-- Kaldi Aprox Perf     --> <td>~50% WER (GMM/HMM)</td>
+  <!-- Model Type           --> <td></td>
   <!-- LM Data              --> <td>Train trans</td>
   <!-- Lexicon              --> <td>Rule derived</td>
 </tr>
@@ -321,6 +355,7 @@
   <!-- Speech Style         --> <td>Read<br>transcript</td>
   <!-- Test Domain          --> <td>Same as train<br>(same channels!)</td>
   <!-- Kaldi Aprox Perf     --> <td>~12% WER real (4 spkrs)<br>~12% WER simu</td>
+  <!-- Model Type           --> <td></td>
   <!-- LM Data              --> <td>Official WSJ0 5K<br>trans</td>
   <!-- Lexicon              --> <td>WSJ0</td>
 </tr>
@@ -336,6 +371,7 @@
   <!-- Speech Style         --> <td>Read trans</td>
   <!-- Test Domain          --> <td>unk</td>
   <!-- Kaldi Aprox Perf     --> <td>unk</td>
+  <!-- Model Type           --> <td></td>
   <!-- LM Data              --> <td>Train</td>
   <!-- Lexicon              --> <td>cmu + g2p for oov</td>
 </tr>
@@ -351,6 +387,7 @@
   <!-- Speech Style         --> <td>Presentation</td>
   <!-- Test Domain          --> <td>Same as train</td>
   <!-- Kaldi Aprox Perf     --> <td>~10% WER</td>
+  <!-- Model Type           --> <td></td>
   <!-- LM Data              --> <td>Cantab provided LM</td>
   <!-- Lexicon              --> <td>Cantab provided dict</td>
 </tr>
