@@ -157,6 +157,7 @@ class ConvolutionalComponent : public UpdatableComponent {
         case 'M': ExpectToken(is, binary, "<MaxNorm>");
           ReadBasicType(is, binary, &max_norm_);
           break;
+        case '!': ExpectToken(is, binary, "<!EndOfComponent>");
         default: end_loop = true;
       }
     }
@@ -230,17 +231,18 @@ class ConvolutionalComponent : public UpdatableComponent {
 
   std::string Info() const {
     return std::string("\n  filters") + MomentStatistics(filters_) +
-           ", lr-coef " + ToString(learn_rate_coef_) +
-           ", max-norm " + ToString(max_norm_) +
-           "\n  bias" + MomentStatistics(bias_) +
-           ", lr-coef " + ToString(bias_learn_rate_coef_);
+      ", lr-coef " + ToString(learn_rate_coef_) +
+      ", max-norm " + ToString(max_norm_) +
+      "\n  bias" + MomentStatistics(bias_) +
+      ", lr-coef " + ToString(bias_learn_rate_coef_);
   }
+
   std::string InfoGradient() const {
     return std::string("\n  filters_grad") + MomentStatistics(filters_grad_) +
-           ", lr-coef " + ToString(learn_rate_coef_) +
-           ", max-norm " + ToString(max_norm_) +
-           "\n  bias_grad" + MomentStatistics(bias_grad_) +
-           ", lr-coef " + ToString(bias_learn_rate_coef_);
+      ", lr-coef " + ToString(learn_rate_coef_) +
+      ", max-norm " + ToString(max_norm_) +
+      "\n  bias_grad" + MomentStatistics(bias_grad_) +
+      ", lr-coef " + ToString(bias_learn_rate_coef_);
   }
 
   void PropagateFnc(const CuMatrixBase<BaseFloat> &in,

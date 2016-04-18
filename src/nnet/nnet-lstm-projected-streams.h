@@ -110,7 +110,7 @@ class LstmProjectedStreams : public UpdatableComponent {
     InitVecParam(peephole_f_c_, param_scale);
     InitVecParam(peephole_o_c_, param_scale);
 
-    // init delta buffers,
+    // init buffers for gradient,
     w_gifo_x_corr_.Resize(4*ncell_, input_dim_, kSetZero);
     w_gifo_r_corr_.Resize(4*ncell_, nrecur_, kSetZero);
     bias_corr_.Resize(4*ncell_, kSetZero);

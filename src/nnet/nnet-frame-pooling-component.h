@@ -40,10 +40,12 @@ namespace nnet1 {
  */
 class FramePoolingComponent : public UpdatableComponent {
  public:
-  FramePoolingComponent(int32 dim_in, int32 dim_out) 
-    : UpdatableComponent(dim_in, dim_out), 
-      feature_dim_(0), normalize_(false)
+  FramePoolingComponent(int32 dim_in, int32 dim_out) : 
+    UpdatableComponent(dim_in, dim_out), 
+    feature_dim_(0), 
+    normalize_(false)
   { }
+
   ~FramePoolingComponent()
   { }
 

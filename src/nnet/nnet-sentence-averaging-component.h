@@ -65,7 +65,6 @@ class SimpleSentenceAveragingComponent : public Component {
   void ReadData(std::istream &is, bool binary) {
     bool end_loop = false;
     while (!end_loop && '<' == Peek(is, binary)) {
-      std::string token;
       int first_char = PeekToken(is, binary);
       switch (first_char) {
         case 'G': ExpectToken(is, binary, "<GradientBoost>");

@@ -89,7 +89,6 @@ class AffineTransform : public UpdatableComponent {
   void ReadData(std::istream &is, bool binary) {
     // Read all the '<Tokens>' in arbitrary order,
     while ('<' == Peek(is, binary)) {
-      std::string token;
       int first_char = PeekToken(is, binary);
       switch (first_char) {
         case 'L': ExpectToken(is, binary, "<LearnRateCoef>"); 
@@ -101,7 +100,9 @@ class AffineTransform : public UpdatableComponent {
         case 'M': ExpectToken(is, binary, "<MaxNorm>");
           ReadBasicType(is, binary, &max_norm_);
           break;
-        default: ReadToken(is, false, &token);
+        default: 
+          std::string token;
+          ReadToken(is, false, &token);
           KALDI_ERR << "Unknown token: " << token;
       }
     }
@@ -141,17 +142,17 @@ class AffineTransform : public UpdatableComponent {
   
   std::string Info() const {
     return std::string("\n  linearity") + MomentStatistics(linearity_) + 
-           ", lr-coef " + ToString(learn_rate_coef_) +
-           ", max-norm " + ToString(max_norm_) +
-           "\n  bias" + MomentStatistics(bias_) + 
-           ", lr-coef " + ToString(bias_learn_rate_coef_);
+      ", lr-coef " + ToString(learn_rate_coef_) +
+      ", max-norm " + ToString(max_norm_) +
+      "\n  bias" + MomentStatistics(bias_) + 
+      ", lr-coef " + ToString(bias_learn_rate_coef_);
   }
   std::string InfoGradient() const {
     return std::string("\n  linearity_grad") + MomentStatistics(linearity_corr_) + 
-           ", lr-coef " + ToString(learn_rate_coef_) +
-           ", max-norm " + ToString(max_norm_) +
-           "\n  bias_grad" + MomentStatistics(bias_corr_) + 
-           ", lr-coef " + ToString(bias_learn_rate_coef_);
+      ", lr-coef " + ToString(learn_rate_coef_) +
+      ", max-norm " + ToString(max_norm_) +
+      "\n  bias_grad" + MomentStatistics(bias_corr_) + 
+      ", lr-coef " + ToString(bias_learn_rate_coef_);
   }
 
   void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {

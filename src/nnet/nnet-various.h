@@ -40,9 +40,10 @@ namespace nnet1 {
  */
 class Splice: public Component {
  public:
-  Splice(int32 dim_in, int32 dim_out)
-    : Component(dim_in, dim_out)
+  Splice(int32 dim_in, int32 dim_out) :
+    Component(dim_in, dim_out)
   { }
+
   ~Splice()
   { }
 
@@ -153,9 +154,10 @@ class Splice: public Component {
  */
 class CopyComponent: public Component {
  public:
-  CopyComponent(int32 dim_in, int32 dim_out)
-    : Component(dim_in, dim_out)
+  CopyComponent(int32 dim_in, int32 dim_out) : 
+    Component(dim_in, dim_out)
   { }
+
   ~CopyComponent()
   { }
 
@@ -293,9 +295,10 @@ class CopyComponent: public Component {
  */
 class LengthNormComponent: public Component {
  public:
-  LengthNormComponent(int32 dim_in, int32 dim_out)
-    : Component(dim_in, dim_out)
+  LengthNormComponent(int32 dim_in, int32 dim_out) : 
+    Component(dim_in, dim_out)
   { }
+
   ~LengthNormComponent()
   { }
 
@@ -337,9 +340,10 @@ class LengthNormComponent: public Component {
  */
 class AddShift : public UpdatableComponent {
  public:
-  AddShift(int32 dim_in, int32 dim_out)
-    : UpdatableComponent(dim_in, dim_out), shift_data_(dim_in)
+  AddShift(int32 dim_in, int32 dim_out) : 
+    UpdatableComponent(dim_in, dim_out), shift_data_(dim_in)
   { }
+
   ~AddShift()
   { }
 
@@ -443,9 +447,11 @@ class AddShift : public UpdatableComponent {
  */
 class Rescale : public UpdatableComponent {
  public:
-  Rescale(int32 dim_in, int32 dim_out)
-    : UpdatableComponent(dim_in, dim_out), scale_data_(dim_in)
+  Rescale(int32 dim_in, int32 dim_out) : 
+    UpdatableComponent(dim_in, dim_out), 
+    scale_data_(dim_in)
   { }
+
   ~Rescale()
   { }
 
