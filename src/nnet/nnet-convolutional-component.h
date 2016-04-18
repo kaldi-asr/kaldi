@@ -79,7 +79,7 @@ class ConvolutionalComponent : public UpdatableComponent {
     BaseFloat bias_mean = -2.0, bias_range = 2.0, param_stddev = 0.1;
     // parse config
     std::string token; 
-    while (!is.eof()) {
+    while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token); 
       /**/ if (token == "<ParamStddev>") ReadBasicType(is, false, &param_stddev);
       else if (token == "<BiasMean>")    ReadBasicType(is, false, &bias_mean);
@@ -92,7 +92,6 @@ class ConvolutionalComponent : public UpdatableComponent {
       else if (token == "<MaxNorm>") ReadBasicType(is, false, &max_norm_);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                      << " (ParamStddev|BiasMean|BiasRange|PatchDim|PatchStep|PatchStride)";
-      is >> std::ws; // eat-up whitespace
     }
 
     //

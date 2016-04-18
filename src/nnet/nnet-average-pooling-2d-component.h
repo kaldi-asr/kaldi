@@ -52,7 +52,7 @@ class AveragePooling2DComponent : public Component {
   void InitData(std::istream &is) {
     // parse config
     std::string token;
-    while (!is.eof()) {
+    while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token);
       /**/ if (token == "<FmapXLen>") ReadBasicType(is, false, &fmap_x_len_);
       else if (token == "<FmapYLen>") ReadBasicType(is, false, &fmap_y_len_);
@@ -62,7 +62,6 @@ class AveragePooling2DComponent : public Component {
       else if (token == "<PoolYStep>") ReadBasicType(is, false, &pool_y_step_);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                      << " (FmapXLen|FmapYLen|PoolXLen|PoolYLen|PoolXStep|PoolYStep)";
-      is >> std::ws;  // eat-up whitespace
     }
     // check
     KALDI_ASSERT(fmap_x_len_ * fmap_y_len_ * pool_x_len_ * pool_y_len_ * pool_x_step_ * pool_y_step_  != 0);

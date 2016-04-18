@@ -55,7 +55,7 @@ class Splice: public Component {
     std::vector<std::vector<int32> > build_vector;
     // parse config
     std::string token; 
-    while (!is.eof()) {
+    while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token); 
       /**/ if (token == "<ReadVector>") {
         ReadIntegerVector(is, false, &frame_offsets);
@@ -74,7 +74,6 @@ class Splice: public Component {
         KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                   << " (ReadVector|BuildVector)";
       }
-      is >> std::ws; // eat-up whitespace
     }
 
     // build the vector, using <BuildVector> ... </BuildVector> inputs
@@ -169,7 +168,7 @@ class CopyComponent: public Component {
     std::vector<std::vector<int32> > build_vector;
     // parse config
     std::string token; 
-    while (!is.eof()) {
+    while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token); 
       /**/ if (token == "<ReadVector>") {
         ReadIntegerVector(is, false, &copy_from_indices);
@@ -188,7 +187,6 @@ class CopyComponent: public Component {
         KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                   << " (ReadVector|BuildVector)";
       }
-      is >> std::ws; // eat-up whitespace
     }
 
     // build the vector, using <BuildVector> ... </BuildVector> inputs
@@ -353,13 +351,12 @@ class AddShift : public UpdatableComponent {
     float init_param = 0.0;
     // parse config
     std::string token; 
-    while (!is.eof()) {
+    while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token); 
       /**/ if (token == "<InitParam>") ReadBasicType(is, false, &init_param);
       else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef_);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                      << " (InitParam)";
-      is >> std::ws; // eat-up whitespace
     }
     // initialize
     shift_data_.Resize(InputDim(), kSetZero); // set to zero
@@ -460,13 +457,12 @@ class Rescale : public UpdatableComponent {
     float init_param = 0.0;
     // parse config
     std::string token; 
-    while (!is.eof()) {
+    while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token); 
       /**/ if (token == "<InitParam>") ReadBasicType(is, false, &init_param);
       else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef_);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                      << " (InitParam)";
-      is >> std::ws; // eat-up whitespace
     }
     // initialize
     scale_data_.Resize(InputDim(), kSetZero);

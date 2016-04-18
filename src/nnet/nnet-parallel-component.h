@@ -70,7 +70,7 @@ class ParallelComponent : public UpdatableComponent {
     std::vector<std::string> nested_nnet_filename;
     // parse config
     std::string token; 
-    while (!is.eof()) {
+    while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token); 
       /**/ if (token == "<NestedNnet>" || token == "<NestedNnetFilename>") {
         while(!is.eof()) {
@@ -88,7 +88,6 @@ class ParallelComponent : public UpdatableComponent {
         }
       } else KALDI_ERR << "Unknown token " << token << ", typo in config?"
                        << " (NestedNnet|NestedNnetFilename|NestedNnetProto)";
-      is >> std::ws; // eat-up whitespace
     }
     // initialize
     KALDI_ASSERT((nested_nnet_proto.size() > 0) ^ (nested_nnet_filename.size() > 0)); //xor

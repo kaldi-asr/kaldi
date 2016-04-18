@@ -74,12 +74,11 @@ class BlockSoftmax : public Component {
     // parse config
     std::string token,
       dims_str;
-    while (!is.eof()) {
+    while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token); 
       /**/ if (token == "<BlockDims>") is >> dims_str;
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                      << " (BlockDims)";
-      is >> std::ws; // eat-up whitespace
     }
     // parse dims,
     if (!kaldi::SplitStringToIntegers(dims_str, ",:", false, &block_dims))
@@ -213,7 +212,7 @@ class Dropout : public Component {
     is >> std::ws; // eat-up whitespace
     // parse config
     std::string token; 
-    while (!is.eof()) {
+    while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token); 
       /**/ if (token == "<DropoutRetention>") ReadBasicType(is, false, &dropout_retention_);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"

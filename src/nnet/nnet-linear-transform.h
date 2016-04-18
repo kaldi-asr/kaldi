@@ -48,14 +48,13 @@ class LinearTransform : public UpdatableComponent {
     std::string read_matrix_file;
     // parse config
     std::string token; 
-    while (!is.eof()) {
+    while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token); 
       /**/ if (token == "<ParamStddev>") ReadBasicType(is, false, &param_stddev);
       else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef);
       else if (token == "<ReadMatrix>") ReadToken(is, false, &read_matrix_file);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                      << " (ParamStddev|ReadMatrix|LearnRateCoef)";
-      is >> std::ws; // eat-up whitespace
     }
 
     //

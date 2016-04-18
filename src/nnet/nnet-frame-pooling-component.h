@@ -62,7 +62,7 @@ class FramePoolingComponent : public UpdatableComponent {
     float learn_rate_coef = 0.01;
     // parse config
     std::string token;
-    while (!is.eof()) {
+    while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token);
       /**/ if (token == "<FeatureDim>") ReadBasicType(is, false, &feature_dim_);
       else if (token == "<CentralOffset>") ReadIntegerVector(is, false, &central_offset);
@@ -72,7 +72,6 @@ class FramePoolingComponent : public UpdatableComponent {
       else if (token == "<Normalize>") ReadBasicType(is, false, &normalize_);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                      << " (FeatureDim|CentralOffset <vec>|PoolSize <vec>|LearnRateCoef|Normalize)";
-      is >> std::ws; // eat-up whitespace
     }
     // check inputs:
     KALDI_ASSERT(feature_dim_ > 0);
