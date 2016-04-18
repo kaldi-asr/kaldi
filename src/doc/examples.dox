@@ -21,6 +21,7 @@
  \page examples Examples included with Kaldi
 
  This is a summary of existing Kaldi recipes and their corresponding corpora.
+ These recipes can be found in the <code>egs/</code> directory. (See \ref install for instructions on how to download Kaldi.)
 
  <table><tr><th>Name</th><th>BW</th><th>Lang</th><th>Train Domain</th><th>Train Hours</th><th>Train Speakers</th><th>License and Availability</th><th>Year Released</th><th>Speech Style</th><th>Test Domain</th><th>Kaldi Aprox Perf</th><th>LM Data</th><th>Lexicon</th></tr>
 <tr>
