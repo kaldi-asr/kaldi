@@ -53,14 +53,18 @@ splice=5            # (default) splice features both-ways along time axis,
 cmvn_opts=          # (optional) adds 'apply-cmvn' to input feature pipeline, see opts,
 delta_opts=         # (optional) adds 'add-deltas' to input feature pipeline, see opts,
 ivector=            # (optional) adds 'append-vector-to-feats', it's rx-filename,
-
+append_vector_to_feats=append-vector-to-feats
 feature_transform_proto= # (optional) use this prototype for 'feature_transform',
 feature_transform=  # (optional) directly use this 'feature_transform',
-
+only_feature_transform=false
 # misc.
 verbose=1 # enable per-cache reports
 skip_cuda_check=false
 
+feat_type=
+traps_dct_basis=11 # nr. od DCT basis (applies to `traps` feat_type, splice10 )
+
+gmm_like_cmd=
 # End configuration.
 
 echo "$0 $@"  # Print the command line for logging
@@ -117,9 +121,16 @@ mkdir -p $dir/log
 ###### PREPARE FEATURES ######
 echo
 echo "# PREPARING FEATURES"
+if [ ! -z "$gmm_like_cmd" ]; then
+  echo "gmm_like_cmd=$gmm_like_cmd, copy_feats=false, splice=0"
+  copy_feats=false
+  splice=0
+  cmvn_opts=
+  delta_opts=
+fi
 if [ "$copy_feats" == "true" ]; then
   # re-save the features to local disk into /tmp/,
-  tmpdir=$(mktemp -d $copy_feats_tmproot)
+  tmpdir=$(mktemp -d -p $copy_feats_tmproot)
   copy-feats scp:$data/feats.scp ark,scp:$tmpdir/train.ark,$dir/train_sorted.scp || exit 1
   trap "echo \"# Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir" EXIT
 else
@@ -149,7 +160,9 @@ fi
 ###### PREPARE FEATURE PIPELINE ######
 # read the features
 feats_tr="ark:copy-feats scp:$dir/train.scp ark:- |"
-
+if [ ! -z "$gmm_like_cmd" ]; then
+  feats_tr="$feats_tr $gmm_like_cmd"
+fi
 # optionally add per-speaker CMVN
 if [ ! -z "$cmvn_opts" ]; then
   echo "+ 'apply-cmvn' with '$cmvn_opts' using statistics : $data/cmvn.scp"
@@ -194,15 +207,26 @@ else
     echo "+ default 'feature_transform_proto' with splice +/-$splice frames"
     feature_transform_proto=$dir/splice${splice}.proto
     echo "<Splice> <InputDim> $feat_dim <OutputDim> $(((2*splice+1)*feat_dim)) <BuildVector> -$splice:$splice </BuildVector>" >$feature_transform_proto
+    if [ ! -z $feat_type ] &&  [ $feat_type == "traps" ]; then
+      feature_transform=$dir/tr_$(basename $feature_transform_proto .proto)_trap_hmm_dct${traps_dct_basis}.nnet
+      utils/nnet/gen_hamm_mat.py --fea-dim=$feat_dim --splice=$splice > $dir/hamm.mat
+      utils/nnet/gen_dct_mat.py --fea-dim=$feat_dim --splice=$splice --dct-basis=$traps_dct_basis > $dir/dct.mat
+      compose-transforms --binary=false $dir/dct.mat $dir/hamm.mat - | \
+      transf-to-nnet - - | \
+      nnet-concat --binary=false "nnet-initialize --binary=false $feature_transform_proto -|" - $feature_transform || exit 1
+    fi
   fi
 
   # Initialize 'feature-transform' from a prototype,
-  feature_transform=$dir/tr_$(basename $feature_transform_proto .proto).nnet
-  nnet-initialize --binary=false $feature_transform_proto $feature_transform
+  if [ -z $feat_type ]; then
+    feature_transform=$dir/tr_$(basename $feature_transform_proto .proto).nnet
+    nnet-initialize --binary=false $feature_transform_proto $feature_transform
+  fi
 
   # Renormalize the MLP input to zero mean and unit variance,
   feature_transform_old=$feature_transform
   feature_transform=${feature_transform%.nnet}_cmvn-g.nnet
+  if [ -z "$gmm_like_cmd" ]; then
   echo "# compute normalization stats from 10k sentences"
   nnet-forward --print-args=true --use-gpu=yes $feature_transform_old \
     "$(echo $feats_tr | sed 's|train.scp|train.scp.10k|')" ark:- |\
@@ -210,6 +234,11 @@ else
   echo "# + normalization of NN-input at '$feature_transform'"
   nnet-concat --print-args=false --binary=false $feature_transform_old \
     "cmvn-to-nnet $dir/cmvn-g.stats -|" $feature_transform
+  else
+    compute-cmvn-stats "$(echo $feats_tr | sed 's|train.scp|train.scp.10k|')" $dir/cmvn-g.stats
+    feature_transform=$dir/cmvn-g.nnet
+    cmvn-to-nnet $dir/cmvn-g.stats  $feature_transform
+  fi
 fi
 
 if [ ! -z $ivector ]; then
@@ -244,7 +273,7 @@ if [ ! -z $ivector ]; then
 
   # pasting the iVecs to the feaures,
   echo "# + ivector input '$ivector'"
-  feats_tr="$feats_tr append-vector-to-feats ark:- '$ivector' ark:- |"
+  feats_tr="$feats_tr $append_vector_to_feats ark:- '$ivector' ark:- |"
 fi
 
 ###### Show the final 'feature_transform' in the log,
@@ -252,17 +281,16 @@ echo
 echo "### Showing the final 'feature_transform':"
 nnet-info $feature_transform
 echo "###"
+$only_feature_transform  && { echo "## LOG: $0, only feature transform generated, no pretraining to be done"; exit 0; }
 
 ###### MAKE LINK TO THE FINAL feature_transform, so the other scripts will find it ######
 [ -f $dir/final.feature_transform ] && unlink $dir/final.feature_transform
 (cd $dir; ln -s $(basename $feature_transform) final.feature_transform )
 feature_transform=$dir/final.feature_transform
 
-
 ###### GET THE DIMENSIONS ######
 num_fea=$(feat-to-dim --print-args=false "$feats_tr nnet-forward --use-gpu=no $feature_transform ark:- ark:- |" - 2>/dev/null)
 num_hid=$hid_dim
-
 
 ###### PERFORM THE PRE-TRAINING ######
 for depth in $(seq 1 $nn_depth); do

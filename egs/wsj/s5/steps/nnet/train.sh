@@ -25,7 +25,7 @@ splice=5            # (default) splice features both-ways along time axis,
 cmvn_opts=          # (optional) adds 'apply-cmvn' to input feature pipeline, see opts,
 delta_opts=         # (optional) adds 'add-deltas' to input feature pipeline, see opts,
 ivector=            # (optional) adds 'append-vector-to-feats', it's rx-filename,
-
+append_vector_to_feats=append-vector-to-feats
 feat_type=plain  
 traps_dct_basis=11    # (feat_type=traps) nr. of DCT basis, 11 is good with splice=10,
 transf=               # (feat_type=transf) import this linear tranform,
@@ -39,21 +39,24 @@ pytel_transform=    # (BUT) use external python transform,
 labels=            # (optional) specify non-default training targets,
                    # (targets need to be in posterior format, see 'ali-to-post', 'feat-to-post'),
 num_tgt=           # (optional) specifiy number of NN outputs, to be used with 'labels=',
-
+no_hmm_info=false
 # training scheduler,
 learn_rate=0.008   # initial learning rate,
+schedule_cmd=steps/nnet/train_schedule.sh
 scheduler_opts=    # options, passed to the training scheduler,
 train_tool=        # optionally change the training tool,
 train_tool_opts=   # options for the training tool,
+mling_opts=
 frame_weights=     # per-frame weights for gradient weighting,
-utt_weights=       # per-utterance weights (scalar for --frame-weights),
 
 # data processing, misc.
 copy_feats=true     # resave the train/cv features into /tmp (disabled by default),
-copy_feats_tmproot=/tmp/kaldi.XXXX # sets tmproot for 'copy-feats',
+# copy_feats_tmproot=/tmp/kaldi.XXXX # sets tmproot for 'copy-feats',
+copy_feats_tmproot=/local/hhx502 # sets tmproot for 'copy-feats',
 seed=777            # seed value used for data-shuffling, nn-initialization, and training,
 skip_cuda_check=false
 
+gmm_like_cmd=
 # End configuration.
 
 echo "$0 $@"  # Print the command line for logging
@@ -116,6 +119,12 @@ printf "\t Train-set : $data $(cat $data/feats.scp | wc -l), $alidir \n"
 printf "\t CV-set    : $data_cv $(cat $data_cv/feats.scp | wc -l) $alidir_cv \n"
 echo
 
+if [ ! -z "$gmm_like_cmd" ]; then
+  echo "gmm_like_cmd=$gmm_like_cmd"
+  copy_feats=false
+  splice=0
+  cmvn_opts=
+fi
 mkdir -p $dir/{log,nnet}
 
 # skip when already trained,
@@ -145,20 +154,14 @@ else
   labels_tr_phn="ark:ali-to-phones --per-frame=true $alidir/final.mdl \"ark:gunzip -c $alidir/ali.*.gz |\" ark:- |"
 
   # get pdf-counts, used later for decoding/aligning,
-  analyze-counts --verbose=1 --binary=false \
-    ${frame_weights:+ "--frame-weights=$frame_weights"} \
-    ${utt_weights:+ "--utt-weights=$utt_weights"} \
-    "$labels_tr_pdf" $dir/ali_train_pdf.counts 2>$dir/log/analyze_counts_pdf.log || exit 1
+  analyze-counts --verbose=1 --binary=false "$labels_tr_pdf" $dir/ali_train_pdf.counts 2>$dir/log/analyze_counts_pdf.log || exit 1
   # copy the old transition model, will be needed by decoder,
   copy-transition-model --binary=false $alidir/final.mdl $dir/final.mdl || exit 1
   # copy the tree
   cp $alidir/tree $dir/tree || exit 1
 
   # make phone counts for analysis,
-  [ -e $lang/phones.txt ] && analyze-counts --verbose=1 --symbol-table=$lang/phones.txt \
-    ${frame_weights:+ "--frame-weights=$frame_weights"} \
-    ${utt_weights:+ "--utt-weights=$utt_weights"} \
-    "$labels_tr_phn" /dev/null 2>$dir/log/analyze_counts_phones.log || exit 1
+  [ -e $lang/phones.txt ] && analyze-counts --verbose=1 --symbol-table=$lang/phones.txt "$labels_tr_phn" /dev/null 2>$dir/log/analyze_counts_phones.log || exit 1
 fi
 
 ###### PREPARE FEATURES ######
@@ -166,7 +169,7 @@ echo
 echo "# PREPARING FEATURES"
 if [ "$copy_feats" == "true" ]; then
   echo "# re-saving features to local disk,"
-  tmpdir=$(mktemp -d $copy_feats_tmproot)
+  tmpdir=$(mktemp -d -p $copy_feats_tmproot)
   copy-feats scp:$data/feats.scp ark,scp:$tmpdir/train.ark,$dir/train_sorted.scp || exit 1
   copy-feats scp:$data_cv/feats.scp ark,scp:$tmpdir/cv.ark,$dir/cv.scp || exit 1
   trap "echo \"# Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir" EXIT
@@ -202,7 +205,10 @@ fi
 # read the features,
 feats_tr="ark:copy-feats scp:$dir/train.scp ark:- |"
 feats_cv="ark:copy-feats scp:$dir/cv.scp ark:- |"
-
+if [ ! -z "$gmm_like_cmd" ]; then
+  feats_tr="$feats_tr $gmm_like_cmd"
+  feats_cv="$feats_cv $gmm_like_cmd"
+fi
 # optionally add per-speaker CMVN,
 if [ ! -z "$cmvn_opts" ]; then
   echo "# + 'apply-cmvn' with '$cmvn_opts' using statistics : $data/cmvn.scp, $data_cv/cmvn.scp"
@@ -347,8 +353,8 @@ if [ ! -z $ivector ]; then
 
   # pasting the iVecs to the feaures,
   echo "# + ivector input '$ivector'"
-  feats_tr="$feats_tr append-vector-to-feats ark:- '$ivector' ark:- |"
-  feats_cv="$feats_cv append-vector-to-feats ark:- '$ivector' ark:- |"
+  feats_tr="$feats_tr $append_vector_to_feats ark:- '$ivector' ark:- |"
+  feats_cv="$feats_cv $append_vector_to_feats ark:- '$ivector' ark:- |"
 fi
 
 ###### Show the final 'feature_transform' in the log,
@@ -362,6 +368,28 @@ echo "###"
 (cd $dir; ln -s $(basename $feature_transform) final.feature_transform )
 feature_transform=$dir/final.feature_transform
 
+if [ ! -z $num_tgt ] && $no_hmm_info && [ -z $nnet_init ] ; then
+  echo "## LOG: $0, num_tgt ($num_tgt) specified, nnet_init will be generated"
+  # input-dim,
+  get_dim_from=$feature_transform
+  [ ! -z $dbn ] && get_dim_from="nnet-concat $feature_transform $dbn -|"
+  num_fea=$(feat-to-dim "$feats_tr nnet-forward \"$get_dim_from\" ark:- ark:- |" -)
+  nnet_proto=$dir/nnet.proto
+  utils/nnet/make_nnet_proto.py $proto_opts \
+        ${bn_dim:+ --bottleneck-dim=$bn_dim} \
+        $num_fea $num_tgt $hid_layers $hid_dim >$nnet_proto || exit 1 
+  # initialize,
+  nnet_init=$dir/nnet.init
+  echo "# initializing the NN '$nnet_proto' -> '$nnet_init'"
+  nnet-initialize $nnet_proto $nnet_init
+
+  # optionally prepend dbn to the initialization,
+  if [ ! -z $dbn ]; then
+    nnet_init_old=$nnet_init; nnet_init=$dir/nnet_$(basename $dbn)_dnn.init
+    nnet-concat $dbn $nnet_init_old $nnet_init || exit 1 
+  fi
+  echo "## LOG: $0, nnet_init($nnet_init) generated"
+fi
 
 ###### INITIALIZE THE NNET ######
 echo 
@@ -371,12 +399,12 @@ if [ ! -z $nnet_init ]; then
 elif [ ! -z $nnet_proto ]; then
   echo "# initializing NN from prototype '$nnet_proto'";
   nnet_init=$dir/nnet.init; log=$dir/log/nnet_initialize.log
-  nnet-initialize --seed=$seed $nnet_proto $nnet_init
+  nnet-initialize --seed $seed $nnet_proto $nnet_init
 else 
   echo "# getting input/output dims :"
   # input-dim,
   get_dim_from=$feature_transform
-  [ ! -z "$dbn" ] && get_dim_from="nnet-concat $feature_transform '$dbn' -|"
+  [ ! -z $dbn ] && get_dim_from="nnet-concat $feature_transform $dbn -|"
   num_fea=$(feat-to-dim "$feats_tr nnet-forward \"$get_dim_from\" ark:- ark:- |" -)
 
   # output-dim,
@@ -430,12 +458,12 @@ else
   # initialize,
   nnet_init=$dir/nnet.init
   echo "# initializing the NN '$nnet_proto' -> '$nnet_init'"
-  nnet-initialize --seed=$seed $nnet_proto $nnet_init
+  nnet-initialize $nnet_proto $nnet_init
 
   # optionally prepend dbn to the initialization,
-  if [ ! -z "$dbn" ]; then
-    nnet_init_old=$nnet_init; nnet_init=$dir/nnet_dbn_dnn.init
-    nnet-concat "$dbn" $nnet_init_old $nnet_init || exit 1 
+  if [ ! -z $dbn ]; then
+    nnet_init_old=$nnet_init; nnet_init=$dir/nnet_$(basename $dbn)_dnn.init
+    nnet-concat $dbn $nnet_init_old $nnet_init || exit 1 
   fi
 fi
 
@@ -443,14 +471,14 @@ fi
 ###### TRAIN ######
 echo
 echo "# RUNNING THE NN-TRAINING SCHEDULER"
-steps/nnet/train_scheduler.sh \
+$schedule_cmd \
   ${scheduler_opts} \
   ${train_tool:+ --train-tool "$train_tool"} \
   ${train_tool_opts:+ --train-tool-opts "$train_tool_opts"} \
+  ${mling_opts:+ --mling-opts "$mling_opts"} \
   ${feature_transform:+ --feature-transform $feature_transform} \
   --learn-rate $learn_rate \
   ${frame_weights:+ --frame-weights "$frame_weights"} \
-  ${utt_weights:+ --utt-weights "$utt_weights"} \
   ${config:+ --config $config} \
   $nnet_init "$feats_tr" "$feats_cv" "$labels_tr" "$labels_cv" $dir || exit 1
 

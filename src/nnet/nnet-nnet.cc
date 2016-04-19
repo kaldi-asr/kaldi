@@ -18,6 +18,9 @@
 // limitations under the License.
 
 #include "nnet/nnet-nnet.h"
+#include "nnet/nnet-mnet.h"
+#include "nnet/nnet-lhuc-sat.h"
+#include "nnet/nnet-input-offset.h"
 #include "nnet/nnet-component.h"
 #include "nnet/nnet-parallel-component.h"
 #include "nnet/nnet-activation.h"
@@ -62,8 +65,26 @@ Nnet & Nnet::operator = (const Nnet& other) {
 Nnet::~Nnet() {
   Destroy();
 }
-
-
+void Nnet::Parallelpropagate(CuMatrix<BaseFloat> *propagate_buf) {
+  for(int32 i = 0; i < vec_nnet_->size(); ++i) {
+    ParallelOneNnet *pOneNnet = (*vec_nnet_)[i];
+    pOneNnet->Propagate();
+    CuMatrix<BaseFloat> &parallel_buf = pOneNnet->nnet_out_;
+    KALDI_ASSERT(parallel_buf.NumRows() == propagate_buf->NumRows() &&
+                 parallel_buf.NumCols() == propagate_buf->NumCols());
+    propagate_buf->AddMat(1.0, parallel_buf);
+  }
+}
+void Nnet::ParallelFeedforward(CuMatrix<BaseFloat> *propagate_buf) {
+  for(int32 i = 0; i < vec_nnet_->size(); ++i) {
+    ParallelOneNnet *pOneNnet = (*vec_nnet_)[i];
+    pOneNnet->Feedforward();
+    CuMatrix<BaseFloat> &parallel_buf = pOneNnet->nnet_out_;
+    KALDI_ASSERT(parallel_buf.NumRows() == propagate_buf->NumRows() &&
+                 parallel_buf.NumCols() == propagate_buf->NumCols());
+    propagate_buf->AddMat(1.0, parallel_buf);
+  }
+}
 void Nnet::Propagate(const CuMatrixBase<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
   KALDI_ASSERT(NULL != out);
 
@@ -71,17 +92,30 @@ void Nnet::Propagate(const CuMatrixBase<BaseFloat> &in, CuMatrix<BaseFloat> *out
     (*out) = in; // copy 
     return; 
   }
-
   // we need at least L+1 input buffers
   KALDI_ASSERT((int32)propagate_buf_.size() >= NumComponents()+1);
-  
+  if(mNnet_ != NULL) { // for multilingual
+    mNnet_->Propagate(in, out);
+    return;
+  }
   propagate_buf_[0].Resize(in.NumRows(), in.NumCols());
   propagate_buf_[0].CopyFromMat(in);
 
   for(int32 i=0; i<(int32)components_.size(); i++) {
+    // for parallel nnet propagating 
+    if(vec_nnet_ != NULL && i+1 == opts_.parallel_level) {
+      Parallelpropagate(&propagate_buf_[i]);
+    }
+    if(lhuc_sat_ptr_ != NULL) {
+      LhucNnet *lhuc_nnet = lhuc_sat_ptr_->GetActiveLhuc();
+      bool copied = false;
+      lhuc_nnet->LhucPropagate(components_[i], propagate_buf_[i], &propagate_buf_[i+1], &copied);
+      if(copied == true) {
+        propagate_buf_[i].CopyFromMat(propagate_buf_[i+1]);
+      }
+    }
     components_[i]->Propagate(propagate_buf_[i], &propagate_buf_[i+1]);
   }
-  
   (*out) = propagate_buf_[components_.size()];
 }
 
@@ -97,16 +131,31 @@ void Nnet::Backpropagate(const CuMatrixBase<BaseFloat> &out_diff, CuMatrix<BaseF
 
   KALDI_ASSERT((int32)propagate_buf_.size() == NumComponents()+1);
   KALDI_ASSERT((int32)backpropagate_buf_.size() == NumComponents()+1);
-
+  if(mNnet_ != NULL) {
+    mNnet_->Backpropagate(in_diff);
+    return;
+  }
   // copy out_diff to last buffer
   backpropagate_buf_[NumComponents()] = out_diff;
   // backpropagate using buffers
   for (int32 i = NumComponents()-1; i >= 0; i--) {
     components_[i]->Backpropagate(propagate_buf_[i], propagate_buf_[i+1],
                             backpropagate_buf_[i+1], &backpropagate_buf_[i]);
-    if (components_[i]->IsUpdatable()) {
+    if(lhuc_sat_ptr_ != NULL && i > 0) {
+      LhucNnet *lhuc_nnet = lhuc_sat_ptr_->GetActiveLhuc();
+      CuMatrix<BaseFloat> scaled_buf(backpropagate_buf_[i]);
+      lhuc_nnet->LhucBackpropagate(components_[i-1], propagate_buf_[i-1], propagate_buf_[i],
+                                   scaled_buf, &backpropagate_buf_[i]);
+    }
+    if (!opts_.freeze_update && components_[i]->IsUpdatable()) {
       UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(components_[i]);
       uc->Update(propagate_buf_[i], backpropagate_buf_[i+1]);
+    }
+    if(vec_nnet_ != NULL && i+1 == opts_.parallel_level) {
+      for(int32 j = 0; j < vec_nnet_->size(); ++j) {
+        ParallelOneNnet *pOneNnet = (*vec_nnet_)[j];
+        pOneNnet->nnet_.Backpropagate(backpropagate_buf_[i], NULL);
+      }
     }
   }
   // eventually export the derivative
@@ -128,7 +177,11 @@ void Nnet::Feedforward(const CuMatrixBase<BaseFloat> &in, CuMatrix<BaseFloat> *o
   }
 
   if (NumComponents() == 1) {
-    components_[0]->Propagate(in, out);
+    propagate_buf_[0] = in;
+    if(vec_nnet_ != NULL && opts_.parallel_level == 1) {
+      ParallelFeedforward(&propagate_buf_[0]);
+    }
+    components_[0]->Propagate(propagate_buf_[0], out);
     return;
   }
 
@@ -137,9 +190,36 @@ void Nnet::Feedforward(const CuMatrixBase<BaseFloat> &in, CuMatrix<BaseFloat> *o
 
   // propagate by using exactly 2 auxiliary buffers
   int32 L = 0;
-  components_[L]->Propagate(in, &propagate_buf_[L%2]);
+  CuMatrix<BaseFloat> propagate_in(in);
+  if(vec_nnet_ != NULL && opts_.parallel_level == 1) {
+    ParallelFeedforward(&propagate_in);
+  }
+  components_[L]->Propagate(propagate_in, &propagate_buf_[L%2]);
   for(L++; L<=NumComponents()-2; L++) {
+    if(vec_nnet_ != NULL && opts_.parallel_level == L+1) {
+      ParallelFeedforward(&propagate_buf_[(L-1)%2]);
+    }
+    if(lhuc_sat_ptr_ != NULL) {
+      LhucNnet *lhuc_nnet = lhuc_sat_ptr_->GetActiveLhuc();
+      bool copied = false;
+      
+      lhuc_nnet->LhucPropagate(components_[L], propagate_buf_[(L-1)%2], &propagate_buf_[L%2], &copied);
+      if(copied == true) {
+        propagate_buf_[(L-1)%2].CopyFromMat(propagate_buf_[L%2]);
+      }
+    }
     components_[L]->Propagate(propagate_buf_[(L-1)%2], &propagate_buf_[L%2]);
+  }
+  if(vec_nnet_ != NULL && opts_.parallel_level == L+1) {
+    ParallelFeedforward(&propagate_buf_[(L-1)%2]);
+  }
+  if(lhuc_sat_ptr_ != NULL) {
+    LhucNnet *lhuc_nnet = lhuc_sat_ptr_->GetActiveLhuc();
+    bool copied = false;
+    lhuc_nnet->LhucPropagate(components_[L], propagate_buf_[(L-1)%2], &propagate_buf_[L%2], &copied);
+    if(copied == true) {
+      propagate_buf_[(L-1)%2].CopyFromMat(propagate_buf_[L%2]);
+    }
   }
   components_[L]->Propagate(propagate_buf_[(L-1)%2], out);
   // release the buffers we don't need anymore
@@ -187,7 +267,7 @@ void Nnet::AppendComponent(Component* dynamically_allocated_comp) {
 
 void Nnet::AppendNnet(const Nnet& nnet_to_append) {
   // append,
-  for(int32 i=0; i<nnet_to_append.NumComponents(); i++) {
+  for(int32 i=0; i < nnet_to_append.NumComponents(); i++) {
     AppendComponent(nnet_to_append.GetComponent(i).Copy());
   }
   // create training buffers,
@@ -464,8 +544,12 @@ std::string Nnet::Info() const {
 std::string Nnet::InfoGradient() const {
   std::ostringstream ostr;
   // gradient stats
-  ostr << "\n### Gradient stats :\n";
+  ostr << "### Gradient stats :\n";
   for (int32 i = 0; i < NumComponents(); i++) {
+    if(mNnet_ != NULL && i >= NumComponents() - 2) {
+      mNnet_->InfoGradient(ostr, i);
+      break;
+    }
     ostr << "Component " << i+1 << " : " 
          << Component::TypeToMarker(components_[i]->GetType()) 
          << ", " << components_[i]->InfoGradient() << std::endl;
@@ -476,9 +560,13 @@ std::string Nnet::InfoGradient() const {
 std::string Nnet::InfoPropagate() const {
   std::ostringstream ostr;
   // forward-pass buffer stats
-  ostr << "\n### Forward propagation buffer content :\n";
+  ostr << "### Forward propagation buffer content :\n";
   ostr << "[0] output of <Input> " << MomentStatistics(propagate_buf_[0]) << std::endl;
   for (int32 i=0; i<NumComponents(); i++) {
+    if(mNnet_ != NULL && i >= NumComponents() -2) {
+      mNnet_->InfoPropagate(ostr, i);
+      break;
+    }
     ostr << "["<<1+i<< "] output of " 
          << Component::TypeToMarker(components_[i]->GetType())
          << MomentStatistics(propagate_buf_[i+1]) << std::endl;
@@ -493,9 +581,13 @@ std::string Nnet::InfoPropagate() const {
 std::string Nnet::InfoBackPropagate() const {
   std::ostringstream ostr;
   // forward-pass buffer stats
-  ostr << "\n### Backward propagation buffer content :\n";
+  ostr << "### Backward propagation buffer content :\n";
   ostr << "[0] diff of <Input> " << MomentStatistics(backpropagate_buf_[0]) << std::endl;
   for (int32 i=0; i<NumComponents(); i++) {
+    if(mNnet_ != NULL && i >= NumComponents()-2) {
+      mNnet_->InfoPropagate(ostr, i);
+      break;
+    }
     ostr << "["<<1+i<< "] diff-output of " 
          << Component::TypeToMarker(components_[i]->GetType())
          << MomentStatistics(backpropagate_buf_[i+1]) << std::endl;

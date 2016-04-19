@@ -26,16 +26,25 @@
 
 #include "base/kaldi-common.h"
 #include "util/kaldi-io.h"
+#include "util/table-types.h"
 #include "matrix/matrix-lib.h"
 #include "nnet/nnet-trnopts.h"
+#include "nnet/nnet-randomizer.h"
 #include "nnet/nnet-component.h"
 
 namespace kaldi {
 namespace nnet1 {
-
+class ParallelOneNnet;
+class NnetDataRandomizerOptions;
+class LhucSat;
+class MultiNnet;
 class Nnet {
+ friend class ParallelOneNnet;
+ friend class MultiNnet;
  public:
-  Nnet() {}
+  Nnet() : vec_nnet_(NULL),
+           lhuc_sat_ptr_(NULL),
+           mNnet_(NULL) { }
   Nnet(const Nnet& other);  // Copy constructor.
   Nnet &operator = (const Nnet& other); // Assignment operator.
 
@@ -134,7 +143,25 @@ class Nnet {
   const NnetTrainOptions& GetTrainOptions() const {
     return opts_;
   }
-
+  bool IsUpdateFrozen() { return opts_.freeze_update; }
+  void SetParallelNnet(std::vector<ParallelOneNnet*> *vec_nnet, const int32 parallel_level) {
+    opts_.parallel_level = parallel_level;
+    if (opts_.parallel_level < 0) {
+      KALDI_ERR << "The nnet has subnnets but you have not indicated at which level they are connected";
+    }
+    vec_nnet_ = vec_nnet;
+  }
+  void SetLhucSat(LhucSat *ptr) { 
+    lhuc_sat_ptr_ = ptr;
+    if(ptr != NULL && !opts_.freeze_update) 
+      opts_.freeze_update = true;
+  }
+  void SetMultiNnet(MultiNnet *ptr) {
+    mNnet_ = ptr;
+  }
+  /// for parallel sub-nnet forward propagation
+  void Parallelpropagate(CuMatrix<BaseFloat> *propagate_buf);
+  void ParallelFeedforward(CuMatrix<BaseFloat> *propagate_buf);
  private:
   /// Vector which contains all the components composing the neural network,
   /// the components are for example: AffineTransform, Sigmoid, Softmax
@@ -145,6 +172,10 @@ class Nnet {
 
   /// Option class with hyper-parameters passed to UpdatableComponent(s)
   NnetTrainOptions opts_;
+  /// for parallel nnet work
+  std::vector<ParallelOneNnet*> *vec_nnet_;
+  LhucSat *lhuc_sat_ptr_;
+  MultiNnet *mNnet_;
 };
 
 }  // namespace nnet1
