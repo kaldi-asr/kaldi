@@ -34,22 +34,10 @@ mfccdir=mfcc
 # here.
 lang=data/lang
 lang_test=data/lang_test
-lang_test_tmp=data/local/lang_test_tmp/
-mkdir -p $lang_test_tmp
 mkdir -p $lang_test
 cp -r $lang/* $lang_test
-gunzip -c $lm | utils/find_arpa_oovs.pl $lang_test/words.txt \
-  > $lang_test_tmp/oovs.txt || exit 1
-gunzip -c $lm | \
-  grep -v '<s> <s>' | \
-  grep -v '</s> <s>' | \
-  grep -v '</s> </s>' | \
-  arpa2fst - | fstprint | \
-  utils/remove_oovs.pl $lang_test_tmp/oovs.txt | \
-  utils/eps2disambig.pl | utils/s2eps.pl | \
-  fstcompile --isymbols=$lang_test/words.txt --osymbols=$lang_test/words.txt  \
-  --keep_isymbols=false --keep_osymbols=false | \
-  fstrmepsilon | fstarcsort --sort_type=ilabel > $lang_test/G.fst
+gunzip -c $lm | arpa2fst --disambig-symbol=#0 \
+                 --read-symbol-table=$lang_test/words.txt - $lang_test/G.fst
 utils/validate_lang.pl --skip-determinization-check $lang_test || exit 1;
 
 # Compiles decoding graph.

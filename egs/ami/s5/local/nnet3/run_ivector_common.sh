@@ -10,7 +10,6 @@ nj=10
 use_ihm_ali=false
 use_sat_alignments=true
 
-set -e
 . cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
@@ -54,7 +53,7 @@ else
   # prepare the perturbed data directory and generate alignments
   local/nnet3/prepare_perturbed_alignments.sh --stage $stage --mic $mic \
                                               --use-sat-alignments $use_sat_alignments
-  
+
   ali_dir=exp/$mic/${gmm}_${mic}_train_sp_ali
 fi
 
@@ -78,7 +77,7 @@ if [ $stage -le 4 ]; then
     steps/make_mfcc.sh --nj $nj --mfcc-config conf/mfcc_hires.conf \
       --cmd "$train_cmd" data/$mic/${datadir}_hires exp/make_${mic}_hires/$datadir $mfccdir || exit 1;
     steps/compute_cmvn_stats.sh data/$mic/${datadir}_hires exp/make_${mic}_hires/$mic/$datadir $mfccdir || exit 1;
-    
+
     utils/fix_data_dir.sh data/$mic/${datadir}_hires
   done
 fi

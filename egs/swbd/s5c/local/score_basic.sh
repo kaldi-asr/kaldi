@@ -6,6 +6,7 @@ cmd=run.pl
 min_lmwt=5
 max_lmwt=20
 reverse=false
+iter=final
 word_ins_penalty=0.0,0.5,1.0
 #end configuration section.
 
@@ -26,7 +27,7 @@ data=$1
 lang=$2 # Note: may be graph directory not lang directory, but has the necessary stuff copied.
 dir=$3
 
-model=$dir/../final.mdl # assume model one level up from decoding dir.
+model=$dir/../$iter.mdl # assume model one level up from decoding dir.
 
 hubscr=$KALDI_ROOT/tools/sctk/bin/hubscr.pl
 [ ! -f $hubscr ] && echo "Cannot find scoring program at $hubscr" && exit 1;
@@ -45,7 +46,7 @@ function filter_text {
   perl -e 'foreach $w (@ARGV) { $bad{$w} = 1; }
    while(<STDIN>) { @A  = split(" ", $_); $id = shift @A; print "$id ";
      foreach $a (@A) { if (!defined $bad{$a}) { print "$a "; }} print "\n"; }' \
-   '[NOISE]' '[LAUGHTER]' '[VOCALIZED-NOISE]' '<UNK>' '%HESITATION'
+   '[noise]' '[laughter]' '[vocalized-noise]' '<unk>' '%hesitation'
 }
 
 for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do

@@ -40,9 +40,10 @@ namespace nnet1 {
  */
 class Splice: public Component {
  public:
-  Splice(int32 dim_in, int32 dim_out)
-    : Component(dim_in, dim_out)
+  Splice(int32 dim_in, int32 dim_out) :
+    Component(dim_in, dim_out)
   { }
+
   ~Splice()
   { }
 
@@ -55,7 +56,7 @@ class Splice: public Component {
     std::vector<std::vector<int32> > build_vector;
     // parse config
     std::string token; 
-    while (!is.eof()) {
+    while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token); 
       /**/ if (token == "<ReadVector>") {
         ReadIntegerVector(is, false, &frame_offsets);
@@ -74,7 +75,6 @@ class Splice: public Component {
         KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                   << " (ReadVector|BuildVector)";
       }
-      is >> std::ws; // eat-up whitespace
     }
 
     // build the vector, using <BuildVector> ... </BuildVector> inputs
@@ -154,9 +154,10 @@ class Splice: public Component {
  */
 class CopyComponent: public Component {
  public:
-  CopyComponent(int32 dim_in, int32 dim_out)
-    : Component(dim_in, dim_out)
+  CopyComponent(int32 dim_in, int32 dim_out) : 
+    Component(dim_in, dim_out)
   { }
+
   ~CopyComponent()
   { }
 
@@ -169,7 +170,7 @@ class CopyComponent: public Component {
     std::vector<std::vector<int32> > build_vector;
     // parse config
     std::string token; 
-    while (!is.eof()) {
+    while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token); 
       /**/ if (token == "<ReadVector>") {
         ReadIntegerVector(is, false, &copy_from_indices);
@@ -188,7 +189,6 @@ class CopyComponent: public Component {
         KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                   << " (ReadVector|BuildVector)";
       }
-      is >> std::ws; // eat-up whitespace
     }
 
     // build the vector, using <BuildVector> ... </BuildVector> inputs
@@ -295,9 +295,10 @@ class CopyComponent: public Component {
  */
 class LengthNormComponent: public Component {
  public:
-  LengthNormComponent(int32 dim_in, int32 dim_out)
-    : Component(dim_in, dim_out)
+  LengthNormComponent(int32 dim_in, int32 dim_out) : 
+    Component(dim_in, dim_out)
   { }
+
   ~LengthNormComponent()
   { }
 
@@ -339,9 +340,10 @@ class LengthNormComponent: public Component {
  */
 class AddShift : public UpdatableComponent {
  public:
-  AddShift(int32 dim_in, int32 dim_out)
-    : UpdatableComponent(dim_in, dim_out), shift_data_(dim_in), learn_rate_coef_(1.0)
+  AddShift(int32 dim_in, int32 dim_out) : 
+    UpdatableComponent(dim_in, dim_out), shift_data_(dim_in)
   { }
+
   ~AddShift()
   { }
 
@@ -353,13 +355,12 @@ class AddShift : public UpdatableComponent {
     float init_param = 0.0;
     // parse config
     std::string token; 
-    while (!is.eof()) {
+    while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token); 
       /**/ if (token == "<InitParam>") ReadBasicType(is, false, &init_param);
       else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef_);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                      << " (InitParam)";
-      is >> std::ws; // eat-up whitespace
     }
     // initialize
     shift_data_.Resize(InputDim(), kSetZero); // set to zero
@@ -390,7 +391,8 @@ class AddShift : public UpdatableComponent {
   }
    
   std::string Info() const {
-    return std::string("\n  shift_data") + MomentStatistics(shift_data_);
+    return std::string("\n  shift_data") + MomentStatistics(shift_data_) +
+           ", lr-coef " + ToString(learn_rate_coef_);
   }
 
   std::string InfoGradient() const {
@@ -406,7 +408,7 @@ class AddShift : public UpdatableComponent {
 
   void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
                         const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
-    //derivative of additive constant is zero...
+    // derivative of additive constant is zero...
     in_diff->CopyFromMat(out_diff);
   }
 
@@ -435,7 +437,6 @@ class AddShift : public UpdatableComponent {
  protected:
   CuVector<BaseFloat> shift_data_;
   CuVector<BaseFloat> shift_data_grad_;
-  BaseFloat learn_rate_coef_;
 };
 
 
@@ -446,9 +447,11 @@ class AddShift : public UpdatableComponent {
  */
 class Rescale : public UpdatableComponent {
  public:
-  Rescale(int32 dim_in, int32 dim_out)
-    : UpdatableComponent(dim_in, dim_out), scale_data_(dim_in), learn_rate_coef_(1.0)
+  Rescale(int32 dim_in, int32 dim_out) : 
+    UpdatableComponent(dim_in, dim_out), 
+    scale_data_(dim_in)
   { }
+
   ~Rescale()
   { }
 
@@ -460,13 +463,12 @@ class Rescale : public UpdatableComponent {
     float init_param = 0.0;
     // parse config
     std::string token; 
-    while (!is.eof()) {
+    while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token); 
       /**/ if (token == "<InitParam>") ReadBasicType(is, false, &init_param);
       else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef_);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                      << " (InitParam)";
-      is >> std::ws; // eat-up whitespace
     }
     // initialize
     scale_data_.Resize(InputDim(), kSetZero);
@@ -497,7 +499,8 @@ class Rescale : public UpdatableComponent {
   }
  
   std::string Info() const {
-    return std::string("\n  scale_data") + MomentStatistics(scale_data_);
+    return std::string("\n  scale_data") + MomentStatistics(scale_data_) +
+           ", lr-coef " + ToString(learn_rate_coef_);
   }
   
   std::string InfoGradient() const {
@@ -545,7 +548,6 @@ class Rescale : public UpdatableComponent {
  protected:
   CuVector<BaseFloat> scale_data_;
   CuVector<BaseFloat> scale_data_grad_;
-  BaseFloat learn_rate_coef_;
 };
 
 

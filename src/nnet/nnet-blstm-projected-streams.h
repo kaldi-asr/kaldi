@@ -1,7 +1,7 @@
 // nnet/nnet-blstm-projected-streams.h
 
-// Copyright 2014  Jiayu DU (Jerry), Wei Li
 // Copyright 2015  Chongjia Ni
+// Copyright 2014  Jiayu DU (Jerry), Wei Li
 // See ../../COPYING for clarification regarding multiple authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -81,27 +81,23 @@ class BLstmProjectedStreams : public UpdatableComponent {
   }
 
   void InitData(std::istream &is) {
-    // define options
+    // define options,
     float param_scale = 0.02;
-    // parse config
+    // parse the line from prototype,
     std::string token;
     while (!is.eof()) {
       ReadToken(is, false, &token);
-      if (token == "<CellDim>")
-        ReadBasicType(is, false, &ncell_);
-      else if (token == "<ClipGradient>")
-        ReadBasicType(is, false, &clip_gradient_);
-      // else if (token == "<DropoutRate>")
-      //  ReadBasicType(is, false, &dropout_rate_);
-      else if (token == "<ParamScale>")
-        ReadBasicType(is, false, &param_scale);
+      /**/ if (token == "<CellDim>") ReadBasicType(is, false, &ncell_);
+      else if (token == "<ClipGradient>") ReadBasicType(is, false, &clip_gradient_);
+      else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef_);
+      else if (token == "<BiasLearnRateCoef>") ReadBasicType(is, false, &bias_learn_rate_coef_);
+      else if (token == "<ParamScale>") ReadBasicType(is, false, &param_scale);
+      // else if (token == "<DropoutRate>") ReadBasicType(is, false, &dropout_rate_);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
-               << " (CellDim|NumStream|ParamScale)";
-               //<< " (CellDim|NumStream|DropoutRate|ParamScale)";
-      is >> std::ws;
+                     << " (CellDim|ClipGradient|LearnRateCoef|BiasLearnRateCoef|ParamScale)";
     }
 
-    // init weight and bias (Uniform)
+    // init the weights and biases (from uniform dist.),
     // forward direction
     f_w_gifo_x_.Resize(4*ncell_, input_dim_, kUndefined);
     f_w_gifo_r_.Resize(4*ncell_, nrecur_, kUndefined);
@@ -154,7 +150,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
     b_w_gifo_r_corr_.Resize(4*ncell_, nrecur_, kSetZero);
     b_bias_corr_.Resize(4*ncell_, kSetZero);
 
-    // peep hole connect
+    // peep-hole connections
     // forward direction
     f_peephole_i_c_corr_.Resize(ncell_, kSetZero);
     f_peephole_f_c_corr_.Resize(ncell_, kSetZero);
@@ -169,17 +165,39 @@ class BLstmProjectedStreams : public UpdatableComponent {
     // backward direction
     b_w_r_m_corr_.Resize(nrecur_, ncell_, kSetZero);
 
+    KALDI_ASSERT(ncell_ > 0);
     KALDI_ASSERT(clip_gradient_ >= 0.0);
+    KALDI_ASSERT(learn_rate_coef_ >= 0.0);
+    KALDI_ASSERT(bias_learn_rate_coef_ >= 0.0);
   }
 
 
   void ReadData(std::istream &is, bool binary) {
-    ExpectToken(is, binary, "<CellDim>");
-    ReadBasicType(is, binary, &ncell_);
-    ExpectToken(is, binary, "<ClipGradient>");
-    ReadBasicType(is, binary, &clip_gradient_);
-    // ExpectToken(is, binary, "<DropoutRate>");
-    // ReadBasicType(is, binary, &dropout_rate_);
+    // Read all the '<Tokens>' in arbitrary order,
+    while ('<' == Peek(is, binary)) {
+      std::string token;
+      int first_char = PeekToken(is, binary);
+      switch (first_char) {
+        case 'C': ReadToken(is, false, &token);
+          /**/ if (token == "<CellDim>") ReadBasicType(is, binary, &ncell_);
+          else if (token == "<ClipGradient>") ReadBasicType(is, binary, &clip_gradient_);
+          else KALDI_ERR << "Unknown token: " << token;
+          break;
+        //case 'D': ExpectToken(is, binary, "<DropoutRate>");
+        //  ReadBasicType(is, binary, &dropout_rate_);
+        //  break;
+        case 'L': ExpectToken(is, binary, "<LearnRateCoef>"); 
+          ReadBasicType(is, binary, &learn_rate_coef_);
+          break;
+        case 'B': ExpectToken(is, binary, "<BiasLearnRateCoef>"); 
+          ReadBasicType(is, binary, &bias_learn_rate_coef_);
+          break;
+        default: ReadToken(is, false, &token);
+          KALDI_ERR << "Unknown token: " << token;
+      }
+    }
+    KALDI_ASSERT(ncell_ != 0);
+    // Read the data (data follow the tokens),
 
     // reading parameters corresponding to forward direction
     f_w_gifo_x_.Read(is, binary);
@@ -236,6 +254,12 @@ class BLstmProjectedStreams : public UpdatableComponent {
     // WriteToken(os, binary, "<DropoutRate>");
     // WriteBasicType(os, binary, dropout_rate_);
 
+    WriteToken(os, binary, "<LearnRateCoef>");
+    WriteBasicType(os, binary, learn_rate_coef_);
+    WriteToken(os, binary, "<BiasLearnRateCoef>");
+    WriteBasicType(os, binary, bias_learn_rate_coef_);
+
+    if(!binary) os << "\n";
     // writing parameters corresponding to forward direction
     f_w_gifo_x_.Write(os, binary);
     f_w_gifo_r_.Write(os, binary);
@@ -262,12 +286,12 @@ class BLstmProjectedStreams : public UpdatableComponent {
 
   int32 NumParams() const {
     return 2*( f_w_gifo_x_.NumRows() * f_w_gifo_x_.NumCols() +
-         f_w_gifo_r_.NumRows() * f_w_gifo_r_.NumCols() +
-         f_bias_.Dim() +
-         f_peephole_i_c_.Dim() +
-         f_peephole_f_c_.Dim() +
-         f_peephole_o_c_.Dim() +
-         f_w_r_m_.NumRows() * f_w_r_m_.NumCols() );
+      f_w_gifo_r_.NumRows() * f_w_gifo_r_.NumCols() +
+      f_bias_.Dim() +
+      f_peephole_i_c_.Dim() +
+      f_peephole_f_c_.Dim() +
+      f_peephole_o_c_.Dim() +
+      f_w_r_m_.NumRows() * f_w_r_m_.NumCols() );
   }
 
 
@@ -318,8 +342,6 @@ class BLstmProjectedStreams : public UpdatableComponent {
 
     offset += len; len = b_w_r_m_.NumRows() * b_w_r_m_.NumCols();
     wei_copy->Range(offset, len).CopyRowsFromMat(b_w_r_m_);
-
-    return;
   }
 
 
@@ -1013,30 +1035,29 @@ class BLstmProjectedStreams : public UpdatableComponent {
     }
   }
 
-
   void Update(const CuMatrixBase<BaseFloat> &input, const CuMatrixBase<BaseFloat> &diff) {
     const BaseFloat lr  = opts_.learn_rate;
     // forward direction update
-    f_w_gifo_x_.AddMat(-lr, f_w_gifo_x_corr_);
-    f_w_gifo_r_.AddMat(-lr, f_w_gifo_r_corr_);
-    f_bias_.AddVec(-lr, f_bias_corr_, 1.0);
+    f_w_gifo_x_.AddMat(-lr * learn_rate_coef_, f_w_gifo_x_corr_);
+    f_w_gifo_r_.AddMat(-lr * learn_rate_coef_, f_w_gifo_r_corr_);
+    f_bias_.AddVec(-lr * bias_learn_rate_coef_, f_bias_corr_, 1.0);
 
-    f_peephole_i_c_.AddVec(-lr, f_peephole_i_c_corr_, 1.0);
-    f_peephole_f_c_.AddVec(-lr, f_peephole_f_c_corr_, 1.0);
-    f_peephole_o_c_.AddVec(-lr, f_peephole_o_c_corr_, 1.0);
+    f_peephole_i_c_.AddVec(-lr * bias_learn_rate_coef_, f_peephole_i_c_corr_, 1.0);
+    f_peephole_f_c_.AddVec(-lr * bias_learn_rate_coef_, f_peephole_f_c_corr_, 1.0);
+    f_peephole_o_c_.AddVec(-lr * bias_learn_rate_coef_, f_peephole_o_c_corr_, 1.0);
 
-    f_w_r_m_.AddMat(-lr, f_w_r_m_corr_);
+    f_w_r_m_.AddMat(-lr * learn_rate_coef_, f_w_r_m_corr_);
 
     // backward direction update
-    b_w_gifo_x_.AddMat(-lr, b_w_gifo_x_corr_);
-    b_w_gifo_r_.AddMat(-lr, b_w_gifo_r_corr_);
-    b_bias_.AddVec(-lr, b_bias_corr_, 1.0);
+    b_w_gifo_x_.AddMat(-lr * learn_rate_coef_, b_w_gifo_x_corr_);
+    b_w_gifo_r_.AddMat(-lr * learn_rate_coef_, b_w_gifo_r_corr_);
+    b_bias_.AddVec(-lr * bias_learn_rate_coef_, b_bias_corr_, 1.0);
 
-    b_peephole_i_c_.AddVec(-lr, b_peephole_i_c_corr_, 1.0);
-    b_peephole_f_c_.AddVec(-lr, b_peephole_f_c_corr_, 1.0);
-    b_peephole_o_c_.AddVec(-lr, b_peephole_o_c_corr_, 1.0);
+    b_peephole_i_c_.AddVec(-lr * bias_learn_rate_coef_, b_peephole_i_c_corr_, 1.0);
+    b_peephole_f_c_.AddVec(-lr * bias_learn_rate_coef_, b_peephole_f_c_corr_, 1.0);
+    b_peephole_o_c_.AddVec(-lr * bias_learn_rate_coef_, b_peephole_o_c_corr_, 1.0);
 
-    b_w_r_m_.AddMat(-lr, b_w_r_m_corr_);
+    b_w_r_m_.AddMat(-lr * learn_rate_coef_, b_w_r_m_corr_);
 
     /* For L2 regularization see "vanishing & exploding difficulties" in nnet-lstm-projected-streams.h */
   }

@@ -28,7 +28,7 @@ namespace nnet3 {
 void UnitTestNnetCompile() {
   for (int32 n = 0; n < 20; n++) {
     struct NnetGenerationOptions gen_config;
-    
+
     std::vector<std::string> configs;
     GenerateConfigSequence(gen_config, &configs);
     Nnet nnet;
@@ -37,13 +37,13 @@ void UnitTestNnetCompile() {
       std::istringstream is(configs[j]);
       nnet.ReadConfig(is);
     }
-    
+
     ComputationRequest request;
     std::vector<Matrix<BaseFloat> > inputs;
     ComputeExampleComputationRequestSimple(nnet, &request, &inputs);
     KALDI_LOG << "Computation request is:";
     request.Print(std::cerr);
-    
+
     NnetComputation computation;
     Compiler compiler(request, nnet);
 
@@ -62,7 +62,7 @@ void UnitTestNnetCompile() {
 int main() {
   using namespace kaldi;
   using namespace kaldi::nnet3;
-  //SetVerboseLevel(2);
+  // SetVerboseLevel(2);
 
   UnitTestNnetCompile();
 

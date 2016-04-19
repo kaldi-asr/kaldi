@@ -51,7 +51,7 @@ void WriteFstKaldi(std::ostream &os, bool binary,
 #endif
     printer.Print(&os, "<unknown>");
     if (os.fail())
-      KALDI_ERR << "Stream failure detected writing FST to stream\n";
+      KALDI_ERR << "Stream failure detected writing FST to stream";
     // Write another newline as a terminating character.  The read routine will
     // detect this [this is a Kaldi mechanism, not something in the original
     // OpenFst code].
@@ -213,4 +213,4 @@ bool VectorFstTplHolder<Arc>::Read(std::istream &is) {
 
 } // namespace fst.
 
-#endif
+#endif  // KALDI_FSTEXT_KALDI_FST_IO_INL_H_

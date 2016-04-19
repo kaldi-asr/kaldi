@@ -44,10 +44,14 @@ my $ans = 1;
 
 my $dir = pop(@ARGV);
 system("mkdir -p $dir 2>/dev/null");
-my $index = 1;
+
+my @all_actual_storage = ();
 foreach my $file (@ARGV) {
-  $file = $file . "/" . $suffix;
-  my $actual_storage = File::Spec->rel2abs($file);
+  push @all_actual_storage, File::Spec->rel2abs($file . "/" . $suffix);
+}
+
+my $index = 1;
+foreach my $actual_storage (@all_actual_storage) {
   my $pseudo_storage = "$dir/$index";
 
   # If the symbolic link already exists, delete it.
@@ -59,6 +63,20 @@ foreach my $file (@ARGV) {
 
   # Create the destination directory and make the link.
   system("mkdir -p $actual_storage 2>/dev/null");
+  if ($? != 0) {
+    print STDERR "$0: error creating directory $actual_storage\n";
+    exit(1);
+  }
+  { # create a README file for easier deletion.
+    open(R, ">$actual_storage/README.txt");
+    my $storage_dir = File::Spec->rel2abs($dir);
+    print R "# This directory is linked from $storage_dir, as part of Kaldi striped data\n";
+    print R "# The full list of directories where this data resides is:\n";
+    foreach my $d (@all_actual_storage) {
+      print R "$d\n";
+    }
+    close(R);
+  }
   my $ret = symlink($actual_storage, $pseudo_storage);
 
   # Process the returned values

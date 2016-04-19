@@ -262,7 +262,10 @@ bool ProtoSupervisionToSupervision(
                                       // of H -- will be empty.
 
   HTransducerConfig h_cfg;
-  h_cfg.transition_scale = 0.0;  // we don't want transition probs.
+
+  // We don't want to add any transition probabilities as they will be added
+  // when we compose with the denominator graph.
+  h_cfg.transition_scale = 0.0;
   h_cfg.push_weights = false;  // there's nothing to push.
 
 
@@ -277,8 +280,10 @@ bool ProtoSupervisionToSupervision(
   TableCompose(*h_fst, context_dep_fst, &transition_id_fst);
   delete h_fst;
 
-  BaseFloat self_loop_scale = 0.0;   // all transition-scales are 0.0; we aren't
-                                     // using transition-probs here.
+  // We don't want to add any transition probabilities as they will be added
+  // when we compose with the denominator graph.
+  BaseFloat self_loop_scale = 0.0;
+
   bool reorder = true;  // more efficient in general; won't affect results.
   // add self-loops to the FST with transition-ids as its labels.
   AddSelfLoops(trans_model, disambig_syms_h, self_loop_scale, reorder,
@@ -802,7 +807,7 @@ void GetWeightsForRanges(int32 range_length,
 
 
 void GetWeightsForRangesNew(int32 range_length,
-                            int32 num_frames_zeroed,                            
+                            int32 num_frames_zeroed,
                             const std::vector<int32> &range_starts,
                             std::vector<Vector<BaseFloat> > *weights) {
   KALDI_ASSERT(range_length > 0 && num_frames_zeroed * 2 < range_length);

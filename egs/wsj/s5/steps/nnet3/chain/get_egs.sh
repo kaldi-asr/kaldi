@@ -19,15 +19,19 @@
 # Begin configuration section.
 cmd=run.pl
 feat_type=raw     # set it to 'lda' to use LDA features.
-frames_per_eg=25   # number of frames of labels per example.  more->less disk space and
-                  # less time preparing egs, but more I/O during training.
-                  # note: the script may reduce this if reduce_frames_per_eg is true.
+frames_per_eg=25   # number of feature frames example (not counting added context).
+                   # more->less disk space and less time preparing egs, but more
+                   # I/O during training.  note: the script may reduce this if
+                   # reduce_frames_per_eg is true.
 frames_overlap_per_eg=0  # number of supervised frames of overlap that we aim for per eg.
                   # can be useful to avoid wasted data if you're using --left-deriv-truncate
                   # and --right-deriv-truncate.
 cut_zero_frames=-1  # if activated, activates new-style derivative weights.. i'll reorganize
                     # this if it works well.
-frame_subsampling_factor=3 # ratio between input and output frame-rate of nnet.
+frame_subsampling_factor=3 # frames-per-second of features we train on divided
+                           # by frames-per-second at output of chain model
+alignment_subsampling_factor=3 # frames-per-second of input alignments divided
+                               # by frames-per-second at output of chain model
 left_context=4    # amount of left-context per eg (i.e. extra frames of input features
                   # not present in the output supervision).
 right_context=4   # amount of right-context per eg.
@@ -43,8 +47,9 @@ num_utts_subset=300     # number of utterances in validation and training
 num_valid_egs_combine=0  # #validation examples for combination weights at the very end.
 num_train_egs_combine=1000 # number of train examples for the above.
 num_egs_diagnostic=400 # number of frames for "compute_prob" jobs
-frames_per_iter=400000 # each iteration of training, see this many frames
-                       # per job.  This is just a guideline; it will pick a number
+frames_per_iter=400000 # each iteration of training, see this many frames per
+                       # job, measured at the sampling rate of the features
+                       # used.  This is just a guideline; it will pick a number
                        # that divides the number of samples in the entire data.
 
 right_tolerance=  #CTC right tolerance == max label delay.
@@ -124,10 +129,22 @@ mkdir -p $dir/log $dir/info
 num_lat_jobs=$(cat $latdir/num_jobs) || exit 1;
 
 # Get list of validation utterances.
-awk '{print $1}' $data/utt2spk | utils/shuffle_list.pl | head -$num_utts_subset \
-    > $dir/valid_uttlist || exit 1;
+
+frame_shift=$(utils/data/get_frame_shift.sh $data)
+utils/data/get_utt2dur.sh $data
+
+cat $data/utt2dur | \
+  awk -v min_len=$frames_per_eg -v fs=$frame_shift '{if ($2 * 1/fs >= min_len) print $1}' | \
+  utils/shuffle_list.pl | head -$num_utts_subset > $dir/valid_uttlist || exit 1;
+
+len_uttlist=`wc -l $dir/valid_uttlist | awk '{print $1}'`
+if [ $len_uttlist -lt $num_utts_subset ]; then
+  echo "Number of utterances which have length at least $frames_per_eg is really low. Please check your data." && exit 1;
+fi
 
 if [ -f $data/utt2uniq ]; then  # this matters if you use data augmentation.
+  # because of this stage we can again have utts with lengths less than
+  # frames_per_eg
   echo "File $data/utt2uniq exists, so augmenting valid_uttlist to"
   echo "include all perturbed versions of the same 'real' utterances."
   mv $dir/valid_uttlist $dir/valid_uttlist.tmp
@@ -138,8 +155,14 @@ if [ -f $data/utt2uniq ]; then  # this matters if you use data augmentation.
   rm $dir/uniq2utt $dir/valid_uttlist.tmp
 fi
 
-awk '{print $1}' $data/utt2spk | utils/filter_scp.pl --exclude $dir/valid_uttlist | \
+cat $data/utt2dur | \
+  awk -v min_len=$frames_per_eg -v fs=$frame_shift '{if ($2 * 1/fs >= min_len) print $1}' | \
+   utils/filter_scp.pl --exclude $dir/valid_uttlist | \
    utils/shuffle_list.pl | head -$num_utts_subset > $dir/train_subset_uttlist || exit 1;
+len_uttlist=`wc -l $dir/train_subset_uttlist | awk '{print $1}'`
+if [ $len_uttlist -lt $num_utts_subset ]; then
+  echo "Number of utterances which have length at least $frames_per_eg is really low. Please check your data." && exit 1;
+fi
 
 [ -z "$transform_dir" ] && transform_dir=$latdir
 
@@ -275,7 +298,7 @@ egs_opts="--left-context=$left_context --right-context=$right_context --num-fram
 # don't do the overlap thing for the validation data.
 valid_egs_opts="--left-context=$valid_left_context --right-context=$valid_right_context --num-frames=$frames_per_eg --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress"
 
-ctc_supervision_all_opts="--lattice-input=true --frame-subsampling-factor=$frame_subsampling_factor"
+ctc_supervision_all_opts="--lattice-input=true --frame-subsampling-factor=$alignment_subsampling_factor"
 [ ! -z $right_tolerance ] && \
   ctc_supervision_all_opts="$ctc_supervision_all_opts --right-tolerance=$right_tolerance"
 

@@ -68,6 +68,9 @@ void MatrixBase<Real>::Invert(Real *log_det, Real *det_sign,
       if (log_det) *log_det = -std::numeric_limits<Real>::infinity();
       if (det_sign) *det_sign = 0;
       delete[] pivot;
+#ifndef HAVE_ATLAS
+      KALDI_MEMALIGN_FREE(p_work);
+#endif
       return;
     }
   }
@@ -628,7 +631,8 @@ Matrix<double>::Matrix(const MatrixBase<float> & M,
 
 template<typename Real>
 inline void Matrix<Real>::Init(const MatrixIndexT rows,
-                               const MatrixIndexT cols) {
+                               const MatrixIndexT cols,
+                               const MatrixStrideType stride_type) {
   if (rows * cols == 0) {
     KALDI_ASSERT(rows == 0 && cols == 0);
     this->num_rows_ = 0;
@@ -638,9 +642,7 @@ inline void Matrix<Real>::Init(const MatrixIndexT rows,
     return;
   }
   KALDI_ASSERT(rows > 0 && cols > 0);
-  // initialize some helping vars
-  MatrixIndexT skip;
-  MatrixIndexT real_cols;
+  MatrixIndexT skip, stride;
   size_t size;
   void *data;  // aligned memory block
   void *temp;  // memory block to be really freed
@@ -648,8 +650,8 @@ inline void Matrix<Real>::Init(const MatrixIndexT rows,
   // compute the size of skip and real cols
   skip = ((16 / sizeof(Real)) - cols % (16 / sizeof(Real)))
       % (16 / sizeof(Real));
-  real_cols = cols + skip;
-  size = static_cast<size_t>(rows) * static_cast<size_t>(real_cols)
+  stride = cols + skip;
+  size = static_cast<size_t>(rows) * static_cast<size_t>(stride)
       * sizeof(Real);
 
   // allocate the memory and set the right dimensions and parameters
@@ -657,7 +659,7 @@ inline void Matrix<Real>::Init(const MatrixIndexT rows,
     MatrixBase<Real>::data_        = static_cast<Real *> (data);
     MatrixBase<Real>::num_rows_      = rows;
     MatrixBase<Real>::num_cols_      = cols;
-    MatrixBase<Real>::stride_  = real_cols;
+    MatrixBase<Real>::stride_  = (stride_type == kDefaultStride ? stride : cols);
   } else {
     throw std::bad_alloc();
   }
@@ -666,7 +668,8 @@ inline void Matrix<Real>::Init(const MatrixIndexT rows,
 template<typename Real>
 void Matrix<Real>::Resize(const MatrixIndexT rows,
                           const MatrixIndexT cols,
-                          MatrixResizeType resize_type) {
+                          MatrixResizeType resize_type,
+                          MatrixStrideType stride_type) {
   // the next block uses recursion to handle what we have to do if
   // resize_type == kCopyData.
   if (resize_type == kCopyData) {
@@ -699,7 +702,7 @@ void Matrix<Real>::Resize(const MatrixIndexT rows,
     else
       Destroy();
   }
-  Init(rows, cols);
+  Init(rows, cols, stride_type);
   if (resize_type == kSetZero) MatrixBase<Real>::SetZero();
 }
 
@@ -1465,7 +1468,9 @@ SubMatrix<Real>::SubMatrix(const MatrixBase<Real> &M,
   MatrixBase<Real>::num_rows_ = r;
   MatrixBase<Real>::num_cols_ = c;
   MatrixBase<Real>::stride_ = M.Stride();
-  MatrixBase<Real>::data_ = M.Data_workaround() + co + ro * M.Stride();
+  MatrixBase<Real>::data_ = M.Data_workaround() +
+      static_cast<size_t>(co) +
+      static_cast<size_t>(ro) * static_cast<size_t>(M.Stride());
 }
 
 
@@ -1966,6 +1971,19 @@ void MatrixBase<Real>::ApplyHeaviside() {
     Real *data = this->RowData(i);
     for (MatrixIndexT j = 0; j < num_cols; j++)
       data[j] = (data[j] > 0 ? 1.0 : 0.0);
+  }
+}
+
+template<typename Real>
+void MatrixBase<Real>::Heaviside(const MatrixBase<Real> &src) {
+  KALDI_ASSERT(SameDim(*this, src));
+  MatrixIndexT num_rows = num_rows_, num_cols = num_cols_;
+  Real *row_data = data_;
+  const Real *src_row_data = src.Data();
+  for (MatrixIndexT row = 0; row < num_rows;
+       row++,row_data += stride_, src_row_data += src.stride_) {
+    for (MatrixIndexT col = 0; col < num_cols; col++)
+      row_data[col] = (src_row_data[col] > 0 ? 1.0 : 0.0);
   }
 }
 

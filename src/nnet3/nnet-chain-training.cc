@@ -1,6 +1,7 @@
 // nnet3/nnet-chain-training.cc
 
 // Copyright      2015    Johns Hopkins University (author: Daniel Povey)
+//                2016    Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -44,6 +45,17 @@ NnetChainTrainer::NnetChainTrainer(const NnetChainTrainingOptions &opts,
                                // natural-gradient updates.
     SetZero(is_gradient, delta_nnet_);
   }
+  if (opts.nnet_config.read_cache != "") {
+    bool binary;
+    try {
+      Input ki(opts.nnet_config.read_cache, &binary);
+      compiler_.ReadCache(ki.Stream(), binary);
+      KALDI_LOG << "Read computation cache from " << opts.nnet_config.write_cache;
+    } catch (...) {
+      KALDI_WARN << "Could not open cached computation. "
+                    "Probably this is the first training iteration.";
+    }
+  } 
 }
 
 
@@ -173,6 +185,11 @@ bool NnetChainTrainer::PrintTotalStats() const {
 
 
 NnetChainTrainer::~NnetChainTrainer() {
+  if (opts_.nnet_config.write_cache != "") {
+    Output ko(opts_.nnet_config.write_cache, opts_.nnet_config.binary_write_cache);
+    compiler_.WriteCache(ko.Stream(), opts_.nnet_config.binary_write_cache);
+    KALDI_LOG << "Wrote computation cache to " << opts_.nnet_config.write_cache;
+  } 
   delete delta_nnet_;
 }
 

@@ -37,6 +37,11 @@
 //  each WAVE chunk has header sub-chunk 'fmt_'
 //  and one or more data sub-chunks 'data'
 //
+//  [Note from Dan: to say that the wave format was ever "specified" anywhere is
+//   not quite right.  The guy who invented the wave format attempted to create
+//   a formal specification but it did not completely make sense.  And there
+//   doesn't seem to be a consensus on what makes a valid wave file,
+//   particularly where the accuracy of header information is concerned.]
 */
 
 
@@ -59,6 +64,8 @@ const BaseFloat kWaveSampleMax = 32768.0;
 /// This class's purpose is to read in Wave files.
 class WaveData {
  public:
+  enum ReadDataType { kReadData, kLeaveDataUndefined };
+
   WaveData(BaseFloat samp_freq, const MatrixBase<BaseFloat> &data)
       : data_(data), samp_freq_(samp_freq) {}
 
@@ -67,7 +74,7 @@ class WaveData {
   /// Read() will throw on error.  It's valid to call Read() more than once--
   /// in this case it will destroy what was there before.
   /// "is" should be opened in binary mode.
-  void Read(std::istream &is);
+  void Read(std::istream &is, ReadDataType read_data = kReadData);
 
   /// Write() will throw on error.   os should be opened in binary mode.
   void Write(std::ostream &os) const;
@@ -92,6 +99,11 @@ class WaveData {
     samp_freq_ = 0.0;
   }
 
+  void Swap(WaveData *other) {
+    data_.Swap(&(other->data_));
+    std::swap(samp_freq_, other->samp_freq_);
+  }
+
  private:
   static const uint32 kBlockSize = 1024 * 1024;  // Use 1M bytes.
   Matrix<BaseFloat> data_;
@@ -106,8 +118,11 @@ class WaveData {
 };
 
 
-// Holder class for .wav files that enables us to read (but not write)
-// .wav files. c.f. util/kaldi-holder.h
+// Holder class for .wav files that enables us to read (but not write) .wav
+// files. c.f. util/kaldi-holder.h we don't use the KaldiObjectHolder template
+// because we don't want to check for the \0B binary header. We could have faked
+// it by pretending to read in the wave data in text mode after failing to find
+// the \0B header, but that would have been a little ugly.
 class WaveHolder {
  public:
   typedef WaveData T;
@@ -153,6 +168,65 @@ class WaveHolder {
     }
   }
 
+  void Swap(WaveHolder *other) {
+    t_.Swap(&(other->t_));
+  }
+
+  bool ExtractRange(const WaveHolder &other, const std::string &range) {
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
+    return false;
+  }
+
+ private:
+  T t_;
+};
+
+// This is like WaveHolder but when you just want the metadata-
+// it leaves the actual data undefined, it doesn't read it.
+class WaveInfoHolder {
+ public:
+  typedef WaveData T;
+
+  static bool Write(std::ostream &os, bool binary, const T &t) {
+    KALDI_ERR << "This holder type does not support writing.";
+    return true;
+  }
+
+  void Copy(const T &t) { t_.CopyFrom(t); }
+
+  static bool IsReadInBinary() { return true; }
+
+  void Clear() { t_.Clear(); }
+
+  const T &Value() { return t_; }
+
+  WaveInfoHolder &operator = (const WaveInfoHolder &other) {
+    t_.CopyFrom(other.t_);
+    return *this;
+  }
+  WaveInfoHolder(const WaveInfoHolder &other): t_(other.t_) {}
+
+  WaveInfoHolder() {}
+
+  bool Read(std::istream &is) {
+    try {
+      t_.Read(is, WaveData::kLeaveDataUndefined);  // throws exception on failure.
+      return true;
+    } catch (const std::exception &e) {
+      KALDI_WARN << "Exception caught in WaveHolder object (reading).";
+      if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
+      return false;  // write failure.
+    }
+  }
+
+  void Swap(WaveInfoHolder *other) {
+    t_.Swap(&(other->t_));
+  }
+
+  bool ExtractRange(const WaveInfoHolder &other, const std::string &range) {
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
+    return false;
+  }
  private:
   T t_;
 };

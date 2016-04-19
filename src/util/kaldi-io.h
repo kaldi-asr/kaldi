@@ -1,6 +1,7 @@
 // util/kaldi-io.h
 
 // Copyright 2009-2011  Microsoft Corporation;  Jan Silovsky
+//                2016  Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -217,8 +218,9 @@ class Input {
 
   // It is never necessary or helpful to call Close, except if
   // you are concerned about to many filehandles being open.
-  // Close does not throw.
-  void Close();
+  // Close does not throw. It returns the exit code as int32
+  // in the case of a pipe [kPipeInput], and always zero otherwise.
+  int32 Close();
 
   // Returns the underlying stream. Throws if !IsOpen()
   std::istream &Stream();

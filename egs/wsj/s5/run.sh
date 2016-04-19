@@ -20,8 +20,8 @@ wsj1=/export/corpora5/LDC/LDC94S13B
 
 local/wsj_data_prep.sh $wsj0/??-{?,??}.? $wsj1/??-{?,??}.?  || exit 1;
 
-# Sometimes, we have seen WSJ distributions that do not have subdirectories 
-# like '11-13.1', but instead have 'doc', 'si_et_05', etc. directly under the 
+# Sometimes, we have seen WSJ distributions that do not have subdirectories
+# like '11-13.1', but instead have 'doc', 'si_et_05', etc. directly under the
 # wsj0 or wsj1 directories. In such cases, try the following:
 #
 # corpus=/exports/work/inf_hcrc_cstr_general/corpora/wsj
@@ -44,9 +44,9 @@ local/wsj_format_data.sh --lang-suffix "_nosp" || exit 1;
  # containing many of the OOVs in the WSJ LM training data,
  # and an LM trained directly on that data (i.e. not just
  # copying the arpa files from the disks from LDC).
- # Caution: the commands below will only work if $decode_cmd 
+ # Caution: the commands below will only work if $decode_cmd
  # is setup to use qsub.  Else, just remove the --cmd option.
- # NOTE: If you have a setup corresponding to the cstr_wsj_data_prep.sh style,
+ # NOTE: If you have a setup corresponding to the older cstr_wsj_data_prep.sh style,
  # use local/cstr_wsj_extend_dict.sh --dict-suffix "_nosp" $corpus/wsj1/doc/ instead.
   (
    local/wsj_extend_dict.sh --dict-suffix "_nosp" $wsj1/13-32.1  && \
@@ -60,7 +60,7 @@ local/wsj_format_data.sh --lang-suffix "_nosp" || exit 1;
 # mfccdir should be some place with a largish disk where you
 # want to store MFCC features.
 mfccdir=mfcc
-for x in test_eval92 test_eval93 test_dev93 train_si284; do 
+for x in test_eval92 test_eval93 test_dev93 train_si284; do
  steps/make_mfcc.sh --cmd "$train_cmd" --nj 20 \
    data/$x exp/make_mfcc/$x $mfccdir || exit 1;
  steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir || exit 1;
@@ -87,7 +87,7 @@ steps/train_mono.sh --boost-silence 1.25 --nj 10 --cmd "$train_cmd" \
  steps/decode.sh --nj 10 --cmd "$decode_cmd" exp/mono0a/graph_nosp_tgpr \
    data/test_dev93 exp/mono0a/decode_nosp_tgpr_dev93 && \
  steps/decode.sh --nj 8 --cmd "$decode_cmd" exp/mono0a/graph_nosp_tgpr \
-   data/test_eval92 exp/mono0a/decode_nosp_tgpr_eval92 
+   data/test_eval92 exp/mono0a/decode_nosp_tgpr_eval92
 ) &
 
 steps/align_si.sh --boost-silence 1.25 --nj 10 --cmd "$train_cmd" \
@@ -101,7 +101,7 @@ while [ ! -f data/lang_nosp_test_tgpr/tmp/LG.fst ] || \
   sleep 20;
 done
 sleep 30;
-# or the mono mkgraph.sh might be writing 
+# or the mono mkgraph.sh might be writing
 # data/lang_test_tgpr/tmp/LG.fst which will cause this to fail.
 
 utils/mkgraph.sh data/lang_nosp_test_tgpr \
@@ -180,9 +180,9 @@ steps/lmrescore.sh --cmd "$decode_cmd" \
   exp/tri2b/decode_nosp_tgpr_dev93_tg || exit 1;
 
 # Trying Minimum Bayes Risk decoding (like Confusion Network decoding):
-mkdir exp/tri2b/decode_nosp_tgpr_dev93_tg_mbr 
+mkdir exp/tri2b/decode_nosp_tgpr_dev93_tg_mbr
 cp exp/tri2b/decode_nosp_tgpr_dev93_tg/lat.*.gz \
-  exp/tri2b/decode_nosp_tgpr_dev93_tg_mbr 
+  exp/tri2b/decode_nosp_tgpr_dev93_tg_mbr
 local/score_mbr.sh --cmd "$decode_cmd" \
  data/test_dev93/ data/lang_nosp_test_tgpr/ \
  exp/tri2b/decode_nosp_tgpr_dev93_tg_mbr
@@ -276,7 +276,7 @@ steps/train_sat.sh  --cmd "$train_cmd" 4200 40000 \
  steps/decode_fmllr.sh --nj 8 --cmd "$decode_cmd" \
    exp/tri4a/graph_nosp_tgpr data/test_eval92 \
    exp/tri4a/decode_nosp_tgpr_eval92 || exit 1;
-) & 
+) &
 
 
 # This step is just to demonstrate the train_quick.sh script, in which we
@@ -397,7 +397,7 @@ local/nnet/run_dnn.sh
 #local/run_bnf_sgmm.sh
 
 
-# You probably want to try KL-HMM 
+# You probably want to try KL-HMM
 #local/run_kl_hmm.sh
 
 # Getting results [see RESULTS file]
@@ -428,7 +428,7 @@ local/nnet/run_dnn.sh
 #  - exp/tri4b/decode_bd_tgpr_eval92/kws/kwslist.xml
 
 # # forward-backward decoding example [way to speed up decoding by decoding forward
-# # and backward in time] 
+# # and backward in time]
 # local/run_fwdbwd.sh
 
 # # A couple of nnet3 recipes:

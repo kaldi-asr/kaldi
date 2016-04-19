@@ -10,6 +10,7 @@ import imp
 
 nodes = imp.load_source('nodes', 'steps/nnet3/components.py')
 nnet3_train_lib = imp.load_source('ntl', 'steps/nnet3/nnet3_train_lib.py')
+chain_lib = imp.load_source('ncl', 'steps/nnet3/chain/nnet3_chain_lib.py')
 
 def GetArgs():
     # we add compulsary arguments as named arguments for readability
@@ -37,10 +38,16 @@ def GetArgs():
                                   help="number of network targets (e.g. num-pdf-ids/num-leaves)")
     num_target_group.add_argument("--ali-dir", type=str,
                                   help="alignment directory, from which we derive the num-targets")
+    num_target_group.add_argument("--tree-dir", type=str,
+                                  help="directory with final.mdl, from which we derive the num-targets")
 
     # General neural network options
     parser.add_argument("--splice-indexes", type=str,
                         help="Splice indexes at input layer, e.g. '-3,-2,-1,0,1,2,3'", required = True, default="0")
+    parser.add_argument("--xent-regularize", type=float,
+                        help="For chain models, if nonzero, add a separate output for cross-entropy "
+                        "regularization (with learning-rate-factor equal to the inverse of this)",
+                        default=0.0)
     parser.add_argument("--include-log-softmax", type=str, action=nnet3_train_lib.StrToBoolAction,
                         help="add the final softmax layer ", default=True, choices = ["false", "true"])
 
@@ -97,6 +104,8 @@ def CheckArgs(args):
 
     if args.ali_dir is not None:
         args.num_targets = nnet3_train_lib.GetNumberOfLeaves(args.ali_dir)
+    elif args.tree_dir is not None:
+        args.num_targets = chain_lib.GetNumberOfLeaves(args.tree_dir)
 
     if args.ivector_dir is not None:
         args.ivector_dim = nnet3_train_lib.GetIvectorDim(args.ivector_dir)
@@ -201,7 +210,7 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
                 num_lstm_layers, num_hidden_layers,
                 norm_based_clipping, clipping_threshold,
                 ng_per_element_scale_options, ng_affine_options,
-                label_delay, include_log_softmax, self_repair_scale):
+                label_delay, include_log_softmax, xent_regularize, self_repair_scale):
 
     config_lines = {'components':[], 'component-nodes':[]}
 
@@ -239,7 +248,14 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
 					    lstm_delay = lstm_delay[i][0], self_repair_scale = self_repair_scale)
         # make the intermediate config file for layerwise discriminative
         # training
-        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options = ng_affine_options, label_delay = label_delay, include_log_softmax = include_log_softmax)
+        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options, label_delay = label_delay, include_log_softmax = include_log_softmax)
+
+
+        if xent_regularize != 0.0:
+            nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
+                                include_log_softmax = True,
+                                name_affix = 'xent')
+
         config_files['{0}/layer{1}.config'.format(config_dir, i+1)] = config_lines
         config_lines = {'components':[], 'component-nodes':[]}
 	if len(lstm_delay[i]) == 2:
@@ -256,7 +272,13 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
                                                ng_affine_options, self_repair_scale = self_repair_scale)
         # make the intermediate config file for layerwise discriminative
         # training
-        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options = ng_affine_options, label_delay = label_delay, include_log_softmax = include_log_softmax)
+        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options, label_delay = label_delay, include_log_softmax = include_log_softmax)
+
+        if xent_regularize != 0.0:
+            nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
+                                include_log_softmax = True,
+                                name_affix = 'xent')
+
         config_files['{0}/layer{1}.config'.format(config_dir, i+1)] = config_lines
         config_lines = {'components':[], 'component-nodes':[]}
 
@@ -301,7 +323,7 @@ def Main():
                 args.norm_based_clipping,
                 args.clipping_threshold,
                 args.ng_per_element_scale_options, args.ng_affine_options,
-                args.label_delay, args.include_log_softmax,
+                args.label_delay, args.include_log_softmax, args.xent_regularize,
                 args.self_repair_scale)
 
 if __name__ == "__main__":

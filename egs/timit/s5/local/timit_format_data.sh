@@ -16,7 +16,7 @@ tmpdir=data/local/lm_tmp
 lexicon=data/local/dict/lexicon.txt
 mkdir -p $tmpdir
 
-for x in train dev test; do 
+for x in train dev test; do
   mkdir -p data/$x
   cp $srcdir/${x}_wav.scp data/$x/wav.scp || exit 1;
   cp $srcdir/$x.text data/$x/text || exit 1;
@@ -37,13 +37,10 @@ for lm_suffix in bg; do
   test=data/lang_test_${lm_suffix}
   mkdir -p $test
   cp -r data/lang/* $test
-  
+
   gunzip -c $lmdir/lm_phone_${lm_suffix}.arpa.gz | \
-    egrep -v '<s> <s>|</s> <s>|</s> </s>' | \
-    arpa2fst - | fstprint | \
-    utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=$test/words.txt \
-     --osymbols=$test/words.txt  --keep_isymbols=false --keep_osymbols=false | \
-    fstrmepsilon | fstarcsort --sort_type=ilabel > $test/G.fst
+    arpa2fst --disambig-symbol=#0 \
+             --read-symbol-table=$test/words.txt - $test/G.fst
   fstisstochastic $test/G.fst
  # The output is like:
  # 9.14233e-05 -0.259833
@@ -61,7 +58,7 @@ for lm_suffix in bg; do
     < "$lexicon"  >$tmpdir/g/select_empty.fst.txt
   fstcompile --isymbols=$test/words.txt --osymbols=$test/words.txt $tmpdir/g/select_empty.fst.txt | \
    fstarcsort --sort_type=olabel | fstcompose - $test/G.fst > $tmpdir/g/empty_words.fst
-  fstinfo $tmpdir/g/empty_words.fst | grep cyclic | grep -w 'y' && 
+  fstinfo $tmpdir/g/empty_words.fst | grep cyclic | grep -w 'y' &&
     echo "Language model has cycles with empty words" && exit 1
   rm -r $tmpdir/g
 done

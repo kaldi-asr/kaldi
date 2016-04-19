@@ -186,7 +186,8 @@ class LatticeWordAligner {
       // force it out.
       CompactLatticeArc lat_arc;
       tuple.comp_state.OutputArcForce(info_, tmodel_, &lat_arc, &error_);
-      lat_arc.nextstate = GetStateForTuple(tuple, true); // true == add to queue.
+      // True in the next line means add it to the queue.
+      lat_arc.nextstate = GetStateForTuple(tuple, true);
       // The final-prob stuff will get called again from ProcessQueueElement().
       // Note: because we did CreateSuperFinal(), this final-state on the input
       // lattice will have no output arcs (and unit final-prob), so there will be
@@ -210,7 +211,6 @@ class LatticeWordAligner {
     // epsilon-sequencing rules encoded by the filters in
     // composition.
     CompactLatticeArc lat_arc;
-    Tuple tuple2(tuple); // temp
     if (tuple.comp_state.OutputArc(info_, tmodel_, &lat_arc, &error_)) {
       // note: this function changes the tuple (when it returns true).
       lat_arc.nextstate = GetStateForTuple(tuple, true); // true == add to queue,
@@ -229,7 +229,7 @@ class LatticeWordAligner {
         ProcessFinal(tuple, output_state);
       }
       // Now process the arcs.  Note: final-state shouldn't have any arcs.
-      for(fst::ArcIterator<CompactLattice> aiter(lat_, tuple.input_state);
+      for (fst::ArcIterator<CompactLattice> aiter(lat_, tuple.input_state);
           !aiter.Done(); aiter.Next()) {
         const CompactLatticeArc &arc = aiter.Value();
         Tuple next_tuple(tuple);
@@ -274,9 +274,13 @@ class LatticeWordAligner {
     // on them.
     if (info_.partial_word_label == 0 || info_.silence_label == 0) {
       int32 unused_label = 1 + HighestNumberedOutputSymbol(lat);
+      if (info_.partial_word_label >= unused_label)
+        unused_label = info_.partial_word_label + 1;
+      if (info_.silence_label >= unused_label)
+        unused_label = info_.silence_label + 1;
       KALDI_ASSERT(unused_label > 0);
       if (info_.partial_word_label == 0)
-        info_.partial_word_label = unused_label;
+        info_.partial_word_label = unused_label++;
       if (info_.silence_label == 0)
         info_.silence_label = unused_label;
     }
@@ -604,7 +608,8 @@ void LatticeWordAligner::ComputationState::OutputArcForce(
       if (!*error) { // Check that it ends at the end state of silence; error otherwise.
         int32 i = transition_ids_.size() - 1;
         if (info.reorder)
-          while(tmodel.IsSelfLoop(transition_ids_[i]) && i > 0) i--;
+          while (tmodel.IsSelfLoop(transition_ids_[i]) && i > 0)
+            i--;
         if (!tmodel.IsFinal(transition_ids_[i])) {
           *error = true;
           KALDI_WARN << "Broken silence arc at end of utterance (does not "
@@ -770,11 +775,11 @@ class WordAlignedLatticeTester {
     if (!info_.reorder) return tmodel_.IsFinal(tids.back());
     else {
       for (size_t i = 0; i < tids.size(); i++) {
-        if(tmodel_.IsFinal(tids[i])) { // got the "final" transition, which is
+        if (tmodel_.IsFinal(tids[i])) { // got the "final" transition, which is
           // reordered to actually not be final.  Make sure that all the
           // rest of the transition ids are the self-loop of that same
           // transition-state.
-          for(size_t j = i+1; j < tids.size(); j++) {
+          for (size_t j = i+1; j < tids.size(); j++) {
             if (!(tmodel_.TransitionIdToTransitionState(tids[j])
                   == tmodel_.TransitionIdToTransitionState(tids[i]))) return false;
           }
@@ -798,11 +803,11 @@ class WordAlignedLatticeTester {
     if (!info_.reorder) return tmodel_.IsFinal(tids.back());
     else {
       for (size_t i = 0; i < tids.size(); i++) {
-        if(tmodel_.IsFinal(tids[i])) { // got the "final" transition, which is
+        if (tmodel_.IsFinal(tids[i])) { // got the "final" transition, which is
           // reordered to actually not be final.  Make sure that all the
           // rest of the transition ids are the self-loop of that same
           // transition-state.
-          for(size_t j = i+1; j < tids.size(); j++) {
+          for (size_t j = i+1; j < tids.size(); j++) {
             if (tmodel_.TransitionIdToTransitionState(tids[j])
                 != tmodel_.TransitionIdToTransitionState(tids[i])) return false;
           }

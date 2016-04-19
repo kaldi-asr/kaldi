@@ -17,11 +17,9 @@
 echo "Preparing train and test data"
 srcdir=data/local/data
 lmdir=data/local/nist_lm
-tmpdir=data/local/lm_tmp
 lexicon=data/local/lang_tmp/lexiconp.txt
-mkdir -p $tmpdir
 
-for x in test_eval92_clean test_eval92_noisy test_eval92_5k_clean test_eval92_5k_noisy dev_dt_05_clean dev_dt_05_reverb dev_dt_05_noisy dev_dt_20_clean dev_dt_20_reverb dev_dt_20_noisy train_si84_clean train_si84_reverb train_si84_noisy; do 
+for x in test_eval92_clean test_eval92_noisy test_eval92_5k_clean test_eval92_5k_noisy dev_dt_05_clean dev_dt_05_reverb dev_dt_05_noisy dev_dt_20_clean dev_dt_20_reverb dev_dt_20_noisy train_si84_clean train_si84_reverb train_si84_noisy; do
   mkdir -p data/$x
   cp $srcdir/${x}_wav.scp data/$x/wav.scp || exit 1;
   cp $srcdir/$x.txt data/$x/text || exit 1;
@@ -42,25 +40,10 @@ for lm_suffix in bg tgpr tg bg_5k tgpr_5k tg_5k; do
   cp -r data/lang/* $test
 
   gunzip -c $lmdir/lm_${lm_suffix}.arpa.gz | \
-   utils/find_arpa_oovs.pl $test/words.txt  > $tmpdir/oovs_${lm_suffix}.txt
-
-  # grep -v '<s> <s>' because the LM seems to have some strange and useless
-  # stuff in it with multiple <s>'s in the history.  Encountered some other similar
-  # things in a LM from Geoff.  Removing all "illegal" combinations of <s> and </s>,
-  # which are supposed to occur only at being/end of utt.  These can cause 
-  # determinization failures of CLG [ends up being epsilon cycles].
-  gunzip -c $lmdir/lm_${lm_suffix}.arpa.gz | \
-    grep -v '<s> <s>' | \
-    grep -v '</s> <s>' | \
-    grep -v '</s> </s>' | \
-    arpa2fst - | fstprint | \
-    utils/remove_oovs.pl $tmpdir/oovs_${lm_suffix}.txt | \
-    utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=$test/words.txt \
-      --osymbols=$test/words.txt  --keep_isymbols=false --keep_osymbols=false | \
-     fstrmepsilon | fstarcsort --sort_type=ilabel > $test/G.fst
+    arpa2fst --disambig-symbol=#0 \
+             --read-symbol-table=$test/words.txt - $test/G.fst
 
   utils/validate_lang.pl $test || exit 1;
 done
 
 echo "Succeeded in formatting data."
-rm -r $tmpdir

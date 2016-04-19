@@ -2,6 +2,7 @@
 # Copyright 2012  Brno University of Technology (Author: Karel Vesely)
 #           2013  Johns Hopkins University (Author: Daniel Povey)
 #           2015  Vijayaditya Peddinti
+#           2016  Vimal Manohar
 # Apache 2.0
 
 # Computes training alignments using nnet3 DNN
@@ -15,7 +16,12 @@ beam=10
 retry_beam=40
 transform_dir=
 iter=final
-use_gpu=no
+use_gpu=true
+frames_per_chunk=50
+extra_left_context=0
+extra_right_context=0
+extra_left_context_initial=-1
+extra_right_context_final=-1
 online_ivector_dir=
 feat_type=  # you can set this to force it to use delta features.
 # End configuration options.
@@ -46,6 +52,13 @@ echo $nj > $dir/num_jobs
 sdata=$data/split$nj
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 
+if $use_gpu; then
+  queue_opt="--gpu 1"
+  gpu_opt="--use-gpu=yes"
+else
+  queue_opt=""
+  gpu_opt="--use-gpu=no"
+fi
 
 extra_files=
 [ ! -z "$online_ivector_dir" ] && \
@@ -118,11 +131,23 @@ echo "$0: aligning data in $data using model from $srcdir, putting alignments in
 
 tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text|";
 
-$cmd JOB=1:$nj $dir/log/align.JOB.log \
+frame_subsampling_opt=
+if [ -f $srcdir/frame_subsampling_factor ]; then
+  # e.g. for 'chain' systems
+  frame_subsampling_opt="--frame-subsampling-factor=$(cat $srcdir/frame_subsampling_factor)"
+  cp $srcdir/frame_subsampling_factor $dir
+fi
+
+$cmd $queue_opt JOB=1:$nj $dir/log/align.JOB.log \
   compile-train-graphs $dir/tree $srcdir/${iter}.mdl  $lang/L.fst "$tra" ark:- \| \
-  nnet3-align-compiled $scale_opts $ivector_opts \
-    --use-gpu=$use_gpu --beam=$beam --retry-beam=$retry_beam \
-    $srcdir/${iter}.mdl ark:- "$feats" "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
+  nnet3-align-compiled $scale_opts $ivector_opts $frame_subsampling_opt \
+  --frames-per-chunk=$frames_per_chunk \
+  --extra-left-context=$extra_left_context \
+  --extra-right-context=$extra_right_context \
+  --extra-left-context-initial=$extra_left_context_initial \
+  --extra-right-context-final=$extra_right_context_final \
+  $gpu_opt --beam=$beam --retry-beam=$retry_beam \
+  $srcdir/${iter}.mdl ark:- "$feats" "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
 
 echo "$0: done aligning data."
 

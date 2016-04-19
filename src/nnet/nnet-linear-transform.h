@@ -31,10 +31,12 @@ namespace nnet1 {
 
 class LinearTransform : public UpdatableComponent {
  public:
-  LinearTransform(int32 dim_in, int32 dim_out) 
-    : UpdatableComponent(dim_in, dim_out), 
-      linearity_(dim_out, dim_in), linearity_corr_(dim_out, dim_in), learn_rate_coef_(1.0)
+  LinearTransform(int32 dim_in, int32 dim_out) : 
+    UpdatableComponent(dim_in, dim_out), 
+    linearity_(dim_out, dim_in), 
+    linearity_corr_(dim_out, dim_in)
   { }
+
   ~LinearTransform()
   { }
 
@@ -48,14 +50,13 @@ class LinearTransform : public UpdatableComponent {
     std::string read_matrix_file;
     // parse config
     std::string token; 
-    while (!is.eof()) {
+    while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token); 
       /**/ if (token == "<ParamStddev>") ReadBasicType(is, false, &param_stddev);
       else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef);
       else if (token == "<ReadMatrix>") ReadToken(is, false, &read_matrix_file);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                      << " (ParamStddev|ReadMatrix|LearnRateCoef)";
-      is >> std::ws; // eat-up whitespace
     }
 
     //
@@ -85,9 +86,21 @@ class LinearTransform : public UpdatableComponent {
   }
 
   void ReadData(std::istream &is, bool binary) {
-    // learning-rate coefficien
-    ExpectToken(is, binary, "<LearnRateCoef>");
-    ReadBasicType(is, binary, &learn_rate_coef_);
+    // Read all the '<Tokens>' in arbitrary order,
+    while ('<' == Peek(is, binary)) {
+      int first_char = PeekToken(is, binary);
+      switch (first_char) {
+        case 'L': ExpectToken(is, binary, "<LearnRateCoef>"); 
+          ReadBasicType(is, binary, &learn_rate_coef_);
+          break;
+        default: 
+          std::string token;
+          ReadToken(is, false, &token);
+          KALDI_ERR << "Unknown token: " << token;
+      }
+    }
+    // Read the data (data follow the tokens),
+    
     // weights
     linearity_.Read(is, binary);
 
@@ -98,6 +111,7 @@ class LinearTransform : public UpdatableComponent {
   void WriteData(std::ostream &os, bool binary) const {
     WriteToken(os, binary, "<LearnRateCoef>");
     WriteBasicType(os, binary, learn_rate_coef_);
+    if(!binary) os << "\n";
     linearity_.Write(os, binary);
   }
 
@@ -110,11 +124,12 @@ class LinearTransform : public UpdatableComponent {
   }
   
   std::string Info() const {
-    return std::string("\n  linearity") + MomentStatistics(linearity_);
+    return std::string("\n  linearity") + MomentStatistics(linearity_) +
+      ", lr-coef " + ToString(learn_rate_coef_);
   }
   std::string InfoGradient() const {
     return std::string("\n  linearity_grad") + MomentStatistics(linearity_corr_) +
-           ", lr-coef " + ToString(learn_rate_coef_);
+      ", lr-coef " + ToString(learn_rate_coef_);
   }
 
   void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
@@ -170,8 +185,6 @@ class LinearTransform : public UpdatableComponent {
  private:
   CuMatrix<BaseFloat> linearity_;
   CuMatrix<BaseFloat> linearity_corr_;
-  
-  BaseFloat learn_rate_coef_;
 };
 
 } // namespace nnet1

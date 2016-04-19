@@ -13,7 +13,7 @@
 // THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
 // WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
-// MERCHANTABLITY OR NON-INFRINGEMENT.
+// MERCHANTABILITY OR NON-INFRINGEMENT.
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
         "that wants to rescore lattices. We assume that the words in the\n"
         "input arpa language model has been converted to integers.\n"
         "\n"
-        "The program is used joinly with utils/map_arpa_lm.pl to build\n"
+        "The program is used jointly with utils/map_arpa_lm.pl to build\n"
         "ConstArpaLm format language model. We first map the words in an Arpa\n"
         "format language model to integers using utils/map_arpa_m.pl, and\n"
         "then use this program to build a ConstArpaLm format language model.\n"
@@ -44,19 +44,19 @@ int main(int argc, char *argv[]) {
 
     kaldi::ParseOptions po(usage);
 
-    bool natural_base = true;
-    int32 unk_symbol = -1;
-    int32 bos_symbol = -1;
-    int32 eos_symbol = -1;
-    po.Register("natural-base", &natural_base,
-                "If true, use log-base e instead of log-base 10.");
-    po.Register("unk-symbol", &unk_symbol,
+    ArpaParseOptions options;
+    options.Register(&po);
+
+    // Ideally, these registrations would be in ArpaParseOptions, but some
+    // programs want integers and other want symbols, so we register them
+    // outside instead.
+    po.Register("unk-symbol", &options.unk_symbol,
                 "Integer corresponds to unknown-word in language model. -1 if "
                 "no such word is provided.");
-    po.Register("bos-symbol", &bos_symbol,
+    po.Register("bos-symbol", &options.bos_symbol,
                 "Integer corresponds to <s>. You must set this to your actual "
                 "BOS integer.");
-    po.Register("eos-symbol", &eos_symbol,
+    po.Register("eos-symbol", &options.eos_symbol,
                 "Integer corresponds to </s>. You must set this to your actual "
                 "EOS integer.");
 
@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    if (bos_symbol == -1 || eos_symbol == -1) {
+    if (options.bos_symbol == -1 || options.eos_symbol == -1) {
       KALDI_ERR << "Please set --bos-symbol and --eos-symbol.";
       exit(1);
     }
@@ -75,10 +75,8 @@ int main(int argc, char *argv[]) {
     std::string arpa_rxfilename = po.GetArg(1),
         const_arpa_wxfilename = po.GetOptArg(2);
 
-    bool ans = BuildConstArpaLm(natural_base, bos_symbol,
-                                eos_symbol, unk_symbol,
-                                arpa_rxfilename, const_arpa_wxfilename);
-
+    bool ans = BuildConstArpaLm(options, arpa_rxfilename,
+                                const_arpa_wxfilename);
     if (ans)
       return 0;
     else

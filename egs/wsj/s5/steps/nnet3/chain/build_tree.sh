@@ -103,7 +103,7 @@ if [ $stage -le -5 ]; then
   # get feature dimension
   example_feats="`echo $feats | sed s/JOB/1/g`";
   if ! feat_dim=$(feat-to-dim "$example_feats" - 2>/dev/null) || [ -z $feat_dim ]; then
-    feat-to-dim "$example_feats"  # to see the error message.
+    feat-to-dim "$example_feats" - # to see the error message.
     echo "error getting feature dimension"
     exit 1;
   fi

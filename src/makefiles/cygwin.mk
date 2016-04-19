@@ -4,7 +4,8 @@ ifndef FSTROOT
 $(error FSTROOT not defined.)
 endif
 
-CXXFLAGS = -msse -msse2 -Wall -I.. -DKALDI_DOUBLEPRECISION=0  \
+DOUBLE_PRECISION = 0
+CXXFLAGS = -msse -msse2 -Wall -I.. -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
     -DHAVE_POSIX_MEMALIGN -DHAVE_CLAPACK -I ../../tools/CLAPACK/ \
     -Wno-sign-compare -Winit-self \
     -I ../../tools/CLAPACK/ \

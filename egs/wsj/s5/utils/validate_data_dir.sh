@@ -133,7 +133,7 @@ if [ -f $data/wav.scp ]; then
     ! cat $data/segments | \
       awk '{if (NF != 4 || ($4 <= $3 && $4 != -1)) { print "Bad line in segments file", $0; exit(1); }}' && \
       echo "$0: badly formatted segments file" && exit 1;
-    
+
     segments_len=`cat $data/segments | wc -l`
     if [ -f $data/text ]; then
       ! cmp -s $tmpdir/utts <(awk '{print $1}' <$data/text) && \
@@ -153,14 +153,14 @@ if [ -f $data/wav.scp ]; then
       # this file is needed only for ctm scoring; it's indexed by recording-id.
       check_sorted_and_uniq $data/reco2file_and_channel
       ! cat $data/reco2file_and_channel | \
-        awk '{if (NF != 3 || ($3 != "A" && $3 != "B" )) { 
+        awk '{if (NF != 3 || ($3 != "A" && $3 != "B" )) {
                 if ( NF == 3 && $3 == "1" ) {
                   warning_issued = 1;
                 } else {
-                  print "Bad line ", $0; exit 1; 
+                  print "Bad line ", $0; exit 1;
                 }
               }
-            } 
+            }
             END {
               if (warning_issued == 1) {
                 print "The channel should be marked as A or B, not 1! You should change it ASAP! "
@@ -188,14 +188,14 @@ if [ -f $data/wav.scp ]; then
       # this file is needed only for ctm scoring; it's indexed by recording-id.
       check_sorted_and_uniq $data/reco2file_and_channel
       ! cat $data/reco2file_and_channel | \
-        awk '{if (NF != 3 || ($3 != "A" && $3 != "B" )) { 
+        awk '{if (NF != 3 || ($3 != "A" && $3 != "B" )) {
                 if ( NF == 3 && $3 == "1" ) {
                   warning_issued = 1;
                 } else {
-                  print "Bad line ", $0; exit 1; 
+                  print "Bad line ", $0; exit 1;
                 }
               }
-            } 
+            }
             END {
               if (warning_issued == 1) {
                 print "The channel should be marked as A or B, not 1! You should change it ASAP! "
@@ -227,6 +227,7 @@ if [ -f $data/feats.scp ]; then
     exit 1;
   fi
 fi
+
 
 if [ -f $data/cmvn.scp ]; then
   check_sorted_and_uniq $data/cmvn.scp
@@ -293,5 +294,20 @@ for f in vad.scp utt2lang utt2uniq; do
     fi
   fi
 done
+
+
+if [ -f $data/utt2dur ]; then
+  check_sorted_and_uniq $data/utt2dur
+  cat $data/utt2dur | awk '{print $1}' > $tmpdir/utts.utt2dur
+  if ! cmp -s $tmpdir/utts{,.utt2dur}; then
+    echo "$0: Error: in $data, utterance-ids extracted from utt2spk and utt2dur file"
+    echo "$0: differ, partial diff is:"
+    partial_diff $tmpdir/utts{,.feats}
+    exit 1;
+  fi
+  cat $data/utt2dur | \
+    awk '{ if (NF != 2 || !($2 > 0)) { print "Bad line : " $0; exit(1) }}' || exit 1
+fi
+
 
 echo "$0: Successfully validated data-directory $data"

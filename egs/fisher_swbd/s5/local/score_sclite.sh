@@ -128,8 +128,8 @@ rt03* )
   if [ $stage -le 3 ]; then
     for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
       $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.swbd.LMWT.${wip}.log \
-        grep -v '^sw_' $data/stm '>' $dir/score_LMWT_${wip}/stm.swbd '&&' \
-        grep -v '^sw_' $dir/score_LMWT_${wip}/${name}.ctm '>' $dir/score_LMWT_${wip}/${name}.ctm.swbd '&&' \
+        grep -v '^fsh_' $data/stm '>' $dir/score_LMWT_${wip}/stm.swbd '&&' \
+        grep -v '^fsh_' $dir/score_LMWT_${wip}/${name}.ctm '>' $dir/score_LMWT_${wip}/${name}.ctm.swbd '&&' \
         $hubscr -p $hubdir -V -l english -h hub5 -g $data/glm -r $dir/score_LMWT_${wip}/stm.swbd $dir/score_LMWT_${wip}/${name}.ctm.swbd || exit 1;
     done
   fi
@@ -137,8 +137,8 @@ rt03* )
   if [ $stage -le 3 ]; then
     for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
       $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.fsh.LMWT.${wip}.log \
-        grep -v '^fsh_' $data/stm '>' $dir/score_LMWT_${wip}/stm.fsh '&&' \
-        grep -v '^fsh_' $dir/score_LMWT_${wip}/${name}.ctm '>' $dir/score_LMWT_${wip}/${name}.ctm.fsh '&&' \
+        grep -v '^sw_' $data/stm '>' $dir/score_LMWT_${wip}/stm.fsh '&&' \
+        grep -v '^sw_' $dir/score_LMWT_${wip}/${name}.ctm '>' $dir/score_LMWT_${wip}/${name}.ctm.fsh '&&' \
         $hubscr -p $hubdir -V -l english -h hub5 -g $data/glm -r $dir/score_LMWT_${wip}/stm.fsh $dir/score_LMWT_${wip}/${name}.ctm.fsh || exit 1;
     done
   fi

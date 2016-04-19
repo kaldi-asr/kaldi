@@ -35,7 +35,7 @@ class AffineTransform : public UpdatableComponent {
     : UpdatableComponent(dim_in, dim_out), 
       linearity_(dim_out, dim_in), bias_(dim_out),
       linearity_corr_(dim_out, dim_in), bias_corr_(dim_out),
-      learn_rate_coef_(1.0), bias_learn_rate_coef_(1.0), max_norm_(0.0) 
+      max_norm_(0.0) 
   { }
   ~AffineTransform()
   { }
@@ -50,7 +50,7 @@ class AffineTransform : public UpdatableComponent {
     float max_norm = 0.0;
     // parse config
     std::string token; 
-    while (!is.eof()) {
+    while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token); 
       /**/ if (token == "<ParamStddev>") ReadBasicType(is, false, &param_stddev);
       else if (token == "<BiasMean>")    ReadBasicType(is, false, &bias_mean);
@@ -60,7 +60,6 @@ class AffineTransform : public UpdatableComponent {
       else if (token == "<MaxNorm>") ReadBasicType(is, false, &max_norm);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                      << " (ParamStddev|BiasMean|BiasRange|LearnRateCoef|BiasLearnRateCoef)";
-      is >> std::ws; // eat-up whitespace
     }
 
     //
@@ -88,19 +87,30 @@ class AffineTransform : public UpdatableComponent {
   }
 
   void ReadData(std::istream &is, bool binary) {
-    // optional learning-rate coefs
-    if ('<' == Peek(is, binary)) {
-      ExpectToken(is, binary, "<LearnRateCoef>");
-      ReadBasicType(is, binary, &learn_rate_coef_);
-      ExpectToken(is, binary, "<BiasLearnRateCoef>");
-      ReadBasicType(is, binary, &bias_learn_rate_coef_);
+    // Read all the '<Tokens>' in arbitrary order,
+    while ('<' == Peek(is, binary)) {
+      int first_char = PeekToken(is, binary);
+      switch (first_char) {
+        case 'L': ExpectToken(is, binary, "<LearnRateCoef>"); 
+          ReadBasicType(is, binary, &learn_rate_coef_);
+          break;
+        case 'B': ExpectToken(is, binary, "<BiasLearnRateCoef>"); 
+          ReadBasicType(is, binary, &bias_learn_rate_coef_);
+          break;
+        case 'M': ExpectToken(is, binary, "<MaxNorm>");
+          ReadBasicType(is, binary, &max_norm_);
+          break;
+        default: 
+          std::string token;
+          ReadToken(is, false, &token);
+          KALDI_ERR << "Unknown token: " << token;
+      }
     }
-    if ('<' == Peek(is, binary)) {
-      ExpectToken(is, binary, "<MaxNorm>");
-      ReadBasicType(is, binary, &max_norm_);
-    }
-    // weights
+    // Read the data (data follow the tokens),
+
+    // weight matrix,
     linearity_.Read(is, binary);
+    // bias vector,
     bias_.Read(is, binary);
 
     KALDI_ASSERT(linearity_.NumRows() == output_dim_);
@@ -115,6 +125,7 @@ class AffineTransform : public UpdatableComponent {
     WriteBasicType(os, binary, bias_learn_rate_coef_);
     WriteToken(os, binary, "<MaxNorm>");
     WriteBasicType(os, binary, max_norm_);
+    if(!binary) os << "\n";
     // weights
     linearity_.Write(os, binary);
     bias_.Write(os, binary);
@@ -130,18 +141,19 @@ class AffineTransform : public UpdatableComponent {
   }
   
   std::string Info() const {
-    return std::string("\n  linearity") + MomentStatistics(linearity_) +
-           "\n  bias" + MomentStatistics(bias_);
+    return std::string("\n  linearity") + MomentStatistics(linearity_) + 
+      ", lr-coef " + ToString(learn_rate_coef_) +
+      ", max-norm " + ToString(max_norm_) +
+      "\n  bias" + MomentStatistics(bias_) + 
+      ", lr-coef " + ToString(bias_learn_rate_coef_);
   }
   std::string InfoGradient() const {
     return std::string("\n  linearity_grad") + MomentStatistics(linearity_corr_) + 
-           ", lr-coef " + ToString(learn_rate_coef_) +
-           ", max-norm " + ToString(max_norm_) +
-           "\n  bias_grad" + MomentStatistics(bias_corr_) + 
-           ", lr-coef " + ToString(bias_learn_rate_coef_);
-           
+      ", lr-coef " + ToString(learn_rate_coef_) +
+      ", max-norm " + ToString(max_norm_) +
+      "\n  bias_grad" + MomentStatistics(bias_corr_) + 
+      ", lr-coef " + ToString(bias_learn_rate_coef_);
   }
-
 
   void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
     // precopy bias
@@ -231,8 +243,6 @@ class AffineTransform : public UpdatableComponent {
   CuMatrix<BaseFloat> linearity_corr_;
   CuVector<BaseFloat> bias_corr_;
 
-  BaseFloat learn_rate_coef_;
-  BaseFloat bias_learn_rate_coef_;
   BaseFloat max_norm_;
 };
 

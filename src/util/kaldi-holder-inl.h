@@ -1,6 +1,7 @@
 // util/kaldi-holder-inl.h
 
 // Copyright 2009-2011     Microsoft Corporation
+//                2016     Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -68,7 +69,7 @@ template<class KaldiType> class KaldiObjectHolder {
   bool Read(std::istream &is) {
     delete t_;
     t_ = new T;
-    // Don't want any existing state to complicate the read functioN: get new
+    // Don't want any existing state to complicate the read function: get new
     // object.
     bool is_binary;
     if (!InitKaldiInputStream(is, &is_binary)) {
@@ -95,6 +96,19 @@ template<class KaldiType> class KaldiObjectHolder {
     // code error if !t_.
     if (!t_) KALDI_ERR << "KaldiObjectHolder::Value() called wrongly.";
     return *t_;
+  }
+
+  void Swap(KaldiObjectHolder<T> *other) {
+    std::swap(t_, other->t_);
+  }
+
+  bool ExtractRange(const KaldiObjectHolder<T> &other,
+                    const std::string &range) {
+    KALDI_ASSERT(other.t_ != NULL);
+    delete t_;
+    t_ = new T;
+    // this call will fail for most object types.
+    return ExtractObjectRange(*(other.t_), range, t_);
   }
 
   ~KaldiObjectHolder() { delete t_; }
@@ -136,7 +150,7 @@ template<class BasicType> class BasicHolder {
     bool is_binary;
     if (!InitKaldiInputStream(is, &is_binary)) {
       KALDI_WARN << "Reading Table object [integer type], failed reading binary"
-        " header\n";
+          " header\n";
       return false;
     }
     try {
@@ -186,6 +200,15 @@ template<class BasicType> class BasicHolder {
     return t_;
   }
 
+  void Swap(BasicHolder<T> *other) {
+    std::swap(t_, other->t_);
+  }
+
+  bool ExtractRange(const BasicHolder<T> &other, const std::string &range) {
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
+    return false;
+  }
+
   ~BasicHolder() { }
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(BasicHolder);
@@ -210,18 +233,18 @@ template<class BasicType> class BasicVectorHolder {
     try {
       if (binary) {  // need to write the size, in binary mode.
         KALDI_ASSERT(static_cast<size_t>(static_cast<int32>(t.size())) ==
-            t.size());
+                     t.size());
         // Or this Write routine cannot handle such a large vector.
         // use int32 because it's fixed size regardless of compilation.
         // change to int64 (plus in Read function) if this becomes a problem.
         WriteBasicType(os, binary, static_cast<int32>(t.size()));
         for (typename std::vector<BasicType>::const_iterator iter = t.begin();
-            iter != t.end(); ++iter)
+             iter != t.end(); ++iter)
           WriteBasicType(os, binary, *iter);
 
       } else {
         for (typename std::vector<BasicType>::const_iterator iter = t.begin();
-            iter != t.end(); ++iter)
+             iter != t.end(); ++iter)
           WriteBasicType(os, binary, *iter);
         os << '\n';  // Makes output format more readable and
         // easier to manipulate.  In text mode, this function writes something
@@ -243,7 +266,7 @@ template<class BasicType> class BasicVectorHolder {
     bool is_binary;
     if (!InitKaldiInputStream(is, &is_binary)) {
       KALDI_WARN << "Reading Table object [integer type], failed reading binary"
-        " header\n";
+          " header\n";
       return false;
     }
     if (!is_binary) {
@@ -252,7 +275,7 @@ template<class BasicType> class BasicVectorHolder {
       getline(is, line);  // this will discard the \n, if present.
       if (is.fail()) {
         KALDI_WARN << "BasicVectorHolder::Read, error reading line " <<
-          (is.eof() ? "[eof]" : "");
+            (is.eof() ? "[eof]" : "");
         return false;  // probably eof.  fail in any case.
       }
       std::istringstream line_is(line);
@@ -278,14 +301,14 @@ template<class BasicType> class BasicVectorHolder {
         ReadBasicType(is, true, &size);
         t_.resize(size);
         for (typename std::vector<BasicType>::iterator iter = t_.begin();
-            iter != t_.end();
-            ++iter) {
+             iter != t_.end();
+             ++iter) {
           ReadBasicType(is, true, &(*iter));
         }
         return true;
       } catch(...) {
         KALDI_WARN << "BasicVectorHolder::Read, read error or unexpected data"
-          " at archive entry beginning at file position " << filepos;
+            " at archive entry beginning at file position " << filepos;
         return false;
       }
     }
@@ -296,6 +319,16 @@ template<class BasicType> class BasicVectorHolder {
   static bool IsReadInBinary() { return true; }
 
   const T &Value() const {  return t_; }
+
+  void Swap(BasicVectorHolder<BasicType> *other) {
+    t_.swap(other->t_);
+  }
+
+  bool ExtractRange(const BasicVectorHolder<BasicType> &other,
+                    const std::string &range) {
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
+    return false;
+  }
 
   ~BasicVectorHolder() { }
  private:
@@ -320,20 +353,20 @@ template<class BasicType> class BasicVectorVectorHolder {
     try {
       if (binary) {  // need to write the size, in binary mode.
         KALDI_ASSERT(static_cast<size_t>(static_cast<int32>(t.size())) ==
-            t.size());
+                     t.size());
         // Or this Write routine cannot handle such a large vector.
         // use int32 because it's fixed size regardless of compilation.
         // change to int64 (plus in Read function) if this becomes a problem.
         WriteBasicType(os, binary, static_cast<int32>(t.size()));
         for (typename std::vector<std::vector<BasicType> >::const_iterator
-            iter = t.begin();
-            iter != t.end(); ++iter) {
+                 iter = t.begin();
+             iter != t.end(); ++iter) {
           KALDI_ASSERT(static_cast<size_t>(static_cast<int32>(iter->size()))
-              == iter->size());
+                       == iter->size());
           WriteBasicType(os, binary, static_cast<int32>(iter->size()));
           for (typename std::vector<BasicType>::const_iterator
-              iter2 = iter->begin();
-              iter2 != iter->end(); ++iter2) {
+                   iter2 = iter->begin();
+               iter2 != iter->end(); ++iter2) {
             WriteBasicType(os, binary, *iter2);
           }
         }
@@ -344,11 +377,11 @@ template<class BasicType> class BasicVectorVectorHolder {
         // (a separator would cause ambiguity between an
         // empty list, and a list containing a single empty list).
         for (typename std::vector<std::vector<BasicType> >::const_iterator
-            iter = t.begin();
-            iter != t.end();
+                 iter = t.begin();
+             iter != t.end();
              ++iter) {
           for (typename std::vector<BasicType>::const_iterator
-               iter2 = iter->begin();
+                   iter2 = iter->begin();
                iter2 != iter->end(); ++iter2)
             WriteBasicType(os, binary, *iter2);
           os << "; ";
@@ -414,21 +447,21 @@ template<class BasicType> class BasicVectorVectorHolder {
         ReadBasicType(is, true, &size);
         t_.resize(size);
         for (typename std::vector<std::vector<BasicType> >::iterator
-            iter = t_.begin();
-            iter != t_.end();
-            ++iter) {
+                 iter = t_.begin();
+             iter != t_.end();
+             ++iter) {
           int32 size2;
           ReadBasicType(is, true, &size2);
           iter->resize(size2);
           for (typename std::vector<BasicType>::iterator iter2 = iter->begin();
-              iter2 != iter->end();
-              ++iter2)
+               iter2 != iter->end();
+               ++iter2)
             ReadBasicType(is, true, &(*iter2));
         }
         return true;
       } catch(...) {
         KALDI_WARN << "Read error or unexpected data at archive entry beginning"
-          " at file position " << filepos;
+            " at file position " << filepos;
         return false;
       }
     }
@@ -439,6 +472,16 @@ template<class BasicType> class BasicVectorVectorHolder {
   static bool IsReadInBinary() { return true; }
 
   const T &Value() const {  return t_; }
+
+  void Swap(BasicVectorVectorHolder<BasicType> *other) {
+    t_.swap(other->t_);
+  }
+
+  bool ExtractRange(BasicVectorVectorHolder<BasicType> &other,
+                    const std::string &range) {
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
+    return false;
+  }
 
   ~BasicVectorVectorHolder() { }
  private:
@@ -463,13 +506,13 @@ template<class BasicType> class BasicPairVectorHolder {
     try {
       if (binary) {  // need to write the size, in binary mode.
         KALDI_ASSERT(static_cast<size_t>(static_cast<int32>(t.size())) ==
-            t.size());
+                     t.size());
         // Or this Write routine cannot handle such a large vector.
         // use int32 because it's fixed size regardless of compilation.
         // change to int64 (plus in Read function) if this becomes a problem.
         WriteBasicType(os, binary, static_cast<int32>(t.size()));
         for (typename T::const_iterator iter = t.begin();
-            iter != t.end(); ++iter) {
+             iter != t.end(); ++iter) {
           WriteBasicType(os, binary, iter->first);
           WriteBasicType(os, binary, iter->second);
         }
@@ -503,7 +546,7 @@ template<class BasicType> class BasicPairVectorHolder {
     bool is_binary;
     if (!InitKaldiInputStream(is, &is_binary)) {
       KALDI_WARN << "Reading Table object [integer type], failed reading binary"
-        " header\n";
+          " header\n";
       return false;
     }
     if (!is_binary) {
@@ -557,15 +600,15 @@ template<class BasicType> class BasicPairVectorHolder {
         ReadBasicType(is, true, &size);
         t_.resize(size);
         for (typename T::iterator iter = t_.begin();
-            iter != t_.end();
-            ++iter) {
+             iter != t_.end();
+             ++iter) {
           ReadBasicType(is, true, &(iter->first));
           ReadBasicType(is, true, &(iter->second));
         }
         return true;
       } catch(...) {
         KALDI_WARN << "BasicVectorHolder::Read, read error or unexpected data"
-          " at archive entry beginning at file position " << filepos;
+            " at archive entry beginning at file position " << filepos;
         return false;
       }
     }
@@ -576,6 +619,16 @@ template<class BasicType> class BasicPairVectorHolder {
   static bool IsReadInBinary() { return true; }
 
   const T &Value() const {  return t_; }
+
+  void Swap(BasicPairVectorHolder<BasicType> *other) {
+    t_.swap(other->t_);
+  }
+
+  bool ExtractRange(const BasicPairVectorHolder<BasicType> &other,
+                    const std::string &range) {
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
+    return false;
+  }
 
   ~BasicPairVectorHolder() { }
  private:
@@ -611,7 +664,7 @@ class TokenHolder {
     while (isspace(c = is.peek()) && c!= '\n') is.get();
     if (is.peek() != '\n') {
       KALDI_ERR << "TokenHolder::Read, expected newline, got char " <<
-        CharToString(is.peek())
+          CharToString(is.peek())
                 << ", at stream pos " << is.tellg();
       return false;
     }
@@ -627,6 +680,17 @@ class TokenHolder {
   const T &Value() const { return t_; }
 
   ~TokenHolder() { }
+
+  void Swap(TokenHolder *other) {
+    t_.swap(other->t_);
+  }
+
+  bool ExtractRange(const TokenHolder &other,
+                    const std::string &range) {
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
+    return false;
+  }
+
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(TokenHolder);
   T t_;
@@ -642,10 +706,10 @@ class TokenVectorHolder {
 
   static bool Write(std::ostream &os, bool, const T &t) {  // ignore binary-mode
     for (std::vector<std::string>::const_iterator iter = t.begin();
-        iter != t.end();
-        ++iter) {
+         iter != t.end();
+         ++iter) {
       KALDI_ASSERT(IsToken(*iter));  // make sure it's whitespace-free,
-     // printable and nonempty.
+      // printable and nonempty.
       os << *iter << ' ';
     }
     os << '\n';
@@ -665,7 +729,7 @@ class TokenVectorHolder {
     getline(is, line);  // this will discard the \n, if present.
     if (is.fail()) {
       KALDI_WARN << "BasicVectorHolder::Read, error reading line " << (is.eof()
-          ? "[eof]" : "");
+                                                                       ? "[eof]" : "");
       return false;  // probably eof.  fail in any case.
     }
     const char *white_chars = " \t\n\r\f\v";
@@ -679,6 +743,16 @@ class TokenVectorHolder {
   static bool IsReadInBinary() { return false; }
 
   const T &Value() const { return t_; }
+
+  void Swap(TokenVectorHolder *other) {
+    t_.swap(other->t_);
+  }
+
+  bool ExtractRange(const TokenVectorHolder &other,
+                    const std::string &range) {
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
+    return false;
+  }
 
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(TokenVectorHolder);
@@ -718,8 +792,17 @@ class HtkMatrixHolder {
 
   const T &Value() const { return t_; }
 
+  void Swap(HtkMatrixHolder *other) {
+    t_.first.Swap(&(other->t_.first));
+    std::swap(t_.second, other->t_.second);
+  }
 
-  // No destructor.
+  bool ExtractRange(const HtkMatrixHolder &other,
+                    const std::string &range) {
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
+    return false;
+  }
+  // Default destructor.
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(HtkMatrixHolder);
   T t_;
@@ -754,8 +837,8 @@ template<int kFeatDim> class SphinxMatrixHolder {
     int32 size = m.NumRows() * m.NumCols();
     if (MachineIsLittleEndian())
       KALDI_SWAP4(size);
-    os.write(reinterpret_cast<char*> (&size), sizeof(size));  // write the
-                                                              // header
+    // write the header
+    os.write(reinterpret_cast<char*> (&size), sizeof(size));
 
     for (MatrixIndexT i = 0; i < m.NumRows(); i++) {
       std::vector<float32> tmp(m.NumCols());
@@ -788,7 +871,7 @@ template<int kFeatDim> class SphinxMatrixHolder {
     for (MatrixIndexT i = 0; i < feats_.NumRows(); i++) {
       if (sizeof(BaseFloat) == sizeof(float32)) {
         is.read(reinterpret_cast<char*> (feats_.RowData(i)),
-            kFeatDim * sizeof(float32));
+                kFeatDim * sizeof(float32));
         if (!is.good()) {
           KALDI_WARN << "Unexpected error/EOF while reading Sphinx features ";
           return false;
@@ -819,6 +902,16 @@ template<int kFeatDim> class SphinxMatrixHolder {
   static bool IsReadInBinary() { return true; }
 
   const T &Value() const { return feats_; }
+
+  void Swap(SphinxMatrixHolder *other) {
+    feats_.Swap(&(other->feats_));
+  }
+
+  bool ExtractRange(const SphinxMatrixHolder &other,
+                    const std::string &range) {
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
+    return false;
+  }
 
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(SphinxMatrixHolder);

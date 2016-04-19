@@ -74,7 +74,7 @@ class Convolutional2DComponent : public UpdatableComponent {
       fmap_x_len_(0), fmap_y_len_(0),
       filt_x_len_(0), filt_y_len_(0),
       filt_x_step_(0), filt_y_step_(0),
-      connect_fmap_(0), learn_rate_coef_(1.0), bias_learn_rate_coef_(1.0)
+      connect_fmap_(0)
   { }
   ~Convolutional2DComponent()
   { }
@@ -202,6 +202,8 @@ class Convolutional2DComponent : public UpdatableComponent {
     WriteBasicType(os, binary, learn_rate_coef_);
     WriteToken(os, binary, "<BiasLearnRateCoef>");
     WriteBasicType(os, binary, bias_learn_rate_coef_);
+    if(!binary) os << "\n";
+
     // convolution hyperparameters
     WriteToken(os, binary, "<FmapXLen>");
     WriteBasicType(os, binary, fmap_x_len_);
@@ -217,11 +219,14 @@ class Convolutional2DComponent : public UpdatableComponent {
     WriteBasicType(os, binary, filt_y_step_);
     WriteToken(os, binary, "<ConnectFmap>");
     WriteBasicType(os, binary, connect_fmap_);
+    if(!binary) os << "\n";
 
     // trainable parameters
     WriteToken(os, binary, "<Filters>");
+    if(!binary) os << "\n";
     filters_.Write(os, binary);
     WriteToken(os, binary, "<Bias>");
+    if(!binary) os << "\n";
     bias_.Write(os, binary);
   }
 
@@ -238,7 +243,9 @@ class Convolutional2DComponent : public UpdatableComponent {
 
   std::string Info() const {
     return std::string("\n  filters") + MomentStatistics(filters_) +
-           "\n  bias" + MomentStatistics(bias_);
+           ", lr-coef " + ToString(learn_rate_coef_) +
+           "\n  bias" + MomentStatistics(bias_) +
+           ", lr-coef " + ToString(bias_learn_rate_coef_);
   }
   std::string InfoGradient() const {
     return std::string("\n  filters_grad") + MomentStatistics(filters_grad_) +
@@ -444,9 +451,6 @@ class Convolutional2DComponent : public UpdatableComponent {
     filt_x_len_, filt_y_len_,  ///< 2D filter dimensions, x_ temporal, y_ spectral
     filt_x_step_, filt_y_step_,  ///< 2D shifts along temporal and spectral
     connect_fmap_;  ///< if connect_fmap_ = 1, then each fmap has num_filt
-
-  BaseFloat learn_rate_coef_;
-  BaseFloat bias_learn_rate_coef_;
 
   CuMatrix<BaseFloat> filters_;  ///< row = vectorized rectangular filter
   CuVector<BaseFloat> bias_;  ///< bias for each filter

@@ -5,13 +5,18 @@ For cygwin installation, see the instructions in `../INSTALL`.
 
 ## Notes
 
-* These instructions are valid June 2015, [Intel® MKL](https://software.intel.com/en-us/intel-mkl) and OpenBLAS are supported
+* The recipes (in egs/) will not work. There is no commitment to support Windows.
+  The Windows port of Kaldi is targeted at experienced developers who want 
+  to program their own apps using the kaldi libraries and are able to do 
+  the troubleshooting on their own. 
+* These instructions are valid March 2016, 
+  [Intel® MKL](https://software.intel.com/en-us/intel-mkl) and OpenBLAS are supported
 * ATLAS is not supported and I personally have no intention to work on supporting
   it, as it requires whole cygwin environment
 * We now (20150613) support CUDA on Windows as well. The build was
   tested on CUDA 7.0. It is possible that the compilation fails
   for significantly older CUDA SDK (less than, say, 5.0)
-  Please not that CUDA support for windows is not really that usefull,
+  Please note that CUDA support for windows is not really that usefull,
   because, the speed benefit during decoding is not large. And for training
   one would have to re-implement the while training pipeline (as the
   bash script wouldn't most probably work)
@@ -29,8 +34,7 @@ For cygwin installation, see the instructions in `../INSTALL`.
 
 ## Steps
 
-1. Checkout Kaldi trunk, either using the svn from the url https://svn.code.sf.net/p/kaldi/code/trunk
-   or using git from https://github.com/kaldi-asr/kaldi.git
+1. Checkout Kaldi trunk, using [git](https://git-for-windows.github.io/) from https://github.com/kaldi-asr/kaldi.git
 
    Example:
    
@@ -83,8 +87,8 @@ for their processors. It isn't free, but you can get [Community Licensing for In
 
    https://sourceforge.net/projects/openblas
 
-        (kaldi)/tools$ wget http://sourceforge.net/projects/openblas/files/v0.2.14/OpenBLAS-v0.2.14-Win64-int32.zip
-        (kaldi)/tools$ wget http://sourceforge.net/projects/openblas/files/v0.2.14/mingw64_dll.zip
+        (kaldi)/tools$ curl -L -O http://sourceforge.net/projects/openblas/files/v0.2.14/OpenBLAS-v0.2.14-Win64-int32.zip
+        (kaldi)/tools$ curl -L -O http://sourceforge.net/projects/openblas/files/v0.2.14/mingw64_dll.zip
         (kaldi)/tools$ unzip OpenBLAS-v0.2.14-Win64-int32.zip
         (kaldi)/tools$ unzip mingw64_dll.zip
 
@@ -121,7 +125,8 @@ for their processors. It isn't free, but you can get [Community Licensing for In
          (kaldi)/tools/openfst$ cd ../../windows
          (kaldi)/windows $ pwd
 
-11. Modify the file `variables.props` to reflect
+11. Copy `variables.props.dev` to `variables.props`.
+    Then modify the file `variables.props` to reflect
     the correct paths, using your favorite text editor.
     Don't worry, it's a text file, even though you have to be
     careful to keep the structure itself intact
@@ -134,15 +139,13 @@ for their processors. It isn't free, but you can get [Community Licensing for In
     variables correctly
 
 12. For OpenBLAS support, copy the file `kaldiwin_openblas.props` to `kaldiwin.props`
-13. For MKL support, you don't have to do anything, it should work out of the box.
-    When you need to switch from OpenBLAS to MKL, copy the `kaldiwin_mkl.props`
-    to `kaldiwin.props`
+13. For MKL support, copy the `kaldiwin_mkl.props` to `kaldiwin.props`
 
 14. Call the script that generates the MSVC solution
 
-         generate_solution.pl --vsver <default|vs2013|vs2015> [--enable-cuda] [--enable-openblas] [--enable-mlk]
+         ./generate_solution.pl --vsver <default|vs2013|vs2015> [--enable-cuda] [--enable-openblas] [--enable-mkl]
 
-    `--enable-mlk` is the default so you shouldn't need to use it. If `--enable-openblas` is passed it disables MLK support.
+    `--enable-mkl` is the default so you shouldn't need to use it. If `--enable-openblas` is passed it disables MKL support.
     CUDA is disabled by default. The default Visual Studio version is 11.0 (Visual Studio 2012).
 
     For example, for a build using OpenBLAS and VS 2015 you would run:

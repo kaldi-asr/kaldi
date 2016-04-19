@@ -268,7 +268,7 @@ void ConstArpaLmBuilder::HeaderAvailable() {
   ngram_order_ = NgramCounts().size();
 }
 
-void ConstArpaLmBuilder::ConsumeNGram(const NGram& ngram) {
+void ConstArpaLmBuilder::ConsumeNGram(const NGram &ngram) {
   int32 cur_order = ngram.words.size();
   // If <ngram_order_> is larger than 1, then we do not create LmState for
   // the final order entry. We only keep the log probability for it.
@@ -1062,16 +1062,9 @@ bool ConstArpaLmDeterministicFst::GetArc(StateId s,
   return true;
 }
 
-bool BuildConstArpaLm(const bool natural_base, const int32 bos_symbol,
-                      const int32 eos_symbol, const int32 unk_symbol,
+bool BuildConstArpaLm(const ArpaParseOptions& options,
                       const std::string& arpa_rxfilename,
                       const std::string& const_arpa_wxfilename) {
-  ArpaParseOptions options;
-  options.bos_symbol = bos_symbol;
-  options.eos_symbol = eos_symbol;
-  options.unk_symbol = unk_symbol;
-  options.use_log10 = !natural_base;
-
   ConstArpaLmBuilder lm_builder(options);
   KALDI_LOG << "Reading " << arpa_rxfilename;
   ReadKaldiObject(arpa_rxfilename, &lm_builder);

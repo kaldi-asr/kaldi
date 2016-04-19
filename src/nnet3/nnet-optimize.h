@@ -1,6 +1,7 @@
 // nnet3/nnet-optimize.h
 
-// Copyright 2015    Johns Hopkins University (author: Daniel Povey)
+// Copyright      2015  Johns Hopkins University (author: Daniel Povey)
+//                2015  Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -99,6 +100,9 @@ struct NnetOptimizeOptions {
                    "at when updating the model.  This is an optimization that "
                    "saves time in the backprop phase for recurrent frameworks");
   }
+  void Read(std::istream &is, bool binary);
+  void Write(std::ostream &os, bool binary) const;
+  bool operator == (const NnetOptimizeOptions &other) const;
 };
 
 /// This is the top-level function for optimizing a computation.
@@ -147,6 +151,8 @@ class CachingOptimizingCompiler {
   /// It calls ComputeCudaIndexes() for you, because you wouldn't
   /// be able to do this on a const object.
   const NnetComputation* Compile(const ComputationRequest &request);
+  void ReadCache(std::istream &is, bool binary);
+  void WriteCache(std::ostream &os, bool binary) const;
  private:
   const Nnet &nnet_;
   NnetOptimizeOptions opt_config_;
@@ -168,10 +174,10 @@ class CachingOptimizingCompiler {
     ComputationRequestPtrEqual> CacheType;
   CacheType computation_cache_;
 
-  // This function updates the computation cache. It is called within
-  // Compile(). It insert the request to the end of the queue, and purge
-  // the least-recently-accessed request from the queue and the cache
-  // if the capacity is reached.
+  // This function updates the computation cache. It is called within Compile().
+  // It takes ownership of the pointers.  It inserts the request at the end of
+  // the queue, and purges the least-recently-accessed request from the queue and
+  // the cache if the capacity is reached.
   void UpdateCache(const ComputationRequest *request,
                    NnetComputation *computation);
   // This function updates the recently accessed queue.

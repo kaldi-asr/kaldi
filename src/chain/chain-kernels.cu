@@ -33,6 +33,18 @@ __device__ inline void atomic_add(Real* address, Real value) {
   }
 }
 
+template<>
+__device__ inline void atomic_add(double* address, double val) {
+  unsigned long long int* address_as_ull =
+    reinterpret_cast<unsigned long long int*>(address);
+  unsigned long long int old = *address_as_ull, assumed;
+  do {
+    assumed = old;
+    old = atomicCAS(address_as_ull, assumed,
+                    __double_as_longlong(val + __longlong_as_double(assumed)));
+  } while (assumed != old);
+}
+
 template <typename Real>
 __device__ inline void atomic_add_thresholded(Real* address, Real value) {
   // This function uses a randomized algorithm to only do atomic adds for values
@@ -81,16 +93,18 @@ __global__
 static void _cuda_chain_hmm_forward(const Int32Pair *backward_transitions,
                                     const DenominatorGraphTransition *transitions,
                                     int32_cuda num_sequences,
+                                    int32_cuda num_hmm_states,
                                     const BaseFloat *probs,
                                     int32_cuda prob_stride,
                                     const BaseFloat *prev_alpha,
                                     BaseFloat *this_alpha) {
-  // 'state_info', indexed by hmm-state, consists of [start, end] indexes into
-  // the 'transition_info' array.  The state_info supplied to this function consists of
-  // indexes for transitions *into* this state.
-  // 'probs' has dimension num-output-indexes by num_sequences; its stride is 'prob_stride'.
-  // 'prev_alpha' and 'this_alpha', which are extracted from a larger matrix,
-  // both have dimension num-history-states by num-sequences.
+  // 'backward_transitions', indexed by hmm-state, consists of [start, end]
+  // indexes into the 'transitions' array.  This gives us the info for
+  // transitions *into* this state.  'probs' contains the exponentiated neural
+  // net outputs; it has dimension num-output-indexes by num_sequences and its
+  // stride is 'prob_stride'.  'prev_alpha' and 'this_alpha', which are
+  // extracted from a larger matrix, both have dimension num-history-states by
+  // num-sequences.
 
   // s is the index of the sequence within the minibatch,
   // from 0 .. num-egs-in-this-minibatch - 1.
@@ -135,7 +149,6 @@ static void _cuda_chain_hmm_forward(const Int32Pair *backward_transitions,
     this_tot_alpha += this_prev_alpha0 * transition_prob0 * pseudo_loglike0;
   }
 
-  int32_cuda num_hmm_states = gridDim.y;
   // Let arbitrary_scale be the inverse of the sum of all alpha values on-- the
   // previous frame this sum of all the alpha values is stored in the place that
   // we'd store the previous alpha for state-index equal to num_hmm_states
@@ -154,16 +167,17 @@ static void _cuda_chain_hmm_forward(const Int32Pair *backward_transitions,
 __global__
 static void _cuda_chain_hmm_backward(const Int32Pair *forward_transitions,
                                      const DenominatorGraphTransition *transitions,
-                                     int32_cuda num_sequences,
+                                     int32_cuda num_sequences, int32_cuda num_hmm_states,
                                      const BaseFloat *probs, int32_cuda prob_stride,
                                      const BaseFloat *this_alpha, const BaseFloat *next_beta,
                                      BaseFloat *this_beta, BaseFloat *log_prob_deriv,
                                      int32_cuda log_prob_deriv_stride) {
-  // 'state_info', indexed by hmm-state, consists of [start, end] indexes into
-  // the 'transition_info' array.  The state_info supplied to this function consists of
-  // indexes for transitions *out of* this state.
-  // 'probs' has dimension num-output-indexes by num_sequences, and contains just
-  //  the probs for this time index.  Its stride is prob_stride.
+  // 'forward_transitions', indexed by hmm-state, consists of [start, end]
+  // indexes into the 'transition_info' array.  This is about the transitions
+  // *out of* this state.  'probs' contains the exponentiated neural net
+  // outputs; it has dimension num-output-indexes by num_sequences, and contains
+  // just the observation probabilities for this time index.  Its stride is
+  // prob_stride.
   // 'this_alpha', 'next_beta' and 'this_beta' all have dimension
   // num-history-states by num-sequences.
   // The beta probs are normalized in such a way (by multiplying by 1/(total-data-prob))
@@ -175,16 +189,15 @@ static void _cuda_chain_hmm_backward(const Int32Pair *forward_transitions,
   // from 0 .. num-egs-in-this-minibatch - 1.
   // h is the hmm-state index.
   int32_cuda s = threadIdx.x + blockIdx.x * blockDim.x,
-      h  = blockIdx.y;
+      h = blockIdx.y;
   if (s >= num_sequences)
     return;
 
-  // below, you can read 'gridDim.y' as 'num_hmm_states'.  See where
-  // arbitrary_scale is defined in the forward computation above, for more
-  // explanation.
+  // See where arbitrary_scale is defined in the forward computation above, for
+  // more explanation of inv_arbitrary_scale.
   BaseFloat this_alpha_prob = this_alpha[h * num_sequences + s],
       inv_arbitrary_scale =
-      this_alpha[gridDim.y * num_sequences + s];
+      this_alpha[num_hmm_states * num_sequences + s];
   double tot_variable_factor = 0.0;
 
   BaseFloat occupation_factor = this_alpha_prob / inv_arbitrary_scale;
@@ -236,11 +249,13 @@ void cuda_chain_hmm_forward(dim3 Gr, dim3 Bl,
                             const Int32Pair *backward_transitions,
                             const DenominatorGraphTransition *transitions,
                             int32_cuda num_sequences,
+                            int32_cuda num_hmm_states,
                             const BaseFloat *probs, int32_cuda prob_stride,
                             const BaseFloat *prev_alpha,
                             BaseFloat *this_alpha) {
   _cuda_chain_hmm_forward<<<Gr,Bl>>>(backward_transitions, transitions,
-                                     num_sequences, probs, prob_stride,
+                                     num_sequences, num_hmm_states,
+                                     probs, prob_stride,
                                      prev_alpha, this_alpha);
 }
 
@@ -248,13 +263,15 @@ void cuda_chain_hmm_backward(dim3 Gr, dim3 Bl,
                              const Int32Pair *forward_transitions,
                              const DenominatorGraphTransition *transitions,
                              int32_cuda num_sequences,
+                             int32_cuda num_hmm_states,
                              const BaseFloat *probs, int32_cuda prob_stride,
                              const BaseFloat *this_alpha, const BaseFloat *next_beta,
                              BaseFloat *this_beta,
                              BaseFloat *log_prob_deriv,
                              int32_cuda log_prob_deriv_stride) {
   _cuda_chain_hmm_backward<<<Gr,Bl>>>(forward_transitions, transitions,
-                                      num_sequences, probs, prob_stride,
+                                      num_sequences, num_hmm_states,
+                                      probs, prob_stride,
                                       this_alpha, next_beta,
                                       this_beta, log_prob_deriv,
                                       log_prob_deriv_stride);
