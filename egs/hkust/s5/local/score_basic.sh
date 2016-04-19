@@ -1,5 +1,6 @@
 #!/bin/bash
 # Copyright Johns Hopkins University (Author: Daniel Povey) 2012.  Apache 2.0.
+#           2016 LeSpeech (Author: Xingyu Na)
 
 # begin configuration section.
 cmd=run.pl
@@ -56,21 +57,44 @@ done
 
 filter_text <$data/text >$dir/scoring/text.filt
 
-unset LC_ALL
 #for character error rate
 cat $dir/scoring/text.filt | awk '{ print $1}' > $dir/scoring/utt_id
-cat $dir/scoring/text.filt | awk '{{for (i = 2; i <= NF; i++) printf(" %s", $i);} printf("\n"); }' | sed -e 's/\(\S\)/\1 /g' > $dir/scoring/utt_tra 
+cat $dir/scoring/text.filt | awk '{{for (i = 2; i <= NF; i++) printf(" %s", $i);} printf("\n"); }' |\
+  perl -e '
+  use encoding utf8;
+  while (<STDIN>) {
+    @words = split(" ", $_);
+    foreach (@words) {
+      @chars = split("", $_);
+      foreach (@chars) {
+        print "$_ ";
+      }
+    }
+    print "\n";
+  }
+  ' > $dir/scoring/utt_tra 
 paste $dir/scoring/utt_id $dir/scoring/utt_tra  > $dir/scoring/char.filt
 
 for lmwt in `seq $min_lmwt $max_lmwt`; do
   cat $dir/scoring/$lmwt.txt | awk '{ print $1}' > $dir/scoring/utt_id 
-  cat $dir/scoring/$lmwt.txt | awk '{{for (i = 2; i <= NF; i++) printf(" %s", $i);} printf("\n"); }' | sed -e 's/\(\S\)/\1 /g' > $dir/scoring/utt_tra 
+  cat $dir/scoring/$lmwt.txt | awk '{{for (i = 2; i <= NF; i++) printf(" %s", $i);} printf("\n"); }' |\
+    perl -e '
+    use encoding utf8;
+    while (<STDIN>) {
+      @words = split(" ", $_);
+      foreach (@words) {
+        @chars = split("", $_);
+        foreach (@chars) {
+          print "$_ ";
+        }
+      }
+      print "\n";
+    }
+    ' > $dir/scoring/utt_tra 
   paste $dir/scoring/utt_id $dir/scoring/utt_tra  > $dir/scoring/${lmwt}.char
 done
 
 rm $dir/scoring/utt_tra $dir/scoring/utt_id 
-
-export LC_ALL=C
 
 $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.log \
   compute-wer --text --mode=present \
