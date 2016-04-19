@@ -27,6 +27,7 @@ pms_combn_weights="0.5:0.5"
 pms_train_stats=
 
 ## Other stuff
+num_threads=5     # parallel score computation
 tmpdir=           # non-default location of tmp_dir, 
                    # if not specified, uses /tmp/kaldi.XXXX
 
@@ -159,7 +160,10 @@ fi
 
 ### find best combination
 ## call this python function
-python utils/multi-stream/pm_utils/get-best-stream-combn_perspk.py --alpha=${alpha} --topN=${topN} $outdir $num_streams $tmpdir/feat_to_len_list $srcdata/spk2utt $outdir/compute_stream_combn_scores.task $outdir/ | copy-feats ark:- ark,scp:$outdir/strm_mask.ark,$outdir/strm_mask.scp || exit 1;
+python utils/multi-stream/pm_utils/get-best-stream-combn_perspk.py \
+  --alpha=${alpha} --topN=${topN} --num-threads $num_threads \
+  $outdir $num_streams $tmpdir/feat_to_len_list $srcdata/spk2utt $outdir/compute_stream_combn_scores.task $outdir/ | \
+  copy-feats ark:- ark,scp:$outdir/strm_mask.ark,$outdir/strm_mask.scp || exit 1;
 
 exit 0;
 

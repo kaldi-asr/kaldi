@@ -4,6 +4,9 @@ import numpy.matlib
 import cPickle as pickle, bz2
 import subprocess
 
+from multiprocessing import Pool
+from functools import partial
+
 sys.path.append(os.path.join(os.path.dirname(__file__), 'utils/numpy_io'))
 import kaldi_io
 
@@ -131,10 +134,20 @@ def main_func(spk, parent_combn):
       return (parent_combn, parent_score)
     
   child_combn_score_list = []
-  for this_child_combn in child_combn_list:
-    this_child_combn_score = get_score_from_combn(spk, this_child_combn)
-    child_combn_score_list.append(this_child_combn_score)
-  child_combn_score_list = np.asarray(child_combn_score_list)
+  if num_threads == 1:
+    for this_child_combn in child_combn_list:
+      this_child_combn_score = get_score_from_combn(spk, this_child_combn)
+      child_combn_score_list.append(this_child_combn_score)
+    child_combn_score_list = np.asarray(child_combn_score_list)
+  elif num_threads > 1:
+    func = partial(get_score_from_combn, spk)
+    pool = Pool(num_threads)
+    child_combn_score_list = pool.map(func, child_combn_list)
+    child_combn_score_list = np.asarray(child_combn_score_list)
+  else:
+    logging.info(" Wrong number of threads %d", num_threads)
+    sys.exit(1)
+    
 
   # modify child_combn_score_list, so that keep only ones
   # satisfying this_child_combn_score > alpha * parent_score 
@@ -210,6 +223,11 @@ parser.add_option('--topN', dest='topN',
                   help='traverse through topN of child satisfying score_child > alpha * score_parent [default: %default]',
                   default=-1, type='int');
 
+parser.add_option('--num-threads', dest='num_threads',
+                  help='for parallel computation of scores [default: %default]',
+                  default=1, type='int');
+
+
 (o, args) = parser.parse_args()
 if len(args) != 6:
   parser.print_help()
@@ -229,6 +247,7 @@ all_stream_combn=num_combns
 
 alpha = float(o.alpha)
 topN = int(o.topN)
+num_threads = int(o.num_threads)
 
 
 #################

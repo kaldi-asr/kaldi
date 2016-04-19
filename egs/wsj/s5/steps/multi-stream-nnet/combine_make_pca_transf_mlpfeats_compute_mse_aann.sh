@@ -58,7 +58,7 @@ for f in $required; do
 done
 
 mkdir -p $logdir $mse_data_dir
-utils/copy_data_dir.sh $srcdata $mse_dir/; rm $mse_dir/{feats,cmvn}.scp 2>/dev/null
+utils/copy_data_dir.sh $srcdata $mse_dir/; #rm $mse_dir/{feats,cmvn}.scp 2>/dev/null
 
 name=$(basename $srcdata)
 sdata=$srcdata/split$nj
