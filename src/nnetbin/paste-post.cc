@@ -56,7 +56,8 @@ int main(int argc, char *argv[]) {
     bool allow_partial = false;
     po.Register("allow-partial", &allow_partial, 
                 "Produce output also when the utterance is not in all input streams.");
-
+    bool no_merge = false;
+    po.Register("no-merge", &no_merge, "Make output in a copy mode");
     po.Read(argc, argv);
 
     if (po.NumArgs() < 5) {
@@ -134,7 +135,11 @@ int main(int argc, char *argv[]) {
               int32 id = post_s[f][i].first;
               BaseFloat val = post_s[f][i].second;
               KALDI_ASSERT(id < stream_dims[s]);
-              post[f].push_back(std::make_pair(stream_offset[s] + id, val));
+              if(!no_merge) {
+                post[f].push_back(std::make_pair(stream_offset[s] + id, val));
+              } else {
+                post[f].push_back(std::make_pair(id, val));
+              }
             }
           }
           empty = false;
