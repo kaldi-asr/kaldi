@@ -66,7 +66,7 @@ class ConvolutionalComponent : public UpdatableComponent {
   ConvolutionalComponent(int32 dim_in, int32 dim_out) 
     : UpdatableComponent(dim_in, dim_out),
       patch_dim_(0), patch_step_(0), patch_stride_(0), 
-      learn_rate_coef_(1.0), bias_learn_rate_coef_(1.0), max_norm_(0.0)  
+      max_norm_(0.0)  
   { }
   ~ConvolutionalComponent()
   { }
@@ -79,7 +79,7 @@ class ConvolutionalComponent : public UpdatableComponent {
     BaseFloat bias_mean = -2.0, bias_range = 2.0, param_stddev = 0.1;
     // parse config
     std::string token; 
-    while (!is.eof()) {
+    while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token); 
       /**/ if (token == "<ParamStddev>") ReadBasicType(is, false, &param_stddev);
       else if (token == "<BiasMean>")    ReadBasicType(is, false, &bias_mean);
@@ -92,7 +92,6 @@ class ConvolutionalComponent : public UpdatableComponent {
       else if (token == "<MaxNorm>") ReadBasicType(is, false, &max_norm_);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                      << " (ParamStddev|BiasMean|BiasRange|PatchDim|PatchStep|PatchStride)";
-      is >> std::ws; // eat-up whitespace
     }
 
     //
@@ -136,7 +135,7 @@ class ConvolutionalComponent : public UpdatableComponent {
   }
 
   void ReadData(std::istream &is, bool binary) {
-    // convolution hyperparameters
+    // convolution hyperparameters,
     ExpectToken(is, binary, "<PatchDim>");
     ReadBasicType(is, binary, &patch_dim_);
     ExpectToken(is, binary, "<PatchStep>");
@@ -144,15 +143,24 @@ class ConvolutionalComponent : public UpdatableComponent {
     ExpectToken(is, binary, "<PatchStride>");
     ReadBasicType(is, binary, &patch_stride_);
 
-    // re-scale learn rate
-    ExpectToken(is, binary, "<LearnRateCoef>");
-    ReadBasicType(is, binary, &learn_rate_coef_);
-    ExpectToken(is, binary, "<BiasLearnRateCoef>");
-    ReadBasicType(is, binary, &bias_learn_rate_coef_);
-    
-    // max-norm regualrization
-    ExpectToken(is, binary, "<MaxNorm>");
-    ReadBasicType(is, binary, &max_norm_);
+    // variant-length list of parameters,
+    bool end_loop = false;
+    while (!end_loop) {
+      int first_char = PeekToken(is, binary);
+      switch (first_char) {
+        case 'L': ExpectToken(is, binary, "<LearnRateCoef>");
+          ReadBasicType(is, binary, &learn_rate_coef_);
+          break;
+        case 'B': ExpectToken(is, binary, "<BiasLearnRateCoef>");
+          ReadBasicType(is, binary, &bias_learn_rate_coef_);  
+          break;
+        case 'M': ExpectToken(is, binary, "<MaxNorm>");
+          ReadBasicType(is, binary, &max_norm_);
+          break;
+        case '!': ExpectToken(is, binary, "<!EndOfComponent>");
+        default: end_loop = true;
+      }
+    }
 
     // trainable parameters
     ExpectToken(is, binary, "<Filters>");
@@ -189,21 +197,24 @@ class ConvolutionalComponent : public UpdatableComponent {
     WriteBasicType(os, binary, patch_step_);
     WriteToken(os, binary, "<PatchStride>");
     WriteBasicType(os, binary, patch_stride_);
+    if(!binary) os << "\n";
 
     // re-scale learn rate
     WriteToken(os, binary, "<LearnRateCoef>");
     WriteBasicType(os, binary, learn_rate_coef_);
     WriteToken(os, binary, "<BiasLearnRateCoef>");
     WriteBasicType(os, binary, bias_learn_rate_coef_);
-
     // max-norm regularization
     WriteToken(os, binary, "<MaxNorm>");
     WriteBasicType(os, binary, max_norm_);
+    if(!binary) os << "\n";
 
     // trainable parameters
     WriteToken(os, binary, "<Filters>");
+    if(!binary) os << "\n";
     filters_.Write(os, binary);
     WriteToken(os, binary, "<Bias>");
+    if(!binary) os << "\n";
     bias_.Write(os, binary);
   }
 
@@ -220,14 +231,18 @@ class ConvolutionalComponent : public UpdatableComponent {
 
   std::string Info() const {
     return std::string("\n  filters") + MomentStatistics(filters_) +
-           "\n  bias" + MomentStatistics(bias_);
+      ", lr-coef " + ToString(learn_rate_coef_) +
+      ", max-norm " + ToString(max_norm_) +
+      "\n  bias" + MomentStatistics(bias_) +
+      ", lr-coef " + ToString(bias_learn_rate_coef_);
   }
+
   std::string InfoGradient() const {
     return std::string("\n  filters_grad") + MomentStatistics(filters_grad_) +
-           ", lr-coef " + ToString(learn_rate_coef_) +
-           ", max-norm " + ToString(max_norm_) +
-           "\n  bias_grad" + MomentStatistics(bias_grad_) +
-           ", lr-coef " + ToString(bias_learn_rate_coef_);
+      ", lr-coef " + ToString(learn_rate_coef_) +
+      ", max-norm " + ToString(max_norm_) +
+      "\n  bias_grad" + MomentStatistics(bias_grad_) +
+      ", lr-coef " + ToString(bias_learn_rate_coef_);
   }
 
   void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
@@ -432,8 +447,6 @@ class ConvolutionalComponent : public UpdatableComponent {
   CuMatrix<BaseFloat> filters_grad_; ///< gradient of filters
   CuVector<BaseFloat> bias_grad_; ///< gradient of biases
 
-  BaseFloat learn_rate_coef_; ///< weight learn rate
-  BaseFloat bias_learn_rate_coef_; ///< bias learn rate
   BaseFloat max_norm_; ///< limit L2 norm of a neuron weights to positive value
 
   /** Buffer of reshaped inputs:

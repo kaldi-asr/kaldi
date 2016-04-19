@@ -1,6 +1,6 @@
 // nnet/nnet-component.h
 
-// Copyright 2011-2013  Brno University of Technology (Author: Karel Vesely)
+// Copyright 2011-2016  Brno University of Technology (Author: Karel Vesely)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -42,9 +42,9 @@ namespace nnet1 {
  */ 
 class Component {
 
- /// Component type identification mechanism
+ /// Component type identification mechanism,
  public: 
-  /// Types of Components
+  /// Types of Components,
   typedef enum {
     kUnknown = 0x0,
      
@@ -83,61 +83,76 @@ class Component {
     kFramePoolingComponent, 
     kParallelComponent
   } ComponentType;
-  /// A pair of type and marker 
+
+  /// A pair of type and marker,
   struct key_value {
     const Component::ComponentType key;
     const char *value;
   };
-  /// Mapping of types and markers (the table is defined in nnet-component.cc) 
-  static const struct key_value kMarkerMap[];
-  /// Convert component type to marker
-  static const char* TypeToMarker(ComponentType t);
-  /// Convert marker to component type (case insensitive)
-  static ComponentType MarkerToType(const std::string &s);  
- 
- /// General interface of a component  
- public:
-  Component(int32 input_dim, int32 output_dim) 
-      : input_dim_(input_dim), output_dim_(output_dim) { }
-  virtual ~Component() { }
 
-  /// Copy component (deep copy).
+  /// The table with pairs of Component types and markers (defined in nnet-component.cc),
+  static const struct key_value kMarkerMap[];
+
+  /// Converts component type to marker,
+  static const char* TypeToMarker(ComponentType t);
+
+  /// Converts marker to component type (case insensitive),
+  static ComponentType MarkerToType(const std::string &s);
+ 
+ /// Generic interface of a component,
+ public:
+  Component(int32 input_dim, int32 output_dim) : 
+    input_dim_(input_dim), 
+    output_dim_(output_dim) 
+  { }
+
+  virtual ~Component() 
+  { }
+
+  /// Copy component (deep copy),
   virtual Component* Copy() const = 0;
 
-  /// Get Type Identification of the component
-  virtual ComponentType GetType() const = 0;  
-  /// Check if contains trainable parameters 
-  virtual bool IsUpdatable() const { 
-    return false; 
+  /// Get Type Identification of the component,
+  virtual ComponentType GetType() const = 0;
+
+  /// Check if contains trainable parameters, 
+  virtual bool IsUpdatable() const {
+    return false;
   }
 
-  /// Get size of input vectors
+  /// Get the dimension of the input,
   int32 InputDim() const { 
     return input_dim_; 
-  }  
-  /// Get size of output vectors 
+  }
+
+  /// Get the dimension of the output,
   int32 OutputDim() const { 
     return output_dim_; 
   }
  
-  /// Perform forward pass propagation Input->Output
+  /// Perform forward-pass propagation 'in' -> 'out',
   void Propagate(const CuMatrixBase<BaseFloat> &in, CuMatrix<BaseFloat> *out); 
-  /// Perform backward pass propagation, out_diff -> in_diff
-  /// '&in' and '&out' will sometimes be unused... 
+
+  /// Perform backward-pass propagation 'out_diff' -> 'in_diff'.
+  /// Note: 'in' and 'out' will be used only sometimes...
   void Backpropagate(const CuMatrixBase<BaseFloat> &in,
                      const CuMatrixBase<BaseFloat> &out,
                      const CuMatrixBase<BaseFloat> &out_diff,
                      CuMatrix<BaseFloat> *in_diff); 
 
-  /// Initialize component from a line in config file
+  /// Initialize component from a line in config file,
   static Component* Init(const std::string &conf_line);
-  /// Read component from stream
+
+  /// Read the component from a stream (static method),
   static Component* Read(std::istream &is, bool binary);
-  /// Write component to stream
+
+  /// Write the component to a stream,
   void Write(std::ostream &os, bool binary) const;
 
-  /// Optionally print some additional info
+  /// Print some additional info (after <ComponentName> and the dims),
   virtual std::string Info() const { return ""; }
+
+  /// Print some additional info about gradient (after <...> and dims),
   virtual std::string InfoGradient() const { return ""; }
 
 
@@ -146,12 +161,15 @@ class Component {
   /// Forward pass transformation (to be implemented by descending class...)
   virtual void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
                             CuMatrixBase<BaseFloat> *out) = 0;
+
   /// Backward pass transformation (to be implemented by descending class...)
   virtual void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
                                 const CuMatrixBase<BaseFloat> &out,
                                 const CuMatrixBase<BaseFloat> &out_diff,
                                 CuMatrixBase<BaseFloat> *in_diff) = 0;
 
+ /// Virtual interface for initialization and I/O,
+ protected:
   /// Initialize internal data of a component
   virtual void InitData(std::istream &is) { }
 
@@ -161,61 +179,89 @@ class Component {
   /// Writes the component content
   virtual void WriteData(std::ostream &os, bool binary) const { }
 
- /// Data members
+ /// Data members,
  protected:
-  int32 input_dim_;  ///< Size of input vectors
-  int32 output_dim_; ///< Size of output vectors
+  int32 input_dim_;  ///< Dimension of the input of the Component,
+  int32 output_dim_; ///< Dimension of the output of the Component,
 
+ /// Private members (descending classes cannot call this),
  private:
-  /// Create new intance of component
-  static Component* NewComponentOfType(ComponentType t, 
-                      int32 input_dim, int32 output_dim);
-  
- protected:
-  //KALDI_DISALLOW_COPY_AND_ASSIGN(Component);
+  /// Create a new intance of component,
+  static Component* NewComponentOfType(
+    ComponentType t, int32 input_dim, int32 output_dim
+  );
 };
 
 
 /**
  * Class UpdatableComponent is a Component which has trainable parameters,
- * contains SGD training hyper-parameters in NnetTrainOptions.
+ * it contains SGD training hyper-parameters in NnetTrainOptions.
+ * The constants 'learning_rate_coef_' and 'bias_learn_rate_coef_'
+ * are separate, and should be stored by ::WriteData(...),
  */
 class UpdatableComponent : public Component {
  public: 
-  UpdatableComponent(int32 input_dim, int32 output_dim)
-    : Component(input_dim, output_dim) { }
-  virtual ~UpdatableComponent() { }
+  UpdatableComponent(int32 input_dim, int32 output_dim) : 
+    Component(input_dim, output_dim),
+    learn_rate_coef_(1.0),
+    bias_learn_rate_coef_(1.0)
+  { }
 
-  /// Check if contains trainable parameters 
+  virtual ~UpdatableComponent()
+  { }
+
+  /// Check if contains trainable parameters,
   bool IsUpdatable() const { 
     return true; 
   }
 
-  /// Number of trainable parameters
+  /// Number of trainable parameters,
   virtual int32 NumParams() const = 0;
+
+  /// Get the trainable parameters reshaped as a vector,
   virtual void GetParams(Vector<BaseFloat> *params) const = 0;
 
-  /// Compute gradient and update parameters
+  /// Compute gradient and update parameters,
   virtual void Update(const CuMatrixBase<BaseFloat> &input,
                       const CuMatrixBase<BaseFloat> &diff) = 0;
 
-  /// Sets the training options to the component
+  /// Set the training options to the component,
   virtual void SetTrainOptions(const NnetTrainOptions &opts) {
     opts_ = opts;
   }
-  /// Gets the training options from the component
+
+  /// Get the training options from the component,
   const NnetTrainOptions& GetTrainOptions() const { 
     return opts_; 
   }
 
+  /// Set the learn-rate coefficient,
+  virtual void SetLearnRateCoef(BaseFloat val) { 
+    learn_rate_coef_ = val; 
+  }
+
+  /// Set the learn-rate coefficient for bias,
+  virtual void SetBiasLearnRateCoef(BaseFloat val) { 
+    bias_learn_rate_coef_ = val; 
+  }
+
+  /// Initialize the content of the component by the 'line' from the prototype,
   virtual void InitData(std::istream &is) = 0;
 
  protected:
-  /// Option-class with training hyper-parameters
-  NnetTrainOptions opts_; 
+  /// Option-class with training hyper-parameters,
+  NnetTrainOptions opts_;
+  /// Scalar applied to learning rate (for weight matrices, to be used in ::Update method),
+  BaseFloat learn_rate_coef_;
+  /// Scalar applied to learning rate (for bias, to be used in ::Update method),
+  BaseFloat bias_learn_rate_coef_;
 };
 
 
+
+/*
+ * Inline methods for ::Component,
+ */
 inline void Component::Propagate(const CuMatrixBase<BaseFloat> &in,
                                  CuMatrix<BaseFloat> *out) {
   // Check the dims
@@ -229,7 +275,6 @@ inline void Component::Propagate(const CuMatrixBase<BaseFloat> &in,
   // Call the propagation implementation of the component
   PropagateFnc(in, out);
 }
-
 
 inline void Component::Backpropagate(const CuMatrixBase<BaseFloat> &in,
                                      const CuMatrixBase<BaseFloat> &out,

@@ -42,13 +42,35 @@ class ParallelComponent : public UpdatableComponent {
   Component* Copy() const { return new ParallelComponent(*this); }
   ComponentType GetType() const { return kParallelComponent; }
 
+  void SetLearnRateCoef(BaseFloat val) {
+    for (int32 i=0; i<nnet_.size(); i++) {
+      for (int32 j=0; j<nnet_[i].NumComponents(); j++) {
+        if (nnet_[i].GetComponent(j).IsUpdatable()) {
+          UpdatableComponent& comp = dynamic_cast<UpdatableComponent&>(nnet_[i].GetComponent(j));
+          comp.SetLearnRateCoef(val);
+        }
+      }
+    }
+  }
+
+  void SetBiasLearnRateCoef(BaseFloat val) {
+    for (int32 i=0; i<nnet_.size(); i++) {
+      for (int32 j=0; j<nnet_[i].NumComponents(); j++) {
+        if (nnet_[i].GetComponent(j).IsUpdatable()) {
+          UpdatableComponent& comp = dynamic_cast<UpdatableComponent&>(nnet_[i].GetComponent(j));
+          comp.SetBiasLearnRateCoef(val);
+        }
+      }
+    }
+  }
+
   void InitData(std::istream &is) {
     // define options
     std::vector<std::string> nested_nnet_proto;
     std::vector<std::string> nested_nnet_filename;
     // parse config
     std::string token; 
-    while (!is.eof()) {
+    while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token); 
       /**/ if (token == "<NestedNnet>" || token == "<NestedNnetFilename>") {
         while(!is.eof()) {
@@ -66,7 +88,6 @@ class ParallelComponent : public UpdatableComponent {
         }
       } else KALDI_ERR << "Unknown token " << token << ", typo in config?"
                        << " (NestedNnet|NestedNnetFilename|NestedNnetProto)";
-      is >> std::ws; // eat-up whitespace
     }
     // initialize
     KALDI_ASSERT((nested_nnet_proto.size() > 0) ^ (nested_nnet_filename.size() > 0)); //xor
@@ -129,9 +150,11 @@ class ParallelComponent : public UpdatableComponent {
     //
     WriteToken(os, binary, "<NestedNnetCount>");
     WriteBasicType(os, binary, nnet_count);
+    if(!binary) os << "\n";
     for (int32 i=0; i<nnet_count; i++) {
       WriteToken(os, binary, "<NestedNnet>");
       WriteBasicType(os, binary, i+1);
+      if(!binary) os << "\n";
       nnet_[i].Write(os, binary);
     }
     WriteToken(os, binary, "</ParallelComponent>");

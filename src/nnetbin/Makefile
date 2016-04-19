@@ -16,7 +16,7 @@ BINFILES = nnet-train-frmshuff \
         transf-to-nnet cmvn-to-nnet nnet-initialize \
         nnet-kl-hmm-acc nnet-kl-hmm-mat-to-component \
 	feat-to-post paste-post train-transitions \
-	cuda-gpu-available
+	cuda-gpu-available nnet-set-learnrate
 
 OBJFILES =
 

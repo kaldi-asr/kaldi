@@ -1,6 +1,6 @@
 // nnet/nnet-sentence-averaging-component.h
 
-// Copyright 2013  Brno University of Technology (Author: Karel Vesely)
+// Copyright 2013-2016  Brno University of Technology (Author: Karel Vesely)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -50,29 +50,46 @@ class SimpleSentenceAveragingComponent : public Component {
   ComponentType GetType() const { return kSimpleSentenceAveragingComponent; }
 
   void InitData(std::istream &is) {
-    is >> std::ws;
     // parse config
     std::string token; 
-    while (!is.eof()) {
+    while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token);
       if (token == "<GradientBoost>") ReadBasicType(is, false, &gradient_boost_);
       else if (token == "<Shrinkage>") ReadBasicType(is, false, &shrinkage_);
       else if (token == "<OnlySumming>") ReadBasicType(is, false, &only_summing_);
-      else KALDI_ERR << "Unknown token " << token << ", a typo in config? (GradientBoost|Shrinkage|OnlySumming)";
-      is >> std::ws; // eat-up whitespace
+      else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
+                     << " (GradientBoost|Shrinkage|OnlySumming)";
     }
   }
 
   void ReadData(std::istream &is, bool binary) {
-    ExpectToken(is, binary, "<GradientBoost>");
-    ReadBasicType(is, binary, &gradient_boost_);
-    if(PeekToken(is, binary) == 'S') {
-      ExpectToken(is, binary, "<Shrinkage>");
-      ReadBasicType(is, binary, &shrinkage_);
-    }
-    if(PeekToken(is, binary) == 'O') {
-      ExpectToken(is, binary, "<OnlySumming>");
-      ReadBasicType(is, binary, &only_summing_);
+    bool end_loop = false;
+    while (!end_loop && '<' == Peek(is, binary)) {
+      int first_char = PeekToken(is, binary);
+      switch (first_char) {
+        case 'G': ExpectToken(is, binary, "<GradientBoost>");
+          ReadBasicType(is, binary, &gradient_boost_);
+          break;
+        case 'S': ExpectToken(is, binary, "<Shrinkage>");
+          ReadBasicType(is, binary, &shrinkage_);
+          break;
+        case 'O': ExpectToken(is, binary, "<OnlySumming>");
+          // compatibility trick,
+          // in some models 'only_summing_' was float '0.0',
+          // from now 'only_summing_' is 'bool':
+          try {
+            ReadBasicType(is, binary, &only_summing_);
+          } catch(const std::exception &e) {
+            KALDI_WARN << "ERROR was handled by exception!";
+            BaseFloat dummy_float;
+            ReadBasicType(is, binary, &dummy_float);
+          }
+          break;
+        case '!':
+          ExpectToken(is, binary, "<!EndOfComponent>");
+        default:
+          end_loop = true;
+      }
     }
   }
 
@@ -137,7 +154,7 @@ class SimpleSentenceAveragingComponent : public Component {
 
 
 
-/** Deprecated, keeping it as Katka Zmolikova used it in JSALT 2015 */
+/** Deprecated!!!, keeping it as Katka Zmolikova used it in JSALT 2015 */
 class SentenceAveragingComponent : public UpdatableComponent {
  public:
   SentenceAveragingComponent(int32 dim_in, int32 dim_out) 
@@ -155,13 +172,12 @@ class SentenceAveragingComponent : public UpdatableComponent {
     std::string nested_nnet_proto;
     // parse config
     std::string token; 
-    while (!is.eof()) {
+    while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token);
       /**/ if (token == "<NestedNnetFilename>") ReadToken(is, false, &nested_nnet_filename);
       else if (token == "<NestedNnetProto>") ReadToken(is, false, &nested_nnet_proto);
       else if (token == "<LearnRateFactor>") ReadBasicType(is, false, &learn_rate_factor_);
       else KALDI_ERR << "Unknown token " << token << " Typo in config?";
-      is >> std::ws; // eat-up whitespace
     }
     // initialize (read already prepared nnet from file)
     KALDI_ASSERT((nested_nnet_proto != "") ^ (nested_nnet_filename != "")); //xor
@@ -183,9 +199,18 @@ class SentenceAveragingComponent : public UpdatableComponent {
   }
 
   int32 NumParams() const { return nnet_.NumParams(); }
-  void GetParams(Vector<BaseFloat>* wei_copy) const { wei_copy->Resize(NumParams()); nnet_.GetParams(wei_copy); }
-  std::string Info() const { return std::string("nested_network {\n") + nnet_.Info() + "}\n"; }
-  std::string InfoGradient() const { return std::string("nested_gradient {\n") + nnet_.InfoGradient() + "}\n"; }
+
+  void GetParams(Vector<BaseFloat>* wei_copy) const { 
+    wei_copy->Resize(NumParams()); nnet_.GetParams(wei_copy); 
+  }
+
+  std::string Info() const { 
+    return std::string("nested_network {\n") + nnet_.Info() + "}\n"; 
+  }
+
+  std::string InfoGradient() const { 
+    return std::string("nested_gradient {\n") + nnet_.InfoGradient() + "}\n"; 
+  }
 
   void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
     // Get NN output
@@ -204,15 +229,18 @@ class SentenceAveragingComponent : public UpdatableComponent {
     out->ColRange(nnet_outputs,num_inputs).CopyFromMat(in);
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+                        const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff, 
+                        CuMatrixBase<BaseFloat> *in_diff) {
     if (in_diff == NULL) return;
     int32 num_inputs = in.NumCols(),
       nnet_outputs = nnet_.OutputDim();
     in_diff->CopyFromMat(out_diff.ColRange(nnet_outputs,num_inputs));
   }
 
-  void Update(const CuMatrixBase<BaseFloat> &input, const CuMatrixBase<BaseFloat> &diff) {
+  void Update(const CuMatrixBase<BaseFloat> &input, 
+              const CuMatrixBase<BaseFloat> &diff) {
 
     int32 nnet_outputs = nnet_.OutputDim(),
       num_frames = diff.NumRows();
@@ -235,8 +263,6 @@ class SentenceAveragingComponent : public UpdatableComponent {
     UpdatableComponent::SetTrainOptions(opts_);
     // Pass the train options to the nnet
     NnetTrainOptions o(opts);
-    //o.learn_rate *= 100; // GOOD
-    //o.learn_rate *= 1000; // BAD
     o.learn_rate *= learn_rate_factor_;
     nnet_.SetTrainOptions(opts_);
   }
