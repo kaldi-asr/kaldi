@@ -409,7 +409,7 @@ function linux_configure_mkl_threading {
 ##
 function configure_cuda {
   #check for CUDA toolkit in the system
-  if [ ! $CUDATKDIR ]; then
+  if [ ! -d  "$CUDATKDIR" ]; then
     for base in /Developer/NVIDIA/CUDA-6.0 /usr/local/share/cuda /usr/local/cuda /pkgs_local/cuda-3.2/ /opt/nvidia_cuda/cuda-6.0/ /usr/; do
       if [ -f $base/bin/nvcc ]; then
         CUDATKDIR=$base
@@ -417,7 +417,7 @@ function configure_cuda {
     done
   fi
 
-  if [ $CUDATKDIR ]; then
+  if [ -d "$CUDATKDIR" ]; then
     if [ ! -f $CUDATKDIR/bin/nvcc ]; then
       failure "Cannnot find nvcc in CUDATKDIR=$CUDATKDIR"
     fi
@@ -429,10 +429,16 @@ function configure_cuda {
 
     # Determine 'CUDA_ARCH',
     CUDA_VERSION=$($CUDATKDIR/bin/nvcc -V | tr '.,' '_ ' | awk '/release/{sub(/.*release/,""); print $1;}') # MAJOR_MINOR,
+    if [ -z "$CUDA_VERSION" ] ; then
+      echo "Cannot figure out CUDA_VERSION from the nvcc output. Either your CUDA is too new or too old." 
+      exit 1
+    fi
+
     case $CUDA_VERSION in
+      5_5) CUDA_ARCH="-gencode arch=compute_13,code=sm_13 -gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35" ;;
       6_*) CUDA_ARCH="-gencode arch=compute_13,code=sm_13 -gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50" ;;
       7_*) CUDA_ARCH="-gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53" ;;
-      *) echo "Missing CUDA_VERSION $CUDA_VERSION, see 'nvcc -h' which lists allowed -gencode values..."; exit 1 ;;
+      *) echo "Unsupported CUDA_VERSION (CUDA_VERSION=$CUDA_VERSION), please report it to Kaldi mailing list, together with 'nvcc -h' or 'ptxas -h' which lists allowed -gencode values..."; exit 1 ;;
     esac
     echo "CUDA_ARCH = $CUDA_ARCH" >> kaldi.mk
 
