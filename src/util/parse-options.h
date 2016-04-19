@@ -36,8 +36,8 @@ namespace kaldi {
 class ParseOptions : public OptionsItf {
  public:
   explicit ParseOptions(const char *usage) :
-    print_args_(true), help_(false), usage_(usage), argc_(0), argv_(NULL),
-    prefix_(""), other_parser_(NULL) {
+    print_args_(true), help_(false), anchor_dir_(""), usage_(usage),
+    argc_(0), argv_(NULL), prefix_(""), other_parser_(NULL) {
 #ifndef _MSC_VER  // This is just a convenient place to set the stderr to line
     setlinebuf(stderr);  // buffering mode, since it's called at program start.
 #endif  // This helps ensure different programs' output is not mixed up.
@@ -128,6 +128,15 @@ class ParseOptions : public OptionsItf {
     return (param <= NumArgs() ? GetArg(param) : "");
   }
 
+  void SetAnchorDir(const std::string &anchor) {
+      anchor_dir_ = anchor;
+  }
+
+  /// Resolve the relative path with the anchor_dir_ previously set
+  /// If anchor_dir_ is unset, relative is actually absolute, or the resolved
+  /// path does not exist return relative
+  std::string ResolvePath(const std::string &relative);
+
   /// The following function will return a possibly quoted and escaped
   /// version of "str", according to the current shell.  Currently
   /// this is just hardwired to bash.  It's useful for debug output.
@@ -209,6 +218,7 @@ class ParseOptions : public OptionsItf {
   bool print_args_;     ///< variable for the implicit --print-args parameter
   bool help_;           ///< variable for the implicit --help parameter
   std::string config_;  ///< variable for the implicit --config parameter
+  std::string anchor_dir_; ///< Used to resolve any relative paths used in this config
   std::vector<std::string> positional_args_;
   const char *usage_;
   int argc_;
