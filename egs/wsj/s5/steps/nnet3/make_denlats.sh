@@ -184,7 +184,7 @@ if [ $sub_split -eq 1 ]; then
     --extra-left-context-initial=$extra_left_context_initial \
     --extra-right-context-final=$extra_right_context_final \
     --minimize=false --determinize-lattice=false \
-    --word-determinize=false --phone-determinize-lattice=false \
+    --word-determinize=false --phone-determinize=false \
     --max-active=$max_active --min-active=$min_active --beam=$beam \
     --lattice-beam=$lattice_beam --acoustic-scale=$acwt --allow-partial=false \
     --max-mem=$max_mem --word-symbol-table=$lang/words.txt $srcdir/final.mdl  \
