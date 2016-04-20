@@ -13,6 +13,10 @@ nnet_forward_opts=
 use_gpu=no
 htk_save=false
 ivector=            # rx-specifier with i-vectors (ark-with-vectors),
+
+# transform nnet out opts
+transf_nnet_out_opts=
+
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -98,8 +102,9 @@ fi
 if [ $htk_save == false ]; then
   # Run the forward pass,
   $cmd JOB=1:$nj $logdir/make_bnfeats.JOB.log \
-    nnet-forward $nnet_forward_opts --use-gpu=$use_gpu $nnet "$feats" \
-    ark,scp:$bnfeadir/raw_bnfea_$name.JOB.ark,$bnfeadir/raw_bnfea_$name.JOB.scp \
+    nnet-forward $nnet_forward_opts --use-gpu=$use_gpu $nnet "$feats" ark:- \| \
+    transform-nnet-posteriors $transf_nnet_out_opts ark:- ark:- \| \
+    copy-feats ark:- ark,scp:$bnfeadir/raw_bnfea_$name.JOB.ark,$bnfeadir/raw_bnfea_$name.JOB.scp \
     || exit 1;
   # concatenate the .scp files
   for ((n=1; n<=nj; n++)); do
@@ -117,6 +122,7 @@ else # htk_save == true
   $cmd JOB=1:$nj $logdir/make_bnfeats_htk.JOB.log \
     mkdir -p $data/htkfeats/JOB \; \
     nnet-forward $nnet_forward_opts --use-gpu=$use_gpu $nnet "$feats" ark:- \| \
+    transform-nnet-posteriors $transf_nnet_out_opts ark:- ark:- \| \
     copy-feats-to-htk --output-dir=$data/htkfeats/JOB ark:- || exit 1
   # Make list of htk features,
   find $data/htkfeats -name *.fea >$data/htkfeats.scp
