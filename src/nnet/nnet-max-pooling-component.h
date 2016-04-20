@@ -49,14 +49,13 @@ class MaxPoolingComponent : public Component {
   void InitData(std::istream &is) {
     // parse config
     std::string token; 
-    while (!is.eof()) {
+    while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token);
       /**/ if (token == "<PoolSize>") ReadBasicType(is, false, &pool_size_);
       else if (token == "<PoolStep>") ReadBasicType(is, false, &pool_step_);
       else if (token == "<PoolStride>") ReadBasicType(is, false, &pool_stride_);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                      << " (PoolSize|PoolStep|PoolStride)";
-      is >> std::ws; // eat-up whitespace
     }
     // check
     KALDI_ASSERT(pool_size_ != 0 && pool_step_ != 0 && pool_stride_ != 0);

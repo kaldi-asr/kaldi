@@ -32,16 +32,16 @@
 #include "base/kaldi-error.h"
 
 namespace kaldi {
-int32 g_kaldi_verbose_level = 0;  // Just initialize this global variable.
+int32 g_kaldi_verbose_level = 0;
 const char *g_program_name = NULL;
+static LogHandler g_log_handler = NULL;
+
 
 // If the program name was set (g_program_name != ""), the function
 // GetProgramName returns the program name (without the path) followed by a
 // colon, e.g. "gmm-align:".  Otherwise it returns the empty string "".
 const char *GetProgramName() {
-  if (g_program_name == NULL) return "";
-  else
-    return g_program_name;
+  return g_program_name == NULL ? "" : g_program_name;
 }
 
 // Given a filename like "/a/b/c/d/e/f.cc",  GetShortFileName
@@ -57,7 +57,6 @@ const char *GetShortFileName(const char *filename) {
     return last_slash;
   }
 }
-
 
 #if defined(HAVE_CXXABI_H) && defined(HAVE_EXECINFO_H)
 // The function name looks like a macro: it's a macro if we don't have ccxxabi.h
@@ -79,7 +78,7 @@ inline void KALDI_APPEND_POSSIBLY_DEMANGLED_STRING(const char *to_append,
 
   char *demangled_name = abi::__cxa_demangle(stripped.c_str(), 0, 0, &status);
 
-  // if status != 0 it is an error (demangling failure),  but not all names seem
+  // if status != 0 it is an error (demangling failure), but not all names seem
   // to demangle, so we don't check it.
 
   if (demangled_name != NULL) {
@@ -131,70 +130,64 @@ std::string KaldiGetStackTrace() {
 
 void KaldiAssertFailure_(const char *func, const char *file,
                          int32 line, const char *cond_str) {
-  std::ostringstream ss;
-  ss << "KALDI_ASSERT: at " << GetProgramName() << func << ':'
-     << GetShortFileName(file)
-     << ':' << line << ", failed: " << cond_str << '\n';
+  MessageLogger ml(LogMessageEnvelope::Error, func, file, line);
+  ml.stream() << "Assertion failed: " << cond_str;
 #ifdef HAVE_EXECINFO_H
-  ss << "Stack trace is:\n" << KaldiGetStackTrace();
+  ml.stream() << "\nStack trace is:\n" << KaldiGetStackTrace();
 #endif
-  std::cerr << ss.str();
-  std::cerr.flush();
-  // We used to call abort() here, but switch to throwing an exception
-  // (like KALDI_ERR) because it's easier to deal with in multi-threaded
-  // code.
-  throw std::runtime_error(ss.str());
 }
 
-
-KaldiWarnMessage::KaldiWarnMessage(const char *func, const char *file,
-                                   int32 line) {
-  this->stream() << "WARNING (" << GetProgramName() << func << "():"
-                 << GetShortFileName(file) << ':' << line << ") ";
+LogHandler SetLogHandler(LogHandler new_handler) {
+  LogHandler old_handler = g_log_handler;
+  g_log_handler = new_handler;
+  return old_handler;
 }
 
-KaldiWarnMessage::~KaldiWarnMessage() {
+static void SendToLog(const LogMessageEnvelope &envelope,
+                      const char *message) {
+  // Send to a logging handler if provided.
+  if (g_log_handler != NULL) {
+    g_log_handler(envelope, message);
+    return;
+  }
+
+  // Otherwise, use Kaldi default logging.
+  std::stringstream header;
+  if (envelope.severity > LogMessageEnvelope::Info)
+    header << "VLOG[" << envelope.severity << "] (";
+  else if (envelope.severity == LogMessageEnvelope::Info)
+    header << "LOG (";
+  else if (envelope.severity == LogMessageEnvelope::Warning)
+    header << "WARNING (";
+  else
+    header << "ERROR (";
+  header << GetProgramName() << envelope.func << "():"
+         << envelope.file << ':' << envelope.line << ")";
+
+  std::string header_str = header.str();
+  fprintf(stderr, "%s %s\n", header_str.c_str(), message);
+}
+
+MessageLogger::MessageLogger(LogMessageEnvelope::Severity severity,
+                             const char *func, const char *file, int32 line) {
+  // Obviously, we assume the strings survive the destruction of this object.
+  envelope_.severity = severity;
+  envelope_.func = func;
+  envelope_.file = GetShortFileName(file);  // Pointer inside 'file'.
+  envelope_.line = line;
+}
+
+MessageLogger::~MessageLogger() KALDI_NOEXCEPT(false) {
   std::string str = ss_.str();
   while (!str.empty() && str[str.length() - 1] == '\n')
     str.resize(str.length() - 1);
-  fprintf(stderr, "%s\n", str.c_str());
-}
+  SendToLog(envelope_, str.c_str());
 
+  if (envelope_.severity > LogMessageEnvelope::Error)
+    return;
 
-KaldiLogMessage::KaldiLogMessage(const char *func, const char *file,
-                                 int32 line) {
-  this->stream() << "LOG (" << GetProgramName() << func << "():"
-                 << GetShortFileName(file) << ':' << line << ") ";
-}
-
-KaldiLogMessage::~KaldiLogMessage() {
-  std::string str = ss_.str();
-  while (!str.empty() && str[str.length() - 1] == '\n')
-    str.resize(str.length() - 1);
-  fprintf(stderr, "%s\n", str.c_str());
-}
-
-
-KaldiVlogMessage::KaldiVlogMessage(const char *func, const char *file,
-                                   int32 line, int32 verbose) {
-  this->stream() << "VLOG[" << verbose << "] (" << GetProgramName() << func
-                 << "():" << GetShortFileName(file) << ':' << line << ") ";
-}
-
-KaldiErrorMessage::KaldiErrorMessage(const char *func, const char *file,
-                                     int32 line) {
-  this->stream() << "ERROR (" << GetProgramName() << func << "():"
-                 << GetShortFileName(file) << ':' << line << ") ";
-}
-
-KaldiErrorMessage::~KaldiErrorMessage() KALDI_NOEXCEPT(false) {
-  std::string str = ss_.str();
-  while (!str.empty() && str[str.length() - 1] == '\n')
-    str.resize(str.length() - 1);
-
-  // (1) Print the message to stderr.
-  fprintf(stderr, "%s\n", str.c_str());
-  // (2) Throw an exception with the message, plus traceback info if available.
+  // On error, throw an exception with the message, plus traceback info if
+  // available.
   if (!std::uncaught_exception()) {
 #ifdef HAVE_EXECINFO_H
     throw std::runtime_error(str + "\n\n[stack trace: ]\n" +
@@ -203,7 +196,7 @@ KaldiErrorMessage::~KaldiErrorMessage() KALDI_NOEXCEPT(false) {
     throw std::runtime_error(str);
 #endif
   } else {
-    abort();  // This may be temporary...
+    abort();
   }
 }
 

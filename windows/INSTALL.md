@@ -5,7 +5,12 @@ For cygwin installation, see the instructions in `../INSTALL`.
 
 ## Notes
 
-* These instructions are valid January 2016, [Intel® MKL](https://software.intel.com/en-us/intel-mkl) and OpenBLAS are supported
+* The recipes (in egs/) will not work. There is no commitment to support Windows.
+  The Windows port of Kaldi is targeted at experienced developers who want 
+  to program their own apps using the kaldi libraries and are able to do 
+  the troubleshooting on their own. 
+* These instructions are valid March 2016, 
+  [Intel® MKL](https://software.intel.com/en-us/intel-mkl) and OpenBLAS are supported
 * ATLAS is not supported and I personally have no intention to work on supporting
   it, as it requires whole cygwin environment
 * We now (20150613) support CUDA on Windows as well. The build was
@@ -82,8 +87,8 @@ for their processors. It isn't free, but you can get [Community Licensing for In
 
    https://sourceforge.net/projects/openblas
 
-        (kaldi)/tools$ wget http://sourceforge.net/projects/openblas/files/v0.2.14/OpenBLAS-v0.2.14-Win64-int32.zip
-        (kaldi)/tools$ wget http://sourceforge.net/projects/openblas/files/v0.2.14/mingw64_dll.zip
+        (kaldi)/tools$ curl -L -O http://sourceforge.net/projects/openblas/files/v0.2.14/OpenBLAS-v0.2.14-Win64-int32.zip
+        (kaldi)/tools$ curl -L -O http://sourceforge.net/projects/openblas/files/v0.2.14/mingw64_dll.zip
         (kaldi)/tools$ unzip OpenBLAS-v0.2.14-Win64-int32.zip
         (kaldi)/tools$ unzip mingw64_dll.zip
 

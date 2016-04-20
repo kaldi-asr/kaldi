@@ -464,7 +464,7 @@ std::string Nnet::Info() const {
 std::string Nnet::InfoGradient() const {
   std::ostringstream ostr;
   // gradient stats
-  ostr << "### Gradient stats :\n";
+  ostr << "\n### Gradient stats :\n";
   for (int32 i = 0; i < NumComponents(); i++) {
     ostr << "Component " << i+1 << " : " 
          << Component::TypeToMarker(components_[i]->GetType()) 
@@ -476,7 +476,7 @@ std::string Nnet::InfoGradient() const {
 std::string Nnet::InfoPropagate() const {
   std::ostringstream ostr;
   // forward-pass buffer stats
-  ostr << "### Forward propagation buffer content :\n";
+  ostr << "\n### Forward propagation buffer content :\n";
   ostr << "[0] output of <Input> " << MomentStatistics(propagate_buf_[0]) << std::endl;
   for (int32 i=0; i<NumComponents(); i++) {
     ostr << "["<<1+i<< "] output of " 
@@ -493,7 +493,7 @@ std::string Nnet::InfoPropagate() const {
 std::string Nnet::InfoBackPropagate() const {
   std::ostringstream ostr;
   // forward-pass buffer stats
-  ostr << "### Backward propagation buffer content :\n";
+  ostr << "\n### Backward propagation buffer content :\n";
   ostr << "[0] diff of <Input> " << MomentStatistics(backpropagate_buf_[0]) << std::endl;
   for (int32 i=0; i<NumComponents(); i++) {
     ostr << "["<<1+i<< "] diff-output of " 

@@ -104,7 +104,7 @@ void SinusoidDetector::QuadraticMaximize(
   // Also,  x1.y2 - y1 =  a (x1 - x1^2) + (x1 - 1) c, so
   // a = ( (x1 y2 - y1) - (x1 - 1) c) / (x1 - x1^2), and
   // b = y2 - a - c.
-  BaseFloat c = y0, 
+  BaseFloat c = y0,
       a = (x1 * y2 - y1 - (x1 - 1.0) * c) / (x1 - x1*x1),
       b = y2 - a - c;
 
@@ -152,8 +152,8 @@ BaseFloat SinusoidDetector::QuadraticInterpolate(
   KALDI_ASSERT(x1 >= 0.0 && x1 <= 1.0);
   if (x1 == 0.0) return y0;
   else if (x1 == 1.0) return y2;
-  
-  BaseFloat c = y0, 
+
+  BaseFloat c = y0,
       a = (x1 * y2 - y1 - (x1 - 1.0) * c) / (x1 - x1*x1),
       b = y2 - a - c;
   return a * x * x + b * x + c;
@@ -172,7 +172,7 @@ void SinusoidDetector::CreateCosAndSin(BaseFloat samp_freq,
   BaseFloat *cos_data = cos_vec->Data(), *sin_data = sin_vec->Data();
   BaseFloat factor_real = cos(M_2PI * freq / samp_freq),
       factor_im = sin(M_2PI * freq / samp_freq);
-  
+
   // process frames in batches of size "batch_size", after which we recompute
   // the starting point to prevent loss of accuracy due to drift.
   for (int32 b = 0; b * batch_size < dim; b++) {
@@ -191,7 +191,7 @@ void SinusoidDetector::CreateCosAndSin(BaseFloat samp_freq,
 }
 
 SinusoidDetector::SinusoidDetector(BaseFloat samp_freq,
-                                     int32 num_samp): 
+                                     int32 num_samp):
     samp_freq_(samp_freq),
     num_samples_(num_samp),
     num_samples_padded_(RoundUpToNearestPowerOfTwo(num_samp)),
@@ -208,14 +208,14 @@ void SinusoidDetector::SelfTest(
     BaseFloat final_energy) {
   int32 num_bins = num_samples_padded_ * 2 + 1;
 
-  
+
   {
     BaseFloat cutoff = 0.0;
     for (int32 k = 0; k <= num_bins; k += 4)
       cutoff = std::max(cutoff, info[k].energy);
     BaseFloat energy_upper_bound = factor1_ * cutoff;
     if (final_energy > energy_upper_bound) {
-      KALDI_WARN << "Self-testing failed [factor1]: " 
+      KALDI_WARN << "Self-testing failed [factor1]: "
                  << final_energy << " > " << energy_upper_bound
                  << ", num-samples is " << num_samples_
                  << ", freq/nyquist = "
@@ -231,17 +231,17 @@ void SinusoidDetector::SelfTest(
         cutoff = std::max(cutoff, info[k].energy);
     BaseFloat energy_upper_bound = factor2_ * cutoff;
     if (final_energy > energy_upper_bound) {
-      KALDI_WARN << "Self-testing failed [factor2]: " 
+      KALDI_WARN << "Self-testing failed [factor2]: "
                  << final_energy << " > " << energy_upper_bound
                  << ", num-samples is " << num_samples_
                  << ", freq/nyquist = "
                  << (final_freq / (samp_freq_ * 0.5))
                  << "- would require factor2 >= "
                  << (final_energy / cutoff);
-          
+
     }
   }
-  
+
 }
 
 
@@ -249,7 +249,7 @@ BaseFloat SinusoidDetector::OptimizeFrequency(
     const std::vector<InfoForBin> &info,
     int32 *bin_out,
     BaseFloat *offset_out) const {
-  
+
   BaseFloat max_energy = 0.0;
   *bin_out = -1;
   int32 max_freq =  num_samples_padded_ * 2;
@@ -320,20 +320,20 @@ BaseFloat SinusoidDetector::DetectSinusoid(
   // between bins, with an offset.
   int32 bin;
   BaseFloat offset;
-  
+
   BaseFloat opt_energy = OptimizeFrequency(info,  &bin, &offset);
 
   if (opt_energy == 0.0)
     return 0.0;
 
   BaseFloat max_freq = (bin + offset) * samp_freq_ / (num_samples_padded_ * 4);
-  
+
   KALDI_VLOG(4) << "Best frequency based on interpolation is "
                 << max_freq << ", best energy is "
                 << opt_energy << ", bin is " << bin;
 
   OptimizedInfo final_info;
-  
+
   FineOptimizeFrequency(signal, bin, offset, &info, &final_info);
 
   // the following while loop will rarely be accessed.
@@ -342,7 +342,7 @@ BaseFloat SinusoidDetector::DetectSinusoid(
     FineOptimizeFrequency(signal, bin, 1.0, &info, &final_info);
   }
 
-  // the following while loop will rarely be accessed.  
+  // the following while loop will rarely be accessed.
   while (final_info.offset == 1.0 && bin < num_samples_padded_ * 2) {
     bin++;
     FineOptimizeFrequency(signal, bin, 0.0, &info, &final_info);
@@ -353,9 +353,9 @@ BaseFloat SinusoidDetector::DetectSinusoid(
     // next-to-highest allowed bin (note, "bin" here is a range, and it can
     // never have the value num_samples_padded_ * 2), we tend to get more
     // estimation error than usual, so do another round of optimization.
-    FineOptimizeFrequency(signal, bin, final_info.offset, &info, &final_info);    
+    FineOptimizeFrequency(signal, bin, final_info.offset, &info, &final_info);
   }
-  
+
   BaseFloat final_freq = (final_info.bin + final_info.offset) * samp_freq_ / (num_samples_padded_ * 4);
   KALDI_VLOG(4) << "Final optimized info is: freq " << final_freq
                 << ", cos coeff " << final_info.cos_coeff << ", sin coeff "
@@ -390,12 +390,12 @@ BaseFloat SinusoidDetector::DetectSinusoid(
 
   Let the signal, as a vector, be V.
   We want to maximize the (positive) energy-difference:
-       ||V||^2  - || V - c C_f - s S_f ||^2 
+       ||V||^2  - || V - c C_f - s S_f ||^2
   where c and s are the coefficients of C_f and S_f.
   This quantity can be expanded as follows, where . means dot product.
    \delta E =    -c^2 C_f.C_f - s^2 S_f.S_f - 2 c s C_f.S_f  + 2 c V.C_f + 2 s V.S_f.
   which can be written as follows, where . means dot-product and ' means transpose:
-    \delta E   =   2 [c s] v  -  [c s] M [c s]' 
+    \delta E   =   2 [c s] v  -  [c s] M [c s]'
   where M = [ C_f.C_f, C_f.S_f, C_f.S_f,  S_f.S_f ],
     and v = [V.C_f,  V.S_f].
   If M is invertible (i.e. for nonzero frequencies), this is maximized by
@@ -451,7 +451,7 @@ void SinusoidDetector::ComputeCoefficients() {
   int32 num_freq =  num_samples_padded_ * 2 + 1;
   cos_.Resize(num_freq, num_samp);
   sin_.Resize(num_freq, num_samp);
-  
+
   Vector<BaseFloat> cc(num_freq), cs(num_freq);
   for (int32 k = 0; k < num_freq; k++) {
     BaseFloat freq = k * samp_freq_ / (num_samples_padded_ * 4);
@@ -460,10 +460,10 @@ void SinusoidDetector::ComputeCoefficients() {
     cc(k) = VecVec(c, c);
     cs(k) = VecVec(c, s);
   }
-  
-  M_.Resize(num_freq, 3, kUndefined);  
+
+  M_.Resize(num_freq, 3, kUndefined);
   Minv_.Resize(num_freq, 3, kUndefined);
-  
+
   for (int32 k = 0; k < num_freq; k++) {
     // Let the matrix M be [ a b; b d ].   [we don't write c because c == b].
     // We want to compute Minv_.
@@ -503,7 +503,7 @@ void SinusoidDetector::FineOptimizeFrequency(
   std::vector<InfoForBin> &info = *info_in;
   if (!info[bin].valid) ComputeBinInfo(signal, bin, &(info[bin]));
   if (!info[bin+1].valid) ComputeBinInfo(signal, bin+1, &(info[bin+1]));
-  
+
   const BaseFloat epsilon = 0.02, delta = 0.001;
 
   // If the offset is very close to the edges of the bin, move it
@@ -527,16 +527,16 @@ void SinusoidDetector::FineOptimizeFrequency(
   BaseFloat a = VecVec(c, c), b = VecVec(c, s), d = num_samples_ - a;
   BaseFloat inv_det = 1.0 / (a * d - b * b);
   BaseFloat inv_a = d * inv_det, inv_b = -b * inv_det, inv_d = a * inv_det;
-  
+
 
   BaseFloat v1 = VecVec(c, signal), v2 = VecVec(s, signal);
-  
+
   BaseFloat delta_e = v1 * v1 * inv_a + v2 * v2 * inv_d + 2 * v1 * v2 * inv_b;
-  
+
   KALDI_VLOG(4) << "Actual energy-change at frequency " << freq << " is "
                 << delta_e;
   // "freq" is frequency somewhere in the middle of the bin.
-  
+
   BaseFloat final_offset, final_energy;
   QuadraticMaximize(bin_offset, info[bin].energy, delta_e, info[bin+1].energy,
                     &final_offset, &final_energy);
@@ -561,7 +561,7 @@ void SinusoidDetector::FineOptimizeFrequency(
 
   // Now get the inverse of the M matrix at the final point.
   BaseFloat a_inv_interp, b_inv_interp, d_inv_interp;
-  
+
   if ((bin == 0 && final_offset < delta) ||
       (bin == num_samples_padded_ * 2 && final_offset > 1.0 - delta)) {
     // If we're extremely close to zero or the Nyquist, we'll have trouble
@@ -584,7 +584,7 @@ void SinusoidDetector::FineOptimizeFrequency(
                                              info[bin+1].cos_dot, final_offset);
   BaseFloat v2_interp = QuadraticInterpolate(bin_offset, info[bin].sin_dot, v2,
                                              info[bin+1].sin_dot, final_offset);
-  
+
   opt_info->bin = bin;
   opt_info->offset = final_offset;
   // Recompute the energy-reduction using the more accurate interpolated values of
@@ -596,7 +596,7 @@ void SinusoidDetector::FineOptimizeFrequency(
   // Compute the coefficients of the cos and sin in the optimal sinusoid, as
   // M^{-1} v.
   opt_info->cos_coeff = a_inv_interp * v1_interp + b_inv_interp * v2_interp;
-  opt_info->sin_coeff = b_inv_interp * v1_interp + d_inv_interp * v2_interp;  
+  opt_info->sin_coeff = b_inv_interp * v1_interp + d_inv_interp * v2_interp;
 }
 
 void SinusoidDetector::FindCandidateBins(
@@ -611,7 +611,7 @@ void SinusoidDetector::FindCandidateBins(
     KALDI_ASSERT(info[k].valid);
     cutoff = std::max(cutoff, info[k].energy);
   }
-  
+
   for (int32 k = 0; k < max_bin; k += 4) {
     BaseFloat energy_upper_bound =
         factor1_ * std::max(info[k].energy,
@@ -628,14 +628,14 @@ void SinusoidDetector::FindCandidateBins2(
     std::vector<int32> *bins2) const {
 
   int32 max_bin = num_samples_padded_ * 2;
-  
+
   BaseFloat cutoff = min_energy;
   for (int32 k = 0; k <= max_bin; k += 2) {
     if (info[k].valid)
       cutoff = std::max(cutoff, info[k].energy);
   }
 
-  for (int32 k = 0; k < max_bin; k += 2) {  
+  for (int32 k = 0; k < max_bin; k += 2) {
     if (info[k].valid && info[k+2].valid) {
       BaseFloat energy_upper_bound =
           factor2_ * std::max(info[k].energy,
@@ -645,7 +645,7 @@ void SinusoidDetector::FindCandidateBins2(
     }
   }
 }
-      
+
 
 void SinusoidDetector::ComputeBinInfo(
     const VectorBase<BaseFloat> &signal,
@@ -670,8 +670,6 @@ MultiSinusoidDetector::MultiSinusoidDetector(
     sample_freq_(sampling_freq),
     samples_per_frame_subsampled_(0.001 * config.frame_length_ms *
                                   static_cast<BaseFloat>(config.subsample_freq)),
-    samples_shift_subsampled_(0.001 * config.frame_shift_ms *
-                              static_cast<BaseFloat>(config.subsample_freq)),
     waveform_finished_(false),
     samples_consumed_(0),
     resampler_(sampling_freq, config.subsample_freq,
@@ -726,7 +724,7 @@ int32 MultiSinusoidDetector::NumSubsampledSamplesReady(int32 max_samp) const {
                ((subsampled_signal_.empty() && samples_consumed_ == 0) ||
                 (!subsampled_signal_.empty () && samples_consumed_ <
                  subsampled_signal_[0]->Dim())));
-      
+
   int32 ans = -samples_consumed_;
   for (size_t i = 0; i < subsampled_signal_.size(); i++) {
     ans += subsampled_signal_[i]->Dim();
@@ -787,7 +785,7 @@ void MultiSinusoidDetector::GetNextFrame(MultiSinusoidDetectorOutput *output) {
   if (signal_energy == 0.0) return;
 
   // min_energy1 is the lowest energy we might care about.
-  BaseFloat min_energy1 = signal_energy * 
+  BaseFloat min_energy1 = signal_energy *
       std::min<BaseFloat>(config_.two_freq_min_total_energy * 0.5,
                           config_.one_freq_min_energy);
 
@@ -830,7 +828,7 @@ void MultiSinusoidDetector::GetNextFrame(MultiSinusoidDetectorOutput *output) {
                     << factor << ".  (This means sinusoid detection is not "
                     << " working ideally).";
     }
-    
+
     if (DetectedTwoFrequency(signal_energy,
                              sinusoid1, energy1,
                              sinusoid2, energy2,
@@ -917,14 +915,14 @@ void DetectSinusoids(const VectorBase<BaseFloat> &signal,
   detector->AcceptWaveform(signal);
   detector->WaveformFinished();
 
-  int32 safety_margin = 10, approx_num_frames = safety_margin + 
+  int32 safety_margin = 10, approx_num_frames = safety_margin +
       (signal.Dim() / (detector->SamplingFrequency() *
                        detector->FrameShiftSecs()));
   output_vec.reserve(approx_num_frames);
   while (!detector->Done()) {
     output_vec.resize(output_vec.size() + 1);
     detector->GetNextFrame(&(output_vec.back()));
-  }  
+  }
   detector->Reset();
   if (output_vec.empty()) {
     output->Resize(0, 0);

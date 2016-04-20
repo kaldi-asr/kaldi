@@ -13,7 +13,7 @@
 // THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
 // WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
-// MERCHANTABLITY OR NON-INFRINGEMENT.
+// MERCHANTABILITY OR NON-INFRINGEMENT.
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
@@ -31,8 +31,15 @@ int main(int argc, char *argv[]) {
         "Convert an ARPA format language model into an FST\n"
         "Usage: arpa2fst [opts] <input_arpa> <output_fst>\n"
         " e.g.: arpa2fst --disambig-symbol=#0 --read-symbol-table="
-        "data/lang/words.txt lm/input.arpa G.fst\n";
+        "data/lang/words.txt lm/input.arpa G.fst\n\n"
+        "Note: When called without switches, the output G.fst will contain\n"
+        "an embedded symbol table. This is compatible with the way a previous\n"
+        "version of arpa2fst worked.\n";
+
     ParseOptions po(usage);
+
+    ArpaParseOptions options;
+    options.Register(&po);
 
     // Option flags.
     std::string bos_symbol = "<s>";
@@ -41,6 +48,7 @@ int main(int argc, char *argv[]) {
     std::string read_syms_filename;
     std::string write_syms_filename;
     bool keep_symbols = false;
+    bool ilabel_sort = true;
 
     po.Register("bos-symbol", &bos_symbol,
                 "Beginning of sentence symbol");
@@ -48,14 +56,17 @@ int main(int argc, char *argv[]) {
                 "End of sentence symbol");
     po.Register("disambig-symbol", &disambig_symbol,
                 "Disambiguator. If provided (e. g. #0), used on input side of "
-                "backoff links, and <s> and </s> are replaced with epsilons.");
+                "backoff links, and <s> and </s> are replaced with epsilons");
     po.Register("read-symbol-table", &read_syms_filename,
                 "Use existing symbol table");
     po.Register("write-symbol-table", &write_syms_filename,
                 "Write generated symbol table to a file");
     po.Register("keep-symbols", &keep_symbols,
-                "Store symbol table with FST. Forced true if "
-                "symbol tables are neiter read or written");
+                "Store symbol table with FST. Symbols always saved to FST if "
+                "symbol tables are neither read or written (otherwise symbols "
+                "would be lost entirely)");
+    po.Register("ilabel-sort", &ilabel_sort,
+                "Ilabel-sort the output FST");
 
     po.Read(argc, argv);
 
@@ -66,7 +77,6 @@ int main(int argc, char *argv[]) {
     std::string arpa_rxfilename = po.GetArg(1),
         fst_wxfilename = po.GetOptArg(2);
 
-    ArpaParseOptions options;
     int64 disambig_symbol_id = 0;
 
     fst::SymbolTable* symbols;
@@ -109,6 +119,11 @@ int main(int argc, char *argv[]) {
     KALDI_ASSERT (symbols != NULL);
     ArpaLmCompiler lm_compiler(options, disambig_symbol_id, symbols);
     ReadKaldiObject(arpa_rxfilename, &lm_compiler);
+
+    // Sort the FST in-place if requested by options.
+    if (ilabel_sort) {
+      fst::ArcSort(lm_compiler.MutableFst(), fst::StdILabelCompare());
+    }
 
     // Write symbols if requested.
     if (!write_syms_filename.empty()) {

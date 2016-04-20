@@ -630,7 +630,7 @@ void DiscriminativeObjectiveInfo::Print(const std::string &criterion,
 }
 
 void DiscriminativeObjectiveInfo::PrintAvgGradientForPdf(int32 pdf_id) const {
-  if ((pdf_id < gradients.Dim()) && (pdf_id >= 0)) {
+  if (pdf_id < gradients.Dim() && pdf_id >= 0) {
     KALDI_LOG << "Average gradient wrt output activations of pdf " << pdf_id
               << " is " << gradients(pdf_id) / tot_t_weighted
               << " per frame, over "

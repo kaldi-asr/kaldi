@@ -2,6 +2,7 @@
 
 // Copyright 2009-2011     Microsoft Corporation
 //                2016     Johns Hopkins University (author: Daniel Povey)
+//                2016     Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -131,8 +132,20 @@ template<class SomeType> class GenericHolder {
 
   /// This swaps the objects held by *this and *other (preferably a shallow
   /// swap).  Note, this is just an example.  The swap is with the *same type*
-  /// of holder, not with some nonexistent base-class.
+  /// of holder, not with some nonexistent base-class (remember, GenericHolder is
+  /// an example for documentation, not a base-class).
   void Swap(GenericHolder<T> *other) { std::swap(t_, other->t_); }
+
+  /// At the time of writing this will only do something meaningful
+  /// KaldiObjectHolder holding matrix objects, in order to extract a holder
+  /// holding a sub-matrix specified by 'range', e.g. [0:3,2:10], like in Matlab
+  /// but with zero-based indexing. It returns true with successful extraction
+  /// of the range, false if the range was invalid or outside the bounds of the
+  /// matrix.  For other types of holder it just throws an error.
+  bool ExtractRange(const GenericHolder<T> &other, const std::string &range) {
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
+    return false;
+  }
 
   /// If the object held pointers, the destructor would free them.
   ~GenericHolder() { }
@@ -205,6 +218,29 @@ class HtkMatrixHolder;
 /// A class for reading/writing Sphinx format matrices.
 template<int kFeatDim = 13> class SphinxMatrixHolder;
 
+/// This templated function exists so that we can write .scp files with
+/// 'object ranges' specified: the canonical example is a [first:last] range
+/// of rows of a matrix, or [first-row:last-row,first-column,last-column]
+/// of a matrix.  We can also support [begin-time:end-time] of a wave
+/// file.  The string 'range' is whatever is in the square brackets; it is
+/// parsed inside this function.
+/// This function returns true if the partial object was successfully extracted,
+/// and false if there was an error such as an invalid range.
+/// The generic version of this function just fails; we overload the template
+/// whenever we need it for a specific class.
+template <class T>
+bool ExtractObjectRange(const T &input, const std::string &range, T *output) {
+  KALDI_ERR << "Ranges not supported for objects of this type.";
+  return false;
+}
+
+/// The template is specialized with a version that actually does something,
+/// for types Matrix<float> and Matrix<double>.  We can later add versions of
+/// this template for other types, such as Vector, which can meaningfully
+/// have ranges extracted.
+template <class Real>
+bool ExtractObjectRange(const Matrix<Real> &input, const std::string &range,
+                        Matrix<Real> *output);
 
 /// @} end "addtogroup holders"
 

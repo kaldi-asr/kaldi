@@ -228,8 +228,8 @@ int main(int argc, char *argv[]) {
 
         // remove frames with '0' weight from training,
         {
-          // are there frames to be removed?
-          if (!weights.Min() > 0.0) { 
+          // are there any frames to be removed? (i.e. frames with zero weight),
+          if (!(weights.Min() > 0.0)) { 
             // create vector with frame-indices to keep,
             std::vector<MatrixIndexT> keep_frames;
             for (int32 i=0; i<weights.Dim(); i++) {
@@ -363,6 +363,7 @@ int main(int argc, char *argv[]) {
               << "]";  
 
     if (objective_function == "xent") {
+      KALDI_LOG << xent.ReportPerClass();
       KALDI_LOG << xent.Report();
     } else if (objective_function == "mse") {
       KALDI_LOG << mse.Report();

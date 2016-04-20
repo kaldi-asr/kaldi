@@ -207,6 +207,8 @@ int main(int argc, char *argv[]) {
         " e.g.: lattice-oracle ark:lat.1 'ark:sym2int.pl -f 2- \\\n"
         "                       data/lang/words.txt <data/test/text|' ark,t:-\n"
         "\n"
+        "Note the --write-lattices option by which you can write out the\n"
+        "optimal path as a lattice.\n"
         "Note: you can use this program to compute the n-best oracle WER by\n"
         "first piping the input lattices through lattice-to-nbest and then\n"
         "nbest-to-lattice.\n";

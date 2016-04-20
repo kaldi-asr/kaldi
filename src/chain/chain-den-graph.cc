@@ -363,6 +363,9 @@ void CreateDenominatorFst(const ContextDependency &ctx_dep,
             << transition_id_fst.NumStates() << " and "
             << NumArcs(transition_id_fst);
 
+  // RemoveEpsLocal doesn't remove all epsilons, but it keeps the graph small.
+  fst::RemoveEpsLocal(&transition_id_fst);
+  // If there are remaining epsilons, remove them.
   fst::RmEpsilon(&transition_id_fst);
   KALDI_LOG << "Number of states and arcs in transition-id FST after "
             << "removing epsilons is "

@@ -114,6 +114,12 @@ class VectorFstTplHolder {
     std::swap(t_, other->t_);
   }
 
+  bool ExtractRange(const VectorFstTplHolder<Arc> &other,
+                    const std::string &range) {
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
+    return false;
+  }
+
   ~VectorFstTplHolder() { Clear(); }
   // No destructor.  Assignment and
   // copy constructor take their default implementations.

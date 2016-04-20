@@ -93,9 +93,8 @@ utils/subset_data_dir.sh --last data/train $n data/train_nodev
 
 # Now-- there are 260k utterances (313hr 23min), and we want to start the
 # monophone training on relatively short utterances (easier to align), but not
-# only the shortest ones (mostly uh-huh).  So take the 100k shortest ones;
-# remove most of the repeated utterances (these are the uh-huh type ones), and
-# then take 10k random utterances from those (about 4hr 40mins)
+# only the shortest ones (mostly uh-huh).  So take the 100k shortest ones, and
+# then take 30k random utterances from those (about 12hr)
 utils/subset_data_dir.sh --shortest data/train_nodev 100000 data/train_100kshort
 utils/subset_data_dir.sh data/train_100kshort 30000 data/train_30kshort
 

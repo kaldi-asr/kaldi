@@ -18,7 +18,7 @@ if [ $# -ne 1 ]; then
   exit 1;
 fi
 
-# check data directories 
+# check data directories
 chime3_data=$1
 wsj0_data=$chime3_data/data/WSJ0 # directory of WSJ0 in CHiME3. You can also specify your WSJ0 corpus directory
 if [ ! -d $chime3_data ]; then
@@ -70,7 +70,7 @@ else
    | awk -v voc=$dir/vocab_5k.txt '
    BEGIN{ while((getline<voc)>0) { invoc[$1]=1; }}
    /^</{next}{
-     for (x=1;x<=NF;x++) { 
+     for (x=1;x<=NF;x++) {
        w=toupper($x);
        if (invoc[w]) { printf("%s ",w); } else { printf("<UNK> "); }
      }
@@ -88,7 +88,7 @@ else
                  $chime3_data/data/transcriptions/dt05_simu.trn_all \
       |gzip -c > $dir/valid.gz
 fi
-  
+
 # train a large n-gram language model
 lm_suffix=${order}gkn_5k
 if [ -f $dir/lm_${lm_suffix}.arpa.gz ]; then
@@ -121,22 +121,8 @@ for f in phones.txt words.txt phones.txt L.fst L_disambig.fst \
   cp -r data/lang/$f $test
 done
 gunzip -c $dir/lm_${lm_suffix}.arpa.gz | \
- utils/find_arpa_oovs.pl $test/words.txt  > $tmpdir/oovs_${lm_suffix}.txt
-
-# grep -v '<s> <s>' because the LM seems to have some strange and useless
-# stuff in it with multiple <s>'s in the history.  Encountered some other similar
-# things in a LM from Geoff.  Removing all "illegal" combinations of <s> and </s>,
-# which are supposed to occur only at being/end of utt.  These can cause 
-# determinization failures of CLG [ends up being epsilon cycles].
-gunzip -c $dir/lm_${lm_suffix}.arpa.gz | \
-  grep -v '<s> <s>' | \
-  grep -v '</s> <s>' | \
-  grep -v '</s> </s>' | \
-  arpa2fst - | fstprint | \
-  utils/remove_oovs.pl $tmpdir/oovs_${lm_suffix}.txt | \
-  utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=$test/words.txt \
-    --osymbols=$test/words.txt  --keep_isymbols=false --keep_osymbols=false | \
-   fstrmepsilon | fstarcsort --sort_type=ilabel > $test/G.fst
+  arpa2fst --disambig-symbol=#0 \
+           --read-symbol-table=$test/words.txt - $test/G.fst
 fstisstochastic $test/G.fst
 # The output is like:
 # 9.14233e-05 -0.259833
@@ -154,10 +140,9 @@ awk '{if(NF==1){ printf("0 0 %s %s\n", $1,$1); }} END{print "0 0 #0 #0"; print "
     < "$lexicon"  >$tmpdir/g/select_empty.fst.txt
 fstcompile --isymbols=$test/words.txt --osymbols=$test/words.txt $tmpdir/g/select_empty.fst.txt | \
  fstarcsort --sort_type=olabel | fstcompose - $test/G.fst > $tmpdir/g/empty_words.fst
-fstinfo $tmpdir/g/empty_words.fst | grep cyclic | grep -w 'y' && 
+fstinfo $tmpdir/g/empty_words.fst | grep cyclic | grep -w 'y' &&
   echo "Language model has cycles with empty words" && exit 1
 rm -r $tmpdir/g
 
 echo "Succeeded in preparing a large ${order}-gram LM"
 rm -r $tmpdir
-

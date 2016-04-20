@@ -107,7 +107,7 @@ class Rbm : public RbmBase {
     std::string vis_bias_cmvn_file; // initialize biases to logit(p_active)
     // parse config
     std::string token; 
-    while (!is.eof()) {
+    while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token); 
       /**/ if (token == "<VisibleType>") ReadToken(is, false, &vis_type);
       else if (token == "<HiddenType>") ReadToken(is, false, &hid_type);
@@ -118,7 +118,6 @@ class Rbm : public RbmBase {
       else if (token == "<ParamStddev>") ReadBasicType(is, false, &param_stddev);
       else if (token == "<VisibleBiasCmvnFilename>") ReadToken(is, false, &vis_bias_cmvn_file);
       else KALDI_ERR << "Unknown token " << token << " Typo in config?";
-      is >> std::ws; // eat-up whitespace
     }
 
     //

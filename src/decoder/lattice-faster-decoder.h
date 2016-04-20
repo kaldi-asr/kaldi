@@ -230,12 +230,9 @@ class LatticeFasterDecoder {
   // links from it when we process the next frame.
   struct Token {
     BaseFloat tot_cost; // would equal weight.Value()... cost up to this point.
-    BaseFloat extra_cost; // >= 0.  After calling PruneForwardLinks, this equals
-    // the minimum difference between the cost of the best path, and the cost of
-    // this is on, and the cost of the absolute best path, under the assumption
-    // that any of the currently active states at the decoding front may
-    // eventually succeed (e.g. if you were to take the currently active states
-    // one by one and compute this difference, and then take the minimum).
+    BaseFloat extra_cost; // >= 0.  This is used in pruning a way tokens.
+    // there is a comment in lattice-faster-decoder.cc explaining this;
+    // search for "a note on the definition of extra_cost".
 
     ForwardLink *links; // Head of singly linked list of ForwardLinks
 

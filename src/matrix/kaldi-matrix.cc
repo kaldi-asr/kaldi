@@ -68,6 +68,9 @@ void MatrixBase<Real>::Invert(Real *log_det, Real *det_sign,
       if (log_det) *log_det = -std::numeric_limits<Real>::infinity();
       if (det_sign) *det_sign = 0;
       delete[] pivot;
+#ifndef HAVE_ATLAS
+      KALDI_MEMALIGN_FREE(p_work);
+#endif
       return;
     }
   }

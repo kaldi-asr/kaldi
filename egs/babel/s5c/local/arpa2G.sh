@@ -38,7 +38,7 @@ if [ $# -ne 3 ]; then
 fi
 
 set -e           #Exit on non-zero return code from any command
-set -o pipefail  #Exit if any of the commands in the pipeline will 
+set -o pipefail  #Exit if any of the commands in the pipeline will
                  #return non-zero return code
 
 lmfile=$1
@@ -58,7 +58,7 @@ if [ ! -z "$oov_prob_file" ]; then
     exit 1;
   fi
 
-  min_prob=$(gunzip -c $lmfile | perl -e '  $minlogprob = 0.0; 
+  min_prob=$(gunzip -c $lmfile | perl -e '  $minlogprob = 0.0;
      while(<STDIN>) { if (m/\\(\d)-grams:/) { $order = $1; }
       if ($order == 1) { @A = split;
        if ($A[0] < $minlogprob && $A[0] != -99) { $minlogprob = $A[0]; }}} print $minlogprob')
@@ -75,7 +75,7 @@ if [ ! -z "$oov_prob_file" ]; then
       while(<STDIN>) {
       if (m/^ngram 1=(\d+)/) { $n = $1 + $num_oovs; print "ngram 1=$n\n"; }
       else { print; } # print all lines unchanged except the one that says ngram 1=X.
-      if (m/^\\1-grams:$/) { 
+      if (m/^\\1-grams:$/) {
         foreach $l (@OOVS) {
           @A = split(" ", $l);
           @A == 2 || die "bad line in oov2prob: $_;";
@@ -96,16 +96,11 @@ elif [[ $lmfile == *.gz ]] ; then
 else
   decompress="cat $lmfile"
 fi
- 
+
 $decompress | \
-  grep -v '<s> <s>' | grep -v '</s> <s>' |  grep -v '</s> </s>' | \
-  arpa2fst - | \
-  fstprint | \
-  utils/eps2disambig.pl | \
-  utils/s2eps.pl | \
-  fstcompile --isymbols=$langdir/words.txt \
-  --osymbols=$langdir/words.txt  --keep_isymbols=false --keep_osymbols=false | \
-  fstrmepsilon | fstarcsort --sort_type=olabel > $destdir/G.fst || exit 1
+  arpa2fst --disambig-symbol=#0 \
+           --read-symbol-table=$langdir/words.txt - $destdir/G.fst || exit 1
+
 fstisstochastic $destdir/G.fst || true;
 
 if $cleanup; then

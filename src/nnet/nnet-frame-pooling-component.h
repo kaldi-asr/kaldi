@@ -40,9 +40,12 @@ namespace nnet1 {
  */
 class FramePoolingComponent : public UpdatableComponent {
  public:
-  FramePoolingComponent(int32 dim_in, int32 dim_out) 
-    : UpdatableComponent(dim_in, dim_out), feature_dim_(0), learn_rate_coef_(0.01), normalize_(false)
+  FramePoolingComponent(int32 dim_in, int32 dim_out) : 
+    UpdatableComponent(dim_in, dim_out), 
+    feature_dim_(0), 
+    normalize_(false)
   { }
+
   ~FramePoolingComponent()
   { }
 
@@ -61,7 +64,7 @@ class FramePoolingComponent : public UpdatableComponent {
     float learn_rate_coef = 0.01;
     // parse config
     std::string token;
-    while (!is.eof()) {
+    while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token);
       /**/ if (token == "<FeatureDim>") ReadBasicType(is, false, &feature_dim_);
       else if (token == "<CentralOffset>") ReadIntegerVector(is, false, &central_offset);
@@ -71,7 +74,6 @@ class FramePoolingComponent : public UpdatableComponent {
       else if (token == "<Normalize>") ReadBasicType(is, false, &normalize_);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                      << " (FeatureDim|CentralOffset <vec>|PoolSize <vec>|LearnRateCoef|Normalize)";
-      is >> std::ws; // eat-up whitespace
     }
     // check inputs:
     KALDI_ASSERT(feature_dim_ > 0);
@@ -257,7 +259,6 @@ class FramePoolingComponent : public UpdatableComponent {
   std::vector<Vector<BaseFloat> > weight_; // vector of pooling weight vectors
   std::vector<Vector<BaseFloat> > weight_diff_; // detivatives of weight vectors
 
-  BaseFloat learn_rate_coef_; // learninig rate multiplier
   bool normalize_; // apply normalization after each update
 };
 
