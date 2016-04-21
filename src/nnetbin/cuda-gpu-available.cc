@@ -17,13 +17,13 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "base/kaldi-common.h"
-#include "cudamatrix/cu-device.h"
-
 #ifndef _MSC_VER
   #include <unistd.h>
   #include <errno.h>
 #endif
+
+#include "base/kaldi-common.h"
+#include "cudamatrix/cu-device.h"
 
 using namespace kaldi;
 

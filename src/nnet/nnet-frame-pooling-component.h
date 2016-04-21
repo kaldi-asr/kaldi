@@ -21,12 +21,14 @@
 #ifndef KALDI_NNET_NNET_FRAME_POOLING_COMPONENT_H_
 #define KALDI_NNET_NNET_FRAME_POOLING_COMPONENT_H_
 
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <sstream>
 
 #include "nnet/nnet-component.h"
 #include "nnet/nnet-utils.h"
 #include "cudamatrix/cu-math.h"
-
-#include <sstream>
 
 namespace kaldi {
 namespace nnet1 {
@@ -49,8 +51,13 @@ class FramePoolingComponent : public UpdatableComponent {
   ~FramePoolingComponent()
   { }
 
-  Component* Copy() const { return new FramePoolingComponent(*this); }
-  ComponentType GetType() const { return kFramePoolingComponent; }
+  Component* Copy() const { 
+    return new FramePoolingComponent(*this); 
+  }
+
+  ComponentType GetType() const { 
+    return kFramePoolingComponent; 
+  }
 
   /** 
    * Here the offsets are w.r.t. central frames, which has offset 0. 
@@ -168,14 +175,22 @@ class FramePoolingComponent : public UpdatableComponent {
     return sum; 
   }
   
-  void GetParams(Vector<BaseFloat>* wei_copy) const {
-    wei_copy->Resize(NumParams());
+  void GetGradient(VectorBase<BaseFloat> *gradient) const {
+    KALDI_ERR << "Unimplemented.";
+  }
+
+  void GetParams(VectorBase<BaseFloat>* params) const {
+    KALDI_ASSERT(params->Dim() == NumParams());
     int32 offset = 0;
     for (int32 p=0; p<weight_.size(); p++) {
-      wei_copy->Range(offset, weight_[p].Dim()).CopyFromVec(weight_[p]);
+      params->Range(offset, weight_[p].Dim()).CopyFromVec(weight_[p]);
       offset += weight_[p].Dim(); 
     }
-    KALDI_ASSERT(offset == wei_copy->Dim());
+    KALDI_ASSERT(offset == params->Dim());
+  }
+
+  void SetParams(const VectorBase<BaseFloat>& params) {
+    KALDI_ERR << "Unimplemented.";
   }
   
   std::string Info() const {
@@ -201,7 +216,8 @@ class FramePoolingComponent : public UpdatableComponent {
     return oss.str();
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+                    CuMatrixBase<BaseFloat> *out) {
     // check dims
     KALDI_ASSERT(in.NumCols() % feature_dim_ == 0);
     KALDI_ASSERT(out->NumCols() % feature_dim_ == 0);
@@ -217,13 +233,16 @@ class FramePoolingComponent : public UpdatableComponent {
     }
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
-    KALDI_ERR << "Unimplemented";
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+                        const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff, 
+                        CuMatrixBase<BaseFloat> *in_diff) {
+    KALDI_ERR << "Unimplemented.";
   }
 
 
-  void Update(const CuMatrixBase<BaseFloat> &input, const CuMatrixBase<BaseFloat> &diff) {
+  void Update(const CuMatrixBase<BaseFloat> &input, 
+              const CuMatrixBase<BaseFloat> &diff) {
     // useful dims
     int32 num_pools = offset_.size();
     // lazy init
@@ -265,4 +284,4 @@ class FramePoolingComponent : public UpdatableComponent {
 } // namespace nnet1
 } // namespace kaldi
 
-#endif
+#endif  // KALDI_NNET_NNET_FRAME_POOLING_COMPONENT_H_

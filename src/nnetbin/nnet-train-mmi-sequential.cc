@@ -17,6 +17,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#include <iomanip>
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
@@ -36,8 +37,6 @@
 #include "nnet/nnet-utils.h"
 #include "base/timer.h"
 #include "cudamatrix/cu-device.h"
-
-#include <iomanip>
 
 
 namespace kaldi {
@@ -229,7 +228,7 @@ int main(int argc, char *argv[]) {
       const Matrix<BaseFloat> &mat = feature_reader.Value();
       const std::vector<int32> &num_ali = num_ali_reader.Value(utt);
       // check for temporal length of numerator alignments
-      if ((int32)num_ali.size() != mat.NumRows()) {
+      if (static_cast<int32>(num_ali.size()) != mat.NumRows()) {
         KALDI_WARN << "Numerator alignment has wrong length "
                    << num_ali.size() << " vs. "<< mat.NumRows();
         num_other_error++;
@@ -442,7 +441,7 @@ int main(int argc, char *argv[]) {
        
     // add the softmax layer back before writing,
     KALDI_LOG << "Appending the softmax " << target_model_filename;
-    nnet.AppendComponent(new Softmax(nnet.OutputDim(),nnet.OutputDim()));
+    nnet.AppendComponentPointer(new Softmax(nnet.OutputDim(),nnet.OutputDim()));
     // store the nnet,
     nnet.Write(target_model_filename, binary);
 

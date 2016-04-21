@@ -21,6 +21,7 @@
 #ifndef KALDI_NNET_NNET_SENTENCE_AVERAGING_COMPONENT_H_
 #define KALDI_NNET_NNET_SENTENCE_AVERAGING_COMPONENT_H_
 
+#include <string>
 
 #include "nnet/nnet-component.h"
 #include "nnet/nnet-utils.h"
@@ -200,8 +201,19 @@ class SentenceAveragingComponent : public UpdatableComponent {
 
   int32 NumParams() const { return nnet_.NumParams(); }
 
-  void GetParams(Vector<BaseFloat>* wei_copy) const { 
-    wei_copy->Resize(NumParams()); nnet_.GetParams(wei_copy); 
+  void GetGradient(VectorBase<BaseFloat>* gradient) const {
+    KALDI_ERR << "Unimplemented!";
+  }
+
+  void GetParams(VectorBase<BaseFloat>* params) const {
+    KALDI_ASSERT(params->Dim() == NumParams());
+    Vector<BaseFloat> params_aux;
+    nnet_.GetParams(&params_aux);
+    params->CopyFromVec(params_aux);
+  }
+
+  void SetParams(const VectorBase<BaseFloat>& params) {
+    KALDI_ERR << "Unimplemented!";
   }
 
   std::string Info() const { 
@@ -276,4 +288,4 @@ class SentenceAveragingComponent : public UpdatableComponent {
 } // namespace nnet1
 } // namespace kaldi
 
-#endif
+#endif  // KALDI_NNET_NNET_SENTENCE_AVERAGING_COMPONENT_H_

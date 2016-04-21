@@ -361,7 +361,7 @@ int main(int argc, char *argv[]) {
 
     // add the softmax layer back before writing,
     KALDI_LOG << "Appending the softmax " << target_model_filename;
-    nnet.AppendComponent(new Softmax(nnet.OutputDim(),nnet.OutputDim()));
+    nnet.AppendComponentPointer(new Softmax(nnet.OutputDim(),nnet.OutputDim()));
     // store the nnet,
     nnet.Write(target_model_filename, binary);
 

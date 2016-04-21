@@ -21,6 +21,7 @@
 #ifndef KALDI_NNET_NNET_RBM_H_
 #define KALDI_NNET_NNET_RBM_H_
 
+#include <string>
 
 #include "nnet/nnet-component.h"
 #include "nnet/nnet-nnet.h"
@@ -158,7 +159,8 @@ class Rbm : public RbmBase {
       Nnet cmvn;
       cmvn.Read(vis_bias_cmvn_file);
       // getting probablity that neuron fires:
-      Vector<BaseFloat> p(dynamic_cast<AddShift&>(cmvn.GetComponent(0)).GetShiftVec());
+      Vector<BaseFloat> p;
+      dynamic_cast<AddShift&>(cmvn.GetComponent(0)).GetParams(&p);
       p.Scale(-1.0);
       // compute logit:
       Vector<BaseFloat> logit_p(p.Dim());
@@ -412,4 +414,4 @@ protected:
 } // namespace nnet1
 } // namespace kaldi
 
-#endif
+#endif  // KALDI_NNET_NNET_RBM_H_

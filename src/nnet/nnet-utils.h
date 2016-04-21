@@ -21,6 +21,8 @@
 #ifndef KALDI_NNET_NNET_UTILS_H_
 #define KALDI_NNET_NNET_UTILS_H_
 
+#include <string>
+#include <vector>
 #include <iterator>
 #include <algorithm>
 
@@ -204,4 +206,4 @@ void PosteriorToMatrixMapped(const Posterior &post, const TransitionModel &model
 } // namespace nnet1
 } // namespace kaldi
 
-#endif
+#endif  // KALDI_NNET_NNET_UTILS_H_

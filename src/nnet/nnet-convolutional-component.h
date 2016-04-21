@@ -21,6 +21,8 @@
 #ifndef KALDI_NNET_NNET_CONVOLUTIONAL_COMPONENT_H_
 #define KALDI_NNET_NNET_CONVOLUTIONAL_COMPONENT_H_
 
+#include <string>
+#include <vector>
 
 #include "nnet/nnet-component.h"
 #include "nnet/nnet-utils.h"
@@ -63,16 +65,24 @@ namespace nnet1 {
  */
 class ConvolutionalComponent : public UpdatableComponent {
  public:
-  ConvolutionalComponent(int32 dim_in, int32 dim_out) 
-    : UpdatableComponent(dim_in, dim_out),
-      patch_dim_(0), patch_step_(0), patch_stride_(0), 
-      max_norm_(0.0)  
+  ConvolutionalComponent(int32 dim_in, int32 dim_out) : 
+    UpdatableComponent(dim_in, dim_out),
+    patch_dim_(0), 
+    patch_step_(0), 
+    patch_stride_(0), 
+    max_norm_(0.0)  
   { }
+
   ~ConvolutionalComponent()
   { }
 
-  Component* Copy() const { return new ConvolutionalComponent(*this); }
-  ComponentType GetType() const { return kConvolutionalComponent; }
+  Component* Copy() const { 
+    return new ConvolutionalComponent(*this); 
+  }
+
+  ComponentType GetType() const { 
+    return kConvolutionalComponent; 
+  }
 
   void InitData(std::istream &is) {
     // define options
@@ -118,15 +128,15 @@ class ConvolutionalComponent : public UpdatableComponent {
     // Initialize parameters
     //
     Matrix<BaseFloat> mat(num_filters, filter_dim);
-    for(int32 r=0; r<num_filters; r++) {
-      for(int32 c=0; c<filter_dim; c++) {
+    for (int32 r=0; r < num_filters; r++) {
+      for (int32 c=0; c < filter_dim; c++) {
         mat(r,c) = param_stddev * RandGauss(); // 0-mean Gauss with given std_dev
       }
     }
     filters_ = mat;
     //
     Vector<BaseFloat> vec(num_filters);
-    for(int32 i=0; i<num_filters; i++) {
+    for (int32 i = 0; i < num_filters; i++) {
       // +/- 1/2*bias_range from bias_mean:
       vec(i) = bias_mean + (RandUniform() - 0.5) * bias_range; 
     }
@@ -221,12 +231,26 @@ class ConvolutionalComponent : public UpdatableComponent {
   int32 NumParams() const { 
     return filters_.NumRows()*filters_.NumCols() + bias_.Dim(); 
   }
-  
-  void GetParams(Vector<BaseFloat>* wei_copy) const {
-    wei_copy->Resize(NumParams());
+ 
+  void GetGradient(VectorBase<BaseFloat>* gradient) const {
+    KALDI_ASSERT(gradient->Dim() == NumParams());
     int32 filters_num_elem = filters_.NumRows() * filters_.NumCols();
-    wei_copy->Range(0,filters_num_elem).CopyRowsFromMat(Matrix<BaseFloat>(filters_));
-    wei_copy->Range(filters_num_elem, bias_.Dim()).CopyFromVec(Vector<BaseFloat>(bias_));
+    gradient->Range(0,filters_num_elem).CopyRowsFromMat(filters_);
+    gradient->Range(filters_num_elem, bias_.Dim()).CopyFromVec(bias_);
+  }
+ 
+  void GetParams(VectorBase<BaseFloat>* params) const {
+    KALDI_ASSERT(params->Dim() == NumParams());
+    int32 filters_num_elem = filters_.NumRows() * filters_.NumCols();
+    params->Range(0,filters_num_elem).CopyRowsFromMat(filters_);
+    params->Range(filters_num_elem, bias_.Dim()).CopyFromVec(bias_);
+  }
+
+  void SetParams(const VectorBase<BaseFloat>& params) {
+    KALDI_ASSERT(params.Dim() == NumParams());
+    int32 filters_num_elem = filters_.NumRows() * filters_.NumCols();
+    filters_.CopyRowsFromVec(params.Range(0,filters_num_elem));
+    bias_.CopyFromVec(params.Range(filters_num_elem, bias_.Dim()));
   }
 
   std::string Info() const {
@@ -469,4 +493,4 @@ class ConvolutionalComponent : public UpdatableComponent {
 } // namespace nnet1
 } // namespace kaldi
 
-#endif
+#endif  // KALDI_NNET_NNET_CONVOLUTIONAL_COMPONENT_H_

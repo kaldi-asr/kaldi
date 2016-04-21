@@ -23,6 +23,8 @@
 #ifndef KALDI_NNET_NNET_CONVOLUTIONAL_2D_COMPONENT_H_
 #define KALDI_NNET_NNET_CONVOLUTIONAL_2D_COMPONENT_H_
 
+#include <string>
+#include <vector>
 
 #include "nnet/nnet-component.h"
 #include "nnet/nnet-various.h"
@@ -69,18 +71,24 @@ namespace nnet1 {
  */
 class Convolutional2DComponent : public UpdatableComponent {
  public:
-  Convolutional2DComponent(int32 dim_in, int32 dim_out)
-    : UpdatableComponent(dim_in, dim_out),
-      fmap_x_len_(0), fmap_y_len_(0),
-      filt_x_len_(0), filt_y_len_(0),
-      filt_x_step_(0), filt_y_step_(0),
-      connect_fmap_(0)
+  Convolutional2DComponent(int32 dim_in, int32 dim_out) : 
+    UpdatableComponent(dim_in, dim_out),
+    fmap_x_len_(0), fmap_y_len_(0),
+    filt_x_len_(0), filt_y_len_(0),
+    filt_x_step_(0), filt_y_step_(0),
+    connect_fmap_(0)
   { }
+
   ~Convolutional2DComponent()
   { }
 
-  Component* Copy() const { return new Convolutional2DComponent(*this); }
-  ComponentType GetType() const { return kConvolutional2DComponent; }
+  Component* Copy() const { 
+    return new Convolutional2DComponent(*this); 
+  }
+
+  ComponentType GetType() const { 
+    return kConvolutional2DComponent; 
+  }
 
   void InitData(std::istream &is) {
     // define options
@@ -234,11 +242,25 @@ class Convolutional2DComponent : public UpdatableComponent {
     return filters_.NumRows()*filters_.NumCols() + bias_.Dim();
   }
 
-  void GetParams(Vector<BaseFloat>* wei_copy) const {
-    wei_copy->Resize(NumParams());
+  void GetGradient(VectorBase<BaseFloat>* gradient) const {
+    KALDI_ASSERT(gradient->Dim() == NumParams());
     int32 filters_num_elem = filters_.NumRows() * filters_.NumCols();
-    wei_copy->Range(0, filters_num_elem).CopyRowsFromMat(Matrix<BaseFloat>(filters_));
-    wei_copy->Range(filters_num_elem, bias_.Dim()).CopyFromVec(Vector<BaseFloat>(bias_));
+    gradient->Range(0,filters_num_elem).CopyRowsFromMat(filters_);
+    gradient->Range(filters_num_elem, bias_.Dim()).CopyFromVec(bias_);
+  }
+ 
+  void GetParams(VectorBase<BaseFloat>* params) const {
+    KALDI_ASSERT(params->Dim() == NumParams());
+    int32 filters_num_elem = filters_.NumRows() * filters_.NumCols();
+    params->Range(0,filters_num_elem).CopyRowsFromMat(filters_);
+    params->Range(filters_num_elem, bias_.Dim()).CopyFromVec(bias_);
+  }
+
+  void SetParams(const VectorBase<BaseFloat>& params) {
+    KALDI_ASSERT(params.Dim() == NumParams());
+    int32 filters_num_elem = filters_.NumRows() * filters_.NumCols();
+    filters_.CopyRowsFromVec(params.Range(0,filters_num_elem));
+    bias_.CopyFromVec(params.Range(filters_num_elem, bias_.Dim()));
   }
 
   std::string Info() const {
@@ -254,7 +276,8 @@ class Convolutional2DComponent : public UpdatableComponent {
            ", lr-coef " + ToString(bias_learn_rate_coef_);
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+                    CuMatrixBase<BaseFloat> *out) {
     // useful dims
     int32 num_input_fmaps = input_dim_ / (fmap_x_len_ * fmap_y_len_);
     // int32 inp_fmap_size = fmap_x_len_ * fmap_y_len_;
@@ -318,8 +341,10 @@ class Convolutional2DComponent : public UpdatableComponent {
   }
 
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+                        const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff, 
+                        CuMatrixBase<BaseFloat> *in_diff) {
     // useful dims
     int32 num_input_fmaps = input_dim_ / (fmap_x_len_ * fmap_y_len_);
 
@@ -408,7 +433,7 @@ class Convolutional2DComponent : public UpdatableComponent {
     // useful dims
     int32 out_fmap_x_len = (fmap_x_len_ - filt_x_len_)/filt_x_step_ + 1;
     int32 out_fmap_y_len = (fmap_y_len_ - filt_y_len_)/filt_y_step_ + 1;
-    int32 out_fmap_size = out_fmap_x_len*out_fmap_y_len;
+    //int32 out_fmap_size = out_fmap_x_len*out_fmap_y_len;
     int32 num_output_fmaps = output_dim_ / (out_fmap_x_len * out_fmap_y_len);
     int32 num_filters = filters_.NumRows();  // this is total num_filters, so each input_fmap has num_filters/num_input_fmaps
     KALDI_ASSERT(num_filters == num_output_fmaps);
@@ -421,25 +446,6 @@ class Convolutional2DComponent : public UpdatableComponent {
     const BaseFloat l1 = opts_.l1_penalty;
     */
 
-
-    //
-    // calculate the gradient
-    //
-    filters_grad_.Resize(filters_.NumRows(), filters_.NumCols(), kSetZero);
-    bias_grad_.Resize(filters_.NumRows());
-
-    for (int32 p = 0; p < out_fmap_size; p++) {
-      CuSubMatrix<BaseFloat> diff_patch(diff.ColRange(p*num_filters, num_filters));
-      filters_grad_.AddMatMat(1.0, diff_patch, kTrans, vectorized_feature_patches_[p], kNoTrans, 1.0);
-      bias_grad_.AddRowSumMat(1.0, diff_patch, 1.0);
-    }
-
-    // scale
-    filters_grad_.Scale(1.0/out_fmap_size);
-    bias_grad_.Scale(1.0/out_fmap_size);
-
-    //
-    // update
     //
     filters_.AddMat(-lr*learn_rate_coef_, filters_grad_);
     bias_.AddVec(-lr*bias_learn_rate_coef_, bias_grad_);
@@ -480,4 +486,4 @@ class Convolutional2DComponent : public UpdatableComponent {
 }  // namespace nnet1
 }  // namespace kaldi
 
-#endif
+#endif  // KALDI_NNET_NNET_CONVOLUTIONAL_2D_COMPONENT_H_

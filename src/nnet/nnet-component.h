@@ -22,14 +22,14 @@
 #ifndef KALDI_NNET_NNET_COMPONENT_H_
 #define KALDI_NNET_NNET_COMPONENT_H_
 
+#include <iostream>
+#include <string>
 
 #include "base/kaldi-common.h"
 #include "matrix/matrix-lib.h"
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-vector.h"
 #include "nnet/nnet-trnopts.h"
-
-#include <iostream>
 
 namespace kaldi {
 namespace nnet1 {
@@ -218,8 +218,14 @@ class UpdatableComponent : public Component {
   /// Number of trainable parameters,
   virtual int32 NumParams() const = 0;
 
+  /// Get gradient reshaped as a vector,
+  virtual void GetGradient(VectorBase<BaseFloat> *gradient) const = 0;
+
   /// Get the trainable parameters reshaped as a vector,
-  virtual void GetParams(Vector<BaseFloat> *params) const = 0;
+  virtual void GetParams(VectorBase<BaseFloat> *params) const = 0;
+
+  /// Set the trainable parameters from, reshaped as a vector,
+  virtual void SetParams(const VectorBase<BaseFloat>& params) = 0;
 
   /// Compute gradient and update parameters,
   virtual void Update(const CuMatrixBase<BaseFloat> &input,
@@ -313,4 +319,4 @@ inline void Component::Backpropagate(const CuMatrixBase<BaseFloat> &in,
 } // namespace kaldi
 
 
-#endif
+#endif  // KALDI_NNET_NNET_COMPONENT_H_

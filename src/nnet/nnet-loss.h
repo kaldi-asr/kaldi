@@ -20,6 +20,9 @@
 #ifndef KALDI_NNET_NNET_LOSS_H_
 #define KALDI_NNET_NNET_LOSS_H_
 
+#include <string>
+#include <vector>
+
 #include "base/kaldi-common.h"
 #include "util/kaldi-holder.h"
 #include "cudamatrix/cu-matrix.h"
@@ -203,5 +206,5 @@ class MultiTaskLoss : public LossItf {
 } // namespace nnet1
 } // namespace kaldi
 
-#endif
+#endif  // KALDI_NNET_NNET_LOSS_H_
 

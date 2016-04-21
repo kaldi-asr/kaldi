@@ -23,6 +23,8 @@
 #ifndef KALDI_NNET_NNET_KL_HMM_H_
 #define KALDI_NNET_NNET_KL_HMM_H_
 
+#include <vector>
+
 #include "nnet/nnet-component.h"
 #include "cudamatrix/cu-math.h"
 #include "cudamatrix/cu-rand.h"
@@ -35,17 +37,23 @@ namespace nnet1 {
 class KlHmm : public Component {
  public:
   KlHmm(int32 dim_in, int32 dim_out) 
-    : Component(dim_in, dim_out), kl_stats_(dim_out, dim_in, kSetZero)
+    : Component(dim_in, dim_out), 
+      kl_stats_(dim_out, dim_in, kSetZero)
   { }
+
   ~KlHmm()
   { }
 
-  Component* Copy() const { return new KlHmm(*this); }
+  Component* Copy() const { 
+    return new KlHmm(*this); 
+  }
+
   ComponentType GetType() const {
     return kKlHmm;
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+                    CuMatrixBase<BaseFloat> *out) {
     if (kl_inv_q_.NumRows() == 0) {
       // Copy the CudaMatrix to a Matrix
       Matrix<BaseFloat> in_tmp(in.NumRows(), in.NumCols());
@@ -99,8 +107,10 @@ class KlHmm : public Component {
     out->Scale(-1);
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+                        const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff, 
+                        CuMatrixBase<BaseFloat> *in_diff) {
     KALDI_ERR << "Unimplemented";
   }
  
@@ -125,7 +135,8 @@ class KlHmm : public Component {
    }
 
   /// Accumulate the statistics for KL-HMM paramter estimation
-  void Accumulate (const Matrix<BaseFloat> &posteriors, const std::vector<int32> &alignment) {
+  void Accumulate (const Matrix<BaseFloat> &posteriors, 
+                   const std::vector<int32> &alignment) {
     KALDI_ASSERT(posteriors.NumRows() == alignment.size());
     KALDI_ASSERT(posteriors.NumCols() == kl_stats_.NumCols());
     int32 num_frames = alignment.size();
@@ -148,5 +159,5 @@ class KlHmm : public Component {
 } // namespace nnet1
 } // namespace kaldi
 
-#endif
+#endif  // KALDI_NNET_NNET_KL_HMM_H_
 

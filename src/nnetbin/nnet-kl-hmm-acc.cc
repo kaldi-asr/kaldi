@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
         const Matrix<BaseFloat> &mat = feature_reader.Value();
         const std::vector<int32> &alignment = alignments_reader.Value(utt);
                  
-        if ((int32)alignment.size() != mat.NumRows()) {
+        if (static_cast<int32>(alignment.size()) != mat.NumRows()) {
           KALDI_WARN << "Alignment has wrong size "<< (alignment.size()) << " vs. "<< (mat.NumRows());
           num_other_error++;
           continue;

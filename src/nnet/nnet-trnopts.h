@@ -106,4 +106,4 @@ struct RbmTrainOptions {
 }//namespace nnet1
 }//namespace kaldi
 
-#endif
+#endif  // KALDI_NNET_NNET_TRNOPTS_H_

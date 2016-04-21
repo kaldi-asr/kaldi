@@ -21,6 +21,7 @@
 #ifndef KALDI_NNET_NNET_LINEAR_TRANSFORM_H_
 #define KALDI_NNET_NNET_LINEAR_TRANSFORM_H_
 
+#include <string>
 
 #include "nnet/nnet-component.h"
 #include "nnet/nnet-utils.h"
@@ -40,8 +41,13 @@ class LinearTransform : public UpdatableComponent {
   ~LinearTransform()
   { }
 
-  Component* Copy() const { return new LinearTransform(*this); }
-  ComponentType GetType() const { return kLinearTransform; }
+  Component* Copy() const { 
+    return new LinearTransform(*this); 
+  }
+
+  ComponentType GetType() const { 
+    return kLinearTransform; 
+  }
   
   void InitData(std::istream &is) {
     // define options
@@ -115,14 +121,31 @@ class LinearTransform : public UpdatableComponent {
     linearity_.Write(os, binary);
   }
 
-  int32 NumParams() const { return linearity_.NumRows()*linearity_.NumCols(); }
-  
-  void GetParams(Vector<BaseFloat>* wei_copy) const {
-    wei_copy->Resize(NumParams());
-    int32 linearity_num_elem = linearity_.NumRows() * linearity_.NumCols(); 
-    wei_copy->Range(0,linearity_num_elem).CopyRowsFromMat(Matrix<BaseFloat>(linearity_));
+  int32 NumParams() const { 
+    return linearity_.NumRows()*linearity_.NumCols(); 
+  }
+
+  void GetGradient(VectorBase<BaseFloat>* gradient) const {
+    KALDI_ASSERT(gradient->Dim() == NumParams());
+    gradient->CopyRowsFromMat(linearity_corr_);
+  }
+
+  void GetParams(VectorBase<BaseFloat>* params) const {
+    KALDI_ASSERT(params->Dim() == NumParams());
+    params->CopyRowsFromMat(linearity_);
   }
   
+  void SetParams(const VectorBase<BaseFloat>& params) {
+    KALDI_ASSERT(params.Dim() == NumParams());
+    linearity_.CopyRowsFromVec(params);
+  }
+
+  void SetLinearity(const MatrixBase<BaseFloat>& l) {
+    KALDI_ASSERT(l.NumCols() == linearity_.NumCols());
+    KALDI_ASSERT(l.NumRows() == linearity_.NumRows());
+    linearity_.CopyFromMat(l);
+  }
+
   std::string Info() const {
     return std::string("\n  linearity") + MomentStatistics(linearity_) +
       ", lr-coef " + ToString(learn_rate_coef_);
@@ -132,19 +155,23 @@ class LinearTransform : public UpdatableComponent {
       ", lr-coef " + ToString(learn_rate_coef_);
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+                    CuMatrixBase<BaseFloat> *out) {
     // multiply by weights^t
     out->AddMatMat(1.0, in, kNoTrans, linearity_, kTrans, 0.0);
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+                        const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff, 
+                        CuMatrixBase<BaseFloat> *in_diff) {
     // multiply error derivative by weights
     in_diff->AddMatMat(1.0, out_diff, kNoTrans, linearity_, kNoTrans, 0.0);
   }
 
 
-  void Update(const CuMatrixBase<BaseFloat> &input, const CuMatrixBase<BaseFloat> &diff) {
+  void Update(const CuMatrixBase<BaseFloat> &input, 
+              const CuMatrixBase<BaseFloat> &diff) {
     // we use following hyperparameters from the option class
     const BaseFloat lr = opts_.learn_rate;
     const BaseFloat mmt = opts_.momentum;
@@ -181,7 +208,6 @@ class LinearTransform : public UpdatableComponent {
     return linearity_corr_;
   }
 
-
  private:
   CuMatrix<BaseFloat> linearity_;
   CuMatrix<BaseFloat> linearity_corr_;
@@ -190,4 +216,4 @@ class LinearTransform : public UpdatableComponent {
 } // namespace nnet1
 } // namespace kaldi
 
-#endif
+#endif  // KALDI_NNET_NNET_LINEAR_TRANSFORM_H_

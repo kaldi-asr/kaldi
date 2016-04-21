@@ -17,6 +17,10 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+
+#include <algorithm>
+#include <sstream>
+
 #include "nnet/nnet-component.h"
 
 #include "nnet/nnet-nnet.h"
@@ -26,7 +30,6 @@
 #include "nnet/nnet-linear-transform.h"
 #include "nnet/nnet-rbm.h"
 #include "nnet/nnet-various.h"
-#include "nnet/nnet-kl-hmm.h"
 
 #include "nnet/nnet-convolutional-component.h"
 #include "nnet/nnet-average-pooling-component.h"
@@ -42,8 +45,6 @@
 #include "nnet/nnet-sentence-averaging-component.h"
 #include "nnet/nnet-frame-pooling-component.h"
 #include "nnet/nnet-parallel-component.h"
-
-#include <sstream>
 
 namespace kaldi {
 namespace nnet1 {

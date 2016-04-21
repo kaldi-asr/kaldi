@@ -22,6 +22,8 @@
 #ifndef KALDI_NNET_NNET_MAX_POOLING_2D_COMPONENT_H_
 #define KALDI_NNET_NNET_MAX_POOLING_2D_COMPONENT_H_
 
+#include <string>
+#include <vector>
 
 #include "nnet/nnet-component.h"
 #include "nnet/nnet-utils.h"
@@ -43,11 +45,17 @@ class MaxPooling2DComponent : public Component {
         fmap_x_len_(0), fmap_y_len_(0),
         pool_x_len_(0), pool_y_len_(0), pool_x_step_(0), pool_y_step_(0)
   { }
+
   ~MaxPooling2DComponent()
   { }
 
-  Component* Copy() const { return new MaxPooling2DComponent(*this); }
-  ComponentType GetType() const { return kMaxPooling2DComponent; }
+  Component* Copy() const { 
+    return new MaxPooling2DComponent(*this); 
+  }
+
+  ComponentType GetType() const { 
+    return kMaxPooling2DComponent; 
+  }
 
   void InitData(std::istream &is) {
     // parse config
@@ -118,7 +126,8 @@ class MaxPooling2DComponent : public Component {
     WriteBasicType(os, binary, pool_y_step_);
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+                    CuMatrixBase<BaseFloat> *out) {
     // useful dims
     int32 num_input_fmaps = input_dim_ / (fmap_x_len_ * fmap_y_len_);
     int out_fmap_cnt = 0;
@@ -141,8 +150,10 @@ class MaxPooling2DComponent : public Component {
     }
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+                        const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff, 
+                        CuMatrixBase<BaseFloat> *in_diff) {
     // useful dims
     int32 num_input_fmaps = input_dim_ / (fmap_x_len_ * fmap_y_len_);
     int32 inp_fmap_size = fmap_x_len_ * fmap_y_len_;
@@ -207,4 +218,4 @@ class MaxPooling2DComponent : public Component {
 }  // namespace nnet1
 }  // namespace kaldi
 
-#endif
+#endif  // KALDI_NNET_NNET_MAX_POOLING_2D_COMPONENT_H_

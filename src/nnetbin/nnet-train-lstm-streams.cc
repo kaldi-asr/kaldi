@@ -312,7 +312,7 @@ int main(int argc, char *argv[]) {
           if ((num_done-num_done_progress)/dump_interval != (num_done/dump_interval)) {
               char nnet_name[512];
               if (!crossvalidate) {
-                  sprintf(nnet_name, "%s_utt%d", target_model_filename.c_str(), num_done);
+                  snprintf(nnet_name, sizeof(nnet_name), "%s_utt%d", target_model_filename.c_str(), num_done);
                   nnet.Write(nnet_name, binary);
               }
           }

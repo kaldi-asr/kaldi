@@ -21,6 +21,7 @@
 #ifndef KALDI_NNET_NNET_AFFINE_TRANSFORM_H_
 #define KALDI_NNET_NNET_AFFINE_TRANSFORM_H_
 
+#include <string>
 
 #include "nnet/nnet-component.h"
 #include "nnet/nnet-utils.h"
@@ -66,16 +67,17 @@ class AffineTransform : public UpdatableComponent {
     // initialize
     //
     Matrix<BaseFloat> mat(output_dim_, input_dim_);
-    for (int32 r=0; r<output_dim_; r++) {
-      for (int32 c=0; c<input_dim_; c++) {
-        mat(r,c) = param_stddev * RandGauss(); // 0-mean Gauss with given std_dev
+    for (int32 r = 0; r < output_dim_; r++) {
+      for (int32 c = 0; c < input_dim_; c++) {
+        // 0-mean Gauss with given std_dev,
+        mat(r, c) = param_stddev * RandGauss();  
       }
     }
     linearity_ = mat;
     //
     Vector<BaseFloat> vec(output_dim_);
-    for (int32 i=0; i<output_dim_; i++) {
-      // +/- 1/2*bias_range from bias_mean:
+    for (int32 i = 0; i < output_dim_; i++) {
+      // +/- 1/2*bias_range from bias_mean,
       vec(i) = bias_mean + (RandUniform() - 0.5) * bias_range; 
     }
     bias_ = vec;
@@ -125,51 +127,73 @@ class AffineTransform : public UpdatableComponent {
     WriteBasicType(os, binary, bias_learn_rate_coef_);
     WriteToken(os, binary, "<MaxNorm>");
     WriteBasicType(os, binary, max_norm_);
-    if(!binary) os << "\n";
+    if (!binary) os << "\n";
     // weights
     linearity_.Write(os, binary);
     bias_.Write(os, binary);
   }
 
-  int32 NumParams() const { return linearity_.NumRows()*linearity_.NumCols() + bias_.Dim(); }
-  
-  void GetParams(Vector<BaseFloat>* wei_copy) const {
-    wei_copy->Resize(NumParams());
-    int32 linearity_num_elem = linearity_.NumRows() * linearity_.NumCols(); 
-    wei_copy->Range(0,linearity_num_elem).CopyRowsFromMat(Matrix<BaseFloat>(linearity_));
-    wei_copy->Range(linearity_num_elem, bias_.Dim()).CopyFromVec(Vector<BaseFloat>(bias_));
+  int32 NumParams() const { 
+    return linearity_.NumRows()*linearity_.NumCols() + bias_.Dim();
   }
-  
+ 
+  void GetGradient(VectorBase<BaseFloat>* gradient) const {
+    KALDI_ASSERT(gradient->Dim() == NumParams());
+    int32 linearity_num_elem = linearity_.NumRows() * linearity_.NumCols(); 
+    gradient->Range(0, linearity_num_elem).CopyRowsFromMat(linearity_corr_);
+    gradient->Range(linearity_num_elem, bias_.Dim()).CopyFromVec(bias_corr_);
+  }
+ 
+  void GetParams(VectorBase<BaseFloat>* params) const {
+    KALDI_ASSERT(params->Dim() == NumParams());
+    int32 linearity_num_elem = linearity_.NumRows() * linearity_.NumCols(); 
+    params->Range(0, linearity_num_elem).CopyRowsFromMat(linearity_);
+    params->Range(linearity_num_elem, bias_.Dim()).CopyFromVec(bias_);
+  }
+ 
+  void SetParams(const VectorBase<BaseFloat>& params) {
+    KALDI_ASSERT(params.Dim() == NumParams());
+    int32 linearity_num_elem = linearity_.NumRows() * linearity_.NumCols();
+    linearity_.CopyRowsFromVec(params.Range(0, linearity_num_elem));
+    bias_.CopyFromVec(params.Range(linearity_num_elem, bias_.Dim()));
+  }
+ 
   std::string Info() const {
-    return std::string("\n  linearity") + MomentStatistics(linearity_) + 
+    return std::string("\n  linearity") + 
+      MomentStatistics(linearity_) + 
       ", lr-coef " + ToString(learn_rate_coef_) +
       ", max-norm " + ToString(max_norm_) +
       "\n  bias" + MomentStatistics(bias_) + 
       ", lr-coef " + ToString(bias_learn_rate_coef_);
   }
   std::string InfoGradient() const {
-    return std::string("\n  linearity_grad") + MomentStatistics(linearity_corr_) + 
+    return std::string("\n  linearity_grad") + 
+      MomentStatistics(linearity_corr_) + 
       ", lr-coef " + ToString(learn_rate_coef_) +
       ", max-norm " + ToString(max_norm_) +
       "\n  bias_grad" + MomentStatistics(bias_corr_) + 
       ", lr-coef " + ToString(bias_learn_rate_coef_);
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+                    CuMatrixBase<BaseFloat> *out) {
     // precopy bias
     out->AddVecToRows(1.0, bias_, 0.0);
     // multiply by weights^t
     out->AddMatMat(1.0, in, kNoTrans, linearity_, kTrans, 1.0);
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+                        const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff, 
+                        CuMatrixBase<BaseFloat> *in_diff) {
     // multiply error derivative by weights
     in_diff->AddMatMat(1.0, out_diff, kNoTrans, linearity_, kNoTrans, 0.0);
   }
 
 
-  void Update(const CuMatrixBase<BaseFloat> &input, const CuMatrixBase<BaseFloat> &diff) {
+  void Update(const CuMatrixBase<BaseFloat> &input, 
+              const CuMatrixBase<BaseFloat> &diff) {
     // we use following hyperparameters from the option class
     const BaseFloat lr = opts_.learn_rate * learn_rate_coef_;
     const BaseFloat lr_bias = opts_.learn_rate * bias_learn_rate_coef_;
@@ -198,16 +222,16 @@ class AffineTransform : public UpdatableComponent {
       lin_sqr.MulElements(linearity_);
       CuVector<BaseFloat> l2(OutputDim());
       l2.AddColSumMat(1.0, lin_sqr, 0.0);
-      l2.ApplyPow(0.5); // we have per-neuron L2 norms
+      l2.ApplyPow(0.5);  // we have per-neuron L2 norms,
       CuVector<BaseFloat> scl(l2);
       scl.Scale(1.0/max_norm_);
       scl.ApplyFloor(1.0);
       scl.InvertElements();
-      linearity_.MulRowsVec(scl); // shink to sphere!
+      linearity_.MulRowsVec(scl);  // shink to sphere!
     }
   }
 
-  /// Accessors to the component parameters
+  /// Accessors to the component parameters,
   const CuVectorBase<BaseFloat>& GetBias() const {
     return bias_;
   }
@@ -227,15 +251,6 @@ class AffineTransform : public UpdatableComponent {
     linearity_.CopyFromMat(linearity);
   }
 
-  const CuVectorBase<BaseFloat>& GetBiasCorr() const {
-    return bias_corr_;
-  }
-
-  const CuMatrixBase<BaseFloat>& GetLinearityCorr() const {
-    return linearity_corr_;
-  }
-
-
  private:
   CuMatrix<BaseFloat> linearity_;
   CuVector<BaseFloat> bias_;
@@ -246,7 +261,7 @@ class AffineTransform : public UpdatableComponent {
   BaseFloat max_norm_;
 };
 
-} // namespace nnet1
-} // namespace kaldi
+}  // namespace nnet1
+}  // namespace kaldi
 
-#endif
+#endif  // KALDI_NNET_NNET_AFFINE_TRANSFORM_H_

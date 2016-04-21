@@ -20,7 +20,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "nnet/nnet-nnet.h"
-#include "nnet/nnet-affine-transform.h"
+#include "nnet/nnet-linear-transform.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
     std::string transform_rxfilename = po.GetArg(1),
         model_out_filename = po.GetArg(2);
 
-    //read the matrix
+    // read the matrix,
     Matrix<BaseFloat> transform;
     {
       bool binary_read;
@@ -58,31 +58,20 @@ int main(int argc, char *argv[]) {
       transform.Read(ki.Stream(), binary_read);
     }
     
-    //we will put the transform to the nnet
+    // wrapping as Nnet with <LinearTransform>,
     Nnet nnet;
-    //create affine transform layer
-    AffineTransform* layer = new AffineTransform(transform.NumCols(),transform.NumRows());
-    //the pointer will be given to the nnet, so we don't need to call delete
-
-    //convert Matrix to CuMatrix
-    CuMatrix<BaseFloat> cu_transform(transform);
-
-    //set the weights
-    layer->SetLinearity(cu_transform);
-
-    //append layer to the nnet
-    nnet.AppendComponent(layer);
+    LinearTransform lin_tran(transform.NumCols(),transform.NumRows());
+    lin_tran.SetLinearity(transform);
+    nnet.AppendComponent(lin_tran);
     
-    //write the nnet
+    // write the nnet,
     {
       Output ko(model_out_filename, binary_write);
       nnet.Write(ko.Stream(), binary_write);
+      KALDI_LOG << "Written transform in 'nnet1' model: " << model_out_filename;
     }
-
-    KALDI_LOG << "Written model to " << model_out_filename;
     return 0;
   } catch(const std::exception& e) {
-    std::cerr << e.what() << '\n';
     return -1;
   }
 }

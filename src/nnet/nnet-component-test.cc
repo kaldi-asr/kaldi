@@ -17,6 +17,9 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#include <sstream>
+#include <fstream>
+#include <algorithm>
 
 #include "nnet/nnet-component.h"
 #include "nnet/nnet-nnet.h"
@@ -26,10 +29,6 @@
 #include "nnet/nnet-max-pooling-2d-component.h"
 #include "nnet/nnet-average-pooling-2d-component.h"
 #include "util/common-utils.h"
-
-#include <sstream>
-#include <fstream>
-#include <algorithm>
 
 namespace kaldi {
 namespace nnet1 {
