@@ -33,15 +33,15 @@ int main(int argc, char *argv[]) try {
   if (gethostname(hostname, 100)) {
     KALDI_WARN << "Cannot get hostname, " << strerror(errno);
   }
-#endif  
-  std::cerr << "### IS CUDA GPU AVAILABLE? '" 
+#endif
+  std::cerr << "### IS CUDA GPU AVAILABLE? '"
             << hostname << "' ###" << std::endl;
 #if HAVE_CUDA==1
   CuDevice::Instantiate().SelectGpuId("yes");
   std::cerr << "### HURRAY, WE GOT A CUDA GPU FOR COMPUTATION!!! ###" << std::endl;
   return 0;
 #else
-  std::cerr << "### CUDA WAS NOT COMPILED IN! ###" << std::endl 
+  std::cerr << "### CUDA WAS NOT COMPILED IN! ###" << std::endl
             << "To support CUDA, you must run 'configure' on a machine "
             << "that has the CUDA compiler 'nvcc' available.";
   return 1;
@@ -52,15 +52,15 @@ int main(int argc, char *argv[]) try {
             << "### If it's your 1st experiment with CUDA, try updating "
             << "'display drivers' and 'CUDA toolkit'." << std::endl
             << "### In other cases run 'nvidia-smi' in terminal "
-            << "(gets installed with display drivers) :" 
+            << "(gets installed with display drivers) :"
             << std::endl
-            << "### - Check that you see your GPU." 
+            << "### - Check that you see your GPU."
             << std::endl
-            << "### - Burnt GPUs indicate error or disappear from the list until reboot." 
+            << "### - Burnt GPUs indicate error or disappear from the list until reboot."
             << std::endl
-            << "### - Check 'Memory-Usage' and 'GPU fan', the GPU may be taken by other process." 
+            << "### - Check 'Memory-Usage' and 'GPU fan', the GPU may be taken by other process."
             << std::endl
-            << "### - Check with NVidia web that your 'display driver' and 'CUDA toolkit' is not too old." 
+            << "### - Check with NVidia web that your 'display driver' and 'CUDA toolkit' is not too old."
             << std::endl;
   static_cast<void>(e);  //To avoid "unreferenced local variable"
   return 1;

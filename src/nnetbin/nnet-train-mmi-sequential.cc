@@ -102,7 +102,7 @@ int main(int argc, char *argv[]) {
     NnetTrainOptions trn_opts; trn_opts.learn_rate=0.00001;
     trn_opts.Register(&po);
 
-    bool binary = true; 
+    bool binary = true;
     po.Register("binary", &binary, "Write output in binary mode");
 
     std::string feature_transform;
@@ -123,14 +123,14 @@ int main(int argc, char *argv[]) {
                 "than discarding them.");
     kaldi::int32 max_frames = 6000;  // Allow segments maximum of one minute by default
     po.Register("max-frames",&max_frames, "Maximum number of frames a segment can have to be processed");
-    
+
     bool drop_frames = true;
-    po.Register("drop-frames", &drop_frames, 
+    po.Register("drop-frames", &drop_frames,
                 "Drop frames, where is zero den-posterior under numerator path "
                 "(ie. path not in lattice)");
 
     std::string use_gpu="yes";
-    po.Register("use-gpu", &use_gpu, "yes|no|optional, only has effect if compiled with CUDA"); 
+    po.Register("use-gpu", &use_gpu, "yes|no|optional, only has effect if compiled with CUDA");
 
     po.Read(argc, argv);
 
@@ -148,7 +148,7 @@ int main(int argc, char *argv[]) {
     std::string target_model_filename;
     target_model_filename = po.GetArg(6);
 
-     
+
     using namespace kaldi;
     using namespace kaldi::nnet1;
     typedef kaldi::int32 int32;
@@ -201,7 +201,7 @@ int main(int argc, char *argv[]) {
     double time_now = 0;
     KALDI_LOG << "TRAINING STARTED";
 
-    int32 num_done = 0, num_no_num_ali = 0, num_no_den_lat = 0, 
+    int32 num_done = 0, num_no_num_ali = 0, num_no_den_lat = 0,
           num_other_error = 0, num_frm_drop = 0;
 
     kaldi::int64 total_frames = 0;
@@ -213,12 +213,12 @@ int main(int argc, char *argv[]) {
     // do per-utterance processing
     for ( ; !feature_reader.Done(); feature_reader.Next()) {
       std::string utt = feature_reader.Key();
-      if (!den_lat_reader.HasKey(utt)) { 
+      if (!den_lat_reader.HasKey(utt)) {
         KALDI_WARN << "Utterance " << utt << ": found no lattice.";
         num_no_den_lat++;
         continue;
       }
-      if (!num_ali_reader.HasKey(utt)) { 
+      if (!num_ali_reader.HasKey(utt)) {
         KALDI_WARN << "Utterance " << utt << ": found no reference alignment.";
         num_no_num_ali++;
         continue;
@@ -235,12 +235,12 @@ int main(int argc, char *argv[]) {
         continue;
       }
       if (mat.NumRows() > max_frames) {
-    KALDI_WARN << "Utterance " << utt << ": Skipped because it has " << mat.NumRows() << 
+    KALDI_WARN << "Utterance " << utt << ": Skipped because it has " << mat.NumRows() <<
       " frames, which is more than " << max_frames << ".";
     num_other_error++;
     continue;
       }
-      
+
       // 2) get the denominator lattice, preprocess
       Lattice den_lat = den_lat_reader.Value(utt);
       if (den_lat.Start() == -1) {
@@ -267,12 +267,12 @@ int main(int argc, char *argv[]) {
         num_other_error++;
         continue;
       }
-     
+
       // get actual dims for this utt and nnet
       int32 num_frames = mat.NumRows(),
           num_fea = mat.NumCols(),
           num_pdfs = nnet.OutputDim();
-      
+
       // 3) propagate the feature to get the log-posteriors (nnet w/o sofrmax)
       // push features to GPU
       feats.Resize(num_frames, num_fea, kUndefined);
@@ -312,7 +312,7 @@ int main(int argc, char *argv[]) {
       }
 
       // 7) Calculate the MMI-objective function
-      // Calculate the likelihood of correct path from acoustic score, 
+      // Calculate the likelihood of correct path from acoustic score,
       // the denominator likelihood is the total likelihood of the lattice.
       double path_ac_like = 0.0;
       for (int32 t=0; t<num_frames; t++) {
@@ -320,14 +320,14 @@ int main(int argc, char *argv[]) {
         path_ac_like += nnet_out_h(t,pdf);
       }
       path_ac_like *= acoustic_scale;
-      mmi_obj = path_ac_like - lat_like; 
+      mmi_obj = path_ac_like - lat_like;
       //
       // Note: numerator likelihood does not include graph score,
       // while denominator likelihood contains graph scores.
       // The result is offset at the MMI-objective.
       // However the offset is constant for given alignment,
       // so it is not harmful.
-      
+
       // Sum the den-posteriors under the correct path:
       post_on_ali = 0.0;
       for (int32 t=0; t<num_frames; t++) {
@@ -349,7 +349,7 @@ int main(int argc, char *argv[]) {
 
       // 7a) Search for the frames with num/den mismatch
       int32 frm_drop = 0;
-      std::vector<int32> frm_drop_vec; 
+      std::vector<int32> frm_drop_vec;
       for (int32 t=0; t<num_frames; t++) {
         int32 pdf = trans_model.TransitionIdToPdf(num_ali[t]);
         double posterior = nnet_diff_h(t, pdf);
@@ -375,7 +375,7 @@ int main(int argc, char *argv[]) {
       // Report the frame dropping
       if (frm_drop > 0) {
         std::stringstream ss;
-        ss << (drop_frames?"Dropped":"[dropping disabled] Would drop") 
+        ss << (drop_frames?"Dropped":"[dropping disabled] Would drop")
            << " frames in " << utt << " " << frm_drop << "/" << num_frames << ",";
         //get frame intervals from vec frm_drop_vec
         ss << " intervals :";
@@ -420,7 +420,7 @@ int main(int argc, char *argv[]) {
       }
 
       // Gradient logging,
-      if (kaldi::g_kaldi_verbose_level >= 1 && 
+      if (kaldi::g_kaldi_verbose_level >= 1 &&
            (num_done == 1 || num_done % 1000 == 0)) {
         // first utterance, or every 1000th utterance,
         KALDI_VLOG(1) << nnet.InfoPropagate();
@@ -438,7 +438,7 @@ int main(int argc, char *argv[]) {
     KALDI_VLOG(1) << nnet.InfoPropagate();
     KALDI_VLOG(1) << nnet.InfoBackPropagate();
     KALDI_VLOG(1) << nnet.InfoGradient();
-       
+
     // add the softmax layer back before writing,
     KALDI_LOG << "Appending the softmax " << target_model_filename;
     nnet.AppendComponentPointer(new Softmax(nnet.OutputDim(),nnet.OutputDim()));
@@ -450,13 +450,13 @@ int main(int argc, char *argv[]) {
               << "Time taken = " << time_now/60 << " min; processed "
               << (total_frames/time_now) << " frames per second.";
 
-    KALDI_LOG << "Done " << num_done << " files, " 
-              << num_no_num_ali << " with no numerator alignments, " 
-              << num_no_den_lat << " with no denominator lattices, " 
+    KALDI_LOG << "Done " << num_done << " files, "
+              << num_no_num_ali << " with no numerator alignments, "
+              << num_no_den_lat << " with no denominator lattices, "
               << num_other_error << " with other errors.";
 
-    KALDI_LOG << "Overall MMI-objective/frame is " 
-              << std::setprecision(8) << (total_mmi_obj/total_frames) 
+    KALDI_LOG << "Overall MMI-objective/frame is "
+              << std::setprecision(8) << (total_mmi_obj/total_frames)
               << " over " << total_frames << " frames."
               << " (average den-posterior on ali " << (total_post_on_ali/total_frames) << ","
               << " dropped " << num_frm_drop << " frames with num/den mismatch)";

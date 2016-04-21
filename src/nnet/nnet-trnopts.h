@@ -37,7 +37,7 @@ struct NnetTrainOptions {
   NnetTrainOptions() : learn_rate(0.008),
                        momentum(0.0),
                        l2_penalty(0.0),
-                       l1_penalty(0.0) 
+                       l1_penalty(0.0)
                        { }
   // register options
   void Register(OptionsItf *opts) {
@@ -72,7 +72,7 @@ struct RbmTrainOptions {
                       momentum_max(0.9),
                       momentum_steps(40),
                       momentum_step_period(500000),
-                        // 500000 * 40 = 55h of linear increase of momentum 
+                        // 500000 * 40 = 55h of linear increase of momentum
                       l2_penalty(0.0002)
                       { }
   // register options
@@ -81,17 +81,17 @@ struct RbmTrainOptions {
 
     opts->Register("momentum", &momentum, "Initial momentum for linear scheduling");
     opts->Register("momentum-max", &momentum_max, "Final momentum for linear scheduling");
-    opts->Register("momentum-steps", &momentum_steps, 
+    opts->Register("momentum-steps", &momentum_steps,
                    "Number of steps of linear momentum scheduling");
-    opts->Register("momentum-step-period", &momentum_step_period, 
+    opts->Register("momentum-step-period", &momentum_step_period,
                    "Number of datapoints per single momentum increase step");
 
-    opts->Register("l2-penalty", &l2_penalty, 
+    opts->Register("l2-penalty", &l2_penalty,
                    "L2 penalty (weight decay, increases mixing-rate)");
   }
   // print for debug purposes
   friend std::ostream& operator<<(std::ostream& os, const RbmTrainOptions& opts) {
-    os << "RbmTrainOptions : "       
+    os << "RbmTrainOptions : "
        << "learn_rate" << opts.learn_rate << ", "
        << "momentum" << opts.momentum << ", "
        << "momentum_max" << opts.momentum_max << ", "

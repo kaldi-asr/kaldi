@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
 
 
     bool binary_write = false;
-    
+
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
 
@@ -57,13 +57,13 @@ int main(int argc, char *argv[]) {
       Input ki(transform_rxfilename, &binary_read);
       transform.Read(ki.Stream(), binary_read);
     }
-    
+
     // wrapping as Nnet with <LinearTransform>,
     Nnet nnet;
     LinearTransform lin_tran(transform.NumCols(),transform.NumRows());
     lin_tran.SetLinearity(transform);
     nnet.AppendComponent(lin_tran);
-    
+
     // write the nnet,
     {
       Output ko(model_out_filename, binary_write);

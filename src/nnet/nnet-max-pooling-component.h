@@ -39,24 +39,24 @@ namespace nnet1 {
  */
 class MaxPoolingComponent : public Component {
  public:
-  MaxPoolingComponent(int32 dim_in, int32 dim_out) 
+  MaxPoolingComponent(int32 dim_in, int32 dim_out)
     : Component(dim_in, dim_out), pool_size_(0), pool_step_(0), pool_stride_(0)
   { }
 
   ~MaxPoolingComponent()
   { }
 
-  Component* Copy() const { 
-    return new MaxPoolingComponent(*this); 
+  Component* Copy() const {
+    return new MaxPoolingComponent(*this);
   }
 
-  ComponentType GetType() const { 
-    return kMaxPoolingComponent; 
+  ComponentType GetType() const {
+    return kMaxPoolingComponent;
   }
-  
+
   void InitData(std::istream &is) {
     // parse config
-    std::string token; 
+    std::string token;
     while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token);
       /**/ if (token == "<PoolSize>") ReadBasicType(is, false, &pool_size_);
@@ -102,7 +102,7 @@ class MaxPoolingComponent : public Component {
     WriteBasicType(os, binary, pool_stride_);
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
                     CuMatrixBase<BaseFloat> *out) {
     // useful dims
     int32 num_patches = input_dim_ / pool_stride_;
@@ -120,9 +120,9 @@ class MaxPoolingComponent : public Component {
     }
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
                         const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, 
+                        const CuMatrixBase<BaseFloat> &out_diff,
                         CuMatrixBase<BaseFloat> *in_diff) {
     // useful dims
     int32 num_patches = input_dim_ / pool_stride_;
@@ -131,10 +131,10 @@ class MaxPoolingComponent : public Component {
     //
     // here we note how many diff matrices are summed for each input patch,
     std::vector<int32> patch_summands(num_patches, 0);
-    // this metainfo will be used to divide diff of patches 
+    // this metainfo will be used to divide diff of patches
     // used in more than one pool.
     //
-    
+
     in_diff->SetZero();  // reset
 
     for (int32 q=0; q<num_pools; q++) {  // sum
@@ -146,7 +146,7 @@ class MaxPoolingComponent : public Component {
         //
         CuSubMatrix<BaseFloat> tgt(in_diff->ColRange(p*pool_stride_, pool_stride_));
         CuMatrix<BaseFloat> src(out_diff.ColRange(q*pool_stride_, pool_stride_));
-        
+
         // Only the pool-inputs with 'max-values' are used to back-propagate into,
         // the rest of derivatives is zeroed-out by a mask.
         CuMatrix<BaseFloat> mask;

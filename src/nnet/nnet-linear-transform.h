@@ -32,32 +32,32 @@ namespace nnet1 {
 
 class LinearTransform : public UpdatableComponent {
  public:
-  LinearTransform(int32 dim_in, int32 dim_out) : 
-    UpdatableComponent(dim_in, dim_out), 
-    linearity_(dim_out, dim_in), 
+  LinearTransform(int32 dim_in, int32 dim_out) :
+    UpdatableComponent(dim_in, dim_out),
+    linearity_(dim_out, dim_in),
     linearity_corr_(dim_out, dim_in)
   { }
 
   ~LinearTransform()
   { }
 
-  Component* Copy() const { 
-    return new LinearTransform(*this); 
+  Component* Copy() const {
+    return new LinearTransform(*this);
   }
 
-  ComponentType GetType() const { 
-    return kLinearTransform; 
+  ComponentType GetType() const {
+    return kLinearTransform;
   }
-  
+
   void InitData(std::istream &is) {
     // define options
     float param_stddev = 0.1;
     float learn_rate_coef = 1.0;
     std::string read_matrix_file;
     // parse config
-    std::string token; 
+    std::string token;
     while (is >> std::ws, !is.eof()) {
-      ReadToken(is, false, &token); 
+      ReadToken(is, false, &token);
       /**/ if (token == "<ParamStddev>") ReadBasicType(is, false, &param_stddev);
       else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef);
       else if (token == "<ReadMatrix>") ReadToken(is, false, &read_matrix_file);
@@ -96,17 +96,17 @@ class LinearTransform : public UpdatableComponent {
     while ('<' == Peek(is, binary)) {
       int first_char = PeekToken(is, binary);
       switch (first_char) {
-        case 'L': ExpectToken(is, binary, "<LearnRateCoef>"); 
+        case 'L': ExpectToken(is, binary, "<LearnRateCoef>");
           ReadBasicType(is, binary, &learn_rate_coef_);
           break;
-        default: 
+        default:
           std::string token;
           ReadToken(is, false, &token);
           KALDI_ERR << "Unknown token: " << token;
       }
     }
     // Read the data (data follow the tokens),
-    
+
     // weights
     linearity_.Read(is, binary);
 
@@ -121,8 +121,8 @@ class LinearTransform : public UpdatableComponent {
     linearity_.Write(os, binary);
   }
 
-  int32 NumParams() const { 
-    return linearity_.NumRows()*linearity_.NumCols(); 
+  int32 NumParams() const {
+    return linearity_.NumRows()*linearity_.NumCols();
   }
 
   void GetGradient(VectorBase<BaseFloat>* gradient) const {
@@ -134,7 +134,7 @@ class LinearTransform : public UpdatableComponent {
     KALDI_ASSERT(params->Dim() == NumParams());
     params->CopyRowsFromMat(linearity_);
   }
-  
+
   void SetParams(const VectorBase<BaseFloat>& params) {
     KALDI_ASSERT(params.Dim() == NumParams());
     linearity_.CopyRowsFromVec(params);
@@ -155,22 +155,22 @@ class LinearTransform : public UpdatableComponent {
       ", lr-coef " + ToString(learn_rate_coef_);
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
                     CuMatrixBase<BaseFloat> *out) {
     // multiply by weights^t
     out->AddMatMat(1.0, in, kNoTrans, linearity_, kTrans, 0.0);
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
                         const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, 
+                        const CuMatrixBase<BaseFloat> &out_diff,
                         CuMatrixBase<BaseFloat> *in_diff) {
     // multiply error derivative by weights
     in_diff->AddMatMat(1.0, out_diff, kNoTrans, linearity_, kNoTrans, 0.0);
   }
 
 
-  void Update(const CuMatrixBase<BaseFloat> &input, 
+  void Update(const CuMatrixBase<BaseFloat> &input,
               const CuMatrixBase<BaseFloat> &diff) {
     // we use following hyperparameters from the option class
     const BaseFloat lr = opts_.learn_rate;

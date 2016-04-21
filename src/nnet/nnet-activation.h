@@ -35,19 +35,19 @@ namespace nnet1 {
 
 class Softmax : public Component {
  public:
-  Softmax(int32 dim_in, int32 dim_out) : 
+  Softmax(int32 dim_in, int32 dim_out) :
     Component(dim_in, dim_out)
   { }
 
   ~Softmax()
   { }
 
-  Component* Copy() const { 
-    return new Softmax(*this); 
+  Component* Copy() const {
+    return new Softmax(*this);
   }
 
-  ComponentType GetType() const { 
-    return kSoftmax; 
+  ComponentType GetType() const {
+    return kSoftmax;
   }
 
   void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
@@ -72,19 +72,19 @@ class Softmax : public Component {
 
 class BlockSoftmax : public Component {
  public:
-  BlockSoftmax(int32 dim_in, int32 dim_out) : 
+  BlockSoftmax(int32 dim_in, int32 dim_out) :
     Component(dim_in, dim_out)
   { }
 
   ~BlockSoftmax()
   { }
 
-  Component* Copy() const { 
-    return new BlockSoftmax(*this); 
+  Component* Copy() const {
+    return new BlockSoftmax(*this);
   }
 
-  ComponentType GetType() const { 
-    return kBlockSoftmax; 
+  ComponentType GetType() const {
+    return kBlockSoftmax;
   }
 
   void InitData(std::istream &is) {
@@ -175,30 +175,30 @@ class BlockSoftmax : public Component {
 
 class Sigmoid : public Component {
  public:
-  Sigmoid(int32 dim_in, int32 dim_out) : 
+  Sigmoid(int32 dim_in, int32 dim_out) :
     Component(dim_in, dim_out)
   { }
 
   ~Sigmoid()
   { }
 
-  Component* Copy() const { 
-    return new Sigmoid(*this); 
+  Component* Copy() const {
+    return new Sigmoid(*this);
   }
 
-  ComponentType GetType() const { 
-    return kSigmoid; 
+  ComponentType GetType() const {
+    return kSigmoid;
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
                     CuMatrixBase<BaseFloat> *out) {
     // y = 1/(1+e^-x)
     out->Sigmoid(in);
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
                         const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, 
+                        const CuMatrixBase<BaseFloat> &out_diff,
                         CuMatrixBase<BaseFloat> *in_diff) {
     // ey = y(1-y)ex,
     in_diff->DiffSigmoid(out, out_diff);
@@ -209,30 +209,30 @@ class Sigmoid : public Component {
 
 class Tanh : public Component {
  public:
-  Tanh(int32 dim_in, int32 dim_out) : 
+  Tanh(int32 dim_in, int32 dim_out) :
     Component(dim_in, dim_out)
   { }
 
   ~Tanh()
   { }
 
-  Component* Copy() const { 
-    return new Tanh(*this); 
+  Component* Copy() const {
+    return new Tanh(*this);
   }
 
-  ComponentType GetType() const { 
-    return kTanh; 
+  ComponentType GetType() const {
+    return kTanh;
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
                     CuMatrixBase<BaseFloat> *out) {
     // y = (e^x - e^(-x)) / (e^x + e^(-x)),
     out->Tanh(in);
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
                         const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, 
+                        const CuMatrixBase<BaseFloat> &out_diff,
                         CuMatrixBase<BaseFloat> *in_diff) {
     // ey = (1 - y^2)ex
     in_diff->DiffTanh(out, out_diff);
@@ -244,19 +244,19 @@ class Tanh : public Component {
 class Dropout : public Component {
  public:
   Dropout(int32 dim_in, int32 dim_out) :
-      Component(dim_in, dim_out), 
+      Component(dim_in, dim_out),
       dropout_retention_(0.5)
   { }
 
   ~Dropout()
   { }
 
-  Component* Copy() const { 
-    return new Dropout(*this); 
+  Component* Copy() const {
+    return new Dropout(*this);
   }
 
-  ComponentType GetType() const { 
-    return kDropout; 
+  ComponentType GetType() const {
+    return kDropout;
   }
 
   void InitData(std::istream &is) {
@@ -285,7 +285,7 @@ class Dropout : public Component {
     WriteBasicType(os, binary, dropout_retention_);
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
                     CuMatrixBase<BaseFloat> *out) {
     out->CopyFromMat(in);
     // switch off 50% of the inputs...
@@ -297,9 +297,9 @@ class Dropout : public Component {
     out->Scale(1.0/dropout_retention_);
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
                         const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, 
+                        const CuMatrixBase<BaseFloat> &out_diff,
                         CuMatrixBase<BaseFloat> *in_diff) {
     in_diff->CopyFromMat(out_diff);
     // use same mask on the error derivatives...

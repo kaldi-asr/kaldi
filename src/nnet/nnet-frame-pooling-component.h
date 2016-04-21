@@ -37,30 +37,30 @@ namespace nnet1 {
  * FramePoolingComponent :
  * The input/output matrices are split to frames of width 'feature_dim_'.
  * Here we do weighted pooling of frames along the temporal axis,
- * given a frame-offset of leftmost frame, the pool-size is defined 
+ * given a frame-offset of leftmost frame, the pool-size is defined
  * by weight-vector size.
  */
 class FramePoolingComponent : public UpdatableComponent {
  public:
-  FramePoolingComponent(int32 dim_in, int32 dim_out) : 
-    UpdatableComponent(dim_in, dim_out), 
-    feature_dim_(0), 
+  FramePoolingComponent(int32 dim_in, int32 dim_out) :
+    UpdatableComponent(dim_in, dim_out),
+    feature_dim_(0),
     normalize_(false)
   { }
 
   ~FramePoolingComponent()
   { }
 
-  Component* Copy() const { 
-    return new FramePoolingComponent(*this); 
+  Component* Copy() const {
+    return new FramePoolingComponent(*this);
   }
 
-  ComponentType GetType() const { 
-    return kFramePoolingComponent; 
+  ComponentType GetType() const {
+    return kFramePoolingComponent;
   }
 
-  /** 
-   * Here the offsets are w.r.t. central frames, which has offset 0. 
+  /**
+   * Here the offsets are w.r.t. central frames, which has offset 0.
    * Note.: both the offsets and pool sizes can be negative.
    */
   void InitData(std::istream &is) {
@@ -115,8 +115,8 @@ class FramePoolingComponent : public UpdatableComponent {
   }
 
   /**
-   * Here the offsets are w.r.t. leftmost frame from splice, its offset is 0. 
-   * If we spliced +/- 15 frames, the central frames has index '15'. 
+   * Here the offsets are w.r.t. leftmost frame from splice, its offset is 0.
+   * If we spliced +/- 15 frames, the central frames has index '15'.
    */
   void ReadData(std::istream &is, bool binary) {
     // get the input dimension before splicing
@@ -169,12 +169,12 @@ class FramePoolingComponent : public UpdatableComponent {
     }
   }
 
-  int32 NumParams() const { 
-    int32 sum = 0; 
-    for (int32 p=0; p<weight_.size(); p++) sum += weight_[p].Dim(); 
-    return sum; 
+  int32 NumParams() const {
+    int32 sum = 0;
+    for (int32 p=0; p<weight_.size(); p++) sum += weight_[p].Dim();
+    return sum;
   }
-  
+
   void GetGradient(VectorBase<BaseFloat> *gradient) const {
     KALDI_ERR << "Unimplemented.";
   }
@@ -184,7 +184,7 @@ class FramePoolingComponent : public UpdatableComponent {
     int32 offset = 0;
     for (int32 p=0; p<weight_.size(); p++) {
       params->Range(offset, weight_[p].Dim()).CopyFromVec(weight_[p]);
-      offset += weight_[p].Dim(); 
+      offset += weight_[p].Dim();
     }
     KALDI_ASSERT(offset == params->Dim());
   }
@@ -192,7 +192,7 @@ class FramePoolingComponent : public UpdatableComponent {
   void SetParams(const VectorBase<BaseFloat>& params) {
     KALDI_ERR << "Unimplemented.";
   }
-  
+
   std::string Info() const {
     std::ostringstream oss;
     oss << "\n  (offset,weights) : ";
@@ -216,7 +216,7 @@ class FramePoolingComponent : public UpdatableComponent {
     return oss.str();
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
                     CuMatrixBase<BaseFloat> *out) {
     // check dims
     KALDI_ASSERT(in.NumCols() % feature_dim_ == 0);
@@ -233,15 +233,15 @@ class FramePoolingComponent : public UpdatableComponent {
     }
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
                         const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, 
+                        const CuMatrixBase<BaseFloat> &out_diff,
                         CuMatrixBase<BaseFloat> *in_diff) {
     KALDI_ERR << "Unimplemented.";
   }
 
 
-  void Update(const CuMatrixBase<BaseFloat> &input, 
+  void Update(const CuMatrixBase<BaseFloat> &input,
               const CuMatrixBase<BaseFloat> &diff) {
     // useful dims
     int32 num_pools = offset_.size();

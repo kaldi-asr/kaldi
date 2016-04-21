@@ -48,12 +48,12 @@ class Splice: public Component {
   ~Splice()
   { }
 
-  Component* Copy() const { 
-    return new Splice(*this); 
+  Component* Copy() const {
+    return new Splice(*this);
   }
 
-  ComponentType GetType() const { 
-    return kSplice; 
+  ComponentType GetType() const {
+    return kSplice;
   }
 
   void InitData(std::istream &is) {
@@ -61,15 +61,15 @@ class Splice: public Component {
     std::vector<int32> frame_offsets;
     std::vector<std::vector<int32> > build_vector;
     // parse config
-    std::string token; 
+    std::string token;
     while (is >> std::ws, !is.eof()) {
-      ReadToken(is, false, &token); 
+      ReadToken(is, false, &token);
       /**/ if (token == "<ReadVector>") {
         ReadIntegerVector(is, false, &frame_offsets);
-      } else if (token == "<BuildVector>") { 
+      } else if (token == "<BuildVector>") {
         // <BuildVector> 1:1:1000 1:1:1000 1 2 3 1:10 </BuildVector> [matlab indexing]
         // read the colon-separated-lists:
-        while (!is.eof()) { 
+        while (!is.eof()) {
           std::string colon_sep_list_or_end;
           ReadToken(is, false, &colon_sep_list_or_end);
           if (colon_sep_list_or_end == "</BuildVector>") break;
@@ -105,12 +105,12 @@ class Splice: public Component {
             }}
             break;
           case 0:
-          default: 
+          default:
             KALDI_ERR << "Error parsing <BuildVector>";
         }
       }
     }
-    
+
     // copy to GPU
     frame_offsets_ = frame_offsets;
 
@@ -130,7 +130,7 @@ class Splice: public Component {
     frame_offsets_.CopyToVec(&frame_offsets);
     WriteIntegerVector(os, binary, frame_offsets);
   }
-  
+
   std::string Info() const {
     std::ostringstream ostr;
     ostr << "\n  frame_offsets " << frame_offsets_;
@@ -139,14 +139,14 @@ class Splice: public Component {
     return str;
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
                     CuMatrixBase<BaseFloat> *out) {
     cu::Splice(in, frame_offsets_, out);
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
                         const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, 
+                        const CuMatrixBase<BaseFloat> &out_diff,
                         CuMatrixBase<BaseFloat> *in_diff) {
     KALDI_ERR << __func__ << "Not implemented!";
   }
@@ -161,19 +161,19 @@ class Splice: public Component {
  */
 class CopyComponent: public Component {
  public:
-  CopyComponent(int32 dim_in, int32 dim_out) : 
+  CopyComponent(int32 dim_in, int32 dim_out) :
     Component(dim_in, dim_out)
   { }
 
   ~CopyComponent()
   { }
 
-  Component* Copy() const { 
-    return new CopyComponent(*this); 
+  Component* Copy() const {
+    return new CopyComponent(*this);
   }
 
-  ComponentType GetType() const { 
-    return kCopy; 
+  ComponentType GetType() const {
+    return kCopy;
   }
 
   void InitData(std::istream &is) {
@@ -181,15 +181,15 @@ class CopyComponent: public Component {
     std::vector<int32> copy_from_indices;
     std::vector<std::vector<int32> > build_vector;
     // parse config
-    std::string token; 
+    std::string token;
     while (is >> std::ws, !is.eof()) {
-      ReadToken(is, false, &token); 
+      ReadToken(is, false, &token);
       /**/ if (token == "<ReadVector>") {
         ReadIntegerVector(is, false, &copy_from_indices);
-      } else if (token == "<BuildVector>") { 
+      } else if (token == "<BuildVector>") {
         // <BuildVector> 1:1:1000 1:1:1000 1 2 3 1:10 </BuildVector> [matlab indexing]
         // read the colon-separated-lists:
-        while (!is.eof()) { 
+        while (!is.eof()) {
           std::string colon_sep_list_or_end;
           ReadToken(is, false, &colon_sep_list_or_end);
           if (colon_sep_list_or_end == "</BuildVector>") break;
@@ -225,12 +225,12 @@ class CopyComponent: public Component {
             }}
             break;
           case 0:
-          default: 
+          default:
             KALDI_ERR << "Error parsing <BuildVector>";
         }
       }
     }
-    
+
     // decrease by 1
     std::vector<int32>& v = copy_from_indices;
     std::transform(v.begin(), v.end(), v.begin(), op_decrease);
@@ -246,13 +246,13 @@ class CopyComponent: public Component {
     KALDI_ASSERT(copy_from_indices_.Dim() == OutputDim());
   }
 
-  void ReadData(std::istream &is, bool binary) { 
+  void ReadData(std::istream &is, bool binary) {
     std::vector<int32> copy_from_indices;
     ReadIntegerVector(is, binary, &copy_from_indices);
-    // -1 from each element 
+    // -1 from each element
     std::vector<int32>& v = copy_from_indices;
     std::transform(v.begin(), v.end(), v.begin(), op_decrease);
-    // 
+    //
     copy_from_indices_ = copy_from_indices;
     KALDI_ASSERT(copy_from_indices_.Dim() == OutputDim());
   }
@@ -260,13 +260,13 @@ class CopyComponent: public Component {
   void WriteData(std::ostream &os, bool binary) const {
     std::vector<int32> copy_from_indices(copy_from_indices_.Dim());
     copy_from_indices_.CopyToVec(&copy_from_indices);
-    // +1 to each element 
+    // +1 to each element
     std::vector<int32>& v = copy_from_indices;
     std::transform(v.begin(), v.end(), v.begin(), op_increase);
-    // 
-    WriteIntegerVector(os, binary, copy_from_indices); 
+    //
+    WriteIntegerVector(os, binary, copy_from_indices);
   }
- 
+
   std::string Info() const {
     /*
     std::ostringstream ostr;
@@ -277,15 +277,15 @@ class CopyComponent: public Component {
     */
     return "";
   }
-  
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, 
-                    CuMatrixBase<BaseFloat> *out) { 
-    cu::Copy(in,copy_from_indices_,out); 
+
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
+                    CuMatrixBase<BaseFloat> *out) {
+    cu::Copy(in,copy_from_indices_,out);
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
                         const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, 
+                        const CuMatrixBase<BaseFloat> &out_diff,
                         CuMatrixBase<BaseFloat> *in_diff) {
     static bool warning_displayed = false;
     if (!warning_displayed) {
@@ -310,25 +310,25 @@ class CopyComponent: public Component {
  */
 class LengthNormComponent: public Component {
  public:
-  LengthNormComponent(int32 dim_in, int32 dim_out) : 
+  LengthNormComponent(int32 dim_in, int32 dim_out) :
     Component(dim_in, dim_out)
   { }
 
   ~LengthNormComponent()
   { }
 
-  Component* Copy() const { 
-    return new LengthNormComponent(*this); 
+  Component* Copy() const {
+    return new LengthNormComponent(*this);
   }
 
-  ComponentType GetType() const { 
-    return kLengthNormComponent; 
+  ComponentType GetType() const {
+    return kLengthNormComponent;
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
                     CuMatrixBase<BaseFloat> *out) {
-    // resize vector when needed,   
-    if (row_scales_.Dim() != in.NumRows()) { 
+    // resize vector when needed,
+    if (row_scales_.Dim() != in.NumRows()) {
       row_scales_.Resize(in.NumRows());
     }
     // get the normalization scalars,
@@ -342,9 +342,9 @@ class LengthNormComponent: public Component {
     out->MulRowsVec(row_scales_);  // re-normalize,
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
                         const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, 
+                        const CuMatrixBase<BaseFloat> &out_diff,
                         CuMatrixBase<BaseFloat> *in_diff) {
     in_diff->CopyFromMat(out_diff);
     in_diff->MulRowsVec(row_scales_);  // diff_by_x(s * x) = s,
@@ -362,28 +362,28 @@ class LengthNormComponent: public Component {
  */
 class AddShift : public UpdatableComponent {
  public:
-  AddShift(int32 dim_in, int32 dim_out) : 
+  AddShift(int32 dim_in, int32 dim_out) :
     UpdatableComponent(dim_in, dim_out), shift_data_(dim_in)
   { }
 
   ~AddShift()
   { }
 
-  Component* Copy() const { 
-    return new AddShift(*this); 
+  Component* Copy() const {
+    return new AddShift(*this);
   }
 
-  ComponentType GetType() const { 
-    return kAddShift; 
+  ComponentType GetType() const {
+    return kAddShift;
   }
 
   void InitData(std::istream &is) {
     // define options
     float init_param = 0.0;
     // parse config
-    std::string token; 
+    std::string token;
     while (is >> std::ws, !is.eof()) {
-      ReadToken(is, false, &token); 
+      ReadToken(is, false, &token);
       /**/ if (token == "<InitParam>") ReadBasicType(is, false, &init_param);
       else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef_);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
@@ -394,7 +394,7 @@ class AddShift : public UpdatableComponent {
     shift_data_.Set(init_param);
   }
 
-  void ReadData(std::istream &is, bool binary) { 
+  void ReadData(std::istream &is, bool binary) {
     // optional learning-rate coef,
     if ('<' == Peek(is, binary)) {
       ExpectToken(is, binary, "<LearnRateCoef>");
@@ -404,12 +404,12 @@ class AddShift : public UpdatableComponent {
     shift_data_.Read(is, binary);
   }
 
-  void WriteData(std::ostream &os, bool binary) const { 
+  void WriteData(std::ostream &os, bool binary) const {
     WriteToken(os, binary, "<LearnRateCoef>");
     WriteBasicType(os, binary, learn_rate_coef_);
     shift_data_.Write(os, binary);
   }
-  
+
   int32 NumParams() const { return shift_data_.Dim(); }
 
   void GetGradient(VectorBase<BaseFloat>* gradient) const {
@@ -421,32 +421,32 @@ class AddShift : public UpdatableComponent {
     KALDI_ASSERT(params->Dim() == NumParams());
     shift_data_.CopyToVec(params);
   }
- 
+
   void SetParams(const VectorBase<BaseFloat>& params) {
     KALDI_ASSERT(params.Dim() == NumParams());
     shift_data_.CopyFromVec(params);
   }
-  
+
   std::string Info() const {
-    return std::string("\n  shift_data") + 
+    return std::string("\n  shift_data") +
       MomentStatistics(shift_data_) +
       ", lr-coef " + ToString(learn_rate_coef_);
   }
 
   std::string InfoGradient() const {
-    return std::string("\n  shift_data_grad") + 
-      MomentStatistics(shift_data_grad_) + 
+    return std::string("\n  shift_data_grad") +
+      MomentStatistics(shift_data_grad_) +
       ", lr-coef " + ToString(learn_rate_coef_);
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, 
-                    CuMatrixBase<BaseFloat> *out) { 
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
+                    CuMatrixBase<BaseFloat> *out) {
     // copy, add the shift,
     out->CopyFromMat(in);
     out->AddVecToRows(1.0, shift_data_, 1.0);
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
                         const CuMatrixBase<BaseFloat> &out,
                         const CuMatrixBase<BaseFloat> &out_diff,
                         CuMatrixBase<BaseFloat> *in_diff) {
@@ -454,7 +454,7 @@ class AddShift : public UpdatableComponent {
     in_diff->CopyFromMat(out_diff);
   }
 
-  void Update(const CuMatrixBase<BaseFloat> &input, 
+  void Update(const CuMatrixBase<BaseFloat> &input,
               const CuMatrixBase<BaseFloat> &diff) {
     // we use following hyperparameters from the option class,
     const BaseFloat lr = opts_.learn_rate;
@@ -481,29 +481,29 @@ class AddShift : public UpdatableComponent {
  */
 class Rescale : public UpdatableComponent {
  public:
-  Rescale(int32 dim_in, int32 dim_out) : 
-    UpdatableComponent(dim_in, dim_out), 
+  Rescale(int32 dim_in, int32 dim_out) :
+    UpdatableComponent(dim_in, dim_out),
     scale_data_(dim_in)
   { }
 
   ~Rescale()
   { }
 
-  Component* Copy() const { 
-    return new Rescale(*this); 
+  Component* Copy() const {
+    return new Rescale(*this);
   }
 
-  ComponentType GetType() const { 
-    return kRescale; 
+  ComponentType GetType() const {
+    return kRescale;
   }
 
   void InitData(std::istream &is) {
     // define options
     float init_param = 0.0;
     // parse config
-    std::string token; 
+    std::string token;
     while (is >> std::ws, !is.eof()) {
-      ReadToken(is, false, &token); 
+      ReadToken(is, false, &token);
       /**/ if (token == "<InitParam>") ReadBasicType(is, false, &init_param);
       else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef_);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
@@ -524,7 +524,7 @@ class Rescale : public UpdatableComponent {
     scale_data_.Read(is, binary);
   }
 
-  void WriteData(std::ostream &os, bool binary) const { 
+  void WriteData(std::ostream &os, bool binary) const {
     WriteToken(os, binary, "<LearnRateCoef>");
     WriteBasicType(os, binary, learn_rate_coef_);
     scale_data_.Write(os, binary);
@@ -541,41 +541,41 @@ class Rescale : public UpdatableComponent {
     KALDI_ASSERT(params->Dim() == NumParams());
     scale_data_.CopyToVec(params);
   }
- 
+
   void SetParams(const VectorBase<BaseFloat>& params) {
     KALDI_ASSERT(params.Dim() == NumParams());
     scale_data_.CopyFromVec(params);
   }
 
   std::string Info() const {
-    return std::string("\n  scale_data") + 
+    return std::string("\n  scale_data") +
       MomentStatistics(scale_data_) +
       ", lr-coef " + ToString(learn_rate_coef_);
   }
-  
+
   std::string InfoGradient() const {
-    return std::string("\n  scale_data_grad") + 
+    return std::string("\n  scale_data_grad") +
       MomentStatistics(scale_data_grad_) +
       ", lr-coef " + ToString(learn_rate_coef_);
   }
-  
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, 
-                    CuMatrixBase<BaseFloat> *out) { 
+
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
+                    CuMatrixBase<BaseFloat> *out) {
     // copy, rescale the data,
     out->CopyFromMat(in);
     out->MulColsVec(scale_data_);
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
                         const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, 
+                        const CuMatrixBase<BaseFloat> &out_diff,
                         CuMatrixBase<BaseFloat> *in_diff) {
     // derivatives are scaled with the scale_data_,
     in_diff->CopyFromMat(out_diff);
     in_diff->MulColsVec(scale_data_);
   }
 
-  void Update(const CuMatrixBase<BaseFloat> &input, 
+  void Update(const CuMatrixBase<BaseFloat> &input,
               const CuMatrixBase<BaseFloat> &diff) {
     // we use following hyperparameters from the option class,
     const BaseFloat lr = opts_.learn_rate;

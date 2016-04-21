@@ -37,9 +37,9 @@ namespace nnet1 {
  * calculates number of matching elemente in 'hyp', 'ref' weighted by 'weights'.
  */
 template <typename T>
-inline void CountCorrectFramesWeighted(const CuArray<T> &hyp, 
-                                       const CuArray<T> &ref, 
-                                       const CuVectorBase<BaseFloat> &weights, 
+inline void CountCorrectFramesWeighted(const CuArray<T> &hyp,
+                                       const CuArray<T> &ref,
+                                       const CuVectorBase<BaseFloat> &weights,
                                        Vector<double> *correct) {
   KALDI_ASSERT(hyp.Dim() == ref.Dim());
   KALDI_ASSERT(hyp.Dim() == weights.Dim());
@@ -59,8 +59,8 @@ inline void CountCorrectFramesWeighted(const CuArray<T> &hyp,
 
 
 void Xent::Eval(const VectorBase<BaseFloat> &frame_weights,
-                const CuMatrixBase<BaseFloat> &net_out, 
-                const CuMatrixBase<BaseFloat> &targets, 
+                const CuMatrixBase<BaseFloat> &net_out,
+                const CuMatrixBase<BaseFloat> &targets,
                 CuMatrix<BaseFloat> *diff) {
   // check inputs,
   KALDI_ASSERT(net_out.NumCols() == targets.NumCols());
@@ -84,7 +84,7 @@ void Xent::Eval(const VectorBase<BaseFloat> &frame_weights,
   frame_weights_ = frame_weights;
 
   // There may be frames for which the sum of targets is zero.
-  // This happens in multi-lingual training when the frame 
+  // This happens in multi-lingual training when the frame
   // has target class in the softmax of another language.
   // We 'switch-off' such frames by masking the 'frame_weights_',
   target_sum_.Resize(targets.NumRows());
@@ -113,14 +113,14 @@ void Xent::Eval(const VectorBase<BaseFloat> &frame_weights,
   xentropy_aux_.MulElements(targets);  // t*log(y)
   xentropy_aux_.MulRowsVec(frame_weights_);  // w*t*log(y)
   xentropy_.AddRowSumMat(-1.0, CuMatrix<double>(xentropy_aux_));
-  
+
   // caluculate entropy (in GPU),
   entropy_aux_ = targets;  // t
   entropy_aux_.Add(1e-20);  // avoid log(0)
   entropy_aux_.ApplyLog();  // log(t)
   entropy_aux_.MulElements(targets);  // t*log(t)
   entropy_aux_.MulRowsVec(frame_weights_);  // w*t*log(t)
-  entropy_.AddRowSumMat(-1.0, CuMatrix<double>(entropy_aux_)); 
+  entropy_.AddRowSumMat(-1.0, CuMatrix<double>(entropy_aux_));
 
   // progressive loss reporting
   {
@@ -133,9 +133,9 @@ void Xent::Eval(const VectorBase<BaseFloat> &frame_weights,
     KALDI_ASSERT(KALDI_ISFINITE(entropy_progress_));
 
     if (frames_progress_ > progress_step) {
-      KALDI_VLOG(1) << "ProgressLoss[last " 
-                    << static_cast<int>(frames_progress_/100/3600) << "h of " 
-                    << static_cast<int>(frames_.Sum()/100/3600) << "h]: " 
+      KALDI_VLOG(1) << "ProgressLoss[last "
+                    << static_cast<int>(frames_progress_/100/3600) << "h of "
+                    << static_cast<int>(frames_.Sum()/100/3600) << "h]: "
                     << (xentropy_progress_-entropy_progress_)/frames_progress_ << " (Xent)";
       // store
       loss_vec_.push_back((xentropy_progress_-entropy_progress_)/frames_progress_);
@@ -149,8 +149,8 @@ void Xent::Eval(const VectorBase<BaseFloat> &frame_weights,
 
 
 void Xent::Eval(const VectorBase<BaseFloat> &frame_weights,
-                const CuMatrixBase<BaseFloat> &net_out, 
-                const Posterior &post, 
+                const CuMatrixBase<BaseFloat> &net_out,
+                const Posterior &post,
                 CuMatrix<BaseFloat> *diff) {
   int32 num_frames = net_out.NumRows(),
     num_pdf = net_out.NumCols();
@@ -167,16 +167,16 @@ void Xent::Eval(const VectorBase<BaseFloat> &frame_weights,
 std::string Xent::Report() {
   std::ostringstream oss;
   oss << "AvgLoss: " << (xentropy_.Sum()-entropy_.Sum())/frames_.Sum() << " (Xent), "
-      << "[AvgXent: " << xentropy_.Sum()/frames_.Sum() 
+      << "[AvgXent: " << xentropy_.Sum()/frames_.Sum()
       << ", AvgTargetEnt: " << entropy_.Sum()/frames_.Sum() << "]" << std::endl;
-  
+
   oss << "progress: [";
   std::copy(loss_vec_.begin(),loss_vec_.end(),std::ostream_iterator<float>(oss," "));
   oss << "]" << std::endl;
-  
+
   oss << "FRAME_ACCURACY >> " << 100.0*correct_.Sum()/frames_.Sum() << "% <<" << std::endl;
-  
-  return oss.str(); 
+
+  return oss.str();
 }
 
 
@@ -197,16 +197,16 @@ std::string Xent::ReportPerClass() {
   frm_accu.MulElements(inv_frames);
   frm_accu.Scale(100.0);
   oss << "@@@ Frame-accuracy per-class:" << frm_accu;
-  // 
-  return oss.str(); 
+  //
+  return oss.str();
 }
 
 
 /* Mse */
 
 void Mse::Eval(const VectorBase<BaseFloat> &frame_weights,
-               const CuMatrixBase<BaseFloat>& net_out, 
-               const CuMatrixBase<BaseFloat>& target, 
+               const CuMatrixBase<BaseFloat>& net_out,
+               const CuMatrixBase<BaseFloat>& target,
                CuMatrix<BaseFloat>* diff) {
   // check inputs,
   KALDI_ASSERT(net_out.NumCols() == target.NumCols());
@@ -246,9 +246,9 @@ void Mse::Eval(const VectorBase<BaseFloat> &frame_weights,
     frames_progress_ += num_frames;
     loss_progress_ += mean_square_error;
     if (frames_progress_ > progress_step) {
-      KALDI_VLOG(1) << "ProgressLoss[last " 
-                    << static_cast<int>(frames_progress_/100/3600) << "h of " 
-                    << static_cast<int>(frames_/100/3600) << "h]: " 
+      KALDI_VLOG(1) << "ProgressLoss[last "
+                    << static_cast<int>(frames_progress_/100/3600) << "h of "
+                    << static_cast<int>(frames_/100/3600) << "h]: "
                     << loss_progress_/frames_progress_ << " (Mse)";
       // store
       loss_vec_.push_back(loss_progress_/frames_progress_);
@@ -261,8 +261,8 @@ void Mse::Eval(const VectorBase<BaseFloat> &frame_weights,
 
 
 void Mse::Eval(const VectorBase<BaseFloat> &frame_weights,
-               const CuMatrixBase<BaseFloat>& net_out, 
-               const Posterior& post, 
+               const CuMatrixBase<BaseFloat>& net_out,
+               const Posterior& post,
                CuMatrix<BaseFloat>* diff) {
   int32 num_frames = net_out.NumRows(),
     num_nn_outputs = net_out.NumCols();
@@ -274,7 +274,7 @@ void Mse::Eval(const VectorBase<BaseFloat> &frame_weights,
   // call the other eval function,
   Eval(frame_weights, net_out, tgt_mat_, diff);
 }
- 
+
 
 std::string Mse::Report() {
   // compute root mean square,
@@ -282,7 +282,7 @@ std::string Mse::Report() {
   BaseFloat root_mean_square = sqrt(loss_/frames_/num_tgt);
   // build the message,
   std::ostringstream oss;
-  oss << "AvgLoss: " << loss_/frames_ << " (Mse), " 
+  oss << "AvgLoss: " << loss_/frames_ << " (Mse), "
       << "[RMS " << root_mean_square << ", frames " << frames_ << "]" << std::endl;
   oss << "progress: [";
   std::copy(loss_vec_.begin(),loss_vec_.end(),std::ostream_iterator<float>(oss," "));
@@ -340,8 +340,8 @@ void MultiTaskLoss::InitFromString(const std::string& s) {
   KALDI_ASSERT(loss_vec_.size() == loss_weights_.size());
 }
 
-void MultiTaskLoss::Eval(const VectorBase<BaseFloat> &frame_weights, 
-            const CuMatrixBase<BaseFloat>& net_out, 
+void MultiTaskLoss::Eval(const VectorBase<BaseFloat> &frame_weights,
+            const CuMatrixBase<BaseFloat>& net_out,
             const Posterior& post,
             CuMatrix<BaseFloat>* diff) {
   int32 num_frames = net_out.NumRows(),
@@ -354,11 +354,11 @@ void MultiTaskLoss::Eval(const VectorBase<BaseFloat> &frame_weights,
 
   // allocate diff matrix,
   diff->Resize(num_frames, num_output);
-  
+
   // call the vector of loss functions,
   CuMatrix<BaseFloat> diff_aux;
   for (int32 i = 0; i < loss_vec_.size(); i++) {
-    loss_vec_[i]->Eval(frame_weights, 
+    loss_vec_[i]->Eval(frame_weights,
       net_out.ColRange(loss_dim_offset_[i], loss_dim_[i]),
       tgt_mat_.ColRange(loss_dim_offset_[i], loss_dim_[i]),
       &diff_aux);
@@ -387,7 +387,7 @@ std::string MultiTaskLoss::Report() {
   }
 
   // overall loss is last,
-  oss << "Loss (OVERALL), " 
+  oss << "Loss (OVERALL), "
       << "AvgLoss: " << overall_loss << " (MultiTaskLoss), "
       << "weights " << loss_weights_ << ", "
       << "values " << loss_values << std::endl;

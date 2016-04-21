@@ -36,23 +36,23 @@ namespace nnet1 {
 
 class KlHmm : public Component {
  public:
-  KlHmm(int32 dim_in, int32 dim_out) 
-    : Component(dim_in, dim_out), 
+  KlHmm(int32 dim_in, int32 dim_out)
+    : Component(dim_in, dim_out),
       kl_stats_(dim_out, dim_in, kSetZero)
   { }
 
   ~KlHmm()
   { }
 
-  Component* Copy() const { 
-    return new KlHmm(*this); 
+  Component* Copy() const {
+    return new KlHmm(*this);
   }
 
   ComponentType GetType() const {
     return kKlHmm;
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
                     CuMatrixBase<BaseFloat> *out) {
     if (kl_inv_q_.NumRows() == 0) {
       // Copy the CudaMatrix to a Matrix
@@ -107,25 +107,25 @@ class KlHmm : public Component {
     out->Scale(-1);
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
                         const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, 
+                        const CuMatrixBase<BaseFloat> &out_diff,
                         CuMatrixBase<BaseFloat> *in_diff) {
     KALDI_ERR << "Unimplemented";
   }
- 
+
   /// Reads the component content
-  void ReadData(std::istream &is, bool binary) { 
+  void ReadData(std::istream &is, bool binary) {
     kl_stats_.Read(is, binary);
     KALDI_ASSERT(kl_stats_.NumRows() == output_dim_);
     KALDI_ASSERT(kl_stats_.NumCols() == input_dim_);
   }
 
   /// Writes the component content
-  void WriteData(std::ostream &os, bool binary) const { 
+  void WriteData(std::ostream &os, bool binary) const {
     kl_stats_.Write(os, binary);
   }
-  
+
   /// Set the statistics matrix
   void SetStats(const Matrix<BaseFloat> mat) {
     KALDI_ASSERT(mat.NumRows() == output_dim_);
@@ -135,7 +135,7 @@ class KlHmm : public Component {
    }
 
   /// Accumulate the statistics for KL-HMM paramter estimation
-  void Accumulate (const Matrix<BaseFloat> &posteriors, 
+  void Accumulate (const Matrix<BaseFloat> &posteriors,
                    const std::vector<int32> &alignment) {
     KALDI_ASSERT(posteriors.NumRows() == alignment.size());
     KALDI_ASSERT(posteriors.NumCols() == kl_stats_.NumCols());
@@ -148,7 +148,7 @@ class KlHmm : public Component {
     }
   }
 
- private: 
+ private:
   Matrix<double> kl_stats_;
   CuMatrix<BaseFloat> kl_inv_q_;
 };

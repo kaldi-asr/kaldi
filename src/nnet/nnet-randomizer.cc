@@ -57,7 +57,7 @@ void MatrixRandomizer::AddData(const CuMatrixBase<BaseFloat>& m) {
       data_.RowRange(0,leftover).CopyFromMat(data_.RowRange(data_begin_,leftover));
     }
     data_begin_ = 0; data_end_ = leftover;
-    data_.RowRange(leftover,data_.NumRows()-leftover).SetZero();  // zeroing the rest 
+    data_.RowRange(leftover,data_.NumRows()-leftover).SetZero();  // zeroing the rest
   }
   // extend the buffer if necessary
   if (data_.NumRows() < data_end_ + m.NumRows()) {
@@ -76,7 +76,7 @@ void MatrixRandomizer::Randomize(const std::vector<int32>& mask) {
   KALDI_ASSERT(data_end_ == mask.size());
   // Copy to auxiliary buffer for unshuffled data
   data_aux_ = data_;
-  // Put the mask to GPU 
+  // Put the mask to GPU
   CuArray<int32> mask_in_gpu(mask.size());
   mask_in_gpu.CopyFromVec(mask);
   // Randomize the data, mask is used to index rows in source matrix:
@@ -115,7 +115,7 @@ void VectorRandomizer::AddData(const Vector<BaseFloat>& v) {
       data_.Range(0,leftover).CopyFromVec(data_.Range(data_begin_,leftover));
     }
     data_begin_ = 0; data_end_ = leftover;
-    data_.Range(leftover,data_.Dim()-leftover).SetZero();  // zeroing the rest 
+    data_.Range(leftover,data_.Dim()-leftover).SetZero();  // zeroing the rest
   }
   // extend the buffer if necessary
   if (data_.Dim() < data_end_ + v.Dim()) {
@@ -170,7 +170,7 @@ void StdVectorRandomizer<T>::AddData(const std::vector<T>& v) {
     }
     data_begin_ = 0; data_end_ = leftover;
     // cannot do this, we don't know default value of arbitrary type!
-    // data_.RowRange(leftover,data_.NumRows()-leftover).SetZero();  // zeroing the rest 
+    // data_.RowRange(leftover,data_.NumRows()-leftover).SetZero();  // zeroing the rest
   }
   // extend the buffer if necessary
   if (data_.size() < data_end_ + v.size()) {

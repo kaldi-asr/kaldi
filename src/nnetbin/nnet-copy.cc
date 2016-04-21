@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
     bool binary_write = true;
     int32 remove_first_components = 0;
     int32 remove_last_components = 0;
-    
+
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("remove-first-layers", &remove_first_components, "Deprecated, please use --remove-first-components");
@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
     po.Register("remove-last-components", &remove_last_components, "Remove N last layers Components from the Nnet");
 
     std::string from_parallel_component;
-    po.Register("from-parallel-component", &from_parallel_component, 
+    po.Register("from-parallel-component", &from_parallel_component,
         "Extract nested network from parallel component (3 = 3rd network, component is found; 1:3 = 3nd network from 1st component).");
 
     po.Read(argc, argv);
@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
         model_out_filename = po.GetArg(2);
 
     // load the network
-    Nnet nnet; 
+    Nnet nnet;
     {
       bool binary_read;
       Input ki(model_in_filename, &binary_read);
@@ -75,14 +75,14 @@ int main(int argc, char *argv[]) {
       // parse the argument,
       int32 component_id = 0, nested_id = 0;
       switch (component_id_nested_id.size()) {
-        case 1: 
-          nested_id = component_id_nested_id[0]; 
+        case 1:
+          nested_id = component_id_nested_id[0];
           break;
-        case 2: 
+        case 2:
           component_id = component_id_nested_id[0];
-          nested_id = component_id_nested_id[1]; 
+          nested_id = component_id_nested_id[1];
           break;
-        default: 
+        default:
           KALDI_ERR << "Check csl in '--from-parallel-component', must be 1 or 2 elements.";
       }
       // locate 1st parallel component, if not specified by the arg,
@@ -105,7 +105,7 @@ int main(int argc, char *argv[]) {
         nnet.RemoveComponent(0);
       }
     }
-   
+
     // optionally remove N last layers
     if (remove_last_components > 0) {
       for (int32 i=0; i<remove_last_components; i++) {

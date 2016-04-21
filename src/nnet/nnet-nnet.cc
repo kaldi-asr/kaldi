@@ -59,7 +59,7 @@ Nnet& Nnet::operator= (const Nnet& other) {
   propagate_buf_.resize(NumComponents()+1);
   backpropagate_buf_.resize(NumComponents()+1);
   // copy train opts
-  SetTrainOptions(other.opts_); 
+  SetTrainOptions(other.opts_);
   Check();
   return *this;
 }
@@ -68,18 +68,18 @@ Nnet& Nnet::operator= (const Nnet& other) {
  * Forward propagation through the network,
  * (from first component to last).
  */
-void Nnet::Propagate(const CuMatrixBase<BaseFloat> &in, 
+void Nnet::Propagate(const CuMatrixBase<BaseFloat> &in,
                      CuMatrix<BaseFloat> *out) {
   // In case of empty network copy input to output,
   if (NumComponents() == 0) {
     (*out) = in;  // copy,
-    return; 
+    return;
   }
   // We need C+1 buffers,
   if (propagate_buf_.size() != NumComponents()+1) {
     propagate_buf_.resize(NumComponents()+1);
   }
-  // Copy input to first buffer,  
+  // Copy input to first buffer,
   propagate_buf_[0] = in;
   // Propagate through all the components,
   for (int32 i = 0; i < static_cast<int32>(components_.size()); i++) {
@@ -94,12 +94,12 @@ void Nnet::Propagate(const CuMatrixBase<BaseFloat> &in,
  * Error back-propagation through the network,
  * (from last component to first).
  */
-void Nnet::Backpropagate(const CuMatrixBase<BaseFloat> &out_diff, 
+void Nnet::Backpropagate(const CuMatrixBase<BaseFloat> &out_diff,
                          CuMatrix<BaseFloat> *in_diff) {
   // Copy the derivative in case of empty network,
-  if (NumComponents() == 0) { 
+  if (NumComponents() == 0) {
     (*in_diff) = out_diff;  // copy,
-    return; 
+    return;
   }
   // We need C+1 buffers,
   KALDI_ASSERT(static_cast<int32>(propagate_buf_.size()) == NumComponents()+1);
@@ -111,13 +111,13 @@ void Nnet::Backpropagate(const CuMatrixBase<BaseFloat> &out_diff,
   // Loop from last Component to the first,
   for (int32 i = NumComponents()-1; i >= 0; i--) {
     // Backpropagate through 'Component',
-    components_[i]->Backpropagate(propagate_buf_[i], 
+    components_[i]->Backpropagate(propagate_buf_[i],
                                   propagate_buf_[i+1],
-                                  backpropagate_buf_[i+1], 
+                                  backpropagate_buf_[i+1],
                                   &backpropagate_buf_[i]);
     // Update 'Component' (if applicable),
     if (components_[i]->IsUpdatable()) {
-      UpdatableComponent* uc = 
+      UpdatableComponent* uc =
         dynamic_cast<UpdatableComponent*>(components_[i]);
       uc->Update(propagate_buf_[i], backpropagate_buf_[i+1]);
     }
@@ -195,15 +195,15 @@ void Nnet::RemoveComponent(int32 c) {
   Check();
 }
 
-void Nnet::RemoveLastComponent() { 
-  RemoveComponent(NumComponents()-1); 
+void Nnet::RemoveLastComponent() {
+  RemoveComponent(NumComponents()-1);
 }
 
 int32 Nnet::NumParams() const {
   int32 n_params = 0;
   for (int32 n = 0; n < components_.size(); n++) {
     if (components_[n]->IsUpdatable()) {
-      n_params += 
+      n_params +=
         dynamic_cast<UpdatableComponent*>(components_[n])->NumParams();
     }
   }
@@ -216,7 +216,7 @@ void Nnet::GetGradient(Vector<BaseFloat>* gradient) const {
   // loop over Components,
   for (int32 i = 0; i < components_.size(); i++) {
     if (components_[i]->IsUpdatable()) {
-      UpdatableComponent& c = 
+      UpdatableComponent& c =
         dynamic_cast<UpdatableComponent&>(*components_[i]);
       SubVector<BaseFloat> grad_range(gradient->Range(pos, c.NumParams()));
       c.GetGradient(&grad_range);  // getting gradient,
@@ -232,7 +232,7 @@ void Nnet::GetParams(Vector<BaseFloat>* params) const {
   // loop over Components,
   for (int32 i = 0; i < components_.size(); i++) {
     if (components_[i]->IsUpdatable()) {
-      UpdatableComponent& c = 
+      UpdatableComponent& c =
         dynamic_cast<UpdatableComponent&>(*components_[i]);
       SubVector<BaseFloat> params_range(params->Range(pos, c.NumParams()));
       c.GetGradient(&params_range);  // getting params,
@@ -248,7 +248,7 @@ void Nnet::SetParams(const VectorBase<BaseFloat>& params) {
   // loop over Components,
   for (int32 i = 0; i < components_.size(); i++) {
     if (components_[i]->IsUpdatable()) {
-      UpdatableComponent& c = 
+      UpdatableComponent& c =
         dynamic_cast<UpdatableComponent&>(*components_[i]);
       c.SetParams(params.Range(pos, c.NumParams()));  // setting params,
       pos += c.NumParams();
@@ -263,7 +263,7 @@ void Nnet::SetDropoutRetention(BaseFloat r)  {
       Dropout& comp = dynamic_cast<Dropout&>(GetComponent(c));
       BaseFloat r_old = comp.GetDropoutRetention();
       comp.SetDropoutRetention(r);
-      KALDI_LOG << "Setting dropout-retention in component " << c 
+      KALDI_LOG << "Setting dropout-retention in component " << c
                 << " from " << r_old << " to " << r;
     }
   }
@@ -275,7 +275,7 @@ void Nnet::ResetLstmStreams(const std::vector<int32> &stream_reset_flag) {
     if (GetComponent(c).GetType() == Component::kLstmProjectedStreams) {
       LstmProjectedStreams& comp = dynamic_cast<LstmProjectedStreams&>(GetComponent(c));
       comp.ResetLstmStreams(stream_reset_flag);
-    }    
+    }
   }
 }
 
@@ -297,7 +297,7 @@ void Nnet::Init(const std::string &proto_file) {
     KALDI_ASSERT(is.good());
     std::getline(is, proto_line);  // get a line from config file,
     if (proto_line == "") continue;
-    KALDI_VLOG(1) << proto_line; 
+    KALDI_VLOG(1) << proto_line;
     std::istringstream(proto_line) >> std::ws >> token;  // get 1st token,
     if (token == "<NnetProto>" || token == "</NnetProto>") continue;  // ignored tokens,
     this->AppendComponentPointer(Component::Init(proto_line+"\n"));
@@ -308,7 +308,7 @@ void Nnet::Init(const std::string &proto_file) {
 }
 
 
-/** 
+/**
  * I/O wrapper for converting 'rxfilename' to 'istream',
  */
 void Nnet::Read(const std::string &rxfilename) {
@@ -342,7 +342,7 @@ void Nnet::Read(std::istream &is, bool binary) {
 }
 
 
-/** 
+/**
  * I/O wrapper for converting 'wxfilename' to 'ostream',
  */
 void Nnet::Write(const std::string &wxfilename, bool binary) const {
@@ -359,7 +359,7 @@ void Nnet::Write(std::ostream &os, bool binary) const {
   for (int32 i=0; i<NumComponents(); i++) {
     components_[i]->Write(os, binary);
   }
-  WriteToken(os, binary, "</Nnet>");  
+  WriteToken(os, binary, "</Nnet>");
   if (binary == false) os << std::endl;
 }
 
@@ -370,12 +370,12 @@ std::string Nnet::Info() const {
   ostr << "num-components " << NumComponents() << std::endl;
   ostr << "input-dim " << InputDim() << std::endl;
   ostr << "output-dim " << OutputDim() << std::endl;
-  ostr << "number-of-parameters " << static_cast<float>(NumParams())/1e6 
+  ostr << "number-of-parameters " << static_cast<float>(NumParams())/1e6
        << " millions" << std::endl;
   // topology & weight stats
   for (int32 i = 0; i < NumComponents(); i++) {
-    ostr << "component " << i+1 << " : " 
-         << Component::TypeToMarker(components_[i]->GetType()) 
+    ostr << "component " << i+1 << " : "
+         << Component::TypeToMarker(components_[i]->GetType())
          << ", input-dim " << components_[i]->InputDim()
          << ", output-dim " << components_[i]->OutputDim()
          << ", " << components_[i]->Info() << std::endl;
@@ -388,8 +388,8 @@ std::string Nnet::InfoGradient() const {
   // gradient stats
   ostr << "\n### Gradient stats :\n";
   for (int32 i = 0; i < NumComponents(); i++) {
-    ostr << "Component " << i+1 << " : " 
-         << Component::TypeToMarker(components_[i]->GetType()) 
+    ostr << "Component " << i+1 << " : "
+         << Component::TypeToMarker(components_[i]->GetType())
          << ", " << components_[i]->InfoGradient() << std::endl;
   }
   return ostr.str();
@@ -401,7 +401,7 @@ std::string Nnet::InfoPropagate() const {
   ostr << "\n### Forward propagation buffer content :\n";
   ostr << "[0] output of <Input> " << MomentStatistics(propagate_buf_[0]) << std::endl;
   for (int32 i=0; i<NumComponents(); i++) {
-    ostr << "["<<1+i<< "] output of " 
+    ostr << "["<<1+i<< "] output of "
          << Component::TypeToMarker(components_[i]->GetType())
          << MomentStatistics(propagate_buf_[i+1]) << std::endl;
     // nested networks too...
@@ -418,7 +418,7 @@ std::string Nnet::InfoBackPropagate() const {
   ostr << "\n### Backward propagation buffer content :\n";
   ostr << "[0] diff of <Input> " << MomentStatistics(backpropagate_buf_[0]) << std::endl;
   for (int32 i=0; i<NumComponents(); i++) {
-    ostr << "["<<1+i<< "] diff-output of " 
+    ostr << "["<<1+i<< "] diff-output of "
          << Component::TypeToMarker(components_[i]->GetType())
          << MomentStatistics(backpropagate_buf_[i+1]) << std::endl;
     // nested networks too...
@@ -471,6 +471,6 @@ void Nnet::SetTrainOptions(const NnetTrainOptions& opts) {
   }
 }
 
- 
+
 }  // namespace nnet1
 }  // namespace kaldi

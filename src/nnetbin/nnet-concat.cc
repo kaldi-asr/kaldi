@@ -32,9 +32,9 @@ int main(int argc, char *argv[]) {
         "Usage:  nnet-concat [options] <model-in1> <...> <model-inN> <model-out>\n"
         "e.g.:\n"
         " nnet-concat --binary=false nnet.1 nnet.2 nnet.1.2\n";
-    
+
     ParseOptions po(usage);
-    
+
     bool binary_write = true;
     po.Register("binary", &binary_write, "Write output in binary mode");
 
@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
 
     //read the first nnet
     KALDI_LOG << "Reading " << model_in_filename;
-    Nnet nnet; 
+    Nnet nnet;
     {
       bool binary_read;
       Input ki(model_in_filename, &binary_read);

@@ -35,7 +35,7 @@ namespace nnet1 {
 
   /*
    * Helper functions
-   */  
+   */
   template<typename Real>
   void ReadCuMatrixFromString(const std::string& s, CuMatrix<Real>* m) {
     std::istringstream is(s + "\n");
@@ -75,7 +75,7 @@ namespace nnet1 {
     // prepare input,
     CuMatrix<BaseFloat> mat_in;
     ReadCuMatrixFromString("[ 0 0.5 \n 1 1 \n 2 1.5 ] ", &mat_in);
-  
+
     // propagate,
     CuMatrix<BaseFloat> mat_out;
     c->Propagate(mat_in,&mat_out);
@@ -84,12 +84,12 @@ namespace nnet1 {
     for (int32 i=0; i<mat_out.NumRows(); i++) {
       AssertEqual(mat_out.Row(i), ones);
     }
-  
+
     // backpropagate,
     CuMatrix<BaseFloat> dummy1(3,2), dummy2(3,2), diff_out(mat_in), diff_in;
     c->Backpropagate(dummy1, dummy2, diff_out, &diff_in);  // output 1.0 boosted by 10.0,
     // check the output,
-    CuVector<BaseFloat> tens(2); tens.Set(10); 
+    CuVector<BaseFloat> tens(2); tens.Set(10);
     for (int32 i=0; i<diff_in.NumRows(); i++) {
       AssertEqual(diff_in.Row(i), tens);
     }
@@ -104,11 +104,11 @@ namespace nnet1 {
       <Filters> [ 1 \
       ] <Bias> [ 0 ]"
     );
-    
+
     // prepare input,
     CuMatrix<BaseFloat> mat_in;
     ReadCuMatrixFromString("[ 1 2 3 4 5 ] ", &mat_in);
-    
+
     // propagate,
     CuMatrix<BaseFloat> mat_out;
     c->Propagate(mat_in,&mat_out);
@@ -120,7 +120,7 @@ namespace nnet1 {
     c->Backpropagate(mat_in, mat_out, mat_out_diff, &mat_in_diff);
     KALDI_LOG << "mat_out_diff " << mat_out_diff << " mat_in_diff " << mat_in_diff;
     AssertEqual(mat_out_diff,mat_in_diff);
-    
+
     // clean,
     delete c;
   }
@@ -136,13 +136,13 @@ namespace nnet1 {
                   -4  0  0  -3 0 3   4 0 0 ] \
       <Bias> [ -20 -20 -20 ]"
     );
-    
+
     // prepare input, reference output,
     CuMatrix<BaseFloat> mat_in;
     ReadCuMatrixFromString("[ 1 3 5 7 9  2 4 6 8 10  3 5 7 9 11 ]", &mat_in);
     CuMatrix<BaseFloat> mat_out_ref;
     ReadCuMatrixFromString("[ 0 0 0  0 0 0  0 0 0 ]", &mat_out_ref);
-    
+
     // propagate,
     CuMatrix<BaseFloat> mat_out;
     c->Propagate(mat_in, &mat_out);
@@ -160,7 +160,7 @@ namespace nnet1 {
     c->Backpropagate(mat_in, mat_out, mat_out_diff, &mat_in_diff);
     KALDI_LOG << "mat_in_diff " << mat_in_diff << " mat_in_diff_ref " << mat_in_diff_ref;
     AssertEqual(mat_in_diff, mat_in_diff_ref);
-    
+
     // clean,
     delete c;
   }
@@ -196,7 +196,7 @@ namespace nnet1 {
                               7 4 9 4;\
                               5 9 8 9 \
                               8 4 5 7 ]", &mat_out_ref);
-    
+
     // propagate,
     CuMatrix<BaseFloat> mat_out;
     c->Propagate(mat_in,&mat_out);
@@ -240,11 +240,11 @@ namespace nnet1 {
     // input matrix,
     CuMatrix<BaseFloat> mat_in;
     ReadCuMatrixFromString("[ 0 0 1 1 2 2 3 3 4 4 5 5 6 6 7 7 8 8 9 9 10 10 11 11 12 12 13 13 14 14 15 15 16 16 17 17 18 18 19 19 20 20 21 21 22 22 23 23 24 24 25 25 26 26 27 27 ]", &mat_in);
-    
+
     // expected output (max values in the patch)
     CuMatrix<BaseFloat> mat_out_ref;
     ReadCuMatrixFromString("[ 9 9 11 11 13 13 16 16 18 18 20 20 23 23 25 25 27 27 ]", &mat_out_ref);
-    
+
     // propagate,
     CuMatrix<BaseFloat> mat_out;
     c->Propagate(mat_in, &mat_out);
@@ -255,11 +255,11 @@ namespace nnet1 {
     // locations of max values will be shown
     CuMatrix<BaseFloat> mat_out_diff(mat_out);
     ReadCuMatrixFromString("[ 0 0 1 1 2 2 3 3 4 4 5 5 6 6 7 7 8 8 ]", &mat_out_diff);
-    
+
     //expected backpropagated values,
     CuMatrix<BaseFloat> mat_in_diff_ref;  //hand-computed back-propagated values,
     ReadCuMatrixFromString("[ 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0.25 0 0 1 1 0 0 0 0 0.75 0.75 0 0 1 1 0 0 2.5 2.5 0 0 0 0 3 3 0 0 3.5 3.5 0 0 8 8 ]", &mat_in_diff_ref);
-    
+
     // backpropagate,
     CuMatrix<BaseFloat> mat_in_diff;
     c->Backpropagate(mat_in, mat_out, mat_out_diff, &mat_in_diff);
@@ -277,11 +277,11 @@ namespace nnet1 {
     // input matrix,
     CuMatrix<BaseFloat> mat_in;
     ReadCuMatrixFromString("[ 0 0 1 1 2 2 3 3 4 4 5 5 6 6 7 7 8 8 9 9 10 10 11 11 12 12 13 13 14 14 15 15 16 16 17 17 18 18 19 19 20 20 21 21 22 22 23 23 24 24 25 25 26 26 27 27 ]", &mat_in);
-    
+
     // expected output (max values in the patch)
     CuMatrix<BaseFloat> mat_out_ref;
     ReadCuMatrixFromString("[ 4.5 4.5 6.5 6.5 8.5 8.5 11.5 11.5 13.5 13.5 15.5 15.5 18.5 18.5 20.5 20.5 22.5 22.5 ]", &mat_out_ref);
-    
+
     // propagate,
     CuMatrix<BaseFloat> mat_out;
     c->Propagate(mat_in, &mat_out);
@@ -292,11 +292,11 @@ namespace nnet1 {
     // locations of max values will be shown
     CuMatrix<BaseFloat> mat_out_diff(mat_out);
     ReadCuMatrixFromString("[ 0 0 1 1 2 2 3 3 4 4 5 5 6 6 7 7 8 8 ]", &mat_out_diff);
-    
+
     // expected backpropagated values,
     CuMatrix<BaseFloat> mat_in_diff_ref;  // hand-computed back-propagated values,
     ReadCuMatrixFromString("[  0 0 0 0 0.0833333 0.0833333 0.166667 0.166667 0.25 0.25 0.333333 0.333333 0.333333 0.333333 0.25 0.25 0.25 0.25 0.333333 0.333333 0.416667 0.416667 0.5 0.5 0.583333 0.583333 0.583333 0.583333 0.75 0.75 0.75 0.75 0.833333 0.833333 0.916667 0.916667 1 1 1.08333 1.08333 1.08333 1.08333 1 1 1 1 1.08333 1.08333 1.16667 1.16667 1.25 1.25 1.33333 1.33333 1.33333 1.33333 ]", &mat_in_diff_ref);
-    
+
     // backpropagate,
     CuMatrix<BaseFloat> mat_in_diff;
     c->Backpropagate(mat_in, mat_out, mat_out_diff, &mat_in_diff);
@@ -308,16 +308,16 @@ namespace nnet1 {
 
 
   void UnitTestConvolutional2DComponent() { /* Implemented by Harish Mallidi */
-    // Convolutional2D component 
+    // Convolutional2D component
     Component* c = ReadComponentFromString("<Convolutional2DComponent> 18 56 \
 <LearnRateCoef> 0 <BiasLearnRateCoef> 0 <FmapXLen> 4 <FmapYLen> 7 <FiltXLen> 2 <FiltYLen> 3 <FiltXStep> 1 <FiltYStep> 2 <ConnectFmap> 1 <Filters> [ 0 0 1 1 2 2 3 3 4 4 5 5 ; 0 0 1 1 2 2 3 3 4 4 5 5 ] <Bias> [ 0 0 ]");
-    
+
     // input matrix
     CuMatrix<BaseFloat> mat_in;
     ReadCuMatrixFromString("[ 0 0 1 1 2 2 3 3 4 4 5 5 6 6 7 7 8 8 9 9 10 10 11 11 12 12 13 13 14 14 15 15 16 16 17 17 18 18 19 19 20 20 21 21 22 22 23 23 24 24 25 25 26 26 27 27 ]", &mat_in);
     CuMatrix<BaseFloat> mat_out_ref;
     ReadCuMatrixFromString("[ 206 206 266 266 326 326 416 416 476 476 536 536 626 626 686 686 746 746 ]", &mat_out_ref);
-    
+
     // propagate
     CuMatrix<BaseFloat> mat_out;
     c->Propagate(mat_in,&mat_out);
@@ -371,5 +371,5 @@ int main() {
 #if HAVE_CUDA == 1
   CuDevice::Instantiate().PrintProfile();
 #endif
-  return 0; 
+  return 0;
 }

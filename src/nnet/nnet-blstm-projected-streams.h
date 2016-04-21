@@ -61,12 +61,12 @@ class BLstmProjectedStreams : public UpdatableComponent {
   ~BLstmProjectedStreams()
   { }
 
-  Component* Copy() const { 
-    return new BLstmProjectedStreams(*this); 
+  Component* Copy() const {
+    return new BLstmProjectedStreams(*this);
   }
 
-  ComponentType GetType() const { 
-    return kBLstmProjectedStreams; 
+  ComponentType GetType() const {
+    return kBLstmProjectedStreams;
   }
 
  private:
@@ -196,10 +196,10 @@ class BLstmProjectedStreams : public UpdatableComponent {
         //case 'D': ExpectToken(is, binary, "<DropoutRate>");
         //  ReadBasicType(is, binary, &dropout_rate_);
         //  break;
-        case 'L': ExpectToken(is, binary, "<LearnRateCoef>"); 
+        case 'L': ExpectToken(is, binary, "<LearnRateCoef>");
           ReadBasicType(is, binary, &learn_rate_coef_);
           break;
-        case 'B': ExpectToken(is, binary, "<BiasLearnRateCoef>"); 
+        case 'B': ExpectToken(is, binary, "<BiasLearnRateCoef>");
           ReadBasicType(is, binary, &bias_learn_rate_coef_);
           break;
         default: ReadToken(is, false, &token);

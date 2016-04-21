@@ -38,23 +38,23 @@ class RbmBase : public Component {
     Bernoulli,
     Gaussian
   } RbmNodeType;
- 
-  RbmBase(int32 dim_in, int32 dim_out) 
+
+  RbmBase(int32 dim_in, int32 dim_out)
    : Component(dim_in, dim_out)
   { }
-  
+
   // Inherited from Component::
   // void Propagate(...)
   // virtual void PropagateFnc(...) = 0
 
   virtual void Reconstruct(
-    const CuMatrixBase<BaseFloat> &hid_state, 
+    const CuMatrixBase<BaseFloat> &hid_state,
     CuMatrix<BaseFloat> *vis_probs
   ) = 0;
   virtual void RbmUpdate(
-    const CuMatrixBase<BaseFloat> &pos_vis, 
-    const CuMatrixBase<BaseFloat> &pos_hid, 
-    const CuMatrixBase<BaseFloat> &neg_vis, 
+    const CuMatrixBase<BaseFloat> &pos_vis,
+    const CuMatrixBase<BaseFloat> &pos_hid,
+    const CuMatrixBase<BaseFloat> &neg_vis,
     const CuMatrixBase<BaseFloat> &neg_hid
   ) = 0;
 
@@ -71,7 +71,7 @@ class RbmBase : public Component {
   const RbmTrainOptions& GetRbmTrainOptions() const {
     return rbm_opts_;
   }
-  
+
  protected:
   RbmTrainOptions rbm_opts_;
 
@@ -89,12 +89,12 @@ class RbmBase : public Component {
 
 class Rbm : public RbmBase {
  public:
-  Rbm(int32 dim_in, int32 dim_out) 
+  Rbm(int32 dim_in, int32 dim_out)
    : RbmBase(dim_in, dim_out)
-  { } 
+  { }
   ~Rbm()
-  { }  
-  
+  { }
+
   Component* Copy() const { return new Rbm(*this); }
   ComponentType GetType() const { return kRbm; }
 
@@ -102,14 +102,14 @@ class Rbm : public RbmBase {
     // define options
     std::string vis_type;
     std::string hid_type;
-    float vis_bias_mean = 0.0, vis_bias_range = 0.0, 
-          hid_bias_mean = 0.0, hid_bias_range = 0.0, 
+    float vis_bias_mean = 0.0, vis_bias_range = 0.0,
+          hid_bias_mean = 0.0, hid_bias_range = 0.0,
           param_stddev = 0.1;
     std::string vis_bias_cmvn_file;  // initialize biases to logit(p_active)
     // parse config
-    std::string token; 
+    std::string token;
     while (is >> std::ws, !is.eof()) {
-      ReadToken(is, false, &token); 
+      ReadToken(is, false, &token);
       /**/ if (token == "<VisibleType>") ReadToken(is, false, &vis_type);
       else if (token == "<HiddenType>") ReadToken(is, false, &hid_type);
       else if (token == "<VisibleBiasMean>") ReadBasicType(is, false, &vis_bias_mean);
@@ -143,7 +143,7 @@ class Rbm : public RbmBase {
     Vector<BaseFloat> vec(output_dim_);
     for (int32 i=0; i<output_dim_; i++) {
       // +/- 1/2*bias_range from bias_mean:
-      vec(i) = hid_bias_mean + (RandUniform() - 0.5) * hid_bias_range; 
+      vec(i) = hid_bias_mean + (RandUniform() - 0.5) * hid_bias_range;
     }
     hid_bias_ = vec;
     // visible-bias
@@ -151,7 +151,7 @@ class Rbm : public RbmBase {
       Vector<BaseFloat> vec2(input_dim_);
       for (int32 i=0; i<input_dim_; i++) {
         // +/- 1/2*bias_range from bias_mean:
-        vec2(i) = vis_bias_mean + (RandUniform() - 0.5) * vis_bias_range; 
+        vec2(i) = vis_bias_mean + (RandUniform() - 0.5) * vis_bias_range;
       }
       vis_bias_ = vec2;
     } else {
@@ -180,7 +180,7 @@ class Rbm : public RbmBase {
     std::string vis_node_type, hid_node_type;
     ReadToken(is, binary, &vis_node_type);
     ReadToken(is, binary, &hid_node_type);
-    
+
     if (vis_node_type == "bern") {
       vis_type_ = RbmBase::Bernoulli;
     } else if (vis_node_type == "gauss") {
@@ -201,7 +201,7 @@ class Rbm : public RbmBase {
     KALDI_ASSERT(vis_bias_.Dim() == input_dim_);
     KALDI_ASSERT(hid_bias_.Dim() == output_dim_);
   }
-  
+
   void WriteData(std::ostream &os, bool binary) const {
     switch (vis_type_) {
       case Bernoulli : WriteToken(os,binary,"bern"); break;
@@ -251,7 +251,7 @@ class Rbm : public RbmBase {
       vis_probs->Sigmoid(*vis_probs);
     }
   }
-  
+
   void RbmUpdate(const CuMatrixBase<BaseFloat> &pos_vis, const CuMatrixBase<BaseFloat> &pos_hid, const CuMatrixBase<BaseFloat> &neg_vis, const CuMatrixBase<BaseFloat> &neg_hid) {
     // dims
     KALDI_ASSERT(pos_vis.NumRows() == pos_hid.NumRows() &&
@@ -281,17 +281,17 @@ class Rbm : public RbmBase {
     // should be about the same. The model is particularly sensitive at the very
     // beginning of the CD-1 training.
     //
-    // We compute variance of a)input mini-batch b)reconstruction. 
+    // We compute variance of a)input mini-batch b)reconstruction.
     // When the ratio b)/a) is larger than 2, we:
     // 1. scale down the weights and biases by b)/a) (for next mini-batch b)/a) gets 1.0)
     // 2. shrink learning rate by 0.9x
-    // 3. reset the momentum buffer  
+    // 3. reset the momentum buffer
     //
-    // Also a warning message is put to log. Note that in later stage 
+    // Also a warning message is put to log. Note that in later stage
     // the learning-rate returns to its original value.
     //
     // An alternative approach is to use smaller values in weight-matrix initialization.
-    // 
+    //
     if (vis_type_ == RbmBase::Gaussian) {
       // check the data have no nan/inf:
       CheckNanInf(pos_vis,"pos_vis");
@@ -310,7 +310,7 @@ class Rbm : public RbmBase {
         vis_hid_.Scale(scale);
         vis_bias_.Scale(scale);
         hid_bias_.Scale(scale);
-        // 2) reduce the learning rate           
+        // 2) reduce the learning rate
         rbm_opts_.learn_rate *= 0.9;
         // 3) reset the momentum buffers
         vis_hid_corr_.SetZero();
@@ -334,9 +334,9 @@ class Rbm : public RbmBase {
     const BaseFloat lr = rbm_opts_.learn_rate;
     const BaseFloat mmt = rbm_opts_.momentum;
     const BaseFloat l2 = rbm_opts_.l2_penalty;
-    
+
     //  UPDATE vishid matrix
-    //  
+    //
     //  vishidinc = momentum*vishidinc + ...
     //              epsilonw*( (posprods-negprods)/numcases - weightcost*vishid);
     //
@@ -357,7 +357,7 @@ class Rbm : public RbmBase {
     vis_bias_corr_.AddRowSumMat(-lr/N, neg_vis, mmt);
     vis_bias_corr_.AddRowSumMat(+lr/N, pos_vis, 1.0);
     vis_bias_.AddVec(1.0, vis_bias_corr_, 1.0);
-    
+
     //  UPDATE hidbias vector
     //
     // hidbiasinc = momentum*hidbiasinc + (epsilonhb/numcases)*(poshidact-neghidact);
@@ -369,12 +369,12 @@ class Rbm : public RbmBase {
 
 
 
-  RbmNodeType VisType() const { 
-    return vis_type_; 
+  RbmNodeType VisType() const {
+    return vis_type_;
   }
 
-  RbmNodeType HidType() const { 
-    return hid_type_; 
+  RbmNodeType HidType() const {
+    return hid_type_;
   }
 
   void WriteAsNnet(std::ostream& os, bool binary) const {

@@ -32,65 +32,65 @@ namespace kaldi {
 namespace nnet1 {
 
 /**
- * ConvolutionalComponent implements convolution over single axis 
- * (i.e. frequency axis in case we are the 1st component in NN). 
- * We don't do convolution along temporal axis, which simplifies the 
+ * ConvolutionalComponent implements convolution over single axis
+ * (i.e. frequency axis in case we are the 1st component in NN).
+ * We don't do convolution along temporal axis, which simplifies the
  * implementation (and was not helpful for Tara).
  *
  * We assume the input featrues are spliced, i.e. each frame
  * is in fact a set of stacked frames, where we can form patches
  * which span over several frequency bands and whole time axis.
  *
- * The convolution is done over whole axis with same filters, 
- * i.e. we don't use separate filters for different 'regions' 
+ * The convolution is done over whole axis with same filters,
+ * i.e. we don't use separate filters for different 'regions'
  * of frequency axis.
  *
- * In order to have a fast implementations, the filters 
+ * In order to have a fast implementations, the filters
  * are represented in vectorized form, where each rectangular
- * filter corresponds to a row in a matrix, where all the filters 
- * are stored. The features are then re-shaped to a set of matrices, 
- * where one matrix corresponds to single patch-position, 
+ * filter corresponds to a row in a matrix, where all the filters
+ * are stored. The features are then re-shaped to a set of matrices,
+ * where one matrix corresponds to single patch-position,
  * where all the filters get applied.
- * 
+ *
  * The type of convolution is controled by hyperparameters:
  * patch_dim_     ... frequency axis size of the patch
  * patch_step_    ... size of shift in the convolution
- * patch_stride_  ... shift for 2nd dim of a patch 
+ * patch_stride_  ... shift for 2nd dim of a patch
  *                    (i.e. frame length before splicing)
  *
- * Due to convolution same weights are used repeateadly, 
- * the final gradient is a sum of all position-specific 
+ * Due to convolution same weights are used repeateadly,
+ * the final gradient is a sum of all position-specific
  * gradients (the sum was found better than averaging).
  *
  */
 class ConvolutionalComponent : public UpdatableComponent {
  public:
-  ConvolutionalComponent(int32 dim_in, int32 dim_out) : 
+  ConvolutionalComponent(int32 dim_in, int32 dim_out) :
     UpdatableComponent(dim_in, dim_out),
-    patch_dim_(0), 
-    patch_step_(0), 
-    patch_stride_(0), 
-    max_norm_(0.0)  
+    patch_dim_(0),
+    patch_step_(0),
+    patch_stride_(0),
+    max_norm_(0.0)
   { }
 
   ~ConvolutionalComponent()
   { }
 
-  Component* Copy() const { 
-    return new ConvolutionalComponent(*this); 
+  Component* Copy() const {
+    return new ConvolutionalComponent(*this);
   }
 
-  ComponentType GetType() const { 
-    return kConvolutionalComponent; 
+  ComponentType GetType() const {
+    return kConvolutionalComponent;
   }
 
   void InitData(std::istream &is) {
     // define options
     BaseFloat bias_mean = -2.0, bias_range = 2.0, param_stddev = 0.1;
     // parse config
-    std::string token; 
+    std::string token;
     while (is >> std::ws, !is.eof()) {
-      ReadToken(is, false, &token); 
+      ReadToken(is, false, &token);
       /**/ if (token == "<ParamStddev>") ReadBasicType(is, false, &param_stddev);
       else if (token == "<BiasMean>")    ReadBasicType(is, false, &bias_mean);
       else if (token == "<BiasRange>")   ReadBasicType(is, false, &bias_range);
@@ -138,7 +138,7 @@ class ConvolutionalComponent : public UpdatableComponent {
     Vector<BaseFloat> vec(num_filters);
     for (int32 i = 0; i < num_filters; i++) {
       // +/- 1/2*bias_range from bias_mean:
-      vec(i) = bias_mean + (RandUniform() - 0.5) * bias_range; 
+      vec(i) = bias_mean + (RandUniform() - 0.5) * bias_range;
     }
     bias_ = vec;
     //
@@ -162,7 +162,7 @@ class ConvolutionalComponent : public UpdatableComponent {
           ReadBasicType(is, binary, &learn_rate_coef_);
           break;
         case 'B': ExpectToken(is, binary, "<BiasLearnRateCoef>");
-          ReadBasicType(is, binary, &bias_learn_rate_coef_);  
+          ReadBasicType(is, binary, &bias_learn_rate_coef_);
           break;
         case 'M': ExpectToken(is, binary, "<MaxNorm>");
           ReadBasicType(is, binary, &max_norm_);
@@ -228,17 +228,17 @@ class ConvolutionalComponent : public UpdatableComponent {
     bias_.Write(os, binary);
   }
 
-  int32 NumParams() const { 
-    return filters_.NumRows()*filters_.NumCols() + bias_.Dim(); 
+  int32 NumParams() const {
+    return filters_.NumRows()*filters_.NumCols() + bias_.Dim();
   }
- 
+
   void GetGradient(VectorBase<BaseFloat>* gradient) const {
     KALDI_ASSERT(gradient->Dim() == NumParams());
     int32 filters_num_elem = filters_.NumRows() * filters_.NumCols();
     gradient->Range(0,filters_num_elem).CopyRowsFromMat(filters_);
     gradient->Range(filters_num_elem, bias_.Dim()).CopyFromVec(bias_);
   }
- 
+
   void GetParams(VectorBase<BaseFloat>* params) const {
     KALDI_ASSERT(params->Dim() == NumParams());
     int32 filters_num_elem = filters_.NumRows() * filters_.NumCols();
@@ -278,7 +278,7 @@ class ConvolutionalComponent : public UpdatableComponent {
     int32 num_frames = in.NumRows();
     int32 filter_dim = filters_.NumCols();
 
-    // we will need the buffers 
+    // we will need the buffers
     if (vectorized_feature_patches_.NumRows() != num_frames) {
       vectorized_feature_patches_.Resize(num_frames,
                                          filter_dim * num_patches, kUndefined);
@@ -290,12 +290,12 @@ class ConvolutionalComponent : public UpdatableComponent {
      *   xxx        xxx        xxx        xxx       (x = selected elements)
      *
      *   xxx : patch dim
-     *    xxx 
+     *    xxx
      *   ^---: patch step
      * |----------| : patch stride
      *
      *   xxx-xxx-xxx-xxx : filter dim
-     *  
+     *
      */
     // build-up a column selection map:
     column_map_.resize(filter_dim * num_patches);
@@ -437,7 +437,7 @@ class ConvolutionalComponent : public UpdatableComponent {
 
     //
     // update
-    // 
+    //
     filters_.AddMat(-lr*learn_rate_coef_, filters_grad_);
     bias_.AddVec(-lr*bias_learn_rate_coef_, bias_grad_);
     //

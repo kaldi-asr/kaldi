@@ -108,10 +108,10 @@ Component* Component::NewComponentOfType(ComponentType comp_type,
   Component *ans = NULL;
   switch (comp_type) {
     case Component::kAffineTransform :
-      ans = new AffineTransform(input_dim, output_dim); 
+      ans = new AffineTransform(input_dim, output_dim);
       break;
     case Component::kLinearTransform :
-      ans = new LinearTransform(input_dim, output_dim); 
+      ans = new LinearTransform(input_dim, output_dim);
       break;
     case Component::kConvolutionalComponent :
       ans = new ConvolutionalComponent(input_dim, output_dim);
@@ -138,10 +138,10 @@ Component* Component::NewComponentOfType(ComponentType comp_type,
       ans = new Tanh(input_dim, output_dim);
       break;
     case Component::kDropout :
-      ans = new Dropout(input_dim, output_dim); 
+      ans = new Dropout(input_dim, output_dim);
       break;
     case Component::kLengthNormComponent :
-      ans = new LengthNormComponent(input_dim, output_dim); 
+      ans = new LengthNormComponent(input_dim, output_dim);
       break;
     case Component::kRbm :
       ans = new Rbm(input_dim, output_dim);
@@ -202,7 +202,7 @@ Component* Component::Init(const std::string &conf_line) {
   ReadToken(is, false, &component_type_string);
   ComponentType component_type = MarkerToType(component_type_string);
   ExpectToken(is, false, "<InputDim>");
-  ReadBasicType(is, false, &input_dim); 
+  ReadBasicType(is, false, &input_dim);
   ExpectToken(is, false, "<OutputDim>");
   ReadBasicType(is, false, &output_dim);
   Component *ans = NewComponentOfType(component_type, input_dim, output_dim);
@@ -224,7 +224,7 @@ Component* Component::Read(std::istream &is, bool binary) {
   ReadToken(is, binary, &token);
   // Skip the optional initial token,
   if (token == "<Nnet>") {
-    ReadToken(is, binary, &token); 
+    ReadToken(is, binary, &token);
   }
   // Network ends after terminal token appears,
   if (token == "</Nnet>") {
@@ -232,12 +232,12 @@ Component* Component::Read(std::istream &is, bool binary) {
   }
 
   // Read the dims,
-  ReadBasicType(is, binary, &dim_out); 
+  ReadBasicType(is, binary, &dim_out);
   ReadBasicType(is, binary, &dim_in);
 
   // Create the component,
   Component *ans = NewComponentOfType(MarkerToType(token), dim_in, dim_out);
-  
+
   // Read the content,
   ans->ReadData(is, binary);
 

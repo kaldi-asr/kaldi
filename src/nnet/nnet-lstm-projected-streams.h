@@ -60,12 +60,12 @@ class LstmProjectedStreams : public UpdatableComponent {
   ~LstmProjectedStreams()
   { }
 
-  Component* Copy() const { 
-    return new LstmProjectedStreams(*this); 
+  Component* Copy() const {
+    return new LstmProjectedStreams(*this);
   }
 
-  ComponentType GetType() const { 
-    return kLstmProjectedStreams; 
+  ComponentType GetType() const {
+    return kLstmProjectedStreams;
   }
 
  private:
@@ -151,10 +151,10 @@ class LstmProjectedStreams : public UpdatableComponent {
         //case 'D': ExpectToken(is, binary, "<DropoutRate>");
         //  ReadBasicType(is, binary, &dropout_rate_);
         //  break;
-        case 'L': ExpectToken(is, binary, "<LearnRateCoef>"); 
+        case 'L': ExpectToken(is, binary, "<LearnRateCoef>");
           ReadBasicType(is, binary, &learn_rate_coef_);
           break;
-        case 'B': ExpectToken(is, binary, "<BiasLearnRateCoef>"); 
+        case 'B': ExpectToken(is, binary, "<BiasLearnRateCoef>");
           ReadBasicType(is, binary, &bias_learn_rate_coef_);
           break;
         default: ReadToken(is, false, &token);
@@ -386,7 +386,7 @@ class LstmProjectedStreams : public UpdatableComponent {
     }
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
                     CuMatrixBase<BaseFloat> *out) {
     int DEBUG = 0;
 
@@ -509,9 +509,9 @@ class LstmProjectedStreams : public UpdatableComponent {
     prev_nnet_state_.CopyFromMat(propagate_buf_.RowRange(T*S,S));
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
                         const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, 
+                        const CuMatrixBase<BaseFloat> &out_diff,
                         CuMatrixBase<BaseFloat> *in_diff) {
 
     int DEBUG = 0;
@@ -695,7 +695,7 @@ class LstmProjectedStreams : public UpdatableComponent {
     }
   }
 
-  void Update(const CuMatrixBase<BaseFloat> &input, 
+  void Update(const CuMatrixBase<BaseFloat> &input,
               const CuMatrixBase<BaseFloat> &diff) {
 
     const BaseFloat lr  = opts_.learn_rate;

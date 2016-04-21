@@ -49,12 +49,12 @@ class MaxPooling2DComponent : public Component {
   ~MaxPooling2DComponent()
   { }
 
-  Component* Copy() const { 
-    return new MaxPooling2DComponent(*this); 
+  Component* Copy() const {
+    return new MaxPooling2DComponent(*this);
   }
 
-  ComponentType GetType() const { 
-    return kMaxPooling2DComponent; 
+  ComponentType GetType() const {
+    return kMaxPooling2DComponent;
   }
 
   void InitData(std::istream &is) {
@@ -126,7 +126,7 @@ class MaxPooling2DComponent : public Component {
     WriteBasicType(os, binary, pool_y_step_);
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
                     CuMatrixBase<BaseFloat> *out) {
     // useful dims
     int32 num_input_fmaps = input_dim_ / (fmap_x_len_ * fmap_y_len_);
@@ -150,9 +150,9 @@ class MaxPooling2DComponent : public Component {
     }
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
                         const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, 
+                        const CuMatrixBase<BaseFloat> &out_diff,
                         CuMatrixBase<BaseFloat> *in_diff) {
     // useful dims
     int32 num_input_fmaps = input_dim_ / (fmap_x_len_ * fmap_y_len_);

@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("nkl-states", &n_kl_states, "Number of states in Kl-HMM");
 
-    
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 3) {
@@ -73,10 +73,10 @@ int main(int argc, char *argv[]) {
       if (!alignments_reader.HasKey(utt)) {
         num_no_alignment++;
       } else {
-        
+
         const Matrix<BaseFloat> &mat = feature_reader.Value();
         const std::vector<int32> &alignment = alignments_reader.Value(utt);
-                 
+
         if (static_cast<int32>(alignment.size()) != mat.NumRows()) {
           KALDI_WARN << "Alignment has wrong size "<< (alignment.size()) << " vs. "<< (mat.NumRows());
           num_other_error++;
@@ -84,11 +84,11 @@ int main(int argc, char *argv[]) {
         }
 
         // Accumulate the statistics
-        kl_hmm.Accumulate(mat, alignment);  
+        kl_hmm.Accumulate(mat, alignment);
         // log
     KALDI_VLOG(2) << "utt " << utt << ", frames " << alignment.size();
         total_frames += mat.NumRows();
-      } 
+      }
       num_done++;
     }
     KALDI_WARN << "Before writing...";
@@ -98,7 +98,7 @@ int main(int argc, char *argv[]) {
 
     //store the accumulator
     {
-      Output out(kl_hmm_accumulator, binary); 
+      Output out(kl_hmm_accumulator, binary);
       kl_hmm.WriteData(out.Stream(), binary);
     }
 

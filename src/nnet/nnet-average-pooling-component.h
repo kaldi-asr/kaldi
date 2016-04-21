@@ -39,7 +39,7 @@ namespace nnet1 {
  */
 class AveragePoolingComponent : public Component {
  public:
-  AveragePoolingComponent(int32 dim_in, int32 dim_out) 
+  AveragePoolingComponent(int32 dim_in, int32 dim_out)
     : Component(dim_in, dim_out), pool_size_(0), pool_step_(0), pool_stride_(0)
   { }
   ~AveragePoolingComponent()
@@ -47,10 +47,10 @@ class AveragePoolingComponent : public Component {
 
   Component* Copy() const { return new AveragePoolingComponent(*this); }
   ComponentType GetType() const { return kAveragePoolingComponent; }
-  
+
   void InitData(std::istream &is) {
     // parse config
-    std::string token; 
+    std::string token;
     while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token);
       /**/ if (token == "<PoolSize>") ReadBasicType(is, false, &pool_size_);
@@ -96,7 +96,7 @@ class AveragePoolingComponent : public Component {
     WriteBasicType(os, binary, pool_stride_);
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
                     CuMatrixBase<BaseFloat> *out) {
     // useful dims
     int32 num_patches = input_dim_ / pool_stride_;
@@ -115,9 +115,9 @@ class AveragePoolingComponent : public Component {
     }
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
                         const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, 
+                        const CuMatrixBase<BaseFloat> &out_diff,
                         CuMatrixBase<BaseFloat> *in_diff) {
     // useful dims
     int32 num_patches = input_dim_ / pool_stride_;
@@ -126,10 +126,10 @@ class AveragePoolingComponent : public Component {
     //
     // here we note how many diff matrices are summed for each input patch,
     std::vector<int32> patch_summands(num_patches, 0);
-    // this metainfo will be used to divide diff of patches 
+    // this metainfo will be used to divide diff of patches
     // used in more than one pool.
     //
-    
+
     in_diff->SetZero();  // reset
 
     for (int32 q = 0; q < num_pools; q++) {  // sum

@@ -43,7 +43,7 @@ class AveragePooling2DComponent : public Component {
   AveragePooling2DComponent(int32 dim_in, int32 dim_out)
     : Component(dim_in, dim_out),
       fmap_x_len_(0), fmap_y_len_(0),
-      pool_x_len_(0), pool_y_len_(0), 
+      pool_x_len_(0), pool_y_len_(0),
       pool_x_step_(0), pool_y_step_(0)
   { }
   ~AveragePooling2DComponent()
@@ -123,7 +123,7 @@ class AveragePooling2DComponent : public Component {
     WriteBasicType(os, binary, pool_y_step_);
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
                     CuMatrixBase<BaseFloat> *out) {
     // useful dims
     int32 num_input_fmaps = input_dim_ / (fmap_x_len_ * fmap_y_len_);
@@ -148,9 +148,9 @@ class AveragePooling2DComponent : public Component {
     }
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
                         const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, 
+                        const CuMatrixBase<BaseFloat> &out_diff,
                         CuMatrixBase<BaseFloat> *in_diff) {
     // useful dims
     int32 num_input_fmaps = input_dim_ / (fmap_x_len_ * fmap_y_len_);

@@ -36,7 +36,7 @@ namespace nnet1 {
 
 class Nnet {
  public:
-  Nnet(); 
+  Nnet();
   ~Nnet();
 
   Nnet(const Nnet& other);  // Allow copy constructor.
@@ -44,13 +44,13 @@ class Nnet {
 
  public:
   /// Perform forward pass through the network,
-  void Propagate(const CuMatrixBase<BaseFloat> &in, 
+  void Propagate(const CuMatrixBase<BaseFloat> &in,
                  CuMatrix<BaseFloat> *out);
   /// Perform backward pass through the network,
-  void Backpropagate(const CuMatrixBase<BaseFloat> &out_diff, 
+  void Backpropagate(const CuMatrixBase<BaseFloat> &out_diff,
                      CuMatrix<BaseFloat> *in_diff);
   /// Perform forward pass through the network (with 2 swapping buffers),
-  void Feedforward(const CuMatrixBase<BaseFloat> &in, 
+  void Feedforward(const CuMatrixBase<BaseFloat> &in,
                    CuMatrix<BaseFloat> *out);
 
   /// Dimensionality on network input (input feature dim.),
@@ -58,13 +58,13 @@ class Nnet {
   /// Dimensionality of network outputs (posteriors | bn-features | etc.),
   int32 OutputDim() const;
 
-  /// Returns the number of 'Components' which form the NN. 
-  /// Typically a NN layer is composed of 2 components: 
-  /// the <AffineTransform> with trainable parameters 
+  /// Returns the number of 'Components' which form the NN.
+  /// Typically a NN layer is composed of 2 components:
+  /// the <AffineTransform> with trainable parameters
   /// and a non-linearity like <Sigmoid> or <Softmax>.
   /// Usually there are 2x more Components than the NN layers.
-  int32 NumComponents() const { 
-    return components_.size(); 
+  int32 NumComponents() const {
+    return components_.size();
   }
 
   /// Component accessor,
@@ -164,9 +164,9 @@ class Nnet {
   std::vector<Component*> components_;
 
   /// Buffers for forward pass (on demand initialization),
-  std::vector<CuMatrix<BaseFloat> > propagate_buf_;  
+  std::vector<CuMatrix<BaseFloat> > propagate_buf_;
   /// Buffers for backward pass (on demand initialization),
-  std::vector<CuMatrix<BaseFloat> > backpropagate_buf_;  
+  std::vector<CuMatrix<BaseFloat> > backpropagate_buf_;
 
   /// Option class with hyper-parameters passed to UpdatableComponent(s)
   NnetTrainOptions opts_;

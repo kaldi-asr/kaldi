@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
 
     bool allow_partial = false;
-    po.Register("allow-partial", &allow_partial, 
+    po.Register("allow-partial", &allow_partial,
                 "Produce output also when the utterance is not in all input streams.");
 
     po.Read(argc, argv);
@@ -100,7 +100,7 @@ int main(int argc, char *argv[]) {
       bool ok = true, empty = true;
       std::string utt = featlen_reader.Key();
       int32 num_frames = featlen_reader.Value();
-      
+
       // show which streams are non-empty,
       if (allow_partial && kaldi::g_kaldi_verbose_level >= 2) {
         std::string nonempty_streams;
@@ -109,8 +109,8 @@ int main(int argc, char *argv[]) {
             nonempty_streams += " " + ToString(s);
           }
         }
-        KALDI_VLOG(2) << "Processing " << utt 
-                      << ", frames " << num_frames 
+        KALDI_VLOG(2) << "Processing " << utt
+                      << ", frames " << num_frames
                       << ", pasted-from streams " << nonempty_streams;
       }
 

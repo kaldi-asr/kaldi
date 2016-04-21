@@ -52,14 +52,14 @@ int main(int argc, char *argv[]) {
     po.Register("apply-log", &apply_log, "Transform MLP output to logscale");
 
     std::string use_gpu="no";
-    po.Register("use-gpu", &use_gpu, "yes|no|optional, only has effect if compiled with CUDA"); 
+    po.Register("use-gpu", &use_gpu, "yes|no|optional, only has effect if compiled with CUDA");
 
     using namespace kaldi;
     using namespace kaldi::nnet1;
     typedef kaldi::int32 int32;
 
     int32 time_shift = 0;
-    po.Register("time-shift", &time_shift, "LSTM : repeat last input frame N-times, discrad N initial output frames."); 
+    po.Register("time-shift", &time_shift, "LSTM : repeat last input frame N-times, discrad N initial output frames.");
 
     po.Read(argc, argv);
 
@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
     std::string model_filename = po.GetArg(1),
         feature_rspecifier = po.GetArg(2),
         feature_wspecifier = po.GetArg(3);
-        
+
     //Select the GPU
 #if HAVE_CUDA==1
     CuDevice::Instantiate().SelectGpuId(use_gpu);
@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
     }
 
     // we will subtract log-priors later,
-    PdfPrior pdf_prior(prior_opts); 
+    PdfPrior pdf_prior(prior_opts);
 
     // disable dropout,
     nnet_transf.SetDropoutRetention(1.0);
@@ -124,11 +124,11 @@ int main(int argc, char *argv[]) {
       // read
       Matrix<BaseFloat> mat = feature_reader.Value();
       std::string utt = feature_reader.Key();
-      KALDI_VLOG(2) << "Processing utterance " << num_done+1 
+      KALDI_VLOG(2) << "Processing utterance " << num_done+1
                     << ", " << utt
                     << ", " << mat.NumRows() << "frm";
 
-      
+
       if (!KALDI_ISFINITE(mat.Sum())) {  // check there's no nan/inf,
         KALDI_ERR << "NaN or inf found in features for " << utt;
       }
@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
           mat.CopyRowFromVec(mat.Row(last_row), r);  // copy last row,
         }
       }
-      
+
       // push it to gpu,
       feats = mat;
 
@@ -156,7 +156,7 @@ int main(int argc, char *argv[]) {
       if (!KALDI_ISFINITE(nnet_out.Sum())) {  // check there's no nan/inf,
         KALDI_ERR << "NaN or inf found in nn-output for " << utt;
       }
-      
+
       // convert posteriors to log-posteriors,
       if (apply_log) {
         if (!(nnet_out.Min() >= 0.0 && nnet_out.Max() <= 1.0)) {
@@ -167,12 +167,12 @@ int main(int argc, char *argv[]) {
         nnet_out.Add(1e-20);  // avoid log(0),
         nnet_out.ApplyLog();
       }
-     
+
       // subtract log-priors from log-posteriors or pre-softmax,
       if (prior_opts.class_frame_counts != "") {
         if (nnet_out.Min() >= 0.0 && nnet_out.Max() <= 1.0) {
-          KALDI_WARN << utt << " " 
-                     << "Subtracting log-prior on 'probability-like' data in range [0..1] " 
+          KALDI_WARN << utt << " "
+                     << "Subtracting log-prior on 'probability-like' data in range [0..1] "
                      << "(Did you forget --no-softmax=true or --apply-log=true ?)";
         }
         pdf_prior.SubtractOnLogpost(&nnet_out);
@@ -204,11 +204,11 @@ int main(int argc, char *argv[]) {
       num_done++;
       tot_t += mat.NumRows();
     }
-    
+
     // final message
-    KALDI_LOG << "Done " << num_done << " files" 
-              << " in " << time.Elapsed()/60 << "min," 
-              << " (fps " << tot_t/time.Elapsed() << ")"; 
+    KALDI_LOG << "Done " << num_done << " files"
+              << " in " << time.Elapsed()/60 << "min,"
+              << " (fps " << tot_t/time.Elapsed() << ")";
 
 #if HAVE_CUDA==1
     if (kaldi::g_kaldi_verbose_level >= 1) {

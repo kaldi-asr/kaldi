@@ -29,31 +29,31 @@ int main(int argc, char *argv[]) {
     using namespace kaldi::nnet1;
     typedef kaldi::int32 int32;
 
-    const char *usage = 
+    const char *usage =
       "Sets learning rate coefficient inside of 'nnet1' model\n"
       "Usage: nnet-set-learnrate --components=<csl> --coef=<float> <nnet-in> <nnet-out>\n";
 
     ParseOptions po(usage);
     bool binary = true;
-    po.Register("binary", &binary, "Write output in binary mode");   
+    po.Register("binary", &binary, "Write output in binary mode");
 
     std::string components_str = "";
-    po.Register("components", &components_str, 
+    po.Register("components", &components_str,
         "Select components by csl, starts from 1. Layout as in the 'nnet-info' output, (example 1:2:3)");
-    
+
     float coef = 1.0, weight_coef = 1.0, bias_coef = 1.0;
     po.Register("coef", &coef, "Learn-rate coefficient for both weight matrices and biases.");
     po.Register("weight-coef", &weight_coef, "Learn-rate coefficient for weight matrices.");
     po.Register("bias-coef", &bias_coef, "Learn-rate coefficient for bias.");
 
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
     }
 
-    std::string nnet_in_filename = po.GetArg(1), 
+    std::string nnet_in_filename = po.GetArg(1),
       nnet_out_filename = po.GetArg(2);
 
     Nnet nnet;
@@ -81,9 +81,9 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    // Write the component,  
-    nnet.Write(nnet_out_filename, binary); 
-    
+    // Write the component,
+    nnet.Write(nnet_out_filename, binary);
+
     return 0;
   } catch(const std::exception &e) {
     return -1;

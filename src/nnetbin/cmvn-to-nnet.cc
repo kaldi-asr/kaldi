@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
     bool binary_write = false;
     float var_floor = 1e-10;
     float learn_rate_coef = 0.0;
-    
+
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("var-floor", &var_floor, "Floor the variance, so the factors in <Rescale> are bounded.");
@@ -66,11 +66,11 @@ int main(int argc, char *argv[]) {
 
     int32 num_dims = cmvn_stats.NumCols() - 1;
     double frame_count = cmvn_stats(0, cmvn_stats.NumCols() - 1);
-   
-    // buffers for shift and scale 
+
+    // buffers for shift and scale
     Vector<BaseFloat> shift(num_dims);
     Vector<BaseFloat> scale(num_dims);
-    
+
     // compute the shift and scale per each dimension
     for (int32 d = 0; d < num_dims; d++) {
       BaseFloat mean = cmvn_stats(0,d) / frame_count;
@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
       scale_component.SetLearnRateCoef(learn_rate_coef);
       nnet.AppendComponent(scale_component);
     }
-      
+
     // write the nnet,
     {
       Output ko(model_out_filename, binary_write);

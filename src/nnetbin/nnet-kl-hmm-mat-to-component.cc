@@ -51,17 +51,17 @@ int main(int argc, char *argv[]) {
 
     std::string nnet_component_filename = po.GetArg(1);
     std::string mat_filename = po.GetArg(2);
-    
+
     Matrix<BaseFloat> kl_stats;
     {
       bool binary_read;
       Input ki(mat_filename, &binary_read);
       kl_stats.Read(ki.Stream(), binary_read);
     }
-    
+
     KlHmm kl_hmm(kl_stats.NumCols(), kl_stats.NumRows());
     kl_hmm.SetStats(kl_stats);
-    
+
 
     // Write out the accs
     {

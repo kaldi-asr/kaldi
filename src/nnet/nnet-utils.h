@@ -39,7 +39,7 @@ namespace nnet1 {
 /**
  * Define stream insertion opeartor for 'std::vector', useful for log-prints,
  */
-template <typename T> 
+template <typename T>
 std::ostream& operator<<(std::ostream& os, const std::vector<T>& v) {
   std::copy(v.begin(), v.end(), std::ostream_iterator<T>(os," "));
   return os;
@@ -48,11 +48,11 @@ std::ostream& operator<<(std::ostream& os, const std::vector<T>& v) {
 /**
  * Convert basic type to string (try not to overuse as ostringstream creation is slow)
  */
-template <typename T> 
-std::string ToString(const T& t) { 
-  std::ostringstream os; 
-  os << t; 
-  return os.str(); 
+template <typename T>
+std::string ToString(const T& t) {
+  std::ostringstream os;
+  os << t;
+  return os.str();
 }
 
 /**
@@ -70,9 +70,9 @@ std::string MomentStatistics(const VectorBase<Real> &vec) {
   vec_aux.Add(-mean); vec_no_mean = vec_aux;
   vec_aux.MulElements(vec_no_mean);  // (vec-mean)^2
   Real variance = vec_aux.Sum() / vec.Dim();
-  // skewness 
-  // - negative : left tail is longer, 
-  // - positive : right tail is longer, 
+  // skewness
+  // - negative : left tail is longer,
+  // - positive : right tail is longer,
   // - zero : symmetric
   vec_aux.MulElements(vec_no_mean);  // (vec-mean)^3
   Real skewness = vec_aux.Sum() / pow(variance, 3.0/2.0) / vec.Dim();
@@ -86,7 +86,7 @@ std::string MomentStatistics(const VectorBase<Real> &vec) {
   // send the statistics to stream,
   std::ostringstream ostr;
   ostr << " ( min " << vec.Min() << ", max " << vec.Max()
-       << ", mean " << mean 
+       << ", mean " << mean
        << ", stddev " << sqrt(variance)
        << ", skewness " << skewness
        << ", kurtosis " << kurtosis
@@ -152,7 +152,7 @@ Real ComputeStdDev(const CuMatrixBase<Real> &mat) {
 }
 
 /**
- * Convert Posterior to CuMatrix, 
+ * Convert Posterior to CuMatrix,
  * the Posterior outer-dim defines number of matrix-rows,
  * number of matrix-colmuns is set by 'num_cols'.
  */
@@ -166,18 +166,18 @@ void PosteriorToMatrix(const Posterior &post, int32 num_cols, CuMatrix<Real> *ma
     for (int32 i = 0; i < post[t].size(); i++) {
       int32 col = post[t][i].first;
       if (col >= num_cols) {
-        KALDI_ERR << "Out-of-bound Posterior element with index " << col 
+        KALDI_ERR << "Out-of-bound Posterior element with index " << col
                   << ", higher than number of columns " << num_cols;
       }
       m(t, col) = post[t][i].second;
     }
   }
   // Copy to output GPU matrix,
-  (*mat) = m; 
+  (*mat) = m;
 }
 
 /**
- * Convert Posterior to CuMatrix, while mapping to PDFs. 
+ * Convert Posterior to CuMatrix, while mapping to PDFs.
  * The Posterior outer-dim defines number of matrix-rows,
  * number of matrix-colmuns is set by 'TransitionModel::NumPdfs'.
  */
@@ -192,14 +192,14 @@ void PosteriorToMatrixMapped(const Posterior &post, const TransitionModel &model
     for (int32 i = 0; i < post[t].size(); i++) {
       int32 col = model.TransitionIdToPdf(post[t][i].first);
       if (col >= num_cols) {
-        KALDI_ERR << "Out-of-bound Posterior element with index " << col 
+        KALDI_ERR << "Out-of-bound Posterior element with index " << col
                   << ", higher than number of columns " << num_cols;
       }
       m(t, col) += post[t][i].second;  // sum,
     }
   }
   // Copy to output GPU matrix,
-  (*mat) = m; 
+  (*mat) = m;
 }
 
 

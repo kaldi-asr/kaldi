@@ -55,8 +55,8 @@ int main(int argc, char *argv[]) {
 
     // initialize the network
     Nnet nnet;
-    nnet.Init(nnet_config_in_filename); 
-    
+    nnet.Init(nnet_config_in_filename);
+
     // store the network
     Output ko(nnet_out_filename, binary_write);
     nnet.Write(ko.Stream(), binary_write);

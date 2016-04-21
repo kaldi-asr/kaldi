@@ -29,8 +29,8 @@
 int main(int argc, char *argv[]) {
   using namespace kaldi;
   using namespace kaldi::nnet1;
-  typedef kaldi::int32 int32;  
-  
+  typedef kaldi::int32 int32;
+
   try {
     const char *usage =
         "Perform one iteration of Neural Network training by Stochastic Gradient Descent.\n"
@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
     NnetTrainOptions trn_opts;
     trn_opts.Register(&po);
 
-    bool binary = true, 
+    bool binary = true,
          crossvalidate = false;
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("cross-validate", &crossvalidate, "Perform cross-validation (don't backpropagate)");
@@ -58,19 +58,19 @@ int main(int argc, char *argv[]) {
 
     int32 length_tolerance = 5;
     po.Register("length-tolerance", &length_tolerance, "Allowed length difference of features/targets (frames)");
-    
+
     std::string frame_weights;
     po.Register("frame-weights", &frame_weights, "Per-frame weights to scale gradients (frame selection/weighting).");
 
     std::string use_gpu="yes";
-    po.Register("use-gpu", &use_gpu, "yes|no|optional, only has effect if compiled with CUDA"); 
+    po.Register("use-gpu", &use_gpu, "yes|no|optional, only has effect if compiled with CUDA");
 
     // Add dummy randomizer options, to make the tool compatible with standard scripts
     NnetDataRandomizerOptions rnd_opts;
     rnd_opts.Register(&po);
     bool randomize = false;
     po.Register("randomize", &randomize, "Dummy option, for compatibility...");
-    
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 4-(crossvalidate?1:0)) {
@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
     std::string feature_rspecifier = po.GetArg(1),
       targets_rspecifier = po.GetArg(2),
       model_filename = po.GetArg(3);
-        
+
     std::string target_model_filename;
     if (!crossvalidate) {
       target_model_filename = po.GetArg(4);
@@ -121,7 +121,7 @@ int main(int argc, char *argv[]) {
 
     Xent xent;
     Mse mse;
-    
+
     CuMatrix<BaseFloat> feats, feats_transf, nnet_out, obj_diff;
 
     Timer time;
@@ -179,7 +179,7 @@ int main(int argc, char *argv[]) {
       }
       // apply optional feature transform
       nnet_transf.Feedforward(CuMatrix<BaseFloat>(mat), &feats_transf);
- 
+
       // get block of feature/target pairs
       //const Vector<BaseFloat>& frm_weights = weights_randomizer.Value();
 
@@ -203,7 +203,7 @@ int main(int argc, char *argv[]) {
         nnet.Backpropagate(obj_diff, NULL);
       }
 
-      // 1st minibatch : show what happens in network 
+      // 1st minibatch : show what happens in network
       if (kaldi::g_kaldi_verbose_level >= 1 && total_frames == 0) {  // vlog-1
         KALDI_VLOG(1) << "### After " << total_frames << " frames,";
         KALDI_VLOG(1) << nnet.InfoPropagate();
@@ -212,7 +212,7 @@ int main(int argc, char *argv[]) {
           KALDI_VLOG(1) << nnet.InfoGradient();
         }
       }
-      
+
       // monitor the NN training
       if (kaldi::g_kaldi_verbose_level >= 2) {  // vlog-2
         if ((total_frames/25000) != ((total_frames+feats_transf.NumRows())/25000)) {  // print every 25k frames
@@ -223,7 +223,7 @@ int main(int argc, char *argv[]) {
           }
         }
       }
-      
+
       // report the speed
       num_done++;
       total_frames += feats_transf.NumRows();
@@ -238,8 +238,8 @@ int main(int argc, char *argv[]) {
 #endif
       }
     }
-      
-    // after last minibatch : show what happens in network 
+
+    // after last minibatch : show what happens in network
     if (kaldi::g_kaldi_verbose_level >= 1) {  // vlog-1
       KALDI_VLOG(1) << "### After " << total_frames << " frames,";
       KALDI_VLOG(1) << nnet.InfoPropagate();
@@ -257,9 +257,9 @@ int main(int argc, char *argv[]) {
               << " with no tgt_mats, " << num_other_error
               << " with other errors. "
               << "[" << (crossvalidate?"CROSS-VALIDATION":"TRAINING")
-              << ", " << (randomize?"RANDOMIZED":"NOT-RANDOMIZED") 
+              << ", " << (randomize?"RANDOMIZED":"NOT-RANDOMIZED")
               << ", " << time.Elapsed()/60 << " min, fps" << total_frames/time.Elapsed()
-              << "]";  
+              << "]";
 
     if (objective_function == "xent") {
       KALDI_LOG << xent.ReportPerClass();

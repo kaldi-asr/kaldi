@@ -101,11 +101,11 @@ int main(int argc, char *argv[]) {
     NnetTrainOptions trn_opts; trn_opts.learn_rate=0.00001;
     trn_opts.Register(&po);
 
-    bool binary = true; 
+    bool binary = true;
     po.Register("binary", &binary, "Write output in binary mode");
 
     std::string feature_transform;
-    po.Register("feature-transform", &feature_transform, 
+    po.Register("feature-transform", &feature_transform,
                 "Feature transform in Nnet format");
     std::string silence_phones_str;
     po.Register("silence-phones", &silence_phones_str, "Colon-separated list "
@@ -135,7 +135,7 @@ int main(int argc, char *argv[]) {
 
     std::string use_gpu="yes";
     po.Register("use-gpu", &use_gpu, "yes|no|optional, only has effect if compiled with CUDA");
-     
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 6) {
@@ -231,7 +231,7 @@ int main(int argc, char *argv[]) {
         continue;
       }
       if (mat.NumRows() > max_frames) {
-        KALDI_WARN << "Utterance " << utt << ": Skipped because it has " 
+        KALDI_WARN << "Utterance " << utt << ": Skipped because it has "
           << mat.NumRows() << " frames, which is more than " << max_frames << ".";
         num_other_error++;
         continue;
@@ -333,14 +333,14 @@ int main(int argc, char *argv[]) {
         KALDI_VLOG(1) << "After " << num_done << " utterances: time elapsed = "
                       << time_now/60 << " min; processed " << total_frames/time_now
                       << " frames per second.";
-#if HAVE_CUDA==1        
+#if HAVE_CUDA==1
         // check the GPU is not overheated
         CuDevice::Instantiate().CheckGpuHealth();
 #endif
       }
-      
+
       // Gradient logging,
-      if (kaldi::g_kaldi_verbose_level >= 1 && 
+      if (kaldi::g_kaldi_verbose_level >= 1 &&
            (num_done == 1 || num_done % 1000 == 0)) {
         // first utterance, or every 1000th utterance,
         KALDI_VLOG(1) << nnet.InfoPropagate();
@@ -353,7 +353,7 @@ int main(int argc, char *argv[]) {
         KALDI_VLOG(2) << nnet.InfoGradient();
       }
     }
- 
+
     // after last utterance,
     KALDI_VLOG(1) << nnet.InfoPropagate();
     KALDI_VLOG(1) << nnet.InfoBackPropagate();

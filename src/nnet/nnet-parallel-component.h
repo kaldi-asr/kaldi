@@ -35,27 +35,27 @@ namespace nnet1 {
 
 class ParallelComponent : public UpdatableComponent {
  public:
-  ParallelComponent(int32 dim_in, int32 dim_out) 
+  ParallelComponent(int32 dim_in, int32 dim_out)
     : UpdatableComponent(dim_in, dim_out)
   { }
 
   ~ParallelComponent()
   { }
 
-  Component* Copy() const { 
-    return new ParallelComponent(*this); 
+  Component* Copy() const {
+    return new ParallelComponent(*this);
   }
 
-  ComponentType GetType() const { 
-    return kParallelComponent; 
+  ComponentType GetType() const {
+    return kParallelComponent;
   }
 
-  const Nnet& GetNestedNnet(int32 id) const { 
-    return nnet_.at(id); 
+  const Nnet& GetNestedNnet(int32 id) const {
+    return nnet_.at(id);
   }
 
-  Nnet& GetNestedNnet(int32 id) { 
-    return nnet_.at(id); 
+  Nnet& GetNestedNnet(int32 id) {
+    return nnet_.at(id);
   }
 
   void InitData(std::istream &is) {
@@ -63,14 +63,14 @@ class ParallelComponent : public UpdatableComponent {
     std::vector<std::string> nested_nnet_proto;
     std::vector<std::string> nested_nnet_filename;
     // parse config
-    std::string token; 
+    std::string token;
     while (is >> std::ws, !is.eof()) {
-      ReadToken(is, false, &token); 
+      ReadToken(is, false, &token);
       /**/ if (token == "<NestedNnet>" || token == "<NestedNnetFilename>") {
         while(!is.eof()) {
           std::string file_or_end;
           ReadToken(is, false, &file_or_end);
-          if (file_or_end == "</NestedNnet>" || 
+          if (file_or_end == "</NestedNnet>" ||
               file_or_end == "</NestedNnetFilename>") break;
           nested_nnet_filename.push_back(file_or_end);
         }
@@ -86,7 +86,7 @@ class ParallelComponent : public UpdatableComponent {
       }
     }
     // initialize,
-    KALDI_ASSERT((nested_nnet_proto.size() > 0) ^ 
+    KALDI_ASSERT((nested_nnet_proto.size() > 0) ^
                  (nested_nnet_filename.size() > 0));  // ^xor,
     // read nnets from files,
     if (nested_nnet_filename.size() > 0) {
@@ -94,7 +94,7 @@ class ParallelComponent : public UpdatableComponent {
         Nnet nnet;
         nnet.Read(nested_nnet_filename[i]);
         nnet_.push_back(nnet);
-        KALDI_LOG << "Loaded nested <Nnet> from file : " 
+        KALDI_LOG << "Loaded nested <Nnet> from file : "
                   << nested_nnet_filename[i];
       }
     }
@@ -104,7 +104,7 @@ class ParallelComponent : public UpdatableComponent {
         Nnet nnet;
         nnet.Init(nested_nnet_proto[i]);
         nnet_.push_back(nnet);
-        KALDI_LOG << "Initialized nested <Nnet> from prototype : " 
+        KALDI_LOG << "Initialized nested <Nnet> from prototype : "
                   << nested_nnet_proto[i];
       }
     }
@@ -159,7 +159,7 @@ class ParallelComponent : public UpdatableComponent {
     WriteToken(os, binary, "</ParallelComponent>");
   }
 
-  int32 NumParams() const { 
+  int32 NumParams() const {
     int32 ans = 0;
     for (int32 i = 0; i < nnet_.size(); i++) {
       ans += nnet_[i].NumParams();
@@ -167,20 +167,20 @@ class ParallelComponent : public UpdatableComponent {
     return ans;
   }
 
-  void GetGradient(VectorBase<BaseFloat>* gradient) const { 
+  void GetGradient(VectorBase<BaseFloat>* gradient) const {
     KALDI_ASSERT(gradient->Dim() == NumParams());
     int32 offset = 0;
     for (int32 i = 0; i < nnet_.size(); i++) {
-      int32 n_params = nnet_[i].NumParams(); 
+      int32 n_params = nnet_[i].NumParams();
       Vector<BaseFloat> gradient_aux;  // we need 'Vector<>',
-      nnet_[i].GetGradient(&gradient_aux);  // copy gradient from Nnet, 
+      nnet_[i].GetGradient(&gradient_aux);  // copy gradient from Nnet,
       gradient->Range(offset, n_params).CopyFromVec(gradient_aux);
       offset += n_params;
     }
     KALDI_ASSERT(offset == NumParams());
   }
 
-  void GetParams(VectorBase<BaseFloat>* params) const { 
+  void GetParams(VectorBase<BaseFloat>* params) const {
     KALDI_ASSERT(params->Dim() == NumParams());
     int32 offset = 0;
     for (int32 i = 0; i < nnet_.size(); i++) {
@@ -193,7 +193,7 @@ class ParallelComponent : public UpdatableComponent {
     KALDI_ASSERT(offset == NumParams());
   }
 
-  void SetParams(const VectorBase<BaseFloat>& params) { 
+  void SetParams(const VectorBase<BaseFloat>& params) {
     KALDI_ASSERT(params.Dim() == NumParams());
     int32 offset = 0;
     for (int32 i = 0; i < nnet_.size(); i++) {
@@ -208,7 +208,7 @@ class ParallelComponent : public UpdatableComponent {
     std::ostringstream os;
     os << "\n";
     for (int32 i=0; i<nnet_.size(); i++) {
-      os << "nested_network #" << i+1 
+      os << "nested_network #" << i+1
          << " {\n" << nnet_[i].Info() << "}\n";
     }
     std::string s(os.str());
@@ -219,7 +219,7 @@ class ParallelComponent : public UpdatableComponent {
   std::string InfoGradient() const {
     std::ostringstream os;
     for (int32 i=0; i<nnet_.size(); i++) {
-      os << "nested_gradient #" << i+1 
+      os << "nested_gradient #" << i+1
          << " {\n" << nnet_[i].InfoGradient() << "}\n";
     }
     std::string s(os.str());
@@ -230,7 +230,7 @@ class ParallelComponent : public UpdatableComponent {
   std::string InfoPropagate() const {
     std::ostringstream os;
     for (int32 i=0; i<nnet_.size(); i++) {
-      os << "nested_propagate #" << i+1 
+      os << "nested_propagate #" << i+1
          << " {\n" << nnet_[i].InfoPropagate() << "}\n";
     }
     return os.str();
@@ -239,13 +239,13 @@ class ParallelComponent : public UpdatableComponent {
   std::string InfoBackPropagate() const {
     std::ostringstream os;
     for (int32 i=0; i<nnet_.size(); i++) {
-      os << "nested_backpropagate #" << i+1 
+      os << "nested_backpropagate #" << i+1
          << "{\n" << nnet_[i].InfoBackPropagate() << "}\n";
     }
     return os.str();
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
                     CuMatrixBase<BaseFloat> *out) {
     // column-offsets for data buffers 'in,out',
     int32 input_offset = 0, output_offset = 0;
@@ -264,9 +264,9 @@ class ParallelComponent : public UpdatableComponent {
     }
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
                         const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, 
+                        const CuMatrixBase<BaseFloat> &out_diff,
                         CuMatrixBase<BaseFloat> *in_diff) {
     // column-offsets for data buffers 'in,out',
     int32 input_offset = 0, output_offset = 0;
@@ -285,13 +285,13 @@ class ParallelComponent : public UpdatableComponent {
     }
   }
 
-  void Update(const CuMatrixBase<BaseFloat> &input, 
+  void Update(const CuMatrixBase<BaseFloat> &input,
               const CuMatrixBase<BaseFloat> &diff) {
     ;  // do nothing
   }
- 
+
   /**
-   * Overriding the default, 
+   * Overriding the default,
    * which was UpdatableComponent::SetTrainOptions(...)
    */
   void SetTrainOptions(const NnetTrainOptions &opts) {
@@ -301,7 +301,7 @@ class ParallelComponent : public UpdatableComponent {
   }
 
   /**
-   * Overriding the default, 
+   * Overriding the default,
    * which was UpdatableComponent::SetLearnRateCoef(...)
    */
   void SetLearnRateCoef(BaseFloat val) {
@@ -310,7 +310,7 @@ class ParallelComponent : public UpdatableComponent {
       // loop over components,
       for (int32 j=0; j<nnet_[i].NumComponents(); j++) {
         if (nnet_[i].GetComponent(j).IsUpdatable()) {
-          UpdatableComponent& comp = 
+          UpdatableComponent& comp =
             dynamic_cast<UpdatableComponent&>(nnet_[i].GetComponent(j));
           // set the value,
           comp.SetLearnRateCoef(val);
@@ -320,7 +320,7 @@ class ParallelComponent : public UpdatableComponent {
   }
 
   /**
-   * Overriding the default, 
+   * Overriding the default,
    * which was UpdatableComponent::SetBiasLearnRateCoef(...)
    */
   void SetBiasLearnRateCoef(BaseFloat val) {
@@ -329,7 +329,7 @@ class ParallelComponent : public UpdatableComponent {
       // loop over components,
       for (int32 j=0; j<nnet_[i].NumComponents(); j++) {
         if (nnet_[i].GetComponent(j).IsUpdatable()) {
-          UpdatableComponent& comp = 
+          UpdatableComponent& comp =
             dynamic_cast<UpdatableComponent&>(nnet_[i].GetComponent(j));
           // set the value,
           comp.SetBiasLearnRateCoef(val);

@@ -28,13 +28,13 @@ using namespace kaldi::nnet1;
 
 //////////////////////////////////////////////////
 
-template<class Real> 
+template<class Real>
 static void InitRand(VectorBase<Real> *v) {
   for (MatrixIndexT i = 0;i < v->Dim();i++)
     (*v)(i) = RandGauss();
 }
 
-template<class Real> 
+template<class Real>
 static void InitRand(MatrixBase<Real> *M) {
   do {
     for (MatrixIndexT i = 0;i < M->NumRows();i++)
@@ -44,7 +44,7 @@ static void InitRand(MatrixBase<Real> *M) {
 }
 
 
-template<class Real> 
+template<class Real>
 static void AssertEqual(const VectorBase<Real> &A, const VectorBase<Real> &B, float tol = 0.001) {
   KALDI_ASSERT(A.Dim() == B.Dim());
   for (MatrixIndexT i=0; i < A.Dim(); i++)
@@ -52,7 +52,7 @@ static void AssertEqual(const VectorBase<Real> &A, const VectorBase<Real> &B, fl
 }
 
 
-template<class RandomAccessIterator> 
+template<class RandomAccessIterator>
 static void AssertEqual(RandomAccessIterator begin1, RandomAccessIterator end1,
                         RandomAccessIterator begin2, RandomAccessIterator end2) {
   KALDI_ASSERT((end1 - begin1) == (end2 - begin2));
@@ -220,7 +220,7 @@ int main() {
   UnitTestMatrixRandomizer();
   UnitTestVectorRandomizer();
   UnitTestStdVectorRandomizer();
-  
+
   std::cout << "Tests succeeded.\n";
 }
 

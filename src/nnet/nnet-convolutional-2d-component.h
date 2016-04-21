@@ -35,25 +35,25 @@ namespace nnet1 {
 
 /**
  * Convolutional2DComponent implements convolution over 2-axis (frequency and temporal)
- * (i.e. frequency axis in case we are the 1st component in NN). 
- * // We don't do convolution along temporal axis, which simplifies the 
+ * (i.e. frequency axis in case we are the 1st component in NN).
+ * // We don't do convolution along temporal axis, which simplifies the
  * // implementation (and was not helpful for Tara).
  *
  * We assume the input featrues are spliced, i.e. each frame
  * is in fact a set of stacked frames, where we can form patches
  * which span over several frequency bands and time axes.
  *
- * The convolution is done over whole axis with same filters, 
- * i.e. we don't use separate filters for different 'regions' 
+ * The convolution is done over whole axis with same filters,
+ * i.e. we don't use separate filters for different 'regions'
  * of frequency axis.
  *
- * In order to have a fast implementations, the filters 
+ * In order to have a fast implementations, the filters
  * are represented in vectorized form, where each rectangular
- * filter corresponds to a row in a matrix, where all filters 
- * are stored. The features are then re-shaped to a set of matrices, 
- * where one matrix corresponds to single patch-position, 
+ * filter corresponds to a row in a matrix, where all filters
+ * are stored. The features are then re-shaped to a set of matrices,
+ * where one matrix corresponds to single patch-position,
  * where the filters get applied.
- * 
+ *
  * The type of convolution is controled by hyperparameters:
  * x_patch_dim_,y_patch_dim_     ... temporal and frequency axes sizes of the patch (e.g. (9,9) for 9x9 2D filter)
  * x_patch_step_,y_patch_step_    ... temporal and frequencey sizes of shifts in the convolution (e.g. (1,1) 2D filter with 1 step shift in both axes)
@@ -62,16 +62,16 @@ namespace nnet1 {
  * fmap_x_len_, fmap_y_len_ ... dimension of the feature (maps if inside convolutional layer) (e.g. (11,32) for 32-band 11 frame spliced spectrogram patch)
  * filt_x_len_, filt_y_len_ ... temporal and frequency sizes of the filters (e.g. (9,9) for 9x9 2D filter)
  * filt_x_step_, filt_y_step_ ... temporal and frequency sizes of the filters (e.g. (1,1) for 2D-filter, with 1 step shift in both axes)
- * 
  *
- * Due to convolution same weights are used repeateadly, 
- * the final gradient is average of all position-specific 
+ *
+ * Due to convolution same weights are used repeateadly,
+ * the final gradient is average of all position-specific
  * gradients.
  *
  */
 class Convolutional2DComponent : public UpdatableComponent {
  public:
-  Convolutional2DComponent(int32 dim_in, int32 dim_out) : 
+  Convolutional2DComponent(int32 dim_in, int32 dim_out) :
     UpdatableComponent(dim_in, dim_out),
     fmap_x_len_(0), fmap_y_len_(0),
     filt_x_len_(0), filt_y_len_(0),
@@ -82,12 +82,12 @@ class Convolutional2DComponent : public UpdatableComponent {
   ~Convolutional2DComponent()
   { }
 
-  Component* Copy() const { 
-    return new Convolutional2DComponent(*this); 
+  Component* Copy() const {
+    return new Convolutional2DComponent(*this);
   }
 
-  ComponentType GetType() const { 
-    return kConvolutional2DComponent; 
+  ComponentType GetType() const {
+    return kConvolutional2DComponent;
   }
 
   void InitData(std::istream &is) {
@@ -248,7 +248,7 @@ class Convolutional2DComponent : public UpdatableComponent {
     gradient->Range(0,filters_num_elem).CopyRowsFromMat(filters_);
     gradient->Range(filters_num_elem, bias_.Dim()).CopyFromVec(bias_);
   }
- 
+
   void GetParams(VectorBase<BaseFloat>* params) const {
     KALDI_ASSERT(params->Dim() == NumParams());
     int32 filters_num_elem = filters_.NumRows() * filters_.NumCols();
@@ -276,7 +276,7 @@ class Convolutional2DComponent : public UpdatableComponent {
            ", lr-coef " + ToString(bias_learn_rate_coef_);
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
                     CuMatrixBase<BaseFloat> *out) {
     // useful dims
     int32 num_input_fmaps = input_dim_ / (fmap_x_len_ * fmap_y_len_);
@@ -341,9 +341,9 @@ class Convolutional2DComponent : public UpdatableComponent {
   }
 
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
                         const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, 
+                        const CuMatrixBase<BaseFloat> &out_diff,
                         CuMatrixBase<BaseFloat> *in_diff) {
     // useful dims
     int32 num_input_fmaps = input_dim_ / (fmap_x_len_ * fmap_y_len_);

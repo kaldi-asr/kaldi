@@ -48,14 +48,14 @@ int main(int argc, char *argv[]) {
     RbmTrainOptions trn_opts, trn_opts_rbm;
     trn_opts.Register(&po);
 
-    bool binary = false; 
+    bool binary = false;
     po.Register("binary", &binary, "Write output in binary mode");
 
-    bool with_bug = true; 
+    bool with_bug = true;
     po.Register("with-bug", &with_bug, "Apply bug which led to better results (set-initial-momentum-to-max)");
-    
-    int32 num_iters = 1; 
-    po.Register("num-iters", &num_iters, 
+
+    int32 num_iters = 1;
+    po.Register("num-iters", &num_iters,
                 "Number of iterations (smaller datasets should have more iterations, "
                 "iterating within tool because of linear momentum scheduling)");
 
@@ -68,9 +68,9 @@ int main(int argc, char *argv[]) {
 
     kaldi::int32 max_frames = 6000;  // Allow segments maximum of 30 seconds by default
     po.Register("max-frames",&max_frames, "Maximum number of frames a segment can have to be processed");
-    
+
     std::string use_gpu="yes";
-    po.Register("use-gpu", &use_gpu, "yes|no|optional, only has effect if compiled with CUDA"); 
+    po.Register("use-gpu", &use_gpu, "yes|no|optional, only has effect if compiled with CUDA");
 
     po.Read(argc, argv);
 
@@ -81,11 +81,11 @@ int main(int argc, char *argv[]) {
 
     std::string model_filename = po.GetArg(1),
         feature_rspecifier = po.GetArg(2);
-        
+
     std::string target_model_filename;
     target_model_filename = po.GetArg(3);
 
-     
+
     using namespace kaldi;
     using namespace kaldi::nnet1;
     typedef kaldi::int32 int32;
@@ -127,9 +127,9 @@ int main(int argc, char *argv[]) {
 
     CuRand<BaseFloat> cu_rand;  // parallel random number generator
     Mse mse;
-    
-    CuMatrix<BaseFloat> feats, feats_transf, 
-                        pos_hid, pos_hid_aux, 
+
+    CuMatrix<BaseFloat> feats, feats_transf,
+                        pos_hid, pos_hid_aux,
                         neg_vis, neg_hid;
     CuMatrix<BaseFloat> dummy_mse_mat;
 
@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
 
     int32 num_done = 0, num_other_error = 0;
     while (!feature_reader.Done()) {
-#if HAVE_CUDA==1      
+#if HAVE_CUDA==1
       // check the GPU is not overheated
       CuDevice::Instantiate().CheckGpuHealth();
 #endif
@@ -154,7 +154,7 @@ int main(int argc, char *argv[]) {
         const Matrix<BaseFloat> &mat = feature_reader.Value();
         // skip too long segments (avoid runinning out of memory)
         if (mat.NumRows() > max_frames) {
-          KALDI_WARN << "Utterance " << utt << ": Skipped because it has " << mat.NumRows() << 
+          KALDI_WARN << "Utterance " << utt << ": Skipped because it has " << mat.NumRows() <<
             " frames, which is more than " << max_frames << ".";
           num_other_error++;
           continue;
@@ -184,7 +184,7 @@ int main(int argc, char *argv[]) {
       for ( ; !feature_randomizer.Done(); feature_randomizer.Next()) {
         // get block of feature/target pairs
         const CuMatrixBase<BaseFloat>& pos_vis = feature_randomizer.Value();
-        // get the dims 
+        // get the dims
         int32 num_frames = pos_vis.NumRows(),
               dim_hid = rbm.OutputDim();
         // Create dummy frame-weights for Mse::Eval,
@@ -233,7 +233,7 @@ int main(int argc, char *argv[]) {
             BaseFloat learning_rate_actual = learn_rate*(1-momentum_actual);
             KALDI_VLOG(1) << "Setting momentum " << (with_bug ? momentum_max : momentum_actual)
                           << " and learning rate " << learning_rate_actual
-                          << " after processing " 
+                          << " after processing "
                           << static_cast<double>(total_frames)/360000 << "h";
             // pass values to rbm
             trn_opts_rbm.momentum = (with_bug ? momentum_max : momentum_actual);
@@ -253,10 +253,10 @@ int main(int argc, char *argv[]) {
     }
 
     nnet.Write(target_model_filename, binary);
-    
+
     KALDI_LOG << "Done " << iter << " iterations, " << num_done << " files, "
               << "skipped " << num_other_error << " files. "
-              << "[" << time.Elapsed()/60 << " min, fps" << total_frames/time.Elapsed() 
+              << "[" << time.Elapsed()/60 << " min, fps" << total_frames/time.Elapsed()
               << "]";
 
     KALDI_LOG << mse.Report();
