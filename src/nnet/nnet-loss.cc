@@ -94,7 +94,7 @@ void Xent::Eval(const VectorBase<BaseFloat> &frame_weights,
   // compute derivative wrt. activations of last layer of neurons,
   *diff = net_out;
   diff->AddMat(-1.0, targets);
-  diff->MulRowsVec(frame_weights_); // weighting,
+  diff->MulRowsVec(frame_weights_);  // weighting,
 
   // count frames per class,
   frames_aux_ = targets;
@@ -102,29 +102,29 @@ void Xent::Eval(const VectorBase<BaseFloat> &frame_weights,
   frames_.AddRowSumMat(1.0, CuMatrix<double>(frames_aux_));
 
   // evaluate the frame-level classification,
-  net_out.FindRowMaxId(&max_id_out_); // find max in nn-output
-  targets.FindRowMaxId(&max_id_tgt_); // find max in targets
+  net_out.FindRowMaxId(&max_id_out_);  // find max in nn-output
+  targets.FindRowMaxId(&max_id_tgt_);  // find max in targets
   CountCorrectFramesWeighted(max_id_out_, max_id_tgt_, frame_weights_, &correct_);
 
   // calculate cross_entropy (in GPU),
-  xentropy_aux_ = net_out; // y
-  xentropy_aux_.Add(1e-20); // avoid log(0)
-  xentropy_aux_.ApplyLog(); // log(y)
-  xentropy_aux_.MulElements(targets); // t*log(y)
-  xentropy_aux_.MulRowsVec(frame_weights_); // w*t*log(y)
+  xentropy_aux_ = net_out;  // y
+  xentropy_aux_.Add(1e-20);  // avoid log(0)
+  xentropy_aux_.ApplyLog();  // log(y)
+  xentropy_aux_.MulElements(targets);  // t*log(y)
+  xentropy_aux_.MulRowsVec(frame_weights_);  // w*t*log(y)
   xentropy_.AddRowSumMat(-1.0, CuMatrix<double>(xentropy_aux_));
   
   // caluculate entropy (in GPU),
-  entropy_aux_ = targets; // t
-  entropy_aux_.Add(1e-20); // avoid log(0)
-  entropy_aux_.ApplyLog(); // log(t)
-  entropy_aux_.MulElements(targets); // t*log(t)
-  entropy_aux_.MulRowsVec(frame_weights_); // w*t*log(t)
+  entropy_aux_ = targets;  // t
+  entropy_aux_.Add(1e-20);  // avoid log(0)
+  entropy_aux_.ApplyLog();  // log(t)
+  entropy_aux_.MulElements(targets);  // t*log(t)
+  entropy_aux_.MulRowsVec(frame_weights_);  // w*t*log(t)
   entropy_.AddRowSumMat(-1.0, CuMatrix<double>(entropy_aux_)); 
 
   // progressive loss reporting
   {
-    static const int32 progress_step = 3600*100; // 1h
+    static const int32 progress_step = 3600*100;  // 1h
     frames_progress_ += frame_weights_.Sum();
     xentropy_progress_ += -xentropy_aux_.Sum();
     entropy_progress_ += -entropy_aux_.Sum();
@@ -224,15 +224,15 @@ void Mse::Eval(const VectorBase<BaseFloat> &frame_weights,
   frame_weights_ = frame_weights;
 
   //compute derivative w.r.t. neural nerwork outputs
-  *diff = net_out; // y
-  diff->AddMat(-1.0,target); // (y - t)
-  diff->MulRowsVec(frame_weights_); // weighting,
+  *diff = net_out;  // y
+  diff->AddMat(-1.0,target);  // (y - t)
+  diff->MulRowsVec(frame_weights_);  // weighting,
 
   // Compute MeanSquareError loss of mini-batch
   diff_pow_2_ = *diff;
-  diff_pow_2_.MulElements(diff_pow_2_); // (y - t)^2
-  diff_pow_2_.MulRowsVec(frame_weights_); // w*(y - t)^2
-  double mean_square_error = 0.5 * diff_pow_2_.Sum(); // sum the matrix,
+  diff_pow_2_.MulElements(diff_pow_2_);  // (y - t)^2
+  diff_pow_2_.MulRowsVec(frame_weights_);  // w*(y - t)^2
+  double mean_square_error = 0.5 * diff_pow_2_.Sum();  // sum the matrix,
 
   KALDI_ASSERT(KALDI_ISFINITE(mean_square_error));
 
@@ -242,7 +242,7 @@ void Mse::Eval(const VectorBase<BaseFloat> &frame_weights,
 
   // progressive loss reporting
   {
-    static const int32 progress_step = 3600*100; // 1h
+    static const int32 progress_step = 3600*100;  // 1h
     frames_progress_ += num_frames;
     loss_progress_ += mean_square_error;
     if (frames_progress_ > progress_step) {
@@ -297,11 +297,11 @@ void MultiTaskLoss::InitFromString(const std::string& s) {
   std::vector<std::string> v;
   SplitStringToVector(s, ",:" /* delimiter */, false, &v);
 
-  KALDI_ASSERT((v.size()-1) % 3 == 0); // triplets,
-  KALDI_ASSERT(v[0] == "multitask"); // header,
+  KALDI_ASSERT((v.size()-1) % 3 == 0);  // triplets,
+  KALDI_ASSERT(v[0] == "multitask");  // header,
 
   // parse the definition of multitask loss,
-  std::vector<std::string>::iterator it(v.begin()+1); // skip header,
+  std::vector<std::string>::iterator it(v.begin()+1);  // skip header,
   for ( ; it != v.end(); ++it) {
     // type,
     if (*it == "xent") {
@@ -329,7 +329,7 @@ void MultiTaskLoss::InitFromString(const std::string& s) {
   }
 
   // build vector with starting-point offsets,
-  loss_dim_offset_.resize(loss_dim_.size()+1, 0); // 1st zero stays,
+  loss_dim_offset_.resize(loss_dim_.size()+1, 0);  // 1st zero stays,
   for (int32 i = 1; i <= loss_dim_.size(); i++) {
     loss_dim_offset_[i] = loss_dim_offset_[i-1] + loss_dim_[i-1];
   }
@@ -347,7 +347,7 @@ void MultiTaskLoss::Eval(const VectorBase<BaseFloat> &frame_weights,
   int32 num_frames = net_out.NumRows(),
     num_output = net_out.NumCols();
   KALDI_ASSERT(num_frames == post.size());
-  KALDI_ASSERT(num_output == loss_dim_offset_.back()); // sum of loss-dims,
+  KALDI_ASSERT(num_output == loss_dim_offset_.back());  // sum of loss-dims,
 
   // convert posterior to matrix,
   PosteriorToMatrix(post, num_output, &tgt_mat_);
@@ -399,7 +399,7 @@ BaseFloat MultiTaskLoss::AvgLoss() {
   BaseFloat ans(0.0);
   for (int32 i = 0; i < loss_vec_.size(); i++) {
     BaseFloat val = loss_weights_[i] * loss_vec_[i]->AvgLoss();
-    if(!KALDI_ISFINITE(val)) {
+    if (!KALDI_ISFINITE(val)) {
       KALDI_WARN << "Loss " << i+1 << ", has bad objective function value '" << val << "', using 0.0 instead.";
       val = 0.0;
     }
@@ -408,5 +408,5 @@ BaseFloat MultiTaskLoss::AvgLoss() {
   return ans;
 }
 
-} // namespace nnet1
-} // namespace kaldi
+}  // namespace nnet1
+}  // namespace kaldi

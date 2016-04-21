@@ -226,7 +226,7 @@ class FramePoolingComponent : public UpdatableComponent {
     // compute the output pools
     for (int32 p=0; p<num_pools; p++) {
       CuSubMatrix<BaseFloat> tgt(out->ColRange(p*feature_dim_,feature_dim_));
-      tgt.SetZero(); // reset
+      tgt.SetZero();  // reset
       for (int32 i=0; i<weight_[p].Dim(); i++) {
         tgt.AddMat(weight_[p](i), in.ColRange((offset_[p]+i) * feature_dim_, feature_dim_));
       }
@@ -249,7 +249,7 @@ class FramePoolingComponent : public UpdatableComponent {
     if (weight_diff_.size() != num_pools) weight_diff_.resize(num_pools);
     // get the derivatives
     for (int32 p=0; p<num_pools; p++) {
-      weight_diff_[p].Resize(weight_[p].Dim(), kSetZero); // reset
+      weight_diff_[p].Resize(weight_[p].Dim(), kSetZero);  // reset
       for (int32 i=0; i<weight_[p].Dim(); i++) {
         // multiply matrices element-wise, and sum to get the derivative
         CuSubMatrix<BaseFloat> in_frame(input.ColRange((offset_[p]+i) * feature_dim_, feature_dim_));
@@ -273,15 +273,15 @@ class FramePoolingComponent : public UpdatableComponent {
   }
 
  private:
-  int32 feature_dim_; // feature dimension before splicing
-  std::vector<int32> offset_; // vector of pooling offsets
-  std::vector<Vector<BaseFloat> > weight_; // vector of pooling weight vectors
-  std::vector<Vector<BaseFloat> > weight_diff_; // detivatives of weight vectors
+  int32 feature_dim_;  // feature dimension before splicing
+  std::vector<int32> offset_;  // vector of pooling offsets
+  std::vector<Vector<BaseFloat> > weight_;  // vector of pooling weight vectors
+  std::vector<Vector<BaseFloat> > weight_diff_;  // detivatives of weight vectors
 
-  bool normalize_; // apply normalization after each update
+  bool normalize_;  // apply normalization after each update
 };
 
-} // namespace nnet1
-} // namespace kaldi
+}  // namespace nnet1
+}  // namespace kaldi
 
 #endif  // KALDI_NNET_NNET_FRAME_POOLING_COMPONENT_H_

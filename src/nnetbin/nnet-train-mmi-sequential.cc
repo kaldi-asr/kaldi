@@ -121,7 +121,7 @@ int main(int argc, char *argv[]) {
     po.Register("old-acoustic-scale", &old_acoustic_scale,
                 "Add in the scores in the input lattices with this scale, rather "
                 "than discarding them.");
-    kaldi::int32 max_frames = 6000; // Allow segments maximum of one minute by default
+    kaldi::int32 max_frames = 6000;  // Allow segments maximum of one minute by default
     po.Register("max-frames",&max_frames, "Maximum number of frames a segment can have to be processed");
     
     bool drop_frames = true;
@@ -205,13 +205,13 @@ int main(int argc, char *argv[]) {
           num_other_error = 0, num_frm_drop = 0;
 
     kaldi::int64 total_frames = 0;
-    double lat_like; // total likelihood of the lattice
-    double lat_ac_like; // acoustic likelihood weighted by posterior.
+    double lat_like;  // total likelihood of the lattice
+    double lat_ac_like;  // acoustic likelihood weighted by posterior.
     double total_mmi_obj = 0.0, mmi_obj = 0.0;
     double total_post_on_ali = 0.0, post_on_ali = 0.0;
 
     // do per-utterance processing
-    for( ; !feature_reader.Done(); feature_reader.Next()) {
+    for ( ; !feature_reader.Done(); feature_reader.Next()) {
       std::string utt = feature_reader.Key();
       if (!den_lat_reader.HasKey(utt)) { 
         KALDI_WARN << "Utterance " << utt << ": found no lattice.";
@@ -282,7 +282,7 @@ int main(int argc, char *argv[]) {
       // propagate through the nnet (assuming w/o softmax)
       nnet.Propagate(feats_transf, &nnet_out);
       // subtract the log_prior
-      if(prior_opts.class_frame_counts != "") {
+      if (prior_opts.class_frame_counts != "") {
         log_prior.SubtractOnLogpost(&nnet_out);
       }
       // transfer it back to the host
@@ -315,7 +315,7 @@ int main(int argc, char *argv[]) {
       // Calculate the likelihood of correct path from acoustic score, 
       // the denominator likelihood is the total likelihood of the lattice.
       double path_ac_like = 0.0;
-      for(int32 t=0; t<num_frames; t++) {
+      for (int32 t=0; t<num_frames; t++) {
         int32 pdf = trans_model.TransitionIdToPdf(num_ali[t]);
         path_ac_like += nnet_out_h(t,pdf);
       }
@@ -330,7 +330,7 @@ int main(int argc, char *argv[]) {
       
       // Sum the den-posteriors under the correct path:
       post_on_ali = 0.0;
-      for(int32 t=0; t<num_frames; t++) {
+      for (int32 t=0; t<num_frames; t++) {
         int32 pdf = trans_model.TransitionIdToPdf(num_ali[t]);
         double posterior = nnet_diff_h(t, pdf);
         post_on_ali += posterior;
@@ -350,24 +350,24 @@ int main(int argc, char *argv[]) {
       // 7a) Search for the frames with num/den mismatch
       int32 frm_drop = 0;
       std::vector<int32> frm_drop_vec; 
-      for(int32 t=0; t<num_frames; t++) {
+      for (int32 t=0; t<num_frames; t++) {
         int32 pdf = trans_model.TransitionIdToPdf(num_ali[t]);
         double posterior = nnet_diff_h(t, pdf);
-        if(posterior < 1e-20) {
+        if (posterior < 1e-20) {
           frm_drop++;
           frm_drop_vec.push_back(t);
         }
       }
 
       // 8) subtract the pdf-Viterbi-path
-      for(int32 t=0; t<nnet_diff_h.NumRows(); t++) {
+      for (int32 t=0; t<nnet_diff_h.NumRows(); t++) {
         int32 pdf = trans_model.TransitionIdToPdf(num_ali[t]);
         nnet_diff_h(t, pdf) -= 1.0;
       }
 
       // 9) Drop mismatched frames from the training by zeroing the derivative
-      if(drop_frames) {
-        for(int32 i=0; i<frm_drop_vec.size(); i++) {
+      if (drop_frames) {
+        for (int32 i=0; i<frm_drop_vec.size(); i++) {
           nnet_diff_h.Row(frm_drop_vec[i]).Set(0.0);
         }
         num_frm_drop += frm_drop;
@@ -383,8 +383,8 @@ int main(int argc, char *argv[]) {
         int32 beg_streak=frm_drop_vec[0];
         int32 len_streak=0;
         int32 i;
-        for(i=0; i<frm_drop_vec.size(); i++,len_streak++) {
-          if(beg_streak + len_streak != frm_drop_vec[i]) {
+        for (i=0; i<frm_drop_vec.size(); i++,len_streak++) {
+          if (beg_streak + len_streak != frm_drop_vec[i]) {
             ss << " " << beg_streak << ".." << frm_drop_vec[i-1] << "frm";
             beg_streak = frm_drop_vec[i];
             len_streak = 0;

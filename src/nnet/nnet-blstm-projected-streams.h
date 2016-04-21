@@ -269,7 +269,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
     WriteToken(os, binary, "<BiasLearnRateCoef>");
     WriteBasicType(os, binary, bias_learn_rate_coef_);
 
-    if(!binary) os << "\n";
+    if (!binary) os << "\n";
     // writing parameters corresponding to forward direction
     f_w_gifo_x_.Write(os, binary);
     f_w_gifo_r_.Write(os, binary);

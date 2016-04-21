@@ -210,7 +210,7 @@ class Convolutional2DComponent : public UpdatableComponent {
     WriteBasicType(os, binary, learn_rate_coef_);
     WriteToken(os, binary, "<BiasLearnRateCoef>");
     WriteBasicType(os, binary, bias_learn_rate_coef_);
-    if(!binary) os << "\n";
+    if (!binary) os << "\n";
 
     // convolution hyperparameters
     WriteToken(os, binary, "<FmapXLen>");
@@ -227,14 +227,14 @@ class Convolutional2DComponent : public UpdatableComponent {
     WriteBasicType(os, binary, filt_y_step_);
     WriteToken(os, binary, "<ConnectFmap>");
     WriteBasicType(os, binary, connect_fmap_);
-    if(!binary) os << "\n";
+    if (!binary) os << "\n";
 
     // trainable parameters
     WriteToken(os, binary, "<Filters>");
-    if(!binary) os << "\n";
+    if (!binary) os << "\n";
     filters_.Write(os, binary);
     WriteToken(os, binary, "<Bias>");
-    if(!binary) os << "\n";
+    if (!binary) os << "\n";
     bias_.Write(os, binary);
   }
 

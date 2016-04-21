@@ -149,11 +149,11 @@ class ParallelComponent : public UpdatableComponent {
     //
     WriteToken(os, binary, "<NestedNnetCount>");
     WriteBasicType(os, binary, nnet_count);
-    if(!binary) os << "\n";
+    if (!binary) os << "\n";
     for (int32 i=0; i<nnet_count; i++) {
       WriteToken(os, binary, "<NestedNnet>");
       WriteBasicType(os, binary, i+1);
-      if(!binary) os << "\n";
+      if (!binary) os << "\n";
       nnet_[i].Write(os, binary);
     }
     WriteToken(os, binary, "</ParallelComponent>");
@@ -172,8 +172,8 @@ class ParallelComponent : public UpdatableComponent {
     int32 offset = 0;
     for (int32 i = 0; i < nnet_.size(); i++) {
       int32 n_params = nnet_[i].NumParams(); 
-      Vector<BaseFloat> gradient_aux; // we need 'Vector<>',
-      nnet_[i].GetGradient(&gradient_aux); // copy gradient from Nnet, 
+      Vector<BaseFloat> gradient_aux;  // we need 'Vector<>',
+      nnet_[i].GetGradient(&gradient_aux);  // copy gradient from Nnet, 
       gradient->Range(offset, n_params).CopyFromVec(gradient_aux);
       offset += n_params;
     }
@@ -185,8 +185,8 @@ class ParallelComponent : public UpdatableComponent {
     int32 offset = 0;
     for (int32 i = 0; i < nnet_.size(); i++) {
       int32 n_params = nnet_[i].NumParams();
-      Vector<BaseFloat> params_aux; // we need 'Vector<>',
-      nnet_[i].GetParams(&params_aux); // copy params from Nnet,
+      Vector<BaseFloat> params_aux;  // we need 'Vector<>',
+      nnet_[i].GetParams(&params_aux);  // copy params from Nnet,
       params->Range(offset, n_params).CopyFromVec(params_aux);
       offset += n_params;
     }
@@ -212,7 +212,7 @@ class ParallelComponent : public UpdatableComponent {
          << " {\n" << nnet_[i].Info() << "}\n";
     }
     std::string s(os.str());
-    s.erase(s.end() -1); // removing last '\n'
+    s.erase(s.end() -1);  // removing last '\n'
     return s;
   }
 
@@ -223,7 +223,7 @@ class ParallelComponent : public UpdatableComponent {
          << " {\n" << nnet_[i].InfoGradient() << "}\n";
     }
     std::string s(os.str());
-    s.erase(s.end() -1); // removing last '\n'
+    s.erase(s.end() -1);  // removing last '\n'
     return s;
   }
 
@@ -287,7 +287,7 @@ class ParallelComponent : public UpdatableComponent {
 
   void Update(const CuMatrixBase<BaseFloat> &input, 
               const CuMatrixBase<BaseFloat> &diff) {
-    ; // do nothing
+    ;  // do nothing
   }
  
   /**
@@ -342,7 +342,7 @@ class ParallelComponent : public UpdatableComponent {
   std::vector<Nnet> nnet_;
 };
 
-} // namespace nnet1
-} // namespace kaldi
+}  // namespace nnet1
+}  // namespace kaldi
 
 #endif  // KALDI_NNET_NNET_PARALLEL_COMPONENT_H_

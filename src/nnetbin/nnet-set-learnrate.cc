@@ -76,8 +76,8 @@ int main(int argc, char *argv[]) {
     for (int32 i=0; i<components.size(); i++) {
       if (nnet.GetComponent(components[i]-1).IsUpdatable()) {
         UpdatableComponent& comp = dynamic_cast<UpdatableComponent&>(nnet.GetComponent(components[i]-1));
-        comp.SetLearnRateCoef(coef * weight_coef); // lr. coef for weight matrices,
-        comp.SetBiasLearnRateCoef(coef * bias_coef); // lr. coef for biases,
+        comp.SetLearnRateCoef(coef * weight_coef);  // lr. coef for weight matrices,
+        comp.SetBiasLearnRateCoef(coef * bias_coef);  // lr. coef for biases,
       }
     }
 

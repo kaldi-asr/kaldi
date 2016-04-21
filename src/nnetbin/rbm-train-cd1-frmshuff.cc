@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
     rnd_opts.minibatch_size = 100;
     rnd_opts.Register(&po);
 
-    kaldi::int32 max_frames = 6000; // Allow segments maximum of 30 seconds by default
+    kaldi::int32 max_frames = 6000;  // Allow segments maximum of 30 seconds by default
     po.Register("max-frames",&max_frames, "Maximum number of frames a segment can have to be processed");
     
     std::string use_gpu="yes";
@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
 #endif
 
     Nnet rbm_transf;
-    if(feature_transform != "") {
+    if (feature_transform != "") {
       rbm_transf.Read(feature_transform);
     }
 
@@ -115,7 +115,7 @@ int main(int argc, char *argv[]) {
     const int32& momentum_step_period = trn_opts.momentum_step_period;
     // trn_opts_rbm is for RBM, copy the opts
     trn_opts_rbm = trn_opts;
-    trn_opts_rbm.learn_rate = learn_rate*(1-momentum); // keep `effective' learning rate constant
+    trn_opts_rbm.learn_rate = learn_rate*(1-momentum);  // keep `effective' learning rate constant
     // pass options to RBM
     rbm.SetRbmTrainOptions(trn_opts_rbm);
 
@@ -125,7 +125,7 @@ int main(int argc, char *argv[]) {
     RandomizerMask randomizer_mask(rnd_opts);
     MatrixRandomizer feature_randomizer(rnd_opts);
 
-    CuRand<BaseFloat> cu_rand; // parallel random number generator
+    CuRand<BaseFloat> cu_rand;  // parallel random number generator
     Mse mse;
     
     CuMatrix<BaseFloat> feats, feats_transf, 
@@ -147,7 +147,7 @@ int main(int argc, char *argv[]) {
 #endif
       // fill the randomizer
       for ( ; !feature_reader.Done(); feature_reader.Next()) {
-        if (feature_randomizer.IsFull()) break; // suspend, keep utt for next loop
+        if (feature_randomizer.IsFull()) break;  // suspend, keep utt for next loop
         std::string utt = feature_reader.Key();
         KALDI_VLOG(3) << utt;
         // get feature matrix
@@ -181,7 +181,7 @@ int main(int argc, char *argv[]) {
       feature_randomizer.Randomize(randomizer_mask.Generate(feature_randomizer.NumFrames()));
 
       // train with data from randomizer (using mini-batches)
-      for( ; !feature_randomizer.Done(); feature_randomizer.Next()) {
+      for ( ; !feature_randomizer.Done(); feature_randomizer.Next()) {
         // get block of feature/target pairs
         const CuMatrixBase<BaseFloat>& pos_vis = feature_randomizer.Value();
         // get the dims 
@@ -221,14 +221,14 @@ int main(int argc, char *argv[]) {
         {
           static int32 n_prev = -1;
           BaseFloat step = (momentum_max - momentum) / momentum_steps;
-          int32 n = total_frames / momentum_step_period; //change every momentum_step_period data
+          int32 n = total_frames / momentum_step_period;  //change every momentum_step_period data
           BaseFloat momentum_actual;
-          if(n > momentum_steps) {
+          if (n > momentum_steps) {
             momentum_actual = momentum_max;
           } else {
             momentum_actual = momentum + n*step;
           }
-          if(n - n_prev > 0) {
+          if (n - n_prev > 0) {
             n_prev = n;
             BaseFloat learning_rate_actual = learn_rate*(1-momentum_actual);
             KALDI_VLOG(1) << "Setting momentum " << (with_bug ? momentum_max : momentum_actual)

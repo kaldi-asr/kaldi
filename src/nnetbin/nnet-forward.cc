@@ -129,16 +129,16 @@ int main(int argc, char *argv[]) {
                     << ", " << mat.NumRows() << "frm";
 
       
-      if (!KALDI_ISFINITE(mat.Sum())) { // check there's no nan/inf,
+      if (!KALDI_ISFINITE(mat.Sum())) {  // check there's no nan/inf,
         KALDI_ERR << "NaN or inf found in features for " << utt;
       }
 
       // time-shift, copy the last frame of LSTM input N-times,
       if (time_shift > 0) {
-        int32 last_row = mat.NumRows() - 1; // last row,
+        int32 last_row = mat.NumRows() - 1;  // last row,
         mat.Resize(mat.NumRows() + time_shift, mat.NumCols(), kCopyData);
         for (int32 r = last_row+1; r<mat.NumRows(); r++) {
-          mat.CopyRowFromVec(mat.Row(last_row), r); // copy last row,
+          mat.CopyRowFromVec(mat.Row(last_row), r);  // copy last row,
         }
       }
       
@@ -147,13 +147,13 @@ int main(int argc, char *argv[]) {
 
       // fwd-pass, feature transform,
       nnet_transf.Feedforward(feats, &feats_transf);
-      if (!KALDI_ISFINITE(feats_transf.Sum())) { // check there's no nan/inf,
+      if (!KALDI_ISFINITE(feats_transf.Sum())) {  // check there's no nan/inf,
         KALDI_ERR << "NaN or inf found in transformed-features for " << utt;
       }
 
       // fwd-pass, nnet,
       nnet.Feedforward(feats_transf, &nnet_out);
-      if (!KALDI_ISFINITE(nnet_out.Sum())) { // check there's no nan/inf,
+      if (!KALDI_ISFINITE(nnet_out.Sum())) {  // check there's no nan/inf,
         KALDI_ERR << "NaN or inf found in nn-output for " << utt;
       }
       
@@ -164,7 +164,7 @@ int main(int argc, char *argv[]) {
                      << "Applying 'log' to data which don't seem to be probabilities "
                      << "(is there a softmax somwhere?)";
         }
-        nnet_out.Add(1e-20); // avoid log(0),
+        nnet_out.Add(1e-20);  // avoid log(0),
         nnet_out.ApplyLog();
       }
      
@@ -189,7 +189,7 @@ int main(int argc, char *argv[]) {
       }
 
       // write,
-      if (!KALDI_ISFINITE(nnet_out_host.Sum())) { // check there's no nan/inf,
+      if (!KALDI_ISFINITE(nnet_out_host.Sum())) {  // check there's no nan/inf,
         KALDI_ERR << "NaN or inf found in final output nn-output for " << utt;
       }
       feature_writer.Write(feature_reader.Key(), nnet_out_host);

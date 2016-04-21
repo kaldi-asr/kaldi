@@ -182,7 +182,7 @@ class Component {
  /// Data members,
  protected:
   int32 input_dim_;  ///< Dimension of the input of the Component,
-  int32 output_dim_; ///< Dimension of the output of the Component,
+  int32 output_dim_;  ///< Dimension of the output of the Component,
 
  /// Private members (descending classes cannot call this),
  private:
@@ -277,7 +277,7 @@ inline void Component::Propagate(const CuMatrixBase<BaseFloat> &in,
               << ", the data had " << in.NumCols() << " dims.";
   }
   // Allocate target buffer
-  out->Resize(in.NumRows(), output_dim_, kSetZero); // reset
+  out->Resize(in.NumRows(), output_dim_, kSetZero);  // reset
   // Call the propagation implementation of the component
   PropagateFnc(in, out);
 }
@@ -302,7 +302,7 @@ inline void Component::Backpropagate(const CuMatrixBase<BaseFloat> &in,
     }
   } else {
     // Allocate target buffer
-    in_diff->Resize(out_diff.NumRows(), input_dim_, kSetZero); // reset
+    in_diff->Resize(out_diff.NumRows(), input_dim_, kSetZero);  // reset
     // Asserts on the dims
     KALDI_ASSERT((in.NumRows() == out.NumRows()) &&
                  (in.NumRows() == out_diff.NumRows()) &&
@@ -315,8 +315,8 @@ inline void Component::Backpropagate(const CuMatrixBase<BaseFloat> &in,
 }
 
 
-} // namespace nnet1
-} // namespace kaldi
+}  // namespace nnet1
+}  // namespace kaldi
 
 
 #endif  // KALDI_NNET_NNET_COMPONENT_H_

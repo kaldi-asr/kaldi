@@ -203,8 +203,8 @@ class MultiTaskLoss : public LossItf {
   CuMatrix<BaseFloat>    tgt_mat_;
 };
 
-} // namespace nnet1
-} // namespace kaldi
+}  // namespace nnet1
+}  // namespace kaldi
 
 #endif  // KALDI_NNET_NNET_LOSS_H_
 

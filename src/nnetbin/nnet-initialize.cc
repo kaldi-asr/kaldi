@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
         "e.g.:\n"
         " nnet-initialize --binary=false nnet.proto nnet.init\n";
 
-    SetVerboseLevel(1); // be verbose by default
+    SetVerboseLevel(1);  // be verbose by default
 
     ParseOptions po(usage);
     bool binary_write = true;

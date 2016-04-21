@@ -127,7 +127,7 @@ int main(int argc, char *argv[]) {
                 "than discarding them.");
     po.Register("one-silence-class", &one_silence_class, "If true, newer "
                 "behavior which will tend to reduce insertions.");
-    kaldi::int32 max_frames = 6000; // Allow segments maximum of one minute by default
+    kaldi::int32 max_frames = 6000;  // Allow segments maximum of one minute by default
     po.Register("max-frames",&max_frames, "Maximum number of frames a segment can have to be processed");
     bool do_smbr = false;
     po.Register("do-smbr", &do_smbr, "Use state-level accuracies instead of "
@@ -308,7 +308,7 @@ int main(int argc, char *argv[]) {
 
       // 6) convert the Posterior to a matrix,
       PosteriorToMatrixMapped(post, trans_model, &nnet_diff);
-      nnet_diff.Scale(-1.0); // need to flip the sign of derivative,
+      nnet_diff.Scale(-1.0);  // need to flip the sign of derivative,
 
       KALDI_VLOG(1) << "Lattice #" << num_done + 1 << " processed"
                     << " (" << utt << "): found " << den_lat.NumStates()
@@ -321,7 +321,7 @@ int main(int argc, char *argv[]) {
 
       // 7) backpropagate through the nnet,
       nnet.Backpropagate(nnet_diff, NULL);
-      nnet_diff.Resize(0,0); // release GPU memory,
+      nnet_diff.Resize(0,0);  // release GPU memory,
 
       // increase time counter
       total_frame_acc += utt_frame_acc;

@@ -63,25 +63,25 @@ template <typename Real>
 std::string MomentStatistics(const VectorBase<Real> &vec) {
   // we use an auxiliary vector for the higher order powers
   Vector<Real> vec_aux(vec);
-  Vector<Real> vec_no_mean(vec); // vec with mean subtracted
+  Vector<Real> vec_no_mean(vec);  // vec with mean subtracted
   // mean
   Real mean = vec.Sum() / vec.Dim();
   // variance
   vec_aux.Add(-mean); vec_no_mean = vec_aux;
-  vec_aux.MulElements(vec_no_mean); // (vec-mean)^2
+  vec_aux.MulElements(vec_no_mean);  // (vec-mean)^2
   Real variance = vec_aux.Sum() / vec.Dim();
   // skewness 
   // - negative : left tail is longer, 
   // - positive : right tail is longer, 
   // - zero : symmetric
-  vec_aux.MulElements(vec_no_mean); // (vec-mean)^3
+  vec_aux.MulElements(vec_no_mean);  // (vec-mean)^3
   Real skewness = vec_aux.Sum() / pow(variance, 3.0/2.0) / vec.Dim();
   // kurtosis (peakedness)
   // - makes sense for symmetric distributions (skewness is zero)
   // - positive : 'sharper peak' than Normal distribution
   // - negative : 'heavier tails' than Normal distribution
   // - zero : same peakedness as the Normal distribution
-  vec_aux.MulElements(vec_no_mean); // (vec-mean)^4
+  vec_aux.MulElements(vec_no_mean);  // (vec-mean)^4
   Real kurtosis = vec_aux.Sum() / (variance * variance) / vec.Dim() - 3.0;
   // send the statistics to stream,
   std::ostringstream ostr;
@@ -130,8 +130,8 @@ std::string MomentStatistics(const CuMatrixBase<Real> &mat) {
 template <typename Real>
 void CheckNanInf(const CuMatrixBase<Real> &mat, const char *msg = "") {
   Real sum = mat.Sum();
-  if(KALDI_ISINF(sum)) { KALDI_ERR << "'inf' in " << msg; }
-  if(KALDI_ISNAN(sum)) { KALDI_ERR << "'nan' in " << msg; }
+  if (KALDI_ISINF(sum)) { KALDI_ERR << "'inf' in " << msg; }
+  if (KALDI_ISNAN(sum)) { KALDI_ERR << "'nan' in " << msg; }
 }
 
 /**
@@ -160,7 +160,7 @@ template <typename Real>
 void PosteriorToMatrix(const Posterior &post, int32 num_cols, CuMatrix<Real> *mat) {
   // Make a host-matrix,
   int32 num_rows = post.size();
-  Matrix<Real> m(num_rows, num_cols, kSetZero); // zero-filled
+  Matrix<Real> m(num_rows, num_cols, kSetZero);  // zero-filled
   // Fill from Posterior,
   for (int32 t = 0; t < post.size(); t++) {
     for (int32 i = 0; i < post[t].size(); i++) {
@@ -186,7 +186,7 @@ void PosteriorToMatrixMapped(const Posterior &post, const TransitionModel &model
   // Make a host-matrix,
   int32 num_rows = post.size(),
         num_cols = model.NumPdfs();
-  Matrix<Real> m(num_rows, num_cols, kSetZero); // zero-filled
+  Matrix<Real> m(num_rows, num_cols, kSetZero);  // zero-filled
   // Fill from Posterior,
   for (int32 t = 0; t < post.size(); t++) {
     for (int32 i = 0; i < post[t].size(); i++) {
@@ -195,7 +195,7 @@ void PosteriorToMatrixMapped(const Posterior &post, const TransitionModel &model
         KALDI_ERR << "Out-of-bound Posterior element with index " << col 
                   << ", higher than number of columns " << num_cols;
       }
-      m(t, col) += post[t][i].second; // sum,
+      m(t, col) += post[t][i].second;  // sum,
     }
   }
   // Copy to output GPU matrix,
@@ -203,7 +203,7 @@ void PosteriorToMatrixMapped(const Posterior &post, const TransitionModel &model
 }
 
 
-} // namespace nnet1
-} // namespace kaldi
+}  // namespace nnet1
+}  // namespace kaldi
 
 #endif  // KALDI_NNET_NNET_UTILS_H_

@@ -112,9 +112,9 @@ class MaxPoolingComponent : public Component {
     for (int32 q = 0; q < num_pools; q++) {
       // get output buffer of the pool
       CuSubMatrix<BaseFloat> pool(out->ColRange(q*pool_stride_, pool_stride_));
-      pool.Set(-1e20); // reset (large negative value)
-      for (int32 r = 0; r < pool_size_; r++) { // max
-        int32 p = r + q * pool_step_; // p = input patch
+      pool.Set(-1e20);  // reset (large negative value)
+      for (int32 r = 0; r < pool_size_; r++) {  // max
+        int32 p = r + q * pool_step_;  // p = input patch
         pool.Max(in.ColRange(p*pool_stride_, pool_stride_));
       }
     }
@@ -135,11 +135,11 @@ class MaxPoolingComponent : public Component {
     // used in more than one pool.
     //
     
-    in_diff->SetZero(); // reset
+    in_diff->SetZero();  // reset
 
-    for(int32 q=0; q<num_pools; q++) { // sum
-      for(int32 r=0; r<pool_size_; r++) {
-        int32 p = r + q * pool_step_; // patch number
+    for (int32 q=0; q<num_pools; q++) {  // sum
+      for (int32 r=0; r<pool_size_; r++) {
+        int32 p = r + q * pool_step_;  // patch number
         //
         CuSubMatrix<BaseFloat> in_p(in.ColRange(p*pool_stride_, pool_stride_));
         CuSubMatrix<BaseFloat> out_q(out.ColRange(q*pool_stride_, pool_stride_));
@@ -159,9 +159,9 @@ class MaxPoolingComponent : public Component {
     }
 
     // divide diff by #summands (compensate for patches used in more pools)
-    for(int32 p=0; p<num_patches; p++) {
+    for (int32 p=0; p<num_patches; p++) {
       CuSubMatrix<BaseFloat> tgt(in_diff->ColRange(p*pool_stride_, pool_stride_));
-      KALDI_ASSERT(patch_summands[p] > 0); // patch at least in one pool
+      KALDI_ASSERT(patch_summands[p] > 0);  // patch at least in one pool
       tgt.Scale(1.0/patch_summands[p]);
     }
   }
@@ -169,10 +169,10 @@ class MaxPoolingComponent : public Component {
  private:
   int32 pool_size_,   // input patches used for pooling
         pool_step_,   // shift used for pooling (allow overlapping pools)
-        pool_stride_; // stride used to cut input matrix to a vector of matrices
+        pool_stride_;  // stride used to cut input matrix to a vector of matrices
 };
 
-} // namespace nnet1
-} // namespace kaldi
+}  // namespace nnet1
+}  // namespace kaldi
 
 #endif  // KALDI_NNET_NNET_MAX_POOLING_COMPONENT_H_

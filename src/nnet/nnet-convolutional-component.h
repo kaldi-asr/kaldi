@@ -130,7 +130,7 @@ class ConvolutionalComponent : public UpdatableComponent {
     Matrix<BaseFloat> mat(num_filters, filter_dim);
     for (int32 r=0; r < num_filters; r++) {
       for (int32 c=0; c < filter_dim; c++) {
-        mat(r,c) = param_stddev * RandGauss(); // 0-mean Gauss with given std_dev
+        mat(r,c) = param_stddev * RandGauss();  // 0-mean Gauss with given std_dev
       }
     }
     filters_ = mat;
@@ -207,7 +207,7 @@ class ConvolutionalComponent : public UpdatableComponent {
     WriteBasicType(os, binary, patch_step_);
     WriteToken(os, binary, "<PatchStride>");
     WriteBasicType(os, binary, patch_stride_);
-    if(!binary) os << "\n";
+    if (!binary) os << "\n";
 
     // re-scale learn rate
     WriteToken(os, binary, "<LearnRateCoef>");
@@ -217,14 +217,14 @@ class ConvolutionalComponent : public UpdatableComponent {
     // max-norm regularization
     WriteToken(os, binary, "<MaxNorm>");
     WriteBasicType(os, binary, max_norm_);
-    if(!binary) os << "\n";
+    if (!binary) os << "\n";
 
     // trainable parameters
     WriteToken(os, binary, "<Filters>");
-    if(!binary) os << "\n";
+    if (!binary) os << "\n";
     filters_.Write(os, binary);
     WriteToken(os, binary, "<Bias>");
-    if(!binary) os << "\n";
+    if (!binary) os << "\n";
     bias_.Write(os, binary);
   }
 
@@ -315,7 +315,7 @@ class ConvolutionalComponent : public UpdatableComponent {
       CuSubMatrix<BaseFloat> tgt(out->ColRange(p * num_filters, num_filters));
       CuSubMatrix<BaseFloat> patch(vectorized_feature_patches_.ColRange(
                                    p * filter_dim, filter_dim));
-      tgt.AddVecToRows(1.0, bias_, 0.0); // add bias
+      tgt.AddVecToRows(1.0, bias_, 0.0);  // add bias
       // apply all filters
       tgt.AddMatMat(1.0, patch, kNoTrans, filters_, kTrans, 1.0);
     }
@@ -423,10 +423,10 @@ class ConvolutionalComponent : public UpdatableComponent {
     //
     // calculate the gradient
     //
-    filters_grad_.Resize(num_filters, filter_dim, kSetZero); // reset
-    bias_grad_.Resize(num_filters, kSetZero); // reset
+    filters_grad_.Resize(num_filters, filter_dim, kSetZero);  // reset
+    bias_grad_.Resize(num_filters, kSetZero);  // reset
     // use all the patches
-    for (int32 p=0; p<num_patches; p++) { // sum
+    for (int32 p=0; p<num_patches; p++) {  // sum
       CuSubMatrix<BaseFloat> diff_patch(diff.ColRange(p * num_filters,
                                                       num_filters));
       CuSubMatrix<BaseFloat> patch(vectorized_feature_patches_.ColRange(
@@ -448,12 +448,12 @@ class ConvolutionalComponent : public UpdatableComponent {
       lin_sqr.MulElements(filters_);
       CuVector<BaseFloat> l2(filters_.NumRows());
       l2.AddColSumMat(1.0, lin_sqr, 0.0);
-      l2.ApplyPow(0.5); // we have per-neuron L2 norms
+      l2.ApplyPow(0.5);  // we have per-neuron L2 norms
       CuVector<BaseFloat> scl(l2);
       scl.Scale(1.0/max_norm_);
       scl.ApplyFloor(1.0);
       scl.InvertElements();
-      filters_.MulRowsVec(scl); // shink to sphere!
+      filters_.MulRowsVec(scl);  // shink to sphere!
     }
 
   }
@@ -462,16 +462,16 @@ class ConvolutionalComponent : public UpdatableComponent {
   int32 patch_dim_,    ///< number of consecutive inputs, 1st dim of patch
         patch_step_,   ///< step of the convolution
                        ///  (i.e. shift between 2 patches)
-        patch_stride_; ///< shift for 2nd dim of a patch
+        patch_stride_;  ///< shift for 2nd dim of a patch
                        ///  (i.e. frame length before splicing)
 
-  CuMatrix<BaseFloat> filters_; ///< row = vectorized rectangular filter
-  CuVector<BaseFloat> bias_; ///< bias for each filter
+  CuMatrix<BaseFloat> filters_;  ///< row = vectorized rectangular filter
+  CuVector<BaseFloat> bias_;  ///< bias for each filter
 
-  CuMatrix<BaseFloat> filters_grad_; ///< gradient of filters
-  CuVector<BaseFloat> bias_grad_; ///< gradient of biases
+  CuMatrix<BaseFloat> filters_grad_;  ///< gradient of filters
+  CuVector<BaseFloat> bias_grad_;  ///< gradient of biases
 
-  BaseFloat max_norm_; ///< limit L2 norm of a neuron weights to positive value
+  BaseFloat max_norm_;  ///< limit L2 norm of a neuron weights to positive value
 
   /** Buffer of reshaped inputs:
    *  1row = vectorized rectangular feature patches,
@@ -490,7 +490,7 @@ class ConvolutionalComponent : public UpdatableComponent {
   CuMatrix<BaseFloat> feature_patch_diffs_;
 };
 
-} // namespace nnet1
-} // namespace kaldi
+}  // namespace nnet1
+}  // namespace kaldi
 
 #endif  // KALDI_NNET_NNET_CONVOLUTIONAL_COMPONENT_H_

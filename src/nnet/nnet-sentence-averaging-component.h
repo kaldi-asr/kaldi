@@ -145,10 +145,10 @@ class SimpleSentenceAveragingComponent : public Component {
   }
 
  private:
-  CuVector<BaseFloat> average_row_; ///< auxiliary buffer for forward propagation,
-  CuVector<BaseFloat> average_diff_; ///< auxiliary buffer for backpropagation,
-  BaseFloat gradient_boost_; ///< increase of gradient applied in backpropagation,
-  BaseFloat shrinkage_; ///< Number of 'imaginary' zero-vectors in the average 
+  CuVector<BaseFloat> average_row_;  ///< auxiliary buffer for forward propagation,
+  CuVector<BaseFloat> average_diff_;  ///< auxiliary buffer for backpropagation,
+  BaseFloat gradient_boost_;  ///< increase of gradient applied in backpropagation,
+  BaseFloat shrinkage_;  ///< Number of 'imaginary' zero-vectors in the average 
                         ///< (shrinks the average vector for shorter sentences),
   bool only_summing_;   ///< Removes normalization term from arithmetic mean (when true).
 };
@@ -181,7 +181,7 @@ class SentenceAveragingComponent : public UpdatableComponent {
       else KALDI_ERR << "Unknown token " << token << " Typo in config?";
     }
     // initialize (read already prepared nnet from file)
-    KALDI_ASSERT((nested_nnet_proto != "") ^ (nested_nnet_filename != "")); //xor
+    KALDI_ASSERT((nested_nnet_proto != "") ^ (nested_nnet_filename != ""));  //xor
     if (nested_nnet_filename != "") nnet_.Read(nested_nnet_filename);
     if (nested_nnet_proto != "") nnet_.Init(nested_nnet_proto);
     // check dims of nested nnet
@@ -285,7 +285,7 @@ class SentenceAveragingComponent : public UpdatableComponent {
 };
 /* Deprecated */
 
-} // namespace nnet1
-} // namespace kaldi
+}  // namespace nnet1
+}  // namespace kaldi
 
 #endif  // KALDI_NNET_NNET_SENTENCE_AVERAGING_COMPONENT_H_

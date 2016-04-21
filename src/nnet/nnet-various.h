@@ -90,14 +90,14 @@ class Splice: public Component {
           case 1:
             frame_offsets.push_back(build_vector[i][0]);
             break;
-          case 2: { // assuming step 1
+          case 2: {  // assuming step 1
             int32 min=build_vector[i][0], max=build_vector[i][1];
             KALDI_ASSERT(min <= max);
             for (int32 j=min; j<=max; j++) {
               frame_offsets.push_back(j);
             }}
             break;
-          case 3: { // step can be negative -> flipped min/max
+          case 3: {  // step can be negative -> flipped min/max
             int32 min=build_vector[i][0], step=build_vector[i][1], max=build_vector[i][2];
             KALDI_ASSERT((min <= max && step > 0) || (min >= max && step < 0));
             for (int32 j=min; j<=max; j += step) {
@@ -121,7 +121,7 @@ class Splice: public Component {
   void ReadData(std::istream &is, bool binary) {
     std::vector<int32> frame_offsets;
     ReadIntegerVector(is, binary, &frame_offsets);
-    frame_offsets_ = frame_offsets; // to GPU
+    frame_offsets_ = frame_offsets;  // to GPU
     KALDI_ASSERT(frame_offsets_.Dim() * InputDim() == OutputDim());
   }
 
@@ -210,14 +210,14 @@ class CopyComponent: public Component {
           case 1:
             copy_from_indices.push_back(build_vector[i][0]);
             break;
-          case 2: { // assuming step 1
+          case 2: {  // assuming step 1
             int32 min=build_vector[i][0], max=build_vector[i][1];
             KALDI_ASSERT(min <= max);
             for (int32 j=min; j<=max; j++) {
               copy_from_indices.push_back(j);
             }}
             break;
-          case 3: { // step can be negative -> flipped min/max
+          case 3: {  // step can be negative -> flipped min/max
             int32 min=build_vector[i][0], step=build_vector[i][1], max=build_vector[i][2];
             KALDI_ASSERT((min <= max && step > 0) || (min >= max && step < 0));
             for (int32 j=min; j<=max; j += step) {
@@ -333,13 +333,13 @@ class LengthNormComponent: public Component {
     }
     // get the normalization scalars,
     l2_aux_ = in;
-    l2_aux_.MulElements(l2_aux_); // x^2,
-    row_scales_.AddColSumMat(1.0,l2_aux_,0.0); // sum_of_cols(x^2),
-    row_scales_.ApplyPow(0.5); // L2norm = sqrt(sum_of_cols(x^2)),
-    row_scales_.InvertElements(); // 1/L2norm,
+    l2_aux_.MulElements(l2_aux_);  // x^2,
+    row_scales_.AddColSumMat(1.0,l2_aux_,0.0);  // sum_of_cols(x^2),
+    row_scales_.ApplyPow(0.5);  // L2norm = sqrt(sum_of_cols(x^2)),
+    row_scales_.InvertElements();  // 1/L2norm,
     // compute the output,
     out->CopyFromMat(in);
-    out->MulRowsVec(row_scales_); // re-normalize,
+    out->MulRowsVec(row_scales_);  // re-normalize,
   }
 
   void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, 
@@ -347,12 +347,12 @@ class LengthNormComponent: public Component {
                         const CuMatrixBase<BaseFloat> &out_diff, 
                         CuMatrixBase<BaseFloat> *in_diff) {
     in_diff->CopyFromMat(out_diff);
-    in_diff->MulRowsVec(row_scales_); // diff_by_x(s * x) = s,
+    in_diff->MulRowsVec(row_scales_);  // diff_by_x(s * x) = s,
   }
 
  private:
-  CuMatrix<BaseFloat> l2_aux_; ///< auxiliary matrix for L2 norm computation,
-  CuVector<BaseFloat> row_scales_; ///< normalization scale of each row,
+  CuMatrix<BaseFloat> l2_aux_;  ///< auxiliary matrix for L2 norm computation,
+  CuVector<BaseFloat> row_scales_;  ///< normalization scale of each row,
 };
 
 
@@ -390,7 +390,7 @@ class AddShift : public UpdatableComponent {
                      << " (InitParam)";
     }
     // initialize
-    shift_data_.Resize(InputDim(), kSetZero); // set to zero
+    shift_data_.Resize(InputDim(), kSetZero);  // set to zero
     shift_data_.Set(init_param);
   }
 
@@ -459,7 +459,7 @@ class AddShift : public UpdatableComponent {
     // we use following hyperparameters from the option class,
     const BaseFloat lr = opts_.learn_rate;
     // gradient,
-    shift_data_grad_.Resize(InputDim(), kSetZero); // reset to zero,
+    shift_data_grad_.Resize(InputDim(), kSetZero);  // reset to zero,
     shift_data_grad_.AddRowSumMat(1.0, diff, 0.0);
     // update,
     shift_data_.AddVec(-lr * learn_rate_coef_, shift_data_grad_);
@@ -580,7 +580,7 @@ class Rescale : public UpdatableComponent {
     // we use following hyperparameters from the option class,
     const BaseFloat lr = opts_.learn_rate;
     // gradient,
-    scale_data_grad_.Resize(InputDim(), kSetZero); // reset,
+    scale_data_grad_.Resize(InputDim(), kSetZero);  // reset,
     CuMatrix<BaseFloat> gradient_aux(diff);
     gradient_aux.MulElements(input);
     scale_data_grad_.AddRowSumMat(1.0, gradient_aux, 0.0);
@@ -599,7 +599,7 @@ class Rescale : public UpdatableComponent {
 
 
 
-} // namespace nnet1
-} // namespace kaldi
+}  // namespace nnet1
+}  // namespace kaldi
 
 #endif  // KALDI_NNET_NNET_VARIOUS_H_

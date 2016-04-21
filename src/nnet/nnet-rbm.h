@@ -105,7 +105,7 @@ class Rbm : public RbmBase {
     float vis_bias_mean = 0.0, vis_bias_range = 0.0, 
           hid_bias_mean = 0.0, hid_bias_range = 0.0, 
           param_stddev = 0.1;
-    std::string vis_bias_cmvn_file; // initialize biases to logit(p_active)
+    std::string vis_bias_cmvn_file;  // initialize biases to logit(p_active)
     // parse config
     std::string token; 
     while (is >> std::ws, !is.eof()) {
@@ -135,7 +135,7 @@ class Rbm : public RbmBase {
     Matrix<BaseFloat> mat(output_dim_, input_dim_);
     for (int32 r=0; r<output_dim_; r++) {
       for (int32 c=0; c<input_dim_; c++) {
-        mat(r,c) = param_stddev * RandGauss(); // 0-mean Gauss with given std_dev
+        mat(r,c) = param_stddev * RandGauss();  // 0-mean Gauss with given std_dev
       }
     }
     vis_hid_ = mat;
@@ -164,9 +164,9 @@ class Rbm : public RbmBase {
       p.Scale(-1.0);
       // compute logit:
       Vector<BaseFloat> logit_p(p.Dim());
-      for(int32 d = 0; d < p.Dim(); d++) {
-        if(p(d) < 0.0001) p(d) = 0.0001;
-        if(p(d) > 0.9999) p(d) = 0.9999;
+      for (int32 d = 0; d < p.Dim(); d++) {
+        if (p(d) < 0.0001) p(d) = 0.0001;
+        if (p(d) > 0.9999) p(d) = 0.9999;
         logit_p(d) = Log(p(d)) - Log(1.0 - p(d));
       }
       vis_bias_ = logit_p;
@@ -181,14 +181,14 @@ class Rbm : public RbmBase {
     ReadToken(is, binary, &vis_node_type);
     ReadToken(is, binary, &hid_node_type);
     
-    if(vis_node_type == "bern") {
+    if (vis_node_type == "bern") {
       vis_type_ = RbmBase::Bernoulli;
-    } else if(vis_node_type == "gauss") {
+    } else if (vis_node_type == "gauss") {
       vis_type_ = RbmBase::Gaussian;
     }
-    if(hid_node_type == "bern") {
+    if (hid_node_type == "bern") {
       hid_type_ = RbmBase::Bernoulli;
-    } else if(hid_node_type == "gauss") {
+    } else if (hid_node_type == "gauss") {
       hid_type_ = RbmBase::Gaussian;
     }
 
@@ -382,17 +382,17 @@ class Rbm : public RbmBase {
     WriteToken(os,binary,Component::TypeToMarker(Component::kAffineTransform));
     WriteBasicType(os,binary,OutputDim());
     WriteBasicType(os,binary,InputDim());
-    if(!binary) os << "\n";
+    if (!binary) os << "\n";
     //data
     vis_hid_.Write(os,binary);
     hid_bias_.Write(os,binary);
     //optionally sigmoid activation
-    if(HidType() == Bernoulli) {
+    if (HidType() == Bernoulli) {
       WriteToken(os,binary,Component::TypeToMarker(Component::kSigmoid));
       WriteBasicType(os,binary,OutputDim());
       WriteBasicType(os,binary,OutputDim());
     }
-    if(!binary) os << "\n";
+    if (!binary) os << "\n";
   }
 
 protected:
@@ -411,7 +411,7 @@ protected:
 
 
 
-} // namespace nnet1
-} // namespace kaldi
+}  // namespace nnet1
+}  // namespace kaldi
 
 #endif  // KALDI_NNET_NNET_RBM_H_

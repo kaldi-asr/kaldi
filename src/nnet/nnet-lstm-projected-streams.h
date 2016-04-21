@@ -199,7 +199,7 @@ class LstmProjectedStreams : public UpdatableComponent {
     WriteToken(os, binary, "<BiasLearnRateCoef>");
     WriteBasicType(os, binary, bias_learn_rate_coef_);
 
-    if(!binary) os << "\n";
+    if (!binary) os << "\n";
     w_gifo_x_.Write(os, binary);
     w_gifo_r_.Write(os, binary);
     bias_.Write(os, binary);
@@ -393,7 +393,7 @@ class LstmProjectedStreams : public UpdatableComponent {
     static bool do_stream_reset = false;
     if (nstream_ == 0) {
       do_stream_reset = true;
-      nstream_ = 1; // Karel: we are in nnet-forward, so 1 stream,
+      nstream_ = 1;  // Karel: we are in nnet-forward, so 1 stream,
       prev_nnet_state_.Resize(nstream_, 7*ncell_ + 1*nrecur_, kSetZero);
       KALDI_LOG << "Running nnet-forward with per-utterance LSTM-state reset";
     }
@@ -822,7 +822,7 @@ class LstmProjectedStreams : public UpdatableComponent {
   CuMatrix<BaseFloat> backpropagate_buf_;
 
 };
-} // namespace nnet1
-} // namespace kaldi
+}  // namespace nnet1
+}  // namespace kaldi
 
 #endif  // KALDI_NNET_NNET_LSTM_PROJECTED_STREAMS_H_

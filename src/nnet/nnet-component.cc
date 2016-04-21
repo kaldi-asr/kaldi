@@ -81,7 +81,7 @@ const struct Component::key_value Component::kMarkerMap[] = {
 
 const char* Component::TypeToMarker(ComponentType t) {
   int32 N=sizeof(kMarkerMap)/sizeof(kMarkerMap[0]);
-  for(int i=0; i<N; i++) {
+  for (int i=0; i<N; i++) {
     if (kMarkerMap[i].key == t) return kMarkerMap[i].value;
   }
   KALDI_ERR << "Unknown type" << t;
@@ -90,9 +90,9 @@ const char* Component::TypeToMarker(ComponentType t) {
 
 Component::ComponentType Component::MarkerToType(const std::string &s) {
   std::string s_lowercase(s);
-  std::transform(s.begin(), s.end(), s_lowercase.begin(), ::tolower); // lc
+  std::transform(s.begin(), s.end(), s_lowercase.begin(), ::tolower);  // lc
   int32 N=sizeof(kMarkerMap)/sizeof(kMarkerMap[0]);
-  for(int i=0; i<N; i++) {
+  for (int i=0; i<N; i++) {
     std::string m(kMarkerMap[i].value);
     std::string m_lowercase(m);
     std::transform(m.begin(), m.end(), m_lowercase.begin(), ::tolower);
@@ -223,11 +223,11 @@ Component* Component::Read(std::istream &is, bool binary) {
 
   ReadToken(is, binary, &token);
   // Skip the optional initial token,
-  if(token == "<Nnet>") {
+  if (token == "<Nnet>") {
     ReadToken(is, binary, &token); 
   }
   // Network ends after terminal token appears,
-  if(token == "</Nnet>") {
+  if (token == "</Nnet>") {
     return NULL;
   }
 
@@ -254,12 +254,12 @@ void Component::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, Component::TypeToMarker(GetType()));
   WriteBasicType(os, binary, OutputDim());
   WriteBasicType(os, binary, InputDim());
-  if(!binary) os << "\n";
+  if (!binary) os << "\n";
   this->WriteData(os, binary);
-  WriteToken(os, binary, "<!EndOfComponent>"); // Introduce component separator.
-  if(!binary) os << "\n";
+  WriteToken(os, binary, "<!EndOfComponent>");  // Introduce component separator.
+  if (!binary) os << "\n";
 }
 
 
-} // namespace nnet1
-} // namespace kaldi
+}  // namespace nnet1
+}  // namespace kaldi

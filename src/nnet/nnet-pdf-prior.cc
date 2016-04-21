@@ -72,11 +72,11 @@ PdfPrior::PdfPrior(const PdfPriorOptions &opts)
 
 
 void PdfPrior::SubtractOnLogpost(CuMatrixBase<BaseFloat> *llk) {
-  if(log_priors_.Dim() == 0) {
+  if (log_priors_.Dim() == 0) {
     KALDI_ERR << "--class-frame-counts is empty: Cannot initialize priors "
               << "without the counts.";
   }
-  if(log_priors_.Dim() != llk->NumCols()) {
+  if (log_priors_.Dim() != llk->NumCols()) {
     KALDI_ERR << "Dimensionality mismatch,"
               << " class_frame_counts " << log_priors_.Dim()
               << " pdf_output_llk " << llk->NumCols();

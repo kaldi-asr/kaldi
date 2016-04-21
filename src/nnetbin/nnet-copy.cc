@@ -100,15 +100,15 @@ int main(int argc, char *argv[]) {
     }
 
     // optionally remove N first layers
-    if(remove_first_components > 0) {
-      for(int32 i=0; i<remove_first_components; i++) {
+    if (remove_first_components > 0) {
+      for (int32 i=0; i<remove_first_components; i++) {
         nnet.RemoveComponent(0);
       }
     }
    
     // optionally remove N last layers
-    if(remove_last_components > 0) {
-      for(int32 i=0; i<remove_last_components; i++) {
+    if (remove_last_components > 0) {
+      for (int32 i=0; i<remove_last_components; i++) {
         nnet.RemoveLastComponent();
       }
     }

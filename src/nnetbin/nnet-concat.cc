@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
     }
 
     //read all the other nnets
-    for(int32 i=2; i<po.NumArgs(); i++) {
+    for (int32 i=2; i<po.NumArgs(); i++) {
       //read the nnet
       model_in_filename_next = po.GetArg(i);
       KALDI_LOG << "Concatenating " << model_in_filename_next;

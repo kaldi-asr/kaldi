@@ -34,7 +34,7 @@ namespace nnet1 {
 
 /// Configuration variables that affect how frame-level shuffling is done.
 struct NnetDataRandomizerOptions {
-  int32 randomizer_size; // Maximum number of samples we want to have in memory at once.
+  int32 randomizer_size;  // Maximum number of samples we want to have in memory at once.
   int32 randomizer_seed;
   int32 minibatch_size;  // Size of a single mini-batch.
 
@@ -125,9 +125,9 @@ class MatrixRandomizer {
   const CuMatrixBase<BaseFloat>& Value();
 
  private:
-  CuMatrix<BaseFloat> data_; // can be larger than 'randomizer_size'
-  CuMatrix<BaseFloat> data_aux_; // auxiliary buffer for shuffling
-  CuMatrix<BaseFloat> minibatch_; // buffer for mini-batch
+  CuMatrix<BaseFloat> data_;  // can be larger than 'randomizer_size'
+  CuMatrix<BaseFloat> data_aux_;  // auxiliary buffer for shuffling
+  CuMatrix<BaseFloat> minibatch_;  // buffer for mini-batch
 
   /// Cursor to beginning of data (row index, moves as mini-batches are delivered)
   int32 data_begin_;
@@ -186,8 +186,8 @@ class VectorRandomizer {
   const Vector<BaseFloat>& Value();
 
  private:
-  Vector<BaseFloat> data_; // can be larger than 'randomizer_size'
-  Vector<BaseFloat> minibatch_; // buffer for mini-batch
+  Vector<BaseFloat> data_;  // can be larger than 'randomizer_size'
+  Vector<BaseFloat> minibatch_;  // buffer for mini-batch
 
   /// Cursor to beginning of data (row index, moves as mini-batches are delivered)
   int32 data_begin_;
@@ -247,8 +247,8 @@ class StdVectorRandomizer {
   const std::vector<T>& Value();
 
  private:
-  std::vector<T> data_; // can be larger than 'randomizer_size'
-  std::vector<T> minibatch_; // buffer for mini-batch
+  std::vector<T> data_;  // can be larger than 'randomizer_size'
+  std::vector<T> minibatch_;  // buffer for mini-batch
 
   /// Cursor to beginning of data (row index, moves as mini-batches are delivered)
   int32 data_begin_;
@@ -262,7 +262,7 @@ typedef StdVectorRandomizer<int32> Int32VectorRandomizer;
 typedef StdVectorRandomizer<std::vector<std::pair<int32, BaseFloat> > > PosteriorRandomizer;
 
 
-} // namespace nnet1
-} // namespace kaldi
+}  // namespace nnet1
+}  // namespace kaldi
 
 #endif  // KALDI_NNET_NNET_RANDOMIZER_H_

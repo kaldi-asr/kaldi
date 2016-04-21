@@ -140,7 +140,7 @@ class KlHmm : public Component {
     KALDI_ASSERT(posteriors.NumRows() == alignment.size());
     KALDI_ASSERT(posteriors.NumCols() == kl_stats_.NumCols());
     int32 num_frames = alignment.size();
-    for(int32 i = 0; i < num_frames; i++) {
+    for (int32 i = 0; i < num_frames; i++) {
       //Convertin the float posterior into a double (to have higher precision during collection)
       Vector<double> temp(posteriors.Row(i));
       //Sum all the postiors associated with a particular state
@@ -156,8 +156,8 @@ class KlHmm : public Component {
 
 
 
-} // namespace nnet1
-} // namespace kaldi
+}  // namespace nnet1
+}  // namespace kaldi
 
 #endif  // KALDI_NNET_NNET_KL_HMM_H_
 

@@ -39,12 +39,12 @@ namespace nnet1 {
   template<typename Real>
   void ReadCuMatrixFromString(const std::string& s, CuMatrix<Real>* m) {
     std::istringstream is(s + "\n");
-    m->Read(is, false); // false for ascii
+    m->Read(is, false);  // false for ascii
   }
 
   Component* ReadComponentFromString(const std::string& s) {
     std::istringstream is(s + "\n");
-    return Component::Read(is, false); // false for ascii
+    return Component::Read(is, false);  // false for ascii
   }
 
 
@@ -61,10 +61,10 @@ namespace nnet1 {
     CuMatrix<BaseFloat> mat_out;
     c->Propagate(mat_in,&mat_out);
     // check the lenght,
-    mat_out.MulElements(mat_out); // ^2,
+    mat_out.MulElements(mat_out);  // ^2,
     CuVector<BaseFloat> check_length_is_one(2);
-    check_length_is_one.AddColSumMat(1.0, mat_out, 0.0); // sum_of_cols(x^2),
-    check_length_is_one.ApplyPow(0.5); // L2norm = sqrt(sum_of_cols(x^2)),
+    check_length_is_one.AddColSumMat(1.0, mat_out, 0.0);  // sum_of_cols(x^2),
+    check_length_is_one.ApplyPow(0.5);  // L2norm = sqrt(sum_of_cols(x^2)),
     CuVector<BaseFloat> ones(2); ones.Set(1.0);
     AssertEqual(check_length_is_one, ones);
   }
@@ -87,7 +87,7 @@ namespace nnet1 {
   
     // backpropagate,
     CuMatrix<BaseFloat> dummy1(3,2), dummy2(3,2), diff_out(mat_in), diff_in;
-    c->Backpropagate(dummy1, dummy2, diff_out, &diff_in); // output 1.0 boosted by 10.0,
+    c->Backpropagate(dummy1, dummy2, diff_out, &diff_in);  // output 1.0 boosted by 10.0,
     // check the output,
     CuVector<BaseFloat> tens(2); tens.Set(10); 
     for (int32 i=0; i<diff_in.NumRows(); i++) {
@@ -152,7 +152,7 @@ namespace nnet1 {
     // prepare mat_out_diff, mat_in_diff_ref,
     CuMatrix<BaseFloat> mat_out_diff;
     ReadCuMatrixFromString("[ 1 0 0  1 1 0  1 1 1 ]", &mat_out_diff);
-    CuMatrix<BaseFloat> mat_in_diff_ref; // hand-computed back-propagated values,
+    CuMatrix<BaseFloat> mat_in_diff_ref;  // hand-computed back-propagated values,
     ReadCuMatrixFromString("[ -1 -4 -15 -8 -6   0 -3 -6 3 6   1 1 14 11 7 ]", &mat_in_diff_ref);
 
     // backpropagate,
@@ -207,7 +207,7 @@ namespace nnet1 {
     CuMatrix<BaseFloat> mat_out_diff(mat_out);
     mat_out_diff.Set(1);
     // expected backpropagated values,
-    CuMatrix<BaseFloat> mat_in_diff_ref; // hand-computed back-propagated values,
+    CuMatrix<BaseFloat> mat_in_diff_ref;  // hand-computed back-propagated values,
     ReadCuMatrixFromString("[ 0 1 0 1 \
                               1 0 1 0 \
                               0 0 1 0 \
@@ -257,7 +257,7 @@ namespace nnet1 {
     ReadCuMatrixFromString("[ 0 0 1 1 2 2 3 3 4 4 5 5 6 6 7 7 8 8 ]", &mat_out_diff);
     
     //expected backpropagated values,
-    CuMatrix<BaseFloat> mat_in_diff_ref; //hand-computed back-propagated values,
+    CuMatrix<BaseFloat> mat_in_diff_ref;  //hand-computed back-propagated values,
     ReadCuMatrixFromString("[ 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0.25 0 0 1 1 0 0 0 0 0.75 0.75 0 0 1 1 0 0 2.5 2.5 0 0 0 0 3 3 0 0 3.5 3.5 0 0 8 8 ]", &mat_in_diff_ref);
     
     // backpropagate,
@@ -294,7 +294,7 @@ namespace nnet1 {
     ReadCuMatrixFromString("[ 0 0 1 1 2 2 3 3 4 4 5 5 6 6 7 7 8 8 ]", &mat_out_diff);
     
     // expected backpropagated values,
-    CuMatrix<BaseFloat> mat_in_diff_ref; // hand-computed back-propagated values,
+    CuMatrix<BaseFloat> mat_in_diff_ref;  // hand-computed back-propagated values,
     ReadCuMatrixFromString("[  0 0 0 0 0.0833333 0.0833333 0.166667 0.166667 0.25 0.25 0.333333 0.333333 0.333333 0.333333 0.25 0.25 0.25 0.25 0.333333 0.333333 0.416667 0.416667 0.5 0.5 0.583333 0.583333 0.583333 0.583333 0.75 0.75 0.75 0.75 0.833333 0.833333 0.916667 0.916667 1 1 1.08333 1.08333 1.08333 1.08333 1 1 1 1 1.08333 1.08333 1.16667 1.16667 1.25 1.25 1.33333 1.33333 1.33333 1.33333 ]", &mat_in_diff_ref);
     
     // backpropagate,
@@ -339,8 +339,8 @@ namespace nnet1 {
     delete c;
   }
 
-} // namespace nnet1
-} // namespace kaldi
+}  // namespace nnet1
+}  // namespace kaldi
 
 int main() {
   using namespace kaldi;
@@ -349,9 +349,9 @@ int main() {
   for (kaldi::int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1
     if (loop == 0)
-      CuDevice::Instantiate().SelectGpuId("no"); // use no GPU
+      CuDevice::Instantiate().SelectGpuId("no");  // use no GPU
     else
-      CuDevice::Instantiate().SelectGpuId("optional"); // use GPU when available
+      CuDevice::Instantiate().SelectGpuId("optional");  // use GPU when available
 #endif
     // unit-tests :
     UnitTestLengthNorm();

@@ -117,7 +117,7 @@ int main(int argc, char *argv[]) {
 #endif
 
     Nnet nnet_transf;
-    if(feature_transform != "") {
+    if (feature_transform != "") {
       nnet_transf.Read(feature_transform);
     }
 
@@ -265,7 +265,7 @@ int main(int argc, char *argv[]) {
         }
 
         // 1st minibatch : show what happens in network 
-        if (kaldi::g_kaldi_verbose_level >= 1 && total_frames == 0) { // vlog-1
+        if (kaldi::g_kaldi_verbose_level >= 1 && total_frames == 0) {  // vlog-1
             KALDI_VLOG(1) << "### After " << total_frames << " frames,";
             KALDI_VLOG(1) << nnet.InfoPropagate();
             if (!crossvalidate) {
@@ -284,8 +284,8 @@ int main(int argc, char *argv[]) {
         num_done += num_done_progress;
         
         // monitor the NN training
-        if (kaldi::g_kaldi_verbose_level >= 2) { // vlog-2
-            if ((total_frames-frame_progress)/25000 != (total_frames/25000)) { // print every 25k frames
+        if (kaldi::g_kaldi_verbose_level >= 2) {  // vlog-2
+            if ((total_frames-frame_progress)/25000 != (total_frames/25000)) {  // print every 25k frames
                 KALDI_VLOG(2) << "### After " << total_frames << " frames,";
                 KALDI_VLOG(2) << nnet.InfoPropagate();
                 if (!crossvalidate) {
@@ -308,7 +308,7 @@ int main(int argc, char *argv[]) {
 #endif
         }
 
-        if (dump_interval > 0) { // disabled by 'dump_interval == 0',
+        if (dump_interval > 0) {  // disabled by 'dump_interval == 0',
           if ((num_done-num_done_progress)/dump_interval != (num_done/dump_interval)) {
               char nnet_name[512];
               if (!crossvalidate) {
@@ -320,7 +320,7 @@ int main(int argc, char *argv[]) {
     }
       
     // after last minibatch : show what happens in network 
-    if (kaldi::g_kaldi_verbose_level >= 1) { // vlog-1
+    if (kaldi::g_kaldi_verbose_level >= 1) {  // vlog-1
       KALDI_VLOG(1) << "### After " << total_frames << " frames,";
       KALDI_VLOG(1) << nnet.InfoPropagate();
       if (!crossvalidate) {

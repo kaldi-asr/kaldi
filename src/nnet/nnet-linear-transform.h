@@ -68,17 +68,17 @@ class LinearTransform : public UpdatableComponent {
     //
     // initialize
     //
-    if (read_matrix_file != "") { // load from file,
+    if (read_matrix_file != "") {  // load from file,
       bool binary;
       Input in(read_matrix_file, &binary);
       linearity_.Read(in.Stream(), binary);
       in.Close();
       KALDI_LOG << "Loaded <LinearTransform> matrix from file : " << read_matrix_file;
-    } else { // random initialization,
+    } else {  // random initialization,
       linearity_.Resize(output_dim_, input_dim_);
       for (int32 r=0; r<output_dim_; r++) {
         for (int32 c=0; c<input_dim_; c++) {
-          linearity_(r,c) = param_stddev * RandGauss(); // 0-mean Gauss with given std_dev
+          linearity_(r,c) = param_stddev * RandGauss();  // 0-mean Gauss with given std_dev
         }
       }
     }
@@ -117,7 +117,7 @@ class LinearTransform : public UpdatableComponent {
   void WriteData(std::ostream &os, bool binary) const {
     WriteToken(os, binary, "<LearnRateCoef>");
     WriteBasicType(os, binary, learn_rate_coef_);
-    if(!binary) os << "\n";
+    if (!binary) os << "\n";
     linearity_.Write(os, binary);
   }
 
@@ -213,7 +213,7 @@ class LinearTransform : public UpdatableComponent {
   CuMatrix<BaseFloat> linearity_corr_;
 };
 
-} // namespace nnet1
-} // namespace kaldi
+}  // namespace nnet1
+}  // namespace kaldi
 
 #endif  // KALDI_NNET_NNET_LINEAR_TRANSFORM_H_

@@ -97,7 +97,7 @@ int main(int argc, char *argv[]) {
 #endif
 
     Nnet nnet_transf;
-    if(feature_transform != "") {
+    if (feature_transform != "") {
       nnet_transf.Read(feature_transform);
     }
 
@@ -151,7 +151,7 @@ int main(int argc, char *argv[]) {
       Vector<BaseFloat> weights;
       if (frame_weights != "") {
         weights = weights_reader.Value(utt);
-      } else { // all per-frame weights are 1.0
+      } else {  // all per-frame weights are 1.0
         weights.Resize(mat.NumRows());
         weights.Set(1.0);
       }
@@ -167,9 +167,9 @@ int main(int argc, char *argv[]) {
         int32 max = *std::max_element(lenght.begin(),lenght.end());
         // fix or drop ?
         if (max - min < length_tolerance) {
-          if(mat.NumRows() != min) mat.Resize(min, mat.NumCols(), kCopyData);
-          if(targets.size() != min) targets.resize(min);
-          if(weights.Dim() != min) weights.Resize(min, kCopyData);
+          if (mat.NumRows() != min) mat.Resize(min, mat.NumCols(), kCopyData);
+          if (targets.size() != min) targets.resize(min);
+          if (weights.Dim() != min) weights.Resize(min, kCopyData);
         } else {
           KALDI_WARN << utt << ", length mismatch of targets " << targets.size()
                      << " and features " << mat.NumRows();
@@ -204,7 +204,7 @@ int main(int argc, char *argv[]) {
       }
 
       // 1st minibatch : show what happens in network 
-      if (kaldi::g_kaldi_verbose_level >= 1 && total_frames == 0) { // vlog-1
+      if (kaldi::g_kaldi_verbose_level >= 1 && total_frames == 0) {  // vlog-1
         KALDI_VLOG(1) << "### After " << total_frames << " frames,";
         KALDI_VLOG(1) << nnet.InfoPropagate();
         if (!crossvalidate) {
@@ -214,8 +214,8 @@ int main(int argc, char *argv[]) {
       }
       
       // monitor the NN training
-      if (kaldi::g_kaldi_verbose_level >= 2) { // vlog-2
-        if ((total_frames/25000) != ((total_frames+feats_transf.NumRows())/25000)) { // print every 25k frames
+      if (kaldi::g_kaldi_verbose_level >= 2) {  // vlog-2
+        if ((total_frames/25000) != ((total_frames+feats_transf.NumRows())/25000)) {  // print every 25k frames
           KALDI_VLOG(2) << "### After " << total_frames << " frames,";
           KALDI_VLOG(2) << nnet.InfoPropagate();
           if (!crossvalidate) {
@@ -240,7 +240,7 @@ int main(int argc, char *argv[]) {
     }
       
     // after last minibatch : show what happens in network 
-    if (kaldi::g_kaldi_verbose_level >= 1) { // vlog-1
+    if (kaldi::g_kaldi_verbose_level >= 1) {  // vlog-1
       KALDI_VLOG(1) << "### After " << total_frames << " frames,";
       KALDI_VLOG(1) << nnet.InfoPropagate();
       if (!crossvalidate) {
