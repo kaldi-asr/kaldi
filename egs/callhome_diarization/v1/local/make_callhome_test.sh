@@ -23,7 +23,7 @@ fi
 mkdir -p $dir
 
 # Create wav.scp
-ls $1 | cut -f1 -d'.' | awk '{printf("%s '$sph2pipe' -f wav '$1'/%s.sph |\n", $1, $1)}' > $dir/wav.scp
+ls $1 | cut -f1 -d'.' | awk '{printf("%s '$sph2pipe' -f wav -p '$1'/%s.sph |\n", $1, $1)}' > $dir/wav.scp
 
 # Create segments, utt2spk, seg2spk, utt2num
 rm -f $dir/{segments,utt2spk,seg2spk,utt2num}
