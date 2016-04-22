@@ -27,6 +27,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <errno.h>
 #include "util/kaldi-io.h"
 #include "util/kaldi-holder.h"
 #include "util/text-utils.h"
@@ -1493,7 +1494,8 @@ class TableWriterBothImpl: public TableWriterImplBase<Holder> {
 template<class Holder>
 TableWriter<Holder>::TableWriter(const std::string &wspecifier): impl_(NULL) {
   if (wspecifier != "" && !Open(wspecifier))
-    KALDI_ERR << "Failed to write to " << wspecifier;
+    KALDI_ERR << "Failed to open for writing: " << wspecifier
+              << ": " << strerror(errno);
 }
 
 template<class Holder>
