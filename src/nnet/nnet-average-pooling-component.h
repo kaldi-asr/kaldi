@@ -146,7 +146,7 @@ class AveragePoolingComponent : public Component {
     in_diff->Scale(1.0 / pool_size_);
 
     // divide diff by #summands (compensate for patches used in more pools)
-    for (int32 p=0; p<num_patches; p++) {
+    for (int32 p = 0; p < num_patches; p++) {
       CuSubMatrix<BaseFloat> tgt(in_diff->ColRange(p*pool_stride_, pool_stride_));
       KALDI_ASSERT(patch_summands[p] > 0);  // patch at least in one pool
       tgt.Scale(1.0/patch_summands[p]);
@@ -154,9 +154,9 @@ class AveragePoolingComponent : public Component {
   }
 
  private:
-  int32 pool_size_,   // input patches used for pooling
-        pool_step_,   // shift used for pooling (allow overlapping pools)
-        pool_stride_;  // stride used to cut input matrix to a vector of matrices
+  int32 pool_size_,    // input patches used for pooling
+        pool_step_,    // shift used for pooling (allow overlapping pools)
+        pool_stride_;  // stride used to cut input to a vector of matrices
 };
 
 }  // namespace nnet1

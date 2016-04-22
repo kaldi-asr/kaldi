@@ -68,22 +68,6 @@ class LstmProjectedStreams : public UpdatableComponent {
     return kLstmProjectedStreams;
   }
 
- private:
-  static void InitMatParam(float scale, CuMatrixBase<BaseFloat>* m) {
-    m->SetRandUniform();  // uniform in [0, 1]
-    m->Add(-0.5);         // uniform in [-0.5, 0.5]
-    m->Scale(2 * scale);  // uniform in [-scale, +scale]
-  }
-
-  static void InitVecParam(float scale, CuVectorBase<BaseFloat>* v) {
-    Vector<BaseFloat> tmp(v->Dim());
-    for (int i = 0; i < tmp.Dim(); i++) {
-      tmp(i) = (RandUniform() - 0.5) * 2 * scale;
-    }
-    v->CopyFromVec(tmp);
-  }
-
- public:
   void InitData(std::istream &is) {
     // define options,
     float param_scale = 0.02;
@@ -106,19 +90,20 @@ class LstmProjectedStreams : public UpdatableComponent {
     w_gifo_r_.Resize(4*ncell_, nrecur_, kUndefined);
     w_r_m_.Resize(nrecur_, ncell_, kUndefined);
 
-    InitMatParam(param_scale, &w_gifo_x_);
-    InitMatParam(param_scale, &w_gifo_r_);
-    InitMatParam(param_scale, &w_r_m_);
+    RandUniform(0.0, 2.0 * param_scale, &w_gifo_x_);
+    RandUniform(0.0, 2.0 * param_scale, &w_gifo_r_);
+    RandUniform(0.0, 2.0 * param_scale, &w_r_m_);
 
     bias_.Resize(4*ncell_, kUndefined);
     peephole_i_c_.Resize(ncell_, kUndefined);
     peephole_f_c_.Resize(ncell_, kUndefined);
     peephole_o_c_.Resize(ncell_, kUndefined);
 
-    InitVecParam(param_scale, &bias_);
-    InitVecParam(param_scale, &peephole_i_c_);
-    InitVecParam(param_scale, &peephole_f_c_);
-    InitVecParam(param_scale, &peephole_o_c_);
+    
+    RandUniform(0.0, 2.0 * param_scale, &bias_);
+    RandUniform(0.0, 2.0 * param_scale, &peephole_i_c_);
+    RandUniform(0.0, 2.0 * param_scale, &peephole_f_c_);
+    RandUniform(0.0, 2.0 * param_scale, &peephole_o_c_);
 
     // init buffers for gradient,
     w_gifo_x_corr_.Resize(4*ncell_, input_dim_, kSetZero);

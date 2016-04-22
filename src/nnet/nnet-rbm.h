@@ -99,14 +99,14 @@ class Rbm : public RbmBase {
   ComponentType GetType() const { return kRbm; }
 
   void InitData(std::istream &is) {
-    // define options
+    // define options,
     std::string vis_type;
     std::string hid_type;
     float vis_bias_mean = 0.0, vis_bias_range = 0.0,
           hid_bias_mean = 0.0, hid_bias_range = 0.0,
           param_stddev = 0.1;
     std::string vis_bias_cmvn_file;  // initialize biases to logit(p_active)
-    // parse config
+    // parse config,
     std::string token;
     while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token);
@@ -121,9 +121,7 @@ class Rbm : public RbmBase {
       else KALDI_ERR << "Unknown token " << token << " Typo in config?";
     }
 
-    //
-    // initialize
-    //
+    // Translate the 'node' types,
     if (vis_type == "bern" || vis_type == "Bernoulli") vis_type_ = RbmBase::Bernoulli;
     else if (vis_type == "gauss" || vis_type == "Gaussian") vis_type_ = RbmBase::Gaussian;
     else KALDI_ERR << "Wrong <VisibleType>" << vis_type;
@@ -131,48 +129,40 @@ class Rbm : public RbmBase {
     if (hid_type == "bern" || hid_type == "Bernoulli") hid_type_ = RbmBase::Bernoulli;
     else if (hid_type == "gauss" || hid_type == "Gaussian") hid_type_ = RbmBase::Gaussian;
     else KALDI_ERR << "Wrong <HiddenType>" << hid_type;
-    // visible-hidden connections
-    Matrix<BaseFloat> mat(output_dim_, input_dim_);
-    for (int32 r=0; r<output_dim_; r++) {
-      for (int32 c=0; c<input_dim_; c++) {
-        mat(r,c) = param_stddev * RandGauss();  // 0-mean Gauss with given std_dev
-      }
-    }
-    vis_hid_ = mat;
-    // hidden-bias
-    Vector<BaseFloat> vec(output_dim_);
-    for (int32 i=0; i<output_dim_; i++) {
-      // +/- 1/2*bias_range from bias_mean:
-      vec(i) = hid_bias_mean + (RandUniform() - 0.5) * hid_bias_range;
-    }
-    hid_bias_ = vec;
-    // visible-bias
+
+    //
+    // Initialize trainable parameters,
+    //
+    // visible-hidden connections,
+    vis_hid_.Resize(OutputDim(), InputDim());
+    RandGauss(0.0, param_stddev, &vis_hid_);
+    // hidden-bias,
+    hid_bias_.Resize(OutputDim());
+    RandUniform(hid_bias_mean, hid_bias_range, &hid_bias_);
+    // visible-bias,
     if (vis_bias_cmvn_file == "") {
-      Vector<BaseFloat> vec2(input_dim_);
-      for (int32 i=0; i<input_dim_; i++) {
-        // +/- 1/2*bias_range from bias_mean:
-        vec2(i) = vis_bias_mean + (RandUniform() - 0.5) * vis_bias_range;
-      }
-      vis_bias_ = vec2;
+      vis_bias_.Resize(InputDim());
+      RandUniform(vis_bias_mean, vis_bias_range, &vis_bias_);
     } else {
       KALDI_LOG << "Initializing from <VisibleBiasCmvnFilename> " << vis_bias_cmvn_file;
+      // Reading Nnet with 'global-cmvn' components,
       Nnet cmvn;
       cmvn.Read(vis_bias_cmvn_file);
-      // getting probablity that neuron fires:
-      Vector<BaseFloat> p;
+      KALDI_ASSERT(InputDim() == cmvn.InputDim());
+      // The parameters from <AddShift> correspond to 'negative' mean values,
+      Vector<BaseFloat> p(cmvn.InputDim());
       dynamic_cast<AddShift&>(cmvn.GetComponent(0)).GetParams(&p);
-      p.Scale(-1.0);
-      // compute logit:
+      p.Scale(-1.0);  // 'un-do' negation of mean values,
+      p.ApplyFloor(0.0001);
+      p.ApplyCeiling(0.9999);
+      // Getting the logit,      
       Vector<BaseFloat> logit_p(p.Dim());
       for (int32 d = 0; d < p.Dim(); d++) {
-        if (p(d) < 0.0001) p(d) = 0.0001;
-        if (p(d) > 0.9999) p(d) = 0.9999;
         logit_p(d) = Log(p(d)) - Log(1.0 - p(d));
       }
       vis_bias_ = logit_p;
       KALDI_ASSERT(vis_bias_.Dim() == InputDim());
     }
-    //
   }
 
 

@@ -125,23 +125,14 @@ class ConvolutionalComponent : public UpdatableComponent {
     //
 
     //
-    // Initialize parameters
+    // Initialize trainable parameters,
     //
-    Matrix<BaseFloat> mat(num_filters, filter_dim);
-    for (int32 r=0; r < num_filters; r++) {
-      for (int32 c=0; c < filter_dim; c++) {
-        mat(r,c) = param_stddev * RandGauss();  // 0-mean Gauss with given std_dev
-      }
-    }
-    filters_ = mat;
-    //
-    Vector<BaseFloat> vec(num_filters);
-    for (int32 i = 0; i < num_filters; i++) {
-      // +/- 1/2*bias_range from bias_mean:
-      vec(i) = bias_mean + (RandUniform() - 0.5) * bias_range;
-    }
-    bias_ = vec;
-    //
+    // Gaussian with given std_dev (mean = 0),
+    filters_.Resize(num_filters, filter_dim);
+    RandGauss(0.0, param_stddev, &filters_);
+    // Uniform,
+    bias_.Resize(num_filters);
+    RandUniform(bias_mean, bias_range, &bias_);
   }
 
   void ReadData(std::istream &is, bool binary) {

@@ -64,7 +64,7 @@ class AveragePooling2DComponent : public Component {
       else if (token == "<PoolXStep>") ReadBasicType(is, false, &pool_x_step_);
       else if (token == "<PoolYStep>") ReadBasicType(is, false, &pool_y_step_);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
-                     << " (FmapXLen|FmapYLen|PoolXLen|PoolYLen|PoolXStep|PoolYStep)";
+             << " (FmapXLen|FmapYLen|PoolXLen|PoolYLen|PoolXStep|PoolYStep)";
     }
     // check
     KALDI_ASSERT(fmap_x_len_ * fmap_y_len_ != 0);

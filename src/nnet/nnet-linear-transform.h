@@ -52,43 +52,42 @@ class LinearTransform : public UpdatableComponent {
   void InitData(std::istream &is) {
     // define options
     float param_stddev = 0.1;
-    float learn_rate_coef = 1.0;
     std::string read_matrix_file;
     // parse config
     std::string token;
     while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token);
       /**/ if (token == "<ParamStddev>") ReadBasicType(is, false, &param_stddev);
-      else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef);
       else if (token == "<ReadMatrix>") ReadToken(is, false, &read_matrix_file);
+      else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef_);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                      << " (ParamStddev|ReadMatrix|LearnRateCoef)";
     }
 
-    //
-    // initialize
-    //
     if (read_matrix_file != "") {  // load from file,
       bool binary;
       Input in(read_matrix_file, &binary);
       linearity_.Read(in.Stream(), binary);
       in.Close();
-      KALDI_LOG << "Loaded <LinearTransform> matrix from file : " << read_matrix_file;
-    } else {  // random initialization,
-      linearity_.Resize(output_dim_, input_dim_);
-      for (int32 r=0; r<output_dim_; r++) {
-        for (int32 c=0; c<input_dim_; c++) {
-          linearity_(r,c) = param_stddev * RandGauss();  // 0-mean Gauss with given std_dev
-        }
+      // check dims,
+      if (OutputDim() != linearity_.NumRows() || 
+          InputDim() != linearity_.NumCols()) {
+        KALDI_ERR << "Dimensionality mismatch! Expected matrix"
+                  << " r=" << OutputDim() << " c=" << InputDim()
+                  << ", loaded matrix " << read_matrix_file
+                  << " with r=" << linearity_.NumRows() 
+                  << " c=" << linearity_.NumCols();
       }
+      KALDI_LOG << "Loaded <LinearTransform> matrix from file : " << read_matrix_file;
+      return;
     }
-    //
-    learn_rate_coef_ = learn_rate_coef;
-    //
 
-    // check dims,
-    KALDI_ASSERT(linearity_.NumRows() == output_dim_);
-    KALDI_ASSERT(linearity_.NumCols() == input_dim_);
+    //
+    // Initialize trainable parameters,
+    //
+    // Gaussian with given std_dev (mean = 0),
+    linearity_.Resize(OutputDim(), InputDim());
+    RandGauss(0.0, param_stddev, &linearity_); 
   }
 
   void ReadData(std::istream &is, bool binary) {

@@ -47,8 +47,6 @@ class AffineTransform : public UpdatableComponent {
   void InitData(std::istream &is) {
     // define options
     float bias_mean = -2.0, bias_range = 2.0, param_stddev = 0.1;
-    float learn_rate_coef = 1.0, bias_learn_rate_coef = 1.0;
-    float max_norm = 0.0;
     // parse config
     std::string token;
     while (is >> std::ws, !is.eof()) {
@@ -56,36 +54,22 @@ class AffineTransform : public UpdatableComponent {
       /**/ if (token == "<ParamStddev>") ReadBasicType(is, false, &param_stddev);
       else if (token == "<BiasMean>")    ReadBasicType(is, false, &bias_mean);
       else if (token == "<BiasRange>")   ReadBasicType(is, false, &bias_range);
-      else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef);
-      else if (token == "<BiasLearnRateCoef>") ReadBasicType(is, false, &bias_learn_rate_coef);
-      else if (token == "<MaxNorm>") ReadBasicType(is, false, &max_norm);
+      else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef_);
+      else if (token == "<BiasLearnRateCoef>") ReadBasicType(is, false, &bias_learn_rate_coef_);
+      else if (token == "<MaxNorm>") ReadBasicType(is, false, &max_norm_);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                      << " (ParamStddev|BiasMean|BiasRange|LearnRateCoef|BiasLearnRateCoef)";
     }
 
     //
-    // initialize
+    // Initialize trainable parameters,
     //
-    Matrix<BaseFloat> mat(output_dim_, input_dim_);
-    for (int32 r = 0; r < output_dim_; r++) {
-      for (int32 c = 0; c < input_dim_; c++) {
-        // 0-mean Gauss with given std_dev,
-        mat(r, c) = param_stddev * RandGauss();
-      }
-    }
-    linearity_ = mat;
-    //
-    Vector<BaseFloat> vec(output_dim_);
-    for (int32 i = 0; i < output_dim_; i++) {
-      // +/- 1/2*bias_range from bias_mean,
-      vec(i) = bias_mean + (RandUniform() - 0.5) * bias_range;
-    }
-    bias_ = vec;
-    //
-    learn_rate_coef_ = learn_rate_coef;
-    bias_learn_rate_coef_ = bias_learn_rate_coef;
-    max_norm_ = max_norm;
-    //
+    // Gaussian with given std_dev (mean = 0),
+    linearity_.Resize(OutputDim(), InputDim());
+    RandGauss(0.0, param_stddev, &linearity_);
+    // Uniform,
+    bias_.Resize(OutputDim());
+    RandUniform(bias_mean, bias_range, &bias_);
   }
 
   void ReadData(std::istream &is, bool binary) {

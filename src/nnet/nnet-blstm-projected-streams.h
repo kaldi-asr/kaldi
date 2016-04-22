@@ -55,7 +55,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
     nrecur_(static_cast<int32>(output_dim/2)),
     nstream_(0),
     clip_gradient_(0.0)
-    //, dropout_rate_(0.0)
+    // , dropout_rate_(0.0)
   { }
 
   ~BLstmProjectedStreams()
@@ -69,22 +69,6 @@ class BLstmProjectedStreams : public UpdatableComponent {
     return kBLstmProjectedStreams;
   }
 
- private:
-  static void InitMatParam(float scale, CuMatrixBase<BaseFloat>* m) {
-    m->SetRandUniform();  // uniform in [0, 1]
-    m->Add(-0.5);         // uniform in [-0.5, 0.5]
-    m->Scale(2 * scale);  // uniform in [-scale, +scale]
-  }
-
-  static void InitVecParam(float scale, CuVectorBase<BaseFloat>* v) {
-    Vector<BaseFloat> tmp(v->Dim());
-    for (int i = 0; i < tmp.Dim(); i++) {
-      tmp(i) = (RandUniform() - 0.5) * 2 * scale;
-    }
-    v->CopyFromVec(tmp);
-  }
-
- public:
   /// set the utterance length used for parallel training
   void SetSeqLengths(const std::vector<int32> &sequence_lengths) {
         sequence_lengths_ = sequence_lengths;
@@ -113,24 +97,25 @@ class BLstmProjectedStreams : public UpdatableComponent {
     f_w_gifo_r_.Resize(4*ncell_, nrecur_, kUndefined);
     f_w_r_m_.Resize(nrecur_, ncell_, kUndefined);
 
-    InitMatParam(param_scale, &f_w_gifo_x_);
-    InitMatParam(param_scale, &f_w_gifo_r_);
-    InitMatParam(param_scale, &f_w_r_m_);
+    RandUniform(0.0, 2.0 * param_scale, &f_w_gifo_x_);
+    RandUniform(0.0, 2.0 * param_scale, &f_w_gifo_r_);
+    RandUniform(0.0, 2.0 * param_scale, &f_w_r_m_);
+
     // backward direction
     b_w_gifo_x_.Resize(4*ncell_, input_dim_, kUndefined);
     b_w_gifo_r_.Resize(4*ncell_, nrecur_, kUndefined);
     b_w_r_m_.Resize(nrecur_, ncell_, kUndefined);
-
-    InitMatParam(param_scale, &b_w_gifo_x_);
-    InitMatParam(param_scale, &b_w_gifo_r_);
-    InitMatParam(param_scale, &b_w_r_m_);
+    
+    RandUniform(0.0, 2.0 * param_scale, &b_w_gifo_x_);
+    RandUniform(0.0, 2.0 * param_scale, &b_w_gifo_r_);
+    RandUniform(0.0, 2.0 * param_scale, &b_w_r_m_);
 
     // forward direction
     f_bias_.Resize(4*ncell_, kUndefined);
     // backward direction
     b_bias_.Resize(4*ncell_, kUndefined);
-    InitVecParam(param_scale, &f_bias_);
-    InitVecParam(param_scale, &b_bias_);
+    RandUniform(0.0, 2.0 * param_scale, &f_bias_);
+    RandUniform(0.0, 2.0 * param_scale, &b_bias_);
 
     // forward direction
     f_peephole_i_c_.Resize(ncell_, kUndefined);
@@ -141,16 +126,16 @@ class BLstmProjectedStreams : public UpdatableComponent {
     b_peephole_f_c_.Resize(ncell_, kUndefined);
     b_peephole_o_c_.Resize(ncell_, kUndefined);
 
-    InitVecParam(param_scale, &f_peephole_i_c_);
-    InitVecParam(param_scale, &f_peephole_f_c_);
-    InitVecParam(param_scale, &f_peephole_o_c_);
+    RandUniform(0.0, 2.0 * param_scale, &f_peephole_i_c_);
+    RandUniform(0.0, 2.0 * param_scale, &f_peephole_f_c_);
+    RandUniform(0.0, 2.0 * param_scale, &f_peephole_o_c_);
 
-    InitVecParam(param_scale, &b_peephole_i_c_);
-    InitVecParam(param_scale, &b_peephole_f_c_);
-    InitVecParam(param_scale, &b_peephole_o_c_);
+    RandUniform(0.0, 2.0 * param_scale, &b_peephole_i_c_);
+    RandUniform(0.0, 2.0 * param_scale, &b_peephole_f_c_);
+    RandUniform(0.0, 2.0 * param_scale, &b_peephole_o_c_);
 
-    // init delta buffers
-    // forward direction
+    // init delta buffers,
+    // forward direction,
     f_w_gifo_x_corr_.Resize(4*ncell_, input_dim_, kSetZero);
     f_w_gifo_r_corr_.Resize(4*ncell_, nrecur_, kSetZero);
     f_bias_corr_.Resize(4*ncell_, kSetZero);
@@ -193,9 +178,9 @@ class BLstmProjectedStreams : public UpdatableComponent {
           else if (token == "<ClipGradient>") ReadBasicType(is, binary, &clip_gradient_);
           else KALDI_ERR << "Unknown token: " << token;
           break;
-        //case 'D': ExpectToken(is, binary, "<DropoutRate>");
-        //  ReadBasicType(is, binary, &dropout_rate_);
-        //  break;
+        // case 'D': ExpectToken(is, binary, "<DropoutRate>");
+        //   ReadBasicType(is, binary, &dropout_rate_);
+        //   break;
         case 'L': ExpectToken(is, binary, "<LearnRateCoef>");
           ReadBasicType(is, binary, &learn_rate_coef_);
           break;
@@ -588,8 +573,10 @@ class BLstmProjectedStreams : public UpdatableComponent {
       "\n  B_DR  " + MomentStatistics(B_DR);
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+                    CuMatrixBase<BaseFloat> *out) {
     int DEBUG = 0;
+
     int32 nstream_ = sequence_lengths_.size();
     KALDI_ASSERT(in.NumRows() % nstream_ == 0);
     int32 T = in.NumRows() / nstream_;
@@ -803,14 +790,18 @@ class BLstmProjectedStreams : public UpdatableComponent {
     out->CopyFromMat(YR_FB.RowRange(1*S, T*S));
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
-              const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
+
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+                        const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff, 
+                        CuMatrixBase<BaseFloat> *in_diff) {
     int DEBUG = 0;
+
     // the number of sequences to be processed in parallel
     int32 nstream_ = sequence_lengths_.size();
     int32 T = in.NumRows() / nstream_;
     int32 S = nstream_;
-    // disassembling forward-pass forward-propagation buffer into different neurons,
+    // disassembling forward-pass forward-propagation buffer by neuron type,
     CuSubMatrix<BaseFloat> F_YG(f_propagate_buf_.ColRange(0*ncell_, ncell_));
     CuSubMatrix<BaseFloat> F_YI(f_propagate_buf_.ColRange(1*ncell_, ncell_));
     CuSubMatrix<BaseFloat> F_YF(f_propagate_buf_.ColRange(2*ncell_, ncell_));
@@ -823,7 +814,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
     // 0:dummy, [1,T] frames, T+1 backward pass history
     f_backpropagate_buf_.Resize((T+2)*S, 7 * ncell_ + nrecur_, kSetZero);
 
-    // disassembling forward-pass back-propagation buffer into different neurons,
+    // disassembling forward-pass back-propagation buffer by neuron type,
     CuSubMatrix<BaseFloat> F_DG(f_backpropagate_buf_.ColRange(0*ncell_, ncell_));
     CuSubMatrix<BaseFloat> F_DI(f_backpropagate_buf_.ColRange(1*ncell_, ncell_));
     CuSubMatrix<BaseFloat> F_DF(f_backpropagate_buf_.ColRange(2*ncell_, ncell_));
@@ -835,7 +826,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
 
     CuSubMatrix<BaseFloat> F_DGIFO(f_backpropagate_buf_.ColRange(0, 4*ncell_));
 
-    // projection layer to BLSTM output is not recurrent, so backprop it all in once
+    // projection layer to BLSTM output is not recurrent, backprop it all in once
     F_DR.RowRange(1*S, T*S).CopyFromMat(out_diff.ColRange(0, nrecur_));
 
     for (int t = T; t >= 1; t--) {
@@ -925,7 +916,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
       }
     }
 
-    // disassembling backward-pass forward-propagation buffer into different neurons,
+    // disassembling backward-pass forward-propagation buffer by neuron types,
     CuSubMatrix<BaseFloat> B_YG(b_propagate_buf_.ColRange(0*ncell_, ncell_));
     CuSubMatrix<BaseFloat> B_YI(b_propagate_buf_.ColRange(1*ncell_, ncell_));
     CuSubMatrix<BaseFloat> B_YF(b_propagate_buf_.ColRange(2*ncell_, ncell_));
@@ -938,7 +929,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
     // 0:dummy, [1,T] frames, T+1 backward pass history
     b_backpropagate_buf_.Resize((T+2)*S, 7 * ncell_ + nrecur_, kSetZero);
 
-    // disassembling backward-pass back-propagation buffer into different neurons,
+    // disassembling backward-pass back-propagation buffer by neuron types,
     CuSubMatrix<BaseFloat> B_DG(b_backpropagate_buf_.ColRange(0*ncell_, ncell_));
     CuSubMatrix<BaseFloat> B_DI(b_backpropagate_buf_.ColRange(1*ncell_, ncell_));
     CuSubMatrix<BaseFloat> B_DF(b_backpropagate_buf_.ColRange(2*ncell_, ncell_));
@@ -1011,7 +1002,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
       d_c.AddMatMatElements(1.0, B_DC.RowRange((t-1)*S, S), B_YF.RowRange((t-1)*S, S), 1.0);
       d_c.AddMatDiagVec(1.0, B_DI.RowRange((t-1)*S, S), kNoTrans, b_peephole_i_c_, 1.0);
       d_c.AddMatDiagVec(1.0, B_DF.RowRange((t-1)*S, S), kNoTrans, b_peephole_f_c_, 1.0);
-      d_c.AddMatDiagVec(1.0, d_o                     , kNoTrans, b_peephole_o_c_, 1.0);
+      d_c.AddMatDiagVec(1.0, d_o                      , kNoTrans, b_peephole_o_c_, 1.0);
 
       // f
       d_f.AddMatMatElements(1.0, d_c, B_YC.RowRange((t-1)*S, S), 0.0);
@@ -1048,7 +1039,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
     // backward pass dropout
     // if (dropout_rate_ != 0.0) {
     //  in_diff->MulElements(dropout_mask_);
-    //}
+    // }
 
     // calculate delta
     const BaseFloat mmt = opts_.momentum;
@@ -1158,7 +1149,8 @@ class BLstmProjectedStreams : public UpdatableComponent {
     }
   }
 
-  void Update(const CuMatrixBase<BaseFloat> &input, const CuMatrixBase<BaseFloat> &diff) {
+  void Update(const CuMatrixBase<BaseFloat> &input, 
+              const CuMatrixBase<BaseFloat> &diff) {
     const BaseFloat lr  = opts_.learn_rate;
     // forward direction update
     f_w_gifo_x_.AddMat(-lr * learn_rate_coef_, f_w_gifo_x_corr_);
@@ -1182,7 +1174,9 @@ class BLstmProjectedStreams : public UpdatableComponent {
 
     b_w_r_m_.AddMat(-lr * learn_rate_coef_, b_w_r_m_corr_);
 
-    /* For L2 regularization see "vanishing & exploding difficulties" in nnet-lstm-projected-streams.h */
+    /* For L2 regularization see "vanishing & exploding difficulties" 
+     * in nnet-lstm-projected-streams.h 
+     */
   }
 
  private:
@@ -1263,8 +1257,8 @@ class BLstmProjectedStreams : public UpdatableComponent {
   CuMatrix<BaseFloat> f_backpropagate_buf_;
   // backward direction
   CuMatrix<BaseFloat> b_backpropagate_buf_;
+};  // class BLstmProjectedStreams
 
-};
 }  // namespace nnet1
 }  // namespace kaldi
 

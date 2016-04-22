@@ -41,7 +41,6 @@ namespace nnet1 {
  * the formulas are implemented in descendant classes (AffineTransform,Sigmoid,Softmax,...).
  */
 class Component {
-
  /// Component type identification mechanism,
  public:
   /// Types of Components,
@@ -90,7 +89,8 @@ class Component {
     const char *value;
   };
 
-  /// The table with pairs of Component types and markers (defined in nnet-component.cc),
+  /// The table with pairs of Component types and markers 
+  /// (defined in nnet-component.cc),
   static const struct key_value kMarkerMap[];
 
   /// Converts component type to marker,
@@ -257,9 +257,13 @@ class UpdatableComponent : public Component {
  protected:
   /// Option-class with training hyper-parameters,
   NnetTrainOptions opts_;
-  /// Scalar applied to learning rate (for weight matrices, to be used in ::Update method),
+
+  /// Scalar applied to learning rate for weight matrices 
+  /// (to be used in ::Update method),
   BaseFloat learn_rate_coef_;
-  /// Scalar applied to learning rate (for bias, to be used in ::Update method),
+
+  /// Scalar applied to learning rate for bias 
+  /// (to be used in ::Update method),
   BaseFloat bias_learn_rate_coef_;
 };
 
@@ -286,32 +290,25 @@ inline void Component::Backpropagate(const CuMatrixBase<BaseFloat> &in,
                                      const CuMatrixBase<BaseFloat> &out,
                                      const CuMatrixBase<BaseFloat> &out_diff,
                                      CuMatrix<BaseFloat> *in_diff) {
-  // Check the dims
-  if (output_dim_ != out_diff.NumCols()) {
-    KALDI_ERR << "Non-matching output dims, component:" << output_dim_
-              << " data:" << out_diff.NumCols();
+  // Check the dims,
+  if (OutputDim() != out_diff.NumCols()) {
+    KALDI_ERR << "Non-matching dims! Component output dim " << OutputDim()
+              << ", the dim of output derivatives " << out_diff.NumCols();
   }
 
-  // Target buffer NULL : backpropagate only through components with nested nnets.
-  if (in_diff == NULL) {
-    if (GetType() == kParallelComponent ||
-        GetType() == kSentenceAveragingComponent) {
-      BackpropagateFnc(in, out, out_diff, NULL);
-    } else {
-      return;
-    }
-  } else {
-    // Allocate target buffer
-    in_diff->Resize(out_diff.NumRows(), input_dim_, kSetZero);  // reset
-    // Asserts on the dims
-    KALDI_ASSERT((in.NumRows() == out.NumRows()) &&
-                 (in.NumRows() == out_diff.NumRows()) &&
-                 (in.NumRows() == in_diff->NumRows()));
-    KALDI_ASSERT(in.NumCols() == in_diff->NumCols());
-    KALDI_ASSERT(out.NumCols() == out_diff.NumCols());
-    // Call the backprop implementation of the component
-    BackpropagateFnc(in, out, out_diff, in_diff);
-  }
+  int32 num_frames = out_diff.NumRows();
+  KALDI_ASSERT(num_frames == in.NumRows());
+  KALDI_ASSERT(num_frames == out.NumRows());
+
+  KALDI_ASSERT(InputDim() == in.NumCols());
+  KALDI_ASSERT(OutputDim() == out.NumCols());
+
+  // Allocate target buffer,
+  KALDI_ASSERT(in_diff != NULL);
+  in_diff->Resize(num_frames, InputDim(), kSetZero);  // reset,
+
+  // Call the 'virtual' backprop function,
+  BackpropagateFnc(in, out, out_diff, in_diff);
 }
 
 
