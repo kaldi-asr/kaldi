@@ -10,10 +10,9 @@ import argparse, glob, math, os, random, sys, warnings, copy, imp, ast
 train_lib = imp.load_source('ntl', 'steps/nnet3/nnet3_train_lib.py')
 
 class list_cyclic_iterator:
-  def __init__(self, list, random_seed = 0):
+  def __init__(self, list):
     self.list_index = 0
     self.list = list
-    random.seed(random_seed)
     random.shuffle(self.list)
 
   def next(self):
@@ -24,17 +23,28 @@ class list_cyclic_iterator:
 
 def GetArgs():
     # we add compulsary arguments as named arguments for readability
-    parser = argparse.ArgumentParser(description="Generate corrupted data"
-                                                 "for neural network training",
+    parser = argparse.ArgumentParser(description="Reverberate the data directory with an option "
+                                                 "to add isotropic and point source noiseis. "
+                                                 "This script only deals with single channel wave files. "
+                                                 "If multi-channel noise/rir/speech files are provided one "
+                                                 "of the channels will be randomly picked",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument("--rir-list-file", type=str, required = True, 
-                        help="RIR information file")
+                        help="RIR information file, the format of the file is "
+                        "--rir-id <string,compulsary> --room-id <string,compulsary> "
+                        "--receiver-position-id <string,optional> --source-position-id <string,optional> "
+                        "--rt-60 < <float,optional> --drr <float, optional> < location(support Kaldi IO strings) >")
     parser.add_argument("--noise-list-file", type=str, default = None,
-                        help="Noise information file")
+                        help="Noise information file, the format of the file is"
+                        "--noise-id <string,compulsary> --noise-type <choices = (isotropic, point source),compulsary> "
+                        "--bg-fg-type <choices=(background|foreground), default=background> "
+                        "--rir-file <str, compulsary if isotropic, should not be specified if point-source> "
+                        "< location=(support Kaldi IO strings) >")
     parser.add_argument("--num-replications", type=int, dest = "num_replica", default = 1,
                         help="Number of replicate to generated for the data")
-    parser.add_argument('--snrs', type=str, dest = "snr_string", default = '20:10:0', help='snrs to be used for corruption')
+    parser.add_argument('--foreground-snrs', type=str, dest = "foreground_snr_string", default = '20:10:0', help='snrs for foreground noises')
+    parser.add_argument('--background-snrs', type=str, dest = "background_snr_string", default = '20:10:0', help='snrs for background noises')
     parser.add_argument('--prefix', type=str, default = None, help='prefix for the id of the corrupted utterances')
     parser.add_argument("--speech-rvb-probability", type=float, default = 0.8,
                         help="Probability of reverberating the speech signal, e.g. 0 <= p <= 1")
@@ -42,6 +52,7 @@ def GetArgs():
                         help="Probability of adding point-source noises, e.g. 0 <= p <= 1")
     parser.add_argument("--max-noises-added", type=int, default = 2,
                         help="Maximum number of point-source noises could be added")
+    parser.add_argument('--random-seed', type=int, default=0, help='seed to be used in the randomization of impulese and noises')
     parser.add_argument("input_dir",
                         help="Input data directory")
     parser.add_argument("output_dir",
@@ -59,9 +70,6 @@ def CheckArgs(args):
         os.makedirs(args.output_dir)
 
     ## Check arguments.
-    if args.rir_list_file is None:
-        raise Exception("Rir information file must be provided")
-    
     if not os.path.isfile(args.rir_list_file):
         raise Exception(args.rir_list_file + "not found")
     
@@ -90,26 +98,25 @@ def ParseFileToDict(file, assert2fields = False, value_processor = None):
 
 
 # This is the major function to generate pipeline command for the corruption
-# The rir list would have the following format:
-# --rir-id <string,compulsary> --room-id <string,compulsary> --receiver-position-id <string,optional> --source-position-id <string,optional> --rt-60 < <float,optional> --drr <float, optional> < location(support Kaldi IO strings) >
-# The noise list would have the following format:
-# --noise-id <string,compulsary> --noise-type <choices = (isotropic, point source),compulsary> --bg-fg-type <choices=(background|foreground), default=background> --rir-file <str, compulsary if isotropic, should not be specified if point-source> < location=(support Kaldi IO strings) >
-def CorruptWav(wav_scp, durations, output_dir, room_list, noise_list, snr_string, num_replica, prefix, speech_rvb_probability, noise_adding_probability, max_noises_added):
-    rooms = list_cyclic_iterator(room_list, random_seed = 1)
+def CorruptWav(wav_scp, durations, output_dir, room_list, noise_list, foreground_snr_array, background_snr_array, num_replica, prefix, speech_rvb_probability, noise_adding_probability, max_noises_added):
+    rooms = list_cyclic_iterator(room_list)
     noises = None
     if len(noise_list) > 0:
-        noises = list_cyclic_iterator(noise_list, random_seed = 1)
-    snrs = list_cyclic_iterator(snr_string.split(':'))
+        noises = list_cyclic_iterator(noise_list)
+    foreground_snrs = list_cyclic_iterator(foreground_snr_array)
+    background_snrs = list_cyclic_iterator(background_snr_array)
     command_list = []
     for i in range(num_replica):
         keys = wav_scp.keys()
         keys.sort()
         for wav_id in keys:
             wav_pipe = wav_scp[wav_id]
-            wav_dur = durations[wav_id]
+            # check if it is really a pipe
+            if len(wav_pipe.split()) == 1:
+                wav_pipe = "cat {0} |".format(wav_pipe)
+            speech_dur = durations[wav_id]
             if prefix is not None:
                 wav_id = prefix + str(i) + "_" + wav_id
-            command = "{0} {1} wav-reverberate".format(wav_id, wav_pipe)
 
             # pick the room
             room = rooms.next()
@@ -124,25 +131,31 @@ def CorruptWav(wav_scp, durations, output_dir, room_list, noise_list, snr_string
                 # add the corresponding isotropic noise if there is any
                 if len(speech_rir.iso_noise_list) > 0:
                     isotropic_noise = speech_rir.iso_noise_list[random.randint(0,len(speech_rir.iso_noise_list)-1)]
-                    noises_added.append("{0}".format(isotropic_noise.noise_file_location))
-                    snrs_added.append("{0}".format(snrs.next()))
-                    start_times_added.append(round(random.random() * wav_dur, 2))
+                    # extend the isotropic noise to the length of the speech waveform
+                    noises_added.append("\"wav-reverberate --duration={1} {0} - |\" ".format(isotropic_noise.noise_file_location, speech_dur))
+                    snrs_added.append(background_snrs.next())
+                    start_times_added.append(0)
 
             if noises is not None and random.random() < noise_adding_probability:
                 for k in range(random.randint(1, max_noises_added)):
                     # pick the RIR to reverberate the point-source noise
                     noise = noises.next()
                     noise_rir = room['rir_list'][random.randint(0,len(room['rir_list'])-1)]
-                    start_times_added.append(round(random.random() * wav_dur, 2))
-                    noises_added.append("\"wav-reverberate --duration={2} --impulse-response={1} {0} - |\" ".format(noise.noise_file_location, noise_rir.rir_file_location, round(random.random()*(wav_dur-start_times_added[-1]), 2)))
-                    snrs_added.append("{0}".format(snrs.next()))
+                    if noise.bg_fg_type == "background": 
+                        start_times_added.append(0)
+                        noises_added.append("\"wav-reverberate --duration={2} --impulse-response={1} {0} - |\" ".format(noise.noise_file_location, noise_rir.rir_file_location, speech_dur))
+                        snrs_added.append(background_snrs.next())
+                    else:
+                        start_times_added.append(round(random.random() * speech_dur, 2))
+                        noises_added.append("\"wav-reverberate --impulse-response={1} {0} - |\" ".format(noise.noise_file_location, noise_rir.rir_file_location))
+                        snrs_added.append(foreground_snrs.next())
 
-            if len(noises_added) > 1:
+            if len(noises_added) > 0:
                 command_opts += "--additive-signals='{0}' ".format(','.join(noises_added))
-            if len(snrs_added) > 1:
-                command_opts += "--snrs='{0}' ".format(','.join(snrs_added))
-            if len(start_times_added) > 1:
-                command_opts += "--start-times='{0}' ".format(','.join(snrs_added))
+            if len(snrs_added) > 0:
+                command_opts += "--snrs='{0}' ".format(','.join(map(lambda x:str(x),snrs_added)))
+            if len(start_times_added) > 0:
+                command_opts += "--start-times='{0}' ".format(','.join(map(lambda x:str(x),start_times_added)))
             
             if command_opts == "":
                 command = "{0} {1}\n".format(wav_id, wav_pipe) 
@@ -156,52 +169,45 @@ def CorruptWav(wav_scp, durations, output_dir, room_list, noise_list, snr_string
     file_handle.close()
 
 
-# This function replicate the entries in files like text
-def ReplicateFileType1(input_file, output_file, num_replica, prefix):
+# This function replicate the entries in files like segments, utt2spk, text
+def AddPrefixToFields(input_file, output_file, num_replica, prefix, field = [0]):
     list = map(lambda x: x.strip(), open(input_file))
     f = open(output_file, "w")
     for i in range(num_replica):
         for line in list:
-            split1 = line.split()
-            if prefix is not None:
-                split1[0] = prefix + str(i) + "_" + split1[0]
-            print(" ".join(split1), file=f)
+            if len(line) > 0 and line[0] != ';':
+                split1 = line.split()
+                for j in field:
+                    if prefix is not None:
+                        split1[j] = prefix + str(i) + "_" + split1[j]
+                print(" ".join(split1), file=f)
+            else:
+                print(line, file=f)
     f.close()
 
 
-# This function replicate the entries in files like segments, utt2spk
-def ReplicateFileType2(input_file, output_file, num_replica, prefix):
-    list = map(lambda x: x.strip(), open(input_file))
-    f = open(output_file, "w")
-    for i in range(num_replica):
-        for line in list:
-            split1 = line.split()
-            if prefix is not None:
-                split1[0] = prefix + str(i) + "_" + split1[0]
-                split1[1] = prefix + str(i) + "_" + split1[1]
-            print(" ".join(split1), file=f)
-    f.close()
-
-
-def MakeCorruption(input_dir, output_dir, room_list, noise_list, snr_string, num_replica, prefix, speech_rvb_probability, noise_adding_probability, max_noises_added):
+def CreateReverberatedCopy(input_dir, output_dir, room_list, noise_list, foreground_snr_string, background_snr_string, num_replica, prefix, speech_rvb_probability, noise_adding_probability, max_noises_added):
     
     if not os.path.isfile(input_dir + "/reco2dur"):
         print("Getting the duration of the recordings...");
         train_lib.RunKaldiCommand("wav-to-duration --read-entire-file=true scp:{0}/wav.scp ark,t:{0}/reco2dur".format(input_dir))
     durations = ParseFileToDict(input_dir + "/reco2dur", value_processor = lambda x: float(x[0]))
     wav_scp = ParseFileToDict(input_dir + "/wav.scp", value_processor = lambda x: " ".join(x))
-    CorruptWav(wav_scp, durations, output_dir, room_list, noise_list, snr_string, num_replica, prefix, speech_rvb_probability, noise_adding_probability, max_noises_added)
+    foreground_snr_array = map(lambda x: float(x), foreground_snr_string.split(':'))
+    background_snr_array = map(lambda x: float(x), background_snr_string.split(':'))
 
-    ReplicateFileType2(input_dir + "/utt2spk", output_dir + "/utt2spk", num_replica, prefix)
+    CorruptWav(wav_scp, durations, output_dir, room_list, noise_list, foreground_snr_array, background_snr_array, num_replica, prefix, speech_rvb_probability, noise_adding_probability, max_noises_added)
+
+    AddPrefixToFields(input_dir + "/utt2spk", output_dir + "/utt2spk", num_replica, prefix, field = [0,1])
     train_lib.RunKaldiCommand("utils/utt2spk_to_spk2utt.pl <{output_dir}/utt2spk >{output_dir}/spk2utt"
                     .format(output_dir = output_dir))
 
     if os.path.isfile(input_dir + "/text"):
-        ReplicateFileType1(input_dir + "/text", output_dir + "/text", num_replica, prefix)
+        AddPrefixToFields(input_dir + "/text", output_dir + "/text", num_replica, prefix, field =[0])
     if os.path.isfile(input_dir + "/segments"):
-        ReplicateFileType2(input_dir + "/segments", output_dir + "/segments", num_replica, prefix)
+        AddPrefixToFields(input_dir + "/segments", output_dir + "/segments", num_replica, prefix, field = [0,1])
     if os.path.isfile(input_dir + "/reco2file_and_channel"):
-        ReplicateFileType2(input_dir + "/reco2file_and_channel", output_dir + "/reco2file_and_channel", num_replica, prefix)
+        AddPrefixToFields(input_dir + "/reco2file_and_channel", output_dir + "/reco2file_and_channel", num_replica, prefix, field = [0,1])
 
     train_lib.RunKaldiCommand("utils/validate_data_dir.sh --no-feats {output_dir}"
                     .format(output_dir = output_dir))
@@ -247,7 +253,7 @@ def ParseNoiseList(rir_list, noise_list_file):
     noise_parser = argparse.ArgumentParser()
     noise_parser.add_argument('--noise-id', type=str, required=True, help='noise id')
     noise_parser.add_argument('--noise-type', type=str, required=True, help='the type of noise; i.e. isotropic or point-source', choices = ["isotropic", "point-source"])
-    noise_parser.add_argument('--bg-fg-type', type=str, default="background", help='background or foregroun noise', choices = ["background", "foreground"])
+    noise_parser.add_argument('--bg-fg-type', type=str, default="background", help='background or foreground noise', choices = ["background", "foreground"])
     noise_parser.add_argument('--rir-file', type=str, default=None, help='compulsary if isotropic, should not be specified if point-source')
     noise_parser.add_argument('noise_file_location', type=str, help='noise file location')
 
@@ -264,7 +270,6 @@ def ParseNoiseList(rir_list, noise_list_file):
                 for j in range(len(rir_list)):
                     if noise.rir_file == rir_list[j].rir_file_location:
                         id = j
-                        print(noise.rir_file)
                         rir_list[id].iso_noise_list.append(noise)
                         break;
                 if id == -1:
@@ -276,6 +281,7 @@ def ParseNoiseList(rir_list, noise_list_file):
 
 def Main():
     args = GetArgs()
+    random.seed(args.random_seed)
     rir_list = ParseRirList(args.rir_list_file)
     noise_list = []
     if args.noise_list_file is not None:
@@ -283,11 +289,12 @@ def Main():
         print("Number of point-source noises is {0}".format(len(noise_list)))
     room_list = MakeRoomList(rir_list)
 
-    MakeCorruption(input_dir = args.input_dir,
+    CreateReverberatedCopy(input_dir = args.input_dir,
                    output_dir = args.output_dir,
                    room_list = room_list,
                    noise_list = noise_list,
-                   snr_string = args.snr_string,
+                   foreground_snr_string = args.foreground_snr_string,
+                   background_snr_string = args.background_snr_string,
                    num_replica = args.num_replica,
                    prefix = args.prefix,
                    speech_rvb_probability = args.speech_rvb_probability,
