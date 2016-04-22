@@ -165,28 +165,17 @@ int main(int argc, char *argv[]) {
                      &posterior);
       // note: now, this_t == sum of posteriors.
 
-      int32 num_chunks = (mat.NumRows() - chunk_size + period) / period;
-      int32 final_chunk_size = mat.NumRows() - period * num_chunks;
-      bool imperfect_size = final_chunk_size != chunk_size - period;
-      Matrix<BaseFloat> ivectors(num_chunks + int32(imperfect_size), extractor.IvectorDim());
+      int32 num_chunks = ceil((mat.NumRows() - chunk_size + period) / static_cast<BaseFloat>(period));
+      Matrix<BaseFloat> ivectors(num_chunks, extractor.IvectorDim());
       for (int32 i = 0; i < num_chunks; i++) {
         Vector<BaseFloat> ivector(extractor.IvectorDim());
-        SubMatrix<BaseFloat> sub_mat(mat, i * period, chunk_size, 0, mat.NumCols());
+        int32 window = std::min(chunk_size, mat.NumRows() - i * period);
+        SubMatrix<BaseFloat> sub_mat(mat, i * period, window, 0, mat.NumCols());
         IvectorExtract(extractor, utt, Matrix<BaseFloat>(sub_mat),
 		       std::vector<std::vector<std::pair<int32, BaseFloat> > >
-		       (&posterior[i * period], &posterior[i * period + chunk_size]),
+		       (&posterior[i * period], &posterior[i * period + window]),
       		       &ivector, auxf_ptr);
         ivectors.CopyRowFromVec(ivector, i);
-      }
-      // Handle the final chunk of irregular size
-      if (imperfect_size) {
-        Vector<BaseFloat> ivector(extractor.IvectorDim());
-        SubMatrix<BaseFloat> sub_mat(mat, num_chunks * period, final_chunk_size, 0, mat.NumCols());
-        IvectorExtract(extractor, utt, Matrix<BaseFloat>(sub_mat),
-         	       std::vector<std::vector<std::pair<int32, BaseFloat> > >
-         	       (&posterior[num_chunks * period], &posterior[num_chunks * period + final_chunk_size]),
-        	       &ivector, auxf_ptr);
-        ivectors.CopyRowFromVec(ivector, num_chunks);
       }
       ivectors_writer.Write(utt, ivectors);
 
