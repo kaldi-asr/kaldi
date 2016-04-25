@@ -38,7 +38,6 @@ export PATH=${PATH}:$BEAMFORMIT
 set -e
 set -u
 set -o pipefail
-#set -x
 
 mkdir -p $odir
 mkdir -p $wdir/log

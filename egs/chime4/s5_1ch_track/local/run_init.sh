@@ -39,7 +39,6 @@ wsj0_data=$chime4_data/data/WSJ0 # directory of WSJ0 in Chime4. You can also spe
 set -e
 set -u
 set -o pipefail
-set -x
 
 if [ $stage -le 0 ]; then
   # process for clean speech and making LMs etc. from original WSJ0

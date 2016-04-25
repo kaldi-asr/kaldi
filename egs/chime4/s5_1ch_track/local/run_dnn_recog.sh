@@ -40,7 +40,6 @@ mdir=$2
 set -e
 set -u
 set -o pipefail
-set -x
 
 # check data/loca/data
 if [ ! -d $mdir/data/local/data ]; then

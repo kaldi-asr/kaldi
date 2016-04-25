@@ -37,7 +37,6 @@ enhan=$1
 set -e
 set -u
 set -o pipefail
-set -x
 
 # check whether run_init is executed
 if [ ! -d data/lang ]; then
