@@ -21,7 +21,6 @@ flatstart=false
 set -e
 set -u
 set -o pipefail
-set -x
 
 #####check data and model paths################
 # Set a main root directory of the CHiME4 data
