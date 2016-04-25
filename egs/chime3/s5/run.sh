@@ -20,7 +20,6 @@ stage=0 # resume training with --stage=N
 set -e
 set -u
 set -o pipefail
-set -x
 
 # You can execute run_init.sh only "once"
 # This creates LMs, basic task files, basic models,
