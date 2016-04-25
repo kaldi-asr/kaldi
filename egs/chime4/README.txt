@@ -6,6 +6,6 @@ available for testing (i.e., separate 1, 2 and 6 channel tracks).
 
 See http://spandh.dcs.shef.ac.uk/chime_challenge/ for more detailed information.
 
-    s5_1ch_track: 1 channel track
-    s5_2ch_track: 2 channel track
-    s5_6ch_track: 6 channel track
+    s5_1ch: 1 channel track
+    s5_2ch: 2 channel track
+    s5_6ch: 6 channel track
