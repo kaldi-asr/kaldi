@@ -1,4 +1,4 @@
-This is a kaldi recip for the 4th CHiME Speech Separation and Recognition Challenge (CHiME-4). The
+This is a kaldi recipe for the 4th CHiME Speech Separation and Recognition Challenge (CHiME-4). The
 challenge revisits the datasets originally recorded for CHiME-3, i.e., Wall Street Journal corpus sentences
 spoken by talkers situated in challenging noisy environments recorded using a 6-channel tablet based
 microphone array. CHiME-4 increases the level of difficulty by constraining the number of microphones

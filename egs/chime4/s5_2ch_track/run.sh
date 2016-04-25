@@ -28,7 +28,7 @@ set -x
 # If you use scripts distributed in the CHiME4 package,
 chime4_data=`pwd`/../..
 # Otherwise, please specify it, e.g.,
-chime4_data=/db/laputa1/data/processed/public/CHiME4
+chime4_data=/db/laputa1/data/original/public/CHiME4
 if [ ! -d $chime4_data ]; then
   echo "$chime4_data does not exist. Please specify chime4 data root correctly" && exit 1
 fi
