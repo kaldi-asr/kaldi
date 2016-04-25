@@ -12,8 +12,8 @@ cmd=run.pl
 . utils/parse_options.sh || exit 1;
 
 if [ $# != 2 ]; then
-   echo "Wrong #arguments ($#, expected 2)"
-   echo "Usage: local/chime3_beamform.sh [options] <wav-in-dir> <wav-out-dir>"
+   echo "Wrong #arguments ($#, expected 3)"
+   echo "Usage: local/run_beamform_2ch_track.sh [options] <wav-in-dir> <wav-out-dir>"
    echo "main options (for others, see top of script file)"
    echo "  --nj <nj>                                # number of parallel jobs"
    echo "  --cmd <cmd>                              # Command to run in parallel with"
@@ -22,7 +22,8 @@ fi
 
 sdir=$1
 odir=$2
-wdir=data/local/beamforming
+
+wdir=data/beamforming_2ch_track
 
 if [ -z $BEAMFORMIT ] ; then
   export BEAMFORMIT=$KALDI_ROOT/tools/BeamformIt
@@ -39,29 +40,17 @@ set -o pipefail
 mkdir -p $odir
 mkdir -p $wdir/log
 
-# we use the following channel signals, and remove 2nd channel signal, which located on the back of
-# tablet, and behaves very different from the other front channel signals.
-bmf="1 3 4 5 6"
-echo "Will use the following channels: $bmf"
-# number of channels
-numch=`echo $bmf | tr ' ' '\n' | wc -l`
-echo "the number of channels: $numch"
+allwavs=`find $sdir/ | grep "\.wav" | tr ' ' '\n' | awk -F '/' '{print $(NF-1)"/"$NF}'`
 
 # wavfiles.list can be used as the name of the output files
 output_wavfiles=$wdir/wavfiles.list
-find $sdir/*{simu,real} | grep CH1.wav \
-  | awk -F '/' '{print $(NF-1) "/" $NF}' | sed -e "s/\.CH1\.wav//" | sort > $output_wavfiles
+echo $allwavs | tr ' ' '\n' | awk -F '.' '{print $1}' | sort | uniq > $output_wavfiles
 
-# this is an input file list of the microphones
-# format: 1st_wav 2nd_wav ... nth_wav
-input_arrays=$wdir/channels_$numch
-for x in `cat $output_wavfiles`; do
-  echo -n "$x"
-  for ch in $bmf; do
-    echo -n " $x.CH$ch.wav"
-  done
-  echo ""
-done > $input_arrays
+# channel list
+input_arrays=$wdir/channels
+echo $allwavs | tr ' ' '\n' | sort | awk 'NR%2==1' > $wdir/channels.1st
+echo $allwavs | tr ' ' '\n' | sort | awk 'NR%2==0' > $wdir/channels.2nd
+paste -d" " $output_wavfiles $wdir/channels.1st $wdir/channels.2nd > $input_arrays
 
 # split the list for parallel processing
 split_wavfiles=""
@@ -76,7 +65,7 @@ for n in `seq $nj`; do
 cat << EOF > $wdir/log/beamform.$n.sh
 while read line; do
   $BEAMFORMIT/BeamformIt -s \$line -c $input_arrays \
-    --config_file `pwd`/conf/ami.cfg \
+    --config_file `pwd`/conf/chime4.cfg \
     --source_dir $sdir \
     --result_dir $odir
 done < $output_wavfiles.$n

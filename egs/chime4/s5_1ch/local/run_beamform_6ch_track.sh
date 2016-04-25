@@ -8,21 +8,24 @@
 # Config:
 nj=10
 cmd=run.pl
+bmf="1 3 4 5 6"
+eval_flag=false # make it true when the evaluation data are released
 
 . utils/parse_options.sh || exit 1;
 
 if [ $# != 2 ]; then
    echo "Wrong #arguments ($#, expected 2)"
-   echo "Usage: local/chime3_beamform.sh [options] <wav-in-dir> <wav-out-dir>"
+   echo "Usage: local/run_beamform_6ch_track.sh [options] <wav-in-dir> <wav-out-dir>"
    echo "main options (for others, see top of script file)"
    echo "  --nj <nj>                                # number of parallel jobs"
    echo "  --cmd <cmd>                              # Command to run in parallel with"
+   echo "  --bmf \"1 3 4 5 6\"                      # microphones used for beamforming (2th mic is omitted in default)"
    exit 1;
 fi
 
 sdir=$1
 odir=$2
-wdir=data/local/beamforming
+wdir=data/beamforming_`echo $bmf | tr ' ' '_'`
 
 if [ -z $BEAMFORMIT ] ; then
   export BEAMFORMIT=$KALDI_ROOT/tools/BeamformIt
@@ -39,18 +42,21 @@ set -o pipefail
 mkdir -p $odir
 mkdir -p $wdir/log
 
-# we use the following channel signals, and remove 2nd channel signal, which located on the back of
-# tablet, and behaves very different from the other front channel signals.
-bmf="1 3 4 5 6"
 echo "Will use the following channels: $bmf"
 # number of channels
 numch=`echo $bmf | tr ' ' '\n' | wc -l`
 echo "the number of channels: $numch"
 
 # wavfiles.list can be used as the name of the output files
+# we only process dev and eval waves
 output_wavfiles=$wdir/wavfiles.list
-find $sdir/*{simu,real} | grep CH1.wav \
-  | awk -F '/' '{print $(NF-1) "/" $NF}' | sed -e "s/\.CH1\.wav//" | sort > $output_wavfiles
+if $eval_flag; then
+  find $sdir/{dt,et}*{simu,real}/ | grep CH1.wav \
+    | awk -F '/' '{print $(NF-1) "/" $NF}' | sed -e "s/\.CH1\.wav//" | sort > $output_wavfiles
+else
+  find $sdir/dt*{simu,real}/ | grep CH1.wav \
+    | awk -F '/' '{print $(NF-1) "/" $NF}' | sed -e "s/\.CH1\.wav//" | sort > $output_wavfiles
+fi
 
 # this is an input file list of the microphones
 # format: 1st_wav 2nd_wav ... nth_wav
@@ -76,7 +82,7 @@ for n in `seq $nj`; do
 cat << EOF > $wdir/log/beamform.$n.sh
 while read line; do
   $BEAMFORMIT/BeamformIt -s \$line -c $input_arrays \
-    --config_file `pwd`/conf/ami.cfg \
+    --config_file `pwd`/conf/chime4.cfg \
     --source_dir $sdir \
     --result_dir $odir
 done < $output_wavfiles.$n
