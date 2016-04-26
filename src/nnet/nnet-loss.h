@@ -61,8 +61,14 @@ class LossItf {
 
 class Xent : public LossItf {
  public:
-  Xent() : frames_progress_(0.0), xentropy_progress_(0.0), entropy_progress_(0.0) { }
-  ~Xent() { }
+  Xent() : 
+    frames_progress_(0.0), 
+    xentropy_progress_(0.0), 
+    entropy_progress_(0.0) 
+  { }
+
+  ~Xent() 
+  { }
 
   /// Evaluate cross entropy using target-matrix (supports soft labels),
   void Eval(const VectorBase<BaseFloat> &frame_weights,

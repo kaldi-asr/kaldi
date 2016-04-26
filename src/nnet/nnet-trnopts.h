@@ -79,8 +79,10 @@ struct RbmTrainOptions {
   void Register(OptionsItf *opts) {
     opts->Register("learn-rate", &learn_rate, "Learning rate");
 
-    opts->Register("momentum", &momentum, "Initial momentum for linear scheduling");
-    opts->Register("momentum-max", &momentum_max, "Final momentum for linear scheduling");
+    opts->Register("momentum", &momentum, 
+                   "Initial momentum for linear scheduling");
+    opts->Register("momentum-max", &momentum_max, 
+                   "Final momentum for linear scheduling");
     opts->Register("momentum-steps", &momentum_steps,
                    "Number of steps of linear momentum scheduling");
     opts->Register("momentum-step-period", &momentum_step_period,
@@ -100,10 +102,9 @@ struct RbmTrainOptions {
        << "l2_penalty" << opts.l2_penalty;
     return os;
   }
-};
+};  // struct RbmTrainOptions
 
-
-}//namespace nnet1
-}//namespace kaldi
+}  // namespace nnet1
+}  // namespace kaldi
 
 #endif  // KALDI_NNET_NNET_TRNOPTS_H_

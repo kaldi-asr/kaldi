@@ -41,14 +41,23 @@ namespace nnet1 {
  */
 class SimpleSentenceAveragingComponent : public Component {
  public:
-  SimpleSentenceAveragingComponent(int32 dim_in, int32 dim_out)
-    : Component(dim_in, dim_out), gradient_boost_(100.0), shrinkage_(0.0), only_summing_(false)
+  SimpleSentenceAveragingComponent(int32 dim_in, int32 dim_out) :
+    Component(dim_in, dim_out), 
+    gradient_boost_(100.0), 
+    shrinkage_(0.0), 
+    only_summing_(false)
   { }
+
   ~SimpleSentenceAveragingComponent()
   { }
 
-  Component* Copy() const { return new SimpleSentenceAveragingComponent(*this); }
-  ComponentType GetType() const { return kSimpleSentenceAveragingComponent; }
+  Component* Copy() const { 
+    return new SimpleSentenceAveragingComponent(*this); 
+  }
+
+  ComponentType GetType() const { 
+    return kSimpleSentenceAveragingComponent; 
+  }
 
   void InitData(std::istream &is) {
     // parse config
@@ -112,7 +121,8 @@ class SimpleSentenceAveragingComponent : public Component {
     return Info();
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+                    CuMatrixBase<BaseFloat> *out) {
     // get the average row-vector,
     average_row_.Resize(InputDim());
     if (only_summing_) {
@@ -124,14 +134,17 @@ class SimpleSentenceAveragingComponent : public Component {
     out->AddVecToRows(1.0, average_row_, 0.0);
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
-    // While averaging, a single frame from input influenced all frames on the output,
-    // hence the derivative w.r.t. single input frame is a sum of the output derivatives.
-    // (while scaling by averaging constant 1/Nframes).
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+                        const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff, 
+                        CuMatrixBase<BaseFloat> *in_diff) {
+    // When averaging, a single frame from input influenced all the frames 
+    // on the output. So the derivative w.r.t. single input frame is a sum 
+    // of the output derivatives, scaled by the averaging constant 1/K.
     //
-    // In fact all the input frames influenced all the output frames,
-    // so the derivarive is the same for all the input frames.
+    // In the same time all the input frames of the average influenced 
+    // all the output frames. So the loss derivarive is same for all 
+    // the input frames coming to the averaging.
     //
     // getting the average output diff,
     average_diff_.Resize(OutputDim());
@@ -145,14 +158,22 @@ class SimpleSentenceAveragingComponent : public Component {
   }
 
  private:
-  CuVector<BaseFloat> average_row_;  ///< auxiliary buffer for forward propagation,
-  CuVector<BaseFloat> average_diff_;  ///< auxiliary buffer for backpropagation,
-  BaseFloat gradient_boost_;  ///< increase of gradient applied in backpropagation,
-  BaseFloat shrinkage_;  ///< Number of 'imaginary' zero-vectors in the average
-                        ///< (shrinks the average vector for shorter sentences),
-  bool only_summing_;   ///< Removes normalization term from arithmetic mean (when true).
-};
+  /// Auxiliary buffer for forward propagation (for average vector),
+  CuVector<BaseFloat> average_row_; 
+  
+  /// Auxiliary buffer for back-propagation (for average vector),
+  CuVector<BaseFloat> average_diff_;  
 
+  /// Scalar applied on gradient in backpropagation,
+  BaseFloat gradient_boost_;  
+
+  /// Number of 'imaginary' zero-vectors in the average
+  /// (shrinks the average vector for short sentences),
+  BaseFloat shrinkage_; 
+  
+  /// Removes normalization term from arithmetic mean (when true).
+  bool only_summing_;   
+};
 
 
 /** Deprecated!!!, keeping it as Katka Zmolikova used it in JSALT 2015 */
@@ -181,7 +202,7 @@ class SentenceAveragingComponent : public UpdatableComponent {
       else KALDI_ERR << "Unknown token " << token << " Typo in config?";
     }
     // initialize (read already prepared nnet from file)
-    KALDI_ASSERT((nested_nnet_proto != "") ^ (nested_nnet_filename != ""));  //xor
+    KALDI_ASSERT((nested_nnet_proto != "") ^ (nested_nnet_filename != ""));  // xor,
     if (nested_nnet_filename != "") nnet_.Read(nested_nnet_filename);
     if (nested_nnet_proto != "") nnet_.Init(nested_nnet_proto);
     // check dims of nested nnet
@@ -224,12 +245,14 @@ class SentenceAveragingComponent : public UpdatableComponent {
     return std::string("nested_gradient {\n") + nnet_.InfoGradient() + "}\n";
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+                    CuMatrixBase<BaseFloat> *out) {
     // Get NN output
     CuMatrix<BaseFloat> out_nnet;
     nnet_.Propagate(in, &out_nnet);
     // Get the average row (averaging over the time axis):
-    // averaging corresponds to extraction of constant vector code for single sentence,
+    // averaging corresponds to extraction of a 'constant vector' 
+    // code for single sentence,
     int32 num_inputs = in.NumCols(),
       nnet_outputs = nnet_.OutputDim(),
       num_frames = out_nnet.NumRows();
@@ -237,8 +260,8 @@ class SentenceAveragingComponent : public UpdatableComponent {
     CuVector<BaseFloat> average_row(nnet_outputs);
     average_row.AddRowSumMat(1.0/num_frames, out_nnet, 0.0);
     // Forwarding sentence codes along with input features
-    out->ColRange(0,nnet_outputs).AddVecToRows(1.0, average_row, 0.0);
-    out->ColRange(nnet_outputs,num_inputs).CopyFromMat(in);
+    out->ColRange(0, nnet_outputs).AddVecToRows(1.0, average_row, 0.0);
+    out->ColRange(nnet_outputs, num_inputs).CopyFromMat(in);
   }
 
   void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
@@ -248,12 +271,12 @@ class SentenceAveragingComponent : public UpdatableComponent {
     if (in_diff == NULL) return;
     int32 num_inputs = in.NumCols(),
       nnet_outputs = nnet_.OutputDim();
-    in_diff->CopyFromMat(out_diff.ColRange(nnet_outputs,num_inputs));
+    in_diff->CopyFromMat(out_diff.ColRange(nnet_outputs, num_inputs));
   }
 
   void Update(const CuMatrixBase<BaseFloat> &input,
               const CuMatrixBase<BaseFloat> &diff) {
-
+    // get useful dims,
     int32 nnet_outputs = nnet_.OutputDim(),
       num_frames = diff.NumRows();
     // Passing the derivative into the nested network. The loss derivative is averaged:
@@ -264,7 +287,7 @@ class SentenceAveragingComponent : public UpdatableComponent {
     // In fact all the frames from nested network influenced all the input frames to main nnet,
     // so the loss derivarive w.r.t. nested network output is same for all frames in sentence.
     CuVector<BaseFloat> average_diff(nnet_outputs);
-    average_diff.AddRowSumMat(1.0/num_frames, diff.ColRange(0,nnet_outputs), 0.0);
+    average_diff.AddRowSumMat(1.0 / num_frames, diff.ColRange(0, nnet_outputs), 0.0);
     CuMatrix<BaseFloat> nnet_out_diff(num_frames, nnet_outputs);
     nnet_out_diff.AddVecToRows(1.0, average_diff, 0.0);
     //

@@ -58,8 +58,8 @@ class KlHmm : public Component {
       // Copy the CudaMatrix to a Matrix
       Matrix<BaseFloat> in_tmp(in.NumRows(), in.NumCols());
       in.CopyToMat(&in_tmp);
-      // Just check if there are posteriors in the Matrix (just check the first row)
-      BaseFloat post_sum=in_tmp.Row(0).Sum();
+      // Check if there are posteriors in the Matrix (check on first row),
+      BaseFloat post_sum = in_tmp.Row(0).Sum();
       KALDI_ASSERT(ApproxEqual(post_sum, 1.0));
       // Get a tmp Matrix of the stats
       Matrix<BaseFloat> kl_stats_tmp(kl_stats_);
@@ -73,15 +73,15 @@ class KlHmm : public Component {
       row_sum.InvertElements();
       // Normalizing the statistics vector
       kl_stats_tmp.MulRowsVec(row_sum);
-      //Apply floor before inversion and logarithm
+      // Apply floor before inversion and logarithm
       kl_stats_tmp.ApplyFloor(1e-20);
-      //Apply invesion
+      // Apply invesion
       kl_stats_tmp.InvertElements();
-      //Apply logarithm
+      // Apply logarithm
       kl_stats_tmp.ApplyLog();
-      //Inverted and logged values
-      kl_inv_q_.Resize(kl_stats_.NumRows(),kl_stats_.NumCols());
-      //Holds now log (1/Q)
+      // Inverted and logged values
+      kl_inv_q_.Resize(kl_stats_.NumRows(), kl_stats_.NumCols());
+      // Holds now log (1/Q)
       kl_inv_q_.CopyFromMat(kl_stats_tmp);
     }
     // Get the logarithm of the features for the Entropy calculation
@@ -98,7 +98,7 @@ class KlHmm : public Component {
     tmp_entropy.MulElements(log_in);
     // Getting the entropy (sum P*logP)
     CuVector<BaseFloat> in_entropy(in.NumRows(), kSetZero);
-    in_entropy.AddColSumMat(1,tmp_entropy);
+    in_entropy.AddColSumMat(1, tmp_entropy);
     // sum P*log (1/Q)
     out->AddMatMat(1, in, kNoTrans, kl_inv_q_, kTrans, 0);
     // (sum P*logP) + (sum P*log(1/Q)
@@ -132,19 +132,19 @@ class KlHmm : public Component {
     KALDI_ASSERT(mat.NumCols() == input_dim_);
     kl_stats_.Resize(mat.NumRows(), mat.NumCols());
     kl_stats_.CopyFromMat(mat);
-   }
+  }
 
-  /// Accumulate the statistics for KL-HMM paramter estimation
-  void Accumulate (const Matrix<BaseFloat> &posteriors,
-                   const std::vector<int32> &alignment) {
+  /// Accumulate the statistics for KL-HMM paramter estimation,
+  void Accumulate(const Matrix<BaseFloat> &posteriors,
+                  const std::vector<int32> &alignment) {
     KALDI_ASSERT(posteriors.NumRows() == alignment.size());
     KALDI_ASSERT(posteriors.NumCols() == kl_stats_.NumCols());
     int32 num_frames = alignment.size();
     for (int32 i = 0; i < num_frames; i++) {
-      //Convertin the float posterior into a double (to have higher precision during collection)
+      // Casting float posterior to double (fixing numerical issue),
       Vector<double> temp(posteriors.Row(i));
-      //Sum all the postiors associated with a particular state
-      kl_stats_.Row(alignment[i]).AddVec(1,temp);
+      // Sum the postiors grouped by states from the alignment,
+      kl_stats_.Row(alignment[i]).AddVec(1, temp);
     }
   }
 

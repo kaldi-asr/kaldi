@@ -226,21 +226,21 @@ class ConvolutionalComponent : public UpdatableComponent {
   void GetGradient(VectorBase<BaseFloat>* gradient) const {
     KALDI_ASSERT(gradient->Dim() == NumParams());
     int32 filters_num_elem = filters_.NumRows() * filters_.NumCols();
-    gradient->Range(0,filters_num_elem).CopyRowsFromMat(filters_);
+    gradient->Range(0, filters_num_elem).CopyRowsFromMat(filters_);
     gradient->Range(filters_num_elem, bias_.Dim()).CopyFromVec(bias_);
   }
 
   void GetParams(VectorBase<BaseFloat>* params) const {
     KALDI_ASSERT(params->Dim() == NumParams());
     int32 filters_num_elem = filters_.NumRows() * filters_.NumCols();
-    params->Range(0,filters_num_elem).CopyRowsFromMat(filters_);
+    params->Range(0, filters_num_elem).CopyRowsFromMat(filters_);
     params->Range(filters_num_elem, bias_.Dim()).CopyFromVec(bias_);
   }
 
   void SetParams(const VectorBase<BaseFloat>& params) {
     KALDI_ASSERT(params.Dim() == NumParams());
     int32 filters_num_elem = filters_.NumRows() * filters_.NumCols();
-    filters_.CopyRowsFromVec(params.Range(0,filters_num_elem));
+    filters_.CopyRowsFromVec(params.Range(0, filters_num_elem));
     bias_.CopyFromVec(params.Range(filters_num_elem, bias_.Dim()));
   }
 
@@ -271,8 +271,7 @@ class ConvolutionalComponent : public UpdatableComponent {
 
     // we will need the buffers
     if (vectorized_feature_patches_.NumRows() != num_frames) {
-      vectorized_feature_patches_.Resize(num_frames,
-                                         filter_dim * num_patches, kUndefined);
+      vectorized_feature_patches_.Resize(num_frames, filter_dim * num_patches, kUndefined);
       feature_patch_diffs_.Resize(num_frames, filter_dim * num_patches, kSetZero);
     }
 
@@ -289,11 +288,13 @@ class ConvolutionalComponent : public UpdatableComponent {
      *
      */
     // build-up a column selection map:
+    int32 index = 0;
     column_map_.resize(filter_dim * num_patches);
-    for (int32 p=0, index=0; p<num_patches; p++) {
-      for (int32 s=0; s<num_splice; s++) {
-          for (int32 d=0; d<patch_dim_; d++, index++) {
+    for (int32 p = 0; p < num_patches; p++) {
+      for (int32 s = 0; s < num_splice; s++) {
+        for (int32 d = 0; d < patch_dim_; d++) {
           column_map_[index] = p * patch_step_ + s * patch_stride_ + d;
+          index++;
         }
       }
     }
@@ -302,7 +303,7 @@ class ConvolutionalComponent : public UpdatableComponent {
     vectorized_feature_patches_.CopyCols(in, cu_column_map);
 
     // compute filter activations
-    for (int32 p=0; p<num_patches; p++) {
+    for (int32 p = 0; p < num_patches; p++) {
       CuSubMatrix<BaseFloat> tgt(out->ColRange(p * num_filters, num_filters));
       CuSubMatrix<BaseFloat> patch(vectorized_feature_patches_.ColRange(
                                    p * filter_dim, filter_dim));
@@ -380,7 +381,7 @@ class ConvolutionalComponent : public UpdatableComponent {
 
     // backpropagate to vector of matrices
     // (corresponding to position of a filter)
-    for (int32 p=0; p<num_patches; p++) {
+    for (int32 p = 0; p < num_patches; p++) {
       CuSubMatrix<BaseFloat> patch_diff(feature_patch_diffs_.ColRange(
                                         p * filter_dim, filter_dim));
       CuSubMatrix<BaseFloat> out_diff_patch(out_diff.ColRange(
@@ -417,7 +418,7 @@ class ConvolutionalComponent : public UpdatableComponent {
     filters_grad_.Resize(num_filters, filter_dim, kSetZero);  // reset
     bias_grad_.Resize(num_filters, kSetZero);  // reset
     // use all the patches
-    for (int32 p=0; p<num_patches; p++) {  // sum
+    for (int32 p = 0; p < num_patches; p++) {  // sum
       CuSubMatrix<BaseFloat> diff_patch(diff.ColRange(p * num_filters,
                                                       num_filters));
       CuSubMatrix<BaseFloat> patch(vectorized_feature_patches_.ColRange(
@@ -446,7 +447,6 @@ class ConvolutionalComponent : public UpdatableComponent {
       scl.InvertElements();
       filters_.MulRowsVec(scl);  // shink to sphere!
     }
-
   }
 
  private:

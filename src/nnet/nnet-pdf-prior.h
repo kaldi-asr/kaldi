@@ -49,7 +49,8 @@ struct PdfPriorOptions {
     opts->Register("prior-scale", &prior_scale,
                    "Scaling factor to be applied on pdf-log-priors");
     opts->Register("prior-floor", &prior_floor,
-                   "Flooring constatnt for prior probability (i.e. label rel. frequency)");
+                   "Flooring constatnt for prior probability "
+                   "(i.e. label rel. frequency)");
   }
 };
 

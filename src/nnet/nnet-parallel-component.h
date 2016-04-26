@@ -67,7 +67,7 @@ class ParallelComponent : public UpdatableComponent {
     while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token);
       /**/ if (token == "<NestedNnet>" || token == "<NestedNnetFilename>") {
-        while(!is.eof()) {
+        while (is >> std::ws, !is.eof()) {
           std::string file_or_end;
           ReadToken(is, false, &file_or_end);
           if (file_or_end == "</NestedNnet>" ||
@@ -75,7 +75,7 @@ class ParallelComponent : public UpdatableComponent {
           nested_nnet_filename.push_back(file_or_end);
         }
       } else if (token == "<NestedNnetProto>") {
-        while(!is.eof()) {
+        while (is >> std::ws, !is.eof()) {
           std::string file_or_end;
           ReadToken(is, false, &file_or_end);
           if (file_or_end == "</NestedNnetProto>") break;
@@ -90,7 +90,7 @@ class ParallelComponent : public UpdatableComponent {
                  (nested_nnet_filename.size() > 0));  // ^xor,
     // read nnets from files,
     if (nested_nnet_filename.size() > 0) {
-      for (int32 i=0; i<nested_nnet_filename.size(); i++) {
+      for (int32 i = 0; i < nested_nnet_filename.size(); i++) {
         Nnet nnet;
         nnet.Read(nested_nnet_filename[i]);
         nnet_.push_back(nnet);
@@ -100,7 +100,7 @@ class ParallelComponent : public UpdatableComponent {
     }
     // initialize nnets from prototypes,
     if (nested_nnet_proto.size() > 0) {
-      for (int32 i=0; i<nested_nnet_proto.size(); i++) {
+      for (int32 i = 0; i < nested_nnet_proto.size(); i++) {
         Nnet nnet;
         nnet.Init(nested_nnet_proto[i]);
         nnet_.push_back(nnet);
@@ -110,7 +110,7 @@ class ParallelComponent : public UpdatableComponent {
     }
     // check dim-sum of nested nnets,
     int32 nnet_input_sum = 0, nnet_output_sum = 0;
-    for (int32 i=0; i<nnet_.size(); i++) {
+    for (int32 i = 0; i < nnet_.size(); i++) {
       nnet_input_sum += nnet_[i].InputDim();
       nnet_output_sum += nnet_[i].OutputDim();
     }
@@ -123,7 +123,7 @@ class ParallelComponent : public UpdatableComponent {
     ExpectToken(is, binary, "<NestedNnetCount>");
     int32 nnet_count;
     ReadBasicType(is, binary, &nnet_count);
-    for (int32 i=0; i<nnet_count; i++) {
+    for (int32 i = 0; i < nnet_count; i++) {
       ExpectToken(is, binary, "<NestedNnet>");
       int32 dummy;
       ReadBasicType(is, binary, &dummy);
@@ -135,7 +135,7 @@ class ParallelComponent : public UpdatableComponent {
 
     // check dim-sum of nested nnets
     int32 nnet_input_sum = 0, nnet_output_sum = 0;
-    for (int32 i=0; i<nnet_.size(); i++) {
+    for (int32 i = 0; i < nnet_.size(); i++) {
       nnet_input_sum += nnet_[i].InputDim();
       nnet_output_sum += nnet_[i].OutputDim();
     }
@@ -150,7 +150,7 @@ class ParallelComponent : public UpdatableComponent {
     WriteToken(os, binary, "<NestedNnetCount>");
     WriteBasicType(os, binary, nnet_count);
     if (!binary) os << "\n";
-    for (int32 i=0; i<nnet_count; i++) {
+    for (int32 i = 0; i < nnet_count; i++) {
       WriteToken(os, binary, "<NestedNnet>");
       WriteBasicType(os, binary, i+1);
       if (!binary) os << "\n";
@@ -207,7 +207,7 @@ class ParallelComponent : public UpdatableComponent {
   std::string Info() const {
     std::ostringstream os;
     os << "\n";
-    for (int32 i=0; i<nnet_.size(); i++) {
+    for (int32 i = 0; i < nnet_.size(); i++) {
       os << "nested_network #" << i+1
          << " {\n" << nnet_[i].Info() << "}\n";
     }
@@ -218,7 +218,7 @@ class ParallelComponent : public UpdatableComponent {
 
   std::string InfoGradient() const {
     std::ostringstream os;
-    for (int32 i=0; i<nnet_.size(); i++) {
+    for (int32 i = 0; i < nnet_.size(); i++) {
       os << "nested_gradient #" << i+1
          << " {\n" << nnet_[i].InfoGradient() << "}\n";
     }
@@ -229,7 +229,7 @@ class ParallelComponent : public UpdatableComponent {
 
   std::string InfoPropagate() const {
     std::ostringstream os;
-    for (int32 i=0; i<nnet_.size(); i++) {
+    for (int32 i = 0; i < nnet_.size(); i++) {
       os << "nested_propagate #" << i+1
          << " {\n" << nnet_[i].InfoPropagate() << "}\n";
     }
@@ -238,7 +238,7 @@ class ParallelComponent : public UpdatableComponent {
 
   std::string InfoBackPropagate() const {
     std::ostringstream os;
-    for (int32 i=0; i<nnet_.size(); i++) {
+    for (int32 i = 0; i < nnet_.size(); i++) {
       os << "nested_backpropagate #" << i+1
          << "{\n" << nnet_[i].InfoBackPropagate() << "}\n";
     }
@@ -250,10 +250,14 @@ class ParallelComponent : public UpdatableComponent {
     // column-offsets for data buffers 'in,out',
     int32 input_offset = 0, output_offset = 0;
     // loop over nnets,
-    for (int32 i=0; i<nnet_.size(); i++) {
+    for (int32 i = 0; i < nnet_.size(); i++) {
       // get the data 'windows',
-      CuSubMatrix<BaseFloat> src(in.ColRange(input_offset, nnet_[i].InputDim()));
-      CuSubMatrix<BaseFloat> tgt(out->ColRange(output_offset, nnet_[i].OutputDim()));
+      CuSubMatrix<BaseFloat> src(
+        in.ColRange(input_offset, nnet_[i].InputDim())
+      );
+      CuSubMatrix<BaseFloat> tgt(
+        out->ColRange(output_offset, nnet_[i].OutputDim())
+      );
       // forward through auxiliary matrix, as 'Propagate' requires 'CuMatrix',
       CuMatrix<BaseFloat> tgt_aux;
       nnet_[i].Propagate(src, &tgt_aux);
@@ -271,10 +275,14 @@ class ParallelComponent : public UpdatableComponent {
     // column-offsets for data buffers 'in,out',
     int32 input_offset = 0, output_offset = 0;
     // loop over nnets,
-    for (int32 i=0; i<nnet_.size(); i++) {
+    for (int32 i = 0; i < nnet_.size(); i++) {
       // get the data 'windows',
-      CuSubMatrix<BaseFloat> src(out_diff.ColRange(output_offset, nnet_[i].OutputDim()));
-      CuSubMatrix<BaseFloat> tgt(in_diff->ColRange(input_offset, nnet_[i].InputDim()));
+      CuSubMatrix<BaseFloat> src(
+        out_diff.ColRange(output_offset, nnet_[i].OutputDim())
+      );
+      CuSubMatrix<BaseFloat> tgt(
+        in_diff->ColRange(input_offset, nnet_[i].InputDim())
+      );
       // ::Backpropagate through auxiliary matrix (CuMatrix in the interface),
       CuMatrix<BaseFloat> tgt_aux;
       nnet_[i].Backpropagate(src, &tgt_aux);
@@ -287,7 +295,7 @@ class ParallelComponent : public UpdatableComponent {
 
   void Update(const CuMatrixBase<BaseFloat> &input,
               const CuMatrixBase<BaseFloat> &diff) {
-    ;  // do nothing
+    { }  // do nothing
   }
 
   /**
@@ -295,7 +303,7 @@ class ParallelComponent : public UpdatableComponent {
    * which was UpdatableComponent::SetTrainOptions(...)
    */
   void SetTrainOptions(const NnetTrainOptions &opts) {
-    for (int32 i=0; i<nnet_.size(); i++) {
+    for (int32 i = 0; i < nnet_.size(); i++) {
       nnet_[i].SetTrainOptions(opts);
     }
   }
@@ -306,9 +314,9 @@ class ParallelComponent : public UpdatableComponent {
    */
   void SetLearnRateCoef(BaseFloat val) {
     // loop over nnets,
-    for (int32 i=0; i<nnet_.size(); i++) {
+    for (int32 i = 0; i < nnet_.size(); i++) {
       // loop over components,
-      for (int32 j=0; j<nnet_[i].NumComponents(); j++) {
+      for (int32 j = 0; j < nnet_[i].NumComponents(); j++) {
         if (nnet_[i].GetComponent(j).IsUpdatable()) {
           UpdatableComponent& comp =
             dynamic_cast<UpdatableComponent&>(nnet_[i].GetComponent(j));
@@ -325,9 +333,9 @@ class ParallelComponent : public UpdatableComponent {
    */
   void SetBiasLearnRateCoef(BaseFloat val) {
     // loop over nnets,
-    for (int32 i=0; i<nnet_.size(); i++) {
+    for (int32 i = 0; i < nnet_.size(); i++) {
       // loop over components,
-      for (int32 j=0; j<nnet_[i].NumComponents(); j++) {
+      for (int32 j = 0; j < nnet_[i].NumComponents(); j++) {
         if (nnet_[i].GetComponent(j).IsUpdatable()) {
           UpdatableComponent& comp =
             dynamic_cast<UpdatableComponent&>(nnet_[i].GetComponent(j));

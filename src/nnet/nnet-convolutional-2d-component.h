@@ -109,8 +109,10 @@ class Convolutional2DComponent : public UpdatableComponent {
       else if (token == "<ConnectFmap>") ReadBasicType(is, false, &connect_fmap_);
       else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef_);
       else if (token == "<BiasLearnRateCoef>") ReadBasicType(is, false, &bias_learn_rate_coef_);
-      else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
-                     << " (ParamStddev|BiasMean|BiasRange|FmapXLen|FmapYLen|FiltXLen|FiltYLen|FiltXStep|FiltYStep|ConnectFmap|LearnRateCoef|BiasLearnRateCoef)";
+      else KALDI_ERR << "Unknown token " << token << ", a typo in config? "
+                     << "(ParamStddev|BiasMean|BiasRange|FmapXLen|FmapYLen|"
+                        "FiltXLen|FiltYLen|FiltXStep|FiltYStep|ConnectFmap|"
+                        "LearnRateCoef|BiasLearnRateCoef)";
     }
 
     //
@@ -126,7 +128,6 @@ class Convolutional2DComponent : public UpdatableComponent {
     KALDI_ASSERT((fmap_y_len_ - filt_y_len_) % (filt_y_step_) == 0);
     int32 out_fmap_x_len = (fmap_x_len_ - filt_x_len_)/filt_x_step_ + 1;
     int32 out_fmap_y_len = (fmap_y_len_ - filt_y_len_)/filt_y_step_ + 1;
-    //    int32 out_fmap_size = out_fmap_x_len*out_fmap_y_len;
     // output sanity checks
     KALDI_ASSERT(output_dim_ % (out_fmap_x_len * out_fmap_y_len)  == 0);
     int32 num_output_fmaps = output_dim_ / (out_fmap_x_len * out_fmap_y_len);
@@ -423,7 +424,8 @@ class Convolutional2DComponent : public UpdatableComponent {
     int32 out_fmap_y_len = (fmap_y_len_ - filt_y_len_)/filt_y_step_ + 1;
     int32 num_output_fmaps = output_dim_ / (out_fmap_x_len * out_fmap_y_len);
 
-    // This is total num_filters, so each input_fmap has num_filters/num_input_fmaps:
+    // This is total num_filters, 
+    // each input_fmap has num_filters / num_input_fmaps:
     int32 num_filters = filters_.NumRows();    
     KALDI_ASSERT(num_filters == num_output_fmaps);
 

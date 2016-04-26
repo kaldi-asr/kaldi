@@ -32,11 +32,13 @@
 namespace kaldi {
 namespace nnet1 {
 
-/// Configuration variables that affect how frame-level shuffling is done.
+/**
+ * Configuration variables that affect how frame-level shuffling is done.
+ */
 struct NnetDataRandomizerOptions {
-  int32 randomizer_size;  // Maximum number of samples we want to have in memory at once.
+  int32 randomizer_size;  ///< Maximum number of samples we have in memory,
   int32 randomizer_seed;
-  int32 minibatch_size;  // Size of a single mini-batch.
+  int32 minibatch_size;
 
   NnetDataRandomizerOptions() :
     randomizer_size(32768),
@@ -46,7 +48,7 @@ struct NnetDataRandomizerOptions {
 
   void Register(OptionsItf *opts) {
     opts->Register("randomizer-size", &randomizer_size,
-       "Capacity of randomizer, length of concatenated utterances which "
+       "Capacity of randomizer, length of concatenated utterances which, "
        "are used for frame-level shuffling (in frames, affects memory "
        "consumption, max 8000000).");
     opts->Register("randomizer-seed", &randomizer_seed,
@@ -54,10 +56,11 @@ struct NnetDataRandomizerOptions {
     opts->Register("minibatch-size", &minibatch_size, "Size of a minibatch.");
   }
 };
-///
 
 
-/// Generates index-mask, which is used to randomize order of datapoints (speech frames)
+/**
+ * Generates randomly ordered vector of indices,
+ */
 class RandomizerMask {
  public:
   RandomizerMask()
@@ -67,9 +70,10 @@ class RandomizerMask {
     Init(conf);
   }
 
-  /// Init (only runs srand)
+  /// Init, call srand,
   void Init(const NnetDataRandomizerOptions& conf);
-  /// Generate vector of integers 0..[mask_size -1] with random order.
+
+  /// Generate randomly ordered vector of integers 0..[mask_size -1],
   const std::vector<int32>& Generate(int32 mask_size);
 
  private:
@@ -77,7 +81,9 @@ class RandomizerMask {
 };
 
 
-/// Randomizes rows of a matrix according to a mask
+/**
+ * Shuffles rows of a matrix according to the indices in the mask,
+ */
 class MatrixRandomizer {
  public:
   MatrixRandomizer() :
@@ -87,7 +93,7 @@ class MatrixRandomizer {
 
   explicit MatrixRandomizer(const NnetDataRandomizerOptions &conf) :
     data_begin_(0),
-    data_end_(0)
+    data_end_(0) 
   {
     Init(conf);
   }
@@ -129,9 +135,9 @@ class MatrixRandomizer {
   CuMatrix<BaseFloat> data_aux_;  // auxiliary buffer for shuffling
   CuMatrix<BaseFloat> minibatch_;  // buffer for mini-batch
 
-  /// Cursor to beginning of data (row index, moves as mini-batches are delivered)
+  /// A cursor, pointing to the 'row' where the next mini-batch begins,
   int32 data_begin_;
-  /// Cursor past the end of data (row index)
+  /// A cursor, pointing to the 'row' after the end of data,
   int32 data_end_;
 
   NnetDataRandomizerOptions conf_;
@@ -189,9 +195,9 @@ class VectorRandomizer {
   Vector<BaseFloat> data_;  // can be larger than 'randomizer_size'
   Vector<BaseFloat> minibatch_;  // buffer for mini-batch
 
-  /// Cursor to beginning of data (row index, moves as mini-batches are delivered)
+  /// A cursor, pointing to the 'row' where the next mini-batch begins,
   int32 data_begin_;
-  /// Cursor past the end of data (row index)
+  /// A cursor, pointing to the 'row' after the end of data,
   int32 data_end_;
 
   NnetDataRandomizerOptions conf_;
@@ -250,9 +256,9 @@ class StdVectorRandomizer {
   std::vector<T> data_;  // can be larger than 'randomizer_size'
   std::vector<T> minibatch_;  // buffer for mini-batch
 
-  /// Cursor to beginning of data (row index, moves as mini-batches are delivered)
+  /// A cursor, pointing to the 'row' where the next mini-batch begins,
   int32 data_begin_;
-  /// Cursor past the end of data (row index)
+  /// A cursor, pointing to the 'row' after the end of data,
   int32 data_end_;
 
   NnetDataRandomizerOptions conf_;

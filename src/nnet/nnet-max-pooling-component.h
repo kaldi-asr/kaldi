@@ -137,8 +137,8 @@ class MaxPoolingComponent : public Component {
 
     in_diff->SetZero();  // reset
 
-    for (int32 q=0; q<num_pools; q++) {  // sum
-      for (int32 r=0; r<pool_size_; r++) {
+    for (int32 q = 0; q<num_pools; q++) {  // sum
+      for (int32 r = 0; r<pool_size_; r++) {
         int32 p = r + q * pool_step_;  // patch number
         //
         CuSubMatrix<BaseFloat> in_p(in.ColRange(p*pool_stride_, pool_stride_));
@@ -159,7 +159,7 @@ class MaxPoolingComponent : public Component {
     }
 
     // divide diff by #summands (compensate for patches used in more pools)
-    for (int32 p=0; p<num_patches; p++) {
+    for (int32 p = 0; p < num_patches; p++) {
       CuSubMatrix<BaseFloat> tgt(in_diff->ColRange(p*pool_stride_, pool_stride_));
       KALDI_ASSERT(patch_summands[p] > 0);  // patch at least in one pool
       tgt.Scale(1.0/patch_summands[p]);
@@ -167,9 +167,9 @@ class MaxPoolingComponent : public Component {
   }
 
  private:
-  int32 pool_size_,   // input patches used for pooling
-        pool_step_,   // shift used for pooling (allow overlapping pools)
-        pool_stride_;  // stride used to cut input matrix to a vector of matrices
+  int32 pool_size_,    // input patches used for pooling
+        pool_step_,    // shift used for pooling (allow overlapping pools)
+        pool_stride_;  // stride used to slice input to a vector of matrices
 };
 
 }  // namespace nnet1

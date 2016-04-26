@@ -51,7 +51,7 @@ inline void CountCorrectFramesWeighted(const CuArray<T> &hyp,
   Vector<BaseFloat> w(dim);
   weights.CopyToVec(&w);
   // Accumulate weighted counts of correct frames,
-  for (int32 i=0; i<dim; i++) {
+  for (int32 i = 0; i < dim; i++) {
     KALDI_ASSERT(ref_h[i] < correct->Dim());
     (*correct)(ref_h[i]) += w(i) * (hyp_h[i] == ref_h[i] ? 1.0 : 0.0);
   }
@@ -104,7 +104,8 @@ void Xent::Eval(const VectorBase<BaseFloat> &frame_weights,
   // evaluate the frame-level classification,
   net_out.FindRowMaxId(&max_id_out_);  // find max in nn-output
   targets.FindRowMaxId(&max_id_tgt_);  // find max in targets
-  CountCorrectFramesWeighted(max_id_out_, max_id_tgt_, frame_weights_, &correct_);
+  CountCorrectFramesWeighted(max_id_out_, max_id_tgt_, 
+                             frame_weights_, &correct_);
 
   // calculate cross_entropy (in GPU),
   xentropy_aux_ = net_out;  // y
@@ -133,13 +134,16 @@ void Xent::Eval(const VectorBase<BaseFloat> &frame_weights,
     KALDI_ASSERT(KALDI_ISFINITE(entropy_progress_));
 
     if (frames_progress_ > progress_step) {
+      double progress_value = 
+        (xentropy_progress_ - entropy_progress_) / frames_progress_;
+      // print,
       KALDI_VLOG(1) << "ProgressLoss[last "
                     << static_cast<int>(frames_progress_/100/3600) << "h of "
                     << static_cast<int>(frames_.Sum()/100/3600) << "h]: "
-                    << (xentropy_progress_-entropy_progress_)/frames_progress_ << " (Xent)";
-      // store
-      loss_vec_.push_back((xentropy_progress_-entropy_progress_)/frames_progress_);
-      // reset
+                    << progress_value << " (Xent)";
+      // store,
+      loss_vec_.push_back(progress_value);
+      // reset,
       frames_progress_ = 0;
       xentropy_progress_ = 0.0;
       entropy_progress_ = 0.0;
@@ -165,16 +169,21 @@ void Xent::Eval(const VectorBase<BaseFloat> &frame_weights,
 
 
 std::string Xent::Report() {
+  double loss_value =
+    (xentropy_.Sum() - entropy_.Sum()) / frames_.Sum();
   std::ostringstream oss;
-  oss << "AvgLoss: " << (xentropy_.Sum()-entropy_.Sum())/frames_.Sum() << " (Xent), "
-      << "[AvgXent: " << xentropy_.Sum()/frames_.Sum()
-      << ", AvgTargetEnt: " << entropy_.Sum()/frames_.Sum() << "]" << std::endl;
+  oss << "AvgLoss: " << loss_value << " (Xent), "
+      << "[AvgXent: " << xentropy_.Sum() / frames_.Sum()
+      << ", AvgTargetEnt: " << entropy_.Sum() / frames_.Sum() 
+      << "]" << std::endl;
 
   oss << "progress: [";
-  std::copy(loss_vec_.begin(),loss_vec_.end(),std::ostream_iterator<float>(oss," "));
+  std::copy(loss_vec_.begin(), loss_vec_.end(), 
+            std::ostream_iterator<float>(oss, " "));
   oss << "]" << std::endl;
 
-  oss << "FRAME_ACCURACY >> " << 100.0*correct_.Sum()/frames_.Sum() << "% <<" << std::endl;
+  double frame_accuracy = 100.0 * correct_.Sum() / frames_.Sum();
+  oss << "FRAME_ACCURACY >> " << frame_accuracy << "% <<" << std::endl;
 
   return oss.str();
 }
@@ -223,9 +232,9 @@ void Mse::Eval(const VectorBase<BaseFloat> &frame_weights,
   // get frame_weights to GPU,
   frame_weights_ = frame_weights;
 
-  //compute derivative w.r.t. neural nerwork outputs
+  // compute derivative w.r.t. neural nerwork outputs
   *diff = net_out;  // y
-  diff->AddMat(-1.0,target);  // (y - t)
+  diff->AddMat(-1.0, target);  // (y - t)
   diff->MulRowsVec(frame_weights_);  // weighting,
 
   // Compute MeanSquareError loss of mini-batch
@@ -283,9 +292,11 @@ std::string Mse::Report() {
   // build the message,
   std::ostringstream oss;
   oss << "AvgLoss: " << loss_/frames_ << " (Mse), "
-      << "[RMS " << root_mean_square << ", frames " << frames_ << "]" << std::endl;
+      << "[RMS " << root_mean_square << ", frames " 
+      << frames_ << "]" << std::endl;
   oss << "progress: [";
-  std::copy(loss_vec_.begin(),loss_vec_.end(),std::ostream_iterator<float>(oss," "));
+  std::copy(loss_vec_.begin(), loss_vec_.end(),
+            std::ostream_iterator<float>(oss, " "));
   oss << "]" << std::endl;
   return oss.str();
 }
@@ -380,7 +391,8 @@ std::string MultiTaskLoss::Report() {
 
   // build the message,
   std::ostringstream oss;
-  oss << "MultiTaskLoss, with " << loss_vec_.size() << " parallel loss functions." << std::endl;
+  oss << "MultiTaskLoss, with " << loss_vec_.size() 
+      << " parallel loss functions." << std::endl;
   // individual loss reports first,
   for (int32 i = 0; i < loss_vec_.size(); i++) {
     oss << "Loss " << i+1 << ", " << loss_vec_[i]->Report() << std::endl;
@@ -400,7 +412,8 @@ BaseFloat MultiTaskLoss::AvgLoss() {
   for (int32 i = 0; i < loss_vec_.size(); i++) {
     BaseFloat val = loss_weights_[i] * loss_vec_[i]->AvgLoss();
     if (!KALDI_ISFINITE(val)) {
-      KALDI_WARN << "Loss " << i+1 << ", has bad objective function value '" << val << "', using 0.0 instead.";
+      KALDI_WARN << "Loss " << i+1 << ", has bad objective function value '" 
+                 << val << "', using 0.0 instead.";
       val = 0.0;
     }
     ans += val;

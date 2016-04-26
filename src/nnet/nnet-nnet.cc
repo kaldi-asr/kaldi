@@ -129,7 +129,8 @@ void Nnet::Backpropagate(const CuMatrixBase<BaseFloat> &out_diff,
 }
 
 
-void Nnet::Feedforward(const CuMatrixBase<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
+void Nnet::Feedforward(const CuMatrixBase<BaseFloat> &in, 
+                       CuMatrix<BaseFloat> *out) {
   KALDI_ASSERT(NULL != out);
   (*out) = in;  // works even with 0 components,
   CuMatrix<BaseFloat> tmp_in;
@@ -258,7 +259,7 @@ void Nnet::SetParams(const VectorBase<BaseFloat>& params) {
 }
 
 void Nnet::SetDropoutRetention(BaseFloat r)  {
-  for (int32 c=0; c < NumComponents(); c++) {
+  for (int32 c = 0; c < NumComponents(); c++) {
     if (GetComponent(c).GetType() == Component::kDropout) {
       Dropout& comp = dynamic_cast<Dropout&>(GetComponent(c));
       BaseFloat r_old = comp.GetDropoutRetention();
@@ -271,18 +272,20 @@ void Nnet::SetDropoutRetention(BaseFloat r)  {
 
 
 void Nnet::ResetLstmStreams(const std::vector<int32> &stream_reset_flag) {
-  for (int32 c=0; c < NumComponents(); c++) {
+  for (int32 c = 0; c < NumComponents(); c++) {
     if (GetComponent(c).GetType() == Component::kLstmProjectedStreams) {
-      LstmProjectedStreams& comp = dynamic_cast<LstmProjectedStreams&>(GetComponent(c));
+      LstmProjectedStreams& comp = 
+        dynamic_cast<LstmProjectedStreams&>(GetComponent(c));
       comp.ResetLstmStreams(stream_reset_flag);
     }
   }
 }
 
 void Nnet::SetSeqLengths(const std::vector<int32> &sequence_lengths) {
-  for (int32 c=0; c < NumComponents(); c++) {
+  for (int32 c = 0; c < NumComponents(); c++) {
     if (GetComponent(c).GetType() == Component::kBLstmProjectedStreams) {
-      BLstmProjectedStreams& comp = dynamic_cast<BLstmProjectedStreams&>(GetComponent(c));
+      BLstmProjectedStreams& comp = 
+        dynamic_cast<BLstmProjectedStreams&>(GetComponent(c));
       comp.SetSeqLengths(sequence_lengths);
     }
   }
@@ -291,15 +294,24 @@ void Nnet::SetSeqLengths(const std::vector<int32> &sequence_lengths) {
 void Nnet::Init(const std::string &proto_file) {
   Input in(proto_file);
   std::istream &is = in.Stream();
-  // do the initialization with config lines,
   std::string proto_line, token;
+
+  // Initialize from the prototype, where each line 
+  // contains the description for one component.
   while (is >> std::ws, !is.eof()) {
     KALDI_ASSERT(is.good());
-    std::getline(is, proto_line);  // get a line from config file,
+
+    // get a line from the proto file,
+    std::getline(is, proto_line);  
     if (proto_line == "") continue;
     KALDI_VLOG(1) << proto_line;
-    std::istringstream(proto_line) >> std::ws >> token;  // get 1st token,
-    if (token == "<NnetProto>" || token == "</NnetProto>") continue;  // ignored tokens,
+    
+    // get the 1st token from the line,
+    std::istringstream(proto_line) >> std::ws >> token;  
+    // ignore these tokens:
+    if (token == "<NnetProto>" || token == "</NnetProto>") continue;
+
+    // create new component, append to Nnet,
     this->AppendComponentPointer(Component::Init(proto_line+"\n"));
   }
   // cleanup
@@ -356,7 +368,7 @@ void Nnet::Write(std::ostream &os, bool binary) const {
   Check();
   WriteToken(os, binary, "<Nnet>");
   if (binary == false) os << std::endl;
-  for (int32 i=0; i<NumComponents(); i++) {
+  for (int32 i = 0; i < NumComponents(); i++) {
     components_[i]->Write(os, binary);
   }
   WriteToken(os, binary, "</Nnet>");
@@ -399,14 +411,16 @@ std::string Nnet::InfoPropagate() const {
   std::ostringstream ostr;
   // forward-pass buffer stats
   ostr << "\n### Forward propagation buffer content :\n";
-  ostr << "[0] output of <Input> " << MomentStatistics(propagate_buf_[0]) << std::endl;
-  for (int32 i=0; i<NumComponents(); i++) {
-    ostr << "["<<1+i<< "] output of "
+  ostr << "[0] output of <Input> " << MomentStatistics(propagate_buf_[0]) 
+       << std::endl;
+  for (int32 i = 0; i < NumComponents(); i++) {
+    ostr << "[" << 1+i << "] output of "
          << Component::TypeToMarker(components_[i]->GetType())
          << MomentStatistics(propagate_buf_[i+1]) << std::endl;
     // nested networks too...
     if (Component::kParallelComponent == components_[i]->GetType()) {
-      ostr << dynamic_cast<ParallelComponent*>(components_[i])->InfoPropagate();
+      ostr << 
+        dynamic_cast<ParallelComponent*>(components_[i])->InfoPropagate();
     }
   }
   return ostr.str();
@@ -416,14 +430,16 @@ std::string Nnet::InfoBackPropagate() const {
   std::ostringstream ostr;
   // forward-pass buffer stats
   ostr << "\n### Backward propagation buffer content :\n";
-  ostr << "[0] diff of <Input> " << MomentStatistics(backpropagate_buf_[0]) << std::endl;
-  for (int32 i=0; i<NumComponents(); i++) {
+  ostr << "[0] diff of <Input> " << MomentStatistics(backpropagate_buf_[0]) 
+       << std::endl;
+  for (int32 i = 0; i < NumComponents(); i++) {
     ostr << "["<<1+i<< "] diff-output of "
          << Component::TypeToMarker(components_[i]->GetType())
          << MomentStatistics(backpropagate_buf_[i+1]) << std::endl;
     // nested networks too...
     if (Component::kParallelComponent == components_[i]->GetType()) {
-      ostr << dynamic_cast<ParallelComponent*>(components_[i])->InfoBackPropagate();
+      ostr << 
+        dynamic_cast<ParallelComponent*>(components_[i])->InfoBackPropagate();
     }
   }
   return ostr.str();
@@ -443,16 +459,17 @@ void Nnet::Check() const {
   GetParams(&weights);
   BaseFloat sum = weights.Sum();
   if (KALDI_ISINF(sum)) {
-    KALDI_ERR << "'inf' in network parameters (weight explosion, try lower learning rate?)";
+    KALDI_ERR << "'inf' in network parameters "
+              << "(weight explosion, need lower learning rate?)";
   }
   if (KALDI_ISNAN(sum)) {
-    KALDI_ERR << "'nan' in network parameters (try lower learning rate?)";
+    KALDI_ERR << "'nan' in network parameters (need lower learning rate?)";
   }
 }
 
 
 void Nnet::Destroy() {
-  for (int32 i=0; i<NumComponents(); i++) {
+  for (int32 i = 0; i < NumComponents(); i++) {
     delete components_[i];
   }
   components_.resize(0);
@@ -463,8 +480,8 @@ void Nnet::Destroy() {
 
 void Nnet::SetTrainOptions(const NnetTrainOptions& opts) {
   opts_ = opts;
-  //set values to individual components
-  for (int32 l=0; l<NumComponents(); l++) {
+  // set values to individual components,
+  for (int32 l = 0; l < NumComponents(); l++) {
     if (GetComponent(l).IsUpdatable()) {
       dynamic_cast<UpdatableComponent&>(GetComponent(l)).SetTrainOptions(opts_);
     }

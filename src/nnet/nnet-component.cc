@@ -50,49 +50,49 @@ namespace kaldi {
 namespace nnet1 {
 
 const struct Component::key_value Component::kMarkerMap[] = {
-  { Component::kAffineTransform,"<AffineTransform>" },
-  { Component::kLinearTransform,"<LinearTransform>" },
-  { Component::kConvolutionalComponent,"<ConvolutionalComponent>"},
-  { Component::kConvolutional2DComponent,"<Convolutional2DComponent>"},
-  { Component::kLstmProjectedStreams,"<LstmProjectedStreams>"},
-  { Component::kBLstmProjectedStreams,"<BLstmProjectedStreams>"},
-  { Component::kSoftmax,"<Softmax>" },
-  { Component::kBlockSoftmax,"<BlockSoftmax>" },
-  { Component::kSigmoid,"<Sigmoid>" },
-  { Component::kTanh,"<Tanh>" },
-  { Component::kDropout,"<Dropout>" },
-  { Component::kLengthNormComponent,"<LengthNormComponent>" },
-  { Component::kRbm,"<Rbm>" },
-  { Component::kSplice,"<Splice>" },
-  { Component::kCopy,"<Copy>" },
-  { Component::kAddShift,"<AddShift>" },
-  { Component::kRescale,"<Rescale>" },
-  { Component::kKlHmm,"<KlHmm>" },
-  { Component::kAveragePoolingComponent,"<AveragePoolingComponent>"},
-  { Component::kAveragePooling2DComponent,"<AveragePooling2DComponent>"},
-  { Component::kMaxPoolingComponent, "<MaxPoolingComponent>"},
-  { Component::kMaxPooling2DComponent, "<MaxPooling2DComponent>"},
-  { Component::kSentenceAveragingComponent,"<SentenceAveragingComponent>"},
-  { Component::kSimpleSentenceAveragingComponent,"<SimpleSentenceAveragingComponent>"},
-  { Component::kFramePoolingComponent, "<FramePoolingComponent>"},
-  { Component::kParallelComponent, "<ParallelComponent>"},
+  { Component::kAffineTransform, "<AffineTransform>" },
+  { Component::kLinearTransform, "<LinearTransform>" },
+  { Component::kConvolutionalComponent, "<ConvolutionalComponent>" },
+  { Component::kConvolutional2DComponent, "<Convolutional2DComponent>" },
+  { Component::kLstmProjectedStreams, "<LstmProjectedStreams>" },
+  { Component::kBLstmProjectedStreams, "<BLstmProjectedStreams>" },
+  { Component::kSoftmax, "<Softmax>" },
+  { Component::kBlockSoftmax, "<BlockSoftmax>" },
+  { Component::kSigmoid, "<Sigmoid>" },
+  { Component::kTanh, "<Tanh>" },
+  { Component::kDropout, "<Dropout>" },
+  { Component::kLengthNormComponent, "<LengthNormComponent>" },
+  { Component::kRbm, "<Rbm>" },
+  { Component::kSplice, "<Splice>" },
+  { Component::kCopy, "<Copy>" },
+  { Component::kAddShift, "<AddShift>" },
+  { Component::kRescale, "<Rescale>" },
+  { Component::kKlHmm, "<KlHmm>" },
+  { Component::kAveragePoolingComponent, "<AveragePoolingComponent>" },
+  { Component::kAveragePooling2DComponent, "<AveragePooling2DComponent>" },
+  { Component::kMaxPoolingComponent, "<MaxPoolingComponent>" },
+  { Component::kMaxPooling2DComponent, "<MaxPooling2DComponent>" },
+  { Component::kSentenceAveragingComponent, "<SentenceAveragingComponent>" },
+  { Component::kSimpleSentenceAveragingComponent, "<SimpleSentenceAveragingComponent>" },
+  { Component::kFramePoolingComponent, "<FramePoolingComponent>" },
+  { Component::kParallelComponent, "<ParallelComponent>" },
 };
 
 
 const char* Component::TypeToMarker(ComponentType t) {
-  int32 N=sizeof(kMarkerMap)/sizeof(kMarkerMap[0]);
-  for (int i=0; i<N; i++) {
+  int32 N = sizeof(kMarkerMap) / sizeof(kMarkerMap[0]);
+  for (int i = 0; i < N; i++) {
     if (kMarkerMap[i].key == t) return kMarkerMap[i].value;
   }
-  KALDI_ERR << "Unknown type" << t;
+  KALDI_ERR << "Unknown type : " << t;
   return NULL;
 }
 
 Component::ComponentType Component::MarkerToType(const std::string &s) {
   std::string s_lowercase(s);
   std::transform(s.begin(), s.end(), s_lowercase.begin(), ::tolower);  // lc
-  int32 N=sizeof(kMarkerMap)/sizeof(kMarkerMap[0]);
-  for (int i=0; i<N; i++) {
+  int32 N = sizeof(kMarkerMap) / sizeof(kMarkerMap[0]);
+  for (int i = 0; i < N; i++) {
     std::string m(kMarkerMap[i].value);
     std::string m_lowercase(m);
     std::transform(m.begin(), m.end(), m_lowercase.begin(), ::tolower);
@@ -256,7 +256,7 @@ void Component::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, InputDim());
   if (!binary) os << "\n";
   this->WriteData(os, binary);
-  WriteToken(os, binary, "<!EndOfComponent>");  // Introduce component separator.
+  WriteToken(os, binary, "<!EndOfComponent>");  // Write component separator.
   if (!binary) os << "\n";
 }
 
