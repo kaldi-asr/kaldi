@@ -57,19 +57,18 @@ class Splice: public Component {
   }
 
   void InitData(std::istream &is) {
-    // define options
-    std::vector<int32> frame_offsets;
+    // define options,
     std::vector<std::vector<int32> > build_vector;
-    // parse config
+    // parse config,
     std::string token;
     while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token);
       /**/ if (token == "<ReadVector>") {
-        ReadIntegerVector(is, false, &frame_offsets);
+        ReadIntegerVector(is, false, &frame_offsets_);
       } else if (token == "<BuildVector>") {
-        // <BuildVector> 1:1:1000 1:1:1000 1 2 3 1:10 </BuildVector> [matlab indexing]
-        // read the colon-separated-lists:
-        while (!is.eof()) {
+        // Parse the list of 'matlab-like' indices:
+        // <BuildVector> 1:1:1000 1 2 3 1:10 </BuildVector> 
+        while (is >> std::ws, !is.eof()) {
           std::string colon_sep_list_or_end;
           ReadToken(is, false, &colon_sep_list_or_end);
           if (colon_sep_list_or_end == "</BuildVector>") break;
@@ -83,52 +82,22 @@ class Splice: public Component {
       }
     }
 
-    // build the vector, using <BuildVector> ... </BuildVector> inputs
     if (build_vector.size() > 0) {
-      for (int32 i=0; i<build_vector.size(); i++) {
-        switch (build_vector[i].size()) {
-          case 1:
-            frame_offsets.push_back(build_vector[i][0]);
-            break;
-          case 2: {  // assuming step 1
-            int32 min=build_vector[i][0], max=build_vector[i][1];
-            KALDI_ASSERT(min <= max);
-            for (int32 j=min; j<=max; j++) {
-              frame_offsets.push_back(j);
-            }}
-            break;
-          case 3: {  // step can be negative -> flipped min/max
-            int32 min=build_vector[i][0], step=build_vector[i][1], max=build_vector[i][2];
-            KALDI_ASSERT((min <= max && step > 0) || (min >= max && step < 0));
-            for (int32 j=min; j<=max; j += step) {
-              frame_offsets.push_back(j);
-            }}
-            break;
-          case 0:
-          default:
-            KALDI_ERR << "Error parsing <BuildVector>";
-        }
-      }
+      // build the vector, using <BuildVector> ... </BuildVector> inputs,
+      BuildIntegerVector(build_vector, &frame_offsets_);
     }
-
-    // copy to GPU
-    frame_offsets_ = frame_offsets;
 
     // check dim
     KALDI_ASSERT(frame_offsets_.Dim()*InputDim() == OutputDim());
   }
 
   void ReadData(std::istream &is, bool binary) {
-    std::vector<int32> frame_offsets;
-    ReadIntegerVector(is, binary, &frame_offsets);
-    frame_offsets_ = frame_offsets;  // to GPU
+    ReadIntegerVector(is, binary, &frame_offsets_);
     KALDI_ASSERT(frame_offsets_.Dim() * InputDim() == OutputDim());
   }
 
   void WriteData(std::ostream &os, bool binary) const {
-    std::vector<int32> frame_offsets(frame_offsets_.Dim());
-    frame_offsets_.CopyToVec(&frame_offsets);
-    WriteIntegerVector(os, binary, frame_offsets);
+    WriteIntegerVector(os, binary, frame_offsets_);
   }
 
   std::string Info() const {
@@ -177,19 +146,18 @@ class CopyComponent: public Component {
   }
 
   void InitData(std::istream &is) {
-    // define options
-    std::vector<int32> copy_from_indices;
+    // define options,
     std::vector<std::vector<int32> > build_vector;
-    // parse config
+    // parse config,
     std::string token;
     while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token);
       /**/ if (token == "<ReadVector>") {
-        ReadIntegerVector(is, false, &copy_from_indices);
+        ReadIntegerVector(is, false, &copy_from_indices_);
       } else if (token == "<BuildVector>") {
-        // <BuildVector> 1:1:1000 1:1:1000 1 2 3 1:10 </BuildVector> [matlab indexing]
-        // read the colon-separated-lists:
-        while (!is.eof()) {
+        // <BuildVector> 1:1:1000 1:1:1000 1 2 3 1:10 </BuildVector> 
+        // 'matlab-line' indexing, read the colon-separated-lists:
+        while (is >> std::ws, !is.eof()) {
           std::string colon_sep_list_or_end;
           ReadToken(is, false, &colon_sep_list_or_end);
           if (colon_sep_list_or_end == "</BuildVector>") break;
@@ -203,84 +171,41 @@ class CopyComponent: public Component {
       }
     }
 
-    // build the vector, using <BuildVector> ... </BuildVector> inputs
     if (build_vector.size() > 0) {
-      for (int32 i=0; i<build_vector.size(); i++) {
-        switch (build_vector[i].size()) {
-          case 1:
-            copy_from_indices.push_back(build_vector[i][0]);
-            break;
-          case 2: {  // assuming step 1
-            int32 min=build_vector[i][0], max=build_vector[i][1];
-            KALDI_ASSERT(min <= max);
-            for (int32 j=min; j<=max; j++) {
-              copy_from_indices.push_back(j);
-            }}
-            break;
-          case 3: {  // step can be negative -> flipped min/max
-            int32 min=build_vector[i][0], step=build_vector[i][1], max=build_vector[i][2];
-            KALDI_ASSERT((min <= max && step > 0) || (min >= max && step < 0));
-            for (int32 j=min; j<=max; j += step) {
-              copy_from_indices.push_back(j);
-            }}
-            break;
-          case 0:
-          default:
-            KALDI_ERR << "Error parsing <BuildVector>";
-        }
-      }
+      // build the vector, using <BuildVector> ... </BuildVector> inputs,
+      BuildIntegerVector(build_vector, &copy_from_indices_);
     }
 
-    // decrease by 1
-    std::vector<int32>& v = copy_from_indices;
-    std::transform(v.begin(), v.end(), v.begin(), op_decrease);
-    // copy to GPU
-    copy_from_indices_ = copy_from_indices;
+    // decrease by 1,
+    copy_from_indices_.Add(-1);
 
-    // check range
-    for (int32 i=0; i<copy_from_indices.size(); i++) {
-      KALDI_ASSERT(copy_from_indices[i] >= 0);
-      KALDI_ASSERT(copy_from_indices[i] < InputDim());
-    }
-    // check dim
+    // check range,
+    KALDI_ASSERT(copy_from_indices_.Min() >= 0);
+    KALDI_ASSERT(copy_from_indices_.Max() < InputDim());
+    // check dim,
     KALDI_ASSERT(copy_from_indices_.Dim() == OutputDim());
   }
 
   void ReadData(std::istream &is, bool binary) {
-    std::vector<int32> copy_from_indices;
-    ReadIntegerVector(is, binary, &copy_from_indices);
-    // -1 from each element
-    std::vector<int32>& v = copy_from_indices;
-    std::transform(v.begin(), v.end(), v.begin(), op_decrease);
-    //
-    copy_from_indices_ = copy_from_indices;
+    ReadIntegerVector(is, binary, &copy_from_indices_);
     KALDI_ASSERT(copy_from_indices_.Dim() == OutputDim());
+    copy_from_indices_.Add(-1);  // -1 from each element,
   }
 
   void WriteData(std::ostream &os, bool binary) const {
-    std::vector<int32> copy_from_indices(copy_from_indices_.Dim());
-    copy_from_indices_.CopyToVec(&copy_from_indices);
-    // +1 to each element
-    std::vector<int32>& v = copy_from_indices;
-    std::transform(v.begin(), v.end(), v.begin(), op_increase);
-    //
-    WriteIntegerVector(os, binary, copy_from_indices);
+    CuArray<int32> tmp(copy_from_indices_);
+    tmp.Add(1);  // +1 to each element,
+    WriteIntegerVector(os, binary, tmp);
   }
 
   std::string Info() const {
-    /*
-    std::ostringstream ostr;
-    ostr << "\n  copy_from_indices " << copy_from_indices_;
-    std::string str = ostr.str();
-    str.erase(str.end()-1);
-    return str;
-    */
-    return "";
+    return std::string("\n  min ") + ToString(copy_from_indices_.Min()) + 
+                         ", max "  + ToString(copy_from_indices_.Max());
   }
 
   void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
                     CuMatrixBase<BaseFloat> *out) {
-    cu::Copy(in,copy_from_indices_,out);
+    cu::Copy(in, copy_from_indices_,out);
   }
 
   void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
@@ -297,10 +222,6 @@ class CopyComponent: public Component {
 
  protected:
   CuArray<int32> copy_from_indices_;
-
- private:
-  static int32 op_increase (int32 i) { return ++i; }
-  static int32 op_decrease (int32 i) { return --i; }
 };
 
 
@@ -334,7 +255,7 @@ class LengthNormComponent: public Component {
     // get the normalization scalars,
     l2_aux_ = in;
     l2_aux_.MulElements(l2_aux_);  // x^2,
-    row_scales_.AddColSumMat(1.0,l2_aux_,0.0);  // sum_of_cols(x^2),
+    row_scales_.AddColSumMat(1.0, l2_aux_, 0.0);  // sum_of_cols(x^2),
     row_scales_.ApplyPow(0.5);  // L2norm = sqrt(sum_of_cols(x^2)),
     row_scales_.InvertElements();  // 1/L2norm,
     // compute the output,

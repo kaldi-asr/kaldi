@@ -2106,6 +2106,9 @@ static void _diff_xent(const int32_cuda* vec_tgt, Real* mat_net_out, Real* vec_l
 void cudaI32_set_const(dim3 Gr, dim3 Bl, int32_cuda* mat, int32_cuda value, MatrixDim d) {
   _set_const<<<Gr,Bl>>>(mat,value,d);
 }
+void cudaI32_add(dim3 Gr, dim3 Bl, int32_cuda* mat, int32_cuda value, MatrixDim d) {
+  _add<<<Gr,Bl>>>(mat,value,d);
+}
 
 
 

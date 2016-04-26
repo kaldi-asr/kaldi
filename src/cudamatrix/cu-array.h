@@ -101,6 +101,16 @@ class CuArray {
   /// assignment operators or destructors are not called.  This is NOT IMPLEMENTED
   /// YET except for T == int32 (the current implementation will just crash).
   void Set(const T &value);
+  
+  /// Add a constant value. This is NOT IMPLEMENTED YET except for T == int32 
+  /// (the current implementation will just crash).
+  void Add(const T &value);
+
+  /// Get minimum value (for now implemented on CPU, reimplement if slow).
+  T Min() const;
+
+  /// Get minimum value (for now implemented on CPU, reimplement if slow).
+  T Max() const;
 
   CuArray<T> &operator= (const CuArray<T> &in) {
     this->CopyFromArray(in); return *this;
@@ -120,7 +130,15 @@ class CuArray {
 /// I/O
 template<typename T>
 std::ostream &operator << (std::ostream &out, const CuArray<T> &vec);
- 
+
+/// Wrapper for reading,
+template<typename T>
+void ReadIntegerVector(std::istream& in, bool binary, CuArray<T>* vec);
+
+/// Wrapper for writing,
+template<typename T>
+void WriteIntegerVector(std::ostream& out, bool binary, const CuArray<T>& vec);
+
 } // namespace
 
 

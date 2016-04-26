@@ -36,6 +36,7 @@ extern "C" {
  * int32 CUDA kernel calls (no template wrapper)
  */
 void cudaI32_set_const(dim3 Gr, dim3 Bl, int32_cuda *mat, int32_cuda value, MatrixDim d);
+void cudaI32_add(dim3 Gr, dim3 Bl, int32_cuda *mat, int32_cuda value, MatrixDim d);
 
 
 

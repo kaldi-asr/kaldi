@@ -41,7 +41,7 @@ namespace nnet1 {
  */
 template <typename T>
 std::ostream& operator<<(std::ostream& os, const std::vector<T>& v) {
-  std::copy(v.begin(), v.end(), std::ostream_iterator<T>(os," "));
+  std::copy(v.begin(), v.end(), std::ostream_iterator<T>(os, " "));
   return os;
 }
 
@@ -67,7 +67,8 @@ std::string MomentStatistics(const VectorBase<Real> &vec) {
   // mean
   Real mean = vec.Sum() / vec.Dim();
   // variance
-  vec_aux.Add(-mean); vec_no_mean = vec_aux;
+  vec_aux.Add(-mean); 
+  vec_no_mean = vec_aux;
   vec_aux.MulElements(vec_no_mean);  // (vec-mean)^2
   Real variance = vec_aux.Sum() / vec.Dim();
   // skewness
@@ -119,7 +120,7 @@ std::string MomentStatistics(const CuVectorBase<Real> &vec) {
  */
 template <typename Real>
 std::string MomentStatistics(const CuMatrixBase<Real> &mat) {
-  Matrix<Real> mat_host(mat.NumRows(),mat.NumCols());
+  Matrix<Real> mat_host(mat.NumRows(), mat.NumCols());
   mat.CopyToMat(&mat_host);
   return MomentStatistics(mat_host);
 }
@@ -195,7 +196,7 @@ void RandUniform(BaseFloat mu, BaseFloat range, CuMatrixBase<Real>* mat,
   }
   // re-shape the distrbution,
   m.Scale(range);  // 0..range,
-  m.Add(mu -range/2.0); // mu-range/2 .. mu+range/2,
+  m.Add(mu -range/2.0);  // mu-range/2 .. mu+range/2,
   // export,
   mat->CopyFromMat(m);
 }
@@ -217,9 +218,70 @@ void RandUniform(BaseFloat mu, BaseFloat range, CuVectorBase<Real>* vec,
   }
   // re-shape the distrbution,
   v.Scale(range);  // 0..range,
-  v.Add(mu -range/2.0); // mu-range/2 .. mu+range/2,
+  v.Add(mu -range/2.0);  // mu-range/2 .. mu+range/2,
   // export,
   vec->CopyFromVec(v);
+}
+
+
+/**
+ * Build 'integer vector' out of vector of 'matlab-like' representation:
+ * 'b, b:e, b:s:e'
+ * 
+ * b,e,s are integers, where:
+ * b = beginning
+ * e = end
+ * s = step
+ *
+ * The sequence includes 'end', 1:3 => [ 1 2 3 ].
+ * The 'step' has to be positive.
+ */
+inline void BuildIntegerVector(const std::vector<std::vector<int32> >& in, 
+                               std::vector<int32>* out) {
+  // start with empty vector,
+  out->clear();
+  // loop over records,
+  for (int32 i = 0; i < in.size(); i++) {
+    // process i'th record,
+    int32 beg, end, step;
+    switch (in[i].size()) {
+      case 1:
+        beg  = in[i][0];
+        end  = in[i][0];
+        step = 1;
+        break;
+      case 2:
+        beg  = in[i][0];
+        end  = in[i][1];
+        step = 1;
+        break;
+      case 3:
+        beg  = in[i][0];
+        end  = in[i][2];
+        step = in[i][1];
+        break;
+      default:
+        KALDI_ERR << "Something is wrong! (should be 1-3) : " 
+                  << in[i].size();
+    }
+    // check the inputs,
+    KALDI_ASSERT(beg <= end);
+    KALDI_ASSERT(step > 0);  // positive,
+    // append values to vector,
+    for (int32 j = beg; j <= end; j += step) {
+      out->push_back(j);
+    }
+  }
+}
+
+/**
+ * Wrapper with 'CuArray<int32>' output.
+ */
+inline void BuildIntegerVector(const std::vector<std::vector<int32> >& in, 
+                               CuArray<int32>* out) {
+  std::vector<int32> v;
+  BuildIntegerVector(in, &v);
+  (*out) = v;
 }
 
 
@@ -229,7 +291,8 @@ void RandUniform(BaseFloat mu, BaseFloat range, CuVectorBase<Real>* vec,
  * number of matrix-colmuns is set by 'num_cols'.
  */
 template <typename Real>
-void PosteriorToMatrix(const Posterior &post, int32 num_cols, CuMatrix<Real> *mat) {
+void PosteriorToMatrix(const Posterior &post, 
+                       const int32 num_cols, CuMatrix<Real> *mat) {
   // Make a host-matrix,
   int32 num_rows = post.size();
   Matrix<Real> m(num_rows, num_cols, kSetZero);  // zero-filled
@@ -254,7 +317,9 @@ void PosteriorToMatrix(const Posterior &post, int32 num_cols, CuMatrix<Real> *ma
  * number of matrix-colmuns is set by 'TransitionModel::NumPdfs'.
  */
 template <typename Real>
-void PosteriorToMatrixMapped(const Posterior &post, const TransitionModel &model, CuMatrix<Real> *mat) {
+void PosteriorToMatrixMapped(const Posterior &post, 
+                             const TransitionModel &model, 
+                             CuMatrix<Real> *mat) {
   // Make a host-matrix,
   int32 num_rows = post.size(),
         num_cols = model.NumPdfs();

@@ -179,6 +179,22 @@ std::ostream &operator << (std::ostream &out, const CuArray<T> &vec) {
 }
 
 
+template<typename T>
+void ReadIntegerVector(std::istream& in, bool binary, CuArray<T>* vec) {
+  std::vector<T> tmp;
+  ReadIntegerVector(in, binary, &tmp);
+  (*vec) = tmp;
+}
+
+
+template<typename T>
+void WriteIntegerVector(std::ostream& out, bool binary, const CuArray<T>& vec) {
+  std::vector<T> tmp(vec.Dim());
+  vec.CopyToVec(&tmp);
+  WriteIntegerVector(out, binary, tmp);
+}
+
+
 template<class T> 
 inline void CuArray<T>::Set(const T &value) {
   // This is not implemented yet, we'll do so if it's needed.
@@ -207,6 +223,66 @@ inline void CuArray<int32>::Set(const int32 &value) {
       data_[i] = value;
   }
 }
+
+template<class T> 
+inline void CuArray<T>::Add(const T &value) {
+  // This is not implemented yet, we'll do so if it's needed.
+  KALDI_ERR << "CuArray<T>::Add not implemented yet for this type.";
+}
+
+template<> 
+inline void CuArray<int32>::Add(const int32 &value) {
+  if (dim_ == 0) return;
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) { 
+    Timer tim;
+
+    dim3 dimBlock(CU2DBLOCK);
+    dim3 dimGrid(n_blocks(Dim(), CU2DBLOCK));
+    ::MatrixDim d = { 1, Dim(), Dim() };
+
+    cudaI32_add(dimGrid, dimBlock, data_, value, d);
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    for (int32 i = 0; i < dim_; i++)
+      data_[i] += value;
+  }
+} 
+
+
+template<class T> 
+inline T CuArray<T>::Min() const {
+  Timer tim;
+  std::vector<T> tmp(Dim());
+  CopyToVec(&tmp);
+  T ans = *std::min_element(tmp.begin(), tmp.end());
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  }
+#endif
+  return ans;
+}
+
+
+template<class T> 
+inline T CuArray<T>::Max() const {
+  Timer tim;
+  std::vector<T> tmp(Dim());
+  CopyToVec(&tmp);
+  T ans = *std::max_element(tmp.begin(), tmp.end());
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  }
+#endif
+  return ans;
+}
+
 
 template<typename T>
 void CuArray<T>::CopyFromArray(const CuArray<T> &src) {
