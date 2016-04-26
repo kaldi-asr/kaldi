@@ -65,66 +65,99 @@ int32 LevenshteinEditDistance(const std::vector<T> &a,
   }
   return e.back();
 }
+
 //
-struct error_stats {
+struct particle {
   int32 ins_num;
   int32 del_num;
   int32 sub_num;
   int32 total_cost;  // minimum total cost to the current alignment.
+  int32 a_i;
+  int32 b_i;
 };
 // Note that both hyp and ref should not contain noise word in
 // the following implementation.
 
 template<class T>
-int32 LevenshteinEditDistance(const std::vector<T> &ref,
-                              const std::vector<T> &hyp,
+int32 LevenshteinEditDistance(const std::vector<T> &a,
+                              const std::vector<T> &b,
                               int32 *ins, int32 *del, int32 *sub) {
-  // temp sequence to remember error type and stats.
-  std::vector<error_stats> e(ref.size()+1);
-  std::vector<error_stats> cur_e(ref.size()+1);
-  // initialize the first hypothesis aligned to the reference at each
-  // position:[hyp_index =0][ref_index]
-  for (size_t i =0; i < e.size(); i ++) {
-    e[i].ins_num = 0;
-    e[i].sub_num = 0;
-    e[i].del_num = i;
-    e[i].total_cost = i;
-  }
 
-  // for other alignments
-  for (size_t hyp_index = 1; hyp_index <= hyp.size(); hyp_index ++) {
-    cur_e[0] = e[0];
-    cur_e[0].ins_num++;
-    cur_e[0].total_cost++;
-    for (size_t ref_index = 1; ref_index <= ref.size(); ref_index ++) {
-     int32 ins_err = e[ref_index].total_cost + 1;
-     int32 del_err = cur_e[ref_index-1].total_cost + 1;
-     int32 sub_err = e[ref_index-1].total_cost;
-      if (hyp[hyp_index-1] != ref[ref_index-1])
-       sub_err++;
-
-     if (sub_err < ins_err && sub_err < del_err) {
-        cur_e[ref_index] =e[ref_index-1];
-        if (hyp[hyp_index-1] != ref[ref_index-1])
-          cur_e[ref_index].sub_num++;  // substitution error should be increased
-        cur_e[ref_index].total_cost = sub_err;
-     } else if (del_err < ins_err) {
-        cur_e[ref_index] = cur_e[ref_index-1];
-        cur_e[ref_index].total_cost = del_err;
-        cur_e[ref_index].del_num++;    // deletion number is increased.
-     } else {
-        cur_e[ref_index] = e[ref_index];
-        cur_e[ref_index].total_cost = ins_err;
-        cur_e[ref_index].ins_num++;    // insertion number is increased.
-     }
+  size_t A = a.size(), B = b.size();
+  std::vector<particle> diagonal(A+B+1);
+  for(int d=0;d<A+B+1;++d){
+    particle & p = diagonal[d];
+    p.b_i = p.a_i = -1;
   }
-  e = cur_e;  // alternate for the next recursion.
+  particle &start=diagonal[0-0+B];
+  start.a_i=start.b_i=0;
+  start.total_cost = 0;
+  start.del_num = 0;
+  start.ins_num = 0;
+  start.sub_num = 0;
+  std::vector<int> diagonal_indexes;
+  diagonal_indexes.push_back(0-0+B);
+  while(true){
+    for(int d=diagonal_indexes.size();d--;){
+      particle & p = diagonal[diagonal_indexes[d]];
+      while(p.a_i < A && p.b_i < B && a[p.a_i]==b[p.b_i]){
+        p.a_i++;
+        p.b_i++;
+      }
+      if(p.a_i==A && p.b_i==B){
+        *ins = p.ins_num;
+        *del = p.del_num;
+        *sub = p.sub_num;
+        return p.total_cost;
+      }
+    }
+    std::vector<particle> future_diagonal=diagonal;
+    for(int d=diagonal_indexes.size();d--;){
+      particle & p = future_diagonal[diagonal_indexes[d]];
+      p.total_cost++;
+      if(p.a_i < A && p.b_i<B){
+        p.a_i++;
+        p.b_i++;
+        p.sub_num++;
+      }
+    }
+    for(int d=diagonal_indexes.size();d--;){
+      int diagonal_index=diagonal_indexes[d];
+      particle & p = diagonal[diagonal_index];
+      if(p.a_i<A){
+        int nbr_diagonal_index = diagonal_index+1;
+        assert(nbr_diagonal_index<A+B+1);
+        particle &n = future_diagonal[nbr_diagonal_index];
+        if(n.b_i<p.b_i){
+          if(n.b_i==-1){
+            diagonal_indexes.push_back(nbr_diagonal_index);
+          }
+          n = p;
+          n.a_i++;
+          n.del_num++;
+          n.total_cost++;
+        }
+      }
+      if(p.b_i<B){
+        int nbr_diagonal_index = diagonal_index-1;
+        assert(nbr_diagonal_index>=0);
+        particle &n = future_diagonal[nbr_diagonal_index];
+        if(n.a_i<p.a_i){
+          if(n.a_i==-1){
+            diagonal_indexes.push_back(diagonal_index-1);
+          }
+          n = p;
+          n.b_i++;
+          n.ins_num++;
+          n.total_cost++;
+        }
+      }
+    }
+    diagonal=future_diagonal;
   }
-  size_t ref_index = e.size()-1;
-  *ins = e[ref_index].ins_num, *del =
-    e[ref_index].del_num, *sub = e[ref_index].sub_num;
-  return e[ref_index].total_cost;
 }
+
+
 
 template<class T>
 int32 LevenshteinAlignment(const std::vector<T> &a,
