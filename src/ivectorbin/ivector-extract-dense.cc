@@ -73,9 +73,11 @@ void PrepareSegments (const std::string segments_rxfilename,
       continue;
     }
     
-    unordered_map<std::string, std::vector<Segments*> >::const_iterator iter = record2seg->find(recording);
+    unordered_map<std::string, std::vector<Segments*> >::const_iterator
+	iter = record2seg->find(recording);
     if (iter == record2seg->end()) {
-      record2seg->insert(std::make_pair<std::string, std::vector<Segments*> >(recording, std::vector<Segments*>()));
+      record2seg->insert(std::make_pair<std::string, std::vector<Segments*> >
+				(recording, std::vector<Segments*>()));
     }
     Segments *seg = new Segments();
     seg->segment = segment;
@@ -141,13 +143,14 @@ int main(int argc, char *argv[]) {
   try {
     const char *usage =
         "Extract iVectors for sessions using a sliding window over segments,\n"
-	"using a trained iVector extractor and features and Gaussian-level posteriors\n"
-        "Usage:  ivector-extract [options] <model-in> <segments-rxfilename> <feature-rspecifier> "
-        "<posteriors-rspecifier> <ivector-wspecifier> <ivector-ranges-wspecifier> <ivector-weights-wspecifier>\n"
+        "using a trained iVector extractor and features and Gaussian-level posteriors\n"
+        "Usage:  ivector-extract [options] <model-in> <segments-rxfilename> "
+        "<feature-rspecifier> <posteriors-rspecifier> <ivector-wspecifier> "
+        "<ivector-ranges-wspecifier> <ivector-weights-wspecifier>\n"
         "e.g.: \n"
         " fgmm-global-gselect-to-post 1.ubm '$feats' 'ark:gunzip -c gselect.1.gz|' ark:- | \\\n"
         "  ivector-extract-dense final.ie segments '$feats' ark,s,cs:- ark,t:ivectors.1.ark \\\n"
-	"   ark,t:ivector_ranges.1.ark ark,t:ivector_weights.1.ark\n";
+        "   ark,t:ivector_ranges.1.ark ark,t:ivector_weights.1.ark\n";
 
     ParseOptions po(usage);
     bool compute_objf_change = true;
@@ -179,9 +182,9 @@ int main(int argc, char *argv[]) {
 
     std::string ivector_extractor_rxfilename = po.GetArg(1),
 	segments_rxfilename = po.GetArg(2),
-        feature_rspecifier = po.GetArg(3),
-        posterior_rspecifier = po.GetArg(4),
-        ivectors_wspecifier = po.GetArg(5),
+	feature_rspecifier = po.GetArg(3),
+	posterior_rspecifier = po.GetArg(4),
+	ivectors_wspecifier = po.GetArg(5),
 	ivector_ranges_wspecifier = po.GetArg(6),
 	ivector_weights_wspecifier = po.GetArg(7);
 
@@ -239,7 +242,8 @@ int main(int argc, char *argv[]) {
                        &posterior);
         // note: now, this_t == sum of posteriors.
 
-        int32 num_chunks = std::max((int32)ceil((mat.NumRows() - chunk_size + period) / static_cast<BaseFloat>(period)), 1);
+        int32 num_chunks = std::max(static_cast<int32>(ceil((mat.NumRows() - chunk_size
+					+ period) / static_cast<BaseFloat>(period))), 1);
         Matrix<BaseFloat> ivectors(num_chunks, extractor.IvectorDim());
         for (int32 i = 0; i < num_chunks; i++) {
           Vector<BaseFloat> ivector(extractor.IvectorDim());
@@ -253,7 +257,8 @@ int main(int argc, char *argv[]) {
 
 	  std::stringstream ss;
 	  double start = iter->second[seg_num]->start;
-	  ss << start + i * period * frame_shift << "," << start + (i * period + window) * frame_shift;
+	  ss << start + i * period * frame_shift << ","
+	     << start + (i * period + window) * frame_shift;
 	  ivector_ranges.push_back(ss.str());
 	  ss.str(std::string());
 	  ss << window;
@@ -264,12 +269,15 @@ int main(int argc, char *argv[]) {
 
         tot_t += this_t;
         num_done++;
+
+	delete iter->second[seg_num];
       }
       Matrix<BaseFloat> recording_ivectors(tot_size, extractor.IvectorDim());
       int32 start_ind = 0;
       for (std::vector<Matrix<BaseFloat> >::iterator vec_iter = ivector_list.begin();
 	   vec_iter != ivector_list.end(); ++vec_iter) {
-        SubMatrix<BaseFloat> recording_ivectors_sub(recording_ivectors, start_ind, vec_iter->NumRows(), 0, extractor.IvectorDim());
+        SubMatrix<BaseFloat> recording_ivectors_sub(recording_ivectors,
+			start_ind, vec_iter->NumRows(), 0, extractor.IvectorDim());
 	recording_ivectors_sub.CopyFromMat(*vec_iter);
 	start_ind += vec_iter->NumRows();
       }
@@ -277,7 +285,6 @@ int main(int argc, char *argv[]) {
       ivector_ranges_writer.Write(iter->first, ivector_ranges);
       ivector_weights_writer.Write(iter->first, ivector_weights);
     }
-    // Destructor of "sequencer" will wait for any remaining tasks.
 
     KALDI_LOG << "Done " << num_done << " files, " << num_err
               << " with errors.  Total (weighted) frames " << tot_t;
