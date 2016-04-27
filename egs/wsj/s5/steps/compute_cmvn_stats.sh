@@ -38,18 +38,24 @@ if [ "$1" == "--two-channel" ]; then
   two_channel=true
   shift
 fi
+if [ "$1" == "--out-suffix" ]; then
+  out_suffix=$2
+  shift
+  shift
+fi
 
 if [ $# -lt 1 ] || [ $# -gt 3 ]; then
    echo "Usage: $0 [options] <data-dir> [<log-dir> [<cmvn-dir>] ]";
    echo "e.g.: $0 data/train exp/make_mfcc/train mfcc"
    echo "Note: <log-dir> defaults to <data-dir>/log, and <cmvn-dir> defaults to <data-dir>/data"
    echo "Options:"
-   echo " --fake          gives you fake cmvn stats that do no normalization."
-   echo " --two-channel   is for two-channel telephone data, there must be no segments "
-   echo "                 file and reco2file_and_channel must be present.  It will take"
-   echo "                 only frames that are louder than the other channel."
-   echo " --fake-dims <n1:n2>  Generate stats that won't cause normalization for these"
-   echo "                  dimensions (e.g. 13:14:15)"
+   echo " --fake                # gives you fake cmvn stats that do no normalization."
+   echo " --two-channel         # is for two-channel telephone data, there must be no segments "
+   echo "                       # file and reco2file_and_channel must be present.  It will take"
+   echo "                       # only frames that are louder than the other channel."
+   echo " --fake-dims <n1:n2>   # generate stats that won't cause normalization for these"
+   echo "                       # dimensions (e.g. 13:14:15)"
+   echo " --out-suffix <string> # suffix of mfcc output file"
    exit 1;
 fi
 
@@ -70,8 +76,13 @@ fi
 # make $cmvndir an absolute pathname.
 cmvndir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $cmvndir ${PWD}`
 
-# use "name" as part of name of the archive.
-name=`basename $data`
+# use $out_suffix as part of archive name if it exists,
+# otherwise use name of data dir
+if [ -z "$out_suffix" ]; then
+  name=`basename $data`
+else
+  name="$out_suffix"
+fi
 
 mkdir -p $cmvndir || exit 1;
 mkdir -p $logdir || exit 1;

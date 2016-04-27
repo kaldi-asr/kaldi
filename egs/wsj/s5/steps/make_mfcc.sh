@@ -11,6 +11,7 @@ cmd=run.pl
 mfcc_config=conf/mfcc.conf
 compress=true
 write_utt2num_frames=false  # if true writes utt2num_frames
+out_suffix=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -27,6 +28,7 @@ if [ $# -lt 1 ] || [ $# -gt 3 ]; then
    echo "  --nj <nj>                                        # number of parallel jobs"
    echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
    echo "  --write-utt2num-frames <true|false>     # If true, write utt2num_frames file."
+   echo "  --out-suffix <string>                            # suffix of mfcc output file"
    exit 1;
 fi
 
@@ -45,8 +47,13 @@ fi
 # make $mfccdir an absolute pathname.
 mfccdir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $mfccdir ${PWD}`
 
-# use "name" as part of name of the archive.
-name=`basename $data`
+# use $out_suffix as part of archive name if it exists,
+# otherwise use name of data dir
+if [ -z "$out_suffix" ]; then
+  name=`basename $data`
+else
+  name="$out_suffix"
+fi
 
 mkdir -p $mfccdir || exit 1;
 mkdir -p $logdir || exit 1;
