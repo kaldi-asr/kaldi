@@ -2081,7 +2081,8 @@ void PerElementOffsetComponent::UnVectorize(
 
 std::string ConstantFunctionComponent::Info() const {
   std::ostringstream stream;
-  stream << Type() << ", input-dim=" << InputDim()
+  stream << UpdatableComponent::Info()
+         << ", " << Type() << ", input-dim=" << InputDim()
          << ", output-dim=" << OutputDim()
          << ", is-updatable=" << std::boolalpha << is_updatable_
          << ", use-natural-gradient=" << std::boolalpha
@@ -2140,6 +2141,7 @@ void ConstantFunctionComponent::Backprop(
 }
 
 void ConstantFunctionComponent::Read(std::istream &is, bool binary) {
+  ReadUpdatableCommon(is, binary);  // Read the opening tag and learning rate
   ExpectOneOrTwoTokens(is, binary, "<ConstantFunctionComponent>",
                        "<InputDim>");
   ReadBasicType(is, binary, &input_dim_);
@@ -2153,6 +2155,7 @@ void ConstantFunctionComponent::Read(std::istream &is, bool binary) {
 }
 
 void ConstantFunctionComponent::Write(std::ostream &os, bool binary) const {
+  WriteUpdatableCommon(os, binary);  // Write the opening tag and learning rate
   WriteToken(os, binary, "<ConstantFunctionComponent>");
   WriteToken(os, binary, "<InputDim>");
   WriteBasicType(os, binary, input_dim_);
