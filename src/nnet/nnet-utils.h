@@ -319,11 +319,11 @@ void PosteriorToMatrix(const Posterior &post,
 template <typename Real>
 void PosteriorToMatrixMapped(const Posterior &post, 
                              const TransitionModel &model, 
-                             CuMatrix<Real> *mat) {
+                             Matrix<Real> *mat) {
   // Make a host-matrix,
   int32 num_rows = post.size(),
         num_cols = model.NumPdfs();
-  Matrix<Real> m(num_rows, num_cols, kSetZero);  // zero-filled
+  mat->Resize(num_rows, num_cols, kSetZero);  // zero-filled,
   // Fill from Posterior,
   for (int32 t = 0; t < post.size(); t++) {
     for (int32 i = 0; i < post[t].size(); i++) {
@@ -332,12 +332,24 @@ void PosteriorToMatrixMapped(const Posterior &post,
         KALDI_ERR << "Out-of-bound Posterior element with index " << col
                   << ", higher than number of columns " << num_cols;
       }
-      m(t, col) += post[t][i].second;  // sum,
+      (*mat)(t, col) += post[t][i].second;  // sum,
     }
   }
+}
+
+/**
+ * Wrapper of PosteriorToMatrixMapped with CuMatrix argument.
+ */
+template <typename Real>
+void PosteriorToMatrixMapped(const Posterior &post, 
+                             const TransitionModel &model, 
+                             CuMatrix<Real> *mat) {
+  Matrix<BaseFloat> m;
+  PosteriorToMatrixMapped(post, model, &m);
   // Copy to output GPU matrix,
   (*mat) = m;
 }
+
 
 
 }  // namespace nnet1

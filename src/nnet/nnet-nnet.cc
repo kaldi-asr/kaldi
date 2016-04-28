@@ -159,6 +159,14 @@ Component& Nnet::GetComponent(int32 c) {
   return *(components_.at(c));
 }
 
+const Component& Nnet::GetLastComponent() const {
+  return *(components_.at(NumComponents()-1));
+}
+
+Component& Nnet::GetLastComponent() {
+  return *(components_.at(NumComponents()-1));
+}
+
 void Nnet::ReplaceComponent(int32 c, const Component& comp) {
   delete components_.at(c);
   components_.at(c) = comp.Copy();  // deep copy,

@@ -73,6 +73,12 @@ class Nnet {
   /// Component accessor,
   Component& GetComponent(int32 c);
 
+  /// LastComponent accessor,
+  const Component& GetLastComponent() const;
+
+  /// LastComponent accessor,
+  Component& GetLastComponent();
+
   /// Replace c'th component in 'this' Nnet (deep copy),
   void ReplaceComponent(int32 c, const Component& comp);
 
