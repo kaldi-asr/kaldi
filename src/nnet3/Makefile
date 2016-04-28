@@ -27,7 +27,9 @@ OBJFILES = nnet-common.o nnet-compile.o nnet-component-itf.o \
   nnet-chain-training.o nnet-chain-diagnostics.o nnet-chain-combine.o \
 	discriminative-supervision.o nnet-discriminative-example.o \
 	nnet-discriminative-diagnostics.o \
-	discriminative-training.o nnet-discriminative-training.o
+	discriminative-training.o nnet-discriminative-training.o \
+	online-nnet3-decodable-simple.o
+
 
 LIBNAME = kaldi-nnet3
 

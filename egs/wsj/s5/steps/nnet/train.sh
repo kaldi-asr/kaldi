@@ -98,7 +98,7 @@ dir=$6
 
 # Using alidir for supervision (default)
 if [ -z "$labels" ]; then 
-  silphonelist=`cat $lang/phones/silence.csl` || exit 1;
+  silphonelist=`cat $lang/phones/silence.csl`
   for f in $alidir/final.mdl $alidir/ali.1.gz $alidir_cv/ali.1.gz; do
     [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
   done
@@ -145,20 +145,21 @@ else
   labels_tr_phn="ark:ali-to-phones --per-frame=true $alidir/final.mdl \"ark:gunzip -c $alidir/ali.*.gz |\" ark:- |"
 
   # get pdf-counts, used later for decoding/aligning,
-  analyze-counts --verbose=1 --binary=false \
+  num_pdf=$(hmm-info $alidir/final.mdl | awk '/pdfs/{print $4}')
+  analyze-counts --verbose=1 --binary=false --counts-dim=$num_pdf \
     ${frame_weights:+ "--frame-weights=$frame_weights"} \
     ${utt_weights:+ "--utt-weights=$utt_weights"} \
-    "$labels_tr_pdf" $dir/ali_train_pdf.counts 2>$dir/log/analyze_counts_pdf.log || exit 1
+    "$labels_tr_pdf" $dir/ali_train_pdf.counts 2>$dir/log/analyze_counts_pdf.log
   # copy the old transition model, will be needed by decoder,
-  copy-transition-model --binary=false $alidir/final.mdl $dir/final.mdl || exit 1
+  copy-transition-model --binary=false $alidir/final.mdl $dir/final.mdl
   # copy the tree
-  cp $alidir/tree $dir/tree || exit 1
+  cp $alidir/tree $dir/tree
 
   # make phone counts for analysis,
-  [ -e $lang/phones.txt ] && analyze-counts --verbose=1 --symbol-table=$lang/phones.txt \
+  [ -e $lang/phones.txt ] && analyze-counts --verbose=1 --symbol-table=$lang/phones.txt --counts-dim=$num_pdf \
     ${frame_weights:+ "--frame-weights=$frame_weights"} \
     ${utt_weights:+ "--utt-weights=$utt_weights"} \
-    "$labels_tr_phn" /dev/null 2>$dir/log/analyze_counts_phones.log || exit 1
+    "$labels_tr_phn" /dev/null 2>$dir/log/analyze_counts_phones.log
 fi
 
 ###### PREPARE FEATURES ######
@@ -167,9 +168,9 @@ echo "# PREPARING FEATURES"
 if [ "$copy_feats" == "true" ]; then
   echo "# re-saving features to local disk,"
   tmpdir=$(mktemp -d $copy_feats_tmproot)
-  copy-feats scp:$data/feats.scp ark,scp:$tmpdir/train.ark,$dir/train_sorted.scp || exit 1
-  copy-feats scp:$data_cv/feats.scp ark,scp:$tmpdir/cv.ark,$dir/cv.scp || exit 1
-  trap "echo \"# Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir" EXIT
+  copy-feats scp:$data/feats.scp ark,scp:$tmpdir/train.ark,$dir/train_sorted.scp
+  copy-feats scp:$data_cv/feats.scp ark,scp:$tmpdir/cv.ark,$dir/cv.scp
+  trap "echo '# Removing features tmpdir $tmpdir @ $(hostname)'; ls $tmpdir; rm -r $tmpdir" EXIT
 else
   # or copy the list,
   cp $data/feats.scp $dir/train_sorted.scp
@@ -281,7 +282,7 @@ else
       #put everything together
       compose-transforms --binary=false $dir/dct.mat $dir/hamm.mat - | \
         transf-to-nnet - - | \
-        nnet-concat --binary=false $feature_transform_old - $feature_transform || exit 1
+        nnet-concat --binary=false $feature_transform_old - $feature_transform
     ;;
     transf)
       feature_transform_old=$feature_transform
@@ -292,7 +293,7 @@ else
       nnet-concat --binary=false $feature_transform_old \
         "transf-to-nnet $transf - |" \
         "utils/nnet/gen_splice.py --fea-dim=$feat_dim --splice=$splice_after_transf |" \
-        $feature_transform || exit 1
+        $feature_transform
     ;;
     *)
       echo "Unknown feature type $feat_type"
@@ -390,39 +391,39 @@ else
     dnn)
       utils/nnet/make_nnet_proto.py $proto_opts \
         ${bn_dim:+ --bottleneck-dim=$bn_dim} \
-        $num_fea $num_tgt $hid_layers $hid_dim >$nnet_proto || exit 1 
+        $num_fea $num_tgt $hid_layers $hid_dim >$nnet_proto
       ;;
     cnn1d)
       delta_order=$([ -z $delta_opts ] && echo "0" || { echo $delta_opts | tr ' ' '\n' | grep "delta[-_]order" | sed 's:^.*=::'; })
       echo "Debug : $delta_opts, delta_order $delta_order"
       utils/nnet/make_cnn_proto.py $cnn_proto_opts \
         --splice=$splice --delta-order=$delta_order --dir=$dir \
-        $num_fea >$nnet_proto || exit 1
+        $num_fea >$nnet_proto
       cnn_fea=$(cat $nnet_proto | grep -v '^$' | tail -n1 | awk '{ print $5; }')
       utils/nnet/make_nnet_proto.py $proto_opts \
         --no-proto-head --no-smaller-input-weights \
         ${bn_dim:+ --bottleneck-dim=$bn_dim} \
-        "$cnn_fea" $num_tgt $hid_layers $hid_dim >>$nnet_proto || exit 1 
+        "$cnn_fea" $num_tgt $hid_layers $hid_dim >>$nnet_proto
       ;;
     cnn2d) 
       delta_order=$([ -z $delta_opts ] && echo "0" || { echo $delta_opts | tr ' ' '\n' | grep "delta[-_]order" | sed 's:^.*=::'; })
       echo "Debug : $delta_opts, delta_order $delta_order"
       utils/nnet/make_cnn2d_proto.py $cnn_proto_opts \
         --splice=$splice --delta-order=$delta_order --dir=$dir \
-        $num_fea >$nnet_proto || exit 1
+        $num_fea >$nnet_proto
       cnn_fea=$(cat $nnet_proto | grep -v '^$' | tail -n1 | awk '{ print $5; }')
       utils/nnet/make_nnet_proto.py $proto_opts \
         --no-proto-head --no-smaller-input-weights \
         ${bn_dim:+ --bottleneck-dim=$bn_dim} \
-        "$cnn_fea" $num_tgt $hid_layers $hid_dim >>$nnet_proto || exit 1
+        "$cnn_fea" $num_tgt $hid_layers $hid_dim >>$nnet_proto
       ;;
     lstm)
       utils/nnet/make_lstm_proto.py $proto_opts \
-        $num_fea $num_tgt >$nnet_proto || exit 1 
+        $num_fea $num_tgt >$nnet_proto
       ;;
     blstm)
       utils/nnet/make_blstm_proto.py $proto_opts \
-        $num_fea $num_tgt >$nnet_proto || exit 1
+        $num_fea $num_tgt >$nnet_proto
       ;; 
     *) echo "Unknown : --network-type $network_type" && exit 1;
   esac
@@ -435,7 +436,7 @@ else
   # optionally prepend dbn to the initialization,
   if [ ! -z "$dbn" ]; then
     nnet_init_old=$nnet_init; nnet_init=$dir/nnet_dbn_dnn.init
-    nnet-concat "$dbn" $nnet_init_old $nnet_init || exit 1 
+    nnet-concat "$dbn" $nnet_init_old $nnet_init
   fi
 fi
 
@@ -452,7 +453,7 @@ steps/nnet/train_scheduler.sh \
   ${frame_weights:+ --frame-weights "$frame_weights"} \
   ${utt_weights:+ --utt-weights "$utt_weights"} \
   ${config:+ --config $config} \
-  $nnet_init "$feats_tr" "$feats_cv" "$labels_tr" "$labels_cv" $dir || exit 1
+  $nnet_init "$feats_tr" "$feats_cv" "$labels_tr" "$labels_cv" $dir
 
 echo "$0 successfuly finished.. $dir"
 
