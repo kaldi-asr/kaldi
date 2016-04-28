@@ -79,9 +79,9 @@ struct RbmTrainOptions {
   void Register(OptionsItf *opts) {
     opts->Register("learn-rate", &learn_rate, "Learning rate");
 
-    opts->Register("momentum", &momentum, 
+    opts->Register("momentum", &momentum,
                    "Initial momentum for linear scheduling");
-    opts->Register("momentum-max", &momentum_max, 
+    opts->Register("momentum-max", &momentum_max,
                    "Final momentum for linear scheduling");
     opts->Register("momentum-steps", &momentum_steps,
                    "Number of steps of linear momentum scheduling");

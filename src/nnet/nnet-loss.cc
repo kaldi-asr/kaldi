@@ -104,7 +104,7 @@ void Xent::Eval(const VectorBase<BaseFloat> &frame_weights,
   // evaluate the frame-level classification,
   net_out.FindRowMaxId(&max_id_out_);  // find max in nn-output
   targets.FindRowMaxId(&max_id_tgt_);  // find max in targets
-  CountCorrectFramesWeighted(max_id_out_, max_id_tgt_, 
+  CountCorrectFramesWeighted(max_id_out_, max_id_tgt_,
                              frame_weights_, &correct_);
 
   // calculate cross_entropy (in GPU),
@@ -134,7 +134,7 @@ void Xent::Eval(const VectorBase<BaseFloat> &frame_weights,
     KALDI_ASSERT(KALDI_ISFINITE(entropy_progress_));
 
     if (frames_progress_ > progress_step) {
-      double progress_value = 
+      double progress_value =
         (xentropy_progress_ - entropy_progress_) / frames_progress_;
       // print,
       KALDI_VLOG(1) << "ProgressLoss[last "
@@ -174,11 +174,11 @@ std::string Xent::Report() {
   std::ostringstream oss;
   oss << "AvgLoss: " << loss_value << " (Xent), "
       << "[AvgXent: " << xentropy_.Sum() / frames_.Sum()
-      << ", AvgTargetEnt: " << entropy_.Sum() / frames_.Sum() 
+      << ", AvgTargetEnt: " << entropy_.Sum() / frames_.Sum()
       << "]" << std::endl;
 
   oss << "progress: [";
-  std::copy(loss_vec_.begin(), loss_vec_.end(), 
+  std::copy(loss_vec_.begin(), loss_vec_.end(),
             std::ostream_iterator<float>(oss, " "));
   oss << "]" << std::endl;
 
@@ -292,7 +292,7 @@ std::string Mse::Report() {
   // build the message,
   std::ostringstream oss;
   oss << "AvgLoss: " << loss_/frames_ << " (Mse), "
-      << "[RMS " << root_mean_square << ", frames " 
+      << "[RMS " << root_mean_square << ", frames "
       << frames_ << "]" << std::endl;
   oss << "progress: [";
   std::copy(loss_vec_.begin(), loss_vec_.end(),
@@ -391,7 +391,7 @@ std::string MultiTaskLoss::Report() {
 
   // build the message,
   std::ostringstream oss;
-  oss << "MultiTaskLoss, with " << loss_vec_.size() 
+  oss << "MultiTaskLoss, with " << loss_vec_.size()
       << " parallel loss functions." << std::endl;
   // individual loss reports first,
   for (int32 i = 0; i < loss_vec_.size(); i++) {
@@ -412,7 +412,7 @@ BaseFloat MultiTaskLoss::AvgLoss() {
   for (int32 i = 0; i < loss_vec_.size(); i++) {
     BaseFloat val = loss_weights_[i] * loss_vec_[i]->AvgLoss();
     if (!KALDI_ISFINITE(val)) {
-      KALDI_WARN << "Loss " << i+1 << ", has bad objective function value '" 
+      KALDI_WARN << "Loss " << i+1 << ", has bad objective function value '"
                  << val << "', using 0.0 instead.";
       val = 0.0;
     }

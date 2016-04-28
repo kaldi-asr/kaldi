@@ -49,27 +49,27 @@ int main(int argc, char *argv[]) {
     po.Register("binary", &binary, "Write output in binary mode");
 
     bool crossvalidate = false;
-    po.Register("cross-validate", &crossvalidate, 
+    po.Register("cross-validate", &crossvalidate,
         "Perform cross-validation (don't backpropagate)");
 
     std::string feature_transform;
-    po.Register("feature-transform", &feature_transform, 
+    po.Register("feature-transform", &feature_transform,
         "Feature transform in Nnet format");
 
     std::string objective_function = "xent";
-    po.Register("objective-function", &objective_function, 
+    po.Register("objective-function", &objective_function,
         "Objective function : xent|mse");
 
     int32 length_tolerance = 5;
-    po.Register("length-tolerance", &length_tolerance, 
+    po.Register("length-tolerance", &length_tolerance,
         "Allowed length difference of features/targets (frames)");
 
     std::string frame_weights;
-    po.Register("frame-weights", &frame_weights, 
+    po.Register("frame-weights", &frame_weights,
         "Per-frame weights to scale gradients (frame selection/weighting).");
 
     std::string use_gpu="yes";
-    po.Register("use-gpu", &use_gpu, 
+    po.Register("use-gpu", &use_gpu,
         "yes|no|optional, only has effect if compiled with CUDA");
 
     //// Add dummy option for compatibility with default scheduler,
@@ -128,8 +128,8 @@ int main(int argc, char *argv[]) {
     Timer time;
     KALDI_LOG << (crossvalidate?"CROSS-VALIDATION":"TRAINING") << " STARTED";
 
-    int32 num_done = 0, 
-          num_no_tgt_mat = 0, 
+    int32 num_done = 0,
+          num_no_tgt_mat = 0,
           num_other_error = 0;
 
     // main loop,
@@ -196,7 +196,7 @@ int main(int argc, char *argv[]) {
         // gradients are re-scaled by weights inside Eval,
         mse.Eval(weights, nnet_out, targets, &obj_diff);
       } else {
-        KALDI_ERR << "Unknown objective function code : " 
+        KALDI_ERR << "Unknown objective function code : "
                   << objective_function;
       }
 
@@ -234,7 +234,7 @@ int main(int argc, char *argv[]) {
 
       num_done++;
       total_frames += weights.Sum();
-      
+
       // do this every 5000 utterances,
       if (num_done % 5000 == 0) {
         // report the speed,
@@ -242,7 +242,7 @@ int main(int argc, char *argv[]) {
         KALDI_VLOG(1) << "After " << num_done << " utterances: "
           << "time elapsed = " << time_now / 60 << " min; "
           << "processed " << total_frames / time_now << " frames per sec.";
-#if HAVE_CUDA == 1 
+#if HAVE_CUDA == 1
         // check that GPU computes accurately,
         CuDevice::Instantiate().CheckGpuHealth();
 #endif
@@ -261,12 +261,12 @@ int main(int argc, char *argv[]) {
       nnet.Write(target_model_filename, binary);
     }
 
-    KALDI_LOG << "Done " << num_done << " files, " 
-      << num_no_tgt_mat << " with no tgt_mats, " 
+    KALDI_LOG << "Done " << num_done << " files, "
+      << num_no_tgt_mat << " with no tgt_mats, "
       << num_other_error << " with other errors. "
       << "[" << (crossvalidate ? "CROSS-VALIDATION" : "TRAINING")
       << ", " << (randomize ? "RANDOMIZED" : "NOT-RANDOMIZED")
-      << ", " << time.Elapsed() / 60 << " min, processing " 
+      << ", " << time.Elapsed() / 60 << " min, processing "
       << total_frames / time.Elapsed() << " frames per sec.]";
 
     if (objective_function == "xent") {

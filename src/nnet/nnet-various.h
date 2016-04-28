@@ -67,7 +67,7 @@ class Splice: public Component {
         ReadIntegerVector(is, false, &frame_offsets_);
       } else if (token == "<BuildVector>") {
         // Parse the list of 'matlab-like' indices:
-        // <BuildVector> 1:1:1000 1 2 3 1:10 </BuildVector> 
+        // <BuildVector> 1:1:1000 1 2 3 1:10 </BuildVector>
         while (is >> std::ws, !is.eof()) {
           std::string colon_sep_list_or_end;
           ReadToken(is, false, &colon_sep_list_or_end);
@@ -155,7 +155,7 @@ class CopyComponent: public Component {
       /**/ if (token == "<ReadVector>") {
         ReadIntegerVector(is, false, &copy_from_indices_);
       } else if (token == "<BuildVector>") {
-        // <BuildVector> 1:1:1000 1:1:1000 1 2 3 1:10 </BuildVector> 
+        // <BuildVector> 1:1:1000 1:1:1000 1 2 3 1:10 </BuildVector>
         // 'matlab-line' indexing, read the colon-separated-lists:
         while (is >> std::ws, !is.eof()) {
           std::string colon_sep_list_or_end;
@@ -199,7 +199,7 @@ class CopyComponent: public Component {
   }
 
   std::string Info() const {
-    return std::string("\n  min ") + ToString(copy_from_indices_.Min()) + 
+    return std::string("\n  min ") + ToString(copy_from_indices_.Min()) +
                          ", max "  + ToString(copy_from_indices_.Max());
   }
 

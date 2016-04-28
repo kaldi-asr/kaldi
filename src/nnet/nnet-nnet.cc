@@ -129,7 +129,7 @@ void Nnet::Backpropagate(const CuMatrixBase<BaseFloat> &out_diff,
 }
 
 
-void Nnet::Feedforward(const CuMatrixBase<BaseFloat> &in, 
+void Nnet::Feedforward(const CuMatrixBase<BaseFloat> &in,
                        CuMatrix<BaseFloat> *out) {
   KALDI_ASSERT(NULL != out);
   (*out) = in;  // works even with 0 components,
@@ -282,7 +282,7 @@ void Nnet::SetDropoutRetention(BaseFloat r)  {
 void Nnet::ResetLstmStreams(const std::vector<int32> &stream_reset_flag) {
   for (int32 c = 0; c < NumComponents(); c++) {
     if (GetComponent(c).GetType() == Component::kLstmProjectedStreams) {
-      LstmProjectedStreams& comp = 
+      LstmProjectedStreams& comp =
         dynamic_cast<LstmProjectedStreams&>(GetComponent(c));
       comp.ResetLstmStreams(stream_reset_flag);
     }
@@ -292,7 +292,7 @@ void Nnet::ResetLstmStreams(const std::vector<int32> &stream_reset_flag) {
 void Nnet::SetSeqLengths(const std::vector<int32> &sequence_lengths) {
   for (int32 c = 0; c < NumComponents(); c++) {
     if (GetComponent(c).GetType() == Component::kBLstmProjectedStreams) {
-      BLstmProjectedStreams& comp = 
+      BLstmProjectedStreams& comp =
         dynamic_cast<BLstmProjectedStreams&>(GetComponent(c));
       comp.SetSeqLengths(sequence_lengths);
     }
@@ -304,18 +304,18 @@ void Nnet::Init(const std::string &proto_file) {
   std::istream &is = in.Stream();
   std::string proto_line, token;
 
-  // Initialize from the prototype, where each line 
+  // Initialize from the prototype, where each line
   // contains the description for one component.
   while (is >> std::ws, !is.eof()) {
     KALDI_ASSERT(is.good());
 
     // get a line from the proto file,
-    std::getline(is, proto_line);  
+    std::getline(is, proto_line);
     if (proto_line == "") continue;
     KALDI_VLOG(1) << proto_line;
-    
+
     // get the 1st token from the line,
-    std::istringstream(proto_line) >> std::ws >> token;  
+    std::istringstream(proto_line) >> std::ws >> token;
     // ignore these tokens:
     if (token == "<NnetProto>" || token == "</NnetProto>") continue;
 
@@ -419,7 +419,7 @@ std::string Nnet::InfoPropagate() const {
   std::ostringstream ostr;
   // forward-pass buffer stats
   ostr << "\n### Forward propagation buffer content :\n";
-  ostr << "[0] output of <Input> " << MomentStatistics(propagate_buf_[0]) 
+  ostr << "[0] output of <Input> " << MomentStatistics(propagate_buf_[0])
        << std::endl;
   for (int32 i = 0; i < NumComponents(); i++) {
     ostr << "[" << 1+i << "] output of "
@@ -427,7 +427,7 @@ std::string Nnet::InfoPropagate() const {
          << MomentStatistics(propagate_buf_[i+1]) << std::endl;
     // nested networks too...
     if (Component::kParallelComponent == components_[i]->GetType()) {
-      ostr << 
+      ostr <<
         dynamic_cast<ParallelComponent*>(components_[i])->InfoPropagate();
     }
   }
@@ -438,7 +438,7 @@ std::string Nnet::InfoBackPropagate() const {
   std::ostringstream ostr;
   // forward-pass buffer stats
   ostr << "\n### Backward propagation buffer content :\n";
-  ostr << "[0] diff of <Input> " << MomentStatistics(backpropagate_buf_[0]) 
+  ostr << "[0] diff of <Input> " << MomentStatistics(backpropagate_buf_[0])
        << std::endl;
   for (int32 i = 0; i < NumComponents(); i++) {
     ostr << "["<<1+i<< "] diff-output of "
@@ -446,7 +446,7 @@ std::string Nnet::InfoBackPropagate() const {
          << MomentStatistics(backpropagate_buf_[i+1]) << std::endl;
     // nested networks too...
     if (Component::kParallelComponent == components_[i]->GetType()) {
-      ostr << 
+      ostr <<
         dynamic_cast<ParallelComponent*>(components_[i])->InfoBackPropagate();
     }
   }

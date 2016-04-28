@@ -42,11 +42,11 @@ int main(int argc, char *argv[]) {
     prior_opts.Register(&po);
 
     std::string feature_transform;
-    po.Register("feature-transform", &feature_transform, 
+    po.Register("feature-transform", &feature_transform,
         "Feature transform in front of main network (in nnet format)");
 
     bool no_softmax = false;
-    po.Register("no-softmax", &no_softmax, 
+    po.Register("no-softmax", &no_softmax,
         "Removes the last component with Softmax, if found. The pre-softmax "
         "activations are the output of the network. Decoding them leads to "
         "the same lattices as if we had used 'log-posteriors'.");
@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
     po.Register("apply-log", &apply_log, "Transform NN output by log()");
 
     std::string use_gpu="no";
-    po.Register("use-gpu", &use_gpu, 
+    po.Register("use-gpu", &use_gpu,
         "yes|no|optional, only has effect if compiled with CUDA");
 
     using namespace kaldi;
@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
 
     int32 time_shift = 0;
-    po.Register("time-shift", &time_shift, 
+    po.Register("time-shift", &time_shift,
         "LSTM : repeat last input frame N-times, discrad N initial output frames.");
 
     po.Read(argc, argv);
@@ -92,9 +92,9 @@ int main(int argc, char *argv[]) {
     // optionally remove softmax,
     Component::ComponentType last_comp_type = nnet.GetLastComponent().GetType();
     if (no_softmax) {
-      if (last_comp_type == Component::kSoftmax || 
+      if (last_comp_type == Component::kSoftmax ||
           last_comp_type == Component::kBlockSoftmax) {
-        KALDI_LOG << "Removing " << Component::TypeToMarker(last_comp_type) 
+        KALDI_LOG << "Removing " << Component::TypeToMarker(last_comp_type)
                   << " from the nnet " << model_filename;
         nnet.RemoveLastComponent();
       } else {

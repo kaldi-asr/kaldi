@@ -70,15 +70,15 @@ class LinearTransform : public UpdatableComponent {
       linearity_.Read(in.Stream(), binary);
       in.Close();
       // check dims,
-      if (OutputDim() != linearity_.NumRows() || 
+      if (OutputDim() != linearity_.NumRows() ||
           InputDim() != linearity_.NumCols()) {
         KALDI_ERR << "Dimensionality mismatch! Expected matrix"
                   << " r=" << OutputDim() << " c=" << InputDim()
                   << ", loaded matrix " << read_matrix_file
-                  << " with r=" << linearity_.NumRows() 
+                  << " with r=" << linearity_.NumRows()
                   << " c=" << linearity_.NumCols();
       }
-      KALDI_LOG << "Loaded <LinearTransform> matrix from file : " 
+      KALDI_LOG << "Loaded <LinearTransform> matrix from file : "
                 << read_matrix_file;
       return;
     }
@@ -88,7 +88,7 @@ class LinearTransform : public UpdatableComponent {
     //
     // Gaussian with given std_dev (mean = 0),
     linearity_.Resize(OutputDim(), InputDim());
-    RandGauss(0.0, param_stddev, &linearity_); 
+    RandGauss(0.0, param_stddev, &linearity_);
   }
 
   void ReadData(std::istream &is, bool binary) {
@@ -147,12 +147,12 @@ class LinearTransform : public UpdatableComponent {
   }
 
   std::string Info() const {
-    return std::string("\n  linearity") + 
+    return std::string("\n  linearity") +
       MomentStatistics(linearity_) +
       ", lr-coef " + ToString(learn_rate_coef_);
   }
   std::string InfoGradient() const {
-    return std::string("\n  linearity_grad") + 
+    return std::string("\n  linearity_grad") +
       MomentStatistics(linearity_corr_) +
       ", lr-coef " + ToString(learn_rate_coef_);
   }

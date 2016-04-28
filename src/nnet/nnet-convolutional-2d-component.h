@@ -405,7 +405,7 @@ class Convolutional2DComponent : public UpdatableComponent {
             CuMatrix<BaseFloat>& diff_mat = feature_patch_diffs_[out_fmap_cnt];
             CuSubMatrix<BaseFloat> src(diff_mat.ColRange(i*filt_y_len_*num_input_fmaps+j, 1));
             // to which col?
-            CuSubMatrix<BaseFloat> tgt(in_diff->ColRange(c, 1)); 
+            CuSubMatrix<BaseFloat> tgt(in_diff->ColRange(c, 1));
             tgt.AddMat(1.0, src);
           }
         }
@@ -417,16 +417,16 @@ class Convolutional2DComponent : public UpdatableComponent {
   }
 
 
-  void Update(const CuMatrixBase<BaseFloat> &input, 
+  void Update(const CuMatrixBase<BaseFloat> &input,
               const CuMatrixBase<BaseFloat> &diff) {
     // useful dims,
     int32 out_fmap_x_len = (fmap_x_len_ - filt_x_len_)/filt_x_step_ + 1;
     int32 out_fmap_y_len = (fmap_y_len_ - filt_y_len_)/filt_y_step_ + 1;
     int32 num_output_fmaps = output_dim_ / (out_fmap_x_len * out_fmap_y_len);
 
-    // This is total num_filters, 
+    // This is total num_filters,
     // each input_fmap has num_filters / num_input_fmaps:
-    int32 num_filters = filters_.NumRows();    
+    int32 num_filters = filters_.NumRows();
     KALDI_ASSERT(num_filters == num_output_fmaps);
 
     // we use following hyperparameters from the option class,
@@ -437,16 +437,16 @@ class Convolutional2DComponent : public UpdatableComponent {
   }
 
  private:
-  /// feature maps dimensions (for input x_ is usually splice 
-  /// and y_ is num of fbanks) shift for 2nd dim of a patch 
+  /// feature maps dimensions (for input x_ is usually splice
+  /// and y_ is num of fbanks) shift for 2nd dim of a patch
   /// (i.e. frame length before splicing),
   int32 fmap_x_len_, fmap_y_len_;
-  
+
   /// 2D filter dimensions, x_ temporal, y_ spectral,
   int32 filt_x_len_, filt_y_len_;
 
   /// 2D shifts along temporal and spectral axis,
-  int32 filt_x_step_, filt_y_step_;  
+  int32 filt_x_step_, filt_y_step_;
 
   int32 connect_fmap_;  ///< if connect_fmap_ = 1, then each fmap has num_filt
 

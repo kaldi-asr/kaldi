@@ -66,8 +66,8 @@ int main(int argc, char *argv[]) {
     int32 posterior_dim = feature_reader.Value().NumCols();
     KlHmm kl_hmm(posterior_dim, n_kl_states);
 
-    int32 num_done = 0, 
-          num_no_alignment = 0, 
+    int32 num_done = 0,
+          num_no_alignment = 0,
           num_other_error = 0;
 
     // main loop,
@@ -80,8 +80,8 @@ int main(int argc, char *argv[]) {
         const std::vector<int32> &alignment = alignments_reader.Value(utt);
         // Check,
         if (static_cast<int32>(alignment.size()) != mat.NumRows()) {
-          KALDI_WARN << "Length mismatch! alignment " << alignment.size() 
-                     << ", feature-rows " << mat.NumRows() 
+          KALDI_WARN << "Length mismatch! alignment " << alignment.size()
+                     << ", feature-rows " << mat.NumRows()
                      << ", " << utt;
           num_other_error++;
           continue;

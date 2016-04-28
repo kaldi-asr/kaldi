@@ -155,7 +155,7 @@ int main(int argc, char *argv[]) {
       }
     }
     KALDI_LOG << "Pasted posteriors for " << num_done << " sentences, "
-              << "missing sentences " << num_empty << ", " 
+              << "missing sentences " << num_empty << ", "
               << "failed for " << num_err;
     return (num_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {

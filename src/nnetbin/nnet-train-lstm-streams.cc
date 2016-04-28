@@ -53,29 +53,29 @@ int main(int argc, char *argv[]) {
     po.Register("binary", &binary, "Write output in binary mode");
 
     bool crossvalidate = false;
-    po.Register("cross-validate", &crossvalidate, 
+    po.Register("cross-validate", &crossvalidate,
         "Perform cross-validation (don't back-propagate)");
 
     std::string feature_transform;
-    po.Register("feature-transform", &feature_transform, 
+    po.Register("feature-transform", &feature_transform,
         "Feature transform in Nnet format");
 
     std::string objective_function = "xent";
-    po.Register("objective-function", &objective_function, 
+    po.Register("objective-function", &objective_function,
         "Objective function : xent|mse");
 
     /*
     int32 length_tolerance = 5;
-    po.Register("length-tolerance", &length_tolerance, 
+    po.Register("length-tolerance", &length_tolerance,
       "Allowed length difference of features/targets (frames)");
 
     std::string frame_weights;
-    po.Register("frame-weights", &frame_weights, 
+    po.Register("frame-weights", &frame_weights,
       "Per-frame weights to scale gradients (frame selection/weighting).");
     */
 
     std::string use_gpu="yes";
-    po.Register("use-gpu", &use_gpu, 
+    po.Register("use-gpu", &use_gpu,
         "yes|no|optional, only has effect if compiled with CUDA");
 
     // <jiayu>
@@ -91,7 +91,7 @@ int main(int argc, char *argv[]) {
 
     //// Add dummy option for compatibility with default scheduler,
     bool randomize = false;
-    po.Register("randomize", &randomize, 
+    po.Register("randomize", &randomize,
         "Dummy, for compatibility with 'steps/nnet/train_scheduler.sh'");
     ////
 
@@ -144,11 +144,11 @@ int main(int argc, char *argv[]) {
     Mse mse;
 
     Timer time;
-    KALDI_LOG << (crossvalidate ? "CROSS-VALIDATION" : "TRAINING") 
+    KALDI_LOG << (crossvalidate ? "CROSS-VALIDATION" : "TRAINING")
               << " STARTED";
 
-    int32 num_done = 0, 
-          num_no_tgt_mat = 0, 
+    int32 num_done = 0,
+          num_no_tgt_mat = 0,
           num_other_error = 0;
 
     // book-keeping for multi-streams,
@@ -194,7 +194,7 @@ int main(int argc, char *argv[]) {
 
           // check that the length matches,
           if (feat_transf.NumRows() != target.size()) {
-            KALDI_WARN << key 
+            KALDI_WARN << key
               << ", length miss-match between feats and targets, skipping";
             num_other_error++;
             feature_reader.Next();
@@ -218,7 +218,7 @@ int main(int argc, char *argv[]) {
       int done = 1;
       for (int s = 0; s < num_stream; s++) {
         // this stream still contains valid data, not yet exhausted,
-        if (curt[s] < lent[s]) done = 0;  
+        if (curt[s] < lent[s]) done = 0;
       }
       if (done) break;
 
@@ -294,14 +294,14 @@ int main(int argc, char *argv[]) {
         }
       }
 
-      num_done += 
+      num_done +=
         std::accumulate(new_utt_flags.begin(), new_utt_flags.end(), 0);
 
       total_frames += frame_mask.Sum();
-      
-      { // do this every 5000 uttearnces,
+
+      {  // do this every 5000 uttearnces,
         static int32 utt_counter = 0;
-        utt_counter += 
+        utt_counter +=
           std::accumulate(new_utt_flags.begin(), new_utt_flags.end(), 0);
         if (utt_counter > 5000) {
           utt_counter = 0;
@@ -330,12 +330,12 @@ int main(int argc, char *argv[]) {
       nnet.Write(target_model_filename, binary);
     }
 
-    KALDI_LOG << "Done " << num_done << " files, " 
-      << num_no_tgt_mat << " with no tgt_mats, " 
+    KALDI_LOG << "Done " << num_done << " files, "
+      << num_no_tgt_mat << " with no tgt_mats, "
       << num_other_error << " with other errors. "
       << "[" << (crossvalidate ? "CROSS-VALIDATION" : "TRAINING")
       << ", " << (randomize ? "RANDOMIZED" : "NOT-RANDOMIZED")
-      << ", " << time.Elapsed() / 60 << " min, processing " 
+      << ", " << time.Elapsed() / 60 << " min, processing "
       << total_frames / time.Elapsed() << " frames per sec.]";
 
     if (objective_function == "xent") {

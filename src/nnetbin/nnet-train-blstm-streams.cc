@@ -50,31 +50,31 @@ int main(int argc, char *argv[]) {
     po.Register("binary", &binary, "Write model in binary mode");
 
     bool crossvalidate = false;
-    po.Register("cross-validate", &crossvalidate, 
+    po.Register("cross-validate", &crossvalidate,
         "Perform cross-validation (no backpropagation)");
 
     std::string feature_transform;
-    po.Register("feature-transform", &feature_transform, 
+    po.Register("feature-transform", &feature_transform,
         "Feature transform in Nnet format");
 
     int32 length_tolerance = 5;
-    po.Register("length-tolerance", &length_tolerance, 
+    po.Register("length-tolerance", &length_tolerance,
         "Allowed length difference of features/targets (frames)");
 
     std::string frame_weights;
-    po.Register("frame-weights", &frame_weights, 
+    po.Register("frame-weights", &frame_weights,
         "Per-frame weights to scale gradients (frame selection/weighting).");
 
     int32 num_streams = 4;
-    po.Register("num_streams", &num_streams, 
+    po.Register("num_streams", &num_streams,
         "Number of sentences processed in parallel");
 
     double frame_limit = 100000;
-    po.Register("frame-limit", &frame_limit, 
+    po.Register("frame-limit", &frame_limit,
         "Max number of frames to be processed");
 
     std::string use_gpu = "yes";
-    po.Register("use-gpu", &use_gpu, 
+    po.Register("use-gpu", &use_gpu,
         "yes|no|optional, only has effect if compiled with CUDA");
 
     po.Read(argc, argv);
@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
     CuMatrix<BaseFloat> feats, feats_transf, nnet_out, obj_diff;
 
     Timer time;
-    KALDI_LOG << (crossvalidate ? "CROSS-VALIDATION" : "TRAINING") 
+    KALDI_LOG << (crossvalidate ? "CROSS-VALIDATION" : "TRAINING")
               << " STARTED";
 
     // Feature matrix of every utterance,
@@ -137,8 +137,8 @@ int main(int argc, char *argv[]) {
 
     int32 feat_dim = nnet.InputDim();
 
-    int32 num_done = 0, 
-          num_no_tgt_mat = 0, 
+    int32 num_done = 0,
+          num_no_tgt_mat = 0,
           num_other_error = 0;
 
     while (!feature_reader.Done()) {
@@ -193,18 +193,18 @@ int main(int argc, char *argv[]) {
 
         frame_num_utt.push_back(mat.NumRows());
         sequence_index++;
-        // If the total number of frames reaches frame_limit, then stop adding 
-        // more sequences, regardless of whether the number of utterances 
+        // If the total number of frames reaches frame_limit, then stop adding
+        // more sequences, regardless of whether the number of utterances
         // reaches num_sequence or not.
-        if (frame_num_utt.size() == num_streams || 
+        if (frame_num_utt.size() == num_streams ||
             frame_num_utt.size() * max_frame_num > frame_limit) {
-            feature_reader.Next(); 
+            feature_reader.Next();
             break;
         }
       }
       int32 cur_sequence_num = frame_num_utt.size();
 
-      // Create the final feature matrix. Every utterance is padded to the max 
+      // Create the final feature matrix. Every utterance is padded to the max
       // length within this group of utterances,
       Matrix<BaseFloat> feat_mat_host(cur_sequence_num * max_frame_num, feat_dim);
       Posterior target_host;
@@ -261,7 +261,7 @@ int main(int argc, char *argv[]) {
       // monitor the NN training (--verbose=2),
       if (kaldi::g_kaldi_verbose_level >= 2) {
         // print every 25k frames,
-        if ((total_frames / 25000) != ((total_frames + feats_transf.NumRows()) / 25000)) {  
+        if ((total_frames / 25000) != ((total_frames + feats_transf.NumRows()) / 25000)) {
           KALDI_VLOG(2) << "### After " << total_frames << " frames,";
           KALDI_VLOG(2) << nnet.InfoPropagate();
           if (!crossvalidate) {

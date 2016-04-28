@@ -99,7 +99,7 @@ class LstmProjectedStreams : public UpdatableComponent {
     peephole_f_c_.Resize(ncell_, kUndefined);
     peephole_o_c_.Resize(ncell_, kUndefined);
 
-    
+
     RandUniform(0.0, 2.0 * param_scale, &bias_);
     RandUniform(0.0, 2.0 * param_scale, &peephole_i_c_);
     RandUniform(0.0, 2.0 * param_scale, &peephole_f_c_);
@@ -696,11 +696,11 @@ class LstmProjectedStreams : public UpdatableComponent {
     w_r_m_.AddMat(-lr * learn_rate_coef_, w_r_m_corr_);
 
 //    /*
-//      Here we deal with the famous "vanishing & exploding difficulties" 
+//      Here we deal with the famous "vanishing & exploding difficulties"
 //      in RNN learning.
 //
 //      *For gradients vanishing*
-//      LSTM architecture introduces linear CEC as the "error bridge" across 
+//      LSTM architecture introduces linear CEC as the "error bridge" across
 //      long time distance solving vanishing problem.
 //
 //      *For gradients exploding*
@@ -711,7 +711,7 @@ class LstmProjectedStreams : public UpdatableComponent {
 //      Our approach is a *modified* version of Max Norm Regularization:
 //      For each nonlinear neuron,
 //      1. fan-in weights & bias model a seperation hyper-plane: W x + b = 0
-//      2. squashing function models a differentiable nonlinear slope around 
+//      2. squashing function models a differentiable nonlinear slope around
 //         this hyper-plane.
 //
 //      Conventional max norm regularization scale W to keep its L2 norm bounded,
@@ -807,7 +807,7 @@ class LstmProjectedStreams : public UpdatableComponent {
 
   // back-propagate buffer: diff-input of [g, i, f, o, c, h, m, r]
   CuMatrix<BaseFloat> backpropagate_buf_;
-};  // class LstmProjectedStreams 
+};  // class LstmProjectedStreams
 
 }  // namespace nnet1
 }  // namespace kaldi

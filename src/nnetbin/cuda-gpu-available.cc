@@ -34,17 +34,17 @@ int main(int argc, char *argv[]) try {
     KALDI_WARN << "Cannot get hostname, " << strerror(errno);
   }
 #endif
-  std::cerr 
+  std::cerr
     << "### IS CUDA GPU AVAILABLE? '"
     << hostname << "' ###" << std::endl;
 #if HAVE_CUDA == 1
   CuDevice::Instantiate().SelectGpuId("yes");
-  std::cerr 
-    << "### HURRAY, WE GOT A CUDA GPU FOR COMPUTATION!!! ###" 
+  std::cerr
+    << "### HURRAY, WE GOT A CUDA GPU FOR COMPUTATION!!! ###"
     << std::endl;
   return 0;
 #else
-  std::cerr 
+  std::cerr
     << "### CUDA WAS NOT COMPILED IN! ###" << std::endl
     << "To support CUDA, you must run 'configure' on a machine "
     << "that has the CUDA compiler 'nvcc' available.";
@@ -52,10 +52,10 @@ int main(int argc, char *argv[]) try {
 #endif
 } catch (const std::exception &e) {
   // Error message 'e' already printed in base/kaldi-error.cc:175,
-  std::cerr 
+  std::cerr
     << "### WE DID NOT GET A CUDA GPU!!! ###" << std::endl
     << "### If it's your 1st experiment with CUDA, try reinstalling "
-    << "'CUDA toolkit' from NVidia web (it contains the drivers)." 
+    << "'CUDA toolkit' from NVidia web (it contains the drivers)."
     << std::endl
     << "### In other cases run 'nvidia-smi' in terminal "
     << "(gets installed with display drivers) :"

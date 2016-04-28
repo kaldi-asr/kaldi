@@ -41,14 +41,14 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
 
-    po.Register("remove-first-layers", &remove_first_components, 
+    po.Register("remove-first-layers", &remove_first_components,
         "Deprecated, please use --remove-first-components");
-    po.Register("remove-last-layers", &remove_last_components, 
+    po.Register("remove-last-layers", &remove_last_components,
         "Deprecated, please use --remove-last-components");
 
-    po.Register("remove-first-components", &remove_first_components, 
+    po.Register("remove-first-components", &remove_first_components,
         "Remove N first Components from the Nnet");
-    po.Register("remove-last-components", &remove_last_components, 
+    po.Register("remove-last-components", &remove_last_components,
         "Remove N last layers Components from the Nnet");
 
     std::string from_parallel_component;
@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
     // eventually replace 'nnet' by nested network from <ParallelComponent>,
     if (from_parallel_component != "") {
       std::vector<int32> component_id_nested_id;
-      kaldi::SplitStringToIntegers(from_parallel_component, ":", false, 
+      kaldi::SplitStringToIntegers(from_parallel_component, ":", false,
                                    &component_id_nested_id);
       // parse the argument,
       int32 component_id = -1, nested_id = 0;
@@ -105,9 +105,9 @@ int main(int argc, char *argv[]) {
         }
       }
       // replace the nnet,
-      KALDI_ASSERT(nnet.GetComponent(component_id-1).GetType() == 
+      KALDI_ASSERT(nnet.GetComponent(component_id-1).GetType() ==
                    Component::kParallelComponent);
-      ParallelComponent& parallel_comp = 
+      ParallelComponent& parallel_comp =
         dynamic_cast<ParallelComponent&>(nnet.GetComponent(component_id-1));
       nnet = parallel_comp.GetNestedNnet(nested_id-1);  // replace!
     }

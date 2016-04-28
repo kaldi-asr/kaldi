@@ -105,7 +105,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
     b_w_gifo_x_.Resize(4*ncell_, input_dim_, kUndefined);
     b_w_gifo_r_.Resize(4*ncell_, nrecur_, kUndefined);
     b_w_r_m_.Resize(nrecur_, ncell_, kUndefined);
-    
+
     RandUniform(0.0, 2.0 * param_scale, &b_w_gifo_x_);
     RandUniform(0.0, 2.0 * param_scale, &b_w_gifo_r_);
     RandUniform(0.0, 2.0 * param_scale, &b_w_r_m_);
@@ -573,7 +573,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
       "\n  B_DR  " + MomentStatistics(B_DR);
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
                     CuMatrixBase<BaseFloat> *out) {
     int DEBUG = 0;
 
@@ -791,9 +791,9 @@ class BLstmProjectedStreams : public UpdatableComponent {
   }
 
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
                         const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, 
+                        const CuMatrixBase<BaseFloat> &out_diff,
                         CuMatrixBase<BaseFloat> *in_diff) {
     int DEBUG = 0;
 
@@ -1149,7 +1149,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
     }
   }
 
-  void Update(const CuMatrixBase<BaseFloat> &input, 
+  void Update(const CuMatrixBase<BaseFloat> &input,
               const CuMatrixBase<BaseFloat> &diff) {
     const BaseFloat lr  = opts_.learn_rate;
     // forward direction update
@@ -1174,8 +1174,8 @@ class BLstmProjectedStreams : public UpdatableComponent {
 
     b_w_r_m_.AddMat(-lr * learn_rate_coef_, b_w_r_m_corr_);
 
-    /* For L2 regularization see "vanishing & exploding difficulties" 
-     * in nnet-lstm-projected-streams.h 
+    /* For L2 regularization see "vanishing & exploding difficulties"
+     * in nnet-lstm-projected-streams.h
      */
   }
 

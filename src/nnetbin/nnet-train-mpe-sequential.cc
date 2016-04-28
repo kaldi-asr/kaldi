@@ -1,6 +1,6 @@
 // nnetbin/nnet-train-mpe-sequential.cc
 
-// Copyright 2011-2016  Brno University of Technology (author: Karel Vesely);  
+// Copyright 2011-2016  Brno University of Technology (author: Karel Vesely);
 //                      Arnab Ghoshal
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -90,7 +90,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
       "Perform one iteration of MPE/sMBR training using SGD with per-utterance"
       "updates.\n"
-      
+
       "Usage:  nnet-train-mpe-sequential [options] "
       "<model-in> <transition-model-in> <feature-rspecifier> "
       "<den-lat-rspecifier> <ali-rspecifier> [<model-out>]\n"
@@ -100,8 +100,8 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
 
-    NnetTrainOptions trn_opts; 
-    trn_opts.learn_rate = 0.00001; // changing default,
+    NnetTrainOptions trn_opts;
+    trn_opts.learn_rate = 0.00001;  // changing default,
     trn_opts.Register(&po);
 
     bool binary = true;
@@ -112,7 +112,7 @@ int main(int argc, char *argv[]) {
                 "Feature transform in 'nnet1' format");
 
     std::string silence_phones_str;
-    po.Register("silence-phones", &silence_phones_str, 
+    po.Register("silence-phones", &silence_phones_str,
         "Colon-separated list of integer id's of silence phones, e.g. 46:47");
 
     PdfPriorOptions prior_opts;
@@ -131,21 +131,21 @@ int main(int argc, char *argv[]) {
     po.Register("old-acoustic-scale", &old_acoustic_scale,
         "Add in the scores in the input lattices with this scale, rather "
         "than discarding them.");
-    
+
     bool one_silence_class = false;
-    po.Register("one-silence-class", &one_silence_class, 
+    po.Register("one-silence-class", &one_silence_class,
         "If true, the newer behavior reduces insertions.");
 
     kaldi::int32 max_frames = 6000;
-    po.Register("max-frames", &max_frames, 
+    po.Register("max-frames", &max_frames,
         "Maximum number of frames an utterance can have (skipped if longer)");
 
     bool do_smbr = false;
-    po.Register("do-smbr", &do_smbr, 
+    po.Register("do-smbr", &do_smbr,
         "Use state-level accuracies instead of phone accuracies.");
 
     std::string use_gpu="yes";
-    po.Register("use-gpu", &use_gpu, 
+    po.Register("use-gpu", &use_gpu,
         "yes|no|optional, only has effect if compiled with CUDA");
 
     po.Read(argc, argv);
@@ -193,7 +193,7 @@ int main(int argc, char *argv[]) {
       nnet.RemoveLastComponent();
     } else {
       KALDI_LOG << "The nnet was without softmax. "
-                << "The last component in " << model_filename << " was " 
+                << "The last component in " << model_filename << " was "
                 << Component::TypeToMarker(nnet.GetLastComponent().GetType());
     }
     nnet.SetTrainOptions(trn_opts);
@@ -216,8 +216,8 @@ int main(int argc, char *argv[]) {
     double time_now = 0;
     KALDI_LOG << "TRAINING STARTED";
 
-    int32 num_done = 0, 
-          num_no_ref_ali = 0, 
+    int32 num_done = 0,
+          num_no_ref_ali = 0,
           num_no_den_lat = 0,
           num_other_error = 0;
 
@@ -244,13 +244,13 @@ int main(int argc, char *argv[]) {
       // check duration of numerator alignments,
       if (static_cast<MatrixIndexT>(ref_ali.size()) != mat.NumRows()) {
         KALDI_WARN << "Duration mismatch!"
-                   << " alignment " << ref_ali.size() 
+                   << " alignment " << ref_ali.size()
                    << " features " << mat.NumRows();
         num_other_error++;
         continue;
       }
       if (mat.NumRows() > max_frames) {
-        KALDI_WARN << "Skipping " << utt 
+        KALDI_WARN << "Skipping " << utt
           << " that has " << mat.NumRows() << " frames,"
           << " it is longer than '--max-frames'" << max_frames;
         num_other_error++;
@@ -281,7 +281,7 @@ int main(int argc, char *argv[]) {
       // check for temporal length of denominator lattices
       if (max_time != mat.NumRows()) {
         KALDI_WARN << "Duration mismatch!"
-          << " denominator lattice " << max_time 
+          << " denominator lattice " << max_time
           << " features " << mat.NumRows() << ","
           << " skipping " << utt;
         num_other_error++;
@@ -312,12 +312,12 @@ int main(int argc, char *argv[]) {
         fst::ScaleLattice(fst::LatticeScale(lm_scale, acoustic_scale), &den_lat);
 
       kaldi::Posterior post;
-      if (do_smbr) {  
+      if (do_smbr) {
         // use state-level accuracies, i.e. sMBR estimation,
         utt_frame_acc = LatticeForwardBackwardMpeVariants(
             trans_model, silence_phones, den_lat, ref_ali, "smbr",
             one_silence_class, &post);
-      } else {  
+      } else {
         // use phone-level accuracies, i.e. MPFE (minimum phone frame error),
         utt_frame_acc = LatticeForwardBackwardMpeVariants(
             trans_model, silence_phones, den_lat, ref_ali, "mpfe",
@@ -335,7 +335,7 @@ int main(int argc, char *argv[]) {
       KALDI_VLOG(1) << "Utterance " << utt << ": Average frame accuracy = "
                     << (utt_frame_acc/num_frames) << " over " << num_frames
                     << " frames,"
-                    << " diff-range(" << nnet_diff.Min() << "," 
+                    << " diff-range(" << nnet_diff.Min() << ","
                                       << nnet_diff.Max() << ")";
 
       // 7) backpropagate through the nnet, update,
@@ -359,12 +359,12 @@ int main(int argc, char *argv[]) {
       }
 
       // GRADIENT LOGGING
-      // First utterance, 
+      // First utterance,
       if (num_done == 1) {
         KALDI_VLOG(1) << nnet.InfoPropagate();
         KALDI_VLOG(1) << nnet.InfoBackPropagate();
         KALDI_VLOG(1) << nnet.InfoGradient();
-      } 
+      }
       // Every 1000 utterances (--verbose=2),
       if (kaldi::g_kaldi_verbose_level >= 2) {
         if (num_done % 1000 == 0) {
@@ -397,7 +397,7 @@ int main(int argc, char *argv[]) {
               << num_other_error << " with other errors.";
 
     KALDI_LOG << "Overall average frame-accuracy is "
-              << total_frame_acc / total_frames << " over " 
+              << total_frame_acc / total_frames << " over "
               << total_frames << " frames.";
 
 #if HAVE_CUDA == 1

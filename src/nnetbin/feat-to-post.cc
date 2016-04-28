@@ -22,7 +22,7 @@
 #include "util/common-utils.h"
 #include "hmm/posterior.h"
 
-/** @brief Converts features into posterior format, which is the generic 
+/** @brief Converts features into posterior format, which is the generic
  *  format of NN training targets in 'nnet1'. */
 int main(int argc, char *argv[]) {
   using namespace kaldi;

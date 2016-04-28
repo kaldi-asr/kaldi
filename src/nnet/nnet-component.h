@@ -89,7 +89,7 @@ class Component {
     const char *value;
   };
 
-  /// The table with pairs of Component types and markers 
+  /// The table with pairs of Component types and markers
   /// (defined in nnet-component.cc),
   static const struct key_value kMarkerMap[];
 
@@ -258,11 +258,11 @@ class UpdatableComponent : public Component {
   /// Option-class with training hyper-parameters,
   NnetTrainOptions opts_;
 
-  /// Scalar applied to learning rate for weight matrices 
+  /// Scalar applied to learning rate for weight matrices
   /// (to be used in ::Update method),
   BaseFloat learn_rate_coef_;
 
-  /// Scalar applied to learning rate for bias 
+  /// Scalar applied to learning rate for bias
   /// (to be used in ::Update method),
   BaseFloat bias_learn_rate_coef_;
 };

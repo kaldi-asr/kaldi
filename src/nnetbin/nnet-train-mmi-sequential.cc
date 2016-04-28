@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
       "updates\n"
 
       "Usage:  nnet-train-mmi-sequential [options] "
-      "<model-in> <transition-model-in> <feature-rspecifier> " 
+      "<model-in> <transition-model-in> <feature-rspecifier> "
       "<den-lat-rspecifier> <ali-rspecifier> [<model-out>]\n"
 
       "e.g.: nnet-train-mmi-sequential nnet.init trans.mdl scp:feats.scp "
@@ -100,15 +100,15 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
 
-    NnetTrainOptions trn_opts; 
-    trn_opts.learn_rate = 0.00001; // changing default,
+    NnetTrainOptions trn_opts;
+    trn_opts.learn_rate = 0.00001;  // changing default,
     trn_opts.Register(&po);
 
     bool binary = true;
     po.Register("binary", &binary, "Write output in binary mode");
 
     std::string feature_transform;
-    po.Register("feature-transform", &feature_transform, 
+    po.Register("feature-transform", &feature_transform,
         "Feature transform in 'nnet1' format");
 
     PdfPriorOptions prior_opts;
@@ -129,7 +129,7 @@ int main(int argc, char *argv[]) {
         "rather than discarding them.");
 
     kaldi::int32 max_frames = 6000;
-    po.Register("max-frames", &max_frames, 
+    po.Register("max-frames", &max_frames,
         "Maximum number of frames an utterance can have (skipped if longer)");
 
     bool drop_frames = true;
@@ -138,7 +138,7 @@ int main(int argc, char *argv[]) {
         "(ie. path not in lattice)");
 
     std::string use_gpu="yes";
-    po.Register("use-gpu", &use_gpu, 
+    po.Register("use-gpu", &use_gpu,
         "yes|no|optional, only has effect if compiled with CUDA");
 
     po.Read(argc, argv);
@@ -180,7 +180,7 @@ int main(int argc, char *argv[]) {
       nnet.RemoveLastComponent();
     } else {
       KALDI_LOG << "The nnet was without softmax. "
-                << "The last component in " << model_filename << " was " 
+                << "The last component in " << model_filename << " was "
                 << Component::TypeToMarker(nnet.GetLastComponent().GetType());
     }
     nnet.SetTrainOptions(trn_opts);
@@ -240,13 +240,13 @@ int main(int argc, char *argv[]) {
       // check duration of numerator alignments
       if (static_cast<int32>(num_ali.size()) != mat.NumRows()) {
         KALDI_WARN << "Duration mismatch!"
-                   << " alignment " << num_ali.size() 
+                   << " alignment " << num_ali.size()
                    << " features " << mat.NumRows();
         num_other_error++;
         continue;
       }
       if (mat.NumRows() > max_frames) {
-        KALDI_WARN << "Skipping " << utt 
+        KALDI_WARN << "Skipping " << utt
           << " that has " << mat.NumRows() << " frames,"
           << " it is longer than '--max-frames'" << max_frames;
         num_other_error++;
@@ -261,7 +261,7 @@ int main(int argc, char *argv[]) {
         continue;
       }
       if (old_acoustic_scale != 1.0) {
-        fst::ScaleLattice(fst::AcousticLatticeScale(old_acoustic_scale), 
+        fst::ScaleLattice(fst::AcousticLatticeScale(old_acoustic_scale),
                           &den_lat);
       }
       // optional sort it topologically
@@ -277,7 +277,7 @@ int main(int argc, char *argv[]) {
       // check duration of den. lattice,
       if (max_time != mat.NumRows()) {
         KALDI_WARN << "Duration mismatch!"
-          << " denominator lattice " << max_time 
+          << " denominator lattice " << max_time
           << " features " << mat.NumRows() << ","
           << " skipping " << utt;
         num_other_error++;
@@ -379,7 +379,7 @@ int main(int argc, char *argv[]) {
       if (frm_drop > 0) {
         std::stringstream ss;
         ss << (drop_frames?"Dropped":"[dropping disabled] Would drop")
-           << " frames in " << utt << " " << frm_drop << "/" << num_frames 
+           << " frames in " << utt << " " << frm_drop << "/" << num_frames
            << ",";
         // get frame intervals from vec frm_drop_vec,
         ss << " intervals :";
@@ -424,7 +424,7 @@ int main(int argc, char *argv[]) {
       }
 
       // GRADIENT LOGGING
-      // First utterance, 
+      // First utterance,
       if (num_done == 1) {
         KALDI_VLOG(1) << nnet.InfoPropagate();
         KALDI_VLOG(1) << nnet.InfoBackPropagate();
@@ -464,9 +464,9 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Overall MMI-objective/frame is "
               << std::setprecision(8) << total_mmi_obj / total_frames
               << " over " << total_frames << " frames,"
-              << " (average den-posterior on ali " 
+              << " (average den-posterior on ali "
               << total_post_on_ali / total_frames << ","
-              << " dropped " << num_frm_drop 
+              << " dropped " << num_frm_drop
               << " frames with num/den mismatch)";
 
 #if HAVE_CUDA == 1

@@ -50,40 +50,40 @@ int main(int argc, char *argv[]) {
     po.Register("binary", &binary, "Write output in binary mode");
 
     bool crossvalidate = false;
-    po.Register("cross-validate", &crossvalidate, 
+    po.Register("cross-validate", &crossvalidate,
         "Perform cross-validation (don't back-propagate)");
 
     bool randomize = true;
-    po.Register("randomize", &randomize, 
+    po.Register("randomize", &randomize,
         "Perform the frame-level shuffling within the Cache::");
 
     std::string feature_transform;
-    po.Register("feature-transform", &feature_transform, 
+    po.Register("feature-transform", &feature_transform,
         "Feature transform in Nnet format");
 
     std::string objective_function = "xent";
-    po.Register("objective-function", &objective_function, 
+    po.Register("objective-function", &objective_function,
         "Objective function : xent|mse|multitask");
 
     int32 length_tolerance = 5;
-    po.Register("length-tolerance", &length_tolerance, 
+    po.Register("length-tolerance", &length_tolerance,
         "Allowed length mismatch of features/targets/weights "
         "(in frames, we truncate to the shortest)");
 
     std::string frame_weights;
-    po.Register("frame-weights", &frame_weights, 
+    po.Register("frame-weights", &frame_weights,
         "Per-frame weights, used to re-scale gradients.");
 
     std::string utt_weights;
-    po.Register("utt-weights", &utt_weights, 
+    po.Register("utt-weights", &utt_weights,
         "Per-utterance weights, used to re-scale frame-weights.");
 
     std::string use_gpu="yes";
-    po.Register("use-gpu", &use_gpu, 
+    po.Register("use-gpu", &use_gpu,
         "yes|no|optional, only has effect if compiled with CUDA");
 
     double dropout_retention = 0.0;
-    po.Register("dropout-retention", &dropout_retention, 
+    po.Register("dropout-retention", &dropout_retention,
         "number between 0..1, controls how many neurons are preserved "
         "(0.0 will keep the value unchanged)");
 
@@ -163,11 +163,11 @@ int main(int argc, char *argv[]) {
     CuMatrix<BaseFloat> feats_transf, nnet_out, obj_diff;
 
     Timer time;
-    KALDI_LOG << (crossvalidate ? "CROSS-VALIDATION" : "TRAINING") 
+    KALDI_LOG << (crossvalidate ? "CROSS-VALIDATION" : "TRAINING")
               << " STARTED";
 
-    int32 num_done = 0, 
-          num_no_tgt_mat = 0, 
+    int32 num_done = 0,
+          num_no_tgt_mat = 0,
           num_other_error = 0;
 
     // main loop,
@@ -179,9 +179,9 @@ int main(int argc, char *argv[]) {
       // fill the randomizer,
       for ( ; !feature_reader.Done(); feature_reader.Next()) {
         if (feature_randomizer.IsFull()) {
-          // break the loop without calling Next(), 
+          // break the loop without calling Next(),
           // we keep the 'utt' for next round,
-          break;  
+          break;
         }
         std::string utt = feature_reader.Key();
         KALDI_VLOG(3) << "Reading " << utt;
@@ -263,7 +263,7 @@ int main(int argc, char *argv[]) {
             }
 
             // when all frames are removed, we skip the sentence,
-            if (keep_frames.size() == 0) continue;  
+            if (keep_frames.size() == 0) continue;
 
             // filter feature-frames,
             CuMatrix<BaseFloat> tmp_feats(keep_frames.size(), feats_transf.NumCols());
@@ -304,7 +304,7 @@ int main(int argc, char *argv[]) {
 
       // randomize,
       if (!crossvalidate && randomize) {
-        const std::vector<int32>& mask = 
+        const std::vector<int32>& mask =
           randomizer_mask.Generate(feature_randomizer.NumFrames());
         feature_randomizer.Randomize(mask);
         targets_randomizer.Randomize(mask);
@@ -385,8 +385,8 @@ int main(int argc, char *argv[]) {
       nnet.Write(target_model_filename, binary);
     }
 
-    KALDI_LOG << "Done " << num_done << " files, " 
-      << num_no_tgt_mat << " with no tgt_mats, " 
+    KALDI_LOG << "Done " << num_done << " files, "
+      << num_no_tgt_mat << " with no tgt_mats, "
       << num_other_error << " with other errors. "
       << "[" << (crossvalidate ? "CROSS-VALIDATION" : "TRAINING")
       << ", " << (randomize ? "RANDOMIZED" : "NOT-RANDOMIZED")

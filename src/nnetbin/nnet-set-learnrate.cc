@@ -1,6 +1,6 @@
 // nnetbin/nnet-set-learnrate.cc
 
-// Copyright 2016,  Brno University of Technology 
+// Copyright 2016,  Brno University of Technology
 //                  (author: Katerina Zmolikova, Karel Vesely)
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -44,16 +44,16 @@ int main(int argc, char *argv[]) {
         "Select components by 'csl' of 1..N values. Layout is the same as in "
         "'nnet-info' output, (example 1:3:5)");
 
-    float coef = 1.0, 
+    float coef = 1.0,
           weight_coef = 1.0,
           bias_coef = 1.0;
 
-    po.Register("coef", &coef, 
+    po.Register("coef", &coef,
         "Learn-rate coefficient for both weight matrices and biases.");
-    po.Register("weight-coef", &weight_coef, 
+    po.Register("weight-coef", &weight_coef,
         "Learn-rate coefficient for weight matrices "
         "(used as: coef * weight_coef).");
-    po.Register("bias-coef", &bias_coef, 
+    po.Register("bias-coef", &bias_coef,
         "Learn-rate coefficient for bias (used as: coef * bias_coef).");
 
     po.Read(argc, argv);
@@ -85,7 +85,7 @@ int main(int argc, char *argv[]) {
     // Setting the learning rate coefficients,
     for (int32 i = 0; i < components.size(); i++) {
       if (nnet.GetComponent(components[i]-1).IsUpdatable()) {
-        UpdatableComponent& comp = 
+        UpdatableComponent& comp =
           dynamic_cast<UpdatableComponent&>(nnet.GetComponent(components[i]-1));
         comp.SetLearnRateCoef(coef * weight_coef);  // weight matrices, etc.,
         comp.SetBiasLearnRateCoef(coef * bias_coef);  // biases,

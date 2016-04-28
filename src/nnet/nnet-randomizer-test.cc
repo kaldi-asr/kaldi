@@ -45,8 +45,8 @@ static void InitRand(MatrixBase<Real> *M) {
 
 
 template<class Real>
-static void AssertEqual(const VectorBase<Real> &A, 
-                        const VectorBase<Real> &B, 
+static void AssertEqual(const VectorBase<Real> &A,
+                        const VectorBase<Real> &B,
                         float tol = 0.001) {
   KALDI_ASSERT(A.Dim() == B.Dim());
   for (MatrixIndexT i = 0; i < A.Dim(); i++) {
@@ -93,8 +93,8 @@ void UnitTestMatrixRandomizer() {
   KALDI_ASSERT(r.IsFull());
   // create vector with consecutive indices
   std::vector<int32> mask(1111);
-  for (int32 i = 0; i < 1111; i++) { 
-    mask[i] = i; 
+  for (int32 i = 0; i < 1111; i++) {
+    mask[i] = i;
   }
   r.Randomize(mask);  // no shuffling
   // make sure we get same data we put to randomizer
@@ -102,7 +102,7 @@ void UnitTestMatrixRandomizer() {
   for ( ; !r.Done(); r.Next(), i++) {
     KALDI_LOG << i;
     const CuMatrixBase<BaseFloat> &m3 = r.Value();
-    Matrix<BaseFloat> m4(m3.NumRows(), m3.NumCols()); 
+    Matrix<BaseFloat> m4(m3.NumRows(), m3.NumCols());
     m3.CopyToMat(&m4);
     AssertEqual(m4, m.RowRange(i * c.minibatch_size, c.minibatch_size));
   }
@@ -116,7 +116,7 @@ void UnitTestMatrixRandomizer() {
   KALDI_ASSERT(r.NumFrames() == 11 + 1111);
   {  // check last 11 rows were copied to the front in the buffer
     const CuMatrixBase<BaseFloat> &m3 = r.Value();
-    Matrix<BaseFloat> m4(m3.NumRows(), m3.NumCols()); 
+    Matrix<BaseFloat> m4(m3.NumRows(), m3.NumCols());
     m3.CopyToMat(&m4);
     AssertEqual(m4.RowRange(0, 11), m.RowRange(1100, 11));
   }
@@ -143,8 +143,8 @@ void UnitTestVectorRandomizer() {
   KALDI_ASSERT(r.IsFull());
   // create vector with consecutive indices
   std::vector<int32> mask(1111);
-  for (int32 i = 0; i < 1111; i++) { 
-    mask[i] = i; 
+  for (int32 i = 0; i < 1111; i++) {
+    mask[i] = i;
   }
   r.Randomize(mask);  // no shuffling
   // make sure we get same data we put to randomizer
@@ -194,8 +194,8 @@ void UnitTestStdVectorRandomizer() {
   KALDI_ASSERT(r.IsFull());
   // create vector with consecutive indices
   std::vector<int32> mask(1111);
-  for (int32 i = 0; i < 1111; i++) { 
-    mask[i]=i; 
+  for (int32 i = 0; i < 1111; i++) {
+    mask[i]=i;
   }
   r.Randomize(mask);  // no shuffling
   // make sure we get same data we put to randomizer
@@ -203,9 +203,9 @@ void UnitTestStdVectorRandomizer() {
   for ( ; !r.Done(); r.Next(), i++) {
     KALDI_LOG << i;
     std::vector<int32> v2 = r.Value();
-    AssertEqual(v2.begin(), 
-                v2.end(), 
-                v.begin() + (i * c.minibatch_size), 
+    AssertEqual(v2.begin(),
+                v2.end(),
+                v.begin() + (i * c.minibatch_size),
                 v.begin() + ((i+1) * c.minibatch_size));
   }
   KALDI_ASSERT(i == 11);  // 11 minibatches

@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("nkl-states", &n_kl_states, "Number of states in Kl-HMM");
 
-    po.Register("posterior-dim", &n_posterior_dim, 
+    po.Register("posterior-dim", &n_posterior_dim,
         "Dimensionality of posterior features");
 
     po.Read(argc, argv);

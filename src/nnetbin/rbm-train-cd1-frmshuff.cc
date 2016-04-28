@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
     po.Register("binary", &binary, "Write output in binary mode");
 
     bool with_bug = true;
-    po.Register("with-bug", &with_bug, 
+    po.Register("with-bug", &with_bug,
         "Apply bug which led to better results (set-initial-momentum-to-max)");
 
     int32 num_iters = 1;
@@ -62,7 +62,7 @@ int main(int argc, char *argv[]) {
                 "iterating within tool because of linear momentum scheduling)");
 
     std::string feature_transform;
-    po.Register("feature-transform", &feature_transform, 
+    po.Register("feature-transform", &feature_transform,
         "Feature transform in 'nnet1' format");
 
     NnetDataRandomizerOptions rnd_opts;
@@ -70,11 +70,11 @@ int main(int argc, char *argv[]) {
     rnd_opts.Register(&po);
 
     kaldi::int32 max_frames = 6000;
-    po.Register("max-frames", &max_frames, 
+    po.Register("max-frames", &max_frames,
         "Maximum number of frames an utterance can have (skipped if longer)");
 
     std::string use_gpu="yes";
-    po.Register("use-gpu", &use_gpu, 
+    po.Register("use-gpu", &use_gpu,
         "yes|no|optional, only has effect if compiled with CUDA");
 
     po.Read(argc, argv);
@@ -122,7 +122,7 @@ int main(int argc, char *argv[]) {
     // 'trn_opts_rbm' is a local copy of 'trn_opts' which is passed to RBM,
     trn_opts_rbm = trn_opts;
     // keep `effective' learning rate constant
-    trn_opts_rbm.learn_rate = learn_rate * (1 - momentum);  
+    trn_opts_rbm.learn_rate = learn_rate * (1 - momentum);
     // pass options to RBM,
     rbm.SetRbmTrainOptions(trn_opts_rbm);
 
@@ -155,7 +155,7 @@ int main(int argc, char *argv[]) {
       // fill the randomizer,
       for ( ; !feature_reader.Done(); feature_reader.Next()) {
         if (feature_randomizer.IsFull()) {
-          // break the loop without calling Next(), 
+          // break the loop without calling Next(),
           // we keep the 'utt' for next round,
           break;
         }
@@ -165,7 +165,7 @@ int main(int argc, char *argv[]) {
         const Matrix<BaseFloat> &mat = feature_reader.Value();
         // skip too long segments (avoid runinning out of memory)
         if (mat.NumRows() > max_frames) {
-          KALDI_WARN << "Skipping " << utt 
+          KALDI_WARN << "Skipping " << utt
             << " that has " << mat.NumRows() << " frames,"
             << " it is longer than '--max-frames'" << max_frames;
           num_other_error++;
@@ -232,7 +232,7 @@ int main(int argc, char *argv[]) {
           static int32 n_prev = -1;
           BaseFloat step = (momentum_max - momentum) / momentum_steps;
           // change every momentum_step_period data,
-          int32 n = total_frames / momentum_step_period;  
+          int32 n = total_frames / momentum_step_period;
           BaseFloat momentum_actual;
           if (n > momentum_steps) {
             momentum_actual = momentum_max;
@@ -242,7 +242,7 @@ int main(int argc, char *argv[]) {
           if (n - n_prev > 0) {
             n_prev = n;
             BaseFloat learning_rate_actual = learn_rate*(1-momentum_actual);
-            KALDI_VLOG(1) << "Setting momentum " 
+            KALDI_VLOG(1) << "Setting momentum "
               << (with_bug ? momentum_max : momentum_actual)
               << " and learning rate " << learning_rate_actual
               << " after processing "
@@ -269,7 +269,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Done " << iter << " iterations, " << num_done << " files, "
               << "skipped " << num_other_error << " files. "
               << "[" << time.Elapsed() / 60 << " min, "
-              << "processing" << total_frames / time.Elapsed() << " " 
+              << "processing" << total_frames / time.Elapsed() << " "
               << "frames per sec.]";
 
     KALDI_LOG << mse.Report();

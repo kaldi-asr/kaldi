@@ -282,9 +282,9 @@ class FramePoolingComponent : public UpdatableComponent {
   int32 feature_dim_;  // feature dimension before splicing
   std::vector<int32> offset_;  // vector of pooling offsets
   /// Vector of pooling weight vectors,
-  std::vector<Vector<BaseFloat> > weight_; 
+  std::vector<Vector<BaseFloat> > weight_;
   /// detivatives of weight vectors,
-  std::vector<Vector<BaseFloat> > weight_diff_;  
+  std::vector<Vector<BaseFloat> > weight_diff_;
 
   bool normalize_;  // apply normalization after each update
 };

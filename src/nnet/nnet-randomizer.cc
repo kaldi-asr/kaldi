@@ -37,7 +37,7 @@ const std::vector<int32>& RandomizerMask::Generate(int32 mask_size) {
   mask_.resize(mask_size);
   for (int32 i = 0; i < mask_size; i++) mask_[i] = i;
   // shuffle using built-in random generator:
-  std::random_shuffle(mask_.begin(), mask_.end());  
+  std::random_shuffle(mask_.begin(), mask_.end());
   return mask_;
 }
 
@@ -57,16 +57,16 @@ void MatrixRandomizer::AddData(const CuMatrixBase<BaseFloat>& m) {
     if (leftover > 0) {
       data_.RowRange(0, leftover).CopyFromMat(data_.RowRange(data_begin_, leftover));
     }
-    data_begin_ = 0; 
+    data_begin_ = 0;
     data_end_ = leftover;
     // set zero to the rest of the buffer,
-    data_.RowRange(leftover, data_.NumRows() - leftover).SetZero();  
+    data_.RowRange(leftover, data_.NumRows() - leftover).SetZero();
   }
   // extend the buffer if necessary,
   if (data_.NumRows() < data_end_ + m.NumRows()) {
     CuMatrix<BaseFloat> data_aux(data_);
     // Add extra 1000 rows, so we don't reallocate soon:
-    data_.Resize(data_end_ + m.NumRows() + 1000, data_.NumCols());  
+    data_.Resize(data_end_ + m.NumRows() + 1000, data_.NumCols());
     data_.RowRange(0, data_aux.NumRows()).CopyFromMat(data_aux);
   }
   // copy the data
@@ -84,11 +84,11 @@ void MatrixRandomizer::Randomize(const std::vector<int32>& mask) {
   CuArray<int32> mask_in_gpu(mask.size());
   mask_in_gpu.CopyFromVec(mask);
   // Randomize the data, mask is used to index rows in source matrix:
-  // (Here the vector 'mask_in_gpu' is typically shorter than number 
-  //  of rows in 'data_aux_', because the buffer 'data_aux_' 
+  // (Here the vector 'mask_in_gpu' is typically shorter than number
+  //  of rows in 'data_aux_', because the buffer 'data_aux_'
   //  is larger than capacity 'randomizer_size'.
-  //  The extra rows in 'data_aux_' do not contain speech frames and 
-  //  are not copied from 'data_aux_', the extra rows in 'data_' are 
+  //  The extra rows in 'data_aux_' do not contain speech frames and
+  //  are not copied from 'data_aux_', the extra rows in 'data_' are
   //  unchanged by cu::Randomize.)
   cu::Randomize(data_aux_, mask_in_gpu, &data_);
 }
@@ -99,7 +99,7 @@ void MatrixRandomizer::Next() {
 
 const CuMatrixBase<BaseFloat>& MatrixRandomizer::Value() {
   // make sure we have data for next minibatch,
-  KALDI_ASSERT(data_end_ - data_begin_ >= conf_.minibatch_size);  
+  KALDI_ASSERT(data_end_ - data_begin_ >= conf_.minibatch_size);
   // prepare the mini-batch buffer,
   minibatch_.Resize(conf_.minibatch_size, data_.NumCols(), kUndefined);
   minibatch_.CopyFromMat(data_.RowRange(data_begin_, conf_.minibatch_size));
@@ -122,7 +122,7 @@ void VectorRandomizer::AddData(const Vector<BaseFloat>& v) {
     if (leftover > 0) {
       data_.Range(0, leftover).CopyFromVec(data_.Range(data_begin_, leftover));
     }
-    data_begin_ = 0; 
+    data_begin_ = 0;
     data_end_ = leftover;
     data_.Range(leftover, data_.Dim()-leftover).SetZero();  // zeroing the rest
   }
@@ -155,7 +155,7 @@ void VectorRandomizer::Next() {
 
 const Vector<BaseFloat>& VectorRandomizer::Value() {
   // make sure we have data for next minibatch,
-  KALDI_ASSERT(data_end_ - data_begin_ >= conf_.minibatch_size);  
+  KALDI_ASSERT(data_end_ - data_begin_ >= conf_.minibatch_size);
   // prepare the mini-batch buffer,
   minibatch_.Resize(conf_.minibatch_size, kUndefined);
   minibatch_.CopyFromVec(data_.Range(data_begin_, conf_.minibatch_size));
@@ -180,7 +180,7 @@ void StdVectorRandomizer<T>::AddData(const std::vector<T>& v) {
       typename std::vector<T>::iterator leftover_begin = data_.begin() + data_begin_;
       std::copy(leftover_begin, leftover_begin + leftover, data_.begin());
     }
-    data_begin_ = 0; 
+    data_begin_ = 0;
     data_end_ = leftover;
   }
   // extend the buffer if necessary
@@ -226,7 +226,7 @@ const std::vector<T>& StdVectorRandomizer<T>::Value() {
 // - Int32VectorRandomizer:
 template class StdVectorRandomizer<int32>;
 // - PosteriorRandomizer:
-template class StdVectorRandomizer<std::vector<std::pair<int32, BaseFloat> > >;  
+template class StdVectorRandomizer<std::vector<std::pair<int32, BaseFloat> > >;
 
 }  // namespace nnet1
 }  // namespace kaldi

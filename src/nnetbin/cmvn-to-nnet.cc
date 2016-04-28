@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("var-floor", &var_floor,
         "Floor the variance, so the factors in <Rescale> are bounded.");
-    po.Register("learn-rate-coef", &learn_rate_coef, 
+    po.Register("learn-rate-coef", &learn_rate_coef,
         "Initialize learning-rate coefficient to a value.");
 
     po.Read(argc, argv);
@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
       BaseFloat mean = cmvn_stats(0, d) / frame_count;
       BaseFloat var = cmvn_stats(1, d) / frame_count - mean * mean;
       if (var <= var_floor) {
-        KALDI_WARN << "Very small variance " << var 
+        KALDI_WARN << "Very small variance " << var
                    << " flooring to " << var_floor;
         var = var_floor;
       }

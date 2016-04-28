@@ -65,7 +65,7 @@ namespace nnet1 {
     CuVector<BaseFloat> check_length_is_one(2);
     check_length_is_one.AddColSumMat(1.0, mat_out, 0.0);  // sum_of_cols(x^2),
     check_length_is_one.ApplyPow(0.5);  // L2norm = sqrt(sum_of_cols(x^2)),
-    CuVector<BaseFloat> ones(2); 
+    CuVector<BaseFloat> ones(2);
     ones.Set(1.0);
     AssertEqual(check_length_is_one, ones);
   }
@@ -83,7 +83,7 @@ namespace nnet1 {
     CuMatrix<BaseFloat> mat_out;
     c->Propagate(mat_in, &mat_out);
     // check the output,
-    CuVector<BaseFloat> ones(2); 
+    CuVector<BaseFloat> ones(2);
     ones.Set(1.0);
     for (int32 i = 0; i < mat_out.NumRows(); i++) {
       AssertEqual(mat_out.Row(i), ones);
@@ -92,7 +92,7 @@ namespace nnet1 {
     // backpropagate,
     CuMatrix<BaseFloat> dummy1(3, 2), dummy2(3, 2), diff_out(mat_in), diff_in;
     // the average 1.0 in 'diff_in' will be boosted by 10.0,
-    c->Backpropagate(dummy1, dummy2, diff_out, &diff_in);  
+    c->Backpropagate(dummy1, dummy2, diff_out, &diff_in);
     // check the output,
     CuVector<BaseFloat> tens(2); tens.Set(10);
     for (int32 i = 0; i < diff_in.NumRows(); i++) {
@@ -123,7 +123,7 @@ namespace nnet1 {
     // backpropagate,
     CuMatrix<BaseFloat> mat_out_diff(mat_in), mat_in_diff;
     c->Backpropagate(mat_in, mat_out, mat_out_diff, &mat_in_diff);
-    KALDI_LOG << "mat_out_diff " << mat_out_diff 
+    KALDI_LOG << "mat_out_diff " << mat_out_diff
               << " mat_in_diff " << mat_in_diff;
     AssertEqual(mat_out_diff, mat_in_diff);
 
@@ -132,7 +132,7 @@ namespace nnet1 {
   }
 
   void UnitTestConvolutionalComponent3x3() {
-    // make 3x3 convolutional component, 
+    // make 3x3 convolutional component,
     // design such weights and input so output is zero,
     Component* c = ReadComponentFromString("<ConvolutionalComponent> 9 15 \
       <PatchDim> 3 <PatchStep> 1 <PatchStride> 5 \
@@ -160,14 +160,14 @@ namespace nnet1 {
     CuMatrix<BaseFloat> mat_out_diff;
     ReadCuMatrixFromString("[ 1 0 0  1 1 0  1 1 1 ]", &mat_out_diff);
     // hand-computed back-propagated values,
-    CuMatrix<BaseFloat> mat_in_diff_ref;  
-    ReadCuMatrixFromString("[ -1 -4 -15 -8 -6   0 -3 -6 3 6   1 1 14 11 7 ]", 
+    CuMatrix<BaseFloat> mat_in_diff_ref;
+    ReadCuMatrixFromString("[ -1 -4 -15 -8 -6   0 -3 -6 3 6   1 1 14 11 7 ]",
                            &mat_in_diff_ref);
 
     // backpropagate,
     CuMatrix<BaseFloat> mat_in_diff;
     c->Backpropagate(mat_in, mat_out, mat_out_diff, &mat_in_diff);
-    KALDI_LOG << "mat_in_diff " << mat_in_diff 
+    KALDI_LOG << "mat_in_diff " << mat_in_diff
               << " mat_in_diff_ref " << mat_in_diff_ref;
     AssertEqual(mat_in_diff, mat_in_diff_ref);
 
@@ -177,7 +177,7 @@ namespace nnet1 {
 
 
   void UnitTestMaxPoolingComponent() {
-    // make max-pooling component, assuming 4 conv. neurons, 
+    // make max-pooling component, assuming 4 conv. neurons,
     // non-overlapping pool of size 3,
     Component* c = Component::Init(
         "<MaxPoolingComponent> <InputDim> 24 <OutputDim> 8 \
@@ -238,7 +238,7 @@ namespace nnet1 {
     // backpropagate,
     CuMatrix<BaseFloat> mat_in_diff;
     c->Backpropagate(mat_in, mat_out, mat_out_diff, &mat_in_diff);
-    KALDI_LOG << "mat_in_diff " << mat_in_diff 
+    KALDI_LOG << "mat_in_diff " << mat_in_diff
               << " mat_in_diff_ref " << mat_in_diff_ref;
     AssertEqual(mat_in_diff, mat_in_diff_ref);
 
@@ -287,7 +287,7 @@ namespace nnet1 {
     // backpropagate,
     CuMatrix<BaseFloat> mat_in_diff;
     c->Backpropagate(mat_in, mat_out, mat_out_diff, &mat_in_diff);
-    KALDI_LOG << "mat_in_diff " << mat_in_diff 
+    KALDI_LOG << "mat_in_diff " << mat_in_diff
               << " mat_in_diff_ref " << mat_in_diff_ref;
     AssertEqual(mat_in_diff, mat_in_diff_ref);
 
@@ -337,7 +337,7 @@ namespace nnet1 {
     // backpropagate,
     CuMatrix<BaseFloat> mat_in_diff;
     c->Backpropagate(mat_in, mat_out, mat_out_diff, &mat_in_diff);
-    KALDI_LOG << "mat_in_diff " << mat_in_diff 
+    KALDI_LOG << "mat_in_diff " << mat_in_diff
               << " mat_in_diff_ref " << mat_in_diff_ref;
     AssertEqual(mat_in_diff, mat_in_diff_ref);
 
@@ -372,7 +372,7 @@ namespace nnet1 {
 
     // prepare mat_out_diff, mat_in_diff_ref,
     CuMatrix<BaseFloat> mat_out_diff;
-    ReadCuMatrixFromString("[ 0 0 1 1 2 2 3 3 4 4 5 5 6 6 7 7 8 8 ]", 
+    ReadCuMatrixFromString("[ 0 0 1 1 2 2 3 3 4 4 5 5 6 6 7 7 8 8 ]",
                            &mat_out_diff);
 
     CuMatrix<BaseFloat> mat_in_diff_ref;
@@ -383,7 +383,7 @@ namespace nnet1 {
     // backpropagate
     CuMatrix<BaseFloat> mat_in_diff;
     c->Backpropagate(mat_in, mat_out, mat_out_diff, &mat_in_diff);
-    KALDI_LOG << "mat_in_diff " << mat_in_diff 
+    KALDI_LOG << "mat_in_diff " << mat_in_diff
               << " mat_in_diff_ref " << mat_in_diff_ref;
     AssertEqual(mat_in_diff, mat_in_diff_ref);
 
@@ -401,10 +401,10 @@ int main() {
 #if HAVE_CUDA == 1
     if (loop == 0)
       // use no GPU,
-      CuDevice::Instantiate().SelectGpuId("no");  
+      CuDevice::Instantiate().SelectGpuId("no");
     else
       // use GPU when available,
-      CuDevice::Instantiate().SelectGpuId("optional");  
+      CuDevice::Instantiate().SelectGpuId("optional");
 #endif
     // unit-tests :
     UnitTestLengthNorm();

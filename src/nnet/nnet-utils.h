@@ -67,7 +67,7 @@ std::string MomentStatistics(const VectorBase<Real> &vec) {
   // mean
   Real mean = vec.Sum() / vec.Dim();
   // variance
-  vec_aux.Add(-mean); 
+  vec_aux.Add(-mean);
   vec_no_mean = vec_aux;
   vec_aux.MulElements(vec_no_mean);  // (vec-mean)^2
   Real variance = vec_aux.Sum() / vec.Dim();
@@ -161,7 +161,7 @@ Real ComputeStdDev(const CuMatrixBase<Real> &mat) {
  * Using the CPU random generator.
  */
 template <typename Real>
-void RandGauss(BaseFloat mu, BaseFloat sigma, CuMatrixBase<Real>* mat, 
+void RandGauss(BaseFloat mu, BaseFloat sigma, CuMatrixBase<Real>* mat,
                struct RandomState* state = NULL) {
   // fill temporary matrix with 'Normal' samples,
   Matrix<Real> m(mat->NumRows(), mat->NumCols(), kUndefined);
@@ -185,7 +185,7 @@ void RandGauss(BaseFloat mu, BaseFloat sigma, CuMatrixBase<Real>* mat,
  * Using the CPU random generator.
  */
 template <typename Real>
-void RandUniform(BaseFloat mu, BaseFloat range, CuMatrixBase<Real>* mat, 
+void RandUniform(BaseFloat mu, BaseFloat range, CuMatrixBase<Real>* mat,
                  struct RandomState* state = NULL) {
   // fill temporary matrix with '0..1' samples,
   Matrix<Real> m(mat->NumRows(), mat->NumCols(), kUndefined);
@@ -209,7 +209,7 @@ void RandUniform(BaseFloat mu, BaseFloat range, CuMatrixBase<Real>* mat,
  * Using the CPU random generator.
  */
 template <typename Real>
-void RandUniform(BaseFloat mu, BaseFloat range, CuVectorBase<Real>* vec, 
+void RandUniform(BaseFloat mu, BaseFloat range, CuVectorBase<Real>* vec,
                  struct RandomState* state = NULL) {
   // fill temporary vector with '0..1' samples,
   Vector<Real> v(vec->Dim(), kUndefined);
@@ -227,7 +227,7 @@ void RandUniform(BaseFloat mu, BaseFloat range, CuVectorBase<Real>* vec,
 /**
  * Build 'integer vector' out of vector of 'matlab-like' representation:
  * 'b, b:e, b:s:e'
- * 
+ *
  * b,e,s are integers, where:
  * b = beginning
  * e = end
@@ -236,7 +236,7 @@ void RandUniform(BaseFloat mu, BaseFloat range, CuVectorBase<Real>* vec,
  * The sequence includes 'end', 1:3 => [ 1 2 3 ].
  * The 'step' has to be positive.
  */
-inline void BuildIntegerVector(const std::vector<std::vector<int32> >& in, 
+inline void BuildIntegerVector(const std::vector<std::vector<int32> >& in,
                                std::vector<int32>* out) {
   // start with empty vector,
   out->clear();
@@ -261,7 +261,7 @@ inline void BuildIntegerVector(const std::vector<std::vector<int32> >& in,
         step = in[i][1];
         break;
       default:
-        KALDI_ERR << "Something is wrong! (should be 1-3) : " 
+        KALDI_ERR << "Something is wrong! (should be 1-3) : "
                   << in[i].size();
     }
     // check the inputs,
@@ -277,7 +277,7 @@ inline void BuildIntegerVector(const std::vector<std::vector<int32> >& in,
 /**
  * Wrapper with 'CuArray<int32>' output.
  */
-inline void BuildIntegerVector(const std::vector<std::vector<int32> >& in, 
+inline void BuildIntegerVector(const std::vector<std::vector<int32> >& in,
                                CuArray<int32>* out) {
   std::vector<int32> v;
   BuildIntegerVector(in, &v);
@@ -291,7 +291,7 @@ inline void BuildIntegerVector(const std::vector<std::vector<int32> >& in,
  * number of matrix-colmuns is set by 'num_cols'.
  */
 template <typename Real>
-void PosteriorToMatrix(const Posterior &post, 
+void PosteriorToMatrix(const Posterior &post,
                        const int32 num_cols, CuMatrix<Real> *mat) {
   // Make a host-matrix,
   int32 num_rows = post.size();
@@ -317,8 +317,8 @@ void PosteriorToMatrix(const Posterior &post,
  * number of matrix-colmuns is set by 'TransitionModel::NumPdfs'.
  */
 template <typename Real>
-void PosteriorToMatrixMapped(const Posterior &post, 
-                             const TransitionModel &model, 
+void PosteriorToMatrixMapped(const Posterior &post,
+                             const TransitionModel &model,
                              Matrix<Real> *mat) {
   // Make a host-matrix,
   int32 num_rows = post.size(),
@@ -341,8 +341,8 @@ void PosteriorToMatrixMapped(const Posterior &post,
  * Wrapper of PosteriorToMatrixMapped with CuMatrix argument.
  */
 template <typename Real>
-void PosteriorToMatrixMapped(const Posterior &post, 
-                             const TransitionModel &model, 
+void PosteriorToMatrixMapped(const Posterior &post,
+                             const TransitionModel &model,
                              CuMatrix<Real> *mat) {
   Matrix<BaseFloat> m;
   PosteriorToMatrixMapped(post, model, &m);

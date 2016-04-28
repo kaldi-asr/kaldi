@@ -93,7 +93,7 @@ class MatrixRandomizer {
 
   explicit MatrixRandomizer(const NnetDataRandomizerOptions &conf) :
     data_begin_(0),
-    data_end_(0) 
+    data_end_(0)
   {
     Init(conf);
   }

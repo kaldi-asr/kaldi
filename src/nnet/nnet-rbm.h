@@ -39,7 +39,7 @@ class RbmBase : public Component {
     Gaussian
   } RbmNodeType;
 
-  RbmBase(int32 dim_in, int32 dim_out) : 
+  RbmBase(int32 dim_in, int32 dim_out) :
     Component(dim_in, dim_out)
   { }
 
@@ -78,15 +78,15 @@ class RbmBase : public Component {
  private:
   //// Make inherited methods inaccessible,
   //   as for RBMs we use Reconstruct(.)
-  void Backpropagate(const CuMatrixBase<BaseFloat> &in, 
+  void Backpropagate(const CuMatrixBase<BaseFloat> &in,
                      const CuMatrixBase<BaseFloat> &out,
-                     const CuMatrixBase<BaseFloat> &out_diff, 
-                     CuMatrix<BaseFloat> *in_diff) 
+                     const CuMatrixBase<BaseFloat> &out_diff,
+                     CuMatrix<BaseFloat> *in_diff)
   { }
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
                         const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, 
-                        CuMatrixBase<BaseFloat> *in_diff) 
+                        const CuMatrixBase<BaseFloat> &out_diff,
+                        CuMatrixBase<BaseFloat> *in_diff)
   { }
   ////
 };
@@ -95,19 +95,19 @@ class RbmBase : public Component {
 
 class Rbm : public RbmBase {
  public:
-  Rbm(int32 dim_in, int32 dim_out) : 
+  Rbm(int32 dim_in, int32 dim_out) :
     RbmBase(dim_in, dim_out)
   { }
 
   ~Rbm()
   { }
 
-  Component* Copy() const { 
-    return new Rbm(*this); 
+  Component* Copy() const {
+    return new Rbm(*this);
   }
 
-  ComponentType GetType() const { 
-    return kRbm; 
+  ComponentType GetType() const {
+    return kRbm;
   }
 
   void InitData(std::istream &is) {
@@ -156,7 +156,7 @@ class Rbm : public RbmBase {
       vis_bias_.Resize(InputDim());
       RandUniform(vis_bias_mean, vis_bias_range, &vis_bias_);
     } else {
-      KALDI_LOG << "Initializing from <VisibleBiasCmvnFilename> " 
+      KALDI_LOG << "Initializing from <VisibleBiasCmvnFilename> "
                 << vis_bias_cmvn_file;
       // Reading Nnet with 'global-cmvn' components,
       Nnet cmvn;
@@ -168,7 +168,7 @@ class Rbm : public RbmBase {
       p.Scale(-1.0);  // 'un-do' negation of mean values,
       p.ApplyFloor(0.0001);
       p.ApplyCeiling(0.9999);
-      // Getting the logit,      
+      // Getting the logit,
       Vector<BaseFloat> logit_p(p.Dim());
       for (int32 d = 0; d < p.Dim(); d++) {
         logit_p(d) = Log(p(d)) - Log(1.0 - p(d));
@@ -223,7 +223,7 @@ class Rbm : public RbmBase {
 
 
   // Component API
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
                     CuMatrixBase<BaseFloat> *out) {
     // pre-fill with bias
     out->AddVecToRows(1.0, hid_bias_, 0.0);
@@ -236,15 +236,15 @@ class Rbm : public RbmBase {
   }
 
   // RBM training API
-  void Reconstruct(const CuMatrixBase<BaseFloat> &hid_state, 
+  void Reconstruct(const CuMatrixBase<BaseFloat> &hid_state,
                    CuMatrix<BaseFloat> *vis_probs) {
     // check the dim
     if (output_dim_ != hid_state.NumCols()) {
-      KALDI_ERR << "Nonmatching dims, component:" << output_dim_ 
+      KALDI_ERR << "Nonmatching dims, component:" << output_dim_
                 << " data:" << hid_state.NumCols();
     }
     // optionally allocate buffer
-    if (input_dim_ != vis_probs->NumCols() || 
+    if (input_dim_ != vis_probs->NumCols() ||
         hid_state.NumRows() != vis_probs->NumRows()) {
       vis_probs->Resize(hid_state.NumRows(), input_dim_);
     }
@@ -259,9 +259,9 @@ class Rbm : public RbmBase {
     }
   }
 
-  void RbmUpdate(const CuMatrixBase<BaseFloat> &pos_vis, 
-                 const CuMatrixBase<BaseFloat> &pos_hid, 
-                 const CuMatrixBase<BaseFloat> &neg_vis, 
+  void RbmUpdate(const CuMatrixBase<BaseFloat> &pos_vis,
+                 const CuMatrixBase<BaseFloat> &pos_hid,
+                 const CuMatrixBase<BaseFloat> &neg_vis,
                  const CuMatrixBase<BaseFloat> &neg_hid) {
     // dims
     KALDI_ASSERT(pos_vis.NumRows() == pos_hid.NumRows() &&
@@ -284,18 +284,18 @@ class Rbm : public RbmBase {
 
     // ANTI-WEIGHT-EXPLOSION PROTECTION (Gaussian-Bernoulli RBM)
     //
-    // in the following section we detect that the weights in 
-    // Gaussian-Bernoulli RBM are almost exploding. The weight 
-    // explosion is caused by large variance of the reconstructed data, 
+    // in the following section we detect that the weights in
+    // Gaussian-Bernoulli RBM are almost exploding. The weight
+    // explosion is caused by large variance of the reconstructed data,
     // which causes a feed-back loop that keeps increasing the weights.
     //
-    // To avoid explosion, the standard-deviation of the visible-data 
-    // and reconstructed-data should be about the same. 
+    // To avoid explosion, the standard-deviation of the visible-data
+    // and reconstructed-data should be about the same.
     // The model is particularly sensitive at the very
     // beginning of the CD-1 training.
     //
-    // We compute the standard deviations on 
-    // * 'A' : input mini-batch 
+    // We compute the standard deviations on
+    // * 'A' : input mini-batch
     // * 'B' : reconstruction.
     // When 'B > 2*A', we stabilize the training in this way:
     // 1. we scale down the weights and biases by 'A/B',
@@ -305,7 +305,7 @@ class Rbm : public RbmBase {
     // A warning message is put to the log. In later stage
     // the learning-rate returns back to its original value.
     //
-    // To avoid the issue, we make sure that the weight-matrix 
+    // To avoid the issue, we make sure that the weight-matrix
     // is sensibly initialized.
     //
     if (vis_type_ == RbmBase::Gaussian) {
@@ -369,7 +369,7 @@ class Rbm : public RbmBase {
 
     //  UPDATE visbias vector
     //
-    //  visbiasinc = momentum*visbiasinc + 
+    //  visbiasinc = momentum*visbiasinc +
     //               (epsilonvb/numcases)*(posvisact-negvisact);
     //
     vis_bias_corr_.AddRowSumMat(-lr/N, neg_vis, mmt);
@@ -378,7 +378,7 @@ class Rbm : public RbmBase {
 
     //  UPDATE hidbias vector
     //
-    // hidbiasinc = momentum*hidbiasinc + 
+    // hidbiasinc = momentum*hidbiasinc +
     //              (epsilonhb/numcases)*(poshidact-neghidact);
     //
     hid_bias_corr_.AddRowSumMat(-lr/N, neg_hid, mmt);
