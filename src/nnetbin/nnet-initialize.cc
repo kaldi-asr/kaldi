@@ -28,12 +28,11 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Initialize Neural Network parameters according to a prototype (nnet1).\n"
-        "Usage:  nnet-initialize [options] <nnet-prototype-in> <nnet-out>\n"
-        "e.g.:\n"
-        " nnet-initialize --binary=false nnet.proto nnet.init\n";
+      "Initialize Neural Network parameters according to a prototype (nnet1).\n"
+      "Usage:  nnet-initialize [options] <nnet-prototype-in> <nnet-out>\n"
+      "e.g.: nnet-initialize --binary=false nnet.proto nnet.init\n";
 
-    SetVerboseLevel(1);  // be verbose by default
+    SetVerboseLevel(1);  // be verbose by default,
 
     ParseOptions po(usage);
     bool binary_write = true;
@@ -64,7 +63,6 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Written initialized model to " << nnet_out_filename;
     return 0;
   } catch(const std::exception &e) {
-    std::cerr << e.what() << '\n';
     return -1;
   }
 }

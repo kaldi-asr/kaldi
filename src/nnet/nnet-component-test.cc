@@ -52,7 +52,7 @@ namespace nnet1 {
    * Unit tests,
    */
   void UnitTestLengthNorm() {
-    // make L2-lenght normalization component,
+    // make L2-length normalization component,
     Component* c = ReadComponentFromString("<LengthNormComponent> 5 5");
     // prepare input,
     CuMatrix<BaseFloat> mat_in;
@@ -60,7 +60,7 @@ namespace nnet1 {
     // propagate,
     CuMatrix<BaseFloat> mat_out;
     c->Propagate(mat_in, &mat_out);
-    // check the lenght,
+    // check the length,
     mat_out.MulElements(mat_out);  // ^2,
     CuVector<BaseFloat> check_length_is_one(2);
     check_length_is_one.AddColSumMat(1.0, mat_out, 0.0);  // sum_of_cols(x^2),

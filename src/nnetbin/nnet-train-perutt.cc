@@ -33,47 +33,54 @@ int main(int argc, char *argv[]) {
 
   try {
     const char *usage =
-        "Perform one iteration of Neural Network training by Stochastic Gradient Descent.\n"
-        "This version use pdf-posterior as targets, prepared typically by ali-to-post.\n"
-        "The updates are done per-utterance, shuffling options are dummy for compatibility reason.\n"
-        "\n"
-        "Usage:  nnet-train-perutt [options] <feature-rspecifier> <targets-rspecifier> <model-in> [<model-out>]\n"
-        "e.g.: \n"
-        " nnet-train-perutt scp:feature.scp ark:posterior.ark nnet.init nnet.iter1\n";
+      "Perform one iteration of NN training by SGD with per-utterance updates.\n"
+      "The training targets are represented as pdf-posteriors, usually prepared "
+      "by ali-to-post.\n"
+      "Usage: nnet-train-perutt [options] "
+      "<feature-rspecifier> <targets-rspecifier> <model-in> [<model-out>]\n"
+      "e.g.: nnet-train-perutt scp:feature.scp ark:posterior.ark nnet.init nnet.iter1\n";
 
     ParseOptions po(usage);
 
     NnetTrainOptions trn_opts;
     trn_opts.Register(&po);
 
-    bool binary = true,
-         crossvalidate = false;
+    bool binary = true;
     po.Register("binary", &binary, "Write output in binary mode");
-    po.Register("cross-validate", &crossvalidate, "Perform cross-validation (don't backpropagate)");
+
+    bool crossvalidate = false;
+    po.Register("cross-validate", &crossvalidate, 
+        "Perform cross-validation (don't backpropagate)");
 
     std::string feature_transform;
-    po.Register("feature-transform", &feature_transform, "Feature transform in Nnet format");
+    po.Register("feature-transform", &feature_transform, 
+        "Feature transform in Nnet format");
+
     std::string objective_function = "xent";
-    po.Register("objective-function", &objective_function, "Objective function : xent|mse");
+    po.Register("objective-function", &objective_function, 
+        "Objective function : xent|mse");
 
     int32 length_tolerance = 5;
-    po.Register("length-tolerance", &length_tolerance, "Allowed length difference of features/targets (frames)");
+    po.Register("length-tolerance", &length_tolerance, 
+        "Allowed length difference of features/targets (frames)");
 
     std::string frame_weights;
-    po.Register("frame-weights", &frame_weights, "Per-frame weights to scale gradients (frame selection/weighting).");
+    po.Register("frame-weights", &frame_weights, 
+        "Per-frame weights to scale gradients (frame selection/weighting).");
 
     std::string use_gpu="yes";
-    po.Register("use-gpu", &use_gpu, "yes|no|optional, only has effect if compiled with CUDA");
+    po.Register("use-gpu", &use_gpu, 
+        "yes|no|optional, only has effect if compiled with CUDA");
 
-    // Add dummy randomizer options, to make the tool compatible with standard scripts
-    NnetDataRandomizerOptions rnd_opts;
-    rnd_opts.Register(&po);
+    //// Add dummy option for compatibility with default scheduler,
     bool randomize = false;
-    po.Register("randomize", &randomize, "Dummy option, for compatibility...");
+    po.Register("randomize", &randomize,
+        "Dummy, for compatibility with 'steps/nnet/train_scheduler.sh'");
+    ////
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 4-(crossvalidate?1:0)) {
+    if (po.NumArgs() != 3 + (crossvalidate ? 0 : 1)) {
       po.PrintUsage();
       exit(1);
     }
@@ -91,8 +98,7 @@ int main(int argc, char *argv[]) {
     using namespace kaldi::nnet1;
     typedef kaldi::int32 int32;
 
-    //Select the GPU
-#if HAVE_CUDA==1
+#if HAVE_CUDA == 1
     CuDevice::Instantiate().SelectGpuId(use_gpu);
 #endif
 
@@ -114,11 +120,6 @@ int main(int argc, char *argv[]) {
       weights_reader.Open(frame_weights);
     }
 
-    RandomizerMask randomizer_mask(rnd_opts);
-    MatrixRandomizer feature_randomizer(rnd_opts);
-    PosteriorRandomizer targets_randomizer(rnd_opts);
-    VectorRandomizer weights_randomizer(rnd_opts);
-
     Xent xent;
     Mse mse;
 
@@ -127,7 +128,11 @@ int main(int argc, char *argv[]) {
     Timer time;
     KALDI_LOG << (crossvalidate?"CROSS-VALIDATION":"TRAINING") << " STARTED";
 
-    int32 num_done = 0, num_no_tgt_mat = 0, num_other_error = 0;
+    int32 num_done = 0, 
+          num_no_tgt_mat = 0, 
+          num_other_error = 0;
+
+    // main loop,
     for ( ; !feature_reader.Done(); feature_reader.Next()) {
       std::string utt = feature_reader.Key();
       KALDI_VLOG(3) << "Reading " << utt;
@@ -158,13 +163,13 @@ int main(int argc, char *argv[]) {
       // correct small length mismatch ... or drop sentence
       {
         // add lengths to vector
-        std::vector<int32> lenght;
-        lenght.push_back(mat.NumRows());
-        lenght.push_back(targets.size());
-        lenght.push_back(weights.Dim());
+        std::vector<int32> length;
+        length.push_back(mat.NumRows());
+        length.push_back(targets.size());
+        length.push_back(weights.Dim());
         // find min, max
-        int32 min = *std::min_element(lenght.begin(),lenght.end());
-        int32 max = *std::max_element(lenght.begin(),lenght.end());
+        int32 min = *std::min_element(length.begin(), length.end());
+        int32 max = *std::max_element(length.begin(), length.end());
         // fix or drop ?
         if (max - min < length_tolerance) {
           if (mat.NumRows() != min) mat.Resize(min, mat.NumCols(), kCopyData);
@@ -180,31 +185,28 @@ int main(int argc, char *argv[]) {
       // apply optional feature transform
       nnet_transf.Feedforward(CuMatrix<BaseFloat>(mat), &feats_transf);
 
-      // get block of feature/target pairs
-      //const Vector<BaseFloat>& frm_weights = weights_randomizer.Value();
-
       // forward pass
       nnet.Propagate(feats_transf, &nnet_out);
 
-      // evaluate objective function we've chosen
+      // evaluate objective function we've chosen,
       if (objective_function == "xent") {
-        // gradients re-scaled by weights in Eval,
+        // gradients are re-scaled by weights inside Eval,
         xent.Eval(weights, nnet_out, targets, &obj_diff);
       } else if (objective_function == "mse") {
-        // gradients re-scaled by weights in Eval,
+        // gradients are re-scaled by weights inside Eval,
         mse.Eval(weights, nnet_out, targets, &obj_diff);
       } else {
-        KALDI_ERR << "Unknown objective function code : " << objective_function;
+        KALDI_ERR << "Unknown objective function code : " 
+                  << objective_function;
       }
 
-      // backward pass
       if (!crossvalidate) {
-        // backpropagate
+        // backpropagate and update,
         nnet.Backpropagate(obj_diff, NULL);
       }
 
-      // 1st minibatch : show what happens in network
-      if (kaldi::g_kaldi_verbose_level >= 1 && total_frames == 0) {  // vlog-1
+      // 1st minibatch : show what happens in network,
+      if (total_frames == 0) {
         KALDI_VLOG(1) << "### After " << total_frames << " frames,";
         KALDI_VLOG(1) << nnet.InfoPropagate();
         if (!crossvalidate) {
@@ -213,53 +215,59 @@ int main(int argc, char *argv[]) {
         }
       }
 
-      // monitor the NN training
-      if (kaldi::g_kaldi_verbose_level >= 2) {  // vlog-2
-        if ((total_frames/25000) != ((total_frames+feats_transf.NumRows())/25000)) {  // print every 25k frames
+      // VERBOSE LOG
+      // monitor the NN training (--verbose=2),
+      if (kaldi::g_kaldi_verbose_level >= 2) {
+        static int32 counter = 0;
+        counter += mat.NumRows();
+        // print every 25k frames,
+        if (counter >= 25000) {
           KALDI_VLOG(2) << "### After " << total_frames << " frames,";
           KALDI_VLOG(2) << nnet.InfoPropagate();
           if (!crossvalidate) {
+            KALDI_VLOG(2) << nnet.InfoBackPropagate();
             KALDI_VLOG(2) << nnet.InfoGradient();
           }
+          counter = 0;
         }
       }
 
-      // report the speed
       num_done++;
-      total_frames += feats_transf.NumRows();
+      total_frames += weights.Sum();
+      
+      // do this every 5000 utterances,
       if (num_done % 5000 == 0) {
+        // report the speed,
         double time_now = time.Elapsed();
-        KALDI_VLOG(1) << "After " << num_done << " utterances: time elapsed = "
-                      << time_now/60 << " min; processed " << total_frames/time_now
-                      << " frames per second.";
-#if HAVE_CUDA==1
-        // check the GPU is not overheated
+        KALDI_VLOG(1) << "After " << num_done << " utterances: "
+          << "time elapsed = " << time_now / 60 << " min; "
+          << "processed " << total_frames / time_now << " frames per sec.";
+#if HAVE_CUDA == 1 
+        // check that GPU computes accurately,
         CuDevice::Instantiate().CheckGpuHealth();
 #endif
       }
-    }
+    }  // main loop,
 
-    // after last minibatch : show what happens in network
-    if (kaldi::g_kaldi_verbose_level >= 1) {  // vlog-1
-      KALDI_VLOG(1) << "### After " << total_frames << " frames,";
-      KALDI_VLOG(1) << nnet.InfoPropagate();
-      if (!crossvalidate) {
-        KALDI_VLOG(1) << nnet.InfoBackPropagate();
-        KALDI_VLOG(1) << nnet.InfoGradient();
-      }
+    // after last minibatch : show what happens in network,
+    KALDI_VLOG(1) << "### After " << total_frames << " frames,";
+    KALDI_VLOG(1) << nnet.InfoPropagate();
+    if (!crossvalidate) {
+      KALDI_VLOG(1) << nnet.InfoBackPropagate();
+      KALDI_VLOG(1) << nnet.InfoGradient();
     }
 
     if (!crossvalidate) {
       nnet.Write(target_model_filename, binary);
     }
 
-    KALDI_LOG << "Done " << num_done << " files, " << num_no_tgt_mat
-              << " with no tgt_mats, " << num_other_error
-              << " with other errors. "
-              << "[" << (crossvalidate?"CROSS-VALIDATION":"TRAINING")
-              << ", " << (randomize?"RANDOMIZED":"NOT-RANDOMIZED")
-              << ", " << time.Elapsed()/60 << " min, fps" << total_frames/time.Elapsed()
-              << "]";
+    KALDI_LOG << "Done " << num_done << " files, " 
+      << num_no_tgt_mat << " with no tgt_mats, " 
+      << num_other_error << " with other errors. "
+      << "[" << (crossvalidate ? "CROSS-VALIDATION" : "TRAINING")
+      << ", " << (randomize ? "RANDOMIZED" : "NOT-RANDOMIZED")
+      << ", " << time.Elapsed() / 60 << " min, processing " 
+      << total_frames / time.Elapsed() << " frames per sec.]";
 
     if (objective_function == "xent") {
       KALDI_LOG << xent.ReportPerClass();
@@ -270,13 +278,12 @@ int main(int argc, char *argv[]) {
       KALDI_ERR << "Unknown objective function code : " << objective_function;
     }
 
-#if HAVE_CUDA==1
+#if HAVE_CUDA == 1
     CuDevice::Instantiate().PrintProfile();
 #endif
 
     return 0;
   } catch(const std::exception &e) {
-    std::cerr << e.what();
     return -1;
   }
 }

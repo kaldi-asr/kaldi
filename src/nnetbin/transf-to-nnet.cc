@@ -34,7 +34,6 @@ int main(int argc, char *argv[]) {
         "e.g.:\n"
         " transf-to-nnet --binary=false transf.mat nnet.mdl\n";
 
-
     bool binary_write = false;
 
     ParseOptions po(usage);
@@ -60,7 +59,7 @@ int main(int argc, char *argv[]) {
 
     // wrapping as Nnet with <LinearTransform>,
     Nnet nnet;
-    LinearTransform lin_tran(transform.NumCols(),transform.NumRows());
+    LinearTransform lin_tran(transform.NumCols(), transform.NumRows());
     lin_tran.SetLinearity(transform);
     nnet.AppendComponent(lin_tran);
 

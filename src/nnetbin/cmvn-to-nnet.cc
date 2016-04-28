@@ -29,10 +29,10 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Convert cmvn-stats into <AddShift> and <Rescale> components.\n"
-        "Usage:  cmvn-to-nnet [options] <transf-in> <nnet-out>\n"
-        "e.g.:\n"
-        " cmvn-to-nnet --binary=false transf.mat nnet.mdl\n";
+      "Convert cmvn-stats into <AddShift> and <Rescale> components.\n"
+      "Usage:  cmvn-to-nnet [options] <transf-in> <nnet-out>\n"
+      "e.g.:\n"
+      " cmvn-to-nnet --binary=false transf.mat nnet.mdl\n";
 
 
     bool binary_write = false;
@@ -41,8 +41,10 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
-    po.Register("var-floor", &var_floor, "Floor the variance, so the factors in <Rescale> are bounded.");
-    po.Register("learn-rate-coef", &learn_rate_coef, "Initialize learning-rate coefficient to a value.");
+    po.Register("var-floor", &var_floor,
+        "Floor the variance, so the factors in <Rescale> are bounded.");
+    po.Register("learn-rate-coef", &learn_rate_coef, 
+        "Initialize learning-rate coefficient to a value.");
 
     po.Read(argc, argv);
 
@@ -73,10 +75,11 @@ int main(int argc, char *argv[]) {
 
     // compute the shift and scale per each dimension
     for (int32 d = 0; d < num_dims; d++) {
-      BaseFloat mean = cmvn_stats(0,d) / frame_count;
-      BaseFloat var = cmvn_stats(1,d) / frame_count - mean * mean;
+      BaseFloat mean = cmvn_stats(0, d) / frame_count;
+      BaseFloat var = cmvn_stats(1, d) / frame_count - mean * mean;
       if (var <= var_floor) {
-        KALDI_WARN << "Very small variance " << var << " flooring to " << var_floor;
+        KALDI_WARN << "Very small variance " << var 
+                   << " flooring to " << var_floor;
         var = var_floor;
       }
       shift(d) = -mean;
