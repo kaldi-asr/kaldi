@@ -23,6 +23,8 @@
 #ifndef KALDI_CUDAMATRIX_CU_ARRAY_INL_H_
 #define KALDI_CUDAMATRIX_CU_ARRAY_INL_H_
 
+#include <algorithm>
+
 #if HAVE_CUDA == 1
 #include <cuda_runtime_api.h>
 #include "cudamatrix/cu-common.h"
