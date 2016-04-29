@@ -373,7 +373,7 @@ int main(int argc, char *argv[]) {
       }
     }  // main loop,
 
-    // after last minibatch : show what happens in network,
+    // after last mini-batch : show what happens in network,
     KALDI_VLOG(1) << "### After " << total_frames << " frames,";
     KALDI_VLOG(1) << nnet.InfoPropagate();
     if (!crossvalidate) {

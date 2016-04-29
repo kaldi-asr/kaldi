@@ -117,7 +117,8 @@ class Splice: public Component {
                         const CuMatrixBase<BaseFloat> &out,
                         const CuMatrixBase<BaseFloat> &out_diff,
                         CuMatrixBase<BaseFloat> *in_diff) {
-    KALDI_ERR << __func__ << "Not implemented!";
+    KALDI_ERR << Component::TypeToMarker(GetType()) << " : "
+              << __func__ << "() Not implemented!";
   }
 
  protected:
@@ -214,7 +215,9 @@ class CopyComponent: public Component {
                         CuMatrixBase<BaseFloat> *in_diff) {
     static bool warning_displayed = false;
     if (!warning_displayed) {
-      KALDI_WARN << __func__ << "Not implemented!";
+      KALDI_WARN << Component::TypeToMarker(GetType()) << " : "
+                 << __func__ << "() Not implemented!";
+
       warning_displayed = true;
     }
     in_diff->SetZero();

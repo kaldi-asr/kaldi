@@ -208,8 +208,9 @@ class ParallelComponent : public UpdatableComponent {
     std::ostringstream os;
     os << "\n";
     for (int32 i = 0; i < nnet_.size(); i++) {
-      os << "nested_network #" << i+1
-         << " {\n" << nnet_[i].Info() << "}\n";
+      os << "nested_network #" << i+1 << " {\n"
+         << nnet_[i].Info()
+         << "}\n";
     }
     std::string s(os.str());
     s.erase(s.end() -1);  // removing last '\n'
@@ -218,9 +219,11 @@ class ParallelComponent : public UpdatableComponent {
 
   std::string InfoGradient() const {
     std::ostringstream os;
+    os << "\n";
     for (int32 i = 0; i < nnet_.size(); i++) {
-      os << "nested_gradient #" << i+1
-         << " {\n" << nnet_[i].InfoGradient() << "}\n";
+      os << "nested_gradient #" << i+1 << " {\n"
+         << nnet_[i].InfoGradient(false)
+         << "}\n";
     }
     std::string s(os.str());
     s.erase(s.end() -1);  // removing last '\n'
@@ -230,8 +233,9 @@ class ParallelComponent : public UpdatableComponent {
   std::string InfoPropagate() const {
     std::ostringstream os;
     for (int32 i = 0; i < nnet_.size(); i++) {
-      os << "nested_propagate #" << i+1
-         << " {\n" << nnet_[i].InfoPropagate() << "}\n";
+      os << "nested_propagate #" << i+1 << " {\n"
+         << nnet_[i].InfoPropagate(false)
+         << "}\n";
     }
     return os.str();
   }
@@ -239,8 +243,9 @@ class ParallelComponent : public UpdatableComponent {
   std::string InfoBackPropagate() const {
     std::ostringstream os;
     for (int32 i = 0; i < nnet_.size(); i++) {
-      os << "nested_backpropagate #" << i+1
-         << "{\n" << nnet_[i].InfoBackPropagate() << "}\n";
+      os << "nested_backpropagate #" << i+1 << " {\n"
+         << nnet_[i].InfoBackPropagate(false)
+         << "}\n";
     }
     return os.str();
   }

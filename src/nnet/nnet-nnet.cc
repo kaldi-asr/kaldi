@@ -244,7 +244,7 @@ void Nnet::GetParams(Vector<BaseFloat>* params) const {
       UpdatableComponent& c =
         dynamic_cast<UpdatableComponent&>(*components_[i]);
       SubVector<BaseFloat> params_range(params->Range(pos, c.NumParams()));
-      c.GetGradient(&params_range);  // getting params,
+      c.GetParams(&params_range);  // getting params,
       pos += c.NumParams();
     }
   }
@@ -403,22 +403,23 @@ std::string Nnet::Info() const {
   return ostr.str();
 }
 
-std::string Nnet::InfoGradient() const {
+std::string Nnet::InfoGradient(bool header) const {
   std::ostringstream ostr;
   // gradient stats
-  ostr << "\n### Gradient stats :\n";
+  if (header) ostr << "\n### GRADIENT STATS :\n";
   for (int32 i = 0; i < NumComponents(); i++) {
     ostr << "Component " << i+1 << " : "
          << Component::TypeToMarker(components_[i]->GetType())
          << ", " << components_[i]->InfoGradient() << std::endl;
   }
+  if (header) ostr << "### END GRADIENT\n";
   return ostr.str();
 }
 
-std::string Nnet::InfoPropagate() const {
+std::string Nnet::InfoPropagate(bool header) const {
   std::ostringstream ostr;
   // forward-pass buffer stats
-  ostr << "\n### Forward propagation buffer content :\n";
+  if (header) ostr << "\n### FORWARD PROPAGATION BUFFER CONTENT :\n";
   ostr << "[0] output of <Input> " << MomentStatistics(propagate_buf_[0])
        << std::endl;
   for (int32 i = 0; i < NumComponents(); i++) {
@@ -431,13 +432,14 @@ std::string Nnet::InfoPropagate() const {
         dynamic_cast<ParallelComponent*>(components_[i])->InfoPropagate();
     }
   }
+  if (header) ostr << "### END FORWARD\n";
   return ostr.str();
 }
 
-std::string Nnet::InfoBackPropagate() const {
+std::string Nnet::InfoBackPropagate(bool header) const {
   std::ostringstream ostr;
   // forward-pass buffer stats
-  ostr << "\n### Backward propagation buffer content :\n";
+  if (header) ostr << "\n### BACKWARD PROPAGATION BUFFER CONTENT :\n";
   ostr << "[0] diff of <Input> " << MomentStatistics(backpropagate_buf_[0])
        << std::endl;
   for (int32 i = 0; i < NumComponents(); i++) {
@@ -450,6 +452,7 @@ std::string Nnet::InfoBackPropagate() const {
         dynamic_cast<ParallelComponent*>(components_[i])->InfoBackPropagate();
     }
   }
+  if (header) ostr << "### END BACKWARD\n\n";
   return ostr.str();
 }
 

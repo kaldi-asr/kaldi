@@ -147,11 +147,11 @@ class Nnet {
   /// Create string with human readable description of the nnet,
   std::string Info() const;
   /// Create string with per-component gradient statistics,
-  std::string InfoGradient() const;
+  std::string InfoGradient(bool header = true) const;
   /// Create string with propagation-buffer statistics,
-  std::string InfoPropagate() const;
+  std::string InfoPropagate(bool header = true) const;
   /// Create string with back-propagation-buffer statistics,
-  std::string InfoBackPropagate() const;
+  std::string InfoBackPropagate(bool header = true) const;
   /// Consistency check,
   void Check() const;
   /// Relese the memory,
@@ -182,4 +182,5 @@ class Nnet {
 }  // namespace kaldi
 
 #endif  // KALDI_NNET_NNET_NNET_H_
+
 

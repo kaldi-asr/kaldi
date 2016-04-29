@@ -191,12 +191,12 @@ void RandUniform(BaseFloat mu, BaseFloat range, CuMatrixBase<Real>* mat,
   Matrix<Real> m(mat->NumRows(), mat->NumCols(), kUndefined);
   for (int32 r = 0; r < m.NumRows(); r++) {
     for (int32 c = 0; c < m.NumCols(); c++) {
-      m(r, c) = Rand(state);
+      m(r, c) = Rand(state) / static_cast<Real>(RAND_MAX);
     }
   }
   // re-shape the distrbution,
   m.Scale(range);  // 0..range,
-  m.Add(mu -range/2.0);  // mu-range/2 .. mu+range/2,
+  m.Add(mu - (range / 2.0));  // mu-range/2 .. mu+range/2,
   // export,
   mat->CopyFromMat(m);
 }
@@ -214,11 +214,11 @@ void RandUniform(BaseFloat mu, BaseFloat range, CuVectorBase<Real>* vec,
   // fill temporary vector with '0..1' samples,
   Vector<Real> v(vec->Dim(), kUndefined);
   for (int32 i = 0; i < v.Dim(); i++) {
-    v(i) = Rand(state);
+    v(i) = Rand(state) / static_cast<Real>(RAND_MAX);
   }
   // re-shape the distrbution,
   v.Scale(range);  // 0..range,
-  v.Add(mu -range/2.0);  // mu-range/2 .. mu+range/2,
+  v.Add(mu - (range / 2.0));  // mu-range/2 .. mu+range/2,
   // export,
   vec->CopyFromVec(v);
 }
