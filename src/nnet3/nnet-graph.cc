@@ -230,18 +230,18 @@ void ComputeTopSortOrder(const std::vector<std::vector<int32> > &graph,
   std::vector<bool> cycle_detector(graph.size(), false);
   std::vector<bool> is_visited(graph.size(), false);
 
-  std::vector<int32> reversed_orders;
+  std::vector<int32> orders;
   for(int32 i = 0; i < graph.size(); ++i) {
     if (!is_visited[i]) {
       ComputeTopSortOrderRecursive(i, graph, &cycle_detector,
-                                   &is_visited, &reversed_orders);
+                                   &is_visited, &orders);
     }
   }
 
-  KALDI_ASSERT(node_to_order->size() == reversed_orders.size());
-  for (int32 i = 0; i < reversed_orders.size(); ++i) {
-    KALDI_ASSERT(reversed_orders[i] >= 0 && reversed_orders[i] < graph.size());
-    (*node_to_order)[reversed_orders[i]] = graph.size() - i - 1;
+  KALDI_ASSERT(node_to_order->size() == orders.size());
+  for (int32 i = 0; i < orders.size(); ++i) {
+    KALDI_ASSERT(orders[i] >= 0 && orders[i] < graph.size());
+    (*node_to_order)[orders[i]] = i;
   }
 }
 
@@ -283,7 +283,7 @@ void ComputeNnetComputationEpochs(const Nnet &nnet,
   ComputeGraphTranspose(scc_graph, &scc_graph_transpose);
 
   std::vector<int32> scc_node_to_epoch;
-  ComputeTopSortOrder(scc_graph, &scc_node_to_epoch);
+  ComputeTopSortOrder(scc_graph_transpose, &scc_node_to_epoch);
   if (GetVerboseLevel() >= 6) {
     std::ostringstream os;
     for (int32 i = 0; i < scc_node_to_epoch.size(); i++)
