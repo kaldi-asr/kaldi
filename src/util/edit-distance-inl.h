@@ -77,28 +77,36 @@ struct Particle {
 };
 // Note that both hyp and ref should not contain noise word in
 // the following implementation.
+// The current algorithm is symmetric, so `hyp` and `ref` are named `a` and `b`
 
 template<class T>
 int32 LevenshteinEditDistance(const std::vector<T> &a,
                               const std::vector<T> &b,
                               int32 *ins, int32 *del, int32 *sub) {
   size_t A = a.size(), B = b.size();
-  std::vector<Particle> diagonal(A+B+1);
+  //There are A+B+1 diagonals, and at most that many Particles.
+  //We denote uninitialized Particle as located in imaginary location (a_i,b_i)=(-1,-1).
+  std::vector<Particle> diagonals(A+B+1),future_diagonals;
   for (int d = 0;d < A+B+1;++d) {
-    Particle &p = diagonal[d];
+    Particle &p = diagonals[d];
     p.b_i = p.a_i = -1;
   }
-  Particle &start = diagonal[0-0+B];
+  future_diagonals = diagonals;
+  //We start with a single Particle in the upper left corner: (0,0).
+  //Mapping between position (a_i,b_i) and diagonal index is index=a_i-b_i+B.
+  Particle &start = diagonals[0-0+B];
   start.a_i = start.b_i = 0;
   start.total_cost = 0;
   start.del_num = 0;
   start.ins_num = 0;
   start.sub_num = 0;
-  std::vector<int> diagonal_indexes;
-  diagonal_indexes.push_back(0-0+B);
+  //We maintain the list of indexs of active particles, which never shrinks, and initially contains the single particle.
+  std::vector<int> diagonals_indexes;
+  diagonals_indexes.push_back(0-0+B);
   while (true) {
-    for (int d = diagonal_indexes.size();d--;) {
-      Particle &p = diagonal[diagonal_indexes[d]];
+    //We progress all Particles along their diagonals as far as possible without incurring any cost.
+    for (size_t d = diagonals_indexes.size();d--;) {
+      Particle &p = diagonals[diagonals_indexes[d]];
       while (p.a_i < A && p.b_i < B && a[p.a_i] == b[p.b_i]) {
         p.a_i++;
         p.b_i++;
@@ -110,49 +118,67 @@ int32 LevenshteinEditDistance(const std::vector<T> &a,
         return p.total_cost;
       }
     }
-    std::vector<Particle> future_diagonal = diagonal;
-    for (int d = diagonal_indexes.size();d--;) {
-      Particle &p = future_diagonal[diagonal_indexes[d]];
-      p.total_cost++;
-      if (p.a_i < A && p.b_i < B) {
-        p.a_i++;
-        p.b_i++;
-        p.sub_num++;
+    //None of particles can go any further without paying.
+    //Moving one cell in any direction will cost 1 unit.
+    //There are three interesting directions which we will consider:
+    //Case 1) along the diagonal (a_i+1,b_i+1), which increases sub_num
+    //Case 2) to the next diagonal (a_i+1,b_i), which increases del_num
+    //Case 3) to the previous diagonal (a_i,b_i-1), which increases ins_num
+    //Therefore, each old particle in diagonals[] can spawn at most three new particles in future_particles[].
+    //We merge these propositions, and maintain only the best particle for each diagonal.
+    //Case 1)
+    for (size_t d = diagonals_indexes.size();d--;) {
+      const int diagonal_index = diagonals_indexes[d];
+      Particle &future = future_diagonals[diagonal_index];
+      future = diagonals[diagonal_index];
+      future.total_cost++;
+      if (future.a_i < A && future.b_i < B) {
+        future.a_i++;
+        future.b_i++;
+        future.sub_num++;
       }
     }
-    for (int d = diagonal_indexes.size();d--;) {
-      int diagonal_index = diagonal_indexes[d];
-      Particle &p = diagonal[diagonal_index];
+    for (size_t d = diagonals_indexes.size();d--;) {
+      const int diagonal_index = diagonals_indexes[d];
+      const Particle &p = diagonals[diagonal_index];
+      //Case 2)
       if (p.a_i < A) {
-        int nbr_diagonal_index = diagonal_index+1;
+        const int nbr_diagonal_index = diagonal_index+1;
         assert(nbr_diagonal_index < A+B+1);
-        Particle &n = future_diagonal[nbr_diagonal_index];
-        if (n.b_i < p.b_i) {
-          if (n.b_i == -1) {
-            diagonal_indexes.push_back(nbr_diagonal_index);
-          }
-          n = p;
-          n.a_i++;
-          n.del_num++;
-          n.total_cost++;
+        Particle &nbr = future_diagonals[nbr_diagonal_index];
+        if (nbr.b_i == -1) {
+          //uninitialized particle
+          diagonals_indexes.push_back(nbr_diagonal_index);
+        } else {
+          //a particle at this diagonal is already found, it should be from the future generation
+          assert(nbr.total_cost == p.total_cost+1);
+        }
+        if (nbr.b_i < p.b_i || (nbr.b_i == p.b_i && nbr.sub_num < p.sub_num) ) {
+          nbr = p;
+          nbr.a_i++;
+          nbr.del_num++;
+          nbr.total_cost++;
         }
       }
+      //Case 3)
       if (p.b_i < B) {
-        int nbr_diagonal_index = diagonal_index-1;
+        const int nbr_diagonal_index = diagonal_index-1;
         assert(0 <= nbr_diagonal_index);
-        Particle &n = future_diagonal[nbr_diagonal_index];
-        if (n.a_i < p.a_i) {
-          if (n.a_i == -1) {
-            diagonal_indexes.push_back(diagonal_index-1);
-          }
-          n = p;
-          n.b_i++;
-          n.ins_num++;
-          n.total_cost++;
+        Particle &nbr = future_diagonals[nbr_diagonal_index];
+        if (nbr.a_i == -1) {
+          diagonals_indexes.push_back(nbr_diagonal_index);
+        } else {
+          assert(nbr.total_cost == p.total_cost+1);
+        }
+        if (nbr.a_i < p.a_i || (nbr.a_i == p.a_i && nbr.sub_num < p.sub_num) ) {
+          nbr = p;
+          nbr.b_i++;
+          nbr.ins_num++;
+          nbr.total_cost++;
         }
       }
     }
-    diagonal = future_diagonal;
+    swap(diagonals,future_diagonals);
   }
 }
 
