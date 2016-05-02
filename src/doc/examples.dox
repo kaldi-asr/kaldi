@@ -20,8 +20,10 @@
 /**
  \page examples Examples included with Kaldi
 
- This is a summary of existing Kaldi recipes and their corresponding corpora.
- These recipes can be found in the <code>egs/</code> directory. (See \ref install for instructions on how to download Kaldi.)
+ When you check out the Kaldi source tree (see \ref install), you will find many
+ sets of example scripts in the egs/ directory.  This table summarizes some key
+ facts about some of those example scripts; however, it it not an exhaustive
+ list.
 
 <table><tr>
   <th>Name</th>

@@ -25,7 +25,7 @@ if [ ! -f $data/wav.scp ]; then
   exit 1
 fi
 
-if [ grep "sox --vol" $data/wav.scp ]; then
+if grep -q "sox --vol" $data/wav.scp; then
   echo "$0: It looks like the data was already volume perturbed.  Not doing anything."
   exit 0
 fi
