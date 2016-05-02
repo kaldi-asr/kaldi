@@ -67,7 +67,7 @@ int32 LevenshteinEditDistance(const std::vector<T> &a,
 }
 
 //
-struct particle {
+struct Particle {
   int32 ins_num;
   int32 del_num;
   int32 sub_num;
@@ -82,54 +82,53 @@ template<class T>
 int32 LevenshteinEditDistance(const std::vector<T> &a,
                               const std::vector<T> &b,
                               int32 *ins, int32 *del, int32 *sub) {
-
   size_t A = a.size(), B = b.size();
-  std::vector<particle> diagonal(A+B+1);
-  for(int d=0;d<A+B+1;++d){
-    particle & p = diagonal[d];
+  std::vector<Particle> diagonal(A+B+1);
+  for (int d = 0;d < A+B+1;++d) {
+    Particle &p = diagonal[d];
     p.b_i = p.a_i = -1;
   }
-  particle &start=diagonal[0-0+B];
-  start.a_i=start.b_i=0;
+  Particle &start = diagonal[0-0+B];
+  start.a_i = start.b_i = 0;
   start.total_cost = 0;
   start.del_num = 0;
   start.ins_num = 0;
   start.sub_num = 0;
   std::vector<int> diagonal_indexes;
   diagonal_indexes.push_back(0-0+B);
-  while(true){
-    for(int d=diagonal_indexes.size();d--;){
-      particle & p = diagonal[diagonal_indexes[d]];
-      while(p.a_i < A && p.b_i < B && a[p.a_i]==b[p.b_i]){
+  while (true) {
+    for (int d = diagonal_indexes.size();d--;) {
+      Particle &p = diagonal[diagonal_indexes[d]];
+      while (p.a_i < A && p.b_i < B && a[p.a_i] == b[p.b_i]) {
         p.a_i++;
         p.b_i++;
       }
-      if(p.a_i==A && p.b_i==B){
+      if (p.a_i == A && p.b_i == B) {
         *ins = p.ins_num;
         *del = p.del_num;
         *sub = p.sub_num;
         return p.total_cost;
       }
     }
-    std::vector<particle> future_diagonal=diagonal;
-    for(int d=diagonal_indexes.size();d--;){
-      particle & p = future_diagonal[diagonal_indexes[d]];
+    std::vector<Particle> future_diagonal = diagonal;
+    for (int d = diagonal_indexes.size();d--;) {
+      Particle &p = future_diagonal[diagonal_indexes[d]];
       p.total_cost++;
-      if(p.a_i < A && p.b_i<B){
+      if (p.a_i < A && p.b_i < B) {
         p.a_i++;
         p.b_i++;
         p.sub_num++;
       }
     }
-    for(int d=diagonal_indexes.size();d--;){
-      int diagonal_index=diagonal_indexes[d];
-      particle & p = diagonal[diagonal_index];
-      if(p.a_i<A){
+    for (int d = diagonal_indexes.size();d--;) {
+      int diagonal_index = diagonal_indexes[d];
+      Particle &p = diagonal[diagonal_index];
+      if (p.a_i < A) {
         int nbr_diagonal_index = diagonal_index+1;
-        assert(nbr_diagonal_index<A+B+1);
-        particle &n = future_diagonal[nbr_diagonal_index];
-        if(n.b_i<p.b_i){
-          if(n.b_i==-1){
+        assert(nbr_diagonal_index < A+B+1);
+        Particle &n = future_diagonal[nbr_diagonal_index];
+        if (n.b_i < p.b_i) {
+          if (n.b_i == -1) {
             diagonal_indexes.push_back(nbr_diagonal_index);
           }
           n = p;
@@ -138,12 +137,12 @@ int32 LevenshteinEditDistance(const std::vector<T> &a,
           n.total_cost++;
         }
       }
-      if(p.b_i<B){
+      if (p.b_i < B) {
         int nbr_diagonal_index = diagonal_index-1;
-        assert(nbr_diagonal_index>=0);
-        particle &n = future_diagonal[nbr_diagonal_index];
-        if(n.a_i<p.a_i){
-          if(n.a_i==-1){
+        assert(0 <= nbr_diagonal_index);
+        Particle &n = future_diagonal[nbr_diagonal_index];
+        if (n.a_i < p.a_i) {
+          if (n.a_i == -1) {
             diagonal_indexes.push_back(diagonal_index-1);
           }
           n = p;
@@ -153,7 +152,7 @@ int32 LevenshteinEditDistance(const std::vector<T> &a,
         }
       }
     }
-    diagonal=future_diagonal;
+    diagonal = future_diagonal;
   }
 }
 
