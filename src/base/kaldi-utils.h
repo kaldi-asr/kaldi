@@ -61,7 +61,10 @@
   (*(pp_orig) = _aligned_malloc(size, align))
 #  define KALDI_MEMALIGN_FREE(x) _aligned_free(x)
 #else
-#error Manual memory alignment is no longer supported
+#error Manual memory alignment is no longer supported.  Note: if you see this error \
+it will usually be due to Makefile problems-- you are probably not using the flags \
+that the Kaldi configure script would normally add to the Makefile, or they are \
+somehow not getting passed to your compilation command line.
 #endif
 
 #ifdef __ICC
