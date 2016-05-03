@@ -135,14 +135,14 @@ void BuildTestTopSortOrder(std::vector<int32> *node_to_order) {
 
   // The topological sorting order of the above SCC graph is as follows (from
   // our particular algorithm):
-  // 0 --> 3
-  // 1 --> 2
-  // 2 --> 1
-  // 3 --> 0
-  (*node_to_order)[0] = 3;
-  (*node_to_order)[1] = 2;
-  (*node_to_order)[2] = 1;
-  (*node_to_order)[3] = 0;
+  // 0 --> 0
+  // 1 --> 1
+  // 2 --> 2
+  // 3 --> 3
+  (*node_to_order)[0] = 0;
+  (*node_to_order)[1] = 1;
+  (*node_to_order)[2] = 2;
+  (*node_to_order)[3] = 3;
 }
 
 void UnitTestComputeGraphTranspose() {

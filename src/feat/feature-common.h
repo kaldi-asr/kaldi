@@ -142,7 +142,7 @@ class OfflineFeatureTpl {
 
   // Copy constructor.
   OfflineFeatureTpl(const OfflineFeatureTpl<F> &other):
-      computer_(other.computer),
+      computer_(other.computer_),
       feature_window_function_(other.feature_window_function_) { }
   private:
   // Disallow assignment.

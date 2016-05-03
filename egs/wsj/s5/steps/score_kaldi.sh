@@ -143,7 +143,7 @@ if [ $stage -le 1 ]; then
       compute-wer-bootci \
         ark:$dir/scoring_kaldi/test_filt.txt ark:$dir/scoring_kaldi/penalty_$best_wip/$best_lmwt.txt \
         '>' $dir/scoring_kaldi/wer_details/wer_bootci || exit 1;
-    
+
   fi
 fi
 

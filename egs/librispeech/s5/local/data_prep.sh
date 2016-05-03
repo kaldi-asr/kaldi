@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2014  Vassil Panayotov 
+# Copyright 2014  Vassil Panayotov
 #           2014  Johns Hopkins University (author: Daniel Povey)
 # Apache 2.0
 
@@ -79,7 +79,7 @@ nutt2spk=$(wc -l <$utt2spk)
 ! [ "$ntrans" -eq "$nutt2spk" ] && \
   echo "Inconsistent #transcripts($ntrans) and #utt2spk($nutt2spk)" && exit 1;
 
-utils/data/get_utt2dur.sh $utt2dur 1>&2 || exit 1
+utils/data/get_utt2dur.sh $dst 1>&2 || exit 1
 
 utils/validate_data_dir.sh --no-feats $dst || exit 1;
 
