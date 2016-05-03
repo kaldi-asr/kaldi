@@ -107,9 +107,11 @@ class CuArray {
   void Add(const T &value);
 
   /// Get minimum value (for now implemented on CPU, reimplement if slow).
+  /// Asserts the vector is non-empty, otherwise crashes.
   T Min() const;
 
   /// Get minimum value (for now implemented on CPU, reimplement if slow).
+  /// Asserts the vector is non-empty, otherwise crashes.
   T Max() const;
 
   CuArray<T> &operator= (const CuArray<T> &in) {
