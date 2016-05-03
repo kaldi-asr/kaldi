@@ -10,7 +10,7 @@ set -e -o pipefail
 
 local/train_lms_srilm.sh --train-text data/train/text data/ data/srilm
 
-nl -nrz -w10  iban/LM/iban-bp-2012.txt | sort -R > data/local/external_text
+nl -nrz -w10  corpus/LM/iban-bp-2012.txt | sort -R > data/local/external_text
 local/train_lms_srilm.sh --train-text data/local/external_text data/ data/srilm_external
 
 # let's do ngram interpolation of the previous two LMs
