@@ -152,6 +152,10 @@ int32 OnlineIvectorFeature::NumFramesReady() const {
   return lda_->NumFramesReady();
 }
 
+BaseFloat OnlineIvectorFeature::FrameShiftInSeconds() const {
+  return lda_->FrameShiftInSeconds();
+}
+
 void OnlineIvectorFeature::UpdateFrameWeights(
     const std::vector<std::pair<int32, BaseFloat> > &delta_weights) {
   // add the elements to delta_weights_, which is a priority queue.  The top

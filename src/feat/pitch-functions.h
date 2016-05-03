@@ -301,6 +301,8 @@ class OnlinePitchFeature: public OnlineBaseFeature {
   virtual int32 Dim() const { return 2; /* (NCCF, pitch) */ }
 
   virtual int32 NumFramesReady() const;
+  
+  virtual BaseFloat FrameShiftInSeconds() const;
 
   virtual bool IsLastFrame(int32 frame) const;
 
@@ -335,6 +337,9 @@ class OnlineProcessPitch: public OnlineFeatureInterface {
       return src_->IsLastFrame(-1) == true ? false : src_->IsLastFrame(0);
     else
       return src_->IsLastFrame(frame - opts_.delay); 
+  }
+  virtual BaseFloat FrameShiftInSeconds() const {
+    return src_->FrameShiftInSeconds();
   }
 
   virtual int32 NumFramesReady() const;
