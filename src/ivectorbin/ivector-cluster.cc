@@ -24,31 +24,6 @@
 #include "tree/cluster-utils.h"
 #include "tree/clusterable-classes.h"
 
-namespace kaldi {
-
-void PrepareSpeakerNums (const std::string utt2num_rxfilename,
-			 unordered_map<std::string, int32> *utt2num) {
-
-  Input ki(utt2num_rxfilename);
-
-  std::string line;
-  while (std::getline(ki.Stream(), line)) {
-    std::vector<std::string> split_line;
-    SplitStringToVector(line, " ", false, &split_line);
-    std::string utt = split_line[0],
-	num_str = split_line[1];
-
-    int32 num;
-    if (!ConvertStringToInteger(num_str, &num)) {
-      KALDI_ERR << "Invalid number of speakers in utt2num: " << line;
-    }
-
-    utt2num->insert(std::make_pair<std::string, int32>(utt, num));
-  }
-}
-
-}
-
 int main(int argc, char *argv[]) {
   using namespace kaldi;
   typedef kaldi::int32 int32;
@@ -86,12 +61,8 @@ int main(int argc, char *argv[]) {
     SequentialBaseFloatMatrixReader ivectors_reader(ivectors_rspecifier);
     RandomAccessTokenVectorReader ivector_ranges_reader(ivector_ranges_rspecifier);
     RandomAccessTokenVectorReader ivector_weights_reader(ivector_weights_rspecifier);
+    RandomAccessInt32Reader utt2num_reader(utt2num_rxfilename);
     TokenVectorWriter cluster_ranges_writer(cluster_ranges_wspecifier);
-
-    unordered_map<std::string, int32> utt2num;
-    if ( !utt2num_rxfilename.empty() ) {
-      PrepareSpeakerNums(utt2num_rxfilename, &utt2num);
-    }
 
     for (; !ivectors_reader.Done(); ivectors_reader.Next()) {
       std::string utt = ivectors_reader.Key();
@@ -119,7 +90,8 @@ int main(int argc, char *argv[]) {
 	ivec.CopyRowFromMat(mat, i);
         ivectors_clusterables.push_back(new VectorClusterable(ivec, static_cast<BaseFloat>(weights[i])));
       }
-      ClusterKMeans(ivectors_clusterables, utt2num[utt], NULL, &spk_ids, opts);
+      int32 num_speakers = utt2num_reader.Value(utt);
+      ClusterKMeans(ivectors_clusterables, num_speakers, NULL, &spk_ids, opts);
 
       std::vector<std::string> ivector_ranges = ivector_ranges_reader.Value(utt);
       std::vector<std::string> cluster_ranges(ivector_ranges.size());
