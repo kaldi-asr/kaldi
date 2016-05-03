@@ -5,23 +5,24 @@
 # since the lattice generation runs in about real-time, so takes of the order of
 # 1000 hours of CPU time.
 # 
-#%WER 13.6 | 507 17792 | 89.1 8.3 2.6 2.7 13.6 87.0 | -0.192 | exp/nnet3/tdnn_sp_smbr/decode_devepoch1.adj/score_11_1.0/ctm.filt.filt.sys
-#%WER 12.4 | 507 17792 | 89.8 7.4 2.8 2.2 12.4 84.6 | -0.258 | exp/nnet3/tdnn_sp_smbr/decode_devepoch1.adj_rescore/score_12_1.0/ctm.filt.filt.sys
-#%WER 13.5 | 507 17792 | 89.1 8.5 2.4 2.6 13.5 86.6 | -0.195 | exp/nnet3/tdnn_sp_smbr/decode_devepoch2.adj/score_11_1.0/ctm.filt.filt.sys
-#%WER 12.6 | 507 17792 | 89.9 7.4 2.6 2.5 12.6 85.2 | -0.241 | exp/nnet3/tdnn_sp_smbr/decode_devepoch2.adj_rescore/score_14_0.5/ctm.filt.filt.sys
-#%WER 13.7 | 507 17792 | 88.8 8.3 2.8 2.6 13.7 87.4 | -0.118 | exp/nnet3/tdnn_sp_smbr/decode_devepoch3.adj/score_13_1.0/ctm.filt.filt.sys
-#%WER 12.6 | 507 17792 | 89.8 7.5 2.7 2.4 12.6 85.0 | -0.307 | exp/nnet3/tdnn_sp_smbr/decode_devepoch3.adj_rescore/score_12_1.0/ctm.filt.filt.sys
-#%WER 13.7 | 507 17792 | 88.8 8.3 2.9 2.5 13.7 87.2 | -0.182 | exp/nnet3/tdnn_sp_smbr/decode_devepoch4.adj/score_14_1.0/ctm.filt.filt.sys
-#%WER 12.8 | 507 17792 | 90.0 7.7 2.3 2.8 12.8 86.0 | -0.300 | exp/nnet3/tdnn_sp_smbr/decode_devepoch4.adj_rescore/score_13_0.5/ctm.filt.filt.sys
-#%WER 12.7 | 1155 27512 | 89.3 8.2 2.5 2.0 12.7 81.0 | -0.151 | exp/nnet3/tdnn_sp_smbr/decode_test/score_12_1.0/ctm.filt.filt.sys
-#%WER 12.5 | 1155 27512 | 89.4 8.1 2.5 1.9 12.5 80.3 | -0.119 | exp/nnet3/tdnn_sp_smbr/decode_testepoch1.adj/score_12_1.0/ctm.filt.filt.sys
-#%WER 11.4 | 1155 27512 | 90.6 7.0 2.3 2.0 11.4 78.9 | -0.184 | exp/nnet3/tdnn_sp_smbr/decode_testepoch1.adj_rescore/score_12_0.5/ctm.filt.filt.sys
-#%WER 12.5 | 1155 27512 | 89.4 8.0 2.6 1.9 12.5 80.5 | -0.120 | exp/nnet3/tdnn_sp_smbr/decode_testepoch2.adj/score_13_1.0/ctm.filt.filt.sys
-#%WER 11.3 | 1155 27512 | 90.4 7.0 2.6 1.7 11.3 79.2 | -0.224 | exp/nnet3/tdnn_sp_smbr/decode_testepoch2.adj_rescore/score_13_1.0/ctm.filt.filt.sys
-#%WER 12.7 | 1155 27512 | 89.3 8.2 2.5 2.0 12.7 81.0 | -0.151 | exp/nnet3/tdnn_sp_smbr/decode_testepoch3.adj/score_12_1.0/ctm.filt.filt.sys
-#%WER 11.5 | 1155 27512 | 90.3 7.1 2.6 1.8 11.5 79.5 | -0.246 | exp/nnet3/tdnn_sp_smbr/decode_testepoch3.adj_rescore/score_13_1.0/ctm.filt.filt.sys
-#%WER 12.8 | 1155 27512 | 89.2 8.2 2.6 2.0 12.8 81.7 | -0.181 | exp/nnet3/tdnn_sp_smbr/decode_testepoch4.adj/score_13_1.0/ctm.filt.filt.sys
-#%WER 11.5 | 1155 27512 | 90.4 7.1 2.5 2.0 11.5 80.6 | -0.248 | exp/nnet3/tdnn_sp_smbr/decode_testepoch4.adj_rescore/score_16_0.5/ctm.filt.filt.sys
+
+#%WER 13.3 | 507 17792 | 89.1 8.2 2.8 2.4 13.3 86.0 | -0.207 | exp/nnet3/tdnn_smbr/decode_dev_epoch1.adj/score_12_1.0/ctm.filt.filt.sys
+#%WER 12.4 | 507 17792 | 89.8 7.5 2.7 2.2 12.4 85.4 | -0.305 | exp/nnet3/tdnn_smbr/decode_dev_epoch1.adj_rescore/score_12_1.0/ctm.filt.filt.sys
+#%WER 13.1 | 507 17792 | 89.2 8.0 2.8 2.3 13.1 85.4 | -0.244 | exp/nnet3/tdnn_smbr/decode_dev_epoch2.adj/score_13_1.0/ctm.filt.filt.sys
+#%WER 12.4 | 507 17792 | 89.7 7.5 2.8 2.1 12.4 84.0 | -0.336 | exp/nnet3/tdnn_smbr/decode_dev_epoch2.adj_rescore/score_13_1.0/ctm.filt.filt.sys
+#%WER 13.2 | 507 17792 | 89.2 8.1 2.7 2.4 13.2 85.8 | -0.332 | exp/nnet3/tdnn_smbr/decode_dev_epoch3.adj/score_13_1.0/ctm.filt.filt.sys
+#%WER 12.5 | 507 17792 | 89.9 7.8 2.4 2.4 12.5 85.2 | -0.391 | exp/nnet3/tdnn_smbr/decode_dev_epoch3.adj_rescore/score_14_0.5/ctm.filt.filt.sys
+#%WER 13.4 | 507 17792 | 88.9 8.3 2.7 2.4 13.4 86.0 | -0.342 | exp/nnet3/tdnn_smbr/decode_dev_epoch4.adj/score_13_1.0/ctm.filt.filt.sys
+#%WER 12.7 | 507 17792 | 89.3 7.7 3.0 2.1 12.7 84.4 | -0.427 | exp/nnet3/tdnn_smbr/decode_dev_epoch4.adj_rescore/score_16_1.0/ctm.filt.filt.sys
+#%WER 12.4 | 1155 27512 | 89.4 7.9 2.7 1.7 12.4 80.1 | -0.163 | exp/nnet3/tdnn_smbr/decode_test_epoch1.adj/score_13_1.0/ctm.filt.filt.sys
+#%WER 11.4 | 1155 27512 | 90.5 6.9 2.6 2.0 11.4 78.9 | -0.269 | exp/nnet3/tdnn_smbr/decode_test_epoch1.adj_rescore/score_13_0.5/ctm.filt.filt.sys
+#%WER 12.6 | 1155 27512 | 89.4 8.0 2.6 2.0 12.6 81.4 | -0.190 | exp/nnet3/tdnn_smbr/decode_test_epoch2.adj/score_13_1.0/ctm.filt.filt.sys
+#%WER 11.5 | 1155 27512 | 90.2 7.0 2.8 1.7 11.5 79.8 | -0.301 | exp/nnet3/tdnn_smbr/decode_test_epoch2.adj_rescore/score_14_1.0/ctm.filt.filt.sys
+#%WER 12.7 | 1155 27512 | 89.5 8.1 2.4 2.2 12.7 82.3 | -0.218 | exp/nnet3/tdnn_smbr/decode_test_epoch3.adj/score_14_0.5/ctm.filt.filt.sys
+#%WER 11.6 | 1155 27512 | 90.4 7.1 2.5 2.0 11.6 80.4 | -0.345 | exp/nnet3/tdnn_smbr/decode_test_epoch3.adj_rescore/score_14_0.5/ctm.filt.filt.sys
+#%WER 12.8 | 1155 27512 | 89.0 8.1 2.8 1.9 12.8 82.0 | -0.252 | exp/nnet3/tdnn_smbr/decode_test_epoch4.adj/score_15_1.0/ctm.filt.filt.sys
+#%WER 11.7 | 1155 27512 | 90.1 7.3 2.6 1.8 11.7 79.4 | -0.383 | exp/nnet3/tdnn_smbr/decode_test_epoch4.adj_rescore/score_13_1.0/ctm.filt.filt.sys
+
 
 set -uo pipefail
 
@@ -36,7 +37,7 @@ cleanup=false  # run with --cleanup true --stage 6 to clean up (remove large thi
 . ./path.sh
 . ./utils/parse_options.sh
 
-srcdir=exp/nnet3/tdnn_sp
+srcdir=exp/nnet3/tdnn
 train_data_dir=data/train_sp_hires
 online_ivector_dir=exp/nnet3/ivectors_train_sp
 degs_dir=                     # If provided, will skip the degs directory creation
@@ -115,14 +116,11 @@ if [ -z "$lats_dir" ]; then
   fi
 fi
 
-model_left_context=`nnet3-am-info $srcdir/final.mdl | grep "left-context:" | awk '{print $2}'` 
-model_right_context=`nnet3-am-info $srcdir/final.mdl | grep "right-context:" | awk '{print $2}'` 
+left_context=`nnet3-am-info $srcdir/final.mdl | grep "left-context:" | awk '{print $2}'` 
+right_context=`nnet3-am-info $srcdir/final.mdl | grep "right-context:" | awk '{print $2}'` 
 
-left_context=$[model_left_context + extra_left_context]
-right_context=$[model_right_context + extra_right_context]
-
-valid_left_context=$[valid_left_context + frames_per_eg]
-valid_right_context=$[valid_right_context + frames_per_eg]
+valid_left_context=$[left_context + frames_per_eg]
+valid_right_context=$[right_context + frames_per_eg]
 
 frame_subsampling_opt=
 if [ -f $srcdir/frame_subsampling_factor ]; then
@@ -179,12 +177,12 @@ if [ $stage -le 5 ]; then
       
       steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" --iter $iter \
         --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
-        $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}${decode_iter:+_$decode_iter} || exit 1;
+        $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}${iter:+_$iter} || exit 1;
 
       steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
         data/lang_test data/lang_rescore data/${decode_set}_hires \
-        $dir/decode_${decode_set}$iter \
-        $dir/decode_${decode_set}${iter}_rescore || exit 1;
+        $dir/decode_${decode_set}${iter:+_$iter} \
+        $dir/decode_${decode_set}${iter:+_$iter}_rescore || exit 1;
       ) &
     done
   done
