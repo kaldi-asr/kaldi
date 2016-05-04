@@ -70,7 +70,8 @@ int main(int argc, char *argv[]) {
       KALDI_LOG << "Written transform in 'nnet1' model: " << model_out_filename;
     }
     return 0;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
+    std::cerr << e.what();
     return -1;
   }
 }

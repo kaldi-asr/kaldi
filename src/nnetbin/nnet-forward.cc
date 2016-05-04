@@ -221,6 +221,7 @@ int main(int argc, char *argv[]) {
     if (num_done == 0) return -1;
     return 0;
   } catch(const std::exception &e) {
+    std::cerr << e.what();
     return -1;
   }
 }

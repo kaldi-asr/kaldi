@@ -74,6 +74,7 @@ int main(int argc, char *argv[]) {
 
     KALDI_LOG << "Written nnet component to " << nnet_component_filename;
   } catch(const std::exception &e) {
+    std::cerr << e.what();
     return -1;
   }
 }

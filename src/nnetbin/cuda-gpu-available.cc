@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) try {
   return 1;
 #endif
 } catch (const std::exception &e) {
-  // Error message 'e' already printed in base/kaldi-error.cc:175,
+  std::cerr << e.what();
   std::cerr
     << "### WE DID NOT GET A CUDA GPU!!! ###" << std::endl
     << "### If it's your 1st experiment with CUDA, try reinstalling "
@@ -71,7 +71,6 @@ int main(int argc, char *argv[]) try {
     << "### - Check there is same version of 'NVIDIA-SMI' and "
     << "'Driver', and that it is not too old for your GPU."
     << std::endl;
-  static_cast<void>(e);  // To avoid "unreferenced local variable"
-  return 1;
+  return -1;
 }
 

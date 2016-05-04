@@ -57,6 +57,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Printed info about " << nnet_rxfilename;
     return 0;
   } catch(const std::exception &e) {
+    std::cerr << e.what();
     return -1;
   }
 }
