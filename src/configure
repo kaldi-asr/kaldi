@@ -439,7 +439,7 @@ function configure_cuda {
     # Determine 'CUDA_ARCH',
     CUDA_VERSION=$($CUDATKDIR/bin/nvcc -V | tr '.,' '_ ' | awk '/release/{sub(/.*release/,""); print $1;}') # MAJOR_MINOR,
     if [ -z "$CUDA_VERSION" ] ; then
-      echo "Cannot figure out CUDA_VERSION from the nvcc output. Either your CUDA is too new or too old." 
+      echo "Cannot figure out CUDA_VERSION from the nvcc output. Either your CUDA is too new or too old."
       exit 1
     fi
 
@@ -485,7 +485,8 @@ function linux_configure_speex {
     spx_type=so
   fi
   if [ ! -f "$SPEEXLIBDIR/libspeex.${spx_type}" ];then
-    echo "Static=[$static_speex] Speex library not found: You can still build Kaldi without Speex."
+    echo "Info: configuring Kaldi not to link with Speex (don't worry, it's only needed if you"
+    echo "intend to use 'compress-uncompress-speex', which is very unlikely)"
     return
   fi
 
@@ -726,7 +727,7 @@ function linux_check_dynamic {
         return 0;
       fi
   done
-  echo "... no {libatlas,lib${pt}atlas}.so in $dir";
+  # echo "... no {libatlas,lib${pt}atlas}.so in $dir";
   return 1;
 }
 

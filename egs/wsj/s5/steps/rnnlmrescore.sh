@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# please see lmrescore_rnnlm_lat.sh which is a newer script using lattices.
 
 # Begin configuration section.
 N=10
@@ -104,14 +105,14 @@ if [ "$oldlm" == "$oldlang/G.fst" ]; then
     if [ $stage -le 2 ]; then
       echo "$0: removing old LM scores."
       # Use the phi-matcher style of composition.. this is appropriate
-      # if the old LM scores were added e.g. by lmrescore.sh, using 
+      # if the old LM scores were added e.g. by lmrescore.sh, using
       # phi-matcher composition.
       $cmd JOB=1:$nj $dir/log/remove_old.JOB.log \
         lattice-scale --acoustic-scale=-1 --lm-scale=-1 "ark:gunzip -c $dir/nbest1.JOB.gz|" ark:- \| \
         lattice-compose --phi-label=$phi ark:- $oldlm ark:- \| \
         lattice-scale --acoustic-scale=-1 --lm-scale=-1 ark:- "ark:|gzip -c >$dir/nbest2.JOB.gz" \
         || exit 1;
-    fi    
+    fi
   else
     if [ $stage -le 2 ]; then
       echo "$0: removing old LM scores."
@@ -189,7 +190,7 @@ if [ $stage -le 7 ]; then
   echo "$0: reconstructing total LM+graph scores including interpolation of RNNLM and old LM scores."
   for n in `seq $nj`; do
     paste $adir.$n/lmwt.nolm $adir.$n/lmwt.lmonly $adir.$n/lmwt.rnn | awk -v rnnweight=$rnnweight \
-      '{ key=$1; graphscore=$2; lmscore=$4; rnnscore=$6; 
+      '{ key=$1; graphscore=$2; lmscore=$4; rnnscore=$6;
      score = graphscore+(rnnweight*rnnscore)+((1-rnnweight)*lmscore);
      print $1,score; } ' > $adir.$n/lmwt.interp.$rnnweight || exit 1;
   done
