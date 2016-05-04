@@ -181,22 +181,31 @@ MessageLogger::~MessageLogger() KALDI_NOEXCEPT(false) {
   std::string str = ss_.str();
   while (!str.empty() && str[str.length() - 1] == '\n')
     str.resize(str.length() - 1);
+
+  // print the mesage (or send to logging handler),
   SendToLog(envelope_, str.c_str());
 
-  if (envelope_.severity > LogMessageEnvelope::Error)
+  if (envelope_.severity > LogMessageEnvelope::Error) {
+    // We are done, it was not 'KALDI_ERR << msg',
     return;
-
-  // On error, throw an exception with the message, plus traceback info if
-  // available.
-  if (!std::uncaught_exception()) {
-#ifdef HAVE_EXECINFO_H
-    throw std::runtime_error(str + "\n\n[stack trace: ]\n" +
-                             KaldiGetStackTrace() + "\n");
-#else
-    throw std::runtime_error(str);
-#endif
   } else {
-    abort();
+    if (std::uncaught_exception()) {
+      // We get here, if there was an exception on this thread that has not
+      // yet arrived to its 'catch' clause... (can happen if an exception
+      // triggers a destructor and the destructor calls 'KALDI_ERR << msg').
+      // Throwing a new exception would be unsafe!
+      abort();
+    } else {
+      // On error we throw an exception.
+      // - 'what()' contains stack-trace or is empty.
+      // - the message was printed in 'SendToLog(...)'.
+#ifdef HAVE_EXECINFO_H
+      throw std::runtime_error("\n[stack trace: ]\n" +
+                               KaldiGetStackTrace() + "\n");
+#else
+      throw std::runtime_error("");
+#endif
+    }
   }
 }
 
