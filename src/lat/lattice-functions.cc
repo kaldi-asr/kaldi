@@ -1586,7 +1586,7 @@ void ComposeCompactLatticeDeterministic(
         // Adds arc to <composed_clat>.
         if (arc1.olabel == 0) {
           composed_clat->AddArc(state_map[s],
-                                CompactLatticeArc(0, 0,
+                                CompactLatticeArc(arc1.ilabel, 0,
                                                   arc1.weight, next_state));
         } else {
           Weight2 composed_weight(
