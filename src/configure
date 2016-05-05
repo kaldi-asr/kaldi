@@ -953,7 +953,7 @@ if [ "`uname`" == "Linux" ]; then
       See makefiles/linux_64_mkl.mk to manually configure for other platforms."
     fi
 
-    if  is_set "$MKLROOT" -a ! is_set "$MKLLIBDIR"; then
+    if  ( is_set "$MKLROOT" && ! is_set "$MKLLIBDIR" ); then
       echo -n "Configuring MKL library directory: "
       MKLLIBDIR=`linux_configure_mkllibdir $MKLROOT`
       if [ $? -ne 0 ]; then
