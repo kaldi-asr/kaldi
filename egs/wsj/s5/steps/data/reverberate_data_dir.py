@@ -83,6 +83,40 @@ def CheckArgs(args):
 
     return args
 
+
+def PickItemFromDict(dict):
+   total_p = sum(dict[key].probability for key in dict.keys())
+   p = random.uniform(0, total_p)
+   upto = 0
+   for key in dict.keys():
+      if upto + dict[key].probability >= p:
+         return dict[key]
+      upto += dict[key].probability
+   assert False, "Shouldn't get here"
+
+
+def PickItemFromList(list):
+   total_p = sum(item.probability for item in list)
+   p = random.uniform(0, total_p)
+   upto = 0
+   for item in list:
+      if upto + item.probability >= p:
+         return item
+      upto += item.probability
+   assert False, "Shouldn't get here"
+
+
+def weighted_choice(choices):
+   total = sum(w for c, w in choices)
+   r = random.uniform(0, total)
+   upto = 0
+   for c, w in choices:
+      if upto + w >= r:
+         return c
+      upto += w
+   assert False, "Shouldn't get here"
+
+
 def ParseFileToDict(file, assert2fields = False, value_processor = None):
     if value_processor is None:
         value_processor = lambda x: x[0]
@@ -98,11 +132,7 @@ def ParseFileToDict(file, assert2fields = False, value_processor = None):
 
 
 # This is the major function to generate pipeline command for the corruption
-def CorruptWav(wav_scp, durations, output_dir, room_list, noise_list, foreground_snr_array, background_snr_array, num_replica, prefix, speech_rvb_probability, noise_adding_probability, max_noises_added):
-    rooms = list_cyclic_iterator(room_list)
-    noises = None
-    if len(noise_list) > 0:
-        noises = list_cyclic_iterator(noise_list)
+def CorruptWav(wav_scp, durations, output_dir, room_dict, noise_list, foreground_snr_array, background_snr_array, num_replica, prefix, speech_rvb_probability, noise_adding_probability, max_noises_added):
     foreground_snrs = list_cyclic_iterator(foreground_snr_array)
     background_snrs = list_cyclic_iterator(background_snr_array)
     command_list = []
@@ -119,28 +149,29 @@ def CorruptWav(wav_scp, durations, output_dir, room_list, noise_list, foreground
                 wav_id = prefix + str(i) + "_" + wav_id
 
             # pick the room
-            room = rooms.next()
+            room = PickItemFromDict(room_dict)
             command_opts = ""
             noises_added = []
             snrs_added = []
             start_times_added = []
             if random.random() < speech_rvb_probability:
                 # pick the RIR to reverberate the speech
-                speech_rir = room['rir_list'][random.randint(0,len(room['rir_list'])-1)]
+                speech_rir = PickItemFromList(room.rir_list)
                 command_opts += "--impulse-response={0} ".format(speech_rir.rir_file_location)
                 # add the corresponding isotropic noise if there is any
                 if len(speech_rir.iso_noise_list) > 0:
-                    isotropic_noise = speech_rir.iso_noise_list[random.randint(0,len(speech_rir.iso_noise_list)-1)]
+                    isotropic_noise = PickItemFromList(speech_rir.iso_noise_list)
                     # extend the isotropic noise to the length of the speech waveform
                     noises_added.append("\"wav-reverberate --duration={1} {0} - |\" ".format(isotropic_noise.noise_file_location, speech_dur))
                     snrs_added.append(background_snrs.next())
                     start_times_added.append(0)
 
-            if noises is not None and random.random() < noise_adding_probability:
+            # Add the point-source noise
+            if len(noise_list) > 0 and random.random() < noise_adding_probability:
                 for k in range(random.randint(1, max_noises_added)):
                     # pick the RIR to reverberate the point-source noise
-                    noise = noises.next()
-                    noise_rir = room['rir_list'][random.randint(0,len(room['rir_list'])-1)]
+                    noise = PickItemFromList(noise_list)
+                    noise_rir = PickItemFromList(room.rir_list)
                     if noise.bg_fg_type == "background": 
                         start_times_added.append(0)
                         noises_added.append("\"wav-reverberate --duration={2} --impulse-response={1} {0} - |\" ".format(noise.noise_file_location, noise_rir.rir_file_location, speech_dur))
@@ -186,7 +217,7 @@ def AddPrefixToFields(input_file, output_file, num_replica, prefix, field = [0])
     f.close()
 
 
-def CreateReverberatedCopy(input_dir, output_dir, room_list, noise_list, foreground_snr_string, background_snr_string, num_replica, prefix, speech_rvb_probability, noise_adding_probability, max_noises_added):
+def CreateReverberatedCopy(input_dir, output_dir, room_dict, noise_list, foreground_snr_string, background_snr_string, num_replica, prefix, speech_rvb_probability, noise_adding_probability, max_noises_added):
     
     if not os.path.isfile(input_dir + "/reco2dur"):
         print("Getting the duration of the recordings...");
@@ -196,7 +227,7 @@ def CreateReverberatedCopy(input_dir, output_dir, room_list, noise_list, foregro
     foreground_snr_array = map(lambda x: float(x), foreground_snr_string.split(':'))
     background_snr_array = map(lambda x: float(x), background_snr_string.split(':'))
 
-    CorruptWav(wav_scp, durations, output_dir, room_list, noise_list, foreground_snr_array, background_snr_array, num_replica, prefix, speech_rvb_probability, noise_adding_probability, max_noises_added)
+    CorruptWav(wav_scp, durations, output_dir, room_dict, noise_list, foreground_snr_array, background_snr_array, num_replica, prefix, speech_rvb_probability, noise_adding_probability, max_noises_added)
 
     AddPrefixToFields(input_dir + "/utt2spk", output_dir + "/utt2spk", num_replica, prefix, field = [0,1])
     train_lib.RunKaldiCommand("utils/utt2spk_to_spk2utt.pl <{output_dir}/utt2spk >{output_dir}/spk2utt"
@@ -212,6 +243,21 @@ def CreateReverberatedCopy(input_dir, output_dir, room_list, noise_list, foregro
     train_lib.RunKaldiCommand("utils/validate_data_dir.sh --no-feats {output_dir}"
                     .format(output_dir = output_dir))
 
+def SmoothProbability(list):
+    uniform_probability = 1 / float(len(list))
+    for item in list:
+        if item.probability is None:
+            item.probability = uniform_probability
+        else:
+            # smooth the probability
+            item.probability = 0.3 * item.probability + 0.7 * uniform_probability
+
+    sum_p = sum(item.probability for item in list)
+    # Normalize the probability
+    for item in list:
+        item.probability = item.probability / sum_p
+
+    return list
 
 def ParseRirList(rir_list_file):
     rir_parser = argparse.ArgumentParser()
@@ -221,6 +267,7 @@ def ParseRirList(rir_list_file):
     rir_parser.add_argument('--source-position-id', type=str, default=None, help='source position id')
     rir_parser.add_argument('--rt60', type=float, default=None, help='RT60 is the time required for reflections of a direct sound to decay 60 dB.')
     rir_parser.add_argument('--drr', type=float, default=None, help='Direct-to-reverberant-ratio of the impulse.')
+    rir_parser.add_argument('--probability', type=float, default=None, help='probability of the impulse.')
     rir_parser.add_argument('rir_file_location', type=str, help='rir file location')
 
     rir_list = []
@@ -228,26 +275,26 @@ def ParseRirList(rir_list_file):
     for line in rir_lines:
         rir = rir_parser.parse_args(line.split())
         setattr(rir, "iso_noise_list", [])
-        rir.iso_noise_list = []
         rir_list.append(rir)
 
-    return rir_list
+    return SmoothProbability(rir_list)
 
-def MakeRoomList(rir_list):
-    room_list = []
-    for i in range(len(rir_list)):
-        id = -1
-        for j in range(len(room_list)):
-            if room_list[j]['room_id'] == rir_list[i].room_id:
-                id = j
-                break
-        if id == -1:
+
+def MakeRoomDict(rir_list):
+    room_dict = {}
+    for rir in rir_list:
+        if rir.room_id not in room_dict:
             # add new room
-            room_list.append({'room_id': rir_list[i].room_id, 'rir_list': []})
+            room_dict[rir.room_id] = lambda: None
+            setattr(room_dict[rir.room_id], "rir_list", [])
+            setattr(room_dict[rir.room_id], "probability", 0)
+        room_dict[rir.room_id].rir_list.append(rir)
 
-        room_list[id]['rir_list'].append(rir_list[i])
+    for key in room_dict.keys():
+        room_dict[key].probability = sum(rir.probability for rir in room_dict[key].rir_list)
 
-    return room_list
+    return room_dict
+
 
 def ParseNoiseList(rir_list, noise_list_file):
     noise_parser = argparse.ArgumentParser()
@@ -255,29 +302,36 @@ def ParseNoiseList(rir_list, noise_list_file):
     noise_parser.add_argument('--noise-type', type=str, required=True, help='the type of noise; i.e. isotropic or point-source', choices = ["isotropic", "point-source"])
     noise_parser.add_argument('--bg-fg-type', type=str, default="background", help='background or foreground noise', choices = ["background", "foreground"])
     noise_parser.add_argument('--rir-file', type=str, default=None, help='compulsary if isotropic, should not be specified if point-source')
+    noise_parser.add_argument('--probability', type=float, default=None, help='probability of the noise.')
     noise_parser.add_argument('noise_file_location', type=str, help='noise file location')
 
     point_noise_list = []
+    iso_noise_list = []
     noise_lines = map(lambda x: x.strip(), open(noise_list_file))
     for line in noise_lines:
         noise = noise_parser.parse_args(line.split())
         if noise.noise_type == "isotropic":
             if noise.rir_file is None:
-                raise Exception("--rir-file must be specified is --noise-type is point-source")
-                warnings.warn("No rir file specified for noise id {0}".format(noise.noise_id))
+                raise Exception("--rir-file must be specified if --noise-type is point-source")
             else:
-                id = -1
-                for j in range(len(rir_list)):
-                    if noise.rir_file == rir_list[j].rir_file_location:
-                        id = j
-                        rir_list[id].iso_noise_list.append(noise)
-                        break;
-                if id == -1:
-                    warnings.warn("Rir file specified for noise id {0} is not found in rir_list".format(noise.noise_id))
+                iso_noise_list.append(noise)
         else:
             point_noise_list.append(noise)
 
-    return (point_noise_list, rir_list)
+    iso_noise_list = SmoothProbability(iso_noise_list)
+
+    for iso_noise in iso_noise_list:
+        id = -1
+        for j in range(len(rir_list)):
+            if iso_noise.rir_file == rir_list[j].rir_file_location:
+                id = j
+                rir_list[id].iso_noise_list.append(noise)
+                break;
+        if id == -1:
+            warnings.warn("Rir file specified for noise id {0} is not found in rir_list".format(iso_noise.noise_id))
+
+    return (SmoothProbability(point_noise_list), rir_list)
+
 
 def Main():
     args = GetArgs()
@@ -287,11 +341,11 @@ def Main():
     if args.noise_list_file is not None:
         noise_list, rir_list = ParseNoiseList(rir_list, args.noise_list_file)
         print("Number of point-source noises is {0}".format(len(noise_list)))
-    room_list = MakeRoomList(rir_list)
+    room_dict = MakeRoomDict(rir_list)
 
     CreateReverberatedCopy(input_dir = args.input_dir,
                    output_dir = args.output_dir,
-                   room_list = room_list,
+                   room_dict = room_dict,
                    noise_list = noise_list,
                    foreground_snr_string = args.foreground_snr_string,
                    background_snr_string = args.background_snr_string,
