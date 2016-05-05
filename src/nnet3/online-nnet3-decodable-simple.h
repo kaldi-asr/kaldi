@@ -43,7 +43,7 @@ struct DecodableNnet3OnlineOptions {
   int32 max_nnet_batch_size;
   NnetComputeOptions compute_config;
   NnetOptimizeOptions optimize_config;
-  
+
   DecodableNnet3OnlineOptions():
       frame_subsampling_factor(1),
       acoustic_scale(0.1),
@@ -73,7 +73,7 @@ struct DecodableNnet3OnlineOptions {
     // register the compute options with the prefix "computation".
     ParseOptions compute_opts("computation", opts);
     compute_config.Register(&compute_opts);
-                 
+
   }
 };
 
@@ -87,21 +87,21 @@ struct DecodableNnet3OnlineOptions {
 class DecodableNnet3SimpleOnline: public DecodableInterface {
  public:
   DecodableNnet3SimpleOnline(const AmNnetSimple &am_nnet,
-                       const TransitionModel &trans_model,
-                       const DecodableNnet3OnlineOptions &opts,
-                       OnlineFeatureInterface *input_feats);
-  
-  
+                             const TransitionModel &trans_model,
+                             const DecodableNnet3OnlineOptions &opts,
+                             OnlineFeatureInterface *input_feats);
+
+
   /// Returns the scaled log likelihood
   virtual BaseFloat LogLikelihood(int32 frame, int32 index);
-  
+
   virtual bool IsLastFrame(int32 frame) const;
 
-  virtual int32 NumFramesReady() const;  
-  
+  virtual int32 NumFramesReady() const;
+
   /// Indices are one-based!  This is for compatibility with OpenFst.
   virtual int32 NumIndices() const { return trans_model_.NumTransitionIds(); }
-  
+
  private:
 
   /// If the neural-network outputs for this frame are not cached, it computes
@@ -109,7 +109,7 @@ class DecodableNnet3SimpleOnline: public DecodableInterface {
   void ComputeForFrame(int32 frame);
   // corrects number of frames by frame_subsampling_factor;
   int32 NumSubsampledFrames(int32) const;
-  
+
   void DoNnetComputation(
       int32 input_t_start,
       const MatrixBase<BaseFloat> &input_feats,
@@ -129,11 +129,11 @@ class DecodableNnet3SimpleOnline: public DecodableInterface {
   int32 right_context_;  // Right context of the network (cached here)
   int32 num_pdfs_;  // Number of pdfs, equals output-dim of the network (cached
                     // here)
-  
+
   int32 begin_frame_;  // First frame for which scaled_loglikes_ is valid
                        // (i.e. the first frame of the batch of frames for
                        // which we've computed the output).
-  
+
   // scaled_loglikes_ contains the neural network pseudo-likelihoods: the log of
   // (prob divided by the prior), scaled by opts.acoustic_scale).  We may
   // compute this using the GPU, but we transfer it back to the system memory
