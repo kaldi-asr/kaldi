@@ -1,5 +1,7 @@
 #include "cued-rnnlm-lib.h"
 
+namespace cued_rnnlm {
+
 void printusage(char *str)
 {
     printf ("Usage of command \"%s\"\n", str);
@@ -66,7 +68,7 @@ float randomv(float min, float max)
 
 float gaussrandv(float mean, float var)
 {
-    float v1, v2, s;
+    float v1, v2=1.0, s=1.0;
     int phase  = 0;
     double x;
     if (0 == phase)
@@ -137,8 +139,6 @@ float random(float min, float max)
 
 
 
-namespace cued_rnnlm {
-
 void RNNLM::init()
 {
     lognormconst    = 0;
@@ -192,9 +192,14 @@ RNNLM::~RNNLM()
 }
 
 
-RNNLM::RNNLM(string inmodelfile_1, string inputwlist_1, string outputwlist_1, vector<int> &lsizes, int fvocsize, bool bformat, int debuglevel):inmodelfile(inmodelfile_1), inputwlist(inputwlist_1), outputwlist(outputwlist_1), layersizes(lsizes), binformat(bformat), debug(debuglevel)
+RNNLM::RNNLM(string inmodelfile_1, string inputwlist_1, string outputwlist_1,
+               const vector<int> &lsizes, int fvocsize,
+               bool bformat, int debuglevel): inmodelfile(inmodelfile_1),
+               inputwlist(inputwlist_1), outputwlist(outputwlist_1),
+               layersizes(lsizes), debug(debuglevel), binformat(bformat)
 {
-    int i;
+    // now we only support 1 hidden layer
+    assert(lsizes.size() == 3);
     init ();
     LoadRNNLM (inmodelfile);
     ReadWordlist (inputwlist, outputwlist);
@@ -203,6 +208,36 @@ RNNLM::RNNLM(string inmodelfile_1, string inputwlist_1, string outputwlist_1, ve
 
     resetAc = new float[layersizes[1]];
     memcpy(resetAc, neu0_ac_hist->gethostdataptr(), sizeof(float)*layersizes[1]);
+}
+
+void RNNLM::copyToHiddenLayer(const vector<float> &hidden) {
+    const float *srcac;
+    float *dstac;
+    assert(hidden.size() == layersizes[1]);
+    srcac = hidden.data(); // TODO
+    dstac = neu_ac[1]->gethostdataptr();
+    memcpy (dstac, srcac, sizeof(float)*layersizes[1]);
+}
+
+void RNNLM::fetchHiddenLayer(vector<float> *context_out) {
+    const float *srcac;
+    float *dstac;
+    assert(context_out->size() == layersizes[1]);
+    srcac = neu_ac[1]->gethostdataptr();
+    dstac = context_out->data(); // TODO(hxu)
+    memcpy (dstac, srcac, sizeof(float)*layersizes[1]);
+}
+
+float RNNLM::computeConditionalLogprob(int current_word,
+                                       const vector<int> &history_words,
+                                       const vector<float> &context_in,
+                                       vector<float> *context_out) {
+    float ans = 0.0;
+    copyToHiddenLayer(context_in);
+    ans = forword(history_words[history_words.size() - 1], current_word);
+    fetchHiddenLayer(context_out);
+
+    return ans;
 }
 
 // allocate memory for RNNLM model
@@ -275,14 +310,14 @@ void RNNLM::printPPLInfo ()
 
 bool RNNLM::calppl (string testfilename, float intpltwght, string nglmfile)
 {
-    int i, j, wordcn, nwordoov, cnt;
+    int i, wordcn, nwordoov, cnt;
     vector<string> linevec;
     FILEPTR fileptr;
     float prob_rnn, prob_ng, prob_int, logp_rnn,
           logp_ng, logp_int, ppl_rnn, ppl_ng,
           ppl_int;
     bool flag_intplt = false, flag_oov = false;
-    FILE *fptr=NULL, *fptr_nglm=NULL;
+    FILE *fptr_nglm=NULL;
     auto_timer timer;
     timer.start();
     string word;
@@ -350,7 +385,7 @@ bool RNNLM::calppl (string testfilename, float intpltwght, string nglmfile)
             {
                 ResetRechist();
             }
-            for (i; i<cnt; i++)
+            for (; i<cnt; i++)
             {
                 word = linevec[i];
                 if (outputmap.find(word) == outputmap.end())
@@ -457,14 +492,14 @@ bool RNNLM::calppl (string testfilename, float intpltwght, string nglmfile)
 
 bool RNNLM::calnbest (string testfilename, float intpltwght, string nglmfile)
 {
-    int i, j, wordcn, cnt, nbestid, prevnbestid=-1, sentcnt=0, nword;
+    int i, wordcn, cnt, nbestid, prevnbestid=-1, sentcnt=0, nword;
     vector<string> linevec, maxlinevec;
     FILEPTR fileptr;
     float prob_rnn, prob_ng, prob_int, logp_rnn,
           logp_ng, logp_int, ppl_rnn, ppl_ng,
           ppl_int, sentlogp, acscore, lmscore, score, maxscore;
     bool flag_intplt = false;
-    FILE *fptr=NULL, *fptr_nglm=NULL;
+    FILE *fptr_nglm=NULL;
     auto_timer timer;
     timer.start();
     string word;
@@ -551,6 +586,7 @@ bool RNNLM::calnbest (string testfilename, float intpltwght, string nglmfile)
 
             acscore = string2float(linevec[1]);
             lmscore = string2float(linevec[2]);
+            assert(lmscore == lmscore); // TODO
             nword   = string2int(linevec[3]);
             if (linevec[4] == "<s>")    i = 5;
             else                        i = 4;
@@ -560,7 +596,7 @@ bool RNNLM::calnbest (string testfilename, float intpltwght, string nglmfile)
             {
                 ResetRechist();
             }
-            for (i; i<cnt; i++)
+            for (; i<cnt; i++)
             {
                 word = linevec[i];
                 if (outputmap.find(word) == outputmap.end())
@@ -846,7 +882,7 @@ void RNNLM::LoadBinaryRNNLM(string modelname)
 {
     int i, a, b;
     float v;
-    char word[1024];
+//    char word[1024];
     FILE *fptr = NULL;
     fptr = fopen (modelname.c_str(), "rb");
     if (fptr == NULL)
@@ -946,8 +982,8 @@ void RNNLM::ReadWordlist (string inputlist, string outputlist)
 {
     //index 0 for <s> and </s> in input and output layer
     //last node for <OOS>
-    int i, a, b;
-    float v;
+    int i;
+//    float v;
     char word[1024];
     FILE *finlst, *foutlst;
     finlst = fopen (inputlist.c_str(), "r");
@@ -1081,7 +1117,6 @@ void RNNLM::copyRecurrentAc ()
 
 void RNNLM::ResetRechist()
 {
-    int a = 0;
     for (int i=0; i<layersizes[1]; i++)
     {
         neu0_ac_hist->assignhostvalue(i, 0, RESETVALUE);
@@ -1091,8 +1126,7 @@ void RNNLM::ResetRechist()
 
 float RNNLM::forword (int prevword, int curword)
 {
-   int a, b, c, nrow, ncol;
-   float v, norm, maxv;
+   int a, b, nrow, ncol;
    nrow = layersizes[1];
    ncol = layersizes[1];
    float *srcac, *wgt, *dstac;

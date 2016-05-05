@@ -22,7 +22,7 @@
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
 #include "lat/lattice-functions.h"
-#include "lm/kaldi-rnnlm.h"
+#include "lm/kaldi-cuedrnnlm.h"
 #include "lm/cued-rnnlm-lib.h"
 #include "util/common-utils.h"
 
@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
                 "rnnlm context to the given number, -1 means we are not going "
                 "to limit it.");
 
-    KaldiRnnlmWrapperOpts opts;
+    KaldiCuedRnnlmWrapperOpts opts;
     opts.Register(&po);
 
     po.Read(argc, argv);
@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Reads the language model.
-    KaldiRnnlmWrapper rnnlm(opts, unk_prob_rspecifier,
+    KaldiCuedRnnlmWrapper rnnlm(opts, unk_prob_rspecifier,
                             word_symbols_rxfilename, rnnlm_rxfilename);
 
     // Reads and writes as compact lattice.
@@ -105,7 +105,7 @@ int main(int argc, char *argv[]) {
 
         // Wraps the rnnlm into FST. We re-create it for each lattice to prevent
         // memory usage increasing with time.
-        RnnlmDeterministicFst rnnlm_fst(max_ngram_order, &rnnlm);
+        CuedRnnlmDeterministicFst rnnlm_fst(max_ngram_order, &rnnlm);
 
         // Composes lattice with language model.
         CompactLattice composed_clat;

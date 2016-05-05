@@ -5,12 +5,12 @@
 #include <vector>
 #include "util/stl-utils.h"
 
+#include <omp.h>
 /*
 #include "head.h"
 #include "helper.h"
 #include "fileops.h"
 #include "DataType.h"
-#include <omp.h>
 // */
 
 #include <stdlib.h>
@@ -26,6 +26,8 @@
 #include "math.h"
 
 using namespace std;
+
+namespace cued_rnnlm {
 
 #define     SUCCESS             0
 #define     FILEREADERROR       1
@@ -326,8 +328,6 @@ public:
     }
 };
 
-namespace cued_rnnlm {
-
 class matrix
 {
 private:
@@ -366,7 +366,7 @@ public:
     {
         host_data[i+j*nrows] = v;
     }
-    real addhostvalue (size_t i, size_t j, real v)
+    void addhostvalue (size_t i, size_t j, real v)
     {
         host_data[i+j*nrows] += v;
     }
@@ -448,7 +448,8 @@ public:
 
     void hostsoftmax()
     {
-        int a, maxi;
+//        int a, maxi;
+        int a;
         float v, norm, maxv = 1e-8;
         assert (ncols == 1);
         maxv = 1e-10;
@@ -458,7 +459,7 @@ public:
             if (v > maxv)
             {
                 maxv = v;
-                maxi = a;
+//                maxi = a;
             }
         }
         norm = 0;
@@ -477,7 +478,8 @@ public:
 
     void hostpartsoftmax(int swordid, int ewordid)
     {
-        int a, maxi;
+//        int a, maxi;
+        int a;
         float v, norm, maxv = 1e-8;
         assert (ncols == 1);
         maxv = 1e-10;
@@ -487,7 +489,7 @@ public:
             if (v > maxv)
             {
                 maxv = v;
-                maxi = a;
+//                maxi = a;
             }
         }
         norm = 0;
@@ -524,7 +526,7 @@ class RNNLM
 protected:
     string inmodelfile, trainfile, validfile, nglmstfile,
            testfile, inputwlist, outputwlist, feafile;
-    vector<int> &layersizes;
+    vector<int> layersizes;
     map<string, int> inputmap, outputmap;
     vector<string>  inputvec, outputvec, ooswordsvec;
     vector<float>   ooswordsprob;
@@ -548,9 +550,18 @@ protected:
     auto_timer timer_sampler, timer_forward, timer_output, timer_backprop, timer_hidden;
 
 public:
-    RNNLM(string inmodelfile_1, string inputwlist_1, string outputwlist_1, vector<int> &lsizes, int fvocsize, bool bformat, int debuglevel);
+    RNNLM(string inmodelfile_1, string inputwlist_1, string outputwlist_1,
+          const vector<int> &lsizes, int fvocsize, bool bformat, int debuglevel);
 
     ~RNNLM();
+
+    int getHiddenLayerSize() const {return layersizes[1];} // TODO
+    void copyToHiddenLayer(const vector<float> &hidden);
+    void fetchHiddenLayer(vector<float> *out);
+
+    float computeConditionalLogprob(                                              
+        int current_word, const std::vector<int> &history_words,                            
+        const std::vector<float> &context_in, std::vector<float> *context_out);
 
     bool calppl (string testfilename, float lambda, string nglmfile);
 
@@ -586,6 +597,6 @@ public:
 };
 
 
-}
+}  // namespace cued_rnnlm
 
 #endif  // KALDI_LM_CUED_RNNLM_LIB_H_

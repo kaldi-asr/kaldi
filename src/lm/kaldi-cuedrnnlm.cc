@@ -29,12 +29,10 @@ KaldiCuedRnnlmWrapper::KaldiCuedRnnlmWrapper(
     const KaldiCuedRnnlmWrapperOpts &opts,
     const std::string &unk_prob_rspecifier,
     const std::string &word_symbol_table_rxfilename,
-    const std::string &rnnlm_rxfilename) {
-  rnnlm_.setRnnLMFile(rnnlm_rxfilename);
-  rnnlm_.setRandSeed(1);
-  rnnlm_.setUnkSym(opts.unk_symbol);
-  rnnlm_.setUnkPenalty(unk_prob_rspecifier);
-  rnnlm_.restoreNet();
+    const std::string &rnnlm_rxfilename):
+ rnnlm_(rnnlm_rxfilename, word_symbol_table_rxfilename,
+        word_symbol_table_rxfilename, opts.LayerSizes(),
+        0, false, 0) {
 
   // Reads symbol table.
   fst::SymbolTable *word_symbols = NULL;
@@ -61,6 +59,8 @@ BaseFloat KaldiCuedRnnlmWrapper::GetLogProb(
     const std::vector<BaseFloat> &context_in,
     std::vector<BaseFloat> *context_out) {
 
+  return rnnlm_.computeConditionalLogprob(word, wseq, context_in, context_out);
+/*
   std::vector<std::string> wseq_symbols(wseq.size());
   for (int32 i = 0; i < wseq_symbols.size(); ++i) {
     KALDI_ASSERT(wseq[i] < label_to_word_.size());
@@ -69,6 +69,7 @@ BaseFloat KaldiCuedRnnlmWrapper::GetLogProb(
 
   return rnnlm_.computeConditionalLogprob(label_to_word_[word], wseq_symbols,
                                           context_in, context_out);
+// */
 }
 
 CuedRnnlmDeterministicFst::CuedRnnlmDeterministicFst(int32 max_ngram_order,

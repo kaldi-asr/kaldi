@@ -1,7 +1,7 @@
 
 all:
 
-EXTRA_CXXFLAGS = -Wno-sign-compare
+EXTRA_CXXFLAGS = -Wno-sign-compare -fopenmp # not sure if I should add it here
 include ../kaldi.mk
 
 BINFILES = lattice-best-path lattice-prune lattice-equivalent lattice-to-nbest \
@@ -20,7 +20,8 @@ BINFILES = lattice-best-path lattice-prune lattice-equivalent lattice-to-nbest \
            lattice-minimize lattice-limit-depth lattice-depth-per-frame \
            lattice-confidence lattice-determinize-phone-pruned \
            lattice-determinize-phone-pruned-parallel lattice-expand-ngram \
-           lattice-lmrescore-const-arpa lattice-lmrescore-rnnlm nbest-to-prons
+           lattice-lmrescore-const-arpa lattice-lmrescore-rnnlm nbest-to-prons \
+           lattice-lmrescore-cuedrnnlm
 
 OBJFILES =
 

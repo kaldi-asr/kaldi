@@ -1,4 +1,4 @@
-EXTRA_CXXFLAGS = -Wno-sign-compare
+EXTRA_CXXFLAGS = -Wno-sign-compare -lrt -fopenmp
 
 all:
 
@@ -13,7 +13,7 @@ include ../kaldi.mk
 TESTFILES = lm-lib-test
 
 OBJFILES = const-arpa-lm.o kaldi-lmtable.o kaldi-lm.o kaldi-rnnlm.o \
-           mikolov-rnnlm-lib.o
+           mikolov-rnnlm-lib.o cued-rnnlm-lib.o kaldi-cuedrnnlm.o
 
 TESTOUTPUTS = composed.fst output.fst output1.fst output2.fst
 

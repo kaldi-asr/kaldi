@@ -18,7 +18,6 @@
 # has, on each line, "word prob".
 
 rnnlm_ver=rnnlm-0.3e
-machine_w_gpu_cmd="queue.pl -q all.q@b*.clsp.jhu.edu"
 
 . ./path.sh || exit 1;
 . utils/parse_options.sh
@@ -47,15 +46,16 @@ done
 mkdir -p $tempdir
 cat $text_in | awk '{for (x=2;x<=NF;x++) {printf("%s ", $x)} printf("\n");}' >$tempdir/text
 cat $text_in | awk '{print $1}' > $tempdir/ids # e.g. utterance ids.
+# TODO(hxu) again with RNN_UNK
 cat $tempdir/text | awk -v voc=$dir/wordlist.rnn -v unk=$dir/unk.probs \
   -v logprobs=$tempdir/loglikes.oov \
  'BEGIN{ while((getline<voc)>0) { invoc[$1]=1; } while ((getline<unk)>0){ unkprob[$1]=$2;} }
   { logprob=0;
-    if (NF==0) { printf "<RNN_UNK>"; logprob = log(1.0e-07);
+    if (NF==0) { printf "RNN_UNK"; logprob = log(1.0e-07);
       print "Warning: empty sequence." | "cat 1>&2"; }
     for (x=1;x<=NF;x++) { w=$x;  
     if (invoc[w]) { printf("%s ",w); } else {
-      printf("<RNN_UNK> ");
+      printf("RNN_UNK ");
       if (unkprob[w] != 0) { logprob += log(unkprob[w]); }
       else { print "Warning: unknown word ", w | "cat 1>&2"; logprob += log(1.0e-07); }}}
     printf("\n"); print logprob > logprobs } ' > $tempdir/text.nounk
@@ -65,11 +65,13 @@ cat $tempdir/text | awk -v voc=$dir/wordlist.rnn -v unk=$dir/unk.probs \
 
 if [ "$rnnlm_ver" == "cuedrnnlm" ]; then
   set -x
-  cat $tempdir/text | awk '{print NR,0,0,"<s>",$0,"</s>"}' > $tempdir/text.s
-  $rnnlm.eval -nbest -independent 1 -readmodel $dir/rnnlm \
-    -testfile $tempdir/text.s  \
-    -inputwlist $dir/wordlist.rnn.id -outputwlist $dir/wordlist.rnn.id \
-    -debug 0  > $tempdir/loglikes.rnn  
+# not needed here for cued-rnnlm format
+#  cat $tempdir/text | awk '{print NR,0,0,"<s>",$0,"</s>"}' > $tempdir/text.s
+  cat $tempdir/text.nounk | sed 's=<unk>=UNK=g' | sed 's=<UNK>=UNK=g' > $tempdir/text.nounk.2
+  $rnnlm.eval -ppl -readmodel $dir/rnnlm \
+    -testfile $tempdir/text.nounk.2 \
+    -inputwlist $dir/wordlist.rnn.id -outputwlist $dir/rnnlm.output.wlist.index -debug 0 \
+    | grep "^per-sentence" | awk '{print $3*log(10)}' > $tempdir/loglikes.rnn  
 #    | tail -n 1 | awk '{print $4}' > $tempdir/loglikes.rnn
 else
   $rnnlm -independent -rnnlm $dir/rnnlm -test $tempdir/text.nounk -nbest -debug 0 | \

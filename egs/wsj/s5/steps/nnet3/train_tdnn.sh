@@ -14,6 +14,7 @@
 cmd=run.pl
 num_epochs=15      # Number of epochs of training;
                    # the number of iterations is worked out from this.
+io_opts=
 initial_effective_lrate=0.01
 final_effective_lrate=0.001
 pnorm_input_dim=3000

@@ -1,26 +1,19 @@
 #!/bin/bash
 
-set -v
-
 train_text=
 nwords=10000
-hidden=150
+hidden=200
 
 rand_seed=0
 cmd=run.pl
-class=200 # Num-classes... should be somewhat larger than sqrt of nwords.
-direct=1000 # Number of weights that are used for "direct" connections, in millions.
+class=120 # Num-classes... should be somewhat larger than sqrt of nwords.
+direct=10 # Number of weights that are used for "direct" connections, in millions.
 rnnlm_ver=rnnlm-0.3e # version of RNNLM to use
 threads=1 # for RNNLM-HS
-bptt=2 # length of BPTT unfolding in RNNLM
+bptt=3 # length of BPTT unfolding in RNNLM
 bptt_block=20 # length of BPTT unfolding in RNNLM
 dict_suffix=
 # End configuration section.
-
-
-rnnlm_ver=rnnlm-0.3e
-
-bptt=3
 
 . path.sh
 . cmd.sh
@@ -102,7 +95,7 @@ echo "Training RNNLM (note: this uses a lot of memory! Run it on a big machine.)
 #  -hidden 100 -rand-seed 1 -debug 2 -class 100 -bptt 2 -bptt-block 20 \
 #  -direct-order 4 -direct 1000 -binary >& $dir/rnnlm1.log &
 
-false && $cmd $dir/rnnlm.log \
+$cmd $dir/rnnlm.log \
    $KALDI_ROOT/tools/$rnnlm_ver/rnnlm -threads $threads -independent -train $dir/train -valid $dir/valid \
    -rnnlm $dir/rnnlm -hidden $hidden -rand-seed 1 -debug 2 -class $class -bptt $bptt -bptt-block $bptt_block \
    -direct-order 4 -direct $direct -binary

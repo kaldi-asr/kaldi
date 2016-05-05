@@ -33,14 +33,32 @@ namespace kaldi {
 struct KaldiCuedRnnlmWrapperOpts {
   std::string unk_symbol;
   std::string eos_symbol;
+  std::string layer_sizes;
 
   KaldiCuedRnnlmWrapperOpts() : unk_symbol("<RNN_UNK>"), eos_symbol("</s>") {}
+
+  std::vector<int> LayerSizes() const {
+    vector<int> ans;
+/*    for (size_t i = 0; i < layer_sizes.size(); i++) {
+      if (layer_sizes[i] == ':') {
+        layer_sizes[i] = ' ';
+      }
+    }
+// */
+    stringstream ss(layer_sizes);
+    int i;
+    while (ss >> i) {
+      ans.push_back(i);
+    }
+    return ans;
+  }
 
   void Register(OptionsItf *opts) {
     opts->Register("unk-symbol", &unk_symbol, "Symbol for out-of-vocabulary "
                    "words in rnnlm.");
     opts->Register("eos-symbol", &eos_symbol, "End of setence symbol in "
                    "rnnlm.");
+    opts->Register("layer-sizes", &layer_sizes, "String for layer sizes");
   }
 };
 
@@ -60,7 +78,7 @@ class KaldiCuedRnnlmWrapper {
                        std::vector<BaseFloat> *context_out);
 
  private:
-  rnnlm::RNNLM rnnlm_;
+  cued_rnnlm::RNNLM rnnlm_;
   std::vector<std::string> label_to_word_;
   int32 eos_;
 

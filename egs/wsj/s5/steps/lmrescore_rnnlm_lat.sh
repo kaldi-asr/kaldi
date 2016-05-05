@@ -13,6 +13,8 @@ N=10
 inv_acwt=12
 weight=1.0  # Interpolation weight for RNNLM.
 # End configuration section.
+rnnlm_ver=
+layer_string=
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -37,6 +39,12 @@ oldlang=$2
 data=$3
 indir=$4
 outdir=$5
+
+rescoring_binary=lattice-lmrescore-rnnlm
+
+if [ "$rnnlm_ver" == "cuedrnnlm" ]; then
+  rescoring_binary="lattice-lmrescore-cuedrnnlm --layer-sizes=\"$layer_string\""
+fi
 
 oldlm=$oldlang/G.fst
 if [ -f $oldlang/G.carpa ]; then
@@ -71,7 +79,7 @@ if [ "$oldlm" == "$oldlang/G.fst" ]; then
   $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
     lattice-lmrescore --lm-scale=$oldlm_weight \
     "ark:gunzip -c $indir/lat.JOB.gz|" "$oldlm_command" ark:-  \| \
-    lattice-lmrescore-rnnlm --lm-scale=$weight \
+    $rescoring_binary --lm-scale=$weight \
     --max-ngram-order=$max_ngram_order ark:$rnnlm_dir/unk.probs \
     $oldlang/words.txt ark:- "$rnnlm_dir/rnnlm" \
     "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;
@@ -79,7 +87,7 @@ else
   $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
     lattice-lmrescore-const-arpa --lm-scale=$oldlm_weight \
     "ark:gunzip -c $indir/lat.JOB.gz|" "$oldlm_command" ark:-  \| \
-    lattice-lmrescore-rnnlm --lm-scale=$weight \
+    $rescoring_binary --lm-scale=$weight \
     --max-ngram-order=$max_ngram_order ark:$rnnlm_dir/unk.probs \
     $oldlang/words.txt ark:- "$rnnlm_dir/rnnlm" \
     "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;
