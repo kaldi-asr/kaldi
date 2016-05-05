@@ -71,6 +71,7 @@ unset MKLLIBDIR
 function usage {
   echo 'Usage: ./configure [--static|--shared] [--threaded-atlas={yes|no}] [--atlas-root=ATLASROOT] [--fst-root=FSTROOT]
   [--openblas-root=OPENBLASROOOT] [--clapack-root=CLAPACKROOT] [--mkl-root=MKLROOT] [--mkl-libdir=MKLLIBDIR]
+  [--speex-root=SPEEXROOT] [--speex-libdir=SPEEXLIBDIR] [--speex-includedir=SPEEXINCLUDEDIR]
   [--omp-libdir=OMPDIR] [--static-fst={yes|no}] [--static-math={yes|no}] [--threaded-math={yes|no}] [--mathlib=ATLAS|MKL|CLAPACK|OPENBLAS]
   [--use-cuda={yes|no}] [--cudatk-dir=CUDATKDIR][--mkl-threading=sequential|iomp|tbb|gomp]';
 }
