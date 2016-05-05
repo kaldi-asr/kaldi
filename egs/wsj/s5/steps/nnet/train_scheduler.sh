@@ -177,9 +177,9 @@ if [ $mlp_best != $mlp_init ]; then
   mlp_final=${mlp_best}_final_
   ( cd $dir/nnet; ln -s $(basename $mlp_best) $(basename $mlp_final); )
   ( cd $dir; ln -s nnet/$(basename $mlp_final) final.nnet; )
-  echo "Succeeded training the Neural Network : $dir/final.nnet '$0'"
+  echo "$0: Succeeded training the Neural Network : '$dir/final.nnet'"
 else
-  echo "Error training neural network... '$0'"
+  echo "$0: Error training neural network..."
   exit 1
 fi
 
