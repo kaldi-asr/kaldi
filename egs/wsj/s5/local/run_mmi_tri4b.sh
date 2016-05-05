@@ -9,7 +9,7 @@ steps/train_mmi.sh --cmd "$train_cmd" --boost 0.1 \
   data/train_si284 data/lang exp/tri4b_ali_si284 exp/tri4b_denlats_si284 \
   exp/tri4b_mmi_b0.1  || exit 1;
 
-steps/decode.sh --nj 10 --cmd "$decode_cmd" --transform-dir exp/tri3b/decode_tgpr_dev93 \
+steps/decode.sh --nj 10 --cmd "$decode_cmd" --transform-dir exp/tri4b/decode_tgpr_dev93 \
   exp/tri4b/graph_tgpr data/test_dev93 exp/tri4b_mmi_b0.1/decode_tgpr_dev93
 
 #first, train UBM for fMMI experiments.
@@ -23,7 +23,7 @@ steps/train_mmi_fmmi.sh \
 
 for iter in 3 4 5 6 7 8; do
  steps/decode_fmmi.sh --nj 10  --cmd "$decode_cmd" --iter $iter \
-   --transform-dir exp/tri3b/decode_tgpr_dev93  exp/tri4b/graph_tgpr data/test_dev93 \
+   --transform-dir exp/tri4b/decode_tgpr_dev93  exp/tri4b/graph_tgpr data/test_dev93 \
   exp/tri4b_fmmi_a/decode_tgpr_dev93_it$iter &
 done
 # decode the last iter with the bd model.
