@@ -33,8 +33,8 @@ while(<S>) {
     print "--> ERROR: last line '$_' of $dict/silence_phones.txt does not end in newline.\n";
     set_to_fail();
   }
-  if ($crlf == 1 && m/\r$/) {
-    print "--> ERROR: $dict/silence_phones.txt contains CRLF line terminators.\n";
+  if ($crlf == 1 && m/\r/) {
+    print "--> ERROR: $dict/silence_phones.txt contains Carriage Return (^M) characters.\n";
     set_to_fail();
     $crlf = 0;
   }
@@ -75,8 +75,8 @@ while(<OS>) {
   } elsif (!$silence{$col[0]}) {
     set_to_fail(); print "--> ERROR: phone $col[0] not found in $dict/silence_phones.txt\n";
   }
-  if ($crlf == 1 && m/\r$/) {
-    print "--> ERROR: $dict/optional_silence.txt contains CRLF line terminators.\n";
+  if ($crlf == 1 && m/\r/) {
+    print "--> ERROR: $dict/optional_silence.txt contains Carriage Return (^M) characters.\n";
     set_to_fail();
     $crlf = 0;
   }
@@ -96,8 +96,8 @@ $success = 1;
 $crlf = 1;
 print "--> reading $dict/nonsilence_phones.txt\n";
 while(<NS>) {
-  if ($crlf == 1 && m/\r$/) {
-    print "--> ERROR: $dict/nonsilence_phones.txt contains CRLF line terminators.\n";
+  if ($crlf == 1 && m/\r/) {
+    print "--> ERROR: $dict/nonsilence_phones.txt contains Carriage Return (^M) characters.\n";
     set_to_fail();
     $crlf = 0;
   }
@@ -155,8 +155,8 @@ sub check_lexicon {
   $idx = 1; $success = 1; $crlf = 1;
   print "--> reading $lex\n";
   while (<L>) {
-    if ($crlf == 1 && m/\r$/) {
-      print "--> ERROR: $lex contains CRLF line terminators.\n";
+    if ($crlf == 1 && m/\r/) {
+      print "--> ERROR: $lex contains Carriage Return (^M) characters.\n";
       set_to_fail();
       $crlf = 0;
     }
@@ -216,8 +216,8 @@ if (-f "$dict/lexiconp_silprob.txt") {
       print "--> ERROR: fail to open $dict/silprob.txt\n" && set_to_fail();
       $crlf = 1;
     while (<SP>) {
-      if ($crlf == 1 && m/\r$/) {
-        print "--> ERROR: $dict/silprob.txt contains CRLF line terminators.\n";
+      if ($crlf == 1 && m/\r/) {
+        print "--> ERROR: $dict/silprob.txt contains Carriage Return (^M) characters.\n";
         set_to_fail();
         $crlf = 0;
       }
@@ -322,8 +322,8 @@ if (-s "$dict/extra_questions.txt") {
   $crlf = 1;
   print "--> reading $dict/extra_questions.txt\n";
   while(<EX>) {
-    if ($crlf == 1 && m/\r$/) {
-      print "--> ERROR: $dict/extra_questions.txt contains CRLF line terminators.\n";
+    if ($crlf == 1 && m/\r/) {
+      print "--> ERROR: $dict/extra_questions.txt contains Carriage Return (^M) characters.\n";
       set_to_fail();
       $crlf = 0;
     }
