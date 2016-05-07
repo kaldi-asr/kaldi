@@ -28,7 +28,7 @@ SingleUtteranceNnet2Decoder::SingleUtteranceNnet2Decoder(
     const TransitionModel &tmodel,
     const nnet2::AmNnet &model,
     const fst::Fst<fst::StdArc> &fst,
-    OnlineNnet2FeaturePipeline *feature_pipeline):
+    OnlineFeatureInterface *feature_pipeline):
     config_(config),
     feature_pipeline_(feature_pipeline),
     tmodel_(tmodel),
