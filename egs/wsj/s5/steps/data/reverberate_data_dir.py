@@ -132,6 +132,9 @@ def ParseFileToDict(file, assert2fields = False, value_processor = None):
 
 
 # This is the major function to generate pipeline command for the corruption
+# The generic command of wav-reverberate will be like:
+# wav-reverberate --duration=t --impulse-response=rir.wav 
+# --additive-signals='noise1.wav,noise2.wav' --snrs='snr1,snr2' --start-times='s1,s2' input.wav output.wav
 def CorruptWav(wav_scp, durations, output_dir, room_dict, noise_list, foreground_snr_array, background_snr_array, num_replica, prefix, speech_rvb_probability, noise_adding_probability, max_noises_added):
     foreground_snrs = list_cyclic_iterator(foreground_snr_array)
     background_snrs = list_cyclic_iterator(background_snr_array)
@@ -162,7 +165,7 @@ def CorruptWav(wav_scp, durations, output_dir, room_dict, noise_list, foreground
                 if len(speech_rir.iso_noise_list) > 0:
                     isotropic_noise = PickItemFromList(speech_rir.iso_noise_list)
                     # extend the isotropic noise to the length of the speech waveform
-                    noises_added.append("\"wav-reverberate --duration={1} {0} - |\" ".format(isotropic_noise.noise_file_location, speech_dur))
+                    noises_added.append("wav-reverberate --duration={1} {0} - |".format(isotropic_noise.noise_file_location, speech_dur))
                     snrs_added.append(background_snrs.next())
                     start_times_added.append(0)
 
@@ -174,11 +177,11 @@ def CorruptWav(wav_scp, durations, output_dir, room_dict, noise_list, foreground
                     noise_rir = PickItemFromList(room.rir_list)
                     if noise.bg_fg_type == "background": 
                         start_times_added.append(0)
-                        noises_added.append("\"wav-reverberate --duration={2} --impulse-response={1} {0} - |\" ".format(noise.noise_file_location, noise_rir.rir_file_location, speech_dur))
+                        noises_added.append("wav-reverberate --duration={2} --impulse-response={1} {0} - |".format(noise.noise_file_location, noise_rir.rir_file_location, speech_dur))
                         snrs_added.append(background_snrs.next())
                     else:
                         start_times_added.append(round(random.random() * speech_dur, 2))
-                        noises_added.append("\"wav-reverberate --impulse-response={1} {0} - |\" ".format(noise.noise_file_location, noise_rir.rir_file_location))
+                        noises_added.append("wav-reverberate --impulse-response={1} {0} - |".format(noise.noise_file_location, noise_rir.rir_file_location))
                         snrs_added.append(foreground_snrs.next())
 
             if len(noises_added) > 0:
