@@ -176,6 +176,6 @@ ivector: base util matrix thread transform tree gmm
 onlinebin: base matrix util feat tree optimization gmm transform sgmm sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet2 online thread
 # python-kaldi-decoding: base matrix util feat tree optimization thread gmm transform sgmm sgmm2 fstext hmm decoder lat online
 online: decoder gmm transform feat matrix util base lat hmm thread tree
-online2: decoder gmm transform feat matrix util base lat hmm thread ivector cudamatrix nnet2
+online2: decoder gmm transform feat matrix util base lat hmm thread ivector cudamatrix nnet2 nnet3
 kws: base util hmm tree matrix lat
 

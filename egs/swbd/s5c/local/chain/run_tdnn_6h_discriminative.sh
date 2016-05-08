@@ -8,9 +8,49 @@ set -e
 # note: this relies on having a cluster that has plenty of CPUs as well as GPUs,
 # since the lattice generation runs in about real-time, so takes of the order of
 # 1000 hours of CPU time.
-# 
-. cmd.sh
+#
+# eval2000
 
+# chain 7b
+# %WER 17.2 | 4459 42989 | 84.8 10.2 5.0 2.0 17.2 54.4 | exp/chain/tdnn_7b_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.filt.sys
+
+# chain 7b + smbr
+# %WER 16.9 | 4459 42989 | 85.2 10.3 4.5 2.1 16.9 54.4 | exp/chain/tdnn_7b_sp_smbr/decode_eval2000_sw1_tg_epoch1/score_11_0.0/eval2000_hires.ctm.filt.sys
+# %WER 16.9 | 4459 42989 | 85.4 10.5 4.1 2.3 16.9 54.2 | exp/chain/tdnn_7b_sp_smbr/decode_eval2000_sw1_tg_epoch2/score_11_0.0/eval2000_hires.ctm.filt.sys
+# %WER 17.0 | 4459 42989 | 85.3 10.4 4.3 2.3 17.0 54.5 | exp/chain/tdnn_7b_sp_smbr/decode_eval2000_sw1_tg_epoch3/score_12_0.0/eval2000_hires.ctm.filt.sys
+# %WER 17.1 | 4459 42989 | 85.2 10.5 4.3 2.4 17.1 54.5 | exp/chain/tdnn_7b_sp_smbr/decode_eval2000_sw1_tg_epoch4/score_12_0.5/eval2000_hires.ctm.filt.sys
+
+# chain 7b
+# %WER 15.5 | 4459 42989 | 86.3 9.0 4.7 1.8 15.5 51.3 | exp/chain/tdnn_7b_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.filt.sys
+
+# chain 7b + smbr
+# %WER 15.2 | 4459 42989 | 86.8 9.1 4.1 2.0 15.2 51.2 | exp/chain/tdnn_7b_sp_smbr/decode_eval2000_sw1_fsh_fg_epoch1/score_11_0.0/eval2000_hires.ctm.filt.sys
+# %WER 15.1 | 4459 42989 | 86.9 9.0 4.1 2.0 15.1 51.3 | exp/chain/tdnn_7b_sp_smbr/decode_eval2000_sw1_fsh_fg_epoch2/score_12_0.0/eval2000_hires.ctm.filt.sys
+# %WER 15.1 | 4459 42989 | 87.0 9.1 3.9 2.1 15.1 51.2 | exp/chain/tdnn_7b_sp_smbr/decode_eval2000_sw1_fsh_fg_epoch3/score_12_0.5/eval2000_hires.ctm.filt.sys
+# %WER 15.2 | 4459 42989 | 87.0 9.2 3.8 2.2 15.2 51.5 | exp/chain/tdnn_7b_sp_smbr/decode_eval2000_sw1_fsh_fg_epoch4/score_12_0.5/eval2000_hires.ctm.filt.sys
+
+
+# RT'03
+
+# chain 7b
+# %WER 21.6 | 8420 76157 | 80.5 12.8 6.7 2.1 21.6 53.7 | exp/chain/tdnn_7b_sp/decode_rt03_sw1_tg/score_9_0.0/rt03_hires.ctm.filt.sys
+
+# chain 7b + smbr
+# %WER 21.0 | 8420 76157 | 81.3 12.8 5.8 2.4 21.0 53.0 | exp/chain/tdnn_7b_sp_smbr/decode_rt03_sw1_tg_epoch1/score_10_0.0/rt03_hires.ctm.filt.sys
+# %WER 20.8 | 8420 76157 | 81.6 12.5 6.0 2.4 20.8 53.0 | exp/chain/tdnn_7b_sp_smbr/decode_rt03_sw1_tg_epoch2/score_11_0.0/rt03_hires.ctm.filt.sys
+# %WER 20.8 | 8420 76157 | 81.6 12.6 5.8 2.5 20.8 53.1 | exp/chain/tdnn_7b_sp_smbr/decode_rt03_sw1_tg_epoch3/score_11_0.5/rt03_hires.ctm.filt.sys
+# %WER 20.9 | 8420 76157 | 81.7 12.7 5.6 2.6 20.9 53.2 | exp/chain/tdnn_7b_sp_smbr/decode_rt03_sw1_tg_epoch4/score_11_0.0/rt03_hires.ctm.filt.sys
+
+# chain 7b
+# %WER 19.0 | 8420 76157 | 82.7 10.2 7.2 1.7 19.0 50.0 | exp/chain/tdnn_7b_sp/decode_rt03_sw1_fsh_fg/score_10_0.0/rt03_hires.ctm.filt.sys
+
+# chain 7b + smbr
+# %WER 18.2 | 8420 76157 | 83.7 10.4 5.9 1.9 18.2 49.3 | exp/chain/tdnn_7b_sp_smbr/decode_rt03_sw1_fsh_fg_epoch1/score_11_0.0/rt03_hires.ctm.filt.sys
+# %WER 18.1 | 8420 76157 | 83.9 10.7 5.4 2.1 18.1 49.3 | exp/chain/tdnn_7b_sp_smbr/decode_rt03_sw1_fsh_fg_epoch2/score_11_0.0/rt03_hires.ctm.filt.sys
+# %WER 18.1 | 8420 76157 | 84.0 10.7 5.3 2.1 18.1 49.4 | exp/chain/tdnn_7b_sp_smbr/decode_rt03_sw1_fsh_fg_epoch3/score_11_1.0/rt03_hires.ctm.filt.sys
+# %WER 18.2 | 8420 76157 | 83.8 10.5 5.7 2.1 18.2 49.6 | exp/chain/tdnn_7b_sp_smbr/decode_rt03_sw1_fsh_fg_epoch4/score_12_1.0/rt03_hires.ctm.filt.sys
+
+. cmd.sh
 
 stage=0
 train_stage=-10 # can be used to start training in the middle.
@@ -41,14 +81,12 @@ frames_overlap_per_eg=30
 truncate_deriv_weights=10
 
 ## Nnet training options
-effective_learning_rate=0.00000125
+effective_learning_rate=0.000000125
 max_param_change=1
 num_jobs_nnet=4
 num_epochs=4
 regularization_opts="--xent-regularize=0.1 --l2-regularize=0.00005"          # Applicable for providing --xent-regularize and --l2-regularize options 
 minibatch_size=64
-modify_learning_rates=true    
-last_layer_factor=0.1         
 
 ## Decode options
 decode_start_epoch=1 # can be used to avoid decoding all epochs, e.g. if we decided to run more.
@@ -188,14 +226,14 @@ if [ $stage -le 4 ]; then
     --num-jobs-nnet $num_jobs_nnet --num-threads $num_threads \
     --regularization-opts "$regularization_opts" --use-frame-shift false \
     --truncate-deriv-weights $truncate_deriv_weights --adjust-priors false \
-    --modify-learning-rates $modify_learning_rates --last-layer-factor $last_layer_factor \
+    --modify-learning-rates false \
       ${degs_dir} $dir ;
 fi
 
 graph_dir=$srcdir/graph_sw1_tg
 if [ $stage -le 5 ]; then
   for x in `seq $decode_start_epoch $num_epochs`; do
-    for decode_set in train_dev eval2000; do
+    for decode_set in train_dev eval2000 rt03; do
       (
       num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
       iter=epoch$x.adj

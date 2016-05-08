@@ -55,7 +55,7 @@ fi
   [ ! -z ${IRSTLM} ] && \
     echo >&2 "IRSTLM config is already in env.sh" && exit
 
-  wd=`readlink -f $wd 2>/dev/null || pwd`
+  wd=`pwd -P`
 
   echo "export IRSTLM=$wd/irstlm"
   echo "export PATH=\${PATH}:\${IRSTLM}/bin"

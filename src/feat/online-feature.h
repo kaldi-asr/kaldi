@@ -57,6 +57,9 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
   virtual bool IsLastFrame(int32 frame) const {
     return input_finished_ && frame == NumFramesReady() - 1;
   }
+  virtual BaseFloat FrameShiftInSeconds() const {
+    return computer_.GetFrameOptions().frame_shift_ms * 1.0e-03;
+  }
 
   virtual int32 NumFramesReady() const { return features_.size(); }
 
@@ -140,6 +143,10 @@ class OnlineMatrixFeature: public OnlineFeatureInterface {
 
   virtual int32 Dim() const { return mat_.NumCols(); }
 
+  virtual BaseFloat FrameShiftInSeconds() const {
+    return 0.01f;
+  }
+
   virtual int32 NumFramesReady() const { return mat_.NumRows(); }
 
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {
@@ -149,6 +156,7 @@ class OnlineMatrixFeature: public OnlineFeatureInterface {
   virtual bool IsLastFrame(int32 frame) const {
     return (frame + 1 == mat_.NumRows());
   }
+
 
  private:
   const MatrixBase<BaseFloat> &mat_;
@@ -291,12 +299,14 @@ class OnlineCmvn: public OnlineFeatureInterface {
   virtual bool IsLastFrame(int32 frame) const {
     return src_->IsLastFrame(frame);
   }
+  virtual BaseFloat FrameShiftInSeconds() const {
+    return src_->FrameShiftInSeconds();
+  }
 
   // The online cmvn does not introduce any additional latency.
   virtual int32 NumFramesReady() const { return src_->NumFramesReady(); }
 
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
-
 
   //
   // Next, functions that are not in the interface.
@@ -421,6 +431,9 @@ class OnlineSpliceFrames: public OnlineFeatureInterface {
   virtual bool IsLastFrame(int32 frame) const {
     return src_->IsLastFrame(frame);
   }
+  virtual BaseFloat FrameShiftInSeconds() const {
+    return src_->FrameShiftInSeconds();
+  }
 
   virtual int32 NumFramesReady() const;
 
@@ -450,6 +463,9 @@ class OnlineTransform: public OnlineFeatureInterface {
 
   virtual bool IsLastFrame(int32 frame) const {
     return src_->IsLastFrame(frame);
+  }
+  virtual BaseFloat FrameShiftInSeconds() const {
+    return src_->FrameShiftInSeconds();
   }
 
   virtual int32 NumFramesReady() const { return src_->NumFramesReady(); }
@@ -482,6 +498,9 @@ class OnlineDeltaFeature: public OnlineFeatureInterface {
   virtual bool IsLastFrame(int32 frame) const {
     return src_->IsLastFrame(frame);
   }
+  virtual BaseFloat FrameShiftInSeconds() const {
+    return src_->FrameShiftInSeconds();
+  }
 
   virtual int32 NumFramesReady() const;
 
@@ -509,6 +528,9 @@ class OnlineCacheFeature: public OnlineFeatureInterface {
 
   virtual bool IsLastFrame(int32 frame) const {
     return src_->IsLastFrame(frame);
+  }
+  virtual BaseFloat FrameShiftInSeconds() const {
+    return src_->FrameShiftInSeconds(); 
   }
 
   virtual int32 NumFramesReady() const { return src_->NumFramesReady(); }
@@ -540,6 +562,10 @@ class OnlineAppendFeature: public OnlineFeatureInterface {
 
   virtual bool IsLastFrame(int32 frame) const {
     return (src1_->IsLastFrame(frame) || src2_->IsLastFrame(frame));
+  }
+  // Hopefully sources have the same rate
+  virtual BaseFloat FrameShiftInSeconds() const {
+    return src1_->FrameShiftInSeconds();
   }
 
   virtual int32 NumFramesReady() const {

@@ -118,8 +118,8 @@ echo
 echo "# PREPARING FEATURES"
 if [ "$copy_feats" == "true" ]; then
   # re-save the features to local disk into /tmp/,
-  trap "echo \"# Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir" INT QUIT TERM EXIT
   tmpdir=$(mktemp -d $copy_feats_tmproot)
+  trap "echo \"# Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir" INT QUIT TERM EXIT
   copy-feats scp:$data/feats.scp ark,scp:$tmpdir/train.ark,$dir/train_sorted.scp || exit 1
 else
   # or copy the list,
