@@ -933,7 +933,7 @@ void ComputeExampleComputationRequestSimple(
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
 
-  int32 n = RandInt(0, 28);
+  int32 n = RandInt(0, 29);
   BaseFloat learning_rate = 0.001 * RandInt(1, 3);
 
   std::ostringstream os;
@@ -1232,7 +1232,35 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       if (RandInt(0, 1) == 1)
         os << " self-repair-target=" << RandUniform();
       break;
-    } 
+    }
+    case 29: {
+      *component_type = "CuDNN3DConvolutionComponent";
+
+      int32 input_x_dim = 10 + Rand() % 20,
+            input_y_dim = 10 + Rand() % 20,
+            input_z_dim = 3 + Rand() % 10,
+            filt_x_dim = 1 + Rand() % input_x_dim,
+            filt_y_dim = 1 + Rand() % input_y_dim,
+            filt_z_dim = 1 + Rand() % input_z_dim,
+            filt_x_stride = (1 + Rand() % filt_x_dim),
+            filt_y_stride = (1 + Rand() % filt_y_dim),
+            filt_z_stride = (1 + Rand() % filt_z_dim),
+            num_filters = 1 + Rand() % 100,
+            input_num_filters = 1 + Rand() % 100;
+      os << " input-x-dim=" << input_x_dim
+         << " input-y-dim=" << input_y_dim
+         << " input-z-dim=" << input_z_dim
+         << " filt-x-dim=" << filt_x_dim
+         << " filt-y-dim=" << filt_y_dim
+         << " filt-z-dim=" << filt_z_dim
+         << " filt-x-stride=" << filt_x_stride
+         << " filt-y-stride=" << filt_y_stride
+         << " filt-z-stride=" << filt_z_stride
+         << " num-filters=" << num_filters
+         << " input-num-filters=" << input_num_filters
+         << " learning-rate=" << learning_rate;
+      break;
+    }
     default:
       KALDI_ERR << "Error generating random component";
   }

@@ -1330,6 +1330,10 @@ class ConstantFunctionComponent: public UpdatableComponent {
 // maximum amount of change per minibatch, for stability.
 class NaturalGradientPerElementScaleComponent: public PerElementScaleComponent {
  public:
+  enum TensorVectorizationType  {
+    kYzx = 0,
+    kZyx = 1
+  };
 
   virtual std::string Info() const;
 
