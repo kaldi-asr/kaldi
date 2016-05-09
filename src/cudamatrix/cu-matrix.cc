@@ -372,19 +372,31 @@ void CuMatrixBase<Real>::CopyFromSp(const CuSpMatrix<Real> &M) {
 
 template<typename Real>
 CuMatrix<Real>::CuMatrix(const CuMatrix<Real> &other, MatrixTransposeType trans) {
+  // It is possible that other was initialized with kDefaultStride,
+  // even if other.NumCols() == other.Stride(), but if it was this
+  // means that MallocPitch() did not allocate any padding anyway, so
+  // using cudaMalloc to allocate space for this is okay.
+  MatrixStrideType stride_type =
+    other.NumCols() == other.Stride() ? kStrideEqualNumCols : kDefaultStride;
   if (trans == kNoTrans)
-    this->Resize(other.NumRows(), other.NumCols(), kUndefined);
+    this->Resize(other.NumRows(), other.NumCols(), kUndefined, stride_type);
   else
-    this->Resize(other.NumCols(), other.NumRows(), kUndefined);
+    this->Resize(other.NumCols(), other.NumRows(), kUndefined, stride_type);
   this->CopyFromMat(other, trans);
 }
 
 template<typename Real>
 CuMatrix<Real>::CuMatrix(const CuMatrixBase<Real> &other, MatrixTransposeType trans) {
+  // It is possible that other was initialized with kDefaultStride, even if
+  // other.NumCols() == other.Stride(), but if it was this means that MallocPitch()
+  // did not allocate any padding anyway, so using cudaMalloc to allocate
+  // space for this is okay.
+  MatrixStrideType stride_type =
+    other.NumCols() == other.Stride() ? kStrideEqualNumCols : kDefaultStride;
   if (trans == kNoTrans)
-    this->Resize(other.NumRows(), other.NumCols(), kUndefined);
+    this->Resize(other.NumRows(), other.NumCols(), kUndefined, stride_type);
   else
-    this->Resize(other.NumCols(), other.NumRows(), kUndefined);
+    this->Resize(other.NumCols(), other.NumRows(), kUndefined, stride_type);
   this->CopyFromMat(other, trans);
 }
 
@@ -392,10 +404,16 @@ CuMatrix<Real>::CuMatrix(const CuMatrixBase<Real> &other, MatrixTransposeType tr
 template<typename Real>
 template<typename OtherReal>
 CuMatrix<Real>::CuMatrix(const MatrixBase<OtherReal> &other, MatrixTransposeType trans) {
+  // It is possible that other was initialized with kDefaultStride, even if
+  // other.NumCols() == other.Stride(), but if it was this means that MallocPitch()
+  // did not allocate any padding anyway, so using cudaMalloc to allocate
+  // space for this is okay.
+  MatrixStrideType stride_type =
+    other.NumCols() == other.Stride() ? kStrideEqualNumCols : kDefaultStride;
   if (trans == kNoTrans)
-    this->Resize(other.NumRows(), other.NumCols(), kUndefined);
+    this->Resize(other.NumRows(), other.NumCols(), kUndefined, stride_type);
   else
-    this->Resize(other.NumCols(), other.NumRows(), kUndefined);
+    this->Resize(other.NumCols(), other.NumRows(), kUndefined, stride_type);
   this->CopyFromMat(other, trans);
 }
 // Instantiate the template above.
