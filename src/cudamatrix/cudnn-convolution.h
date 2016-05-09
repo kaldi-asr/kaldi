@@ -21,159 +21,126 @@
 #ifndef KALDI_CUDAMATRIX_CUDNN_CONVOLUTION_H_
 #define KALDI_CUDAMATRIX_CUDNN_CONVOLUTION_H_
 
-#if HAVE_CUDA == 1 && HAVE_CUDNN == 1 
-#include <type_traits>
+#if HAVE_CUDA == 1 && HAVE_CUDNN == 1
 #include "cudamatrix/cu-matrix.h"
 #include "cudnn.h"
 
 
 namespace kaldi {
-
-template<typename Real> 
-class CuDnnConvolution {
- public:
-  void InitializeTensorDescriptor(size_t nbDims, MatrixIndexT dimA[],
-      MatrixIndexT strideA[], cudnnTensorDescriptor_t *tensor);
-
-  void InitializeFilterDescriptor(size_t nbDims, MatrixIndexT filterDimA[],
-      cudnnFilterDescriptor_t *filter);
-
-  void InitializeConvolutionDescriptor(size_t arrayLength, MatrixIndexT padA[],
-      MatrixIndexT filterStrideA[], cudnnConvolutionMode_t mode,
-      cudnnConvolutionDescriptor_t *conv);
-
-  void InitializePoolingDescriptor(size_t nbDims, MatrixIndexT windowDimA[],
-      MatrixIndexT paddingA[], MatrixIndexT strideA[], cudnnPoolingMode_t mode, 
-      cudnnPoolingDescriptor_t *pool);
-
-  void DestroyTensorDescriptor(cudnnTensorDescriptor_t tensor);
-
-  void DestroyFilterDescriptor(cudnnFilterDescriptor_t filter);
-
-  void DestroyConvolutionDescriptor(cudnnConvolutionDescriptor_t conv);
-
-  void DestroyPoolingDescriptor(cudnnPoolingDescriptor_t pool);
-
-  void ConvolutionForward(const cudnnTensorDescriptor_t &xDesc,
-                          const CuMatrixBase<Real> &x,
-                          const cudnnFilterDescriptor_t &wDesc,
-                          const CuMatrixBase<Real> &w,
-                          const cudnnConvolutionDescriptor_t &convDesc,
+namespace cudnn {
+  void ConvolutionForward(cudnnHandle_t handle,
+                          const void *alpha,
+                          const cudnnTensorDescriptor_t &x_desc,
+                          const void *x_data,
+                          const cudnnFilterDescriptor_t &w_desc,
+                          const void *w_data,
+                          const cudnnConvolutionDescriptor_t &conv_desc,
                           const cudnnConvolutionFwdAlgo_t &algo,
-                          CuMatrixBase<Real> *workSpace,
-                          size_t workSpaceSizeInBytes,
-                          const cudnnTensorDescriptor_t &yDesc,
-                          CuMatrixBase<Real> *y);
+                          void *work_space,
+                          size_t work_space_size_in_bytes,
+                          const void *beta,
+                          const cudnnTensorDescriptor_t &y_desc,
+                          void *y_data);
 
-  void ConvolutionBackwardData(const cudnnFilterDescriptor_t &wDesc,
-                               const CuMatrixBase<Real> &w,
-                               const cudnnTensorDescriptor_t &dyDesc,
-                               const CuMatrixBase<Real> &dy,
-                               const cudnnConvolutionDescriptor_t &convDesc,
+  void ConvolutionBackwardData(cudnnHandle_t handle,
+                               const void *alpha,
+                               const cudnnFilterDescriptor_t &w_desc,
+                               const void *w_data,
+                               const cudnnTensorDescriptor_t &dy_desc,
+                               const void *dy_data,
+                               const cudnnConvolutionDescriptor_t &conv_desc,
                                const cudnnConvolutionBwdDataAlgo_t &algo,
-                               CuMatrixBase<Real> *workSpace,
-                               size_t workSpaceSizeInBytes,
-                               const cudnnTensorDescriptor_t &dxDesc,
-                               CuMatrixBase<Real> *dx);
+                               void *work_space,
+                               size_t work_space_size_in_bytes,
+                               const void *beta,
+                               const cudnnTensorDescriptor_t &dx_desc,
+                               void *dx_data);
 
-  void ConvolutionBackwardFilter(const cudnnTensorDescriptor_t &xDesc,
-                                 const CuMatrixBase<Real> &x,
-                                 const cudnnTensorDescriptor_t &dyDesc,
-                                 const CuMatrixBase<Real> &dy,
-                                 const cudnnConvolutionDescriptor_t &convDesc,
+  void ConvolutionBackwardFilter(cudnnHandle_t handle,
+                                 const void *alpha,
+                                 const cudnnTensorDescriptor_t &x_desc,
+                                 const void *x,
+                                 const cudnnTensorDescriptor_t &dy_desc,
+                                 const void *dy,
+                                 const cudnnConvolutionDescriptor_t &conv_desc,
                                  const cudnnConvolutionBwdFilterAlgo_t &algo,
-                                 CuMatrixBase<Real> *workSpace,
-                                 size_t workSpaceSizeInBytes,
-                                 const cudnnFilterDescriptor_t &dwDesc,
-                                 CuMatrixBase<Real> *dw);
+                                 void *work_space,
+                                 size_t work_space_size_in_bytes,
+                                 const void *beta,
+                                 const cudnnFilterDescriptor_t &dw_desc,
+                                 void *dw_data);
 
-  void GetConvolutionNdForwardOutputDim(const cudnnConvolutionDescriptor_t &convDesc,
-                                        const cudnnTensorDescriptor_t &inputTensorDesc,
-                                        const cudnnFilterDescriptor_t &filterDesc,
-                                        size_t nbDims, MatrixIndexT tensorOutputDimA[]);
+  void ConvolutionBackwardBias(cudnnHandle_t                       handle,
+                               const void                         *alpha,
+                               const cudnnTensorDescriptor_t       dy_desc,
+                               const void                         *dy_data,
+                               const void                         *beta,
+                               const cudnnTensorDescriptor_t       db_desc,
+                               void                               *db_data);
 
-  void PoolingForward(const cudnnPoolingDescriptor_t &poolingDesc,
-                      const cudnnTensorDescriptor_t &xDesc,
-                      const CuMatrixBase<Real> &x,
-                      const cudnnTensorDescriptor_t &yDesc,
-                      CuMatrixBase<Real> *y);
+  void PoolingForward(cudnnHandle_t handle,
+                      const cudnnPoolingDescriptor_t &pooling_desc,
+                      const void *alpha,
+                      const cudnnTensorDescriptor_t &x_desc,
+                      const void *x_data,
+                      const void *beta,
+                      const cudnnTensorDescriptor_t &y_desc,
+                      void *y_data);
 
-  void PoolingBackward(const cudnnPoolingDescriptor_t &poolingDesc,
-                       const cudnnTensorDescriptor_t &yDesc,
-                       const CuMatrixBase<Real> &y,
-                       const cudnnTensorDescriptor_t &dyDesc,
-                       const CuMatrixBase<Real> &dy,
-                       const cudnnTensorDescriptor_t &xDesc,
-                       const CuMatrixBase<Real> &x,
-                       const cudnnTensorDescriptor_t &dxDesc,
-                       CuMatrixBase<Real> *dx);
+  void PoolingBackward(const cudnnPoolingDescriptor_t &pooling_desc,
+                       const void *alpha,
+                       const cudnnTensorDescriptor_t &y_desc,
+                       const void *y_data,
+                       const cudnnTensorDescriptor_t &dy_desc,
+                       const void *dy_data,
+                       const cudnnTensorDescriptor_t &x_desc,
+                       const void *x_data,
+                       const void *beta,
+                       const cudnnTensorDescriptor_t &dx_desc,
+                       void *dx_data);
 
-  void GetPoolingNdForwardOutputDim(const cudnnPoolingDescriptor_t &poolDesc,
-                                    const cudnnTensorDescriptor_t &inputDesc,
-                                    size_t nbDims, MatrixIndexT OutDimA[]);
-
-  void FindBestConvolutionFwdAlgo(const cudnnTensorDescriptor_t &xDesc,
-                                  const cudnnFilterDescriptor_t &wDesc,
-                                  const cudnnConvolutionDescriptor_t &convDesc,
-                                  const cudnnTensorDescriptor_t &yDesc,
-                                  int requestedAlgoCount,
+  void FindBestConvolutionFwdAlgo(const cudnnTensorDescriptor_t &x_desc,
+                                  const cudnnFilterDescriptor_t &w_desc,
+                                  const cudnnConvolutionDescriptor_t &conv_desc,
+                                  const cudnnTensorDescriptor_t &y_desc,
+                                  int requested_algo_count,
                                   cudnnConvolutionFwdAlgo_t *algo);
 
-  void FindBestConvolutionBwdDataAlgo(const cudnnFilterDescriptor_t &wDesc,
-                                      const cudnnTensorDescriptor_t &dyDesc,
-                                      const cudnnConvolutionDescriptor_t &convDesc,
-                                      const cudnnTensorDescriptor_t &dxDesc,
-                                      int requestedAlgoCount,
+  void FindBestConvolutionBwdDataAlgo(const cudnnFilterDescriptor_t &w_desc,
+                                      const cudnnTensorDescriptor_t &dy_desc,
+                                      const cudnnConvolutionDescriptor_t &conv_desc,
+                                      const cudnnTensorDescriptor_t &dx_desc,
+                                      int requested_algo_count,
                                       cudnnConvolutionBwdDataAlgo_t *algo);
 
-  void FindBestConvolutionBwdFilterAlgo(const cudnnTensorDescriptor_t &xDesc,
-                                        const cudnnTensorDescriptor_t &dyDesc,
-                                        const cudnnConvolutionDescriptor_t &convDesc,
-                                        const cudnnFilterDescriptor_t &dwDesc,
-                                        int requestedAlgoCount,
+  void FindBestConvolutionBwdFilterAlgo(const cudnnTensorDescriptor_t &x_desc,
+                                        const cudnnTensorDescriptor_t &dy_desc,
+                                        const cudnnConvolutionDescriptor_t &conv_desc,
+                                        const cudnnFilterDescriptor_t &dw_desc,
+                                        int requested_algo_count,
                                         cudnnConvolutionBwdFilterAlgo_t *algo);
 
-  void GetConvolutionFwdWorkspaceSize(const cudnnTensorDescriptor_t &xDesc,
-                                      const cudnnFilterDescriptor_t &wDesc,
-                                      const cudnnConvolutionDescriptor_t &convDesc,
-                                      const cudnnTensorDescriptor_t &yDesc,
+  void GetConvolutionFwdWorkspaceSize(const cudnnTensorDescriptor_t &x_desc,
+                                      const cudnnFilterDescriptor_t &w_desc,
+                                      const cudnnConvolutionDescriptor_t &conv_desc,
+                                      const cudnnTensorDescriptor_t &y_desc,
                                       cudnnConvolutionFwdAlgo_t algo,
-                                      size_t *sizeInBytes);
+                                      size_t *size_in_bytes);
 
-  void GetConvolutionBwdDataWorkspaceSize(const cudnnFilterDescriptor_t &wDesc,
-                                          const cudnnTensorDescriptor_t &dyDesc,
-                                          const cudnnConvolutionDescriptor_t &convDesc,
-                                          const cudnnTensorDescriptor_t &dxDesc,
+  void GetConvolutionBwdDataWorkspaceSize(const cudnnFilterDescriptor_t &w_desc,
+                                          const cudnnTensorDescriptor_t &dy_desc,
+                                          const cudnnConvolutionDescriptor_t &conv_desc,
+                                          const cudnnTensorDescriptor_t &dx_desc,
                                           cudnnConvolutionBwdDataAlgo_t algo,
-                                          size_t *sizeInBytes);
+                                          size_t *size_in_bytes);
 
-  void GetConvolutionBwdFilterWorkspaceSize(const cudnnTensorDescriptor_t &xDesc,
-                                            const cudnnTensorDescriptor_t &dyDesc,
-                                            const cudnnConvolutionDescriptor_t &convDesc,
-                                            const cudnnFilterDescriptor_t &dwDesc,
+  void GetConvolutionBwdFilterWorkspaceSize(const cudnnTensorDescriptor_t &x_desc,
+                                            const cudnnTensorDescriptor_t &dy_desc,
+                                            const cudnnConvolutionDescriptor_t &conv_desc,
+                                            const cudnnFilterDescriptor_t &dw_desc,
                                             cudnnConvolutionBwdFilterAlgo_t algo,
-                                            size_t *sizeInBytes);
-
-
-
- private:
-  static const Real one_;
-  static const Real zero_;
-
-  inline cudnnDataType_t ConvertType() const {
-    if (std::is_same<Real, float>::value)
-      return CUDNN_DATA_FLOAT;
-    else if (std::is_same<Real, double>::value)
-      return CUDNN_DATA_DOUBLE;
-    else {
-      KALDI_ERR << "Unsupported type.";
-      return CUDNN_DATA_FLOAT;
-    }
-  }
-
-};
-
-}  // namespace
-
+                                            size_t *size_in_bytes);
+} // namespace cudnn
+} // namespace kaldi
 #endif // HAVE_CUDA && HAVE_CUDNN
 #endif

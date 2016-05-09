@@ -20,6 +20,7 @@
 #include "nnet3/nnet-cudnn-simple-component.h"
 #include "nnet3/nnet-parse.h"
 #include "cudamatrix/cudnn-utils.h"
+#include "cudamatrix/cudnn-convolution.h"
 #include <cudnn.h>
 #include <numeric>
 #include <functional>
@@ -380,8 +381,7 @@ void CuDNN3DConvolutionComponent::Propagate(const ComponentPrecomputedIndexes *i
                                              output_strides
                                              )
                   );
-  CUDNN_SAFE_CALL(
-    cudnnConvolutionForward(CuDevice::Instantiate().GetCudnnHandle(),
+  cudnn::ConvolutionForward(CuDevice::Instantiate().GetCudnnHandle(),
                             &cudnn::one,
                             in_desc,
                             in.Data(),
@@ -394,8 +394,7 @@ void CuDNN3DConvolutionComponent::Propagate(const ComponentPrecomputedIndexes *i
                             &cudnn::one,
                             out_desc,
                             out->Data()
-                            )
-                  );
+                            );
 
   CUDNN_SAFE_CALL(
     cudnnAddTensor(CuDevice::Instantiate().GetCudnnHandle(),
@@ -483,8 +482,7 @@ void CuDNN3DConvolutionComponent::Backprop(const std::string &debug_info,
 
   if (in_deriv) {
 
-    CUDNN_SAFE_CALL(
-      cudnnConvolutionBackwardData(CuDevice::Instantiate().GetCudnnHandle(),
+    cudnn::ConvolutionBackwardData(CuDevice::Instantiate().GetCudnnHandle(),
                                    &cudnn::one,
                                    filter_desc_,
                                    filter_params_.Data(),
@@ -496,8 +494,7 @@ void CuDNN3DConvolutionComponent::Backprop(const std::string &debug_info,
                                    work_space_size_,
                                    &cudnn::one,
                                    in_desc,
-                                   in_deriv->Data())
-                    );
+                                   in_deriv->Data());
   }
 
   if (to_update) {
@@ -511,8 +508,7 @@ void CuDNN3DConvolutionComponent::Update(const CuMatrixBase<BaseFloat> &in_value
                                          const CuMatrixBase<BaseFloat> &out_deriv,
                                          const cudnnTensorDescriptor_t in_desc,
                                          const cudnnTensorDescriptor_t out_deriv_desc) {
-  CUDNN_SAFE_CALL(
-    cudnnConvolutionBackwardFilter(CuDevice::Instantiate().GetCudnnHandle(),
+  cudnn::ConvolutionBackwardFilter(CuDevice::Instantiate().GetCudnnHandle(),
                                    &learning_rate_, // alpha
                                    in_desc,
                                    in_value.Data(),
@@ -525,19 +521,16 @@ void CuDNN3DConvolutionComponent::Update(const CuMatrixBase<BaseFloat> &in_value
                                    &cudnn::one, // beta
                                    filter_desc_,
                                    filter_params_.Data()
-                                   )
-                  );
+                                   );
 
-  CUDNN_SAFE_CALL(
-    cudnnConvolutionBackwardBias(CuDevice::Instantiate().GetCudnnHandle(),
+  cudnn::ConvolutionBackwardBias(CuDevice::Instantiate().GetCudnnHandle(),
                                  &learning_rate_,
                                  out_deriv_desc,
                                  out_deriv.Data(),
                                  &cudnn::one,
                                  bias_desc_,
                                  bias_params_.Data()
-                                 )
-                  );
+                                 );
 }
 
 Component *CuDNN3DConvolutionComponent::Copy() const {
