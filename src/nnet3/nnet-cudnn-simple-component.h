@@ -87,12 +87,18 @@ class CuDNN3DConvolutionComponent: public UpdatableComponent {
   virtual void SetZero(bool treat_as_gradient);
   virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
   virtual int32 NumParameters() const;
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const Component &other);
   virtual void Vectorize(VectorBase<BaseFloat> *params) const;
   virtual void UnVectorize(const VectorBase<BaseFloat> &params);
   virtual void PerturbParams(BaseFloat stddev);
  private:
   std::vector<int32> GetOutputDims() const;
   std::vector<int32> GetFilterDims() const;
+  void Update(const CuMatrixBase<BaseFloat> &in_value,
+              const CuMatrixBase<BaseFloat> &out_deriv,
+              const cudnnTensorDescriptor_t in_desc,
+              const cudnnTensorDescriptor_t out_desc);
 
   int32 input_x_dim_;   // size of the input along x-axis
                         // (e.g. number of time steps)
