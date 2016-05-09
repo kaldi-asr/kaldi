@@ -3173,7 +3173,6 @@ void NaturalGradientPerElementScaleComponent::Update(
   scales_.AddVec(1.0, delta_scales);
 }
 
-
 // Constructors for the convolution component
 ConvolutionComponent::ConvolutionComponent():
     UpdatableComponent(),

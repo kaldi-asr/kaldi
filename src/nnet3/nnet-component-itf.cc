@@ -23,6 +23,7 @@
 #include <iomanip>
 #include "nnet3/nnet-component-itf.h"
 #include "nnet3/nnet-simple-component.h"
+#include "nnet3/nnet-cudnn-simple-component.h"
 #include "nnet3/nnet-general-component.h"
 #include "nnet3/nnet-parse.h"
 #include "nnet3/nnet-computation-graph.h"
@@ -141,6 +142,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new StatisticsPoolingComponent();
   } else if (component_type == "ConstantFunctionComponent") {
     ans = new ConstantFunctionComponent();
+  } else if (component_type == "CuDNN3DConvolutionComponent") {
+    ans = new CuDNN3DConvolutionComponent();
   }
   if (ans != NULL) {
     KALDI_ASSERT(component_type == ans->Type());

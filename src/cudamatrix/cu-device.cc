@@ -28,6 +28,10 @@
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 
+#if HAVE_CUDNN == 1
+#include <cudnn.h>
+#endif
+
 #include <string>
 #include <vector>
 #include <algorithm>

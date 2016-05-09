@@ -22,6 +22,7 @@
 #define KALDI_CUDAMATRIX_CUDNN_CONVOLUTION_H_
 
 #if HAVE_CUDA == 1 && HAVE_CUDNN == 1 
+#include <type_traits>
 #include "cudamatrix/cu-matrix.h"
 #include "cudnn.h"
 
@@ -160,9 +161,9 @@ class CuDnnConvolution {
   static const Real zero_;
 
   inline cudnnDataType_t ConvertType() const {
-    if (sizeof(Real) == sizeof(float))
+    if (std::is_same<Real, float>::value)
       return CUDNN_DATA_FLOAT;
-    else if (sizeof(Real) == sizeof(double))
+    else if (std::is_same<Real, double>::value)
       return CUDNN_DATA_DOUBLE;
     else {
       KALDI_ERR << "Unsupported type.";
