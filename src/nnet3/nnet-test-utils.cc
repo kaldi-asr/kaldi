@@ -1222,17 +1222,17 @@ static void GenerateRandomComponentConfig(std::string *component_type,
     case 28: {
       *component_type = "CuDNN3DConvolutionComponent";
 
-      int32 input_x_dim = 10 + Rand() % 20,
-            input_y_dim = 10 + Rand() % 20,
-            input_z_dim = 3 + Rand() % 10,
-            filt_x_dim = 1 + Rand() % input_x_dim,
-            filt_y_dim = 1 + Rand() % input_y_dim,
-            filt_z_dim = 1 + Rand() % input_z_dim,
-            filt_x_stride = (1 + Rand() % filt_x_dim),
-            filt_y_stride = (1 + Rand() % filt_y_dim),
-            filt_z_stride = (1 + Rand() % filt_z_dim),
-            num_filters = 1 + Rand() % 100,
-            input_num_filters = 1 + Rand() % 100;
+      int32 input_x_dim = 9 + Rand() % 10,
+            input_y_dim = 9 + Rand() % 10,
+            input_z_dim = 9 + Rand() % 10,
+            filt_x_dim = 2 + Rand() % 4,
+            filt_y_dim = 2 + Rand() % 4,
+            filt_z_dim = 2 + Rand() % 4,
+            filt_x_stride = (1 + Rand() % 2),
+            filt_y_stride = (1 + Rand() % 2),
+            filt_z_stride = (1 + Rand() % 2),
+            num_filters = 1 + Rand() % 10,
+            input_num_filters = 1 + Rand() % 10;
       os << " input-x-dim=" << input_x_dim
          << " input-y-dim=" << input_y_dim
          << " input-z-dim=" << input_z_dim
