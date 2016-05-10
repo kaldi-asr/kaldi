@@ -19,14 +19,14 @@
 // limitations under the License.
 
 #ifdef HAVE_EXECINFO_H
-  #include <execinfo.h>  // To get stack trace in error messages.
-  // If this #include fails there is an error in the Makefile, it does not
-  // support your platform well. Make sure HAVE_EXECINFO_H is undefined, 
-  // and the code will compile.
-  #ifdef HAVE_CXXABI_H
-    #include <cxxabi.h>  // For name demangling.
-    // Useful to decode the stack trace, but only used if we have execinfo.h
-  #endif  // HAVE_CXXABI_H
+#include <execinfo.h>  // To get stack trace in error messages.
+// If this #include fails there is an error in the Makefile, it does not
+// support your platform well. Make sure HAVE_EXECINFO_H is undefined, 
+// and the code will compile.
+#ifdef HAVE_CXXABI_H
+#include <cxxabi.h>  // For name demangling.
+// Useful to decode the stack trace, but only used if we have execinfo.h
+#endif  // HAVE_CXXABI_H
 #endif  // HAVE_EXECINFO_H
 
 #include "base/kaldi-common.h"
@@ -45,6 +45,23 @@ static LogHandler g_log_handler = NULL;
 // colon, e.g. "gmm-align:".  Otherwise it returns the empty string "".
 const char *GetProgramName() {
   return g_program_name == NULL ? "" : g_program_name;
+}
+
+
+/***** HELPER FUNCTIONS *****/
+
+// Given a filename like "/a/b/c/d/e/f.cc",  GetShortFileName
+// returns "e/f.cc".  Does not currently work if backslash is
+// the filename separator.
+static const char *GetShortFileName(const char *filename) {
+  const char *last_slash = strrchr(filename, '/');
+  if (!last_slash) {
+    return filename;
+  } else {
+    while (last_slash > filename && last_slash[-1] != '/')
+      last_slash--;
+    return last_slash;
+  }
 }
 
 
@@ -84,8 +101,8 @@ static std::string Demangle(std::string trace_name) {
 static std::string KaldiGetStackTrace() {
   std::string ans;
 #ifdef HAVE_EXECINFO_H
-  #define KALDI_MAX_TRACE_SIZE 50
-  #define KALDI_MAX_TRACE_PRINT 20  // must be even.
+#define KALDI_MAX_TRACE_SIZE 50
+#define KALDI_MAX_TRACE_PRINT 20  // must be even.
   // buffer for the trace,
   void *trace[KALDI_MAX_TRACE_SIZE];
   // get the trace,
@@ -120,21 +137,6 @@ static std::string KaldiGetStackTrace() {
 
 /***** KALDI LOGIGNG *****/
 
-// Given a filename like "/a/b/c/d/e/f.cc",  GetShortFileName
-// returns "e/f.cc".  Does not currently work if backslash is
-// the filename separator.
-static const char *GetShortFileName(const char *filename) {
-  const char *last_slash = strrchr(filename, '/');
-  if (!last_slash) {
-    return filename;
-  } else {
-    while (last_slash > filename && last_slash[-1] != '/')
-      last_slash--;
-    return last_slash;
-  }
-}
-
-
 MessageLogger::MessageLogger(LogMessageEnvelope::Severity severity,
                              const char *func, const char *file, int32 line) {
   // Obviously, we assume the strings survive the destruction of this object.
@@ -152,12 +154,12 @@ MessageLogger::~MessageLogger() KALDI_NOEXCEPT(false) {
     str.resize(str.length() - 1);
 
   // print the mesage (or send to logging handler),
-  MessageLogger::SendToLog(envelope_, str.c_str());
+  MessageLogger::HandleMessage(envelope_, str.c_str());
 }
 
 
-void MessageLogger::SendToLog(const LogMessageEnvelope &envelope,
-                                     const char *message) {
+void MessageLogger::HandleMessage(const LogMessageEnvelope &envelope,
+                                  const char *message) {
   // Send to a logging handler if provided.
   if (g_log_handler != NULL) {
     g_log_handler(envelope, message);
@@ -198,20 +200,19 @@ void MessageLogger::SendToLog(const LogMessageEnvelope &envelope,
     // print to stderr,
     fprintf(stderr, "%s %s\n", header.str().c_str(), message);
   } else if (envelope.severity == LogMessageEnvelope::Error) {
-    // ERROR: 
-    // throw exception with 'what()' message (contains stack-trace),
-    std::string what_arg = header.str() + " " + 
-                           message + "\n\n" + 
-                           KaldiGetStackTrace() + "\n";
+    // ERROR:
+    // print to stderr (with stack-trace), 
+    fprintf(stderr, "%s %s\n\n%s\n", header.str().c_str(), message, 
+            KaldiGetStackTrace().c_str());
     if (!std::uncaught_exception()) {
-      throw std::runtime_error(what_arg);
+      // throw exception with empty message,
+      throw std::runtime_error("");
     } else {
       // If we got here, this thread has already thrown exception,
       // and this exception has not yet arrived to its 'catch' clause...
       // Throwing a new exception would be unsafe!
       // (can happen during 'stack unwinding', if we have 'KALDI_ERR << msg' 
-      // in a destructor).
-      fprintf(stderr, "%s", what_arg.c_str());
+      // in a destructor of some local object).
       abort();
     }
   } else if (envelope.severity == LogMessageEnvelope::AssertFailed) {
@@ -242,6 +243,5 @@ LogHandler SetLogHandler(LogHandler new_handler) {
   g_log_handler = new_handler;
   return old_handler;
 }
-
 
 }  // end namespace kaldi

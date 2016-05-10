@@ -36,16 +36,16 @@
 // we can tell the compiler that the function must-not produce 
 // exceptions (true), or may produce exceptions (false):
 #if _MSC_VER >= 1900 || (!defined(_MSC_VER) && __cplusplus >= 201103L)
-  #define KALDI_NOEXCEPT(Predicate) noexcept((Predicate))
+#define KALDI_NOEXCEPT(Predicate) noexcept((Predicate))
 #elif defined(__GXX_EXPERIMENTAL_CXX0X__) && \
-  (__GNUC__ >= 4 && __GNUC_MINOR__ >= 6)
-  #define KALDI_NOEXCEPT(Predicate) noexcept((Predicate))
+      (__GNUC__ >= 4 && __GNUC_MINOR__ >= 6)
+#define KALDI_NOEXCEPT(Predicate) noexcept((Predicate))
 #else
-  #define KALDI_NOEXCEPT(Predicate)
+#define KALDI_NOEXCEPT(Predicate)
 #endif
 
 #ifdef _MSC_VER
-  #define __func__ __FUNCTION__
+#define __func__ __FUNCTION__
 #endif
 
 namespace kaldi {
@@ -105,7 +105,7 @@ public:
                 const char *file, 
                 int32 line);
 
-  /// Destructor, calls 'SendToLog' which prints the message,
+  /// Destructor, calls 'HandleMessage' which prints the message,
   /// (since C++11 a 'throwing' destructor must be declared 'noexcept(false)')
   ~MessageLogger() KALDI_NOEXCEPT(false);
 
@@ -115,7 +115,7 @@ public:
 
 private:
   /// The logging function,
-  static void SendToLog(const LogMessageEnvelope &env, const char *msg);
+  static void HandleMessage(const LogMessageEnvelope &env, const char *msg);
 
 private:
   LogMessageEnvelope envelope_;
@@ -193,15 +193,6 @@ typedef void (*LogHandler)(const LogMessageEnvelope &envelope,
 /// log. If called with NULL pointer, restores default Kaldi error logging to
 /// stderr.  SetLogHandler is obviously not thread safe.
 LogHandler SetLogHandler(LogHandler);
-
-
-/***** DEPRECATED *****/
-/// TODO: Deprecated function, get rid of it if possible!
-inline bool IsKaldiError(const std::string &str) {
-  KALDI_WARN << "Deprecated!";
-  return(!strncmp(str.c_str(), "ERROR ", 6));
-}
-
 
 /// @} end "addtogroup error_group"
 
