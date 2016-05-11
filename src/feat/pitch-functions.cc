@@ -576,6 +576,8 @@ class OnlinePitchFeatureImpl {
   explicit OnlinePitchFeatureImpl(const PitchExtractionOptions &opts);
 
   int32 Dim() const { return 2; }
+  
+  BaseFloat FrameShiftInSeconds() const;
 
   int32 NumFramesReady() const;
 
@@ -879,6 +881,10 @@ bool OnlinePitchFeatureImpl::IsLastFrame(int32 frame) const {
   return (input_finished_ && frame + 1 == T);
 }
 
+BaseFloat OnlinePitchFeatureImpl::FrameShiftInSeconds() const {
+  return opts_.frame_shift_ms * 1.0e-03;
+}
+
 int32 OnlinePitchFeatureImpl::NumFramesReady() const {
   int32 num_frames = lag_nccf_.size(),
       latency = frames_latency_;
@@ -1169,6 +1175,10 @@ OnlinePitchFeature::OnlinePitchFeature(const PitchExtractionOptions &opts)
 
 bool OnlinePitchFeature::IsLastFrame(int32 frame) const {
   return impl_->IsLastFrame(frame);
+}
+
+BaseFloat OnlinePitchFeature::FrameShiftInSeconds() const {
+  return impl_->FrameShiftInSeconds();
 }
 
 void OnlinePitchFeature::GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {

@@ -48,7 +48,7 @@ def GetArgs():
     parser.add_argument('--cnn.layer', type=str, action='append', dest = "cnn_layer",
                         help="CNN parameters at each CNN layer, e.g. --filt-x-dim=3 --filt-y-dim=8 "
                         "--filt-x-step=1 --filt-y-step=1 --num-filters=256 --pool-x-size=1 --pool-y-size=3 "
-                        "--pool-z-size=1 --pool-x-step=1 --pool-y-step=3 --pool-z-step=1, " 
+                        "--pool-z-size=1 --pool-x-step=1 --pool-y-step=3 --pool-z-step=1, "
                         "when CNN layers are used, no LDA will be added", default = None)
     parser.add_argument("--cnn.bottleneck-dim", type=int, dest = "cnn_bottleneck_dim",
                         help="Output dimension of the linear layer at the CNN output "
@@ -69,7 +69,7 @@ def GetArgs():
                         help="If \"true\" an LDA matrix computed from the input features "
                         "(spliced according to the first set of splice-indexes) will be used as "
                         "the first Affine layer. This affine layer's parameters are fixed during training. "
-                        "If --cnn.layer is specified this option will be forced to \"false\".", 
+                        "If --cnn.layer is specified this option will be forced to \"false\".",
                         default=True, choices = ["false", "true"])
 
     parser.add_argument("--include-log-softmax", type=str, action=nnet3_train_lib.StrToBoolAction,
@@ -368,7 +368,7 @@ def ParseSpliceString(splice_indexes):
     splice_array = []
     left_context = 0
     right_context = 0
-    split1 = splice_indexes.split(" ");  # we already checked the string is nonempty.
+    split1 = splice_indexes.split();  # we already checked the string is nonempty.
     if len(split1) < 1:
         raise Exception("invalid splice-indexes argument, too short: "
                  + splice_indexes)
@@ -388,7 +388,7 @@ def ParseSpliceString(splice_indexes):
             right_context += int_list[-1]
             splice_array.append(int_list)
     except ValueError as e:
-        raise Exception("invalid splice-indexes argument " + splice_indexes + e)
+        raise Exception("invalid splice-indexes argument " + splice_indexes + str(e))
     left_context = max(0, left_context)
     right_context = max(0, right_context)
 
@@ -440,7 +440,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
     config_files[config_dir + '/init.config'] = init_config_lines
 
     if cnn_layer is not None:
-        prev_layer_output = AddCnnLayers(config_lines, cnn_layer, cnn_bottleneck_dim, cepstral_lifter, config_dir, 
+        prev_layer_output = AddCnnLayers(config_lines, cnn_layer, cnn_bottleneck_dim, cepstral_lifter, config_dir,
                                          feat_dim, splice_indexes[0], ivector_dim)
 
     if add_lda:

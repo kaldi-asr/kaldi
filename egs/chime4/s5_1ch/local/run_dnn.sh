@@ -90,10 +90,17 @@ fi
 # make mixed training set from real and simulation enhanced data
 # multi = simu + real
 if [ $stage -le 3 ]; then
+  for data_dir in $data_fmllr/tr05_real_${train} $data_fmllr/tr05_simu_${train} $data_fmllr/dt05_real_$enhan $data_fmllr/dt05_simu_$enhan; do
+    utils/data/get_utt2dur.sh $data_dir
+  done
+
   utils/combine_data.sh $data_fmllr/tr05_multi_${train} $data_fmllr/tr05_simu_${train} $data_fmllr/tr05_real_${train}
   utils/combine_data.sh $data_fmllr/dt05_multi_$enhan $data_fmllr/dt05_simu_$enhan $data_fmllr/dt05_real_$enhan
   if $eval_flag; then
-  utils/combine_data.sh $data_fmllr/et05_multi_$enhan $data_fmllr/et05_simu_$enhan $data_fmllr/et05_real_$enhan
+    for data_dir in $data_fmllr/et05_real_$enhan $data_fmllr/et05_simu_$enhan; do
+      utils/data/get_utt2dur.sh $data_dir
+    done
+    utils/combine_data.sh $data_fmllr/et05_multi_$enhan $data_fmllr/et05_simu_$enhan $data_fmllr/et05_real_$enhan
   fi
 fi
 
