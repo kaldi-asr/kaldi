@@ -42,7 +42,7 @@ namespace nnet1 {
  */
 class FramePoolingComponent : public UpdatableComponent {
  public:
-  FramePoolingComponent(int32 dim_in, int32 dim_out) :
+  FramePoolingComponent(int32 dim_in, int32 dim_out):
     UpdatableComponent(dim_in, dim_out),
     feature_dim_(0),
     normalize_(false)
@@ -51,13 +51,8 @@ class FramePoolingComponent : public UpdatableComponent {
   ~FramePoolingComponent()
   { }
 
-  Component* Copy() const {
-    return new FramePoolingComponent(*this);
-  }
-
-  ComponentType GetType() const {
-    return kFramePoolingComponent;
-  }
+  Component* Copy() const { return new FramePoolingComponent(*this); }
+  ComponentType GetType() const { return kFramePoolingComponent; }
 
   /**
    * Here the offsets are w.r.t. central frames, which has offset 0.

@@ -40,22 +40,18 @@ namespace nnet1 {
  */
 class MaxPooling2DComponent : public Component {
  public:
-  MaxPooling2DComponent(int32 dim_in, int32 dim_out)
-      : Component(dim_in, dim_out),
-        fmap_x_len_(0), fmap_y_len_(0),
-        pool_x_len_(0), pool_y_len_(0), pool_x_step_(0), pool_y_step_(0)
+  MaxPooling2DComponent(int32 dim_in, int32 dim_out):
+    Component(dim_in, dim_out),
+    fmap_x_len_(0), fmap_y_len_(0),
+    pool_x_len_(0), pool_y_len_(0),
+    pool_x_step_(0), pool_y_step_(0)
   { }
 
   ~MaxPooling2DComponent()
   { }
 
-  Component* Copy() const {
-    return new MaxPooling2DComponent(*this);
-  }
-
-  ComponentType GetType() const {
-    return kMaxPooling2DComponent;
-  }
+  Component* Copy() const { return new MaxPooling2DComponent(*this); }
+  ComponentType GetType() const { return kMaxPooling2DComponent; }
 
   void InitData(std::istream &is) {
     // parse config
@@ -219,8 +215,8 @@ class MaxPooling2DComponent : public Component {
 
  private:
   int32 fmap_x_len_, fmap_y_len_,
-    pool_x_len_, pool_y_len_,
-    pool_x_step_, pool_y_step_;
+        pool_x_len_, pool_y_len_,
+        pool_x_step_, pool_y_step_;
 };
 
 }  // namespace nnet1

@@ -121,6 +121,10 @@ class CuArray {
   CuArray<T> &operator= (const std::vector<T> &in) {
     this->CopyFromVec(in); return *this;
   }
+
+  /// I/O
+  void Read(std::istream &is, bool binary);
+  void Write(std::ostream &is, bool binary) const;
   
  private:
   MatrixIndexT dim_;     ///< dimension of the vector
@@ -133,16 +137,7 @@ class CuArray {
 template<typename T>
 std::ostream &operator << (std::ostream &out, const CuArray<T> &vec);
 
-/// Wrapper for reading,
-template<typename T>
-void ReadIntegerVector(std::istream& in, bool binary, CuArray<T>* vec);
-
-/// Wrapper for writing,
-template<typename T>
-void WriteIntegerVector(std::ostream& out, bool binary, const CuArray<T>& vec);
-
 } // namespace
-
 
 #include "cudamatrix/cu-array-inl.h"
 

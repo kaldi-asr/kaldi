@@ -32,11 +32,11 @@ namespace nnet1 {
 
 class AffineTransform : public UpdatableComponent {
  public:
-  AffineTransform(int32 dim_in, int32 dim_out)
-    : UpdatableComponent(dim_in, dim_out),
-      linearity_(dim_out, dim_in), bias_(dim_out),
-      linearity_corr_(dim_out, dim_in), bias_corr_(dim_out),
-      max_norm_(0.0)
+  AffineTransform(int32 dim_in, int32 dim_out):
+    UpdatableComponent(dim_in, dim_out),
+    linearity_(dim_out, dim_in), bias_(dim_out),
+    linearity_corr_(dim_out, dim_in), bias_corr_(dim_out),
+    max_norm_(0.0)
   { }
   ~AffineTransform()
   { }
@@ -216,18 +216,14 @@ class AffineTransform : public UpdatableComponent {
   }
 
   /// Accessors to the component parameters,
-  const CuVectorBase<BaseFloat>& GetBias() const {
-    return bias_;
-  }
+  const CuVectorBase<BaseFloat>& GetBias() const { return bias_; }
 
   void SetBias(const CuVectorBase<BaseFloat>& bias) {
     KALDI_ASSERT(bias.Dim() == bias_.Dim());
     bias_.CopyFromVec(bias);
   }
 
-  const CuMatrixBase<BaseFloat>& GetLinearity() const {
-    return linearity_;
-  }
+  const CuMatrixBase<BaseFloat>& GetLinearity() const { return linearity_; }
 
   void SetLinearity(const CuMatrixBase<BaseFloat>& linearity) {
     KALDI_ASSERT(linearity.NumRows() == linearity_.NumRows());

@@ -35,28 +35,18 @@ namespace nnet1 {
 
 class ParallelComponent : public UpdatableComponent {
  public:
-  ParallelComponent(int32 dim_in, int32 dim_out)
-    : UpdatableComponent(dim_in, dim_out)
+  ParallelComponent(int32 dim_in, int32 dim_out):
+    UpdatableComponent(dim_in, dim_out)
   { }
 
   ~ParallelComponent()
   { }
 
-  Component* Copy() const {
-    return new ParallelComponent(*this);
-  }
+  Component* Copy() const { return new ParallelComponent(*this); }
+  ComponentType GetType() const { return kParallelComponent; }
 
-  ComponentType GetType() const {
-    return kParallelComponent;
-  }
-
-  const Nnet& GetNestedNnet(int32 id) const {
-    return nnet_.at(id);
-  }
-
-  Nnet& GetNestedNnet(int32 id) {
-    return nnet_.at(id);
-  }
+  const Nnet& GetNestedNnet(int32 id) const { return nnet_.at(id); }
+  Nnet& GetNestedNnet(int32 id) { return nnet_.at(id); }
 
   void InitData(std::istream &is) {
     // define options

@@ -44,7 +44,7 @@ void CuArray<int32>::Set(const int32 &value) {
     dim3 dimGrid(n_blocks(Dim(), CU2DBLOCK));
     ::MatrixDim d = { 1, Dim(), Dim() };
 
-    cudaI32_set_const(dimGrid, dimBlock, data_, value, d);
+    cuda_int32_set_const(dimGrid, dimBlock, data_, value, d);
     CU_SAFE_CALL(cudaGetLastError());
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -69,7 +69,7 @@ void CuArray<int32>::Add(const int32 &value) {
     dim3 dimGrid(n_blocks(Dim(), CU2DBLOCK));
     ::MatrixDim d = { 1, Dim(), Dim() };
 
-    cudaI32_add(dimGrid, dimBlock, data_, value, d);
+    cuda_int32_add(dimGrid, dimBlock, data_, value, d);
     CU_SAFE_CALL(cudaGetLastError());
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());

@@ -61,7 +61,7 @@ class LossItf {
 
 class Xent : public LossItf {
  public:
-  Xent() :
+  Xent():
     frames_progress_(0.0),
     xentropy_progress_(0.0),
     entropy_progress_(0.0)
@@ -124,9 +124,15 @@ class Xent : public LossItf {
 
 class Mse : public LossItf {
  public:
-  Mse() : frames_(0.0), loss_(0.0),
-          frames_progress_(0.0), loss_progress_(0.0) { }
-  ~Mse() { }
+  Mse():
+    frames_(0.0),
+    loss_(0.0),
+    frames_progress_(0.0),
+    loss_progress_(0.0)
+  { }
+
+  ~Mse()
+  { }
 
   /// Evaluate mean square error using target-matrix,
   void Eval(const VectorBase<BaseFloat> &frame_weights,
@@ -164,7 +170,9 @@ class Mse : public LossItf {
 
 class MultiTaskLoss : public LossItf {
  public:
-  MultiTaskLoss() { }
+  MultiTaskLoss()
+  { }
+
   ~MultiTaskLoss() {
     while (loss_vec_.size() > 0) {
       delete loss_vec_.back();

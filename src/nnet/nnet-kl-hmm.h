@@ -36,21 +36,16 @@ namespace nnet1 {
 
 class KlHmm : public Component {
  public:
-  KlHmm(int32 dim_in, int32 dim_out)
-    : Component(dim_in, dim_out),
-      kl_stats_(dim_out, dim_in, kSetZero)
+  KlHmm(int32 dim_in, int32 dim_out):
+    Component(dim_in, dim_out),
+    kl_stats_(dim_out, dim_in, kSetZero)
   { }
 
   ~KlHmm()
   { }
 
-  Component* Copy() const {
-    return new KlHmm(*this);
-  }
-
-  ComponentType GetType() const {
-    return kKlHmm;
-  }
+  Component* Copy() const { return new KlHmm(*this); }
+  ComponentType GetType() const { return kKlHmm; }
 
   void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
                     CuMatrixBase<BaseFloat> *out) {
@@ -152,9 +147,6 @@ class KlHmm : public Component {
   Matrix<double> kl_stats_;
   CuMatrix<BaseFloat> kl_inv_q_;
 };
-
-
-
 
 }  // namespace nnet1
 }  // namespace kaldi

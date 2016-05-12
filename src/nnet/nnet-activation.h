@@ -35,20 +35,15 @@ namespace nnet1 {
 
 class Softmax : public Component {
  public:
-  Softmax(int32 dim_in, int32 dim_out) :
+  Softmax(int32 dim_in, int32 dim_out):
     Component(dim_in, dim_out)
   { }
 
   ~Softmax()
   { }
 
-  Component* Copy() const {
-    return new Softmax(*this);
-  }
-
-  ComponentType GetType() const {
-    return kSoftmax;
-  }
+  Component* Copy() const { return new Softmax(*this); }
+  ComponentType GetType() const { return kSoftmax; }
 
   void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
                     CuMatrixBase<BaseFloat> *out) {
@@ -72,20 +67,15 @@ class Softmax : public Component {
 
 class BlockSoftmax : public Component {
  public:
-  BlockSoftmax(int32 dim_in, int32 dim_out) :
+  BlockSoftmax(int32 dim_in, int32 dim_out):
     Component(dim_in, dim_out)
   { }
 
   ~BlockSoftmax()
   { }
 
-  Component* Copy() const {
-    return new BlockSoftmax(*this);
-  }
-
-  ComponentType GetType() const {
-    return kBlockSoftmax;
-  }
+  Component* Copy() const { return new BlockSoftmax(*this); }
+  ComponentType GetType() const { return kBlockSoftmax; }
 
   void InitData(std::istream &is) {
     // parse config
@@ -175,20 +165,15 @@ class BlockSoftmax : public Component {
 
 class Sigmoid : public Component {
  public:
-  Sigmoid(int32 dim_in, int32 dim_out) :
+  Sigmoid(int32 dim_in, int32 dim_out):
     Component(dim_in, dim_out)
   { }
 
   ~Sigmoid()
   { }
 
-  Component* Copy() const {
-    return new Sigmoid(*this);
-  }
-
-  ComponentType GetType() const {
-    return kSigmoid;
-  }
+  Component* Copy() const { return new Sigmoid(*this); }
+  ComponentType GetType() const { return kSigmoid; }
 
   void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
                     CuMatrixBase<BaseFloat> *out) {
@@ -209,20 +194,15 @@ class Sigmoid : public Component {
 
 class Tanh : public Component {
  public:
-  Tanh(int32 dim_in, int32 dim_out) :
+  Tanh(int32 dim_in, int32 dim_out):
     Component(dim_in, dim_out)
   { }
 
   ~Tanh()
   { }
 
-  Component* Copy() const {
-    return new Tanh(*this);
-  }
-
-  ComponentType GetType() const {
-    return kTanh;
-  }
+  Component* Copy() const { return new Tanh(*this); }
+  ComponentType GetType() const { return kTanh; }
 
   void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
                     CuMatrixBase<BaseFloat> *out) {
@@ -243,7 +223,7 @@ class Tanh : public Component {
 
 class Dropout : public Component {
  public:
-  Dropout(int32 dim_in, int32 dim_out) :
+  Dropout(int32 dim_in, int32 dim_out):
       Component(dim_in, dim_out),
       dropout_retention_(0.5)
   { }
@@ -251,13 +231,8 @@ class Dropout : public Component {
   ~Dropout()
   { }
 
-  Component* Copy() const {
-    return new Dropout(*this);
-  }
-
-  ComponentType GetType() const {
-    return kDropout;
-  }
+  Component* Copy() const { return new Dropout(*this); }
+  ComponentType GetType() const { return kDropout; }
 
   void InitData(std::istream &is) {
     is >> std::ws;  // eat-up whitespace
@@ -308,9 +283,7 @@ class Dropout : public Component {
     in_diff->Scale(1.0/dropout_retention_);
   }
 
-  BaseFloat GetDropoutRetention() {
-    return dropout_retention_;
-  }
+  BaseFloat GetDropoutRetention() { return dropout_retention_; }
 
   void SetDropoutRetention(BaseFloat dr) {
     dropout_retention_ = dr;

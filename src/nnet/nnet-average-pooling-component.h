@@ -39,9 +39,13 @@ namespace nnet1 {
  */
 class AveragePoolingComponent : public Component {
  public:
-  AveragePoolingComponent(int32 dim_in, int32 dim_out)
-    : Component(dim_in, dim_out), pool_size_(0), pool_step_(0), pool_stride_(0)
+  AveragePoolingComponent(int32 dim_in, int32 dim_out):
+    Component(dim_in, dim_out),
+    pool_size_(0),
+    pool_step_(0),
+    pool_stride_(0)
   { }
+
   ~AveragePoolingComponent()
   { }
 

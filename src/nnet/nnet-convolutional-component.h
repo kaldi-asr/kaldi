@@ -65,7 +65,7 @@ namespace nnet1 {
  */
 class ConvolutionalComponent : public UpdatableComponent {
  public:
-  ConvolutionalComponent(int32 dim_in, int32 dim_out) :
+  ConvolutionalComponent(int32 dim_in, int32 dim_out):
     UpdatableComponent(dim_in, dim_out),
     patch_dim_(0),
     patch_step_(0),
@@ -76,13 +76,8 @@ class ConvolutionalComponent : public UpdatableComponent {
   ~ConvolutionalComponent()
   { }
 
-  Component* Copy() const {
-    return new ConvolutionalComponent(*this);
-  }
-
-  ComponentType GetType() const {
-    return kConvolutionalComponent;
-  }
+  Component* Copy() const { return new ConvolutionalComponent(*this); }
+  ComponentType GetType() const { return kConvolutionalComponent; }
 
   void InitData(std::istream &is) {
     // define options

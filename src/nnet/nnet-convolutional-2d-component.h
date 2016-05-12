@@ -71,7 +71,7 @@ namespace nnet1 {
  */
 class Convolutional2DComponent : public UpdatableComponent {
  public:
-  Convolutional2DComponent(int32 dim_in, int32 dim_out) :
+  Convolutional2DComponent(int32 dim_in, int32 dim_out):
     UpdatableComponent(dim_in, dim_out),
     fmap_x_len_(0), fmap_y_len_(0),
     filt_x_len_(0), filt_y_len_(0),
@@ -82,13 +82,8 @@ class Convolutional2DComponent : public UpdatableComponent {
   ~Convolutional2DComponent()
   { }
 
-  Component* Copy() const {
-    return new Convolutional2DComponent(*this);
-  }
-
-  ComponentType GetType() const {
-    return kConvolutional2DComponent;
-  }
+  Component* Copy() const { return new Convolutional2DComponent(*this); }
+  ComponentType GetType() const { return kConvolutional2DComponent; }
 
   void InitData(std::istream &is) {
     // define options

@@ -33,12 +33,15 @@ struct NnetTrainOptions {
   BaseFloat momentum;
   BaseFloat l2_penalty;
   BaseFloat l1_penalty;
+
   // default values
-  NnetTrainOptions() : learn_rate(0.008),
-                       momentum(0.0),
-                       l2_penalty(0.0),
-                       l1_penalty(0.0)
-                       { }
+  NnetTrainOptions():
+    learn_rate(0.008),
+    momentum(0.0),
+    l2_penalty(0.0),
+    l1_penalty(0.0)
+  { }
+
   // register options
   void Register(OptionsItf *opts) {
     opts->Register("learn-rate", &learn_rate, "Learning rate");
@@ -46,6 +49,7 @@ struct NnetTrainOptions {
     opts->Register("l2-penalty", &l2_penalty, "L2 penalty (weight decay)");
     opts->Register("l1-penalty", &l1_penalty, "L1 penalty (promote sparsity)");
   }
+
   // print for debug purposes
   friend std::ostream& operator<<(std::ostream& os, const NnetTrainOptions& opts) {
     os << "RbmTrainOptions : "
@@ -66,15 +70,18 @@ struct RbmTrainOptions {
   int32 momentum_steps;
   int32 momentum_step_period;
   BaseFloat l2_penalty;
+
   // default values
-  RbmTrainOptions() : learn_rate(0.4),
-                      momentum(0.5),
-                      momentum_max(0.9),
-                      momentum_steps(40),
-                      momentum_step_period(500000),
-                        // 500000 * 40 = 55h of linear increase of momentum
-                      l2_penalty(0.0002)
-                      { }
+  RbmTrainOptions():
+    learn_rate(0.4),
+    momentum(0.5),
+    momentum_max(0.9),
+    momentum_steps(40),
+    momentum_step_period(500000),
+    // 500000 * 40 = 55h of linear increase of momentum
+    l2_penalty(0.0002)
+  { }
+
   // register options
   void Register(OptionsItf *opts) {
     opts->Register("learn-rate", &learn_rate, "Learning rate");
@@ -91,6 +98,7 @@ struct RbmTrainOptions {
     opts->Register("l2-penalty", &l2_penalty,
                    "L2 penalty (weight decay, increases mixing-rate)");
   }
+
   // print for debug purposes
   friend std::ostream& operator<<(std::ostream& os, const RbmTrainOptions& opts) {
     os << "RbmTrainOptions : "

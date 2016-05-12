@@ -39,20 +39,18 @@ namespace nnet1 {
  */
 class MaxPoolingComponent : public Component {
  public:
-  MaxPoolingComponent(int32 dim_in, int32 dim_out)
-    : Component(dim_in, dim_out), pool_size_(0), pool_step_(0), pool_stride_(0)
+  MaxPoolingComponent(int32 dim_in, int32 dim_out):
+    Component(dim_in, dim_out),
+    pool_size_(0),
+    pool_step_(0),
+    pool_stride_(0)
   { }
 
   ~MaxPoolingComponent()
   { }
 
-  Component* Copy() const {
-    return new MaxPoolingComponent(*this);
-  }
-
-  ComponentType GetType() const {
-    return kMaxPoolingComponent;
-  }
+  Component* Copy() const { return new MaxPoolingComponent(*this); }
+  ComponentType GetType() const { return kMaxPoolingComponent; }
 
   void InitData(std::istream &is) {
     // parse config

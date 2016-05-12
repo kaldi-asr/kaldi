@@ -40,11 +40,11 @@ namespace nnet1 {
  */
 class AveragePooling2DComponent : public Component {
  public:
-  AveragePooling2DComponent(int32 dim_in, int32 dim_out)
-    : Component(dim_in, dim_out),
-      fmap_x_len_(0), fmap_y_len_(0),
-      pool_x_len_(0), pool_y_len_(0),
-      pool_x_step_(0), pool_y_step_(0)
+  AveragePooling2DComponent(int32 dim_in, int32 dim_out):
+    Component(dim_in, dim_out),
+    fmap_x_len_(0), fmap_y_len_(0),
+    pool_x_len_(0), pool_y_len_(0),
+    pool_x_step_(0), pool_y_step_(0)
   { }
   ~AveragePooling2DComponent()
   { }
@@ -199,8 +199,8 @@ class AveragePooling2DComponent : public Component {
 
  private:
   int32 fmap_x_len_, fmap_y_len_,
-    pool_x_len_, pool_y_len_,
-    pool_x_step_, pool_y_step_;
+        pool_x_len_, pool_y_len_,
+        pool_x_step_, pool_y_step_;
 };
 
 }  // namespace nnet1

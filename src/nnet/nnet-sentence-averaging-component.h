@@ -41,7 +41,7 @@ namespace nnet1 {
  */
 class SimpleSentenceAveragingComponent : public Component {
  public:
-  SimpleSentenceAveragingComponent(int32 dim_in, int32 dim_out) :
+  SimpleSentenceAveragingComponent(int32 dim_in, int32 dim_out):
     Component(dim_in, dim_out),
     gradient_boost_(100.0),
     shrinkage_(0.0),
@@ -179,8 +179,8 @@ class SimpleSentenceAveragingComponent : public Component {
 /** Deprecated!!!, keeping it as Katka Zmolikova used it in JSALT 2015 */
 class SentenceAveragingComponent : public UpdatableComponent {
  public:
-  SentenceAveragingComponent(int32 dim_in, int32 dim_out)
-    : UpdatableComponent(dim_in, dim_out), learn_rate_factor_(100.0)
+  SentenceAveragingComponent(int32 dim_in, int32 dim_out):
+    UpdatableComponent(dim_in, dim_out), learn_rate_factor_(100.0)
   { }
   ~SentenceAveragingComponent()
   { }

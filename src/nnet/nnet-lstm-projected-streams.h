@@ -48,7 +48,7 @@ namespace nnet1 {
 
 class LstmProjectedStreams : public UpdatableComponent {
  public:
-  LstmProjectedStreams(int32 input_dim, int32 output_dim) :
+  LstmProjectedStreams(int32 input_dim, int32 output_dim):
     UpdatableComponent(input_dim, output_dim),
     ncell_(0),
     nrecur_(output_dim),
@@ -60,13 +60,8 @@ class LstmProjectedStreams : public UpdatableComponent {
   ~LstmProjectedStreams()
   { }
 
-  Component* Copy() const {
-    return new LstmProjectedStreams(*this);
-  }
-
-  ComponentType GetType() const {
-    return kLstmProjectedStreams;
-  }
+  Component* Copy() const { return new LstmProjectedStreams(*this); }
+  ComponentType GetType() const { return kLstmProjectedStreams; }
 
   void InitData(std::istream &is) {
     // define options,

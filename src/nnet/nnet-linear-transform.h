@@ -32,7 +32,7 @@ namespace nnet1 {
 
 class LinearTransform : public UpdatableComponent {
  public:
-  LinearTransform(int32 dim_in, int32 dim_out) :
+  LinearTransform(int32 dim_in, int32 dim_out):
     UpdatableComponent(dim_in, dim_out),
     linearity_(dim_out, dim_in),
     linearity_corr_(dim_out, dim_in)
@@ -41,13 +41,8 @@ class LinearTransform : public UpdatableComponent {
   ~LinearTransform()
   { }
 
-  Component* Copy() const {
-    return new LinearTransform(*this);
-  }
-
-  ComponentType GetType() const {
-    return kLinearTransform;
-  }
+  Component* Copy() const { return new LinearTransform(*this); }
+  ComponentType GetType() const { return kLinearTransform; }
 
   void InitData(std::istream &is) {
     // define options
@@ -196,9 +191,7 @@ class LinearTransform : public UpdatableComponent {
   }
 
   /// Accessors to the component parameters
-  const CuMatrixBase<BaseFloat>& GetLinearity() {
-    return linearity_;
-  }
+  const CuMatrixBase<BaseFloat>& GetLinearity() { return linearity_; }
 
   void SetLinearity(const CuMatrixBase<BaseFloat>& linearity) {
     KALDI_ASSERT(linearity.NumRows() == linearity_.NumRows());
@@ -206,9 +199,7 @@ class LinearTransform : public UpdatableComponent {
     linearity_.CopyFromMat(linearity);
   }
 
-  const CuMatrixBase<BaseFloat>& GetLinearityCorr() {
-    return linearity_corr_;
-  }
+  const CuMatrixBase<BaseFloat>& GetLinearityCorr() { return linearity_corr_; }
 
  private:
   CuMatrix<BaseFloat> linearity_;

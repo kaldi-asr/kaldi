@@ -40,7 +40,7 @@ struct NnetDataRandomizerOptions {
   int32 randomizer_seed;
   int32 minibatch_size;
 
-  NnetDataRandomizerOptions() :
+  NnetDataRandomizerOptions():
     randomizer_size(32768),
     randomizer_seed(777),
     minibatch_size(256)
@@ -86,12 +86,12 @@ class RandomizerMask {
  */
 class MatrixRandomizer {
  public:
-  MatrixRandomizer() :
+  MatrixRandomizer():
     data_begin_(0),
     data_end_(0)
   { }
 
-  explicit MatrixRandomizer(const NnetDataRandomizerOptions &conf) :
+  explicit MatrixRandomizer(const NnetDataRandomizerOptions &conf):
     data_begin_(0),
     data_end_(0)
   {
@@ -147,12 +147,12 @@ class MatrixRandomizer {
 /// Randomizes elements of a vector according to a mask
 class VectorRandomizer {
  public:
-  VectorRandomizer() :
+  VectorRandomizer():
     data_begin_(0),
     data_end_(0)
   { }
 
-  explicit VectorRandomizer(const NnetDataRandomizerOptions &conf) :
+  explicit VectorRandomizer(const NnetDataRandomizerOptions &conf):
     data_begin_(0),
     data_end_(0)
   {
@@ -208,12 +208,12 @@ class VectorRandomizer {
 template<typename T>
 class StdVectorRandomizer {
  public:
-  StdVectorRandomizer() :
+  StdVectorRandomizer():
     data_begin_(0),
     data_end_(0)
   { }
 
-  explicit StdVectorRandomizer(const NnetDataRandomizerOptions &conf) :
+  explicit StdVectorRandomizer(const NnetDataRandomizerOptions &conf):
     data_begin_(0),
     data_end_(0)
   {

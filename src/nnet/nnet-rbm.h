@@ -39,7 +39,7 @@ class RbmBase : public Component {
     Gaussian
   } RbmNodeType;
 
-  RbmBase(int32 dim_in, int32 dim_out) :
+  RbmBase(int32 dim_in, int32 dim_out):
     Component(dim_in, dim_out)
   { }
 
@@ -95,7 +95,7 @@ class RbmBase : public Component {
 
 class Rbm : public RbmBase {
  public:
-  Rbm(int32 dim_in, int32 dim_out) :
+  Rbm(int32 dim_in, int32 dim_out):
     RbmBase(dim_in, dim_out)
   { }
 

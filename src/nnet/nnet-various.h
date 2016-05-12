@@ -41,20 +41,15 @@ namespace nnet1 {
  */
 class Splice: public Component {
  public:
-  Splice(int32 dim_in, int32 dim_out) :
+  Splice(int32 dim_in, int32 dim_out):
     Component(dim_in, dim_out)
   { }
 
   ~Splice()
   { }
 
-  Component* Copy() const {
-    return new Splice(*this);
-  }
-
-  ComponentType GetType() const {
-    return kSplice;
-  }
+  Component* Copy() const { return new Splice(*this); }
+  ComponentType GetType() const { return kSplice; }
 
   void InitData(std::istream &is) {
     // define options,
@@ -64,7 +59,7 @@ class Splice: public Component {
     while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token);
       /**/ if (token == "<ReadVector>") {
-        ReadIntegerVector(is, false, &frame_offsets_);
+        frame_offsets_.Read(is, false);
       } else if (token == "<BuildVector>") {
         // Parse the list of 'matlab-like' indices:
         // <BuildVector> 1:1:1000 1 2 3 1:10 </BuildVector>
@@ -92,12 +87,12 @@ class Splice: public Component {
   }
 
   void ReadData(std::istream &is, bool binary) {
-    ReadIntegerVector(is, binary, &frame_offsets_);
+    frame_offsets_.Read(is, binary);
     KALDI_ASSERT(frame_offsets_.Dim() * InputDim() == OutputDim());
   }
 
   void WriteData(std::ostream &os, bool binary) const {
-    WriteIntegerVector(os, binary, frame_offsets_);
+    frame_offsets_.Write(os, binary);
   }
 
   std::string Info() const {
@@ -131,20 +126,15 @@ class Splice: public Component {
  */
 class CopyComponent: public Component {
  public:
-  CopyComponent(int32 dim_in, int32 dim_out) :
+  CopyComponent(int32 dim_in, int32 dim_out):
     Component(dim_in, dim_out)
   { }
 
   ~CopyComponent()
   { }
 
-  Component* Copy() const {
-    return new CopyComponent(*this);
-  }
-
-  ComponentType GetType() const {
-    return kCopy;
-  }
+  Component* Copy() const { return new CopyComponent(*this); }
+  ComponentType GetType() const { return kCopy; }
 
   void InitData(std::istream &is) {
     // define options,
@@ -154,7 +144,7 @@ class CopyComponent: public Component {
     while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token);
       /**/ if (token == "<ReadVector>") {
-        ReadIntegerVector(is, false, &copy_from_indices_);
+        copy_from_indices_.Read(is, false);
       } else if (token == "<BuildVector>") {
         // <BuildVector> 1:1:1000 1:1:1000 1 2 3 1:10 </BuildVector>
         // 'matlab-line' indexing, read the colon-separated-lists:
@@ -188,7 +178,7 @@ class CopyComponent: public Component {
   }
 
   void ReadData(std::istream &is, bool binary) {
-    ReadIntegerVector(is, binary, &copy_from_indices_);
+    copy_from_indices_.Read(is, binary);
     KALDI_ASSERT(copy_from_indices_.Dim() == OutputDim());
     copy_from_indices_.Add(-1);  // -1 from each element,
   }
@@ -196,7 +186,7 @@ class CopyComponent: public Component {
   void WriteData(std::ostream &os, bool binary) const {
     CuArray<int32> tmp(copy_from_indices_);
     tmp.Add(1);  // +1 to each element,
-    WriteIntegerVector(os, binary, tmp);
+    tmp.Write(os, binary);
   }
 
   std::string Info() const {
@@ -234,20 +224,15 @@ class CopyComponent: public Component {
  */
 class LengthNormComponent: public Component {
  public:
-  LengthNormComponent(int32 dim_in, int32 dim_out) :
+  LengthNormComponent(int32 dim_in, int32 dim_out):
     Component(dim_in, dim_out)
   { }
 
   ~LengthNormComponent()
   { }
 
-  Component* Copy() const {
-    return new LengthNormComponent(*this);
-  }
-
-  ComponentType GetType() const {
-    return kLengthNormComponent;
-  }
+  Component* Copy() const { return new LengthNormComponent(*this); }
+  ComponentType GetType() const { return kLengthNormComponent; }
 
   void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
                     CuMatrixBase<BaseFloat> *out) {
@@ -286,20 +271,16 @@ class LengthNormComponent: public Component {
  */
 class AddShift : public UpdatableComponent {
  public:
-  AddShift(int32 dim_in, int32 dim_out) :
-    UpdatableComponent(dim_in, dim_out), shift_data_(dim_in)
+  AddShift(int32 dim_in, int32 dim_out):
+    UpdatableComponent(dim_in, dim_out),
+    shift_data_(dim_in)
   { }
 
   ~AddShift()
   { }
 
-  Component* Copy() const {
-    return new AddShift(*this);
-  }
-
-  ComponentType GetType() const {
-    return kAddShift;
-  }
+  Component* Copy() const { return new AddShift(*this); }
+  ComponentType GetType() const { return kAddShift; }
 
   void InitData(std::istream &is) {
     // define options
@@ -389,9 +370,7 @@ class AddShift : public UpdatableComponent {
     shift_data_.AddVec(-lr * learn_rate_coef_, shift_data_grad_);
   }
 
-  void SetLearnRateCoef(float c) {
-    learn_rate_coef_ = c;
-  }
+  void SetLearnRateCoef(float c) { learn_rate_coef_ = c; }
 
  protected:
   CuVector<BaseFloat> shift_data_;
@@ -405,7 +384,7 @@ class AddShift : public UpdatableComponent {
  */
 class Rescale : public UpdatableComponent {
  public:
-  Rescale(int32 dim_in, int32 dim_out) :
+  Rescale(int32 dim_in, int32 dim_out):
     UpdatableComponent(dim_in, dim_out),
     scale_data_(dim_in)
   { }
@@ -413,13 +392,8 @@ class Rescale : public UpdatableComponent {
   ~Rescale()
   { }
 
-  Component* Copy() const {
-    return new Rescale(*this);
-  }
-
-  ComponentType GetType() const {
-    return kRescale;
-  }
+  Component* Copy() const { return new Rescale(*this); }
+  ComponentType GetType() const { return kRescale; }
 
   void InitData(std::istream &is) {
     // define options
@@ -512,16 +486,12 @@ class Rescale : public UpdatableComponent {
     scale_data_.AddVec(-lr * learn_rate_coef_, scale_data_grad_);
   }
 
-  void SetLearnRateCoef(float c) {
-    learn_rate_coef_ = c;
-  }
+  void SetLearnRateCoef(float c) { learn_rate_coef_ = c; }
 
  protected:
   CuVector<BaseFloat> scale_data_;
   CuVector<BaseFloat> scale_data_grad_;
 };
-
-
 
 }  // namespace nnet1
 }  // namespace kaldi

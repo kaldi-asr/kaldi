@@ -233,6 +233,22 @@ inline T CuArray<T>::Max() const {
 }
 
 
+template<typename T>
+void CuArray<T>::Read(std::istream& in, bool binary) {
+  std::vector<T> tmp;
+  ReadIntegerVector(in, binary, &tmp);
+  (*this) = tmp;
+}
+
+
+template<typename T>
+void CuArray<T>::Write(std::ostream& out, bool binary) const {
+  std::vector<T> tmp(this->Dim());
+  this->CopyToVec(&tmp);
+  WriteIntegerVector(out, binary, tmp);
+}
+
+
 /**
  * Print the vector to stream
  */
@@ -247,23 +263,6 @@ std::ostream &operator << (std::ostream &out, const CuArray<T> &vec) {
   out << " ]\n";
   return out;
 }
-
-
-template<typename T>
-void ReadIntegerVector(std::istream& in, bool binary, CuArray<T>* vec) {
-  std::vector<T> tmp;
-  ReadIntegerVector(in, binary, &tmp);
-  (*vec) = tmp;
-}
-
-
-template<typename T>
-void WriteIntegerVector(std::ostream& out, bool binary, const CuArray<T>& vec) {
-  std::vector<T> tmp(vec.Dim());
-  vec.CopyToVec(&tmp);
-  WriteIntegerVector(out, binary, tmp);
-}
-
 
 } // namespace kaldi
 

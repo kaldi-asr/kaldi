@@ -101,7 +101,7 @@ class Component {
 
  /// Generic interface of a component,
  public:
-  Component(int32 input_dim, int32 output_dim) :
+  Component(int32 input_dim, int32 output_dim):
     input_dim_(input_dim),
     output_dim_(output_dim)
   { }
@@ -201,7 +201,7 @@ class Component {
  */
 class UpdatableComponent : public Component {
  public:
-  UpdatableComponent(int32 input_dim, int32 output_dim) :
+  UpdatableComponent(int32 input_dim, int32 output_dim):
     Component(input_dim, output_dim),
     learn_rate_coef_(1.0),
     bias_learn_rate_coef_(1.0)

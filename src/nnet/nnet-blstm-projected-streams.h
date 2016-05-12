@@ -49,7 +49,7 @@ namespace nnet1 {
 
 class BLstmProjectedStreams : public UpdatableComponent {
  public:
-  BLstmProjectedStreams(int32 input_dim, int32 output_dim) :
+  BLstmProjectedStreams(int32 input_dim, int32 output_dim):
     UpdatableComponent(input_dim, output_dim),
     ncell_(0),
     nrecur_(static_cast<int32>(output_dim/2)),
@@ -61,17 +61,12 @@ class BLstmProjectedStreams : public UpdatableComponent {
   ~BLstmProjectedStreams()
   { }
 
-  Component* Copy() const {
-    return new BLstmProjectedStreams(*this);
-  }
-
-  ComponentType GetType() const {
-    return kBLstmProjectedStreams;
-  }
+  Component* Copy() const { return new BLstmProjectedStreams(*this); }
+  ComponentType GetType() const { return kBLstmProjectedStreams; }
 
   /// set the utterance length used for parallel training
   void SetSeqLengths(const std::vector<int32> &sequence_lengths) {
-        sequence_lengths_ = sequence_lengths;
+    sequence_lengths_ = sequence_lengths;
   }
 
   void InitData(std::istream &is) {
