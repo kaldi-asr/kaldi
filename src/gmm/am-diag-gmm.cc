@@ -266,7 +266,9 @@ void ClusterGaussiansToUbm(const AmDiagGmm &am,
       am.GetGaussianMean(pdf_index, gauss_index, &tmp_mean);
       am.GetGaussianVariance(pdf_index, gauss_index, &tmp_var);
       tmp_var.AddVec2(1.0, tmp_mean);  // make it x^2 stats.
-      BaseFloat this_weight =  state_occs(pdf_index) *
+      // adding 1.0e-10 to the weight will prevent problems later on, see
+      // the line KALDI_ASSERT(weight > 0.0).
+      BaseFloat this_weight =  (1.0e-10 + state_occs(pdf_index)) *
           (am.GetPdf(pdf_index).weights())(gauss_index);
       tmp_mean.Scale(this_weight);
       tmp_var.Scale(this_weight);
