@@ -72,7 +72,7 @@ if ($num_jobs == 0) { # without -j option
     @OUTPUTS = @ARGV;
 } else {
     for ($j = 0; $j < $num_jobs; $j++) {
-        if ($j == $job_id) { 
+        if ($j == $job_id) {
             if (@ARGV > 0) { push @OUTPUTS, $ARGV[0]; }
             else { push @OUTPUTS, "-"; }
         } else {
@@ -98,12 +98,12 @@ if ($utt2spk_file ne "") {  # We have the --utt2spk option...
         $s = $utt2spk{$u};
         if(!defined $s) { die "No such utterance $u in utt2spk file $utt2spk_file"; }
         if(!defined $spk_count{$s}) {
-            push @spkrs, $s; 
+            push @spkrs, $s;
             $spk_count{$s} = 0;
-            $spk_data{$s} = "";
+            $spk_data{$s} = [];  # ref to new empty array.
         }
         $spk_count{$s}++;
-        $spk_data{$s} = $spk_data{$s} . $_;
+        push @{$spk_data{$s}}, $_;
     }
     # Now split as equally as possible ..
     # First allocate spks to files by allocating an approximately
@@ -182,7 +182,7 @@ if ($utt2spk_file ne "") {  # We have the --utt2spk option...
             $error = 1;
         } else {
             foreach $spk ( @{$scparray[$scpidx]} ) {
-                print F $spk_data{$spk};
+                print F @{$spk_data{$spk}};
                 $count += $spk_count{$spk};
             }
             if($count != $scpcount[$scpidx]) { die "Count mismatch [code error]"; }
@@ -190,7 +190,7 @@ if ($utt2spk_file ne "") {  # We have the --utt2spk option...
         close(F);
     }
 } else {
-   # This block is the "normal" case where there is no --utt2spk 
+   # This block is the "normal" case where there is no --utt2spk
    # option and we just break into equal size chunks.
 
     open(I, "<$inscp") || die "Opening input scp file $inscp";
