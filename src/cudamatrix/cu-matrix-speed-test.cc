@@ -250,7 +250,7 @@ static void TestCuFindRowMaxId(int32 dim) {
   Di.CopyFromMat(Hi);
 
   std::vector<int32> Hmax(dimM);
-  CuArray<int32> Dmax(dimN);
+  CuArray<int32> Dmax(dimM);
 
   BaseFloat time_in_secs = 0.025;
   int iter = 0;
