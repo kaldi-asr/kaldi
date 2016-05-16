@@ -1489,6 +1489,7 @@ void CuMatrixBase<Real>::FindRowMaxId(CuArray<int32> *id) const {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
+    id->Resize(num_rows_);
     MatrixDim d = Dim();
     dim3 dimBlock(CU1DBLOCK);
     dim3 dimGrid(num_rows_);
