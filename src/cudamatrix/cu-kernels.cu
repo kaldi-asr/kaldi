@@ -2059,6 +2059,7 @@ static void _find_row_max_id(const Real* mat, Real* vec_val, int32_cuda* vec_id,
   Real tmax = -1e20;
   int32_cuda tidx = -1;
 
+  // Loop over blocks for coalesced memory access.
   for (int32_cuda j = tid; j < d.cols; j += CU1DBLOCK) {
     const Real val = mat[base + j];
     if (val > tmax) {
@@ -2082,7 +2083,8 @@ static void _find_row_max_id(const Real* mat, Real* vec_val, int32_cuda* vec_id,
       }
     }
   }
-  // reduce last warp without __syncthreads()
+  // Warp reduce without __syncthreads()
+  // (note.: synchronizes implicitly within a warp at the multiprocessor)
   if (tid < warpSize / 2) {
     #pragma unroll
     for (int32_cuda num_working_threads = warpSize / 2; num_working_threads > 0;

@@ -1491,9 +1491,10 @@ void CuMatrixBase<Real>::FindRowMaxId(CuArray<int32> *id) const {
     Timer tim;
     id->Resize(num_rows_);
     MatrixDim d = Dim();
+
+    // CUDA thread layout: one thread block per matrix-row.
     dim3 dimBlock(CU1DBLOCK);
     dim3 dimGrid(num_rows_);
-
     cuda_find_row_max_id(dimGrid, dimBlock, data_, NULL, id->Data(), d);
 
     // now we have the indices!
