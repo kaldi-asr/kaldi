@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2010-2013 Microsoft Corporation 
+# Copyright 2010-2013 Microsoft Corporation
 #                     Johns Hopkins University (Author: Daniel Povey)
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -56,9 +56,9 @@ if [ -f $data/text ] && [ $nu -ne $nt ]; then
 fi
 
 s1=$data/split$numsplit/1
-if [ ! -d $s1 ]; then 
+if [ ! -d $s1 ]; then
   need_to_split=true
-else 
+else
   need_to_split=false
   for f in utt2spk spk2utt spk2warp feats.scp text wav.scp cmvn.scp spk2gender \
     vad.scp segments reco2file_and_channel utt2lang; do
@@ -71,11 +71,17 @@ fi
 if ! $need_to_split; then
   exit 0;
 fi
-  
-for n in `seq $numsplit`; do
-   mkdir -p $data/split$numsplit/$n
-   utt2spks="$utt2spks $data/split$numsplit/$n/utt2spk"
-done
+
+utt2spks=$(for n in `seq $numsplit`; do echo $data/split$numsplit/$n/utt2spk; done)
+
+directories=$(for n in `seq $numsplit`; do echo $data/split$numsplit/$n; done)
+
+# if this mkdir fails due to argument-list being too long, iterate.
+if ! mkdir -p $directories >&/dev/null; then
+  for n in `seq $numsplit`; do
+    mkdir -p $data/split$numsplit/$n
+  done
+fi
 
 if $split_per_spk; then
   utt2spk_opt="--utt2spk=$data/utt2spk"
@@ -84,7 +90,8 @@ else
 fi
 
 # If lockfile is not installed, just don't lock it.  It's not a big deal.
-which lockfile >&/dev/null && lockfile -l 60 $data/.split_lock 
+which lockfile >&/dev/null && lockfile -l 60 $data/.split_lock
+trap 'rm -f $data/.split_lock' EXIT HUP INT PIPE TERM
 
 utils/split_scp.pl $utt2spk_opt $data/utt2spk $utt2spks || exit 1
 
@@ -115,21 +122,24 @@ for f in spk2gender spk2warp cmvn.scp; do
   fi
 done
 
-for n in `seq $numsplit`; do
-   dsn=$data/split$numsplit/$n
-   if [ -f $data/segments ]; then
-     utils/filter_scp.pl $dsn/utt2spk $data/segments > $dsn/segments
-     awk '{print $2;}' $dsn/segments | sort | uniq > $data/tmp.reco # recording-ids.
-     if [ -f $data/reco2file_and_channel ]; then
-       utils/filter_scp.pl $data/tmp.reco $data/reco2file_and_channel > $dsn/reco2file_and_channel
-     fi
-     if [ -f $data/wav.scp ]; then
-       utils/filter_scp.pl $data/tmp.reco $data/wav.scp >$dsn/wav.scp
-     fi
-     rm $data/tmp.reco
-   fi # else it would have been handled above, see maybe_wav.
-done
-
-rm -f $data/.split_lock
+if [ -f $data/segments ]; then
+  utils/filter_scps.pl JOB=1:$numsplit \
+     $data/split$numsplit/JOB/utt2spk $data/segments $data/split$numsplit/JOB/segments || exit 1
+  for n in `seq $numsplit`; do
+    dsn=$data/split$numsplit/$n
+    awk '{print $2;}' $dsn/segments | sort | uniq > $dsn/tmp.reco # recording-ids.
+  done
+  if [ -f $data/reco2file_and_channel ]; then
+    utils/filter_scps.pl JOB=1:$numsplit \
+      $data/split$numsplit/JOB/tmp.reco $data/reco2file_and_channel \
+      $data/split$numsplit/JOB/reco2file_and_channel || exit 1
+  fi
+  if [ -f $data/wav.scp ]; then
+    utils/filter_scps.pl JOB=1:$numsplit \
+      $data/split$numsplit/JOB/tmp.reco $data/wav.scp \
+      $data/split$numsplit/JOB/wav.scp || exit 1
+  fi
+  for f in $data/split$numsplit/*/tmp.reco; do rm $f; done
+fi
 
 exit 0
