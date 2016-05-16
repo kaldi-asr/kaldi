@@ -501,48 +501,46 @@ if (-z "$lang/topo") {
 if (!open(T, "<$lang/topo")) {
   $exit = 1; print "--> ERROR: fail to open $lang/topo\n";
 } else {
+  $topo_ok = 1;
   $idx = 1;
+  %phones_in_topo_int_hash = ( );
+  %phones_in_topo_hash = ( );
   while (<T>) {
     chomp;
     next if (m/^<.*>[ ]*$/);
-    if ($idx == 1) {
-      $nonsilence_seq = $_; $idx ++;
-    }
-    if ($idx == 2) {
-      $silence_seq = $_;
+    foreach $i (split(" ", $_)) {
+      if (defined $phones_in_topo_int_hash{$i}) {
+        $topo_ok = 0;
+        $exit = 1; print "--> ERROR: $lang/topo has phone $i twice\n";
+      }
+      if (!defined $pint2sym{$i}) {
+        $topo_ok = 0;
+        $exit = 1; print "--> ERROR: $lang/topo has phone $i which is not in phones.txt\n";
+      }
+      $phones_in_topo_int_hash{$i} = 1;
+      $phones_in_topo_hash{$pint2sym{$i}} = 1;
     }
   }
   close(T);
-  if ($silence_seq == 0 || $nonsilence_seq == 0) {
-    $exit = 1; print "--> ERROR: $lang/topo doesn't have nonsilence section or silence section\n";
-  }
-  @silence_seq = split(" ", $silence_seq);
-  @nonsilence_seq = split(" ", $nonsilence_seq);
-  $success1 = 1;
-  if (@nonsilence_seq != @nonsilence) {
-    $exit = 1; print "--> ERROR: $lang/topo's nonsilence section doesn't correspond to nonsilence.txt\n";
-  } else {
-    foreach (0 .. scalar(@nonsilence)-1) {
-      if ($psymtab{@nonsilence[$_]} ne @nonsilence_seq[$_]) {
-        $exit = 1; print "--> ERROR: $lang/topo's nonsilence section doesn't correspond to nonsilence.txt\n";
-        $success = 0;
-      }
+  $phones_that_should_be_in_topo_hash = {};
+  foreach $p (@silence, @nonsilence) { $phones_that_should_be_in_topo_hash{$p} = 1; }
+  foreach $p (keys %phones_that_should_be_in_topo_hash) {
+    if ( ! defined $phones_in_topo_hash{$p}) {
+      $topo_ok = 0;
+      $i = $pint2sym{$p};
+      $exit = 1; print "--> ERROR: $lang/topo does not cover phone $p (label = $i)\n";
     }
   }
-  $success1 != 1 || print "--> $lang/topo's nonsilence section is OK\n";
-  $success2 = 1;
-  if (@silence_seq != @silence) {
-    $exit = 1; print "--> ERROR: $lang/topo's silence section doesn't correspond to silence.txt\n";
-  } else {
-    foreach (0 .. scalar(@silence)-1) {
-      if ($psymtab{@silence[$_]} ne @silence_seq[$_]) {
-        $exit = 1; print "--> ERROR: $lang/topo's silence section doesn't correspond to silence.txt\n";
-        $success = 0;
-      }
+  foreach $i (keys %phones_in_topo_int_hash) {
+    $p = $pint2sym{$i};
+    if ( ! defined $phones_that_should_be_in_topo_hash{$p}) {
+      $topo_ok = 0;
+      $exit = 1; print "--> ERROR: $lang/topo covers phone $p (label = $i) which is not a real phone\n";
     }
   }
-  $success2 != 1 || print "--> $lang/topo's silence section is OK\n";
-  $success1 != 1 or $success2 != 1 || print "--> $lang/topo is OK\n";
+  if ($topo_ok) {
+    "--> $lang/topo is OK\n";
+  }
   print "\n";
 }
 
@@ -635,6 +633,9 @@ if (-s "$lang/phones/word_boundary.txt") {
   #  The symbol  '#0' should appear in words.txt and phones.txt, and should
   # or (2): the files wdisambig.txt, wdisambig_phones.int and wdisambig_words.int
   #  exist, and have the expected properties (see below for details).
+
+  # note, %wdisambig_words_hash hashes from the integer word-id of word-level
+  # disambiguation symbols, to 1 if the word is a disambig symbol.
   my %wdisambig_words_hash;
   my %wdisambig_words_string = "";
 
