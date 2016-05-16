@@ -455,7 +455,7 @@ steps/nnet/train_scheduler.sh \
   ${config:+ --config $config} \
   $nnet_init "$feats_tr" "$feats_cv" "$labels_tr" "$labels_cv" $dir
 
-echo "$0 successfuly finished.. $dir"
+echo "$0: Successfuly finished. '$dir'"
 
 sleep 3
 exit 0

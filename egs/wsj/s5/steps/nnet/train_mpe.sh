@@ -23,6 +23,7 @@ do_smbr=true
 exclude_silphones=true # exclude silphones from approximate accuracy computation
 unkphonelist= # exclude unkphones from approximate accuracy computation (overrides exclude_silphones)
 one_silence_class=true # true : reduce insertions in sMBR/MPE FW/BW, more stable training,
+                       # (all silphones are seen as a single class in the sMBR/MPE FW/BW)
 verbose=1
 ivector=
 
@@ -59,7 +60,9 @@ alidir=$4
 denlatdir=$5
 dir=$6
 
-for f in $data/feats.scp $alidir/{tree,final.mdl,ali.1.gz} $denlatdir/lat.scp $srcdir/{final.nnet,final.feature_transform}; do
+for f in $data/feats.scp $denlatdir/lat.scp \
+         $alidir/{tree,final.mdl,ali.1.gz} \
+         $srcdir/{final.nnet,final.feature_transform}; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
@@ -70,7 +73,7 @@ mkdir -p $dir/log
 
 cp $alidir/{final.mdl,tree} $dir
 
-silphonelist=`cat $lang/phones/silence.csl` || exit 1;
+silphonelist=`cat $lang/phones/silence.csl`
 
 #Get the files we will need
 nnet=$srcdir/$(readlink $srcdir/final.nnet || echo final.nnet);
@@ -91,7 +94,9 @@ cp $feature_transform $dir/final.feature_transform
 model=$dir/final.mdl
 [ -z "$model" ] && echo "Error transition model '$model' does not exist!" && exit 1;
 
-#enable/disable silphones from MPE training
+# The argument '--silence-phones=csl' together with '--one-silence-class=true'
+# will cause regrouping of the silenece phones into a single class in the FW/BW
+# which calculates the Loss derivative (the 'new' behavior).
 mpe_silphones_arg= #empty
 $exclude_silphones && mpe_silphones_arg="--silence-phones=$silphonelist" # all silphones
 [ ! -z $unkphonelist ] && mpe_silphones_arg="--silence-phones=$unkphonelist" # unk only
@@ -175,7 +180,7 @@ while [ $x -le $num_iters ]; do
        --verbose=$verbose \
        --one-silence-class=$one_silence_class \
        $mpe_silphones_arg \
-       $cur_mdl $alidir/final.mdl "$feats" "$lats" "$ali" $dir/$x.nnet || exit 1
+       $cur_mdl $alidir/final.mdl "$feats" "$lats" "$ali" $dir/$x.nnet
   fi
   cur_mdl=$dir/$x.nnet
 
@@ -198,7 +203,10 @@ else
   echo "Re-estimating priors by forwarding 10k utterances from training set."
   . cmd.sh
   nj=$(cat $alidir/num_jobs)
-  steps/nnet/make_priors.sh --cmd "$train_cmd" --nj $nj $data $dir || exit 1
+  steps/nnet/make_priors.sh --cmd "$train_cmd" --nj $nj \
+    ${ivector:+ --ivector "$ivector"} \
+    $data $dir
 fi
 
+echo "$0: Done. '$dir'"
 exit 0
