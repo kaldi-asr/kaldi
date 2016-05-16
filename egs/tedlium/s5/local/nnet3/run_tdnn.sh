@@ -4,6 +4,7 @@
 # call multi-splice.
 
 # Results (2 epochs):
+# Number of parameters: 6056880
 # %WER 15.3 | 507 17792 | 87.4 9.0 3.6 2.7 15.3 90.1 | -0.081 | exp/nnet3/tdnn_sp/decode_dev/score_10_0.5/ctm.filt.filt.sys
 # %WER 13.9 | 507 17792 | 88.4 8.0 3.6 2.3 13.9 85.8 | -0.164 | exp/nnet3/tdnn_sp/decode_dev_rescore/score_10_0.5/ctm.filt.filt.sys
 # %WER 13.8 | 1155 27512 | 88.5 8.7 2.7 2.3 13.8 84.2 | -0.076 | exp/nnet3/tdnn_sp/decode_test/score_10_0.0/ctm.filt.filt.sys
@@ -98,7 +99,7 @@ if [ $stage -le 11 ]; then
   for decode_set in dev test; do
     (
     steps/nnet3/decode.sh \
-      --nj 8 --cmd "$decode_cmd" $iter_opts \
+      --nj $(wc -l data/$decode_set/spk2utt) --cmd "$decode_cmd" $iter_opts \
       --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
       $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}${decode_iter:+_$decode_iter} || exit 1;
 

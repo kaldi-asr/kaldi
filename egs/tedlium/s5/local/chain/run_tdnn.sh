@@ -3,6 +3,7 @@
 # This script requires that you have run the toplevel run.sh script in TEDLIUM up to stage 7.
 #
 # Results: (Run for x in exp/chain/tdnn/decode*; do [ -d $x ] && grep Sum $x/score_*/*.sys | utils/best_wer.sh; done 2>/dev/null)
+## Number of parameters: 6172530
 ## %WER 14.1 | 507 17792 | 88.6 7.3 4.1 2.7 14.1 92.9 | 0.075 | exp/chain/tdnn/decode_dev/score_10_0.5/ctm.filt.filt.sys
 ## %WER 13.3 | 507 17792 | 89.7 6.9 3.4 2.9 13.3 92.1 | 0.000 | exp/chain/tdnn/decode_dev_rescore/score_10_0.0/ctm.filt.filt.sys
 ## %WER 13.8 | 1155 27512 | 89.4 7.5 3.1 3.2 13.8 87.9 | 0.101 | exp/chain/tdnn/decode_test/score_10_0.0/ctm.filt.filt.sys
@@ -14,11 +15,12 @@
 # relu_dim=525
 # xent_regularize=0.2
 #
-# Results: (Run for x in exp/chain/tdnn_more_ce_sp/decode*; do [ -d $x ] && grep Sum $x/score_*/*.sys | utils/best_wer.sh; done 2>/dev/null)
-## %WER 14.3 | 507 17792 | 89.0 7.8 3.2 3.3 14.3 93.5 | 0.116 | exp/chain/tdnn_more_ce_sp/decode_dev/score_10_0.0/ctm.filt.filt.sys
-## %WER 13.0 | 507 17792 | 90.0 6.9 3.2 2.9 13.0 91.3 | -0.003 | exp/chain/tdnn_more_ce_sp/decode_devv_rescore/score_10_0.0/ctm.filt.filt.sys
-## %WER 13.8 | 1155 27512 | 89.1 7.4 3.4 2.9 13.8 87.5 | 0.082 | exp/chain/tdnn_more_ce_sp/decode_test/score_10_0.5/ctm.filt.filt.sys
-## %WER 12.8 | 1155 27512 | 90.4 6.6 3.1 3.1 12.8 86.7 | 0.014 | exp/chain/tdnn_more_ce_sp/decode_test_rescore/score_10_0.0/ctm.filt.filt.sys
+# Results: (Run for x in exp/chain/tdnn_more_ce/decode*; do [ -d $x ] && grep Sum $x/score_*/*.sys | utils/best_wer.sh; done 2>/dev/null)
+## Number of parameters: 8758742
+## %WER 14.3 | 507 17792 | 89.0 7.8 3.2 3.3 14.3 93.5 | 0.116 | exp/chain/tdnn_more_ce/decode_dev/score_10_0.0/ctm.filt.filt.sys
+## %WER 13.0 | 507 17792 | 90.0 6.9 3.2 2.9 13.0 91.3 | -0.003 | exp/chain/tdnn_more_ce/decode_devv_rescore/score_10_0.0/ctm.filt.filt.sys
+## %WER 13.8 | 1155 27512 | 89.1 7.4 3.4 2.9 13.8 87.5 | 0.082 | exp/chain/tdnn_more_ce/decode_test/score_10_0.5/ctm.filt.filt.sys
+## %WER 12.8 | 1155 27512 | 90.4 6.6 3.1 3.1 12.8 86.7 | 0.014 | exp/chain/tdnn_more_ce/decode_test_rescore/score_10_0.0/ctm.filt.filt.sys
 
 set -uo pipefail
 
@@ -70,7 +72,6 @@ fi
 # nnet3 setup, and you can skip them by setting "--stage 9" if you have already
 # run those things.
 
-train_set=train
 gmm_dir=exp/tri3
 ali_dir=exp/tri3_ali
 lats_dir=${ali_dir/ali/lats}
@@ -78,18 +79,16 @@ treedir=exp/chain/tri3_tree
 lang=data/lang_chain
 
 mkdir -p $dir
-# It is not required to generate alignments here, but doing so
-# allows us to run local/nnet3 models without having to run this script first.
-# If you don't want to run those models, you can do "--generate-alignments false"
+
 local/nnet3/run_ivector_common.sh --stage $stage \
-  --generate-alignments true \
+  --generate-alignments false \
   --speed-perturb true || exit 1;
 
 if [ $stage -le 9 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
   nj=$(cat ${ali_dir}/num_jobs) || exit 1;
-  steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" data/${train_set}_sp \
+  steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" data/train_sp \
     data/lang $gmm_dir $lats_dir
   rm ${lats_dir}/fsts.*.gz # save space
 fi
@@ -122,8 +121,8 @@ if [ $stage -le 12 ]; then
 
   steps/nnet3/tdnn/make_configs.py \
     $repair_opts \
-    --feat-dir data/${train_set}_sp_hires \
-    --ivector-dir exp/nnet3/ivectors_${train_set}_sp \
+    --feat-dir data/train_sp_hires \
+    --ivector-dir exp/nnet3/ivectors_train_sp \
     --tree-dir $treedir \
     --relu-dim $relu_dim \
     --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -3,0,3 -3,0,3 -6,-3,0 0" \
@@ -146,7 +145,7 @@ if [ $stage -le 13 ]; then
 
  steps/nnet3/chain/train.py --stage $train_stage \
    --cmd "$decode_cmd" \
-   --feat.online-ivector-dir exp/nnet3/ivectors_${train_set}_sp \
+   --feat.online-ivector-dir exp/nnet3/ivectors_train_sp \
    --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
    --chain.xent-regularize $xent_regularize \
    --chain.leaky-hmm-coefficient 0.1 \
@@ -166,7 +165,7 @@ if [ $stage -le 13 ]; then
    --trainer.max-param-change $max_param_change \
    --cleanup.remove-egs $remove_egs \
    --cleanup.preserve-model-interval 20 \
-   --feat-dir data/${train_set}_sp_hires \
+   --feat-dir data/train_sp_hires \
    --tree-dir $treedir \
    --lat-dir $lats_dir \
    --dir $dir || exit 1;
@@ -189,7 +188,7 @@ if [ $stage -le 15 ]; then
   for decode_set in dev test; do
     (
     steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-      --nj 8 --cmd "$decode_cmd" $iter_opts \
+      --nj $(wc -l data/$decode_set/spk2utt) --cmd "$decode_cmd" $iter_opts \
       --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
       --scoring-opts "--min_lmwt 5 --max_lmwt 15" \
       $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}${decode_iter:+_$decode_iter} || exit 1;
