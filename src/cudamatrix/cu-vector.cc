@@ -353,7 +353,7 @@ MatrixIndexT CuVectorBase<Real>::ApplyCeiling(Real ceiling_val) {
     cuda_vec_apply_ceiling(dimGrid, dimBlock, data_, ceiling_val, count_vec.Data(), dim_);
     CU_SAFE_CALL(cudaGetLastError());
     num_ceiled = count_vec.Sum();
-    CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyFloor", tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyCeiling", tim.Elapsed());
   } else
 #endif
   {
@@ -376,7 +376,7 @@ void CuVectorBase<Real>::ApplyPow(Real power) {
     // num_cols is Dim(), num_rows is 1, stride is 1 (it's a don't-care).
     cuda_apply_pow(dimGrid, dimBlock, data_, power, fake_matrix_dim);
     CU_SAFE_CALL(cudaGetLastError());
-    CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyFloor", tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyPow", tim.Elapsed());
   } else
 #endif
   {
