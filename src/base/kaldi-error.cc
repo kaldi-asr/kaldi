@@ -163,66 +163,63 @@ void MessageLogger::HandleMessage(const LogMessageEnvelope &envelope,
   // Send to a logging handler if provided.
   if (g_log_handler != NULL) {
     g_log_handler(envelope, message);
-    // TODO: should we abort() at 'assert_failed' or 'error'?
-    return;
-  }
-  // Otherwise, we use the default Kaldi logging.
-  
-  // Build the log-message 'header',
-  std::stringstream header;
-  if (envelope.severity > LogMessageEnvelope::kInfo) {
-    header << "VLOG[" << envelope.severity << "] (";
   } else {
-    switch (envelope.severity) {
-      case LogMessageEnvelope::kInfo :
-        header << "LOG (";
-        break;
-      case LogMessageEnvelope::kWarning :
-        header << "WARNING (";
-        break;
-      case LogMessageEnvelope::kError :
-        header << "ERROR (";
-        break;
-      case LogMessageEnvelope::kAssertFailed :
-        header << "ASSERTION_FAILED (";
-        break;
-      default:
-        abort();  // coding errror (unknown 'severity'),
-    }
-  }
-  // fill the other info from the envelope,
-  header << GetProgramName() << envelope.func << "():"
-         << envelope.file << ':' << envelope.line << ")";
-
-  // In following lines we decide what to do,
-  if (envelope.severity >= LogMessageEnvelope::kWarning) {
-    // VLOG, LOG, WARNING: 
-    // print to stderr,
-    fprintf(stderr, "%s %s\n", header.str().c_str(), message);
-  } else if (envelope.severity == LogMessageEnvelope::kError) {
-    // ERROR:
-    // print to stderr (with stack-trace), 
-    fprintf(stderr, "%s %s\n\n%s\n", header.str().c_str(), message, 
-            KaldiGetStackTrace().c_str());
-    if (!std::uncaught_exception()) {
-      // throw exception with empty message,
-      throw std::runtime_error("");
+    // Otherwise, we use the default Kaldi logging.
+    // Build the log-message 'header',
+    std::stringstream header;
+    if (envelope.severity > LogMessageEnvelope::kInfo) {
+      header << "VLOG[" << envelope.severity << "] (";
     } else {
-      // If we got here, this thread has already thrown exception,
-      // and this exception has not yet arrived to its 'catch' clause...
-      // Throwing a new exception would be unsafe!
-      // (can happen during 'stack unwinding', if we have 'KALDI_ERR << msg' 
-      // in a destructor of some local object).
-      abort();
+      switch (envelope.severity) {
+        case LogMessageEnvelope::kInfo :
+          header << "LOG (";
+          break;
+        case LogMessageEnvelope::kWarning :
+          header << "WARNING (";
+          break;
+        case LogMessageEnvelope::kError :
+          header << "ERROR (";
+          break;
+        case LogMessageEnvelope::kAssertFailed :
+          header << "ASSERTION_FAILED (";
+          break;
+        default:
+          abort();  // coding errror (unknown 'severity'),
+      }
     }
-  } else if (envelope.severity == LogMessageEnvelope::kAssertFailed) {
-    // ASSERT_FAILED:
-    // print to stderr (with stack-trace), call abort(),
-    fprintf(stderr, "%s %s\n\n%s\n", header.str().c_str(), message, 
-            KaldiGetStackTrace().c_str());
-    abort();
-  } else {
-    abort();  // coding error (unknown 'severity'),
+    // fill the other info from the envelope,
+    header << GetProgramName() << envelope.func << "():"
+           << envelope.file << ':' << envelope.line << ")";
+
+    // Printing the message,
+    if (envelope.severity >= LogMessageEnvelope::kWarning) {
+      // VLOG, LOG, WARNING: 
+      fprintf(stderr, "%s %s\n", header.str().c_str(), message);
+    } else {
+      // ERROR, ASSERT_FAILED (print with stack-trace):
+      fprintf(stderr, "%s %s\n\n%s\n", header.str().c_str(), message, 
+              KaldiGetStackTrace().c_str());
+    }
+  }
+
+  // Should we throw exception, or abort?
+  switch (envelope.severity) {
+    case LogMessageEnvelope::kAssertFailed:
+      abort(); // ASSERT_FAILED,
+      break;
+    case LogMessageEnvelope::kError:
+      if (!std::uncaught_exception()) {
+        // throw exception with empty message,
+        throw std::runtime_error(""); // KALDI_ERR,
+      } else {
+        // If we got here, this thread has already thrown exception,
+        // and this exception has not yet arrived to its 'catch' clause...
+        // Throwing a new exception would be unsafe!
+        // (can happen during 'stack unwinding', if we have 'KALDI_ERR << msg' 
+        // in a destructor of some local object).
+        abort();
+      }
+      break;
   }
 }
 
