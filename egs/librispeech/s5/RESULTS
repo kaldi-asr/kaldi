@@ -353,3 +353,45 @@
 %WER 13.79 [ 7219 / 52343, 847 ins, 953 del, 5419 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_test_other_tglarge_utt_offline/wer_13
 %WER 16.08 [ 8416 / 52343, 746 ins, 1466 del, 6204 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_test_other_tgmed_utt_offline/wer_15
 %WER 17.64 [ 9231 / 52343, 764 ins, 1662 del, 6805 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_test_other_tgsmall_utt_offline/wer_14
+
+# Results with nnet3 tdnn
+# local/nnet3/run_tdnn.sh
+# (4 epoch training on speed-perturbed data)
+# num_params=19.3M
+%WER 4.43 [ 2410 / 54402, 306 ins, 278 del, 1826 sub ] exp/nnet3/tdnn_sp/decode_dev_clean_fglarge/wer_13_1.0
+%WER 4.63 [ 2520 / 54402, 369 ins, 259 del, 1892 sub ] exp/nnet3/tdnn_sp/decode_dev_clean_tglarge/wer_12_0.5
+%WER 5.90 [ 3211 / 54402, 430 ins, 337 del, 2444 sub ] exp/nnet3/tdnn_sp/decode_dev_clean_tgmed/wer_12_0.0
+%WER 6.66 [ 3622 / 54402, 450 ins, 415 del, 2757 sub ] exp/nnet3/tdnn_sp/decode_dev_clean_tgsmall/wer_12_0.0
+%WER 11.62 [ 5922 / 50948, 727 ins, 741 del, 4454 sub ] exp/nnet3/tdnn_sp/decode_dev_other_fglarge/wer_14_0.5
+%WER 12.19 [ 6209 / 50948, 863 ins, 682 del, 4664 sub ] exp/nnet3/tdnn_sp/decode_dev_other_tglarge/wer_14_0.0
+%WER 14.52 [ 7396 / 50948, 789 ins, 1079 del, 5528 sub ] exp/nnet3/tdnn_sp/decode_dev_other_tgmed/wer_16_0.0
+%WER 15.83 [ 8063 / 50948, 867 ins, 1141 del, 6055 sub ] exp/nnet3/tdnn_sp/decode_dev_other_tgsmall/wer_14_0.0
+%WER 4.97 [ 2614 / 52576, 373 ins, 271 del, 1970 sub ] exp/nnet3/tdnn_sp/decode_test_clean_fglarge/wer_14_0.5
+%WER 5.15 [ 2708 / 52576, 446 ins, 235 del, 2027 sub ] exp/nnet3/tdnn_sp/decode_test_clean_tglarge/wer_13_0.0
+%WER 6.24 [ 3281 / 52576, 467 ins, 336 del, 2478 sub ] exp/nnet3/tdnn_sp/decode_test_clean_tgmed/wer_12_0.0
+%WER 6.95 [ 3654 / 52576, 459 ins, 433 del, 2762 sub ] exp/nnet3/tdnn_sp/decode_test_clean_tgsmall/wer_13_0.0
+%WER 12.14 [ 6352 / 52343, 883 ins, 649 del, 4820 sub ] exp/nnet3/tdnn_sp/decode_test_other_fglarge/wer_13_0.0
+%WER 12.62 [ 6605 / 52343, 898 ins, 720 del, 4987 sub ] exp/nnet3/tdnn_sp/decode_test_other_tglarge/wer_13_0.0
+%WER 15.10 [ 7904 / 52343, 874 ins, 1070 del, 5960 sub ] exp/nnet3/tdnn_sp/decode_test_other_tgmed/wer_13_0.0
+%WER 16.29 [ 8528 / 52343, 828 ins, 1320 del, 6380 sub ] exp/nnet3/tdnn_sp/decode_test_other_tgsmall/wer_14_0.0
+
+# Results with nnet3 tdnn+chain model
+# local/chain/run_tdnn_6z.sh
+# (4 epoch training on speed-perturbed data)
+# num_params=16.8M (12.7M after excluding the xent branch)
+%WER 3.92 [ 2131 / 54402, 290 ins, 197 del, 1644 sub ] exp/chain/tdnn_6z_sp/decode_dev_clean_fglarge/wer_11_0.5
+%WER 4.09 [ 2227 / 54402, 337 ins, 176 del, 1714 sub ] exp/chain/tdnn_6z_sp/decode_dev_clean_tglarge/wer_11_0.0
+%WER 5.11 [ 2781 / 54402, 329 ins, 300 del, 2152 sub ] exp/chain/tdnn_6z_sp/decode_dev_clean_tgmed/wer_12_0.0
+%WER 5.83 [ 3172 / 54402, 335 ins, 372 del, 2465 sub ] exp/chain/tdnn_6z_sp/decode_dev_clean_tgsmall/wer_12_0.0
+%WER 10.43 [ 5314 / 50948, 528 ins, 697 del, 4089 sub ] exp/chain/tdnn_6z_sp/decode_dev_other_fglarge/wer_14_0.5
+%WER 10.95 [ 5581 / 50948, 546 ins, 764 del, 4271 sub ] exp/chain/tdnn_6z_sp/decode_dev_other_tglarge/wer_14_0.5
+%WER 13.20 [ 6723 / 50948, 676 ins, 858 del, 5189 sub ] exp/chain/tdnn_6z_sp/decode_dev_other_tgmed/wer_13_0.0
+%WER 14.56 [ 7419 / 50948, 715 ins, 1003 del, 5701 sub ] exp/chain/tdnn_6z_sp/decode_dev_other_tgsmall/wer_13_0.0
+%WER 4.28 [ 2251 / 52576, 292 ins, 238 del, 1721 sub ] exp/chain/tdnn_6z_sp/decode_test_clean_fglarge/wer_11_1.0
+%WER 4.47 [ 2349 / 52576, 342 ins, 225 del, 1782 sub ] exp/chain/tdnn_6z_sp/decode_test_clean_tglarge/wer_11_0.5
+%WER 5.55 [ 2917 / 52576, 366 ins, 314 del, 2237 sub ] exp/chain/tdnn_6z_sp/decode_test_clean_tgmed/wer_13_0.0
+%WER 6.20 [ 3259 / 52576, 383 ins, 381 del, 2495 sub ] exp/chain/tdnn_6z_sp/decode_test_clean_tgsmall/wer_12_0.0
+%WER 10.76 [ 5634 / 52343, 643 ins, 672 del, 4319 sub ] exp/chain/tdnn_6z_sp/decode_test_other_fglarge/wer_12_0.5
+%WER 11.20 [ 5864 / 52343, 619 ins, 781 del, 4464 sub ] exp/chain/tdnn_6z_sp/decode_test_other_tglarge/wer_13_0.5
+%WER 13.47 [ 7051 / 52343, 733 ins, 933 del, 5385 sub ] exp/chain/tdnn_6z_sp/decode_test_other_tgmed/wer_13_0.0
+%WER 14.73 [ 7710 / 52343, 662 ins, 1209 del, 5839 sub ] exp/chain/tdnn_6z_sp/decode_test_other_tgsmall/wer_14_0.0

@@ -23,6 +23,7 @@ remove_oov=false
 
 for x in `seq 6`; do
   [ "$1" == "--mono" ] && context=mono && shift;
+  [ "$1" == "--left-biphone" ] && context=lbiphone && shift;
   [ "$1" == "--quinphone" ] && context=quinphone && shift;
   [ "$1" == "--reverse" ] && reverse=true && shift;
   [ "$1" == "--remove-oov" ] && remove_oov=true && shift;
@@ -60,6 +61,7 @@ done
 N=$(tree-info $tree | grep "context-width" | cut -d' ' -f2) || { echo "Error when getting context-width"; exit 1; }
 P=$(tree-info $tree | grep "central-position" | cut -d' ' -f2) || { echo "Error when getting central-position"; exit 1; }
 if [[ $context == mono && ($N != 1 || $P != 0) || \
+      $context == lbiphone && ($N != 2 || $P != 1) || \
       $context == quinphone && ($N != 5 || $P != 2) ]]; then
   echo "mkgraph.sh: mismatch between the specified context (--$context) and the one in the tree: N=$N, P=$P"
   exit 1

@@ -1,6 +1,7 @@
 // nnetbin/nnet-set-learnrate.cc
 
-// Copyright 2016 Brno University of Technology (Author: Katerina Zmolikova, Karel Vesely)
+// Copyright 2016,  Brno University of Technology
+//                  (author: Katerina Zmolikova, Karel Vesely)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -29,31 +30,40 @@ int main(int argc, char *argv[]) {
     using namespace kaldi::nnet1;
     typedef kaldi::int32 int32;
 
-    const char *usage = 
+    const char *usage =
       "Sets learning rate coefficient inside of 'nnet1' model\n"
-      "Usage: nnet-set-learnrate --components=<csl> --coef=<float> <nnet-in> <nnet-out>\n";
+      "Usage: nnet-set-learnrate --components=<csl> --coef=<float> <nnet-in> <nnet-out>\n"
+      "e.g.: nnet-set-learnrate --components=1:3:5 --coef=0.5 --bias-coef=0.1 nnet-in nnet-out\n";
 
     ParseOptions po(usage);
     bool binary = true;
-    po.Register("binary", &binary, "Write output in binary mode");   
+    po.Register("binary", &binary, "Write output in binary mode");
 
     std::string components_str = "";
-    po.Register("components", &components_str, 
-        "Select components by csl, starts from 1. Layout as in the 'nnet-info' output, (example 1:2:3)");
-    
-    float coef = 1.0, weight_coef = 1.0, bias_coef = 1.0;
-    po.Register("coef", &coef, "Learn-rate coefficient for both weight matrices and biases.");
-    po.Register("weight-coef", &weight_coef, "Learn-rate coefficient for weight matrices.");
-    po.Register("bias-coef", &bias_coef, "Learn-rate coefficient for bias.");
+    po.Register("components", &components_str,
+        "Select components by 'csl' of 1..N values. Layout is the same as in "
+        "'nnet-info' output, (example 1:3:5)");
+
+    float coef = 1.0,
+          weight_coef = 1.0,
+          bias_coef = 1.0;
+
+    po.Register("coef", &coef,
+        "Learn-rate coefficient for both weight matrices and biases.");
+    po.Register("weight-coef", &weight_coef,
+        "Learn-rate coefficient for weight matrices "
+        "(used as: coef * weight_coef).");
+    po.Register("bias-coef", &bias_coef,
+        "Learn-rate coefficient for bias (used as: coef * bias_coef).");
 
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
     }
 
-    std::string nnet_in_filename = po.GetArg(1), 
+    std::string nnet_in_filename = po.GetArg(1),
       nnet_out_filename = po.GetArg(2);
 
     Nnet nnet;
@@ -62,30 +72,32 @@ int main(int argc, char *argv[]) {
     // A vector which contains indices of components,
     // where we will set the 'learn-rate coefficients',
     std::vector<int32> components;
-    if (components_str == "") {
-      // select all the components (1..Ncomp),
-      for (int32 i=1; i<=nnet.NumComponents(); i++) {
+    if (components_str != "") {
+      // components were selected by the option,
+      kaldi::SplitStringToIntegers(components_str, ":", false, &components);
+    } else {
+      // otherwise select all the components (1..Ncomp),
+      for (int32 i = 1; i <= nnet.NumComponents(); i++) {
         components.push_back(i);
       }
-    } else {
-      // select only some components,
-      kaldi::SplitStringToIntegers(components_str, ":", false, &components);
     }
 
     // Setting the learning rate coefficients,
-    for (int32 i=0; i<components.size(); i++) {
+    for (int32 i = 0; i < components.size(); i++) {
       if (nnet.GetComponent(components[i]-1).IsUpdatable()) {
-        UpdatableComponent& comp = dynamic_cast<UpdatableComponent&>(nnet.GetComponent(components[i]-1));
-        comp.SetLearnRateCoef(coef * weight_coef); // lr. coef for weight matrices,
-        comp.SetBiasLearnRateCoef(coef * bias_coef); // lr. coef for biases,
+        UpdatableComponent& comp =
+          dynamic_cast<UpdatableComponent&>(nnet.GetComponent(components[i]-1));
+        comp.SetLearnRateCoef(coef * weight_coef);  // weight matrices, etc.,
+        comp.SetBiasLearnRateCoef(coef * bias_coef);  // biases,
       }
     }
 
-    // Write the component,  
-    nnet.Write(nnet_out_filename, binary); 
-    
+    // Write the 'nnet1' network,
+    nnet.Write(nnet_out_filename, binary);
+
     return 0;
   } catch(const std::exception &e) {
+    std::cerr << e.what();
     return -1;
   }
 }

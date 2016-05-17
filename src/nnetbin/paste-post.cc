@@ -35,26 +35,27 @@ int main(int argc, char *argv[]) {
   typedef kaldi::int32 int32;
   try {
     const char *usage =
-        "Combine 2 or more streams with NN-training targets into single stream.\n"
-        "As the posterior streams are pasted, the output dimension is the sum\n"
-        "of the input dimensions. This is used when training NN with\n"
-        "multiple softmaxes on its output. This is used in multi-task, \n"
-        "multi-lingual or multi-database training. Depending on the context,\n"
-        "an utterance is not required to be in all the input streams.\n"
-        "For a multi-database training only 1 output layer will be active.\n"
-        "\n"
-        "The lengths of utterances are provided as 1st argument.\n"
-        "The dimensions of input stream are set as 2nd in argument.\n"
-        "Follow the input and output streams which are in 'posterior' format.\n"
-        "\n"
-        "Usage: paste-post <featlen-rspecifier> <dims-csl> <post1-rspecifier> ... <postN-rspecifier> <post-wspecifier>\n"
-        "e.g.:\n"
-        " paste-post 'ark:feat-to-len $feats ark,t:-|' 1029:1124 ark:post1.ark ark:post2.ark ark:pasted.ark\n";
+      "Combine 2 or more streams with NN-training targets into single stream.\n"
+      "As the posterior streams are pasted, the output dimension is the sum\n"
+      "of the input dimensions. This is used when training NN with\n"
+      "multiple softmaxes on its output. This is used in multi-task, \n"
+      "multi-lingual or multi-database training. Depending on the context,\n"
+      "an utterance is not required to be in all the input streams.\n"
+      "For a multi-database training only 1 output layer will be active.\n"
+      "\n"
+      "The lengths of utterances are provided as 1st argument.\n"
+      "The dimensions of input stream are set as 2nd in argument.\n"
+      "Follow the input and output streams which are in 'posterior' format.\n"
+      "\n"
+      "Usage: paste-post <featlen-rspecifier> <dims-csl> <post1-rspecifier> "
+      "... <postN-rspecifier> <post-wspecifier>\n"
+      "e.g.: paste-post 'ark:feat-to-len $feats ark,t:-|' 1029:1124 "
+      "ark:post1.ark ark:post2.ark ark:pasted.ark\n";
 
     ParseOptions po(usage);
 
     bool allow_partial = false;
-    po.Register("allow-partial", &allow_partial, 
+    po.Register("allow-partial", &allow_partial,
                 "Produce output also when the utterance is not in all input streams.");
 
     po.Read(argc, argv);
@@ -71,8 +72,9 @@ int main(int argc, char *argv[]) {
 
     // read the dims of input posterior streams,
     std::vector<int32> stream_dims;
-    if (!kaldi::SplitStringToIntegers(stream_dims_str, ":,", false, &stream_dims))
+    if (!kaldi::SplitStringToIntegers(stream_dims_str, ":,", false, &stream_dims)) {
       KALDI_ERR << "Invalid stream-dims string " << stream_dims_str;
+    }
     if (stream_count != stream_dims.size()) {
       KALDI_ERR << "Mismatch in input posterior-stream count " << stream_count
                 << " and --stream-dims count" << stream_dims.size()
@@ -100,7 +102,7 @@ int main(int argc, char *argv[]) {
       bool ok = true, empty = true;
       std::string utt = featlen_reader.Key();
       int32 num_frames = featlen_reader.Value();
-      
+
       // show which streams are non-empty,
       if (allow_partial && kaldi::g_kaldi_verbose_level >= 2) {
         std::string nonempty_streams;
@@ -109,8 +111,8 @@ int main(int argc, char *argv[]) {
             nonempty_streams += " " + ToString(s);
           }
         }
-        KALDI_VLOG(2) << "Processing " << utt 
-                      << ", frames " << num_frames 
+        KALDI_VLOG(2) << "Processing " << utt
+                      << ", frames " << num_frames
                       << ", pasted-from streams " << nonempty_streams;
       }
 
@@ -153,7 +155,8 @@ int main(int argc, char *argv[]) {
       }
     }
     KALDI_LOG << "Pasted posteriors for " << num_done << " sentences, "
-              << "missing sentences " << num_empty << ", failed for " << num_err;
+              << "missing sentences " << num_empty << ", "
+              << "failed for " << num_err;
     return (num_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();

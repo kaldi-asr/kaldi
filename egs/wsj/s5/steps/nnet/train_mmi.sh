@@ -57,7 +57,9 @@ alidir=$4
 denlatdir=$5
 dir=$6
 
-for f in $data/feats.scp $alidir/{tree,final.mdl,ali.1.gz} $denlatdir/lat.scp $srcdir/{final.nnet,final.feature_transform}; do
+for f in $data/feats.scp $denlatdir/lat.scp \
+         $alidir/{tree,final.mdl,ali.1.gz} \
+         $srcdir/{final.nnet,final.feature_transform}; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
@@ -68,7 +70,7 @@ mkdir -p $dir/log
 
 cp $alidir/{final.mdl,tree} $dir
 
-silphonelist=`cat $lang/phones/silence.csl` || exit 1;
+silphonelist=`cat $lang/phones/silence.csl`
 
 
 #Get the files we will need
@@ -94,7 +96,7 @@ model=$dir/final.mdl
 
 # Shuffle the feature list to make the GD stochastic!
 # By shuffling features, we have to use lattices with random access (indexed by .scp file).
-cat $data/feats.scp | utils/shuffle_list.pl --srand $seed > $dir/train.scp
+cat $data/feats.scp | utils/shuffle_list.pl --srand $seed >$dir/train.scp
 
 ###
 ### PREPARE FEATURE EXTRACTION PIPELINE
@@ -187,7 +189,7 @@ while [ $x -le $num_iters ]; do
        --learn-rate=$learn_rate \
        --drop-frames=$drop_frames \
        --verbose=$verbose \
-       $cur_mdl $alidir/final.mdl "$feats" "$lats" "$ali" $dir/$x.nnet || exit 1
+       $cur_mdl $alidir/final.mdl "$feats" "$lats" "$ali" $dir/$x.nnet
   fi
   cur_mdl=$dir/$x.nnet
 
@@ -209,8 +211,10 @@ else
   echo "Re-estimating priors by forwarding 10k utterances from training set."
   . cmd.sh
   nj=$(cat $alidir/num_jobs)
-  steps/nnet/make_priors.sh --cmd "$train_cmd" ${ivector:+--ivector "$ivector"} --nj $nj \
-    $data $dir || exit 1
+  steps/nnet/make_priors.sh --cmd "$train_cmd" --nj $nj \
+    ${ivector:+ --ivector "$ivector"} \
+    $data $dir
 fi
 
+echo "$0: Done. '$dir'"
 exit 0

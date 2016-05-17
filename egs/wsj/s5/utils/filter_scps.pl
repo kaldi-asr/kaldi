@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
-# Copyright 2010-2012 Microsoft Corporation
-#                     Johns Hopkins University (author: Daniel Povey)
-#           2015      Xiaohui Zhang
+# Copyright 2010-2012   Microsoft Corporation
+#           2012-2016   Johns Hopkins University (author: Daniel Povey)
+#                2015   Xiaohui Zhang
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -58,7 +58,7 @@ do {
 
 $idlist = shift @ARGV;
 
-if (defined $jobname && $idlist !~ m/$jobname/ &&
+if ($idlist !~ m/$jobname/ &&
     $jobend > $jobstart) {
   print STDERR "filter_scps.pl: you are trying to use multiple filter files as filter patterns but "
     . "you are providing just one filter file ($idlist)\n";
@@ -67,52 +67,96 @@ if (defined $jobname && $idlist !~ m/$jobname/ &&
 
 
 $infile = shift @ARGV;
-open (F, "< $infile") or die "Can't open $infile for read: $!";
-my @inlines;
-@inlines = <F>;
-close(F);
 
 $outfile = shift @ARGV;
 
-if (defined $jobname && $outfile !~ m/$jobname/ &&
-    $jobend > $jobstart) {
+if ($outfile !~ m/$jobname/ &&  $jobend > $jobstart) {
   print STDERR "filter_scps.pl: you are trying to create multiple filtered files but "
     . "you are providing just one output file ($outfile)\n";
   exit(1);
 }
 
+# This hashes from the id (e.g. utterance-id) to an array of the relevant
+# job-ids (which are integers).  In any normal use-case, this array will contain
+# exactly one job-id for any given id, but we want to be agnostic about this.
+%id2jobs = ( );
+
+# Some variables that we set to produce a warning.
+$warn_uncovered = 0;
+$warn_multiply_covered = 0;
+
 for ($jobid = $jobstart; $jobid <= $jobend; $jobid++) {
-  $outfile_n = $outfile;
   $idlist_n = $idlist;
-  if (defined $jobname) { 
-    $idlist_n =~ s/$jobname/$jobid/g;
-    $outfile_n =~ s/$jobname/$jobid/g;
-  }
+  $idlist_n =~ s/$jobname/$jobid/g;
 
   open(F, "<$idlist_n") || die "Could not open id-list file $idlist_n";
-  my %seen;
+
   while(<F>) {
     @A = split;
-    @A>=1 || die "Invalid line $_ in id-list file $idlist_n";
-    $seen{$A[0]} = 1;
+    @A >= 1 || die "Invalid line $_ in id-list file $idlist_n";
+    $id = $A[0];
+    if (! defined $id2jobs{$id}) {
+      $id2jobs{$id} = [ ];  # new anonymous array.
+    }
+    push @{$id2jobs{$id}}, $jobid;
   }
   close(F);
-  open(FW, ">$outfile_n") || die "Could not open output file $outfile_n";
-  foreach (@inlines) {
-    if ($field == 1) { # Treat this as special case, since it is common.
-      $_ =~ m/\s*(\S+)\s*/ || die "Bad line $_, could not get first field.";
-      # $1 is what we filter on.
-      if ($seen{$1}) {
-        print FW $_;
+}
+
+# job2output hashes from the job-id, to an anonymous array containing
+# a sequence of output lines.
+%job2output = ( );
+for ($jobid = $jobstart; $jobid <= $jobend; $jobid++) {
+  $job2output{$jobid} = [ ];  # new anonymous array.
+}
+
+open (F, "< $infile") or die "Can't open $infile for read: $!";
+while (<F>) {
+  if ($field == 1) {           # Treat this as special case, since it is common.
+    $_ =~ m/\s*(\S+)\s*/ || die "Bad line $_, could not get first field.";
+    # $1 is what we filter on.
+    $id = $1;
+  } else {
+    @A = split;
+    @A > 0 || die "Invalid scp file line $_";
+    @A >= $field || die "Invalid scp file line $_";
+    $id = $A[$field-1];
+  }
+  if ( ! defined $id2jobs{$id}) {
+    $warn_uncovered = 1;
+  } else {
+    @jobs = @{$id2jobs{$id}};   # this dereferences the array reference.
+    if (@jobs > 1) {
+      $warn_multiply_covered = 1;
+    }
+    foreach $job_id (@jobs) {
+      if (!defined $job2output{$job_id}) {
+        die "Likely code error";
       }
-    } else {
-      @A = split;
-      @A > 0 || die "Invalid scp file line $_";
-      @A >= $field || die "Invalid scp file line $_";
-      if ($seen{$A[$field-1]}) {
-        print FW $_;
-      }
+      push @{$job2output{$job_id}}, $_;
     }
   }
+}
+close(F);
+
+for ($jobid = $jobstart; $jobid <= $jobend; $jobid++) {
+  $outfile_n = $outfile;
+  $outfile_n =~ s/$jobname/$jobid/g;
+  open(FW, ">$outfile_n") || die "Could not open output file $outfile_n";
+  $printed = 0;
+  foreach $line (@{$job2output{$jobid}}) {
+    print FW $line;
+    $printed = 1;
+  }
+  if (!printed) {
+    print STDERR "filter_scps.pl: warning: output to $outfile_n is empty\n";
+  }
   close(FW);
+}
+
+if ($warn_uncovered) {
+  print STDERR "filter_scps.pl: warning: some input lines did not get output\n";
+}
+if ($warn_multiply_covered) {
+  print STDERR "filter_scps.pl: warning: some input lines were output to multiple files\n";
 }
