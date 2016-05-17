@@ -77,10 +77,10 @@ inline void SetVerboseLevel(int32 i) { g_kaldi_verbose_level = i; }
 /// Log message severity and source location info.
 struct LogMessageEnvelope {
   enum Severity {
-    AssertFailed = -3,
-    Error = -2,
-    Warning = -1,
-    Info = 0,
+    kAssertFailed = -3,
+    kError = -2,
+    kWarning = -1,
+    kInfo = 0,
   };
   // An 'enum Severity' value, or a positive number indicating verbosity level.
   int severity;
@@ -124,13 +124,13 @@ private:
 
 // The definition of the logging macros,
 #define KALDI_ERR \
-  ::kaldi::MessageLogger(::kaldi::LogMessageEnvelope::Error, \
+  ::kaldi::MessageLogger(::kaldi::LogMessageEnvelope::kError, \
                          __func__, __FILE__, __LINE__).stream()
 #define KALDI_WARN \
-  ::kaldi::MessageLogger(::kaldi::LogMessageEnvelope::Warning, \
+  ::kaldi::MessageLogger(::kaldi::LogMessageEnvelope::kWarning, \
                          __func__, __FILE__, __LINE__).stream()
 #define KALDI_LOG \
-  ::kaldi::MessageLogger(::kaldi::LogMessageEnvelope::Info, \
+  ::kaldi::MessageLogger(::kaldi::LogMessageEnvelope::kInfo, \
                          __func__, __FILE__, __LINE__).stream()
 #define KALDI_VLOG(v) if ((v) <= ::kaldi::g_kaldi_verbose_level)     \
   ::kaldi::MessageLogger((::kaldi::LogMessageEnvelope::Severity)(v), \

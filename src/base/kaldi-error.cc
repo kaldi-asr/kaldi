@@ -170,20 +170,20 @@ void MessageLogger::HandleMessage(const LogMessageEnvelope &envelope,
   
   // Build the log-message 'header',
   std::stringstream header;
-  if (envelope.severity > LogMessageEnvelope::Info) {
+  if (envelope.severity > LogMessageEnvelope::kInfo) {
     header << "VLOG[" << envelope.severity << "] (";
   } else {
     switch (envelope.severity) {
-      case LogMessageEnvelope::Info :
+      case LogMessageEnvelope::kInfo :
         header << "LOG (";
         break;
-      case LogMessageEnvelope::Warning :
+      case LogMessageEnvelope::kWarning :
         header << "WARNING (";
         break;
-      case LogMessageEnvelope::Error :
+      case LogMessageEnvelope::kError :
         header << "ERROR (";
         break;
-      case LogMessageEnvelope::AssertFailed :
+      case LogMessageEnvelope::kAssertFailed :
         header << "ASSERTION_FAILED (";
         break;
       default:
@@ -195,11 +195,11 @@ void MessageLogger::HandleMessage(const LogMessageEnvelope &envelope,
          << envelope.file << ':' << envelope.line << ")";
 
   // In following lines we decide what to do,
-  if (envelope.severity >= LogMessageEnvelope::Warning) {
+  if (envelope.severity >= LogMessageEnvelope::kWarning) {
     // VLOG, LOG, WARNING: 
     // print to stderr,
     fprintf(stderr, "%s %s\n", header.str().c_str(), message);
-  } else if (envelope.severity == LogMessageEnvelope::Error) {
+  } else if (envelope.severity == LogMessageEnvelope::kError) {
     // ERROR:
     // print to stderr (with stack-trace), 
     fprintf(stderr, "%s %s\n\n%s\n", header.str().c_str(), message, 
@@ -215,7 +215,7 @@ void MessageLogger::HandleMessage(const LogMessageEnvelope &envelope,
       // in a destructor of some local object).
       abort();
     }
-  } else if (envelope.severity == LogMessageEnvelope::AssertFailed) {
+  } else if (envelope.severity == LogMessageEnvelope::kAssertFailed) {
     // ASSERT_FAILED:
     // print to stderr (with stack-trace), call abort(),
     fprintf(stderr, "%s %s\n\n%s\n", header.str().c_str(), message, 
@@ -231,7 +231,7 @@ void MessageLogger::HandleMessage(const LogMessageEnvelope &envelope,
 
 void KaldiAssertFailure_(const char *func, const char *file,
                          int32 line, const char *cond_str) {
-  MessageLogger ml(LogMessageEnvelope::AssertFailed, func, file, line);
+  MessageLogger ml(LogMessageEnvelope::kAssertFailed, func, file, line);
   ml.stream() << ": '" << cond_str << "' ";
 }
 
