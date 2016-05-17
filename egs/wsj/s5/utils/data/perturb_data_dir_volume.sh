@@ -32,6 +32,7 @@ fi
 
 cat $data/wav.scp | python -c "
 import sys, os, subprocess, re, random
+random.seed(0)
 scale_low = 1.0/8
 scale_high = 2.0
 for line in sys.stdin.readlines():
