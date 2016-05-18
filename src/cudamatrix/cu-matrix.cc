@@ -239,6 +239,7 @@ void CuMatrixBase<Real>::CopyFromMat(const CuMatrixBase<OtherReal> &M,
       } else {
         cuda_copy_from_mat_trans(dimGrid, dimBlock, data_, M.data_, Dim(), M.Dim());
       }
+      CU_SAFE_CALL(cudaGetLastError());
     }
     CuDevice::Instantiate().AccuProfile("CuMatrixBase::CopyFromMat(from other CuMatrixBase)", tim.Elapsed());
   } else
