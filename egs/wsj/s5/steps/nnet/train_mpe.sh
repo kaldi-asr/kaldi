@@ -130,12 +130,19 @@ feats="ark,o:copy-feats scp:$dir/train.scp ark:- |"
 
 # add-ivector (optional),
 if [ -e $D/ivector_dim ]; then
-  ivector_dim=$(cat $D/ivector_dim)
-  [ -z $ivector ] && echo "Missing --ivector, they were used in training! (dim $ivector_dim)" && exit 1
-  ivector_dim2=$(copy-vector "$ivector" ark,t:- | head -n1 | awk '{ print NF-3 }') || true
-  [ $ivector_dim != $ivector_dim2 ] && "Error, i-vector dimensionality mismatch! (expected $ivector_dim, got $ivector_dim2 in $ivector)" && exit 1
-  # Append to feats
-  feats="$feats append-vector-to-feats ark:- '$ivector' ark:- |"
+  [ -z $ivector ] && echo "Missing --ivector, they were used in training!" && exit 1
+  # Get the tool, 
+  ivector_append_tool=append-vector-to-feats # default,
+  [ -e $D/ivector_append_tool ] && ivector_append_tool=$(cat $D/ivector_append_tool)
+  # Check dims,
+  dim_raw=$(feat-to-dim "$feats" -)
+  dim_raw_and_ivec=$(feat-to-dim "$feats $ivector_append_tool ark:- '$ivector' ark:- |" -)
+  dim_ivec=$((dim_raw_and_ivec - dim_raw))
+  [ $dim_ivec != "$(cat $D/ivector_dim)" ] && \
+    echo "Error, i-vector dim. mismatch (expected $(cat $D/ivector_dim), got $dim_ivec in '$ivector')" && \
+    exit 1
+  # Append to feats,
+  feats="$feats $ivector_append_tool ark:- '$ivector' ark:- |"
 fi
 
 ### Record the setup,
@@ -143,6 +150,7 @@ fi
 [ ! -z "$delta_opts" ] && echo $delta_opts >$dir/delta_opts
 [ -e $D/pytel_transform.py ] && cp {$D,$dir}/pytel_transform.py
 [ -e $D/ivector_dim ] && cp {$D,$dir}/ivector_dim
+[ -e $D/ivector_append_tool ] && cp $D/ivector_append_tool $dir/ivector_append_tool
 ###
 
 ###
@@ -204,8 +212,7 @@ else
   . cmd.sh
   nj=$(cat $alidir/num_jobs)
   steps/nnet/make_priors.sh --cmd "$train_cmd" --nj $nj \
-    ${ivector:+ --ivector "$ivector"} \
-    $data $dir
+    ${ivector:+ --ivector "$ivector"} $data $dir
 fi
 
 echo "$0: Done. '$dir'"
