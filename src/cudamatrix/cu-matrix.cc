@@ -1496,6 +1496,7 @@ void CuMatrixBase<Real>::FindRowMaxId(CuArray<int32> *id) const {
     dim3 dimBlock(CU1DBLOCK);
     dim3 dimGrid(num_rows_);
     cuda_find_row_max_id(dimGrid, dimBlock, data_, NULL, id->Data(), d);
+    CU_SAFE_CALL(cudaGetLastError());
 
     // now we have the indices!
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
