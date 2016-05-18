@@ -135,8 +135,8 @@ class WaveHolder {
       t.Write(os);  // throws exception on failure.
       return true;
     } catch (const std::exception &e) {
-      KALDI_WARN << "Exception caught in WaveHolder object (writing).";
-      if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
+      KALDI_WARN << "Exception caught in WaveHolder object (writing). " 
+                 << e.what();
       return false;  // write failure.
     }
   }
@@ -162,8 +162,8 @@ class WaveHolder {
       t_.Read(is);  // throws exception on failure.
       return true;
     } catch (const std::exception &e) {
-      KALDI_WARN << "Exception caught in WaveHolder object (reading).";
-      if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
+      KALDI_WARN << "Exception caught in WaveHolder object (reading). " 
+                 << e.what();
       return false;  // write failure.
     }
   }
@@ -213,8 +213,8 @@ class WaveInfoHolder {
       t_.Read(is, WaveData::kLeaveDataUndefined);  // throws exception on failure.
       return true;
     } catch (const std::exception &e) {
-      KALDI_WARN << "Exception caught in WaveHolder object (reading).";
-      if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
+      KALDI_WARN << "Exception caught in WaveHolder object (reading). " 
+                 << e.what();
       return false;  // write failure.
     }
   }

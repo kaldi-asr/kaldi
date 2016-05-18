@@ -129,8 +129,7 @@ bool PosteriorHolder::Write(std::ostream &os, bool binary, const T &t) {
     WritePosterior(os, binary, t);
     return true;
   } catch(const std::exception &e) {
-    KALDI_WARN << "Exception caught writing table of posteriors";
-    if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
+    KALDI_WARN << "Exception caught writing table of posteriors. " << e.what();
     return false;  // Write failure.
   }
 }
@@ -147,8 +146,7 @@ bool PosteriorHolder::Read(std::istream &is) {
     ReadPosterior(is, is_binary, &t_);
     return true;
   } catch (std::exception &e) {
-    KALDI_WARN << "Exception caught reading table of posteriors";
-    if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
+    KALDI_WARN << "Exception caught reading table of posteriors. " << e.what();
     t_.clear();
     return false;
   }
@@ -174,8 +172,7 @@ bool GaussPostHolder::Write(std::ostream &os, bool binary, const T &t) {
     if(!binary) os << '\n';
     return os.good();
   } catch (const std::exception &e) {
-    KALDI_WARN << "Exception caught writing table of posteriors";
-    if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
+    KALDI_WARN << "Exception caught writing table of posteriors. " << e.what();
     return false;  // Write failure.
   }
 }
@@ -210,8 +207,7 @@ bool GaussPostHolder::Read(std::istream &is) {
     }
     return true;
   } catch (std::exception &e) {
-    KALDI_WARN << "Exception caught reading table of posteriors";
-    if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
+    KALDI_WARN << "Exception caught reading table of posteriors. " << e.what();
     t_.clear();
     return false;
   }
