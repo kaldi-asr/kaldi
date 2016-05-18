@@ -1489,36 +1489,15 @@ void CuMatrixBase<Real>::FindRowMaxId(CuArray<int32> *id) const {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-
-    // initialize the vectors
-    CuVector<Real> max(num_rows_);
-    max.Set(-1e21);
     id->Resize(num_rows_);
-    id->Set(-1);
+    MatrixDim d = Dim();
 
-    MatrixDim d=Dim(); // only stride will be used!
+    // CUDA thread layout: one thread block per matrix-row.
+    dim3 dimBlock(CU1DBLOCK);
+    dim3 dimGrid(num_rows_);
+    cuda_find_row_max_id(dimGrid, dimBlock, data_, NULL, id->Data(), d);
+    CU_SAFE_CALL(cudaGetLastError());
 
-    // process per 256 column blocks
-    for (int32 block = 0; (block+1)*256 <= num_cols_; block++) {
-      dim3 dimBlock(CU1DBLOCK, 1);
-      dim3 dimGrid(1, num_rows_);
-      int32 offset = block*CU1DBLOCK;
-
-      cuda_find_row_max_id(dimGrid, dimBlock, data_ + offset,
-                           max.data_, id->Data(), offset, d);
-    }
-
-    // process the remainder
-    int32 div = num_cols_ / 256;
-    int32 mod = num_cols_ % 256;
-    if (mod != 0) {
-      dim3 dimBlock(mod, 1);
-      dim3 dimGrid(1, num_rows_);
-      int32 offset=div*256;
-
-      cuda_find_row_max_id(dimGrid, dimBlock, data_ + offset,
-                           max.data_, id->Data(), offset, d);
-    }
     // now we have the indices!
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
@@ -1529,11 +1508,11 @@ void CuMatrixBase<Real>::FindRowMaxId(CuArray<int32> *id) const {
     id->Set(-1);
     // find maxima
     MatrixIndexT num_rows = num_rows_, num_cols = num_cols_;
-    for(MatrixIndexT r = 0; r < num_rows; r++) {
+    for (MatrixIndexT r = 0; r < num_rows; r++) {
       Real max = -1e21;
       int32 max_id = -1;
       const Real *row_data = Mat().RowData(r);
-      for(MatrixIndexT c = 0; c < num_cols; c++) {
+      for (MatrixIndexT c = 0; c < num_cols; c++) {
         if (max < row_data[c]) {
           max = row_data[c];
           max_id = c;

@@ -2045,35 +2045,62 @@ static void _regularize_l1(Real* wei, Real* grad, Real l1, Real lr, MatrixDim d,
   }
 }
 
-
-
 template<typename Real>
 __global__
-static void _find_row_max_id(const Real* mat, Real* vec_val, int32_cuda* vec_id, int32_cuda voff, MatrixDim d) {
-  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
-  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
+static void _find_row_max_id(const Real* mat, Real* vec_val, int32_cuda* vec_id,
+    MatrixDim d) {
+  const int32_cuda i = blockIdx.x;
+  const int32_cuda base = i * d.stride;
+  const int32_cuda tid = threadIdx.x;
 
-  if(blockIdx.x > 0) return;
-  if(blockDim.y != 1) return;
+  __shared__ Real smax[CU1DBLOCK];
+  __shared__ int32_cuda sidx[CU1DBLOCK];
 
-  __shared__ Real value[CU1DBLOCK];
-  __shared__ int32_cuda index[CU1DBLOCK];
+  Real tmax = -1e20;
+  int32_cuda tidx = -1;
 
-  //copy to shared memory
-  value[threadIdx.x] = mat[i+j*d.stride];
-  index[threadIdx.x] = threadIdx.x;
-  __syncthreads();
-
-  //get the id of the max value
-  int32_cuda out_max = _max_id_reduce(value, index);
-  __syncthreads();
-
-  //see if it's bigger value
-  if(threadIdx.x == 0) {
-    if(vec_val[j] <= mat[out_max+j*d.stride]) {
-      vec_val[j] = mat[out_max+j*d.stride];
-      vec_id[j]  = voff+out_max;
+  // Loop over blocks for coalesced memory access.
+  for (int32_cuda j = tid; j < d.cols; j += CU1DBLOCK) {
+    const Real val = mat[base + j];
+    if (val > tmax) {
+      tmax = val;
+      tidx = j;
     }
+  }
+
+  smax[tid] = tmax;
+  sidx[tid] = tidx;
+
+  // Parallel reduce
+  #pragma unroll
+  for (int32_cuda num_working_threads = CU1DBLOCK / 2;
+      num_working_threads >= warpSize; num_working_threads >>= 1) {
+    __syncthreads();
+    if (tid < num_working_threads) {
+      if (smax[tid + num_working_threads] > smax[tid]) {
+        smax[tid] = smax[tid + num_working_threads];
+        sidx[tid] = sidx[tid + num_working_threads];
+      }
+    }
+  }
+  // Warp reduce without __syncthreads()
+  // (note.: synchronizes implicitly within a warp at the multiprocessor)
+  if (tid < warpSize / 2) {
+    #pragma unroll
+    for (int32_cuda num_working_threads = warpSize / 2; num_working_threads > 0;
+        num_working_threads >>= 1) {
+      if (smax[tid + num_working_threads] > smax[tid]) {
+        smax[tid] = smax[tid + num_working_threads];
+        sidx[tid] = sidx[tid + num_working_threads];
+      }
+    }
+  }
+
+  if (tid == 0) {
+    if (vec_val) {
+      vec_val[i] = smax[0];
+    }
+    vec_id[i] = sidx[0];
   }
 }
 
@@ -2534,8 +2561,8 @@ void cudaF_regularize_l1(dim3 Gr, dim3 Bl, float* wei, float* grad, float l1, fl
   _regularize_l1<<<Gr,Bl>>>(wei,grad,l1,lr,d,stride_grad);
 }
 
-void cudaF_find_row_max_id(dim3 Gr, dim3 Bl, const float* mat, float* vec_val, int32_cuda* vec_id, int32_cuda voff, MatrixDim d) {
-  _find_row_max_id<<<Gr,Bl>>>(mat, vec_val, vec_id, voff, d);
+void cudaF_find_row_max_id(dim3 Gr, dim3 Bl, const float* mat, float* vec_val, int32_cuda* vec_id, MatrixDim d) {
+  _find_row_max_id<<<Gr,Bl>>>(mat, vec_val, vec_id, d);
 }
 
 void cudaF_diff_xent(dim3 Gr, dim3 Bl, const int32_cuda* vec_tgt, float* mat_net_out, float* vec_log_post, MatrixDim d) {
@@ -2996,8 +3023,8 @@ void cudaD_regularize_l1(dim3 Gr, dim3 Bl, double* wei, double* grad, double l1,
   _regularize_l1<<<Gr,Bl>>>(wei,grad,l1,lr,d,stride_grad);
 }
 
-void cudaD_find_row_max_id(dim3 Gr, dim3 Bl, const double* mat, double* vec_val, int32_cuda* vec_id, int32_cuda voff, MatrixDim d) {
-  _find_row_max_id<<<Gr,Bl>>>(mat, vec_val, vec_id, voff, d);
+void cudaD_find_row_max_id(dim3 Gr, dim3 Bl, const double* mat, double* vec_val, int32_cuda* vec_id, MatrixDim d) {
+  _find_row_max_id<<<Gr,Bl>>>(mat, vec_val, vec_id, d);
 }
 
 void cudaD_diff_xent(dim3 Gr, dim3 Bl, const int32_cuda* vec_tgt, double* mat_net_out, double* vec_log_post, MatrixDim d) {

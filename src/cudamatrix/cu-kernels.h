@@ -249,7 +249,7 @@ inline void cuda_softmax_reduce(size_t Gr, size_t Bl, float *y, const float *x, 
 inline void cuda_log_softmax_reduce(size_t Gr, size_t Bl, float *y, const float *x, MatrixDim d, int src_stride) { cudaF_log_softmax_reduce(Gr,Bl,y,x,d,src_stride); }
 
 inline void cuda_regularize_l1(dim3 Gr, dim3 Bl, float *wei, float *grad, float l1, float lr, MatrixDim d, int stride_grad) { cudaF_regularize_l1(Gr,Bl,wei,grad,l1,lr,d,stride_grad); }
-inline void cuda_find_row_max_id(dim3 Gr, dim3 Bl, const float *mat, float *vec_val, int32_cuda *vec_id, int32_cuda voff, MatrixDim d) { cudaF_find_row_max_id(Gr,Bl,mat,vec_val,vec_id,voff,d); }
+inline void cuda_find_row_max_id(dim3 Gr, dim3 Bl, const float *mat, float *vec_val, int32_cuda *vec_id, MatrixDim d) { cudaF_find_row_max_id(Gr,Bl,mat,vec_val,vec_id,d); }
 inline void cuda_diff_xent(dim3 Gr, dim3 Bl, const int32_cuda *vec_tgt, float *mat_net_out, float *vec_log_post, MatrixDim d) { cudaF_diff_xent(Gr,Bl,vec_tgt,mat_net_out,vec_log_post,d); }
 inline void cuda_copy_rows_from_vec(dim3 Gr, dim3 Bl, float *mat_out, MatrixDim d_out, const float *v_in) {
   cudaF_copy_rows_from_vec(Gr, Bl, mat_out, d_out, v_in);
@@ -428,7 +428,7 @@ inline void cuda_softmax_reduce(size_t Gr, size_t Bl, double *y, const double *x
 inline void cuda_log_softmax_reduce(size_t Gr, size_t Bl, double *y, const double *x, MatrixDim d, int src_stride) { cudaD_log_softmax_reduce(Gr,Bl,y,x,d,src_stride); }
 
 inline void cuda_regularize_l1(dim3 Gr, dim3 Bl, double *wei, double *grad, double l1, double lr, MatrixDim d, int stride_grad) { cudaD_regularize_l1(Gr,Bl,wei,grad,l1,lr,d,stride_grad); }
-inline void cuda_find_row_max_id(dim3 Gr, dim3 Bl, const double *mat, double *vec_val, int32_cuda *vec_id, int32_cuda voff, MatrixDim d) { cudaD_find_row_max_id(Gr,Bl,mat,vec_val,vec_id,voff,d); }
+inline void cuda_find_row_max_id(dim3 Gr, dim3 Bl, const double *mat, double *vec_val, int32_cuda *vec_id, MatrixDim d) { cudaD_find_row_max_id(Gr,Bl,mat,vec_val,vec_id,d); }
 inline void cuda_diff_xent(dim3 Gr, dim3 Bl, const int32_cuda *vec_tgt, double *mat_net_out, double *vec_log_post, MatrixDim d) {
   cudaD_diff_xent(Gr,Bl,vec_tgt,mat_net_out,vec_log_post,d);
 }
