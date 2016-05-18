@@ -235,16 +235,43 @@ static void _copy_from_mat(Real* mat_out, const OtherReal* mat_in, MatrixDim d_o
     mat_out[index_out] = static_cast<Real>(mat_in[index_in]);
 }
 
-
-template<typename Real, typename OtherReal>
+template<int TileDim, typename Real, typename OtherReal>
 __global__
-static void _copy_from_mat_trans(Real* mat_out, const OtherReal* mat_in, MatrixDim d_out, MatrixDim d_in) {
-  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x; // col-index out
-  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y; // row-index out
-  int32_cuda index_out = i + j * d_out.stride;
-  int32_cuda index_in = j + i * d_in.stride;
-  if (j < d_out.rows && i < d_out.cols)
-    mat_out[index_out] = static_cast<Real>(mat_in[index_in]);
+static void _copy_from_mat_trans(Real* mat_out, const OtherReal* mat_in,
+    MatrixDim d_out, MatrixDim d_in) {
+  // Use shared meme to achieve both coalesced memory reading and writing
+  // '+1' to avoid bank conflict when reading sbuf
+  __shared__ Real sbuf[TileDim][TileDim + 1];
+
+  const int32_cuda i_in = blockIdx.y * TileDim + threadIdx.y; // row-index
+  const int32_cuda j_in = blockIdx.x * TileDim + threadIdx.x; // col-index
+  const int32_cuda tile_stride_in = CU1DBLOCK / TileDim * d_in.stride;
+  int32_cuda index_in = i_in * d_in.stride + j_in;
+
+  #pragma unroll
+  for (int i = 0; i < TileDim; i += CU1DBLOCK / TileDim) {
+    if (i_in + i < d_in.rows && j_in < d_in.cols) {
+      sbuf[threadIdx.y + i][threadIdx.x] = static_cast<Real>(mat_in[index_in]);
+    }
+    index_in += tile_stride_in;
+  }
+  __syncthreads();
+
+  // Grid is transposed, but block is not yet.
+  // Warp (blockDim.x) is always along the row-dim.
+  const int32_cuda i_out = blockIdx.x * TileDim + threadIdx.y;
+  const int32_cuda j_out = blockIdx.y * TileDim + threadIdx.x;
+  const int32_cuda tile_stride_out = CU1DBLOCK / TileDim * d_out.stride;
+  int32_cuda index_out = i_out * d_out.stride + j_out;
+
+  #pragma unroll
+  for (int i = 0; i < TileDim; i += CU1DBLOCK / TileDim) {
+    if (i_out + i < d_out.rows && j_out < d_out.cols) {
+      // block is tranposed when reading sbuf
+      mat_out[index_out] = sbuf[threadIdx.x][threadIdx.y + i];
+    }
+    index_out += tile_stride_out;
+  }
 }
 
 template<typename Real, typename OtherReal>
@@ -3080,19 +3107,51 @@ void cuda_copy_from_mat_dd(dim3 Gr, dim3 Bl, double *mat_out, const double* mat_
 }
 
 void cuda_copy_from_mat_df_trans(dim3 Gr, dim3 Bl, double* mat_out, const float* mat_in, MatrixDim d_out, MatrixDim d_in) {
-  _copy_from_mat_trans<<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
+  // Make Bl.x as compile-time constant for shared mem allocation and loop unroll. 16 is not used currently.
+  switch (Bl.x) {
+  case 16:
+    _copy_from_mat_trans<16><<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
+    break;
+  case 32:
+    _copy_from_mat_trans<32><<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
+    break;
+  }
 }
 
-void cuda_copy_from_mat_ff_trans(dim3 Gr, dim3 Bl, float* mat_out, const float* mat_in, MatrixDim d_out, MatrixDim d_in) {
-  _copy_from_mat_trans<<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
+void cuda_copy_from_mat_ff_trans(dim3 Gr, dim3 Bl, float* mat_out,  const float* mat_in, MatrixDim d_out, MatrixDim d_in) {
+  // Make Bl.x as compile-time constant for shared mem allocation and loop unroll. 16 is not used currently.
+  switch (Bl.x) {
+  case 16:
+    _copy_from_mat_trans<16><<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
+    break;
+  case 32:
+    _copy_from_mat_trans<32><<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
+    break;
+  }
 }
 
 void cuda_copy_from_mat_fd_trans(dim3 Gr, dim3 Bl, float *mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in) {
-  _copy_from_mat_trans<<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
+  // Make Bl.x as compile-time constant for shared mem allocation and loop unroll. 16 is not used currently.
+  switch (Bl.x) {
+  case 16:
+    _copy_from_mat_trans<16><<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
+    break;
+  case 32:
+    _copy_from_mat_trans<32><<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
+    break;
+  }
 }
 
 void cuda_copy_from_mat_dd_trans(dim3 Gr, dim3 Bl, double *mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in) {
-  _copy_from_mat_trans<<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
+  // Make Bl.x as compile-time constant for shared mem allocation and loop unroll. 16 is not used currently.
+  switch (Bl.x) {
+  case 16:
+    _copy_from_mat_trans<16><<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
+    break;
+  case 32:
+    _copy_from_mat_trans<32><<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
+    break;
+  }
 }
 
 void cuda_copy_from_smat_ff(dim3 Gr, dim3 Bl, float* mat_out, const MatrixElement<float>* smat_in, MatrixDim d_out, MatrixIndexT_cuda d_in) {
