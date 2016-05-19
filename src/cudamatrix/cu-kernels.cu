@@ -248,7 +248,7 @@ static void _copy_from_mat_trans(Real* mat_out, const OtherReal* mat_in,
   const int32_cuda tile_stride_in = CU1DBLOCK / TileDim * d_in.stride;
   int32_cuda index_in = i_in * d_in.stride + j_in;
 
-  #pragma unroll
+# pragma unroll
   for (int i = 0; i < TileDim; i += CU1DBLOCK / TileDim) {
     if (i_in + i < d_in.rows && j_in < d_in.cols) {
       sbuf[threadIdx.y + i][threadIdx.x] = static_cast<Real>(mat_in[index_in]);
@@ -264,7 +264,7 @@ static void _copy_from_mat_trans(Real* mat_out, const OtherReal* mat_in,
   const int32_cuda tile_stride_out = CU1DBLOCK / TileDim * d_out.stride;
   int32_cuda index_out = i_out * d_out.stride + j_out;
 
-  #pragma unroll
+# pragma unroll
   for (int i = 0; i < TileDim; i += CU1DBLOCK / TileDim) {
     if (i_out + i < d_out.rows && j_out < d_out.cols) {
       // block is tranposed when reading sbuf
