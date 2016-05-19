@@ -3107,51 +3107,19 @@ void cuda_copy_from_mat_dd(dim3 Gr, dim3 Bl, double *mat_out, const double* mat_
 }
 
 void cuda_copy_from_mat_df_trans(dim3 Gr, dim3 Bl, double* mat_out, const float* mat_in, MatrixDim d_out, MatrixDim d_in) {
-  // Make Bl.x as compile-time constant for shared mem allocation and loop unroll. 16 is not used currently.
-  switch (Bl.x) {
-  case 16:
-    _copy_from_mat_trans<16><<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
-    break;
-  case 32:
-    _copy_from_mat_trans<32><<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
-    break;
-  }
+  _copy_from_mat_trans<32><<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
 }
 
 void cuda_copy_from_mat_ff_trans(dim3 Gr, dim3 Bl, float* mat_out,  const float* mat_in, MatrixDim d_out, MatrixDim d_in) {
-  // Make Bl.x as compile-time constant for shared mem allocation and loop unroll. 16 is not used currently.
-  switch (Bl.x) {
-  case 16:
-    _copy_from_mat_trans<16><<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
-    break;
-  case 32:
-    _copy_from_mat_trans<32><<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
-    break;
-  }
+  _copy_from_mat_trans<32><<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
 }
 
 void cuda_copy_from_mat_fd_trans(dim3 Gr, dim3 Bl, float *mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in) {
-  // Make Bl.x as compile-time constant for shared mem allocation and loop unroll. 16 is not used currently.
-  switch (Bl.x) {
-  case 16:
-    _copy_from_mat_trans<16><<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
-    break;
-  case 32:
-    _copy_from_mat_trans<32><<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
-    break;
-  }
+  _copy_from_mat_trans<32><<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
 }
 
 void cuda_copy_from_mat_dd_trans(dim3 Gr, dim3 Bl, double *mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in) {
-  // Make Bl.x as compile-time constant for shared mem allocation and loop unroll. 16 is not used currently.
-  switch (Bl.x) {
-  case 16:
-    _copy_from_mat_trans<16><<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
-    break;
-  case 32:
-    _copy_from_mat_trans<32><<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
-    break;
-  }
+  _copy_from_mat_trans<32><<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
 }
 
 void cuda_copy_from_smat_ff(dim3 Gr, dim3 Bl, float* mat_out, const MatrixElement<float>* smat_in, MatrixDim d_out, MatrixIndexT_cuda d_in) {
