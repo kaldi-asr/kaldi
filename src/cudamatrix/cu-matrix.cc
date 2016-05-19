@@ -231,14 +231,22 @@ void CuMatrixBase<Real>::CopyFromMat(const CuMatrixBase<OtherReal> &M,
       CU_SAFE_CALL(cudaMemcpy2D(data_, dst_pitch, M.data_, src_pitch,
                                 width, M.num_rows_, cudaMemcpyDeviceToDevice));
     } else {
-      dim3 dimGrid, dimBlock;
-      GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
-                                            &dimGrid, &dimBlock);
       if (trans == kNoTrans) {
+        dim3 dimGrid, dimBlock;
+        GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
+                                              &dimGrid, &dimBlock);
         cuda_copy_from_mat(dimGrid, dimBlock, data_, M.data_, Dim(), M.Dim());
       } else {
-        cuda_copy_from_mat_trans(dimGrid, dimBlock, data_, M.data_, Dim(), M.Dim());
+        // 2D thread block with warps (blockDim.x) along the row-dim of input M.
+        // Each (8x32) thread block will transpose (32x32) data
+        const int32 warpSize = 32;
+        dim3 dimBlock(warpSize, CU1DBLOCK / warpSize);
+        dim3 dimGrid(n_blocks(M.NumCols(), warpSize),
+            n_blocks(M.NumRows(), warpSize));
+        cuda_copy_from_mat_trans(dimGrid, dimBlock, data_, M.data_, Dim(),
+            M.Dim());
       }
+      CU_SAFE_CALL(cudaGetLastError());
     }
     CuDevice::Instantiate().AccuProfile("CuMatrixBase::CopyFromMat(from other CuMatrixBase)", tim.Elapsed());
   } else
@@ -2569,22 +2577,12 @@ template<typename Real>
 void CuMatrix<Real>::Transpose() {
   if (this->num_rows_ == 0)
     return;
-#if HAVE_CUDA == 1
-  if (this->num_rows_ == this->num_cols_ && CuDevice::Instantiate().Enabled()) {
-    Timer tim;
-    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
-    // (x,y) indices will be (row of *this, col of *this)
-    dim3 dimGrid(n_blocks(this->num_rows_, CU2DBLOCK),
-                 n_blocks(this->num_cols_, CU2DBLOCK));
-    cuda_transpose_matrix(dimGrid, dimBlock, this->data_, this->Dim());
-    CU_SAFE_CALL(cudaGetLastError());
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
-  } else
-#endif
-  {
-    CuMatrix<Real> tmp(*this, kTrans);
-    *this = tmp;
-  }
+  // Copy and swap for all cases.
+  // No need for a separate kernel of squared matrix in-place transpose.
+  // It has the same posible peak performance as copy transpose,
+  // if allocate/deallocate overhead can be ignored.
+  CuMatrix<Real> tmp(*this, kTrans);
+  this->Swap(&tmp);
 }
 
 
