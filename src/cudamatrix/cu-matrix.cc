@@ -1726,31 +1726,35 @@ Real TraceMatMat(const CuMatrixBase<Real> &A,
     } else {
       KALDI_ASSERT(A.NumRows() == B.NumRows() && A.NumCols() == B.NumCols());
     }
-    if (A.NumRows() * A.NumCols() > 16384) {
-      // This version in which we don't use a special-purpose kernel, but
-      // do AddDiagMat on a temporary vector and returns its sum, seems to be
-      // faster for larger matrices.  The cutoff is approximate and
-      // we only looked at the time on square matrices, which
-      // is what we test in cu-matrix-speed-test.cc.
-      CuVector<Real> sum_vec(A.NumRows());
-      sum_vec.AddDiagMatMat(1.0, A, kNoTrans,
-                            B, trans, 0.0);
-      return sum_vec.Sum();
-    } else {
-      Timer tim;
-      // the sizes of result_vec must match what we
-      // call the kernels with, in cu-kernels.cu
-      CuVector<Real> result_vec(trans == kTrans ? 4 : 2, kUndefined);
-      if (trans == kNoTrans) {
-        cuda_trace_mat_mat(A.Data(), B.Data(), A.Dim(), B.Stride(), result_vec.Data());
-      } else {
-        cuda_trace_mat_mat_trans(A.Data(), B.Data(), A.Dim(), B.Stride(), result_vec.Data());
+    Timer tim;
+    // 2D blocks: each (8x32) block sums up (32x32) elements.
+    // 2D grid: try to cover all the matrix A unless it is too big.
+    // Kernel will reduce to ~256 elements with good performance,
+    // if the matrix is not in a very bad shape.
+    // (wider or taller than 32x8192)
+    // CPU will then reduce to 1 element.
+    const int kWarpSize = 32;
+    dim3 dimBlock(kWarpSize, CU1DBLOCK / kWarpSize);
+    dim3 dimGrid(n_blocks(A.NumCols(), kWarpSize),
+        n_blocks(A.NumRows(), kWarpSize));
+    if (dimGrid.x * dimGrid.y > 256) {
+      dimGrid.y = 256 / dimGrid.x;
+      if (dimGrid.y == 0) {
+        dimGrid.y = 1;
       }
-      CU_SAFE_CALL(cudaGetLastError());
-      Vector<Real> result_cpu(result_vec); // copying from CUDA faster than summing in CUDA.
-      result = result_cpu.Sum();
-      CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
     }
+    CuVector<Real> result_vec(dimGrid.x * dimGrid.y, kUndefined);
+    if (trans == kNoTrans) {
+      cuda_trace_mat_mat(dimGrid, dimBlock, A.Data(), B.Data(), A.Dim(),
+          B.Stride(), result_vec.Data());
+    } else {
+      cuda_trace_mat_mat_trans(dimGrid, dimBlock, A.Data(), B.Data(), A.Dim(),
+          B.Stride(), result_vec.Data());
+    }
+    CU_SAFE_CALL(cudaGetLastError());
+    Vector<Real> result_cpu(result_vec); // copying from CUDA faster than summing in CUDA.
+    result = result_cpu.Sum();
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
   {
