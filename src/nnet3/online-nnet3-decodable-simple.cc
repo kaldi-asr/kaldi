@@ -44,6 +44,20 @@ DecodableNnet3SimpleOnline::DecodableNnet3SimpleOnline(
 
   ComputeSimpleNnetContext(am_nnet_.GetNnet(), &left_context_, &right_context_);
   log_priors_.ApplyLog();
+
+  // Check that the dimensions are correct.
+  int32 input_dim = am_nnet_.GetNnet().InputDim("input");
+  int32 ivector_dim = std::max<int32>(0, am_nnet_.GetNnet().InputDim("ivector"));
+  // We use feature extraction code that was designed for nnet2, which just
+  // appends the mfcc and ivector features.  So here we have to separate them
+  // again.  This code just checks that the dimension is as we expect.
+  int32 feature_dim = features_->Dim();
+  if (feature_dim != input_dim + ivector_dim) {
+    KALDI_ERR << "Dimension of features " << feature_dim << " does not equal "
+              << "input dim " << input_dim << " + ivector dim " << ivector_dim
+              << " of neural network.  Likely the config and neural net "
+              << "mismatch.";
+  }
 }
 
 
@@ -120,9 +134,6 @@ void DecodableNnet3SimpleOnline::ComputeForFrame(int32 subsampled_frame) {
 
   int32 num_subsampled_frames = NumSubsampledFrames(input_frame_end - input_frame_begin -
           left_context_ - right_context_);
-  // I'm not checking if the input feature vector is ok.
-  // It should be done, but I'm not sure if it is the best place.
-  // Maybe a new "nnet3 feature pipeline"?
   int32 mfcc_dim = am_nnet_.GetNnet().InputDim("input");
   int32 ivector_dim = am_nnet_.GetNnet().InputDim("ivector");
   // MFCCs in the left chunk
