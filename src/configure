@@ -328,7 +328,7 @@ function linux_configure_mkl_extra {
 
   declare -A extra_libs
   extra_libs=(
-    [sequential]="-lpthread -lm"
+    [sequential]="-ldl -lpthread -lm"
     [gomp]="-lgomp -ldl -lpthread -lm"
     [iomp]="-ldl -lpthread -lm"
     [tbb]=" -ldl -lpthread -lm "
