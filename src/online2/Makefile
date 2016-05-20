@@ -15,7 +15,8 @@ LIBNAME = kaldi-online2
 
 ADDLIBS = ../gmm/kaldi-gmm.a ../transform/kaldi-transform.a ../feat/kaldi-feat.a \
      ../lat/kaldi-lat.a ../decoder/kaldi-decoder.a ../hmm/kaldi-hmm.a \
-     ../nnet2/kaldi-nnet2.a ../nnet3/kaldi-nnet3.a ../ivector/kaldi-ivector.a \
+     ../nnet2/kaldi-nnet2.a ../nnet3/kaldi-nnet3.a ../chain/kaldi-chain.a \
+     ../ivector/kaldi-ivector.a \
      ../cudamatrix/kaldi-cudamatrix.a ../matrix/kaldi-matrix.a \
      ../util/kaldi-util.a ../thread/kaldi-thread.a ../base/kaldi-base.a
 
