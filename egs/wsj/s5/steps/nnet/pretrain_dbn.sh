@@ -52,7 +52,8 @@ copy_feats_tmproot=/tmp/kaldi.XXXX # sets tmproot for 'copy-feats',
 splice=5            # (default) splice features both-ways along time axis,
 cmvn_opts=          # (optional) adds 'apply-cmvn' to input feature pipeline, see opts,
 delta_opts=         # (optional) adds 'add-deltas' to input feature pipeline, see opts,
-ivector=            # (optional) adds 'append-vector-to-feats', it's rx-filename,
+ivector=            # (optional) adds 'append-vector-to-feats', the option is rx-filename for the 2nd stream,
+ivector_append_tool=append-vector-to-feats # (optional) the tool for appending ivectors,
 
 feature_transform_proto= # (optional) use this prototype for 'feature_transform',
 feature_transform=  # (optional) directly use this 'feature_transform',
@@ -142,6 +143,7 @@ if [ ! -z $feature_transform ]; then
   [ -e $D/cmvn_opts ] && cmvn_opts=$(cat $D/cmvn_opts)
   [ -e $D/delta_opts ] && delta_opts=$(cat $D/delta_opts)
   [ -e $D/ivector_dim ] && ivector_dim=$(cat $D/ivector_dim)
+  [ -e $D/ivector_append_tool ] && ivector_append_tool=$(cat $D/ivector_append_tool)
   echo "# cmvn_opts='$cmvn_opts' delta_opts='$delta_opts' ivector_dim='$ivector_dim'"
 fi
 
@@ -220,7 +222,8 @@ if [ ! -z $ivector ]; then
 
   echo "# getting dims,"
   dim_raw=$(feat-to-dim "$feats_tr" -)
-  dim_ivec=$(copy-vector "$ivector" ark,t:- | head -n1 | awk '{ print NF-3 }') || true
+  dim_raw_and_ivec=$(feat-to-dim "$feats_tr $ivector_append_tool ark:- '$ivector' ark:- |" -)
+  dim_ivec=$((dim_raw_and_ivec - dim_raw))
   echo "# dims, feats-raw $dim_raw, ivectors $dim_ivec,"
 
   # Should we do something with 'feature_transform'?
@@ -240,10 +243,11 @@ if [ ! -z $ivector ]; then
     nnet-initialize --print-args=false <(echo "<ParallelComponent> <InputDim> $((dim_raw+dim_ivec)) <OutputDim> $((dim_transformed+dim_ivec)) <NestedNnetFilename> $feature_transform_old $dir/tr_ivec_copy.nnet </NestedNnetFilename>") $feature_transform
   fi
   echo $dim_ivec >$dir/ivector_dim # mark down the iVec dim!
+  echo $ivector_append_tool >$dir/ivector_append_tool
 
   # pasting the iVecs to the feaures,
   echo "# + ivector input '$ivector'"
-  feats_tr="$feats_tr append-vector-to-feats ark:- '$ivector' ark:- |"
+  feats_tr="$feats_tr $ivector_append_tool ark:- '$ivector' ark:- |"
 fi
 
 ###### Show the final 'feature_transform' in the log,

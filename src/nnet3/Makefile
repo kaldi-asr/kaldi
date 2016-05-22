@@ -34,7 +34,7 @@ OBJFILES = nnet-common.o nnet-compile.o nnet-component-itf.o \
 LIBNAME = kaldi-nnet3
 
 ADDLIBS = ../chain/kaldi-chain.a ../thread/kaldi-thread.a \
-       ../lat/kaldi-lat.a ../gmm/kaldi-gmm.a \
+       ../fstext/kaldi-fstext.a ../lat/kaldi-lat.a ../gmm/kaldi-gmm.a \
       ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a ../transform/kaldi-transform.a \
       ../cudamatrix/kaldi-cudamatrix.a ../matrix/kaldi-matrix.a \
       ../util/kaldi-util.a ../thread/kaldi-thread.a ../base/kaldi-base.a

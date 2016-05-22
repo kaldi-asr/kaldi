@@ -41,6 +41,59 @@ std::string NameOf() {
   return (sizeof(Real) == 8 ? "<double>" : "<float>");
 }
 
+template<typename Real> void TestCuMatrixTransposeNS(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> M(dim, dim / 2);
+  M.SetRandn();
+
+  Timer tim;
+  int32 iter = 0;
+  for (; tim.Elapsed() < time_in_secs; iter++) {
+    M.Transpose();
+  }
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter / 2) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG<< "For CuMatrix::TransposeNS" << NameOf<Real>() << ", for dim = "
+  << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+template<typename Real> void TestCuMatrixTransposeS(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> M(dim, dim);
+  M.SetRandn();
+
+  Timer tim;
+  int32 iter = 0;
+  for (; tim.Elapsed() < time_in_secs; iter++) {
+    M.Transpose();
+  }
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG<< "For CuMatrix::TransposeS" << NameOf<Real>() << ", for dim = "
+  << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+template<typename Real> void TestCuMatrixTransposeCross(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<float> Mf(dim / 2, dim), ref(dim, dim / 2);
+  CuMatrix<Real> Md(dim, dim / 2);
+  Mf.SetRandn();
+  ref = Mf;
+
+  Timer tim;
+  int32 iter = 0;
+  for (; tim.Elapsed() < time_in_secs; iter++) {
+    Md.CopyFromMat(Mf, kTrans);
+    Mf.CopyFromMat(Md, kTrans);
+  }
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG<< "For CuMatrix::TransposeCross" << NameOf<Real>() << ", for dim = "
+  << dim << ", speed was " << gflops << " gigaflops.";
+
+  AssertEqual(ref, Mf);
+}
+
 template<typename Real> void TestCuMatrixAddMat(int32 dim, 
 		int32 num_row_blocks, int32 num_col_blocks) {
   BaseFloat time_in_secs = 0.025;
@@ -873,6 +926,12 @@ template<typename Real> void CudaMatrixSpeedTest() {
     TestCuMatrixAddToRows<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixAddRowRanges<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixTransposeCross<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixTransposeS<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixTransposeNS<Real>(sizes[s]);
 }
 
 

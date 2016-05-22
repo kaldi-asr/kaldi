@@ -147,7 +147,7 @@ $(EXT_SUBDIRS) : mklibdir
 
 bin fstbin gmmbin fgmmbin sgmmbin sgmm2bin featbin nnetbin nnet2bin nnet3bin chainbin latbin ivectorbin lmbin kwsbin online2bin: \
  base matrix util feat tree optimization thread gmm transform sgmm sgmm2 fstext hmm \
- lm decoder lat cudamatrix nnet nnet2 nnet3 ivector chain
+ lm decoder lat cudamatrix nnet nnet2 nnet3 ivector chain kws online2
 
 #2)The libraries have inter-dependencies
 base:
@@ -155,27 +155,27 @@ matrix : base
 thread : base
 util: base matrix thread
 feat: base matrix util gmm transform tree thread
-tree: base util matrix
+tree: base util thread matrix
 optimization: base matrix
 gmm: base util matrix tree thread
 transform: base util matrix gmm tree thread
 sgmm: base util matrix gmm tree transform thread hmm
 sgmm2: base util matrix gmm tree transform thread hmm
-fstext: base util matrix tree
-hmm: base tree matrix util
-lm: base util fstext
-decoder: base util matrix gmm sgmm hmm tree transform lat
-lat: base util hmm tree matrix
-cudamatrix: base util matrix
-nnet: base util matrix cudamatrix
+fstext: base util thread matrix tree
+hmm: base tree matrix util thread
+lm: base util thread matrix fstext
+decoder: base util thread matrix gmm sgmm hmm tree transform lat
+lat: base util thread hmm tree matrix
+cudamatrix: base util thread matrix
+nnet: base util thread matrix cudamatrix
 nnet2: base util matrix thread lat gmm hmm tree transform cudamatrix
-nnet3: base util matrix thread lat gmm hmm tree transform cudamatrix chain
-chain: lat hmm tree fstext matrix cudamatrix util base
+nnet3: base util matrix thread lat gmm hmm tree transform cudamatrix chain fstext
+chain: lat hmm tree fstext matrix cudamatrix util thread base
 ivector: base util matrix thread transform tree gmm
 #3)Dependencies for optional parts of Kaldi
 onlinebin: base matrix util feat tree optimization gmm transform sgmm sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet2 online thread
 # python-kaldi-decoding: base matrix util feat tree optimization thread gmm transform sgmm sgmm2 fstext hmm decoder lat online
 online: decoder gmm transform feat matrix util base lat hmm thread tree
-online2: decoder gmm transform feat matrix util base lat hmm thread ivector cudamatrix nnet2 nnet3
-kws: base util hmm tree matrix lat
+online2: decoder gmm transform feat matrix util base lat hmm thread ivector cudamatrix nnet2 nnet3 chain
+kws: base util thread hmm tree matrix lat
 

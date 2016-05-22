@@ -231,14 +231,22 @@ void CuMatrixBase<Real>::CopyFromMat(const CuMatrixBase<OtherReal> &M,
       CU_SAFE_CALL(cudaMemcpy2D(data_, dst_pitch, M.data_, src_pitch,
                                 width, M.num_rows_, cudaMemcpyDeviceToDevice));
     } else {
-      dim3 dimGrid, dimBlock;
-      GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
-                                            &dimGrid, &dimBlock);
       if (trans == kNoTrans) {
+        dim3 dimGrid, dimBlock;
+        GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
+                                              &dimGrid, &dimBlock);
         cuda_copy_from_mat(dimGrid, dimBlock, data_, M.data_, Dim(), M.Dim());
       } else {
-        cuda_copy_from_mat_trans(dimGrid, dimBlock, data_, M.data_, Dim(), M.Dim());
+        // 2D thread block with warps (blockDim.x) along the row-dim of input M.
+        // Each (8x32) thread block will transpose (32x32) data
+        const int32 warpSize = 32;
+        dim3 dimBlock(warpSize, CU1DBLOCK / warpSize);
+        dim3 dimGrid(n_blocks(M.NumCols(), warpSize),
+            n_blocks(M.NumRows(), warpSize));
+        cuda_copy_from_mat_trans(dimGrid, dimBlock, data_, M.data_, Dim(),
+            M.Dim());
       }
+      CU_SAFE_CALL(cudaGetLastError());
     }
     CuDevice::Instantiate().AccuProfile("CuMatrixBase::CopyFromMat(from other CuMatrixBase)", tim.Elapsed());
   } else
@@ -1489,36 +1497,15 @@ void CuMatrixBase<Real>::FindRowMaxId(CuArray<int32> *id) const {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-
-    // initialize the vectors
-    CuVector<Real> max(num_rows_);
-    max.Set(-1e21);
     id->Resize(num_rows_);
-    id->Set(-1);
+    MatrixDim d = Dim();
 
-    MatrixDim d=Dim(); // only stride will be used!
+    // CUDA thread layout: one thread block per matrix-row.
+    dim3 dimBlock(CU1DBLOCK);
+    dim3 dimGrid(num_rows_);
+    cuda_find_row_max_id(dimGrid, dimBlock, data_, NULL, id->Data(), d);
+    CU_SAFE_CALL(cudaGetLastError());
 
-    // process per 256 column blocks
-    for (int32 block = 0; (block+1)*256 <= num_cols_; block++) {
-      dim3 dimBlock(CU1DBLOCK, 1);
-      dim3 dimGrid(1, num_rows_);
-      int32 offset = block*CU1DBLOCK;
-
-      cuda_find_row_max_id(dimGrid, dimBlock, data_ + offset,
-                           max.data_, id->Data(), offset, d);
-    }
-
-    // process the remainder
-    int32 div = num_cols_ / 256;
-    int32 mod = num_cols_ % 256;
-    if (mod != 0) {
-      dim3 dimBlock(mod, 1);
-      dim3 dimGrid(1, num_rows_);
-      int32 offset=div*256;
-
-      cuda_find_row_max_id(dimGrid, dimBlock, data_ + offset,
-                           max.data_, id->Data(), offset, d);
-    }
     // now we have the indices!
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
@@ -1529,11 +1516,11 @@ void CuMatrixBase<Real>::FindRowMaxId(CuArray<int32> *id) const {
     id->Set(-1);
     // find maxima
     MatrixIndexT num_rows = num_rows_, num_cols = num_cols_;
-    for(MatrixIndexT r = 0; r < num_rows; r++) {
+    for (MatrixIndexT r = 0; r < num_rows; r++) {
       Real max = -1e21;
       int32 max_id = -1;
       const Real *row_data = Mat().RowData(r);
-      for(MatrixIndexT c = 0; c < num_cols; c++) {
+      for (MatrixIndexT c = 0; c < num_cols; c++) {
         if (max < row_data[c]) {
           max = row_data[c];
           max_id = c;
@@ -1747,31 +1734,35 @@ Real TraceMatMat(const CuMatrixBase<Real> &A,
     } else {
       KALDI_ASSERT(A.NumRows() == B.NumRows() && A.NumCols() == B.NumCols());
     }
-    if (A.NumRows() * A.NumCols() > 16384) {
-      // This version in which we don't use a special-purpose kernel, but
-      // do AddDiagMat on a temporary vector and returns its sum, seems to be
-      // faster for larger matrices.  The cutoff is approximate and
-      // we only looked at the time on square matrices, which
-      // is what we test in cu-matrix-speed-test.cc.
-      CuVector<Real> sum_vec(A.NumRows());
-      sum_vec.AddDiagMatMat(1.0, A, kNoTrans,
-                            B, trans, 0.0);
-      return sum_vec.Sum();
-    } else {
-      Timer tim;
-      // the sizes of result_vec must match what we
-      // call the kernels with, in cu-kernels.cu
-      CuVector<Real> result_vec(trans == kTrans ? 4 : 2, kUndefined);
-      if (trans == kNoTrans) {
-        cuda_trace_mat_mat(A.Data(), B.Data(), A.Dim(), B.Stride(), result_vec.Data());
-      } else {
-        cuda_trace_mat_mat_trans(A.Data(), B.Data(), A.Dim(), B.Stride(), result_vec.Data());
+    Timer tim;
+    // 2D blocks: each (8x32) block sums up (32x32) elements.
+    // 2D grid: try to cover all the matrix A unless it is too big.
+    // Kernel will reduce to ~256 elements with good performance,
+    // if the matrix is not in a very bad shape.
+    // (wider or taller than 32x8192)
+    // CPU will then reduce to 1 element.
+    const int kWarpSize = 32;
+    dim3 dimBlock(kWarpSize, CU1DBLOCK / kWarpSize);
+    dim3 dimGrid(n_blocks(A.NumCols(), kWarpSize),
+        n_blocks(A.NumRows(), kWarpSize));
+    if (dimGrid.x * dimGrid.y > 256) {
+      dimGrid.y = 256 / dimGrid.x;
+      if (dimGrid.y == 0) {
+        dimGrid.y = 1;
       }
-      CU_SAFE_CALL(cudaGetLastError());
-      Vector<Real> result_cpu(result_vec); // copying from CUDA faster than summing in CUDA.
-      result = result_cpu.Sum();
-      CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
     }
+    CuVector<Real> result_vec(dimGrid.x * dimGrid.y, kUndefined);
+    if (trans == kNoTrans) {
+      cuda_trace_mat_mat(dimGrid, dimBlock, A.Data(), B.Data(), A.Dim(),
+          B.Stride(), result_vec.Data());
+    } else {
+      cuda_trace_mat_mat_trans(dimGrid, dimBlock, A.Data(), B.Data(), A.Dim(),
+          B.Stride(), result_vec.Data());
+    }
+    CU_SAFE_CALL(cudaGetLastError());
+    Vector<Real> result_cpu(result_vec); // copying from CUDA faster than summing in CUDA.
+    result = result_cpu.Sum();
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
   {
@@ -2586,22 +2577,12 @@ template<typename Real>
 void CuMatrix<Real>::Transpose() {
   if (this->num_rows_ == 0)
     return;
-#if HAVE_CUDA == 1
-  if (this->num_rows_ == this->num_cols_ && CuDevice::Instantiate().Enabled()) {
-    Timer tim;
-    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
-    // (x,y) indices will be (row of *this, col of *this)
-    dim3 dimGrid(n_blocks(this->num_rows_, CU2DBLOCK),
-                 n_blocks(this->num_cols_, CU2DBLOCK));
-    cuda_transpose_matrix(dimGrid, dimBlock, this->data_, this->Dim());
-    CU_SAFE_CALL(cudaGetLastError());
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
-  } else
-#endif
-  {
-    CuMatrix<Real> tmp(*this, kTrans);
-    *this = tmp;
-  }
+  // Copy and swap for all cases.
+  // No need for a separate kernel of squared matrix in-place transpose.
+  // It has the same posible peak performance as copy transpose,
+  // if allocate/deallocate overhead can be ignored.
+  CuMatrix<Real> tmp(*this, kTrans);
+  this->Swap(&tmp);
 }
 
 
