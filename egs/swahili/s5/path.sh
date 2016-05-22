@@ -14,3 +14,5 @@ TRAIN_DIR="train"
 
 
 export LC_ALL=C
+export PYTHONPATH=$KALDI_ROOT/egs/wsj/s5/utils/numpy_io:$PYTHONPATH
+

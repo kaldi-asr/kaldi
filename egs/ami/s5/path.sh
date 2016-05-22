@@ -11,3 +11,5 @@ BEAMFORMIT=$KALDI_ROOT/tools/BeamformIt
 
 export PATH=$PATH:$LMBIN:$BEAMFORMIT:$SRILM
 
+export PYTHONPATH=$KALDI_ROOT/egs/wsj/s5/utils/numpy_io:$PYTHONPATH
+

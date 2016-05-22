@@ -137,10 +137,6 @@ int main(int argc, char *argv[]) {
     if (frame_weights != "") {
       weights_reader.Open(frame_weights);
     }
-    RandomAccessBaseFloatReader utt_weights_reader;
-    if (utt_weights != "") {
-      utt_weights_reader.Open(utt_weights);
-    }
 
     RandomizerMask randomizer_mask(rnd_opts);
     MatrixRandomizer feature_randomizer(rnd_opts);
@@ -197,6 +193,7 @@ int main(int argc, char *argv[]) {
           num_other_error++;
           continue;
         }
+
         // check we have per-utterance weights,
         if (utt_weights != "" && !utt_weights_reader.HasKey(utt)) {
           KALDI_WARN << utt << ", missing per-utterance weight";
@@ -204,6 +201,7 @@ int main(int argc, char *argv[]) {
           continue;
         }
         // get feature / target pair,
+
         Matrix<BaseFloat> mat = feature_reader.Value();
         Posterior targets = targets_reader.Value(utt);
         // get per-frame weights,
@@ -214,6 +212,7 @@ int main(int argc, char *argv[]) {
           weights.Resize(mat.NumRows());
           weights.Set(1.0);
         }
+
         // multiply with per-utterance weight,
         if (utt_weights != "") {
           BaseFloat w = utt_weights_reader.Value(utt);

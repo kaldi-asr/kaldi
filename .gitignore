@@ -106,4 +106,8 @@ GSYMS
 /tools/sequitur
 /tools/srilm.tgz
 
+# Compiled Python Files
+*.pyc
+
 /kaldiwin_vs*
+

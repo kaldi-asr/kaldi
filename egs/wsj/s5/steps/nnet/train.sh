@@ -35,6 +35,7 @@ splice_after_transf=5 # (feat_type=transf) splice after the linear transform,
 feature_transform_proto= # (optional) use this prototype for 'feature_transform',
 feature_transform=  # (optional) directly use this 'feature_transform',
 pytel_transform=    # (BUT) use external python transform,
+append_feature_transform= # (Add one more feature transform at the end)
 
 # labels,
 labels=            # (optional) specify non-default training targets,
@@ -355,6 +356,13 @@ if [ ! -z $ivector ]; then
   echo "# + ivector input '$ivector'"
   feats_tr="$feats_tr $ivector_append_tool ark:- '$ivector' ark:- |"
   feats_cv="$feats_cv $ivector_append_tool ark:- '$ivector' ark:- |"
+fi
+
+###### Append another transform #####
+if [ ! -z $append_feature_transform ]; then
+  feature_transform_old=$feature_transform
+  feature_transform=${feature_transform_old}_append_$(basename $append_feature_transform)
+  nnet-concat --binary=false $feature_transform_old $append_feature_transform $feature_transform || exit 1
 fi
 
 ###### Show the final 'feature_transform' in the log,
