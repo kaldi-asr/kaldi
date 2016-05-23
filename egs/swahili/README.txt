@@ -29,7 +29,7 @@ More details on the corpus and how it was collected can be found on the followin
 ### SWAHILI SPEECH CORPUS
 Directory: asr_swahili/data/train
 Files: text (training transcription), wav.scp (file id and path), utt2spk (file id and audio id), spk2utt (audio id and file id), wav (.wav files). 
-For more information about the format, please refer to Kaldi website http://kaldi.sourceforge.net/data_prep.html
+For more information about the format, please refer to Kaldi website http://kaldi-asr.org/doc/data_prep.html
 Description: training data in Kaldi format about 10 hours. Note: The path of wav files in wav.scp have to be modified to point to the actual locatiion.  
 
 Directory: asr_swahili/data/test
@@ -89,7 +89,7 @@ Triphone (39 features) + LDA and MLLT + SGMM: 27.36% (All)
 
 
 ### REFERENCES
-[1] KALDI: http://kaldi.sourceforge.net/tutorial_running.html
+[1] KALDI: http://kaldi-asr.org/doc/tutorial_running.html
 [2] SRILM: http://www.speech.sri.com/projects/srilm/
 [3] Hadrien Gelas, Laurent Besacier, François Pellegrino, Developments of Swahili Resources for an Automatic Speech Recognition System, 
 http://www.ddl.ish-lyon.cnrs.fr/fulltext/Gelas/Gelas_2012_SLTU.pdf 

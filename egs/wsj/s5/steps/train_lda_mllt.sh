@@ -6,7 +6,7 @@
 # the MFCCs: we splice across several frames, reduce the dimension (to 40
 # by default) using Linear Discriminant Analysis), and then later estimate,
 # over multiple iterations, a diagonalizing transform known as MLLT or CTC.
-# See http://kaldi.sourceforge.net/transform.html for more explanation.
+# See http://kaldi-asr.org/doc/transform.html for more explanation.
 #
 # Apache 2.0.
 

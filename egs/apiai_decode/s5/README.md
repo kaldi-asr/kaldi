@@ -33,7 +33,7 @@ $ steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 --cmd run.pl --nj 1 e
 See exp/api.ai-model/decode/wer* files for WER and exp/api.ai-model/decode/log/ files for decoding output.
 
 ### Online Decoder:
-See http://kaldi.sourceforge.net/online_decoding.html for more information about kaldi online decoding.
+See http://kaldi-asr.org/doc/online_decoding.html for more information about kaldi online decoding.
 
 Run:
 ```sh
