@@ -198,7 +198,7 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "lattice-determinize lattices (and apply a pruning beam)\n"
-        " (see http://kaldi.sourceforge.net/lattices.html for more explanation)\n"
+        " (see http://kaldi-asr.org/doc/lattices.html for more explanation)\n"
         "This version of the program retains the original "
         "acoustic scores of arcs in the determinized lattice and writes it "
         "as a normal (non-compact) lattice. \n"
