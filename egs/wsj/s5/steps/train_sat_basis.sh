@@ -100,9 +100,9 @@ else
     $cmd JOB=1:$nj $dir/log/fmllr.0.JOB.log \
       ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:-  \| \
       weight-silence-post $silence_weight $silphonelist $alidir/final.mdl ark:- ark:- \| \
-	  gmm-post-to-gpost $alidir/final.mdl "$sifeats" ark:- ark:- \| \
-	  gmm-basis-fmllr-accs-gpost $spk2utt_opt \
-	  $alidir/final.mdl "$sifeats" ark,s,cs:- $dir/basis.acc.JOB || exit 1; 
+      gmm-post-to-gpost $alidir/final.mdl "$sifeats" ark:- ark:- \| \
+      gmm-basis-fmllr-accs-gpost --spk2utt=ark:$sdata/JOB/spk2utt \
+      $alidir/final.mdl "$sifeats" ark,s,cs:- $dir/basis.acc.JOB || exit 1;
 
     # Compute the basis matrices.
     $cmd $dir/log/basis_training.log \
@@ -111,7 +111,7 @@ else
       ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:-  \| \
       weight-silence-post $silence_weight $silphonelist $alidir/final.mdl ark:- ark:- \| \
       gmm-post-to-gpost $alidir/final.mdl "$sifeats" ark:- ark:- \| \
-	  gmm-est-basis-fmllr-gpost --fmllr-min-count=22  --num-iters=10 \
+      gmm-est-basis-fmllr-gpost --spk2utt=ark:$sdata/JOB/spk2utt --fmllr-min-count=22  --num-iters=10 \
       --size-scale=0.2 --step-size-iters=3 \
       --write-weights=ark:$dir/pre_wgt.JOB \
       $alidir/final.mdl $alidir/fmllr.basis "$sifeats"  ark,s,cs:- \
@@ -200,7 +200,7 @@ while [ $x -lt $num_iters ]; do
           ali-to-post "ark:gunzip -c $dir/ali.JOB.gz|" ark:-  \| \
           weight-silence-post $silence_weight $silphonelist $dir/$x.mdl ark:- ark:- \| \
 	  gmm-post-to-gpost $dir/$x.mdl "$feats" ark:- ark:- \| \
-	  gmm-basis-fmllr-accs-gpost $spk2utt_opt \
+	  gmm-basis-fmllr-accs-gpost --spk2utt=ark:$sdata/JOB/spk2utt \
 	  $dir/$x.mdl "$sifeats" ark,s,cs:- $dir/basis.acc.JOB || exit 1; 
 
       # Compute the basis matrices.
@@ -211,7 +211,7 @@ while [ $x -lt $num_iters ]; do
           ali-to-post "ark:gunzip -c $dir/ali.JOB.gz|" ark:-  \| \
           weight-silence-post $silence_weight $silphonelist $dir/$x.mdl ark:- ark:- \| \
           gmm-post-to-gpost $dir/$x.mdl "$sifeats" ark:- ark:- \| \
-	  gmm-est-basis-fmllr-gpost --fmllr-min-count=22  --num-iters=10 \
+	  gmm-est-basis-fmllr-gpost --spk2utt=ark:$sdata/JOB/spk2utt --fmllr-min-count=22  --num-iters=10 \
           --size-scale=0.2 --step-size-iters=3 \
           --write-weights=ark:$dir/pre_wgt.JOB \
           $dir/$x.mdl $dir/fmllr.basis "$sifeats"  ark,s,cs:- \
