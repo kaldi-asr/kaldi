@@ -204,12 +204,13 @@ function check_exists {
 function check_for_bad_gcc {
   if which gcc >&/dev/null; then  # gcc is on the path
     gcc_version=$(gcc -dumpspecs 2>&1 | grep -A1 -F '*version:' | grep -v version)
-    if [ "$gcc_version" == "4.8.2" ]; then
-      echo "*** WARNING: your version of gcc seems to be 4.8.2. ***"
-      echo "*** This version of gcc has a bug in nth_element ***"
+    if [ "$gcc_version" == "4.8.2" ] || [ "$gcc_version" == "4.8.1" ]; then
+      echo "*** WARNING: your version of gcc seems to be 4.8.1 or 4.8.2. ***"
+      echo "*** These versions of gcc has a bug in nth_element ***"
       echo "*** in its implementation of the standard library ***"
       echo "*** This will cause Kaldi to crash (make test   ***"
-      echo "*** should fail). Please either upgrade or downgrade gcc. ***"
+      echo "*** would fail). Please either upgrade or downgrade gcc. ***"
+      exit 1
     fi
   fi
 }
@@ -878,6 +879,14 @@ if [ "`uname`" == "Darwin"  ]; then
   elif [ "$osx_ver" == "10.11" ]; then
     check_exists makefiles/darwin_10_11.mk
     cat makefiles/darwin_10_11.mk >> kaldi.mk
+    echo "**BAD WARNING**: You are using OS X El Capitan.  Some versions of this OS"
+    echo "**BAD WARNING**: have a bug in the BLAS implementation that affects Kaldi."
+    echo "**BAD WARNING**: After compiling, cd to matrix/ and type 'make test'.  The"
+    echo "**BAD WARNING**: test will fail if the problem exists in your version. "
+    echo "**BAD WARNING**: Eventually this issue will be fixed by system updates from"
+    echo "**BAD WARNING**  Apple.  Unexplained crashes with reports of NaNs will"
+    echo "**BAD WARNING**  be caused by this bug, but some recipes will (sometimes) work."
+    sleep 1; echo -n .; sleep 1; echo -n .; sleep 1; echo .
   else
     failure "OS X version '$osx_ver' not supported"
   fi
