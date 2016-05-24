@@ -711,6 +711,41 @@ void CuVectorBase<Real>::MulElements(const CuVectorBase<Real> &v) {
 
 template<>
 template<>
+void CuVectorBase<double>::CopyFromVec(const CuVectorBase<double> &src) {
+  KALDI_ASSERT(src.Dim() == dim_);
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    if (dim_ == 0) return;
+    Timer tim;
+    CU_SAFE_CALL(cublas_copy(GetCublasHandle(), dim_, src.Data(), 1, data_, 1));
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Vec().CopyFromVec(src.Vec());
+  }
+}
+
+template<>
+template<>
+void CuVectorBase<float>::CopyFromVec(const CuVectorBase<float> &src) {
+  KALDI_ASSERT(src.Dim() == dim_);
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    if (dim_ == 0) return;
+    Timer tim;
+    CU_SAFE_CALL(cublas_copy(GetCublasHandle(), dim_, src.Data(), 1, data_, 1));
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Vec().CopyFromVec(src.Vec());
+  }
+}
+
+
+template<>
+template<>
 void CuVectorBase<double>::CopyFromVec(const CuVectorBase<float> &src) {
   KALDI_ASSERT(src.Dim() == dim_);
 #if HAVE_CUDA == 1

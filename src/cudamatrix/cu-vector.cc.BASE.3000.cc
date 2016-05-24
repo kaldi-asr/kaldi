@@ -743,7 +743,6 @@ void CuVectorBase<float>::CopyFromVec(const CuVectorBase<double> &src) {
   }
 }
 
-
 template<typename Real>
 template<typename OtherReal>
 void CuVectorBase<Real>::CopyFromVec(const VectorBase<OtherReal> &src) {

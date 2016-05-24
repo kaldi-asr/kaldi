@@ -104,8 +104,6 @@ void cublas_copy_kaldi_fd(int Gr, int Bl, int n, const float* x,
 		int incx, double* y, int incy);
 void cublas_copy_kaldi_df(int Gr, int Bl, int n, const double* x, 
 		int incx, float* y, int incy);
-void cudaF_copy_from_vec_df(int Gr, int Bl, double* v_out, const float* v_in, int dim);
-void cudaF_copy_from_vec_fd(int Gr, int Bl, float* v_out, const float* v_in, int dim);
 void cudaF_vec_mul_elements(int Gr, int Bl, float* v, const float* a, int dim);
 void cudaF_vec_soft_max(int Gr, int Bl, float* v, int dim);
 void cudaF_vec_min(const float* v, float* value, int dim);
@@ -245,8 +243,6 @@ void cudaD_add_mat_mat_elements(dim3 Gr, dim3 Bl, double *data, const double *sr
  */
 void cudaD_replace_value(int Gr, int Bl, double *v, int dim, double orig, double changed);
 void cudaD_set_bias_params(int Gr, int Bl, double* v, const double* a, double param_1, double param_2, double param_3, int* flag, int dim);
-void cudaD_copy_from_vec_df(int Gr, int Bl, double* v_out, const double* v_in, int dim);
-void cudaD_copy_from_vec_fd(int Gr, int Bl, float* v_out, const double* v_in, int dim);
 void cudaD_vec_mul_elements(int Gr, int Bl, double* v, const double* a, int dim);
 void cudaD_vec_soft_max(int Gr, int Bl, double* v, int dim);
 void cudaD_vec_min(const double* v, double* value, int dim);
