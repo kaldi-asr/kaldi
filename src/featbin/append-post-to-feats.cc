@@ -1,8 +1,6 @@
-// featbin/append-vector-to-feats.cc
+// featbin/append-post-to-feats.cc
 
-// Copyright 2012 Korbinian Riedhammer
-//           2013 Brno University of Technology (Author: Karel Vesely)
-//           2013-2014 Johns Hopkins University (Author: Daniel Povey)
+// Copyright 2016 Brno University of Technology (Author: Karel Vesely)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -23,18 +21,28 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "matrix/kaldi-matrix.h"
+#include "hmm/posterior.h"
 
 namespace kaldi {
 
-void AppendVectorToFeats(const Matrix<BaseFloat> &in,
-                         const Vector<BaseFloat> &vec,
-                         Matrix<BaseFloat> *out) {
+void AppendPostToFeats(const Matrix<BaseFloat> &in,
+                       const Posterior &post,
+                       const int32 post_dim,
+                       Matrix<BaseFloat> *out) {
   // Check inputs,
-  KALDI_ASSERT(in.NumRows() != 0);
+  if (in.NumRows() != post.size()) {
+    KALDI_WARN << "Mismatch of length!"
+               << " features: " << in.NumRows()
+               << " posteriors: " << post.size();
+  }
+  KALDI_ASSERT(in.NumRows() == post.size());
+  // Convert post to Matrix,
+  Matrix<BaseFloat> post_mat;
+  PosteriorToMatrix(post, post_dim, &post_mat);
   // Build the output matrix,
-  out->Resize(in.NumRows(), in.NumCols() + vec.Dim());
+  out->Resize(in.NumRows(), in.NumCols() + post_dim);
   out->ColRange(0, in.NumCols()).CopyFromMat(in);
-  out->ColRange(in.NumCols(), vec.Dim()).CopyRowsFromVec(vec);
+  out->ColRange(in.NumCols(), post_mat.NumCols()).CopyFromMat(post_mat);
 }
 
 }  // namespace kaldi,
@@ -45,17 +53,21 @@ int main(int argc, char *argv[]) {
     using namespace std;
 
     const char *usage =
-        "Append a vector to each row of input feature files\n"
+        "Append posteriors to features\n"
         "\n"
-        "Usage: append-vector-to-feats <in-rspecifier1> <in-rspecifier2> <out-wspecifier>\n"
-        " or: append-vector-to-feats <in-rxfilename1> <in-rxfilename2> <out-wxfilename>\n"
-        "See also: paste-feats, concat-feats\n";
+        "Usage: append-post-to-feats [options] <in-rspecifier1> <in-rspecifier2> <out-wspecifier>\n"
+        " or: append-post-to-feats [options] <in-rxfilename1> <in-rxfilename2> <out-wxfilename>\n"
+        "e.g.: append-post-to-feats --post-dim=50 ark:input.ark scp:post.scp ark:output.ark\n"
+        "See also: paste-feats, concat-feats, append-vector-to-feats\n";
 
     ParseOptions po(usage);
 
     bool binary = true;
     po.Register("binary", &binary, "If true, output files in binary "
                 "(only relevant for single-file operation, i.e. no tables)");
+
+    int32 post_dim = 0;
+    po.Register("post-dim", &post_dim, "Dimensionality of the posteriors.");
 
     po.Read(argc, argv);
 
@@ -64,16 +76,20 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
+    if (post_dim == 0) {
+      KALDI_ERR << "You have to set the dimensionality of posteriors "
+                   "with '--post-dim=D'";
+    }
+
     if (ClassifyRspecifier(po.GetArg(1), NULL, NULL)
         != kNoRspecifier) {
       // We're operating on tables, e.g. archives.
 
-
       string feat_rspecifier = po.GetArg(1);
       SequentialBaseFloatMatrixReader feat_reader(feat_rspecifier);
 
-      string vec_rspecifier = po.GetArg(2);
-      RandomAccessBaseFloatVectorReader vec_reader(vec_rspecifier);
+      string post_rspecifier = po.GetArg(2);
+      RandomAccessPosteriorReader post_reader(post_rspecifier);
 
       string wspecifier = po.GetArg(3);
       BaseFloatMatrixWriter feat_writer(wspecifier);
@@ -86,15 +102,15 @@ int main(int argc, char *argv[]) {
 
         const Matrix<BaseFloat> &feats(feat_reader.Value());
 
-        if (!vec_reader.HasKey(utt)) {
-          KALDI_WARN << "Could not read vector for utterance " << utt;
+        if (!post_reader.HasKey(utt)) {
+          KALDI_WARN << "Could not read posteriors for utterance " << utt;
           num_err++;
           continue;
         }
-        const Vector<BaseFloat> &vec(vec_reader.Value(utt));
+        const Posterior &post(post_reader.Value(utt));
 
         Matrix<BaseFloat> output;
-        AppendVectorToFeats(feats, vec, &output);
+        AppendPostToFeats(feats, post, post_dim, &output);
         feat_writer.Write(utt, output);
         num_done++;
       }
@@ -106,10 +122,15 @@ int main(int argc, char *argv[]) {
       // We're operating on rxfilenames|wxfilenames, most likely files.
       Matrix<BaseFloat> mat;
       ReadKaldiObject(po.GetArg(1), &mat);
-      Vector<BaseFloat> vec;
-      ReadKaldiObject(po.GetArg(2), &vec);
+
+      Posterior post;
+      bool binary_in;
+      Input ki(po.GetArg(2), &binary_in);
+      ReadPosterior(ki.Stream(), binary_in, &post);
+
       Matrix<BaseFloat> output;
-      AppendVectorToFeats(mat, vec, &output);
+      AppendPostToFeats(mat, post, post_dim, &output);
+
       std::string output_wxfilename = po.GetArg(3);
       WriteKaldiObject(output, output_wxfilename, binary);
       KALDI_LOG << "Wrote appended features to " << output_wxfilename;
@@ -120,28 +141,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-/*
-  Testing:
-
-cat <<EOF >1.mat
-[ 0 1 2
-  3 4 5
-  8 9 10 ]
-EOF
-cat <<EOF > 2.vec
- [ 0 1 ]
-EOF
-append-vector-to-feats --binary=false 1.mat 2.vec 3a.mat
-cat <<EOF > 3b.mat
- [ 0 1 2 0 1
-   3 4 5 0 1
-   8 9 10 0 1 ]
-EOF
-cmp <(../bin/copy-matrix 3b.mat -) <(../bin/copy-matrix 3a.mat -) || echo 'Bad!'
-
-append-vector-to-feats 'scp:echo foo 1.mat|' 'scp:echo foo 2.vec|' 'scp,t:echo foo 3a.mat|'
-cmp <(../bin/copy-matrix 3b.mat -) <(../bin/copy-matrix 3a.mat -) || echo 'Bad!'
-
-rm {1,3?}.mat 2.vec
- */

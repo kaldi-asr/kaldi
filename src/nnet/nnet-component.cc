@@ -45,6 +45,7 @@
 #include "nnet/nnet-sentence-averaging-component.h"
 #include "nnet/nnet-frame-pooling-component.h"
 #include "nnet/nnet-parallel-component.h"
+#include "nnet/nnet-multibasis-component.h"
 
 namespace kaldi {
 namespace nnet1 {
@@ -57,6 +58,7 @@ const struct Component::key_value Component::kMarkerMap[] = {
   { Component::kLstmProjectedStreams, "<LstmProjectedStreams>" },
   { Component::kBLstmProjectedStreams, "<BLstmProjectedStreams>" },
   { Component::kSoftmax, "<Softmax>" },
+  { Component::kHiddenSoftmax, "<HiddenSoftmax>" },
   { Component::kBlockSoftmax, "<BlockSoftmax>" },
   { Component::kSigmoid, "<Sigmoid>" },
   { Component::kTanh, "<Tanh>" },
@@ -76,6 +78,7 @@ const struct Component::key_value Component::kMarkerMap[] = {
   { Component::kSimpleSentenceAveragingComponent, "<SimpleSentenceAveragingComponent>" },
   { Component::kFramePoolingComponent, "<FramePoolingComponent>" },
   { Component::kParallelComponent, "<ParallelComponent>" },
+  { Component::kMultiBasisComponent, "<MultiBasisComponent>" },
 };
 
 
@@ -127,6 +130,9 @@ Component* Component::NewComponentOfType(ComponentType comp_type,
       break;
     case Component::kSoftmax :
       ans = new Softmax(input_dim, output_dim);
+      break;
+    case Component::kHiddenSoftmax :
+      ans = new HiddenSoftmax(input_dim, output_dim);
       break;
     case Component::kBlockSoftmax :
       ans = new BlockSoftmax(input_dim, output_dim);
@@ -184,6 +190,9 @@ Component* Component::NewComponentOfType(ComponentType comp_type,
       break;
     case Component::kParallelComponent :
       ans = new ParallelComponent(input_dim, output_dim);
+      break;
+    case Component::kMultiBasisComponent :
+      ans = new MultiBasisComponent(input_dim, output_dim);
       break;
     case Component::kUnknown :
     default :

@@ -15,15 +15,15 @@ BINFILES = compute-mfcc-feats compute-plp-feats compute-fbank-feats \
     process-kaldi-pitch-feats compare-feats wav-to-duration add-deltas-sdc \
     compute-and-process-kaldi-pitch-feats modify-cmvn-stats wav-copy \
     wav-reverberate append-vector-to-feats detect-sinusoids shift-feats \
-    concat-feats
+    concat-feats append-post-to-feats post-to-feats
 
 OBJFILES =
 
 TESTFILES =
 
 ADDLIBS = ../feat/kaldi-feat.a ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
-          ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a \
-         ../util/kaldi-util.a ../thread/kaldi-thread.a ../base/kaldi-base.a
+          ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a ../hmm/kaldi-hmm.a \
+          ../util/kaldi-util.a ../thread/kaldi-thread.a ../base/kaldi-base.a
 
 include ../makefiles/default_rules.mk
 
