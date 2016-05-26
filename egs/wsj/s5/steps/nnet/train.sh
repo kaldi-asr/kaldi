@@ -52,6 +52,7 @@ utt_weights=       # per-utterance weights (scalar for --frame-weights),
 # data processing, misc.
 copy_feats=true     # resave the train/cv features into /tmp (disabled by default),
 copy_feats_tmproot=/tmp/kaldi.XXXX # sets tmproot for 'copy-feats',
+copy_feats_compress=true # compress feats while resaving
 seed=777            # seed value used for data-shuffling, nn-initialization, and training,
 skip_cuda_check=false
 
@@ -169,8 +170,8 @@ echo "# PREPARING FEATURES"
 if [ "$copy_feats" == "true" ]; then
   echo "# re-saving features to local disk,"
   tmpdir=$(mktemp -d $copy_feats_tmproot)
-  copy-feats scp:$data/feats.scp ark,scp:$tmpdir/train.ark,$dir/train_sorted.scp
-  copy-feats scp:$data_cv/feats.scp ark,scp:$tmpdir/cv.ark,$dir/cv.scp
+  copy-feats --compress=$copy_feats_compress scp:$data/feats.scp ark,scp:$tmpdir/train.ark,$dir/train_sorted.scp
+  copy-feats --compress=$copy_feats_compress scp:$data_cv/feats.scp ark,scp:$tmpdir/cv.ark,$dir/cv.scp
   trap "echo '# Removing features tmpdir $tmpdir @ $(hostname)'; ls $tmpdir; rm -r $tmpdir" EXIT
 else
   # or copy the list,
