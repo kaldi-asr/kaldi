@@ -47,6 +47,7 @@ rbm_extra_opts=
 # data processing,
 copy_feats=true     # resave the features to tmpdir,
 copy_feats_tmproot=/tmp/kaldi.XXXX # sets tmproot for 'copy-feats',
+copy_feats_compress=true # compress feats while resaving
 
 # feature processing,
 splice=5            # (default) splice features both-ways along time axis,
@@ -121,7 +122,7 @@ if [ "$copy_feats" == "true" ]; then
   # re-save the features to local disk into /tmp/,
   tmpdir=$(mktemp -d $copy_feats_tmproot)
   trap "echo \"# Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir" INT QUIT TERM EXIT
-  copy-feats scp:$data/feats.scp ark,scp:$tmpdir/train.ark,$dir/train_sorted.scp || exit 1
+  copy-feats --compress=$copy_feats_compress scp:$data/feats.scp ark,scp:$tmpdir/train.ark,$dir/train_sorted.scp || exit 1
 else
   # or copy the list,
   cp $data/feats.scp $dir/train_sorted.scp
