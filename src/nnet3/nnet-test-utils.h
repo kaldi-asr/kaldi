@@ -79,7 +79,7 @@ void ComputeExampleComputationRequestSimple(
     std::vector<Matrix<BaseFloat> > *inputs);
 
 Component *GenerateRandomSimpleComponent();
-
+Component *GenerateRandomGPUOnlySimpleComponent();
 
 /** Used for testing that the updatable parameters in two networks are the same.
     May crash if structure differs.  Prints warning and returns false if

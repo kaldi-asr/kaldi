@@ -933,7 +933,7 @@ void ComputeExampleComputationRequestSimple(
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
 
-  int32 n = RandInt(0, 29);
+  int32 n = RandInt(0, 28);
   BaseFloat learning_rate = 0.001 * RandInt(1, 3);
 
   std::ostringstream os;
@@ -1233,7 +1233,23 @@ static void GenerateRandomComponentConfig(std::string *component_type,
         os << " self-repair-target=" << RandUniform();
       break;
     }
-    case 29: {
+    default:
+      KALDI_ERR << "Error generating random component";
+  }
+  *config = os.str();
+}
+
+
+
+static void GenerateRandomGPUOnlyComponentConfig(std::string *component_type,
+                                                 std::string *config) {
+
+  int32 n = RandInt(0, 0);
+  BaseFloat learning_rate = 0.001 * RandInt(1, 3);
+
+  std::ostringstream os;
+  switch(n) {
+    case 0: {
       *component_type = "CuDNN3DConvolutionComponent";
 
       int32 input_x_dim = 9 + Rand() % 10,
@@ -1261,11 +1277,10 @@ static void GenerateRandomComponentConfig(std::string *component_type,
          << " learning-rate=" << learning_rate;
       break;
     }
-    default:
-      KALDI_ERR << "Error generating random component";
   }
   *config = os.str();
 }
+
 
 /// Generates random simple component for testing.
 Component *GenerateRandomSimpleComponent() {
@@ -1281,6 +1296,24 @@ Component *GenerateRandomSimpleComponent() {
   c->InitFromConfig(&config_line);
   return c;
 }
+
+
+/// Generates random simple component for testing components with only GPU
+/// implementations.
+Component *GenerateRandomGPUOnlySimpleComponent() {
+  std::string component_type, config;
+  GenerateRandomGPUOnlyComponentConfig(&component_type, &config);
+  ConfigLine config_line;
+  if (!config_line.ParseLine(config))
+    KALDI_ERR << "Bad config line " << config;
+
+  Component *c = Component::NewComponentOfType(component_type);
+  if (c == NULL)
+    KALDI_ERR << "Invalid component type " << component_type;
+  c->InitFromConfig(&config_line);
+  return c;
+}
+
 
 bool NnetParametersAreIdentical(const Nnet &nnet1,
                                 const Nnet &nnet2,

@@ -494,6 +494,41 @@ void UnitTestNnetComponent() {
   }
 }
 
+/**
+ * This duplicates UnitTestNnetComponent(), but it's an easy
+ * way to test those components that have only GPU implementations
+ */
+void UnitTestGPUOnlyNnetComponent() {
+  for (int32 n = 0; n < 2; n++)  {
+    Component *c = GenerateRandomGPUOnlySimpleComponent();
+    KALDI_LOG << c->Info();
+    TestNnetComponentIo(c);
+    TestNnetComponentCopy(c);
+    TestNnetComponentAddScale(c);
+    TestNnetComponentVectorizeUnVectorize(c);
+    TestNnetComponentUpdatable(c);
+    TestSimpleComponentPropagateProperties(*c);
+    if (!TestSimpleComponentDataDerivative(*c, 1.0e-04) &&
+        !TestSimpleComponentDataDerivative(*c, 1.0e-03) &&
+        !TestSimpleComponentDataDerivative(*c, 1.0e-05) &&
+        !TestSimpleComponentDataDerivative(*c, 1.0e-06))
+      KALDI_ERR << "Component data-derivative test failed";
+
+    if (!TestSimpleComponentModelDerivative(*c, 1.0e-04, false) &&
+        !TestSimpleComponentModelDerivative(*c, 1.0e-03, false) &&
+        !TestSimpleComponentModelDerivative(*c, 1.0e-06, false))
+      KALDI_ERR << "Component downhill-update test failed";
+
+    if (!TestSimpleComponentModelDerivative(*c, 1.0e-04, true) &&
+        !TestSimpleComponentModelDerivative(*c, 1.0e-03, true) &&
+        !TestSimpleComponentModelDerivative(*c, 1.0e-05, true) &&
+        !TestSimpleComponentModelDerivative(*c, 1.0e-06, true))
+      KALDI_ERR << "Component model-derivative test failed";
+
+    delete c;
+  }
+}
+
 } // namespace nnet3
 } // namespace kaldi
 
@@ -510,6 +545,14 @@ int main() {
 #endif
     UnitTestNnetComponent();
   }
+
+#if HAVE_CUDNN == 1
+  // If HAVE_CUDNN == 1, then HAVE_CUDA == 1 as well, and we know from
+  // the previous code that a GPU has already been selected at this
+  // point. Note that we'll need a better condition here if ever we have
+  // components other than CUDNN ones that do not have CPU implementations.
+  UnitTestGPUOnlyNnetComponent();
+#endif
 
   KALDI_LOG << "Nnet component ntests succeeded.";
 
