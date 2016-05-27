@@ -50,9 +50,10 @@ class CuDevice {
   static inline CuDevice& Instantiate() { return global_device_; }
 
   inline cublasHandle_t GetHandle() { return handle_; }
-  
-  inline cudnnHandle_t GetCudnnHandle() { return cudnn_; }
 
+#if HAVE_CUDNN == 1
+  inline cudnnHandle_t GetCudnnHandle() { return cudnn_; }
+#endif
   // We provide functions Malloc, MallocPitch and Free which replace cudaMalloc,
   // cudaMallocPitch and cudaFree.  Their function is to cache the results of
   // previous allocations to avoid the very large overhead that CUDA's

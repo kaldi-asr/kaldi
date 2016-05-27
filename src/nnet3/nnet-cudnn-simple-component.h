@@ -22,6 +22,8 @@
 
 #include "nnet3/nnet-common.h"
 #include "nnet3/nnet-component-itf.h"
+#include "cudamatrix/cudnn-utils.h"
+#include <cudnn.h>
 #include <vector>
 
 namespace kaldi {

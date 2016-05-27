@@ -61,7 +61,7 @@ fi
 MATHLIB='ATLAS'
 ATLASROOT=`rel2abs ../tools/ATLAS/`
 FSTROOT=`rel2abs ../tools/openfst`
-CUDNNROOT=`rel2abs ../tools/cudnn`
+CUDNNROOT=`rel2abs ../tools/extras/cudnn/`
 
 # Avoid using any variables that are set in the shell.
 unset MKLROOT
