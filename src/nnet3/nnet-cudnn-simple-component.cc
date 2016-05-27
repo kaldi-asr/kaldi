@@ -196,9 +196,13 @@ void CuDNN3DConvolutionComponent::InitFromConfig(ConfigLine *cfl) {
   ok = ok && cfl->GetValue("filt-x-dim", &filt_x_dim);
   ok = ok && cfl->GetValue("filt-y-dim", &filt_y_dim);
   ok = ok && cfl->GetValue("filt-z-dim", &filt_z_dim);
-  ok = ok && cfl->GetValue("filt-x-stride", &filt_x_stride);
-  ok = ok && cfl->GetValue("filt-y-stride", &filt_y_stride);
-  ok = ok && cfl->GetValue("filt-z-stride", &filt_z_stride);
+  // the config line uses "step" while the code uses "stride"
+  // because we want to be more compatible with the original
+  // ConvolutionComponent interface. Tis code uses "stride"
+  // to be consistent with the naming in the cudnn documentation.
+  ok = ok && cfl->GetValue("filt-x-step", &filt_x_stride);
+  ok = ok && cfl->GetValue("filt-y-step", &filt_y_stride);
+  ok = ok && cfl->GetValue("filt-z-step", &filt_z_stride);
 
   // upscale_<k>_dim is how many times to
   // repeat each output in the <k>th dimension. This is
