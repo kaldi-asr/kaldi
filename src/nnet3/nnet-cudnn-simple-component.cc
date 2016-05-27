@@ -219,27 +219,19 @@ void CuDNN3DConvolutionComponent::InitFromConfig(ConfigLine *cfl) {
     upscale_z_dim = 1;
   }
 
-  // If padding is not explicitly given, this code chooses padding so that the input dimension 
-  // will equal the output dimension.
-  // For a justification of this, search for "The effect of zero padding on network size" in 
-  // Chapter 9: Convolutional Networks, of the Deep Learning book by Goodfellow et al.
-  // TODO: Make a private function for this.
-  // ALSO: I'm not sure whether I should be rounding up or down. Right now,
-  // I am rounding down.
+  // If zero padding is not explicitly specified, use no padding.
   pad_x_dim = 0;
   pad_y_dim = 0;
   pad_z_dim = 0;
-  /*
   if(!cfl->GetValue("pad-x-dim", &pad_x_dim)) {
-    pad_x_dim = ((filt_x_stride - upscale_x_dim)*input_x_dim + filt_x_dim - filt_x_stride)/2;
+    pad_x_dim = 0;
   }
   if(!cfl->GetValue("pad-y-dim", &pad_y_dim)) {
-    pad_y_dim = ((filt_y_stride - upscale_y_dim)*input_y_dim + filt_y_dim - filt_y_stride)/2;
+    pad_y_dim = 0;
   }
   if(!cfl->GetValue("pad-z-dim", &pad_z_dim)) {
-    pad_z_dim = ((filt_z_stride - upscale_z_dim)*input_z_dim + filt_z_dim - filt_z_stride)/2;
+    pad_z_dim = 0;
   }
-  */
   int32 filter_input_dim = filt_x_dim * filt_y_dim * input_z_dim;
   BaseFloat param_stddev = 1.0 / std::sqrt(filter_input_dim), bias_stddev = 1.0;
   cfl->GetValue("param-stddev", &param_stddev);
