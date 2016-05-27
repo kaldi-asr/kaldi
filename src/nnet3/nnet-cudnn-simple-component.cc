@@ -297,6 +297,7 @@ std::vector<int32> CuDNN3DConvolutionComponent::GetOutputDims() const {
                   );
   KALDI_ASSERT(output_dims[0] == 1); // Sanity check: Only one element in fake batch.
   KALDI_ASSERT(output_dims[1] == num_filters_);
+  // Skip the first two elements. We know what they will be.
   std::vector<int32> output_dims_vec(kConvolutionDimension_);
   for(int i = 0; i < output_dims_vec.size(); i++) {
     output_dims_vec[i] = output_dims[i + 2];
@@ -546,15 +547,19 @@ void CuDNN3DConvolutionComponent::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &input_y_dim_);
   ExpectToken(is, binary, "<InputZDim>");
   ReadBasicType(is, binary, &input_z_dim_);
-  ExpectToken(is, binary, "<NumFilters>");
+  int32 filter_dims[kConvolutionDimension_ + 2];
+  ExpectToken(is, binary, "<InputNumFilters>");
+  ReadBasicType(is, binary, &input_num_filters_);
+  filter_dims[1] = input_num_filters_;
+  ExpectToken(is, binary, "<OutputNumFilters>");
   ReadBasicType(is, binary, &num_filters_);
-  int32 filter_dims[kConvolutionDimension_];
+  filter_dims[0] = num_filters_;
   ExpectToken(is, binary, "<FilterXDim>");
-  ReadBasicType(is, binary, &filter_dims[0]);
-  ExpectToken(is, binary, "<FilterYDim>");
-  ReadBasicType(is, binary, &filter_dims[1]);
-  ExpectToken(is, binary, "<FilterZDim>");
   ReadBasicType(is, binary, &filter_dims[2]);
+  ExpectToken(is, binary, "<FilterYDim>");
+  ReadBasicType(is, binary, &filter_dims[3]);
+  ExpectToken(is, binary, "<FilterZDim>");
+  ReadBasicType(is, binary, &filter_dims[4]);
   int32 padding[kConvolutionDimension_];
   ExpectToken(is, binary, "<FilterXPadding>");
   ReadBasicType(is, binary, &padding[0]);
@@ -590,17 +595,14 @@ void CuDNN3DConvolutionComponent::Read(std::istream &is, bool binary) {
 
   CUDNN_SAFE_CALL(cudnnSetFilterNdDescriptor(filter_desc_,
                                              cudnn::GetDataType(),
-                                             kConvolutionDimension_,
+                                             kConvolutionDimension_ + 2,
                                              filter_dims
                                              ));
-  // N x C x D x H x W
-  // TODO: torch uses {1, num_filters, 1, 1}
-  // Understand why. Is this a mistake?
-  int32 bias_dims[] = {1, num_filters_, 1, 1};
-  int32 bias_strides[] = {num_filters_, 1, 1, 1};
+  int32 bias_dims[] = {1, num_filters_, 1, 1, 1};
+  int32 bias_strides[] = {num_filters_, 1, 1, 1, 1};
   CUDNN_SAFE_CALL(cudnnSetTensorNdDescriptor(bias_desc_,
                                              cudnn::GetDataType(),
-                                             kConvolutionDimension_ + 1,
+                                             kConvolutionDimension_ + 2,
                                              bias_dims,
                                              bias_strides
                                              ));
@@ -622,23 +624,29 @@ void CuDNN3DConvolutionComponent::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, input_y_dim_);
   WriteToken(os, binary, "<InputZDim>");
   WriteBasicType(os, binary, input_z_dim_);
-  WriteToken(os, binary, "<NumFilters>");
+  WriteToken(os, binary, "<InputNumFilters>");
+  WriteBasicType(os, binary, input_num_filters_);
+  WriteToken(os, binary, "<OutputNumFilters>");
   WriteBasicType(os, binary, num_filters_);
-  int32 filter_dims[kConvolutionDimension_];
+  int32 filter_dims[kConvolutionDimension_ + 2];
   int32 numDimensions;
   cudnnDataType_t float_type;
   CUDNN_SAFE_CALL(cudnnGetFilterNdDescriptor(filter_desc_,
-                                             kConvolutionDimension_,
+                                             kConvolutionDimension_ + 2,
                                              &float_type,
                                              &numDimensions,
                                              filter_dims)
                   );
+  // Note that filter_dims[0] == input_num_filters_ and
+  // filter_dims[1] == num_filters_
+  KALDI_ASSERT(filter_dims[1] == input_num_filters_);
+  KALDI_ASSERT(filter_dims[0] == num_filters_);
   WriteToken(os, binary, "<FilterXDim>");
-  WriteBasicType(os, binary, filter_dims[0]);
-  WriteToken(os, binary, "<FilterYDim>");
-  WriteBasicType(os, binary, filter_dims[1]);
-  WriteToken(os, binary, "<FilterZDim>");
   WriteBasicType(os, binary, filter_dims[2]);
+  WriteToken(os, binary, "<FilterYDim>");
+  WriteBasicType(os, binary, filter_dims[3]);
+  WriteToken(os, binary, "<FilterZDim>");
+  WriteBasicType(os, binary, filter_dims[4]);
   int32 padding[kConvolutionDimension_];
   int32 strides[kConvolutionDimension_];
   int32 upscales[kConvolutionDimension_];
