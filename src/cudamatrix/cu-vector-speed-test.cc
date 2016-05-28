@@ -114,10 +114,10 @@ template<typename Real> void TestCuVectorSumChooseMinLength() {
       BaseFloat fdim = dim;
       gflops_cpu = (fdim * iter) / (tim.Elapsed() * 1.0e+09);
     }
-    KALDI_LOG<< "CuVector::Sum" << NameOf<Real>() << ", dim: " << dim
-    << ", speed: GPU " << (gflops > gflops_cpu ? ">" : "<")
-    << " CPU, GPU speed: " << gflops << " Gflops. CPU speed: " << gflops_cpu
-    << " Gflops. Result diff: " << (result - result_cpu);
+    KALDI_LOG << "CuVector::Sum" << NameOf<Real>() << ", dim: " << dim
+              << ", speed: GPU " << (gflops > gflops_cpu ? ">" : "<")
+              << " CPU, GPU speed: " << gflops << " Gflops. CPU speed: "
+              << gflops_cpu << " Gflops. Result diff: " << (result - result_cpu);
   }
 }
 #endif

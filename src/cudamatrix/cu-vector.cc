@@ -268,7 +268,7 @@ Real CuVectorBase<Real>::Sum() const {
 
     // Small vectors are copied to RAM and reduced on CPU.
     // The length is chosen by cu-vector-speed-test
-    if (dim_ < 8192) {
+    if (dim_ < 4096) {
       Vector<Real> ans_cpu(*this);
       result = ans_cpu.Sum();
     } else {
@@ -640,7 +640,7 @@ Real CuVectorBase<Real>::Min() const {
 
     // Small vectors are copied to RAM and reduced on CPU.
     // The length is chosen by cu-vector-speed-test
-    if (dim_ < 8192) {
+    if (dim_ < 4096) {
       Vector<Real> ans_cpu(*this);
       result = ans_cpu.Min();
     } else {
@@ -678,7 +678,7 @@ Real CuVectorBase<Real>::Max() const {
 
     // Small vectors are copied to RAM and reduced on CPU.
     // The length is chosen by cu-vector-speed-test
-    if (dim_ < 8192) {
+    if (dim_ < 4096) {
       Vector<Real> ans_cpu(*this);
       result = ans_cpu.Max();
     } else {
