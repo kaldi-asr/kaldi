@@ -2420,41 +2420,64 @@ void CuMatrixBase<Real>::CopyUpperToLower() {
 
 template<typename Real>
 Real CuMatrixBase<Real>::Sum() const {
-  CuVector<Real> row_sum(NumCols());
-  row_sum.AddRowSumMat(1.0, *this, 0.0);
-  return row_sum.Sum();
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    KALDI_ASSERT(num_rows_ > 0 && num_cols_ > 0);
+    Timer tim;
+
+    CuVector<Real> col_sum(num_rows_, kUndefined);
+    cuda_sum_mat_cols(num_rows_, CU1DBLOCK, col_sum.Data(), data_, Dim());
+    Real ans = col_sum.Sum();
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    return ans;
+  } else
+#endif
+  {
+    return Mat().Sum();
+  }
 }
 
 
 template<typename Real>
 Real CuMatrixBase<Real>::Max() const {
-  Timer tim;
-  // TODO rewrite in CUDA,
-  Matrix<Real> tmp(NumRows(), NumCols(), kUndefined);
-  CopyToMat(&tmp);
-  Real ans = tmp.Max();
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    KALDI_ASSERT(num_rows_ > 0 && num_cols_ > 0);
+    Timer tim;
+
+    CuVector<Real> col_max(num_rows_, kUndefined);
+    cuda_max_mat_cols(num_rows_, CU1DBLOCK, col_max.Data(), data_, Dim());
+    Real ans = col_max.Max();
+
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
-  }
+    return ans;
+  } else
 #endif
-  return ans;
+  {
+    return Mat().Max();
+  }
 }
 
 
 template<typename Real>
 Real CuMatrixBase<Real>::Min() const {
-  Timer tim;
-  // TODO rewrite in CUDA,
-  Matrix<Real> tmp(NumRows(), NumCols(), kUndefined);
-  CopyToMat(&tmp);
-  Real ans = tmp.Min();
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    KALDI_ASSERT(num_rows_ > 0 && num_cols_ > 0);
+    Timer tim;
+
+    CuVector<Real> col_min(num_rows_, kUndefined);
+    cuda_min_mat_cols(num_rows_, CU1DBLOCK, col_min.Data(), data_, Dim());
+    Real ans = col_min.Min();
+
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
-  }
+    return ans;
+  } else
 #endif
-  return ans;
+  {
+    return Mat().Min();
+  }
 }
 
 

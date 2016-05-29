@@ -1118,6 +1118,44 @@ static void _vec_reduce(const Real* v, Real* result, const int dim,
     result[blockIdx.x] = sdata[0];
 }
 
+// Reduce a matrix 'mat' to a column vector 'result'
+template<EnumReduceType ReduceType, typename Real>
+__global__
+static void _reduce_mat_cols(Real *result, const Real *mat, const MatrixDim d) {
+
+  ReduceOperation<ReduceType, Real> reduce;
+
+  __shared__ Real sdata[CU1DBLOCK];
+  const int i = blockIdx.x;
+  const int row_start = i * d.stride;
+
+  Real tdata = reduce.InitValue();
+  for (int j = threadIdx.x; j < d.cols; j += CU1DBLOCK) {
+    tdata = reduce(tdata, mat[row_start + j]);
+  }
+  sdata[threadIdx.x] = tdata;
+  __syncthreads();
+
+  // Tree reduce
+# pragma unroll
+  for (int shift = CU1DBLOCK / 2; shift > warpSize; shift >>= 1) {
+    if (threadIdx.x < shift)
+      sdata[threadIdx.x] = reduce(sdata[threadIdx.x],
+          sdata[threadIdx.x + shift]);
+    __syncthreads();
+  }
+
+  // Reduce last warp. Threads implicitly synchronized within a warp.
+  if (threadIdx.x < warpSize) {
+    for (int shift = warpSize; shift > 0; shift >>= 1)
+      sdata[threadIdx.x] = reduce(sdata[threadIdx.x],
+          sdata[threadIdx.x + shift]);
+  }
+
+  // Output to vector result.
+  if (threadIdx.x == 0)
+    result[i] = sdata[0];
+}
 
 template<typename Real>
 __global__
@@ -2309,6 +2347,19 @@ void cudaF_apply_mask(dim3 Gr, dim3 Bl, float* mat, const char* mask, MatrixDim 
  * CuVector
  */
 
+void cudaF_max_mat_cols(int Gr, int Bl, float* result, const float* mat,
+    const MatrixDim d) {
+  _reduce_mat_cols<MAX> <<<Gr,Bl>>>(result,mat,d);
+}
+void cudaF_min_mat_cols(int Gr, int Bl, float* result, const float* mat,
+    const MatrixDim d) {
+  _reduce_mat_cols<MIN> <<<Gr,Bl>>>(result,mat,d);
+}
+void cudaF_sum_mat_cols(int Gr, int Bl, float* result, const float* mat,
+    const MatrixDim d) {
+  _reduce_mat_cols<SUM> <<<Gr,Bl>>>(result,mat,d);
+}
+
 void cudaF_replace_value(int Gr, int Bl, float *v, int dim, float orig, float changed) {
   _replace_value<<<Gr,Bl>>>(v, dim, orig, changed);
 }
@@ -2765,6 +2816,19 @@ void cudaD_apply_mask(dim3 Gr, dim3 Bl, double* mat, const char* mask, MatrixDim
 /*
  * CuVector
  */
+void cudaD_max_mat_cols(int Gr, int Bl, double* result, const double* mat,
+    const MatrixDim d) {
+  _reduce_mat_cols<MAX> <<<Gr,Bl>>>(result,mat,d);
+}
+void cudaD_min_mat_cols(int Gr, int Bl, double* result, const double* mat,
+    const MatrixDim d) {
+  _reduce_mat_cols<MIN> <<<Gr,Bl>>>(result,mat,d);
+}
+void cudaD_sum_mat_cols(int Gr, int Bl, double* result, const double* mat,
+    const MatrixDim d) {
+  _reduce_mat_cols<SUM> <<<Gr,Bl>>>(result,mat,d);
+}
+
 void cudaD_replace_value(int Gr, int Bl, double *v, int dim, double orig, double changed) {
   _replace_value<<<Gr,Bl>>>(v, dim, orig, changed);
 }
