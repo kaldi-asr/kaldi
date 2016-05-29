@@ -1183,7 +1183,7 @@ static void UnitTestCuMatrixAddMatBlocks() {
 }
 
 template<typename Real>
-static void UnitTestCuMatrixSum() {
+static void UnitTestCuMatrixReduceSum() {
   int32 M = 100 + Rand() % 300, N = 100 + Rand() % 300;
   CuMatrix<Real> A(M, N);
   A.SetRandn();
@@ -1191,6 +1191,23 @@ static void UnitTestCuMatrixSum() {
   KALDI_ASSERT(ApproxEqual(mA.Sum(), A.Sum()));
 }
 
+template<typename Real>
+static void UnitTestCuMatrixReduceMax() {
+  int32 M = 100 + Rand() % 300, N = 100 + Rand() % 300;
+  CuMatrix<Real> A(M, N);
+  A.SetRandn();
+  Matrix<Real> mA(A);
+  KALDI_ASSERT(ApproxEqual(mA.Max(), A.Max()));
+}
+
+template<typename Real>
+static void UnitTestCuMatrixReduceMin() {
+  int32 M = 100 + Rand() % 300, N = 100 + Rand() % 300;
+  CuMatrix<Real> A(M, N);
+  A.SetRandn();
+  Matrix<Real> mA(A);
+  KALDI_ASSERT(ApproxEqual(mA.Min(), A.Min()));
+}
 
 template<typename Real>
 static void UnitTestCuMatrixAddVecToCols() {
@@ -2473,7 +2490,9 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixDivRowsVec<Real>();
   UnitTestCuMatrixAddMat<Real>();
   UnitTestCuMatrixAddMatBlocks<Real>();
-  UnitTestCuMatrixSum<Real>();
+  UnitTestCuMatrixReduceSum<Real>();
+  UnitTestCuMatrixReduceMax<Real>();
+  UnitTestCuMatrixReduceMin<Real>();
   UnitTestCuMatrixAddVecToCols<Real>();
   UnitTestCuMatrixAddVecToRows<Real>();
   UnitTestCuMatrixAddMatMat<Real>();

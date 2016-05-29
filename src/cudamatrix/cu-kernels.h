@@ -182,6 +182,9 @@ inline void cuda_add_mat_mat_elements(dim3 Gr, dim3 Bl, float *data, const float
 /*
  * CuVector
  */
+inline void cuda_max_mat_cols(int Gr, int Bl, float* result, const float* mat, const MatrixDim d) { cudaF_max_mat_cols(Gr, Bl, result, mat, d); }
+inline void cuda_min_mat_cols(int Gr, int Bl, float* result, const float* mat, const MatrixDim d) { cudaF_min_mat_cols(Gr, Bl, result, mat, d); }
+inline void cuda_sum_mat_cols(int Gr, int Bl, float* result, const float* mat, const MatrixDim d) { cudaF_sum_mat_cols(Gr, Bl, result, mat, d); }
 inline void cuda_replace_value(int Gr, int Bl, float *v, int dim, float orig, float changed) {cudaF_replace_value(Gr, Bl, v, dim, orig, changed); }
 inline void cuda_div_rows_vec(dim3 Gr, dim3 Bl, float *mat, const float *vec_div, MatrixDim d) { cudaF_div_rows_vec(Gr,Bl,mat,vec_div,d); }
 inline void cuda_set_bias_params(int Gr, int Bl, float* v, const float* a, float param_1, float param_2, float param_3, int* flag, int dim) { cudaF_set_bias_params(Gr,Bl,v,a,param_1,param_2,param_3,flag,dim); }
@@ -365,6 +368,10 @@ inline void cuda_add_mat_mat_elements(dim3 Gr, dim3 Bl, double *data, const doub
 /*
  * CuVector
  */
+
+inline void cuda_max_mat_cols(int Gr, int Bl, double* result, const double* mat, const MatrixDim d) { cudaD_max_mat_cols(Gr, Bl, result, mat, d); }
+inline void cuda_min_mat_cols(int Gr, int Bl, double* result, const double* mat, const MatrixDim d) { cudaD_min_mat_cols(Gr, Bl, result, mat, d); }
+inline void cuda_sum_mat_cols(int Gr, int Bl, double* result, const double* mat, const MatrixDim d) { cudaD_sum_mat_cols(Gr, Bl, result, mat, d); }
 inline void cuda_replace_value(int Gr, int Bl, double *v, int dim, double orig, double changed) {cudaD_replace_value(Gr, Bl, v, dim, orig, changed); }
 inline void cuda_div_rows_vec(dim3 Gr, dim3 Bl, double *mat, const double *vec_div, MatrixDim d) { cudaD_div_rows_vec(Gr,Bl,mat,vec_div,d); }
 inline void cuda_set_bias_params(int Gr, int Bl, double* v, const double* a, double param_1, double param_2, double param_3, int* flag, int dim) { cudaD_set_bias_params(Gr,Bl,v,a,param_1,param_2,param_3,flag,dim); }

@@ -41,6 +41,57 @@ std::string NameOf() {
   return (sizeof(Real) == 8 ? "<double>" : "<float>");
 }
 
+template<typename Real> void TestCuMatrixSum(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> M(dim, dim);
+  M.SetRandn();
+
+  Timer tim;
+  int32 iter = 0;
+  Real result = 0;
+  for (; tim.Elapsed() < time_in_secs; iter++) {
+    result = M.Sum();
+  }
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG<< "For CuMatrix::TestCuMatrixSum" << NameOf<Real>() << ", for dim = "
+  << dim << ", speed was " << gflops << " gigaflops, result = " << result;
+}
+
+template<typename Real> void TestCuMatrixMax(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> M(dim, dim);
+  M.SetRandn();
+
+  Timer tim;
+  int32 iter = 0;
+  Real result = 0;
+  for (; tim.Elapsed() < time_in_secs; iter++) {
+    result = M.Max();
+  }
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG<< "For CuMatrix::TestCuMatrixMax" << NameOf<Real>() << ", for dim = "
+  << dim << ", speed was " << gflops << " gigaflops, result = " << result;
+}
+
+template<typename Real> void TestCuMatrixMin(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> M(dim, dim);
+  M.SetRandn();
+
+  Timer tim;
+  int32 iter = 0;
+  Real result = 0;
+  for (; tim.Elapsed() < time_in_secs; iter++) {
+    result = M.Min();
+  }
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG<< "For CuMatrix::TestCuMatrixMin" << NameOf<Real>() << ", for dim = "
+  << dim << ", speed was " << gflops << " gigaflops, result = " << result;
+}
+
 template<typename Real> void TestCuMatrixTransposeNS(int32 dim) {
   BaseFloat time_in_secs = 0.025;
   CuMatrix<Real> M(dim, dim / 2);
@@ -932,6 +983,12 @@ template<typename Real> void CudaMatrixSpeedTest() {
     TestCuMatrixTransposeS<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixTransposeNS<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixSum<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixMax<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixMin<Real>(sizes[s]);
 }
 
 
