@@ -857,7 +857,14 @@ void CuMatrixBase<Real>::DivRowsVec(const CuVectorBase<Real> &div) {
     dim3 dimGrid, dimBlock;
     GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
                                           &dimGrid, &dimBlock);
-
+    // For large matrix we do more work per thread by limiting the
+    // the grid size to reduce the block launching overhead.
+    if (dimGrid.x * dimGrid.y > 1024) {
+      dimGrid.x = 1024 / dimGrid.y;
+      if (dimGrid.x == 0) {
+        dimGrid.x = 1;
+      }
+    }
     cuda_div_rows_vec(dimGrid, dimBlock, data_, div.data_, Dim());
     CU_SAFE_CALL(cudaGetLastError());
 
