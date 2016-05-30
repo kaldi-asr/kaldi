@@ -464,22 +464,16 @@ static void _replace_value(Real *vec, int dim, Real orig, Real changed) {
 template<typename Real>
 __global__
 static void _div_rows_vec(Real* mat, const Real* vec_div, MatrixDim d) {
-  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
-  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
-  int32_cuda index = i + j*d.stride;
-
-  if (j >= d.rows ) return;
-
-  //invert divider in shared memory
-  __shared__ Real inv[16];
-  if(threadIdx.x==0) {
-    inv[threadIdx.y] = 1.0/vec_div[j];
+  const int32_cuda i = blockIdx.y * blockDim.y + threadIdx.y;
+  if (i < d.rows) {
+    const int32_cuda start = i * d.stride;
+    const Real scale = Real(1) / vec_div[i];
+    const int32_cuda grid_stride = blockDim.x * gridDim.x;
+    for (int32_cuda j = blockIdx.x * blockDim.x + threadIdx.x; j < d.cols; j +=
+        grid_stride) {
+      mat[start + j] *= scale;
+    }
   }
-  __syncthreads();
-
-  //multiply elements
-  if (i < d.cols && j < d.rows)
-    mat[index] *= inv[threadIdx.y];
 }
 
 

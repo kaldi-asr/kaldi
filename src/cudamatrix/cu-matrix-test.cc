@@ -1072,13 +1072,14 @@ template<typename Real> static void UnitTestCuMatrixAddMatMatElements() {
 
 template<typename Real>
 static void UnitTestCuMatrixDivRowsVec() {
-  Matrix<Real> Hm(100,99);
-  Vector<Real> Hv(100);
+  MatrixIndexT dimM = 1000, dimN = 5;
+  Matrix<Real> Hm(dimM, dimN);
+  Vector<Real> Hv(dimM);
   Hm.SetRandn();
   InitRand(&Hv);
 
-  CuMatrix<Real> Dm(100,99);
-  CuVector<Real> Dv(100);
+  CuMatrix<Real> Dm(dimM, dimN);
+  CuVector<Real> Dv(dimM);
   Dm.CopyFromMat(Hm);
   Dv.CopyFromVec(Hv);
 
@@ -1086,10 +1087,10 @@ static void UnitTestCuMatrixDivRowsVec() {
   Hv.InvertElements();
   Hm.MulRowsVec(Hv);
 
-  Matrix<Real> Hm2(100,99);
+  Matrix<Real> Hm2(dimM, dimN);
   Dm.CopyToMat(&Hm2);
 
-  AssertEqual(Hm,Hm2);
+  AssertEqual(Hm, Hm2);
 }
 
 
