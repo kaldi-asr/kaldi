@@ -21,6 +21,7 @@
 #include "base/kaldi-math.h"
 #ifndef _MSC_VER
 #include <pthread.h>
+#include <stdlib.h>
 #endif
 #include <string>
 
