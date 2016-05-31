@@ -75,7 +75,7 @@ if [ "$use_cnn" == "true" ]; then
   [ ! -z "$cepstral_lifter" ] && cnn_opts+=(--cnn.cepstral-lifter $cepstral_lifter)
   affix=3dcnn
   # We found that using CNN with mean-normalized features obtains better results
-  cmvn_opts="--norm-means=true --norm-vars=false"
+  #cmvn_opts="--norm-means=true --norm-vars=false"
 fi
 
 dir=exp/nnet3/tdnn
@@ -114,7 +114,7 @@ if [ $stage -le 10 ]; then
     --feat.online-ivector-dir exp/nnet3/ivectors_${train_set} \
     --feat.cmvn-opts="$cmvn_opts" \
     --trainer.num-epochs 2 \
-    --trainer.optimization.minibatch-size 512 \
+    --trainer.optimization.minibatch-size 256 \
     --trainer.optimization.num-jobs-initial 3 \
     --trainer.optimization.num-jobs-final 16 \
     --trainer.optimization.initial-effective-lrate 0.0017 \

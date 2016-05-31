@@ -188,6 +188,49 @@ def AddConvolutionLayer(config_lines, name, input,
             '3d-dim': [num_x_steps, num_y_steps, num_z_steps * num_filters],
             'vectorization': 'zyx'}
 
+def AddCuDNN3DConvolutionLayer(config_lines, name, input,
+                       input_x_dim, input_y_dim, input_z_dim,
+                       filt_x_dim, filt_y_dim, filt_z_dim,
+                       filt_x_step, filt_y_step, filt_z_step,
+                       num_filters, input_vectorization,
+                       param_stddev = None, bias_stddev = None,
+                       filter_bias_file = None,
+                       is_updatable = True):
+    assert(input['dimension'] == input_x_dim * input_y_dim * input_z_dim)
+    components = config_lines['components']
+    component_nodes = config_lines['component-nodes']
+
+    # if filt_z_dim is None we assume it equals to the input
+    if filt_z_dim is None:
+      filt_z_dim = input_z_dim
+    if filt_z_step is None:
+      filt_z_step = filt_z_dim
+
+    conv_init_string = ("component name={0}_conv type=CuDNN3DConvolutionComponent "
+                       "input-x-dim={1} input-y-dim={2} input-z-dim={3} "
+                       "filt-x-dim={4} filt-y-dim={5} filt-z-dim={6} "
+                       "filt-x-step={7} filt-y-step={8} filt-z-step={9} ".format(name, input_x_dim, input_y_dim, input_z_dim,
+                       filt_x_dim, filt_y_dim, filt_z_dim,
+                       filt_x_step, filt_y_step, filt_z_step))
+    conv_init_string += " input-num-filters=1"
+    if filter_bias_file is not None:
+        conv_init_string += " matrix={0}".format(filter_bias_file)
+    else:
+        conv_init_string += " num-filters={0}".format(num_filters)
+        
+    components.append(conv_init_string)
+    component_nodes.append("component-node name={0}_conv_t component={0}_conv input={1}".format(name, input['descriptor']))
+
+    num_x_steps = (1 + (input_x_dim - filt_x_dim) / filt_x_step)
+    num_y_steps = (1 + (input_y_dim - filt_y_dim) / filt_y_step)
+    num_z_steps = (1 + (input_z_dim - filt_z_dim) / filt_z_step)
+    # The output is actually a vectorized 4d-tensor but we ignore the 4th dimension and fold it into the 3rd dimension
+    output_dim = num_x_steps * num_y_steps * num_z_steps * num_filters;
+    return {'descriptor':  '{0}_conv_t'.format(name),
+            'dimension': output_dim,
+            '3d-dim': [num_x_steps, num_y_steps, num_z_steps * num_filters],
+            'vectorization': input_vectorization}
+
 
 # The Maxpooling component assumes input vectorizations of type zyx
 def AddMaxpoolingLayer(config_lines, name, input,

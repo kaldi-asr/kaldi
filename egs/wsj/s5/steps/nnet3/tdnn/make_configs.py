@@ -286,11 +286,13 @@ def AddConvMaxpLayer(config_lines, name, input, args):
     if '3d-dim' not in input:
         raise Exception("The input to AddConvMaxpLayer() needs '3d-dim' parameters.")
 
-    input = nodes.AddConvolutionLayer(config_lines, name, input,
+#    input = nodes.AddConvolutionLayer(config_lines, name, input,
+    input = nodes.AddCuDNN3DConvolutionLayer(config_lines, name, input,
                               input['3d-dim'][0], input['3d-dim'][1], input['3d-dim'][2],
                               args.filt_x_dim, args.filt_y_dim, args.filt_z_dim,
                               args.filt_x_step, args.filt_y_step, args.filt_z_step,
                               args.num_filters, input['vectorization'])
+
 
     if args.pool_x_size > 1 or args.pool_y_size > 1 or args.pool_z_size > 1:
       input = nodes.AddMaxpoolingLayer(config_lines, name, input,

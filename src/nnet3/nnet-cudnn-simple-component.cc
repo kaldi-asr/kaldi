@@ -232,7 +232,7 @@ void CuDNN3DConvolutionComponent::InitFromConfig(ConfigLine *cfl) {
   if(!cfl->GetValue("pad-z-dim", &pad_z_dim)) {
     pad_z_dim = 0;
   }
-  int32 filter_input_dim = filt_x_dim * filt_y_dim * input_z_dim;
+  int32 filter_input_dim = filt_x_dim * filt_y_dim * filt_z_dim;
   BaseFloat param_stddev = 1.0 / std::sqrt(filter_input_dim), bias_stddev = 1.0;
   cfl->GetValue("param-stddev", &param_stddev);
   cfl->GetValue("bias-stddev", &bias_stddev);
@@ -551,11 +551,11 @@ void CuDNN3DConvolutionComponent::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &num_filters_);
   filter_dims[0] = num_filters_;
   ExpectToken(is, binary, "<FilterXDim>");
-  ReadBasicType(is, binary, &filter_dims[2]);
+  ReadBasicType(is, binary, &filter_dims[4]);
   ExpectToken(is, binary, "<FilterYDim>");
   ReadBasicType(is, binary, &filter_dims[3]);
   ExpectToken(is, binary, "<FilterZDim>");
-  ReadBasicType(is, binary, &filter_dims[4]);
+  ReadBasicType(is, binary, &filter_dims[2]);
   int32 padding[kConvolutionDimension_];
   ExpectToken(is, binary, "<FilterXPadding>");
   ReadBasicType(is, binary, &padding[0]);
@@ -638,11 +638,11 @@ void CuDNN3DConvolutionComponent::Write(std::ostream &os, bool binary) const {
   KALDI_ASSERT(filter_dims[1] == input_num_filters_);
   KALDI_ASSERT(filter_dims[0] == num_filters_);
   WriteToken(os, binary, "<FilterXDim>");
-  WriteBasicType(os, binary, filter_dims[2]);
+  WriteBasicType(os, binary, filter_dims[4]);
   WriteToken(os, binary, "<FilterYDim>");
   WriteBasicType(os, binary, filter_dims[3]);
   WriteToken(os, binary, "<FilterZDim>");
-  WriteBasicType(os, binary, filter_dims[4]);
+  WriteBasicType(os, binary, filter_dims[2]);
   int32 padding[kConvolutionDimension_];
   int32 strides[kConvolutionDimension_];
   int32 upscales[kConvolutionDimension_];
@@ -722,9 +722,9 @@ std::string CuDNN3DConvolutionComponent::Info() const {
                                                   &float_type)
                   );
   KALDI_ASSERT(float_type == cudnn::GetDataType());
-  int32 filter_dims[CUDNN_DIM_MAX];
+  int32 filter_dims[kConvolutionDimension_ + 2];
   CUDNN_SAFE_CALL(cudnnGetFilterNdDescriptor(filter_desc_,
-                                             kConvolutionDimension_,
+                                             kConvolutionDimension_ + 2,
                                              &float_type,
                                              &numDimensions,
                                              filter_dims)
@@ -736,9 +736,9 @@ std::string CuDNN3DConvolutionComponent::Info() const {
          << ", input-x-dim=" << input_x_dim_
          << ", input-y-dim=" << input_y_dim_
          << ", input-z-dim=" << input_z_dim_
-         << ", filt-x-dim=" << filter_dims[2]
-         << ", filt-y-dim=" << filter_dims[1]
-         << ", filt-z-dim=" << filter_dims[0]
+         << ", filt-x-dim=" << filter_dims[4]
+         << ", filt-y-dim=" << filter_dims[3]
+         << ", filt-z-dim=" << filter_dims[2]
          << ", filt-x-stride=" << stride_dims[2]
          << ", filt-y-stride=" << stride_dims[1]
          << ", filt-z-stride=" << stride_dims[0]
