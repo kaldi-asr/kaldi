@@ -545,6 +545,29 @@ template<typename Real> void TestCuMatrixGroupMax(int32 dim) {
             << dim << ", speed was " << gflops << " gigaflops.";
 }
 
+template<typename Real> void TestCuMatrixGroupMaxAllGroupSizes(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> M(dim, dim);
+  M.SetRandn();
+  Timer tim;
+  int32 iter = 0;
+  for (; tim.Elapsed() < time_in_secs;) {
+    for (int group_size = 1; group_size <= dim; group_size++) {
+      if (dim % group_size == 0) {
+        CuMatrix<Real> N(dim, dim / group_size, kUndefined);
+        N.GroupMax(M);
+        iter++;
+      }
+    }
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::GroupMax (all group sizes)" << NameOf<Real>()
+            << ", for dim = " << dim << ", speed was " << gflops
+            << " gigaflops.";
+}
+
 template<typename Real> void TestCuMatrixGroupMaxDeriv(int32 dim) {
   BaseFloat time_in_secs = 0.025;
   int32 group_size = 4;
@@ -966,6 +989,8 @@ template<typename Real> void CudaMatrixSpeedTest() {
     TestCuMatrixGroupPnormDeriv<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixGroupMax<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixGroupMaxAllGroupSizes<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixGroupMaxDeriv<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
