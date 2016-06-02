@@ -1660,21 +1660,63 @@ static void _group_pnorm(Real *y, const Real *x, MatrixDim d, int src_stride,
 
 template<typename Real>
 __global__
-static void _group_max(Real *y, const Real *x, MatrixDim d, int src_stride,
-                       int group_size) {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  int j = blockIdx.y * blockDim.y + threadIdx.y;
-  if (j < d.rows  && i < d.cols) {
-    int dst_index = i + j * d.stride;
-    int src_begin_index = i * group_size + j * src_stride;
-    Real max_value = -1e20;
-    int src_end_index = src_begin_index + group_size;
-    for (int src_index = src_begin_index; src_index < src_end_index;
-         src_index ++) {
-      if (!isnan(x[src_index]) && x[src_index] > max_value)
-        max_value = x[src_index];
+static void _group_max(Real *y, const Real *x, const MatrixDim d,
+    const int src_stride, const int group_size) {
+  __shared__ Real smax[CU1DBLOCK];
+  const int i = blockIdx.x;
+  const int x_start = i * src_stride;
+  const int y_start = i * d.stride;
+  const int threads_per_group = blockDim.x;
+
+  // Reduce n groups per thread block
+  const int n = blockDim.y;
+  const int len = group_size * n;
+  const int tid = threadIdx.y * threads_per_group + threadIdx.x; // linear thread id
+  int j = threadIdx.y * group_size + threadIdx.x; // col-id of *x
+  int group_id = threadIdx.y;                     // col-id of *y
+  int group_end = x_start + (group_id + 1) * group_size;
+
+  while (group_id < d.cols) {
+    int x_idx = x_start + j;
+    Real tmax = x[x_idx];
+    x_idx += threads_per_group;
+    while (x_idx < group_end) {
+      tmax = max(tmax, x[x_idx]);
+      x_idx += threads_per_group;
     }
-    y[dst_index] = max_value;
+    smax[tid] = tmax;
+    if (threads_per_group > warpSize) {
+      __syncthreads();
+    }
+
+    // Multi-tree reduce
+#   pragma unroll
+    for (int active_threads = threads_per_group / 2; active_threads > warpSize;
+        active_threads >>= 1) {
+      if (threadIdx.x < active_threads) {
+        smax[tid] = max(smax[tid], smax[tid + active_threads]);
+      }
+      __syncthreads();
+    }
+
+    // Multi-warp reduce. Implicitly synchronized within the warp.
+    const int warp_reduce_size =
+        threads_per_group / 2 < warpSize ? threads_per_group / 2 : warpSize;
+    if (threadIdx.x < warp_reduce_size) {
+#     pragma unroll
+      for (int active_threads = warp_reduce_size; active_threads > 0;
+          active_threads >>= 1) {
+        smax[tid] = max(smax[tid], smax[tid + active_threads]);
+      }
+    }
+
+    if (threadIdx.x == 0) {
+      y[y_start + group_id] = smax[tid];
+    }
+
+    j += len;
+    group_end += len;
+    group_id += n;
   }
 }
 
