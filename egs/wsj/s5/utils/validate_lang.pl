@@ -636,7 +636,6 @@ if (-s "$lang/phones/word_boundary.txt") {
 
   # note, %wdisambig_words_hash hashes from the integer word-id of word-level
   # disambiguation symbols, to 1 if the word is a disambig symbol.
-  my %wdisambig_words_hash;
 
   if (! -e "$lang/phones/wdisambig.txt") {
     print "--> no $lang/phones/wdisambig.txt (older prepare_lang.sh)\n";
