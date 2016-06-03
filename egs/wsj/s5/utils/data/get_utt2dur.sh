@@ -29,8 +29,9 @@ export LC_ALL=C
 
 data=$1
 
-if [ -f $data/utt2dur ]; then
-  echo "$0: $data/utt2dur file already exists. The script is not going to be executed."
+if [ -s $data/utt2dur ] && \
+  [ $(cat $data/utt2spk | wc -l) -eq $(cat $data/utt2dur | wc -l) ]; then
+  echo "$0: $data/utt2dur already exists with the expected length.  We won't recompute it."
   exit 0;
 fi
 
@@ -75,7 +76,7 @@ elif [ -f $data/wav.scp ]; then
       read_entire_file=true
       echo "$0: reading from the entire wav file to fix the problem caused by sox commands with speed perturbation. It is going to be slow."
     fi
-    
+
     if ! wav-to-duration --read-entire-file=$read_entire_file scp:$data/wav.scp ark,t:$data/utt2dur 2>&1 | grep -v 'nonzero return status'; then
       echo "$0: there was a problem getting the durations; moving $data/utt2dur to $data/.backup/"
       mkdir -p $data/.backup/
@@ -94,6 +95,10 @@ len1=$(cat $data/utt2spk | wc -l)
 len2=$(cat $data/utt2dur | wc -l)
 if [ "$len1" != "$len2" ]; then
   echo "$0: warning: length of utt2dur does not equal that of utt2spk, $len2 != $len1"
+  if [ $len1 -gt $[$len2*2] ]; then
+    echo "$0: less than half of utterances got a duration: failing."
+    exit 1
+  fi
 fi
 
 echo "$0: computed $data/utt2dur"

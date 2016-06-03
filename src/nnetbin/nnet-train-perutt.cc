@@ -68,6 +68,9 @@ int main(int argc, char *argv[]) {
     po.Register("frame-weights", &frame_weights,
         "Per-frame weights to scale gradients (frame selection/weighting).");
 
+    kaldi::int32 max_frames = 6000;  // Allow segments maximum of one minute by default
+    po.Register("max-frames",&max_frames, "Maximum number of frames a segment can have to be processed");
+
     std::string use_gpu="yes";
     po.Register("use-gpu", &use_gpu,
         "yes|no|optional, only has effect if compiled with CUDA");
@@ -152,6 +155,14 @@ int main(int argc, char *argv[]) {
       // get feature / target pair
       Matrix<BaseFloat> mat = feature_reader.Value();
       Posterior targets = targets_reader.Value(utt);
+      // skip the sentence if it is too long,
+      if (mat.NumRows() > max_frames) {
+        KALDI_WARN << "Skipping " << utt
+          << " that has " << mat.NumRows() << " frames,"
+          << " it is longer than '--max-frames'" << max_frames;
+        num_other_error++;
+        continue;
+      }
       // get per-frame weights
       Vector<BaseFloat> weights;
       if (frame_weights != "") {

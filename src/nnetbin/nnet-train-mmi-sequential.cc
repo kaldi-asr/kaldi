@@ -313,7 +313,7 @@ int main(int argc, char *argv[]) {
       lat_like = kaldi::LatticeForwardBackward(den_lat, &post, &lat_ac_like);
 
       // 6) convert the Posterior to a matrix,
-      PosteriorToMatrixMapped(post, trans_model, &nnet_diff_h);
+      PosteriorToPdfMatrix(post, trans_model, &nnet_diff_h);
 
       // 7) Calculate the MMI-objective function,
       // Calculate the likelihood of correct path from acoustic score,

@@ -637,14 +637,12 @@ if (-s "$lang/phones/word_boundary.txt") {
   # note, %wdisambig_words_hash hashes from the integer word-id of word-level
   # disambiguation symbols, to 1 if the word is a disambig symbol.
   my %wdisambig_words_hash;
-  my %wdisambig_words_string = "";
 
   if (! -e "$lang/phones/wdisambig.txt") {
     print "--> no $lang/phones/wdisambig.txt (older prepare_lang.sh)\n";
     if (exists $wsymtab{"#0"}) {
       print "--> $lang/words.txt has \"#0\"\n";
       $wdisambig_words_hash{$wsymtab{"#0"}} = 1;
-      $wdisambig_words_string = $wsymtab{"#0"};
     } else {
       print "--> WARNING: $lang/words.txt doesn't have \"#0\"\n";
       print "-->          (if you are using ARPA-type language models, you will normally\n";
@@ -692,7 +690,6 @@ if (-s "$lang/phones/word_boundary.txt") {
     }
     foreach my $i ( @wdisambig_words ) {
       $wdisambig_words_hash{$i} = 1;
-      $wdisambig_words_string .= " " . $i;
     }
   }
 }
@@ -732,7 +729,7 @@ if (-s "$lang/phones/word_boundary.int") {
       $id = int(rand(scalar(keys %wint2sym)));
       # exclude disambiguation symbols, BOS and EOS and epsilon from the word
       # sequence.
-      while (defined $wdisambig_words_hash{$wint2sym{$id}} or
+      while (defined $wdisambig_words_hash{$id} or
              $wint2sym{$id} eq "<s>" or $wint2sym{$id} eq "</s>" or $id == 0) {
         $id = int(rand(scalar(keys %wint2sym)));
       }

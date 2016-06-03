@@ -22,7 +22,7 @@ For cygwin installation, see the instructions in `../INSTALL`.
   bash script wouldn't most probably work)
 * While the 32bit project files will still be generated, we don't really
   care if they work or not. They will be removed in the near future.
-* The build process were validated using MSVS2013 and partially (MKL only) using MSVS2015-rc
+* The build process was validated using MSVS2013 and MSVS2015
 * We support only openfst-1.3.x for now.
 * I suggest to have git installed -- not only because we will
   use it to download the source codes (you could download archives
@@ -76,14 +76,21 @@ For cygwin installation, see the instructions in `../INSTALL`.
 
    If you get this error: `Assertion failed: hunk, file ../patch-2.5.9-src/patch.c, line 354`
    it is because the `patch.c` file should have Windows line endings (CRLF) rather than Unix ones (LF).
+
+6. Use patch to patch the pthreads
+
+   The patch location is `tools/extras/pthread-2.9.1.patch`
+
+        (kaldi)/tools$ cd pthreads
+        (kaldi)/tools/pthreads$ patch -p1 <../extras/pthread-2.9.1.patch
    
 There are two options to use for BLAS (linear algebra): [Intel® MKL](https://software.intel.com/en-us/intel-mkl) and OpenBLAS. [Intel® MKL](https://software.intel.com/en-us/intel-mkl) is made by Intel and is optimised
 for their processors. It isn't free, but you can get [Community Licensing for Intel® Performance Libraries
 ](https://software.intel.com/sites/campaigns/nest/) or as part of Intel product suite if you [qualify as students, educators, academic researchers, and open source contributors](https://software.intel.com/en-us/qualify-for-free-software). OpenBLAS is free alternative with similar performance.
 
-6. If using [Intel® MKL](https://software.intel.com/en-us/intel-mkl), [install it](https://software.intel.com/en-us/intel-mkl/try-buy).
+7. If using [Intel® MKL](https://software.intel.com/en-us/intel-mkl), [install it](https://software.intel.com/en-us/intel-mkl/try-buy).
 
-7. If using OpenBLAS, download the binary packages.
+8. If using OpenBLAS, download the binary packages.
 
    https://sourceforge.net/projects/openblas
 
@@ -94,7 +101,7 @@ for their processors. It isn't free, but you can get [Community Licensing for In
 
    **Be careful to download "Win64-int32" and not "Win64-int64"!**
 
-8. If you want enabled [CUDA](http://www.nvidia.com/object/cuda_home_new.html) support, download and install [NVIDIA CUDA SDK](https://developer.nvidia.com/cuda-downloads).
+9. If you want enabled [CUDA](http://www.nvidia.com/object/cuda_home_new.html) support, download and install [NVIDIA CUDA SDK](https://developer.nvidia.com/cuda-downloads).
    Be careful and strive for as standard install as possible. The installer
    set certain environment variables on which the MSVC Build rules rely.
    If you call "set" in the command line, you should see:
@@ -107,7 +114,7 @@ for their processors. It isn't free, but you can get [Community Licensing for In
 
    The first one (`CUDA_PATH`) is particularly important.
 
-9. Open the OpenFST solution in Visual Studio
+10. Open the OpenFST solution in Visual Studio
 
    * for [Visual Studio 2013](https://www.visualstudio.com/en-us/news/vs2013-community-vs.aspx), the correct solution is in `MSVC12` directory
    * for [Visual Studio 2015](https://www.visualstudio.com/en-us/products/visual-studio-community-vs.aspx), the correct solution is in `MSVC14` directory
@@ -118,14 +125,14 @@ for their processors. It isn't free, but you can get [Community Licensing for In
 
    If either of the two won't build, you should stop here and start figuring what's different!
 
-10. Enter the `(kaldi)/windows` directory
+11. Enter the `(kaldi)/windows` directory
 
     Example:
     
          (kaldi)/tools/openfst$ cd ../../windows
          (kaldi)/windows $ pwd
 
-11. Copy `variables.props.dev` to `variables.props`.
+12. Copy `variables.props.dev` to `variables.props`.
     Then modify the file `variables.props` to reflect
     the correct paths, using your favorite text editor.
     Don't worry, it's a text file, even though you have to be
@@ -138,10 +145,10 @@ for their processors. It isn't free, but you can get [Community Licensing for In
     No matter what you plan to use, set both the `OPENFST*` and `PTHREADW`
     variables correctly
 
-12. For OpenBLAS support, copy the file `kaldiwin_openblas.props` to `kaldiwin.props`
-13. For MKL support, copy the `kaldiwin_mkl.props` to `kaldiwin.props`
+13. For OpenBLAS support, copy the file `kaldiwin_openblas.props` to `kaldiwin.props`
+14. For MKL support, copy the `kaldiwin_mkl.props` to `kaldiwin.props`
 
-14. Call the script that generates the MSVC solution
+15. Call the script that generates the MSVC solution
 
          ./generate_solution.pl --vsver <default|vs2013|vs2015> [--enable-cuda] [--enable-openblas] [--enable-mkl]
 
@@ -156,7 +163,7 @@ for their processors. It isn't free, but you can get [Community Licensing for In
 
          (kaldi)/tools$ generate_solution.pl --vsver vs2013 --enable-cuda --enable-openblas
 
-15. Open the generated solution in the visual studio and switch to **Debug|x64** (or **Release|x64**) and build.
+16. Open the generated solution in the visual studio and switch to **Debug|x64** (or **Release|x64**) and build.
    Expect 10 projects to fail, majority of them will fail because of missing include `portaudio.h`
 
 ------

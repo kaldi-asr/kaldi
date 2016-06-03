@@ -11,6 +11,7 @@ import re
 import time
 import imp
 import os
+import sys
 
 train_lib = imp.load_source('ntl', 'steps/nnet3/nnet3_train_lib.py')
 
@@ -176,9 +177,11 @@ def CombineModels(dir, num_iters, num_iters_combine, num_chunk_per_minibatch,
     raw_model_strings = []
     for iter in range(num_iters - num_iters_combine + 1, num_iters + 1):
       model_file = '{0}/{1}.mdl'.format(dir, iter)
-      if not os.path.exists(model_file):
-          raise Exception('Model file {0} missing'.format(model_file))
-      raw_model_strings.append('"nnet3-am-copy --raw=true {0} -|"'.format(model_file))
+      if os.path.exists(model_file):
+          raw_model_strings.append('"nnet3-am-copy --raw=true {0} -|"'.format(model_file))
+      else:
+          print('{0}: warning: model file {1} does not exist (final combination)'.format(
+                  sys.argv[0], model_file))
     train_lib.RunKaldiCommand("""
 {command} {combine_queue_opt} {dir}/log/combine.log \
 nnet3-chain-combine --num-iters=40 \

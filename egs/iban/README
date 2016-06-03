@@ -7,7 +7,7 @@
 
 ## INTRODUCTION ##
 This package has iban text and speech corpora used for Automatic Speech Recognition (ASR) experiments. Data is available in the subdirectories of /data. The subdirectories contain:
-a. train - train transcript for training ASR system using Kaldi ASR (http://kaldi.sourceforge.net/)
+a. train - train transcript for training ASR system using Kaldi ASR (http://kaldi-asr.org/doc/)
 b. test - test transcript for testing ASR system (also Kaldi ASR format)
 c. wav - speech corpus
 
@@ -38,7 +38,7 @@ News data provided by a local radio station in Sarawak, Malaysia.
 
 Directory: data/train
 Files: text (training transcript), wav.scp (file id and path to audio file), utt2spk (file id and audio id), spk2utt(audio id and file id), wav (.wav files).
-For more information about the format, please refer to Kaldi website http://kaldi.sourceforge.net/data_prep.html
+For more information about the format, please refer to Kaldi website http://kaldi-asr.org/doc/data_prep.html
 Description: training data in Kaldi format about 7 hours. Note: The path of wav files in wav.scp MUST BE MODIFIED to point to the actual location.
 
 Directory: data/test

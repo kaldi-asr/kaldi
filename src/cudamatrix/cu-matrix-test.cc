@@ -1072,13 +1072,14 @@ template<typename Real> static void UnitTestCuMatrixAddMatMatElements() {
 
 template<typename Real>
 static void UnitTestCuMatrixDivRowsVec() {
-  Matrix<Real> Hm(100,99);
-  Vector<Real> Hv(100);
+  MatrixIndexT dimM = 1000, dimN = 5;
+  Matrix<Real> Hm(dimM, dimN);
+  Vector<Real> Hv(dimM);
   Hm.SetRandn();
   InitRand(&Hv);
 
-  CuMatrix<Real> Dm(100,99);
-  CuVector<Real> Dv(100);
+  CuMatrix<Real> Dm(dimM, dimN);
+  CuVector<Real> Dv(dimM);
   Dm.CopyFromMat(Hm);
   Dv.CopyFromVec(Hv);
 
@@ -1086,10 +1087,10 @@ static void UnitTestCuMatrixDivRowsVec() {
   Hv.InvertElements();
   Hm.MulRowsVec(Hv);
 
-  Matrix<Real> Hm2(100,99);
+  Matrix<Real> Hm2(dimM, dimN);
   Dm.CopyToMat(&Hm2);
 
-  AssertEqual(Hm,Hm2);
+  AssertEqual(Hm, Hm2);
 }
 
 
@@ -1183,7 +1184,7 @@ static void UnitTestCuMatrixAddMatBlocks() {
 }
 
 template<typename Real>
-static void UnitTestCuMatrixSum() {
+static void UnitTestCuMatrixReduceSum() {
   int32 M = 100 + Rand() % 300, N = 100 + Rand() % 300;
   CuMatrix<Real> A(M, N);
   A.SetRandn();
@@ -1191,6 +1192,23 @@ static void UnitTestCuMatrixSum() {
   KALDI_ASSERT(ApproxEqual(mA.Sum(), A.Sum()));
 }
 
+template<typename Real>
+static void UnitTestCuMatrixReduceMax() {
+  int32 M = 100 + Rand() % 300, N = 100 + Rand() % 300;
+  CuMatrix<Real> A(M, N);
+  A.SetRandn();
+  Matrix<Real> mA(A);
+  KALDI_ASSERT(ApproxEqual(mA.Max(), A.Max()));
+}
+
+template<typename Real>
+static void UnitTestCuMatrixReduceMin() {
+  int32 M = 100 + Rand() % 300, N = 100 + Rand() % 300;
+  CuMatrix<Real> A(M, N);
+  A.SetRandn();
+  Matrix<Real> mA(A);
+  KALDI_ASSERT(ApproxEqual(mA.Min(), A.Min()));
+}
 
 template<typename Real>
 static void UnitTestCuMatrixAddVecToCols() {
@@ -2473,7 +2491,9 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixDivRowsVec<Real>();
   UnitTestCuMatrixAddMat<Real>();
   UnitTestCuMatrixAddMatBlocks<Real>();
-  UnitTestCuMatrixSum<Real>();
+  UnitTestCuMatrixReduceSum<Real>();
+  UnitTestCuMatrixReduceMax<Real>();
+  UnitTestCuMatrixReduceMin<Real>();
   UnitTestCuMatrixAddVecToCols<Real>();
   UnitTestCuMatrixAddVecToRows<Real>();
   UnitTestCuMatrixAddMatMat<Real>();

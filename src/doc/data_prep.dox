@@ -105,12 +105,17 @@ prefix of the utterance id; this is important for reasons relating to the sortin
 these files.  The rest of the line is the transcription of each sentence.  You don't
 have to make sure that all words in this file are in your vocabulary; out of vocabulary words will
 get mapped to a word specified in the file data/lang/oov.txt.
-Note: although, in this particular example we have used an underscore to separate the
-"speaker" and "utterance" parts of the utterance-id, in general it is probably safer to
-use a dash ("-").  This is because it has a lower ASCII value; it has been pointed out
-to me that if an underscore is used, and if the speaker-ids vary in length, in certain
-cases the speaker-ids and their corresponding utterance ids can end up being sorted in
-different orders when using the standard "C"-style ordering on strings.
+
+It needs to be the case that when you sort both the utt2spk and spk2utt files,
+the orders "agree", e.g. the list of speaker-ids extracted from the utt2spk file
+is the same as the string sorted order.  The easiest way to make this happen is
+to make the speaker-ids a prefix of the utter Although, in this particular
+example we have used an underscore to separate the "speaker" and "utterance"
+parts of the utterance-id, in general it is probably safer to use a dash ("-").
+This is because it has a lower ASCII value; if the speaker-ids vary in length,
+in certain cases the speaker-ids and their corresponding utterance ids can end
+up being sorted in different orders when using the standard "C"-style ordering
+on strings, which will lead to a crash.
 \endverbatim
 Another important file is <DFN>wav.scp</DFN>.  In the Switchboard example,
 \verbatim
@@ -127,6 +132,8 @@ an actual filename, or as in this case, a command that extracts a wav-format fil
 on the end of the extended-filename specifies that it is to be interpreted as a pipe.  We will
 explain what "recording-id" is below, but we would first like to point out that if the "segments" file
 does not exist, the first token on each line of "wav.scp" file is just the utterance id.
+The files in wav.scp must be single-channel (mono); if the underlying wav files have multiple
+channels, then a sox command must be used in the wav.scp to extract a particular channel.
 
 In the Switchboard setup we have the "segments" file, so we'll discuss this next.
 \verbatim
@@ -661,7 +668,7 @@ scripts <DFN>prepare_lang.sh</DFN> that adds those suffixes.
 
 You can see from the empty <DFN>extra_questions.txt</DFN> file that there
 is some kind of potential here that is not being fully exploited.  This relates
-things like stress markings or tone markings.  You may want to have different
+to things like stress markings or tone markings.  You may want to have different
 versions of a particular phone that have different stress or tone.  In order
 to demonstrate what this looks like, we'll view the same files as above,
 but in the <DFN>egs/wsj/s5/</DFN> setup.  The result is below:
