@@ -2717,6 +2717,51 @@ void MatrixBase<Real>::AddToRows(Real alpha, Real *const *dst) const {
   }
 }
 
+template<typename Real>
+void MatrixBase<Real>::ParametricRelu(
+                       const MatrixBase<Real> &src,
+                       const VectorBase<Real> &a,
+                       const VectorBase<Real> &b) {
+  KALDI_ASSERT(SameDim(*this, src));
+  MatrixIndexT num_rows = num_rows_, num_cols = num_cols_, stride = stride_, src_stride = src.stride_;
+  KALDI_ASSERT(a.Dim() == num_cols && b.Dim() == num_cols);
+  Real *data = data_;
+  const Real *src_data = src.data_;
+  const Real *adata = a.Data();
+  const Real *bdata = b.Data();
+  for (MatrixIndexT r = 0; r < num_rows; r++) {
+    for (MatrixIndexT c = 0; c < num_cols; c++)
+      data[c] = (src_data[c] > 0 ? adata[c] * src_data[c] : bdata[c] * src_data[c]);
+   data += stride;
+   src_data += src_stride;
+  }
+
+}
+
+
+template<typename Real>
+void MatrixBase<Real>::DiffParametricRelu(
+                       const MatrixBase<Real> &value,
+                       const MatrixBase<Real> &diff,
+                       const VectorBase<Real> &a,
+                       const VectorBase<Real> &b) {
+  KALDI_ASSERT(SameDim(*this, value) && SameDim(*this, diff));
+  MatrixIndexT num_rows = num_rows_, num_cols = num_cols_,
+      stride = stride_, value_stride = value.stride_, diff_stride = diff.stride_;
+  Real *data = data_;
+
+  KALDI_ASSERT(a.Dim() == num_cols && b.Dim() == num_cols);
+  const Real *value_data = value.data_, *diff_data = diff.data_;
+  const Real *adata = a.Data();
+  const Real *bdata = b.Data();
+  for (MatrixIndexT r = 0; r < num_rows; r++) {
+    for (MatrixIndexT c = 0; c < num_cols; c++)
+      data[c] = (value_data[c] > 0 ? adata[c] * diff_data[c] : bdata[c] * diff_data[c]);
+   data += stride;
+   value_data += value_stride;
+   diff_data += diff_stride;
+  }
+}
 
 template<typename Real>
 void MatrixBase<Real>::Sigmoid(const MatrixBase<Real> &src) {

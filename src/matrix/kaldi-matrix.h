@@ -454,6 +454,12 @@ class MatrixBase {
   /// matrix and return normalizer (log sum of exponentials).
   Real ApplySoftMax();
 
+  /// Compute the Parametric rectified linear unit function; element by element,
+  /// *this = ParametricRelu(src).
+  /// The positive and negative values are scaled by updatable parameters.
+  /// (x > 0 ? alpha * x : beta * x)
+  void ParametricRelu(const MatrixBase<Real> &src, const VectorBase<Real> &a, const VectorBase<Real> &b);
+
   /// Set each element to the sigmoid of the corresponding element of "src".
   void Sigmoid(const MatrixBase<Real> &src);
 
@@ -494,6 +500,13 @@ class MatrixBase {
 
   /// Set each element to the tanh of the corresponding element of "src".
   void Tanh(const MatrixBase<Real> &src);
+
+  /// Differentiate backward through the relu function.  Here, "value" is the
+  /// ParametricRelu output.  Does, element-by-element,
+  /// *this = diff * (x > 0 ? alpha*1 : beta*1 ).
+  void DiffParametricRelu(const MatrixBase<Real> &value,
+                const MatrixBase<Real> &diff, const VectorBase<Real> &a, const VectorBase<Real> &b);
+
 
   // Function used in backpropagating derivatives of the sigmoid function:
   // element-by-element, set *this = diff * value * (1.0 - value).

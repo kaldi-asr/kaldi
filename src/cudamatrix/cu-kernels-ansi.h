@@ -143,6 +143,8 @@ void cudaF_log_softmax_reduce(size_t Gr, size_t Bl, float *y, const float *x, Ma
 void cudaF_soft_hinge(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride);
 void cudaF_group_pnorm(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride, int group_size, float power);
 void cudaF_group_max(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride, int group_size);
+void cudaF_parametric_relu(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride, const float *a, const float *b);
+void cudaF_diff_parametric_relu(dim3 Gr, dim3 Bl, float *eout, const float *e, const float *y, MatrixDim d, int e_stride, int y_stride, const float *a, const float *b);
 void cudaF_sigmoid(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride);
 void cudaF_heaviside(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride);
 void cudaF_diff_sigmoid(dim3 Gr, dim3 Bl, float *eout, const float *e, const float *y, MatrixDim d, int e_stride, int y_stride);
@@ -287,8 +289,10 @@ void cudaD_log_softmax_reduce(size_t Gr, size_t Bl, double *y, const double *x, 
 void cudaD_soft_hinge(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d, int src_stride);
 void cudaD_group_pnorm(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d, int src_stride, int group_size, double power);
 void cudaD_group_max(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d, int src_stride, int group_size);
+void cudaD_parametric_relu(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d, int src_stride, const double *a, const double *b);
 void cudaD_sigmoid(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d, int src_stride);
 void cudaD_heaviside(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d, int src_stride);
+void cudaD_diff_parametric_relu(dim3 Gr, dim3 Bl, double *eout, const double *e, const double *y, MatrixDim d, int e_stride, int y_stride, const double *a, const double *b);
 void cudaD_diff_sigmoid(dim3 Gr, dim3 Bl, double *eout, const double *e, const double *y, MatrixDim d, int e_stride, int y_stride);
 void cudaD_tanh(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d, int src_stride);
 void cudaD_diff_tanh(dim3 Gr, dim3 Bl, double *eout, const double *e, const double *y, MatrixDim d, int e_stride, int y_stride);
