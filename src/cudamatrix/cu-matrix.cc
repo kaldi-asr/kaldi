@@ -1309,11 +1309,23 @@ void CuMatrixBase<Real>::GroupMax(const CuMatrixBase<Real> &src) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
-    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK),
-                 n_blocks(NumRows(), CU2DBLOCK));
-    cuda_group_max(dimGrid, dimBlock, this->data_, src.data_,
-                   this->Dim(), src.Stride(), group_size);
+    // One thread block per row.
+    // Use 2D block for small group size to simplify the calculation.
+    // Each group is reduced by threads_per_group threads.
+    // threads_per_group should be a power of 2 for fast tree reduction.
+    //        group size: 1 2 3 4 5 6 7 .. 12 13 .. 24 25 .. 48 ...
+    // threads_per_group: 1 1 1 2 2 2 4 ..  4  8 ..  8 16 .. 16 ...
+    int threads_per_group = CU1DBLOCK;
+    while (threads_per_group * 3 / 2 >= group_size) {
+      threads_per_group >>= 1;
+    }
+    if (group_size == 1) {
+      threads_per_group = 1;
+    }
+    dim3 dimBlock(threads_per_group, CU1DBLOCK / threads_per_group);
+    dim3 dimGrid(NumRows());
+    cuda_group_max(dimGrid, dimBlock, this->data_, src.data_, this->Dim(),
+        src.Stride(), group_size);
     CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
