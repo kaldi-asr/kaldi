@@ -531,6 +531,24 @@ void Supervision::Write(std::ostream &os, bool binary) const {
         fst, fst::AcceptorCompactor<fst::StdArc>(), os,
         write_options);
   }
+  if(num_sequences > 1) {
+    KALDI_ASSERT(fsts.size() == num_sequences);
+    WriteToken(os, binary, "<UnmergedFSTs>");
+    for (int i = 0; i < num_sequences; i++) {
+      if (binary == false) {
+        // In text mode, write the FST without any compactification.
+        WriteFstKaldi(os, binary, fsts[i]);
+      } else {
+        // Write using StdAcceptorCompactFst, making use of the fact that it's an
+        // acceptor.
+        fst::FstWriteOptions write_options("<unknown>");
+        fst::StdCompactAcceptorFst::WriteFst(
+            fsts[i], fst::AcceptorCompactor<fst::StdArc>(), os,
+            write_options);
+      }
+    }
+    WriteToken(os, binary, "</UnmergedFSTs>");
+  }
   WriteToken(os, binary, "</Supervision>");
 }
 
@@ -540,6 +558,7 @@ void Supervision::Swap(Supervision *other) {
   std::swap(frames_per_sequence, other->frames_per_sequence);
   std::swap(label_dim, other->label_dim);
   std::swap(fst, other->fst);
+  std::swap(fsts, other->fsts);
 }
 
 void Supervision::Read(std::istream &is, bool binary) {
@@ -562,6 +581,24 @@ void Supervision::Read(std::istream &is, bool binary) {
       KALDI_ERR << "Error reading compact FST from disk";
     fst = *compact_fst;
     delete compact_fst;
+  }
+  if(num_sequences > 1) {
+    fsts.resize(num_sequences);
+    ExpectToken(is, binary, "<UnmergedFSTs>");
+    for (int i = 0; i < num_sequences; i++) {
+      if (!binary) {
+        ReadFstKaldi(is, binary, &fsts[i]);
+      } else {
+        fst::StdCompactAcceptorFst *compact_fst =
+            fst::StdCompactAcceptorFst::Read(
+                is, fst::FstReadOptions(std::string("[unknown]")));
+        if (compact_fst == NULL)
+          KALDI_ERR << "Error reading compact FST from disk";
+        fsts[i] = *compact_fst;
+        delete compact_fst;
+      }
+    }
+    ExpectToken(is, binary, "</UnmergedFSTs>");
   }
     // ReadFstKaldi will work even though we wrote using a compact format.
   ExpectToken(is, binary, "</Supervision>");
@@ -605,7 +642,7 @@ int32 ComputeFstStateTimes(const fst::StdVectorFst &fst,
 Supervision::Supervision(const Supervision &other):
     weight(other.weight), num_sequences(other.num_sequences),
     frames_per_sequence(other.frames_per_sequence),
-    label_dim(other.label_dim), fst(other.fst) { }
+    label_dim(other.label_dim), fst(other.fst), fsts(other.fsts) { }
 
 void AppendSupervision(const std::vector<const Supervision*> &input,
                        bool compactify,
@@ -641,6 +678,9 @@ void AppendSupervision(const std::vector<const Supervision*> &input,
       output_was_merged.push_back(false);
     }
   }
+  for (int32 i = 0; i < input.size(); i++)
+    (*output_supervision)[0].fsts.push_back(input[i]->fst);
+
   KALDI_ASSERT(output_was_merged.size() == output_supervision->size());
   for (size_t i = 0; i < output_supervision->size(); i++) {
     if (output_was_merged[i]) {

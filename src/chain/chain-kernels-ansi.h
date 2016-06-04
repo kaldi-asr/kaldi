@@ -43,6 +43,32 @@ extern "C" {
                               const DenominatorGraphTransition *transitions,
                               int32_cuda num_sequences,
                               int32_cuda num_hmm_states,
+                              int32_cuda max_num_hmm_states,
+                              const BaseFloat *probs,
+                              int32_cuda prob_stride,
+                              const BaseFloat *prev_alpha,
+                              BaseFloat *this_alpha);
+
+
+
+  void cuda_chain_num_hmm_backward(dim3 Gr, dim3 Bl,
+                               const Int32Pair *forward_transitions,
+                               const DenominatorGraphTransition *transitions,
+                               int32_cuda num_sequences,
+                               int32_cuda num_hmm_states,
+                               const BaseFloat *probs,
+                               int32_cuda prob_stride,
+                               const BaseFloat *this_alpha,
+                               const BaseFloat *next_beta,
+                               BaseFloat *this_beta,
+                               BaseFloat *log_prob_deriv,
+                               int32_cuda log_prob_deriv_stride);
+
+  void cuda_chain_num_hmm_forward(dim3 Gr, dim3 Bl,
+                              const Int32Pair *backward_transitions,
+                              const DenominatorGraphTransition *transitions,
+                              int32_cuda num_sequences,
+                              int32_cuda num_hmm_states,
                               const BaseFloat *probs,
                               int32_cuda prob_stride,
                               const BaseFloat *prev_alpha,

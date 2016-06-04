@@ -1,6 +1,7 @@
 // chain/chain-kernels.cu
 
 // Copyright  2015  Johns Hopkins University (author: Daniel Povey)
+//            2016  Hossein Hadian
 
 
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -245,6 +246,138 @@ static void _cuda_chain_hmm_backward(const Int32Pair *forward_transitions,
 }
 
 
+
+__global__
+static void _cuda_chain_num_hmm_forward(const Int32Pair *backward_transitions,
+                                    const DenominatorGraphTransition *transitions,
+                                    int32_cuda num_sequences,
+                                    int32_cuda num_hmm_states,
+                                    int32_cuda max_num_hmm_states,
+                                    const BaseFloat *probs,
+                                    int32_cuda prob_stride,
+                                    const BaseFloat *prev_alpha,
+                                    BaseFloat *this_alpha) {
+  int32_cuda s = threadIdx.x + blockIdx.x * blockDim.x,
+      h  = blockIdx.y;
+  if (s >= num_sequences)
+    return;
+  if (h >= num_hmm_states)
+    return;
+
+  double this_tot_alpha = 0.0;
+  const DenominatorGraphTransition
+      *trans_iter = transitions + backward_transitions[s*max_num_hmm_states+h].first,
+      *trans_end = transitions + backward_transitions[s*max_num_hmm_states+h].second;
+  const int loop_unroll = 2;  // don't change this without changing the code
+                              // below.
+  for (; trans_iter + loop_unroll <= trans_end; trans_iter += loop_unroll) {
+    BaseFloat transition_prob0 = trans_iter[0].transition_prob;
+    int32_cuda pdf_id0 = trans_iter[0].pdf_id,
+        prev_hmm_state0 = trans_iter[0].hmm_state;
+    BaseFloat transition_prob1 = trans_iter[1].transition_prob;
+    int32_cuda pdf_id1 = trans_iter[1].pdf_id,
+        prev_hmm_state1 = trans_iter[1].hmm_state;
+    BaseFloat pseudo_loglike0 = probs[pdf_id0 * prob_stride + s],
+             this_prev_alpha0 = prev_alpha[prev_hmm_state0 * num_sequences + s],
+              pseudo_loglike1 = probs[pdf_id1 * prob_stride + s],
+             this_prev_alpha1 = prev_alpha[prev_hmm_state1 * num_sequences + s];
+
+    this_tot_alpha += this_prev_alpha0 * transition_prob0 * pseudo_loglike0 +
+                       this_prev_alpha1 * transition_prob1 * pseudo_loglike1;
+  }
+  if (trans_iter != trans_end) {
+    // mop up the odd transition.
+    BaseFloat transition_prob0 = trans_iter[0].transition_prob;
+    int32_cuda pdf_id0 = trans_iter[0].pdf_id,
+       prev_hmm_state0 = trans_iter[0].hmm_state;
+    BaseFloat pseudo_loglike0 = probs[pdf_id0 * prob_stride + s],
+             this_prev_alpha0 = prev_alpha[prev_hmm_state0 * num_sequences + s];
+    this_tot_alpha += this_prev_alpha0 * transition_prob0 * pseudo_loglike0;
+  }
+
+  // Let arbitrary_scale be the inverse of the sum of all alpha values on-- the
+  // previous frame this sum of all the alpha values is stored in the place that
+  // we'd store the previous alpha for state-index equal to num_hmm_states
+  // (i.e. one past the end).  We multiply this into all the
+  // transition-probabilities from the previous frame to this frame, in both the
+  // forward and backward passes, in order to keep the alphas in a good numeric
+  // range.  This won't affect the posteriors, as it's just a constant factor
+  // for each frame, but when computing the total likelihood we'll need to
+  // compensate for it later on.
+  BaseFloat arbitrary_scale =
+      1.0 / prev_alpha[max_num_hmm_states * num_sequences + s];
+  this_alpha[h * num_sequences + s] = this_tot_alpha * arbitrary_scale;
+}
+
+
+__global__
+static void _cuda_chain_num_hmm_backward(const Int32Pair *forward_transitions,
+                                     const DenominatorGraphTransition *transitions,
+                                     int32_cuda num_sequences, int32_cuda num_hmm_states,
+                                     const BaseFloat *probs, int32_cuda prob_stride,
+                                     const BaseFloat *this_alpha, const BaseFloat *next_beta,
+                                     BaseFloat *this_beta, BaseFloat *log_prob_deriv,
+                                     int32_cuda log_prob_deriv_stride) {
+  int32_cuda s = threadIdx.x + blockIdx.x * blockDim.x,
+      h = blockIdx.y;
+  if (s >= num_sequences)
+    return;
+
+  // See where arbitrary_scale is defined in the forward computation above, for
+  // more explanation of inv_arbitrary_scale.
+  BaseFloat this_alpha_prob = this_alpha[h * num_sequences + s],
+      inv_arbitrary_scale =
+      this_alpha[num_hmm_states * num_sequences + s];
+  double tot_variable_factor = 0.0;
+
+  BaseFloat occupation_factor = this_alpha_prob / inv_arbitrary_scale;
+  const DenominatorGraphTransition
+      *trans_iter = transitions + forward_transitions[h].first,
+      *trans_end = transitions + forward_transitions[h].second;
+  const int loop_unroll = 2;  // don't change this without changing the code
+                              // below.
+  for (; trans_iter + loop_unroll <= trans_end; trans_iter += loop_unroll) {
+    BaseFloat transition_prob0 = trans_iter[0].transition_prob;
+    int32_cuda pdf_id0 = trans_iter[0].pdf_id,
+        next_hmm_state0 = trans_iter[0].hmm_state;
+    BaseFloat transition_prob1 = trans_iter[1].transition_prob;
+    int32_cuda pdf_id1 = trans_iter[1].pdf_id,
+        next_hmm_state1 = trans_iter[1].hmm_state;
+    BaseFloat variable_factor0 = transition_prob0 *
+        next_beta[next_hmm_state0 * num_sequences + s] *
+                    probs[pdf_id0 * prob_stride + s],
+         variable_factor1 = transition_prob1 *
+        next_beta[next_hmm_state1 * num_sequences + s] *
+                    probs[pdf_id1 * prob_stride + s];
+    tot_variable_factor += variable_factor0 + variable_factor1;
+    BaseFloat occupation_prob0 = variable_factor0 * occupation_factor;
+    atomic_add_thresholded(log_prob_deriv + (pdf_id0 * log_prob_deriv_stride + s),
+                           occupation_prob0);
+    BaseFloat occupation_prob1 = variable_factor1 * occupation_factor;
+    atomic_add_thresholded(log_prob_deriv + (pdf_id1 * log_prob_deriv_stride + s),
+                           occupation_prob1);
+  }
+  if (trans_iter != trans_end) {
+    // mop up the odd transition.
+    BaseFloat transition_prob0 = trans_iter[0].transition_prob;
+    int32_cuda pdf_id0 = trans_iter[0].pdf_id,
+        next_hmm_state0 = trans_iter[0].hmm_state;
+    BaseFloat variable_factor0 = transition_prob0 *
+        next_beta[next_hmm_state0 * num_sequences + s] *
+                      probs[pdf_id0 * prob_stride + s];
+    tot_variable_factor += variable_factor0;
+    BaseFloat occupation_prob0 = variable_factor0 * occupation_factor;
+    atomic_add_thresholded(log_prob_deriv + (pdf_id0 * log_prob_deriv_stride + s),
+                           occupation_prob0);
+  }
+  BaseFloat beta = tot_variable_factor / inv_arbitrary_scale;
+  this_beta[h * num_sequences + s] = beta;
+}
+
+
+
+
+
 void cuda_chain_hmm_forward(dim3 Gr, dim3 Bl,
                             const Int32Pair *backward_transitions,
                             const DenominatorGraphTransition *transitions,
@@ -276,4 +409,41 @@ void cuda_chain_hmm_backward(dim3 Gr, dim3 Bl,
                                       this_beta, log_prob_deriv,
                                       log_prob_deriv_stride);
 }
+
+
+// kernels for on-gpu numerator computation:
+void cuda_chain_num_hmm_forward(dim3 Gr, dim3 Bl,
+                            const Int32Pair *backward_transitions,
+                            const DenominatorGraphTransition *transitions,
+                            int32_cuda num_sequences,
+                            int32_cuda num_hmm_states,
+                            int32_cuda max_num_hmm_states,
+                            const BaseFloat *probs, int32_cuda prob_stride,
+                            const BaseFloat *prev_alpha,
+                            BaseFloat *this_alpha) {
+  _cuda_chain_num_hmm_forward<<<Gr,Bl>>>(backward_transitions, transitions,
+                                     num_sequences, num_hmm_states,
+                                     probs, prob_stride,
+                                     prev_alpha, this_alpha);
+}
+
+void cuda_chain_num_hmm_backward(dim3 Gr, dim3 Bl,
+                             const Int32Pair *forward_transitions,
+                             const DenominatorGraphTransition *transitions,
+                             int32_cuda num_sequences,
+                             int32_cuda num_hmm_states,
+                             const BaseFloat *probs, int32_cuda prob_stride,
+                             const BaseFloat *this_alpha, const BaseFloat *next_beta,
+                             BaseFloat *this_beta,
+                             BaseFloat *log_prob_deriv,
+                             int32_cuda log_prob_deriv_stride) {
+  _cuda_chain_num_hmm_backward<<<Gr,Bl>>>(forward_transitions, transitions,
+                                      num_sequences, num_hmm_states,
+                                      probs, prob_stride,
+                                      this_alpha, next_beta,
+                                      this_beta, log_prob_deriv,
+                                      log_prob_deriv_stride);
+}
+
+
 
