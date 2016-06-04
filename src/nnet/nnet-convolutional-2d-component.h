@@ -427,6 +427,24 @@ class Convolutional2DComponent : public UpdatableComponent {
     // we use following hyperparameters from the option class,
     const BaseFloat lr = opts_.learn_rate;
 
+    //
+    // calculate the gradient
+    //
+    filters_grad_.Resize(filters_.NumRows(), filters_.NumCols(), kSetZero);
+    bias_grad_.Resize(filters_.NumRows(), kSetZero);
+    //
+    for (int32 p = 0; p < num_output_fmaps; p++) {
+      CuSubMatrix<BaseFloat> diff_patch(diff.ColRange(p * num_filters, num_filters));
+      filters_grad_.AddMatMat(1.0, diff_patch, kTrans, vectorized_feature_patches_[p], kNoTrans, 1.0);
+      bias_grad_.AddRowSumMat(1.0, diff_patch, 1.0);
+    }
+    // scale
+    filters_grad_.Scale(1.0/num_output_fmaps);
+    bias_grad_.Scale(1.0/num_output_fmaps);
+
+    //
+    // update
+    //
     filters_.AddMat(-lr * learn_rate_coef_, filters_grad_);
     bias_.AddVec(-lr * bias_learn_rate_coef_, bias_grad_);
   }

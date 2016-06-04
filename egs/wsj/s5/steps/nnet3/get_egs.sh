@@ -106,6 +106,14 @@ cp $alidir/tree $dir
 
 num_ali_jobs=$(cat $alidir/num_jobs) || exit 1;
 
+
+num_utts=$(cat $data/utt2spk | wc -l)
+if ! [ $num_utts -gt $[$num_utts_subset*4] ]; then
+  echo "$0: number of utterances $num_utts in your training data is too small versus --num-utts-subset=$num_utts_subset"
+  echo "... you probably have so little data that it doesn't make sense to train a neural net."
+  exit 1
+fi
+
 # Get list of validation utterances.
 awk '{print $1}' $data/utt2spk | utils/shuffle_list.pl | head -$num_utts_subset \
     > $dir/valid_uttlist || exit 1;

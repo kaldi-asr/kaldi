@@ -659,8 +659,8 @@ template<class Holder>  class SequentialTableReaderArchiveImpl:
 
   virtual bool Close() {
     // To clean up, Close() also closes the Input object if
-    // it's open. It will succeed if the stream was not in an error state,
-    // and the Input object isn't in an error state if we've found eof in the archive.
+    // it's open.  It will succeed if the stream was not in an error state,
+    // and the Input object isn't in an error state  we've found eof in the archive.
     if (!this->IsOpen())
       KALDI_ERR << "Close() called on TableReader twice or otherwise wrongly.";
     int32 status = 0;

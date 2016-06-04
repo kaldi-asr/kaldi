@@ -68,7 +68,7 @@ if [ $# -ne 4 ]; then
   echo "e.g.: utils/prepare_lang.sh data/local/dict <SPOKEN_NOISE> data/local/lang data/lang"
   echo "<dict-src-dir> should contain the following files:"
   echo " extra_questions.txt  lexicon.txt nonsilence_phones.txt  optional_silence.txt  silence_phones.txt"
-  echo "See http://kaldi.sourceforge.net/data_prep.html#data_prep_lang_creating for more info."
+  echo "See http://kaldi-asr.org/doc/data_prep.html#data_prep_lang_creating for more info."
   echo "options: "
   echo "     --num-sil-states <number of states>             # default: 5, #states in silence models."
   echo "     --num-nonsil-states <number of states>          # default: 3, #states in non-silence models."

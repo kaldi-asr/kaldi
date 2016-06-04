@@ -3,7 +3,7 @@
 #           2014  David Snyder
 
 # This script operates on a data directory, such as in data/train/.
-# See http://kaldi.sourceforge.net/data_prep.html#data_prep_data
+# See http://kaldi-asr.org/doc/data_prep.html#data_prep_data
 # for what these directories contain.
 
 # Begin configuration section. 

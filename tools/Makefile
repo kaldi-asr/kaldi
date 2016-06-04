@@ -2,6 +2,8 @@
 
 CXX = g++
 # CXX = clang++  # Uncomment this line to build with Clang.
+CC = gcc    # used for sph2pipe
+
 
 OPENFST_VERSION = 1.3.4
 # Uncomment the next line to build with OpenFst-1.4.1.

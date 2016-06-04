@@ -49,7 +49,7 @@ done
 ns=$(wc -l < $data/spk2utt)
 if [ "$ns" == 1 ]; then
   echo "$0: WARNING: you have only one speaker.  This probably a bad idea."
-  echo "   Search for the word 'bold' in http://kaldi.sourceforge.net/data_prep.html"
+  echo "   Search for the word 'bold' in http://kaldi-asr.org/doc/data_prep.html"
   echo "   for more information."
 fi
 

@@ -636,15 +636,12 @@ if (-s "$lang/phones/word_boundary.txt") {
 
   # note, %wdisambig_words_hash hashes from the integer word-id of word-level
   # disambiguation symbols, to 1 if the word is a disambig symbol.
-  my %wdisambig_words_hash;
-  my %wdisambig_words_string = "";
 
   if (! -e "$lang/phones/wdisambig.txt") {
     print "--> no $lang/phones/wdisambig.txt (older prepare_lang.sh)\n";
     if (exists $wsymtab{"#0"}) {
       print "--> $lang/words.txt has \"#0\"\n";
       $wdisambig_words_hash{$wsymtab{"#0"}} = 1;
-      $wdisambig_words_string = $wsymtab{"#0"};
     } else {
       print "--> WARNING: $lang/words.txt doesn't have \"#0\"\n";
       print "-->          (if you are using ARPA-type language models, you will normally\n";
@@ -692,7 +689,6 @@ if (-s "$lang/phones/word_boundary.txt") {
     }
     foreach my $i ( @wdisambig_words ) {
       $wdisambig_words_hash{$i} = 1;
-      $wdisambig_words_string .= " " . $i;
     }
   }
 }
@@ -732,7 +728,7 @@ if (-s "$lang/phones/word_boundary.int") {
       $id = int(rand(scalar(keys %wint2sym)));
       # exclude disambiguation symbols, BOS and EOS and epsilon from the word
       # sequence.
-      while (defined $wdisambig_words_hash{$wint2sym{$id}} or
+      while (defined $wdisambig_words_hash{$id} or
              $wint2sym{$id} eq "<s>" or $wint2sym{$id} eq "</s>" or $id == 0) {
         $id = int(rand(scalar(keys %wint2sym)));
       }
@@ -742,7 +738,6 @@ if (-s "$lang/phones/word_boundary.int") {
     }
     $wordseq = $wordseq . "$sid 0";
     $phoneseq = `. ./path.sh; echo \"$wordseq" | fstcompile | fstcompose $lang/$fst - | fstproject | fstrandgen | fstrmepsilon | fsttopsort | fstprint | awk '{if (NF > 2) {print \$3}}';`;
-    @phoneseq = split(" ", $phoneseq);
     $transition = { }; # empty assoc. array of allowed transitions between phone types.  1 means we count a word,
     # 0 means transition is allowed.  bos and eos are added as extra symbols here.
     foreach $x ("bos", "nonword", "end", "singleton") {
@@ -758,9 +753,9 @@ if (-s "$lang/phones/word_boundary.int") {
 
     $cur_state = "bos";
     $num_words = 0;
-    foreach $phone (split (" ", "$phoneseq eos")) {
+    foreach $phone (split (" ", "$phoneseq <<eos>>")) {
       if (!($fst == "L_disambig.fst" && defined $is_disambig{$phone})) {
-        if ($phone == "eos") {
+        if ($phone == "<<eos>>") {
           $state = "eos";
         } else {
           $state = $wbtype{$phone};
@@ -821,7 +816,10 @@ if (-e "$lang/L_disambig.fst") {
 if (-e "$lang/G.fst") {
   # Check that G.fst is ilabel sorted and nonempty.
   $text = `. ./path.sh; fstinfo $lang/G.fst`;
-
+  if ($? != 0) {
+    print "--> ERROR: fstinfo failed on $lang/G.fst\n";
+    $exit = 1;
+  }
   if ($text =~ m/input label sorted\s+y/) {
     print "--> $lang/G.fst is ilabel sorted\n";
   } else {
