@@ -1,4 +1,4 @@
-// chain/chain-numerator.h
+// chain/chain-cu-numerator.h
 
 // Copyright       2015  Hossein Hadian
 
@@ -53,23 +53,10 @@ namespace chain {
 class CuNumeratorComputation {
  public:
 
-  /// Initialize the objcect.  Note: we expect the 'nnet_output' to have the
-  /// same number of rows as supervision.num_frames * supervision.num_sequences,
-  /// and the same number of columns as the 'label-dim' of the supervision
-  /// object (which will be the NumPdfs() of the transition model); but the
-  /// ordering of the rows of 'nnet_output' is not the same as the ordering of
-  /// frames in paths in the 'supervision' object (which has all frames of the
-  /// 1st sequence first, then the 2nd sequence, and so on).  Instead, the
-  /// frames in 'nnet_output' are ordered as: first the first frame of each
-  /// sequence, then the second frame of each sequence, and so on.  This is more
-  /// convenient both because the nnet3 code internally orders them that way,
-  /// and because this makes it easier to order things in the way that class
-  /// SingleHmmForwardBackward needs (we can just transpose, instead of doing a
-  /// 3d tensor rearrangement).
+
   CuNumeratorComputation(const ChainTrainingOptions &opts,
                          const NumeratorGraph &num_graph,
                          const CuMatrixBase<BaseFloat> &nnet_output);
-
 
   // Does the forward computation.  Returns the total log-prob multiplied
   // by supervision_.weight.

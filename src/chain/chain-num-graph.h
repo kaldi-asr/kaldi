@@ -1,4 +1,4 @@
-// chain/chain-den-graph.h
+// chain/chain-num-graph.h
 
 // Copyright       2015  Hossein Hadian
 
@@ -60,7 +60,7 @@ class NumeratorGraph {
   const Int32Pair *BackwardTransitions() const;
 
   const DenominatorGraphTransition *Transitions() const;
-  
+
   const int32 *NumStates() const { return num_hmm_states_.Data(); }
 
   void CopyNumStatesToCpu(int32* destination) const {
@@ -71,18 +71,19 @@ class NumeratorGraph {
   void PrintInfo() const;
   // Use default copy constructor and assignment operator.
  private:
-  
+
   void SetTransitions(const std::vector<fst::StdVectorFst> &fsts);
-  /// 2-dim array of forward-transitions for a specific sequence and 
-  /// hmm-state: It is num_sequences_ by max_num_hmm_states_. To get the pair 
-  /// for seq s and state i one should use forward_transitions_.Data()[s*max_num_hmm_states_ + i]
-  CuArray<Int32Pair> forward_transitions_; 
-  CuArray<Int32Pair> backward_transitions_; // 
+  /// 2-dim array of forward-transitions for a specific sequence and
+  /// hmm-state: It is num_sequences_ by max_num_hmm_states_. To get the pair
+  /// for seq s and state i one should use
+  /// forward_transitions_.Data()[s*max_num_hmm_states_ + i]
+  CuArray<Int32Pair> forward_transitions_;
+  CuArray<Int32Pair> backward_transitions_; //
 
   // This stores the actual transitions.
   CuArray<DenominatorGraphTransition> transitions_;
 
-  /// This matrix has a size of (num_sequences_, max_num_hmm_states_) and each 
+  /// This matrix has a size of (num_sequences_, max_num_hmm_states_) and each
   /// element gives the final prob for state i in the hmm of sequence s
 //  CuMatrix<BaseFloat> final_probs_;
 

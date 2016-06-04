@@ -64,7 +64,7 @@ void CuNumeratorComputation::AlphaFirstFrame() {
   // set alpha_0(0) for all sequences to 1.0 and leave the rest to be 0.0.
   // i.e. the only start state is state 0.
   alpha_hmm_state0.Set(1.0);
-  
+
   // Now compute alpha-sums for t==0 which is obviously 1.0 for each sequence
   CuSubVector<BaseFloat> alpha_sum_vec(
                                      first_frame_alpha +
@@ -121,8 +121,10 @@ void CuNumeratorComputation::AlphaGeneralFrame(int32 t) {
       for (int32 h = 0; h < num_graph_.NumStates()[s]; h++) {
         double this_tot_alpha = 0.0;
         const DenominatorGraphTransition
-            *trans_iter = transitions + backward_transitions[s*max_num_hmm_states+h].first,
-            *trans_end = transitions + backward_transitions[s*max_num_hmm_states+h].second;
+            *trans_iter = transitions +
+              backward_transitions[s*max_num_hmm_states+h].first,
+            *trans_end = transitions +
+              backward_transitions[s*max_num_hmm_states+h].second;
         for (; trans_iter != trans_end; ++trans_iter) {
           BaseFloat transition_prob = trans_iter->transition_prob;
           int32 pdf_id = trans_iter->pdf_id,
@@ -146,15 +148,15 @@ void CuNumeratorComputation::AlphaGeneralFrame(int32 t) {
       }
     }
   }
-  
+
   // Now compute alpha-sums for frame t:
   CuSubMatrix<BaseFloat> alpha_mat(this_alpha,
                                    num_graph_.MaxNumStates(),
                                    num_sequences_,
                                    num_sequences_);
   CuSubVector<BaseFloat> alpha_sum_vec(this_alpha +
-                                       num_graph_.MaxNumStates() * num_sequences_,
-                                       num_sequences_);
+                                     num_graph_.MaxNumStates() * num_sequences_,
+                                     num_sequences_);
   alpha_sum_vec.AddRowSumMat(1.0, alpha_mat, 0.0);
 }
 
@@ -212,7 +214,8 @@ bool CuNumeratorComputation::Backward(
     if (GetVerboseLevel() >= 1 || t == 0)
       BetaGeneralFrameDebug(t);
   }
-  nnet_output_deriv->AddMat(deriv_weight, nnet_output_deriv_transposed_, kTrans);
+  nnet_output_deriv->AddMat(
+                           deriv_weight, nnet_output_deriv_transposed_, kTrans);
   return ok_;
 }
 
@@ -268,7 +271,8 @@ void CuNumeratorComputation::BetaGeneralFrame(int32 t) {
     while (1) {
       if (dimGrid.y > 65535)  // the hardware doesn't allow more than this.
         dimGrid.y = 65535;
-      cuda_chain_num_hmm_backward(dimGrid, dimBlock, forward_transitions, transitions,
+      cuda_chain_num_hmm_backward(dimGrid, dimBlock, forward_transitions,
+                              transitions,
                               num_sequences, num_graph_.NumStates(),
                               max_num_hmm_states,
                               probs.Data(), probs.Stride(),
@@ -298,8 +302,10 @@ void CuNumeratorComputation::BetaGeneralFrame(int32 t) {
         BaseFloat occupation_factor = this_alpha_prob /
             inv_arbitrary_scale;
         const DenominatorGraphTransition
-            *trans_iter = transitions + forward_transitions[s*max_num_hmm_states + h].first,
-            *trans_end = transitions + forward_transitions[s*max_num_hmm_states + h].second;
+            *trans_iter = transitions +
+              forward_transitions[s*max_num_hmm_states + h].first,
+            *trans_end = transitions +
+              forward_transitions[s*max_num_hmm_states + h].second;
         for (; trans_iter != trans_end; ++trans_iter) {
           BaseFloat transition_prob = trans_iter->transition_prob;
           int32 pdf_id = trans_iter->pdf_id,

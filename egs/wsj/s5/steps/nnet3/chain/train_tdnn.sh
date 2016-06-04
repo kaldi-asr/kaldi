@@ -13,6 +13,7 @@
 
 # Begin configuration section.
 cmd=run.pl
+num_threads=1
 num_epochs=10      # Number of epochs of training;
                    # the number of iterations is worked out from this.
                    # Be careful with this: we actually go over the data
@@ -169,7 +170,7 @@ utils/split_data.sh $data $nj
 
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
-cp $treedir/tree $dir
+cp $treedir/tree $dir || exit 1;
 
 
 # First work out the feature and iVector dimension, needed for tdnn config creation.

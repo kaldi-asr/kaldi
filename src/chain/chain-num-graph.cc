@@ -1,4 +1,4 @@
-// chain/chain-den-graph.cc
+// chain/chain-num-graph.cc
 
 // Copyright      2015   Hossein Hadian
 
@@ -40,7 +40,7 @@ NumeratorGraph::NumeratorGraph(const Supervision &supervision) {
       max_num_hmm_states_ = num_hmm_states[i];
   }
   num_hmm_states_ = num_hmm_states;
-  SetTransitions(supervision.fsts);  
+  SetTransitions(supervision.fsts);
   // SetFinalProbs();
 }
 
@@ -60,8 +60,9 @@ const DenominatorGraphTransition* NumeratorGraph::Transitions() const {
 //  return final_probs_;
 //}
 
-void NumeratorGraph::SetTransitions(const std::vector<fst::StdVectorFst> &fsts) {
-  
+void NumeratorGraph::SetTransitions(
+                                   const std::vector<fst::StdVectorFst> &fsts) {
+
   // TODO(hhadian): shouldn't we memory-align the stride?
   int32 transitions_dim = num_sequences_ * max_num_hmm_states_;
 
@@ -74,22 +75,26 @@ void NumeratorGraph::SetTransitions(const std::vector<fst::StdVectorFst> &fsts) 
 
   for (int32 seq = 0; seq < num_sequences_; seq++) {
     for (int32 s = 0; s < fsts[seq].NumStates(); s++) {
-      for (fst::ArcIterator<fst::StdVectorFst> aiter(fsts[seq], s); !aiter.Done();
+      for (fst::ArcIterator<fst::StdVectorFst> aiter(fsts[seq], s);
+           !aiter.Done();
            aiter.Next()) {
         const fst::StdArc &arc = aiter.Value();
         DenominatorGraphTransition transition;
         transition.transition_prob = exp(-arc.weight.Value());
         transition.pdf_id = arc.ilabel - 1;
-        transition.hmm_state = arc.nextstate;  // it is local (i.e. within the corresponding hmm)
+        transition.hmm_state = arc.nextstate;  // it is local (i.e. within
+                                               // the corresponding hmm)
         KALDI_ASSERT(transition.pdf_id >= 0 && transition.pdf_id < num_pdfs_);
         transitions_out[seq * max_num_hmm_states_ + s].push_back(transition);
         // now the reverse transition.
-        transition.hmm_state = s;  // it is local (i.e. within the corresponding hmm)
-        transitions_in[seq * max_num_hmm_states_ + arc.nextstate].push_back(transition);
+        transition.hmm_state = s;  // it is local (i.e. within the
+                                   // corresponding hmm)
+        transitions_in[seq * max_num_hmm_states_ + arc.nextstate].push_back(
+                                                                    transition);
       }
     }
   }
-  
+
   for (int32 s = 0; s < transitions_dim; s++) {
     forward_transitions[s].first = static_cast<int32>(transitions.size());
     transitions.insert(transitions.end(), transitions_out[s].begin(),
@@ -105,14 +110,14 @@ void NumeratorGraph::SetTransitions(const std::vector<fst::StdVectorFst> &fsts) 
 
   forward_transitions_ = forward_transitions;
   backward_transitions_ = backward_transitions;
-  transitions_ = transitions;  
+  transitions_ = transitions;
 }
 
 void NumeratorGraph::PrintInfo() const {
   std::cout << "NumPdfs: " << NumPdfs() << "\n"
             << "NumSequences: " << NumSequences() << "\n"
             ;
-  for (int seq = 0; seq < NumSequences(); seq++) { 
+  for (int seq = 0; seq < NumSequences(); seq++) {
     std::cout << "\n\n------ SEQUENCE " << seq << " ------\n"
               << "num-states: " << NumStates()[seq] << "\n";
     std::cout << "FORWARD TRANSITIONS:\n";
