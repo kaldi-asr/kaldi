@@ -41,12 +41,15 @@ int main(int argc, char *argv[]) {
 
 //    bool compress = false;
 //    int32 minibatch_size = 64;
+    std::string use_gpu = "no";
 
     ParseOptions po(usage);
 //    po.Register("minibatch-size", &minibatch_size, "Target size of minibatches "
 //                "when merging (see also --measure-output-frames)");
 //    po.Register("compress", &compress, "If true, compress the output examples "
 //                "(not recommended unless you are writing to disk");
+    po.Register("use-gpu", &use_gpu,
+                "yes|no|optional|wait, only has effect if compiled with CUDA");
 
     po.Read(argc, argv);
 
@@ -54,6 +57,10 @@ int main(int argc, char *argv[]) {
       po.PrintUsage();
       exit(1);
     }
+
+#if HAVE_CUDA==1
+    CuDevice::Instantiate().SelectGpuId(use_gpu);
+#endif
 
     std::string examples_rspecifier = po.GetArg(1);
 
@@ -106,6 +113,11 @@ int main(int argc, char *argv[]) {
       AssertEqual(nnet_output_deriv1, nnet_output_deriv2, 0.001);
       //nnet_output_deriv.Write(std::cout, false);
     }
+    
+#if HAVE_CUDA==1
+    CuDevice::Instantiate().PrintProfile();
+#endif
+    
     KALDI_LOG << "Checked " << num_read << " egs.";
     return (num_written != 0 ? 0 : 1);
   } catch(const std::exception &e) {
