@@ -45,8 +45,6 @@ namespace chain {
 class NumeratorGraph {
  public:
 
-  // the number of states in the HMM of a sequence.
-  int32 NumStates(int32 sequence_index) const;
   int32 NumSequences() const { return num_sequences_; }
 
   // the number of PDFs (the labels on the transitions are numbered from 0 to
@@ -62,7 +60,12 @@ class NumeratorGraph {
   const Int32Pair *BackwardTransitions() const;
 
   const DenominatorGraphTransition *Transitions() const;
+  
+  const int32 *NumStates() const { return num_hmm_states_.Data(); }
 
+  void CopyNumStatesToCpu(int32* destination) const {
+    num_hmm_states_.CopyToHost(destination);
+  }
 //  const CuMatrix<BaseFloat> &FinalProbs() const;
 
   void PrintInfo() const;

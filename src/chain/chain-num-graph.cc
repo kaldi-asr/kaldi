@@ -108,21 +108,15 @@ void NumeratorGraph::SetTransitions(const std::vector<fst::StdVectorFst> &fsts) 
   transitions_ = transitions;  
 }
 
-
-int32 NumeratorGraph::NumStates(int sequence_index) const {
-  KALDI_ASSERT(sequence_index < num_sequences_);
-  return num_hmm_states_.Data()[sequence_index];
-}
-
-void NumeratorGraph::PrintInfo() const{
+void NumeratorGraph::PrintInfo() const {
   std::cout << "NumPdfs: " << NumPdfs() << "\n"
             << "NumSequences: " << NumSequences() << "\n"
             ;
   for (int seq = 0; seq < NumSequences(); seq++) { 
     std::cout << "\n\n------ SEQUENCE " << seq << " ------\n"
-              << "num-states: " << NumStates(seq) << "\n";
+              << "num-states: " << NumStates()[seq] << "\n";
     std::cout << "FORWARD TRANSITIONS:\n";
-    for (int i = 0; i < NumStates(seq); i++) {
+    for (int i = 0; i < NumStates()[seq]; i++) {
       int from = i;
       for (int j = ForwardTransitions()[seq * MaxNumStates() + i].first;
            j < ForwardTransitions()[seq * MaxNumStates() + i].second; j++) {

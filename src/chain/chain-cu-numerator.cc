@@ -99,22 +99,17 @@ void CuNumeratorComputation::AlphaGeneralFrame(int32 t) {
     while (1) {
       if (dimGrid.y > 65535)  // the hardware doesn't allow more than this.
         dimGrid.y = 65535;
-      cuda_chain_hmm_forward(dimGrid, dimBlock,
+      cuda_chain_num_hmm_forward(dimGrid, dimBlock,
                              backward_transitions, transitions,
-                             num_sequences, num_hmm_states,
-                             prob_data, probs.Stride(), prev_alpha_dash,
+                             num_sequences, num_graph_.NumStates(),
+                             max_num_hmm_states,
+                             prob_data, probs.Stride(), prev_alpha,
                              this_alpha);
       CU_SAFE_CALL(cudaGetLastError());
       if (dimGrid.y == max_num_hmm_states) {
         break;  // this is the normal case.
       } else {
-        // We reach this code only in the unusual case where max_num_hmm_states >
-        // 65535.  We can compute the alphas for the remaining HMM states by
-        // moving some of the array pointers and making the call again.
-        backward_transitions += dimGrid.y;
-        this_alpha += dimGrid.y * num_sequences;
-        max_num_hmm_states -= dimGrid.y;
-        dimGrid.y = max_num_hmm_states;
+        KALDI_ERR << "Not supported yet.\n";
       }
     }
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -123,7 +118,7 @@ void CuNumeratorComputation::AlphaGeneralFrame(int32 t) {
   {
     int32 prob_stride = probs.Stride();
     for (int32 s = 0; s < num_sequences; s++) {
-      for (int32 h = 0; h < num_graph_.NumStates(s); h++) {
+      for (int32 h = 0; h < num_graph_.NumStates()[s]; h++) {
         double this_tot_alpha = 0.0;
         const DenominatorGraphTransition
             *trans_iter = transitions + backward_transitions[s*max_num_hmm_states+h].first,
@@ -218,16 +213,6 @@ bool CuNumeratorComputation::Backward(
       BetaGeneralFrameDebug(t);
   }
   nnet_output_deriv->AddMat(deriv_weight, nnet_output_deriv_transposed_, kTrans);
-  
-  //KALDI_LOG << "Destroying alpha...";
-  //alpha_.Resize(1, 1);
-  //KALDI_LOG << "Destroying beta...";
-  //beta_.Resize(1, 1);
-  //KALDI_LOG << "Destroying exp_nnet_output_transposed_...";
-  //exp_nnet_output_transposed_.Resize(1, 1);  
-  //KALDI_LOG << "Destroying nnet_output_deriv_transposed_..";
-  //nnet_output_deriv_transposed_.Resize(1, 1);
-  //KALDI_LOG << "all destroyed.";
   return ok_;
 }
 
@@ -249,10 +234,13 @@ void CuNumeratorComputation::BetaLastFrame() {
   // Please refer to chain-supervision.h,cc for more info
   // since final state indexes are different for each sequence, we set them in
   // a for loop.
+  int32 *num_states_cpu = new int32[num_graph_.NumSequences()];
+  num_graph_.CopyNumStatesToCpu(num_states_cpu);
   for (int32 seq = 0; seq < num_sequences_; seq++) {
-    int32 final_state = num_graph_.NumStates(seq) - 1;
+    int32 final_state = num_states_cpu[seq] - 1;
     beta_mat(final_state, seq) = 1.0 / tot_prob_(seq);
   }
+  delete num_states_cpu;
 }
 
 void CuNumeratorComputation::BetaGeneralFrame(int32 t) {
@@ -280,24 +268,17 @@ void CuNumeratorComputation::BetaGeneralFrame(int32 t) {
     while (1) {
       if (dimGrid.y > 65535)  // the hardware doesn't allow more than this.
         dimGrid.y = 65535;
-      cuda_chain_hmm_backward(dimGrid, dimBlock, forward_transitions, transitions,
-                              num_sequences, num_hmm_states, max_num_hmm_states,
+      cuda_chain_num_hmm_backward(dimGrid, dimBlock, forward_transitions, transitions,
+                              num_sequences, num_graph_.NumStates(),
+                              max_num_hmm_states,
                               probs.Data(), probs.Stride(),
-                              this_alpha_dash, next_beta, this_beta_dash,
+                              this_alpha, next_beta, this_beta,
                               log_prob_deriv.Data(), log_prob_deriv.Stride());
       CU_SAFE_CALL(cudaGetLastError());
       if (dimGrid.y == max_num_hmm_states) {
         break;  // this is the normal case.
       } else {
-        // We reach this code only in the unusual case where max_num_hmm_states >
-        // 65535.  We can compute the betas (and log-prob derivatives) for the
-        // remaining HMM states by moving some of the array pointers and making
-        // the call again.
-        forward_transitions += dimGrid.y;
-        this_alpha_dash += dimGrid.y * num_sequences;
-        this_beta_dash += dimGrid.y * num_sequences;
-        max_num_hmm_states -= dimGrid.y;
-        dimGrid.y = max_num_hmm_states;
+        KALDI_ERR << "Not supported yet.\n";
       }
     }
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -309,7 +290,7 @@ void CuNumeratorComputation::BetaGeneralFrame(int32 t) {
     const BaseFloat *prob_data = probs.Data();
     BaseFloat *log_prob_deriv_data = log_prob_deriv.Data();
     for (int32 s = 0; s < num_sequences; s++) {
-      for (int32 h = 0; h < num_graph_.NumStates(s); h++) {
+      for (int32 h = 0; h < num_graph_.NumStates()[s]; h++) {
         BaseFloat this_alpha_prob = this_alpha[h * num_sequences + s],
             inv_arbitrary_scale =
             this_alpha[max_num_hmm_states * num_sequences + s];

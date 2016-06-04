@@ -251,7 +251,7 @@ __global__
 static void _cuda_chain_num_hmm_forward(const Int32Pair *backward_transitions,
                                     const DenominatorGraphTransition *transitions,
                                     int32_cuda num_sequences,
-                                    int32_cuda num_hmm_states,
+                                    const int32_cuda *num_states,
                                     int32_cuda max_num_hmm_states,
                                     const BaseFloat *probs,
                                     int32_cuda prob_stride,
@@ -261,7 +261,7 @@ static void _cuda_chain_num_hmm_forward(const Int32Pair *backward_transitions,
       h  = blockIdx.y;
   if (s >= num_sequences)
     return;
-  if (h >= num_hmm_states)
+  if (h >= num_states[s])
     return;
 
   double this_tot_alpha = 0.0;
@@ -295,15 +295,6 @@ static void _cuda_chain_num_hmm_forward(const Int32Pair *backward_transitions,
     this_tot_alpha += this_prev_alpha0 * transition_prob0 * pseudo_loglike0;
   }
 
-  // Let arbitrary_scale be the inverse of the sum of all alpha values on-- the
-  // previous frame this sum of all the alpha values is stored in the place that
-  // we'd store the previous alpha for state-index equal to num_hmm_states
-  // (i.e. one past the end).  We multiply this into all the
-  // transition-probabilities from the previous frame to this frame, in both the
-  // forward and backward passes, in order to keep the alphas in a good numeric
-  // range.  This won't affect the posteriors, as it's just a constant factor
-  // for each frame, but when computing the total likelihood we'll need to
-  // compensate for it later on.
   BaseFloat arbitrary_scale =
       1.0 / prev_alpha[max_num_hmm_states * num_sequences + s];
   this_alpha[h * num_sequences + s] = this_tot_alpha * arbitrary_scale;
@@ -313,7 +304,9 @@ static void _cuda_chain_num_hmm_forward(const Int32Pair *backward_transitions,
 __global__
 static void _cuda_chain_num_hmm_backward(const Int32Pair *forward_transitions,
                                      const DenominatorGraphTransition *transitions,
-                                     int32_cuda num_sequences, int32_cuda num_hmm_states,
+                                     int32_cuda num_sequences,
+                                     const int32_cuda *num_states,
+                                     int32_cuda max_num_hmm_states,
                                      const BaseFloat *probs, int32_cuda prob_stride,
                                      const BaseFloat *this_alpha, const BaseFloat *next_beta,
                                      BaseFloat *this_beta, BaseFloat *log_prob_deriv,
@@ -322,18 +315,20 @@ static void _cuda_chain_num_hmm_backward(const Int32Pair *forward_transitions,
       h = blockIdx.y;
   if (s >= num_sequences)
     return;
+  if (h >= num_states[s])
+    return;
 
   // See where arbitrary_scale is defined in the forward computation above, for
   // more explanation of inv_arbitrary_scale.
   BaseFloat this_alpha_prob = this_alpha[h * num_sequences + s],
       inv_arbitrary_scale =
-      this_alpha[num_hmm_states * num_sequences + s];
+      this_alpha[max_num_hmm_states * num_sequences + s];
   double tot_variable_factor = 0.0;
 
   BaseFloat occupation_factor = this_alpha_prob / inv_arbitrary_scale;
   const DenominatorGraphTransition
-      *trans_iter = transitions + forward_transitions[h].first,
-      *trans_end = transitions + forward_transitions[h].second;
+      *trans_iter = transitions + forward_transitions[s*max_num_hmm_states+h].first,
+      *trans_end = transitions + forward_transitions[s*max_num_hmm_states+h].second;
   const int loop_unroll = 2;  // don't change this without changing the code
                               // below.
   for (; trans_iter + loop_unroll <= trans_end; trans_iter += loop_unroll) {
@@ -416,13 +411,14 @@ void cuda_chain_num_hmm_forward(dim3 Gr, dim3 Bl,
                             const Int32Pair *backward_transitions,
                             const DenominatorGraphTransition *transitions,
                             int32_cuda num_sequences,
-                            int32_cuda num_hmm_states,
+                            const int32_cuda *num_states,
                             int32_cuda max_num_hmm_states,
                             const BaseFloat *probs, int32_cuda prob_stride,
                             const BaseFloat *prev_alpha,
                             BaseFloat *this_alpha) {
   _cuda_chain_num_hmm_forward<<<Gr,Bl>>>(backward_transitions, transitions,
-                                     num_sequences, num_hmm_states,
+                                     num_sequences, num_states,
+                                     max_num_hmm_states,
                                      probs, prob_stride,
                                      prev_alpha, this_alpha);
 }
@@ -431,14 +427,16 @@ void cuda_chain_num_hmm_backward(dim3 Gr, dim3 Bl,
                              const Int32Pair *forward_transitions,
                              const DenominatorGraphTransition *transitions,
                              int32_cuda num_sequences,
-                             int32_cuda num_hmm_states,
+                             const int32_cuda *num_states,
+                             int32_cuda max_num_hmm_states,
                              const BaseFloat *probs, int32_cuda prob_stride,
                              const BaseFloat *this_alpha, const BaseFloat *next_beta,
                              BaseFloat *this_beta,
                              BaseFloat *log_prob_deriv,
                              int32_cuda log_prob_deriv_stride) {
   _cuda_chain_num_hmm_backward<<<Gr,Bl>>>(forward_transitions, transitions,
-                                      num_sequences, num_hmm_states,
+                                      num_sequences, num_states,
+                                      max_num_hmm_states,
                                       probs, prob_stride,
                                       this_alpha, next_beta,
                                       this_beta, log_prob_deriv,
