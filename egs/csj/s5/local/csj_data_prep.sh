@@ -20,7 +20,7 @@
 set -e # exit on error
 
 #check existing directories
-if [ $# != 1 -a $# != 2 ]; then
+if [ $# != 1 ]; then
   echo "Usage: csj_data_prep.sh <csj-data dir>"
   exit 1;
 fi

@@ -35,8 +35,8 @@ CSJVER=dvd  ## Set your CSJ format (dvd or usb).
 
 if [ ! -e data/csj-data/.done_make_all ]; then
  echo "CSJ transcription file does not exist"
- #local/csj_make_trans/csj_automake.sh <RESOUCE_DIR> <MAKING_PLACE(no change)> || exit 1;
- local/csj_make_trans/csj_automake.sh $CSJDATATOP data/csj-data $CSJVER
+ #local/csj_make_trans/csj_makerun.sh <RESOUCE_DIR> <MAKING_PLACE(no change)> || exit 1;
+ local/csj_make_trans/csj_makerun.sh $CSJDATATOP data/csj-data $CSJVER
 fi
 wait
 
@@ -274,9 +274,8 @@ wait
 #SKIP
 
 ##### Start DNN training #####
-# In case of using CSJ on DNN, we recommend you to use local/nnet/run_dnn.sh
 # Karel's DNN recipe on top of fMLLR features
-# local/nnet/run_dnn.sh
+local/nnet/run_dnn.sh
 
 # nnet3 TDNN recipe
 # local/nnet3/run_tdnn.sh
