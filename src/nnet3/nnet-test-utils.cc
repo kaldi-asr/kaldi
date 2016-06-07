@@ -1269,9 +1269,9 @@ static void GenerateRandomGPUOnlyComponentConfig(std::string *component_type,
          << " filt-x-dim=" << filt_x_dim
          << " filt-y-dim=" << filt_y_dim
          << " filt-z-dim=" << filt_z_dim
-         << " filt-x-stride=" << filt_x_stride
-         << " filt-y-stride=" << filt_y_stride
-         << " filt-z-stride=" << filt_z_stride
+         << " filt-x-step=" << filt_x_stride
+         << " filt-y-step=" << filt_y_stride
+         << " filt-z-step=" << filt_z_stride
          << " num-filters=" << num_filters
          << " input-num-filters=" << input_num_filters
          << " learning-rate=" << learning_rate;
@@ -1279,6 +1279,85 @@ static void GenerateRandomGPUOnlyComponentConfig(std::string *component_type,
     }
   }
   *config = os.str();
+}
+
+
+static void GenerateRandomCuDNNKaldiComponentPairConfig(std::string *component_type1,
+                   std::string *config1, std::string *component_type2, std::string *config2) {
+
+  int32 n = RandInt(0, 0);
+  BaseFloat learning_rate = 0.001 * RandInt(1, 3);
+
+  std::ostringstream os1;
+  std::ostringstream os2;
+  switch(n) {
+    case 0: {
+      *component_type1 = "CuDNN3DConvolutionComponent";
+      *component_type2 = "ConvolutionComponent";
+
+      std::string vectorization;
+      //hardcode here
+      vectorization = "zyx";
+      
+      // might need a better name and location for the matrix file
+      std::string matrix_filename="temp.mat";
+
+      int32 input_x_dim = 10 + Rand() % 20,
+            input_y_dim = 10 + Rand() % 20,
+            input_z_dim = 3 + Rand() % 10,
+            filt_x_dim = 1 + Rand() % input_x_dim,
+            filt_y_dim = 1 + Rand() % input_y_dim,
+            filt_z_dim = 1 + Rand() % input_z_dim,
+            num_filters = 1 + Rand() % 10,
+            filt_x_step = (1 + Rand() % filt_x_dim),
+            filt_y_step = (1 + Rand() % filt_y_dim),
+            filt_z_step = (1 + Rand() % filt_z_dim);
+      // adjusting input dim to ensure divisibility
+      int32 remainder = (input_x_dim - filt_x_dim) % filt_x_step;
+      input_x_dim = input_x_dim - remainder;
+      remainder = (input_y_dim - filt_y_dim) % filt_y_step;
+      input_y_dim = input_y_dim - remainder;
+      remainder = (input_z_dim - filt_z_dim) % filt_z_step;
+      input_z_dim = input_z_dim - remainder;
+      int32 input_num_filters = 1;
+
+      Matrix<BaseFloat> mat;
+      int32 filter_dim = input_num_filters * filt_x_dim * filt_y_dim * filt_z_dim;
+      mat.Resize(num_filters, filter_dim + 1);
+      mat.SetRandn();
+     
+      WriteKaldiObject(mat, matrix_filename, false);
+
+      os1 << "input-x-dim=" << input_x_dim
+         << " input-y-dim=" << input_y_dim
+         << " input-z-dim=" << input_z_dim
+         << " filt-x-dim=" << filt_x_dim
+         << " filt-y-dim=" << filt_y_dim
+         << " filt-z-dim=" << filt_z_dim
+         << " filt-x-step=" << filt_x_step
+         << " filt-y-step=" << filt_y_step
+         << " filt-z-step=" << filt_z_step
+         << " input-num-filters=" << input_num_filters
+         << " matrix=" << matrix_filename
+         << " learning-rate=" << learning_rate;
+
+      os2 << " input-x-dim=" << input_x_dim
+         << " input-y-dim=" << input_y_dim
+         << " input-z-dim=" << input_z_dim
+         << " filt-x-dim=" << filt_x_dim
+         << " filt-y-dim=" << filt_y_dim
+         << " filt-z-dim=" << filt_z_dim
+         << " filt-x-step=" << filt_x_step
+         << " filt-y-step=" << filt_y_step
+         << " filt-z-step=" << filt_z_step
+         << " input-vectorization-order=" << vectorization
+         << " matrix=" << matrix_filename
+         << " learning-rate=" << learning_rate;
+      break;
+    }
+  }
+  *config1 = os1.str();
+  *config2 = os2.str();
 }
 
 
@@ -1313,6 +1392,30 @@ Component *GenerateRandomGPUOnlySimpleComponent() {
   c->InitFromConfig(&config_line);
   return c;
 }
+
+/// Generates random simple component for testing components with only GPU
+/// implementations.
+void GenerateRandomCuDNNKaldiComponentPair(Component* &c1, Component* &c2) {
+  std::string component_type1, config1;
+  std::string component_type2, config2;
+  GenerateRandomCuDNNKaldiComponentPairConfig(&component_type1, &config1, &component_type2, &config2);
+  ConfigLine config_line1;
+  if (!config_line1.ParseLine(config1))
+    KALDI_ERR << "Bad config line " << config1;
+  ConfigLine config_line2;
+  if (!config_line2.ParseLine(config2))
+    KALDI_ERR << "Bad config line " << config2;
+
+  c1 = Component::NewComponentOfType(component_type1);
+  if (c1 == NULL)
+    KALDI_ERR << "Invalid component type " << component_type1;
+  c1->InitFromConfig(&config_line1);
+  c2 = Component::NewComponentOfType(component_type2);
+  if (c2 == NULL)
+    KALDI_ERR << "Invalid component type " << component_type2;
+  c2->InitFromConfig(&config_line2);
+}
+
 
 
 bool NnetParametersAreIdentical(const Nnet &nnet1,

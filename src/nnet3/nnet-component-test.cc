@@ -183,6 +183,29 @@ void TestNnetComponentUpdatable(Component *c) {
   }
 }
 
+void DiffSimpleComponentPairPropagateProperties(const Component &c1, const Component &c2) {
+  int32 properties = c1.Properties();
+  MatrixStrideType input_stride_type = (c1.Properties()&kInputContiguous) ?
+      kStrideEqualNumCols : kDefaultStride;
+  MatrixStrideType output_stride_type = (c1.Properties()&kOutputContiguous) ?
+      kStrideEqualNumCols : kDefaultStride;
+
+  int32 input_dim = c1.InputDim(),
+      output_dim = c1.OutputDim(),
+      num_rows = RandInt(1, 100);
+  CuMatrix<BaseFloat> input_data(num_rows, input_dim, kUndefined,
+                                 input_stride_type);
+
+  input_data.SetRandn();
+  CuMatrix<BaseFloat>
+      output_data1(num_rows, output_dim, kSetZero, output_stride_type),
+      output_data2(num_rows, output_dim, kSetZero, output_stride_type);
+
+  c1.Propagate(NULL, input_data, &output_data1);
+  c2.Propagate(NULL, input_data, &output_data2);
+  AssertEqual(output_data1, output_data2);
+}
+
 // tests the properties kPropagateAdds, kBackpropAdds,
 // kBackpropNeedsInput, kBackpropNeedsOutput.
 void TestSimpleComponentPropagateProperties(const Component &c) {
@@ -529,6 +552,23 @@ void UnitTestGPUOnlyNnetComponent() {
   }
 }
 
+
+void UnitTestDiffCuDNNKaldiNnetComponents() {
+  for (int32 n = 0; n < 2; n++)  {
+    Component *c1, *c2;
+    GenerateRandomCuDNNKaldiComponentPair(c1, c2);
+    KALDI_LOG << c1->Info();
+    KALDI_LOG << c2->Info();
+    KALDI_ASSERT(c1->InputDim() == c2->InputDim());
+    KALDI_ASSERT(c1->OutputDim() == c2->OutputDim());
+    DiffSimpleComponentPairPropagateProperties(*c1, *c2);
+
+    delete c1;
+    delete c2;
+  }
+}
+
+
 } // namespace nnet3
 } // namespace kaldi
 
@@ -543,7 +583,7 @@ int main() {
     else
       CuDevice::Instantiate().SelectGpuId("yes");
 #endif
-    UnitTestNnetComponent();
+//    UnitTestNnetComponent();
   }
 
 #if HAVE_CUDNN == 1
@@ -552,6 +592,7 @@ int main() {
   // point. Note that we'll need a better condition here if ever we have
   // components other than CUDNN ones that do not have CPU implementations.
   UnitTestGPUOnlyNnetComponent();
+  UnitTestDiffCuDNNKaldiNnetComponents();
 #endif
 
   KALDI_LOG << "Nnet component ntests succeeded.";

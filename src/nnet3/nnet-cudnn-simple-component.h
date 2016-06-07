@@ -68,6 +68,14 @@ class CuDNN3DConvolutionComponent: public UpdatableComponent {
             int32 upscale_x_dim, int32 upscale_y_dim, int32 upscale_z_dim,
             TensorVectorizationType input_vectorization,
             BaseFloat param_stddev, BaseFloat bias_stddev);
+  void Init(int32 input_x_dim, int32 input_y_dim, int32 input_z_dim,
+            int32 input_num_filters,
+            int32 filt_x_dim, int32 filt_y_dim, int32 filt_z_dim,
+            int32 filt_x_stride, int32 filt_y_stride, int32 filt_z_stride,
+            int32 pad_x_dim, int32 pad_y_dim, int32 pad_z_dim,
+            int32 upscale_x_dim, int32 upscale_y_dim, int32 upscale_z_dim,
+            TensorVectorizationType input_vectorization,
+            std::string matrix_filename);
 
   // constructor using another component
   explicit CuDNN3DConvolutionComponent(const CuDNN3DConvolutionComponent &component);

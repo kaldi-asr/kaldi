@@ -80,6 +80,7 @@ void ComputeExampleComputationRequestSimple(
 
 Component *GenerateRandomSimpleComponent();
 Component *GenerateRandomGPUOnlySimpleComponent();
+void GenerateRandomCuDNNKaldiComponentPair(Component* &c1, Component* &c2);
 
 /** Used for testing that the updatable parameters in two networks are the same.
     May crash if structure differs.  Prints warning and returns false if
