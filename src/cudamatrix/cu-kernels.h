@@ -236,6 +236,11 @@ inline void cuda_block_add_mat_mat(dim3 Gr, dim3 Bl, CuBlockMatrixData *B_cu_dat
  */
 inline void cuda_soft_hinge(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride) { cudaF_soft_hinge(Gr,Bl,y,x,d,src_stride); }
 inline void cuda_group_pnorm(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride, int group_size, float power) { cudaF_group_pnorm(Gr, Bl, y, x, d, src_stride, group_size, power);}
+inline void cuda_group_spec_pnorm(dim3 Gr, dim3 Bl, float *y, const float *x,
+                                  MatrixDim d, int src_stride, int group_size,
+                                  float power) {
+  cudaF_group_spec_pnorm(Gr, Bl, y, x, d, src_stride, group_size, power);
+}
 inline void cuda_group_max(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride, int group_size) { cudaF_group_max(Gr, Bl, y, x, d, src_stride, group_size);}
 inline void cuda_sigmoid(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride) { cudaF_sigmoid(Gr,Bl,y,x,d,src_stride); }
 inline void cuda_diff_sigmoid(dim3 Gr, dim3 Bl, float *eout, const float *e, const float *y, MatrixDim d, int e_stride, int y_stride) { cudaF_diff_sigmoid(Gr,Bl,eout,e,y,d,e_stride,y_stride); }
@@ -421,6 +426,11 @@ inline void cuda_block_add_mat_mat(dim3 Gr, dim3 Bl, CuBlockMatrixData *B_cu_dat
  */
 inline void cuda_soft_hinge(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d, int src_stride) { cudaD_soft_hinge(Gr,Bl,y,x,d,src_stride); }
 inline void cuda_group_pnorm(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d, int src_stride, int group_size, double power) { cudaD_group_pnorm(Gr, Bl, y, x, d, src_stride, group_size, power); }
+inline void cuda_group_spec_pnorm(dim3 Gr, dim3 Bl, double *y, const double *x,
+                                  MatrixDim d, int src_stride, int group_size,
+                                  double power) {
+  cudaD_group_spec_pnorm(Gr, Bl, y, x, d, src_stride, group_size, power);
+}
 inline void cuda_group_max(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d, int src_stride, int group_size) { cudaD_group_max(Gr, Bl, y, x, d, src_stride, group_size); }
 inline void cuda_sigmoid(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d, int src_stride) { cudaD_sigmoid(Gr,Bl,y,x,d,src_stride); }
 inline void cuda_diff_sigmoid(dim3 Gr, dim3 Bl, double *eout, const double *e, const double *y, MatrixDim d, int e_stride, int y_stride) { cudaD_diff_sigmoid(Gr,Bl,eout,e,y,d,e_stride,y_stride); }

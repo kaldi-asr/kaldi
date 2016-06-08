@@ -1032,7 +1032,7 @@ static void _equal_element_mask(const Real *mat1, const Real *mat2, Real *mask, 
 
 
 enum EnumTransformReduce {
-  SUM, MAX, MIN, LINFNORM, L2NORM, L1NORM, L0NORM
+  SUM, MAX, MIN, LINFNORM, L2NORM, L1NORM, L0NORM, LPNORM
 };
 
 template<EnumTransformReduce TransReduceType, typename Real>
@@ -1195,11 +1195,38 @@ struct TransReduceOp<L0NORM, Real> {
   }
 };
 
+template<typename Real>
+struct TransReduceOp<LPNORM, Real> {
+
+  const Real power_;
+  TransReduceOp(const Real& p) :
+      power_(p) {
+  }
+
+  __forceinline__
+  __device__ Real InitValue() const {
+    return Real(0);
+  }
+  __forceinline__
+  __device__ Real Transform(const Real& x) const {
+    return pow(abs(x), power_);
+  }
+  __forceinline__
+  __device__ Real Reduce(const Real& a, const Real& b) const {
+    return a + b;
+  }
+  __forceinline__
+  __device__ Real PostReduce(const Real& x, const Real& output) const {
+    return pow(x, Real(1) / power_);
+  }
+};
+
 // Vector reduce.
 template<EnumTransformReduce TransReduceType, typename Real>
 __global__
-static void _vec_transform_reduce(const Real* v, Real* result, const int dim,
-    const int inc, const TransReduceOp<TransReduceType, Real> op) {
+static void _vec_transform_reduce(
+    const Real* v, Real* result, const int dim, const int inc,
+    const TransReduceOp<TransReduceType, Real> op) {
 
   __shared__ Real sdata[CU1DBLOCK];
   Real tdata = op.InitValue();
@@ -1240,8 +1267,9 @@ static void _vec_transform_reduce(const Real* v, Real* result, const int dim,
 // Reduce a matrix 'mat' to a column vector 'result'
 template<EnumTransformReduce TransReduceType, typename Real>
 __global__
-static void _transform_reduce_mat_cols(Real *result, const Real *mat,
-    const MatrixDim d, const TransReduceOp<TransReduceType, Real> op) {
+static void _transform_reduce_mat_cols(
+    Real *result, const Real *mat, const MatrixDim d,
+    const TransReduceOp<TransReduceType, Real> op) {
 
   __shared__ Real sdata[CU1DBLOCK];
   const int tid = threadIdx.x;
@@ -1275,42 +1303,43 @@ static void _transform_reduce_mat_cols(Real *result, const Real *mat,
   }
 }
 
-template<int ThreadsPerGroup, EnumTransformReduce TransReduceType, typename Real>
+template<EnumTransformReduce TransReduceType, typename Real>
 __global__
-static void _group_transform_reduce(Real *y, const Real *x, const MatrixDim d,
-    const int src_stride, const int group_size,
-    const TransReduceOp<TransReduceType, Real> op) {
+static void _group_transform_reduce(
+    Real *y, const Real *x, const MatrixDim d, const int src_stride,
+    const int group_size, const TransReduceOp<TransReduceType, Real> op) {
 
   __shared__ Real sreduction[CU1DBLOCK];
   const int i = blockIdx.x;
   const int x_start = i * src_stride;
   const int y_start = i * d.stride;
+  const int threads_per_group = blockDim.x;
 
   // Reduce n groups per thread block
   const int n = blockDim.y;
   const int len = group_size * n;
-  const int tid = threadIdx.y * ThreadsPerGroup + threadIdx.x; // linear thread id
+  const int tid = threadIdx.y * threads_per_group + threadIdx.x; // linear thread id
   int j = threadIdx.y * group_size + threadIdx.x; // col-id of *x
   int group_id = threadIdx.y;                     // col-id of *y
   int group_end = x_start + (group_id + 1) * group_size;
 
   while (group_id < d.cols) {
-    // reduce to ThreadsPerGroup elements per group
+    // reduce to threads_per_group elements per group
     int x_idx = x_start + j;
     Real treduction = op.Transform(x[x_idx]);
-    x_idx += ThreadsPerGroup;
+    x_idx += threads_per_group;
     while (x_idx < group_end) {
       treduction = op.Reduce(treduction, op.Transform(x[x_idx]));
-      x_idx += ThreadsPerGroup;
+      x_idx += threads_per_group;
     }
     sreduction[tid] = treduction;
-    if (ThreadsPerGroup > warpSize) {
+    if (threads_per_group > warpSize) {
       __syncthreads();
     }
 
     // tree-reduce to 2x warpSize elements per group
 #   pragma unroll
-    for (int shift = ThreadsPerGroup / 2; shift > warpSize; shift >>= 1) {
+    for (int shift = threads_per_group / 2; shift > warpSize; shift >>= 1) {
       if (threadIdx.x < shift) {
         sreduction[tid] = op.Reduce(sreduction[tid], sreduction[tid + shift]);
       }
@@ -1320,7 +1349,7 @@ static void _group_transform_reduce(Real *y, const Real *x, const MatrixDim d,
     // Warp-reduce to 1 element per group.
     // Threads implicitly synchronized within the warp.
     const int warp_reduce_size =
-        ThreadsPerGroup / 2 < warpSize ? ThreadsPerGroup / 2 : warpSize;
+        threads_per_group / 2 < warpSize ? threads_per_group / 2 : warpSize;
     if (threadIdx.x < warp_reduce_size) {
 #     pragma unroll
       for (int shift = warp_reduce_size; shift > 0; shift >>= 1) {
@@ -1331,7 +1360,7 @@ static void _group_transform_reduce(Real *y, const Real *x, const MatrixDim d,
     // Store the result.
     if (threadIdx.x == 0) {
       y[y_start + group_id] = op.PostReduce(sreduction[tid],
-          y[y_start + group_id]);
+                                            y[y_start + group_id]);
     }
 
     j += len;
@@ -2649,39 +2678,34 @@ void cudaF_soft_hinge (dim3 Gr, dim3 Bl, float* y, const float* x, MatrixDim d, 
   _soft_hinge<<<Gr,Bl>>>(y, x, d, src_stride);
 }
 
+
+
 void cudaF_group_pnorm(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride, int group_size, float power) {
   _group_pnorm<<<Gr,Bl>>>(y, x, d, src_stride, group_size, power);
 }
 
-void cudaF_group_max(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride, int group_size) {
-  switch (Bl.x) {
-  case 1:
-    _group_transform_reduce<1><<<Gr,Bl>>>(y, x, d, src_stride, group_size, TransReduceOp<MAX, float>());
-    break;
-  case 2:
-    _group_transform_reduce<2><<<Gr,Bl>>>(y, x, d, src_stride, group_size, TransReduceOp<MAX, float>());
-    break;
-  case 4:
-    _group_transform_reduce<4><<<Gr,Bl>>>(y, x, d, src_stride, group_size, TransReduceOp<MAX, float>());
-    break;
-  case 8:
-    _group_transform_reduce<8><<<Gr,Bl>>>(y, x, d, src_stride, group_size, TransReduceOp<MAX, float>());
-    break;
-  case 16:
-    _group_transform_reduce<16><<<Gr,Bl>>>(y, x, d, src_stride, group_size, TransReduceOp<MAX, float>());
-    break;
-  case 32:
-    _group_transform_reduce<32><<<Gr,Bl>>>(y, x, d, src_stride, group_size, TransReduceOp<MAX, float>());
-    break;
-  case 64:
-    _group_transform_reduce<64><<<Gr,Bl>>>(y, x, d, src_stride, group_size, TransReduceOp<MAX, float>());
-    break;
-  case 128:
-    _group_transform_reduce<128><<<Gr,Bl>>>(y, x, d, src_stride, group_size, TransReduceOp<MAX, float>());
-    break;
-  default:
-    _group_transform_reduce<256><<<Gr,Bl>>>(y, x, d, src_stride, group_size, TransReduceOp<MAX, float>());
+void cudaF_group_spec_pnorm(dim3 Gr, dim3 Bl, float* y, const float* x,
+    MatrixDim d, int src_stride, int group_size, float power) {
+  if (power == float(0)) {
+    _group_transform_reduce<<<Gr, Bl>>>(y, x, d, src_stride, group_size,
+        TransReduceOp<L0NORM, float>());
+  } else if (power == float(1)) {
+    _group_transform_reduce<<<Gr, Bl>>>(y, x, d, src_stride, group_size,
+        TransReduceOp<L1NORM, float>());
+  } else if (power == float(2)) {
+    _group_transform_reduce<<<Gr, Bl>>>(y, x, d, src_stride, group_size,
+        TransReduceOp<L2NORM, float>());
+  } else if (power == float(1.0 / 0.0)) {
+    _group_transform_reduce<<<Gr, Bl>>>(y, x, d, src_stride, group_size,
+        TransReduceOp<LINFNORM, float>());
+  } else {
+    _group_transform_reduce<<<Gr, Bl>>>(y, x, d, src_stride, group_size,
+        TransReduceOp<LPNORM, float>(power));
   }
+}
+
+void cudaF_group_max(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride, int group_size) {
+  _group_transform_reduce<<<Gr,Bl>>>(y, x, d, src_stride, group_size, TransReduceOp<MAX, float>());
 }
 
 void cudaF_sigmoid (dim3 Gr, dim3 Bl, float* y, const float* x, MatrixDim d, int src_stride) {
@@ -3143,40 +3167,33 @@ void cudaD_soft_hinge (dim3 Gr, dim3 Bl, double* y, const double* x, MatrixDim d
 }
 
 void cudaD_group_pnorm(dim3 Gr, dim3 Bl, double* y, const double* x, MatrixDim d,
-		       int src_stride, int group_size, double power) {
+           int src_stride, int group_size, double power) {
   _group_pnorm<<<Gr,Bl>>>(y, x, d, src_stride, group_size, power);
+}
+
+void cudaD_group_spec_pnorm(dim3 Gr, dim3 Bl, double* y, const double* x,
+    MatrixDim d, int src_stride, int group_size, double power) {
+  if (power == double(0)) {
+    _group_transform_reduce<<<Gr, Bl>>>(y, x, d, src_stride, group_size,
+        TransReduceOp<L0NORM, double>());
+  } else if (power == double(1)) {
+    _group_transform_reduce<<<Gr, Bl>>>(y, x, d, src_stride, group_size,
+        TransReduceOp<L1NORM, double>());
+  } else if (power == double(2)) {
+    _group_transform_reduce<<<Gr, Bl>>>(y, x, d, src_stride, group_size,
+        TransReduceOp<L2NORM, double>());
+  } else if (power == double(1.0 / 0.0)) {
+    _group_transform_reduce<<<Gr, Bl>>>(y, x, d, src_stride, group_size,
+        TransReduceOp<LINFNORM, double>());
+  } else {
+    _group_transform_reduce<<<Gr, Bl>>>(y, x, d, src_stride, group_size,
+        TransReduceOp<LPNORM, double>(power));
+  }
 }
 
 void cudaD_group_max(dim3 Gr, dim3 Bl, double* y, const double* x, MatrixDim d,
 		     int src_stride, int group_size) {
-  switch (Bl.x) {
-  case 1:
-    _group_transform_reduce<1><<<Gr,Bl>>>(y, x, d, src_stride, group_size, TransReduceOp<MAX, double>());
-    break;
-  case 2:
-    _group_transform_reduce<2><<<Gr,Bl>>>(y, x, d, src_stride, group_size, TransReduceOp<MAX, double>());
-    break;
-  case 4:
-    _group_transform_reduce<4><<<Gr,Bl>>>(y, x, d, src_stride, group_size, TransReduceOp<MAX, double>());
-    break;
-  case 8:
-    _group_transform_reduce<8><<<Gr,Bl>>>(y, x, d, src_stride, group_size, TransReduceOp<MAX, double>());
-    break;
-  case 16:
-    _group_transform_reduce<16><<<Gr,Bl>>>(y, x, d, src_stride, group_size, TransReduceOp<MAX, double>());
-    break;
-  case 32:
-    _group_transform_reduce<32><<<Gr,Bl>>>(y, x, d, src_stride, group_size, TransReduceOp<MAX, double>());
-    break;
-  case 64:
-    _group_transform_reduce<64><<<Gr,Bl>>>(y, x, d, src_stride, group_size, TransReduceOp<MAX, double>());
-    break;
-  case 128:
-    _group_transform_reduce<128><<<Gr,Bl>>>(y, x, d, src_stride, group_size, TransReduceOp<MAX, double>());
-    break;
-  default:
-    _group_transform_reduce<256><<<Gr,Bl>>>(y, x, d, src_stride, group_size, TransReduceOp<MAX, double>());
-  }
+  _group_transform_reduce<<<Gr,Bl>>>(y, x, d, src_stride, group_size, TransReduceOp<MAX, double>());
 }
 
 void cudaD_sigmoid (dim3 Gr, dim3 Bl, double* y, const double* x, MatrixDim d, int src_stride) {
