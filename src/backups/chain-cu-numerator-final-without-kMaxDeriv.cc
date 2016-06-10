@@ -35,9 +35,7 @@ CuNumeratorComputation::CuNumeratorComputation(
     exp_nnet_output_transposed_(nnet_output, kTrans),
     nnet_output_deriv_transposed_(
         exp_nnet_output_transposed_.NumRows(),
-        std::min<int32>(exp_nnet_output_transposed_.NumCols(),
-                        static_cast<int32>(kMaxDerivTimeSteps) *
-                        num_sequences_)),
+        exp_nnet_output_transposed_.NumCols()),
     alpha_(frames_per_sequence_ + 1,
            num_graph_.MaxNumStates() * num_sequences_ + num_sequences_,
            kSetZero),
@@ -72,7 +70,7 @@ void CuNumeratorComputation::AlphaFirstFrame() {
                                      first_frame_alpha +
                                      num_graph_.MaxNumStates() * num_sequences_,
                                      num_sequences_);
-  alpha_sum_vec.Set(1.0);   // #SCC# e-20
+  alpha_sum_vec.Set(1.0e-20);   // #SCC# e-20
   // KALDI_LOG << "al-sum for seq=7, t=" << 0 << " is " << alpha_sum_vec(7);
 }
 
@@ -205,8 +203,6 @@ BaseFloat CuNumeratorComputation::ComputeTotLogLike() {
   // we should probably add an ApplyLog() function that takes a vector argument.
   tot_log_prob_ = tot_prob_;
   tot_log_prob_.ApplyLog();
-  if (num_graph_.AreFirstTransitionsScaled())
-    tot_log_prob_.AddVec(1.0, num_graph_.FirstTransitionOffsets());
   BaseFloat tot_log_prob = tot_log_prob_.Sum();
 
   // We now have to add something for the arbitrary scaling factor.  [note: the
@@ -239,27 +235,9 @@ bool CuNumeratorComputation::Backward(
     BetaGeneralFrame(t);
     if (GetVerboseLevel() >= 1 || t == 0)
       BetaGeneralFrameDebug(t);
-    if (t % kMaxDerivTimeSteps == 0) {
-      // commit the derivative stored in exp_nnet_output_transposed_ by adding
-      // its transpose to the appropriate sub-matrix of 'nnet_output_deriv'.
-      int32 chunk_frames = std::min<int32>(static_cast<int32>(kMaxDerivTimeSteps),
-                                           frames_per_sequence_ - t),
-                num_pdfs = exp_nnet_output_transposed_.NumRows();
-      CuSubMatrix<BaseFloat> transposed_deriv_part(
-          nnet_output_deriv_transposed_,
-          0, num_pdfs,
-          0, chunk_frames * num_sequences_);
-      CuSubMatrix<BaseFloat> output_deriv_part(
-          *nnet_output_deriv,
-          t * num_sequences_, chunk_frames * num_sequences_,
-          0, num_pdfs);
-      output_deriv_part.AddMat(deriv_weight, transposed_deriv_part, kTrans);
-      if (t != 0)
-        transposed_deriv_part.SetZero();
-    }
   }
-//  nnet_output_deriv->AddMat(
-//                           deriv_weight, nnet_output_deriv_transposed_, kTrans);
+  nnet_output_deriv->AddMat(
+                           deriv_weight, nnet_output_deriv_transposed_, kTrans);
   return ok_;
 }
 
@@ -293,11 +271,6 @@ void CuNumeratorComputation::BetaLastFrame() {
 void CuNumeratorComputation::BetaGeneralFrame(int32 t) {
   KALDI_ASSERT(t >= 0 && t < frames_per_sequence_);
   int32 num_pdfs = exp_nnet_output_transposed_.NumRows();
-  // t_wrapped gives us the time-index we use when indexing
-  // nnet_output_deriv_transposed_; to save memory we limit the size of the
-  // matrix, storing only chunks of frames at a time, and we add it to the
-  // non-transposed output whenever we finish a chunk.
-  int32 t_wrapped = t % static_cast<int32>(kMaxDerivTimeSteps);
   const BaseFloat *this_alpha = alpha_.RowData(t),
                   *next_beta = beta_.RowData((t + 1) % 2);
   BaseFloat *this_beta = beta_.RowData(t % 2);
@@ -307,7 +280,7 @@ void CuNumeratorComputation::BetaGeneralFrame(int32 t) {
   CuSubMatrix<BaseFloat> probs(exp_nnet_output_transposed_, 0, num_pdfs,
                                t * num_sequences_, num_sequences_),
       log_prob_deriv(nnet_output_deriv_transposed_, 0, num_pdfs,
-                     t_wrapped * num_sequences_, num_sequences_);
+                     t * num_sequences_, num_sequences_);
 
   int32 max_num_hmm_states = num_graph_.MaxNumStates(),
         num_sequences = num_sequences_;
@@ -392,11 +365,10 @@ void CuNumeratorComputation::BetaGeneralFrameDebug(int32 t) {
       alpha_beta_size = max_num_hmm_states * num_sequences_;
   CuSubVector<BaseFloat> this_alpha(alpha_.RowData(t), alpha_beta_size),
       this_beta(beta_.RowData(t % 2), alpha_beta_size);
-  int32 t_wrapped = t % static_cast<int32>(kMaxDerivTimeSteps),
-        num_pdfs = exp_nnet_output_transposed_.NumRows();
+  int32 num_pdfs = exp_nnet_output_transposed_.NumRows();
   CuSubMatrix<BaseFloat> this_log_prob_deriv(
       nnet_output_deriv_transposed_, 0, num_pdfs,
-      t_wrapped * num_sequences_, num_sequences_);
+      t * num_sequences_, num_sequences_);
   BaseFloat alpha_beta_product = VecVec(this_alpha,
                                         this_beta),
       this_log_prob_deriv_sum = this_log_prob_deriv.Sum();

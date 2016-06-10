@@ -1,4 +1,4 @@
-// chain/chain-num-graph.cc
+// chain/chain-den-graph.cc
 
 // Copyright      2015   Hossein Hadian
 
@@ -26,23 +26,23 @@ namespace kaldi {
 namespace chain {
 
 
-NumeratorGraph::NumeratorGraph(const Supervision &supervision,
-                               bool scale_first_transitions) {
-  scale_first_transitions_ = scale_first_transitions;
-  num_sequences_ = supervision.num_sequences;
-  num_pdfs_ = supervision.label_dim;
+NumeratorGraph::NumeratorGraph(const std::vector<const Supervision*> &minibatch_of_supervisions) {
+  num_sequences_ = minibatch_of_supervisions.size();
   max_num_hmm_states_ = 0;
   std::vector<int32> num_hmm_states(num_sequences_);
-  KALDI_ASSERT(supervision.fsts.size() == num_sequences_);
 
-  for (int32 i = 0; i < num_sequences_; i++) {
-    KALDI_ASSERT(supervision.fsts[i].Properties(fst::kIEpsilons, true) == 0);
-    num_hmm_states[i] = supervision.fsts[i].NumStates();
+  for (int32 i = 0; i < minibatch_of_supervisions.size(); i++) {
+    const Supervision &src = *(minibatch_of_supervisions[i]);
+    KALDI_ASSERT(src.fst.Properties(fst::kIEpsilons, true) == 0);
+    if (i == 0)
+      num_pdfs_ = src.label_dim;
+    KALDI_ASSERT(src.label_dim == num_pdfs_);
+    num_hmm_states[i] = src.fst.NumStates();
     if (num_hmm_states[i] > max_num_hmm_states_)
       max_num_hmm_states_ = num_hmm_states[i];
   }
-  num_hmm_states_ = num_hmm_states;
-  SetTransitions(supervision.fsts);
+
+  SetTransitions(minibatch_of_supervisions);  
   // SetFinalProbs();
 }
 
@@ -62,9 +62,8 @@ const DenominatorGraphTransition* NumeratorGraph::Transitions() const {
 //  return final_probs_;
 //}
 
-void NumeratorGraph::SetTransitions(
-                                   const std::vector<fst::StdVectorFst> &fsts) {
-
+void NumeratorGraph::SetTransitions(const std::vector<const Supervision*> &minibatch_of_supervisions) {
+  
   // TODO(hhadian): shouldn't we memory-align the stride?
   int32 transitions_dim = num_sequences_ * max_num_hmm_states_;
 
@@ -74,38 +73,26 @@ void NumeratorGraph::SetTransitions(
   std::vector<Int32Pair> forward_transitions(transitions_dim);
   std::vector<Int32Pair> backward_transitions(transitions_dim);
   std::vector<DenominatorGraphTransition> transitions;
-  Vector<BaseFloat> offsets(num_sequences_);
-  for (int32 seq = 0; seq < num_sequences_; seq++) {
-    for (int32 s = 0; s < fsts[seq].NumStates(); s++) {
-      BaseFloat offset = 0.0;
-      if (s == 0 && scale_first_transitions_) {
-        for (fst::ArcIterator<fst::StdVectorFst> aiter(fsts[seq], s);
-             !aiter.Done();
-             aiter.Next())
-          if (aiter.Value().weight.Value() > offset)
-            offset = aiter.Value().weight.Value();
-        offsets(seq) = -offset;
-      }
-      for (fst::ArcIterator<fst::StdVectorFst> aiter(fsts[seq], s);
-           !aiter.Done();
+
+  for (int32 seq = 0; seq < minibatch_of_supervisions.size(); seq++) {
+    const Supervision &src = *(minibatch_of_supervisions[seq]);
+    for (int32 s = 0; s < src.fst.NumStates(); s++) {
+      for (fst::ArcIterator<fst::StdVectorFst> aiter(src.fst, s); !aiter.Done();
            aiter.Next()) {
         const fst::StdArc &arc = aiter.Value();
         DenominatorGraphTransition transition;
-        transition.transition_prob = exp(-(arc.weight.Value() - offset));
+        transition.transition_prob = exp(-arc.weight.Value());
         transition.pdf_id = arc.ilabel - 1;
-        transition.hmm_state = arc.nextstate;  // it is local (i.e. within
-                                               // the corresponding hmm)
+        transition.hmm_state = arc.nextstate;  // it is local (i.e. within the corresponding hmm)
         KALDI_ASSERT(transition.pdf_id >= 0 && transition.pdf_id < num_pdfs_);
         transitions_out[seq * max_num_hmm_states_ + s].push_back(transition);
         // now the reverse transition.
-        transition.hmm_state = s;  // it is local (i.e. within the
-                                   // corresponding hmm)
-        transitions_in[seq * max_num_hmm_states_ + arc.nextstate].push_back(
-                                                                    transition);
+        transition.hmm_state = s;  // it is local (i.e. within the corresponding hmm)
+        transitions_in[seq * max_num_hmm_states_ + arc.nextstate].push_back(transition);
       }
     }
   }
-  first_transition_offsets_ = offsets;
+  
   for (int32 s = 0; s < transitions_dim; s++) {
     forward_transitions[s].first = static_cast<int32>(transitions.size());
     transitions.insert(transitions.end(), transitions_out[s].begin(),
@@ -121,29 +108,13 @@ void NumeratorGraph::SetTransitions(
 
   forward_transitions_ = forward_transitions;
   backward_transitions_ = backward_transitions;
-  transitions_ = transitions;
-}
-
-void NumeratorGraph::PrintInfo() const {
-  std::cout << "NumPdfs: " << NumPdfs() << "\n"
-            << "NumSequences: " << NumSequences() << "\n"
-            ;
-  for (int seq = 0; seq < NumSequences(); seq++) {
-    std::cout << "\n\n------ SEQUENCE " << seq << " ------\n"
-              << "num-states: " << NumStates()[seq] << "\n";
-    std::cout << "FORWARD TRANSITIONS:\n";
-    for (int i = 0; i < NumStates()[seq]; i++) {
-      int from = i;
-      for (int j = ForwardTransitions()[seq * MaxNumStates() + i].first;
-           j < ForwardTransitions()[seq * MaxNumStates() + i].second; j++) {
-        int to = Transitions()[j].hmm_state;
-        BaseFloat weight = Transitions()[j].transition_prob;
-        std::cout << "(" << from << " -> " << to << "): " << weight << "\n";
-      }
-    }
-  }
+  transitions_ = transitions;  
 }
 
 
+int32 NumeratorGraph::NumStates(int sequence_index) const {
+  KALDI_ASSERT(sequence_index < num_sequences_);
+  return num_hmm_states_[sequence_index];
+}
 }  // namespace chain
 }  // namespace kaldi

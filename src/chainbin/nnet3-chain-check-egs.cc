@@ -8,6 +8,7 @@
 #include "chain/chain-numerator.h"
 #include "chain/chain-cu-numerator.h"
 #include "chain/chain-training.h"
+#include "chainbin/profiler2.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -66,24 +67,37 @@ int main(int argc, char *argv[]) {
                 << "out[0].supervision.fst.NumStates: " << eg.outputs[0].supervision.fst.NumStates() << "\n"
                 << "out[0].supervision.fsts.size: " << eg.outputs[0].supervision.fsts.size() << "\n"                
                 ;
-      for (int i = 0; i < eg.outputs[0].supervision.fsts.size(); i++)
-        std::cout << "fsts[i].NumStates: " << eg.outputs[0].supervision.fsts[i].NumStates() << "\n";
-      NumeratorGraph ng(eg.outputs[0].supervision);
+      //for (int i = 0; i < eg.outputs[0].supervision.fsts.size(); i++)
+      //  std::cout << "fsts[i].NumStates: " << eg.outputs[0].supervision.fsts[i].NumStates() << "\n";
+
+      Profiler pf;
+      
+      pf.tic("numGraph");
+      NumeratorGraph ng(eg.outputs[0].supervision, true);
       //ng.PrintInfo();
+      pf.tac();
+
+      pf.tic("matPrep");
       int32 T = eg.outputs[0].supervision.frames_per_sequence,
             B = eg.outputs[0].supervision.num_sequences,
             N = eg.outputs[0].supervision.label_dim; //num pdfs
       CuMatrix<BaseFloat> random_nnet_output(T*B, N),
                           nnet_output_deriv1(T*B, N),
                           nnet_output_deriv2(T*B, N);
-      random_nnet_output.SetRandn();
+      random_nnet_output.SetRandUniform();
       random_nnet_output.ApplyLogSoftMaxPerRow(random_nnet_output);
+      pf.tac();
+      
+      // /*
+      pf.tic("on-CPU");
       NumeratorComputation numerator(eg.outputs[0].supervision, random_nnet_output);
       BaseFloat num_logprob_weighted = numerator.Forward();
       std::cout << "num logprob weighted: " << num_logprob_weighted << "\n";
       numerator.Backward(&nnet_output_deriv1);
-      //nnet_output_deriv.Write(std::cout, false);
+      pf.tac();
+      // */
       
+      pf.tic("on-GPU-my");
       ChainTrainingOptions opts;
       CuNumeratorComputation cunum(opts, ng, random_nnet_output);
       BaseFloat cu_num_logprob_weighted = cunum.Forward();
@@ -91,9 +105,19 @@ int main(int argc, char *argv[]) {
       bool ok = true;
       ok = cunum.Backward(eg.outputs[0].supervision.weight, &nnet_output_deriv2);
       std::cout << "ok: " << ok << "\n";
+      pf.tac();
+      
+      std::cout << "Profiling results:\n" << pf.toString() << "\n";
+
+      //WriteKaldiObject(nnet_output_deriv1, "deriv1.txt", false);
+      //WriteKaldiObject(nnet_output_deriv2, "deriv2.txt", false);
+      //for (int i = 0; i < nnet_output_deriv1.NumRows(); i++)
+      //  for (int j = 0; j < nnet_output_deriv1.NumCols(); j++)
+      //    if ( abs(nnet_output_deriv1(i, j) - nnet_output_deriv2(i, j)) > 0.01 )
+      //      std::cout << "i: " << i << ", j: " << j << " ,deriv1: "
+      //                << nnet_output_deriv1(i, j) << " ,deriv2: " << nnet_output_deriv2(i, j) << "\n";
       
       AssertEqual(nnet_output_deriv1, nnet_output_deriv2, 0.001);
-      //nnet_output_deriv.Write(std::cout, false);
     }
     
 #if HAVE_CUDA==1

@@ -69,6 +69,7 @@ class CuNumeratorComputation {
 
  private:
 
+  enum { kMaxDerivTimeSteps = 4 };
   // sets up the alpha for frame t = 0.
   void AlphaFirstFrame();
 

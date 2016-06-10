@@ -1,4 +1,4 @@
-// chain/chain-num-graph.h
+// chain/chain-den-graph.h
 
 // Copyright       2015  Hossein Hadian
 
@@ -45,15 +45,17 @@ namespace chain {
 class NumeratorGraph {
  public:
 
-  int32 NumSequences() const { return num_sequences_; }
+  // the number of states in the HMM of a sequence.
+  int32 NumStates(int32 sequence_index) const;
+  int32 NumSequences() const;
 
   // the number of PDFs (the labels on the transitions are numbered from 0 to
   // NumPdfs() - 1).
   int32 NumPdfs() const { return num_pdfs_; }
-  int32 MaxNumStates() const { return max_num_hmm_states_; }
+
 //  NumeratorGraph();
 
-  NumeratorGraph(const Supervision &supervision, bool scale_first_transitions);
+  NumeratorGraph(const std::vector<const Supervision*> &minibatch_of_supervisions);
 
   const Int32Pair *ForwardTransitions() const;
 
@@ -61,46 +63,31 @@ class NumeratorGraph {
 
   const DenominatorGraphTransition *Transitions() const;
 
-  const int32 *NumStates() const { return num_hmm_states_.Data(); }
-
-  void CopyNumStatesToCpu(int32* destination) const {
-    num_hmm_states_.CopyToHost(destination);
-  }
 //  const CuMatrix<BaseFloat> &FinalProbs() const;
-  const CuVector<BaseFloat> &FirstTransitionOffsets() const { return first_transition_offsets_; }
-  bool AreFirstTransitionsScaled() const { return scale_first_transitions_; }
-  void PrintInfo() const;
-  
+
+
   // Use default copy constructor and assignment operator.
  private:
-
-  void SetTransitions(const std::vector<fst::StdVectorFst> &fsts);
-  /// 2-dim array of forward-transitions for a specific sequence and
-  /// hmm-state: It is num_sequences_ by max_num_hmm_states_. To get the pair
-  /// for seq s and state i one should use
-  /// forward_transitions_.Data()[s*max_num_hmm_states_ + i]
-  CuArray<Int32Pair> forward_transitions_;
-  CuArray<Int32Pair> backward_transitions_; //
+  
+  void SetTransitions(const std::vector<const Supervision*>
+                      &minibatch_of_supervisions);
+  /// 2-dim array of forward-transitions for a specific sequence and 
+  /// hmm-state: It is num_sequences_ by max_num_hmm_states_. To get the pair 
+  /// for seq s and state i one should use forward_transitions_.Data()[s*max_num_hmm_states_ + i]
+  CuArray<Int32Pair> forward_transitions_; 
+  CuArray<Int32Pair> backward_transitions_; // 
 
   // This stores the actual transitions.
   CuArray<DenominatorGraphTransition> transitions_;
 
-  /// This matrix has a size of (num_sequences_, max_num_hmm_states_) and each
+  /// This matrix has a size of (num_sequences_, max_num_hmm_states_) and each 
   /// element gives the final prob for state i in the hmm of sequence s
-  //  CuMatrix<BaseFloat> final_probs_;
+//  CuMatrix<BaseFloat> final_probs_;
 
   int32 num_pdfs_;
   int32 num_sequences_;
   int32 max_num_hmm_states_;
   CuArray<int32> num_hmm_states_;
-
-  // if scale_first_transitions_ is set to true, we subtract the largest of 
-  // transition probabilities on arcs out of state 0, and store the offsets 
-  // in the following array for each sequence. This is necessary because these
-  // probabilities can get too small (very large in log-scale) due to weight
-  // pushing which can cause problems in numerator computations.
-  bool scale_first_transitions_;
-  CuVector<BaseFloat> first_transition_offsets_;
 };
 
 }  // namespace chain

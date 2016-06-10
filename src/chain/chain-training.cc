@@ -21,6 +21,8 @@
 #include "chain/chain-kernels-ansi.h"
 #include "chain/chain-numerator.h"
 #include "chain/chain-denominator.h"
+#include "chain/chain-num-graph.h"
+#include "chain/chain-cu-numerator.h"
 
 namespace kaldi {
 namespace chain {
@@ -37,6 +39,8 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
   BaseFloat num_logprob_weighted;
   if (nnet_output_deriv)
     nnet_output_deriv->SetZero();
+
+  
   {
     NumeratorComputation numerator(supervision, nnet_output);
     // note: supervision.weight is included as a factor in the derivative from
@@ -54,6 +58,27 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
       numerator.Backward(xent_output_deriv);
     }
   }
+
+
+
+///////////////////////////////////////////////////
+
+  std::cout << "num logprob weighted: " << num_logprob_weighted << "\n";
+  NumeratorGraph ng(supervision);
+  CuMatrix<BaseFloat> cuderiv(nnet_output_deriv->NumRows(),
+      nnet_output_deriv->NumCols(), kSetZero);
+  CuNumeratorComputation cunum(opts, ng, nnet_output);
+  BaseFloat cu_num_logprob_weighted = cunum.Forward();
+  std::cout << "cu num logprob weighted: " << cu_num_logprob_weighted << "\n";
+  bool nok = true;
+  nok = cunum.Backward(supervision.weight, &cuderiv);
+  std::cout << "ok: " << nok << "\n";
+  AssertEqual(*nnet_output_deriv, cuderiv, 0.001);
+  
+///////////////////////////////////////////////////
+
+
+
   DenominatorComputation denominator(opts, den_graph,
                                      supervision.num_sequences,
                                      nnet_output);
