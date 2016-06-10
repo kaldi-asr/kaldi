@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright  2015 Tokyo Institute of Technology 
+# Copyright  2015 Tokyo Institute of Technology
 #                 (Authors: Takafumi Moriya, Tomohiro Tanaka and Takahiro Shinozaki)
 #            2015 Mitsubishi Electric Research Laboratories (Author: Shinji Watanabe)
 # Apache 2.0
@@ -35,8 +35,8 @@ CSJVER=dvd  ## Set your CSJ format (dvd or usb).
 
 if [ ! -e data/csj-data/.done_make_all ]; then
  echo "CSJ transcription file does not exist"
- #local/csj_make_trans/csj_makerun.sh <RESOUCE_DIR> <MAKING_PLACE(no change)> || exit 1;
- local/csj_make_trans/csj_makerun.sh $CSJDATATOP data/csj-data $CSJVER
+ #local/csj_make_trans/csj_autorun.sh <RESOUCE_DIR> <MAKING_PLACE(no change)> || exit 1;
+ local/csj_make_trans/csj_autorun.sh $CSJDATATOP data/csj-data $CSJVER
 fi
 wait
 
