@@ -124,10 +124,19 @@ void NumeratorGraph::SetTransitions(
   transitions_ = transitions;
 }
 
-void NumeratorGraph::PrintInfo() const {
+void NumeratorGraph::PrintInfo(bool print_transitions) const {
   std::cout << "NumPdfs: " << NumPdfs() << "\n"
             << "NumSequences: " << NumSequences() << "\n"
+            << "forward-transitions dim: " << forward_transitions_.Dim() << "\n"
+            << "backward-transitions dim: " << backward_transitions_.Dim() << "\n"
+            << "transitions dim: " << transitions_.Dim() << "\n"
+            << "Approximate Mem Usage: " <<
+            ((forward_transitions_.Dim() + backward_transitions_.Dim()) * 
+            sizeof(Int32Pair) + transitions_.Dim() *
+            sizeof(DenominatorGraphTransition)) / 1024 / 1024 << " MBytes.\n"
             ;
+  if (!print_transitions)
+    return;
   for (int seq = 0; seq < NumSequences(); seq++) {
     std::cout << "\n\n------ SEQUENCE " << seq << " ------\n"
               << "num-states: " << NumStates()[seq] << "\n";

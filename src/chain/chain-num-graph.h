@@ -69,7 +69,7 @@ class NumeratorGraph {
 //  const CuMatrix<BaseFloat> &FinalProbs() const;
   const CuVector<BaseFloat> &FirstTransitionOffsets() const { return first_transition_offsets_; }
   bool AreFirstTransitionsScaled() const { return scale_first_transitions_; }
-  void PrintInfo() const;
+  void PrintInfo(bool print_transitions = false) const;
   
   // Use default copy constructor and assignment operator.
  private:
