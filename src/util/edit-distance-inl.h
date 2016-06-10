@@ -93,7 +93,8 @@ int32 LevenshteinEditDistance(const std::vector<T> &ref,
   // that we compute. We know that the total_cost has to at least account for
   // the difference in lengths of the two strings. We then double it each time
   // we find it too small.
-  for (ssize_t max_d = labs(length_difference); ; max_d*=2) {
+  // To avoid the infinite loop for max_d=0, we add +1.
+  for (ssize_t max_d = 1+labs(length_difference); ; max_d*=2) {
     // initialize the first hypothesis aligned to the reference at each
     // position:[hyp_index =0][ref_index]
     for (size_t i =0; i < e.size(); i ++) {
@@ -108,7 +109,12 @@ int32 LevenshteinEditDistance(const std::vector<T> &ref,
     // cur_e[first_ok-1 or last_ok+1] plus the cost to get to the goal diagonal
     // is too big.
     ssize_t first_ok = 0;
-    ssize_t last_ok = (max_d+length_difference)/2;
+    // The expression for last_ok is derived from two separate cases:
+    // a) when |hyp| > |ref|
+    // b) when |hyp| <= |ref|
+    // and in both cases it turns out that
+    // last_ok = hyp_index+(max_d + |ref|-|hyp|)/2.
+    ssize_t last_ok = 1+(max_d+length_difference)/2;
     ssize_t hyp_index;
     for (hyp_index = 1; hyp_index <= (ssize_t)hyp.size(); hyp_index ++) {
       cur_e[0] = e[0];
@@ -118,9 +124,13 @@ int32 LevenshteinEditDistance(const std::vector<T> &ref,
       if (0 < first_ok) {
         cur_e[first_ok-1].total_cost = HUGE_COST;
       }
+      // We cache the for() loop bounds.
+      // As zero is handled separately, we start at least from 1.
       const ssize_t start = std::max<ssize_t>(1, first_ok);
       const ssize_t stop = std::min<ssize_t>(ref.size(), last_ok);
-      if (stop < start) {
+      // The intention here is to assert first_ok <= last_ok,
+      // and that first_ok <= |ref|.
+      if (stop < first_ok) {
         has_chance = false;
         break;
       }
