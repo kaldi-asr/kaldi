@@ -56,8 +56,8 @@ struct FbankOptions {
                  energy_floor(0.0),  // not in log scale: a small value e.g. 1.0e-10
                  raw_energy(true),
                  htk_compat(false),
-    use_log_fbank(true),
-    use_power(true) {}
+                 use_log_fbank(true),
+                 use_power(true) {}
 
   void Register(OptionsItf *opts) {
     frame_opts.Register(opts);
@@ -74,7 +74,7 @@ struct FbankOptions {
     opts->Register("use-log-fbank", &use_log_fbank,
                    "If true, produce log-filterbank, else produce linear.");
     opts->Register("use-power", &use_power,
-		   "If true, use power in filterbank analysis, else magnitude.");
+                   "If true, use power, else use magnitude.");
   }
 };
 
