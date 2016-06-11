@@ -1263,6 +1263,7 @@ static void GenerateRandomGPUOnlyComponentConfig(std::string *component_type,
             filt_z_stride = (1 + Rand() % 2),
             num_filters = 1 + Rand() % 10,
             input_num_filters = 1 + Rand() % 10;
+
       os << " input-x-dim=" << input_x_dim
          << " input-y-dim=" << input_y_dim
          << " input-z-dim=" << input_z_dim
@@ -1295,11 +1296,13 @@ static void GenerateRandomCuDNNKaldiComponentPairConfig(std::string *component_t
       *component_type1 = "CuDNN3DConvolutionComponent";
       *component_type2 = "ConvolutionComponent";
 
+      int32 input_vectorization = Rand() % 2;
       std::string vectorization;
-      //hardcode here
-      vectorization = "zyx";
-      
-      // might need a better name and location for the matrix file
+      if (input_vectorization == 0) {
+        vectorization = "yzx";
+      } else  {
+        vectorization = "zyx";
+      }
       std::string matrix_filename="temp.mat";
 
       int32 input_x_dim = 10 + Rand() % 20,
@@ -1325,7 +1328,7 @@ static void GenerateRandomCuDNNKaldiComponentPairConfig(std::string *component_t
       int32 filter_dim = input_num_filters * filt_x_dim * filt_y_dim * filt_z_dim;
       mat.Resize(num_filters, filter_dim + 1);
       mat.SetRandn();
-     
+
       WriteKaldiObject(mat, matrix_filename, false);
 
       os1 << "input-x-dim=" << input_x_dim
@@ -1337,11 +1340,11 @@ static void GenerateRandomCuDNNKaldiComponentPairConfig(std::string *component_t
          << " filt-x-step=" << filt_x_step
          << " filt-y-step=" << filt_y_step
          << " filt-z-step=" << filt_z_step
-         << " input-num-filters=" << input_num_filters
+         << " input-vectorization-order=" << vectorization
          << " matrix=" << matrix_filename
          << " learning-rate=" << learning_rate;
 
-      os2 << " input-x-dim=" << input_x_dim
+      os2 << " input-x-dim=" << input_x_dim 
          << " input-y-dim=" << input_y_dim
          << " input-z-dim=" << input_z_dim
          << " filt-x-dim=" << filt_x_dim

@@ -31,6 +31,11 @@ namespace nnet3 {
 
 class CuDNN3DConvolutionComponent: public UpdatableComponent {
  public:
+
+// the following vectorization notation need to be modified
+// as they are arranging the dimension from smallest to largest
+// stride which is opposite to the convention used by a large group
+// of people
   enum TensorVectorizationType  {
     kYzx = 0,
     kZyx = 1
@@ -59,6 +64,14 @@ class CuDNN3DConvolutionComponent: public UpdatableComponent {
                         const CuMatrixBase<BaseFloat> &out_deriv,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  void InitDescriptor(
+    int32 filt_x_dim, int32 filt_y_dim, int32 filt_z_dim,
+    int32 filt_x_stride, int32 filt_y_stride, int32 filt_z_stride,
+    int32 pad_x_dim, int32 pad_y_dim, int32 pad_z_dim,
+    int32 upscale_x_dim, int32 upscale_y_dim, int32 upscale_z_dim);
+  void FillInputStrides(int32 n_dims, const int32 *shape, int32 *strides) const;
+  void FillOutputStrides(int32 n_dims, const int32 *shape, int32 *strides) const;
   void Init(int32 input_x_dim, int32 input_y_dim, int32 input_z_dim,
             int32 input_num_filters,
             int32 filt_x_dim, int32 filt_y_dim, int32 filt_z_dim,

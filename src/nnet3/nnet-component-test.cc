@@ -184,7 +184,6 @@ void TestNnetComponentUpdatable(Component *c) {
 }
 
 void DiffSimpleComponentPairPropagateProperties(const Component &c1, const Component &c2) {
-  int32 properties = c1.Properties();
   MatrixStrideType input_stride_type = (c1.Properties()&kInputContiguous) ?
       kStrideEqualNumCols : kDefaultStride;
   MatrixStrideType output_stride_type = (c1.Properties()&kOutputContiguous) ?
@@ -193,10 +192,11 @@ void DiffSimpleComponentPairPropagateProperties(const Component &c1, const Compo
   int32 input_dim = c1.InputDim(),
       output_dim = c1.OutputDim(),
       num_rows = RandInt(1, 100);
+  num_rows = 2;
   CuMatrix<BaseFloat> input_data(num_rows, input_dim, kUndefined,
                                  input_stride_type);
-
   input_data.SetRandn();
+
   CuMatrix<BaseFloat>
       output_data1(num_rows, output_dim, kSetZero, output_stride_type),
       output_data2(num_rows, output_dim, kSetZero, output_stride_type);
@@ -204,6 +204,47 @@ void DiffSimpleComponentPairPropagateProperties(const Component &c1, const Compo
   c1.Propagate(NULL, input_data, &output_data1);
   c2.Propagate(NULL, input_data, &output_data2);
   AssertEqual(output_data1, output_data2);
+  KALDI_LOG << "The propagate results from the two component are bitwise the same";
+
+  CuMatrix<BaseFloat> output_deriv(num_rows, output_dim, kSetZero, output_stride_type);
+  output_deriv.SetRandn();
+
+  CuMatrix<BaseFloat> input_deriv1(num_rows, input_dim, kSetZero, input_stride_type);
+  CuMatrix<BaseFloat> input_deriv2(num_rows, input_dim, kSetZero, input_stride_type);
+
+  CuMatrix<BaseFloat> empty_mat;
+  Component *c1_copy = NULL, *c2_copy = NULL;
+  if ((c1.Properties() & kUpdatableComponent) &&
+      (c2.Properties() & kUpdatableComponent)) {
+    c1_copy = c1.Copy();  // This will test backprop with an updatable component.
+    c2_copy = c2.Copy();  // This will test backprop with an updatable component.
+  }
+
+  c1.Backprop("foobar", NULL,
+             ((c1.Properties() & kBackpropNeedsInput) ? input_data : empty_mat),
+             empty_mat,
+             output_deriv,
+             c1_copy,
+             &input_deriv1);
+  c2.Backprop("foobar", NULL,
+             ((c2.Properties() & kBackpropNeedsInput) ? input_data : empty_mat),
+             empty_mat,
+             output_deriv,
+             c2_copy,
+             &input_deriv2);
+  AssertEqual(input_deriv1, input_deriv2);
+  KALDI_LOG << "The backpropagate results from the two component are bitwise the same";
+
+  if (c1_copy != NULL && c2_copy != NULL) {
+    UpdatableComponent *uc1 = dynamic_cast<UpdatableComponent*>(c1_copy);
+    UpdatableComponent *uc2 = dynamic_cast<UpdatableComponent*>(c2_copy);
+    Vector<BaseFloat> vec1(uc1->NumParameters());
+    Vector<BaseFloat> vec2(uc2->NumParameters());
+    uc1->Vectorize(&vec1);
+    uc2->Vectorize(&vec2);
+    AssertEqual(vec1, vec2);
+    KALDI_LOG << "The updated parameters from the two component are bitwise the same";
+  }
 }
 
 // tests the properties kPropagateAdds, kBackpropAdds,
