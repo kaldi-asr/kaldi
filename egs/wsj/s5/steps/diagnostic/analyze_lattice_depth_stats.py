@@ -128,7 +128,7 @@ print("The total amount of data analyzed assuming 100 frames per second "
       "is {0} hours".format("%.1f" % (total_frames / 360000.0)))
 
 # the next block prints lines like (to give some examples):
-# Nonsilence phones as a group account for 74.4794710984% of phone occurrences, with lattice depth (10,50,90-percentile)=(1,2,7) and mean=3.1
+# Nonsilence phones as a group account for 74.4% of phone occurrences, with lattice depth (10,50,90-percentile)=(1,2,7) and mean=3.1
 # Phone SIL accounts for 25.5% of phone occurrences, with lattice depth (10,50,90-percentile)=(1,1,4) and mean=2.5
 # Phone Z_E accounts for 2.5% of phone occurrences, with lattice depth (10,50,90-percentile)=(1,2,6) and mean=2.9
 # ...
@@ -157,7 +157,7 @@ for phone,depths in sorted(phone_depth_counts.items(), key = lambda x : -sum(x[1
             phone_text = phone_text, percent = "%.1f" % frequency_percentage)
     elif phone == 0:
         preamble = "Nonsilence phones as a group account for {percent}% of frames, with".format(
-            percent = frequency_percentage)
+            percent = "%.1f" % frequency_percentage)
     else:
         assert phone == -1
         preamble = "Overall,";
