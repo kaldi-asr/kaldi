@@ -222,8 +222,9 @@ ln -s $x.mdl $dir/final.mdl
 ln -s $x.occs $dir/final.occs
 ln -s $cur_lda_iter.mat $dir/final.mat
 
-# Summarize warning messages...
+steps/diagnostic/analyze_alignments.sh --cmd "$cmd" $lang $dir
 
+# Summarize warning messages...
 utils/summarize_warnings.pl $dir/log
 
 echo Done training system with LDA+MLLT features in $dir

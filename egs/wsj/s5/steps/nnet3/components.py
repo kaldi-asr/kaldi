@@ -116,6 +116,21 @@ def AddAffRelNormLayer(config_lines, name, input, output_dim, ng_affine_options 
     return {'descriptor':  '{0}_renorm'.format(name),
             'dimension': output_dim}
 
+def AddAffPnormLayer(config_lines, name, input, pnorm_input_dim, pnorm_output_dim, ng_affine_options = " bias-stddev=0 ", norm_target_rms = 1.0):
+    components = config_lines['components']
+    component_nodes = config_lines['component-nodes']
+
+    components.append("component name={0}_affine type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input['dimension'], pnorm_input_dim, ng_affine_options))
+    components.append("component name={0}_pnorm type=PnormComponent input-dim={1} output-dim={2}".format(name, pnorm_input_dim, pnorm_output_dim))
+    components.append("component name={0}_renorm type=NormalizeComponent dim={1} target-rms={2}".format(name, pnorm_output_dim, norm_target_rms))
+
+    component_nodes.append("component-node name={0}_affine component={0}_affine input={1}".format(name, input['descriptor']))
+    component_nodes.append("component-node name={0}_pnorm component={0}_pnorm input={0}_affine".format(name))
+    component_nodes.append("component-node name={0}_renorm component={0}_renorm input={0}_pnorm".format(name))
+
+    return {'descriptor':  '{0}_renorm'.format(name),
+            'dimension': pnorm_output_dim}
+
 def AddConvolutionLayer(config_lines, name, input,
                        input_x_dim, input_y_dim, input_z_dim,
                        filt_x_dim, filt_y_dim,
@@ -165,7 +180,7 @@ def AddMaxpoolingLayer(config_lines, name, input,
         raise Exception("invalid maxpooling pool size vs. input size")
     if pool_x_step > pool_x_size or pool_y_step > pool_y_size or pool_z_step > pool_z_size:
         raise Exception("invalid maxpooling pool step vs. pool size")
-    
+
     assert(input['dimension'] == input_x_dim * input_y_dim * input_z_dim)
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']

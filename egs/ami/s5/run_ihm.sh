@@ -118,7 +118,7 @@ if [ $stage -le 7 ]; then
     5000 80000 data/$mic/train data/lang exp/$mic/tri3a_ali exp/$mic/tri4a
   # Decode,
   graph_dir=exp/$mic/tri4a/graph_${LM}
-  $highmem_cmd $graph_dir/mkgraph.log \
+  $decode_cmd --mem 4G $graph_dir/mkgraph.log \
     utils/mkgraph.sh data/lang_${LM} exp/$mic/tri4a $graph_dir
   steps/decode_fmllr.sh --nj $nj --cmd "$decode_cmd"  --config conf/decode.conf \
     $graph_dir data/$mic/dev exp/$mic/tri4a/decode_dev_${LM}
