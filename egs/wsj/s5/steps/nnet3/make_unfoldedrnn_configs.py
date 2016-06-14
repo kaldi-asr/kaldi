@@ -229,7 +229,10 @@ def MakeConfigs(config_dir, splice_indexes_string,
                                                   self_repair_scale = self_repair_scale)
 
     # make the intermediate config file for layerwise discriminative training
-    nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options, include_log_softmax = include_log_softmax)
+    nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
+                        use_presoftmax_prior_scale = use_presoftmax_prior_scale,
+                        prior_scale_file = prior_scale_file,
+                        include_log_softmax = include_log_softmax)
 
     config_files['{0}/layer{1}.config'.format(config_dir, 1)] = config_lines
     config_lines = {'components':[], 'component-nodes':[]}
@@ -237,13 +240,35 @@ def MakeConfigs(config_dir, splice_indexes_string,
     for i in range(1, num_hidden_layers):
         # make the intermediate config file for layerwise discriminative training
 
+        # prepare the spliced input
+        if not (len(splice_indexes[i]) == 1 and splice_indexes[i][0] == 0):
+            try:
+                zero_index = splice_indexes[i].index(0)
+            except ValueError:
+                zero_index = None
+            appended_descriptors = []
+            appended_dimension = 0
+            for j in range(len(splice_indexes[i])):
+                if j == zero_index:
+                    appended_descriptors.append(prev_layer_output['descriptor'])
+                    appended_dimension += prev_layer_output['dimension']
+                    continue
+                appended_descriptors.append('Offset({0}, {1})'.format(prev_layer_output['descriptor'], splice_indexes[i][j]))
+                appended_dimension += prev_layer_output['dimension']
+            prev_layer_output = {'descriptor' : "Append({0})".format(" , ".join(appended_descriptors)),
+                                 'dimension'  : appended_dimension}
+        else:
+            pass
         prev_layer_output = nodes.AddAffRelNormLayer(config_lines, "L_{0}".format(i),
                                                      prev_layer_output, nonlin_output_dim,
                                                      self_repair_scale = self_repair_scale,
                                                      norm_target_rms = 1.0 if i < num_hidden_layers - 1 else final_layer_normalize_target)
 
         # make the intermediate config file for layerwise discriminative training
-        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options, include_log_softmax = include_log_softmax)
+        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
+                            use_presoftmax_prior_scale = use_presoftmax_prior_scale,
+                            prior_scale_file = prior_scale_file,
+                            include_log_softmax = include_log_softmax)
 
         config_files['{0}/layer{1}.config'.format(config_dir, i+1)] = config_lines
         config_lines = {'components':[], 'component-nodes':[]}

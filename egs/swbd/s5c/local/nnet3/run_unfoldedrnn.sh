@@ -56,12 +56,11 @@ if [ $stage -le 9 ]; then
     --num-unfolded-time-steps 6 \
     --rnn-dim 1024 \
     --relu-dim 1024 \
-    --splice-indexes "-2,-1,0,1,2 0 0 0"  \
+    --splice-indexes "-2,-1,0,1,2,3,4,5,6,7 0 0 0 0" \
     --use-presoftmax-prior-scale true \
    $dir/configs || exit 1;
 fi
 
-exit 0
 
 if [ $stage -le 10 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
