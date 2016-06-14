@@ -71,19 +71,19 @@ class ParametricRelu : public UpdatableComponent {
     // Initialize trainable parameters,
     //
 
-    Vector<BaseFloat> veca(output_dim_);
+    Vector<BaseFloat> vec_a(output_dim_);
     for (int32 i = 0; i < output_dim_; i++) {
       // elements of vector is initialized with input alpha
-      veca(i) = init_alpha;
+      vec_a(i) = init_alpha;
     }
-    alpha_ = veca;
+    alpha_ = vec_a;
     //
-    Vector<BaseFloat> vecb(output_dim_);
+    Vector<BaseFloat> vec_b(output_dim_);
     for (int32 i = 0; i < output_dim_; i++) {
       // elements of vector is initialized with input beta
-      vecb(i) = init_beta;
+      vec_b(i) = init_beta;
     }
-    beta_ = vecb;
+    beta_ = vec_b;
     //
     fix_alpha_ = fix_alpha;
     fix_beta_ = fix_beta;
