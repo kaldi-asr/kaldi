@@ -48,6 +48,7 @@ elif [ -f $data/wav.scp ]; then
              @A = split; if (!($#A == 5 && $A[1] =~ m/sph2pipe$/ &&
                                $A[2] eq "-f" && $A[3] eq "wav" && $A[5] eq "|")) { exit(1); }
              $utt = $A[0]; $sphere_file = $A[4];
+
              if (!open(F, "<$sphere_file")) { die "Error opening sphere file $sphere_file"; }
              $sample_rate = -1;  $sample_count = -1;
              for ($n = 0; $n <= 30; $n++) {
@@ -75,6 +76,8 @@ elif [ -f $data/wav.scp ]; then
     if cat $data/wav.scp | grep -q 'sox.*speed'; then
       read_entire_file=true
       echo "$0: reading from the entire wav file to fix the problem caused by sox commands with speed perturbation. It is going to be slow."
+      echo "... It is much faster if you call get_utt2dur.sh *before* doing the speed perturbation via e.g. perturb_data_dir_speed.sh or "
+      echo "... perturb_data_dir_speed_3way.sh."
     fi
 
     if ! wav-to-duration --read-entire-file=$read_entire_file scp:$data/wav.scp ark,t:$data/utt2dur 2>&1 | grep -v 'nonzero return status'; then

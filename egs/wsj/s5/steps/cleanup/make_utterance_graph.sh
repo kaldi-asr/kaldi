@@ -57,7 +57,7 @@ mkdir -p $graph_dir/sub_graphs
 
 # If --ngram-order is larger than 1, we will have to use SRILM
 if [ $ngram_order -gt 1 ]; then
-  ngram_count=`which ngram-count`;
+  ngram_count=`which ngram-count` || true
   if [ -z $ngram_count ]; then
     if uname -a | grep 64 >/dev/null; then # some kind of 64 bit...
       sdir=`pwd`/../../../tools/srilm/bin/i686-m64

@@ -254,6 +254,7 @@ ln -s $x.occs $dir/final.occs
 ln -s $x.alimdl $dir/final.alimdl
 
 
+steps/diagnostic/analyze_alignments.sh --cmd "$cmd" $lang $dir
 
 utils/summarize_warnings.pl $dir/log
 (
