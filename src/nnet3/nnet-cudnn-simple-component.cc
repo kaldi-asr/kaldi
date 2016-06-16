@@ -695,7 +695,12 @@ void CuDNN3DConvolutionComponent::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &input_vectorization);
   input_vectorization_ = static_cast<TensorVectorizationType>(input_vectorization);
   ExpectToken(is, binary, "<FilterParams>");
-  filter_params_.Read(is, binary);
+  // dummy matrix is needed as no option to specify contigous memory in matrix Read()
+  CuMatrix<BaseFloat> mat;
+  mat.Read(is, binary);
+  filter_params_.Resize(mat.NumRows(), mat.NumCols(), kUndefined,
+                        kStrideEqualNumCols);
+  filter_params_.CopyFromMat(mat);
   ExpectToken(is, binary, "<BiasParams>");
   bias_params_.Read(is, binary);
   ExpectToken(is, binary, "<IsGradient>");
