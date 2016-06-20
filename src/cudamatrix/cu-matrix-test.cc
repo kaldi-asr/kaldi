@@ -245,14 +245,14 @@ static void UnitTestCuMatrixSoftHinge() {
 template<typename Real>
 static void UnitTestCuMatrixGroupPnorm() {
   int32 M = 100 + Rand() % 200, N = 100 + Rand() % 200;
-  // M = 256; N = 256;
+  Real power[] = { 1.4, 1.6, 0.1234, 2.123, 0, 1, 2, Real(1.0 / 0.0) };
   for (int32 K = 5; K < 7; K++) {
-    for (int32 q = 2; q < 4; q++) {
-      BaseFloat p = 1.0 + 0.2 * q;
+    for (int32 i = 0; i < 2 * sizeof(power) / sizeof(Real); ++i) {
+      Real p = power[i / 2];
       int32 N_src = N * K;
       Matrix<Real> H_src(M, N_src);
       H_src.SetRandn();
-      if (rand () % 2 == 0)
+      if (i % 2 == 0)
         H_src.ApplyFloor(0.0); // will put some zeros in the matrix.. harder to
                                // do derivatives.
       Matrix<Real> H(M, N);
@@ -261,7 +261,7 @@ static void UnitTestCuMatrixGroupPnorm() {
       CuMatrix<Real> E(M, N);
       E.GroupPnorm(D, p);
       Matrix<Real> H2(E);
-      AssertEqual(H,H2);
+      AssertEqual(H, H2);
     }
   }
 }
