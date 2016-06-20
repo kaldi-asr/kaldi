@@ -142,6 +142,9 @@ void cudaF_softmax_reduce(size_t Gr, size_t Bl, float *y, const float *x, Matrix
 void cudaF_log_softmax_reduce(size_t Gr, size_t Bl, float *y, const float *x, MatrixDim d, int src_stride);
 void cudaF_soft_hinge(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride);
 void cudaF_group_pnorm(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride, int group_size, float power);
+void cudaF_group_spec_pnorm(dim3 Gr, dim3 Bl, float *y, const float *x,
+                            MatrixDim d, int src_stride, int group_size,
+                            float power);
 void cudaF_group_max(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride, int group_size);
 void cudaF_sigmoid(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride);
 void cudaF_heaviside(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride);
@@ -286,6 +289,9 @@ void cudaD_softmax_reduce(size_t Gr, size_t Bl, double *y, const double *x, Matr
 void cudaD_log_softmax_reduce(size_t Gr, size_t Bl, double *y, const double *x, MatrixDim d, int src_stride);
 void cudaD_soft_hinge(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d, int src_stride);
 void cudaD_group_pnorm(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d, int src_stride, int group_size, double power);
+void cudaD_group_spec_pnorm(dim3 Gr, dim3 Bl, double *y, const double *x,
+                            MatrixDim d, int src_stride, int group_size,
+                            double power);
 void cudaD_group_max(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d, int src_stride, int group_size);
 void cudaD_sigmoid(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d, int src_stride);
 void cudaD_heaviside(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d, int src_stride);
