@@ -195,8 +195,10 @@ def ParseLstmDelayString(lstm_delay):
             if len(indexes) < 1:
                 raise ValueError("invalid --lstm-delay argument, too-short element: "
                                 + lstm_delay)
-	    elif len(indexes) == 2 and indexes[0] * indexes[1] >= 0:
+            elif len(indexes) == 2 and indexes[0] * indexes[1] >= 0:
                 raise ValueError('Warning: ' + str(indexes) + ' is not a standard BLSTM mode. There should be a negative delay for the forward, and a postive delay for the backward.')
+            if len(indexes) == 2 and indexes[0] > 0: # always a negative delay followed by a postive delay
+                indexes[0], indexes[1] = indexes[1], indexes[0]
             lstm_delay_array.append(indexes)
     except ValueError as e:
         raise ValueError("invalid --lstm-delay argument " + lstm_delay + str(e))
@@ -227,25 +229,20 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
     prev_layer_output = nodes.AddLdaLayer(config_lines, "L0", prev_layer_output, config_dir + '/lda.mat')
 
     for i in range(num_lstm_layers):
-	if len(lstm_delay[i]) == 2: # BLSTM layer case, add both forward and backward
-            prev_layer_output1 = nodes.AddLstmLayer(config_lines, "BLstm{0}_forward".format(i+1), prev_layer_output, cell_dim,
-                                             recurrent_projection_dim, non_recurrent_projection_dim,
-                                             clipping_threshold, norm_based_clipping,
-                                             ng_per_element_scale_options, ng_affine_options,
-                                             lstm_delay = lstm_delay[i][0], self_repair_scale = self_repair_scale)
-            prev_layer_output2 = nodes.AddLstmLayer(config_lines, "BLstm{0}_backward".format(i+1), prev_layer_output, cell_dim,
-                                             recurrent_projection_dim, non_recurrent_projection_dim,
-                                             clipping_threshold, norm_based_clipping,
-                                             ng_per_element_scale_options, ng_affine_options,
-                                             lstm_delay = lstm_delay[i][1], self_repair_scale = self_repair_scale)
-            prev_layer_output['descriptor'] = 'Append({0}, {1})'.format(prev_layer_output1['descriptor'], prev_layer_output2['descriptor'])
-	    prev_layer_output['dimension'] = prev_layer_output1['dimension'] + prev_layer_output2['dimension']
-	else: # LSTM layer case
-	    prev_layer_output = nodes.AddLstmLayer(config_lines, "Lstm{0}".format(i+1), prev_layer_output, cell_dim,
-			                    recurrent_projection_dim, non_recurrent_projection_dim,
-					    clipping_threshold, norm_based_clipping,
-					    ng_per_element_scale_options, ng_affine_options,
-					    lstm_delay = lstm_delay[i][0], self_repair_scale = self_repair_scale)
+        if len(lstm_delay[i]) == 2: # add a bi-directional LSTM layer
+            prev_layer_output = nodes.AddBLstmLayer(config_lines, "BLstm{0}".format(i+1),
+                                                    prev_layer_output, cell_dim,
+                                                    recurrent_projection_dim, non_recurrent_projection_dim,
+                                                    clipping_threshold, norm_based_clipping,
+                                                    ng_per_element_scale_options, ng_affine_options,
+                                                    lstm_delay = lstm_delay[i], self_repair_scale = self_repair_scale)
+        else: # add a uni-directional LSTM layer
+            prev_layer_output = nodes.AddLstmLayer(config_lines, "Lstm{0}".format(i+1),
+                                                   prev_layer_output, cell_dim,
+                                                   recurrent_projection_dim, non_recurrent_projection_dim,
+                                                   clipping_threshold, norm_based_clipping,
+                                                   ng_per_element_scale_options, ng_affine_options,
+                                                   lstm_delay = lstm_delay[i][0], self_repair_scale = self_repair_scale)
         # make the intermediate config file for layerwise discriminative
         # training
         nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options, label_delay = label_delay, include_log_softmax = include_log_softmax)
@@ -258,14 +255,7 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
 
         config_files['{0}/layer{1}.config'.format(config_dir, i+1)] = config_lines
         config_lines = {'components':[], 'component-nodes':[]}
-	if len(lstm_delay[i]) == 2:
-	    # since the form 'Append(Append(xx, yy), zz)' is not allowed, here we don't wrap the descriptor with 'Append()' so that we would have the form
-	    # 'Append(xx, yy, zz)' in the next lstm layer
-	    prev_layer_output['descriptor'] = '{0}, {1}'.format(prev_layer_output1['descriptor'], prev_layer_output2['descriptor'])
 
-    if len(lstm_delay[i]) == 2:
-        # since there is no 'Append' in 'AffRelNormLayer', here we wrap the descriptor with 'Append()'
-        prev_layer_output['descriptor'] = 'Append({0})'.format(prev_layer_output['descriptor'])
     for i in range(num_lstm_layers, num_hidden_layers):
         prev_layer_output = nodes.AddAffRelNormLayer(config_lines, "L{0}".format(i+1),
                                                prev_layer_output, hidden_dim,
@@ -315,16 +305,23 @@ def Main():
     args = GetArgs()
     [left_context, right_context, num_hidden_layers, splice_indexes] = ProcessSpliceIndexes(args.config_dir, args.splice_indexes, args.label_delay, args.num_lstm_layers)
 
-    MakeConfigs(args.config_dir,
-                args.feat_dim, args.ivector_dim, args.num_targets,
-                splice_indexes, args.lstm_delay, args.cell_dim,
-                args.recurrent_projection_dim, args.non_recurrent_projection_dim,
-                args.num_lstm_layers, num_hidden_layers,
-                args.norm_based_clipping,
-                args.clipping_threshold,
-                args.ng_per_element_scale_options, args.ng_affine_options,
-                args.label_delay, args.include_log_softmax, args.xent_regularize,
-                args.self_repair_scale)
+    MakeConfigs(config_dir = args.config_dir,
+                feat_dim = args.feat_dim, ivector_dim = args.ivector_dim,
+                num_targets = args.num_targets,
+                splice_indexes = splice_indexes, lstm_delay = args.lstm_delay,
+                cell_dim = args.cell_dim,
+                recurrent_projection_dim = args.recurrent_projection_dim,
+                non_recurrent_projection_dim = args.non_recurrent_projection_dim,
+                num_lstm_layers = args.num_lstm_layers,
+                num_hidden_layers = num_hidden_layers,
+                norm_based_clipping = args.norm_based_clipping,
+                clipping_threshold = args.clipping_threshold,
+                ng_per_element_scale_options = args.ng_per_element_scale_options,
+                ng_affine_options = args.ng_affine_options,
+                label_delay = args.label_delay,
+                include_log_softmax = args.include_log_softmax,
+                xent_regularize = args.xent_regularize,
+                self_repair_scale = args.self_repair_scale)
 
 if __name__ == "__main__":
     Main()
