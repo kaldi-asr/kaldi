@@ -65,6 +65,50 @@ class Softmax : public Component {
 };
 
 
+class HiddenSoftmax : public Component {
+ public:
+  HiddenSoftmax(int32 dim_in, int32 dim_out) :
+    Component(dim_in, dim_out)
+  { }
+
+  ~HiddenSoftmax()
+  { }
+
+  Component* Copy() const { return new HiddenSoftmax(*this); }
+  ComponentType GetType() const { return kHiddenSoftmax; }
+
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
+                    CuMatrixBase<BaseFloat> *out) {
+    // y = e^x_j/sum_j(e^x_j)
+    out->ApplySoftMaxPerRow(in);
+  }
+
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
+                        const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff,
+                        CuMatrixBase<BaseFloat> *in_diff) {
+    // This Softmax should be used for a hidden layer, it calculates
+    // the true Jacobian of Softmax: J = diag(out) - out*out^T
+
+    // The backpropagation formual is:
+    // in_diff = out_diff \odot out - out(out_diff^T * out)
+    // (where \odot is Hadamard product)
+
+    // 1st term, out_diff \odot out,
+    in_diff->CopyFromMat(out_diff);
+    in_diff->MulElements(out);
+
+    // 2nd term, -out(out_diff^T * out),
+    diag_out_diff_out_.Resize(out.NumRows());
+    diag_out_diff_out_.AddDiagMatMat(1.0, out_diff, kNoTrans, out, kTrans, 0.0);
+    in_diff->AddDiagVecMat(-1.0, diag_out_diff_out_, out, kNoTrans, 1.0);
+  }
+
+ private:
+  /// buffer for dot-products in BackpropagateFnc,
+  CuVector<BaseFloat> diag_out_diff_out_;
+};
+
 class BlockSoftmax : public Component {
  public:
   BlockSoftmax(int32 dim_in, int32 dim_out):

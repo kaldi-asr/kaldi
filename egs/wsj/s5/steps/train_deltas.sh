@@ -158,6 +158,8 @@ rm $dir/final.mdl $dir/final.occs 2>/dev/null
 ln -s $x.mdl $dir/final.mdl
 ln -s $x.occs $dir/final.occs
 
+steps/diagnostic/analyze_alignments.sh --cmd "$cmd" $lang $dir
+
 # Summarize warning messages...
 utils/summarize_warnings.pl  $dir/log
 

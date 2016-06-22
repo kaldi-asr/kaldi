@@ -121,31 +121,17 @@ for mode in 1 2 3 4; do
     exp/tri1/decode_nosp_tgpr_dev93_tg$mode  || exit 1;
 done
 
-# demonstrate how to get lattices that are "word-aligned" (arcs coincide with
-# words, with boundaries in the right place).
-sil_label=`grep '!SIL' data/lang_nosp_test_tgpr/words.txt | awk '{print $2}'`
-steps/word_align_lattices.sh --cmd "$train_cmd" --silence-label $sil_label \
-  data/lang_nosp_test_tgpr exp/tri1/decode_nosp_tgpr_dev93 \
-  exp/tri1/decode_nosp_tgpr_dev93_aligned || exit 1;
+
+## the following command demonstrates how to get lattices that are
+## "word-aligned" (arcs coincide with words, with boundaries in the right
+## place).
+#sil_label=`grep '!SIL' data/lang_nosp_test_tgpr/words.txt | awk '{print $2}'`
+#steps/word_align_lattices.sh --cmd "$train_cmd" --silence-label $sil_label \
+#  data/lang_nosp_test_tgpr exp/tri1/decode_nosp_tgpr_dev93 \
+#  exp/tri1/decode_nosp_tgpr_dev93_aligned || exit 1;
 
 steps/align_si.sh --nj 10 --cmd "$train_cmd" \
   data/train_si84 data/lang_nosp exp/tri1 exp/tri1_ali_si84 || exit 1;
-
-# Train tri2a, which is deltas + delta-deltas, on si84 data.
-steps/train_deltas.sh --cmd "$train_cmd" 2500 15000 \
-  data/train_si84 data/lang_nosp exp/tri1_ali_si84 exp/tri2a || exit 1;
-
-utils/mkgraph.sh data/lang_nosp_test_tgpr \
-  exp/tri2a exp/tri2a/graph_nosp_tgpr || exit 1;
-
-steps/decode.sh --nj 10 --cmd "$decode_cmd" exp/tri2a/graph_nosp_tgpr \
-  data/test_dev93 exp/tri2a/decode_nosp_tgpr_dev93 || exit 1;
-steps/decode.sh --nj 8 --cmd "$decode_cmd" exp/tri2a/graph_nosp_tgpr \
-  data/test_eval92 exp/tri2a/decode_nosp_tgpr_eval92 || exit 1;
-
-utils/mkgraph.sh data/lang_nosp_test_bg_5k exp/tri2a exp/tri2a/graph_nosp_bg5k
-steps/decode.sh --nj 8 --cmd "$decode_cmd" exp/tri2a/graph_nosp_bg5k \
-  data/test_eval92 exp/tri2a/decode_nosp_eval92_bg5k || exit 1;
 
 steps/train_lda_mllt.sh --cmd "$train_cmd" \
   --splice-opts "--left-context=3 --right-context=3" 2500 15000 \
@@ -187,9 +173,10 @@ local/score_mbr.sh --cmd "$decode_cmd" \
  data/test_dev93/ data/lang_nosp_test_tgpr/ \
  exp/tri2b/decode_nosp_tgpr_dev93_tg_mbr
 
-steps/decode_fromlats.sh --cmd "$decode_cmd" \
-  data/test_dev93 data/lang_nosp_test_tgpr exp/tri2b/decode_nosp_tgpr_dev93 \
-  exp/tri2a/decode_nosp_tgpr_dev93_fromlats || exit 1
+# This script trains a delta+delta-delta system.  It's not really recommended or
+# necessary, but it does contain a demonstration of the decode_fromlats.sh
+# script which isn't used elsewhere.
+# local/run_deltas.sh
 
 # Align tri2b system with si84 data.
 steps/align_si.sh  --nj 10 --cmd "$train_cmd" \

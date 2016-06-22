@@ -32,7 +32,7 @@
 
 namespace kaldi {
 
-template<typename Real> 
+template<typename Real>
 Real VecVec(const VectorBase<Real> &a,
             const VectorBase<Real> &b) {
   MatrixIndexT adim = a.Dim();
@@ -96,8 +96,8 @@ void VectorBase<Real>::AddMatVec(const Real alpha,
   KALDI_ASSERT((trans == kNoTrans && M.NumCols() == v.dim_ && M.NumRows() == dim_)
                || (trans == kTrans && M.NumRows() == v.dim_ && M.NumCols() == dim_));
   KALDI_ASSERT(&v != this);
-  cblas_Xgemv(trans, M.NumRows(), M.NumCols(), alpha, M.Data(), M.Stride(), 
-              v.Data(), 1, beta, data_, 1); 
+  cblas_Xgemv(trans, M.NumRows(), M.NumCols(), alpha, M.Data(), M.Stride(),
+              v.Data(), 1, beta, data_, 1);
 }
 
 template<typename Real>
@@ -109,7 +109,7 @@ void VectorBase<Real>::AddMatSvec(const Real alpha,
   KALDI_ASSERT((trans == kNoTrans && M.NumCols() == v.dim_ && M.NumRows() == dim_)
                || (trans == kTrans && M.NumRows() == v.dim_ && M.NumCols() == dim_));
   KALDI_ASSERT(&v != this);
-  Xgemv_sparsevec(trans, M.NumRows(), M.NumCols(), alpha, M.Data(), M.Stride(), 
+  Xgemv_sparsevec(trans, M.NumRows(), M.NumCols(), alpha, M.Data(), M.Stride(),
                   v.Data(), 1, beta, data_, 1);
   return;
   /*
@@ -416,14 +416,14 @@ template<typename OtherReal>
 void VectorBase<Real>::CopyRowFromSp(const SpMatrix<OtherReal> &sp, MatrixIndexT row) {
   KALDI_ASSERT(row < sp.NumRows());
   KALDI_ASSERT(dim_ == sp.NumCols());
-  
+
   const OtherReal *sp_data = sp.Data();
 
   sp_data += (row*(row+1)) / 2; // takes us to beginning of this row.
   MatrixIndexT i;
   for (i = 0; i < row; i++) // copy consecutive elements.
     data_[i] = static_cast<Real>(*(sp_data++));
-  for(; i < dim_; ++i, sp_data += i) 
+  for(; i < dim_; ++i, sp_data += i)
     data_[i] = static_cast<Real>(*sp_data);
 }
 
@@ -461,7 +461,7 @@ void VectorBase<Real>::ApplyPow(Real power) {
     for (MatrixIndexT i = 0; i < dim_; i++) {
       data_[i] = pow(data_[i], power);
       if (data_[i] == HUGE_VAL) {  // HUGE_VAL is what errno returns on error.
-        KALDI_ERR << "Could not raise element "  << i << "to power "
+        KALDI_ERR << "Could not raise element "  << i << " to power "
                   << power << ": returned value = " << data_[i];
       }
     }
@@ -473,7 +473,7 @@ void VectorBase<Real>::ApplyPow(Real power) {
 // Throws exception if could not (but only for power != 1 and power != 2).
 template<typename Real>
 void VectorBase<Real>::ApplyPowAbs(Real power, bool include_sign) {
-  if (power == 1.0) 
+  if (power == 1.0)
     for (MatrixIndexT i = 0; i < dim_; i++)
       data_[i] = (include_sign && data_[i] < 0 ? -1 : 1) * std::abs(data_[i]);
   if (power == 2.0) {
@@ -520,6 +520,10 @@ Real VectorBase<Real>::Norm(Real p) const {
     for (MatrixIndexT i = 0; i < dim_; i++)
       sum += data_[i] * data_[i];
     return std::sqrt(sum);
+  } else if (p == Real(1.0 / 0.0)){
+    for (MatrixIndexT i = 0; i < dim_; i++)
+      sum = std::max(sum, std::abs(data_[i]));
+    return sum;
   } else {
     Real tmp;
     bool ok = true;
@@ -540,7 +544,7 @@ Real VectorBase<Real>::Norm(Real p) const {
       Vector<Real> tmp(*this);
       tmp.Scale(1.0 / max_abs);
       return tmp.Norm(p) * max_abs;
-    }      
+    }
   }
 }
 
@@ -691,7 +695,7 @@ Real VectorBase<Real>::SumLog() const {
     prod *= data_[i];
     // Possible future work (arnab): change these magic values to pre-defined
     // constants
-    if (prod < 1.0e-10 || prod > 1.0e+10) {  
+    if (prod < 1.0e-10 || prod > 1.0e+10) {
       sum_log += Log(prod);
       prod = 1.0;
     }
@@ -706,7 +710,7 @@ void VectorBase<Real>::AddRowSumMat(Real alpha, const MatrixBase<Real> &M, Real 
   MatrixIndexT num_rows = M.NumRows(), stride = M.Stride(), dim = dim_;
   Real *data = data_;
 
-  // implement the function according to a dimension cutoff for computation efficiency  
+  // implement the function according to a dimension cutoff for computation efficiency
   if (num_rows <= 64) {
     cblas_Xscal(dim, beta, data, 1);
     const Real *m_data = M.Data();
@@ -948,7 +952,7 @@ void VectorBase<Real>::MulElements(const VectorBase<Real> &v) {
 template<typename Real>  // Set each element to y = (x == orig ? changed : x).
 void VectorBase<Real>::ReplaceValue(Real orig, Real changed) {
   Real *data = data_;
-  for (MatrixIndexT i = 0; i < dim_; i++) 
+  for (MatrixIndexT i = 0; i < dim_; i++)
     if (data[i] == orig) data[i] = changed;
 }
 
@@ -979,7 +983,7 @@ void VectorBase<Real>::AddVecVec(Real alpha, const VectorBase<Real> &v,
               r.data_, 1, beta, this->data_, 1);
 }
 
-  
+
 template<typename Real>
 void VectorBase<Real>::DivElements(const VectorBase<Real> &v) {
   KALDI_ASSERT(dim_ == v.dim_);
