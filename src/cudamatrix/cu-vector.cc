@@ -263,30 +263,30 @@ Real CuVectorBase<Real>::Sum() const {
     return 0.0;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    Real result;
     Timer tim;
-    int max_threads = 2048;
-    // This is the smallest block of consecutive vector elements, which
-    // its sum will save at the partial vector.
-    int block_size = (dim_ + max_threads - 1) / max_threads;
-    if (block_size > 3) {
-      int dimBlock(CU1DBLOCK);
-      int dimGrid(n_blocks(max_threads, CU1DBLOCK));
-      CuVector<Real> g(dimGrid);
-      cuda_pvec_sum(dimGrid, dimBlock, data_, g.Data(), dim_, block_size);
-      CU_SAFE_CALL(cudaGetLastError());
-      Vector<Real> tmp(dimGrid);
-      g.CopyToVec(&tmp);
-      CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
-      return tmp.Sum();
+
+    // Small vectors are copied to RAM and reduced on CPU.
+    // The length is chosen by cu-vector-speed-test
+    if (dim_ < 4096) {
+      Vector<Real> ans_cpu(*this);
+      result = ans_cpu.Sum();
     } else {
-      CuVector<Real> tmp(1, kUndefined);
-      int dimBlock(CU1DBLOCK);
-      int dimGrid = 1; // only 1 block here. we have loops in each thread.
-      cuda_vec_sum(dimGrid, dimBlock, data_, tmp.Data(), dim_, 1);
+      // Use no more than 256 blocks (still too many?)
+      int dimBlock = CU1DBLOCK;
+      int dimGrid = n_blocks(dim_, dimBlock);
+      if (dimGrid > 256) {
+        dimGrid = 256;
+      }
+      CuVector<Real> ans(dimGrid, kUndefined);
+      cuda_vec_sum(dimGrid, dimBlock, data_, ans.Data(), dim_, 1);
       CU_SAFE_CALL(cudaGetLastError());
-      CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
-      return tmp(0);
+      Vector<Real> ans_cpu(ans);
+      result = ans_cpu.Sum();
     }
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    return result;
   } else
 #endif
   {
@@ -637,10 +637,26 @@ Real CuVectorBase<Real>::Min() const {
       return std::numeric_limits<Real>::infinity();
     }
     Timer tim;
-    CuVector<Real> ans(1);
-    cuda_vec_min(data_, ans.Data(), dim_);
-    CU_SAFE_CALL(cudaGetLastError());
-    result = ans(0);
+
+    // Small vectors are copied to RAM and reduced on CPU.
+    // The length is chosen by cu-vector-speed-test
+    if (dim_ < 4096) {
+      Vector<Real> ans_cpu(*this);
+      result = ans_cpu.Min();
+    } else {
+      // Use no more than 256 blocks (still too many?)
+      int dimBlock = CU1DBLOCK;
+      int dimGrid = n_blocks(dim_, dimBlock);
+      if (dimGrid > 256) {
+        dimGrid = 256;
+      }
+      CuVector<Real> ans(dimGrid, kUndefined);
+      cuda_vec_min(dimGrid, dimBlock, data_, ans.Data(), dim_, 1);
+      CU_SAFE_CALL(cudaGetLastError());
+      Vector<Real> ans_cpu(ans);
+      result = ans_cpu.Min();
+    }
+
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
@@ -659,10 +675,26 @@ Real CuVectorBase<Real>::Max() const {
       return -std::numeric_limits<Real>::infinity();
     }
     Timer tim;
-    CuVector<Real> ans(1);
-    cuda_vec_max(data_, ans.Data(), dim_);
-    CU_SAFE_CALL(cudaGetLastError());
-    result = ans(0);
+
+    // Small vectors are copied to RAM and reduced on CPU.
+    // The length is chosen by cu-vector-speed-test
+    if (dim_ < 4096) {
+      Vector<Real> ans_cpu(*this);
+      result = ans_cpu.Max();
+    } else {
+      // Use no more than 256 blocks (still too many?)
+      int dimBlock = CU1DBLOCK;
+      int dimGrid = n_blocks(dim_, dimBlock);
+      if (dimGrid > 256) {
+        dimGrid = 256;
+      }
+      CuVector<Real> ans(dimGrid, kUndefined);
+      cuda_vec_max(dimGrid, dimBlock, data_, ans.Data(), dim_, 1);
+      CU_SAFE_CALL(cudaGetLastError());
+      Vector<Real> ans_cpu(ans);
+      result = ans_cpu.Max();
+    }
+
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif

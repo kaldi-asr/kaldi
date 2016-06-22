@@ -3,7 +3,7 @@
 # Copyright 2012-2015 Brno University of Technology (author: Karel Vesely), Daniel Povey
 # Apache 2.0
 
-# Begin configuration section. 
+# Begin configuration section.
 nnet=               # non-default location of DNN (optional)
 feature_transform=  # non-default location of feature_transform (optional)
 model=              # non-default location of transition model (optional)
@@ -12,7 +12,7 @@ srcdir=             # non-default location of DNN-dir (decouples model dir from 
 ivector=            # rx-specifier with i-vectors (ark-with-vectors),
 
 blocksoftmax_dims=   # 'csl' with block-softmax dimensions: dim1,dim2,dim3,...
-blocksoftmax_active= # '1' for the 1st block, 
+blocksoftmax_active= # '1' for the 1st block,
 
 stage=0 # stage=1 skips lattice generation
 nj=4
@@ -93,7 +93,7 @@ done
 
 # Possibly use multi-threaded decoder
 thread_string=
-[ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads" 
+[ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads"
 
 
 # PREPARE FEATURE EXTRACTION PIPELINE
@@ -119,7 +119,7 @@ feats="ark,s,cs:copy-feats scp:$sdata/JOB/feats.scp ark:- |"
 # add-ivector (optional),
 if [ -e $D/ivector_dim ]; then
   [ -z $ivector ] && echo "Missing --ivector, they were used in training!" && exit 1
-  # Get the tool, 
+  # Get the tool,
   ivector_append_tool=append-vector-to-feats # default,
   [ -e $D/ivector_append_tool ] && ivector_append_tool=$(cat $D/ivector_append_tool)
   # Check dims,
@@ -143,8 +143,8 @@ if [ ! -z "$blocksoftmax_dims" ]; then
   dim_block=$(awk -F'[:,]' -v active=$blocksoftmax_active '{ print $active; }' <(echo $blocksoftmax_dims))
   offset=$(awk -F'[:,]' -v active=$blocksoftmax_active '{ sum=0; for(i=1;i<active;i++) { sum += $i }; print sum; }' <(echo $blocksoftmax_dims))
   # create components which select a block,
-  nnet-initialize <(echo "<Copy> <InputDim> $dim_total <OutputDim> $dim_block <BuildVector> $((1+offset)):$((offset+dim_block)) </BuildVector>"; 
-                    echo "<Softmax> <InputDim> $dim_block <OutputDim> $dim_block") $dir/copy_and_softmax.nnet 
+  nnet-initialize <(echo "<Copy> <InputDim> $dim_total <OutputDim> $dim_block <BuildVector> $((1+offset)):$((offset+dim_block)) </BuildVector>";
+                    echo "<Softmax> <InputDim> $dim_block <OutputDim> $dim_block") $dir/copy_and_softmax.nnet
   # nnet is assembled on-the fly, <BlockSoftmax> is removed, while <Copy> + <Softmax> is added,
   nnet="nnet-concat 'nnet-copy --remove-last-components=1 $nnet - |' $dir/copy_and_softmax.nnet - |"
 fi

@@ -127,6 +127,13 @@ if [[ ! -s $dir/HCLG.fst || $dir/HCLG.fst -ot $dir/HCLGa.fst ]]; then
   fi
 fi
 
+# note: the empty FST has 66 bytes.  this check is for whether the final FST
+# is the empty file or is the empty FST.
+if ! [ $(head -c 67 $dir/HCLG.fst | wc -c) -eq 67 ]; then
+  echo "$0: it looks like the result in $dir/HCLG.fst is empty"
+  exit 1
+fi
+
 # keep a copy of the lexicon and a list of silence phones with HCLG...
 # this means we can decode without reference to the $lang directory.
 
@@ -135,6 +142,7 @@ cp $lang/words.txt $dir/ || exit 1;
 mkdir -p $dir/phones
 cp $lang/phones/word_boundary.* $dir/phones/ 2>/dev/null # might be needed for ctm scoring,
 cp $lang/phones/align_lexicon.* $dir/phones/ 2>/dev/null # might be needed for ctm scoring,
+cp $lang/phones/optional_silence.* $dir/phones/ 2>/dev/null # might be needed for analyzing alignments.
   # but ignore the error if it's not there.
 
 cp $lang/phones/disambig.{txt,int} $dir/phones/ 2> /dev/null

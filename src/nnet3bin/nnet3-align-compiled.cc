@@ -54,7 +54,6 @@ int main(int argc, char *argv[]) {
     AlignConfig align_config;
     NnetSimpleComputationOptions decodable_opts;
     std::string use_gpu = "yes";
-    BaseFloat acoustic_scale = 1.0;
     BaseFloat transition_scale = 1.0;
     BaseFloat self_loop_scale = 1.0;
 
@@ -69,8 +68,6 @@ int main(int argc, char *argv[]) {
                 "yes|no|optional|wait, only has effect if compiled with CUDA");
     po.Register("transition-scale", &transition_scale,
                 "Transition-probability scale [relative to acoustics]");
-    po.Register("acoustic-scale", &acoustic_scale,
-                "Scaling factor for acoustic likelihoods");
     po.Register("self-loop-scale", &self_loop_scale,
                 "Scale of self-loop versus non-self-loop "
                 "log probs [relative to acoustics]");
@@ -83,8 +80,6 @@ int main(int argc, char *argv[]) {
     po.Register("online-ivector-period", &online_ivector_period, "Number of frames "
                 "between iVectors in matrices supplied to the --online-ivectors "
                 "option");
-    po.Register("use-gpu", &use_gpu,
-                "yes|no|optional|wait, only has effect if compiled with CUDA");
     po.Read(argc, argv);
 
     if (po.NumArgs() < 4 || po.NumArgs() > 5) {

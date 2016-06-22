@@ -63,7 +63,7 @@ oov=`cat $lang/oov.int` || exit 1;
 
 mkdir -p $dir
 
-cp -rH $lang $dir/
+cp -RH $lang $dir/
 
 # Compute grammar FST which corresponds to unigram decoding graph.
 new_lang="$dir/"$(basename "$lang")
@@ -90,7 +90,7 @@ echo "$0: feature type is $feat_type"
 case $feat_type in
   delta) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas $delta_opts ark:- ark:- |";;
   lda) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
-    cp $srcdir/final.mat $dir    
+    cp $srcdir/final.mat $dir
    ;;
   *) echo "Invalid feature type $feat_type" && exit 1;
 esac
@@ -120,7 +120,7 @@ cleanup() {
 trap "cleanup" INT QUIT TERM EXIT
 
 
-if [ $sub_split -eq 1 ]; then 
+if [ $sub_split -eq 1 ]; then
   $cmd --num-threads $num_threads JOB=1:$nj $dir/log/decode_den.JOB.log \
    gmm-latgen-faster$thread_string --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
     --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $srcdir/final.mdl  \

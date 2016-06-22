@@ -245,14 +245,14 @@ static void UnitTestCuMatrixSoftHinge() {
 template<typename Real>
 static void UnitTestCuMatrixGroupPnorm() {
   int32 M = 100 + Rand() % 200, N = 100 + Rand() % 200;
-  // M = 256; N = 256;
+  Real power[] = { 1.4, 1.6, 0.1234, 2.123, 0, 1, 2, Real(1.0 / 0.0) };
   for (int32 K = 5; K < 7; K++) {
-    for (int32 q = 2; q < 4; q++) {
-      BaseFloat p = 1.0 + 0.2 * q;
+    for (int32 i = 0; i < 2 * sizeof(power) / sizeof(Real); ++i) {
+      Real p = power[i / 2];
       int32 N_src = N * K;
       Matrix<Real> H_src(M, N_src);
       H_src.SetRandn();
-      if (rand () % 2 == 0)
+      if (i % 2 == 0)
         H_src.ApplyFloor(0.0); // will put some zeros in the matrix.. harder to
                                // do derivatives.
       Matrix<Real> H(M, N);
@@ -261,7 +261,7 @@ static void UnitTestCuMatrixGroupPnorm() {
       CuMatrix<Real> E(M, N);
       E.GroupPnorm(D, p);
       Matrix<Real> H2(E);
-      AssertEqual(H,H2);
+      AssertEqual(H, H2);
     }
   }
 }
@@ -1072,13 +1072,14 @@ template<typename Real> static void UnitTestCuMatrixAddMatMatElements() {
 
 template<typename Real>
 static void UnitTestCuMatrixDivRowsVec() {
-  Matrix<Real> Hm(100,99);
-  Vector<Real> Hv(100);
+  MatrixIndexT dimM = 1000, dimN = 5;
+  Matrix<Real> Hm(dimM, dimN);
+  Vector<Real> Hv(dimM);
   Hm.SetRandn();
   InitRand(&Hv);
 
-  CuMatrix<Real> Dm(100,99);
-  CuVector<Real> Dv(100);
+  CuMatrix<Real> Dm(dimM, dimN);
+  CuVector<Real> Dv(dimM);
   Dm.CopyFromMat(Hm);
   Dv.CopyFromVec(Hv);
 
@@ -1086,10 +1087,10 @@ static void UnitTestCuMatrixDivRowsVec() {
   Hv.InvertElements();
   Hm.MulRowsVec(Hv);
 
-  Matrix<Real> Hm2(100,99);
+  Matrix<Real> Hm2(dimM, dimN);
   Dm.CopyToMat(&Hm2);
 
-  AssertEqual(Hm,Hm2);
+  AssertEqual(Hm, Hm2);
 }
 
 
@@ -1183,7 +1184,7 @@ static void UnitTestCuMatrixAddMatBlocks() {
 }
 
 template<typename Real>
-static void UnitTestCuMatrixSum() {
+static void UnitTestCuMatrixReduceSum() {
   int32 M = 100 + Rand() % 300, N = 100 + Rand() % 300;
   CuMatrix<Real> A(M, N);
   A.SetRandn();
@@ -1191,6 +1192,23 @@ static void UnitTestCuMatrixSum() {
   KALDI_ASSERT(ApproxEqual(mA.Sum(), A.Sum()));
 }
 
+template<typename Real>
+static void UnitTestCuMatrixReduceMax() {
+  int32 M = 100 + Rand() % 300, N = 100 + Rand() % 300;
+  CuMatrix<Real> A(M, N);
+  A.SetRandn();
+  Matrix<Real> mA(A);
+  KALDI_ASSERT(ApproxEqual(mA.Max(), A.Max()));
+}
+
+template<typename Real>
+static void UnitTestCuMatrixReduceMin() {
+  int32 M = 100 + Rand() % 300, N = 100 + Rand() % 300;
+  CuMatrix<Real> A(M, N);
+  A.SetRandn();
+  Matrix<Real> mA(A);
+  KALDI_ASSERT(ApproxEqual(mA.Min(), A.Min()));
+}
 
 template<typename Real>
 static void UnitTestCuMatrixAddVecToCols() {
@@ -2473,7 +2491,9 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixDivRowsVec<Real>();
   UnitTestCuMatrixAddMat<Real>();
   UnitTestCuMatrixAddMatBlocks<Real>();
-  UnitTestCuMatrixSum<Real>();
+  UnitTestCuMatrixReduceSum<Real>();
+  UnitTestCuMatrixReduceMax<Real>();
+  UnitTestCuMatrixReduceMin<Real>();
   UnitTestCuMatrixAddVecToCols<Real>();
   UnitTestCuMatrixAddVecToRows<Real>();
   UnitTestCuMatrixAddMatMat<Real>();

@@ -12,7 +12,7 @@
 # case the number of jobs must match the source directory.
 
 
-# Begin configuration section.  
+# Begin configuration section.
 stage=0
 nj=4
 cmd=run.pl
@@ -65,7 +65,7 @@ if [[ ! -f $srcdir/final.mat || ! -f $srcdir/full.mat ]]; then
 fi
 
 full_lda_mat="get-full-lda-mat --print-args=false $srcdir/final.mat $srcdir/full.mat -|"
-cp $srcdir/full.mat $srcdir/final.mat $dir 
+cp $srcdir/full.mat $srcdir/final.mat $dir
 
 raw_dim=$(feat-to-dim scp:$data/feats.scp -) || exit 1;
 ! [ "$raw_dim" -gt 0 ] && echo "raw feature dim not set" && exit 1;
@@ -95,7 +95,7 @@ else
   graphdir=$dir
   if [ $stage -le 0 ]; then
     echo "$0: compiling training graphs"
-    tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text|";   
+    tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text|";
     $cmd JOB=1:$nj $dir/log/compile_graphs.JOB.log  \
       compile-train-graphs $dir/tree $dir/final.mdl  $lang/L.fst "$tra" \
         "ark:|gzip -c >$dir/fsts.JOB.gz" || exit 1;
@@ -140,6 +140,8 @@ fi
 rm $dir/pre_ali.*.gz
 
 echo "$0: done aligning data."
+
+steps/diagnostic/analyze_alignments.sh --cmd "$cmd" $lang $dir
 
 utils/summarize_warnings.pl $dir/log
 

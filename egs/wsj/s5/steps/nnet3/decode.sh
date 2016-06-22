@@ -25,6 +25,7 @@ iter=final
 num_threads=1 # if >1, will use gmm-latgen-faster-parallel
 parallel_opts=  # ignored now.
 scoring_opts=
+skip_diagnostics=false
 skip_scoring=false
 extra_left_context=0
 extra_right_context=0
@@ -161,11 +162,18 @@ if [ $stage -le 1 ]; then
      $graphdir/HCLG.fst "$feats" "$lat_wspecifier" || exit 1;
 fi
 
-# The output of this script is the files "lat.*.gz"-- we'll rescore this at
-# different acoustic scales to get the final output.
-
 
 if [ $stage -le 2 ]; then
+  if ! $skip_diagnostics ; then
+    [ ! -z $iter ] && iter_opt="--iter $iter"
+    steps/diagnostic/analyze_lats.sh --cmd "$cmd" $iter_opt $graphdir $dir
+  fi
+fi
+
+
+# The output of this script is the files "lat.*.gz"-- we'll rescore this at
+# different acoustic scales to get the final output.
+if [ $stage -le 3 ]; then
   if ! $skip_scoring ; then
     [ ! -x local/score.sh ] && \
       echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;

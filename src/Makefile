@@ -151,8 +151,8 @@ bin fstbin gmmbin fgmmbin sgmmbin sgmm2bin featbin nnetbin nnet2bin nnet3bin cha
 
 #2)The libraries have inter-dependencies
 base:
-matrix : base
-thread : base
+matrix: base
+thread: base
 util: base matrix thread
 feat: base matrix util gmm transform tree thread
 tree: base util thread matrix
@@ -167,7 +167,7 @@ lm: base util thread matrix fstext
 decoder: base util thread matrix gmm sgmm hmm tree transform lat
 lat: base util thread hmm tree matrix
 cudamatrix: base util thread matrix
-nnet: base util thread matrix cudamatrix
+nnet: base util hmm tree thread matrix cudamatrix
 nnet2: base util matrix thread lat gmm hmm tree transform cudamatrix
 nnet3: base util matrix thread lat gmm hmm tree transform cudamatrix chain fstext
 chain: lat hmm tree fstext matrix cudamatrix util thread base
@@ -176,6 +176,6 @@ ivector: base util matrix thread transform tree gmm
 onlinebin: base matrix util feat tree optimization gmm transform sgmm sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet2 online thread
 # python-kaldi-decoding: base matrix util feat tree optimization thread gmm transform sgmm sgmm2 fstext hmm decoder lat online
 online: decoder gmm transform feat matrix util base lat hmm thread tree
-online2: decoder gmm transform feat matrix util base lat hmm thread ivector cudamatrix nnet2 nnet3 chain
+online2: decoder gmm transform feat matrix util base lat hmm thread tree ivector cudamatrix nnet2 nnet3 chain
 kws: base util thread hmm tree matrix lat
 

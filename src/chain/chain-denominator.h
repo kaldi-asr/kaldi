@@ -117,7 +117,7 @@ namespace chain {
 
   When the algorithm outputs log(total-prob) as the total log-probability
   of the HMM, we have to instead return the expression:
-    log(total-prob) + \sum_{t=0}^{T-1} tot-alpha(t).
+    log(total-prob) + \sum_{t=0}^{T-1} \log tot-alpha(t).
   to correct for the scaling of the x values.
 
   The algorithm is still vulnerable to overflow in the beta computation because
@@ -161,7 +161,7 @@ namespace chain {
   - total-prob = \sum_i alpha'(T, i)
 
   The corrected log-prob that we return from the algorithm will be
-   (total-prob + \sum_{t=0}^{T-1} tot-alpha(t)).
+   (total-prob + \sum_{t=0}^{T-1} \log tot-alpha(t)).
 
   * Backward computation (version 3)
 
