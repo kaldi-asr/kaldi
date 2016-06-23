@@ -7,12 +7,13 @@ include ../kaldi.mk
 TESTFILES = feature-mfcc-test feature-plp-test feature-fbank-test \
          feature-functions-test pitch-functions-test feature-sdc-test \
          resample-test online-feature-test sinusoid-detection-test \
-         signal-test
+         signal-test feature-aperiodic-test
 
 OBJFILES = feature-functions.o feature-mfcc.o feature-plp.o feature-fbank.o \
            feature-spectrogram.o mel-computations.o wave-reader.o \
            pitch-functions.o resample.o online-feature.o sinusoid-detection.o \
-           signal.o feature-window.o
+           signal.o feature-window.o feature-mcep.o banks-computations.o \
+           feature-aperiodic.o 
 
 LIBNAME = kaldi-feat
 
