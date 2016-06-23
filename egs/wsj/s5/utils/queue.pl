@@ -457,7 +457,11 @@ if (! $sync) { # We're not submitting with -sync y, so we
 
       # Check that the job exists in SGE. Job can be killed if duration
       # exceeds some hard limit, or in case of a machine shutdown.
-      if (($check_sge_job_ctr++ % 10) == 0) { # Don't run qstat too often, avoid stress on SGE.
+      if (($check_sge_job_ctr < 100 && ($check_sge_job_ctr++ % 10) == 0) ||
+          ($check_sge_job_ctr >= 100 && ($check_sge_job_ctr++ % 50) == 0)) {
+        # Don't run qstat too often, avoid stress on SGE; the if-condition above
+        # is designed to check every 10 waits at first, and eventually every 50
+        # waits.
         if ( -f $f ) { next; }; #syncfile appeared: OK.
         $ret = system("qstat -j $sge_job_id >/dev/null 2>/dev/null");
         # system(...) : To get the actual exit value, shift $ret right by eight bits.
