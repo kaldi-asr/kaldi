@@ -459,6 +459,24 @@ template<typename Real> void TestCuMatrixMulRowsGroupMat(int32 dim) {
 }
 
 
+template<typename Real> void TestCuMatrixDiffSoftmax(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> M(dim, dim), N(dim, dim), L(dim, dim);
+  M.SetRandn();
+  N.SetRandn();
+  L.SetRandn();
+  Timer tim;
+  int32 iter = 0;
+  for (; tim.Elapsed() < time_in_secs; iter++) {
+    N.DiffSoftmaxPerRow(M, L);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::DiffSoftmaxPerRow" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
 template<typename Real> void TestCuMatrixSoftmax(int32 dim) {
   BaseFloat time_in_secs = 0.025;
   CuMatrix<Real> M(dim, dim), N(dim, dim);
@@ -981,6 +999,8 @@ template<typename Real> void CudaMatrixSpeedTest() {
     TestCuMatrixMulRowsGroupMat<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixSoftmax<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixDiffSoftmax<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixLogSoftmax<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
