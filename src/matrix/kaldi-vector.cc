@@ -508,7 +508,6 @@ template<typename Real>
 Real VectorBase<Real>::Norm(Real p) const {
   KALDI_ASSERT(p >= 0.0);
   Real sum = 0.0;
-  const Real zero = 0.0;
   if (p == 0.0) {
     for (MatrixIndexT i = 0; i < dim_; i++)
       if (data_[i] != 0.0) sum += 1.0;
@@ -521,7 +520,7 @@ Real VectorBase<Real>::Norm(Real p) const {
     for (MatrixIndexT i = 0; i < dim_; i++)
       sum += data_[i] * data_[i];
     return std::sqrt(sum);
-  } else if (p == Real(1.0 / zero)){
+  } else if (p == std::numeric_limits<Real>::infinity()){
     for (MatrixIndexT i = 0; i < dim_; i++)
       sum = std::max(sum, std::abs(data_[i]));
     return sum;
