@@ -1571,6 +1571,34 @@ void CuMatrixBase<Real>::FindRowMaxId(CuArray<int32> *id) const {
 }
 
 template<typename Real>
+void CuMatrixBase<Real>::DiffSoftmaxPerRow(const CuMatrixBase<Real> &value,
+                                           const CuMatrixBase<Real> &diff) {
+
+  KALDI_ASSERT(SameDim(value, diff) && SameDim(value, *this));
+
+  const CuMatrixBase<Real> &P(value), &E(diff);
+  CuMatrixBase<Real> &D(*this);
+
+#if HAVE_CUDA == 1
+//  if (CuDevice::Instantiate().Enabled()) {
+//    Timer tim;
+//
+//    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+//  } else
+#endif
+  {
+    D.CopyFromMat(P);
+    D.MulElements(E);
+    // At this point, D = P .* E (in matlab notation)
+    CuVector<Real> pe_vec(D.NumRows()); // For each row i, the dot product (p_t . e_t).
+    pe_vec.AddDiagMatMat(1.0, P, kNoTrans, E, kTrans, 0.0);
+
+    D.AddDiagVecMat(-1.0, pe_vec, P, kNoTrans, 1.0); // does D -= diag(pe_vec) * P.
+  }
+}
+
+
+template<typename Real>
 void CuMatrixBase<Real>::DiffXent(const CuArray<int32> &tgt,
                                   CuVector<Real> *log_post_tgt) {
 
