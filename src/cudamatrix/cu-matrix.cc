@@ -1576,17 +1576,25 @@ void CuMatrixBase<Real>::DiffSoftmaxPerRow(const CuMatrixBase<Real> &value,
 
   KALDI_ASSERT(SameDim(value, diff) && SameDim(value, *this));
 
-  const CuMatrixBase<Real> &P(value), &E(diff);
-  CuMatrixBase<Real> &D(*this);
-
 #if HAVE_CUDA == 1
-//  if (CuDevice::Instantiate().Enabled()) {
-//    Timer tim;
-//
-//    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
-//  } else
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+
+    // CUDA thread layout: one thread block per matrix-row.
+    dim3 dimBlock(CU1DBLOCK);
+    dim3 dimGrid(num_rows_);
+    cuda_diff_softmax(dimGrid, dimBlock, data_, this->Dim(), value.Data(),
+        value.Stride(), diff.Data(), diff.Stride());
+    CU_SAFE_CALL(cudaGetLastError());
+
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
 #endif
   {
+    const CuMatrixBase<Real> &P(value), &E(diff);
+    CuMatrixBase<Real> &D(*this);
+
     D.CopyFromMat(P);
     D.MulElements(E);
     // At this point, D = P .* E (in matlab notation)
