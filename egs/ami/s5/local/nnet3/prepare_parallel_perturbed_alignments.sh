@@ -11,11 +11,13 @@ new_mic=sdm1_cleanali
 use_sat_alignments=true
 nj=10
 stage=0
+affix=
 
 . cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
+data_set=train${affix}
 
 speed_perturb_datadir() {
   mic=$1
@@ -47,7 +49,8 @@ if [ $stage -le 0 ]; then
   # but as the segment names differ we will create a new data dir 
   local/nnet3/prepare_parallel_datadirs.sh --original-mic $mic \
                                            --parallel-mic ihm \
-                                           --new-mic $new_mic
+                                           --new-mic $new_mic \
+                                           --train-set $data_set
 fi
 
 mic=$new_mic
@@ -60,33 +63,40 @@ if [ $stage -le 1 ]; then
   fi
 
   steps/make_mfcc.sh --cmd "$train_cmd" --nj $nj \
-    data/${mic}/train_parallel exp/make_${mic}_mfcc/train_parallel $mfccdir || exit 1;
-  steps/compute_cmvn_stats.sh data/$mic/train_parallel exp/make_${mic}_mfcc/train_parallel $mfccdir || exit 1;
-  utils/fix_data_dir.sh data/$mic/train_parallel
+    data/${mic}/${data_set}_parallel exp/make_${mic}_mfcc/${data_set}_parallel $mfccdir || exit 1;
+  steps/compute_cmvn_stats.sh data/$mic/${data_set}_parallel exp/make_${mic}_mfcc/${data_set}_parallel $mfccdir || exit 1;
+  utils/fix_data_dir.sh data/$mic/${data_set}_parallel
 fi
 
 if [ $stage -le 2 ]; then
   # if we are using the ihm alignments we just need features for the parallel
   # data, the actual data is being perturbed just so that we can copy this 
   # directory to create hiresolution features later
-  speed_perturb_datadir $mic train_parallel true 
-  speed_perturb_datadir $mic train false
+  speed_perturb_datadir $mic ${data_set}_parallel true 
+  speed_perturb_datadir $mic ${data_set} false
 fi
 
 if [ $stage -le 3 ]; then
+  steps/cleanup/combine_short_segments.py \
+    --minimum-duration $min_seg_len \
+    --input-data-dir data/$mic/${data_set}_parallel_sp \
+    --output-data-dir data/$mic/${data_set}_parallel_sp_min${min_seg_len}
+fi
+
+if [ $stage -le 4 ]; then
   # we just need to recreate alignments in case we perturbed the data 
   # or in the case we are using ihm alignments, else the alignments would already
   # have been generated when we built the GMM-HMM systems
-  data_set=train_parallel_sp
+  data_set=${data_set}_parallel_sp_min${min_seg_len}
   if [ "$use_sat_alignments" == "true" ]; then
-    gmm_dir=exp/ihm/tri4a
+    gmm_dir=exp/ihm/tri4a${affix}
     align_script=steps/align_fmllr.sh
   else
-    gmm_dir=exp/ihm/tri3a
+    gmm_dir=exp/ihm/tri3a${affix}
     align_script=steps/align_si.sh
   fi
   $align_script --nj $nj --cmd "$train_cmd" \
-    data/$mic/train_parallel_sp data/lang $gmm_dir ${gmm_dir}_${mic}_${data_set}_ali || exit 1;
+    data/$mic/${data_set} data/lang $gmm_dir ${gmm_dir}_${mic}_${data_set}_ali || exit 1;
 fi
 
 exit 0;

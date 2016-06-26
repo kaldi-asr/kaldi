@@ -216,6 +216,9 @@ fi
 # num_hidden_layers=(something)
 . $dir/configs/vars || exit 1;
 
+left_context=$model_left_context
+right_context=$model_right_context
+
 context_opts="--left-context=$left_context --right-context=$right_context"
 
 ! [ "$num_hidden_layers" -gt 0 ] && echo \

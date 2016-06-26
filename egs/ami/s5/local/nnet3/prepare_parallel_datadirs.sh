@@ -9,23 +9,24 @@
 original_mic=sdm1
 parallel_mic=ihm
 new_mic=sdm1_cleanali
+train_set=train
 
 . cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
 #copy the clean data directory and change the segment ids
-for dset in train dev eval; do
+for dset in ${train_set} dev eval; do
   utils/copy_data_dir.sh data/$original_mic/$dset data/$new_mic/$dset
 done
-dset=train
+dset=${train_set}
 utils/copy_data_dir.sh data/$parallel_mic/$dset data/$new_mic/${dset}_parallel
 rm -rf data/$new_mic/${dset}_parallel/{text,feats.scp,cmvn.scp}
 cp data/$new_mic/$dset/{spk2utt,text,utt2spk} data/$new_mic/${dset}_parallel
 cp data/$new_mic/${dset}_parallel/wav.scp data/$new_mic/${dset}_parallel/wav.scp_full
 cp data/$new_mic/${dset}_parallel/reco2file_and_channel data/$new_mic/${dset}_parallel/reco2file_and_channel_full
 
-dset=train
+dset=${train_set}
 # map sdm/mdm segments to the ihm segments
 tmpdir=`mktemp -d ./tmpXXX`
 cat data/$parallel_mic/$dset/segments | sed -e "s/_H[0-9][0-9]_//g" > $tmpdir/key2ihm
