@@ -25,6 +25,8 @@
 // In this file is the CUDA code of the CUDA kernels, plus the ANSI-C wrappers
 
 #include <cfloat>
+#include <limits>
+#include <math_constants.h>
 #include "cudamatrix/cu-kernels-ansi.h"
 
 
@@ -1079,7 +1081,7 @@ template<typename Real>
 struct TransReduceOp<MAX, Real> {
   __forceinline__
   __device__ Real InitValue() const {
-    return Real(-1.0 / 0.0);
+    return sizeof(Real) == sizeof(float) ? -CUDART_INF_F : -CUDART_INF;
   }
   __forceinline__
   __device__ Real Transform(const Real& x) const {
@@ -1099,7 +1101,7 @@ template<typename Real>
 struct TransReduceOp<MIN, Real> {
   __forceinline__
   __device__ Real InitValue() const {
-    return Real(1.0 / 0.0);
+    return sizeof(Real) == sizeof(float) ? CUDART_INF_F : CUDART_INF;
   }
   __forceinline__
   __device__ Real Transform(const Real& x) const {
@@ -2743,7 +2745,7 @@ void cudaF_group_spec_pnorm(dim3 Gr, dim3 Bl, float* y, const float* x,
   } else if (power == float(2)) {
     _group_transform_reduce<<<Gr, Bl>>>(y, x, d, src_stride, group_size,
         TransReduceOp<L2NORM, float>());
-  } else if (power == float(1.0 / 0.0)) {
+  } else if (power == std::numeric_limits<float>::infinity()) {
     _group_transform_reduce<<<Gr, Bl>>>(y, x, d, src_stride, group_size,
         TransReduceOp<LINFNORM, float>());
   } else {
@@ -3236,7 +3238,7 @@ void cudaD_group_spec_pnorm(dim3 Gr, dim3 Bl, double* y, const double* x,
   } else if (power == double(2)) {
     _group_transform_reduce<<<Gr, Bl>>>(y, x, d, src_stride, group_size,
         TransReduceOp<L2NORM, double>());
-  } else if (power == double(1.0 / 0.0)) {
+  } else if (power == std::numeric_limits<double>::infinity()) {
     _group_transform_reduce<<<Gr, Bl>>>(y, x, d, src_stride, group_size,
         TransReduceOp<LINFNORM, double>());
   } else {

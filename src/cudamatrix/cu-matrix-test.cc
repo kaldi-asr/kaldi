@@ -245,7 +245,8 @@ static void UnitTestCuMatrixSoftHinge() {
 template<typename Real>
 static void UnitTestCuMatrixGroupPnorm() {
   int32 M = 100 + Rand() % 200, N = 100 + Rand() % 200;
-  Real power[] = { 1.4, 1.6, 0.1234, 2.123, 0, 1, 2, Real(1.0 / 0.0) };
+  Real power[] = { 1.4, 1.6, 0.1234, 2.123, 0, 1, 2,
+      std::numeric_limits<Real>::infinity() };
   for (int32 K = 5; K < 7; K++) {
     for (int32 i = 0; i < 2 * sizeof(power) / sizeof(Real); ++i) {
       Real p = power[i / 2];
