@@ -1289,7 +1289,7 @@ void CuMatrixBase<Real>::GroupPnorm(const CuMatrixBase<Real> &src, Real power) {
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
     if (power == Real(0) || power == Real(1) || power == Real(2)
-        || power == Real(1.0 / 0.0)) {
+        || power == std::numeric_limits<Real>::infinity()) {
       // One thread block per row.
       // Use 2D block for small group size to simplify the calculation
       // Each group is reduced by threads_per_group threads.
