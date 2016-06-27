@@ -25,6 +25,8 @@
 // In this file is the CUDA code of the CUDA kernels, plus the ANSI-C wrappers
 
 #include <cfloat>
+#include <limits>
+#include <math_constants.h>
 #include "cudamatrix/cu-kernels-ansi.h"
 
 
@@ -1079,7 +1081,7 @@ template<typename Real>
 struct TransReduceOp<MAX, Real> {
   __forceinline__
   __device__ Real InitValue() const {
-    return Real(-1.0 / 0.0);
+    return sizeof(Real) == sizeof(float) ? -CUDART_INF_F : -CUDART_INF;
   }
   __forceinline__
   __device__ Real Transform(const Real& x) const {
@@ -1099,7 +1101,7 @@ template<typename Real>
 struct TransReduceOp<MIN, Real> {
   __forceinline__
   __device__ Real InitValue() const {
-    return Real(1.0 / 0.0);
+    return sizeof(Real) == sizeof(float) ? CUDART_INF_F : CUDART_INF;
   }
   __forceinline__
   __device__ Real Transform(const Real& x) const {
@@ -2306,6 +2308,54 @@ static void _diff_xent(const int32_cuda* vec_tgt, Real* mat_net_out, Real* vec_l
   }
 }
 
+template<typename Real>
+__global__
+static void _diff_softmax(Real* x, const MatrixDim dim, const Real* value,
+                          const int value_stride, const Real* diff,
+                          const int diff_stride) {
+  __shared__ Real ssum[CU1DBLOCK];
+  const int tid = threadIdx.x;
+  const int i = blockIdx.x;
+  const int value_start = i * value_stride;
+  const int diff_start = i * diff_stride;
+  const int x_start = i * dim.stride;
+
+  // Loop along the matrix row. Reduce to CU1DBLOCK elements per row.
+  Real tsum = Real(0);
+  for (int j = tid; j < dim.cols; j += CU1DBLOCK) {
+    tsum += value[value_start + j] * diff[diff_start + j];
+  }
+  ssum[tid] = tsum;
+  __syncthreads();
+
+  // Tree reduce to 2x warpSize elements.
+# pragma unroll
+  for (int shift = CU1DBLOCK / 2; shift > warpSize; shift >>= 1) {
+    if (tid < shift) {
+      ssum[tid] += ssum[tid + shift];
+    }
+    __syncthreads();
+  }
+
+  // Warp reduce to 1 element. Threads implicitly synchronized within a warp.
+  if (tid < warpSize) {
+#   pragma unroll
+    for (int shift = warpSize; shift > 0; shift >>= 1) {
+      ssum[tid] += ssum[tid + shift];
+    }
+  }
+
+  // Broadcast result to all threads
+  __syncthreads();
+  const Real pe = ssum[0];
+
+  // Apply element-wise x = value * (diff - pe)
+  for (int j = tid; j < dim.cols; j += CU1DBLOCK) {
+    x[x_start + j] = value[value_start + j] * (diff[diff_start + j] - pe);
+  }
+}
+
+
 
 
 /***********************************************************************
@@ -2695,7 +2745,7 @@ void cudaF_group_spec_pnorm(dim3 Gr, dim3 Bl, float* y, const float* x,
   } else if (power == float(2)) {
     _group_transform_reduce<<<Gr, Bl>>>(y, x, d, src_stride, group_size,
         TransReduceOp<L2NORM, float>());
-  } else if (power == float(1.0 / 0.0)) {
+  } else if (power == std::numeric_limits<float>::infinity()) {
     _group_transform_reduce<<<Gr, Bl>>>(y, x, d, src_stride, group_size,
         TransReduceOp<LINFNORM, float>());
   } else {
@@ -2779,6 +2829,12 @@ void cudaF_find_row_max_id(dim3 Gr, dim3 Bl, const float* mat, float* vec_val, i
 
 void cudaF_diff_xent(dim3 Gr, dim3 Bl, const int32_cuda* vec_tgt, float* mat_net_out, float* vec_log_post, MatrixDim d) {
   _diff_xent<<<Gr,Bl>>>(vec_tgt,mat_net_out,vec_log_post,d);
+}
+
+void cudaF_diff_softmax(dim3 Gr, dim3 Bl, float* x, const MatrixDim dim,
+                        const float* value, const int value_stride,
+                        const float* diff, const int diff_stride) {
+  _diff_softmax<<<Gr, Bl>>>(x, dim, value, value_stride, diff, diff_stride);
 }
 
 void cudaF_copy_rows_from_vec(dim3 Gr, dim3 Bl, float *mat_out, MatrixDim d_out, const float *v_in) {
@@ -3182,7 +3238,7 @@ void cudaD_group_spec_pnorm(dim3 Gr, dim3 Bl, double* y, const double* x,
   } else if (power == double(2)) {
     _group_transform_reduce<<<Gr, Bl>>>(y, x, d, src_stride, group_size,
         TransReduceOp<L2NORM, double>());
-  } else if (power == double(1.0 / 0.0)) {
+  } else if (power == std::numeric_limits<double>::infinity()) {
     _group_transform_reduce<<<Gr, Bl>>>(y, x, d, src_stride, group_size,
         TransReduceOp<LINFNORM, double>());
   } else {
@@ -3266,6 +3322,12 @@ void cudaD_find_row_max_id(dim3 Gr, dim3 Bl, const double* mat, double* vec_val,
 
 void cudaD_diff_xent(dim3 Gr, dim3 Bl, const int32_cuda* vec_tgt, double* mat_net_out, double* vec_log_post, MatrixDim d) {
   _diff_xent<<<Gr,Bl>>>(vec_tgt,mat_net_out,vec_log_post,d);
+}
+
+void cudaD_diff_softmax(dim3 Gr, dim3 Bl, double* x, const MatrixDim dim,
+                        const double* value, const int value_stride,
+                        const double* diff, const int diff_stride) {
+  _diff_softmax<<<Gr, Bl>>>(x, dim, value, value_stride, diff, diff_stride);
 }
 
 void cudaD_copy_rows_from_vec(dim3 Gr, dim3 Bl, double *mat_out, MatrixDim d_out, const double *v_in) {
