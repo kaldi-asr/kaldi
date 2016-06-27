@@ -6,7 +6,7 @@ include ../kaldi.mk
 LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
 
-BINFILES = nnet-train-frmshuff \
+BINFILES = nnet-train-frmshuff nnet-train-frmshuff-tgtmat \
         nnet-train-perutt \
         nnet-train-mmi-sequential \
         nnet-train-mpe-sequential \
@@ -15,8 +15,8 @@ BINFILES = nnet-train-frmshuff \
         nnet-forward nnet-copy nnet-info nnet-concat \
         transf-to-nnet cmvn-to-nnet nnet-initialize \
         nnet-kl-hmm-acc nnet-kl-hmm-mat-to-component \
-	feat-to-post paste-post train-transitions \
-	cuda-gpu-available nnet-set-learnrate
+        feat-to-post paste-post train-transitions \
+        cuda-gpu-available nnet-set-learnrate
 
 OBJFILES =
 

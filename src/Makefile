@@ -6,10 +6,10 @@ SHELL := /bin/bash
 
 
 SUBDIRS = base matrix util feat tree thread gmm transform sgmm \
-          fstext hmm lm decoder lat kws cudamatrix nnet \
+          fstext hmm lm decoder lat kws cudamatrix nnet idlakfeat \
           bin fstbin gmmbin fgmmbin sgmmbin featbin \
           nnetbin latbin sgmm2 sgmm2bin nnet2 nnet3 chain nnet3bin nnet2bin kwsbin \
-          ivector ivectorbin online2 online2bin lmbin chainbin
+          ivector ivectorbin online2 online2bin lmbin chainbin idlakbin
 
 MEMTESTDIRS = base matrix util feat tree thread gmm transform sgmm \
           fstext hmm lm decoder lat nnet kws chain \
@@ -145,7 +145,7 @@ $(EXT_SUBDIRS) : mklibdir
 # this is necessary for correct parallel compilation
 #1)The tools depend on all the libraries
 
-bin fstbin gmmbin fgmmbin sgmmbin sgmm2bin featbin nnetbin nnet2bin nnet3bin chainbin latbin ivectorbin lmbin kwsbin online2bin: \
+bin fstbin gmmbin fgmmbin sgmmbin sgmm2bin featbin nnetbin nnet2bin nnet3bin chainbin latbin ivectorbin lmbin kwsbin online2bin idlakbin: \
  base matrix util feat tree optimization thread gmm transform sgmm sgmm2 fstext hmm \
  lm decoder lat cudamatrix nnet nnet2 nnet3 ivector chain kws online2
 
@@ -178,4 +178,5 @@ onlinebin: base matrix util feat tree optimization gmm transform sgmm sgmm2 fste
 online: decoder gmm transform feat matrix util base lat hmm thread tree
 online2: decoder gmm transform feat matrix util base lat hmm thread tree ivector cudamatrix nnet2 nnet3 chain
 kws: base util thread hmm tree matrix lat
+idlakfeat: base util hmm thread feat transform
 
