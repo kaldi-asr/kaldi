@@ -25,6 +25,7 @@ iter=final
 num_threads=1 # if >1, will use gmm-latgen-faster-parallel
 parallel_opts=  # ignored now.
 scoring_opts=
+skip_diagnostics=false
 skip_scoring=false
 extra_left_context=0
 extra_right_context=0
@@ -163,8 +164,10 @@ fi
 
 
 if [ $stage -le 2 ]; then
-  [ ! -z $iter ] && iter_opt="--iter $iter"
-  steps/diagnostic/analyze_lats.sh --cmd "$cmd" $iter_opt $graphdir $dir
+  if ! $skip_diagnostics ; then
+    [ ! -z $iter ] && iter_opt="--iter $iter"
+    steps/diagnostic/analyze_lats.sh --cmd "$cmd" $iter_opt $graphdir $dir
+  fi
 fi
 
 
