@@ -45,30 +45,6 @@ def AddInputLayer(config_lines, feat_dim, splice_indexes=[0], ivector_dim=0):
     return {'descriptor': splice_descriptor,
             'dimension': output_dim}
 
-# adds the input nodes and return list of unfolded input descriptors
-def AddUnfoldedInputLayer(config_lines, feat_dim, num_unfolded_time_steps, splice_indexes=[0], ivector_dim=0):
-    components = config_lines['components']
-    component_nodes = config_lines['component-nodes']
-    components.append('input-node name=input dim=' + str(feat_dim))
-    unfolded_input_layer=[]
-    if ivector_dim > 0:
-        components.append('input-node name=ivector dim=' + str(ivector_dim))
-    for i in range(num_unfolded_time_steps):
-        output_dim = 0
-        list = [('Offset(input, {0})'.format(n - i) if (n - i) != 0 else 'input') for n in splice_indexes]
-        output_dim += len(splice_indexes) * feat_dim
-        if ivector_dim > 0:
-            list.append('ReplaceIndex(ivector, t, 0)')
-            output_dim += ivector_dim
-        if len(list) > 1:
-            splice_descriptor = "Append({0})".format(", ".join(list))
-        else:
-            splice_descriptor = list[0]
-        unfolded_input_layer.insert(0, {'descriptor': splice_descriptor, 'dimension': output_dim})
-    for i in range(len(unfolded_input_layer)):
-        print(unfolded_input_layer[i]['descriptor'])
-    return unfolded_input_layer
-
 
 def AddNoOpLayer(config_lines, name, input):
     components = config_lines['components']
@@ -238,22 +214,29 @@ def AddSigmoidLayer(config_lines, name, input, self_repair_scale = None):
     return {'descriptor':  '{0}_sigmoid'.format(name),
             'dimension': input['dimension']}
 
-def AddUnfoldedRnnLayer(config_lines, name, input, output_dim, ng_affine_options = "", self_repair_scale = None):
+def AddRnnLayer(config_lines, name, input, output_dim, init_params_filename = "", ng_affine_options = "", norm_target_rms = 1.0, rnn_delay = -1, self_repair_scale = None):
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
 
-    components.append("component name={0}_affine type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input[0]['dimension'] + output_dim, output_dim, ng_affine_options))
+    if init_params_filename == "":
+        components.append("component name={0}_affine type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input['dimension'] + output_dim, output_dim, ng_affine_options))
+    else:
+        components.append("component name={0}_affine_h-x type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input['dimension'], output_dim, ng_affine_options))
+        components.append("component name={0}_affine_h-h type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3} matrix={4}".format(name, output_dim, output_dim, ng_affine_options, init_params_filename))        
     self_repair_string = "self-repair-scale={0:.10f}".format(self_repair_scale) if self_repair_scale is not None else ''
-    components.append("component name={0}_tanh type=TanhComponent dim={1}".format(name, output_dim, self_repair_string))
-    # create a dummy node as a recurrent input to the first frame (it is expected to be 0 because it would not be computable in the computation graph) 
-    component_nodes.append("component-node name={0}_tanh_dummy component={0}_tanh input=IfDefined(ReplaceIndex({0}_tanh_t, x, -1))".format(name))
-    prev_rnn_output = "{0}_tanh_dummy".format(name)
-    for i in range(len(input)):
-        suffix = ("minus{0}".format(len(input) - 1 - i) if i != len(input) - 1 else "")
-        component_nodes.append("component-node name={0}_affine_t{1} component={0}_affine input=Append({2}, {3})".format(name, suffix, input[i]['descriptor'], prev_rnn_output))
-        component_nodes.append("component-node name={0}_tanh_t{1} component={0}_tanh input={0}_affine_t{1}".format(name, suffix))
-        prev_rnn_output = "{0}_tanh_t{1}".format(name, suffix)
-    return {'descriptor':  '{0}_tanh_t'.format(name),
+    components.append("component name={0}_relu type=RectifiedLinearComponent dim={1}".format(name, output_dim, self_repair_string))
+    components.append("component name={0}_renorm type=NormalizeComponent dim={1} target-rms={2}".format(name, output_dim, norm_target_rms))
+
+    if init_params_filename == "":
+        component_nodes.append("component-node name={0}_affine_t component={0}_affine input=Append({1}, IfDefined(Offset({0}_renorm_t, {2})))".format(name, input['descriptor'], rnn_delay))
+        prev_output_string = "{0}_affine_t".format(name)
+    else:
+        component_nodes.append("component-node name={0}_affine_h-x_t component={0}_affine_h-x input={1}".format(name, input['descriptor']))
+        component_nodes.append("component-node name={0}_affine_h-h_t component={0}_affine_h-h input=IfDefined(Offset({0}_renorm_t, {1}))".format(name, rnn_delay))
+        prev_output_string = "Sum({0}_affine_h-x_t, {0}_affine_h-h_t)".format(name)
+    component_nodes.append("component-node name={0}_relu_t component={0}_relu input={1}".format(name, prev_output_string))
+    component_nodes.append("component-node name={0}_renorm_t component={0}_renorm input={0}_relu_t".format(name))
+    return {'descriptor':  '{0}_renorm_t'.format(name),
             'dimension': output_dim}
 
 def AddOutputLayer(config_lines, input, label_delay = None, suffix=None, objective_type = "linear"):
@@ -263,7 +246,7 @@ def AddOutputLayer(config_lines, input, label_delay = None, suffix=None, objecti
     if suffix is not None:
         name = '{0}-{1}'.format(name, suffix)
 
-    if label_delay is None:
+    if label_delay is None or label_delay == 0:
         component_nodes.append('output-node name={0} input={1} objective={2}'.format(name, input['descriptor'], objective_type))
     else:
         component_nodes.append('output-node name={0} input=Offset({1},{2}) objective={3}'.format(name, input['descriptor'], label_delay, objective_type))

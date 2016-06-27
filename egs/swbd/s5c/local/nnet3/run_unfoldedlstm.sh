@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# this is the "unfolded rnn" system, built in nnet3
+# this is the "unfolded lstm" system, built in nnet3
 
 
 # At this script level we don't support not running on GPU, as it would be painfully slow.
@@ -16,14 +16,19 @@ common_egs_dir=
 reporting_email=
 remove_egs=true
 
-# Unfolded RNN options
-splice_indexes="-2,-1,0,1,2 0 0 0 0"
-rnn_delay=" -1 "
+# Unfolded LSTM options
+splice_indexes="-2,-1,0,1,2 0 0"
+lstm_delay=" -1 -2 -3 "
 label_delay=0
-num_rnn_layers=1
+num_lstm_layers=3
 num_unfolded_times=12
-rnn_dim=1024
+cell_dim=1024
 fully_connected_layer_dim=1024
+recurrent_projection_dim=256
+non_recurrent_projection_dim=256
+
+# training options
+momentum=0.5
 
 . ./cmd.sh
 . ./path.sh
@@ -42,7 +47,7 @@ suffix=
 if [ "$speed_perturb" == "true" ]; then
   suffix=_sp
 fi
-dir=exp/nnet3/urnn
+dir=exp/nnet3/ulstm
 dir=$dir${affix:+_$affix}
 dir=${dir}$suffix
 train_set=train_nodup$suffix
@@ -54,16 +59,18 @@ local/nnet3/run_ivector_common.sh --stage $stage \
 if [ $stage -le 9 ]; then
   echo "$0: creating neural net configs";
   config_extra_opts=()
-  [ ! -z "$rnn_delay" ] && config_extra_opts+=(--rnn-delay "$rnn_delay")
+  [ ! -z "$lstm_delay" ] && config_extra_opts+=(--lstm-delay "$lstm_delay")
   # create the config files for nnet initialization
-  steps/nnet3/make_unfoldedrnn_configs.py  "${config_extra_opts[@]}" \
+  steps/nnet3/make_unfoldedlstm_configs.py  "${config_extra_opts[@]}" \
     --feat-dir data/${train_set}_hires \
     --ivector-dir exp/nnet3/ivectors_${train_set} \
     --ali-dir $ali_dir \
     --num-unfolded-times $num_unfolded_times \
-    --num-rnn-layers $num_rnn_layers \
-    --rnn-dim $rnn_dim \
+    --num-lstm-layers $num_lstm_layers \
+    --cell-dim $cell_dim \
     --fully-connected-layer-dim $fully_connected_layer_dim \
+    --recurrent-projection-dim $recurrent_projection_dim \
+    --non-recurrent-projection-dim $non_recurrent_projection_dim \
     --splice-indexes "$splice_indexes " \
     --use-presoftmax-prior-scale true \
     --label-delay $label_delay \
@@ -84,8 +91,9 @@ if [ $stage -le 10 ]; then
     --trainer.num-epochs 2 \
     --trainer.optimization.num-jobs-initial 3 \
     --trainer.optimization.num-jobs-final 16 \
-    --trainer.optimization.initial-effective-lrate 0.0017 \
-    --trainer.optimization.final-effective-lrate 0.00017 \
+    --trainer.optimization.initial-effective-lrate 0.0003 \
+    --trainer.optimization.final-effective-lrate 0.00003 \
+    --trainer.optimization.momentum=$momentum \
     --egs.dir "$common_egs_dir" \
     --cleanup.remove-egs $remove_egs \
     --cleanup.preserve-model-interval 100 \

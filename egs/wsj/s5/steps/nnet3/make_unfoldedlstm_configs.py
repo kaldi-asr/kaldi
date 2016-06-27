@@ -44,18 +44,31 @@ def GetArgs():
     num_target_group.add_argument("--tree-dir", type=str,
                                   help="directory with final.mdl, from which we derive the num-targets")
 
-    # Unfolded RNN options
-    parser.add_argument("--num-rnn-layers", type=int,
-                        help="Number of unfolded RNN layers to be stacked", default=1)
+    # Unfolded LSTM options
+    parser.add_argument("--num-lstm-layers", type=int,
+                        help="Number of unfolded LSTM layers to be stacked", default=1)
     parser.add_argument("--num-unfolded-times", type=int,
                         help="number of unfolded times.", default=5)
-    parser.add_argument("--rnn-dim", type=int,
-                        help="dimension of rnn output.")
+    parser.add_argument("--cell-dim", type=int,
+                        help="dimension of lstm cell.")
+    parser.add_argument("--recurrent-projection-dim", type=int,
+                        help="dimension of recurrent projection")
+    parser.add_argument("--non-recurrent-projection-dim", type=int,
+                        help="dimension of non-recurrent projection")
+
 
     # Natural gradient options
+    parser.add_argument("--ng-per-element-scale-options", type=str,
+                        help="options to be supplied to NaturalGradientPerElementScaleComponent", default="")
     parser.add_argument("--ng-affine-options", type=str,
                         help="options to be supplied to NaturalGradientAffineComponent", default="")
 
+    # Gradient clipper options
+    parser.add_argument("--norm-based-clipping", type=str, action=nnet3_train_lib.StrToBoolAction,
+                        help="use norm based clipping in ClipGradient components ", default=True, choices = ["false", "true"])
+    parser.add_argument("--clipping-threshold", type=float,
+                        help="clipping threshold used in ClipGradient components, if clipping-threshold=0 no clipping is done", default=30)
+ 
     # General neural network options
     parser.add_argument("--splice-indexes", type=str, required = True,
                         help="Splice indexes at each layer, e.g. '-3,-2,-1,0,1,2,3'")
@@ -85,7 +98,7 @@ def GetArgs():
                         help="dimension of fully connected layer's nonlinearities")
 
     parser.add_argument("--self-repair-scale", type=float,
-                        help="A non-zero value activates the self-repair mechanism in the relu and tanh non-linearities of the RNN", default=None)
+                        help="A non-zero value activates the self-repair mechanism in the sigmoid and tanh non-linearities of the LSTM", default=None)
 
 
     parser.add_argument("--use-presoftmax-prior-scale", type=str, action=nnet3_train_lib.StrToBoolAction,
@@ -94,9 +107,9 @@ def GetArgs():
 
     # Delay options
     parser.add_argument("--label-delay", type=int, default=None,
-                        help="option to delay the labels to make the rnn robust")
+                        help="option to delay the labels to make the lstm robust")
 
-    parser.add_argument("--rnn-delay", type=str, default=None,
+    parser.add_argument("--lstm-delay", type=str, default=None,
                         help="option to have different delays in recurrence")
 
     parser.add_argument("config_dir",
@@ -135,14 +148,14 @@ def CheckArgs(args):
     if not args.ivector_dim >= 0:
         raise Exception("ivector-dim has to be non-negative")
 
-    if (args.num_rnn_layers < 1):
-        raise Exception("--num-rnn-layers has to be a positive integer")
+    if (args.num_lstm_layers < 1):
+        raise Exception("--num-lstm-layers has to be a positive integer")
     
     if not args.num_unfolded_times > 0:
         raise Exception("num-unfolded-times has to be positive")
 
-    if not args.rnn_dim > 0:
-        raise Exception("rnn-dim has to be positive")
+    if not args.cell_dim > 0:
+        raise Exception("cell-dim has to be positive")
 
     if not args.fully_connected_layer_dim > 0:
         raise Exception("fully-connected-layer-dim has to be positive")
@@ -150,15 +163,15 @@ def CheckArgs(args):
     if args.add_final_sigmoid and args.include_log_softmax:
         raise Exception("--include-log-softmax and --add-final-sigmoid cannot both be true.")
 
-    if args.rnn_delay is None:
-        args.rnn_delay = [[-1]] * args.num_rnn_layers
+    if args.lstm_delay is None:
+        args.lstm_delay = [[-1]] * args.num_lstm_layers
     else:
         try:
-            args.rnn_delay = ParseRnnDelayString(args.rnn_delay.strip())
+            args.lstm_delay = ParseLstmDelayString(args.lstm_delay.strip())
         except ValueError:
-            sys.exit("--rnn-delay has incorrect format value. Provided value is '{0}'".format(args.rnn_delay))
-        if len(args.rnn_delay) != args.num_rnn_layers:
-            raise Exception("--rnn-delay: Number of delays provided has to match --num-rnn-layers")
+            sys.exit("--lstm-delay has incorrect format value. Provided value is '{0}'".format(args.lstm_delay))
+        if len(args.lstm_delay) != args.num_lstm_layers:
+            raise Exception("--lstm-delay: Number of delays provided has to match --num-lstm-layers")
     return args
 
 def PrintConfig(file_name, config_lines):
@@ -168,17 +181,7 @@ def PrintConfig(file_name, config_lines):
     f.write("\n".join(config_lines['component-nodes'])+"\n")
     f.close()
 
-def WriteIdentityMatrixAndZeroBias(filename, output_dim, scale):
-    f = open(filename, 'w')
-    f.write(" [ ")
-    for i in range(output_dim):
-        for j in range(output_dim):
-          f.write("{0:.5g} ".format(scale) if i == j else "0 ")
-        f.write("0\n")
-    f.write("]\n")
-    f.close()
-
-def ParseSpliceString(splice_indexes, label_delay=None, num_unfolded_times=None, rnn_delay=[-1]):
+def ParseSpliceString(splice_indexes, label_delay=None, num_unfolded_times=None, lstm_delay=[-1]):
     splice_array = []
     left_context = 0
     right_context = 0
@@ -186,12 +189,12 @@ def ParseSpliceString(splice_indexes, label_delay=None, num_unfolded_times=None,
         left_context = -label_delay
         right_context = label_delay
 
-    assert(rnn_delay[0] < 0)
-    assert(len(rnn_delay) == 1 or rnn_delay[1] > 0)
+    assert(lstm_delay[0] < 0)
+    assert(len(lstm_delay) == 1 or lstm_delay[1] > 0)
     if num_unfolded_times is not None:
         assert(num_unfolded_times > 0)
-        left_context += -rnn_delay[0] * (num_unfolded_times - 1)         
-        right_context += rnn_delay[1] * (num_unfolded_times - 1) if len(rnn_delay) > 1 else 0 
+        left_context += -lstm_delay[0] * (num_unfolded_times - 1)         
+        right_context += lstm_delay[1] * (num_unfolded_times - 1) if len(lstm_delay) > 1 else 0 
 
     split1 = splice_indexes.split();  # we already checked the string is nonempty.
     if len(split1) < 1:
@@ -223,57 +226,57 @@ def ParseSpliceString(splice_indexes, label_delay=None, num_unfolded_times=None,
             'num_hidden_layers':len(splice_array)
             }
 
-def ParseRnnDelayString(rnn_delay):
-    ## Work out rnn_delay e.g. "-1 [-1,1] -2" -> list([ [-1], [-1, 1], [-2] ])
-    split1 = rnn_delay.split(" ");
-    rnn_delay_array = []
+def ParseLstmDelayString(lstm_delay):
+    ## Work out lstm_delay e.g. "-1 [-1,1] -2" -> list([ [-1], [-1, 1], [-2] ])
+    split1 = lstm_delay.split(" ");
+    lstm_delay_array = []
     try:
         for i in range(len(split1)):
             indexes = map(lambda x: int(x), split1[i].strip().lstrip('[').rstrip(']').strip().split(","))
             if len(indexes) < 1:
-                raise ValueError("invalid --rnn-delay argument, too-short element: "
-                                + rnn_delay)
+                raise ValueError("invalid --lstm-delay argument, too-short element: "
+                                + lstm_delay)
             elif len(indexes) == 2 and indexes[0] * indexes[1] >= 0:
-                raise ValueError('Warning: ' + str(indexes) + ' is not a standard BRNN mode. There should be a negative delay for the forward, and a postive delay for the backward.')
-            if len(indexes) == 2 and indexes[0] > 0: # always a negative delay followed by a postive delay
+                raise ValueError('Warning: ' + str(indexes) + ' is not a standard BLSTM mode. There should be a negative delay for the forward, and a postive delay for the backward.')
+            elif len(indexes) == 2 and indexes[0] > 0: # always a negative delay followed by a postive delay
                 indexes[0], indexes[1] = indexes[1], indexes[0]
-            rnn_delay_array.append(indexes)
+            lstm_delay_array.append(indexes)
     except ValueError as e:
-        raise ValueError("invalid --rnn-delay argument " + rnn_delay + str(e))
+        raise ValueError("invalid --lstm-delay argument " + lstm_delay + str(e))
 
-    return rnn_delay_array
+    return lstm_delay_array
 
 # The function signature of MakeConfigs is changed frequently as it is intended for local use in this script.
 def MakeConfigs(config_dir, splice_indexes_string,
                 feat_dim, ivector_dim, num_targets, add_lda,
-                rnn_delay, num_unfolded_times, rnn_dim,
+                lstm_delay, num_unfolded_times, cell_dim,
+                recurrent_projection_dim, non_recurrent_projection_dim,
                 fully_connected_layer_dim,
-                num_rnn_layers,
+                num_lstm_layers,
+                norm_based_clipping, clipping_threshold,
                 use_presoftmax_prior_scale,
                 final_layer_normalize_target,
-                ng_affine_options,
-                label_delay,
-                include_log_softmax,
-                add_final_sigmoid,
+                ng_per_element_scale_options, ng_affine_options,
+                label_delay, include_log_softmax, add_final_sigmoid,
                 self_repair_scale,
                 objective_type):
 
-    parsed_splice_output = ParseSpliceString(splice_indexes_string.strip(), label_delay, num_unfolded_times, rnn_delay[0])
+    parsed_splice_output = ParseSpliceString(splice_indexes_string.strip(), label_delay)
 
     left_context = parsed_splice_output['left_context']
     right_context = parsed_splice_output['right_context']
     num_hidden_layers = parsed_splice_output['num_hidden_layers']
     splice_indexes = parsed_splice_output['splice_indexes']
 
-    if (num_hidden_layers < num_rnn_layers):
-        raise Exception("num-rnn-layers : number of rnn layers has to be greater than number of layers, decided based on splice-indexes")
+    if (num_hidden_layers < num_lstm_layers):
+        raise Exception("num-lstm-layers : number of lstm layers has to be greater than number of layers, decided based on splice-indexes")
 
     prior_scale_file = '{0}/presoftmax_prior_scale.vec'.format(config_dir)
 
     config_lines = {'components':[], 'component-nodes':[]}
 
     config_files={}
-    assert(rnn_delay[0][0] < 0)
+    assert(lstm_delay[0][0] < 0)
     prev_layer_output = nodes.AddInputLayer(config_lines, feat_dim, splice_indexes[0], ivector_dim)
  
     # Add the init config lines for estimating the preconditioning matrices
@@ -289,38 +292,42 @@ def MakeConfigs(config_dir, splice_indexes_string,
         # so the input to the first affine layer is going to [0] index
         splice_indexes[0] = [0]
 
-    # initialize RNN affine parameters with identity matrix and 0 bias
-    WriteIdentityMatrixAndZeroBias(config_dir + '/rnn_affine_init.mat', rnn_dim, 1.0)
-    for i in range(num_rnn_layers):
-        if len(rnn_delay[i]) == 2: # bidirectional RNN case, add both forward and backward 
-            prev_layer_output_forward = nodes.AddRnnLayer(config_lines,
-                                            "BUnfoldedRnn{0}_forward".format(i+1),
-                                            prev_layer_output, rnn_dim,
-                                            #init_params_filename = config_dir + '/rnn_affine_init.mat',
+    for i in range(num_lstm_layers):
+        if len(lstm_delay[i]) == 2: # bidirectional LSTM case, add both forward and backward 
+            prev_layer_output_forward = nodes.AddLstmLayer(config_lines,
+                                            "BUnfoldedLstm{0}_forward".format(i+1),
+                                            prev_layer_output, cell_dim,
+                                            recurrent_projection_dim, non_recurrent_projection_dim,
+                                            clipping_threshold, norm_based_clipping,
+                                            ng_per_element_scale_options = ng_per_element_scale_options,
                                             ng_affine_options = ng_affine_options,
-                                            rnn_delay = rnn_delay[i][0],
+                                            lstm_delay = lstm_delay[i][0],
                                             self_repair_scale = self_repair_scale)
-            prev_layer_output_backward = nodes.AddRnnLayer(config_lines,
-                                            "BUnfoldedRnn{0}_backward".format(i+1),
-                                            prev_layer_output, rnn_dim,
-                                            #init_params_filename = config_dir + '/rnn_affine_init.mat',
+            prev_layer_output_backward = nodes.AddLstmLayer(config_lines,
+                                            "BUnfoldedLstm{0}_backward".format(i+1),
+                                            prev_layer_output, cell_dim,
+                                            recurrent_projection_dim, non_recurrent_projection_dim,
+                                            clipping_threshold, norm_based_clipping,
+                                            ng_per_element_scale_options = ng_per_element_scale_options,
                                             ng_affine_options = ng_affine_options,
-                                            rnn_delay = rnn_delay[i][1],
+                                            lstm_delay = lstm_delay[i][1],
                                             self_repair_scale = self_repair_scale)
             prev_layer_output['descriptor'] = 'Append({0}, {1})'.format(prev_layer_output_forward['descriptor'], prev_layer_output_backward['descriptor'])
             prev_layer_output['dimension'] = prev_layer_output_forward['dimension'] + prev_layer_output_backward['dimension']
-        else: # unidirectional RNN case
-            prev_layer_output = nodes.AddRnnLayer(config_lines,
-                                            "UnfoldedRnn{0}".format(i+1),
-                                            prev_layer_output, rnn_dim,
-                                            #init_params_filename = config_dir + '/rnn_affine_init.mat',
-                                            ng_affine_options = ng_affine_options,
-                                            rnn_delay = rnn_delay[i][0],
-                                            self_repair_scale = self_repair_scale)
+        else: # unidirectional LSTM case
+            prev_layer_output = nodes.AddLstmLayer(config_lines,
+                                        "UnfoldedLstm{0}".format(i+1),
+                                        prev_layer_output, cell_dim,
+                                        recurrent_projection_dim, non_recurrent_projection_dim,
+                                        clipping_threshold, norm_based_clipping,
+                                        ng_per_element_scale_options = ng_per_element_scale_options,
+                                        ng_affine_options = ng_affine_options,
+                                        lstm_delay = lstm_delay[i][0],
+                                        self_repair_scale = self_repair_scale) 
     
         # make the intermediate config file for layerwise discriminative training
         nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
-                            use_presoftmax_prior_scale = use_presoftmax_prior_scale,
+                            use_presoftmax_prior_scale = False,
                             prior_scale_file = prior_scale_file,
                             label_delay = label_delay,
                             include_log_softmax = include_log_softmax)
@@ -328,7 +335,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
         config_files['{0}/layer{1}.config'.format(config_dir, i+1)] = config_lines
         config_lines = {'components':[], 'component-nodes':[]}
 
-    for i in range(num_rnn_layers, num_hidden_layers):
+    for i in range(num_lstm_layers, num_hidden_layers):
         # make the intermediate config file for layerwise discriminative training
 
         # prepare the spliced input
@@ -358,7 +365,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
 
         # make the intermediate config file for layerwise discriminative training
         nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
-                            use_presoftmax_prior_scale = use_presoftmax_prior_scale,
+                            use_presoftmax_prior_scale = False,
                             prior_scale_file = prior_scale_file,
                             label_delay = label_delay,
                             include_log_softmax = include_log_softmax)
@@ -390,13 +397,18 @@ def Main():
                 feat_dim = args.feat_dim, ivector_dim = args.ivector_dim,
                 num_targets = args.num_targets,
                 add_lda = args.add_lda,
-                rnn_delay = args.rnn_delay,
+                lstm_delay = args.lstm_delay,
                 num_unfolded_times = args.num_unfolded_times,
-                rnn_dim = args.rnn_dim,
+                cell_dim = args.cell_dim,
+                recurrent_projection_dim = args.recurrent_projection_dim,
+                non_recurrent_projection_dim = args.non_recurrent_projection_dim,
                 fully_connected_layer_dim = args.fully_connected_layer_dim,
-                num_rnn_layers = args.num_rnn_layers,
+                num_lstm_layers = args.num_lstm_layers,
+                norm_based_clipping = args.norm_based_clipping,
+                clipping_threshold = args.clipping_threshold, 
                 use_presoftmax_prior_scale = args.use_presoftmax_prior_scale,
                 final_layer_normalize_target = args.final_layer_normalize_target,
+                ng_per_element_scale_options = args.ng_per_element_scale_options,
                 ng_affine_options = args.ng_affine_options,
                 label_delay = args.label_delay,
                 include_log_softmax = args.include_log_softmax,
