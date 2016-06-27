@@ -52,14 +52,13 @@ srcdir=`dirname $decodedir`; # The model directory is one level up from decoding
 mkdir -p $kwsdir/log;
 nj=`cat $decodedir/num_jobs` || exit 1;
 echo $nj > $kwsdir/num_jobs;
-word_boundary=$langdir/phones/word_boundary.int
 utter_id=$kwsdatadir/utter_id
 
 if [ -z "$model" ]; then # if --model <mdl> was not specified on the command line...
   model=$srcdir/final.mdl; 
 fi
 
-for f in $word_boundary $model $decodedir/lat.1.gz; do
+for f in $model $decodedir/lat.1.gz $utter_id; do
   [ ! -f $f ] && echo "make_index.sh: no such file $f" && exit 1;
 done
 
@@ -72,14 +71,26 @@ if [ ! -z $silence_word ]; then
   silence_opt="--silence-label=$silence_int"
 fi
 
-$cmd JOB=1:$nj $kwsdir/log/index.JOB.log \
-  lattice-add-penalty --word-ins-penalty=$word_ins_penalty "ark:gzip -cdf $decodedir/lat.JOB.gz|" ark:- \| \
-    lattice-align-words $silence_opt --max-expand=$max_expand $word_boundary $model  ark:- ark:- \| \
-    lattice-scale --acoustic-scale=$acwt --lm-scale=$lmwt ark:- ark:- \| \
-    lattice-to-kws-index --max-states-scale=$max_states_scale --allow-partial=true \
-    --max-silence-frames=$max_silence_frames --strict=$strict ark:$utter_id ark:- ark:- \| \
-    kws-index-union --skip-optimization=$skip_optimization --strict=$strict --max-states=$max_states \
-    ark:- "ark:|gzip -c > $kwsdir/index.JOB.gz" || exit 1
-    
+word_boundary=$langdir/phones/word_boundary.int
+if [ -f $word_boundary ] ; then
+  $cmd JOB=1:$nj $kwsdir/log/index.JOB.log \
+    lattice-add-penalty --word-ins-penalty=$word_ins_penalty "ark:gzip -cdf $decodedir/lat.JOB.gz|" ark:- \| \
+      lattice-align-words $silence_opt --max-expand=$max_expand $word_boundary $model  ark:- ark:- \| \
+      lattice-scale --acoustic-scale=$acwt --lm-scale=$lmwt ark:- ark:- \| \
+      lattice-to-kws-index --max-states-scale=$max_states_scale --allow-partial=true \
+      --max-silence-frames=$max_silence_frames --strict=$strict ark:$utter_id ark:- ark:- \| \
+      kws-index-union --skip-optimization=$skip_optimization --strict=$strict --max-states=$max_states \
+      ark:- "ark:|gzip -c > $kwsdir/index.JOB.gz" || exit 1
+else
+  align_lexicon=$langdir/phones/align_lexicon.int 
+  $cmd JOB=1:$nj $kwsdir/log/index.JOB.log \
+    lattice-add-penalty --word-ins-penalty=$word_ins_penalty "ark:gzip -cdf $decodedir/lat.JOB.gz|" ark:- \| \
+      lattice-align-words-lexicon $silence_opt --max-expand=$max_expand $align_lexicon $model  ark:- ark:- \| \
+      lattice-scale --acoustic-scale=$acwt --lm-scale=$lmwt ark:- ark:- \| \
+      lattice-to-kws-index --max-states-scale=$max_states_scale --allow-partial=true \
+      --max-silence-frames=$max_silence_frames --strict=$strict ark:$utter_id ark:- ark:- \| \
+      kws-index-union --skip-optimization=$skip_optimization --strict=$strict --max-states=$max_states \
+      ark:- "ark:|gzip -c > $kwsdir/index.JOB.gz" || exit 1
+fi
 
 exit 0;
