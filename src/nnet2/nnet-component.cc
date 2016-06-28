@@ -955,6 +955,7 @@ void SoftmaxComponent::Backprop(const ChunkInfo &in_info,
     d = diag(p) e - p (p^T e).
     d_i = p_i e_i - p_i (p^T e).
   */
+  in_deriv->Resize(out_deriv.NumRows(), out_deriv.NumCols());
   in_deriv->DiffSoftmaxPerRow(out_value, out_deriv);
 
   // The SoftmaxComponent does not have any real trainable parameters, but
