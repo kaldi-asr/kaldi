@@ -31,7 +31,7 @@ cat $dict_dir/words.txt | grep -v '[a-zA-Z]' > $dict_dir/lexicon-ch/words-ch.txt
 ##### produce pronunciations for english 
 if [ ! -f $dict_dir/cmudict/cmudict.0.7a ]; then
   echo "--- Downloading CMU dictionary ..."
-  svn co https://svn.code.sf.net/p/cmusphinx/code/trunk/cmudict \
+  svn co -r 13068 https://svn.code.sf.net/p/cmusphinx/code/trunk/cmudict \
     $dict_dir/cmudict || exit 1;
 fi
 
