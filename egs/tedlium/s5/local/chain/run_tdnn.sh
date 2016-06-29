@@ -110,7 +110,7 @@ if [ $stage -le 11 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --leftmost-questions-truncate $leftmost_questions_truncate \
-      --cmd "$train_cmd" 4000 data/$train_set $lang $ali_dir $treedir
+      --cmd "$train_cmd" 4000 data/train_sp $lang $ali_dir $treedir
 fi
 
 if [ $stage -le 12 ]; then
@@ -188,7 +188,7 @@ if [ $stage -le 15 ]; then
   for decode_set in dev test; do
     (
     steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-      --nj $(wc -l data/$decode_set/spk2utt) --cmd "$decode_cmd" $iter_opts \
+      --nj $(wc -l < data/$decode_set/spk2utt) --cmd "$decode_cmd" $iter_opts \
       --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
       --scoring-opts "--min_lmwt 5 --max_lmwt 15" \
       $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}${decode_iter:+_$decode_iter} || exit 1;

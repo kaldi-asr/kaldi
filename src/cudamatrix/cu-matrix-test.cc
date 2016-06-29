@@ -245,7 +245,8 @@ static void UnitTestCuMatrixSoftHinge() {
 template<typename Real>
 static void UnitTestCuMatrixGroupPnorm() {
   int32 M = 100 + Rand() % 200, N = 100 + Rand() % 200;
-  Real power[] = { 1.4, 1.6, 0.1234, 2.123, 0, 1, 2, Real(1.0 / 0.0) };
+  Real power[] = { 1.4, 1.6, 0.1234, 2.123, 0, 1, 2,
+      std::numeric_limits<Real>::infinity() };
   for (int32 K = 5; K < 7; K++) {
     for (int32 i = 0; i < 2 * sizeof(power) / sizeof(Real); ++i) {
       Real p = power[i / 2];
@@ -1943,6 +1944,41 @@ static void UnitTestCuDiffSigmoid() {
 }
 
 
+template<typename Real>
+static void UnitTestCuDiffSoftmax() {
+  int m = 100, n = 111;
+  Matrix<Real> Hi(m, n);
+  Matrix<Real> Ho(m, n);
+  Matrix<Real> Hy(m, n);
+  Hi.SetRandn();
+  RandZeroToOneMatrix(&Hy);
+
+  CuMatrix<Real> Di(m, n);
+  CuMatrix<Real> Do(m, n);
+  CuMatrix<Real> Dy(m, n);
+  Di.CopyFromMat(Hi);
+  Dy.CopyFromMat(Hy);
+
+  //gpu
+  Do.DiffSoftmaxPerRow(Dy, Di);
+  //cpu
+  {
+    const MatrixBase<Real> &P(Hy), &E(Hi);
+    MatrixBase<Real> &D(Ho);
+    D.CopyFromMat(P);
+    D.MulElements(E);
+    // At this point, D = P .* E (in matlab notation)
+    Vector<Real> pe_vec(D.NumRows()); // For each row i, the dot product (p_t . e_t).
+    pe_vec.AddDiagMatMat(1.0, P, kNoTrans, E, kTrans, 0.0);
+    D.AddDiagVecMat(-1.0, pe_vec, P, kNoTrans, 1.0); // does D -= diag(pe_vec) * P.
+  }
+
+  Matrix<Real> Ho2(m, n);
+  Do.CopyToMat(&Ho2);
+
+  AssertEqual(Ho, Ho2);
+}
+
 
 template<typename Real>
 static void UnitTestCuSoftmax() {
@@ -2541,6 +2577,7 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixAddToDiag<Real>();
   UnitTestCuMatrixAdd2<Real>();
   UnitTestCuDiffSigmoid<Real>();
+  UnitTestCuDiffSoftmax<Real>();
   UnitTestCuMatrixGroupPnorm<Real>();
   UnitTestCuMatrixGroupPnormDeriv<Real>();
   UnitTestCuMatrixGroupMax<Real>();

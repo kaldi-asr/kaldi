@@ -2829,16 +2829,7 @@ void SoftmaxComponent::Backprop(const std::string &debug_info,
     d = diag(p) e - p (p^T e).
     d_i = p_i e_i - p_i (p^T e).
   */
-  const CuMatrixBase<BaseFloat> &P(out_value), &E(out_deriv);
-  CuMatrixBase<BaseFloat> &D (*in_deriv);
-
-  D.CopyFromMat(P);
-  D.MulElements(E);
-  // At this point, D = P .* E (in matlab notation)
-  CuVector<BaseFloat> pe_vec(D.NumRows()); // For each row i, the dot product (p_t . e_t).
-  pe_vec.AddDiagMatMat(1.0, P, kNoTrans, E, kTrans, 0.0);
-
-  D.AddDiagVecMat(-1.0, pe_vec, P, kNoTrans, 1.0); // does D -= diag(pe_vec) * P.
+  in_deriv->DiffSoftmaxPerRow(out_value, out_deriv);
 }
 
 void SoftmaxComponent::StoreStats(const CuMatrixBase<BaseFloat> &out_value) {
