@@ -218,17 +218,20 @@ def AddUnfoldedRnnLayer(config_lines, name, input, output_dim, num_unfolded_time
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
 
-    components.append("component name={0}_affine type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input['dimension'] + output_dim, output_dim, ng_affine_options))
+    components.append("component name={0}_affine_h-x type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input['dimension'], output_dim, ng_affine_options))
+    components.append("component name={0}_affine_h-h type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, output_dim, output_dim, ng_affine_options))
     self_repair_string = "self-repair-scale={0:.10f}".format(self_repair_scale) if self_repair_scale is not None else ''
     components.append("component name={0}_relu type=RectifiedLinearComponent dim={1}".format(name, output_dim, self_repair_string))
     components.append("component name={0}_renorm type=NormalizeComponent dim={1} target-rms={2}".format(name, output_dim, norm_target_rms))
 
     for i in range(1, num_unfolded_times + 1):
-        # a node with its "x" index replaced with a value other than 0 (e.g., -1) is NOT computable                                                                                       
-        # in this network, so the recurrent input to "<name>_renorm<num_unfolded_times>_t" would be zero
-        recurrent_descriptor_string = "Offset({0}_renorm{1}_t, {2})".format(name, i + 1, rnn_delay) if i < num_unfolded_times else "ReplaceIndex({0}_renorm{1}_t, x, -1)".format(name, i)
-        component_nodes.append("component-node name={0}_affine{1}_t component={0}_affine input=Append({2}, IfDefined({3}))".format(name, i, input['descriptor'], recurrent_descriptor_string))
-        component_nodes.append("component-node name={0}_relu{1}_t component={0}_relu input={0}_affine{1}_t".format(name, i))
+        component_nodes.append("component-node name={0}_affine{1}_h-x_t component={0}_affine_h-x input={2}".format(name, i, input['descriptor']))
+        if i < num_unfolded_times:
+            component_nodes.append("component-node name={0}_affine{1}_h-h_t component={0}_affine_h-h input=IfDefined(Offset({0}_renorm{2}_t, {3}))".format(name, i, i + 1, rnn_delay))
+            prev_output_string = "Sum({0}_affine{1}_h-x_t, {0}_affine{1}_h-h_t)".format(name, i)
+        else:
+            prev_output_string = "{0}_affine{1}_h-x_t".format(name, i)
+        component_nodes.append("component-node name={0}_relu{1}_t component={0}_relu input={2}".format(name, i, prev_output_string))
         component_nodes.append("component-node name={0}_renorm{1}_t component={0}_renorm input={0}_relu{1}_t".format(name, i))
 
     return {'descriptor':  '{0}_renorm1_t'.format(name),
