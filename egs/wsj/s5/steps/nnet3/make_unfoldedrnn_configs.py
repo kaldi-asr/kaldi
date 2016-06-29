@@ -190,8 +190,8 @@ def ParseSpliceString(splice_indexes, label_delay=None, num_unfolded_times=None,
     assert(len(rnn_delay) == 1 or rnn_delay[1] > 0)
     if num_unfolded_times is not None:
         assert(num_unfolded_times > 0)
-        left_context += -rnn_delay[0] * (num_unfolded_times - 1)         
-        right_context += rnn_delay[1] * (num_unfolded_times - 1) if len(rnn_delay) > 1 else 0 
+        left_context += -rnn_delay[0] * (num_unfolded_times - 1) * 2
+        right_context += rnn_delay[1] * (num_unfolded_times - 1) * 2 if len(rnn_delay) > 1 else 0 
 
     split1 = splice_indexes.split();  # we already checked the string is nonempty.
     if len(split1) < 1:
@@ -290,30 +290,30 @@ def MakeConfigs(config_dir, splice_indexes_string,
         splice_indexes[0] = [0]
 
     # initialize RNN affine parameters with identity matrix and 0 bias
-    WriteIdentityMatrixAndZeroBias(config_dir + '/rnn_affine_init.mat', rnn_dim, 1.0)
+    # WriteIdentityMatrixAndZeroBias(config_dir + '/rnn_affine_init.mat', rnn_dim, 1.0)
     for i in range(num_rnn_layers):
         if len(rnn_delay[i]) == 2: # bidirectional RNN case, add both forward and backward 
-            prev_layer_output_forward = nodes.AddRnnLayer(config_lines,
+            prev_layer_output_forward = nodes.AddUnfoldedRnnLayer(config_lines,
                                             "BUnfoldedRnn{0}_forward".format(i+1),
                                             prev_layer_output, rnn_dim,
-                                            #init_params_filename = config_dir + '/rnn_affine_init.mat',
+                                            num_unfolded_times = num_unfolded_times,
                                             ng_affine_options = ng_affine_options,
                                             rnn_delay = rnn_delay[i][0],
                                             self_repair_scale = self_repair_scale)
-            prev_layer_output_backward = nodes.AddRnnLayer(config_lines,
+            prev_layer_output_backward = nodes.AddUnfoldedRnnLayer(config_lines,
                                             "BUnfoldedRnn{0}_backward".format(i+1),
                                             prev_layer_output, rnn_dim,
-                                            #init_params_filename = config_dir + '/rnn_affine_init.mat',
+                                            num_unfolded_times = num_unfolded_times,
                                             ng_affine_options = ng_affine_options,
                                             rnn_delay = rnn_delay[i][1],
                                             self_repair_scale = self_repair_scale)
             prev_layer_output['descriptor'] = 'Append({0}, {1})'.format(prev_layer_output_forward['descriptor'], prev_layer_output_backward['descriptor'])
             prev_layer_output['dimension'] = prev_layer_output_forward['dimension'] + prev_layer_output_backward['dimension']
         else: # unidirectional RNN case
-            prev_layer_output = nodes.AddRnnLayer(config_lines,
+            prev_layer_output = nodes.AddUnfoldedRnnLayer(config_lines,
                                             "UnfoldedRnn{0}".format(i+1),
                                             prev_layer_output, rnn_dim,
-                                            #init_params_filename = config_dir + '/rnn_affine_init.mat',
+                                            num_unfolded_times = num_unfolded_times,
                                             ng_affine_options = ng_affine_options,
                                             rnn_delay = rnn_delay[i][0],
                                             self_repair_scale = self_repair_scale)
