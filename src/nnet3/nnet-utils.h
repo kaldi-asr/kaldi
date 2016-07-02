@@ -69,25 +69,20 @@ void GetRecurrentOutputNodeNames(const Nnet &nnet,
                                  std::vector<std::string>
                                  *recurrent_node_names);
 
-/// Get offset of each recurrent node. The input argument recurrent_node_names
-/// is one of the output arguments of GetRecurrentOutputNodeNames().
+/// Get (largest absolute) time offset of each recurrent node in
+/// recurrent_node_names.
 void GetRecurrentNodeOffsets(const Nnet &nnet,
                              const std::vector<std::string>
                              &recurrent_node_names,
                              std::vector<int32> *recurrent_offsets);
 
-/// Recursively extract (recurrent) offsets in SumDescriptor.
-void TraceIntoSumDescriptorForOffsets(const Nnet &nnet,
-                                  const SumDescriptor &this_descriptor,
-                                  const std::vector<std::string> &node_names,
-                                  std::vector<int32> *offsets);
-
-/// Recursively extract (recurrent) offsets in ForwardingDescriptor.
-void TraceIntoForwardingDescriptorForOffsets(const Nnet &nnet,
-                                 const ForwardingDescriptor &this_descriptor,
-                                 const std::vector<std::string> &node_names,
-                                 std::vector<int32> *offsets);
-
+/// Get time offset of a recurrent node (queried by its node index) and
+/// return true if it can be found in gen_desc; otherwise returns false.
+/// If the recurrent node appears more than once, return offset with the
+/// largest absolute value.
+bool GetDescriptorRecurrentNodeOffset(const GeneralDescriptor &gen_desc,
+                                      int32 recurrent_node_index, int32 *offset);
+ 
 /// Calls SetZero (with the given is_gradient parameter) on all updatable
 /// components of the nnet.
 void SetZero(bool is_gradient,

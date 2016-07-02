@@ -166,12 +166,6 @@ class OffsetForwardingDescriptor: public ForwardingDescriptor {
                              Index offset): src_(src), offset_(offset) { }
 
   virtual ~OffsetForwardingDescriptor() { delete src_; }
-
-  // defined in nnet-utils.h
-  friend void TraceIntoForwardingDescriptorForOffsets(const Nnet &Nnet,
-                                  const ForwardingDescriptor &this_descriptor,
-                                  const std::vector<std::string> &node_names,
-                                  std::vector<int32> *offsets);
  private:
   ForwardingDescriptor *src_;  // Owned here.
   Index offset_;  // The index-offset to be added to the index.
@@ -198,12 +192,6 @@ class SwitchingForwardingDescriptor: public ForwardingDescriptor {
   SwitchingForwardingDescriptor(std::vector<ForwardingDescriptor*> &src):
       src_(src) { }
   virtual ~SwitchingForwardingDescriptor() { DeletePointers(&src_); }
-
-  // defined in nnet-utils.h
-  friend void TraceIntoForwardingDescriptorForOffsets(const Nnet &nnet,
-                                  const ForwardingDescriptor &this_descriptor,
-                                  const std::vector<std::string> &node_names,
-                                  std::vector<int32> *offsets);
  private:
   // Pointers are owned here.
   std::vector<ForwardingDescriptor*> src_;
@@ -235,12 +223,6 @@ class RoundingForwardingDescriptor: public ForwardingDescriptor {
       src_(src), t_modulus_(t_modulus) { }
 
   virtual ~RoundingForwardingDescriptor() { delete src_; }
-
-  // defined in nnet-utils.h
-  friend void TraceIntoForwardingDescriptorForOffsets(const Nnet &nnet,
-                                  const ForwardingDescriptor &this_descriptor,
-                                  const std::vector<std::string> &node_names,
-                                  std::vector<int32> *offsets);
  private:
   ForwardingDescriptor *src_;
   int32 t_modulus_;
@@ -271,12 +253,6 @@ class ReplaceIndexForwardingDescriptor: public ForwardingDescriptor {
       src_(src), variable_name_(variable_name), value_(value) { }
 
   virtual ~ReplaceIndexForwardingDescriptor() { delete src_; }
-  
-  // defined in nnet-utils.h
-  friend void TraceIntoForwardingDescriptorForOffsets(const Nnet &nnet,
-                                  const ForwardingDescriptor &this_descriptor,
-                                  const std::vector<std::string> &node_names,
-                                  std::vector<int32> *offsets);
  private:
   ForwardingDescriptor *src_;
   VariableName variable_name_;
@@ -375,12 +351,6 @@ class OptionalSumDescriptor: public SumDescriptor {
 
   OptionalSumDescriptor(SumDescriptor *src): src_(src) { }
   virtual ~OptionalSumDescriptor() { delete src_; }
-
-  // defined in nnet-utils.h
-  friend void TraceIntoSumDescriptorForOffsets(const Nnet &nnet,
-                                  const SumDescriptor &this_descriptor,
-                                  const std::vector<std::string> &node_names,
-                                  std::vector<int32> *offsets);
  private:
   SumDescriptor *src_;
 };
@@ -408,12 +378,6 @@ class SimpleSumDescriptor: public SumDescriptor {
 
   SimpleSumDescriptor(ForwardingDescriptor *src): src_(src) { }
   virtual ~SimpleSumDescriptor() { delete src_; }
-  
-  // defined in nnet-utils.h
-  friend void TraceIntoSumDescriptorForOffsets(const Nnet &nnet,
-                                  const SumDescriptor &this_descriptor,
-                                  const std::vector<std::string> &node_names,
-                                  std::vector<int32> *offsets);
  private:
   ForwardingDescriptor *src_;
 };
@@ -451,12 +415,6 @@ class BinarySumDescriptor: public SumDescriptor {
   BinarySumDescriptor(Operation op, SumDescriptor *src1, SumDescriptor *src2):
       op_(op), src1_(src1), src2_(src2) {}
   virtual ~BinarySumDescriptor() { delete src1_; delete src2_; }
-
-  // defined in nnet-utils.h
-  friend void TraceIntoSumDescriptorForOffsets(const Nnet &nnet,
-                                  const SumDescriptor &this_descriptor,
-                                  const std::vector<std::string> &node_names,
-                                  std::vector<int32> *offsets);
  private:
   Operation op_;
   SumDescriptor *src1_;
@@ -579,6 +537,11 @@ struct GeneralDescriptor {
   // prints in text form-- this is really only used for debug.
   void Print(const std::vector<std::string> &node_names,
              std::ostream &os);
+
+  // defined in nnet-utils.h
+  friend bool GetDescriptorRecurrentNodeOffset(const GeneralDescriptor &gen_desc,
+                                               int32 input_node_index,
+                                               int32 *offset);
 
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(GeneralDescriptor);

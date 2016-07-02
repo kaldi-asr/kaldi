@@ -88,110 +88,76 @@ void GetRecurrentNodeOffsets(const Nnet &nnet,
                              const std::vector<std::string>
                              &recurrent_node_names,
                              std::vector<int32> *recurrent_offsets) {
+  const std::vector<std::string> &node_names = nnet.GetNodeNames();
   recurrent_offsets->clear();
   recurrent_offsets->resize(recurrent_node_names.size(), 0);
-  for (int32 i = 0; i < nnet.NumNodes(); i++) {
-    const NetworkNode &node = nnet.GetNode(i);
-    // skip output node to circumvent the problem when a recurrent output 
-    // is "label delayed" and thus also contain keyword "Offset", which is not
-    // what we are trying to look at for our "offset"  
-    if (node.node_type == kDescriptor && !nnet.IsOutputNode(i)) {
-      for (int32 p = 0; p < node.descriptor.NumParts(); p++) {
-        const SumDescriptor &this_part = node.descriptor.Part(p);
-        TraceIntoSumDescriptorForOffsets(nnet, this_part, recurrent_node_names,
-                                         recurrent_offsets);
+  for (size_t i = 0; i < recurrent_node_names.size(); i++) {
+    int32 node_index = nnet.GetNodeIndex(recurrent_node_names[i]);
+    if (node_index == -1)
+      continue;
+    for (size_t n = 0; n < nnet.NumNodes(); n++) {
+      const NetworkNode &node = nnet.GetNode(n);
+      // skip output node to circumvent the problem when a recurrent output 
+      // is "label delayed" and thus also contain keyword "Offset", which is not
+      // what we are trying to look at for our "offset"  
+      if (node.node_type == kDescriptor && !nnet.IsOutputNode(n)) {
+        std::ostringstream ostr;
+        node.descriptor.WriteConfig(ostr, node_names);
+        std::vector<std::string> tokens;
+        DescriptorTokenize(ostr.str(), &tokens);
+        tokens.push_back("end of input");
+        const std::string *next_token = &(tokens[0]);
+        GeneralDescriptor *gen_desc = GeneralDescriptor::Parse(node_names,
+                                                               &next_token);
+        if (*next_token != "end of input")
+          KALDI_ERR << "Parsing Descriptor, expected end of input but got "
+                    << "'" <<  *next_token << "'";
+        int32 offset = 0;
+        GetDescriptorRecurrentNodeOffset(*gen_desc, node_index, &offset);
+        delete gen_desc;
+        if (std::abs(offset) > std::abs((*recurrent_offsets)[i]))
+          (*recurrent_offsets)[i] = offset;
       }
     }
   }
 }
 
-void TraceIntoSumDescriptorForOffsets(const Nnet &nnet,
-                                  const SumDescriptor &this_descriptor,
-                                  const std::vector<std::string> &node_names,
-                                  std::vector<int32> *offsets) {
-  const OptionalSumDescriptor *ptr_optional =
-      dynamic_cast<const OptionalSumDescriptor*>(&this_descriptor);
-  if (ptr_optional != NULL) {
-    TraceIntoSumDescriptorForOffsets(nnet, *(ptr_optional->src_),
-                                     node_names, offsets);
-    return;
-  }
-  const BinarySumDescriptor *ptr_binary =
-      dynamic_cast<const BinarySumDescriptor*>(&this_descriptor);
-  if (ptr_binary != NULL) {
-    TraceIntoSumDescriptorForOffsets(nnet, *(ptr_binary->src1_),
-                                     node_names, offsets);
-    TraceIntoSumDescriptorForOffsets(nnet, *(ptr_binary->src2_),
-                                     node_names, offsets);
-    return;
-  }
-  const SimpleSumDescriptor *ptr_simple =
-      dynamic_cast<const SimpleSumDescriptor*>(&this_descriptor);
-  if (ptr_simple != NULL) {
-    TraceIntoForwardingDescriptorForOffsets(nnet, *(ptr_simple->src_),
-                                            node_names, offsets);
-    return;
-  }
-  KALDI_ERR << "Unidentified SumDescriptor.";
-}
-
-void TraceIntoForwardingDescriptorForOffsets(const Nnet &nnet,
-                                 const ForwardingDescriptor &this_descriptor,
-                                 const std::vector<std::string> &node_names,
-                                 std::vector<int32> *offsets) {
-  const OffsetForwardingDescriptor *ptr_offset =
-      dynamic_cast<const OffsetForwardingDescriptor*>(&this_descriptor);
-  if (ptr_offset != NULL) {
-    const SimpleForwardingDescriptor *ptr_simple =
-        dynamic_cast<const SimpleForwardingDescriptor*>(ptr_offset->src_);
-    if (ptr_simple != NULL) {
-      std::vector<int32> node_index;
-      ptr_simple->GetNodeDependencies(&node_index);
-      KALDI_ASSERT(node_index.size() == 1);
-      const std::string &node_name = nnet.GetNodeName(node_index[0]);
-      std::vector<std::string>::const_iterator iter,
-            begin = node_names.begin(),
-            end = node_names.end();
-      iter = find(begin, end, node_name);
-      // if it is a recurrent node that we are looking for, 
-      // then get its offset "t" value
-      if (iter != end)
-        (*offsets)[iter - begin] = ptr_offset->offset_.t;
-    } else {
-      TraceIntoForwardingDescriptorForOffsets(nnet, *(ptr_offset->src_),
-          node_names, offsets);
+bool GetDescriptorRecurrentNodeOffset(const GeneralDescriptor &gen_desc,
+                                      int32 recurrent_node_index, int32 *offset) {
+  switch (gen_desc.descriptor_type_) {
+    case GeneralDescriptor::kAppend: case GeneralDescriptor::kSum:
+    case GeneralDescriptor::kFailover: case GeneralDescriptor::kIfDefined:
+    case GeneralDescriptor::kSwitch: case GeneralDescriptor::kRound:
+    case GeneralDescriptor::kReplaceIndex: {
+      bool node_found = false;
+      for (size_t i = 0; i < gen_desc.descriptors_.size(); i++) {
+        int32 inner_offset = 0;
+        bool inner_node_found =
+            GetDescriptorRecurrentNodeOffset(*(gen_desc.descriptors_[i]),
+                recurrent_node_index, &inner_offset);
+        node_found = node_found || inner_node_found;
+        if (inner_node_found && std::abs(inner_offset) > std::abs(*offset))
+          *offset = inner_offset;
+      }
+      return node_found;
     }
-    return;
+    case GeneralDescriptor::kOffset: {
+      KALDI_ASSERT(gen_desc.descriptors_.size() == 1);
+      int32 inner_offset = 0;
+      bool node_found =
+          GetDescriptorRecurrentNodeOffset(*(gen_desc.descriptors_[0]),
+              recurrent_node_index, &inner_offset);
+      if (node_found)
+        *offset = inner_offset + gen_desc.value1_;
+      return node_found;
+    }
+    case GeneralDescriptor::kNodeName: {
+      return gen_desc.value1_ == recurrent_node_index;
+    }
+    default:
+      KALDI_ERR << "Invalid descriptor type.";
   }
-  const RoundingForwardingDescriptor *ptr_rounding =
-      dynamic_cast<const RoundingForwardingDescriptor*>(&this_descriptor);
-  if (ptr_rounding != NULL) {
-    TraceIntoForwardingDescriptorForOffsets(nnet, *(ptr_rounding->src_),
-        node_names, offsets);
-    return;
-  }
-  const ReplaceIndexForwardingDescriptor *ptr_replace =
-      dynamic_cast<const ReplaceIndexForwardingDescriptor*>(&this_descriptor);
-  if (ptr_replace != NULL) {
-    TraceIntoForwardingDescriptorForOffsets(nnet, *(ptr_replace->src_),
-        node_names, offsets);
-    return;
-  }
-  const SwitchingForwardingDescriptor *ptr_switching =
-      dynamic_cast<const SwitchingForwardingDescriptor*>(&this_descriptor);
-  if (ptr_switching != NULL) {
-    for (int32 i = 0; i < ptr_switching->src_.size(); i++)
-      TraceIntoForwardingDescriptorForOffsets(nnet,
-          *(ptr_switching->src_[i]), node_names, offsets);
-    return;
-  }
-  const SimpleForwardingDescriptor *ptr_simple =
-      dynamic_cast<const SimpleForwardingDescriptor*>(&this_descriptor);
-  if (ptr_simple != NULL) {
-     // do nothing
-     return;
-  }
-  KALDI_ERR << "Unidentified ForwardingDescriptor.";
+  return false;
 }
 
 bool IsSimpleNnet(const Nnet &nnet) {
