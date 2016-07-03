@@ -54,7 +54,7 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
   else
     chain::SplitIntoRanges(feats.NumRows(), frames_per_eg, &range_starts);
 
-  for (int32 i = 0; i < range_starts.size(); i ++) {
+  for (int32 i = 0; i < range_starts.size(); i++) {
     int32 t = range_starts[i];
 
     // actual_frames_per_eg is the number of frames with nonzero

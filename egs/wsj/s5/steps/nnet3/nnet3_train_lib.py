@@ -507,7 +507,7 @@ def ComputeTrainCvProbabilities(dir, iter, egs_dir, run_opts, wait = False):
     RunKaldiCommand("""
 {command} {dir}/log/compute_prob_valid.{iter}.log \
   nnet3-compute-prob "nnet3-am-copy --raw=true {model} - |" \
-        "ark,bg:nnet3-merge-egs ark:{egs_dir}/valid_diagnostic.egs ark:- |"
+  "ark,bg:nnet3-merge-egs ark:{egs_dir}/valid_diagnostic.egs ark:- | nnet3-add-recurrent-io-to-egs \\"nnet3-am-copy --raw=true {dir}/{iter}.mdl - |\\" ark:- ark:- |"
     """.format(command = run_opts.command,
                dir = dir,
                iter = iter,
@@ -517,7 +517,7 @@ def ComputeTrainCvProbabilities(dir, iter, egs_dir, run_opts, wait = False):
     RunKaldiCommand("""
 {command} {dir}/log/compute_prob_train.{iter}.log \
   nnet3-compute-prob "nnet3-am-copy --raw=true {model} - |" \
-       "ark,bg:nnet3-merge-egs ark:{egs_dir}/train_diagnostic.egs ark:- |"
+  "ark,bg:nnet3-merge-egs ark:{egs_dir}/train_diagnostic.egs ark:- | nnet3-add-recurrent-io-to-egs \\"nnet3-am-copy --raw=true {dir}/{iter}.mdl - |\\" ark:- ark:- |"
     """.format(command = run_opts.command,
                dir = dir,
                iter = iter,
@@ -533,7 +533,7 @@ def ComputeProgress(dir, iter, egs_dir, run_opts, wait=False):
 {command} {dir}/log/progress.{iter}.log \
 nnet3-info "nnet3-am-copy --raw=true {model} - |" '&&' \
 nnet3-show-progress --use-gpu=no "nnet3-am-copy --raw=true {prev_model} - |" "nnet3-am-copy --raw=true {model} - |" \
-"ark,bg:nnet3-merge-egs --minibatch-size=256 ark:{egs_dir}/train_diagnostic.egs ark:-|"
+"ark,bg:nnet3-merge-egs --minibatch-size=256 ark:{egs_dir}/train_diagnostic.egs ark:-| nnet3-add-recurrent-io-to-egs \\"nnet3-am-copy --raw=true {dir}/{iter}.mdl - |\\" ark:- ark:- |"
     """.format(command = run_opts.command,
                dir = dir,
                iter = iter,
@@ -565,7 +565,7 @@ def CombineModels(dir, num_iters, num_iters_combine, egs_dir,
 {command} {combine_queue_opt} {dir}/log/combine.log \
 nnet3-combine --num-iters=40 \
    --enforce-sum-to-one=true --enforce-positive-weights=true \
-   --verbose=3 {raw_models} "ark,bg:nnet3-merge-egs --measure-output-frames=false --minibatch-size={mbsize} ark:{egs_dir}/combine.egs ark:-|" \
+   --verbose=3 {raw_models} "ark,bg:nnet3-merge-egs --measure-output-frames=false --minibatch-size={mbsize} ark:{egs_dir}/combine.egs ark:-| nnet3-add-recurrent-io-to-egs \\"nnet3-am-copy --raw=true {dir}/{num_iters}.mdl - |\\" ark:- ark:- |" \
 "|nnet3-am-copy --set-raw-nnet=- {dir}/{num_iters}.mdl {dir}/combined.mdl"
     """.format(command = run_opts.command,
                combine_queue_opt = run_opts.combine_queue_opt,
@@ -596,6 +596,7 @@ def ComputeAveragePosterior(dir, iter, egs_dir, num_archives,
 {command} JOB=1:{num_jobs_compute_prior} {prior_queue_opt} {dir}/log/get_post.{iter}.JOB.log \
     nnet3-subset-egs --srand=JOB --n={prior_subset_size} ark:{egs_dir}/egs.{egs_part}.ark ark:- \| \
     nnet3-merge-egs --measure-output-frames=true --minibatch-size=128 ark:- ark:- \| \
+    nnet3-add-recurrent-io-to-egs "nnet3-am-copy --raw=true {dir}/{iter}.mdl - |" ark:- ark:- \| \
     nnet3-compute-from-egs {prior_gpu_opt} --apply-exp=true \
   "nnet3-am-copy --raw=true {dir}/combined.mdl -|" ark:- ark:- \| \
 matrix-sum-rows ark:- ark:- \| vector-sum ark:- {dir}/post.{iter}.JOB.vec

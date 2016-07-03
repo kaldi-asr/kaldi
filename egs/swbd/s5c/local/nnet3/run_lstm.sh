@@ -34,6 +34,8 @@ non_recurrent_projection_dim=256
 chunk_width=20
 chunk_left_context=40
 chunk_right_context=0
+minibatch_chunk_size=0
+left_shift_window=false
 
 
 # training options
@@ -85,6 +87,10 @@ local/nnet3/run_ivector_common.sh --stage $stage \
 
 if [ $stage -le 9 ]; then
   echo "$0: creating neural net configs";
+  preserve_state=false
+  if [ $minibatch_chunk_size -gt 0 ] && [ $minibatch_chunk_size -lt $chunk_width ]; then
+    preserve_state=true
+  fi
   config_extra_opts=()
   [ ! -z "$lstm_delay" ] && config_extra_opts+=(--lstm-delay "$lstm_delay")
   steps/nnet3/lstm/make_configs.py  "${config_extra_opts[@]}" \
@@ -99,6 +105,7 @@ if [ $stage -le 9 ]; then
     --non-recurrent-projection-dim $non_recurrent_projection_dim \
     --label-delay $label_delay \
     --self-repair-scale 0.00001 \
+    --preserve-state $preserve_state \
    $dir/configs || exit 1;
 
 fi
@@ -121,8 +128,10 @@ if [ $stage -le 10 ]; then
     --trainer.optimization.final-effective-lrate=$final_effective_lrate \
     --trainer.optimization.shrink-value 0.99 \
     --trainer.rnn.num-chunk-per-minibatch=$num_chunk_per_minibatch \
+    --trainer.rnn.minibatch-chunk-size=$minibatch_chunk_size \
     --trainer.optimization.momentum=$momentum \
     --egs.chunk-width=$chunk_width \
+    --egs.left-shift-window $left_shift_window \
     --egs.chunk-left-context=$chunk_left_context \
     --egs.chunk-right-context=$chunk_right_context \
     --egs.dir="$common_egs_dir" \

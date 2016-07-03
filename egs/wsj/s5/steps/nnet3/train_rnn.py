@@ -69,6 +69,12 @@ def GetArgs():
                         default = 0,
                         help="""Number of right steps used in the estimation of BLSTM
                         state before prediction of the first label""")
+    parser.add_argument("--egs.left-shift-window", type=str, dest='left_shift_window',
+                        action = StrToBoolAction, choices = ["true", "false"],
+                        help="""If false, the last example extracted from an utterance would be padded with the final frame
+                        to get frames_per_eg frames. If true, the starting frame-index of the last example would be"
+                        shifted to the left to get frames_per_eg frames.""", default=False)
+
     parser.add_argument("--egs.transform_dir", type=str, dest='transform_dir',
                         default = None, action = NullstrToNoneAction,
                         help="""String to provide options directly to steps/nnet3/get_egs.sh script""")
@@ -184,6 +190,11 @@ def GetArgs():
     parser.add_argument("--trainer.rnn.num-bptt-steps", type=int, dest='num_bptt_steps',
                         default=None,
                         help="The number of time steps to back-propagate from the last label in the chunk. By default it is same as the chunk-width." )
+    parser.add_argument("--trainer.rnn.minibatch-chunk-size", type=int, dest='minibatch_chunk_size',
+                        default = None,
+                        help="""if > 0 && < chunk_width then each chunk of size chunk_width will be splitted into smaller ones of size
+                        minibatch_chunk_size, and the state preserving training mode will be enabled, which preserves
+                        states between minibatches. Note: if it is the case, chunk_width should be an exact multiple of it.""")
 
     # General options
     parser.add_argument("--stage", type=int, default=-4,
@@ -242,6 +253,21 @@ def ProcessArgs(args):
     # process the options
     if args.chunk_width < 1:
         raise Exception("--egs.chunk-width should have a minimum value of 1")
+
+    if args.minibatch_chunk_size is None:
+        args.minibatch_chunk_size = args.chunk_width
+    if args.minibatch_chunk_size > 0 and args.minibatch_chunk_size < args.chunk_width:
+        args.preserve_state =True
+        if args.chunk_width % args.minibatch_chunk_size != 0:
+            raise Exception("Error chunk_width is not a multiple of minibatch_chunk_size.")
+    elif args.minibatch_chunk_size > args.chunk_width:
+        raise Exception("Error chunk_width should not be less than minibatch_chunk_size.")
+    else:
+        args.preserve_state=False
+
+    if args.egs_opts is None:
+        args.egs_opts = ""
+    args.egs_opts += "--left-shift-window {0} --multiple-ivectors-per-eg {1}".format("true" if args.left_shift_window else "false", "false" if args.preserve_state else "false")
 
     if args.chunk_left_context < 0:
         raise Exception("--egs.chunk-left-context should be positive")
@@ -336,6 +362,7 @@ class RunOpts:
 def TrainNewModels(dir, iter, num_jobs, num_archives_processed, num_archives,
                    raw_model_string, egs_dir,
                    left_context, right_context, min_deriv_time,
+                   chunk_width, minibatch_chunk_size,
                    momentum, max_param_change,
                    shuffle_buffer_size, num_chunk_per_minibatch,
                    cache_read_opt, run_opts):
@@ -364,8 +391,9 @@ def TrainNewModels(dir, iter, num_jobs, num_archives_processed, num_archives,
   nnet3-train {parallel_train_opts} {cache_read_opt} {cache_write_opt} \
   --print-interval=10 --momentum={momentum} \
   --max-param-change={max_param_change} \
-  --optimization.min-deriv-time={min_deriv_time} "{raw_model}" \
-  "ark,bg:nnet3-copy-egs {context_opts} ark:{egs_dir}/egs.{archive_index}.ark ark:- | nnet3-shuffle-egs --buffer-size={shuffle_buffer_size} --srand={iter} ark:- ark:-| nnet3-merge-egs --minibatch-size={num_chunk_per_minibatch} --measure-output-frames=false --discard-partial-minibatches=true ark:- ark:- |" \
+  --optimization.min-deriv-time={min_deriv_time} \
+  --num-minibatches-per-chunk=$[{chunk_width}/{minibatch_chunk_size}] "{raw_model}" \
+  "ark,bg:nnet3-copy-egs {context_opts} ark:{egs_dir}/egs.{archive_index}.ark ark:- | nnet3-shuffle-egs --buffer-size={shuffle_buffer_size} --srand={iter} ark:- ark:-| nnet3-merge-egs --minibatch-size={num_chunk_per_minibatch} --measure-output-frames=false --discard-partial-minibatches=true ark:- ark:- | nnet3-split-egs --chunk-size-after-split={minibatch_chunk_size} \\"{raw_model}\\" ark:- ark:- | nnet3-add-recurrent-io-to-egs \\"{raw_model}\\" ark:- ark:- |" \
   {dir}/{next_iter}.{job}.raw
           """.format(command = run_opts.command,
                      train_queue_opt = run_opts.train_queue_opt,
@@ -374,6 +402,7 @@ def TrainNewModels(dir, iter, num_jobs, num_archives_processed, num_archives,
                      cache_read_opt = cache_read_opt, cache_write_opt = cache_write_opt,
                      momentum = momentum, max_param_change = max_param_change,
                      min_deriv_time = min_deriv_time,
+                     chunk_width = chunk_width, minibatch_chunk_size = minibatch_chunk_size,
                      raw_model = raw_model_string, context_opts = context_opts,
                      egs_dir = egs_dir, archive_index = archive_index,
                      shuffle_buffer_size = shuffle_buffer_size,
@@ -399,6 +428,7 @@ def TrainOneIteration(dir, iter, egs_dir,
                       learning_rate, shrinkage_value, num_chunk_per_minibatch,
                       num_hidden_layers, add_layers_period,
                       left_context, right_context, min_deriv_time,
+                      chunk_width, minibatch_chunk_size,
                       momentum, max_param_change, shuffle_buffer_size,
                       run_opts):
     # Set off jobs doing some diagnostics, in the background.
@@ -445,6 +475,7 @@ def TrainOneIteration(dir, iter, egs_dir,
     TrainNewModels(dir, iter, num_jobs, num_archives_processed, num_archives,
                    raw_model_string, egs_dir,
                    left_context, right_context, min_deriv_time,
+                   chunk_width, minibatch_chunk_size,
                    momentum, max_param_change,
                    shuffle_buffer_size, cur_num_chunk_per_minibatch,
                    cache_read_opt, run_opts)
@@ -536,8 +567,8 @@ def Train(args, run_opts):
 
         GenerateEgs(args.feat_dir, args.ali_dir, default_egs_dir,
                     left_context, right_context,
-                    args.chunk_width + left_context,
-                    args.chunk_width + right_context, run_opts,
+                    args.minibatch_chunk_size + left_context,
+                    args.minibatch_chunk_size + right_context, run_opts,
                     frames_per_eg = args.chunk_width,
                     egs_opts = args.egs_opts,
                     cmvn_opts = args.cmvn_opts,
@@ -638,6 +669,7 @@ def Train(args, run_opts):
                               args.num_chunk_per_minibatch,
                               num_hidden_layers, args.add_layers_period,
                               left_context, right_context, min_deriv_time,
+                              args.chunk_width, args.minibatch_chunk_size,
                               args.momentum, args.max_param_change,
                               args.shuffle_buffer_size, run_opts)
             if args.cleanup:
