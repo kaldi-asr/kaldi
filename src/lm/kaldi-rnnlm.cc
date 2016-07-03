@@ -1,6 +1,7 @@
 // lm/kaldi-rnnlm.cc
 
 // Copyright 2015  Guoguo Chen
+//	     2016  Ricky Chan Ho Yin
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -25,6 +26,13 @@
 
 namespace kaldi {
 
+KaldiRnnlmWrapper::~KaldiRnnlmWrapper() {
+  if(use_cued_lm && cuedrnnlm_ptr_) {
+    delete cuedrnnlm_ptr_;
+    cuedrnnlm_ptr_ = NULL;
+  }
+}
+
 KaldiRnnlmWrapper::KaldiRnnlmWrapper(
     const KaldiRnnlmWrapperOpts &opts,
     const std::string &unk_prob_rspecifier,
@@ -35,6 +43,56 @@ KaldiRnnlmWrapper::KaldiRnnlmWrapper(
   rnnlm_.setUnkSym(opts.unk_symbol);
   rnnlm_.setUnkPenalty(unk_prob_rspecifier);
   rnnlm_.restoreNet();
+
+  // Reads symbol table.
+  fst::SymbolTable *word_symbols = NULL;
+  if (!(word_symbols =
+        fst::SymbolTable::ReadText(word_symbol_table_rxfilename))) {
+    KALDI_ERR << "Could not read symbol table from file "
+        << word_symbol_table_rxfilename;
+  }
+  label_to_word_.resize(word_symbols->NumSymbols() + 1);
+  for (int32 i = 0; i < label_to_word_.size() - 1; ++i) {
+    label_to_word_[i] = word_symbols->Find(i);
+    if (label_to_word_[i] == "") {
+      KALDI_ERR << "Could not find word for integer " << i << "in the word "
+          << "symbol table, mismatched symbol table or you have discoutinuous "
+          << "integers in your symbol table?";
+    }
+  }
+  label_to_word_[label_to_word_.size() - 1] = opts.eos_symbol;
+  eos_ = label_to_word_.size() - 1;
+  use_cued_lm = false;
+}
+
+KaldiRnnlmWrapper::KaldiRnnlmWrapper(
+    const KaldiRnnlmWrapperOpts &opts,
+    const std::string &unk_prob_rspecifier,
+    const std::string &word_symbol_table_rxfilename,
+    const std::string &rnnlm_rxfilename,
+    bool use_cued,
+    const std::string &inputwlist,
+    const std::string &outputwlist,
+    std::vector<int> &lsizes,
+    int fvocsize,
+    int nthread /* =1 */) {
+
+  use_cued_lm = use_cued;
+  if(!use_cued_lm) {
+    rnnlm_.setRnnLMFile(rnnlm_rxfilename);
+    rnnlm_.setRandSeed(1);
+    rnnlm_.setUnkSym(opts.unk_symbol);
+    rnnlm_.setUnkPenalty(unk_prob_rspecifier);
+    rnnlm_.restoreNet();
+  }
+  else {
+    cuedrnnlm_ptr_ = new RNNLM(lsizes, fvocsize);
+    // text rnn model, minibatch 1 for evaluation, debug 0
+    cuedrnnlm_ptr_->loadfresh(rnnlm_rxfilename, inputwlist, outputwlist, false, 1, 0); 
+    /* cuedrnnlm_ptr_->loadfresh(rnnlm_rxfilename, inputwlist, outputwlist, false, 1, 0, 0, false); */
+    cuedrnnlm_ptr_->setLognormConst(-1.0);  // default lognormconst value: -1.0 in cued rnnlm
+    cuedrnnlm_ptr_->setNthread(nthread);          // default nthread value: 1 in cued rnnlm
+  }
 
   // Reads symbol table.
   fst::SymbolTable *word_symbols = NULL;
@@ -67,8 +125,23 @@ BaseFloat KaldiRnnlmWrapper::GetLogProb(
     wseq_symbols[i] = label_to_word_[wseq[i]];
   }
 
+  if(use_cued_lm) 
+  return cuedrnnlm_ptr_->computeConditionalLogprob(label_to_word_[word], wseq_symbols,
+                                          context_in, context_out);
+  else 
   return rnnlm_.computeConditionalLogprob(label_to_word_[word], wseq_symbols,
                                           context_in, context_out);
+}
+
+void KaldiRnnlmWrapper::ResetCuedLMhist() {
+  cuedrnnlm_ptr_->ResetRechist();
+}
+
+int32 KaldiRnnlmWrapper::GetHiddenLayerSize() {
+  if(use_cued_lm==false)
+    return rnnlm_.getHiddenLayerSize();
+  else
+    return cuedrnnlm_ptr_->getOneHiddenLayerSize();
 }
 
 RnnlmDeterministicFst::RnnlmDeterministicFst(int32 max_ngram_order,
@@ -80,6 +153,28 @@ RnnlmDeterministicFst::RnnlmDeterministicFst(int32 max_ngram_order,
   // Uses empty history for <s>.
   std::vector<Label> bos;
   std::vector<float> bos_context(rnnlm->GetHiddenLayerSize(), 1.0);
+  state_to_wseq_.push_back(bos);
+  state_to_context_.push_back(bos_context);
+  wseq_to_state_[bos] = 0;
+  start_state_ = 0;
+  use_cued_lm = false;
+}
+
+RnnlmDeterministicFst::RnnlmDeterministicFst(int32 max_ngram_order,
+                                             KaldiRnnlmWrapper *rnnlm, bool using_cued_lm) {
+  KALDI_ASSERT(rnnlm != NULL);
+  max_ngram_order_ = max_ngram_order;
+  rnnlm_ = rnnlm;
+
+  use_cued_lm = using_cued_lm;
+  if(use_cued_lm) {
+    rnnlm->ResetCuedLMhist();
+  }
+  float init_value = (use_cued_lm == true) ? CUED_RESETVALUE : 1.0;
+
+  // Uses empty history for <s>.
+  std::vector<Label> bos;
+  std::vector<float> bos_context(rnnlm->GetHiddenLayerSize(), init_value);
   state_to_wseq_.push_back(bos);
   state_to_context_.push_back(bos_context);
   wseq_to_state_[bos] = 0;
