@@ -75,11 +75,11 @@ int main(int argc, char *argv[]) {
     unk_prob_rspecifier = "";
     word_symbols_rxfilename = po.GetArg(1);
     lats_rspecifier = po.GetArg(2);
-    rnnlm_rxfilename = po.GetArg(3);
+    rnnlm_rxfilename = po.GetArg(3);  // cuedrnnlm rnnlm.txt model v0.1
     lats_wspecifier = po.GetArg(4);
-    inputwordlist = po.GetArg(5);
-    outputwordlist = po.GetArg(6);
-    rnnlminfofile = po.GetArg(7);
+    inputwordlist = po.GetArg(5);   // cuedrnnlm inputwordlist
+    outputwordlist = po.GetArg(6);  // cuedrnnlm outputwordlist
+    rnnlminfofile = po.GetArg(7);   // e.g. -layers 172887:200:172887 -fullvocsize 175887
 
     string str;
     vector<int> layersizes;
