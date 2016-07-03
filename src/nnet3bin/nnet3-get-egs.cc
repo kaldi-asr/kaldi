@@ -25,6 +25,7 @@
 #include "hmm/transition-model.h"
 #include "hmm/posterior.h"
 #include "nnet3/nnet-example.h"
+#include "chain/chain-supervision.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -46,16 +47,15 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
                         NnetExampleWriter *example_writer) {
   KALDI_ASSERT(feats.NumRows() == static_cast<int32>(pdf_post.size()));
   
-  for (int32 t = 0; t < feats.NumRows(); t += frames_per_eg) {
+  std::vector<int32> range_starts;
+  if (!left_shift_window)
+    for (int32 t = 0; t < feats.NumRows(); t += frames_per_eg)
+      range_starts.push_back(t);
+  else
+    chain::SplitIntoRanges(feats.NumRows(), frames_per_eg, &range_starts);
 
-    if (left_shift_window) {
-      // At the end of the file we left shift the frame window
-      // so that all examples have the same length if the length
-      // of the utterance is at least equal to frames_per_eg;
-      // otherwise just left shift as far as we can.
-      if (feats.NumRows() - t < frames_per_eg)
-        t = std::max(feats.NumRows() - frames_per_eg, 0);
-    }
+  for (int32 i = 0; i < range_starts.size(); i ++) {
+    int32 t = range_starts[i];
 
     // actual_frames_per_eg is the number of frames with nonzero
     // posteriors.  At the end of the file we pad with zero posteriors
