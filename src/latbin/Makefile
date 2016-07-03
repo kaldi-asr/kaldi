@@ -36,3 +36,5 @@ ADDLIBS = ../lat/kaldi-lat.a ../lm/kaldi-lm.a ../hmm/kaldi-hmm.a \
 
 include ../makefiles/default_rules.mk
 
+LDLIBS += -fopenmp
+
