@@ -3,7 +3,8 @@
 // Copyright 2009-2012  Karel Vesely
 //                      Johns Hopkins University (author: Daniel Povey)
 //                      Lucas Ondel
-//          2013  Xiaohui Zhang    
+//           2013       Xiaohui Zhang
+//           2015       Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -81,7 +82,6 @@ class CuVectorBase {
   template<typename OtherReal>
   void CopyFromVec(const VectorBase<OtherReal> &src);
 
-
   template<typename OtherReal>
   void CopyToVec(VectorBase<OtherReal> *dst) const;
   
@@ -122,7 +122,7 @@ class CuVectorBase {
   void ApplyExp();
   void ApplyLog();
   MatrixIndexT ApplyFloor(Real floor_val);
-  void ApplyCeiling(Real ceiling_val);
+  MatrixIndexT ApplyCeiling(Real ceiling_val);
   void ApplyPow(Real power);
   Real Sum() const;
   void SetRandn();
@@ -212,6 +212,7 @@ class CuVectorBase {
   Real *data_; ///< GPU data pointer (or regular data pointer
                ///< if CUDA is not compiled in or we have no GPU).
   MatrixIndexT dim_; ///< dimension of the vector
+
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(CuVectorBase);
 };
@@ -329,8 +330,8 @@ bool ApproxEqual(const CuVectorBase<Real> &a,
 }
 
 template<typename Real>
-inline void AssertEqual(CuVectorBase<Real> &a, CuVectorBase<Real> &b,
-                        float tol = 0.01) {
+inline void AssertEqual(const CuVectorBase<Real> &a, 
+                        const CuVectorBase<Real> &b, Real tol = 0.01) {
   KALDI_ASSERT(a.ApproxEqual(b, tol));
 }
 

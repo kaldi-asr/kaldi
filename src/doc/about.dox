@@ -138,8 +138,6 @@
  this is the version you should use. Also,
  frequently do "git pull" to keep it up to date; see \ref install for more details.
 
- See \ref roadmap for details of features we are currently working on.
-
   @section about_reference Referencing Kaldi in papers
 
 You can use the following reference if you want to cite Kaldi in papers.

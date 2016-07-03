@@ -220,7 +220,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Done " << num_success << " utterances, failed for "
               << num_fail;
 
-    if (word_syms) delete word_syms;
+    delete word_syms;
     return (num_success != 0 ? 0 : 1);
   }
   catch(const std::exception& e) {

@@ -50,7 +50,9 @@ class CuArray {
   explicit CuArray<T>(const std::vector<T> &src):
     dim_(0), data_(NULL) { CopyFromVec(src); }
 
-  explicit CuArray<T>(const CuArray<T> &src):
+  /// Copy constructor.  We don't make this explicit because we want to be able
+  /// to create a std::vector<CuArray>.
+  CuArray<T>(const CuArray<T> &src):
    dim_(0), data_(NULL) { CopyFromArray(src); }
 
   /// Destructor
@@ -86,6 +88,11 @@ class CuArray {
   /// objects are more than plain structs.
   void CopyToVec(std::vector<T> *dst) const;
 
+  /// Version of the above function that copies contents to a host array.
+  /// This function requires *dst to be allocated before calling. The allocated
+  /// size should be dim_ * sizeof(T)
+  void CopyToHost(T *dst) const;
+
   /// Sets the memory for the object to zero, via memset.  You should verify
   /// that this makes sense for type T.
   void SetZero();
@@ -94,6 +101,18 @@ class CuArray {
   /// assignment operators or destructors are not called.  This is NOT IMPLEMENTED
   /// YET except for T == int32 (the current implementation will just crash).
   void Set(const T &value);
+  
+  /// Add a constant value. This is NOT IMPLEMENTED YET except for T == int32 
+  /// (the current implementation will just crash).
+  void Add(const T &value);
+
+  /// Get minimum value (for now implemented on CPU, reimplement if slow).
+  /// Asserts the vector is non-empty, otherwise crashes.
+  T Min() const;
+
+  /// Get minimum value (for now implemented on CPU, reimplement if slow).
+  /// Asserts the vector is non-empty, otherwise crashes.
+  T Max() const;
 
   CuArray<T> &operator= (const CuArray<T> &in) {
     this->CopyFromArray(in); return *this;
@@ -102,6 +121,10 @@ class CuArray {
   CuArray<T> &operator= (const std::vector<T> &in) {
     this->CopyFromVec(in); return *this;
   }
+
+  /// I/O
+  void Read(std::istream &is, bool binary);
+  void Write(std::ostream &is, bool binary) const;
   
  private:
   MatrixIndexT dim_;     ///< dimension of the vector
@@ -113,9 +136,8 @@ class CuArray {
 /// I/O
 template<typename T>
 std::ostream &operator << (std::ostream &out, const CuArray<T> &vec);
- 
-} // namespace
 
+} // namespace
 
 #include "cudamatrix/cu-array-inl.h"
 

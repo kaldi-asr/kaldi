@@ -2,6 +2,7 @@
 
 // Copyright 2012    Johns Hopkins University (author: Daniel Povey)
 //                   Frantisek Skala, Wei Shi
+//           2015    Tom Ko
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -482,7 +483,15 @@ void CompressedMatrix::Read(std::istream &is, bool binary) {
 }
 
 template<typename Real>
-void CompressedMatrix::CopyToMat(MatrixBase<Real> *mat) const {
+void CompressedMatrix::CopyToMat(MatrixBase<Real> *mat,
+                                 MatrixTransposeType trans) const {
+  if (trans == kTrans) {
+    Matrix<Real> temp(this->NumCols(), this->NumRows());
+    CopyToMat(&temp, kNoTrans);
+    mat->CopyFromMat(temp, kTrans);
+    return;
+  }
+  
   if (data_ == NULL) {
     KALDI_ASSERT(mat->NumRows() == 0);
     KALDI_ASSERT(mat->NumCols() == 0);
@@ -521,9 +530,11 @@ void CompressedMatrix::CopyToMat(MatrixBase<Real> *mat) const {
 
 // Instantiate the template for float and double.
 template
-void CompressedMatrix::CopyToMat(MatrixBase<float> *mat) const;
+void CompressedMatrix::CopyToMat(MatrixBase<float> *mat,
+                                 MatrixTransposeType trans) const;
 template
-void CompressedMatrix::CopyToMat(MatrixBase<double> *mat) const;
+void CompressedMatrix::CopyToMat(MatrixBase<double> *mat,
+                                 MatrixTransposeType trans) const;
 
 template<typename Real>
 void CompressedMatrix::CopyRowToVec(MatrixIndexT row,
@@ -540,7 +551,7 @@ void CompressedMatrix::CopyRowToVec(MatrixIndexT row,
                                                                 h->num_cols);
     byte_data += row;  // point to first value we are interested in
     for (int32 i = 0; i < h->num_cols;
-         i++, per_col_header++, byte_data+=h->num_rows) {
+         i++, per_col_header++, byte_data += h->num_rows) {
       float p0 = Uint16ToFloat(*h, per_col_header->percentile_0),
           p25 = Uint16ToFloat(*h, per_col_header->percentile_25),
           p75 = Uint16ToFloat(*h, per_col_header->percentile_75),
@@ -663,7 +674,7 @@ template void CompressedMatrix::CopyToMat(int32,
                int32,
                MatrixBase<double> *dest) const;
 
-void CompressedMatrix::Destroy() {
+void CompressedMatrix::Clear() {
   if (data_ != NULL) {
     delete [] static_cast<float*>(data_);
     data_ = NULL;
@@ -675,7 +686,7 @@ CompressedMatrix::CompressedMatrix(const CompressedMatrix &mat): data_(NULL) {
 }
 
 CompressedMatrix &CompressedMatrix::operator = (const CompressedMatrix &mat) {
-  Destroy(); // now this->data_ == NULL.
+  Clear(); // now this->data_ == NULL.
   if (mat.data_ != NULL) {
     MatrixIndexT data_size = DataSize(*static_cast<GlobalHeader*>(mat.data_));
     data_ = AllocateData(data_size);

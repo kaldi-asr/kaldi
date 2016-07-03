@@ -19,11 +19,11 @@
 
 
 #include "util/const-integer-set.h"
-#include "util/kaldi-io.h"
-#include <set> // for baseline.
+#include <set>  // for baseline.
 #include <cassert>
 #include <cstdlib>
 #include <iostream>
+#include "util/kaldi-io.h"
 
 namespace kaldi {
 
@@ -32,7 +32,7 @@ template<class Int> void TestSetOfNumbers(bool binary) {
   size_t n_in_set = (Rand() % 3) * 50 + (Rand() % 4);  // may be less than this.
   size_t max = (Int) (Rand() % 100) + 1;
   for (size_t i = 0; i < n_in_set; i++) {
-    Int to_add  ((Int) (Rand() % max));
+    Int to_add((Int) (Rand() % max));
     baseline_set.insert(to_add);
   }
 
@@ -41,13 +41,14 @@ template<class Int> void TestSetOfNumbers(bool binary) {
        iter!= baseline_set.end();iter++)
     vector_set.push_back(*iter);
   if (vector_set.size() != 0) {
-    for (size_t i = 0;i < 10;i++) // randomize order.
-      std::swap(vector_set[Rand()%vector_set.size()],  vector_set[Rand()%vector_set.size()]);
+    for (size_t i = 0;i < 10;i++)  // randomize order.
+      std::swap(vector_set[Rand()%vector_set.size()],
+                vector_set[Rand()%vector_set.size()]);
   }
 
   ConstIntegerSet<Int> my_set1(baseline_set);
 
-  ConstIntegerSet<Int> my_set2(vector_set) ;
+  ConstIntegerSet<Int> my_set2(vector_set);
 
   ConstIntegerSet<Int> my_set3;
   my_set3.Init(baseline_set);
@@ -70,7 +71,7 @@ template<class Int> void TestSetOfNumbers(bool binary) {
   // if (enable_iterators) {
   size_t sz = baseline_set.size(), sz1 = my_set1.size(), sz2 = my_set2.size(),
       sz3 = my_set3.size(), sz4 = my_set4.size(), sz5 = my_set5.size();
-  KALDI_ASSERT(sz == sz1 && sz == sz2 && sz == sz3 && sz == sz4 && sz==sz5);
+  KALDI_ASSERT(sz == sz1 && sz == sz2 && sz == sz3 && sz == sz4 && sz == sz5);
   // }
   for (size_t i = 0;i < 100;i++) {
     Int some_int;
@@ -88,7 +89,8 @@ template<class Int> void TestSetOfNumbers(bool binary) {
     if (in_baseline) {
       KALDI_ASSERT(in_my_set1&&in_my_set2&&in_my_set3&&in_my_set4&&in_my_set5);
     } else {
-      KALDI_ASSERT(!in_my_set1&&!in_my_set2&&!in_my_set3&&!in_my_set4&&!in_my_set5);
+      KALDI_ASSERT(!in_my_set1&&!in_my_set2&&!in_my_set3&&!in_my_set4&&
+                   !in_my_set5);
     }
   }
 
@@ -125,7 +127,7 @@ template<class Int> void TestSetOfNumbers(bool binary) {
   // }
 }
 
-} // end namespace kaldi
+}  // end namespace kaldi
 
 
 
@@ -134,8 +136,8 @@ int main() {
   for (size_t i = 0;i < 10;i++) {
     TestSetOfNumbers<int>(Rand()%2);
     TestSetOfNumbers<unsigned int>(Rand()%2);
-    TestSetOfNumbers<short int>(Rand()%2);
-    TestSetOfNumbers<short unsigned int>(Rand()%2);
+    TestSetOfNumbers<int16>(Rand()%2);
+    TestSetOfNumbers<int16>(Rand()%2);
     TestSetOfNumbers<char>(Rand()%2);
     TestSetOfNumbers<unsigned char>(Rand()%2);
   }

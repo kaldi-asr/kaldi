@@ -93,44 +93,16 @@ fi
 
 if [ $stage -le 4 ]; then
   # Re-train the DNN by 1 iteration of sMBR 
-  steps/nnet/train_mpe.sh --cmd "$cuda_cmd" --num-iters 1 --acwt $acwt --do-smbr true \
+  steps/nnet/train_mpe.sh --cmd "$cuda_cmd" --num-iters 5 --acwt $acwt --do-smbr true \
     $data_fmllr/train_si284 data/lang $srcdir ${srcdir}_ali ${srcdir}_denlats $dir || exit 1
   # Decode (reuse HCLG graph)
-  for ITER in 1; do
+  for ITER in 5 4 3 1; do
     steps/nnet/decode.sh --nj 10 --cmd "$decode_cmd" --config conf/decode_dnn.config \
       --nnet $dir/${ITER}.nnet --acwt $acwt \
       $gmmdir/graph_bd_tgpr $data_fmllr/test_dev93 $dir/decode_bd_tgpr_dev93_it${ITER} || exit 1;
     steps/nnet/decode.sh --nj 8 --cmd "$decode_cmd" --config conf/decode_dnn.config \
       --nnet $dir/${ITER}.nnet --acwt $acwt \
       $gmmdir/graph_bd_tgpr $data_fmllr/test_eval92 $dir/decode_bd_tgpr_eval92_it${ITER} || exit 1;
-  done 
-fi
-
-# Re-generate lattices, run 4 more sMBR iterations
-dir=exp/dnn5b_pretrain-dbn_dnn_smbr_i1lats
-srcdir=exp/dnn5b_pretrain-dbn_dnn_smbr
-acwt=0.1
-
-if [ $stage -le 5 ]; then
-  # Generate lattices and alignments:
-  steps/nnet/align.sh --nj 100 --cmd "$train_cmd" \
-    $data_fmllr/train_si284 data/lang $srcdir ${srcdir}_ali || exit 1;
-  steps/nnet/make_denlats.sh --nj 100 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt $acwt \
-    $data_fmllr/train_si284 data/lang $srcdir ${srcdir}_denlats || exit 1;
-fi
-
-if [ $stage -le 6 ]; then
-  # Re-train the DNN by 1 iteration of sMBR 
-  steps/nnet/train_mpe.sh --cmd "$cuda_cmd" --num-iters 4 --acwt $acwt --do-smbr true \
-    $data_fmllr/train_si284 data/lang $srcdir ${srcdir}_ali ${srcdir}_denlats $dir || exit 1
-  # Decode (reuse HCLG graph)
-  for ITER in 1 2 3 4; do
-    steps/nnet/decode.sh --nj 10 --cmd "$decode_cmd" --config conf/decode_dnn.config \
-      --nnet $dir/${ITER}.nnet --acwt $acwt \
-      $gmmdir/graph_bd_tgpr $data_fmllr/test_dev93 $dir/decode_bd_tgpr_dev93_iter${ITER} || exit 1;
-    steps/nnet/decode.sh --nj 8 --cmd "$decode_cmd" --config conf/decode_dnn.config \
-      --nnet $dir/${ITER}.nnet --acwt $acwt \
-      $gmmdir/graph_bd_tgpr $data_fmllr/test_eval92 $dir/decode_bd_tgpr_eval92_iter${ITER} || exit 1;
   done 
 fi
 

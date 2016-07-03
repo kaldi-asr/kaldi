@@ -16,13 +16,13 @@
 // MERCHANTABLITY OR NON-INFRINGEMENT.
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
+#ifndef _MSC_VER
+#include <unistd.h>
+#endif
 #include "base/io-funcs.h"
 #include "util/kaldi-io.h"
 #include "base/kaldi-math.h"
 #include "base/kaldi-utils.h"
-#ifndef _MSC_VER
-#include <unistd.h>
-#endif
 
 namespace kaldi {
 
@@ -132,7 +132,7 @@ void UnitTestIoNew(bool binary) {
       ReadIntegerVector(infile, binary_in, &vec3_in);
       KALDI_ASSERT(vec3_in == vec3);
       std::string  token1_in, token2_in;
-      KALDI_ASSERT(Peek(infile, binary_in) == (int)*token1);
+      KALDI_ASSERT(Peek(infile, binary_in) == static_cast<int>(*token1));
       ReadToken(infile, binary_in, &token1_in);
       KALDI_ASSERT(token1_in == (std::string)token1);
       ReadToken(infile, binary_in, &token2_in);
@@ -245,7 +245,7 @@ void UnitTestIoPipe(bool binary) {
       ReadIntegerVector(infile, binary_in, &vec3_in);
       KALDI_ASSERT(vec3_in == vec3);
       std::string  token1_in, token2_in;
-      KALDI_ASSERT(Peek(infile, binary_in) == (int)*token1);
+      KALDI_ASSERT(Peek(infile, binary_in) == static_cast<int>(*token1));
       ReadToken(infile, binary_in, &token1_in);
       KALDI_ASSERT(token1_in == (std::string)token1);
       ReadToken(infile, binary_in, &token2_in);
@@ -319,10 +319,8 @@ void UnitTestNativeFilename() {
 }  // end namespace kaldi.
 
 #if defined(_MSC_VER) && !defined(KALDI_CYGWIN_COMPAT)
-//         /\_/\   Windows has no cat!
-//    ____/ o o \
-//  /~____  =%= /  There is probably no suitable tool to test popen I/O
-// (______)__m_m)  on Windows, so we emulate a lame version of cat(1).
+// Windows has no cat!  There is probably no suitable tool to test popen I/O on
+// Windows, so we emulate a lame version of cat(1).
 static int TinyCat(int argc, const char** argv) {
   const char* name_in = argc > 0 && strcmp(argv[0], "-") ? argv[0] : NULL;
   int fd_in = name_in ? _open(name_in, _O_RDONLY) : _fileno(stdin);
@@ -359,6 +357,7 @@ int main(int argc, const char** argv) {
   UnitTestClassifyRxfilename();
   UnitTestClassifyWxfilename();
 
-  KALDI_ASSERT(1);  // just wanted to check that KALDI_ASSERT does not fail for 1.
+  KALDI_ASSERT(1);  // just wanted to check that KALDI_ASSERT does not fail
+  // for 1.
   return 0;
 }

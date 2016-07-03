@@ -1,7 +1,13 @@
 About aurora4
     The aurora4 database contains a) clean wsj0 data (Wall Street Journal)
                                   b) artificially added noise with clean wsj0 data
-    for detailed information, please refer to: http://aurora.hsnr.de/aurora-4.html
+    for detailed information, please refer to: http://aurora.hsnr.de/aurora-4.html.
+    To obtain the data you should contact ELRA, see
+    http://catalog.elra.info/index.php?cPath=37_40, and look for aurora4a and aurora4b.
+    If you already have the WSJ license from LDC, you should not need any
+    additional licenses (but they may want to check that you have a license for
+    WSJ).
+    Note: we recommend to use the chime2 example scripts instead of these ones.
 
 About the Wall Street Journal corpus:
     This is a corpus of read

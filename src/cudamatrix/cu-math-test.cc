@@ -1,4 +1,4 @@
-// cudamatrix/cuda-math-test.cc
+// cudamatrix/cu-math-test.cc
 
 // Copyright 2013 Johns Hopkins University (Author: David Snyder)
 

@@ -14,7 +14,7 @@
 # for online decoding.
 
 # Rather than treating each utterance separately, it carries forward
-# information from one utterance to the next, within the speaker. 
+# information from one utterance to the next, within the speaker.
 
 
 # Begin configuration section.
@@ -45,7 +45,6 @@ max_count=0         # The use of this option (e.g. --max-count 100) can make
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
-
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
@@ -56,7 +55,7 @@ if [ $# != 3 ]; then
   echo "main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config containing options"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
-  echo "  --nj <n|10>                                      # Number of jobs (also see num-processes and num-threads)"
+  echo "  --nj <n|10>                                      # Number of jobs"
   echo "  --stage <stage|0>                                # To control partial reruns"
   echo "  --num-gselect <n|5>                              # Number of Gaussians to select using"
   echo "                                                   # diagonal model."
@@ -94,6 +93,7 @@ echo -n >$ieconf
 cp $srcdir/online_cmvn.conf $dir/conf/ || exit 1;
 echo "--cmvn-config=$dir/conf/online_cmvn.conf" >>$ieconf
 for x in $(echo $splice_opts); do echo "$x"; done > $dir/conf/splice.conf
+echo "--ivector-period=$ivector_period" >>$ieconf
 echo "--splice-config=$dir/conf/splice.conf" >>$ieconf
 echo "--lda-matrix=$srcdir/final.mat" >>$ieconf
 echo "--global-cmvn-stats=$srcdir/global_cmvn.stats" >>$ieconf
@@ -106,6 +106,7 @@ echo "--max-remembered-frames=1000" >>$ieconf # the default
 echo "--max-count=$max_count" >>$ieconf
 
 
+absdir=$(readlink -f $dir)
 
 for n in $(seq $nj); do
   # This will do nothing unless the directory $dir/storage exists;
@@ -118,7 +119,7 @@ if [ $stage -le 0 ]; then
   $cmd JOB=1:$nj $dir/log/extract_ivectors.JOB.log \
      ivector-extract-online2 --config=$ieconf ark:$sdata/JOB/spk2utt scp:$sdata/JOB/feats.scp ark:- \| \
      copy-feats --compress=$compress ark:- \
-      ark,scp:$dir/ivector_online.JOB.ark,$dir/ivector_online.JOB.scp || exit 1;
+      ark,scp:$absdir/ivector_online.JOB.ark,$absdir/ivector_online.JOB.scp || exit 1;
 fi
 
 if [ $stage -le 1 ]; then

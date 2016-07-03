@@ -130,16 +130,16 @@ class LatticeReader {
       // archive format.
       if (col.size() > 5) {
         KALDI_WARN << "Reading lattice: bad line in FST: " << line;
-        if (fst) delete fst;
-        if (cfst) delete cfst;    
+        delete fst;
+        delete cfst;    
         return PairT(static_cast<Lattice*>(NULL),
                      static_cast<CompactLattice*>(NULL));
       }
       StateId s;
       if (!ConvertStringToInteger(col[0], &s)) {
         KALDI_WARN << "FstCompiler: bad line in FST: " << line;
-        if (fst) delete fst;
-        if (cfst) delete cfst;
+        delete fst;
+        delete cfst;
         return PairT(static_cast<Lattice*>(NULL),
                      static_cast<CompactLattice*>(NULL));
       }
@@ -283,7 +283,7 @@ class LatticeReader {
 CompactLattice *ReadCompactLatticeText(std::istream &is) {
   std::pair<Lattice*, CompactLattice*> lat_pair = LatticeReader::ReadText(is);
   if (lat_pair.second != NULL) {
-    if (lat_pair.first) delete lat_pair.first;
+    delete lat_pair.first;
     return lat_pair.second;
   } else if (lat_pair.first != NULL) {
     // note: ConvertToCompactLattice frees its input.
@@ -297,7 +297,7 @@ CompactLattice *ReadCompactLatticeText(std::istream &is) {
 Lattice *ReadLatticeText(std::istream &is) {
   std::pair<Lattice*, CompactLattice*> lat_pair = LatticeReader::ReadText(is);
   if (lat_pair.first != NULL) {
-    if (lat_pair.second) delete lat_pair.second;
+    delete lat_pair.second;
     return lat_pair.first;
   } else if (lat_pair.second != NULL) {
     // note: ConvertToLattice frees its input.
@@ -396,7 +396,7 @@ bool WriteLattice(std::ostream &os, bool binary, const Lattice &t) {
     fst::FstWriteOptions opts;
     // Leave all the options default.  Normally these lattices wouldn't have any
     // osymbols/isymbols so no point directing it not to write them (who knows what
-    // we'd want to if we had them).
+    // we'd want to do if we had them).
     return t.Write(os, opts);
   } else {
     // Text-mode output.  Note: we expect that t.InputSymbols() and

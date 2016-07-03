@@ -57,7 +57,9 @@ class CuSpMatrix : public CuPackedMatrix<Real> {
   explicit CuSpMatrix(const SpMatrix<Real> &orig)
     : CuPackedMatrix<Real>(orig) {}
 
-  explicit CuSpMatrix(const CuSpMatrix<Real> &orig)
+  // This constructor lacks the "explicit" keyword so that
+  // we can include it in std::vector.
+  CuSpMatrix(const CuSpMatrix<Real> &orig)
     : CuPackedMatrix<Real>(orig) {}
 
   explicit CuSpMatrix(const CuMatrixBase<Real> &orig,
@@ -66,6 +68,8 @@ class CuSpMatrix : public CuPackedMatrix<Real> {
     CopyFromMat(orig, copy_type);
   }
 
+  CuSpMatrix<Real> &operator = (const CuSpMatrix<Real> &in);
+  
   ~CuSpMatrix() {}  
 
   inline void Resize(MatrixIndexT nRows, MatrixResizeType resize_type = kSetZero) {
@@ -131,7 +135,6 @@ class CuSpMatrix : public CuPackedMatrix<Real> {
   inline SpMatrix<Real> &Mat() {
     return *(reinterpret_cast<SpMatrix<Real>* >(this));
   }
-
 };
 
 template<typename Real>

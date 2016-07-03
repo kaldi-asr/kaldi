@@ -29,7 +29,7 @@ namespace nnet2 {
 
 /*
   The class AmNnet (AM stands for "acoustic model") has the job of taking the
-  "Nnet1" class, which is a quite general neural network, and giving it an
+  "Nnet" class, which is a quite general neural network, and giving it an
   interface that's suitable for acoustic modeling; it deals with storing, and
   dividing by, the prior of each context-dependent state.
 */

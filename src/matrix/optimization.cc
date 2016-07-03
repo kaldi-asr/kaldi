@@ -509,6 +509,7 @@ int32 LinearCgd(const LinearCgdOptions &opts,
     
     if (r_next_norm_sq < residual_factor * r_recompute_norm_sq ||
         r_next_norm_sq > inv_residual_factor * r_recompute_norm_sq) {
+         
       // Recompute the residual from scratch if the residual norm has decreased
       // a lot; this costs an extra matrix-vector multiply, but helps keep the
       // residual accurate.

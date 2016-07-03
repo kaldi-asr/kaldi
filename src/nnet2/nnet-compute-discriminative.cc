@@ -235,7 +235,9 @@ void NnetDiscriminativeUpdater::LatticeComputations() {
   }
 
   std::vector<BaseFloat> answers;
-  posteriors.Lookup(requested_indexes, &answers);
+  CuArray<Int32Pair> cu_requested_indexes(requested_indexes);
+  answers.resize(requested_indexes.size());
+  posteriors.Lookup(cu_requested_indexes, &(answers[0]));
 
   int32 num_floored = 0;
 

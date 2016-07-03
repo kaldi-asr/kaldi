@@ -1,4 +1,4 @@
-// onlinebin/online2-wav-nnet2-latgen-thread.cc
+// online2bin/online2-wav-nnet2-latgen-threaded.cc
 
 // Copyright 2014-2015  Johns Hopkins University (author: Daniel Povey)
 
@@ -19,6 +19,7 @@
 
 #include "feat/wave-reader.h"
 #include "online2/online-nnet2-decoding-threaded.h"
+#include "online2/online-nnet2-feature-pipeline.h"
 #include "online2/onlinebin-util.h"
 #include "online2/online-timing.h"
 #include "online2/online-endpoint.h"

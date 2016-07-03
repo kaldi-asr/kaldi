@@ -1,7 +1,7 @@
-// nnet/nnet-example.cc
+// nnet2/nnet-example.cc
 
 // Copyright 2012-2013  Johns Hopkins University (author: Daniel Povey)
-// Copyright 2014       Vimal Manohar
+//                2014  Vimal Manohar
 
 // See ../../COPYING for clarification regarding multiple authors
 //

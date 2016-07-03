@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
         "and (ali-to-phones --per-frame=true).  Since this program only sees the integer\n"
         "indexes, it does not care what they represent-- but of course they should match\n"
         "(e.g. don't input posteriors with transition-ids and alignments with pdf-ids).\n"
-        "See http://kaldi.sourceforge.net/hmm.html#transition_model_identifiers for an\n"
+        "See http://kaldi-asr.org/doc/hmm.html#transition_model_identifiers for an\n"
         "explanation of these types of indexes.\n"
         "\n"
         "See also: weight-post, post-to-weights, reverse-weights\n"

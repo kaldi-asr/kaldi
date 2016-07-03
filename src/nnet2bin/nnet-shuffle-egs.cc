@@ -32,8 +32,8 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Copy examples (typically single frames) for neural network training,\n"
-        "from the input to output, but randomly shuffle the order. This program will keep\n"
-        "all of the examples in memory at once, so don't give it too many.\n"
+        "from the input to output, but randomly shuffle the order.  This program will keep\n"
+        "all of the examples in memory at once, unless you use the --buffer-size option\n"
         "\n"
         "Usage:  nnet-shuffle-egs [options] <egs-rspecifier> <egs-wspecifier>\n"
         "\n"
@@ -62,6 +62,7 @@ int main(int argc, char *argv[]) {
     int64 num_done = 0;
 
     std::vector<std::pair<std::string, NnetExample*> > egs;
+
     SequentialNnetExampleReader example_reader(examples_rspecifier);
     NnetExampleWriter example_writer(examples_wspecifier);
     if (buffer_size == 0) {  // Do full randomization
@@ -70,12 +71,12 @@ int main(int argc, char *argv[]) {
 
       for (; !example_reader.Done(); example_reader.Next())
         egs.push_back(std::make_pair(example_reader.Key(),
-                                    new NnetExample(example_reader.Value())));
+                                     new NnetExample(example_reader.Value())));
 
       std::random_shuffle(egs.begin(), egs.end());
     } else {
       KALDI_ASSERT(buffer_size > 0);
-      egs.resize(buffer_size, 
+      egs.resize(buffer_size,
           std::pair<std::string, NnetExample*>("", static_cast<NnetExample *>(NULL)));
       for (; !example_reader.Done(); example_reader.Next()) {
         int32 index = RandInt(0, buffer_size - 1);
@@ -94,8 +95,8 @@ int main(int argc, char *argv[]) {
       if (egs[i].second != NULL) {
         example_writer.Write(egs[i].first, *(egs[i].second));
         delete egs[i].second;
+        num_done++;
       }
-      num_done++;
     }
 
     KALDI_LOG << "Shuffled order of " << num_done

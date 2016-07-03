@@ -26,7 +26,6 @@ BINFILES = nnet-am-info nnet-init \
    nnet-modify-learning-rates nnet-normalize-stddev nnet-perturb-egs \
    nnet-perturb-egs-fmllr nnet-get-weighted-egs nnet-adjust-priors \
    cuda-compiled nnet-replace-last-layers nnet-am-switch-preconditioning \
-   nnet-train-simple-perturbed nnet-train-parallel-perturbed \
    nnet1-to-raw-nnet raw-nnet-copy nnet-relabel-egs nnet-am-reinitialize \
    nnet2-boost-silence
 
@@ -42,6 +41,7 @@ ADDLIBS = ../nnet2/kaldi-nnet2.a ../nnet/kaldi-nnet.a ../gmm/kaldi-gmm.a \
          ../decoder/kaldi-decoder.a ../lat/kaldi-lat.a ../hmm/kaldi-hmm.a  \
          ../transform/kaldi-transform.a ../tree/kaldi-tree.a ../thread/kaldi-thread.a \
          ../cudamatrix/kaldi-cudamatrix.a ../matrix/kaldi-matrix.a \
-         ../util/kaldi-util.a ../base/kaldi-base.a 
+         ../fstext/kaldi-fstext.a ../util/kaldi-util.a ../thread/kaldi-thread.a \
+         ../base/kaldi-base.a
 
 include ../makefiles/default_rules.mk

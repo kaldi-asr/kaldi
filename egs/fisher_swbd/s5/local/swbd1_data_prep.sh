@@ -14,7 +14,7 @@
 
 #check existing directories
 if [ $# != 1 ]; then
-  echo "Usage: swbd1_data_prep_edin.sh /path/to/SWBD"
+  echo "Usage: swbd1_data_prep.sh /path/to/SWBD"
   exit 1; 
 fi 
 
@@ -22,7 +22,6 @@ SWBD_DIR=$1
 
 dir=data/local/train_swbd
 mkdir -p $dir
-
 
 # Audio data directory check
 if [ ! -d $SWBD_DIR ]; then
@@ -33,22 +32,6 @@ fi
 sph2pipe=$KALDI_ROOT/tools/sph2pipe_v2.5/sph2pipe
 [ ! -x $sph2pipe ] \
   && echo "Could not execute the sph2pipe program at $sph2pipe" && exit 1;
-
-
-# Trans directory check
-if [ ! -d $SWBD_DIR/transcriptions/swb_ms98_transcriptions ]; then
-  # To get the SWBD transcriptions and dict, do:
-  echo " *** Downloading transcriptions and dictionary ***"   
-  ( 
-    cd $dir;
-    wget http://www.isip.piconepress.com/projects/switchboard/releases/switchboard_word_alignments.tar.gz
-    tar -xf switchboard_word_alignments.tar.gz
-  )
-else
-  echo "Directory with transcriptions exists, skipping downloading"
-  [ -f $dir/swb_ms98_transcriptions ] \
-    || ln -sf $SWBD_DIR/transcriptions/swb_ms98_transcriptions $dir/
-fi
 
 # Option A: SWBD dictionary file check
 [ ! -f $dir/swb_ms98_transcriptions/sw-ms98-dict.text ] && \
@@ -101,7 +84,7 @@ local/swbd1_map_words.pl -f 2- $dir/transcripts2.txt  > $dir/text  # final trans
 
 # format acronyms in text
 python local/map_acronyms_transcripts.py -i $dir/text -o $dir/text_map \
-  -M data/local/dict/acronyms_swbd.map
+  -M data/local/dict_nosp/acronyms_swbd.map
 cp $dir/text $dir/text_bk
 mv $dir/text_map $dir/text
 

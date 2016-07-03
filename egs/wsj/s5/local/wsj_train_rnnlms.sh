@@ -38,34 +38,8 @@ dir=$1
 srcdir=data/local/dict${dict_suffix}_larger
 mkdir -p $dir
 
+$KALDI_ROOT/tools/extras/check_for_rnnlm.sh "$rnnlm_ver" || exit 1
 export PATH=$KALDI_ROOT/tools/$rnnlm_ver:$PATH
-
-
-( # First make sure the kaldi_lm toolkit is installed.
- # Note: this didn't work out of the box for me, I had to
- # change the g++ version to just "g++" (no cross-compilation
- # needed for me as I ran on a machine that had been setup
- # as 64 bit by default.
- cd $KALDI_ROOT/tools || exit 1;
- if [ -f $rnnlm_ver/rnnlm ]; then
-   echo Not installing the rnnlm toolkit since it is already there.
- else
-   if [ $rnnlm_ver == "rnnlm-hs-0.1b" ]; then
-       extras/install_rnnlm_hs.sh
-   else
-       echo Downloading and installing the rnnlm tools
-       # http://www.fit.vutbr.cz/~imikolov/rnnlm/$rnnlm_ver.tgz
-       if [ ! -f $rnnlm_ver.tgz ]; then
-	   wget http://www.fit.vutbr.cz/~imikolov/rnnlm/$rnnlm_ver.tgz || exit 1;
-       fi
-       mkdir $rnnlm_ver
-       cd $rnnlm_ver
-       tar -xvzf ../$rnnlm_ver.tgz || exit 1;
-       make CC=g++ || exit 1;
-       echo Done making the rnnlm tools
-       fi
-   fi
-) || exit 1;
 
 
 if [ ! -f $srcdir/cleaned.gz -o ! -f $srcdir/lexicon.txt ]; then

@@ -20,6 +20,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
+#include "fstext/kaldi-fst-io.h"
 #include "fstext/fstext-utils.h"
 
 int main(int argc, char *argv[]) {
@@ -106,12 +107,8 @@ int main(int argc, char *argv[]) {
       n_done++;
     }
 
-    if (lfst != NULL) {
-      delete lfst;
-    }
-    if (rfst != NULL) {
-      delete rfst;
-    }
+    delete lfst;
+    delete rfst;
 
     KALDI_LOG << "Done " << n_done << " transcriptions";
     return (n_done != 0 ? 0 : 1);    

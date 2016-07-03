@@ -63,10 +63,12 @@ ciphonelist=`cat $lang/phones/context_indep.csl` || exit 1;
 sdata=$data/split$nj;
 splice_opts=`cat $alidir/splice_opts 2>/dev/null` # frame-splicing options.
 cmvn_opts=`cat $alidir/cmvn_opts 2>/dev/null`
+delta_opts=`cat $alidir/delta_opts 2>/dev/null`
 
 mkdir -p $dir/log
 cp $alidir/splice_opts $dir 2>/dev/null # frame-splicing options.
 cp $alidir/cmvn_opts $dir 2>/dev/null # cmn/cmvn option.
+cp $alidir/delta_opts $dir 2>/dev/null
 
 echo $nj >$dir/num_jobs
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
@@ -78,7 +80,7 @@ echo "$0: feature type is $feat_type"
 
 ## Set up speaker-independent features.
 case $feat_type in
-  delta) sifeats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
+  delta) sifeats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas $delta_opts ark:- ark:- |";;
   lda) sifeats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
     cp $alidir/final.mat $dir    
     ;;
@@ -88,7 +90,7 @@ esac
 ## Get initial fMLLR transforms (possibly from alignment dir)
 if [ -f $alidir/trans.1 ]; then
   echo "$0: Using transforms from $alidir"
-  feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$alidir/trans.JOB ark:- ark:- |"
+  feats="$sifeats transform-feats ark,s,cs:$alidir/trans.JOB ark:- ark:- |"
   cur_trans_dir=$alidir
 else 
   if [ $stage -le -5 ]; then
@@ -98,9 +100,9 @@ else
     $cmd JOB=1:$nj $dir/log/fmllr.0.JOB.log \
       ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:-  \| \
       weight-silence-post $silence_weight $silphonelist $alidir/final.mdl ark:- ark:- \| \
-	  gmm-post-to-gpost $alidir/final.mdl "$sifeats" ark:- ark:- \| \
-	  gmm-basis-fmllr-accs-gpost $spk2utt_opt \
-	  $alidir/final.mdl "$sifeats" ark,s,cs:- $dir/basis.acc.JOB || exit 1; 
+      gmm-post-to-gpost $alidir/final.mdl "$sifeats" ark:- ark:- \| \
+      gmm-basis-fmllr-accs-gpost \
+      $alidir/final.mdl "$sifeats" ark,s,cs:- $dir/basis.acc.JOB || exit 1;
 
     # Compute the basis matrices.
     $cmd $dir/log/basis_training.log \
@@ -109,13 +111,13 @@ else
       ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:-  \| \
       weight-silence-post $silence_weight $silphonelist $alidir/final.mdl ark:- ark:- \| \
       gmm-post-to-gpost $alidir/final.mdl "$sifeats" ark:- ark:- \| \
-	  gmm-est-basis-fmllr-gpost --fmllr-min-count=22  --num-iters=10 \
+      gmm-est-basis-fmllr-gpost --fmllr-min-count=22  --num-iters=10 \
       --size-scale=0.2 --step-size-iters=3 \
       --write-weights=ark:$dir/pre_wgt.JOB \
       $alidir/final.mdl $alidir/fmllr.basis "$sifeats"  ark,s,cs:- \
       ark:$alidir/trans.JOB || exit 1;
 
-    feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$alidir/trans.JOB ark:- ark:- |"
+    feats="$sifeats transform-feats ark,s,cs:$alidir/trans.JOB ark:- ark:- |"
     cur_trans_dir=$alidir
   fi
 fi
@@ -198,7 +200,7 @@ while [ $x -lt $num_iters ]; do
           ali-to-post "ark:gunzip -c $dir/ali.JOB.gz|" ark:-  \| \
           weight-silence-post $silence_weight $silphonelist $dir/$x.mdl ark:- ark:- \| \
 	  gmm-post-to-gpost $dir/$x.mdl "$feats" ark:- ark:- \| \
-	  gmm-basis-fmllr-accs-gpost $spk2utt_opt \
+	  gmm-basis-fmllr-accs-gpost \
 	  $dir/$x.mdl "$sifeats" ark,s,cs:- $dir/basis.acc.JOB || exit 1; 
 
       # Compute the basis matrices.
@@ -216,7 +218,7 @@ while [ $x -lt $num_iters ]; do
           ark:$dir/trans.JOB || exit 1;
 
     fi
-    feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/trans.JOB ark:- ark:- |"
+    feats="$sifeats transform-feats ark:$dir/trans.JOB ark:- ark:- |"
     cur_trans_dir=$dir
   fi
   

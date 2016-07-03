@@ -1,4 +1,4 @@
-// gmmbin/gmm-latgen-faster.cc
+// gmmbin/gmm-latgen-faster-regtree-fmllr.cc
 
 // Copyright 2009-2012  Microsoft Corporation
 //           2012-2013  Johns Hopkins University (author: Daniel Povey)
@@ -208,7 +208,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Overall log-likelihood per frame is " << (tot_like/frame_count) << " over "
               << frame_count << " frames.";
 
-    if (word_syms) delete word_syms;
+    delete word_syms;
     if (num_done != 0) return 0;
     else return 1;
   } catch(const std::exception &e) {

@@ -13,6 +13,7 @@ beam=7  # speed-up, but may affect MBR confidences.
 word_ins_penalty=0.0,0.5,1.0
 min_lmwt=10
 max_lmwt=20
+iter=final
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
@@ -32,7 +33,7 @@ data=$1
 lang=$2 # Note: may be graph directory not lang directory, but has the necessary stuff copied.
 dir=$3
 
-model=$dir/../final.mdl # assume model one level up from decoding dir.
+model=$dir/../$iter.mdl # assume model one level up from decoding dir.
 
 hubscr=$KALDI_ROOT/tools/sctk/bin/hubscr.pl 
 [ ! -f $hubscr ] && echo "Cannot find scoring program at $hubscr" && exit 1;
@@ -48,6 +49,15 @@ nj=$(cat $dir/num_jobs)
 
 mkdir -p $dir/scoring/log
 
+if [ -f $dir/../frame_shift ]; then
+  frame_shift_opt="--frame-shift=$(cat $dir/../frame_shift)"
+  echo "$0: $dir/../frame_shift exists, using $frame_shift_opt"
+elif [ -f $dir/../frame_subsampling_factor ]; then
+  factor=$(cat $dir/../frame_subsampling_factor) || exit 1
+  frame_shift_opt="--frame-shift=0.0$factor"
+  echo "$0: $dir/../frame_subsampling_factor exists, using $frame_shift_opt"
+fi
+
 if [ $stage -le 0 ]; then
   for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
     $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.${wip}.log \
@@ -58,7 +68,7 @@ if [ $stage -le 0 ]; then
       lattice-prune --beam=$beam ark:- ark:- \| \
       lattice-align-words-lexicon --output-error-lats=true --max-expand=10.0 --test=false \
        $lang/phones/align_lexicon.int $model ark:- ark:- \| \
-      lattice-to-ctm-conf --decode-mbr=$decode_mbr ark:- - \| \
+      lattice-to-ctm-conf --decode-mbr=$decode_mbr $frame_shift_opt ark:- - \| \
       utils/int2sym.pl -f 5 $lang/words.txt \| \
       utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \| \
       sort -k1,1 -k2,2 -k3,3nb '>' $dir/score_LMWT_${wip}/ctm || exit 1;
@@ -68,8 +78,10 @@ fi
 if [ $stage -le 1 ]; then
   # Remove some stuff we don't want to score, from the ctm.
   for x in $dir/score_*/ctm; do
-    cat $x | grep -v -E '"\[BREATH|NOISE|COUGH|SMACK|UM|UH\]"' | \
-      grep -v -E '"!SIL|\<UNK\>"' > ${x}.filt || exit 1;
+    # `-i` is not needed in the following. It is added for robustness in ase this code is copy-pasted
+    # into another script that, e.g., uses <UNK> instead of <unk>
+    cat $x | grep -v -w -i -E '\[BREATH|NOISE|COUGH|SMACK|UM|UH\]' | \
+      grep -v -w -i -E '!SIL|<unk>' > ${x}.filt || exit 1;
   done
 fi
 

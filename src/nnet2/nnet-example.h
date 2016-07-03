@@ -1,7 +1,7 @@
 // nnet2/nnet-example.h
 
 // Copyright 2012  Johns Hopkins University (author: Daniel Povey)
-// Copyright 2014  Vimal Manohar
+//           2014  Vimal Manohar
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -29,7 +29,7 @@
 namespace kaldi {
 namespace nnet2 {
 
-/// NnetExample is the input data and corresponding labels (or labels) for one
+/// NnetExample is the input data and corresponding label (or labels) for one
 /// or more frames of input, used for standard cross-entropy training of neural
 /// nets (and possibly for other objective functions).  In the normal case there
 /// will be just one frame, and one label, with a weight of 1.0.

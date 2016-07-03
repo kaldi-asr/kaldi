@@ -14,6 +14,7 @@ grep '^\*' .gitignore > patterns
 for dir in $(cat dirs); do
   cp patterns cur_ignore
   grep -v '#' .gitignore | grep ^/$dir | sed s:^/$dir:: | sed s:/$:: >> cur_ignore
+  echo .depend.mk >> cur_ignore
   svn propset -F cur_ignore svn:ignore $dir
 done
 

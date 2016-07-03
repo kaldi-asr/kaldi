@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
         "Do forward-backward and collect posteriors over lattices.\n"
         "Usage: lattice-to-post [options] lats-rspecifier posts-wspecifier [loglikes-wspecifier]\n"
         " e.g.: lattice-to-post --acoustic-scale=0.1 ark:1.lats ark:1.post\n"
-        "See also: lattice-to-ctm-conf, post-to-pdf-post\n";
+        "See also: lattice-to-ctm-conf, post-to-pdf-post, lattice-arc-post\n";
 
     kaldi::BaseFloat acoustic_scale = 1.0, lm_scale = 1.0;
     kaldi::ParseOptions po(usage);
@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
       lattice_reader.FreeCurrent();
       if (acoustic_scale != 1.0 || lm_scale != 1.0)
         fst::ScaleLattice(fst::LatticeScale(lm_scale, acoustic_scale), &lat);
-      
+
       kaldi::uint64 props = lat.Properties(fst::kFstProperties, false);
       if (!(props & fst::kTopSorted)) {
         if (fst::TopSort(&lat) == false)
@@ -95,8 +95,8 @@ int main(int argc, char *argv[]) {
                     << " arcs. Average log-likelihood = " << (lat_like/lat_time)
                     << " over " << lat_time << " frames.  Average acoustic log-like"
                     << " per frame is " << (lat_ac_like/lat_time);
-      
-      if (loglikes_writer.IsOpen()) 
+
+      if (loglikes_writer.IsOpen())
         loglikes_writer.Write(key, lat_like);
 
       posterior_writer.Write(key, post);

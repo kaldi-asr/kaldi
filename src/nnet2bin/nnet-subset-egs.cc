@@ -61,18 +61,23 @@ int main(int argc, char *argv[]) {
         examples_wspecifier = po.GetArg(2);
 
     std::vector<std::pair<std::string, NnetExample> > egs;
+    egs.reserve(n);    
     
     SequentialNnetExampleReader example_reader(examples_rspecifier);
 
     int64 num_read = 0;
     for (; !example_reader.Done(); example_reader.Next()) {
       num_read++;
-      if (num_read <= n)
-        egs.push_back(std::make_pair(example_reader.Key(), example_reader.Value()));
-      else {
+      if (num_read <= n) {
+        egs.resize(egs.size() + 1);
+        egs.back().first = example_reader.Key();
+        egs.back().second = example_reader.Value();
+      } else {
         BaseFloat keep_prob = n / static_cast<BaseFloat>(num_read);
         if (WithProb(keep_prob)) { // With probability "keep_prob"
-          egs[RandInt(0, n-1)] = std::make_pair(example_reader.Key(), example_reader.Value());
+          int32 index = RandInt(0, n-1);
+          egs[index].first = example_reader.Key();
+          egs[index].second = example_reader.Value();
         }
       }
     }

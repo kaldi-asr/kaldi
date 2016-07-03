@@ -1,4 +1,4 @@
-// lat/determinize-lattice-pruned-inl.h
+// lat/determinize-lattice-pruned.cc
 
 // Copyright 2009-2012  Microsoft Corporation
 //           2012-2013  Johns Hopkins University (Author: Daniel Povey)
@@ -18,17 +18,6 @@
 // MERCHANTABLITY OR NON-INFRINGEMENT.
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
-
-#ifdef _MSC_VER
-#include <unordered_map>
-using std::unordered_map;
-#elif __cplusplus > 199711L || defined(__GXX_EXPERIMENTAL_CXX0X__)
-#include <unordered_map>
-using std::unordered_map;
-#else
-#include <tr1/unordered_map>
-using std::tr1::unordered_map;
-#endif
 
 #include <vector>
 #include <climits>
@@ -412,6 +401,10 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
     bool operator > (const Element &other) const {
       return state > other.state;
     }
+    // This operator is only intended to support sorting in EpsilonClosure()
+    bool operator < (const Element &other) const {
+      return state < other.state;
+    }
   };
 
   // Arcs in the format we temporarily create in this class (a representation, essentially of
@@ -538,6 +531,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
                    << forward_cost << ", "
                    << state.forward_cost;
       }
+      return state_id;
     }
     OutputStateId state_id = static_cast<OutputStateId>(output_states_.size());
     OutputState *new_state = new OutputState(subset, forward_cost);
@@ -641,29 +635,18 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
     // be so at output].  This function follows input-epsilons, and augments the
     // subset accordingly.
     
-    unordered_map<InputStateId, Element> cur_subset;
-    typedef typename unordered_map<InputStateId, Element>::iterator MapIter;    
-
-    {
-      MapIter iter = cur_subset.end();
-      for (size_t i = 0; i < subset->size(); i++) {
-        std::pair<const InputStateId, Element> pr((*subset)[i].state, (*subset)[i]);
-#if __GNUC__ == 4 && __GNUC_MINOR__ == 0
-        iter = cur_subset.insert(iter, pr).first;
-#else
-        iter = cur_subset.insert(iter, pr);
-#endif
-        // By providing iterator where we inserted last one, we make insertion more efficient since
-        // input subset was already in sorted order.
-      }
-    }
-    // find whether input fst is known to be sorted on input label. 
-    bool sorted = ((ifst_->Properties(kILabelSorted, false) & kILabelSorted) != 0);
-
     std::priority_queue<Element, vector<Element>, greater<Element> > queue;
-    for (typename vector<Element>::const_iterator iter = subset->begin();
-         iter != subset->end();
-         ++iter) queue.push(*iter);
+    unordered_map<InputStateId, Element> cur_subset;
+    typedef typename unordered_map<InputStateId, Element>::iterator MapIter;
+    typedef typename vector<Element>::const_iterator VecIter;
+
+    for (VecIter iter = subset->begin(); iter != subset->end(); ++iter) {
+      queue.push(*iter);
+      cur_subset[iter->state] = *iter;
+    }
+
+    // find whether input fst is known to be sorted on input label.
+    bool sorted = ((ifst_->Properties(kILabelSorted, false) & kILabelSorted) != 0);
     bool replaced_elems = false; // relates to an optimization, see below.
     int counter = 0; // stops infinite loops here for non-lattice-determinizable input
     // (e.g. input with negative-cost epsilon loops); useful in testing.
@@ -697,8 +680,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
           // next_elem.string is not set up yet... create it only
           // when we know we need it (this is an optimization) 
           
-          typename unordered_map<InputStateId, Element>::iterator
-              iter = cur_subset.find(next_elem.state);
+          MapIter iter = cur_subset.find(next_elem.state);
           if (iter == cur_subset.end()) {
             // was no such StateId: insert and add to queue.
             next_elem.string = (arc.olabel == 0 ? elem.string :
@@ -732,12 +714,13 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
       }
     }
 
-    {  // copy cur_subset to subset.
-      // sorted order is automatic.
+    { // copy cur_subset to subset.
       subset->clear();
       subset->reserve(cur_subset.size());
       MapIter iter = cur_subset.begin(), end = cur_subset.end();
       for (; iter != end; ++iter) subset->push_back(iter->second);
+      // sort by state ID, because the subset hash function is order-dependent(see SubsetKey)
+      std::sort(subset->begin(), subset->end());
     }
   }
 
@@ -1386,6 +1369,11 @@ void DeterminizeLatticeDeletePhones(
     }
   }
 }
+// instantiate for type LatticeWeight
+template
+void DeterminizeLatticeDeletePhones(
+    ArcTpl<kaldi::LatticeWeight>::Label first_phone_label,
+    MutableFst<ArcTpl<kaldi::LatticeWeight> > *fst);    
 
 /** This function does a first pass determinization with phone symbols inserted
     at phone boundary. It uses a transition model to work out the transition-id
@@ -1552,5 +1540,3 @@ bool DeterminizeLatticePhonePruned<kaldi::LatticeWeight, kaldi::int32>(
     DeterminizeLatticePhonePrunedOptions opts);
 
 }
-
-

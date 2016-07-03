@@ -22,12 +22,32 @@ lexicon=$1
 #Get all unique words, remove punctuation.
 if [ $stage -le 0 ]; then
   cat $datadir/text | sed 's:[0-9][0-9]\S*::g' | sed 's:[\.,\?]::g' | tr " " "\n" | sort | uniq | awk '{if (NF > 0){ print; }}' > $tmpdir/uniquewords
-  if [ -f "/export/a04/gkumar/corpora/gigaword-spanish/bin/gigaword-lexicon.json" ]; then
-    # Merge with gigaword corpus
-    $local/merge_lexicons.py
-    mv $tmpdir/uniquewords $tmpdir/uniquewords.small
-    mv $tmpdir/uniquewords64k $tmpdir/uniquewords
+  if [ ! -f "${tmpdir}/es_wordlist.json" ]; then
+    echo "Could not find the large collection of Spanish words es_wordlist.json"
+    echo "Trying to download it via wget"
+
+    if ! which wget >&/dev/null; then
+      echo "This script requires you to first install wget"
+      exit 1;
+    fi
+
+    cwd=`pwd`
+    cd $tmpdir
+    wget -T 10 -t 3 -c http://www.openslr.org/resources/21/es_wordlist.json.tgz
+
+    if [ ! -e ${tmpdir}/es_wordlist.json.tgz ]; then
+      echo "Download of the large Spanish word list failed"
+      exit 1;
+    fi
+
+    tar -xovzf es_wordlist.json.tgz || exit 1;
+    cd $cwd
   fi
+
+  # Merge with gigaword corpus
+  $local/merge_lexicons.py ${tmpdir} ${lexicon}
+  mv $tmpdir/uniquewords $tmpdir/uniquewords.small
+  mv $tmpdir/uniquewords64k $tmpdir/uniquewords
 fi
 
 #Then get the list of phones form basic_rules in the lexicon folder
@@ -50,6 +70,7 @@ if [ $stage -le 2 ]; then
   # representation
   cat $tmpdir/uniquewords | $local/spron.pl $lexicon/callhome_spanish_lexicon_970908/preferences $lexicon/callhome_spanish_lexicon_970908/basic_rules \
     | cut -f1 | sed -r 's:#\S+\s\S+\s\S+\s\S+\s(\S+):\1:g' \
+    | awk -F '[/][/]' '{print $1}' \
     > $tmpdir/lexicon_raw
 fi
 

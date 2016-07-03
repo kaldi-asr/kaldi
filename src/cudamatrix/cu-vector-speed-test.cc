@@ -39,7 +39,7 @@ std::string NameOf() {
 }
 
 template<typename Real> void TestCuVectorSoftmax(int32 dim) {
-  BaseFloat time_in_secs = 0.05;
+  BaseFloat time_in_secs = 0.02;
   CuVector<Real> M(dim);
   M.SetRandn();
 
@@ -57,7 +57,7 @@ template<typename Real> void TestCuVectorSoftmax(int32 dim) {
 
 
 template<typename Real> void TestCuVectorSum(int32 dim) {
-  BaseFloat time_in_secs = 0.05;
+  BaseFloat time_in_secs = 0.02;
   CuVector<Real> M(dim);
   M.SetRandn();
 
@@ -73,9 +73,57 @@ template<typename Real> void TestCuVectorSum(int32 dim) {
             << dim << ", speed was " << gflops << " gigaflops.";
 }
 
+#if HAVE_CUDA == 1
+// This test choose the min length of vectors to be reduced on GPU.
+// Smaller vector will be copied to RAM and reduced on CPU.
+template<typename Real> void TestCuVectorSumChooseMinLength() {
+  BaseFloat time_in_secs = 0.02;
+  for (int dim = 100; dim < 1000000; dim = dim * 1.5 + 1 ) {
+    CuVector<Real> M(dim);
+    BaseFloat gflops, gflops_cpu;
+    Real result = 0, result_cpu = 0;
+    M.SetRandn();
+    {
+      Timer tim;
+      int32 iter = 0;
+      for (; tim.Elapsed() < time_in_secs; iter++) {
+        // Force GPU reduction
+        int dimBlock = CU1DBLOCK;
+        int dimGrid = n_blocks(M.Dim(), dimBlock);
+        if (dimGrid > 256) {
+          dimGrid = 256;
+        }
+        CuVector<Real> ans(dimGrid, kUndefined);
+        cuda_vec_sum(dimGrid, dimBlock, M.Data(), ans.Data(), M.Dim(), 1);
+        CU_SAFE_CALL(cudaGetLastError());
+        Vector<Real> ans_cpu(ans);
+        result = ans_cpu.Sum();
+      }
+
+      BaseFloat fdim = dim;
+      gflops = (fdim * iter) / (tim.Elapsed() * 1.0e+09);
+    }
+    {
+      Timer tim;
+      int32 iter = 0;
+      for (; tim.Elapsed() < time_in_secs; iter++) {
+        Vector<Real> M_cpu(M);
+        result_cpu = M_cpu.Sum();
+      }
+
+      BaseFloat fdim = dim;
+      gflops_cpu = (fdim * iter) / (tim.Elapsed() * 1.0e+09);
+    }
+    KALDI_LOG << "CuVector::Sum" << NameOf<Real>() << ", dim: " << dim
+              << ", speed: GPU " << (gflops > gflops_cpu ? ">" : "<")
+              << " CPU, GPU speed: " << gflops << " Gflops. CPU speed: "
+              << gflops_cpu << " Gflops. Result diff: " << (result - result_cpu);
+  }
+}
+#endif
 
 template<typename Real> void TestCuVectorVecVecOne(int32 dim) {
-  BaseFloat time_in_secs = 0.05;
+  BaseFloat time_in_secs = 0.02;
   CuVector<Real> M(dim);
   M.SetRandn();
 
@@ -99,7 +147,7 @@ template<typename Real> void TestCuVectorVecVecOne(int32 dim) {
 template<typename Real> void TestCuVectorAddDiagMatMat(int32 dim,
                                                        MatrixTransposeType transN,
                                                        MatrixTransposeType transO) {
-  BaseFloat time_in_secs = 0.05;
+  BaseFloat time_in_secs = 0.02;
   CuVector<Real> v(dim);
   v.SetRandn();
   CuMatrix<Real> N(dim, dim), O(dim, dim);
@@ -108,7 +156,7 @@ template<typename Real> void TestCuVectorAddDiagMatMat(int32 dim,
 
   Timer tim;
   int32 iter = 0;
-  
+
   for (;tim.Elapsed() < time_in_secs; iter++) {
     v.AddDiagMatMat(1.0, N, transN, O, transO, 1.0);
   }
@@ -123,7 +171,7 @@ template<typename Real> void TestCuVectorAddDiagMatMat(int32 dim,
 
 
 template<typename Real> void TestCuVectorAddDiagMat2(int32 dim, MatrixTransposeType trans) {
-  BaseFloat time_in_secs = 0.05;
+  BaseFloat time_in_secs = 0.02;
   CuVector<Real> v(dim);
   v.SetRandn();
   CuMatrix<Real> N(dim, dim);
@@ -131,7 +179,7 @@ template<typename Real> void TestCuVectorAddDiagMat2(int32 dim, MatrixTransposeT
 
   Timer tim;
   int32 iter = 0;
-  
+
   for (;tim.Elapsed() < time_in_secs; iter++) {
     v.AddDiagMat2(1.0, N, trans, 0.0);
   }
@@ -199,6 +247,9 @@ template<typename Real> void CudaVectorSpeedTest() {
   int32 ns = sizes.size();
   for (int32 s = 0; s < ns; s++)
     TestCuVectorSoftmax<Real>(sizes[s]);
+#if HAVE_CUDA == 1
+  TestCuVectorSumChooseMinLength<Real>();
+#endif
   for (int32 s = 0; s < ns; s++)
     TestCuVectorSum<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
@@ -209,7 +260,7 @@ template<typename Real> void CudaVectorSpeedTest() {
     TestCuVectorAddDiagMatMat<Real>(sizes[s], kTrans, kNoTrans);
     TestCuVectorAddDiagMatMat<Real>(sizes[s], kTrans, kTrans);
   }
-  for (int32 s = 0; s < ns; s++) { 
+  for (int32 s = 0; s < ns; s++) {
     TestCuVectorAddDiagMat2<Real>(sizes[s], kNoTrans);
     TestCuVectorAddDiagMat2<Real>(sizes[s], kTrans);
   }
@@ -221,7 +272,7 @@ template<typename Real> void CudaVectorSpeedTest() {
     TestCuVectorAddColSumMat<Real>(sizes[s], kNoTrans);
     TestCuVectorAddColSumMat<Real>(sizes[s], kTrans);
   }
-  
+
 }
 
 

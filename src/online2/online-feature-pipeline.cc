@@ -48,12 +48,12 @@ OnlineFeaturePipelineConfig::OnlineFeaturePipelineConfig(
   }  // else use the defaults.
 
   if (config.fbank_config != "") {
-    ReadConfigFromFile(config.plp_config, &fbank_opts);
+    ReadConfigFromFile(config.fbank_config, &fbank_opts);
     if (feature_type != "fbank")
       KALDI_WARN << "--fbank-config option has no effect "
                  << "since feature type is set to " << feature_type << ".";
   }  // else use the defaults.
-  
+
   add_pitch = config.add_pitch;
   if (config.pitch_config != "") {
     ReadConfigFromFile(config.pitch_config, &pitch_opts);

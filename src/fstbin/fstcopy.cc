@@ -23,8 +23,21 @@
 #include "fst/fstlib.h"
 #include "fstext/table-matcher.h"
 #include "fstext/fstext-utils.h"
+#include "fstext/kaldi-fst-io.h"
 
+/*
+Test:
+the command below should print out something similar to the given
+input.  and if you remove ,t from the output side it should print something
+binary.
+cat <<EOF | fstcopy ark,t:- ark,t:-
+foo
+0 1 9 9
+1 0.0
 
+EOF
+
+*/
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;

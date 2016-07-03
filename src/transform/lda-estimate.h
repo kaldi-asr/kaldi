@@ -68,6 +68,8 @@ class LdaEstimate {
   void ZeroAccumulators();
   /// Scales all accumulators
   void Scale(BaseFloat f);
+  /// Return total count of the data.
+  double TotCount() { return zero_acc_.Sum(); }
 
   /// Accumulates data
   void Accumulate(const VectorBase<BaseFloat> &data, int32 class_id, BaseFloat weight = 1.0);

@@ -23,7 +23,7 @@
 #include "fst/fstlib.h"
 #include "fstext/table-matcher.h"
 #include "fstext/fstext-utils.h"
-
+#include "fstext/kaldi-fst-io.h"
 
 /*
 The following commands represent a basic test of this program.

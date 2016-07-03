@@ -576,6 +576,8 @@ class OnlinePitchFeatureImpl {
   explicit OnlinePitchFeatureImpl(const PitchExtractionOptions &opts);
 
   int32 Dim() const { return 2; }
+  
+  BaseFloat FrameShiftInSeconds() const;
 
   int32 NumFramesReady() const;
 
@@ -771,13 +773,22 @@ int32 OnlinePitchFeatureImpl::NumFramesAvailable(
   // of frames only if the input is not finished.
   if (!input_finished_)
     frame_length += nccf_last_lag_;
-  if (num_downsampled_samples < frame_length) return 0;
-  else
-    if (input_finished_ && !snip_edges) {
-      return (int32)(num_downsampled_samples * 1.0f / frame_shift + 0.5f);
+  if (num_downsampled_samples < frame_length) {
+    return 0;
+  } else {
+    if (!snip_edges) {
+      if (input_finished_) {
+        return static_cast<int32>(num_downsampled_samples * 1.0f /
+                                  frame_shift + 0.5f);
+      } else {
+        return static_cast<int32>((num_downsampled_samples - frame_length / 2) *
+                                   1.0f / frame_shift + 0.5f);
+      }
+    } else {
+      return static_cast<int32>((num_downsampled_samples - frame_length) /
+                                 frame_shift + 1);
     }
-    else
-      return ((num_downsampled_samples - frame_length) / frame_shift) + 1;
+  }
 }
 
 void OnlinePitchFeatureImpl::UpdateRemainder(
@@ -833,19 +844,35 @@ void OnlinePitchFeatureImpl::ExtractFrame(
   int32 offset = static_cast<int32>(sample_index -
                                     downsampled_samples_processed_);
 
+  // Treat edge cases first
+  if (sample_index < 0) {
+    // Part of the frame is before the beginning of the signal. This
+    // should only happen if opts_.snip_edges == false, when we are
+    // processing the first few frames of signal. In this case
+    // we pad with zeros.
+    KALDI_ASSERT(opts_.snip_edges == false);
+    int32 sub_frame_length = sample_index + full_frame_length;
+    int32 sub_frame_index = full_frame_length - sub_frame_length;
+    KALDI_ASSERT(sub_frame_length > 0 && sub_frame_index > 0);
+    window->SetZero();
+    SubVector<BaseFloat> sub_window(*window, sub_frame_index, sub_frame_length);
+    ExtractFrame(downsampled_wave_part, 0, &sub_window);
+    return;
+  }
+
   if (offset + full_frame_length > downsampled_wave_part.Dim()) {
     // Requested frame is past end of the signal.  This should only happen if
     // input_finished_ == true, when we're flushing out the last couple of
     // frames of signal.  In this case we pad with zeros.
     KALDI_ASSERT(input_finished_);
-    int32 new_full_frame_length = downsampled_wave_part.Dim() - offset;
-    KALDI_ASSERT(new_full_frame_length > 0);
+    int32 sub_frame_length = downsampled_wave_part.Dim() - offset;
+    KALDI_ASSERT(sub_frame_length > 0);
     window->SetZero();
-    SubVector<BaseFloat> sub_window(*window, 0, new_full_frame_length);
+    SubVector<BaseFloat> sub_window(*window, 0, sub_frame_length);
     ExtractFrame(downsampled_wave_part, sample_index, &sub_window);
     return;
   }
-  
+
   // "offset" is the offset of the start of the frame, into this
   // signal.
   if (offset >= 0) {
@@ -877,6 +904,10 @@ bool OnlinePitchFeatureImpl::IsLastFrame(int32 frame) const {
   int32 T = NumFramesReady();
   KALDI_ASSERT(frame < T);
   return (input_finished_ && frame + 1 == T);
+}
+
+BaseFloat OnlinePitchFeatureImpl::FrameShiftInSeconds() const {
+  return opts_.frame_shift_ms * 1.0e-03;
 }
 
 int32 OnlinePitchFeatureImpl::NumFramesReady() const {
@@ -1070,7 +1101,17 @@ void OnlinePitchFeatureImpl::AcceptWaveform(
 
   for (int32 frame = start_frame; frame < end_frame; frame++) {
     // start_sample is index into the whole wave, not just this part.
-    int64 start_sample = static_cast<int64>(frame) * frame_shift;
+    int64 start_sample;
+    if (opts_.snip_edges) {
+      // Usual case: offset starts at 0
+      start_sample = static_cast<int64>(frame) * frame_shift;
+    } else { 
+      // When we are not snipping the edges, the first offsets may be
+      // negative. In this case we will pad with zeros, it should not impact
+      // the pitch tracker.
+      start_sample = 
+        static_cast<int64>((frame + 0.5) * frame_shift) - full_frame_length / 2;
+    }
     ExtractFrame(downsampled_wave, start_sample, &window);
     if (opts_.nccf_ballast_online) {
       // use only up to end of current frame to compute root-mean-square value.
@@ -1169,6 +1210,10 @@ OnlinePitchFeature::OnlinePitchFeature(const PitchExtractionOptions &opts)
 
 bool OnlinePitchFeature::IsLastFrame(int32 frame) const {
   return impl_->IsLastFrame(frame);
+}
+
+BaseFloat OnlinePitchFeature::FrameShiftInSeconds() const {
+  return impl_->FrameShiftInSeconds();
 }
 
 void OnlinePitchFeature::GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {
@@ -1334,8 +1379,6 @@ inline void AppendVector(const VectorBase<Real> &src, Vector<Real> *dst) {
   dst->Resize(dst->Dim() + src.Dim(), kCopyData);
   dst->Range(dst->Dim() - src.Dim(), src.Dim()).CopyFromVec(src);
 }
-
-const int32 OnlineProcessPitch::kRawFeatureDim;
 
 /**
    Note on the implementation of OnlineProcessPitch: the

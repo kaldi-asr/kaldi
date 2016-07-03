@@ -5,7 +5,7 @@
 
 
 # This script operates on a data directory, such as in data/train/.
-# See http://kaldi.sourceforge.net/data_prep.html#data_prep_data
+# See http://kaldi-asr.org/doc/data_prep.html#data_prep_data
 # for what these directories contain.
 
 # This script creates a subset of that data, consisting of some specified
@@ -106,6 +106,7 @@ function do_filtering {
   [ -f $srcdir/feats.scp ] && utils/filter_scp.pl $destdir/utt2spk <$srcdir/feats.scp >$destdir/feats.scp
   [ -f $srcdir/vad.scp ] && utils/filter_scp.pl $destdir/utt2spk <$srcdir/vad.scp >$destdir/vad.scp
   [ -f $srcdir/utt2lang ] && utils/filter_scp.pl $destdir/utt2spk <$srcdir/utt2lang >$destdir/utt2lang
+  [ -f $srcdir/utt2dur ] && utils/filter_scp.pl $destdir/utt2spk <$srcdir/utt2dur >$destdir/utt2dur
   [ -f $srcdir/wav.scp ] && utils/filter_scp.pl $destdir/utt2spk <$srcdir/wav.scp >$destdir/wav.scp
   [ -f $srcdir/spk2warp ] && utils/filter_scp.pl $destdir/spk2utt <$srcdir/spk2warp >$destdir/spk2warp
   [ -f $srcdir/utt2warp ] && utils/filter_scp.pl $destdir/utt2spk <$srcdir/utt2warp >$destdir/utt2warp
@@ -159,7 +160,7 @@ elif $perspk; then
   do_filtering; # bash function.
   exit 0;
 else
-  if [ $numutt -gt `cat $srcdir/feats.scp | wc -l` ]; then
+  if [ $numutt -gt `cat $srcdir/utt2spk | wc -l` ]; then
     echo "subset_data_dir.sh: cannot subset to more utterances than you originally had."
     exit 1;
   fi 

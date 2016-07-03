@@ -6,7 +6,7 @@
 set -e
 
 if [ $# -ne 2 ]; then
-  printf "\nUSAGE: %s <training experiment directory> <enhance method>\n\n" `basename $0`
+  printf "\nUSAGE: %s <training experiment directory> <enhancement method>\n\n" `basename $0`
   printf "%s exp/tri3b_tr05_sr_noisy noisy\n\n" `basename $0`
   exit 1;
 fi
@@ -28,7 +28,7 @@ for a in `find $dir/decode_tgpr_5k_dt05_real_$enhan/ | grep "\/wer_" | awk -F'[/
 	cat $dir/decode_tgpr_5k_dt05_{real,simu}_$enhan/$a | grep WER | awk '{err+=$4} {wrd+=$6} END{printf("%.2f\n",err/wrd*100)}'
     else
 	cat $dir/decode_tgpr_5k_dt05_real_$enhan/$a | grep WER | awk '{err+=$4} {wrd+=$6} END{printf("%.2f\n",err/wrd*100)}'
-    fi	
+    fi
 done | sort -n -k 2 | head -n 1 > $dir/log/best_wer_$enhan
 
 lmw=`cut -f 1 -d" " $dir/log/best_wer_$enhan | cut -f 2 -d"_"`

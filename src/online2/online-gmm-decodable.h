@@ -1,4 +1,4 @@
-// online/online-gmm-decodable.h
+// online2/online-gmm-decodable.h
 
 // Copyright 2012  Cisco Systems (author: Matthias Paulik)
 //           2013  Vassil Panayotov

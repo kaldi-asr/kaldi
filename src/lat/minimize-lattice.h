@@ -49,4 +49,4 @@ bool MinimizeCompactLattice(
 
 }  // namespace fst
 
-#endif  // KALDI_LAT_PUSH_LATTICE_H_
+#endif  // KALDI_LAT_MINIMIZE_LATTICE_H_

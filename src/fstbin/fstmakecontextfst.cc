@@ -24,6 +24,8 @@
 #include "fst/fstlib.h"
 #include "fstext/fstext-utils.h"
 #include "fstext/context-fst.h"
+#include "fstext/kaldi-fst-io.h"
+
 
 /* for example of testing setup, see fstmakecontextsymbols.cc */
 

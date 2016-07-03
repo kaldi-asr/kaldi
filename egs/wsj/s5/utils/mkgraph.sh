@@ -7,24 +7,26 @@
 # all the language-model, pronunciation dictionary (lexicon), context-dependency,
 # and HMM structure in our model.  The output is a Finite State Transducer
 # that has word-ids on the output, and pdf-ids on the input (these are indexes
-# that resolve to Gaussian Mixture Models).  
+# that resolve to Gaussian Mixture Models).
 # See
-#  http://kaldi.sourceforge.net/graph_recipe_test.html
+#  http://kaldi-asr.org/doc/graph_recipe_test.html
 # (this is compiled from this repository using Doxygen,
 # the source for this part is in src/doc/graph_recipe_test.dox)
 
+set -o pipefail
 
-N=3
-P=1
 tscale=1.0
 loopscale=0.1
 
 reverse=false
+remove_oov=false
 
-for x in `seq 5`; do 
-  [ "$1" == "--mono" ] && N=1 && P=0 && shift;
-  [ "$1" == "--quinphone" ] && N=5 && P=2 && shift;
+for x in `seq 6`; do
+  [ "$1" == "--mono" ] && context=mono && shift;
+  [ "$1" == "--left-biphone" ] && context=lbiphone && shift;
+  [ "$1" == "--quinphone" ] && context=quinphone && shift;
   [ "$1" == "--reverse" ] && reverse=true && shift;
+  [ "$1" == "--remove-oov" ] && remove_oov=true && shift;
   [ "$1" == "--transition-scale" ] && tscale=$2 && shift 2;
   [ "$1" == "--self-loop-scale" ] && loopscale=$2 && shift 2;
 done
@@ -56,13 +58,23 @@ for f in $required; do
   [ ! -f $f ] && echo "mkgraph.sh: expected $f to exist" && exit 1;
 done
 
+N=$(tree-info $tree | grep "context-width" | cut -d' ' -f2) || { echo "Error when getting context-width"; exit 1; }
+P=$(tree-info $tree | grep "central-position" | cut -d' ' -f2) || { echo "Error when getting central-position"; exit 1; }
+if [[ $context == mono && ($N != 1 || $P != 0) || \
+      $context == lbiphone && ($N != 2 || $P != 1) || \
+      $context == quinphone && ($N != 5 || $P != 2) ]]; then
+  echo "mkgraph.sh: mismatch between the specified context (--$context) and the one in the tree: N=$N, P=$P"
+  exit 1
+fi
+
 mkdir -p $lang/tmp
-# Note: [[ ]] is like [ ] but enables certain extra constructs, e.g. || in 
+# Note: [[ ]] is like [ ] but enables certain extra constructs, e.g. || in
 # place of -o
 if [[ ! -s $lang/tmp/LG.fst || $lang/tmp/LG.fst -ot $lang/G.fst || \
       $lang/tmp/LG.fst -ot $lang/L_disambig.fst ]]; then
   fsttablecompose $lang/L_disambig.fst $lang/G.fst | fstdeterminizestar --use-log=true | \
-    fstminimizeencoded | fstarcsort --sort_type=ilabel > $lang/tmp/LG.fst || exit 1;
+    fstminimizeencoded | fstpushspecial | \
+    fstarcsort --sort_type=ilabel > $lang/tmp/LG.fst || exit 1;
   fstisstochastic $lang/tmp/LG.fst || echo "[info]: LG not stochastic."
 fi
 
@@ -94,7 +106,12 @@ fi
 
 if [[ ! -s $dir/HCLGa.fst || $dir/HCLGa.fst -ot $dir/Ha.fst || \
       $dir/HCLGa.fst -ot $clg ]]; then
-  fsttablecompose $dir/Ha.fst $clg | fstdeterminizestar --use-log=true \
+  if $remove_oov; then
+    [ ! -f $lang/oov.int ] && \
+      echo "$0: --remove-oov option: no file $lang/oov.int" && exit 1;
+    clg="fstrmsymbols --remove-arcs=true --apply-to-output=true $lang/oov.int $clg|"
+  fi
+  fsttablecompose $dir/Ha.fst "$clg" | fstdeterminizestar --use-log=true \
     | fstrmsymbols $dir/disambig_tid.int | fstrmepslocal | \
      fstminimizeencoded > $dir/HCLGa.fst || exit 1;
   fstisstochastic $dir/HCLGa.fst || echo "HCLGa is not stochastic"
@@ -105,9 +122,16 @@ if [[ ! -s $dir/HCLG.fst || $dir/HCLG.fst -ot $dir/HCLGa.fst ]]; then
     $model < $dir/HCLGa.fst > $dir/HCLG.fst || exit 1;
 
   if [ $tscale == 1.0 -a $loopscale == 1.0 ]; then
-    # No point doing this test if transition-scale not 1, as it is bound to fail. 
+    # No point doing this test if transition-scale not 1, as it is bound to fail.
     fstisstochastic $dir/HCLG.fst || echo "[info]: final HCLG is not stochastic."
   fi
+fi
+
+# note: the empty FST has 66 bytes.  this check is for whether the final FST
+# is the empty file or is the empty FST.
+if ! [ $(head -c 67 $dir/HCLG.fst | wc -c) -eq 67 ]; then
+  echo "$0: it looks like the result in $dir/HCLG.fst is empty"
+  exit 1
 fi
 
 # keep a copy of the lexicon and a list of silence phones with HCLG...
@@ -118,6 +142,7 @@ cp $lang/words.txt $dir/ || exit 1;
 mkdir -p $dir/phones
 cp $lang/phones/word_boundary.* $dir/phones/ 2>/dev/null # might be needed for ctm scoring,
 cp $lang/phones/align_lexicon.* $dir/phones/ 2>/dev/null # might be needed for ctm scoring,
+cp $lang/phones/optional_silence.* $dir/phones/ 2>/dev/null # might be needed for analyzing alignments.
   # but ignore the error if it's not there.
 
 cp $lang/phones/disambig.{txt,int} $dir/phones/ 2> /dev/null

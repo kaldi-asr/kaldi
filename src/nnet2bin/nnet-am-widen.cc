@@ -19,7 +19,6 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "hmm/transition-model.h"
 #include "nnet2/am-nnet.h"
 #include "nnet2/widen-nnet.h"
 #include "hmm/transition-model.h"

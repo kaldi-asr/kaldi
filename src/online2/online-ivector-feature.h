@@ -266,6 +266,7 @@ class OnlineIvectorFeature: public OnlineFeatureInterface {
   virtual int32 Dim() const;
   virtual bool IsLastFrame(int32 frame) const;
   virtual int32 NumFramesReady() const;
+  virtual BaseFloat FrameShiftInSeconds() const;
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
 
   /// Set the adaptation state to a particular value, e.g. reflecting previous
@@ -510,5 +511,5 @@ class OnlineSilenceWeighting {
 /// @} End of "addtogroup onlinefeat"
 }  // namespace kaldi
 
-#endif  // KALDI_ONLINE2_ONLINE_NNET2_FEATURE_PIPELINE_H_
+#endif  // KALDI_ONLINE2_ONLINE_IVECTOR_FEATURE_H_
 

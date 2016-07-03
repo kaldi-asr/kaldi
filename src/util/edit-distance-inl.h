@@ -19,8 +19,10 @@
 
 #ifndef KALDI_UTIL_EDIT_DISTANCE_INL_H_
 #define KALDI_UTIL_EDIT_DISTANCE_INL_H_
+#include <algorithm>
+#include <utility>
+#include <vector>
 #include "util/stl-utils.h"
-
 
 namespace kaldi {
 
@@ -64,7 +66,7 @@ int32 LevenshteinEditDistance(const std::vector<T> &a,
   return e.back();
 }
 //
-struct error_stats{
+struct error_stats {
   int32 ins_num;
   int32 del_num;
   int32 sub_num;
@@ -89,38 +91,38 @@ int32 LevenshteinEditDistance(const std::vector<T> &ref,
     e[i].total_cost = i;
   }
 
- // for other alignments
- for (size_t hyp_index = 1; hyp_index <= hyp.size(); hyp_index ++) {
-   cur_e[0] = e[0];
-   cur_e[0].ins_num ++;
-   cur_e[0].total_cost ++;
-   for (size_t ref_index = 1; ref_index <= ref.size(); ref_index ++) {
-
+  // for other alignments
+  for (size_t hyp_index = 1; hyp_index <= hyp.size(); hyp_index ++) {
+    cur_e[0] = e[0];
+    cur_e[0].ins_num++;
+    cur_e[0].total_cost++;
+    for (size_t ref_index = 1; ref_index <= ref.size(); ref_index ++) {
      int32 ins_err = e[ref_index].total_cost + 1;
      int32 del_err = cur_e[ref_index-1].total_cost + 1;
      int32 sub_err = e[ref_index-1].total_cost;
       if (hyp[hyp_index-1] != ref[ref_index-1])
-       sub_err ++;
+       sub_err++;
 
      if (sub_err < ins_err && sub_err < del_err) {
         cur_e[ref_index] =e[ref_index-1];
         if (hyp[hyp_index-1] != ref[ref_index-1])
-          cur_e[ref_index].sub_num ++;   // substitution error should be increased
+          cur_e[ref_index].sub_num++;  // substitution error should be increased
         cur_e[ref_index].total_cost = sub_err;
-     }else if (del_err < ins_err ) {
+     } else if (del_err < ins_err) {
         cur_e[ref_index] = cur_e[ref_index-1];
         cur_e[ref_index].total_cost = del_err;
-        cur_e[ref_index].del_num ++;    // deletion number is increased.
-     }else{
+        cur_e[ref_index].del_num++;    // deletion number is increased.
+     } else {
         cur_e[ref_index] = e[ref_index];
         cur_e[ref_index].total_cost = ins_err;
-        cur_e[ref_index].ins_num ++;    // insertion number is increased.
+        cur_e[ref_index].ins_num++;    // insertion number is increased.
      }
-   }
-   e = cur_e;  // alternate for the next recursion.
- }
+  }
+  e = cur_e;  // alternate for the next recursion.
+  }
   size_t ref_index = e.size()-1;
-  *ins = e[ref_index].ins_num, *del = e[ref_index].del_num, *sub = e[ref_index].sub_num;
+  *ins = e[ref_index].ins_num, *del =
+    e[ref_index].del_num, *sub = e[ref_index].sub_num;
   return e[ref_index].total_cost;
 }
 
@@ -153,22 +155,31 @@ int32 LevenshteinAlignment(const std::vector<T> &a,
     }
   }
   // get time-reversed output first: trace back.
-  m = M; n = N;
+  m = M;
+  n = N;
   while (m != 0 || n != 0) {
     size_t last_m, last_n;
-    if (m == 0) { last_m = m; last_n = n-1; }
-    else if (n == 0) { last_m = m-1; last_n = n; }
-    else {
+    if (m == 0) {
+      last_m = m;
+      last_n = n-1;
+    } else if (n == 0) {
+      last_m = m-1;
+      last_n = n;
+    } else {
       int32 sub_or_ok = e[m-1][n-1] + (a[m-1] == b[n-1] ? 0 : 1);
       int32 del = e[m-1][n] + 1;  // assumes a == ref, b == hyp.
       int32 ins = e[m][n-1] + 1;
-      if (sub_or_ok <= std::min(del, ins)) {  // choose sub_or_ok if all else equal.
-        last_m = m-1; last_n = n-1;
+      // choose sub_or_ok if all else equal.
+      if (sub_or_ok <= std::min(del, ins)) {
+        last_m = m-1;
+        last_n = n-1;
       } else {
         if (del <= ins) {  // choose del over ins if equal.
-          last_m = m-1; last_n = n;
+          last_m = m-1;
+          last_n = n;
         } else {
-          last_m = m; last_n = n-1;
+          last_m = m;
+          last_n = n-1;
         }
       }
     }
@@ -186,4 +197,4 @@ int32 LevenshteinAlignment(const std::vector<T> &a,
 
 }  // end namespace kaldi
 
-#endif // KALDI_UTIL_EDIT_DISTANCE_INL_H_
+#endif  // KALDI_UTIL_EDIT_DISTANCE_INL_H_

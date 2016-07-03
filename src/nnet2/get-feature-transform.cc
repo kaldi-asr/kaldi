@@ -46,7 +46,9 @@ void FeatureTransformEstimate::EstimateInternal(
     TpMatrix<BaseFloat> *C) {
   
   int32 target_dim = opts.dim, dim = total_covar.NumRows();
-  KALDI_ASSERT(target_dim > 0);
+  // Interpret zero or negative target_dim as the full dim
+  if (target_dim <= 0)
+    target_dim = dim;
   // between-class covar is of most rank C-1
   KALDI_ASSERT(target_dim <= dim);
   

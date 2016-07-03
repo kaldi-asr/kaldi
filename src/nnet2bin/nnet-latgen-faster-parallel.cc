@@ -23,7 +23,7 @@
 #include "util/common-utils.h"
 #include "tree/context-dep.h"
 #include "hmm/transition-model.h"
-#include "fstext/fstext-lib.h"
+#include "fstext/kaldi-fst-io.h"
 #include "decoder/decoder-wrappers.h"
 #include "nnet2/decodable-am-nnet.h"
 #include "base/timer.h"
@@ -184,7 +184,7 @@ int main(int argc, char *argv[]) {
       }
     }
     sequencer.Wait(); // Waits for all tasks to be done.
-    if (decode_fst != NULL) delete decode_fst;   
+    delete decode_fst;   
     
     double elapsed = timer.Elapsed();
     KALDI_LOG << "Time taken "<< elapsed
@@ -195,7 +195,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Overall log-likelihood per frame is " << (tot_like/frame_count) << " over "
               << frame_count<<" frames.";
 
-    if (word_syms) delete word_syms;
+    delete word_syms;
     if (num_done != 0) return 0;
     else return 1;
   } catch(const std::exception &e) {

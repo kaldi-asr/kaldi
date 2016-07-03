@@ -92,7 +92,7 @@ class TableMatcherImpl : public MatcherBase<typename F::Arc> {
       if (tables_[i] != NULL && tables_[i] != empty)
         delete tables_[i];
     }
-    if (aiter_) delete aiter_;
+    delete aiter_;
     delete fst_;
   }
 
@@ -355,14 +355,13 @@ struct TableComposeCache {
   TableMatcher<F> *matcher;
   TableComposeOptions opts;
   TableComposeCache(const TableComposeOptions &opts = TableComposeOptions()): matcher (NULL), opts(opts) {}
-  ~TableComposeCache() { if (matcher) delete(matcher); }
+  ~TableComposeCache() { delete(matcher); }
 };
 
 template<class Arc>
 void TableCompose(const Fst<Arc> &ifst1, const Fst<Arc> &ifst2,
                   MutableFst<Arc> *ofst,
                   TableComposeCache<Fst<Arc> > *cache) {
-  typedef Matcher< Fst<Arc> > M;
   typedef Fst<Arc> F;
   assert(cache != NULL);
   CacheOptions nopts;

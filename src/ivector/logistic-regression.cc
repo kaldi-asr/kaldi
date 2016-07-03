@@ -24,14 +24,14 @@
 
 namespace kaldi {
 
-void LogisticRegression::Train(const Matrix<BaseFloat> &xs, 
+void LogisticRegression::Train(const Matrix<BaseFloat> &xs,
                                const std::vector<int32> &ys,
                                const LogisticRegressionConfig &conf) {
-  
+
   int32 xs_num_rows = xs.NumRows(), xs_num_cols = xs.NumCols(),
                      num_ys = ys.size();
   KALDI_ASSERT(xs_num_rows == num_ys);
-  
+
   // Adding on extra column for each x to handle the prior.
   Matrix<BaseFloat> xs_with_prior(xs_num_rows, xs_num_cols + 1);
   SubMatrix<BaseFloat> sub_xs(xs_with_prior, 0, xs_num_rows, 0, xs_num_cols);
@@ -55,7 +55,7 @@ void LogisticRegression::Train(const Matrix<BaseFloat> &xs,
 
   weights_.SetZero();
   TrainParameters(xs_with_prior, ys, conf, &xw);
-  KALDI_LOG << 
+  KALDI_LOG <<
     "Finished training parameters without mixture components." << std::endl;
 
   // If we are using mixture components, we add those components
@@ -64,7 +64,7 @@ void LogisticRegression::Train(const Matrix<BaseFloat> &xs,
     MixUp(ys, num_classes, conf);
     Matrix<BaseFloat> xw(xs_num_rows, weights_.NumRows());
     TrainParameters(xs_with_prior, ys, conf, &xw);
-    KALDI_LOG << 
+    KALDI_LOG <<
       "Finished training mixture components." << std::endl;
   }
 }
@@ -73,7 +73,7 @@ void LogisticRegression::Train(const Matrix<BaseFloat> &xs,
 void LogisticRegression::MixUp(const std::vector<int32> &ys,
                                const int32 &num_classes,
                                const LogisticRegressionConfig &conf) {
-  
+
   Vector<BaseFloat> counts(num_classes);
   for (int32 i = 0; i < ys.size(); i++) {
     counts(ys[i]) += 1.0;
@@ -86,14 +86,14 @@ void LogisticRegression::MixUp(const std::vector<int32> &ys,
   int32 new_dim = std::accumulate(targets.begin(), targets.end(),
                                   static_cast<int32>(0));
 
-  KALDI_LOG << "Target number mixture components was " << conf.mix_up 
-            << ". Training " << new_dim << " mixture components. " 
+  KALDI_LOG << "Target number mixture components was " << conf.mix_up
+            << ". Training " << new_dim << " mixture components. "
             << std::endl;
 
   int32 old_dim = weights_.NumRows(),
         num_components = old_dim,
         num_feats = weights_.NumCols();
-                                       
+
   Matrix<BaseFloat> old_weights(weights_);
   weights_.Resize(new_dim, num_feats);
   SubMatrix<BaseFloat> sub_weights(weights_, 0, num_classes, 0, num_feats);
@@ -142,9 +142,9 @@ void LogisticRegression::GetLogPosteriors(const Matrix<BaseFloat> &xs,
   int32 xs_num_rows = xs.NumRows(),
       xs_num_cols = xs.NumCols(),
       num_mixes = weights_.NumRows();
-  
+
   int32 num_classes = *std::max_element(class_.begin(), class_.end()) + 1;
-  
+
   log_posteriors->Resize(xs_num_rows, num_classes);
   Matrix<BaseFloat> xw(xs_num_rows, num_mixes);
 
@@ -155,9 +155,9 @@ void LogisticRegression::GetLogPosteriors(const Matrix<BaseFloat> &xs,
   for (int32 i = 0; i < xs_num_rows; i++) {
     xs_with_prior(i, xs_num_cols) = 1.0;
   }
-  xw.AddMatMat(1.0, xs_with_prior, kNoTrans, weights_, 
+  xw.AddMatMat(1.0, xs_with_prior, kNoTrans, weights_,
                kTrans, 0.0);
-  
+
   log_posteriors->Set(-std::numeric_limits<BaseFloat>::infinity());
 
   // i is the training example
@@ -184,11 +184,11 @@ void LogisticRegression::GetLogPosteriors(const Vector<BaseFloat> &x,
   sub_x.CopyFromVec(x);
   // Adding on extra element to handle the prior
   x_with_prior(x_dim) = 1.0;
-  
+
   xw.AddMatVec(1.0, weights_, kNoTrans, x_with_prior, kNoTrans);
 
   log_posteriors->Set(-std::numeric_limits<BaseFloat>::infinity());
-  
+
   for (int32 i = 0; i < num_mixes; i++) {
     int32 j = class_[i];
     (*log_posteriors)(j) = LogAdd((*log_posteriors)(j), xw(i));
@@ -203,7 +203,7 @@ BaseFloat LogisticRegression::DoStep(const Matrix<BaseFloat> &xs,
   Matrix<BaseFloat> gradient(weights_.NumRows(), weights_.NumCols());
   // Vector form of the above matrix
   Vector<BaseFloat> grad_vec(weights_.NumRows() * weights_.NumCols());
-    
+
   // Calculate XW.T. The rows correspond to the x
   // training examples and the columns to the class labels.
   xw->AddMatMat(1.0, xs, kNoTrans, weights_, kTrans, 0.0);
@@ -217,7 +217,7 @@ BaseFloat LogisticRegression::DoStep(const Matrix<BaseFloat> &xs,
 
   // Compute next step in L-BFGS.
   lbfgs->DoStep(objf, grad_vec);
-  
+
   // Update weights
   Vector<BaseFloat> new_w(lbfgs->GetProposedValue());
   weights_.CopyRowsFromVec(new_w);
@@ -240,7 +240,7 @@ BaseFloat LogisticRegression::GetObjfAndGrad(
     Vector<BaseFloat> row(xw.NumCols());
     row.CopyFromVec(xw.Row(i));
     row.ApplySoftMax();
-    // Identify the rows of weights_ (which are a set of columns in wx) 
+    // Identify the rows of weights_ (which are a set of columns in wx)
     // which correspond to class ys[i]
     const std::vector<int32> &cols = class_to_cols[ys[i]];
     SubVector<BaseFloat> x = xs.Row(i);
@@ -268,7 +268,7 @@ BaseFloat LogisticRegression::GetObjfAndGrad(
   grad->Scale(1.0/ys.size());
   grad->AddMat(-1.0 * normalizer, weights_);
   raw_objf /= ys.size();
-  BaseFloat regularizer = - 0.5 * normalizer 
+  BaseFloat regularizer = - 0.5 * normalizer
                           * TraceMatMat(weights_, weights_, kTrans);
   KALDI_VLOG(2) << "Objf is " << raw_objf << " + " << regularizer
                 << " = " << (raw_objf + regularizer);
@@ -280,7 +280,7 @@ void LogisticRegression::SetWeights(const Matrix<BaseFloat> &weights,
   weights_.Resize(weights.NumRows(), weights.NumCols());
   weights_.CopyFromMat(weights);
   class_.resize(classes.size());
-  for (int32 i = 0; i < class_.size(); i++) 
+  for (int32 i = 0; i < class_.size(); i++)
     class_[i] = classes[i];
 }
 

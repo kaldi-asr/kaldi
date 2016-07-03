@@ -24,16 +24,16 @@
 
 using namespace kaldi;
 
-int ComputeLogPosteriors(ParseOptions &po, 
+int ComputeLogPosteriors(ParseOptions &po,
   const LogisticRegressionConfig &config,
   bool apply_log) {
   std::string model = po.GetArg(1),
       vector_rspecifier = po.GetArg(2),
       log_posteriors_wspecifier = po.GetArg(3);
-  
+
   LogisticRegression classifier;
   ReadKaldiObject(model, &classifier);
-  
+
   std::vector<Vector<BaseFloat> > vectors;
   SequentialBaseFloatVectorReader vector_reader(vector_rspecifier);
   BaseFloatVectorWriter posterior_writer(log_posteriors_wspecifier);
@@ -90,12 +90,12 @@ int32 ComputeScores(ParseOptions &po, const LogisticRegressionConfig &config,
     KALDI_WARN << "Read no input";
     return 1;
   }
-  
+
   Matrix<BaseFloat> xs(vectors.size(), vectors[0].Dim());
   for (int i = 0; i < vectors.size(); i++) {
     xs.Row(i).CopyFromVec(vectors[i]);
   }
- 
+
   Matrix<BaseFloat> log_posteriors;
   classifier.GetLogPosteriors(xs, &log_posteriors);
 
@@ -104,11 +104,11 @@ int32 ComputeScores(ParseOptions &po, const LogisticRegressionConfig &config,
 
   if (!apply_log)
     log_posteriors.ApplyExp();
-  
+
   for (int i = 0; i < ys.size(); i++) {
     ko.Stream() << utt_list[i] << " " << ys[i] << " " << log_posteriors(i, ys[i]) << std::endl;
   }
-  KALDI_LOG << "Calculated scores for " << num_utt_done 
+  KALDI_LOG << "Calculated scores for " << num_utt_done
             << " vectors with "
             << num_utt_err << " missing. ";
   return (num_utt_done == 0 ? 1 : 0);
@@ -125,11 +125,11 @@ int main(int argc, char *argv[]) {
         "                                <output-log-posteriors-wspecifier>\n"
         "Usage2: logistic-regression-eval <model> <trials-file> <input-vectors-rspecifier>\n"
         "                                <output-scores-file>\n";
-    
+
   ParseOptions po(usage);
 
   bool apply_log = true;
-  po.Register("apply-log", &apply_log, 
+  po.Register("apply-log", &apply_log,
               "If false, apply Exp to the log posteriors output. This is "
               "helpful when combining posteriors from multiple logistic "
               "regression models.");
@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
     po.PrintUsage();
     exit(1);
   }
-  
+
   if (po.NumArgs() == 4) {
     return ComputeScores(po, config, apply_log);
   } else {

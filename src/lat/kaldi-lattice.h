@@ -86,12 +86,20 @@ class CompactLatticeHolder {
   const T &Value() const {
     KALDI_ASSERT(t_ != NULL && "Called Value() on empty CompactLatticeHolder");
     return *t_;
-  } 
+  }
 
-  void Clear() { if (t_) { delete t_; t_ = NULL; } }
+  void Clear() { delete t_; t_ = NULL; }
+
+  void Swap(CompactLatticeHolder *other) {
+    std::swap(t_, other->t_);
+  }
+
+  bool ExtractRange(const CompactLatticeHolder &other, const std::string &range) {
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
+    return false;
+  }
 
   ~CompactLatticeHolder() { Clear(); }
-
  private:
   T *t_;
 };
@@ -116,12 +124,20 @@ class LatticeHolder {
   const T &Value() const {
     KALDI_ASSERT(t_ != NULL && "Called Value() on empty LatticeHolder");
     return *t_;
-  } 
+  }
 
-  void Clear() { if (t_) { delete t_; t_ = NULL; } }
+  void Clear() {  delete t_; t_ = NULL; }
+
+  void Swap(LatticeHolder *other) {
+    std::swap(t_, other->t_);
+  }
+
+  bool ExtractRange(const LatticeHolder &other, const std::string &range) {
+    KALDI_ERR << "ExtractRange is not defined for this type of holder.";
+    return false;
+  }
 
   ~LatticeHolder() { Clear(); }
-
  private:
   T *t_;
 };

@@ -1,6 +1,7 @@
 // nnet2/nnet-compute-test.cc
 
 // Copyright 2014  Johns Hopkins University (author:  Daniel Povey)
+// Copyright 2015  David Snyder
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -80,6 +81,41 @@ void UnitTestNnetCompute() {
   delete nnet;
 }
 
+void UnitTestNnetComputeChunked() {
+  int32 input_dim = 10 + rand() % 40, output_dim = 100 + rand() % 500;
+  bool pad_input = true;
+  
+  Nnet *nnet = GenRandomNnet(input_dim, output_dim);
+  int32 num_feats = 100 + rand() % 500;
+  int32 chunk_size = num_feats / (2 + rand() % 10);
+  CuMatrix<BaseFloat> input(num_feats, input_dim);
+  input.SetRandn();
+
+  KALDI_LOG << "Left context = " << nnet->LeftContext() 
+            << ", right context = " << nnet->RightContext() 
+            << ", chunk size = " << chunk_size;
+  KALDI_LOG << "NNet info is " << nnet->Info();
+
+  int32 num_output_rows = num_feats;
+  CuMatrix<BaseFloat> cu_output1(num_output_rows, output_dim);
+  Matrix<BaseFloat> output2(num_output_rows, output_dim);
+  NnetComputation(*nnet, input, pad_input, &cu_output1);
+  NnetComputationChunked(*nnet, Matrix<BaseFloat>(input), chunk_size, 
+                         &output2);
+  Matrix<BaseFloat> output1(cu_output1);
+  AssertEqual(output1, output2);
+  for (int32 i = 0; i < output1.NumRows(); i++) {
+    // just double-check that the frames near the end are right, in case
+    // the test above somehow passed despite that.
+    if (i < 10 || output1.NumRows() - i < 10) {
+      SubVector<BaseFloat> vec1(output1, i), vec2(output2, i);
+      AssertEqual(vec1, vec2);
+    }
+  }
+  KALDI_LOG << "OK";
+  delete nnet;
+}
+
 }  // namespace nnet2
 }  // namespace kaldi
 
@@ -92,6 +128,7 @@ int main() {
 
   for (int32 i = 0; i < 10; i++) 
     UnitTestNnetCompute();
+    UnitTestNnetComputeChunked();
   return 0;
 }
   

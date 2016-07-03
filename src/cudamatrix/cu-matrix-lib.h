@@ -26,6 +26,7 @@
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-sp-matrix.h"
 #include "cudamatrix/cu-tp-matrix.h"
+#include "cudamatrix/cu-sparse-matrix.h"
 #include "cudamatrix/cu-block-matrix.h"
 #include "cudamatrix/cu-rand.h"
 

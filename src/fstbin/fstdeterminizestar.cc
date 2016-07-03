@@ -23,6 +23,7 @@
 #include "fst/fstlib.h"
 #include "fstext/determinize-star.h"
 #include "fstext/fstext-utils.h"
+#include "fstext/kaldi-fst-io.h"
 #ifndef _MSC_VER
 #include <signal.h> // Comment this line and the call to signal below if
 // it causes compilation problems.  It is only to enable a debugging procedure

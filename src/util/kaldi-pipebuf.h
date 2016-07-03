@@ -25,14 +25,14 @@
 #ifndef KALDI_UTIL_KALDI_PIPEBUF_H_
 #define KALDI_UTIL_KALDI_PIPEBUF_H_
 
-#if defined(_LIBCPP_VERSION)  // libc++
-#include "basic-filebuf.h"
-#else
+#include<string>
+#if !defined(_LIBCPP_VERSION)  // libc++
 #include <fstream>
+#else
+#include "util/basic-filebuf.h"
 #endif
 
-namespace kaldi
-{
+namespace kaldi {
 // This class provides a way to initialize a filebuf with a FILE* pointer
 // directly; it will not close the file pointer when it is deleted.
 // The C++ standard does not allow implementations of C++ to provide
@@ -42,8 +42,7 @@ namespace kaldi
 #ifdef _MSC_VER
 #elif defined(_LIBCPP_VERSION)  // libc++
 template<class CharType, class Traits = std::char_traits<CharType> >
-class basic_pipebuf : public basic_filebuf<CharType, Traits>
-{
+class basic_pipebuf : public basic_filebuf<CharType, Traits> {
  public:
   typedef basic_pipebuf<CharType, Traits>   ThisType;
 
@@ -60,8 +59,7 @@ class basic_pipebuf : public basic_filebuf<CharType, Traits>
 };  // class basic_pipebuf
 #else
 template<class CharType, class Traits = std::char_traits<CharType> >
-class basic_pipebuf : public std::basic_filebuf<CharType, Traits>
-{
+class basic_pipebuf : public std::basic_filebuf<CharType, Traits> {
  public:
   typedef basic_pipebuf<CharType, Traits>   ThisType;
 
@@ -82,9 +80,9 @@ class basic_pipebuf : public std::basic_filebuf<CharType, Traits>
     this->_M_set_buffer(-1);
   }
 };  // class basic_pipebuf
-#endif // _MSC_VER
+#endif  // _MSC_VER
 
 };  // namespace kaldi
 
-#endif // KALDI_UTIL_KALDI_PIPEBUF_H_
+#endif  // KALDI_UTIL_KALDI_PIPEBUF_H_
 

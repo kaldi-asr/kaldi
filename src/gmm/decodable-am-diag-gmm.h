@@ -149,7 +149,7 @@ class DecodableAmDiagGmmScaled: public DecodableAmDiagGmmUnmapped {
   const TransitionModel *TransModel() { return &trans_model_; }
 
   virtual ~DecodableAmDiagGmmScaled() {
-    if (delete_feats_) delete delete_feats_;
+    delete delete_feats_;
   }
   
  private: // want to access it public to have pdf id information

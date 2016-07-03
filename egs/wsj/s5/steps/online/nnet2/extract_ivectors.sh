@@ -258,7 +258,7 @@ base_feat_dim=$(feat-to-dim scp:$data/feats.scp -) || exit 1;
 
 start_dim=$base_feat_dim
 end_dim=$[$base_feat_dim+$ivector_dim-1]
-
+absdir=$(readlink -f $dir)
 
 if [ $stage -le 4 ]; then
   # here, we are just using the original features in $sdata/JOB/feats.scp for
@@ -269,7 +269,7 @@ if [ $stage -le 4 ]; then
     select-feats "$start_dim-$end_dim" ark:- ark:- \| \
     subsample-feats --n=$ivector_period ark:- ark:- \| \
     copy-feats --compress=$compress ark:- \
-    ark,scp:$dir/ivector_online.JOB.ark,$dir/ivector_online.JOB.scp || exit 1;
+    ark,scp:$absdir/ivector_online.JOB.ark,$absdir/ivector_online.JOB.scp || exit 1;
 fi
 
 if [ $stage -le 5 ]; then

@@ -22,17 +22,6 @@
 
 #include <sstream>
 
-#ifdef _MSC_VER
-#include <unordered_map>
-using std::unordered_map;
-#elif __cplusplus > 199711L || defined(__GXX_EXPERIMENTAL_CXX0X__)
-#include <unordered_map>
-using std::unordered_map;
-#else
-#include <tr1/unordered_map>
-using std::tr1::unordered_map;
-#endif
-
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "nnet2/nnet-example.h"
@@ -160,7 +149,7 @@ int main(int argc, char *argv[]) {
 
     unordered_map<std::string, std::vector<int32>*>::iterator iter;
     
-    for (iter = utt_to_pdf_ali.begin(); iter != utt_to_pdf_ali.end(); iter++)
+    for (iter = utt_to_pdf_ali.begin(); iter != utt_to_pdf_ali.end(); ++iter)
       delete iter->second;
     
     KALDI_LOG << "Read " << num_ali << " alignments containing a total of " 

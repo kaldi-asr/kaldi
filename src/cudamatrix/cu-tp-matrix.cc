@@ -20,7 +20,7 @@
 
 #if HAVE_CUDA==1
 #include <cuda_runtime_api.h>
-#include <cublas.h>
+#include <cublas_v2.h>
 #endif
 
 #include "base/timer.h"
@@ -74,9 +74,8 @@ void CuTpMatrix<Real>::Invert() {
     CU_SAFE_CALL(cudaGetLastError());        
     CuMatrix<Real> tmp2(dim, dim);
     tmp2.CopyFromTp(*this);
-    cublas_trsm(dim, dim, alpha, tmp2.Data(), tmp2.Dim().stride, 
-      tmp.Data(), tmp.Dim().stride);
-    CU_SAFE_CALL(cudaGetLastError());        
+    CU_SAFE_CALL(cublas_trsm(GetCublasHandle(), dim, dim, alpha, tmp2.Data(), tmp2.Dim().stride, 
+      tmp.Data(), tmp.Dim().stride));
     this->CopyFromMat(tmp, kNoTrans);
   } else
 #endif
@@ -124,6 +123,14 @@ void TpMatrix<Real>::CopyFromMat(const CuTpMatrix<Real> &other) {
 // instantiate the template above.
 template void TpMatrix<float>::CopyFromMat(const CuTpMatrix<float> &other);
 template void TpMatrix<double>::CopyFromMat(const CuTpMatrix<double> &other);
+
+template <class Real>
+CuTpMatrix<Real>& CuTpMatrix<Real>::operator = (const CuTpMatrix<Real> &in) {
+  this->Resize(in.NumRows(), kUndefined);
+  this->CopyFromPacked(in);
+  return *this;
+}
+
 
 template class CuTpMatrix<float>;
 template class CuTpMatrix<double>;

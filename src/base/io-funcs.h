@@ -2,6 +2,7 @@
 
 // Copyright 2009-2011  Microsoft Corporation;  Saarland University;
 //                      Jan Silovsky;   Yanmin Qian
+//                2016  Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -98,7 +99,6 @@ namespace kaldi {
     void ReadToken(std::istream &is, bool binary, std::string *str);
     void PeekToken(std::istream &is, bool binary, std::string *str);
 
-
   WriteToken writes the token and one space (whether in binary or text mode).
 
   Peek returns the first character of the next token, by consuming whitespace
@@ -181,6 +181,16 @@ template<class T> inline void WriteIntegerVector(std::ostream &os, bool binary,
 /// Function for reading STL vector of integer types.
 template<class T> inline void ReadIntegerVector(std::istream &is, bool binary,
                                                 std::vector<T> *v);
+
+/// Function for writing STL vectors of pairs of integer types.
+template<class T>
+inline void WriteIntegerPairVector(std::ostream &os, bool binary,
+                                   const std::vector<std::pair<T, T> > &v);
+
+/// Function for reading STL vector of pairs of integer types.
+template<class T> 
+inline void ReadIntegerPairVector(std::istream &is, bool binary,
+                                  std::vector<std::pair<T, T> > *v);
 
 /// The WriteToken functions are for writing nonempty sequences of non-space
 /// characters. They are not for general strings.

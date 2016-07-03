@@ -1,6 +1,7 @@
 // nnet2/nnet-compute.cc
 
 // Copyright 2012   Johns Hopkins University (author: Daniel Povey)
+// Copyright 2015   David Snyder
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -163,6 +164,45 @@ void NnetComputation(const Nnet &nnet,
   NnetComputer nnet_computer(nnet, input, pad_input, NULL);
   nnet_computer.Propagate();
   output->CopyFromMat(nnet_computer.GetOutput());
+}
+
+void NnetComputationChunked(const Nnet &nnet,
+                     const Matrix<BaseFloat> &input,  // features
+                     int32 chunk_size,
+                     Matrix<BaseFloat> *output) {
+  int32 num_rows,
+       num_chunks = ceil((BaseFloat)input.NumRows() / chunk_size),
+       dim = input.NumCols(),
+       left_context = nnet.LeftContext(),
+       right_context = nnet.RightContext();
+  Matrix<BaseFloat> full_input;
+  num_rows = left_context + input.NumRows() + right_context;
+  full_input.Resize(num_rows, dim);
+  full_input.Range(left_context, input.NumRows(),
+            0, dim).CopyFromMat(input);
+  for (int32 i = 0; i < left_context; i++)
+    full_input.Row(i).CopyFromVec(input.Row(0));
+  int32 last_row = input.NumRows() - 1;
+  for (int32 i = 0; i < right_context; i++)
+    full_input.Row(num_rows - i - 1).CopyFromVec(input.Row(last_row));
+
+  for (int32 i = 0; i < num_chunks; i++) {
+    int32 index = i * chunk_size,
+          offset = std::min(num_rows - chunk_size * i, 
+                            left_context + chunk_size + right_context);
+    SubMatrix<BaseFloat> chunk_input(full_input, index, offset, 0, dim);
+    CuMatrix<BaseFloat> cu_chunk_input(chunk_input);
+
+    // Note: we have already accounted for input padding, so we pass
+    // pad_input==false to the NnetComputer.
+    NnetComputer nnet_computer(nnet, cu_chunk_input, false, NULL);
+    nnet_computer.Propagate();
+    CuMatrix<BaseFloat> cu_chunk_output(nnet_computer.GetOutput());
+    SubMatrix<BaseFloat> chunk_out(*output, i * chunk_size, 
+                           cu_chunk_output.NumRows(), 0, 
+                           cu_chunk_output.NumCols());
+    chunk_out.CopyFromMat(cu_chunk_output);
+  }
 }
 
 BaseFloat NnetGradientComputation(const Nnet &nnet,

@@ -1,4 +1,4 @@
-// nnet/nnet-average-pooling-component.h
+// nnet/nnet-average-pooling-2d-component.h
 
 // Copyright 2014  Brno University of Technology (author: Karel Vesely)
 //                 Johns Hopkins University (author: Sri Harish Mallidi)
@@ -22,6 +22,8 @@
 #ifndef KALDI_NNET_NNET_AVERAGE_POOLING_2D_COMPONENT_H_
 #define KALDI_NNET_NNET_AVERAGE_POOLING_2D_COMPONENT_H_
 
+#include <string>
+#include <vector>
 
 #include "nnet/nnet-component.h"
 #include "nnet/nnet-utils.h"
@@ -38,10 +40,11 @@ namespace nnet1 {
  */
 class AveragePooling2DComponent : public Component {
  public:
-  AveragePooling2DComponent(int32 dim_in, int32 dim_out)
-    : Component(dim_in, dim_out),
-      fmap_x_len_(0), fmap_y_len_(0),
-      pool_x_len_(0), pool_y_len_(0), pool_x_step_(0), pool_y_step_(0)
+  AveragePooling2DComponent(int32 dim_in, int32 dim_out):
+    Component(dim_in, dim_out),
+    fmap_x_len_(0), fmap_y_len_(0),
+    pool_x_len_(0), pool_y_len_(0),
+    pool_x_step_(0), pool_y_step_(0)
   { }
   ~AveragePooling2DComponent()
   { }
@@ -52,7 +55,7 @@ class AveragePooling2DComponent : public Component {
   void InitData(std::istream &is) {
     // parse config
     std::string token;
-    while (!is.eof()) {
+    while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token);
       /**/ if (token == "<FmapXLen>") ReadBasicType(is, false, &fmap_x_len_);
       else if (token == "<FmapYLen>") ReadBasicType(is, false, &fmap_y_len_);
@@ -61,11 +64,12 @@ class AveragePooling2DComponent : public Component {
       else if (token == "<PoolXStep>") ReadBasicType(is, false, &pool_x_step_);
       else if (token == "<PoolYStep>") ReadBasicType(is, false, &pool_y_step_);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
-                     << " (FmapXLen|FmapYLen|PoolXLen|PoolYLen|PoolXStep|PoolYStep)";
-      is >> std::ws;  // eat-up whitespace
+             << " (FmapXLen|FmapYLen|PoolXLen|PoolYLen|PoolXStep|PoolYStep)";
     }
     // check
-    KALDI_ASSERT(fmap_x_len_ * fmap_y_len_ * pool_x_len_ * pool_y_len_ * pool_x_step_ * pool_y_step_  != 0);
+    KALDI_ASSERT(fmap_x_len_ * fmap_y_len_ != 0);
+    KALDI_ASSERT(pool_x_len_ * pool_y_len_ != 0);
+    KALDI_ASSERT(pool_x_step_ * pool_y_step_  != 0);
   }
 
   void ReadData(std::istream &is, bool binary) {
@@ -119,14 +123,15 @@ class AveragePooling2DComponent : public Component {
     WriteBasicType(os, binary, pool_y_step_);
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
+                    CuMatrixBase<BaseFloat> *out) {
     // useful dims
     int32 num_input_fmaps = input_dim_ / (fmap_x_len_ * fmap_y_len_);
     int out_fmap_cnt = 0;
     for (int32 m = 0; m < fmap_x_len_-pool_x_len_+1; m = m+pool_x_step_) {
       for (int32 n = 0; n < fmap_y_len_-pool_y_len_+1; n = n+pool_y_step_) {
         int32 st = 0;
-        st = (m*fmap_y_len_+n)*num_input_fmaps;
+        st = (m * fmap_y_len_ + n) * num_input_fmaps;
         CuSubMatrix<BaseFloat> pool(out->ColRange(out_fmap_cnt * num_input_fmaps, num_input_fmaps));
         pool.SetZero();  // reset
         for (int32 i = 0; i < pool_x_len_; i++) {
@@ -143,8 +148,10 @@ class AveragePooling2DComponent : public Component {
     }
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
+                        const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff,
+                        CuMatrixBase<BaseFloat> *in_diff) {
     // useful dims
     int32 num_input_fmaps = input_dim_ / (fmap_x_len_ * fmap_y_len_);
     int32 inp_fmap_size = fmap_x_len_ * fmap_y_len_;
@@ -160,8 +167,8 @@ class AveragePooling2DComponent : public Component {
     for (int32 m = 0; m < fmap_x_len_-pool_x_len_+1; m = m+pool_x_step_) {
       for (int32 n = 0; n < fmap_y_len_-pool_y_len_+1; n = n+pool_y_step_) {
         int32 st = 0;
-        st = (m*fmap_y_len_+n)*num_input_fmaps;
-        CuSubMatrix<BaseFloat> src(out_diff.ColRange(out_fmap_cnt*num_input_fmaps, num_input_fmaps));
+        st = (m * fmap_y_len_ + n) * num_input_fmaps;
+        CuSubMatrix<BaseFloat> src(out_diff.ColRange(out_fmap_cnt * num_input_fmaps, num_input_fmaps));
         for (int32 i = 0; i < pool_x_len_; i++) {
           for (int32 j = 0; j < pool_y_len_; j++) {
             int32 c = 0;
@@ -169,7 +176,7 @@ class AveragePooling2DComponent : public Component {
                    + j * num_input_fmaps;
             CuSubMatrix<BaseFloat> tgt(in_diff->ColRange(c, num_input_fmaps));
             tgt.AddMat(1.0, src);
-            patch_summands[c/num_input_fmaps] += 1;
+            patch_summands[c / num_input_fmaps] += 1;
           }
         }
         out_fmap_cnt++;
@@ -192,11 +199,11 @@ class AveragePooling2DComponent : public Component {
 
  private:
   int32 fmap_x_len_, fmap_y_len_,
-    pool_x_len_, pool_y_len_,
-    pool_x_step_, pool_y_step_;
+        pool_x_len_, pool_y_len_,
+        pool_x_step_, pool_y_step_;
 };
 
 }  // namespace nnet1
 }  // namespace kaldi
 
-#endif
+#endif  // KALDI_NNET_NNET_AVERAGE_POOLING_2D_COMPONENT_H_

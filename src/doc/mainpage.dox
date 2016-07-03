@@ -45,6 +45,7 @@
    - \subpage dependencies
    - \subpage legal
    - \subpage tutorial
+   - \subpage examples
    - \subpage glossary
    - \subpage data_prep
    - \subpage build_setup 
@@ -74,6 +75,8 @@
    - \subpage dnn
      - \ref dnn1
      - \ref dnn2
+     - \ref dnn3     
+     - \ref chain
    - \subpage online_decoding
    - \subpage kws
    - \subpage queue

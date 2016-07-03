@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
               << frame_count<<" frames.";
 
     delete decode_fst;
-    if (word_syms) delete word_syms;
+    delete word_syms;
     if (num_success != 0) return 0;
     else return 1;
   } catch(const std::exception &e) {
