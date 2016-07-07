@@ -207,7 +207,7 @@ def ParseLstmDelayString(lstm_delay):
 
 
 def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
-                splice_indexes, lstm_delay, cell_dim,
+                splice_indexes, lstm_delay, cell_dim, hidden_dim,
                 recurrent_projection_dim, non_recurrent_projection_dim,
                 num_lstm_layers, num_hidden_layers,
                 norm_based_clipping, clipping_threshold,
@@ -310,6 +310,7 @@ def Main():
                 num_targets = args.num_targets,
                 splice_indexes = splice_indexes, lstm_delay = args.lstm_delay,
                 cell_dim = args.cell_dim,
+                hidden_dim = args.hidden_dim,
                 recurrent_projection_dim = args.recurrent_projection_dim,
                 non_recurrent_projection_dim = args.non_recurrent_projection_dim,
                 num_lstm_layers = args.num_lstm_layers,

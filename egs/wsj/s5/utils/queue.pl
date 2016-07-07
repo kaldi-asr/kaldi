@@ -383,17 +383,37 @@ if (!close(Q)) { # close was not successful... || die "Could not close script fi
   die "Failed to close the script file (full disk?)";
 }
 
-my $ret = system ($qsub_cmd);
-if ($ret != 0) {
-  if ($sync && $ret == 256) { # this is the exit status when a job failed (bad exit status)
-    if (defined $jobname) { $logfile =~ s/\$SGE_TASK_ID/*/g; }
-    print STDERR "queue.pl: job writing to $logfile failed\n";
+# This block submits the job to the queue.
+for (my $try = 1; $try < 5; $try++) {
+  my $ret = system ($qsub_cmd);
+  if ($ret != 0) {
+    if ($sync && $ret == 256) { # this is the exit status when a job failed (bad exit status)
+      if (defined $jobname) {
+        $logfile =~ s/\$SGE_TASK_ID/*/g;
+      }
+      print STDERR "queue.pl: job writing to $logfile failed\n";
+      exit(1);
+    } else {
+      print STDERR "queue.pl: Error submitting jobs to queue (return status was $ret)\n";
+      print STDERR "queue log file is $queue_logfile, command was $qsub_cmd\n";
+      my $err = `tail $queue_logfile`;
+      print STDERR "Output of qsub was: $err\n";
+      if ($err =~ m/gdi request/) {
+        # When we get queue connectivity problems we usually see a message like:
+        # Unable to run job: failed receiving gdi request response for mid=1 (got
+        # syncron message receive timeout error)..
+        my $waitfor = 20;
+        print STDERR "queue.pl: It looks like the queue master may be inaccessible. " .
+          " Trying again after $waitfor seconts\n";
+        sleep($waitfor);
+        # ... and continue throught the loop.
+      } else {
+        exit(1);
+      }
+    }
   } else {
-    print STDERR "queue.pl: error submitting jobs to queue (return status was $ret)\n";
-    print STDERR "queue log file is $queue_logfile, command was $qsub_cmd\n";
-    print STDERR `tail $queue_logfile`;
+    last;  # break from the loop.
   }
-  exit(1);
 }
 
 my $sge_job_id;
@@ -409,7 +429,8 @@ if (! $sync) { # We're not submitting with -sync y, so we
     }
   }
   # We will need the sge_job_id, to check that job still exists
-  { # Get the SGE job-id from the log file in q/
+  { # This block extracts the numeric SGE job-id from the log file in q/.
+    # It may be used later to query 'qstat' about the job.
     open(L, "<$queue_logfile") || die "Error opening log file $queue_logfile";
     undef $sge_job_id;
     while (<L>) {
@@ -427,11 +448,11 @@ if (! $sync) { # We're not submitting with -sync y, so we
     }
   }
   my $check_sge_job_ctr=1;
-  #
+
   my $wait = 0.1;
   my $counter = 0;
   foreach my $f (@syncfiles) {
-    # wait for them to finish one by one.
+    # wait for the jobs to finish one by one.
     while (! -f $f) {
       sleep($wait);
       $wait *= 1.2;
@@ -455,17 +476,21 @@ if (! $sync) { # We're not submitting with -sync y, so we
         }
       }
 
-      # Check that the job exists in SGE. Job can be killed if duration
-      # exceeds some hard limit, or in case of a machine shutdown.
+      # The purpose of the next block is so that queue.pl can exit if the job
+      # was killed without terminating.  It's a bit complicated because (a) we
+      # don't want to overload the qmaster by querying it too frequently), and
+      # (b) sometimes the qmaster is unreachable or temporarily down, and we
+      # don't want this to necessarily kill the job.
       if (($check_sge_job_ctr < 100 && ($check_sge_job_ctr++ % 10) == 0) ||
           ($check_sge_job_ctr >= 100 && ($check_sge_job_ctr++ % 50) == 0)) {
         # Don't run qstat too often, avoid stress on SGE; the if-condition above
         # is designed to check every 10 waits at first, and eventually every 50
         # waits.
-        if ( -f $f ) { next; }; #syncfile appeared: OK.
-        $ret = system("qstat -j $sge_job_id >/dev/null 2>/dev/null");
-        # system(...) : To get the actual exit value, shift $ret right by eight bits.
-        if ($ret>>8 == 1) {     # Job does not seem to exist
+        if ( -f $f ) { next; }  #syncfile appeared: OK.
+        my $output = `qstat -j $sge_job_id 2>&1`;
+        my $ret = $?;
+        if ($ret >> 8 == 1 && $output !~ m/contact qmaster/ &&
+            $output !~ m/gdi request/) {
           # Don't consider immediately missing job as error, first wait some
           # time to make sure it is not just delayed creation of the syncfile.
 
@@ -513,6 +538,7 @@ if (! $sync) { # We're not submitting with -sync y, so we
           }
         } elsif ($ret != 0) {
           print STDERR "queue.pl: Warning: qstat command returned status $ret (qstat -j $sge_job_id,$!)\n";
+          print STDERR "queue.pl: output was: $output";
         }
       }
     }
