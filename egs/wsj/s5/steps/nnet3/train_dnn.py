@@ -367,7 +367,7 @@ def TrainOneIteration(dir, iter, egs_dir,
       # model-averaging isn't always helpful when the model is changing too fast
       # (i.e. it can worsen the objective function), and the smaller minibatch
       # size will help to keep the update stable.
-      cur_minibatch_size = minibatch_size / 2
+      cur_minibatch_size = minibatch_size // 2
       cur_max_param_change = float(max_param_change) / math.sqrt(2)
 
     try:
