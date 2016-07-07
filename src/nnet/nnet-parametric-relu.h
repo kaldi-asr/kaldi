@@ -50,7 +50,6 @@ class ParametricRelu : public UpdatableComponent {
   void InitData(std::istream &is) {
     // define options
     float init_alpha = 1, init_beta = 0.25;
-    float fix_alpha = 0.0, fix_beta = 0.0;
 
     // parse config
     std::string token;
@@ -60,33 +59,28 @@ class ParametricRelu : public UpdatableComponent {
       else if (token == "<InitBeta>")  ReadBasicType(is, false, &init_beta);
       else if (token == "<BiasLearnRateCoef>")  ReadBasicType(is, false, &bias_learn_rate_coef_);
       else if (token == "<LearnRateCoef>")  ReadBasicType(is, false, &learn_rate_coef_);
-      else if (token == "<FixAlpha>")  ReadBasicType(is, false, &fix_alpha);
-      else if (token == "<FixBeta>")   ReadBasicType(is, false, &fix_beta);
       else if (token == "<ClipGradient>")  ReadBasicType(is, false, &clip_gradient_);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
-                  << " (InitAlpha|InitBeta|BiasLearnRateCoef|LearnRateCoef|FixAlpha|FixBeta|ClipGradient)";
+                  << " (InitAlpha|InitBeta|BiasLearnRateCoef|LearnRateCoef|ClipGradient)";
     }
 
     //
     // Initialize trainable parameters,
     //
-
     Vector<BaseFloat> vec_a(output_dim_);
     for (int32 i = 0; i < output_dim_; i++) {
       // elements of vector is initialized with input alpha
       vec_a(i) = init_alpha;
     }
     alpha_ = vec_a;
-    //
+    // Bias learning rate is applied to alpha(a)
     Vector<BaseFloat> vec_b(output_dim_);
     for (int32 i = 0; i < output_dim_; i++) {
       // elements of vector is initialized with input beta
       vec_b(i) = init_beta;
     }
     beta_ = vec_b;
-    //
-    fix_alpha_ = fix_alpha;
-    fix_beta_ = fix_beta;
+    // learning rate is applied to beta(b)
     KALDI_ASSERT(clip_gradient_ >= 0.0);
   }
 
@@ -100,12 +94,7 @@ class ParametricRelu : public UpdatableComponent {
           ExpectToken(is, binary, "<LearnRateCoef>");
           ReadBasicType(is, binary, &learn_rate_coef_);
           break;
-        case 'F': ExpectToken(is, binary, "<FixAlpha>");
-          ReadBasicType(is, binary, &fix_alpha_);
-          ExpectToken(is, binary, "<FixBeta>");
-          ReadBasicType(is, binary, &fix_beta_);
-          break;
-         case 'C': ExpectToken(is, binary, "<ClipGradient>");
+        case 'C': ExpectToken(is, binary, "<ClipGradient>");
           ReadBasicType(is, binary, &clip_gradient_);
           break;
         default:
@@ -126,10 +115,6 @@ class ParametricRelu : public UpdatableComponent {
     WriteBasicType(os, binary, bias_learn_rate_coef_);
     WriteToken(os, binary, "<LearnRateCoef>");
     WriteBasicType(os, binary, learn_rate_coef_);
-    WriteToken(os, binary, "<FixAlpha>");
-    WriteBasicType(os, binary, fix_alpha_);
-    WriteToken(os, binary, "<FixBeta>");
-    WriteBasicType(os, binary, fix_beta_);
     WriteToken(os, binary, "<ClipGradient>");
     WriteBasicType(os, binary, clip_gradient_);
 
@@ -203,31 +188,31 @@ class ParametricRelu : public UpdatableComponent {
   void Update(const CuMatrixBase<BaseFloat> &input,
               const CuMatrixBase<BaseFloat> &diff) {
     // we use following hyperparameters from the option class
-    const BaseFloat alr = opts_.learn_rate * bias_learn_rate_coef_;
-    const BaseFloat blr = opts_.learn_rate * learn_rate_coef_;
+    const BaseFloat a_lr = opts_.learn_rate * bias_learn_rate_coef_;
+    const BaseFloat b_lr = opts_.learn_rate * learn_rate_coef_;
     const BaseFloat mmt = opts_.momentum;
-    if (clip_gradient_ > 0.0) {  // gradient clipping
-      alpha_corr_.ApplyFloor(-clip_gradient_);
-      beta_corr_.ApplyFloor(-clip_gradient_);
-      alpha_corr_.ApplyCeiling(clip_gradient_);
-      beta_corr_.ApplyCeiling(clip_gradient_);
-    }
     // compute gradient (incl. momentum)
-    if (!fix_alpha_) {  // the alpha parameter is learnable
-       in_alpha_.Resize(input.NumRows(), input.NumCols());
-       in_alpha_.CopyFromMat(input);
+    if (a_lr > 0.0) {  // the alpha parameter is learnable
+       in_alpha_ = input;
        in_alpha_.ApplyFloor(0.0);
        in_alpha_.MulElements(diff);
        alpha_corr_.AddRowSumMat(1.0, in_alpha_, mmt);
-       alpha_.AddVec(-alr, alpha_corr_);
+        if (clip_gradient_ > 0.0) {  // gradient clipping
+          alpha_corr_.ApplyFloor(-clip_gradient_);
+          alpha_corr_.ApplyCeiling(clip_gradient_);
+        }
+       alpha_.AddVec(-a_lr, alpha_corr_);
     }
-    if (!fix_beta_) {  // the beta parameter is learnable
-       in_beta_.Resize(input.NumRows(), input.NumCols());
-       in_beta_.CopyFromMat(input);
+    if (b_lr > 0.0) {  // the beta parameter is learnable
+       in_beta_ = input;
        in_beta_.ApplyCeiling(0.0);
        in_beta_.MulElements(diff);
        beta_corr_.AddRowSumMat(1.0, in_beta_, mmt);
-       beta_.AddVec(-blr, beta_corr_);
+        if (clip_gradient_ > 0.0) {  // gradient clipping
+          beta_corr_.ApplyFloor(-clip_gradient_);
+          beta_corr_.ApplyCeiling(clip_gradient_);
+        }
+       beta_.AddVec(-b_lr, beta_corr_);
     }
   }
 
@@ -256,8 +241,6 @@ class ParametricRelu : public UpdatableComponent {
   CuMatrix<BaseFloat> in_beta_;
 
   BaseFloat clip_gradient_;
-  BaseFloat fix_alpha_;
-  BaseFloat fix_beta_;
 };
 
 }  // namespace nnet1

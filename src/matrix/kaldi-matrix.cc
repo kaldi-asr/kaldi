@@ -2731,7 +2731,7 @@ void MatrixBase<Real>::ParametricRelu(
   const Real *bdata = b.Data();
   for (MatrixIndexT r = 0; r < num_rows; r++) {
     for (MatrixIndexT c = 0; c < num_cols; c++)
-      data[c] = (src_data[c] > 0 ? adata[c] * src_data[c] : bdata[c] * src_data[c]);
+      data[c] = (src_data[c] > 0.0 ? adata[c] * src_data[c] : bdata[c] * src_data[c]);
    data += stride;
    src_data += src_stride;
   }
