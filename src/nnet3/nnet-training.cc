@@ -123,7 +123,9 @@ void NnetTrainer::ProcessOutputs(const NnetExample &eg,
                                supply_deriv, computer,
                                &tot_weight, &tot_objf);
       objf_info_[io.name].UpdateStats(io.name, config_.print_interval,
-                                      num_minibatches_processed_++,
+                                      io.name == "output" ?
+                                      num_minibatches_processed_++ :
+                                      num_minibatches_processed_,
                                       tot_weight, tot_objf);
     }
   }
