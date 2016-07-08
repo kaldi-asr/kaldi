@@ -300,7 +300,7 @@ void CuVectorBase<Real>::ApplySoftMax() {
   if (CuDevice::Instantiate().Enabled()) {
     if (dim_ == 0) return;
     Timer tim;
-    size_t dimBlock = dim_ > CU1DBLOCK ? CU1DBLOCK : dim_; // for cuda_softmax_reduce function, dimBlock value is fixed min(CU1DBLOCK, dim) , represent CU1DBLOCK threads reduce a row at the same time.
+    size_t dimBlock = CU1DBLOCK;
     size_t dimGrid = 1;       // dimGrid value represent the number of rows
     ::MatrixDim dim = { 1, this->dim_, this->dim_};
     cuda_softmax_reduce(dimGrid, dimBlock, data_, data_, dim, this->dim_);//actually dim is not stride...
