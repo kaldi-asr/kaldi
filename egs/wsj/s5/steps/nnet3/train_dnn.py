@@ -66,7 +66,10 @@ def GetArgs():
     # trainer options
     parser.add_argument("--trainer.srand", type=int, dest='srand',
                         default = 0,
-                        help="Sets random seed for model initialization and egs shuffling")
+                        help="Sets the random seed for model initialization and egs shuffling. "
+                        "Warning: This random seed does not control all aspects of this experiment. "
+                        "There might be other random seeds used other stages of the experiment "
+                        "like data preparation (e.g. volume perturbation).")
     parser.add_argument("--trainer.num-epochs", type=int, dest='num_epochs',
                         default = 8,
                         help="Number of epochs to train the model")
@@ -467,6 +470,7 @@ def Train(args, run_opts):
                     left_context, right_context,
                     left_context, right_context, run_opts,
                     frames_per_eg = args.frames_per_eg,
+                    srand = args.srand,
                     egs_opts = args.egs_opts,
                     cmvn_opts = args.cmvn_opts,
                     online_ivector_dir = args.online_ivector_dir,
