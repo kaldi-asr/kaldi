@@ -398,7 +398,7 @@ for (my $try = 1; $try < 5; $try++) {
       print STDERR "queue log file is $queue_logfile, command was $qsub_cmd\n";
       my $err = `tail $queue_logfile`;
       print STDERR "Output of qsub was: $err\n";
-      if ($err =~ m/gdi request/) {
+      if ($err =~ m/gdi request/ || $err =~ m/qmaster/) {
         # When we get queue connectivity problems we usually see a message like:
         # Unable to run job: failed receiving gdi request response for mid=1 (got
         # syncron message receive timeout error)..
@@ -489,7 +489,7 @@ if (! $sync) { # We're not submitting with -sync y, so we
         if ( -f $f ) { next; }  #syncfile appeared: OK.
         my $output = `qstat -j $sge_job_id 2>&1`;
         my $ret = $?;
-        if ($ret >> 8 == 1 && $output !~ m/contact qmaster/ &&
+        if ($ret >> 8 == 1 && $output !~ m/qmaster/ &&
             $output !~ m/gdi request/) {
           # Don't consider immediately missing job as error, first wait some
           # time to make sure it is not just delayed creation of the syncfile.
@@ -533,7 +533,8 @@ if (! $sync) { # We're not submitting with -sync y, so we
               "longer exists, log is in $logfile, last line is '$last_line', " .
               "syncfile is $f, return status of qstat was $ret\n" .
               "Possible reasons: a) Exceeded time limit? -> Use more jobs!" .
-              " b) Shutdown/Frozen machine? -> Run again!\n";
+              " b) Shutdown/Frozen machine? -> Run again!  Qmaster output " .
+              "was: $output\n";
             exit(1);
           }
         } elsif ($ret != 0) {
