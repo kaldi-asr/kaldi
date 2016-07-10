@@ -64,6 +64,9 @@ def GetArgs():
                         help="""String to provide options directly to steps/nnet3/get_egs.sh script""")
 
     # trainer options
+    parser.add_argument("--trainer.srand", type=int, dest='srand',
+                        default = 0,
+                        help="Sets random seed for model initialization and egs shuffling")
     parser.add_argument("--trainer.num-epochs", type=int, dest='num_epochs',
                         default = 8,
                         help="Number of epochs to train the model")
@@ -272,7 +275,7 @@ class RunOpts:
         self.realign_use_gpu = None
 
 # this is the main method which differs between RNN and DNN training
-def TrainNewModels(dir, iter, num_jobs, num_archives_processed, num_archives,
+def TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archives,
                    raw_model_string, egs_dir, frames_per_eg,
                    left_context, right_context,
                    momentum, max_param_change,
@@ -298,11 +301,11 @@ def TrainNewModels(dir, iter, num_jobs, num_archives_processed, num_archives,
   --print-interval=10 --momentum={momentum} \
   --max-param-change={max_param_change} \
   "{raw_model}" \
-  "ark,bg:nnet3-copy-egs --frame={frame} {context_opts} ark:{egs_dir}/egs.{archive_index}.ark ark:- | nnet3-shuffle-egs --buffer-size={shuffle_buffer_size} --srand={iter} ark:- ark:-| nnet3-merge-egs --minibatch-size={minibatch_size} --measure-output-frames=false --discard-partial-minibatches=true ark:- ark:- |" \
+  "ark,bg:nnet3-copy-egs --frame={frame} {context_opts} ark:{egs_dir}/egs.{archive_index}.ark ark:- | nnet3-shuffle-egs --buffer-size={shuffle_buffer_size} --srand={srand} ark:- ark:-| nnet3-merge-egs --minibatch-size={minibatch_size} --measure-output-frames=false --discard-partial-minibatches=true ark:- ark:- |" \
   {dir}/{next_iter}.{job}.raw
           """.format(command = run_opts.command,
                      train_queue_opt = run_opts.train_queue_opt,
-                     dir = dir, iter = iter, next_iter = iter + 1, job = job,
+                     dir = dir, iter = iter, srand = iter + srand, next_iter = iter + 1, job = job,
                      parallel_train_opts = run_opts.parallel_train_opts,
                      frame = frame,
                      momentum = momentum, max_param_change = max_param_change,
@@ -326,7 +329,7 @@ def TrainNewModels(dir, iter, num_jobs, num_archives_processed, num_archives,
         open('{0}/.error'.format(dir), 'w').close()
         raise Exception("There was error during training iteration {0}".format(iter))
 
-def TrainOneIteration(dir, iter, egs_dir,
+def TrainOneIteration(dir, iter, srand, egs_dir,
                       num_jobs, num_archives_processed, num_archives,
                       learning_rate, minibatch_size,
                       frames_per_eg, num_hidden_layers, add_layers_period,
@@ -351,7 +354,7 @@ def TrainOneIteration(dir, iter, egs_dir,
                            # best.
         cur_num_hidden_layers = 1 + iter / add_layers_period
         config_file = "{0}/configs/layer{1}.config".format(dir, cur_num_hidden_layers)
-        raw_model_string = "nnet3-am-copy --raw=true --learning-rate={lr} {dir}/{iter}.mdl - | nnet3-init --srand={iter} - {config} - |".format(lr=learning_rate, dir=dir, iter=iter, config=config_file )
+        raw_model_string = "nnet3-am-copy --raw=true --learning-rate={lr} {dir}/{iter}.mdl - | nnet3-init --srand={srand} - {config} - |".format(lr=learning_rate, dir=dir, iter=iter, srand=iter + srand, config=config_file )
     else:
         do_average = True
         if iter == 0:
@@ -375,7 +378,7 @@ def TrainOneIteration(dir, iter, egs_dir,
     except OSError:
         pass
 
-    TrainNewModels(dir, iter, num_jobs, num_archives_processed, num_archives,
+    TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archives,
                    raw_model_string, egs_dir, frames_per_eg,
                    left_context, right_context,
                    momentum, max_param_change,
@@ -558,7 +561,7 @@ def Train(args, run_opts):
 
             logger.info("On iteration {0}, learning rate is {1}.".format(iter, learning_rate(iter, current_num_jobs, num_archives_processed)))
 
-            TrainOneIteration(args.dir, iter, egs_dir, current_num_jobs,
+            TrainOneIteration(args.dir, iter, args.srand, egs_dir, current_num_jobs,
                               num_archives_processed, num_archives,
                               learning_rate(iter, current_num_jobs, num_archives_processed),
                               args.minibatch_size, args.frames_per_eg,

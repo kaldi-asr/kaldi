@@ -37,6 +37,7 @@ chunk_right_context=0
 
 
 # training options
+srand=0
 num_epochs=8
 initial_effective_lrate=0.0003
 final_effective_lrate=0.00003
@@ -113,6 +114,7 @@ if [ $stage -le 10 ]; then
     --cmd="$decode_cmd" \
     --feat.online-ivector-dir=exp/nnet3/ivectors_${train_set} \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
+    --trainer.srand=$srand \
     --trainer.num-epochs=$num_epochs \
     --trainer.samples-per-iter=$samples_per_iter \
     --trainer.optimization.num-jobs-initial=$num_jobs_initial \
