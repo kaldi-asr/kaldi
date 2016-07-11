@@ -28,7 +28,7 @@ namespace kaldi {
    This function is to repeatedly concatenate signal1 by itself 
    to match the length of signal2 and add the two signals together.
 */
-void AddVectorsOfUnequalLength(const Vector<BaseFloat> &signal1,
+void AddVectorsOfUnequalLength(const VectorBase<BaseFloat> &signal1,
                                      Vector<BaseFloat> *signal2) {
   for (int32 po = 0; po < signal2->Dim(); po += signal1.Dim()) {
     int32 block_length = signal1.Dim();
@@ -87,6 +87,8 @@ BaseFloat ComputeEarlyReverbEnergy(const Vector<BaseFloat> &rir, const Vector<Ba
    This is the core function to do reverberation on the given signal.
    The input parameters to this function are the room impulse response,
    the sampling frequency and the signal respectively.
+   The length of the signal will be extended to (original signal length +
+   rir length - 1) after the reverberation.
 */
 float DoReverberation(const Vector<BaseFloat> &rir, BaseFloat samp_freq,
                         Vector<BaseFloat> *signal) {
@@ -147,6 +149,7 @@ int main(int argc, char *argv[]) {
     std::string snrs;
     std::string start_times;
     bool multi_channel_output = false;
+    bool shift_output = true;
     int32 input_channel = 0;
     int32 rir_channel = 0;
     int32 noise_channel = 0;
@@ -156,6 +159,14 @@ int main(int argc, char *argv[]) {
 
     po.Register("multi-channel-output", &multi_channel_output,
                 "Specifies if the output should be multi-channel or not");
+    po.Register("shift-output", &shift_output,
+                "If true, the reverberated waveform will be shifted by the "
+                "amount of the peak position of the RIR and the length of "
+                "the output waveform will be equal to the input waveform."
+                "If false, the length of the output waveform will be "
+                "equal to (original input length + rir length - 1). "
+                "This value is default true and "
+                "it only affects the output when RIR file is provided.");
     po.Register("input-wave-channel", &input_channel,
                 "Specifies the channel to be used from input as only a "
                 "single channel will be used to generate reverberated output");
@@ -228,8 +239,8 @@ int main(int argc, char *argv[]) {
 
     Matrix<BaseFloat> rir_matrix;
     BaseFloat samp_freq_rir = samp_freq_input;
-    int32 num_samp_rir = 1,
-          num_rir_channel = 1;
+    int32 num_samp_rir = 0,
+          num_rir_channel = 0;
     if (!rir_file.empty()) {
       WaveData rir_wave;
       {
@@ -287,8 +298,11 @@ int main(int argc, char *argv[]) {
       ReadCommaSeparatedCommand(start_times, &start_time_vector);
     }
 
+    int32 shift_index = 0;
     int32 num_output_channels = (multi_channel_output ? num_rir_channel : 1);
-    int32 num_samp_output = (duration > 0 ? samp_freq_input * duration : num_samp_input);
+    int32 num_samp_output = (duration > 0 ? samp_freq_input * duration :
+                              (shift_output ? num_samp_input :
+                                              num_samp_input + num_samp_rir - 1));
     Matrix<BaseFloat> out_matrix(num_output_channels, num_samp_output);
 
     for (int32 output_channel = 0; output_channel < num_output_channels; output_channel++) {
@@ -305,6 +319,11 @@ int main(int argc, char *argv[]) {
         rir.CopyRowFromMat(rir_matrix, this_rir_channel);
         rir.Scale(1.0 / (1 << 15));
         early_energy = DoReverberation(rir, samp_freq_rir, &input);
+        if (shift_output) {
+          // find the position of the peak of the impulse response 
+          // and shift the output waveform by this amount
+          rir.Max(&shift_index);
+        }
       }
 
       if (additive_signal_matrices.size() > 0) {
@@ -327,12 +346,12 @@ int main(int argc, char *argv[]) {
 
       if (num_samp_output <= num_samp_input) {
         // trim the signal from the start
-        out_matrix.CopyRowFromVec(input.Range(0, num_samp_output), output_channel);
+        out_matrix.CopyRowFromVec(input.Range(shift_index, num_samp_output), output_channel);
       } else {
         // repeat the signal to fill up the duration
         Vector<BaseFloat> extended_input(num_samp_output);
         extended_input.SetZero();
-        AddVectorsOfUnequalLength(input, &extended_input);
+        AddVectorsOfUnequalLength(input.Range(shift_index, num_samp_input), &extended_input);
         out_matrix.CopyRowFromVec(extended_input, output_channel);
       }
     }

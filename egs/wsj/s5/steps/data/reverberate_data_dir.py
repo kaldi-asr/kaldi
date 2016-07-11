@@ -41,7 +41,7 @@ def GetArgs():
                         "--bg-fg-type <choices=(background|foreground), default=background> "
                         "--rir-file <str, compulsary if isotropic, should not be specified if point-source> "
                         "< location=(support Kaldi IO strings) >")
-    parser.add_argument("--num-replications", type=int, dest = "num_replica", default = 1,
+    parser.add_argument("--num-replications", type=int, dest = "num_replicas", default = 1,
                         help="Number of replicate to generated for the data")
     parser.add_argument('--foreground-snrs', type=str, dest = "foreground_snr_string", default = '20:10:0', help='snrs for foreground noises')
     parser.add_argument('--background-snrs', type=str, dest = "background_snr_string", default = '20:10:0', help='snrs for background noises')
@@ -77,7 +77,7 @@ def CheckArgs(args):
         if not os.path.isfile(args.noise_list_file):
             raise Exception(args.noise_list_file + "not found")
 
-    if args.num_replica > 1 and args.prefix is None:
+    if args.num_replicas > 1 and args.prefix is None:
         args.prefix = "rvb"
         warnings.warn("--prefix is set to 'rvb' as --num-replications is larger than 1.")
 
@@ -135,11 +135,11 @@ def ParseFileToDict(file, assert2fields = False, value_processor = None):
 # The generic command of wav-reverberate will be like:
 # wav-reverberate --duration=t --impulse-response=rir.wav 
 # --additive-signals='noise1.wav,noise2.wav' --snrs='snr1,snr2' --start-times='s1,s2' input.wav output.wav
-def CorruptWav(wav_scp, durations, output_dir, room_dict, noise_list, foreground_snr_array, background_snr_array, num_replica, prefix, speech_rvb_probability, noise_adding_probability, max_noises_added):
+def CorruptWav(wav_scp, durations, output_dir, room_dict, noise_list, foreground_snr_array, background_snr_array, num_replicas, prefix, speech_rvb_probability, noise_adding_probability, max_noises_added):
     foreground_snrs = list_cyclic_iterator(foreground_snr_array)
     background_snrs = list_cyclic_iterator(background_snr_array)
     command_list = []
-    for i in range(num_replica):
+    for i in range(num_replicas):
         keys = wav_scp.keys()
         keys.sort()
         for wav_id in keys:
@@ -204,10 +204,10 @@ def CorruptWav(wav_scp, durations, output_dir, room_dict, noise_list, foreground
 
 
 # This function replicate the entries in files like segments, utt2spk, text
-def AddPrefixToFields(input_file, output_file, num_replica, prefix, field = [0]):
+def AddPrefixToFields(input_file, output_file, num_replicas, prefix, field = [0]):
     list = map(lambda x: x.strip(), open(input_file))
     f = open(output_file, "w")
-    for i in range(num_replica):
+    for i in range(num_replicas):
         for line in list:
             if len(line) > 0 and line[0] != ';':
                 split1 = line.split()
@@ -220,7 +220,7 @@ def AddPrefixToFields(input_file, output_file, num_replica, prefix, field = [0])
     f.close()
 
 
-def CreateReverberatedCopy(input_dir, output_dir, room_dict, noise_list, foreground_snr_string, background_snr_string, num_replica, prefix, speech_rvb_probability, noise_adding_probability, max_noises_added):
+def CreateReverberatedCopy(input_dir, output_dir, room_dict, noise_list, foreground_snr_string, background_snr_string, num_replicas, prefix, speech_rvb_probability, noise_adding_probability, max_noises_added):
     
     if not os.path.isfile(input_dir + "/reco2dur"):
         print("Getting the duration of the recordings...");
@@ -230,18 +230,18 @@ def CreateReverberatedCopy(input_dir, output_dir, room_dict, noise_list, foregro
     foreground_snr_array = map(lambda x: float(x), foreground_snr_string.split(':'))
     background_snr_array = map(lambda x: float(x), background_snr_string.split(':'))
 
-    CorruptWav(wav_scp, durations, output_dir, room_dict, noise_list, foreground_snr_array, background_snr_array, num_replica, prefix, speech_rvb_probability, noise_adding_probability, max_noises_added)
+    CorruptWav(wav_scp, durations, output_dir, room_dict, noise_list, foreground_snr_array, background_snr_array, num_replicas, prefix, speech_rvb_probability, noise_adding_probability, max_noises_added)
 
-    AddPrefixToFields(input_dir + "/utt2spk", output_dir + "/utt2spk", num_replica, prefix, field = [0,1])
+    AddPrefixToFields(input_dir + "/utt2spk", output_dir + "/utt2spk", num_replicas, prefix, field = [0,1])
     train_lib.RunKaldiCommand("utils/utt2spk_to_spk2utt.pl <{output_dir}/utt2spk >{output_dir}/spk2utt"
                     .format(output_dir = output_dir))
 
     if os.path.isfile(input_dir + "/text"):
-        AddPrefixToFields(input_dir + "/text", output_dir + "/text", num_replica, prefix, field =[0])
+        AddPrefixToFields(input_dir + "/text", output_dir + "/text", num_replicas, prefix, field =[0])
     if os.path.isfile(input_dir + "/segments"):
-        AddPrefixToFields(input_dir + "/segments", output_dir + "/segments", num_replica, prefix, field = [0,1])
+        AddPrefixToFields(input_dir + "/segments", output_dir + "/segments", num_replicas, prefix, field = [0,1])
     if os.path.isfile(input_dir + "/reco2file_and_channel"):
-        AddPrefixToFields(input_dir + "/reco2file_and_channel", output_dir + "/reco2file_and_channel", num_replica, prefix, field = [0,1])
+        AddPrefixToFields(input_dir + "/reco2file_and_channel", output_dir + "/reco2file_and_channel", num_replicas, prefix, field = [0,1])
 
     train_lib.RunKaldiCommand("utils/validate_data_dir.sh --no-feats {output_dir}"
                     .format(output_dir = output_dir))
@@ -352,7 +352,7 @@ def Main():
                    noise_list = noise_list,
                    foreground_snr_string = args.foreground_snr_string,
                    background_snr_string = args.background_snr_string,
-                   num_replica = args.num_replica,
+                   num_replicas = args.num_replicas,
                    prefix = args.prefix,
                    speech_rvb_probability = args.speech_rvb_probability,
                    noise_adding_probability = args.noise_adding_probability,
