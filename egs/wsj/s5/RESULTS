@@ -300,7 +300,7 @@ for x in exp/nnet3/nnet_tdnn_a/decode_*; do grep WER $x/wer_* | utils/best_wer.s
 # -----------------------
 # local/nnet3/run_lstm.sh --affix bidirectional \ 
 #                         --lstm-delay " [-1,1] [-2,2] [-3,3] " \
-#	                  --label-delay 0 \
+#                         --label-delay 0 \
 #                         --cell-dim 640 \
 #                         --recurrent-projection-dim 128 \
 #                         --non-recurrent-projection-dim 128 \
@@ -311,3 +311,9 @@ for x in exp/nnet3/nnet_tdnn_a/decode_*; do grep WER $x/wer_* | utils/best_wer.s
 %WER 4.27 exp/nnet3/lstm_bidirectional/decode_bd_tgpr_eval92/wer_11_0.0
 %WER 9.29 exp/nnet3/lstm_bidirectional/decode_tgpr_dev93/wer_11_0.5
 %WER 6.61 exp/nnet3/lstm_bidirectional/decode_tgpr_eval92/wer_11_1.0
+
+# state preserving LSTM
+#------------------------
+# local/nnet3/run_splstm.sh
+# During training the total GPU time is 22% less than normal chunk-based LSTM per eg. This is mostly due to 
+# 40.7% less time spent on Propagate(), since time spent on Backprop() is roughly the same

@@ -538,6 +538,11 @@ struct GeneralDescriptor {
   void Print(const std::vector<std::string> &node_names,
              std::ostream &os);
 
+  // defined in nnet-utils.h
+  friend bool GetDescriptorRecurrentNodeOffset(const GeneralDescriptor &gen_desc,
+                                               int32 input_node_index,
+                                               int32 *offset);
+
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(GeneralDescriptor);
 

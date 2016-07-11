@@ -51,6 +51,15 @@ NnetDecodableBase::NnetDecodableBase(
                  "You need to set the --online-ivector-period option!"));
   log_priors_.ApplyLog();
   CheckAndFixConfigs();
+
+   // extract recurrent output names and their offsets from nnet 
+  std::vector<std::string> recurrent_node_names; 
+  GetRecurrentOutputNodeNames(nnet_, &recurrent_output_names_,
+                              &recurrent_node_names);
+  GetRecurrentNodeOffsets(nnet_, recurrent_node_names, &recurrent_offsets_);
+  for (int32 i = 0; i < recurrent_offsets_.size(); i++)
+    KALDI_VLOG(2) << "recurrent node: " << recurrent_node_names[i] 
+                  << ", offset: " << recurrent_offsets_[i];
 }
 
 
@@ -224,7 +233,7 @@ void NnetDecodableBase::DoNnetComputation(
   int32 time_offset = (shift_time ? -output_t_start : 0);
 
   // First add the regular features-- named "input".
-  request.inputs.reserve(2);
+  request.inputs.reserve(2 + recurrent_output_names_.size());
   request.inputs.push_back(
       IoSpecification("input", time_offset + input_t_start,
                       time_offset + input_t_start + input_feats.NumRows()));
@@ -244,6 +253,25 @@ void NnetDecodableBase::DoNnetComputation(
   request.outputs.resize(1);
   request.outputs[0].Swap(&output_spec);
 
+  // Add recurrent inputs to request. We do not need to add recurrent outputs to
+  // request like we did in state preserving RNN training, as we do not actually
+  // preserve the the states of the network across chunks during decoding.
+  for (int32 i = 0; i < recurrent_output_names_.size(); i++) {
+    const std::string &node_name = recurrent_output_names_[i];
+    const int32 offset = recurrent_offsets_[i];
+    if (offset < 0)
+      request.inputs.push_back(
+          IoSpecification(node_name + "_STATE_PREVIOUS_MINIBATCH",
+              time_offset + output_t_start - opts_.extra_left_context + offset,
+              time_offset + output_t_start - opts_.extra_left_context));
+    else
+      request.inputs.push_back(
+          IoSpecification(node_name + "_STATE_PREVIOUS_MINIBATCH",
+              time_offset + output_t_start + opts_.extra_right_context + 1,
+              time_offset + output_t_start + opts_.extra_right_context + 1 +
+              offset));
+  }
+
   const NnetComputation *computation = compiler_.Compile(request);
   Nnet *nnet_to_update = NULL;  // we're not doing any update.
   NnetComputer computer(opts_.compute_config, *computation,
@@ -256,6 +284,15 @@ void NnetDecodableBase::DoNnetComputation(
     ivector_feats_cu.Resize(1, ivector.Dim());
     ivector_feats_cu.Row(0).CopyFromVec(ivector);
     computer.AcceptInput("ivector", &ivector_feats_cu);
+  }
+  for (int32 i = 0; i < recurrent_output_names_.size(); i++) {
+    const std::string &node_name = recurrent_output_names_[i];
+    const int32 offset = recurrent_offsets_[i];
+    // create the "dummy" zero matrix for input
+    CuMatrix<BaseFloat> zero_matrix_as_input_cu(abs(offset),
+                                                nnet_.OutputDim(node_name));
+    computer.AcceptInput(node_name + "_STATE_PREVIOUS_MINIBATCH",
+                         &zero_matrix_as_input_cu);
   }
   computer.Forward();
   CuMatrix<BaseFloat> cu_output;

@@ -26,7 +26,7 @@ def GetSumDescriptor(inputs):
     return sum_descriptors
 
 # adds the input nodes and returns the descriptor
-def AddInputLayer(config_lines, feat_dim, splice_indexes=[0], ivector_dim=0):
+def AddInputLayer(config_lines, feat_dim, splice_indexes=[0], ivector_dim=0, ivector_interval=0):
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
     output_dim = 0
@@ -35,7 +35,10 @@ def AddInputLayer(config_lines, feat_dim, splice_indexes=[0], ivector_dim=0):
     output_dim += len(splice_indexes) * feat_dim
     if ivector_dim > 0:
         components.append('input-node name=ivector dim=' + str(ivector_dim))
-        list.append('ReplaceIndex(ivector, t, 0)')
+        if ivector_interval == 0:
+            list.append('ReplaceIndex(ivector, t, 0)')
+        else:
+            list.append('Round(ivector, {0})'.format(ivector_interval))
         output_dim += ivector_dim
     if len(list) > 1:
         splice_descriptor = "Append({0})".format(", ".join(list))
@@ -276,10 +279,38 @@ def AddFinalLayer(config_lines, input, output_dim,
     # suffix for output node
     AddOutputLayer(config_lines, prev_layer_output, label_delay, suffix = name_affix, objective_type = objective_type)
 
+# The following two functions are necessary for state preserving RNN training. Users need to add additional output-nodes 
+# in order to output states of the recurrent nodes that would be used as inputs to the next minibatch.
+# We use the string "_STATE_PREVIOUS_MINIBATCH" as a reserved suffix for node names: if there is an input-node named
+# "xxx_STATE_PREVIOUS_MINIBATCH", there should be an output-node named "xxx". In this case, they are a state output and
+# the corresponding state input respectively. The time offset, i.e, how many time steps away the state input will get from
+# the state output of the previous minibatch, will be automatically determined by its recurrent delay
+# (e.g., lstm_delay in LSTM case) from the network config file.
+def AddRecurrentInputNodesForLstm(config_lines, name, cell_dim = 0, recurrent_projection_dim = 0):
+    components = config_lines['components']
+    components.append('# The following 2 input-nodes are used for state preserving training.')
+    if cell_dim > 0:
+        components.append('input-node name=output_{0}_c_t_STATE_PREVIOUS_MINIBATCH dim='.format(name) + str(cell_dim))
+        if recurrent_projection_dim > 0:
+            components.append('input-node name=output_{0}_r_t_STATE_PREVIOUS_MINIBATCH dim='.format(name) + str(recurrent_projection_dim))
+        else:
+            components.append('input-node name=output_{0}_m_t_STATE_PREVIOUS_MINIBATCh dim='.format(name) + str(cell_dim))
+
+def AddRecurrentOutputNodesForLstm(config_lines, name, recurrent_projection_dim = 0):
+    component_nodes = config_lines['component-nodes']
+    component_nodes.append('# The following 2 output-nodes are used for state preserving training.')
+    component_nodes.append('output-node name=output_{0}_c_t input={0}_c_t'.format(name))
+    if (recurrent_projection_dim == 0):
+        recurrent_connection = "m_t"
+    else:
+        recurrent_connection = "r_t"
+    component_nodes.append('output-node name=output_{0}_{1} input={0}_{1}'.format(name, recurrent_connection))
+
 def AddLstmLayer(config_lines,
                  name, input, cell_dim,
                  recurrent_projection_dim = 0,
                  non_recurrent_projection_dim = 0,
+                 preserve_state = False,
                  clipping_threshold = 1.0,
                  norm_based_clipping = "false",
                  ng_per_element_scale_options = "",
@@ -287,6 +318,10 @@ def AddLstmLayer(config_lines,
                  lstm_delay = -1,
                  self_repair_scale = None):
     assert(recurrent_projection_dim >= 0 and non_recurrent_projection_dim >= 0)
+
+    if preserve_state: # add recurrent state input-nodes. Read the documentation of AddRecurrentInputNodesForLstm method in components.py for more information
+        AddRecurrentInputNodesForLstm(config_lines, name, cell_dim, recurrent_projection_dim)
+
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
 
@@ -344,20 +379,32 @@ def AddLstmLayer(config_lines,
 
     # c1_t and c2_t defined below
     component_nodes.append("component-node name={0}_c_t component={0}_c input=Sum({0}_c1_t, {0}_c2_t)".format(name))
-    c_tminus1_descriptor = "IfDefined(Offset({0}_c_t, {1}))".format(name, lstm_delay)
+    if not preserve_state:
+        c_tminus1_descriptor = "IfDefined(Offset({0}_c_t, {1}))".format(name, lstm_delay)
+    else:
+        c_tminus1_descriptor = "Failover(Offset({0}_c_t, {1}), Offset(output_{0}_c_t_STATE_PREVIOUS_MINIBATCH, {1}))".format(name, lstm_delay)
 
     component_nodes.append("# i_t")
-    component_nodes.append("component-node name={0}_i1 component={0}_W_i-xr input=Append({1}, IfDefined(Offset({0}_{2}, {3})))".format(name, input_descriptor, recurrent_connection, lstm_delay))
+    if not preserve_state:
+        component_nodes.append("component-node name={0}_i1 component={0}_W_i-xr input=Append({1}, IfDefined(Offset({0}_{2}, {3})))".format(name, input_descriptor, recurrent_connection, lstm_delay))
+    else:
+        component_nodes.append("component-node name={0}_i1 component={0}_W_i-xr input=Append({1}, Failover(Offset({0}_{2}, {3}), Offset(output_{0}_{2}_STATE_PREVIOUS_MINIBATCH, {3})))".format(name, input_descriptor, recurrent_connection, lstm_delay))
     component_nodes.append("component-node name={0}_i2 component={0}_w_ic  input={1}".format(name, c_tminus1_descriptor))
     component_nodes.append("component-node name={0}_i_t component={0}_i input=Sum({0}_i1, {0}_i2)".format(name))
 
     component_nodes.append("# f_t")
-    component_nodes.append("component-node name={0}_f1 component={0}_W_f-xr input=Append({1}, IfDefined(Offset({0}_{2}, {3})))".format(name, input_descriptor, recurrent_connection, lstm_delay))
+    if not preserve_state:
+        component_nodes.append("component-node name={0}_f1 component={0}_W_f-xr input=Append({1}, IfDefined(Offset({0}_{2}, {3})))".format(name, input_descriptor, recurrent_connection, lstm_delay))
+    else:
+        component_nodes.append("component-node name={0}_f1 component={0}_W_f-xr input=Append({1}, Failover(Offset({0}_{2}, {3}), Offset(output_{0}_{2}_STATE_PREVIOUS_MINIBATCH, {3})))".format(name, input_descriptor, recurrent_connection, lstm_delay))
     component_nodes.append("component-node name={0}_f2 component={0}_w_fc  input={1}".format(name, c_tminus1_descriptor))
     component_nodes.append("component-node name={0}_f_t component={0}_f input=Sum({0}_f1,{0}_f2)".format(name))
 
     component_nodes.append("# o_t")
-    component_nodes.append("component-node name={0}_o1 component={0}_W_o-xr input=Append({1}, IfDefined(Offset({0}_{2}, {3})))".format(name, input_descriptor, recurrent_connection, lstm_delay))
+    if not preserve_state:
+        component_nodes.append("component-node name={0}_o1 component={0}_W_o-xr input=Append({1}, IfDefined(Offset({0}_{2}, {3})))".format(name, input_descriptor, recurrent_connection, lstm_delay))
+    else:
+        component_nodes.append("component-node name={0}_o1 component={0}_W_o-xr input=Append({1}, Failover(Offset({0}_{2}, {3}), Offset(output_{0}_{2}_STATE_PREVIOUS_MINIBATCH, {3})))".format(name, input_descriptor, recurrent_connection, lstm_delay))
     component_nodes.append("component-node name={0}_o2 component={0}_w_oc input={0}_c_t".format(name))
     component_nodes.append("component-node name={0}_o_t component={0}_o input=Sum({0}_o1, {0}_o2)".format(name))
 
@@ -365,7 +412,10 @@ def AddLstmLayer(config_lines,
     component_nodes.append("component-node name={0}_h_t component={0}_h input={0}_c_t".format(name))
 
     component_nodes.append("# g_t")
-    component_nodes.append("component-node name={0}_g1 component={0}_W_c-xr input=Append({1}, IfDefined(Offset({0}_{2}, {3})))".format(name, input_descriptor, recurrent_connection, lstm_delay))
+    if not preserve_state:
+        component_nodes.append("component-node name={0}_g1 component={0}_W_c-xr input=Append({1}, IfDefined(Offset({0}_{2}, {3})))".format(name, input_descriptor, recurrent_connection, lstm_delay))
+    else:
+        component_nodes.append("component-node name={0}_g1 component={0}_W_c-xr input=Append({1}, Failover(Offset({0}_{2}, {3}), Offset(output_{0}_{2}_STATE_PREVIOUS_MINIBATCH, {3})))".format(name, input_descriptor, recurrent_connection, lstm_delay))
     component_nodes.append("component-node name={0}_g_t component={0}_g input={0}_g1".format(name))
 
     component_nodes.append("# parts of c_t")
@@ -403,6 +453,9 @@ def AddLstmLayer(config_lines,
         output_descriptor = '{0}_r_t'.format(name)
         output_dim = cell_dim
 
+    if preserve_state: # add recurrent state output-nodes
+        AddRecurrentOutputNodesForLstm(config_lines, name, recurrent_projection_dim)
+
     return {
             'descriptor': output_descriptor,
             'dimension':output_dim
@@ -412,6 +465,7 @@ def AddBLstmLayer(config_lines,
                   name, input, cell_dim,
                   recurrent_projection_dim = 0,
                   non_recurrent_projection_dim = 0,
+                  preserve_state = False,
                   clipping_threshold = 1.0,
                   norm_based_clipping = "false",
                   ng_per_element_scale_options = "",
@@ -421,11 +475,13 @@ def AddBLstmLayer(config_lines,
     assert(len(lstm_delay) == 2 and lstm_delay[0] < 0 and lstm_delay[1] > 0)
     output_forward = AddLstmLayer(config_lines, "{0}_forward".format(name), input, cell_dim,
                                   recurrent_projection_dim, non_recurrent_projection_dim,
+                                  preserve_state,
                                   clipping_threshold, norm_based_clipping,
                                   ng_per_element_scale_options, ng_affine_options,
                                   lstm_delay = lstm_delay[0], self_repair_scale = self_repair_scale)
     output_backward = AddLstmLayer(config_lines, "{0}_backward".format(name), input, cell_dim,
                                    recurrent_projection_dim, non_recurrent_projection_dim,
+                                   preserve_state,
                                    clipping_threshold, norm_based_clipping,
                                    ng_per_element_scale_options, ng_affine_options,
                                    lstm_delay = lstm_delay[1], self_repair_scale = self_repair_scale)

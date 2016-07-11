@@ -2914,6 +2914,19 @@ void CuMatrixBase<Real>::EqualElementMask(const CuMatrixBase<Real> &mat, CuMatri
   }
 }
 
+GeneralMatrix& GeneralMatrix::operator= (const CuMatrixBase<BaseFloat> &cu_mat) {
+  Clear();
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    mat_.Resize(cu_mat.NumRows(), cu_mat.NumCols(), kUndefined);
+    mat_.CopyFromMat(cu_mat);
+    return *this;
+  }
+#endif
+  mat_ = cu_mat.Mat();
+  return *this;
+}
+
 
 /**
  * Print the matrix to stream

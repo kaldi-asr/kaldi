@@ -23,6 +23,7 @@
 #include "nnet3/nnet-example.h"
 #include "nnet3/nnet-computation.h"
 #include "nnet3/nnet-compute.h"
+#include "base/timer.h" //debug
 
 namespace kaldi {
 namespace nnet3 {
@@ -62,6 +63,16 @@ void GetComputationRequest(const Nnet &nnet,
                            bool store_component_stats,
                            ComputationRequest *computation_request);
 
+/** Computes num frames per chunk in io. It is used in the minibatch case where
+    we need to know the num frames per chunk in the minibatch. Note that all
+    chunks in the minibatch have the same num of frames by construction.
+*/
+int32 NumFramesPerChunk(const NnetIo &io);
+
+/** Computes num of chunks in io. It is used in the minibatch case where we need
+    to know the num of chunks in a minibatch (a.k.a. minibatch size).
+*/
+int32 NumChunks(const NnetIo &io);
 
 // Writes as unsigned char a vector 'vec' that is required to have
 // values between 0 and 1.
@@ -80,6 +91,13 @@ void RoundUpNumFrames(int32 frame_subsampling_factor,
                       int32 *num_frames,
                       int32 *num_frames_overlap);
 
+/** For each original large chunk in a minibatch, Split it into smaller ones,
+    which is of size new_chunk_size. It will end up generate
+    (chunk_size / new_chunk_size) new minibatches
+*/
+void SplitChunk(int32 new_chunk_size, int32 left_context, int32 right_context,
+                const NnetExample &eg, const Nnet &nnet,
+                std::vector<NnetExample> *splitted);
 
 } // namespace nnet3
 } // namespace kaldi

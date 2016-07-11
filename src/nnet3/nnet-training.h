@@ -148,6 +148,17 @@ class NnetTrainer {
   // train on one minibatch.
   void Train(const NnetExample &eg);
 
+  // give some necessary info to *this for state-preserving training
+  void GiveStatePreservingInfo(const std::vector<std::string>
+                               &recurrent_output_names,
+                               const std::vector<int32> &recurrent_offsets);
+  
+  // get the i-th recurrent output
+  inline const CuMatrix<BaseFloat> &GetRecurrentOutput(int32 i) const {
+    KALDI_ASSERT(i >= 0 && i < recurrent_outputs_.size());
+    return recurrent_outputs_[i];
+  }
+
   // Prints out the final stats, and return true if there was a nonzero count.
   bool PrintTotalStats() const;
 
@@ -155,6 +166,13 @@ class NnetTrainer {
  private:
   void ProcessOutputs(const NnetExample &eg,
                       NnetComputer *computer);
+
+  // Update output matrix in current_outputs_ of all the recurrent connections
+  // of the current minibatch for the next minibatch. The output matrix only
+  // includes the recurrent output of the last [offset] frame of each chunk of
+  // the current minibatch. 
+  void UpdateRecurrentOutputs(const NnetExample &eg,
+                              const NnetComputer &computer);
 
   const NnetTrainerOptions config_;
   Nnet *nnet_;
@@ -171,6 +189,14 @@ class NnetTrainer {
   int32 num_minibatches_processed_;
 
   unordered_map<std::string, ObjectiveFunctionInfo, StringHasher> objf_info_;
+
+  // some info needed in the state preserving training
+  std::vector<std::string> recurrent_output_names_;
+  std::vector<int32> recurrent_offsets_;
+
+  // In the state presrving training mode needed as inputs to the next minibatch
+  // It is a vector container storing the recurrent outputs of each chunk
+  std::vector<CuMatrix<BaseFloat> > recurrent_outputs_;
 };
 
 /**

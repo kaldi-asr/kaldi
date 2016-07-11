@@ -69,10 +69,21 @@ void NnetTrainer::Train(const NnetExample &eg) {
                         (delta_nnet_ == NULL ? nnet_ : delta_nnet_));
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, eg.io);
+  Timer tim;//debug
   computer.Forward();
+  KALDI_LOG << "forward time: " << tim.Elapsed();//debug
 
+  tim.Reset();//debug
   this->ProcessOutputs(eg, &computer);
+  KALDI_LOG << "processoutputs time: " << tim.Elapsed();//debug
+  // Update the recurrent output matrices in recurrent_outputs_
+  // as additional inputs for the next minibatch, if there is any
+  tim.Reset();//debug
+  UpdateRecurrentOutputs(eg, computer);
+  KALDI_LOG << "update time: " << tim.Elapsed();//debug
+  tim.Reset();//debug
   computer.Backward();
+  KALDI_LOG << "backward time: " << tim.Elapsed();//debug
 
   if (delta_nnet_ != NULL) {
     BaseFloat scale = (1.0 - config_.momentum);
@@ -112,9 +123,81 @@ void NnetTrainer::ProcessOutputs(const NnetExample &eg,
                                supply_deriv, computer,
                                &tot_weight, &tot_objf);
       objf_info_[io.name].UpdateStats(io.name, config_.print_interval,
-                                      num_minibatches_processed_++,
+                                      io.name == "output" ?
+                                      num_minibatches_processed_++ :
+                                      num_minibatches_processed_,
                                       tot_weight, tot_objf);
     }
+  }
+}
+
+void NnetTrainer::GiveStatePreservingInfo(const std::vector<std::string>
+                                          &recurrent_output_names,
+                                          const std::vector<int32>
+                                          &recurrent_offsets) {
+  recurrent_output_names_ = recurrent_output_names;
+  recurrent_offsets_ = recurrent_offsets;
+  recurrent_outputs_.resize(recurrent_output_names.size());
+}
+
+void NnetTrainer::UpdateRecurrentOutputs(const NnetExample &eg,
+                                         const NnetComputer &computer) {
+  //for (int32 i = 0; i < recurrent_output_names_.size(); i++) {//debug
+    //KALDI_ASSERT(recurrent_output_names_[i] + "_STATE_PREVIOUS_MINIBATCH" == eg.io[i * 2 + 3].name);//debug
+    //CuMatrix<BaseFloat> feat(eg.io[i * 2+ 3].features.NumRows(), eg.io[i * 2 + 3].features.NumCols(), kUndefined);//debug
+    //eg.io[i * 2 + 3].features.CopyToMat(&feat);//debug
+    //if (feat.FrobeniusNorm() < 0.0001) {//debug
+      //KALDI_ASSERT(ApproxEqual(recurrent_outputs_[i], feat, static_cast<BaseFloat>(0.0001)));//debug
+    //}//debug
+  //}//debug
+  // compute the chunk size and num of chunks of the current minibatch
+  int32 chunk_size = 0, num_chunks = 0;
+  for (int32 f = 0; f < eg.io.size(); f++) {
+    if (eg.io[f].name == "output") {
+      chunk_size = NumFramesPerChunk(eg.io[f]);
+      num_chunks = NumChunks(eg.io[f]);
+      break;
+    }
+  }
+
+  for (int32 i = 0; i < recurrent_output_names_.size(); i++) {
+    const std::string &node_name = recurrent_output_names_[i];
+    // get the cuda matrix corresponding to the recurrent output
+    const CuMatrixBase<BaseFloat> &r_all_cu = computer.GetOutput(node_name);
+    KALDI_ASSERT(r_all_cu.NumRows() == num_chunks * chunk_size);
+
+    // only copy the rows corresponding to the recurrent output of the
+    // last (if offset < 0) or first (if offset > 0) [abs(offset)] frames 
+    // of each chunk from the previous minibatch
+    const int32 offset = recurrent_offsets_[i];
+    KALDI_ASSERT(offset != 0);
+    std::vector<int32> indexes(num_chunks * abs(offset));
+    for (int32 n = 0; n < num_chunks; n++) {
+      for (int32 t = 0; t < abs(offset); t++) {
+        if (offset < 0)
+          indexes[n * abs(offset) + t] = (n + 1) * chunk_size + offset + t;
+        else
+          indexes[n * abs(offset) + t] = n * chunk_size + t;
+      }
+    }
+
+    CuArray<int32> indexes_cu(indexes);
+
+    recurrent_outputs_[i].Resize(num_chunks * abs(offset), r_all_cu.NumCols(),
+                                 kUndefined);
+    recurrent_outputs_[i].CopyRows(r_all_cu, indexes_cu);
+    //for (int32 n = 0; n < num_chunks; n++) {//debug
+      //for (int32 t = 0; t < abs(offset); t++) { //debug
+        //if (offset < 0) //debug 
+          //AssertEqual(r_all_cu.RowRange((n + 1) * chunk_size + offset, abs(offset)),//debug
+            //          recurrent_outputs_[i].RowRange(n * abs(offset), abs(offset)),//debug
+              //        static_cast<BaseFloat>(0.0001));//debug
+        //else //debug
+          //AssertEqual(r_all_cu.RowRange(n * chunk_size, abs(offset)),//debug
+            //          recurrent_outputs_[i].RowRange(n * abs(offset), abs(offset)),//debug
+              //        static_cast<BaseFloat>(0.0001));//debug 
+      //}//debug
+    //}//debug
   }
 }
 
@@ -214,6 +297,19 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
                               BaseFloat *tot_weight,
                               BaseFloat *tot_objf) {
   const CuMatrixBase<BaseFloat> &output = computer->GetOutput(output_name);
+
+  // create zero matrix as output derivative of the recurrent output node
+  int32 node_index = computer->GetNnet().GetNodeIndex(output_name +
+                     "_STATE_PREVIOUS_MINIBATCH");
+  if (node_index != -1 && computer->GetNnet().IsInputNode(node_index)) {
+    *tot_weight = 0;
+    *tot_objf = 0;
+    if (supply_deriv) {
+      CuMatrix<BaseFloat> output_deriv(output.NumRows(), output.NumCols());
+      computer->AcceptOutputDeriv(output_name, &output_deriv);
+    }
+    return;
+  }
 
   if (output.NumCols() != supervision.NumCols())
     KALDI_ERR << "Nnet versus example output dimension (num-classes) "

@@ -36,6 +36,8 @@ momentum=0.5
 num_chunk_per_minibatch=100
 samples_per_iter=20000
 remove_egs=true
+minibatch_chunk_size=20
+left_shift_window=false
 
 #decode options
 extra_left_context=
@@ -94,6 +96,8 @@ if [ $stage -le 8 ]; then
     --chunk-right-context $chunk_right_context \
     --egs-dir "$common_egs_dir" \
     --remove-egs $remove_egs \
+    --minibatch-chunk-size $minibatch_chunk_size \
+    --left-shift-window $left_shift_window \
     data/train_si284_hires data/lang exp/tri4b_ali_si284 $dir  || exit 1;
 fi
 
@@ -114,11 +118,11 @@ if [ $stage -le 9 ]; then
       (
       num_jobs=`cat data/test_${year}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
       steps/nnet3/lstm/decode.sh --nj $num_jobs --cmd "$decode_cmd" \
-	  --extra-left-context $extra_left_context \
-	  --extra-right-context $extra_right_context \
-	  --frames-per-chunk "$frames_per_chunk" \
-	  --online-ivector-dir exp/nnet3/ivectors_test_$year \
-	 $graph_dir data/test_${year}_hires $dir/decode_${lm_suffix}_${year} || exit 1;
+        --extra-left-context $extra_left_context \
+        --extra-right-context $extra_right_context \
+        --frames-per-chunk "$frames_per_chunk" \
+        --online-ivector-dir exp/nnet3/ivectors_test_$year \
+        $graph_dir data/test_${year}_hires $dir/decode_${lm_suffix}_${year} || exit 1;
       ) &
     done
   done

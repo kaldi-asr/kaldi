@@ -110,6 +110,8 @@ class NnetComputer {
   const CuMatrixBase<BaseFloat> &GetInputDeriv(
       const std::string &input_name) const;
 
+  inline const Nnet &GetNnet() const { return nnet_; }
+
  private:
   const NnetComputeOptions &options_;
   const NnetComputation &computation_;

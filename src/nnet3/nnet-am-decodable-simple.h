@@ -224,6 +224,10 @@ class NnetDecodableBase {
   // frames.
   int32 current_log_post_subsampled_offset_;
 
+  // for state preserving
+  std::vector<std::string> recurrent_output_names_;
+  std::vector<int32> recurrent_offsets_;
+
 
 };
 

@@ -53,6 +53,36 @@ int32 NumOutputNodes(const Nnet &nnet);
 /// returns the number of input nodes of this nnet.
 int32 NumInputNodes(const Nnet &nnet);
 
+/// This is called when we are using state preserving RNN training. It checks
+/// that the state inputs and the corresponding state outputs are correctly
+/// specified after updating Nnet by the config file.
+void CheckStateIoForStatePreserving(const Nnet &nnet);
+
+/// Get node names of all recurrent output nodes from output nodes, and node
+/// names of those output nodes' "input" field as specified in the config file.
+/// The assumption is that all output nodes except the one named "output" are
+/// recurrent outputs, and for a recurrent output node, its input can only
+/// contain one component node.
+void GetRecurrentOutputNodeNames(const Nnet &nnet,
+                                 std::vector<std::string>
+                                 *recurrent_output_names,
+                                 std::vector<std::string>
+                                 *recurrent_node_names);
+
+/// Get (largest absolute) time offset of each recurrent node in
+/// recurrent_node_names.
+void GetRecurrentNodeOffsets(const Nnet &nnet,
+                             const std::vector<std::string>
+                             &recurrent_node_names,
+                             std::vector<int32> *recurrent_offsets);
+
+/// Get time offset of a recurrent node (queried by its node index) and
+/// return true if it can be found in gen_desc; otherwise returns false.
+/// If the recurrent node appears more than once, return offset with the
+/// largest absolute value.
+bool GetDescriptorRecurrentNodeOffset(const GeneralDescriptor &gen_desc,
+                                      int32 recurrent_node_index, int32 *offset);
+ 
 /// Calls SetZero (with the given is_gradient parameter) on all updatable
 /// components of the nnet.
 void SetZero(bool is_gradient,

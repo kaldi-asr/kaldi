@@ -55,6 +55,15 @@ online_ivector_dir=  # can be used if we are including speaker information as iV
 cmvn_opts=  # can be used for specifying CMVN options, if feature type is not lda (if lda,
             # it doesn't make sense to use different options than were used as input to the
             # LDA transform).  This is used to turn off CMVN in the online-nnet experiments.
+left_shift_window=false  # If false, the last example extracted from an utterance would
+                         # be padded with the final frame to get frames_per_eg frames.
+                         # If true, the starting frame-index of the last example would be
+                         # shifted to the left to get frames_per_eg frames.
+multiple_ivectors_per_eg=false # If true, dump more ivectors (e.g. every 20 frames) per eg. One
+                               # situation when it is used is in state preserving training when
+                               # we usually get egs of large chunk size, and it may be
+                               # inappropriate to just use one ivector to represent all the
+                               # smaller chunks after splitting.
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -80,6 +89,15 @@ if [ $# != 3 ]; then
   echo "  --num-frames-diagnostic <#frames;4000>           # Number of frames used in computing (train,valid) diagnostics"
   echo "  --num-valid-frames-combine <#frames;10000>       # Number of frames used in getting combination weights at the"
   echo "                                                   # very end."
+  echo "  --left-shift-window <bool;false>                 # If false, the last example extracted from an utterance would"
+  echo "                                                   # be padded with the final frame to get frames_per_eg frames."
+  echo "                                                   # If true, the starting frame-index of the last example would be"
+  echo "                                                   # shifted to the left to get frames_per_eg frames."
+  echo " --multiple-ivectors-per-eg <bool;false>           # If true, dump more ivectors (e.g. every 20 frames) per eg. One"
+  echo "                                                   # situation when it is used is in state preserving training when"
+  echo "                                                   # we usually get egs of large chunk size, and it may be"
+  echo "                                                   # inappropriate to just use one ivector to represent all the"
+  echo "                                                   # smaller chunks after splitting."
   echo "  --stage <stage|0>                                # Used to run a partially-completed training process from somewhere in"
   echo "                                                   # the middle."
 
@@ -265,11 +283,11 @@ if [ $stage -le 2 ]; then
     copy-int-vector ark:- ark,scp:$dir/ali.ark,$dir/ali.scp || exit 1;
 fi
 
-egs_opts="--left-context=$left_context --right-context=$right_context --compress=$compress"
+egs_opts="--left-context=$left_context --right-context=$right_context --compress=$compress --left-shift-window=$left_shift_window --multiple-ivectors-per-eg=$multiple_ivectors_per_eg"
 
 [ -z $valid_left_context ] &&  valid_left_context=$left_context;
 [ -z $valid_right_context ] &&  valid_right_context=$right_context;
-valid_egs_opts="--left-context=$valid_left_context --right-context=$valid_right_context --compress=$compress"
+valid_egs_opts="--left-context=$valid_left_context --right-context=$valid_right_context --compress=$compress --left-shift-window=$left_shift_window"
 
 echo $left_context > $dir/info/left_context
 echo $right_context > $dir/info/right_context
