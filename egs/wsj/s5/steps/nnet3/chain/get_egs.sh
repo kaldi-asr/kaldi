@@ -64,6 +64,7 @@ nj=15         # This should be set to the maximum number of jobs you are
 max_shuffle_jobs_run=50  # the shuffle jobs now include the nnet3-chain-normalize-egs command,
                          # which is fairly CPU intensive, so we can run quite a few at once
                          # without overloading the disks.
+srand=0     # rand seed for nnet3-chain-copy-egs and nnet3-chain-shuffle-egs 
 online_ivector_dir=  # can be used if we are including speaker information as iVectors.
 cmvn_opts=  # can be used for specifying CMVN options, if feature type is not lda (if lda,
             # it doesn't make sense to use different options than were used as input to the
@@ -379,7 +380,7 @@ if [ $stage -le 4 ]; then
       $chaindir/tree $chaindir/0.trans_mdl ark:- ark:- \| \
     nnet3-chain-get-egs $ivector_opt $egs_opts \
      "$feats" ark,s,cs:- ark:- \| \
-    nnet3-chain-copy-egs --random=true --srand=JOB ark:- $egs_list || exit 1;
+    nnet3-chain-copy-egs --random=true --srand=\$[JOB+$srand] ark:- $egs_list || exit 1;
 fi
 
 if [ $stage -le 5 ]; then
@@ -396,7 +397,7 @@ if [ $stage -le 5 ]; then
   if [ $archives_multiple == 1 ]; then # normal case.
     $cmd --max-jobs-run $max_shuffle_jobs_run --mem 8G JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
       nnet3-chain-normalize-egs $chaindir/normalization.fst "ark:cat $egs_list|" ark:- \| \
-      nnet3-chain-shuffle-egs --srand=JOB ark:- ark:$dir/cegs.JOB.ark  || exit 1;
+      nnet3-chain-shuffle-egs --srand=\$[JOB+$srand] ark:- ark:$dir/cegs.JOB.ark  || exit 1;
   else
     # we need to shuffle the 'intermediate archives' and then split into the
     # final archives.  we create soft links to manage this splitting, because
@@ -413,7 +414,7 @@ if [ $stage -le 5 ]; then
     done
     $cmd --max-jobs-run $max_shuffle_jobs_run --mem 8G JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
       nnet3-chain-normalize-egs $chaindir/normalization.fst "ark:cat $egs_list|" ark:- \| \
-      nnet3-chain-shuffle-egs --srand=JOB ark:- ark:- \| \
+      nnet3-chain-shuffle-egs --srand=\$[JOB+$srand] ark:- ark:- \| \
       nnet3-chain-copy-egs ark:- $output_archives || exit 1;
   fi
 fi

@@ -131,7 +131,7 @@ def GetArgs():
                         default = 0,
                         help="Sets the random seed for model initialization and egs shuffling. "
                         "Warning: This random seed does not control all aspects of this experiment. "
-                        "There might be other random seeds used other stages of the experiment "
+                        "There might be other random seeds used in other stages of the experiment "
                         "like data preparation (e.g. volume perturbation).")
     parser.add_argument("--trainer.num-epochs", type=int, dest='num_epochs',
                         default = 10,
