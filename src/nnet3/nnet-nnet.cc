@@ -455,6 +455,10 @@ int32 Nnet::GetNodeIndex(const std::string &node_name) const {
   return -1;
 }
 
+void Nnet::RenameNode(int32 node_index, const std::string &new_node_name) {
+  node_names_[node_index] = new_node_name; 
+}
+
 int32 Nnet::GetComponentIndex(const std::string &component_name) const {
   size_t size = component_names_.size();
   for (size_t i = 0; i < size; i++)

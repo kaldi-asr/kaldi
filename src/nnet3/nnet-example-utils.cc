@@ -285,6 +285,179 @@ void RoundUpNumFrames(int32 frame_subsampling_factor,
 
 }
 
+bool ContainsSingleExample(const NnetExample &eg,
+                           int32 *min_input_t,
+                           int32 *max_input_t,
+                           int32 *min_output_t,
+                           int32 *max_output_t) {
+  bool done_input = false, done_output = false;
+  int32 num_indexes = eg.io.size();
+  for (int32 i = 0; i < num_indexes; i++) {
+    const NnetIo &io = eg.io[i];
+    std::vector<Index>::const_iterator iter = io.indexes.begin(),
+                                        end = io.indexes.end();
+    // Should not have an empty input/output type.
+    KALDI_ASSERT(!io.indexes.empty());
+    if (io.name == "input" || io.name == "output") {
+      int32 min_t = iter->t, max_t = iter->t;
+      for (; iter != end; ++iter) {
+        int32 this_t = iter->t;
+        min_t = std::min(min_t, this_t);
+        max_t = std::max(max_t, this_t);
+        if (iter->n != 0) {
+          KALDI_WARN << "Example does not contain just a single example; "
+                     << "too late to do frame selection or reduce context.";
+          return false;
+        }
+      }
+      if (io.name == "input") {
+        done_input = true;
+        *min_input_t = min_t;
+        *max_input_t = max_t;
+      } else {
+        KALDI_ASSERT(io.name == "output");
+        done_output = true;
+        *min_output_t = min_t;
+        *max_output_t = max_t;
+      }
+    } else {
+      for (; iter != end; ++iter) {
+        if (iter->n != 0) {
+          KALDI_WARN << "Example does not contain just a single example; "
+                     << "too late to do frame selection or reduce context.";
+          return false;
+        }
+      }
+    }
+  }
+  if (!done_input) {
+    KALDI_WARN << "Example does not have any input named 'input'";
+    return false;
+  }
+  if (!done_output) {
+    KALDI_WARN << "Example does not have any output named 'output'";
+    return false;
+  }
+  return true;
+}
+
+void FilterExample(const NnetExample &eg,
+                   int32 min_input_t,
+                   int32 max_input_t,
+                   int32 min_output_t,
+                   int32 max_output_t,
+                   NnetExample *eg_out) {
+  eg_out->io.clear();
+  eg_out->io.resize(eg.io.size());
+  for (size_t i = 0; i < eg.io.size(); i++) {
+    bool is_input_or_output;
+    int32 min_t, max_t;
+    const NnetIo &io_in = eg.io[i];
+    NnetIo &io_out = eg_out->io[i];
+    const std::string &name = io_in.name;
+    io_out.name = name;
+    if (name == "input") {
+      min_t = min_input_t;
+      max_t = max_input_t;
+      is_input_or_output = true;
+    } else if (name == "output") {
+      min_t = min_output_t;
+      max_t = max_output_t;
+      is_input_or_output = true;
+    } else {
+      is_input_or_output = false;
+    }
+    if (!is_input_or_output) {  // Just copy everything.
+      io_out.indexes = io_in.indexes;
+      io_out.features = io_in.features;
+    } else {
+      const std::vector<Index> &indexes_in = io_in.indexes;
+      std::vector<Index> &indexes_out = io_out.indexes;
+      indexes_out.reserve(indexes_in.size());
+      int32 num_indexes = indexes_in.size(), num_kept = 0;
+      KALDI_ASSERT(io_in.features.NumRows() == num_indexes);
+      std::vector<bool> keep(num_indexes, false);
+      std::vector<Index>::const_iterator iter_in = indexes_in.begin(),
+                                          end_in = indexes_in.end();
+      std::vector<bool>::iterator iter_out = keep.begin();
+      for (; iter_in != end_in; ++iter_in,++iter_out) {
+        int32 t = iter_in->t;
+        bool is_within_range = (t >= min_t && t <= max_t);
+        *iter_out = is_within_range;
+        if (is_within_range) {
+          indexes_out.push_back(*iter_in);
+          num_kept++;
+        }
+      }
+      KALDI_ASSERT(iter_out == keep.end());
+      if (num_kept == 0)
+        KALDI_ERR << "FilterExample removed all indexes for '" << name << "'";
+
+      FilterGeneralMatrixRows(io_in.features, keep,
+                              &io_out.features);
+      KALDI_ASSERT(io_out.features.NumRows() == num_kept &&
+                   indexes_out.size() == static_cast<size_t>(num_kept));
+    }
+  }
+}
+
+bool SelectFromExample(const NnetExample &eg,
+                       std::string frame_str,
+                       int32 left_context,
+                       int32 right_context,
+                       int32 frame_shift,
+                       NnetExample *eg_out) {
+  int32 min_input_t, max_input_t,
+      min_output_t, max_output_t;
+  if (!ContainsSingleExample(eg, &min_input_t, &max_input_t,
+                             &min_output_t, &max_output_t))
+    KALDI_ERR << "Too late to perform frame selection/context reduction on "
+              << "these examples (already merged?)";
+  if (frame_str != "") {
+    // select one frame.
+    if (frame_str == "random") {
+      min_output_t = max_output_t = RandInt(min_output_t,
+                                                          max_output_t);
+    } else {
+      int32 frame;
+      if (!ConvertStringToInteger(frame_str, &frame))
+        KALDI_ERR << "Invalid option --frame='" << frame_str << "'";
+      if (frame < min_output_t || frame > max_output_t) {
+        // Frame is out of range.  Should happen only rarely.  Calling code
+        // makes sure of this.
+        return false;
+      }
+      min_output_t = max_output_t = frame;
+    }
+  }
+  // There may come a time when we want to remove or make it possible to disable
+  // the error messages below.  The std::max and std::min expressions may seem
+  // unnecessary but are intended to make life easier if and when we do that.
+  if (left_context != -1) {
+    if (min_input_t > min_output_t - left_context)
+      KALDI_ERR << "You requested --left-context=" << left_context
+                << ", but example only has left-context of "
+                <<  (min_output_t - min_input_t);
+    min_input_t = std::max(min_input_t, min_output_t - left_context);
+  }
+  if (right_context != -1) {
+    if (max_input_t < max_output_t + right_context)
+      KALDI_ERR << "You requested --right-context=" << right_context
+                << ", but example only has right-context of "
+                <<  (max_input_t - max_output_t);
+    max_input_t = std::min(max_input_t, max_output_t + right_context);
+  }
+  FilterExample(eg,
+                min_input_t, max_input_t,
+                min_output_t, max_output_t,
+                eg_out);
+  if (frame_shift != 0) {
+    std::vector<std::string> exclude_names;  // we can later make this
+    exclude_names.push_back(std::string("ivector")); // configurable.
+    ShiftExampleTimes(frame_shift, exclude_names, eg_out);
+  }
+  return true;
+}
 
 } // namespace nnet3
 } // namespace kaldi

@@ -43,6 +43,8 @@ def GetArgs():
                                   help="alignment directory, from which we derive the num-targets")
     num_target_group.add_argument("--tree-dir", type=str,
                                   help="directory with final.mdl, from which we derive the num-targets")
+    num_target_group.add_argument("--num-multiple-targets", type=str,
+                        help="space separated number of network targets for different languages(e.g. num-pdf-ids/num-leaves e.g. '1000 2000 3000')")
 
     # CNN options
     parser.add_argument('--cnn.layer', type=str, action='append', dest = "cnn_layer",
@@ -119,7 +121,14 @@ def GetArgs():
                         choices=['true', 'false'], default = True)
     parser.add_argument("config_dir",
                         help="Directory to write config files and variables")
-
+    # multilingual tdnn with bn layer config
+    parser.add_argument("--bottleneck-layer", type=int,
+                        help="The layer number to add bottleneck layer,"
+                        "if < 0, means this layer is not needed in network.",
+                        default=-1)
+    parser.add_argument("--bottleneck-dim", type=int,
+                        help="The bottleneck layer dimension in TDNN network e.g. 42.",
+                        default=40)
     print(' '.join(sys.argv))
 
     args = parser.parse_args()
@@ -147,9 +156,10 @@ def CheckArgs(args):
         raise Exception("feat-dim has to be postive")
 
     if not args.num_targets > 0:
-        print(args.num_targets)
-        raise Exception("num_targets has to be positive")
-
+        if args.num_multiple_targets is None:
+          print(args.num_targets)
+          raise Exception("num_targets or num_multiple_targets has to be positive")
+    
     if not args.ivector_dim >= 0:
         raise Exception("ivector-dim has to be non-negative")
 
@@ -235,7 +245,7 @@ def AddMultiDimAffineLayer(config_lines, name, input, input_window, block_input_
     permuted_output_descriptor = nodes.AddPermuteLayer(config_lines,
             name, filter_input_descriptor, column_map)
     # add a block-affine component
-    output_descriptor = nodes.AddBlockAffineLayer(config_lines, name,
+    output_descriptor = nodesAddBlockAffineLayer(config_lines, name,
                                                   permuted_output_descriptor,
                                                   num_feats / (block_input_dim / input_window) * block_output_dim, num_feats / (block_input_dim/ input_window))
 
@@ -411,7 +421,8 @@ def MakeConfigs(config_dir, splice_indexes_string,
                 xent_regularize,
                 xent_separate_forward_affine,
                 self_repair_scale,
-                objective_type):
+                objective_type,
+                num_multiple_targets, bottleneck_layer, bottleneck_dim):
 
     parsed_splice_output = ParseSpliceString(splice_indexes_string.strip())
 
@@ -436,7 +447,12 @@ def MakeConfigs(config_dir, splice_indexes_string,
     init_config_lines = copy.deepcopy(config_lines)
     init_config_lines['components'].insert(0, '# Config file for initializing neural network prior to')
     init_config_lines['components'].insert(0, '# preconditioning matrix computation')
-    nodes.AddOutputLayer(init_config_lines, prev_layer_output)
+    if len(num_multiple_targets) > 1:
+      for target in range(len(num_multiple_targets)):
+        nodes.AddOutputLayer(init_config_lines, prev_layer_output, suffix = str(target)) 
+    else:
+      nodes.AddOutputLayer(init_config_lines, prev_layer_output)
+
     config_files[config_dir + '/init.config'] = init_config_lines
 
     if cnn_layer is not None:
@@ -555,11 +571,30 @@ def MakeConfigs(config_dir, splice_indexes_string,
                                 include_log_softmax = True,
                                 name_affix = 'xent')
         else:
-            prev_layer_output = nodes.AddAffRelNormLayer(config_lines, "Tdnn_{0}".format(i),
-                                                        prev_layer_output, nonlin_output_dim,
-                                                        self_repair_scale = self_repair_scale,
-                                                        norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
+          if bottleneck_layer > -1 and i+1 == bottleneck_layer:
+             print('bottleneck layer and dimension are {0} and {1}'.format(bottleneck_layer, bottleneck_dim))
+             prev_layer_output = nodes.AddAffRelNormLayer(config_lines, "Tdnn_{0}".format(i),
+                                                          prev_layer_output, bottleneck_dim,
+                                                          self_repair_scale = self_repair_scale,
+                                                          norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
 
+
+          else:
+             prev_layer_output = nodes.AddAffRelNormLayer(config_lines, "Tdnn_{0}".format(i),
+                                                          prev_layer_output, nonlin_output_dim,
+                                                          self_repair_scale = self_repair_scale,
+                                                          norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
+          # Add multiple pre-final affine layer and multiple softmax layer correspond 
+          # to each target language.
+          if len(num_multiple_targets) > 1:
+            for target in range(len(num_multiple_targets)):
+              nodes.AddFinalLayer(config_lines, prev_layer_output, 
+                                  num_multiple_targets[target],
+                                  name_affix = 'output-'+str(target),
+                                  use_presoftmax_prior_scale = use_presoftmax_prior_scale,
+                                  prior_scale_file = prior_scale_file,
+                                  include_log_softmax = include_log_softmax)
+          else:
             # a final layer is added after each new layer as we are generating
             # configs for layer-wise discriminative training
 
@@ -575,14 +610,14 @@ def MakeConfigs(config_dir, splice_indexes_string,
                                include_log_softmax = include_log_softmax,
                                add_final_sigmoid = add_final_sigmoid,
                                objective_type = objective_type)
-            if xent_regularize != 0.0:
-                nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
-                                    ng_affine_options = " param-stddev=0 bias-stddev=0 learning-rate-factor={0} ".format(
-                                          0.5 / xent_regularize),
-                                    use_presoftmax_prior_scale = use_presoftmax_prior_scale,
-                                    prior_scale_file = prior_scale_file,
-                                    include_log_softmax = True,
-                                    name_affix = 'xent')
+          if xent_regularize != 0.0:
+              nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
+                                  ng_affine_options = " param-stddev=0 bias-stddev=0 learning-rate-factor={0} ".format(
+                                        0.5 / xent_regularize),
+                                  use_presoftmax_prior_scale = use_presoftmax_prior_scale,
+                                  prior_scale_file = prior_scale_file,
+                                  include_log_softmax = True,
+                                  name_affix = 'xent')
 
         config_files['{0}/layer{1}.config'.format(config_dir, i+1)] = config_lines
         config_lines = {'components':[], 'component-nodes':[]}
@@ -608,6 +643,10 @@ def MakeConfigs(config_dir, splice_indexes_string,
 
 def Main():
     args = GetArgs()
+    
+    if args.num_multiple_targets is not None:
+      num_multiple_targets = args.num_multiple_targets.split()
+      print('Number of output targets is {0}'.format(len(num_multiple_targets)))
 
     MakeConfigs(config_dir = args.config_dir,
                 splice_indexes_string = args.splice_indexes,
@@ -629,7 +668,10 @@ def Main():
                 xent_regularize = args.xent_regularize,
                 xent_separate_forward_affine = args.xent_separate_forward_affine,
                 self_repair_scale = args.self_repair_scale,
-                objective_type = args.objective_type)
+                objective_type = args.objective_type,
+                num_multiple_targets = num_multiple_targets, 
+                bottleneck_layer = args.bottleneck_layer,
+                bottleneck_dim = args.bottleneck_dim)
 
 if __name__ == "__main__":
     Main()

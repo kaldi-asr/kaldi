@@ -141,6 +141,11 @@ struct RandomState {
 // Returns a random integer between min and max inclusive.
 int32 RandInt(int32 min, int32 max, struct RandomState* state = NULL);
 
+// Returns a random integer number according to a discrete probability distribution.
+// It works based on sampling from a discrete distribution and 
+// it returns i with prob(i).
+int32 RandIntDiscreteDist(const std::vector<BaseFloat> &prob, struct RandomState* = NULL);
+
 // Returns true with probability "prob",
 bool WithProb(BaseFloat prob, struct RandomState* state = NULL);
 // with 0 <= prob <= 1 [we check this].
