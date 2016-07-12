@@ -128,6 +128,41 @@ void UnitTestRand() {
         KALDI_ASSERT(tot > (n * p * 0.8) && tot < (n * p * 1.2));
       }
     }
+    { // test-1 RandIntDiscreteDist().
+      int32 n = 10000, m = 10;
+      std::vector<BaseFloat> p(m, 0.0);
+      BaseFloat sum = 0.0;
+      // generate discrete probability distribution
+      for (int32 i = 0; i < m; i++) {
+        p[i] = RandUniform();
+        if (RandInt(0,5) == 0) p[i] = 0;
+        sum += p[i];
+      }
+      for (int32 i = 0; i < m; i++)
+        p[i] /= sum;
+
+      std::vector<int32> rand_seq(n,0);
+      std::vector<BaseFloat> empirical_dist(m,0); 
+      for (int32 i = 0; i < n; i++) {
+        rand_seq[i] = RandIntDiscreteDist(p);
+        // compute empirical distribution of generated sequence.
+        empirical_dist[rand_seq[i]] += 1.0/n;
+      }
+      
+      BaseFloat tmp = 0.0, kl_div = 0.0;
+      for (int32 i = 0; i < m; i++) {
+        if (p[i] < 0.0000001) {
+          KALDI_ASSERT(empirical_dist[i] <= 0.001);
+          KALDI_LOG << " p and q for i = " << i << " is " << p[i] << ", " << empirical_dist[i];
+        } else {
+          if (empirical_dist[i] > 0.0) {
+              tmp = p[i]/empirical_dist[i];
+              kl_div += p[i] * log(p[i]/empirical_dist[i]);
+          }
+        }
+      }
+      KALDI_ASSERT(kl_div < 0.001);
+    }
     {  // test RandInt().
       KALDI_ASSERT(RandInt(0, 3) >= 0 && RandInt(0, 3) <= 3);
 

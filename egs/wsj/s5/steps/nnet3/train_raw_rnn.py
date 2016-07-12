@@ -1,13 +1,10 @@
 #!/usr/bin/env python
 
-
 # Copyright 2016 Vijayaditya Peddinti.
 #           2016 Vimal Manohar
 # Apache 2.0.
 
-
 # this script is based on steps/nnet3/lstm/train.sh
-
 
 import subprocess
 import argparse
@@ -29,13 +26,13 @@ handler.setLevel(logging.INFO)
 formatter = logging.Formatter('%(asctime)s [%(filename)s:%(lineno)s - %(funcName)s - %(levelname)s ] %(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
-logger.info('Starting RNN trainer (train_rnn.py)')
+logger.info('Starting RNN trainer (train_raw_rnn.py)')
 
 
 def GetArgs():
     # we add compulsary arguments as named arguments for readability
     parser = argparse.ArgumentParser(description="""
-    Trains an RNN acoustic model using the cross-entropy objective.
+    Trains an RNN neural network using the cross-entropy objective.
     RNNs include LSTMs, BLSTMs and GRUs.
     RNN acoustic model training differs from feed-forward DNN training
     in the following ways
@@ -101,12 +98,16 @@ def GetArgs():
                         help="The number of time steps to back-propagate from the last label in the chunk. By default it is same as the chunk-width." )
 
     # General options
+    parser.add_argument("--nj", type=int, default=4,
+                        help="Number of parallel jobs")
+
+    parser.add_argument("--use-dense-targets", type=str, action=StrToBoolAction,
+                       default = True, choices = ["true", "false"],
+                       help="Train neural network using dense targets")
     parser.add_argument("--feat-dir", type=str, required = True,
                         help="Directory with features used for training the neural network.")
-    parser.add_argument("--lang", type=str, required = True,
-                        help="Language directory")
-    parser.add_argument("--ali-dir", type=str, required = True,
-                        help="Directory with alignments used for training the neural network.")
+    parser.add_argument("--targets-scp", type=str, required = True,
+                        help="Target for training neural network.")
     parser.add_argument("--dir", type=str, required = True,
                         help="Directory to store the models and all other files.")
 
@@ -132,9 +133,6 @@ def ProcessArgs(args):
     if (not os.path.exists(args.dir)) or (not os.path.exists(args.dir+"/configs")):
         raise Exception("""This scripts expects {0} to exist and have a configs
         directory which is the output of make_configs.py script""")
-
-    if args.transform_dir is None:
-        args.transform_dir = args.ali_dir
 
     # set the options corresponding to args.use_gpu
     run_opts = train_lib.RunOpts()
@@ -173,18 +171,11 @@ def Train(args, run_opts):
     logger.info("Arguments for the experiment\n{0}".format(arg_string))
 
     # Set some variables.
-    num_leaves = GetNumberOfLeaves(args.ali_dir)
-    num_jobs = GetNumberOfJobs(args.ali_dir)
     feat_dim = GetFeatDim(args.feat_dir)
     ivector_dim = GetIvectorDim(args.online_ivector_dir)
 
     # split the training data into parts for individual jobs
-    # we will use the same number of jobs as that used for alignment
-    SplitData(args.feat_dir, num_jobs)
-    shutil.copy('{0}/tree'.format(args.ali_dir), args.dir)
-    f = open('{0}/num_jobs'.format(args.dir), 'w')
-    f.write(str(num_jobs))
-    f.close()
+    SplitData(args.feat_dir, args.nj)
 
     config_dir = '{0}/configs'.format(args.dir)
     var_file = '{0}/vars'.format(config_dir)
@@ -197,6 +188,10 @@ def Train(args, run_opts):
         model_left_context = variables['model_left_context']
         model_right_context = variables['model_right_context']
         num_hidden_layers = variables['num_hidden_layers']
+        num_targets = int(variables['num_targets'])
+        add_lda = StrToBool(variables['add_lda'])
+        include_log_softmax = StrToBool(variables['include_log_softmax'])
+        objective_type = variables['objective_type']
     except KeyError as e:
         raise Exception("KeyError {0}: Variables need to be defined in {1}".format(
             str(e), '{0}/configs'.format(args.dir)))
@@ -209,8 +204,13 @@ def Train(args, run_opts):
     # we do this as it's a convenient way to get the stats for the 'lda-like'
     # transform.
 
+    if args.use_dense_targets:
+        if GetFeatDimFromScp(args.targets_scp) != num_targets:
+            raise Exception("Mismatch between num-targets provided to "
+                            "script vs configs")
+
     if (args.stage <= -4):
-        logger.info("Initializing a basic network for estimating preconditioning matrix")
+        logger.info("Initializing a basic network")
         RunKaldiCommand("""
 {command} {dir}/log/nnet_init.log \
     nnet3-init --srand=-2 {dir}/configs/init.config {dir}/init.raw
@@ -218,21 +218,31 @@ def Train(args, run_opts):
                dir = args.dir))
 
     default_egs_dir = '{0}/egs'.format(args.dir)
+
+    if args.use_dense_targets:
+        target_type = "dense"
+        compute_accuracy = False
+    else:
+        target_type = "sparse"
+        compute_accuracy = True if objective_type == "linear" else False
+
     if (args.stage <= -3) and args.egs_dir is None:
         logger.info("Generating egs")
 
-        GenerateEgs(args.feat_dir, args.ali_dir, default_egs_dir,
-                    left_context, right_context,
-                    args.chunk_width + left_context,
-                    args.chunk_width + right_context, run_opts,
-                    frames_per_eg = args.chunk_width,
-                    srand = args.srand,
-                    egs_opts = args.egs_opts,
-                    cmvn_opts = args.cmvn_opts,
-                    online_ivector_dir = args.online_ivector_dir,
-                    samples_per_iter = args.samples_per_iter,
-                    transform_dir = args.transform_dir,
-                    stage = args.egs_stage)
+        GenerateEgsUsingTargets(args.feat_dir, args.targets_scp, default_egs_dir,
+                                left_context, right_context,
+                                args.chunk_width + left_context,
+                                args.chunk_width + right_context, run_opts,
+                                frames_per_eg = args.chunk_width,
+                                srand = args.srand,
+                                egs_opts = args.egs_opts,
+                                cmvn_opts = args.cmvn_opts,
+                                online_ivector_dir = args.online_ivector_dir,
+                                samples_per_iter = args.samples_per_iter,
+                                transform_dir = args.transform_dir,
+                                stage = args.egs_stage,
+                                target_type = target_type,
+                                num_targets = num_targets)
 
     if args.egs_dir is None:
         egs_dir = default_egs_dir
@@ -249,16 +259,17 @@ def Train(args, run_opts):
     # use during decoding
     CopyEgsPropertiesToExpDir(egs_dir, args.dir)
 
-    if (args.stage <= -2):
+    if (add_lda and args.stage <= -2):
         logger.info('Computing the preconditioning matrix for input features')
 
         ComputePreconditioningMatrix(args.dir, egs_dir, num_archives, run_opts,
                                      max_lda_jobs = args.max_lda_jobs,
                                      rand_prune = args.rand_prune)
 
+
     if (args.stage <= -1):
         logger.info("Preparing the initial acoustic model.")
-        PrepareInitialAcousticModel(args.dir, args.ali_dir, run_opts)
+        PrepareInitialNetwork(args.dir, run_opts)
 
 
     # set num_iters so that as close as possible, we process the data $num_epochs
@@ -278,7 +289,6 @@ def Train(args, run_opts):
                                                                     num_archives_to_process,
                                                                     args.initial_effective_lrate,
                                                                     args.final_effective_lrate)
-
     if args.num_bptt_steps is None:
         num_bptt_steps = args.chunk_width
     else:
@@ -295,8 +305,8 @@ def Train(args, run_opts):
         current_num_jobs = int(0.5 + args.num_jobs_initial + (args.num_jobs_final - args.num_jobs_initial) * float(iter) / num_iters)
 
         if args.stage <= iter:
-            model_file = "{dir}/{iter}.mdl".format(dir = args.dir, iter = iter)
-            shrinkage_value = args.shrink_value if DoShrinkage(iter, model_file, "SigmoidComponent", args.shrink_threshold) else 1
+            model_file = "{dir}/{iter}.raw".format(dir = args.dir, iter = iter)
+            shrinkage_value = args.shrink_value if DoShrinkage(iter, model_file, "Lstm*", "SigmoidComponent", args.shrink_threshold, get_raw_nnet_from_am = False) else 1
             logger.info("On iteration {0}, learning rate is {1} and shrink value is {2}.".format(iter, learning_rate(iter, current_num_jobs, num_archives_processed), shrinkage_value))
 
             rnn_train_lib.TrainOneIteration(
@@ -319,12 +329,14 @@ def Train(args, run_opts):
                           max_param_change = args.max_param_change,
                           shuffle_buffer_size = args.shuffle_buffer_size,
                           cv_minibatch_size = args.cv_minibatch_size,
-                          run_opts = run_opts)
+                          run_opts = run_opts,
+                          compute_accuracy = compute_accuracy,
+                          get_raw_nnet_from_am = False)
 
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain conditions
                 RemoveModel(args.dir, iter-2, num_iters, num_iters_combine,
-                            args.preserve_model_interval)
+                            args.preserve_model_interval, get_raw_nnet_from_am = False)
 
             if args.email is not None:
                 reporting_iter_interval = num_iters * args.reporting_interval
@@ -338,19 +350,14 @@ def Train(args, run_opts):
         num_archives_processed = num_archives_processed + current_num_jobs
 
     if args.stage <= num_iters:
-        logger.info("Doing final combination to produce final.mdl")
+        logger.info("Doing final combination to produce final.raw")
         CombineModels(args.dir, num_iters, num_iters_combine, egs_dir, run_opts,
-                chunk_width = args.chunk_width)
+                chunk_width = args.chunk_width, get_raw_nnet_from_am = False, compute_accuracy = compute_accuracy)
 
-    if args.stage <= num_iters + 1:
-        logger.info("Getting average posterior for purposes of adjusting the priors.")
-        avg_post_vec_file = ComputeAveragePosterior(args.dir, 'combined', egs_dir,
-                                num_archives, args.prior_subset_size, run_opts)
-
-        logger.info("Re-adjusting priors based on computed posteriors")
-        combined_model = "{dir}/combined.mdl".format(dir = args.dir)
-        final_model = "{dir}/final.mdl".format(dir = args.dir)
-        AdjustAmPriors(args.dir, combined_model, avg_post_vec_file, final_model, run_opts)
+    if include_log_softmax and args.stage <= num_iters + 1:
+        logger.info("Getting average posterior for purpose of using as priors to convert posteriors into likelihoods.")
+        avg_post_vec_file = ComputeAveragePosterior(args.dir, 'final', egs_dir,
+                                num_archives, args.prior_subset_size, run_opts, get_raw_nnet_from_am = False)
 
     if args.cleanup:
         logger.info("Cleaning up the experiment directory {0}".format(args.dir))
@@ -362,7 +369,8 @@ def Train(args, run_opts):
 
         CleanNnetDir(args.dir, num_iters, egs_dir,
                      preserve_model_interval = args.preserve_model_interval,
-                     remove_egs = remove_egs)
+                     remove_egs = remove_egs,
+                     get_raw_nnet_from_am = False)
 
     # do some reporting
     [report, times, data] = nnet3_log_parse.GenerateAccuracyReport(args.dir)

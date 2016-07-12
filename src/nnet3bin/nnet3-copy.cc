@@ -64,41 +64,6 @@ int main(int argc, char *argv[]) {
                 "'--edits=remove-orphans'.");
     po.Register("set-dropout-proportion", &dropout, "Set dropout proportion "
                 "in all DropoutComponent to this value.");
-    po.Read(argc, argv);
-
-    if (po.NumArgs() != 2) {
-      po.PrintUsage();
-      exit(1);
-    }
-
-    std::string raw_nnet_rxfilename = po.GetArg(1),
-                raw_nnet_wxfilename = po.GetArg(2);
-
-    Nnet nnet;
-    ReadKaldiObject(raw_nnet_rxfilename, &nnet);
-
-    if (!nnet_config.empty()) {
-      Input ki(nnet_config);
-      nnet.ReadConfig(ki.Stream());
-    }
-
-    if (learning_rate >= 0)
-      SetLearningRate(learning_rate, &nnet);
-    
-    if (dropout > 0)
-      SetDropoutProportion(dropout, &nnet);
-
-    if (!edits_config.empty()) {
-      Input ki(edits_config);
-      ReadEditConfig(ki.Stream(), &nnet);
-    }
-    if (!edits_str.empty()) {
-      for (size_t i = 0; i < edits_str.size(); i++)
-        if (edits_str[i] == ';')
-          edits_str[i] = '\n';
-      std::istringstream is(edits_str);
-      ReadEditConfig(is, &nnet);
-    }
 
     WriteKaldiObject(nnet, raw_nnet_wxfilename, binary_write);
     KALDI_LOG << "Copied raw neural net from " << raw_nnet_rxfilename

@@ -18,8 +18,10 @@ chain_lib = imp.load_source('ncl', 'steps/nnet3/chain/nnet3_chain_lib.py')
 def GetArgs():
     # we add compulsary arguments as named arguments for readability
     parser = argparse.ArgumentParser(description="Writes config files and variables "
-                                                 "for TDNNs creation and training",
-                                     epilog="See steps/nnet3/tdnn/train.sh for example.")
+                                                 "for TDNNs creation and training for "
+                                                 "multilingaul system with multiple output "
+                                                 "and bottleneck layer",
+                                     epilog="See egs/babel_multilingual/s5/local/nnet3/run_tdnn_joint_babel_sp_bnf.sh for example.")
 
     # Only one of these arguments can be specified, and one of them has to
     # be compulsarily specified
@@ -43,6 +45,8 @@ def GetArgs():
                                   help="alignment directory, from which we derive the num-targets")
     num_target_group.add_argument("--tree-dir", type=str,
                                   help="directory with final.mdl, from which we derive the num-targets")
+    num_target_group.add_argument("--num-multiple-targets", type=str,
+                        help="space separated number of network targets for different languages(e.g. num-pdf-ids/num-leaves e.g. '1000 2000 3000')")
 
     # CNN options
     parser.add_argument('--cnn.layer', type=str, action='append', dest = "cnn_layer",
@@ -54,6 +58,10 @@ def GetArgs():
                         help="Output dimension of the linear layer at the CNN output "
                         "for dimension reduction, e.g. 256."
                         "The default zero means this layer is not needed.", default=0)
+    parser.add_argument("--cnn.cepstral-lifter", type=float, dest = "cepstral_lifter",
+                        help="The factor used for determining the liftering vector in the production of MFCC. "
+                        "User has to ensure that it matches the lifter used in MFCC generation, "
+                        "e.g. 22.0", default=22.0)
 
     # General neural network options
     parser.add_argument("--splice-indexes", type=str, required = True,
@@ -65,10 +73,8 @@ def GetArgs():
                         help="If \"true\" an LDA matrix computed from the input features "
                         "(spliced according to the first set of splice-indexes) will be used as "
                         "the first Affine layer. This affine layer's parameters are fixed during training. "
-                        "This variable needs to be set to \"false\" when using dense-targets "
-                        "or when --add-idct is set to \"true\"."
                         "If --cnn.layer is specified this option will be forced to \"false\".",
-                        default=True, choices = ["false", "true"])
+                        default=False, choices = ["false", "true"])
 
     parser.add_argument("--include-log-softmax", type=str, action=nnet3_train_lib.StrToBoolAction,
                         help="add the final softmax layer ", default=True, choices = ["false", "true"])
@@ -99,35 +105,25 @@ def GetArgs():
                         help="input dimension to p-norm nonlinearities")
     parser.add_argument("--pnorm-output-dim", type=int,
                         help="output dimension of p-norm nonlinearities")
-    relu_dim_group = parser.add_mutually_exclusive_group(required = False)
-    relu_dim_group.add_argument("--relu-dim", type=int,
-                        help="dimension of all ReLU nonlinearity layers")
-    relu_dim_group.add_argument("--relu-dim-final", type=int,
-                        help="dimension of the last ReLU nonlinearity layer. Dimensions increase geometrically from the first through the last ReLU layer.", default=None)
-    parser.add_argument("--relu-dim-init", type=int,
-                        help="dimension of the first ReLU nonlinearity layer. Dimensions increase geometrically from the first through the last ReLU layer.", default=None)
+    parser.add_argument("--relu-dim", type=int,
+                        help="dimension of ReLU nonlinearities")
 
     parser.add_argument("--self-repair-scale-nonlinearity", type=float,
                         help="A non-zero value activates the self-repair mechanism in the sigmoid and tanh non-linearities of the LSTM", default=None)
 
-
     parser.add_argument("--use-presoftmax-prior-scale", type=str, action=nnet3_train_lib.StrToBoolAction,
                         help="if true, a presoftmax-prior-scale is added",
-                        choices=['true', 'false'], default = True)
-
-    # Options to convert input MFCC into Fbank features. This is useful when a
-    # LDA layer is not added (such as when using dense targets)
-    #parser.add_argument(["--cepstral-lifter","--cnn.cepstral-lifter"], type=float, dest = "cepstral_lifter",
-    parser.add_argument("--cepstral-lifter", type=float, dest = "cepstral_lifter",
-                        help="The factor used for determining the liftering vector in the production of MFCC. "
-                        "User has to ensure that it matches the lifter used in MFCC generation, "
-                        "e.g. 22.0", default=22.0)
-
-    parser.add_argument("--add-idct", type=str, action=nnet3_train_lib.StrToBoolAction,
-                        help="Add an IDCT after input to convert MFCC to Fbank", default = False)
+                        choices=['true', 'false'], default = False)
     parser.add_argument("config_dir",
                         help="Directory to write config files and variables")
-
+    # multilingual tdnn with bn layer config
+    parser.add_argument("--bottleneck-layer", type=int,
+                        help="The layer number to add bottleneck layer,"
+                        "if < 0, means this layer is not needed in network.",
+                        default=-1)
+    parser.add_argument("--bottleneck-dim", type=int,
+                        help="The bottleneck layer dimension in TDNN network e.g. 42.",
+                        default=40)
     print(' '.join(sys.argv))
 
     args = parser.parse_args()
@@ -154,13 +150,10 @@ def CheckArgs(args):
     if not args.feat_dim > 0:
         raise Exception("feat-dim has to be postive")
 
-    if args.add_lda and args.add_idct:
-        raise Exception("add-idct can be true only if add-lda is false")
-
     if not args.num_targets > 0:
-        print(args.num_targets)
-        raise Exception("num_targets has to be positive")
-
+        if args.num_multiple_targets is None:
+          print(args.num_targets)
+          raise Exception("num_targets or num_multiple_targets has to be positive")
     if not args.ivector_dim >= 0:
         raise Exception("ivector-dim has to be non-negative")
 
@@ -168,33 +161,13 @@ def CheckArgs(args):
         raise Exception("--subset-dim has to be non-negative")
 
     if not args.relu_dim is None:
-        if not args.pnorm_input_dim is None or not args.pnorm_output_dim is None or not args.relu_dim_init is None:
+        if not args.pnorm_input_dim is None or not args.pnorm_output_dim is None:
             raise Exception("--relu-dim argument not compatible with "
-                            "--pnorm-input-dim or --pnorm-output-dim or --relu-dim-init options");
+                            "--pnorm-input-dim or --pnorm-output-dim options");
         args.nonlin_input_dim = args.relu_dim
         args.nonlin_output_dim = args.relu_dim
-        args.nonlin_output_dim_final = None
-        args.nonlin_output_dim_init = None
         args.nonlin_type = 'relu'
-
-    elif not args.relu_dim_final is None:
-        if not args.pnorm_input_dim is None or not args.pnorm_output_dim is None:
-            raise Exception("--relu-dim-final argument not compatible with "
-                            "--pnorm-input-dim or --pnorm-output-dim options")
-        if args.relu_dim_init is None:
-            raise Exception("--relu-dim-init argument should also be provided with --relu-dim-final")
-        if args.relu_dim_init > args.relu_dim_final:
-            raise Exception("--relu-dim-init has to be no larger than --relu-dim-final")
-        args.nonlin_input_dim = None
-        args.nonlin_output_dim = None
-        args.nonlin_output_dim_final = args.relu_dim_final
-        args.nonlin_output_dim_init = args.relu_dim_init
-        args.nonlin_type = 'relu'
-
     else:
-        if not args.relu_dim_init is None:
-            raise Exception("--relu-dim-final argument not compatible with "
-                            "--pnorm-input-dim or --pnorm-output-dim options")
         if not args.pnorm_input_dim > 0 or not args.pnorm_output_dim > 0:
             raise Exception("--relu-dim not set, so expected --pnorm-input-dim and "
                             "--pnorm-output-dim to be provided.");
@@ -202,8 +175,6 @@ def CheckArgs(args):
         args.nonlin_output_dim = args.pnorm_output_dim
         if (args.nonlin_input_dim < args.nonlin_output_dim) or (args.nonlin_input_dim % args.nonlin_output_dim != 0):
             raise Exception("Invalid --pnorm-input-dim {0} and --pnorm-output-dim {1}".format(args.nonlin_input_dim, args.nonlin_output_dim))
-        args.nonlin_output_dim_final = None
-        args.nonlin_output_dim_init = None
         args.nonlin_type = 'pnorm'
 
     if args.add_final_sigmoid and args.include_log_softmax:
@@ -274,7 +245,7 @@ def PrintConfig(file_name, config_lines):
     f = open(file_name, 'w')
     f.write("\n".join(config_lines['components'])+"\n")
     f.write("\n#Component nodes\n")
-    f.write("\n".join(config_lines['component-nodes'])+"\n")
+    f.write("\n".join(config_lines['component-nodes']))
     f.close()
 
 def ParseCnnString(cnn_param_string_list):
@@ -335,9 +306,8 @@ def ParseSpliceString(splice_indexes):
 # The function signature of MakeConfigs is changed frequently as it is intended for local use in this script.
 def MakeConfigs(config_dir, splice_indexes_string,
                 cnn_layer, cnn_bottleneck_dim, cepstral_lifter,
-                feat_dim, ivector_dim, num_targets, add_lda, add_idct,
+                feat_dim, ivector_dim, num_targets, add_lda,
                 nonlin_type, nonlin_input_dim, nonlin_output_dim, subset_dim,
-                nonlin_output_dim_init, nonlin_output_dim_final,
                 use_presoftmax_prior_scale,
                 final_layer_normalize_target,
                 include_log_softmax,
@@ -345,7 +315,8 @@ def MakeConfigs(config_dir, splice_indexes_string,
                 xent_regularize,
                 xent_separate_forward_affine,
                 self_repair_scale,
-                objective_type):
+                objective_type,
+                num_multiple_targets, bottleneck_layer, bottleneck_dim):
 
     parsed_splice_output = ParseSpliceString(splice_indexes_string.strip())
 
@@ -363,29 +334,25 @@ def MakeConfigs(config_dir, splice_indexes_string,
 
     config_lines = {'components':[], 'component-nodes':[]}
 
-    if add_idct and cnn_layer is None:
-        # If CNN layer is not None, IDCT will be add inside AddCnnLayers method
-        nnet3_train_lib.WriteIdctMatrix(feat_dim, cepstral_lifter, config_dir.strip() + "/idct.mat")
-
     config_files={}
-    prev_layer_output = nodes.AddInputLayer(config_lines, feat_dim, splice_indexes[0],
-                        ivector_dim,
-                        idct_mat = config_dir.strip() + "/idct.mat" if (add_idct and cnn_layer is None) else None)
+    prev_layer_output = nodes.AddInputLayer(config_lines, feat_dim, splice_indexes[0], ivector_dim)
 
     # Add the init config lines for estimating the preconditioning matrices
     init_config_lines = copy.deepcopy(config_lines)
     init_config_lines['components'].insert(0, '# Config file for initializing neural network prior to')
     init_config_lines['components'].insert(0, '# preconditioning matrix computation')
-    nodes.AddOutputLayer(init_config_lines, prev_layer_output)
+    if len(num_multiple_targets) > 1:
+      for target in range(len(num_multiple_targets)):
+        nodes.AddOutputLayer(init_config_lines, prev_layer_output, suffix = str(target)) 
+    else:
+      nodes.AddOutputLayer(init_config_lines, prev_layer_output)
+
     config_files[config_dir + '/init.config'] = init_config_lines
 
     if cnn_layer is not None:
         prev_layer_output = AddCnnLayers(config_lines, cnn_layer, cnn_bottleneck_dim, cepstral_lifter, config_dir,
                                          feat_dim, splice_indexes[0], ivector_dim)
 
-    # add_lda needs to be set "false" when using dense targets,
-    # or if the task is not a simple classification task
-    # (e.g. regression, multi-task)
     if add_lda:
         prev_layer_output = nodes.AddLdaLayer(config_lines, "L0", prev_layer_output, config_dir + '/lda.mat')
 
@@ -394,17 +361,6 @@ def MakeConfigs(config_dir, splice_indexes_string,
     # we moved the first splice layer to before the LDA..
     # so the input to the first affine layer is going to [0] index
     splice_indexes[0] = [0]
-
-    if not nonlin_output_dim is None:
-        nonlin_output_dims = [nonlin_output_dim] * num_hidden_layers
-    elif nonlin_output_dim_init < nonlin_output_dim_final and num_hidden_layers == 1:
-        raise Exception("num-hidden-layers has to be greater than 1 if relu-dim-init and relu-dim-final is different.")
-    else:
-        # computes relu-dim for each hidden layer. They increase geometrically across layers
-        factor = pow(float(nonlin_output_dim_final) / nonlin_output_dim_init, 1.0 / (num_hidden_layers - 1)) if num_hidden_layers > 1 else 1
-        nonlin_output_dims = [int(round(nonlin_output_dim_init * pow(factor, i))) for i in range(0, num_hidden_layers)]
-        assert(nonlin_output_dims[-1] >= nonlin_output_dim_final - 1 and nonlin_output_dims[-1] <= nonlin_output_dim_final + 1) # due to rounding error
-        nonlin_output_dims[-1] = nonlin_output_dim_final # It ensures that the dim of the last hidden layer is exactly the same as what is specified
 
     for i in range(0, num_hidden_layers):
         # make the intermediate config file for layerwise discriminative training
@@ -478,60 +434,68 @@ def MakeConfigs(config_dir, splice_indexes_string,
                                 include_log_softmax = True,
                                 name_affix = 'xent')
         else:
-            if nonlin_type == "relu":
-                prev_layer_output = nodes.AddAffRelNormLayer(config_lines, "Tdnn_{0}".format(i),
-                                                            prev_layer_output, nonlin_output_dims[i],
-                                                            self_repair_scale = self_repair_scale,
+          if bottleneck_layer > -1 and i+1 == bottleneck_layer:
+             print('bottleneck layer and its dimension are {0} and {1} respectively.'.format(bottleneck_layer, bottleneck_dim))
+             if nonlin_type == "relu":
+                 prev_layer_output = nodes.AddAffRelNormLayer(config_lines, "Tdnn_Bottleneck".format(i),
+                                                              prev_layer_output, bottleneck_dim,
+                                                              self_repair_scale = self_repair_scale,
+                                                              norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
+
+             elif nonlin_type == "pnorm":
+                 prev_layer_output = nodes.AddAffPnormLayer(config_lines, "Tdnn_Bottleneck".format(i),
+                                                            prev_layer_output, nonlin_input_dim, bottleneck_dim,
                                                             norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
-            elif nonlin_type == "pnorm":
-                prev_layer_output = nodes.AddAffPnormLayer(config_lines, "Tdnn_{0}".format(i),
-                                                           prev_layer_output, nonlin_input_dim, nonlin_output_dim,
-                                                           norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
-            else:
-                raise Exception("Unknown nonlinearity type")
+             else:
+                 raise Exception("Unknown nonlinearity type")
+          else:
+              if nonlin_type == "relu":
+                  prev_layer_output = nodes.AddAffRelNormLayer(config_lines, "Tdnn_{0}".format(i),
+                                                              prev_layer_output, nonlin_output_dim,
+                                                              self_repair_scale = self_repair_scale,
+                                                              norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
+              elif nonlin_type == "pnorm":
+                  prev_layer_output = nodes.AddAffPnormLayer(config_lines, "Tdnn_{0}".format(i),
+                                                             prev_layer_output, nonlin_input_dim, nonlin_output_dim,
+                                                             norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
+              else:
+                  raise Exception("Unknown nonlinearity type")
+         # Add multiple pre-final affine layer and multiple softmax layer correspond 
+          # to each target language.
+          if len(num_multiple_targets) > 1:
+            for target in range(len(num_multiple_targets)):
+              nodes.AddFinalLayer(config_lines, prev_layer_output, 
+                                  num_multiple_targets[target],
+                                  name_affix = 'output-'+str(target),
+                                  use_presoftmax_prior_scale = use_presoftmax_prior_scale,
+                                  prior_scale_file = prior_scale_file,
+                                  include_log_softmax = include_log_softmax,
+                                  add_final_sigmoid = add_final_sigmoid,
+                                  objective_type = objective_type)
+          else:
+            # a final layer is added after each new layer as we are generating
+            # configs for layer-wise discriminative training
 
-            if len(num_multiple_targets) > 1:
-              for target in range(len(num_multiple_targets)):
-                nodes.AddFinalLayer(config_lines, prev_layer_output, 
-                                    num_multiple_targets[target],
-                                    name_affix = str(target),
-                                    use_presoftmax_prior_scale = use_presoftmax_prior_scale,
-                                    prior_scale_file = prior_scale_file,
-                                    include_log_softmax = include_log_softmax,
-                                    add_final_sigmoid = add_final_sigmoid,
-                                    objective_type = objective_type)
-                if xent_regularize != 0.0:
-                    nodes.AddFinalLayer(config_lines, prev_layer_output, num_multiple_targets[target],
-                                        ng_affine_options = " param-stddev=0 bias-stddev=0 learning-rate-factor={0} ".format(
-                                              0.5 / xent_regularize),
-                                        use_presoftmax_prior_scale = use_presoftmax_prior_scale,
-                                        prior_scale_file = prior_scale_file,
-                                        include_log_softmax = True,
-                                        name_affix = 'xent-output-'+str(target))
-            else:
-                # a final layer is added after each new layer as we are generating
-                # configs for layer-wise discriminative training
-
-                # add_final_sigmoid adds a sigmoid as a final layer as alternative
-                # to log-softmax layer.
-                # http://ufldl.stanford.edu/wiki/index.php/Softmax_Regression#Softmax_Regression_vs._k_Binary_Classifiers
-                # This is useful when you need the final outputs to be probabilities between 0 and 1.
-                # Usually used with an objective-type such as "quadratic".
-                # Applications are k-binary classification such Ideal Ratio Mask prediction.
-                nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
-                                   use_presoftmax_prior_scale = use_presoftmax_prior_scale,
-                                   prior_scale_file = prior_scale_file,
-                                   include_log_softmax = include_log_softmax,
-                                   add_final_sigmoid = add_final_sigmoid,
-                                   objective_type = objective_type)
-                if xent_regularize != 0.0:
-                    nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
-                                        ng_affine_options = " param-stddev=0 bias-stddev=0 learning-rate-factor={0} ".format(
-                                              0.5 / xent_regularize),
-                                        use_presoftmax_prior_scale = use_presoftmax_prior_scale,
-                                        prior_scale_file = prior_scale_file,
-                                        include_log_softmax = True,
-                                        name_affix = 'xent')
+            # add_final_sigmoid adds a sigmoid as a final layer as alternative
+            # to log-softmax layer.
+            # http://ufldl.stanford.edu/wiki/index.php/Softmax_Regression#Softmax_Regression_vs._k_Binary_Classifiers
+            # This is useful when you need the final outputs to be probabilities between 0 and 1.
+            # Usually used with an objective-type such as "quadratic".
+            # Applications are k-binary classification such Ideal Ratio Mask prediction.
+            nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
+                               use_presoftmax_prior_scale = use_presoftmax_prior_scale,
+                               prior_scale_file = prior_scale_file,
+                               include_log_softmax = include_log_softmax,
+                               add_final_sigmoid = add_final_sigmoid,
+                               objective_type = objective_type)
+          if xent_regularize != 0.0:
+              nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
+                                  ng_affine_options = " param-stddev=0 bias-stddev=0 learning-rate-factor={0} ".format(
+                                        0.5 / xent_regularize),
+                                  use_presoftmax_prior_scale = use_presoftmax_prior_scale,
+                                  prior_scale_file = prior_scale_file,
+                                  include_log_softmax = True,
+                                  name_affix = 'xent')
 
         config_files['{0}/layer{1}.config'.format(config_dir, i+1)] = config_lines
         config_lines = {'components':[], 'component-nodes':[]}
@@ -557,12 +521,16 @@ def MakeConfigs(config_dir, splice_indexes_string,
 
 def Main():
     args = GetArgs()
+    
+    if args.num_multiple_targets is not None:
+      num_multiple_targets = args.num_multiple_targets.split()
+      print('Number of output targets is {0}'.format(len(num_multiple_targets)))
 
     MakeConfigs(config_dir = args.config_dir,
                 splice_indexes_string = args.splice_indexes,
                 feat_dim = args.feat_dim, ivector_dim = args.ivector_dim,
                 num_targets = args.num_targets,
-                add_lda = args.add_lda, add_idct = args.add_idct,
+                add_lda = args.add_lda,
                 cnn_layer = args.cnn_layer,
                 cnn_bottleneck_dim = args.cnn_bottleneck_dim,
                 cepstral_lifter = args.cepstral_lifter,
@@ -570,8 +538,6 @@ def Main():
                 nonlin_input_dim = args.nonlin_input_dim,
                 nonlin_output_dim = args.nonlin_output_dim,
                 subset_dim = args.subset_dim,
-                nonlin_output_dim_init = args.nonlin_output_dim_init,
-                nonlin_output_dim_final = args.nonlin_output_dim_final,
                 use_presoftmax_prior_scale = args.use_presoftmax_prior_scale,
                 final_layer_normalize_target = args.final_layer_normalize_target,
                 include_log_softmax = args.include_log_softmax,
@@ -579,7 +545,10 @@ def Main():
                 xent_regularize = args.xent_regularize,
                 xent_separate_forward_affine = args.xent_separate_forward_affine,
                 self_repair_scale = args.self_repair_scale_nonlinearity,
-                objective_type = args.objective_type)
+                objective_type = args.objective_type,
+                num_multiple_targets = num_multiple_targets, 
+                bottleneck_layer = args.bottleneck_layer,
+                bottleneck_dim = args.bottleneck_dim)
 
 if __name__ == "__main__":
     Main()

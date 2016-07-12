@@ -2,6 +2,7 @@
 
 // Copyright 2012-2015  Johns Hopkins University (author:  Daniel Povey)
 //                2014  Vimal Manohar
+//                2016  Pegah Ghahremani
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -26,6 +27,34 @@
 
 namespace kaldi {
 namespace nnet3 {
+
+// rename io-name of eg w.r.t io_names list e.g. input/input-1,output/output-1
+// 'input' is renamed to input-1 and 'output' renamed to output-1.
+void RenameIoNames(const std::string &io_names,
+                   NnetExample *eg_modified) {
+  std::vector<std::string> separated_io_names;
+  SplitStringToVector(io_names, ",", true, &separated_io_names);
+  int32 num_modified_io = separated_io_names.size(),
+   io_size = eg_modified->io.size();
+  std::vector<std::string> orig_io_list;
+  for (int32 io_ind = 0; io_ind < io_size; io_ind++)
+    orig_io_list.push_back(eg_modified->io[io_ind].name);
+  
+  for (int32 ind = 0; ind < num_modified_io; ind++) {
+    std::vector<std::string> rename_io_name;
+    SplitStringToVector(separated_io_names[ind], "/", true, &rename_io_name);
+    // find the io in eg with specific name and rename it to new name.
+
+    int32 rename_io_ind = 
+       std::find(orig_io_list.begin(), orig_io_list.end(), rename_io_name[0]) - 
+        orig_io_list.begin();
+
+    if (rename_io_ind >= io_size)
+      KALDI_ERR << "No io-node with name " << rename_io_name[0]
+                << "exists in eg.";
+    eg_modified->io[rename_io_ind].name = rename_io_name[1];            
+  }
+}
 
 // returns an integer randomly drawn with expected value "expected_count"
 // (will be either floor(expected_count) or ceil(expected_count)).
@@ -278,7 +307,9 @@ int main(int argc, char *argv[]) {
 
     // you can set frame to a number to select a single frame with a particular
     // offset, or to 'random' to select a random single frame.
-    std::string frame_str;
+    std::string frame_str,
+      weight_str = "",
+      output_str = "";
 
     ParseOptions po(usage);
     po.Register("random", &random, "If true, will write frames to output "
@@ -301,6 +332,16 @@ int main(int argc, char *argv[]) {
                 "feature left-context that we output.");
     po.Register("right-context", &right_context, "Can be used to truncate the "
                 "feature right-context that we output.");
+    po.Register("weights", &weight_str,
+                "Rspecifier maps the output posterior to each example" 
+                "If provided, the supervision weight for output is scaled."
+                " Scaling supervision weight is the same as scaling to the derivative during training "
+                " in case of linear objective."
+                "The default is one, which means we are not applying per-example weights.");
+    po.Register("outputs", &output_str,
+                "Rspecifier maps example old output-name to new output-name in example."
+                " If provided, the NnetIo with name 'output' in each example "
+                " is renamed to new output name.");
 
 
     po.Read(argc, argv);
@@ -315,6 +356,8 @@ int main(int argc, char *argv[]) {
     std::string examples_rspecifier = po.GetArg(1);
 
     SequentialNnetExampleReader example_reader(examples_rspecifier);
+    RandomAccessTokenReader output_reader(output_str);
+    RandomAccessBaseFloatReader egs_weight_reader(weight_str);
 
     int32 num_outputs = po.NumArgs() - 1;
     std::vector<NnetExampleWriter*> example_writers(num_outputs);
@@ -322,7 +365,7 @@ int main(int argc, char *argv[]) {
       example_writers[i] = new NnetExampleWriter(po.GetArg(i+2));
 
 
-    int64 num_read = 0, num_written = 0;
+    int64 num_read = 0, num_written = 0, num_err = 0;
     for (; !example_reader.Done(); example_reader.Next(), num_read++) {
       // count is normally 1; could be 0, or possibly >1.
       int32 count = GetCount(keep_proportion);
@@ -332,12 +375,59 @@ int main(int argc, char *argv[]) {
         int32 index = (random ? Rand() : num_written) % num_outputs;
         if (frame_str == "" && left_context == -1 && right_context == -1 &&
             frame_shift == 0) {
-          example_writers[index]->Write(key, eg);
+          NnetExample eg_modified = eg;
+          if (!weight_str.empty()) {
+            // scale the supervision weight for egs
+            if (!egs_weight_reader.HasKey(key)) {
+              KALDI_WARN << "No weight for example key " << key;
+              num_err++;
+              continue;
+            }
+            BaseFloat weight = egs_weight_reader.Value(key);
+            for (int32 i = 0; i < eg_modified.io.size(); i++) 
+              if (eg_modified.io[i].name == "output") 
+                eg_modified.io[i].features.Scale(weight);
+          }
+          if (!output_str.empty()) {
+            if (!output_reader.HasKey(key)) {
+              KALDI_WARN << "No new output-name for example key " << key;
+              num_err++;
+              continue;
+            }
+            std::string new_output_name = output_reader.Value(key);
+            // rename output io name to $new_output_name.
+            std::string rename_io_names = "output/" + new_output_name;
+            RenameIoNames(rename_io_names, &eg_modified);
+          }
+          example_writers[index]->Write(key, eg_modified);
           num_written++;
         } else { // the --frame option or context options were set.
           NnetExample eg_modified;
           if (SelectFromExample(eg, frame_str, left_context, right_context,
                                 frame_shift, &eg_modified)) {
+            if (!weight_str.empty()) {
+              // scale the supervision weight for egs
+              if (!egs_weight_reader.HasKey(key)) {
+                KALDI_WARN << "No weight for example key " << key;
+                num_err++;
+                continue;
+              }
+              int32 weight = egs_weight_reader.Value(key);
+              for (int32 i = 0; i < eg_modified.io.size(); i++) 
+                if (eg_modified.io[i].name == "output") 
+                  eg_modified.io[i].features.Scale(weight);
+            }
+            if (!output_str.empty()) {
+              if (!output_reader.HasKey(key)) {
+                KALDI_WARN << "No new output-name for example key " << key;
+                num_err++;
+                continue;
+              }
+              std::string new_output_name = output_reader.Value(key);
+              // rename output io name to $new_output_name.
+              std::string rename_io_names = "output/" + new_output_name;
+              RenameIoNames(rename_io_names, &eg_modified);
+            }
             // this branch of the if statement will almost always be taken (should only
             // not be taken for shorter-than-normal egs from the end of a file.
             example_writers[index]->Write(key, eg_modified);

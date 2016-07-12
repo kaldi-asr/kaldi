@@ -6,7 +6,7 @@
 # Apache 2.0.
 
 
-# this script is based on steps/nnet3/tdnn/train.sh
+# this script is based on steps/nnet3/tdnn/train_raw_nnet.sh
 
 
 import subprocess
@@ -16,6 +16,7 @@ import pprint
 import logging
 import imp
 import traceback
+import os.path
 from nnet3_train_lib import *
 
 nnet3_log_parse = imp.load_source('nlp', 'steps/nnet3/report/nnet3_log_parse_lib.py')
@@ -28,13 +29,14 @@ handler.setLevel(logging.INFO)
 formatter = logging.Formatter('%(asctime)s [%(filename)s:%(lineno)s - %(funcName)s - %(levelname)s ] %(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
-logger.info('Starting DNN trainer (train_dnn.py)')
+logger.info('Starting raw DNN trainer (train_raw_dnn.py)')
 
 
 def GetArgs():
     # we add compulsary arguments as named arguments for readability
     parser = argparse.ArgumentParser(description="""
-    Trains a feed forward DNN acoustic model using the cross-entropy objective.
+    Trains a feed forward raw DNN (without transition model)
+    using the cross-entropy objective.
     DNNs include simple DNNs, TDNNs and CNNs.
     """,
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -45,62 +47,84 @@ def GetArgs():
     parser.add_argument("--egs.frames-per-eg", type=int, dest='frames_per_eg',
                         default = 8,
                         help="Number of output labels per example")
+    parser.add_argument("--egs.transform_dir", type=str, dest='transform_dir',
+                        default = None, action = NullstrToNoneAction,
+                        help="""String to provide options directly to steps/nnet3/get_egs.sh script""")
+    parser.add_argument("--egs.dir", type=str, dest='egs_dir',
+                        default = None, action = NullstrToNoneAction,
+                        help="""Directory with egs. If specified this directory
+                        will be used rather than extracting egs""")
+    parser.add_argument("--egs.stage", type=int, dest='egs_stage',
+                        default = 0, help="Stage at which get_egs.sh should be restarted")
+    parser.add_argument("--egs.opts", type=str, dest='egs_opts',
+                        default = None, action = NullstrToNoneAction,
+                        help="""String to provide options directly to steps/nnet3/get_egs.sh script""")
+    # trainer options
+    parser.add_argument("--trainer.srand", type=int, dest='srand',
+                        default = 0,
+                        help="Sets the random seed for model initialization and egs shuffling. "
+                        "Warning: This random seed does not control all aspects of this experiment. "
+                        "There might be other random seeds used in other stages of the experiment "
+                        "like data preparation (e.g. volume perturbation).")
+    parser.add_argument("--trainer.num-epochs", type=int, dest='num_epochs',
+                        default = 8,
+                        help="Number of epochs to train the model")
+    parser.add_argument("--trainer.prior-subset-size", type=int, dest='prior_subset_size',
+                        default = 20000,
+                        help="Number of samples for computing priors")
+    parser.add_argument("--trainer.num-jobs-compute-prior", type=int, dest='num_jobs_compute_prior',
+                        default = 10,
+                        help="The prior computation jobs are single threaded and run on the CPU")
+    parser.add_argument("--trainer.max-models-combine", type=int, dest='max_models_combine',
+                        default = 20,
+                        help="The maximum number of models used in the final model combination stage. These models will themselves be averages of iteration-number ranges")
+    parser.add_argument("--trainer.shuffle-buffer-size", type=int, dest='shuffle_buffer_size',
+                        default = 5000,
+                        help="Controls randomization of the samples on each"
+                        "iteration. If 0 or a large value the randomization is"
+                        "complete, but this will consume memory and cause spikes"
+                        "in disk I/O.  Smaller is easier on disk and memory but"
+                        "less random.  It's not a huge deal though, as samples"
+                        "are anyway randomized right at the start."
+                        "(the point of this is to get data in different"
+                        "minibatches on different iterations, since in the"
+                        "preconditioning method, 2 samples in the same minibatch"
+                        "can affect each others' gradients.")
+    parser.add_argument("--trainer.add-layers-period", type=int, dest='add_layers_period',
+                        default=2,
+                        help="The number of iterations between adding layers"
+                        "during layer-wise discriminative training.")
+    parser.add_argument("--trainer.max-param-change", type=float, dest='max_param_change',
+                        default=2.0,
+                        help="The maximum change in parameters allowed per minibatch,"
+                        "measured in Frobenius norm over the entire model")
+    parser.add_argument("--trainer.samples-per-iter", type=int, dest='samples_per_iter',
+                        default=400000,
+                        help="This is really the number of egs in each archive.")
+    parser.add_argument("--trainer.lda.rand-prune", type=float, dest='rand_prune',
+                        default=4.0,
+                        help="""Value used in preconditioning matrix estimation""")
+    parser.add_argument("--trainer.lda.max-lda-jobs", type=float, dest='max_lda_jobs',
+                        default=10,
+                        help="""Max number of jobs used for LDA stats accumulation""")
 
+
+    # Parameters for the optimization
     parser.add_argument("--trainer.optimization.minibatch-size", type=float, dest='minibatch_size',
                         default = 512,
                         help="Size of the minibatch used to compute the gradient")
 
-    parser.add_argument("--trainer.presoftmax-prior-scale-power", type=float, dest='presoftmax_prior_scale_power',
-                        default=-0.25,
-                        help="")
-
     # General options
-    parser.add_argument("--stage", type=int, default=-4,
-                        help="Specifies the stage of the experiment to execution from")
-    parser.add_argument("--exit-stage", type=int, default=None,
-                        help="If specified, training exits before running this stage")
-    parser.add_argument("--cmd", type=str, action = NullstrToNoneAction,
-                        dest = "command",
-                        help="""Specifies the script to launch jobs.
-                        e.g. queue.pl for launching on SGE cluster
-                             run.pl for launching on local machine
-                        """, default = "queue.pl")
-    parser.add_argument("--egs.cmd", type=str, action = NullstrToNoneAction,
-                        dest = "egs_command",
-                        help="""Script to launch egs jobs""", default = "queue.pl")
-    parser.add_argument("--use-gpu", type=str, action = StrToBoolAction,
-                        choices = ["true", "false"],
-                        help="Use GPU for training", default=True)
-    parser.add_argument("--cleanup", type=str, action = StrToBoolAction,
-                        choices = ["true", "false"],
-                        help="Clean up models after training", default=True)
-    parser.add_argument("--cleanup.remove-egs", type=str, dest='remove_egs',
-                        default = True, action = StrToBoolAction,
-                        choices = ["true", "false"],
-                        help="""If true, remove egs after experiment""")
-    parser.add_argument("--cleanup.preserve-model-interval", dest = "preserve_model_interval",
-                        type=int, default=100,
-                        help="Determines iterations for which models will be preserved during cleanup. If mod(iter,preserve_model_interval) == 0 model will be preserved.")
+    parser.add_argument("--nj", type=int, default=4,
+                        help="Number of parallel jobs")
 
-    parser.add_argument("--reporting.email", dest = "email",
-                        type=str, default=None, action = NullstrToNoneAction,
-                        help=""" Email-id to report about the progress of the experiment.
-                              NOTE: It assumes the machine on which the script is being run can send
-                              emails from command line via. mail program. The
-                              Kaldi mailing list will not support this feature.
-                              It might require local expertise to setup. """)
-    parser.add_argument("--reporting.interval", dest = "reporting_interval",
-                        type=int, default=0.1,
-                        help="Frequency with which reports have to be sent, measured in terms of fraction of iterations. If 0 and reporting mail has been specified then only failure notifications are sent")
-
-    parser.add_argument("--configs-dir", type=str,
-                        help="Use a different configs dir than dir/configs")
+    parser.add_argument("--use-dense-targets", type=str, action=StrToBoolAction,
+                       default = True, choices = ["true", "false"],
+                       help="Train neural network using dense targets")
     parser.add_argument("--feat-dir", type=str, required = True,
                         help="Directory with features used for training the neural network.")
-    parser.add_argument("--lang", type=str, required = True,
-                        help="Language directory")
-    parser.add_argument("--ali-dir", type=str, required = True,
-                        help="Directory with alignments used for training the neural network.")
+    parser.add_argument("--targets-scp", type=str, 
+                        help="Target for training neural network.")
     parser.add_argument("--dir", type=str, required = True,
                         help="Directory to store the models and all other files.")
 
@@ -118,11 +142,8 @@ def ProcessArgs(args):
         raise Exception("--egs.frames-per-eg should have a minimum value of 1")
 
     if (not os.path.exists(args.dir)) or (not os.path.exists(args.dir+"/configs")):
-        raise Exception("This scripts expects {0} to exist and have a configs"
-        " directory which is the output of make_configs.py script")
-
-    if args.transform_dir is None:
-        args.transform_dir = args.ali_dir
+        raise Exception("""This scripts expects {0} to exist and have a configs
+        directory which is the output of make_configs.py script""")
 
     # set the options corresponding to args.use_gpu
     run_opts = train_lib.RunOpts()
@@ -161,18 +182,11 @@ def Train(args, run_opts):
     logger.info("Arguments for the experiment\n{0}".format(arg_string))
 
     # Set some variables.
-    num_leaves = GetNumberOfLeaves(args.ali_dir)
-    num_jobs = GetNumberOfJobs(args.ali_dir)
     feat_dim = GetFeatDim(args.feat_dir)
     ivector_dim = GetIvectorDim(args.online_ivector_dir)
 
     # split the training data into parts for individual jobs
-    # we will use the same number of jobs as that used for alignment
-    SplitData(args.feat_dir, num_jobs)
-    shutil.copy('{0}/tree'.format(args.ali_dir), args.dir)
-    f = open('{0}/num_jobs'.format(args.dir), 'w')
-    f.write(str(num_jobs))
-    f.close()
+    SplitData(args.feat_dir, args.nj)
 
     config_dir = '{0}/configs'.format(args.dir)
     var_file = '{0}/vars'.format(config_dir)
@@ -185,6 +199,11 @@ def Train(args, run_opts):
         left_context = variables['model_left_context']
         right_context = variables['model_right_context']
         num_hidden_layers = variables['num_hidden_layers']
+        if variables['num_targets'] != 'None':
+          num_targets = int(variables['num_targets'])
+        add_lda = StrToBool(variables['add_lda'])
+        include_log_softmax = StrToBool(variables['include_log_softmax'])
+        objective_type = variables['objective_type']
     except KeyError as e:
         raise Exception("KeyError {0}: Variables need to be defined in {1}".format(
             str(e), '{0}/configs'.format(args.dir)))
@@ -192,6 +211,11 @@ def Train(args, run_opts):
     # matrix.  This first config just does any initial splicing that we do;
     # we do this as it's a convenient way to get the stats for the 'lda-like'
     # transform.
+
+    if args.use_dense_targets:
+        if GetFeatDimFromScp(args.targets_scp) != num_targets:
+            raise Exception("Mismatch between num-targets provided to "
+                            "script vs configs")
 
     if (args.stage <= -5):
         logger.info("Initializing a basic network for estimating preconditioning matrix")
@@ -202,26 +226,75 @@ def Train(args, run_opts):
                dir = args.dir))
 
     default_egs_dir = '{0}/egs'.format(args.dir)
+
+    if args.use_dense_targets:
+        target_type = "dense"
+        compute_accuracy = False
+    else:
+        target_type = "sparse"
+        compute_accuracy = True if objective_type == "linear" else False
+
+<<<<<<< HEAD
+    # If num of egs dirs in args.egs_dir > 1,
+    # it is correspond to multilingual training and 
+    # it should generate egs dir for each languages.
+    # The last dir corresponds to multilingual egs directory,
+    # that is generated using this script, but 
+    # it requires single egs dirs to exist.
+    multi_egs_dir = args.egs_dir.split()
+    if len(multi_egs_dir) == 1:
+      default_egs_dir = '{0}/egs'.format(args.dir)
+      if (args.stage <= -4) and args.egs_dir is None:
+          logger.info("Generating egs")
+
+          GenerateEgsFromTargets(args.feat_dir, args.targets_scp, default_egs_dir,
+                      left_context, right_context,
+                      left_context, right_context, run_opts,
+                      frames_per_eg = args.frames_per_eg,
+                      egs_opts = args.egs_opts,
+                      cmvn_opts = args.cmvn_opts,
+                      online_ivector_dir = args.online_ivector_dir,
+                      samples_per_iter = args.samples_per_iter,
+                      transform_dir = args.transform_dir,
+                      stage = args.egs_stage,
+                      target_type = target_type,
+                      num_targets = num_targets)
+      
+      if args.egs_dir is None:
+          egs_dir = default_egs_dir
+      else:
+          egs_dir = args.egs_dir
+=======
     if (args.stage <= -4) and args.egs_dir is None:
         logger.info("Generating egs")
 
-        GenerateEgs(args.feat_dir, args.ali_dir, default_egs_dir,
-                    left_context, right_context,
-                    left_context, right_context, run_opts,
-                    frames_per_eg = args.frames_per_eg,
-                    srand = args.srand,
-                    egs_opts = args.egs_opts,
-                    cmvn_opts = args.cmvn_opts,
-                    online_ivector_dir = args.online_ivector_dir,
-                    samples_per_iter = args.samples_per_iter,
-                    transform_dir = args.transform_dir,
-                    stage = args.egs_stage)
+        GenerateEgsUsingTargets(args.feat_dir, args.targets_scp, default_egs_dir,
+                                left_context, right_context,
+                                left_context, right_context, run_opts,
+                                frames_per_eg = args.frames_per_eg,
+                                srand = args.srand,
+                                egs_opts = args.egs_opts,
+                                cmvn_opts = args.cmvn_opts,
+                                online_ivector_dir = args.online_ivector_dir,
+                                samples_per_iter = args.samples_per_iter,
+                                transform_dir = args.transform_dir,
+                                stage = args.egs_stage,
+                                target_type = target_type,
+                                num_targets = num_targets)
 
     if args.egs_dir is None:
         egs_dir = default_egs_dir
+>>>>>>> 5b17a4c... raw_python_script: Addressed comments and made changes
     else:
-        egs_dir = args.egs_dir
-
+      egs_dir = multi_egs_dir[-1]
+      #if (args.stage <= -4) and not os.path.exists(egs_dir):
+      if (args.stage <= -4):
+        logger.info("Generating multilingual egs dir")
+        GenerateMultilingualEgs(args.egs_dir, run_opts,
+                                stage = args.egs_stage,
+                                samples_per_iter = args.samples_per_iter,
+                                egs_opts = args.egs_opts)
+        
     [egs_left_context, egs_right_context, frames_per_eg, num_archives] = VerifyEgsDir(egs_dir, feat_dim, ivector_dim, left_context, right_context)
     assert(args.frames_per_eg == frames_per_eg)
 
@@ -232,25 +305,17 @@ def Train(args, run_opts):
     # use during decoding
     CopyEgsPropertiesToExpDir(egs_dir, args.dir)
 
-    if (args.stage <= -3):
+    if (add_lda and args.stage <= -3):
         logger.info('Computing the preconditioning matrix for input features')
 
         ComputePreconditioningMatrix(args.dir, egs_dir, num_archives, run_opts,
                                      max_lda_jobs = args.max_lda_jobs,
                                      rand_prune = args.rand_prune)
 
-    if (args.stage <= -2):
-        logger.info("Computing initial vector for FixedScaleComponent before"
-                    " softmax, using priors^{prior_scale} and rescaling to"
-                    " average 1".format(prior_scale = args.presoftmax_prior_scale_power))
-
-        ComputePresoftmaxPriorScale(args.dir, args.ali_dir, num_jobs, run_opts,
-                                    presoftmax_prior_scale_power = args.presoftmax_prior_scale_power)
-
 
     if (args.stage <= -1):
-        logger.info("Preparing the initial acoustic model.")
-        PrepareInitialAcousticModel(args.dir, args.ali_dir, run_opts)
+        logger.info("Preparing the initial network.")
+        PrepareInitialNetwork(args.dir, run_opts)
 
 
     # set num_iters so that as close as possible, we process the data $num_epochs
@@ -301,11 +366,13 @@ def Train(args, run_opts):
                                         momentum = args.momentum,
                                         max_param_change = args.max_param_change,
                                         shuffle_buffer_size = args.shuffle_buffer_size,
-                                        run_opts = run_opts)
+                                        run_opts = run_opts,
+                                        compute_accuracy = compute_accuracy,
+                                        get_raw_nnet_from_am = False)
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain conditions
                 RemoveModel(args.dir, iter-2, num_iters, num_iters_combine,
-                            args.preserve_model_interval)
+                            args.preserve_model_interval, get_raw_nnet_from_am = False)
 
             if args.email is not None:
                 reporting_iter_interval = num_iters * args.reporting_interval
@@ -320,17 +387,13 @@ def Train(args, run_opts):
 
     if args.stage <= num_iters:
         logger.info("Doing final combination to produce final.mdl")
-        CombineModels(args.dir, num_iters, num_iters_combine, egs_dir, run_opts)
+        CombineModels(args.dir, num_iters, num_iters_combine, egs_dir, run_opts,
+                      get_raw_nnet_from_am = False, compute_accuracy = compute_accuracy)
 
-    if args.stage <= num_iters + 1:
-        logger.info("Getting average posterior for purposes of adjusting the priors.")
-        avg_post_vec_file = ComputeAveragePosterior(args.dir, 'combined', egs_dir,
-                                num_archives, args.prior_subset_size, run_opts)
-
-        logger.info("Re-adjusting priors based on computed posteriors")
-        combined_model = "{dir}/combined.mdl".format(dir = args.dir)
-        final_model = "{dir}/final.mdl".format(dir = args.dir)
-        AdjustAmPriors(args.dir, combined_model, avg_post_vec_file, final_model, run_opts)
+    if include_log_softmax and args.stage <= num_iters + 1:
+        logger.info("Getting average posterior for purpose of using as priors to convert posteriors into likelihoods.")
+        avg_post_vec_file = ComputeAveragePosterior(args.dir, 'final', egs_dir,
+                                num_archives, args.prior_subset_size, run_opts, get_raw_nnet_from_am = False)
 
     if args.cleanup:
         logger.info("Cleaning up the experiment directory {0}".format(args.dir))
@@ -342,7 +405,8 @@ def Train(args, run_opts):
 
         CleanNnetDir(args.dir, num_iters, egs_dir,
                      preserve_model_interval = args.preserve_model_interval,
-                     remove_egs = remove_egs)
+                     remove_egs = remove_egs,
+                     get_raw_nnet_from_am = False)
 
     # do some reporting
     [report, times, data] = nnet3_log_parse.GenerateAccuracyReport(args.dir)

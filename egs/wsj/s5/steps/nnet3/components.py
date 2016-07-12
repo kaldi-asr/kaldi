@@ -26,12 +26,16 @@ def GetSumDescriptor(inputs):
     return sum_descriptors
 
 # adds the input nodes and returns the descriptor
-def AddInputLayer(config_lines, feat_dim, splice_indexes=[0], ivector_dim=0):
+def AddInputLayer(config_lines, feat_dim, splice_indexes=[0], ivector_dim=0, idct_mat = None):
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
     output_dim = 0
     components.append('input-node name=input dim=' + str(feat_dim))
-    list = [('Offset(input, {0})'.format(n) if n != 0 else 'input') for n in splice_indexes]
+    prev_layer_output = {'descriptor':  "input",
+                         'dimension': feat_dim}
+    if idct_mat is not None:
+        prev_layer_output = AddFixedAffineLayer(config_lines, "Idct", prev_layer_output, idct_mat)
+    list = [('Offset({0}, {1})'.format(prev_layer_output['descriptor'],n) if n != 0 else prev_layer_output['descriptor']) for n in splice_indexes]
     output_dim += len(splice_indexes) * feat_dim
     if ivector_dim > 0:
         components.append('input-node name=ivector dim=' + str(ivector_dim))
@@ -157,6 +161,11 @@ def AddConvolutionLayer(config_lines, name, input,
         conv_init_string += " matrix={0}".format(filter_bias_file)
     else:
         conv_init_string += " num-filters={0}".format(num_filters)
+
+    if param_stddev is not None:
+        conv_init_string += " param-stddev={0}".format(param_stddev)
+    if bias_stddev is not None:
+        conv_init_string += " bias-stddev={0}".format(bias_stddev)
 
     components.append(conv_init_string)
     component_nodes.append("component-node name={0}_conv_t component={0}_conv input={1}".format(name, input['descriptor']))
@@ -448,4 +457,4 @@ def AddBLstmLayer(config_lines,
             'descriptor': output_descriptor,
             'dimension':output_dim
             }
- 
+
