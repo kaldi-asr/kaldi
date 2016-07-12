@@ -235,6 +235,7 @@ done
 # now make sure num_archives is an exact multiple of archives_multiple.
 num_archives=$[$archives_multiple*$num_archives_intermediate]
 
+echo $srand >$dir/info/srand
 echo $num_archives >$dir/info/num_archives
 echo $frames_per_eg >$dir/info/frames_per_eg
 # Work out the number of egs per archive

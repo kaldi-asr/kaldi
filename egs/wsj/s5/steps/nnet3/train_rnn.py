@@ -411,6 +411,19 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
     # Use the egs dir from the previous iteration for the diagnostics
     logger.info("Training neural net (pass {0})".format(iter))
 
+    # check if different iterations use the same random seed 
+    if os.path.exists('{0}/srand'.format(dir)):
+        try:
+            saved_srand = int(open('{0}/srand'.format(dir), 'r').readline().strip())
+        except IOError, ValueError:
+            raise Exception('Exception while reading the random seed for training')
+        if srand != saved_srand:
+            logger.warning("The random seed provided to this iteration (srand={0}) is different from the one saved last time (srand={1}). Using srand={0}.".format(srand, saved_srand))
+    else: 
+        f = open('{0}/srand'.format(dir), 'w')                              
+        f.write(str(srand))                                                      
+        f.close()
+
     ComputeTrainCvProbabilities(dir, iter, egs_dir, run_opts)
 
     if iter > 0:
@@ -558,7 +571,7 @@ def Train(args, run_opts):
     else:
         egs_dir = args.egs_dir
 
-    [egs_left_context, egs_right_context, frames_per_eg, num_archives] = VerifyEgsDir(egs_dir, feat_dim, ivector_dim, left_context, right_context)
+    [egs_left_context, egs_right_context, frames_per_eg, num_archives] = VerifyEgsDir(egs_dir, feat_dim, ivector_dim, left_context, right_context, args.srand)
     assert(args.chunk_width == frames_per_eg)
 
     if (args.num_jobs_final > num_archives):
