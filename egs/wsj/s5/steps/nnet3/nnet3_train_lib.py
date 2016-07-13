@@ -237,7 +237,7 @@ steps/nnet3/get_egs.sh {egs_opts} \
           egs_dir = egs_dir,
           egs_opts = egs_opts if egs_opts is not None else '' ))
 
-def VerifyEgsDir(egs_dir, feat_dim, ivector_dim, left_context, right_context, srand):
+def VerifyEgsDir(egs_dir, feat_dim, ivector_dim, left_context, right_context):
     try:
         egs_feat_dim = int(open('{0}/info/feat_dim'.format(egs_dir)).readline())
         egs_ivector_dim = int(open('{0}/info/ivector_dim'.format(egs_dir)).readline())
@@ -251,12 +251,6 @@ def VerifyEgsDir(egs_dir, feat_dim, ivector_dim, left_context, right_context, sr
 
         frames_per_eg = int(open('{0}/info/frames_per_eg'.format(egs_dir)).readline())
         num_archives = int(open('{0}/info/num_archives'.format(egs_dir)).readline())
-
-        if os.path.exists('{0}/info/srand'.format(egs_dir)):
-            egs_srand = int(open('{0}/info/srand'.format(egs_dir)).readline())
-            if (egs_srand != srand):
-                logger.warning("The random seed used for generating the provided egs (srand={0}) is different from the one provided for "
-                               "model initialization and egs shuffling in the training (srand={1}). Using srand={1} for training.".format(egs_srand, srand))
 
         return [egs_left_context, egs_right_context, frames_per_eg, num_archives]
     except IOError, ValueError:

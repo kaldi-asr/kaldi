@@ -596,7 +596,7 @@ def Train(args, run_opts):
     else:
         egs_dir = args.egs_dir
 
-    [egs_left_context, egs_right_context, frames_per_eg, num_archives] = train_lib.VerifyEgsDir(egs_dir, feat_dim, ivector_dim, left_context, right_context, args.srand)
+    [egs_left_context, egs_right_context, frames_per_eg, num_archives] = train_lib.VerifyEgsDir(egs_dir, feat_dim, ivector_dim, left_context, right_context)
     assert(args.chunk_width == frames_per_eg)
     num_archives_expanded = num_archives * args.frame_subsampling_factor
 
