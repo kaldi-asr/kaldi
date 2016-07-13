@@ -25,9 +25,11 @@ def GetArgs():
     # we add compulsary arguments as named arguments for readability
     parser = argparse.ArgumentParser(description="Reverberate the data directory with an option "
                                                  "to add isotropic and point source noiseis. "
-                                                 "This script only deals with single channel wave files. "
-                                                 "If multi-channel noise/rir/speech files are provided one "
-                                                 "of the channels will be randomly picked",
+                                                 "Usage: reverberate_data_dir.py [options...] <in-data-dir> <out-data-dir> "
+                                                 "E.g. reverberate_data_dir.py --rir-list-file rir_list "
+                                                 "--foreground-snrs 20:10:15:5:0 --background-snrs 20:10:15:5:0 "
+                                                 "--noise-list-file noise_list --speech-rvb-probability 1 --num-replications 2 "
+                                                 "--random-seed 1 data/train data/train_rvb",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument("--rir-list-file", type=str, required = True, 
@@ -84,37 +86,21 @@ def CheckArgs(args):
     return args
 
 
-def PickItemFromDict(dict):
-   total_p = sum(dict[key].probability for key in dict.keys())
+# This function pick the item according to the associated probability
+# The input could be either a dictinoary of a list
+def PickItemWithProbability(x):
+   if isinstance(x, dict):
+     plist = list(set(x.values()))
+   else:
+     plist = x
+   total_p = sum(item.probability for item in plist)
    p = random.uniform(0, total_p)
-   upto = 0
-   for key in dict.keys():
-      if upto + dict[key].probability >= p:
-         return dict[key]
-      upto += dict[key].probability
-   assert False, "Shouldn't get here"
-
-
-def PickItemFromList(list):
-   total_p = sum(item.probability for item in list)
-   p = random.uniform(0, total_p)
-   upto = 0
-   for item in list:
-      if upto + item.probability >= p:
+   accumulate_p = 0
+   for item in plist:
+      if accumulate_p + item.probability >= p:
          return item
-      upto += item.probability
-   assert False, "Shouldn't get here"
-
-
-def weighted_choice(choices):
-   total = sum(w for c, w in choices)
-   r = random.uniform(0, total)
-   upto = 0
-   for c, w in choices:
-      if upto + w >= r:
-         return c
-      upto += w
-   assert False, "Shouldn't get here"
+      accumulate_p += item.probability
+   assert False, "Shouldn't get here as the accumulated probability should always equal to 1"
 
 
 def ParseFileToDict(file, assert2fields = False, value_processor = None):
@@ -152,18 +138,18 @@ def CorruptWav(wav_scp, durations, output_dir, room_dict, noise_list, foreground
                 wav_id = prefix + str(i) + "_" + wav_id
 
             # pick the room
-            room = PickItemFromDict(room_dict)
+            room = PickItemWithProbability(room_dict)
             command_opts = ""
             noises_added = []
             snrs_added = []
             start_times_added = []
             if random.random() < speech_rvb_probability:
                 # pick the RIR to reverberate the speech
-                speech_rir = PickItemFromList(room.rir_list)
+                speech_rir = PickItemWithProbability(room.rir_list)
                 command_opts += "--impulse-response={0} ".format(speech_rir.rir_file_location)
                 # add the corresponding isotropic noise if there is any
                 if len(speech_rir.iso_noise_list) > 0:
-                    isotropic_noise = PickItemFromList(speech_rir.iso_noise_list)
+                    isotropic_noise = PickItemWithProbability(speech_rir.iso_noise_list)
                     # extend the isotropic noise to the length of the speech waveform
                     noises_added.append("wav-reverberate --duration={1} {0} - |".format(isotropic_noise.noise_file_location, speech_dur))
                     snrs_added.append(background_snrs.next())
@@ -173,8 +159,8 @@ def CorruptWav(wav_scp, durations, output_dir, room_dict, noise_list, foreground
             if len(noise_list) > 0 and random.random() < noise_adding_probability:
                 for k in range(random.randint(1, max_noises_added)):
                     # pick the RIR to reverberate the point-source noise
-                    noise = PickItemFromList(noise_list)
-                    noise_rir = PickItemFromList(room.rir_list)
+                    noise = PickItemWithProbability(noise_list)
+                    noise_rir = PickItemWithProbability(room.rir_list)
                     if noise.bg_fg_type == "background": 
                         start_times_added.append(0)
                         noises_added.append("wav-reverberate --duration={2} --impulse-response={1} {0} - |".format(noise.noise_file_location, noise_rir.rir_file_location, speech_dur))
@@ -283,6 +269,8 @@ def ParseRirList(rir_list_file):
     return SmoothProbability(rir_list)
 
 
+# This function crate the room dictinoary from the rir list
+# The key of the returned dictionary is the room id
 def MakeRoomDict(rir_list):
     room_dict = {}
     for rir in rir_list:
