@@ -49,11 +49,11 @@ def GetArgs():
     parser.add_argument('--background-snrs', type=str, dest = "background_snr_string", default = '20:10:0', help='snrs for background noises')
     parser.add_argument('--prefix', type=str, default = None, help='prefix for the id of the corrupted utterances')
     parser.add_argument("--speech-rvb-probability", type=float, default = 0.8,
-                        help="Probability of reverberating the speech signal, e.g. 0 <= p <= 1")
+                        help="Probability of reverberating a speech signal, e.g. 0 <= p <= 1")
     parser.add_argument("--noise-adding-probability", type=float, default = 0.4,
                         help="Probability of adding point-source noises, e.g. 0 <= p <= 1")
-    parser.add_argument("--max-noises-added", type=int, default = 2,
-                        help="Maximum number of point-source noises could be added")
+    parser.add_argument("--max-noises-per-minute", type=int, default = 2,
+                        help="This controls the maximum number of point-source noises that could be added to a recording according to its duration")
     parser.add_argument('--random-seed', type=int, default=0, help='seed to be used in the randomization of impulese and noises')
     parser.add_argument("input_dir",
                         help="Input data directory")
@@ -121,7 +121,7 @@ def ParseFileToDict(file, assert2fields = False, value_processor = None):
 # The generic command of wav-reverberate will be like:
 # wav-reverberate --duration=t --impulse-response=rir.wav 
 # --additive-signals='noise1.wav,noise2.wav' --snrs='snr1,snr2' --start-times='s1,s2' input.wav output.wav
-def CorruptWav(wav_scp, durations, output_dir, room_dict, noise_list, foreground_snr_array, background_snr_array, num_replicas, prefix, speech_rvb_probability, noise_adding_probability, max_noises_added):
+def CorruptWav(wav_scp, durations, output_dir, room_dict, noise_list, foreground_snr_array, background_snr_array, num_replicas, prefix, speech_rvb_probability, noise_adding_probability, max_noises_per_minute):
     foreground_snrs = list_cyclic_iterator(foreground_snr_array)
     background_snrs = list_cyclic_iterator(background_snr_array)
     command_list = []
@@ -134,6 +134,7 @@ def CorruptWav(wav_scp, durations, output_dir, room_dict, noise_list, foreground
             if len(wav_pipe.split()) == 1:
                 wav_pipe = "cat {0} |".format(wav_pipe)
             speech_dur = durations[wav_id]
+            max_noises_recording = math.floor(max_noises_per_minute * speech_dur / 60)
             if prefix is not None:
                 wav_id = prefix + str(i) + "_" + wav_id
 
@@ -157,7 +158,7 @@ def CorruptWav(wav_scp, durations, output_dir, room_dict, noise_list, foreground
 
             # Add the point-source noise
             if len(noise_list) > 0 and random.random() < noise_adding_probability:
-                for k in range(random.randint(1, max_noises_added)):
+                for k in range(random.randint(1, max_noises_recording)):
                     # pick the RIR to reverberate the point-source noise
                     noise = PickItemWithProbability(noise_list)
                     noise_rir = PickItemWithProbability(room.rir_list)
@@ -206,7 +207,7 @@ def AddPrefixToFields(input_file, output_file, num_replicas, prefix, field = [0]
     f.close()
 
 
-def CreateReverberatedCopy(input_dir, output_dir, room_dict, noise_list, foreground_snr_string, background_snr_string, num_replicas, prefix, speech_rvb_probability, noise_adding_probability, max_noises_added):
+def CreateReverberatedCopy(input_dir, output_dir, room_dict, noise_list, foreground_snr_string, background_snr_string, num_replicas, prefix, speech_rvb_probability, noise_adding_probability, max_noises_per_minute):
     
     if not os.path.isfile(input_dir + "/reco2dur"):
         print("Getting the duration of the recordings...");
@@ -216,7 +217,7 @@ def CreateReverberatedCopy(input_dir, output_dir, room_dict, noise_list, foregro
     foreground_snr_array = map(lambda x: float(x), foreground_snr_string.split(':'))
     background_snr_array = map(lambda x: float(x), background_snr_string.split(':'))
 
-    CorruptWav(wav_scp, durations, output_dir, room_dict, noise_list, foreground_snr_array, background_snr_array, num_replicas, prefix, speech_rvb_probability, noise_adding_probability, max_noises_added)
+    CorruptWav(wav_scp, durations, output_dir, room_dict, noise_list, foreground_snr_array, background_snr_array, num_replicas, prefix, speech_rvb_probability, noise_adding_probability, max_noises_per_minute)
 
     AddPrefixToFields(input_dir + "/utt2spk", output_dir + "/utt2spk", num_replicas, prefix, field = [0,1])
     train_lib.RunKaldiCommand("utils/utt2spk_to_spk2utt.pl <{output_dir}/utt2spk >{output_dir}/spk2utt"
@@ -344,7 +345,7 @@ def Main():
                    prefix = args.prefix,
                    speech_rvb_probability = args.speech_rvb_probability,
                    noise_adding_probability = args.noise_adding_probability,
-                   max_noises_added = args.max_noises_added)
+                   max_noises_per_minute = args.max_noises_per_minute)
 
 if __name__ == "__main__":
     Main()
