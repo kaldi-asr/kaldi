@@ -312,6 +312,14 @@ echo $priors_right_context > $dir/info/priors_right_context
 
 echo $frame_subsampling_factor > $dir/info/frame_subsampling_factor
 
+
+if [ "$frame_subsampling_factor" != 1 ]; then
+  if $adjust_priors; then
+    echo "$0: setting --adjust-priors false since adjusting priors is not supported (and does not make sense) for chain models"
+    adjust_priors=false
+  fi
+fi
+
 (
   if $adjust_priors && [ $stage -le 10 ]; then
     if [ ! -f $dir/ali.scp ]; then
