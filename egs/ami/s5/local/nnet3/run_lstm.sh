@@ -134,6 +134,7 @@ if [ $stage -le 10 ]; then
     --num-chunk-per-minibatch $num_chunk_per_minibatch \
     --samples-per-iter $samples_per_iter \
     --splice-indexes "$splice_indexes" \
+    --add-lda $add_lda \
     --feat-type raw \
     --cmvn-opts "$cmvn_opts" \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \

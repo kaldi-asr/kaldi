@@ -57,6 +57,8 @@ def GetArgs():
     # GRU options
     parser.add_argument("--num-gru-layers", type=int,
                         help="Number of GRU layers to be stacked", default=1)
+    parser.add_argument("--cell-dim", type=int,
+                        help="dimension of GRU-cell")
     parser.add_argument("--recurrent-projection-dim", type=int,
                         help="dimension of recurrent projection")
     parser.add_argument("--non-recurrent-projection-dim", type=int,
@@ -73,8 +75,10 @@ def GetArgs():
                         help="use norm based clipping in ClipGradient components ", default=True, choices = ["false", "true"])
     parser.add_argument("--clipping-threshold", type=float,
                         help="clipping threshold used in ClipGradient components, if clipping-threshold=0 no clipping is done", default=30)
-    parser.add_argument("--self-repair-scale", type=float,
-                        help="A non-zero value activates the self-repair mechanism in the sigmoid and tanh non-linearities of the GRU", default=None)
+    parser.add_argument("--self-repair-scale-nonlinearity", type=float,
+                        help="A non-zero value activates the self-repair mechanism in the sigmoid and tanh non-linearities of the GRU", default=0.00001)
+    parser.add_argument("--self-repair-scale-clipgradient", type=float,
+                        help="A non-zero value activates the self-repair mechanism in the ClipGradient component of the LSTM", default=1.0)
 
     # Delay options
     parser.add_argument("--label-delay", type=int, default=None,
@@ -142,18 +146,18 @@ def PrintConfig(file_name, config_lines):
     f.write("\n".join(config_lines['component-nodes'])+"\n")
     f.close()
 
-def WriteScaleMinusOne(file_name, recurrent_projection_dim):
+def WriteScaleMinusOne(file_name, dim):
     f = open(file_name, 'w')
     f.write(" [ ")
-    for i in range(recurrent_projection_dim):
+    for i in range(dim):
         f.write("-1 ")
     f.write("]\n")
     f.close()
 
-def WriteBiasOne(file_name, recurrent_projection_dim):
+def WriteBiasOne(file_name, dim):
     f = open(file_name, 'w')
     f.write(" [ ")
-    for i in range(recurrent_projection_dim):
+    for i in range(dim):
         f.write("1 ")
     f.write("]\n")
     f.close()
@@ -220,15 +224,16 @@ def ParseGruDelayString(gru_delay):
 
 
 def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
-                splice_indexes, gru_delay,
+                splice_indexes, gru_delay, cell_dim, hidden_dim,
                 recurrent_projection_dim, non_recurrent_projection_dim,
                 num_gru_layers, num_hidden_layers,
                 norm_based_clipping, clipping_threshold,
                 ng_affine_options,
-                label_delay, include_log_softmax, xent_regularize, self_repair_scale):
+                label_delay, include_log_softmax, xent_regularize,
+                self_repair_scale_nonlinearity, self_repair_scale_clipgradient):
 
-    WriteScaleMinusOne(config_dir + '/scale_minus_one.vec', recurrent_projection_dim)
-    WriteBiasOne(config_dir + '/bias_one.vec', recurrent_projection_dim)
+    WriteScaleMinusOne(config_dir + '/scale_minus_one.vec', cell_dim)
+    WriteBiasOne(config_dir + '/bias_one.vec', cell_dim)
 
     config_lines = {'components':[], 'component-nodes':[]}
 
@@ -245,25 +250,25 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
     prev_layer_output = nodes.AddLdaLayer(config_lines, "L0", prev_layer_output, config_dir + '/lda.mat')
 
     for i in range(num_gru_layers):
-        if len(gru_delay[i]) == 2: # BGRU layer case, add both forward and backward
+        if len(gru_delay[i]) == 2: # add a bi-directional GRU layer (both forward and backward)
             prev_layer_output1 = nodes.AddGruLayer(config_lines, "BGru{0}_forward".format(i+1), prev_layer_output,
-                                             recurrent_projection_dim, non_recurrent_projection_dim,
+                                             cell_dim, recurrent_projection_dim, non_recurrent_projection_dim,
                                              config_dir + '/scale_minus_one.vec', config_dir + '/bias_one.vec',
                                              clipping_threshold, norm_based_clipping, ng_affine_options,
-                                             gru_delay = gru_delay[i][0], self_repair_scale = self_repair_scale)
+                                             gru_delay = gru_delay[i][0], self_repair_scale_nonlinearity = self_repair_scale_nonlinearity, self_repair_scale_clipgradient = self_repair_scale_clipgradient)
             prev_layer_output2 = nodes.AddGruLayer(config_lines, "BGru{0}_backward".format(i+1), prev_layer_output,
-                                             recurrent_projection_dim, non_recurrent_projection_dim,
+                                             cell_dim, recurrent_projection_dim, non_recurrent_projection_dim,
                                              config_dir + '/scale_minus_one.vec', config_dir + '/bias_one.vec',
                                              clipping_threshold, norm_based_clipping, ng_affine_options,
-                                             gru_delay = gru_delay[i][1], self_repair_scale = self_repair_scale)
+                                             gru_delay = gru_delay[i][1], self_repair_scale_nonlinearity = self_repair_scale_nonlinearity, self_repair_scale_clipgradient = self_repair_scale_clipgradient)
             prev_layer_output['descriptor'] = 'Append({0}, {1})'.format(prev_layer_output1['descriptor'], prev_layer_output2['descriptor'])
             prev_layer_output['dimension'] = prev_layer_output1['dimension'] + prev_layer_output2['dimension']
-        else: # GRU layer case
+        else: # add a uni-directional GRU layer
             prev_layer_output = nodes.AddGruLayer(config_lines, "Gru{0}".format(i+1), prev_layer_output,
-                                            recurrent_projection_dim, non_recurrent_projection_dim,
+                                            cell_dim, recurrent_projection_dim, non_recurrent_projection_dim,
                                             config_dir + '/scale_minus_one.vec', config_dir + '/bias_one.vec',
                                             clipping_threshold, norm_based_clipping, ng_affine_options,
-                                            gru_delay = gru_delay[i][0], self_repair_scale = self_repair_scale)
+                                            gru_delay = gru_delay[i][0], self_repair_scale_nonlinearity = self_repair_scale_nonlinearity, self_repair_scale_clipgradient = self_repair_scale_clipgradient)
         # make the intermediate config file for layerwise discriminative
         # training
         nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options, label_delay = label_delay, include_log_softmax = include_log_softmax)
@@ -326,16 +331,25 @@ def Main():
     args = GetArgs()
     [left_context, right_context, num_hidden_layers, splice_indexes] = ProcessSpliceIndexes(args.config_dir, args.splice_indexes, args.label_delay, args.num_gru_layers)
 
-    MakeConfigs(args.config_dir,
-                args.feat_dim, args.ivector_dim, args.num_targets,
-                splice_indexes, args.gru_delay,
-                args.recurrent_projection_dim, args.non_recurrent_projection_dim,
-                args.num_gru_layers, num_hidden_layers,
-                args.norm_based_clipping,
-                args.clipping_threshold,
-                args.ng_affine_options,
-                args.label_delay, args.include_log_softmax, args.xent_regularize,
-                args.self_repair_scale)
+    MakeConfigs(config_dir = args.config_dir,
+                feat_dim = args.feat_dim, ivector_dim = args.ivector_dim,
+                num_targets = args.num_targets,
+                splice_indexes = splice_indexes,
+                gru_delay = args.gru_delay,
+                cell_dim = args.cell_dim,
+                hidden_dim = args.hidden_dim,
+                recurrent_projection_dim = args.recurrent_projection_dim,
+                non_recurrent_projection_dim = args.non_recurrent_projection_dim,
+                num_gru_layers = args.num_gru_layers,
+                num_hidden_layers = num_hidden_layers,
+                norm_based_clipping = args.norm_based_clipping,
+                clipping_threshold = args.clipping_threshold,
+                ng_affine_options = args.ng_affine_options,
+                label_delay = args.label_delay,
+                include_log_softmax = args.include_log_softmax,
+                xent_regularize = args.xent_regularize,
+                self_repair_scale_nonlinearity = args.self_repair_scale_nonlinearity,
+                self_repair_scale_clipgradient = args.self_repair_scale_clipgradient)
 
 if __name__ == "__main__":
     Main()

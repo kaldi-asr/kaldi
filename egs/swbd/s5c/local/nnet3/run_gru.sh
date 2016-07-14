@@ -25,6 +25,7 @@ splice_indexes="-2,-1,0,1,2 0 0"
 gru_delay=" -1 -2 -3 "
 label_delay=5
 num_gru_layers=3
+cell_dim=1024
 hidden_dim=1024
 recurrent_projection_dim=1024
 non_recurrent_projection_dim=768
@@ -34,6 +35,7 @@ chunk_right_context=0
 
 
 # training options
+srand=0
 num_epochs=8
 initial_effective_lrate=0.0003
 final_effective_lrate=0.00003
@@ -90,11 +92,13 @@ if [ $stage -le 9 ]; then
     --ali-dir $ali_dir \
     --num-gru-layers $num_gru_layers \
     --splice-indexes "$splice_indexes " \
+    --cell-dim $cell_dim \
     --hidden-dim $hidden_dim \
     --recurrent-projection-dim $recurrent_projection_dim \
     --non-recurrent-projection-dim $non_recurrent_projection_dim \
     --label-delay $label_delay \
-    --self-repair-scale 0.00001 \
+    --self-repair-scale-nonlinearity 0.00001 \
+    --self-repair-scale-clipgradient 1.0 \
    $dir/configs || exit 1;
 
 fi
@@ -109,6 +113,7 @@ if [ $stage -le 10 ]; then
     --cmd="$decode_cmd" \
     --feat.online-ivector-dir=exp/nnet3/ivectors_${train_set} \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
+    --trainer.srand=$srand \
     --trainer.num-epochs=$num_epochs \
     --trainer.samples-per-iter=$samples_per_iter \
     --trainer.optimization.num-jobs-initial=$num_jobs_initial \
