@@ -279,6 +279,12 @@ class CuMatrixBase {
   void GroupPnormDeriv(const CuMatrixBase<Real> &input,
                        const CuMatrixBase<Real> &output, Real power);
 
+  /// Differentiate backward through the GroupPnorm function.
+  /// It is a combination of GroupPnormDeriv and MulRowsGroupMax.
+  void DiffGroupPnorm(const CuMatrixBase<Real> &in_value,
+                      const CuMatrixBase<Real> &out_value,
+                      const CuMatrixBase<Real> &out_deriv, Real power);
+
   /// Apply the function y(i) = (max_{j = i*G}^{(i+1)*G-1} x_j
   /// where G = x.NumCols() / y.NumCols() must be an integer.
   /// [note: y corresponds to *this and x to src, so

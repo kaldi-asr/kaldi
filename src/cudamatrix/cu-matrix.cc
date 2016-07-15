@@ -823,6 +823,34 @@ void CuMatrixBase<Real>::GroupPnormDeriv(const CuMatrixBase<Real> &src1,
 }
 
 template<typename Real>
+void CuMatrixBase<Real>::DiffGroupPnorm(const CuMatrixBase<Real> &in_value,
+                                        const CuMatrixBase<Real> &out_value,
+                                        const CuMatrixBase<Real> &out_deriv,
+                                        Real power) {
+  KALDI_ASSERT(out_value.NumCols() > 0);
+  KALDI_ASSERT(out_value.NumCols() == out_deriv.NumCols());
+  int group_size = this->NumCols() / out_value.NumCols();
+  KALDI_ASSERT(this->NumCols() == out_value.NumCols() * group_size);
+//#if HAVE_CUDA == 1
+//  if (CuDevice::Instantiate().Enabled()) {
+//    Timer tim;
+//    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+//    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK),
+//                 n_blocks(NumRows(), CU2DBLOCK));
+//    cuda_calc_pnorm_deriv(dimGrid, dimBlock, this->data_, src1.Data(),
+//                          src2.Data(), Dim(), src2.Stride(), group_size, power);
+//    CU_SAFE_CALL(cudaGetLastError());
+//
+//    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+//  } else
+//#endif
+  {
+    GroupPnormDeriv(in_value, out_value, power);
+    MulRowsGroupMat(out_deriv);
+  }
+}
+
+template<typename Real>
 void CuMatrixBase<Real>::GroupMaxDeriv(const CuMatrixBase<Real> &src1,
                                        const CuMatrixBase<Real> &src2) {
   KALDI_ASSERT(src2.NumCols() > 0);
