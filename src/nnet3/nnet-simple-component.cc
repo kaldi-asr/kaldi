@@ -558,10 +558,20 @@ void ClipGradientComponent::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &clipping_threshold_);
   ExpectToken(is, binary, "<NormBasedClipping>");
   ReadBasicType(is, binary, &norm_based_clipping_);
+  ExpectToken(is, binary, "<SelfRepairClippedProportionThreshold>");
+  ReadBasicType(is, binary, &self_repair_clipped_proportion_threshold_);
+  ExpectToken(is, binary, "<SelfRepairTarget>");
+  ReadBasicType(is, binary, &self_repair_target_);
+  ExpectToken(is, binary, "<SelfRepairScale>");
+  ReadBasicType(is, binary, &self_repair_scale_);
   ExpectToken(is, binary, "<NumElementsClipped>");
   ReadBasicType(is, binary, &num_clipped_);
   ExpectToken(is, binary, "<NumElementsProcessed>");
   ReadBasicType(is, binary, &count_);
+  ExpectToken(is, binary, "<NumSelfRepaired>");
+  ReadBasicType(is, binary, &num_self_repaired_);
+  ExpectToken(is, binary, "<NumBackpropped>");
+  ReadBasicType(is, binary, &num_backpropped_);
   ExpectToken(is, binary, "</ClipGradientComponent>");
 }
 
@@ -573,10 +583,20 @@ void ClipGradientComponent::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, clipping_threshold_);
   WriteToken(os, binary, "<NormBasedClipping>");
   WriteBasicType(os, binary, norm_based_clipping_);
+  WriteToken(os, binary, "<SelfRepairClippedProportionThreshold>");
+  WriteBasicType(os, binary, self_repair_clipped_proportion_threshold_);
+  WriteToken(os, binary, "<SelfRepairTarget>");
+  WriteBasicType(os, binary, self_repair_target_);
+  WriteToken(os, binary, "<SelfRepairScale>");
+  WriteBasicType(os, binary, self_repair_scale_);
   WriteToken(os, binary, "<NumElementsClipped>");
   WriteBasicType(os, binary, num_clipped_);
   WriteToken(os, binary, "<NumElementsProcessed>");
   WriteBasicType(os, binary, count_);
+  WriteToken(os, binary, "<NumSelfRepaired>");
+  WriteBasicType(os, binary, num_self_repaired_);
+  WriteToken(os, binary, "<NumBackpropped>");
+  WriteBasicType(os, binary, num_backpropped_);
   WriteToken(os, binary, "</ClipGradientComponent>");
 }
 
@@ -588,20 +608,38 @@ std::string ClipGradientComponent::Info() const {
          << ", clipping-threshold=" << clipping_threshold_
          << ", clipped-proportion="
          << (count_ > 0 ? static_cast<BaseFloat>(num_clipped_)/count_ : 0);
+  if (self_repair_scale_ != 0.0)
+    stream << ", self-repair-clipped-proportion-threshold="
+           << self_repair_clipped_proportion_threshold_
+           << ", self-repair-target=" << self_repair_target_
+           << ", self-repair-scale=" << self_repair_scale_;
   return stream.str();
 }
 
 void ClipGradientComponent::Init(int32 dim,
                                  BaseFloat clipping_threshold,
                                  bool norm_based_clipping,
+                                 BaseFloat self_repair_clipped_proportion_threshold,
+                                 BaseFloat self_repair_target,
+                                 BaseFloat self_repair_scale,
                                  int32 num_clipped,
-                                 int32 count)  {
-  KALDI_ASSERT(clipping_threshold >= 0 && dim > 0);
+                                 int32 count,
+                                 int32 num_self_repaired,
+                                 int32 num_backpropped)  {
+  KALDI_ASSERT(clipping_threshold >= 0 && dim > 0 &&
+      self_repair_clipped_proportion_threshold >= 0.0 && 
+      self_repair_target >= 0.0 && self_repair_scale >= 0.0);
   dim_ = dim;
   norm_based_clipping_ = norm_based_clipping;
   clipping_threshold_ = clipping_threshold;
+  self_repair_clipped_proportion_threshold_ =
+      self_repair_clipped_proportion_threshold;
+  self_repair_target_ = self_repair_target;
+  self_repair_scale_ = self_repair_scale;
   num_clipped_ = num_clipped;
   count_ = count;
+  num_self_repaired_ = num_self_repaired;
+  num_backpropped_ = num_backpropped;
 }
 
 void ClipGradientComponent::InitFromConfig(ConfigLine *cfl) {
@@ -609,13 +647,26 @@ void ClipGradientComponent::InitFromConfig(ConfigLine *cfl) {
   bool ok = cfl->GetValue("dim", &dim);
   bool norm_based_clipping = false;
   BaseFloat clipping_threshold = 15.0;
+  BaseFloat self_repair_clipped_proportion_threshold = 0.01;
+  BaseFloat self_repair_target = 0.0;
+  BaseFloat self_repair_scale = 1.0;
   cfl->GetValue("clipping-threshold", &clipping_threshold);
   cfl->GetValue("norm-based-clipping", &norm_based_clipping);
+  cfl->GetValue("self-repair-clipped-proportion-threshold",
+                &self_repair_clipped_proportion_threshold);
+  cfl->GetValue("self-repair-target",
+                &self_repair_target);
+  cfl->GetValue("self-repair-scale", &self_repair_scale);
   if (!ok || cfl->HasUnusedValues() ||
-      clipping_threshold < 0 || dim <= 0)
+      clipping_threshold < 0 || dim <= 0 ||
+      self_repair_clipped_proportion_threshold < 0.0 || 
+      self_repair_target < 0.0 || self_repair_scale < 0.0)
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << cfl->WholeLine() << "\"";
-  Init(dim, clipping_threshold, norm_based_clipping, 0, 0);
+  Init(dim, clipping_threshold, norm_based_clipping,
+       self_repair_clipped_proportion_threshold,
+       self_repair_target,
+       self_repair_scale, 0, 0, 0, 0);
 }
 
 void ClipGradientComponent::Propagate(
@@ -628,7 +679,7 @@ void ClipGradientComponent::Propagate(
 
 void ClipGradientComponent::Backprop(const std::string &debug_info,
                              const ComponentPrecomputedIndexes *indexes,
-                             const CuMatrixBase<BaseFloat> &,
+                             const CuMatrixBase<BaseFloat> &in_value,
                              const CuMatrixBase<BaseFloat> &,
                              const CuMatrixBase<BaseFloat> &out_deriv,
                              Component *to_update_in, // may be NULL; may be identical
@@ -640,7 +691,6 @@ void ClipGradientComponent::Backprop(const std::string &debug_info,
 
   ClipGradientComponent *to_update =
       dynamic_cast<ClipGradientComponent*>(to_update_in);
-  KALDI_ASSERT(to_update != NULL);
 
   if (clipping_threshold_ > 0) {
     if (norm_based_clipping_) {
@@ -659,21 +709,117 @@ void ClipGradientComponent::Backprop(const std::string &debug_info,
         // now clipping_scales contains max(1,
         //       clipping_threshold/vector_norm)
         in_deriv->MulRowsVec(clipping_scales);
-        to_update->num_clipped_ += (clipping_scales.Dim() - num_not_scaled);
+        if (to_update != NULL)
+          to_update->num_clipped_ += (clipping_scales.Dim() - num_not_scaled);
        }
-      to_update->count_ += clipping_scales.Dim();
+      if (to_update != NULL)
+        to_update->count_ += clipping_scales.Dim();
     } else {
       // each element of the derivative matrix, is clipped to be below the
       // clipping_threshold_
       in_deriv->ApplyCeiling(clipping_threshold_);
       in_deriv->ApplyFloor(-1 * clipping_threshold_);
     }
+
+    if (to_update != NULL) {
+      to_update->num_backpropped_ += 1;
+      RepairGradients(debug_info, in_value, in_deriv, to_update);
+    }
   }
+}
+
+// This function will add a self-repair term to in-deriv, attempting to shrink
+// the maginitude of the input towards self_repair_target_.
+// This term is proportional to [-(input vector - self_repair_target_)].
+// The avarage magnitude of this term is equal to
+// [self_repair_scale_ * clipped_proportion * average norm of input derivative].
+// We use norm of input derivative when computing the magnitude so that it is
+// comparable to the magnitude of input derivative, especially when the gradient
+// explosion is actually happening.
+void ClipGradientComponent::RepairGradients(
+    const std::string &debug_info,
+    const CuMatrixBase<BaseFloat> &in_value,
+    CuMatrixBase<BaseFloat> *in_deriv, ClipGradientComponent *to_update) const {
+  KALDI_ASSERT(to_update != NULL);
+
+  // we use this 'repair_probability' (hardcoded for now) to limit
+  // this code to running on about half of the minibatches.
+  BaseFloat repair_probability = 0.5;
+  if (self_repair_clipped_proportion_threshold_ >= 1.0 ||
+      self_repair_scale_ == 0.0 || count_ == 0 ||
+      RandUniform() > repair_probability)
+    return;
+
+  KALDI_ASSERT(self_repair_target_ >= 0.0 && self_repair_scale_ > 0.0);
+
+  BaseFloat clipped_proportion =
+    (count_ > 0 ? static_cast<BaseFloat>(num_clipped_) / count_ : 0);
+  // in-deriv would be modified only when clipped_proportion exceeds the
+  // threshold
+  if (clipped_proportion <= self_repair_clipped_proportion_threshold_)
+    return;
+
+  to_update->num_self_repaired_ += 1;
+  if (to_update->debug_info_ == "") // get the component-node name
+    to_update->debug_info_ = debug_info;
+  if (to_update->num_self_repaired_ == 1)
+    KALDI_LOG << "ClipGradientComponent(node_name=" << debug_info
+              << ")'s self-repair was activated as the first time at the "
+              << to_update->num_backpropped_
+              << "-th call of Backprop() in this training job.";
+
+  // sign_mat = sign(in_value), i.e.,
+  // An element in sign_mat is 1 if its corresponding element in in_value > 0,
+  // or -1 otherwise
+  CuMatrix<BaseFloat> sign_mat(in_value);
+  sign_mat.ApplyHeaviside();
+  sign_mat.Scale(2.0);
+  sign_mat.Add(-1.0);
+
+  // repair_mat =
+  // floor(abs(in_value) - self_repair_target_, 0) .* sign(in_value)
+  CuMatrix<BaseFloat> repair_mat(in_value);
+  repair_mat.ApplyPowAbs(1.0);
+  repair_mat.Add(-self_repair_target_);
+  repair_mat.ApplyFloor(0.0);
+  repair_mat.MulElements(sign_mat);
+
+  // magnitude =
+  // self_repair_scale_ * clipped_proportion * average norm of in-deriv
+  CuVector<BaseFloat> in_deriv_norm_vec(in_deriv->NumRows());
+  in_deriv_norm_vec.AddDiagMat2(1.0, *in_deriv, kNoTrans, 0.0);
+  in_deriv_norm_vec.ApplyPow(0.5);
+  double in_deriv_norm_sum = in_deriv_norm_vec.Sum();
+  BaseFloat magnitude = self_repair_scale_ * clipped_proportion *
+                        (in_deriv_norm_sum / in_deriv_norm_vec.Dim());
+ 
+  CuVector<BaseFloat> repair_mat_norm_vec(repair_mat.NumRows());
+  repair_mat_norm_vec.AddDiagMat2(1.0, repair_mat, kNoTrans, 0.0);
+  repair_mat_norm_vec.ApplyPow(0.5);
+  double repair_mat_norm_sum = repair_mat_norm_vec.Sum();
+  double scale = 0.0;
+  if (repair_mat_norm_sum != 0.0)
+    scale = magnitude / (repair_mat_norm_sum / repair_mat_norm_vec.Dim());
+  // repair_mat is scaled so that on average the rows have the norm
+  // (magnitude / repair_probability). This will give higher magnitude of
+  // self-repair to input vectors that have larger absolute value, which tend to
+  // be those that are diverging.
+  in_deriv->AddMat(-scale / repair_probability, repair_mat);
+  CuVector<BaseFloat> in_deriv_repaired_norm_vec(in_deriv->NumRows());
+  in_deriv_repaired_norm_vec.AddDiagMat2(1.0, *in_deriv, kNoTrans, 0.0);
+  in_deriv_repaired_norm_vec.ApplyPow(0.5);
+  // scale in_deriv to have the same norm as that before adding the self-repair
+  // term, in order to avoid increase of the norm caused by self-repair,
+  // which may incur more clip of gradient and thus more self-repair
+  double in_deriv_repaired_norm_sum = in_deriv_repaired_norm_vec.Sum();
+  in_deriv->Scale(in_deriv_norm_sum / in_deriv_repaired_norm_sum);
 }
 
 void ClipGradientComponent::ZeroStats()  {
   count_ = 0.0;
   num_clipped_ = 0.0;
+  num_self_repaired_ = 0;
+  num_backpropped_ = 0;
 }
 
 void ClipGradientComponent::Scale(BaseFloat scale) {
