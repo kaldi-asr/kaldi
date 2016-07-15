@@ -1209,8 +1209,14 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       *component_type = "ClipGradientComponent";
       os << "dim=" << RandInt(1, 50);
       os << " clipping-threshold=" << RandInt(1, 50)
-         << " norm-based-clipping=" << (RandInt(0, 1) == 0 ? "false" : "true")
-         << " self-repair-scale=" << (RandInt(0, 1) == 0 ? 0 : RandInt(1, 50));
+         << " norm-based-clipping=" << (RandInt(0, 1) == 0 ? "false" : "true");
+      if (RandInt(0, 1) == 1)
+        os << " self-repair-scale="
+           << (RandInt(0, 1) == 0 ? 0 : RandInt(1, 50));
+      if (RandInt(0, 1) == 1)
+        os << " self-repair-clipped-proportion-threshold=" << RandUniform();
+      if (RandInt(0, 1) == 1)
+        os << " self-repair-target=" << RandUniform();
       break;
     } 
     default:

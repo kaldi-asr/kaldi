@@ -728,6 +728,14 @@ void ClipGradientComponent::Backprop(const std::string &debug_info,
   }
 }
 
+// This function will add a self-repair term to in-deriv, attempting to shrink
+// the maginitude of the input towards self_repair_target_.
+// This term is proportional to [-(input vector - self_repair_target_)].
+// The avarage magnitude of this term is equal to
+// [self_repair_scale_ * clipped_proportion * average norm of input derivative].
+// We use norm of input derivative when computing the magnitude so that it is
+// comparable to the magnitude of input derivative, especially when the gradient
+// explosion is actually happening.
 void ClipGradientComponent::RepairGradients(
     const std::string &debug_info,
     const CuMatrixBase<BaseFloat> &in_value,
