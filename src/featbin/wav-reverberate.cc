@@ -165,7 +165,7 @@ int main(int argc, char *argv[]) {
                 "the output waveform will be equal to the input waveform."
                 "If false, the length of the output waveform will be "
                 "equal to (original input length + rir length - 1). "
-                "This value is default true and "
+                "This value is true by default and "
                 "it only affects the output when RIR file is provided.");
     po.Register("input-wave-channel", &input_channel,
                 "Specifies the channel to be used from input as only a "
