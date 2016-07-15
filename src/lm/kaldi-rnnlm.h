@@ -1,6 +1,7 @@
 // lm/kaldi-rnnlm.h
 
 // Copyright 2015  Guoguo Chen
+// 	     2016  Ricky Chan Ho Yin
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -27,6 +28,9 @@
 #include "fstext/deterministic-fst.h"
 #include "lm/mikolov-rnnlm-lib.h"
 #include "util/common-utils.h"
+#include "cuedlmcpu/cued-rnnlm-lib.h"
+
+using namespace cuedrnnlm;
 
 namespace kaldi {
 
@@ -51,7 +55,7 @@ class KaldiRnnlmWrapper {
                     const std::string &word_symbol_table_rxfilename,
                     const std::string &rnnlm_rxfilename);
 
-  int32 GetHiddenLayerSize() const { return rnnlm_.getHiddenLayerSize(); }
+  int32 GetHiddenLayerSize();
 
   int32 GetEos() const { return eos_; }
 
@@ -59,12 +63,30 @@ class KaldiRnnlmWrapper {
                        const std::vector<float> &context_in,
                        std::vector<float> *context_out);
 
+  KaldiRnnlmWrapper(const KaldiRnnlmWrapperOpts &opts,
+                    const std::string &unk_prob_rspecifier,
+                    const std::string &word_symbol_table_rxfilename,
+                    const std::string &rnnlm_rxfilename,
+                    bool use_cued,
+                    const std::string &inputwlist,
+                    const std::string &outputwlist,
+                    std::vector<int> &lsizes,
+                    int fvocsize, 
+		    int nthread=1);
+
+  void ResetCuedLMhist();
+  
+  ~KaldiRnnlmWrapper();
+
  private:
   rnnlm::CRnnLM rnnlm_;
   std::vector<std::string> label_to_word_;
   int32 eos_;
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(KaldiRnnlmWrapper);
+
+  cuedrnnlm::RNNLM *cuedrnnlm_ptr_;
+  bool use_cued_lm;
 };
 
 class RnnlmDeterministicFst
@@ -76,6 +98,7 @@ class RnnlmDeterministicFst
 
   // Does not take ownership.
   RnnlmDeterministicFst(int32 max_ngram_order, KaldiRnnlmWrapper *rnnlm);
+  RnnlmDeterministicFst(int32 max_ngram_order, KaldiRnnlmWrapper *rnnlm, bool use_cued_lm);
 
   // We cannot use "const" because the pure virtual function in the interface is
   // not const.
@@ -97,6 +120,8 @@ class RnnlmDeterministicFst
   KaldiRnnlmWrapper *rnnlm_;
   int32 max_ngram_order_;
   std::vector<std::vector<float> > state_to_context_;
+
+  bool use_cued_lm;
 };
 
 }  // namespace kaldi
