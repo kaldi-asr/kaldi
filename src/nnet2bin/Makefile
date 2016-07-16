@@ -37,11 +37,11 @@ cuda-compiled.o: ../kaldi.mk
 
 TESTFILES =
 
-ADDLIBS = ../nnet/kaldi-nnet.a ../cudamatrix/kaldi-cudamatrix.a \
-          ../decoder/kaldi-decoder.a ../lat/kaldi-lat.a \
-          ../fstext/kaldi-fstext.a ../hmm/kaldi-hmm.a \
+ADDLIBS = ../nnet2/kaldi-nnet2.a ../nnet/kaldi-nnet.a \
+          ../cudamatrix/kaldi-cudamatrix.a ../decoder/kaldi-decoder.a \
+          ../lat/kaldi-lat.a ../fstext/kaldi-fstext.a ../hmm/kaldi-hmm.a \
           ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
           ../tree/kaldi-tree.a ../util/kaldi-util.a ../thread/kaldi-thread.a \
-          ../matrix/kaldi-matrix.a ../base/kaldi-base.a ../nnet2/kaldi-nnet2.a 
+          ../matrix/kaldi-matrix.a ../base/kaldi-base.a 
 
 include ../makefiles/default_rules.mk

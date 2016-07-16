@@ -46,7 +46,7 @@ for f in */Makefile; do
         @weird_libs = ();
         %normal_lib_names = {};
         foreach $lib (@addlibs) {
-          if ($lib =~ m|^\.\./([a-z]+)/kaldi-([a-z]+)\.a$| && $1 == $2 && defined $library_name_to_order{$1}) {
+          if ($lib =~ m|^\.\./(.+)/kaldi-(.+)\.a$| && $1 == $2 && defined $library_name_to_order{$1}) {
              $normal_lib_names{$1} = 1;
           } else { push @weird_libs, $lib; }
         }
@@ -57,7 +57,7 @@ for f in */Makefile; do
                push @normalized_addlibs, "../$test_name/kaldi-$test_name.a";
             }
          }
-        if (@weird_libs > 0) {  print STDERR "Unexpected libraries: " . join(":", @weird_libs); }
+        if (@weird_libs > 0) {  print STDERR "Unexpected libraries: " . join(":", @weird_libs) . "\n"; }
         # unexpected libraries that aren not part of the normal list will go last.
         push @normalized_addlibs, @weird_libs;
         @rearranged_lines = ();
