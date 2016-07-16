@@ -52,7 +52,7 @@ void PnormComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                const CuMatrixBase<BaseFloat> &in,
                                CuMatrixBase<BaseFloat> *out) const {
   BaseFloat p = 2.0;
-  out->GroupPnorm(in, p);  // TODO: when done, replace with Group2Norm function.
+  out->GroupPnorm(in, p);
 }
 
 void PnormComponent::Backprop(const std::string &debug_info,
@@ -62,11 +62,10 @@ void PnormComponent::Backprop(const std::string &debug_info,
                               const CuMatrixBase<BaseFloat> &out_deriv,
                               Component *to_update,
                               CuMatrixBase<BaseFloat> *in_deriv) const {
-  if (!in_deriv)  return;
+  if (!in_deriv)
+    return;
   BaseFloat p = 2.0;
-  // TODO: use Group2NormDeriv when done.
-  in_deriv->GroupPnormDeriv(in_value, out_value, p);
-  in_deriv->MulRowsGroupMat(out_deriv);
+  in_deriv->DiffGroupPnorm(in_value, out_value, out_deriv, p);
 }
 
 void PnormComponent::Read(std::istream &is, bool binary) {
