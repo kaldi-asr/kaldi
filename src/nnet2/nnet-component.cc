@@ -531,8 +531,7 @@ void PnormComponent::Backprop(const ChunkInfo &,  // in_info,
                                 // may be identical to "this".
                               CuMatrix<BaseFloat> *in_deriv) const  {
   in_deriv->Resize(in_value.NumRows(), in_value.NumCols(), kSetZero);
-  in_deriv->GroupPnormDeriv(in_value, out_value, p_);
-  in_deriv->MulRowsGroupMat(out_deriv);
+  in_deriv->DiffGroupPnorm(in_value, out_value, out_deriv, p_);
 }
 
 void PnormComponent::Read(std::istream &is, bool binary) {

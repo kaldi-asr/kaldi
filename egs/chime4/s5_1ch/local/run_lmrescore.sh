@@ -14,7 +14,7 @@ hidden=300
 rnnweight=0.5
 nbest=100
 train=noisy
-eval_flag=false # make it true when the evaluation data are released
+eval_flag=true # make it true when the evaluation data are released
 
 . utils/parse_options.sh || exit 1;
 
