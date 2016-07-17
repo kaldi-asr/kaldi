@@ -19,7 +19,7 @@ common_egs_dir=
 reporting_email=
 remove_egs=true
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -53,8 +53,8 @@ if [ $stage -le 9 ]; then
     --feat-dir data/${train_set}_hires \
     --ivector-dir exp/nnet3/ivectors_${train_set} \
     --ali-dir $ali_dir \
-    --relu-dim 1024 \
-    --splice-indexes "-2,-1,0,1,2 -1,2 -3,3 -7,2 0"  \
+    --relu-dim 960 \
+    --splice-indexes "-2,-1,0,1,2 -1,0,1 -1,0,1 -1,0,1 -2,0,2 -2,0,2 -2,0,2 -4,0,4 0" \
     --use-presoftmax-prior-scale true \
    $dir/configs || exit 1;
 fi
