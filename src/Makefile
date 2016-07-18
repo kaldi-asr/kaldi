@@ -146,7 +146,7 @@ $(EXT_SUBDIRS) : mklibdir
 #1)The tools depend on all the libraries
 
 bin fstbin gmmbin fgmmbin sgmmbin sgmm2bin featbin nnetbin nnet2bin nnet3bin chainbin latbin ivectorbin lmbin kwsbin online2bin: \
- base matrix util feat tree optimization thread gmm transform sgmm sgmm2 fstext hmm \
+ base matrix util feat tree thread gmm transform sgmm sgmm2 fstext hmm \
  lm decoder lat cudamatrix nnet nnet2 nnet3 ivector chain kws online2
 
 #2)The libraries have inter-dependencies
@@ -156,7 +156,6 @@ thread: base
 util: base matrix thread
 feat: base matrix util gmm transform tree thread
 tree: base util thread matrix
-optimization: base matrix
 gmm: base util matrix tree thread
 transform: base util matrix gmm tree thread
 sgmm: base util matrix gmm tree transform thread hmm
@@ -173,8 +172,8 @@ nnet3: base util matrix thread lat gmm hmm tree transform cudamatrix chain fstex
 chain: lat hmm tree fstext matrix cudamatrix util thread base
 ivector: base util matrix thread transform tree gmm
 #3)Dependencies for optional parts of Kaldi
-onlinebin: base matrix util feat tree optimization gmm transform sgmm sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet2 online thread
-# python-kaldi-decoding: base matrix util feat tree optimization thread gmm transform sgmm sgmm2 fstext hmm decoder lat online
+onlinebin: base matrix util feat tree gmm transform sgmm sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet2 online thread
+# python-kaldi-decoding: base matrix util feat tree thread gmm transform sgmm sgmm2 fstext hmm decoder lat online
 online: decoder gmm transform feat matrix util base lat hmm thread tree
 online2: decoder gmm transform feat matrix util base lat hmm thread tree ivector cudamatrix nnet2 nnet3 chain
 kws: base util thread hmm tree matrix lat
