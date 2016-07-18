@@ -20,7 +20,7 @@ use_gpu=true
 truncate_deriv_weights=0  # can be used to set to zero the weights of derivs from frames
                           # near the edges.  (counts subsampled frames).
 apply_deriv_weights=true
-use_frame_shift=true
+use_frame_shift=false
 run_diagnostics=true
 learning_rate=0.00002
 max_param_change=2.0
@@ -39,9 +39,8 @@ num_jobs_nnet=4    # Number of neural net jobs to run in parallel.  Note: this
                    # versa).
 regularization_opts=
 minibatch_size=64  # This is the number of examples rather than the number of output frames.
-modify_learning_rates=false
-last_layer_factor=1.0  # relates to modify-learning-rates
-first_layer_factor=1.0 # relates to modify-learning-rates
+modify_learning_rates=false   # [deprecated]
+last_layer_factor=1.0  # relates to modify-learning-rates [deprecated]
 shuffle_buffer_size=1000 # This "buffer_size" variable controls randomization of the samples
                 # on each iter.  You could set it to 0 or to a large value for complete
                 # randomization, but this would both consume memory and cause spikes in
@@ -57,7 +56,6 @@ num_threads=16  # this is the default but you may want to change it, e.g. to 1 i
 
 cleanup=true
 keep_model_iters=1
-retroactive=false
 remove_egs=false
 src_model=  # will default to $degs_dir/final.mdl
 
@@ -101,7 +99,7 @@ if [ $# != 2 ]; then
   echo "                                                   # where the numerator transition-id is not in the denominator lattice."
   echo "  --one-silence-class <true,false|false>           # Option that affects MPE/SMBR training (will tend to reduce insertions)"
   echo "  --modify-learning-rates <true,false|false>       # If true, modify learning rates to try to equalize relative"
-  echo "                                                   # changes across layers."
+  echo "                                                   # changes across layers. [deprecated]"
   exit 1;
 fi
 
@@ -137,7 +135,11 @@ frame_subsampling_factor=$(cat $degs_dir/info/frame_subsampling_factor)
 
 echo $frame_subsampling_factor > $dir/frame_subsampling_factor
 
-num_archives_expanded=$[$num_archives*$frame_subsampling_factor]
+if $use_frame_shift; then
+  num_archives_expanded=$[$num_archives*$frame_subsampling_factor]
+else
+  num_archives_expanded=$num_archives
+fi
 
 if [ $num_jobs_nnet -gt $num_archives_expanded ]; then
   echo "$0: num-jobs-nnet $num_jobs_nnet exceeds number of archives $num_archives_expanded,"
@@ -166,7 +168,13 @@ else
   parallel_train_opts="--use-gpu=no"
 fi
 
-for e in $(seq 1 $[num_epochs*frame_subsampling_factor]); do
+if $use_frame_shift; then
+  num_epochs_expanded=$[num_epochs*frame_subsampling_factor]
+else
+  num_epochs_expanded=$num_epochs
+fi
+
+for e in $(seq 1 $num_epochs_expanded); do
   x=$[($e*$num_archives)/$num_jobs_nnet] # gives the iteration number.
   iter_to_epoch[$x]=$e
 done
@@ -297,14 +305,6 @@ while [ $x -lt $num_iters ]; do
       nnet3-average $nnets_list - \| \
       nnet3-am-copy --set-raw-nnet=- $dir/$x.mdl $dir/$[$x+1].mdl || exit 1;
 
-    if $modify_learning_rates; then
-      run.pl $dir/log/modify_learning_rates.$x.log \
-        nnet3-modify-learning-rates --retroactive=$retroactive \
-        --last-layer-factor=$last_layer_factor \
-        --first-layer-factor=$first_layer_factor \
-        "nnet3-am-copy --raw $dir/$x.mdl -|" "nnet3-am-copy --raw $dir/$[$x+1].mdl -|" - \| \
-        nnet3-am-copy --set-raw-nnet=- $dir/$x.mdl $dir/$[$x+1].mdl || exit 1;
-    fi
     rm $nnets_list
 
     if [ ! -z "${iter_to_epoch[$x]}" ]; then
@@ -340,7 +340,7 @@ done
 
 rm $dir/final.mdl 2>/dev/null
 cp $dir/$x.mdl $dir/final.mdl
-ln -sf final.mdl $dir/epoch$[num_epochs*frame_subsampling_factor].mdl
+ln -sf final.mdl $dir/epoch$num_epochs_expanded.mdl
 
 if $adjust_priors && [ $stage -le $num_iters ]; then
   if [ ! -f $degs_dir/priors_egs.1.ark ]; then
@@ -352,7 +352,7 @@ if $adjust_priors && [ $stage -le $num_iters ]; then
   steps/nnet3/adjust_priors.sh --egs-type priors_egs \
     --num-jobs-compute-prior $num_archives_priors \
     --cmd "$cmd $prior_queue_opt" --use-gpu false \
-    --use-raw-nnet false --iter epoch$[num_epochs*frame_subsampling_factor] \
+    --use-raw-nnet false --iter epoch$num_epochs_expanded \
     $dir $degs_dir || exit 1
 fi
 

@@ -1,13 +1,14 @@
-exp/mono0a/decode/cer_9:%WER 80.54 [ 45228 / 56154, 1435 ins, 11484 del, 32309 sub ]
-exp/tri1/decode/cer_12:%WER 60.34 [ 33881 / 56154, 2720 ins, 6019 del, 25142 sub ]
-exp/tri2/decode/cer_12:%WER 59.69 [ 33521 / 56154, 2800 ins, 5618 del, 25103 sub ]
-exp/tri3a/decode/cer_13:%WER 57.65 [ 32370 / 56154, 2535 ins, 5673 del, 24162 sub ]
-exp/tri4a/decode/cer_12:%WER 53.02 [ 29774 / 56154, 2724 ins, 4791 del, 22259 sub ]
-exp/tri5a/decode/cer_13:%WER 49.67 [ 27891 / 56154, 2877 ins, 4538 del, 20476 sub ]
+# for x in exp/*/decode; do [ -d $x ] && grep WER $x/cer_* | utils/best_wer.sh; done
+%WER 80.89 [ 45422 / 56154, 1530 ins, 11018 del, 32874 sub ] exp/mono0a/decode/cer_9
+%WER 60.01 [ 33698 / 56154, 2528 ins, 5961 del, 25209 sub ] exp/tri1/decode/cer_12
+%WER 59.68 [ 33514 / 56154, 2574 ins, 5752 del, 25188 sub ] exp/tri2/decode/cer_12
+%WER 57.25 [ 32148 / 56154, 2484 ins, 5811 del, 23853 sub ] exp/tri3a/decode/cer_13
+%WER 53.47 [ 30026 / 56154, 2789 ins, 5115 del, 22122 sub ] exp/tri4a/decode/cer_13
+%WER 49.72 [ 27921 / 56154, 2833 ins, 4568 del, 20520 sub ] exp/tri5a/decode/cer_13
+%WER 43.95 [ 24681 / 56154, 2106 ins, 3890 del, 18685 sub ] exp/tri5a_mmi_b0.1/decode/cer_10
+%WER 44.60 [ 25044 / 56154, 2121 ins, 4040 del, 18883 sub ] exp/tri5a_mpe/decode/cer_11
+%WER 43.81 [ 24602 / 56154, 2843 ins, 3751 del, 18008 sub ] exp/sgmm2_5a/decode/cer_10
 exp/tri5a_mce/decode/cer_11:%WER 44.74 [ 25125 / 56154, 2112 ins, 4108 del, 18905 sub ]
-exp/tri5a_mmi_b0.1/decode/cer_11:%WER 44.24 [ 24840 / 56154, 2060 ins, 4118 del, 18662 sub ]
-exp/tri5a_mpe/decode/cer_12:%WER 44.96 [ 25247 / 56154, 2233 ins, 4174 del, 18840 sub ]
-exp/sgmm2_5a/decode/cer_11:%WER 43.44 [ 24391 / 56154, 2646 ins, 4066 del, 17679 sub ]
 
 # nnet1 results
 exp/dnn5b_pretrain-dbn_dnn/decode/cer_10:%WER 39.42 [ 22134 / 56154, 2507 ins, 3730 del, 15897 sub ]

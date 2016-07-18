@@ -1,7 +1,7 @@
 // nnet/nnet-blstm-projected-streams.h
 
-// Copyright 2014  Jiayu DU (Jerry), Wei Li
 // Copyright 2015  Chongjia Ni
+// Copyright 2014  Jiayu DU (Jerry), Wei Li
 // See ../../COPYING for clarification regarding multiple authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,6 +21,9 @@
 
 #ifndef KALDI_NNET_NNET_BLSTM_PROJECTED_STREAMS_H_
 #define KALDI_NNET_NNET_BLSTM_PROJECTED_STREAMS_H_
+
+#include <string>
+#include <vector>
 
 #include "nnet/nnet-component.h"
 #include "nnet/nnet-utils.h"
@@ -46,13 +49,13 @@ namespace nnet1 {
 
 class BLstmProjectedStreams : public UpdatableComponent {
  public:
-  BLstmProjectedStreams(int32 input_dim, int32 output_dim) :
+  BLstmProjectedStreams(int32 input_dim, int32 output_dim):
     UpdatableComponent(input_dim, output_dim),
     ncell_(0),
     nrecur_(static_cast<int32>(output_dim/2)),
     nstream_(0),
     clip_gradient_(0.0)
-    //, dropout_rate_(0.0)
+    // , dropout_rate_(0.0)
   { }
 
   ~BLstmProjectedStreams()
@@ -61,70 +64,53 @@ class BLstmProjectedStreams : public UpdatableComponent {
   Component* Copy() const { return new BLstmProjectedStreams(*this); }
   ComponentType GetType() const { return kBLstmProjectedStreams; }
 
-  static void InitMatParam(CuMatrix<BaseFloat> &m, float scale) {
-    m.SetRandUniform();  // uniform in [0, 1]
-    m.Add(-0.5);         // uniform in [-0.5, 0.5]
-    m.Scale(2 * scale);  // uniform in [-scale, +scale]
-  }
-
-  static void InitVecParam(CuVector<BaseFloat> &v, float scale) {
-    Vector<BaseFloat> tmp(v.Dim());
-    for (int i=0; i < tmp.Dim(); i++) {
-      tmp(i) = (RandUniform() - 0.5) * 2 * scale;
-    }
-    v = tmp;
-  }
-
   /// set the utterance length used for parallel training
   void SetSeqLengths(const std::vector<int32> &sequence_lengths) {
-        sequence_lengths_ = sequence_lengths;
+    sequence_lengths_ = sequence_lengths;
   }
 
   void InitData(std::istream &is) {
-    // define options
+    // define options,
     float param_scale = 0.02;
-    // parse config
+    // parse the line from prototype,
     std::string token;
     while (!is.eof()) {
       ReadToken(is, false, &token);
-      if (token == "<CellDim>")
-        ReadBasicType(is, false, &ncell_);
-      else if (token == "<ClipGradient>")
-        ReadBasicType(is, false, &clip_gradient_);
-      // else if (token == "<DropoutRate>")
-      //  ReadBasicType(is, false, &dropout_rate_);
-      else if (token == "<ParamScale>")
-        ReadBasicType(is, false, &param_scale);
+      /**/ if (token == "<CellDim>") ReadBasicType(is, false, &ncell_);
+      else if (token == "<ClipGradient>") ReadBasicType(is, false, &clip_gradient_);
+      else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef_);
+      else if (token == "<BiasLearnRateCoef>") ReadBasicType(is, false, &bias_learn_rate_coef_);
+      else if (token == "<ParamScale>") ReadBasicType(is, false, &param_scale);
+      // else if (token == "<DropoutRate>") ReadBasicType(is, false, &dropout_rate_);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
-               << " (CellDim|NumStream|ParamScale)";
-               //<< " (CellDim|NumStream|DropoutRate|ParamScale)";
-      is >> std::ws;
+                     << " (CellDim|ClipGradient|LearnRateCoef|BiasLearnRateCoef|ParamScale)";
     }
 
-    // init weight and bias (Uniform)
+    // init the weights and biases (from uniform dist.),
     // forward direction
     f_w_gifo_x_.Resize(4*ncell_, input_dim_, kUndefined);
     f_w_gifo_r_.Resize(4*ncell_, nrecur_, kUndefined);
     f_w_r_m_.Resize(nrecur_, ncell_, kUndefined);
 
-    InitMatParam(f_w_gifo_x_, param_scale);
-    InitMatParam(f_w_gifo_r_, param_scale);
-    InitMatParam(f_w_r_m_, param_scale);
+    RandUniform(0.0, 2.0 * param_scale, &f_w_gifo_x_);
+    RandUniform(0.0, 2.0 * param_scale, &f_w_gifo_r_);
+    RandUniform(0.0, 2.0 * param_scale, &f_w_r_m_);
+
     // backward direction
     b_w_gifo_x_.Resize(4*ncell_, input_dim_, kUndefined);
     b_w_gifo_r_.Resize(4*ncell_, nrecur_, kUndefined);
     b_w_r_m_.Resize(nrecur_, ncell_, kUndefined);
 
-    InitMatParam(b_w_gifo_x_, param_scale);
-    InitMatParam(b_w_gifo_r_, param_scale);
-    InitMatParam(b_w_r_m_, param_scale);
+    RandUniform(0.0, 2.0 * param_scale, &b_w_gifo_x_);
+    RandUniform(0.0, 2.0 * param_scale, &b_w_gifo_r_);
+    RandUniform(0.0, 2.0 * param_scale, &b_w_r_m_);
 
     // forward direction
     f_bias_.Resize(4*ncell_, kUndefined);
     // backward direction
     b_bias_.Resize(4*ncell_, kUndefined);
-    InitVecParam(f_bias_, param_scale);
-    InitVecParam(b_bias_, param_scale);
+    RandUniform(0.0, 2.0 * param_scale, &f_bias_);
+    RandUniform(0.0, 2.0 * param_scale, &b_bias_);
 
     // forward direction
     f_peephole_i_c_.Resize(ncell_, kUndefined);
@@ -135,16 +121,16 @@ class BLstmProjectedStreams : public UpdatableComponent {
     b_peephole_f_c_.Resize(ncell_, kUndefined);
     b_peephole_o_c_.Resize(ncell_, kUndefined);
 
-    InitVecParam(f_peephole_i_c_, param_scale);
-    InitVecParam(f_peephole_f_c_, param_scale);
-    InitVecParam(f_peephole_o_c_, param_scale);
+    RandUniform(0.0, 2.0 * param_scale, &f_peephole_i_c_);
+    RandUniform(0.0, 2.0 * param_scale, &f_peephole_f_c_);
+    RandUniform(0.0, 2.0 * param_scale, &f_peephole_o_c_);
 
-    InitVecParam(b_peephole_i_c_, param_scale);
-    InitVecParam(b_peephole_f_c_, param_scale);
-    InitVecParam(b_peephole_o_c_, param_scale);
+    RandUniform(0.0, 2.0 * param_scale, &b_peephole_i_c_);
+    RandUniform(0.0, 2.0 * param_scale, &b_peephole_f_c_);
+    RandUniform(0.0, 2.0 * param_scale, &b_peephole_o_c_);
 
-    // init delta buffers
-    // forward direction
+    // init delta buffers,
+    // forward direction,
     f_w_gifo_x_corr_.Resize(4*ncell_, input_dim_, kSetZero);
     f_w_gifo_r_corr_.Resize(4*ncell_, nrecur_, kSetZero);
     f_bias_corr_.Resize(4*ncell_, kSetZero);
@@ -154,7 +140,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
     b_w_gifo_r_corr_.Resize(4*ncell_, nrecur_, kSetZero);
     b_bias_corr_.Resize(4*ncell_, kSetZero);
 
-    // peep hole connect
+    // peep-hole connections
     // forward direction
     f_peephole_i_c_corr_.Resize(ncell_, kSetZero);
     f_peephole_f_c_corr_.Resize(ncell_, kSetZero);
@@ -169,17 +155,39 @@ class BLstmProjectedStreams : public UpdatableComponent {
     // backward direction
     b_w_r_m_corr_.Resize(nrecur_, ncell_, kSetZero);
 
+    KALDI_ASSERT(ncell_ > 0);
     KALDI_ASSERT(clip_gradient_ >= 0.0);
+    KALDI_ASSERT(learn_rate_coef_ >= 0.0);
+    KALDI_ASSERT(bias_learn_rate_coef_ >= 0.0);
   }
 
 
   void ReadData(std::istream &is, bool binary) {
-    ExpectToken(is, binary, "<CellDim>");
-    ReadBasicType(is, binary, &ncell_);
-    ExpectToken(is, binary, "<ClipGradient>");
-    ReadBasicType(is, binary, &clip_gradient_);
-    // ExpectToken(is, binary, "<DropoutRate>");
-    // ReadBasicType(is, binary, &dropout_rate_);
+    // Read all the '<Tokens>' in arbitrary order,
+    while ('<' == Peek(is, binary)) {
+      std::string token;
+      int first_char = PeekToken(is, binary);
+      switch (first_char) {
+        case 'C': ReadToken(is, false, &token);
+          /**/ if (token == "<CellDim>") ReadBasicType(is, binary, &ncell_);
+          else if (token == "<ClipGradient>") ReadBasicType(is, binary, &clip_gradient_);
+          else KALDI_ERR << "Unknown token: " << token;
+          break;
+        // case 'D': ExpectToken(is, binary, "<DropoutRate>");
+        //   ReadBasicType(is, binary, &dropout_rate_);
+        //   break;
+        case 'L': ExpectToken(is, binary, "<LearnRateCoef>");
+          ReadBasicType(is, binary, &learn_rate_coef_);
+          break;
+        case 'B': ExpectToken(is, binary, "<BiasLearnRateCoef>");
+          ReadBasicType(is, binary, &bias_learn_rate_coef_);
+          break;
+        default: ReadToken(is, false, &token);
+          KALDI_ERR << "Unknown token: " << token;
+      }
+    }
+    KALDI_ASSERT(ncell_ != 0);
+    // Read the data (data follow the tokens),
 
     // reading parameters corresponding to forward direction
     f_w_gifo_x_.Read(is, binary);
@@ -236,6 +244,12 @@ class BLstmProjectedStreams : public UpdatableComponent {
     // WriteToken(os, binary, "<DropoutRate>");
     // WriteBasicType(os, binary, dropout_rate_);
 
+    WriteToken(os, binary, "<LearnRateCoef>");
+    WriteBasicType(os, binary, learn_rate_coef_);
+    WriteToken(os, binary, "<BiasLearnRateCoef>");
+    WriteBasicType(os, binary, bias_learn_rate_coef_);
+
+    if (!binary) os << "\n";
     // writing parameters corresponding to forward direction
     f_w_gifo_x_.Write(os, binary);
     f_w_gifo_r_.Write(os, binary);
@@ -262,64 +276,175 @@ class BLstmProjectedStreams : public UpdatableComponent {
 
   int32 NumParams() const {
     return 2*( f_w_gifo_x_.NumRows() * f_w_gifo_x_.NumCols() +
-         f_w_gifo_r_.NumRows() * f_w_gifo_r_.NumCols() +
-         f_bias_.Dim() +
-         f_peephole_i_c_.Dim() +
-         f_peephole_f_c_.Dim() +
-         f_peephole_o_c_.Dim() +
-         f_w_r_m_.NumRows() * f_w_r_m_.NumCols() );
+      f_w_gifo_r_.NumRows() * f_w_gifo_r_.NumCols() +
+      f_bias_.Dim() +
+      f_peephole_i_c_.Dim() +
+      f_peephole_f_c_.Dim() +
+      f_peephole_o_c_.Dim() +
+      f_w_r_m_.NumRows() * f_w_r_m_.NumCols() );
   }
 
 
-  void GetParams(Vector<BaseFloat>* wei_copy) const {
-    wei_copy->Resize(NumParams());
+  void GetGradient(VectorBase<BaseFloat>* gradient) const {
+    KALDI_ASSERT(gradient->Dim() == NumParams());
     int32 offset, len;
 
     // Copying parameters corresponding to forward direction
-    offset = 0;  len = f_w_gifo_x_.NumRows() * f_w_gifo_x_.NumCols();
-    wei_copy->Range(offset, len).CopyRowsFromMat(f_w_gifo_x_);
+    offset = 0;    len = f_w_gifo_x_.NumRows() * f_w_gifo_x_.NumCols();
+    gradient->Range(offset, len).CopyRowsFromMat(f_w_gifo_x_corr_);
 
-    offset += len; len =f_w_gifo_r_.NumRows() * f_w_gifo_r_.NumCols();
-    wei_copy->Range(offset, len).CopyRowsFromMat(f_w_gifo_r_);
+    offset += len; len = f_w_gifo_r_.NumRows() * f_w_gifo_r_.NumCols();
+    gradient->Range(offset, len).CopyRowsFromMat(f_w_gifo_r_corr_);
 
     offset += len; len = f_bias_.Dim();
-    wei_copy->Range(offset, len).CopyFromVec(f_bias_);
+    gradient->Range(offset, len).CopyFromVec(f_bias_corr_);
 
     offset += len; len = f_peephole_i_c_.Dim();
-    wei_copy->Range(offset, len).CopyFromVec(f_peephole_i_c_);
+    gradient->Range(offset, len).CopyFromVec(f_peephole_i_c_corr_);
 
     offset += len; len = f_peephole_f_c_.Dim();
-    wei_copy->Range(offset, len).CopyFromVec(f_peephole_f_c_);
+    gradient->Range(offset, len).CopyFromVec(f_peephole_f_c_corr_);
 
     offset += len; len = f_peephole_o_c_.Dim();
-    wei_copy->Range(offset, len).CopyFromVec(f_peephole_o_c_);
+    gradient->Range(offset, len).CopyFromVec(f_peephole_o_c_corr_);
 
     offset += len; len = f_w_r_m_.NumRows() * f_w_r_m_.NumCols();
-    wei_copy->Range(offset, len).CopyRowsFromMat(f_w_r_m_);
+    gradient->Range(offset, len).CopyRowsFromMat(f_w_r_m_corr_);
 
     // Copying parameters corresponding to backward direction
     offset += len; len = b_w_gifo_x_.NumRows() * b_w_gifo_x_.NumCols();
-    wei_copy->Range(offset, len).CopyRowsFromMat(b_w_gifo_x_);
+    gradient->Range(offset, len).CopyRowsFromMat(b_w_gifo_x_corr_);
 
     offset += len; len = b_w_gifo_r_.NumRows() * b_w_gifo_r_.NumCols();
-    wei_copy->Range(offset, len).CopyRowsFromMat(b_w_gifo_r_);
+    gradient->Range(offset, len).CopyRowsFromMat(b_w_gifo_r_corr_);
 
     offset += len; len = b_bias_.Dim();
-    wei_copy->Range(offset, len).CopyFromVec(b_bias_);
+    gradient->Range(offset, len).CopyFromVec(b_bias_corr_);
 
     offset += len; len = b_peephole_i_c_.Dim();
-    wei_copy->Range(offset, len).CopyFromVec(b_peephole_i_c_);
+    gradient->Range(offset, len).CopyFromVec(b_peephole_i_c_corr_);
 
     offset += len; len = b_peephole_f_c_.Dim();
-    wei_copy->Range(offset, len).CopyFromVec(b_peephole_f_c_);
+    gradient->Range(offset, len).CopyFromVec(b_peephole_f_c_corr_);
 
     offset += len; len = b_peephole_o_c_.Dim();
-    wei_copy->Range(offset, len).CopyFromVec(b_peephole_o_c_);
+    gradient->Range(offset, len).CopyFromVec(b_peephole_o_c_corr_);
 
     offset += len; len = b_w_r_m_.NumRows() * b_w_r_m_.NumCols();
-    wei_copy->Range(offset, len).CopyRowsFromMat(b_w_r_m_);
+    gradient->Range(offset, len).CopyRowsFromMat(b_w_r_m_corr_);
 
-    return;
+    // check the dim,
+    offset += len;
+    KALDI_ASSERT(offset == NumParams());
+  }
+
+
+  void GetParams(VectorBase<BaseFloat>* params) const {
+    KALDI_ASSERT(params->Dim() == NumParams());
+    int32 offset, len;
+
+    // Copying parameters corresponding to forward direction
+    offset = 0;    len = f_w_gifo_x_.NumRows() * f_w_gifo_x_.NumCols();
+    params->Range(offset, len).CopyRowsFromMat(f_w_gifo_x_);
+
+    offset += len; len = f_w_gifo_r_.NumRows() * f_w_gifo_r_.NumCols();
+    params->Range(offset, len).CopyRowsFromMat(f_w_gifo_r_);
+
+    offset += len; len = f_bias_.Dim();
+    params->Range(offset, len).CopyFromVec(f_bias_);
+
+    offset += len; len = f_peephole_i_c_.Dim();
+    params->Range(offset, len).CopyFromVec(f_peephole_i_c_);
+
+    offset += len; len = f_peephole_f_c_.Dim();
+    params->Range(offset, len).CopyFromVec(f_peephole_f_c_);
+
+    offset += len; len = f_peephole_o_c_.Dim();
+    params->Range(offset, len).CopyFromVec(f_peephole_o_c_);
+
+    offset += len; len = f_w_r_m_.NumRows() * f_w_r_m_.NumCols();
+    params->Range(offset, len).CopyRowsFromMat(f_w_r_m_);
+
+    // Copying parameters corresponding to backward direction
+    offset += len; len = b_w_gifo_x_.NumRows() * b_w_gifo_x_.NumCols();
+    params->Range(offset, len).CopyRowsFromMat(b_w_gifo_x_);
+
+    offset += len; len = b_w_gifo_r_.NumRows() * b_w_gifo_r_.NumCols();
+    params->Range(offset, len).CopyRowsFromMat(b_w_gifo_r_);
+
+    offset += len; len = b_bias_.Dim();
+    params->Range(offset, len).CopyFromVec(b_bias_);
+
+    offset += len; len = b_peephole_i_c_.Dim();
+    params->Range(offset, len).CopyFromVec(b_peephole_i_c_);
+
+    offset += len; len = b_peephole_f_c_.Dim();
+    params->Range(offset, len).CopyFromVec(b_peephole_f_c_);
+
+    offset += len; len = b_peephole_o_c_.Dim();
+    params->Range(offset, len).CopyFromVec(b_peephole_o_c_);
+
+    offset += len; len = b_w_r_m_.NumRows() * b_w_r_m_.NumCols();
+    params->Range(offset, len).CopyRowsFromMat(b_w_r_m_);
+
+    // check the dim,
+    offset += len;
+    KALDI_ASSERT(offset == NumParams());
+  }
+
+
+  void SetParams(const VectorBase<BaseFloat>& params) {
+    KALDI_ASSERT(params.Dim() == NumParams());
+    int32 offset, len;
+
+    // Copying parameters corresponding to forward direction
+    offset = 0;    len = f_w_gifo_x_.NumRows() * f_w_gifo_x_.NumCols();
+    f_w_gifo_x_.CopyRowsFromVec(params.Range(offset, len));
+
+    offset += len; len = f_w_gifo_r_.NumRows() * f_w_gifo_r_.NumCols();
+    f_w_gifo_r_.CopyRowsFromVec(params.Range(offset, len));
+
+    offset += len; len = f_bias_.Dim();
+    f_bias_.CopyFromVec(params.Range(offset, len));
+
+    offset += len; len = f_peephole_i_c_.Dim();
+    f_peephole_i_c_.CopyFromVec(params.Range(offset, len));
+
+    offset += len; len = f_peephole_f_c_.Dim();
+    f_peephole_f_c_.CopyFromVec(params.Range(offset, len));
+
+    offset += len; len = f_peephole_o_c_.Dim();
+    f_peephole_o_c_.CopyFromVec(params.Range(offset, len));
+
+    offset += len; len = f_w_r_m_.NumRows() * f_w_r_m_.NumCols();
+    f_w_r_m_.CopyRowsFromVec(params.Range(offset, len));
+
+
+    // Copying parameters corresponding to backward direction
+    offset += len; len = b_w_gifo_x_.NumRows() * b_w_gifo_x_.NumCols();
+    b_w_gifo_x_.CopyRowsFromVec(params.Range(offset, len));
+
+    offset += len; len = b_w_gifo_r_.NumRows() * b_w_gifo_r_.NumCols();
+    b_w_gifo_r_.CopyRowsFromVec(params.Range(offset, len));
+
+    offset += len; len = b_bias_.Dim();
+    b_bias_.CopyFromVec(params.Range(offset, len));
+
+    offset += len; len = b_peephole_i_c_.Dim();
+    b_peephole_i_c_.CopyFromVec(params.Range(offset, len));
+
+    offset += len; len = b_peephole_f_c_.Dim();
+    b_peephole_f_c_.CopyFromVec(params.Range(offset, len));
+
+    offset += len; len = b_peephole_o_c_.Dim();
+    b_peephole_o_c_.CopyFromVec(params.Range(offset, len));
+
+    offset += len; len = b_w_r_m_.NumRows() * b_w_r_m_.NumCols();
+    b_w_r_m_.CopyRowsFromVec(params.Range(offset, len));
+
+    // check the dim,
+    offset += len;
+    KALDI_ASSERT(offset == NumParams());
   }
 
 
@@ -443,8 +568,10 @@ class BLstmProjectedStreams : public UpdatableComponent {
       "\n  B_DR  " + MomentStatistics(B_DR);
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
+                    CuMatrixBase<BaseFloat> *out) {
     int DEBUG = 0;
+
     int32 nstream_ = sequence_lengths_.size();
     KALDI_ASSERT(in.NumRows() % nstream_ == 0);
     int32 T = in.NumRows() / nstream_;
@@ -658,14 +785,18 @@ class BLstmProjectedStreams : public UpdatableComponent {
     out->CopyFromMat(YR_FB.RowRange(1*S, T*S));
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
-              const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
+
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
+                        const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff,
+                        CuMatrixBase<BaseFloat> *in_diff) {
     int DEBUG = 0;
+
     // the number of sequences to be processed in parallel
     int32 nstream_ = sequence_lengths_.size();
     int32 T = in.NumRows() / nstream_;
     int32 S = nstream_;
-    // disassembling forward-pass forward-propagation buffer into different neurons,
+    // disassembling forward-pass forward-propagation buffer by neuron type,
     CuSubMatrix<BaseFloat> F_YG(f_propagate_buf_.ColRange(0*ncell_, ncell_));
     CuSubMatrix<BaseFloat> F_YI(f_propagate_buf_.ColRange(1*ncell_, ncell_));
     CuSubMatrix<BaseFloat> F_YF(f_propagate_buf_.ColRange(2*ncell_, ncell_));
@@ -678,7 +809,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
     // 0:dummy, [1,T] frames, T+1 backward pass history
     f_backpropagate_buf_.Resize((T+2)*S, 7 * ncell_ + nrecur_, kSetZero);
 
-    // disassembling forward-pass back-propagation buffer into different neurons,
+    // disassembling forward-pass back-propagation buffer by neuron type,
     CuSubMatrix<BaseFloat> F_DG(f_backpropagate_buf_.ColRange(0*ncell_, ncell_));
     CuSubMatrix<BaseFloat> F_DI(f_backpropagate_buf_.ColRange(1*ncell_, ncell_));
     CuSubMatrix<BaseFloat> F_DF(f_backpropagate_buf_.ColRange(2*ncell_, ncell_));
@@ -690,7 +821,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
 
     CuSubMatrix<BaseFloat> F_DGIFO(f_backpropagate_buf_.ColRange(0, 4*ncell_));
 
-    // projection layer to BLSTM output is not recurrent, so backprop it all in once
+    // projection layer to BLSTM output is not recurrent, backprop it all in once
     F_DR.RowRange(1*S, T*S).CopyFromMat(out_diff.ColRange(0, nrecur_));
 
     for (int t = T; t >= 1; t--) {
@@ -780,7 +911,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
       }
     }
 
-    // disassembling backward-pass forward-propagation buffer into different neurons,
+    // disassembling backward-pass forward-propagation buffer by neuron types,
     CuSubMatrix<BaseFloat> B_YG(b_propagate_buf_.ColRange(0*ncell_, ncell_));
     CuSubMatrix<BaseFloat> B_YI(b_propagate_buf_.ColRange(1*ncell_, ncell_));
     CuSubMatrix<BaseFloat> B_YF(b_propagate_buf_.ColRange(2*ncell_, ncell_));
@@ -793,7 +924,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
     // 0:dummy, [1,T] frames, T+1 backward pass history
     b_backpropagate_buf_.Resize((T+2)*S, 7 * ncell_ + nrecur_, kSetZero);
 
-    // disassembling backward-pass back-propagation buffer into different neurons,
+    // disassembling backward-pass back-propagation buffer by neuron types,
     CuSubMatrix<BaseFloat> B_DG(b_backpropagate_buf_.ColRange(0*ncell_, ncell_));
     CuSubMatrix<BaseFloat> B_DI(b_backpropagate_buf_.ColRange(1*ncell_, ncell_));
     CuSubMatrix<BaseFloat> B_DF(b_backpropagate_buf_.ColRange(2*ncell_, ncell_));
@@ -866,7 +997,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
       d_c.AddMatMatElements(1.0, B_DC.RowRange((t-1)*S, S), B_YF.RowRange((t-1)*S, S), 1.0);
       d_c.AddMatDiagVec(1.0, B_DI.RowRange((t-1)*S, S), kNoTrans, b_peephole_i_c_, 1.0);
       d_c.AddMatDiagVec(1.0, B_DF.RowRange((t-1)*S, S), kNoTrans, b_peephole_f_c_, 1.0);
-      d_c.AddMatDiagVec(1.0, d_o                     , kNoTrans, b_peephole_o_c_, 1.0);
+      d_c.AddMatDiagVec(1.0, d_o                      , kNoTrans, b_peephole_o_c_, 1.0);
 
       // f
       d_f.AddMatMatElements(1.0, d_c, B_YC.RowRange((t-1)*S, S), 0.0);
@@ -903,7 +1034,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
     // backward pass dropout
     // if (dropout_rate_ != 0.0) {
     //  in_diff->MulElements(dropout_mask_);
-    //}
+    // }
 
     // calculate delta
     const BaseFloat mmt = opts_.momentum;
@@ -1013,32 +1144,34 @@ class BLstmProjectedStreams : public UpdatableComponent {
     }
   }
 
-
-  void Update(const CuMatrixBase<BaseFloat> &input, const CuMatrixBase<BaseFloat> &diff) {
+  void Update(const CuMatrixBase<BaseFloat> &input,
+              const CuMatrixBase<BaseFloat> &diff) {
     const BaseFloat lr  = opts_.learn_rate;
     // forward direction update
-    f_w_gifo_x_.AddMat(-lr, f_w_gifo_x_corr_);
-    f_w_gifo_r_.AddMat(-lr, f_w_gifo_r_corr_);
-    f_bias_.AddVec(-lr, f_bias_corr_, 1.0);
+    f_w_gifo_x_.AddMat(-lr * learn_rate_coef_, f_w_gifo_x_corr_);
+    f_w_gifo_r_.AddMat(-lr * learn_rate_coef_, f_w_gifo_r_corr_);
+    f_bias_.AddVec(-lr * bias_learn_rate_coef_, f_bias_corr_, 1.0);
 
-    f_peephole_i_c_.AddVec(-lr, f_peephole_i_c_corr_, 1.0);
-    f_peephole_f_c_.AddVec(-lr, f_peephole_f_c_corr_, 1.0);
-    f_peephole_o_c_.AddVec(-lr, f_peephole_o_c_corr_, 1.0);
+    f_peephole_i_c_.AddVec(-lr * bias_learn_rate_coef_, f_peephole_i_c_corr_, 1.0);
+    f_peephole_f_c_.AddVec(-lr * bias_learn_rate_coef_, f_peephole_f_c_corr_, 1.0);
+    f_peephole_o_c_.AddVec(-lr * bias_learn_rate_coef_, f_peephole_o_c_corr_, 1.0);
 
-    f_w_r_m_.AddMat(-lr, f_w_r_m_corr_);
+    f_w_r_m_.AddMat(-lr * learn_rate_coef_, f_w_r_m_corr_);
 
     // backward direction update
-    b_w_gifo_x_.AddMat(-lr, b_w_gifo_x_corr_);
-    b_w_gifo_r_.AddMat(-lr, b_w_gifo_r_corr_);
-    b_bias_.AddVec(-lr, b_bias_corr_, 1.0);
+    b_w_gifo_x_.AddMat(-lr * learn_rate_coef_, b_w_gifo_x_corr_);
+    b_w_gifo_r_.AddMat(-lr * learn_rate_coef_, b_w_gifo_r_corr_);
+    b_bias_.AddVec(-lr * bias_learn_rate_coef_, b_bias_corr_, 1.0);
 
-    b_peephole_i_c_.AddVec(-lr, b_peephole_i_c_corr_, 1.0);
-    b_peephole_f_c_.AddVec(-lr, b_peephole_f_c_corr_, 1.0);
-    b_peephole_o_c_.AddVec(-lr, b_peephole_o_c_corr_, 1.0);
+    b_peephole_i_c_.AddVec(-lr * bias_learn_rate_coef_, b_peephole_i_c_corr_, 1.0);
+    b_peephole_f_c_.AddVec(-lr * bias_learn_rate_coef_, b_peephole_f_c_corr_, 1.0);
+    b_peephole_o_c_.AddVec(-lr * bias_learn_rate_coef_, b_peephole_o_c_corr_, 1.0);
 
-    b_w_r_m_.AddMat(-lr, b_w_r_m_corr_);
+    b_w_r_m_.AddMat(-lr * learn_rate_coef_, b_w_r_m_corr_);
 
-    /* For L2 regularization see "vanishing & exploding difficulties" in nnet-lstm-projected-streams.h */
+    /* For L2 regularization see "vanishing & exploding difficulties"
+     * in nnet-lstm-projected-streams.h
+     */
   }
 
  private:
@@ -1119,9 +1252,9 @@ class BLstmProjectedStreams : public UpdatableComponent {
   CuMatrix<BaseFloat> f_backpropagate_buf_;
   // backward direction
   CuMatrix<BaseFloat> b_backpropagate_buf_;
+};  // class BLstmProjectedStreams
 
-};
 }  // namespace nnet1
 }  // namespace kaldi
 
-#endif
+#endif  // KALDI_NNET_NNET_BLSTM_PROJECTED_STREAMS_H_

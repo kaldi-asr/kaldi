@@ -48,15 +48,15 @@ template<class IntType> class LatticeStringRepository {
   // Note: all Entry* pointers returned in function calls are
   // owned by the repository itself, not by the caller!
 
-  // Interface guarantees empty string is NULL.  
-  inline const Entry *EmptyString() { return NULL; }  
+  // Interface guarantees empty string is NULL.
+  inline const Entry *EmptyString() { return NULL; }
 
   // Returns string of "parent" with i appended.  Pointer
   // owned by repository
   const Entry *Successor(const Entry *parent, IntType i) {
     new_entry_->parent = parent;
     new_entry_->i = i;
-    
+
     std::pair<typename SetType::iterator, bool> pr = set_.insert(new_entry_);
     if (pr.second) { // Was successfully inserted (was not there).  We need to
                      // replace the element we inserted, which resides on the
@@ -124,7 +124,7 @@ template<class IntType> class LatticeStringRepository {
       ans = Successor(ans, a_vec[i]);
     return ans;
   }
-  
+
 
 
   // Returns true if a is a prefix of b.  If a is prefix of b,
@@ -145,7 +145,7 @@ template<class IntType> class LatticeStringRepository {
     }
     return ans;
   }
-  
+
   void ConvertToVector(const Entry *entry, vector<IntType> *out) const {
     size_t length = Size(entry);
     out->resize(length);
@@ -165,9 +165,9 @@ template<class IntType> class LatticeStringRepository {
       e = Successor(e, vec[i]);
     return e;
   }
-  
+
   LatticeStringRepository() { new_entry_ = new Entry; }
-  
+
   void Destroy() {
     for (typename SetType::iterator iter = set_.begin();
          iter != set_.end();
@@ -199,13 +199,13 @@ template<class IntType> class LatticeStringRepository {
     }
     set_.swap(tmp_set);
   }
-  
+
   ~LatticeStringRepository() { Destroy(); }
   int32 MemSize() const {
     return set_.size() * sizeof(Entry) * 2; // this is a lower bound
     // on the size this structure might take.
   }
- private:  
+ private:
   class EntryKey { // Hash function object.
    public:
     inline size_t operator()(const Entry *entry) const {
@@ -234,7 +234,7 @@ template<class IntType> class LatticeStringRepository {
       }
     }
   }
-  
+
   DISALLOW_COPY_AND_ASSIGN(LatticeStringRepository);
   Entry *new_entry_; // We always have a pre-allocated Entry ready to use,
                      // to avoid unnecessary news and deletes.
@@ -263,8 +263,8 @@ template<class Weight, class IntType> class LatticeDeterminizer {
 
   typedef CompactLatticeWeightTpl<Weight, IntType> CompactWeight;
   typedef ArcTpl<CompactWeight> CompactArc; // arc in compact, acceptor form of lattice
-  typedef ArcTpl<Weight> Arc; // arc in non-compact version of lattice 
-  
+  typedef ArcTpl<Weight> Arc; // arc in non-compact version of lattice
+
 
   // Output to standard FST with CompactWeightTpl<Weight> as its weight type (the
   // weight stores the original output-symbol strings).  If destroy == true,
@@ -427,11 +427,11 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     { vector<OutputStateId> tmp; tmp.swap(queue_); }
     { vector<pair<Label, Element> > tmp; tmp.swap(all_elems_tmp_); }
   }
-  
+
   ~LatticeDeterminizer() {
     FreeMostMemory(); // rest is deleted by destructors.
   }
-  void RebuildRepository() { // rebuild the string repository,    
+  void RebuildRepository() { // rebuild the string repository,
     // freeing stuff we don't need.. we call this when memory usage
     // passes a supplied threshold.  We need to accumulate all the
     // strings we need the repository to "remember", then tell it
@@ -464,7 +464,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
                          needed_strings.end()); // uniq the strings.
     repository_.Rebuild(needed_strings);
   }
-  
+
   bool CheckMemoryUsage() {
     int32 repo_size = repository_.MemSize(),
         arcs_size = num_arcs_ * sizeof(TempArc),
@@ -479,7 +479,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
 
       KALDI_VLOG(2) << "Rebuilt repository in determinize-lattice: repository shrank from "
                     << repo_size << " to " << new_repo_size << " bytes (approximately)";
-      
+
       if (new_total_size > static_cast<int32>(opts_.max_mem * 0.8)) {
         // Rebuilding didn't help enough-- we need a margin to stop
         // having to rebuild too often.
@@ -492,7 +492,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     }
     return true;
   }
-  
+
   // Returns true on success.  Can fail for out-of-memory
   // or max-states related reasons.
   bool Determinize(bool *debug_ptr) {
@@ -521,12 +521,12 @@ template<class Weight, class IntType> class LatticeDeterminizer {
           << repo_size << "," << arcs_size << "," << elems_size << ")";
       return (determinized_ = false);
     } catch (std::runtime_error) {
-      std::cerr << "Caught exception doing lattice determinization\n";
+      KALDI_WARN << "Caught exception doing lattice determinization";
       return (determinized_ = false);
-    }      
+    }
   }
  private:
-  
+
   typedef typename Arc::Label Label;
   typedef typename Arc::StateId StateId;  // use this when we don't know if it's input or output.
   typedef typename Arc::StateId InputStateId;  // state in the input FST.
@@ -639,7 +639,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
   // these types are the same anyway].
   typedef unordered_map<const vector<Element>*, Element,
                         SubsetKey, SubsetEqual> InitialSubsetHash;
-  
+
 
   // converts the representation of the subset from canonical (all states) to
   // minimal (only states with output symbols on arcs leaving them, and final
@@ -657,7 +657,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     }
     subset->resize(cur_out - subset->begin());
   }
-  
+
   // Takes a minimal, normalized subset, and converts it to an OutputStateId.
   // Involves a hash lookup, and possibly adding a new OutputStateId.
   // If it creates a new OutputStateId, it adds it to the queue.
@@ -676,7 +676,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     return ans;
   }
 
-  
+
   // Given a normalized initial subset of elements (i.e. before epsilon closure),
   // compute the corresponding output-state.
   OutputStateId InitialToStateId(const vector<Element> &subset_in,
@@ -689,7 +689,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
       *remaining_weight = elem.weight;
       *common_prefix = elem.string;
       if (elem.weight == Weight::Zero())
-        std::cerr << "Zero weight!\n"; // TEMP
+        KALDI_WARN << "Zero weight!"; // TEMP
       return elem.state;
     }
     // else no matching subset-- have to work it out.
@@ -702,17 +702,17 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     ConvertToMinimal(&subset); // remove all but emitting and final states.
 
     Element elem; // will be used to store remaining weight and string, and
-                 // OutputStateId, in initial_hash_;    
+                 // OutputStateId, in initial_hash_;
     NormalizeSubset(&subset, &elem.weight, &elem.string); // normalize subset; put
     // common string and weight in "elem".  The subset is now a minimal,
     // normalized subset.
-    
+
     OutputStateId ans = MinimalToStateId(subset);
     *remaining_weight = elem.weight;
     *common_prefix = elem.string;
     if (elem.weight == Weight::Zero())
-      std::cerr << "Zero weight!\n"; // TEMP
-    
+      KALDI_WARN << "Zero weight!"; // TEMP
+
     // Before returning "ans", add the initial subset to the hash,
     // so that we can bypass the epsilon-closure etc., next time
     // we process the same initial subset.
@@ -752,8 +752,8 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     assert(0); // because we checked if a_str == b_str above, shouldn't reach here
     return 0;
   }
-  
-  
+
+
   // This function computes epsilon closure of subset of states by following epsilon links.
   // Called by InitialToStateId and Initialize.
   // Has no side effects except on the string repository.  The "output_subset" is not
@@ -763,7 +763,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     // at input, subset must have only one example of each StateId.  [will still
     // be so at output].  This function follows input-epsilons, and augments the
     // subset accordingly.
-    
+
     std::deque<Element> queue;
     unordered_map<InputStateId, Element> cur_subset;
     typedef typename unordered_map<InputStateId, Element>::iterator MapIter;
@@ -782,7 +782,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     while (queue.size() != 0) {
       Element elem = queue.front();
       queue.pop_front();
-      
+
       // The next if-statement is a kind of optimization.  It's to prevent us
       // unnecessarily repeating the processing of a state.  "cur_subset" always
       // contains only one Element with a particular state.  The issue is that
@@ -794,8 +794,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
         continue;
       if (opts_.max_loop > 0 && counter++ > opts_.max_loop) {
         KALDI_ERR << "Lattice determinization aborted since looped more than "
-                  << opts_.max_loop << " times during epsilon closure.\n";
-        throw std::runtime_error("looped more than max-arcs times in lattice determinization");
+                  << opts_.max_loop << " times during epsilon closure";
       }
       for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state); !aiter.Done(); aiter.Next()) {
         const Arc &arc = aiter.Value();
@@ -811,7 +810,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
             next_elem.string = elem.string;
           else
             next_elem.string = repository_.Successor(elem.string, arc.olabel);
-          
+
           MapIter iter = cur_subset.find(next_elem.state);
           if (iter == cur_subset.end()) {
             // was no such StateId: insert and add to queue.
@@ -882,7 +881,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
       temp_arc.string = final_string;
       temp_arc.weight = final_weight;
       output_arcs_[output_state].push_back(temp_arc);
-      num_arcs_++;      
+      num_arcs_++;
     }
   }
 
@@ -893,7 +892,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
                        Weight *tot_weight,
                        StringId *common_str) {
     if(elems->empty()) { // just set common_str, tot_weight
-      std::cerr << "[empty subset]\n"; // TEMP 
+      KALDI_WARN << "[empty subset]"; // TEMP
       // to defaults and return...
       *common_str = repository_.EmptyString();
       *tot_weight = Weight::Zero();
@@ -924,11 +923,11 @@ template<class Weight, class IntType> class LatticeDeterminizer {
   // (weight, string) pair in the semiring).
   void MakeSubsetUnique(vector<Element> *subset) {
     typedef typename vector<Element>::iterator IterType;
-    
+
     // This assert is designed to fail (usually) if the subset is not sorted on
     // state.
     assert(subset->size() < 2 || (*subset)[0].state <= (*subset)[1].state);
-    
+
     IterType cur_in = subset->begin(), cur_out = cur_in, end = subset->end();
     size_t num_out = 0;
     // Merge elements with same state-id
@@ -951,7 +950,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     }
     subset->resize(num_out);
   }
-  
+
   // ProcessTransition is called from "ProcessTransitions".  Broken out for
   // clarity.  Processes a transition from state "state".  The set of Elements
   // represents a set of next-states with associated weights and strings, each
@@ -962,7 +961,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
   // semiring).
   void ProcessTransition(OutputStateId state, Label ilabel, vector<Element> *subset) {
     MakeSubsetUnique(subset); // remove duplicates with the same state.
-    
+
     StringId common_str;
     Weight tot_weight;
     NormalizeSubset(subset, &tot_weight, &common_str);
@@ -971,13 +970,13 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     {
       Weight next_tot_weight;
       StringId next_common_str;
-      nextstate = InitialToStateId(*subset, 
+      nextstate = InitialToStateId(*subset,
                                    &next_tot_weight,
                                    &next_common_str);
       common_str = repository_.Concatenate(common_str, next_common_str);
       tot_weight = Times(tot_weight, next_tot_weight);
     }
-    
+
     // Now add an arc to the next state (would have been created if necessary by
     // InitialToStateId).
     TempArc temp_arc;
@@ -991,7 +990,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
 
 
   // "less than" operator for pair<Label, Element>.   Used in ProcessTransitions.
-  // Lexicographical order, which only compares the state when ordering the 
+  // Lexicographical order, which only compares the state when ordering the
   // "Element" member of the pair.
 
   class PairComparator {
@@ -1015,7 +1014,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
   // with the same ilabel.
   // Side effects on repository, and (via ProcessTransition) on Q_, hash_,
   // and output_arcs_.
-  
+
   void ProcessTransitions(OutputStateId output_state) {
     const vector<Element> &minimal_subset = *(output_states_[output_state]);
     // it's possible that minimal_subset could be empty if there are
@@ -1039,7 +1038,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
             next_elem.weight = Times(elem.weight, arc.weight);
             if (arc.olabel == 0) // output epsilon
               next_elem.string = elem.string;
-            else 
+            else
               next_elem.string = repository_.Successor(elem.string, arc.olabel);
             all_elems.push_back(this_pr);
           }
@@ -1076,29 +1075,28 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     ProcessFinal(output_state);
     ProcessTransitions(output_state);
   }
-    
+
 
   void Debug() {  // this function called if you send a signal
     // SIGUSR1 to the process (and it's caught by the handler in
     // fstdeterminizestar).  It prints out some traceback
     // info and exits.
 
-    std::cerr << "Debug function called (probably SIGUSR1 caught).\n";
+    KALDI_WARN << "Debug function called (probably SIGUSR1 caught)";
     // free up memory from the hash as we need a little memory
     { MinimalSubsetHash hash_tmp; hash_tmp.swap(minimal_hash_); }
 
     if (output_arcs_.size() <= 2) {
-      std::cerr << "Nothing to trace back";
-      exit(1);
+      KALDI_ERR << "Nothing to trace back";
     }
-    size_t max_state = output_arcs_.size() - 2;  // don't take the last
+    size_t max_state = output_arcs_.size() - 2;  // Don't take the last
     // one as we might be halfway into constructing it.
 
     vector<OutputStateId> predecessor(max_state+1, kNoStateId);
     for (size_t i = 0; i < max_state; i++) {
       for (size_t j = 0; j < output_arcs_[i].size(); j++) {
         OutputStateId nextstate = output_arcs_[i][j].nextstate;
-        // always find an earlier-numbered prececessor; this
+        // Always find an earlier-numbered predecessor; this
         // is always possible because of the way the algorithm
         // works.
         if (nextstate <= max_state && nextstate > i)
@@ -1106,8 +1104,8 @@ template<class Weight, class IntType> class LatticeDeterminizer {
       }
     }
     vector<pair<Label, StringId> > traceback;
-    // traceback is a pair of (ilabel, olabel-seq).
-    OutputStateId cur_state = max_state;  // a recently constructed state.
+    // 'traceback' is a pair of (ilabel, olabel-seq).
+    OutputStateId cur_state = max_state;  // A recently constructed state.
 
     while (cur_state != 0 && cur_state != kNoStateId) {
       OutputStateId last_state = predecessor[cur_state];
@@ -1121,23 +1119,25 @@ template<class Weight, class IntType> class LatticeDeterminizer {
           break;
         }
       }
-      assert(i != output_arcs_[last_state].size());  // or fell off loop.
+      KALDI_ASSERT(i != output_arcs_[last_state].size());  // Or fell off loop.
       cur_state = last_state;
     }
-    if (cur_state == kNoStateId) 
-      std::cerr << "Traceback did not reach start state (possibly debug-code error)";
+    if (cur_state == kNoStateId)
+      KALDI_WARN << "Traceback did not reach start state "
+                 << "(possibly debug-code error)";
 
-    std::cerr << "Traceback below (or on standard error) in format ilabel (olabel olabel) ilabel (olabel) ...\n";
+    std::stringstream ss;
+    ss << "Traceback follows in format "
+       << "ilabel (olabel olabel) ilabel (olabel) ... :";
     for (ssize_t i = traceback.size() - 1; i >= 0; i--) {
-      std::cerr << traceback[i].first << ' ' << "( ";
+      ss << ' ' << traceback[i].first << " ( ";
       vector<Label> seq;
       repository_.ConvertToVector(traceback[i].second, &seq);
       for (size_t j = 0; j < seq.size(); j++)
-        std::cerr << seq[j] << ' ';
-      std::cerr << ") ";
+        ss << seq[j] << ' ';
+      ss << ')';
     }
-    std::cerr << '\n';
-    exit(1);
+    KALDI_ERR << ss.str();
   }
 
   bool IsIsymbolOrFinal(InputStateId state) { // returns true if this state
@@ -1165,8 +1165,8 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     }
     return IsIsymbolOrFinal(state); // will only recurse once.
   }
-  
-  void InitializeDeterminization() {    
+
+  void InitializeDeterminization() {
     if(ifst_->Properties(kExpanded, false) != 0) { // if we know the number of
       // states in ifst_, it might be a bit more efficient
       // to pre-size the hashes so we're not constantly rebuilding them.
@@ -1189,7 +1189,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
          Note, we don't put anything in the initial_hash_.  The initial_hash_ is only
          a lookaside buffer anyway, so this isn't a problem-- it will get populated
          later if it needs to be.
-      */ 
+      */
       Element elem;
       elem.state = start_id;
       elem.weight = Weight::One();
@@ -1207,9 +1207,9 @@ template<class Weight, class IntType> class LatticeDeterminizer {
       OutputStateId initial_state = 0;
       minimal_hash_[subset_ptr] = initial_state;
       queue_.push_back(initial_state);
-    }     
+    }
   }
-  
+
   DISALLOW_COPY_AND_ASSIGN(LatticeDeterminizer);
 
 
@@ -1221,7 +1221,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
 
   int num_arcs_; // keep track of memory usage: number of arcs in output_arcs_
   int num_elems_; // keep track of memory usage: number of elems in output_states_
-  
+
   const Fst<Arc> *ifst_;
   DeterminizeLatticeOptions opts_;
   SubsetKey hasher_;  // object that computes keys-- has no data members.
@@ -1246,13 +1246,13 @@ template<class Weight, class IntType> class LatticeDeterminizer {
   // determinization.  LIFO queue (queue discipline doesn't really matter).
 
   vector<pair<Label, Element> > all_elems_tmp_; // temporary vector used in ProcessTransitions.
-  
+
   enum IsymbolOrFinal { OSF_UNKNOWN = 0, OSF_NO = 1, OSF_YES = 2 };
-  
+
   vector<char> isymbol_or_final_; // A kind of cache; it says whether
   // each state is (emitting or final) where emitting means it has at least one
   // non-epsilon output arc.  Only accessed by IsIsymbolOrFinal()
-  
+
   LatticeStringRepository<IntType> repository_;  // defines a compact and fast way of
   // storing sequences of labels.
 };
@@ -1291,9 +1291,6 @@ bool DeterminizeLattice(const Fst<ArcTpl<Weight> >&ifst,
   return true;
 }
 
+}  // namespace fst
 
-
-}
-
-
-#endif
+#endif  // KALDI_FSTEXT_DETERMINIZE_LATTICE_INL_H_

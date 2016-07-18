@@ -459,13 +459,13 @@ double ComputeLatticeAlphasAndBetas(const LatticeType &lat,
 }
 
 // instantiate the template for Lattice and CompactLattice
-template 
+template
 double ComputeLatticeAlphasAndBetas(const Lattice &lat,
                                     bool viterbi,
                                     vector<double> *alpha,
                                     vector<double> *beta);
 
-template 
+template
 double ComputeLatticeAlphasAndBetas(const CompactLattice &lat,
                                     bool viterbi,
                                     vector<double> *alpha,
@@ -1517,16 +1517,27 @@ void ComposeCompactLatticeDeterministic(
     StateId s2 = s.second;
     state_queue.pop();
 
-    // If the product of the final weights of the two states is not zero, then
-    // we should create final state in fst_composed. We compute the product
-    // manually since this is more efficient.
-    Weight2 final_weight(LatticeWeight(clat.Final(s1).Weight().Value1() +
-                                       det_fst->Final(s2).Value(),
-                                       clat.Final(s1).Weight().Value2()),
-                         clat.Final(s1).String());
-    if (final_weight != Weight2::Zero()) {
-      KALDI_ASSERT(state_map.find(s) != state_map.end());
-      composed_clat->SetFinal(state_map[s], final_weight);
+
+    Weight2 clat_final = clat.Final(s1);
+    if (clat_final.Weight().Value1() !=
+        std::numeric_limits<BaseFloat>::infinity()) {
+      // Test for whether the final-prob of state s1 was zero.
+      Weight1 det_fst_final = det_fst->Final(s2);
+      if (det_fst_final.Value() !=
+          std::numeric_limits<BaseFloat>::infinity()) {
+        // Test for whether the final-prob of state s2 was zero.  If neither
+        // source-state final prob was zero, then we should create final state
+        // in fst_composed. We compute the product manually since this is more
+        // efficient.
+        Weight2 final_weight(LatticeWeight(clat_final.Weight().Value1() +
+                                           det_fst_final.Value(),
+                                           clat_final.Weight().Value2()),
+                             clat_final.String());
+        // we can assume final_weight is not Zero(), since neither of
+        // the sources was zero.
+        KALDI_ASSERT(state_map.find(s) != state_map.end());
+        composed_clat->SetFinal(state_map[s], final_weight);
+      }
     }
 
     // Loops over pair of edges at s1 and s2.
@@ -1567,7 +1578,7 @@ void ComposeCompactLatticeDeterministic(
           KALDI_ASSERT(result.second);
           state_queue.push(next_state_pair);
         } else {
-          // If the combposed state is already in <state_map>, we can directly
+          // If the composed state is already in <state_map>, we can directly
           // use that.
           next_state = siter->second;
         }
@@ -1575,7 +1586,7 @@ void ComposeCompactLatticeDeterministic(
         // Adds arc to <composed_clat>.
         if (arc1.olabel == 0) {
           composed_clat->AddArc(state_map[s],
-                                CompactLatticeArc(0, 0,
+                                CompactLatticeArc(arc1.ilabel, 0,
                                                   arc1.weight, next_state));
         } else {
           Weight2 composed_weight(
@@ -1584,7 +1595,7 @@ void ComposeCompactLatticeDeterministic(
                             arc1.weight.Weight().Value2()),
               arc1.weight.String());
           composed_clat->AddArc(state_map[s],
-                                CompactLatticeArc(arc1.ilabel, arc1.olabel,
+                                CompactLatticeArc(arc1.ilabel, arc2.olabel,
                                                   composed_weight, next_state));
         }
       }

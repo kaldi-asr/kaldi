@@ -101,7 +101,7 @@ nnet2::Component *ConvertAddShiftComponent(
   const nnet1::AddShift *add_shift =
       dynamic_cast<const nnet1::AddShift*>(&nnet1_component);
   KALDI_ASSERT(add_shift != NULL);
-  Vector<BaseFloat> bias;
+  Vector<BaseFloat> bias(add_shift->NumParams());
 
   add_shift->GetParams(&bias);
   CuVector<BaseFloat> cu_bias(bias);
@@ -117,7 +117,7 @@ nnet2::Component *ConvertRescaleComponent(
       dynamic_cast<const nnet1::Rescale*>(&nnet1_component);
   KALDI_ASSERT(rescale != NULL);
 
-  Vector<BaseFloat> scale;
+  Vector<BaseFloat> scale(rescale->NumParams());
   rescale->GetParams(&scale);
 
   CuVector<BaseFloat> cu_scale(scale);

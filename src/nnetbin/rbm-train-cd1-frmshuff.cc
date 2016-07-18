@@ -35,42 +35,47 @@ int main(int argc, char *argv[]) {
   typedef kaldi::int32 int32;
   try {
     const char *usage =
-        "Train RBM by Contrastive Divergence alg. with 1 step of "
-        "Markov Chain Monte-Carlo.\n"
-        "The tool can perform several iterations (--num-iters) "
-        "or it can subsample the training dataset (--drop-data)\n"
-        "Usage:  rbm-train-cd1-frmshuff [options] <model-in> <feature-rspecifier> <model-out>\n"
-        "e.g.: \n"
-        " rbm-train-cd1-frmshuff 1.rbm.init scp:train.scp 1.rbm\n";
+      "Train RBM by Contrastive Divergence alg. with 1 step of "
+      "Markov Chain Monte-Carlo.\n"
+      "The tool can perform several iterations (--num-iters) "
+      "or it can subsample the training dataset (--drop-data)\n"
+
+      "Usage: rbm-train-cd1-frmshuff [options] <model-in> "
+      "<feature-rspecifier> <model-out>\n"
+      "e.g.: rbm-train-cd1-frmshuff 1.rbm.init scp:train.scp 1.rbm\n";
 
     ParseOptions po(usage);
 
     RbmTrainOptions trn_opts, trn_opts_rbm;
     trn_opts.Register(&po);
 
-    bool binary = false; 
+    bool binary = false;
     po.Register("binary", &binary, "Write output in binary mode");
 
-    bool with_bug = true; 
-    po.Register("with-bug", &with_bug, "Apply bug which led to better results (set-initial-momentum-to-max)");
-    
-    int32 num_iters = 1; 
-    po.Register("num-iters", &num_iters, 
+    bool with_bug = true;
+    po.Register("with-bug", &with_bug,
+        "Apply bug which led to better results (set-initial-momentum-to-max)");
+
+    int32 num_iters = 1;
+    po.Register("num-iters", &num_iters,
                 "Number of iterations (smaller datasets should have more iterations, "
                 "iterating within tool because of linear momentum scheduling)");
 
     std::string feature_transform;
-    po.Register("feature-transform", &feature_transform, "Feature transform in Nnet format");
+    po.Register("feature-transform", &feature_transform,
+        "Feature transform in 'nnet1' format");
 
     NnetDataRandomizerOptions rnd_opts;
     rnd_opts.minibatch_size = 100;
     rnd_opts.Register(&po);
 
-    kaldi::int32 max_frames = 6000; // Allow segments maximum of 30 seconds by default
-    po.Register("max-frames",&max_frames, "Maximum number of frames a segment can have to be processed");
-    
+    kaldi::int32 max_frames = 6000;
+    po.Register("max-frames", &max_frames,
+        "Maximum number of frames an utterance can have (skipped if longer)");
+
     std::string use_gpu="yes";
-    po.Register("use-gpu", &use_gpu, "yes|no|optional, only has effect if compiled with CUDA"); 
+    po.Register("use-gpu", &use_gpu,
+        "yes|no|optional, only has effect if compiled with CUDA");
 
     po.Read(argc, argv);
 
@@ -81,42 +86,44 @@ int main(int argc, char *argv[]) {
 
     std::string model_filename = po.GetArg(1),
         feature_rspecifier = po.GetArg(2);
-        
+
     std::string target_model_filename;
     target_model_filename = po.GetArg(3);
 
-     
+
     using namespace kaldi;
     using namespace kaldi::nnet1;
     typedef kaldi::int32 int32;
 
-#if HAVE_CUDA==1
+#if HAVE_CUDA == 1
     CuDevice::Instantiate().SelectGpuId(use_gpu);
 #endif
 
     Nnet rbm_transf;
-    if(feature_transform != "") {
+    if (feature_transform != "") {
       rbm_transf.Read(feature_transform);
     }
 
-    // Read nnet, extract the RBM
+    // Read nnet, extract the RBM,
     Nnet nnet;
     nnet.Read(model_filename);
-    KALDI_ASSERT(nnet.NumComponents()==1);
+    KALDI_ASSERT(nnet.NumComponents() == 1);
     KALDI_ASSERT(nnet.GetComponent(0).GetType() == kaldi::nnet1::Component::kRbm);
     RbmBase &rbm = dynamic_cast<RbmBase&>(nnet.GetComponent(0));
 
     // Configure the RBM,
-    // make some constants accessible, will use them later:
+    // make some constants accessible, will use them later,
     const BaseFloat& learn_rate = trn_opts.learn_rate;
     const BaseFloat& momentum = trn_opts.momentum;
     const BaseFloat& momentum_max = trn_opts.momentum_max;
     const int32& momentum_steps = trn_opts.momentum_steps;
     const int32& momentum_step_period = trn_opts.momentum_step_period;
-    // trn_opts_rbm is for RBM, copy the opts
+
+    // 'trn_opts_rbm' is a local copy of 'trn_opts' which is passed to RBM,
     trn_opts_rbm = trn_opts;
-    trn_opts_rbm.learn_rate = learn_rate*(1-momentum); // keep `effective' learning rate constant
-    // pass options to RBM
+    // keep `effective' learning rate constant
+    trn_opts_rbm.learn_rate = learn_rate * (1 - momentum);
+    // pass options to RBM,
     rbm.SetRbmTrainOptions(trn_opts_rbm);
 
     kaldi::int64 total_frames = 0;
@@ -125,11 +132,11 @@ int main(int argc, char *argv[]) {
     RandomizerMask randomizer_mask(rnd_opts);
     MatrixRandomizer feature_randomizer(rnd_opts);
 
-    CuRand<BaseFloat> cu_rand; // parallel random number generator
+    CuRand<BaseFloat> cu_rand;  // parallel random number generator,
     Mse mse;
-    
-    CuMatrix<BaseFloat> feats, feats_transf, 
-                        pos_hid, pos_hid_aux, 
+
+    CuMatrix<BaseFloat> feats_transf,
+                        pos_hid, pos_hid_aux,
                         neg_vis, neg_hid;
     CuMatrix<BaseFloat> dummy_mse_mat;
 
@@ -141,72 +148,75 @@ int main(int argc, char *argv[]) {
 
     int32 num_done = 0, num_other_error = 0;
     while (!feature_reader.Done()) {
-#if HAVE_CUDA==1      
-      // check the GPU is not overheated
+#if HAVE_CUDA == 1
+      // check that GPU is computing accurately,
       CuDevice::Instantiate().CheckGpuHealth();
 #endif
-      // fill the randomizer
+      // fill the randomizer,
       for ( ; !feature_reader.Done(); feature_reader.Next()) {
-        if (feature_randomizer.IsFull()) break; // suspend, keep utt for next loop
+        if (feature_randomizer.IsFull()) {
+          // break the loop without calling Next(),
+          // we keep the 'utt' for next round,
+          break;
+        }
         std::string utt = feature_reader.Key();
-        KALDI_VLOG(3) << utt;
-        // get feature matrix
+        KALDI_VLOG(3) << "Reading " << utt;
+        // get feature matrix,
         const Matrix<BaseFloat> &mat = feature_reader.Value();
         // skip too long segments (avoid runinning out of memory)
         if (mat.NumRows() > max_frames) {
-          KALDI_WARN << "Utterance " << utt << ": Skipped because it has " << mat.NumRows() << 
-            " frames, which is more than " << max_frames << ".";
+          KALDI_WARN << "Skipping " << utt
+            << " that has " << mat.NumRows() << " frames,"
+            << " it is longer than '--max-frames'" << max_frames;
           num_other_error++;
           continue;
         }
-        // push features to GPU
-        feats.Resize(mat.NumRows(),mat.NumCols());
-        feats.CopyFromMat(mat);
-        // apply optional feature transform
-        rbm_transf.Feedforward(feats, &feats_transf);
-        // add to randomizer
+        // apply feature transform,
+        rbm_transf.Feedforward(CuMatrix<BaseFloat>(mat), &feats_transf);
+        // add to randomizer,
         feature_randomizer.AddData(feats_transf);
         num_done++;
 
         // report the speed
         if (num_done % 5000 == 0) {
           double time_now = time.Elapsed();
-          KALDI_VLOG(1) << "After " << num_done << " utterances: time elapsed = "
-                        << time_now/60 << " min; processed " << total_frames/time_now
-                        << " frames per second.";
+          KALDI_VLOG(1) << "After " << num_done << " utterances: "
+            << "time elapsed = " << time_now / 60 << " min; "
+            << "processed " << total_frames / time_now << " frames per sec.";
         }
       }
 
-      // randomize
-      feature_randomizer.Randomize(randomizer_mask.Generate(feature_randomizer.NumFrames()));
+      // randomize,
+      feature_randomizer.Randomize(
+        randomizer_mask.Generate(feature_randomizer.NumFrames())
+      );
 
       // train with data from randomizer (using mini-batches)
-      for( ; !feature_randomizer.Done(); feature_randomizer.Next()) {
-        // get block of feature/target pairs
+      for ( ; !feature_randomizer.Done(); feature_randomizer.Next()) {
+        // get the mini-batch,
         const CuMatrixBase<BaseFloat>& pos_vis = feature_randomizer.Value();
-        // get the dims 
+        // get the dims,
         int32 num_frames = pos_vis.NumRows(),
               dim_hid = rbm.OutputDim();
         // Create dummy frame-weights for Mse::Eval,
         Vector<BaseFloat> dummy_weights(num_frames);
         dummy_weights.Set(1.0);
 
-        // TRAIN with CD1
-        // forward pass
+        // TRAIN with CD1,
+        // forward pass,
         rbm.Propagate(pos_vis, &pos_hid);
 
-        // alter the hidden values, so we can generate negative example
+        // alter the hidden values, so we can generate negative example,
         if (rbm.HidType() == Rbm::Bernoulli) {
           pos_hid_aux.Resize(num_frames, dim_hid);
-          cu_rand.BinarizeProbs(pos_hid, &pos_hid_aux);
+          cu_rand.BinarizeProbs(pos_hid, &pos_hid_aux);  // => 0 / 1,
         } else {
-          // assume HidType Rbm::GAUSSIAN
-          pos_hid_aux.Resize(num_frames, dim_hid);
-          pos_hid_aux.CopyFromMat(pos_hid);
+          KALDI_ASSERT(rbm.HidType() == Rbm::Gaussian);
+          pos_hid_aux = pos_hid;
           cu_rand.AddGaussNoise(&pos_hid_aux);
         }
 
-        // reconstruct pass
+        // reconstruct pass,
         rbm.Reconstruct(pos_hid_aux, &neg_vis);
         // propagate negative examples
         rbm.Propagate(neg_vis, &neg_hid);
@@ -221,21 +231,23 @@ int main(int argc, char *argv[]) {
         {
           static int32 n_prev = -1;
           BaseFloat step = (momentum_max - momentum) / momentum_steps;
-          int32 n = total_frames / momentum_step_period; //change every momentum_step_period data
+          // change every momentum_step_period data,
+          int32 n = total_frames / momentum_step_period;
           BaseFloat momentum_actual;
-          if(n > momentum_steps) {
+          if (n > momentum_steps) {
             momentum_actual = momentum_max;
           } else {
             momentum_actual = momentum + n*step;
           }
-          if(n - n_prev > 0) {
+          if (n - n_prev > 0) {
             n_prev = n;
             BaseFloat learning_rate_actual = learn_rate*(1-momentum_actual);
-            KALDI_VLOG(1) << "Setting momentum " << (with_bug ? momentum_max : momentum_actual)
-                          << " and learning rate " << learning_rate_actual
-                          << " after processing " 
-                          << static_cast<double>(total_frames)/360000 << "h";
-            // pass values to rbm
+            KALDI_VLOG(1) << "Setting momentum "
+              << (with_bug ? momentum_max : momentum_actual)
+              << " and learning rate " << learning_rate_actual
+              << " after processing "
+              << static_cast<double>(total_frames) / 360000 << " h";
+            // pass values to rbm,
             trn_opts_rbm.momentum = (with_bug ? momentum_max : momentum_actual);
             trn_opts_rbm.learn_rate = learning_rate_actual;
             rbm.SetRbmTrainOptions(trn_opts_rbm);
@@ -253,15 +265,16 @@ int main(int argc, char *argv[]) {
     }
 
     nnet.Write(target_model_filename, binary);
-    
+
     KALDI_LOG << "Done " << iter << " iterations, " << num_done << " files, "
               << "skipped " << num_other_error << " files. "
-              << "[" << time.Elapsed()/60 << " min, fps" << total_frames/time.Elapsed() 
-              << "]";
+              << "[" << time.Elapsed() / 60 << " min, "
+              << "processing" << total_frames / time.Elapsed() << " "
+              << "frames per sec.]";
 
     KALDI_LOG << mse.Report();
 
-#if HAVE_CUDA==1
+#if HAVE_CUDA == 1
     CuDevice::Instantiate().PrintProfile();
 #endif
     return 0;

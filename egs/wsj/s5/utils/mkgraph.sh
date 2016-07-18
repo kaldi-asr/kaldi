@@ -9,13 +9,12 @@
 # that has word-ids on the output, and pdf-ids on the input (these are indexes
 # that resolve to Gaussian Mixture Models).
 # See
-#  http://kaldi.sourceforge.net/graph_recipe_test.html
+#  http://kaldi-asr.org/doc/graph_recipe_test.html
 # (this is compiled from this repository using Doxygen,
 # the source for this part is in src/doc/graph_recipe_test.dox)
 
+set -o pipefail
 
-N=3
-P=1
 tscale=1.0
 loopscale=0.1
 
@@ -23,8 +22,9 @@ reverse=false
 remove_oov=false
 
 for x in `seq 6`; do
-  [ "$1" == "--mono" ] && N=1 && P=0 && shift;
-  [ "$1" == "--quinphone" ] && N=5 && P=2 && shift;
+  [ "$1" == "--mono" ] && context=mono && shift;
+  [ "$1" == "--left-biphone" ] && context=lbiphone && shift;
+  [ "$1" == "--quinphone" ] && context=quinphone && shift;
   [ "$1" == "--reverse" ] && reverse=true && shift;
   [ "$1" == "--remove-oov" ] && remove_oov=true && shift;
   [ "$1" == "--transition-scale" ] && tscale=$2 && shift 2;
@@ -57,6 +57,15 @@ required="$lang/L.fst $lang/G.fst $lang/phones.txt $lang/words.txt $lang/phones/
 for f in $required; do
   [ ! -f $f ] && echo "mkgraph.sh: expected $f to exist" && exit 1;
 done
+
+N=$(tree-info $tree | grep "context-width" | cut -d' ' -f2) || { echo "Error when getting context-width"; exit 1; }
+P=$(tree-info $tree | grep "central-position" | cut -d' ' -f2) || { echo "Error when getting central-position"; exit 1; }
+if [[ $context == mono && ($N != 1 || $P != 0) || \
+      $context == lbiphone && ($N != 2 || $P != 1) || \
+      $context == quinphone && ($N != 5 || $P != 2) ]]; then
+  echo "mkgraph.sh: mismatch between the specified context (--$context) and the one in the tree: N=$N, P=$P"
+  exit 1
+fi
 
 mkdir -p $lang/tmp
 # Note: [[ ]] is like [ ] but enables certain extra constructs, e.g. || in
@@ -118,6 +127,13 @@ if [[ ! -s $dir/HCLG.fst || $dir/HCLG.fst -ot $dir/HCLGa.fst ]]; then
   fi
 fi
 
+# note: the empty FST has 66 bytes.  this check is for whether the final FST
+# is the empty file or is the empty FST.
+if ! [ $(head -c 67 $dir/HCLG.fst | wc -c) -eq 67 ]; then
+  echo "$0: it looks like the result in $dir/HCLG.fst is empty"
+  exit 1
+fi
+
 # keep a copy of the lexicon and a list of silence phones with HCLG...
 # this means we can decode without reference to the $lang directory.
 
@@ -126,6 +142,7 @@ cp $lang/words.txt $dir/ || exit 1;
 mkdir -p $dir/phones
 cp $lang/phones/word_boundary.* $dir/phones/ 2>/dev/null # might be needed for ctm scoring,
 cp $lang/phones/align_lexicon.* $dir/phones/ 2>/dev/null # might be needed for ctm scoring,
+cp $lang/phones/optional_silence.* $dir/phones/ 2>/dev/null # might be needed for analyzing alignments.
   # but ignore the error if it's not there.
 
 cp $lang/phones/disambig.{txt,int} $dir/phones/ 2> /dev/null

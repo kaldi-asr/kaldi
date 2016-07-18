@@ -35,7 +35,7 @@ if [ $# != 4 ]; then
   echo "                                                   # (note: we splice processed, typically 40-dimensional frames"
   echo "  --stage <stage|0>                                # Used to run a partially-completed training process from somewhere in"
   echo "                                                   # the middle."
-  
+
   exit 1;
 fi
 
@@ -88,25 +88,27 @@ fi
 echo $feat_dim > $dir/feat_dim
 
 echo -n > $dir/indexes
-# Get list of indexes, e.g. a file like: 
+# Get list of indexes, e.g. a file like:
 # 0 1 2 3 4 5 6 7 8 9
-# 5 6 7 8 9 10 11 12 13 14 
+# 5 6 7 8 9 10 11 12 13 14
 # 10 ...
 
 cur_index=0
 num_blocks=0
 context_length=$[1+2*($splice_width)]
 
-while [ $[$cur_index+$block_size] -le $feat_dim ]; do
+while true; do
   for n in `seq $cur_index $[cur_index+$block_size-1]`; do
     echo -n `seq $n $feat_dim $[$n+($feat_dim*($context_length-1))]` '' >> $dir/indexes
   done
   echo >> $dir/indexes
   num_blocks=$[$num_blocks+1]
-  cur_index=$[$cur_index+$block_shift]
-  if [ $[$cur_index+$block_size] -gt $feat_dim ]; then
-    cur_index=$[$feat_dim-$block_size];
+  next_index=$[$cur_index+$block_shift]
+  if [ $[$next_index+$block_size] -gt $feat_dim ]; then
+    next_index=$[$feat_dim-$block_size];
   fi
+  if [ $next_index -le $cur_index ]; then break; fi
+  cur_index=$next_index
 done
 echo $num_blocks >$dir/num_blocks
 

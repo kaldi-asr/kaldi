@@ -27,6 +27,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <errno.h>
 #include "util/kaldi-io.h"
 #include "util/kaldi-holder.h"
 #include "util/text-utils.h"
@@ -658,8 +659,8 @@ template<class Holder>  class SequentialTableReaderArchiveImpl:
 
   virtual bool Close() {
     // To clean up, Close() also closes the Input object if
-    // it's open. It will succeed if the stream was not in an error state,
-    // and the Input object isn't in an error state if we've found eof in the archive.
+    // it's open.  It will succeed if the stream was not in an error state,
+    // and the Input object isn't in an error state  we've found eof in the archive.
     if (!this->IsOpen())
       KALDI_ERR << "Close() called on TableReader twice or otherwise wrongly.";
     int32 status = 0;
@@ -1493,7 +1494,8 @@ class TableWriterBothImpl: public TableWriterImplBase<Holder> {
 template<class Holder>
 TableWriter<Holder>::TableWriter(const std::string &wspecifier): impl_(NULL) {
   if (wspecifier != "" && !Open(wspecifier))
-    KALDI_ERR << "Failed to write to " << wspecifier;
+    KALDI_ERR << "Failed to open for writing: " << wspecifier
+              << ": " << strerror(errno);
 }
 
 template<class Holder>
