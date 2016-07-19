@@ -134,7 +134,7 @@ def GetArgs():
                         help="If true, gpu is used with steps/nnet3/align.sh")
 
     # Parameters for the optimization
-    parser.add_argument("--trainer.optimization.minibatch-size", type=float, dest='minibatch_size',
+    parser.add_argument("--trainer.optimization.minibatch-size", type=int, dest='minibatch_size',
                         default = 512,
                         help="Size of the minibatch used to compute the gradient")
     parser.add_argument("--trainer.optimization.initial-effective-lrate", type=float, dest='initial_effective_lrate',
