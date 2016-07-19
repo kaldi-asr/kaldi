@@ -741,60 +741,6 @@ static void _copy_rows_from_vec(Real* m_out, MatrixDim d, const Real* v_in) {
   }
 }
 
-template<typename Real>
-__global__
-static void _vec_min(const Real* v, Real* value, int dim) {
-  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
-
-  if(i >= CU1DBLOCK) return;
-
-  __shared__ Real row_data[CU1DBLOCK];
-
-  int block_size = (dim + CU1DBLOCK - 1) / CU1DBLOCK;
-
-  Real min = 1.0 / 0.0; // infinity. 
-
-  for (int j = i * block_size; j < (i+1) * block_size && j < dim; j++){
-    Real v_j = v[j];
-    if (v_j < min) min = v_j;
-  }
-
-  row_data[i] = min; 
-
-  __syncthreads();
-      
-  //get the sum
-  *value = _min_reduce(row_data);
-}
-
-template<typename Real>
-__global__
-static void _vec_max(const Real* v, Real* value, int dim) {
-  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
-  if(blockIdx.y > 0) return;
-            
-  __shared__ Real row_data[CU1DBLOCK];
-               
-  if(i >= CU1DBLOCK) return;
-                  
-  int block_size = (dim + CU1DBLOCK - 1) / CU1DBLOCK;
-                     
-  Real max = -1.0 / 0.0; // -infinity.
-                        
-  for (int j = i * block_size; j < (i+1) * block_size && j < dim; j++) {
-    Real v_j = v[j];
-    if (v_j > max) max = v_j;
-  }
-                           
-  row_data[i] = max;
-                              
-  __syncthreads();
-                                 
-  //get the sum
-  *value = _max_reduce(row_data);
-}
-
-
 // _trace_mat_mat reduce the partial sum to value[blockIdx.y * gridDim.x + blockIdx.x]
 // It use shared mem to transpose matrix B to ensure coalesced memory access
 template<int TileDim, typename Real>

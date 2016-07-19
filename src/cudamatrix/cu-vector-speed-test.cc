@@ -87,7 +87,8 @@ template<typename Real, typename OtherReal> void TestCuVectorCopyFromVec(int32 d
 
   BaseFloat fdim = dim;
   BaseFloat gflops = (fdim * iter) / (tim.Elapsed() * 1.0e+09);
-  KALDI_LOG << "For CuVector::CopyFromVec" << NameOf<Real>() << ", for dim = "
+  KALDI_LOG << "For CuVector::CopyFromVec" << NameOf<Real>() << " to " 
+            <<  NameOf<OtherReal>() << ", for dim = "
             << dim << ", speed was " << gflops << " gigaflops.";
 }
 
