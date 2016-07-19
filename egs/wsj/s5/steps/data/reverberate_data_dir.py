@@ -36,11 +36,11 @@ def GetArgs():
     parser.add_argument('--foreground-snrs', type=str, dest = "foreground_snr_string", default = '20:10:0', help='snrs for foreground noises')
     parser.add_argument('--background-snrs', type=str, dest = "background_snr_string", default = '20:10:0', help='snrs for background noises')
     parser.add_argument('--prefix', type=str, default = None, help='prefix for the id of the corrupted utterances')
-    parser.add_argument("--speech-rvb-probability", type=float, default = 0.8,
+    parser.add_argument("--speech-rvb-probability", type=float, default = 1.0,
                         help="Probability of reverberating a speech signal, e.g. 0 <= p <= 1")
-    parser.add_argument("--pointsource-noise-addition-probability", type=float, default = 0.4,
+    parser.add_argument("--pointsource-noise-addition-probability", type=float, default = 1.0,
                         help="Probability of adding point-source noises, e.g. 0 <= p <= 1")
-    parser.add_argument("--isotropic-noise-addition-probability", type=float, default = 0.4,
+    parser.add_argument("--isotropic-noise-addition-probability", type=float, default = 1.0,
                         help="Probability of adding isotropic noises, e.g. 0 <= p <= 1")
     parser.add_argument("--max-noises-per-minute", type=int, default = 2,
                         help="This controls the maximum number of point-source noises that could be added to a recording according to its duration")
@@ -88,8 +88,9 @@ class list_cyclic_iterator:
     return item
 
 
-# This function pick the item according to the associated probability
-# The input could be either a dictinoary of a list
+# This functions picks an item from the collection according to the associated probability distribution.
+# The probability estimate of each item in the collection is stored in the "probability" field of 
+# the particular item. x : a collection (list or dictionary) where the values contain a field called probability
 def PickItemWithProbability(x):
    if isinstance(x, dict):
      plist = list(set(x.values()))
@@ -105,6 +106,8 @@ def PickItemWithProbability(x):
    assert False, "Shouldn't get here as the accumulated probability should always equal to 1"
 
 
+# This function parses a file and pack the data into a dictionary
+# It is useful for parsing file like wav.scp, utt2spk, text...etc
 def ParseFileToDict(file, assert2fields = False, value_processor = None):
     if value_processor is None:
         value_processor = lambda x: x[0]
@@ -118,6 +121,7 @@ def ParseFileToDict(file, assert2fields = False, value_processor = None):
         dict[parts[0]] = value_processor(parts[1:])
     return dict
 
+# This function creates a file and write the content of a dictionary into it
 def WriteDictToFile(dict, file_name):
     file = open(file_name, 'w')
     keys = dict.keys()
@@ -134,6 +138,7 @@ def WriteDictToFile(dict, file_name):
 
 
 # This function returns only the isotropic noises according to the specified RIR id
+# Please refer to ParseNoiseList() for the format of iso_noise_list
 def FilterIsotropicNoiseList(iso_noise_list, rir_id):
     filtered_list = []
     for noise in iso_noise_list:
@@ -141,6 +146,33 @@ def FilterIsotropicNoiseList(iso_noise_list, rir_id):
             filtered_list.append(noise)
 
     return filtered_list
+
+
+def AddPointSourceNoise(noise_addition_descriptor,  # descriptor to store the information of the noise added
+                        room,  # the room selected
+                        point_noise_list, # the point source noise list
+                        pointsource_noise_addition_probability, # Probability of adding point-source noises
+                        foreground_snrs, # the SNR for adding the foreground noises
+                        background_snrs, # the SNR for adding the background noises
+                        speech_dur,  # duration of the recording
+                        max_noises_recording  # Maximum number of point-source noises that can be added
+                        ):
+    if len(point_noise_list) > 0 and random.random() < pointsource_noise_addition_probability:
+        for k in range(random.randint(1, max_noises_recording)):
+            # pick the RIR to reverberate the point-source noise
+            noise = PickItemWithProbability(point_noise_list)
+            noise_rir = PickItemWithProbability(room.rir_list)
+            if noise.bg_fg_type == "background":
+                noise_addition_descriptor['noise_io'].append("wav-reverberate --duration={2} --impulse-response={1} {0} - |".format(noise.noise_file_location, noise_rir.rir_file_location, speech_dur))
+                noise_addition_descriptor['start_times'].append(0)
+                noise_addition_descriptor['snrs'].append(background_snrs.next())
+            else:
+                noise_addition_descriptor['noise_io'].append("wav-reverberate --impulse-response={1} {0} - |".format(noise.noise_file_location, noise_rir.rir_file_location))
+                noise_addition_descriptor['start_times'].append(round(random.random() * speech_dur, 2))
+                noise_addition_descriptor['snrs'].append(foreground_snrs.next())
+
+    return noise_addition_descriptor
+
 
 def GenerateReverberationOpts(room_dict,  # the room dictionary, please refer to MakeRoomDict() for the format
                             point_noise_list, # the point source noise list
@@ -154,9 +186,9 @@ def GenerateReverberationOpts(room_dict,  # the room dictionary, please refer to
                             max_noises_recording  # Maximum number of point-source noises that can be added
                             ):
     reverberate_opts = ""
-    noises_added = []
-    snrs_added = []
-    start_times_added = []
+    noise_addition_descriptor = {'noise_io': [],
+                                 'start_times': [],
+                                 'snrs': []}
     # Randomly select the room
     room = PickItemWithProbability(room_dict)
     # Randomly select the RIR in the room
@@ -170,34 +202,29 @@ def GenerateReverberationOpts(room_dict,  # the room dictionary, please refer to
     if len(rir_iso_noise_list) > 0 and random.random() < isotropic_noise_addition_probability:
         isotropic_noise = PickItemWithProbability(rir_iso_noise_list)
         # extend the isotropic noise to the length of the speech waveform
-        noises_added.append("wav-reverberate --duration={1} {0} - |".format(isotropic_noise.noise_file_location, speech_dur))
-        snrs_added.append(background_snrs.next())
-        start_times_added.append(0)
+        noise_addition_descriptor['noise_io'].append("wav-reverberate --duration={1} {0} - |".format(isotropic_noise.noise_file_location, speech_dur))
+        noise_addition_descriptor['start_times'].append(0)
+        noise_addition_descriptor['snrs'].append(background_snrs.next())
 
-    # Add the point-source noise
-    if len(point_noise_list) > 0 and random.random() < pointsource_noise_addition_probability:
-        for k in range(random.randint(1, max_noises_recording)):
-            # pick the RIR to reverberate the point-source noise
-            noise = PickItemWithProbability(point_noise_list)
-            noise_rir = PickItemWithProbability(room.rir_list)
-            if noise.bg_fg_type == "background":
-                start_times_added.append(0)
-                noises_added.append("wav-reverberate --duration={2} --impulse-response={1} {0} - |".format(noise.noise_file_location, noise_rir.rir_file_location, speech_dur))
-                snrs_added.append(background_snrs.next())
-            else:
-                start_times_added.append(round(random.random() * speech_dur, 2))
-                noises_added.append("wav-reverberate --impulse-response={1} {0} - |".format(noise.noise_file_location, noise_rir.rir_file_location))
-                snrs_added.append(foreground_snrs.next())
+    noise_addition_descriptor = AddPointSourceNoise(noise_addition_descriptor,  # descriptor to store the information of the noise added
+                                                    room,  # the room selected
+                                                    point_noise_list, # the point source noise list
+                                                    pointsource_noise_addition_probability, # Probability of adding point-source noises
+                                                    foreground_snrs, # the SNR for adding the foreground noises
+                                                    background_snrs, # the SNR for adding the background noises
+                                                    speech_dur,  # duration of the recording
+                                                    max_noises_recording  # Maximum number of point-source noises that can be added
+                                                    )
 
-    assert len(noises_added) == len(snrs_added)
-    assert len(noises_added) == len(start_times_added)
-
-    if len(noises_added) > 0:
-        reverberate_opts += "--additive-signals='{0}' ".format(','.join(noises_added))
-        reverberate_opts += "--snrs='{0}' ".format(','.join(map(lambda x:str(x),snrs_added)))
-        reverberate_opts += "--start-times='{0}' ".format(','.join(map(lambda x:str(x),start_times_added)))
+    assert len(noise_addition_descriptor['noise_io']) == len(noise_addition_descriptor['start_times'])
+    assert len(noise_addition_descriptor['noise_io']) == len(noise_addition_descriptor['snrs'])
+    if len(noise_addition_descriptor['noise_io']) > 0:
+        reverberate_opts += "--additive-signals='{0}' ".format(','.join(noise_addition_descriptor['noise_io']))
+        reverberate_opts += "--start-times='{0}' ".format(','.join(map(lambda x:str(x), noise_addition_descriptor['start_times'])))
+        reverberate_opts += "--snrs='{0}' ".format(','.join(map(lambda x:str(x), noise_addition_descriptor['snrs'])))
 
     return reverberate_opts
+
 
 # This is the main function to generate pipeline command for the corruption
 # The generic command of wav-reverberate will be like:
@@ -320,14 +347,14 @@ def CreateReverberatedCopy(input_dir,
 
 
 # This function smooths the probability distribution in the list
-def SmoothProbabilityDistribution(list):
+def SmoothProbabilityDistribution(list, smoothing_weight=0.3):
     uniform_probability = 1 / float(len(list))
     for item in list:
         if item.probability is None:
             item.probability = uniform_probability
         else:
             # smooth the probability
-            item.probability = 0.3 * item.probability + 0.7 * uniform_probability
+            item.probability = (1 - smoothing_weight) * item.probability + smoothing_weight * uniform_probability
 
     # Normalize the probability
     sum_p = sum(item.probability for item in list)
@@ -337,11 +364,13 @@ def SmoothProbabilityDistribution(list):
     return list
 
 # This function creates the RIR list 
-# Each item in the list contains the following arguments
+# Each noise item in the list contains the following attributes:
+# rir_id, room_id, receiver_position_id, source_position_id, rt60, drr, probability
+# Please refer to the help messages in the parser for the meaning of these attributes
 def ParseRirList(rir_list_file):
     rir_parser = argparse.ArgumentParser()
-    rir_parser.add_argument('--rir-id', type=str, required=True, help='rir id')
-    rir_parser.add_argument('--room-id', type=str, required=True, help='room id')
+    rir_parser.add_argument('--rir-id', type=str, required=True, help='This id is unique for each RIR and the noise may associate with a particular RIR by refering to this id')
+    rir_parser.add_argument('--room-id', type=str, required=True, help='This is the room that where the RIR is generated')
     rir_parser.add_argument('--receiver-position-id', type=str, default=None, help='receiver position id')
     rir_parser.add_argument('--source-position-id', type=str, default=None, help='source position id')
     rir_parser.add_argument('--rt60', type=float, default=None, help='RT60 is the time required for reflections of a direct sound to decay 60 dB.')
@@ -382,7 +411,9 @@ def MakeRoomDict(rir_list):
 
 # This function creates the point-source noise list 
 # and the isotropic noise list from the noise information file
-# Each item in the list contains the following arguments
+# Each noise item in the list contains the following attributes:
+# noise_id, noise_type, bg_fg_type, rir_id, probability, noise_file_location
+# Please refer to the help messages in the parser for the meaning of these attributes
 def ParseNoiseList(noise_list_file):
     noise_parser = argparse.ArgumentParser()
     noise_parser.add_argument('--noise-id', type=str, required=True, help='noise id')
