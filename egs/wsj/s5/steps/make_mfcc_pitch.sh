@@ -1,9 +1,10 @@
-#!/bin/bash 
+#!/bin/bash
 
 # Copyright 2013 The Shenzhen Key Laboratory of Intelligent Media and Speech,
 #                PKU-HKUST Shenzhen Hong Kong Institution (Author: Wei Shi)
+#           2016  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
-# Combine MFCC and pitch features together 
+# Combine MFCC and pitch features together
 # Note: This file is based on make_mfcc.sh and make_pitch_kaldi.sh
 
 # Begin configuration section.
@@ -21,9 +22,11 @@ echo "$0 $@"  # Print the command line for logging
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
-if [ $# != 3 ]; then
-   echo "usage: make_mfcc_pitch.sh [options] <data-dir> <log-dir> <path-to-mfcc-pitch-dir>";
-   echo "options: "
+if [ $# -lt 1 ] || [ $# -gt 3 ]; then
+   echo "Usage: $0 [options] <data-dir> [<log-dir> [<mfcc-dir>] ]";
+   echo "e.g.: $0 data/train exp/make_mfcc/train mfcc"
+   echo "Note: <log-dir> defaults to <data-dir>/log, and <mfcc-dir> defaults to <data-dir>/data"
+   echo "Options: "
    echo "  --mfcc-config              <mfcc-config-file>        # config passed to compute-mfcc-feats "
    echo "  --pitch-config             <pitch-config-file>       # config passed to compute-kaldi-pitch-feats "
    echo "  --pitch-postprocess-config <postprocess-config-file>	# config passed to process-kaldi-pitch-feats "
@@ -34,8 +37,16 @@ if [ $# != 3 ]; then
 fi
 
 data=$1
-logdir=$2
-mfcc_pitch_dir=$3
+if [ $# -ge 2 ]; then
+  logdir=$2
+else
+  logdir=$data/log
+fi
+if [ $# -ge 3 ]; then
+  mfcc_pitch_dir=$3
+else
+  mfcc_pitch_dir=$data/data
+fi
 
 
 # make $mfcc_pitch_dir an absolute pathname.
@@ -82,7 +93,7 @@ fi
 for n in $(seq $nj); do
   # the next command does nothing unless $mfcc_pitch_dir/storage/ exists, see
   # utils/create_data_link.pl for more info.
-  utils/create_data_link.pl $mfcc_pitch_dir/raw_mfcc_pitch_$name.$n.ark  
+  utils/create_data_link.pl $mfcc_pitch_dir/raw_mfcc_pitch_$name.$n.ark
 done
 
 if [ -f $data/segments ]; then
@@ -94,7 +105,7 @@ if [ -f $data/segments ]; then
 
   utils/split_scp.pl $data/segments $split_segments || exit 1;
   rm $logdir/.error 2>/dev/null
-   
+
   mfcc_feats="ark:extract-segments scp,p:$scp $logdir/segments.JOB ark:- | compute-mfcc-feats $vtln_opts --verbose=2 --config=$mfcc_config ark:- ark:- |"
   pitch_feats="ark,s,cs:extract-segments scp,p:$scp $logdir/segments.JOB ark:- | compute-kaldi-pitch-feats --verbose=2 --config=$pitch_config ark:- ark:- | process-kaldi-pitch-feats $postprocess_config_opt ark:- ark:- |"
 
@@ -112,10 +123,10 @@ else
   done
 
   utils/split_scp.pl $scp $split_scps || exit 1;
-  
+
   mfcc_feats="ark:compute-mfcc-feats $vtln_opts --verbose=2 --config=$mfcc_config scp,p:$logdir/wav_${name}.JOB.scp ark:- |"
   pitch_feats="ark,s,cs:compute-kaldi-pitch-feats --verbose=2 --config=$pitch_config scp,p:$logdir/wav_${name}.JOB.scp ark:- | process-kaldi-pitch-feats $postprocess_config_opt ark:- ark:- |"
- 
+
   $cmd JOB=1:$nj $logdir/make_mfcc_pitch_${name}.JOB.log \
     paste-feats --length-tolerance=$paste_length_tolerance "$mfcc_feats" "$pitch_feats" ark:- \| \
     copy-feats --compress=$compress ark:- \
@@ -138,8 +149,8 @@ done > $data/feats.scp
 
 rm $logdir/wav_${name}.*.scp  $logdir/segments.* 2>/dev/null
 
-nf=`cat $data/feats.scp | wc -l` 
-nu=`cat $data/utt2spk | wc -l` 
+nf=`cat $data/feats.scp | wc -l`
+nu=`cat $data/utt2spk | wc -l`
 if [ $nf -ne $nu ]; then
   echo "It seems not all of the feature files were successfully processed ($nf != $nu);"
   echo "consider using utils/fix_data_dir.sh $data"
