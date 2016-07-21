@@ -1,9 +1,10 @@
-#!/bin/bash 
+#!/bin/bash
 
-# Copyright 2013 The Shenzhen Key Laboratory of Intelligent Media and Speech,
-#                PKU-HKUST Shenzhen Hong Kong Institution (Author: Wei Shi)
+# Copyright 2013  The Shenzhen Key Laboratory of Intelligent Media and Speech,
+#                 PKU-HKUST Shenzhen Hong Kong Institution (Author: Wei Shi)
+#           2016  Johns Hopkins University (author: Daniel Povey)
 # Apache 2.0
-# Combine filterbank and pitch features together 
+# Combine filterbank and pitch features together
 # Note: This file is based on make_fbank.sh and make_pitch_kaldi.sh
 
 # Begin configuration section.
@@ -21,9 +22,11 @@ echo "$0 $@"  # Print the command line for logging
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
-if [ $# != 3 ]; then
-   echo "usage: make_fbank_pitch.sh [options] <data-dir> <log-dir> <path-to-fbank-pitch-dir>";
-   echo "options: "
+if [ $# -lt 1 ] || [ $# -gt 3 ]; then
+   echo "Usage: $0 [options] <data-dir> [<log-dir> [<fbank-dir>] ]";
+   echo "e.g.: $0 data/train exp/make_fbank/train mfcc"
+   echo "Note: <log-dir> defaults to <data-dir>/log, and <fbank-dir> defaults to <data-dir>/data"
+   echo "Options: "
    echo "  --fbank-config             <config-file>             # config passed to compute-fbank-feats "
    echo "  --pitch-config             <pitch-config-file>       # config passed to compute-kaldi-pitch-feats "
    echo "  --pitch-postprocess-config <postprocess-config-file> # config passed to process-kaldi-pitch-feats "
@@ -34,8 +37,16 @@ if [ $# != 3 ]; then
 fi
 
 data=$1
-logdir=$2
-fbank_pitch_dir=$3
+if [ $# -ge 2 ]; then
+  logdir=$2
+else
+  logdir=$data/log
+fi
+if [ $# -ge 3 ]; then
+  fbank_pitch_dir=$3
+else
+  fbank_pitch_dir=$data/data
+fi
 
 
 # make $fbank_pitch_dir an absolute pathname.
@@ -83,7 +94,7 @@ fi
 for n in $(seq $nj); do
   # the next command does nothing unless $fbank_pitch_dir/storage/ exists, see
   # utils/create_data_link.pl for more info.
-  utils/create_data_link.pl $fbank_pitch_dir/raw_fbank_pitch_$name.$n.ark  
+  utils/create_data_link.pl $fbank_pitch_dir/raw_fbank_pitch_$name.$n.ark
 done
 
 if [ -f $data/segments ]; then
@@ -95,7 +106,7 @@ if [ -f $data/segments ]; then
 
   utils/split_scp.pl $data/segments $split_segments || exit 1;
   rm $logdir/.error 2>/dev/null
-   
+
   fbank_feats="ark:extract-segments scp,p:$scp $logdir/segments.JOB ark:- | compute-fbank-feats $vtln_opts --verbose=2 --config=$fbank_config ark:- ark:- |"
   pitch_feats="ark,s,cs:extract-segments scp,p:$scp $logdir/segments.JOB ark:- | compute-kaldi-pitch-feats --verbose=2 --config=$pitch_config ark:- ark:- | process-kaldi-pitch-feats $postprocess_config_opt ark:- ark:- |"
 
@@ -113,10 +124,10 @@ else
   done
 
   utils/split_scp.pl $scp $split_scps || exit 1;
-  
+
   fbank_feats="ark:compute-fbank-feats $vtln_opts --verbose=2 --config=$fbank_config scp,p:$logdir/wav.JOB.scp ark:- |"
   pitch_feats="ark,s,cs:compute-kaldi-pitch-feats --verbose=2 --config=$pitch_config scp,p:$logdir/wav.JOB.scp ark:- | process-kaldi-pitch-feats $postprocess_config_opt ark:- ark:- |"
- 
+
   $cmd JOB=1:$nj $logdir/make_fbank_pitch_${name}.JOB.log \
     paste-feats --length-tolerance=$paste_length_tolerance "$fbank_feats" "$pitch_feats" ark:- \| \
     copy-feats --compress=$compress ark:- \
@@ -139,8 +150,8 @@ done > $data/feats.scp
 
 rm $logdir/wav.*.scp  $logdir/segments.* 2>/dev/null
 
-nf=`cat $data/feats.scp | wc -l` 
-nu=`cat $data/utt2spk | wc -l` 
+nf=`cat $data/feats.scp | wc -l`
+nu=`cat $data/utt2spk | wc -l`
 if [ $nf -ne $nu ]; then
   echo "It seems not all of the feature files were successfully processed ($nf != $nu);"
   echo "consider using utils/fix_data_dir.sh $data"

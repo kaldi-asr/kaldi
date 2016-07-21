@@ -956,6 +956,46 @@ static void UnitTestCuMatrixGroupPnormDeriv() {
 }
 
 template<typename Real>
+static void UnitTestCuMatrixDiffGroupPnorm() {
+  Real p[] = { 1.234, 2.345, 1, 2, std::numeric_limits<Real>::infinity() };
+  for (int i = 0; i < 2 * sizeof(p) / sizeof(Real); i++) {
+    int32 dimM = 100 + Rand() % 200, dimNs = 100 + Rand() % 200;
+    int32 group_size = 1 + Rand() % 10;
+    BaseFloat power = p[i / 2];
+    int32 dimN = group_size * dimNs;
+    Matrix<Real> Hiv(dimM, dimN);
+    Matrix<Real> Hov(dimM, dimNs);
+    Matrix<Real> Hid(dimM, dimN);
+    Matrix<Real> Hod(dimM, dimNs);
+    Hiv.SetRandn();
+    Hod.SetRandn();
+    if (i % 2 == 0)
+      Hiv.ApplyFloor(0.0); // will put some zeros in the matrix.. harder to
+                           // do derivatives.
+    Hov.GroupPnorm(Hiv, power);
+    CuMatrix<Real> Div(dimM, dimN);
+    CuMatrix<Real> Dov(dimM, dimNs);
+    CuMatrix<Real> Did(dimM, dimN);
+    CuMatrix<Real> Dod(dimM, dimNs);
+    Div.CopyFromMat(Hiv);
+    Dod.CopyFromMat(Hod);
+    Dov.CopyFromMat(Hov);
+
+    // GPU
+    Did.DiffGroupPnorm(Div, Dov, Dod, power);
+
+    // CPU
+    Hid.GroupPnormDeriv(Hiv, Hov, power);
+    Hid.MulRowsGroupMat(Hod);
+
+    Matrix<Real> Hid2(dimM, dimN);
+    Did.CopyToMat(&Hid2);
+    AssertEqual(Hid, Hid2);
+  }
+}
+
+
+template<typename Real>
 static void UnitTestCuMatrixGroupMaxDeriv() {
   int32 dimM = 100 + Rand() % 200, dimNs = 100 + Rand() % 200;
   int32 group_size = 1 + Rand() % 10;
@@ -2580,6 +2620,7 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuDiffSoftmax<Real>();
   UnitTestCuMatrixGroupPnorm<Real>();
   UnitTestCuMatrixGroupPnormDeriv<Real>();
+  UnitTestCuMatrixDiffGroupPnorm<Real>();
   UnitTestCuMatrixGroupMax<Real>();
   UnitTestCuMatrixGroupMaxDeriv<Real>();
   UnitTestCuMatrixMulRowsVec<Real>();

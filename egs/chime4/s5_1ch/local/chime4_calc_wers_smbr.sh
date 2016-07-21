@@ -6,7 +6,7 @@
 set -e
 
 # Config:
-eval_flag=false # make it true when the evaluation data are released
+eval_flag=true # make it true when the evaluation data are released
 
 . utils/parse_options.sh || exit 1;
 

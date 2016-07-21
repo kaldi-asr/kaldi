@@ -435,6 +435,55 @@ static void _calc_pnorm_deriv(Real *deriv, const Real *vec, const Real *norm,
   }
 }
 
+
+template<typename Real>
+__global__
+void _diff_group_pnorm(Real *id, const Real *iv, const Real *ov, const Real* od,
+                       MatrixDim id_dim, int iv_stride, int ov_stride,
+                       int od_stride, int group_size, Real power) {
+  const int j = blockIdx.x * blockDim.x + threadIdx.x;
+  if (j < id_dim.cols) {
+    const int grid_stride = gridDim.y * blockDim.y;
+    const int src_j = j / group_size;
+    int i = blockIdx.y * blockDim.y + threadIdx.y;
+    for (; i < id_dim.rows; i += grid_stride) {
+      const int iv_index = j + i * iv_stride;
+      Real iv_ij = iv[iv_index];
+      Real ans;
+      if (power == Real(2)) {
+        const int ov_index = src_j + i * ov_stride;
+        Real ov_ij = ov[ov_index];
+        ans = ov_ij <= 0.0 ? 0.0 : iv_ij / ov_ij;
+      } else if (power == Real(1)) {
+        Real iv_ij_sign = (iv_ij >= 0 ? 1 : -1);
+        ans = (iv_ij == Real(0) ? 0.0 : iv_ij_sign);
+      } else if (power
+          == (sizeof(Real) == sizeof(float) ? CUDART_INF_F : CUDART_INF)) {
+        const int ov_index = src_j + i * ov_stride;
+        Real ov_ij = ov[ov_index];
+        Real iv_ij_sign = (iv_ij >= 0 ? 1 : -1);
+        ans =
+            ov_ij <= 0.0 ?
+                0.0 : (iv_ij_sign * (abs(iv_ij) == ov_ij ? 1.0 : 0.0));
+      } else {
+        const int ov_index = src_j + i * ov_stride;
+        Real ov_ij = ov[ov_index];
+        Real iv_ij_sign = (iv_ij >= 0 ? 1 : -1);
+        if (ov_ij <= 0.0) {
+          ans = 0.0; // The derivative is either zero or undefined at the origin.
+        } else {
+          ans = iv_ij_sign * pow(std::abs(iv_ij), power - 1)
+              * pow(ov_ij, 1 - power);
+        }
+      }
+      const int od_index = src_j + i * od_stride;
+      const int id_index = j + i * id_dim.stride;
+      id[id_index] = ans * od[od_index];
+    }
+  }
+}
+
+
 /// deriv is the derivative we will output; vec is the input we're computing
 /// the group max on, "maxv" is the previously computed group max.
 template<typename Real>
@@ -1954,69 +2003,76 @@ static void _heaviside(Real*y, const Real*x, MatrixDim d, int src_stride) {
 template<typename Real>
 __global__
 static void _softmax_reduce(Real*y, const Real*x, MatrixDim d, int src_stride) {
-  int j = blockIdx.x;
-  int THREADS = blockDim.x;
-  if (j >= d.rows) return;
+  __shared__ Real smem[CU1DBLOCK];
+  const int i = blockIdx.x;
+  const int x_start = i * src_stride;
+  const int y_start = i * d.stride;
+  const int tid = threadIdx.x;
 
-  __shared__ Real aux[CU1DBLOCK];
-  int steps = (d.cols - 1) / THREADS + 1;
-
-  //copy input to aux
-  aux[threadIdx.x] = x[threadIdx.x+j*d.stride];
-  for(int i=1; i<steps; ++i) {
-    if(threadIdx.x+i*THREADS < d.cols && aux[threadIdx.x] < x[threadIdx.x+i*THREADS+j*d.stride])
-	aux[threadIdx.x] = x[threadIdx.x+i*THREADS+j*d.stride];
+  // find max element of the row
+  // reduce to CU1DBLOCK elements per row.
+  Real tmax = sizeof(Real) == sizeof(float) ? -CUDART_INF_F : -CUDART_INF;
+  for (int j = tid; j < d.cols; j += CU1DBLOCK) {
+    tmax = max(tmax, x[x_start + j]);
   }
-
-  //get the maximum value
-  int nTotalThreads = THREADS;
+  smem[tid] = tmax;
   __syncthreads();
-  while(nTotalThreads > 1) {
-    int halfPoint = ((1+nTotalThreads) >> 1);   // divide by two
-    // only the first half of the threads will be active.
-    if (threadIdx.x < halfPoint)  {
-      // Get the shared value stored by another thread
-      if(threadIdx.x+halfPoint < nTotalThreads && aux[threadIdx.x] < aux[threadIdx.x+halfPoint])
-        aux[threadIdx.x] = aux[threadIdx.x + halfPoint];
+
+  // reduce to 2x warpSize elements per row
+# pragma unroll
+  for (int shift = CU1DBLOCK / 2; shift > warpSize; shift >>= 1) {
+    if (tid < shift) {
+      smem[tid] = max(smem[tid], smem[tid + shift]);
     }
     __syncthreads();
-    nTotalThreads = ((1+nTotalThreads) >> 1);   // divide by two.
   }
-  Real max = aux[0];
-  __syncthreads();
 
-   // subtract max, apply exp, sum up...
-  y[threadIdx.x+j*d.stride] = exp(x[threadIdx.x+j*d.stride] - max);
-  aux[threadIdx.x] = y[threadIdx.x+j*d.stride];
-  for(int i=1; i<steps; i++) {
-    if(threadIdx.x+i*THREADS < d.cols) {
-      y[threadIdx.x+i*THREADS+j*d.stride] = exp(x[threadIdx.x+i*THREADS+j*d.stride] - max);
-      aux[threadIdx.x] += y[threadIdx.x+i*THREADS+j*d.stride];
+  // reduce to 1 element per row
+  if (tid < warpSize) {
+#   pragma unroll
+    for (int shift = warpSize; shift > 0; shift >>= 1) {
+      smem[tid] = max(smem[tid], smem[tid + shift]);
     }
   }
-  nTotalThreads = THREADS;
+
+  // broadcast max to all threads
   __syncthreads();
-  while(nTotalThreads > 1) {
-    int halfPoint = ((1+nTotalThreads) >> 1);   // divide by two
-    // only the first half of the threads will be active.
-    if (threadIdx.x < halfPoint)  {
-      // Get the shared value stored by another thread
-      if(threadIdx.x+halfPoint < nTotalThreads)
-        aux[threadIdx.x] += aux[threadIdx.x + halfPoint];
+  Real max = smem[0];
+
+  // sum_j(exp(x(i,j)-max))
+  // reduce to CU1DBLOCK elements per row.
+  Real tsum = Real(0);
+  for (int j = tid; j < d.cols; j += CU1DBLOCK) {
+    tsum += exp(x[x_start + j] - max);
+  }
+  smem[tid] = tsum;
+  __syncthreads();
+
+  // reduce to 2x warpSize elements per row
+# pragma unroll
+  for (int shift = CU1DBLOCK / 2; shift > warpSize; shift >>= 1) {
+    if (tid < shift) {
+      smem[tid] += smem[tid + shift];
     }
     __syncthreads();
-    nTotalThreads = ((1+nTotalThreads) >> 1);   // divide by two.
   }
-  Real sum = aux[0];
-  __syncthreads();
 
-  //normalize by sum...
-  for(int i=0; i<steps; i++) {
-    if(threadIdx.x+i*THREADS < d.cols) {
-      y[threadIdx.x+i*THREADS+j*d.stride] = y[threadIdx.x+i*THREADS+j*d.stride] / sum;
+  // reduce to 1 element per row
+  if (tid < warpSize) {
+#   pragma unroll
+    for (int shift = warpSize; shift > 0; shift >>= 1) {
+      smem[tid] += smem[tid + shift];
     }
   }
 
+  // broadcast sum to all threads
+  __syncthreads();
+  Real inv_sum = Real(1) / smem[0];
+
+  // normalize the row
+  for (int j = tid; j < d.cols; j += CU1DBLOCK) {
+    y[y_start + j] = exp(x[x_start + j] - max) * inv_sum;
+  }
 }
 
 template<typename Real>
@@ -2527,6 +2583,14 @@ void cudaF_calc_pnorm_deriv(dim3 Gr, dim3 Bl, float *y, const float *x1,
   _calc_pnorm_deriv<<<Gr,Bl>>>(y, x1, x2, d, src_stride, group_size, power);
 }
 
+void cudaF_diff_group_pnorm(dim3 Gr, dim3 Bl, float *id, const float *iv,
+                            const float *ov, const float* od, MatrixDim id_dim,
+                            int iv_stride, int ov_stride, int od_stride,
+                            int group_size, float power) {
+  _diff_group_pnorm<<<Gr, Bl>>>(id, iv, ov, od, id_dim, iv_stride, ov_stride,
+      od_stride, group_size, power);
+}
+
 void cudaF_calc_group_max_deriv(dim3 Gr, dim3 Bl, float *y, const float *x1,
 			        const float *x2, MatrixDim d, int src_stride,
 			        int group_size) {
@@ -3024,6 +3088,14 @@ void cudaD_calc_pnorm_deriv(dim3 Gr, dim3 Bl, double*y, const double* x1,
 			    const double* x2, MatrixDim d, int src_stride,
 			    int group_size, double power) {
   _calc_pnorm_deriv<<<Gr,Bl>>>(y, x1, x2, d, src_stride, group_size, power);
+}
+
+void cudaD_diff_group_pnorm(dim3 Gr, dim3 Bl, double *id, const double *iv,
+                            const double *ov, const double* od,
+                            MatrixDim id_dim, int iv_stride, int ov_stride,
+                            int od_stride, int group_size, double power) {
+  _diff_group_pnorm<<<Gr, Bl>>>(id, iv, ov, od, id_dim, iv_stride, ov_stride,
+                                od_stride, group_size, power);
 }
 
 void cudaD_calc_group_max_deriv(dim3 Gr, dim3 Bl, double*y, const double* x1,

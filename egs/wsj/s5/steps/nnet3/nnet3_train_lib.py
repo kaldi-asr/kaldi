@@ -206,7 +206,7 @@ def GenerateEgs(data, alidir, egs_dir,
                 valid_left_context, valid_right_context,
                 run_opts, stage = 0,
                 feat_type = 'raw', online_ivector_dir = None,
-                samples_per_iter = 20000, frames_per_eg = 20,
+                samples_per_iter = 20000, frames_per_eg = 20, srand = 0,
                 egs_opts = None, cmvn_opts = None, transform_dir = None):
 
     RunKaldiCommand("""
@@ -222,6 +222,7 @@ steps/nnet3/get_egs.sh {egs_opts} \
   --stage {stage} \
   --samples-per-iter {samples_per_iter} \
   --frames-per-eg {frames_per_eg} \
+  --srand {srand} \
   {data} {alidir} {egs_dir}
       """.format(command = run_opts.command,
           cmvn_opts = cmvn_opts if cmvn_opts is not None else '',
@@ -232,7 +233,7 @@ steps/nnet3/get_egs.sh {egs_opts} \
           valid_left_context = valid_left_context,
           valid_right_context = valid_right_context,
           stage = stage, samples_per_iter = samples_per_iter,
-          frames_per_eg = frames_per_eg, data = data, alidir = alidir,
+          frames_per_eg = frames_per_eg, srand = srand, data = data, alidir = alidir,
           egs_dir = egs_dir,
           egs_opts = egs_opts if egs_opts is not None else '' ))
 

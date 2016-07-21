@@ -936,23 +936,44 @@ class NoOpComponent: public NonlinearComponent {
 class ClipGradientComponent: public Component {
  public:
   ClipGradientComponent(int32 dim, BaseFloat clipping_threshold,
-                        bool norm_based_clipping, int32 num_clipped,
-                        int32 count) {
-    Init(dim, clipping_threshold, norm_based_clipping, num_clipped, count);}
+                        bool norm_based_clipping,
+                        BaseFloat self_repair_clipped_proportion_threshold,
+                        BaseFloat self_repair_target,
+                        BaseFloat self_repair_scale,
+                        int32 num_clipped,
+                        int32 count,
+                        int32 num_self_repaired,
+                        int32 num_backpropped) {
+    Init(dim, clipping_threshold, norm_based_clipping,
+         self_repair_clipped_proportion_threshold,
+         self_repair_target,
+         self_repair_scale,
+         num_clipped, count,
+         num_self_repaired, num_backpropped);}
 
   ClipGradientComponent(): dim_(0), clipping_threshold_(-1),
-    norm_based_clipping_(false), num_clipped_(0), count_(0) { }
+    norm_based_clipping_(false),
+    self_repair_clipped_proportion_threshold_(1.0),
+    self_repair_target_(0.0),
+    self_repair_scale_(0.0),
+    num_clipped_(0), count_(0),
+    num_self_repaired_(0), num_backpropped_(0) { }
 
   virtual int32 InputDim() const { return dim_; }
   virtual int32 OutputDim() const { return dim_; }
   virtual void InitFromConfig(ConfigLine *cfl);
   void Init(int32 dim, BaseFloat clipping_threshold, bool norm_based_clipping,
-            int32 num_clipped, int32 count);
+            BaseFloat self_repair_clipped_proportion_threshold,
+            BaseFloat self_repair_target,
+            BaseFloat self_repair_scale,
+            int32 num_clipped, int32 count,
+            int32 num_self_repaired, int32 num_backpropped);
 
   virtual std::string Type() const { return "ClipGradientComponent"; }
 
   virtual int32 Properties() const {
-    return kSimpleComponent|kLinearInInput|kPropagateInPlace|kBackpropInPlace;
+    return kSimpleComponent|kLinearInInput|kPropagateInPlace|kBackpropInPlace|
+           kBackpropNeedsInput;
   }
 
   virtual void ZeroStats();
@@ -961,15 +982,20 @@ class ClipGradientComponent: public Component {
     return new ClipGradientComponent(dim_,
                                      clipping_threshold_,
                                      norm_based_clipping_,
+                                     self_repair_clipped_proportion_threshold_,
+                                     self_repair_target_,
+                                     self_repair_scale_,
                                      num_clipped_,
-                                     count_);}
+                                     count_,
+                                     num_self_repaired_,
+                                     num_backpropped_);}
 
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
                         const ComponentPrecomputedIndexes *indexes,
-                        const CuMatrixBase<BaseFloat> &, //in_value
+                        const CuMatrixBase<BaseFloat> &in_value,
                         const CuMatrixBase<BaseFloat> &, // out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
                         Component *to_update,
@@ -982,6 +1008,13 @@ class ClipGradientComponent: public Component {
   /// Write component to stream
   virtual void Write(std::ostream &os, bool binary) const;
   virtual std::string Info() const;
+  virtual ~ClipGradientComponent() {
+    if (num_self_repaired_ > 0)
+      KALDI_LOG << "ClipGradientComponent(node_name=" << debug_info_
+                << ")'s self-repair was activated " << num_self_repaired_
+                << " time(s) out of " << num_backpropped_
+                << " times of calling Backprop() in this training job.";
+  }
  private:
   int32 dim_;  // input/output dimension
   BaseFloat clipping_threshold_;  // threshold to be used for clipping
@@ -992,6 +1025,29 @@ class ClipGradientComponent: public Component {
                               // else element-wise absolute value clipping is
                               // done
 
+  // some configuration values relating to self-repairing.
+  BaseFloat self_repair_clipped_proportion_threshold_; // the threshold of
+                                                       // clipped-proportion
+                                                       // for self-repair to be
+                                                       // activated
+  BaseFloat self_repair_target_; // the target value towards which self-repair
+                                 // is trying to set for in-deriv
+  BaseFloat self_repair_scale_;  // constant scaling the self-repair vector
+  std::string debug_info_;   // component-node name, used in the destructor to
+                             // print out stats of self-repair
+  
+  // this function is called from Backprop code, and only does something if the
+  // self-repair-scale config value is set and the current clipped proportion
+  // exceeds the threshold. What it does is to add a term to in-deriv that
+  // forces the input to the ClipGradientComponent to be close to some small
+  // value (e.g., 0.0 or 0.5, depending on what the input is, e.g.,
+  // Sigmoid or Tanh or Affine). The hope is that if the input is forced to be
+  // small, the parameters on the path will also tend to be small, which may
+  // help tamp down the divergence caused by gradient explosion.
+  void RepairGradients(const std::string &debug_info,
+                       const CuMatrixBase<BaseFloat> &in_value,
+                       CuMatrixBase<BaseFloat> *in_deriv,
+                       ClipGradientComponent *to_update) const;
 
   ClipGradientComponent &operator =
       (const ClipGradientComponent &other); // Disallow.
@@ -1004,6 +1060,8 @@ class ClipGradientComponent: public Component {
   // Note: no stats are stored when norm_based_clipping_ is false
   int32 num_clipped_;  // number of elements which were clipped
   int32 count_;  // number of elements which were processed
+  int32 num_self_repaired_; // number of times self-repair is activated
+  int32 num_backpropped_; //number of times backprop is called
 
 };
 
