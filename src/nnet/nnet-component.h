@@ -82,7 +82,8 @@ class Component {
     kMaxPooling2DComponent,
     kFramePoolingComponent,
     kParallelComponent,
-    kMultiBasisComponent
+    kMultiBasisComponent,
+    kMultiStreamMaskComponent
   } ComponentType;
 
   /// A pair of type and marker,

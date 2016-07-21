@@ -47,6 +47,8 @@
 #include "nnet/nnet-parallel-component.h"
 #include "nnet/nnet-multibasis-component.h"
 
+#include "nnet/nnet-multistream-mask-component.h"
+
 namespace kaldi {
 namespace nnet1 {
 
@@ -79,6 +81,7 @@ const struct Component::key_value Component::kMarkerMap[] = {
   { Component::kFramePoolingComponent, "<FramePoolingComponent>" },
   { Component::kParallelComponent, "<ParallelComponent>" },
   { Component::kMultiBasisComponent, "<MultiBasisComponent>" },
+  { Component::kMultiStreamMaskComponent, "<MultiStreamMaskComponent>" },
 };
 
 
@@ -193,6 +196,9 @@ Component* Component::NewComponentOfType(ComponentType comp_type,
       break;
     case Component::kMultiBasisComponent :
       ans = new MultiBasisComponent(input_dim, output_dim);
+      break;
+    case Component::kMultiStreamMaskComponent :
+      ans = new MultiStreamMaskComponent(input_dim, output_dim);
       break;
     case Component::kUnknown :
     default :
