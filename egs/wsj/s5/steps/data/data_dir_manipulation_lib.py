@@ -1,9 +1,4 @@
 import subprocess
-#import logging
-#import math
-#import re
-#import time
-#import argparse
 
 def RunKaldiCommand(command, wait = True):
     """ Runs commands frequently seen in Kaldi scripts. These are usually a
