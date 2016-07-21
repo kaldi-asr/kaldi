@@ -1433,6 +1433,8 @@ bool DeterminizeLatticePhonePruned(
   DeterminizeLatticePrunedOptions det_opts;
   det_opts.delta = opts.delta;
   det_opts.max_mem = opts.max_mem;
+  det_opts.max_loop = opts.max_loop;
+  det_opts.max_arcs = opts.max_arcs;
 
   // If --phone-determinize is true, do the determinization on phone + word
   // lattices.
