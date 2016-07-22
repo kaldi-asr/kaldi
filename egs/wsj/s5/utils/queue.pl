@@ -312,8 +312,10 @@ if (!-d $dir) { die "Cannot make the directory $dir\n"; }
 # make a directory called "q",
 # where we will put the log created by qsub... normally this doesn't contain
 # anything interesting, evertyhing goes to $logfile.
-if (! -d "$qdir") {
-  system "mkdir $qdir 2>/dev/null";
+# in $qdir/sync we'll put the done.* files... we try to keep this
+# directory small because it's transmitted over NFS many times.
+if (! -d "$qdir/sync") {
+  system "mkdir -p $qdir/sync 2>/dev/null";
   sleep(5); ## This is to fix an issue we encountered in denominator lattice creation,
   ## where if e.g. the exp/tri2b_denlats/log/15/q directory had just been
   ## created and the job immediately ran, it would die with an error because nfs
@@ -345,7 +347,7 @@ if ($queue_scriptfile !~ m:^/:) {
 # Also keep our current PATH around, just in case there was something
 # in it that we need (although we also source ./path.sh)
 
-my $syncfile = "$qdir/done.$$";
+my $syncfile = "$qdir/sync/done.$$";
 
 system("rm $queue_logfile $syncfile 2>/dev/null");
 #
@@ -461,9 +463,9 @@ if (! $sync) { # We're not submitting with -sync y, so we
         # the following (.kick) commands are basically workarounds for NFS bugs.
         if (rand() < 0.25) { # don't do this every time...
           if (rand() > 0.5) {
-            system("touch $qdir/.kick");
+            system("touch $qdir/sync/.kick");
           } else {
-            system("rm $qdir/.kick 2>/dev/null");
+            system("rm $qdir/sync/.kick 2>/dev/null");
           }
         }
         if ($counter++ % 10 == 0) {
@@ -498,18 +500,18 @@ if (! $sync) { # We're not submitting with -sync y, so we
           # Sometimes NFS gets confused and thinks it's transmitted the directory
           # but it hasn't, due to timestamp issues.  Changing something in the
           # directory will usually fix that.
-          system("touch $qdir/.kick");
-          system("rm $qdir/.kick 2>/dev/null");
+          system("touch $qdir/sync/.kick");
+          system("rm $qdir/sync/.kick 2>/dev/null");
           if ( -f $f ) { next; }   #syncfile appeared, ok
           sleep(7);
-          system("touch $qdir/.kick");
+          system("touch $qdir/sync/.kick");
           sleep(1);
-          system("rm $qdir/.kick 2>/dev/null");
+          system("rm $qdir/sync/.kick 2>/dev/null");
           if ( -f $f ) {  next; }   #syncfile appeared, ok
           sleep(60);
-          system("touch $qdir/.kick");
+          system("touch $qdir/sync/.kick");
           sleep(1);
-          system("rm $qdir/.kick 2>/dev/null");
+          system("rm $qdir/sync/.kick 2>/dev/null");
           if ( -f $f ) { next; }  #syncfile appeared, ok
           $f =~ m/\.(\d+)$/ || die "Bad sync-file name $f";
           my $job_id = $1;
