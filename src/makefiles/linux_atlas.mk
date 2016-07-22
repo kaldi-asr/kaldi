@@ -27,7 +27,7 @@ ifeq ($(KALDI_FLAVOR), dynamic)
 CXXFLAGS += -fPIC
 endif
 
-LDFLAGS = -rdynamic $(OPENFSTLDFLAGS)
+LDFLAGS = -rdynamic $(OPENFSTLDFLAGS) ${EXTRA_LDFLAGS}
 LDLIBS = $(EXTRA_LDLIBS) $(OPENFSTLIBS) $(ATLASLIBS) -lm -lpthread -ldl
 CC = g++
 CXX = g++

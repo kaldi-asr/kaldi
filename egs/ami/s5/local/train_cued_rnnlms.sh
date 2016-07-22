@@ -4,12 +4,14 @@ train_text=
 nwords=10000
 hidden=200
 cachesize=20
+crit=ce
 
 rnnlm_ver=cuedrnnlm
 
 bptt=5
 
 #set -v
+set -e
 
 . path.sh
 . cmd.sh
@@ -37,7 +39,7 @@ cat $srcdir/lexicon.txt | awk '{print $1}' | grep -v -w '!SIL' > $dir/wordlist.a
 # TODO(hxu) now use UNK for debugging
 cat $train_text | awk -v w=$dir/wordlist.all \
   'BEGIN{while((getline<w)>0) v[$1]=1;}
-  {for (i=2;i<=NF;i++) if ($i in v) printf $i" ";else printf "UNK ";print ""}'|sed 's/ $//g' \
+  {for (i=2;i<=NF;i++) if ($i in v) printf $i" ";else printf "[UNK] ";print ""}'|sed 's/ $//g' \
   | perl -e ' use List::Util qw(shuffle); @A=<>; print join("", shuffle(@A)); ' \
   | gzip -c > $dir/all.gz
 
@@ -58,9 +60,12 @@ gunzip -c $dir/all.gz | tail -n +$heldout_sent > $dir/train.in # training data
 # Note: by concatenating with $dir/wordlist.all, we are doing add-one
 # smoothing of the counts.
 
+# get rid of this design - 
 cat $dir/train.in $dir/wordlist.all | grep -v '</s>' | grep -v '<s>' | \
   awk '{ for(x=1;x<=NF;x++) count[$x]++; } END{for(w in count){print count[w], w;}}' | \
   sort -nr > $dir/unigram.counts
+
+total_nwords=`wc -l $dir/unigram.counts | awk '{print $1}'`
 
 #head -$nwords_input $dir/unigram.counts | awk '{print $2}' | tee $dir/wordlist.rnn.input | awk '{print NR-1, $1}' > $dir/wordlist.rnn.id.input
 #head -$nwords_output $dir/unigram.counts | awk '{print $2}' | tee $dir/wordlist.rnn.output | awk '{print NR-1, $1}' > $dir/wordlist.rnn.id.output
@@ -70,15 +75,19 @@ tail -n +$nwords $dir/unigram.counts > $dir/unk_class.counts
 
 tot=`awk '{x=x+$1} END{print x}' $dir/unk_class.counts`
 awk -v tot=$tot '{print $2, ($1*1.0/tot);}' <$dir/unk_class.counts  >$dir/unk.probs
-
 # TODO(hxu) using RNN_UNK for debugging
 
-for type in train valid; do
+false && for type in train valid; do
   cat $dir/$type.in | awk -v w=$dir/wordlist.rnn \
     'BEGIN{while((getline<w)>0) v[$1]=1;}
     {for (i=1;i<=NF;i++) if ($i in v) printf $i" ";else printf "RNN_UNK ";print ""}'|sed 's/ $//g' \
     > $dir/$type
 done
+#
+for type in train valid; do
+  mv $dir/$type.in $dir/$type
+done
+
 #rm $dir/train.in # no longer needed-- and big. #TODO(hxu) keep this to debug
 
 # Now randomize the order of the training data.
@@ -93,12 +102,7 @@ echo "Training CUED-RNNLM on GPU"
 #  -hidden 100 -rand-seed 1 -debug 2 -class 100 -bptt 2 -bptt-block 20 \
 #  -direct-order 4 -direct 1000 -binary >& $dir/rnnlm1.log &
 
-'''
-./cuedrnnlm/rnnlm -train -trainfile data/train.dat -validfile data/dev.dat -device 1 -minibatch 64 -layers 31858:200:20002 -bptt 5 -bptt-delay 0  -traincrit ce -lrtune newbob -inputwlist ./wlists/input.wlist -outputwlist ./wlists/output.wlist  -debug 2 -randseed 1 -writemodel h200.mb64/rnnlm.txt -independent 1 -learnrate 1.0  -min_improvement 1.003
-''' 2>/dev/null
-
 layer_str=$[$nwords+2]:$hidden:$[$nwords+2]
-crit=ce
 bptt_delay=0
 
 # TODO(hxu) fullvocsize
@@ -109,12 +113,12 @@ $cuda_mem_cmd $dir/rnnlm.log \
    -bptt $bptt -bptt-delay $bptt_delay -traincrit $crit -lrtune newbob \
    -inputwlist $dir/wordlist.rnn.id -outputwlist $dir/wordlist.rnn.id \
    -independent 1 -learnrate 1.0 \
-   -fullvocsize $nwords \
+   -fullvocsize $total_nwords \
    -writemodel $dir/rnnlm -randseed 1 -debug 2
 fi
 
 # make it like a Kaldi table format, with fake utterance-ids.
-cat $dir/valid.in | awk '{ printf("uttid-%d ", NR); print; }' > $dir/valid.with_ids
+cat $dir/valid | awk '{ printf("uttid-%d ", NR); print; }' > $dir/valid.with_ids
 
 utils/rnnlm_compute_scores.sh --rnnlm_ver $rnnlm_ver $dir $dir/tmp.valid $dir/valid.with_ids $dir/valid.scores
 

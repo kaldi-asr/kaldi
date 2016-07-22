@@ -31,11 +31,11 @@
 namespace kaldi {
 
 struct KaldiCuedRnnlmWrapperOpts {
-  std::string unk_symbol;
   std::string eos_symbol;
   std::string layer_sizes;
+  int full_voc_size;
 
-  KaldiCuedRnnlmWrapperOpts() : unk_symbol("<RNN_UNK>"), eos_symbol("</s>") {}
+  KaldiCuedRnnlmWrapperOpts() : eos_symbol("</s>"), full_voc_size(-1) {}
 
   std::vector<int> LayerSizes() const {
     vector<int> ans;
@@ -54,20 +54,19 @@ struct KaldiCuedRnnlmWrapperOpts {
   }
 
   void Register(OptionsItf *opts) {
-    opts->Register("unk-symbol", &unk_symbol, "Symbol for out-of-vocabulary "
-                   "words in rnnlm.");
     opts->Register("eos-symbol", &eos_symbol, "End of setence symbol in "
                    "rnnlm.");
     opts->Register("layer-sizes", &layer_sizes, "String for layer sizes");
+    opts->Register("full-voc-size", &full_voc_size, "Vocabulary size");
   }
 };
 
 class KaldiCuedRnnlmWrapper {
  public:
   KaldiCuedRnnlmWrapper(const KaldiCuedRnnlmWrapperOpts &opts,
-                    const std::string &unk_prob_rspecifier,
-                    const std::string &word_symbol_table_rxfilename,
-                    const std::string &rnnlm_rxfilename);
+                        const std::string &rnn_wordlist,
+                        const std::string &word_symbol_table_rxfilename,
+                        const std::string &rnnlm_rxfilename);
 
   int32 GetHiddenLayerSize() const { return rnnlm_.getHiddenLayerSize(); }
 
@@ -77,9 +76,12 @@ class KaldiCuedRnnlmWrapper {
                        const std::vector<BaseFloat> &context_in,
                        std::vector<BaseFloat> *context_out);
 
+
  private:
   cued_rnnlm::RNNLM rnnlm_;
-  std::vector<std::string> label_to_word_;
+  std::vector<std::string> fst_label_to_word_;
+  std::vector<std::string> rnn_label_to_word_;
+  std::vector<int> fst_label_to_rnn_label_;
   int32 eos_;
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(KaldiCuedRnnlmWrapper);
@@ -106,8 +108,8 @@ class CuedRnnlmDeterministicFst
   virtual bool GetArc(StateId s, Label ilabel, fst::StdArc* oarc);
 
  private:
-  typedef unordered_map<std::vector<Label>,
-                        StateId, VectorHasher<Label> > MapType;
+  typedef unordered_map
+            <std::vector<Label>, StateId, VectorHasher<Label> > MapType;
   StateId start_state_;
   MapType wseq_to_state_;
   std::vector<std::vector<Label> > state_to_wseq_;

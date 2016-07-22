@@ -27,39 +27,116 @@ namespace kaldi {
 
 KaldiCuedRnnlmWrapper::KaldiCuedRnnlmWrapper(
     const KaldiCuedRnnlmWrapperOpts &opts,
-    const std::string &unk_prob_rspecifier,
+    const std::string &rnn_wordlist,
     const std::string &word_symbol_table_rxfilename,
     const std::string &rnnlm_rxfilename):
- rnnlm_(rnnlm_rxfilename, word_symbol_table_rxfilename,
-        word_symbol_table_rxfilename, opts.LayerSizes(),
-        0, false, 0) {
+       rnnlm_(rnnlm_rxfilename, rnn_wordlist, rnn_wordlist, opts.LayerSizes(),
+              opts.full_voc_size, false, 0) {
 
   // Reads symbol table.
-  fst::SymbolTable *word_symbols = NULL;
-  if (!(word_symbols =
+  fst::SymbolTable *fst_word_symbols = NULL;
+  if (!(fst_word_symbols =
         fst::SymbolTable::ReadText(word_symbol_table_rxfilename))) {
     KALDI_ERR << "Could not read symbol table from file "
         << word_symbol_table_rxfilename;
   }
-  label_to_word_.resize(word_symbols->NumSymbols() + 1);
-  for (int32 i = 0; i < label_to_word_.size() - 1; ++i) {
-    label_to_word_[i] = word_symbols->Find(i);
-    if (label_to_word_[i] == "") {
+
+  fst_label_to_word_.resize(fst_word_symbols->NumSymbols());
+
+  for (int32 i = 0; i < fst_label_to_word_.size(); ++i) {
+    fst_label_to_word_[i] = fst_word_symbols->Find(i);
+    if (fst_label_to_word_[i] == "") {
       KALDI_ERR << "Could not find word for integer " << i << "in the word "
           << "symbol table, mismatched symbol table or you have discoutinuous "
           << "integers in your symbol table?";
     }
   }
-  label_to_word_[label_to_word_.size() - 1] = opts.eos_symbol;
-  eos_ = label_to_word_.size() - 1;
+
+//  fst::SymbolTable *rnn_word_symbols = NULL;
+/*
+  if (!(rnn_word_symbols =
+        fst::SymbolTable::ReadText(rnn_wordlist))) {
+    KALDI_ERR << "Could not read symbol table from file "
+        << rnn_wordlist;
+  }
+*/
+
+//  rnn_label_to_word_.resize(rnn_word_symbols->NumSymbols() + 2);
+  fst_label_to_rnn_label_.resize(fst_word_symbols->NumSymbols(), -1);
+                                 // +1 is the <OOS> symbol
+//                                 rnn_word_symbols->NumSymbols() + 1);
+
+  rnn_label_to_word_.push_back("<s>"); // TODO(hxu) not quite right
+  { // input.
+    ifstream ifile(rnn_wordlist.c_str());
+    int id;
+    string word;
+    int i = 0;
+    while (ifile >> id >> word) {
+      if (word == "[UNK]") {
+        word = "<unk>";
+      } else if (word == "<OOS>") {
+        continue;
+      }
+      i++;
+      KALDI_ASSERT(i == id + 1);
+      rnn_label_to_word_.push_back(word);
+
+      int fst_label = fst_word_symbols->Find(rnn_label_to_word_[i]);
+//      cout << "word is " << rnn_label_to_word_[i] << endl;
+      KALDI_ASSERT(fst::SymbolTable::kNoSymbol != fst_label);
+      fst_label_to_rnn_label_[fst_label] = i;
+    }
+  }
+  rnn_label_to_word_.push_back("<OOS>"); // TODO(hxu) not quite right
+  
+  for (int i = 0; i < fst_label_to_rnn_label_.size(); i++) {
+    if (fst_label_to_rnn_label_[i] == -1) {
+      fst_label_to_rnn_label_[i] = rnn_label_to_word_.size() - 1;
+    }
+  }
+
+
+/*
+  for (int32 i = 0; i < rnn_label_to_word_.size(); ++i) {
+    
+    rnn_label_to_word_[i + 1] = rnn_word_symbols->Find(i);
+    if (rnn_label_to_word_[i + 1] == "") {
+      KALDI_ERR << "Could not find word for integer " << i << "in the word "
+          << "symbol table, mismatched symbol table or you have discoutinuous "
+          << "integers in your symbol table?";
+    }
+  }
+//*/
+
+  eos_ = rnn_label_to_word_.size() - 1; // TODO
 }
 
 BaseFloat KaldiCuedRnnlmWrapper::GetLogProb(
     int32 word, const std::vector<int32> &wseq,
     const std::vector<BaseFloat> &context_in,
     std::vector<BaseFloat> *context_out) {
+  int32 rnn_word = fst_label_to_rnn_label_[word];
+//  std::vector<int32> rnn_wseq(wseq.size());
+//
+//  for (int i = 0; i < rnn_wseq.size(); i++) {
+//    rnn_wseq[i] = fst_label_to_rnn_label_[wseq[i]];
+//  }
 
-  return rnnlm_.computeConditionalLogprob(word, wseq, context_in, context_out);
+  std::cout << "rnnlm: history is ";
+  vector<std::string> words(wseq.size());
+  for (int i = 0; i < wseq.size(); i++) {
+//    words[i] = fst_label_to_word[wseq[i]];
+    std::cout << fst_label_to_word_[wseq[i]] << " ";
+  }
+  std::cout << "\nrnnlm: this word is "
+            << fst_label_to_word_[word] << "\n\n";
+
+  BaseFloat prob = rnnlm_.computeConditionalLogprob(rnn_word, wseq,
+                                          context_in, context_out);
+
+  cout << "rnnlm: prob is: " << prob << endl;
+  return prob;
 /*
   std::vector<std::string> wseq_symbols(wseq.size());
   for (int32 i = 0; i < wseq_symbols.size(); ++i) {
@@ -78,8 +155,8 @@ CuedRnnlmDeterministicFst::CuedRnnlmDeterministicFst(int32 max_ngram_order,
   max_ngram_order_ = max_ngram_order;
   rnnlm_ = rnnlm;
 
-  // Uses empty history for <s>.
   std::vector<Label> bos;
+  bos.push_back(0); // TODO(hxu) 0 for <s>
   std::vector<BaseFloat> bos_context(rnnlm->GetHiddenLayerSize(), 1.0f);
   state_to_wseq_.push_back(bos);
   state_to_context_.push_back(bos_context);

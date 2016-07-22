@@ -42,8 +42,14 @@ outdir=$5
 
 rescoring_binary=lattice-lmrescore-rnnlm
 
+first_arg=ark:$rnnlm_dir/unk.probs # this is for mikolov's rnnlm
+extra_arg=
+
 if [ "$rnnlm_ver" == "cuedrnnlm" ]; then
-  rescoring_binary="lattice-lmrescore-cuedrnnlm --layer-sizes=\"$layer_string\""
+  total_size=`wc -l $rnnlm_dir/unigram.counts | awk '{print $1}'`
+  rescoring_binary="lattice-lmrescore-cuedrnnlm --full-voc-size=$total_size --layer-sizes=\"$layer_string\""
+  cat $rnnlm_dir/rnnlm.input.wlist.index | tail -n +2 | awk '{print $1-1,$2}' > $rnnlm_dir/rnn.wlist # ugly fix but works
+  first_arg=$rnnlm_dir/rnn.wlist
 fi
 
 oldlm=$oldlang/G.fst
@@ -80,7 +86,7 @@ if [ "$oldlm" == "$oldlang/G.fst" ]; then
     lattice-lmrescore --lm-scale=$oldlm_weight \
     "ark:gunzip -c $indir/lat.JOB.gz|" "$oldlm_command" ark:-  \| \
     $rescoring_binary --lm-scale=$weight \
-    --max-ngram-order=$max_ngram_order ark:$rnnlm_dir/unk.probs \
+    --max-ngram-order=$max_ngram_order $first_arg \
     $oldlang/words.txt ark:- "$rnnlm_dir/rnnlm" \
     "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;
 else

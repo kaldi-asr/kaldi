@@ -1,8 +1,10 @@
 
 all:
 
-EXTRA_CXXFLAGS = -Wno-sign-compare -fopenmp # not sure if I should add it here
+EXTRA_CXXFLAGS = -Wno-sign-compare -fopenmp # not sure if I should add it here TODO(hxu) seems it's not used here!
 include ../kaldi.mk
+
+EXTRA_LDFLAGS = -fopenmp
 
 BINFILES = lattice-best-path lattice-prune lattice-equivalent lattice-to-nbest \
            lattice-lmrescore lattice-scale lattice-union lattice-to-post \
@@ -34,4 +36,3 @@ ADDLIBS = ../lat/kaldi-lat.a ../lm/kaldi-lm.a ../hmm/kaldi-hmm.a \
           ../thread/kaldi-thread.a ../fstext/kaldi-fstext.a ../base/kaldi-base.a 
 
 include ../makefiles/default_rules.mk
-

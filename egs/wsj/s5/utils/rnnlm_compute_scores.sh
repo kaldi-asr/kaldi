@@ -65,12 +65,24 @@ cat $tempdir/text | awk -v voc=$dir/wordlist.rnn -v unk=$dir/unk.probs \
 
 if [ "$rnnlm_ver" == "cuedrnnlm" ]; then
   set -x
+  total_nwords=`wc -l $dir/unigram.counts | awk '{print$1}'`
 # not needed here for cued-rnnlm format
 #  cat $tempdir/text | awk '{print NR,0,0,"<s>",$0,"</s>"}' > $tempdir/text.s
-  cat $tempdir/text.nounk | sed 's=<unk>=UNK=g' | sed 's=<UNK>=UNK=g' > $tempdir/text.nounk.2
+
+false && (
+    cat $tempdir/text | awk -v w=$dir/wordlist.all \
+    'BEGIN{while((getline<w)>0) v[$1]=1;}
+    {for (i=1;i<=NF;i++) if ($i in v) printf $i" ";else printf "[UNK] ";print ""}'|sed 's/ $//g' \
+    > $tempdir/text.nounk.2
+    )
+
+  cat $tempdir/text | sed 's/<unk>/[UNK]/g' \
+    > $tempdir/text.nounk.2
+
   $rnnlm.eval -ppl -readmodel $dir/rnnlm \
     -testfile $tempdir/text.nounk.2 \
-    -inputwlist $dir/wordlist.rnn.id -outputwlist $dir/rnnlm.output.wlist.index -debug 0 \
+    -fullvocsize $total_nwords \
+    -inputwlist $dir/rnnlm.input.wlist.index -outputwlist $dir/rnnlm.output.wlist.index -debug 0 \
     | grep "^per-sentence" | awk '{print $3*log(10)}' > $tempdir/loglikes.rnn  
 #    | tail -n 1 | awk '{print $4}' > $tempdir/loglikes.rnn
 else
@@ -82,6 +94,10 @@ fi
   echo "rnnlm rescoring failed" && exit 1;
 
 paste $tempdir/loglikes.rnn $tempdir/loglikes.oov | awk '{print -($1+$2);}' >$tempdir/scores
+
+if [ "$rnnlm_ver" == "cuedrnnlm" ]; then 
+  cat $tempdir/loglikes.rnn | awk '{print -$1 * log(10)}' > $tempdir/scores
+fi
 
 # scores out, with utterance-ids.
 paste $tempdir/ids $tempdir/scores  > $scores_out

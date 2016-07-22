@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
         "composing with the wrapped LM using a special type of composition\n"
         "algorithm. Determinization will be applied on the composed lattice.\n"
         "\n"
-        "Usage: lattice-lmrescore-rnnlm [options] [unk_prob_rspecifier] \\\n"
+        "Usage: lattice-lmrescore-rnnlm [options] <rnnlm-wordlist> \\\n"
         "             <word-symbol-table-rxfilename> <lattice-rspecifier> \\\n"
         "             <rnnlm-rxfilename> <lattice-wspecifier>\n"
         " e.g.: lattice-lmrescore-rnnlm --lm-scale=-1.0 words.txt \\\n"
@@ -64,25 +64,19 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::string lats_rspecifier, unk_prob_rspecifier,
+    std::string lats_rspecifier, rnn_word_list,
         word_symbols_rxfilename, rnnlm_rxfilename, lats_wspecifier;
-    if (po.NumArgs() == 4) {
-      unk_prob_rspecifier = "";
-      word_symbols_rxfilename = po.GetArg(1);
-      lats_rspecifier = po.GetArg(2);
-      rnnlm_rxfilename = po.GetArg(3);
-      lats_wspecifier = po.GetArg(4);
-    } else if (po.NumArgs() == 5) {
-      unk_prob_rspecifier = po.GetArg(1);
-      word_symbols_rxfilename = po.GetArg(2);
-      lats_rspecifier = po.GetArg(3);
-      rnnlm_rxfilename = po.GetArg(4);
-      lats_wspecifier = po.GetArg(5);
-    }
+    KALDI_ASSERT (po.NumArgs() == 5);
+
+    rnn_word_list = po.GetArg(1);
+    word_symbols_rxfilename = po.GetArg(2);
+    lats_rspecifier = po.GetArg(3);
+    rnnlm_rxfilename = po.GetArg(4);
+    lats_wspecifier = po.GetArg(5);
 
     // Reads the language model.
-    KaldiCuedRnnlmWrapper rnnlm(opts, unk_prob_rspecifier,
-                            word_symbols_rxfilename, rnnlm_rxfilename);
+    KaldiCuedRnnlmWrapper rnnlm(opts, rnn_word_list, word_symbols_rxfilename,
+                                rnnlm_rxfilename);
 
     // Reads and writes as compact lattice.
     SequentialCompactLatticeReader compact_lattice_reader(lats_rspecifier);

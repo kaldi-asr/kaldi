@@ -20,7 +20,7 @@ echo nvcc found. Will start building cued-rnnlm
 export PATH=$PATH:/usr/local/cuda/bin/
 ./build.sh
 
-rm rnnlm
+[ -f rnnlm ] && rm rnnlm
 ln -s rnnlm.cued rnnlm
 
 wget http://mi.eng.cam.ac.uk/projects/cued-rnnlm/src.evaloncpu.tar.gz
