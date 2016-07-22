@@ -357,8 +357,7 @@ print Q "#!/bin/bash\n";
 print Q "cd $cwd\n";
 print Q ". ./path.sh\n";
 if ($cli_options{"gpu"} == "0") {
-    print "Here!\n";
-  print Q "CUDA_VISIBLE_DEVICES=\n";
+  print Q "export CUDA_VISIBLE_DEVICES=\n";
 }
 print Q "( echo '#' Running on \`hostname\`\n";
 print Q "  echo '#' Started at \`date\`\n";

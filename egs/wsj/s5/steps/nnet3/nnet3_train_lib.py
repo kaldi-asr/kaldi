@@ -506,20 +506,22 @@ def ComputeTrainCvProbabilities(dir, iter, egs_dir, run_opts, wait = False):
     model = '{0}/{1}.mdl'.format(dir, iter)
 
     RunKaldiCommand("""
-{command} {dir}/log/compute_prob_valid.{iter}.log \
+{command} {train_queue_opt} {dir}/log/compute_prob_valid.{iter}.log \
   nnet3-compute-prob "nnet3-am-copy --raw=true {model} - |" \
         "ark,bg:nnet3-merge-egs ark:{egs_dir}/valid_diagnostic.egs ark:- |"
     """.format(command = run_opts.command,
+               train_queue_opt = run_opts.train_queue_opt,
                dir = dir,
                iter = iter,
                model = model,
                egs_dir = egs_dir), wait = wait)
 
     RunKaldiCommand("""
-{command} {dir}/log/compute_prob_train.{iter}.log \
+{command} {train_queue_opt} {dir}/log/compute_prob_train.{iter}.log \
   nnet3-compute-prob "nnet3-am-copy --raw=true {model} - |" \
        "ark,bg:nnet3-merge-egs ark:{egs_dir}/train_diagnostic.egs ark:- |"
     """.format(command = run_opts.command,
+               train_queue_opt = run_opts.train_queue_opt,
                dir = dir,
                iter = iter,
                model = model,
