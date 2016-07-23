@@ -100,6 +100,20 @@ inline cublasStatus_t cublas_nrm2(cublasHandle_t handle, int n, const double* x,
 		int incx, double *result) {
   return cublasDnrm2_v2(handle, n, x, incx, result);
 }
+inline cudaError_t cublas_copy(cublasHandle_t handle, int n, const float* x, 
+				  int incx, double* y, int incy) {
+  int dimBlock(CU1DBLOCK);
+  int dimGrid(n_blocks(n, CU1DBLOCK));
+  cublas_copy_kaldi_fd(dimGrid, dimBlock, n, x, incx, y, incy);
+  return cudaGetLastError();
+}
+inline cudaError_t cublas_copy(cublasHandle_t handle, int n, const double* x, 
+		int incx, float* y, int incy) {
+  int dimBlock(CU1DBLOCK);
+  int dimGrid(n_blocks(n, CU1DBLOCK));
+  cublas_copy_kaldi_df(dimGrid, dimBlock, n, x, incx, y, incy);
+  return cudaGetLastError();
+}
 inline cublasStatus_t cublas_copy(cublasHandle_t handle, int n, const float* x, 
 		int incx, float* y, int incy) {
   return cublasScopy_v2(handle,n,x,incx,y,incy);
