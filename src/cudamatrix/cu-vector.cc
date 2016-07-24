@@ -749,10 +749,7 @@ void CuVectorBase<double>::CopyFromVec(const CuVectorBase<float> &src) {
   if (CuDevice::Instantiate().Enabled()) {
     if (dim_ == 0) return;
     Timer tim;
-    int dimBlock(CU2DBLOCK);
-    int dimGrid(n_blocks(dim_, CU2DBLOCK));
-    cuda_copy_from_vec_df(dimGrid, dimBlock, data_, src.data_, dim_);
-    CU_SAFE_CALL(cudaGetLastError());
+    CU_SAFE_CALL(cublas_copy(GetCublasHandle(), dim_, src.Data(), 1, data_, 1));
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
@@ -769,10 +766,7 @@ void CuVectorBase<float>::CopyFromVec(const CuVectorBase<double> &src) {
   if (CuDevice::Instantiate().Enabled()) {
     if (dim_ == 0) return;
     Timer tim;
-    int dimBlock(CU1DBLOCK);
-    int dimGrid(n_blocks(dim_, CU1DBLOCK));
-    cuda_copy_from_vec_fd(dimGrid, dimBlock, data_, src.data_, dim_);
-    CU_SAFE_CALL(cudaGetLastError());
+    CU_SAFE_CALL(cublas_copy(GetCublasHandle(), dim_, src.Data(), 1, data_, 1));
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
