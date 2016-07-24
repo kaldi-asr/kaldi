@@ -2,10 +2,11 @@
 # Copyright 2016  Xiaohui Zhang  Apache 2.0.
 
 # This srcipt operates on alignment directories, such as exp/tri4a_ali
+# the output is a new ali dir which has alignments from all the input ali dirs
 
-# Begin configuration section. 
+# Begin configuration section.
 cmd=run.pl
-extra_files= 
+extra_files=
 num_jobs=4
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -24,7 +25,7 @@ if [[ $# -lt 3 ]]; then
   exit 1;
 fi
 
-data=$1; 
+data=$1;
 shift;
 dest=$1;
 shift;
@@ -61,6 +62,7 @@ done
 
 src_id=0
 temp_dir=$dest/temp
+[ -d $temp_dir ] && rm -r $temp_dir;
 mkdir -p $temp_dir
 echo "$0: dumping alignments in each source directory as single archive and index."
 for dir in $*; do
@@ -71,23 +73,25 @@ for dir in $*; do
     copy-int-vector "ark:gunzip -c $dir/ali.{$all_ids}.gz|" \
     ark,scp:$temp_dir/ali.$src_id.ark,$temp_dir/ali.$src_id.scp || exit 1;
 done
-cat $temp_dir/ali.*.scp | sort -m > $temp_dir/ali.scp || exit 1;
+sort -m $temp_dir/ali.*.scp > $temp_dir/ali.scp || exit 1;
 
 echo "$0: splitting data to get reference utt2spk for individual ali.JOB.gz files."
 utils/split_data.sh $data $num_jobs || exit 1;
-echo $num_jobs > $dest/num_jobs  || exit 1
-   
+
 echo "$0: splitting the alignments to appropriate chunks according to the reference utt2spk files."
+utils/filter_scps.pl JOB=1:$num_jobs \
+  $data/split$num_jobs/JOB/utt2spk $temp_dir/ali.scp $temp_dir/ali.JOB.scp
+
 for i in `seq 1 $num_jobs`; do
-  awk '{print $1}' $data/split$num_jobs/$i/utt2spk | sort > $temp_dir/utt_subset.$i
-  utils/filter_scp.pl $temp_dir/utt_subset.$i $temp_dir/ali.scp | \
-    copy-int-vector scp:- "ark:|gzip -c >$dest/ali.$i.gz" || exit 1;
-done   
+    copy-int-vector scp:$temp_dir/ali.${i}.scp "ark:|gzip -c >$dest/ali.$i.gz" || exit 1;
+done
+
+echo $num_jobs > $dest/num_jobs  || exit 1
 
 echo "$0: checking the alignment files generated have at least 90% of the utterances."
 for i in `seq 1 $num_jobs`; do
-  num_lines=` utils/filter_scp.pl $temp_dir/utt_subset.$i $temp_dir/ali.scp | wc -l` || exit 1;
-  num_lines_tot=`cat $temp_dir/utt_subset.$i |wc -l` || exit 1;
+  num_lines=`cat $temp_dir/ali.$i.scp | wc -l` || exit 1;
+  num_lines_tot=`cat $data/split$num_jobs/$i/utt2spk | wc -l` || exit 1;
   python -c "import sys;
 percent = 100.0 * float($num_lines) / $num_lines_tot
 if percent < 90 :
