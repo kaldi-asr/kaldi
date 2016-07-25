@@ -501,32 +501,34 @@ def DoShrinkage(iter, model_file, non_linearity, shrink_threshold):
 
     return False
 
-def ComputeTrainCvProbabilities(dir, iter, egs_dir, run_opts, wait = False):
+def ComputeTrainCvProbabilities(dir, iter, egs_dir, run_opts, mb_size=256, wait = False):
 
     model = '{0}/{1}.mdl'.format(dir, iter)
 
     RunKaldiCommand("""
 {command} {dir}/log/compute_prob_valid.{iter}.log \
   nnet3-compute-prob "nnet3-am-copy --raw=true {model} - |" \
-        "ark,bg:nnet3-merge-egs ark:{egs_dir}/valid_diagnostic.egs ark:- |"
+        "ark,bg:nnet3-merge-egs --minibatch-size={mb_size} ark:{egs_dir}/valid_diagnostic.egs ark:- |"
     """.format(command = run_opts.command,
                dir = dir,
                iter = iter,
+               mb_size = mb_size,
                model = model,
                egs_dir = egs_dir), wait = wait)
 
     RunKaldiCommand("""
 {command} {dir}/log/compute_prob_train.{iter}.log \
   nnet3-compute-prob "nnet3-am-copy --raw=true {model} - |" \
-       "ark,bg:nnet3-merge-egs ark:{egs_dir}/train_diagnostic.egs ark:- |"
+       "ark,bg:nnet3-merge-egs --minibatch-size={mb_size} ark:{egs_dir}/train_diagnostic.egs ark:- |"
     """.format(command = run_opts.command,
                dir = dir,
                iter = iter,
+               mb_size = mb_size,
                model = model,
                egs_dir = egs_dir), wait = wait)
 
 
-def ComputeProgress(dir, iter, egs_dir, run_opts, wait=False):
+def ComputeProgress(dir, iter, egs_dir, run_opts, mb_size=256, wait=False):
 
     prev_model = '{0}/{1}.mdl'.format(dir, iter - 1)
     model = '{0}/{1}.mdl'.format(dir, iter)
@@ -534,11 +536,12 @@ def ComputeProgress(dir, iter, egs_dir, run_opts, wait=False):
 {command} {dir}/log/progress.{iter}.log \
 nnet3-info "nnet3-am-copy --raw=true {model} - |" '&&' \
 nnet3-show-progress --use-gpu=no "nnet3-am-copy --raw=true {prev_model} - |" "nnet3-am-copy --raw=true {model} - |" \
-"ark,bg:nnet3-merge-egs --minibatch-size=256 ark:{egs_dir}/train_diagnostic.egs ark:-|"
+"ark,bg:nnet3-merge-egs --minibatch-size={mb_size} ark:{egs_dir}/train_diagnostic.egs ark:-|"
     """.format(command = run_opts.command,
                dir = dir,
                iter = iter,
                model = model,
+               mb_size = mb_size,
                prev_model = prev_model,
                egs_dir = egs_dir), wait = wait)
 
