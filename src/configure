@@ -82,6 +82,7 @@ static_fst=false
 use_cuda=true
 dynamic_kaldi=false
 mkl_threading=sequential
+INSTALLPREFIX=/opt/kaldi
 
 cmd_line="$0 $@"  # Save the command line to include in kaldi.mk
 
@@ -666,7 +667,8 @@ function linux_configure_static {
   if $threaded_atlas; then pt=pt; else pt=""; fi
 
   if [ -z $ATLASLIBDIR ]; then # Note: it'll pick up the last one below.
-    for dir in /usr{,/local}/lib{64,}{,/atlas,/atlas-sse2,/atlas-sse3} \
+    for dir in $(echo $LIBRARY_PATH | tr ':' ' ') \
+       /usr{,/local}/lib{64,}{,/atlas,/atlas-sse2,/atlas-sse3} \
        /usr/local/atlas/lib{,64} `pwd`/../tools/ATLAS/build/install/lib/ $ATLASROOT/lib; do
      linux_check_static &&  ATLASLIBDIR=$dir
     done
