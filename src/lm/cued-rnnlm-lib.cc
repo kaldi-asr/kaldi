@@ -186,8 +186,8 @@ void RNNLM::copyToHiddenLayer(const vector<float> &hidden) {
   assert(hidden.size() == layersizes[1]);
   srcac = hidden.data(); // TODO
   dstac = neu_ac[1]->gethostdataptr();
-//  memcpy (dstac, srcac, sizeof(float)*layersizes[1]);
-  std::copy(hidden.begin(), hidden.end(), dstac); // TODO
+  memcpy (dstac, srcac, sizeof(float)*layersizes[1]);
+//  std::copy(hidden.begin(), hidden.end(), dstac); // TODO
 }
 
 void RNNLM::fetchHiddenLayer(vector<float> *context_out) {
@@ -199,9 +199,9 @@ void RNNLM::fetchHiddenLayer(vector<float> *context_out) {
   assert(context_out->size() == layersizes[1]);
   srcac = neu_ac[1]->gethostdataptr();
   dstac = context_out->data(); // TODO(hxu)
-//  memcpy (dstac, srcac, sizeof(float)*layersizes[1]);
-  std::copy(neu_ac[1]->gethostdataptr(),
-            neu_ac[1]->gethostdataptr() + layersizes[1], dstac); // TODO
+  memcpy (dstac, srcac, sizeof(float)*layersizes[1]);
+//  std::copy(neu_ac[1]->gethostdataptr(),
+//            neu_ac[1]->gethostdataptr() + layersizes[1], dstac); // TODO
 }
 
 float RNNLM::computeConditionalLogprob(int current_word,
@@ -211,13 +211,19 @@ float RNNLM::computeConditionalLogprob(int current_word,
   float ans = 0.0;
   copyToHiddenLayer(context_in);
   int last_word = 0; // <s>
-//  if (history_words.size() != 0) {
+  if (history_words.size() != 0) {
     last_word = history_words[history_words.size() - 1];
-//  }
+  }
+  copyRecurrentAc();
   ans = forward(last_word, current_word);
+
+  if (curword == outOOSindex)
+    // uniformly distribute the probability mass among OOS's
+    ans /= (fullvocsize - layersizes[num_layer] + 1);
+
   fetchHiddenLayer(context_out);
 
-  return ans;
+  return log(ans);
 }
 
 // allocate memory for RNNLM model

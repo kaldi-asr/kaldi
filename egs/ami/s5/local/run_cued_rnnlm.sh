@@ -28,15 +28,16 @@ for decode_set in dev eval; do
 
     ) 
 
+  (
   # Lattice rescoring
   steps/lmrescore_rnnlm_lat.sh \
     --rnnlm-ver cuedrnnlm \
     --layer-string "10002 200 10002" \
     --weight 0.5 --cmd "$decode_cmd --mem 16G" --max-ngram-order 3 \
     data/$mic/cued_rnn_vr data/lang_$LM \
-    data/$mic/$decode_set ${decode_dir} \
+    data/$mic/${decode_set}_hires ${decode_dir} \
     ${decode_dir}.rnnlm.vr.cued.lat || exit 1;
-
+  ) &
 
   continue
 done

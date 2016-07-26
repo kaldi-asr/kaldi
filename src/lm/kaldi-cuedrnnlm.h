@@ -76,12 +76,12 @@ class KaldiCuedRnnlmWrapper {
                        const std::vector<BaseFloat> &context_in,
                        std::vector<BaseFloat> *context_out);
 
+  std::vector<int> fst_label_to_rnn_label_;
+  std::vector<std::string> rnn_label_to_word_;
+  std::vector<std::string> fst_label_to_word_;
 
  private:
   cued_rnnlm::RNNLM rnnlm_;
-  std::vector<std::string> fst_label_to_word_;
-  std::vector<std::string> rnn_label_to_word_;
-  std::vector<int> fst_label_to_rnn_label_;
   int32 eos_;
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(KaldiCuedRnnlmWrapper);

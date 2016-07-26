@@ -81,6 +81,7 @@ nj=`cat $indir/num_jobs` || exit 1;
 cp $indir/num_jobs $outdir
 
 oldlm_weight=`perl -e "print -1.0 * $weight;"`
+#false && (
 if [ "$oldlm" == "$oldlang/G.fst" ]; then
   $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
     lattice-lmrescore --lm-scale=$oldlm_weight \
@@ -98,11 +99,11 @@ else
     $oldlang/words.txt ark:- "$rnnlm_dir/rnnlm" \
     "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;
 fi
-
+#)
 if ! $skip_scoring ; then
   err_msg="Not scoring because local/score.sh does not exist or not executable."
   [ ! -x local/score.sh ] && echo $err_msg && exit 1;
-  local/score.sh --cmd "$cmd" $data $newlang $outdir
+  local/score.sh --cmd "$cmd" $data $oldlang $outdir
 else
   echo "Not scoring because requested so..."
 fi
