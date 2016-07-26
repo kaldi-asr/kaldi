@@ -108,8 +108,10 @@ void cudaF_min_mat_cols(int Gr, int Bl, float* result, const float* mat, const M
 void cudaF_sum_mat_cols(int Gr, int Bl, float* result, const float* mat, const MatrixDim d);
 void cudaF_replace_value(int Gr, int Bl, float *v, int dim, float orig, float changed);
 void cudaF_set_bias_params(int Gr, int Bl, float* v, const float* a, float param_1, float param_2, float param_3, int* flag, int dim);
-void cudaF_copy_from_vec_df(int Gr, int Bl, double* v_out, const float* v_in, int dim);
-void cudaF_copy_from_vec_fd(int Gr, int Bl, float* v_out, const float* v_in, int dim);
+void cublas_copy_kaldi_fd(int Gr, int Bl, int n, const float* x,
+    int incx, double* y, int incy);
+void cublas_copy_kaldi_df(int Gr, int Bl, int n, const double* x,
+    int incx, float* y, int incy);
 void cudaF_vec_mul_elements(int Gr, int Bl, float* v, const float* a, int dim);
 void cudaF_vec_soft_max(int Gr, int Bl, float* v, int dim);
 void cudaF_vec_min(int Gr, int Bl, const float* v, float* value, int dim, int inc);
@@ -260,8 +262,6 @@ void cudaD_min_mat_cols(int Gr, int Bl, double* result, const double* mat, const
 void cudaD_sum_mat_cols(int Gr, int Bl, double* result, const double* mat, const MatrixDim d);
 void cudaD_replace_value(int Gr, int Bl, double *v, int dim, double orig, double changed);
 void cudaD_set_bias_params(int Gr, int Bl, double* v, const double* a, double param_1, double param_2, double param_3, int* flag, int dim);
-void cudaD_copy_from_vec_df(int Gr, int Bl, double* v_out, const double* v_in, int dim);
-void cudaD_copy_from_vec_fd(int Gr, int Bl, float* v_out, const double* v_in, int dim);
 void cudaD_vec_mul_elements(int Gr, int Bl, double* v, const double* a, int dim);
 void cudaD_vec_soft_max(int Gr, int Bl, double* v, int dim);
 void cudaD_vec_min(int Gr, int Bl, const double* v, double* value, int dim, int inc);

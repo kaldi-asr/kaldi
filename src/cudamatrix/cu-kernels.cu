@@ -719,14 +719,13 @@ static void _set_bias_params(Real* v, const Real* a, Real param_1, Real param_2,
 }
 
 
-template<typename Real>
+template<typename Real, typename OtherReal>
 __global__
-static void _copy_from_vec_df(double* v_out, const Real* v_in, int dim) {
+static void _cublas_copy_kaldi(int n, const Real* x, int incx, OtherReal* y, int incy) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
-  //  if (blockIdx.y > 0) return;
 
-  if (i < dim) {
-    v_out[i] = (double) v_in[i];
+  if (i < n) {
+    y[i * incy] = static_cast<OtherReal> (x[i * incx]);
   }
 }
 
@@ -741,17 +740,6 @@ static void _copy_rows_from_vec(Real* m_out, MatrixDim d, const Real* v_in) {
   if (i < d.cols && j < d.rows) {
     int index = i + j * d.stride;
     m_out[index] = v_in[i];
-  }
-}
-
-template<typename Real>
-__global__
-static void _copy_from_vec_fd(float* v_out, const Real* v_in, int dim) {
-  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
-  //  if (blockIdx.y > 0) return;
-
-  if (i < dim) {
-    v_out[i] = (float) v_in[i];
   }
 }
 
@@ -2675,12 +2663,14 @@ void cudaF_set_bias_params(int Gr, int Bl, float* v, const float* a, float param
   _set_bias_params<<<Gr,Bl>>>(v,a,param_1,param_2,param_3,flag,dim);
 }
 
-void cudaF_copy_from_vec_df(int Gr, int Bl, double* v_out, const float* v_in, int dim) {
-  _copy_from_vec_df<<<Gr,Bl>>>(v_out,v_in,dim);
+void cublas_copy_kaldi_fd(int Gr, int Bl, int n, const float* x,
+    int incx, double* y, int incy){
+  _cublas_copy_kaldi<<<Gr,Bl>>>(n, x, incx, y, incy);
 }
 
-void cudaF_copy_from_vec_fd(int Gr, int Bl, float* v_out, const float* v_in, int dim) {
-  _copy_from_vec_fd<<<Gr,Bl>>>(v_out,v_in,dim);
+void cublas_copy_kaldi_df(int Gr, int Bl, int n, const double* x,
+    int incx, float* y, int incy){
+  _cublas_copy_kaldi<<<Gr,Bl>>>(n, x, incx, y, incy);
 }
 
 void cudaF_vec_mul_elements(int Gr, int Bl, float* v, const float* a, int dim) {
@@ -3178,14 +3168,6 @@ void cudaD_replace_value(int Gr, int Bl, double *v, int dim, double orig, double
 
 void cudaD_set_bias_params(int Gr, int Bl, double* v, const double* a, double param_1, double param_2, double param_3, int* flag, int dim) {
   _set_bias_params<<<Gr,Bl>>>(v,a,param_1,param_2,param_3,flag,dim);
-}
-
-void cudaD_copy_from_vec_df(int Gr, int Bl, double* v_out, const double* v_in, int dim) {
-  _copy_from_vec_df<<<Gr,Bl>>>(v_out,v_in,dim);
-}
-
-void cudaD_copy_from_vec_fd(int Gr, int Bl, float* v_out, const double* v_in, int dim) {
-  _copy_from_vec_fd<<<Gr,Bl>>>(v_out,v_in,dim);
 }
 
 void cudaD_vec_mul_elements(int Gr, int Bl, double* v, const double* a, int dim) {
