@@ -194,10 +194,12 @@ if [ $stage -le 13 ]; then
   utils/mkgraph.sh --self-loop-scale 1.0 data/lang_pp_test $dir $dir/graph_pp
 fi
 
+if [ $stage -le 14 ]; then
 #%WER 27.8 | 2120 27217 | 78.2 13.6 8.2 6.0 27.8 75.9 | -0.613 | exp/chain/tdnn_7b/decode_dev_aspire_whole_uniformsegmented_win10_over5_v6_200jobs_iterfinal_pp_fg/score_9/penalty_0.0/ctm.filt.filt.sys
-  local/chain/prep_test_aspire.sh --stage 0 --decode-num-jobs 200 --affix "v6_200jobs" \
+  local/chain/prep_test_aspire.sh --stage 11 --decode-num-jobs 200 --affix "v6_200jobs" \
    --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
    --ivector-scale 0.75  --tune-hyper true dev_aspire data/lang exp/chain/tdnn_7b || exit 1;
+fi
 
 exit 0;
 
