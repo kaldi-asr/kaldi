@@ -179,6 +179,7 @@ int main(int argc, char *argv[]) {
 	  block_dropout_mask.CopyColFromVec(this_stream_mask, j);
 
 	}
+
 	// Fix rows having all zeros
 	for (int32 i=0; i<block_dropout_mask.NumRows(); i++) {
 	  CuSubVector<BaseFloat> this_row(block_dropout_mask, i);

@@ -119,7 +119,8 @@ class MultiStreamMaskComponent : public Component {
       this_stream_mask.CopyColFromMat(this_stream_dropout_mask, 0); 
       block_dropout_mask.CopyColFromVec(this_stream_mask, j);
     }
-
+    
+    // Apply masking
     for (int32 j = 0; j < num_streams; j++) {     
       this_stream_mask.CopyColFromMat(block_dropout_mask, j);
 
