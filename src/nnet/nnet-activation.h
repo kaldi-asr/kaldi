@@ -306,6 +306,7 @@ class Dropout : public Component {
 
   void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
                     CuMatrixBase<BaseFloat> *out) {
+    KALDI_LOG << "In Propagate=" << dropout_retention_ << "\n";
     out->CopyFromMat(in);
     // switch off 50% of the inputs...
     dropout_mask_.Resize(out->NumRows(), out->NumCols());
@@ -320,6 +321,7 @@ class Dropout : public Component {
                         const CuMatrixBase<BaseFloat> &out,
                         const CuMatrixBase<BaseFloat> &out_diff,
                         CuMatrixBase<BaseFloat> *in_diff) {
+    KALDI_LOG << "In BackPropagate=" << dropout_retention_ << "\n";
     in_diff->CopyFromMat(out_diff);
     // use same mask on the error derivatives...
     in_diff->MulElements(dropout_mask_);
