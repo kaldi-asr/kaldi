@@ -52,8 +52,7 @@ template<class KaldiType> class KaldiObjectHolder {
       t.Write(os, binary);
       return os.good();
     } catch(const std::exception &e) {
-      KALDI_WARN << "Exception caught writing Table object: " << e.what();
-      if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
+      KALDI_WARN << "Exception caught writing Table object. " << e.what();
       return false;  // Write failure.
     }
   }
@@ -80,8 +79,7 @@ template<class KaldiType> class KaldiObjectHolder {
       t_->Read(is, is_binary);
       return true;
     } catch(const std::exception &e) {
-      KALDI_WARN << "Exception caught reading Table object ";
-      if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
+      KALDI_WARN << "Exception caught reading Table object. " << e.what();
       delete t_;
       t_ = NULL;
       return false;
@@ -137,8 +135,7 @@ template<class BasicType> class BasicHolder {
       // easier to manipulate.
       return os.good();
     } catch(const std::exception &e) {
-      KALDI_WARN << "Exception caught writing Table object: " << e.what();
-      if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
+      KALDI_WARN << "Exception caught writing Table object. " << e.what();
       return false;  // Write failure.
     }
   }
@@ -186,8 +183,7 @@ template<class BasicType> class BasicHolder {
       }
       return true;
     } catch(const std::exception &e) {
-      KALDI_WARN << "Exception caught reading Table object";
-      if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
+      KALDI_WARN << "Exception caught reading Table object. " << e.what();
       return false;
     }
   }
@@ -252,8 +248,8 @@ template<class BasicType> class BasicVectorHolder {
       }
       return os.good();
     } catch(const std::exception &e) {
-      KALDI_WARN << "Exception caught writing Table object (BasicVector). ";
-      if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
+      KALDI_WARN << "Exception caught writing Table object (BasicVector). "
+                 << e.what();
       return false;  // Write failure.
     }
   }
@@ -290,8 +286,7 @@ template<class BasicType> class BasicVectorHolder {
         return true;
       } catch(const std::exception &e) {
         KALDI_WARN << "BasicVectorHolder::Read, could not interpret line: "
-                   << line;
-        if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
+                   << "'" << line << "'" << "\n" << e.what();
         return false;
       }
     } else {  // binary mode.
@@ -390,8 +385,7 @@ template<class BasicType> class BasicVectorVectorHolder {
       }
       return os.good();
     } catch(const std::exception &e) {
-      KALDI_WARN << "Exception caught writing Table object. ";
-      if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
+      KALDI_WARN << "Exception caught writing Table object. " << e.what();
       return false;  // Write failure.
     }
   }
@@ -436,8 +430,7 @@ template<class BasicType> class BasicVectorVectorHolder {
           }
         }
       } catch(const std::exception &e) {
-        KALDI_WARN << "BasicVectorVectorHolder::Read, read error";
-        if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
+        KALDI_WARN << "BasicVectorVectorHolder::Read, read error. " << e.what();
         return false;
       }
     } else {  // binary mode.
@@ -532,8 +525,7 @@ template<class BasicType> class BasicPairVectorHolder {
       }
       return os.good();
     } catch(const std::exception &e) {
-      KALDI_WARN << "Exception caught writing Table object. ";
-      if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
+      KALDI_WARN << "Exception caught writing Table object. " << e.what();
       return false;  // Write failure.
     }
   }
@@ -589,8 +581,7 @@ template<class BasicType> class BasicPairVectorHolder {
           }
         }
       } catch(const std::exception &e) {
-        KALDI_WARN << "BasicPairVectorHolder::Read, read error";
-        if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
+        KALDI_WARN << "BasicPairVectorHolder::Read, read error. " << e.what();
         return false;
       }
     } else {  // binary mode.

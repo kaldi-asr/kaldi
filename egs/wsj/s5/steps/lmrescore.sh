@@ -4,6 +4,7 @@
 mode=4
 cmd=run.pl
 skip_scoring=false
+self_loop_scale=0.1
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -104,7 +105,7 @@ case "$mode" in
       lattice-compose ark:- $outdir/Ldet.fst ark:- \| \
       lattice-determinize ark:- ark:- \| \
       lattice-compose --phi-label=$phi ark:- $newlm ark:- \| \
-      lattice-add-trans-probs --transition-scale=1.0 --self-loop-scale=0.1 \
+      lattice-add-trans-probs --transition-scale=1.0 --self-loop-scale=$self_loop_scale \
       $mdl ark:- ark:- \| \
       gzip -c \>$outdir/lat.JOB.gz  || exit 1;
     ;;

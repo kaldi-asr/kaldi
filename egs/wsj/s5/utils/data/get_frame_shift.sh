@@ -27,7 +27,7 @@ export LC_ALL=C
 
 dir=$1
 
-if [ ! -f $dir/utt2dur ]; then
+if [ ! -s $dir/utt2dur ]; then
   echo "$0: $dir/utt2dur does not exist: creating it" 1>&2
   utils/data/get_utt2dur.sh $dir 1>&2
 fi

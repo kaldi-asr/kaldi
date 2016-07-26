@@ -279,6 +279,12 @@ class CuMatrixBase {
   void GroupPnormDeriv(const CuMatrixBase<Real> &input,
                        const CuMatrixBase<Real> &output, Real power);
 
+  /// Differentiate backward through the GroupPnorm function.
+  /// It is a combination of GroupPnormDeriv and MulRowsGroupMax.
+  void DiffGroupPnorm(const CuMatrixBase<Real> &in_value,
+                      const CuMatrixBase<Real> &out_value,
+                      const CuMatrixBase<Real> &out_deriv, Real power);
+
   /// Apply the function y(i) = (max_{j = i*G}^{(i+1)*G-1} x_j
   /// where G = x.NumCols() / y.NumCols() must be an integer.
   /// [note: y corresponds to *this and x to src, so
@@ -308,6 +314,13 @@ class CuMatrixBase {
   /// tanh output.  Does, element-by-element, *this = diff * (1 - value^2).
   void DiffTanh(const CuMatrixBase<Real> &value,
                 const CuMatrixBase<Real> &diff);
+
+  /// Differentiate backward through the softmax function.  Here, "value" is the
+  /// softmax output. Does, for each row i,
+  /// *this(i) =  diff(i) * diag(value(i)) - diff(i) * (value(i)^T * value(i))
+  /// xxxx(i) is row-vector; '*' and '-' are matrix operations.
+  void DiffSoftmaxPerRow(const CuMatrixBase<Real> &value,
+                         const CuMatrixBase<Real> &diff);
 
   /// Differentiate the block [softmax+cross-entropy] :
   /// dE/da = posterior_mat - target_mat,
@@ -522,8 +535,8 @@ class CuMatrixBase {
   }
 
   Real Sum() const;
-  Real Max() const; ///< proxy to MatrixBase::Max(), cuda not used
-  Real Min() const; ///< proxy to MatrixBase::Min(), cuda not used
+  Real Max() const;
+  Real Min() const;
 
   /// Return the trace. If check_square = true, will crash if matrix is not square.
   Real Trace(bool check_square = true) const;

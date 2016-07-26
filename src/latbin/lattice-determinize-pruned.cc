@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
         "Determinize lattices, keeping only the best path (sequence of acoustic states)\n"
         "for each input-symbol sequence.  This version does pruning as part of the\n"
         "determinization algorithm, which is more efficient and prevents blowup.\n"
-        "See http://kaldi.sourceforge.net/lattices.html for more information on lattices.\n"
+        "See http://kaldi-asr.org/doc/lattices.html for more information on lattices.\n"
         "\n"
         "Usage: lattice-determinize-pruned [options] lattice-rspecifier lattice-wspecifier\n"
         " e.g.: lattice-determinize-pruned --acoustic-scale=0.1 --beam=6.0 ark:in.lats ark:det.lats\n";

@@ -46,22 +46,14 @@
 #endif
 #endif
 
-#ifdef HAVE_POSIX_MEMALIGN
-#  define KALDI_MEMALIGN(align, size, pp_orig) \
-     (!posix_memalign(pp_orig, align, size) ? *(pp_orig) : NULL)
-#  define KALDI_MEMALIGN_FREE(x) free(x)
-#elif defined(HAVE_MEMALIGN)
-  /* Some systems have memalign() but no declaration for it */
-  void * memalign(size_t align, size_t size);
-#  define KALDI_MEMALIGN(align, size, pp_orig) \
-     (*(pp_orig) = memalign(align, size))
-#  define KALDI_MEMALIGN_FREE(x) free(x)
-#elif defined(_MSC_VER)
+#ifdef _MSC_VER
 #  define KALDI_MEMALIGN(align, size, pp_orig) \
   (*(pp_orig) = _aligned_malloc(size, align))
 #  define KALDI_MEMALIGN_FREE(x) _aligned_free(x)
 #else
-#error Manual memory alignment is no longer supported
+#  define KALDI_MEMALIGN(align, size, pp_orig) \
+     (!posix_memalign(pp_orig, align, size) ? *(pp_orig) : NULL)
+#  define KALDI_MEMALIGN_FREE(x) free(x)
 #endif
 
 #ifdef __ICC

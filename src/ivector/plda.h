@@ -98,7 +98,7 @@ class Plda {
   /// the transformed iVectors.
   double LogLikelihoodRatio(const VectorBase<double> &transformed_train_ivector,
                             int32 num_train_utts,
-                            const VectorBase<double> &transformed_test_ivector);
+                            const VectorBase<double> &transformed_test_ivector) const;
 
 
   /// This function smooths the within-class covariance by adding to it,

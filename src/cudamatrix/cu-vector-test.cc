@@ -297,8 +297,8 @@ template<typename Real> void CuVectorUnitTestInvertElements() {
 }
 
 template<typename Real> void CuVectorUnitTestSum() {
-  for (int32 i =1; i < 10; i++) {
-    MatrixIndexT dim = 2048 * i + 100 % Rand();
+  for (int32 p = 1; p <= 1000000; p *= 2) {
+    MatrixIndexT dim = p + Rand() % 500;
     CuVector<Real> A(dim), ones(dim);
     A.SetRandn();
     ones.Set(1.0);
@@ -429,8 +429,8 @@ template<typename Real> void CuVectorUnitTestNorm() {
 
 
 template<typename Real> void CuVectorUnitTestMin() {
-  for (int32 p = 0; p < 5; p++) {
-    int32 dim = 100 + Rand() % 500;
+  for (int32 p = 1; p <= 1000000; p *= 2) {
+    int32 dim = p + Rand() % 500;
     CuVector<Real> cu_vector(dim);
     cu_vector.SetRandn();
     Vector<Real> vector(cu_vector);
@@ -441,8 +441,8 @@ template<typename Real> void CuVectorUnitTestMin() {
 
 
 template<typename Real> void CuVectorUnitTestMax() {
-  for (int32 p = 0; p < 5; p++) {
-    int32 dim = 100 + Rand() % 500;
+  for (int32 p = 1; p <= 1000000; p *= 2) {
+    int32 dim = p + Rand() % 500;
     CuVector<Real> cu_vector(dim);
     cu_vector.SetRandn();
     Vector<Real> vector(cu_vector);

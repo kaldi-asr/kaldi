@@ -41,10 +41,10 @@ frames_overlap_per_eg=30
 truncate_deriv_weights=10
 
 ## Nnet training options
-effective_learning_rate=0.0000125
+effective_learning_rate=0.00000125
 max_param_change=1
 num_jobs_nnet=4
-num_epochs=4
+num_epochs=2
 regularization_opts=          # Applicable for providing --xent-regularize and --l2-regularize options 
 minibatch_size=64
 adjust_priors=true            # May need to be set to false 

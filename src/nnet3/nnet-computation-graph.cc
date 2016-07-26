@@ -955,22 +955,22 @@ void AddInputToGraph(const ComputationRequest &request,
 
 // This function outputs to dependencies_subset[c], for each cindex_id c,
 // the subset of elements d of graph.dependencies[c] such that
-// cindex_id_to_phase[d] == cindex_id_to_phase[d].
+// cindex_id_to_epoch[d] == cindex_id_to_epoch[c].
 static void ComputeDependenciesSubset(
     const ComputationGraph &graph,
-    const std::vector<int32> &cindex_id_to_phase,
+    const std::vector<int32> &cindex_id_to_epoch,
     std::vector<std::vector<int32> > *dependencies_subset) {
   int32 num_cindex_ids = graph.cindexes.size();
-  KALDI_ASSERT(cindex_id_to_phase.size() == num_cindex_ids);
+  KALDI_ASSERT(cindex_id_to_epoch.size() == num_cindex_ids);
   dependencies_subset->resize(num_cindex_ids);
   for (int32 cindex_id = 0; cindex_id < num_cindex_ids; cindex_id++) {
-    int32 phase_index = cindex_id_to_phase[cindex_id];
+    int32 phase_index = cindex_id_to_epoch[cindex_id];
     const std::vector<int32> &dependencies = graph.dependencies[cindex_id];
     std::vector<int32> &dep_subset = (*dependencies_subset)[cindex_id];
     int32 num_dep = dependencies.size();
     for (int32 i = 0; i < num_dep; i++) {
       int32 d = dependencies[i];
-      if (cindex_id_to_phase[d] == phase_index)
+      if (cindex_id_to_epoch[d] == phase_index)
         dep_subset.push_back(d);
     }
   }

@@ -115,12 +115,19 @@ def GetNumberOfJobs(alidir):
     except IOError, ValueError:
         raise Exception('Exception while reading the number of alignment jobs')
     return num_jobs
+
 def GetIvectorDim(ivector_dir = None):
     if ivector_dir is None:
         return 0
     [stdout_val, stderr_val] = RunKaldiCommand("feat-to-dim --print-args=false scp:{dir}/ivector_online.scp -".format(dir = ivector_dir))
     ivector_dim = int(stdout_val)
     return ivector_dim
+
+def GetIvectorPeriod(ivector_dir = None):
+    if ivector_dir is None:
+        return 0
+    return int(open('{0}/ivector_period'.format(ivector_dir), 'r').readline().strip())
+
 
 def GetFeatDim(feat_dir):
     [stdout_val, stderr_val] = RunKaldiCommand("feat-to-dim --print-args=false scp:{data}/feats.scp -".format(data = feat_dir))
@@ -173,6 +180,7 @@ def CopyEgsPropertiesToExpDir(egs_dir, dir):
 def SplitData(data, num_jobs):
    RunKaldiCommand("utils/split_data.sh {data} {num_jobs}".format(data = data,
                                                                   num_jobs = num_jobs))
+   return '{0}/split{1}'.format(data,int(num_jobs))
 
 def ParseModelConfigVarsFile(var_file):
     try:
@@ -206,7 +214,7 @@ def GenerateEgs(data, alidir, egs_dir,
                 valid_left_context, valid_right_context,
                 run_opts, stage = 0,
                 feat_type = 'raw', online_ivector_dir = None,
-                samples_per_iter = 20000, frames_per_eg = 20,
+                samples_per_iter = 20000, frames_per_eg = 20, srand = 0,
                 egs_opts = None, cmvn_opts = None, transform_dir = None):
 
     RunKaldiCommand("""
@@ -222,6 +230,7 @@ steps/nnet3/get_egs.sh {egs_opts} \
   --stage {stage} \
   --samples-per-iter {samples_per_iter} \
   --frames-per-eg {frames_per_eg} \
+  --srand {srand} \
   {data} {alidir} {egs_dir}
       """.format(command = run_opts.command,
           cmvn_opts = cmvn_opts if cmvn_opts is not None else '',
@@ -232,7 +241,7 @@ steps/nnet3/get_egs.sh {egs_opts} \
           valid_left_context = valid_left_context,
           valid_right_context = valid_right_context,
           stage = stage, samples_per_iter = samples_per_iter,
-          frames_per_eg = frames_per_eg, data = data, alidir = alidir,
+          frames_per_eg = frames_per_eg, srand = srand, data = data, alidir = alidir,
           egs_dir = egs_dir,
           egs_opts = egs_opts if egs_opts is not None else '' ))
 
@@ -500,32 +509,34 @@ def DoShrinkage(iter, model_file, non_linearity, shrink_threshold):
 
     return False
 
-def ComputeTrainCvProbabilities(dir, iter, egs_dir, run_opts, wait = False):
+def ComputeTrainCvProbabilities(dir, iter, egs_dir, run_opts, mb_size=256, wait = False):
 
     model = '{0}/{1}.mdl'.format(dir, iter)
 
     RunKaldiCommand("""
 {command} {dir}/log/compute_prob_valid.{iter}.log \
   nnet3-compute-prob "nnet3-am-copy --raw=true {model} - |" \
-        "ark,bg:nnet3-merge-egs ark:{egs_dir}/valid_diagnostic.egs ark:- |"
+        "ark,bg:nnet3-merge-egs --minibatch-size={mb_size} ark:{egs_dir}/valid_diagnostic.egs ark:- |"
     """.format(command = run_opts.command,
                dir = dir,
                iter = iter,
+               mb_size = mb_size,
                model = model,
                egs_dir = egs_dir), wait = wait)
 
     RunKaldiCommand("""
 {command} {dir}/log/compute_prob_train.{iter}.log \
   nnet3-compute-prob "nnet3-am-copy --raw=true {model} - |" \
-       "ark,bg:nnet3-merge-egs ark:{egs_dir}/train_diagnostic.egs ark:- |"
+       "ark,bg:nnet3-merge-egs --minibatch-size={mb_size} ark:{egs_dir}/train_diagnostic.egs ark:- |"
     """.format(command = run_opts.command,
                dir = dir,
                iter = iter,
+               mb_size = mb_size,
                model = model,
                egs_dir = egs_dir), wait = wait)
 
 
-def ComputeProgress(dir, iter, egs_dir, run_opts, wait=False):
+def ComputeProgress(dir, iter, egs_dir, run_opts, mb_size=256, wait=False):
 
     prev_model = '{0}/{1}.mdl'.format(dir, iter - 1)
     model = '{0}/{1}.mdl'.format(dir, iter)
@@ -533,11 +544,12 @@ def ComputeProgress(dir, iter, egs_dir, run_opts, wait=False):
 {command} {dir}/log/progress.{iter}.log \
 nnet3-info "nnet3-am-copy --raw=true {model} - |" '&&' \
 nnet3-show-progress --use-gpu=no "nnet3-am-copy --raw=true {prev_model} - |" "nnet3-am-copy --raw=true {model} - |" \
-"ark,bg:nnet3-merge-egs --minibatch-size=256 ark:{egs_dir}/train_diagnostic.egs ark:-|"
+"ark,bg:nnet3-merge-egs --minibatch-size={mb_size} ark:{egs_dir}/train_diagnostic.egs ark:-|"
     """.format(command = run_opts.command,
                dir = dir,
                iter = iter,
                model = model,
+               mb_size = mb_size,
                prev_model = prev_model,
                egs_dir = egs_dir), wait = wait)
 

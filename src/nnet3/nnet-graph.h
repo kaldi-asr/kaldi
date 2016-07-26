@@ -45,8 +45,8 @@ std::string PrintGraphToString(const std::vector<std::vector<int32> > &graph);
 /// where graph->size() == nnet.NumNodes().  For each node-index
 /// n, the vector in (*graph)[n] will contain a list of all the nodes
 /// that have a direct dependency on node n (in order to compute them).
-/// For instance, if n is an input node, (*graph)[n] will be the empty
-/// list because it won't depend on anything.
+/// For instance, if n is the output node, (*graph)[n] will be the empty
+/// list because no other node will depend on it.
 void NnetToDirectedGraph(const Nnet &nnet,
                          std::vector<std::vector<int32> > *graph);
 

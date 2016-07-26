@@ -274,9 +274,9 @@ class ContextFst : public Fst<Arc> {
 
   virtual uint64 Properties(uint64 mask, bool test) const {
     if (test) {
-      uint64 known, test = TestProperties(*this, mask, &known);
-      impl_->SetProperties(test, known);
-      return test & mask;
+      uint64 knownprops, testprops = TestProperties(*this, mask, &knownprops);
+      impl_->SetProperties(knownprops, testprops);
+      return testprops & mask;
     } else {
       return impl_->Properties(mask);
     }
@@ -534,4 +534,4 @@ void AddSubsequentialLoop(typename Arc::Label subseq_symbol,
 
 #include "context-fst-inl.h"
 
-#endif
+#endif  // KALDI_FSTEXT_CONTEXT_FST_H_

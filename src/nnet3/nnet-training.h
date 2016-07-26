@@ -47,6 +47,7 @@ struct NnetTrainerOptions {
       store_component_stats(true),
       print_interval(100),
       debug_computation(false),
+      binary_write_cache(true),
       momentum(0.0),
       max_param_change(2.0) { }
   void Register(OptionsItf *opts) {

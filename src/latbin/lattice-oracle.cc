@@ -196,9 +196,8 @@ int main(int argc, char *argv[]) {
     typedef fst::StdArc::StateId StateId;
 
     const char *usage =
-        "Finds the path having the smallest edit-distance between two\n"
-        "lattices. For efficiency put the smallest lattices first (for\n"
-        "example reference strings).\n"
+        "Finds the path having the smallest edit-distance between a lattice\n"
+        "and a reference string.\n"
         "\n"
         "Usage: lattice-oracle [options] <test-lattice-rspecifier> \\\n"
         "                                <reference-rspecifier> \\\n"
