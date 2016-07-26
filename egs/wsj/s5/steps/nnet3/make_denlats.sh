@@ -3,7 +3,7 @@
 #           2014-2015   Vimal Manohar
 # Apache 2.0.
 
-# Create denominator lattices for MMI/MPE training.  
+# Create denominator lattices for MMI/MPE training.
 # This version uses the neural-net models (version 3, i.e. the nnet3 code).
 # Creates its output in $dir/lat.*.gz
 
@@ -111,14 +111,14 @@ cp $srcdir/cmvn_opts $dir 2>/dev/null
 if [ -z "$feat_type" ]; then
   if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=raw; fi
 fi
-echo "$0: feature type is $feat_type"         
+echo "$0: feature type is $feat_type"
 
 case $feat_type in
   delta) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
   raw) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
    ;;
   lda) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
-    cp $srcdir/final.mat $dir    
+    cp $srcdir/final.mat $dir
    ;;
   *) echo "Invalid feature type $feat_type" && exit 1;
 esac
@@ -128,7 +128,7 @@ if [ ! -z "$transform_dir" ]; then
   [ ! -s $transform_dir/num_jobs ] && \
     echo "$0: expected $transform_dir/num_jobs to contain the number of jobs." && exit 1;
   nj_orig=$(cat $transform_dir/num_jobs)
-  
+
   if [ $feat_type == "raw" ]; then trans=raw_trans;
   else trans=trans; fi
   if [ $feat_type == "lda" ] && ! cmp $transform_dir/final.mat $srcdir/final.mat; then
@@ -175,7 +175,7 @@ if $determinize; then
   lattice_determinize_cmd="lattice-determinize-non-compact --acoustic-scale=$acwt --max-mem=$max_mem --minimize=$minimize --prune --beam=$beam ark:- ark:- |"
 fi
 
-if [ $sub_split -eq 1 ]; then 
+if [ $sub_split -eq 1 ]; then
   $cmd --num-threads $num_threads JOB=1:$nj $dir/log/decode_den.JOB.log \
     nnet3-latgen-faster$thread_string $ivector_opts $frame_subsampling_opt \
     --frames-per-chunk=$frames_per_chunk \
@@ -193,7 +193,7 @@ if [ $sub_split -eq 1 ]; then
 else
 
   # each job from 1 to $nj is split into multiple pieces (sub-split), and we aim
-  # to have at most two jobs running at each time.  The idea is that if we have stragglers 
+  # to have at most two jobs running at each time.  The idea is that if we have stragglers
   # from one job, we can be processing another one at the same time.
   rm $dir/.error 2>/dev/null
 
@@ -205,10 +205,8 @@ else
       echo "Not processing subset $n as already done (delete $dir/.done.$n if not)";
       this_pid=
     else
-      sdata2=$data/split$nj/$n/split$sub_split;
-      if [ ! -d $sdata2 ] || [ $sdata2 -ot $sdata/$n/feats.scp ]; then
-        split_data.sh --per-utt $sdata/$n $sub_split || exit 1;
-      fi
+      sdata2=$data/split$nj/$n/split${sub_split}utt;
+      split_data.sh --per-utt $sdata/$n $sub_split || exit 1;
       mkdir -p $dir/log/$n
       mkdir -p $dir/part
       feats_subset=`echo $feats | sed "s/trans.JOB/trans.$n/g" | sed s:JOB/:$n/split$sub_split/JOB/:g`

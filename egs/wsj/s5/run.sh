@@ -59,11 +59,10 @@ local/wsj_format_data.sh --lang-suffix "_nosp" || exit 1;
 # Now make MFCC features.
 # mfccdir should be some place with a largish disk where you
 # want to store MFCC features.
-mfccdir=mfcc
+
 for x in test_eval92 test_eval93 test_dev93 train_si284; do
- steps/make_mfcc.sh --cmd "$train_cmd" --nj 20 \
-   data/$x exp/make_mfcc/$x $mfccdir || exit 1;
- steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir || exit 1;
+  steps/make_mfcc.sh --cmd "$train_cmd" --nj 20 data/$x || exit 1;
+  steps/compute_cmvn_stats.sh data/$x || exit 1;
 done
 
 utils/subset_data_dir.sh --first data/train_si284 7138 data/train_si84 || exit 1

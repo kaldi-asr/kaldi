@@ -1,8 +1,7 @@
 #!/bin/bash
 #set -e
-# this script is based on local/online/run_nnet2_comman.sh
-# but it operates on corrupted training/dev/test data sets
-
+# this script is based on local/multicondition/run_nnet2_common.sh
+# minor corrections were made to dir names for nnet3
 
 stage=1
 snrs="20:10:15:5:0"
@@ -21,7 +20,7 @@ set -e
 # check if the required tools are present
 local/multi_condition/check_version.sh || exit 1;
 
-mkdir -p exp/nnet2_multicondition
+mkdir -p exp/nnet3
 if [ $stage -le 1 ]; then
   # prepare the impulse responses
   local/multi_condition/prepare_impulses_noises.sh --log-dir exp/make_reverb/log \
@@ -49,16 +48,16 @@ if [ $stage -le 1 ]; then
     utils/combine_data.sh --extra-files utt2uniq data/${data_dir}_rvb $reverb_data_dirs
     rm -rf $reverb_data_dirs
   done
-
   # create the dev, test and eval sets from the aspire recipe
   local/multi_condition/aspire_data_prep.sh
 
   # copy the alignments for the newly created utterance ids
   ali_dirs=
   for i in `seq 1 $num_data_reps`; do
-    local/multi_condition/copy_ali_dir.sh --utt-prefix "rev${i}_" exp/tri5a exp/tri5a_temp_$i || exit 1;
+    local/multi_condition/copy_ali_dir.sh --cmd "$decode_cmd" --utt-prefix "rev${i}_" exp/tri5a exp/tri5a_temp_$i || exit 1;
     ali_dirs+=" exp/tri5a_temp_$i"
   done
+
   steps/combine_ali_dirs.sh data/train_rvb exp/tri5a_rvb_ali $ali_dirs || exit 1;
 
   # copy the alignments for training the 100k system (from tri4a)
@@ -69,8 +68,9 @@ if [ $stage -le 2 ]; then
   mfccdir=mfcc_reverb
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
     date=$(date +'%m_%d_%H_%M')
-    utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/fisher_english_reverb-$date/s5/$mfccdir/storage $mfccdir/storage
+    utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/aspire-$date/s5/$mfccdir/storage $mfccdir/storage
   fi
+
   for data_dir in train_rvb dev_rvb test_rvb dev_aspire dev test ; do
     utils/copy_data_dir.sh data/$data_dir data/${data_dir}_hires
     steps/make_mfcc.sh --nj 70 --mfcc-config conf/mfcc_hires.conf \
@@ -97,17 +97,17 @@ if [ $stage -le 3 ]; then
   # the transform (12th iter is the last), any further training is pointless.
   steps/train_lda_mllt.sh --cmd "$train_cmd" --num-iters 13 \
     --splice-opts "--left-context=3 --right-context=3" \
-    5000 10000 data/train_rvb_hires_100k data/lang exp/tri4a_rvb exp/nnet2_multicondition/tri5a
+    5000 10000 data/train_rvb_hires_100k data/lang exp/tri4a_rvb exp/nnet3/tri5a
 fi
 
 
 if [ $stage -le 4 ]; then
   # To train a diagonal UBM we don't need very much data, so use the smallest
-  # subset.  the input directory exp/nnet2_online/tri5a is only needed for
+  # subset.  the input directory exp/nnet3/tri5a is only needed for
   # the splice-opts and the LDA transform.
   steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 30 --num-frames 400000 \
-    data/train_rvb_hires_30k 512 exp/nnet2_multicondition/tri5a \
-    exp/nnet2_multicondition/diag_ubm
+    data/train_rvb_hires_30k 512 exp/nnet3/tri5a \
+    exp/nnet3/diag_ubm
 fi
 
 if [ $stage -le 5 ]; then
@@ -115,14 +115,14 @@ if [ $stage -le 5 ]; then
   # this one has a fairly small dim (defaults to 100) so we don't use all of it,
   # we use just the 100k subset (about one sixteenth of the data).
   steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 10 \
-    data/train_rvb_hires_100k exp/nnet2_multicondition/diag_ubm \
-    exp/nnet2_multicondition/extractor || exit 1;
+    data/train_rvb_hires_100k exp/nnet3/diag_ubm \
+    exp/nnet3/extractor || exit 1;
 fi
 
 if [ $stage -le 6 ]; then
-  ivectordir=exp/nnet2_multicondition/ivectors_train
+  ivectordir=exp/nnet3/ivectors_train
   if [[ $(hostname -f) == *.clsp.jhu.edu ]]; then # this shows how you can split across multiple file-systems.
-    utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/fisher_english_reverb/s5/$ivectordir/storage $ivectordir/storage
+    utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/aspire/s5/$ivectordir/storage $ivectordir/storage
   fi
 
   # having a larger number of speakers is helpful for generalization, and to
@@ -131,5 +131,5 @@ if [ $stage -le 6 ]; then
     data/train_rvb_hires data/train_rvb_hires_max2
 
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 60 \
-    data/train_rvb_hires_max2 exp/nnet2_multicondition/extractor $ivectordir || exit 1;
+    data/train_rvb_hires_max2 exp/nnet3/extractor $ivectordir || exit 1;
 fi

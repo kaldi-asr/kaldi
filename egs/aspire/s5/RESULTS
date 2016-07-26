@@ -15,7 +15,7 @@ for x in exp/*/decode_dev; do grep WER $x/wer_* | utils/best_wer.sh; done
 72.30 score dev_test for leaderboard
 
 # These results are for the dev and test sets in Fisher corpora (these are subsets created for the purpose of testing and not actual universally accepted evalutation sets)
-# dev_rvb and test_rvb are artificially reverberated test data (no care was taken to ensure non-overlap of RIRs between train, test and dev sets) 
+# dev_rvb and test_rvb are artificially reverberated test data (no care was taken to ensure non-overlap of RIRs between train, test and dev sets)
 %WER 18.11 [ 7020 / 38753, 960 ins, 1807 del, 4253 sub ] exp/nnet2_multicondition/nnet_ms_a/decode_dev/wer_11
 %WER 18.51 [ 7174 / 38753, 1093 ins, 1663 del, 4418 sub ] exp/nnet2_multicondition/nnet_ms_a_online/decode_dev/wer_10
 %WER 24.68 [ 9563 / 38753, 1127 ins, 2374 del, 6062 sub ] exp/nnet2_multicondition/nnet_ms_a/decode_dev_rvb/wer_10
@@ -25,5 +25,12 @@ for x in exp/*/decode_dev; do grep WER $x/wer_* | utils/best_wer.sh; done
 %WER 18.41 [ 7267 / 39477, 1027 ins, 1740 del, 4500 sub ] exp/nnet2_multicondition/nnet_ms_a_online/decode_test/wer_10
 %WER 24.36 [ 9618 / 39477, 1152 ins, 2347 del, 6119 sub ] exp/nnet2_multicondition/nnet_ms_a/decode_test_rvb/wer_10
 %WER 25.02 [ 9876 / 39477, 1032 ins, 2581 del, 6263 sub ] exp/nnet2_multicondition/nnet_ms_a_online/decode_test_rvb/wer_12
+
+# Results on ASpIRE dev data using nnet3 scripts
+# local/chain/run_tdnn_7b.sh
+%WER 27.8 | 2120 27217 | 78.2 13.6 8.2 6.0 27.8 75.9 | -0.613 | exp/chain/tdnn_7b/decode_dev_aspire_whole_uniformsegmented_win10_over5_v6_200jobs_iterfinal_pp_fg/score_9/penalty_0.0/ctm.filt.filt.sys
+
+# local/nnet3/run_tdnn.sh
+%WER 31.0 | 2120 27217 | 74.8 16.1 9.1 5.9 31.0 77.9 | -0.707 | exp/nnet3/tdnn/decode_dev_aspire_whole_uniformsegmented_win10_over5_v6_200jobs_iterfinal_pp_fg/score_14/penalty_0.0/ctm.filt.filt.sys
 
 

@@ -64,7 +64,7 @@ nj=15         # This should be set to the maximum number of jobs you are
 max_shuffle_jobs_run=50  # the shuffle jobs now include the nnet3-chain-normalize-egs command,
                          # which is fairly CPU intensive, so we can run quite a few at once
                          # without overloading the disks.
-srand=0     # rand seed for nnet3-chain-copy-egs and nnet3-chain-shuffle-egs 
+srand=0     # rand seed for nnet3-chain-copy-egs and nnet3-chain-shuffle-egs
 online_ivector_dir=  # can be used if we are including speaker information as iVectors.
 cmvn_opts=  # can be used for specifying CMVN options, if feature type is not lda (if lda,
             # it doesn't make sense to use different options than were used as input to the

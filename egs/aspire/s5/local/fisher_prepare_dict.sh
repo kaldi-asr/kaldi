@@ -10,7 +10,7 @@
 
 # for example /mnt/matylda2/data/SWITCHBOARD_1R2
 
-. path.sh
+. ./path.sh
 
 # The parts of the output of this that will be needed are
 # [in data/local/dict/ ]
@@ -29,7 +29,7 @@ mkdir -p $dir
 echo "Getting CMU dictionary"
 svn co  https://svn.code.sf.net/p/cmusphinx/code/trunk/cmudict  $dir/cmudict
 
-# silence phones, one per line. 
+# silence phones, one per line.
 for w in sil laughter noise oov; do echo $w; done > $dir/silence_phones.txt
 echo sil > $dir/optional_silence.txt
 
@@ -62,7 +62,7 @@ cat $dir/word_counts | awk '{print $2}' > $dir/word_list
 # the Fisher data.
 utils/filter_scp.pl $dir/word_list $dir/lexicon2_raw.txt > $dir/lexicon3_expand.txt
 
-# From lexicon2_raw to lexicon3_expand, we also expand the vocab for acronyms 
+# From lexicon2_raw to lexicon3_expand, we also expand the vocab for acronyms
 # like c._n._n. and other underscore-containing things as long as the new vocab
 # could be divided into finite parts contained in lexicon2_raw
 cat $dir/lexicon2_raw.txt | \
@@ -70,14 +70,14 @@ cat $dir/lexicon2_raw.txt | \
      ($w) = @ARGV;  open(W, "<$w") || die "Error opening word-counts from $w";
      while(<W>) { # reading in words we saw in training data..
        ($c, $w) = split;
-       if (!defined $pron{$w}) { 
+       if (!defined $pron{$w}) {
          @A = split("_", $w);
          if (@A > 1) {
            $this_pron = "";
            $pron_ok = 1;
-           foreach $a (@A) { 
+           foreach $a (@A) {
              if (defined($pron{$a})) { $this_pron = $this_pron . "$pron{$a} "; }
-             else { $pron_ok = 0; print STDERR "Not handling word $w, count is $c\n"; last; } 
+             else { $pron_ok = 0; print STDERR "Not handling word $w, count is $c\n"; last; }
            }
            if ($pron_ok) { $new_pron{$w} = $this_pron;   }
          }
@@ -159,7 +159,7 @@ echo -n >$dir/extra_questions.txt
 # becomes
 # -B-
 # Also, curly braces, which appear to be used for "nonstandard"
-# words or non-words, are removed, e.g. 
+# words or non-words, are removed, e.g.
 # {WOLMANIZED} W OW L M AX N AY Z D
 # -> WOLMANIZED
 # Also, mispronounced words, e.g.

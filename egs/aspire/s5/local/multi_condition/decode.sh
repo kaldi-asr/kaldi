@@ -65,13 +65,13 @@ for f in $graphdir/HCLG.fst $data/feats.scp $model $extra_files; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
-sdata=$data/split$nj;
+sdata=$data/split${nj}utt;
 cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null`
 thread_string=
-[ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads" 
+[ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads"
 
 mkdir -p $dir/log
-[[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh --per-utt $data $nj || exit 1;
+split_data.sh --per-utt $data $nj || exit 1;
 echo $nj > $dir/num_jobs
 
 
@@ -94,7 +94,7 @@ if [ ! -z "$transform_dir" ]; then
   [ ! -s $transform_dir/num_jobs ] && \
     echo "$0: expected $transform_dir/num_jobs to contain the number of jobs." && exit 1;
   nj_orig=$(cat $transform_dir/num_jobs)
-  
+
   if [ $feat_type == "raw" ]; then trans=raw_trans;
   else trans=trans; fi
   if [ $feat_type == "lda" ] && \
@@ -137,7 +137,7 @@ if [ $stage -le 1 ]; then
      $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 fi
 
-# The output of this script is the files "lat.*.gz"-- we'll rescore this at 
+# The output of this script is the files "lat.*.gz"-- we'll rescore this at
 # different acoustic scales to get the final output.
 
 
