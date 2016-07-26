@@ -23,6 +23,10 @@
 #include "fstext/determinize-star.h"
 #include "fstext/epsilon-property.h"
 
+// note: this .cc file does not include everything declared in kws-functions.h;
+// the remainder are defined in kws-functions2.cc (for compilation speed and
+// to avoid generating too-large object files on cygwin).
+
 namespace kaldi {
 
 bool CompareInterval(const Interval &i1,
@@ -139,39 +143,10 @@ class CompactLatticeToKwsProductFstMapper {
   uint64 Properties(uint64 props) const { return props; }
 };
 
-class KwsProductFstToKwsLexicographicFstMapper {
- public:
-  typedef KwsProductArc FromArc;
-  typedef KwsProductWeight FromWeight;
-  typedef KwsLexicographicArc ToArc;
-  typedef KwsLexicographicWeight ToWeight;
-
-  KwsProductFstToKwsLexicographicFstMapper() {}
-
-  ToArc operator()(const FromArc &arc) const {
-    return ToArc(arc.ilabel, 
-                 arc.olabel, 
-                 (arc.weight == FromWeight::Zero() ?
-                  ToWeight::Zero() :
-                  ToWeight(arc.weight.Value1().Value(), 
-                           StdLStdWeight(arc.weight.Value2().Value1().Value(),
-                                         arc.weight.Value2().Value2().Value()))),
-                 arc.nextstate);
-  }
-
-  fst::MapFinalAction FinalAction() const { return fst::MAP_NO_SUPERFINAL; }
-
-  fst::MapSymbolsAction InputSymbolsAction() const { return fst::MAP_COPY_SYMBOLS; }
-
-  fst::MapSymbolsAction OutputSymbolsAction() const { return fst::MAP_COPY_SYMBOLS;}
-
-  uint64 Properties(uint64 props) const { return props; }
-};
-
 
 bool CreateFactorTransducer(const CompactLattice &clat,
                             const vector<int32> &state_times,
-                            int32 utterance_id, 
+                            int32 utterance_id,
                             KwsProductFst *factor_transducer) {
   using namespace fst;
   typedef KwsProductArc::StateId StateId;
@@ -196,10 +171,10 @@ bool CreateFactorTransducer(const CompactLattice &clat,
   // initial and remove the total weight, i.e., the sum of all the outgoing
   // transitions and final weight at any state is equal to One() (push only the
   // negated log-prob, not the alignments)
-  for (StateIterator<KwsProductFst> 
+  for (StateIterator<KwsProductFst>
        siter(*factor_transducer); !siter.Done(); siter.Next()) {
     KwsProductArc::StateId state_id = siter.Value();
-    for (MutableArcIterator<KwsProductFst> 
+    for (MutableArcIterator<KwsProductFst>
          aiter(factor_transducer, state_id); !aiter.Done(); aiter.Next()) {
       KwsProductArc arc = aiter.Value();
       BaseFloat w = arc.weight.Value1().Value();
@@ -213,7 +188,7 @@ bool CreateFactorTransducer(const CompactLattice &clat,
       BaseFloat w = factor_transducer->Final(state_id).Value1().Value();
       w += beta[state_id];
       KwsProductWeight weight(w, factor_transducer->Final(state_id).Value2());
-      factor_transducer->SetFinal(state_id, weight); 
+      factor_transducer->SetFinal(state_id, weight);
     }
   }
 
@@ -248,11 +223,11 @@ bool CreateFactorTransducer(const CompactLattice &clat,
   if (!has_epsilon_property) {
     KALDI_WARN << "Epsilon property does not hold, reverting to old behavior.";
   }
-  
+
   // OK, after the above preparation, we finally come to the factor generation
-  // step. 
-  StateId ns = factor_transducer->NumStates(); 
-  StateId ss = factor_transducer->AddState(); 
+  // step.
+  StateId ns = factor_transducer->NumStates();
+  StateId ss = factor_transducer->AddState();
   StateId fs = factor_transducer->AddState();
   factor_transducer->SetStart(ss);
   factor_transducer->SetFinal(fs, KwsProductWeight::One());
@@ -285,7 +260,7 @@ void RemoveLongSilences(int32 max_silence_frames,
     // Skip arcs start from the initial state
     if (s == ss)
       continue;
-    for (MutableArcIterator<KwsProductFst> 
+    for (MutableArcIterator<KwsProductFst>
          aiter(factor_transducer, s); !aiter.Done(); aiter.Next()) {
       KwsProductArc arc = aiter.Value();
       // Skip arcs end with the final state
@@ -324,13 +299,13 @@ static void DifferenceWrapper(const fst::VectorFst<Arc> &fst1,
     DifferenceWrapper(fst1_copy, fst2_copy, difference);
     Decode(difference, encoder);
   } else {
-    VectorFst<Arc> fst2_copy(fst2);    
+    VectorFst<Arc> fst2_copy(fst2);
     RmEpsilon(&fst2_copy); // or Difference will crash.
     RemoveWeights(&fst2_copy); // or Difference will crash.
     Difference(fst1, fst2_copy, difference);
   }
 }
-                       
+
 
 void MaybeDoSanityCheck(const KwsLexicographicFst &index_transducer) {
   typedef KwsLexicographicFst::Arc::Label Label;
@@ -355,7 +330,7 @@ void MaybeDoSanityCheck(const KwsLexicographicFst &index_transducer) {
   // into a transducer).
   KwsLexicographicFst difference_transducer;
   DifferenceWrapper(index_transducer, temp_transducer, &difference_transducer);
-  ShortestPath(difference_transducer, &temp_transducer);  
+  ShortestPath(difference_transducer, &temp_transducer);
 
   GetLinearSymbolSequence(temp_transducer, &isymbols, &osymbols, &weight);
   std::ostringstream os2;
@@ -369,122 +344,13 @@ void MaybeDoSanityCheck(const KwsLexicographicFst &index_transducer) {
     KALDI_WARN << "Negative second-best cost found " << second_best_cost;
   }
 }
-  
+
 
 void MaybeDoSanityCheck(const KwsProductFst &product_transducer) {
   if (GetVerboseLevel() < 2) return;
   KwsLexicographicFst index_transducer;
   Map(product_transducer, &index_transducer, KwsProductFstToKwsLexicographicFstMapper());
   MaybeDoSanityCheck(index_transducer);
-}
-
-
-// This function replaces a symbol with epsilon wherever it appears
-// (fst must be an acceptor).
-template<class Arc>
-static void ReplaceSymbolWithEpsilon(typename Arc::Label symbol,
-                                     fst::VectorFst<Arc> *fst) {
-  typedef typename Arc::StateId StateId;
-  for (StateId s = 0; s < fst->NumStates(); s++) {
-    for (fst::MutableArcIterator<fst::VectorFst<Arc> > aiter(fst, s);
-         !aiter.Done(); aiter.Next()) {
-      Arc arc = aiter.Value();
-      KALDI_ASSERT(arc.ilabel == arc.olabel);
-      if (arc.ilabel == symbol) {
-        arc.ilabel = 0;
-        arc.olabel = 0;
-        aiter.SetValue(arc);
-      }
-    }
-  }
-}  
-
-
-void DoFactorMerging(KwsProductFst *factor_transducer,
-                     KwsLexicographicFst *index_transducer) {
-  using namespace fst;
-  typedef KwsProductFst::Arc::Label Label;
-
-  // Encode the transducer first
-  EncodeMapper<KwsProductArc> encoder(kEncodeLabels, ENCODE);
-  Encode(factor_transducer, &encoder);
-
-
-  // We want DeterminizeStar to remove epsilon arcs, so turn whatever it encoded
-  // epsilons as, into actual epsilons.
-  {
-    KwsProductArc epsilon_arc(0, 0, KwsProductWeight::One(), 0);
-    Label epsilon_label = encoder(epsilon_arc).ilabel;
-    ReplaceSymbolWithEpsilon(epsilon_label, factor_transducer);
-  }
-    
-
-  MaybeDoSanityCheck(*factor_transducer);
-
-  // Use DeterminizeStar
-  KALDI_VLOG(2) << "DoFactorMerging: determinization...";
-  KwsProductFst dest_transducer;
-  DeterminizeStar(*factor_transducer, &dest_transducer);
-
-  MaybeDoSanityCheck(dest_transducer);
-
-  // Commenting the minimization out, as it moves states/arcs in a way we don't
-  // want in some rare cases. For example, if we have two arcs from starting
-  // state, which have same words on the input side, but different cluster IDs
-  // on the output side, it may make the two arcs sharing a common final arc,
-  // which will cause problem in the factor disambiguation stage (we will not
-  // be able to add disambiguation symbols for both paths). We do a final step
-  // optimization anyway so commenting this out shouldn't matter too much.
-  // KALDI_VLOG(2) << "DoFactorMerging: minimization...";
-  // Minimize(&dest_transducer);
-
-  MaybeDoSanityCheck(dest_transducer);
-  
-  Decode(&dest_transducer, encoder);
-
-  Map(dest_transducer, index_transducer, KwsProductFstToKwsLexicographicFstMapper());
-}
-
-void DoFactorDisambiguation(KwsLexicographicFst *index_transducer) {
-  using namespace fst;
-  typedef KwsLexicographicArc::StateId StateId;
-
-  StateId ns = index_transducer->NumStates();
-  for (StateId s = 0; s < ns; s++) {
-    for (MutableArcIterator<KwsLexicographicFst> 
-         aiter(index_transducer, s); !aiter.Done(); aiter.Next()) {
-      KwsLexicographicArc arc = aiter.Value();
-      if (index_transducer->Final(arc.nextstate) != KwsLexicographicWeight::Zero())
-        arc.ilabel = s;
-      else
-        arc.olabel = 0;
-      aiter.SetValue(arc);
-    }
-  }
-}
-
-void OptimizeFactorTransducer(KwsLexicographicFst *index_transducer,
-                              int32 max_states,
-                              bool allow_partial) {
-  using namespace fst;
-  KwsLexicographicFst ifst = *index_transducer;
-  EncodeMapper<KwsLexicographicArc> encoder(kEncodeLabels, ENCODE);
-  Encode(&ifst, &encoder);
-  KALDI_VLOG(2) << "OptimizeFactorTransducer: determinization...";
-  if (allow_partial) {
-    DeterminizeStar(ifst, index_transducer, kDelta, NULL, max_states, true);
-  } else {
-      try {
-        DeterminizeStar(ifst, index_transducer, kDelta, NULL, max_states,
-                        false);
-      } catch(const std::exception &e) {
-        KALDI_WARN << e.what();
-        *index_transducer = ifst;
-      }
-  }
-  KALDI_VLOG(2) << "OptimizeFactorTransducer: minimization...";
-  Minimize(index_transducer);
-  Decode(index_transducer, encoder);
 }
 
 

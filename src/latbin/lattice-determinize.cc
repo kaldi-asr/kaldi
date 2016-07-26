@@ -98,7 +98,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "This program is deprecated, please used lattice-determinize-pruned.\n"
         "lattice-determinize lattices (and apply a pruning beam)\n"
-        " (see http://kaldi.sourceforge.net/lattices.html for more explanation)\n"
+        " (see http://kaldi-asr.org/doc/lattices.html for more explanation)\n"
         " note: this program is tyically only useful if you generated state-level\n"
         " lattices, e.g. called gmm-latgen-simple with --determinize=false\n"
         "\n"

@@ -1,8 +1,9 @@
 // nnet2bin/nnet-align-compiled.cc
 
-// Copyright 2009-2012  Microsoft Corporation
-//                      Johns Hopkins University (author: Daniel Povey)
-//                2015  Vijayaditya Peddinti
+// Copyright 2009-2012     Microsoft Corporation
+//                         Johns Hopkins University (author: Daniel Povey)
+//                2015     Vijayaditya Peddinti
+//                2015-16  Vimal Manohar
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -41,7 +42,8 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Align features given nnet3 neural net model\n"
-        "Usage:   nnet3-align-compiled [options] <nnet-in> <graphs-rspecifier> <features-rspecifier> <alignments-wspecifier>\n"
+        "Usage:   nnet3-align-compiled [options] <nnet-in> <graphs-rspecifier> "
+        "<features-rspecifier> <alignments-wspecifier>\n"
         "e.g.: \n"
         " nnet3-align-compiled 1.mdl ark:graphs.fsts scp:train.scp ark:1.ali\n"
         "or:\n"
@@ -52,7 +54,6 @@ int main(int argc, char *argv[]) {
     AlignConfig align_config;
     NnetSimpleComputationOptions decodable_opts;
     std::string use_gpu = "yes";
-    BaseFloat acoustic_scale = 1.0;
     BaseFloat transition_scale = 1.0;
     BaseFloat self_loop_scale = 1.0;
 
@@ -67,8 +68,6 @@ int main(int argc, char *argv[]) {
                 "yes|no|optional|wait, only has effect if compiled with CUDA");
     po.Register("transition-scale", &transition_scale,
                 "Transition-probability scale [relative to acoustics]");
-    po.Register("acoustic-scale", &acoustic_scale,
-                "Scaling factor for acoustic likelihoods");
     po.Register("self-loop-scale", &self_loop_scale,
                 "Scale of self-loop versus non-self-loop "
                 "log probs [relative to acoustics]");

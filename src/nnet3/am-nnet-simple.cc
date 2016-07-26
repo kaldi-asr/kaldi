@@ -50,6 +50,8 @@ void AmNnetSimple::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &left_context_);
   ExpectToken(is, binary, "<RightContext>");
   ReadBasicType(is, binary, &right_context_);
+  SetContext();  // temporarily, I'm not trusting the written ones (there was
+                 // briefly a bug)
   ExpectToken(is, binary, "<Priors>");
   priors_.Read(is, binary);
 }

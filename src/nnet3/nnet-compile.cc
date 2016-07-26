@@ -163,6 +163,30 @@ void Compiler::ComputeDerivNeeded(
   }
 }
 
+MatrixStrideType Compiler::GetStrideType(int32 node_index) const {
+  int32 component_node_index;
+  bool is_input;
+  if (nnet_.IsComponentInputNode(node_index)) {
+    // this node is for the input to a component.
+    component_node_index = node_index + 1;
+    is_input = true;
+  } else if (nnet_.IsComponentNode(node_index)) {
+    component_node_index = node_index;
+    is_input = false;
+  } else {
+    return kDefaultStride;
+  }
+  const NetworkNode &node = nnet_.GetNode(component_node_index);
+  const Component *c = nnet_.GetComponent(node.u.component_index);
+  if (is_input) {
+    return (c->Properties() & kInputContiguous) ?
+        kStrideEqualNumCols : kDefaultStride;
+  } else {
+    return (c->Properties() & kOutputContiguous) ?
+        kStrideEqualNumCols : kDefaultStride;
+  }
+}
+
 
 // Note: "by_step" is an input but is passed as a pointer because this
 // function destroys it.
@@ -189,9 +213,12 @@ void Compiler::CreateStepInfo(
     int32 num_rows = num_ids, num_cols = node.Dim(nnet_);
 
     if (node.node_type != kDimRange) {
-      this_info.value = computation->NewMatrix(num_rows, num_cols);
+      MatrixStrideType stride_type = GetStrideType(this_info.node_index);
+      this_info.value = computation->NewMatrix(num_rows, num_cols,
+                                               stride_type);
       if (deriv_needed[step])
-        this_info.deriv = computation->NewMatrix(num_rows, num_cols);
+        this_info.deriv = computation->NewMatrix(num_rows, num_cols,
+                                                 stride_type);
       if (node.node_type == kComponent)
         KALDI_PARANOID_ASSERT(step > 0 &&  steps_[step-1].output_indexes ==
                               this_info.output_indexes);

@@ -41,26 +41,34 @@ namespace kaldi {
 /// @{
 
 
-
+/// This is a templated class for online feature extraction;
+/// it's templated on a class like MfccComputer or PlpComputer
+/// that does the basic feature extraction.
 template<class C>
 class OnlineGenericBaseFeature: public OnlineBaseFeature {
  public:
   //
   // First, functions that are present in the interface:
   //
-  virtual int32 Dim() const { return mfcc_or_plp_.Dim(); }
+  virtual int32 Dim() const { return computer_.Dim(); }
 
-  // Note: this will only ever return true if you call InputFinished(), which
-  // isn't really necessary to do unless you want to make sure to flush out the
-  // last few frames of delta or LDA features to exactly match a non-online
-  // decode of some data.
-  virtual bool IsLastFrame(int32 frame) const;
-  virtual int32 NumFramesReady() const { return num_frames_; }
+  // Note: IsLastFrame() will only ever return true if you have called
+  // InputFinished() (and this frame is the last frame).
+  virtual bool IsLastFrame(int32 frame) const {
+    return input_finished_ && frame == NumFramesReady() - 1;
+  }
+  virtual BaseFloat FrameShiftInSeconds() const {
+    return computer_.GetFrameOptions().frame_shift_ms / 1000.0f;
+  }
+
+  virtual int32 NumFramesReady() const { return features_.size(); }
+
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
 
-  //
   // Next, functions that are not in the interface.
-  //
+
+
+  // Constructor from options class
   explicit OnlineGenericBaseFeature(const typename C::Options &opts);
 
   // This would be called from the application, when you get
@@ -69,32 +77,48 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
   // expected in the options.
   virtual void AcceptWaveform(BaseFloat sampling_rate,
                               const VectorBase<BaseFloat> &waveform);
-  
+
 
   // InputFinished() tells the class you won't be providing any
-  // more waveform.  This will help flush out the last few frames
-  // of delta or LDA features.
-  virtual void InputFinished() { input_finished_= true; }
+  // more waveform.  This will help flush out the last frame or two
+  // of features, in the case where snip-edges == false; it also
+  // affects the return value of IsLastFrame().
+  virtual void InputFinished() {
+    input_finished_ = true;
+    ComputeFeatures();
+  }
 
+  ~OnlineGenericBaseFeature() {
+    DeletePointers(&features_);
+  }
 
  private:
-  C mfcc_or_plp_;  // class that does the MFCC or PLP computation
+  // This function computes any additional feature frames that it is possible to
+  // compute from 'waveform_remainder_', which at this point may contain more
+  // than just a remainder-sized quantity (because AcceptWaveform() appends to
+  // waveform_remainder_ before calling this function).  It adds these feature
+  // frames to features_, and shifts off any now-unneeded samples of input from
+  // waveform_remainder_ while incrementing waveform_offset_ by the same amount.
+  void ComputeFeatures();
+
+  C computer_;  // class that does the MFCC or PLP or filterbank computation
+
+  FeatureWindowFunction window_function_;
 
   // features_ is the Mfcc or Plp or Fbank features that we have already computed.
-  Matrix<BaseFloat> features_;
+
+  std::vector<Vector<BaseFloat>*> features_;
 
   // True if the user has called "InputFinished()"
   bool input_finished_;
 
-  // num_frames_ is the number of frames of MFCC features we have
-  // already computed.  It may be less than the size of features_,
-  // because when we resize that matrix we leave some extra room,
-  // so that we don't spend too much time resizing.
-  int32 num_frames_;
-
   // The sampling frequency, extracted from the config.  Should
   // be identical to the waveform supplied.
   BaseFloat sampling_frequency_;
+
+  // waveform_offset_ is the number of samples of waveform that we have
+  // already discarded, i.e. thatn were prior to 'waveform_remainder_'.
+  int64 waveform_offset_;
 
   // waveform_remainder_ is a short piece of waveform that we may need to keep
   // after extracting all the whole frames we can (whatever length of feature
@@ -102,9 +126,9 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
   Vector<BaseFloat> waveform_remainder_;
 };
 
-typedef OnlineGenericBaseFeature<Mfcc> OnlineMfcc;
-typedef OnlineGenericBaseFeature<Plp> OnlinePlp;
-typedef OnlineGenericBaseFeature<Fbank> OnlineFbank;
+typedef OnlineGenericBaseFeature<MfccComputer> OnlineMfcc;
+typedef OnlineGenericBaseFeature<PlpComputer> OnlinePlp;
+typedef OnlineGenericBaseFeature<FbankComputer> OnlineFbank;
 
 
 /// This class takes a Matrix<BaseFloat> and wraps it as an
@@ -119,8 +143,12 @@ class OnlineMatrixFeature: public OnlineFeatureInterface {
 
   virtual int32 Dim() const { return mat_.NumCols(); }
 
+  virtual BaseFloat FrameShiftInSeconds() const {
+    return 0.01f;
+  }
+
   virtual int32 NumFramesReady() const { return mat_.NumRows(); }
-  
+
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {
     feat->CopyFromVec(mat_.Row(frame));
   }
@@ -128,6 +156,7 @@ class OnlineMatrixFeature: public OnlineFeatureInterface {
   virtual bool IsLastFrame(int32 frame) const {
     return (frame + 1 == mat_.NumRows());
   }
+
 
  private:
   const MatrixBase<BaseFloat> &mat_;
@@ -156,7 +185,7 @@ struct OnlineCmvnOptions {
                            // buffer used for caching CMVN stats.
   std::string skip_dims; // Colon-separated list of dimensions to skip normalization
                          // of, e.g. 13:14:15.
-  
+
   OnlineCmvnOptions():
       cmn_window(600),
       speaker_frames(600),
@@ -166,7 +195,7 @@ struct OnlineCmvnOptions {
       modulus(20),
       ring_buffer_size(20),
       skip_dims("") { }
-  
+
   void Check() {
     KALDI_ASSERT(speaker_frames <= cmn_window && global_frames <= speaker_frames
                  && modulus > 0);
@@ -225,11 +254,11 @@ struct OnlineCmvnState {
       global_cmvn_stats(global_stats) { }
 
   // Copy constructor
-  OnlineCmvnState(const OnlineCmvnState &other); 
+  OnlineCmvnState(const OnlineCmvnState &other);
 
   void Write(std::ostream &os, bool binary) const;
   void Read(std::istream &is, bool binary);
-  
+
   // Use the default assignment operator.
 };
 
@@ -242,7 +271,7 @@ struct OnlineCmvnState {
    We normally only do so in the "online" GMM-based decoding, e.g.  in
    online2bin/online2-wav-gmm-latgen-faster.cc; see also the script
    steps/online/prepare_online_decoding.sh and steps/online/decode.sh.
-   
+
    In the steady state (in the middle of a long utterance), this class
    accumulates CMVN statistics from the previous "cmn_window" frames (default 600
    frames, or 6 seconds), and uses these to normalize the mean and possibly
@@ -270,12 +299,14 @@ class OnlineCmvn: public OnlineFeatureInterface {
   virtual bool IsLastFrame(int32 frame) const {
     return src_->IsLastFrame(frame);
   }
+  virtual BaseFloat FrameShiftInSeconds() const {
+    return src_->FrameShiftInSeconds();
+  }
 
   // The online cmvn does not introduce any additional latency.
   virtual int32 NumFramesReady() const { return src_->NumFramesReady(); }
 
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
-
 
   //
   // Next, functions that are not in the interface.
@@ -400,6 +431,9 @@ class OnlineSpliceFrames: public OnlineFeatureInterface {
   virtual bool IsLastFrame(int32 frame) const {
     return src_->IsLastFrame(frame);
   }
+  virtual BaseFloat FrameShiftInSeconds() const {
+    return src_->FrameShiftInSeconds();
+  }
 
   virtual int32 NumFramesReady() const;
 
@@ -429,6 +463,9 @@ class OnlineTransform: public OnlineFeatureInterface {
 
   virtual bool IsLastFrame(int32 frame) const {
     return src_->IsLastFrame(frame);
+  }
+  virtual BaseFloat FrameShiftInSeconds() const {
+    return src_->FrameShiftInSeconds();
   }
 
   virtual int32 NumFramesReady() const { return src_->NumFramesReady(); }
@@ -461,6 +498,9 @@ class OnlineDeltaFeature: public OnlineFeatureInterface {
   virtual bool IsLastFrame(int32 frame) const {
     return src_->IsLastFrame(frame);
   }
+  virtual BaseFloat FrameShiftInSeconds() const {
+    return src_->FrameShiftInSeconds();
+  }
 
   virtual int32 NumFramesReady() const;
 
@@ -488,6 +528,9 @@ class OnlineCacheFeature: public OnlineFeatureInterface {
 
   virtual bool IsLastFrame(int32 frame) const {
     return src_->IsLastFrame(frame);
+  }
+  virtual BaseFloat FrameShiftInSeconds() const {
+    return src_->FrameShiftInSeconds();
   }
 
   virtual int32 NumFramesReady() const { return src_->NumFramesReady(); }
@@ -519,6 +562,10 @@ class OnlineAppendFeature: public OnlineFeatureInterface {
 
   virtual bool IsLastFrame(int32 frame) const {
     return (src1_->IsLastFrame(frame) || src2_->IsLastFrame(frame));
+  }
+  // Hopefully sources have the same rate
+  virtual BaseFloat FrameShiftInSeconds() const {
+    return src1_->FrameShiftInSeconds();
   }
 
   virtual int32 NumFramesReady() const {

@@ -1,9 +1,8 @@
-#!/bin/bash 
+#!/bin/bash
 #set -e
 # this script is based on local/online/run_nnet2_comman.sh
 # but it operates on corrupted training/dev/test data sets
 
-. cmd.sh
 
 stage=1
 snrs="20:10:15:5:0"
@@ -15,7 +14,7 @@ RIR_home=db/RIR_databases/ # parent directory of the RIR databases files
 download_rirs=true # download the RIR databases from the urls or assume they are present in the RIR_home directory
 
 set -e
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -30,8 +29,8 @@ if [ $stage -le 1 ]; then
     --download-rirs $download_rirs \
     --RIR-home $RIR_home \
     data/impulses_noises || exit 1;
-    
-  # corrupt the fisher data to generate multi-condition data 
+
+  # corrupt the fisher data to generate multi-condition data
   # for data_dir in train dev test; do
   for data_dir in train dev test; do
     if [ "$data_dir" == "train" ]; then
@@ -41,18 +40,18 @@ if [ $stage -le 1 ]; then
     fi
     reverb_data_dirs=
     for i in `seq 1 $num_reps`; do
-      cur_dest_dir=" data/temp_${data_dir}_${i}" 
+      cur_dest_dir=" data/temp_${data_dir}_${i}"
       local/multi_condition/reverberate_data_dir.sh --random-seed $i \
         --snrs "$snrs" --log-dir exp/make_corrupted_wav \
         data/${data_dir}  data/impulses_noises $cur_dest_dir
-      reverb_data_dirs+=" $cur_dest_dir" 
+      reverb_data_dirs+=" $cur_dest_dir"
     done
     utils/combine_data.sh --extra-files utt2uniq data/${data_dir}_rvb $reverb_data_dirs
     rm -rf $reverb_data_dirs
   done
 
   # create the dev, test and eval sets from the aspire recipe
-  local/multi_condition/aspire_data_prep.sh 
+  local/multi_condition/aspire_data_prep.sh
 
   # copy the alignments for the newly created utterance ids
   ali_dirs=
@@ -60,9 +59,8 @@ if [ $stage -le 1 ]; then
     local/multi_condition/copy_ali_dir.sh --utt-prefix "rev${i}_" exp/tri5a exp/tri5a_temp_$i || exit 1;
     ali_dirs+=" exp/tri5a_temp_$i"
   done
-  local/multi_condition/combine_ali_dirs.sh --ref-data-dir data/train_rvb \
-    exp/tri5a_rvb_ali $ali_dirs || exit 1;
-   
+  steps/combine_ali_dirs.sh data/train_rvb exp/tri5a_rvb_ali $ali_dirs || exit 1;
+
   # copy the alignments for training the 100k system (from tri4a)
   local/multi_condition/copy_ali_dir.sh --utt-prefix "rev1_" exp/tri4a exp/tri4a_rvb || exit 1;
 fi

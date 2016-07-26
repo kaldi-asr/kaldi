@@ -68,7 +68,7 @@ done
 sdata=$data/split$nj;
 cmvn_opts=`cat $srcdir/cmvn_opts` || exit 1;
 thread_string=
-[ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads" 
+[ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads"
 
 mkdir -p $dir/log
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
@@ -99,7 +99,7 @@ if [ ! -z "$transform_dir" ]; then
   [ ! -s $transform_dir/num_jobs ] && \
     echo "$0: expected $transform_dir/num_jobs to contain the number of jobs." && exit 1;
   nj_orig=$(cat $transform_dir/num_jobs)
-  
+
   if [ $feat_type == "raw" ]; then trans=raw_trans;
   else trans=trans; fi
   if [ $feat_type == "lda" ] && \
@@ -142,16 +142,21 @@ if [ $stage -le 1 ]; then
      $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 fi
 
-# The output of this script is the files "lat.*.gz"-- we'll rescore this at 
+if [ $stage -le 2 ]; then
+  [ ! -z $iter ] && iter_opt="--iter $iter"
+  steps/diagnostic/analyze_lats.sh --cmd "$cmd" $iter_opt $graphdir $dir
+fi
+
+# The output of this script is the files "lat.*.gz"-- we'll rescore this at
 # different acoustic scales to get the final output.
 
-
-if [ $stage -le 2 ]; then
+if [ $stage -le 3 ]; then
   if ! $skip_scoring ; then
     [ ! -x local/score.sh ] && \
       echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
     echo "score best paths"
-    local/score.sh $scoring_opts --cmd "$cmd" $data $graphdir $dir
+    [ "$iter" != "final" ] && iter_opt="--iter $iter"
+    local/score.sh $iter_opt $scoring_opts --cmd "$cmd" $data $graphdir $dir
     echo "score confidence and timing with sclite"
   fi
 fi

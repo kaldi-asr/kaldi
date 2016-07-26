@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/usr/bin/env python
 
 # Copyright 2015  Brno University of Technology (author: Karel Vesely)
 # Apache 2.0
@@ -16,7 +16,7 @@ parser.add_option("--min-count", help="Minimum word-count to have a single word 
 (o, args) = parser.parse_args()
 
 if len(args) != 3:
-  parset.print_help()
+  parser.print_help()
   sys.exit(1)
 words_file, text_file, category_mapping_file = args
 

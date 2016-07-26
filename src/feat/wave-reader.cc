@@ -106,7 +106,7 @@ void WaveData::WriteUint16(std::ostream &os, int16 i) {
 
 
 
-void WaveData::Read(std::istream &is) {
+void WaveData::Read(std::istream &is, ReadDataType read_data) {
   data_.Resize(0, 0);  // clear the data.
 
   char tmp[5];
@@ -231,6 +231,19 @@ void WaveData::Read(std::istream &is) {
                << "after first data block there will be " << riff_chunk_read
                << " + " << data_chunk_size << " bytes "
                << "(we do not support reading multiple data chunks).";
+  }
+
+  if (read_data == kLeaveDataUndefined) {
+    // we won't actually be reading the data- we'll just be faking that we read
+    // that data, so the caller can get the metadata.
+    // assume we'd read the same number of bytes that the data-chunk header
+    // says we'd read.
+    int32 num_bytes_read = data_chunk_size;
+    uint32 num_samp = num_bytes_read / block_align;
+    data_.Resize(num_channels, num_samp, kUndefined);
+    return;
+  } else {
+    KALDI_ASSERT(read_data == kReadData);
   }
 
   std::vector<char*> data_pointer_vec;

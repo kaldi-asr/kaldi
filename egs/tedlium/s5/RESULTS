@@ -7,6 +7,27 @@ for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; d
   for x in exp/{mono,tri,sgmm,nnet,dnn,lstm}*/decode*; do [ -d $x ] && grep Sum $x/score_*/*.sys | utils/best_wer.sh; done 2>/dev/null | grep $filter_regexp
 exit 0
 
+
+#---------------------------------Current results (after fixing the <unk> problem)---------------------------------
+# There was a problem with the language model preparation where the scripts expected <UNK> to represent OOV words while
+# the language model used <unk> to represent them. See `git log tedlium-unk-fix` for details.
+# Fixing this causes a small decrease in WER.
+
+# GMMs
+# DEV SPEAKERS:
+%WER 31.0 | 507 17792 | 73.5 20.2 6.3 4.5 31.0 97.2 | -0.032 | exp/tri1/decode_nosp_dev/score_11_0.0/ctm.filt.filt.sys
+%WER 26.4 | 507 17792 | 77.8 16.7 5.5 4.2 26.4 95.5 | -0.066 | exp/tri2/decode_nosp_dev/score_13_0.0/ctm.filt.filt.sys
+%WER 26.1 | 507 17792 | 77.2 16.3 6.5 3.4 26.1 95.5 | -0.106 | exp/tri2/decode_dev/score_14_1.0/ctm.filt.filt.sys
+%WER 22.0 | 507 17792 | 81.6 13.2 5.2 3.6 22.0 93.9 | -0.189 | exp/tri3/decode_dev/score_13_1.0/ctm.filt.filt.sys
+
+# TEST SPEAKERS:
+%WER 30.9 | 1155 27512 | 72.1 21.0 6.9 3.0 30.9 94.5 | 0.035 | exp/tri1/decode_nosp_test/score_12_0.5/ctm.filt.filt.sys
+%WER 25.5 | 1155 27512 | 78.0 17.4 4.6 3.6 25.5 92.8 | -0.034 | exp/tri2/decode_nosp_test/score_12_0.0/ctm.filt.filt.sys
+%WER 24.9 | 1155 27512 | 78.3 16.7 5.0 3.2 24.9 93.0 | -0.020 | exp/tri2/decode_test/score_14_0.5/ctm.filt.filt.sys
+%WER 20.3 | 1155 27512 | 82.7 13.4 3.9 3.0 20.3 90.0 | -0.063 | exp/tri3/decode_test/score_14_0.5/ctm.filt.filt.sys
+
+#---------------------------------(Pre-<unk> fix for Cantab LM) Provided for reference----------------------------------
+
 # Results from Nikolay, using kaldi scoring:
 # %WER 35.17 [ 9677 / 27512, 1267 ins, 1681 del, 6729 sub ] exp/tri1/decode/wer_13
 # %WER 30.03 [ 8262 / 27512, 1255 ins, 1367 del, 5640 sub ] exp/tri2/decode/wer_15

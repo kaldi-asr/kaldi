@@ -1,7 +1,7 @@
 // nnet3/nnet-test-utils.h
 
 // Copyright   2015  Johns Hopkins University (author: Daniel Povey)
-
+// Copyright   2016  Daniel Galvez
 // See ../../COPYING for clarification regarding multiple authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -59,11 +59,20 @@ struct NnetGenerationOptions {
 void GenerateConfigSequence(const NnetGenerationOptions &opts,
                             std::vector<std::string> *configs);
 
+/// Generate a config string with a composite component composed only
+/// of block affine, repeated affine, and natural gradient repeated affine
+/// components.
+void GenerateConfigSequenceCompositeBlock(const NnetGenerationOptions &opts,
+                                          std::vector<std::string> *configs);
 
 /**  This function computes an example computation request, for testing purposes.
      The "Simple" in the name means that it currently only supports neural nets
      that satisfy IsSimple(nnet) (defined in nnet-utils.h).
-     If there are 2 inputs, the "input" will be first, followed by "ivector". */
+     If there are 2 inputs, the "input" will be first, followed by "ivector".
+
+     In order to expand the range of things you can test with this, we guarantee
+     that there will always be at least 3 successive frames of input available.
+*/
 void ComputeExampleComputationRequestSimple(
     const Nnet &nnet,
     ComputationRequest *request,
@@ -87,7 +96,7 @@ bool NnetParametersAreIdentical(const Nnet &nnet1,
     ivector_dim <= 0).  This function generates exactly "left_context" or
     "right_context" frames of context on the left and right respectively. */
 void GenerateSimpleNnetTrainingExample(
-    int32 num_supervised_frames,    
+    int32 num_supervised_frames,
     int32 left_context,
     int32 right_context,
     int32 input_dim,

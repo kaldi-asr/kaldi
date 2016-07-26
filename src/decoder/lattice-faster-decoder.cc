@@ -145,12 +145,12 @@ bool LatticeFasterDecoder::GetRawLattice(Lattice *ofst,
     TopSortTokens(active_toks_[f].toks, &token_list);
     for (size_t i = 0; i < token_list.size(); i++)
       if (token_list[i] != NULL)
-        tok_map[token_list[i]] = ofst->AddState();    
+        tok_map[token_list[i]] = ofst->AddState();
   }
   // The next statement sets the start state of the output FST.  Because we
   // topologically sorted the tokens, state zero must be the start-state.
   ofst->SetStart(0);
-  
+
   KALDI_VLOG(4) << "init:" << num_toks_/2 + 3 << " buckets:"
                 << tok_map.bucket_count() << " load:" << tok_map.load_factor()
                 << " max:" << tok_map.max_load_factor();
@@ -223,6 +223,32 @@ void LatticeFasterDecoder::PossiblyResizeHash(size_t num_toks) {
     toks_.SetSize(new_sz);
   }
 }
+
+/*
+  A note on the definition of extra_cost.
+
+  extra_cost is used in pruning tokens, to save memory.
+
+  Define the 'forward cost' of a token as zero for any token on the frame
+  we're currently decoding; and for other frames, as the shortest-path cost
+  between that token and a token on the frame we're currently decoding.
+  (by "currently decoding" I mean the most recently processed frame).
+
+  Then define the extra_cost of a token (always >= 0) as the forward-cost of
+  the token minus the smallest forward-cost of any token on the same frame.
+
+  We can use the extra_cost to accurately prune away tokens that we know will
+  never appear in the lattice.  If the extra_cost is greater than the desired
+  lattice beam, the token would provably never appear in the lattice, so we can
+  prune away the token.
+
+  The advantage of storing the extra_cost rather than the forward-cost, is that
+  it is less costly to keep the extra_cost up-to-date when we process new frames.
+  When we process a new frame, *all* the previous frames' forward-costs would change;
+  but in general the extra_cost will change only for a finite number of frames.
+  (Actually we don't update all the extra_costs every time we update a frame; we
+  only do it every 'config_.prune_interval' frames).
+ */
 
 // FindOrAddToken either locates a token in hash of toks_,
 // or if necessary inserts a new, empty token (i.e. with no forward links)
@@ -352,7 +378,7 @@ void LatticeFasterDecoder::PruneForwardLinksFinal() {
 
   if (active_toks_[frame_plus_one].toks == NULL)  // empty list; should not happen.
     KALDI_WARN << "No tokens alive at end of file";
-  
+
   typedef unordered_map<Token*, BaseFloat>::const_iterator IterType;
   ComputeFinalCosts(&final_costs_, &final_relative_cost_, &final_best_cost_);
   decoding_finalized_ = true;
@@ -623,7 +649,7 @@ BaseFloat LatticeFasterDecoder::GetCutoff(Elem *list_head, size_t *tok_count,
 
     KALDI_VLOG(6) << "Number of tokens active on frame " << NumFramesDecoded()
                   << " is " << tmp_array_.size();
-    
+
     if (tmp_array_.size() > static_cast<size_t>(config_.max_active)) {
       std::nth_element(tmp_array_.begin(),
                        tmp_array_.begin() + config_.max_active,
@@ -634,7 +660,7 @@ BaseFloat LatticeFasterDecoder::GetCutoff(Elem *list_head, size_t *tok_count,
       if (adaptive_beam)
         *adaptive_beam = max_active_cutoff - best_weight + config_.beam_delta;
       return max_active_cutoff;
-    }     
+    }
     if (tmp_array_.size() > static_cast<size_t>(config_.min_active)) {
       if (config_.min_active == 0) min_active_cutoff = best_weight;
       else {
@@ -645,7 +671,7 @@ BaseFloat LatticeFasterDecoder::GetCutoff(Elem *list_head, size_t *tok_count,
                          tmp_array_.end());
         min_active_cutoff = tmp_array_[config_.min_active];
       }
-    }    
+    }
     if (min_active_cutoff > beam_cutoff) { // min_active is looser than beam.
       if (adaptive_beam)
         *adaptive_beam = min_active_cutoff - best_weight + config_.beam_delta;
@@ -673,7 +699,7 @@ BaseFloat LatticeFasterDecoder::ProcessEmitting(DecodableInterface *decodable) {
   BaseFloat cur_cutoff = GetCutoff(final_toks, &tok_cnt, &adaptive_beam, &best_elem);
   KALDI_VLOG(6) << "Adaptive beam on frame " << NumFramesDecoded() << " is "
                 << adaptive_beam;
-  
+
   PossiblyResizeHash(tok_cnt);  // This makes sure the hash is always big enough.
 
   BaseFloat next_cutoff = std::numeric_limits<BaseFloat>::infinity();
@@ -761,7 +787,7 @@ void LatticeFasterDecoder::ProcessNonemitting(BaseFloat cutoff) {
   // it may cause us to process states unnecessarily (e.g. more than once),
   // but in the baseline code, turning this vector into a set to fix this
   // problem did not improve overall speed.
-  
+
   KALDI_ASSERT(queue_.empty());
   for (const Elem *e = toks_.GetList(); e != NULL;  e = e->tail)
     queue_.push_back(e->key);
@@ -771,7 +797,7 @@ void LatticeFasterDecoder::ProcessNonemitting(BaseFloat cutoff) {
       warned_ = true;
     }
   }
-  
+
   while (!queue_.empty()) {
     StateId state = queue_.back();
     queue_.pop_back();

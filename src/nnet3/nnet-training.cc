@@ -1,6 +1,7 @@
 // nnet3/nnet-training.cc
 
 // Copyright      2015    Johns Hopkins University (author: Daniel Povey)
+//                2015    Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -41,6 +42,17 @@ NnetTrainer::NnetTrainer(const NnetTrainerOptions &config,
                                // natural-gradient updates.
     SetZero(is_gradient, delta_nnet_);
   }
+  if (config_.read_cache != "") {
+    bool binary;
+    try {
+      Input ki(config_.read_cache, &binary);
+      compiler_.ReadCache(ki.Stream(), binary);
+      KALDI_LOG << "Read computation cache from " << config_.read_cache;
+    } catch (...) {
+      KALDI_WARN << "Could not open cached computation. "
+                    "Probably this is the first training iteration.";
+    }
+  } 
 }
 
 
@@ -124,7 +136,8 @@ void ObjectiveFunctionInfo::UpdateStats(
     int32 minibatches_per_phase,
     int32 minibatch_counter,
     BaseFloat this_minibatch_weight,
-    BaseFloat this_minibatch_tot_objf) {
+    BaseFloat this_minibatch_tot_objf,
+    BaseFloat this_minibatch_tot_aux_objf) {
   int32 phase = minibatch_counter / minibatches_per_phase;
   if (phase != current_phase) {
     KALDI_ASSERT(phase == current_phase + 1); // or doesn't really make sense.
@@ -132,11 +145,14 @@ void ObjectiveFunctionInfo::UpdateStats(
     current_phase = phase;
     tot_weight_this_phase = 0.0;
     tot_objf_this_phase = 0.0;
+    tot_aux_objf_this_phase = 0.0;
   }
   tot_weight_this_phase += this_minibatch_weight;
   tot_objf_this_phase += this_minibatch_tot_objf;
+  tot_aux_objf_this_phase += this_minibatch_tot_aux_objf;
   tot_weight += this_minibatch_weight;
   tot_objf += this_minibatch_tot_objf;
+  tot_aux_objf += this_minibatch_tot_aux_objf;
 }
 
 void ObjectiveFunctionInfo::PrintStatsForThisPhase(
@@ -144,23 +160,49 @@ void ObjectiveFunctionInfo::PrintStatsForThisPhase(
     int32 minibatches_per_phase) const {
   int32 start_minibatch = current_phase * minibatches_per_phase,
       end_minibatch = start_minibatch + minibatches_per_phase - 1;
-  KALDI_LOG << "Average objective function for '" << output_name
-            << "' for minibatches " << start_minibatch
-            << '-' << end_minibatch << " is "
-            << (tot_objf_this_phase / tot_weight_this_phase) << " over "
-            << tot_weight_this_phase << " frames.";
+
+  if (tot_aux_objf_this_phase == 0.0) {
+    KALDI_LOG << "Average objective function for '" << output_name
+              << "' for minibatches " << start_minibatch
+              << '-' << end_minibatch << " is "
+              << (tot_objf_this_phase / tot_weight_this_phase) << " over "
+              << tot_weight_this_phase << " frames.";
+  } else {
+    BaseFloat objf = (tot_objf_this_phase / tot_weight_this_phase),
+        aux_objf = (tot_aux_objf_this_phase / tot_weight_this_phase),
+        sum_objf = objf + aux_objf;
+    KALDI_LOG << "Average objective function for '" << output_name
+              << "' for minibatches " << start_minibatch
+              << '-' << end_minibatch << " is "
+              << objf << " + " << aux_objf << " = " << sum_objf
+              << " over " << tot_weight_this_phase << " frames.";
+  }
 }
 
 bool ObjectiveFunctionInfo::PrintTotalStats(const std::string &name) const {
-  KALDI_LOG << "Overall average objective function for '" << name << "' is "
-            << (tot_objf / tot_weight) << " over " << tot_weight << " frames.";
+  BaseFloat objf = (tot_objf / tot_weight),
+        aux_objf = (tot_aux_objf / tot_weight),
+        sum_objf = objf + aux_objf;
+  if (tot_aux_objf == 0.0) {
+    KALDI_LOG << "Overall average objective function for '" << name << "' is "
+              << (tot_objf / tot_weight) << " over " << tot_weight << " frames.";
+  } else {
+    KALDI_LOG << "Overall average objective function for '" << name << "' is "
+              << objf << " + " << aux_objf << " = " << sum_objf        
+              << " over " << tot_weight << " frames.";
+  }
   KALDI_LOG << "[this line is to be parsed by a script:] "
             << "log-prob-per-frame="
-            << (tot_objf / tot_weight);
+            << objf;
   return (tot_weight != 0.0);
 }
 
 NnetTrainer::~NnetTrainer() {
+  if (config_.write_cache != "") {
+    Output ko(config_.write_cache, config_.binary_write_cache);
+    compiler_.WriteCache(ko.Stream(), config_.binary_write_cache);
+    KALDI_LOG << "Wrote computation cache to " << config_.write_cache;
+  } 
   delete delta_nnet_;
 }
 

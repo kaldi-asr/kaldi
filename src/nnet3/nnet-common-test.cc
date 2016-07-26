@@ -1,6 +1,7 @@
 // nnet3/nnet-common-test.cc
 
-// Copyright 2015  Johns Hopkins University (author: Daniel Povey)
+// Copyright      2015  Johns Hopkins University (author: Daniel Povey)
+//                2016  Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -58,6 +59,44 @@ void UnitTestIndexIo() {
   }
 }
 
+void UnitTestCindexIo() {
+  std::vector<Cindex> cindexes(RandInt(0, 10));
+
+  for (int32 i = 0; i < cindexes.size(); i++) {
+    if (i == 0 || RandInt(0, 1) == 0) {
+      cindexes[i].first = RandInt(0, 127);
+    } else {
+      cindexes[i].first = cindexes[i-1].first;
+    }
+    if (i == 0 || RandInt(0, 1) == 0) {
+      cindexes[i].second.n = RandInt(-1, 2);
+      cindexes[i].second.t = RandInt(-150, 150);
+      cindexes[i].second.x = RandInt(-1, 1);
+    } else {
+      // this case gets optimized while writing. (if abs(diff-in-t) < 125).
+      cindexes[i].second.n = cindexes[i-1].second.n;
+      cindexes[i].second.t = cindexes[i-1].second.t + RandInt(-127, 127);
+      cindexes[i].second.x = cindexes[i-1].second.x;
+    }
+  }
+  
+  std::ostringstream os;
+  bool binary = (RandInt(0, 1) == 0);
+  WriteCindexVector(os, binary, cindexes);
+  std::vector<Cindex> cindexes2;
+  if (RandInt(0, 1) == 0)
+    cindexes2 = cindexes;
+  std::istringstream is(os.str());
+  ReadCindexVector(is, binary, &cindexes2);
+  if (cindexes != cindexes2) {
+    WriteCindexVector(std::cerr, false, cindexes);
+    std::cerr << "  vs. \n";
+    WriteCindexVector(std::cerr, false, cindexes2);
+    std::cerr << "\n";
+    KALDI_ERR << "Indexes differ.";
+  }
+}
+
 } // namespace nnet3
 } // namespace kaldi
 
@@ -65,8 +104,10 @@ int main() {
   using namespace kaldi;
   using namespace kaldi::nnet3;
 
-  for (int32 i = 0; i < 50; i++)
+  for (int32 i = 0; i < 50; i++) {
     UnitTestIndexIo();
+    UnitTestCindexIo();
+  }
 
   KALDI_LOG << "Nnet-common tests succeeded.";
 

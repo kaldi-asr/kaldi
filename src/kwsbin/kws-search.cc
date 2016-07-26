@@ -50,7 +50,7 @@ class VectorFstToKwsLexicographicFstMapper {
   VectorFstToKwsLexicographicFstMapper() {}
 
   ToArc operator()(const FromArc &arc) const {
-    return ToArc(arc.ilabel, 
+    return ToArc(arc.ilabel,
                  arc.olabel,
                  (arc.weight == FromWeight::Zero() ?
                   ToWeight::Zero() :
@@ -99,12 +99,12 @@ int main(int argc, char *argv[]) {
     bool strict = true;
     double negative_tolerance = -0.1;
     double keyword_beam = -1;
-    
+
     po.Register("nbest", &n_best, "Return the best n hypotheses.");
     po.Register("keyword-nbest", &keyword_nbest,
                 "Pick the best n keywords if the FST contains multiple keywords.");
     po.Register("strict", &strict, "Affects the return status of the program.");
-    po.Register("negative-tolerance", &negative_tolerance, 
+    po.Register("negative-tolerance", &negative_tolerance,
                 "The program will print a warning if we get negative score smaller "
                 "than this tolerance.");
     po.Register("keyword-beam", &keyword_beam,
@@ -134,13 +134,13 @@ int main(int argc, char *argv[]) {
         keyword_rspecifier = po.GetOptArg(2),
         result_wspecifier = po.GetOptArg(3);
 
-    RandomAccessTableReader< VectorFstTplHolder<KwsLexicographicArc> > index_reader(index_rspecifier);
+    RandomAccessTableReader< VectorFstTplHolder<Arc> > index_reader(index_rspecifier);
     SequentialTableReader<VectorFstHolder> keyword_reader(keyword_rspecifier);
-    TableWriter< BasicVectorHolder<double> > result_writer(result_wspecifier);
+    TableWriter<BasicVectorHolder<double> > result_writer(result_wspecifier);
 
     // Index has key "global"
     KwsLexicographicFst index = index_reader.Value("global");
-    
+
     // First we have to remove the disambiguation symbols. But rather than
     // removing them totally, we actually move them from input side to output
     // side, making the output symbol a "combined" symbol of the disambiguation
@@ -154,7 +154,7 @@ int main(int argc, char *argv[]) {
     unordered_map<uint32, uint64> label_decoder;
     for (StateIterator<KwsLexicographicFst> siter(index); !siter.Done(); siter.Next()) {
       StateId state_id = siter.Value();
-      for (MutableArcIterator<KwsLexicographicFst> 
+      for (MutableArcIterator<KwsLexicographicFst>
            aiter(&index, state_id); !aiter.Done(); aiter.Next()) {
         Arc arc = aiter.Value();
         // Skip the non-final arcs
@@ -169,14 +169,14 @@ int main(int argc, char *argv[]) {
           label_encoder[osymbol] = label_count;
           label_decoder[label_count] = osymbol;
           label_count++;
-        } else { 
+        } else {
           arc.olabel = label_encoder[osymbol];
         }
         aiter.SetValue(arc);
       }
     }
-    ArcSort(&index, fst::ILabelCompare<KwsLexicographicArc>());
-    
+    ArcSort(&index, fst::ILabelCompare<Arc>());
+
     int32 n_done = 0;
     int32 n_fail = 0;
     for (; !keyword_reader.Done(); keyword_reader.Next()) {
@@ -210,7 +210,7 @@ int main(int argc, char *argv[]) {
       // Got something here
       double score;
       int32 tbeg, tend, uid;
-      for (ArcIterator<KwsLexicographicFst> 
+      for (ArcIterator<KwsLexicographicFst>
            aiter(result_fst, result_fst.Start()); !aiter.Done(); aiter.Next()) {
         const Arc &arc = aiter.Value();
 

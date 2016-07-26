@@ -40,10 +40,10 @@ open(DUR3, ">$dir/3sec") || die "Failed opening output file $dir/3sec";
 open(DUR10, ">$dir/10sec") || die "Failed opening output file $dir/10sec";
 open(DUR30, ">$dir/30sec") || die "Failed opening output file $dir/30sec";
 
-my $key_str = `wget -qO- "http://www.itl.nist.gov/iad/mig/tests/lang/2007/lid07key_v5.txt"`;
+my $key_str = `wget -qO- "http://www.openslr.org/resources/23/lre07_key.txt"`;
 @key_lines = split("\n",$key_str);
-%utt2lang = (); 
-%utt2dur = (); 
+%utt2lang = ();
+%utt2dur = ();
 foreach (@key_lines) {
   @words = split(' ', $_);
   if (index($words[0], "#") == -1) {

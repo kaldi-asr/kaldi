@@ -25,6 +25,7 @@
 
 #include "base/kaldi-common.h"
 #include "fstext/deterministic-fst.h"
+#include "lm/arpa-file-parser.h"
 #include "util/common-utils.h"
 
 namespace kaldi {
@@ -418,8 +419,7 @@ class ConstArpaLmDeterministicFst
 // Reads in an Arpa format language model and converts it into ConstArpaLm
 // format. We assume that the words in the input Arpa format language model have
 // been converted into integers.
-bool BuildConstArpaLm(const bool natural_base, const int32 bos_symbol,
-                      const int32 eos_symbol, const int32 unk_symbol,
+bool BuildConstArpaLm(const ArpaParseOptions& options,
                       const std::string& arpa_rxfilename,
                       const std::string& const_arpa_wxfilename);
 

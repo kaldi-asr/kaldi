@@ -1,7 +1,8 @@
 // nnet3/nnet-utils.cc
 
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
-
+//                2016  Daniel Galvez
+//
 // See ../../COPYING for clarification regarding multiple authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,6 +19,7 @@
 // limitations under the License.
 
 #include "nnet3/nnet-utils.h"
+#include "nnet3/nnet-simple-component.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -40,10 +42,8 @@ int32 NumInputNodes(const Nnet &nnet) {
 
 
 bool IsSimpleNnet(const Nnet &nnet) {
-  // check that we have just one output node and it is
-  // called "output".
-  if (NumOutputNodes(nnet) != 1 ||
-      nnet.GetNodeIndex("output") == -1 ||
+  // check that we have an output node and called "output".
+  if (nnet.GetNodeIndex("output") == -1 ||
       !nnet.IsOutputNode(nnet.GetNodeIndex("output")))
     return false;
   // check that there is an input node named "input".
@@ -248,6 +248,22 @@ void ZeroComponentStats(Nnet *nnet) {
   }
 }
 
+void ScaleLearningRate(BaseFloat learning_rate_scale,
+                     Nnet *nnet) {
+  for (int32 c = 0; c < nnet->NumComponents(); c++) {
+    Component *comp = nnet->GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent) {
+      // For now all updatable components inherit from class UpdatableComponent.
+      // If that changes in future, we will change this code.
+      UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(comp);
+      if (uc == NULL)
+        KALDI_ERR << "Updatable component does not inherit from class "
+            "UpdatableComponent; change this code.";
+      uc->SetActualLearningRate(uc->LearningRate() * learning_rate_scale);
+    }
+  }
+}
+
 void SetLearningRate(BaseFloat learning_rate,
                      Nnet *nnet) {
   for (int32 c = 0; c < nnet->NumComponents(); c++) {
@@ -259,9 +275,66 @@ void SetLearningRate(BaseFloat learning_rate,
       if (uc == NULL)
         KALDI_ERR << "Updatable component does not inherit from class "
             "UpdatableComponent; change this code.";
-      uc->SetLearningRate(learning_rate);
+      uc->SetUnderlyingLearningRate(learning_rate);
     }
   }
+}
+
+void SetLearningRates(const Vector<BaseFloat> &learning_rates,
+                     Nnet *nnet) {
+  int32 i = 0;
+  for (int32 c = 0; c < nnet->NumComponents(); c++) {
+    Component *comp = nnet->GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent) {
+      // For now all updatable components inherit from class UpdatableComponent.
+      // If that changes in future, we will change this code.
+      UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(comp);
+      if (uc == NULL)
+        KALDI_ERR << "Updatable component does not inherit from class "
+            "UpdatableComponent; change this code.";
+      KALDI_ASSERT(i < learning_rates.Dim());
+      uc->SetActualLearningRate(learning_rates(i++));
+    }
+  }
+  KALDI_ASSERT(i == learning_rates.Dim());
+}
+
+void GetLearningRates(const Nnet &nnet, 
+                      Vector<BaseFloat> *learning_rates) {
+  learning_rates->Resize(NumUpdatableComponents(nnet));
+  int32 i = 0;
+  for (int32 c = 0; c < nnet.NumComponents(); c++) {
+    const Component *comp = nnet.GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent) {
+      // For now all updatable components inherit from class UpdatableComponent.
+      // If that changes in future, we will change this code.
+      const UpdatableComponent *uc = dynamic_cast<const UpdatableComponent*>(comp);
+      if (uc == NULL)
+        KALDI_ERR << "Updatable component does not inherit from class "
+            "UpdatableComponent; change this code.";
+      (*learning_rates)(i++) = uc->LearningRate();
+    }
+  }
+  KALDI_ASSERT(i == learning_rates->Dim());
+}
+
+void ScaleNnetComponents(const Vector<BaseFloat> &scale_factors,
+                         Nnet *nnet) {
+  int32 i = 0;
+  for (int32 c = 0; c < nnet->NumComponents(); c++) {
+    Component *comp = nnet->GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent) {
+      // For now all updatable components inherit from class UpdatableComponent.
+      // If that changes in future, we will change this code.
+      UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(comp);
+      if (uc == NULL)
+        KALDI_ERR << "Updatable component does not inherit from class "
+            "UpdatableComponent; change this code.";
+      KALDI_ASSERT(i < scale_factors.Dim());
+      uc->Scale(scale_factors(i++));
+    }
+  }
+  KALDI_ASSERT(i == scale_factors.Dim());
 }
 
 void ScaleNnet(BaseFloat scale, Nnet *nnet) {
@@ -357,6 +430,51 @@ int32 NumUpdatableComponents(const Nnet &dest) {
       ans++;
   }
   return ans;
+}
+
+void ConvertRepeatedToBlockAffine(CompositeComponent *c_component) {
+  for(int32 i = 0; i < c_component->NumComponents(); i++) {
+    const Component *c = c_component->GetComponent(i);
+    KALDI_ASSERT(c->Type() != "CompositeComponent" &&
+                 "Nesting CompositeComponent within CompositeComponent is not allowed.\n"
+                 "(We may change this as more complicated components are introduced.)");
+
+    if(c->Type() == "RepeatedAffineComponent" ||
+       c->Type() == "NaturalGradientRepeatedAffineComponent") {
+      // N.B.: NaturalGradientRepeatedAffineComponent is a subclass of
+      // RepeatedAffineComponent.
+      const RepeatedAffineComponent *rac =
+        dynamic_cast<const RepeatedAffineComponent*>(c);
+      KALDI_ASSERT(rac != NULL);
+      BlockAffineComponent *bac = new BlockAffineComponent(*rac);
+      // following call deletes rac
+      c_component->SetComponent(i, bac);
+    }
+  }
+}
+
+void ConvertRepeatedToBlockAffine(Nnet *nnet) {
+  for(int32 i = 0; i < nnet->NumComponents(); i++) {
+    const Component *const_c = nnet->GetComponent(i);
+    if(const_c->Type() == "RepeatedAffineComponent" ||
+       const_c->Type() == "NaturalGradientRepeatedAffineComponent") {
+      // N.B.: NaturalGradientRepeatedAffineComponent is a subclass of
+      // RepeatedAffineComponent.
+      const RepeatedAffineComponent *rac =
+        dynamic_cast<const RepeatedAffineComponent*>(const_c);
+      KALDI_ASSERT(rac != NULL);
+      BlockAffineComponent *bac = new BlockAffineComponent(*rac);
+      // following call deletes rac
+      nnet->SetComponent(i, bac);
+    } else if (const_c->Type() == "CompositeComponent") {
+      // We must modify the composite component, so we use the
+      // non-const GetComponent() call here.
+      Component *c = nnet->GetComponent(i);
+      CompositeComponent *cc = dynamic_cast<CompositeComponent*>(c);
+      KALDI_ASSERT(cc != NULL);
+      ConvertRepeatedToBlockAffine(cc);
+    }
+  }
 }
 
 std::string NnetInfo(const Nnet &nnet) {

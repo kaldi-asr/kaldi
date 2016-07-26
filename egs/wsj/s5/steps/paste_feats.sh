@@ -44,10 +44,10 @@ done
 
 mkdir -p $ark_dir $logdir
 
-mkdir -p $data 
+mkdir -p $data
 cp $data_src_first/* $data/ 2>/dev/null # so we get the other files, such as utt2spk.
-rm $data/cmvn.scp 2>/dev/null 
-rm $data/feats.scp 2>/dev/null 
+rm $data/cmvn.scp 2>/dev/null
+rm $data/feats.scp 2>/dev/null
 
 # use "name" as part of name of the archive.
 name=`basename $data`
@@ -58,19 +58,25 @@ for data_src in ${data_src_arr[@]}; do
   data_src_args="$data_src_args scp:$data_src/split$nj/JOB/feats.scp"
 done
 
+for n in $(seq $nj); do
+  # the next command does nothing unless $arkdir/storage/ exists, see
+  # utils/create_data_link.pl for more info.
+  utils/create_data_link.pl $arkdir/pasted_$name.$n.ark
+done
+
 $cmd JOB=1:$nj $logdir/append.JOB.log \
    paste-feats --length-tolerance=$length_tolerance $data_src_args ark:- \| \
    copy-feats --compress=$compress ark:- \
     ark,scp:$ark_dir/pasted_$name.JOB.ark,$ark_dir/pasted_$name.JOB.scp || exit 1;
-              
+
 # concatenate the .scp files together.
 for ((n=1; n<=nj; n++)); do
   cat $ark_dir/pasted_$name.$n.scp >> $data/feats.scp || exit 1;
 done > $data/feats.scp || exit 1;
 
 
-nf=`cat $data/feats.scp | wc -l` 
-nu=`cat $data/utt2spk | wc -l` 
+nf=`cat $data/feats.scp | wc -l`
+nu=`cat $data/utt2spk | wc -l`
 if [ $nf -ne $nu ]; then
   echo "It seems not all of the feature files were successfully processed ($nf != $nu);"
   echo "consider using utils/fix_data_dir.sh $data"

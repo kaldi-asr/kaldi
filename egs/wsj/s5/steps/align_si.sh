@@ -10,7 +10,7 @@
 # case the number of jobs must match with the source directory.
 
 
-# Begin configuration section.  
+# Begin configuration section.
 nj=4
 cmd=run.pl
 use_graphs=false
@@ -72,7 +72,7 @@ echo "$0: feature type is $feat_type"
 case $feat_type in
   delta) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas $delta_opts ark:- ark:- |";;
   lda) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
-    cp $srcdir/final.mat $srcdir/full.mat $dir    
+    cp $srcdir/final.mat $srcdir/full.mat $dir
    ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;
 esac
@@ -81,7 +81,7 @@ echo "$0: aligning data in $data using model from $srcdir, putting alignments in
 
 mdl="gmm-boost-silence --boost=$boost_silence `cat $lang/phones/optional_silence.csl` $dir/final.mdl - |"
 
-if $use_graphs; then 
+if $use_graphs; then
   [ $nj != "`cat $srcdir/num_jobs`" ] && echo "$0: mismatch in num-jobs" && exit 1;
   [ ! -f $srcdir/fsts.1.gz ] && echo "$0: no such file $srcdir/fsts.1.gz" && exit 1;
 
@@ -97,5 +97,7 @@ else
     gmm-align-compiled $scale_opts --beam=$beam --retry-beam=$retry_beam --careful=$careful "$mdl" ark:- \
       "$feats" "ark,t:|gzip -c >$dir/ali.JOB.gz" || exit 1;
 fi
+
+steps/diagnostic/analyze_alignments.sh --cmd "$cmd" $lang $dir
 
 echo "$0: done aligning data."

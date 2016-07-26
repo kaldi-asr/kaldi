@@ -24,8 +24,8 @@
 
 namespace kaldi {
 
-Spectrogram::Spectrogram(const SpectrogramOptions &opts)
-    : opts_(opts), feature_window_function_(opts.frame_opts), srfft_(NULL) {
+SpectrogramComputer::SpectrogramComputer(const SpectrogramOptions &opts)
+    : opts_(opts), srfft_(NULL) {
   if (opts.energy_floor > 0.0)
     log_energy_floor_ = Log(opts.energy_floor);
 
@@ -34,62 +34,49 @@ Spectrogram::Spectrogram(const SpectrogramOptions &opts)
     srfft_ = new SplitRadixRealFft<BaseFloat>(padded_window_size);
 }
 
-Spectrogram::~Spectrogram() {
+SpectrogramComputer::SpectrogramComputer(const SpectrogramComputer &other):
+    opts_(other.opts_), log_energy_floor_(other.log_energy_floor_), srfft_(NULL) {
+  if (other.srfft_ != NULL)
+    srfft_ = new SplitRadixRealFft<BaseFloat>(*other.srfft_);
+}
+
+SpectrogramComputer::~SpectrogramComputer() {
   delete srfft_;
 }
 
-void Spectrogram::Compute(const VectorBase<BaseFloat> &wave,
-                          Matrix<BaseFloat> *output,
-                          Vector<BaseFloat> *wave_remainder) {
-  KALDI_ASSERT(output != NULL);
+void SpectrogramComputer::Compute(BaseFloat signal_log_energy,
+                                  BaseFloat vtln_warp,
+                                  VectorBase<BaseFloat> *signal_frame,
+                                  VectorBase<BaseFloat> *feature) {
+  KALDI_ASSERT(signal_frame->Dim() == opts_.frame_opts.PaddedWindowSize() &&
+               feature->Dim() == this->Dim());
 
-  // Get dimensions of output features
-  int32 rows_out = NumFrames(wave.Dim(), opts_.frame_opts);
-  int32 cols_out =  opts_.frame_opts.PaddedWindowSize()/2 +1;
-  if (rows_out == 0)
-    KALDI_ERR << "No frames fit in file (#samples is " << wave.Dim() << ")";
-  // Prepare the output buffer
-  output->Resize(rows_out, cols_out);
 
-  // Optionally extract the remainder for further processing
-  if (wave_remainder != NULL)
-    ExtractWaveformRemainder(wave, opts_.frame_opts, wave_remainder);
+  // Compute energy after window function (not the raw one)
+  if (!opts_.raw_energy)
+    signal_log_energy = Log(std::max(VecVec(*signal_frame, *signal_frame),
+                                     std::numeric_limits<BaseFloat>::epsilon()));
 
-  // Buffers
-  Vector<BaseFloat> window;  // windowed waveform.
-  BaseFloat log_energy;
+  if (srfft_ != NULL)  // Compute FFT using split-radix algorithm.
+    srfft_->Compute(signal_frame->Data(), true);
+  else  // An alternative algorithm that works for non-powers-of-two
+    RealFft(signal_frame, true);
 
-  // Compute all the freames, r is frame index..
-  for (int32 r = 0; r < rows_out; r++) {
-    // Cut the window, apply window function
-    ExtractWindow(wave, r, opts_.frame_opts, feature_window_function_,
-                  &window, (opts_.raw_energy ? &log_energy : NULL));
+  // Convert the FFT into a power spectrum.
+  ComputePowerSpectrum(signal_frame);
+  SubVector<BaseFloat> power_spectrum(*signal_frame,
+                                      0, signal_frame->Dim() / 2 + 1);
 
-    // Compute energy after window function (not the raw one)
-    if (!opts_.raw_energy)
-      log_energy = Log(std::max(VecVec(window, window),
-                                std::numeric_limits<BaseFloat>::min()));
-    
-    if (srfft_ != NULL)  // Compute FFT using split-radix algorithm.
-      srfft_->Compute(window.Data(), true);
-    else  // An alternative algorithm that works for non-powers-of-two
-      RealFft(&window, true);
+  power_spectrum.ApplyFloor(std::numeric_limits<BaseFloat>::epsilon());
+  power_spectrum.ApplyLog();
 
-    // Convert the FFT into a power spectrum.
-    ComputePowerSpectrum(&window);
-    SubVector<BaseFloat> power_spectrum(window, 0, window.Dim()/2 + 1);
+  feature->CopyFromVec(power_spectrum);
 
-    power_spectrum.ApplyFloor(std::numeric_limits<BaseFloat>::min());
-    power_spectrum.ApplyLog();
-
-    // Output buffers
-    SubVector<BaseFloat> this_output(output->Row(r));
-    this_output.CopyFromVec(power_spectrum);
-    if (opts_.energy_floor > 0.0 && log_energy < log_energy_floor_) {
-        log_energy = log_energy_floor_;
-    }
-    this_output(0) = log_energy;
-  }
+  if (opts_.energy_floor > 0.0 && signal_log_energy < log_energy_floor_)
+    signal_log_energy = log_energy_floor_;
+  // The zeroth spectrogram component is always set to the signal energy,
+  // instead of the square of the constant component of the signal.
+  (*feature)(0) = signal_log_energy;
 }
 
 }  // namespace kaldi

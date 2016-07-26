@@ -6,11 +6,12 @@
 !/src/*/Makefile
 !/src/*/README
 
-# Compiled Object files
+# Compiled Object files and python ciles
 *.slo
 *.lo
 *.o
 *.obj
+*.pyc
 
 # Compiled Dynamic libraries
 *.so
@@ -100,5 +101,9 @@ GSYMS
 /tools/mpg123
 /tools/mpg123-1.21.0.tar.bz2
 /tools/mpg123-1.21.0
+/tools/pthreads
+/tools/pthreads*.zip
 /tools/sequitur
 /tools/srilm.tgz
+
+/kaldiwin_vs*
