@@ -177,7 +177,7 @@ else
       split_data.sh --per-utt $sdata/$n $sub_split || exit 1;
       mkdir -p $dir/log/$n
       mkdir -p $dir/part
-      feats_subset=$(echo $feats | sed s:JOB/:$n/split$sub_split/JOB/:g)
+      feats_subset=$(echo $feats | sed s:JOB/:$n/split${sub_split}utt/JOB/:g)
       # Prepare 'scp' for storing lattices separately and gzipped
       for k in `seq $sub_split`; do
         [ ! -d $dir/lat$n/$k ] && mkdir -p $dir/lat$n/$k;
