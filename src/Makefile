@@ -21,6 +21,7 @@ CUDAMEMTESTDIR = cudamatrix
 
 SUBDIRS_LIB = $(filter-out %bin, $(SUBDIRS))
 
+KALDI_SONAME ?= libkaldi.so
 
 # Optional subdirectories
 EXT_SUBDIRS = online onlinebin  # python-kaldi-decoding
@@ -60,7 +61,7 @@ ifeq ($(shell uname), Darwin)
 else
 ifeq ($(shell uname), Linux)
 	#$(warning the following command will probably fail, in that case add -fPIC to your CXXFLAGS and remake all)
-	$(CXX) -shared -o $(KALDILIBDIR)/libkaldi.so -Wl,-soname=libkaldi.so,--whole-archive  $(SUBDIRS_LIB:=/kaldi-*.a) -Wl,--no-whole-archive
+	$(CXX) -shared -o $(KALDILIBDIR)/$(KALDI_SONAME) -Wl,-soname=$(KALDI_SONAME),--whole-archive  $(SUBDIRS_LIB:=/kaldi-*.a) $(LDLIBS) -Wl,--no-whole-archive
 else
 	$(error Dynamic libraries not supported on this platform. Run configure with --static flag. )
 endif
