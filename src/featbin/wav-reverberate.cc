@@ -197,8 +197,9 @@ int main(int argc, char *argv[]) {
                 "If nonzero, it specified the duration (secs) of the output "
                 "signal. If the duration t is less than the length of the "
                 "input signal, the first t secs of the signal is trimed, "
-                "otherwise, the signal will be repeated to"
-                "fulfill the duration specified.");
+                "otherwise, the signal will be repeated to "
+                "fulfill the duration specified. This option is useful for "
+                "extending the length of isotropic noises.");
     po.Register("volume", &volume,
                 "If nonzero, a scaling factor on the signal that is applied "
                 "after reverberating and possibly adding noise. "
