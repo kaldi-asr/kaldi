@@ -72,7 +72,7 @@ function usage {
   echo 'Usage: ./configure [--static|--shared] [--threaded-atlas={yes|no}] [--atlas-root=ATLASROOT] [--fst-root=FSTROOT]
   [--openblas-root=OPENBLASROOOT] [--clapack-root=CLAPACKROOT] [--mkl-root=MKLROOT] [--mkl-libdir=MKLLIBDIR]
   [--omp-libdir=OMPDIR] [--static-fst={yes|no}] [--static-math={yes|no}] [--threaded-math={yes|no}] [--mathlib=ATLAS|MKL|CLAPACK|OPENBLAS]
-  [--use-cuda={yes|no}] [--cudatk-dir=CUDATKDIR][--mkl-threading=sequential|iomp|tbb|gomp]';
+  [--use-cuda={yes|no}] [--cudatk-dir=CUDATKDIR][--mkl-threading=sequential|iomp|tbb|gomp] [--prefix=INSTALLPREFIX]';
 }
 
 threaded_atlas=false #  By default, use the un-threaded version of ATLAS.
@@ -165,15 +165,6 @@ do
   --mkl-libdir=*)
     MKLLIBDIR=`read_dirname $1`;
     shift ;;
-  --speex-root=*)
-    SPEEXROOT=`read_dirname $1`;
-    shift ;;
-  --speex-libdir=*)
-    SPEEXLIBDIR=`read_dirname $1`;
-    shift ;;
-  --speex-includedir=*)
-    SPEEXINCLUDEDIR=`read_dirname $1`;
-    shift ;;
   --omp-libdir=*)
     OMPLIBDIR=`read_dirname $1`;
     shift ;;
@@ -183,6 +174,9 @@ do
   --cudatk-dir=*)
     CUDATKDIR=`read_dirname $1`;
     shift ;; #CUDA is used in src/cudamatrix and src/nnet{,bin} only
+  --prefix=*)
+    INSTALLPREFIX=`read_dirname $1`;
+    shift ;; 
   *)  echo "Unknown argument: $1, exiting"; usage; exit 1 ;;
   esac
 done
@@ -420,7 +414,7 @@ function linux_configure_mkl_threading {
 ##
 function configure_cuda {
   #check for CUDA toolkit in the system
-  if [ ! -d  "$CUDATKDIR" ]; then
+  if [ ! $CUDATKDIR ]; then
     for base in /Developer/NVIDIA/CUDA-6.0 /usr/local/share/cuda /usr/local/cuda /pkgs_local/cuda-3.2/ /opt/nvidia_cuda/cuda-6.0/ /usr/; do
       if [ -f $base/bin/nvcc ]; then
         CUDATKDIR=$base
@@ -428,7 +422,7 @@ function configure_cuda {
     done
   fi
 
-  if [ -d "$CUDATKDIR" ]; then
+  if [ $CUDATKDIR ]; then
     if [ ! -f $CUDATKDIR/bin/nvcc ]; then
       failure "Cannnot find nvcc in CUDATKDIR=$CUDATKDIR"
     fi
@@ -449,7 +443,6 @@ function configure_cuda {
       5_5) CUDA_ARCH="-gencode arch=compute_13,code=sm_13 -gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35" ;;
       6_*) CUDA_ARCH="-gencode arch=compute_13,code=sm_13 -gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50" ;;
       7_*) CUDA_ARCH="-gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53" ;;
-      8_*) CUDA_ARCH="-gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_62,code=sm_62" ;;
       *) echo "Unsupported CUDA_VERSION (CUDA_VERSION=$CUDA_VERSION), please report it to Kaldi mailing list, together with 'nvcc -h' or 'ptxas -h' which lists allowed -gencode values..."; exit 1 ;;
     esac
     echo "CUDA_ARCH = $CUDA_ARCH" >> kaldi.mk
@@ -474,9 +467,7 @@ function configure_cuda {
 
 function linux_configure_speex {
   #check whether the user has called tools/extras/install_speex.sh or not
-  [ ! -z "$SPEEXROOT" ] || SPEEXROOT=`pwd`/../tools/speex
-  [ ! -z "$SPEEXLIBDIR" ] || SPEEXLIBDIR="$SPEEXROOT"/lib
-  [ ! -z "$SPEEXINCLUDEDIR" ] || SPEEXINCLUDEDIR="$SPEEXROOT"/include
+  SPEEXROOT=`pwd`/../tools/speex
   static_speex=$1
   if [ "foo"$static_speex == "foo" ]; then
     static_speex=false
@@ -487,21 +478,20 @@ function linux_configure_speex {
   else
     spx_type=so
   fi
-  if [ ! -f "$SPEEXLIBDIR/libspeex.${spx_type}" ];then
-    echo "Info: configuring Kaldi not to link with Speex (don't worry, it's only needed if you"
-    echo "intend to use 'compress-uncompress-speex', which is very unlikely)"
+  if [ ! -f "$SPEEXROOT/lib/libspeex.${spx_type}" ];then
+    echo "Static=[$static_speex] Speex library not found: You can still build Kaldi without Speex."
     return
   fi
 
-  if [ -f $SPEEXINCLUDEDIR/speex/speex.h ]; then
-    echo >> kaldi.mk
-    echo CXXFLAGS += -DHAVE_SPEEX -I${SPEEXINCLUDEDIR} >> kaldi.mk
+  if [ -f $SPEEXROOT/include/speex/speex.h ]; then
+   echo >> kaldi.mk
+    echo CXXFLAGS += -DHAVE_SPEEX -I${SPEEXROOT}/include >> kaldi.mk
 
     if $static_speex; then
-      echo LDLIBS += $SPEEXLIBDIR/libspeex.a
+      echo LDLIBS += $SPEEXROOT/lib/libspeex.a
     else
-      echo LDLIBS += -L${SPEEXLIBDIR} -lspeex >> kaldi.mk
-      echo LDFLAGS += -Wl,-rpath=${SPEEXLIBDIR} >> kaldi.mk
+      echo LDLIBS += -L${SPEEXROOT}/lib -lspeex >> kaldi.mk
+      echo LDFLAGS += -Wl,-rpath=${SPEEXROOT}/lib >> kaldi.mk
     fi
 
     echo "Successfully configured with Speex at $SPEEXROOT, (static=[$static_speex])"
@@ -731,7 +721,7 @@ function linux_check_dynamic {
         return 0;
       fi
   done
-  # echo "... no {libatlas,lib${pt}atlas}.so in $dir";
+  echo "... no {libatlas,lib${pt}atlas}.so in $dir";
   return 1;
 }
 
@@ -831,6 +821,9 @@ echo "KALDILIBDIR := $KALDILIBDIR" >> kaldi.mk
 fi
 echo "CONFIGURE_VERSION := $CONFIGURE_VERSION" >> kaldi.mk
 echo "FSTROOT = $FSTROOT" >> kaldi.mk
+
+# add installation prefix to kaldi.mk
+echo "INSTALLPREFIX = $INSTALLPREFIX" >> kaldi.mk
 
 # Check installed OpenFst version and add C++11 flags if OpenFst >= 1.4
 OPENFST_VER="${OPENFST_VER:-`grep 'PACKAGE_VERSION' $FSTROOT/Makefile | sed -e 's:.*= ::'`}"
@@ -977,8 +970,8 @@ if [ "`uname`" == "Linux" ]; then
       See makefiles/linux_64_mkl.mk to manually configure for other platforms."
     fi
 
-    if  ( is_set "$MKLROOT" && ! is_set "$MKLLIBDIR" ); then
-      echo -n "Configuring MKL library directory: "
+    if  is_set "$MKLROOT" -a ! is_set "$MKLLIBDIR"; then
+     echo -n "Configuring MKL library directory: "
       MKLLIBDIR=`linux_configure_mkllibdir $MKLROOT`
       if [ $? -ne 0 ]; then
         failure "MKL libraries could not be found. Please use the switch --mkl-libdir "

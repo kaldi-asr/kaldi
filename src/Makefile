@@ -21,6 +21,7 @@ CUDAMEMTESTDIR = cudamatrix
 
 SUBDIRS_LIB = $(filter-out %bin, $(SUBDIRS))
 
+SUBDIRS_BIN = $(filter %bin, $(SUBDIRS))
 
 # Optional subdirectories
 EXT_SUBDIRS = online onlinebin  # python-kaldi-decoding
@@ -146,7 +147,6 @@ install: all
 	find $(SUBDIRS_BIN) -type f -executable -exec cp -v {} $(INSTALLPREFIX)/bin/ ';'
 	cp -av ../tools/sph2pipe_v2.5/sph2pipe $(INSTALLPREFIX)/bin/
 	# copying libs to $(INSTALLPREFIX)/lib
-	find $(SUBDIRS_LIB) -type f -name '*.so' -exec cp -v {} $(INSTALLPREFIX)/lib/ ';'
 	cp -av ../tools/openfst/lib/* $(INSTALLPREFIX)/lib/
 
 ### Dependency list ###
@@ -160,8 +160,8 @@ bin fstbin gmmbin fgmmbin sgmmbin sgmm2bin featbin nnetbin nnet2bin nnet3bin cha
 #2)The libraries have inter-dependencies
 base:
 matrix: base
-thread: base
-util: base matrix thread
+util: base matrix
+thread: util matrix base
 feat: base matrix util gmm transform tree thread
 tree: base util thread matrix
 gmm: base util matrix tree thread
