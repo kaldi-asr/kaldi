@@ -137,19 +137,33 @@ def WriteDictToFile(dict, file_name):
                 value = list(value)
             value.sort()
             value = ' '.join(str(value))
-        file.write('{0}\t{1}\n'.format(key, value))
+        file.write('{0} {1}\n'.format(key, value))
     file.close()
 
 
-# This function returns only the isotropic noises according to the specified RIR id
+# This function creates the utt2uniq file from the utterance id in utt2spk file
+def CreateCorruptedUtt2uniq(input_dir, output_dir, num_replicas, prefix):
+    corrupted_utt2uniq = {}
+    # Parse the utt2spk to get the utterance id
+    utt2spk = ParseFileToDict(input_dir + "/utt2spk", value_processor = lambda x: " ".join(x))
+    keys = utt2spk.keys()
+    keys.sort()
+    for i in range(1, num_replicas+1):
+        for utt_id in keys:
+            new_utt_id = GetNewId(utt_id, prefix, i)
+            corrupted_utt2uniq[new_utt_id] = utt_id
+
+    WriteDictToFile(corrupted_utt2uniq, output_dir + "/utt2uniq")
+
+
+# This function returns only the isotropic noises according to the specified room
 # Please refer to ParseNoiseList() for the format of iso_noise_list
-def FilterIsotropicNoiseList(iso_noise_list, rir_id):
+def FilterIsotropicNoiseList(iso_noise_list, room_id):
     filtered_list = []
     for noise in iso_noise_list:
-        for id in noise.rir_linkage:
-            if id == rir_id:
-                filtered_list.append(noise)
-                break
+        if noise.room_linkage == room_id:
+            filtered_list.append(noise)
+            break
 
     return filtered_list
 
@@ -206,7 +220,7 @@ def GenerateReverberationOpts(room_dict,  # the room dictionary, please refer to
         # pick the RIR to reverberate the speech
         reverberate_opts += "--impulse-response={0} ".format(speech_rir.rir_file_location)
 
-    rir_iso_noise_list = FilterIsotropicNoiseList(iso_noise_list, speech_rir.rir_id)
+    rir_iso_noise_list = FilterIsotropicNoiseList(iso_noise_list, speech_rir.room_id)
     # Add the corresponding isotropic noise associated with the selected RIR
     if len(rir_iso_noise_list) > 0 and random.random() < isotropic_noise_addition_probability:
         isotropic_noise = PickItemWithProbability(rir_iso_noise_list)
@@ -267,9 +281,9 @@ def GenerateReverberatedWavScp(wav_scp,  # a dictionary whose values are the Kal
     foreground_snrs = list_cyclic_iterator(foreground_snr_array)
     background_snrs = list_cyclic_iterator(background_snr_array)
     corrupted_wav_scp = {}
+    keys = wav_scp.keys()
+    keys.sort()
     for i in range(1, num_replicas+1):
-        keys = wav_scp.keys()
-        keys.sort()
         for recording_id in keys:
             wav_original_pipe = wav_scp[recording_id]
             # check if it is really a pipe
@@ -350,6 +364,13 @@ def CreateReverberatedCopy(input_dir,
     data_lib.RunKaldiCommand("utils/utt2spk_to_spk2utt.pl <{output_dir}/utt2spk >{output_dir}/spk2utt"
                     .format(output_dir = output_dir))
 
+    if os.path.isfile(input_dir + "/utt2uniq"):
+        AddPrefixToFields(input_dir + "/utt2uniq", output_dir + "/utt2uniq", num_replicas, prefix, field =[0])
+    else:
+        # Create the utt2uniq file
+        CreateCorruptedUtt2uniq(input_dir, output_dir, num_replicas, prefix)
+
+
     if os.path.isfile(input_dir + "/text"):
         AddPrefixToFields(input_dir + "/text", output_dir + "/text", num_replicas, prefix, field =[0])
     if os.path.isfile(input_dir + "/segments"):
@@ -426,27 +447,17 @@ def MakeRoomDict(rir_list):
     return room_dict
 
 
-# This function check if the RIR IO string is listed in the input rir_list file
-# It returns the RIR id if the io string is found
-def ValidateRirIO(rir_io_str, rir_list):
-    for rir in rir_list:
-        if rir_io_str == rir.rir_file_location:
-            return rir.rir_id
-
-    return "Not found"
-
-
 # This function creates the point-source noise list 
 # and the isotropic noise list from the noise information file
 # Each noise item in the list contains the following attributes:
-# noise_id, noise_type, bg_fg_type, rir_linkage, probability, noise_file_location
+# noise_id, noise_type, bg_fg_type, room_linkage, probability, noise_file_location
 # Please refer to the help messages in the parser for the meaning of these attributes
-def ParseNoiseList(noise_list_file, rir_list):
+def ParseNoiseList(noise_list_file):
     noise_parser = argparse.ArgumentParser()
     noise_parser.add_argument('--noise-id', type=str, required=True, help='noise id')
     noise_parser.add_argument('--noise-type', type=str, required=True, help='the type of noise; i.e. isotropic or point-source', choices = ["isotropic", "point-source"])
     noise_parser.add_argument('--bg-fg-type', type=str, default="background", help='background or foreground noise', choices = ["background", "foreground"])
-    noise_parser.add_argument('--rir-linkage', type=str, action='append', default=None, help='required if isotropic, should not be specified if point-source, this option can be repeatly added to define multiple noise-rir association, the rir linkage can either be a RIR id or a RIR file path')
+    noise_parser.add_argument('--room-linkage', type=str, default=None, help='required if isotropic, should not be specified if point-source.')
     noise_parser.add_argument('--probability', type=float, default=None, help='probability of the noise.')
     noise_parser.add_argument('noise_file_location', type=str, help='noise file location')
 
@@ -456,18 +467,9 @@ def ParseNoiseList(noise_list_file, rir_list):
     for line in noise_lines:
         noise = noise_parser.parse_args(line.split())
         if noise.noise_type == "isotropic":
-            if noise.rir_linkage is None:
-                raise Exception("--rir-linkage must be specified if --noise-type is isotropic")
+            if noise.room_linkage is None:
+                raise Exception("--room-linkage must be specified if --noise-type is isotropic")
             else:
-                for r in range(0, len(noise.rir_linkage)):
-                    if not noise.rir_linkage[r].isdigit():
-                       # this is a RIR IO string, validate if it exist in the input rir_list and return the RIR id
-                       result = ValidateRirIO(noise.rir_linkage[r], rir_list)
-                       if result == "Not found":
-                           raise Exception("RIR {0} specified by isotropic noise {1} not found".format(noise.rir_linkage[r], noise.noise_id))
-                       else:
-                           noise.rir_linkage[r] = result
-                       
                 iso_noise_list.append(noise)
         else:
             pointsource_noise_list.append(noise)
@@ -482,7 +484,7 @@ def Main():
     rir_list = ParseRirList(args.rir_list_file)
     noise_list = []
     if args.noise_list_file is not None:
-        pointsource_noise_list, iso_noise_list = ParseNoiseList(args.noise_list_file, rir_list)
+        pointsource_noise_list, iso_noise_list = ParseNoiseList(args.noise_list_file)
         print("Number of point-source noises is {0}".format(len(pointsource_noise_list)))
         print("Number of isotropic noises is {0}".format(len(iso_noise_list)))
     room_dict = MakeRoomDict(rir_list)

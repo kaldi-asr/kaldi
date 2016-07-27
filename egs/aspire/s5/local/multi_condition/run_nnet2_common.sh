@@ -6,7 +6,6 @@
 . cmd.sh
 
 stage=1
-snrs="20:10:15:5:0"
 foreground_snrs="20:10:15:5:0"
 background_snrs="20:10:15:5:0"
 num_data_reps=3
@@ -34,6 +33,7 @@ if [ $stage -le 1 ]; then
     data/impulses_noises || exit 1;
     
   # Generate the rir_list and noise_list for the reverberate_data_dir.py to corrupt the data
+  # this script just assumes air rwcp rvb2014 databases
   python local/multi_condition/aspire_prep_rir_noise_list.py data/impulses_noises data/impulses_noises/info
 
   # corrupt the fisher data to generate multi-condition data 

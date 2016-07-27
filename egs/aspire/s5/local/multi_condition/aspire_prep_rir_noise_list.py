@@ -23,19 +23,31 @@ def GetArgs():
     return args
 
 
-# This function generate the rir_list file for the aspire real RIR
+# This function generates the rir_list file for the real RIRs being in ASpIRE experiments.
+# It assumes the availability of data/impulses_noises directory prepared by local/multi_condition/prepare_impulses_noises.sh
 def GenerateRirListFile(input_dir, output_dir):
   rir_list_file = open(output_dir + "/rir_list", 'w')
   rir_id = 1
-  room_id = 1
   for db in ["RVB2014", "RWCP", "air"]:
     rir_files = glob.glob(input_dir + "/{0}_*.wav".format(db))
+    rir_files.sort()
     for rir in rir_files:
       filename = rir.split('/')[-1]
       if "noise" not in filename:
-        rir_list_file.write('--rir-id {0} --room-id {1} {2}\n'.format(str(rir_id).zfill(5), str(room_id).zfill(3), rir))
+        parts = filename.split('_')
+        db_name = parts[0]
+        type_num = parts[1]
+        if db == "RVB2014":
+          noise_pattern = parts[3]
+        elif db == "RWCP" and len(parts) == 4:
+          noise_pattern = parts[3]
+        else:
+          noise_pattern = '_'.join(parts[3:len(parts)-1])
+
+        # We use the string as the room id
+        room_id = db_name + "_" + noise_pattern
+        rir_list_file.write('--rir-id {0} --room-id {1} {2}\n'.format(str(rir_id).zfill(5), room_id, rir))
         rir_id += 1
-    room_id += 1
   rir_list_file.close()
 
 
@@ -43,18 +55,16 @@ def GenerateRirListFile(input_dir, output_dir):
 def GenerateNoiseListFile(input_dir, output_dir):
   noise_list_file = open(output_dir + "/noise_list", 'w')
   noise_files = glob.glob(input_dir + "/*_type*_noise*.wav")
+  noise_files.sort()
   noise_id = 1
   for noise_file in noise_files:
     parts = noise_file.split('/')[-1].split('_')
     db_name = parts[0]
     type_num = parts[1]
     noise_pattern = '_'.join(parts[3:len(parts)-1])
-    if db_name == "RWCP":
-      type_num = "type*"
-    matched_rir_files = glob.glob(input_dir + "/{0}_{1}_rir_{2}*.wav".format(db_name, type_num, noise_pattern))
     noise_line = "--noise-id {0} --noise-type isotropic ".format(str(noise_id).zfill(5))
-    for rir in matched_rir_files:
-      noise_line += "--rir-linkage {0} ".format(rir)
+    room_id = db_name + "_" + noise_pattern
+    noise_line += "--room-linkage {0} ".format(room_id)
     noise_line += "{0}".format(noise_file)
     noise_list_file.write("{0}\n".format(noise_line))
     noise_id += 1
