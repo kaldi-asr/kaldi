@@ -115,4 +115,3 @@ exit 0
 %WER 20.3 | 1155 27512 | 83.3 13.2 3.5 3.6 20.3 90.7 | -0.176 | exp/lstm4f_ClipGradient5_lrate1e-4/decode_test/score_11/ctm.filt.filt.sys
 # 2xLSTM
 TODO...
-
