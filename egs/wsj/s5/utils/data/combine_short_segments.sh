@@ -7,7 +7,7 @@
 # segments whose duration is lower than a specified minimum segment
 # length.
 #
-# Note: this does not work for the wav.scp, sincen there is no natural way to
+# Note: this does not work for the wav.scp, since there is no natural way to
 # concatenate segments; you have to operate on directories that already have
 # features extracted.
 

@@ -6,9 +6,12 @@ use warnings; #sed replacement for -w perl parameter
 # combined.
 
 if (@ARGV != 1) {
-  print STDERR "Usage: make_utterance_fsts.pl top-words-file.txt < text-archive > fsts-archive\n" .
+  print STDERR "** Warning: this script is deprecated and will be removed.  See\n" .
+               "** steps/cleanup/make_biased_lm_graphs.sh.\n" .
+               "Usage: make_utterance_fsts.pl top-words-file.txt < text-archive > fsts-archive\n" .
                "e.g.: utils/sym2int.pl -f 2- data/lang/words.txt data/train/text | \\\n" .
                "  make_utterance_fsts.pl exp/foo/top_words.int | compile-train-graphs-fsts ... \n";
+  exit(1);
 }
 
 ($top_words_file) = @ARGV;
