@@ -26,7 +26,7 @@ set -uo pipefail
 
 # configs for 'chain'
 affix=
-stage=0 # After running the entire script once, you can set stage=12 to tune the neural net only.
+stage=12 # After running the entire script once, you can set stage=12 to tune the neural net only.
 train_stage=-10
 get_egs_stage=-10
 dir=exp/chain/tdnn
@@ -42,8 +42,8 @@ final_effective_lrate=0.0001
 leftmost_questions_truncate=-1
 max_param_change=2.0
 final_layer_normalize_target=0.5
-num_jobs_initial=3
-num_jobs_final=8
+num_jobs_initial=2
+num_jobs_final=2
 minibatch_size=128
 relu_dim=425
 frames_per_eg=150
@@ -73,7 +73,7 @@ fi
 # run those things.
 
 gmm_dir=exp/tri3
-ali_dir=exp/tri3_ali
+ali_dir=exp/tri3_ali_sp
 lats_dir=${ali_dir/ali/lats}
 treedir=exp/chain/tri3_tree
 lang=data/lang_chain
@@ -81,8 +81,9 @@ lang=data/lang_chain
 mkdir -p $dir
 
 local/nnet3/run_ivector_common.sh --stage $stage \
-  --generate-alignments false \
-  --speed-perturb true || exit 1;
+  --generate-alignments false || exit 1;
+# \
+#  --speed-perturb true || exit 1;
 
 if [ $stage -le 9 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
@@ -188,7 +189,7 @@ if [ $stage -le 15 ]; then
   for decode_set in dev test; do
     (
     steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-      --nj $(wc -l < data/$decode_set/spk2utt) --cmd "$decode_cmd" $iter_opts \
+      --nj 2 --cmd "$decode_cmd" $iter_opts \
       --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
       --scoring-opts "--min_lmwt 5 --max_lmwt 15" \
       $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}${decode_iter:+_$decode_iter} || exit 1;

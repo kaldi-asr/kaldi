@@ -36,12 +36,14 @@ if [ $stage -le 0 ]; then
   utils/prepare_lang.sh data/local/dict_nosp \
     "<unk>" data/local/lang_nosp data/lang_nosp || exit 1
 
+# Here needs to be inserted ted_train_lm.sh
+
   local/prepare_lm.sh || exit 1
 
 fi
 
 # Feature extraction
-feat_dir=$pwd/data/mfcc_features
+
 if [ $stage -le 1 ]; then
   for set in test dev train; do
     dir=data/$set
@@ -178,6 +180,8 @@ fi
 # Nnet3 TDNN recipe
 # local/nnet3/run_tdnn.sh
 # local/nnet3/run_tdnn_discriminative.sh
+
+local/chain/run_tdnn.sh
 
 
 echo success...

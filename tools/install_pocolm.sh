@@ -1,0 +1,1 @@
+/home/moses/kaldi/tools/extras/install_pocolm.sh

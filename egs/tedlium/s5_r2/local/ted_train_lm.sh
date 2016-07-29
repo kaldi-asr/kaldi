@@ -27,11 +27,8 @@ export PATH=$KALDI_ROOT/tools/pocolm/scripts:$PATH
  if [ -d pocolm ]; then
    echo Not installing the pocolm toolkit since it is already there.
  else
-   echo Downloading and installing the pocolm tools
-   git clone https://github.com/danpovey/pocolm.git || exit 1;
-   cd pocolm/src
-   make || exit 1;
-   echo Done making the pocolm tools
+   echo "Please install the PocoLM toolkit with kaldi/tools/install_pocolm.sh"
+   exit 1;
  fi
 ) || exit 1;
 
@@ -84,12 +81,12 @@ for order in 3 4; do
 
 done
 
-# pruning the LM for order 3 only, and using threshold 0.10 to get a 30MB LM size
+# pruning the LM for order 3 only, and using 3400000 n-grams to get a 30MB LM size
 order=3
-for threshold in 0.10; do
-    prune_lm_dir.py ${dir}/data/lm_${order} $threshold ${dir}/data/lm_${order}_prune${threshold} 2>&1 | tail -n 5 | head -n 3
-    get_data_prob.py ${dir}/data/text/dev.txt ${dir}/data/lm_${order}_prune${threshold} 2>&1 | grep -F '[perplexity'
+size=3400000
+    prune_lm_dir.py --target-num-ngrams=$size ${dir}/data/lm_${order} ${dir}/data/lm_${order}_prune 2>&1 | tail -n 5 | head -n 3
+    get_data_prob.py ${dir}/data/text/dev.txt ${dir}/data/lm_${order}_prune 2>&1 | grep -F '[perplexity'
 
-    format_arpa_lm.py ${dir}/data/lm_${order}_prune${threshold} | gzip -c > ${dir}/data/arpa/${vocab_size}_${order}gram_prune${threshold}.arpa.gz
-done
+    format_arpa_lm.py ${dir}/data/lm_${order}_prune | gzip -c > ${dir}/data/arpa/${vocab_size}_${order}gram_prune.arpa.gz
+
 

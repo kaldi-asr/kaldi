@@ -13,6 +13,7 @@ beam=7  # speed-up, but may affect MBR confidences.
 word_ins_penalty=0.0,0.5,1.0
 min_lmwt=8
 max_lmwt=17
+iter=final
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
@@ -83,3 +84,5 @@ if [ $stage -le 2 ]; then
 fi
 
 exit 0
+
+
