@@ -62,6 +62,7 @@ class Component {
     kSigmoid,
     kTanh,
     kDropout,
+    kBlockDropout,
     kLengthNormComponent,
 
     kTranform = 0x0400,
@@ -83,7 +84,7 @@ class Component {
     kFramePoolingComponent,
     kParallelComponent,
     kMultiBasisComponent,
-    kMultiStreamMaskComponent
+    kMultiStreamMaskComponent,
   } ComponentType;
 
   /// A pair of type and marker,

@@ -137,7 +137,10 @@ for iter in $(seq -w $max_iters); do
     fi
     this_seed=$(($seed+${iter#0}+$ii))
 
-    multistream_mask_transf_str="<NnetProto>\n <MultiStreamMaskComponent> \
+    # multistream_mask_transf_str="<NnetProto>\n <MultiStreamMaskComponent> \
+    #                              <InputDim> $num_fea <OutputDim> $num_fea \
+    #                              <StreamIndices> ${stream_indices}\n</NnetProto>"
+    multistream_mask_transf_str="<NnetProto>\n <BlockDropout> \
                                  <InputDim> $num_fea <OutputDim> $num_fea \
                                  <StreamIndices> ${stream_indices}\n</NnetProto>"
     feature_transform_with_multistream="echo -e \"$multistream_mask_transf_str\" | \

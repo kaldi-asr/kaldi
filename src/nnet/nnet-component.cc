@@ -30,6 +30,7 @@
 #include "nnet/nnet-linear-transform.h"
 #include "nnet/nnet-rbm.h"
 #include "nnet/nnet-various.h"
+#include "nnet/nnet-block-dropout-component.h"
 
 #include "nnet/nnet-convolutional-component.h"
 #include "nnet/nnet-average-pooling-component.h"
@@ -65,6 +66,7 @@ const struct Component::key_value Component::kMarkerMap[] = {
   { Component::kSigmoid, "<Sigmoid>" },
   { Component::kTanh, "<Tanh>" },
   { Component::kDropout, "<Dropout>" },
+  { Component::kBlockDropout, "<BlockDropout>" },
   { Component::kLengthNormComponent, "<LengthNormComponent>" },
   { Component::kRbm, "<Rbm>" },
   { Component::kSplice, "<Splice>" },
@@ -148,6 +150,9 @@ Component* Component::NewComponentOfType(ComponentType comp_type,
       break;
     case Component::kDropout :
       ans = new Dropout(input_dim, output_dim);
+      break;
+    case Component::kBlockDropout :
+      ans = new BlockDropout(input_dim, output_dim);
       break;
     case Component::kLengthNormComponent :
       ans = new LengthNormComponent(input_dim, output_dim);

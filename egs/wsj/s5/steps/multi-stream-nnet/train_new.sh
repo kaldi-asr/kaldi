@@ -306,7 +306,7 @@ else
   feature_transform_old=$feature_transform
   feature_transform=${feature_transform%.nnet}_cmvn-g.nnet
   echo "# compute normalization stats from 10k sentences"
-  nnet-forward --print-args=true $feature_transform_old \
+  nnet-forward --use-gpu="yes" --print-args=true $feature_transform_old \
     "$(echo $feats_tr | sed 's|train.scp|train.scp.10k|')" ark:- |\
     compute-cmvn-stats ark:- $dir/cmvn-g.stats
   echo "# + normalization of NN-input at '$feature_transform'"
