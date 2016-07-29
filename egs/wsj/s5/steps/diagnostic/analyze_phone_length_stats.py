@@ -81,6 +81,8 @@ for boundary_type in [ 'begin', 'end', 'all' ]:
 total_phones = defaultdict(int)
 # total_frames is a dict from boundary_type to total number of frames.
 total_frames = defaultdict(int)
+# total_frames is a dict from num-frames to count of num-utterances with that
+# num-frames.
 
 while True:
     line = sys.stdin.readline()

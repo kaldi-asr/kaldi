@@ -76,9 +76,8 @@ fi
 
 if [ $stage -le 9 ]; then
   rm -rf data/train_rvb_min${min_seg_len}_hires
-  steps/cleanup/combine_short_segments.py --minimum-duration $min_seg_len \
-    --input-data-dir data/train_rvb_hires \
-    --output-data-dir data/train_rvb_min${min_seg_len}_hires
+  utils/data/combine_short_segments.sh \
+      data/train_rvb_hires $min_seg_len data/train_rvb_min${min_seg_len}_hires
 
   #extract ivectors for the new data
   steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 \
@@ -98,9 +97,8 @@ if [ $stage -le 9 ]; then
   spk_prefix="THISISUNIQUESTRING_"
   utils/copy_data_dir.sh --spk-prefix "$spk_prefix" --utt-prefix "$utt_prefix" \
     data/train data/train_temp_for_lats
-  steps/cleanup/combine_short_segments.py --minimum-duration $min_seg_len \
-                   --input-data-dir data/train_temp_for_lats \
-                   --output-data-dir data/train_min${min_seg_len}
+  utils/data/combine_short_segments.sh \
+      data/train_temp_for_lats $min_seg_len data/train_min${min_seg_len}
 fi
 
 if [ $stage -le 10 ]; then

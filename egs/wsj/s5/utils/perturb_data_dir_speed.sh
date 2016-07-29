@@ -40,6 +40,11 @@ if [ ! -f $srcdir/utt2spk ]; then
   exit 1;
 fi
 
+if [ "$destdir" == "$srcdir" ]; then
+  echo "$0: this script requires <srcdir> and <destdir> to be different."
+  exit 1
+fi
+
 set -e;
 set -o pipefail
 
