@@ -28,7 +28,7 @@
 #include "nnet/nnet-max-pooling-component.h"
 #include "nnet/nnet-max-pooling-2d-component.h"
 #include "nnet/nnet-average-pooling-2d-component.h"
-#include "nnet/nnet-multistream-mask-component.h"
+#include "nnet/nnet-block-dropout-component.h"
 #include "util/common-utils.h"
 
 namespace kaldi {
@@ -344,10 +344,29 @@ namespace nnet1 {
 
     delete c;
   }
-
+  
   void UnitTestMultiStreamMaskComponent() {
     // MultiStreamMask component
     Component* c = ReadComponentFromString("<MultiStreamMaskComponent> 7 7 \
+      [ 0 3 7]"
+    );
+
+    // input matrix
+    CuMatrix<BaseFloat> mat_in;
+    ReadCuMatrixFromString("[ 0 1 2 3 4 5 6;\
+                              7 8 9 1 2 3 4]", &mat_in);
+
+    // propagate
+    CuMatrix<BaseFloat> mat_out;
+    c->Propagate(mat_in, &mat_out);
+    KALDI_LOG << "mat_in" << mat_in << "mat_out" << mat_out;
+  
+    delete c;
+  }
+  
+  void UnitTestBlockDropout() {
+    // MultiStreamMask component
+    Component* c = ReadComponentFromString("<BlockDropout> 7 7 \
       [ 0 3 7]"
     );
 
@@ -435,6 +454,7 @@ int main() {
     UnitTestMaxPooling2DComponent();
     UnitTestAveragePooling2DComponent();
     UnitTestMultiStreamMaskComponent();
+    UnitTestBlockDropout();
     // end of unit-tests,
     if (loop == 0)
         KALDI_LOG << "Tests without GPU use succeeded.";
