@@ -55,6 +55,11 @@ def CheckIfCudaCompiled():
     else:
         return True
 
+
+class KaldiCommandException(Exception):
+    def __init__(self, command, err):
+        Exception.__init__(self,"There was an error while running the command {0}\n".format(command)+"-"*10+"\n"+err)
+
 def RunKaldiCommand(command, wait = True):
     """ Runs commands frequently seen in Kaldi scripts. These are usually a
         sequence of commands connected by pipes, so we use shell=True """
@@ -66,7 +71,7 @@ def RunKaldiCommand(command, wait = True):
     if wait:
         [stdout, stderr] = p.communicate()
         if p.returncode is not 0:
-            raise Exception("There was an error while running the command {0}\n".format(command)+"-"*10+"\n"+stderr)
+            raise KaldiCommandException(command, stderr)
         return stdout, stderr
     else:
         return p
