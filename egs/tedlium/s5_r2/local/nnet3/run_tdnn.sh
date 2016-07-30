@@ -2,19 +2,12 @@
 
 # this is the standard "tdnn" system, built in nnet3; it's what we use to
 # call multi-splice.
+# results below are for relu dim 768 - 3 epochs - 7 layers same splicing as chain
+%WER 13.1 | 507 17792 | 88.8 7.8 3.4 1.9 13.1 84.6 | -0.123 | exp/nnet3/tdnn/decode_dev/score_11_0.5/ctm.filt.filt.sys
+%WER 11.7 | 507 17792 | 90.3 7.0 2.7 2.0 11.7 81.9 | -0.270 | exp/nnet3/tdnn/decode_dev_rescore/score_10_0.0/ctm.filt.filt.sys
+%WER 11.8 | 1155 27512 | 89.8 7.5 2.6 1.7 11.8 79.0 | -0.201 | exp/nnet3/tdnn/decode_test/score_10_0.0/ctm.filt.filt.sys
+%WER 10.7 | 1155 27512 | 90.8 6.6 2.6 1.5 10.7 75.7 | -0.278 | exp/nnet3/tdnn/decode_test_rescore/score_10_0.0/ctm.filt.filt.sys
 
-# Results (2 epochs):
-# Number of parameters: 6056880
-# %WER 15.3 | 507 17792 | 87.4 9.0 3.6 2.7 15.3 90.1 | -0.081 | exp/nnet3/tdnn_sp/decode_dev/score_10_0.5/ctm.filt.filt.sys
-# %WER 13.9 | 507 17792 | 88.4 8.0 3.6 2.3 13.9 85.8 | -0.164 | exp/nnet3/tdnn_sp/decode_dev_rescore/score_10_0.5/ctm.filt.filt.sys
-# %WER 13.8 | 1155 27512 | 88.5 8.7 2.7 2.3 13.8 84.2 | -0.076 | exp/nnet3/tdnn_sp/decode_test/score_10_0.0/ctm.filt.filt.sys
-# %WER 12.5 | 1155 27512 | 89.6 7.7 2.6 2.1 12.5 81.5 | -0.133 | exp/nnet3/tdnn_sp/decode_test_rescore/score_10_0.0/ctm.filt.filt.sys
-
-# 4 epochs
-# %WER 14.6 | 507 17792 | 87.9 8.7 3.4 2.5 14.6 88.6 | -0.111 | exp/nnet3/tdnn/decode_dev/score_10_0.5/ctm.filt.filt.sys
-# %WER 13.2 | 507 17792 | 89.4 7.7 2.9 2.6 13.2 85.0 | -0.170 | exp/nnet3/tdnn/decode_dev_rescore/score_10_0.0/ctm.filt.filt.sys
-# %WER 13.5 | 1155 27512 | 88.7 8.5 2.7 2.3 13.5 83.6 | -0.110 | exp/nnet3/tdnn/decode_test/score_10_0.0/ctm.filt.filt.sys
-# %WER 12.1 | 1155 27512 | 89.9 7.5 2.6 2.1 12.1 80.3 | -0.178 | exp/nnet3/tdnn/decode_test_rescore/score_10_0.0/ctm.filt.filt.sys
 
 # At this script level we don't support not running on GPU, as it would be painfully slow.
 # If you want to run without GPU you'd have to call train_tdnn.sh with --gpu false,

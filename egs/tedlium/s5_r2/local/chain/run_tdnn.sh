@@ -2,31 +2,18 @@
 #
 # This script requires that you have run the toplevel run.sh script in TEDLIUM up to stage 7.
 #
-# Results: (Run for x in exp/chain/tdnn/decode*; do [ -d $x ] && grep Sum $x/score_*/*.sys | utils/best_wer.sh; done 2>/dev/null)
-## Number of parameters: 6172530
-## %WER 14.1 | 507 17792 | 88.6 7.3 4.1 2.7 14.1 92.9 | 0.075 | exp/chain/tdnn/decode_dev/score_10_0.5/ctm.filt.filt.sys
-## %WER 13.3 | 507 17792 | 89.7 6.9 3.4 2.9 13.3 92.1 | 0.000 | exp/chain/tdnn/decode_dev_rescore/score_10_0.0/ctm.filt.filt.sys
-## %WER 13.8 | 1155 27512 | 89.4 7.5 3.1 3.2 13.8 87.9 | 0.101 | exp/chain/tdnn/decode_test/score_10_0.0/ctm.filt.filt.sys
-## %WER 12.9 | 1155 27512 | 90.1 6.6 3.3 2.9 12.9 86.1 | 0.043 | exp/chain/tdnn/decode_test_rescore/score_10_0.0/ctm.filt.filt.sys
-# The final WER (rescored WER on the test set) is what we are interested in.
+# Results: (Run toplevel ./results.sh)
+%WER 12.5 | 507 17792 | 89.5 7.5 3.0 2.0 12.5 85.0 | -0.132 | exp/chain/tdnn/decode_dev/score_8_0.5/ctm.filt.filt.sys
+%WER 11.7 | 507 17792 | 90.4 6.8 2.8 2.0 11.7 81.5 | -0.230 | exp/chain/tdnn/decode_dev_rescore/score_8_0.0/ctm.filt.filt.sys
+%WER 11.5 | 1155 27512 | 90.2 7.2 2.6 1.7 11.5 77.6 | -0.073 | exp/chain/tdnn/decode_test/score_8_0.0/ctm.filt.filt.sys
+%WER 10.4 | 1155 27512 | 90.9 5.9 3.2 1.3 10.4 73.8 | -0.099 | exp/chain/tdnn/decode_test_rescore/score_9_0.0/ctm.filt.filt.sys
 
-# To reproduce the setup used in the paper, set the following variables:
-# affix=_more_ce
-# relu_dim=525
-# xent_regularize=0.2
-#
-# Results: (Run for x in exp/chain/tdnn_more_ce/decode*; do [ -d $x ] && grep Sum $x/score_*/*.sys | utils/best_wer.sh; done 2>/dev/null)
-## Number of parameters: 8758742
-## %WER 14.3 | 507 17792 | 89.0 7.8 3.2 3.3 14.3 93.5 | 0.116 | exp/chain/tdnn_more_ce/decode_dev/score_10_0.0/ctm.filt.filt.sys
-## %WER 13.0 | 507 17792 | 90.0 6.9 3.2 2.9 13.0 91.3 | -0.003 | exp/chain/tdnn_more_ce/decode_devv_rescore/score_10_0.0/ctm.filt.filt.sys
-## %WER 13.8 | 1155 27512 | 89.1 7.4 3.4 2.9 13.8 87.5 | 0.082 | exp/chain/tdnn_more_ce/decode_test/score_10_0.5/ctm.filt.filt.sys
-## %WER 12.8 | 1155 27512 | 90.4 6.6 3.1 3.1 12.8 86.7 | 0.014 | exp/chain/tdnn_more_ce/decode_test_rescore/score_10_0.0/ctm.filt.filt.sys
 
 set -uo pipefail
 
 # configs for 'chain'
 affix=
-stage=12 # After running the entire script once, you can set stage=12 to tune the neural net only.
+stage=0 # After running the entire script once, you can set stage=12 to tune the neural net only.
 train_stage=-10
 get_egs_stage=-10
 dir=exp/chain/tdnn
