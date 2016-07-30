@@ -1,1 +1,0 @@
-/home/moses/kaldi/egs/librispeech/s5/local/score.sh

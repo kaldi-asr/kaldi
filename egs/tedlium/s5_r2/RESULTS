@@ -1,4 +1,6 @@
 
+use ./results.sh to grab all the results.
+
 # GMMs
 # DEV SPEAKERS:
 %WER 30.5 | 507 17792 | 73.8 19.8 6.4 4.4 30.5 96.8 | -0.039 | exp/tri1/decode_nosp_dev/score_10_0.0/ctm.filt.filt.sys
