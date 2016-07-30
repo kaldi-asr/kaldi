@@ -825,7 +825,8 @@ void ClipGradientComponent::RepairGradients(
   // term, in order to avoid increase of the norm caused by self-repair,
   // which may incur more clip of gradient and thus more self-repair
   double in_deriv_repaired_norm_sum = in_deriv_repaired_norm_vec.Sum();
-  in_deriv->Scale(in_deriv_norm_sum / in_deriv_repaired_norm_sum);
+  if (in_deriv_repaired_norm_sum != 0.0)
+    in_deriv->Scale(in_deriv_norm_sum / in_deriv_repaired_norm_sum);
 }
 
 void ClipGradientComponent::ZeroStats()  {
