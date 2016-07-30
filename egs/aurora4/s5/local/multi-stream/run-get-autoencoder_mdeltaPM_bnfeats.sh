@@ -45,6 +45,30 @@ njdec=60
 num_streams=`echo $strm_indices | awk -F ":" '{print NF-1}'`
 all_stream_combn=`echo 2^$num_streams -1|bc`
 
+###########################################
+###########################################
+if [ $stage -le 0 ]; then
+  if [ ! -d $test ]; then
+    c=$(basename $test)
+    mkdir -p data-multistream-fbank/${c}; 
+    cp data/${c}/{spk2utt,spk2gender,text,utt2spk,wav.scp} data-multistream-fbank/${c}/
+    steps/make_fbank.sh --fbank-config data-multistream-fbank/conf/fbank_multistream.conf \
+      data-multistream-fbank/$c data-multistream-fbank/$c/log data-multistream-fbank/$c/data || exit 1
+    steps/compute_cmvn_stats.sh \
+      data-multistream-fbank/$c data-multistream-fbank/$c/log data-multistream-fbank/$c/data || exit 1
+  fi
+
+  if [ ! -d $train ]; then
+    c=$(basename $train)
+    mkdir -p data-multistream-fbank/${c}; 
+    cp data/${c}/{spk2utt,spk2gender,text,utt2spk,wav.scp} data-multistream-fbank/${c}/
+    steps/make_fbank.sh --fbank-config data-multistream-fbank/conf/fbank_multistream.conf \
+      data-multistream-fbank/$c data-multistream-fbank/$c/log data-multistream-fbank/$c/data || exit 1
+    steps/compute_cmvn_stats.sh \
+      data-multistream-fbank/$c data-multistream-fbank/$c/log data-multistream-fbank/$c/data || exit 1
+  fi
+
+fi
 
 ###########################################
 ###########################################

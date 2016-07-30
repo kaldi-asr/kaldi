@@ -23,6 +23,10 @@ utils/prepare_lang.sh data/local/dict "<SPOKEN_NOISE>" data/local/lang_tmp data/
 
 local/aurora4_format_data.sh || exit 1;
 
+# create percond spk test_eval92
+local/create_percond_spk.py data/test_eval92 data/test_eval92_percond-spk || exit 1;
+utils/fix_data_dir.sh data/test_eval92_percond-spk || exit 1;
+
 # Now make MFCC features.
 # mfccdir should be some place with a largish disk where you
 # want to store MFCC features.

@@ -12,7 +12,7 @@ graph_src=exp/tri2b_multi/graph_tgpr_5k
 exp="fbank-traps_mstrm_9strms-2BarkPerStrm_CMN_bnfeats_splice5_traps_dct_basis6_iters-per-epoch5" # same as run-dnn-mstrm-bnfeats_train
 
 # fbank features,
-test_id=test_eval92
+test=data-multistream-fbank/test_eval92_percond-spk
 
 # mstrm options
 strm_indices="0:30:60:90:120:150:186:216:252:378"
@@ -26,17 +26,19 @@ num_streams=`echo $strm_indices | awk -F ":" '{print NF-1}'`
 num_stream_combns=`echo 2^$num_streams -1|bc`
 
 if [ $stage -le 0 ]; then
-  c="$test_id"
-  mkdir -p data-multistream-fbank/${c}; 
-  cp data/${c}/{spk2utt,spk2gender,text,utt2spk,wav.scp} data-multistream-fbank/${c}/
-  steps/make_fbank.sh --fbank-config data-multistream-fbank/conf/fbank_multistream.conf \
-    data-multistream-fbank/$c data-multistream-fbank/$c/log data-multistream-fbank/$c/data || exit 1
-  steps/compute_cmvn_stats.sh \
-    data-multistream-fbank/$c data-multistream-fbank/$c/log data-multistream-fbank/$c/data || exit 1
+
+  if [ ! -d $test ]; then
+    c=$(basename $test)
+    mkdir -p data-multistream-fbank/${c}; 
+    cp data/${c}/{spk2utt,spk2gender,text,utt2spk,wav.scp} data-multistream-fbank/${c}/
+    steps/make_fbank.sh --fbank-config data-multistream-fbank/conf/fbank_multistream.conf \
+      data-multistream-fbank/$c data-multistream-fbank/$c/log data-multistream-fbank/$c/data || exit 1
+    steps/compute_cmvn_stats.sh \
+      data-multistream-fbank/$c data-multistream-fbank/$c/log data-multistream-fbank/$c/data || exit 1
+  fi
 
 fi
 
-test=data-multistream-fbank/${test_id}
 
 nnet_dir=exp/dnn8a_bn-feat_${exp}
 mask_dir="strm-mask/Comb${comb_num}_$(basename $nnet_dir)_strm-masks/$(basename $test)"; mkdir -p $mask_dir
