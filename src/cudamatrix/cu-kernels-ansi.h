@@ -118,6 +118,9 @@ void cudaF_vec_min(int Gr, int Bl, const float* v, float* value, int dim, int in
 void cudaF_vec_max(int Gr, int Bl, const float* v, float* value, int dim, int inc);
 void cudaF_trace_mat_mat_trans(dim3 Gr, dim3 Bl, const float* A, const float* B, MatrixDim dA, int B_stride, float* value);
 void cudaF_trace_mat_mat(dim3 Gr, dim3 Bl, const float* A, const float* B, MatrixDim dA, int B_stride, float* value);
+void cudaF_add_diag_mat_mat_MNT(int Gr, int Bl, const float alpha,
+    const float* M, const MatrixDim dim_M, const float* N, const int stride_N,
+    const float beta, float* v);
 void cudaF_add_diag_mat_mat(int Gr, int Bl, float alpha, float* v, int v_dim, const float* M,
                             int M_cols, int M_row_stride, int M_col_stride, const float *N, int N_row_stride,
                             int N_col_stride, int threads_per_element, float beta);
@@ -268,6 +271,9 @@ void cudaD_vec_min(int Gr, int Bl, const double* v, double* value, int dim, int 
 void cudaD_vec_max(int Gr, int Bl, const double* v, double* value, int dim, int inc);
 void cudaD_trace_mat_mat_trans(dim3 Gr, dim3 Bl, const double* A, const double* B, MatrixDim dA, int B_stride, double* value);
 void cudaD_trace_mat_mat(dim3 Gr, dim3 Bl, const double* A, const double* B, MatrixDim dA, int B_stride, double* value);
+void cudaD_add_diag_mat_mat_MNT(int Gr, int Bl, const double alpha,
+    const double* M, const MatrixDim dim_M, const double* N, const int stride_N,
+    const double beta, double* v);
 void cudaD_add_diag_mat_mat(int Gr, int Bl, double alpha, double* v, int v_dim, const double* M,
                             int M_cols, int M_row_stride, int M_col_stride, const double *N, int N_row_stride,
                             int N_col_stride, int threads_per_element, double beta);

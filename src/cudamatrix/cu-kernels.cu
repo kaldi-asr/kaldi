@@ -862,6 +862,49 @@ static void _trace_mat_mat_trans(const Real* A, const Real* B, MatrixDim dA, int
   }
 }
 
+// v = alpha * diag(M * N^T) + beta * v
+template<typename Real>
+__global__
+static void _add_diag_mat_mat_MNT(const Real alpha, const Real* M,
+    const MatrixDim dim_M, const Real* N, const int stride_N, const Real beta,
+    Real* v) {
+  __shared__ Real ssum[CU1DBLOCK];
+  const int tid = threadIdx.x;
+  const int i = blockIdx.x;
+  const int m_start = i * dim_M.stride;
+  const int n_start = i * stride_N;
+
+  // Loop along the matrix row. Reduce to CU1DBLOCK elements.
+  Real tsum = Real(0);
+  for (int j = tid; j < dim_M.cols; j += CU1DBLOCK) {
+    tsum += M[m_start + j] * N[n_start + j];
+  }
+  ssum[tid] = tsum;
+  __syncthreads();
+
+  // Tree reduce to warpSize elements.
+# pragma unroll
+  for (int shift = CU1DBLOCK / 2; shift > warpSize; shift >>= 1) {
+    if (tid < shift) {
+      ssum[tid] += ssum[tid + shift];
+    }
+    __syncthreads();
+  }
+
+  // Warp reduce to 1 element. Threads implicitly synchronized within a warp.
+  if (tid < warpSize) {
+#   pragma unroll
+    for (int shift = warpSize; shift > 0; shift >>= 1) {
+      ssum[tid] += ssum[tid + shift];
+    }
+  }
+
+  // output 1 sum per thread block
+  if (tid == 0) {
+    v[i] = alpha * ssum[0] + beta * v[i];
+  }
+}
+
 
 // Adds diag(M N) to v, where M and N are matrices.  We supply row_stride and
 // col_stride arguments for M and N, and swapping them allows us to transpose
@@ -2693,6 +2736,11 @@ void cudaF_trace_mat_mat(dim3 Gr, dim3 Bl, const float* A, const float* B, Matri
   _trace_mat_mat<32><<<Gr,Bl>>>(A,B,dA,B_stride,value);
 }
 
+void cudaF_add_diag_mat_mat_MNT(int Gr, int Bl, const float alpha, const float* M,
+    const MatrixDim dim_M, const float* N, const int stride_N, const float beta,
+    float* v) {
+  _add_diag_mat_mat_MNT<<<Gr,Bl>>>(alpha,M,dim_M,N,stride_N,beta,v);
+}
 
 void cudaF_add_diag_mat_mat(int Gr, int Bl, float alpha, float* v, int v_dim, const float* M,
      int M_cols, int M_row_stride, int M_col_stride, const float *N, int N_row_stride,
@@ -3188,6 +3236,12 @@ void cudaD_trace_mat_mat_trans(dim3 Gr, dim3 Bl, const double* A, const double* 
 
 void cudaD_trace_mat_mat(dim3 Gr, dim3 Bl, const double* A, const double* B, MatrixDim dA, int B_stride, double* value) {
   _trace_mat_mat<32><<<Gr,Bl>>>(A,B,dA,B_stride,value);
+}
+
+void cudaD_add_diag_mat_mat_MNT(int Gr, int Bl, const double alpha,
+    const double* M, const MatrixDim dim_M, const double* N, const int stride_N,
+    const double beta, double* v) {
+  _add_diag_mat_mat_MNT<<<Gr,Bl>>>(alpha,M,dim_M,N,stride_N,beta,v);
 }
 
 void cudaD_add_diag_mat_mat(int Gr, int Bl, double alpha, double* v, int v_dim, const double* M,
