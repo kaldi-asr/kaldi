@@ -557,6 +557,16 @@ void CuVectorBase<Real>::AddDiagMatMat(
       int dimGrid(M.NumRows());
       cuda_add_diag_mat_mat_MNT(dimGrid, dimBlock, alpha, M.Data(), M.Dim(),
           N.Data(), N.Stride(), beta, data_);
+    } else if (transM == kTrans && transN == kNoTrans) {
+      int tile_dim = 16;
+      // Large tile size only for large float matrix
+      if (sizeof(Real) == 4 && N.NumCols() > 1024) {
+        tile_dim = 32;
+      }
+      dim3 dimBlock(tile_dim, CU1DBLOCK / tile_dim);
+      dim3 dimGrid(n_blocks(N.NumCols(), tile_dim));
+      cuda_add_diag_mat_mat_MTN(dimGrid, dimBlock, alpha, M.Data(), M.Stride(),
+          N.Data(), N.Dim(), beta, data_);
     } else {
 
 

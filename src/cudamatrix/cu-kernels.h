@@ -207,6 +207,11 @@ inline void cuda_add_diag_mat_mat_MNT(int Gr, int Bl, const float alpha,
     const float beta, float* v) {
   cudaF_add_diag_mat_mat_MNT(Gr, Bl, alpha, M, dim_M, N, stride_N, beta, v);
 }
+inline void cuda_add_diag_mat_mat_MTN(dim3 Gr, dim3 Bl, const float alpha,
+    const float* M, const int stride_M, const float* N, const MatrixDim dim_N,
+    const float beta, float* v) {
+  cudaF_add_diag_mat_mat_MTN(Gr, Bl, alpha, M, stride_M, N, dim_N, beta, v);
+}
 inline void cuda_add_diag_mat_mat(int Gr, int Bl, float alpha, float* v, int v_dim, const float* M,
                                   int M_cols, int M_row_stride, int M_col_stride, const float *N, int N_row_stride,
                                   int N_col_stride, int threads_per_element, float beta) {
@@ -414,6 +419,11 @@ inline void cuda_add_diag_mat_mat_MNT(int Gr, int Bl, const double alpha,
     const double* M, const MatrixDim dim_M, const double* N, const int stride_N,
     const double beta, double* v) {
   cudaD_add_diag_mat_mat_MNT(Gr, Bl, alpha, M, dim_M, N, stride_N, beta, v);
+}
+inline void cuda_add_diag_mat_mat_MTN(dim3 Gr, dim3 Bl, const double alpha,
+    const double* M, const int stride_M, const double* N, const MatrixDim dim_N,
+    const double beta, double* v) {
+  cudaD_add_diag_mat_mat_MTN(Gr, Bl, alpha, M, stride_M, N, dim_N, beta, v);
 }
 inline void cuda_add_diag_mat_mat(int Gr, int Bl, double alpha, double* v, int v_dim, const double* M,
                                   int M_cols, int M_row_stride, int M_col_stride, const double *N, int N_row_stride,

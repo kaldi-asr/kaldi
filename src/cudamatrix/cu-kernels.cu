@@ -905,6 +905,51 @@ static void _add_diag_mat_mat_MNT(const Real alpha, const Real* M,
   }
 }
 
+// v = alpha * diag(M^T * N) + beta * v
+template<int TileDim, typename Real>
+__global__
+static void _add_diag_mat_mat_MTN(const Real alpha, const Real* M,
+    const int stride_M, const Real* N, const MatrixDim dim_N, const Real beta,
+    Real* v) {
+  __shared__ Real ssum[CU1DBLOCK];
+  const int tid = threadIdx.y * blockDim.x + threadIdx.x;
+  const int j = blockIdx.x * blockDim.x + threadIdx.x;
+
+  if (j > dim_N.cols) return;
+
+  // Loop along the matrix row. Reduce to CU1DBLOCK elements.
+  Real tsum = Real(0);
+  for (int i = threadIdx.y; i < dim_N.rows; i += blockDim.y) {
+    tsum += M[i * stride_M + j] * N[i * dim_N.stride + j];
+  }
+  ssum[tid] = tsum;
+  __syncthreads();
+
+  // Tree reduce to warpSize elements.
+# pragma unroll
+  for (int shift = CU1DBLOCK / 2; shift > warpSize && shift >= TileDim;
+      shift >>= 1) {
+    if (tid < shift) {
+      ssum[tid] += ssum[tid + shift];
+    }
+    __syncthreads();
+  }
+
+  // Warp reduce to TileDim elements.
+  // Threads implicitly synchronized within a warp.
+  if (tid < warpSize) {
+#   pragma unroll
+    for (int shift = warpSize; shift >= TileDim; shift >>= 1) {
+      ssum[tid] += ssum[tid + shift];
+    }
+  }
+
+  // output TileDim sums per thread block
+  if (tid < TileDim) {
+    v[j] = alpha * ssum[tid] + beta * v[j];
+  }
+}
+
 
 // Adds diag(M N) to v, where M and N are matrices.  We supply row_stride and
 // col_stride arguments for M and N, and swapping them allows us to transpose
@@ -2742,6 +2787,16 @@ void cudaF_add_diag_mat_mat_MNT(int Gr, int Bl, const float alpha, const float* 
   _add_diag_mat_mat_MNT<<<Gr,Bl>>>(alpha,M,dim_M,N,stride_N,beta,v);
 }
 
+void cudaF_add_diag_mat_mat_MTN(dim3 Gr, dim3 Bl, const float alpha,
+    const float* M, const int stride_M, const float* N, const MatrixDim dim_N,
+    const float beta, float* v) {
+  if (Bl.x==16) {
+    _add_diag_mat_mat_MTN<16><<<Gr,Bl>>>(alpha,M,stride_M,N,dim_N,beta,v);
+  } else if (Bl.x==32) {
+    _add_diag_mat_mat_MTN<32><<<Gr,Bl>>>(alpha,M,stride_M,N,dim_N,beta,v);
+  }
+}
+
 void cudaF_add_diag_mat_mat(int Gr, int Bl, float alpha, float* v, int v_dim, const float* M,
      int M_cols, int M_row_stride, int M_col_stride, const float *N, int N_row_stride,
                             int N_col_stride, int threads_per_element, float beta) {
@@ -3242,6 +3297,16 @@ void cudaD_add_diag_mat_mat_MNT(int Gr, int Bl, const double alpha,
     const double* M, const MatrixDim dim_M, const double* N, const int stride_N,
     const double beta, double* v) {
   _add_diag_mat_mat_MNT<<<Gr,Bl>>>(alpha,M,dim_M,N,stride_N,beta,v);
+}
+
+void cudaD_add_diag_mat_mat_MTN(dim3 Gr, dim3 Bl, const double alpha,
+    const double* M, const int stride_M, const double* N, const MatrixDim dim_N,
+    const double beta, double* v) {
+  if (Bl.x==16) {
+    _add_diag_mat_mat_MTN<16><<<Gr,Bl>>>(alpha,M,stride_M,N,dim_N,beta,v);
+  } else if (Bl.x==32) {
+    _add_diag_mat_mat_MTN<32><<<Gr,Bl>>>(alpha,M,stride_M,N,dim_N,beta,v);
+  }
 }
 
 void cudaD_add_diag_mat_mat(int Gr, int Bl, double alpha, double* v, int v_dim, const double* M,
