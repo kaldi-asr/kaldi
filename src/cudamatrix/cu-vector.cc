@@ -534,47 +534,65 @@ void CuVectorBase<Real>::AddDiagMat2(Real alpha, const CuMatrixBase<Real> &M,
 }
 
 template<typename Real>
-void CuVectorBase<Real>::AddDiagMatMat(
-    Real alpha,
-    const CuMatrixBase<Real> &M, MatrixTransposeType transM,
-    const CuMatrixBase<Real> &N, MatrixTransposeType transN,
-    Real beta) {
+void CuVectorBase<Real>::AddDiagMatMat(Real alpha, const CuMatrixBase<Real> &M,
+                                       MatrixTransposeType transM,
+                                       const CuMatrixBase<Real> &N,
+                                       MatrixTransposeType transN, Real beta) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    MatrixIndexT dim = this->dim_,
-        M_col_dim = (transM == kTrans ? M.NumRows() : M.NumCols()),
-        N_row_dim = (transN == kTrans ? N.NumCols() : N.NumRows());
-    KALDI_ASSERT(M_col_dim == N_row_dim); // this is the dimension we sum over
-    MatrixIndexT M_row_stride = M.Stride(), M_col_stride = 1;
-    if (transM == kTrans) std::swap(M_row_stride, M_col_stride);
-    MatrixIndexT N_row_stride = N.Stride(), N_col_stride = 1;
-    if (transN == kTrans) std::swap(N_row_stride, N_col_stride);
-    if (dim_ == 0) return;
 
-    // This kernel can take a variable grid dimension, it makes use
-    // of the extra threads by partitioning each vector-vector dot
-    // product into multiple pieces.
-    int dimBlock(CU1DBLOCK);
-    int dimGrid(n_blocks(dim,CU1DBLOCK));
-    int threads_per_element = 1;
-    // dimGridLimit may be any power of two between 1 and 256 inclusive; it was
-    // determined empirically based on speed tests.
-    int dimGridLimit = (transM == kNoTrans && transN == kTrans ? 2048 :
-                        (transM == kTrans && transN == kNoTrans ? 16 : 32));
-
-
-    while (M_col_dim > 10 * threads_per_element &&
-           dimGrid < dimGridLimit && threads_per_element < 256) {
-      threads_per_element *= 2;
-      dimGrid = n_blocks(dim * threads_per_element, CU1DBLOCK);
+    if (transM != transN) {
+      KALDI_ASSERT(M.NumCols() == N.NumCols());
+      KALDI_ASSERT(M.NumRows() == N.NumRows());
+      if (transM == kNoTrans) {
+        // Case 1: diag(M*N') == sum(M.*N, 2)
+        // 1D grid and 1D block. One block per row of N.
+        // 1D grid expands along the column of N.
+        int dimBlock(CU1DBLOCK);
+        int dimGrid(M.NumRows());
+        cuda_add_diag_mat_mat_MNT(dimGrid, dimBlock, alpha, M.Data(), M.Dim(),
+                                  N.Data(), N.Stride(), beta, data_);
+      } else {
+        // Case 2: diag(M'*N) == sum(M.*N, 1)
+        // 16x16 or 8x32 2D block for coalesced memory access.
+        // One block per 'tile_dim' columns of N.
+        // Large tile dim only for large matrix
+        // 1D grid expands along the row of N.
+        int tile_dim =
+            sizeof(Real) == sizeof(float) && N.NumCols() >= 1536 ? 32 : 16;
+        dim3 dimBlock(tile_dim, CU1DBLOCK / tile_dim);
+        dim3 dimGrid(n_blocks(N.NumCols(), tile_dim));
+        cuda_add_diag_mat_mat_MTN(dimGrid, dimBlock, alpha, M.Data(),
+                                  M.Stride(), N.Data(), N.Dim(), beta, data_);
+      }
+    } else {
+      KALDI_ASSERT(M.NumCols() == N.NumRows());
+      KALDI_ASSERT(N.NumCols() == M.NumRows());
+      if (transM == kNoTrans) {
+        // Case 3: diag(M*N) == sum(M'.*N, 1)
+        // 16x16 or 8x32 2D block for matrix transpose and coalesced memory access.
+        // One block per 'tile_dim' columns of N.
+        // 1D grid expands along the row of N.
+        int tile_dim =
+            sizeof(Real) == sizeof(float) && N.NumCols() >= 2048 ? 32 : 16;
+        dim3 dimBlock(tile_dim, CU1DBLOCK / tile_dim);
+        dim3 dimGrid(n_blocks(N.NumCols(), tile_dim));
+        cuda_add_diag_mat_mat_MN(dimGrid, dimBlock, alpha, M.Data(), M.Stride(),
+                                 N.Data(), N.Dim(), beta, data_);
+      } else {
+        // Case 4: diag(M'*N') == sum(N'.*M, 1)
+        // Same kernel and config as case 3 except M and N are swapped.
+        int tile_dim =
+            sizeof(Real) == sizeof(float) && N.NumCols() >= 2048 ? 32 : 16;
+        dim3 dimBlock(tile_dim, CU1DBLOCK / tile_dim);
+        dim3 dimGrid(n_blocks(M.NumCols(), tile_dim));
+        cuda_add_diag_mat_mat_MN(dimGrid, dimBlock, alpha, N.Data(), N.Stride(),
+                                 M.Data(), M.Dim(), beta, data_);
+      }
     }
-
-    cuda_add_diag_mat_mat(dimGrid, dimBlock, alpha, data_, dim,
-                          M.Data(), M_col_dim, M_row_stride, M_col_stride,
-                          N.Data(), N_row_stride, N_col_stride,
-                          threads_per_element, beta);
     CU_SAFE_CALL(cudaGetLastError());
+
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
