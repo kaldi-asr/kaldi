@@ -369,8 +369,7 @@ cat $dir/phones/align_lexicon.txt | utils/sym2int.pl -f 3- $dir/phones.txt | \
 if $silprob; then
   # Usually it's the same as having a fixed-prob L.fst
   # it matters a little bit in discriminative trainings
-  utils/make_lexicon_fst_silprob.pl $tmpdir/lexiconp_silprob_disambig.txt $srcdir/silprob.txt $silphone '#'$ndisambig | \
-     sed 's=\#[0-9][0-9]*=<eps>=g' | \
+  utils/make_lexicon_fst_silprob.pl $tmpdir/lexiconp_silprob.txt $srcdir/silprob.txt $silphone "<eps>" | \
      fstcompile --isymbols=$dir/phones.txt --osymbols=$dir/words.txt \
      --keep_isymbols=false --keep_osymbols=false |   \
      fstarcsort --sort_type=olabel > $dir/L.fst || exit 1;
