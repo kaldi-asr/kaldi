@@ -9,10 +9,15 @@ import argparse, glob, math, os, sys
 
 
 def GetArgs():
-    parser = argparse.ArgumentParser(description="Prepare rir_list and noise_list for Aspire  "
-                                                 "Usage: reverberate_data_dir.py [options...] <in-data-dir> <out-data-dir> "
-                                                 "E.g. reverberate_data_dir.py "
-                                                 "data/impulses_noises data/impulses_noises/info",
+    parser = argparse.ArgumentParser(description="Prepare rir_list and noise_list for Aspire. "
+                                     "For information on the the format of data/impulses_noises "
+                                     "look at the script aspire/s5/local/multi_condition/prepare_impulses_noises.sh "
+                                     "This script assumes the data/impulses_noises directory has been prepared "
+                                     "by the command aspire/s5/local/multi_condition/prepare_impulses_noises.sh "
+                                     "--db-string \"'air' 'rvb2014' 'rwcp'\". It does not work for other directories. "
+                                     "Usage: aspire_prep_rir_noise_list.py [options...] <in-data-dir> <out-data-dir> "
+                                     "E.g. aspire_prep_rir_noise_list.py "
+                                     "data/impulses_noises data/impulses_noises/info",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument("input_dir", help="Input data directory")
