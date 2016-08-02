@@ -640,7 +640,7 @@ void ClipGradientComponent::Init(int32 dim,
                                  int32 num_self_repaired,
                                  int32 num_backpropped)  {
   KALDI_ASSERT(clipping_threshold >= 0 && dim > 0 &&
-      self_repair_clipped_proportion_threshold >= 0.0 && 
+      self_repair_clipped_proportion_threshold >= 0.0 &&
       self_repair_target >= 0.0 && self_repair_scale >= 0.0);
   dim_ = dim;
   norm_based_clipping_ = norm_based_clipping;
@@ -672,7 +672,7 @@ void ClipGradientComponent::InitFromConfig(ConfigLine *cfl) {
   cfl->GetValue("self-repair-scale", &self_repair_scale);
   if (!ok || cfl->HasUnusedValues() ||
       clipping_threshold < 0 || dim <= 0 ||
-      self_repair_clipped_proportion_threshold < 0.0 || 
+      self_repair_clipped_proportion_threshold < 0.0 ||
       self_repair_target < 0.0 || self_repair_scale < 0.0)
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << cfl->WholeLine() << "\"";
@@ -805,7 +805,7 @@ void ClipGradientComponent::RepairGradients(
   double in_deriv_norm_sum = in_deriv_norm_vec.Sum();
   BaseFloat magnitude = self_repair_scale_ * clipped_proportion *
                         (in_deriv_norm_sum / in_deriv_norm_vec.Dim());
- 
+
   CuVector<BaseFloat> repair_mat_norm_vec(repair_mat.NumRows());
   repair_mat_norm_vec.AddDiagMat2(1.0, repair_mat, kNoTrans, 0.0);
   repair_mat_norm_vec.ApplyPow(0.5);
@@ -2513,6 +2513,8 @@ void NaturalGradientAffineComponent::InitFromConfig(ConfigLine *cfl) {
   } else {
     ok = ok && cfl->GetValue("input-dim", &input_dim);
     ok = ok && cfl->GetValue("output-dim", &output_dim);
+    if (!ok)
+      KALDI_ERR << "Bad initializer " << cfl->WholeLine();
     BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
         bias_stddev = 1.0, bias_mean = 0.0;
     cfl->GetValue("param-stddev", &param_stddev);
