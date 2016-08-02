@@ -74,7 +74,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
     float param_scale = 0.02;
     // parse the line from prototype,
     std::string token;
-    while (!is.eof()) {
+    while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token);
       /**/ if (token == "<CellDim>") ReadBasicType(is, false, &ncell_);
       else if (token == "<ClipGradient>") ReadBasicType(is, false, &clip_gradient_);
