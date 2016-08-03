@@ -573,8 +573,13 @@ bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
         // which we check feature_buffer_finished_, and we'll exit the loop, so
         // if we reach here it must be the first time it was true.
         last_time = true;
-        computer.Flush(&cu_loglikes);
-        ProcessLoglikes(log_inv_prior, &cu_loglikes);
+        if (computer.getLastSeenInputFrameLength() != 0){
+            computer.Flush(&cu_loglikes);
+            ProcessLoglikes(log_inv_prior, &cu_loglikes);
+        }
+        else {
+            //KALDI_LOG << "WARNING\n";
+        }
       }
     } else {
       CuMatrix<BaseFloat> cu_feats;
