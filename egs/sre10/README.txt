@@ -10,8 +10,9 @@
  are required by the subdirectories. See the corresponding README.txt files 
  in the subdirectories for more details.
 
- The subdirectories "v1" and so on are different versions of the recipe;
- we don't call them "s1" etc., because they don't really correspond to
- the speech recognition recipes.
-
+ The subdirectories "v1" and so on are different iVector-based speaker 
+ recognition recipes. The recipe in v1 demonstrates a standard approach 
+ using a full-covariance GMM-UBM, iVectors, and a PLDA backend. The example 
+ in v2 replaces the GMM of the v1 recipe with a time-delay deep neural 
+ network.
 

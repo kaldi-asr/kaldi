@@ -117,39 +117,28 @@ BaseFloat KaldiCuedRnnlmWrapper::GetLogProb(
     const std::vector<BaseFloat> &context_in,
     std::vector<BaseFloat> *context_out) {
 
-//  std::vector<int32> rnn_wseq(wseq.size());
-//
-//  for (int i = 0; i < rnn_wseq.size(); i++) {
-//    rnn_wseq[i] = fst_label_to_rnn_label_[wseq[i]];
-//  }
+  BaseFloat logprob = rnnlm_.computeConditionalLogprob(word, wseq,
+                                                       context_in, context_out);
+/*
+  cout << "rnnlm: hidden layer is ";
+  for (int i = 0; i < context_in.size(); i++) {
+    cout << context_in[i] << ' ';
+  }
+  cout << endl;
+//*/
 
 /*
-  std::cout << "rnnlm: history is ";
+  std::cout << "rnnlm: given history: ";
   for (int i = 0; i < wseq.size(); i++) {
     std::cout << rnn_label_to_word_[wseq[i]] << " ";
   }
-// * /
 
-  std::cout << "rnnlm: this word is "
-            << ( (word == 0)? string("</s>") : rnn_label_to_word_[word] )
-            << endl
-            << endl;
+  std::cout << ", log-prob of word of "
+            << ( (word == 0)? string("</s>") : rnn_label_to_word_[word] );
+  cout << " = " << logprob << endl;
 // */
-  BaseFloat prob = rnnlm_.computeConditionalLogprob(word, wseq,
-                                          context_in, context_out);
 
-//  cout << "rnnlm: prob is: " << prob << endl << endl;
-  return prob;
-/*
-  std::vector<std::string> wseq_symbols(wseq.size());
-  for (int32 i = 0; i < wseq_symbols.size(); ++i) {
-    KALDI_ASSERT(wseq[i] < label_to_word_.size());
-    wseq_symbols[i] = label_to_word_[wseq[i]];
-  }
-
-  return rnnlm_.computeConditionalLogprob(label_to_word_[word], wseq_symbols,
-                                          context_in, context_out);
-// */
+  return logprob;
 }
 
 CuedRnnlmDeterministicFst::CuedRnnlmDeterministicFst(int32 max_ngram_order,
@@ -157,10 +146,11 @@ CuedRnnlmDeterministicFst::CuedRnnlmDeterministicFst(int32 max_ngram_order,
   KALDI_ASSERT(rnnlm != NULL);
   max_ngram_order_ = max_ngram_order;
   rnnlm_ = rnnlm;
+  rnnlm_->ResetHistory();
 
   std::vector<Label> bos;
-  bos.push_back(0); // TODO(hxu) 0 for <s>
-  std::vector<BaseFloat> bos_context(rnnlm->GetHiddenLayerSize(), 1.0f);
+  bos.push_back(0); // TODO(hxu) 0 for <s> !! IMPORTANT
+  std::vector<BaseFloat> bos_context(rnnlm->GetHiddenLayerSize(), 0.1f);
   state_to_wseq_.push_back(bos);
   state_to_context_.push_back(bos_context);
   wseq_to_state_[bos] = 0;
@@ -184,7 +174,6 @@ bool CuedRnnlmDeterministicFst::GetArc(StateId s, Label ilabel, fst::StdArc *oar
   std::vector<BaseFloat> new_context(rnnlm_->GetHiddenLayerSize());
 
 //  cout << "rnnlm: getarc, this word is " << rnnlm_->fst_label_to_word_[ilabel] << endl;
-  KALDI_ASSERT(ilabel != 0); // TODO not epsilon
   int32 rnn_word = rnnlm_->fst_label_to_rnn_label_[ilabel];
   BaseFloat logprob = rnnlm_->GetLogProb(rnn_word, wseq,
                                          state_to_context_[s], &new_context);

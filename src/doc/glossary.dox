@@ -26,9 +26,19 @@
  search function of your browser.  For convenience the definition of each
  term's section is preceded and followed by a colon, so for
  instance, typing ctrl-f ":lattice:" would take you to the section for "lattice".
- 
+
 
 <div style="text-indent: -1.5em;  padding-left: 1.5em;">
+
+
+<b>:acoustic scale:</b>  The acoustic scale used in decoding, written as --acoustic-scale
+in C++ programs and --acwt in programs.  This is a scale on the acoustic log-probabilities,
+and is a universally used kludge in HMM-GMM and HMM-DNN systems to account for the correlation
+between frames.  It's usually set to 0.1, meaning the acoustic log-probs get a much lower weight
+than the language model log-probs.   In scoring scripts you'll often see a range of language
+model weights being searched over (like the range 7 to 15).  These can be interpreted as
+the inverse of an acoustic scale; it's the ratio between the two that matters for Viterbi
+decoding.
 
 
 <b>:alignment:</b> A representation of the sequence of HMM states taken by the
@@ -37,7 +47,7 @@ synonymous with a sequence of <b>transition-ids</b>.  Most of the time an
 alignment is derived from aligning the reference transcript of an utterance,
 in which case it is called a <b>forced alignment</b>.  <b>lattices</b> also
 contain alignment information as sequences of transition-ids for each word
-sequence in the lattice.  The program \ref bin/show-alignments.cc "show-alignments" shows 
+sequence in the lattice.  The program \ref bin/show-alignments.cc "show-alignments" shows
 alignments in a human-readable format.
 
 <b>:forced alignment:</b> see <b>alignment</b>.
@@ -53,6 +63,18 @@ Appears in lattices, decoding graphs and alignments.  See \ref transition_model.
 of the HMMs, and also various other important integer mappings; see \ref transition_model.
 This object is generally written at the start of model files.  The program
 \ref bin/show-transitions.cc "show-transitions" shows these.
+
+<b>:G.fst:</b>  The grammar FST <code>G.fst</code> which lives in the
+  <code>data/lang/</code> directory in the scripts (see \ref data_prep_lang) represents
+  the language model in a Finite State Transducer format (see www.openfst.org).
+ For the most part it is an acceptor, meaning the input and output symbols on the
+ arcs are the same, but for statistical language models with backoff, the backoff
+ arcs have the "disambiguation symbol" <code>#0</code> on the input side only.
+ For many purposes you'll want to get rid of the disambiguation symbols
+  using the command <code>fstproject --project_output=true</code>.  The disambiguation symbols
+ are needed during graph compilation to make the FST determinizable, but for things
+ like language-model rescoring you don't want them.
+
 
 </div>
 

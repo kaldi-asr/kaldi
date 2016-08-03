@@ -41,20 +41,19 @@
 #endif
 
 #ifndef M_PI
-#  define M_PI 3.1415926535897932384626433832795
+#define M_PI 3.1415926535897932384626433832795
 #endif
 
 #ifndef M_SQRT2
-#  define M_SQRT2 1.4142135623730950488016887
+#define M_SQRT2 1.4142135623730950488016887
 #endif
 
-
 #ifndef M_2PI
-#  define M_2PI 6.283185307179586476925286766559005
+#define M_2PI 6.283185307179586476925286766559005
 #endif
 
 #ifndef M_SQRT1_2
-# define M_SQRT1_2 0.7071067811865475244008443621048490
+#define M_SQRT1_2 0.7071067811865475244008443621048490
 #endif
 
 #ifndef M_LOG_2PI
@@ -64,6 +63,11 @@
 #ifndef M_LN2
 #define M_LN2 0.693147180559945309417232121458
 #endif
+
+#ifndef M_LN10
+#define M_LN10 2.302585092994045684017991454684
+#endif
+
 
 #define KALDI_ISNAN std::isnan
 #define KALDI_ISINF std::isinf
@@ -81,7 +85,7 @@ inline double Exp(double x) { return exp(x); }
 inline float Exp(float x) { return expf(x); }
 #else
 inline float Exp(float x) { return exp(static_cast<double>(x)); }
-#endif // KALDI_NO_EXPF
+#endif  // KALDI_NO_EXPF
 #else
 inline double Exp(double x) { return exp(x); }
 #if !defined(__INTEL_COMPILER) && _MSC_VER == 1800 && defined(_M_X64)
@@ -90,8 +94,8 @@ inline double Exp(double x) { return exp(x); }
 inline float Exp(float x) { return exp(static_cast<double>(x)); }
 #else
 inline float Exp(float x) { return expf(x); }
-#endif // !defined(__INTEL_COMPILER) && _MSC_VER == 1800 && defined(_M_X64)
-#endif // !defined(_MSC_VER) || (_MSC_VER >= 1900)
+#endif  // !defined(__INTEL_COMPILER) && _MSC_VER == 1800 && defined(_M_X64)
+#endif  // !defined(_MSC_VER) || (_MSC_VER >= 1900)
 
 inline double Log(double x) { return log(x); }
 inline float Log(float x) { return logf(x); }
@@ -126,7 +130,7 @@ const double kLogZeroDouble = -std::numeric_limits<double>::infinity();
 const BaseFloat kLogZeroBaseFloat = -std::numeric_limits<BaseFloat>::infinity();
 
 // Returns a random integer between 0 and RAND_MAX, inclusive
-int Rand(struct RandomState* state=NULL);
+int Rand(struct RandomState* state = NULL);
 
 // State for thread-safe random number generator
 struct RandomState {
@@ -135,9 +139,10 @@ struct RandomState {
 };
 
 // Returns a random integer between min and max inclusive.
-int32 RandInt(int32 min, int32 max, struct RandomState* state=NULL);
+int32 RandInt(int32 min, int32 max, struct RandomState* state = NULL);
 
-bool WithProb(BaseFloat prob, struct RandomState* state=NULL); // Returns true with probability "prob",
+// Returns true with probability "prob",
+bool WithProb(BaseFloat prob, struct RandomState* state = NULL);
 // with 0 <= prob <= 1 [we check this].
 // Internally calls Rand().  This function is carefully implemented so
 // that it should work even if prob is very small.
@@ -155,7 +160,7 @@ inline float RandGauss(struct RandomState* state = NULL) {
 // Returns poisson-distributed random number.  Uses Knuth's algorithm.
 // Take care: this takes time proportinal
 // to lambda.  Faster algorithms exist but are more complex.
-int32 RandPoisson(float lambda, struct RandomState* state=NULL);
+int32 RandPoisson(float lambda, struct RandomState* state = NULL);
 
 // Returns a pair of gaussian random numbers. Uses Box-Muller transform
 void RandGauss2(float *a, float *b, RandomState *state = NULL);
@@ -166,7 +171,8 @@ void RandGauss2(double *a, double *b, RandomState *state = NULL);
 // This is a randomized pruning mechanism that preserves expectations,
 // that we typically use to prune posteriors.
 template<class Float>
-inline Float RandPrune(Float post, BaseFloat prune_thresh, struct RandomState* state=NULL) {
+inline Float RandPrune(Float post, BaseFloat prune_thresh,
+                       struct RandomState* state = NULL) {
   KALDI_ASSERT(prune_thresh >= 0.0);
   if (post == 0.0 || std::abs(post) >= prune_thresh)
     return post;
@@ -256,11 +262,11 @@ inline float LogSub(float x, float y) {
 static inline bool ApproxEqual(float a, float b,
                                float relative_tolerance = 0.001) {
   // a==b handles infinities.
-  if (a==b) return true;
+  if (a == b) return true;
   float diff = std::abs(a-b);
   if (diff == std::numeric_limits<float>::infinity()
-      || diff != diff) return false; // diff is +inf or nan.
-  return (diff <= relative_tolerance*(std::abs(a)+std::abs(b))); 
+      || diff != diff) return false;  // diff is +inf or nan.
+  return (diff <= relative_tolerance*(std::abs(a)+std::abs(b)));
 }
 
 /// assert abs(a - b) <= relative_tolerance * (abs(a)+abs(b))

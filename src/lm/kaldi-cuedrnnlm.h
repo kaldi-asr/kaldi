@@ -75,6 +75,7 @@ class KaldiCuedRnnlmWrapper {
   BaseFloat GetLogProb(int32 word, const std::vector<int32> &wseq,
                        const std::vector<BaseFloat> &context_in,
                        std::vector<BaseFloat> *context_out);
+  void ResetHistory() {rnnlm_.ResetRechist();} // TODO(hxu) maybe this is the issue?
 
   std::vector<int> fst_label_to_rnn_label_;
   std::vector<std::string> rnn_label_to_word_;

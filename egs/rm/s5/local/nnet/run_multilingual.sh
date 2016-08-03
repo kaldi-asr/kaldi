@@ -58,7 +58,7 @@ if [ $stage -le 0 ]; then
     tgt_dir=$data/${code}_$(basename $dir)
     utils/copy_data_dir.sh --utt-suffix _$code --spk-suffix _$code $dir $tgt_dir; rm $tgt_dir/{feats,cmvn}.scp || true # remove features,
     # extract features, get cmvn stats,
-    steps/make_fbank_pitch.sh --nj 30 --cmd "$train_cmd -tc 10" $tgt_dir{,/log,/data}
+    steps/make_fbank_pitch.sh --nj 30 --cmd "$train_cmd --max-jobs-run 10" $tgt_dir{,/log,/data}
     steps/compute_cmvn_stats.sh $tgt_dir{,/log,/data}
     # split lists 90% train / 10% held-out,
     utils/subset_data_dir_tr_cv.sh $tgt_dir ${tgt_dir}_tr90 ${tgt_dir}_cv10
@@ -148,7 +148,7 @@ if [ $stage -le 2 ]; then
     # Compose feature_transform for 2nd part,
     nnet-initialize <(echo "<Splice> <InputDim> $bn1_dim <OutputDim> $((13*bn1_dim)) <BuildVector> -10 -5:5 10 </BuildVector>") \
       $dir_part1/splice_for_bottleneck.nnet 
-    nnet-concat $dir_part1/final.feature_transform "nnet-copy --remove-last-layers=4 $dir_part1/final.nnet - |" \
+    nnet-concat $dir_part1/final.feature_transform "nnet-copy --remove-last-components=4 $dir_part1/final.nnet - |" \
       $dir_part1/splice_for_bottleneck.nnet $dir_part1/final.feature_transform.part1
     # Train 2nd part,
     $cuda_cmd $dir/log/train_nnet.log \

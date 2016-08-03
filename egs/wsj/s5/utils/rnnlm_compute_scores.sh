@@ -63,6 +63,7 @@ cat $tempdir/text | awk -v voc=$dir/wordlist.rnn -v unk=$dir/unk.probs \
 # OK, now we compute the scores on the text with OOVs replaced
 # with <RNN_UNK>
 
+#<<<<<<< HEAD
 if [ "$rnnlm_ver" == "cuedrnnlm" ]; then
   set -x
   total_nwords=`wc -l $dir/unigram.counts | awk '{print$1}'`
@@ -88,6 +89,17 @@ false && (
 else
   $rnnlm -independent -rnnlm $dir/rnnlm -test $tempdir/text.nounk -nbest -debug 0 | \
      awk '{print $1*log(10);}' > $tempdir/loglikes.rnn
+#=======
+#if [ $rnnlm_ver == "faster-rnnlm" ]; then
+#  $rnnlm -independent -rnnlm $dir/rnnlm -test $tempdir/text.nounk -nbest -debug 0 | \
+#     awk '{print $1*log(10);}' > $tempdir/loglikes.rnn
+#else
+#  # add the utterance_id as required by Mikolove's rnnlm
+#  paste $tempdir/ids $tempdir/text.nounk > $tempdir/id_text.nounk
+#
+#  $rnnlm -independent -rnnlm $dir/rnnlm -test $tempdir/id_text.nounk -nbest -debug 0 | \
+#     awk '{print $1*log(10);}' > $tempdir/loglikes.rnn
+#>>>>>>> 6c7c0170812a1f7dfb5c09c078787e79ee72333a
 fi
 
 [ `cat $tempdir/loglikes.rnn | wc -l` -ne `cat $tempdir/loglikes.oov | wc -l` ] && \

@@ -895,6 +895,17 @@ void VariableMergingOptimizer::DoMergeCommon(int32 command_index,
       computation_->commands[alloc_discard].command_type =
           kNoOperation;
   }
+
+  //  If the matrix to discard had stride_type == kStrideEqualNumCols, set the
+  //  matrix to keep's stride_type to kStrideEqualNuMCols.
+  if (computation_->matrices[m_to_discard].stride_type == kStrideEqualNumCols) {
+    computation_->matrices[m_to_keep].stride_type = kStrideEqualNumCols;
+    // ... and perform an additional check.
+    KALDI_ASSERT(computation_->matrices[m_to_discard].num_rows ==
+                 computation_->matrices[m_to_keep].num_rows &&
+                 computation_->matrices[m_to_discard].num_cols ==
+                 computation_->matrices[m_to_keep].num_cols);
+  }
 }
 
 void VariableMergingOptimizer::DoLeftMerge(int32 command_index,
@@ -972,7 +983,16 @@ std::pair<bool,bool> VariableMergingOptimizer::MayBeMerged(
       right = config_.allow_right_merge;
   // condition c3:
   if (!computation_->IsWholeMatrix(s2)) left = false;
+  // condition c4:
   if (!computation_->IsWholeMatrix(s1)) right = false;
+  // condition c6:
+  if (computation_->matrices[m2].stride_type == kStrideEqualNumCols &&
+      !computation_->IsWholeMatrix(s1)) left = false;
+  // condition c7:
+  if (computation_->matrices[m1].stride_type == kStrideEqualNumCols &&
+      !computation_->IsWholeMatrix(s2)) right = false;
+
+
   if (!left && !right)  // save some time.
     return std::pair<bool,bool>(false,false);
   bool is_assignment = (computation_->commands[command_index].command_type ==
@@ -1028,6 +1048,7 @@ int32 ModelUpdateConsolidator::ConsolidateSubmatrices(
   int32 first_submatrix = submatrices[0];
   int32 num_cols = computation_->submatrices[first_submatrix].num_cols,
       num_rows = 0;
+  MatrixStrideType stride_type = kDefaultStride;
   NnetComputation::MatrixDebugInfo debug_info;
   for (int32 i = 0; i < num_submatrices; i++) {
     int32 submatrix = submatrices[i];
@@ -1035,10 +1056,16 @@ int32 ModelUpdateConsolidator::ConsolidateSubmatrices(
     KALDI_ASSERT(computation_->submatrices[submatrix].num_cols == num_cols);
     if (!computation_->matrix_debug_info.empty())
       AppendDebugInfoForSubmatrix(submatrix, &debug_info);
+    if (computation_->IsWholeMatrix(submatrix)) {
+      int32 matrix = computation_->submatrices[submatrix].matrix_index;
+      if (computation_->matrices[matrix].stride_type == kStrideEqualNumCols)
+        stride_type = kStrideEqualNumCols;
+    }
   }
   // new_whole_submatrix is a new submatrix index corresponding to the whole
   // of a new matrix that we are creating.
-  int32 new_whole_submatrix = computation_->NewMatrix(num_rows, num_cols);
+  int32 new_whole_submatrix = computation_->NewMatrix(num_rows, num_cols,
+                                                      stride_type);
   // Add a command at the very start, to initialize this new matrix.
   int32 new_matrix_index =
       computation_->submatrices[new_whole_submatrix].matrix_index;
@@ -1160,8 +1187,6 @@ void ModelUpdateConsolidator::ConsolidateModelUpdate() {
   // 'backprop_commands' is a list, for each component (but nonempty only for
   // updatable components), of the command indexes for the backprop commands.
   std::vector<std::vector<int32> > backprop_commands(num_components);
-  std::vector<NnetComputation::Command>::const_iterator iter =
-      computation_->commands.begin(), end = computation_->commands.end();
   for (int32 command_index = 0;
        command_index < num_commands; command_index++) {
     const NnetComputation::Command &c = computation_->commands[command_index];
@@ -1509,13 +1534,18 @@ void DerivativeTimeLimiter::MapAddRowRangesCommand(
     if (new_first >= src_num_rows) new_first = src_num_rows - 1;
     if (new_second < 0) new_second = 0;
     if (new_second >= src_num_rows) new_second = src_num_rows - 1;
+    if (new_first == new_second) {
+      // for clarity, represent empty ranges as (-1, -1).
+      new_first = -1;
+      new_second = -1;
+    }
     KALDI_ASSERT(new_second >= new_first);
     this_pair.first = new_first;
     this_pair.second = new_second;
   }
   c->arg1 = dest_submatrix_mapped;
   c->arg2 = src_submatrix_mapped;
-  c->arg2 = computation_->indexes_ranges.size();
+  c->arg3 = computation_->indexes_ranges.size();
   computation_->indexes_ranges.push_back(new_indexes_ranges);
 }
 

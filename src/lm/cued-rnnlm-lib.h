@@ -40,7 +40,7 @@ namespace cued_rnnlm {
 #define     MAXRANDINITVALUE    0.1
 // #define     CONSTLOGNORM        9
 #define     NOTSTOREMODEL
-// #define     NUM_THREAD          8
+#define     NUM_THREAD          8
 #define     MAX_WORD_LINE       4008
 // #define     INPUTEMBEDDINGCPU
 #define     FUDGE_FACTOR        1e-8

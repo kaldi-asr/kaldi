@@ -74,7 +74,7 @@ struct LatticeTrackingDecoderConfig {
 
   }
   void Check() const {
-    KALDI_ASSERT(beam > 0.0 && max_active > 1 && lattice_beam > 0.0 
+    KALDI_ASSERT(beam > 0.0 && max_active > 1 && lattice_beam > 0.0
                  && prune_interval > 0 && beam_delta > 0.0 && hash_ratio >= 1.0
                  && extra_beam >= 0.0 && max_beam >= beam);
   }
@@ -135,7 +135,7 @@ class LatticeTrackingDecoder {
   /// format.
   bool Decode(DecodableInterface *decodable,
               const fst::StdVectorFst &arc_graph);
-  
+
   /// says whether a final-state was active on the last frame.  If it was not, the
   /// lattice (or traceback) will end with states that are not final-states.
   bool ReachedFinal() const { return final_active_; }
@@ -167,7 +167,7 @@ class LatticeTrackingDecoder {
   /// final-probs as one.
   bool GetLattice(fst::MutableFst<CompactLatticeArc> *ofst,
                   bool use_final_probs = true) const;
-  
+
  private:
   struct Token;
   // ForwardLinks are the links from a token to a token on the next frame.
@@ -181,13 +181,13 @@ class LatticeTrackingDecoder {
     ForwardLink *next; // next in singly-linked list of forward links from a
                        // token.
     inline ForwardLink(Token *next_tok, Label ilabel, Label olabel,
-                       BaseFloat graph_cost, BaseFloat acoustic_cost, 
+                       BaseFloat graph_cost, BaseFloat acoustic_cost,
                        ForwardLink *next):
         next_tok(next_tok), ilabel(ilabel), olabel(olabel),
-        graph_cost(graph_cost), acoustic_cost(acoustic_cost), 
+        graph_cost(graph_cost), acoustic_cost(acoustic_cost),
         next(next) { }
-  };  
-  
+  };
+
   // Token is what's resident in a particular state at a particular time.
   // In this decoder a Token actually contains *forward* links.
   // When first created, a Token just has the (total) cost.    We add forward
@@ -200,19 +200,19 @@ class LatticeTrackingDecoder {
     // that any of the currently active states at the decoding front may
     // eventually succeed (e.g. if you were to take the currently active states
     // one by one and compute this difference, and then take the minimum).
-    
+
     ForwardLink *links; // Head of singly linked list of ForwardLinks
-    
+
     Token *next; // Next in list of tokens for this frame.
-    
+
     StateId lat_state; // current state in graph arc lattice from first pass decoding
     // lat_state == fst::kNoStateId means that this token is not tracked
-    
+
     inline Token(BaseFloat tot_cost, BaseFloat extra_cost, ForwardLink *links,
                  Token *next, StateId lat_state): tot_cost(tot_cost), extra_cost(extra_cost),
                  links(links), next(next), lat_state(lat_state) { }
     inline void DeleteForwardLinks() {
-      ForwardLink *l = links, *m; 
+      ForwardLink *l = links, *m;
       while (l != NULL) {
         m = l->next;
         delete l;
@@ -221,7 +221,7 @@ class LatticeTrackingDecoder {
       links = NULL;
     }
   };
-  
+
   // head and tail of per-frame list of Tokens (list is in topological order),
   // and something saying whether we ever pruned it using PruneForwardLinks.
   struct TokenList {
@@ -231,7 +231,7 @@ class LatticeTrackingDecoder {
     TokenList(): toks(NULL), must_prune_forward_links(true),
                  must_prune_tokens(true) { }
   };
-  
+
   typedef HashList<StateId, Token*>::Elem Elem;
 
   void PossiblyResizeHash(size_t num_toks);
@@ -248,7 +248,7 @@ class LatticeTrackingDecoder {
   // lat_state is the next state in the arc graph lattice
   inline Token *FindOrAddToken(StateId state, StateId lat_state, int32 frame,
                                BaseFloat tot_cost, bool *changed);
-  
+
   // prunes outgoing links for all tokens in active_toks_[frame]
   // it's called by PruneActiveTokens
   // all links, that have link_extra_cost > lattice_beam are pruned
@@ -267,13 +267,13 @@ class LatticeTrackingDecoder {
   // on the final frame.  If there are final tokens active, it uses
   // the final-probs for pruning, otherwise it treats all tokens as final.
   void PruneForwardLinksFinal(int32 frame);
-  
+
   // Prune away any tokens on this frame that have no forward links.
   // [we don't do this in PruneForwardLinks because it would give us
   // a problem with dangling pointers].
   // It's called by PruneActiveTokens if any forward links have been pruned
   void PruneTokensForFrame(int32 frame);
-  
+
   // Go backwards through still-alive tokens, pruning them.  note: cur_frame is
   // where hash toks_ are (so we do not want to mess with it because these tokens
   // don't yet have forward pointers), but we do all previous frames, unless we
@@ -286,7 +286,7 @@ class LatticeTrackingDecoder {
   /// Version of PruneActiveTokens that we call on the final frame.
   /// Takes into account the final-prob of tokens.
   void PruneActiveTokensFinal(int32 cur_frame);
-  
+
   /// Gets the weight cutoff.  Also counts the active tokens.
   BaseFloat GetCutoff(Elem *list_head, size_t *tok_count,
                       BaseFloat *adaptive_beam, Elem **best_elem);
@@ -311,9 +311,10 @@ class LatticeTrackingDecoder {
   std::vector<BaseFloat> tmp_array_;  // used in GetCutoff.
   // make it class member to avoid internal new/delete.
   const fst::Fst<fst::StdArc> &fst_;
-  std::vector<BaseFloat> cost_offsets_; // This contains, for each
-  // frame, an offset that was added to the acoustic likelihoods on that
-  // frame in order to keep everything in a nice dynamic range.
+  std::vector<BaseFloat> cost_offsets_;  // This contains, for each
+  // frame, an offset that was added to the acoustic log-likelihoods on that
+  // frame in order to keep everything in a nice dynamic range i.e.  close to
+  // zero, to reduce roundoff errors.
   LatticeTrackingDecoderConfig config_;
   int32 num_toks_; // current total #toks allocated...
   bool warned_;
@@ -331,9 +332,9 @@ class LatticeTrackingDecoder {
   // to the caller, who then has to call toks_.Delete(e) for each one.  It was designed
   // this way for convenience in propagating tokens from one frame to the next.
   void ClearToks(Elem *list);
-  
+
   void ClearActiveTokens();
-  
+
 };
 
 

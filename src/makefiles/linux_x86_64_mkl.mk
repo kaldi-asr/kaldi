@@ -19,8 +19,9 @@ endif
 
 MKLLIB ?= $(MKLROOT)/lib/em64t
 
+DOUBLE_PRECISION = 0
 CXXFLAGS = -m64 -msse -msse2 -pthread -Wall -I.. \
-      -DKALDI_DOUBLEPRECISION=0 -DHAVE_POSIX_MEMALIGN \
+      -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
       -Wno-sign-compare -Wno-unused-local-typedefs -Winit-self \
       -DHAVE_EXECINFO_H=1 -rdynamic -DHAVE_CXXABI_H \
       -DHAVE_MKL -I$(MKLROOT)/include \
@@ -52,8 +53,8 @@ MKL_DYN_MUL = -L$(MKLLIB) -lmkl_solver_lp64 -Wl,--start-group -lmkl_intel_lp64 \
 
 # MKLFLAGS = $(MKL_DYN_MUL)
 
-LDFLAGS = -rdynamic -L$(FSTROOT)/lib -Wl,-R$(FSTROOT)/lib
-LDLIBS =  $(EXTRA_LDLIBS) -lfst -ldl $(MKLFLAGS) -lm -lpthread
+LDFLAGS = -rdynamic $(OPENFSTLDFLAGS)
+LDLIBS = $(EXTRA_LDLIBS) $(OPENFSTLIBS) $(MKLFLAGS) -lm -lpthread -ldl
 CC = g++
 CXX = g++
 AR = ar

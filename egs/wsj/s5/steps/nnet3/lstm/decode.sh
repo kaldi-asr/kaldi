@@ -30,6 +30,8 @@ minimize=false
 frames_per_chunk=10000
 extra_left_context=20   # it is recommended to use the same value as the chunk_left_context
                         # used during training
+extra_right_context=0   # it is recommended to use the same value as the chunk_right_context
+                        # used during training (usually used in bi-directional LSTM case)
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -70,13 +72,13 @@ for f in $graphdir/HCLG.fst $data/feats.scp $model $extra_files; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
-sdata=$data/split$nj;
+sdata=$data/split${nj}utt;
 cmvn_opts=`cat $srcdir/cmvn_opts` || exit 1;
 thread_string=
 [ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads"
 
 mkdir -p $dir/log
-[[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh --per-utt $data $nj || exit 1;
+split_data.sh --per-utt $data $nj || exit 1;
 echo $nj > $dir/num_jobs
 
 
@@ -139,6 +141,7 @@ if [ $stage -le 1 ]; then
      --minimize=$minimize --max-active=$max_active --min-active=$min_active --beam=$beam \
      --lattice-beam=$lattice_beam --acoustic-scale=$acwt --allow-partial=true \
      --extra-left-context=$extra_left_context \
+     --extra-right-context=$extra_right_context \
      --word-symbol-table=$graphdir/words.txt "$model" \
      $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 fi

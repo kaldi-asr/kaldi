@@ -113,7 +113,7 @@ static void MergeIo(const std::vector<NnetExample> &src,
       KALDI_ASSERT(*names_iter == io.name);
       int32 f = names_iter - names_begin;
       int32 this_size = io.indexes.size(),
-        &this_offset = cur_size[f];
+          &this_offset = cur_size[f];
       KALDI_ASSERT(this_size + this_offset <= sizes[f]);
       output_lists[f].push_back(&(io.features));
       NnetIo &output_io = merged_eg->io[f];
@@ -156,6 +156,33 @@ void MergeExamples(const std::vector<NnetExample> &src,
   MergeIo(src, io_names, io_sizes, compress, merged_eg);
 }
 
+void ShiftExampleTimes(int32 t_offset,
+                       const std::vector<std::string> &exclude_names,
+                       NnetExample *eg) {
+  if (t_offset == 0)
+    return;
+  std::vector<NnetIo>::iterator iter = eg->io.begin(),
+      end = eg->io.end();
+  for (; iter != end; iter++) {
+    bool name_is_excluded = false;
+    std::vector<std::string>::const_iterator
+        exclude_iter = exclude_names.begin(),
+        exclude_end = exclude_names.end();
+    for (; exclude_iter != exclude_end; ++exclude_iter) {
+      if (iter->name == *exclude_iter) {
+        name_is_excluded = true;
+        break;
+      }
+    }
+    if (!name_is_excluded) {
+      // name is not something like "ivector" that we exclude from shifting.
+      std::vector<Index>::iterator index_iter = iter->indexes.begin(),
+          index_end = iter->indexes.end();
+      for (; index_iter != index_end; ++index_iter)
+        index_iter->t += t_offset;
+    }
+  }
+}
 
 void GetComputationRequest(const Nnet &nnet,
                            const NnetExample &eg,
@@ -191,6 +218,73 @@ void GetComputationRequest(const Nnet &nnet,
   if (request->outputs.empty())
     KALDI_ERR << "No outputs in computation request.";
 }
+
+void WriteVectorAsChar(std::ostream &os,
+                       bool binary,
+                       const VectorBase<BaseFloat> &vec) {
+  if (binary) {
+    int32 dim = vec.Dim();
+    std::vector<unsigned char> char_vec(dim);
+    const BaseFloat *data = vec.Data();
+    for (int32 i = 0; i < dim; i++) {
+      BaseFloat value = data[i];
+      KALDI_ASSERT(value >= 0.0 && value <= 1.0);
+      // below, the adding 0.5 is done so that we round to the closest integer
+      // rather than rounding down (since static_cast will round down).
+      char_vec[i] = static_cast<unsigned char>(255.0 * value + 0.5);
+    }
+    WriteIntegerVector(os, binary, char_vec);
+  } else {
+    // the regular floating-point format will be more readable for text mode.
+    vec.Write(os, binary);
+  }
+}
+
+void ReadVectorAsChar(std::istream &is,
+                      bool binary,
+                      Vector<BaseFloat> *vec) {
+  if (binary) {
+    BaseFloat scale = 1.0 / 255.0;
+    std::vector<unsigned char> char_vec;
+    ReadIntegerVector(is, binary, &char_vec);
+    int32 dim = char_vec.size();
+    vec->Resize(dim, kUndefined);
+    BaseFloat *data = vec->Data();
+    for (int32 i = 0; i < dim; i++)
+      data[i] = scale * char_vec[i];
+  } else {
+    vec->Read(is, binary);
+  }
+}
+
+void RoundUpNumFrames(int32 frame_subsampling_factor,
+                      int32 *num_frames,
+                      int32 *num_frames_overlap) {
+  if (*num_frames % frame_subsampling_factor != 0) {
+    int32 new_num_frames = frame_subsampling_factor *
+        (*num_frames / frame_subsampling_factor + 1);
+    KALDI_LOG << "Rounding up --num-frames=" << (*num_frames)
+              << " to a multiple of --frame-subsampling-factor="
+              << frame_subsampling_factor
+              << ", now --num-frames=" << new_num_frames;
+    *num_frames = new_num_frames;
+  }
+  if (*num_frames_overlap % frame_subsampling_factor != 0) {
+    int32 new_num_frames_overlap = frame_subsampling_factor *
+        (*num_frames_overlap / frame_subsampling_factor + 1);
+    KALDI_LOG << "Rounding up --num-frames-overlap=" << (*num_frames_overlap)
+              << " to a multiple of --frame-subsampling-factor="
+              << frame_subsampling_factor
+              << ", now --num-frames-overlap=" << new_num_frames_overlap;
+    *num_frames_overlap = new_num_frames_overlap;
+  }
+  if (*num_frames_overlap < 0 || *num_frames_overlap >= *num_frames) {
+    KALDI_ERR << "--num-frames-overlap=" << (*num_frames_overlap) << " < "
+              << "--num-frames=" << (*num_frames);
+  }
+
+}
+
 
 } // namespace nnet3
 } // namespace kaldi

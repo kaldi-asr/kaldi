@@ -13,7 +13,6 @@ cmd="run.pl"
 stage=-2
 delta_window=3
 delta_order=2
-num_components=5297
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -31,7 +30,6 @@ if [ $# != 4 ]; then
   echo "  --nj <n|16>                                      # number of parallel training jobs"
   echo "  --delta-window <n|3>                             # delta window size"
   echo "  --delta-order <n|2>                              # delta order"
-  echo "  --number-components <n|5297>                     # number of components in the final GMM needs"
   echo "                                                   # to be equal to the size of the DNN output layer."
   exit 1;
 fi
@@ -41,7 +39,9 @@ data_dnn=$2
 nnet=$3
 dir=$4
 
-for f in $data/feats.scp $data/vad.scp; do
+
+for f in $data/feats.scp $data/vad.scp ${data_dnn}/feats.scp \
+    ${data_dnn}/vad.scp $nnet; do
   [ ! -f $f ] && echo "No such file $f" && exit 1;
 done
 
@@ -63,6 +63,11 @@ nnet_feats="ark,s,cs:apply-cmvn-sliding --center=true scp:$sdata_dnn/JOB/feats.s
 feats="ark,s,cs:add-deltas $delta_opts scp:$sdata/JOB/feats.scp ark:- | \
 apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 ark:- ark:- | \
 select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- |"
+
+# Parse the output of nnet-am-info to find the size of the output layer
+# of the TDNN.  This will also correspond to the number of components
+# in the ancillary GMM.
+num_components=`grep -oP 'output-dim\ \K[0-9]+' <(nnet-am-info $nnet 2> /dev/null)`
 
 $cmd JOB=1:$nj $logdir/make_stats.JOB.log \
   nnet-am-compute --apply-log=true $nnet "$nnet_feats" ark:- \

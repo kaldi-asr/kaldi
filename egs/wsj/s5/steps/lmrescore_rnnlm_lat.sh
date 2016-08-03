@@ -3,7 +3,8 @@
 # Copyright 2015  Guoguo Chen
 # Apache 2.0
 
-# This script rescores lattices with RNNLM.
+# This script rescores lattices with RNNLM.  See also rnnlmrescore.sh which is
+# an older script using n-best lists.
 
 # Begin configuration section.
 cmd=run.pl
@@ -24,7 +25,7 @@ if [ $# != 5 ]; then
    echo "Does language model rescoring of lattices (remove old LM, add new LM)"
    echo "with RNNLM."
    echo ""
-   echo "Usage: $0 [options] <rnnlm-dir> <old-lang-dir> \\"
+   echo "Usage: $0 [options] <old-lang-dir> <rnnlm-dir> \\"
    echo "                   <data-dir> <input-decode-dir> <output-decode-dir>"
    echo " e.g.: $0 ./rnnlm data/lang_tg data/test \\"
    echo "                   exp/tri3/test_tg exp/tri3/test_rnnlm"
@@ -34,8 +35,8 @@ fi
 
 [ -f path.sh ] && . ./path.sh;
 
-rnnlm_dir=$1
-oldlang=$2
+oldlang=$1
+rnnlm_dir=$2
 data=$3
 indir=$4
 outdir=$5

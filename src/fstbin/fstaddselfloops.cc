@@ -45,8 +45,9 @@ int main(int argc, char *argv[]) {
         "on at least one arc out of the state.  Useful in conjunction with predeterminize\n"
         "\n"
         "Usage:  fstaddselfloops in-disambig-list out-disambig-list  [in.fst [out.fst] ]\n"
-        "E.g:  fstaddselfloops in.list out.list < in.fst > withloops.fst\n";
-
+        "E.g:  fstaddselfloops in.list out.list < in.fst > withloops.fst\n"
+        "in.list and out.list are lists of integers, one per line, of the\n"
+        "same length.\n";
 
     ParseOptions po(usage);
     po.Read(argc, argv);
@@ -62,12 +63,12 @@ int main(int argc, char *argv[]) {
         fst_out_filename = po.GetOptArg(4);
 
     VectorFst<StdArc> *fst = ReadFstKaldi(fst_in_filename);
-    
+
     std::vector<int32> disambig_in;
     if (!ReadIntegerVectorSimple(disambig_in_rxfilename, &disambig_in))
       KALDI_ERR << "fstaddselfloops: Could not read disambiguation symbols from "
                  << kaldi::PrintableRxfilename(disambig_in_rxfilename);
-    
+
     std::vector<int32> disambig_out;
     if (!ReadIntegerVectorSimple(disambig_out_rxfilename, &disambig_out))
       KALDI_ERR << "fstaddselfloops: Could not read disambiguation symbols from "
@@ -81,7 +82,7 @@ int main(int argc, char *argv[]) {
     WriteFstKaldi(*fst, fst_out_filename);
 
     delete fst;
-    
+
     return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what();

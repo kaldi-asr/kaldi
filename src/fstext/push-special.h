@@ -32,9 +32,8 @@ namespace fst {
   gets distributed evenly along the FST, and doesn't end up either
   at the start or at the end.  Basically it pushes the weights such
   that the total weight of each state (i.e. the sum of the arc
-  probabilities plus the final-prob) is the same for all states.  
+  probabilities plus the final-prob) is the same for all states.
 */
-
 void PushSpecial(VectorFst<StdArc> *fst,
                  float delta = kDelta);
 

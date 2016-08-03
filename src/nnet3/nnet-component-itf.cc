@@ -33,6 +33,35 @@
 namespace kaldi {
 namespace nnet3 {
 
+ComponentPrecomputedIndexes* ComponentPrecomputedIndexes::ReadNew(std::istream &is,
+                                                                  bool binary) {
+  std::string token;
+  ReadToken(is, binary, &token); // e.g. "<DistributePrecomputedComponentIndexes>".
+  token.erase(0, 1); // erase "<".
+  token.erase(token.length()-1); // erase ">".
+  ComponentPrecomputedIndexes *ans = NewComponentPrecomputedIndexesOfType(token);
+  if (!ans)
+   KALDI_ERR << "Unknown ComponentPrecomputedIndexes type " << token;
+  ans->Read(is, binary);
+  return ans;
+}
+
+ComponentPrecomputedIndexes* ComponentPrecomputedIndexes::NewComponentPrecomputedIndexesOfType(
+                                           const std::string &cpi_type) {
+  ComponentPrecomputedIndexes *ans = NULL;
+  if (cpi_type == "DistributeComponentPrecomputedIndexes") {
+    ans = new DistributeComponentPrecomputedIndexes();
+  } else if (cpi_type == "StatisticsExtractionComponentPrecomputedIndexes") {
+    ans = new StatisticsExtractionComponentPrecomputedIndexes();
+  } else if (cpi_type == "StatisticsPoolingComponentPrecomputedIndexes") {
+    ans = new StatisticsPoolingComponentPrecomputedIndexes();
+  }
+  if (ans != NULL) {
+    KALDI_ASSERT(cpi_type == ans->Type());
+  }
+  return ans;
+}
+
 // static
 Component* Component::ReadNew(std::istream &is, bool binary) {
   std::string token;
@@ -64,6 +93,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new NormalizeComponent();
   } else if (component_type == "PnormComponent") {
     ans = new PnormComponent();
+  } else if (component_type == "SumReduceComponent") {
+    ans = new SumReduceComponent();
   } else if (component_type == "AffineComponent") {
     ans = new AffineComponent();
   } else if (component_type == "NaturalGradientAffineComponent") {
@@ -72,6 +103,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new PerElementScaleComponent();
   } else if (component_type == "NaturalGradientPerElementScaleComponent") {
     ans = new NaturalGradientPerElementScaleComponent();
+  } else if (component_type == "PerElementOffsetComponent") {
+    ans = new PerElementOffsetComponent();
   } else if (component_type == "SumGroupComponent") {
     ans = new SumGroupComponent();
   } else if (component_type == "FixedAffineComponent") {
@@ -86,10 +119,31 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new ClipGradientComponent();
   } else if (component_type == "ElementwiseProductComponent") {
     ans = new ElementwiseProductComponent();
-  } else if (component_type == "Convolutional1dComponent") {
-    ans = new Convolutional1dComponent();    
+  } else if (component_type == "ConvolutionComponent") {
+    ans = new ConvolutionComponent();
   } else if (component_type == "MaxpoolingComponent") {
     ans = new MaxpoolingComponent();
+  } else if (component_type == "PermuteComponent") {
+    ans = new PermuteComponent();
+  } else if (component_type == "DistributeComponent") {
+    ans = new DistributeComponent();
+  } else if (component_type == "CompositeComponent") {
+    ans = new CompositeComponent();
+  } else if (component_type == "RepeatedAffineComponent") {
+    ans = new RepeatedAffineComponent();
+  } else if (component_type == "BlockAffineComponent") {
+    ans = new BlockAffineComponent();
+  } else if (component_type == "NaturalGradientRepeatedAffineComponent") {
+    ans = new NaturalGradientRepeatedAffineComponent();
+  } else if (component_type == "StatisticsExtractionComponent") {
+    ans = new StatisticsExtractionComponent();
+  } else if (component_type == "StatisticsPoolingComponent") {
+    ans = new StatisticsPoolingComponent();
+  } else if (component_type == "ConstantFunctionComponent") {
+    ans = new ConstantFunctionComponent();
+  }
+  if (ans != NULL) {
+    KALDI_ASSERT(component_type == ans->Type());
   }
   return ans;
 }
@@ -124,11 +178,62 @@ bool Component::IsComputable(const MiscComputationInfo &misc_info,
 }
 
 
-
-void UpdatableComponent::Init(BaseFloat lr, bool is_gradient) {
-  learning_rate_ = lr;
-  is_gradient_ = is_gradient;
+void UpdatableComponent::InitLearningRatesFromConfig(ConfigLine *cfl) {
+  cfl->GetValue("learning-rate", &learning_rate_);
+  cfl->GetValue("learning-rate-factor", &learning_rate_factor_);
+  if (learning_rate_ < 0.0 || learning_rate_factor_ < 0.0)
+    KALDI_ERR << "Bad initializer " << cfl->WholeLine();
 }
+
+
+void UpdatableComponent::ReadUpdatableCommon(std::istream &is, bool binary) {
+  std::ostringstream opening_tag;
+  opening_tag << '<' << this->Type() << '>';
+  std::string token;
+  ReadToken(is, binary, &token);
+  if (token == opening_tag.str()) {
+    // if the first token is the opening tag, then
+    // ignore it and get the next tag.
+    ReadToken(is, binary, &token);
+  }
+  if (token == "<LearningRateFactor>") {
+    ReadBasicType(is, binary, &learning_rate_factor_);
+    ReadToken(is, binary, &token);
+  } else {
+    learning_rate_factor_ = 1.0;
+  }
+  if (token == "<IsGradient>") {
+    ReadBasicType(is, binary, &is_gradient_);
+    ReadToken(is, binary, &token);
+  } else {
+    is_gradient_ = false;
+  }
+  if (token == "<LearningRate>") {
+    ReadBasicType(is, binary, &learning_rate_);
+  } else {
+    KALDI_ERR << "Expected token <LearningRate>, got "
+              << token;
+  }
+}
+
+void UpdatableComponent::WriteUpdatableCommon(std::ostream &os,
+                                              bool binary) const {
+  std::ostringstream opening_tag;
+  opening_tag << '<' << this->Type() << '>';
+  std::string token;
+  WriteToken(os, binary, opening_tag.str());
+  if (learning_rate_factor_ != 1.0) {
+    WriteToken(os, binary, "<LearningRateFactor>");
+    WriteBasicType(os, binary, learning_rate_factor_);
+  }
+  if (is_gradient_) {
+    WriteToken(os, binary, "<IsGradient>");
+    WriteBasicType(os, binary, is_gradient_);
+  }
+  WriteToken(os, binary, "<LearningRate>");
+  WriteBasicType(os, binary, learning_rate_);
+}
+
 
 std::string UpdatableComponent::Info() const {
   std::stringstream stream;
@@ -137,6 +242,8 @@ std::string UpdatableComponent::Info() const {
          << LearningRate();
   if (is_gradient_)
     stream << ", is-gradient=true";
+  if (learning_rate_factor_ != 1.0)
+    stream << ", learning-rate-factor=" << learning_rate_factor_;
   return stream.str();
 }
 
@@ -177,9 +284,19 @@ void NonlinearComponent::ZeroStats() {
 
 std::string NonlinearComponent::Info() const {
   std::stringstream stream;
-  KALDI_ASSERT(InputDim() == OutputDim());  // always the case
-  stream << Type() << ", dim=" << InputDim();
+  if (InputDim() == OutputDim())
+    stream << Type() << ", dim=" << InputDim();
+  else
+    stream << Type() << ", input-dim=" << InputDim()
+           << ", output-dim=" << OutputDim()
+           << ", add-log-stddev=true";
 
+  if (self_repair_lower_threshold_ != BaseFloat(kUnsetThreshold))
+    stream << ", self-repair-lower-threshold=" << self_repair_lower_threshold_;
+  if (self_repair_upper_threshold_ != BaseFloat(kUnsetThreshold))
+    stream << ", self-repair-upper-threshold=" << self_repair_upper_threshold_;
+  if (self_repair_scale_ != 0.0)
+    stream << ", self-repair-scale=" << self_repair_scale_;
   if (count_ > 0 && value_sum_.Dim() == dim_ &&  deriv_sum_.Dim() == dim_) {
     stream << ", count=" << std::setprecision(3) << count_
            << std::setprecision(6);
@@ -222,29 +339,32 @@ void NonlinearComponent::Read(std::istream &is, bool binary) {
   ostr_end << "</" << Type() << ">"; // e.g. "</SigmoidComponent>"
   ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<Dim>");
   ReadBasicType(is, binary, &dim_); // Read dimension.
-  std::string tok; // TODO: remove back-compatibility code.
-  ReadToken(is, binary, &tok);
-  if (tok == "<ValueSum>") {
-    // this branch is for back compatibility.  TODO: delete it
-    // after Dec 2015.
-    value_sum_.Read(is, binary);
-    ExpectToken(is, binary, "<DerivSum>");
-    deriv_sum_.Read(is, binary);
-    ExpectToken(is, binary, "<Count>");
-    ReadBasicType(is, binary, &count_);
-    ExpectToken(is, binary, ostr_end.str());
-  } else {
-    // The new format is more readable as we write values that are normalized by
-    // the count.
-    KALDI_ASSERT(tok == "<ValueAvg>");
-    value_sum_.Read(is, binary);
-    ExpectToken(is, binary, "<DerivAvg>");
-    deriv_sum_.Read(is, binary);
-    ExpectToken(is, binary, "<Count>");
-    ReadBasicType(is, binary, &count_);
-    value_sum_.Scale(count_);
-    deriv_sum_.Scale(count_);
-    ExpectToken(is, binary, ostr_end.str());
+  ExpectToken(is, binary, "<ValueAvg>");
+  value_sum_.Read(is, binary);
+  ExpectToken(is, binary, "<DerivAvg>");
+  deriv_sum_.Read(is, binary);
+  ExpectToken(is, binary, "<Count>");
+  ReadBasicType(is, binary, &count_);
+  value_sum_.Scale(count_);
+  deriv_sum_.Scale(count_);
+
+  std::string token;
+  ReadToken(is, binary, &token);
+  if (token == "<SelfRepairLowerThreshold>") {
+    ReadBasicType(is, binary, &self_repair_lower_threshold_);
+    ReadToken(is, binary, &token);
+  }
+  if (token == "<SelfRepairUpperThreshold>") {
+    ReadBasicType(is, binary, &self_repair_upper_threshold_);
+    ReadToken(is, binary, &token);
+  }
+  if (token == "<SelfRepairScale>") {
+    ReadBasicType(is, binary, &self_repair_scale_);
+    ReadToken(is, binary, &token);
+  }
+  if (token != ostr_end.str()) {
+    KALDI_ERR << "Expected token " << ostr_end.str()
+              << ", got " << token;
   }
 }
 
@@ -269,21 +389,45 @@ void NonlinearComponent::Write(std::ostream &os, bool binary) const {
   temp.Write(os, binary);
   WriteToken(os, binary, "<Count>");
   WriteBasicType(os, binary, count_);
+  if (self_repair_lower_threshold_ != kUnsetThreshold) {
+    WriteToken(os, binary, "<SelfRepairLowerThreshold>");
+    WriteBasicType(os, binary, self_repair_lower_threshold_);
+  }
+  if (self_repair_upper_threshold_ != kUnsetThreshold) {
+    WriteToken(os, binary, "<SelfRepairUpperThreshold>");
+    WriteBasicType(os, binary, self_repair_upper_threshold_);
+  }
+  if (self_repair_scale_ != 0.0) {
+    WriteToken(os, binary, "<SelfRepairScale>");
+    WriteBasicType(os, binary, self_repair_scale_);
+  }
   WriteToken(os, binary, ostr_end.str());
 }
 
+NonlinearComponent::NonlinearComponent():
+    dim_(-1), count_(0.0),
+    self_repair_lower_threshold_(kUnsetThreshold),
+    self_repair_upper_threshold_(kUnsetThreshold),
+    self_repair_scale_(0.0) { }
+
 NonlinearComponent::NonlinearComponent(const NonlinearComponent &other):
     dim_(other.dim_), value_sum_(other.value_sum_), deriv_sum_(other.deriv_sum_),
-    count_(other.count_) { }
+    count_(other.count_),
+    self_repair_lower_threshold_(other.self_repair_lower_threshold_),
+    self_repair_upper_threshold_(other.self_repair_upper_threshold_),
+    self_repair_scale_(other.self_repair_scale_) { }
 
 void NonlinearComponent::InitFromConfig(ConfigLine *cfl) {
-  int32 dim;
-  bool ok = cfl->GetValue("dim", &dim);
-  if (!ok || cfl->HasUnusedValues() || dim <= 0)
+  bool ok = cfl->GetValue("dim", &dim_);
+  cfl->GetValue("self-repair-lower-threshold", &self_repair_lower_threshold_);
+  cfl->GetValue("self-repair-upper-threshold", &self_repair_upper_threshold_);
+  cfl->GetValue("self-repair-scale", &self_repair_scale_);
+  if (!ok || cfl->HasUnusedValues() || dim_ <= 0)
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << cfl->WholeLine() << "\"";
-  Init(dim);
 }
+
+
 
 } // namespace nnet3
 } // namespace kaldi

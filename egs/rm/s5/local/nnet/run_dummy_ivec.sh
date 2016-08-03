@@ -37,13 +37,13 @@ set -uexo pipefail
 # Make the FBANK features
 [ ! -e $dev ] && if [ $stage -le 0 ]; then
   # Dev set
-  utils/copy_data_dir.sh $dev_original $dev rm $dev/{cmvn,feats}.scp
+  utils/copy_data_dir.sh $dev_original $dev; rm $dev/{cmvn,feats}.scp
   steps/make_fbank_pitch.sh --nj 10 --cmd "$train_cmd" \
      $dev $dev/log $dev/data
   steps/compute_cmvn_stats.sh $dev $dev/log $dev/data
   # Training set
-  utils/copy_data_dir.sh $train_original $train rm $train/{cmvn,feats}.scp
-  steps/make_fbank_pitch.sh --nj 10 --cmd "$train_cmd -tc 10" \
+  utils/copy_data_dir.sh $train_original $train; rm $train/{cmvn,feats}.scp
+  steps/make_fbank_pitch.sh --nj 10 --cmd "$train_cmd --max-jobs-run 10" \
      $train $train/log $train/data
   steps/compute_cmvn_stats.sh $train $train/log $train/data
   # Split the training set

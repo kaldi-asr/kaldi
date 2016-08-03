@@ -32,16 +32,24 @@ int main(int argc, char *argv[]) {
   try {
     const char *usage =
         "Convert alignments from one decision-tree/model to another\n"
-        "Usage:  convert-ali  [options] old-model new-model new-tree old-alignments-rspecifier new-alignments-wspecifier\n"
+        "Usage:  convert-ali  [options] <old-model> <new-model> <new-tree> "
+        "<old-alignments-rspecifier> <new-alignments-wspecifier>\n"
         "e.g.: \n"
-        " convert-ali old.mdl new.mdl new.tree ark:old.ali ark:new.ali\n";
+        " convert-ali old/final.mdl new/0.mdl new/tree ark:old/ali.1 ark:new/ali.1\n";
 
+    int32 frame_subsampling_factor = 1;
+    bool reorder = true;
 
     std::string phone_map_rxfilename;
     ParseOptions po(usage);
     po.Register("phone-map", &phone_map_rxfilename,
                 "File name containing old->new phone mapping (each line is: "
                 "old-integer-id new-integer-id)");
+    po.Register("reorder", &reorder,
+                "True if you want the converted alignments to be 'reordered' "
+                "versus the way they appear in the HmmTopology object");
+    po.Register("frame-subsampling-factor", &frame_subsampling_factor,
+                "Can be used in converting alignments to reduced frame rates.");
 
     po.Read(argc, argv);
 
@@ -61,7 +69,7 @@ int main(int argc, char *argv[]) {
       ReadPhoneMap(phone_map_rxfilename,
                    &phone_map);
     }
-    
+
     SequentialInt32VectorReader alignment_reader(old_alignments_rspecifier);
     Int32VectorWriter alignment_writer(new_alignments_wspecifier);
 
@@ -74,8 +82,8 @@ int main(int argc, char *argv[]) {
     if (!(old_trans_model.GetTopo() == new_trans_model.GetTopo()))
       KALDI_WARN << "Toplogies of models are not equal: "
                  << "conversion may not be correct or may fail.";
-    
-    
+
+
     ContextDependency new_ctx_dep;  // the tree.
     ReadKaldiObject(new_tree_filename, &new_ctx_dep);
 
@@ -86,11 +94,13 @@ int main(int argc, char *argv[]) {
       const std::vector<int32> &old_alignment = alignment_reader.Value();
       std::vector<int32> new_alignment;
       if (ConvertAlignment(old_trans_model,
-                          new_trans_model,
-                          new_ctx_dep,
-                          old_alignment,
-                          (phone_map_rxfilename != "" ? &phone_map : NULL),
-                          &new_alignment)) {
+                           new_trans_model,
+                           new_ctx_dep,
+                           old_alignment,
+                           frame_subsampling_factor,
+                           reorder,
+                           (phone_map_rxfilename != "" ? &phone_map : NULL),
+                           &new_alignment)) {
         alignment_writer.Write(key, new_alignment);
         num_success++;
       } else {
@@ -101,7 +111,7 @@ int main(int argc, char *argv[]) {
     }
 
     KALDI_LOG << "Succeeded converting alignments for " << num_success
-              <<" files, failed for " << num_fail;
+              << " files, failed for " << num_fail;
 
     if (num_success != 0) return 0;
     else return 1;
@@ -110,5 +120,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-

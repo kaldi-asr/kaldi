@@ -115,6 +115,7 @@ void* CuMemoryAllocator::MallocPitchInternal(size_t row_bytes,
                   << row_bytes << " x " << num_rows << " = "
                   << row_bytes * num_rows << " bytes)";
       }
+      cudaGetLastError();  // Clear the error state.
     } else {
       break;
     }

@@ -1,7 +1,7 @@
 // nnet3/nnet-common.h
 
-// Copyright      2015  Johns Hopkins University (author: Daniel Povey)
-
+// Copyright      2015  Johns Hopkins University (author: Daniel Pove
+//                2016  Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -68,6 +68,21 @@ struct Index {
   void Read(std::istream &os, bool binary);
 };
 
+
+// This struct can be used as a comparison object when you want to
+// sort the indexes first on n, then x, then t (Index's own comparison
+// object will sort first on t, then n, then x)
+struct IndexLessNxt {
+  inline bool operator ()(const Index &a, const Index &b) const {
+    if (a.n < b.n) { return true; }
+    else if (a.n > b.n) { return false; }
+    else if (a.x < b.x) { return true; }
+    else if (a.x > b.x) { return false; }
+    else return (a.t < b.t);
+  }
+};
+
+
 // this will be used only for debugging output.
 std::ostream &operator << (std::ostream &ostream, const Index &index);
 
@@ -75,7 +90,7 @@ std::ostream &operator << (std::ostream &ostream, const Index &index);
 void WriteIndexVector(std::ostream &os, bool binary,
                       const std::vector<Index> &vec);
 
-void ReadIndexVector(std::istream &os, bool binary,
+void ReadIndexVector(std::istream &is, bool binary,
                      std::vector<Index> *vec);
 
 
@@ -84,9 +99,15 @@ void ReadIndexVector(std::istream &os, bool binary,
  */
 typedef std::pair<int32, Index> Cindex;
 
+struct IndexHasher {
+  size_t operator () (const Index &cindex) const;
+};
+
 struct CindexHasher {
   size_t operator () (const Cindex &cindex) const;
 };
+
+
 
 // this will only be used for pretty-printing.
 void PrintCindex(std::ostream &ostream, const Cindex &cindex,
@@ -117,6 +138,11 @@ void PrintCindexes(std::ostream &ostream,
 void AppendCindexes(int32 node, const std::vector<Index> &indexes,
                     std::vector<Cindex> *out);
 
+void WriteCindexVector(std::ostream &os, bool binary,
+                       const std::vector<Cindex> &vec);
+
+void ReadCindexVector(std::istream &is, bool binary,
+                      std::vector<Cindex> *vec);
 
 // this function prints a vector of integers in a human-readable
 // way, for pretty-printing; it outputs ranges and repeats in

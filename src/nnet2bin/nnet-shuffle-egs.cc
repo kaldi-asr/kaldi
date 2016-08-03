@@ -62,7 +62,7 @@ int main(int argc, char *argv[]) {
     int64 num_done = 0;
 
     std::vector<std::pair<std::string, NnetExample*> > egs;
-    
+
     SequentialNnetExampleReader example_reader(examples_rspecifier);
     NnetExampleWriter example_writer(examples_wspecifier);
     if (buffer_size == 0) {  // Do full randomization
@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
       std::random_shuffle(egs.begin(), egs.end());
     } else {
       KALDI_ASSERT(buffer_size > 0);
-      egs.resize(buffer_size, 
+      egs.resize(buffer_size,
           std::pair<std::string, NnetExample*>("", static_cast<NnetExample *>(NULL)));
       for (; !example_reader.Done(); example_reader.Next()) {
         int32 index = RandInt(0, buffer_size - 1);
@@ -95,8 +95,8 @@ int main(int argc, char *argv[]) {
       if (egs[i].second != NULL) {
         example_writer.Write(egs[i].first, *(egs[i].second));
         delete egs[i].second;
+        num_done++;
       }
-      num_done++;
     }
 
     KALDI_LOG << "Shuffled order of " << num_done

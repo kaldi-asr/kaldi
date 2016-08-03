@@ -17,11 +17,13 @@ num_iters=4
 acwt=0.1
 lmwt=1.0
 learn_rate=0.00001
+momentum=0.0
 halving_factor=1.0 #ie. disable halving
 do_smbr=true
 exclude_silphones=true # exclude silphones from approximate accuracy computation
 unkphonelist= # exclude unkphones from approximate accuracy computation (overrides exclude_silphones)
 one_silence_class=true # true : reduce insertions in sMBR/MPE FW/BW, more stable training,
+                       # (all silphones are seen as a single class in the sMBR/MPE FW/BW)
 verbose=1
 ivector=
 
@@ -58,7 +60,9 @@ alidir=$4
 denlatdir=$5
 dir=$6
 
-for f in $data/feats.scp $alidir/{tree,final.mdl,ali.1.gz} $denlatdir/lat.scp $srcdir/{final.nnet,final.feature_transform}; do
+for f in $data/feats.scp $denlatdir/lat.scp \
+         $alidir/{tree,final.mdl,ali.1.gz} \
+         $srcdir/{final.nnet,final.feature_transform}; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
@@ -69,7 +73,7 @@ mkdir -p $dir/log
 
 cp $alidir/{final.mdl,tree} $dir
 
-silphonelist=`cat $lang/phones/silence.csl` || exit 1;
+silphonelist=`cat $lang/phones/silence.csl`
 
 #Get the files we will need
 nnet=$srcdir/$(readlink $srcdir/final.nnet || echo final.nnet);
@@ -90,7 +94,9 @@ cp $feature_transform $dir/final.feature_transform
 model=$dir/final.mdl
 [ -z "$model" ] && echo "Error transition model '$model' does not exist!" && exit 1;
 
-#enable/disable silphones from MPE training
+# The argument '--silence-phones=csl' together with '--one-silence-class=true'
+# will cause regrouping of the silenece phones into a single class in the FW/BW
+# which calculates the Loss derivative (the 'new' behavior).
 mpe_silphones_arg= #empty
 $exclude_silphones && mpe_silphones_arg="--silence-phones=$silphonelist" # all silphones
 [ ! -z $unkphonelist ] && mpe_silphones_arg="--silence-phones=$unkphonelist" # unk only
@@ -124,12 +130,19 @@ feats="ark,o:copy-feats scp:$dir/train.scp ark:- |"
 
 # add-ivector (optional),
 if [ -e $D/ivector_dim ]; then
-  ivector_dim=$(cat $D/ivector_dim)
-  [ -z $ivector ] && echo "Missing --ivector, they were used in training! (dim $ivector_dim)" && exit 1
-  ivector_dim2=$(copy-vector "$ivector" ark,t:- | head -n1 | awk '{ print NF-3 }') || true
-  [ $ivector_dim != $ivector_dim2 ] && "Error, i-vector dimensionality mismatch! (expected $ivector_dim, got $ivector_dim2 in $ivector)" && exit 1
-  # Append to feats
-  feats="$feats append-vector-to-feats ark:- '$ivector' ark:- |"
+  [ -z $ivector ] && echo "Missing --ivector, they were used in training!" && exit 1
+  # Get the tool, 
+  ivector_append_tool=append-vector-to-feats # default,
+  [ -e $D/ivector_append_tool ] && ivector_append_tool=$(cat $D/ivector_append_tool)
+  # Check dims,
+  dim_raw=$(feat-to-dim "$feats" -)
+  dim_raw_and_ivec=$(feat-to-dim "$feats $ivector_append_tool ark:- '$ivector' ark:- |" -)
+  dim_ivec=$((dim_raw_and_ivec - dim_raw))
+  [ $dim_ivec != "$(cat $D/ivector_dim)" ] && \
+    echo "Error, i-vector dim. mismatch (expected $(cat $D/ivector_dim), got $dim_ivec in '$ivector')" && \
+    exit 1
+  # Append to feats,
+  feats="$feats $ivector_append_tool ark:- '$ivector' ark:- |"
 fi
 
 ### Record the setup,
@@ -137,6 +150,7 @@ fi
 [ ! -z "$delta_opts" ] && echo $delta_opts >$dir/delta_opts
 [ -e $D/pytel_transform.py ] && cp {$D,$dir}/pytel_transform.py
 [ -e $D/ivector_dim ] && cp {$D,$dir}/ivector_dim
+[ -e $D/ivector_append_tool ] && cp $D/ivector_append_tool $dir/ivector_append_tool
 ###
 
 ###
@@ -169,11 +183,12 @@ while [ $x -le $num_iters ]; do
        --acoustic-scale=$acwt \
        --lm-scale=$lmwt \
        --learn-rate=$learn_rate \
+       --momentum=$momentum \
        --do-smbr=$do_smbr \
        --verbose=$verbose \
        --one-silence-class=$one_silence_class \
        $mpe_silphones_arg \
-       $cur_mdl $alidir/final.mdl "$feats" "$lats" "$ali" $dir/$x.nnet || exit 1
+       $cur_mdl $alidir/final.mdl "$feats" "$lats" "$ali" $dir/$x.nnet
   fi
   cur_mdl=$dir/$x.nnet
 
@@ -193,10 +208,12 @@ echo "MPE/sMBR training finished"
 if [ -e $dir/prior_counts ]; then
   echo "Priors are already re-estimated, skipping... ($dir/prior_counts)"
 else
-  echo "Re-estimating priors by forwarding the training set."
+  echo "Re-estimating priors by forwarding 10k utterances from training set."
   . cmd.sh
   nj=$(cat $alidir/num_jobs)
-  steps/nnet/make_priors.sh --cmd "$train_cmd" --nj $nj $data $dir || exit 1
+  steps/nnet/make_priors.sh --cmd "$train_cmd" --nj $nj \
+    ${ivector:+ --ivector "$ivector"} $data $dir
 fi
 
+echo "$0: Done. '$dir'"
 exit 0

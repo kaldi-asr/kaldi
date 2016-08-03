@@ -546,10 +546,8 @@ void ComputeMatrixAccesses(
 ComputationChecker::ComputationChecker(
     const CheckComputationOptions &config,
     const Nnet &nnet,
-    const ComputationRequest &request,
     const NnetComputation &computation):
-    config_(config), nnet_(nnet), request_(request),
-    computation_(computation) { }
+    config_(config), nnet_(nnet), computation_(computation) { }
 
 
 
@@ -899,7 +897,7 @@ void ComputationChecker::CheckComputationIndexes() const {
             static_cast<size_t>(c.arg3) >= computation_.indexes_ranges.size())
           KALDI_ERR << "Index out of range in add-row-ranges command";
         const std::vector<std::pair<int32, int32> > pairs =
-            computation_.indexes_ranges[c.arg2];
+            computation_.indexes_ranges[c.arg3];
         if (static_cast<size_t>(submatrices[c.arg1].num_rows) != pairs.size())
           KALDI_ERR << "Num-rows mismatch in add-row-ranges command";
         if (submatrices[c.arg1].num_cols != submatrices[c.arg2].num_cols)
@@ -908,12 +906,11 @@ void ComputationChecker::CheckComputationIndexes() const {
         std::vector<std::pair<int32, int32> >::const_iterator
             iter = pairs.begin(), end = pairs.end();
         for (; iter != end; ++iter) {
-          // note: -1's are not allowed.  To represent the empty range,
-          // the user should use some valid index twice.
-          if (iter->second < iter->first || iter->first < 0 ||
-              iter->second > src_num_rows)
+          if (!((iter->first == -1 && iter->second == -1) ||
+                (iter->second > iter->first &&
+                 iter->first >= 0 && iter->second <= src_num_rows)))
             KALDI_ERR << "Row range " << iter->first << ',' << iter->second
-                      << " out of range in add-row-ranges command.";
+                      << " is invalid in add-row-ranges command.";
         }
         break;
       }
@@ -981,7 +978,7 @@ void CheckComputation(const Nnet &nnet,
                       bool check_rewrite) {
   CheckComputationOptions opts;
   opts.check_rewrite = check_rewrite;
-  ComputationChecker checker(opts, nnet, request, computation);
+  ComputationChecker checker(opts, nnet, computation);
   checker.Check();
 }
 

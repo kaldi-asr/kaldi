@@ -168,15 +168,6 @@ class ParseOptions : public OptionsItf {
   void RegisterCommon(const std::string &name,
                       T *ptr, const std::string &doc, bool is_standard);
 
-  /// SplitLongArg parses an argument of the form --a=b, --a=, or --a,
-  /// and sets "has_equal_sign" to true if an equals-sign was parsed..
-  /// this is needed in order to correctly allow --x for a boolean option
-  /// x, and --y= for a string option y, and to disallow --x= and --y.
-  void SplitLongArg(std::string in, std::string *key, std::string *value,
-                    bool *has_equal_sign);
-
-  void NormalizeArgName(std::string *str);
-
   /// Set option with name "key" to "value"; will crash if can't do it.
   /// "has_equal_sign" is used to allow --x for a boolean option x,
   /// and --y=, for a string option y.
@@ -227,6 +218,15 @@ class ParseOptions : public OptionsItf {
   /// is constructed with a prefix
   std::string prefix_;
   OptionsItf *other_parser_;
+ protected:
+    /// SplitLongArg parses an argument of the form --a=b, --a=, or --a,
+  /// and sets "has_equal_sign" to true if an equals-sign was parsed..
+  /// this is needed in order to correctly allow --x for a boolean option
+  /// x, and --y= for a string option y, and to disallow --x= and --y.
+  void SplitLongArg(std::string in, std::string *key, std::string *value,
+                    bool *has_equal_sign);
+
+  void NormalizeArgName(std::string *str);
 };
 
 /// This template is provided for convenience in reading config classes from
@@ -246,7 +246,8 @@ template<class C> void ReadConfigFromFile(const std::string config_filename,
 
 /// This variant of the template ReadConfigFromFile is for if you need to read
 /// two config classes from the same file.
-template<class C1, class C2> void ReadConfigsFromFile(const std::string config_filename,
+template<class C1, class C2> void ReadConfigsFromFile(const std::string
+                                                      config_filename,
                                                       C1 *c1, C2 *c2) {
   std::ostringstream usage_str;
   usage_str << "Parsing config from "

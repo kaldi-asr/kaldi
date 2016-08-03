@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# This script makes sure that only the segments present in 
+# This script makes sure that only the segments present in
 # all of "feats.scp", "wav.scp" [if present], segments [if present]
 # text, and utt2spk are present in any of them.
-# It puts the original contents of data-dir into 
+# It puts the original contents of data-dir into
 # data-dir/.backup
 
 if [ $# != 1 ]; then
@@ -35,7 +35,8 @@ function check_sorted {
   fi
 }
 
-for x in utt2spk spk2utt feats.scp text segments wav.scp cmvn.scp vad.scp reco2file_and_channel spk2gender utt2lang; do
+for x in utt2spk spk2utt feats.scp text segments wav.scp cmvn.scp vad.scp \
+    reco2file_and_channel spk2gender utt2lang utt2uniq utt2dur; do
   if [ -f $data/$x ]; then
     cp $data/$x $data/.backup/$x
     check_sorted $data/$x
@@ -61,7 +62,7 @@ function filter_file {
 function filter_recordings {
   # We call this once before the stage when we filter on utterance-id, and once
   # after.
-  
+
   if [ -f $data/segments ]; then
   # We have a segments file -> we need to filter this and the file wav.scp, and
   # reco2file_and_utt, if it exists, to make sure they have the same list of
@@ -78,7 +79,7 @@ function filter_recordings {
     utils/filter_scp.pl $data/wav.scp $tmpdir/recordings > $tmpdir/recordings.tmp
     mv $tmpdir/recordings.tmp $tmpdir/recordings
 
-    
+
     cp $data/segments{,.tmp}; awk '{print $2, $1, $3, $4}' <$data/segments.tmp >$data/segments
     filter_file $tmpdir/recordings $data/segments
     cp $data/segments{,.tmp}; awk '{print $2, $1, $3, $4}' <$data/segments.tmp >$data/segments
@@ -86,7 +87,7 @@ function filter_recordings {
 
     filter_file $tmpdir/recordings $data/wav.scp
     [ -f $data/reco2file_and_channel ] && filter_file $tmpdir/recordings $data/reco2file_and_channel
-    
+
   fi
 }
 
@@ -116,8 +117,6 @@ function filter_speakers {
 function filter_utts {
   cat $data/utt2spk | awk '{print $1}' > $tmpdir/utts
 
-# Do a check.
-
   ! cat $data/utt2spk | sort | cmp - $data/utt2spk && \
     echo "utt2spk is not in sorted order (fix this yourself)" && exit 1;
 
@@ -128,6 +127,10 @@ function filter_utts {
   ! cat $data/spk2utt | sort | cmp - $data/spk2utt && \
     echo "spk2utt is not in sorted order (fix this yourself)" && exit 1;
 
+  if [ -f $data/utt2uniq ]; then
+    ! cat $data/utt2uniq | sort | cmp - $data/utt2uniq && \
+      echo "utt2uniq is not in sorted order (fix this yourself)" && exit 1;
+  fi
 
   maybe_wav=
   [ ! -f $data/segments ] && maybe_wav=wav.scp  # wav indexed by utts only if segments does not exist.
@@ -151,7 +154,7 @@ function filter_utts {
     fi
   fi
 
-  for x in utt2spk feats.scp vad.scp text segments utt2lang $maybe_wav; do
+  for x in utt2spk utt2uniq feats.scp vad.scp text segments utt2lang utt2dur $maybe_wav; do
     if [ -f $data/$x ]; then
       cp $data/$x $data/.backup/$x
       if ! cmp -s $data/$x <( utils/filter_scp.pl $tmpdir/utts $data/$x ) ; then
@@ -167,8 +170,6 @@ filter_speakers
 filter_utts
 filter_speakers
 filter_recordings
-
-
 
 utils/utt2spk_to_spk2utt.pl $data/utt2spk > $data/spk2utt
 

@@ -1,13 +1,13 @@
 #!/bin/bash
 
-# Copyright  2014 Nickolay V. Shmyrev 
+# Copyright  2014 Nickolay V. Shmyrev
 #            2014 Brno University of Technology (Author: Karel Vesely)
 # Apache 2.0
 
 pushd db
 # TED-LIUM database:
 if [[ $(hostname -f) == *.clsp.jhu.edu ]] ; then
- ln -s /export/corpora5/TEDLIUM_release1
+  ln -s /export/corpora5/TEDLIUM_release1
 else
   if [ ! -f TEDLIUM_release1.tar.gz ]; then
     wget http://www.openslr.org/resources/7/TEDLIUM_release1.tar.gz || exit 1

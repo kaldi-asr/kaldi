@@ -20,13 +20,6 @@
 #ifndef KALDI_UTIL_STL_UTILS_H_
 #define KALDI_UTIL_STL_UTILS_H_
 
-#include <algorithm>
-#include <map>
-#include <set>
-#include <string>
-#include <vector>
-#include "base/kaldi-common.h"
-
 #ifdef _MSC_VER
 #include <unordered_map>
 #include <unordered_set>
@@ -44,6 +37,12 @@ using std::tr1::unordered_map;
 using std::tr1::unordered_set;
 #endif
 
+#include <algorithm>
+#include <map>
+#include <set>
+#include <string>
+#include <vector>
+#include "base/kaldi-common.h"
 
 namespace kaldi {
 
@@ -248,7 +247,7 @@ struct VectorHasher {  // hashing function for vector<Int>.
 /// A hashing function-object for pairs of ints
 template<typename Int>
 struct PairHasher {  // hashing function for pair<int>
-  size_t operator()(const std::pair<Int,Int> &x) const {
+  size_t operator()(const std::pair<Int, Int> &x) const {
     return x.first + x.second * kPrime;
   }
   PairHasher() {  // Check we're instantiated with an integer type.
@@ -303,7 +302,7 @@ template<typename I, typename F>
 inline void MergePairVectorSumming(std::vector<std::pair<I, F> > *vec) {
   KALDI_ASSERT_IS_INTEGER_TYPE(I);
   CompareFirstMemberOfPair<I, F> c;
-  std::sort(vec->begin(), vec->end(), c); // sort on 1st element.
+  std::sort(vec->begin(), vec->end(), c);  // sort on 1st element.
   typename std::vector<std::pair<I, F> >::iterator out = vec->begin(),
       in = vec->begin(), end = vec->end();
   // special case: while there is nothing to be changed, skip over
@@ -318,10 +317,10 @@ inline void MergePairVectorSumming(std::vector<std::pair<I, F> > *vec) {
     *out = *in;
     ++in;
     while (in < end && in->first == out->first) {
-      out->second += in->second; // this is the merge operation.
+      out->second += in->second;  // this is the merge operation.
       ++in;
     }
-    if (out->second != static_cast<F>(0)) // Don't keep zero elements.
+    if (out->second != static_cast<F>(0))  // Don't keep zero elements.
       out++;
   }
   vec->erase(out, end);

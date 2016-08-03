@@ -84,10 +84,10 @@ class AmNnetSimple {
   int32 RightContext() const { return right_context_; }
 
   /// Returns the input feature dim.
-  int32 InputDim() const { return nnet_.InputDim("input-dim"); }
+  int32 InputDim() const { return nnet_.InputDim("input"); }
 
   /// Returns the iVector dimension, or -1 if there is no such input.
-  int32 IvectorDim() const { return nnet_.InputDim("ivector-dim"); }
+  int32 IvectorDim() const { return nnet_.InputDim("ivector"); }
   
  private:
   void SetContext();

@@ -289,7 +289,7 @@ done
     --config=nnet_a_gpu_online/conf/online_nnet2_decoding.conf \
     --max-active=7000 --beam=15.0 --lattice-beam=6.0 \
     --acoustic-scale=0.1 --word-symbol-table=graph/words.txt \
-   nnet_a_gpu_online/smbr_epoch2.mdl graph/HCLG.fst "ark:echo utterance-id1 utterance-id1|" "scp:echo utterance-id1 ENG_M.wav|" \
+   nnet_a_gpu_online/final.mdl graph/HCLG.fst "ark:echo utterance-id1 utterance-id1|" "scp:echo utterance-id1 ENG_M.wav|" \
    ark:/dev/null
  \endverbatim
  We added the <code>--online=false</code> option because it tends to slightly improve results.
@@ -397,7 +397,7 @@ extra_questions.txt, nonsilence_phones.txt, optional_silence.txt,
 silence_phones.txt can be re-used. For details of how to create those files, we
 suggest the users follow the existing Kaldi scripts, for example this one:
 egs/wsj/s5/local/wsj_prepare_dict.sh. The format of the dictionary directory is
-described \ref data_prep_lang_creating "here". 
+described \ref data_prep_lang_creating "here".
 
 Now we can create a new lang directory with the updated lexicon. Suppose
 $lang is the recognizer's old lang directory, $lang_own is the new lang

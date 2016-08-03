@@ -163,6 +163,30 @@ void Compiler::ComputeDerivNeeded(
   }
 }
 
+MatrixStrideType Compiler::GetStrideType(int32 node_index) const {
+  int32 component_node_index;
+  bool is_input;
+  if (nnet_.IsComponentInputNode(node_index)) {
+    // this node is for the input to a component.
+    component_node_index = node_index + 1;
+    is_input = true;
+  } else if (nnet_.IsComponentNode(node_index)) {
+    component_node_index = node_index;
+    is_input = false;
+  } else {
+    return kDefaultStride;
+  }
+  const NetworkNode &node = nnet_.GetNode(component_node_index);
+  const Component *c = nnet_.GetComponent(node.u.component_index);
+  if (is_input) {
+    return (c->Properties() & kInputContiguous) ?
+        kStrideEqualNumCols : kDefaultStride;
+  } else {
+    return (c->Properties() & kOutputContiguous) ?
+        kStrideEqualNumCols : kDefaultStride;
+  }
+}
+
 
 // Note: "by_step" is an input but is passed as a pointer because this
 // function destroys it.
@@ -189,9 +213,12 @@ void Compiler::CreateStepInfo(
     int32 num_rows = num_ids, num_cols = node.Dim(nnet_);
 
     if (node.node_type != kDimRange) {
-      this_info.value = computation->NewMatrix(num_rows, num_cols);
+      MatrixStrideType stride_type = GetStrideType(this_info.node_index);
+      this_info.value = computation->NewMatrix(num_rows, num_cols,
+                                               stride_type);
       if (deriv_needed[step])
-        this_info.deriv = computation->NewMatrix(num_rows, num_cols);
+        this_info.deriv = computation->NewMatrix(num_rows, num_cols,
+                                                 stride_type);
       if (node.node_type == kComponent)
         KALDI_PARANOID_ASSERT(step > 0 &&  steps_[step-1].output_indexes ==
                               this_info.output_indexes);
@@ -615,50 +642,6 @@ void Compiler::DoBackwardComputationFromSubmatLocations(
   }
 }
 
-// This function returns true if for each integer i != -1, all the indexes j at which
-// indexes[j] == i are consecutive with no gaps (more formally: if j1 < j2 < j3
-// and indexes[j1] == indexes[j3], then indexes[j1] == indexes[j2]).  If so it
-// also outputs to "reverse_indexes" the begin and end of these ranges, so that
-// indexes[j] == i for all j such that (*reverse_indexes)[i].first <= j && j <
-// (*reverse_indexes)[i].second.
-static bool HasContiguousProperty(
-    const std::vector<int32> &indexes,
-    std::vector<std::pair<int32, int32> > *reverse_indexes) {
-  int32 num_indexes = indexes.size(),
-      num_input_indexes = *std::max_element(indexes.begin(), indexes.end()) + 1;
-  reverse_indexes->resize(num_input_indexes);
-  for (int32 i = 0; i < num_input_indexes; i++) {
-    (*reverse_indexes)[i].first = -1;
-    (*reverse_indexes)[i].second = -1;
-  }
-  // set each pair's "first" to the min index of all elements
-  // of "indexes" with that value, and the "second" to the
-  // max plus one.
-  for (int32 i = 0; i < num_indexes; i++) {
-    int32 j = indexes[i];
-    if (j == -1) continue;
-    KALDI_ASSERT(j >= 0);
-    std::pair<int32, int32> &pair = (*reverse_indexes)[j];
-    if (pair.first == -1) {
-      pair.first = j;
-      pair.second = j + 1;
-    } else {
-      pair.first = std::min(pair.first, j);
-      pair.second = std::max(pair.second, j + 1);
-    }
-  }
-  // check that the contiguous property holds.
-  for (int32 i = 0; i < num_input_indexes; i++) {
-    std::pair<int32, int32> pair = (*reverse_indexes)[i];
-    if (pair.first != -1) {
-      for (int32 j = pair.first; j < pair.second; j++)
-        if (indexes[j] != i)
-          return false;
-    }
-  }
-  return true;
-}
-
 void Compiler::DoBackwardComputationFromIndexes(
     int32 deriv_submatrix_index,
     int32 input_deriv_submatrix_index,
@@ -713,6 +696,11 @@ void Compiler::DoBackwardComputationFromIndexes(
   std::vector<std::pair<int32, int32> > ranges;
   if (HasContiguousProperty(indexes, &ranges)) {
     // the operation can be set up as AddRowRanges.
+    if (static_cast<int32>(ranges.size()) != input_num_rows) {
+      KALDI_ASSERT(static_cast<int32>(ranges.size()) < input_num_rows);
+      // extend with (-1, -1) pairs.
+      ranges.resize(input_num_rows, std::pair<int32,int32>(-1, -1));
+    }
     int32 indexes_ranges_index = computation->indexes_ranges.size();
     computation->indexes_ranges.push_back(ranges);
     computation->commands.push_back(

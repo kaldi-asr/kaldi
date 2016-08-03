@@ -27,8 +27,8 @@ namespace nnet2 {
 
 void UnitTestGenericComponentInternal(const Component &component,
                                       const ChunkInfo in_info,
-                                      const ChunkInfo out_info)  { 
-  
+                                      const ChunkInfo out_info)  {
+
   CuMatrix<BaseFloat> input(in_info.NumRows(), in_info.NumCols()),
       output(1, out_info.NumRows() * out_info.NumCols());
   input.SetRandn();
@@ -56,20 +56,20 @@ void UnitTestGenericComponentInternal(const Component &component,
     component_copy = Component::ReadNew(ki.Stream(), binary_in);
   }
   unlink("tmpf");
-  
+
   { // Test backward derivative is correct.
     CuVector<BaseFloat> output_objfs(out_info.NumRows());
     output_objfs.AddMatVec(1.0, output, kNoTrans, objf_vec, 0.0);
     BaseFloat objf = output_objfs.Sum();
 
-    
+
     CuMatrix<BaseFloat> output_deriv(output.NumRows(), output.NumCols());
     for (int32 i = 0; i < output_deriv.NumRows(); i++)
       output_deriv.Row(i).CopyFromVec(objf_vec);
 
     CuMatrix<BaseFloat> input_deriv(input.NumRows(), input.NumCols());
 
-    
+
     CuMatrix<BaseFloat> empty_mat;
     CuMatrix<BaseFloat> &input_ref =
         (component_copy->BackpropNeedsInput() ? input : empty_mat),
@@ -90,7 +90,7 @@ void UnitTestGenericComponentInternal(const Component &component,
           srand(rand_seed);
           rand_component->ResetGenerator();
         }
-      }        
+      }
       perturbed_input.SetRandn();
       perturbed_input.Scale(1.0e-04); // scale by a small amount so it's like a delta.
       BaseFloat predicted_difference = TraceMatMat(perturbed_input,
@@ -106,7 +106,7 @@ void UnitTestGenericComponentInternal(const Component &component,
             srand(rand_seed);
             rand_component->ResetGenerator();
           }
-        }        
+        }
         component.Propagate(in_info, out_info, perturbed_input, &perturbed_output);
         CuVector<BaseFloat> perturbed_output_objfs(out_info.NumRows());
         perturbed_output_objfs.AddMatVec(1.0, perturbed_output, kNoTrans,
@@ -140,7 +140,7 @@ void UnitTestGenericComponentInternal(const Component &component,
 
     int32 num_ok = 0, num_bad = 0, num_tries = 10;
     KALDI_LOG << "Comparing model gradients " << num_tries << " times.";
-    for (int32 i = 0; i < num_tries; i++) {    
+    for (int32 i = 0; i < num_tries; i++) {
       UpdatableComponent *perturbed_ucomponent =
           dynamic_cast<UpdatableComponent*>(ucomponent->Copy()),
           *gradient_ucomponent =
@@ -149,7 +149,7 @@ void UnitTestGenericComponentInternal(const Component &component,
       gradient_ucomponent->SetZero(true); // set params to zero and treat as gradient.
       BaseFloat perturb_stddev = 5.0e-04;
       perturbed_ucomponent->PerturbParams(perturb_stddev);
-      
+
       CuVector<BaseFloat> output_objfs(out_info.NumRows());
       output_objfs.AddMatVec(1.0, output, kNoTrans, objf_vec, 0.0);
       BaseFloat objf = output_objfs.Sum();
@@ -174,7 +174,7 @@ void UnitTestGenericComponentInternal(const Component &component,
             srand(rand_seed);
             rand_component->ResetGenerator();
           }
-        }        
+        }
         perturbed_ucomponent->Propagate(in_info, out_info, input, &output_perturbed);
         CuVector<BaseFloat> output_objfs_perturbed(out_info.NumRows());
         output_objfs_perturbed.AddMatVec(1.0, output_perturbed,
@@ -185,7 +185,7 @@ void UnitTestGenericComponentInternal(const Component &component,
       BaseFloat delta_objf_observed = objf_perturbed - objf,
           delta_objf_predicted = (perturbed_ucomponent->DotProduct(*gradient_ucomponent) -
                                   ucomponent->DotProduct(*gradient_ucomponent));
-      
+
       KALDI_LOG << "Model gradients: comparing " << delta_objf_observed
                 << " and " << delta_objf_predicted;
       if (fabs(delta_objf_predicted - delta_objf_observed) >
@@ -227,7 +227,7 @@ void UnitTestGenericComponentInternal(const Component &component) {
 void UnitTestSigmoidComponent() {
   // We're testing that the gradients are computed correctly:
   // the input gradients and the model gradients.
-  
+
   int32 input_dim = 10 + Rand() % 50;
   {
     SigmoidComponent sigmoid_component(input_dim);
@@ -244,10 +244,10 @@ template<class T>
 void UnitTestGenericComponent(std::string extra_str = "") {
   // works if it has an initializer from int,
   // e.g. tanh, sigmoid.
-  
+
   // We're testing that the gradients are computed correctly:
   // the input gradients and the model gradients.
-  
+
   int32 input_dim = 10 + Rand() % 50;
   {
     T component(input_dim);
@@ -263,7 +263,7 @@ void UnitTestGenericComponent(std::string extra_str = "") {
 void UnitTestMaxoutComponent() {
   // works if it has an initializer from int,
   // e.g. tanh, sigmoid.
-  
+
   // We're testing that the gradients are computed correctly:
   // the input gradients and the model gradients.
 
@@ -271,7 +271,7 @@ void UnitTestMaxoutComponent() {
     int32 output_dim = 10 + Rand() % 20,
         group_size = 1 + Rand() % 10,
         input_dim = output_dim * group_size;
-    
+
     MaxoutComponent component(input_dim, output_dim);
     UnitTestGenericComponentInternal(component);
   }
@@ -286,7 +286,7 @@ void UnitTestMaxoutComponent() {
 void UnitTestPnormComponent() {
   // works if it has an initializer from int,
   // e.g. tanh, sigmoid.
-  
+
   // We're testing that the gradients are computed correctly:
   // the input gradients and the model gradients.
 
@@ -295,7 +295,7 @@ void UnitTestPnormComponent() {
         group_size = 1 + Rand() % 10,
         input_dim = output_dim * group_size;
     BaseFloat p = 0.8 + 0.1 * (Rand() % 20);
-    
+
     PnormComponent component(input_dim, output_dim, p);
     UnitTestGenericComponentInternal(component);
   }
@@ -376,24 +376,28 @@ void UnitTestConvolutional1dComponent() {
     if (Rand() % 2 == 0) {
       component.Init(learning_rate, input_dim, output_dim,
                      patch_dim, patch_step, patch_stride,
-                     param_stddev, bias_stddev);
+                     param_stddev, bias_stddev, true);
     } else {
-      // initialize the hyper-parameters
-      component.Init(learning_rate, input_dim, output_dim,
-                     patch_dim, patch_step, patch_stride,
-                     param_stddev, bias_stddev);
       Matrix<BaseFloat> mat(num_filters, filter_dim + 1);
       mat.SetRandn();
       mat.Scale(param_stddev);
       WriteKaldiObject(mat, "tmpf", true);
       Sleep(0.5);
-      component.Init(learning_rate, "tmpf");
+      component.Init(learning_rate, patch_dim,
+                     patch_step, patch_stride, "tmpf", false);
       unlink("tmpf");
     }
     UnitTestGenericComponentInternal(component);
   }
   {
+    // appended-conv is false by default
     const char *str = "learning-rate=0.01 input-dim=100 output-dim=70 param-stddev=0.1 patch-dim=4 patch-step=1 patch-stride=10";
+    Convolutional1dComponent component;
+    component.InitFromString(str);
+    UnitTestGenericComponentInternal(component);
+  }
+  {
+    const char *str = "learning-rate=0.01 input-dim=100 output-dim=70 param-stddev=0.1 patch-dim=4 patch-step=1 patch-stride=10 appended-conv=true";
     Convolutional1dComponent component;
     component.InitFromString(str);
     UnitTestGenericComponentInternal(component);
@@ -451,7 +455,7 @@ void UnitTestAdditiveNoiseComponent() {
   }
   if (num_fail >= num_tries/2) {
     KALDI_ERR << "Too many test failures.";
-  }  
+  }
 }
 
 void UnitTestScaleComponent() {
@@ -543,7 +547,7 @@ void UnitTestBlockAffineComponent() {
   int32 num_blocks = 1 + Rand() % 3,
          input_dim = num_blocks * (2 + Rand() % 4),
         output_dim = num_blocks * (2 + Rand() % 4);
-  
+
   {
     BlockAffineComponent component;
     component.Init(learning_rate, input_dim, output_dim,
@@ -564,7 +568,7 @@ void UnitTestBlockAffineComponentPreconditioned() {
   int32 num_blocks = 1 + Rand() % 3,
          input_dim = num_blocks * (2 + Rand() % 4),
         output_dim = num_blocks * (2 + Rand() % 4);
-  
+
   {
     BlockAffineComponentPreconditioned component;
     component.Init(learning_rate, input_dim, output_dim,
@@ -584,8 +588,8 @@ void UnitTestSumGroupComponent() {
   std::vector<int32> sizes;
   int32 num_sizes = 1 + Rand() % 5;
   for (int32 i = 0; i < num_sizes; i++)
-    sizes.push_back(1 + Rand() % 5); 
-  
+    sizes.push_back(1 + Rand() % 5);
+
   {
     SumGroupComponent component;
     component.Init(sizes);
@@ -717,7 +721,7 @@ void UnitTestParsing() {
                  && b == false && s == "");
     s = "x=y foo=true a=b";
     KALDI_ASSERT(ParseFromString("foo", &s, &b) == true
-                 && b == true && s == "x=y a=b");    
+                 && b == true && s == "x=y a=b");
   }
 
   {
@@ -759,7 +763,7 @@ void UnitTestSpliceComponent() {
       // (-left_context, right_context)
       KALDI_LOG << "Testing contiguous splice component";
       splice_indexes.reserve(right_context - left_context + 1);
-      for (int32 i = left_context; i <= right_context; i++) 
+      for (int32 i = left_context; i <= right_context; i++)
         splice_indexes.push_back(i);
     } else  {
       // generate random splice indexes in range (-left_context, right_context)
@@ -808,7 +812,7 @@ void BasicDebugTestForSpliceMax(bool output=false) {
   int32 C=5,
         context_len=2,
         R= 3 + 2*context_len;
- 
+
   SpliceMaxComponent *c = new SpliceMaxComponent();
   std::vector<int32> context(2 * context_len + 1);
   for (int32 i = -1 * context_len; i <= context_len; i++)
@@ -824,17 +828,17 @@ void BasicDebugTestForSpliceMax(bool output=false) {
     KALDI_LOG << in;
 
   c->Propagate(in_info, out_info, in, &out);
-  
-  if (output) 
+
+  if (output)
     KALDI_LOG << out;
 
   out.Set(5.0);
-  
+
   if (output)
     KALDI_LOG << out;
-  
+
   c->Backprop(in_info, out_info, in, in, out, c, &in_deriv);
-  
+
   if (output)
     KALDI_LOG << in_deriv;
 
@@ -860,7 +864,7 @@ int main() {
     else
       CuDevice::Instantiate().SelectGpuId("optional"); // -2 .. automatic selection
 #endif
-    
+
     BasicDebugTestForSpliceMax(true);
     for (int32 i = 0; i < 3; i++) {
       UnitTestGenericComponent<SigmoidComponent>();
@@ -873,8 +877,8 @@ int main() {
       UnitTestGenericComponent<RectifiedLinearComponent>();
       UnitTestGenericComponent<SoftHingeComponent>();
       UnitTestSpliceComponent();
-      UnitTestMaxoutComponent(); 
-      UnitTestPnormComponent(); 
+      UnitTestMaxoutComponent();
+      UnitTestPnormComponent();
       UnitTestMaxpoolingComponent();
       UnitTestGenericComponent<NormalizeComponent>();
       UnitTestSigmoidComponent();

@@ -6,7 +6,7 @@
 set -e
 
 if [ $# -ne 3 ]; then
-  printf "\nUSAGE: %s <training experiment directory> <enhance method> <graph_dir>\n\n" `basename $0`
+  printf "\nUSAGE: %s <training experiment directory> <enhancement method> <graph_dir>\n\n" `basename $0`
   printf "%s exp/tri3b_tr05_sr_noisy noisy exp/tri4a_dnn_tr05_sr_noisy/graph_tgpr_5k\n\n" `basename $0`
   exit 1;
 fi

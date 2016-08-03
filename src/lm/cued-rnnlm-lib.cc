@@ -114,7 +114,7 @@ float random(float min, float max) {
 }
 
 void RNNLM::init() {
-  lognormconst    = 0;
+  lognormconst    = -1.0;
   lambda          = 0.5;
   version         = 0.1;
   iter            = 0;
@@ -177,6 +177,7 @@ RNNLM::RNNLM(string inmodelfile_1, string inputwlist_1, string outputwlist_1,
   setFullVocsize (fvocsize);
 
   resetAc = new float[layersizes[1]];
+//  lognormconst = -1; // TODO(hxu)
   memcpy(resetAc, neu0_ac_hist->gethostdataptr(), sizeof(float)*layersizes[1]);
 }
 
@@ -185,9 +186,12 @@ void RNNLM::copyToHiddenLayer(const vector<float> &hidden) {
   float *dstac;
   assert(hidden.size() == layersizes[1]);
   srcac = hidden.data(); // TODO
-  dstac = neu_ac[1]->gethostdataptr();
+//  dstac = neu_ac[1]->gethostdataptr();
+  dstac = neu0_ac_hist->gethostdataptr(); 
+//  for (int i = 0; i < hidden.size(); i++) {
+//    dstac[i] = hidden[i];
+//  }
   memcpy (dstac, srcac, sizeof(float)*layersizes[1]);
-//  std::copy(hidden.begin(), hidden.end(), dstac); // TODO
 }
 
 void RNNLM::fetchHiddenLayer(vector<float> *context_out) {
@@ -199,9 +203,9 @@ void RNNLM::fetchHiddenLayer(vector<float> *context_out) {
   assert(context_out->size() == layersizes[1]);
   srcac = neu_ac[1]->gethostdataptr();
   dstac = context_out->data(); // TODO(hxu)
+//  for (int i = 0; i < context_out->size(); i++) {
+//  }
   memcpy (dstac, srcac, sizeof(float)*layersizes[1]);
-//  std::copy(neu_ac[1]->gethostdataptr(),
-//            neu_ac[1]->gethostdataptr() + layersizes[1], dstac); // TODO
 }
 
 float RNNLM::computeConditionalLogprob(int current_word,
@@ -214,15 +218,15 @@ float RNNLM::computeConditionalLogprob(int current_word,
   if (history_words.size() != 0) {
     last_word = history_words[history_words.size() - 1];
   }
-  copyRecurrentAc();
   ans = forward(last_word, current_word);
 
-  if (curword == outOOSindex)
+//  cout << current_word << " : " << outOOSindex << endl;
+  if (current_word == outOOSindex) {
     // uniformly distribute the probability mass among OOS's
     ans /= (fullvocsize - layersizes[num_layer] + 1);
+  }
 
   fetchHiddenLayer(context_out);
-
   return log(ans);
 }
 
@@ -1064,6 +1068,7 @@ void RNNLM::ResetRechist() {
 }
 
 float RNNLM::forward (int prevword, int curword) {
+//  cout << "forward: " << prevword << " " << curword << endl;
   int a, b, nrow, ncol;
   nrow = layersizes[1];
   ncol = layersizes[1];

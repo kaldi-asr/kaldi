@@ -52,25 +52,10 @@ mkdir -p $test
 cp -r data/lang/* $test
 
 cat $lmdir/sprak.arpa | \
-utils/find_arpa_oovs.pl $test/words.txt  > $lmdir/oovs_${lm_suffix}.txt
-
-  # grep -v '<s> <s>' because the LM seems to have some strange and useless
-  # stuff in it with multiple <s>'s in the history.  Encountered some other similar
-  # things in a LM from Geoff.  Removing all "illegal" combinations of <s> and </s>,
-  # which are supposed to occur only at being/end of utt.  These can cause 
-  # determinization failures of CLG [ends up being epsilon cycles].
-cat $lmdir/sprak.arpa | \
-  grep -v '<s> <s>' | \
-  grep -v '</s> <s>' | \
-  grep -v '</s> </s>' | \
-  arpa2fst - | fstprint | \
-  utils/remove_oovs.pl $lmdir/oovs_${lm_suffix}.txt | \
-  utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=$test/words.txt \
-    --osymbols=$test/words.txt  --keep_isymbols=false --keep_osymbols=false | \
-   fstrmepsilon | fstarcsort --sort_type=ilabel > $test/G.fst
+  arpa2fst --disambig-symbol=#0 \
+           --read-symbol-table=$test/words.txt - $test/G.fst
 
 
 utils/validate_lang.pl $test || exit 1;
 
 exit 0;
-

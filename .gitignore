@@ -6,11 +6,16 @@
 !/src/*/Makefile
 !/src/*/README
 
-# Compiled Object files
+# Compiled Object files and python ciles
 *.slo
 *.lo
 *.o
 *.obj
+*.pyc
+
+# profiling files and core files
+*.nvprof
+core
 
 # Compiled Dynamic libraries
 *.so
@@ -81,6 +86,8 @@ GSYMS
 /tools/portaudio/
 /tools/sctk-2.4.0-20091110-0958.tar.bz2
 /tools/sctk-2.4.0/
+/tools/sctk-2.4.10-20151007-1312Z.tar.bz2
+/tools/sctk-2.4.10/
 /tools/sph2pipe_v2.5.tar.gz
 /tools/sph2pipe_v2.5/
 /tools/kaldi_lm.tar.gz
@@ -98,5 +105,9 @@ GSYMS
 /tools/mpg123
 /tools/mpg123-1.21.0.tar.bz2
 /tools/mpg123-1.21.0
+/tools/pthreads
+/tools/pthreads*.zip
 /tools/sequitur
 /tools/srilm.tgz
+
+/kaldiwin_vs*

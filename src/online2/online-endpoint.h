@@ -52,7 +52,7 @@ namespace kaldi {
 
    The endpointing rule is a disjunction of conjunctions.  The way we have
    it configured, it's an OR of five rules, and each rule has the following form:
-    
+
       (<contains-nonsilence> || !rule.must_contain_nonsilence) &&
        <length-of-trailing-silence> >= rule.min_trailing_silence &&
        <relative-cost> <= rule.max_relative_cost &&
@@ -67,7 +67,7 @@ namespace kaldi {
       infinity if no final-state was active (and >0 for in-between cases).
     <utterance-length> is the number of seconds of the utterance that we have
       decoded so far.
-   
+
    All of these pieces of information are obtained from the best-path
    traceback from the decoder, which is output by the function GetBestPath().
    We do this every time we're finished processing a chunk of data.
@@ -80,7 +80,7 @@ namespace kaldi {
    best-path, i.e. whether to call decoder.GetBestPath(&lat, (true or false)),
    but my recommendation is not to use them.  If you do use them, then depending
    on the grammar, you may force the best-path to decode non-silence even though
-   that was not what it really preferred to decode.   
+   that was not what it really preferred to decode.
  */
 
 
@@ -98,17 +98,17 @@ struct OnlineEndpointRule {
       min_trailing_silence(min_trailing_silence),
       max_relative_cost(max_relative_cost),
       min_utterance_length(min_utterance_length) { }
-  
+
   void Register(OptionsItf *opts) {
     opts->Register("must-contain-nonsilence", &must_contain_nonsilence,
                    "If true, for this endpointing rule to apply there must"
                    "be nonsilence in the best-path traceback.");
     opts->Register("min-trailing-silence", &min_trailing_silence,
                    "This endpointing rule requires duration of trailing silence"
-                   "to be >= this value.");
+                   "(in seconds) to be >= this value.");
     opts->Register("max-relative-cost", &max_relative_cost,
-                   "This endpointing rule requires relative-cost of final-states "
-                   "to be <= this value (describes how good the probability "
+                   "This endpointing rule requires relative-cost of final-states"
+                   " to be <= this value (describes how good the probability "
                    "of final-states is).");
     opts->Register("min-utterance-length", &min_utterance_length,
                    "This endpointing rule requires utterance-length (in seconds) "
@@ -147,7 +147,7 @@ struct OnlineEndpointConfig {
   /// rule5 times out after the utterance is 20 seconds long, regardless of
   /// anything else.
   OnlineEndpointRule rule5;
-  
+
   OnlineEndpointConfig():
       rule1(false, 5.0, std::numeric_limits<BaseFloat>::infinity(), 0.0),
       rule2(true, 0.5, 2.0, 0.0),
@@ -203,7 +203,7 @@ bool EndpointDetected(
     BaseFloat frame_shift_in_seconds,
     const LatticeFasterOnlineDecoder &decoder);
 
-  
+
 
 
 /// @} End of "addtogroup onlinedecoding"

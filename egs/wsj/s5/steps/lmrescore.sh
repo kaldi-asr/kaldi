@@ -4,6 +4,7 @@
 mode=4
 cmd=run.pl
 skip_scoring=false
+self_loop_scale=0.1
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -31,6 +32,10 @@ newlm=$newlang/G.fst
 [ ! -f $oldlm ] && echo Missing file $oldlm && exit 1;
 [ ! -f $newlm ] && echo Missing file $newlm && exit 1;
 ! ls $indir/lat.*.gz >/dev/null && echo "No lattices input directory $indir" && exit 1;
+
+if ! cmp -s $oldlang/words.txt $newlang/words.txt; then
+  echo "$0: $oldlang/words.txt and $newlang/words.txt differ: make sure you know what you are doing.";
+fi
 
 oldlmcommand="fstproject --project_output=true $oldlm |"
 newlmcommand="fstproject --project_output=true $newlm |"
@@ -75,7 +80,7 @@ case "$mode" in
       gzip -c \>$outdir/lat.JOB.gz || exit 1;
     ;;
   3) # 3 is "exact" in that we remove the old LM scores accepting any path
-     # through G.fst (which is what we want as that happened in lattice 
+     # through G.fst (which is what we want as that happened in lattice
      # generation), but we add the new one with "phi matcher", only taking
      # backoff arcs if an explicit arc did not exist.
     $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
@@ -100,7 +105,7 @@ case "$mode" in
       lattice-compose ark:- $outdir/Ldet.fst ark:- \| \
       lattice-determinize ark:- ark:- \| \
       lattice-compose --phi-label=$phi ark:- $newlm ark:- \| \
-      lattice-add-trans-probs --transition-scale=1.0 --self-loop-scale=0.1 \
+      lattice-add-trans-probs --transition-scale=1.0 --self-loop-scale=$self_loop_scale \
       $mdl ark:- ark:- \| \
       gzip -c \>$outdir/lat.JOB.gz  || exit 1;
     ;;

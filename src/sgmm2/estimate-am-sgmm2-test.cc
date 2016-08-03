@@ -58,7 +58,6 @@ void TestSgmm2AccsIO(const AmSgmm2 &sgmm,
   accs.CommitStatsForSpk(sgmm, empty);
 
   kaldi::MleAmSgmm2Options update_opts;
-  update_opts.check_v = (Rand()%2 == 0);
   AmSgmm2 *sgmm1 = new AmSgmm2();
   sgmm1->CopyFromSgmm2(sgmm, false, false);
   kaldi::MleAmSgmm2Updater updater(update_opts);
@@ -66,7 +65,7 @@ void TestSgmm2AccsIO(const AmSgmm2 &sgmm,
   sgmm1->ComputeDerivedVars();
   std::vector<int32> gselect;
   Sgmm2LikelihoodCache like_cache(sgmm.NumGroups(), sgmm.NumPdfs());
-  
+
   sgmm1->GaussianSelection(sgmm_config, feats.Row(0), &gselect);
   sgmm1->ComputePerFrameVars(feats.Row(0), gselect, empty, &frame_vars);
   BaseFloat loglike1 = sgmm1->LogLikelihood(frame_vars, 0, &like_cache, &empty);
@@ -119,7 +118,7 @@ void TestSgmm2AccsIO(const AmSgmm2 &sgmm,
   delete accs2;
   delete sgmm2;
   delete sgmm3;
-  
+
   unlink("tmpf");
   unlink("tmpfb");
 }
@@ -136,7 +135,7 @@ void UnitTestEstimateSgmm2() {
   pdf2group.push_back(0);
   sgmm.InitializeFromFullGmm(full_gmm, pdf2group, dim+1, dim, false, 0.9); // TODO-- make this true!
   sgmm.ComputeNormalizers();
-  
+
   kaldi::Matrix<BaseFloat> feats;
 
   {  // First, generate random means and variances

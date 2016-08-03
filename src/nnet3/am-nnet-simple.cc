@@ -50,6 +50,8 @@ void AmNnetSimple::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &left_context_);
   ExpectToken(is, binary, "<RightContext>");
   ReadBasicType(is, binary, &right_context_);
+  SetContext();  // temporarily, I'm not trusting the written ones (there was
+                 // briefly a bug)
   ExpectToken(is, binary, "<Priors>");
   priors_.Read(is, binary);
 }
@@ -67,7 +69,8 @@ void AmNnetSimple::SetNnet(const Nnet &nnet) {
 
 void AmNnetSimple::SetPriors(const VectorBase<BaseFloat> &priors) {
   priors_ = priors;
-  if (priors_.Dim() != nnet_.OutputDim("output")) {
+  if (priors_.Dim() != nnet_.OutputDim("output") &&
+      priors_.Dim() != 0) {
     KALDI_ERR << "Dimension mismatch when setting priors: priors have dim "
               << priors.Dim() << ", model expects "
               << nnet_.OutputDim("output");
@@ -87,7 +90,7 @@ std::string AmNnetSimple::Info() const {
     ostr << "prior-min: " << priors_.Min() << "\n";
     ostr << "prior-max: " << priors_.Max() << "\n";
   }
-  ostr << "# Nnet info follows.\n" << "\n";
+  ostr << "# Nnet info follows.\n";
   return ostr.str() + nnet_.Info();
 }
 

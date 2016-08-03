@@ -33,10 +33,21 @@ for decode_set in dev eval; do
   steps/lmrescore_rnnlm_lat.sh \
     --rnnlm-ver cuedrnnlm \
     --layer-string "10002 200 10002" \
-    --weight 0.5 --cmd "$decode_cmd --mem 16G" --max-ngram-order 3 \
-    data/$mic/cued_rnn_vr data/lang_$LM \
+    --weight 0.5 --cmd "$decode_cmd --mem 16G" --max-ngram-order 4 \
+    data/lang_$LM data/$mic/cued_rnn_vr \
     data/$mic/${decode_set}_hires ${decode_dir} \
-    ${decode_dir}.rnnlm.vr.cued.lat || exit 1;
+    ${decode_dir}.rnnlm.vr.cued.lat.4gram || exit 1;
+  ) &
+
+  (
+  # Lattice rescoring
+  steps/lmrescore_rnnlm_lat.sh \
+    --rnnlm-ver cuedrnnlm \
+    --layer-string "10002 200 10002" \
+    --weight 0.5 --cmd "$decode_cmd --mem 16G" --max-ngram-order 5 \
+    data/lang_$LM data/$mic/cued_rnn_vr \
+    data/$mic/${decode_set}_hires ${decode_dir} \
+    ${decode_dir}.rnnlm.vr.cued.lat.5gram || exit 1;
   ) &
 
   continue

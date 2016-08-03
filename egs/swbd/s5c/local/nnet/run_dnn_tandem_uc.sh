@@ -78,7 +78,7 @@ if [ $stage -le 4 ]; then
   nnet-initialize <(echo "<Splice> <InputDim> 80 <OutputDim> 1040 <BuildVector> -10 -5:5 10 </BuildVector>") \
     $dir/splice_for_bottleneck.nnet 
   # Concatanate the input-transform, 1stage network, splicing,
-  nnet-concat $dir/final.feature_transform "nnet-copy --remove-last-layers=4 $dir/final.nnet - |" \
+  nnet-concat $dir/final.feature_transform "nnet-copy --remove-last-components=4 $dir/final.nnet - |" \
     $dir/splice_for_bottleneck.nnet $feature_transform
   
   # Train 2nd network, overall context +/-15 frames,
@@ -109,7 +109,7 @@ if [ $stage -le 6 ]; then
   # eval2000,
   steps/nnet/make_bn_feats.sh --cmd "$train_cmd" --nj 20 $dev_bn $dev $nnet $dev_bn/log $dev_bn/data
   # trainig,
-  steps/nnet/make_bn_feats.sh --cmd "$train_cmd -tc 50" --nj 200 $train_bn $train $nnet $train_bn/log $train_bn/data
+  steps/nnet/make_bn_feats.sh --cmd "$train_cmd --max-jobs-run 50" --nj 200 $train_bn $train $nnet $train_bn/log $train_bn/data
   # For further GMM training, we have to produce cmvn statistics even if not used!!!
   steps/compute_cmvn_stats.sh $dev_bn $dev_bn/log $dev_bn/data
   steps/compute_cmvn_stats.sh $train_bn $train_bn/log $train_bn/data

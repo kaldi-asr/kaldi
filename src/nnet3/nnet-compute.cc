@@ -150,12 +150,14 @@ void NnetComputer::ExecuteCommand(int32 command) {
       case kAllocMatrixZeroed:
         matrices_[c.arg1].Resize(computation_.matrices[c.arg1].num_rows,
                                  computation_.matrices[c.arg1].num_cols,
-                                 kSetZero);
+                                 kSetZero,
+                                 computation_.matrices[c.arg1].stride_type);
         break;
       case kAllocMatrixUndefined:
         matrices_[c.arg1].Resize(computation_.matrices[c.arg1].num_rows,
                                  computation_.matrices[c.arg1].num_cols,
-                                 kUndefined);
+                                 kUndefined,
+                                 computation_.matrices[c.arg1].stride_type);
         break;
       case kDeallocMatrix:
         matrices_[c.arg1].Resize(0, 0);
@@ -383,22 +385,31 @@ void NnetComputer::Backward() {
 }
 
 void NnetComputer::AcceptInput(const std::string &input_name,
-                             CuMatrix<BaseFloat> *input) {
+                               CuMatrix<BaseFloat> *input) {
   bool is_output = false, is_deriv = false;
   int32 matrix_index = GetMatrixIndex(input_name, is_output, is_deriv);
-
   KALDI_ASSERT(static_cast<size_t>(matrix_index) < matrices_.size());
-  if (input->NumRows() != computation_.matrices[matrix_index].num_rows)
+  const NnetComputation::MatrixInfo &matrix_info =
+      computation_.matrices[matrix_index];
+  if (input->NumRows() != matrix_info.num_rows)
     KALDI_ERR << "Num-rows mismatch for input '" << input_name
-              << "': " << computation_.matrices[matrix_index].num_rows
+              << "': " << matrix_info.num_rows
               <<  " in computation-request, " << input->NumRows()
               << " provided.";
-  if (input->NumCols() != computation_.matrices[matrix_index].num_cols)
+  if (input->NumCols() != matrix_info.num_cols)
     KALDI_ERR << "Num-cols mismatch for input '" << input_name
-              << "': " << computation_.matrices[matrix_index].num_cols
+              << "': " << matrix_info.num_cols
               <<  " in computation-request, " << input->NumCols()
               << " provided.";
-  matrices_[matrix_index].Swap(input);
+  if (matrix_info.stride_type == kDefaultStride ||
+      input->Stride() == input->NumCols()) {
+    matrices_[matrix_index].Swap(input);
+  } else {
+    matrices_[matrix_index].Resize(matrix_info.num_rows,
+                                   matrix_info.num_cols,
+                                   kUndefined, kStrideEqualNumCols);
+    matrices_[matrix_index].CopyFromMat(*input);
+  }
   input->Resize(0, 0);
 }
 
@@ -438,17 +449,27 @@ void NnetComputer::AcceptOutputDeriv(const std::string &output_name,
   bool is_output = true, is_deriv = true;
   int32 matrix_index = GetMatrixIndex(output_name, is_output, is_deriv);
   KALDI_ASSERT(static_cast<size_t>(matrix_index) < matrices_.size());
-  if (output_deriv->NumRows() != computation_.matrices[matrix_index].num_rows)
+  const NnetComputation::MatrixInfo &matrix_info =
+      computation_.matrices[matrix_index];
+  if (output_deriv->NumRows() != matrix_info.num_rows)
     KALDI_ERR << "Num-rows mismatch for output-deriv '" << output_name
-              << "': " << computation_.matrices[matrix_index].num_rows
+              << "': " << matrix_info.num_rows
               <<  " in computation-request, " << output_deriv->NumRows()
               << " provided.";
-  if (output_deriv->NumCols() != computation_.matrices[matrix_index].num_cols)
+  if (output_deriv->NumCols() != matrix_info.num_cols)
     KALDI_ERR << "Num-cols mismatch for output_deriv '" << output_name
-              << "': " << computation_.matrices[matrix_index].num_cols
+              << "': " << matrix_info.num_cols
               <<  " in computation-request, " << output_deriv->NumCols()
               << " provided.";
-  matrices_[matrix_index].Swap(output_deriv);
+  if (matrix_info.stride_type == kDefaultStride ||
+      output_deriv->Stride() == output_deriv->NumCols()) {
+    matrices_[matrix_index].Swap(output_deriv);
+  } else {
+    matrices_[matrix_index].Resize(matrix_info.num_rows,
+                                   matrix_info.num_cols,
+                                   kUndefined, kStrideEqualNumCols);
+    matrices_[matrix_index].CopyFromMat(*output_deriv);
+  }
   output_deriv->Resize(0, 0);
 }
 
@@ -513,9 +534,9 @@ void NnetComputer::CheckInputs(bool check_output_deriv) const {
 }
 
 void NnetComputer::AcceptInputs(const Nnet &nnet,
-                                const NnetExample &example) {
-  for (size_t i = 0; i < example.io.size(); i++) {
-    const NnetIo &io = example.io[i];
+                                const std::vector<NnetIo> &io_vec) {
+  for (size_t i = 0; i < io_vec.size(); i++) {
+    const NnetIo &io = io_vec[i];
     int32 node_index = nnet.GetNodeIndex(io.name);
     if (node_index == -1)
       KALDI_ERR << "No node named '" << io.name << "' in nnet.";

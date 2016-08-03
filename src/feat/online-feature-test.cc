@@ -172,6 +172,8 @@ void TestOnlineMfcc() {
   op.mel_opts.low_freq = 0.0;
   op.htk_compat = false;
   op.use_energy = false;  // C0 not energy.
+  if (RandInt(0, 1) == 0)
+    op.frame_opts.snip_edges = false;
   Mfcc mfcc(op);
 
   // compute mfcc offline

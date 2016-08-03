@@ -1,11 +1,12 @@
 #!/bin/bash
 
 # script showing use of nnet3_to_dot.py
-# Copyright 2015  Johns Hopkins University (Author: Vijayaditya Peddinti). 
+# Copyright 2015  Johns Hopkins University (Author: Vijayaditya Peddinti).
 
 # Begin configuration section.
 component_attributes="name,type"
 node_prefixes=""
+info_bin=nnet3-am-info
 echo "$0 $@"  # Print the command line for logging
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
@@ -20,7 +21,7 @@ if [ $# != 3 ]; then
   echo "  --node-prefixes <string|Lstm1,Lstm2>          # list of prefixes. Nnet3 components/component-nodes with the same prefix"
   echo "                                                # will be clustered together in the dot-graph"
 
-  
+
   exit 1;
 fi
 
@@ -29,10 +30,10 @@ dot_file=$2
 output_file=$3
 
 attr=${node_prefixes:+ --node-prefixes "$node_prefixes"}
-nnet3-am-info $model | \
+$info_bin $model | \
   steps/nnet3/dot/nnet3_to_dot.py \
     --component-attributes "$component_attributes" \
-    $attr  > $dot_file
+    $attr $dot_file
 
 command -v dot >/dev/null 2>&1 || { echo >&2 "This script requires dot but it's not installed. Please compile $dot_file with dot"; exit 1; }
-dot -Tpng $dot_file -o $output_file
+dot -Tpdf $dot_file -o $output_file
