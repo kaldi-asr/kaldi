@@ -31,7 +31,7 @@ NnetOnlineComputer::NnetOnlineComputer(const Nnet &nnet, bool pad_input)
   data_.resize(nnet_.NumComponents() + 1);
   reusable_component_inputs_.resize(nnet_.NumComponents()+1);
 }
-void NnetOnlineComputer::getLastSeenInputFrameLength() {
+int NnetOnlineComputer::getLastSeenInputFrameLength() {
     return last_seen_input_frame_.Dim();
 }
 void NnetOnlineComputer::Compute(const CuMatrixBase<BaseFloat> &input,
