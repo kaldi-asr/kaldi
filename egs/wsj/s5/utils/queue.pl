@@ -474,7 +474,7 @@ if (! $sync) { # We're not submitting with -sync y, so we
           # updated, even though the file exists on the server.
           # Only do this every 10 waits (every 30 seconds) though, or if there
           # are many jobs waiting they can overwhelm the file server.
-          system("ls $qdir >/dev/null");
+          system("ls $qdir/sync >/dev/null");
         }
       }
 
