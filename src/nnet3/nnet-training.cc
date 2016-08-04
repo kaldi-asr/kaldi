@@ -75,6 +75,7 @@ void NnetTrainer::Train(const NnetExample &eg) {
   computer.Backward();
 
   if (delta_nnet_ != NULL) {
+    ApplyMaxChangePerComponent(GetMinibatchSize(eg), delta_nnet_);
     BaseFloat scale = (1.0 - config_.momentum);
     if (config_.max_param_change != 0.0) {
       BaseFloat param_delta =

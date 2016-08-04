@@ -145,6 +145,9 @@ void ScaleNnetComponents(const Vector<BaseFloat> &scales,
 /// stored stats).
 void AddNnet(const Nnet &src, BaseFloat alpha, Nnet *dest);
 
+/// Applies max-change per component on all updatable components in delta_nnet,
+void ApplyMaxChangePerComponent(int32 minibatch_size, Nnet *delta_nnet);
+
 /// Returns the total of the number of parameters in the updatable components of
 /// the nnet.
 int32 NumParameters(const Nnet &src);

@@ -408,6 +408,9 @@ class UpdatableComponent: public Component {
   /// a different value than x will returned.
   BaseFloat LearningRate() const { return learning_rate_; }
 
+  /// Applies max-change per minibatch.
+  virtual void ApplyMaxChangePerMinibatch(int32 minibatch_size) { }
+
   virtual std::string Info() const;
 
   /// The following new virtual function returns the total dimension of
