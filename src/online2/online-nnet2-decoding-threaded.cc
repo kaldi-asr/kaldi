@@ -575,8 +575,8 @@ bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
         last_time = true;
         if (computer.getLastSeenInputFrameLength() != 0){
             computer.Flush(&cu_loglikes);
-            ProcessLoglikes(log_inv_prior, &cu_loglikes);
         }
+        ProcessLoglikes(log_inv_prior, &cu_loglikes);
         else {
             //KALDI_LOG << "WARNING\n";
         }
