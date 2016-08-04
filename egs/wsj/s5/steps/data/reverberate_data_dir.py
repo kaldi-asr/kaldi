@@ -162,7 +162,6 @@ def FilterIsotropicNoiseList(iso_noise_list, room_id):
     for noise in iso_noise_list:
         if noise.room_linkage == room_id:
             filtered_list.append(noise)
-            break
 
     return filtered_list
 
@@ -488,7 +487,8 @@ def Main():
     args = GetArgs()
     random.seed(args.random_seed)
     rir_list = ParseRirList(args.rir_list_file)
-    noise_list = []
+    pointsource_noise_list = []
+    iso_noise_list = []
     if args.noise_list_file is not None:
         pointsource_noise_list, iso_noise_list = ParseNoiseList(args.noise_list_file)
         print("Number of point-source noises is {0}".format(len(pointsource_noise_list)))
