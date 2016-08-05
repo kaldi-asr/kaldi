@@ -9,180 +9,184 @@
 # The data is distributed under 'Creative Commons BY-NC-ND 3.0' license,
 # which allow free non-commercial use, while only a citation is required.
 #
-# Copyright  2014 Nickolay V. Shmyrev
-#            2014 Brno University of Technology (Author: Karel Vesely)
+# Copyright  2014  Nickolay V. Shmyrev
+#            2014  Brno University of Technology (Author: Karel Vesely)
+#            2016  Vincent Nguyen
+#            2016  Johns Hopkins University (Author: Daniel Povey)
+#
 # Apache 2.0
 #
-
-# TODO : use pruned trigram?
 
 . cmd.sh
 . path.sh
 
-nj=40
-decode_nj=8
 
+set -e -o pipefail -u
+
+nj=35
+decode_nj=30   # note: should not be >38 which is the number of speakers in the dev set
+               # after applying --seconds-per-spk-max 180.  We decode with 4 threads, so
+               # this will be too many jobs if you're using run.pl.
 stage=0
+
 . utils/parse_options.sh # accept options
 
 # Data preparation
 if [ $stage -le 0 ]; then
-  local/download_data.sh || exit 1
-
-  local/prepare_data.sh || exit 1
-
-  local/prepare_dict.sh || exit 1
-
-  utils/prepare_lang.sh data/local/dict_nosp \
-    "<unk>" data/local/lang_nosp data/lang_nosp || exit 1
-
-# Here needs to be inserted ted_train_lm.sh
-
-  local/prepare_lm.sh || exit 1
-
+  local/download_data.sh
 fi
 
-# Feature extraction
-
 if [ $stage -le 1 ]; then
-  for set in test dev train; do
-    dir=data/$set
-    steps/make_mfcc.sh --nj 20 --cmd "$train_cmd" $dir $dir/log $dir/data || exit 1
-    steps/compute_cmvn_stats.sh $dir $dir/log $dir/data || exit 1
+  local/prepare_data.sh
+  # Split speakers up into 3-minute chunks.  This doesn't hurt adaptation, and
+  # lets us use more jobs for decoding etc.
+  # [we chose 3 minutes because that gives us 38 speakers for the dev data, which is
+  #  more than our normal 30 jobs.]
+  for dset in dev test train; do
+    utils/data/modify_speaker_info.sh --seconds-per-spk-max 180 data/${dset}.orig data/${dset}
   done
 fi
 
-# Now we have 207 hours of training data.
-# Let's create a subset with 10k short segments to make flat-start training easier:
 if [ $stage -le 2 ]; then
-  utils/subset_data_dir.sh --shortest data/train 10000 data/train_10kshort || exit 1
-  local/remove_dup_utts.sh 10 data/train_10kshort data/train_10kshort_nodup || exit 1
+  local/prepare_dict.sh
 fi
 
-# Train
 if [ $stage -le 3 ]; then
-  steps/train_mono.sh --nj 20 --cmd "$train_cmd" \
-    data/train_10kshort_nodup data/lang_nosp exp/mono0a || exit 1
-
-  steps/align_si.sh --nj $nj --cmd "$train_cmd" \
-    data/train data/lang_nosp exp/mono0a exp/mono0a_ali || exit 1
-
-  steps/train_deltas.sh --cmd "$train_cmd" \
-    2500 30000 data/train data/lang_nosp exp/mono0a_ali exp/tri1 || exit 1
-
-  utils/mkgraph.sh data/lang_nosp_test exp/tri1 exp/tri1/graph_nosp || exit 1
-
-  steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
-    --num-threads 4 \
-    exp/tri1/graph_nosp data/dev exp/tri1/decode_nosp_dev || exit 1
-  steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
-    --num-threads 4 \
-    exp/tri1/graph_nosp data/test exp/tri1/decode_nosp_test || exit 1
+  utils/prepare_lang.sh data/local/dict_nosp \
+    "<unk>" data/local/lang_nosp data/lang_nosp
 fi
 
 if [ $stage -le 4 ]; then
-  steps/align_si.sh --nj $nj --cmd "$train_cmd" \
-    data/train data/lang_nosp exp/tri1 exp/tri1_ali || exit 1
-
-  steps/train_lda_mllt.sh --cmd "$train_cmd" \
-    4000 50000 data/train data/lang_nosp exp/tri1_ali exp/tri2 || exit 1
-
-  utils/mkgraph.sh data/lang_nosp_test exp/tri2 exp/tri2/graph_nosp || exit 1
-
-  steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
-    --num-threads 4 \
-    exp/tri2/graph_nosp data/dev exp/tri2/decode_nosp_dev || exit 1
-  steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
-    --num-threads 4 \
-    exp/tri2/graph_nosp data/test exp/tri2/decode_nosp_test || exit 1
+  # later on we'll change this script so you have the option to
+  # download the pre-built LMs from openslr.org instead of building them
+  # locally.
+  local/ted_train_lm.sh
 fi
 
 if [ $stage -le 5 ]; then
+  local/format_lms.sh
+fi
+
+# Feature extraction
+if [ $stage -le 6 ]; then
+  for set in test dev train; do
+    dir=data/$set
+    steps/make_mfcc.sh --nj 30 --cmd "$train_cmd" $dir
+    steps/compute_cmvn_stats.sh $dir
+  done
+fi
+
+# Now we have 212 hours of training data.
+# Well create a subset with 10k short segments to make flat-start training easier:
+if [ $stage -le 7 ]; then
+  utils/subset_data_dir.sh --shortest data/train 10000 data/train_10kshort
+  utils/data/remove_dup_utts.sh 10 data/train_10kshort data/train_10kshort_nodup
+fi
+
+# Train
+if [ $stage -le 8 ]; then
+  steps/train_mono.sh --nj 20 --cmd "$train_cmd" \
+    data/train_10kshort_nodup data/lang_nosp exp/mono
+fi
+
+if [ $stage -le 9 ]; then
+  steps/align_si.sh --nj $nj --cmd "$train_cmd" \
+    data/train data/lang_nosp exp/mono exp/mono_ali
+  steps/train_deltas.sh --cmd "$train_cmd" \
+    2500 30000 data/train data/lang_nosp exp/mono_ali exp/tri1
+fi
+
+if [ $stage -le 10 ]; then
+  utils/mkgraph.sh data/lang_nosp exp/tri1 exp/tri1/graph_nosp
+
+  # The slowest part about this decoding is the scoring, which we can't really
+  # control as the bottleneck is the NIST tools.
+  for dset in dev test; do
+    steps/decode.sh --nj $decode_nj --cmd "$decode_cmd"  --num-threads 4 \
+      exp/tri1/graph_nosp data/${dset} exp/tri1/decode_nosp_${dset}
+    steps/lmrescore_const_arpa.sh  --cmd "$decode_cmd" data/lang_nosp data/lang_nosp_rescore \
+       data/${dset} exp/tri1/decode_nosp_${dset} exp/tri1/decode_nosp_${dset}_rescore
+  done
+fi
+
+if [ $stage -le 11 ]; then
+  steps/align_si.sh --nj $nj --cmd "$train_cmd" \
+    data/train data/lang_nosp exp/tri1 exp/tri1_ali
+
+  steps/train_lda_mllt.sh --cmd "$train_cmd" \
+    4000 50000 data/train data/lang_nosp exp/tri1_ali exp/tri2
+fi
+
+if [ $stage -le 12 ]; then
+  utils/mkgraph.sh data/lang_nosp exp/tri2 exp/tri2/graph_nosp
+  for dset in dev test; do
+    steps/decode.sh --nj $decode_nj --cmd "$decode_cmd"  --num-threads 4 \
+      exp/tri2/graph_nosp data/${dset} exp/tri2/decode_nosp_${dset}
+    steps/lmrescore_const_arpa.sh  --cmd "$decode_cmd" data/lang_nosp data/lang_nosp_rescore \
+       data/${dset} exp/tri2/decode_nosp_${dset} exp/tri2/decode_nosp_${dset}_rescore
+  done
+fi
+
+if [ $stage -le 13 ]; then
   steps/get_prons.sh --cmd "$train_cmd" data/train data/lang_nosp exp/tri2
   utils/dict_dir_add_pronprobs.sh --max-normalize true \
     data/local/dict_nosp exp/tri2/pron_counts_nowb.txt \
     exp/tri2/sil_counts_nowb.txt \
     exp/tri2/pron_bigram_counts_nowb.txt data/local/dict
+fi
 
+if [ $stage -le 14 ]; then
   utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
-  cp -rT data/lang data/lang_test
   cp -rT data/lang data/lang_rescore
-  cp data/lang_nosp_test/G.fst data/lang_test
-  cp data/lang_nosp_rescore/G.carpa data/lang_rescore
+  cp data/lang_nosp/G.fst data/lang/
+  cp data/lang_nosp_rescore/G.carpa data/lang_rescore/
 
-  utils/mkgraph.sh data/lang_test exp/tri2 exp/tri2/graph || exit 1
+  utils/mkgraph.sh data/lang exp/tri2 exp/tri2/graph
 
-  steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
-    --num-threads 4 \
-    exp/tri2/graph data/dev exp/tri2/decode_dev || exit 1
-  steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
-    --num-threads 4 \
-    exp/tri2/graph data/test exp/tri2/decode_test || exit 1
-fi
-
-if [ $stage -le 6 ]; then
-  steps/align_si.sh --nj $nj --cmd "$train_cmd" \
-    data/train data/lang exp/tri2 exp/tri2_ali || exit 1
-
-  steps/train_sat.sh --cmd "$train_cmd" \
-    5000 100000 data/train data/lang exp/tri2_ali exp/tri3 || exit 1
-
-  utils/mkgraph.sh data/lang_test exp/tri3 exp/tri3/graph || exit 1
-
-  steps/decode_fmllr.sh --nj $decode_nj --cmd "$decode_cmd" \
-    --num-threads 4 \
-    exp/tri3/graph data/dev exp/tri3/decode_dev || exit 1
-  steps/decode_fmllr.sh --nj $decode_nj --cmd "$decode_cmd" \
-    --num-threads 4 \
-    exp/tri3/graph data/test exp/tri3/decode_test || exit 1
-fi
-
-# steps/cleanup/debug_lexicon.sh --nj 100 --alidir exp/tri3 --cmd "$train_cmd" data/train data/lang exp/tri3 data/local/dict/lexicon.txt exp/tri3_debug_lexicon &
-
-if [ $stage -le 7 ]; then
-  steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
-    data/train data/lang exp/tri3 exp/tri3_ali || exit 1
-
-  steps/make_denlats.sh --transform-dir exp/tri3_ali --nj $nj --cmd "$decode_cmd" \
-    data/train data/lang exp/tri3 exp/tri3_denlats || exit 1
-
-  steps/train_mmi.sh --cmd "$train_cmd" --boost 0.1 \
-    data/train data/lang exp/tri3_ali exp/tri3_denlats \
-    exp/tri3_mmi_b0.1 || exit 1
-
-  for iter in 4; do
-  steps/decode.sh --transform-dir exp/tri3/decode_dev --nj $decode_nj --cmd "$decode_cmd" --iter $iter \
-    --num-threads 4 \
-    exp/tri3/graph data/dev exp/tri3_mmi_b0.1/decode_dev_it$iter || exit 1
-  steps/decode.sh --transform-dir exp/tri3/decode_test --nj $decode_nj --cmd "$decode_cmd" --iter $iter \
-    --num-threads 4 \
-    exp/tri3/graph data/test exp/tri3_mmi_b0.1/decode_test_it$iter || exit 1
+  for dset in dev test; do
+    steps/decode.sh --nj $decode_nj --cmd "$decode_cmd"  --num-threads 4 \
+      exp/tri2/graph data/${dset} exp/tri2/decode_${dset}
+    steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" data/lang data/lang_rescore \
+       data/${dset} exp/tri2/decode_${dset} exp/tri2/decode_${dset}_rescore
   done
 fi
 
+if [ $stage -le 15 ]; then
+  steps/align_si.sh --nj $nj --cmd "$train_cmd" \
+    data/train data/lang exp/tri2 exp/tri2_ali
 
-# Run the DNN recipe on fMLLR feats:
-# local/nnet/run_dnn.sh || exit 1
-# for decode_dir in "exp/dnn4_pretrain-dbn_dnn/decode_test" "exp/dnn4_pretrain-dbn_dnn_smbr_i1lats/decode_test_it4"; do
-#  steps/lmrescore_const_arpa.sh data/lang_test data/lang_rescore data/test $decode_dir $decode_dir.rescore
-# done
-# DNN recipe with bottle-neck features
-# local/nnet/run_dnn_bn.sh
-# Rescore with 4-gram LM:
-# decode_dir=exp/dnn8f_BN_pretrain-dbn_dnn_smbr/decode_test_it4
-# steps/lmrescore_const_arpa.sh data/lang_test data/lang_rescore data/test $decode_dir $decode_dir.rescore || exit 1
+  steps/train_sat.sh --cmd "$train_cmd" \
+    5000 100000 data/train data/lang exp/tri2_ali exp/tri3
 
-# Nnet2 multisplice recipe
-# local/online/run_nnet2_ms_perturbed.sh || exit 1;
-# Run discriminative training on the top of multisplice recipe
-# local/online/run_nnet2_ms_disc.sh || exit 1;
+  utils/mkgraph.sh data/lang exp/tri3 exp/tri3/graph
+
+  for dset in dev test; do
+    steps/decode_fmllr.sh --nj $decode_nj --cmd "$decode_cmd"  --num-threads 4 \
+      exp/tri3/graph data/${dset} exp/tri3/decode_${dset}
+    steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" data/lang data/lang_rescore \
+       data/${dset} exp/tri3/decode_${dset} exp/tri3/decode_${dset}_rescore
+  done
+fi
+
+if [ $stage -le 16 ]; then
+  # this does some data-cleaning.  It actually degrades the GMM-level results
+  # slightly, but the cleaned data should be useful when we add the neural net and chain
+  # systems.  If not we'll remove this stage.
+  local/run_cleanup_segmentation.sh
+fi
+
+# We removed the GMM+MMI stage that used to exist in the release-1 scripts,
+# since the neural net training is more of interest.
+
+# steps/cleanup/debug_lexicon.sh --nj 100 --alidir exp/tri3 --cmd "$train_cmd" data/train data/lang exp/tri3 data/local/dict/lexicon.txt exp/tri3_debug_lexicon &
+
 
 # Nnet3 TDNN recipe
 # local/nnet3/run_tdnn.sh
 # local/nnet3/run_tdnn_discriminative.sh
 
-local/chain/run_tdnn.sh
+# local/chain/run_tdnn.sh
 
 
-echo success...
+echo "$0: success."
 exit 0
