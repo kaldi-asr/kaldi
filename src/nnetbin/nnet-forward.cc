@@ -62,10 +62,6 @@ int main(int argc, char *argv[]) {
     using namespace kaldi::nnet1;
     typedef kaldi::int32 int32;
 
-    int32 time_shift = 0;
-    po.Register("time-shift", &time_shift,
-        "LSTM : repeat last input frame N-times, discrad N initial output frames.");
-
     po.Read(argc, argv);
 
     if (po.NumArgs() != 3) {
@@ -142,15 +138,6 @@ int main(int argc, char *argv[]) {
         KALDI_ERR << "NaN or inf found in features for " << utt;
       }
 
-      // time-shift, copy the last frame of LSTM input N-times,
-      if (time_shift > 0) {
-        int32 last_row = mat.NumRows() - 1;  // last row,
-        mat.Resize(mat.NumRows() + time_shift, mat.NumCols(), kCopyData);
-        for (int32 r = last_row+1; r < mat.NumRows(); r++) {
-          mat.CopyRowFromVec(mat.Row(last_row), r);  // copy last row,
-        }
-      }
-
       // push it to gpu,
       feats = mat;
 
@@ -183,12 +170,6 @@ int main(int argc, char *argv[]) {
 
       // download from GPU,
       nnet_out_host = Matrix<BaseFloat>(nnet_out);
-
-      // time-shift, remove N first frames of LSTM output,
-      if (time_shift > 0) {
-        Matrix<BaseFloat> tmp(nnet_out_host);
-        nnet_out_host = tmp.RowRange(time_shift, tmp.NumRows() - time_shift);
-      }
 
       // write,
       if (!KALDI_ISFINITE(nnet_out_host.Sum())) {  // check there's no nan/inf,
