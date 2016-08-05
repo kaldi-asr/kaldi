@@ -275,21 +275,11 @@ def OutputCtm(utterance_id, edits_array, ctm_array):
 def ProcessOneUtterance(utterance_id, edits_line, ctm_lines):
     try:
         # Remove the utterance-id from the beginning of the edits line
-        edits_fields = edits_line[len(utterance_id) + 1:]
+        edits_line = edits_line[len(utterance_id) + 1:]
 
-        # e.g. if edits_fields is now 'i i ; see be ; my my ', edits_array will become
+        # e.g. if edits_line is now 'i i ; see be ; my my ', edits_array will become
         #  [ ['i', 'i'], ['see', 'be'], ['my', 'my'] ]
-        edits_array = [ x.split() for x in edits_fields.split(";") ]
-        # The lines below are a fix for when we get empty transcripts and reference, hence
-        # just whitespace in 'edits_fields'.
-        if edits_array == [[]]:
-            edits_array =  []
-        try:
-            for x in edits_array:
-                assert len(x) == 2
-        except:
-            sys.exit("get_ctm_edits.py: could not make sense of edits line: " + edits_line)
-
+        edits_array = [ x.split() for x in edits_line.split(";") ]
         # ctm_array will now become something like [ ['1', '1.010', '0.240', 'little ' ], ... ]
         ctm_array = [ x.split() for x in ctm_lines ]
         ctm_array = []

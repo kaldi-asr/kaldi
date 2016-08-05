@@ -169,6 +169,7 @@ for uniq in sorted(uniq2orig_uniq.keys()):
 fi
 
 # note: the user will have to recompute the cmvn, as the speakers may have changed.
+rm $dir/cmvn.scp 2>/dev/null || true
 
 utils/validate_data_dir.sh --no-wav $dir
 
