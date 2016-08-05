@@ -234,7 +234,7 @@ if [ -f $data/cmvn.scp ]; then
   cat $data/cmvn.scp | awk '{print $1}' > $tmpdir/speakers.cmvn
   cat $data/spk2utt | awk '{print $1}' > $tmpdir/speakers
   if ! cmp -s $tmpdir/speakers{,.cmvn}; then
-    echo "$0: Error: in $data, speaker lists extracted from spkutt and cmvn"
+    echo "$0: Error: in $data, speaker lists extracted from spk2utt and cmvn"
     echo "$0: differ, partial diff is:"
     partial_diff $tmpdir/speakers{,.cmvn}
     exit 1;
@@ -302,7 +302,7 @@ if [ -f $data/utt2dur ]; then
   if ! cmp -s $tmpdir/utts{,.utt2dur}; then
     echo "$0: Error: in $data, utterance-ids extracted from utt2spk and utt2dur file"
     echo "$0: differ, partial diff is:"
-    partial_diff $tmpdir/utts{,.feats}
+    partial_diff $tmpdir/utts{,.utt2dur}
     exit 1;
   fi
   cat $data/utt2dur | \

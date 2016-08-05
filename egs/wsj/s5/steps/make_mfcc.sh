@@ -10,6 +10,7 @@ nj=4
 cmd=run.pl
 mfcc_config=conf/mfcc.conf
 compress=true
+write_utt2num_frames=false  # if true writes utt2num_frames
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -25,6 +26,7 @@ if [ $# -lt 1 ] || [ $# -gt 3 ]; then
    echo "  --mfcc-config <config-file>                      # config passed to compute-mfcc-feats "
    echo "  --nj <nj>                                        # number of parallel jobs"
    echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
+   echo "  --write-utt2num-frames <true|false>     # If true, write utt2num_frames file."
    exit 1;
 fi
 
@@ -82,6 +84,13 @@ for n in $(seq $nj); do
 done
 
 
+if $write_utt2num_frames; then
+  write_num_frames_opt="--write-num-frames=ark,t:$logdir/utt2num_frames.JOB"
+else
+  write_num_frames_opt=
+fi
+
+
 if [ -f $data/segments ]; then
   echo "$0 [info]: segments file exists: using that."
 
@@ -96,7 +105,7 @@ if [ -f $data/segments ]; then
   $cmd JOB=1:$nj $logdir/make_mfcc_${name}.JOB.log \
     extract-segments scp,p:$scp $logdir/segments.JOB ark:- \| \
     compute-mfcc-feats $vtln_opts --verbose=2 --config=$mfcc_config ark:- ark:- \| \
-    copy-feats --compress=$compress ark:- \
+    copy-feats --compress=$compress $write_num_frames_opt ark:- \
       ark,scp:$mfccdir/raw_mfcc_$name.JOB.ark,$mfccdir/raw_mfcc_$name.JOB.scp \
      || exit 1;
 
@@ -116,7 +125,7 @@ else
   $cmd JOB=1:$nj $logdir/make_mfcc_${name}.JOB.log \
     compute-mfcc-feats  $vtln_opts --verbose=2 --config=$mfcc_config \
      scp,p:$logdir/wav_${name}.JOB.scp ark:- \| \
-      copy-feats --compress=$compress ark:- \
+      copy-feats $write_num_frames_opt --compress=$compress ark:- \
       ark,scp:$mfccdir/raw_mfcc_$name.JOB.ark,$mfccdir/raw_mfcc_$name.JOB.scp \
       || exit 1;
 fi
@@ -131,7 +140,14 @@ fi
 # concatenate the .scp files together.
 for n in $(seq $nj); do
   cat $mfccdir/raw_mfcc_$name.$n.scp || exit 1;
-done > $data/feats.scp
+done > $data/feats.scp || exit 1
+
+if $write_utt2num_frames; then
+  for n in $(seq $nj); do
+    cat $logdir/utt2num_frames.$n || exit 1;
+  done > $data/utt2num_frames || exit 1
+  rm $logdir/uttnum_frames.*
+fi
 
 rm $logdir/wav_${name}.*.scp  $logdir/segments.* 2>/dev/null
 
