@@ -116,10 +116,10 @@ utils/subset_data_dir.sh data/train_100kshort 30000 data/train_30kshort
 # Take the first 100k utterances (about half the data); we'll use
 # this for later stages of training.
 utils/subset_data_dir.sh --first data/train_nodev 100000 data/train_100k
-local/remove_dup_utts.sh 200 data/train_100k data/train_100k_nodup  # 147hr 6min
+utils/data/remove_dup_utts.sh 200 data/train_100k data/train_100k_nodup  # 147hr 6min
 
 # Finally, the full training set:
-local/remove_dup_utts.sh 300 data/train_nodev data/train_nodup  # 233hr 36min
+utils/data/remove_dup_utts.sh 300 data/train_nodev data/train_nodup  # 233hr 36min
 
 ## Starting basic training on MFCC features
 steps/train_mono.sh --nj 10 --cmd "$train_cmd" \
