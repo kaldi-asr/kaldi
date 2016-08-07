@@ -54,8 +54,15 @@ name=`basename $data`
 
 # get list of source scp's for pasting
 data_src_args=
+cmvn_src_args=
+create_cmvn_scp=true
+
 for data_src in ${data_src_arr[@]}; do
   data_src_args="$data_src_args scp:$data_src/split$nj/JOB/feats.scp"
+  if [ ! -f $data_src/cmvn.scp ]; then
+    create_cmvn_scp=false
+  fi
+  cmvn_src_args="$cmvn_src_args scp:$data_src/cmvn.scp"
 done
 
 for n in $(seq $nj); do
@@ -69,11 +76,15 @@ $cmd JOB=1:$nj $logdir/append.JOB.log \
    copy-feats --compress=$compress ark:- \
     ark,scp:$ark_dir/pasted_$name.JOB.ark,$ark_dir/pasted_$name.JOB.scp || exit 1;
 
+# create the cmvn scp file
+if [ "$create_cmvn_scp" == "true" ]; then
+  paste-feats --length-tolerance=0 $cmvn_src_args ark,scp:$ark_dir/cmvn.ark,$data/cmvn.scp
+fi
+
 # concatenate the .scp files together.
 for ((n=1; n<=nj; n++)); do
   cat $ark_dir/pasted_$name.$n.scp >> $data/feats.scp || exit 1;
 done > $data/feats.scp || exit 1;
-
 
 nf=`cat $data/feats.scp | wc -l`
 nu=`cat $data/utt2spk | wc -l`
