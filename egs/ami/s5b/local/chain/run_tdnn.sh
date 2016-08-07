@@ -1,8 +1,10 @@
 #!/bin/bash
 
-# this script has common stages shared across AMI chain recipes
+# This is a chain-training script with TDNN neural networks.
+# Please see RESULTS_* for examples of command lines invoking this script.
 
-# local/nnet3/run_tdnn.sh --stage 8 --use-ihm-ali true --mic sdm1
+
+# local/nnet3/run_tdnn.sh --stage 8 --use-ihm-ali true --mic sdm1 # rerunning with biphone
 # local/nnet3/run_tdnn.sh --stage 8 --use-ihm-ali false --mic sdm1
 
 # local/chain/run_tdnn.sh --use-ihm-ali true --mic sdm1 --train-set train --gmm tri3 --nnet3-affix "" --stage 12 &
@@ -12,9 +14,6 @@
 
 # local/chain/run_tdnn.sh --mic sdm1 --use-ihm-ali true --train-set train_cleaned  --gmm tri3_cleaned&
 
-#local/chain/run_tdnn.sh --mic ihm --train-set train_cleaned2  --gmm tri4a_cleaned2  --stage 11 &
-
-#
 
 set -e -o pipefail
 
@@ -75,18 +74,18 @@ if $use_ihm_ali; then
   gmm_dir=exp/ihm/${ihm_gmm}
   ali_dir=exp/${mic}/${ihm_gmm}_ali_${train_set}_sp_comb_ihmdata
   lores_train_data_dir=data/$mic/${train_set}_ihmdata_sp_comb
-  tree_dir=exp/$mic/chain${nnet3_affix}/tree${tree_affix}_ihmdata
+  tree_dir=exp/$mic/chain${nnet3_affix}/tree_bi${tree_affix}_ihmdata
   lat_dir=exp/$mic/chain${nnet3_affix}/${gmm}_${train_set}_sp_comb_lats_ihmdata
-  dir=exp/$mic/chain${nnet3_affix}/tdnn${tdnn_affix}_sp_ihmali
+  dir=exp/$mic/chain${nnet3_affix}/tdnn${tdnn_affix}_sp_bi_ihmali
   # note: the distinction between when we use the 'ihmdata' suffix versus
   # 'ihmali' is pretty arbitrary.
 else
   gmm_dir=exp/${mic}/$gmm
   ali_dir=exp/${mic}/${gmm}_ali_${train_set}_sp_comb
   lores_train_data_dir=data/$mic/${train_set}_sp_comb
-  tree_dir=exp/$mic/chain${nnet3_affix}/tree${tree_affix}
+  tree_dir=exp/$mic/chain${nnet3_affix}/tree_bi${tree_affix}
   lat_dir=exp/$mic/chain${nnet3_affix}/${gmm}_${train_set}_sp_comb_lats
-  dir=exp/$mic/chain${nnet3_affix}/tdnn${tdnn_affix}_sp
+  dir=exp/$mic/chain${nnet3_affix}/tdnn${tdnn_affix}_sp_bi
 fi
 
 train_data_dir=data/$mic/${train_set}_sp_hires_comb
@@ -138,6 +137,14 @@ if [ $stage -le 12 ]; then
 fi
 
 if [ $stage -le 13 ]; then
+  # Get the alignments as lattices (gives the chain training more freedom).
+  # use the same num-jobs as the alignments
+  steps/align_fmllr_lats.sh --nj 100 --cmd "$train_cmd" ${lores_train_data_dir} \
+    data/lang $gmm_dir $lat_dir
+  rm $lat_dir/fsts.*.gz # save space
+fi
+
+if [ $stage -le 14 ]; then
   # Build a tree using our new topology.  We know we have alignments for the
   # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
   # those.
@@ -146,17 +153,9 @@ if [ $stage -le 13 ]; then
     exit 1;
   fi
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
+      --context-opts "--context-width=2 --central-position=1" \
       --leftmost-questions-truncate -1 \
       --cmd "$train_cmd" 4200 ${lores_train_data_dir} data/lang_chain $ali_dir $tree_dir
-fi
-
-
-if [ $stage -le 14 ]; then
-  # Get the alignments as lattices (gives the chain training more freedom).
-  # use the same num-jobs as the alignments
-  steps/align_fmllr_lats.sh --nj 100 --cmd "$train_cmd" ${lores_train_data_dir} \
-    data/lang $gmm_dir $lat_dir
-  rm $lat_dir/fsts.*.gz # save space
 fi
 
 if [ $stage -le 15 ]; then
@@ -182,7 +181,7 @@ fi
 if [ $stage -le 16 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/ami-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
+     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/ami-$(date +'%m_%d_%H_%M')/s5b/$dir/egs/storage $dir/egs/storage
   fi
 
  touch $dir/egs/.nodelete # keep egs around when that run dies.
@@ -220,14 +219,13 @@ if [ $stage -le 17 ]; then
   # Note: it might appear that this data/lang_chain directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_${LM} $dir $graph_dir
+  utils/mkgraph.sh --left-biphone --self-loop-scale 1.0 data/lang_${LM} $dir $graph_dir
 fi
 
 if [ $stage -le 18 ]; then
   rm $dir/.error 2>/dev/null || true
   for decode_set in dev eval; do
       (
-
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
           --nj $nj --cmd "$decode_cmd" \
           --online-ivector-dir exp/$mic/nnet3${nnet3_affix}/ivectors_${decode_set}_hires \

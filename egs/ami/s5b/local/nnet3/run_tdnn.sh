@@ -1,8 +1,7 @@
 #!/bin/bash
 
-#    This is the standard "tdnn" system, built in nnet3; this script
-# is the version that's meant to run with data-cleanup, that doesn't
-# support parallel alignments.
+#    This is the standard "tdnn" system, built in nnet3.
+# Please see RESULTS_* for examples of command lines invoking this script.
 
 
 # local/nnet3/run_tdnn.sh --mic sdm1 --use-ihm-ali true
@@ -125,7 +124,7 @@ fi
 if [ $stage -le 12 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/ami-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
+     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/ami-$(date +'%m_%d_%H_%M')/s5b/$dir/egs/storage $dir/egs/storage
   fi
 
   steps/nnet3/tdnn/train.sh --stage $train_stage \
@@ -142,13 +141,10 @@ if [ $stage -le 12 ]; then
 fi
 
 if [ $stage -le 12 ]; then
-  # this version of the decoding treats each utterance separately
-  # without carrying forward speaker information.
   rm $dir/.error || true 2>/dev/null
   for decode_set in dev eval; do
       (
       decode_dir=${dir}/decode_${decode_set}
-
       steps/nnet3/decode.sh --nj $nj --cmd "$decode_cmd" \
           --online-ivector-dir exp/$mic/nnet3${nnet3_affix}/ivectors_${decode_set}_hires \
          $graph_dir data/$mic/${decode_set}_hires $decode_dir

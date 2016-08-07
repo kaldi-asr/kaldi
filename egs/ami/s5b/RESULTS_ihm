@@ -15,6 +15,8 @@
 %WER 35.5 | 12643 89987 | 68.8 20.2 11.0 4.4 35.5 62.8 | -0.517 | exp/ihm/tri3_cleaned/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_15/eval.ctm.filt.sys
 
 
+---
+
 # local/nnet3/run_tdnn.sh --mic ihm &
 # for d in exp/ihm/nnet3_cleaned/tdnn_sp/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
 # nnet3 xent TDNN with data cleaning:
@@ -29,13 +31,17 @@
 %WER 24.2 | 13098 94477 | 79.3 12.2 8.6 3.5 24.2 57.1 | -0.178 | exp/ihm/nnet3/tdnn_sp/decode_dev/ascore_11/dev_hires.ctm.filt.sys
 %WER 25.4 | 12643 89970 | 77.6 13.7 8.7 3.0 25.4 56.3 | -0.067 | exp/ihm/nnet3/tdnn_sp/decode_eval/ascore_12/eval_hires.ctm.filt.sys
 
+############################################
 
 # local/chain/run_tdnn.sh --mic ihm --stage 12 &
 # cleanup + chain TDNN model
-# for d in exp/ihm/chain_cleaned/tdnn_sp/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
-%WER 22.7 | 13098 94487 | 80.4 11.5 8.1 3.1 22.7 55.5 | 0.071 | exp/ihm/chain_cleaned/tdnn_sp/decode_dev/ascore_10/dev_hires.ctm.filt.sys
-%WER 22.9 | 12643 89971 | 80.0 12.9 7.1 2.9 22.9 53.6 | 0.143 | exp/ihm/chain_cleaned/tdnn_sp/decode_eval/ascore_10/eval_hires.ctm.filt.sys
+# for d in exp/ihm/chain_cleaned/tdnn_sp_bi/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
+%WER 22.5 | 13098 94490 | 80.6 10.8 8.6 3.1 22.5 55.0 | 0.072 | exp/ihm/chain_cleaned/tdnn_sp_bi/decode_dev/ascore_10/dev_hires.ctm.filt.sys
+%WER 22.5 | 12643 89978 | 80.3 12.5 7.2 2.7 22.5 53.1 | 0.149 | exp/ihm/chain_cleaned/tdnn_sp_bi/decode_eval/ascore_10/eval_hires.ctm.filt.sys
 
 
 # local/chain/run_tdnn.sh --mic ihm --train-set train --gmm tri3 --nnet3-affix "" --stage 12
-# chain TDNN model without cleanup
+# chain TDNN model without cleanup [note: cleanup helps very little on this IHM data.]
+for d in exp/ihm/chain/tdnn_sp_bi/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
+%WER 22.4 | 13098 94476 | 80.4 10.4 9.2 2.8 22.4 54.6 | 0.069 | exp/ihm/chain/tdnn_sp_bi/decode_dev/ascore_10/dev_hires.ctm.filt.sys
+%WER 22.5 | 12643 89974 | 80.0 12.1 7.9 2.6 22.5 52.8 | 0.157 | exp/ihm/chain/tdnn_sp_bi/decode_eval/ascore_10/eval_hires.ctm.filt.sys

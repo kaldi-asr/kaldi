@@ -7,14 +7,16 @@ set -e -o pipefail
 # alignments and/or lattices on the speed-perturbed data.
 # These will either be from the IHM data (with the --use-ihm-ali true option),
 # or with the target data as given by the --mic option.
-# e.g.:
 #
+# please see local/nnet3/run_tdnn.sh and local/chain/run_tdnn.sh for examples of
+# usage.
 
 stage=0
 mic=ihm
 nj=30
 min_seg_len=1.55  # min length in seconds... we do this because chain training
-                  # will discard segments shorter than 1.5 seconds.
+                  # will discard segments shorter than 1.5 seconds.  Must remain in
+                  # sync with the same option given to run_ivector_common.sh.
 use_ihm_ali=false # If true, we use alignments from the IHM data (which is better..
                   # don't set this to true if $mic is set to ihm.)
 train_set=train   # you might set this to e.g. train_cleaned.
