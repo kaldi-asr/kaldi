@@ -246,6 +246,80 @@ def GenerateNonlinStatsPlots(exp_dir, output_dir, plot, comparison_dir = None, s
             if latex_report is not None:
                 latex_report.AddFigure(figfile_name, "Mean and stddev of the value and derivative at {0}".format(component_name))
 
+def GenerateClippedProportionPlots(exp_dir, output_dir, plot, comparison_dir = None, start_iter = 1, latex_report = None):
+    assert(start_iter >= 1)
+
+    comparison_dir = [] if comparison_dir is None else comparison_dir
+    dirs = [exp_dir] + comparison_dir
+    index = 0
+    stats_per_dir = {}
+    for dir in dirs:
+        try:
+            stats_per_dir[dir] = nlp.ParseProgressLogsForClippedProportion(dir)
+        except nlp.MalformedClippedProportionLineException as e:
+            raise e
+        except train_lib.KaldiCommandException as e:
+            warnings.warn("Could not extract the clipped proportions for {0},"
+                          " this might be because there are no "
+                          "ClipGradientComponents.".format(dir))
+            continue
+    try:
+        main_cp_stats = stats_per_dir[exp_dir]['table']
+    except KeyError:
+        warnings.warn("The main experiment directory {0} does not have clipped"
+                      " proportions. So not generating clipped proportion plots.".format(exp_dir))
+        return
+
+    # this is the main experiment directory
+    file = open("{dir}/clipped_proportion.log".format(dir = output_dir), "w")
+    iter_stat_report = ""
+    for row in main_cp_stats:
+        iter_stat_report += "\t".join(map(lambda x: str(x), row)) + "\n"
+    file.write(iter_stat_report)
+    file.close()
+
+    if plot:
+        main_component_names = stats_per_dir[exp_dir]['cp_per_iter_per_component'].keys()
+        main_component_names.sort()
+        plot_component_names = set(main_component_names)
+        for dir in dirs:
+            component_names = set(stats_per_dir[dir]['cp_per_iter_per_component'].keys())
+            plot_component_names = plot_component_names.intersection(component_names)
+        plot_component_names = list(plot_component_names)
+        plot_component_names.sort()
+        if plot_component_names != main_component_names:
+            logger.warning("The components in all the neural networks in the given experiment dirs are not the same, so comparison plots are provided only for common component names. Make sure that these are comparable experiments before analyzing these plots.")
+
+        fig = plt.figure()
+        for component_name in main_component_names:
+            fig.clf()
+            index = 0
+            plots = []
+            for dir in dirs:
+                color_val = plot_colors[index]
+                index += 1
+                try:
+                    iter_stats = stats_per_dir[dir]['cp_per_iter_per_component'][component_name]
+                except KeyError:
+                    # this component is not available in this network so lets not just plot it
+                    continue
+
+                data = np.array(iter_stats)
+                data = data[data[:,0] >=start_iter, :]
+                ax = plt.subplot(111)
+                mp, = ax.plot(data[:,0], data[:,1], color=color_val, label="Clipped Proportion {0}".format(dir))
+                plots.append(mp)
+                ax.set_ylabel('Clipped Proportion')
+                ax.set_ylim([0, 1.2])
+                ax.grid(True)
+            lgd = plt.legend(handles=plots, loc='lower center', bbox_to_anchor=(0.5, -0.5 + len(dirs) * -0.2 ), ncol=1, borderaxespad=0.)
+            plt.grid(True)
+            fig.suptitle("Clipped-proportion value at {comp_name}".format(comp_name = component_name))
+            figfile_name = '{dir}/clipped_proportion_{comp_name}.pdf'.format(dir = output_dir, comp_name = component_name)
+            fig.savefig(figfile_name, bbox_extra_artists=(lgd,), bbox_inches='tight')
+            if latex_report is not None:
+                latex_report.AddFigure(figfile_name, "Clipped proportion at {0}".format(component_name))
+
 def GeneratePlots(exp_dir, output_dir, comparison_dir = None, start_iter = 1, is_chain = False):
     try:
         os.makedirs(output_dir)
@@ -271,6 +345,9 @@ def GeneratePlots(exp_dir, output_dir, comparison_dir = None, start_iter = 1, is
 
     logger.info("Generating non-linearity stats plots")
     GenerateNonlinStatsPlots(exp_dir, output_dir, plot, comparison_dir = comparison_dir, start_iter = start_iter, latex_report = latex_report)
+
+    logger.info("Generating clipped-proportion plots")
+    GenerateClippedProportionPlots(exp_dir, output_dir, plot, comparison_dir = comparison_dir, start_iter = start_iter, latex_report = latex_report)
 
     logger.info("Generating parameter difference files")
     # Parameter changes

@@ -3,6 +3,7 @@
 # Copyright 2016 Vijayaditya Peddinti
 # Apache 2.0
 
+from __future__ import print_function
 import argparse
 import sys
 import os
@@ -10,13 +11,16 @@ import subprocess
 import errno
 import copy
 import shutil
+import warnings
 
 def GetArgs():
     # we add compulsary arguments as named arguments for readability
     parser = argparse.ArgumentParser(description="""
+    **Warning, this script is deprecated.  Please use utils/data/combine_short_segments.sh**
     This script concatenates segments in the input_data_dir to ensure that"""
     " the segments in the output_data_dir have a specified minimum length.",
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
 
     parser.add_argument("--minimum-duration", type=float, required = True,
                         help="Minimum duration of the segments in the output directory")
@@ -262,8 +266,10 @@ def CombineSegments(input_dir, output_dir, minimum_duration):
                 if not cur_utt_dur >= minimum_duration:
                     # this is a rare occurrence, better make the user aware of this
                     # situation and let them deal with it
-                    raise Exception('Speaker {0} does not have enough utterances to satisfy the minimum duration constraint'.format(speaker))
-
+                    warnings.warn('Speaker {0} does not have enough utterances to satisfy the minimum duration '
+                                  'constraint. Not modifying these utterances'.format(speaker))
+                    utt_index = utt_index + 1
+                    continue
                 combined_duration = 0
                 combined_utts = []
                 # update the utts_dur dictionary
@@ -290,6 +296,8 @@ def CombineSegments(input_dir, output_dir, minimum_duration):
     WriteCombinedDirFiles(output_dir, utt2spk, spk2utt, text, feat, utt2dur, utt2uniq)
 
 def Main():
+    print("""steps/cleanup/combine_short_segments.py: warning: this script is deprecated and will be removed.
+          Please use utils/data/combine_short_segments.sh""", file = sys.stderr)
     args = GetArgs()
 
     CheckFiles(args.input_data_dir)
@@ -308,5 +316,4 @@ def Main():
     RunKaldiCommand("utils/fix_data_dir.sh {0}".format(args.output_data_dir))
 if __name__ == "__main__":
     Main()
-
 

@@ -139,13 +139,11 @@ else
       echo "Not processing subset $n as already done (delete $dir/.done.$n if not)";
       this_pid=
     else
-      sdata2=$data/split$nj/$n/split$sub_split;
-      if [ ! -d $sdata2 ] || [ $sdata2 -ot $sdata/$n/feats.scp ]; then
-        split_data.sh --per-utt $sdata/$n $sub_split || exit 1;
-      fi
+      sdata2=$data/split$nj/$n/split${sub_split}utt;
+      split_data.sh --per-utt $sdata/$n $sub_split || exit 1;
       mkdir -p $dir/log/$n
       mkdir -p $dir/part
-      feats_subset=`echo $feats | sed "s/trans.JOB/trans.$n/g" | sed s:JOB/:$n/split$sub_split/JOB/:g`
+      feats_subset=`echo $feats | sed "s/trans.JOB/trans.$n/g" | sed s:JOB/:$n/split${sub_split}utt/JOB/:g`
 
       $cmd --num-threads $num_threads JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \
         gmm-latgen-faster$thread_string --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \

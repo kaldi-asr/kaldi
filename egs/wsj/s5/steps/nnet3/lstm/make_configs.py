@@ -74,8 +74,10 @@ def GetArgs():
                         help="use norm based clipping in ClipGradient components ", default=True, choices = ["false", "true"])
     parser.add_argument("--clipping-threshold", type=float,
                         help="clipping threshold used in ClipGradient components, if clipping-threshold=0 no clipping is done", default=30)
-    parser.add_argument("--self-repair-scale", type=float,
-                        help="A non-zero value activates the self-repair mechanism in the sigmoid and tanh non-linearities of the LSTM", default=None)
+    parser.add_argument("--self-repair-scale-nonlinearity", type=float,
+                        help="A non-zero value activates the self-repair mechanism in the sigmoid and tanh non-linearities of the LSTM", default=0.00001)
+    parser.add_argument("--self-repair-scale-clipgradient", type=float,
+                        help="A non-zero value activates the self-repair mechanism in the ClipGradient component of the LSTM", default=1.0)
 
     # Delay options
     parser.add_argument("--label-delay", type=int, default=None,
@@ -212,7 +214,8 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
                 num_lstm_layers, num_hidden_layers,
                 norm_based_clipping, clipping_threshold,
                 ng_per_element_scale_options, ng_affine_options,
-                label_delay, include_log_softmax, xent_regularize, self_repair_scale):
+                label_delay, include_log_softmax, xent_regularize,
+                self_repair_scale_nonlinearity, self_repair_scale_clipgradient):
 
     config_lines = {'components':[], 'component-nodes':[]}
 
@@ -235,14 +238,14 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
                                                     recurrent_projection_dim, non_recurrent_projection_dim,
                                                     clipping_threshold, norm_based_clipping,
                                                     ng_per_element_scale_options, ng_affine_options,
-                                                    lstm_delay = lstm_delay[i], self_repair_scale = self_repair_scale)
+                                                    lstm_delay = lstm_delay[i], self_repair_scale_nonlinearity = self_repair_scale_nonlinearity, self_repair_scale_clipgradient = self_repair_scale_clipgradient)
         else: # add a uni-directional LSTM layer
             prev_layer_output = nodes.AddLstmLayer(config_lines, "Lstm{0}".format(i+1),
                                                    prev_layer_output, cell_dim,
                                                    recurrent_projection_dim, non_recurrent_projection_dim,
                                                    clipping_threshold, norm_based_clipping,
                                                    ng_per_element_scale_options, ng_affine_options,
-                                                   lstm_delay = lstm_delay[i][0], self_repair_scale = self_repair_scale)
+                                                   lstm_delay = lstm_delay[i][0], self_repair_scale_nonlinearity = self_repair_scale_nonlinearity, self_repair_scale_clipgradient = self_repair_scale_clipgradient)
         # make the intermediate config file for layerwise discriminative
         # training
         nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options, label_delay = label_delay, include_log_softmax = include_log_softmax)
@@ -259,7 +262,7 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
     for i in range(num_lstm_layers, num_hidden_layers):
         prev_layer_output = nodes.AddAffRelNormLayer(config_lines, "L{0}".format(i+1),
                                                prev_layer_output, hidden_dim,
-                                               ng_affine_options, self_repair_scale = self_repair_scale)
+                                               ng_affine_options, self_repair_scale = self_repair_scale_nonlinearity)
         # make the intermediate config file for layerwise discriminative
         # training
         nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options, label_delay = label_delay, include_log_softmax = include_log_softmax)
@@ -322,7 +325,8 @@ def Main():
                 label_delay = args.label_delay,
                 include_log_softmax = args.include_log_softmax,
                 xent_regularize = args.xent_regularize,
-                self_repair_scale = args.self_repair_scale)
+                self_repair_scale_nonlinearity = args.self_repair_scale_nonlinearity,
+                self_repair_scale_clipgradient = args.self_repair_scale_clipgradient)
 
 if __name__ == "__main__":
     Main()

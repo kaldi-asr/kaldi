@@ -21,9 +21,10 @@ OBJFILES =
 
 TESTFILES =
 
-ADDLIBS = ../feat/kaldi-feat.a ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
-          ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a ../hmm/kaldi-hmm.a \
-          ../util/kaldi-util.a ../thread/kaldi-thread.a ../base/kaldi-base.a
+ADDLIBS = ../hmm/kaldi-hmm.a ../feat/kaldi-feat.a \
+          ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
+          ../tree/kaldi-tree.a ../util/kaldi-util.a ../thread/kaldi-thread.a \
+          ../matrix/kaldi-matrix.a ../base/kaldi-base.a 
 
 include ../makefiles/default_rules.mk
 

@@ -40,6 +40,11 @@ if [ ! -f $srcdir/utt2spk ]; then
   exit 1;
 fi
 
+if [ "$destdir" == "$srcdir" ]; then
+  echo "$0: this script requires <srcdir> and <destdir> to be different."
+  exit 1
+fi
+
 set -e;
 set -o pipefail
 
@@ -47,7 +52,12 @@ mkdir -p $destdir
 
 cat $srcdir/utt2spk | awk -v p=$utt_prefix '{printf("%s %s%s\n", $1, p, $1);}' > $destdir/utt_map
 cat $srcdir/spk2utt | awk -v p=$spk_prefix '{printf("%s %s%s\n", $1, p, $1);}' > $destdir/spk_map
-cat $srcdir/utt2spk | awk -v p=$utt_prefix '{printf("%s%s %s\n", p, $1, $1);}' > $destdir/utt2uniq
+if [ ! -f $srcdir/utt2uniq ]; then
+  cat $srcdir/utt2spk | awk -v p=$utt_prefix '{printf("%s%s %s\n", p, $1, $1);}' > $destdir/utt2uniq
+else
+  cat $srcdir/utt2uniq | awk -v p=$utt_prefix '{printf("%s%s %s\n", p, $1, $2);}' > $destdir/utt2uniq
+fi
+
 
 cat $srcdir/utt2spk | utils/apply_map.pl -f 1 $destdir/utt_map  | \
   utils/apply_map.pl -f 2 $destdir/spk_map >$destdir/utt2spk

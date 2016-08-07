@@ -7,7 +7,11 @@
 # data-dir/.backup
 
 if [ $# != 1 ]; then
-  echo "Usage: fix_data_dir.sh data-dir"
+  echo "Usage: utils/data/fix_data_dir.sh <data-dir>"
+  echo "e.g.: utils/data/fix_data_dir.sh data/train"
+  echo "This script helps ensure that the various files in a data directory"
+  echo "are correctly sorted and filtered, for example removing utterances"
+  echo "that have no features (if feats.scp is present)"
   exit 1
 fi
 
@@ -36,7 +40,7 @@ function check_sorted {
 }
 
 for x in utt2spk spk2utt feats.scp text segments wav.scp cmvn.scp vad.scp \
-    reco2file_and_channel spk2gender utt2lang utt2uniq utt2dur; do
+    reco2file_and_channel spk2gender utt2lang utt2uniq utt2dur utt2num_frames; do
   if [ -f $data/$x ]; then
     cp $data/$x $data/.backup/$x
     check_sorted $data/$x
@@ -154,7 +158,7 @@ function filter_utts {
     fi
   fi
 
-  for x in utt2spk utt2uniq feats.scp vad.scp text segments utt2lang utt2dur $maybe_wav; do
+  for x in utt2spk utt2uniq feats.scp vad.scp text segments utt2lang utt2dur utt2num_frames $maybe_wav; do
     if [ -f $data/$x ]; then
       cp $data/$x $data/.backup/$x
       if ! cmp -s $data/$x <( utils/filter_scp.pl $tmpdir/utts $data/$x ) ; then

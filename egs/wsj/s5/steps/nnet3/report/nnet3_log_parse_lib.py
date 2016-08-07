@@ -45,6 +45,72 @@ def ParseDifferenceString(string):
         dict[sub_parts[0]] = float(sub_parts[1])
     return dict
 
+#exp/chain/cwrnn_trial2_ld5_sp/log/progress.245.log:component name=BLstm1_forward_c type=ClipGradientComponent, dim=512, norm-based-clipping=true, clipping-threshold=30, clipped-proportion=0.000565527, self-repair-clipped-proportion-threshold=0.01, self-repair-target=0, self-repair-scale=1
+
+class MalformedClippedProportionLineException(Exception):
+    def __init__(self, line):
+        Exception.__init__(self, "Malformed line encountered while trying to"
+                                 " extract clipped-proportions.\n"+line)
+
+def ParseProgressLogsForClippedProportion(exp_dir):
+
+    progress_log_files = "%s/log/progress.*.log" % (exp_dir)
+    component_names = set([])
+    progress_log_lines = ntl.RunKaldiCommand('grep -e "{0}" {1}'.format("clipped-proportion", progress_log_files))[0]
+    parse_regex = re.compile(".*progress\.([0-9]+)\.log:component name=(.*) type=.* clipped-proportion=([0-9\.e\-]+)")
+
+    cp_per_component_per_iter = {}
+
+    max_iteration = 0
+    component_names = set([])
+    for line in progress_log_lines.split("\n") :
+        mat_obj = parse_regex.search(line)
+        if mat_obj is None:
+            if line.strip() == "":
+                continue
+            raise MalformedClippedProportionLineException(line)
+        groups = mat_obj.groups()
+        iteration = int(groups[0])
+        max_iteration = max(max_iteration, iteration)
+        name = groups[1]
+        clipped_proportion = float(groups[2])
+        if clipped_proportion > 1:
+            raise MalformedClippedProportionLineException(line)
+        if not cp_per_component_per_iter.has_key(iteration):
+            cp_per_component_per_iter[iteration] = {}
+        cp_per_component_per_iter[iteration][name] = clipped_proportion
+        component_names.add(name)
+    component_names = list(component_names)
+    component_names.sort()
+
+    # re arranging the data into an array
+    # and into an cp_per_iter_per_component
+    cp_per_iter_per_component = {}
+    for component_name in component_names:
+        cp_per_iter_per_component[component_name] = []
+    data = []
+    data.append(["iteration"]+component_names)
+    for iter in range(max_iteration+1):
+        if not cp_per_component_per_iter.has_key(iter):
+            continue
+        comp_dict = cp_per_component_per_iter[iter]
+        row = [iter]
+        for component in component_names:
+            try:
+                row.append(comp_dict[component])
+                cp_per_iter_per_component[component].append([iter, comp_dict[component]])
+            except KeyError:
+                # if clipped proportion is not available for a particular
+                # component it is set to None
+                # this usually happens during layer-wise discriminative training
+                row.append(None)
+        data.append(row)
+
+
+    return {'table' : data,
+            'cp_per_component_per_iter' : cp_per_component_per_iter,
+            'cp_per_iter_per_component' : cp_per_iter_per_component}
+
 #exp/chain/cwrnn_trial2_ld5_sp/log/progress.245.log:LOG (nnet3-show-progress:main():nnet3-show-progress.cc:144) Relative parameter differences per layer are [ Cwrnn1_T3_W_r:0.0171537 Cwrnn1_T3_W_x:1.33338e-07 Cwrnn1_T2_W_r:0.048075 Cwrnn1_T2_W_x:1.34088e-07 Cwrnn1_T1_W_r:0.0157277 Cwrnn1_T1_W_x:0.0212704 Final_affine:0.0321521 Cwrnn2_T3_W_r:0.0212082 Cwrnn2_T3_W_x:1.33691e-07 Cwrnn2_T2_W_r:0.0212978 Cwrnn2_T2_W_x:1.33401e-07 Cwrnn2_T1_W_r:0.014976 Cwrnn2_T1_W_x:0.0233588 Cwrnn3_T3_W_r:0.0237165 Cwrnn3_T3_W_x:1.33184e-07 Cwrnn3_T2_W_r:0.0239754 Cwrnn3_T2_W_x:1.3296e-07 Cwrnn3_T1_W_r:0.0194809 Cwrnn3_T1_W_x:0.0271934 ]
 def ParseProgressLogsForParamDiff(exp_dir, pattern):
     if pattern not in set(["Relative parameter differences", "Parameter differences"]):

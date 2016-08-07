@@ -167,15 +167,15 @@ utils/fix_data_dir.sh data/train_dnn_32k
 # Initialize a full GMM from the DNN posteriors and language recognition
 # features. This can be used both alone, as a UBM, or to initialize the
 # i-vector extractor in a DNN-based system.
-sid/init_full_ubm_from_dnn.sh --cmd "$train_cmd -l mem_free=6G,ram_free=6G" \
+lid/init_full_ubm_from_dnn.sh --nj 4 --cmd "$train_cmd -l mem_free=6G,ram_free=6G" \
   data/train_32k \
   data/train_dnn_32k $nnet exp/full_ubm
 
 
 # Train an i-vector extractor based on the DNN-UBM.
-sid/train_ivector_extractor_dnn.sh --cmd "$train_cmd -l mem_free=80G,ram_free=80G" \
-				   --min-post 0.015  \
-				   --ivector-dim 600 \
+lid/train_ivector_extractor_dnn.sh --cmd "$train_cmd -l mem_free=80G,ram_free=80G" \
+				   --min-post 0.015 \
+				   --ivector-dim 600 --nj 1 --num-processes 1 --num-threads 8 \
 				   --num-iters 5 exp/full_ubm/final.ubm $nnet \
 				   data/train \
 				   data/train_dnn \
@@ -199,14 +199,14 @@ echo "**Language count for logistic regression training (after splitting long ut
 awk '{print $2}' data/train_lr_dnn/utt2lang | sort | uniq -c | sort -nr
 
 # Extract i-vectors using the extractor with the DNN-UBM
-sid/extract_ivectors_dnn.sh --cmd "$train_cmd -l mem_free=10G,ram_free=10G" --nj 12 \
+lid/extract_ivectors_dnn.sh --cmd "$train_cmd -l mem_free=10G,ram_free=10G" --nj 2 \
 			    exp/extractor_dnn \
 			    $nnet \
 			    data/train_lr \
 			    data/train_lr_dnn \
 			    exp/ivectors_train
 
-sid/extract_ivectors_dnn.sh --cmd "$train_cmd -l mem_free=10G,ram_free=10G" --nj 12 \
+lid/extract_ivectors_dnn.sh --cmd "$train_cmd -l mem_free=10G,ram_free=10G" --nj 2 \
 			    exp/extractor_dnn \
 			    $nnet \
 			    data/lre07 \
@@ -223,6 +223,14 @@ local/lre07_eval/lre07_eval.sh exp/ivectors_lre07 \
 
 
 
+#Duration (sec):    avg      3     10     30
+#        ER (%):   8.84  20.81   4.68   1.02
+#     C_avg (%):   5.16  12.33   2.66   0.48
+
+#Note:
+# We performed similar experiment using speaker recognition style features (eg. sid/extract_ivectors_dnn.sh) instead of
+# standard SDC features. It can be observed that SDC helps to improve the performance
+# at 10 sec and 30 sec conditions, however at shorter duration like 3 sec speaker recognition style feature is a better choice. 
 #Duration (sec):    avg      3     10     30
 #        ER (%):   8.36  18.81   5.10   1.16
 #     C_avg (%):   5.34  11.87   3.31   0.83

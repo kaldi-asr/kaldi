@@ -28,7 +28,7 @@ steps/cleanup/make_segmentation_graph.sh \
 
 steps/cleanup/decode_segmentation.sh \
   --nj 64 --cmd "$decode_cmd" --skip-scoring true \
-  exp/tri2b/graph_train_si284_split \
+  exp/tri2b/graph_train_si284_split/lats \
   data/train_si284_split exp/tri2b/decode_train_si284_split || exit 1;
 
 steps/get_ctm.sh --cmd "$decode_cmd" data/train_si284_split \

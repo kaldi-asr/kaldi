@@ -73,8 +73,8 @@ fi
 # run those things.
 
 gmm_dir=exp/tri3
-ali_dir=exp/tri3_ali
-lats_dir=${ali_dir/ali/lats}
+ali_dir=exp/tri3_ali_sp
+lats_dir=${ali_dir/ali/lats} # note, this is a search-and-replace from 'ali' to 'lats'
 treedir=exp/chain/tri3_tree
 lang=data/lang_chain
 

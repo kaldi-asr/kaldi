@@ -31,6 +31,16 @@
 <div style="text-indent: -1.5em;  padding-left: 1.5em;">
 
 
+<b>:acoustic scale:</b>  The acoustic scale used in decoding, written as --acoustic-scale
+in C++ programs and --acwt in programs.  This is a scale on the acoustic log-probabilities,
+and is a universally used kludge in HMM-GMM and HMM-DNN systems to account for the correlation
+between frames.  It's usually set to 0.1, meaning the acoustic log-probs get a much lower weight
+than the language model log-probs.   In scoring scripts you'll often see a range of language
+model weights being searched over (like the range 7 to 15).  These can be interpreted as
+the inverse of an acoustic scale; it's the ratio between the two that matters for Viterbi
+decoding.
+
+
 <b>:alignment:</b> A representation of the sequence of HMM states taken by the
 Viterbi (best-path) alignment of an utterance.  In Kaldi an alignment is
 synonymous with a sequence of <b>transition-ids</b>.  Most of the time an

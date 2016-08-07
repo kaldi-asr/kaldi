@@ -74,13 +74,13 @@ for f in $graphdir/HCLG.fst $data/feats.scp $model $extra_files; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
-sdata=$data/split$nj;
+sdata=$data/split${nj}utt;
 cmvn_opts=`cat $srcdir/cmvn_opts` || exit 1;
 thread_string=
 [ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads"
 
 mkdir -p $dir/log
-[[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
+[[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh --per-utt $data $nj || exit 1;
 echo $nj > $dir/num_jobs
 
 

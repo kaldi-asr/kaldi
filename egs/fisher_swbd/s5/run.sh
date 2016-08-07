@@ -101,15 +101,15 @@ utils/subset_data_dir.sh --last data/train_all $n data/train
 # more carefully hand-labeled alignments
 
 utils/subset_data_dir.sh --shortest data/train_swbd 100000 data/train_100kshort
-local/remove_dup_utts.sh 10 data/train_100kshort data/train_100kshort_nodup
+utils/data/remove_dup_utts.sh 10 data/train_100kshort data/train_100kshort_nodup
 utils/subset_data_dir.sh  data/train_100kshort_nodup 10000 data/train_10k_nodup
 
 utils/subset_data_dir.sh --speakers data/train_swbd 30000 data/train_30k
 utils/subset_data_dir.sh --speakers data/train_swbd 100000 data/train_100k
 
-local/remove_dup_utts.sh 200 data/train_30k data/train_30k_nodup
-local/remove_dup_utts.sh 200 data/train_100k data/train_100k_nodup
-local/remove_dup_utts.sh 300 data/train data/train_nodup
+utils/data/remove_dup_utts.sh 200 data/train_30k data/train_30k_nodup
+utils/data/remove_dup_utts.sh 200 data/train_100k data/train_100k_nodup
+utils/data/remove_dup_utts.sh 300 data/train data/train_nodup
 
 # The next commands are not necessary for the scripts to run, but increase 
 # efficiency of data access by putting the mfcc's of the subset 

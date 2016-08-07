@@ -71,9 +71,8 @@ fi
 
 if [ $stage -le 12 ]; then
   rm -rf data/${train_set}_min${min_seg_len}_hires
-  steps/cleanup/combine_short_segments.py --minimum-duration $min_seg_len \
-    --input-data-dir data/${train_set}_hires \
-    --output-data-dir data/${train_set}_min${min_seg_len}_hires
+  utils/data/combine_short_segments.sh \
+     data/${train_set}_hires $min_seg_len data/${train_set}_min${min_seg_len}_hires
 
   #extract ivectors for the new data
   steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 \
@@ -85,9 +84,8 @@ if [ $stage -le 12 ]; then
 
  # combine the non-hires features for alignments/lattices
  rm -rf data/${latgen_train_set}_min${min_seg_len}
- steps/cleanup/combine_short_segments.py --minimum-duration $min_seg_len \
-                   --input-data-dir data/${latgen_train_set} \
-                   --output-data-dir data/${latgen_train_set}_min${min_seg_len}
+ utils/data/combine_short_segments.sh \
+    data/${latgen_train_set} $min_seg_len data/${latgen_train_set}_min${min_seg_len}
 fi
 
 train_set=${train_set}_min${min_seg_len}

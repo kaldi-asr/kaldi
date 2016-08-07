@@ -823,6 +823,39 @@ void CuMatrixBase<Real>::GroupPnormDeriv(const CuMatrixBase<Real> &src1,
 }
 
 template<typename Real>
+void CuMatrixBase<Real>::DiffGroupPnorm(const CuMatrixBase<Real> &in_value,
+                                        const CuMatrixBase<Real> &out_value,
+                                        const CuMatrixBase<Real> &out_deriv,
+                                        Real power) {
+  KALDI_ASSERT(out_value.NumCols() > 0);
+  KALDI_ASSERT(out_value.NumCols() == out_deriv.NumCols());
+  int group_size = this->NumCols() / out_value.NumCols();
+  KALDI_ASSERT(this->NumCols() == out_value.NumCols() * group_size);
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    const int kWarpSize = 32;
+    dim3 dimBlock(kWarpSize, CU1DBLOCK / kWarpSize);
+    dim3 dimGrid(n_blocks(NumCols(), dimBlock.x),
+                 n_blocks(NumRows(), dimBlock.y));
+    if (dimGrid.x * dimGrid.y > 1024) {
+      dimGrid.y = std::max(1024 / dimGrid.x, unsigned(1));
+    }
+    cuda_diff_group_pnorm(dimGrid, dimBlock, this->data_, in_value.Data(),
+                          out_value.Data(), out_deriv.Data(), Dim(),
+                          in_value.Stride(), out_value.Stride(),
+                          out_deriv.Stride(), group_size, power);
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    GroupPnormDeriv(in_value, out_value, power);
+    MulRowsGroupMat(out_deriv);
+  }
+}
+
+template<typename Real>
 void CuMatrixBase<Real>::GroupMaxDeriv(const CuMatrixBase<Real> &src1,
                                        const CuMatrixBase<Real> &src2) {
   KALDI_ASSERT(src2.NumCols() > 0);
