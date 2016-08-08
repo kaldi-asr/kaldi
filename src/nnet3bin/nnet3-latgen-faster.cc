@@ -120,6 +120,10 @@ int main(int argc, char *argv[]) {
     double tot_like = 0.0;
     kaldi::int64 frame_count = 0;
     int num_success = 0, num_fail = 0;
+    // this compiler object allows caching of computations across
+    // different utterances.
+    CachingOptimizingCompiler compiler(am_nnet.GetNnet(),
+                                       decodable_opts.optimize_config);
 
     if (ClassifyRspecifier(fst_in_str, NULL, NULL) == kNoRspecifier) {
       SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
@@ -162,7 +166,7 @@ int main(int argc, char *argv[]) {
           DecodableAmNnetSimple nnet_decodable(
               decodable_opts, trans_model, am_nnet,
               features, ivector, online_ivectors,
-              online_ivector_period);
+              online_ivector_period, &compiler);
 
           double like;
           if (DecodeUtteranceLatticeFaster(
@@ -222,7 +226,7 @@ int main(int argc, char *argv[]) {
         DecodableAmNnetSimple nnet_decodable(
             decodable_opts, trans_model, am_nnet,
             features, ivector, online_ivectors,
-            online_ivector_period);
+            online_ivector_period, &compiler);
 
         double like;
         if (DecodeUtteranceLatticeFaster(
