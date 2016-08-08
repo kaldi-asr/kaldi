@@ -72,7 +72,7 @@ if [ $stage -le 0 ]; then
       nbest-to-ctm --frame-shift=$frame_shift --print-silence=$print_silence ark:- - \| \
       utils/int2sym.pl -f 5 $lang/words.txt \| \
       $filter_cmd '>' $dir/score_LMWT/$name.ctm || exit 1;
-  elif [ ! -f $lang/phones/align_lexicon.int ]; then
+  elif [ -f $lang/phones/align_lexicon.int ]; then
     $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.log \
       set -o pipefail '&&' mkdir -p $dir/score_LMWT/ '&&' \
       lattice-1best --lm-scale=LMWT "ark:gunzip -c $lats|" ark:- \| \
