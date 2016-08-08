@@ -23,6 +23,8 @@
 
 #include <utility>
 #include <vector>
+#include <list>
+#include <string>
 
 #include "itf/options-itf.h"
 #include "util/common-utils.h"
