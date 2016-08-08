@@ -29,6 +29,82 @@
 #include "base/timer.h"
 #include "cudamatrix/cu-device.h"
 
+
+namespace kaldi {
+
+bool ReadData(SequentialBaseFloatMatrixReader& feature_reader,
+              RandomAccessPosteriorReader& target_reader,
+              RandomAccessBaseFloatVectorReader& weights_reader,
+              int32 length_tolerance,
+              Matrix<BaseFloat>* feats,
+              Posterior* targets,
+              Vector<BaseFloat>* weights,
+              int32* num_no_tgt_mat,
+              int32* num_other_error) {
+
+  // We're looking for the 1st valid utterance...
+  for ( ; !feature_reader.Done(); feature_reader.Next()) {
+    // Do we have targets?
+    const std::string& utt = feature_reader.Key();
+    if (!target_reader.HasKey(utt)) {
+      KALDI_WARN << utt << ", missing targets";
+      (*num_no_tgt_mat)++;
+      continue;
+    }
+    // Do we have frame-weights?
+    if (weights_reader.IsOpen() && !weights_reader.HasKey(utt)) {
+      KALDI_WARN << utt << ", missing frame-weights";
+      (*num_other_error)++;
+      continue;
+    }
+
+    // get the (feature,target) pair,
+    (*feats) = feature_reader.Value();
+    (*targets) = target_reader.Value(utt);
+
+    // getting per-frame weights,
+    if (weights_reader.IsOpen()) {
+      (*weights) = weights_reader.Value(utt);
+    } else {  // all per-frame weights are 1.0
+      weights->Resize(feats->NumRows());
+      weights->Set(1.0);
+    }
+
+    // correct small length mismatch ... or drop sentence
+    {
+      // add lengths to vector
+      std::vector<int32> length;
+      length.push_back(feats->NumRows());
+      length.push_back(targets->size());
+      length.push_back(weights->Dim());
+      // find min, max
+      int32 min = *std::min_element(length.begin(), length.end());
+      int32 max = *std::max_element(length.begin(), length.end());
+      // fix or drop ?
+      if (max - min < length_tolerance) {
+        if (feats->NumRows() != min) feats->Resize(min, feats->NumCols(), kCopyData);
+        if (targets->size() != min) targets->resize(min);
+        if (weights->Dim() != min) weights->Resize(min, kCopyData);
+      } else {
+        KALDI_WARN << "Length mismatch! Targets " << targets->size()
+                   << ", features " << feats->NumRows() << ", " << utt;
+        num_other_error++;
+        continue;
+      }
+    }
+
+    // By getting here we got a valid utterance,
+    feature_reader.Next();
+    return true;
+  }
+
+  // No more data,
+  return false;
+}
+
+}  // namespace kaldi
+
+
 int main(int argc, char *argv[]) {
   using namespace kaldi;
   using namespace kaldi::nnet1;
@@ -140,7 +216,7 @@ int main(int argc, char *argv[]) {
           num_no_tgt_mat = 0,
           num_other_error = 0;
 
-    // book-keeping for multi-streams,
+    // book-keeping for multi-stream training,
     std::vector<Matrix<BaseFloat> > feats_utt(num_streams);
     std::vector<Posterior> labels_utt(num_streams);
     std::vector<Vector<BaseFloat> > weights_utt(num_streams);
@@ -148,88 +224,41 @@ int main(int argc, char *argv[]) {
 
     CuMatrix<BaseFloat> feats_transf, nnet_out, obj_diff;
 
+    // MAIN LOOP,
     while (1) {
 
-      // Re-fill the stream utterances if needed,
-      {
-        new_utt_flags.assign(num_streams, 0);  // set new-utterance flags to zero,
-        for (int s = 0; s < num_streams; s++) {
-          // Need a new utterance for stream 's'?
-          if (feats_utt[s].NumRows() == 0) {
-            for ( ; !feature_reader.Done(); feature_reader.Next()) {
-              // Do we have targets?
-              const std::string& utt = feature_reader.Key();
-              if (!target_reader.HasKey(utt)) {
-                KALDI_WARN << utt << ", missing targets";
-                num_no_tgt_mat++;
-                continue;
-              }
-              // Do we have frame-weights?
-              if (frame_weights != "" && !weights_reader.HasKey(utt)) {
-                KALDI_WARN << utt << ", missing frame-weights";
-                num_other_error++;
-                continue;
-              }
+      // Re-fill the streams, if needed,
+      new_utt_flags.assign(num_streams, 0);  // set new-utterance flags to zero,
+      for (int s = 0; s < num_streams; s++) {
+        // Need a new utterance for stream 's'?
+        if (feats_utt[s].NumRows() == 0) {
+          Matrix<BaseFloat> feats;
+          Posterior targets;
+          Vector<BaseFloat> weights;
+          // get the data from readers,
+          if (ReadData(feature_reader, target_reader, weights_reader,
+                       length_tolerance,
+                       &feats, &targets, &weights,
+                       &num_no_tgt_mat, &num_other_error)) {
 
-              // get the (feature,target) pair,
-              Matrix<BaseFloat> mat = feature_reader.Value();
-              Posterior targets = target_reader.Value(utt);
+            // input transform may contain splicing,
+            nnet_transf.Feedforward(CuMatrix<BaseFloat>(feats), &feats_transf);
 
-              // getting per-frame weights,
-              Vector<BaseFloat> weights;
-              if (frame_weights != "") {
-                weights = weights_reader.Value(utt);
-              } else {  // all per-frame weights are 1.0
-                weights.Resize(mat.NumRows());
-                weights.Set(1.0);
-              }
+            /* Here we could do the 'targets_delay', BUT...
+             * It is better to do it by a <Splice> component!
+             *
+             * The prototype would look like this (6th frame becomes 1st frame, etc.):
+             * '<Splice> <InputDim> dim1 <OutputDim> dim1 <BuildVector> 5 </BuildVector>'
+             */
 
-              // correct small length mismatch ... or drop sentence
-              {
-                // add lengths to vector
-                std::vector<int32> length;
-                length.push_back(mat.NumRows());
-                length.push_back(targets.size());
-                length.push_back(weights.Dim());
-                // find min, max
-                int32 min = *std::min_element(length.begin(), length.end());
-                int32 max = *std::max_element(length.begin(), length.end());
-                // fix or drop ?
-                if (max - min < length_tolerance) {
-                  if (mat.NumRows() != min) mat.Resize(min, mat.NumCols(), kCopyData);
-                  if (targets.size() != min) targets.resize(min);
-                  if (weights.Dim() != min) weights.Resize(min, kCopyData);
-                } else {
-                  KALDI_WARN << "Length mismatch! Targets " << targets.size()
-                             << ", features " << mat.NumRows() << ", " << utt;
-                  num_other_error++;
-                  continue;
-                }
-              }
-
-              // input transform may contain splicing,
-              nnet_transf.Feedforward(CuMatrix<BaseFloat>(mat), &feats_transf);
-
-              /* Here we could do the 'targets_delay', BUT...
-               * It is better to do it by a <Splice> component!
-               *
-               * The prototype would look like this (6th frame becomes 1st frame, etc.):
-               * '<Splice> <InputDim> dim1 <OutputDim> dim1 <BuildVector> 5 </BuildVector>'
-               */
-
-              // store,
-              feats_utt[s] = Matrix<BaseFloat>(feats_transf);
-              labels_utt[s] = targets;
-              weights_utt[s] = weights;
-              new_utt_flags[s] = 1;
-
-              // end the loop,
-              feature_reader.Next();
-              break;
-            }
+            // store,
+            feats_utt[s] = Matrix<BaseFloat>(feats_transf);
+            labels_utt[s] = targets;
+            weights_utt[s] = weights;
+            new_utt_flags[s] = 1;
           }
-        }  // for 'num_streams'
-      }  // Re-fill,
+        }
+      }
 
       // end the training after processing all the frames,
       size_t frames_to_go = 0;
@@ -255,7 +284,7 @@ int main(int argc, char *argv[]) {
         weight_host.Resize(n_streams * batch_size, kSetZero);
         frame_num_utt.resize(n_streams, 0);
 
-        // fill the 'frame_num_utt' with 'batch_size' or smaller frame-count,
+        // we'll slice at most 'batch_size' frames,
         for (int32 s = 0; s < n_streams; s++) {
           int32 num_rows = feats_utt[s].NumRows();
           frame_num_utt[s] = std::min(batch_size, num_rows);
@@ -310,7 +339,6 @@ int main(int argc, char *argv[]) {
                 w.Range(frame_num_utt[s], w.Dim() - frame_num_utt[s])
               );
             }
-            //
           }
         }
       }

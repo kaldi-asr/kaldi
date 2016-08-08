@@ -137,7 +137,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << (crossvalidate ? "CROSS-VALIDATION" : "TRAINING")
               << " STARTED";
 
-    // Buffer for input features, used for choosing with similar length,
+    // Buffer for input features, used for choosing utt's with similar length,
     MatrixBuffer matrix_buffer;
     matrix_buffer.Init(&feature_reader);
 
