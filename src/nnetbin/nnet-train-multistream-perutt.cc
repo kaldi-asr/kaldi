@@ -1,4 +1,4 @@
-// nnetbin/nnet-train-blstm-streams.cc
+// nnetbin/nnet-train-multistream-perutt.cc
 
 // Copyright 2016 Brno University of Technology (author: Karel Vesely)
 // Copyright 2015 Chongjia Ni
@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
       "The updates are done per-utterance, while several utterances are \n"
       "processed at the same time.\n"
       "\n"
-      "Usage: nnet-train-blstm-streams [options] <feature-rspecifier> <labels-rspecifier> <model-in> [<model-out>]\n"
+      "Usage: nnet-train-multistream-perutt [options] <feature-rspecifier> <labels-rspecifier> <model-in> [<model-out>]\n"
       "e.g.: nnet-train-blstm-streams scp:feats.scp ark:targets.ark nnet.init nnet.iter1\n";
 
     ParseOptions po(usage);

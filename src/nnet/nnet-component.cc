@@ -57,7 +57,9 @@ const struct Component::key_value Component::kMarkerMap[] = {
   { Component::kConvolutionalComponent, "<ConvolutionalComponent>" },
   { Component::kConvolutional2DComponent, "<Convolutional2DComponent>" },
   { Component::kLstmProjected, "<LstmProjected>" },
+  { Component::kLstmProjected, "<LstmProjectedStreams>" }, // bwd compat.
   { Component::kBlstmProjected, "<BlstmProjected>" },
+  { Component::kBlstmProjected, "<BlstmProjectedStreams>" }, // bwd compat.
   { Component::kRecurrentComponent, "<RecurrentComponent>" },
   { Component::kSoftmax, "<Softmax>" },
   { Component::kHiddenSoftmax, "<HiddenSoftmax>" },
@@ -85,6 +87,7 @@ const struct Component::key_value Component::kMarkerMap[] = {
 
 
 const char* Component::TypeToMarker(ComponentType t) {
+  // Retuns the 1st '<string>' corresponding to the type in 'kMarkerMap',
   int32 N = sizeof(kMarkerMap) / sizeof(kMarkerMap[0]);
   for (int i = 0; i < N; i++) {
     if (kMarkerMap[i].key == t) return kMarkerMap[i].value;
@@ -103,7 +106,8 @@ Component::ComponentType Component::MarkerToType(const std::string &s) {
     std::transform(m.begin(), m.end(), m_lowercase.begin(), ::tolower);
     if (s_lowercase == m_lowercase) return kMarkerMap[i].key;
   }
-  KALDI_ERR << "Unknown marker : '" << s << "'";
+  KALDI_ERR << "Unknown 'Component' marker : '" << s << "'\n"
+            << "(isn't the model 'too old' or incompatible?)";
   return kUnknown;
 }
 

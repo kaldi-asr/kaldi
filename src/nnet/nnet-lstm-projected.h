@@ -19,8 +19,8 @@
 // limitations under the License.
 
 
-#ifndef KALDI_NNET_NNET_LSTM_PROJECTED_STREAMS_H_
-#define KALDI_NNET_NNET_LSTM_PROJECTED_STREAMS_H_
+#ifndef KALDI_NNET_NNET_LSTM_PROJECTED_H_
+#define KALDI_NNET_NNET_LSTM_PROJECTED_H_
 
 #include <string>
 #include <vector>
@@ -114,6 +114,7 @@ class LstmProjected : public MultistreamComponent {
           /**/ if (token == "<CellDim>") ReadBasicType(is, binary, &cell_dim_);
           else if (token == "<CellClip>") ReadBasicType(is, binary, &cell_clip_);
           else if (token == "<CellDiffClip>") ReadBasicType(is, binary, &cell_diff_clip_);
+          else if (token == "<ClipGradient>") ReadBasicType(is, binary, &grad_clip_); // bwd-compat.
           else KALDI_ERR << "Unknown token: " << token;
           break;
         case 'L': ExpectToken(is, binary, "<LearnRateCoef>");
@@ -736,4 +737,4 @@ class LstmProjected : public MultistreamComponent {
 }  // namespace nnet1
 }  // namespace kaldi
 
-#endif  // KALDI_NNET_NNET_LSTM_PROJECTED_STREAMS_H_
+#endif  // KALDI_NNET_NNET_LSTM_PROJECTED_H_

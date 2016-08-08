@@ -1,4 +1,4 @@
-// nnetbin/nnet-train-lstm-streams.cc
+// nnetbin/nnet-train-multistream.cc
 
 // Copyright 2015-2016  Brno University of Technology (Author: Karel Vesely)
 //           2014  Jiayu DU (Jerry), Wei Li
@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
         "The training targets are pdf-posteriors, usually prepared by ali-to-post.\n"
         "The updates are per-utterance.\n"
         "\n"
-        "Usage: nnet-train-lstm-streams [options] "
+        "Usage: nnet-train-multistream [options] "
           "<feature-rspecifier> <targets-rspecifier> <model-in> [<model-out>]\n"
         "e.g.: nnet-train-lstm-streams scp:feature.scp ark:posterior.ark nnet.init nnet.iter1\n";
 
@@ -175,7 +175,7 @@ int main(int argc, char *argv[]) {
               Matrix<BaseFloat> mat = feature_reader.Value();
               Posterior targets = target_reader.Value(utt);
 
-              // getting per-frame weihts,
+              // getting per-frame weights,
               Vector<BaseFloat> weights;
               if (frame_weights != "") {
                 weights = weights_reader.Value(utt);
@@ -249,13 +249,13 @@ int main(int argc, char *argv[]) {
         // Number of sequences (can have zero length),
         int32 n_streams = num_streams;
 
-        // Create the final feature matrix with 'interleved feature-lines',
+        // Create the final feature matrix with 'interleaved feature-lines',
         feat_mat_host.Resize(n_streams * batch_size, nnet.InputDim(), kSetZero);
         target_host.resize(n_streams * batch_size);
         weight_host.Resize(n_streams * batch_size, kSetZero);
         frame_num_utt.resize(n_streams, 0);
 
-        // fill the frame_num_utt,
+        // fill the 'frame_num_utt' with 'batch_size' or smaller frame-count,
         for (int32 s = 0; s < n_streams; s++) {
           int32 num_rows = feats_utt[s].NumRows();
           frame_num_utt[s] = std::min(batch_size, num_rows);
