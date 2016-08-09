@@ -3,7 +3,7 @@
 # Copyright 2012  Johns Hopkins University (Author: Guoguo Chen)
 # Apache 2.0
 
-# Begin configuration section.  
+# Begin configuration section.
 model= # You can specify the model to use
 cmd=run.pl
 acwt=0.083333
@@ -16,8 +16,8 @@ strict=true
 word_ins_penalty=0
 silence_word=  # Specify this only if you did so in kws_setup
 skip_optimization=false     # If you only search for few thousands of keywords, you probablly
-                            # can skip the optimization; but if you're going to search for 
-                            # millions of keywords, you'd better do set this optimization to 
+                            # can skip the optimization; but if you're going to search for
+                            # millions of keywords, you'd better do set this optimization to
                             # false and do the optimization on the final index.
 # End configuration section.
 
@@ -55,7 +55,7 @@ echo $nj > $kwsdir/num_jobs;
 utter_id=$kwsdatadir/utter_id
 
 if [ -z "$model" ]; then # if --model <mdl> was not specified on the command line...
-  model=$srcdir/final.mdl; 
+  model=$srcdir/final.mdl;
 fi
 
 for f in $model $decodedir/lat.1.gz $utter_id; do
@@ -72,6 +72,7 @@ if [ ! -z $silence_word ]; then
 fi
 
 word_boundary=$langdir/phones/word_boundary.int
+align_lexicon=$langdir/phones/align_lexicon.int
 if [ -f $word_boundary ] ; then
   $cmd JOB=1:$nj $kwsdir/log/index.JOB.log \
     lattice-add-penalty --word-ins-penalty=$word_ins_penalty "ark:gzip -cdf $decodedir/lat.JOB.gz|" ark:- \| \
@@ -81,8 +82,7 @@ if [ -f $word_boundary ] ; then
       --max-silence-frames=$max_silence_frames --strict=$strict ark:$utter_id ark:- ark:- \| \
       kws-index-union --skip-optimization=$skip_optimization --strict=$strict --max-states=$max_states \
       ark:- "ark:|gzip -c > $kwsdir/index.JOB.gz" || exit 1
-else
-  align_lexicon=$langdir/phones/align_lexicon.int 
+elif [ -f $align_lexicon ]; then
   $cmd JOB=1:$nj $kwsdir/log/index.JOB.log \
     lattice-add-penalty --word-ins-penalty=$word_ins_penalty "ark:gzip -cdf $decodedir/lat.JOB.gz|" ark:- \| \
       lattice-align-words-lexicon $silence_opt --max-expand=$max_expand $align_lexicon $model  ark:- ark:- \| \
@@ -91,6 +91,9 @@ else
       --max-silence-frames=$max_silence_frames --strict=$strict ark:$utter_id ark:- ark:- \| \
       kws-index-union --skip-optimization=$skip_optimization --strict=$strict --max-states=$max_states \
       ark:- "ark:|gzip -c > $kwsdir/index.JOB.gz" || exit 1
+else
+  echo "$0: cannot find either word-boundary file $word_boundary or alignment lexicon $align_lexicon"
+  exit 1
 fi
 
 exit 0;
