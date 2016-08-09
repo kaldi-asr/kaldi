@@ -27,7 +27,7 @@ nnet3_affix=_cleaned     # affix for exp/nnet3 directory to put iVector stuff in
 
 
 gmm_dir=exp/${gmm}
-ali_dir=exp/${gmm}_ali_${train_set}_sp
+ali_dir=exp/${gmm}_ali_${train_set}_sp_comb
 
 for f in data/${train_set}/feats.scp ${gmm_dir}/final.mdl; do
   if [ ! -f $f ]; then

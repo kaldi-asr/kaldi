@@ -6,7 +6,6 @@
 
 
 # by default, with cleanup:
-
 # local/nnet3/run_tdnn.sh
 
 # without cleanup:
@@ -19,6 +18,7 @@ set -e -o pipefail -u
 # (some of which are also used in this script directly).
 stage=0
 nj=30
+decode_nj=30
 min_seg_len=1.55
 train_set=train_cleaned
 gmm=tri3_cleaned  # this is the source gmm-dir for the data-type of interest; it
@@ -55,9 +55,10 @@ local/nnet3/run_ivector_common.sh --stage $stage \
                                   --nnet3-affix "$nnet3_affix"
 
 
-graph_dir=$gmm_dir/graph
+
 gmm_dir=exp/${gmm}
-ali_dir=exp/${gmm}_ali_${train_set}_sp
+graph_dir=$gmm_dir/graph
+ali_dir=exp/${gmm}_ali_${train_set}_sp_comb
 dir=exp/nnet3${nnet3_affix}/tdnn${tdnn_affix}_sp
 train_data_dir=data/${train_set}_sp_hires_comb
 train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
@@ -72,7 +73,7 @@ done
 if [ $stage -le 12 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/ami-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
+     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/tedlium-$(date +'%m_%d_%H_%M')/s5_r2/$dir/egs/storage $dir/egs/storage
   fi
 
   steps/nnet3/tdnn/train.sh --stage $train_stage \
@@ -88,15 +89,15 @@ if [ $stage -le 12 ]; then
     $train_data_dir data/lang $ali_dir $dir
 fi
 
-if [ $stage -le 12 ]; then
+if [ $stage -le 13 ]; then
   rm $dir/.error || true 2>/dev/null
   for dset in dev test; do
    (
-    steps/decode.sh --nj $decode_nj --cmd "$decode_cmd"  --num-threads 4 \
-      ${graph_dir} data/${dset} ${dir}/decode_${dset} || exit 1
+    steps/nnet3/decode.sh --nj $decode_nj --cmd "$decode_cmd"  --num-threads 4 \
+        --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${dset}_hires \
+      ${graph_dir} data/${dset}_hires ${dir}/decode_${dset} || exit 1
     steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" data/lang data/lang_rescore \
-          --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${dset}_hires \
-       data/${dset} ${dir}/decode_${dset} ${dir}/decode_${dset}_rescore || exit 1
+       data/${dset}_hires ${dir}/decode_${dset} ${dir}/decode_${dset}_rescore || exit 1
     ) || touch $dir/.error &
   done
   wait

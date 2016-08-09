@@ -175,17 +175,30 @@ if [ $stage -le 16 ]; then
   local/run_cleanup_segmentation.sh
 fi
 
+
+# TODO: xiaohui-zhang will add lexicon cleanup at some point.
+
+if [ $stage -le 17 ]; then
+  # This will only work if you have GPUs on your system (and note that it requires
+  # you to have the queue set up the right way... see kaldi-asr.org/doc/queue.html)
+  local/chain/run_tdnn.sh
+fi
+
+# The nnet3 TDNN recipe:
+# local/nnet3/run_tdnn.sh
+
+
 # We removed the GMM+MMI stage that used to exist in the release-1 scripts,
 # since the neural net training is more of interest.
 
-# steps/cleanup/debug_lexicon.sh --nj 100 --alidir exp/tri3 --cmd "$train_cmd" data/train data/lang exp/tri3 data/local/dict/lexicon.txt exp/tri3_debug_lexicon &
 
 
-# Nnet3 TDNN recipe
-# local/nnet3/run_tdnn.sh
-# local/nnet3/run_tdnn_discriminative.sh
 
-# local/chain/run_tdnn.sh
+
+
+
+
+
 
 
 echo "$0: success."
