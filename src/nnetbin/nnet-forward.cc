@@ -194,7 +194,7 @@ int main(int argc, char *argv[]) {
               << " (fps " << tot_t/time.Elapsed() << ")";
 
 #if HAVE_CUDA == 1
-    if (kaldi::g_kaldi_verbose_level >= 1) {
+    if (GetVerboseLevel() >= 1) {
       CuDevice::Instantiate().PrintProfile();
     }
 #endif

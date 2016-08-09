@@ -268,11 +268,8 @@ int main(int argc, char *argv[]) {
       // Set the original lengths of utterances before padding,
       nnet.SetSeqLengths(frame_num_utt);
       // Show the 'utt' lengths in the VLOG[2],
-      if (kaldi::g_kaldi_verbose_level >= 2) {
-        WriteIntegerVector(
-          KALDI_LOG << "frame_num_utt[" << frame_num_utt.size() << "]",
-          false, frame_num_utt
-        );
+      if (GetVerboseLevel() >= 2) {
+        KALDI_LOG << "frame_num_utt[" << frame_num_utt.size() << "]" << frame_num_utt;
       }
       // Reset all the streams (we have new sentences),
       nnet.ResetStreams(std::vector<int32>(frame_num_utt.size(), 1));
@@ -317,7 +314,7 @@ int main(int argc, char *argv[]) {
 
       // monitor the NN training (--verbose=2),
       int32 F = 25000;
-      if (kaldi::g_kaldi_verbose_level >= 3) {
+      if (GetVerboseLevel() >= 3) {
         // print every 25k frames,
         if (tmp_frames / F != total_frames / F) {
           KALDI_VLOG(3) << "### After " << total_frames << " frames,";
@@ -332,7 +329,7 @@ int main(int argc, char *argv[]) {
     }
 
     // after last model update : show what happens in network,
-    if (kaldi::g_kaldi_verbose_level >= 1) {  // vlog-1
+    if (GetVerboseLevel() >= 1) {  // vlog-1
       KALDI_VLOG(1) << "### After " << total_frames << " frames,";
       KALDI_VLOG(1) << nnet.Info();
       KALDI_VLOG(1) << nnet.InfoPropagate();
