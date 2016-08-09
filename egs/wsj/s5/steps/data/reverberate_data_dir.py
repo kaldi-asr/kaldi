@@ -155,17 +155,6 @@ def CreateCorruptedUtt2uniq(input_dir, output_dir, num_replicas, prefix):
     WriteDictToFile(corrupted_utt2uniq, output_dir + "/utt2uniq")
 
 
-# This function returns only the isotropic noises according to the specified room
-# Please refer to ParseNoiseList() for the format of iso_noise_list
-def FilterIsotropicNoiseList(iso_noise_list, room_id):
-    filtered_list = []
-    for noise in iso_noise_list:
-        if noise.room_linkage == room_id:
-            filtered_list.append(noise)
-
-    return filtered_list
-
-
 def AddPointSourceNoise(noise_addition_descriptor,  # descriptor to store the information of the noise added
                         room,  # the room selected
                         pointsource_noise_list, # the point source noise list
@@ -199,7 +188,7 @@ def AddPointSourceNoise(noise_addition_descriptor,  # descriptor to store the in
 # This function return the string of options to the binary wav-reverberate
 def GenerateReverberationOpts(room_dict,  # the room dictionary, please refer to MakeRoomDict() for the format
                               pointsource_noise_list, # the point source noise list
-                              iso_noise_list, # the isotropic noise list
+                              iso_noise_dict, # the isotropic noise dictionary
                               foreground_snrs, # the SNR for adding the foreground noises
                               background_snrs, # the SNR for adding the background noises
                               speech_rvb_probability, # Probability of reverberating a speech signal
@@ -221,7 +210,9 @@ def GenerateReverberationOpts(room_dict,  # the room dictionary, please refer to
         # pick the RIR to reverberate the speech
         reverberate_opts += "--impulse-response={0} ".format(speech_rir.rir_file_location)
 
-    rir_iso_noise_list = FilterIsotropicNoiseList(iso_noise_list, speech_rir.room_id)
+    rir_iso_noise_list = []
+    if speech_rir.room_id in iso_noise_dict:
+        rir_iso_noise_list = iso_noise_dict[speech_rir.room_id]
     # Add the corresponding isotropic noise associated with the selected RIR
     if len(rir_iso_noise_list) > 0 and random.random() < isotropic_noise_addition_probability:
         isotropic_noise = PickItemWithProbability(rir_iso_noise_list)
@@ -270,7 +261,7 @@ def GenerateReverberatedWavScp(wav_scp,  # a dictionary whose values are the Kal
                                output_dir, # output directory to write the corrupted wav.scp 
                                room_dict,  # the room dictionary, please refer to MakeRoomDict() for the format
                                pointsource_noise_list, # the point source noise list
-                               iso_noise_list, # the isotropic noise list
+                               iso_noise_dict, # the isotropic noise dictionary
                                foreground_snr_array, # the SNR for adding the foreground noises
                                background_snr_array, # the SNR for adding the background noises
                                num_replicas, # Number of replicate to generated for the data
@@ -296,7 +287,7 @@ def GenerateReverberatedWavScp(wav_scp,  # a dictionary whose values are the Kal
 
             reverberate_opts = GenerateReverberationOpts(room_dict,  # the room dictionary, please refer to MakeRoomDict() for the format
                                                          pointsource_noise_list, # the point source noise list
-                                                         iso_noise_list, # the isotropic noise list
+                                                         iso_noise_dict, # the isotropic noise dictionary
                                                          foreground_snrs, # the SNR for adding the foreground noises
                                                          background_snrs, # the SNR for adding the background noises
                                                          speech_rvb_probability, # Probability of reverberating a speech signal
@@ -338,7 +329,7 @@ def CreateReverberatedCopy(input_dir,
                            output_dir,
                            room_dict,  # the room dictionary, please refer to MakeRoomDict() for the format
                            pointsource_noise_list, # the point source noise list
-                           iso_noise_list, # the isotropic noise list
+                           iso_noise_dict, # the isotropic noise dictionary
                            foreground_snr_string, # the SNR for adding the foreground noises
                            background_snr_string, # the SNR for adding the background noises
                            num_replicas, # Number of replicate to generated for the data
@@ -357,7 +348,7 @@ def CreateReverberatedCopy(input_dir,
     foreground_snr_array = map(lambda x: float(x), foreground_snr_string.split(':'))
     background_snr_array = map(lambda x: float(x), background_snr_string.split(':'))
 
-    GenerateReverberatedWavScp(wav_scp, durations, output_dir, room_dict, pointsource_noise_list, iso_noise_list, 
+    GenerateReverberatedWavScp(wav_scp, durations, output_dir, room_dict, pointsource_noise_list, iso_noise_dict,
                foreground_snr_array, background_snr_array, num_replicas, prefix, 
                speech_rvb_probability, isotropic_noise_addition_probability, 
                pointsource_noise_addition_probability, max_noises_per_minute)
@@ -421,11 +412,13 @@ def ParseRirList(rir_list_file):
     rir_lines = map(lambda x: x.strip(), open(rir_list_file))
     for line in rir_lines:
         rir = rir_parser.parse_args(line.split())
-        setattr(rir, "iso_noise_list", [])
         rir_list.append(rir)
 
     return SmoothProbabilityDistribution(rir_list)
 
+# This dunction checks if the inputs are approximately equal assuming they are floats.
+def almost_equal(value_1, value_2, accuracy = 10**-8):
+    return abs(value_1 - value_2) < accuracy
 
 # This function converts a list of RIRs into a dictionary of RIRs indexed by the room-id.
 # Its values are objects with two attributes: a local RIR list
@@ -445,13 +438,15 @@ def MakeRoomDict(rir_list):
     for key in room_dict.keys():
         room_dict[key].probability = sum(rir.probability for rir in room_dict[key].rir_list)
 
-    assert sum(room_dict[key].probability for key in room_dict.keys())
+    assert almost_equal(sum(room_dict[key].probability for key in room_dict.keys()), 1.0)
 
     return room_dict
 
 
 # This function creates the point-source noise list 
-# and the isotropic noise list from the noise information file
+# and the isotropic noise dictionary from the noise information file
+# The isotropic noise dictionary is indexed by the room
+# and its value is the corrresponding isotropic noise list
 # Each noise object in the list contains the following attributes:
 # noise_id, noise_type, bg_fg_type, room_linkage, probability, noise_file_location
 # Please refer to the help messages in the parser for the meaning of these attributes
@@ -467,7 +462,7 @@ def ParseNoiseList(noise_list_file):
     noise_parser.add_argument('noise_file_location', type=str, help='noise file location')
 
     pointsource_noise_list = []
-    iso_noise_list = []
+    iso_noise_dict = {}
     noise_lines = map(lambda x: x.strip(), open(noise_list_file))
     for line in noise_lines:
         noise = noise_parser.parse_args(line.split())
@@ -475,12 +470,23 @@ def ParseNoiseList(noise_list_file):
             if noise.room_linkage is None:
                 raise Exception("--room-linkage must be specified if --noise-type is isotropic")
             else:
-                iso_noise_list.append(noise)
+                if noise.room_linkage not in iso_noise_dict:
+                    iso_noise_dict[noise.room_linkage] = []
+                iso_noise_dict[noise.room_linkage].append(noise)
         else:
             pointsource_noise_list.append(noise)
 
-    return (SmoothProbabilityDistribution(pointsource_noise_list),
-            SmoothProbabilityDistribution(iso_noise_list))
+    # ensure the point-source noise probabilities sum to 1 
+    if len(pointsource_noise_list) > 0:
+        pointsource_noise_list = SmoothProbabilityDistribution(pointsource_noise_list)
+        assert almost_equal(sum(noise.probability for noise in pointsource_noise_list), 1.0)
+    
+    # ensure the isotropic noise source probabilities for a given room sum to 1
+    for key in iso_noise_dict.keys():
+        iso_noise_dict[key] = SmoothProbabilityDistribution(iso_noise_dict[key])
+        assert almost_equal(sum(noise.probability for noise in iso_noise_dict[key]), 1.0)
+
+    return (pointsource_noise_list, iso_noise_dict)
 
 
 def Main():
@@ -488,18 +494,18 @@ def Main():
     random.seed(args.random_seed)
     rir_list = ParseRirList(args.rir_list_file)
     pointsource_noise_list = []
-    iso_noise_list = []
+    iso_noise_dict = {}
     if args.noise_list_file is not None:
-        pointsource_noise_list, iso_noise_list = ParseNoiseList(args.noise_list_file)
+        pointsource_noise_list, iso_noise_dict = ParseNoiseList(args.noise_list_file)
         print("Number of point-source noises is {0}".format(len(pointsource_noise_list)))
-        print("Number of isotropic noises is {0}".format(len(iso_noise_list)))
+        print("Number of isotropic noises is {0}".format(sum(len(iso_noise_dict[key]) for key in iso_noise_dict.keys())))
     room_dict = MakeRoomDict(rir_list)
 
     CreateReverberatedCopy(input_dir = args.input_dir,
                            output_dir = args.output_dir,
                            room_dict = room_dict,
                            pointsource_noise_list = pointsource_noise_list,
-                           iso_noise_list = iso_noise_list,
+                           iso_noise_dict = iso_noise_dict,
                            foreground_snr_string = args.foreground_snr_string,
                            background_snr_string = args.background_snr_string,
                            num_replicas = args.num_replicas,
