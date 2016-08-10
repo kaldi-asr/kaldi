@@ -24,7 +24,7 @@ def GetArgs():
                         help="RIR information file, the format of the file is "
                         "--rir-id <string,required> --room-id <string,required> "
                         "--receiver-position-id <string,optional> --source-position-id <string,optional> "
-                        "--rt-60 <float,optional> --drr <float, optional> <location(support Kaldi IO strings)> "
+                        "--rt-60 <float,optional> --drr <float, optional> location <filename> "
                         "E.g. --rir-id 00001 --room-id 001 --receiver-position-id 001 --source-position-id 00001 "
                         "--rt60 0.58 --drr -4.885 data/impulses/Room001-00001.wav")
     parser.add_argument("--noise-list-file", type=str, default = None,
@@ -32,7 +32,7 @@ def GetArgs():
                         "--noise-id <string,required> --noise-type <choices = {isotropic, point source},required> "
                         "--bg-fg-type <choices = {background, foreground}, default=background> "
                         "--room-linkage <str, specifies the room associated with the noise file. Required if isotropic> "
-                        "<location=(support Kaldi IO strings)> "
+                        "location <filename> "
                         "E.g. --noise-id 001 --noise-type isotropic --rir-id 00019 iso_noise.wav")
     parser.add_argument("--num-replications", type=int, dest = "num_replicas", default = 1,
                         help="Number of replicate to generated for the data")
@@ -48,6 +48,8 @@ def GetArgs():
     parser.add_argument("--max-noises-per-minute", type=int, default = 2,
                         help="This controls the maximum number of point-source noises that could be added to a recording according to its duration")
     parser.add_argument('--random-seed', type=int, default=0, help='seed to be used in the randomization of impulses and noises')
+    parser.add_argument("--shift-output", type=str, help="If true, the reverberated waveform will be shifted by the amount of the peak position of the RIR",
+                         choices=['true', 'false'], default = "true")
     parser.add_argument("input_dir",
                         help="Input data directory")
     parser.add_argument("output_dir",
@@ -75,6 +77,21 @@ def CheckArgs(args):
     if args.num_replicas > 1 and args.prefix is None:
         args.prefix = "rvb"
         warnings.warn("--prefix is set to 'rvb' as --num-replications is larger than 1.")
+
+    if not args.num_replicas > 0:
+        raise Exception("--num-replications cannot be non-positive")
+
+    if args.speech_rvb_probability < 0 or args.speech_rvb_probability > 1:
+        raise Exception("--speech-rvb-probability must be between 0 and 1")
+
+    if args.pointsource_noise_addition_probability < 0 or args.pointsource_noise_addition_probability > 1:
+        raise Exception("--pointsource-noise-addition-probability must be between 0 and 1")
+
+    if args.isotropic_noise_addition_probability < 0 or args.isotropic_noise_addition_probability > 1:
+        raise Exception("--isotropic-noise-addition-probability must be between 0 and 1")
+
+    if args.max_noises_per_minute < 0:
+        raise Exception("--max-noises-per-minute cannot be negative")
 
     return args
 
@@ -164,7 +181,7 @@ def AddPointSourceNoise(noise_addition_descriptor,  # descriptor to store the in
                         speech_dur,  # duration of the recording
                         max_noises_recording  # Maximum number of point-source noises that can be added
                         ):
-    if len(pointsource_noise_list) > 0 and random.random() < pointsource_noise_addition_probability and max_noises_recording > 1:
+    if len(pointsource_noise_list) > 0 and random.random() < pointsource_noise_addition_probability and max_noises_recording >= 1:
         for k in range(random.randint(1, max_noises_recording)):
             # pick the RIR to reverberate the point-source noise
             noise = PickItemWithProbability(pointsource_noise_list)
@@ -208,7 +225,7 @@ def GenerateReverberationOpts(room_dict,  # the room dictionary, please refer to
     speech_rir = PickItemWithProbability(room.rir_list)
     if random.random() < speech_rvb_probability:
         # pick the RIR to reverberate the speech
-        reverberate_opts += "--impulse-response={0} ".format(speech_rir.rir_file_location)
+        reverberate_opts += "--impulse-response='{0}' ".format(speech_rir.rir_file_location)
 
     rir_iso_noise_list = []
     if speech_rir.room_id in iso_noise_dict:
@@ -267,6 +284,7 @@ def GenerateReverberatedWavScp(wav_scp,  # a dictionary whose values are the Kal
                                num_replicas, # Number of replicate to generated for the data
                                prefix, # prefix for the id of the corrupted utterances
                                speech_rvb_probability, # Probability of reverberating a speech signal
+                               shift_output, # option whether to shift the output waveform
                                isotropic_noise_addition_probability, # Probability of adding isotropic noises
                                pointsource_noise_addition_probability, # Probability of adding point-source noises
                                max_noises_per_minute # maximum number of point-source noises that can be added to a recording according to its duration
@@ -300,7 +318,7 @@ def GenerateReverberatedWavScp(wav_scp,  # a dictionary whose values are the Kal
             if reverberate_opts == "":
                 wav_corrupted_pipe = "{0}".format(wav_original_pipe) 
             else:
-                wav_corrupted_pipe = "{0} wav-reverberate {1} - - |".format(wav_original_pipe, reverberate_opts)
+                wav_corrupted_pipe = "{0} wav-reverberate --shift-output={1} {2} - - |".format(wav_original_pipe, shift_output, reverberate_opts)
 
             new_recording_id = GetNewId(recording_id, prefix, i)
             corrupted_wav_scp[new_recording_id] = wav_corrupted_pipe
@@ -335,6 +353,7 @@ def CreateReverberatedCopy(input_dir,
                            num_replicas, # Number of replicate to generated for the data
                            prefix, # prefix for the id of the corrupted utterances
                            speech_rvb_probability, # Probability of reverberating a speech signal
+                           shift_output, # option whether to shift the output waveform
                            isotropic_noise_addition_probability, # Probability of adding isotropic noises
                            pointsource_noise_addition_probability, # Probability of adding point-source noises
                            max_noises_per_minute  # maximum number of point-source noises that can be added to a recording according to its duration
@@ -350,7 +369,7 @@ def CreateReverberatedCopy(input_dir,
 
     GenerateReverberatedWavScp(wav_scp, durations, output_dir, room_dict, pointsource_noise_list, iso_noise_dict,
                foreground_snr_array, background_snr_array, num_replicas, prefix, 
-               speech_rvb_probability, isotropic_noise_addition_probability, 
+               speech_rvb_probability, shift_output, isotropic_noise_addition_probability, 
                pointsource_noise_addition_probability, max_noises_per_minute)
 
     AddPrefixToFields(input_dir + "/utt2spk", output_dir + "/utt2spk", num_replicas, prefix, field = [0,1])
@@ -405,6 +424,7 @@ def ParseRirList(rir_list_file):
     rir_parser.add_argument('--source-position-id', type=str, default=None, help='source position id')
     rir_parser.add_argument('--rt60', type=float, default=None, help='RT60 is the time required for reflections of a direct sound to decay 60 dB.')
     rir_parser.add_argument('--drr', type=float, default=None, help='Direct-to-reverberant-ratio of the impulse response.')
+    rir_parser.add_argument('--cte', type=float, default=None, help='Early-to-late index of the impulse response.')
     rir_parser.add_argument('--probability', type=float, default=None, help='probability of the impulse response.')
     rir_parser.add_argument('rir_file_location', type=str, help='rir file location')
 
@@ -511,6 +531,7 @@ def Main():
                            num_replicas = args.num_replicas,
                            prefix = args.prefix,
                            speech_rvb_probability = args.speech_rvb_probability,
+                           shift_output = args.shift_output,
                            isotropic_noise_addition_probability = args.isotropic_noise_addition_probability,
                            pointsource_noise_addition_probability = args.pointsource_noise_addition_probability,
                            max_noises_per_minute = args.max_noises_per_minute)

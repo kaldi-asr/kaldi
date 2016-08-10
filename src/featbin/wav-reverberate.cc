@@ -162,7 +162,7 @@ int main(int argc, char *argv[]) {
     po.Register("shift-output", &shift_output,
                 "If true, the reverberated waveform will be shifted by the "
                 "amount of the peak position of the RIR and the length of "
-                "the output waveform will be equal to the input waveform."
+                "the output waveform will be equal to the input waveform. "
                 "If false, the length of the output waveform will be "
                 "equal to (original input length + rir length - 1). "
                 "This value is true by default and "
