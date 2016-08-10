@@ -576,10 +576,10 @@ bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
         if (computer.getLastSeenInputFrameLength() != 0){
             computer.Flush(&cu_loglikes);
         }
-        ProcessLoglikes(log_inv_prior, &cu_loglikes);
         else {
             //KALDI_LOG << "WARNING\n";
         }
+        ProcessLoglikes(log_inv_prior, &cu_loglikes);
       }
     } else {
       CuMatrix<BaseFloat> cu_feats;
