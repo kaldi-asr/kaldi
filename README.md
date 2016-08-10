@@ -1,5 +1,5 @@
-[![Build Status](https://travis-ci.org/kaldi-asr/kaldi.svg?branch=master)]
-(https://travis-ci.org/kaldi-asr/kaldi)
+[![Build Status](https://travis-ci.org/matthewaylett/idlak.svg?branch=master)]
+(https://travis-ci.org/matthewaylett/idlak)
 
 Kaldi Speech Recognition Toolkit
 ================================
