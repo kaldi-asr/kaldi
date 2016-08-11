@@ -33,10 +33,10 @@
 namespace kaldi {
 namespace nnet1 {
 
-class ParallelComponent : public UpdatableComponent {
+class ParallelComponent : public MultistreamComponent {
  public:
   ParallelComponent(int32 dim_in, int32 dim_out):
-    UpdatableComponent(dim_in, dim_out)
+    MultistreamComponent(dim_in, dim_out)
   { }
 
   ~ParallelComponent()
@@ -338,6 +338,18 @@ class ParallelComponent : public UpdatableComponent {
           comp.SetBiasLearnRateCoef(val);
         }
       }
+    }
+  }
+
+  /**
+   * Overriding the default,
+   * which was MultistreamComponent::SetSeqLengths(...)
+   */
+  void SetSeqLengths(const std::vector<int32> &sequence_lengths) {
+    sequence_lengths_ = sequence_lengths;
+    // loop over nnets,
+    for (int32 i = 0; i < nnet_.size(); i++) {
+      nnet_[i].SetSeqLengths(sequence_lengths);
     }
   }
 
