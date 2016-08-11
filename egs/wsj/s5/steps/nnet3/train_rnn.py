@@ -730,6 +730,9 @@ def Train(args, run_opts):
     report_handle.write(report)
     report_handle.close()
 
+    os.system("steps/info/nnet3_dir_info.sh " + args.dir)
+
+
 def Main():
     [args, run_opts] = GetArgs()
     try:

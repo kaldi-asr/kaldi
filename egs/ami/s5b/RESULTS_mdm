@@ -3,18 +3,34 @@
 # ./run.sh --mic mdm8
 #
 
+#  steps/info/gmm_dir_info.pl exp/mdm8/{mono,tri1,tri2,tri3,tri3_cleaned}
+# exp/mdm8/mono: nj=30 align prob=-92.06 over 10.78h [retry=6.3%, fail=0.1%] states=137 gauss=980
+# exp/mdm8/tri1: nj=30 align prob=-89.91 over 76.18h [retry=5.6%, fail=0.1%] states=3829 gauss=80166 tree-impr=3.17
+# exp/mdm8/tri2: nj=30 align prob=-51.10 over 76.15h [retry=5.0%, fail=0.2%] states=3913 gauss=80127 tree-impr=3.37 lda-sum=11.01 mllt impr,logdet=0.66,1.00
+# exp/mdm8/tri3: nj=30 align prob=-52.15 over 76.19h [retry=3.0%, fail=0.1%] states=4011 gauss=80071 fmllr-impr=3.99 over 53.86h tree-impr=4.79
+# exp/mdm8/tri3_cleaned: nj=50 align prob=-51.69 over 69.07h [retry=0.7%, fail=0.0%] states=4029 gauss=80051 fmllr-impr=0.87 over 52.85h tree-impr=5.32
+
+
+# steps/info/nnet3_dir_info.pl exp/mdm8/nnet3_cleaned/tdnn_sp_ihmali exp/sdm1/nnet3_cleaned/tdnn_sp exp/sdm1/nnet3/tdnn_sp_ihmali
+# exp/mdm8/nnet3_cleaned/tdnn_sp_ihmali: num-iters=82 nj=2..12 num-params=10.9M dim=40+100->3980 combine=-2.04->-1.98 loglike:train/valid[53,81,final]=(-2.20,-2.01,-2.00/-2.70,-2.71,-2.71) accuracy:train/valid[53,81,final]=(0.48,0.52,0.51/0.41,0.41,0.41)
+# exp/sdm1/nnet3_cleaned/tdnn_sp: num-iters=82 nj=2..12 num-params=10.9M dim=40+100->3961 combine=-2.24->-2.19 loglike:train/valid[53,81,final]=(-2.41,-2.20,-2.19/-2.86,-2.87,-2.87) accuracy:train/valid[53,81,final]=(0.45,0.49,0.49/0.39,0.39,0.40)
+# exp/sdm1/nnet3/tdnn_sp_ihmali: num-iters=92 nj=2..12 num-params=10.9M dim=40+100->3980 combine=-2.15->-2.10 loglike:train/valid[60,91,final]=(-2.33,-2.14,-2.13/-2.99,-3.02,-3.03) accuracy:train/valid[60,91,final]=(0.45,0.48,0.49/0.36,0.36,0.36)
+
+# steps/info/chain_dir_info.pl exp/mdm8/chain_cleaned/tdnn_sp_ihmali exp/sdm1/chain_cleaned/tdnn_sp exp/sdm1/chain/tdnn_sp_ihmali
+# exp/mdm8/chain_cleaned/tdnn_sp_ihmali: num-iters=87 nj=2..12 num-params=6.9M dim=40+100->3466 combine=-0.19->-0.18 xent:train/valid[57,86,final]=(-2.38,-2.24,-2.25/-2.75,-2.69,-2.69) logprob:train/valid[57,86,final]=(-0.19,-0.16,-0.16/-0.26,-0.26,-0.26)
+# exp/sdm1/chain_cleaned/tdnn_sp: num-iters=87 nj=2..12 num-params=6.8M dim=40+100->3404 combine=-0.20->-0.20 xent:train/valid[57,86,final]=(-2.44,-2.31,-2.32/-2.74,-2.68,-2.68) logprob:train/valid[57,86,final]=(-0.19,-0.17,-0.16/-0.27,-0.27,-0.27)
+# exp/sdm1/chain/tdnn_sp_ihmali: num-iters=96 nj=2..12 num-params=6.9M dim=40+100->3472 combine=-0.20->-0.20 xent:train/valid[63,95,final]=(-2.61,-2.46,-2.47/-2.79,-2.72,-2.72) logprob:train/valid[63,95,final]=(-0.21,-0.18,-0.18/-0.27,-0.27,-0.27)
+
 # for d in exp/mdm8/tri*/decode_*pr1-7; do grep Sum $d/*scor*/*ys | utils/best_wer.sh; done
 
-for d in exp/sdm1/tri*/decode_*pr1-7; do grep Sum $d/*scor*/*ys | utils/best_wer.sh; done
+%WER 53.9 | 14278 94496 | 51.8 30.1 18.1 5.7 53.9 74.2 | 0.486 | exp/mdm8/tri2/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_13/dev_o4.ctm.filt.sys
+%WER 59.6 | 13357 90001 | 45.8 32.8 21.4 5.3 59.6 75.8 | 0.455 | exp/mdm8/tri2/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_12/eval_o4.ctm.filt.sys
 
-%WER 61.5 | 14827 94516 | 44.3 36.0 19.7 5.8 61.5 72.0 | 0.412 | exp/sdm1/tri2/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_12/dev_o4.ctm.filt.sys
-%WER 67.0 | 14014 89827 | 37.7 36.8 25.4 4.7 67.0 72.5 | 0.364 | exp/sdm1/tri2/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_12/eval_o4.ctm.filt.sys
+%WER 52.0 | 14353 94505 | 54.4 30.3 15.3 6.5 52.0 73.1 | 0.640 | exp/mdm8/tri3/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_14/dev_o4.ctm.filt.sys
+%WER 56.5 | 14089 89627 | 48.3 31.6 20.1 4.8 56.5 70.9 | 0.617 | exp/mdm8/tri3/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_15/eval_o4.ctm.filt.sys
 
-%WER 59.4 | 14535 94520 | 46.3 35.2 18.5 5.7 59.4 73.2 | 0.587 | exp/sdm1/tri3/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_14/dev_o4.ctm.filt.sys
-%WER 64.4 | 13743 89614 | 40.6 37.3 22.1 5.0 64.4 73.2 | 0.580 | exp/sdm1/tri3/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_13/eval_o4.ctm.filt.sys
-
-%WER 59.4 | 14688 94526 | 46.5 35.4 18.1 5.9 59.4 72.5 | 0.584 | exp/sdm1/tri3_cleaned/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_14/dev_o4.ctm.filt.sys
-%WER 64.3 | 13702 89815 | 40.2 36.1 23.8 4.5 64.3 73.9 | 0.565 | exp/sdm1/tri3_cleaned/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_15/eval_o4.ctm.filt.sys
+%WER 52.0 | 14354 94511 | 54.4 30.4 15.2 6.4 52.0 73.3 | 0.644 | exp/mdm8/tri3_cleaned/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_14/dev_o4.ctm.filt.sys
+%WER 56.4 | 13221 89634 | 48.8 32.2 19.0 5.2 56.4 75.7 | 0.629 | exp/mdm8/tri3_cleaned/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_14/eval_o4.ctm.filt.sys
 
 
 # xent TDNN with cleaned data and the mdm8 system's own alignments.
