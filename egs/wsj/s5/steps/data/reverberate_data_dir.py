@@ -5,7 +5,7 @@
 
 # we're using python 3.x style print but want it to work in python 2.x,
 from __future__ import print_function
-import argparse, glob, math, os, random, sys, warnings, copy, imp, ast
+import argparse, shlex, glob, math, os, random, sys, warnings, copy, imp, ast
 
 data_lib = imp.load_source('dml', 'steps/data/data_dir_manipulation_lib.py')
 
@@ -24,7 +24,7 @@ def GetArgs():
                         help="RIR information file, the format of the file is "
                         "--rir-id <string,required> --room-id <string,required> "
                         "--receiver-position-id <string,optional> --source-position-id <string,optional> "
-                        "--rt-60 <float,optional> --drr <float, optional> location <filename> "
+                        "--rt-60 <float,optional> --drr <float, optional> location <rspecifier> "
                         "E.g. --rir-id 00001 --room-id 001 --receiver-position-id 001 --source-position-id 00001 "
                         "--rt60 0.58 --drr -4.885 data/impulses/Room001-00001.wav")
     parser.add_argument("--noise-list-file", type=str, default = None,
@@ -32,7 +32,7 @@ def GetArgs():
                         "--noise-id <string,required> --noise-type <choices = {isotropic, point source},required> "
                         "--bg-fg-type <choices = {background, foreground}, default=background> "
                         "--room-linkage <str, specifies the room associated with the noise file. Required if isotropic> "
-                        "location <filename> "
+                        "location <rspecifier> "
                         "E.g. --noise-id 001 --noise-type isotropic --rir-id 00019 iso_noise.wav")
     parser.add_argument("--num-replications", type=int, dest = "num_replicas", default = 1,
                         help="Number of replicate to generated for the data")
@@ -189,13 +189,18 @@ def AddPointSourceNoise(noise_addition_descriptor,  # descriptor to store the in
             # If it is a background noise, the noise will be extended and be added to the whole speech
             # if it is a foreground noise, the noise will not extended and be added at a random time of the speech
             if noise.bg_fg_type == "background":
-                noise_addition_descriptor['noise_io'].append("wav-reverberate --duration={2} --impulse-response={1} {0} - |".format(noise.noise_file_location, noise_rir.rir_file_location, speech_dur))
+                noise_rvb_command = "wav-reverberate --impulse-response=\"{0}\" --duration={1}".format(noise_rir.rir_file_location, speech_dur)
                 noise_addition_descriptor['start_times'].append(0)
                 noise_addition_descriptor['snrs'].append(background_snrs.next())
             else:
-                noise_addition_descriptor['noise_io'].append("wav-reverberate --impulse-response={1} {0} - |".format(noise.noise_file_location, noise_rir.rir_file_location))
+                noise_rvb_command = "wav-reverberate --impulse-response=\"{0}\"".format(noise_rir.rir_file_location)
                 noise_addition_descriptor['start_times'].append(round(random.random() * speech_dur, 2))
                 noise_addition_descriptor['snrs'].append(foreground_snrs.next())
+
+            if len(noise.noise_file_location.split()) == 1:
+                noise_addition_descriptor['noise_io'].append("{1} {0} - |".format(noise.noise_file_location, noise_rvb_command))
+            else:
+                noise_addition_descriptor['noise_io'].append("{0} {1} - - |".format(noise.noise_file_location, noise_rvb_command))
 
     return noise_addition_descriptor
 
@@ -225,7 +230,7 @@ def GenerateReverberationOpts(room_dict,  # the room dictionary, please refer to
     speech_rir = PickItemWithProbability(room.rir_list)
     if random.random() < speech_rvb_probability:
         # pick the RIR to reverberate the speech
-        reverberate_opts += "--impulse-response='{0}' ".format(speech_rir.rir_file_location)
+        reverberate_opts += "--impulse-response=\"{0}\" ".format(speech_rir.rir_file_location)
 
     rir_iso_noise_list = []
     if speech_rir.room_id in iso_noise_dict:
@@ -234,7 +239,11 @@ def GenerateReverberationOpts(room_dict,  # the room dictionary, please refer to
     if len(rir_iso_noise_list) > 0 and random.random() < isotropic_noise_addition_probability:
         isotropic_noise = PickItemWithProbability(rir_iso_noise_list)
         # extend the isotropic noise to the length of the speech waveform
-        noise_addition_descriptor['noise_io'].append("wav-reverberate --duration={1} {0} - |".format(isotropic_noise.noise_file_location, speech_dur))
+        # check if it is really a pipe
+        if len(isotropic_noise.noise_file_location.split()) == 1:
+            noise_addition_descriptor['noise_io'].append("wav-reverberate --duration={1} {0} - |".format(isotropic_noise.noise_file_location, speech_dur))
+        else:
+            noise_addition_descriptor['noise_io'].append("{0} wav-reverberate --duration={1} - - |".format(isotropic_noise.noise_file_location, speech_dur))
         noise_addition_descriptor['start_times'].append(0)
         noise_addition_descriptor['snrs'].append(background_snrs.next())
 
@@ -426,12 +435,13 @@ def ParseRirList(rir_list_file):
     rir_parser.add_argument('--drr', type=float, default=None, help='Direct-to-reverberant-ratio of the impulse response.')
     rir_parser.add_argument('--cte', type=float, default=None, help='Early-to-late index of the impulse response.')
     rir_parser.add_argument('--probability', type=float, default=None, help='probability of the impulse response.')
-    rir_parser.add_argument('rir_file_location', type=str, help='rir file location')
+    rir_parser.add_argument('rir_file_location', type=str, help="rir file location, it can be either a filename or a piped command. "
+                            "E.g. data/impulses/Room001-00001.wav or \"sox data/impulses/Room001-00001.wav -t wav - |\"")
 
     rir_list = []
     rir_lines = map(lambda x: x.strip(), open(rir_list_file))
     for line in rir_lines:
-        rir = rir_parser.parse_args(line.split())
+        rir = rir_parser.parse_args(shlex.split(line))
         rir_list.append(rir)
 
     return SmoothProbabilityDistribution(rir_list)
@@ -479,13 +489,14 @@ def ParseNoiseList(noise_list_file):
                               'to their original duration and added at a random point of the speech.', choices = ["background", "foreground"])
     noise_parser.add_argument('--room-linkage', type=str, default=None, help='required if isotropic, should not be specified if point-source.')
     noise_parser.add_argument('--probability', type=float, default=None, help='probability of the noise.')
-    noise_parser.add_argument('noise_file_location', type=str, help='noise file location')
+    noise_parser.add_argument('noise_file_location', type=str, help="noise file location, it can be either a filename or a piped command. "
+                              "E.g. type5_noise_cirline_ofc_ambient1.wav or \"sox type5_noise_cirline_ofc_ambient1.wav -t wav - |\"")
 
     pointsource_noise_list = []
     iso_noise_dict = {}
     noise_lines = map(lambda x: x.strip(), open(noise_list_file))
     for line in noise_lines:
-        noise = noise_parser.parse_args(line.split())
+        noise = noise_parser.parse_args(shlex.split(line))
         if noise.noise_type == "isotropic":
             if noise.room_linkage is None:
                 raise Exception("--room-linkage must be specified if --noise-type is isotropic")
