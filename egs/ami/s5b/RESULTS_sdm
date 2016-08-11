@@ -6,7 +6,7 @@
 # steps/info/gmm_dir_info.pl exp/sdm1/{mono,tri1,tri2,tri3,tri3_cleaned}
 # exp/sdm1/mono: nj=30 align prob=-88.10 over 10.76h [retry=7.1%, fail=0.2%] states=137 gauss=979
 # exp/sdm1/tri1: nj=30 align prob=-86.11 over 76.10h [retry=5.0%, fail=0.2%] states=3794 gauss=80189 tree-impr=2.92
-# exp/sdm1/tri2: nj=30 align prob=-51.15 over 76.06h [retry=4.4%, fail=0.2%] states=3894 gauss=80148 tree-impr=3.24 lda-sum=10.02 mllt impr,logdet=0.55,1.00
+# exp/sdm1/tri2: nj=30 align prob=-51.15 over 76.06h [retry=4.4%, fail=0.2%] states=3894 gauss=80148 tree-impr=3.24 lda-sum=10.02 mllt:impr,logdet=0.55,0.90
 # exp/sdm1/tri3: nj=30 align prob=-52.11 over 76.11h [retry=2.4%, fail=0.2%] states=3965 gauss=80086 fmllr-impr=4.12 over 54.22h tree-impr=4.53
 # exp/sdm1/tri3_cleaned: nj=50 align prob=-51.61 over 69.44h [retry=0.6%, fail=0.0%] states=3961 gauss=80052 fmllr-impr=0.99 over 53.43h tree-impr=5.06
 

@@ -254,7 +254,7 @@ sub get_mllt_info {
     }
   }
   if ($mllt_objf_impr != 0.0 && $mllt_logdet != 0.0) {
-    return sprintf(" mllt impr,logdet=%.2f,%.2f", $mllt_objf_impr, $mllt_logdet != 0.0);
+    return sprintf(" mllt:impr,logdet=%.2f,%.2f", $mllt_objf_impr, $mllt_logdet);
   } else {
     return "";
   }
