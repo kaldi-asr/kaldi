@@ -276,7 +276,7 @@ class LstmProjected : public MultistreamComponent {
   }
 
   std::string Info() const {
-    return std::string("") +
+    return std::string("cell-dim ") + ToString(cell_dim_) + " " +
       "( learn_rate_coef_ " + ToString(learn_rate_coef_) +
       ", bias_learn_rate_coef_ " + ToString(bias_learn_rate_coef_) +
       ", cell_clip_ " + ToString(cell_clip_) +
