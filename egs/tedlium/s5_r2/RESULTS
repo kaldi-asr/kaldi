@@ -1,4 +1,18 @@
 
+# steps/info/gmm_dir_info.pl exp/mono exp/tri{1,2,3,3_cleaned}
+# exp/mono: nj=20 align prob=-96.77 over 4.65h [retry=1.1%, fail=0.1%] states=127 gauss=1001
+# exp/tri1: nj=35 align prob=-96.06 over 210.65h [retry=5.0%, fail=0.3%] states=1986 gauss=30087 tree-impr=3.84
+# exp/tri2: nj=35 align prob=-50.05 over 210.21h [retry=6.1%, fail=0.5%] states=3342 gauss=50121 tree-impr=4.81 lda-sum=18.73 mllt:impr,logdet=0.93,1.51
+# exp/tri3: nj=35 align prob=-49.01 over 210.04h [retry=4.4%, fail=0.5%] states=4177 gauss=100136 fmllr-impr=2.98 over 172.09h tree-impr=7.26
+# exp/tri3_cleaned: nj=100 align prob=-49.05 over 202.62h [retry=1.5%, fail=0.0%] states=4186 gauss=100093 fmllr-impr=0.46 over 171.37h tree-impr=7.81
+
+# steps/info/nnet3_dir_info.pl exp/nnet3{,_cleaned}/tdnn_sp
+# exp/nnet3/tdnn_sp: num-iters=250 nj=2..12 num-params=11.0M dim=40+100->4177 combine=-1.06->-1.05 loglike:train/valid[165,249,final]=(-1.16,-1.08,-1.08/-1.29,-1.28,-1.27) accuracy:train/valid[165,249,final]=(0.69,0.70,0.70/0.65,0.66,0.66)
+# exp/nnet3_cleaned/tdnn_sp: num-iters=240 nj=2..12 num-params=11.0M dim=40+100->4186 combine=-0.97->-0.96 loglike:train/valid[159,239,final]=(-1.06,-0.98,-0.98/-1.19,-1.16,-1.16) accuracy:train/valid[159,239,final]=(0.70,0.72,0.72/0.66,0.67,0.68)
+
+# steps/info/chain_dir_info.pl exp/chain{,_cleaned}/tdnn_sp_bi
+# exp/chain/tdnn_sp_bi: num-iters=264 nj=2..12 num-params=7.0M dim=40+100->3615 combine=-0.11->-inf xent:train/valid[175,263,final]=(-1.42,-1.35,-1.35/-1.48,-1.44,-1.44) logprob:train/valid[175,263,final]=(-0.10,-0.09,-0.09/-0.11,-0.12,-0.12)
+# exp/chain_cleaned/tdnn_sp_bi: num-iters=253 nj=2..12 num-params=7.0M dim=40+100->3589 combine=-0.10->-0.10 xent:train/valid[167,252,final]=(-1.37,-1.30,-1.30/-1.43,-1.38,-1.38) logprob:train/valid[167,252,final]=(-0.10,-0.09,-0.09/-0.11,-0.11,-0.10)
 
 ######### tri1 results ########
 for d in  exp/tri1/decode_*; do grep Sum $d/*ore*/*ys | utils/best_wer.sh ; done

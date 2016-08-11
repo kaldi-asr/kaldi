@@ -3,6 +3,19 @@
 # ./run.sh --mic sdm1
 #
 
+# steps/info/gmm_dir_info.pl exp/sdm1/{mono,tri1,tri2,tri3,tri3_cleaned}
+# exp/sdm1/mono: nj=30 align prob=-88.10 over 10.76h [retry=7.1%, fail=0.2%] states=137 gauss=979
+# exp/sdm1/tri1: nj=30 align prob=-86.11 over 76.10h [retry=5.0%, fail=0.2%] states=3794 gauss=80189 tree-impr=2.92
+# exp/sdm1/tri2: nj=30 align prob=-51.15 over 76.06h [retry=4.4%, fail=0.2%] states=3894 gauss=80148 tree-impr=3.24 lda-sum=10.02 mllt:impr,logdet=0.55,0.90
+# exp/sdm1/tri3: nj=30 align prob=-52.11 over 76.11h [retry=2.4%, fail=0.2%] states=3965 gauss=80086 fmllr-impr=4.12 over 54.22h tree-impr=4.53
+# exp/sdm1/tri3_cleaned: nj=50 align prob=-51.61 over 69.44h [retry=0.6%, fail=0.0%] states=3961 gauss=80052 fmllr-impr=0.99 over 53.43h tree-impr=5.06
+
+# steps/info/nnet3_dir_info.pl exp/sdm1/nnet3_cleaned/tdnn_sp_ihmali exp/sdm1/nnet3_cleaned/tdnn_sp exp/sdm1/nnet3/tdnn_sp_ihmali
+# exp/sdm1/nnet3_cleaned/tdnn_sp_ihmali: num-iters=82 nj=2..12 num-params=10.9M dim=40+100->3980 combine=-2.30->-2.25 loglike:train/valid[53,81,final]=(-2.51,-2.29,-2.28/-2.94,-2.93,-2.93) accuracy:train/valid[53,81,final]=(0.43,0.46,0.46/0.36,0.36,0.37)
+# exp/sdm1/nnet3_cleaned/tdnn_sp: num-iters=82 nj=2..12 num-params=10.9M dim=40+100->3961 combine=-2.24->-2.19 loglike:train/valid[53,81,final]=(-2.41,-2.20,-2.19/-2.86,-2.87,-2.87) accuracy:train/valid[53,81,final]=(0.45,0.49,0.49/0.39,0.39,0.40)
+# exp/sdm1/nnet3/tdnn_sp_ihmali: num-iters=92 nj=2..12 num-params=10.9M dim=40+100->3980 combine=-2.15->-2.10 loglike:train/valid[60,91,final]=(-2.33,-2.14,-2.13/-2.99,-3.02,-3.03) accuracy:train/valid[60,91,final]=(0.45,0.48,0.49/0.36,0.36,0.36)
+
+
 # for d in exp/sdm1/tri*/decode_*pr1-7; do grep Sum $d/*scor*/*ys | utils/best_wer.sh; done
 
 %WER 61.5 | 14827 94516 | 44.3 36.0 19.7 5.8 61.5 72.0 | 0.412 | exp/sdm1/tri2/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_12/dev_o4.ctm.filt.sys
