@@ -48,6 +48,7 @@ int main(int argc, char *argv[]) {
         "Usage: nnet3-latgen-faster-parallel [options] <nnet-in> <fst-in|fsts-rspecifier> <features-rspecifier>"
         " <lattice-wspecifier> [ <words-wspecifier> [<alignments-wspecifier>] ]\n";
     ParseOptions po(usage);
+
     Timer timer;
     bool allow_partial = false;
     TaskSequencerConfig sequencer_config; // has --num-threads option
@@ -131,6 +132,7 @@ int main(int argc, char *argv[]) {
 
       // Input FST is just one FST, not a table of FSTs.
       VectorFst<StdArc> *decode_fst = fst::ReadFstKaldi(fst_in_str);
+      timer.Reset();
 
       {
         LatticeFasterDecoder decoder(*decode_fst, config);
@@ -249,10 +251,14 @@ int main(int argc, char *argv[]) {
       sequencer.Wait(); // Waits for all tasks to be done.
     }
 
+    kaldi::int64 input_frame_count =
+        frame_count * decodable_opts.frame_subsampling_factor;
+
     double elapsed = timer.Elapsed();
     KALDI_LOG << "Time taken " << elapsed
-              << "s: real-time factor assuming 100 frames/sec is "
-              << (elapsed * 100.0 / frame_count);
+              << "s: real-time factor assuming 100 feature frames/sec is "
+              << (sequencer_config.num_threads * elapsed * 100.0 /
+                  input_frame_count);
     KALDI_LOG << "Done " << num_success << " utterances, failed for "
               << num_fail;
     KALDI_LOG << "Overall log-likelihood per frame is "

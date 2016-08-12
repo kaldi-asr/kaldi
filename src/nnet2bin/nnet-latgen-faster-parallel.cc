@@ -111,6 +111,7 @@ int main(int argc, char *argv[]) {
       SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
 
       decode_fst = fst::ReadFstKaldi(fst_in_str);
+      timer.Reset();
 
       {
 

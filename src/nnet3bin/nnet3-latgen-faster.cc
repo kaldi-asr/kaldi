@@ -130,6 +130,7 @@ int main(int argc, char *argv[]) {
 
       // Input FST is just one FST, not a table of FSTs.
       VectorFst<StdArc> *decode_fst = fst::ReadFstKaldi(fst_in_str);
+      timer.Reset();
 
       {
         LatticeFasterDecoder decoder(*decode_fst, config);
