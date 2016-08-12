@@ -139,9 +139,9 @@ int main(int argc, char *argv[]) {
         "Usage:  wav-reverberate [options...] <wav-in-rxfilename> "
         "<wav-out-wxfilename>\n"
         "e.g.\n"
-        "wav-reverberate --duration=t --impulse-response=rir.wav "
-        "--additive-signals='noise1.wav,noise2.wav' --snrs='snr1,snr2' "
-        "--start-times='s1,s2' input.wav output.wav\n";
+        "wav-reverberate --duration=20.25 --impulse-response=rir.wav "
+        "--additive-signals='noise1.wav,noise2.wav' --snrs='20.0,15.0' "
+        "--start-times='0,17.8' input.wav output.wav\n";
 
     ParseOptions po(usage);
     std::string rir_file;
@@ -177,12 +177,18 @@ int main(int argc, char *argv[]) {
                 "Specifies the channel of the noise file, "
                 "it will only be used when multi-channel-output is false");
     po.Register("impulse-response", &rir_file,
-                "File with the impulse response for reverberating the input wave");
+                "File with the impulse response for reverberating the input wave"
+                "It can be either a file in wav format or a piped command. "
+                "E.g. --impulse-response='rir.wav' or 'sox rir.wav - |' ");
     po.Register("additive-signals", &additive_signals,
-                "A comma separated list of additive signals");
+                "A comma separated list of additive signals. "
+                "They can be either filenames or piped commands. "
+                "E.g. --additive-signals='noise1.wav,noise2.wav' or "
+                "'sox noise1.wav - |,sox noise2.wav - |' ");
     po.Register("snrs", &snrs,
-                "A comma separated list of SNRs. The additive signals will be "
-                "scaled according to these SNRs.");
+                "A comma separated list of SNRs(dB). "
+                "The additive signals will be scaled according to these SNRs. "
+                "E.g. --snrs='20.0,0.0,5.0,10.0' ");
     po.Register("start-times", &start_times,
                 "A comma separated list of start times referring to the "
                 "input signal. The additive signals will be added to the "
@@ -192,7 +198,8 @@ int main(int argc, char *argv[]) {
     po.Register("normalize-output", &normalize_output,
                 "If true, then after reverberating and "
                 "possibly adding noise, scale so that the signal "
-                "energy is the same as the original input signal.");
+                "energy is the same as the original input signal. "
+                "See also the --volume option.");
     po.Register("duration", &duration,
                 "If nonzero, it specified the duration (secs) of the output "
                 "signal. If the duration t is less than the length of the "
