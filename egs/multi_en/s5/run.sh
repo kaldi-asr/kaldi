@@ -11,7 +11,7 @@ ami=
 fisher=
 librispeech=
 swbd=
-tedlium=
+tedlium2=
 wsj0=
 wsj1=
 eval2000=
@@ -25,7 +25,7 @@ case $(hostname -d) in
       /export/corpora3/LDC/LDC2004S13 /export/corpora3/LDC/LDC2005S13"
     librispeech=/export/a15/vpanayotov/data
     swbd=/export/corpora3/LDC/LDC97S62
-    tedlium=/export/corpora5/TEDLIUM_release1
+    tedlium2=/export/corpora5/TEDLIUM_release2
     wsj0=/export/corpora5/LDC/LDC93S6B
     wsj1=/export/corpora5/LDC/LDC94S13B
     eval2000="/export/corpora/LDC/LDC2002S09/hub5e_00 /export/corpora/LDC/LDC2002T43"
@@ -60,7 +60,7 @@ if [ $stage -le 1 ]; then
   local/librispeech_data_prep.sh $librispeech/LibriSpeech/train-other-500 data/librispeech_500/train
   local/librispeech_data_prep.sh $librispeech/LibriSpeech/test-clean data/librispeech/test
   # tedlium
-  local/tedlium_prepare_data.sh $tedlium
+  local/tedlium_prepare_data.sh $tedlium2
   # wsj
   local/wsj_data_prep.sh $wsj0/??-{?,??}.? $wsj1/??-{?,??}.?
   local/wsj_format_data.sh
@@ -81,7 +81,7 @@ fi
 
 # prepare initial CMUDict-based dict directory and normalize transcripts
 if [ $stage -le 3 ]; then
-  local/prepare_dict.sh $tedlium
+  local/prepare_dict.sh $tedlium2
   for f in data/*/{train,test}/text; do
     echo Normalizing $f
     cp $f $f.orig

@@ -52,7 +52,7 @@ echo "<unk> oov" | cat - $dir/lexicon3.txt > $dir/lexicon4.txt
 
 # Add in tedlium dict, if available
 if [ $# == 1 ]; then
-  cat $1/TEDLIUM.150K.dic | egrep '\S+\s+.+' | \
+  cat $1/TEDLIUM.152k.dic | egrep '\S+\s+.+' | \
     grep -v -w "<s>" | grep -v -w "</s>" | grep -v -w "<unk>" | grep -v 'ERROR' | \
     sed 's:([0-9])::g' | tr A-Z a-z | \
     cat - $dir/lexicon4.txt | sort | uniq > $dir/lexicon.txt || exit 1;
