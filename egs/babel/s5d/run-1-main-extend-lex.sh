@@ -141,7 +141,8 @@ if [[ ! -f data/srilm/lm.gz || data/srilm/lm.gz -ot data/train/text ]]; then
   if $extend_lexicon; then
     words_file_param=(--words-file data/local/lexicon_orig.txt)
   fi
-  local/train_lms_srilm.sh "${words_file_param[@]}" --dev-text data/dev2h/text \
+  local/train_lms_srilm.sh  "${words_file_param[@]}" \
+    --dev-text data/dev2h/text --oov-symbol "$oovSymbol"\
     --train-text data/train/text data data/srilm
 fi
 
