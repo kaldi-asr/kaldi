@@ -1,8 +1,8 @@
-#!/bin/bash                                                                        
+#!/bin/bash
 # Copyright (c) 2015, Johns Hopkins University (Yenda Trmal <jtrmal@gmail.com>)
 # License: Apache 2.0
 
-# Begin configuration section.  
+# Begin configuration section.
 cmd=run.pl
 # End configuration section
 . ./utils/parse_options.sh
@@ -10,7 +10,7 @@ cmd=run.pl
 
 
 
-set -e -o pipefail 
+set -e -o pipefail
 set -o nounset                              # Treat unset variables as an error
 
 data=$1
@@ -19,7 +19,7 @@ lang=$3
 out=$4
 lout=$5
 
-test -d $lout && rm -rf $lout 
+test -d $lout && rm -rf $lout
 mkdir -p $lout
 test -d $out && rm -rf $out
 cp -R $lang $out
@@ -54,7 +54,7 @@ cp $lout/lex.{syllabs2phones,words2syllabs,words2phones}.txt $out
 
 #We will fake the words.txt file
 (
-  echo "<eps>"; 
+  echo "<eps>";
   cut -f 1 $out/lex.syllabs2phones.txt;
   echo -e "#0\n<s>\n</s>";
 ) | nl -v 0 | awk '{print $2, $1}' > $out/syllabs.txt
@@ -65,7 +65,7 @@ cp $lang/words.txt $out/real_words.txt
 #Figure out the "OOV" token
 oovword=$(cat $lang/oov.txt)
 oovsyl=$(grep -w -F "$oovword" $out/lex.words2syllabs.txt | \
-        awk '{if (NF == 2) { print $2;} 
+        awk '{if (NF == 2) { print $2;}
         else {print "Error, oov word has more than one syllable "; exit 1;}}')
 
 echo $oovsyl > $out/oov.txt
@@ -77,6 +77,10 @@ word_disambig_symbol=$(grep '#0' $out/words.txt | awk '{print $2}')
 optional_sil=$(cat $out/phones/optional_silence.txt)
 utils/add_lex_disambig.pl  $out/lex.syllabs2phones.txt $out/lex.syllabs2phones.disambig.txt > /dev/null
 cat $out/lex.syllabs2phones.disambig.txt | sort -u > $lout/lexicon.txt
+
+if [ -f $out/phones/wdisambig_words.int  ]; then
+  echo $word_disambig_symbol > $out/phones/wdisambig_words.int
+fi
 
 echo "<eps> SIL" | cat - $lout/lexicon.txt | perl -ane 'print $F[0], " ", join(" ", @F), "\n";' | \
   sed 's/ #[0-9]$//g' > $out/phones/align_lexicon.txt
@@ -104,7 +108,7 @@ sil=$(cat $lang/phones/optional_silence.txt)
 utils/make_lexicon_fst.pl $out/lex.syllabs2phones.txt 0.5 $sil | \
   fstcompile --isymbols=$lang/phones.txt --osymbols=$out/syllabs.txt \
     --keep_isymbols=false --keep_osymbols=false| \
-  fstarcsort --sort_type=olabel > $out/lex.syllabs2phones.fst 
+  fstarcsort --sort_type=olabel > $out/lex.syllabs2phones.fst
 ln -s lex.syllabs2phones.fst $out/L.fst
 
 
@@ -112,7 +116,7 @@ utils/make_lexicon_fst.pl $out/lex.syllabs2phones.disambig.txt 0.5 $sil '#'$ndis
   fstcompile --isymbols=$lang/phones.txt --osymbols=$out/syllabs.txt \
     --keep_isymbols=false --keep_osymbols=false| \
   fstaddselfloops  "echo $phone_disambig_symbol |" "echo $word_disambig_symbol |"|\
-  fstarcsort --sort_type=olabel > $out/lex.syllabs2phones.disambig.fst 
+  fstarcsort --sort_type=olabel > $out/lex.syllabs2phones.disambig.fst
 ln -s lex.syllabs2phones.disambig.fst $out/L_disambig.fst
 
 echo "Validating the output lang dir"
