@@ -12,11 +12,11 @@ cer=0
 
 #Declaring here to make the definition inside the language conf files more
 # transparent and nice
-declare -A dev10h_kwlists
-declare -A dev2h_kwlists
-declare -A evalpart1_kwlists
-declare -A eval_kwlists
-declare -A shadow_kwlists
+declare -a dev10h_kwlists
+declare -a dev2h_kwlists
+declare -a evalpart1_kwlists
+declare -a eval_kwlists
+declare -a shadow_kwlists
 
 # just for back-compatibility
 declare -A dev10h_more_kwlists

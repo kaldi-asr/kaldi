@@ -115,7 +115,9 @@ eval my_kwlists_keys="\${!${dataset_type}_kwlists[@]}"
 for key in $my_kwlists_keys  # make sure you include the quotes there
 do
   eval my_kwlists_val="\${${dataset_type}_kwlists[$key]}"
-  my_kwlists["$key"]="${my_kwlists_val}"
+  index=`echo $my_kwlists_val | sed 's/.*\.\([^.][^.]*\)\.xml/\1/g'`
+
+  my_kwlists["$index"]="${my_kwlists_val}"
 done
 declare -p my_kwlists
 export my_kwlists
