@@ -48,7 +48,7 @@ if [ $# -ne 3 ]; then
 fi
 
 data_dir=$1;
-lang_dir=$2;
+lang_dir=$(echo "$2" | perl -pe 's/\/$//g')
 decode_dir=$3;
 
 ##NB: The first ".done" files are used for backward compatibility only
@@ -96,11 +96,11 @@ if ! $skip_kws ; then
       touch $decode_dir/.done.kwset.$extraid
     fi
 
-    if [ -f ${decode_dir}/syllabs/kwset_kwlist_${min_lmwt}/f4de/metrics.txt ]; then
+    if [ -f ${decode_dir}/syllabs/kwset_${extraid}_${min_lmwt}/f4de/metrics.txt ]; then
       touch $decode_dir/syllabs/.done.kwset.$extraid
     fi
 
-    if [ -f ${decode_dir}/phones/kwset_kwlist_${min_lmwt}/f4de/metrics.txt ]; then
+    if [ -f ${decode_dir}/phones/kwset_${extraid}_${min_lmwt}/f4de/metrics.txt ]; then
       touch $decode_dir/phones/.done.kwset.$extraid
     fi
 
