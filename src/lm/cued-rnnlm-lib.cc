@@ -29,7 +29,7 @@ void printusage(char *str) {
 }
 
 bool isEmpty(string str) {
-  if (str == "EMPTY")     return true; // TODO(hxu) this is very weird
+  if (str == "EMPTY")     return true;
   else                    return false;
 }
 
@@ -177,7 +177,7 @@ RNNLM::RNNLM(string inmodelfile_1, string inputwlist_1, string outputwlist_1,
   setFullVocsize (fvocsize);
 
   resetAc = new float[layersizes[1]];
-//  lognormconst = -1; // TODO(hxu)
+  lognormconst = -1; // TODO(hxu)
   memcpy(resetAc, neu0_ac_hist->gethostdataptr(), sizeof(float)*layersizes[1]);
 }
 
@@ -185,12 +185,8 @@ void RNNLM::copyToHiddenLayer(const vector<float> &hidden) {
   const float *srcac;
   float *dstac;
   assert(hidden.size() == layersizes[1]);
-  srcac = hidden.data(); // TODO
-//  dstac = neu_ac[1]->gethostdataptr();
+  srcac = hidden.data();
   dstac = neu0_ac_hist->gethostdataptr(); 
-//  for (int i = 0; i < hidden.size(); i++) {
-//    dstac[i] = hidden[i];
-//  }
   memcpy (dstac, srcac, sizeof(float)*layersizes[1]);
 }
 
@@ -202,9 +198,7 @@ void RNNLM::fetchHiddenLayer(vector<float> *context_out) {
   float *dstac;
   assert(context_out->size() == layersizes[1]);
   srcac = neu_ac[1]->gethostdataptr();
-  dstac = context_out->data(); // TODO(hxu)
-//  for (int i = 0; i < context_out->size(); i++) {
-//  }
+  dstac = context_out->data();
   memcpy (dstac, srcac, sizeof(float)*layersizes[1]);
 }
 
@@ -220,7 +214,6 @@ float RNNLM::computeConditionalLogprob(int current_word,
   }
   ans = forward(last_word, current_word);
 
-//  cout << current_word << " : " << outOOSindex << endl;
   if (current_word == outOOSindex) {
     // uniformly distribute the probability mass among OOS's
     ans /= (fullvocsize - layersizes[num_layer] + 1);
@@ -240,7 +233,7 @@ void RNNLM::allocMem (vector<int> &layersizes)
   }
   inputlayersize = layersizes[0] + layersizes[1];
   outputlayersize = layersizes[num_layer];
-  layer0_hist = new matrix (layersizes[1], layersizes[1]); // TODO not sure what this is for
+  layer0_hist = new matrix (layersizes[1], layersizes[1]);
   neu0_ac_hist = new matrix (layersizes[1], minibatch);
   layers.resize(num_layer);
   neu_ac.resize(num_layer+1);
@@ -367,7 +360,7 @@ bool RNNLM::calppl(string testfilename, float intpltwght, string nglmfile) {
 
       prevword = inStartindex;
       if (independent) {
-        ResetRechist(); /// TODO
+        ResetRechist();
       }
 
       for (; i < cnt; i++) {
@@ -570,7 +563,6 @@ bool RNNLM::calnbest (string testfilename, float intpltwght, string nglmfile) {
 
             acscore = string2float(linevec[1]);
             lmscore = string2float(linevec[2]);
-            assert(lmscore == lmscore); // TODO
             nword   = string2int(linevec[3]);
             if (linevec[4] == "<s>")    i = 5;
             else                        i = 4;

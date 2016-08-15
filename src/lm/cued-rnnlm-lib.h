@@ -199,7 +199,6 @@ class FILEPTR
     }
   }
 
-  // linevec stores words (as divded by spaces), cnt is total numnber of words read so far? TODO
   void readline (vector<string> &linevec, int &cnt) {
     linevec.clear();
     char word[1024];
@@ -315,7 +314,7 @@ public:
 class matrix
 {
  private:
-  real* host_data; // TODO it seems this saves a transposed version of the matrix?
+  real* host_data;
   size_t nrows;
   size_t ncols;
   size_t size;
@@ -509,7 +508,7 @@ class RNNLM
 
   ~RNNLM();
 
-  int getHiddenLayerSize() const {return layersizes[1];} // TODO
+  int getHiddenLayerSize() const {return layersizes[1];}
   void copyToHiddenLayer(const vector<float> &hidden);
   void fetchHiddenLayer(vector<float> *out);
 

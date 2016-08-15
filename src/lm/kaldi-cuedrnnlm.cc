@@ -66,7 +66,7 @@ KaldiCuedRnnlmWrapper::KaldiCuedRnnlmWrapper(
                                  // +1 is the <OOS> symbol
 //                                 rnn_word_symbols->NumSymbols() + 1);
 
-  rnn_label_to_word_.push_back("<s>"); // TODO(hxu) not quite right
+  rnn_label_to_word_.push_back("<s>");
   { // input.
     ifstream ifile(rnn_wordlist.c_str());
     int id;
@@ -83,33 +83,17 @@ KaldiCuedRnnlmWrapper::KaldiCuedRnnlmWrapper(
       rnn_label_to_word_.push_back(word);
 
       int fst_label = fst_word_symbols->Find(rnn_label_to_word_[i]);
-//      cout << "word is " << rnn_label_to_word_[i] << endl;
       KALDI_ASSERT(fst::SymbolTable::kNoSymbol != fst_label);
       fst_label_to_rnn_label_[fst_label] = i;
     }
   }
-  rnn_label_to_word_.push_back("<OOS>"); // TODO(hxu) not quite right
+  rnn_label_to_word_.push_back("<OOS>");
   
   for (int i = 0; i < fst_label_to_rnn_label_.size(); i++) {
     if (fst_label_to_rnn_label_[i] == -1) {
       fst_label_to_rnn_label_[i] = rnn_label_to_word_.size() - 1;
     }
   }
-
-
-/*
-  for (int32 i = 0; i < rnn_label_to_word_.size(); ++i) {
-    
-    rnn_label_to_word_[i + 1] = rnn_word_symbols->Find(i);
-    if (rnn_label_to_word_[i + 1] == "") {
-      KALDI_ERR << "Could not find word for integer " << i << "in the word "
-          << "symbol table, mismatched symbol table or you have discoutinuous "
-          << "integers in your symbol table?";
-    }
-  }
-//*/
-
-  eos_ = -1; // TODO
 }
 
 BaseFloat KaldiCuedRnnlmWrapper::GetLogProb(
@@ -119,25 +103,6 @@ BaseFloat KaldiCuedRnnlmWrapper::GetLogProb(
 
   BaseFloat logprob = rnnlm_.computeConditionalLogprob(word, wseq,
                                                        context_in, context_out);
-/*
-  cout << "rnnlm: hidden layer is ";
-  for (int i = 0; i < context_in.size(); i++) {
-    cout << context_in[i] << ' ';
-  }
-  cout << endl;
-//*/
-
-/*
-  std::cout << "rnnlm: given history: ";
-  for (int i = 0; i < wseq.size(); i++) {
-    std::cout << rnn_label_to_word_[wseq[i]] << " ";
-  }
-
-  std::cout << ", log-prob of word of "
-            << ( (word == 0)? string("</s>") : rnn_label_to_word_[word] );
-  cout << " = " << logprob << endl;
-// */
-
   return logprob;
 }
 
@@ -149,7 +114,7 @@ CuedRnnlmDeterministicFst::CuedRnnlmDeterministicFst(int32 max_ngram_order,
   rnnlm_->ResetHistory();
 
   std::vector<Label> bos;
-  bos.push_back(0); // TODO(hxu) 0 for <s> !! IMPORTANT
+  bos.push_back(0); // 0 for <s>
   std::vector<BaseFloat> bos_context(rnnlm->GetHiddenLayerSize(), 0.1f);
   state_to_wseq_.push_back(bos);
   state_to_context_.push_back(bos_context);
@@ -173,7 +138,6 @@ bool CuedRnnlmDeterministicFst::GetArc(StateId s, Label ilabel, fst::StdArc *oar
   std::vector<Label> wseq = state_to_wseq_[s];
   std::vector<BaseFloat> new_context(rnnlm_->GetHiddenLayerSize());
 
-//  cout << "rnnlm: getarc, this word is " << rnnlm_->fst_label_to_word_[ilabel] << endl;
   int32 rnn_word = rnnlm_->fst_label_to_rnn_label_[ilabel];
   BaseFloat logprob = rnnlm_->GetLogProb(rnn_word, wseq,
                                          state_to_context_[s], &new_context);
