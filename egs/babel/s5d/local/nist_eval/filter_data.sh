@@ -3,6 +3,7 @@
 min_lmwt=5
 max_lmwt=25
 cer=0
+nbest=-1
 cmd=run.pl
 . ./utils/parse_options.sh
 
@@ -71,57 +72,59 @@ while (( "$#" )); do
   fi
 
 
-  kws_tasks="kws"
+  kws_tasks=""
 
-  for kws in `cat $datadir/extra_kws_tasks`; do
-    kws_tasks+=" ${kws}_kws"
+  for kws in $datadir/kwset_*; do
+    kws=`basename $kws`
+    echo $kws
+    kws_tasks+=" $kws"
   done
 
   for kws in $kws_tasks ; do
     echo "Processing KWS task: $kws"
     mkdir -p $targetdir/$kws
-    filter=$targetdir/$kws/utterances
-    grep -F -f $filelist $datadir/segments | tee  $targetdir/$kws/segments | \
-                       awk '{print $1, $2}' | tee  $targetdir/$kws/utter_map |\
-                       awk '{print $1}' > $filter
 
-    kwlist=$datadir/$kws/kwlist.xml
+    echo -e  "\tFiltering... $kws LMWT=$min_lmwt:$max_lmwt"
 
-    echo -e  "\tFiltering..."
-    #$cmd LMWT=$min_lmwt:$max_lmwt $targetdir/$kws/kws_filter.LMWT.log \
-    #  set -e';' set -o pipefail';' \
-    #  mkdir -p $targetdir/${kws}_LMWT';'\
-    #  cat $resultdir/${kws}_LMWT/'result.*' \| grep -F -f $filter \> $targetdir/${kws}_LMWT/result || exit 1
+    indices_dir=$resultdir/kws_indices
+    for lmwt in $(seq $min_lmwt $max_lmwt) ; do
+      kwsoutput=${targetdir}/${kws}_${lmwt}
+      indices=${indices_dir}_$lmwt
+      nj=$(cat $indices/num_jobs)
 
-    $cmd LMWT=$min_lmwt:$max_lmwt $targetdir/$kws/kws_filter.LMWT.log \
-      set -e';' set -o pipefail';' \
-      mkdir -p $targetdir/${kws}_LMWT';'\
-      cat $resultdir/${kws}_LMWT/'result.*' \| utils/filter_scp.pl -f 2 $filter \> $targetdir/${kws}_LMWT/result || exit -1
-
-
-    echo -e  "\tWrite normalized..."
-    $cmd LMWT=$min_lmwt:$max_lmwt $targetdir/$kws/kws_write_normalized.LMWT.log \
-      set -e';' set -o pipefail';' \
-      cat $targetdir/${kws}_LMWT/result \| \
-      utils/write_kwslist.pl --flen=0.01 --duration=$duration \
-        --segments=$targetdir/$kws/segments --normalize=true --remove-dup=true\
-        --map-utter=$targetdir/$kws/utter_map  --digits=3 - $targetdir/${kws}_LMWT/kwslist.xml || exit 1
-
-    echo -e  "\tWrite unnormalized..."
-    $cmd LMWT=$min_lmwt:$max_lmwt $targetdir/$kws/kws_write_unnormalized.LMWT.log \
-      set -e';' set -o pipefail';' \
-      cat $targetdir/${kws}_LMWT/result \| \
-      utils/write_kwslist.pl --flen=0.01 --duration=$duration \
-        --segments=$targetdir/$kws/segments --normalize=false --remove-dup=true\
-        --map-utter=$targetdir/$kws/utter_map  - $targetdir/${kws}_LMWT/kwslist.unnormalized.xml || exit 1
+      # This is a memory-efficient way how to do the filtration
+      # we do this in this way because the result.* files can be fairly big
+      # and we do not want to run into troubles with memory
+      files=""
+      for job in $(seq 1 $nj); do
+        if [ -f $resultdir/${kws}_${lmwt}/result.${job}.gz ] ; then
+         files="$files <(gunzip -c $resultdir/${kws}_${lmwt}/result.${job}.gz)"
+        elif [ -f $resultdir/${kws}_${lmwt}/result.${job} ] ; then
+         files="$files $resultdir/${kws}_${lmwt}/result.${job} "
+        else
+          echo >&2 "The file $resultdir/${$kws}_${lmwt}/result.${job}[.gz] does not exist"
+          exit 1
+        fi
+      done
+      # we have to call it using eval as we need the bash to interpret
+      # the (possible) command substitution in case of gz files
+      # bash -c would probably work as well, but would spawn another
+      # shell instance
+      echo $kwsoutput
+      echo  $datadir/compounds/$name/utterances
+      mkdir -p $kwsoutput
+      eval "sort -m -u $files" |\
+        int2sym.pl -f 2 $datadir/$kws/utt.map | \
+        utils/filter_scp.pl -f 2 $datadir/compounds/$name/utterances |\
+        sym2int.pl -f 2 $datadir/$kws/utt.map  |\
+        local/search/filter_kws_results.pl --likes --nbest $nbest > $kwsoutput/results || exit 1
+    done
 
     if [ ! -z $rttm ] ; then
-      echo -e  "\tScoring..."
-      $cmd LMWT=$min_lmwt:$max_lmwt $targetdir/$kws/kws_score.LMWT.log \
-        set -e';' set -o pipefail';' \
-        local/kws_score.sh --ecf $ecf --rttm $rttm --kwlist $kwlist $datadir $targetdir/${kws}_LMWT || exit 1
-    else
-      echo -e  "\tNot scoring..."
+      local/search/score.sh --cmd "$cmd" --extraid ${kws##kwset_}\
+        --min-lmwt $min_lmwt --max-lmwt $max_lmwt \
+        data/lang $datadir/compounds/$name  ${targetdir}/${kws}  || exit 1;
     fi
   done
+
 done

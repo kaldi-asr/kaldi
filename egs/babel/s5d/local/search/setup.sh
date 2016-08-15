@@ -10,12 +10,23 @@ set -e -o pipefail
 set -o nounset                              # Treat unset variables as an error
 
 
-ecf=$1
-rttm=$2
-kwlist=$3
-data=$4
-lang=$5
-output=$6
+if [ $# -eq 6 ]; then
+  ecf=$1
+  rttm=$2
+  kwlist=$3
+  data=$4
+  lang=$5
+  output=$6
+elif  [ $# -eq 5 ]; then
+  ecf=$1
+  rttm=""
+  kwlist=$2
+  data=$3
+  lang=$4
+  output=$5
+else
+  echo >&2 "Incorrect number of script parameters!"
+fi
 
 mkdir -p $output
 for f in $ecf $kwlist; do
@@ -44,8 +55,8 @@ cat $data/wav.scp | awk 'BEGIN{i=1}; {print $1, i; i+=1;}' > $output/wav.map
 
 #This does not work cp --no-preserve=all $ecf $output/ecf.xml
 cat $ecf > $output/ecf.xml
-cat $rttm  > $output/rttm
 cat $kwlist > $output/kwlist.xml
+[ ! -z "$rttm" ] && cat $rttm  > $output/rttm
 
 {
   echo "kwlist_name=`basename $kwlist`"
@@ -96,7 +107,7 @@ echo "Generating categories"
      else { print "$F[0] OOV=0\n";}'
 } | local/search/normalize_categories.pl > $output/categories
 
-if [ -f $rttm ] ; then
+if [ ! -z "$rttm" ] && [ -f $rttm ] ; then
   local/search/rttm_to_hitlists.sh --segments $data/segments --utt-table $output/utt.map\
     $rttm $kwlist $ecf $output/tmp $output/hitlist
 else

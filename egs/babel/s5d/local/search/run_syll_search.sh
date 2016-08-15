@@ -4,6 +4,7 @@
 
 # Begin configuration section.
 stage=2
+dir=dev10h.pem
 # End configuration section
 . ./conf/common_vars.sh
 . ./utils/parse_options.sh
@@ -14,8 +15,6 @@ set -o nounset                              # Treat unset variables as an error
 
 #Example script how to run keyword search using the Kaldi-native pipeline
 
-lang=data/lang.syll
-data=data/dev10h.syll.pem
 
 if [ $stage -le 0 ]; then
   local/generate_confusion_matrix.sh --nj 64 --cmd "$decode_cmd" \
@@ -26,21 +25,38 @@ if [ $stage -le 1 ] ; then
   local/train_g2p.sh --cmd "$decode_cmd" data/local/lexicon.txt  exp/g2p
 fi
 
-kwsets=${!dev10h_kwlists[@]}
-echo "$kwsets"
+dataset=${dir%%.*}
+datatype=${dir#*.}
+
+lang=data/lang.syll
+data=data/${dataset}.syll.${datatype}
+
+set +o nounset
+eval kwsets=${!dataset_kwlists[@]}
+eval my_ecf_file=\$${dataset}_ecf_file
+eval my_rttm_file=\$${dataset}_rttm_file
+set -o nounset
+
+my_array_name=${dataset}_kwlists
+
+eval kwsets=\( \${!$my_array_name[@]} \)
+declare -p kwsets
+for set in ${kwsets[@]} ; do
+  eval my_kwlist=\${$my_array_name[$set]}
+  declare -p my_kwlist
+done
+declare -p my_ecf_file
+declare -p my_rttm_file
+
 if [ $stage -le 2 ] ; then
 
-  for set in $kwsets ; do
+  for set in ${kwsets[@]} ; do
+
+    eval my_kwlist=\${$my_array_name[$set]}
 
     #This will set up the basic files and converts the F4DE files into Kaldi-native format
-    local/search/setup.sh $dev10h_ecf_file $dev10h_rttm_file  "${dev10h_kwlists[$set]}" \
+    local/search/setup.sh $my_ecf_file $my_rttm_file  "${my_kwlist}" \
       $data $lang  $data/kwset_${set}
-
-    cat data/dev10h.pem/kwset_${set}/categories | \
-      local/search/normalize_categories.pl --one-per-line | \
-      grep OOV | sed 's/OOV/BaseOOV/g' | cat - $data/kwset_kwlist/categories | \
-      local/search/normalize_categories.pl > $data/kwset_kwlist/categories.new
-    mv $data/kwset_kwlist/categories.new $data/kwset_kwlist/categories
 
     # we will search for the IV words normally (i.e. will look for the specificsequence
     # of the words
@@ -58,13 +74,16 @@ if [ $stage -le 2 ] ; then
       --beam 5 --nbest 100 --nj 64  --confusion-matrix exp/conf_matrix/confusions.txt  \
       ${data}/kwset_${set} ${lang} data/local/dict.syll/lexiconp.txt exp/g2p \
       ${data}/kwset_${set}/tmp.4
+
+    # and finally, replace the categories by the word-level categories
+    cp data/${dir}/kwset_${set}/categories $data/kwset_${set}/categories
   done
 fi
 
 if [ $stage -le 3 ] ; then
-  for set in $kwsets ; do
-    fsts-union scp:<(sort ${data}/kwset_${set}/tmp*/keywords.scp) \
-      ark,t:"|gzip -c >${data}/kwset_${set}/keywords.fsts.gz"
+  for set in ${kwsets[@]} ; do
+    fsts-union scp:<(sort $data/kwset_${set}/tmp*/keywords.scp) \
+      ark,t:"|gzip -c >$data/kwset_${set}/keywords.fsts.gz"
   done
 fi
 
