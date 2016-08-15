@@ -33,6 +33,8 @@ if [ $# -ne 0 ]; then
   exit 1
 fi
 
+echo "Dir: $dir"
+
 #This seems to be the only functioning way how to ensure the comple
 #set of scripts will exit when sourcing several of them together
 #Otherwise, the CTRL-C just terminates the deepest sourced script ?
@@ -288,6 +290,13 @@ if ! $skip_kws ; then
   if  $vocab_kws ; then
     . ./local/datasets/vocab_kws.sh || exit 1
   fi
+
+  ./local/syllab/run_phones.sh ${dataset_dir}
+  ./local/syllab/run_syllabs.sh ${dataset_dir}
+
+  ./local/search/run_search.sh --dir ${dataset_dir##*/}
+  ./local/search/run_phn_search.sh --dir ${dataset_dir##*/}
+  ./local/search/run_syll_search.sh --dir ${dataset_dir##*/}
 fi
 
 if $data_only ; then
@@ -305,6 +314,14 @@ if [ ! -f data/langp_test/.done ]; then
   cp data/lang/G.fst data/langp_test
   touch data/langp_test/.done
 fi
+
+if [ ! -d ./data/langp_test.syll ]; then
+  ln -s lang.syll data/langp_test.syll
+fi
+if [ ! -d ./data/langp_test.phn ]; then
+  ln -s lang.phn data/langp_test.phn
+fi
+
 
 decode=exp/tri5/decode_${dataset_id}
 if [ ! -f ${decode}/.done ]; then

@@ -3,7 +3,9 @@
 # License: Apache 2.0
 
 # Begin configuration section.
+stage=0
 # End configuration section
+. ./utils/parse_options.sh
 set -e -o pipefail
 set -o nounset                              # Treat unset variables as an error
 
@@ -13,36 +15,53 @@ set -o nounset                              # Treat unset variables as an error
 . ./conf/common_vars.sh
 . ./lang.conf
 
-local/syllab/generate_syllable_lang.sh \
-    data/train data/local/ data/lang data/lang.syll data/local/dict.syll
+if [ $# -ne 1 ] ; then
+  echo "Invalid number of parameters"
+  exit 1
+fi
 
-local/syllab/ali_to_syllabs.sh \
-    data/train data/lang.syll exp/tri5_ali exp/tri5_ali_syll
+idir=$1
+idata=${idir##*/}
 
 
-utils/copy_data_dir.sh data/train data/train.syll
-cp exp/tri5_ali_syll/text data/train.syll/text
+odata=${idata%%.*}.syll.${idata#*.}
 
-#Create syllab LM
-local/train_lms_srilm.sh \
-    --words-file data/lang.syll/words.txt --train-text data/train.syll/text \
-    --oov-symbol "`cat data/lang.syll/oov.txt`"  data data/srilm.syll
+if [ $stage -le -1 ] ; then
+  local/syllab/generate_syllable_lang.sh \
+      data/train data/local/ data/lang data/lang.syll data/local/dict.syll
 
-local/arpa2G.sh  data/srilm.syll/lm.gz  data/lang.syll/ data/lang.syll/
+  local/syllab/ali_to_syllabs.sh \
+      data/train data/lang.syll exp/tri5_ali exp/tri5_ali_syll
 
-#Create dev10h.syll.pem dir
-steps/align_fmllr.sh \
-    --boost-silence $boost_sil --nj $train_nj --cmd "$train_cmd" \
-    data/dev10h.pem data/lang exp/tri5 exp/tri5_ali/align_dev10h.pem
 
-local/syllab/ali_to_syllabs.sh \
-  --cmd "$decode_cmd" \
-  data/dev10h.pem data/lang.syll exp/tri5_ali/align_dev10h.pem exp/tri5_ali_syll/align_dev10h.pem
+  utils/copy_data_dir.sh data/train data/train.syll
+  cp exp/tri5_ali_syll/text data/train.syll/text
 
-utils/copy_data_dir.sh data/dev10h.pem data/dev10h.syll.pem
-cp exp/tri5_ali_syll/align_dev10h.pem/text data/dev10h.syll.pem/text
-touch data/dev10h.syll.pem/.plp.done
-touch data/dev10h.syll.pem/.done
+  #Create syllab LM
+  local/train_lms_srilm.sh \
+      --words-file data/lang.syll/words.txt --train-text data/train.syll/text \
+      --oov-symbol "`cat data/lang.syll/oov.txt`"  data data/srilm.syll
 
+  local/arpa2G.sh  data/srilm.syll/lm.gz  data/lang.syll/ data/lang.syll/
+fi
+
+if [ $stage -le 0 ] && [ -f "$idir/text" ] ; then
+  #Create dev10h.syll.pem dir
+  steps/align_fmllr.sh \
+      --boost-silence $boost_sil --nj $train_nj --cmd "$train_cmd" \
+      $idir data/lang exp/tri5 exp/tri5_ali/align_$idata
+
+  local/syllab/ali_to_syllabs.sh \
+    --cmd "$decode_cmd" \
+    $idir data/lang.syll exp/tri5_ali/align_$idata exp/tri5_ali_syll/align_$idata
+fi
+
+if [ $stage -le 1 ] ; then
+  utils/copy_data_dir.sh data/$idata data/$odata
+  [ -f exp/tri5_ali_syll/align_$idata/text ] && \
+    cp exp/tri5_ali_syll/align_$idata/text data/$odata/text
+  touch data/$odata/.plp.done
+  touch data/$odata/.done
+fi
 
 

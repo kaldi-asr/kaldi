@@ -3,7 +3,9 @@
 # License: Apache 2.0
 
 # Begin configuration section.
+stage=0
 # End configuration section
+. ./utils/parse_options.sh
 set -e -o pipefail
 set -o nounset                              # Treat unset variables as an error
 
@@ -13,36 +15,53 @@ set -o nounset                              # Treat unset variables as an error
 . ./conf/common_vars.sh
 . ./lang.conf
 
-local/syllab/generate_phone_lang.sh \
-    data/train data/local/ data/lang data/lang.phn data/local/dict.phn
+if [ $# -ne 1 ] ; then
+  echo "Invalid number of parameters"
+  exit 1
+fi
 
-local/syllab/ali_to_syllabs.sh \
-    data/train data/lang.phn exp/tri5_ali exp/tri5_ali_phn
+idir=$1
+idata=${idir##*/}
 
 
-utils/copy_data_dir.sh data/train data/train.phn
-cp exp/tri5_ali_phn/text data/train.phn/text
+odata=${idata%%.*}.phn.${idata#*.}
 
-#Create syllab LM
-local/train_lms_srilm.sh \
-    --words-file data/lang.phn/words.txt --train-text data/train.phn/text \
-    --oov-symbol "`cat data/lang.phn/oov.txt`"  data data/srilm.phn
+if [ $stage -le -1 ] ; then
+  local/syllab/generate_phone_lang.sh \
+      data/train data/local/ data/lang data/lang.phn data/local/dict.phn
 
-local/arpa2G.sh  data/srilm.phn/lm.gz  data/lang.phn/ data/lang.phn/
+  local/syllab/ali_to_syllabs.sh \
+      data/train data/lang.phn exp/tri5_ali exp/tri5_ali_phn
 
-#Create dev10h.phn.pem dir
-steps/align_fmllr.sh \
-    --boost-silence $boost_sil --nj $train_nj --cmd "$train_cmd" \
-    data/dev10h.pem data/lang exp/tri5 exp/tri5_ali/align_dev10h.pem
 
-local/syllab/ali_to_syllabs.sh \
-  --cmd "$decode_cmd" \
-  data/dev10h.pem data/lang.phn exp/tri5_ali/align_dev10h.pem exp/tri5_ali_phn/align_dev10h.pem
+  utils/copy_data_dir.sh data/train data/train.phn
+  cp exp/tri5_ali_phn/text data/train.phn/text
 
-utils/copy_data_dir.sh data/dev10h.pem data/dev10h.phn.pem
-cp exp/tri5_ali_phn/align_dev10h.pem/text data/dev10h.phn.pem/text
-touch data/dev10h.phn.pem/.plp.done
-touch data/dev10h.phn.pem/.done
+  #Create syllab LM
+  local/train_lms_srilm.sh \
+      --words-file data/lang.phn/words.txt --train-text data/train.phn/text \
+      --oov-symbol "`cat data/lang.phn/oov.txt`"  data data/srilm.phn
 
+  local/arpa2G.sh  data/srilm.phn/lm.gz  data/lang.phn/ data/lang.phn/
+fi
+
+if [ $stage -le 0 ] && [ -f "$idir/text" ] ; then
+  #Create dev10h.phn.pem dir
+  steps/align_fmllr.sh \
+      --boost-silence $boost_sil --nj $train_nj --cmd "$train_cmd" \
+      $idir data/lang exp/tri5 exp/tri5_ali/align_$idata
+
+  local/syllab/ali_to_syllabs.sh \
+    --cmd "$decode_cmd" \
+    $idir data/lang.phn exp/tri5_ali/align_$idata exp/tri5_ali_phn/align_$idata
+fi
+
+if [ $stage -le 1 ] ; then
+  utils/copy_data_dir.sh data/$idata data/$odata
+  [ -f exp/tri5_ali_phn/align_$idata/text ] && \
+    cp exp/tri5_ali_phn/align_$idata/text data/$odata/text
+  touch data/$odata/.plp.done
+  touch data/$odata/.done
+fi
 
 
