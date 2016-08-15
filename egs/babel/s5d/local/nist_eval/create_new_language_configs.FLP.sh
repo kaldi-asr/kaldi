@@ -196,7 +196,7 @@ if [ ! -z "$eval_dir" ] ; then
   echo ") # shadow_data_dir"
   echo "shadow_data_list=("
   echo "    $lists/dev.list"
-  echo "    $lists/eval.lists"
+  echo "    $lists/eval.list"
   echo ") # shadow_data_dir"
   echo "shadow_ecf_file=$dev10h_ecf"
   echo "shadow_rttm_file=$dev10h_rttm"
