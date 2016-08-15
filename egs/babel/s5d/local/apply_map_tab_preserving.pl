@@ -12,8 +12,8 @@ use warnings; #sed replacement for -w perl parameter
 # this version preserves tabs.
 
 if (@ARGV > 0 && $ARGV[0] eq "-f") {
-  shift @ARGV; 
-  $field_spec = shift @ARGV; 
+  shift @ARGV;
+  $field_spec = shift @ARGV;
   if ($field_spec =~ m/^\d+$/) {
     $field_begin = $field_spec - 1; $field_end = $field_spec - 1;
   }
@@ -26,7 +26,7 @@ if (@ARGV > 0 && $ARGV[0] eq "-f") {
     }
   }
   if (!defined $field_begin && !defined $field_end) {
-    die "Bad argument to -f option: $field_spec"; 
+    die "Bad argument to -f option: $field_spec";
   }
 }
 
@@ -70,7 +70,7 @@ while(<STDIN>) {
   $field_offset = 0;
   for ($n = 0; $n < @A; $n++) {
     @B = split(" ", $A[$n]);
-    
+
     for ($x = 0; $x < @B; $x++) {
       $y = $x + $field_offset;
       if ( (!defined $field_begin || $y >= $field_begin)
@@ -78,12 +78,12 @@ while(<STDIN>) {
         $b = $B[$x];
         if (!defined $map{$b}) {
           if (!$permissive) {
-            die "apply_map.pl: undefined key $a\n"; 
+            die "apply_map.pl: undefined key $a\n";
           } else {
             print STDERR "apply_map.pl: warning! missing key $a\n";
           }
         } else {
-          $B[$x] = $map{$b}; 
+          $B[$x] = $map{$b};
         }
       }
     }
