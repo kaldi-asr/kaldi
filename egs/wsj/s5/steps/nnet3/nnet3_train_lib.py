@@ -700,3 +700,9 @@ def WriteIdctMatrix(feat_dim, cepstral_lifter, file_path):
         idct_matrix[k].append(0)
     WriteKaldiMatrix(file_path, idct_matrix)
 
+
+def GetIvectorExtractorId(dir):
+    file_name = '{0}/ivector_extractor_id'.format(dir)
+    if os.path.exists(file_name):
+        return open(file_name, 'r').readline().strip()
+    return None

@@ -34,6 +34,7 @@ extra_right_context=0   # it is recommended to use the same value as the chunk_r
                         # used during training (usually used in bi-directional LSTM case)
 # End configuration section.
 
+echo " WARNING : This script has been deprecated and please use steps/nnet3/decode.sh"
 echo "$0 $@"  # Print the command line for logging
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.

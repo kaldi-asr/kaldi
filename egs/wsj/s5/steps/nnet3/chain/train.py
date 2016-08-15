@@ -535,6 +535,9 @@ def Train(args, run_opts):
     feat_dim = train_lib.GetFeatDim(args.feat_dir)
     ivector_dim = train_lib.GetIvectorDim(args.online_ivector_dir)
 
+    shutil.copy(args.online_ivector_dir+'/ivector_extractor_id',
+                args.dir+'/ivector_extractor_id')
+
     # split the training data into parts for individual jobs
     # we will use the same number of jobs as that used for alignment
     train_lib.SplitData(args.feat_dir, num_jobs)
@@ -595,6 +598,12 @@ def Train(args, run_opts):
         egs_dir = default_egs_dir
     else:
         egs_dir = args.egs_dir
+
+    if not (GetIvectorExtractorId(args.dir) ==  GetIvectorExtractorId(egs_dir+'/info')):
+        raise Exception("The ivector extractor ids in the experiment directory {0}"
+                        " and the egs directory {1} do not match. The egs were "
+                        " not created with the ivector extractor whose unique id "
+                        " is {2} ".format(args.dir, egs_dir, GetIvectorExtractorId(args.dir)))
 
     [egs_left_context, egs_right_context, frames_per_eg, num_archives] = train_lib.VerifyEgsDir(egs_dir, feat_dim, ivector_dim, left_context, right_context)
     assert(args.chunk_width == frames_per_eg)

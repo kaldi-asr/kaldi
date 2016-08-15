@@ -218,6 +218,7 @@ fi
 if [ ! -z "$online_ivector_dir" ]; then
   ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
   echo $ivector_dim > $dir/info/ivector_dim
+  cp $online_ivector_dir/ivector_extractor_id $dir/info 2>/dev/null
   ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
 
   ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $sdata/JOB/utt2spk $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |'"

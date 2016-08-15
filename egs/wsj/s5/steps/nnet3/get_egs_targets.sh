@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Copyright 2012-2015 Johns Hopkins University (Author: Daniel Povey).  
+# Copyright 2012-2015 Johns Hopkins University (Author: Daniel Povey).
 #           2015-2016 Vimal Manohar
 # Apache 2.0.
 
 # This script is similar to steps/nnet3/get_egs.sh but used
-# when getting general targets (not from alignment directory) for raw nnet 
+# when getting general targets (not from alignment directory) for raw nnet
 #
 # This script, which will generally be called from other neural-net training
 # scripts, extracts the training examples used to train the neural net (and also
@@ -21,7 +21,7 @@
 # Begin configuration section.
 cmd=run.pl
 feat_type=raw       # set it to 'lda' to use LDA features.
-target_type=sparse  # dense to have dense targets, 
+target_type=sparse  # dense to have dense targets,
                     # sparse to have posteriors targets
 num_targets=        # required for target-type=sparse with raw nnet
 frames_per_eg=8   # number of frames of labels per example.  more->less disk space and
@@ -53,7 +53,7 @@ samples_per_iter=400000 # this is the target number of egs in each archive of eg
                         # a number that divides the number of samples in the
                         # entire data.
 
-transform_dir=     
+transform_dir=
 
 stage=0
 nj=6         # This should be set to the maximum number of jobs you are
@@ -186,6 +186,7 @@ if [ ! -z "$online_ivector_dir" ]; then
   train_subset_ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |'"
 else
   echo 0 >$dir/info/ivector_dim
+  cp $online_ivector_dir/ivector_extractor_id $dir/info 2>/dev/null
 fi
 
 if [ $stage -le 1 ]; then
@@ -273,12 +274,12 @@ if [ $target_type == "dense" ]; then
 fi
 
 if [ -z "$num_targets" ]; then
-  echo "$0: num-targets is not set" 
+  echo "$0: num-targets is not set"
   exit 1
 fi
 
 case $target_type in
-  "dense") 
+  "dense")
     get_egs_program="nnet3-get-egs-dense-targets --num-targets=$num_targets"
 
     targets="ark:utils/filter_scp.pl --exclude $dir/valid_uttlist $targets_scp_split | copy-feats scp:- ark:- |"
@@ -288,7 +289,7 @@ case $target_type in
   "sparse")
     get_egs_program="nnet3-get-egs --num-pdfs=$num_targets"
     targets="ark:utils/filter_scp.pl --exclude $dir/valid_uttlist $targets_scp_split | ali-to-post scp:- ark:- |"
-    valid_targets="ark:utils/filter_scp.pl $dir/valid_uttlist $targets_scp | ali-to-post scp:- ark:- |" 
+    valid_targets="ark:utils/filter_scp.pl $dir/valid_uttlist $targets_scp | ali-to-post scp:- ark:- |"
     train_subset_targets="ark:utils/filter_scp.pl $dir/train_subset_uttlist $targets_scp | ali-to-post scp:- ark:- |"
     ;;
   default)

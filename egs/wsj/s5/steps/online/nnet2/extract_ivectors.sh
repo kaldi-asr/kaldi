@@ -14,7 +14,7 @@
 # down-weight silence in the stats (default is --silence-weight 0.0).
 #
 # This is for when you use the "online-decoding" setup in an offline task, and
-# you want the best possible results.  
+# you want the best possible results.
 
 
 # Begin configuration section.
@@ -73,7 +73,7 @@ if [ $# != 4 ] && [ $# != 5 ]; then
   echo "  --ivector-period <int;default=10>                # How often to extract an iVector (frames)"
   echo "  --posterior-scale <float;default=0.1>            # Scale on posteriors in iVector extraction; "
   echo "                                                   # affects strength of prior term."
-  
+
   exit 1;
 fi
 
@@ -95,12 +95,12 @@ for f in $data/feats.scp $srcdir/final.ie $srcdir/final.dubm $srcdir/global_cmvn
   [ ! -f $f ] && echo "$0: No such file $f" && exit 1;
 done
 
-mkdir -p $dir/log 
+mkdir -p $dir/log
 silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
 
 if [ ! -z "$ali_or_decode_dir" ]; then
 
-  
+
   if [ -f $ali_or_decode_dir/ali.1.gz ]; then
     if [ ! -f $ali_or_decode_dir/${mdl}.mdl ]; then
       echo "$0: expected $ali_or_decode_dir/${mdl}.mdl to exist."
@@ -210,7 +210,7 @@ for line_index in range(len(lines)):
       numeric_id += 1
       print '{0} {1}'.format(spk_partial, ' '.join(current_utts))
       current_utts = []
-      current_count = 0 
+      current_count = 0
 "> $dir/spk2utt || exit 1;
     mkdir -p $dir/split$nj
     # create split versions of our spk2utt file.
@@ -242,11 +242,11 @@ if [ $stage -le 2 ]; then
   fi
 fi
 
-# get an utterance-level set of iVectors (just duplicate the speaker-level ones).  
+# get an utterance-level set of iVectors (just duplicate the speaker-level ones).
 # note: if $this_sdata is set $dir/split$nj, then these won't be real speakers, they'll
 # be "sub-speakers" (speakers split up into multiple utterances).
 if [ $stage -le 3 ]; then
-  for j in $(seq $nj); do 
+  for j in $(seq $nj); do
     utils/apply_map.pl -f 2 $dir/ivectors_spk.$j.ark <$this_sdata/$j/utt2spk >$dir/ivectors_utt.$j.ark || exit 1;
   done
 fi
@@ -277,4 +277,5 @@ if [ $stage -le 5 ]; then
   for j in $(seq $nj); do cat $dir/ivector_online.$j.scp; done >$dir/ivector_online.scp || exit 1;
 fi
 
-echo "$0: done extracting (pseudo-online) iVectors"
+
+cp $srcdir/ivector_extractor_id $dir 2>/dev/null

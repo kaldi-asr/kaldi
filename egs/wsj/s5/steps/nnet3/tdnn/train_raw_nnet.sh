@@ -136,6 +136,7 @@ if [ -z "$online_ivector_dir" ]; then
   ivector_dim=0
 else
   ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
+  cp $online_ivector_dir/ivector_extractor_id $dir/ 2>/dev/null
 fi
 
 if [ ! -z "$configs_dir" ]; then
@@ -207,6 +208,15 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
 fi
 
 [ -z $egs_dir ] && egs_dir=$dir/egs
+
+[ ! -z "$online_ivector_dir" ] && \
+[ -f $dir/ivector_extractor_id ] && \
+[ -f $egs_dir/info/ivector_extractor_id ] && \
+! cmp -s $dir/ivector_extractor_id $egs_dir/info/ivector_extractor_id && \
+echo "ivector extractor ids in the experiment directory $dir and " && \
+echo " the egs directory $egs_dir do not match." && exit 1;
+
+
 
 if [ "$feat_dim" != "$(cat $egs_dir/info/feat_dim)" ]; then
   echo "$0: feature dimension mismatch with egs, $feat_dim vs $(cat $egs_dir/info/feat_dim)";

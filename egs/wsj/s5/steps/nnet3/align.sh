@@ -61,8 +61,17 @@ else
 fi
 
 extra_files=
-[ ! -z "$online_ivector_dir" ] && \
+if [ ! -z "$online_ivector_dir" ]; then
+  [ -f $srcdir/ivector_extractor_id ] && \
+    [ -f $online_ivector_dir/ivector_extractor_id ] && \
+    ! cmp -s $srcdir/ivector_extractor_id $online_ivector_dir/ivector_extractor_id && \
+    echo "ivectors in $online_ivector_dir and the ivectors used to train" &&
+    echo " the nnet3 model in $srcdir were generated using different ivector " &&
+    echo " extractors." && exit 1;
   extra_files="$online_ivector_dir/ivector_online.scp $online_ivector_dir/ivector_period"
+fi
+
+
 for f in $srcdir/tree $srcdir/${iter}.mdl $data/feats.scp $lang/L.fst $extra_files; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done

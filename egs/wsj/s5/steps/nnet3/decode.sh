@@ -67,8 +67,17 @@ srcdir=`dirname $dir`; # Assume model directory one level up from decoding direc
 model=$srcdir/$iter.mdl
 
 
-[ ! -z "$online_ivector_dir" ] && \
+extra_files=
+if [ ! -z "$online_ivector_dir" ]; then
+  [ -f $srcdir/ivector_extractor_id ] && \
+    [ -f $online_ivector_dir/ivector_extractor_id ] && \
+    ! cmp -s $srcdir/ivector_extractor_id $online_ivector_dir/ivector_extractor_id && \
+    echo "ivectors in $online_ivector_dir and the ivectors used to train" &&
+    echo " the nnet3 model in $srcdir were generated using different ivector " &&
+    echo " extractors." && exit 1;
+
   extra_files="$online_ivector_dir/ivector_online.scp $online_ivector_dir/ivector_period"
+fi
 
 for f in $graphdir/HCLG.fst $data/feats.scp $model $extra_files; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
