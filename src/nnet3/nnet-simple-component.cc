@@ -2568,7 +2568,7 @@ void NaturalGradientAffineComponent::InitFromConfig(ConfigLine *cfl) {
   bool ok = true;
   std::string matrix_filename;
   BaseFloat num_samples_history = 2000.0, alpha = 4.0,
-      max_change_per_sample = 0.075;
+      max_change_per_sample = 0.0;
   int32 input_dim = -1, output_dim = -1, rank_in = 20, rank_out = 80,
       update_period = 4;
   InitLearningRatesFromConfig(cfl);
@@ -2669,6 +2669,11 @@ void NaturalGradientAffineComponent::Init(
   num_samples_history_ = num_samples_history;
   alpha_ = alpha;
   SetNaturalGradientConfigs();
+  if (max_change_per_sample > 0.0)
+    KALDI_WARN << "You are setting a positive max_change_per_sample for "
+               << "NaturalGradientAffineComponent. But it has been deprecated. "
+               << "Please use max_change for all updatable components instead "
+               << "to activate the per-component max change mechanism.";
   KALDI_ASSERT(max_change_per_sample >= 0.0);
   max_change_per_sample_ = max_change_per_sample;
   is_gradient_ = false;  // not configurable; there's no reason you'd want this
@@ -2798,35 +2803,6 @@ void NaturalGradientAffineComponent::Update(
                          precon_ones, 1.0);
   linear_params_.AddMatMat(local_lrate, out_deriv_temp, kTrans,
                            in_value_precon_part, kNoTrans, 1.0);
-}
-
-void NaturalGradientAffineComponent::ApplyMaxChangePerMinibatch(
-    int32 minibatch_size) {
-  if (max_change_per_sample_ == 0.0)
-    return;
-
-  static int scaling_factor_warnings_remaining = 10;
-
-  BaseFloat tot_change_norm =
-      std::sqrt(std::pow(linear_params_.FrobeniusNorm(), 2.0) +
-                std::pow(bias_params_.Norm(2.0), 2.0)),
-      max_change_norm = max_change_per_sample_ * minibatch_size;
-  KALDI_ASSERT(tot_change_norm - tot_change_norm == 0.0 && "NaN in backprop");
-  KALDI_ASSERT(tot_change_norm >= 0.0);
-  if (tot_change_norm > max_change_norm) {
-    BaseFloat max_change_scale = max_change_norm / tot_change_norm;
-    active_scaling_count_ += 1.0;
-    if (scaling_factor_warnings_remaining > 0) {
-      scaling_factor_warnings_remaining--;
-      KALDI_LOG << "Limiting step size using scaling factor "
-                << max_change_scale << ", for " << Type();
-    }
-    linear_params_.Scale(max_change_scale);
-    bias_params_.Scale(max_change_scale);
-    max_change_scale_stats_ += max_change_scale;
-  } else {
-    max_change_scale_stats_ += 1.0;
-  }
 }
 
 void NaturalGradientAffineComponent::ZeroStats()  {
@@ -3346,7 +3322,7 @@ void NaturalGradientPerElementScaleComponent::InitFromConfig(ConfigLine *cfl) {
   // the parameter-change.  It has the same purpose as the max-change-per-sample in
   // the NaturalGradientAffineComponent.
   BaseFloat num_samples_history = 2000.0, alpha = 4.0,
-      max_change_per_minibatch = 0.5;
+      max_change_per_minibatch = 0.0;
   cfl->GetValue("rank", &rank);
   cfl->GetValue("update-period", &update_period);
   cfl->GetValue("num-samples-history", &num_samples_history);
@@ -3389,6 +3365,11 @@ void NaturalGradientPerElementScaleComponent::Init(
   preconditioner_.SetNumSamplesHistory(num_samples_history);
   preconditioner_.SetAlpha(alpha);
   max_change_per_minibatch_ = max_change_per_minibatch;
+  if (max_change_per_minibatch > 0.0)
+    KALDI_WARN << "You are setting a positive max_change_per_minibatch for "
+               << "NaturalGradientPerElementScaleComponent. But it has been deprecated. "
+               << "Please use max_change for all updatable components instead "
+               << "to activate the per-component max change mechanism.";
 }
 
 void NaturalGradientPerElementScaleComponent::Init(
@@ -3433,28 +3414,6 @@ void NaturalGradientPerElementScaleComponent::Update(
   CuVector<BaseFloat> delta_scales(scales_.Dim());
   delta_scales.AddRowSumMat(scale * learning_rate_, derivs_per_frame);
   scales_.AddVec(1.0, delta_scales);
-}
-
-void NaturalGradientPerElementScaleComponent::ApplyMaxChangePerMinibatch(
-    int32 minibatch_size) {
-  if (max_change_per_minibatch_ == 0.0)
-    return;
-
-  static int max_change_warnings_remaining = 10;
-
-  BaseFloat tot_change_norm = scales_.Norm(2.0); 
-  if (tot_change_norm > max_change_per_minibatch_) {
-    BaseFloat max_change_scale = max_change_per_minibatch_ / tot_change_norm;
-    if (max_change_warnings_remaining >= 0) {
-      max_change_warnings_remaining--;
-      KALDI_WARN << "Parameter change " << tot_change_norm
-                 << " exceeds --max-change-per-minibatch="
-                 << max_change_per_minibatch_ << " for this minibatch, "
-                 << "for " << Type() << ", scaling by factor "
-                 << max_change_scale;
-    }
-    scales_.Scale(max_change_scale);
-  }
 }
 
 // Constructors for the convolution component

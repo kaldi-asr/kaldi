@@ -41,6 +41,9 @@ NnetTrainer::NnetTrainer(const NnetTrainerOptions &config,
     bool is_gradient = false;  // setting this to true would disable the
                                // natural-gradient updates.
     SetZero(is_gradient, delta_nnet_);
+    const int32 num_ucs = NumUpdatableComponents(*delta_nnet_);
+    num_max_changes_per_component_applied_.resize(num_ucs, 0); 
+    num_max_changes_global_applied_ = 0;
   }
   if (config_.read_cache != "") {
     bool binary;
@@ -75,25 +78,7 @@ void NnetTrainer::Train(const NnetExample &eg) {
   computer.Backward();
 
   if (delta_nnet_ != NULL) {
-    ApplyMaxChangePerComponent(GetMinibatchSize(eg), delta_nnet_);
-    BaseFloat scale = (1.0 - config_.momentum);
-    if (config_.max_param_change != 0.0) {
-      BaseFloat param_delta =
-          std::sqrt(DotProduct(*delta_nnet_, *delta_nnet_)) * scale;
-      if (param_delta > config_.max_param_change) {
-        if (param_delta - param_delta != 0.0) {
-          KALDI_WARN << "Infinite parameter change, will not apply.";
-          SetZero(false, delta_nnet_);
-        } else {
-          scale *= config_.max_param_change / param_delta;
-          KALDI_LOG << "Parameter change too big: " << param_delta << " > "
-                    << "--max-param-change=" << config_.max_param_change
-                    << ", scaling by " << config_.max_param_change / param_delta;
-        }
-      }
-    }
-    AddNnet(*delta_nnet_, scale, nnet_);
-    ScaleNnet(config_.momentum, delta_nnet_);
+    UpdateParamsWithMaxChanges();
   }
 }
 
@@ -119,6 +104,63 @@ void NnetTrainer::ProcessOutputs(const NnetExample &eg,
   }
 }
 
+void NnetTrainer::UpdateParamsWithMaxChanges() {
+  KALDI_ASSERT(delta_nnet_ != NULL);
+  // computes scaling factors for per-component max-changes
+  const int32 num_ucs = NumUpdatableComponents(*delta_nnet_);
+  Vector<BaseFloat> scale_factors = Vector<BaseFloat>(num_ucs);
+  BaseFloat param_delta = 0.0;
+  int32 i = 0;
+  for (int32 c = 0; c < delta_nnet_->NumComponents(); c++) {
+    Component *comp = delta_nnet_->GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent) {
+      UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(comp);
+      if (uc == NULL)
+        KALDI_ERR << "Updatable component does not inherit from class "
+                  << "UpdatableComponent; change this code.";
+      BaseFloat max_param_change_per_comp = uc->MaxChange();
+      KALDI_ASSERT(max_param_change_per_comp >= 0.0);
+      BaseFloat dot_prod = uc->DotProduct(*uc);
+      if (max_param_change_per_comp != 0.0 &&
+          std::sqrt(dot_prod) > max_param_change_per_comp) {
+        scale_factors(i) = max_param_change_per_comp / std::sqrt(dot_prod);
+        num_max_changes_per_component_applied_[i]++;
+        KALDI_VLOG(2) << "Parameters in " << delta_nnet_->GetComponentName(c)
+                      << " change too big: " << std::sqrt(dot_prod) << " > "
+                      << "--max-change=" << max_param_change_per_comp
+                      << ", scaling by " << scale_factors(i);
+      } else
+        scale_factors(i) = 1.0;
+      param_delta += std::pow(scale_factors(i), 2.0) * dot_prod;
+      i++;
+    }
+  }
+  param_delta = std::sqrt(param_delta);
+  // computes the scale for global max-change (with momentum)
+  BaseFloat scale = (1.0 - config_.momentum);
+  if (config_.max_param_change != 0.0) {
+    param_delta *= scale;
+    if (param_delta > config_.max_param_change) {
+      if (param_delta - param_delta != 0.0) {
+        KALDI_WARN << "Infinite parameter change, will not apply.";
+        SetZero(false, delta_nnet_);
+      } else {
+        scale *= config_.max_param_change / param_delta;
+        num_max_changes_global_applied_++;
+        KALDI_LOG << "Parameters change too big: " << param_delta << " > "
+                  << "--max-param-change=" << config_.max_param_change
+                  << ", scaling by " << config_.max_param_change / param_delta;
+      }
+    }
+  }
+  // applies both of the max-change scalings all at once, component by component
+  // and updates parameters
+  scale_factors.Scale(scale);
+  ScaleNnetComponents(scale_factors, delta_nnet_);
+  AddNnet(*delta_nnet_, 1.0, nnet_);
+  ScaleNnet(config_.momentum, delta_nnet_);
+}
+
 bool NnetTrainer::PrintTotalStats() const {
   unordered_map<std::string, ObjectiveFunctionInfo>::const_iterator
       iter = objf_info_.begin(),
@@ -129,7 +171,33 @@ bool NnetTrainer::PrintTotalStats() const {
     const ObjectiveFunctionInfo &info = iter->second;
     ans = ans || info.PrintTotalStats(name);
   }
+  if (delta_nnet_ != NULL)
+    PrintMaxChangesStats();
   return ans;
+}
+
+void NnetTrainer::PrintMaxChangesStats() const {
+  KALDI_ASSERT(delta_nnet_ != NULL);
+  int32 i = 0;
+  for (int32 c = 0; c < delta_nnet_->NumComponents(); c++) {
+    Component *comp = delta_nnet_->GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent) {
+      UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(comp);
+      if (uc == NULL)
+        KALDI_ERR << "Updatable component does not inherit from class "
+                  << "UpdatableComponent; change this code.";
+      if (num_max_changes_per_component_applied_[i] > 0)
+        KALDI_LOG << "For " << delta_nnet_->GetComponentName(c)
+                  << ", per-component max-change was enforced "
+                  << (100.0 * num_max_changes_per_component_applied_[i]) /
+                     num_minibatches_processed_ << " \% of the time.";
+      i++;
+    }
+  }
+  if (num_max_changes_global_applied_ > 0)
+    KALDI_LOG << "The global max-change was enforced "
+              << (100.0 * num_max_changes_global_applied_) /
+                 num_minibatches_processed_ << " \% of the time.";
 }
 
 void ObjectiveFunctionInfo::UpdateStats(

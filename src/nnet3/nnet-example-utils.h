@@ -80,8 +80,6 @@ void RoundUpNumFrames(int32 frame_subsampling_factor,
                       int32 *num_frames,
                       int32 *num_frames_overlap);
 
-// Get minibatch size of an example
-int32 GetMinibatchSize(const NnetExample &eg);
 
 } // namespace nnet3
 } // namespace kaldi

@@ -723,7 +723,6 @@ class NaturalGradientAffineComponent: public AffineComponent {
   virtual Component* Copy() const;
   virtual void Scale(BaseFloat scale);
   virtual void Add(BaseFloat alpha, const Component &other);
-  virtual void ApplyMaxChangePerMinibatch(int32 minibatch_size);
   // copy constructor
   explicit NaturalGradientAffineComponent(
       const NaturalGradientAffineComponent &other);
@@ -1399,8 +1398,6 @@ class NaturalGradientPerElementScaleComponent: public PerElementScaleComponent {
   virtual std::string Type() const {
     return "NaturalGradientPerElementScaleComponent";
   }
-
-  virtual void ApplyMaxChangePerMinibatch(int32 minibatch_size);
 
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;

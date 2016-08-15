@@ -361,20 +361,6 @@ void AddNnet(const Nnet &src, BaseFloat alpha, Nnet *dest) {
   }
 }
 
-void ApplyMaxChangePerComponent(int32 minibatch_size, Nnet *delta_nnet) {
-  KALDI_ASSERT(delta_nnet != NULL);
-  for (int32 c = 0; c < delta_nnet->NumComponents(); c++) {
-    Component *comp = delta_nnet->GetComponent(c);
-    if (comp->Properties() & kUpdatableComponent) {
-      UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(comp);
-      if (uc == NULL)
-        KALDI_ERR << "Updatable component does not inherit from class "
-            "UpdatableComponent; change this code.";
-      uc->ApplyMaxChangePerMinibatch(minibatch_size);
-    }
-  }
-}
-
 int32 NumParameters(const Nnet &src) {
   int32 ans = 0;
   for (int32 c = 0; c < src.NumComponents(); c++) {

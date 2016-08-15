@@ -238,22 +238,27 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
                                                     recurrent_projection_dim, non_recurrent_projection_dim,
                                                     clipping_threshold, norm_based_clipping,
                                                     ng_per_element_scale_options, ng_affine_options,
-                                                    lstm_delay = lstm_delay[i], self_repair_scale_nonlinearity = self_repair_scale_nonlinearity, self_repair_scale_clipgradient = self_repair_scale_clipgradient)
+                                                    lstm_delay = lstm_delay[i],
+                                                    self_repair_scale_nonlinearity = self_repair_scale_nonlinearity, self_repair_scale_clipgradient = self_repair_scale_clipgradient,
+                                                    max_change_per_component = 0.25)
         else: # add a uni-directional LSTM layer
             prev_layer_output = nodes.AddLstmLayer(config_lines, "Lstm{0}".format(i+1),
                                                    prev_layer_output, cell_dim,
                                                    recurrent_projection_dim, non_recurrent_projection_dim,
                                                    clipping_threshold, norm_based_clipping,
                                                    ng_per_element_scale_options, ng_affine_options,
-                                                   lstm_delay = lstm_delay[i][0], self_repair_scale_nonlinearity = self_repair_scale_nonlinearity, self_repair_scale_clipgradient = self_repair_scale_clipgradient)
+                                                   lstm_delay = lstm_delay[i][0],
+                                                   self_repair_scale_nonlinearity = self_repair_scale_nonlinearity, self_repair_scale_clipgradient = self_repair_scale_clipgradient,
+                                                   max_change_per_component = 0.25)
         # make the intermediate config file for layerwise discriminative
         # training
-        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options, label_delay = label_delay, include_log_softmax = include_log_softmax)
+        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options, max_change_per_component = 0.5, label_delay = label_delay, include_log_softmax = include_log_softmax)
 
 
         if xent_regularize != 0.0:
             nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
                                 include_log_softmax = True, label_delay = label_delay,
+                                max_change_per_component = 0.5,
                                 name_affix = 'xent')
 
         config_files['{0}/layer{1}.config'.format(config_dir, i+1)] = config_lines
@@ -262,14 +267,15 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
     for i in range(num_lstm_layers, num_hidden_layers):
         prev_layer_output = nodes.AddAffRelNormLayer(config_lines, "L{0}".format(i+1),
                                                prev_layer_output, hidden_dim,
-                                               ng_affine_options, self_repair_scale = self_repair_scale_nonlinearity)
+                                               ng_affine_options, self_repair_scale = self_repair_scale_nonlinearity, max_change_per_component = 0.25)
         # make the intermediate config file for layerwise discriminative
         # training
-        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options, label_delay = label_delay, include_log_softmax = include_log_softmax)
+        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options, max_change_per_component = 0.5, label_delay = label_delay, include_log_softmax = include_log_softmax)
 
         if xent_regularize != 0.0:
             nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
                                 include_log_softmax = True, label_delay = label_delay,
+                                max_change_per_component = 0.5,
                                 name_affix = 'xent')
 
         config_files['{0}/layer{1}.config'.format(config_dir, i+1)] = config_lines
