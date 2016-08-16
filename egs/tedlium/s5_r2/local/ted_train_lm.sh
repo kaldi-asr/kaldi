@@ -37,14 +37,14 @@ export PATH=$KALDI_ROOT/tools/pocolm/scripts:$PATH
 
 num_dev_sentences=10000
 
-bypass_metaparam_optim_opt=
+#bypass_metaparam_optim_opt=
 # If you want to bypass the metaparameter optimization steps with specific metaparameters
 # un-comment the following line, and change the numbers to some appropriate values.
 # You can find the values from output log of train_lm.py.
 # These example numbers of metaparameters is for 4-gram model (with min-counts)
 # running with train_lm.py.
 # The dev perplexity should be close to the non-bypassed model.
-#bypass_metaparam_optim_opt="--bypass-metaparameter-optimization=0.794,0.022,0.761,0.083,0.043,0.013,1.000,0.359,0.123,0.078,1.000,0.613,0.227,0.227"
+bypass_metaparam_optim_opt="--bypass-metaparameter-optimization=0.837,0.023,0.761,0.065,0.029,0.015,0.999,0.361,0.157,0.080,0.999,0.625,0.2164,0.2162"
 # Note: to use these example parameters, you may need to remove the .done files
 # to make sure the make_lm_dir.py be called and tain only 3-gram model
 #for order in 3; do
@@ -102,7 +102,7 @@ if [ $stage -le 1 ]; then
   get_data_prob.py ${dir}/data/real_dev_set.txt ${unpruned_lm_dir} 2>&1 | grep -F '[perplexity'
 
   # currently (with min-counts), this is what we have:
-  # get_data_prob.py: log-prob of data/local/local_lm/data/real_dev_set.txt given model data/local/local_lm/data/wordlist_4.pocolm was -5.13902242865 per word [perplexity = 170.51635206] over 18290.0 words.
+  # get_data_prob.py: log-prob of data/local/local_lm/data/real_dev_set.txt given model data/local/local_lm/data/wordlist_4.pocolm was -5.13902242865 per word [perplexity = 170.514153159] over 18290.0 words.
   # before I added min-counts, this is what we had:
   # get_data_prob.py: log-prob of data/local/local_lm/data/real_dev_set.txt given model data/local/local_lm/data/lm_4 was -5.10576291033 per word [perplexity = 164.969879761] over 18290.0 words.
 fi
@@ -117,7 +117,7 @@ if [ $stage -le 2 ]; then
   
   # with min-counts: 
   # get_data_prob.py ${dir}/data/real_dev_set.txt ${dir}/data/lm_${order}_prune_big 2>&1 | grep -F '[perplexity'
-  # get_data_prob.py: log-prob of data/local/local_lm/data/real_dev_set.txt given model data/local/local_lm/data/lm_4_prune_big was -5.17638942756 per word [perplexity = 176.963480425] over 18290.0 words.
+  # get_data_prob.py: log-prob of data/local/local_lm/data/real_dev_set.txt given model data/local/local_lm/data/lm_4_prune_big was -5.17638942756 per word [perplexity = 177.006688203] over 18290.0 words.
 
   mkdir -p ${dir}/data/arpa
   format_arpa_lm.py ${dir}/data/lm_${order}_prune_big | gzip -c > ${dir}/data/arpa/${order}gram_big.arpa.gz
@@ -133,10 +133,9 @@ if [ $stage -le 3 ]; then
   get_data_prob.py ${dir}/data/real_dev_set.txt ${dir}/data/lm_${order}_prune_small 2>&1 | grep -F '[perplexity'
 
   # with min-counts:
-  # get_data_prob.py: log-prob of data/local/local_lm/data/real_dev_set.txt given model data/local/local_lm/data/lm_4_prune_small was -5.28346290049 per word [perplexity = 198.060250839] over 18290.0 words.
+  # get_data_prob.py: log-prob of data/local/local_lm/data/real_dev_set.txt given model data/local/local_lm/data/lm_4_prune_small was -5.28346290049 per word [perplexity = 197.123843355] over 18290.0 words.
   # before adding min-counts:
   # get_data_prob.py: log-prob of data/local/local_lm/data/real_dev_set.txt given model data/local/local_lm/data/lm_4_prune_small was -5.27623197813 per word [perplexity = 195.631341646] over 18290.0 words.
 
   format_arpa_lm.py ${dir}/data/lm_${order}_prune_small | gzip -c > ${dir}/data/arpa/${order}gram_small.arpa.gz
 fi
-
