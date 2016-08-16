@@ -210,11 +210,11 @@ fi
 [ -z $egs_dir ] && egs_dir=$dir/egs
 
 [ ! -z "$online_ivector_dir" ] && \
-[ -f $dir/ivector_extractor_id ] && \
-[ -f $egs_dir/info/ivector_extractor_id ] && \
-! cmp -s $dir/ivector_extractor_id $egs_dir/info/ivector_extractor_id && \
-echo "ivector extractor ids in the experiment directory $dir and " && \
-echo " the egs directory $egs_dir do not match." && exit 1;
+  [ -f $dir/ivector_extractor_id ] && \
+  [ -f $egs_dir/info/ivector_extractor_id ] && \
+  ! cmp -s $dir/ivector_extractor_id $egs_dir/info/ivector_extractor_id && \
+  echo "ivector extractor ids in the experiment directory $dir and " && \
+  echo " the egs directory $egs_dir do not match." && exit 1;
 
 
 

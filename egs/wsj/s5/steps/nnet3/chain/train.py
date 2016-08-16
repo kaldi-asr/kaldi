@@ -535,7 +535,7 @@ def Train(args, run_opts):
     num_jobs = train_lib.GetNumberOfJobs(args.tree_dir)
     feat_dim = train_lib.GetFeatDim(args.feat_dir)
     ivector_dim = train_lib.GetIvectorDim(args.online_ivector_dir)
-    CopyIvectorExractorId(args.online_ivector_dir, args.dir)
+    CopyIvectorExtractorId(args.online_ivector_dir, args.dir)
 
     # split the training data into parts for individual jobs
     # we will use the same number of jobs as that used for alignment
