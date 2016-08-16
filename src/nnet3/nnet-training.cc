@@ -135,6 +135,7 @@ void NnetTrainer::UpdateParamsWithMaxChanges() {
       i++;
     }
   }
+  KALDI_ASSERT(i == scale_factors.Dim());
   param_delta = std::sqrt(param_delta);
   // computes the scale for global max-change (with momentum)
   BaseFloat scale = (1.0 - config_.momentum);
@@ -156,8 +157,7 @@ void NnetTrainer::UpdateParamsWithMaxChanges() {
   // applies both of the max-change scalings all at once, component by component
   // and updates parameters
   scale_factors.Scale(scale);
-  ScaleNnetComponents(scale_factors, delta_nnet_);
-  AddNnet(*delta_nnet_, 1.0, nnet_);
+  AddNnetComponents(*delta_nnet_, scale_factors, scale, nnet_);
   ScaleNnet(config_.momentum, delta_nnet_);
 }
 
