@@ -30,14 +30,14 @@ echo sil > $dir/optional_silence.txt
 
 # For this setup we're discarding stress.
 cat $dir/cmudict/cmudict.0.7a.symbols | sed s/[0-9]//g | \
- tr '[A-Z]' '[a-z]' | perl -ane 's:\r::; print;' | sort | uniq > $dir/nonsilence_phones.txt
+ tr '[A-Z]' '[a-z]' | perl -ane 's:\r::; print;' | sort -u > $dir/nonsilence_phones.txt
 
 # An extra question will be added by including the silence phones in one class.
 cat $dir/silence_phones.txt| awk '{printf("%s ", $1);} END{printf "\n";}' > $dir/extra_questions.txt || exit 1;
 
 grep -v ';;;' $dir/cmudict/cmudict.0.7a |  tr '[A-Z]' '[a-z]' | \
  perl -ane 'if(!m:^;;;:){ s:(\S+)\(\d+\) :$1 :; s:  : :; print; }' | \
-   sed s/[0-9]//g | sort | uniq > $dir/lexicon1.txt || exit 1;
+   sed s/[0-9]//g | sort -u > $dir/lexicon1.txt || exit 1;
 
 # Get rid of punctuation words
 patch -o $dir/lexicon2.txt $dir/lexicon1.txt local/dict.patch
@@ -54,8 +54,8 @@ echo "<unk> oov" | cat - $dir/lexicon3.txt > $dir/lexicon4.txt
 if [ $# == 1 ]; then
   cat $1/TEDLIUM.152k.dic | egrep '\S+\s+.+' | \
     grep -v -w "<s>" | grep -v -w "</s>" | grep -v -w "<unk>" | grep -v 'ERROR' | \
-    sed 's:([0-9])::g' | tr A-Z a-z | \
-    cat - $dir/lexicon4.txt | sort | uniq > $dir/lexicon.txt || exit 1;
+    sed 's:([0-9])::g' |sed 's:\s\+: :g' | tr A-Z a-z | \
+    cat - $dir/lexicon4.txt | sort -u > $dir/lexicon.txt || exit 1;
 else
-  cat $dir/lexicon4.txt | sort | uniq > $dir/lexicon.txt
+  cat $dir/lexicon4.txt | sort -u > $dir/lexicon.txt
 fi

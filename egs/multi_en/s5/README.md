@@ -17,8 +17,9 @@ This recipe was developed by Allen Guo (ICSI) and Korbinian Riedhammer (Remeetin
 To make it as easy as possible to extend and modify this example, we provide the ability to create separate recipe variants. These variants are named `multi_a`, `multi_b`, etc. For instance, you could have
 
 * `multi_a` = default
-  * Train GMM-HMM on WSJ SI-84
-  * Then train AMI/Fisher/Librispeech/SWBD/Tedlium/WSJ nnet3 model
+  * Bootstrap GMM-HMM on WSJ SI-84
+  * Train SAT system with AMI/Fisher/Librispeech/SWBD/Tedlium/WSJ nnet3 model (no AMI-SDM)
+  * Train tdnn (ivector) system on top of that
 * `multi_b` = your first experiment
   * Train monophone model on SWBD
   * Then add in WSJ SI-284 for remaining GMM-HMM steps
@@ -38,8 +39,6 @@ Instead of having a few `train_*` directories (like `train_200k`, `train_50_shor
 $ ls -1 data/multi_a/
 mono/
 mono_ali/
-tmp1/
-tmp2/
 tri1@
 tri1_ali@
 tri2@

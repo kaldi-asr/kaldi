@@ -59,7 +59,7 @@ for set in dev test train; do
     awk '{ printf ("%s-%07d-%07d", $1, $4*100, $5*100);
            for (i=7;i<=NF;i++) { printf(" %s", $i); }
            printf("\n");
-         }' | tr '{}' '[]' | sort -k1,1 > $dir/text || exit 1
+         }' | tr '{}' '[]' | sed 's:^ \+::' | sort -k1,1 > $dir/text || exit 1
 
   # Prepare 'segments', 'utt2spk', 'spk2utt'
   cat $dir/text | cut -d" " -f 1 | awk -F"-" '{printf("%s %s %07.2f %07.2f\n", $0, $1, $2/100.0, $3/100.0)}' > $dir/segments
@@ -89,7 +89,11 @@ for set in dev test train; do
   rm -rf data/tedlium/$set
   mv $dir data/tedlium/$set
 
-  # Check that data dirs are okay!
+  # Make sure that data dirs are okay!
+  utils/fix_data_dir.sh data/tedlium/$set
   utils/validate_data_dir.sh --no-feats data/tedlium/$set || exit 1
+
+  # no need to keep those around
+  rm -rf data/tedlium/$set/.backup
 done
 

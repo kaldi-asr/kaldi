@@ -120,11 +120,11 @@ if [ $stage -le 7 ]; then
   corpora="ami_ihm ami_sdm1 fisher librispeech_100 librispeech_360 librispeech_500 swbd tedlium wsj"
   for c in $corpora; do
     data=data/$c/train
-    steps/make_mfcc.sh --out-suffix "train_$c" --mfcc-config conf/mfcc.conf \
+    steps/make_mfcc.sh --mfcc-config conf/mfcc.conf \
       --cmd "$train_cmd" --nj 40 \
-      $data exp/make_mfcc/$c/train $mfccdir || exit 1;
-    steps/compute_cmvn_stats.sh --out-suffix "train_$c" \
-      $data exp/make_mfcc/$c/train $mfccdir || exit 1;
+      $data exp/make_mfcc/$c/train || exit 1;
+    steps/compute_cmvn_stats.sh \
+      $data exp/make_mfcc/$c/train || exit 1;
   done
 fi
 
@@ -162,11 +162,11 @@ if [ $stage -le 9 ]; then
   corpora="tedlium eval2000 rt03 librispeech"
   for c in $corpora; do
     data=data/$c/test
-    steps/make_mfcc.sh --out-suffix "test_$c" --mfcc-config conf/mfcc.conf \
+    steps/make_mfcc.sh --mfcc-config conf/mfcc.conf \
       --cmd "$train_cmd" --nj 20 \
-      $data exp/make_mfcc/$c/test $mfccdir || exit 1;
-    steps/compute_cmvn_stats.sh --out-suffix "test_$c" \
-      $data exp/make_mfcc/$c/test $mfccdir || exit 1;
+      $data exp/make_mfcc/$c/test || exit 1;
+    steps/compute_cmvn_stats.sh \
+      $data exp/make_mfcc/$c/test || exit 1;
   done
 fi
 
@@ -216,7 +216,7 @@ fi
 
 # reestimate LM with silprobs
 if [ $stage -le 15 ]; then
-  steps/get_prons.sh --cmd "$train_cmd" data/$multi/tri3 data/lang_nosp exp/$multi/tri3
+#  steps/get_prons.sh --cmd "$train_cmd" data/$multi/tri3 data/lang_nosp exp/$multi/tri3
   utils/dict_dir_add_pronprobs.sh --max-normalize true \
     data/local/dict_nosp exp/$multi/tri3/pron_counts_nowb.txt \
     exp/$multi/tri3/sil_counts_nowb.txt exp/$multi/tri3/pron_bigram_counts_nowb.txt data/local/dict

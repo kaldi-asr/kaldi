@@ -69,3 +69,6 @@ if [ $stage -eq 7 ]; then
   utils/subset_data_dir.sh $data_dir/tdnn \
     30000 $data_dir/tdnn_30k
 fi
+
+# remove temporary directories
+rm -rf $tmp1 $tmp2
