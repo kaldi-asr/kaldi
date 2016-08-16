@@ -15,7 +15,7 @@ inv_acwt=12
 weight=1.0  # Interpolation weight for RNNLM.
 # End configuration section.
 rnnlm_ver=
-layer_string=
+#layer_string=
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -47,9 +47,11 @@ first_arg=ark:$rnnlm_dir/unk.probs # this is for mikolov's rnnlm
 extra_arg=
 
 if [ "$rnnlm_ver" == "cuedrnnlm" ]; then
+  layer_string=`cat $rnnlm_dir/layer_string | sed "s=:= =g"`
   total_size=`wc -l $rnnlm_dir/unigram.counts | awk '{print $1}'`
-  rescoring_binary="lattice-lmrescore-cuedrnnlm --full-voc-size=$total_size --layer-sizes=\"$layer_string\""
-  cat $rnnlm_dir/rnnlm.input.wlist.index | tail -n +2 | awk '{print $1-1,$2}' > $rnnlm_dir/rnn.wlist # ugly fix but works
+  rescoring_binary="lattice-lmrescore-cuedrnnlm"
+  cat $rnnlm_dir/rnnlm.input.wlist.index | tail -n +2 | awk '{print $1-1,$2}' > $rnnlm_dir/rnn.wlist
+  extra_arg="--full-voc-size=$total_size --layer-sizes=\"$layer_string\""
   first_arg=$rnnlm_dir/rnn.wlist
 fi
 
@@ -82,25 +84,23 @@ nj=`cat $indir/num_jobs` || exit 1;
 cp $indir/num_jobs $outdir
 
 oldlm_weight=`perl -e "print -1.0 * $weight;"`
-#false && (
 if [ "$oldlm" == "$oldlang/G.fst" ]; then
   $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
     lattice-lmrescore --lm-scale=$oldlm_weight \
     "ark:gunzip -c $indir/lat.JOB.gz|" "$oldlm_command" ark:-  \| \
-    $rescoring_binary --lm-scale=$weight \
-    --max-ngram-order=$max_ngram_order $first_arg \
-    $oldlang/words.txt ark:- "$rnnlm_dir/rnnlm" \
+    $rescoring_binary $extra_arg --lm-scale=$weight \
+    --max-ngram-order=$max_ngram_order \
+    $first_arg $oldlang/words.txt ark:- "$rnnlm_dir/rnnlm" \
     "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;
 else
   $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
     lattice-lmrescore-const-arpa --lm-scale=$oldlm_weight \
     "ark:gunzip -c $indir/lat.JOB.gz|" "$oldlm_command" ark:-  \| \
-    $rescoring_binary --lm-scale=$weight \
-    --max-ngram-order=$max_ngram_order ark:$rnnlm_dir/unk.probs \
-    $oldlang/words.txt ark:- "$rnnlm_dir/rnnlm" \
+    $rescoring_binary $extra_arg --lm-scale=$weight \
+    --max-ngram-order=$max_ngram_order \
+    $first_arg $oldlang/words.txt ark:- "$rnnlm_dir/rnnlm" \
     "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;
 fi
-#)
 if ! $skip_scoring ; then
   err_msg="Not scoring because local/score.sh does not exist or not executable."
   [ ! -x local/score.sh ] && echo $err_msg && exit 1;

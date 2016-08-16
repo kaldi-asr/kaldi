@@ -1,10 +1,10 @@
 
 all:
 
-EXTRA_CXXFLAGS = -Wno-sign-compare
+EXTRA_CXXFLAGS = -Wno-sign-compare -fopenmp
 include ../kaldi.mk
 
-BINFILES = arpa2fst arpa-to-const-arpa
+BINFILES = arpa2fst arpa-to-const-arpa cued-rnnlm-eval
 
 OBJFILES =
 

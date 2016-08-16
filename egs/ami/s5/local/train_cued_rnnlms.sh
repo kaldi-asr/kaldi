@@ -36,7 +36,7 @@ if [  True ]; then
 cat $srcdir/lexicon.txt | awk '{print $1}' | grep -v -w '!SIL' > $dir/wordlist.all
 
 # Get training data with OOV words (w.r.t. our current vocab) replaced with <UNK>.
-# TODO(hxu) now use UNK for debugging
+# TODO(hxu) will fix the cued-rnnlm <unk> bug and change this
 cat $train_text | awk -v w=$dir/wordlist.all \
   'BEGIN{while((getline<w)>0) v[$1]=1;}
   {for (i=2;i<=NF;i++) if ($i in v) printf $i" ";else printf "[UNK] ";print ""}'|sed 's/ $//g' \
@@ -73,22 +73,9 @@ head -$nwords $dir/unigram.counts | awk '{print $2}' | tee $dir/wordlist.rnn | a
 
 tail -n +$nwords $dir/unigram.counts > $dir/unk_class.counts
 
-tot=`awk '{x=x+$1} END{print x}' $dir/unk_class.counts`
-awk -v tot=$tot '{print $2, ($1*1.0/tot);}' <$dir/unk_class.counts  >$dir/unk.probs
-# TODO(hxu) using RNN_UNK for debugging
-
-false && for type in train valid; do
-  cat $dir/$type.in | awk -v w=$dir/wordlist.rnn \
-    'BEGIN{while((getline<w)>0) v[$1]=1;}
-    {for (i=1;i<=NF;i++) if ($i in v) printf $i" ";else printf "RNN_UNK ";print ""}'|sed 's/ $//g' \
-    > $dir/$type
-done
-#
 for type in train valid; do
   mv $dir/$type.in $dir/$type
 done
-
-#rm $dir/train.in # no longer needed-- and big. #TODO(hxu) keep this to debug
 
 # Now randomize the order of the training data.
 cat $dir/train | awk -v rand_seed=$rand_seed 'BEGIN{srand(rand_seed);} {printf("%f\t%s\n", rand(), $0);}' | \
@@ -98,16 +85,13 @@ mv $dir/foo $dir/train
 # OK we'll train the RNNLM on this data.
 
 echo "Training CUED-RNNLM on GPU"
-#time rnnlm -train $dir/train -valid $dir/valid -rnnlm $dir/100.rnnlm \
-#  -hidden 100 -rand-seed 1 -debug 2 -class 100 -bptt 2 -bptt-block 20 \
-#  -direct-order 4 -direct 1000 -binary >& $dir/rnnlm1.log &
 
 layer_str=$[$nwords+2]:$hidden:$[$nwords+2]
 bptt_delay=0
 
-# TODO(hxu) fullvocsize
-
-$cuda_mem_cmd $dir/rnnlm.log \
+echo $layer_str > $dir/layer_string
+#TODO
+false && $cuda_mem_cmd $dir/rnnlm.log \
    steps/train_cued_rnnlm.sh -train -trainfile $dir/train \
    -validfile $dir/valid -minibatch 64 -layers $layer_str \
    -bptt $bptt -bptt-delay $bptt_delay -traincrit $crit -lrtune newbob \
@@ -117,21 +101,16 @@ $cuda_mem_cmd $dir/rnnlm.log \
    -writemodel $dir/rnnlm -randseed 1 -debug 2
 fi
 
+touch $dir/unk.probs  # dummy file, not used for cued-rnnlm
+
 # make it like a Kaldi table format, with fake utterance-ids.
 cat $dir/valid | awk '{ printf("uttid-%d ", NR); print; }' > $dir/valid.with_ids
 
 utils/rnnlm_compute_scores.sh --rnnlm_ver $rnnlm_ver $dir $dir/tmp.valid $dir/valid.with_ids $dir/valid.scores
 
-nw=`wc -w < $dir/valid.with_ids` # Note: valid.with_ids includes utterance-ids which
+nw=`cat $dir/valid.with_ids | sed 's= =\n=g' | wc -l | awk '{print $1}'` # Note: valid.with_ids includes utterance-ids which
   # is one per word, to account for the </s> at the end of each sentence; this is the
   # correct number to normalize buy.
 p=`awk -v nw=$nw '{x=x+$2} END{print exp(x/nw);}' <$dir/valid.scores` 
 echo Perplexity is $p | tee $dir/perplexity.log
 
-#rm $dir/train $dir/all.gz TODO(hxu) keep this to debug
-
-# This is a better setup, but takes a long time to train:
-#echo "Training RNNLM (note: this uses a lot of memory! Run it on a big machine.)"
-#time rnnlm -train $dir/train -valid $dir/valid -rnnlm $dir/320.rnnlm \
-#  -hidden 320 -rand-seed 1 -debug 2 -class 300 -bptt 2 -bptt-block 20 \
-#  -direct-order 4 -direct 2000 -binary

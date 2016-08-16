@@ -7,12 +7,6 @@
 
 #include <omp.h>
 #include <time.h>
-/*
-#include "head.h"
-#include "helper.h"
-#include "fileops.h"
-#include "DataType.h"
-// */
 
 #include <stdlib.h>
 #include <stdio.h>

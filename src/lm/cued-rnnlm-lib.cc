@@ -114,7 +114,7 @@ float random(float min, float max) {
 }
 
 void RNNLM::init() {
-  lognormconst    = -1.0;
+  lognormconst    = 0;
   lambda          = 0.5;
   version         = 0.1;
   iter            = 0;
@@ -168,8 +168,6 @@ RNNLM::RNNLM(string inmodelfile_1, string inputwlist_1, string outputwlist_1,
              bool bformat, int debuglevel): inmodelfile(inmodelfile_1),
              inputwlist(inputwlist_1), outputwlist(outputwlist_1),
              layersizes(lsizes), debug(debuglevel), binformat(bformat) {
-  // now we only support 1 hidden layer
-  assert(lsizes.size() == 3);
   init();
   LoadRNNLM(inmodelfile);
   ReadWordlist(inputwlist, outputwlist);
@@ -177,7 +175,8 @@ RNNLM::RNNLM(string inmodelfile_1, string inputwlist_1, string outputwlist_1,
   setFullVocsize (fvocsize);
 
   resetAc = new float[layersizes[1]];
-  lognormconst = -1; // TODO(hxu)
+//  lognormconst = -1; // TODO(hxu) it seems adding this would help, although
+                     // it makes more sense to not add it
   memcpy(resetAc, neu0_ac_hist->gethostdataptr(), sizeof(float)*layersizes[1]);
 }
 
@@ -343,7 +342,6 @@ bool RNNLM::calppl(string testfilename, float intpltwght, string nglmfile) {
       memcpy(acptr, feaptr, sizeof(float)*dim_fea);
     }
     fileptr.readline(linevec, cnt);
-    float sentence_loglike = 0.0;
 
     if (linevec.size() > 0) {
       if (linevec[cnt-1] != "</s>") {
@@ -362,6 +360,8 @@ bool RNNLM::calppl(string testfilename, float intpltwght, string nglmfile) {
       if (independent) {
         ResetRechist();
       }
+
+      float sent_prob = 0.0;
 
       for (; i < cnt; i++) {
         word = linevec[i];
@@ -400,6 +400,8 @@ bool RNNLM::calppl(string testfilename, float intpltwght, string nglmfile) {
           logp_rnn += log10(prob_rnn);
           logp_ng  += log10(prob_ng);
           logp_int += log10(prob_int);
+
+          sent_prob += log10(prob_rnn);
         }
         else {
           nwordoov++;
@@ -427,12 +429,10 @@ bool RNNLM::calppl(string testfilename, float intpltwght, string nglmfile) {
             printf ("eval speed  %.4f Words/sec\n", nwordspersec);
           }
         }
-        sentence_loglike += log10(prob_rnn);
       }
+      printf ("per-sentence log-likelihood: %.10f\n", sent_prob);
     }
 
-    if (cnt != 0)
-      printf ("per-sentence log-likelihood: %f\n", sentence_loglike);
   }
 
   if (debug > 2) {
@@ -1060,7 +1060,6 @@ void RNNLM::ResetRechist() {
 }
 
 float RNNLM::forward (int prevword, int curword) {
-//  cout << "forward: " << prevword << " " << curword << endl;
   int a, b, nrow, ncol;
   nrow = layersizes[1];
   ncol = layersizes[1];

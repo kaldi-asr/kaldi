@@ -52,19 +52,7 @@ KaldiCuedRnnlmWrapper::KaldiCuedRnnlmWrapper(
     }
   }
 
-//  fst::SymbolTable *rnn_word_symbols = NULL;
-/*
-  if (!(rnn_word_symbols =
-        fst::SymbolTable::ReadText(rnn_wordlist))) {
-    KALDI_ERR << "Could not read symbol table from file "
-        << rnn_wordlist;
-  }
-*/
-
-//  rnn_label_to_word_.resize(rnn_word_symbols->NumSymbols() + 2);
   fst_label_to_rnn_label_.resize(fst_word_symbols->NumSymbols(), -1);
-                                 // +1 is the <OOS> symbol
-//                                 rnn_word_symbols->NumSymbols() + 1);
 
   rnn_label_to_word_.push_back("<s>");
   { // input.
@@ -72,14 +60,15 @@ KaldiCuedRnnlmWrapper::KaldiCuedRnnlmWrapper(
     int id;
     string word;
     int i = 0;
-    while (ifile >> id >> word) {
+    while (ifile >> id >> word) { // TODO(hxu) ugly fix for cued-rnnlm's bug
+                                  // will implement a better fix later
       if (word == "[UNK]") {
         word = "<unk>";
       } else if (word == "<OOS>") {
         continue;
       }
       i++;
-      KALDI_ASSERT(i == id + 1);
+      assert(i == id + 1);
       rnn_label_to_word_.push_back(word);
 
       int fst_label = fst_word_symbols->Find(rnn_label_to_word_[i]);

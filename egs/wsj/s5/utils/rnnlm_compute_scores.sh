@@ -46,7 +46,6 @@ done
 mkdir -p $tempdir
 cat $text_in | awk '{for (x=2;x<=NF;x++) {printf("%s ", $x)} printf("\n");}' >$tempdir/text
 cat $text_in | awk '{print $1}' > $tempdir/ids # e.g. utterance ids.
-# TODO(hxu) again with RNN_UNK
 cat $tempdir/text | awk -v voc=$dir/wordlist.rnn -v unk=$dir/unk.probs \
   -v logprobs=$tempdir/loglikes.oov \
  'BEGIN{ while((getline<voc)>0) { invoc[$1]=1; } while ((getline<unk)>0){ unkprob[$1]=$2;} }
@@ -63,43 +62,28 @@ cat $tempdir/text | awk -v voc=$dir/wordlist.rnn -v unk=$dir/unk.probs \
 # OK, now we compute the scores on the text with OOVs replaced
 # with <RNN_UNK>
 
-#<<<<<<< HEAD
 if [ "$rnnlm_ver" == "cuedrnnlm" ]; then
-  set -x
   total_nwords=`wc -l $dir/unigram.counts | awk '{print$1}'`
-# not needed here for cued-rnnlm format
-#  cat $tempdir/text | awk '{print NR,0,0,"<s>",$0,"</s>"}' > $tempdir/text.s
 
-false && (
-    cat $tempdir/text | awk -v w=$dir/wordlist.all \
-    'BEGIN{while((getline<w)>0) v[$1]=1;}
-    {for (i=1;i<=NF;i++) if ($i in v) printf $i" ";else printf "[UNK] ";print ""}'|sed 's/ $//g' \
-    > $tempdir/text.nounk.2
-    )
+  cat $tempdir/text | sed 's/<unk>/[UNK]/g' > $tempdir/text.nounk2 # TODO(hxu) will change this
 
-  cat $tempdir/text | sed 's/<unk>/[UNK]/g' \
-    > $tempdir/text.nounk.2
+echo  cued-rnnlm-eval -ppl -readmodel $dir/rnnlm  -testfile $tempdir/text.nounk2 \
+    -fullvocsize $total_nwords -inputwlist $dir/rnnlm.input.wlist.index \
+    -outputwlist $dir/rnnlm.output.wlist.index -debug 0 
 
-  $rnnlm.eval -ppl -readmodel $dir/rnnlm \
-    -testfile $tempdir/text.nounk.2 \
-    -fullvocsize $total_nwords \
-    -inputwlist $dir/rnnlm.input.wlist.index -outputwlist $dir/rnnlm.output.wlist.index -debug 0 \
-    | grep "^per-sentence" | awk '{print $3*log(10)}' > $tempdir/loglikes.rnn  
-#    | tail -n 1 | awk '{print $4}' > $tempdir/loglikes.rnn
-else
+  cued-rnnlm-eval -ppl -readmodel $dir/rnnlm  -testfile $tempdir/text.nounk2 \
+    -fullvocsize $total_nwords -inputwlist $dir/rnnlm.input.wlist.index \
+    -outputwlist $dir/rnnlm.output.wlist.index -debug 0 | \
+    grep "^per-sentence" | awk '{print $3*log(10)}' > $tempdir/loglikes.rnn  
+elif [ "$rnnlm_ver" == "faster-rnnlm" ]; then
   $rnnlm -independent -rnnlm $dir/rnnlm -test $tempdir/text.nounk -nbest -debug 0 | \
      awk '{print $1*log(10);}' > $tempdir/loglikes.rnn
-#=======
-#if [ $rnnlm_ver == "faster-rnnlm" ]; then
-#  $rnnlm -independent -rnnlm $dir/rnnlm -test $tempdir/text.nounk -nbest -debug 0 | \
-#     awk '{print $1*log(10);}' > $tempdir/loglikes.rnn
-#else
-#  # add the utterance_id as required by Mikolove's rnnlm
-#  paste $tempdir/ids $tempdir/text.nounk > $tempdir/id_text.nounk
-#
-#  $rnnlm -independent -rnnlm $dir/rnnlm -test $tempdir/id_text.nounk -nbest -debug 0 | \
-#     awk '{print $1*log(10);}' > $tempdir/loglikes.rnn
-#>>>>>>> 6c7c0170812a1f7dfb5c09c078787e79ee72333a
+else
+  # add the utterance_id as required by Mikolove's rnnlm
+  paste $tempdir/ids $tempdir/text.nounk > $tempdir/id_text.nounk
+
+  $rnnlm -independent -rnnlm $dir/rnnlm -test $tempdir/id_text.nounk -nbest -debug 0 | \
+     awk '{print $1*log(10);}' > $tempdir/loglikes.rnn
 fi
 
 [ `cat $tempdir/loglikes.rnn | wc -l` -ne `cat $tempdir/loglikes.oov | wc -l` ] && \
