@@ -90,8 +90,7 @@ layer_str=$[$nwords+2]:$hidden:$[$nwords+2]
 bptt_delay=0
 
 echo $layer_str > $dir/layer_string
-#TODO
-false && $cuda_mem_cmd $dir/rnnlm.log \
+$cuda_mem_cmd $dir/rnnlm.log \
    steps/train_cued_rnnlm.sh -train -trainfile $dir/train \
    -validfile $dir/valid -minibatch 64 -layers $layer_str \
    -bptt $bptt -bptt-delay $bptt_delay -traincrit $crit -lrtune newbob \

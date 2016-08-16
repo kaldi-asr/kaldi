@@ -6,14 +6,14 @@ mic=sdm1
 . ./cmd.sh
 . ./path.sh
 
-#local/train_rnnlms.sh --train-text data/$mic/train/text data/$mic/mik_rnn
+local/train_rnnlms.sh --train-text data/$mic/train/text data/$mic/mik_rnn
 
 final_lm=ami_fsh.o3g.kn
 LM=$final_lm.pr1-7
 
 graph_dir=exp/$mic/tri4a/graph_${LM}
 
-for decode_set in dev ; do
+false && for decode_set in dev ; do
   dir=exp/$mic/nnet3/tdnn_sp/
   decode_dir=${dir}/decode_${decode_set}
 

@@ -74,6 +74,7 @@ nj=`cat $indir/num_jobs` || exit 1;
 adir=$dir/archives
 
 mkdir -p $dir;
+#echo $nj > $dir/num_jobs
 phi=`grep -w '#0' $oldlang/words.txt | awk '{print $2}'`
 
 rm $dir/.error 2>/dev/null
