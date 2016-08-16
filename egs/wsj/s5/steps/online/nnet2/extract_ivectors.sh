@@ -277,5 +277,6 @@ if [ $stage -le 5 ]; then
   for j in $(seq $nj); do cat $dir/ivector_online.$j.scp; done >$dir/ivector_online.scp || exit 1;
 fi
 
-
 cp $srcdir/ivector_extractor_id $dir 2>/dev/null
+
+echo "$0: done extracting (pseudo-online) iVectors to $dir using the extractor in $srcdir."

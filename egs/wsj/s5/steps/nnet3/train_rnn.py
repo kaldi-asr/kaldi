@@ -15,6 +15,7 @@ import pprint
 import logging
 import imp
 import traceback
+import warnings
 from nnet3_train_lib import *
 
 nnet3_log_parse = imp.load_source('', 'steps/nnet3/report/nnet3_log_parse_lib.py')
@@ -526,9 +527,7 @@ def Train(args, run_opts):
     num_jobs = GetNumberOfJobs(args.ali_dir)
     feat_dim = GetFeatDim(args.feat_dir)
     ivector_dim = GetIvectorDim(args.online_ivector_dir)
-
-    shutil.copy(args.online_ivector_dir+'/ivector_extractor_id',
-                args.dir+'/ivector_extractor_id')
+    CopyIvectorExractorId(args.online_ivector_dir, args.dir)
 
     # split the training data into parts for individual jobs
     # we will use the same number of jobs as that used for alignment
@@ -580,7 +579,13 @@ def Train(args, run_opts):
     else:
         egs_dir = args.egs_dir
 
-    if not (GetIvectorExtractorId(args.dir) ==  GetIvectorExtractorId(egs_dir+'/info')):
+
+    if (GetIvectorExtractorId(args.dir) is None) or (GetIvectorExtractorId(egs_dir+'/info') is None):
+        warnings.warn("There is no ivector_extractor_id information in {0} or {1}"
+                      " so the experiment will proceed without verification of"
+                      " extractor ids. It is up to the user to ensure that the "
+                      " ivector extractors are matched.".format(args.dir, egs_dir+'/info'))
+    elif (GetIvectorExtractorId(args.dir) != GetIvectorExtractorId(egs_dir+'/info')):
         raise Exception("The ivector extractor ids in the experiment directory {0}"
                         " and the egs directory {1} do not match. The egs were "
                         " not created with the ivector extractor whose unique id "
