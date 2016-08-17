@@ -63,7 +63,7 @@ if [ $stage -le 0 ]; then
   fi
 
   nj=$(cat $dir/num_jobs)
-  lats=$(eval echo $dir/lat.{$(seq -s, $nj)}.gz)
+  lats=$(for n in $(seq $nj); do echo $dir/lat.$n.gz; done)
   if [ -f $lang/phones/word_boundary.int ]; then
     $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.log \
       set -o pipefail '&&' mkdir -p $dir/score_LMWT/ '&&' \

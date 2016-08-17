@@ -80,10 +80,6 @@ mkdir -p $dir/log $dir/info || exit 1;
 nj=$(cat $denlatdir/num_jobs) || exit 1; # $nj is the number of
                                          # splits of the denlats and alignments.
 
-
-[ "$(readlink /bin/sh)" == dash ] && \
-  echo "This script won't work if /bin/sh points to dash.  make it point to bash." && exit 1
-
 nj_ali=$(cat $alidir/num_jobs) || exit 1;
 
 sdata=$data/split$nj
@@ -91,16 +87,16 @@ utils/split_data.sh $data $nj
 
 if [ $nj_ali -eq $nj ]; then
   ali_rspecifier="ark,s,cs:gunzip -c $alidir/ali.JOB.gz |"
-  all_ids=$(seq -s, $nj)
-  prior_ali_rspecifier="ark,s,cs:gunzip -c $alidir/ali.{$all_ids}.gz | copy-int-vector ark:- ark,t:- | utils/filter_scp.pl $dir/priors_uttlist | ali-to-pdf $alidir/final.mdl ark,t:- ark:- |"
+  alis=$(for n in $(seq $nj); do echo $alidir/ali.$n.gz; done)
+  prior_ali_rspecifier="ark,s,cs:gunzip -c $alis | copy-int-vector ark:- ark,t:- | utils/filter_scp.pl $dir/priors_uttlist | ali-to-pdf $alidir/final.mdl ark,t:- ark:- |"
 else
   ali_rspecifier="scp:$dir/ali.scp"
   prior_ali_rspecifier="ark,s,cs:utils/filter_scp.pl $dir/priors_uttlist $dir/ali.scp | ali-to-pdf $alidir/final.mdl scp:- ark:- |"
   if [ $stage -le 1 ]; then
     echo "$0: number of jobs in den-lats versus alignments differ: dumping them as single archive and index."
-    all_ids=$(seq -s, $nj_ali)
+    alis=$(for n in $(seq $nj_ali); do echo $alidir/ali.$n.gz; done)
     $cmd $dir/log/copy_alignments.log \
-      copy-int-vector "ark:gunzip -c $alidir/ali.{$all_ids}.gz|" \
+      copy-int-vector "ark:gunzip -c $alis|" \
       ark,scp:$dir/ali.ark,$dir/ali.scp || exit 1;
   fi
 fi
@@ -180,8 +176,8 @@ if [ ! -z "$transform_dir" ]; then
   else
     # number of jobs matches with alignment dir.
     feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/$trans.JOB ark:- ark:- |"
-    all_ids=`seq -s, $nj`
-    priors_feats="$priors_feats transform-feats --utt2spk=ark:$data/utt2spk 'ark:cat $transform_dir/$trans.{$all_ids} |' ark:- ark:- |"
+    tras=$(for n in $(seq $nj); do echo $transform_dir/$trans.$n; done)
+    priors_feats="$priors_feats transform-feats --utt2spk=ark:$data/utt2spk 'ark:cat $tras |' ark:- ark:- |"
   fi
 fi
 if [ ! -z $online_ivector_dir ]; then
