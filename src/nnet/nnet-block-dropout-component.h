@@ -1,6 +1,6 @@
 // nnet/nnet-block-dropout-component.h
 
-// Copyright      2015  Sri Harish Mallidi
+// Copyright      2016  Sri Harish Mallidi
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -130,30 +130,10 @@ class BlockDropout : public Component {
                         const CuMatrixBase<BaseFloat> &out,
                         const CuMatrixBase<BaseFloat> &out_diff,
                         CuMatrixBase<BaseFloat> *in_diff) {
-
-    static bool warning_displayed = false;
-    if (!warning_displayed) {
-      KALDI_WARN << Component::TypeToMarker(GetType()) << " : "
-                 << __func__ << "() Not implemented!";
-
-      warning_displayed = true;
-    }
-    in_diff->SetZero();
+    in_diff->CopyFromMat(out_diff);
+    // use same mask on the error derivatives...
+    in_diff->MulElements(block_dropout_mask_);
   }
-
-  void Update(const CuMatrixBase<BaseFloat> &input,
-              const CuMatrixBase<BaseFloat> &diff) {
-
-    static bool warning_displayed = false;
-    if (!warning_displayed) {
-      KALDI_WARN << Component::TypeToMarker(GetType()) << " : "
-                 << __func__ << "() Not implemented!";
-
-      warning_displayed = true;
-    }
-
-  }
-
  private:
 
   CuArray<int32> stream_indices_;
@@ -161,10 +141,7 @@ class BlockDropout : public Component {
 
   CuRand<BaseFloat> rand_;
   CuMatrix<BaseFloat> block_dropout_mask_;
-
-  // CuMatrix<BaseFloat> this_stream_dropout_mask;
-  CuVector<BaseFloat> this_stream_mask;
- 
+  CuVector<BaseFloat> this_stream_mask; 
 };
 
 }  // namespace nnet1
