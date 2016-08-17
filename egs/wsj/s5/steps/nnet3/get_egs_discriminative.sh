@@ -102,9 +102,6 @@ done
 
 mkdir -p $dir/log $dir/info || exit 1;
 
-[ "$(readlink /bin/sh)" == dash ] && \
-  echo "This script won't work if /bin/sh points to dash.  make it point to bash." && exit 1
-
 nj=$(cat $denlatdir/num_jobs) || exit 1;
 
 sdata=$data/split$nj
@@ -132,9 +129,9 @@ awk '{print $1}' $data/utt2spk | utils/filter_scp.pl --exclude $dir/valid_uttlis
 
 if [ $stage -le 1 ]; then
   nj_ali=$(cat $alidir/num_jobs)
-  all_ids=$(seq -s, $nj_ali)
+  alis=$(for n in $(seq $nj_ali); do echo $alidir/ali.$n.gz; done)
   $cmd $dir/log/copy_alignments.log \
-    copy-int-vector "ark:gunzip -c $alidir/ali.{$all_ids}.gz|" \
+    copy-int-vector "ark:gunzip -c $alis|" \
     ark,scp:$dir/ali.ark,$dir/ali.scp || exit 1;
 fi
 
@@ -324,9 +321,9 @@ fi
   if $adjust_priors && [ $stage -le 10 ]; then
     if [ ! -f $dir/ali.scp ]; then
       nj_ali=$(cat $alidir/num_jobs)
-      all_ids=$(seq -s, $nj_ali)
+      alis=$(for n in $(seq $nj_ali); do echo $alidir/ali.$n.gz; done)
       $cmd $dir/log/copy_alignments.log \
-        copy-int-vector "ark:gunzip -c $alidir/ali.{$all_ids}.gz|" \
+        copy-int-vector "ark:gunzip -c $alis|" \
         ark,scp:$dir/ali.ark,$dir/ali.scp || exit 1;
     fi
 

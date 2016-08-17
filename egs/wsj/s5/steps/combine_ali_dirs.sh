@@ -68,9 +68,9 @@ echo "$0: dumping alignments in each source directory as single archive and inde
 for dir in $*; do
   src_id=$((src_id + 1))
   cur_num_jobs=$(cat $dir/num_jobs) || exit 1;
-  all_ids=$(seq -s, $cur_num_jobs)
+  alis=$(for n in $(seq $cur_num_jobs); do echo $dir/ali.$n.gz; done)
   $cmd $dir/log/copy_alignments.log \
-    copy-int-vector "ark:gunzip -c $dir/ali.{$all_ids}.gz|" \
+    copy-int-vector "ark:gunzip -c $alis|" \
     ark,scp:$temp_dir/ali.$src_id.ark,$temp_dir/ali.$src_id.scp || exit 1;
 done
 sort -m $temp_dir/ali.*.scp > $temp_dir/ali.scp || exit 1;
