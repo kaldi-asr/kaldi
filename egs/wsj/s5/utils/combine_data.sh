@@ -2,9 +2,11 @@
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 #           2014  David Snyder
 
-# This script operates on a data directory, such as in data/train/.
-# See http://kaldi-asr.org/doc/data_prep.html#data_prep_data
-# for what these directories contain.
+# This script combines the data from multiple source directories into
+# a single destination directory.
+
+# See http://kaldi-asr.org/doc/data_prep.html#data_prep_data for information
+# about what these directories contain.
 
 # Begin configuration section.
 extra_files= # specify addtional files in 'src-data-dir' to merge, ex. "file1 file2 ..."

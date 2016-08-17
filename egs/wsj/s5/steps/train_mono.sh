@@ -139,7 +139,11 @@ done
 steps/diagnostic/analyze_alignments.sh --cmd "$cmd" $lang $dir
 utils/summarize_warnings.pl $dir/log
 
-echo Done
+steps/info/gmm_dir_info.pl $dir
+
+echo "$0: Done training monophone system in $dir"
+
+exit 0
 
 # example of showing the alignments:
 # show-alignments data/lang/phones.txt $dir/30.mdl "ark:gunzip -c $dir/ali.0.gz|" | head -4

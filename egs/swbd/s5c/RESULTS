@@ -173,9 +173,9 @@ exit 0
 %WER 18.9 | 4459 42989 | 83.2 11.5 5.3 2.2 18.9 55.6 | exp/nnet3/tdnn_cnn_sp/decode_eval2000_hires_sw1_tg/score_11_0.0/eval2000_hires.ctm.filt.sys
 
 
-# current best 'chain' models with TDNNs (see local/chain/run_tdnn_2o.sh)
-%WER 11.3 | 1831 21395 | 90.0 6.8 3.2 1.3 11.3 46.6 | exp/chain/tdnn_2o_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
-%WER 13.0 | 1831 21395 | 88.6 7.9 3.6 1.6 13.0 50.4 | exp/chain/tdnn_2o_sp/decode_eval2000_sw1_tg/score_10_0.5/eval2000_hires.ctm.swbd.filt.sys
+# current best 'chain' models with TDNNs (see local/chain/run_tdnn_7d.sh)
+%WER 10.4 | 1831 21395 | 90.7 6.1 3.2 1.2 10.4 44.6 | exp/chain/tdnn_7d_sp/decode_eval2000_sw1_fsh_fg/score_11_1.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 11.6 | 1831 21395 | 89.7 7.0 3.3 1.4 11.6 47.0 | exp/chain/tdnn_7d_sp/decode_eval2000_sw1_tg/score_10_1.0/eval2000_hires.ctm.swbd.filt.sys
 
 # current best 'chain' models with LSTM (see local/chain/run_lstm_d.sh)
 %WER 10.5 | 1831 21395 | 90.8 6.4 2.9 1.3 10.5 44.3 | exp/chain/lstm_d_ld5_sp/decode_eval2000_sw1_fsh_fg/score_10_1.0/eval2000_hires.ctm.swbd.filt.sys

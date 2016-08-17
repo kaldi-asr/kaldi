@@ -179,9 +179,8 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
     return;
   } else {
     // Or suggest to use compute exclusive mode
-    if (num_gpus > 1) {
-      KALDI_WARN << "Suggestion: use 'nvidia-smi -c 3' to set compute exclusive mode";
-    }
+    KALDI_WARN << "Suggestion: use 'nvidia-smi -c 3' to set compute exclusive mode";
+
     // And select the GPU according to proportion of free memory
     if (SelectGpuIdAuto()) {
       FinalizeActiveGpu();

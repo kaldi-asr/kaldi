@@ -225,7 +225,7 @@ def WriteCombinedDirFiles(output_dir, utt2spk, spk2utt, text, feat, utt2dur, utt
             # of data however if perturbation changes the length of the utterance
             # (e.g. speed perturbation) the utterance combinations in each
             # perturbation of the original recording can be very different. So there
-            # is no good way to find the utt2uniq mappinng so that we can avoid
+            # is no good way to find the utt2uniq mapping so that we can avoid
             # overlap.
             utt2uniq[new_utt_name] = combined_uniqs[0]
 

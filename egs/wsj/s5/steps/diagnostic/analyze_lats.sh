@@ -81,6 +81,7 @@ $cmd $dir/log/analyze_lattice_depth_stats.log \
   gunzip -c "$dir/depth_stats_tmp.*.gz" \| \
   steps/diagnostic/analyze_lattice_depth_stats.py $lang || exit 1
 
+grep Overall $dir/log/analyze_lattice_depth_stats.log
 echo "$0: see stats in $dir/log/analyze_lattice_depth_stats.log"
 
 

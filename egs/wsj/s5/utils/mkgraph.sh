@@ -37,6 +37,8 @@ if [ $# != 3 ]; then
    echo " Options:"
    echo " --mono          #  For monophone models."
    echo " --quinphone     #  For models with 5-phone context (3 is default)"
+   echo " --left-biphone  #  For left biphone models"
+   echo "For other accepted options, see top of script."
    exit 1;
 fi
 
