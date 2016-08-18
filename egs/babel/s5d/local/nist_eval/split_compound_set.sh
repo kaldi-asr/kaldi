@@ -10,12 +10,12 @@ set -o nounset                              # Treat unset variables as an error
 . ./cmd.sh;
 
 devset=dev10h.pem
-evalset=evalpart1.seg
+evalset=eval.seg
 cmd="$decode_cmd"
 
 
 rootdir=exp/nnet3/lstm_bidirectional_sp/decode_shadow.seg
-combinedir=exp/combine/lstm_bidirectional_sp/shadow.seg.y
+combinedir=exp/combine/lstm_bidirectional_sp/shadow.seg
 
 [ ! -d data/shadow.seg/compounds/$devset ] && \
   echo >&2 "data/shadow.seg/compounds/$devset does not exist!"  && exit 1
