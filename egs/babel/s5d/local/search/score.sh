@@ -10,6 +10,7 @@ min_lmwt=8
 max_lmwt=12
 cmd=run.pl
 stage=0
+ntrue_from=
 # End configuration section.
 
 help_message="$0: score the kwslist using the F4DE scorer from NIST
@@ -44,30 +45,43 @@ trials=$(cat $kwsdatadir/trials)
 mkdir -p $kwsoutputdir/log/
 
 if [ $stage -le 0 ] ; then
-for LMWT in $(seq $min_lmwt $max_lmwt) ; do
-  mkdir -p ${kwsoutputdir}_$LMWT/details/
-  mkdir -p ${kwsoutputdir}_$LMWT/scoring/
+  if [ -z "$ntrue_from" ]; then
+    for LMWT in $(seq $min_lmwt $max_lmwt) ; do
+      mkdir -p ${kwsoutputdir}_$LMWT/details/
+      mkdir -p ${kwsoutputdir}_$LMWT/scoring/
 
-  # as we need to sweep through different ntrue-scales we will
-  # we will do it in one parallel command -- it will be more effective
-  # than sweeping in a loop and for all lmwts in parallel (as usuallyu
-  # there will be just a couple of different lmwts, but the ntrue-scale
-  # has a larger dynamic range
-  $cmd NTRUE=1:21 $kwsoutputdir/log/score.${LMWT}.NTRUE.log \
-    ntrue=\$\(perl -e 'print 1+(NTRUE-1)/5.0' \) '&&' \
-    cat ${kwsoutputdir}_$LMWT/results \|\
-      local/search/normalize_results_kst.pl --trials $trials --ntrue-scale \$ntrue \|\
-      local/search/filter_kws_results.pl --probs --nbest 200   \|\
-      compute-atwv $trials ark,t:$kwsdatadir/hitlist ark:- \
-      \> ${kwsoutputdir}_$LMWT/scoring/score.NTRUE.txt
+      # as we need to sweep through different ntrue-scales we will
+      # we will do it in one parallel command -- it will be more effective
+      # than sweeping in a loop and for all lmwts in parallel (as usuallyu
+      # there will be just a couple of different lmwts, but the ntrue-scale
+      # has a larger dynamic range
+      $cmd NTRUE=1:21 $kwsoutputdir/log/score.${LMWT}.NTRUE.log \
+        ntrue=\$\(perl -e 'print 1+(NTRUE-1)/5.0' \) '&&' \
+        cat ${kwsoutputdir}_$LMWT/results \|\
+          local/search/normalize_results_kst.pl --trials $trials --ntrue-scale \$ntrue \|\
+          local/search/filter_kws_results.pl --probs --nbest 200   \|\
+          compute-atwv $trials ark,t:$kwsdatadir/hitlist ark:- \
+          \> ${kwsoutputdir}_$LMWT/scoring/score.NTRUE.txt
 
-  ntrue=$(grep ATWV ${kwsoutputdir}_$LMWT/scoring/score.*.txt | \
-          sort -k2,2nr -t '='  | head -n 1 | \
-          sed 's/.*score\.\([0-9][0-9]*\)\.txt.*/\1/g')
-  #The calculation of ntrue must be the same as in the command above
-  ntrue=$(perl -e "print 1+($ntrue-1)/5.0")
-  echo "$ntrue" > ${kwsoutputdir}_$LMWT/details/ntrue
-done
+      ntrue=$(grep ATWV ${kwsoutputdir}_$LMWT/scoring/score.*.txt | \
+              sort -k2,2nr -t '='  | head -n 1 | \
+              sed 's/.*score\.\([0-9][0-9]*\)\.txt.*/\1/g')
+      #The calculation of ntrue must be the same as in the command above
+      echo "$ntrue" > ${kwsoutputdir}_$LMWT/details/ntrue_raw
+      ntrue=$(perl -e "print 1+($ntrue-1)/5.0")
+      echo "$ntrue" > ${kwsoutputdir}_$LMWT/details/ntrue
+    done
+  else
+    for LMWT in $(seq $min_lmwt $max_lmwt) ; do
+      mkdir -p ${kwsoutputdir}_$LMWT/details/
+      mkdir -p ${kwsoutputdir}_$LMWT/scoring/
+
+      cp ${ntrue_from}_${LMWT}/details/ntrue  ${kwsoutputdir}_${LMWT}/details/ntrue
+      [ -f  ${ntrue_from}_${LMWT}/details/ntrue_raw ] && \
+        cp ${ntrue_from}_${LMWT}/details/ntrue_raw  ${kwsoutputdir}_${LMWT}/details/ntrue_raw
+      echo "$ntrue_from" > ${kwsoutputdir}_${LMWT}/details/ntrue_from
+    done
+  fi
 fi
 
 if [ $stage -le 1 ] ; then

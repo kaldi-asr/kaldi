@@ -33,6 +33,7 @@ fi
 
 data=$1; shift;
 lang=$1; shift;
+template=$1; shift;
 output=${@: -1}  # last argument to the script
 decode_dirs=( $@ )  # read the remaining arguments into an array
 unset decode_dirs[${#decode_dirs[@]}-1]  # 'pop' the last argument which is odir
@@ -52,128 +53,65 @@ fi
 
 declare -A params=([PWR]=$power [NTRUE]=$ntrue_scale)
 declare -A files
-declare -A files_reduced
+declare -A duced
 
 mkdir -p $output
 mkdir -p $output/log
 
+if [ -f $template/details/params.sh ] ; then
+  . $template/details/params.sh
+else
+  echo >&2 "$0: Optimization output in $template/details/params.sh not found";
+  exit 1;
+fi
+
+
 echo "$0: Combination config (id, weight, results) -- initial"
 
 i=1
-nsystems=0
 for elem in ${decode_dirs[@]} ; do
-  params[W$i]="0.5"
   if [ -f $elem ] ; then
-    f=$(echo $elem | cut -d: -f1)
-    w=$(echo $elem | cut -d: -s -f2)
-
-    [ ! -z "$w" ] && params[W$i]="$w"
     files[W$i]=$f
-    files_reduced[W$i]=$output/results.reduced.$i
-
   elif [ -d $elem ]  && [ -d $elem/details ]  ; then
-    mtwv=$(cat $elem/details/score.txt | grep "MTWV *=" |cut -f 2 -d '=' | sed 's/ //g')
-    params[W$i]="$mtwv"
     files[W$i]=$elem/details/results
-    files_reduced[W$i]=$output/results.reduced.$i
   elif [ -d $elem ] ; then
-    best_dir=$(find ${elem}_* -name "score.txt" \
-                              -path "*$extraid*" \
-                              -path "*/details/*" |\
-               xargs grep "MTWV *=" | \
-               sort -k2,2g -t '=' |
-               tail -n 1 | \
-               cut -f 1 -d ':' | \
-               xargs dirname \
-              )
-    mtwv=$(cat $best_dir/score.txt | grep "MTWV *=" |cut -f 2 -d '=' | sed 's/ //g')
-    params[W$i]="$mtwv"
-    files[W$i]=$best_dir/results
-    files_reduced[W$i]=$output/results.reduced.$i
+    tmpl=`cat $template/results_W${i}`
+    echo $tmpl
+    #exp/nnet3/lstm_bidirectional_sp/decode_dev10h.pem/kwset_kwlist4_10/details/results
+    if [[ "$tmpl" == */details/results ]] ; then
+      base=`echo $tmpl | sed 's:/details/results::g'`
+      base=`basename $base`
+      lmwt=${base##*_}
+      tmpl_kwset=${base%_*}
+      tmpl_kwset=${tmpl_kwset##*_}
+    else
+      echo >&2 "The template results file does not follow the naming pattern"
+      exit 1
+    fi
+    f=${elem}_${lmwt}/details/results
+    if [ ! -f $f ]; then
+      echo >&2 "The file $f does not exist (check template or $template/results_W${i})"
+      exit 1
+    fi
+    kwset=${elem##*_}
+    if [ "$kwset" != "$tmpl_kwset" ] ; then
+      echo >&2 "WARNING: The the kwset and the tmpl kwset do not match! ($kwset vs $tmpl_kwset) "
+    fi
+
+    files[W$i]=$f
   else
     echo >&2 "$0: The parameter\"$elem\" is not file nor directory"
   fi
-
   echo "  $i W$i=${params[W$i]} ${files[W$i]}"
-  echo "${files[W$i]}" > $output/results_W$i
 
-  cat ${files[W$i]} | \
-    local/search/filter_kws_results.pl --probs --nbest $nbest_small > ${files_reduced[W$i]}
-
-  nsystems=$i
   i=$(($i+1))
 
 done
 
-if [ $nsystems -le 0 ] ; then
-  echo >&2 "No acoustic system found"
-  return 1
-fi
+
 
 trials=$(cat $data/trials)
 
-if $optimize ; then
-  cmdline=
-
-
-  declare -A params
-  opt_vars=""
-  opt_task_params=""
-  for w in "${!params[@]}" ; do
-    opt_vars="$opt_vars --var $w=${params[$w]}"
-
-    if [ ${files_reduced[$w]+isset} ] ; then
-      opt_task_params="$opt_task_params $w ${files_reduced[$w]}"
-    fi
-  done
-
-  echo "$0: Optimization -- first stage (reduced size results)"
-  mkdir -p $output/opt
-  local/optimize2.pl --result-regexp '.*ATWV *= *(.*)' --ftol 0.01 --iftol 0.01\
-    --output-dir $output/opt $opt_vars \
-    local/search/combine_results.pl --probs --power PWR $opt_task_params - \| \
-    local/search/normalize_results_kst.pl  --duration $trials --ntrue-scale NTRUE\| \
-    local/search/filter_kws_results.pl --nbest 100 \| \
-    compute-atwv $trials ark:$data/hitlist ark:- | \
-    tee $output/log/optimize.log | grep -i "Iter" || {
-      echo >&2 "$0: Optimization failed (see $output/log/optimize.log for errors)"; exit 1
-    }
-
-  # override the default parameters
-  if [ -f $output/opt/params.sh ] ; then
-    . $output/opt/params.sh
-  else
-    echo >&2 "$0: Optimization output in $output/opt/params.sh not found";
-    exit 1;
-  fi
-
-  # Second round of optimization -- this time, only the NTRUE
-  comb_task_params=""
-  for w  in "${!params[@]}" ; do
-    if [ ${files[$w]+isset} ] ; then
-      comb_task_params="$comb_task_params ${params[$w]} ${files[$w]}"
-    fi
-  done
-
-  echo "$0: Optimization -- second stage (full size results)"
-  mkdir -p $output/opt_ntrue
-  local/optimize2.pl --result-regexp '.*ATWV *= *(.*)' \
-    --output-dir $output/opt_ntrue --var NTRUE=${params[NTRUE]}  \
-    local/search/combine_results.pl --probs --tolerance $duptime --power ${params[PWR]}  $comb_task_params - \| \
-    local/search/normalize_results_kst.pl  --duration $trials --ntrue-scale NTRUE\| \
-    local/search/filter_kws_results.pl --probs --duptime $duptime  \| \
-    compute-atwv $trials ark:$data/hitlist ark:- | \
-    tee $output/log/optimize_ntrue.log | grep -i "Iteration" || {
-      echo >&2 "$0: Optimization failed (see $output/log/optimize_ntrue.log for errors)"; exit 1
-    }
-  # override the default parameters
-  if [ -f $output/opt_ntrue/params.sh ] ; then
-    . $output/opt_ntrue/params.sh
-  else
-    echo >&2 "$0: Optimization output in $output/opt_ntrue/params.sh not found";
-    exit 1;
-  fi
-fi
 
 echo "$0: Combination config (final)"
 echo -n "$0:   params=["
@@ -219,7 +157,6 @@ if ! $skip_scoring ; then
       2> ${output}/log/per-category-score.log
 
   cp $output/details/score.txt $output/score.txt
-
 fi
 
 if [ $stage -le 2 ]; then
@@ -235,14 +172,14 @@ if [ $stage -le 2 ]; then
 
     mkdir -p ${output}/f4de/
 
-    cat $kwlist | local/search/annotate_kwlist.pl $data/categories > ${output}/f4de/kwlist.xml
-    kwlist=${output}/f4de/kwlist.xml
-
     cat ${output}/details/results | \
       utils/int2sym.pl -f 2 $data/utt.map | \
       local/search/utt_to_files.pl --flen "$flen" $data/../segments |\
       local/search/write_kwslist.pl --flen "$flen" --language "$language" \
       --kwlist-id "$kwlist_name" > ${output}/f4de/kwslist.xml
+
+    cat $kwlist | local/search/annotate_kwlist.pl $data/categories > ${output}/f4de/kwlist.xml
+    kwlist=${output}/f4de/kwlist.xml
 
     KWSEval -e $ecf -r $rttm -t $kwlist -a  \
         --zGlobalMeasures Optimum --zGlobalMeasures Supremum \
