@@ -643,3 +643,7 @@ if $cleanup; then
     fi
   done
 fi
+
+steps/info/chain_dir_info.pl $dir
+
+exit 0

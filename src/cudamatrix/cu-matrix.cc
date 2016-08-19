@@ -1256,6 +1256,7 @@ void CuMatrixBase<Real>::AddMatMatElements(Real alpha,
     const CuMatrixBase<Real> &A, const CuMatrixBase<Real> &B, Real beta) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    KALDI_ASSERT(SameDim(*this, A) && SameDim(A, B));
     Timer tim;
     dim3 dimGrid, dimBlock;
     GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),

@@ -33,9 +33,8 @@ args = parser.parse_args()
 try:
     utterance_map_file = open(args.utterance_map, "w")
 except:
-    print("make_biased_lms.py: error opening {0} to write utterance map".format(
+    sys.exit("make_biased_lms.py: error opening {0} to write utterance map".format(
             args.utterance_map))
-
 
 # This processes one group of input lines; 'group_of_lines' is
 # an array of lines of input integerized text, e.g.
@@ -54,7 +53,7 @@ def ProcessGroupOfLines(group_of_lines):
     sys.stdout.flush()
 
     try:
-        command = "steps/cleanup/make_one_biased_lm.py " + args.lm_opts
+        command = "steps/cleanup/internal/make_one_biased_lm.py " + args.lm_opts
         p = subprocess.Popen(command, shell = True, stdin = subprocess.PIPE,
                             stdout = sys.stdout, stderr = sys.stderr)
         for line in group_of_lines:

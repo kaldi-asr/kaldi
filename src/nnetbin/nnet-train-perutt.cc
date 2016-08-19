@@ -228,7 +228,7 @@ int main(int argc, char *argv[]) {
 
       // VERBOSE LOG
       // monitor the NN training (--verbose=2),
-      if (kaldi::g_kaldi_verbose_level >= 2) {
+      if (GetVerboseLevel() >= 2) {
         static int32 counter = 0;
         counter += mat.NumRows();
         // print every 25k frames,

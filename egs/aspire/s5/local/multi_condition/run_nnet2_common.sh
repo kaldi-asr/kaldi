@@ -5,7 +5,8 @@
 
 
 stage=1
-snrs="20:10:15:5:0"
+foreground_snrs="20:10:15:5:0"
+background_snrs="20:10:15:5:0"
 num_data_reps=3
 ali_dir=exp/
 db_string="'air' 'rwcp' 'rvb2014'" # RIR dbs to be used in the experiment
@@ -29,25 +30,31 @@ if [ $stage -le 1 ]; then
     --download-rirs $download_rirs \
     --RIR-home $RIR_home \
     data/impulses_noises || exit 1;
+    
+  # Generate the rir_list and noise_list for the reverberate_data_dir.py to corrupt the data
+  # this script just assumes air rwcp rvb2014 databases
+  python local/multi_condition/aspire_prep_rir_noise_list.py data/impulses_noises data/impulses_noises/info
 
   # corrupt the fisher data to generate multi-condition data
-  # for data_dir in train dev test; do
   for data_dir in train dev test; do
     if [ "$data_dir" == "train" ]; then
       num_reps=$num_data_reps
     else
       num_reps=1
     fi
-    reverb_data_dirs=
-    for i in `seq 1 $num_reps`; do
-      cur_dest_dir=" data/temp_${data_dir}_${i}"
-      local/multi_condition/reverberate_data_dir.sh --random-seed $i \
-        --snrs "$snrs" --log-dir exp/make_corrupted_wav \
-        data/${data_dir}  data/impulses_noises $cur_dest_dir
-      reverb_data_dirs+=" $cur_dest_dir"
-    done
-    utils/combine_data.sh --extra-files utt2uniq data/${data_dir}_rvb $reverb_data_dirs
-    rm -rf $reverb_data_dirs
+    python steps/data/reverberate_data_dir.py \
+      --prefix "rev" \
+      --rir-list-file data/impulses_noises/info/rir_list \
+      --noise-list-file data/impulses_noises/info/noise_list \
+      --foreground-snrs $foreground_snrs \
+      --background-snrs $background_snrs \
+      --speech-rvb-probability 1 \
+      --pointsource-noise-addition-probability 1 \
+      --isotropic-noise-addition-probability 1 \
+      --num-replications $num_reps \
+      --max-noises-per-minute 1 \
+      --random-seed 1 \
+      data/${data_dir} data/${data_dir}_rvb
   done
 
   # create the dev, test and eval sets from the aspire recipe

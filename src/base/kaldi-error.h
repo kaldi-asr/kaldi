@@ -27,13 +27,14 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include "base/kaldi-types.h"
 #include "base/kaldi-utils.h"
 /* Important that this file does not depend on any other kaldi headers. */
 
 // By adding 'KALDI_NOEXCEPT(bool)' immediately after function declaration,
-// we can tell the compiler that the function must-not produce 
+// we can tell the compiler that the function must-not produce
 // exceptions (true), or may produce exceptions (false):
 #if _MSC_VER >= 1900 || (!defined(_MSC_VER) && __cplusplus >= 201103L)
 #define KALDI_NOEXCEPT(Predicate) noexcept((Predicate))
@@ -54,7 +55,7 @@ namespace kaldi {
 /// @{
 
 /***** VERBOSITY LEVEL *****/
-  
+
 /// This is set by util/parse-options.{h, cc} if you set --verbose=? option.
 extern int32 g_kaldi_verbose_level;
 
@@ -193,6 +194,19 @@ typedef void (*LogHandler)(const LogMessageEnvelope &envelope,
 /// log. If called with NULL pointer, restores default Kaldi error logging to
 /// stderr.  SetLogHandler is obviously not thread safe.
 LogHandler SetLogHandler(LogHandler);
+
+
+/***** WRITING 'std::vector<T>' TO LOGPRINT *****/
+template<typename T>
+std::ostream& operator<< (std::ostream& os, const std::vector<T>& v) {
+  os << "[ ";
+  typename std::vector<T>::const_iterator it;
+  for (it = v.begin(); it != v.end(); ++it) {
+    os << *it << " ";
+  }
+  os << "]";
+  return os;
+}
 
 /// @} end "addtogroup error_group"
 

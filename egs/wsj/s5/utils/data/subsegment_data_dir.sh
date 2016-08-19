@@ -20,6 +20,8 @@
 # the CMVN stats).
 
 
+segment_end_padding=0.0
+
 . utils/parse_options.sh
 
 if [ $# != 4 ]; then
@@ -31,7 +33,15 @@ if [ $# != 4 ]; then
   echo "This script appropriately combines the <subsegments-file> with the original"
   echo "segments file, if necessary, and if not, creates a segments file."
   echo "e.g.:"
-  echo " $0 data/train exp/tri3b_resegment/segments exp/tri3b_resegment/text data/train_resegmented"
+  echo " $0 data/train [options] exp/tri3b_resegment/segments exp/tri3b_resegment/text data/train_resegmented"
+  echo " Options:"
+  echo "  --segment-end-padding <padding-time>       # e.g. 0.02.  Default 0.0.  If provided,"
+  echo "                                             # we will add this value to the end times of <destdir>/segments"
+  echo "                                             # when creating it.  This can be useful to account for"
+  echo "                                             # end effects in feature generation.  The reason this is"
+  echo "                                             # not just applied to the input segments file, is that"
+  echo "                                             # for purposes of computing the num-frames of the parts of"
+  echo "                                             # matrices in feats.scp, the padding should not be done."
   exit 1;
 fi
 
@@ -98,10 +108,10 @@ if [ -f $srcdir/segments ]; then
   # which the awk command turns into:
   # <new-utt-id> <recording-id> <start-time-of-new-utt-within-recording> <end-time-of-new-utt-within-recording>
   utils/apply_map.pl -f 2 $srcdir/segments <$subsegments | \
-    awk '{ print $1, $2, $5+$3, $6+$3; }' >$dir/segments
+    awk -v pad=$segment_end_padding '{ print $1, $2, $5+$3, $6+$3+pad; }' >$dir/segments
 else
   # the subsegments file just becomes the segments file.
-  cp $subsegments $dir/segments
+  awk -v pad=$segment_end_padding '{$4 += pad; print}' <$subsegments >$dir/segments
 fi
 
 if [ -f $srcdir/utt2uniq ]; then
@@ -145,9 +155,12 @@ fi
 
 
 if [ -f $dir/cmvn.scp ]; then
-  rm $dir/cmvn.scp || true
+  rm $dir/cmvn.scp
   echo "$0: warning: removing $dir/cmvn.scp, you will have to regenerate it from the features."
 fi
+
+# remove the utt2dur file in case it's now invalid-- it be regenerated from the segments file.
+rm $dir/utt2dur 2>/dev/null || true
 
 if [ -f $srcdir/spk2gender ]; then
   cp $srcdir/spk2gender $dir

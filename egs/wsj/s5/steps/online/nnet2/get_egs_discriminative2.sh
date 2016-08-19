@@ -85,9 +85,9 @@ else
   ali_rspecifier="scp:$dir/ali.scp"
   if [ $stage -le 1 ]; then
     echo "$0: number of jobs in den-lats versus alignments differ: dumping them as single archive and index."
-    all_ids=$(seq -s, $nj_ali)
+    alis=$(for n in $(seq $nj_ali); do echo $alidir/ali.$n.gz; done)
     copy-int-vector --print-args=false \
-      "ark:gunzip -c $alidir/ali.{$all_ids}.gz|" ark,scp:$dir/ali.ark,$dir/ali.scp || exit 1;
+      "ark:gunzip -c $alis|" ark,scp:$dir/ali.ark,$dir/ali.scp || exit 1;
   fi
 fi
 

@@ -45,7 +45,7 @@ if [ $# -ne 5 ]; then
   echo "  --nj <n>                # number of parallel jobs to use in graph creation and"
   echo "                          # decoding"
   echo "  --segmentation-opts 'opts'  # Additional options to segment_ctm_edits.py."
-  echo "                              # Please run steps/cleanup/segment_ctm_edits.py"
+  echo "                              # Please run steps/cleanup/internal/segment_ctm_edits.py"
   echo "                              # without arguments to see allowed options."
   echo "  --graph-opts 'opts'         # Additional options to make_biased_lm_graphs.sh."
   echo "                              # Please run steps/cleanup/make_biased_lm_graphs.sh"
@@ -121,7 +121,7 @@ if [ $stage -le 4 ]; then
   # scripts; essentially, we view the non-scored words as negotiable when it
   # comes to the reference transcript, so we'll consider changing the reference
   # to match the hyp when it comes to these words.
-  steps/cleanup/get_non_scored_words.py $lang > $dir/non_scored_words.txt
+  steps/cleanup/internal/get_non_scored_words.py $lang > $dir/non_scored_words.txt
 fi
 
 if [ $stage -le 5 ]; then
@@ -129,7 +129,7 @@ if [ $stage -le 5 ]; then
   echo "   ... to fix reference mismatches involving non-scored words. "
 
   $cmd $dir/log/modify_ctm_edits.log \
-    steps/cleanup/modify_ctm_edits.py --verbose=3 $dir/non_scored_words.txt \
+    steps/cleanup/internal/modify_ctm_edits.py --verbose=3 $dir/non_scored_words.txt \
     $dir/lattice_oracle/ctm_edits $dir/ctm_edits.modified
 
   echo "   ... See $dir/log/modify_ctm_edits.log for details and stats, including"
@@ -140,7 +140,7 @@ if [ $stage -le 6 ]; then
   echo "$0: applying 'taint' markers to ctm-edits file to mark silences and"
   echo "  ... non-scored words that are next to errors."
   $cmd $dir/log/taint_ctm_edits.log \
-       steps/cleanup/taint_ctm_edits.py $dir/ctm_edits.modified $dir/ctm_edits.tainted
+       steps/cleanup/internal/taint_ctm_edits.py $dir/ctm_edits.modified $dir/ctm_edits.tainted
   echo "... Stats, including global cor/ins/del/sub stats, are in $dir/log/taint_ctm_edits.log."
 fi
 
@@ -149,25 +149,47 @@ if [ $stage -le 7 ]; then
   echo "$0: creating segmentation from ctm-edits file."
 
   $cmd $dir/log/segment_ctm_edits.log \
-    steps/cleanup/segment_ctm_edits.py \
+    steps/cleanup/internal/segment_ctm_edits.py \
        $segmentation_opts \
        --oov-symbol-file=$lang/oov.txt \
       --ctm-edits-out=$dir/ctm_edits.segmented \
       --word-stats-out=$dir/word_stats.txt \
-   $dir/non_scored_words.txt \
-   $dir/ctm_edits.tainted $dir/text $dir/segments
+      $dir/non_scored_words.txt \
+      $dir/ctm_edits.tainted $dir/text $dir/segments
 
-  echo "$0: for global segmentation stats, including the amount of data retained at various processing stages,"
-  echo " ... see $dir/log/segment_ctm_edits.log"
+  echo "$0: contents of $dir/log/segment_ctm_edits.log are:"
+  cat $dir/log/segment_ctm_edits.log
   echo "For word-level statistics on p(not-being-in-a-segment), with 'worst' words at the top,"
   echo "see $dir/word_stats.txt"
   echo "For detailed utterance-level debugging information, see $dir/ctm_edits.segmented"
 fi
 
+if [ $stage -le 8 ]; then
+  echo "$0: working out required segment padding to account for feature-generation edge effects."
+  # make sure $data/utt2dur exists.
+  utils/data/get_utt2dur.sh $data
+  # utt2dur.from_ctm contains lines of the form 'utt dur',  e.g.
+  # AMI_EN2001a_H00_MEE068_0000557_0000594 0.35
+  # where the times are ultimately derived from the num-frames in the features.
+  cat $dir/lattice_oracle/ctm_edits | \
+     awk '{utt=$1; t=$3+$4; if (t > dur[$1]) dur[$1] = t; } END{for (k in dur) print k, dur[k];}' | \
+     sort > $dir/utt2dur.from_ctm
+  # the apply_map command below gives us lines of the form 'utt dur-from-$data/utt2dur dur-from-utt2dur.from_ctm',
+  # e.g. AMI_EN2001a_H00_MEE068_0000557_0000594 0.37 0.35
+  utils/apply_map.pl -f 1 <(awk '{print $1,$1,$2}' <$data/utt2dur) <$dir/utt2dur.from_ctm  | \
+    awk '{printf("%.3f\n", $2 - $3); }' | sort | uniq -c > $dir/padding_frequencies
+  # there are values other than the most-frequent one (0.02) in there because
+  # of wav files that were shorter than the segment info.
+  padding=$(head -n 1 $dir/padding_frequencies | awk '{print $2}')
+  echo "$0: we'll pad segments with $padding seconds at segment ends to correct for feature-generation end effects"
+  echo $padding >$dir/segment_end_padding
+fi
+
 
 if [ $stage -le 8 ]; then
   echo "$0: based on the segments and text file in $dir/segments and $dir/text, creating new data-dir in $data_out"
-  utils/data/subsegment_data_dir.sh ${data} $dir/segments $dir/text $data_out
+  padding=$(cat $dir/segment_end_padding)  # e.g. 0.02
+  utils/data/subsegment_data_dir.sh --segment-end-padding $padding ${data} $dir/segments $dir/text $data_out
 fi
 
 if [ $stage -le 9 ]; then
@@ -179,9 +201,9 @@ fi
 
 if $cleanup; then
   echo "$0: cleaning up intermediate files"
-  rm -r $dir/fsts $dir/HCLG.fsts.scp
-  rm -r $dir/lats/lat.*.gz $dir/lats/split_fsts
-  rm $dir/lattice_oracle/lat.*.gz
+  rm -r $dir/fsts $dir/HCLG.fsts.scp || true
+  rm -r $dir/lats/lat.*.gz $dir/lats/split_fsts || true
+  rm $dir/lattice_oracle/lat.*.gz || true
 fi
 
 echo "$0: done."

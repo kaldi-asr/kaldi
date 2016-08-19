@@ -20,7 +20,7 @@ parser.add_argument("--end-padding", type = float, default = 0.1,
                     "each segment.")
 parser.add_argument("--last-segment-end-padding", type = float, default = 0.1,
                     help="Amount of padding, in seconds, for the end time of "
-                    "the last segment of each file (maximum allowed)")
+                    "the last segment of each file (maximum allowed).")
 parser.add_argument("--fix-overlapping-segments", type = str,
                     default = 'true', choices=['true', 'false'],
                     help="If true, prevent segments from overlapping as a result "
