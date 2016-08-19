@@ -5,6 +5,7 @@ max_lmwt=25
 cer=0
 nbest=-1
 cmd=run.pl
+ntrue_from=
 . ./utils/parse_options.sh
 
 min_lmwt_start=$min_lmwt
@@ -45,30 +46,39 @@ while (( "$#" )); do
 
   targetdir=$resultdir/$outputname
 
+
   min_existing=
   max_existing=
   for lmw in `seq $min_lmwt_start $max_lmwt_start`; do
     [ -d $resultdir/score_$lmw ] && [ -z $min_existing ] && min_existing=$lmw
     [ -d $resultdir/score_$lmw ] && [ ! -z $min_existing ] && max_existing=$lmw
   done
+  if [ -z $min_existing ] || [ -z $max_existing ] ; then
+    for lmw in `seq $min_lmwt_start $max_lmwt_start`; do
+      [ -d $resultdir/kwset_kwlist_$lmw ] && [ -z $min_existing ] && min_existing=$lmw
+      [ -d $resultdir/kwset_kwlist_$lmw ] && [ ! -z $min_existing ] && max_existing=$lmw
+    done
+  fi
   [ -z $min_existing ] && echo "Data directories to be scored could not be found!" && exit 1
   [ -z $max_existing ] && echo "Data directories to be scored could not be found!" && exit 1
   min_lmwt=$min_existing
   max_lmwt=$max_existing
   echo "Found data directories for range LMWT=$min_lmwt:$max_lmwt"
 
-  $cmd LMWT=$min_lmwt:$max_lmwt $targetdir/scoring/filter.LMWT.log \
-    set -e';' set -o pipefail';' \
-    mkdir -p $targetdir/score_LMWT/';'\
-    test -f $resultdir/score_LMWT/$inputname.ctm '&&' \
-    utils/filter_scp.pl $filelist $resultdir/score_LMWT/$inputname.ctm '>' \
-      $targetdir/score_LMWT/$outputname.ctm || exit 1
+  if [ -d $resultdir/score_${min_lmwt} ] ; then
+    $cmd LMWT=$min_lmwt:$max_lmwt $targetdir/scoring/filter.LMWT.log \
+      set -e';' set -o pipefail';' \
+      mkdir -p $targetdir/score_LMWT/';'\
+      test -f $resultdir/score_LMWT/$inputname.ctm '&&' \
+      utils/filter_scp.pl $filelist $resultdir/score_LMWT/$inputname.ctm '>' \
+        $targetdir/score_LMWT/$outputname.ctm || exit 1
 
-  if [ ! -z $stm ] && [ -f $stm ] ; then
-    echo "For scoring CTMs, this STM is used $stm"
-    local/score_stm.sh --min-lmwt $min_lmwt --max-lmwt $max_lmwt --cer $cer --cmd "$cmd" $datadir/compounds/$name data/lang $targetdir
-  else
-    echo "Not running scoring, $datadir/compounds/$name/stm does not exist"
+    if [ ! -z $stm ] && [ -f $stm ] ; then
+      echo "For scoring CTMs, this STM is used $stm"
+      local/score_stm.sh --min-lmwt $min_lmwt --max-lmwt $max_lmwt --cer $cer --cmd "$cmd" $datadir/compounds/$name data/lang $targetdir
+    else
+      echo "Not running scoring, $datadir/compounds/$name/stm does not exist"
+    fi
   fi
 
 
@@ -120,10 +130,21 @@ while (( "$#" )); do
         local/search/filter_kws_results.pl --likes --nbest $nbest > $kwsoutput/results || exit 1
     done
 
+    ntrue_from_args=""
+    if [ ! -z "$ntrue_from" ]; then
+      echo "Using $resultdir/$ntrue_from/$kws for NTRUE"
+      ntrue_from_args=" --ntrue-from $resultdir/$ntrue_from/$kws"
+    fi
     if [ ! -z $rttm ] ; then
       local/search/score.sh --cmd "$cmd" --extraid ${kws##kwset_}\
-        --min-lmwt $min_lmwt --max-lmwt $max_lmwt \
+        --min-lmwt $min_lmwt --max-lmwt $max_lmwt $ntrue_from_args \
         data/lang $datadir/compounds/$name  ${targetdir}/${kws}  || exit 1;
+    elif [ ! -z $ntrue_from ] ; then
+      local/search/normalize.sh  --cmd "$cmd" --extraid ${kws##kwset_}\
+        --min-lmwt $min_lmwt --max-lmwt $max_lmwt $ntrue_from_args \
+        data/lang $datadir/compounds/$name  ${targetdir}/${kws}  || exit 1;
+    else
+      echo >&2 "Cannot score and don't know which compound set to use to inherit the config"
     fi
   done
 

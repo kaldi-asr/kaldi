@@ -34,7 +34,7 @@ done
 
 
 for kwset in data/shadow.seg/compounds/$devset/kwset_* ; do
-  kwsetdir=$(basename kwset)
+  kwsetdir=$(basename $kwset)
   kwsetid=${kwsetdir#*_}
 
   local/search/combine.sh --extraid "$kwsetid"  --cmd "$cmd" \
