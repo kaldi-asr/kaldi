@@ -142,7 +142,9 @@ done >> $output/details/params.sh
 echo "${params[NTRUE]}" > $output/details/ntrue
 echo "${params[PWR]}" > $output/details/power
 
-if ! $skip_scoring ; then
+
+echo "DATA: $data"
+if ! $skip_scoring && [ -f $data/hitlist ]  ; then
   echo "$0: Scoring..."
   cat $output/details/results |\
     compute-atwv $trials ark,t:$data/hitlist ark:- \
@@ -157,6 +159,7 @@ if ! $skip_scoring ; then
       2> ${output}/log/per-category-score.log
 
   cp $output/details/score.txt $output/score.txt
+
 fi
 
 if [ $stage -le 2 ]; then
@@ -178,17 +181,19 @@ if [ $stage -le 2 ]; then
       local/search/write_kwslist.pl --flen "$flen" --language "$language" \
       --kwlist-id "$kwlist_name" > ${output}/f4de/kwslist.xml
 
-    cat $kwlist | local/search/annotate_kwlist.pl $data/categories > ${output}/f4de/kwlist.xml
-    kwlist=${output}/f4de/kwlist.xml
+    if [ -f $rttm ] ; then
+      cat $kwlist | local/search/annotate_kwlist.pl $data/categories > ${output}/f4de/kwlist.xml
+      kwlist=${output}/f4de/kwlist.xml
 
-    KWSEval -e $ecf -r $rttm -t $kwlist -a  \
-        --zGlobalMeasures Optimum --zGlobalMeasures Supremum \
-        -O -B -q 'Characters:regex=.*' -q 'NGramOrder:regex=.*' \
-        -O -B -q 'OOV:regex=.*' -q 'BaseOOV:regex=.*' \
-        -s ${output}/f4de/kwslist.xml -c -o -b -d -f  ${output}/f4de/
+      KWSEval -e $ecf -r $rttm -t $kwlist -a  \
+          --zGlobalMeasures Optimum --zGlobalMeasures Supremum \
+          -O -B -q 'Characters:regex=.*' -q 'NGramOrder:regex=.*' \
+          -O -B -q 'OOV:regex=.*' -q 'BaseOOV:regex=.*' \
+          -s ${output}/f4de/kwslist.xml -c -o -b -d -f  ${output}/f4de/
 
-    local/kws_oracle_threshold.pl --duration $trials \
-      ${output}/f4de/alignment.csv > ${output}/f4de/metrics.txt
+      local/kws_oracle_threshold.pl --duration $trials \
+        ${output}/f4de/alignment.csv > ${output}/f4de/metrics.txt
+    fi
   fi
 fi
 

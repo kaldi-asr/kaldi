@@ -145,6 +145,7 @@ while (( "$#" )); do
         data/lang $datadir/compounds/$name  ${targetdir}/${kws}  || exit 1;
     else
       echo >&2 "Cannot score and don't know which compound set to use to inherit the config"
+      exit 1
     fi
   done
 

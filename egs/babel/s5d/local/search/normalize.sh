@@ -10,6 +10,7 @@ min_lmwt=8
 max_lmwt=12
 cmd=run.pl
 stage=0
+ntrue_from=
 # End configuration section.
 
 help_message="$0: score the kwslist using the F4DE scorer from NIST
@@ -47,9 +48,9 @@ if [ $stage -le 0 ] ; then
   for LMWT in $(seq $min_lmwt $max_lmwt) ; do
     mkdir -p ${kwsoutputdir}_$LMWT/details/
 
-    cp ${ntrue_from}_LMWT/details/ntrue  ${kwsoutputdir}_LMWT/details/ntrue
-    cp ${ntrue_from}_LMWT/details/ntrue_raw  ${kwsoutputdir}_LMWT/details/ntrue_raw
-    echo "$ntrue_from" > ${kwsoutputdir}_LMWT/details/ntrue_from
+    cp ${ntrue_from}_$LMWT/details/ntrue  ${kwsoutputdir}_$LMWT/details/ntrue
+    cp ${ntrue_from}_$LMWT/details/ntrue_raw  ${kwsoutputdir}_$LMWT/details/ntrue_raw
+    echo "$ntrue_from" > ${kwsoutputdir}_$LMWT/details/ntrue_from
   done
 fi
 
@@ -72,6 +73,7 @@ if [ -f $kwsdatadir/f4de_attribs ] ; then
   kwlist=$kwsdatadir/kwlist.xml
 
   $cmd LMWT=$min_lmwt:$max_lmwt $kwsoutputdir/log/f4de_write_kwslist.LMWT.log \
+    mkdir -p ${kwsoutputdir}_LMWT/f4de/\; \
     cat ${kwsoutputdir}_LMWT/details/results \| \
       utils/int2sym.pl -f 2 $kwsdatadir/utt.map \| \
       local/search/utt_to_files.pl --flen $flen $kwsdatadir/../segments \|\

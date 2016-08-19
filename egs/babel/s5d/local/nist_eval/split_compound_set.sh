@@ -37,6 +37,7 @@ for kwset in data/shadow.seg/compounds/$devset/kwset_* ; do
   kwsetdir=$(basename $kwset)
   kwsetid=${kwsetdir#*_}
 
+  echo "Processing kwset id=$kwsetid"
   local/search/combine.sh --extraid "$kwsetid"  --cmd "$cmd" \
     data/shadow.seg/compounds/${devset}/  data/langp_test \
     $rootdir/{,syllabs/,phones/}${devset}/${kwsetdir}  $combinedir/${devset}
