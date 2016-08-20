@@ -29,11 +29,15 @@ def get_normalization_coefficient(file_list, is_rir, additional_scaling):
         assert(rate == sampling_rate)
       else:
         sampling_rate = rate
+      # numpy does not check for numerical overflow in integer type
+      # and it is important to convert data to float before division to avoid
+      # rounding errors
+      data = data.astype(np.float64)
       data = data / dtype_max_value
       if is_rir:
         # just count the energy of the direct impulse response
         # this is treated as energy of signal from 0.001 seconds before impulse
-        # to 0.05 seconds after impulse. This is done as we do not want the 
+        # to 0.05 seconds after impulse. This is done as we do not want the
         # recording length to influence the scaling factor
         channel_one = data[:, 0]
         max_d = max(channel_one)
@@ -45,9 +49,6 @@ def get_normalization_coefficient(file_list, is_rir, additional_scaling):
       else:
         start_index = 0
         end_index = data.shape[0]
-      # numpy does not check for numerical overflow in integer type
-      # so we convert the data into floats
-      data = data.astype(np.float64)
       total_energy += np.sum(data[start_index:end_index, :] ** 2)
       data_shape = list(data.shape)
       data_shape[0] = end_index-start_index
@@ -69,7 +70,7 @@ if __name__ == "__main__":
   parser.add_argument('--extra-scaling-factor', type=float, default = 1.0,  help='additional scaling factor to be multiplied with the wav files')
   parser.add_argument('input_file_list', type=str, help='list of wav files to be normalized collectively')
   parser.add_argument('output_file', type=str, help='output file to store normalization coefficient')
-  params = parser.parse_args() 
+  params = parser.parse_args()
   if params.is_room_impulse_response.lower() == 'true':
     params.is_room_impulse_response = True
   else:
