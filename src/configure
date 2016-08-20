@@ -499,13 +499,8 @@ function linux_configure_speex {
     if $static_speex; then
       echo LDLIBS += $SPEEXLIBDIR/libspeex.a
     else
-#<<<<<<< HEAD
-#      echo LDLIBS += -L${SPEEXROOT}/lib -lspeex >> kaldi.mk
-#      echo LDFLAGS += -Wl,-rpath=${SPEEXROOT}/lib ${EXTRA_LDFLAGS} >> kaldi.mk
-#=======
       echo LDLIBS += -L${SPEEXLIBDIR} -lspeex >> kaldi.mk
       echo LDFLAGS += -Wl,-rpath=${SPEEXLIBDIR} ${EXTRA_LDFLAGS} >> kaldi.mk
-#>>>>>>> 6c7c0170812a1f7dfb5c09c078787e79ee72333a
     fi
 
     echo "Successfully configured with Speex at $SPEEXROOT, (static=[$static_speex])"

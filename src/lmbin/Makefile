@@ -2,6 +2,7 @@
 all:
 
 EXTRA_CXXFLAGS = -Wno-sign-compare -fopenmp
+EXTRA_LDFLAGS = -fopenmp
 include ../kaldi.mk
 
 BINFILES = arpa2fst arpa-to-const-arpa cued-rnnlm-eval

@@ -1,7 +1,7 @@
 
 all:
 
-EXTRA_CXXFLAGS = -Wno-sign-compare -fopenmp # not sure if I should add it here TODO(hxu) seems it's not used here!
+EXTRA_CXXFLAGS = -Wno-sign-compare -fopenmp
 include ../kaldi.mk
 
 EXTRA_LDFLAGS = -fopenmp
@@ -24,10 +24,6 @@ BINFILES = lattice-best-path lattice-prune lattice-equivalent lattice-to-nbest \
            lattice-determinize-phone-pruned-parallel lattice-expand-ngram \
            lattice-lmrescore-const-arpa lattice-lmrescore-rnnlm nbest-to-prons \
            lattice-arc-post lattice-determinize-non-compact lattice-lmrescore-cuedrnnlm
-#<<<<<<< HEAD
-#           lattice-lmrescore-cuedrnnlm
-#=======
-#>>>>>>> 6c7c0170812a1f7dfb5c09c078787e79ee72333a
 
 OBJFILES =
 
