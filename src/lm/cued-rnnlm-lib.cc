@@ -295,8 +295,7 @@ bool RNNLM::calppl(string testfilename, float intpltwght, string nglmfile) {
         ppl_int;
   bool flag_intplt = false, flag_oov = false;
   FILE *fptr_nglm=NULL;
-  auto_timer timer;
-  timer.start();
+  Timer timer;
   string word;
   testfile = testfilename;
   nglmstfile = nglmfile;
@@ -425,7 +424,7 @@ bool RNNLM::calppl(string testfilename, float intpltwght, string nglmfile) {
 
         if (debug > 2) {
           if (wordcn % 10000 == 0) {
-            float nwordspersec = wordcn / (timer.stop());
+            float nwordspersec = wordcn / (timer.Elapsed());
             printf ("eval speed  %.4f Words/sec\n", nwordspersec);
           }
         }
@@ -436,7 +435,7 @@ bool RNNLM::calppl(string testfilename, float intpltwght, string nglmfile) {
   }
 
   if (debug > 2) {
-    float nwordspersec = wordcn / (timer.stop());
+    float nwordspersec = wordcn / (timer.Elapsed());
     printf ("eval speed  %.4f Words/sec\n", nwordspersec);
   }
 
@@ -474,11 +473,10 @@ bool RNNLM::calnbest (string testfilename, float intpltwght, string nglmfile) {
     FILEPTR fileptr;
     float prob_rnn, prob_ng, prob_int, logp_rnn,
           logp_ng, logp_int, ppl_rnn, ppl_ng,
-          ppl_int, sentlogp, acscore, lmscore, score, maxscore;
+          ppl_int, sentlogp, acscore, score, maxscore;
     bool flag_intplt = false;
     FILE *fptr_nglm=NULL;
-    auto_timer timer;
-    timer.start();
+    Timer timer;
     string word;
     testfile = testfilename;
     nglmstfile = nglmfile;
@@ -562,7 +560,6 @@ bool RNNLM::calnbest (string testfilename, float intpltwght, string nglmfile) {
             }
 
             acscore = string2float(linevec[1]);
-            lmscore = string2float(linevec[2]);
             nword   = string2int(linevec[3]);
             if (linevec[4] == "<s>")    i = 5;
             else                        i = 4;
@@ -629,7 +626,7 @@ bool RNNLM::calnbest (string testfilename, float intpltwght, string nglmfile) {
                 {
                     if (wordcn % 10000 == 0)
                     {
-                        float nwordspersec = wordcn / (timer.stop());
+                        float nwordspersec = wordcn / (timer.Elapsed());
                         printf ("eval speed  %.4f Words/sec\n", nwordspersec);
                     }
                 }
@@ -669,7 +666,7 @@ bool RNNLM::calnbest (string testfilename, float intpltwght, string nglmfile) {
     printf ("\n");
     if (debug > 1)
     {
-        float nwordspersec = wordcn / (timer.stop());
+        float nwordspersec = wordcn / (timer.Elapsed());
         printf ("eval speed  %.4f Words/sec\n", nwordspersec);
     }
     ppl_rnn = exp10(-logp_rnn/(wordcn));

@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include "util/stl-utils.h"
+#include "base/timer.h"
 
 #include <omp.h>
 #include <time.h>
@@ -23,6 +24,7 @@
 using namespace std;
 
 namespace cued_rnnlm {
+using kaldi::Timer;
 
 #define     SUCCESS             0
 #define     FILEREADERROR       1
@@ -203,7 +205,7 @@ class FILEPTR
       c = fgetc(fptr);
       // getvalidchar (fptr, c);
       if (c == '\n') {
-        if (cnt == 0 && word[0] != '<') {
+        if (cnt == 0 && strcmp(word, "<s>") != 0) {
           linevec.push_back("<s>");
           cnt ++;
         }
@@ -222,7 +224,7 @@ class FILEPTR
       else if ((c == ' ' || c=='\t') && index > 0) // space in the middle of line
       {
         word[index] = 0;
-        if (cnt == 0 && word[0] != '<') {
+        if (cnt == 0 && strcmp(word, "<s>") != 0) {
           linevec.push_back("<s>");
           cnt ++;
         }
@@ -235,73 +237,10 @@ class FILEPTR
         index ++;
       }
     }
-    if (cnt > 0 && word[0] != '<') {
+    if (cnt > 0 && strcmp(word, "</s>") != 0) {
       linevec.push_back("</s>");
       cnt ++;
     }
-  }
-};
-
-
-class auto_timer
-{
-  timespec time_start, time_end;
-  real sec;
-  real nsec;
-  real acctime;
-public:
-  void start () {
-    clock_gettime (CLOCK_REALTIME, &time_start);
-  }
-
-  void end() {
-       clock_gettime (CLOCK_REALTIME, &time_end);
-  }
-
-  void add() {
-    end();
-    if (time_end.tv_nsec - time_start.tv_nsec < 0) {
-      nsec = 1000000000 + time_end.tv_nsec - time_start.tv_nsec;
-      sec = time_end.tv_sec - time_start.tv_sec - 1;
-    }
-    else {
-      nsec = time_end.tv_nsec - time_start.tv_nsec;
-      sec = time_end.tv_sec - time_start.tv_sec;
-    }
-    acctime += sec + nsec * 1.0 / 1000000000;
-  }
-
-  real stop() {
-    end();
-    if (time_end.tv_nsec - time_start.tv_nsec < 0) {
-      nsec = 1000000000 + time_end.tv_nsec - time_start.tv_nsec;
-      sec = time_end.tv_sec - time_start.tv_sec - 1;
-    }
-    else {
-      nsec = time_end.tv_nsec - time_start.tv_nsec;
-      sec = time_end.tv_sec - time_start.tv_sec;
-    }
-    return sec + nsec * 1.0/1000000000;
-  }
-
-  real getacctime () {
-    return acctime;
-  }
-
-  void clear() {
-    sec = 0.0;
-    nsec = 0.0;
-    acctime = 0.0;
-  }
-
-  auto_timer () {
-    sec = 0.0;
-    nsec = 0.0;
-    acctime = 0.0;
-    time_start.tv_sec = 0;
-    time_end.tv_sec = 0;
-    time_start.tv_nsec = 0;
-    time_end.tv_nsec = 0;
   }
 };
 
@@ -494,7 +433,6 @@ class RNNLM
       *host_curclass;
   bool binformat;
   float *resetAc; // allocate memory
-  auto_timer timer_sampler, timer_forward, timer_output, timer_backprop, timer_hidden;
 
  public:
   RNNLM(string inmodelfile_1, string inputwlist_1, string outputwlist_1,

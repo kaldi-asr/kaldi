@@ -11,8 +11,7 @@ ngram_order=4
 
 set -e
 
-#TODO(hxu)
-#local/train_cued_rnnlms.sh --crit $crit --train-text data/$mic/train/text data/$mic/cued_rnn_$crit
+local/train_cued_rnnlms.sh --crit $crit --train-text data/$mic/train/text data/$mic/cued_rnn_$crit
 
 final_lm=ami_fsh.o3g.kn
 LM=$final_lm.pr1-7
@@ -29,8 +28,6 @@ for decode_set in dev eval; do
     data/lang_$LM data/$mic/cued_rnn_$crit \
     data/$mic/$decode_set ${decode_dir} \
     ${decode_dir}.rnnlm.$crit.cued.$n-best 
-
-  exit
 
   # Lattice rescoring
   steps/lmrescore_rnnlm_lat.sh \

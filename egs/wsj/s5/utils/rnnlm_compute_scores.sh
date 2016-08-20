@@ -65,7 +65,7 @@ cat $tempdir/text | awk -v voc=$dir/wordlist.rnn -v unk=$dir/unk.probs \
 if [ "$rnnlm_ver" == "cuedrnnlm" ]; then
   total_nwords=`wc -l $dir/unigram.counts | awk '{print$1}'`
 
-  cat $tempdir/text | sed 's/<unk>/[UNK]/g' > $tempdir/text.nounk2 # TODO(hxu) will change this
+  cat $tempdir/text > $tempdir/text.nounk2
 
   cued-rnnlm-eval -ppl -readmodel $dir/rnnlm  -testfile $tempdir/text.nounk2 \
     -fullvocsize $total_nwords -inputwlist $dir/rnnlm.input.wlist.index \

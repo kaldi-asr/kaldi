@@ -13,7 +13,7 @@ LM=$final_lm.pr1-7
 
 graph_dir=exp/$mic/tri4a/graph_${LM}
 
-false && for decode_set in dev ; do
+for decode_set in dev ; do
   dir=exp/$mic/nnet3/tdnn_sp/
   decode_dir=${dir}/decode_${decode_set}
 

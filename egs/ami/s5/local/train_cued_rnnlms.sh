@@ -35,11 +35,10 @@ export PATH=$KALDI_ROOT/tools/$rnnlm_ver:$PATH
 if [  True ]; then
 cat $srcdir/lexicon.txt | awk '{print $1}' | grep -v -w '!SIL' > $dir/wordlist.all
 
-# Get training data with OOV words (w.r.t. our current vocab) replaced with <UNK>.
-# TODO(hxu) will fix the cued-rnnlm <unk> bug and change this
+# Get training data with OOV words (w.r.t. our current vocab) replaced with <unk>.
 cat $train_text | awk -v w=$dir/wordlist.all \
   'BEGIN{while((getline<w)>0) v[$1]=1;}
-  {for (i=2;i<=NF;i++) if ($i in v) printf $i" ";else printf "[UNK] ";print ""}'|sed 's/ $//g' \
+  {for (i=2;i<=NF;i++) if ($i in v) printf $i" ";else printf "<unk> ";print ""}'|sed 's/ $//g' \
   | perl -e ' use List::Util qw(shuffle); @A=<>; print join("", shuffle(@A)); ' \
   | gzip -c > $dir/all.gz
 
@@ -107,9 +106,11 @@ cat $dir/valid | awk '{ printf("uttid-%d ", NR); print; }' > $dir/valid.with_ids
 
 utils/rnnlm_compute_scores.sh --rnnlm_ver $rnnlm_ver $dir $dir/tmp.valid $dir/valid.with_ids $dir/valid.scores
 
-nw=`cat $dir/valid.with_ids | sed 's= =\n=g' | wc -l | awk '{print $1}'` # Note: valid.with_ids includes utterance-ids which
+nw=`cat $dir/valid.with_ids | sed 's= =\n=g' | wc -l | awk '{print $1}'`
+  # Note: valid.with_ids includes utterance-ids which
   # is one per word, to account for the </s> at the end of each sentence; this is the
   # correct number to normalize buy.
+  # not use "wc -w" here since it does not work well for non-ascii characters
 p=`awk -v nw=$nw '{x=x+$2} END{print exp(x/nw);}' <$dir/valid.scores` 
 echo Perplexity is $p | tee $dir/perplexity.log
 
