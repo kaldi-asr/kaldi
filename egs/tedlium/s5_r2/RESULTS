@@ -97,7 +97,7 @@ for x in exp/nnet3_cleaned/tdnn_sp/decode_*; do grep Sum $x/*ore*/*ys | utils/be
 
 
   # chain+TDNN systems ran without cleanup, using the command:
-  # local/chain/run_tdnn.sh --train-set train --gmm tri3 --nnet3-affix "" --stage 20
+  # local/chain/run_tdnn.sh --train-set train --gmm tri3 --nnet3-affix ""
   # for d in exp/chain/tdnn_sp_bi/decode_*; do grep Sum $d/*/*ys | utils/best_wer.sh; done
   # This is about 0.6% worse than the corresponding results with cleanup.
 

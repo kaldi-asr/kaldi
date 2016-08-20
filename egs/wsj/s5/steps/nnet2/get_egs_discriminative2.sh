@@ -87,14 +87,14 @@ utils/split_data.sh $data $nj
 
 if [ $nj_ali -eq $nj ]; then
   ali_rspecifier="ark,s,cs:gunzip -c $alidir/ali.JOB.gz |"
-  alis=$(for n in $(seq $nj); do echo $alidir/ali.$n.gz; done)
+  alis=$(for n in $(seq $nj); do echo -n "$alidir/ali.$n.gz "; done)
   prior_ali_rspecifier="ark,s,cs:gunzip -c $alis | copy-int-vector ark:- ark,t:- | utils/filter_scp.pl $dir/priors_uttlist | ali-to-pdf $alidir/final.mdl ark,t:- ark:- |"
 else
   ali_rspecifier="scp:$dir/ali.scp"
   prior_ali_rspecifier="ark,s,cs:utils/filter_scp.pl $dir/priors_uttlist $dir/ali.scp | ali-to-pdf $alidir/final.mdl scp:- ark:- |"
   if [ $stage -le 1 ]; then
     echo "$0: number of jobs in den-lats versus alignments differ: dumping them as single archive and index."
-    alis=$(for n in $(seq $nj_ali); do echo $alidir/ali.$n.gz; done)
+    alis=$(for n in $(seq $nj_ali); do echo -n "$alidir/ali.$n.gz "; done)
     $cmd $dir/log/copy_alignments.log \
       copy-int-vector "ark:gunzip -c $alis|" \
       ark,scp:$dir/ali.ark,$dir/ali.scp || exit 1;
@@ -176,7 +176,7 @@ if [ ! -z "$transform_dir" ]; then
   else
     # number of jobs matches with alignment dir.
     feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/$trans.JOB ark:- ark:- |"
-    tras=$(for n in $(seq $nj); do echo $transform_dir/$trans.$n; done)
+    tras=$(for n in $(seq $nj); do echo -n "$transform_dir/$trans.$n "; done)
     priors_feats="$priors_feats transform-feats --utt2spk=ark:$data/utt2spk 'ark:cat $tras |' ark:- ark:- |"
   fi
 fi
@@ -278,7 +278,7 @@ fi
 if [ $stage -le 3 ]; then
   echo "$0: getting initial training examples by splitting lattices"
 
-  degs_list=$(for n in $(seq $num_archives_temp); do echo ark:$dir/degs_orig.JOB.$n.ark; done)
+  degs_list=$(for n in $(seq $num_archives_temp); do echo -n "ark:$dir/degs_orig.JOB.$n.ark "; done)
 
   $cmd JOB=1:$nj $dir/log/get_egs.JOB.log \
     nnet-get-egs-discriminative --criterion=$criterion --drop-frames=$drop_frames \
@@ -289,7 +289,7 @@ fi
 
 if [ $stage -le 4 ]; then
 
-  degs_list=$(for n in $(seq $nj); do echo $dir/degs_orig.$n.JOB.ark; done)
+  degs_list=$(for n in $(seq $nj); do echo -n "$dir/degs_orig.$n.JOB.ark "; done)
 
   if [ $num_archives -eq $num_archives_temp ]; then
     echo "$0: combining data into final archives and shuffling it"
@@ -308,7 +308,7 @@ if [ $stage -le 4 ]; then
     # ... num_archives, which is more than num_archives_temp.  The list with
     # \$[... ] expressions in it computes the set of final indexes for each
     # temporary index.
-    degs_list_out=$(for n in $(seq $archive_ratio); do echo "ark:$dir/degs_temp.\$[((JOB-1)*$archive_ratio)+$n].ark"; done)
+    degs_list_out=$(for n in $(seq $archive_ratio); do echo -n "ark:$dir/degs_temp.\$[((JOB-1)*$archive_ratio)+$n].ark "; done)
     # e.g. if dir=foo and archive_ratio=2, we'd have
     # degs_list_out='foo/degs_temp.$[((JOB-1)*2)+1].ark foo/degs_temp.$[((JOB-1)*2)+2].ark'
 
