@@ -72,5 +72,5 @@ ln -s mpg123-1.21.0  mpg123
 ) >> env.sh
 
 echo >&2 "Installation of MPG123 finished successfully"
-echo >&2 "Please source the tools/env.sh in your path.sh to enable it"
+echo >&2 "Please source the tools/extras/env.sh in your path.sh to enable it"
 
