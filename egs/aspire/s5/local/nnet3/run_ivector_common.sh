@@ -4,7 +4,8 @@
 # minor corrections were made to dir names for nnet3
 
 stage=1
-snrs="20:10:15:5:0"
+foreground_snrs="20:10:15:5:0"
+background_snrs="20:10:15:5:0"
 num_data_reps=3
 ali_dir=exp/
 db_string="'air' 'rwcp' 'rvb2014'" # RIR dbs to be used in the experiment
@@ -22,36 +23,48 @@ local/multi_condition/check_version.sh || exit 1;
 
 mkdir -p exp/nnet3
 if [ $stage -le 1 ]; then
+  false && {
   # prepare the impulse responses
+  echo "$0: Generating impulses/noises from real RIR databases"
   local/multi_condition/prepare_impulses_noises.sh --log-dir exp/make_reverb/log \
     --db-string "$db_string" \
     --download-rirs $download_rirs \
     --RIR-home $RIR_home \
     data/impulses_noises || exit 1;
+  }
+
+  # Generate the rir_list and noise_list for the reverberate_data_dir.py to corrupt the data
+  # this script just assumes air rwcp rvb2014 databases
+  python local/multi_condition/aspire_prep_rir_noise_list.py data/impulses_noises data/impulses_noises/info
 
   # corrupt the fisher data to generate multi-condition data
-  # for data_dir in train dev test; do
+  echo "$0: Generating reverberated data"
   for data_dir in train dev test; do
     if [ "$data_dir" == "train" ]; then
       num_reps=$num_data_reps
     else
       num_reps=1
     fi
-    reverb_data_dirs=
-    for i in `seq 1 $num_reps`; do
-      cur_dest_dir=" data/temp_${data_dir}_${i}"
-      local/multi_condition/reverberate_data_dir.sh --random-seed $i \
-        --snrs "$snrs" --log-dir exp/make_corrupted_wav \
-        data/${data_dir}  data/impulses_noises $cur_dest_dir
-      reverb_data_dirs+=" $cur_dest_dir"
-    done
-    utils/combine_data.sh --extra-files utt2uniq data/${data_dir}_rvb $reverb_data_dirs
-    rm -rf $reverb_data_dirs
+    python steps/data/reverberate_data_dir.py \
+      --prefix "rev" \
+      --rir-list-file data/impulses_noises/info/rir_list \
+      --noise-list-file data/impulses_noises/info/noise_list \
+      --foreground-snrs $foreground_snrs \
+      --background-snrs $background_snrs \
+      --speech-rvb-probability 1 \
+      --pointsource-noise-addition-probability 1 \
+      --isotropic-noise-addition-probability 1 \
+      --num-replications $num_reps \
+      --max-noises-per-minute 1 \
+      --random-seed 1 \
+      data/${data_dir} data/${data_dir}_rvb
   done
+
   # create the dev, test and eval sets from the aspire recipe
   local/multi_condition/aspire_data_prep.sh
 
   # copy the alignments for the newly created utterance ids
+  echo "$0: Generating alignments for reverberated data"
   ali_dirs=
   for i in `seq 1 $num_data_reps`; do
     local/multi_condition/copy_ali_dir.sh --cmd "$decode_cmd" --utt-prefix "rev${i}_" exp/tri5a exp/tri5a_temp_$i || exit 1;
@@ -59,12 +72,14 @@ if [ $stage -le 1 ]; then
   done
 
   steps/combine_ali_dirs.sh data/train_rvb exp/tri5a_rvb_ali $ali_dirs || exit 1;
+  rm -r $ali_dirs
 
   # copy the alignments for training the 100k system (from tri4a)
   local/multi_condition/copy_ali_dir.sh --utt-prefix "rev1_" exp/tri4a exp/tri4a_rvb || exit 1;
 fi
 
 if [ $stage -le 2 ]; then
+  echo "$0: Generating features for reverberated data"
   mfccdir=mfcc_reverb
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
     date=$(date +'%m_%d_%H_%M')
@@ -95,6 +110,7 @@ if [ $stage -le 3 ]; then
   # We need to build a small system just because we need the LDA+MLLT transform
   # to train the diag-UBM on top of.  We use --num-iters 13 because after we get
   # the transform (12th iter is the last), any further training is pointless.
+  echo "$0: ivector extractor training : Training lda+mllt system with reverberated data"
   steps/train_lda_mllt.sh --cmd "$train_cmd" --num-iters 13 \
     --splice-opts "--left-context=3 --right-context=3" \
     5000 10000 data/train_rvb_hires_100k data/lang exp/tri4a_rvb exp/nnet3/tri5a
@@ -105,6 +121,7 @@ if [ $stage -le 4 ]; then
   # To train a diagonal UBM we don't need very much data, so use the smallest
   # subset.  the input directory exp/nnet3/tri5a is only needed for
   # the splice-opts and the LDA transform.
+  echo "$0: ivector extractor training : Training diagonal UBM"
   steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 30 --num-frames 400000 \
     data/train_rvb_hires_30k 512 exp/nnet3/tri5a \
     exp/nnet3/diag_ubm
@@ -114,12 +131,14 @@ if [ $stage -le 5 ]; then
   # iVector extractors can in general be sensitive to the amount of data, but
   # this one has a fairly small dim (defaults to 100) so we don't use all of it,
   # we use just the 100k subset (about one sixteenth of the data).
+  echo "$0: ivector extractor training : Training ivector extractor"
   steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 10 \
     data/train_rvb_hires_100k exp/nnet3/diag_ubm \
     exp/nnet3/extractor || exit 1;
 fi
 
 if [ $stage -le 6 ]; then
+  echo "$0: Extracting ivectors for training data"
   ivectordir=exp/nnet3/ivectors_train
   if [[ $(hostname -f) == *.clsp.jhu.edu ]]; then # this shows how you can split across multiple file-systems.
     utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/aspire/s5/$ivectordir/storage $ivectordir/storage
