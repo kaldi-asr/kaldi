@@ -31,7 +31,6 @@ if [ $stage -le 1 ]; then
     --download-rirs $download_rirs \
     --RIR-home $RIR_home \
     data/impulses_noises || exit 1;
-  }
 
   # Generate the rir_list and noise_list for the reverberate_data_dir.py to corrupt the data
   # this script just assumes air rwcp rvb2014 databases
@@ -62,12 +61,13 @@ if [ $stage -le 1 ]; then
 
   # create the dev, test and eval sets from the aspire recipe
   local/multi_condition/aspire_data_prep.sh
+  }
 
   # copy the alignments for the newly created utterance ids
   echo "$0: Generating alignments for reverberated data"
   ali_dirs=
   for i in `seq 1 $num_data_reps`; do
-    local/multi_condition/copy_ali_dir.sh --cmd "$decode_cmd" --utt-prefix "rev${i}_" exp/tri5a exp/tri5a_temp_$i || exit 1;
+    #local/multi_condition/copy_ali_dir.sh --cmd "$decode_cmd" --utt-prefix "rev${i}_" exp/tri5a exp/tri5a_temp_$i || exit 1;
     ali_dirs+=" exp/tri5a_temp_$i"
   done
 
