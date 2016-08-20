@@ -129,7 +129,7 @@ awk '{print $1}' $data/utt2spk | utils/filter_scp.pl --exclude $dir/valid_uttlis
 
 if [ $stage -le 1 ]; then
   nj_ali=$(cat $alidir/num_jobs)
-  alis=$(for n in $(seq $nj_ali); do echo $alidir/ali.$n.gz; done)
+  alis=$(for n in $(seq $nj_ali); do echo -n "$alidir/ali.$n.gz "; done)
   $cmd $dir/log/copy_alignments.log \
     copy-int-vector "ark:gunzip -c $alis|" \
     ark,scp:$dir/ali.ark,$dir/ali.scp || exit 1;
@@ -321,7 +321,7 @@ fi
   if $adjust_priors && [ $stage -le 10 ]; then
     if [ ! -f $dir/ali.scp ]; then
       nj_ali=$(cat $alidir/num_jobs)
-      alis=$(for n in $(seq $nj_ali); do echo $alidir/ali.$n.gz; done)
+      alis=$(for n in $(seq $nj_ali); do echo -n "$alidir/ali.$n.gz "; done)
       $cmd $dir/log/copy_alignments.log \
         copy-int-vector "ark:gunzip -c $alis|" \
         ark,scp:$dir/ali.ark,$dir/ali.scp || exit 1;
@@ -426,7 +426,7 @@ if [ $stage -le 6 ]; then
     # otherwise managing the output names is quite difficult (and we don't want
     # to submit separate queue jobs for each intermediate archive, because then
     # the --max-jobs-run option is hard to enforce).
-    output_archives="$(for y in $(seq $archives_multiple); do echo ark:$dir/degs.JOB.$y.ark; done)"
+    output_archives=$(for y in $(seq $archives_multiple); do echo -n "ark:$dir/degs.JOB.$y.ark "; done)
     for x in $(seq $num_archives_intermediate); do
       for y in $(seq $archives_multiple); do
         archive_index=$[($x-1)*$archives_multiple+$y]
