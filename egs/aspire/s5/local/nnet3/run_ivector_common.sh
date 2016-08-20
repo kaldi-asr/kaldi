@@ -23,7 +23,6 @@ local/multi_condition/check_version.sh || exit 1;
 
 mkdir -p exp/nnet3
 if [ $stage -le 1 ]; then
-  false && {
   # prepare the impulse responses
   echo "$0: Generating impulses/noises from real RIR databases"
   local/multi_condition/prepare_impulses_noises.sh --log-dir exp/make_reverb/log \
@@ -61,13 +60,12 @@ if [ $stage -le 1 ]; then
 
   # create the dev, test and eval sets from the aspire recipe
   local/multi_condition/aspire_data_prep.sh
-  }
 
   # copy the alignments for the newly created utterance ids
   echo "$0: Generating alignments for reverberated data"
   ali_dirs=
   for i in `seq 1 $num_data_reps`; do
-    #local/multi_condition/copy_ali_dir.sh --cmd "$decode_cmd" --utt-prefix "rev${i}_" exp/tri5a exp/tri5a_temp_$i || exit 1;
+    local/multi_condition/copy_ali_dir.sh --cmd "$decode_cmd" --utt-prefix "rev${i}_" exp/tri5a exp/tri5a_temp_$i || exit 1;
     ali_dirs+=" exp/tri5a_temp_$i"
   done
 
