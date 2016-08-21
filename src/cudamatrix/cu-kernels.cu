@@ -2176,6 +2176,18 @@ static void _softmax_reduce(Real*y, const Real*x, MatrixDim d, int src_stride) {
   }
 }
 
+/**
+   This kernel implements the per-row log-softmax operation on 'x', with writing to 'y';
+   note, x and my may point to the same memory.  This is equivalent to setting
+   matrix y to matrix x and then, for each row of y, subtracting the offset that
+   will make exp(y.row[j]) sum to 1 for each row j.
+
+   It expects to be called with CU1DBLOCK threads if d.num_cols > CU1DBLOCK,
+   otherwise with d.num_cols threads.  The number of blocks [i.e. the gridDim]
+   equals d.rows, so one block of threads processes each row.  x and y are
+   expected to have the same dimension, but possibly different row strides;
+   d.stride is the row-stride of y and src_stride is the row-stride of x.
+ */
 template<typename Real>
 __global__
 static void _log_softmax_reduce(Real *y, const Real *x,
@@ -2190,11 +2202,11 @@ static void _log_softmax_reduce(Real *y, const Real *x,
   // Maximum step 1: loads input data to <aux>. If <d.cols> is larger than
   //                 <blockDim.x>, then we do a first pass filtering and only
   //                 keep a <blockDim.x> size array.
-  aux[threadIdx.x] = x[threadIdx.x + j * d.stride];
+  aux[threadIdx.x] = x[threadIdx.x + j * src_stride];
   for (int i = 1; i < steps; ++i) {
     if (threadIdx.x + i * THREADS < d.cols
-        && aux[threadIdx.x] < x[threadIdx.x + i * THREADS + j * d.stride])
-      aux[threadIdx.x] = x[threadIdx.x + i * THREADS + j * d.stride];
+        && aux[threadIdx.x] < x[threadIdx.x + i * THREADS + j * src_stride])
+      aux[threadIdx.x] = x[threadIdx.x + i * THREADS + j * src_stride];
   }
 
   // Maximum step 2: the standard max reduce.
@@ -2214,12 +2226,12 @@ static void _log_softmax_reduce(Real *y, const Real *x,
   __syncthreads();
 
   // Log sum step 1: substracts max, and takes exponentials.
-  y[threadIdx.x + j * d.stride] = x[threadIdx.x + j * d.stride] - max;
+  y[threadIdx.x + j * d.stride] = x[threadIdx.x + j * src_stride] - max;
   aux[threadIdx.x] = exp(y[threadIdx.x + j * d.stride]);
   for (int i = 1; i < steps; ++i) {
     if (threadIdx.x + i * THREADS < d.cols) {
       y[threadIdx.x + i * THREADS + j * d.stride] =
-        x[threadIdx.x + i * THREADS + j * d.stride] - max;
+        x[threadIdx.x + i * THREADS + j * src_stride] - max;
       aux[threadIdx.x] += exp(y[threadIdx.x + i * THREADS + j * d.stride]);
     }
   }
