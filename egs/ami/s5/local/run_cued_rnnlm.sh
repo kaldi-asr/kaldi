@@ -22,7 +22,6 @@ for decode_set in dev eval; do
 
   # N-best rescoring
   steps/rnnlmrescore.sh \
-    --stage 7 \
     --rnnlm-ver cuedrnnlm \
     --N $n --cmd "$decode_cmd --mem 16G" --inv-acwt 10 0.5 \
     data/lang_$LM data/$mic/cued_rnn_$crit \
@@ -35,10 +34,6 @@ for decode_set in dev eval; do
     --rnnlm-ver cuedrnnlm  --weight 0.5 --max-ngram-order $ngram_order \
     data/lang_$LM data/$mic/cued_rnn_$crit \
     data/$mic/${decode_set}_hires ${decode_dir} \
-    ${decode_dir}.rnnlm.$crit.cued.lat.${ngram_order}gram &
+    ${decode_dir}.rnnlm.$crit.cued.lat.${ngram_order}gram
 
 done
-
-wait
-
-

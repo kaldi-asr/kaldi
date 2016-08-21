@@ -32,7 +32,6 @@ mkdir -p $dir
 $KALDI_ROOT/tools/extras/check_for_rnnlm.sh "$rnnlm_ver" || exit 1
 export PATH=$KALDI_ROOT/tools/$rnnlm_ver:$PATH
 
-if [  True ]; then
 cat $srcdir/lexicon.txt | awk '{print $1}' | grep -v -w '!SIL' > $dir/wordlist.all
 
 # Get training data with OOV words (w.r.t. our current vocab) replaced with <unk>.
@@ -97,7 +96,6 @@ $cuda_mem_cmd $dir/rnnlm.log \
    -independent 1 -learnrate 1.0 \
    -fullvocsize $total_nwords \
    -writemodel $dir/rnnlm -randseed 1 -debug 2
-fi
 
 touch $dir/unk.probs  # dummy file, not used for cued-rnnlm
 
