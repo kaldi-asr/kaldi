@@ -2054,9 +2054,9 @@ static void UnitTestCuSoftmax() {
 template<typename Real>
 static void UnitTestCuLogSoftmax() {
 
-  for (int32 i = 0; i < 2; i++) {
-    int row = 10 + Rand() % 40;
-    int col = 10 + Rand() % 50;
+  for (int32 i = 0; i < 50; i++) {
+    int row = 10 + Rand() % 300;
+    int col = 10 + Rand() % 300;
 
     Matrix<Real> Hi(row, col);
     Matrix<Real> Ho(row, col);
