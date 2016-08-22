@@ -25,12 +25,24 @@ use warnings; #sed replacement for -w perl parameter
 # the make_lexicon_fst.pl script except for the word-dependent silprobs part
 
 if (@ARGV != 4) {
-  print STDERR "Usage: $0 lexiconp_disambig.txt \\\n";
-  print STDERR "       silprob.txt silphone sil_disambig_sym > lexiconfst.txt \n";
+  print STDERR "Usage: $0 lexiconp_silprob_disambig.txt \\\n";
+  print STDERR "       silprob.txt silphone_string sil_disambig_sym > lexiconfst.txt \n";
   print STDERR "\n";
   print STDERR "This script is almost the same as the utils/make_lexicon_fst.pl\n";
   print STDERR "except here we include word-dependent silence probabilities\n";
-  print STDERR "when making the lexicon FSTs.\n";
+  print STDERR "when making the lexicon FSTs. ";
+  print STDERR "For details, see paper \nhttp://danielpovey.com/files/2015_interspeech_silprob.pdf\n\n";
+  print STDERR "The lexiconp_silprob_disambig.txt file should have each line like \n";
+  print STDERR "(pronunciation would have to include disambiguation symbols)\n\n";
+  print STDERR "word p(pronunciation|word) p(sil after|word) correction-factor-for-sil ";
+  print STDERR "correction-factor-for-no-sil phone-1 phone-2 ... phone-N\n\n";
+  print STDERR "The silprob.txt file contains 4 lines, \n\n";
+  print STDERR "<s> p(sil after|<s>)\n";
+  print STDERR "</s>_s correction-factor-for-sil-for-</s>\n";
+  print STDERR "</s>_n correction-factor-for-no-sil-for-</s>\n";
+  print STDERR "overall p(overall sil)\n\n";
+  print STDERR "Other files are the same as utils/make_lexicon_fst.pl\n";
+
   exit(1);
 }
 
@@ -112,13 +124,21 @@ while (<L>) {
     if ($first == 1) {
       $newstate = $nextstate++;
 
-      # for nonsil before w
-      $cost = $nonsilwordcost + $pron_cost;
-      print "$nonsilstart\t$newstate\t$p\t$w\t$cost\n";
+      if (is_sil($p)) {
+        # if the first phone $p is already a silence,
+        # we don't want 2 sil's in a row
+        $cost = $pron_cost;
+        print "$nonsilstart\t$newstate\t$p\t$w\t$cost\n";
+      }
+      else {
+        # for nonsil before w
+        $cost = $nonsilwordcost + $pron_cost;
+        print "$nonsilstart\t$newstate\t$p\t$w\t$cost\n";
 
-      # for sil before w
-      $cost = $silwordcost + $pron_cost;
-      print "$silstart\t$newstate\t$p\t$w\t$cost\n";
+        # for sil before w
+        $cost = $silwordcost + $pron_cost;
+        print "$silstart\t$newstate\t$p\t$w\t$cost\n";
+      }
       $first = 0;
     }
     else {
