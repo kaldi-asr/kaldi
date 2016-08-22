@@ -129,7 +129,6 @@ if [ $stage -le 12 ]; then
     --frames-per-eg $frames_per_eg \
     --num-epochs $num_epochs --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
     --splice-indexes "$splice_indexes" \
-    --pool-type "$pool_type" \
     --pool-window "$pool_window" \
     --pool-lpfilter-width "$pool_lpfilter_width" \
     --feat-type raw \
