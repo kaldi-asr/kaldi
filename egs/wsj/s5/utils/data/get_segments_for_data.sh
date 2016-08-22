@@ -20,7 +20,7 @@ fi
 data=$1
 
 if [ ! -f $data/utt2dur ]; then
-  utils/data/get_utt2dur.sh $data 2>/dev/null || exit 1;
+  utils/data/get_utt2dur.sh $data 1>&2 || exit 1;
 fi
 
 # <utt-id> <utt-id> 0 <utt-dur>
