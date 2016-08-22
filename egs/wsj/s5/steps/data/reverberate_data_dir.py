@@ -20,14 +20,14 @@ def GetArgs():
                                                  "--random-seed 1 data/train data/train_rvb",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument("--rir-list-file", type=str, required = True, 
+    parser.add_argument("--rir-list-file", type=str, action='append', required = True, dest = "rir_list_file_array", 
                         help="RIR information file, the format of the file is "
                         "--rir-id <string,required> --room-id <string,required> "
                         "--receiver-position-id <string,optional> --source-position-id <string,optional> "
                         "--rt-60 <float,optional> --drr <float, optional> location <rspecifier> "
                         "E.g. --rir-id 00001 --room-id 001 --receiver-position-id 001 --source-position-id 00001 "
                         "--rt60 0.58 --drr -4.885 data/impulses/Room001-00001.wav")
-    parser.add_argument("--noise-list-file", type=str, default = None,
+    parser.add_argument("--noise-list-file", type=str, action='append', default = None, dest = "noise_list_file_array",
                         help="Noise information file, the format of the file is"
                         "--noise-id <string,required> --noise-type <choices = {isotropic, point source},required> "
                         "--bg-fg-type <choices = {background, foreground}, default=background> "
@@ -67,12 +67,14 @@ def CheckArgs(args):
         os.makedirs(args.output_dir)
 
     ## Check arguments.
-    if not os.path.isfile(args.rir_list_file):
-        raise Exception(args.rir_list_file + " not found")
+    for rir_list_file in args.rir_list_file_array:
+        if not os.path.isfile(rir_list_file):
+            raise Exception(rir_list_file + " not found")
     
-    if args.noise_list_file is not None:
-        if not os.path.isfile(args.noise_list_file):
-            raise Exception(args.noise_list_file + " not found")
+    if args.noise_list_file_array is not None:
+        for noise_list_file in args.noise_list_file_array:
+            if not os.path.isfile(noise_list_file):
+                raise Exception(noise_list_file + " not found")
 
     if args.num_replicas > 1 and args.prefix is None:
         args.prefix = "rvb"
@@ -368,11 +370,15 @@ def CreateReverberatedCopy(input_dir,
                            max_noises_per_minute  # maximum number of point-source noises that can be added to a recording according to its duration
                            ):
     
+    wav_scp = ParseFileToDict(input_dir + "/wav.scp", value_processor = lambda x: " ".join(x))
     if not os.path.isfile(input_dir + "/reco2dur"):
         print("Getting the duration of the recordings...");
-        data_lib.RunKaldiCommand("wav-to-duration --read-entire-file=true scp:{0}/wav.scp ark,t:{0}/reco2dur".format(input_dir))
+        read_entire_file="false"
+        if "sox" in wav_scp[wav_scp.keys()[0]]:
+            read_entire_file="true"
+
+        data_lib.RunKaldiCommand("wav-to-duration --read-entire-file={1} scp:{0}/wav.scp ark,t:{0}/reco2dur".format(input_dir, read_entire_file))
     durations = ParseFileToDict(input_dir + "/reco2dur", value_processor = lambda x: float(x[0]))
-    wav_scp = ParseFileToDict(input_dir + "/wav.scp", value_processor = lambda x: " ".join(x))
     foreground_snr_array = map(lambda x: float(x), foreground_snr_string.split(':'))
     background_snr_array = map(lambda x: float(x), background_snr_string.split(':'))
 
@@ -425,7 +431,7 @@ def SmoothProbabilityDistribution(list, smoothing_weight=0.3):
 # Each rir object in the list contains the following attributes:
 # rir_id, room_id, receiver_position_id, source_position_id, rt60, drr, probability
 # Please refer to the help messages in the parser for the meaning of these attributes
-def ParseRirList(rir_list_file):
+def ParseRirList(rir_list_file_array):
     rir_parser = argparse.ArgumentParser()
     rir_parser.add_argument('--rir-id', type=str, required=True, help='This id is unique for each RIR and the noise may associate with a particular RIR by refering to this id')
     rir_parser.add_argument('--room-id', type=str, required=True, help='This is the room that where the RIR is generated')
@@ -439,7 +445,10 @@ def ParseRirList(rir_list_file):
                             E.g. data/impulses/Room001-00001.wav or "sox data/impulses/Room001-00001.wav -t wav - |" """)
 
     rir_list = []
-    rir_lines = map(lambda x: x.strip(), open(rir_list_file))
+    rir_lines = []
+    for rir_list_file in rir_list_file_array:
+        rir_lines += map(lambda x: x.strip(), open(rir_list_file))
+
     for line in rir_lines:
         rir = rir_parser.parse_args(shlex.split(line))
         rir_list.append(rir)
@@ -480,7 +489,7 @@ def MakeRoomDict(rir_list):
 # Each noise object in the list contains the following attributes:
 # noise_id, noise_type, bg_fg_type, room_linkage, probability, noise_rspecifier
 # Please refer to the help messages in the parser for the meaning of these attributes
-def ParseNoiseList(noise_list_file):
+def ParseNoiseList(noise_list_file_array):
     noise_parser = argparse.ArgumentParser()
     noise_parser.add_argument('--noise-id', type=str, required=True, help='noise id')
     noise_parser.add_argument('--noise-type', type=str, required=True, help='the type of noise; i.e. isotropic or point-source', choices = ["isotropic", "point-source"])
@@ -494,7 +503,9 @@ def ParseNoiseList(noise_list_file):
 
     pointsource_noise_list = []
     iso_noise_dict = {}
-    noise_lines = map(lambda x: x.strip(), open(noise_list_file))
+    noise_lines = []
+    for noise_list_file in noise_list_file_array:
+        noise_lines += map(lambda x: x.strip(), open(noise_list_file))
     for line in noise_lines:
         noise = noise_parser.parse_args(shlex.split(line))
         if noise.noise_type == "isotropic":
@@ -523,11 +534,12 @@ def ParseNoiseList(noise_list_file):
 def Main():
     args = GetArgs()
     random.seed(args.random_seed)
-    rir_list = ParseRirList(args.rir_list_file)
+    rir_list = ParseRirList(args.rir_list_file_array)
+    print("Number of RIRs is {0}".format(len(rir_list)))
     pointsource_noise_list = []
     iso_noise_dict = {}
-    if args.noise_list_file is not None:
-        pointsource_noise_list, iso_noise_dict = ParseNoiseList(args.noise_list_file)
+    if args.noise_list_file_array is not None:
+        pointsource_noise_list, iso_noise_dict = ParseNoiseList(args.noise_list_file_array)
         print("Number of point-source noises is {0}".format(len(pointsource_noise_list)))
         print("Number of isotropic noises is {0}".format(sum(len(iso_noise_dict[key]) for key in iso_noise_dict.keys())))
     room_dict = MakeRoomDict(rir_list)
