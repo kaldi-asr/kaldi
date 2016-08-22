@@ -96,9 +96,10 @@ sub print_usage() {
 }
 
 sub exec_command {
+  # Execute command and return a tuple of stdout and exit code
   my $command = join ' ', @_;
   # To get the actual exit value, shift right by eight bits.
-  ($_ = qx{$command 2>&1}, $? >> 8);
+  ($_ = `$command 2>&1`, $? >> 8);
 }
 
 if (@ARGV < 2) {
