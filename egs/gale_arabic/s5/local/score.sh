@@ -10,8 +10,8 @@ stage=0
 decode_mbr=true
 reverse=false
 word_ins_penalty=0.0
-min_lmwt=9
-max_lmwt=20
+min_lmwt=7
+max_lmwt=17
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
