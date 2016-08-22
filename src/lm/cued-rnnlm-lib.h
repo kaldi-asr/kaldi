@@ -5,6 +5,7 @@
 #include <vector>
 #include "util/stl-utils.h"
 #include "base/timer.h"
+#include "matrix/kaldi-matrix.h"
 
 #include <omp.h>
 #include <time.h>
@@ -25,6 +26,9 @@ using namespace std;
 
 namespace cued_rnnlm {
 using kaldi::Timer;
+using kaldi::Matrix;
+using kaldi::MatrixBase;
+using kaldi::SubMatrix;
 
 #define     SUCCESS             0
 #define     FILEREADERROR       1
@@ -247,161 +251,106 @@ class FILEPTR
 class matrix
 {
  private:
-  real* host_data;
-  size_t nrows;
-  size_t ncols;
-  size_t size;
+  Matrix<real>* host_data;
  public:
-  matrix (): host_data(NULL), nrows(0), ncols(0) {}
-  matrix (size_t nr, size_t nc) {
-    nrows = nr;
-    ncols = nc;
-    size = sizeof(real) * ncols * nrows;
-    host_data = (real *) malloc (size);
+  matrix(): host_data(NULL) {}
+  matrix(size_t nr, size_t nc) {
+    if (nc == 1) {
+      host_data = new Matrix<real>(nr, nc, kaldi::kSetZero, kaldi::kStrideEqualNumCols);
+    }
+    host_data = new Matrix<real>(nr, nc, kaldi::kSetZero, kaldi::kDefaultStride);
   }
   ~matrix () {
-    if (host_data) {
-      free (host_data);
-      host_data = NULL;
-    }
+    freemem();
   }
   size_t Sizeof () {
-    return (nrows * ncols * sizeof(real));
+    return (host_data->NumRows() * host_data->NumCols() * sizeof(real));
   }
   size_t nelem () {
-    return (nrows * ncols);
+    return (host_data->NumRows() * host_data->NumCols());
   }
   // asign value on CPU
   void assignhostvalue (size_t i, size_t j, real v) {
-    host_data[i + j * nrows] = v;
+    (*host_data)(i, j) = v;
   }
   void addhostvalue (size_t i, size_t j, real v) {
-    host_data[i + j * nrows] += v;
+    (*host_data)(i, j) += v;
   }
   real fetchhostvalue (size_t i, size_t j) {
-    return host_data[i + j * nrows];
+    return (*host_data)(i, j);
   }
 
-  void setnrows (size_t nr) {
-    nrows = nr;
-  }
-  void setncols (size_t nc) {
-    ncols = nc;
-  }
   size_t rows () {
-    return nrows;
+    return host_data->NumRows();
   }
   size_t cols () {
-    return ncols;
+    return host_data->NumCols();
   }
   void freemem () {
-    free (host_data);
-    ncols = 0;
-    nrows = 0;
-    size = 0;
+    if (host_data) {
+      delete host_data;
+    }
   }
 
   real& operator() (int i, int j) const {
-    assert ((i >= 0) && (i < nrows) && (j >= 0) && (j < ncols));
-    return host_data[i + j * nrows];
+    return (*host_data)(i, j);
   }
 
   const real& operator() (int i, int j) {
-    assert ((i >= 0) && (i < nrows) && (j >= 0) && (j < ncols));
-    return host_data[i + j * nrows];
+    return (*host_data)(i, j);
   }
-  real* gethostdataptr () {
+
+  Matrix<real>* GetMatrixPointer() {
     return host_data;
   }
 
+  real* gethostdataptr () {
+    // only return the data pointer when it's continuously stored
+    KALDI_ASSERT(host_data->NumCols() == 1);
+    return host_data->Data();
+  }
+
   real *gethostdataptr(int i, int j) {
-    return &host_data[i+j*nrows];
+    return &(*host_data)(i, j);
   }
 
   // initialize all element (both GPU and CPU) in matrx with v
   void initmatrix (int v = 0) {
-    memset (host_data, v, Sizeof());
+    host_data->Set(v);
   }
 
   void hostrelu (float ratio)
   {
-    assert (ncols == 1);
-    for (int i = 0; i < nrows; i++) {
-      if (host_data[i] > 0) {
-        host_data[i] *= ratio;
-      }
-      else {
-        host_data[i] = 0;
-      }
-    }
+    KALDI_ASSERT(host_data->NumCols() == 1);
+
+    host_data->Scale(ratio);
+    host_data->ApplyFloor(0);
   }
 
   void hostsigmoid() {
-    assert (ncols == 1);
-    for (int i = 0; i< nrows; i++) {
-      host_data[i] = 1.0 / (1 + exp(-host_data[i]));
-    }
+    KALDI_ASSERT(host_data->NumCols() == 1);
+
+    host_data->Sigmoid(*host_data);
   }
 
   void hostsoftmax() {
-//        int a, maxi;
-    int a;
-    float v, norm, maxv = 1e-8;
-    assert (ncols == 1);
-    maxv = 1e-10;
-    for (a = 0; a < nrows; a++) {
-      v = host_data[a];
-      if (v > maxv) {
-        maxv = v;
-//                maxi = a;
-      }
-    }
-    norm = 0;
-
-    for (a = 0; a < nrows; a++) {
-      v = host_data[a] - maxv;
-      host_data[a] = exp(v);
-      norm += host_data[a];
-    }
-    for (a = 0; a < nrows; a++) {
-      v = host_data[a] / norm;
-      host_data[a] = v;
-    }
+    KALDI_ASSERT(host_data->NumCols() == 1);
+    host_data->ApplySoftMax();
   }
 
   void hostpartsoftmax(int swordid, int ewordid) {
-//        int a, maxi;
-    int a;
-    float v, norm, maxv = 1e-8;
-    assert (ncols == 1);
-    maxv = 1e-10;
-    for (a = swordid; a <= ewordid; a++) {
-      v = host_data[a];
-      if (v > maxv) {
-        maxv = v;
-//                maxi = a;
-      }
-    }
-    norm = 0;
-
-    for (a = swordid; a <= ewordid; a++) {
-      v = host_data[a] - maxv;
-      host_data[a] = exp(v);
-      norm += host_data[a];
-    }
-    for (a = swordid; a <= ewordid; a++) {
-      v = host_data[a] / norm;
-      host_data[a] = v;
-    }
+    KALDI_ASSERT(host_data->NumCols() == 1);
+    SubMatrix<real> t(*host_data, swordid, 1 + ewordid - swordid, 0, 1);
+    t.ApplySoftMax();
   }
 
   void random(float min, float max) {
     int i, j;
     float v;
-    for (i = 0; i < nrows; i++) {
-      for (j = 0; j < ncols; j++) {
+    for (i = 0; i < host_data->NumRows(); i++) {
+      for (j = 0; j < host_data->NumCols(); j++) {
         v = randomv(min, max) + randomv(min,max) + randomv(min, max);
-        host_data[i + j * nrows] = v;
+        (*host_data)(i, j) = v;
       }
     }
   }
@@ -472,12 +421,9 @@ class RNNLM
   void ResetRechist();
   float forward (int prevword, int curword);
   void ReadUnigramFile (string unigramfile);
-  void matrixXvector (float *ac0, float *wgt1, float *ac1, int nrow, int ncol);
+  void matrixXvector (const MatrixBase<real> &src, const MatrixBase<real> &wgt,
+                            MatrixBase<real> &dst, int nr, int nc);
   void allocMem (vector<int> &layersizes);
-
-  // functions for using additional feature file in input layer
-  void ReadFeaFile(string filestr);
-  void setFeafile (string str)  {feafile = str;}
 
 };
 

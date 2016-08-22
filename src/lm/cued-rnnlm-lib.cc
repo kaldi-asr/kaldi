@@ -245,11 +245,7 @@ void RNNLM::allocMem (vector<int> &layersizes)
     int nrow = layersizes[i];
     neu_ac[i] = new matrix(nrow, minibatch);
   }
-  if (dim_fea > 0) {
-    layer0_fea = new matrix(dim_fea, layersizes[1]);
-    neu0_ac_fea = new matrix(dim_fea, minibatch);
-    neu0_ac_fea->initmatrix();
-  }
+  KALDI_ASSERT(dim_fea == 0);
   if (nclass > 0) {
     layerN_class = new matrix(layersizes[num_layer-1], nclass);
     neuN_ac_class = new matrix(nclass, minibatch);
@@ -333,13 +329,7 @@ bool RNNLM::calppl(string testfilename, float intpltwght, string nglmfile) {
   }
 
   while (!fileptr.eof()) {
-    if (dim_fea > 0) {
-      int feaid = fileptr.readint();
-      assert (feaid >=0 && feaid < num_fea);
-      float *feaptr = feamatrix->gethostdataptr(0, feaid);
-      float *acptr  = neu0_ac_fea->gethostdataptr();
-      memcpy(acptr, feaptr, sizeof(float)*dim_fea);
-    }
+    KALDI_ASSERT(dim_fea == 0);
     fileptr.readline(linevec, cnt);
 
     if (linevec.size() > 0) {
@@ -473,7 +463,7 @@ bool RNNLM::calnbest (string testfilename, float intpltwght, string nglmfile) {
     FILEPTR fileptr;
     float prob_rnn, prob_ng, prob_int, logp_rnn,
           logp_ng, logp_int, ppl_rnn, ppl_ng,
-          ppl_int, sentlogp, acscore, score, maxscore;
+          ppl_int, sentlogp, acscore, score, maxscore = -100000;
     bool flag_intplt = false;
     FILE *fptr_nglm=NULL;
     Timer timer;
@@ -508,14 +498,7 @@ bool RNNLM::calnbest (string testfilename, float intpltwght, string nglmfile) {
     }
     while (!fileptr.eof())
     {
-        if (dim_fea > 0)
-        {
-            int feaid = fileptr.readint();
-            assert (feaid >=0 && feaid < num_fea);
-            float *feaptr = feamatrix->gethostdataptr(0, feaid);
-            float *acptr  = neu0_ac_fea->gethostdataptr();
-            memcpy(acptr, feaptr, sizeof(float)*dim_fea);
-        }
+        KALDI_ASSERT(dim_fea == 0);
         fileptr.readline(linevec, cnt);
         if (linevec.size() > 0)
         {
@@ -792,16 +775,7 @@ void RNNLM::LoadTextRNNLM(string modelname) {
     fscanf (fptr, "\n");
   }
 
-  if (dim_fea > 0) {
-    fscanf (fptr, "feature layer weight\n");
-    for (a = 0; a < dim_fea; a++) {
-      for (b = 0; b < layersizes[1]; b++) {
-        fscanf (fptr, "%f", &v);
-        layer0_fea->assignhostvalue(a, b, v);
-      }
-      fscanf (fptr, "\n");
-    }
-  }
+  KALDI_ASSERT(dim_fea == 0);
 
   if (nclass > 0) {
     fscanf (fptr, "class layer weight\n");
@@ -886,14 +860,7 @@ void RNNLM::LoadBinaryRNNLM(string modelname)
     }
   }
 
-  if (dim_fea > 0) {
-    for (a=0; a<dim_fea; a++) {
-      for (b=0; b<layersizes[1]; b++) {
-        fread (&v, sizeof(float), 1, fptr);
-        layer0_fea->assignhostvalue(a, b, v);
-      }
-    }
-  }
+  KALDI_ASSERT(dim_fea == 0);
 
   if (nclass > 0) {
     for (a=0; a<layersizes[num_layer-1]; a++) {
@@ -1057,57 +1024,57 @@ void RNNLM::ResetRechist() {
 }
 
 float RNNLM::forward (int prevword, int curword) {
-  int a, b, nrow, ncol;
+//  int a, b, nrow, ncol;
+  int a, nrow, ncol;
   nrow = layersizes[1];
   ncol = layersizes[1];
-  float *srcac, *wgt, *dstac;
+  Matrix<real> *srcac, *wgt, *dstac;
 
    // neu0 -> neu1
   for (a = 0; a < layers.size(); a++) {
     if (a==0) {
-      srcac = neu0_ac_hist->gethostdataptr();
-      wgt   = layer0_hist->gethostdataptr();
-      dstac = neu_ac[1]->gethostdataptr();
+      srcac = neu0_ac_hist->GetMatrixPointer();
+      wgt   = layer0_hist->GetMatrixPointer();
+      dstac = neu_ac[1]->GetMatrixPointer();
       nrow  = layersizes[1];
       ncol  = layersizes[1];
-      memset(dstac, 0, sizeof(float) * ncol);
+      dstac->SetZero();
 
-      for (b = 0; b < ncol; b++) {
-        dstac[b] = layers[0]->fetchhostvalue(prevword, b);
-      }
+      dstac->CopyFromMat(layers[0]->GetMatrixPointer()->Range(prevword, 1, 0, ncol),
+                         kaldi::kTrans);
 
-      if (dim_fea > 0) {
-        float *feasrcac = neu0_ac_fea->gethostdataptr();
-        float *feawgt   = layer0_fea->gethostdataptr();
-        matrixXvector (feasrcac, feawgt, dstac, dim_fea, ncol);
-      }
+      KALDI_ASSERT(dim_fea == 0);
     }
     else {
-      srcac = neu_ac[a]->gethostdataptr();
-      wgt   = layers[a]->gethostdataptr();
-      dstac = neu_ac[a + 1]->gethostdataptr();
+      srcac = neu_ac[a]->GetMatrixPointer();
+      wgt   = layers[a]->GetMatrixPointer();
+      dstac = neu_ac[a + 1]->GetMatrixPointer();
       nrow  = layersizes[a];
       ncol  = layersizes[a + 1];
-      memset(dstac, 0, sizeof(float) * ncol);
+      dstac->SetZero();
     }
 
-    if (a + 1== num_layer) {
+    if (a + 1 == num_layer) {
       if (lognormconst < 0) {
         if (nclass > 0) {
-          float *clsdstac = neuN_ac_class->gethostdataptr();
-          float *clswgt = layerN_class->gethostdataptr();
+          Matrix<real> *clsdstac = neuN_ac_class->GetMatrixPointer();
+          Matrix<real> *clswgt = layerN_class->GetMatrixPointer();
           int ncol_cls = nclass;
-          matrixXvector (srcac, clswgt, clsdstac, nrow, ncol_cls);
+          matrixXvector (*srcac, *clswgt, *clsdstac, nrow, ncol_cls);
           neuN_ac_class->hostsoftmax();
           int clsid = word2class[curword];
           int swordid = classinfo[clsid*3];
           int ewordid = classinfo[clsid*3+1];
           int nword   = classinfo[clsid*3+2];
-          matrixXvector(srcac, wgt + swordid * nrow, dstac + swordid, nrow, nword);
+
+          SubMatrix<real> dstac_sub(*dstac, swordid, nword, 0, 1);
+
+          matrixXvector(*srcac, wgt->ColRange(swordid, nword),
+                         dstac_sub, nrow, nword);
           neu_ac[a+1]->hostpartsoftmax(swordid, ewordid);
         }
         else {
-          matrixXvector (srcac, wgt, dstac, nrow, ncol);
+          matrixXvector (*srcac, *wgt, *dstac, nrow, ncol);
           neu_ac[a+1]->hostsoftmax();
         }
       }
@@ -1117,11 +1084,11 @@ float RNNLM::forward (int prevword, int curword) {
           // v += srcac[i]*wgt[i+curword*nrow];
           v += neu_ac[a]->fetchhostvalue(i, 0) * layers[a]->fetchhostvalue(i, curword);
         }
-        dstac[curword] = exp(v-lognormconst);
+        (*dstac)(curword, 0) = exp(v-lognormconst);
       }
     }
     else {
-      matrixXvector (srcac, wgt, dstac, nrow, ncol);
+      matrixXvector (*srcac, *wgt, *dstac, nrow, ncol);
       if (nodetype == 0) {
         neu_ac[a+1]->hostsigmoid();
       }
@@ -1144,71 +1111,16 @@ float RNNLM::forward (int prevword, int curword) {
   }
 }
 
-void RNNLM::matrixXvector (float *src, float *wgt, float *dst, int nr, int nc) {
-  int i, j;
-#if 1
-#ifdef NUM_THREAD
-#pragma omp parallel for num_threads(NUM_THREAD)
-#else
-#pragma omp parallel for num_threads(nthread)
-#endif
-#endif
-  for (i = 0; i < nc; i++) {
-    for (j = 0; j < nr; j++) {
-      dst[i] += src[j] * wgt[j + i * nr];
-    }
-  }
-  return;
+void RNNLM::matrixXvector (const MatrixBase<real> &src,
+                           const MatrixBase<real> &wgt,
+                           MatrixBase<real> &dst, int nr, int nc) {
+//  KALDI_ASSERT(wgt.NumRows() == nr);
+//  KALDI_ASSERT(wgt.NumCols() == nc);
+//  KALDI_ASSERT(src.NumRows() == nr);
+//  KALDI_ASSERT(src.NumCols() == 1);
+//  KALDI_ASSERT(dst.NumRows() == nc);
+//  KALDI_ASSERT(dst.NumCols() == 1);
+  dst.AddMatMat(1, wgt, kaldi::kTrans, src, kaldi::kNoTrans, 0);
 }
-
-void RNNLM::ReadFeaFile(string filestr) {
-  int i, j, t;
-  float value;
-  FILE *fptr = fopen (filestr.c_str(), "r");
-  if (fptr == NULL) {
-    printf ("Error: Failed to open feature file: %s\n", filestr.c_str());
-    exit(0);
-  }
-  fscanf (fptr, "%d %d", &num_fea, &dim_fea);
-  // if the fea file is two large, just allocate cpu memory
-  feamatrix = new matrix (dim_fea, num_fea);
-  feamatrix->initmatrix();
-
-  if (debug > 1) {
-      printf ("%d lines feature (with %d dimensions) will be read from %s\n",
-              num_fea, dim_fea, filestr.c_str());
-  }
-  i = 0;
-  while (i < num_fea) {
-    if (feof(fptr))         break;
-    fscanf (fptr, "%d", &j);
-    assert (j == i);
-    for (t=0; t<dim_fea; t++) {
-      fscanf (fptr, "%f", &value);
-      feamatrix->assignhostvalue(t, i, value);
-    }
-    i++;
-  }
-
-  if (i != num_fea) {
-    printf ("Warning: only read %d lines from the feature file: %s, should be %d lines\n",
-             i, filestr.c_str(), num_fea);
-  }
-  if (debug > 1) {
-    printf ("%d feature lines (with %d dimensions) is read from %s successfully\n",
-             num_fea, dim_fea,  filestr.c_str());
-  }
-  fclose(fptr);
-
-  // allocate memeory for additional feature in input layer
-  // if memory already allocated during laoding model
-  if (layer0_fea == NULL) {
-    layer0_fea = new matrix(dim_fea, layersizes[1]);
-    layer0_fea->random (MINRANDINITVALUE, MAXRANDINITVALUE);
-    neu0_ac_fea = new matrix (dim_fea, minibatch);
-    neu0_ac_fea->initmatrix();
-  }
-}
-
 
 } // namespace cued_rnnlm

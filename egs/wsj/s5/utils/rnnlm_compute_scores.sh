@@ -50,11 +50,11 @@ cat $tempdir/text | awk -v voc=$dir/wordlist.rnn -v unk=$dir/unk.probs \
   -v logprobs=$tempdir/loglikes.oov \
  'BEGIN{ while((getline<voc)>0) { invoc[$1]=1; } while ((getline<unk)>0){ unkprob[$1]=$2;} }
   { logprob=0;
-    if (NF==0) { printf "RNN_UNK"; logprob = log(1.0e-07);
+    if (NF==0) { printf "<RNN_UNK>"; logprob = log(1.0e-07);
       print "Warning: empty sequence." | "cat 1>&2"; }
     for (x=1;x<=NF;x++) { w=$x;  
     if (invoc[w]) { printf("%s ",w); } else {
-      printf("RNN_UNK ");
+      printf("<RNN_UNK> ");
       if (unkprob[w] != 0) { logprob += log(unkprob[w]); }
       else { print "Warning: unknown word ", w | "cat 1>&2"; logprob += log(1.0e-07); }}}
     printf("\n"); print logprob > logprobs } ' > $tempdir/text.nounk
@@ -66,6 +66,10 @@ if [ "$rnnlm_ver" == "cuedrnnlm" ]; then
   total_nwords=`wc -l $dir/unigram.counts | awk '{print$1}'`
 
   cat $tempdir/text > $tempdir/text.nounk2
+
+  echo "cued-rnnlm-eval -ppl -readmodel $dir/rnnlm  -testfile $tempdir/text.nounk2 \
+    -fullvocsize $total_nwords -inputwlist $dir/rnnlm.input.wlist.index \
+    -outputwlist $dir/rnnlm.output.wlist.index -debug 0 "
 
   cued-rnnlm-eval -ppl -readmodel $dir/rnnlm  -testfile $tempdir/text.nounk2 \
     -fullvocsize $total_nwords -inputwlist $dir/rnnlm.input.wlist.index \

@@ -79,11 +79,11 @@ int main (int argc, char **argv)
             RNNLM rnnlm (inmodelname, inputwlist, outputwlist, layersizes, fullvocsize, binformat, debug);
             rnnlm.setLognormConst (lognormconst); // TODO(hxu) figure out what this does
             rnnlm.setNthread(nthread);
-            if (flag_feature)
-            {
-                rnnlm.setFeafile (feafile);
-                rnnlm.ReadFeaFile (feafile);
-            }
+//            if (flag_feature)
+//            {
+//                rnnlm.setFeafile (feafile);
+//                rnnlm.ReadFeaFile (feafile);
+//            }
             rnnlm.calppl(testfile, lambda, nglmstfile);
         }
         else if (!isEmpty(arg.find ("-nbest")))
@@ -93,11 +93,11 @@ int main (int argc, char **argv)
             rnnlm.setNthread (nthread);
             rnnlm.setLmscale (lmscale);
             rnnlm.setIp (ip);
-            if (flag_feature)
-            {
-                rnnlm.setFeafile (feafile);
-                rnnlm.ReadFeaFile (feafile);
-            }
+//            if (flag_feature)
+//            {
+//                rnnlm.setFeafile (feafile);
+//                rnnlm.ReadFeaFile (feafile);
+//            }
 
             rnnlm.calnbest(testfile, lambda, nglmstfile);
         }
