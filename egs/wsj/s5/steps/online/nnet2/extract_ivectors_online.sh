@@ -127,3 +127,6 @@ if [ $stage -le 1 ]; then
   echo "$0: combining iVectors across jobs"
   for j in $(seq $nj); do cat $dir/ivector_online.$j.scp; done >$dir/ivector_online.scp || exit 1;
 fi
+
+cp $srcdir/ivector_extractor_id $dir 2>/dev/null
+

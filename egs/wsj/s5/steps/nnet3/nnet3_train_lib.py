@@ -4,6 +4,7 @@ import math
 import re
 import time
 import argparse
+import shutil
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -165,7 +166,6 @@ def WriteKaldiMatrix(output_file, matrix):
     file.write(" ]")
     file.close()
 
-import shutil
 def CopyEgsPropertiesToExpDir(egs_dir, dir):
     try:
         for file in ['cmvn_opts', 'splice_opts', 'final.mat']:
@@ -700,3 +700,19 @@ def WriteIdctMatrix(feat_dim, cepstral_lifter, file_path):
         idct_matrix[k].append(0)
     WriteKaldiMatrix(file_path, idct_matrix)
 
+
+def GetIvectorExtractorId(dir):
+    file_name = '{0}/ivector_extractor_id'.format(dir)
+    if os.path.exists(file_name):
+        return open(file_name, 'r').readline().strip()
+    return None
+
+def CopyIvectorExtractorId(src_dir, dest_dir):
+    try:
+        shutil.copy(src_dir+'/ivector_extractor_id',
+                    dest_dir+'/ivector_extractor_id')
+    except IOError:
+        warnings.warn("No ivector_extractor_id was found in {0}. This directory"
+                " was probably created before extractor identifiers were"
+                " implemented. Please note that it is up to the user to ensure"
+                " that the ivector extractors are appropriately matched.".format(src_dir))

@@ -60,8 +60,8 @@ frames_per_chunk=
 . ./utils/parse_options.sh
 
 if ! cuda-compiled; then
-  cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+  cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.
 EOF
@@ -155,7 +155,7 @@ if [ $stage -le 9 ]; then
         ivector_opts=
       fi
 
-      steps/nnet3/lstm/decode.sh --nj $num_jobs --cmd "$decode_cmd" $ivector_opts \
+      steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" $ivector_opts \
         --extra-left-context $extra_left_context \
         --frames-per-chunk "$frames_per_chunk" \
         $graph_dir data/${decode_set}_hires $decode_dir || exit 1;

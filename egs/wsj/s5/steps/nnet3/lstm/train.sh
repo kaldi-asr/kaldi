@@ -116,6 +116,10 @@ rand_prune=4.0 # speeds up LDA.
 
 trap 'for pid in $(jobs -pr); do kill -KILL $pid; done' INT QUIT TERM
 
+echo " WARNING : This script has been deprecated. Please use"
+echo " steps/nnet3/lstm/make_configs.py and steps/nnet3/train_rnn.py."
+echo " e.g. Please see egs/swbd/s5c/local/nnet3/run_lstm.sh. "
+
 echo "$0 $@"  # Print the command line for logging
 
 if [ -f path.sh ]; then . ./path.sh; fi

@@ -83,6 +83,10 @@ subset_dim=0
 
 trap 'for pid in $(jobs -pr); do kill -KILL $pid; done' INT QUIT TERM
 
+echo " WARNING : This script has been deprecated. Please use"
+echo " steps/nnet3/tdnn/make_configs.py and steps/nnet3/train_dnn.py."
+echo " e.g. Please see egs/swbd/s5c/local/nnet3/run_tdnn.sh. "
+
 echo "$0 $@"  # Print the command line for logging
 
 if [ -f path.sh ]; then . ./path.sh; fi
