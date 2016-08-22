@@ -32,11 +32,11 @@ fi
 
 dir=exp/nnet3/tdnn
 dir=$dir${affix:+_$affix}
-train_set=train_nodup_sp
-ali_dir=exp/tri5a_ali_nodup_sp
+train_set=train_nodup
+ali_dir=exp/tri5a_ali
 
 local/nnet3/run_ivector_common.sh --stage $stage \
-  --speed-perturb true || exit 1;
+  --speed-perturb false || exit 1;
 
 if [ $stage -le 9 ]; then
   echo "$0: creating neural net configs";
