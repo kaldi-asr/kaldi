@@ -73,7 +73,6 @@ extra_files=$(echo "$extra_files"|sed -e "s/utt2uniq//g")
 # segments are treated similarly to utt2uniq. If it exists in some, but not all
 # src directories, then we generate segments where necessary.
 has_segments=false
-segments_absent_somewhere=false
 for in_dir in $*; do
   if [ -f $in_dir/segments ]; then
     has_segments=true
