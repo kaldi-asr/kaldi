@@ -71,24 +71,20 @@ fi
 extra_files=$(echo "$extra_files"|sed -e "s/utt2uniq//g")
 
 # segments are treated similarly to utt2uniq. If it exists in some, but not all
-# src directories, then we create segments files where necessary.
-# These are stored in the src directories.
+# src directories, then we generate segments where necessary.
 has_segments=false
 segments_absent_somewhere=false
 for in_dir in $*; do
   if [ -f $in_dir/segments ]; then
     has_segments=true
-  else
-    segments_absent_somewhere=true
+    break
   fi
 done
 
 if $has_segments; then
-  if $segments_absent_somewhere; then
-    echo "$0 [info]: will generate missing segments"
-  fi
   for in_dir in $*; do
     if [ ! -f $in_dir/segments ]; then
+      echo "$0 [info]: will generate missing segments for $in_dir" 1>&2
       utils/data/get_segments_for_data.sh $in_dir
     else
       cat $in_dir/segments
