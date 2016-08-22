@@ -11,7 +11,7 @@ for x in "$@"; do orig_args="$orig_args '$x'"; done
 # score_basic.sh might need, or parse_options.sh will die.
 cmd=run.pl
 stage=0
-min_lmwt=9 # unused,
+min_lmwt=7 # unused,
 max_lmwt=15 # unused,
 iter=final
 asclite=true
