@@ -5,7 +5,7 @@
 cmd=run.pl
 stage=0
 min_lmwt=5
-max_lmwt=20
+max_lmwt=17
 reverse=false
 iter=final
 word_ins_penalty=0.0,0.5,1.0
