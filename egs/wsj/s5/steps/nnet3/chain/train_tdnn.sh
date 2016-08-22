@@ -78,9 +78,6 @@ exit_stage=-100 # you can set this to terminate the training early.  Exits befor
 
 # count space-separated fields in splice_indexes to get num-hidden-layers.
 splice_indexes="-4,-3,-2,-1,0,1,2,3,4  0  -2,2  0  -4,4 0"
-pool_type='none'
-pool_window=
-pool_lpfilter_width=
 
 # Format : layer<hidden_layer>/<frame_indices>....layer<hidden_layer>/<frame_indices> "
 # note: hidden layers which are composed of one or more components,
@@ -233,12 +230,6 @@ if [ $stage -le -5 ]; then
     else
       dim_opts="--pnorm-input-dim $pnorm_input_dim --pnorm-output-dim  $pnorm_output_dim"
     fi
-
-    # create the config files for nnet initialization
-    pool_opts=
-    pool_opts=$pool_opts${pool_type:+" --pool-type $pool_type "}
-    pool_opts=$pool_opts${pool_window:+" --pool-window $pool_window "}
-    pool_opts=$pool_opts${pool_lpfilter_width:+" --pool-lpfilter-width $pool_lpfilter_width "}
 
     python steps/nnet3/tdnn/make_configs.py $pool_opts \
       --include-log-softmax=false \

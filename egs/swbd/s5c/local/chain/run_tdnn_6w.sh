@@ -44,9 +44,6 @@ decode_iter=
 # TDNN options
 # this script uses the new tdnn config generator so it needs a final 0 to reflect that the final layer input has no splicing
 # smoothing options
-pool_window=
-pool_type='none'
-pool_lpfilter_width=
 self_repair_scale=0.00001
 # training options
 num_epochs=4
@@ -143,13 +140,9 @@ if [ $stage -le 12 ]; then
   fi
 
   # create the config files for nnet initialization
-  pool_opts=
-  pool_opts=$pool_opts${pool_type:+" --pool-type $pool_type "}
-  pool_opts=$pool_opts${pool_window:+" --pool-window $pool_window "}
-  pool_opts=$pool_opts${pool_lpfilter_width:+" --pool-lpfilter-width $pool_lpfilter_width "}
   repair_opts=${self_repair_scale:+" --self-repair-scale $self_repair_scale "}
 
-  steps/nnet3/tdnn/make_configs.py $pool_opts \
+  steps/nnet3/tdnn/make_configs.py \
     $repair_opts \
     --feat-dir data/${train_set}_hires \
     --ivector-dir exp/nnet3/ivectors_${train_set} \
