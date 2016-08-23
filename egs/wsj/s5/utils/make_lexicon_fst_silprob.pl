@@ -65,10 +65,9 @@ sub is_sil {
   # This function returns true if @_ equals ( $silphone )
   # or something of the form ( "#0", $silphone, "#1" )
   # where the "#0" and "#1" are disambiguation symbols.
-  return ( @_ == 1 && $_[0] eq $silphone ||
-           (@_ == 3 && $_[1] eq $silphone &&
-            $_[0] =~ m/^\#\d+$/ &&
-            $_[0] =~ m/^\#\d+$/));
+  return (( @_ == 1 && ($_[0] eq $silphone || $_[0] =~ m/^${silphone}_/)) ||
+           (@_ == 3 && ($_[1] eq $silphone || $_[1] =~ m/^${silphone}_/) &&
+            $_[0] =~ m/^\#\d+$/ && $_[0] =~ m/^\#\d+$/));
 }
 
 $silbeginprob = -1;
