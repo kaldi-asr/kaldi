@@ -60,6 +60,11 @@ where "nvcc" is installed.
 EOF
 fi
 
+if [[ $(hostname -f) == *.clsp.jhu.edu ]]; then
+  cmd_opts=" --config conf/queue_only_k80.conf --only-k80 false"
+fi
+
+
 dir=exp/nnet3/lstm
 dir=$dir${affix:+_$affix}
 if [ $label_delay -gt 0 ]; then dir=${dir}_ld$label_delay; fi
@@ -82,7 +87,8 @@ if [ $stage -le 7 ]; then
     --recurrent-projection-dim $recurrent_projection_dim \
     --non-recurrent-projection-dim $non_recurrent_projection_dim \
     --label-delay $label_delay \
-    --self-repair-scale 0.00001 \
+    --self-repair-scale-nonlinearity 0.00001 \
+    --self-repair-scale-clipgradient 1.0 \
    $dir/configs || exit 1;
 
 fi
@@ -94,7 +100,7 @@ if [ $stage -le 8 ]; then
   fi
 
   steps/nnet3/train_rnn.py --stage=$train_stage \
-    --cmd="$decode_cmd" \
+    --cmd="$decode_cmd $cmd_opts" \
     --feat.online-ivector-dir=exp/nnet3/ivectors_train \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
     --trainer.num-epochs=$num_epochs \
@@ -122,31 +128,5 @@ if [ $stage -le 8 ]; then
     --dir=$dir  || exit 1;
 fi
 
-# this is just a sample decode of data dirs with segments files
-# the actual decodes are done using local/multi_condition/prep_test_aspire.sh script
-# see run.sh for these details
-graph_dir=exp/tri5a/graph
-if [ $stage -le 9 ]; then
-  if [ -z $extra_left_context ]; then
-    extra_left_context=$chunk_left_context
-  fi
-  if [ -z $extra_right_context ]; then
-    extra_right_context=$chunk_right_context
-  fi
-  if [ -z $frames_per_chunk ]; then
-    frames_per_chunk=$chunk_width
-  fi
-  for data_dir in dev_rvb test_rvb dev_aspire dev test; do
-      (
-      num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-      steps/nnet3/lstm/decode.sh --nj $num_jobs --cmd "$decode_cmd" \
-          --extra-left-context $extra_left_context  \
-          --extra-right-context $extra_right_context  \
-          --frames-per-chunk "$frames_per_chunk" \
-          --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
-         $graph_dir data/${decode_set}_hires $dir/decode_${decode_set} || exit 1;
-      ) &
-  done
-fi
 wait;
 exit 0;
