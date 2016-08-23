@@ -32,15 +32,19 @@ if (@ARGV != 4) {
   print STDERR "except here we include word-dependent silence probabilities\n";
   print STDERR "when making the lexicon FSTs. ";
   print STDERR "For details, see paper \nhttp://danielpovey.com/files/2015_interspeech_silprob.pdf\n\n";
-  print STDERR "The lexiconp_silprob_disambig.txt file should have each line like \n";
-  print STDERR "(pronunciation would have to include disambiguation symbols)\n\n";
-  print STDERR "word p(pronunciation|word) p(sil after|word) correction-factor-for-sil ";
-  print STDERR "correction-factor-for-no-sil phone-1 phone-2 ... phone-N\n\n";
+  print STDERR "The lexiconp_silprob_disambig.txt file should have each line like \n\n";
+  print STDERR "word p(pronunciation|word) p(sil-after|word) correction-term-for-sil ";
+  print STDERR "correction-term-for-no-sil phone-1 phone-2 ... phone-N\n\n";
+  print STDERR "The pronunciation would have to include disambiguation symbols;\n";
+  print STDERR "the 2 correction terms above are computed to reflect how much a \n";
+  print STDERR "word affects the probability of a [non-]silence before it. \n";
+  print STDERR "Please see the paper (link given above) for detailed descriptions\n";
+  print STDERR "for how the 2 terms are computed.\n\n";
   print STDERR "The silprob.txt file contains 4 lines, \n\n";
-  print STDERR "<s> p(sil after|<s>)\n";
-  print STDERR "</s>_s correction-factor-for-sil-for-</s>\n";
-  print STDERR "</s>_n correction-factor-for-no-sil-for-</s>\n";
-  print STDERR "overall p(overall sil)\n\n";
+  print STDERR "<s> p(sil-after|<s>)\n";
+  print STDERR "</s>_s correction-term-for-sil-for-</s>\n";
+  print STDERR "</s>_n correction-term-for-no-sil-for-</s>\n";
+  print STDERR "overall p(overall-sil)\n\n";
   print STDERR "Other files are the same as utils/make_lexicon_fst.pl\n";
 
   exit(1);
