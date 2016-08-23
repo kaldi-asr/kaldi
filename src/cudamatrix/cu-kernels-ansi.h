@@ -218,7 +218,7 @@ void cudaF_block_add_mat_mat(dim3 Gr, dim3 Bl, CuBlockMatrixData *B_cu_data,
 void cudaF_softmax_reduce(size_t Gr, size_t Bl, float *y, const float *x,
                           MatrixDim d, int src_stride);
 void cudaF_log_softmax_reduce(size_t Gr, size_t Bl, float *y, const float *x,
-                              MatrixDim d, int src_stride);
+                              MatrixDim y_dim, int x_stride);
 void cudaF_soft_hinge(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d,
                       int src_stride);
 void cudaF_group_pnorm(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d,
@@ -479,7 +479,7 @@ void cudaD_block_add_mat_mat(dim3 Gr, dim3 Bl, CuBlockMatrixData *B_cu_data,
 void cudaD_softmax_reduce(size_t Gr, size_t Bl, double *y, const double *x,
                           MatrixDim d, int src_stride);
 void cudaD_log_softmax_reduce(size_t Gr, size_t Bl, double *y, const double *x,
-                              MatrixDim d, int src_stride);
+                              MatrixDim y_dim, int x_stride);
 void cudaD_soft_hinge(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d,
                       int src_stride);
 void cudaD_group_pnorm(dim3 Gr, dim3 Bl, double *y, const double *x,
