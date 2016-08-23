@@ -186,5 +186,3 @@ local/multi_condition/run_nnet2_ms_disc.sh
 
 
 # see local/{chain,nnet3}/* for nnet3 scripts
-
-

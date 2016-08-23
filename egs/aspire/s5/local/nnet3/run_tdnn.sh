@@ -72,30 +72,7 @@ if [ $stage -le 8 ]; then
 
 fi
 
-if [ $stage -le 9 ]; then
-  # dump iVectors for the testing data.
-  for data_dir in dev_rvb test_rvb dev_aspire dev test; do
-    steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 20 \
-      data/${data_dir}_hires exp/nnet3/extractor exp/nnet3/ivectors_${data_dir} || exit 1;
-  done
-fi
-
-# this is just a sample decode of data dirs with segments files
-# the actual decodes are done using local/multi_condition/prep_test_aspire.sh script
-# see run.sh for these details
-graph_dir=exp/tri5a/graph
-if [ $stage -le 9 ]; then
-  for data_dir in dev_rvb test_rvb dev_aspire dev test; do
-    (
-    num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-    steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" \
-        --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
-       $graph_dir data/${decode_set}_hires $dir/decode_${decode_set} || exit 1;
-    ) &
-  done
-fi
-wait;
-
+exit 0;
 
 #ASpIRE decodes
 
