@@ -14,31 +14,31 @@ mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
 languages=local/general_lr_closed_set_langs.txt
 
+data_root=/export/corpora/LDC
 # Training data sources
-local/make_sre_2008_train.pl /export/corpora5/LDC/LDC2011S05 data
-local/make_callfriend.pl /export/corpora/LDC/LDC96S60 vietnamese data
-local/make_callfriend.pl /export/corpora/LDC/LDC96S59 tamil data
-local/make_callfriend.pl /export/corpora/LDC/LDC96S53 japanese data
-local/make_callfriend.pl /export/corpora/LDC/LDC96S52 hindi data
-local/make_callfriend.pl /export/corpora/LDC/LDC96S51 german data
-local/make_callfriend.pl /export/corpora/LDC/LDC96S50 farsi data
-local/make_callfriend.pl /export/corpora5/LDC/LDC96S48 french data
-local/make_callfriend.pl /export/corpora5/LDC/LDC96S49 arabic.standard data
-local/make_callfriend.pl /export/corpora5/LDC/LDC96S54 korean data
-local/make_callfriend.pl /export/corpora5/LDC/LDC96S55 chinese.mandarin.mainland data
-local/make_callfriend.pl /export/corpora5/LDC/LDC96S56 chinese.mandarin.taiwan data
-local/make_callfriend.pl /export/corpora5/LDC/LDC96S57 spanish.caribbean data
-local/make_callfriend.pl /export/corpora5/LDC/LDC96S58 spanish.noncaribbean data
-local/make_lre96.pl /export/corpora/NIST/lid96e1 data
-local/make_lre03.pl /export/corpora4/LDC/LDC2006S31 data
-local/make_lre05.pl /export/corpora5/LDC/LDC2008S05 data
-local/make_lre07_train.pl /export/corpora5/LDC/LDC2009S05 data
+local/make_sre_2008_train.pl $data_root/LDC2011S05 data
+local/make_callfriend.pl $data_root/LDC96S60 vietnamese data
+local/make_callfriend.pl $data_root/LDC96S59 tamil data
+local/make_callfriend.pl $data_root/LDC96S53 japanese data
+local/make_callfriend.pl $data_root/LDC96S52 hindi data
+local/make_callfriend.pl $data_root/LDC96S51 german data
+local/make_callfriend.pl $data_root/LDC96S50 farsi data
+local/make_callfriend.pl $data_root/LDC96S48 french data
+local/make_callfriend.pl $data_root/LDC96S49 arabic.standard data
+local/make_callfriend.pl $data_root/LDC96S54 korean data
+local/make_callfriend.pl $data_root/LDC96S55 chinese.mandarin.mainland data
+local/make_callfriend.pl $data_root/LDC96S56 chinese.mandarin.taiwan data
+local/make_callfriend.pl $data_root/LDC96S57 spanish.caribbean data
+local/make_callfriend.pl $data_root/LDC96S58 spanish.noncaribbean data
+local/make_lre03.pl $data_root/LDC/LDC2006S31 data
+local/make_lre05.pl $data_root/LDC/LDC2008S05 data
+local/make_lre07_train.pl $data_root/LDC2009S05 data
 local/make_lre09.pl /export/corpora5/NIST/LRE/LRE2009/eval data
 
 # Make the evaluation data set. We're concentrating on the General Language
 # Recognition Closed-Set evaluation, so we remove the dialects and filter
 # out the unknown languages used in the open-set evaluation.
-local/make_lre07.pl /export/corpora5/LDC/LDC2009S04 data/lre07_all
+local/make_lre07.pl $data_root/LDC2009S04 data/lre07_all
 
 cp -r data/lre07_all data/lre07
 utils/filter_scp.pl -f 2 $languages <(lid/remove_dialect.pl data/lre07_all/utt2lang) \
