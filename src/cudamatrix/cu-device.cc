@@ -562,8 +562,10 @@ void CuDevice::CheckGpuHealth() {
   }
 */
 
-CuDevice::CuDevice(): active_gpu_id_(-1), verbose_(true),
-                      allocator_(CuAllocatorOptions()) { }
+CuDevice::CuDevice() :
+    active_gpu_id_(-1), verbose_(true), random_stride_mode_(false),
+    allocator_(CuAllocatorOptions()) {
+}
 
 
 CuDevice::~CuDevice() {
