@@ -1430,6 +1430,10 @@ static void UnitTestCuMatrixAddVecVec() {
 
 template<typename Real>
 static void UnitTestCuMatrixAddMatMatBatched() {
+  // Random stride is disabled as AddMatMatBatched requires consistent stride
+#if HAVE_CUDA == 1
+  CuDevice::Instantiate().SetRandomStrideMode(false);
+#endif
   const int32 batchCount = 10;
   std::vector<Matrix<Real>* > Ha(batchCount), Hb(batchCount), Hc1(batchCount), Hc2(batchCount);
   std::vector<CuMatrix<Real>* > Da(batchCount), Db(batchCount), Dc1(batchCount), Dc2(batchCount);
@@ -1492,6 +1496,9 @@ static void UnitTestCuMatrixAddMatMatBatched() {
     delete Da[i]; delete Db[i]; delete Dc1[i]; delete Dc2[i];
     delete DA[i]; delete DB[i]; delete DC1[i]; delete DC2[i];
   }
+#if HAVE_CUDA == 1
+  CuDevice::Instantiate().SetRandomStrideMode(true);
+#endif
 }
 
 
@@ -2649,6 +2656,7 @@ template<typename Real> void CudaMatrixUnitTest() {
 int main() {
   for (int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1
+    CuDevice::Instantiate().SetRandomStrideMode(true);
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no");
     else
