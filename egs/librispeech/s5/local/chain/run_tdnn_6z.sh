@@ -65,7 +65,7 @@ local/chain/run_chain_common.sh --stage $stage \
 if [ $stage -le 16 ]; then
   echo "$0: creating neural net configs";
   # create the config files for nnet initialization
-  repair_opts=${self_repair_scale:+" --self-repair-scale $self_repair_scale "}
+  repair_opts=${self_repair_scale:+" --self-repair-scale-nonlinearity $self_repair_scale "}
 
   steps/nnet3/tdnn/make_configs.py $repair_opts \
     --feat-dir $train_data_dir \

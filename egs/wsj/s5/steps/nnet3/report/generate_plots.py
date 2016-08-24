@@ -283,8 +283,11 @@ def GenerateClippedProportionPlots(exp_dir, output_dir, plot, comparison_dir = N
         main_component_names.sort()
         plot_component_names = set(main_component_names)
         for dir in dirs:
-            component_names = set(stats_per_dir[dir]['cp_per_iter_per_component'].keys())
-            plot_component_names = plot_component_names.intersection(component_names)
+            try:
+                component_names = set(stats_per_dir[dir]['cp_per_iter_per_component'].keys())
+                plot_component_names = plot_component_names.intersection(component_names)
+            except KeyError:
+                continue
         plot_component_names = list(plot_component_names)
         plot_component_names.sort()
         if plot_component_names != main_component_names:

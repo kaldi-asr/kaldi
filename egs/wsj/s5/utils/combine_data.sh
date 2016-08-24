@@ -9,7 +9,7 @@
 # about what these directories contain.
 
 # Begin configuration section.
-extra_files= # specify addtional files in 'src-data-dir' to merge, ex. "file1 file2 ..."
+extra_files= # specify additional files in 'src-data-dir' to merge, ex. "file1 file2 ..."
 skip_fix=false # skip the fix_data_dir.sh in the end
 # End configuration section.
 
@@ -20,7 +20,8 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 if [ $# -lt 2 ]; then
   echo "Usage: combine_data.sh [--extra-files 'file1 file2'] <dest-data-dir> <src-data-dir1> <src-data-dir2> ..."
-  echo "Note, files that don't appear in first source dir will not be added even if they appear in later ones."
+  echo "Note, files that don't appear in all source dirs will not be combined,"
+  echo "with the exception of utt2uniq and segments, which are created where necessary."
   exit 1
 fi
 
@@ -63,11 +64,37 @@ if $has_utt2uniq; then
     fi
   done | sort -k1 > $dest/utt2uniq
   echo "$0: combined utt2uniq"
+else
+  echo "$0 [info]: not combining utt2uniq as it does not exist"
 fi
 # some of the old scripts might provide utt2uniq as an extrafile, so just remove it
 extra_files=$(echo "$extra_files"|sed -e "s/utt2uniq//g")
 
-for file in utt2spk utt2lang utt2dur feats.scp text cmvn.scp segments reco2file_and_channel wav.scp spk2gender $extra_files; do
+# segments are treated similarly to utt2uniq. If it exists in some, but not all
+# src directories, then we generate segments where necessary.
+has_segments=false
+for in_dir in $*; do
+  if [ -f $in_dir/segments ]; then
+    has_segments=true
+    break
+  fi
+done
+
+if $has_segments; then
+  for in_dir in $*; do
+    if [ ! -f $in_dir/segments ]; then
+      echo "$0 [info]: will generate missing segments for $in_dir" 1>&2
+      utils/data/get_segments_for_data.sh $in_dir
+    else
+      cat $in_dir/segments
+    fi
+  done | sort -k1 > $dest/segments
+  echo "$0: combined segments"
+else
+  echo "$0 [info]: not combining segments as it does not exist"
+fi
+
+for file in utt2spk utt2lang utt2dur feats.scp text cmvn.scp reco2file_and_channel wav.scp spk2gender $extra_files; do
   exists_somewhere=false
   absent_somewhere=false
   for d in $*; do

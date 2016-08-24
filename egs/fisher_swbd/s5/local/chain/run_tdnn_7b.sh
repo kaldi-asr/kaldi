@@ -80,7 +80,7 @@ if [ $stage -le 12 ]; then
 
   # create the config files for nnet initialization
   steps/nnet3/tdnn/make_configs.py \
-    --self-repair-scale 0.00001 \
+    --self-repair-scale-nonlinearity 0.00001 \
     --feat-dir data/${train_set}_hires \
     --ivector-dir exp/nnet3/ivectors_${train_set} \
     --tree-dir $treedir \

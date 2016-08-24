@@ -1,5 +1,13 @@
 #!/bin/bash
 
+current_path=`pwd`
+current_dir=`basename "$current_path"`
+
+if [ "tools" != "$current_dir" ]; then
+    echo "You should run this script in tools/ directery!!"
+    exit 1
+fi
+
 if [ ! -f liblbfgs-1.10 ]; then
     echo Intalling libLBFGS library to support MaxEnt LMs
     bash extras/install_liblbfgs.sh || exit 1
@@ -65,5 +73,5 @@ cd ..
 ) >> env.sh
 
 echo >&2 "Installation of SRILM finished successfully"
-echo >&2 "Please source the tools/env.sh in your path.sh to enable it"
+echo >&2 "Please source the tools/extras/env.sh in your path.sh to enable it"
 
