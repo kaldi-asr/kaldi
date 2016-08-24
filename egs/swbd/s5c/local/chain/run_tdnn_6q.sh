@@ -3,7 +3,7 @@
 # _6q is as _5n (which is a double-frame-rate system), but putting back
 # the iVectors and otherwise changing the configuration as in 5j -> 6g,
 # like 'rebasing' the changes onto 6g.
-# (note, I forgot the self-repair-scale, and I probably should have used
+# (note, I forgot the self-repair-scale-nonlinearity, and I probably should have used
 # 6h as the baseline because it has --xent-separate-forward-affine=true;
 # note, this experiment doesn't have --xent-separate-forward-affine=true but
 # it would have been better to have it (retrying as 6r)

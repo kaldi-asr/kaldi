@@ -137,7 +137,7 @@ if [ $stage -le 11 ]; then
 
   # create the config files for nnet initialization
   steps/nnet3/tdnn/make_configs.py \
-    --self-repair-scale 0.00001 \
+    --self-repair-scale-nonlinearity 0.00001 \
     --feat-dir data/train_rvb_hires \
     --ivector-dir exp/nnet3/ivectors_train_min${min_seg_len} \
     --tree-dir $treedir \

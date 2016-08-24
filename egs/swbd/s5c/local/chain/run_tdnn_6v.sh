@@ -131,7 +131,7 @@ if [ $stage -le 12 ]; then
     dim_opts="--pnorm-input-dim $pnorm_input_dim --pnorm-output-dim  $pnorm_output_dim"
   fi
 
-  repair_opts=${self_repair_scale:+" --self-repair-scale $self_repair_scale "}
+  repair_opts=${self_repair_scale:+" --self-repair-scale-nonlinearity $self_repair_scale "}
 
   steps/nnet3/tdnn/make_configs.py \
     $repair_opts \

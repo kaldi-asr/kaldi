@@ -55,7 +55,12 @@ class CuDevice {
   inline void* Malloc(size_t size) { return allocator_.Malloc(size); }
 
   inline void* MallocPitch(size_t row_bytes, size_t num_rows, size_t *pitch) {
-    return allocator_.MallocPitch(row_bytes, num_rows, pitch);
+    if (random_stride_mode_) {
+      return allocator_.MallocPitch(row_bytes + 128 * (rand() & 1), num_rows,
+                                    pitch);
+    } else {
+      return allocator_.MallocPitch(row_bytes, num_rows, pitch);
+    }
   }
   inline void Free(void *ptr) { allocator_.Free(ptr); }
 
@@ -106,6 +111,19 @@ class CuDevice {
   /// Otherwise, return 16, which is the stride used for CPU matrices.
   int32 GetMatrixAlignment() const;
 
+  /// Call SetRandomStrideMode(true) to activate a mode where calls
+  /// to MallocPitch will purposely allocate arrays with randomized pitch
+  /// (inconsistent between calls).  This is only useful testing code.
+  /// This function returns the previous mode, where true means randomized
+  /// pitch.  Note that you cannot ever rely on the strides from MallocPitch()
+  /// being consistent for the same request, but in practice they tend to be
+  /// consistent unless you are close to running out of memory.
+  bool SetRandomStrideMode(bool mode) {
+    bool old_mode = random_stride_mode_;
+    random_stride_mode_ = mode;
+    return old_mode;
+  }
+
  private:
   CuDevice();
   CuDevice(CuDevice&); // Disallow.
@@ -150,6 +168,8 @@ class CuDevice {
   cudaDeviceProp properties_;
 
   bool verbose_;
+
+  bool random_stride_mode_;
 
   CuMemoryAllocator allocator_;
 
