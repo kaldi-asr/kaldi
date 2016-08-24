@@ -45,6 +45,8 @@ def GetArgs():
                         help="Probability of adding point-source noises, e.g. 0 <= p <= 1")
     parser.add_argument("--isotropic-noise-addition-probability", type=float, default = 1.0,
                         help="Probability of adding isotropic noises, e.g. 0 <= p <= 1")
+    parser.add_argument("--rir-smoothing-weight", type=float, default = 0.3,
+                        help="Smoothing weight for the RIR probabilties, e.g. 0 <= p <= 1. If p = 0, no smoothing will be done.")
     parser.add_argument("--max-noises-per-minute", type=int, default = 2,
                         help="This controls the maximum number of point-source noises that could be added to a recording according to its duration")
     parser.add_argument('--random-seed', type=int, default=0, help='seed to be used in the randomization of impulses and noises')
@@ -91,6 +93,9 @@ def CheckArgs(args):
 
     if args.isotropic_noise_addition_probability < 0 or args.isotropic_noise_addition_probability > 1:
         raise Exception("--isotropic-noise-addition-probability must be between 0 and 1")
+    
+    if args.rir_smoothing_weight < 0 or args.rir_smoothing_weight > 1:
+        raise Exception("--rir-smoothing-weight must be between 0 and 1")
 
     if args.max_noises_per_minute < 0:
         raise Exception("--max-noises-per-minute cannot be negative")
@@ -374,9 +379,10 @@ def CreateReverberatedCopy(input_dir,
     if not os.path.isfile(input_dir + "/reco2dur"):
         print("Getting the duration of the recordings...");
         read_entire_file="false"
-        if "sox" in wav_scp[wav_scp.keys()[0]]:
-            read_entire_file="true"
-
+        for value in wav_scp.values():
+            if "sox" in value and "speed" in value:
+                read_entire_file="true"
+                break
         data_lib.RunKaldiCommand("wav-to-duration --read-entire-file={1} scp:{0}/wav.scp ark,t:{0}/reco2dur".format(input_dir, read_entire_file))
     durations = ParseFileToDict(input_dir + "/reco2dur", value_processor = lambda x: float(x[0]))
     foreground_snr_array = map(lambda x: float(x), foreground_snr_string.split(':'))
@@ -431,7 +437,7 @@ def SmoothProbabilityDistribution(list, smoothing_weight=0.3):
 # Each rir object in the list contains the following attributes:
 # rir_id, room_id, receiver_position_id, source_position_id, rt60, drr, probability
 # Please refer to the help messages in the parser for the meaning of these attributes
-def ParseRirList(rir_list_file_array):
+def ParseRirList(rir_list_file_array, smoothing_weight):
     rir_parser = argparse.ArgumentParser()
     rir_parser.add_argument('--rir-id', type=str, required=True, help='This id is unique for each RIR and the noise may associate with a particular RIR by refering to this id')
     rir_parser.add_argument('--room-id', type=str, required=True, help='This is the room that where the RIR is generated')
@@ -453,7 +459,7 @@ def ParseRirList(rir_list_file_array):
         rir = rir_parser.parse_args(shlex.split(line))
         rir_list.append(rir)
 
-    return SmoothProbabilityDistribution(rir_list)
+    return SmoothProbabilityDistribution(rir_list, smoothing_weight)
 
 # This dunction checks if the inputs are approximately equal assuming they are floats.
 def almost_equal(value_1, value_2, accuracy = 10**-8):
@@ -534,7 +540,7 @@ def ParseNoiseList(noise_list_file_array):
 def Main():
     args = GetArgs()
     random.seed(args.random_seed)
-    rir_list = ParseRirList(args.rir_list_file_array)
+    rir_list = ParseRirList(args.rir_list_file_array, args.rir_smoothing_weight)
     print("Number of RIRs is {0}".format(len(rir_list)))
     pointsource_noise_list = []
     iso_noise_dict = {}
