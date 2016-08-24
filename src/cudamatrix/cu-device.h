@@ -56,7 +56,9 @@ class CuDevice {
 
   inline void* MallocPitch(size_t row_bytes, size_t num_rows, size_t *pitch) {
     if (random_stride_mode_) {
-      return allocator_.MallocPitch(row_bytes + 128 * (rand() & 1), num_rows,
+      // The pitch bucket size is hardware dependent.
+      // It is 512 on K40c with CUDA 7.5
+      return allocator_.MallocPitch(row_bytes + 512 * (rand() & 1), num_rows,
                                     pitch);
     } else {
       return allocator_.MallocPitch(row_bytes, num_rows, pitch);
@@ -113,7 +115,7 @@ class CuDevice {
 
   /// Call SetRandomStrideMode(true) to activate a mode where calls
   /// to MallocPitch will purposely allocate arrays with randomized pitch
-  /// (inconsistent between calls).  This is only useful testing code.
+  /// (inconsistent between calls).  This is only useful for testing code.
   /// This function returns the previous mode, where true means randomized
   /// pitch.  Note that you cannot ever rely on the strides from MallocPitch()
   /// being consistent for the same request, but in practice they tend to be

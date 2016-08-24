@@ -1432,7 +1432,7 @@ template<typename Real>
 static void UnitTestCuMatrixAddMatMatBatched() {
   // Random stride is disabled as AddMatMatBatched requires consistent stride
 #if HAVE_CUDA == 1
-  CuDevice::Instantiate().SetRandomStrideMode(false);
+  bool old_mode = CuDevice::Instantiate().SetRandomStrideMode(false);
 #endif
   const int32 batchCount = 10;
   std::vector<Matrix<Real>* > Ha(batchCount), Hb(batchCount), Hc1(batchCount), Hc2(batchCount);
@@ -1497,7 +1497,7 @@ static void UnitTestCuMatrixAddMatMatBatched() {
     delete DA[i]; delete DB[i]; delete DC1[i]; delete DC2[i];
   }
 #if HAVE_CUDA == 1
-  CuDevice::Instantiate().SetRandomStrideMode(true);
+  CuDevice::Instantiate().SetRandomStrideMode(old_mode);
 #endif
 }
 
