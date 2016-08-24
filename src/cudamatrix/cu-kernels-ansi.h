@@ -119,8 +119,8 @@ void cudaF_diff_group_pnorm(dim3 Gr, dim3 Bl, float *id, const float *iv,
                             int iv_stride, int ov_stride, int od_stride,
                             int group_size, float power);
 void cudaF_calc_group_max_deriv(dim3 Gr, dim3 Bl, float *y, const float *x1,
-                                const float *x2, MatrixDim d, int src_stride,
-                                int group_size);
+                                const float *x2, MatrixDim y_dim, int x1_stride,
+                                int x2_stride, int group_size);
 void cudaF_div_rows_vec(dim3 Gr, dim3 Bl, float *mat, const float *vec_div,
                         MatrixDim d);
 void cudaF_add_mat(dim3 Gr, dim3 Bl, float alpha, const float *src, float *dst,
@@ -377,8 +377,8 @@ void cudaD_diff_group_pnorm(dim3 Gr, dim3 Bl, double *id, const double *iv,
                             MatrixDim id_dim, int iv_stride, int ov_stride,
                             int od_stride, int group_size, double power);
 void cudaD_calc_group_max_deriv(dim3 Gr, dim3 Bl, double *y, const double *x1,
-                                const double *x2, MatrixDim d, int src_stride,
-                                int group_size);
+                                const double *x2, MatrixDim y_dim,
+                                int x1_stride, int x2_stride, int group_size);
 void cudaD_div_rows_vec(dim3 Gr, dim3 Bl, double *mat, const double *vec_div,
                         MatrixDim d);
 void cudaD_add_mat(dim3 Gr, dim3 Bl, double alpha, const double *src,
