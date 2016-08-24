@@ -3,7 +3,7 @@
 # Comparing with 5e which is the most recent baseline we actually decoded,
 # 5s is as 5e but with jesus-forward-output-dim reduced 1800->1700,
 # jesus-hidden-dim reduced 7500 to 5000, and
-# and the new option --self-repair-scale 0.00001 added.
+# and the new option --self-repair-scale-nonlinearity 0.00001 added.
 # Also compare 5t and 5v which have even smaller j3sus-hidden-dims.
 
 #./compare_wer.sh 5e 5s 5t
@@ -21,7 +21,7 @@
 # to compensate for the fact that more of the output dimensions are now being
 # usefully used.
 
-# _5p is as _5e but adding (new option) --self-repair-scale 0.00001, to repair
+# _5p is as _5e but adding (new option) --self-repair-scale-nonlinearity 0.00001, to repair
 # ReLUs that are over or under-saturated.
 
 # _5e is as _5b, but reducing --xent-regularize from 0.2 to 0.1 (since based on
@@ -392,7 +392,7 @@ if [ $stage -le 12 ]; then
     --leaky-hmm-coefficient 0.1 \
     --l2-regularize 0.00005 \
     --egs-dir exp/chain/tdnn_2y_sp/egs \
-    --jesus-opts "--jesus-forward-input-dim 500  --jesus-forward-output-dim 1700 --jesus-hidden-dim 5000 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25  --self-repair-scale 0.00001" \
+    --jesus-opts "--jesus-forward-input-dim 500  --jesus-forward-output-dim 1700 --jesus-hidden-dim 5000 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25  --self-repair-scale-nonlinearity 0.00001" \
     --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -3,0,3 -3,0,3 -6,-3,0" \
     --apply-deriv-weights false \
     --frames-per-iter 1200000 \

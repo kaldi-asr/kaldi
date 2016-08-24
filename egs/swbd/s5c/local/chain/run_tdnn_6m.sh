@@ -446,7 +446,7 @@ if [ $stage -le 12 ]; then
     --xent-regularize 0.1 \
     --leaky-hmm-coefficient 0.1 \
     --l2-regularize 0.00005 \
-    --jesus-opts "--jesus-forward-input-dim 600  --jesus-forward-output-dim 1700 --jesus-hidden-dim 0 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25  --self-repair-scale 0.00001 --xent-separate-forward-affine=true" \
+    --jesus-opts "--jesus-forward-input-dim 600  --jesus-forward-output-dim 1700 --jesus-hidden-dim 0 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25  --self-repair-scale-nonlinearity 0.00001 --xent-separate-forward-affine=true" \
     --splice-indexes "-1,0,1 -2,-1,0,1,2 -4,-2,0,2 -4,0,4 -4,0,4 -4,0,4" \
     --apply-deriv-weights false \
     --frames-per-iter 1500000 \
