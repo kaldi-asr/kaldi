@@ -325,9 +325,10 @@ inline void cuda_diff_group_pnorm(dim3 Gr, dim3 Bl, float *id, const float *iv,
 }
 inline void cuda_calc_group_max_deriv(dim3 Gr, dim3 Bl, float *y,
                                       const float *x1, const float *x2,
-                                      MatrixDim d, int src_stride,
-                                      int group_size) {
-  cudaF_calc_group_max_deriv(Gr, Bl, y, x1, x2, d, src_stride, group_size);
+                                      MatrixDim y_dim, int x1_stride,
+                                      int x2_stride, int group_size) {
+  cudaF_calc_group_max_deriv(Gr, Bl, y, x1, x2, y_dim, x1_stride, x2_stride,
+                             group_size);
 }
 inline void cuda_add_mat(dim3 Gr, dim3 Bl, float alpha, const float *src,
                          float *dst, MatrixDim d, int src_stride, int A_trans) {
@@ -842,9 +843,10 @@ inline void cuda_diff_group_pnorm(dim3 Gr, dim3 Bl, double *id,
 }
 inline void cuda_calc_group_max_deriv(dim3 Gr, dim3 Bl, double *y,
                                       const double *x1, const double *x2,
-                                      MatrixDim d, int src_stride,
-                                      int group_size) {
-  cudaD_calc_group_max_deriv(Gr, Bl, y, x1, x2, d, src_stride, group_size);
+                                      MatrixDim y_dim, int x1_stride,
+                                      int x2_stride, int group_size) {
+  cudaD_calc_group_max_deriv(Gr, Bl, y, x1, x2, y_dim, x1_stride, x2_stride,
+                             group_size);
 }
 inline void cuda_add_mat(dim3 Gr, dim3 Bl, double alpha, const double *src,
                          double *dst, MatrixDim d, int src_stride,

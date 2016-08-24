@@ -869,7 +869,7 @@ void CuMatrixBase<Real>::GroupMaxDeriv(const CuMatrixBase<Real> &src1,
                  n_blocks(NumRows(), CU2DBLOCK));
     cuda_calc_group_max_deriv(dimGrid, dimBlock, this->data_,
                               src1.Data(), src2.Data(), Dim(),
-                              src2.Stride(), group_size);
+                              src1.Stride(), src2.Stride(), group_size);
     CU_SAFE_CALL(cudaGetLastError());
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
