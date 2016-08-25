@@ -10,6 +10,7 @@ cmd=run.pl
 stage=0
 min_lmwt=7
 max_lmwt=17
+iter=final
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
