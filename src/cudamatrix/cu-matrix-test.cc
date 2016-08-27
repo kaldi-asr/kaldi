@@ -1111,6 +1111,26 @@ template<typename Real> static void UnitTestCuMatrixAddMatMatElements() {
   KALDI_ASSERT(M.Sum() != 0.0);
 }
 
+template<typename Real> static void UnitTestCuMatrixAddMatMatDivMat() {
+  // M = a * b / c (by element; when c = 0, M = a)
+  MatrixIndexT dimM = 100 + Rand() % 255, dimN = 100 + Rand() % 255;
+  CuMatrix<Real> M(dimM, dimN), A(dimM, dimN), B(dimM, dimN), C(dimM, dimN);
+  CuMatrix<Real> ref(dimM, dimN);
+  M.SetRandn();
+  A.SetRandn();
+  B.SetRandn();
+  C.SetRandn();
+
+  M.AddMatMatDivMat(A,B,C);
+  ref.AddMatMatElements(1.0, A, B, 0.0);
+  ref.DivElements(C);
+  AssertEqual(M, ref);
+
+  C.SetZero();
+  M.AddMatMatDivMat(A,B,C);
+  AssertEqual(M, A);
+}
+
 template<typename Real>
 static void UnitTestCuMatrixDivRowsVec() {
   MatrixIndexT dimM = 1000, dimN = 5;
@@ -2642,6 +2662,7 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixAddDiagVecMat<Real>();
   UnitTestCuMatrixAddMatDiagVec<Real>();
   UnitTestCuMatrixAddMatMatElements<Real>();
+  UnitTestCuMatrixAddMatMatDivMat<Real>();
   UnitTestCuTanh<Real>();
   UnitTestCuCholesky<Real>();
   UnitTestCuDiffTanh<Real>();
