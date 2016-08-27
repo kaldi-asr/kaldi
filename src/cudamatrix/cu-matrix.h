@@ -280,7 +280,7 @@ class CuMatrixBase {
                        const CuMatrixBase<Real> &output, Real power);
 
   /// Differentiate backward through the GroupPnorm function.
-  /// It is a combination of GroupPnormDeriv and MulRowsGroupMax.
+  /// It is a combination of GroupPnormDeriv and MulRowsGroupMat.
   void DiffGroupPnorm(const CuMatrixBase<Real> &in_value,
                       const CuMatrixBase<Real> &out_value,
                       const CuMatrixBase<Real> &out_deriv, Real power);
