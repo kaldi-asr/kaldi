@@ -429,15 +429,16 @@ static void _mul_rows_group_mat(Real *y, const Real *x, MatrixDim d,
 template<typename Real>
 __global__
 static void _calc_pnorm_deriv(Real *deriv, const Real *vec, const Real *norm,
-                              MatrixDim d, int src_stride, int group_size,
-                              Real power) {
+                              MatrixDim deriv_dim, int vec_stride,
+                              int norm_stride, int group_size, Real power) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int j = blockIdx.y * blockDim.y + threadIdx.y;
-  if (j < d.rows && i < d.cols) {
-    int dst_index = i + j * d.stride, src_index = i / group_size
-        + j * src_stride;
-    Real vec_element = vec[dst_index], // The element of the original vector.
-        norm_element = norm[src_index]; // this is the pnorm
+  if (j < deriv_dim.rows && i < deriv_dim.cols) {
+    int deriv_index = i + j * deriv_dim.stride;
+    int vec_index = i + j * vec_stride;
+    int norm_index = i / group_size + j * norm_stride;
+    Real vec_element = vec[vec_index], // The element of the original vector.
+        norm_element = norm[norm_index]; // this is the pnorm
     Real vec_element_sign = (vec_element > 0 ? 1 : -1);
     Real ans;
     if (norm_element <= 0.0)
@@ -445,7 +446,7 @@ static void _calc_pnorm_deriv(Real *deriv, const Real *vec, const Real *norm,
     else
       ans = vec_element_sign * pow(std::abs(vec_element), power - 1)
           * pow(norm_element, 1 - power);
-    deriv[dst_index] = ans;
+    deriv[deriv_index] = ans;
   }
 }
 
@@ -501,17 +502,19 @@ void _diff_group_pnorm(Real *id, const Real *iv, const Real *ov, const Real* od,
 template<typename Real>
 __global__
 static void _calc_group_max_deriv(Real *deriv, const Real *vec,
-                                  const Real *maxv, MatrixDim d, int src_stride,
+                                  const Real *maxv, MatrixDim deriv_dim,
+                                  int vec_stride, int maxv_stride,
                                   int group_size) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int j = blockIdx.y * blockDim.y + threadIdx.y;
-  if (j < d.rows && i < d.cols) {
-    int dst_index = i + j * d.stride, src_index = i / group_size
-        + j * src_stride;
-    Real vec_element = vec[dst_index], // The element of the original vector.
-        max_element = maxv[src_index]; // this is the max value
+  if (j < deriv_dim.rows && i < deriv_dim.cols) {
+    int deriv_index = i + j * deriv_dim.stride;
+    int vec_index = i + j * vec_stride;
+    int maxv_index = i / group_size + j * maxv_stride;
+    Real vec_element = vec[vec_index], // The element of the original vector.
+        max_element = maxv[maxv_index]; // this is the max value
     Real ans = (max_element == vec_element ? 1.0 : 0.0);
-    deriv[dst_index] = ans;
+    deriv[deriv_index] = ans;
   }
 }
 
@@ -2761,9 +2764,10 @@ void cudaF_mul_rows_group_mat(dim3 Gr, dim3 Bl, float *y, const float *x,
 }
 
 void cudaF_calc_pnorm_deriv(dim3 Gr, dim3 Bl, float *y, const float *x1,
-                            const float *x2, MatrixDim d, int src_stride,
-                            int group_size, float power) {
-  _calc_pnorm_deriv<<<Gr,Bl>>>(y, x1, x2, d, src_stride, group_size, power);
+                            const float *x2, MatrixDim y_dim, int x1_stride,
+                            int x2_stride, int group_size, float power) {
+  _calc_pnorm_deriv<<<Gr,Bl>>>(y, x1, x2, y_dim, x1_stride, x2_stride,
+      group_size, power);
 }
 
 void cudaF_diff_group_pnorm(dim3 Gr, dim3 Bl, float *id, const float *iv,
@@ -2775,9 +2779,10 @@ void cudaF_diff_group_pnorm(dim3 Gr, dim3 Bl, float *id, const float *iv,
 }
 
 void cudaF_calc_group_max_deriv(dim3 Gr, dim3 Bl, float *y, const float *x1,
-                                const float *x2, MatrixDim d, int src_stride,
-                                int group_size) {
-  _calc_group_max_deriv<<<Gr,Bl>>>(y, x1, x2, d, src_stride, group_size);
+                                const float *x2, MatrixDim y_dim, int x1_stride,
+                                int x2_stride, int group_size) {
+  _calc_group_max_deriv<<<Gr,Bl>>>(y, x1, x2, y_dim, x1_stride, x2_stride,
+      group_size);
 }
 
 void cudaF_div_rows_vec(dim3 Gr, dim3 Bl, float* mat, const float* vec_div,
@@ -3388,9 +3393,10 @@ void cudaD_mul_rows_group_mat(dim3 Gr, dim3 Bl, double* y, const double* x,
 }
 
 void cudaD_calc_pnorm_deriv(dim3 Gr, dim3 Bl, double*y, const double* x1,
-                            const double* x2, MatrixDim d, int src_stride,
-                            int group_size, double power) {
-  _calc_pnorm_deriv<<<Gr,Bl>>>(y, x1, x2, d, src_stride, group_size, power);
+                            const double* x2, MatrixDim y_dim, int x1_stride,
+                            int x2_stride, int group_size, double power) {
+  _calc_pnorm_deriv<<<Gr,Bl>>>(y, x1, x2, y_dim, x1_stride, x2_stride,
+      group_size, power);
 }
 
 void cudaD_diff_group_pnorm(dim3 Gr, dim3 Bl, double *id, const double *iv,
@@ -3402,9 +3408,10 @@ void cudaD_diff_group_pnorm(dim3 Gr, dim3 Bl, double *id, const double *iv,
 }
 
 void cudaD_calc_group_max_deriv(dim3 Gr, dim3 Bl, double*y, const double* x1,
-                                const double* x2, MatrixDim d, int src_stride,
-                                int group_size) {
-  _calc_group_max_deriv<<<Gr,Bl>>>(y, x1, x2, d, src_stride, group_size);
+                                const double* x2, MatrixDim y_dim,
+                                int x1_stride, int x2_stride, int group_size) {
+  _calc_group_max_deriv<<<Gr,Bl>>>(y, x1, x2, y_dim, x1_stride, x2_stride,
+      group_size);
 }
 
 void cudaD_div_rows_vec(dim3 Gr, dim3 Bl, double* mat, const double* vec_div,

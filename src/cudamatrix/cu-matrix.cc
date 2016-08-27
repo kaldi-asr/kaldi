@@ -811,7 +811,8 @@ void CuMatrixBase<Real>::GroupPnormDeriv(const CuMatrixBase<Real> &src1,
     dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK),
                  n_blocks(NumRows(), CU2DBLOCK));
     cuda_calc_pnorm_deriv(dimGrid, dimBlock, this->data_, src1.Data(),
-                          src2.Data(), Dim(), src2.Stride(), group_size, power);
+                          src2.Data(), Dim(), src1.Stride(), src2.Stride(),
+                          group_size, power);
     CU_SAFE_CALL(cudaGetLastError());
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -863,13 +864,13 @@ void CuMatrixBase<Real>::GroupMaxDeriv(const CuMatrixBase<Real> &src1,
   KALDI_ASSERT(this->NumCols() == src2.NumCols() * group_size);
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-   Timer tim;
+    Timer tim;
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK),
                  n_blocks(NumRows(), CU2DBLOCK));
-    cuda_calc_group_max_deriv(dimGrid, dimBlock, this->data_,
-                              src1.Data(), src2.Data(), Dim(),
-                              src2.Stride(), group_size);
+    cuda_calc_group_max_deriv(dimGrid, dimBlock, this->data_, src1.Data(),
+                              src2.Data(), Dim(), src1.Stride(), src2.Stride(),
+                              group_size);
     CU_SAFE_CALL(cudaGetLastError());
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
