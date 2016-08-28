@@ -177,7 +177,7 @@ if [ $stage -le 5 ]; then
       num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
       iter=epoch$x.adj
       
-      steps/nnet3/lstm/decode.sh --nj $num_jobs --cmd "$decode_cmd" --iter $iter \
+      steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" --iter $iter \
         --online-ivector-dir exp/nnet3/ivectors_${decode_set} $context_opts \
         $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_sw1_tg_$iter ;
       if $has_fisher; then
