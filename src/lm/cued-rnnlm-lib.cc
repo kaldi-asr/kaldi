@@ -177,7 +177,9 @@ RNNLM::RNNLM(string inmodelfile_1, string inputwlist_1, string outputwlist_1,
   resetAc = new float[layersizes[1]];
 //  lognormconst = -1; // TODO(hxu) it seems adding this would help, although
                      // it makes more sense to not add it
+//  neu0_ac_hist->GetMatrixPointer()->Set(resetAc);
   memcpy(resetAc, neu0_ac_hist->gethostdataptr(), sizeof(float)*layersizes[1]);
+  KALDI_ASSERT((*neu0_ac_hist->GetMatrixPointer())(layersizes[1] - 1, 0) == resetAc[layersizes[1] - 1]);
 }
 
 void RNNLM::copyToHiddenLayer(const vector<float> &hidden) {
@@ -185,7 +187,7 @@ void RNNLM::copyToHiddenLayer(const vector<float> &hidden) {
   float *dstac;
   assert(hidden.size() == layersizes[1]);
   srcac = hidden.data();
-  dstac = neu0_ac_hist->gethostdataptr(); 
+  dstac = neu0_ac_hist->gethostdataptr(); // TODO(hxu) it might be broken now..
   memcpy (dstac, srcac, sizeof(float)*layersizes[1]);
 }
 
@@ -316,8 +318,9 @@ bool RNNLM::calppl(string testfilename, float intpltwght, string nglmfile) {
   logp_rnn = 0;
   logp_ng = 0;
 
-  for (int i=0; i<layersizes[1]; i++)
-    neu0_ac_hist->assignhostvalue(i, 0, RESETVALUE);
+//  for (int i=0; i<layersizes[1]; i++)
+//    neu0_ac_hist->assignhostvalue(i, 0, RESETVALUE);
+  neu0_ac_hist->GetMatrixPointer()->Set(RESETVALUE);
 
   if (debug > 1) {
     if (flag_intplt) {
@@ -685,14 +688,15 @@ bool RNNLM::calnbest (string testfilename, float intpltwght, string nglmfile) {
 }
 
 void RNNLM::InitVariables() {
-  int i, j;
+//  int i, j;
   counter = 0;
   logp = 0;
   wordcn = 0;
   if (independent) {
-    for (i = 0; i < neu0_ac_hist->rows(); i++)
-      for (j = 0; j < neu0_ac_hist->cols(); j++)
-        neu0_ac_hist->assignhostvalue(i, j, RESETVALUE);
+    neu0_ac_hist->GetMatrixPointer()->Set(RESETVALUE);
+//    for (i = 0; i < neu0_ac_hist->rows(); i++)
+//      for (j = 0; j < neu0_ac_hist->cols(); j++)
+//        neu0_ac_hist->assignhostvalue(i, j, RESETVALUE);
   }
   if (traincritmode == 1 || traincritmode == 2) {
     lognorm_mean = 0;
@@ -1009,16 +1013,18 @@ void RNNLM::setFullVocsize (int n)
 
 void RNNLM::copyRecurrentAc ()
 {
-  float *srcac, *dstac;
+//  float *srcac, *dstac;
+  MatrixBase<real> *srcac, *dstac;
   assert (minibatch == 1);
-  srcac = neu_ac[1]->gethostdataptr();
-  dstac = neu0_ac_hist->gethostdataptr();
-  memcpy (dstac, srcac, sizeof(float) * layersizes[1]);
+  srcac = neu_ac[1]->GetMatrixPointer();
+  dstac = neu0_ac_hist->GetMatrixPointer();
+  dstac->CopyFromMat(*srcac);
 }
 
 void RNNLM::ResetRechist() {
+  neu0_ac_hist->GetMatrixPointer()->Set(RESETVALUE);
   for (int i=0; i<layersizes[1]; i++) {
-    neu0_ac_hist->assignhostvalue(i, 0, RESETVALUE);
+//    neu0_ac_hist->assignhostvalue(i, 0, RESETVALUE);
     resetAc[i] = RESETVALUE;
   }
 }
@@ -1038,8 +1044,6 @@ float RNNLM::forward (int prevword, int curword) {
       dstac = neu_ac[1]->GetMatrixPointer();
       nrow  = layersizes[1];
       ncol  = layersizes[1];
-      dstac->SetZero();
-
       dstac->CopyFromMat(layers[0]->GetMatrixPointer()->Range(prevword, 1, 0, ncol),
                          kaldi::kTrans);
 
@@ -1120,7 +1124,36 @@ void RNNLM::matrixXvector (const MatrixBase<real> &src,
 //  KALDI_ASSERT(src.NumCols() == 1);
 //  KALDI_ASSERT(dst.NumRows() == nc);
 //  KALDI_ASSERT(dst.NumCols() == 1);
-  dst.AddMatMat(1, wgt, kaldi::kTrans, src, kaldi::kNoTrans, 0);
+//
+//  cout << "original: ";
+//  for (int i = 0; i < nc; i++) {
+//    cout << dst(i, 0) << " ";
+//  }
+//  cout << endl;
+
+  dst.AddMatMat(1, wgt, kaldi::kTrans, src, kaldi::kNoTrans, 1);
+
+//  cout << "src: ";
+//  for (int i = 0; i < nr; i++) {
+//    cout << src(i, 0) << " ";
+//  }
+//  cout << endl;
+
+//  cout << "wgt: ";
+//  for (int i = 0; i < nr; i++) {
+//    for (int j = 0; j < nc; j++) {
+//      cout << wgt(i, j) << " ";
+//    }
+//    cout << endl;
+//  }
+//  cout << endl;
+
+//  cout << "mXv: ";
+//  for (int i = 0; i < nc; i++) {
+//    cout << dst(i, 0) << " ";
+//  }
+//  cout << endl;
+
 }
 
 } // namespace cued_rnnlm

@@ -257,8 +257,9 @@ class matrix
   matrix(size_t nr, size_t nc) {
     if (nc == 1) {
       host_data = new Matrix<real>(nr, nc, kaldi::kSetZero, kaldi::kStrideEqualNumCols);
+    } else {
+      host_data = new Matrix<real>(nr, nc, kaldi::kSetZero, kaldi::kDefaultStride);
     }
-    host_data = new Matrix<real>(nr, nc, kaldi::kSetZero, kaldi::kDefaultStride);
   }
   ~matrix () {
     freemem();
