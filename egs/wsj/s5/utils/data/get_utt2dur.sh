@@ -35,7 +35,7 @@ if [ -s $data/utt2dur ] && \
   exit 0;
 fi
 
-if [ -f $data/segments ]; then
+if [ -s $data/segments ]; then
   echo "$0: working out $data/utt2dur from $data/segments"
   cat $data/segments | awk '{len=$4-$3; print $1, len;}' > $data/utt2dur
 elif [ -f $data/wav.scp ]; then
