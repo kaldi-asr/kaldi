@@ -1012,6 +1012,8 @@ void CuMatrixBase<Real>::AddMatBlocks(Real alpha, const CuMatrixBase<Real> &A,
   }
 }
 
+/// dst = a * b / c (by element; when c = 0, dst = a)
+/// dst can be an alias of a, b or c safely and get expected result.
 template<typename Real>
 void CuMatrixBase<Real>::AddMatMatDivMat(const CuMatrixBase<Real> &A,
                     const CuMatrixBase<Real> &B, const CuMatrixBase<Real> &C) {
