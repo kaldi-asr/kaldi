@@ -73,6 +73,26 @@ template<typename Real> void TestCuVectorSum(int32 dim) {
             << dim << ", speed was " << gflops << " gigaflops.";
 }
 
+template<typename Real, typename OtherReal> void TestCuVectorCopyFromVec(int32 dim) {
+  BaseFloat time_in_secs = 0.02;
+  CuVector<Real> M(dim);
+  M.SetRandn();
+
+  Timer tim;
+  int32 iter = 0;
+  for (;tim.Elapsed() < time_in_secs; iter++) {
+    CuVector<OtherReal> v(dim);
+    v.CopyFromVec(M);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuVector::CopyFromVec" << NameOf<Real>() << " to "
+            <<  NameOf<OtherReal>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+
 #if HAVE_CUDA == 1
 // This test choose the min length of vectors to be reduced on GPU.
 // Smaller vector will be copied to RAM and reduced on CPU.
@@ -254,6 +274,10 @@ template<typename Real> void CudaVectorSpeedTest() {
     TestCuVectorSum<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuVectorVecVecOne<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuVectorCopyFromVec<Real, float>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuVectorCopyFromVec<Real, double>(sizes[s]);
   for (int32 s = 0; s < ns; s++) {
     TestCuVectorAddDiagMatMat<Real>(sizes[s], kNoTrans, kNoTrans);
     TestCuVectorAddDiagMatMat<Real>(sizes[s], kNoTrans, kTrans);

@@ -11,7 +11,7 @@ srilm_bin=$KALDI_ROOT/tools/srilm/bin/
 if [ ! -e "$srilm_bin" ] ; then
     echo "SRILM is not installed in $KALDI_ROOT/tools."
     echo "May not be able to create LMs!"
-    echo "Please go to $KALDI_ROOT/tools and run ./install_srilm.sh"
+    echo "Please go to $KALDI_ROOT/tools and run ./extras/install_srilm.sh"
 fi
 srilm_sub_bin=`find "$srilm_bin" -type d`
 for d in $srilm_sub_bin ; do

@@ -5,7 +5,7 @@
 cmd=run.pl
 stage=0
 min_lmwt=5
-max_lmwt=20
+max_lmwt=17
 reverse=false
 iter=final
 word_ins_penalty=0.0,0.5,1.0
@@ -40,17 +40,12 @@ for f in $data/stm $data/glm $lang/words.txt $lang/phones/word_boundary.int \
   [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
 done
 
-name=`basename $data`; # e.g. eval2000
-
-mkdir -p $dir/scoring/log
-
 align_word=
 reorder_opt=
 if $reverse; then
   align_word="lattice-reverse ark:- ark:- |"
   reorder_opt="--reorder=false"
 fi
-
 
 if [ -f $dir/../frame_shift ]; then
   frame_shift_opt="--frame-shift=$(cat $dir/../frame_shift)"
@@ -72,7 +67,7 @@ if [ $stage -le 0 ]; then
       lattice-scale --lm-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
       lattice-add-penalty --word-ins-penalty=$wip ark:- ark:- \| \
       lattice-1best ark:- ark:- \| \
-      lattice-align-words $reorder_opt $lang/phones/word_boundary.int $model ark:- ark:- \| \
+      $align_word lattice-align-words $reorder_opt $lang/phones/word_boundary.int $model ark:- ark:- \| \
       nbest-to-ctm $frame_shift_opt ark:- - \| \
       utils/int2sym.pl -f 5 $lang/words.txt  \| \
       utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \

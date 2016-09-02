@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# _6r is as _6q, but adding --self-repair-scale 0.00001
+# _6r is as _6q, but adding --self-repair-scale-nonlinearity 0.00001
 # --xent-separate-forward-affine=true.  the appropriate normal-frame-rate
 # baseline for this is 6h (since it has --xent-separate-forward-affine=true),
 # so using that as the baseline:
@@ -441,7 +441,7 @@ if [ $stage -le 14 ]; then
     --xent-regularize 0.1 \
     --leaky-hmm-coefficient 0.1 \
     --l2-regularize 0.00005 \
-    --jesus-opts "--jesus-forward-input-dim 500  --jesus-forward-output-dim 1800 --jesus-hidden-dim 7500 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25 --self-repair-scale 0.00001 --xent-separate-forward-affine=true" \
+    --jesus-opts "--jesus-forward-input-dim 500  --jesus-forward-output-dim 1800 --jesus-hidden-dim 7500 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25 --self-repair-scale-nonlinearity 0.00001 --xent-separate-forward-affine=true" \
     --splice-indexes "-1,0,1 -2,0,2 -4,-2,0,2 -6,0,6 -6,0,6 -12,-6,0" \
     --apply-deriv-weights false \
     --frames-per-iter 3000000 \

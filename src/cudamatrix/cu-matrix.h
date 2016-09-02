@@ -279,6 +279,12 @@ class CuMatrixBase {
   void GroupPnormDeriv(const CuMatrixBase<Real> &input,
                        const CuMatrixBase<Real> &output, Real power);
 
+  /// Differentiate backward through the GroupPnorm function.
+  /// It is a combination of GroupPnormDeriv and MulRowsGroupMat.
+  void DiffGroupPnorm(const CuMatrixBase<Real> &in_value,
+                      const CuMatrixBase<Real> &out_value,
+                      const CuMatrixBase<Real> &out_deriv, Real power);
+
   /// Apply the function y(i) = (max_{j = i*G}^{(i+1)*G-1} x_j
   /// where G = x.NumCols() / y.NumCols() must be an integer.
   /// [note: y corresponds to *this and x to src, so
@@ -410,6 +416,7 @@ class CuMatrixBase {
   /// A = alpha * x * y^T + A .
   void AddVecVec(Real alpha, const CuVectorBase<Real> &x, const CuVectorBase<Real> &y);
   /// *this = a * b / c (by element; when c = 0, *this = a)
+  /// *this can be an alias of a, b or c safely and get expected result.
   void AddMatMatDivMat(const CuMatrixBase<Real> &A, const CuMatrixBase<Real> &B, const CuMatrixBase<Real> &C);
 
   /// *this = beta * *this + alpha * M M^T, for symmetric matrices.  It only

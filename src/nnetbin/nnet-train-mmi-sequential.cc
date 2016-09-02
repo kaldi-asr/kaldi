@@ -431,7 +431,7 @@ int main(int argc, char *argv[]) {
         KALDI_VLOG(1) << nnet.InfoGradient();
       }
       // Every 1000 utterances (--verbose=2),
-      if (kaldi::g_kaldi_verbose_level >= 2) {
+      if (GetVerboseLevel() >= 2) {
         if (num_done % 1000 == 0) {
           KALDI_VLOG(2) << nnet.InfoPropagate();
           KALDI_VLOG(2) << nnet.InfoBackPropagate();

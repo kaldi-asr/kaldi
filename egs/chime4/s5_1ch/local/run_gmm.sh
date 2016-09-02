@@ -16,7 +16,7 @@
 nj=30
 stage=0 # resume training with --stage=N
 train=noisy # noisy data multi-condition training
-eval_flag=false # make it true when the evaluation data are released
+eval_flag=true # make it true when the evaluation data are released
 
 . utils/parse_options.sh || exit 1;
 
@@ -122,7 +122,7 @@ fi
 #### tsting #########
 # process for enhanced data
 if [ $stage -le 5 ]; then
-  if [ ! -d data/dt05_real_$enhan ]; then
+  if [ ! -d data/dt05_real_$enhan ] || [ ! -d data/et05_real_$enhan ]; then
     local/real_enhan_chime4_data_prep.sh $enhan $enhan_data
     local/simu_enhan_chime4_data_prep.sh $enhan $enhan_data
   fi

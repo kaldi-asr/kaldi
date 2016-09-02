@@ -251,11 +251,10 @@ class Component {
 
 
 
-  /// \brief This function only returns non-NULL for non-simple Components (and
-  ///     may still return NULL for non-simple Compoennts).  Returns a pointer
-  ///     to a class that may contain some precomputed component-specific and
-  ///     computation-specific indexes to be in used in the Propagate and
-  ///     Backprop functions.
+  /// \brief This function must return NULL for simple Components.  Returns a
+  ///     pointer to a class that may contain some precomputed
+  ///     component-specific and computation-specific indexes to be in used in
+  ///     the Propagate and Backprop functions.
   ///
   /// \param [in] misc_info  This argument is supplied to handle things that the
   ///       framework can't very easily supply: information like which time

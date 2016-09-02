@@ -114,7 +114,8 @@ sctk/.configured: sctk
 
 .PHONY: sctk
 sctk: sctk-2.4.10-20151007-1312Z.tar.bz2
-	tar xojf sctk-2.4.10-20151007-1312Z.tar.bz2
+	tar xojf sctk-2.4.10-20151007-1312Z.tar.bz2 || \
+      tar --exclude '*NONE*html' -xvojf sctk-2.4.10-20151007-1312Z.tar.bz2
 	rm -rf sctk && ln -s sctk-2.4.10 sctk
 
 sctk-2.4.10-20151007-1312Z.tar.bz2:

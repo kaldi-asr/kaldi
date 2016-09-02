@@ -104,7 +104,7 @@ def GetArgs():
     parser.add_argument("--relu-dim", type=int,
                         help="dimension of ReLU nonlinearities")
 
-    parser.add_argument("--self-repair-scale", type=float,
+    parser.add_argument("--self-repair-scale-nonlinearity", type=float,
                         help="A non-zero value activates the self-repair mechanism in the sigmoid and tanh non-linearities of the LSTM", default=None)
 
 
@@ -496,7 +496,7 @@ def Main():
                 add_final_sigmoid = args.add_final_sigmoid,
                 xent_regularize = args.xent_regularize,
                 xent_separate_forward_affine = args.xent_separate_forward_affine,
-                self_repair_scale = args.self_repair_scale,
+                self_repair_scale = args.self_repair_scale_nonlinearity,
                 objective_type = args.objective_type)
 
 if __name__ == "__main__":

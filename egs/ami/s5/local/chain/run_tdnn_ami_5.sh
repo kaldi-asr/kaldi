@@ -117,7 +117,7 @@ if [ $stage -le 16 ]; then
   echo "$0: creating neural net configs";
 
   steps/nnet3/tdnn/make_configs.py \
-    --self-repair-scale 0.00001 \
+    --self-repair-scale-nonlinearity 0.00001 \
     --feat-dir $train_data_dir \
     --ivector-dir $train_ivector_dir \
     --tree-dir $treedir \

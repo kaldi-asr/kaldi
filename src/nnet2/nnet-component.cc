@@ -531,8 +531,7 @@ void PnormComponent::Backprop(const ChunkInfo &,  // in_info,
                                 // may be identical to "this".
                               CuMatrix<BaseFloat> *in_deriv) const  {
   in_deriv->Resize(in_value.NumRows(), in_value.NumCols(), kSetZero);
-  in_deriv->GroupPnormDeriv(in_value, out_value, p_);
-  in_deriv->MulRowsGroupMat(out_deriv);
+  in_deriv->DiffGroupPnorm(in_value, out_value, out_deriv, p_);
 }
 
 void PnormComponent::Read(std::istream &is, bool binary) {
@@ -955,6 +954,7 @@ void SoftmaxComponent::Backprop(const ChunkInfo &in_info,
     d = diag(p) e - p (p^T e).
     d_i = p_i e_i - p_i (p^T e).
   */
+  in_deriv->Resize(out_deriv.NumRows(), out_deriv.NumCols());
   in_deriv->DiffSoftmaxPerRow(out_value, out_deriv);
 
   // The SoftmaxComponent does not have any real trainable parameters, but

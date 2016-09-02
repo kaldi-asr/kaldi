@@ -52,8 +52,9 @@ class Component {
     kLinearTransform,
     kConvolutionalComponent,
     kConvolutional2DComponent,
-    kLstmProjectedStreams,
-    kBLstmProjectedStreams,
+    kLstmProjected,
+    kBlstmProjected,
+    kRecurrentComponent,
 
     kActivationFunction = 0x0200,
     kSoftmax,
@@ -117,8 +118,13 @@ class Component {
   /// Get Type Identification of the component,
   virtual ComponentType GetType() const = 0;
 
-  /// Check if contains trainable parameters,
+  /// Check if componeny has 'Updatable' interface (trainable components),
   virtual bool IsUpdatable() const {
+    return false;
+  }
+
+  /// Check if component has 'Recurrent' interface (trainable and recurrent),
+  virtual bool IsMultistream() const {
     return false;
   }
 
@@ -269,6 +275,36 @@ class UpdatableComponent : public Component {
   BaseFloat bias_learn_rate_coef_;
 };
 
+
+/**
+ * Class MultistreamComponent is an extension of UpdatableComponent
+ * for recurrent networks, which are trained with parallel sequences.
+ */
+class MultistreamComponent : public UpdatableComponent {
+ public:
+  MultistreamComponent(int32 input_dim, int32 output_dim):
+    UpdatableComponent(input_dim, output_dim)
+  { }
+
+  bool IsMultistream() const {
+    return true;
+  }
+
+  virtual void SetSeqLengths(const std::vector<int32>& sequence_lengths) {
+    sequence_lengths_ = sequence_lengths;
+  }
+
+  int32 NumStreams() const {
+    return std::max<int32>(1, sequence_lengths_.size());
+  }
+
+  /// Optional function to reset the transfer of context (not used for BLSTMs
+  virtual void ResetStreams(const std::vector<int32>& stream_reset_flag)
+  { }
+
+ protected:
+  std::vector<int32> sequence_lengths_;
+};
 
 
 /*

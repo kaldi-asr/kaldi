@@ -956,6 +956,46 @@ static void UnitTestCuMatrixGroupPnormDeriv() {
 }
 
 template<typename Real>
+static void UnitTestCuMatrixDiffGroupPnorm() {
+  Real p[] = { 1.234, 2.345, 1, 2, std::numeric_limits<Real>::infinity() };
+  for (int i = 0; i < 2 * sizeof(p) / sizeof(Real); i++) {
+    int32 dimM = 100 + Rand() % 200, dimNs = 100 + Rand() % 200;
+    int32 group_size = 1 + Rand() % 10;
+    BaseFloat power = p[i / 2];
+    int32 dimN = group_size * dimNs;
+    Matrix<Real> Hiv(dimM, dimN);
+    Matrix<Real> Hov(dimM, dimNs);
+    Matrix<Real> Hid(dimM, dimN);
+    Matrix<Real> Hod(dimM, dimNs);
+    Hiv.SetRandn();
+    Hod.SetRandn();
+    if (i % 2 == 0)
+      Hiv.ApplyFloor(0.0); // will put some zeros in the matrix.. harder to
+                           // do derivatives.
+    Hov.GroupPnorm(Hiv, power);
+    CuMatrix<Real> Div(dimM, dimN);
+    CuMatrix<Real> Dov(dimM, dimNs);
+    CuMatrix<Real> Did(dimM, dimN);
+    CuMatrix<Real> Dod(dimM, dimNs);
+    Div.CopyFromMat(Hiv);
+    Dod.CopyFromMat(Hod);
+    Dov.CopyFromMat(Hov);
+
+    // GPU
+    Did.DiffGroupPnorm(Div, Dov, Dod, power);
+
+    // CPU
+    Hid.GroupPnormDeriv(Hiv, Hov, power);
+    Hid.MulRowsGroupMat(Hod);
+
+    Matrix<Real> Hid2(dimM, dimN);
+    Did.CopyToMat(&Hid2);
+    AssertEqual(Hid, Hid2);
+  }
+}
+
+
+template<typename Real>
 static void UnitTestCuMatrixGroupMaxDeriv() {
   int32 dimM = 100 + Rand() % 200, dimNs = 100 + Rand() % 200;
   int32 group_size = 1 + Rand() % 10;
@@ -1069,6 +1109,26 @@ template<typename Real> static void UnitTestCuMatrixAddMatMatElements() {
   M.AddMatMatElements(alpha, A, B, beta);
   AssertEqual(M, Mcheck);
   KALDI_ASSERT(M.Sum() != 0.0);
+}
+
+template<typename Real> static void UnitTestCuMatrixAddMatMatDivMat() {
+  // M = a * b / c (by element; when c = 0, M = a)
+  MatrixIndexT dimM = 100 + Rand() % 255, dimN = 100 + Rand() % 255;
+  CuMatrix<Real> M(dimM, dimN), A(dimM, dimN), B(dimM, dimN), C(dimM, dimN);
+  CuMatrix<Real> ref(dimM, dimN);
+  M.SetRandn();
+  A.SetRandn();
+  B.SetRandn();
+  C.SetRandn();
+
+  M.AddMatMatDivMat(A,B,C);
+  ref.AddMatMatElements(1.0, A, B, 0.0);
+  ref.DivElements(C);
+  AssertEqual(M, ref);
+
+  C.SetZero();
+  M.AddMatMatDivMat(A,B,C);
+  AssertEqual(M, A);
 }
 
 template<typename Real>
@@ -1390,6 +1450,10 @@ static void UnitTestCuMatrixAddVecVec() {
 
 template<typename Real>
 static void UnitTestCuMatrixAddMatMatBatched() {
+  // Random stride is disabled as AddMatMatBatched requires consistent stride
+#if HAVE_CUDA == 1
+  bool old_mode = CuDevice::Instantiate().SetDebugStrideMode(false);
+#endif
   const int32 batchCount = 10;
   std::vector<Matrix<Real>* > Ha(batchCount), Hb(batchCount), Hc1(batchCount), Hc2(batchCount);
   std::vector<CuMatrix<Real>* > Da(batchCount), Db(batchCount), Dc1(batchCount), Dc2(batchCount);
@@ -1452,6 +1516,9 @@ static void UnitTestCuMatrixAddMatMatBatched() {
     delete Da[i]; delete Db[i]; delete Dc1[i]; delete Dc2[i];
     delete DA[i]; delete DB[i]; delete DC1[i]; delete DC2[i];
   }
+#if HAVE_CUDA == 1
+  CuDevice::Instantiate().SetDebugStrideMode(old_mode);
+#endif
 }
 
 
@@ -2014,9 +2081,9 @@ static void UnitTestCuSoftmax() {
 template<typename Real>
 static void UnitTestCuLogSoftmax() {
 
-  for (int32 i = 0; i < 2; i++) {
-    int row = 10 + Rand() % 40;
-    int col = 10 + Rand() % 50;
+  for (int32 i = 0; i < 50; i++) {
+    int row = 10 + Rand() % 300;
+    int col = 10 + Rand() % 300;
 
     Matrix<Real> Hi(row, col);
     Matrix<Real> Ho(row, col);
@@ -2580,6 +2647,7 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuDiffSoftmax<Real>();
   UnitTestCuMatrixGroupPnorm<Real>();
   UnitTestCuMatrixGroupPnormDeriv<Real>();
+  UnitTestCuMatrixDiffGroupPnorm<Real>();
   UnitTestCuMatrixGroupMax<Real>();
   UnitTestCuMatrixGroupMaxDeriv<Real>();
   UnitTestCuMatrixMulRowsVec<Real>();
@@ -2594,6 +2662,7 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixAddDiagVecMat<Real>();
   UnitTestCuMatrixAddMatDiagVec<Real>();
   UnitTestCuMatrixAddMatMatElements<Real>();
+  UnitTestCuMatrixAddMatMatDivMat<Real>();
   UnitTestCuTanh<Real>();
   UnitTestCuCholesky<Real>();
   UnitTestCuDiffTanh<Real>();
@@ -2608,6 +2677,7 @@ template<typename Real> void CudaMatrixUnitTest() {
 int main() {
   for (int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1
+    CuDevice::Instantiate().SetDebugStrideMode(true);
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no");
     else

@@ -5,7 +5,7 @@
 # usefully used.  [abandoned after discovering bug,
 # this thread is picked up in 5s and 5t.]
 
-# _5p is as _5e but adding (new option) --self-repair-scale 0.00001, to repair
+# _5p is as _5e but adding (new option) --self-repair-scale-nonlinearity 0.00001, to repair
 # ReLUs that are over or under-saturated.
 
 # _5e is as _5b, but reducing --xent-regularize from 0.2 to 0.1 (since based on
@@ -376,7 +376,7 @@ if [ $stage -le 12 ]; then
     --leaky-hmm-coefficient 0.1 \
     --l2-regularize 0.00005 \
     --egs-dir exp/chain/tdnn_2y_sp/egs \
-    --jesus-opts "--jesus-forward-input-dim 500  --jesus-forward-output-dim 1500 --jesus-hidden-dim 7500 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25  --self-repair-scale 0.00001" \
+    --jesus-opts "--jesus-forward-input-dim 500  --jesus-forward-output-dim 1500 --jesus-hidden-dim 7500 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25  --self-repair-scale-nonlinearity 0.00001" \
     --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -3,0,3 -3,0,3 -6,-3,0" \
     --apply-deriv-weights false \
     --frames-per-iter 1200000 \

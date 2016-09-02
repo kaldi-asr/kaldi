@@ -174,18 +174,39 @@ if [ $stage -le 12 ]; then
   local/nnet/run_dnn.sh $mic
 fi
 
-# TDNN training.
+# nnet3 systems
 if [ $stage -le 13 ]; then
-  local/online/run_nnet2_ms_perturbed.sh \
-    --mic $mic \
-    --hidden-dim 950 \
-    --splice-indexes "layer0/-2:-1:0:1:2 layer1/-1:2 layer2/-3:3 layer3/-7:2 layer4/-3:3" \
-    --use-sat-alignments true
 
-  local/online/run_nnet2_ms_sp_disc.sh  \
-    --mic $mic  \
-    --gmm-dir exp/$mic/tri4a \
-    --srcdir exp/$mic/nnet2_online/nnet_ms_sp
+  # tdnn model + xent training
+  local/nnet3/run_tdnn.sh --mic $mic
+
+  # lstm model + xent training
+  local/nnet3/run_lstm.sh --mic $mic \
+    --stage 10 --use-sat-alignments true
+
+  # blstm model + xent training
+  local/nnet3/run_blstm.sh --mic $mic \
+    --stage 10 --chunk-right-context 20
+
+  # tdnn model + chain training
+  local/chain/run_tdnn_ami_5.sh  --mic $mic --affix msl1.5_45wer
+
 fi
 
 echo "Done."
+exit 0;
+
+# Older nnet2 scripts. They are still kept here
+# as we have not yet committed sMBR training scripts for AMI in nnet3
+#if [ $stage -le 13 ]; then
+#  local/online/run_nnet2_ms_perturbed.sh \
+#    --mic $mic \
+#    --hidden-dim 950 \
+#    --splice-indexes "layer0/-2:-1:0:1:2 layer1/-1:2 layer2/-3:3 layer3/-7:2 layer4/-3:3" \
+#    --use-sat-alignments true
+#
+#  local/online/run_nnet2_ms_sp_disc.sh  \
+#    --mic $mic  \
+#    --gmm-dir exp/$mic/tri4a \
+#    --srcdir exp/$mic/nnet2_online/nnet_ms_sp
+#fi

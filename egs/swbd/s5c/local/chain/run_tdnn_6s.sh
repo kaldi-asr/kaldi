@@ -25,7 +25,7 @@
 #Final train prob (xent)      -1.42483  -1.62108   -1.5454
 #Final valid prob (xent)      -1.49792  -1.67695  -1.58129
 
-# _6r is as _6q, but adding --self-repair-scale 0.00001 --xent-separate-forward-affine=true
+# _6r is as _6q, but adding --self-repair-scale-nonlinearity 0.00001 --xent-separate-forward-affine=true
 
 # _6q is as _5n (which is a double-frame-rate system), but putting back
 # the iVectors and otherwise changing the configuration as in 5j -> 6g,
@@ -451,7 +451,7 @@ if [ $stage -le 14 ]; then
     --xent-regularize 0.1 \
     --leaky-hmm-coefficient 0.1 \
     --l2-regularize 0.00005 \
-    --jesus-opts "--jesus-forward-input-dim 500  --jesus-forward-output-dim 1800 --jesus-hidden-dim 7500 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25 --self-repair-scale 0.00001 --xent-separate-forward-affine=true" \
+    --jesus-opts "--jesus-forward-input-dim 500  --jesus-forward-output-dim 1800 --jesus-hidden-dim 7500 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25 --self-repair-scale-nonlinearity 0.00001 --xent-separate-forward-affine=true" \
     --splice-indexes "-2,0,2 -2,0,2,4 -6,0,6 -6,0,6 -6,0,6 -12,-6,0" \
     --apply-deriv-weights false \
     --frames-per-iter 3000000 \

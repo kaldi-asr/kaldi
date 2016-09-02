@@ -21,6 +21,7 @@ CUDAMEMTESTDIR = cudamatrix
 
 SUBDIRS_LIB = $(filter-out %bin, $(SUBDIRS))
 
+KALDI_SONAME ?= libkaldi.so
 
 # Optional subdirectories
 EXT_SUBDIRS = online onlinebin  # python-kaldi-decoding
@@ -60,7 +61,7 @@ ifeq ($(shell uname), Darwin)
 else
 ifeq ($(shell uname), Linux)
 	#$(warning the following command will probably fail, in that case add -fPIC to your CXXFLAGS and remake all)
-	$(CXX) -shared -o $(KALDILIBDIR)/libkaldi.so -Wl,-soname=libkaldi.so,--whole-archive  $(SUBDIRS_LIB:=/kaldi-*.a) -Wl,--no-whole-archive
+	$(CXX) -shared -o $(KALDILIBDIR)/$(KALDI_SONAME) -Wl,-soname=$(KALDI_SONAME),--whole-archive  $(SUBDIRS_LIB:=/kaldi-*.a) $(LDLIBS) -Wl,--no-whole-archive
 else
 	$(error Dynamic libraries not supported on this platform. Run configure with --static flag. )
 endif
@@ -145,9 +146,10 @@ $(EXT_SUBDIRS) : mklibdir
 # this is necessary for correct parallel compilation
 #1)The tools depend on all the libraries
 
+<<<<<<< HEAD
 bin fstbin gmmbin fgmmbin sgmmbin sgmm2bin featbin nnetbin nnet2bin nnet3bin chainbin latbin ivectorbin lmbin kwsbin online2bin idlakbin: \
- base matrix util feat tree optimization thread gmm transform sgmm sgmm2 fstext hmm \
- lm decoder lat cudamatrix nnet nnet2 nnet3 ivector chain kws online2
+ base matrix util feat tree thread gmm transform sgmm sgmm2 fstext hmm \
+ lm decoder lat cudamatrix nnet nnet2 nnet3 ivector chain kws online2 idlakfeat
 
 #2)The libraries have inter-dependencies
 base:
@@ -156,7 +158,6 @@ thread: base
 util: base matrix thread
 feat: base matrix util gmm transform tree thread
 tree: base util thread matrix
-optimization: base matrix
 gmm: base util matrix tree thread
 transform: base util matrix gmm tree thread
 sgmm: base util matrix gmm tree transform thread hmm
@@ -173,8 +174,8 @@ nnet3: base util matrix thread lat gmm hmm tree transform cudamatrix chain fstex
 chain: lat hmm tree fstext matrix cudamatrix util thread base
 ivector: base util matrix thread transform tree gmm
 #3)Dependencies for optional parts of Kaldi
-onlinebin: base matrix util feat tree optimization gmm transform sgmm sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet2 online thread
-# python-kaldi-decoding: base matrix util feat tree optimization thread gmm transform sgmm sgmm2 fstext hmm decoder lat online
+onlinebin: base matrix util feat tree gmm transform sgmm sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet2 online thread
+# python-kaldi-decoding: base matrix util feat tree thread gmm transform sgmm sgmm2 fstext hmm decoder lat online
 online: decoder gmm transform feat matrix util base lat hmm thread tree
 online2: decoder gmm transform feat matrix util base lat hmm thread tree ivector cudamatrix nnet2 nnet3 chain
 kws: base util thread hmm tree matrix lat

@@ -267,4 +267,10 @@ utils/summarize_warnings.pl $dir/log
   echo
 ) | tee $dir/log/summary.log
 
-echo Done
+
+steps/info/gmm_dir_info.pl $dir
+
+echo "$0: done training SAT system in $dir"
+
+exit 0
+

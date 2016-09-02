@@ -58,7 +58,7 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
     return input_finished_ && frame == NumFramesReady() - 1;
   }
   virtual BaseFloat FrameShiftInSeconds() const {
-    return computer_.GetFrameOptions().frame_shift_ms * 1.0e-03;
+    return computer_.GetFrameOptions().frame_shift_ms / 1000.0f;
   }
 
   virtual int32 NumFramesReady() const { return features_.size(); }
@@ -530,7 +530,7 @@ class OnlineCacheFeature: public OnlineFeatureInterface {
     return src_->IsLastFrame(frame);
   }
   virtual BaseFloat FrameShiftInSeconds() const {
-    return src_->FrameShiftInSeconds(); 
+    return src_->FrameShiftInSeconds();
   }
 
   virtual int32 NumFramesReady() const { return src_->NumFramesReady(); }

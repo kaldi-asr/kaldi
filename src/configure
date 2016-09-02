@@ -522,7 +522,11 @@ function linux_atlas_failure { # function we use when we couldn't find
    # ATLAS libs.
    echo ATLASINC = $ATLASROOT/include >> kaldi.mk
    echo ATLASLIBS = [somewhere]/liblapack.a [somewhere]/libcblas.a [somewhere]/libatlas.a [somewhere]/libf77blas.a $ATLASLIBDIR >> kaldi.mk
-   cat makefiles/linux_atlas.mk >> kaldi.mk
+   if [[ "`uname -m`" == arm* ]]; then
+     cat makefiles/linux_atlas_arm.mk >> kaldi.mk
+   else
+     cat makefiles/linux_atlas.mk >> kaldi.mk
+   fi
    fix_cxx_flag
    echo "** $* ***"
    echo "**  ERROR   **"
@@ -573,7 +577,11 @@ function linux_configure_debian_ubuntu {
   fi
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
-  cat makefiles/linux_atlas.mk >> kaldi.mk
+  if [[ "`uname -m`" == arm* ]]; then
+    cat makefiles/linux_atlas_arm.mk >> kaldi.mk
+  else
+    cat makefiles/linux_atlas.mk >> kaldi.mk
+  fi
   fix_cxx_flag
   echo "Successfully configured for Debian/Ubuntu Linux [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
   $use_cuda && configure_cuda
@@ -592,7 +600,11 @@ function linux_configure_debian_ubuntu3 {
   fi
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
-  cat makefiles/linux_atlas.mk >> kaldi.mk
+  if [[ "`uname -m`" == arm* ]]; then
+    cat makefiles/linux_atlas_arm.mk >> kaldi.mk
+  else
+    cat makefiles/linux_atlas.mk >> kaldi.mk
+  fi
   fix_cxx_flag
   echo "Successfully configured for Debian/Ubuntu Linux [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
   $use_cuda && configure_cuda
@@ -614,7 +626,11 @@ function linux_configure_debian7 {
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS -Wl,-rpath=$libdir >> kaldi.mk
   echo
-  cat makefiles/linux_atlas.mk >> kaldi.mk
+  if [[ "`uname -m`" == arm* ]]; then
+    cat makefiles/linux_atlas_arm.mk >> kaldi.mk
+  else
+    cat makefiles/linux_atlas.mk >> kaldi.mk
+  fi
   fix_cxx_flag
   echo "Successfully configured for Debian 7 [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
   $use_cuda && configure_cuda
@@ -633,7 +649,11 @@ function linux_configure_redhat {
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS -Wl,-rpath=$libdir >> kaldi.mk
   echo
-  cat makefiles/linux_atlas.mk >> kaldi.mk
+  if [[ "`uname -m`" == arm* ]]; then
+    cat makefiles/linux_atlas_arm.mk >> kaldi.mk
+  else
+    cat makefiles/linux_atlas.mk >> kaldi.mk
+  fi
   fix_cxx_flag
   echo "Successfully configured for red hat [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
   $use_cuda && configure_cuda
@@ -654,7 +674,11 @@ function linux_configure_redhat_fat {
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS -Wl,-rpath=$libdir >> kaldi.mk
   echo
-  cat makefiles/linux_atlas.mk >> kaldi.mk
+  if [[ "`uname -m`" == arm* ]]; then
+    cat makefiles/linux_atlas_arm.mk >> kaldi.mk
+  else
+    cat makefiles/linux_atlas.mk >> kaldi.mk
+  fi
   fix_cxx_flag
   echo "Successfully configured for red hat [dynamic libraries, fat] with ATLASLIBS =$ATLASLIBS"
   $use_cuda && configure_cuda
@@ -707,7 +731,11 @@ function linux_configure_static {
 
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
-  cat makefiles/linux_atlas.mk >> kaldi.mk
+  if [[ "`uname -m`" == arm* ]]; then
+    cat makefiles/linux_atlas_arm.mk >> kaldi.mk
+  else
+    cat makefiles/linux_atlas.mk >> kaldi.mk
+  fi
   fix_cxx_flag
   $use_cuda && configure_cuda
   linux_configure_speex
@@ -786,7 +814,11 @@ function linux_configure_dynamic {
 
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
-  cat makefiles/linux_atlas.mk >> kaldi.mk
+  if [[ "`uname -m`" == arm* ]]; then
+    cat makefiles/linux_atlas_arm.mk >> kaldi.mk
+  else
+    cat makefiles/linux_atlas.mk >> kaldi.mk
+  fi
   fix_cxx_flag
   $use_cuda && configure_cuda
   linux_configure_speex
@@ -1036,7 +1068,11 @@ if [ "`uname`" == "Linux" ]; then
     if [ ! -f makefiles/linux_clapack.mk ]; then
       failure "makefiles/linux_clapack.mk not found."
     fi
-    cat makefiles/linux_clapack.mk >> kaldi.mk
+    if [[ "`uname -m`" == arm* ]]; then
+      cat makefiles/linux_clapack_arm.mk >> kaldi.mk
+    else
+      cat makefiles/linux_clapack.mk >> kaldi.mk
+    fi
     fix_cxx_flag
     echo "Warning (CLAPACK): this part of the configure process is not properly tested and will not work."
     $use_cuda && configure_cuda
@@ -1061,7 +1097,11 @@ if [ "`uname`" == "Linux" ]; then
     fi
     echo "OPENBLASLIBS = $OPENBLASLIBS" >> kaldi.mk
     echo "OPENBLASROOT = $OPENBLASROOT" >> kaldi.mk
-    cat makefiles/linux_openblas.mk >> kaldi.mk
+    if [[ "`uname -m`" == arm* ]]; then
+      cat makefiles/linux_openblas_arm.mk >> kaldi.mk
+    else
+      cat makefiles/linux_openblas.mk >> kaldi.mk
+    fi
     fix_cxx_flag
     $use_cuda && configure_cuda
     linux_configure_speex

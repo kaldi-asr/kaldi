@@ -99,7 +99,7 @@ if [ $stage -le 11 ]; then
   for decode_set in dev test; do
     (
     steps/nnet3/decode.sh \
-      --nj $(wc -l data/$decode_set/spk2utt) --cmd "$decode_cmd" $iter_opts \
+      --nj $(wc -l < data/$decode_set/spk2utt) --cmd "$decode_cmd" $iter_opts \
       --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
       $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}${decode_iter:+_$decode_iter} || exit 1;
 

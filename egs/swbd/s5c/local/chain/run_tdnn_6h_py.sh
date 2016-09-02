@@ -105,7 +105,7 @@ if [ $stage -le 12 ]; then
       --jesus-hidden-dim 0 \
       --jesus-stddev-scale 0.2 \
       --final-layer-learning-rate-factor 0.25  \
-      --self-repair-scale 0.00001 \
+      --self-repair-scale-nonlinearity 0.00001 \
       --xent-separate-forward-affine=true \
       --xent-regularize=$xent_regularize \
       --include-log-softmax=false \

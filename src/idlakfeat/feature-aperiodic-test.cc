@@ -19,7 +19,7 @@
 
 #include <iostream>
 
-#include "feat/feature-aperiodic.h"
+#include "idlakfeat/feature-aperiodic.h"
 #include "feat/wave-reader.h"
 
 namespace kaldi {

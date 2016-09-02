@@ -227,4 +227,8 @@ steps/diagnostic/analyze_alignments.sh --cmd "$cmd" $lang $dir
 # Summarize warning messages...
 utils/summarize_warnings.pl $dir/log
 
-echo Done training system with LDA+MLLT features in $dir
+steps/info/gmm_dir_info.pl $dir
+
+echo "Done training system with LDA+MLLT features in $dir"
+
+exit 0
