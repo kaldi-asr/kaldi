@@ -128,11 +128,11 @@ sid/gender_id.sh --cmd "$train_cmd" --nj 150 exp/full_ubm_2048{,_male,_female} \
   data/train exp/gender_id_train
 # Gender-id error rate is 3.41%
 
-# Extract the iVectors for the Fisher data.
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=3G,ram_free=3G" --nj 50 \
+# Extract the iVectors for the training data.
+sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=6G,ram_free=6G" --nj 50 \
  exp/extractor_2048_male data/train_male exp/ivectors_train_male
 
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=3G,ram_free=3G" --nj 50 \
+sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=6G,ram_free=6G" --nj 50 \
  exp/extractor_2048_female data/train_female exp/ivectors_train_female
 
 # .. and for the SRE08 training and test data. (We focus on the main
