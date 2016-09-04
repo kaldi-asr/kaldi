@@ -35,10 +35,6 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFst(
     HmmCacheType *cache) {
   using namespace fst;
 
-  if (config.reverse) ReverseVector(&phone_window);  // phone_window represents backwards
-  // phone sequence.  Make it "forwards" so the ctx_dep object can interpret it
-  // right.  will also have to reverse the FST we produce.
-
   if (static_cast<int32>(phone_window.size()) != ctx_dep.ContextWidth())
     KALDI_ERR << "Context size mismatch, ilabel-info [from context FST is "
               << phone_window.size() << ", context-dependency object "
@@ -46,16 +42,9 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFst(
 
   int P = ctx_dep.CentralPosition();
   int32 phone = phone_window[P];
-  if (phone == 0) {  // error.  Error message depends on whether reversed.
-    if (config.reverse)
-      KALDI_ERR << "phone == 0.  Possibly you are trying to get a reversed "
-          "FST with a non-central \"central position\" P (i.e. asymmetric "
-          "context), but forgot to initialize the ContextFst object with P "
-          "as N-1-P (or it could be a simpler problem)";
-    else
-      KALDI_ERR << "phone == 0.  Some mismatch happened, or there is "
+  if (phone == 0)
+    KALDI_ERR << "phone == 0.  Some mismatch happened, or there is "
           "a code error.";
-  }
 
   const HmmTopology &topo = trans_model.GetTopo();
   const HmmTopology::TopologyEntry &entry  = topo.TopologyForPhone(phone);
@@ -142,17 +131,7 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFst(
     }
   }
 
-  if (config.reverse) {
-    VectorFst<StdArc> *tmp = new VectorFst<StdArc>;
-    fst::Reverse(*ans, tmp);
-    fst::RemoveEpsLocal(tmp);  // this is safe and will not blow up.
-    if (config.push_weights)  // Push to make it stochastic again.
-      PushInLog<REWEIGHT_TO_INITIAL>(tmp, kPushWeights, config.push_delta);
-    delete ans;
-    ans = tmp;
-  } else {
-    fst::RemoveEpsLocal(ans);  // this is safe and will not blow up.
-  }
+  fst::RemoveEpsLocal(ans);  // this is safe and will not blow up.
 
   // Now apply probability scale.
   // We waited till after the possible weight-pushing steps,

@@ -18,14 +18,12 @@ set -o pipefail
 tscale=1.0
 loopscale=0.1
 
-reverse=false
 remove_oov=false
 
 for x in `seq 6`; do
   [ "$1" == "--mono" ] && context=mono && shift;
   [ "$1" == "--left-biphone" ] && context=lbiphone && shift;
   [ "$1" == "--quinphone" ] && context=quinphone && shift;
-  [ "$1" == "--reverse" ] && reverse=true && shift;
   [ "$1" == "--remove-oov" ] && remove_oov=true && shift;
   [ "$1" == "--transition-scale" ] && tscale=$2 && shift 2;
   [ "$1" == "--self-loop-scale" ] && loopscale=$2 && shift 2;
@@ -94,16 +92,9 @@ fi
 
 if [[ ! -s $dir/Ha.fst || $dir/Ha.fst -ot $model  \
     || $dir/Ha.fst -ot $lang/tmp/ilabels_${N}_${P} ]]; then
-  if $reverse; then
-    make-h-transducer --reverse=true --push_weights=true \
-      --disambig-syms-out=$dir/disambig_tid.int \
-      --transition-scale=$tscale $lang/tmp/ilabels_${N}_${P} $tree $model \
-      > $dir/Ha.fst  || exit 1;
-  else
-    make-h-transducer --disambig-syms-out=$dir/disambig_tid.int \
-      --transition-scale=$tscale $lang/tmp/ilabels_${N}_${P} $tree $model \
-       > $dir/Ha.fst  || exit 1;
-  fi
+  make-h-transducer --disambig-syms-out=$dir/disambig_tid.int \
+    --transition-scale=$tscale $lang/tmp/ilabels_${N}_${P} $tree $model \
+     > $dir/Ha.fst  || exit 1;
 fi
 
 if [[ ! -s $dir/HCLGa.fst || $dir/HCLGa.fst -ot $dir/Ha.fst || \
