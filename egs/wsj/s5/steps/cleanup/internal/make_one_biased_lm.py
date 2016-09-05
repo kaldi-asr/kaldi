@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+# Copyright 2016  Johns Hopkins University (Author: Daniel Povey)
+# Apache 2.0.
+
 from __future__ import print_function
 import sys
 import argparse
@@ -50,7 +53,7 @@ class NgramCounts:
     ## We store n-gram counts as an array, indexed by (history-length == n-gram order minus one)
     ## (note: python calls arrays "lists")  of dicts from histories to counts, where
     ## histories are arrays of integers and "counts" are dicts from integer to float.
-    ## For instance, when accumulating the 4-gram count for the 'd' in the sequence '5 6 7 8',
+    ## For instance, when accumulating the 4-gram count for the '8' in the sequence '5 6 7 8',
     ## we'd do as follows:
     ##  self.counts[3][[5,6,7]][8] += 1.0
     ## where the [3] indexes an array, the [[5,6,7]] indexes a dict, and
@@ -58,7 +61,7 @@ class NgramCounts:
     def __init__(self, ngram_order):
         self.ngram_order = ngram_order
         # Integerized counts will never contain negative numbers, so
-        # inside this program, we use -1 and -2 for the BOS and EOS symbols
+        # inside this program, we use -3 and -2 for the BOS and EOS symbols
         # respectively.
         # Note: it's actually important that the bos-symbol is the most negative;
         # it helps ensure that we print the state with left-context <s> first
