@@ -42,6 +42,9 @@ max_count=0         # The use of this option (e.g. --max-count 100) can make
                     # posterior-scaling, so assuming the posterior-scale is 0.1,
                     # --max-count 100 starts having effect after 1000 frames, or
                     # 10 seconds of data.
+weights=
+use_most_recent_ivector=true
+max_remembered_frames=1000
 
 # End configuration section.
 
@@ -89,6 +92,8 @@ splice_opts=$(cat $srcdir/splice_opts)
 # involved in online decoding.  We need to create a config file for iVector
 # extraction.
 
+absdir=$(readlink -f $dir)
+
 ieconf=$dir/conf/ivector_extractor.conf
 echo -n >$ieconf
 cp $srcdir/online_cmvn.conf $dir/conf/ || exit 1;
@@ -103,11 +108,18 @@ echo "--ivector-extractor=$srcdir/final.ie" >>$ieconf
 echo "--num-gselect=$num_gselect"  >>$ieconf
 echo "--min-post=$min_post" >>$ieconf
 echo "--posterior-scale=$posterior_scale" >>$ieconf
-echo "--max-remembered-frames=1000" >>$ieconf # the default
+echo "--max-remembered-frames=$max_remembered_frames" >>$ieconf # the default
 echo "--max-count=$max_count" >>$ieconf
+echo "--use-most-recent-ivector=$use_most_recent_ivector" >>$use_most_recent_ivector
+if [ ! -z "$weights" ]; then
+  if [ -f $weights ] && gunzip -c $weights > /dev/null; then
+    cp -f $weights $absdir/weights.gz || exit 1
+  else
+    echo "Could not open file $weights"
+    exit 1
+  fi
+fi
 
-
-absdir=$(readlink -f $dir)
 
 for n in $(seq $nj); do
   # This will do nothing unless the directory $dir/storage exists;
@@ -117,10 +129,21 @@ done
 
 if [ $stage -le 0 ]; then
   echo "$0: extracting iVectors"
-  $cmd JOB=1:$nj $dir/log/extract_ivectors.JOB.log \
-     ivector-extract-online2 --config=$ieconf ark:$sdata/JOB/spk2utt scp:$sdata/JOB/feats.scp ark:- \| \
-     copy-feats --compress=$compress ark:- \
+  if [ ! -z "$weights" ]; then
+    $cmd JOB=1:$nj $dir/log/extract_ivectors.JOB.log \
+      ivector-extract-online2 --config=$ieconf \
+      --frame-weights-rspecifier="ark:gunzip -c $absdir/weights.gz |" \
+      --length-tolerance=1 \
+      ark:$sdata/JOB/spk2utt scp:$sdata/JOB/feats.scp ark:- \| \
+      copy-feats --compress=$compress ark:- \
       ark,scp:$absdir/ivector_online.JOB.ark,$absdir/ivector_online.JOB.scp || exit 1;
+  else
+    $cmd JOB=1:$nj $dir/log/extract_ivectors.JOB.log \
+      ivector-extract-online2 --config=$ieconf \
+      ark:$sdata/JOB/spk2utt scp:$sdata/JOB/feats.scp ark:- \| \
+      copy-feats --compress=$compress ark:- \
+      ark,scp:$absdir/ivector_online.JOB.ark,$absdir/ivector_online.JOB.scp || exit 1;
+  fi
 fi
 
 if [ $stage -le 1 ]; then
