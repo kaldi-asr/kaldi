@@ -1012,6 +1012,8 @@ void CuMatrixBase<Real>::AddMatBlocks(Real alpha, const CuMatrixBase<Real> &A,
   }
 }
 
+/// dst = a * b / c (by element; when c = 0, dst = a)
+/// dst can be an alias of a, b or c safely and get expected result.
 template<typename Real>
 void CuMatrixBase<Real>::AddMatMatDivMat(const CuMatrixBase<Real> &A,
                     const CuMatrixBase<Real> &B, const CuMatrixBase<Real> &C) {
@@ -1482,7 +1484,7 @@ void CuMatrixBase<Real>::ApplyLogSoftMaxPerRow(const CuMatrixBase<Real> &src) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    size_t dimBlock = src.num_cols_ > CU1DBLOCK ? CU1DBLOCK : src.num_cols_;
+    size_t dimBlock = CU1DBLOCK;
     size_t dimGrid = src.num_rows_;
     cuda_log_softmax_reduce(dimGrid, dimBlock,
                             data_, src.data_, Dim(), src.Stride());

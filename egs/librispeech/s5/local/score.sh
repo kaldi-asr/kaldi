@@ -9,7 +9,6 @@
 cmd=run.pl
 stage=0
 decode_mbr=true
-reverse=false
 word_ins_penalty=0.0,0.5,1.0
 min_lmwt=7
 max_lmwt=17
@@ -27,7 +26,6 @@ if [ $# -ne 3 ]; then
   echo "    --decode_mbr (true/false)       # maximum bayes risk decoding (confusion network)."
   echo "    --min_lmwt <int>                # minumum LM-weight for lattice rescoring "
   echo "    --max_lmwt <int>                # maximum LM-weight for lattice rescoring "
-  echo "    --reverse (true/false)          # score with time reversed features "
   exit 1;
 fi
 
@@ -52,16 +50,6 @@ for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
     lattice-best-path --word-symbol-table=$symtab \
       ark:- ark,t:$dir/scoring/LMWT.$wip.tra || exit 1;
 done
-
-if $reverse; then
-  for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
-    for lmwt in `seq $min_lmwt $max_lmwt`; do
-      mv $dir/scoring/$lmwt.$wip.tra $dir/scoring/$lmwt.$wip.tra.orig
-      awk '{ printf("%s ",$1); for(i=NF; i>1; i--){ printf("%s ",$i); } printf("\n"); }' \
-        <$dir/scoring/$lmwt.$wip.tra.orig >$dir/scoring/$lmwt.$wip.tra
-    done
-  done
-fi
 
 # Note: the double level of quoting for the sed command
 for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do

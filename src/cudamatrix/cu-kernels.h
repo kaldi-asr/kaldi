@@ -565,9 +565,9 @@ inline void cuda_softmax_reduce(size_t Gr, size_t Bl, float *y, const float *x,
   cudaF_softmax_reduce(Gr, Bl, y, x, d, src_stride);
 }
 inline void cuda_log_softmax_reduce(size_t Gr, size_t Bl, float *y,
-                                    const float *x, MatrixDim d,
-                                    int src_stride) {
-  cudaF_log_softmax_reduce(Gr, Bl, y, x, d, src_stride);
+                                    const float *x, MatrixDim y_dim,
+                                    int x_stride) {
+  cudaF_log_softmax_reduce(Gr, Bl, y, x, y_dim, x_stride);
 }
 
 inline void cuda_regularize_l1(dim3 Gr, dim3 Bl, float *wei, float *grad,
@@ -1087,9 +1087,9 @@ inline void cuda_softmax_reduce(size_t Gr, size_t Bl, double *y,
   cudaD_softmax_reduce(Gr, Bl, y, x, d, src_stride);
 }
 inline void cuda_log_softmax_reduce(size_t Gr, size_t Bl, double *y,
-                                    const double *x, MatrixDim d,
-                                    int src_stride) {
-  cudaD_log_softmax_reduce(Gr, Bl, y, x, d, src_stride);
+                                    const double *x, MatrixDim y_dim,
+                                    int x_stride) {
+  cudaD_log_softmax_reduce(Gr, Bl, y, x, y_dim, x_stride);
 }
 
 inline void cuda_regularize_l1(dim3 Gr, dim3 Bl, double *wei, double *grad,
