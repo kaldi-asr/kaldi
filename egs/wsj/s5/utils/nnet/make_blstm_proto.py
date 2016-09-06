@@ -28,8 +28,8 @@ parser = OptionParser(usage)
 # Required,
 parser.add_option('--cell-dim', dest='cell_dim', type='int', default=320,
                    help='Number of cells for one direction in BLSTM [default: %default]');
-parser.add_option('--proj-dim', dest='proj_dim', type='int', default=400,
-                   help='Number of LSTM recurrent units [default: %default]');
+parser.add_option('--proj-dim', dest='proj_dim', type='int', default=200,
+                   help='Dim reduction for one direction in BLSTM [default: %default]');
 parser.add_option('--num-layers', dest='num_layers', type='int', default=2,
                    help='Number of BLSTM layers [default: %default]');
 # Optional (default == 'None'),
