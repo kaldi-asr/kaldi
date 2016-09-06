@@ -426,13 +426,15 @@ def MakeConfigs(config_dir, splice_indexes_string,
             if nonlin_type == "relu" :
                 prev_layer_output_chain = nodes.AddAffRelNormLayer(config_lines, "Tdnn_pre_final_chain",
                                                                    prev_layer_output, nonlin_output_dim,
+                                                                   norm_target_rms = final_layer_normalize_target,
                                                                    self_repair_scale = self_repair_scale,
-                                                                   norm_target_rms = final_layer_normalize_target)
+                                                                   max_change_per_component = 0.75)
 
                 prev_layer_output_xent = nodes.AddAffRelNormLayer(config_lines, "Tdnn_pre_final_xent",
                                                                   prev_layer_output, nonlin_output_dim,
+                                                                  norm_target_rms = final_layer_normalize_target,
                                                                   self_repair_scale = self_repair_scale,
-                                                                  norm_target_rms = final_layer_normalize_target)
+                                                                  max_change_per_component = 0.75)
             elif nonlin_type == "pnorm" :
                 prev_layer_output_chain = nodes.AddAffPnormLayer(config_lines, "Tdnn_pre_final_chain",
                                                                  prev_layer_output, nonlin_input_dim, nonlin_output_dim,
@@ -445,6 +447,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
                 raise Exception("Unknown nonlinearity type")
 
             nodes.AddFinalLayer(config_lines, prev_layer_output_chain, num_targets,
+                               max_change_per_component = 1.5,
                                use_presoftmax_prior_scale = use_presoftmax_prior_scale,
                                prior_scale_file = prior_scale_file,
                                include_log_softmax = include_log_softmax)
@@ -452,6 +455,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
             nodes.AddFinalLayer(config_lines, prev_layer_output_xent, num_targets,
                                 ng_affine_options = " param-stddev=0 bias-stddev=0 learning-rate-factor={0} ".format(
                                     0.5 / xent_regularize),
+                                max_change_per_component = 1.5,
                                 use_presoftmax_prior_scale = use_presoftmax_prior_scale,
                                 prior_scale_file = prior_scale_file,
                                 include_log_softmax = True,
@@ -460,8 +464,9 @@ def MakeConfigs(config_dir, splice_indexes_string,
             if nonlin_type == "relu":
                 prev_layer_output = nodes.AddAffRelNormLayer(config_lines, "Tdnn_{0}".format(i),
                                                             prev_layer_output, nonlin_output_dims[i],
+                                                            norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target,
                                                             self_repair_scale = self_repair_scale,
-                                                            norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
+                                                            max_change_per_component = 0.75)
             elif nonlin_type == "pnorm":
                 prev_layer_output = nodes.AddAffPnormLayer(config_lines, "Tdnn_{0}".format(i),
                                                            prev_layer_output, nonlin_input_dim, nonlin_output_dim,
@@ -478,6 +483,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
             # Usually used with an objective-type such as "quadratic".
             # Applications are k-binary classification such Ideal Ratio Mask prediction.
             nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
+                               max_change_per_component = 1.5,
                                use_presoftmax_prior_scale = use_presoftmax_prior_scale,
                                prior_scale_file = prior_scale_file,
                                include_log_softmax = include_log_softmax,
@@ -487,6 +493,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
                 nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
                                     ng_affine_options = " param-stddev=0 bias-stddev=0 learning-rate-factor={0} ".format(
                                           0.5 / xent_regularize),
+                                    max_change_per_component = 1.5,
                                     use_presoftmax_prior_scale = use_presoftmax_prior_scale,
                                     prior_scale_file = prior_scale_file,
                                     include_log_softmax = True,

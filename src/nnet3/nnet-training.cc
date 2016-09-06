@@ -129,8 +129,9 @@ void NnetTrainer::UpdateParamsWithMaxChanges() {
                       << " change too big: " << std::sqrt(dot_prod) << " > "
                       << "--max-change=" << max_param_change_per_comp
                       << ", scaling by " << scale_factors(i);
-      } else
+      } else {
         scale_factors(i) = 1.0;
+      }
       param_delta += std::pow(scale_factors(i), 2.0) * dot_prod;
       i++;
     }
