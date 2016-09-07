@@ -265,6 +265,38 @@ class Tanh : public Component {
 
 
 
+class ReLU : public Component {
+ public:
+  ReLU(int32 dim_in, int32 dim_out): 
+    Component(dim_in, dim_out)
+  { }
+
+  ~ReLU()
+  { }
+
+  Component* Copy() const { return new ReLU(*this); }
+  ComponentType GetType() const { return kReLU; }
+
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+		    CuMatrixBase<BaseFloat> *out) {
+    // y = max(x, 0)
+    out->CopyFromMat(in);
+    out->ApplyFloor(0.0);
+  }
+
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
+			const CuMatrixBase<BaseFloat> &out,
+			const CuMatrixBase<BaseFloat> &out_diff,
+			CuMatrixBase<BaseFloat> *in_diff) {
+    // ey = (y > 0.0 ? 1.0 : 0.0)ex
+    in_diff->CopyFromMat(out);
+    in_diff->ApplyHeaviside();
+    in_diff->MulElements(out_diff);
+  }
+};
+
+
+
 class Dropout : public Component {
  public:
   Dropout(int32 dim_in, int32 dim_out):
