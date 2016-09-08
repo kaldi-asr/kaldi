@@ -112,7 +112,7 @@ def ParseProgressLogsForClippedProportion(exp_dir):
             'cp_per_iter_per_component' : cp_per_iter_per_component}
 
 #exp/chain/cwrnn_trial2_ld5_sp/log/progress.245.log:LOG (nnet3-show-progress:main():nnet3-show-progress.cc:144) Relative parameter differences per layer are [ Cwrnn1_T3_W_r:0.0171537 Cwrnn1_T3_W_x:1.33338e-07 Cwrnn1_T2_W_r:0.048075 Cwrnn1_T2_W_x:1.34088e-07 Cwrnn1_T1_W_r:0.0157277 Cwrnn1_T1_W_x:0.0212704 Final_affine:0.0321521 Cwrnn2_T3_W_r:0.0212082 Cwrnn2_T3_W_x:1.33691e-07 Cwrnn2_T2_W_r:0.0212978 Cwrnn2_T2_W_x:1.33401e-07 Cwrnn2_T1_W_r:0.014976 Cwrnn2_T1_W_x:0.0233588 Cwrnn3_T3_W_r:0.0237165 Cwrnn3_T3_W_x:1.33184e-07 Cwrnn3_T2_W_r:0.0239754 Cwrnn3_T2_W_x:1.3296e-07 Cwrnn3_T1_W_r:0.0194809 Cwrnn3_T1_W_x:0.0271934 ]
-def ParseProgressLogsForParamDiff(exp_dir, pattern):
+def ParseProgressLogsForParamDiff(exp_dir, pattern, logger = None):
     if pattern not in set(["Relative parameter differences", "Parameter differences"]):
         raise Exception("Unknown value for pattern : {0}".format(pattern))
 
@@ -133,25 +133,35 @@ def ParseProgressLogsForParamDiff(exp_dir, pattern):
 
     component_names = list(component_names)
     component_names.sort()
-    # rearranging the data into an array
-    data = []
-    data.append(["iteration"]+component_names)
+    # rearranging the parameter differences available per iter
+    # into parameter differences per component
+    progress_per_component = {}
+    for cn in component_names:
+        progress_per_component[cn] = {}
+
     max_iter = max(progress_per_iter.keys())
+    total_missing_iterations = 0
+    gave_user_warning = False
     for iter in range(max_iter + 1):
         try:
             component_dict = progress_per_iter[iter]
         except KeyError:
             continue
-        iter_values = []
+
         for component_name in component_names:
             try:
-                iter_values.append(component_dict[component_name])
+                progress_per_component[component_name][iter] = component_dict[component_name]
             except KeyError:
+                total_missing_iterations += 1
                 # the component was not found this iteration, may be because of layerwise discriminative training
-                iter_values.append(0)
-        data.append([iter] + iter_values)
+                pass
+        if (total_missing_iterations/len(component_names) > 20) and not gave_user_warning and logger is not None:
+            logger.warning("There are more than {0} missing iterations per component. Something might be wrong.".format(total_missing_iterations/len(component_names)))
+            gave_user_warning = True
 
-    return data
+    return {'progress_per_component' : progress_per_component,
+            'component_names' : component_names,
+            'max_iter' : max_iter}
 
 def ParseTrainLogs(exp_dir):
   train_log_files = "%s/log/train.*.log" % (exp_dir)
