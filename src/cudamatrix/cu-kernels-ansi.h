@@ -239,6 +239,12 @@ void cudaF_tanh(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d,
                 int src_stride);
 void cudaF_diff_tanh(dim3 Gr, dim3 Bl, float *eout, const float *e,
                      const float *y, MatrixDim d, int e_stride, int y_stride);
+void cudaF_parametric_relu(dim3 Gr, dim3 Bl, float *y, const float *x,
+                           MatrixDim d, int src_stride,
+                           const float *a, const float *b);
+void cudaF_diff_parametric_relu(dim3 Gr, dim3 Bl, float *eout, const float *e,
+                                const float *y, MatrixDim d, int e_stride,
+                                int y_stride, const float *a, const float *b);
 
 void cudaF_regularize_l1(dim3 Gr, dim3 Bl, float *wei, float *grad, float l1,
                          float lr, MatrixDim d, int stride_grad);
@@ -501,6 +507,12 @@ void cudaD_tanh(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d,
                 int src_stride);
 void cudaD_diff_tanh(dim3 Gr, dim3 Bl, double *eout, const double *e,
                      const double *y, MatrixDim d, int e_stride, int y_stride);
+void cudaD_parametric_relu(dim3 Gr, dim3 Bl, double *y, const double *x,
+                           MatrixDim d, int src_stride,
+                           const double *a, const double *b);
+void cudaD_diff_parametric_relu(dim3 Gr, dim3 Bl, double *eout, const double *e,
+                                const double *y, MatrixDim d, int e_stride,
+                                int y_stride, const double *a, const double *b);
 
 void cudaD_regularize_l1(dim3 Gr, dim3 Bl, double *wei, double *grad, double l1,
                          double lr, MatrixDim d, int stride_grad);

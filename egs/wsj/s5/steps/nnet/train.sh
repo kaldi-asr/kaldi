@@ -409,7 +409,7 @@ else
         $num_fea >$nnet_proto
       cnn_fea=$(cat $nnet_proto | grep -v '^$' | tail -n1 | awk '{ print $5; }')
       utils/nnet/make_nnet_proto.py $proto_opts \
-        --no-proto-head --no-smaller-input-weights \
+        --no-smaller-input-weights \
         ${bn_dim:+ --bottleneck-dim=$bn_dim} \
         "$cnn_fea" $num_tgt $hid_layers $hid_dim >>$nnet_proto
       ;;
@@ -421,7 +421,7 @@ else
         $num_fea >$nnet_proto
       cnn_fea=$(cat $nnet_proto | grep -v '^$' | tail -n1 | awk '{ print $5; }')
       utils/nnet/make_nnet_proto.py $proto_opts \
-        --no-proto-head --no-smaller-input-weights \
+        --no-smaller-input-weights \
         ${bn_dim:+ --bottleneck-dim=$bn_dim} \
         "$cnn_fea" $num_tgt $hid_layers $hid_dim >>$nnet_proto
       ;;

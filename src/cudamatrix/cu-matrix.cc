@@ -1274,6 +1274,72 @@ void CuMatrixBase<Real>::AddMatMatElements(Real alpha,
   }
 }
 
+template<typename Real>
+void CuMatrixBase<Real>::ParametricRelu(
+     const CuMatrixBase<Real> &src,
+     const CuVectorBase<Real> &alpha,
+     const CuVectorBase<Real> &beta) {
+  KALDI_ASSERT(src.NumRows() == this->NumRows());
+  KALDI_ASSERT(src.NumCols() == this->NumCols());
+  KALDI_ASSERT(alpha.Dim() == this->NumCols());
+  KALDI_ASSERT(beta.Dim() == this->NumCols());
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(src.NumCols(), CU2DBLOCK), n_blocks(src.NumRows(), CU2DBLOCK));
+
+    cuda_parametric_relu(dimGrid, dimBlock, this->data_, src.data_, this->Dim(),
+                         src.Stride(), alpha.data_, beta.data_);
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    // Do it on CPU,
+    for (MatrixIndexT r = 0; r < NumRows(); r++) {
+      for (MatrixIndexT c = 0; c < NumCols(); c++) {
+        Real src_elem = src.Mat()(r,c);
+        this->Mat()(r,c) = src_elem * (src_elem >= 0.0 ? alpha.Vec()(c) : beta.Vec()(c));
+      }
+    }
+  }
+}
+
+template<typename Real>
+void CuMatrixBase<Real>::DiffParametricRelu(
+     const CuMatrixBase<Real> &value,
+     const CuMatrixBase<Real> &diff,
+     const CuVectorBase<Real> &alpha,
+     const CuVectorBase<Real> &beta) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(num_cols_, CU2DBLOCK), n_blocks(num_rows_, CU2DBLOCK));
+
+    cuda_diff_parametric_relu(dimGrid, dimBlock, data_, diff.data_, value.data_,
+                              Dim(), diff.Stride(), value.Stride(),
+                              alpha.data_, beta.data_);
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    // Do it on CPU,
+    for (MatrixIndexT r = 0; r < NumRows(); r++) {
+      for (MatrixIndexT c = 0; c < NumCols(); c++) {
+        Real value_elem = value.Mat()(r,c);
+        this->Mat()(r,c) = diff.Mat()(r,c) *
+          (value_elem >= 0.0 ? alpha.Vec()(c) : beta.Vec()(c));
+      }
+    }
+  }
+}
 
 template<typename Real>
 void CuMatrixBase<Real>::Sigmoid(const CuMatrixBase<Real> &src) {

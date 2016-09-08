@@ -262,6 +262,19 @@ for x in exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_*; do grep WER $x/
 %WER 1.91 [ 239 / 12533, 19 ins, 60 del, 160 sub ] exp/dnn4d-fbank_pretrain-dbn_dnn_smbr/decode_it3/wer_5_0.5
 %WER 1.88 [ 236 / 12533, 17 ins, 61 del, 158 sub ] exp/dnn4d-fbank_pretrain-dbn_dnn_smbr/decode_it6/wer_6_0.5
 
+# Relu, FBANK+pitch, (Karel - 8.9.2016)
+# - no pre-train,
+# Xent,
+%WER 1.95 [ 245 / 12533, 15 ins, 77 del, 153 sub ] exp/dnn4d-6L1024-relu-fbank/decode/wer_7_0.5
+# ParametricRelu, FBANK+pitch, (Karel - 8.9.2016)
+# Xent,
+%WER 1.79 [ 224 / 12533, 27 ins, 47 del, 150 sub ] exp/dnn4d-6L1024-relu-fbank-alpha-beta/decode/wer_4_1.0
+# sMBR,
+%WER 1.74 [ 218 / 12533, 21 ins, 47 del, 150 sub ] exp/dnn4d-6L1024-relu-fbank-alpha-beta_smbr/decode_it1/wer_5_0.5
+%WER 1.74 [ 218 / 12533, 22 ins, 45 del, 151 sub ] exp/dnn4d-6L1024-relu-fbank-alpha-beta_smbr/decode_it3/wer_6_0.0
+%WER 1.76 [ 220 / 12533, 23 ins, 43 del, 154 sub ] exp/dnn4d-6L1024-relu-fbank-alpha-beta_smbr/decode_it6/wer_6_0.5
+# => Better than 'Sigmoid' with pre-training,
+
 # dnn4e, FBANK+pitch, 2 output layers: rm + wsj, (Karel - 10.7.2015)
 %WER 1.52 [ 191 / 12533, 17 ins, 52 del, 122 sub ] exp/dnn4e-fbank_blocksoftmax/decode/wer_4_0.5 <<<[BEST]
 %WER 7.86 [ 985 / 12533, 84 ins, 160 del, 741 sub ] exp/dnn4e-fbank_blocksoftmax/decode_ug/wer_8_0.0
