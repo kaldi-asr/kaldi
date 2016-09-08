@@ -301,6 +301,20 @@ class CuMatrixBase {
   void GroupMaxDeriv(const CuMatrixBase<Real> &input,
                      const CuMatrixBase<Real> &output);
 
+  /// Compute the parametric rectified linear unit function;
+  /// element by element, *this = src * (src > 0 ? alpha : beta)
+  void ParametricRelu(const CuMatrixBase<Real> &src,
+                      const CuVectorBase<Real> &alpha,
+                      const CuVectorBase<Real> &beta);
+
+  /// Differentiate backward through the parametric relu function.
+  /// Here the "value" is the Relu input. Does, element-by-element.
+  /// *this = diff * (value > 0 ? alpha : beta)
+  void DiffParametricRelu(const CuMatrixBase<Real> &value,
+                          const CuMatrixBase<Real> &diff,
+                          const CuVectorBase<Real> &alpha,
+                          const CuVectorBase<Real> &beta);
+
   /// Compute the hyperbolic tangent (tanh) function; element by element,
   /// *this = tanh(src).
   void Tanh(const CuMatrixBase<Real> &src);

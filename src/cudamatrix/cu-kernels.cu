@@ -2129,6 +2129,34 @@ static void _diff_tanh(Real*eout, const Real*e, const Real*y, MatrixDim d,
 
 template<typename Real>
 __global__
+static void _parametric_relu(Real* y, const Real* x, MatrixDim d, int src_stride,
+                             const Real* a, const Real* b) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  int dst_index = i + j * d.stride,
+      src_index = i + j * src_stride;
+  if (i < d.cols && j < d.rows) {
+    Real res = (x[src_index] > 0.0) ? a[i] * x[src_index] : b[i] * x[src_index];
+    y[dst_index] = res;
+  }
+}
+
+template<typename Real>
+__global__
+static void _diff_parametric_relu(Real* eout, const Real* e, const Real* y,
+                                  MatrixDim d, int e_stride, int y_stride,
+                                  const Real* a, const Real* b) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  int dst_index = i + j * d.stride;
+  int e_index   = i + j * e_stride;
+  int y_index   = i + j * y_stride;
+  if (i < d.cols  && j < d.rows )
+    eout[dst_index] = (y[y_index] > 0.0 ? a[i] * e[e_index] : b[i] * e[e_index]);
+}
+
+template<typename Real>
+__global__
 static void _heaviside(Real*y, const Real*x, MatrixDim d, int src_stride) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int j = blockIdx.y * blockDim.y + threadIdx.y;
@@ -3097,6 +3125,18 @@ void cudaF_diff_tanh(dim3 Gr, dim3 Bl, float* eout, const float* e,
   _diff_tanh<<<Gr,Bl>>>(eout, e, y, d, e_stride, y_stride);
 }
 
+void cudaF_parametric_relu(dim3 Gr, dim3 Bl, float* y, const float* x,
+                           MatrixDim d, int src_stride,
+                           const float* a, const float* b) {
+  _parametric_relu<<<Gr,Bl>>>(y, x, d, src_stride, a, b);
+}
+
+void cudaF_diff_parametric_relu(dim3 Gr, dim3 Bl, float* eout, const float* e,
+                                const float* y, MatrixDim d, int e_stride,
+                                int y_stride, const float* a, const float* b) {
+  _diff_parametric_relu<<<Gr,Bl>>>(eout, e, y, d, e_stride, y_stride, a, b);
+}
+
 void cudaF_heaviside(dim3 Gr, dim3 Bl, float* y, const float* x, MatrixDim d,
                      int src_stride) {
   _heaviside<<<Gr,Bl>>>(y, x, d, src_stride);
@@ -3716,6 +3756,18 @@ void cudaD_tanh(dim3 Gr, dim3 Bl, double* y, const double* x, MatrixDim d,
 void cudaD_diff_tanh(dim3 Gr, dim3 Bl, double* eout, const double* e,
                      const double* y, MatrixDim d, int e_stride, int y_stride) {
   _diff_tanh<<<Gr,Bl>>>(eout, e, y, d, e_stride, y_stride);
+}
+
+void cudaD_parametric_relu(dim3 Gr, dim3 Bl, double* y, const double* x,
+                           MatrixDim d, int src_stride, 
+                           const double* a, const double* b) {
+  _parametric_relu<<<Gr,Bl>>>(y, x, d, src_stride, a, b);
+}
+
+void cudaD_diff_parametric_relu(dim3 Gr, dim3 Bl, double* eout, const double* e,
+                                const double* y, MatrixDim d, int e_stride,
+                                int y_stride, const double* a, const double* b) {
+  _diff_parametric_relu<<<Gr,Bl>>>(eout, e, y, d, e_stride, y_stride, a, b);
 }
 
 void cudaD_heaviside(dim3 Gr, dim3 Bl, double* y, const double* x, MatrixDim d,

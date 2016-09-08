@@ -34,7 +34,7 @@ gmm=exp/tri3b
 stage=0
 . utils/parse_options.sh || exit 1;
 
-set -eu
+set -euxo pipefail
 
 # Make the FBANK features
 [ ! -e $dev ] && if [ $stage -le 0 ]; then
@@ -52,58 +52,78 @@ set -eu
   utils/subset_data_dir_tr_cv.sh --cv-spk-percent 10 $train ${train}_tr90 ${train}_cv10
 fi
 
-if [ $stage -le 1 ]; then
-  # Pre-train DBN, i.e. a stack of RBMs (small database, smaller DNN)
-  dir=exp/dnn4d-fbank_pretrain-dbn
-  $cuda_cmd $dir/log/pretrain_dbn.log \
-    steps/nnet/pretrain_dbn.sh \
-      --cmvn-opts "--norm-means=true --norm-vars=true" \
-      --delta-opts "--delta-order=2" --splice 5 \
-      --hid-dim 1024 --rbm-iter 20 $train $dir || exit 1;
-fi
+# Tuned with 6x1024 Relu units,
+lrate=0.001
+param_std=0.02
 
-if [ $stage -le 2 ]; then
+# Original Relu,
+if [ $stage -le 1 ]; then
   # Train the DNN optimizing per-frame cross-entropy.
-  dir=exp/dnn4d-fbank_pretrain-dbn_dnn
+  dir=exp/dnn4d-6L1024-relu-fbank
   ali=${gmm}_ali
-  feature_transform=exp/dnn4d-fbank_pretrain-dbn/final.feature_transform
-  dbn=exp/dnn4d-fbank_pretrain-dbn/6.dbn
   # Train
   $cuda_cmd $dir/log/train_nnet.log \
-    steps/nnet/train.sh --feature-transform $feature_transform --dbn $dbn --hid-layers 0 --learn-rate 0.008 \
-    ${train}_tr90 ${train}_cv10 data/lang $ali $ali $dir || exit 1;
+    steps/nnet/train.sh --learn-rate $lrate \
+    --cmvn-opts "--norm-means=true --norm-vars=true" \
+    --delta-opts "--delta-order=2" --splice 5 \
+    --hid-layers 6 --hid-dim 1024 \
+    --proto-opts "--activation-type <ParametricRelu> --param-stddev-factor $param_std --hid-bias-mean 0 --hid-bias-range 0 --no-glorot-scaled-stddev --no-smaller-input-weights" \
+    ${train}_tr90 ${train}_cv10 data/lang $ali $ali $dir
   # Decode (reuse HCLG graph)
   steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 \
-    $gmm/graph $dev $dir/decode || exit 1;
+    $gmm/graph $dev $dir/decode
+fi
+
+# Parametric Relu,
+lr_alpha=1.0
+lr_beta=0.75
+if [ $stage -le 2 ]; then
+  # Train the DNN optimizing per-frame cross-entropy.
+  dir=exp/dnn4d-6L1024-relu-fbank-alpha-beta
+  ali=${gmm}_ali
+  # Train
+  $cuda_cmd $dir/log/train_nnet.log \
+    steps/nnet/train.sh --learn-rate $lrate \
+    --cmvn-opts "--norm-means=true --norm-vars=true" \
+    --delta-opts "--delta-order=2" --splice 5 \
+    --hid-layers 6 --hid-dim 1024 \
+    --proto-opts "--activation-type=<ParametricRelu> --activation-opts=<AlphaLearnRateCoef>_${lr_alpha}_<BetaLearnRateCoef>_${lr_beta} --param-stddev-factor $param_std --hid-bias-mean 0 --hid-bias-range 0 --no-glorot-scaled-stddev --no-smaller-input-weights" \
+    ${train}_tr90 ${train}_cv10 data/lang $ali $ali $dir
+  # Decode (reuse HCLG graph)
+  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 \
+    $gmm/graph $dev $dir/decode
 fi
 
 
 # Sequence training using sMBR criterion, we do Stochastic-GD with per-utterance updates.
 # Note: With DNNs in RM, the optimal LMWT is 2-6. Don't be tempted to try acwt's like 0.2,
 # the value 0.1 is better both for decoding and sMBR.
-dir=exp/dnn4d-fbank_pretrain-dbn_dnn_smbr
-srcdir=exp/dnn4d-fbank_pretrain-dbn_dnn
+dir=exp/dnn4d-6L1024-relu-fbank-alpha-beta_smbr
+srcdir=exp/dnn4d-6L1024-relu-fbank-alpha-beta
 acwt=0.1
 
 if [ $stage -le 3 ]; then
   # First we generate lattices and alignments:
   steps/nnet/align.sh --nj 20 --cmd "$train_cmd" \
-    $train data/lang $srcdir ${srcdir}_ali || exit 1;
+    $train data/lang $srcdir ${srcdir}_ali
   steps/nnet/make_denlats.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt $acwt \
-    $train data/lang $srcdir ${srcdir}_denlats || exit 1;
+    $train data/lang $srcdir ${srcdir}_denlats
 fi
 
+lrate=0.000001 # an 10x smaller than with Sigmoid,
 if [ $stage -le 4 ]; then
   # Re-train the DNN by 6 iterations of sMBR
-  steps/nnet/train_mpe.sh --cmd "$cuda_cmd" --num-iters 6 --acwt $acwt --do-smbr true \
-    $train data/lang $srcdir ${srcdir}_ali ${srcdir}_denlats $dir || exit 1
+  steps/nnet/train_mpe.sh --cmd "$cuda_cmd" --num-iters 6 --learn-rate $lrate --acwt $acwt --do-smbr true \
+    $train data/lang $srcdir ${srcdir}_ali ${srcdir}_denlats $dir
   # Decode
   for ITER in 6 3 1; do
     steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config \
-      --nnet $dir/${ITER}.nnet --acwt $acwt \
-      $gmm/graph $dev $dir/decode_it${ITER} || exit 1
+      --nnet $dir2/${ITER}.nnet --acwt $acwt \
+      $gmm/graph $dev $dir/decode_it${ITER}
   done
 fi
+
+
 
 echo Success
 exit 0

@@ -48,6 +48,7 @@
 #include "nnet/nnet-frame-pooling-component.h"
 #include "nnet/nnet-parallel-component.h"
 #include "nnet/nnet-multibasis-component.h"
+#include "nnet/nnet-parametric-relu.h"
 
 #include "nnet/nnet-multistream-mask-component.h"
 
@@ -68,8 +69,8 @@ const struct Component::key_value Component::kMarkerMap[] = {
   { Component::kHiddenSoftmax, "<HiddenSoftmax>" },
   { Component::kBlockSoftmax, "<BlockSoftmax>" },
   { Component::kSigmoid, "<Sigmoid>" },
-  { Component::kReLU, "<ReLU>" },
   { Component::kTanh, "<Tanh>" },
+  { Component::kParametricRelu,"<ParametricRelu>" },
   { Component::kDropout, "<Dropout>" },
   { Component::kBlockDropout, "<BlockDropout>" },
   { Component::kLengthNormComponent, "<LengthNormComponent>" },
@@ -155,11 +156,11 @@ Component* Component::NewComponentOfType(ComponentType comp_type,
     case Component::kSigmoid :
       ans = new Sigmoid(input_dim, output_dim);
       break;
-    case Component::kReLU :
-      ans = new ReLU(input_dim, output_dim);
-      break;
     case Component::kTanh :
       ans = new Tanh(input_dim, output_dim);
+      break;
+    case Component::kParametricRelu :
+      ans = new ParametricRelu(input_dim, output_dim);
       break;
     case Component::kDropout :
       ans = new Dropout(input_dim, output_dim);
