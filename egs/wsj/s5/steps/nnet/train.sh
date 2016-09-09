@@ -122,6 +122,10 @@ echo
 
 mkdir -p $dir/{log,nnet}
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir_cv/phones.txt
+cp $alidir/phones.txt $dir
+
 # skip when already trained,
 if [ -e $dir/final.nnet ]; then
   echo "SKIPPING TRAINING... ($0)"
