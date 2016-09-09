@@ -53,14 +53,6 @@ parser.add_option('--hid-bias-range', dest='hid_bias_range',
 parser.add_option('--param-stddev-factor', dest='param_stddev_factor',
                    help='Factor to rescale Normal distriburtion for initalizing weight matrices [default: %default]',
                    default=0.1, type='float');
-parser.add_option('--bottleneck-dim', dest='bottleneck_dim', 
-                   help='Make bottleneck network with desired bn-dim (0 = no bottleneck) [default: %default]',
-                   default=0, type='int');
-# where to put bottleneck, Added by Harish
-parser.add_option('--bottleneck-before-last-affine', dest='bottleneck_before_last_affine',
-                   help='Put bottleneck before last affine',
-                   action='store_true', default=False);
-
 parser.add_option('--no-glorot-scaled-stddev', dest='with_glorot',
                    help='Generate normalized weights according to X.Glorot paper, but mapping U->N with same variance (factor sqrt(x/(dim_in+dim_out)))',
                    action='store_false', default=True);
@@ -80,6 +72,10 @@ parser.add_option('--affine-opts', dest='affine_opts',
 parser.add_option('--bottleneck-dim', dest='bottleneck_dim',
                    help='Make bottleneck network with desired bn-dim (0 = no bottleneck) [default: %default]',
                    default=0, type='int');
+## where to put bottleneck, Added by Harish
+parser.add_option('--bottleneck-before-last-affine', dest='bottleneck_before_last_affine',
+                   help='Put bottleneck before last affine',
+                   action='store_true', default=False);
 
 
 (o,args) = parser.parse_args()
