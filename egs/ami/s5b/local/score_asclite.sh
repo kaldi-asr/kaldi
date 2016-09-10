@@ -12,6 +12,8 @@ max_lmwt=15
 asclite=true
 iter=final
 overlap_spk=4
+resolve_overlaps=false
+stm_suffix=
 # end configuration section.
 [ -f ./path.sh ] && . ./path.sh
 . parse_options.sh || exit 1;
@@ -36,7 +38,7 @@ hubscr=$KALDI_ROOT/tools/sctk/bin/hubscr.pl
 [ ! -f $hubscr ] && echo "Cannot find scoring program at $hubscr" && exit 1;
 hubdir=`dirname $hubscr`
 
-for f in $data/stm $data/glm $lang/words.txt $lang/phones/word_boundary.int \
+for f in $data/stm${stm_suffix} $data/glm $lang/words.txt $lang/phones/word_boundary.int \
      $model $data/segments $data/reco2file_and_channel $dir/lat.1.gz; do
   [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
 done
@@ -55,24 +57,45 @@ nj=$(cat $dir/num_jobs)
 
 mkdir -p $dir/ascoring/log
 
+copy_ctm_script="cat -"
+if $resolve_overlaps; then
+  copy_ctm_script="steps/resolve_ctm_overlaps.py $data/segments - -"
+fi
+
 if [ $stage -le 0 ]; then
   for LMWT in $(seq $min_lmwt $max_lmwt); do
     rm -f $dir/.error
     (
-    $cmd JOB=1:$nj $dir/ascoring/log/get_ctm.${LMWT}.JOB.log \
-      mkdir -p $dir/ascore_${LMWT}/ '&&' \
-      lattice-scale --inv-acoustic-scale=${LMWT} "ark:gunzip -c $dir/lat.JOB.gz|" ark:- \| \
-      lattice-limit-depth ark:- ark:- \| \
-      lattice-push --push-strings=false ark:- ark:- \| \
-      lattice-align-words-lexicon --max-expand=10.0 \
-       $lang/phones/align_lexicon.int $model ark:- ark:- \| \
-      lattice-to-ctm-conf $frame_shift_opt --decode-mbr=$decode_mbr ark:- - \| \
-      utils/int2sym.pl -f 5 $lang/words.txt  \| \
-      utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
-      '>' $dir/ascore_${LMWT}/${name}.JOB.ctm || touch $dir/.error;
+    if $decode_mbr; then
+      $cmd JOB=1:$nj $dir/ascoring/log/get_ctm.${LMWT}.JOB.log \
+        mkdir -p $dir/ascore_${LMWT}/ '&&' \
+        lattice-scale --inv-acoustic-scale=${LMWT} "ark:gunzip -c $dir/lat.JOB.gz|" ark:- \| \
+        lattice-limit-depth ark:- ark:- \| \
+        lattice-push --push-strings=false ark:- ark:- \| \
+        lattice-align-words-lexicon --max-expand=10.0 \
+         $lang/phones/align_lexicon.int $model ark:- ark:- \| \
+        lattice-to-ctm-conf $frame_shift_opt --decode-mbr=$decode_mbr ark:- - \| \
+        utils/int2sym.pl -f 5 $lang/words.txt \
+        '>' $dir/ascore_${LMWT}/${name}.JOB.ctm || touch $dir/.error;
+    else
+      $cmd JOB=1:$nj $dir/ascoring/log/get_ctm.${LMWT}.JOB.log \
+        mkdir -p $dir/ascore_${LMWT}/ '&&' \
+        lattice-scale --inv-acoustic-scale=${LMWT} "ark:gunzip -c $dir/lat.JOB.gz|" ark:- \| \
+        lattice-limit-depth ark:- ark:- \| \
+        lattice-1best ark:- ark:- \| \
+        lattice-push --push-strings=false ark:- ark:- \| \
+        lattice-align-words-lexicon --max-expand=10.0 \
+         $lang/phones/align_lexicon.int $model ark:- ark:- \| \
+        nbest-to-ctm $frame_shift_opt ark:- - \| \
+        utils/int2sym.pl -f 5 $lang/words.txt \
+        '>' $dir/ascore_${LMWT}/${name}.JOB.ctm || touch $dir/.error;
+    fi
+
     # Merge and clean,
-    for ((n=1; n<=nj; n++)); do cat $dir/ascore_${LMWT}/${name}.${n}.ctm; done > $dir/ascore_${LMWT}/${name}.ctm
-    rm -f $dir/ascore_${LMWT}/${name}.*.ctm
+    for ((n=1; n<=nj; n++)); do 
+      cat $dir/ascore_${LMWT}/${name}.${n}.ctm; 
+      rm -f $dir/ascore_${LMWT}/${name}.${n}.ctm
+    done > $dir/ascore_${LMWT}/${name}.utt.ctm
     )&
   done
   wait;
@@ -80,11 +103,20 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
+  for LMWT in $(seq $min_lmwt $max_lmwt); do
+    cat $dir/ascore_${LMWT}/${name}.utt.ctm | \
+      $copy_ctm_script | utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
+      > $dir/ascore_${LMWT}/${name}.ctm || exit 1
+  done 
+fi
+
+if [ $stage -le 1 ]; then
 # Remove some stuff we don't want to score, from the ctm.
 # - we remove hesitations here, otherwise the CTM would have a bug!
 #   (confidences in place of the removed hesitations),
-  for x in $dir/ascore_*/${name}.ctm; do
-    cp $x $x.tmpf;
+  for LMWT in $(seq $min_lmwt $max_lmwt); do
+    x=$dir/ascore_${LMWT}/${name}.ctm
+    mv $x $x.tmpf;
     cat $x.tmpf | grep -i -v -E '\[noise|laughter|vocalized-noise\]' | \
       grep -i -v -E ' (ACH|AH|EEE|EH|ER|EW|HA|HEE|HM|HMM|HUH|MM|OOF|UH|UM) ' | \
       grep -i -v -E '<unk>' > $x;
@@ -94,8 +126,9 @@ fi
 
 if [ $stage -le 2 ]; then
   if [ "$asclite" == "true" ]; then
-    oname=$name
+    oname=${name}
     [ ! -z $overlap_spk ] && oname=${name}_o$overlap_spk
+    oname=${oname}${stm_suffix}
     echo "asclite is starting"
     # Run scoring, meaning of hubscr.pl options:
     # -G .. produce alignment graphs,
@@ -109,10 +142,10 @@ if [ $stage -le 2 ]; then
     # -V .. skip validation of input transcripts,
     # -h rt-stt .. removes non-lexical items from CTM,
     $cmd LMWT=$min_lmwt:$max_lmwt $dir/ascoring/log/score.LMWT.log \
-      cp $data/stm $dir/ascore_LMWT/ '&&' \
+      cp $data/stm${stm_suffix} $dir/ascore_LMWT/ '&&' \
       cp $dir/ascore_LMWT/${name}.ctm $dir/ascore_LMWT/${oname}.ctm '&&' \
       $hubscr -G -v -m 1:2 -o$overlap_spk -a -C -B 8192 -p $hubdir -V -l english \
-        -h rt-stt -g $data/glm -r $dir/ascore_LMWT/stm $dir/ascore_LMWT/${oname}.ctm || exit 1
+        -h rt-stt -g $data/glm -r $dir/ascore_LMWT/stm${stm_suffix} $dir/ascore_LMWT/${oname}.ctm || exit 1
     # Compress some scoring outputs : alignment info and graphs,
     echo -n "compressing asclite outputs "
     for LMWT in $(seq $min_lmwt $max_lmwt); do
@@ -126,8 +159,8 @@ if [ $stage -le 2 ]; then
     echo done
   else
     $cmd LMWT=$min_lmwt:$max_lmwt $dir/ascoring/log/score.LMWT.log \
-      cp $data/stm $dir/ascore_LMWT/ '&&' \
-      $hubscr -p $hubdir -v -V -l english -h hub5 -g $data/glm -r $dir/ascore_LMWT/stm $dir/ascore_LMWT/${name}.ctm || exit 1
+      cp $data/stm${stm_suffix} $dir/ascore_LMWT/ '&&' \
+      $hubscr -p $hubdir -v -V -l english -h hub5 -g $data/glm -r $dir/ascore_LMWT/stm${suffix} $dir/ascore_LMWT/${name}${stm_suffix}.ctm || exit 1
   fi
 fi
 
