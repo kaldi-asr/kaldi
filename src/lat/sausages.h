@@ -133,8 +133,8 @@ class MinimumBayesRisk {
   // used in the algorithm.
 
   /// Function used to increment map.
-  static inline void AddToMap(int32 i, double d, std::map<int32, double> *gamma) {
-    if (d == 0) return;
+  static inline void AddToMap(int32 i, double d, std::map<int32, double> *gamma, bool return_if_zero = true) {
+    if (return_if_zero && d == 0) return;
     std::pair<const int32, double> pr(i, d);
     std::pair<std::map<int32, double>::iterator, bool> ret = gamma->insert(pr);
     if (!ret.second) // not inserted, so add to contents.
@@ -177,6 +177,12 @@ class MinimumBayesRisk {
   // that word-id may be epsilon.  Caution: indexed from zero, not from 1 as in
   // paper.  We sort in reverse order on the second member (posterior), so more
   // likely word is first.
+
+  std::vector<std::map<int32, BaseFloat> > begin_times_;
+  std::vector<std::map<int32, BaseFloat> > end_times_;
+  // The average start and end times for each word in a confusion-network bin.
+  // These are the tau_b and tau_e quantities in Appendix C of the paper.
+  // Indexed from zero, like gamma_ and R_.
 
   std::vector<std::pair<BaseFloat, BaseFloat> > times_;
   // The average start and end times for each confusion-network bin.  This
