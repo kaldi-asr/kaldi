@@ -336,6 +336,13 @@ class CuMatrixBase {
   void DiffSoftmaxPerRow(const CuMatrixBase<Real> &value,
                          const CuMatrixBase<Real> &diff);
 
+  /// Differentiate backward through the log softmax function.  Here, "value" is the
+  /// log softmax output. Does, for each row i,
+  /// *this(i) =  diff(i) - sum(diff(i)) .* exp(value(i))
+  /// xxxx(i) is row-vector.
+  void DiffLogSoftmaxPerRow(const CuMatrixBase<Real> &value,
+                            const CuMatrixBase<Real> &diff);
+
   /// Differentiate the block [softmax+cross-entropy] :
   /// dE/da = posterior_mat - target_mat,
   /// 'E' is error function, 'a' is activation on softmax input
