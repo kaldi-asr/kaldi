@@ -51,6 +51,9 @@ struct NnetIo {
   /// represents.
   NnetIo(const std::string &name,
          int32 t_begin, const MatrixBase<BaseFloat> &feats);
+  
+  NnetIo(const std::string &name,
+         int32 t_begin, const SparseMatrix<BaseFloat> &feats);
 
   /// This constructor sets "name" to the provided string, sets "indexes" with
   /// n=0, x=0, and t from t_begin to t_begin + labels.size() - 1, and the labels
