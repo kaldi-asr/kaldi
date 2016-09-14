@@ -37,6 +37,7 @@ int main(int argc, char *argv[]) {
     bool binary_write = true;
     int32 remove_first_components = 0;
     int32 remove_last_components = 0;
+    BaseFloat dropout_retention = 0.0;
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
@@ -50,6 +51,9 @@ int main(int argc, char *argv[]) {
         "Remove N first Components from the Nnet");
     po.Register("remove-last-components", &remove_last_components,
         "Remove N last layers Components from the Nnet");
+
+    po.Register("dropout-retention", &dropout_retention,
+        "Set dropout retention to a particular value.");
 
     std::string from_parallel_component;
     po.Register("from-parallel-component", &from_parallel_component,
@@ -126,7 +130,12 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    // store the network
+    // dropout,
+    if (dropout_retention != 0.0) {
+      nnet.SetDropoutRetention(dropout_retention);
+    }
+
+    // store the network,
     {
       Output ko(model_out_filename, binary_write);
       nnet.Write(ko.Stream(), binary_write);
