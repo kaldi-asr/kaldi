@@ -2048,6 +2048,43 @@ static void UnitTestCuDiffSoftmax() {
 
 
 template<typename Real>
+static void UnitTestCuDiffLogSoftmax() {
+  int m = 100, n = 111;
+  Matrix<Real> Hi(m, n);
+  Matrix<Real> Ho(m, n);
+  Matrix<Real> Hy(m, n);
+  Hi.SetRandn();
+  RandZeroToOneMatrix(&Hy);
+
+  CuMatrix<Real> Di(m, n);
+  CuMatrix<Real> Do(m, n);
+  CuMatrix<Real> Dy(m, n);
+  Di.CopyFromMat(Hi);
+  Dy.CopyFromMat(Hy);
+
+  //gpu
+  Do.DiffLogSoftmaxPerRow(Dy, Di);
+  //cpu
+  {
+    const MatrixBase<Real> &Y(Hy), &E(Hi);
+    MatrixBase<Real> &D(Ho);
+    D.CopyFromMat(Y);
+    D.ApplyExp();                           // exp(y)
+    Vector<Real> E_sum(D.NumRows());        // Initializes to zero
+    E_sum.AddColSumMat(1.0, E);             // Sum(e)
+    D.MulRowsVec(E_sum);                    // exp(y) Sum(e)
+    D.Scale(-1.0);                          // - exp(y) Sum(e)
+    D.AddMat(1.0, E, kNoTrans);             // e - exp(y_i) Sum(e)
+  }
+
+  Matrix<Real> Ho2(m, n);
+  Do.CopyToMat(&Ho2);
+
+  AssertEqual(Ho, Ho2);
+}
+
+
+template<typename Real>
 static void UnitTestCuSoftmax() {
 
   for (int32 i = 0; i < 2; i++) {
@@ -2645,6 +2682,7 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixAdd2<Real>();
   UnitTestCuDiffSigmoid<Real>();
   UnitTestCuDiffSoftmax<Real>();
+  UnitTestCuDiffLogSoftmax<Real>();
   UnitTestCuMatrixGroupPnorm<Real>();
   UnitTestCuMatrixGroupPnormDeriv<Real>();
   UnitTestCuMatrixDiffGroupPnorm<Real>();

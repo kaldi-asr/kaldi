@@ -1690,7 +1690,6 @@ void CuMatrixBase<Real>::DiffSoftmaxPerRow(const CuMatrixBase<Real> &value,
         value.Stride(), diff.Data(), diff.Stride());
     CU_SAFE_CALL(cudaGetLastError());
 
-
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
@@ -1708,6 +1707,51 @@ void CuMatrixBase<Real>::DiffSoftmaxPerRow(const CuMatrixBase<Real> &value,
   }
 }
 
+template<typename Real>
+void CuMatrixBase<Real>::DiffLogSoftmaxPerRow(
+    const CuMatrixBase<Real> &out_value, const CuMatrixBase<Real> &out_deriv) {
+
+  KALDI_ASSERT(SameDim(out_value, out_deriv) && SameDim(out_value, *this));
+
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+
+    // CUDA thread layout: one thread block per matrix-row.
+    dim3 dimBlock(CU1DBLOCK);
+    dim3 dimGrid(num_rows_);
+    cuda_diff_log_softmax(dimGrid, dimBlock, this->Dim(), out_value.Data(),
+                          out_value.Stride(), out_deriv.Data(),
+                          out_deriv.Stride(), data_);
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    /*
+     Let the output be y, then
+     y_i = x_i - log(sum_i exp(x_i))
+     where x_i is the input to the component. The Jacobian matrix of this
+     function is
+     J = I - 1 exp(y^T)
+     where 1 is a vector of ones. Let the derivative vector at the output be e,
+     and at the input be d, then we have
+     d = e - exp(y) Sum(e)
+     d_i = e_i - exp(y_i) Sum(e)
+     */
+    const CuMatrixBase<Real> &Y(out_value), &E(out_deriv);
+    CuMatrixBase<Real> &D(*this);
+
+    D.CopyFromMat(Y);
+    D.ApplyExp();                           // exp(y)
+    CuVector<Real> E_sum(D.NumRows()); // Initializes to zero
+    E_sum.AddColSumMat(1.0, E);             // Sum(e)
+    D.MulRowsVec(E_sum);                    // exp(y) Sum(e)
+    D.Scale(-1.0);                          // - exp(y) Sum(e)
+    D.AddMat(1.0, E, kNoTrans);             // e - exp(y_i) Sum(e)
+  }
+}
 
 template<typename Real>
 void CuMatrixBase<Real>::DiffXent(const CuArray<int32> &tgt,
