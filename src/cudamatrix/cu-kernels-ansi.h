@@ -240,8 +240,8 @@ void cudaF_tanh(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d,
 void cudaF_diff_tanh(dim3 Gr, dim3 Bl, float *eout, const float *e,
                      const float *y, MatrixDim d, int e_stride, int y_stride);
 void cudaF_parametric_relu(dim3 Gr, dim3 Bl, float *y, const float *x,
-                           MatrixDim d, int src_stride,
-                           const float *a, const float *b);
+                           MatrixDim d, int src_stride, const float *a,
+                           const float *b);
 void cudaF_diff_parametric_relu(dim3 Gr, dim3 Bl, float *eout, const float *e,
                                 const float *y, MatrixDim d, int e_stride,
                                 int y_stride, const float *a, const float *b);
@@ -263,6 +263,10 @@ void cudaF_randomize(dim3 Gr, dim3 Bl, float *y, const float *x,
                      MatrixDim d_in);
 void cudaF_splice(dim3 Gr, dim3 Bl, float *y, const float *x,
                   const int32_cuda *off, MatrixDim d_out, MatrixDim d_in);
+void cudaF_diff_log_softmax(dim3 Gr, dim3 Bl, const MatrixDim in_deriv_dim,
+                            const float* out_value, const int out_value_stride,
+                            const float* out_deriv, const int out_deriv_stride,
+                            float* in_deriv);
 void cudaF_one(int Gr, int Bl, float* x, int dim);
 void cudaF_copy(dim3 Gr, dim3 Bl, float *y, const float *x,
                 const int32_cuda *copy_from, MatrixDim d_out, MatrixDim d_in);
@@ -508,8 +512,8 @@ void cudaD_tanh(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d,
 void cudaD_diff_tanh(dim3 Gr, dim3 Bl, double *eout, const double *e,
                      const double *y, MatrixDim d, int e_stride, int y_stride);
 void cudaD_parametric_relu(dim3 Gr, dim3 Bl, double *y, const double *x,
-                           MatrixDim d, int src_stride,
-                           const double *a, const double *b);
+                           MatrixDim d, int src_stride, const double *a,
+                           const double *b);
 void cudaD_diff_parametric_relu(dim3 Gr, dim3 Bl, double *eout, const double *e,
                                 const double *y, MatrixDim d, int e_stride,
                                 int y_stride, const double *a, const double *b);
@@ -531,6 +535,10 @@ void cudaD_randomize(dim3 Gr, dim3 Bl, double *y, const double *x,
                      MatrixDim d_in);
 void cudaD_splice(dim3 Gr, dim3 Bl, double *y, const double *x,
                   const int32_cuda *off, MatrixDim d_out, MatrixDim d_in);
+void cudaD_diff_log_softmax(dim3 Gr, dim3 Bl, const MatrixDim in_deriv_dim,
+                            const double* out_value, const int out_value_stride,
+                            const double* out_deriv, const int out_deriv_stride,
+                            double* in_deriv);
 void cudaD_one(int Gr, int Bl, double* x, int dim);
 void cudaD_copy(dim3 Gr, dim3 Bl, double *y, const double *x,
                 const int32_cuda *copy_from, MatrixDim d_out, MatrixDim d_in);

@@ -2599,6 +2599,62 @@ static void _diff_softmax(Real* x, const MatrixDim dim, const Real* value,
   }
 }
 
+// Differentiate backward through the log softmax function.
+// "out_value" is the log softmax output. Does, for each row i,
+// in_deriv(i) =  out_deriv(i) - sum(out_deriv(i)) .* exp(out_value(i))
+// ???(i) is row-vector.
+// CUDA thread layout: 1 thread block (CU1DBLOCK == 256 threads) per matrix-row.
+template<typename Real>
+__global__
+static void _diff_log_softmax(const MatrixDim in_deriv_dim,
+                              const Real* out_value, const int out_value_stride,
+                              const Real* out_deriv, const int out_deriv_stride,
+                              Real* in_deriv) {
+
+  __shared__ Real ssum[CU1DBLOCK];
+  const int tid = threadIdx.x;
+  const int i = blockIdx.x;
+  const int out_value_start = i * out_value_stride;
+  const int out_deriv_start = i * out_deriv_stride;
+  const int in_deriv_start = i * in_deriv_dim.stride;
+
+  // Loop along the matrix row. Reduce to CU1DBLOCK elements per row.
+  Real tsum = Real(0);
+  for (int j = tid; j < in_deriv_dim.cols; j += CU1DBLOCK) {
+    tsum += out_deriv[out_deriv_start + j];
+  }
+  ssum[tid] = tsum;
+  __syncthreads();
+
+  // Tree reduce to 2x warpSize elements.
+# pragma unroll
+  for (int shift = CU1DBLOCK / 2; shift > warpSize; shift >>= 1) {
+    if (tid < shift) {
+      ssum[tid] += ssum[tid + shift];
+    }
+    __syncthreads();
+  }
+
+  // Warp reduce to 1 element. Threads implicitly synchronized within a warp.
+  if (tid < warpSize) {
+#   pragma unroll
+    for (int shift = warpSize; shift > 0; shift >>= 1) {
+      ssum[tid] += ssum[tid + shift];
+    }
+  }
+
+  // Broadcast result to all threads
+  __syncthreads();
+  const Real sum_e = ssum[0];
+
+  // Apply element-wise x = out_deriv - exp(value) * sum_e
+  for (int j = tid; j < in_deriv_dim.cols; j += CU1DBLOCK) {
+    in_deriv[in_deriv_start + j] = out_deriv[out_deriv_start + j]
+        - exp(out_value[out_value_start + j]) * sum_e;
+  }
+}
+
+
 /***********************************************************************
  * ANSI-C wrappers of CUDA kernels
  */
@@ -3218,6 +3274,14 @@ void cudaF_copy_rows_from_vec(dim3 Gr, dim3 Bl, float *mat_out, MatrixDim d_out,
   _copy_rows_from_vec<<<Gr,Bl>>>(mat_out, d_out, v_in);
 }
 
+void cudaF_diff_log_softmax(dim3 Gr, dim3 Bl, const MatrixDim in_deriv_dim,
+                            const float* out_value, const int out_value_stride,
+                            const float* out_deriv, const int out_deriv_stride,
+                            float* in_deriv) {
+  _diff_log_softmax<<<Gr, Bl>>>(in_deriv_dim, out_value, out_value_stride,
+      out_deriv, out_deriv_stride, in_deriv);
+}
+
 void cudaF_copy_col_from_mat_df(int Gr, int Bl, double* v, int col,
                                 const float* mat, MatrixDim dmat, int dim) {
   _copy_col_from_mat_df<<<Gr,Bl>>>(v,col,mat,dmat,dim);
@@ -3759,7 +3823,7 @@ void cudaD_diff_tanh(dim3 Gr, dim3 Bl, double* eout, const double* e,
 }
 
 void cudaD_parametric_relu(dim3 Gr, dim3 Bl, double* y, const double* x,
-                           MatrixDim d, int src_stride, 
+                           MatrixDim d, int src_stride,
                            const double* a, const double* b) {
   _parametric_relu<<<Gr,Bl>>>(y, x, d, src_stride, a, b);
 }
@@ -3844,6 +3908,14 @@ void cudaD_diff_softmax(dim3 Gr, dim3 Bl, double* x, const MatrixDim dim,
                         const double* value, const int value_stride,
                         const double* diff, const int diff_stride) {
   _diff_softmax<<<Gr, Bl>>>(x, dim, value, value_stride, diff, diff_stride);
+}
+
+void cudaD_diff_log_softmax(dim3 Gr, dim3 Bl, const MatrixDim in_deriv_dim,
+                            const double* out_value, const int out_value_stride,
+                            const double* out_deriv, const int out_deriv_stride,
+                            double* in_deriv) {
+  _diff_log_softmax<<<Gr, Bl>>>(in_deriv_dim, out_value, out_value_stride,
+      out_deriv, out_deriv_stride, in_deriv);
 }
 
 void cudaD_copy_rows_from_vec(dim3 Gr, dim3 Bl, double *mat_out,
