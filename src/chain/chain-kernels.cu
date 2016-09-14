@@ -20,17 +20,9 @@
 #include <cfloat>
 #include "chain/chain-kernels-ansi.h"
 
-
-
 template <typename Real>
 __device__ inline void atomic_add(Real* address, Real value) {
-  Real old = value;
-  Real ret = atomicExch(address, 0.0f);
-  Real new_old = ret + old;
-  while ((old = atomicExch(address, new_old)) != 0.0f) {
-    new_old = atomicExch(address, 0.0f);
-    new_old += old;
-  }
+  atomicAdd(address, value);
 }
 
 template<>
