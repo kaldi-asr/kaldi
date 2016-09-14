@@ -23,7 +23,7 @@
 
 #This should be incremented after every significant change of the configure script
 #I.e. after each change that affects the kaldi.mk or the build system as whole
-CONFIGURE_VERSION=3
+CONFIGURE_VERSION=4
 
 function rel2abs {
   if [ ! -z "$1" ]; then
