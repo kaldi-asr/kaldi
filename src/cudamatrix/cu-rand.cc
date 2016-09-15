@@ -17,8 +17,6 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#if HAVE_CUDA == 1
-
 #include "cudamatrix/cu-rand.h"
 
 namespace kaldi {
@@ -140,10 +138,11 @@ void CuRand<double>::RandGaussian(CuVectorBase<double> *tgt) {
 /// convert probabilities binary values,
 template<typename Real>
 void CuRand<Real>::BinarizeProbs(const CuMatrix<Real> &probs, CuMatrix<Real> *states) {
-  this->RandUniform(states);  // [0..1]
-  states->Scale(-1.0);  // [-1..0]
-  states->AddMat(1.0, probs);  // [-1..+1]
-  states->Heaviside(*states); // negative -> 0, positive 1,
+  CuMatrix<Real> tmp(probs.NumRows(), probs.NumCols());
+  this->RandUniform(&tmp);  // [0..1]
+  tmp.Scale(-1.0);  // [-1..0]
+  tmp.AddMat(1.0, probs);  // [-1..+1]
+  states->Heaviside(tmp);  // negative
 }
 
 /// add gaussian noise to each element
@@ -160,4 +159,3 @@ template class CuRand<double>;
 
 }  // namespace,
 
-#endif  // HAVE_CUDA
