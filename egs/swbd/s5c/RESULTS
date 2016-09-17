@@ -164,6 +164,14 @@ exit 0
 %WER 12.1 | 1831 21395 | 89.1 7.1 3.8 1.3 12.1 48.1 | exp/nnet3/tdnn_sp/decode_eval2000_hires_sw1_fsh_fg/score_12_0.0/eval2000_hires.ctm.swbd.filt.sys
 %WER 13.6 | 1831 21395 | 87.9 8.2 3.9 1.5 13.6 51.0 | exp/nnet3/tdnn_sp/decode_eval2000_hires_sw1_tg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
 
+# results with nnet3 tdnn: local/nnet3/run_tdnn.sh (7.17.2016) (2 epoch training on speed-perturbed data)
+%WER 11.8 | 1831 21395 | 89.5 6.9 3.6 1.3 11.8 46.2 | exp/nnet3/tdnn_sp/decode_eval2000_hires_sw1_fsh_fg/score_12_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 13.1 | 1831 21395 | 88.3 7.7 4.0 1.4 13.1 49.4 | exp/nnet3/tdnn_sp/decode_eval2000_hires_sw1_tg/score_12_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 22.6 | 2628 21594 | 79.8 13.7 6.5 2.4 22.6 58.6 | exp/nnet3/tdnn_sp/decode_eval2000_hires_sw1_fsh_fg/score_13_0.0/eval2000_hires.ctm.callhm.filt.sys
+%WER 24.1 | 2628 21594 | 78.5 14.7 6.8 2.6 24.1 60.9 | exp/nnet3/tdnn_sp/decode_eval2000_hires_sw1_tg/score_12_0.0/eval2000_hires.ctm.callhm.filt.sys
+%WER 17.2 | 4459 42989 | 84.6 10.4 5.0 1.9 17.2 53.4 | exp/nnet3/tdnn_sp/decode_eval2000_hires_sw1_fsh_fg/score_12_0.0/eval2000_hires.ctm.filt.sys
+%WER 18.6 | 4459 42989 | 83.4 11.3 5.4 2.0 18.6 56.2 | exp/nnet3/tdnn_sp/decode_eval2000_hires_sw1_tg/score_12_0.0/eval2000_hires.ctm.filt.sys
+
 # results with nnet3 cnn+tdnn: local/nnet3/run_tdnn.sh --use_cnn true (1.2.2016) (2 epoch training on speed-perturbed and volume perturbed data)
 %WER 12.0 | 1831 21395 | 89.3 7.1 3.7 1.3 12.0 47.1 | exp/nnet3/tdnn_cnn_sp/decode_eval2000_hires_sw1_fsh_fg/score_12_0.0/eval2000_hires.ctm.swbd.filt.sys
 %WER 22.4 | 2628 21594 | 80.1 13.7 6.2 2.6 22.4 57.6 | exp/nnet3/tdnn_cnn_sp/decode_eval2000_hires_sw1_fsh_fg/score_11_1.0/eval2000_hires.ctm.callhm.filt.sys
