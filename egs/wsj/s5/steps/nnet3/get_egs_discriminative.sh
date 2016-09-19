@@ -4,7 +4,7 @@
 # Copyright 2014-2015   Vimal Manohar
 
 # This script dumps examples MPE or MMI or state-level minimum bayes risk (sMBR)
-# training of neural nets.  
+# training of neural nets.
 # Criterion supported are mpe, smbr and mmi
 
 # Begin configuration section.
@@ -102,9 +102,6 @@ done
 
 mkdir -p $dir/log $dir/info || exit 1;
 
-[ "$(readlink /bin/sh)" == dash ] && \
-  echo "This script won't work if /bin/sh points to dash.  make it point to bash." && exit 1
-
 nj=$(cat $denlatdir/num_jobs) || exit 1;
 
 sdata=$data/split$nj
@@ -129,12 +126,12 @@ awk '{print $1}' $data/utt2spk | utils/filter_scp.pl --exclude $dir/valid_uttlis
    utils/shuffle_list.pl | head -$num_utts_subset > $dir/train_subset_uttlist || exit 1;
 
 [ -z "$transform_dir" ] && transform_dir=$alidir
-  
+
 if [ $stage -le 1 ]; then
   nj_ali=$(cat $alidir/num_jobs)
-  all_ids=$(seq -s, $nj_ali)
+  alis=$(for n in $(seq $nj_ali); do echo -n "$alidir/ali.$n.gz "; done)
   $cmd $dir/log/copy_alignments.log \
-    copy-int-vector "ark:gunzip -c $alidir/ali.{$all_ids}.gz|" \
+    copy-int-vector "ark:gunzip -c $alis|" \
     ark,scp:$dir/ali.ark,$dir/ali.scp || exit 1;
 fi
 
@@ -271,7 +268,7 @@ if [ $stage -le 3 ]; then
   echo "$0: copying training lattices"
 
   $cmd --max-jobs-run 6 JOB=1:$nj $dir/log/lattice_copy.JOB.log \
-    lattice-copy --include="cat $dir/valid_uttlist $dir/train_subset_uttlist |" --ignore-missing \
+    lattice-copy --write-compact=false --include="cat $dir/valid_uttlist $dir/train_subset_uttlist |" --ignore-missing \
     "ark:gunzip -c $denlatdir/lat.JOB.gz|" ark,scp:$dir/lat_special.JOB.ark,$dir/lat_special.JOB.scp || exit 1;
 
   for id in $(seq $nj); do cat $dir/lat_special.$id.scp; done > $dir/lat_special.scp
@@ -312,13 +309,21 @@ echo $priors_right_context > $dir/info/priors_right_context
 
 echo $frame_subsampling_factor > $dir/info/frame_subsampling_factor
 
+
+if [ "$frame_subsampling_factor" != 1 ]; then
+  if $adjust_priors; then
+    echo "$0: setting --adjust-priors false since adjusting priors is not supported (and does not make sense) for chain models"
+    adjust_priors=false
+  fi
+fi
+
 (
   if $adjust_priors && [ $stage -le 10 ]; then
     if [ ! -f $dir/ali.scp ]; then
       nj_ali=$(cat $alidir/num_jobs)
-      all_ids=$(seq -s, $nj_ali)
+      alis=$(for n in $(seq $nj_ali); do echo -n "$alidir/ali.$n.gz "; done)
       $cmd $dir/log/copy_alignments.log \
-        copy-int-vector "ark:gunzip -c $alidir/ali.{$all_ids}.gz|" \
+        copy-int-vector "ark:gunzip -c $alis|" \
         ark,scp:$dir/ali.ark,$dir/ali.scp || exit 1;
     fi
 
@@ -371,7 +376,7 @@ if [ $stage -le 4 ]; then
   wait;
   [ -f $dir/.error ] && echo "Error detected while creating train/valid egs" && exit 1
   echo "... Getting subsets of validation examples for diagnostics and combination."
-  
+
   for f in $dir/{train_diagnostic,valid_diagnostic}.degs; do
     [ ! -s $f ] && echo "No examples in file $f" && exit 1;
   done
@@ -386,8 +391,8 @@ if [ $stage -le 5 ]; then
     degs_list="$degs_list ark:$dir/degs_orig.JOB.$n.ark"
   done
   echo "$0: Generating training examples on disk"
-  
-  # The examples will go round-robin to degs_list.  
+
+  # The examples will go round-robin to degs_list.
   # To make it efficient we need to use a large 'nj', like 40, and in that case
   # there can be too many small files to deal with, because the total number of
   # files is the product of 'nj' by 'num_archives_intermediate', which might be
@@ -395,7 +400,7 @@ if [ $stage -le 5 ]; then
   $cmd --max-jobs-run $max_jobs_run JOB=1:$nj $dir/log/get_egs.JOB.log \
     discriminative-get-supervision $supervision_all_opts \
     "scp:utils/filter_scp.pl $sdata/JOB/utt2spk $dir/ali.scp |" \
-    "ark:gunzip -c $denlatdir/lat.JOB.gz |" ark:- \| \
+    "ark,s,cs:gunzip -c $denlatdir/lat.JOB.gz |" ark:- \| \
     nnet3-discriminative-get-egs $ivector_opt $egs_opts \
     $dir/final.mdl "$feats" ark,s,cs:- ark:- \| \
     nnet3-discriminative-copy-egs --random=true --srand=JOB ark:- $degs_list || exit 1;
@@ -411,7 +416,7 @@ if [ $stage -le 6 ]; then
   for n in $(seq $nj); do
     degs_list="$degs_list $dir/degs_orig.$n.JOB.ark"
   done
-  
+
   if [ $archives_multiple == 1 ]; then # normal case.
     $cmd --max-jobs-run $max_shuffle_jobs_run --mem 8G JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
       nnet3-discriminative-shuffle-egs --srand=JOB "ark:cat $degs_list|" ark:$dir/degs.JOB.ark  || exit 1;
@@ -421,7 +426,7 @@ if [ $stage -le 6 ]; then
     # otherwise managing the output names is quite difficult (and we don't want
     # to submit separate queue jobs for each intermediate archive, because then
     # the --max-jobs-run option is hard to enforce).
-    output_archives="$(for y in $(seq $archives_multiple); do echo ark:$dir/degs.JOB.$y.ark; done)"
+    output_archives=$(for y in $(seq $archives_multiple); do echo -n "ark:$dir/degs.JOB.$y.ark "; done)
     for x in $(seq $num_archives_intermediate); do
       for y in $(seq $archives_multiple); do
         archive_index=$[($x-1)*$archives_multiple+$y]
@@ -434,7 +439,7 @@ if [ $stage -le 6 ]; then
       nnet3-discriminative-copy-egs ark:- $output_archives || exit 1;
   fi
 fi
-  
+
 if [ $stage -le 7 ]; then
   echo "$0: removing temporary archives"
   (

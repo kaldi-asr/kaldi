@@ -27,6 +27,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <errno.h>
 #include "util/kaldi-io.h"
 #include "util/kaldi-holder.h"
 #include "util/text-utils.h"
@@ -39,18 +40,6 @@ namespace kaldi {
 
 /// \addtogroup table_impl_types
 /// @{
-
-// In SequentialTableReaderScriptImpl and RandomAccessTableReaderScriptImpl, for
-// cases where the scp contained 'range specifiers' (things in square brackets
-// identifying parts of objects like matrices), use this function to separate
-// the input string 'line' (e.g "1.ark:100[1:2,2:10]") into the data_rxfilename
-// (e.g. "1.ark:100") and the optional range specifier which will be everything
-// inside the square brackets.  It returns true if everything seems OK, and
-// false if for example the string contained more than one '['.  This function
-// should only be called if 'line' ends in '[', otherwise it is an error.
-bool ExtractRangeSpecifier(const std::string &line,
-                           std::string *data_rxfilename,
-                           std::string *range);
 
 template<class Holder> class SequentialTableReaderImplBase {
  public:
@@ -658,8 +647,8 @@ template<class Holder>  class SequentialTableReaderArchiveImpl:
 
   virtual bool Close() {
     // To clean up, Close() also closes the Input object if
-    // it's open. It will succeed if the stream was not in an error state,
-    // and the Input object isn't in an error state if we've found eof in the archive.
+    // it's open.  It will succeed if the stream was not in an error state,
+    // and the Input object isn't in an error state  we've found eof in the archive.
     if (!this->IsOpen())
       KALDI_ERR << "Close() called on TableReader twice or otherwise wrongly.";
     int32 status = 0;
@@ -1493,7 +1482,8 @@ class TableWriterBothImpl: public TableWriterImplBase<Holder> {
 template<class Holder>
 TableWriter<Holder>::TableWriter(const std::string &wspecifier): impl_(NULL) {
   if (wspecifier != "" && !Open(wspecifier))
-    KALDI_ERR << "Failed to write to " << wspecifier;
+    KALDI_ERR << "Failed to open for writing: " << wspecifier
+              << ": " << strerror(errno);
 }
 
 template<class Holder>

@@ -65,7 +65,7 @@ shared_phones_opt="--shared-phones=$lang/phones/sets.int"
 if [ $stage -le -3 ]; then
   # Note: JOB=1 just uses the 1st part of the features-- we only need a subset anyway.
   if ! feat_dim=`feat-to-dim "$example_feats" - 2>/dev/null` || [ -z $feat_dim ]; then
-    feat-to-dim "$example_feats"
+    feat-to-dim "$example_feats" -
     echo "error getting feature dimension"
     exit 1;
   fi
@@ -135,9 +135,15 @@ done
 
 ( cd $dir; rm final.{mdl,occs} 2>/dev/null; ln -s $x.mdl final.mdl; ln -s $x.occs final.occs )
 
+
+steps/diagnostic/analyze_alignments.sh --cmd "$cmd" $lang $dir
 utils/summarize_warnings.pl $dir/log
 
-echo Done
+steps/info/gmm_dir_info.pl $dir
+
+echo "$0: Done training monophone system in $dir"
+
+exit 0
 
 # example of showing the alignments:
 # show-alignments data/lang/phones.txt $dir/30.mdl "ark:gunzip -c $dir/ali.0.gz|" | head -4

@@ -39,9 +39,8 @@ num_jobs_nnet=4    # Number of neural net jobs to run in parallel.  Note: this
                    # versa).
 regularization_opts=
 minibatch_size=64  # This is the number of examples rather than the number of output frames.
-modify_learning_rates=false
-last_layer_factor=1.0  # relates to modify-learning-rates
-first_layer_factor=1.0 # relates to modify-learning-rates
+modify_learning_rates=false   # [deprecated]
+last_layer_factor=1.0  # relates to modify-learning-rates [deprecated]
 shuffle_buffer_size=1000 # This "buffer_size" variable controls randomization of the samples
                 # on each iter.  You could set it to 0 or to a large value for complete
                 # randomization, but this would both consume memory and cause spikes in
@@ -57,7 +56,6 @@ num_threads=16  # this is the default but you may want to change it, e.g. to 1 i
 
 cleanup=true
 keep_model_iters=1
-retroactive=false
 remove_egs=false
 src_model=  # will default to $degs_dir/final.mdl
 
@@ -101,7 +99,7 @@ if [ $# != 2 ]; then
   echo "                                                   # where the numerator transition-id is not in the denominator lattice."
   echo "  --one-silence-class <true,false|false>           # Option that affects MPE/SMBR training (will tend to reduce insertions)"
   echo "  --modify-learning-rates <true,false|false>       # If true, modify learning rates to try to equalize relative"
-  echo "                                                   # changes across layers."
+  echo "                                                   # changes across layers. [deprecated]"
   exit 1;
 fi
 
@@ -307,14 +305,6 @@ while [ $x -lt $num_iters ]; do
       nnet3-average $nnets_list - \| \
       nnet3-am-copy --set-raw-nnet=- $dir/$x.mdl $dir/$[$x+1].mdl || exit 1;
 
-    if $modify_learning_rates; then
-      run.pl $dir/log/modify_learning_rates.$x.log \
-        nnet3-modify-learning-rates --retroactive=$retroactive \
-        --last-layer-factor=$last_layer_factor \
-        --first-layer-factor=$first_layer_factor \
-        "nnet3-am-copy --raw $dir/$x.mdl -|" "nnet3-am-copy --raw $dir/$[$x+1].mdl -|" - \| \
-        nnet3-am-copy --set-raw-nnet=- $dir/$x.mdl $dir/$[$x+1].mdl || exit 1;
-    fi
     rm $nnets_list
 
     if [ ! -z "${iter_to_epoch[$x]}" ]; then

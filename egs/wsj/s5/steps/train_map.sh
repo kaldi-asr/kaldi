@@ -7,11 +7,21 @@
 # of MAP adaptation to the model in the input alignment-directory.  It's useful for
 # adapting a system to a specific gender, or new acoustic conditions.
 
+# Note: what we implement here is not the MAP from the paper by Gauvain and Lee,
+# it's the simpler (and, I believe, more widely used) so-called "relevance MAP",
+# implemented in HTK, where we add a fixed count "tau" of fake Gaussian stats
+# generated from the old model, to the new 'in-domain' stats from the features
+# and alignments provided;  and we only update the mean.  So if the new count
+# is zero it just gives you the Gaussian parameters from the old model, but as
+# you get more than about tau counts, it approaches the in-domain stats.
+# We use 'gmm-ismooth-stats' in the command line because the equations for this
+# are the same as the equations for i-smoothing in discriminative training
+# (for which, see my [Dan Povey's] PhD thesis).
 
 # Begin configuration..
 cmd=run.pl
 stage=0
-tau=20 # smoothing constant used in MAP estimation, corresponds to the number of 
+tau=20 # smoothing constant used in MAP estimation, corresponds to the number of
        # "fake counts" that we add for the old model.  Larger tau corresponds to less
        # aggressive re-estimation, and more smoothing.  You might want to try 10 or 15 also
 # End configuration section.
@@ -68,7 +78,7 @@ echo "$0: feature type is $feat_type"
 case $feat_type in
   delta) sifeats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas $delta_opts ark:- ark:- |";;
   lda) sifeats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
-    cp $alidir/final.mat $dir    
+    cp $alidir/final.mat $dir
     cp $alidir/full.mat $dir 2>/dev/null
     ;;
   *) echo "Invalid feature type $feat_type" && exit 1;
@@ -86,7 +96,7 @@ if [ $stage -le 0 ]; then
   $cmd JOB=1:$nj $dir/log/acc.JOB.log \
     gmm-acc-stats-ali  $alidir/final.mdl "$feats" \
     "ark,s,cs:gunzip -c $alidir/ali.JOB.gz|"  $dir/0.JOB.acc || exit 1;
-  
+
   [ "`ls $dir/0.*.acc | wc -w`" -ne "$nj" ] && echo "$0: wrong #accs" && exit 1;
 
   $cmd $dir/log/sum_accs.log \

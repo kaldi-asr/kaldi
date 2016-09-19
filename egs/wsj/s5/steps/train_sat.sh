@@ -254,6 +254,7 @@ ln -s $x.occs $dir/final.occs
 ln -s $x.alimdl $dir/final.alimdl
 
 
+steps/diagnostic/analyze_alignments.sh --cmd "$cmd" $lang $dir
 
 utils/summarize_warnings.pl $dir/log
 (
@@ -266,4 +267,10 @@ utils/summarize_warnings.pl $dir/log
   echo
 ) | tee $dir/log/summary.log
 
-echo Done
+
+steps/info/gmm_dir_info.pl $dir
+
+echo "$0: done training SAT system in $dir"
+
+exit 0
+

@@ -1105,6 +1105,17 @@ void MatrixBase<Real>::GroupPnormDeriv(const MatrixBase<Real> &input,
         (*this)(i, j) = (input_val == 0 ? 0 : (input_val > 0 ? 1 : -1));
       }
     }
+  } else if (power == std::numeric_limits<Real>::infinity()) {
+    for (MatrixIndexT i = 0; i < num_rows; i++) {
+      for (MatrixIndexT j = 0; j < num_cols; j++) {
+        Real output_val = output(i, j / group_size), input_val = input(i, j);
+        if (output_val == 0)
+          (*this)(i, j) = 0;
+        else
+          (*this)(i, j) = (std::abs(input_val) == output_val ? 1.0 : 0.0)
+              * (input_val >= 0 ? 1 : -1);
+      }
+    }
   } else {
     for (MatrixIndexT i = 0; i < num_rows; i++) {
       for (MatrixIndexT j = 0; j < num_cols; j++) {
@@ -2716,7 +2727,6 @@ void MatrixBase<Real>::AddToRows(Real alpha, Real *const *dst) const {
       cblas_Xaxpy(num_cols, alpha, this_data, 1, dst_data, 1);
   }
 }
-
 
 template<typename Real>
 void MatrixBase<Real>::Sigmoid(const MatrixBase<Real> &src) {

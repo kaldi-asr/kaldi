@@ -501,48 +501,46 @@ if (-z "$lang/topo") {
 if (!open(T, "<$lang/topo")) {
   $exit = 1; print "--> ERROR: fail to open $lang/topo\n";
 } else {
+  $topo_ok = 1;
   $idx = 1;
+  %phones_in_topo_int_hash = ( );
+  %phones_in_topo_hash = ( );
   while (<T>) {
     chomp;
     next if (m/^<.*>[ ]*$/);
-    if ($idx == 1) {
-      $nonsilence_seq = $_; $idx ++;
-    }
-    if ($idx == 2) {
-      $silence_seq = $_;
+    foreach $i (split(" ", $_)) {
+      if (defined $phones_in_topo_int_hash{$i}) {
+        $topo_ok = 0;
+        $exit = 1; print "--> ERROR: $lang/topo has phone $i twice\n";
+      }
+      if (!defined $pint2sym{$i}) {
+        $topo_ok = 0;
+        $exit = 1; print "--> ERROR: $lang/topo has phone $i which is not in phones.txt\n";
+      }
+      $phones_in_topo_int_hash{$i} = 1;
+      $phones_in_topo_hash{$pint2sym{$i}} = 1;
     }
   }
   close(T);
-  if ($silence_seq == 0 || $nonsilence_seq == 0) {
-    $exit = 1; print "--> ERROR: $lang/topo doesn't have nonsilence section or silence section\n";
-  }
-  @silence_seq = split(" ", $silence_seq);
-  @nonsilence_seq = split(" ", $nonsilence_seq);
-  $success1 = 1;
-  if (@nonsilence_seq != @nonsilence) {
-    $exit = 1; print "--> ERROR: $lang/topo's nonsilence section doesn't correspond to nonsilence.txt\n";
-  } else {
-    foreach (0 .. scalar(@nonsilence)-1) {
-      if ($psymtab{@nonsilence[$_]} ne @nonsilence_seq[$_]) {
-        $exit = 1; print "--> ERROR: $lang/topo's nonsilence section doesn't correspond to nonsilence.txt\n";
-        $success = 0;
-      }
+  $phones_that_should_be_in_topo_hash = {};
+  foreach $p (@silence, @nonsilence) { $phones_that_should_be_in_topo_hash{$p} = 1; }
+  foreach $p (keys %phones_that_should_be_in_topo_hash) {
+    if ( ! defined $phones_in_topo_hash{$p}) {
+      $topo_ok = 0;
+      $i = $pint2sym{$p};
+      $exit = 1; print "--> ERROR: $lang/topo does not cover phone $p (label = $i)\n";
     }
   }
-  $success1 != 1 || print "--> $lang/topo's nonsilence section is OK\n";
-  $success2 = 1;
-  if (@silence_seq != @silence) {
-    $exit = 1; print "--> ERROR: $lang/topo's silence section doesn't correspond to silence.txt\n";
-  } else {
-    foreach (0 .. scalar(@silence)-1) {
-      if ($psymtab{@silence[$_]} ne @silence_seq[$_]) {
-        $exit = 1; print "--> ERROR: $lang/topo's silence section doesn't correspond to silence.txt\n";
-        $success = 0;
-      }
+  foreach $i (keys %phones_in_topo_int_hash) {
+    $p = $pint2sym{$i};
+    if ( ! defined $phones_that_should_be_in_topo_hash{$p}) {
+      $topo_ok = 0;
+      $exit = 1; print "--> ERROR: $lang/topo covers phone $p (label = $i) which is not a real phone\n";
     }
   }
-  $success2 != 1 || print "--> $lang/topo's silence section is OK\n";
-  $success1 != 1 or $success2 != 1 || print "--> $lang/topo is OK\n";
+  if ($topo_ok) {
+    "--> $lang/topo is OK\n";
+  }
   print "\n";
 }
 
@@ -626,6 +624,76 @@ if (-s "$lang/phones/word_boundary.txt") {
   print "\n";
 }
 
+
+
+{
+  print "Checking word-level disambiguation symbols...\n";
+  # This block checks that one of the two following conditions hold:
+  # (1) for lang diretories prepared by older versions of prepare_lang.sh:
+  #  The symbol  '#0' should appear in words.txt and phones.txt, and should
+  # or (2): the files wdisambig.txt, wdisambig_phones.int and wdisambig_words.int
+  #  exist, and have the expected properties (see below for details).
+
+  # note, %wdisambig_words_hash hashes from the integer word-id of word-level
+  # disambiguation symbols, to 1 if the word is a disambig symbol.
+
+  if (! -e "$lang/phones/wdisambig.txt") {
+    print "--> no $lang/phones/wdisambig.txt (older prepare_lang.sh)\n";
+    if (exists $wsymtab{"#0"}) {
+      print "--> $lang/words.txt has \"#0\"\n";
+      $wdisambig_words_hash{$wsymtab{"#0"}} = 1;
+    } else {
+      print "--> WARNING: $lang/words.txt doesn't have \"#0\"\n";
+      print "-->          (if you are using ARPA-type language models, you will normally\n";
+      print "-->           need the disambiguation symbol \"#0\" to ensure determinizability)\n";
+    }
+  } else {
+    print "--> $lang/phones/wdisambig.txt exists (newer prepare_lang.sh)\n";
+    if (!open(T, "<$lang/phones/wdisambig.txt")) {
+      print "--> ERROR: fail to open $lang/phones/wdisambig.txt\n"; $exit = 1; return;
+    }
+    chomp(my @wdisambig = <T>);
+    close(T);
+    if (!open(W, "<$lang/phones/wdisambig_words.int")) {
+      print "--> ERROR: fail to open $lang/phones/wdisambig_words.int\n"; $exit = 1; return;
+    }
+    chomp(my @wdisambig_words = <W>);
+    close(W);
+    if (!open(P, "<$lang/phones/wdisambig_phones.int")) {
+      print "--> ERROR: fail to open $lang/phones/wdisambig_phones.int\n"; $exit = 1; return;
+    }
+    chomp(my @wdisambig_phones = <P>);
+    close(P);
+    my $len = @wdisambig, $len2;
+    if (($len2 = @wdisambig_words) != $len) {
+      print "--> ERROR: files $lang/phones/wdisambig.txt and $lang/phones/wdisambig_words.int have different lengths";
+      $exit = 1; return;
+    }
+    if (($len2 = @wdisambig_phones) != $len) {
+      print "--> ERROR: files $lang/phones/wdisambig.txt and $lang/phones/wdisambig_phones.int have different lengths";
+      $exit = 1; return;
+    }
+    for (my $i = 0; $i < $len; $i++) {
+      if ($wsymtab{$wdisambig[$i]} ne $wdisambig_words[$i]) {
+        my $ii = $i + 1;
+        print "--> ERROR: line $ii of files $lang/phones/wdisambig.txt and $lang/phones/wdisambig_words.int mismatch\n";
+        $exit = 1; return;
+      }
+    }
+    for (my $i = 0; $i < $len; $i++) {
+      if ($psymtab{$wdisambig[$i]} ne $wdisambig_phones[$i]) {
+        my $ii = $i + 1;
+        print "--> ERROR: line $ii of files $lang/phones/wdisambig.txt and $lang/phones/wdisambig_phones.int mismatch\n";
+        $exit = 1; return;
+      }
+    }
+    foreach my $i ( @wdisambig_words ) {
+      $wdisambig_words_hash{$i} = 1;
+    }
+  }
+}
+
+
 if (-s "$lang/phones/word_boundary.int") {
   print "Checking word_boundary.int and disambig.int\n";
   if (!open (W, "<$lang/phones/word_boundary.int")) {
@@ -658,7 +726,9 @@ if (-s "$lang/phones/word_boundary.int") {
     $wordseq_syms = "";
     foreach (1 .. $wlen) {
       $id = int(rand(scalar(keys %wint2sym)));
-      while ($wint2sym{$id} =~ m/^#[0-9]*$/ or
+      # exclude disambiguation symbols, BOS and EOS and epsilon from the word
+      # sequence.
+      while (defined $wdisambig_words_hash{$id} or
              $wint2sym{$id} eq "<s>" or $wint2sym{$id} eq "</s>" or $id == 0) {
         $id = int(rand(scalar(keys %wint2sym)));
       }
@@ -668,7 +738,6 @@ if (-s "$lang/phones/word_boundary.int") {
     }
     $wordseq = $wordseq . "$sid 0";
     $phoneseq = `. ./path.sh; echo \"$wordseq" | fstcompile | fstcompose $lang/$fst - | fstproject | fstrandgen | fstrmepsilon | fsttopsort | fstprint | awk '{if (NF > 2) {print \$3}}';`;
-    @phoneseq = split(" ", $phoneseq);
     $transition = { }; # empty assoc. array of allowed transitions between phone types.  1 means we count a word,
     # 0 means transition is allowed.  bos and eos are added as extra symbols here.
     foreach $x ("bos", "nonword", "end", "singleton") {
@@ -684,9 +753,9 @@ if (-s "$lang/phones/word_boundary.int") {
 
     $cur_state = "bos";
     $num_words = 0;
-    foreach $phone (split (" ", "$phoneseq eos")) {
+    foreach $phone (split (" ", "$phoneseq <<eos>>")) {
       if (!($fst == "L_disambig.fst" && defined $is_disambig{$phone})) {
-        if ($phone == "eos") {
+        if ($phone == "<<eos>>") {
           $state = "eos";
         } else {
           $state = $wbtype{$phone};
@@ -744,80 +813,13 @@ if (-e "$lang/L_disambig.fst") {
   }
 }
 
-sub check_wdisambig {
-  print "Checking word-level disambiguation symbols...\n";
-  # This block checks that one of the two following conditions hold:
-  # (1) for lang diretories prepared by older versions of prepare_lang.sh:
-  #  The symbol  '#0' should appear in words.txt and phones.txt, and should
-  # or (2): the files wdisambig.txt, wdisambig_phones.int and wdisambig_words.int
-  #  exist, and have the expected properties (see below for details).
-  my %wdisambig_words_hash;
-  my %wdisambig_words_string = "";
-
-  if (! -e "$lang/phones/wdisambig.txt") {
-    print "--> no $lang/phones/wdisambig.txt (older prepare_lang.sh)\n";
-    if (exists $wsymtab{"#0"}) {
-      print "--> $lang/words.txt has \"#0\"\n";
-      $wdisambig_words_hash{$wsymtab{"#0"}} = 1;
-      $wdisambig_words_string = $wsymtab{"#0"};
-    } else {
-      print "--> WARNING: $lang/words.txt doesn't have \"#0\"\n";
-      print "-->          (if you are using ARPA-type language models, you will normally\n";
-      print "-->           need the disambiguation symbol \"#0\" to ensure determinizability)\n";
-    }
-  } else {
-   print "--> $lang/phones/wdisambig.txt exists (newer prepare_lang.sh)\n";
-    if (!open(T, "<$lang/phones/wdisambig.txt")) {
-      print "--> ERROR: fail to open $lang/phones/wdisambig.txt\n"; $exit = 1; return;
-    }
-    chomp(my @wdisambig = <T>);
-    close(T);
-    if (!open(W, "<$lang/phones/wdisambig_words.int")) {
-      print "--> ERROR: fail to open $lang/phones/wdisambig_words.int\n"; $exit = 1; return;
-    }
-    chomp(my @wdisambig_words = <W>);
-    close(W);
-    if (!open(P, "<$lang/phones/wdisambig_phones.int")) {
-      print "--> ERROR: fail to open $lang/phones/wdisambig_phones.int\n"; $exit = 1; return;
-    }
-    chomp(my @wdisambig_phones = <P>);
-    close(P);
-    my $len = @wdisambig, $len2;
-    if (($len2 = @wdisambig_words) != $len) {
-      print "--> ERROR: files $lang/phones/wdisambig.txt and $lang/phones/wdisambig_words.int have different lengths";
-      $exit = 1; return;
-    }
-   if (($len2 = @wdisambig_phones) != $len) {
-      print "--> ERROR: files $lang/phones/wdisambig.txt and $lang/phones/wdisambig_phones.int have different lengths";
-      $exit = 1; return;
-    }
-    for (my $i = 0; $i < $len; $i++) {
-      if ($wsymtab{$wdisambig[$i]} ne $wdisambig_words[$i]) {
-        my $ii = $i + 1;
-        print "--> ERROR: line $ii of files $lang/phones/wdisambig.txt and $lang/phones/wdisambig_words.int mismatch\n";
-        $exit = 1; return;
-      }
-    }
-    for (my $i = 0; $i < $len; $i++) {
-      if ($psymtab{$wdisambig[$i]} ne $wdisambig_phones[$i]) {
-        my $ii = $i + 1;
-        print "--> ERROR: line $ii of files $lang/phones/wdisambig.txt and $lang/phones/wdisambig_phones.int mismatch\n";
-        $exit = 1; return;
-      }
-    }
-    foreach my $i ( @wdisambig_words ) {
-      $wdisambig_words_hash{$i} = 1;
-      $wdisambig_words_string .= " " . $i;
-    }
- }
-}
-
-check_wdisambig();
-
 if (-e "$lang/G.fst") {
   # Check that G.fst is ilabel sorted and nonempty.
   $text = `. ./path.sh; fstinfo $lang/G.fst`;
-
+  if ($? != 0) {
+    print "--> ERROR: fstinfo failed on $lang/G.fst\n";
+    $exit = 1;
+  }
   if ($text =~ m/input label sorted\s+y/) {
     print "--> $lang/G.fst is ilabel sorted\n";
   } else {

@@ -21,6 +21,7 @@
 #ifndef KALDI_NNET_NNET_SENTENCE_AVERAGING_COMPONENT_H_
 #define KALDI_NNET_NNET_SENTENCE_AVERAGING_COMPONENT_H_
 
+#include <string>
 
 #include "nnet/nnet-component.h"
 #include "nnet/nnet-utils.h"
@@ -35,23 +36,32 @@ namespace nnet1 {
  * it is intended to be used inside of a <ParallelComponent>.
  * For training use 'nnet-train-perutt'.
  *
- * The sentence-averaging typically leads to small gradients, so we boost it 100x 
+ * The sentence-averaging typically leads to small gradients, so we boost it 100x
  * by default (boost = multiply, it's equivalent to applying learning-rate factor).
  */
 class SimpleSentenceAveragingComponent : public Component {
  public:
-  SimpleSentenceAveragingComponent(int32 dim_in, int32 dim_out) 
-    : Component(dim_in, dim_out), gradient_boost_(100.0), shrinkage_(0.0), only_summing_(false)
+  SimpleSentenceAveragingComponent(int32 dim_in, int32 dim_out):
+    Component(dim_in, dim_out),
+    gradient_boost_(100.0),
+    shrinkage_(0.0),
+    only_summing_(false)
   { }
+
   ~SimpleSentenceAveragingComponent()
   { }
 
-  Component* Copy() const { return new SimpleSentenceAveragingComponent(*this); }
-  ComponentType GetType() const { return kSimpleSentenceAveragingComponent; }
+  Component* Copy() const {
+    return new SimpleSentenceAveragingComponent(*this);
+  }
+
+  ComponentType GetType() const {
+    return kSimpleSentenceAveragingComponent;
+  }
 
   void InitData(std::istream &is) {
     // parse config
-    std::string token; 
+    std::string token;
     while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token);
       if (token == "<GradientBoost>") ReadBasicType(is, false, &gradient_boost_);
@@ -104,14 +114,15 @@ class SimpleSentenceAveragingComponent : public Component {
 
   std::string Info() const {
     return std::string("\n  gradient-boost ") + ToString(gradient_boost_) +
-      ", shrinkage: " + ToString(shrinkage_) + 
+      ", shrinkage: " + ToString(shrinkage_) +
       ", only summing: " + ToString(only_summing_);
   }
   std::string InfoGradient() const {
     return Info();
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
+                    CuMatrixBase<BaseFloat> *out) {
     // get the average row-vector,
     average_row_.Resize(InputDim());
     if (only_summing_) {
@@ -123,14 +134,17 @@ class SimpleSentenceAveragingComponent : public Component {
     out->AddVecToRows(1.0, average_row_, 0.0);
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
-    // While averaging, a single frame from input influenced all frames on the output,
-    // hence the derivative w.r.t. single input frame is a sum of the output derivatives.
-    // (while scaling by averaging constant 1/Nframes).
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
+                        const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff,
+                        CuMatrixBase<BaseFloat> *in_diff) {
+    // When averaging, a single frame from input influenced all the frames
+    // on the output. So the derivative w.r.t. single input frame is a sum
+    // of the output derivatives, scaled by the averaging constant 1/K.
     //
-    // In fact all the input frames influenced all the output frames,
-    // so the derivarive is the same for all the input frames.
+    // In the same time all the input frames of the average influenced
+    // all the output frames. So the loss derivarive is same for all
+    // the input frames coming to the averaging.
     //
     // getting the average output diff,
     average_diff_.Resize(OutputDim());
@@ -144,21 +158,29 @@ class SimpleSentenceAveragingComponent : public Component {
   }
 
  private:
-  CuVector<BaseFloat> average_row_; ///< auxiliary buffer for forward propagation,
-  CuVector<BaseFloat> average_diff_; ///< auxiliary buffer for backpropagation,
-  BaseFloat gradient_boost_; ///< increase of gradient applied in backpropagation,
-  BaseFloat shrinkage_; ///< Number of 'imaginary' zero-vectors in the average 
-                        ///< (shrinks the average vector for shorter sentences),
-  bool only_summing_;   ///< Removes normalization term from arithmetic mean (when true).
-};
+  /// Auxiliary buffer for forward propagation (for average vector),
+  CuVector<BaseFloat> average_row_;
 
+  /// Auxiliary buffer for back-propagation (for average vector),
+  CuVector<BaseFloat> average_diff_;
+
+  /// Scalar applied on gradient in backpropagation,
+  BaseFloat gradient_boost_;
+
+  /// Number of 'imaginary' zero-vectors in the average
+  /// (shrinks the average vector for short sentences),
+  BaseFloat shrinkage_;
+
+  /// Removes normalization term from arithmetic mean (when true).
+  bool only_summing_;
+};
 
 
 /** Deprecated!!!, keeping it as Katka Zmolikova used it in JSALT 2015 */
 class SentenceAveragingComponent : public UpdatableComponent {
  public:
-  SentenceAveragingComponent(int32 dim_in, int32 dim_out) 
-    : UpdatableComponent(dim_in, dim_out), learn_rate_factor_(100.0)
+  SentenceAveragingComponent(int32 dim_in, int32 dim_out):
+    UpdatableComponent(dim_in, dim_out), learn_rate_factor_(100.0)
   { }
   ~SentenceAveragingComponent()
   { }
@@ -171,7 +193,7 @@ class SentenceAveragingComponent : public UpdatableComponent {
     std::string nested_nnet_filename;
     std::string nested_nnet_proto;
     // parse config
-    std::string token; 
+    std::string token;
     while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token);
       /**/ if (token == "<NestedNnetFilename>") ReadToken(is, false, &nested_nnet_filename);
@@ -180,7 +202,7 @@ class SentenceAveragingComponent : public UpdatableComponent {
       else KALDI_ERR << "Unknown token " << token << " Typo in config?";
     }
     // initialize (read already prepared nnet from file)
-    KALDI_ASSERT((nested_nnet_proto != "") ^ (nested_nnet_filename != "")); //xor
+    KALDI_ASSERT((nested_nnet_proto != "") ^ (nested_nnet_filename != ""));  // xor,
     if (nested_nnet_filename != "") nnet_.Read(nested_nnet_filename);
     if (nested_nnet_proto != "") nnet_.Init(nested_nnet_proto);
     // check dims of nested nnet
@@ -200,48 +222,61 @@ class SentenceAveragingComponent : public UpdatableComponent {
 
   int32 NumParams() const { return nnet_.NumParams(); }
 
-  void GetParams(Vector<BaseFloat>* wei_copy) const { 
-    wei_copy->Resize(NumParams()); nnet_.GetParams(wei_copy); 
+  void GetGradient(VectorBase<BaseFloat>* gradient) const {
+    KALDI_ERR << "Unimplemented!";
   }
 
-  std::string Info() const { 
-    return std::string("nested_network {\n") + nnet_.Info() + "}\n"; 
+  void GetParams(VectorBase<BaseFloat>* params) const {
+    KALDI_ASSERT(params->Dim() == NumParams());
+    Vector<BaseFloat> params_aux;
+    nnet_.GetParams(&params_aux);
+    params->CopyFromVec(params_aux);
   }
 
-  std::string InfoGradient() const { 
-    return std::string("nested_gradient {\n") + nnet_.InfoGradient() + "}\n"; 
+  void SetParams(const VectorBase<BaseFloat>& params) {
+    KALDI_ERR << "Unimplemented!";
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
+  std::string Info() const {
+    return std::string("nested_network {\n") + nnet_.Info() + "}\n";
+  }
+
+  std::string InfoGradient() const {
+    return std::string("nested_gradient {\n") + nnet_.InfoGradient() + "}\n";
+  }
+
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
+                    CuMatrixBase<BaseFloat> *out) {
     // Get NN output
     CuMatrix<BaseFloat> out_nnet;
     nnet_.Propagate(in, &out_nnet);
     // Get the average row (averaging over the time axis):
-    // averaging corresponds to extraction of constant vector code for single sentence, 
+    // averaging corresponds to extraction of a 'constant vector'
+    // code for single sentence,
     int32 num_inputs = in.NumCols(),
       nnet_outputs = nnet_.OutputDim(),
       num_frames = out_nnet.NumRows();
-      
+
     CuVector<BaseFloat> average_row(nnet_outputs);
     average_row.AddRowSumMat(1.0/num_frames, out_nnet, 0.0);
     // Forwarding sentence codes along with input features
-    out->ColRange(0,nnet_outputs).AddVecToRows(1.0, average_row, 0.0);
-    out->ColRange(nnet_outputs,num_inputs).CopyFromMat(in);
+    out->ColRange(0, nnet_outputs).AddVecToRows(1.0, average_row, 0.0);
+    out->ColRange(nnet_outputs, num_inputs).CopyFromMat(in);
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, 
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
                         const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, 
+                        const CuMatrixBase<BaseFloat> &out_diff,
                         CuMatrixBase<BaseFloat> *in_diff) {
     if (in_diff == NULL) return;
     int32 num_inputs = in.NumCols(),
       nnet_outputs = nnet_.OutputDim();
-    in_diff->CopyFromMat(out_diff.ColRange(nnet_outputs,num_inputs));
+    in_diff->CopyFromMat(out_diff.ColRange(nnet_outputs, num_inputs));
   }
 
-  void Update(const CuMatrixBase<BaseFloat> &input, 
+  void Update(const CuMatrixBase<BaseFloat> &input,
               const CuMatrixBase<BaseFloat> &diff) {
-
+    // get useful dims,
     int32 nnet_outputs = nnet_.OutputDim(),
       num_frames = diff.NumRows();
     // Passing the derivative into the nested network. The loss derivative is averaged:
@@ -252,13 +287,13 @@ class SentenceAveragingComponent : public UpdatableComponent {
     // In fact all the frames from nested network influenced all the input frames to main nnet,
     // so the loss derivarive w.r.t. nested network output is same for all frames in sentence.
     CuVector<BaseFloat> average_diff(nnet_outputs);
-    average_diff.AddRowSumMat(1.0/num_frames, diff.ColRange(0,nnet_outputs), 0.0);
+    average_diff.AddRowSumMat(1.0 / num_frames, diff.ColRange(0, nnet_outputs), 0.0);
     CuMatrix<BaseFloat> nnet_out_diff(num_frames, nnet_outputs);
     nnet_out_diff.AddVecToRows(1.0, average_diff, 0.0);
-    // 
+    //
     nnet_.Backpropagate(nnet_out_diff, NULL);
   }
- 
+
   void SetTrainOptions(const NnetTrainOptions &opts) {
     UpdatableComponent::SetTrainOptions(opts_);
     // Pass the train options to the nnet
@@ -273,7 +308,7 @@ class SentenceAveragingComponent : public UpdatableComponent {
 };
 /* Deprecated */
 
-} // namespace nnet1
-} // namespace kaldi
+}  // namespace nnet1
+}  // namespace kaldi
 
-#endif
+#endif  // KALDI_NNET_NNET_SENTENCE_AVERAGING_COMPONENT_H_

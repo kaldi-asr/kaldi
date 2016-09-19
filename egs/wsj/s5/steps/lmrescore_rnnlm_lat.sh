@@ -3,7 +3,8 @@
 # Copyright 2015  Guoguo Chen
 # Apache 2.0
 
-# This script rescores lattices with RNNLM.
+# This script rescores lattices with RNNLM.  See also rnnlmrescore.sh which is
+# an older script using n-best lists.
 
 # Begin configuration section.
 cmd=run.pl

@@ -2,6 +2,8 @@
 
 CXX = g++
 # CXX = clang++  # Uncomment this line to build with Clang.
+CC = gcc    # used for sph2pipe
+
 
 OPENFST_VERSION = 1.3.4
 # Uncomment the next line to build with OpenFst-1.4.1.
@@ -112,7 +114,8 @@ sctk/.configured: sctk
 
 .PHONY: sctk
 sctk: sctk-2.4.10-20151007-1312Z.tar.bz2
-	tar xojf sctk-2.4.10-20151007-1312Z.tar.bz2
+	tar xojf sctk-2.4.10-20151007-1312Z.tar.bz2 || \
+      tar --exclude '*NONE*html' -xvojf sctk-2.4.10-20151007-1312Z.tar.bz2
 	rm -rf sctk && ln -s sctk-2.4.10 sctk
 
 sctk-2.4.10-20151007-1312Z.tar.bz2:

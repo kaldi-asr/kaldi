@@ -179,9 +179,8 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
     return;
   } else {
     // Or suggest to use compute exclusive mode
-    if (num_gpus > 1) {
-      KALDI_WARN << "Suggestion: use 'nvidia-smi -c 1' to set compute exclusive mode";
-    }
+    KALDI_WARN << "Suggestion: use 'nvidia-smi -c 3' to set compute exclusive mode";
+
     // And select the GPU according to proportion of free memory
     if (SelectGpuIdAuto()) {
       FinalizeActiveGpu();
@@ -563,8 +562,10 @@ void CuDevice::CheckGpuHealth() {
   }
 */
 
-CuDevice::CuDevice(): active_gpu_id_(-1), verbose_(true),
-                      allocator_(CuAllocatorOptions()) { }
+CuDevice::CuDevice() :
+    active_gpu_id_(-1), verbose_(true), debug_stride_mode_(false),
+    num_debug_stride_allocations_(0), allocator_(CuAllocatorOptions()) {
+}
 
 
 CuDevice::~CuDevice() {

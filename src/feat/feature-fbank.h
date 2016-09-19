@@ -46,6 +46,7 @@ struct FbankOptions {
   bool raw_energy;  // If true, compute energy before preemphasis and windowing
   bool htk_compat;  // If true, put energy last (if using energy)
   bool use_log_fbank;  // if true (default), produce log-filterbank, else linear
+  bool use_power;  // if true (default), use power in filterbank analysis, else magnitude.
 
   FbankOptions(): mel_opts(23),
                  // defaults the #mel-banks to 23 for the FBANK computations.
@@ -55,7 +56,8 @@ struct FbankOptions {
                  energy_floor(0.0),  // not in log scale: a small value e.g. 1.0e-10
                  raw_energy(true),
                  htk_compat(false),
-                 use_log_fbank(true) {}
+                 use_log_fbank(true),
+                 use_power(true) {}
 
   void Register(OptionsItf *opts) {
     frame_opts.Register(opts);
@@ -71,6 +73,8 @@ struct FbankOptions {
                    "to change other parameters).");
     opts->Register("use-log-fbank", &use_log_fbank,
                    "If true, produce log-filterbank, else produce linear.");
+    opts->Register("use-power", &use_power,
+                   "If true, use power, else use magnitude.");
   }
 };
 

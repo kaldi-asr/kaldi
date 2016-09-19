@@ -41,8 +41,8 @@ int main(int argc, char *argv[]) {
         "\n"
         "Usage:  nnet3-am-copy [options] <nnet-in> <nnet-out>\n"
         "e.g.:\n"
-        " nnet-am-copy --binary=false 1.mdl text.mdl\n"
-        " nnet-am-copy --raw=true 1.mdl 1.raw\n";
+        " nnet3-am-copy --binary=false 1.mdl text.mdl\n"
+        " nnet3-am-copy --raw=true 1.mdl 1.raw\n";
 
     bool binary_write = true,
         raw = false;
@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
 
     if (learning_rate >= 0)
       SetLearningRate(learning_rate, &(am_nnet.GetNnet()));
-    
+
     KALDI_ASSERT(learning_rate_scale >= 0.0);
 
     if (learning_rate_scale != 1.0)

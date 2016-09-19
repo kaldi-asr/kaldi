@@ -23,6 +23,7 @@
 #include "base/kaldi-math.h"
 #include "util/text-utils.h"
 #include "util/parse-options.h"
+#include "util/kaldi-holder.h"
 
 #include "util/kaldi-pipebuf.h"
 
@@ -353,7 +354,7 @@ class InputImplBase {
   // is for non-Kaldi files.
   virtual bool Open(const std::string &filename, bool binary) = 0;
   virtual std::istream &Stream() = 0;
-  virtual int32 Close() = 0;  // We only need to check failure in the case of 
+  virtual int32 Close() = 0;  // We only need to check failure in the case of
                               // kPipeInput.
   // on close for input streams.
   virtual InputType MyType() = 0;  // Because if it's kOffsetFileInput, we may
@@ -811,6 +812,57 @@ Input::~Input() { if (impl_) Close(); }
 std::istream &Input::Stream() {
   if (!IsOpen()) KALDI_ERR << "Input::Stream(), not open.";
   return impl_->Stream();
+}
+
+
+template <> void ReadKaldiObject(const std::string &filename,
+                                 Matrix<float> *m) {
+  if (!filename.empty() && filename[filename.size() - 1] == ']') {
+    // This filename seems to have a 'range'... like foo.ark:4312423[20:30].
+    // (the bit in square brackets is the range).
+    std::string rxfilename, range;
+    if (!ExtractRangeSpecifier(filename, &rxfilename, &range)) {
+      KALDI_ERR << "Could not make sense of possible range specifier in filename "
+                << "while reading matrix: " << filename;
+    }
+    Matrix<float> temp;
+    bool binary_in;
+    Input ki(rxfilename, &binary_in);
+    temp.Read(ki.Stream(), binary_in);
+    if (!ExtractObjectRange(temp, range, m)) {
+      KALDI_ERR << "Error extracting range of object: " << filename;
+    }
+  } else {
+    // The normal case, there is no range.
+    bool binary_in;
+    Input ki(filename, &binary_in);
+    m->Read(ki.Stream(), binary_in);
+  }
+}
+
+template <> void ReadKaldiObject(const std::string &filename,
+                                 Matrix<double> *m) {
+  if (!filename.empty() && filename[filename.size() - 1] == ']') {
+    // This filename seems to have a 'range'... like foo.ark:4312423[20:30].
+    // (the bit in square brackets is the range).
+    std::string rxfilename, range;
+    if (!ExtractRangeSpecifier(filename, &rxfilename, &range)) {
+      KALDI_ERR << "Could not make sense of possible range specifier in filename "
+                << "while reading matrix: " << filename;
+    }
+    Matrix<double> temp;
+    bool binary_in;
+    Input ki(rxfilename, &binary_in);
+    temp.Read(ki.Stream(), binary_in);
+    if (!ExtractObjectRange(temp, range, m)) {
+      KALDI_ERR << "Error extracting range of object: " << filename;
+    }
+  } else {
+    // The normal case, there is no range.
+    bool binary_in;
+    Input ki(filename, &binary_in);
+    m->Read(ki.Stream(), binary_in);
+  }
 }
 
 

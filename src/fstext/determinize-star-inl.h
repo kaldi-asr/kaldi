@@ -55,8 +55,11 @@ template<class Label, class StringId> class StringRepository {
     size_t operator()(const vector<Label> *vec) const {
       assert(vec != NULL);
       size_t hash = 0, factor = 1;
-      for (typename vector<Label>::const_iterator it = vec->begin(); it != vec->end(); it++)
-        hash += factor*(*it); factor*=103333;  // just an arbitrary prime number.
+      for (typename vector<Label>::const_iterator it = vec->begin();
+           it != vec->end(); it++) {
+        hash += factor*(*it);
+        factor *= 103333;  // just an arbitrary prime number.
+      }
       return hash;
     }
   };
@@ -297,7 +300,7 @@ template<class F> class DeterminizerStar {
       for (typename vector<Element>::const_iterator iter = subset->begin();
            iter != subset->end(); ++iter) {
         hash *= factor;
-        hash += iter->state + 103333*iter->string;
+        hash += iter->state + 103333 * iter->string;
         factor *= 23531;  // these numbers are primes.
       }
       return hash;

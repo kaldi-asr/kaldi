@@ -164,6 +164,15 @@ do
   --mkl-libdir=*)
     MKLLIBDIR=`read_dirname $1`;
     shift ;;
+  --speex-root=*)
+    SPEEXROOT=`read_dirname $1`;
+    shift ;;
+  --speex-libdir=*)
+    SPEEXLIBDIR=`read_dirname $1`;
+    shift ;;
+  --speex-includedir=*)
+    SPEEXINCLUDEDIR=`read_dirname $1`;
+    shift ;;
   --omp-libdir=*)
     OMPLIBDIR=`read_dirname $1`;
     shift ;;
@@ -195,12 +204,13 @@ function check_exists {
 function check_for_bad_gcc {
   if which gcc >&/dev/null; then  # gcc is on the path
     gcc_version=$(gcc -dumpspecs 2>&1 | grep -A1 -F '*version:' | grep -v version)
-    if [ "$gcc_version" == "4.8.2" ]; then
-      echo "*** WARNING: your version of gcc seems to be 4.8.2. ***"
-      echo "*** This version of gcc has a bug in nth_element ***"
+    if [ "$gcc_version" == "4.8.2" ] || [ "$gcc_version" == "4.8.1" ]; then
+      echo "*** WARNING: your version of gcc seems to be 4.8.1 or 4.8.2. ***"
+      echo "*** These versions of gcc has a bug in nth_element ***"
       echo "*** in its implementation of the standard library ***"
       echo "*** This will cause Kaldi to crash (make test   ***"
-      echo "*** should fail). Please either upgrade or downgrade gcc. ***"
+      echo "*** would fail). Please either upgrade or downgrade gcc. ***"
+      exit 1
     fi
   fi
 }
@@ -319,7 +329,7 @@ function linux_configure_mkl_extra {
 
   declare -A extra_libs
   extra_libs=(
-    [sequential]="-lpthread -lm"
+    [sequential]="-ldl -lpthread -lm"
     [gomp]="-lgomp -ldl -lpthread -lm"
     [iomp]="-ldl -lpthread -lm"
     [tbb]=" -ldl -lpthread -lm "
@@ -430,7 +440,7 @@ function configure_cuda {
     # Determine 'CUDA_ARCH',
     CUDA_VERSION=$($CUDATKDIR/bin/nvcc -V | tr '.,' '_ ' | awk '/release/{sub(/.*release/,""); print $1;}') # MAJOR_MINOR,
     if [ -z "$CUDA_VERSION" ] ; then
-      echo "Cannot figure out CUDA_VERSION from the nvcc output. Either your CUDA is too new or too old." 
+      echo "Cannot figure out CUDA_VERSION from the nvcc output. Either your CUDA is too new or too old."
       exit 1
     fi
 
@@ -438,6 +448,7 @@ function configure_cuda {
       5_5) CUDA_ARCH="-gencode arch=compute_13,code=sm_13 -gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35" ;;
       6_*) CUDA_ARCH="-gencode arch=compute_13,code=sm_13 -gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50" ;;
       7_*) CUDA_ARCH="-gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53" ;;
+      8_*) CUDA_ARCH="-gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_62,code=sm_62" ;;
       *) echo "Unsupported CUDA_VERSION (CUDA_VERSION=$CUDA_VERSION), please report it to Kaldi mailing list, together with 'nvcc -h' or 'ptxas -h' which lists allowed -gencode values..."; exit 1 ;;
     esac
     echo "CUDA_ARCH = $CUDA_ARCH" >> kaldi.mk
@@ -462,7 +473,9 @@ function configure_cuda {
 
 function linux_configure_speex {
   #check whether the user has called tools/extras/install_speex.sh or not
-  SPEEXROOT=`pwd`/../tools/speex
+  [ ! -z "$SPEEXROOT" ] || SPEEXROOT=`pwd`/../tools/speex
+  [ ! -z "$SPEEXLIBDIR" ] || SPEEXLIBDIR="$SPEEXROOT"/lib
+  [ ! -z "$SPEEXINCLUDEDIR" ] || SPEEXINCLUDEDIR="$SPEEXROOT"/include
   static_speex=$1
   if [ "foo"$static_speex == "foo" ]; then
     static_speex=false
@@ -473,20 +486,21 @@ function linux_configure_speex {
   else
     spx_type=so
   fi
-  if [ ! -f "$SPEEXROOT/lib/libspeex.${spx_type}" ];then
-    echo "Static=[$static_speex] Speex library not found: You can still build Kaldi without Speex."
+  if [ ! -f "$SPEEXLIBDIR/libspeex.${spx_type}" ];then
+    echo "Info: configuring Kaldi not to link with Speex (don't worry, it's only needed if you"
+    echo "intend to use 'compress-uncompress-speex', which is very unlikely)"
     return
   fi
 
-  if [ -f $SPEEXROOT/include/speex/speex.h ]; then
+  if [ -f $SPEEXINCLUDEDIR/speex/speex.h ]; then
     echo >> kaldi.mk
-    echo CXXFLAGS += -DHAVE_SPEEX -I${SPEEXROOT}/include >> kaldi.mk
+    echo CXXFLAGS += -DHAVE_SPEEX -I${SPEEXINCLUDEDIR} >> kaldi.mk
 
     if $static_speex; then
-      echo LDLIBS += $SPEEXROOT/lib/libspeex.a
+      echo LDLIBS += $SPEEXLIBDIR/libspeex.a
     else
-      echo LDLIBS += -L${SPEEXROOT}/lib -lspeex >> kaldi.mk
-      echo LDFLAGS += -Wl,-rpath=${SPEEXROOT}/lib >> kaldi.mk
+      echo LDLIBS += -L${SPEEXLIBDIR} -lspeex >> kaldi.mk
+      echo LDFLAGS += -Wl,-rpath=${SPEEXLIBDIR} >> kaldi.mk
     fi
 
     echo "Successfully configured with Speex at $SPEEXROOT, (static=[$static_speex])"
@@ -508,7 +522,11 @@ function linux_atlas_failure { # function we use when we couldn't find
    # ATLAS libs.
    echo ATLASINC = $ATLASROOT/include >> kaldi.mk
    echo ATLASLIBS = [somewhere]/liblapack.a [somewhere]/libcblas.a [somewhere]/libatlas.a [somewhere]/libf77blas.a $ATLASLIBDIR >> kaldi.mk
-   cat makefiles/linux_atlas.mk >> kaldi.mk
+   if [[ "`uname -m`" == arm* ]]; then
+     cat makefiles/linux_atlas_arm.mk >> kaldi.mk
+   else
+     cat makefiles/linux_atlas.mk >> kaldi.mk
+   fi
    fix_cxx_flag
    echo "** $* ***"
    echo "**  ERROR   **"
@@ -559,7 +577,11 @@ function linux_configure_debian_ubuntu {
   fi
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
-  cat makefiles/linux_atlas.mk >> kaldi.mk
+  if [[ "`uname -m`" == arm* ]]; then
+    cat makefiles/linux_atlas_arm.mk >> kaldi.mk
+  else
+    cat makefiles/linux_atlas.mk >> kaldi.mk
+  fi
   fix_cxx_flag
   echo "Successfully configured for Debian/Ubuntu Linux [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
   $use_cuda && configure_cuda
@@ -578,7 +600,11 @@ function linux_configure_debian_ubuntu3 {
   fi
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
-  cat makefiles/linux_atlas.mk >> kaldi.mk
+  if [[ "`uname -m`" == arm* ]]; then
+    cat makefiles/linux_atlas_arm.mk >> kaldi.mk
+  else
+    cat makefiles/linux_atlas.mk >> kaldi.mk
+  fi
   fix_cxx_flag
   echo "Successfully configured for Debian/Ubuntu Linux [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
   $use_cuda && configure_cuda
@@ -600,7 +626,11 @@ function linux_configure_debian7 {
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS -Wl,-rpath=$libdir >> kaldi.mk
   echo
-  cat makefiles/linux_atlas.mk >> kaldi.mk
+  if [[ "`uname -m`" == arm* ]]; then
+    cat makefiles/linux_atlas_arm.mk >> kaldi.mk
+  else
+    cat makefiles/linux_atlas.mk >> kaldi.mk
+  fi
   fix_cxx_flag
   echo "Successfully configured for Debian 7 [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
   $use_cuda && configure_cuda
@@ -619,7 +649,11 @@ function linux_configure_redhat {
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS -Wl,-rpath=$libdir >> kaldi.mk
   echo
-  cat makefiles/linux_atlas.mk >> kaldi.mk
+  if [[ "`uname -m`" == arm* ]]; then
+    cat makefiles/linux_atlas_arm.mk >> kaldi.mk
+  else
+    cat makefiles/linux_atlas.mk >> kaldi.mk
+  fi
   fix_cxx_flag
   echo "Successfully configured for red hat [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
   $use_cuda && configure_cuda
@@ -640,7 +674,11 @@ function linux_configure_redhat_fat {
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS -Wl,-rpath=$libdir >> kaldi.mk
   echo
-  cat makefiles/linux_atlas.mk >> kaldi.mk
+  if [[ "`uname -m`" == arm* ]]; then
+    cat makefiles/linux_atlas_arm.mk >> kaldi.mk
+  else
+    cat makefiles/linux_atlas.mk >> kaldi.mk
+  fi
   fix_cxx_flag
   echo "Successfully configured for red hat [dynamic libraries, fat] with ATLASLIBS =$ATLASLIBS"
   $use_cuda && configure_cuda
@@ -693,7 +731,11 @@ function linux_configure_static {
 
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
-  cat makefiles/linux_atlas.mk >> kaldi.mk
+  if [[ "`uname -m`" == arm* ]]; then
+    cat makefiles/linux_atlas_arm.mk >> kaldi.mk
+  else
+    cat makefiles/linux_atlas.mk >> kaldi.mk
+  fi
   fix_cxx_flag
   $use_cuda && configure_cuda
   linux_configure_speex
@@ -715,7 +757,7 @@ function linux_check_dynamic {
         return 0;
       fi
   done
-  echo "... no {libatlas,lib${pt}atlas}.so in $dir";
+  # echo "... no {libatlas,lib${pt}atlas}.so in $dir";
   return 1;
 }
 
@@ -772,7 +814,11 @@ function linux_configure_dynamic {
 
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
-  cat makefiles/linux_atlas.mk >> kaldi.mk
+  if [[ "`uname -m`" == arm* ]]; then
+    cat makefiles/linux_atlas_arm.mk >> kaldi.mk
+  else
+    cat makefiles/linux_atlas.mk >> kaldi.mk
+  fi
   fix_cxx_flag
   $use_cuda && configure_cuda
   linux_configure_speex
@@ -866,6 +912,14 @@ if [ "`uname`" == "Darwin"  ]; then
   elif [ "$osx_ver" == "10.11" ]; then
     check_exists makefiles/darwin_10_11.mk
     cat makefiles/darwin_10_11.mk >> kaldi.mk
+    echo "**BAD WARNING**: You are using OS X El Capitan.  Some versions of this OS"
+    echo "**BAD WARNING**: have a bug in the BLAS implementation that affects Kaldi."
+    echo "**BAD WARNING**: After compiling, cd to matrix/ and type 'make test'.  The"
+    echo "**BAD WARNING**: test will fail if the problem exists in your version. "
+    echo "**BAD WARNING**: Eventually this issue will be fixed by system updates from"
+    echo "**BAD WARNING**  Apple.  Unexplained crashes with reports of NaNs will"
+    echo "**BAD WARNING**  be caused by this bug, but some recipes will (sometimes) work."
+    sleep 1; echo -n .; sleep 1; echo -n .; sleep 1; echo .
   else
     failure "OS X version '$osx_ver' not supported"
   fi
@@ -953,7 +1007,7 @@ if [ "`uname`" == "Linux" ]; then
       See makefiles/linux_64_mkl.mk to manually configure for other platforms."
     fi
 
-    if  is_set "$MKLROOT" -a ! is_set "$MKLLIBDIR"; then
+    if  ( is_set "$MKLROOT" && ! is_set "$MKLLIBDIR" ); then
       echo -n "Configuring MKL library directory: "
       MKLLIBDIR=`linux_configure_mkllibdir $MKLROOT`
       if [ $? -ne 0 ]; then
@@ -1014,7 +1068,11 @@ if [ "`uname`" == "Linux" ]; then
     if [ ! -f makefiles/linux_clapack.mk ]; then
       failure "makefiles/linux_clapack.mk not found."
     fi
-    cat makefiles/linux_clapack.mk >> kaldi.mk
+    if [[ "`uname -m`" == arm* ]]; then
+      cat makefiles/linux_clapack_arm.mk >> kaldi.mk
+    else
+      cat makefiles/linux_clapack.mk >> kaldi.mk
+    fi
     fix_cxx_flag
     echo "Warning (CLAPACK): this part of the configure process is not properly tested and will not work."
     $use_cuda && configure_cuda
@@ -1039,7 +1097,11 @@ if [ "`uname`" == "Linux" ]; then
     fi
     echo "OPENBLASLIBS = $OPENBLASLIBS" >> kaldi.mk
     echo "OPENBLASROOT = $OPENBLASROOT" >> kaldi.mk
-    cat makefiles/linux_openblas.mk >> kaldi.mk
+    if [[ "`uname -m`" == arm* ]]; then
+      cat makefiles/linux_openblas_arm.mk >> kaldi.mk
+    else
+      cat makefiles/linux_openblas.mk >> kaldi.mk
+    fi
     fix_cxx_flag
     $use_cuda && configure_cuda
     linux_configure_speex
