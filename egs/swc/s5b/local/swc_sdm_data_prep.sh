@@ -5,7 +5,7 @@
 # By default, channel TBL1-01 is used.
 # Apache 2.0
 
-# To be run from one directory above this script.
+# To be executed from one directory above this script.
 
 . path.sh
 
@@ -20,38 +20,38 @@ if [ $# != 2 ]; then
   exit 1;
 fi
 
-SWC_DIR=$1	# SWC1, SWC2, SWC3 should be in subfolders under this directory
-MODE=$2		
+SWC_DIR=$1      # SWC1, SWC2, SWC3 should be in subfolders under this directory
+MODE=$2
 
-dir=data/sdm/$MODE/	# Output dir
+dir=data/sdm/$MODE/     # Output dir
 mkdir -p $dir
 
 
 # ---------------------------------------------------------------------------
 # Explanation of the "MODE":
 # 
-#	SA: stand-alone
-#	AD: adaptation
+#       SA: stand-alone
+#       AD: adaptation
 #
 # SWC1, SWC2 and SWC3 all have three strips: A, B, C. 
 #
-# 	MODE		Train		Dev		Eval
+#       MODE            Train           Dev             Eval
 #
-# 	SA1		SWC1		
-#			SWC2.A		SWC2.B		SWC2.C
-#			SWC3.A		SWC3.B		SWC3.C
-#	
-#	SA2		SWC1
-#					SWC2.A		SWC2.B+C
-#					SWC3.A		SWC3.B+C
+#       SA1             SWC1            
+#                       SWC2.A          SWC2.B          SWC2.C
+#                       SWC3.A          SWC3.B          SWC3.C
+#       
+#       SA2             SWC1
+#                                       SWC2.A          SWC2.B+C
+#                                       SWC3.A          SWC3.B+C
 #
-#	AD1		-		SWC1.A+B	SWC1.C
-#					SWC2.A+B	SWC2.C
-#					SWC3.A+B	SWC3.C
+#       AD1             -               SWC1.A+B        SWC1.C
+#                                       SWC2.A+B        SWC2.C
+#                                       SWC3.A+B        SWC3.C
 #
-#	AD2		-		SWC1		
-#							SWC2
-#							SWC3
+#       AD2             -               SWC1            
+#                                                       SWC2
+#                                                       SWC3
 #
 # ---------------------------------------------------------------------------
 
@@ -98,7 +98,7 @@ if [ "$MODE" == "SA1" ] ; then
   # --- train: swc1.A+B+C, swc2.A, swc3.A 
   outdir=$dir/train
   echo -e "\nprepare folder $outdir"
-  mkdir -p $outdir 
+  mkdir -p $outdir
   grep -v ';;' ${SWC_DIR}/swc1/transcripts/swc1_speech.stm > tmp
   grep -v ';;' ${SWC_DIR}/swc2/transcripts/swc2_speech.stm | grep '<swc2,A>' >> tmp
   grep -v ';;' ${SWC_DIR}/swc3/transcripts/swc3_speech.stm | grep '<swc3,A>' >> tmp
@@ -120,7 +120,6 @@ if [ "$MODE" == "SA1" ] ; then
   grep -v ';;' ${SWC_DIR}/swc2/transcripts/swc2_speech.stm | grep '<swc2,C>' > tmp
   grep -v ';;' ${SWC_DIR}/swc3/transcripts/swc3_speech.stm | grep '<swc3,C>' >> tmp
   awk '{if ($1==";;"){print $0}else{$2="A"; print $0}}' tmp > $outdir/stm
-
 
 elif [ "$MODE" == "SA2" ] ; then
   # --- train: swc1.A+B+C
@@ -146,7 +145,6 @@ elif [ "$MODE" == "SA2" ] ; then
   grep -v ';;' ${SWC_DIR}/swc3/transcripts/swc3_speech.stm | grep '<swc3,B>\|<swc3,C>' >> tmp
   awk '{if ($1==";;"){print $0}else{$2="A"; print $0}}' tmp > $outdir/stm
 
-
 elif [ "$MODE" == "AD1" ] ;  then
   # --- dev: swc1.A+B, swc2.A+B, swc3.A+B
   outdir=$dir/dev
@@ -166,7 +164,7 @@ elif [ "$MODE" == "AD1" ] ;  then
   grep -v ';;' ${SWC_DIR}/swc3/transcripts/swc3_speech.stm | grep '<swc3,C>' >> tmp
   awk '{if ($1==";;"){print $0}else{$2="A"; print $0}}' tmp > $outdir/stm
 
-elif [ "$MODE" == "AD2" ] ; then
+elif [ "$MODE" == "AD2" ] ; then  
   # --- dev: swc1.A+B+C
   outdir=$dir/dev
   echo -e "\nprepare folder $outdir"
@@ -187,40 +185,40 @@ else
   exit 1;
 fi
 
+
 for i in 'train' 'dev' 'eval'
 do
   outdir=$dir/$i
   if [ -d $outdir ] ; then
+    # SWC1-00001 01 mn0001 1.10 1.80 <swc1,A> YOU'RE NUMBER TWO
+    awk '{printf("%s_%s_%06d_%06d", $3, $1, int($4*100+0.5), int($5*100+0.5)); for(i=7;i<=NF; i++){printf(" %s", $i);} printf("\n")}' $outdir/stm | sed 's/(//g' |sed 's/)//g' | sort -u  > $outdir/text
+    awk '{printf("%s_%s_%06d_%06d %s_TBL1-01 %.2f %.2f\n", $3, $1, int($4*100+0.5), int($5*100+0.5), $1, $4, $5)}' $outdir/stm | sort -u  > $outdir/segments
+    awk '{printf("%s_%s_%06d_%06d %s\n", $3, $1, int($4*100+0.5), int($5*100+0.5), $3)}' $outdir/stm | sort -u  > $outdir/utt2spk
+    sort -k 2 $outdir/utt2spk | utils/utt2spk_to_spk2utt.pl > $outdir/spk2utt || exit 1;
 
-# SWC1-00001 01 mn0001 1.10 1.80 <swc1,A> YOU'RE NUMBER TWO
-  awk '{printf("%s_%s_%06d_%06d", $3, $1, int($4*100+0.5), int($5*100+0.5)); for(i=7;i<=NF; i++){printf(" %s", $i);} printf("\n")}' $outdir/stm | sed 's/(//g' |sed 's/)//g' | sort -u  > $outdir/text
-  awk '{printf("%s_%s_%06d_%06d %s_TBL1-01 %.2f %.2f\n", $3, $1, int($4*100+0.5), int($5*100+0.5), $1, $4, $5)}' $outdir/stm | sort -u  > $outdir/segments
-  awk '{printf("%s_%s_%06d_%06d %s\n", $3, $1, int($4*100+0.5), int($5*100+0.5), $3)}' $outdir/stm | sort -u  > $outdir/utt2spk
-  sort -k 2 $outdir/utt2spk | utils/utt2spk_to_spk2utt.pl > $outdir/spk2utt || exit 1;
+    awk '{print $2}' $outdir/segments | sort -u > tmp
+    grep 'SWC1' tmp | awk -v fd=${SWC_DIR}/swc1/audio/table '{print $0" sox -c 1 -t wavpcm -s "fd"/"$0".wav -t wavpcm - | "}' > tmp2
+    grep 'SWC2' tmp | awk -v fd=${SWC_DIR}/swc2/audio/table '{print $0" sox -c 1 -t wavpcm -s "fd"/"$0".wav -t wavpcm - | "}' >> tmp2
+    grep 'SWC3' tmp | awk -v fd=${SWC_DIR}/swc3/audio/table '{print $0" sox -c 1 -t wavpcm -s "fd"/"$0".wav -t wavpcm - | "}' >> tmp2
 
-  awk '{print $2}' $outdir/segments | sort -u > tmp
-  grep 'SWC1' tmp | awk -v fd=${SWC_DIR}/swc1/audio/table '{print $0" sox -c 1 -t wavpcm -s "fd"/"$0".wav -t wavpcm - | "}' > tmp2
-  grep 'SWC2' tmp | awk -v fd=${SWC_DIR}/swc2/audio/table '{print $0" sox -c 1 -t wavpcm -s "fd"/"$0".wav -t wavpcm - | "}' >> tmp2
-  grep 'SWC3' tmp | awk -v fd=${SWC_DIR}/swc3/audio/table '{print $0" sox -c 1 -t wavpcm -s "fd"/"$0".wav -t wavpcm - | "}' >> tmp2
+    sort -u tmp2 > $outdir/wav.scp
+    rm tmp*
 
-  sort -u tmp2 > $outdir/wav.scp
-  rm tmp*
- 
-  utils/validate_data_dir.sh --no-feats $outdir || exit 1;
+    utils/validate_data_dir.sh --no-feats $outdir || exit 1;
 
 
-  # Files needed for scoring
-  cp local/en20140220.glm  $outdir/glm
-  # segments: fn0016_SWC3-00001_181870_181927 SWC3-00001_fn0016 1818.70 1819.27
-# ------- This is the first version I thought should be, but later it does not pass valicaiton script ("utils/validate_data_dir.sh")
-#  # reco2file_and_chan: SWC3-00001_fn0016  SWC3-00001  0                # NOTE: IHM is different here! 0=>16
-#  awk '{print $2}' $outdir/segments | sort -u | awk 'BEGIN{FS="_"}{print $0" "$1" 0"}' > $outdir/reco2file_and_channel
-#
-# ------- This is the updated hacked version 
-  # reco2file_and_chan: SWC3-00001_fn0016  SWC3-00001  A              # NOTE: IHM is different here! Second column => SWC3-00001_fn0016
-  awk '{print $2}' $outdir/segments | sort -u | awk 'BEGIN{FS="_"}{print $0" "$1" A"}' > $outdir/reco2file_and_channel
+    # Files needed for scoring
+    cp local/en20140220.glm  $outdir/glm
+    # segments: fn0016_SWC3-00001_181870_181927 SWC3-00001_fn0016 1818.70 1819.27
+    # ------- This is the first version I thought should be, but later it does not pass valicaiton script ("utils/validate_data_dir.sh")
+    #  # reco2file_and_chan: SWC3-00001_fn0016  SWC3-00001  0                # NOTE: IHM is different here! 0=>16
+    #  awk '{print $2}' $outdir/segments | sort -u | awk 'BEGIN{FS="_"}{print $0" "$1" 0"}' > $outdir/reco2file_and_channel
+    #
+    # ------- This is the updated hacked version 
+    # reco2file_and_chan: SWC3-00001_fn0016  SWC3-00001  A              # NOTE: IHM is different here! Second column => SWC3-00001_fn0016
+    awk '{print $2}' $outdir/segments | sort -u | awk 'BEGIN{FS="_"}{print $0" "$1" A"}' > $outdir/reco2file_and_channel
 
-  echo ";;
+    echo ";;
 ;;
 ;; CATEGORY \"0\" \"$MODE ($i set)\" \"\"
 ;; LABEL \"O\" \"Overall\" \"Overall\"
@@ -238,21 +236,22 @@ do
 ;; LABEL \"swc3\" \"swc3\" \"\" " > tmp_stm
 
 
-# -------- This is the first version I thought should be, but the reco2file_and_channel file for this versiont does not pass valicaiton script ("utils/validate_data_dir.sh")
-#  mv $outdir/stm tmp
-# ------- This is the updated hacked version 
-  awk '{if($1==";;"){print $0}else{$2="A"; print $0}}' $outdir/stm > tmp
-  cat tmp_stm tmp > $outdir/stm
-
+    # -------- This is the first version I thought should be, but the reco2file_and_channel file for this versiont does not pass valicaiton script ("utils/validate_data_dir.sh")
+    #  mv $outdir/stm tmp
+    # ------- This is the updated hacked version 
+    awk '{if($1==";;"){print $0}else{$2="A"; print $0}}' $outdir/stm > tmp
+    cat tmp_stm tmp > $outdir/stm
 
   fi
 done
+
 
 rm tmp*
 
 echo "SWC SDM data preparation succeeded."
 
 exit 0;
+
 
 
 
