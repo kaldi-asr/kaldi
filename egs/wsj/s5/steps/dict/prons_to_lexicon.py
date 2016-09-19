@@ -27,7 +27,7 @@ class StrToBoolAction(argparse.Action):
 
 def GetArgs():
     parser = argparse.ArgumentParser(description = "Converts pronunciation statistics (from phone level decoding) "
-                                     "into a lexicon for lexicon learning. We prune the pronounciations "
+                                     "into a lexicon for lexicon learning. We prune the pronunciations "
                                      "based on the stats, and optionally filter out entries which are "
                                      "already in a filter lexicon.",
                                      epilog = "See steps/dict/debug_lexicon.sh for example")
@@ -46,7 +46,7 @@ def GetArgs():
     parser.add_argument("--filter-lexicon", metavar='<filter-lexicon>', type = str, default = '',
                         help = "Exclude entries in this filter lexicon from the output lexicon.")
     parser.add_argument("stats_file", metavar='<stats-file>', type = str,
-                        help = "Input file containing pronounciation statistics; "
+                        help = "Input file containing pronunciation statistics; "
                         "each line must be <counts> <word> <phones>")
     parser.add_argument("out_lexicon", metavar='<out-lexicon>', type = str,
                         help = "Write output lexicon.")
@@ -168,10 +168,10 @@ def WriteLexicon(args, lexicon, filter_lexicon):
         words.add(entry[0])
         print("{0} {1}".format(entry[0], entry[1]),
                 file = args.out_lexicon_handle)
-    print ("Before pruning, the total num. pronounciations is:", len(lexicon))
-    print ("Removed", num_removed, "pronounciations by setting min_prob", args.min_prob, ".")
-    print ("Filtered out", num_filtered, "pronounciations in the filter lexicon.")
-    print ("Num. pronounciations in the output lexicon, which solely come from phone decoding is",
+    print ("Before pruning, the total num. pronunciations is:", len(lexicon))
+    print ("Removed", num_removed, "pronunciations by setting min_prob", args.min_prob, ".")
+    print ("Filtered out", num_filtered, "pronunciations in the filter lexicon.")
+    print ("Num. pronunciations in the output lexicon, which solely come from phone decoding is",
            len(lexicon) - num_removed - num_filtered, ". num. words is", len(words))
 
 def Main():

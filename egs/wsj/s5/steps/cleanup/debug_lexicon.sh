@@ -142,7 +142,8 @@ if [ $stage -le 9 ]; then
      merge_prev=merge; utt_prev=utt; word_prev=word; pron_prev=pron;}
      END{if(merge_prev==1) {printf utt_prev" "word_prev" "pron_prev"\n"}}' > $dir/ctm_prons.txt
   
-  steps/cleanup/internal/get_pron_stats.py $dir/ctm_prons.txt $phone_lang/phones/silence.txt - | \
+  steps/cleanup/get_non_scored_words.py $lang > $dir/non_scored_words
+  steps/cleanup/internal/get_pron_stats.py $dir/ctm_prons.txt $phone_lang/phones/silence.txt $phone_lang/phones/optional_silence.txt $dir/non_scored_words - | \
     sort -nr > $dir/prons.txt  
 fi
 

@@ -4,7 +4,7 @@
 
 # Begin configuration section.  
 iters=5
-stage=0
+stage=5
 encoding='utf-8'
 remove_tags=true
 only_words=true

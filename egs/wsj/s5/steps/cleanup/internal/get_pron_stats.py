@@ -17,8 +17,12 @@ def GetArgs():
     parser.add_argument("ctm_prons_file", metavar = "<ctm-prons-file>", type = str,
                         help = "File containing word-pronounciation alignments obtained from a ctm file; "
                         "each line must be <utt_id> <word> <phones>")
-    parser.add_argument("silphone_file", metavar = "<silphone-file>", type = str,
+    parser.add_argument("silence_file", metavar = "<silphone-file>", type = str,
                         help = "File containing a list of silence phones.")
+    parser.add_argument("optional_silence_file", metavar = "<optional_silence>", type = str,
+                        help = "File containing the optional silence phone. We'll be replacing empty prons by this.")
+    parser.add_argument("non_scored_words_file", metavar = "<non-scored-words-file>", type = str,
+                        help = "File containing a list of non-scored words.")
     parser.add_argument("stats_file", metavar = "<stats-file>", type = str,
                         help = "Write accumulated statitistics to this file;"
                         "each line is <count> <word> <phones>")
@@ -34,18 +38,20 @@ def CheckArgs(args):
         args.ctm_prons_file_handle = sys.stdin
     else:
         args.ctm_prons_file_handle = open(args.ctm_prons_file)
-    args.silphone_file_handle = open(args.silphone_file)
+    args.non_scored_words_file_handle = open(args.non_scored_words_file)
+    args.silence_file_handle = open(args.silence_file)
+    args.optional_silence_file_handle = open(args.optional_silence_file)
     if args.stats_file == "-":
         args.stats_file_handle = sys.stdout
     else:
         args.stats_file_handle = open(args.stats_file, "w")
     return args
 
-def ReadSilPhones(silphone_file_handle):
-    silphones = set()
-    for line in silphone_file_handle:
-        silphones.add(line.strip())
-    return silphones
+def ReadEntries(file_handle):
+    entries = set()
+    for line in file_handle:
+        entries.add(line.strip())
+    return entries
 
 # Basically, this function generates an "info" list from a ctm_prons file.
 # Each entry in the list represents the pronounciation candidate(s) of a word.
@@ -94,26 +100,27 @@ def ReadSilPhones(silphone_file_handle):
 # example, each pron candidate of "because" gets a count of 1/4. The stats is stored
 # in a dictionary (word, pron) : count.
 
-def GetStatsFromCtmProns(silphones, ctm_prons_file_handle):
+def GetStatsFromCtmProns(silphones, optional_silence, non_scored_words, ctm_prons_file_handle):
     info = []
     for line in ctm_prons_file_handle.readlines():
         splits = line.strip().split()
         utt = splits[0]
         word = splits[1]
-        phones_list = splits[2:]
-        phones = " ".join(phones_list)
+        phones = splits[2:]
+        if phones == []:
+            phones = [optional_silence]
         # extract the nonsil_left and nonsil_right segments, and then try to
         # append nonsil_left to the pron candidates of preceding word, getting
         # extended pron candidates.
-        if word == '<eps>':
+        if word == '<eps>' or (word in non_scored_words and word != '<unk>' and word != '<UNK>'):
             nonsil_left = []
             nonsil_right = [] 
-            for phone in splits[2:]:
+            for phone in phones:
                 if phone in silphones:
                     break
                 nonsil_left.append(phone)
             
-            for phone in reversed(splits[2:]):
+            for phone in reversed(phones):
                 if phone in silphones:
                     break
                 nonsil_right.insert(0, phone)
@@ -132,42 +139,64 @@ def GetStatsFromCtmProns(silphones, ctm_prons_file_handle):
                             ends_with_sil = True
                     if not ends_with_sil:
                         pron_ext.add(pron+" "+" ".join(nonsil_left))
-                info[-1][2] = info[-1][2].union(pron_ext)
+                if isinstance(info[-1][2], set):
+                    info[-1][2] = info[-1][2].union(pron_ext)
             if len(nonsil_right) > 0:
                 info.append([utt, word, " ".join(nonsil_right)])
         else:
             prons = set()
-            if phones != '':
-               prons.add(phones)
-            if word == 'fda':
-                print(info[-1][2], phones, utt)
-            # If there's a preceding <eps>, we append it's nonsil_right segment
-            # to the pron candidates of the current word.
-            if len(info) > 0 and utt == info[-1][0] and info[-1][1] == '<eps>' and (phones == '' or phones_list[0] not in silphones):
-                # info[-1][2] is the nonsil_right segment of the phones aligned to the last <eps>.
-                prons.add(info[-1][2]+' '+phones)
+            prons.add(" ".join(phones))
+            # If there's a preceding <eps>/non_scored_words (which means the third field is a string rather than a set of strings),
+            # we append it's nonsil_right segment to the pron candidates of the current word.
+            if len(info) > 0 and utt == info[-1][0] and isinstance(info[-1][2], str) and (phones == [] or phones[0] not in silphones):
+                # info[-1][2] is the nonsil_right segment of the phones aligned to the last <eps>/non_scored_words.
+                prons.add(info[-1][2]+' '+" ".join(phones))
             info.append([utt, word, prons])
-    
     stats = {}
-    for utt, word, pron_set in info:
-        if word != '<eps>' and len(pron_set) > 0:
-            count = 1.0 / float(len(pron_set))
-            for pron in pron_set:
-                # remove silence phones inserted in the prons
-                phones = " ".join([phone for phone in pron.split() if phone not in silphones])
+    for utt, word, prons in info:
+        # If the prons is not a set, the current word must be <eps> or an non_scored_word,
+        # where we just left the nonsil_right part as prons.
+        if isinstance(prons, set) and len(prons) > 0:
+            count = 1.0 / float(len(prons))
+            for pron in prons:
+                phones = pron.strip().split()
+                # post-processing: remove all begining/trailing silence phones.
+                # we allow only candidates that either consist of a single silence
+                # phone, or the silence phones are inside non-silence phones.
+                if len(phones) > 1:
+                    begin = 0
+                    for phone in phones:
+                        if phone in silphones:
+                            begin += 1
+                        else:
+                            break
+                    if begin == len(phones):
+                        begin -= 1
+                    phones = phones[begin:]
+                    if len(phones) == 1:
+                        break
+                    end = len(phones)
+                    for phone in reversed(phones):
+                        if phone in silphones:
+                            end -= 1
+                        else:
+                            break
+                    phones = phones[:end]
+                phones = " ".join(phones)
                 stats[(word, phones)] = stats.get((word, phones), 0) + count
     return stats
 
 def WriteStats(stats, file_handle):            
     for word_pron, count in stats.iteritems():
-        if word_pron[1] != '':
-            print('{0} {1} {2}'.format(count, word_pron[0], word_pron[1]), file=file_handle)
+        print('{0} {1} {2}'.format(count, word_pron[0], word_pron[1]), file=file_handle)
     file_handle.close()
 
 def Main():
     args = GetArgs()
-    silphones = ReadSilPhones(args.silphone_file_handle)
-    stats = GetStatsFromCtmProns(silphones, args.ctm_prons_file_handle)
+    silphones = ReadEntries(args.silence_file_handle)
+    non_scored_words = ReadEntries(args.non_scored_words_file_handle)
+    optional_silence = ReadEntries(args.optional_silence_file_handle)
+    stats = GetStatsFromCtmProns(silphones, optional_silence.pop(), non_scored_words, args.ctm_prons_file_handle)
     WriteStats(stats, args.stats_file_handle)            
 
 if __name__ == "__main__":
