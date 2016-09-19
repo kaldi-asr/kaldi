@@ -87,8 +87,8 @@ endif
 # patches for openfst. openfst_gcc41up.patch is a patch for openfst to \
 # support multi-threads when compile with g++ (gcc) version above 4.1
 openfst-$(OPENFST_VERSION)/.patched: | openfst-$(OPENFST_VERSION)
-	-cd openfst-$(OPENFST_VERSION)/src/include/fst; \
-	patch -c -p0 -N < ../../../../extras/openfst-$(OPENFST_VERSION).patch;
+	cd openfst-$(OPENFST_VERSION)/; \
+	patch -p1 -N < ../extras/openfst-$(OPENFST_VERSION).patch;
 	$(CXX) -dumpversion | awk '{if(NR==1 && $$1>"4.1") print "cd openfst-$(OPENFST_VERSION)/src/include/fst; patch -c -p0 -N < ../../../../extras/openfst_gcc41up.patch"}' | sh -
 	touch $@
 
