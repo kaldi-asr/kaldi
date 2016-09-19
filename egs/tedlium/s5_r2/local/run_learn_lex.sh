@@ -87,6 +87,8 @@ fi
 # decode
 if [ $stage -le 3 ]; then
   cp -rT data/lang_learned data/lang_learned_rescore
+  ! cmp data/lang_nosp/words.txt data/lang_learned/words.txt &&\
+    echo "$0: The vocab of the learned lexicon and the reference vocab may be incompatible."
   cp data/lang_nosp/G.fst data/lang_learned/
   cp data/lang_nosp_rescore/G.carpa data/lang_learned_rescore/
   utils/mkgraph.sh data/lang_learned exp/tri3_learned_lex exp/tri3_learned_lex/graph
