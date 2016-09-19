@@ -270,15 +270,6 @@ class CuMatrixBase {
   ///  src.NumCols() / this->NumCols() must be an integer.
   void GroupPnorm(const CuMatrixBase<Real> &src, Real pow);
 
-  /// Calculate derivatives for the GroupPnorm function above...
-  /// if "input" is the input to the GroupPnorm function above (i.e. the "src" variable),
-  /// and "output" is the result of the computation (i.e. the "this" of that function
-  /// call), and *this has the same dimension as "input", then it sets each element
-  /// of *this to the derivative d(output-elem)/d(input-elem) for each element of "input", where
-  /// "output-elem" is whichever element of output depends on that input element.
-  void GroupPnormDeriv(const CuMatrixBase<Real> &input,
-                       const CuMatrixBase<Real> &output, Real power);
-
   /// Differentiate backward through the GroupPnorm function.
   /// It is a combination of GroupPnormDeriv and MulRowsGroupMat.
   void DiffGroupPnorm(const CuMatrixBase<Real> &in_value,

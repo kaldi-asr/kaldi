@@ -797,31 +797,6 @@ void CuMatrixBase<Real>::MulRowsGroupMat(const CuMatrixBase<Real> &src) {
   }
 }
 
-template<typename Real>
-void CuMatrixBase<Real>::GroupPnormDeriv(const CuMatrixBase<Real> &src1,
-                                         const CuMatrixBase<Real> &src2,
-                                         Real power) {
-  KALDI_ASSERT(src2.NumCols() > 0);
-  int group_size = this->NumCols() / src2.NumCols();
-  KALDI_ASSERT(this->NumCols() == src2.NumCols() * group_size);
-#if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
-    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
-    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK),
-                 n_blocks(NumRows(), CU2DBLOCK));
-    cuda_calc_pnorm_deriv(dimGrid, dimBlock, this->data_, src1.Data(),
-                          src2.Data(), Dim(), src1.Stride(), src2.Stride(),
-                          group_size, power);
-    CU_SAFE_CALL(cudaGetLastError());
-
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
-  } else
-#endif
-  {
-    Mat().GroupPnormDeriv(src1.Mat(), src2.Mat(), power);
-  }
-}
 
 template<typename Real>
 void CuMatrixBase<Real>::DiffGroupPnorm(const CuMatrixBase<Real> &in_value,
@@ -851,7 +826,7 @@ void CuMatrixBase<Real>::DiffGroupPnorm(const CuMatrixBase<Real> &in_value,
   } else
 #endif
   {
-    GroupPnormDeriv(in_value, out_value, power);
+    Mat().GroupPnormDeriv(in_value.Mat(), out_value.Mat(), power);
     MulRowsGroupMat(out_deriv);
   }
 }

@@ -164,7 +164,7 @@ template<typename Real> void TestCuMatrixTransposeCross(int32 dim) {
   AssertEqual(ref, Mf);
 }
 
-template<typename Real> void TestCuMatrixAddMat(int32 dim, 
+template<typename Real> void TestCuMatrixAddMat(int32 dim,
 		int32 num_row_blocks, int32 num_col_blocks) {
   BaseFloat time_in_secs = 0.025;
   CuMatrix<Real> A(dim, dim), B(dim * num_row_blocks, dim * num_col_blocks);
@@ -180,14 +180,14 @@ template<typename Real> void TestCuMatrixAddMat(int32 dim,
     }
   }
   BaseFloat fdim = dim;
-  BaseFloat gflops = (fdim * fdim * num_row_blocks * num_col_blocks * iter) 
+  BaseFloat gflops = (fdim * fdim * num_row_blocks * num_col_blocks * iter)
 	  / (tim.Elapsed() * 1.0e+09);
   KALDI_LOG << "For CuMatrix::AddMat" << NameOf<Real>() << ", for dim = "
 	    << dim << "numRowBlocks = "<< num_row_blocks << "numColBlocks = "
 	    << num_col_blocks << ", speed was " << gflops << " gigaflops.";
 }
 
-template<typename Real> void TestCuMatrixAddMatBlocks(int32 dim, 
+template<typename Real> void TestCuMatrixAddMatBlocks(int32 dim,
 		int32 num_row_blocks, int32 num_col_blocks) {
   BaseFloat time_in_secs = 0.025;
   CuMatrix<Real> A(dim, dim), B(dim * num_row_blocks, dim * num_col_blocks);
@@ -199,7 +199,7 @@ template<typename Real> void TestCuMatrixAddMatBlocks(int32 dim,
     A.AddMatBlocks(0.0, B);
   }
   BaseFloat fdim = dim;
-  BaseFloat gflops = (fdim * fdim * num_row_blocks * num_col_blocks * iter) 
+  BaseFloat gflops = (fdim * fdim * num_row_blocks * num_col_blocks * iter)
 	  / (tim.Elapsed() * 1.0e+09);
    KALDI_LOG << "For CuMatrix::AddMatBlocks" << NameOf<Real>() << ", for dim = "
 	     << dim << ", numRowBlocks = "<< num_row_blocks << ", numColBlocks = "
@@ -226,7 +226,7 @@ template<typename Real> void TestCuMatrixMatMat(int32 dim) {
 template<typename Real> void TestCuMatrixMatMatBatched(int32 dim, int32 batchCount) {
   std::vector<CuMatrix<Real>* > a(batchCount), b(batchCount), c(batchCount);
   std::vector<CuSubMatrix<Real>* > A, B, C;
-  
+
   for (int32 i = 0; i < batchCount; i++) {
     // first create a Matrix intance and then creat a SubMatrix instance from that
     a[i] = new CuMatrix<Real>(dim, dim);
@@ -234,18 +234,18 @@ template<typename Real> void TestCuMatrixMatMatBatched(int32 dim, int32 batchCou
     c[i] = new CuMatrix<Real>(dim, dim);
     a[i]->SetRandn();
     b[i]->SetRandn();
-    A.push_back(new CuSubMatrix<Real>(*(a[i]), 0, a[i]->NumRows(), 0, 
+    A.push_back(new CuSubMatrix<Real>(*(a[i]), 0, a[i]->NumRows(), 0,
 			    a[i]->NumCols()));
-    B.push_back(new CuSubMatrix<Real>(*(b[i]), 0, b[i]->NumRows(), 0, 
+    B.push_back(new CuSubMatrix<Real>(*(b[i]), 0, b[i]->NumRows(), 0,
 			    b[i]->NumCols()));
-    C.push_back(new CuSubMatrix<Real>(*(c[i]), 0, c[i]->NumRows(), 0, 
+    C.push_back(new CuSubMatrix<Real>(*(c[i]), 0, c[i]->NumRows(), 0,
 			    c[i]->NumCols()));
   }
   BaseFloat time_in_secs = 0.025;
   Timer tim;
   int32 iter = 0;
   for (;tim.Elapsed() < time_in_secs; iter++) {
-    AddMatMatBatched(static_cast<Real>(1.0), C, A, kNoTrans, B, kNoTrans, 
+    AddMatMatBatched(static_cast<Real>(1.0), C, A, kNoTrans, B, kNoTrans,
 		    static_cast<Real>(0.0));
   }
   for (int32 i = 0; i< batchCount; i++) {
@@ -255,7 +255,7 @@ template<typename Real> void TestCuMatrixMatMatBatched(int32 dim, int32 batchCou
 
   BaseFloat fdim = dim;
   BaseFloat gflops = (fdim * fdim * fdim * iter * batchCount) / (tim.Elapsed() * 1.0e+09);
-  KALDI_LOG << "For CuMatrix::AddMatMatBatched" << NameOf<Real>() << ", for dim = " << dim 
+  KALDI_LOG << "For CuMatrix::AddMatMatBatched" << NameOf<Real>() << ", for dim = " << dim
 	    << ", batchSize = " << batchCount << ", speed was " << gflops << " gigaflops.";
 }
 
@@ -546,23 +546,6 @@ template<typename Real> void TestCuMatrixGroupPnorm(int32 dim) {
             << dim << ", speed was " << gflops << " gigaflops.";
 }
 
-template<typename Real> void TestCuMatrixGroupPnormDeriv(int32 dim) {
-  BaseFloat time_in_secs = 0.025;
-  int32 group_size = 4;
-  CuMatrix<Real> M(dim, dim), N(dim, dim / group_size), O(dim, dim);
-  M.SetRandn();
-  N.GroupPnorm(M, 2.0);
-  Timer tim;
-  int32 iter = 0;
-
-  for (;tim.Elapsed() < time_in_secs; iter++)
-    O.GroupPnormDeriv(M, N, 2.0);
-
-  BaseFloat fdim = dim;
-  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
-  KALDI_LOG << "For CuMatrix::GroupPnormDeriv" << NameOf<Real>() << ", for dim = "
-            << dim << ", speed was " << gflops << " gigaflops.";
-}
 
 template<typename Real> void TestCuMatrixDiffGroupPnorm(int32 dim) {
   BaseFloat time_in_secs = 0.025;
@@ -1044,8 +1027,6 @@ template<typename Real> void CudaMatrixSpeedTest() {
     TestCuMatrixLogSoftmax<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixGroupPnorm<Real>(sizes[s]);
-  for (int32 s = 0; s < ns; s++)
-    TestCuMatrixGroupPnormDeriv<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixDiffGroupPnorm<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
