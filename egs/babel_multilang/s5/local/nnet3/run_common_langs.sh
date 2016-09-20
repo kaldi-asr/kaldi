@@ -1,16 +1,16 @@
 #!/bin/bash
-
+# This script generates 40 dim MFCC and pitch features for input language. 
 . ./cmd.sh
 set -e
 stage=1
 train_stage=-10
 generate_alignments=true # false if doing ctc training
 speed_perturb=true
-use_flp=false
-use_pitch=true
-pitch_conf=conf/pitch.conf
-voicing_conf=
-use_pitch_plp=false
+use_flp=false   # If true, it uses fullLP configuration for training data.
+use_pitch=true  # If true, it generates pitch features and append it to 40dim MFCC.
+pitch_conf=conf/pitch.conf # config used to generate pitch features.
+use_pitch_plp=false # If true, it regenerate alignment w.r.t plp+pitch  features.
+
 [ ! -f ./conf/common_vars.sh ] && echo 'the file conf/common_vars.sh does not exist!' && exit 1
 
 . conf/common_vars.sh || exit 1;
