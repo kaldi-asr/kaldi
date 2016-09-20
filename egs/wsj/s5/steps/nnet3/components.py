@@ -466,6 +466,7 @@ def AddGruLayer(config_lines,
                 scale_minus_one_file, bias_one_file,
                 clipping_threshold = 1.0,
                 norm_based_clipping = "false",
+                ng_per_element_scale_options = "",
                 ng_affine_options = "",
                 gru_delay = -1,
                 self_repair_scale_nonlinearity = None,
@@ -487,6 +488,7 @@ def AddGruLayer(config_lines,
     # Parameter Definitions of affine matrix W_rz-xp (appended large matrix of W_r-xp and W_z-xp) for reset gate r(t) and update gate z(t)
     components.append("# Define affine matrices for reset gate and update gate: W_*-xh")
     components.append("component name={0}_W_rz-xp type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + recurrent_projection_dim, 2 * cell_dim, ng_affine_options))
+    components.append("component name={0}_W_rz-h type=NaturalGradientPerElementScaleComponent dim={1} {2}".format(name, 2 * cell_dim, ng_per_element_scale_options))
 
     # Parameter Definitions W_h-* for h_tilt
     components.append("# Define the affine matrix for current hidden output control: W_h-*")
@@ -510,10 +512,11 @@ def AddGruLayer(config_lines,
 
     component_nodes.append("# r_t and z_t")
     component_nodes.append("component-node name={0}_rz1 component={0}_W_rz-xp input=Append({1}, IfDefined(Offset({0}_p_t, {2})))".format(name, input_descriptor, gru_delay))
-    component_nodes.append("component-node name={0}_rz_t component={0}_rz input={0}_rz1".format(name))
+    component_nodes.append("component-node name={0}_rz2 component={0}_W_rz-h input=Append(IfDefined(Offset({0}_h_t, {1})), IfDefined(Offset({0}_h_t, {1})))".format(name, gru_delay))
+    component_nodes.append("component-node name={0}_rz_t component={0}_rz input=Sum({0}_rz1, {0}_rz2)".format(name)) 
     component_nodes.append("dim-range-node name={0}_r_t input-node={0}_rz_t dim-offset=0 dim={1}".format(name, cell_dim))
     component_nodes.append("dim-range-node name={0}_z_t input-node={0}_rz_t dim-offset={2} dim={1}".format(name, cell_dim, cell_dim))
-   
+
     component_nodes.append("# h_tilt_t")
     component_nodes.append("component-node name={0}_h_tilt1_pre component={0}_W_h-p input=IfDefined(Offset({0}_p_t, {1}))".format(name, gru_delay))
     component_nodes.append("component-node name={0}_h_tilt1 component={0}_rh input=Append({0}_r_t, {0}_h_tilt1_pre)".format(name))

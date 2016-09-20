@@ -67,6 +67,8 @@ def GetArgs():
                         help="dimension of fully-connected layers")
 
     # Natural gradient options
+    parser.add_argument("--ng-per-element-scale-options", type=str,
+                        help="options to be supplied to NaturalGradientPerElementScaleComponent", default="")
     parser.add_argument("--ng-affine-options", type=str,
                         help="options to be supplied to NaturalGradientAffineComponent", default="")
 
@@ -228,6 +230,7 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
                 recurrent_projection_dim, non_recurrent_projection_dim,
                 num_gru_layers, num_hidden_layers,
                 norm_based_clipping, clipping_threshold,
+                ng_per_element_scale_options,
                 ng_affine_options,
                 label_delay, include_log_softmax, xent_regularize,
                 self_repair_scale_nonlinearity, self_repair_scale_clipgradient):
@@ -254,12 +257,14 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
             prev_layer_output1 = nodes.AddGruLayer(config_lines, "BGru{0}_forward".format(i+1), prev_layer_output,
                                              cell_dim, recurrent_projection_dim, non_recurrent_projection_dim,
                                              config_dir + '/scale_minus_one.vec', config_dir + '/bias_one.vec',
-                                             clipping_threshold, norm_based_clipping, ng_affine_options,
+                                             clipping_threshold, norm_based_clipping,
+                                             ng_per_element_scale_options, ng_affine_options,
                                              gru_delay = gru_delay[i][0], self_repair_scale_nonlinearity = self_repair_scale_nonlinearity, self_repair_scale_clipgradient = self_repair_scale_clipgradient)
             prev_layer_output2 = nodes.AddGruLayer(config_lines, "BGru{0}_backward".format(i+1), prev_layer_output,
                                              cell_dim, recurrent_projection_dim, non_recurrent_projection_dim,
                                              config_dir + '/scale_minus_one.vec', config_dir + '/bias_one.vec',
-                                             clipping_threshold, norm_based_clipping, ng_affine_options,
+                                             clipping_threshold, norm_based_clipping,
+                                             ng_per_element_scale_options, ng_affine_options,
                                              gru_delay = gru_delay[i][1], self_repair_scale_nonlinearity = self_repair_scale_nonlinearity, self_repair_scale_clipgradient = self_repair_scale_clipgradient)
             prev_layer_output['descriptor'] = 'Append({0}, {1})'.format(prev_layer_output1['descriptor'], prev_layer_output2['descriptor'])
             prev_layer_output['dimension'] = prev_layer_output1['dimension'] + prev_layer_output2['dimension']
@@ -267,7 +272,8 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
             prev_layer_output = nodes.AddGruLayer(config_lines, "Gru{0}".format(i+1), prev_layer_output,
                                             cell_dim, recurrent_projection_dim, non_recurrent_projection_dim,
                                             config_dir + '/scale_minus_one.vec', config_dir + '/bias_one.vec',
-                                            clipping_threshold, norm_based_clipping, ng_affine_options,
+                                            clipping_threshold, norm_based_clipping,
+                                            ng_per_element_scale_options, ng_affine_options,
                                             gru_delay = gru_delay[i][0], self_repair_scale_nonlinearity = self_repair_scale_nonlinearity, self_repair_scale_clipgradient = self_repair_scale_clipgradient)
         # make the intermediate config file for layerwise discriminative
         # training
@@ -344,6 +350,7 @@ def Main():
                 num_hidden_layers = num_hidden_layers,
                 norm_based_clipping = args.norm_based_clipping,
                 clipping_threshold = args.clipping_threshold,
+                ng_per_element_scale_options = args.ng_per_element_scale_options,
                 ng_affine_options = args.ng_affine_options,
                 label_delay = args.label_delay,
                 include_log_softmax = args.include_log_softmax,
