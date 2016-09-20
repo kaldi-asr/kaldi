@@ -29,7 +29,7 @@ local/download_lm.sh $lm_url data/local/lm
 # format the data as Kaldi data directories
 for part in dev-clean test-clean dev-other test-other train-clean-100; do
   # use underscore-separated names in data directories.
-  local/data_prep.sh $data/LibriSpeech/$part data/$(echo $part | sed s/-/_/g)
+  local/data_prep.sh $data/LibriSpeech/$part $data/$(echo $part | sed s/-/_/g)
 done
 
 ## Optional text corpus normalization and LM training
