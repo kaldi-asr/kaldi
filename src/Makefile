@@ -51,7 +51,8 @@ checkversion:
 ifeq ($(shell ./configure --version),$(CONFIGURE_VERSION))
 	@echo "The version of configure script matches kaldi.mk version. Good."
 else
-	$(error The kaldi.mk file was generated using a different version of configure script. Run the configure script again.)
+		@echo "The kaldi.mk file was generated using a different version of configure script."
+		@test -f ./kaldi.mk && echo  "Previous configure command line: " && head -n 2 ./kaldi.mk | grep configure | sed 's/^# *//g'
 endif
 
 biglib: $(SUBDIRS_LIB)
