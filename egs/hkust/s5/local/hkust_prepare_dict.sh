@@ -237,7 +237,7 @@ cat $dict_dir/lexicon-ch/ch-char-dict.txt |\
   }
   print $out_line;  
   ' >  $dict_dir/lexicon-ch/ch-char-dict-mp.txt
-2
+
 # get lexicon for Chinese OOV words
 perl local/create_oov_char_lexicon.pl $dict_dir/lexicon-ch/ch-char-dict-mp.txt $dict_dir/lexicon-ch/words-ch-oov.txt > $dict_dir/lexicon-ch/lexicon-ch-oov.txt
 
@@ -270,7 +270,7 @@ cat $dict_dir/lexicon-ch/lexicon-ch-oov.txt |\
 
 # compose IV and OOV lexicons for Chinese
 cat $dict_dir/lexicon-ch/lexicon-ch-oov-mp.txt $dict_dir/lexicon-ch/lexicon-ch-iv.txt |\
-  awk '{if (NF > 1) print $0;}' > $dict_dir/lexicon-ch/lexicon-ch.txt 
+  awk '{if (NF > 1 && $2 ~ /[A-Za-z0-9]+/) print $0;}' > $dict_dir/lexicon-ch/lexicon-ch.txt 
 
 # convert Chinese pinyin to CMU format
 cat $dict_dir/lexicon-ch/lexicon-ch.txt | sed -e 's/U:/V/g' | sed -e 's/ R\([0-9]\)/ ER\1/g'|\
