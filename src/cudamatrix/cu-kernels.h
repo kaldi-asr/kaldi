@@ -310,13 +310,7 @@ inline void cuda_mul_rows_group_mat(dim3 Gr, dim3 Bl, float *y, const float *x,
                                     int group_size) {
   cudaF_mul_rows_group_mat(Gr, Bl, y, x, d, src_stride, group_size);
 }
-inline void cuda_calc_pnorm_deriv(dim3 Gr, dim3 Bl, float *y, const float *x1,
-                                  const float *x2, MatrixDim y_dim,
-                                  int x1_stride, int x2_stride, int group_size,
-                                  float power) {
-  cudaF_calc_pnorm_deriv(Gr, Bl, y, x1, x2, y_dim, x1_stride, x2_stride,
-                         group_size, power);
-}
+
 inline void cuda_diff_group_pnorm(dim3 Gr, dim3 Bl, float *id, const float *iv,
                                   const float *ov, const float* od,
                                   MatrixDim id_dim, int iv_stride,
@@ -850,13 +844,7 @@ inline void cuda_mul_rows_group_mat(dim3 Gr, dim3 Bl, double *y,
                                     int src_stride, int group_size) {
   cudaD_mul_rows_group_mat(Gr, Bl, y, x, d, src_stride, group_size);
 }
-inline void cuda_calc_pnorm_deriv(dim3 Gr, dim3 Bl, double *y, const double *x1,
-                                  const double *x2, MatrixDim y_dim,
-                                  int x1_stride, int x2_stride, int group_size,
-                                  double power) {
-  cudaD_calc_pnorm_deriv(Gr, Bl, y, x1, x2, y_dim, x1_stride, x2_stride,
-                         group_size, power);
-}
+
 inline void cuda_diff_group_pnorm(dim3 Gr, dim3 Bl, double *id,
                                   const double *iv, const double *ov,
                                   const double* od, MatrixDim id_dim,
