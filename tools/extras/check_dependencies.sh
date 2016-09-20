@@ -12,9 +12,9 @@ function add_packages {
   opensuse_packages="$opensuse_packages $3";
 }
 
-if ! which -v >/dev/null 2>&1; then
+if ! which which >&/dev/null; then
   echo "$0: which is not installed."
-  add_packages which which which
+  add_packages which debianutils which
 fi
 
 if ! which g++ >&/dev/null; then
