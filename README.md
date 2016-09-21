@@ -27,6 +27,7 @@ For HOT news about Kaldi see [the project site](http://kaldi-asr.org/).
 - Doxygen reference of the C++ code.
 
 [Kaldi forums and mailing lists](http://kaldi-asr.org/forums.html):
+
 We have two different lists
 - User list kaldi-help
 - Developer list kaldi-developers:
