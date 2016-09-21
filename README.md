@@ -29,12 +29,8 @@ For HOT news about Kaldi see [the project site](http://kaldi-asr.org/).
 [Kaldi forums and mailing lists](http://kaldi-asr.org/forums.html):
 - User list kaldi-help:
     [Web interface/archive](https://groups.google.com/forum/#!forum/kaldi-help) ||
-    [Subscribe] (mailto:kaldi-help+subscribe@googlegroups.com) ||
-    [Post] (mailto:kaldi-help@googlegroups.com)
 - Developer list kaldi-developers:
     [Web interface/archive](https://groups.google.com/forum/#!forum/kaldi-developers) ||
-    [Subscribe] (mailto:kaldi-developers+subscribe@googlegroups.com) ||
-    [Post] (mailto:kaldi-developers@googlegroups.com)
 - Also try luck and search in [SourceForge archives](https://sourceforge.net/p/kaldi/discussion/).
 
 Development pattern for contributors
