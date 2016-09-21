@@ -27,11 +27,13 @@ For HOT news about Kaldi see [the project site](http://kaldi-asr.org/).
 - Doxygen reference of the C++ code.
 
 [Kaldi forums and mailing lists](http://kaldi-asr.org/forums.html):
-- User list kaldi-help:
-    [Web interface/archive](https://groups.google.com/forum/#!forum/kaldi-help) ||
+We have two different lists
+- User list kaldi-help
 - Developer list kaldi-developers:
-    [Web interface/archive](https://groups.google.com/forum/#!forum/kaldi-developers) ||
-- Also try luck and search in [SourceForge archives](https://sourceforge.net/p/kaldi/discussion/).
+
+To sign up to any of those mailing lists, go to
+[http://kaldi-asr.org/forums.html](http://kaldi-asr.org/forums.html):
+
 
 Development pattern for contributors
 ------------------------------------
