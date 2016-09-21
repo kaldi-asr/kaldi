@@ -42,19 +42,6 @@ $silprobfile = shift @ARGV;
 open(L, "<$lexfn") || die "Error opening lexicon $lexfn";
 open(SP, "<$silprobfile") || die "Error opening word-sil-probs $SP";
 
-sub is_sil {
-  # Return true (1) if provided with a phone-sequence
-  # that means silence.
-  # @_ is the parameters of the function
-  # This function returns true if @_ equals ( $silphone )
-  # or something of the form ( "#0", $silphone, "#1" )
-  # where the "#0" and "#1" are disambiguation symbols.
-  return ( @_ == 1 && $_[0] eq $silphone ||
-           (@_ == 3 && $_[1] eq $silphone &&
-            $_[0] =~ m/^\#\d+$/ &&
-            $_[0] =~ m/^\#\d+$/));
-}
-
 $silbeginprob = -1;
 $silendcorrection = -1;
 $nonsilendcorrection = -1;
