@@ -67,7 +67,7 @@ NnetExample GetEgsFromSent(const vector<int>& wlist_in, int input_dim,
   }
 
   NnetExample eg;
-  eg.io.push_back(NnetIo("input", -1, input_frames));
+  eg.io.push_back(NnetIo("input", 0, input_frames));
 
   Posterior posterior;
   vector<std::pair<int32, BaseFloat> > p;
@@ -125,7 +125,7 @@ void RnnlmEval(NnetComputeProb &computer, // can't make this const it seems
                                      word_ids_out, output_dim);
     computer.Compute(egs);
     const SimpleObjectiveInfo *info = computer.GetObjective("output");
-    ofile << info->tot_objective + obj_to_add << endl;
+    ofile << info->tot_weight + obj_to_add << endl;
     computer.Reset();
   }
 }
@@ -133,8 +133,7 @@ void RnnlmEval(NnetComputeProb &computer, // can't make this const it seems
 int main(int argc, char *argv[]) {
   using namespace kaldi;
   const char *usage = "Get egs for rnnlm\n"
-    "e.g. rnnlm-get-egs text-file wordlist.in wordlist.out ark,t:egs\n"
-    ;
+    "e.g. rnnlm-get-egs rnnlm-model wordlist.in wordlist.out text-file logprob-file\n";
 
   NnetComputeProbOptions opts;
   ParseOptions po(usage);
@@ -147,7 +146,7 @@ int main(int argc, char *argv[]) {
 
   po.Read(argc, argv);
 
-  if (po.NumArgs() != 4) {
+  if (po.NumArgs() != 5) {
     po.PrintUsage();
     exit(1);
   }
@@ -167,11 +166,16 @@ int main(int argc, char *argv[]) {
   unordered_map<string, int> in_wlist = ReadWordlist(in_wlist_file);
   unordered_map<string, int> out_wlist = ReadWordlist(out_wlist_file);
 
+  cout << "sizes are " << in_wlist.size() << " " << out_wlist.size() << endl;
+
   if (num_words != -1) {
     KALDI_ASSERT(num_words >= out_wlist.size());
   }
 
   BaseFloat oos_cost = log(1.0 / (num_words - out_wlist.size() + 1));
+  if (num_words == -1) {
+    oos_cost = 0;
+  }
 
   RnnlmEval(prob_computer, in_wlist, out_wlist, oos_cost, text_file, out_file);
 
