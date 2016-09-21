@@ -71,6 +71,8 @@ for f in $rnndir/rnnlm $data/feats.scp $indir/lat.1.gz; do
 done
 
 nj=`cat $indir/num_jobs` || exit 1;
+cp $indir/num_jobs $dir/num_jobs
+
 adir=$dir/archives
 
 mkdir -p $dir;
