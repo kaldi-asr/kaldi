@@ -23,6 +23,7 @@ threads=1 # for RNNLM-HS
 bptt=2 # length of BPTT unfolding in RNNLM
 bptt_block=20 # length of BPTT unfolding in RNNLM
 dict_suffix=
+rnnlm_options="-direct-order 4"
 # End configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
@@ -113,7 +114,7 @@ echo "Training RNNLM (note: this uses a lot of memory! Run it on a big machine.)
 $cmd $dir/rnnlm.log \
    $KALDI_ROOT/tools/$rnnlm_ver/rnnlm -threads $threads -independent -train $dir/train -valid $dir/valid \
    -rnnlm $dir/rnnlm -hidden $hidden -rand-seed 1 -debug 2 -class $class -bptt $bptt -bptt-block $bptt_block \
-   -direct-order 4 -direct $direct -binary || exit 1;
+   $rnnlm_options -direct $direct -binary || exit 1;
 
 
 # make it like a Kaldi table format, with fake utterance-ids.
