@@ -25,10 +25,10 @@
 #include "fstext/fstext-utils.h"
 #include "fstext/kaldi-fst-io.h"
 
-#if !defined(_MSC_VER) && !defined(__APPLE__)
+#ifndef _MSC_VER
 #include <signal.h> // Comment this line and the call to signal below if
 // it causes compilation problems.  It is only to enable a debugging procedure
-// when determinization does not terminate.
+// when determinization does not terminate.  
 #endif
 
 /* some test  examples.
@@ -93,7 +93,7 @@ int main(int argc, char *argv[]) {
     std::string phi_str = po.GetOptArg(1),
         fst_in_str = po.GetOptArg(2),
         fst_out_str = po.GetOptArg(3);
-
+    
 
     int32 phi_label;
     if (!ConvertStringToInteger(phi_str, &phi_label)
@@ -104,9 +104,9 @@ int main(int argc, char *argv[]) {
 
 
     VectorFst<StdArc> *fst = ReadFstKaldi(fst_in_str);
-
+    
     PropagateFinal(phi_label, fst);
-
+    
     WriteFstKaldi(*fst, fst_out_str);
     delete fst;
     return 0;

@@ -24,10 +24,10 @@
 #include "fstext/determinize-star.h"
 #include "fstext/fstext-utils.h"
 #include "fstext/kaldi-fst-io.h"
-#if !defined(_MSC_VER) && !defined(__APPLE__)
+#ifndef _MSC_VER
 #include <signal.h> // Comment this line and the call to signal below if
 // it causes compilation problems.  It is only to enable a debugging procedure
-// when determinization does not terminate.
+// when determinization does not terminate.  
 #endif
 
 /* some test  examples:
@@ -91,7 +91,7 @@ int main(int argc, char *argv[]) {
 
     // This enables us to get traceback info from determinization that is
     // not seeming to terminate.
-#if !defined(_MSC_VER) && !defined(__APPLE__)
+#ifndef _MSC_VER
     signal(SIGUSR1, signal_handler);
 #endif
     if (ClassifyRspecifier(fst_in_str, NULL, NULL) == kNoRspecifier) {
