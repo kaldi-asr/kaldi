@@ -67,6 +67,9 @@ if [[ $context == mono && ($N != 1 || $P != 0) || \
   exit 1
 fi
 
+[[ -f $2/frame_subsampling_factor && $loopscale != 1.0 ]] && \
+  echo "$0: WARNING: chain models need '--self-loop-scale 1.0'";
+
 mkdir -p $lang/tmp
 # Note: [[ ]] is like [ ] but enables certain extra constructs, e.g. || in
 # place of -o
