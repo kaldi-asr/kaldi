@@ -53,7 +53,8 @@ int main(int argc, char *argv[]) {
         "Remove N last layers Components from the Nnet");
 
     po.Register("dropout-retention", &dropout_retention,
-        "Set dropout retention to a particular value.");
+        "Probability that neuron output stays after dropout "
+        "(0.0 keeps original value).");
 
     std::string from_parallel_component;
     po.Register("from-parallel-component", &from_parallel_component,

@@ -1,6 +1,6 @@
 // nnet/nnet-activation.h
 
-// Copyright 2011-2013  Brno University of Technology (author: Karel Vesely)
+// Copyright 2011-2016  Brno University of Technology (author: Karel Vesely)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -23,6 +23,7 @@
 
 #include <string>
 #include <vector>
+#include <cmath>
 
 #include "nnet/nnet-component.h"
 #include "nnet/nnet-utils.h"
@@ -292,9 +293,25 @@ class Dropout : public Component {
   }
 
   void ReadData(std::istream &is, bool binary) {
-    if ('<' == Peek(is, binary)) {
-      ExpectToken(is, binary, "<DropoutRetention>");
-      ReadBasicType(is, binary, &dropout_retention_);
+    // Read all the '<Tokens>' in arbitrary order,
+    bool finished = false;
+    while ('<' == Peek(is, binary) && !finished) {
+      std::string token;
+      int first_char = PeekToken(is, binary);
+      switch (first_char) {
+        case 'D': ExpectToken(is, binary, "<DropoutRetention>");
+          ReadBasicType(is, binary, &dropout_retention_);
+          break;
+        case 'I': ExpectToken(is, binary, "<InvScale>"); /* compatibility */
+          BaseFloat dummy_value;
+          ReadBasicType(is, binary, &dummy_value);
+          break;
+        case '!': ExpectToken(is, binary, "<!EndOfComponent>");
+          finished = true;
+          break;
+        default: ReadToken(is, false, &token);
+          KALDI_ERR << "Unknown token: " << token;
+      }
     }
     KALDI_ASSERT(dropout_retention_ > 0.0 && dropout_retention_ <= 1.0);
   }
@@ -302,6 +319,10 @@ class Dropout : public Component {
   void WriteData(std::ostream &os, bool binary) const {
     WriteToken(os, binary, "<DropoutRetention>");
     WriteBasicType(os, binary, dropout_retention_);
+  }
+
+  std::string Info() const {
+    return std::string("<DropoutRetention> ") + ToString(dropout_retention_);
   }
 
   void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
