@@ -889,7 +889,7 @@ if [ "`uname`" == "Darwin"  ]; then
     failure "Static OpenFST library not found:  See ../tools/INSTALL"
   fi
   # posix_memalign and gcc -rdynamic options not present on OS X 10.5.*
-  osx_ver=`sw_vers | grep ProductVersion | awk '{print $2}' | awk '{split($0,a,"\."); print a[1] "." a[2]; }'`
+  osx_ver=`sw_vers | grep ProductVersion | awk '{print $2}' | awk '{split($0,a,"."); print a[1] "." a[2]; }'`
   echo "Configuring for OS X version $osx_ver ..."
   if [ "$osx_ver" == "10.5" ]; then
     check_exists makefiles/darwin_10_5.mk
@@ -920,6 +920,9 @@ if [ "`uname`" == "Darwin"  ]; then
     echo "**BAD WARNING**  Apple.  Unexplained crashes with reports of NaNs will"
     echo "**BAD WARNING**  be caused by this bug, but some recipes will (sometimes) work."
     sleep 1; echo -n .; sleep 1; echo -n .; sleep 1; echo .
+  elif [ "$osx_ver" == "10.12" ]; then
+    check_exists makefiles/darwin_10_12.mk
+    cat makefiles/darwin_10_12.mk >> kaldi.mk
   else
     failure "OS X version '$osx_ver' not supported"
   fi
