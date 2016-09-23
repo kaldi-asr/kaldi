@@ -105,7 +105,7 @@ struct OnlineEndpointRule {
                    "be nonsilence in the best-path traceback.");
     opts->Register("min-trailing-silence", &min_trailing_silence,
                    "This endpointing rule requires duration of trailing silence"
-                   " to be >= this value.");
+                   "(in seconds) to be >= this value.");
     opts->Register("max-relative-cost", &max_relative_cost,
                    "This endpointing rule requires relative-cost of final-states"
                    " to be <= this value (describes how good the probability "

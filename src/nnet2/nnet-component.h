@@ -843,7 +843,7 @@ class FixedAffineComponent;
 class AffineComponent: public UpdatableComponent {
   friend class SoftmaxComponent; // Friend declaration relates to mixing up.
  public:
-  explicit AffineComponent(const AffineComponent &other);
+  AffineComponent(const AffineComponent &other);
   // The next constructor is used in converting from nnet1.
   AffineComponent(const CuMatrixBase<BaseFloat> &linear_params,
                   const CuVectorBase<BaseFloat> &bias_params,
@@ -1083,7 +1083,7 @@ class RandomComponent: public Component {
   // consistency in the random number generation (e.g. when optimizing
   // validation-set performance), but check where else we call sRand().  You'll
   // need to call srand as well as making this call.
-  void ResetGenerator() { random_generator_.SeedGpu(0); }
+  void ResetGenerator() { random_generator_.SeedGpu(); }
  protected:
   CuRand<BaseFloat> random_generator_;
 };

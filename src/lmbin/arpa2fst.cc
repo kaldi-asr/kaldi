@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
   try {
     const char *usage  =
         "Convert an ARPA format language model into an FST\n"
-        "Usage: arpa2fst [opts] <input_arpa> <output_fst>\n"
+        "Usage: arpa2fst [opts] <input-arpa> <output-fst>\n"
         " e.g.: arpa2fst --disambig-symbol=#0 --read-symbol-table="
         "data/lang/words.txt lm/input.arpa G.fst\n\n"
         "Note: When called without switches, the output G.fst will contain\n"

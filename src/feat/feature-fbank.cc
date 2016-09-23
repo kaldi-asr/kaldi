@@ -95,6 +95,10 @@ void FbankComputer::Compute(BaseFloat signal_log_energy,
   SubVector<BaseFloat> power_spectrum(*signal_frame, 0,
                                       signal_frame->Dim() / 2 + 1);
 
+  // Use magnitude instead of power if requested.
+  if (!opts_.use_power)
+    power_spectrum.ApplyPow(0.5);
+
   int32 mel_offset = ((opts_.use_energy && !opts_.htk_compat) ? 1 : 0);
   SubVector<BaseFloat> mel_energies(*feature,
                                     mel_offset,

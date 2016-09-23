@@ -124,7 +124,7 @@ ivector_opts=
 if [ ! -z "$online_ivector_dir" ]; then
   ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
   # note: subsample-feats, with negative n, will repeat each feature -n times.
-  ivector_opts="--online-ivectors=scp:$online_ivector_dir/ivector_online.scp --online-ivector_period=$ivector_period"
+  ivector_opts="--online-ivectors=scp:$online_ivector_dir/ivector_online.scp --online-ivector-period=$ivector_period"
 fi
 
 echo "$0: aligning data in $data using model from $srcdir, putting alignments in $dir"
@@ -148,6 +148,8 @@ $cmd $queue_opt JOB=1:$nj $dir/log/align.JOB.log \
   --extra-right-context-final=$extra_right_context_final \
   $gpu_opt --beam=$beam --retry-beam=$retry_beam \
   $srcdir/${iter}.mdl ark:- "$feats" "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
+
+steps/diagnostic/analyze_alignments.sh --cmd "$cmd" $lang $dir
 
 echo "$0: done aligning data."
 

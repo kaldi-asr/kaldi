@@ -40,8 +40,8 @@ def get_normalization_coefficient(file_list, is_rir, additional_scaling):
         delay_impulse = [i for i, j in enumerate(channel_one) if j == max_d][0]
         before_impulse = np.floor(rate * 0.001)
         after_impulse = np.floor(rate * 0.05)
-        start_index = max(0, delay_impulse - before_impulse)
-        end_index = min(len(channel_one), delay_impulse + after_impulse)
+        start_index = int(max(0, delay_impulse - before_impulse))
+        end_index = int(min(len(channel_one), delay_impulse + after_impulse))
       else:
         start_index = 0
         end_index = data.shape[0]

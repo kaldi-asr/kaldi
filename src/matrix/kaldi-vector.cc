@@ -520,6 +520,10 @@ Real VectorBase<Real>::Norm(Real p) const {
     for (MatrixIndexT i = 0; i < dim_; i++)
       sum += data_[i] * data_[i];
     return std::sqrt(sum);
+  } else if (p == std::numeric_limits<Real>::infinity()){
+    for (MatrixIndexT i = 0; i < dim_; i++)
+      sum = std::max(sum, std::abs(data_[i]));
+    return sum;
   } else {
     Real tmp;
     bool ok = true;

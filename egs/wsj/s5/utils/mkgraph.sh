@@ -18,14 +18,12 @@ set -o pipefail
 tscale=1.0
 loopscale=0.1
 
-reverse=false
 remove_oov=false
 
 for x in `seq 6`; do
   [ "$1" == "--mono" ] && context=mono && shift;
   [ "$1" == "--left-biphone" ] && context=lbiphone && shift;
   [ "$1" == "--quinphone" ] && context=quinphone && shift;
-  [ "$1" == "--reverse" ] && reverse=true && shift;
   [ "$1" == "--remove-oov" ] && remove_oov=true && shift;
   [ "$1" == "--transition-scale" ] && tscale=$2 && shift 2;
   [ "$1" == "--self-loop-scale" ] && loopscale=$2 && shift 2;
@@ -37,6 +35,8 @@ if [ $# != 3 ]; then
    echo " Options:"
    echo " --mono          #  For monophone models."
    echo " --quinphone     #  For models with 5-phone context (3 is default)"
+   echo " --left-biphone  #  For left biphone models"
+   echo "For other accepted options, see top of script."
    exit 1;
 fi
 
@@ -67,6 +67,9 @@ if [[ $context == mono && ($N != 1 || $P != 0) || \
   exit 1
 fi
 
+[[ -f $2/frame_subsampling_factor && $loopscale != 1.0 ]] && \
+  echo "$0: WARNING: chain models need '--self-loop-scale 1.0'";
+
 mkdir -p $lang/tmp
 # Note: [[ ]] is like [ ] but enables certain extra constructs, e.g. || in
 # place of -o
@@ -92,16 +95,9 @@ fi
 
 if [[ ! -s $dir/Ha.fst || $dir/Ha.fst -ot $model  \
     || $dir/Ha.fst -ot $lang/tmp/ilabels_${N}_${P} ]]; then
-  if $reverse; then
-    make-h-transducer --reverse=true --push_weights=true \
-      --disambig-syms-out=$dir/disambig_tid.int \
-      --transition-scale=$tscale $lang/tmp/ilabels_${N}_${P} $tree $model \
-      > $dir/Ha.fst  || exit 1;
-  else
-    make-h-transducer --disambig-syms-out=$dir/disambig_tid.int \
-      --transition-scale=$tscale $lang/tmp/ilabels_${N}_${P} $tree $model \
-       > $dir/Ha.fst  || exit 1;
-  fi
+  make-h-transducer --disambig-syms-out=$dir/disambig_tid.int \
+    --transition-scale=$tscale $lang/tmp/ilabels_${N}_${P} $tree $model \
+     > $dir/Ha.fst  || exit 1;
 fi
 
 if [[ ! -s $dir/HCLGa.fst || $dir/HCLGa.fst -ot $dir/Ha.fst || \
@@ -142,6 +138,7 @@ cp $lang/words.txt $dir/ || exit 1;
 mkdir -p $dir/phones
 cp $lang/phones/word_boundary.* $dir/phones/ 2>/dev/null # might be needed for ctm scoring,
 cp $lang/phones/align_lexicon.* $dir/phones/ 2>/dev/null # might be needed for ctm scoring,
+cp $lang/phones/optional_silence.* $dir/phones/ 2>/dev/null # might be needed for analyzing alignments.
   # but ignore the error if it's not there.
 
 cp $lang/phones/disambig.{txt,int} $dir/phones/ 2> /dev/null

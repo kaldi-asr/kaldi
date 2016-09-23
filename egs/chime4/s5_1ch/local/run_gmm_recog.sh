@@ -16,7 +16,7 @@
 nj=30
 stage=0 # resume training with --stage=N
 train=noisy
-eval_flag=false # make it true when the evaluation data are released
+eval_flag=true # make it true when the evaluation data are released
 
 . utils/parse_options.sh || exit 1;
 
@@ -65,7 +65,7 @@ fi
 
 # process for enhanced data
 if [ $stage -le 0 ]; then
-  if [ ! -d data/dt05_real_$enhan ]; then
+  if [ ! -d data/dt05_real_$enhan ] || [ ! -d data/et05_real_$enhan ]; then
     local/real_enhan_chime4_data_prep.sh $enhan $enhan_data
     local/simu_enhan_chime4_data_prep.sh $enhan $enhan_data
   fi
@@ -93,7 +93,7 @@ fi
 # make mixed training set from real and simulation enhanced data
 # multi = simu + real
 if [ $stage -le 2 ]; then
-  if [ ! -d data/dt05_multi_$enhan ]; then
+  if [ ! -d data/dt05_multi_$enhan ] || [ ! -d data/et05_multi_$enhan ]; then
     utils/combine_data.sh data/dt05_multi_$enhan data/dt05_simu_$enhan data/dt05_real_$enhan
     if $eval_flag; then
     utils/combine_data.sh data/et05_multi_$enhan data/et05_simu_$enhan data/et05_real_$enhan

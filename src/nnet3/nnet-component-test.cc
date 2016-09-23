@@ -354,6 +354,11 @@ bool TestSimpleComponentDataDerivative(const Component &c,
               << "with dim=1.";
     return true;
   }
+  else if (c.Type() == "ClipGradientComponent") {
+    KALDI_LOG << "Accepting deriv differences since "
+              << "it is ClipGradientComponent.";
+    return true;
+  }
   return ans;
 }
 
@@ -498,6 +503,7 @@ int main() {
   TestStringsApproxEqual();
   for (kaldi::int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1
+    CuDevice::Instantiate().SetDebugStrideMode(true);
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no");
     else

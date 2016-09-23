@@ -2,14 +2,14 @@
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
 
-# Computes training alignments and (if needed) speaker-vectors, given an 
+# Computes training alignments and (if needed) speaker-vectors, given an
 # SGMM system.  If the system is built on top of SAT, you should supply
 # transforms with the --transform-dir option.
 
 # If you supply the --use-graphs option, it will use the training
 # graphs from the source directory.
 
-# Begin configuration section.  
+# Begin configuration section.
 stage=0
 nj=4
 cmd=run.pl
@@ -70,7 +70,7 @@ echo "$0: feature type is $feat_type"
 case $feat_type in
   delta) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
   lda) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
-    cp $srcdir/final.mat $dir    
+    cp $srcdir/final.mat $dir
    ;;
   *) echo "Invalid feature type $feat_type" && exit 1;
 esac
@@ -106,7 +106,7 @@ else
   graphdir=$dir
   if [ $stage -le 0 ]; then
     echo "$0: compiling training graphs"
-    tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text|";   
+    tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text|";
     $cmd JOB=1:$nj $dir/log/compile_graphs.JOB.log  \
       compile-train-graphs $dir/tree $dir/final.mdl  $lang/L.fst "$tra" \
         "ark:|gzip -c >$dir/fsts.JOB.gz" || exit 1;
@@ -135,7 +135,7 @@ else
 fi
 
 
-if [ $alimdl == $mdl ]; then 
+if [ $alimdl == $mdl ]; then
   # Speaker-independent decoding-- just one pass.  Not normal.
   T=`sgmm2-info $mdl | grep 'speaker vector space' | awk '{print $NF}'` || exit 1;
   [ "$T" -ne 0 ] && echo "No alignment model, yet speaker vector space nonempty" && exit 1;
@@ -189,6 +189,8 @@ fi
 rm $dir/pre_ali.*.gz
 
 echo "$0: done aligning data."
+
+steps/diagnostic/analyze_alignments.sh --cmd "$cmd" $lang $dir
 
 utils/summarize_warnings.pl $dir/log
 

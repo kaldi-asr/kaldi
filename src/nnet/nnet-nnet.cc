@@ -24,8 +24,6 @@
 #include "nnet/nnet-activation.h"
 #include "nnet/nnet-affine-transform.h"
 #include "nnet/nnet-various.h"
-#include "nnet/nnet-lstm-projected-streams.h"
-#include "nnet/nnet-blstm-projected-streams.h"
 
 namespace kaldi {
 namespace nnet1 {
@@ -280,21 +278,21 @@ void Nnet::SetDropoutRetention(BaseFloat r)  {
 }
 
 
-void Nnet::ResetLstmStreams(const std::vector<int32> &stream_reset_flag) {
+void Nnet::ResetStreams(const std::vector<int32> &stream_reset_flag) {
   for (int32 c = 0; c < NumComponents(); c++) {
-    if (GetComponent(c).GetType() == Component::kLstmProjectedStreams) {
-      LstmProjectedStreams& comp =
-        dynamic_cast<LstmProjectedStreams&>(GetComponent(c));
-      comp.ResetLstmStreams(stream_reset_flag);
+    if (GetComponent(c).IsMultistream()) {
+      MultistreamComponent& comp =
+        dynamic_cast<MultistreamComponent&>(GetComponent(c));
+      comp.ResetStreams(stream_reset_flag);
     }
   }
 }
 
 void Nnet::SetSeqLengths(const std::vector<int32> &sequence_lengths) {
   for (int32 c = 0; c < NumComponents(); c++) {
-    if (GetComponent(c).GetType() == Component::kBLstmProjectedStreams) {
-      BLstmProjectedStreams& comp =
-        dynamic_cast<BLstmProjectedStreams&>(GetComponent(c));
+    if (GetComponent(c).IsMultistream()) {
+      MultistreamComponent& comp =
+        dynamic_cast<MultistreamComponent&>(GetComponent(c));
       comp.SetSeqLengths(sequence_lengths);
     }
   }

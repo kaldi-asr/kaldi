@@ -1,6 +1,6 @@
-#!/bin/bash 
+#!/bin/bash
 
-# Copyright 2012  Karel Vesely  Johns Hopkins University (Author: Daniel Povey)
+# Copyright 2012-2016  Karel Vesely  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
 # To be run from .. (one directory up from here)
 # see ../run.sh for example
@@ -17,18 +17,28 @@ echo "$0 $@"  # Print the command line for logging
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
-if [ $# != 3 ]; then
-   echo "usage: make_fbank.sh [options] <data-dir> <log-dir> <path-to-fbankdir>";
-   echo "options: "
-   echo "  --fbank-config <config-file>                      # config passed to compute-fbank-feats "
+if [ $# -lt 1 ] || [ $# -gt 3 ]; then
+   echo "Usage: $0 [options] <data-dir> [<log-dir> [<fbank-dir>] ]";
+   echo "e.g.: $0 data/train exp/make_fbank/train mfcc"
+   echo "Note: <log-dir> defaults to <data-dir>/log, and <fbank-dir> defaults to <data-dir>/data"
+   echo "Options: "
+   echo "  --fbank-config <config-file>                     # config passed to compute-fbank-feats "
    echo "  --nj <nj>                                        # number of parallel jobs"
    echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
    exit 1;
 fi
 
 data=$1
-logdir=$2
-fbankdir=$3
+if [ $# -ge 2 ]; then
+  logdir=$2
+else
+  logdir=$data/log
+fi
+if [ $# -ge 3 ]; then
+  fbankdir=$3
+else
+  fbankdir=$data/data
+fi
 
 
 # make $fbankdir an absolute pathname.
@@ -70,7 +80,7 @@ fi
 for n in $(seq $nj); do
   # the next command does nothing unless $fbankdir/storage/ exists, see
   # utils/create_data_link.pl for more info.
-  utils/create_data_link.pl $fbankdir/raw_fbank_$name.$n.ark  
+  utils/create_data_link.pl $fbankdir/raw_fbank_$name.$n.ark
 done
 
 if [ -f $data/segments ]; then
@@ -98,7 +108,7 @@ else
   done
 
   utils/split_scp.pl $scp $split_scps || exit 1;
- 
+
   $cmd JOB=1:$nj $logdir/make_fbank_${name}.JOB.log \
     compute-fbank-feats $vtln_opts --verbose=2 --config=$fbank_config scp,p:$logdir/wav.JOB.scp ark:- \| \
     copy-feats --compress=$compress ark:- \
@@ -121,8 +131,8 @@ done > $data/feats.scp
 
 rm $logdir/wav.*.scp  $logdir/segments.* 2>/dev/null
 
-nf=`cat $data/feats.scp | wc -l` 
-nu=`cat $data/utt2spk | wc -l` 
+nf=`cat $data/feats.scp | wc -l`
+nu=`cat $data/utt2spk | wc -l`
 if [ $nf -ne $nu ]; then
   echo "It seems not all of the feature files were successfully ($nf != $nu);"
   echo "consider using utils/fix_data_dir.sh $data"

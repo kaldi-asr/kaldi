@@ -24,7 +24,8 @@ TESTFILES =
 # actually, this library is currently empty.  Everything is a header.
 LIBFILE =
 
-ADDLIBS = ../fstext/kaldi-fstext.a ../util/kaldi-util.a ../thread/kaldi-thread.a \
-          ../matrix/kaldi-matrix.a ../base/kaldi-base.a
+ADDLIBS = ../fstext/kaldi-fstext.a ../util/kaldi-util.a \
+          ../thread/kaldi-thread.a ../matrix/kaldi-matrix.a \
+          ../base/kaldi-base.a 
 
 include ../makefiles/default_rules.mk

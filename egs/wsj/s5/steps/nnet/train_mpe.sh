@@ -26,6 +26,7 @@ one_silence_class=true # true : reduce insertions in sMBR/MPE FW/BW, more stable
                        # (all silphones are seen as a single class in the sMBR/MPE FW/BW)
 verbose=1
 ivector=
+nnet=  # For non-default location of nnet,
 
 seed=777    # seed value used for training data shuffling
 skip_cuda_check=false
@@ -49,7 +50,7 @@ if [ $# -ne 6 ]; then
   echo "  --lmwt <float>                                   # linguistic score scaling"
   echo "  --learn-rate <float>                             # learning rate for NN training"
   echo "  --do-smbr <bool>                                 # do sMBR training, otherwise MPE"
-  
+
   exit 1;
 fi
 
@@ -76,7 +77,7 @@ cp $alidir/{final.mdl,tree} $dir
 silphonelist=`cat $lang/phones/silence.csl`
 
 #Get the files we will need
-nnet=$srcdir/$(readlink $srcdir/final.nnet || echo final.nnet);
+[ -z "$nnet" ] && nnet=$srcdir/$(readlink $srcdir/final.nnet || echo final.nnet);
 [ -z "$nnet" ] && echo "Error nnet '$nnet' does not exist!" && exit 1;
 cp $nnet $dir/0.nnet; nnet=$dir/0.nnet
 

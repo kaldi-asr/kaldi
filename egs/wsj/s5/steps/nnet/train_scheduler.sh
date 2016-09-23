@@ -22,6 +22,7 @@ feature_transform=
 max_iters=20
 min_iters=0 # keep training, disable weight rejection, start learn-rate halving as usual,
 keep_lr_iters=0 # fix learning rate for N initial epochs, disable weight rejection,
+dropout_iters= # Disable dropout after 'N' initial epochs,
 start_halving_impr=0.01
 end_halving_impr=0.001
 halving_factor=0.5
@@ -94,10 +95,16 @@ halving=0
 for iter in $(seq -w $max_iters); do
   echo -n "ITERATION $iter: "
   mlp_next=$dir/nnet/${mlp_base}_iter${iter}
-  
+
   # skip iteration (epoch) if already done,
-  [ -e $dir/.done_iter$iter ] && echo -n "skipping... " && ls $mlp_next* && continue 
-  
+  [ -e $dir/.done_iter$iter ] && echo -n "skipping... " && ls $mlp_next* && continue
+
+  # disable dropout?
+  if [ -n $dropout_iters -a $((dropout_iters+1)) -eq $iter ]; then
+    nnet-copy --dropout-retention=1.0 $mlp_best ${mlp_best}.no_dropout
+    mlp_best=${mlp_best}.no_dropout
+  fi
+
   # training,
   log=$dir/log/iter${iter}.tr.log; hostname>$log
   $train_tool --cross-validate=false --randomize=true --verbose=$verbose $train_tool_opts \

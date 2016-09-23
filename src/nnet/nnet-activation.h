@@ -340,8 +340,6 @@ class Dropout : public Component {
   BaseFloat dropout_retention_;
 };
 
-
-
 }  // namespace nnet1
 }  // namespace kaldi
 

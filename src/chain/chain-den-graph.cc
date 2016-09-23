@@ -334,7 +334,6 @@ void CreateDenominatorFst(const ContextDependency &ctx_dep,
   // the default is 1, but just document that we want this to stay as one.
   // we'll use the same value in test time.  Consistency is the key here.
   h_config.transition_scale = 1.0;
-  h_config.push_weights = true;
 
   StdVectorFst *h_fst = GetHTransducer(cfst.ILabelInfo(),
                                        ctx_dep,

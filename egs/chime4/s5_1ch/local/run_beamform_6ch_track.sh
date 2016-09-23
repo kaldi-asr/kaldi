@@ -9,7 +9,7 @@
 nj=10
 cmd=run.pl
 bmf="1 3 4 5 6"
-eval_flag=false # make it true when the evaluation data are released
+eval_flag=true # make it true when the evaluation data are released
 
 . utils/parse_options.sh || exit 1;
 

@@ -71,7 +71,7 @@ struct ComputationGraph {
   /// Const version of GetCindexId that does not add CindexIds.  It will return
   /// -1 if the Cindex is not present, and the user should check for this.
   int32 GetCindexId(const Cindex &cindex) const;
-  
+
   /// This function renumbers the cindex-ids, keeping only for which keep[c] is
   /// true.  The "keep" array must be the same size as this->cindexes.
   void Renumber(const std::vector<bool> &keep);
@@ -84,7 +84,7 @@ struct ComputationGraph {
   /// showing each Cindex and the Cindexes it depends on.  cindexes from different network
   /// nodes are shown on different lines.
   void Print(std::ostream &os, const std::vector<std::string> &node_names);
-  
+
  private:
   /// Maps each Cindex to an integer cindex_id: reverse mapping of "cindexes".
   /// Must be accessed via the GetCindexId() functions.
@@ -120,13 +120,13 @@ class ComputationGraphBuilder {
   // Compute() but before Prune().  If you have already called Prune(), you can
   // just assume everything was computable, or else Prune() would have crashed.
   void GetComputableInfo(std::vector<std::vector<bool> > *computable) const;
-  
+
   // to be called after Compute(), this prunes away unused cindex_ids.
   // If not all the outputs are computable, this will die;
   // you can check the return status of AllOutputsAreComputable() first if
   // you want to avoid this.
   void Prune();
-  
+
   // This enum says for each cindex_id, whether we can compute it from the given
   // inputs or not.  Note that there may be situations where before adding
   // dependencies of a particular cindex_id we realize that we won't be able to
@@ -145,11 +145,11 @@ class ComputationGraphBuilder {
   // a human-readable form of a given cindex_id, that looks like
   // some_network_node(n, t, x), e.g. "final_logsoftmax(0, -4, 0)".
   void PrintCindexId(std::ostream &os, int32 cindex_id) const;
-  
+
   // This function, typically to be called just before dying, prints logging
   // information to explain why the given cindex_id is not computable.
   void ExplainWhyNotComputable(int32 cindex_id) const;
-  
+
   // called at the start of Compute(), this populates the graph (and member
   // variables) for all the inputs specified in the computation request.
   void AddInputs();
@@ -158,12 +158,12 @@ class ComputationGraphBuilder {
   // variables, including current_queue_) with all the outputs specified in the
   // computation request.
   void AddOutputs();
-  
+
   // this does one iteration of building the graph, and increases
   // current_distance_ by one, i.e. it searches at one more remove from
   // the output.
   void BuildGraphOneIter();
-  
+
   // make sure the "computable_info_" array is up to date.
   void UpdateAllComputableInfo();
 
@@ -180,17 +180,17 @@ class ComputationGraphBuilder {
   // compute and return the ComputableInfo for this cindex_id (kUnknown,
   // kComputable or kNotComputable).
   ComputableInfo ComputeComputableInfo(int32 cindex_id) const;
-  
+
   // To be called when this cindex_id has just been newly added to graph_, this
   // function adds various initial variables associated with it, to *this.
   // is_input should be set to true if this cindex-id is being added as an input
   // (from request_.inputs), and is_output should be set to true if this
   // cindex-id is being added as an output (from request_.outputs).
   inline void AddCindexId(int32 cindex_id, bool is_input, bool is_output);
-  
+
   // Add cindex_ids that this cindex_id depends on.
   void AddDependencies(int32 cindex_id);
-  
+
   // increment the "usable" value of this cindex_id.
   void IncrementUsableCount(int32 cindex_id);
 
@@ -203,7 +203,7 @@ class ComputationGraphBuilder {
   // interesting in cases where there are optional dependencies.
   // It also clears the dependencies of those cindexes that are not computable.
   void PruneDependencies(int32 cindex_id);
-  
+
   // This function, called from Prune(), computes an array "required", with an
   // element for each cindex_id that says whether it is required to compute the
   // requested outputs.  This is similar in function to the "usable_count_"
@@ -216,11 +216,11 @@ class ComputationGraphBuilder {
   // this function, to be called from Compute(), does some sanity checks to
   // verify that the internal state is consistent.
   void Check() const;
-  
+
   const Nnet &nnet_;
   const ComputationRequest &request_;
   ComputationGraph *graph_;
-  
+
   // this is the transpose of graph_->dependencies; it tells us
   // for each cindex_id, which other cindex_ids depend on it.
   std::vector<std::vector<int32> > depend_on_this_;
@@ -237,7 +237,7 @@ class ComputationGraphBuilder {
   // this vector tells us whether a cindex_id is in computable_queued_; it
   // stops us from adding things twice.
   std::vector<bool> computable_queued_;
-  
+
   // usable_count_[i] for a cindex_id i is defined as 1 if i is a requested
   // output, and otherwise as the number of other cindex_ids j such that
   // computable_info_[j] is not kNotComputable AND usable_count_[j] > 0 AND i is
@@ -289,7 +289,7 @@ class CindexSet {
 /// An abstract representation of a set of Indexes.
 class IndexSet {
  public:
-  /// Returns true if this Index exists in the set. 
+  /// Returns true if this Index exists in the set.
   bool operator () (const Index &index) const;
 
   /// This constructor creates the set of all Indexes x such that a Cindex
@@ -303,22 +303,38 @@ class IndexSet {
            bool treat_unknown_as_computable);
  private:
   const ComputationGraph &graph_;
-  const std::vector<char> &is_computable_;  
+  const std::vector<char> &is_computable_;
   int32 node_id_;
   bool treat_unknown_as_computable_;
 };
 
 
-/// Compute the phases in which we can compute each cindex in the computation;
-/// the cindexes will be grouped into phases.  This is a prelude to computing
-/// the steps of the computation (ComputeComputationSteps), and gives a coarser
-/// ordering than the steps.  All input cindexes go to phase 0, and in general a
-/// phase contains all cindexes not in previous phases that can be computed
-/// immediately from cindexes in previous phases.  It is an error if some
-/// cindexes cannot be computed (we assume that you have called
-/// PruneComputationGraph before this function), and it is an error if the
-/// computation graph contains cycles.  Each element of *phases will be sorted
-/// numerically.
+
+
+/**
+   This function divides a computation into 'phases', where a 'phase' is a
+   collection of cindexes which can (as far as the computation graph is
+   concerned) all be computed at the same time, and depend only on cindexes
+   previously computed in earlier phases.  So the phases are an ordering of the
+   Cindexes in the computation, but an ordering that depends on graph-theoretic
+   considerations only, and not practical concerns like whether the cindexes
+   belong to the same node [for that, see the notion of steps].
+
+   @param [in] nnet  The neural network this computation is for
+   @param [in] graph  The computation graph that we're computing phases for.
+   @param [out] phases  The phases.  Suppose the computation can be completed
+                       in 20 phases, then phases->size() will be 20 at exit, and
+                       (*phases)[0] will be a sorted list of cindex_ids.  that
+                       belong to the first phase, and so on. (Remember, a
+                       cindex_id is an index into graph->cindexes; it compactly
+                       identifies a cindex.)  The sets represented by the
+                       elements of 'phases' will be disjoint and will cover all
+                       elements in [0 .. computation.cindexes.size() - 1].
+
+                       This function will be crash if the computation cannot
+                       actualy be computed.  Note: we assume you have called
+                       PruneComputationGraph() before this function.
+*/
 void ComputeComputationPhases(
     const Nnet &nnet,
     const ComputationGraph &computation_graph,
@@ -333,7 +349,7 @@ void ComputeComputationPhases(
    these steps will satisfy:
 
   - All cindex_ids within a given step correspond to the same node in the graph
-  - All dependencies of cindex_ids within a given step have been computed in 
+  - All dependencies of cindex_ids within a given step have been computed in
     earlier steps.
   .
 There are also some extra, more obscure properties that the sequence of steps
@@ -366,4 +382,3 @@ void ComputeComputationSteps(
 
 
 #endif
-
