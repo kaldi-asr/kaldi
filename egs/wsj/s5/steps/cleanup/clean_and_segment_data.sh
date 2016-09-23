@@ -75,6 +75,8 @@ cp $srcdir/tree $dir
 cp $srcdir/cmvn_opts $dir
 cp $srcdir/{splice_opts,delta_opts,final.mat,final.alimdl} $dir 2>/dev/null || true
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
+cp $srcdir/phones.txt $dir || exit 1;
 
 if [ $stage -le 1 ]; then
   echo "$0: Building biased-language-model decoding graphs..."

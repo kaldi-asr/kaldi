@@ -70,6 +70,10 @@ silphonelist=`cat $lang/phones/silence.csl` || exit 1;
 ciphonelist=`cat $lang/phones/context_indep.csl` || exit 1;
 
 mkdir -p $dir/log
+
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+cp $alidir/phones.txt $dir || exit 1;
+
 echo $nj >$dir/num_jobs
 echo "$splice_opts" >$dir/splice_opts # keep track of frame-splicing options
            # so that later stages of system building can know what they were.
