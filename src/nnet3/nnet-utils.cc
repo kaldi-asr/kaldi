@@ -493,6 +493,30 @@ std::string NnetInfo(const Nnet &nnet) {
   return ostr.str();
 }
 
+void RenameNodes(const std::string &rename_node_names, Nnet *nnet) {
+  if (!rename_node_names.empty()) {
+    std::vector<string> orig_names,
+     new_names;
+    // Separate nodes separated by space.
+    std::vector<string> separate_nodes;
+    SplitStringToVector(rename_node_names, ",", true, &separate_nodes);
+    int32 num_modified = separate_nodes.size();
+    for (int32 ind = 0; ind < num_modified; ind++) {
+      std::vector<string> rename_node_name;
+      SplitStringToVector(separate_nodes[ind], "/", true, &rename_node_name);
+      if (rename_node_name.size() != 2) 
+        KALDI_ERR << "The rename_node_names format must be old_name/new_name";
+      // rename node name to new node name. 
+      int32 orig_node_index = nnet->GetNodeIndex(rename_node_name[0]);
+      if (orig_node_index == -1) { 
+        KALDI_LOG << "No node with name " << rename_node_name[0]
+                 << " is specified in the nnet.";
+      } else {
+        nnet->SetNodeName(orig_node_index, rename_node_name[1]);
+      }
+    }
+  }
+}
 
 } // namespace nnet3
 } // namespace kaldi

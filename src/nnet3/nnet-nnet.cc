@@ -455,8 +455,12 @@ int32 Nnet::GetNodeIndex(const std::string &node_name) const {
   return -1;
 }
 
-void Nnet::RenameNode(int32 node_index, const std::string &new_node_name) {
-  node_names_[node_index] = new_node_name; 
+void Nnet::SetNodeName(int32 node_index, const std::string &set_node_name) {
+  if (!IsValidName(set_node_name)) 
+    KALDI_ERR << "Name '" << set_node_name << "' is not allowable.";
+
+  node_names_[node_index] = set_node_name;
+  Check();
 }
 
 int32 Nnet::GetComponentIndex(const std::string &component_name) const {

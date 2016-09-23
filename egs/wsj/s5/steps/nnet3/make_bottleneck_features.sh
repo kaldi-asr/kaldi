@@ -5,13 +5,11 @@
 # This script dumps bottleneck feature for model trained using nnet3.
 
 # Begin configuration section.
-feat_type=
 stage=1
 nj=4
 cmd=run.pl
 use_gpu=false
-bnf_name=renorm4
-use_ivector=false
+bnf_name=Tdnn_Bottleneck_renorm
 ivector_dir=
 # Begin configuration.
 transform_dir=
@@ -48,8 +46,8 @@ if [ ! -f $bnf_nnet ] ; then
 fi
 
 if $use_gpu; then
-  train_queue_opt="--gpu 1"
-  prior_gpu_opt="--use-gpu=yes"
+  compute_queue_opt="--gpu 1"
+  compute_gpu_opt="--use-gpu=yes"
   if ! cuda-compiled; then
     echo "$0: WARNING: you are running with one thread but you have not compiled"
     echo "   for CUDA.  You may be running a setup optimized for GPUs.  If you have"
@@ -58,23 +56,11 @@ if $use_gpu; then
   fi
 else
   echo "$0: without using a GPU this will be very slow.  nnet3 does not yet support multiple threads."
-  parallel_train_opts="--use-gpu=no"
-  prior_gpu_opt="--use-gpu=no"
-  prior_queue_opt=""
+  compute_gpu_opt="--use-gpu=no"
 fi
 
 
 ## Set up input features of nnet
-if [ -z "$feat_type" ]; then
-  if [ -f $nnetdir/final.mat ]; then feat_type=lda; fi
-fi
-echo "$0: feature type is $feat_type"
-
-if [ "$feat_type" == "lda" ] && [ ! -f $nnetdir/final.mat ]; then
-  echo "$0: no such file $nnetdir/final.mat"
-  exit 1
-fi
-
 name=`basename $data`
 sdata=$data/split$nj
 
@@ -87,14 +73,9 @@ splice_opts=`cat $nnetdir/splice_opts 2>/dev/null`
 if [ "$ivector_dir" != "" ];then 
   use_ivector=true
 fi
-case $feat_type in
-  raw) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
-       ivec_feats="scp:utils/filter_scp.pl $sdata/JOB/utt2spk $ivector_dir/ivector_online.scp |";;
-  lda) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $nnetdir/final.mat ark:- ark:- |"
-       ivec_feats="scp:utils/filter_scp.pl $sdata/JOB/utt2spk $ivector_dir/ivector_online.scp |";;
-   
-  *) echo "Invalid feature type $feat_type" && exit 1;
-esac
+
+feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
+ivec_feats="scp:utils/filter_scp.pl $sdata/JOB/utt2spk $ivector_dir/ivector_online.scp |"
 
 if [ ! -z "$transform_dir" ]; then
   echo "Using transforms from $transform_dir"
@@ -110,7 +91,7 @@ fi
 
 
 if [ $stage -le 1 ]; then
-  echo "Making BNF scp and ark."
+  echo "$0: Generating bottle-neck features"
   echo output-node name=output input=$bnf_name > output.config
   modified_bnf_nnet="nnet3-copy --rename-node-names=output/output-bkp $bnf_nnet -  | nnet3-init - output.config - |"
   ivector_opts=
@@ -118,8 +99,8 @@ if [ $stage -le 1 ]; then
     ivec_period=`grep ivector-period $ivector_dir/conf/ivector_extractor.conf  | cut -d"=" -f2` 
     ivector_opts="--online-ivector-period=$ivec_period --online-ivectors='$ivec_feats'"
   fi
-  $cmd $train_queue_opt JOB=1:$nj $dir/log/make_bnf_$name.JOB.log \
-    nnet3-compute $prior_gpu_opt $ivector_opts "$modified_bnf_nnet" "$feats" ark:- \| \
+  $cmd $compute_queue_opt JOB=1:$nj $dir/log/make_bnf_$name.JOB.log \
+    nnet3-compute $compute_gpu_opt $ivector_opts "$modified_bnf_nnet" "$feats" ark:- \| \
     copy-feats ark:- ark,scp:$archivedir/raw_bnfeat_$name.JOB.ark,$archivedir/raw_bnfeat_$name.JOB.scp || exit 1;
 fi
 

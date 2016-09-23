@@ -56,7 +56,8 @@ stage=-6
 exit_stage=-100 # you can set this to terminate the training early.  Exits before running this stage
 
 # count space-separated fields in splice_indexes to get num-hidden-layers.
-splice_indexes="-4,-3,-2,-1,0,1,2,3,4  0  -2,2  0  -4,4 0"
+splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -7,2 0 0"
+
 # Format : layer<hidden_layer>/<frame_indices>....layer<hidden_layer>/<frame_indices> "
 # note: hidden layers which are composed of one or more components,
 # so hidden layer indexing is different from component count

@@ -1,15 +1,15 @@
 #!/bin/bash
-# This script generates 40 dim MFCC and pitch features for input language. 
+# This script uses to generated MFCC+pitch features for input language L.
+
 . ./cmd.sh
 set -e
 stage=1
 train_stage=-10
-generate_alignments=true # false if doing ctc training
+generate_alignments=true # If true, it regenerates alignments. 
 speed_perturb=true
-use_flp=false   # If true, it uses fullLP configuration for training data.
-use_pitch=true  # If true, it generates pitch features and append it to 40dim MFCC.
-pitch_conf=conf/pitch.conf # config used to generate pitch features.
-use_pitch_plp=false # If true, it regenerate alignment w.r.t plp+pitch  features.
+use_pitch=true      # If true, it generates pitch features and combine it with 40dim MFCC.
+pitch_conf=conf/pitch.conf # Configuration used for pitch extraction.
+use_pitch_plp=false # If true, it generated plp+pitch to be used in regenerating alignments.
 
 [ ! -f ./conf/common_vars.sh ] && echo 'the file conf/common_vars.sh does not exist!' && exit 1
 
@@ -19,8 +19,7 @@ use_pitch_plp=false # If true, it regenerate alignment w.r.t plp+pitch  features
 
 . ./utils/parse_options.sh
 
-
-L=$1
+lang=$1
 
 # perturbed data preparation
 train_set=train
@@ -29,90 +28,83 @@ if [ "$speed_perturb" == "true" ]; then
     #Although the nnet will be trained by high resolution data, we still have to perturbe the normal data to get the alignment
     # _sp stands for speed-perturbed
     for datadir in train; do
-      utils/perturb_data_dir_speed.sh 0.9 data/$L/${datadir} data/$L/temp1
-      utils/perturb_data_dir_speed.sh 1.1 data/$L/${datadir} data/$L/temp2
-      utils/combine_data.sh data/$L/${datadir}_tmp data/$L/temp1 data/$L/temp2
-      utils/validate_data_dir.sh --no-feats data/$L/${datadir}_tmp
-      rm -r data/$L/temp1 data/$L/temp2
-      
-      featdir=plp_perturbed/$L
+      ./utils/data/perturb_data_dir_speed_3way.sh data/$lang/${datadir} data/$lang/${datadir}_sp
+
+      # Extract Plp+pitch feature for perturbed data.
+      featdir=plp_perturbed/$lang
       if $use_pitch_plp; then
-        steps/make_plp_pitch.sh --cmd "$train_cmd" --nj $train_nj  data/$L/${datadir}_tmp exp/$L/make_plp_pitch/${datadir}_tmp $featdir
+        steps/make_plp_pitch.sh --cmd "$train_cmd" --nj $train_nj  data/$lang/${datadir}_sp exp/$lang/make_plp_pitch/${datadir}_sp $featdir
       else
-        steps/make_plp.sh --cmd "$train_cmd" --nj $train_nj data/$L/${datadir}_tmp exp/$L/make_plp/${datadir}_tmp $featdir
+        steps/make_plp.sh --cmd "$train_cmd" --nj $train_nj data/$lang/${datadir}_sp exp/$lang/make_plp/${datadir}_sp $featdir
       fi
-      steps/compute_cmvn_stats.sh data/$L/${datadir}_tmp exp/$L/make_plp/${datadir}_tmp $featdir || exit 1;
-      utils/fix_data_dir.sh data/$L/${datadir}_tmp
-      
-      utils/copy_data_dir.sh --spk-prefix sp1.0- --utt-prefix sp1.0- data/$L/${datadir} data/$L/temp0
-      utils/combine_data.sh data/$L/${datadir}_sp data/$L/${datadir}_tmp data/$L/temp0
-      utils/fix_data_dir.sh data/$L/${datadir}_sp
-      rm -r data/$L/temp0 data/$L/${datadir}_tmp
+      steps/compute_cmvn_stats.sh data/$lang/${datadir}_sp exp/$lang/make_plp/${datadir}_sp $featdir || exit 1;
+      utils/fix_data_dir.sh data/$lang/${datadir}_sp
     done
   fi
   
   train_set=train_sp
-  if [ $stage -le 2 ] && [ "$generate_alignments" == "true" ] && [ ! -f exp/$L/tri5_ali_sp/.done ]; then
+  if [ $stage -le 2 ] && [ "$generate_alignments" == "true" ] && [ ! -f exp/$lang/tri5_ali_sp/.done ]; then
     #obtain the alignment of the perturbed data
     steps/align_fmllr.sh \
       --nj 70 --cmd "$train_cmd" \
       --boost-silence $boost_sil \
-      data/$L/$train_set data/$L/lang exp/$L/tri5 exp/$L/tri5_ali_sp || exit 1
-    touch exp/$L/tri5_ali_sp/.done
+      data/$lang/$train_set data/$lang/lang exp/$lang/tri5 exp/$lang/tri5_ali_sp || exit 1
+    touch exp/$lang/tri5_ali_sp/.done
   fi
 fi
 
-if [ $stage -le 3 ] && [ ! -f data/$L/${train_set}_hires/.done ]; then
-  mfccdir=mfcc_hires/$L
+if [ $stage -le 3 ] && [ ! -f data/$lang/${train_set}_hires/.done ]; then
+  mfccdir=mfcc_hires/$lang
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
     date=$(date +'%m_%d_%H_%M')
-    utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/$L-$date/s5c/$mfccdir/storage $mfccdir/storage
+    utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/$lang-$date/s5c/$mfccdir/storage $mfccdir/storage
   fi
 
   # the 100k_nodup directory is copied seperately, as
   # we want to use exp/tri2_ali_100k_nodup for lda_mllt training
   # the main train directory might be speed_perturbed
   for dataset in $train_set ; do
-    utils/copy_data_dir.sh data/$L/$dataset data/$L/${dataset}_hires
+    utils/copy_data_dir.sh data/$lang/$dataset data/$lang/${dataset}_hires
 
     # scale the waveforms, this is useful as we don't use CMVN
-    data_dir=data/$L/${dataset}_hires
+    data_dir=data/$lang/${dataset}_hires
 
     utils/data/perturb_data_dir_volume.sh $data_dir || exit 1 ; 
 
     steps/make_mfcc.sh --nj 70 --mfcc-config conf/mfcc_hires.conf \
-        --cmd "$train_cmd" data/$L/${dataset}_hires exp/$L/make_hires/$dataset $mfccdir;
-    steps/compute_cmvn_stats.sh data/$L/${dataset}_hires exp/$L/make_hires/${dataset} $mfccdir;
+      --cmd "$train_cmd" data/$lang/${dataset}_hires exp/$lang/make_hires/$dataset $mfccdir;
+    
+    steps/compute_cmvn_stats.sh data/$lang/${dataset}_hires exp/$lang/make_hires/${dataset} $mfccdir;
 
     # Remove the small number of utterances that couldn't be extracted for some
     # reason (e.g. too short; no such file).
-    utils/fix_data_dir.sh data/$L/${dataset}_hires;
+    utils/fix_data_dir.sh data/$lang/${dataset}_hires;
   done
-  touch data/$L/${train_set}_hires/.done
+  touch data/$lang/${train_set}_hires/.done
 fi
 
 if [ $stage -le 4 ]; then
   if [[ "$use_pitch" == "true" ]]; then
     echo use_pitch = $use_pitch
-    pitchdir=pitch/$L
+    pitchdir=pitch/$lang
     train_set=${train_set}_hires
     for dataset in $train_set; do
       if $use_pitch; then
         mkdir -p $pitchdir
-        if [ ! -f data/$L/${dataset}_pitch/feats.scp ]; then
-        utils/copy_data_dir.sh data/$L/$dataset data/$L/${dataset}_pitch
+        if [ ! -f data/$lang/${dataset}_pitch/feats.scp ]; then
+        utils/copy_data_dir.sh data/$lang/$dataset data/$lang/${dataset}_pitch
         steps/make_pitch.sh --nj 70 --pitch-config $pitch_conf \
-          --cmd "$train_cmd" data/$L/${dataset}_pitch exp/$L/make_pitch/${dataset} $pitchdir;
+          --cmd "$train_cmd" data/$lang/${dataset}_pitch exp/$lang/make_pitch/${dataset} $pitchdir;
         fi
-        aux_suffix=_pitch
+        feat_suffix=_pitch
       fi
 
-      if [ ! -f data/$L/${dataset}_mfcc${aux_suffix}/feats.scp ]; then
-        steps/append_feats.sh --nj 16 --cmd "$train_cmd" data/$L/${dataset} \
-          data/$L/${dataset}${aux_suffix} data/$L/${dataset}_mfcc${aux_suffix} \
-          exp/$L/append_mfcc${aux_suffix}/${dataset} mfcc${aux_suffix}/$L
+      if [ ! -f data/$lang/${dataset}_mfcc${feat_suffix}/feats.scp ]; then
+        steps/append_feats.sh --nj 16 --cmd "$train_cmd" data/$lang/${dataset} \
+          data/$lang/${dataset}${feat_suffix} data/$lang/${dataset}_mfcc${feat_suffix} \
+          exp/$lang/append_mfcc${feat_suffix}/${dataset} mfcc${feat_suffix}/$lang
      
-        steps/compute_cmvn_stats.sh data/$L/${dataset}_mfcc${aux_suffix} exp/$L/make_cmvn_mfcc${aux_suffix}/${x} mfcc${aux_suffix}/$L
+        steps/compute_cmvn_stats.sh data/$lang/${dataset}_mfcc${feat_suffix} exp/$lang/make_cmvn_mfcc${feat_suffix}/${x} mfcc${feat_suffix}/$lang
       fi
     done
   fi

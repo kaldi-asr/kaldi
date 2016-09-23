@@ -1,14 +1,12 @@
 #!/bin/bash
+# This scripts generates iVector using global iVector extractor
+# trained on all languages in multilingual setup.
 
 . ./cmd.sh
 set -e
 stage=1
 train_stage=-10
-generate_alignments=true # false if doing ctc training
 speed_perturb=true
-pitch_conf=conf/pitch.conf
-use_flp=false
-voicing_conf=
 global_extractor=exp/multi/nnet3/extractor
 ivector_suffix=
 
@@ -20,7 +18,7 @@ ivector_suffix=
 
 . ./utils/parse_options.sh
 
-L=$1
+lang=$1
 
 mkdir -p nnet3
 # perturbed data preparation
@@ -29,7 +27,6 @@ if [ "$speed_perturb" == "true" ]; then
   train_set=train_sp
 fi
 
-extractor=$global_extractor
 ivector_suffix=${ivector_suffix}_gb
 
 if [ $stage -le 8 ]; then
@@ -38,11 +35,11 @@ if [ $stage -le 8 ]; then
   
   # having a larger number of speakers is helpful for generalization, and to
   # handle per-utterance decoding well (iVector starts at zero).
-  steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/$L/${train_set}_hires data/$L/${train_set}_max2_hires
+  steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/$lang/${train_set}_hires data/$lang/${train_set}_max2_hires
   
-  if [ ! -f exp/$L/nnet3/ivectors_${train_set}${ivector_suffix}/ivector_online.scp ]; then
+  if [ ! -f exp/$lang/nnet3/ivectors_${train_set}${ivector_suffix}/ivector_online.scp ]; then
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 200 \
-      data/$L/${train_set}_max2_hires $extractor exp/$L/nnet3/ivectors_${train_set}${ivector_suffix} || exit 1;
+      data/$lang/${train_set}_max2_hires $global_extractor exp/$lang/nnet3/ivectors_${train_set}${ivector_suffix} || exit 1;
   fi
 
 fi

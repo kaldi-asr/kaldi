@@ -144,6 +144,7 @@ int32 RandInt(int32 min, int32 max, struct RandomState* state = NULL);
 // Returns a random integer number according to a discrete probability distribution.
 // It works based on sampling from a discrete distribution and 
 // it returns i with prob(i).
+// prob must sume to one.
 int32 RandIntDiscreteDist(const std::vector<BaseFloat> &prob, struct RandomState* = NULL);
 
 // Returns true with probability "prob",

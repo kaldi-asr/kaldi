@@ -174,6 +174,12 @@ void ConvertRepeatedToBlockAffine(Nnet *nnet);
 /// Info() function (we need this in the CTC code).
 std::string NnetInfo(const Nnet &nnet);
 
+/// This function renames the nodes names in rename_node_names string
+/// in the nnet.
+/// rename_node_names is comma-separated list of node names need 
+/// to be modified and their new names 
+/// e.g. 'affine0/affine0-lang1 affine1/affine1-lang2'
+void RenameNodes(const std::string &rename_node_names, Nnet *nnet);
 
 } // namespace nnet3
 } // namespace kaldi

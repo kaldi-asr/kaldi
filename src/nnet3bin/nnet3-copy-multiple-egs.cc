@@ -82,16 +82,20 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int64 int64;
 
     const char *usage =
-        "Copy examples (single frames or fixed-size groups of frames) for neural\n"
-        "network training, possibly changing the binary mode.  Supports multiple rspecifier and wspecifiers, in\n"
-        "which case it will write the examples round-robin to the outputs.\n"
+        "Copy examples (single or fixed group of frames) from multiple egs directory \n"
+        "for neural network training. \n"
+        "If read-input-prob is non-empty, it reads examples from different input egs \n"
+        "archives randomly w.r.t read-input-prob probability distribution. \n"
+        "Supports multiple rspecifier and wspecifier, in which case it will write \n"
+        "examples round-robin to the outputs.\n"
         "\n"
-        "Usage:  nnet3-copy-egs [options] <egs-rspecifier> <egs-wspecifier1> [<egs-wspecifier2> ...]\n"
+        "Usage:  nnet3-copy-multiple-egs [options] <egs-rspecifier> <egs-wspecifier1> [<egs-wspecifier2> ...]\n"
         "\n"
         "e.g.\n"
-        "nnet3-copy-egs ark:train.egs ark,t:text.egs\n"
+        "nnet3-copy-multiple-egs --read-input-prob=0.3:0.2:0.5 ark:train1.egs\n"
+        "ark:train2.egs ark:train3.egs ark,t:text.egs\n"
         "or:\n"
-        "nnet3-copy-egs ark:train.egs ark:1.egs ark:2.egs\n";
+        "nnet3-copy-multiple-egs --num-input-egs=1 ark:train.egs ark:1.egs ark:2.egs\n";
 
     bool random = false;
     int32 srand_seed = 0;
