@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e -o pipefail
+
 # Begin configuration section.
 mode=4
 cmd=run.pl
