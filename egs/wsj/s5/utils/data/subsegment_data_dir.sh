@@ -24,14 +24,15 @@ segment_end_padding=0.0
 
 . utils/parse_options.sh
 
-if [ $# != 4 ]; then
+if [ $# != 4 ] && [ $# != 3 ]; then
   echo "Usage: "
-  echo "  $0 [options] <srcdir> <subsegments-file> <text-file> <destdir>"
+  echo "  $0 [options] <srcdir> <subsegments-file> [<text-file>] <destdir>"
   echo "This script sub-segments a data directory.  <subsegments-file> is to"
   echo "have lines of the form <new-utt> <old-utt> <start-time-within-old-utt> <end-time-within-old-utt>"
   echo "and <text-file> is of the form <new-utt> <word1> <word2> ... <wordN>."
   echo "This script appropriately combines the <subsegments-file> with the original"
   echo "segments file, if necessary, and if not, creates a segments file."
+  echo "<text-file> is an optional argument."
   echo "e.g.:"
   echo " $0 data/train [options] exp/tri3b_resegment/segments exp/tri3b_resegment/text data/train_resegmented"
   echo " Options:"
@@ -50,11 +51,23 @@ export LC_ALL=C
 
 srcdir=$1
 subsegments=$2
-new_text=$3
-dir=$4
 
+no_text=true
+if [ $# -eq 4 ]; then
+  new_text=$3
+  dir=$4
+  no_text=false
 
-for f in "$subsegments" "$new_text" "$srcdir/utt2spk"; do
+  if [ ! -f "$new_text" ]; then
+    echo "$0: no such file $new_text"
+    exit 1
+  fi
+
+else
+  dir=$3
+fi
+
+for f in "$subsegments" "$srcdir/utt2spk"; do
   if [ ! -f "$f" ]; then
     echo "$0: no such file $f"
     exit 1;
@@ -65,9 +78,11 @@ if ! mkdir -p $dir; then
   echo "$0: failed to create directory $dir"
 fi
 
-if ! cmp <(awk '{print $1}' <$subsegments)  <(awk '{print $1}' <$new_text); then
-  echo "$0: expected the first fields of the files $subsegments and $new_text to be identical"
-  exit 1
+if ! $no_text; then
+  if ! cmp <(awk '{print $1}' <$subsegments)  <(awk '{print $1}' <$new_text); then
+    echo "$0: expected the first fields of the files $subsegments and $new_text to be identical"
+    exit 1
+  fi
 fi
 
 # create the utt2spk in $dir
@@ -86,8 +101,11 @@ awk '{print $1, $2}' < $subsegments > $dir/new2old_utt
 utils/apply_map.pl -f 2 $srcdir/utt2spk < $dir/new2old_utt >$dir/utt2spk
 # .. and the new spk2utt file.
 utils/utt2spk_to_spk2utt.pl  <$dir/utt2spk >$dir/spk2utt
-# the new text file is just what the user provides.
-cp $new_text $dir/text
+
+if ! $no_text; then
+  # the new text file is just what the user provides.
+  cp $new_text $dir/text
+fi
 
 # copy the source wav.scp
 cp $srcdir/wav.scp $dir
@@ -184,6 +202,7 @@ utils/data/fix_data_dir.sh $dir
 validate_opts=
 [ ! -f $srcdir/feats.scp ] && validate_opts="$validate_opts --no-feats"
 [ ! -f $srcdir/wav.scp ] && validate_opts="$validate_opts --no-wav"
+$no_text && validate_opts="$validate_opts --no-text"
 
 utils/data/validate_data_dir.sh $validate_opts $dir
 
