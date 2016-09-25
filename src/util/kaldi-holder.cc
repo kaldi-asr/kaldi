@@ -34,7 +34,7 @@ bool ExtractObjectRange(const Matrix<Real> &input, const std::string &range,
   SplitStringToVector(range, ",", false, &splits);
   if (!((splits.size() == 1 && !splits[0].empty()) ||
         (splits.size() == 2  && !splits[0].empty() && !splits[1].empty()))) {
-    KALDI_ERR << "Invalid range specifier: " << range;
+    KALDI_ERR << "Invalid range specifier for matrix: " << range;
     return false;
   }
   std::vector<int32> row_range, col_range;
@@ -74,6 +74,48 @@ template bool ExtractObjectRange(const Matrix<double> &, const std::string &,
                                  Matrix<double> *);
 template bool ExtractObjectRange(const Matrix<float> &, const std::string &,
                                  Matrix<float> *);
+
+template<class Real>
+bool ExtractObjectRange(const Vector<Real> &input, const std::string &range,
+                        Vector<Real> *output) {
+  if (range.empty()) {
+    KALDI_ERR << "Empty range specifier.";
+    return false;
+  }
+  std::vector<std::string> splits;
+  SplitStringToVector(range, ",", false, &splits);
+  if (!((splits.size() == 1 && !splits[0].empty()))) {
+    KALDI_ERR << "Invalid range specifier for vector: " << range;
+    return false;
+  }
+  std::vector<int32> index_range;
+  bool status = true;
+  if (splits[0] != ":")
+    status = SplitStringToIntegers(splits[0], ":", false, &index_range);
+
+  if (index_range.size() == 0) {
+    index_range.push_back(0);
+    index_range.push_back(input.Dim() - 1);
+  }
+
+  if (!(status && index_range.size() == 2 &&
+        index_range[0] >= 0 && index_range[0] <= index_range[1] &&
+        index_range[1] < input.Dim())) {
+    KALDI_ERR << "Invalid range specifier: " << range
+              << " for vector of size " << input.Dim();
+    return false;
+  }
+  int32 size = index_range[1] - index_range[0] + 1;
+  output->Resize(size, kUndefined);
+  output->CopyFromVec(input.Range(index_range[0], size));
+  return true;
+}
+
+// template instantiation
+template bool ExtractObjectRange(const Vector<double> &, const std::string &,
+                                 Vector<double> *);
+template bool ExtractObjectRange(const Vector<BaseFloat> &, const std::string &,
+                                 Vector<BaseFloat> *);
 
 bool ExtractRangeSpecifier(const std::string &rxfilename_with_range,
                            std::string *data_rxfilename,

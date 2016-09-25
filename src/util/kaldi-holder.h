@@ -242,6 +242,11 @@ template <class Real>
 bool ExtractObjectRange(const Matrix<Real> &input, const std::string &range,
                         Matrix<Real> *output);
 
+/// The template is specialized types Vector<float> and Vector<double>.  
+template <class Real>
+bool ExtractObjectRange(const Vector<Real> &input, const std::string &range,
+                        Vector<Real> *output);
+
 
 // In SequentialTableReaderScriptImpl and RandomAccessTableReaderScriptImpl, for
 // cases where the scp contained 'range specifiers' (things in square brackets
