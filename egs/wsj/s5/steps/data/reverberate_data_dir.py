@@ -33,7 +33,12 @@ def GetArgs():
                         "E.g. --rir-id 00001 --room-id 001 --receiver-position-id 001 --source-position-id 00001 "
                         "--rt60 0.58 --drr -4.885 data/impulses/Room001-00001.wav")
     parser.add_argument("--noise-set-parameters", type=str, action='append', default = None, dest = "noise_set_para_array",
-                        help="Noise information file, the format of the file is"
+                        help="Specifies the parameters of an noise set. "
+                        "Supports the specification of  mixture_weight and noise_list_file_name. The mixture weight is optional. "
+                        "The default mixture weight is the probability mass remaining after adding the mixture weights "
+                        "of all the noise lists, uniformly divided among the noise lists without mixture weights. "
+                        "E.g. --noise-set-parameters '0.3, noise_list' or 'noise_list' "
+                        "the format of the noise list file is "
                         "--noise-id <string,required> --noise-type <choices = {isotropic, point source},required> "
                         "--bg-fg-type <choices = {background, foreground}, default=background> "
                         "--room-linkage <str, specifies the room associated with the noise file. Required if isotropic> "
@@ -53,6 +58,9 @@ def GetArgs():
     parser.add_argument("--rir-smoothing-weight", type=float, default = 0.3,
                         help="Smoothing weight for the RIR probabilties, e.g. 0 <= p <= 1. If p = 0, no smoothing will be done. "
                         "The RIR distribution will be mixed with a uniform distribution according to the smoothing weight")
+    parser.add_argument("--noise-smoothing-weight", type=float, default = 0.3,
+                        help="Smoothing weight for the noise probabilties, e.g. 0 <= p <= 1. If p = 0, no smoothing will be done. "
+                        "The noise distribution will be mixed with a uniform distribution according to the smoothing weight")
     parser.add_argument("--max-noises-per-minute", type=int, default = 2,
                         help="This controls the maximum number of point-source noises that could be added to a recording according to its duration")
     parser.add_argument('--random-seed', type=int, default=0, help='seed to be used in the randomization of impulses and noises')
@@ -94,6 +102,9 @@ def CheckArgs(args):
     
     if args.rir_smoothing_weight < 0 or args.rir_smoothing_weight > 1:
         raise Exception("--rir-smoothing-weight must be between 0 and 1")
+
+    if args.noise_smoothing_weight < 0 or args.noise_smoothing_weight > 1:
+        raise Exception("--noise-smoothing-weight must be between 0 and 1")
 
     if args.max_noises_per_minute < 0:
         raise Exception("--max-noises-per-minute cannot be negative")
@@ -451,7 +462,7 @@ def SmoothProbabilityDistribution(list, smoothing_weight=0.0, target_sum=1.0):
 # This function parse the array of rir set parameter strings.
 # It will assign probabilities to those rir sets which don't have a probability
 # It will also check the existence of the rir list files.
-def ParseSetParameterString(set_para_array):
+def ParseSetParameterStrings(set_para_array):
     set_list = []
     for set_para in set_para_array:
         set = lambda: None
@@ -487,7 +498,7 @@ def ParseRirList(rir_set_para_array, smoothing_weight):
     rir_parser.add_argument('rir_rspecifier', type=str, help="""rir rspecifier, it can be either a filename or a piped command. 
                             E.g. data/impulses/Room001-00001.wav or "sox data/impulses/Room001-00001.wav -t wav - |" """)
 
-    set_list = ParseSetParameterString(rir_set_para_array)
+    set_list = ParseSetParameterStrings(rir_set_para_array)
 
     rir_list = []
     for rir_set in set_list:
@@ -531,7 +542,7 @@ def MakeRoomDict(rir_list):
 # Each noise object in the list contains the following attributes:
 # noise_id, noise_type, bg_fg_type, room_linkage, probability, noise_rspecifier
 # Please refer to the help messages in the parser for the meaning of these attributes
-def ParseNoiseList(noise_set_para_array):
+def ParseNoiseList(noise_set_para_array, smoothing_weight):
     noise_parser = argparse.ArgumentParser()
     noise_parser.add_argument('--noise-id', type=str, required=True, help='noise id')
     noise_parser.add_argument('--noise-type', type=str, required=True, help='the type of noise; i.e. isotropic or point-source', choices = ["isotropic", "point-source"])
@@ -543,7 +554,7 @@ def ParseNoiseList(noise_set_para_array):
     noise_parser.add_argument('noise_rspecifier', type=str, help="""noise rspecifier, it can be either a filename or a piped command.
                               E.g. type5_noise_cirline_ofc_ambient1.wav or "sox type5_noise_cirline_ofc_ambient1.wav -t wav - |" """)
 
-    set_list = ParseSetParameterString(noise_set_para_array)
+    set_list = ParseSetParameterStrings(noise_set_para_array)
 
     pointsource_noise_list = []
     iso_noise_dict = {}
@@ -561,11 +572,10 @@ def ParseNoiseList(noise_set_para_array):
             else:
                 current_pointsource_noise_list.append(noise)
 
-        pointsource_noise_list += SmoothProbabilityDistribution(current_pointsource_noise_list, 0.0, noise_set.probability)
+        pointsource_noise_list += SmoothProbabilityDistribution(current_pointsource_noise_list, smoothing_weight, noise_set.probability)
 
     # ensure the point-source noise probabilities sum to 1 
     if len(pointsource_noise_list) > 0:
-    #    pointsource_noise_list = SmoothProbabilityDistribution(pointsource_noise_list)
         assert almost_equal(sum(noise.probability for noise in pointsource_noise_list), 1.0)
     
     # ensure the isotropic noise source probabilities for a given room sum to 1
@@ -584,7 +594,7 @@ def Main():
     pointsource_noise_list = []
     iso_noise_dict = {}
     if args.noise_set_para_array is not None:
-        pointsource_noise_list, iso_noise_dict = ParseNoiseList(args.noise_set_para_array)
+        pointsource_noise_list, iso_noise_dict = ParseNoiseList(args.noise_set_para_array, args.noise_smoothing_weight)
         print("Number of point-source noises is {0}".format(len(pointsource_noise_list)))
         print("Number of isotropic noises is {0}".format(sum(len(iso_noise_dict[key]) for key in iso_noise_dict.keys())))
     room_dict = MakeRoomDict(rir_list)
