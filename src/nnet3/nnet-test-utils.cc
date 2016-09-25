@@ -1218,7 +1218,7 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       if (RandInt(0, 1) == 1)
         os << " self-repair-target=" << RandUniform();
       break;
-    } 
+    }
     default:
       KALDI_ERR << "Error generating random component";
   }

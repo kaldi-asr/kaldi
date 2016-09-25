@@ -42,15 +42,27 @@ int main(int argc, char *argv[]) {
 
     bool binary_write = true;
     BaseFloat learning_rate = -1;
-    
+    std::string nnet_config, edits_config, edits_command;
+
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("learning-rate", &learning_rate,
                 "If supplied, all the learning rates of updatable components"
                 "are set to this value.");
+    po.Register("nnet-config", &nnet_config,
+                "Name of nnet3 config file that can be used to add or replace "
+                "components or nodes of the neural network (the same as you "
+                "would give to nnet3-init).");
+    po.Register("edits-config", &edits_config,
+                "Name of edits-config file that can be used to modify the network "
+                "(applied after nnet-config).  See code of ReadEditConfig() in "
+                "nnet-nnet.cc to see currently supported commands.");
+    po.Register("edits-command", &edits_command,
+                "Can be used as an alternative to edits-config when you just want "
+                "to specify a single command, e.g. --edits-command=remove-orphans");
 
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
@@ -58,12 +70,27 @@ int main(int argc, char *argv[]) {
 
     std::string raw_nnet_rxfilename = po.GetArg(1),
                 raw_nnet_wxfilename = po.GetArg(2);
-    
+
     Nnet nnet;
     ReadKaldiObject(raw_nnet_rxfilename, &nnet);
-    
+
+    if (!nnet_config.empty()) {
+      Input ki(nnet_config);
+      nnet.ReadConfig(ki.Stream());
+    }
+
     if (learning_rate >= 0)
       SetLearningRate(learning_rate, &nnet);
+
+    if (!edits_config.empty()) {
+      Input ki(edits_config);
+      nnet.ReadEditConfig(ki.Stream());
+    }
+    if (!edits_command.empty()) {
+      std::istringstream is(edits_command);
+      nnet.ReadEditConfig(is);
+    }
+
 
     WriteKaldiObject(nnet, raw_nnet_wxfilename, binary_write);
     KALDI_LOG << "Copied raw neural net from " << raw_nnet_rxfilename

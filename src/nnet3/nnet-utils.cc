@@ -19,6 +19,7 @@
 // limitations under the License.
 
 #include "nnet3/nnet-utils.h"
+#include "nnet3/nnet-graph.h"
 #include "nnet3/nnet-simple-component.h"
 
 namespace kaldi {
@@ -299,7 +300,7 @@ void SetLearningRates(const Vector<BaseFloat> &learning_rates,
   KALDI_ASSERT(i == learning_rates.Dim());
 }
 
-void GetLearningRates(const Nnet &nnet, 
+void GetLearningRates(const Nnet &nnet,
                       Vector<BaseFloat> *learning_rates) {
   learning_rates->Resize(NumUpdatableComponents(nnet));
   int32 i = 0;
@@ -494,6 +495,53 @@ std::string NnetInfo(const Nnet &nnet) {
   return ostr.str();
 }
 
+
+void FindOrphanComponents(const Nnet &nnet, std::vector<int32> *components) {
+  int32 num_components = nnet.NumComponents(), num_nodes = nnet.NumNodes();
+  std::vector<bool> is_used(num_components, false);
+  for (int32 i = 0; i < num_nodes; i++) {
+    if (nnet.IsComponentNode(i)) {
+      int32 c = nnet.GetNode(i).u.component_index;
+      KALDI_ASSERT(c >= 0 && c < num_components);
+      is_used[c] = true;
+    }
+  }
+  components->clear();
+  for (int32 i = 0; i < num_components; i++)
+    if (!is_used[i])
+      components->push_back(i);
+}
+
+void FindOrphanNodes(const Nnet &nnet, std::vector<int32> *nodes) {
+
+  std::vector<std::vector<int32> > graph;
+  NnetToDirectedGraph(nnet, &graph);
+  // graph[i] is a list of all the nodes that depend on i.
+
+  // Find all nodes required to produce the outputs.
+  int32 num_nodes = nnet.NumNodes();
+  assert(num_nodes == static_cast<int32>(graph.size()));
+  std::vector<bool> node_is_required(num_nodes, false);
+  std::vector<int32> queue;
+  for (int32 i = 0; i < num_nodes; i++) {
+    if (nnet.IsOutputNode(i))
+      queue.push_back(i);
+  }
+  while (!queue.empty()) {
+    int32 i = queue.back();
+    queue.pop_back();
+    if (!node_is_required[i]) {
+      node_is_required[i] = true;
+      for (size_t j = 0; j < graph[i].size(); j++)
+        queue.push_back(graph[i][j]);
+    }
+  }
+  nodes->clear();
+  for (int32 i = 0; i < num_nodes; i++) {
+    if (!node_is_required[i])
+      nodes->push_back(i);
+  }
+}
 
 } // namespace nnet3
 } // namespace kaldi

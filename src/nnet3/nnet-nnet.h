@@ -119,6 +119,12 @@ class Nnet {
   // it.  It will die with error if something went wrong.
   void ReadConfig(std::istream &config_file);
 
+  // This function reads a file with a similar-looking format to the config file
+  // read by ReadConfig(), but this consists of a sequence of operations to
+  // perform on an existing network: renaming nodes, deleting nodes (e.g. unused
+  // outputs); removing dropout, and so forth.
+  void ReadEditConfig(std::istream &edit_config_file);
+
   int32 NumComponents() const { return components_.size(); }
 
   int32 NumNodes() const { return nodes_.size(); }
@@ -197,12 +203,11 @@ class Nnet {
 
   void Write(std::ostream &ostream, bool binary) const;
 
-  /// note to self: one thing of many that we need to check is that no output
-  /// nodes are referred to in Descriptors.  This might mess up the combination
-  /// of each output node into a single step, as dependencies would be messed
-  /// up.  Also make sure no nodes referred to in Descriptors, or in kDimRange,
-  /// are themselves Descriptors.
-  void Check() const;
+  /// Checks the neural network for validity (dimension matches and various
+  /// other requirements).
+  /// You can call this with warn_for_orphans = false to disable the warnings
+  /// that are printed if orphan nodes or components exist.
+  void Check(bool warn_for_orphans = true) const;
 
   /// returns some human-readable information about the network, mostly for
   /// debugging purposes.
@@ -229,6 +234,15 @@ class Nnet {
 
   // Assignment operator
   Nnet& operator =(const Nnet &nnet);
+
+
+  // Removes nodes that are never needed to compute any output.
+  void RemoveOrphanNodes(bool remove_orphan_inputs = true);
+
+  // Removes components that are not used by any node.
+  void RemoveOrphanComponents();
+
+
  private:
 
   void Destroy();
@@ -262,8 +276,7 @@ class Nnet {
   // means literally "name", but "xxx" stands in for the actual name,
   // e.g. "my-funky-component."
   static void RemoveRedundantConfigLines(int32 num_lines_initial,
-                                         std::vector<std::string> *first_tokens,
-                                         std::vector<ConfigLine> *configs);
+                                         std::vector<ConfigLine> *config_lines);
 
   void ProcessComponentConfigLine(int32 initial_num_components,
                                   ConfigLine *config);

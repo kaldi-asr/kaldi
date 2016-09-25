@@ -127,14 +127,14 @@ void ScaleLearningRate(BaseFloat learning_rate_scale,
 void SetLearningRates(const Vector<BaseFloat> &learning_rates,
                       Nnet *nnet);
 
-/// Get the learning rates for all the updatable components in the neural net 
+/// Get the learning rates for all the updatable components in the neural net
 /// (the output must have dim equal to the number of updatable components).
 void GetLearningRates(const Nnet &nnet,
                       Vector<BaseFloat> *learning_rates);
 
 /// Scales the nnet parameters and stats by this scale.
 void ScaleNnet(BaseFloat scale, Nnet *nnet);
-  
+
 /// Scales the parameters of each of the updatable components.
 /// Here, scales is a vector of size equal to the number of updatable
 /// components
@@ -173,6 +173,17 @@ void ConvertRepeatedToBlockAffine(Nnet *nnet);
 /// This is modeled after the info that AmNnetSimple returns in its
 /// Info() function (we need this in the CTC code).
 std::string NnetInfo(const Nnet &nnet);
+
+
+/// This function finds a list of components that are never used, and outputs
+/// the integer comopnent indexes (you can use these to index
+/// nnet.GetComponentNames() to get their names).
+void FindOrphanComponents(const Nnet &nnet, std::vector<int32> *components);
+
+/// This function finds a list of nodes that are never used to compute any
+/// output, and outputs the integer node indexes (you can use these to index
+/// nnet.GetNodeNames() to get their names).
+void FindOrphanNodes(const Nnet &nnet, std::vector<int32> *nodes);
 
 
 } // namespace nnet3
