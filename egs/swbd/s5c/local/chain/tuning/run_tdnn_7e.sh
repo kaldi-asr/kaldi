@@ -1,19 +1,18 @@
 #!/bin/bash
 
-# 7d is as 7b, but changing the HMM context from triphone to left biphone.
+# 7e is as 7d, but using a different splice indexes which gives slightly better results.
 
 # Left biphone model turns out to be as good as triphone model.
-# local/chain/compare_wer.sh 7b 7d
-# System                       7b        7d
-# WER on train_dev(tg)      15.10     15.03
-# WER on train_dev(fg)      14.21     14.22
-# WER on eval2000(tg)        17.2      17.4
-# WER on eval2000(fg)        15.9      15.9
-# Final train prob      -0.100551 -0.092629
-# Final valid prob      -0.123914  -0.11354
-# Final train prob (xent)      -1.43215  -1.27932
-# Final valid prob (xent)      -1.46662  -1.33193
-# Real-time factor       0.918978  0.711695
+# local/chain/compare_wer.sh 7d 7e
+# System                       7d         7e
+# WER on train_dev(tg)      15.03      14.41
+# WER on train_dev(fg)      14.22      13.39
+# WER on eval2000(tg)        17.4       16.9
+# WER on eval2000(fg)        15.9       15.3
+# Final train prob      -0.092629 -0.0853629
+# Final valid prob      -0.11354  -0.110972
+# Final train prob (xent)      -1.27932  -1.25237
+# Final valid prob (xent)      -1.33193  -1.36715
 
 set -e
 
@@ -23,7 +22,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_7d  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_7e  # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
 
 # TDNN options
@@ -133,7 +132,7 @@ if [ $stage -le 12 ]; then
     --ivector-dir exp/nnet3/ivectors_${train_set} \
     --tree-dir $treedir \
     $dim_opts \
-    --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -3,0,3 -3,0,3 -6,-3,0 0" \
+    --splice-indexes "-1,0,1 -1,0,1 -1,0,1 -3,0,3 -3,0,3 -6,0,6 0" \
     --use-presoftmax-prior-scale false \
     --xent-regularize $xent_regularize \
     --xent-separate-forward-affine true \

@@ -101,8 +101,13 @@ def GetArgs():
                         help="input dimension to p-norm nonlinearities")
     parser.add_argument("--pnorm-output-dim", type=int,
                         help="output dimension of p-norm nonlinearities")
-    parser.add_argument("--relu-dim", type=int,
-                        help="dimension of ReLU nonlinearities")
+    relu_dim_group = parser.add_mutually_exclusive_group(required = False)
+    relu_dim_group.add_argument("--relu-dim", type=int,
+                        help="dimension of all ReLU nonlinearity layers")
+    relu_dim_group.add_argument("--relu-dim-final", type=int,
+                        help="dimension of the last ReLU nonlinearity layer. Dimensions increase geometrically from the first through the last ReLU layer.", default=None)
+    parser.add_argument("--relu-dim-init", type=int,
+                        help="dimension of the first ReLU nonlinearity layer. Dimensions increase geometrically from the first through the last ReLU layer.", default=None)
 
     parser.add_argument("--self-repair-scale-nonlinearity", type=float,
                         help="A non-zero value activates the self-repair mechanism in the sigmoid and tanh non-linearities of the LSTM", default=None)
@@ -151,13 +156,30 @@ def CheckArgs(args):
         raise Exception("--subset-dim has to be non-negative")
 
     if not args.relu_dim is None:
-        if not args.pnorm_input_dim is None or not args.pnorm_output_dim is None:
+        if not args.pnorm_input_dim is None or not args.pnorm_output_dim is None or not args.relu_dim_init is None:
             raise Exception("--relu-dim argument not compatible with "
-                            "--pnorm-input-dim or --pnorm-output-dim options");
+                            "--pnorm-input-dim or --pnorm-output-dim or --relu-dim-init options");
         args.nonlin_input_dim = args.relu_dim
         args.nonlin_output_dim = args.relu_dim
         args.nonlin_type = 'relu'
+
+    elif not args.relu_dim_final is None:
+        if not args.pnorm_input_dim is None or not args.pnorm_output_dim is None:
+            raise Exception("--relu-dim-final argument not compatible with "
+                            "--pnorm-input-dim or --pnorm-output-dim options")
+        if args.relu_dim_init is None:
+            raise Exception("--relu-dim-init argument should also be provided with --relu-dim-final")
+        if args.relu_dim_init > args.relu_dim_final:
+            raise Exception("--relu-dim-init has to be no larger than --relu-dim-final")
+        args.nonlin_output_dim = None
+        args.nonlin_output_dim_final = args.relu_dim_final
+        args.nonlin_output_dim_init = args.relu_dim_init
+        args.nonlin_type = 'relu'
+
     else:
+        if not args.relu_dim_init is None:
+            raise Exception("--relu-dim-final argument not compatible with "
+                            "--pnorm-input-dim or --pnorm-output-dim options")
         if not args.pnorm_input_dim > 0 or not args.pnorm_output_dim > 0:
             raise Exception("--relu-dim not set, so expected --pnorm-input-dim and "
                             "--pnorm-output-dim to be provided.");
@@ -235,7 +257,7 @@ def PrintConfig(file_name, config_lines):
     f = open(file_name, 'w')
     f.write("\n".join(config_lines['components'])+"\n")
     f.write("\n#Component nodes\n")
-    f.write("\n".join(config_lines['component-nodes']))
+    f.write("\n".join(config_lines['component-nodes'])+"\n")
     f.close()
 
 def ParseCnnString(cnn_param_string_list):
@@ -298,6 +320,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
                 cnn_layer, cnn_bottleneck_dim, cepstral_lifter,
                 feat_dim, ivector_dim, num_targets, add_lda,
                 nonlin_type, nonlin_input_dim, nonlin_output_dim, subset_dim,
+                nonlin_output_dim_init, nonlin_output_dim_final,
                 use_presoftmax_prior_scale,
                 final_layer_normalize_target,
                 include_log_softmax,
@@ -345,6 +368,17 @@ def MakeConfigs(config_dir, splice_indexes_string,
     # we moved the first splice layer to before the LDA..
     # so the input to the first affine layer is going to [0] index
     splice_indexes[0] = [0]
+
+    if not nonlin_output_dim is None:
+        nonlin_output_dims = [nonlin_output_dim] * num_hidden_layers
+    elif nonlin_output_dim_init < nonlin_output_dim_final and num_hidden_layers == 1:
+        raise Exception("num-hidden-layers has to be greater than 1 if relu-dim-init and relu-dim-final is different.")
+    else:
+        # computes relu-dim for each hidden layer. They increase geometrically across layers
+        factor = pow(float(nonlin_output_dim_final) / nonlin_output_dim_init, 1.0 / (num_hidden_layers - 1)) if num_hidden_layers > 1 else 1
+        nonlin_output_dims = [int(round(nonlin_output_dim_init * pow(factor, i))) for i in range(0, num_hidden_layers)]
+        assert(nonlin_output_dims[-1] >= nonlin_output_dim_final - 1 and nonlin_output_dims[-1] <= nonlin_output_dim_final + 1) # due to rounding error
+        nonlin_output_dims[-1] = nonlin_output_dim_final # It ensures that the dim of the last hidden layer is exactly the same as what is specified
 
     for i in range(0, num_hidden_layers):
         # make the intermediate config file for layerwise discriminative training
@@ -420,7 +454,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
         else:
             if nonlin_type == "relu":
                 prev_layer_output = nodes.AddAffRelNormLayer(config_lines, "Tdnn_{0}".format(i),
-                                                            prev_layer_output, nonlin_output_dim,
+                                                            prev_layer_output, nonlin_output_dims[i],
                                                             self_repair_scale = self_repair_scale,
                                                             norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
             elif nonlin_type == "pnorm":
@@ -490,6 +524,8 @@ def Main():
                 nonlin_input_dim = args.nonlin_input_dim,
                 nonlin_output_dim = args.nonlin_output_dim,
                 subset_dim = args.subset_dim,
+                nonlin_output_dim_init = args.nonlin_output_dim_init,
+                nonlin_output_dim_final = args.nonlin_output_dim_final,
                 use_presoftmax_prior_scale = args.use_presoftmax_prior_scale,
                 final_layer_normalize_target = args.final_layer_normalize_target,
                 include_log_softmax = args.include_log_softmax,
