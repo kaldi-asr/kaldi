@@ -27,6 +27,7 @@ wsj0=/export/corpora5/LDC/LDC93S6B
 wsj1=/export/corpora5/LDC/LDC94S13B
 
 
+<<<<<<< 425561433881037a5661a186100a1e338d50d254
 <<<<<<< 828f0b9cc6bbf2ad412c17345a66a5437fc95cd2
 if [ $stage -le 0 ]; then
   # data preparation.
@@ -94,6 +95,70 @@ if [ $stage -le 0 ]; then
                             "<SPOKEN_NOISE>" data/local/lang_tmp_nosp_larger data/lang_nosp_bd && \
       local/wsj_train_lms.sh $wclass_opt --dict-suffix "_nosp" &&
       local/wsj_format_local_lms.sh $wclass_opt --lang-suffix "_nosp" # &&
+=======
+# Sometimes, we have seen WSJ distributions that do not have subdirectories
+# like '11-13.1', but instead have 'doc', 'si_et_05', etc. directly under the
+# wsj0 or wsj1 directories. In such cases, try the following:
+#
+# corpus=/exports/work/inf_hcrc_cstr_general/corpora/wsj
+# local/cstr_wsj_data_prep.sh $corpus
+# rm data/local/dict/lexiconp.txt
+# $corpus must contain a 'wsj0' and a 'wsj1' subdirectory for this to work.
+#
+# "nosp" refers to the dictionary before silence probabilities and pronunciation
+# probabilities are added.
+local/wsj_prepare_dict.sh --dict-suffix "_nosp" || exit 1;
+
+# 'wclass_usage=1' will switch on the use of word classes
+wclass_usage=0
+
+# this option is passed on to utils/prepare_lang.sh
+prep_lang_wclass_opt=""
+
+# this option is passed on to LM scripts
+wclass_opt=""
+
+if [ $wclass_usage == 1 ]; then
+  # The source of the word class data (local/wclass/resources) is just an example
+  wclass_src_dir=local/wclass/resources
+  wclass_dst_dir=data/local/wclass
+
+  # Steps necessary to integrate word classes will be only done if
+  # - the script local/wsj_wclass_prep.sh and
+  # - the word class source dir 
+  # both exist
+  if [ -x local/wsj_wclass_prep.sh ] && [ -d $wclass_src_dir ]; then
+    local/wsj_wclass_prep.sh $wclass_src_dir $wclass_dst_dir || exit 1;
+    prep_lang_wclass_opt="--extra-word-disambig-syms $wclass_dst_dir/wclass_disambig_syms.txt"
+    wclass_opt="--wclass-dir $wclass_dst_dir"
+  else
+    echo run.sh: not all scripts and directories necessary for word classes could be found, exiting...
+    exit 1;
+  fi
+fi
+
+utils/prepare_lang.sh $prep_lang_wclass_opt data/local/dict_nosp \
+  "<SPOKEN_NOISE>" data/local/lang_tmp_nosp data/lang_nosp || exit 1;
+
+local/wsj_format_data.sh --lang-suffix "_nosp" || exit 1;
+
+ # We suggest to run the next three commands in the background,
+ # as they are not a precondition for the system building and
+ # most of the tests: these commands build a dictionary
+ # containing many of the OOVs in the WSJ LM training data,
+ # and an LM trained directly on that data (i.e. not just
+ # copying the arpa files from the disks from LDC).
+ # Caution: the commands below will only work if $decode_cmd
+ # is setup to use qsub.  Else, just remove the --cmd option.
+ # NOTE: If you have a setup corresponding to the older cstr_wsj_data_prep.sh style,
+ # use local/cstr_wsj_extend_dict.sh --dict-suffix "_nosp" $corpus/wsj1/doc/ instead.
+  (
+   local/wsj_extend_dict.sh --dict-suffix "_nosp" $wsj1/13-32.1  && \
+   utils/prepare_lang.sh $prep_lang_wclass_opt data/local/dict_nosp_larger \
+     "<SPOKEN_NOISE>" data/local/lang_tmp_nosp_larger data/lang_nosp_bd && \
+   local/wsj_train_lms.sh $wclass_opt --dict-suffix "_nosp" &&
+   local/wsj_format_local_lms.sh $wclass_opt --lang-suffix "_nosp" # &&
+>>>>>>> Word class integration (in wsj recipe)
   ) &
 
   # Now make MFCC features.
