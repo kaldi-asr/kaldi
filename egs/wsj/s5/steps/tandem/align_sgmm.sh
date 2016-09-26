@@ -55,6 +55,9 @@ silphonelist=`cat $lang/phones/silence.csl` || exit 1;
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
+cp $srcdir/phones.txt $dir || exit 1;
+
 ## Set up features.
 
 sdata1=$data1/split$nj

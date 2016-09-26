@@ -103,6 +103,7 @@ for f in $degs_dir/degs.1.ark $degs_dir/info/{num_archives,silence.csl,frames_pe
 done
 
 mkdir -p $dir/log || exit 1;
+cp $degs_dir/phones.txt $dir || exit 1;
 
 # copy some things
 for f in splice_opts cmvn_opts tree final.mat; do

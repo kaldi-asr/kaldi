@@ -104,7 +104,7 @@ sclite: sclite_compiled
 .PHONY: sclite_compiled
 sclite_compiled: sctk sctk_configured
 	cd sctk; \
-	$(MAKE) all && $(MAKE) install && $(MAKE) doc
+	$(MAKE) CC=$(CC) CXX=$(CXX) all && $(MAKE) install && $(MAKE) doc
 
 sctk_configured: sctk sctk/.configured
 
