@@ -81,6 +81,10 @@ grep -v ';;;' $dir/cmudict/cmudict.0.7a | \
 (echo '!SIL SIL'; echo '<SPOKEN_NOISE> SPN'; echo '<UNK> SPN'; echo '<NOISE> NSN'; ) | \
  cat - $dir/lexicon1_raw_nosil.txt | sort | uniq > $dir/lexicon2_raw.txt || exit 1;
 
+# For word classes: some compounds from the word class "US_STATE" like
+# "WEST-VIRGINIA" were not in the lexicon. I add them here ...
+cat $dir/lexicon2_raw.txt local/wclass/resources/wsj_classes_lexicon.txt | sort | uniq > $dir/lexicon2_raw_tmp.txt
+mv $dir/lexicon2_raw_tmp.txt $dir/lexicon2_raw.txt
 
 # lexicon.txt is without the _B, _E, _S, _I markers.
 # This is the input to wsj_format_data.sh
