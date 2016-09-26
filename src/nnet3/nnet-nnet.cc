@@ -48,6 +48,16 @@ int32 NetworkNode::Dim(const Nnet &nnet) const {
   return ans;
 }
 
+void Nnet::SetNodeName(int32 node_index, const std::string &new_name) {
+  if (!(static_cast<size_t>(node_index) < nodes_.size()))
+    KALDI_ERR << "Invalid node index";
+  if (GetNodeIndex(new_name) != -1)
+    KALDI_ERR << "You cannot rename a node to create a duplicate node name";
+  if (!IsValidName(new_name))
+    KALDI_ERR << "Node name " << new_name << " is not allowed.";
+  node_names_[node_index] = new_name;
+}
+
 const std::vector<std::string> &Nnet::GetNodeNames() const {
   return node_names_;
 }
@@ -219,77 +229,6 @@ void Nnet::ReadConfig(std::istream &config_is) {
     }
   }
   Check();
-}
-
-
-void Nnet::ReadEditConfig(std::istream &edit_config_is) {
-  std::vector<std::string> lines;
-  GetConfigLines(edit_config_is, &lines);
-  // we process this as a sequence of lines.
-  std::vector<ConfigLine> config_lines;
-  ParseConfigLines(lines, &config_lines);
-  for (size_t i = 0; i < config_lines.size(); i++) {
-    ConfigLine &config_line = config_lines[i];
-    const std::string &first_token = config_lines[i].FirstToken();
-    if (first_token == "convert-to-fixed-affine") {
-      std::string name_pattern = "*";
-      // name_pattern defaults to '*' if none is given.  Note: this pattern
-      // matches names of components, not nodes.
-      config_line.GetValue("name", &name_pattern);
-      AffineComponent *component = NULL;
-      for (int32 c = 0; c < NumComponents(); c++) {
-        if (NameMatchesPattern(component_names_[c].c_str(),
-                               name_pattern.c_str()) &&
-            (component = dynamic_cast<AffineComponent*>(components_[c])) &&
-            !dynamic_cast<FixedAffineComponent*>(components_[c])) {
-          components_[c] = new FixedAffineComponent(*component);
-          delete component;
-        }
-      }
-    } else if (first_token == "remove-orphan-nodes") {
-      bool remove_orphan_inputs = true;
-      config_line.GetValue("remove-orphan-inputs", &remove_orphan_inputs);
-      RemoveOrphanNodes(remove_orphan_inputs);
-    } else if (first_token == "remove-orphan-components") {
-      RemoveOrphanComponents();
-    } else if (first_token == "remove-orphans") {
-      bool remove_orphan_inputs = true;
-      config_line.GetValue("remove-orphan-inputs", &remove_orphan_inputs);
-      RemoveOrphanNodes(remove_orphan_inputs);
-      RemoveOrphanComponents();
-    } else if (first_token == "set-learning-rate") {
-      std::string name_pattern = "*";
-      // name_pattern defaults to '*' if none is given.  This pattern
-      // matches names of components, not nodes.
-      config_line.GetValue("name", &name_pattern);
-      BaseFloat learning_rate = -1;
-      if (!config_line.GetValue("learning-rate", &learning_rate)) {
-        KALDI_ERR << "In edits-config, expected learning-rate to be set in line: "
-                  << config_line.WholeLine();
-      }
-      // Note: the learning rate you provide will be multiplied by any
-      // 'learning-rate-factor' that is defined in the component,
-      // so if you call SetUnderlyingLearningRate(), the actual learning
-      // rate (learning_rate_) is set to the value you provide times
-      // learning_rate_factor_.
-      UpdatableComponent *component = NULL;
-      for (int32 c = 0; c < NumComponents(); c++) {
-        if (NameMatchesPattern(component_names_[c].c_str(),
-                               name_pattern.c_str()) &&
-            (component = dynamic_cast<UpdatableComponent*>(components_[c]))) {
-          component->SetUnderlyingLearningRate(learning_rate);
-        }
-      }
-    } else {
-      KALDI_ERR << "Directive '" << first_token << "' is not currently "
-          "supported (reading edit-config).";
-    }
-
-    if (config_line.HasUnusedValues()) {
-      KALDI_ERR << "Could not interpret '" << config_line.UnusedValues()
-                << "' in edit config line " << config_line.WholeLine();
-    }
-  }
 }
 
 
@@ -861,6 +800,8 @@ std::string Nnet::Info() const {
 void Nnet::RemoveOrphanComponents() {
   std::vector<int32> orphan_components;
   FindOrphanComponents(*this, &orphan_components);
+  KALDI_LOG << "Removing " << orphan_components.size()
+            << " orphan components.";
   if (orphan_components.empty())
     return;
   int32 old_num_components = components_.size(),
@@ -893,20 +834,14 @@ void Nnet::RemoveOrphanComponents() {
   Check();
 }
 
-void Nnet::RemoveOrphanNodes(bool remove_orphan_inputs) {
-  std::vector<int32> orphan_nodes;
-  FindOrphanNodes(*this, &orphan_nodes);
-  if (!remove_orphan_inputs)
-    for (int32 i = 0; i < orphan_nodes.size(); i++)
-      if (IsInputNode(orphan_nodes[i]))
-        orphan_nodes.erase(orphan_nodes.begin() + i);
-  if (orphan_nodes.empty())
+void Nnet::RemoveSomeNodes(const std::vector<int32> &nodes_to_remove) {
+  if (nodes_to_remove.empty())
     return;
   int32 old_num_nodes = nodes_.size(),
       new_num_nodes = 0;
   std::vector<int32> old2new_map(old_num_nodes, 0);
-  for (size_t i = 0; i < orphan_nodes.size(); i++)
-    old2new_map[orphan_nodes[i]] = -1;
+  for (size_t i = 0; i < nodes_to_remove.size(); i++)
+    old2new_map[nodes_to_remove[i]] = -1;
   std::vector<NetworkNode> new_nodes;
   std::vector<std::string> new_node_names;
   for (int32 n = 0; n < old_num_nodes; n++) {
@@ -940,6 +875,8 @@ void Nnet::RemoveOrphanNodes(bool remove_orphan_inputs) {
       new_nodes[n].u.node_index = new_node_index;
     }
   }
+  KALDI_LOG << "Removed " << (old_num_nodes - new_num_nodes)
+            << " orphan nodes.";
   nodes_ = new_nodes;
   node_names_ = new_node_names;
   bool warn_for_orphans = false;
@@ -947,6 +884,17 @@ void Nnet::RemoveOrphanNodes(bool remove_orphan_inputs) {
   // orphan components that will later be removed by calling
   // RemoveOrphanComponents().
   Check(warn_for_orphans);
+}
+
+
+void Nnet::RemoveOrphanNodes(bool remove_orphan_inputs) {
+  std::vector<int32> orphan_nodes;
+  FindOrphanNodes(*this, &orphan_nodes);
+  if (!remove_orphan_inputs)
+    for (int32 i = 0; i < orphan_nodes.size(); i++)
+      if (IsInputNode(orphan_nodes[i]))
+        orphan_nodes.erase(orphan_nodes.begin() + i);
+  RemoveSomeNodes(orphan_nodes);
 }
 
 

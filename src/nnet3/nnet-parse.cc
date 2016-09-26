@@ -114,7 +114,6 @@ bool ConfigLine::ParseLine(const std::string &line) {
 
 bool ConfigLine::GetValue(const std::string &key, std::string *value) {
   KALDI_ASSERT(value != NULL);
-  value->clear();
   std::map<std::string, std::pair<std::string, bool> >::iterator it = data_.begin();
   for (; it != data_.end(); ++it) {
     if (it->first == key) {

@@ -117,13 +117,9 @@ class Nnet {
   // This function can be used either to initialize a new Nnet from a config
   // file, or to add to an existing Nnet, possibly replacing certain parts of
   // it.  It will die with error if something went wrong.
+  // Also see the function ReadEditConfig() in nnet-utils.h (it's made a
+  // non-member because it doesn't need special access).
   void ReadConfig(std::istream &config_file);
-
-  // This function reads a file with a similar-looking format to the config file
-  // read by ReadConfig(), but this consists of a sequence of operations to
-  // perform on an existing network: renaming nodes, deleting nodes (e.g. unused
-  // outputs); removing dropout, and so forth.
-  void ReadEditConfig(std::istream &edit_config_file);
 
   int32 NumComponents() const { return components_.size(); }
 
@@ -176,6 +172,11 @@ class Nnet {
 
   /// returns individual node name.
   const std::string &GetNodeName(int32 node_index) const;
+
+  /// This can be used to modify invidual node names.  Note, this does not
+  /// affect the neural net structure at all, it just assigns a new
+  /// name to an existing node while leaving all connections identical.
+  void SetNodeName(int32 node_index, const std::string &new_name);
 
   /// returns vector of component names (needed by some parsing code, for instance).
   const std::vector<std::string> &GetComponentNames() const;
@@ -237,11 +238,14 @@ class Nnet {
 
 
   // Removes nodes that are never needed to compute any output.
-  void RemoveOrphanNodes(bool remove_orphan_inputs = true);
+  void RemoveOrphanNodes(bool remove_orphan_inputs = false);
 
   // Removes components that are not used by any node.
   void RemoveOrphanComponents();
 
+  // Removes some nodes.  This is not to be called without a lot of thought,
+  // as it could ruin the graph structure if done carelessly.
+  void RemoveSomeNodes(const std::vector<int32> &nodes_to_remove);
 
  private:
 

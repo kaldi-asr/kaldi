@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
 
     bool binary_write = true;
     BaseFloat learning_rate = -1;
-    std::string nnet_config, edits_config, edits_command;
+    std::string nnet_config, edits_config, edits_str;
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
@@ -55,12 +55,12 @@ int main(int argc, char *argv[]) {
                 "would give to nnet3-init).");
     po.Register("edits-config", &edits_config,
                 "Name of edits-config file that can be used to modify the network "
-                "(applied after nnet-config).  See code of ReadEditConfig() in "
-                "nnet-nnet.cc to see currently supported commands.");
-    po.Register("edits-command", &edits_command,
-                "Can be used as an alternative to edits-config when you just want "
-                "to specify a single command, e.g. --edits-command=remove-orphans");
-
+                "(applied after nnet-config).  See comments for ReadEditConfig()"
+                "in nnet3/nnet-utils.h to see currently supported commands.");
+    po.Register("edits", &edits_str,
+                "Can be used as an inline alternative to edits-config; semicolons "
+                "will be converted to newlines before parsing.  E.g. "
+                "'--edits=remove-orphans'.");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
@@ -84,13 +84,15 @@ int main(int argc, char *argv[]) {
 
     if (!edits_config.empty()) {
       Input ki(edits_config);
-      nnet.ReadEditConfig(ki.Stream());
+      ReadEditConfig(ki.Stream(), &nnet);
     }
-    if (!edits_command.empty()) {
-      std::istringstream is(edits_command);
-      nnet.ReadEditConfig(is);
+    if (!edits_str.empty()) {
+      for (size_t i = 0; i < edits_str.size(); i++)
+        if (edits_str[i] == ';')
+          edits_str[i] = '\n';
+      std::istringstream is(edits_str);
+      ReadEditConfig(is, &nnet);
     }
-
 
     WriteKaldiObject(nnet, raw_nnet_wxfilename, binary_write);
     KALDI_LOG << "Copied raw neural net from " << raw_nnet_rxfilename

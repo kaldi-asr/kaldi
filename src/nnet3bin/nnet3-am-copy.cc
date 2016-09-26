@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
     std::string set_raw_nnet = "";
     bool convert_repeated_to_block = false;
     BaseFloat scale = 1.0;
-    std::string nnet_config, edits_config, edits_command;
+    std::string nnet_config, edits_config, edits_str;
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
@@ -71,11 +71,12 @@ int main(int argc, char *argv[]) {
                 "would give to nnet3-init).");
     po.Register("edits-config", &edits_config,
                 "Name of edits-config file that can be used to modify the network "
-                "(applied after nnet-config).  See code of ReadEditConfig() in "
-                "nnet-nnet.cc to see currently supported commands.");
-    po.Register("edits-command", &edits_command,
-                "Can be used as an alternative to edits-config when you just want "
-                "to specify a single command, e.g. --edits-command=remove-orphans");
+                "(applied after nnet-config).  See comments for ReadEditConfig()"
+                "in nnet3/nnet-utils.h to see currently supported commands.");
+    po.Register("edits", &edits_str,
+                "Can be used as an inline alternative to --edits-config; "
+                "semicolons will be converted to newlines before parsing.  E.g. "
+                "'--edits=remove-orphans'.");
     po.Register("learning-rate", &learning_rate,
                 "If supplied, all the learning rates of updatable components"
                 " are set to this value.");
@@ -130,11 +131,14 @@ int main(int argc, char *argv[]) {
 
     if (!edits_config.empty()) {
       Input ki(edits_config);
-      am_nnet.GetNnet().ReadEditConfig(ki.Stream());
+      ReadEditConfig(ki.Stream(), &(am_nnet.GetNnet()));
     }
-    if (!edits_command.empty()) {
-      std::istringstream is(edits_command);
-      am_nnet.GetNnet().ReadEditConfig(is);
+    if (!edits_str.empty()) {
+      for (size_t i = 0; i < edits_str.size(); i++)
+        if (edits_str[i] == ';')
+          edits_str[i] = '\n';
+      std::istringstream is(edits_str);
+      ReadEditConfig(is, &(am_nnet.GetNnet()));
     }
 
     if (scale != 1.0)
