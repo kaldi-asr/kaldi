@@ -32,10 +32,9 @@ if [ "$speed_perturb" == "true" ]; then
       utils/validate_data_dir.sh --no-feats data/${datadir}_tmp
       rm -r data/temp1 data/temp2
 
-      mfccdir=mfcc_perturbed
       steps/make_mfcc.sh --cmd "$train_cmd" --nj 50 \
-        data/${datadir}_tmp exp/make_mfcc/${datadir}_tmp $mfccdir || exit 1;
-      steps/compute_cmvn_stats.sh data/${datadir}_tmp exp/make_mfcc/${datadir}_tmp $mfccdir || exit 1;
+        data/${datadir}_tmp exp/make_mfcc/${datadir}_tmp || exit 1;
+      steps/compute_cmvn_stats.sh data/${datadir}_tmp exp/make_mfcc/${datadir}_tmp || exit 1;
       utils/fix_data_dir.sh data/${datadir}_tmp
 
       utils/copy_data_dir.sh --spk-prefix sp1.0- --utt-prefix sp1.0- data/${datadir} data/temp0
@@ -54,12 +53,6 @@ if [ "$speed_perturb" == "true" ]; then
 fi
 
 if [ $stage -le 3 ]; then
-  mfccdir=mfcc_hires
-  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
-    date=$(date +'%m_%d_%H_%M')
-    utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/multi_en-$date/s5b/$mfccdir/storage $mfccdir/storage
-  fi
-
   # the 100k_nodup directory is copied seperately, as
   # we want to use exp/tri1b_ali_100k_nodup for lda_mllt training
   # the main train directory might be speed_perturbed
@@ -79,10 +72,9 @@ for line in sys.stdin.readlines():
 "| sort -k1,1 -u  > $data_dir/wav.scp_scaled || exit 1;
     mv $data_dir/wav.scp_scaled $data_dir/wav.scp
 
-    # If $dataset is "multi_a/tdnn_100k", $out-suffix will be "multi_a_tdnn_100k"
-    steps/make_mfcc.sh --nj 70 --mfcc-config conf/mfcc_hires.conf --out-suffix "train_${dataset/\//_}" \
-        --cmd "$train_cmd" data/${dataset}_hires exp/make_hires/$dataset $mfccdir;
-    steps/compute_cmvn_stats.sh --out-suffix "train_${dataset/\//_}" data/${dataset}_hires exp/make_hires/${dataset} $mfccdir;
+    steps/make_mfcc.sh --nj 70 --mfcc-config conf/mfcc_hires.conf --cmd "$train_cmd" \
+      data/${dataset}_hires exp/make_hires/$dataset;
+    steps/compute_cmvn_stats.sh data/${dataset}_hires exp/make_hires/${dataset};
 
     # Remove the small number of utterances that couldn't be extracted for some
     # reason (e.g. too short; no such file).
@@ -92,9 +84,9 @@ for line in sys.stdin.readlines():
   for dataset in eval2000 rt03; do
     # Create MFCCs for the eval set
     utils/copy_data_dir.sh data/$dataset/test data/${dataset}_hires/test
-    steps/make_mfcc.sh --out-suffix "test_$dataset" --cmd "$train_cmd" --nj 10 --mfcc-config conf/mfcc_hires.conf \
-        data/${dataset}_hires/test exp/make_hires/$dataset $mfccdir;
-    steps/compute_cmvn_stats.sh --out-suffix "test_$dataset" data/${dataset}_hires/test exp/make_hires/$dataset $mfccdir;
+    steps/make_mfcc.sh --cmd "$train_cmd" --nj 10 --mfcc-config conf/mfcc_hires.conf \
+        data/${dataset}_hires/test exp/make_hires/$dataset;
+    steps/compute_cmvn_stats.sh data/${dataset}_hires/test exp/make_hires/$dataset;
     utils/fix_data_dir.sh data/${dataset}_hires/test  # remove segments with problems
   done
 
