@@ -111,20 +111,30 @@ echo "Training RNNLM (note: this uses a lot of memory! Run it on a big machine.)
 #  -hidden 100 -rand-seed 1 -debug 2 -class 100 -bptt 2 -bptt-block 20 \
 #  -direct-order 4 -direct 1000 -binary >& $dir/rnnlm1.log &
 
-$cmd $dir/rnnlm.log \
-   $KALDI_ROOT/tools/$rnnlm_ver/rnnlm -threads $threads -independent -train $dir/train -valid $dir/valid \
-   -rnnlm $dir/rnnlm -hidden $hidden -rand-seed 1 -debug 2 -class $class -bptt $bptt -bptt-block $bptt_block \
-   $rnnlm_options -direct $direct -binary || exit 1;
-
+# since the mikolov rnnlm and faster-rnnlm have slightly different interfaces...
+if [ "$rnnlm_ver" == "faster-rnnlm" ]; then
+  $cmd $dir/rnnlm.log \
+     $KALDI_ROOT/tools/$rnnlm_ver/rnnlm -threads $threads -independent -train $dir/train -valid $dir/valid \
+     -rnnlm $dir/rnnlm -hidden $hidden -seed 1 -class $class -bptt $bptt -bptt-block $bptt_block \
+     $rnnlm_options -direct $direct || exit 1;
+else
+  $cmd $dir/rnnlm.log \
+     $KALDI_ROOT/tools/$rnnlm_ver/rnnlm -threads $threads -independent -train $dir/train -valid $dir/valid \
+     -rnnlm $dir/rnnlm -hidden $hidden -rand-seed 1 -debug 2 -class $class -bptt $bptt -bptt-block $bptt_block \
+     $rnnlm_options -direct $direct -binary || exit 1;
+fi
 
 # make it like a Kaldi table format, with fake utterance-ids.
 cat $dir/valid.in | awk '{ printf("uttid-%d ", NR); print; }' > $dir/valid.with_ids
 
-utils/rnnlm_compute_scores.sh --rnnlm_ver $rnnlm_ver $dir $dir/tmp.valid $dir/valid.with_ids \
+utils/rnnlm_compute_scores.sh --ensure_normalized_probs true --rnnlm_ver $rnnlm_ver $dir $dir/tmp.valid $dir/valid.with_ids \
   $dir/valid.scores
-nw=`wc -w < $dir/valid.with_ids` # Note: valid.with_ids includes utterance-ids which
+
+nw=`cat $dir/valid.with_ids | awk '{a+=NF}END{print a}'` # Note: valid.with_ids includes utterance-ids which
   # is one per word, to account for the </s> at the end of each sentence; this is the
   # correct number to normalize buy.
+  # we have noticed that "wc -w" might give wrong results for certain languages
+
 p=`awk -v nw=$nw '{x=x+$2} END{print exp(x/nw);}' <$dir/valid.scores` 
 echo Perplexity is $p | tee $dir/perplexity.log
 
