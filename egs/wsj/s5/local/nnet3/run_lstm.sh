@@ -113,7 +113,7 @@ if [ $stage -le 9 ]; then
     for year in eval92 dev93; do
       (
       num_jobs=`cat data/test_${year}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-      steps/nnet3/lstm/decode.sh --nj $num_jobs --cmd "$decode_cmd" \
+      steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" \
 	  --extra-left-context $extra_left_context \
 	  --extra-right-context $extra_right_context \
 	  --frames-per-chunk "$frames_per_chunk" \

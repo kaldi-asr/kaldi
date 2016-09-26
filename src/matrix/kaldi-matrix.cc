@@ -68,6 +68,9 @@ void MatrixBase<Real>::Invert(Real *log_det, Real *det_sign,
       if (log_det) *log_det = -std::numeric_limits<Real>::infinity();
       if (det_sign) *det_sign = 0;
       delete[] pivot;
+#ifndef HAVE_ATLAS
+      KALDI_MEMALIGN_FREE(p_work);
+#endif
       return;
     }
   }
@@ -1102,6 +1105,17 @@ void MatrixBase<Real>::GroupPnormDeriv(const MatrixBase<Real> &input,
         (*this)(i, j) = (input_val == 0 ? 0 : (input_val > 0 ? 1 : -1));
       }
     }
+  } else if (power == std::numeric_limits<Real>::infinity()) {
+    for (MatrixIndexT i = 0; i < num_rows; i++) {
+      for (MatrixIndexT j = 0; j < num_cols; j++) {
+        Real output_val = output(i, j / group_size), input_val = input(i, j);
+        if (output_val == 0)
+          (*this)(i, j) = 0;
+        else
+          (*this)(i, j) = (std::abs(input_val) == output_val ? 1.0 : 0.0)
+              * (input_val >= 0 ? 1 : -1);
+      }
+    }
   } else {
     for (MatrixIndexT i = 0; i < num_rows; i++) {
       for (MatrixIndexT j = 0; j < num_cols; j++) {
@@ -1465,7 +1479,9 @@ SubMatrix<Real>::SubMatrix(const MatrixBase<Real> &M,
   MatrixBase<Real>::num_rows_ = r;
   MatrixBase<Real>::num_cols_ = c;
   MatrixBase<Real>::stride_ = M.Stride();
-  MatrixBase<Real>::data_ = M.Data_workaround() + co + ro * M.Stride();
+  MatrixBase<Real>::data_ = M.Data_workaround() +
+      static_cast<size_t>(co) +
+      static_cast<size_t>(ro) * static_cast<size_t>(M.Stride());
 }
 
 
@@ -2711,7 +2727,6 @@ void MatrixBase<Real>::AddToRows(Real alpha, Real *const *dst) const {
       cblas_Xaxpy(num_cols, alpha, this_data, 1, dst_data, 1);
   }
 }
-
 
 template<typename Real>
 void MatrixBase<Real>::Sigmoid(const MatrixBase<Real> &src) {

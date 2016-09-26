@@ -81,6 +81,9 @@ cp $alidir/splice_opts $dir 2>/dev/null # frame-splicing options.
 cp $alidir/cmvn_opts $dir 2>/dev/null # cmn/cmvn option.
 cp $alidir/delta_opts $dir 2>/dev/null # delta option.
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+cp $alidir/phones.txt $dir || exit 1;
+
 echo $nj >$dir/num_jobs
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 
@@ -254,6 +257,7 @@ ln -s $x.occs $dir/final.occs
 ln -s $x.alimdl $dir/final.alimdl
 
 
+steps/diagnostic/analyze_alignments.sh --cmd "$cmd" $lang $dir
 
 utils/summarize_warnings.pl $dir/log
 (
@@ -266,4 +270,10 @@ utils/summarize_warnings.pl $dir/log
   echo
 ) | tee $dir/log/summary.log
 
-echo Done
+
+steps/info/gmm_dir_info.pl $dir
+
+echo "$0: done training SAT system in $dir"
+
+exit 0
+

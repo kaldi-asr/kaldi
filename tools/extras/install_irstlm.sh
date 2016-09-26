@@ -55,11 +55,11 @@ fi
   [ ! -z ${IRSTLM} ] && \
     echo >&2 "IRSTLM config is already in env.sh" && exit
 
-  wd=`readlink -f $wd 2>/dev/null || pwd`
+  wd=`pwd -P`
 
   echo "export IRSTLM=$wd/irstlm"
   echo "export PATH=\${PATH}:\${IRSTLM}/bin"
 ) >> env.sh
 
 errcho "***() Installation of IRSTLM finished successfully"
-errcho "***() Please source the tools/env.sh in your path.sh to enable it"
+errcho "***() Please source the tools/extras/env.sh in your path.sh to enable it"

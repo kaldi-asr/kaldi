@@ -490,7 +490,7 @@ while [ $x -lt $num_iters ]; do
           nnet-train-ensemble \
           --minibatch-size=$this_minibatch_size --srand=$x \
           --beta=$beta $nnets_ensemble_in \
-          "ark:nnet-copy-egs --frame=$frame ark:$cur_egs_dir/egs.$archive.ark ark:-|nnet-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-|" \
+          "ark,bg:nnet-copy-egs --frame=$frame ark:$cur_egs_dir/egs.$archive.ark ark:-|nnet-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-|" \
           ark:- $nnets_ensemble_out || touch $dir/.error &
       done
       wait

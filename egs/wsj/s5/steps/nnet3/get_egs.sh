@@ -51,6 +51,7 @@ stage=0
 nj=6         # This should be set to the maximum number of jobs you are
              # comfortable to run in parallel; you can increase it if your disk
              # speed is greater and you have more machines.
+srand=0     # rand seed for nnet3-copy-egs and nnet3-shuffle-egs
 online_ivector_dir=  # can be used if we are including speaker information as iVectors.
 cmvn_opts=  # can be used for specifying CMVN options, if feature type is not lda (if lda,
             # it doesn't make sense to use different options than were used as input to the
@@ -105,6 +106,14 @@ mkdir -p $dir/log $dir/info
 cp $alidir/tree $dir
 
 num_ali_jobs=$(cat $alidir/num_jobs) || exit 1;
+
+
+num_utts=$(cat $data/utt2spk | wc -l)
+if ! [ $num_utts -gt $[$num_utts_subset*4] ]; then
+  echo "$0: number of utterances $num_utts in your training data is too small versus --num-utts-subset=$num_utts_subset"
+  echo "... you probably have so little data that it doesn't make sense to train a neural net."
+  exit 1
+fi
 
 # Get list of validation utterances.
 awk '{print $1}' $data/utt2spk | utils/shuffle_list.pl | head -$num_utts_subset \
@@ -321,7 +330,7 @@ if [ $stage -le 4 ]; then
   $cmd JOB=1:$nj $dir/log/get_egs.JOB.log \
     nnet3-get-egs --num-pdfs=$num_pdfs $ivector_opt $egs_opts --num-frames=$frames_per_eg "$feats" \
     "ark,s,cs:filter_scp.pl $sdata/JOB/utt2spk $dir/ali.scp | ali-to-pdf $alidir/final.mdl scp:- ark:- | ali-to-post ark:- ark:- |" ark:- \| \
-    nnet3-copy-egs --random=true --srand=JOB ark:- $egs_list || exit 1;
+    nnet3-copy-egs --random=true --srand=\$[JOB+$srand] ark:- $egs_list || exit 1;
 fi
 
 if [ $stage -le 5 ]; then
@@ -337,7 +346,7 @@ if [ $stage -le 5 ]; then
 
   if [ $archives_multiple == 1 ]; then # normal case.
     $cmd --max-jobs-run $nj JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
-      nnet3-shuffle-egs --srand=JOB "ark:cat $egs_list|" ark:$dir/egs.JOB.ark  || exit 1;
+      nnet3-shuffle-egs --srand=\$[JOB+$srand] "ark:cat $egs_list|" ark:$dir/egs.JOB.ark  || exit 1;
   else
     # we need to shuffle the 'intermediate archives' and then split into the
     # final archives.  we create soft links to manage this splitting, because
@@ -353,7 +362,7 @@ if [ $stage -le 5 ]; then
       done
     done
     $cmd --max-jobs-run $nj JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
-      nnet3-shuffle-egs --srand=JOB "ark:cat $egs_list|" ark:- \| \
+      nnet3-shuffle-egs --srand=\$[JOB+$srand] "ark:cat $egs_list|" ark:- \| \
       nnet3-copy-egs ark:- $output_archives || exit 1;
   fi
 

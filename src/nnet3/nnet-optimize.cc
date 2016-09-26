@@ -515,7 +515,7 @@ void CachingOptimizingCompiler::ReadCache(std::istream &is, bool binary) {
   bool read_cache = (opt_config_ == opt_config_cached);
 
   if (read_cache) {
-    size_t computation_cache_size;
+    int32 computation_cache_size;
     ExpectToken(is, binary, "<ComputationCacheSize>");
     ReadBasicType(is, binary, &computation_cache_size);
     KALDI_ASSERT(computation_cache_size >= 0);
@@ -533,6 +533,7 @@ void CachingOptimizingCompiler::ReadCache(std::istream &is, bool binary) {
 }
 
 void CachingOptimizingCompiler::WriteCache(std::ostream &os, bool binary) const {
+  opt_config_.Write(os, binary);
   WriteToken(os, binary, "<ComputationCacheSize>");
   WriteBasicType(os, binary, static_cast<int32>(computation_cache_.size()));
   WriteToken(os, binary, "<ComputationCache>");

@@ -123,6 +123,7 @@ static void UnitTestCuBlockMatrixAddMatMat() {
       // early failures will have small dim for easier eyeballing.
       if (b % 2 == 0) std::swap(dimM, dimN);
       data[b].Resize(dimM, dimN);
+      KALDI_LOG << "dimM " << dimM << ", dimN " << dimN << ", stride " << data[b].Stride();
       data[b].SetRandn();
     }    
     
@@ -182,6 +183,7 @@ template<typename Real> void CuBlockMatrixUnitTest() {
 int main() {
   for (int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1
+    CuDevice::Instantiate().SetDebugStrideMode(true);
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no"); // -1 means no GPU
     else

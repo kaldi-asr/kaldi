@@ -8,12 +8,12 @@
 cmd=run.pl
 stage=0
 decode_mbr=false
-reverse=false
 stats=true
 beam=6
 word_ins_penalty=0.0,0.5,1.0
-min_lmwt=9
-max_lmwt=20
+min_lmwt=7
+max_lmwt=17
+iter=final
 #end configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -28,7 +28,6 @@ if [ $# -ne 3 ]; then
   echo "    --decode_mbr (true/false)       # maximum bayes risk decoding (confusion network)."
   echo "    --min_lmwt <int>                # minumum LM-weight for lattice rescoring "
   echo "    --max_lmwt <int>                # maximum LM-weight for lattice rescoring "
-  echo "    --reverse (true/false)          # score with time reversed features "
   exit 1;
 fi
 
@@ -86,14 +85,6 @@ if [ $stage -le 0 ]; then
         $hyp_filtering_cmd '>' $dir/scoring_kaldi/penalty_$wip/LMWT.txt || exit 1;
     fi
 
-    if $reverse; then # rarely-used option, ignore this.
-      for lmwt in `seq $min_lmwt $max_lmwt`; do
-        mv $dir/scoring_kaldi/penalty_$wip/$lmwt.txt $dir/scoring_kaldi/penalty_$wip/$lmwt.txt.orig
-        awk '{ printf("%s ",$1); for(i=NF; i>1; i--){ printf("%s ",$i); } printf("\n"); }' \
-          <$dir/scoring_kaldi/penalty_$wip/$lmwt.txt.orig >$dir/scoring_kaldi/penalty_$wip/$lmwt.txt
-      done
-    fi
-
     $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring_kaldi/penalty_$wip/log/score.LMWT.log \
       cat $dir/scoring_kaldi/penalty_$wip/LMWT.txt \| \
       compute-wer --text --mode=present \
@@ -139,10 +130,10 @@ if [ $stage -le 1 ]; then
       sort -b -i -k 1,1 -k 4,4rn -k 2,2 -k 3,3 \> $dir/scoring_kaldi/wer_details/ops || exit 1;
 
     $cmd $dir/scoring_kaldi/log/wer_bootci.log \
-      compute-wer-bootci \
+      compute-wer-bootci --mode=present \
         ark:$dir/scoring_kaldi/test_filt.txt ark:$dir/scoring_kaldi/penalty_$best_wip/$best_lmwt.txt \
         '>' $dir/scoring_kaldi/wer_details/wer_bootci || exit 1;
-    
+
   fi
 fi
 

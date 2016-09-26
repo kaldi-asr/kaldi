@@ -29,21 +29,22 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Train the transition probabilities in transition-model (used in nnet1 recipe)\n"
+        "Train the transition probabilities in transition-model "
+        "(used in nnet1 recipe).\n"
         "\n"
-        "Usage:  train-transitions [options] <trans-model-in> <alignments-rspecifier> <trans-model-out>\n"
-        "e.g.:\n"
-        " train-transitions 1.mdl \"ark:gunzip -c ali.*.gz|\" 2.mdl\n";
-    
+        "Usage: train-transitions [options] "
+        "<trans-model-in> <alignments-rspecifier> <trans-model-out>\n"
+        "e.g.: train-transitions 1.mdl \"ark:gunzip -c ali.*.gz|\" 2.mdl\n";
+
     bool binary_write = true;
     MleTransitionUpdateConfig transition_update_config;
-    
+
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     transition_update_config.Register(&po);
-    
+
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
@@ -52,20 +53,20 @@ int main(int argc, char *argv[]) {
     std::string trans_model_rxfilename = po.GetArg(1),
         ali_rspecifier = po.GetArg(2),
         trans_model_wxfilename = po.GetArg(3);
-    
+
     TransitionModel trans_model;
     {
       bool binary_read;
       Input ki(trans_model_rxfilename, &binary_read);
       trans_model.Read(ki.Stream(), binary_read);
     }
-    
+
     Vector<double> transition_accs;
     trans_model.InitStats(&transition_accs);
 
     int32 num_done = 0;
     SequentialInt32VectorReader ali_reader(ali_rspecifier);
-    for (; ! ali_reader.Done(); ali_reader.Next()) {
+    for (; !ali_reader.Done(); ali_reader.Next()) {
       const std::vector<int32> alignment(ali_reader.Value());
       for (size_t i = 0; i < alignment.size(); i++) {
         int32 tid = alignment[i];
@@ -85,7 +86,7 @@ int main(int argc, char *argv[]) {
                 << " log-like improvement per frame over " << count
                 << " frames.";
     }
-        
+
     {
       Output ko(trans_model_wxfilename, binary_write);
       trans_model.Write(ko.Stream(), binary_write);
@@ -94,7 +95,7 @@ int main(int argc, char *argv[]) {
               << trans_model_wxfilename;
     return 0;
   } catch(const std::exception &e) {
-    std::cerr << e.what() << '\n';
+    std::cerr << e.what();
     return -1;
   }
 }

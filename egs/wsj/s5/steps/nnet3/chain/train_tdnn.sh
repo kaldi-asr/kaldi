@@ -78,9 +78,6 @@ exit_stage=-100 # you can set this to terminate the training early.  Exits befor
 
 # count space-separated fields in splice_indexes to get num-hidden-layers.
 splice_indexes="-4,-3,-2,-1,0,1,2,3,4  0  -2,2  0  -4,4 0"
-pool_type='none'
-pool_window=
-pool_lpfilter_width=
 
 # Format : layer<hidden_layer>/<frame_indices>....layer<hidden_layer>/<frame_indices> "
 # note: hidden layers which are composed of one or more components,
@@ -233,12 +230,6 @@ if [ $stage -le -5 ]; then
     else
       dim_opts="--pnorm-input-dim $pnorm_input_dim --pnorm-output-dim  $pnorm_output_dim"
     fi
-
-    # create the config files for nnet initialization
-    pool_opts=
-    pool_opts=$pool_opts${pool_type:+" --pool-type $pool_type "}
-    pool_opts=$pool_opts${pool_window:+" --pool-window $pool_window "}
-    pool_opts=$pool_opts${pool_lpfilter_width:+" --pool-lpfilter-width $pool_lpfilter_width "}
 
     python steps/nnet3/tdnn/make_configs.py $pool_opts \
       --include-log-softmax=false \
@@ -462,11 +453,11 @@ while [ $x -lt $num_iters ]; do
     $cmd $dir/log/compute_prob_valid.$x.log \
       nnet3-chain-compute-prob --l2-regularize=$l2_regularize --leaky-hmm-coefficient=$leaky_hmm_coefficient --xent-regularize=$xent_regularize \
           "nnet3-am-copy --raw=true $dir/$x.mdl -|" $dir/den.fst \
-          "ark:nnet3-chain-merge-egs ark:$egs_dir/valid_diagnostic.cegs ark:- |" &
+          "ark,bg:nnet3-chain-merge-egs ark:$egs_dir/valid_diagnostic.cegs ark:- |" &
     $cmd $dir/log/compute_prob_train.$x.log \
       nnet3-chain-compute-prob --l2-regularize=$l2_regularize --leaky-hmm-coefficient=$leaky_hmm_coefficient  --xent-regularize=$xent_regularize \
           "nnet3-am-copy --raw=true $dir/$x.mdl -|" $dir/den.fst \
-          "ark:nnet3-chain-merge-egs ark:$egs_dir/train_diagnostic.cegs ark:- |" &
+          "ark,bg:nnet3-chain-merge-egs ark:$egs_dir/train_diagnostic.cegs ark:- |" &
 
     if [ $x -gt 0 ]; then
       # This doesn't use the egs, it only shows the relative change in model parameters.
@@ -535,7 +526,7 @@ while [ $x -lt $num_iters ]; do
               $this_cache_io_opts $parallel_train_opts $deriv_time_opts \
              --max-param-change=$this_max_param_change \
             --print-interval=10 "$mdl" $dir/den.fst \
-          "ark:nnet3-chain-copy-egs --truncate-deriv-weights=$truncate_deriv_weights --frame-shift=$frame_shift ark:$egs_dir/cegs.$archive.ark ark:- | nnet3-chain-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-chain-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
+          "ark,bg:nnet3-chain-copy-egs --truncate-deriv-weights=$truncate_deriv_weights --frame-shift=$frame_shift ark:$egs_dir/cegs.$archive.ark ark:- | nnet3-chain-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-chain-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
       done
       wait
@@ -602,7 +593,7 @@ if [ $stage -le $num_iters ]; then
   $cmd $combine_queue_opt $dir/log/combine.log \
     nnet3-chain-combine --num-iters=40  --l2-regularize=$l2_regularize --leaky-hmm-coefficient=$leaky_hmm_coefficient \
        --enforce-sum-to-one=true --enforce-positive-weights=true \
-       --verbose=3 $dir/den.fst "${nnets_list[@]}" "ark:nnet3-chain-merge-egs --minibatch-size=$minibatch_size ark:$egs_dir/combine.cegs ark:-|" \
+       --verbose=3 $dir/den.fst "${nnets_list[@]}" "ark,bg:nnet3-chain-merge-egs --minibatch-size=$minibatch_size ark:$egs_dir/combine.cegs ark:-|" \
        "|nnet3-am-copy --set-raw-nnet=- $dir/$first_model_combine.mdl $dir/final.mdl" || exit 1;
 
 
@@ -612,11 +603,11 @@ if [ $stage -le $num_iters ]; then
   $cmd $dir/log/compute_prob_valid.final.log \
     nnet3-chain-compute-prob --l2-regularize=$l2_regularize --leaky-hmm-coefficient=$leaky_hmm_coefficient --xent-regularize=$xent_regularize \
            "nnet3-am-copy --raw=true $dir/final.mdl - |" $dir/den.fst \
-    "ark:nnet3-chain-merge-egs ark:$egs_dir/valid_diagnostic.cegs ark:- |" &
+    "ark,bg:nnet3-chain-merge-egs ark:$egs_dir/valid_diagnostic.cegs ark:- |" &
   $cmd $dir/log/compute_prob_train.final.log \
     nnet3-chain-compute-prob --l2-regularize=$l2_regularize --leaky-hmm-coefficient=$leaky_hmm_coefficient --xent-regularize=$xent_regularize \
       "nnet3-am-copy --raw=true $dir/final.mdl - |" $dir/den.fst \
-    "ark:nnet3-chain-merge-egs ark:$egs_dir/train_diagnostic.cegs ark:- |" &
+    "ark,bg:nnet3-chain-merge-egs ark:$egs_dir/train_diagnostic.cegs ark:- |" &
 fi
 
 if [ ! -f $dir/final.mdl ]; then
@@ -643,3 +634,7 @@ if $cleanup; then
     fi
   done
 fi
+
+steps/info/chain_dir_info.pl $dir
+
+exit 0

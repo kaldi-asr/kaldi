@@ -6,7 +6,7 @@
 # the MFCCs: we splice across several frames, reduce the dimension (to 40
 # by default) using Linear Discriminant Analysis), and then later estimate,
 # over multiple iterations, a diagonalizing transform known as MLLT or CTC.
-# See http://kaldi.sourceforge.net/transform.html for more explanation.
+# See http://kaldi-asr.org/doc/transform.html for more explanation.
 #
 # Apache 2.0.
 
@@ -70,6 +70,10 @@ silphonelist=`cat $lang/phones/silence.csl` || exit 1;
 ciphonelist=`cat $lang/phones/context_indep.csl` || exit 1;
 
 mkdir -p $dir/log
+
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+cp $alidir/phones.txt $dir || exit 1;
+
 echo $nj >$dir/num_jobs
 echo "$splice_opts" >$dir/splice_opts # keep track of frame-splicing options
            # so that later stages of system building can know what they were.
@@ -222,8 +226,13 @@ ln -s $x.mdl $dir/final.mdl
 ln -s $x.occs $dir/final.occs
 ln -s $cur_lda_iter.mat $dir/final.mat
 
-# Summarize warning messages...
+steps/diagnostic/analyze_alignments.sh --cmd "$cmd" $lang $dir
 
+# Summarize warning messages...
 utils/summarize_warnings.pl $dir/log
 
-echo Done training system with LDA+MLLT features in $dir
+steps/info/gmm_dir_info.pl $dir
+
+echo "Done training system with LDA+MLLT features in $dir"
+
+exit 0

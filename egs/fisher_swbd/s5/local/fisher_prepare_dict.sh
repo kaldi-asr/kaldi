@@ -27,7 +27,7 @@
 dir=data/local/dict
 mkdir -p $dir
 echo "Getting CMU dictionary"
-svn co  https://svn.code.sf.net/p/cmusphinx/code/trunk/cmudict  $dir/cmudict
+svn co -r 13068 https://svn.code.sf.net/p/cmusphinx/code/trunk/cmudict  $dir/cmudict
 
 # silence phones, one per line. 
 for w in sil laughter noise oov; do echo $w; done > $dir/silence_phones.txt

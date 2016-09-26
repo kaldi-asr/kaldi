@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. cmd.sh
+. ./cmd.sh
 set -e # exit on error
 
 
@@ -26,8 +26,8 @@ local/rm_prepare_grammar_ug.sh   # Unigram grammar (gives worse results, but
 featdir=mfcc
 
 for x in test_mar87 test_oct87 test_feb89 test_oct89 test_feb91 test_sep92 train; do
-  steps/make_mfcc.sh --nj 8 --cmd "run.pl" data/$x exp/make_feat/$x $featdir
-  #steps/make_plp.sh --nj 8 --cmd "run.pl" data/$x exp/make_feat/$x $featdir
+  steps/make_mfcc.sh --nj 8 --cmd "$train_cmd" data/$x exp/make_feat/$x $featdir
+  #steps/make_plp.sh --nj 8 --cmd "$train_cmd" data/$x exp/make_feat/$x $featdir
   steps/compute_cmvn_stats.sh data/$x exp/make_feat/$x $featdir
 done
 
@@ -38,7 +38,7 @@ done
 utils/combine_data.sh data/test data/test_{mar87,oct87,feb89,oct89,feb91,sep92}
 steps/compute_cmvn_stats.sh data/test exp/make_feat/test $featdir
 
-utils/subset_data_dir.sh data/train 1000 data/train.1k 
+utils/subset_data_dir.sh data/train 1000 data/train.1k
 
 
 steps/train_mono.sh --nj 4 --cmd "$train_cmd" data/train.1k data/lang exp/mono
@@ -48,8 +48,6 @@ steps/train_mono.sh --nj 4 --cmd "$train_cmd" data/train.1k data/lang exp/mono
 
 
 utils/mkgraph.sh --mono data/lang exp/mono exp/mono/graph
-
-
 
 
 steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
@@ -78,14 +76,15 @@ local/test_decoders.sh # This is a test program that we run only in the
 steps/align_si.sh --nj 8 --cmd "$train_cmd" \
   --use-graphs true data/train data/lang exp/tri1 exp/tri1_ali
 
-# train tri2a [delta+delta-deltas]
-steps/train_deltas.sh --cmd "$train_cmd" 1800 9000 \
- data/train data/lang exp/tri1_ali exp/tri2a
+# the tri2a experiments are not needed downstream, so commenting them out.
+# # train tri2a [delta+delta-deltas]
+# steps/train_deltas.sh --cmd "$train_cmd" 1800 9000 \
+#  data/train data/lang exp/tri1_ali exp/tri2a
 
-# decode tri2a
-utils/mkgraph.sh data/lang exp/tri2a exp/tri2a/graph
-steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
-  exp/tri2a/graph data/test exp/tri2a/decode
+# # decode tri2a
+# utils/mkgraph.sh data/lang exp/tri2a exp/tri2a/graph
+# steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
+#   exp/tri2a/graph data/test exp/tri2a/decode
 
 # train and decode tri2b [LDA+MLLT]
 steps/train_lda_mllt.sh --cmd "$train_cmd" \
@@ -151,9 +150,9 @@ steps/align_fmllr.sh --nj 8 --cmd "$train_cmd" --use-graphs true \
 # # has bad transcripts, so you can filter it out.  Below we demonstrate how to
 # # run this script.
 # steps/cleanup/find_bad_utts.sh --nj 20 --cmd "$train_cmd" data/train data/lang \
-#   exp/tri3b_ali exp/tri3b_cleanup 
+#   exp/tri3b_ali exp/tri3b_cleanup
 # # The following command will show you some of the hardest-to-align utterances in the data.
-# head  exp/tri3b_cleanup/all_info.sorted.txt 
+# head  exp/tri3b_cleanup/all_info.sorted.txt
 
 ## MMI on top of tri3b (i.e. LDA+MLLT+SAT+MMI)
 steps/make_denlats.sh --config conf/decode.config \
@@ -173,7 +172,7 @@ steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
 # local/online/run_gmm.sh
 # local/online/run_nnet2.sh
 # local/online/run_baseline.sh
-# Note: for online decoding with pitch, look at local/run_pitch.sh, 
+# Note: for online decoding with pitch, look at local/run_pitch.sh,
 # which calls local/online/run_gmm_pitch.sh
 
 #
@@ -243,11 +242,14 @@ local/run_sgmm2.sh
 #
 # local/run_nnet2.sh
 
-# Karel's neural net recipe.                                                                                                                                        
-# local/nnet/run_dnn.sh                                                                                                                                                  
+# Karel's neural net recipe.
+# local/nnet/run_dnn.sh
 
 # Karel's CNN recipe.
 # local/nnet/run_cnn.sh
 
 # Karel's 2D-CNN recipe (from Harish).
 # local/nnet/run_cnn2d.sh
+
+# chain recipe
+# local/chain/run_tdnn_5f.sh

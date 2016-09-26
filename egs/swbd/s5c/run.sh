@@ -93,19 +93,18 @@ utils/subset_data_dir.sh --last data/train $n data/train_nodev
 
 # Now-- there are 260k utterances (313hr 23min), and we want to start the
 # monophone training on relatively short utterances (easier to align), but not
-# only the shortest ones (mostly uh-huh).  So take the 100k shortest ones;
-# remove most of the repeated utterances (these are the uh-huh type ones), and
-# then take 10k random utterances from those (about 4hr 40mins)
+# only the shortest ones (mostly uh-huh).  So take the 100k shortest ones, and
+# then take 30k random utterances from those (about 12hr)
 utils/subset_data_dir.sh --shortest data/train_nodev 100000 data/train_100kshort
 utils/subset_data_dir.sh data/train_100kshort 30000 data/train_30kshort
 
 # Take the first 100k utterances (just under half the data); we'll use
 # this for later stages of training.
 utils/subset_data_dir.sh --first data/train_nodev 100000 data/train_100k
-local/remove_dup_utts.sh 200 data/train_100k data/train_100k_nodup  # 110hr
+utils/data/remove_dup_utts.sh 200 data/train_100k data/train_100k_nodup  # 110hr
 
 # Finally, the full training set:
-local/remove_dup_utts.sh 300 data/train_nodev data/train_nodup  # 286hr
+utils/data/remove_dup_utts.sh 300 data/train_nodev data/train_nodup  # 286hr
 ## Starting basic training on MFCC features
 steps/train_mono.sh --nj 30 --cmd "$train_cmd" \
   data/train_30kshort data/lang_nosp exp/mono

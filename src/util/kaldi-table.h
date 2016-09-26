@@ -184,6 +184,11 @@ bool WriteScriptFile(std::ostream &os,
 //       [any of the above options can be prefixed by n to negate them, e.g. no,
 //       ns, ncs, np; but these aren't currently useful as you could just omit
 //       the option].
+//   bg means "background".  It currently has no effect for random-access readers,
+//       but for sequential readers it will cause it to "read ahead" to the next
+//       value, in a background thread.  Recommended when reading larger objects
+//       such as neural-net training examples, especially when you want to
+//       maximize GPU usage.
 //
 //   b   is ignored [for scripting convenience]
 //   t   is ignored [for scripting convenience]
@@ -202,11 +207,13 @@ struct  RspecifierOptions {
   bool permissive;  // If "permissive", when reading from scp files it treats
   // scp files that can't be read as if the corresponding key were not there.
   // For archive files it will suppress errors getting thrown if the archive
-
   // is corrupted and can't be read to the end.
-
+  bool background;  // For sequential readers, if the background option ("bg")
+                    // is provided, it will read ahead to the next object in a
+                    // background thread.
   RspecifierOptions(): once(false), sorted(false),
-                       called_sorted(false), permissive(false) { }
+                       called_sorted(false), permissive(false),
+                       background(false) { }
 };
 
 enum RspecifierType  {
@@ -218,11 +225,6 @@ enum RspecifierType  {
 RspecifierType ClassifyRspecifier(const std::string &rspecifier,
                                   std::string *rxfilename,
                                   RspecifierOptions *opts);
-
-// Class Table<Holder> is useful when you want the entire set of
-// objects in memory.  NOT IMPLEMENTED YET.
-// It is the least scalable way of accessing data in Tables.
-// The *TableReader and TableWriter classes are more scalable.
 
 
 /// Allows random access to a collection
@@ -266,8 +268,8 @@ class RandomAccessTableReader {
 
   // Allow copy-constructor only for non-opened readers (needed for inclusion in
   // stl vector)
-  explicit RandomAccessTableReader(const RandomAccessTableReader<Holder>
-                                   &other):
+  RandomAccessTableReader(const RandomAccessTableReader<Holder>
+                          &other):
       impl_(NULL) { KALDI_ASSERT(other.impl_ == NULL); }
  private:
   // Disallow assignment.
@@ -292,9 +294,9 @@ class SequentialTableReader {
   // throws on error.
   explicit SequentialTableReader(const std::string &rspecifier);
 
-  // Opens the table.  Returns exit status; but does throw if previously
-  // open stream was in error state.  Call Close to stop this [anyway,
-  // calling Open more than once is not recommended.]
+  // Opens the table.  Returns exit status; but does throw if previously open
+  // stream was in error state.  You can call Close to prevent this; anyway,
+  // calling Open more than once is not usually needed.
   bool Open(const std::string &rspecifier);
 
   // Returns true if we're done.  It will also return true if there's some kind
@@ -308,18 +310,16 @@ class SequentialTableReader {
 
   // FreeCurrent() is provided as an optimization to save memory, for large
   // objects.  It instructs the class to deallocate the current value. The
-  // reference Value() will/ be invalidated by this.
-
+  // reference Value() will be invalidated by this.
   void FreeCurrent();
 
-  // Return reference to the current value.
-  // The reference is valid till next call to this object.
-  // If will throw if you are reading an scp file, did not
-  // specify the "permissive" (p) option and the file cannot
-  // be read.  [The permissive option makes it behave as if that
-  // key does not even exist, if the corresponding file cannot be
-  // read.]  You probably wouldn't want to catch this exception;
-  // the user can just specify the p option in the rspecifier.
+  // Return reference to the current value.  It's only valid to call this if
+  // Done() returned false.  The reference is valid till next call to this
+  // object.  If will throw if you are reading an scp file, did not specify the
+  // "permissive" (p) option and the file cannot be read.  [The permissive
+  // option makes it behave as if that key does not even exist, if the
+  // corresponding file cannot be read.]  You probably wouldn't want to catch
+  // this exception; the user can just specify the p option in the rspecifier.
   const T &Value();
 
   // Next goes to the next key.  It will not throw; any error will
@@ -349,7 +349,7 @@ class SequentialTableReader {
 
   // Allow copy-constructor only for non-opened readers (needed for inclusion in
   // stl vector)
-  explicit SequentialTableReader(const SequentialTableReader<Holder> &other):
+  SequentialTableReader(const SequentialTableReader<Holder> &other):
       impl_(NULL) { KALDI_ASSERT(other.impl_ == NULL); }
  private:
   // Disallow assignment.
@@ -407,6 +407,7 @@ class TableWriter {
   }
  private:
   TableWriter &operator = (const TableWriter&);  // Disallow assignment.
+
   void CheckImpl() const;  // Checks that impl_ is non-NULL; prints an error
                            // message and dies (with KALDI_ERR) if NULL.
   TableWriterImplBase<Holder> *impl_;

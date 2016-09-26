@@ -112,7 +112,7 @@ float Plda::TransformIvector(const PldaConfig &config,
 double Plda::LogLikelihoodRatio(
     const VectorBase<double> &transformed_train_ivector,
     int32 n, // number of training utterances.
-    const VectorBase<double> &transformed_test_ivector) {
+    const VectorBase<double> &transformed_test_ivector) const {
   int32 dim = Dim();
   double loglike_given_class, loglike_without_class;
   { // work out loglike_given_class.

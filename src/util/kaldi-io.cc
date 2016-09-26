@@ -1,6 +1,7 @@
 // util/kaldi-io.cc
 
 // Copyright 2009-2011  Microsoft Corporation;  Jan Silovsky
+//                2016  Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -22,6 +23,7 @@
 #include "base/kaldi-math.h"
 #include "util/text-utils.h"
 #include "util/parse-options.h"
+#include "util/kaldi-holder.h"
 
 #include "util/kaldi-pipebuf.h"
 
@@ -352,7 +354,8 @@ class InputImplBase {
   // is for non-Kaldi files.
   virtual bool Open(const std::string &filename, bool binary) = 0;
   virtual std::istream &Stream() = 0;
-  virtual void Close() = 0;  // don't bother checking failure
+  virtual int32 Close() = 0;  // We only need to check failure in the case of
+                              // kPipeInput.
   // on close for input streams.
   virtual InputType MyType() = 0;  // Because if it's kOffsetFileInput, we may
                                    // call Open twice
@@ -379,12 +382,13 @@ class FileInputImpl: public InputImplBase {
     return is_;
   }
 
-  virtual void Close() {
+  virtual int32 Close() {
     if (!is_.is_open())
       KALDI_ERR << "FileInputImpl::Close(), file is not open.";
     // I believe this error can only arise from coding error.
     is_.close();
     // Don't check status.
+    return 0;
   }
 
   virtual InputType MyType() { return kFileInput; }
@@ -422,9 +426,10 @@ class StandardInputImpl: public InputImplBase {
 
   virtual InputType MyType() { return kStandardInput; }
 
-  virtual void Close() {
+  virtual int32 Close() {
     if (!is_open_) KALDI_ERR << "StandardInputImpl::Close(), file is not open.";
     is_open_ = false;
+    return 0;
   }
   virtual ~StandardInputImpl() { }
  private:
@@ -481,12 +486,12 @@ class PipeInputImpl: public InputImplBase {
     return *is_;
   }
 
-  virtual void Close() {
+  virtual int32 Close() {
     if (is_ == NULL)
       KALDI_ERR << "PipeInputImpl::Close(), file is not open.";
     delete is_;
     is_ = NULL;
-    int status;
+    int32 status;
 #ifdef _MSC_VER
     status = _pclose(f_);
 #else
@@ -500,6 +505,7 @@ class PipeInputImpl: public InputImplBase {
     delete fb_;
     fb_ = NULL;
 #endif
+    return status;
   }
   virtual ~PipeInputImpl() {
     if (is_)
@@ -620,12 +626,13 @@ class OffsetFileInputImpl: public InputImplBase {
     return is_;
   }
 
-  virtual void Close() {
+  virtual int32 Close() {
     if (!is_.is_open())
       KALDI_ERR << "FileInputImpl::Close(), file is not open.";
     // I believe this error can only arise from coding error.
     is_.close();
     // Don't check status.
+    return 0;
   }
 
   virtual InputType MyType() { return kOffsetFileInput; }
@@ -737,10 +744,14 @@ Input::Input(const std::string &rxfilename, bool *binary): impl_(NULL) {
   }
 }
 
-void Input::Close() {
+int32 Input::Close() {
   if (impl_) {
+    int32 ans = impl_->Close();
     delete impl_;
     impl_ = NULL;
+    return ans;
+  } else {
+    return 0;
   }
 }
 
@@ -801,6 +812,57 @@ Input::~Input() { if (impl_) Close(); }
 std::istream &Input::Stream() {
   if (!IsOpen()) KALDI_ERR << "Input::Stream(), not open.";
   return impl_->Stream();
+}
+
+
+template <> void ReadKaldiObject(const std::string &filename,
+                                 Matrix<float> *m) {
+  if (!filename.empty() && filename[filename.size() - 1] == ']') {
+    // This filename seems to have a 'range'... like foo.ark:4312423[20:30].
+    // (the bit in square brackets is the range).
+    std::string rxfilename, range;
+    if (!ExtractRangeSpecifier(filename, &rxfilename, &range)) {
+      KALDI_ERR << "Could not make sense of possible range specifier in filename "
+                << "while reading matrix: " << filename;
+    }
+    Matrix<float> temp;
+    bool binary_in;
+    Input ki(rxfilename, &binary_in);
+    temp.Read(ki.Stream(), binary_in);
+    if (!ExtractObjectRange(temp, range, m)) {
+      KALDI_ERR << "Error extracting range of object: " << filename;
+    }
+  } else {
+    // The normal case, there is no range.
+    bool binary_in;
+    Input ki(filename, &binary_in);
+    m->Read(ki.Stream(), binary_in);
+  }
+}
+
+template <> void ReadKaldiObject(const std::string &filename,
+                                 Matrix<double> *m) {
+  if (!filename.empty() && filename[filename.size() - 1] == ']') {
+    // This filename seems to have a 'range'... like foo.ark:4312423[20:30].
+    // (the bit in square brackets is the range).
+    std::string rxfilename, range;
+    if (!ExtractRangeSpecifier(filename, &rxfilename, &range)) {
+      KALDI_ERR << "Could not make sense of possible range specifier in filename "
+                << "while reading matrix: " << filename;
+    }
+    Matrix<double> temp;
+    bool binary_in;
+    Input ki(rxfilename, &binary_in);
+    temp.Read(ki.Stream(), binary_in);
+    if (!ExtractObjectRange(temp, range, m)) {
+      KALDI_ERR << "Error extracting range of object: " << filename;
+    }
+  } else {
+    // The normal case, there is no range.
+    bool binary_in;
+    Input ki(filename, &binary_in);
+    m->Read(ki.Stream(), binary_in);
+  }
 }
 
 

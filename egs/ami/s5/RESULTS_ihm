@@ -62,12 +62,17 @@ for x in exp/$mic/nnet2_online/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && gr
 #------------------------------------------------------------------------------------------------------------------------------------
 # Nnet3 systems
 
-# BLSTM 
+# BLSTM
 #  local/nnet3/run_blstm.sh --mic ihm \
-#    --chunk-right-context 20 \ 
+#    --chunk-right-context 20 \
 #    --use-sat-alignments true
 # Note: Chunk right context of 20 limits the latency of the acoustic model to
 # 20 frames.
 
 %WER 22.8 | 13098 94494 | 80.1 11.0 8.9 3.0 22.8 54.8 | exp/ihm/nnet3/lstm_bidirectional_ld0/decode_dev/ascore_10/dev_hires.ctm.filt.sys
 %WER 22.6 | 12643 89969 | 80.0 12.7 7.3 2.7 22.6 53.5 | exp/ihm/nnet3/lstm_bidirectional_ld0/decode_eval/ascore_9/eval_hires.ctm.filt.sys
+
+## Chain systems
+  # local/chain/run_tdnn_ami_5.sh  --mic ihm --max-wer 50 --affix min_seg_len2_50wer (built with min-seg-len 2 secs, but script now just supports (frames_per_eg+5)/100)
+  %WER 22.4 | 13098 94484 | 80.5 10.7 8.8 3.0 22.4 54.8 | 0.091 | exp/ihm/chain/tdnn_min_seg_len2_50wer_sp/decode_dev/ascore_10/dev_hires.ctm.filt.sys
+  %WER 22.4 | 12643 89973 | 80.3 12.6 7.1 2.8 22.4 53.2 | 0.155 | exp/ihm/chain/tdnn_min_seg_len2_50wer_sp/decode_eval/ascore_10/eval_hires.ctm.filt.sys

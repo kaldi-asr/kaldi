@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
 
     LatticeFasterDecoderConfig decoder_opts;
     SgmmGselectConfig sgmm_opts;
-    decoder_opts.Register(&po);    
+    decoder_opts.Register(&po);
     sgmm_opts.Register(&po);
 
     po.Register("acoustic-scale", &acoustic_scale,
@@ -152,18 +152,18 @@ int main(int argc, char *argv[]) {
 
     CompactLatticeWriter compact_lattice_writer;
     LatticeWriter lattice_writer;
-    bool determinize = decoder_opts.determinize_lattice;    
+    bool determinize = decoder_opts.determinize_lattice;
     if (! (determinize ? compact_lattice_writer.Open(lattice_wspecifier)
            : lattice_writer.Open(lattice_wspecifier)))
       KALDI_ERR << "Could not open table for writing lattices: "
                  << lattice_wspecifier;
-    
+
     Int32VectorWriter words_writer(words_wspecifier);
 
     Int32VectorWriter alignment_writer(alignment_wspecifier);
 
     fst::SymbolTable *word_syms = NULL;
-    if (word_syms_filename != "") 
+    if (word_syms_filename != "")
       if (!(word_syms = fst::SymbolTable::ReadText(word_syms_filename)))
         KALDI_ERR << "Could not read symbol table from file "
                    << word_syms_filename;
@@ -171,14 +171,14 @@ int main(int argc, char *argv[]) {
     RandomAccessInt32VectorVectorReader gselect_reader(gselect_rspecifier);
     RandomAccessBaseFloatVectorReaderMapped spkvecs_reader(spkvecs_rspecifier,
                                                            utt2spk_rspecifier);
-                                                     
+
 
     BaseFloat tot_like = 0.0;
     kaldi::int64 frame_count = 0;
     int num_success = 0, num_fail = 0;
 
     Timer timer;
-        
+
     if (ClassifyRspecifier(fst_in_str, NULL, NULL) == kNoRspecifier) { // a single FST.
       SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
       // It's important that we initialize decode_fst after feature_reader, as it
@@ -188,10 +188,10 @@ int main(int argc, char *argv[]) {
       // lot of virtual memory.
       VectorFst<StdArc> *decode_fst = fst::ReadFstKaldi(fst_in_str);
       timer.Reset(); // exclude graph loading time.
-      
+
       {
         LatticeFasterDecoder decoder(*decode_fst, decoder_opts);
-    
+
         const std::vector<std::vector<int32> > empty_gselect;
 
         for (; !feature_reader.Done(); feature_reader.Next()) {
@@ -220,7 +220,7 @@ int main(int argc, char *argv[]) {
       delete decode_fst; // only safe to do this after decoder goes out of scope.
     } else { // We have different FSTs for different utterances.
       SequentialTableReader<fst::VectorFstHolder> fst_reader(fst_in_str);
-      RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);          
+      RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
       for (; !fst_reader.Done(); fst_reader.Next()) {
         std::string utt = fst_reader.Key();
         if (!feature_reader.HasKey(utt)) {

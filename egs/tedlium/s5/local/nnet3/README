@@ -1,0 +1,9 @@
+To produce the results from:
+
+"Purely sequence-trained neural networks for ASR based on lattice-free MMI", Povey et al.
+
+Run the following in order:
+
+./run.sh
+local/nnet3/run_tdnn.sh
+local/nnet3/run_tdnn_discriminative.sh

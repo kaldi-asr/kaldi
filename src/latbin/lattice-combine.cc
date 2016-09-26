@@ -1,6 +1,7 @@
 // latbin/lattice-combine.cc
 
 // Copyright 2012  Arnab Ghoshal
+//           2016  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -48,11 +49,9 @@ namespace kaldi {
 // log likelihood domain, the total weight is *added* to the weight of the final
 // states. This is equivalent to dividing the probability of each path by the
 // total probability over all paths. There is an additional weight to control
-// the relative contribution of individual lattices, which can be used as an
-// exponent (i.e. multiply the log scores) or as a multiplicative weight (i.e.
-// log of the weight is subtracted from the total backward score).
-bool CompactLatticeNormalize(CompactLattice *clat, BaseFloat weight,
-                             bool exp_weights) {
+// the relative contribution of individual lattices-- the log of the weight will
+// become the total weight of the lattice.
+bool CompactLatticeNormalize(CompactLattice *clat, BaseFloat weight) {
   if (weight <= 0.0) {
     KALDI_WARN << "Weights must be positive; found: " << weight;
     return false;
@@ -65,10 +64,6 @@ bool CompactLatticeNormalize(CompactLattice *clat, BaseFloat weight,
     }
   }
 
-  // If exp_weights = true, multiply the log AM & LM scores.
-  if (exp_weights)
-    fst::ScaleLattice(fst::LatticeScale(weight, weight), clat);
-  
   vector<double> beta;
   if (!ComputeCompactLatticeBetas(*clat, &beta)) {
     KALDI_WARN << "Failed to compute backward probabilities on lattice.";
@@ -79,10 +74,8 @@ bool CompactLatticeNormalize(CompactLattice *clat, BaseFloat weight,
   StateId start = clat->Start();  // Should be 0
   BaseFloat total_backward_cost = beta[start];
 
-  // If exp_weights = false, add to the log AM & LM scores.
-  if (!exp_weights)
-    total_backward_cost -= Log(weight);
-  
+  total_backward_cost -= Log(weight);
+
   for (fst::StateIterator<CompactLattice> sit(*clat); !sit.Done(); sit.Next()) {
     CompactLatticeWeight f = clat->Final(sit.Value());
     LatticeWeight w = f.Weight();
@@ -138,13 +131,13 @@ int main(int argc, char *argv[]) {
         "that this program applies are not removed before outputting the lattices.\n"
         "Intended for use in system combination prior to MBR decoding, see comments\n"
         "in code.\n"
-        "Usage: lattice-combine [options] lattice-rspecifier1 lattice-rspecifier2"
-        " [lattice-rspecifier3 ... ] lattice-wspecifier\n";
+        "Usage: lattice-combine [options] <lattice-rspecifier1> <lattice-rspecifier2>"
+        " [<lattice-rspecifier3> ... ] <lattice-wspecifier>\n"
+        "E.g.: lattice-combine 'ark:gunzip -c foo/lat.1.gz|' 'ark:gunzip -c bar/lat.1.gz|' ark:- | ...\n";
 
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 1.0, inv_acoustic_scale = 1.0, lm_scale = 1.0;
     string weight_str;
-    bool exp_weights = false;
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for "
                 "acoustic likelihoods");
     po.Register("inv-acoustic-scale", &inv_acoustic_scale, "An alternative way "
@@ -152,18 +145,15 @@ int main(int argc, char *argv[]) {
     po.Register("lm-scale", &lm_scale, "Scaling factor for language model "
                 "probabilities");
     po.Register("lat-weights", &weight_str, "Colon-separated list of weights "
-                "for each lattice that sum to 1");
-    // The lattice weights can be used either as exponents or as multiplicative
-    // weights, determined by the exp_weights flag.
-    po.Register("exp-weights", &exp_weights, "If true, lattice weights are "
-                "exponents, else they are multiplicative");
+                "for each rspecifier (which should sum to 1), e.g. '0.2:0.8'");
+
     po.Read(argc, argv);
 
     KALDI_ASSERT(acoustic_scale == 1.0 || inv_acoustic_scale == 1.0);
     if (inv_acoustic_scale != 1.0)
       acoustic_scale = 1.0 / inv_acoustic_scale;
-    
-    
+
+
     int32 num_args = po.NumArgs();
     if (num_args < 3) {
       po.PrintUsage();
@@ -172,7 +162,7 @@ int main(int argc, char *argv[]) {
 
     string lats_rspecifier1 = po.GetArg(1),
         lats_wspecifier = po.GetArg(num_args);
-    
+
     // Output lattice
     CompactLatticeWriter clat_writer(lats_wspecifier);
 
@@ -202,8 +192,7 @@ int main(int argc, char *argv[]) {
       n_utts++;
       n_total_lats++;
       fst::ScaleLattice(lat_scale, &clat1);
-      bool success = CompactLatticeNormalize(&clat1, lat_weights[0],
-                                             exp_weights);
+      bool success = CompactLatticeNormalize(&clat1, lat_weights[0]);
       if (!success) {
         KALDI_WARN << "Could not normalize lattice for system 1, utterance: "
                    << key;
@@ -216,7 +205,7 @@ int main(int argc, char *argv[]) {
           CompactLattice clat2 = clat_reader_vec[i]->Value(key);
           n_total_lats++;
           fst::ScaleLattice(lat_scale, &clat2);
-          success = CompactLatticeNormalize(&clat2, lat_weights[i+1], exp_weights);
+          success = CompactLatticeNormalize(&clat2, lat_weights[i+1]);
           if (!success) {
             KALDI_WARN << "Could not normalize lattice for system "<< (i + 2)
                        << ", utterance: " << key;
