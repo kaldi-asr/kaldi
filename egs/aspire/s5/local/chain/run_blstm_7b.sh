@@ -20,7 +20,9 @@ num_data_reps=3
 
 
 min_seg_len=
-frames_per_eg=150
+chunk_width=150
+chunk_left_context=40
+chunk_right_context=40
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -71,7 +73,7 @@ if [ $stage -le 8 ]; then
 fi
 
 if [ -z $min_seg_len ]; then
-  min_seg_len=$(python -c "print ($frames_per_eg+5)/100.0")
+  min_seg_len=$(python -c "print ($chunk_width+5)/100.0")
 fi
 
 if [ $stage -le 9 ]; then
@@ -179,7 +181,9 @@ if [ $stage -le 12 ]; then
     --trainer.max-param-change 1.414 \
     --egs.stage $get_egs_stage \
     --egs.opts "--frames-overlap-per-eg 0" \
-    --egs.chunk-width $frames_per_eg \
+    --egs.chunk-width $chunk_width \
+    --egs.chunk-left-context $chunk_left_context \
+    --egs.chunk-right-context $chunk_right_context \
     --egs.dir "$common_egs_dir" \
     --trainer.frames-per-iter 1500000 \
     --trainer.num-epochs $num_epochs \
@@ -203,27 +207,28 @@ if [ $stage -le 13 ]; then
   utils/mkgraph.sh --self-loop-scale 1.0 data/lang_pp_test $dir $dir/graph_pp
 fi
 
-
 if [ $stage -le 14 ]; then
-#%WER 25.7 | 2120 27216 | 81.1 11.2 7.8 6.8 25.7 76.1 | -0.906 | exp/chain/blstm_7b/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iterfinal_pp_fg/score_9/penalty_0.25/ctm.filt.filt.sys
-  local/chain/prep_test_aspire.sh --stage 0 --decode-num-jobs 400  --affix "v7" \
-   --extra-left-context 40 --extra-right-context 40 --frames-per-chunk 150 \
-   --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
-   --ivector-scale 0.75  --tune-hyper true dev_aspire data/lang exp/chain/blstm_7b
+
+  extra_left_context=$[$chunk_left_context+10]
+  extra_right_context=$[$chunk_right_context+10]
+  # %WER 25.5 | 2120 27212 | 81.0 11.9 7.1 6.5 25.5 75.0 | -1.022 | exp/chain/blstm_asp2/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iterfinal_pp_fg/score_8/penalty_0.5/ctm.filt.filt.sys
+
+  local/chain/prep_test_aspire.sh --stage 4 --decode-num-jobs 30  --affix "v7" \
+   --extra-left-context $extra_left_context \
+   --extra-right-context $extra_right_context \
+   --frames-per-chunk $chunk_width \
+   --sub-speaker-frames 6000 \
+   --window 10 --overlap 5 --max-count 75 \
+   --pass2-decode-opts "--min-active 1000" \
+   --ivector-scale 0.75  --tune-hyper true \
+   dev_aspire data/lang exp/chain/blstm_7b
 fi
 exit 0;
 
 
-#%WER 41.4 | 2120 27229 | 64.6 19.9 15.5 6.0 41.4 83.1 | -0.517 | exp/chain/blstm_7b/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iter100_pp_fg/score_9/penalty_0.0/ctm.filt.filt.sys
-#%WER 29.2 | 2120 27219 | 78.4 14.0 7.6 7.6 29.2 77.8 | -0.723 | exp/chain/blstm_7b/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iter300_pp_fg/score_9/penalty_0.0/ctm.filt.filt.sys
-#%WER 28.3 | 2120 27212 | 78.5 13.1 8.4 6.8 28.3 77.1 | -0.787 | exp/chain/blstm_7b/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iter400_pp_fg/score_9/penalty_0.25/ctm.filt.filt.sys
-#%WER 27.7 | 2120 27223 | 79.2 13.0 7.8 6.9 27.7 77.4 | -0.811 | exp/chain/blstm_7b/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iter500_pp_fg/score_9/penalty_0.25/ctm.filt.filt.sys
-#%WER 27.7 | 2120 27223 | 80.1 13.2 6.7 7.8 27.7 76.6 | -0.807 | exp/chain/blstm_7b/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iter600_pp_fg/score_9/penalty_0.0/ctm.filt.filt.sys
-#%WER 26.8 | 2120 27219 | 80.2 12.4 7.4 7.0 26.8 76.0 | -0.796 | exp/chain/blstm_7b/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iter800_pp_fg/score_9/penalty_0.25/ctm.filt.filt.sys
-#%WER 27.0 | 2120 27220 | 80.5 12.3 7.2 7.5 27.0 75.9 | -0.814 | exp/chain/blstm_7b/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iter900_pp_fg/score_9/penalty_0.0/ctm.filt.filt.sys
-#%WER 26.2 | 2120 27220 | 81.0 12.4 6.5 7.2 26.2 75.7 | -0.855 | exp/chain/blstm_7b/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iter1000_pp_fg/score_9/penalty_0.0/ctm.filt.filt.sys
-#%WER 26.3 | 2120 27221 | 81.0 12.0 7.0 7.2 26.3 76.2 | -0.865 | exp/chain/blstm_7b/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iter1100_pp_fg/score_9/penalty_0.0/ctm.filt.filt.sys
-#%WER 26.8 | 2120 27224 | 80.8 12.2 7.0 7.7 26.8 77.3 | -0.862 | exp/chain/blstm_7b/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iter1200_pp_fg/score_9/penalty_0.0/ctm.filt.filt.sys
-#%WER 26.0 | 2120 27221 | 81.1 11.9 7.0 7.1 26.0 75.4 | -0.843 | exp/chain/blstm_7b/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iter1300_pp_fg/score_9/penalty_0.0/ctm.filt.filt.sys
-#%WER 26.1 | 2120 27221 | 81.0 12.0 7.0 7.2 26.1 76.4 | -0.869 | exp/chain/blstm_7b/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iter1400_pp_fg/score_9/penalty_0.0/ctm.filt.filt.sys
-#%WER 25.7 | 2120 27221 | 81.4 11.6 6.9 7.1 25.7 76.0 | -0.904 | exp/chain/blstm_7b/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iter1500_pp_fg/score_9/penalty_0.0/ctm.filt.filt.sys
+# %WER 28.0 | 2120 27217 | 78.6 13.3 8.1 6.7 28.0 77.0 | -0.852 | exp/chain/blstm_asp2/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iter600_pp_fg/score_9/penalty_0.25/ctm.filt.filt.sys
+# %WER 27.1 | 2120 27217 | 78.9 13.1 7.9 6.0 27.1 75.8 | -0.944 | exp/chain/blstm_asp2/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iter700_pp_fg/score_8/penalty_0.5/ctm.filt.filt.sys
+# %WER 26.9 | 2120 27218 | 79.7 12.1 8.2 6.6 26.9 76.3 | -0.839 | exp/chain/blstm_asp2/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iter1000_pp_fg/score_10/penalty_0.0/ctm.filt.filt.sys
+# %WER 26.6 | 2120 27220 | 80.2 12.7 7.1 6.8 26.6 76.6 | -1.035 | exp/chain/blstm_asp2/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iter1200_pp_fg/score_8/penalty_0.25/ctm.filt.filt.sys
+# %WER 26.3 | 2120 27223 | 80.6 12.3 7.2 6.9 26.3 76.8 | -0.978 | exp/chain/blstm_asp2/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iter1400_pp_fg/score_9/penalty_0.0/ctm.filt.filt.sys
+
