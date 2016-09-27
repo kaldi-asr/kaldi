@@ -115,7 +115,7 @@ case "$mode" in
     ;;
 esac
 
-rm $outdir/Ldet.fst 2>/dev/null
+rm $outdir/Ldet.fst 2>/dev/null || true
 
 if ! $skip_scoring ; then
   [ ! -x local/score.sh ] && \
