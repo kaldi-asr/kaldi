@@ -122,9 +122,6 @@ fi
 mkdir -p $dir/log || exit 1;
 [ -z "$degs_dir" ] && mkdir -p $dir/degs
 
-utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
-cp $alidir/phones.txt $dir || exit 1;
-
 sdata=$data/split$nj
 utils/split_data.sh $data $nj
 

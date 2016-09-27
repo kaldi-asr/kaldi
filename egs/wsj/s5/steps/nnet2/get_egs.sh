@@ -88,8 +88,6 @@ utils/split_data.sh $data $nj
 mkdir -p $dir/log
 cp $alidir/tree $dir
 
-utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
-cp $alidir/phones.txt $dir || exit 1;
 
 # Get list of validation utterances. 
 awk '{print $1}' $data/utt2spk | utils/shuffle_list.pl | head -$num_utts_subset \
