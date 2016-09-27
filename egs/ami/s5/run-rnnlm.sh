@@ -91,6 +91,7 @@ if [ $stage -le $num_iter ]; then
       echo DEV PPL on model $[$n+1].mdl is $ppl
     )
   done
+  cp $outdir/$[$num_iter+1].mdl $outdir/rnnlm
 fi
 
 
