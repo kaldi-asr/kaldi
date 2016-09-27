@@ -424,31 +424,6 @@ static void _mul_rows_group_mat(Real *y, const Real *x, MatrixDim d,
   }
 }
 
-/// y is the derivative we will output; vec is the input we're computing
-/// the group p-norm on, "norm" is the previously computed group p-norm.
-template<typename Real>
-__global__
-static void _calc_pnorm_deriv(Real *deriv, const Real *vec, const Real *norm,
-                              MatrixDim deriv_dim, int vec_stride,
-                              int norm_stride, int group_size, Real power) {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  int j = blockIdx.y * blockDim.y + threadIdx.y;
-  if (j < deriv_dim.rows && i < deriv_dim.cols) {
-    int deriv_index = i + j * deriv_dim.stride;
-    int vec_index = i + j * vec_stride;
-    int norm_index = i / group_size + j * norm_stride;
-    Real vec_element = vec[vec_index], // The element of the original vector.
-        norm_element = norm[norm_index]; // this is the pnorm
-    Real vec_element_sign = (vec_element > 0 ? 1 : -1);
-    Real ans;
-    if (norm_element <= 0.0)
-      ans = 0.0; // The derivative is either zero or undefined at the origin.
-    else
-      ans = vec_element_sign * pow(std::abs(vec_element), power - 1)
-          * pow(norm_element, 1 - power);
-    deriv[deriv_index] = ans;
-  }
-}
 
 template<typename Real>
 __global__
@@ -2129,6 +2104,34 @@ static void _diff_tanh(Real*eout, const Real*e, const Real*y, MatrixDim d,
 
 template<typename Real>
 __global__
+static void _parametric_relu(Real* y, const Real* x, MatrixDim d, int src_stride,
+                             const Real* a, const Real* b) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  int dst_index = i + j * d.stride,
+      src_index = i + j * src_stride;
+  if (i < d.cols && j < d.rows) {
+    Real res = (x[src_index] > 0.0) ? a[i] * x[src_index] : b[i] * x[src_index];
+    y[dst_index] = res;
+  }
+}
+
+template<typename Real>
+__global__
+static void _diff_parametric_relu(Real* eout, const Real* e, const Real* y,
+                                  MatrixDim d, int e_stride, int y_stride,
+                                  const Real* a, const Real* b) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  int dst_index = i + j * d.stride;
+  int e_index   = i + j * e_stride;
+  int y_index   = i + j * y_stride;
+  if (i < d.cols  && j < d.rows )
+    eout[dst_index] = (y[y_index] > 0.0 ? a[i] * e[e_index] : b[i] * e[e_index]);
+}
+
+template<typename Real>
+__global__
 static void _heaviside(Real*y, const Real*x, MatrixDim d, int src_stride) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int j = blockIdx.y * blockDim.y + threadIdx.y;
@@ -2214,88 +2217,86 @@ static void _softmax_reduce(Real*y, const Real*x, MatrixDim d, int src_stride) {
   }
 }
 
-/**
- This kernel implements the per-row log-softmax operation on 'x', with writing
- to 'y';
- note, x and my may point to the same memory.  This is equivalent to setting
- matrix y to matrix x and then, for each row of y, subtracting the offset that
- will make exp(y.row[j]) sum to 1 for each row j.
-
- It expects to be called with CU1DBLOCK threads if d.num_cols > CU1DBLOCK,
- otherwise with d.num_cols threads.  The number of blocks [i.e. the gridDim]
- equals d.rows, so one block of threads processes each row.  x and y are
- expected to have the same dimension, but possibly different row strides;
- d.stride is the row-stride of y and src_stride is the row-stride of x.
- */
+// Per-row log-softmax operation on 'x', with writing to 'y'.
+// note, x and y may point to the same memory.  This is equivalent to setting
+// matrix y to matrix x and then, for each row of y, subtracting the offset that
+// will make exp(y.row[j]) sum to 1 for each row j.
+//
+// It expects to be called with CU1DBLOCK threads.
+// The number of blocks [i.e. the gridDim] equals to y_dim.rows,
+// so one block of threads processes each row.  x and y are
+// expected to have the same dimension, but possibly different row strides.
 template<typename Real>
 __global__
-static void _log_softmax_reduce(Real *y, const Real *x, MatrixDim d,
-                                int src_stride) {
-  int j = blockIdx.x;
-  int THREADS = blockDim.x;
-  if (j >= d.rows)
-    return;
+static void _log_softmax_reduce(Real* y, const Real* x, MatrixDim y_dim,
+                                int x_stride) {
+  __shared__ Real smem[CU1DBLOCK];
+  const int i = blockIdx.x;
+  const int x_start = i * x_stride;
+  const int y_start = i * y_dim.stride;
+  const int tid = threadIdx.x;
 
-  __shared__ Real aux[CU1DBLOCK];
-  int steps = (d.cols - 1) / THREADS + 1;
-
-  // Maximum step 1: loads input data to <aux>. If <d.cols> is larger than
-  //                 <blockDim.x>, then we do a first pass filtering and only
-  //                 keep a <blockDim.x> size array.
-  aux[threadIdx.x] = x[threadIdx.x + j * src_stride];
-  for (int i = 1; i < steps; ++i) {
-    if (threadIdx.x + i * THREADS < d.cols
-        && aux[threadIdx.x] < x[threadIdx.x + i * THREADS + j * src_stride])
-      aux[threadIdx.x] = x[threadIdx.x + i * THREADS + j * src_stride];
+  // find max element of the row
+  // reduce to CU1DBLOCK elements per row.
+  Real tmax = -1e20;
+  for (int j = tid; j < y_dim.cols; j += CU1DBLOCK) {
+    tmax = max(tmax, x[x_start + j]);
   }
-
-  // Maximum step 2: the standard max reduce.
-  int nTotalThreads = THREADS;
+  smem[tid] = tmax;
   __syncthreads();
-  while (nTotalThreads > 1) {
-    int halfPoint = ((1 + nTotalThreads) >> 1);
-    if (threadIdx.x < halfPoint) {
-      if (threadIdx.x + halfPoint < nTotalThreads
-          && aux[threadIdx.x] < aux[threadIdx.x + halfPoint])
-        aux[threadIdx.x] = aux[threadIdx.x + halfPoint];
+
+  // reduce to 2x warpSize elements per row
+# pragma unroll
+  for (int shift = CU1DBLOCK / 2; shift > warpSize; shift >>= 1) {
+    if (tid < shift) {
+      smem[tid] = max(smem[tid], smem[tid + shift]);
     }
     __syncthreads();
-    nTotalThreads = ((1 + nTotalThreads) >> 1);
   }
-  Real max = aux[0];
-  __syncthreads();
 
-  // Log sum step 1: substracts max, and takes exponentials.
-  y[threadIdx.x + j * d.stride] = x[threadIdx.x + j * src_stride] - max;
-  aux[threadIdx.x] = exp(y[threadIdx.x + j * d.stride]);
-  for (int i = 1; i < steps; ++i) {
-    if (threadIdx.x + i * THREADS < d.cols) {
-      y[threadIdx.x + i * THREADS + j * d.stride] = x[threadIdx.x + i * THREADS
-          + j * src_stride] - max;
-      aux[threadIdx.x] += exp(y[threadIdx.x + i * THREADS + j * d.stride]);
+  // reduce to 1 element per row
+  if (tid < warpSize) {
+    for (int shift = warpSize; shift > 0; shift >>= 1) {
+      smem[tid] = max(smem[tid], smem[tid + shift]);
     }
   }
 
-  // Log sum step 2: comptes summation and then takes logarithm.
-  nTotalThreads = THREADS;
+  // broadcast max to all threads
   __syncthreads();
-  while (nTotalThreads > 1) {
-    int halfPoint = ((1 + nTotalThreads) >> 1);
-    if (threadIdx.x < halfPoint) {
-      if (threadIdx.x + halfPoint < nTotalThreads)
-        aux[threadIdx.x] += aux[threadIdx.x + halfPoint];
+  Real max = smem[0];
+
+  // sum_j(exp(x(i,j)-max))
+  // reduce to CU1DBLOCK elements per row.
+  Real tsum = Real(0);
+  for (int j = tid; j < y_dim.cols; j += CU1DBLOCK) {
+    tsum += exp(x[x_start + j] - max);
+  }
+  smem[tid] = tsum;
+  __syncthreads();
+
+  // reduce to 2x warpSize elements per row
+# pragma unroll
+  for (int shift = CU1DBLOCK / 2; shift > warpSize; shift >>= 1) {
+    if (tid < shift) {
+      smem[tid] += smem[tid + shift];
     }
     __syncthreads();
-    nTotalThreads = ((1 + nTotalThreads) >> 1);
   }
-  Real log_sum = log(aux[0]);
-  __syncthreads();
 
-  // Computes log softmax.
-  for (int i = 0; i < steps; ++i) {
-    if (threadIdx.x + i * THREADS < d.cols) {
-      y[threadIdx.x + i * THREADS + j * d.stride] -= log_sum;
+  // reduce to 1 element per row
+  if (tid < warpSize) {
+    for (int shift = warpSize; shift > 0; shift >>= 1) {
+      smem[tid] += smem[tid + shift];
     }
+  }
+
+  // broadcast sum to all threads
+  __syncthreads();
+  Real log_sum = log(smem[0]);
+
+  // normalize the row
+  for (int j = tid; j < y_dim.cols; j += CU1DBLOCK) {
+    y[y_start + j] = x[x_start + j] - max - log_sum;
   }
 }
 
@@ -2573,6 +2574,62 @@ static void _diff_softmax(Real* x, const MatrixDim dim, const Real* value,
   }
 }
 
+// Differentiate backward through the log softmax function.
+// "out_value" is the log softmax output. Does, for each row i,
+// in_deriv(i) =  out_deriv(i) - sum(out_deriv(i)) .* exp(out_value(i))
+// ???(i) is row-vector.
+// CUDA thread layout: 1 thread block (CU1DBLOCK == 256 threads) per matrix-row.
+template<typename Real>
+__global__
+static void _diff_log_softmax(const MatrixDim in_deriv_dim,
+                              const Real* out_value, const int out_value_stride,
+                              const Real* out_deriv, const int out_deriv_stride,
+                              Real* in_deriv) {
+
+  __shared__ Real ssum[CU1DBLOCK];
+  const int tid = threadIdx.x;
+  const int i = blockIdx.x;
+  const int out_value_start = i * out_value_stride;
+  const int out_deriv_start = i * out_deriv_stride;
+  const int in_deriv_start = i * in_deriv_dim.stride;
+
+  // Loop along the matrix row. Reduce to CU1DBLOCK elements per row.
+  Real tsum = Real(0);
+  for (int j = tid; j < in_deriv_dim.cols; j += CU1DBLOCK) {
+    tsum += out_deriv[out_deriv_start + j];
+  }
+  ssum[tid] = tsum;
+  __syncthreads();
+
+  // Tree reduce to 2x warpSize elements.
+# pragma unroll
+  for (int shift = CU1DBLOCK / 2; shift > warpSize; shift >>= 1) {
+    if (tid < shift) {
+      ssum[tid] += ssum[tid + shift];
+    }
+    __syncthreads();
+  }
+
+  // Warp reduce to 1 element. Threads implicitly synchronized within a warp.
+  if (tid < warpSize) {
+#   pragma unroll
+    for (int shift = warpSize; shift > 0; shift >>= 1) {
+      ssum[tid] += ssum[tid + shift];
+    }
+  }
+
+  // Broadcast result to all threads
+  __syncthreads();
+  const Real sum_e = ssum[0];
+
+  // Apply element-wise x = out_deriv - exp(value) * sum_e
+  for (int j = tid; j < in_deriv_dim.cols; j += CU1DBLOCK) {
+    in_deriv[in_deriv_start + j] = out_deriv[out_deriv_start + j]
+        - exp(out_value[out_value_start + j]) * sum_e;
+  }
+}
+
+
 /***********************************************************************
  * ANSI-C wrappers of CUDA kernels
  */
@@ -2763,12 +2820,6 @@ void cudaF_mul_rows_group_mat(dim3 Gr, dim3 Bl, float *y, const float *x,
   _mul_rows_group_mat<<<Gr,Bl>>>(y, x, d, src_stride, group_size);
 }
 
-void cudaF_calc_pnorm_deriv(dim3 Gr, dim3 Bl, float *y, const float *x1,
-                            const float *x2, MatrixDim y_dim, int x1_stride,
-                            int x2_stride, int group_size, float power) {
-  _calc_pnorm_deriv<<<Gr,Bl>>>(y, x1, x2, y_dim, x1_stride, x2_stride,
-      group_size, power);
-}
 
 void cudaF_diff_group_pnorm(dim3 Gr, dim3 Bl, float *id, const float *iv,
                             const float *ov, const float* od, MatrixDim id_dim,
@@ -3099,6 +3150,18 @@ void cudaF_diff_tanh(dim3 Gr, dim3 Bl, float* eout, const float* e,
   _diff_tanh<<<Gr,Bl>>>(eout, e, y, d, e_stride, y_stride);
 }
 
+void cudaF_parametric_relu(dim3 Gr, dim3 Bl, float* y, const float* x,
+                           MatrixDim d, int src_stride,
+                           const float* a, const float* b) {
+  _parametric_relu<<<Gr,Bl>>>(y, x, d, src_stride, a, b);
+}
+
+void cudaF_diff_parametric_relu(dim3 Gr, dim3 Bl, float* eout, const float* e,
+                                const float* y, MatrixDim d, int e_stride,
+                                int y_stride, const float* a, const float* b) {
+  _diff_parametric_relu<<<Gr,Bl>>>(eout, e, y, d, e_stride, y_stride, a, b);
+}
+
 void cudaF_heaviside(dim3 Gr, dim3 Bl, float* y, const float* x, MatrixDim d,
                      int src_stride) {
   _heaviside<<<Gr,Bl>>>(y, x, d, src_stride);
@@ -3110,8 +3173,8 @@ void cudaF_softmax_reduce(size_t Gr, size_t Bl, float* y, const float* x,
 }
 
 void cudaF_log_softmax_reduce(size_t Gr, size_t Bl, float* y, const float* x,
-                              MatrixDim d, int src_stride) {
-  _log_softmax_reduce<<<Gr,Bl>>>(y, x, d, src_stride);
+                              MatrixDim y_dim, int x_stride) {
+  _log_softmax_reduce<<<Gr,Bl>>>(y, x, y_dim, x_stride);
 }
 
 void cudaF_splice(dim3 Gr, dim3 Bl, float* y, const float* x,
@@ -3178,6 +3241,14 @@ void cudaF_diff_softmax(dim3 Gr, dim3 Bl, float* x, const MatrixDim dim,
 void cudaF_copy_rows_from_vec(dim3 Gr, dim3 Bl, float *mat_out, MatrixDim d_out,
                               const float *v_in) {
   _copy_rows_from_vec<<<Gr,Bl>>>(mat_out, d_out, v_in);
+}
+
+void cudaF_diff_log_softmax(dim3 Gr, dim3 Bl, const MatrixDim in_deriv_dim,
+                            const float* out_value, const int out_value_stride,
+                            const float* out_deriv, const int out_deriv_stride,
+                            float* in_deriv) {
+  _diff_log_softmax<<<Gr, Bl>>>(in_deriv_dim, out_value, out_value_stride,
+      out_deriv, out_deriv_stride, in_deriv);
 }
 
 void cudaF_copy_col_from_mat_df(int Gr, int Bl, double* v, int col,
@@ -3390,13 +3461,6 @@ void cudaD_mul_rows_vec(dim3 Gr, dim3 Bl, double* mat, const double* scale,
 void cudaD_mul_rows_group_mat(dim3 Gr, dim3 Bl, double* y, const double* x,
                               MatrixDim d, int src_stride, int group_size) {
   _mul_rows_group_mat<<<Gr,Bl>>>(y, x, d, src_stride, group_size);
-}
-
-void cudaD_calc_pnorm_deriv(dim3 Gr, dim3 Bl, double*y, const double* x1,
-                            const double* x2, MatrixDim y_dim, int x1_stride,
-                            int x2_stride, int group_size, double power) {
-  _calc_pnorm_deriv<<<Gr,Bl>>>(y, x1, x2, y_dim, x1_stride, x2_stride,
-      group_size, power);
 }
 
 void cudaD_diff_group_pnorm(dim3 Gr, dim3 Bl, double *id, const double *iv,
@@ -3720,6 +3784,18 @@ void cudaD_diff_tanh(dim3 Gr, dim3 Bl, double* eout, const double* e,
   _diff_tanh<<<Gr,Bl>>>(eout, e, y, d, e_stride, y_stride);
 }
 
+void cudaD_parametric_relu(dim3 Gr, dim3 Bl, double* y, const double* x,
+                           MatrixDim d, int src_stride,
+                           const double* a, const double* b) {
+  _parametric_relu<<<Gr,Bl>>>(y, x, d, src_stride, a, b);
+}
+
+void cudaD_diff_parametric_relu(dim3 Gr, dim3 Bl, double* eout, const double* e,
+                                const double* y, MatrixDim d, int e_stride,
+                                int y_stride, const double* a, const double* b) {
+  _diff_parametric_relu<<<Gr,Bl>>>(eout, e, y, d, e_stride, y_stride, a, b);
+}
+
 void cudaD_heaviside(dim3 Gr, dim3 Bl, double* y, const double* x, MatrixDim d,
                      int src_stride) {
   _heaviside<<<Gr,Bl>>>(y, x, d, src_stride);
@@ -3731,8 +3807,8 @@ void cudaD_softmax_reduce(size_t Gr, size_t Bl, double* y, const double* x,
 }
 
 void cudaD_log_softmax_reduce(size_t Gr, size_t Bl, double* y, const double* x,
-                              MatrixDim d, int src_stride) {
-  _log_softmax_reduce<<<Gr,Bl>>>(y, x, d, src_stride);
+                              MatrixDim y_dim, int x_stride) {
+  _log_softmax_reduce<<<Gr,Bl>>>(y, x, y_dim, x_stride);
 }
 
 void cudaD_splice(dim3 Gr, dim3 Bl, double* y, const double* x,
@@ -3794,6 +3870,14 @@ void cudaD_diff_softmax(dim3 Gr, dim3 Bl, double* x, const MatrixDim dim,
                         const double* value, const int value_stride,
                         const double* diff, const int diff_stride) {
   _diff_softmax<<<Gr, Bl>>>(x, dim, value, value_stride, diff, diff_stride);
+}
+
+void cudaD_diff_log_softmax(dim3 Gr, dim3 Bl, const MatrixDim in_deriv_dim,
+                            const double* out_value, const int out_value_stride,
+                            const double* out_deriv, const int out_deriv_stride,
+                            double* in_deriv) {
+  _diff_log_softmax<<<Gr, Bl>>>(in_deriv_dim, out_value, out_value_stride,
+      out_deriv, out_deriv_stride, in_deriv);
 }
 
 void cudaD_copy_rows_from_vec(dim3 Gr, dim3 Bl, double *mat_out,
@@ -3947,4 +4031,3 @@ void cudaD_trace_mat_smat_trans(dim3 Gr, dim3 Bl, const double* mat_in,
   _trace_mat_smat_trans<<<Gr,Bl>>>(mat_in, smat_in, mat_d_in, smat_d_in,
       trace_vec_out);
 }
-

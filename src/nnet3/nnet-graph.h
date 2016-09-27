@@ -81,12 +81,12 @@ void ComputeGraphTranspose(const std::vector<std::vector<int32> > &graph,
                            std::vector<std::vector<int32> > *graph_transpose);
 
 /// This function computes the order in which we need to compute each node in
-/// the graph, where each node-index n maps to an order-index t = 0, 1, ... that
+/// the graph, where each node-index n maps to an epoch-index t = 0, 1, ... that
 /// says when we should compute it.  Nodes that are part of a strongly connected
 /// component (SCC) will all be computed at the same time, but any two nodes
-/// that are not part of an SCC will have different order-index, and these
-/// order-indexes will be such that a node computed at a larger order-index may
-/// depend on a node computed at a smaller order-index, but not vice versa.
+/// that are not part of an SCC will have different epoch-index, and these
+/// epoch-indexes will be such that a node computed at a larger epoch-index may
+/// depend on a node computed at a smaller epoch-index, but not vice versa.
 ///
 /// Internally it calls NnetToDirectedGraph, FindSccs, MakeSccGraph and
 /// ComputeTopSortOrder.

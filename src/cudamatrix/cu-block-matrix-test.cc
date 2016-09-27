@@ -123,6 +123,7 @@ static void UnitTestCuBlockMatrixAddMatMat() {
       // early failures will have small dim for easier eyeballing.
       if (b % 2 == 0) std::swap(dimM, dimN);
       data[b].Resize(dimM, dimN);
+      KALDI_LOG << "dimM " << dimM << ", dimN " << dimN << ", stride " << data[b].Stride();
       data[b].SetRandn();
     }    
     

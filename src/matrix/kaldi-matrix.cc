@@ -2728,7 +2728,6 @@ void MatrixBase<Real>::AddToRows(Real alpha, Real *const *dst) const {
   }
 }
 
-
 template<typename Real>
 void MatrixBase<Real>::Sigmoid(const MatrixBase<Real> &src) {
   KALDI_ASSERT(SameDim(*this, src));

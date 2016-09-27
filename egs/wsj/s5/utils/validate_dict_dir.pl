@@ -174,7 +174,7 @@ sub check_lexicon {
     if (!defined $word) {
       print "--> ERROR: empty lexicon line in $lex\n"; set_to_fail();
     }
-    if ($word eq "<s>" || $word eq "</s>") {
+    if ($word eq "<s>" || $word eq "</s>" || $word eq "<eps>") {
       print "--> ERROR: lexicon.txt contains forbidden word $word\n";
       set_to_fail();
     }
