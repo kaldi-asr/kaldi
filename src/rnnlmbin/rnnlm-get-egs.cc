@@ -32,6 +32,32 @@ using std::vector;
 using namespace kaldi;
 using namespace nnet3;
 
+// this function is copied from rnnlm-eval
+NnetExample GetEgsFromSent(const vector<int>& word_ids_in, int input_dim,
+                           const vector<int>& word_ids_out, int output_dim) {
+  SparseMatrix<BaseFloat> input_frames(word_ids_in.size() - 1, input_dim);
+
+  for (int j = 0; j < word_ids_in.size() - 1; j++) {
+    vector<std::pair<MatrixIndexT, BaseFloat> > pairs;
+    pairs.push_back(std::make_pair(word_ids_in[j], 1.0));
+    SparseVector<BaseFloat> v(input_dim, pairs);
+    input_frames.SetRow(j, v);
+  }
+
+  NnetExample eg;
+  eg.io.push_back(NnetIo("input", 0, input_frames));
+
+  Posterior posterior;
+  for (int i = 1; i < word_ids_out.size(); i++) {
+    vector<std::pair<int32, BaseFloat> > p;
+    p.push_back(std::make_pair(word_ids_out[i], 1.0));
+    posterior.push_back(p);
+  }
+
+  eg.io.push_back(NnetIo("output", output_dim, 0, posterior));
+  return eg;
+}
+
 vector<string> SplitByWhiteSpace(const string &line) {
   std::stringstream ss(line);
   vector<string> ans;
@@ -61,6 +87,8 @@ void GenerateEgs(string text_file, const unordered_map<string, int>& wlist_in,
   ifstream ifile(text_file.c_str());
   string line;
   int cur_line = 0;
+  int input_dim = wlist_in.size();
+  int output_dim = wlist_out.size();
   while (getline(ifile, line)) {
     if (cur_line % 1000 == 0) {
       cout << "processing line " << cur_line << endl;
@@ -69,8 +97,6 @@ void GenerateEgs(string text_file, const unordered_map<string, int>& wlist_in,
 
     vector<int> word_ids_in;
     vector<int> word_ids_out;
-    int input_dim = wlist_in.size();
-    int output_dim = wlist_out.size();
 
     for (int i = 0; i < words.size(); i++) {
       int id_in = 1;
@@ -92,47 +118,55 @@ void GenerateEgs(string text_file, const unordered_map<string, int>& wlist_in,
       word_ids_out.push_back(id_out);
     }
 
-    for (int i = 1; i < word_ids_out.size(); i++) {
-      // generate eg that predict word[i]
-      vector<int> history(history_size, -1); // -1 means absence of word
-      for (int j = 0; j < history_size; j++) {
-        if (i - 1 - j < 0) {
-          break;
-        }
-        history[history_size - 1 - j] = word_ids_in[i - 1 - j];
-      }
+    NnetExample eg = GetEgsFromSent(word_ids_in, input_dim, word_ids_out, output_dim);
+    std::ostringstream os;
+    os << "line-" << cur_line;
 
-      SparseMatrix<BaseFloat> input_frames(history_size, input_dim);
-      for (int j = 0; j < history_size; j++) {
-        vector<std::pair<MatrixIndexT, BaseFloat> > pairs;
-        if (history[j] != -1) {
-          pairs.push_back(std::make_pair(history[j], 1.0));
-        }
-        SparseVector<BaseFloat> v(input_dim, pairs);
-        input_frames.SetRow(j, v);
-      }
+    std::string key = os.str(); // key is <line-num>-<word-num>
+    example_writer->Write(key, eg);
 
-//      {
-//        vector<std::pair<MatrixIndexT, BaseFloat> > pairs;
-//        pairs.push_back(std::make_pair(word_ids_in[i], 1.0));
-//        SparseVector<BaseFloat> v(input_dim, pairs);
-//        input_frames.SetRow(history_size, v);
+
+//    for (int i = 1; i < word_ids_out.size(); i++) {
+//      // generate eg that predict word[i]
+//      vector<int> history(history_size, -1); // -1 means absence of word
+//      for (int j = 0; j < history_size; j++) {
+//        if (i - 1 - j < 0) {
+//          break;
+//        }
+//        history[history_size - 1 - j] = word_ids_in[i - 1 - j];
 //      }
-
-      NnetExample eg;
-      eg.io.push_back(NnetIo("input", -history_size + 1, input_frames));
-      Posterior posterior;
-      vector<std::pair<int32, BaseFloat> > p;
-      p.push_back(std::make_pair(word_ids_out[i], 1.0));
-      posterior.push_back(p);
-      eg.io.push_back(NnetIo("output", output_dim, 0, posterior));
-
-      std::ostringstream os;
-      os << "line-" << cur_line << "-" << i;
-
-      std::string key = os.str(); // key is <line-num>-<word-num>
-      example_writer->Write(key, eg);
-    }
+//
+//      SparseMatrix<BaseFloat> input_frames(history_size, input_dim);
+//      for (int j = 0; j < history_size; j++) {
+//        vector<std::pair<MatrixIndexT, BaseFloat> > pairs;
+//        if (history[j] != -1) {
+//          pairs.push_back(std::make_pair(history[j], 1.0));
+//        }
+//        SparseVector<BaseFloat> v(input_dim, pairs);
+//        input_frames.SetRow(j, v);
+//      }
+//
+////      {
+////        vector<std::pair<MatrixIndexT, BaseFloat> > pairs;
+////        pairs.push_back(std::make_pair(word_ids_in[i], 1.0));
+////        SparseVector<BaseFloat> v(input_dim, pairs);
+////        input_frames.SetRow(history_size, v);
+////      }
+//
+//      NnetExample eg;
+//      eg.io.push_back(NnetIo("input", -history_size + 1, input_frames));
+//      Posterior posterior;
+//      vector<std::pair<int32, BaseFloat> > p;
+//      p.push_back(std::make_pair(word_ids_out[i], 1.0));
+//      posterior.push_back(p);
+//      eg.io.push_back(NnetIo("output", output_dim, 0, posterior));
+//
+//      std::ostringstream os;
+//      os << "line-" << cur_line << "-" << i;
+//
+//      std::string key = os.str(); // key is <line-num>-<word-num>
+//      example_writer->Write(key, eg);
+//    }
     cur_line++;
   }
 }

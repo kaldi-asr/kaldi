@@ -55,13 +55,13 @@ unordered_map<string, int> ReadWordlist(string filename) {
   return ans;
 }
 
-NnetExample GetEgsFromSent(const vector<int>& wlist_in, int input_dim,
-                           const vector<int>& wlist_out, int output_dim) {
-  SparseMatrix<BaseFloat> input_frames(wlist_in.size() - 1, input_dim);
+NnetExample GetEgsFromSent(const vector<int>& word_ids_in, int input_dim,
+                           const vector<int>& word_ids_out, int output_dim) {
+  SparseMatrix<BaseFloat> input_frames(word_ids_in.size() - 1, input_dim);
 
-  for (int j = 0; j < wlist_in.size() - 1; j++) {
+  for (int j = 0; j < word_ids_in.size() - 1; j++) {
     vector<std::pair<MatrixIndexT, BaseFloat> > pairs;
-    pairs.push_back(std::make_pair(wlist_in[j], 1.0));
+    pairs.push_back(std::make_pair(word_ids_in[j], 1.0));
     SparseVector<BaseFloat> v(input_dim, pairs);
     input_frames.SetRow(j, v);
   }
@@ -70,9 +70,9 @@ NnetExample GetEgsFromSent(const vector<int>& wlist_in, int input_dim,
   eg.io.push_back(NnetIo("input", 0, input_frames));
 
   Posterior posterior;
-  vector<std::pair<int32, BaseFloat> > p;
-  for (int i = 1; i < wlist_out.size(); i++) {
-    p.push_back(std::make_pair(wlist_out[i], 1.0));
+  for (int i = 1; i < word_ids_out.size(); i++) {
+    vector<std::pair<int32, BaseFloat> > p;
+    p.push_back(std::make_pair(word_ids_out[i], 1.0));
     posterior.push_back(p);
   }
 
@@ -125,7 +125,7 @@ void RnnlmEval(NnetComputeProb &computer, // can't make this const it seems
                                      word_ids_out, output_dim);
     computer.Compute(egs);
     const SimpleObjectiveInfo *info = computer.GetObjective("output");
-    ofile << info->tot_weight + obj_to_add << endl;
+    ofile << info->tot_objective + obj_to_add << endl;
     computer.Reset();
   }
 }
