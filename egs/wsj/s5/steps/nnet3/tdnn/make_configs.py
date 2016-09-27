@@ -161,6 +161,8 @@ def CheckArgs(args):
                             "--pnorm-input-dim or --pnorm-output-dim or --relu-dim-init options");
         args.nonlin_input_dim = args.relu_dim
         args.nonlin_output_dim = args.relu_dim
+        args.nonlin_output_dim_final = None
+        args.nonlin_output_dim_init = None
         args.nonlin_type = 'relu'
 
     elif not args.relu_dim_final is None:
@@ -171,6 +173,7 @@ def CheckArgs(args):
             raise Exception("--relu-dim-init argument should also be provided with --relu-dim-final")
         if args.relu_dim_init > args.relu_dim_final:
             raise Exception("--relu-dim-init has to be no larger than --relu-dim-final")
+        args.nonlin_input_dim = None
         args.nonlin_output_dim = None
         args.nonlin_output_dim_final = args.relu_dim_final
         args.nonlin_output_dim_init = args.relu_dim_init
@@ -187,6 +190,8 @@ def CheckArgs(args):
         args.nonlin_output_dim = args.pnorm_output_dim
         if (args.nonlin_input_dim < args.nonlin_output_dim) or (args.nonlin_input_dim % args.nonlin_output_dim != 0):
             raise Exception("Invalid --pnorm-input-dim {0} and --pnorm-output-dim {1}".format(args.nonlin_input_dim, args.nonlin_output_dim))
+        args.nonlin_output_dim_final = None
+        args.nonlin_output_dim_init = None
         args.nonlin_type = 'pnorm'
 
     if args.add_final_sigmoid and args.include_log_softmax:
