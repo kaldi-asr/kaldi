@@ -33,7 +33,7 @@ namespace kaldi {
 namespace nnet3 {
 
 
-/// \file nnet-utils.h
+/// \file nnet3/nnet-utils.h
 /// This file contains some miscellaneous functions dealing with class Nnet.
 
 /// Given an nnet and a computation request, this function works out which

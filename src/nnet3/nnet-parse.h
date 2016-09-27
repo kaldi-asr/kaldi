@@ -88,7 +88,8 @@ class ConfigLine {
 // using the ConfigLine mechanism.
 
 
-/// \file This header contains a few parsing-related functions that are used
+/// \file nnet-parse.h
+///   This header contains a few parsing-related functions that are used
 ///    while reading parsing neural network files and config files.
 
 /// Function used in Init routines.  Suppose name=="foo", if "string" has a

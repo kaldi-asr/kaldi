@@ -34,7 +34,8 @@
 namespace kaldi {
 namespace nnet3 {
 
-/// @file  This file contains declarations of components that are "simple", meaning
+/// @file  nnet-simple-component.h
+///   This file contains declarations of components that are "simple", meaning
 ///   they don't care about the indexes they are operating on, produce one
 ///   output for one input, and return the kSimpleComponent flag in their
 ///   Properties(): for example, tanh and affine components.  In
