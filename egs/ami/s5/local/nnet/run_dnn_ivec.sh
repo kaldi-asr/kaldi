@@ -29,7 +29,7 @@ graph_dir=$gmmdir/graph_${LM}
 set -euxo pipefail
 
 # Store fMLLR features, so we can train on them easily,
-if [ $stage -le 0 -a ! -e $data_fmllr/$mic/eval ]; then
+if [ $stage -le 0 ]; then
   # eval
   dir=$data_fmllr/$mic/eval
   steps/nnet/make_fmllr_feats.sh --nj 15 --cmd "$train_cmd" \
@@ -49,67 +49,69 @@ if [ $stage -le 0 -a ! -e $data_fmllr/$mic/eval ]; then
   utils/subset_data_dir_tr_cv.sh $dir ${dir}_tr90 ${dir}_cv10
 fi
 
-train=data_ihm-fmllr-tri4/ihm/train
-dev=data_ihm-fmllr-tri4/ihm/dev
-eval=data_ihm-fmllr-tri4/ihm/eval
-
-lrate=0.00025
-param_std=0.02
-lr_alpha=1.0
-lr_beta=0.75
-dropout_schedule=0.8,0.8,0.8,0.8,0.8,1.0
-gmm=$gmmdir
-graph=$graph_dir
-
-# Train 6 layer DNN from random initialization,
-# - Parametric RELU, alphas+betas trained,
-# - Dropout retention 0.8 in 5 initial epochs with fixed learning rate,
+# Prepare the i-vectors,
 if [ $stage -le 1 ]; then
-  # Train the DNN optimizing per-frame cross-entropy.
-  dir=exp/$mic/dnn4d-6L1024-relu
-  ali=${gmm}_ali
+  local/nnet/prepare_ivectors.sh
+fi
+
+# Pre-train DBN, i.e. a stack of RBMs,
+ivector=scp:$data_fmllr/ihm/ivector/ivectors_spk-as-utt_normalized.scp
+if [ $stage -le 2 ]; then
+  dir=exp/$mic/dnn4_pretrain-dbn-ivec
+  $cuda_cmd $dir/log/pretrain_dbn.log \
+    steps/nnet/pretrain_dbn.sh --rbm-iter 1 --ivector $ivector \
+    $data_fmllr/$mic/train $dir
+fi
+
+# Train the DNN optimizing per-frame cross-entropy,
+if [ $stage -le 3 ]; then
+  dir=exp/$mic/dnn4_pretrain-dbn-ivec_dnn
+  ali=${gmmdir}_ali
+  feature_transform=exp/$mic/dnn4_pretrain-dbn-ivec/final.feature_transform
+  dbn=exp/$mic/dnn4_pretrain-dbn-ivec/6.dbn
   # Train
   $cuda_cmd $dir/log/train_nnet.log \
-    steps/nnet/train.sh --learn-rate $lrate \
-    --splice 5 --hid-layers 6 --hid-dim 1024 \
-    --proto-opts "--activation-type=<ParametricRelu> --activation-opts=<AlphaLearnRateCoef>_${lr_alpha}_<BetaLearnRateCoef>_${lr_beta} --param-stddev-factor $param_std --hid-bias-mean 0 --hid-bias-range 0 --with-dropout --no-glorot-scaled-stddev --no-smaller-input-weights" \
-    --scheduler-opts "--keep-lr-iters 5 --dropout-schedule $dropout_schedule" \
-    ${train}_tr90 ${train}_cv10 data/lang $ali $ali $dir
+    steps/nnet/train.sh --feature-transform $feature_transform --ivector $ivector \
+    --dbn $dbn --hid-layers 0 --learn-rate 0.008 \
+    $data_fmllr/$mic/train_tr90 $data_fmllr/$mic/train_cv10 data/lang $ali $ali $dir
   # Decode (reuse HCLG graph)
-  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --acwt 0.1 \
-    $graph $dev $dir/decode_$(basename $dev)
-  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --acwt 0.1 \
-    $graph $eval $dir/decode_$(basename $eval)
+  steps/nnet/decode.sh --nj $nj_decode --cmd "$decode_cmd" --config conf/decode_dnn.conf --acwt 0.1 \
+    --num-threads 3 --ivector $ivector \
+    $graph_dir $data_fmllr/$mic/dev $dir/decode_dev_${LM}
+  steps/nnet/decode.sh --nj $nj_decode --cmd "$decode_cmd" --config conf/decode_dnn.conf --acwt 0.1 \
+    --num-threads 3 --ivector $ivector \
+    $graph_dir $data_fmllr/$mic/eval $dir/decode_eval_${LM}
 fi
 
 # Sequence training using sMBR criterion, we do Stochastic-GD with
 # per-utterance updates. We use usually good acwt 0.1.
 # Lattices are not regenerated (it is faster).
 
-dir=exp/$mic/dnn4d-6L1024-relu_smbr
-srcdir=exp/$mic/dnn4d-6L1024-relu
+dir=exp/$mic/dnn4_pretrain-dbn-ivec_dnn_smbr
+srcdir=exp/$mic/dnn4_pretrain-dbn-ivec_dnn
 acwt=0.1
 
 # Generate lattices and alignments,
-if [ $stage -le 3 ]; then
-  steps/nnet/align.sh --nj $nj --cmd "$train_cmd" \
+if [ $stage -le 4 ]; then
+  steps/nnet/align.sh --nj $nj --cmd "$train_cmd" --ivector $ivector \
     $data_fmllr/$mic/train data/lang $srcdir ${srcdir}_ali
-  steps/nnet/make_denlats.sh --nj $nj --cmd "$decode_cmd" --config conf/decode_dnn.conf \
-    --acwt $acwt $data_fmllr/$mic/train data/lang $srcdir ${srcdir}_denlats
+  steps/nnet/make_denlats.sh --nj $nj --cmd "$decode_cmd" --ivector $ivector \
+    --config conf/decode_dnn.conf --acwt $acwt \
+    $data_fmllr/$mic/train data/lang $srcdir ${srcdir}_denlats
 fi
 
 # Re-train the DNN by 4 epochs of sMBR,
-if [ $stage -le 4 ]; then
+if [ $stage -le 5 ]; then
   steps/nnet/train_mpe.sh --cmd "$cuda_cmd" --num-iters 4 --acwt $acwt --do-smbr true \
-    --learn-rate 0.0000003 \
+    --ivector $ivector \
     $data_fmllr/$mic/train data/lang $srcdir ${srcdir}_ali ${srcdir}_denlats $dir
   # Decode (reuse HCLG graph)
   for ITER in 4 1; do
     steps/nnet/decode.sh --nj $nj_decode --cmd "$decode_cmd" --config conf/decode_dnn.conf \
-      --nnet $dir/${ITER}.nnet --acwt $acwt \
+      --nnet $dir/${ITER}.nnet --acwt $acwt --ivector $ivector \
       $graph_dir $data_fmllr/$mic/dev $dir/decode_dev_${LM}_it${ITER}
     steps/nnet/decode.sh --nj $nj_decode --cmd "$decode_cmd" --config conf/decode_dnn.conf \
-      --nnet $dir/${ITER}.nnet --acwt $acwt \
+      --nnet $dir/${ITER}.nnet --acwt $acwt --ivector $ivector \
       $graph_dir $data_fmllr/$mic/eval $dir/decode_eval_${LM}_it${ITER}
   done
 fi
