@@ -52,8 +52,6 @@ for f in $srcdir/tree $srcdir/${iter}.mdl $data/wav.scp $lang/L.fst \
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
-utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
-cp $srcdir/phones.txt $dir || exit 1;
 cp $srcdir/{tree,${iter}.mdl} $dir || exit 1;
 
 grep -v '^--endpoint' $srcdir/conf/online_nnet2_decoding.conf >$dir/feature.conf || exit 1;

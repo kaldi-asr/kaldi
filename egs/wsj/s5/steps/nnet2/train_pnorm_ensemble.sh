@@ -157,9 +157,6 @@ splice_opts=`cat $alidir/splice_opts 2>/dev/null`
 cp $alidir/splice_opts $dir 2>/dev/null
 cp $alidir/tree $dir
 
-utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
-cp $alidir/phones.txt $dir || exit 1;
-
 if [ $stage -le -4 ]; then
   echo "$0: calling get_lda.sh"
   steps/nnet2/get_lda.sh $lda_opts --splice-width $splice_width --cmd "$cmd" $data $lang $alidir $dir || exit 1;

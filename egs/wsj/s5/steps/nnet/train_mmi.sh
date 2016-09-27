@@ -68,11 +68,6 @@ if ! $skip_cuda_check; then cuda-compiled || { echo "Error, CUDA not compiled-in
 
 mkdir -p $dir/log
 
-utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt
-utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt
-utils/lang/check_phones_compatible.sh $lang/phones.txt $denlatdir/phones.txt
-cp $alidir/phones.txt $dir
-
 cp $alidir/{final.mdl,tree} $dir
 
 silphonelist=`cat $lang/phones/silence.csl`

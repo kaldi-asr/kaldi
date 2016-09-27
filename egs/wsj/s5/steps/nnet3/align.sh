@@ -69,8 +69,7 @@ done
 
 cp $srcdir/{tree,${iter}.mdl} $dir || exit 1;
 
-utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
-cp $srcdir/phones.txt $dir || exit 1;
+
 ## Set up features.  Note: these are different from the normal features
 ## because we have one rspecifier that has the features for the entire
 ## training set, not separate ones for each batch.

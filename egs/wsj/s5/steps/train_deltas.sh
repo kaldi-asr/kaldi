@@ -58,9 +58,6 @@ nj=`cat $alidir/num_jobs` || exit 1;
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 
-utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
-cp $alidir/phones.txt $dir || exit 1;
-
 sdata=$data/split$nj;
 split_data.sh $data $nj || exit 1;
 

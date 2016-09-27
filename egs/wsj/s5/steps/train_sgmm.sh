@@ -85,9 +85,6 @@ cmvn_opts=`cat $alidir/cmvn_opts 2>/dev/null`
 cp $alidir/splice_opts $dir 2>/dev/null
 cp $alidir/cmvn_opts $dir 2>/dev/null # cmn/cmvn option.
 
-utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
-cp $alidir/phones.txt $dir || exit 1;
-
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 
 spkvecs_opt=  # Empty option for now, until we estimate the speaker vectors.
