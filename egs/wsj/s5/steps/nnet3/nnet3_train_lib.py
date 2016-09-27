@@ -24,15 +24,21 @@ def SendMail(message, subject, email_id):
         logger.info(" Unable to send mail due to error:\n {error}".format(error = str(e)))
         pass
 
+def StrToBool(values):
+    if values == "true":
+        return True
+    elif values == "false":
+        return False
+    else:
+        raise ValueError
+
 class StrToBoolAction(argparse.Action):
     """ A custom action to convert bools from shell format i.e., true/false
         to python format i.e., True/False """
     def __call__(self, parser, namespace, values, option_string=None):
-        if values == "true":
-            setattr(namespace, self.dest, True)
-        elif values == "false":
-            setattr(namespace, self.dest, False)
-        else:
+        try:
+            setattr(namespace, self.dest, StrToBool(values))
+        except ValueError:
             raise Exception("Unknown value {0} for --{1}".format(values, self.dest))
 
 class NullstrToNoneAction(argparse.Action):
@@ -105,6 +111,49 @@ def GetSuccessfulModels(num_models, log_file_pattern, difference_threshold=1.0):
 
     return [accepted_models, max_index+1]
 
+def GetAverageNnetModel(dir, iter, nnets_list, run_opts, use_raw_nnet = False, shrink = None):
+    scale = 1.0
+    if shrink is not None:
+        scale = shrink
+
+    new_iter = iter + 1
+    if use_raw_nnet:
+        if shrink is not None:
+            out_model = "- \| nnet3-copy --scale={scale} - {dir}/{new_iter}.raw".format(dir = dir, new_iter = new_iter, scale = scale)
+        else:
+            out_model = "{dir}/{new_iter}.raw".format(dir = dir, new_iter = new_iter)
+    else:
+        out_model = "- \| nnet3-am-copy --set-raw-nnet=- --scale={scale} {dir}/{iter}.mdl {dir}/{new_iter}.mdl".format(dir = dir, iter = iter, new_iter = new_iter, scale = scale)
+
+    RunKaldiCommand("""
+{command} {dir}/log/average.{iter}.log \
+nnet3-average {nnets_list} \
+{out_model}""".format(command = run_opts.command,
+               dir = dir,
+               iter = iter,
+               nnets_list = nnets_list,
+               out_model = out_model))
+
+def GetBestNnetModel(dir, iter, best_model_index, run_opts, use_raw_nnet = False, shrink = None):
+    scale = 1.0
+    if shrink is not None:
+        scale = shrink
+
+    best_model = '{dir}/{next_iter}.{best_model_index}.raw'.format(dir = dir, next_iter = iter + 1, best_model_index = best_model_index)
+
+    if use_raw_nnet:
+        out_model = '{dir}/{next_iter}.raw'.format(dir = dir, next_iter = iter + 1)
+    else:
+        out_model = '- \| nnet3-am-copy --set-raw-nnet=- {dir}/{iter}.mdl {dir}/{next_iter}.mdl'.format(dir = dir, iter = iter, new_iter = iter + 1)
+
+    RunKaldiCommand("""
+{command} {dir}/log/select.{iter}.log \
+nnet3-copy --scale={scale} {best_model} \
+{out_model}""".format(command = run_opts.command,
+               dir = dir, iter = iter,
+               best_model =  best_model,
+               out_model = out_model, scale = scale))
+
 def GetNumberOfLeaves(alidir):
     [stdout, stderr] = RunKaldiCommand("tree-info {0}/tree 2>/dev/null | grep num-pdfs".format(alidir))
     parts = stdout.split()
@@ -120,6 +169,7 @@ def GetNumberOfJobs(alidir):
     except IOError, ValueError:
         raise Exception('Exception while reading the number of alignment jobs')
     return num_jobs
+
 def GetIvectorDim(ivector_dir = None):
     if ivector_dir is None:
         return 0
@@ -129,6 +179,11 @@ def GetIvectorDim(ivector_dir = None):
 
 def GetFeatDim(feat_dir):
     [stdout_val, stderr_val] = RunKaldiCommand("feat-to-dim --print-args=false scp:{data}/feats.scp -".format(data = feat_dir))
+    feat_dim = int(stdout_val)
+    return feat_dim
+
+def GetFeatDimFromScp(feat_scp):
+    [stdout_val, stderr_val] =  RunKaldiCommand("feat-to-dim --print-args=false scp:{feat_scp} -".format(feat_scp = feat_scp))
     feat_dim = int(stdout_val)
     return feat_dim
 
@@ -205,6 +260,28 @@ def ParseModelConfigVarsFile(var_file):
 
     raise Exception('Error while parsing the file {0}'.format(var_file))
 
+def ParseModelConfigGenericVarsFile(var_file):
+    variables = {}
+    try:
+        var_file_handle = open(var_file, 'r')
+        for line in var_file_handle:
+            parts = line.split('=')
+            field_name = parts[0].strip()
+            field_value = parts[1].strip()
+            if field_name in ['model_left_context', 'left_context']:
+                variables['model_left_context'] = int(field_value)
+            elif field_name in ['model_right_context', 'right_context']:
+                variables['model_right_context'] = int(field_value)
+            elif field_name == 'num_hidden_layers':
+                variables['num_hidden_layers'] = int(field_value)
+            else:
+                variables[field_name] = field_value
+        return variables
+    except ValueError:
+        # we will throw an error at the end of the function so I will just pass
+        pass
+
+    raise Exception('Error while parsing the file {0}'.format(var_file))
 
 def GenerateEgs(data, alidir, egs_dir,
                 left_context, right_context,
@@ -239,6 +316,53 @@ steps/nnet3/get_egs.sh {egs_opts} \
           valid_right_context = valid_right_context,
           stage = stage, samples_per_iter = samples_per_iter,
           frames_per_eg = frames_per_eg, srand = srand, data = data, alidir = alidir,
+          egs_dir = egs_dir,
+          egs_opts = egs_opts if egs_opts is not None else '' ))
+
+def GenerateEgsFromTargets(data, targets_scp, egs_dir,
+                left_context, right_context,
+                valid_left_context, valid_right_context,
+                run_opts, stage = 0,
+                feat_type = 'raw', online_ivector_dir = None,
+                target_type = 'dense', num_targets = -1,
+                samples_per_iter = 20000, frames_per_eg = 20, srand = 0,
+                egs_opts = None, cmvn_opts = None, transform_dir = None):
+    if target_type == 'dense':
+        num_targets = GetFeatDimFromScp(targets_scp)
+    else:
+        if num_targets == -1:
+            raise Exception("--num-targets is required if target-type is dense")
+
+    RunKaldiCommand("""
+steps/nnet3/get_egs_targets.sh {egs_opts} \
+  --cmd "{command}" \
+  --cmvn-opts "{cmvn_opts}" \
+  --feat-type {feat_type} \
+  --transform-dir "{transform_dir}" \
+  --online-ivector-dir "{ivector_dir}" \
+  --left-context {left_context} --right-context {right_context} \
+  --valid-left-context {valid_left_context} \
+  --valid-right-context {valid_right_context} \
+  --stage {stage} \
+  --samples-per-iter {samples_per_iter} \
+  --frames-per-eg {frames_per_eg} \
+  --srand {srand} \
+  --target-type {target_type} \
+  --num-targets {num_targets} \
+  {data} {targets_scp} {egs_dir}
+      """.format(command = run_opts.egs_command,
+          cmvn_opts = cmvn_opts if cmvn_opts is not None else '',
+          feat_type = feat_type,
+          transform_dir = transform_dir if transform_dir is not None else '',
+          ivector_dir = online_ivector_dir if online_ivector_dir is not None else '',
+          left_context = left_context, right_context = right_context,
+          valid_left_context = valid_left_context,
+          valid_right_context = valid_right_context,
+          stage = stage, samples_per_iter = samples_per_iter,
+          frames_per_eg = frames_per_eg, srand = srand,
+          num_targets = num_targets,
+          data = data,
+          targets_scp = targets_scp, target_type = target_type,
           egs_dir = egs_dir,
           egs_opts = egs_opts if egs_opts is not None else '' ))
 
@@ -351,7 +475,7 @@ vector-sum --binary=false {dir}/pdf_counts.* {dir}/pdf_counts
     WriteKaldiMatrix(output_file, [scaled_counts])
     ForceSymlink("../presoftmax_prior_scale.vec", "{0}/configs/presoftmax_prior_scale.vec".format(dir))
 
-def PrepareInitialAcousticModel(dir, alidir, run_opts):
+def PrepareInitialAcousticModel(dir, alidir, run_opts, use_raw_nnet = False):
     """ Adds the first layer; this will also add in the lda.mat and
         presoftmax_prior_scale.vec. It will also prepare the acoustic model
         with the transition model."""
@@ -361,13 +485,14 @@ def PrepareInitialAcousticModel(dir, alidir, run_opts):
    nnet3-init --srand=-3 {dir}/init.raw {dir}/configs/layer1.config {dir}/0.raw     """.format(command = run_opts.command,
                dir = dir))
 
-  # Convert to .mdl, train the transitions, set the priors.
-    RunKaldiCommand("""
-{command} {dir}/log/init_mdl.log \
-    nnet3-am-init {alidir}/final.mdl {dir}/0.raw - \| \
-    nnet3-am-train-transitions - "ark:gunzip -c {alidir}/ali.*.gz|" {dir}/0.mdl
-        """.format(command = run_opts.command,
-                   dir = dir, alidir = alidir))
+    if not use_raw_nnet:
+      # Convert to .mdl, train the transitions, set the priors.
+        RunKaldiCommand("""
+    {command} {dir}/log/init_mdl.log \
+        nnet3-am-init {alidir}/final.mdl {dir}/0.raw - \| \
+        nnet3-am-train-transitions - "ark:gunzip -c {alidir}/ali.*.gz|" {dir}/0.mdl
+            """.format(command = run_opts.command,
+                       dir = dir, alidir = alidir))
 
 def VerifyIterations(num_iters, num_epochs, num_hidden_layers,
                      num_archives, max_models_combine, add_layers_period,
@@ -478,13 +603,16 @@ def GetLearningRate(iter, num_jobs, num_iters, num_archives_processed,
 
     return num_jobs * effective_learning_rate
 
-def DoShrinkage(iter, model_file, non_linearity, shrink_threshold):
+def DoShrinkage(iter, model_file, name, non_linearity, shrink_threshold, use_raw_nnet = False):
 
     if iter == 0:
         return True
 
     try:
-        output, error = RunKaldiCommand("nnet3-am-info --print-args=false {model_file} | grep {non_linearity}".format(non_linearity = non_linearity, model_file = model_file))
+        if use_raw_nnet:
+            output, error = RunKaldiCommand("nnet3-info --print-args=false {model_file} | grep '{name}' | grep {non_linearity}".format(name = name, non_linearity = non_linearity, model_file = model_file))
+        else:
+            output, error = RunKaldiCommand("nnet3-am-info --print-args=false {model_file} | grep '{name}' | grep {non_linearity}".format(name = name, non_linearity = non_linearity, model_file = model_file))
         output = output.strip().split("\n")
         # eg.
         # component name=Lstm1_f type=SigmoidComponent, dim=1280, count=5.02e+05, value-avg=[percentiles(0,1,2,5 10,20,50,80,90 95,98,99,100)=(0.06,0.17,0.19,0.24 0.28,0.33,0.44,0.62,0.79 0.96,0.99,1.0,1.0), mean=0.482, stddev=0.198], deriv-avg=[percentiles(0,1,2,5 10,20,50,80,90 95,98,99,100)=(0.0001,0.003,0.004,0.03 0.12,0.18,0.22,0.24,0.25 0.25,0.25,0.25,0.25), mean=0.198, stddev=0.0591]
@@ -506,41 +634,53 @@ def DoShrinkage(iter, model_file, non_linearity, shrink_threshold):
 
     return False
 
-def ComputeTrainCvProbabilities(dir, iter, egs_dir, run_opts, mb_size=256, wait = False):
+def ComputeTrainCvProbabilities(dir, iter, egs_dir, run_opts, mb_size=256, wait = False, use_raw_nnet = False, compute_accuracy = True):
 
-    model = '{0}/{1}.mdl'.format(dir, iter)
+    if use_raw_nnet:
+        model = "{dir}/{iter}.raw".format(dir = dir, iter = iter)
+    else:
+        model = "nnet3-am-copy --raw=true {dir}/{iter}.mdl - |".format(dir = dir, iter = iter)
+
+    compute_prob_opts = ""
+    if compute_accuracy:
+        compute_prob_opts = "--compute-accuracy"
 
     RunKaldiCommand("""
 {command} {dir}/log/compute_prob_valid.{iter}.log \
-  nnet3-compute-prob "nnet3-am-copy --raw=true {model} - |" \
+  nnet3-compute-prob {compute_prob_opts} "{model}" \
         "ark,bg:nnet3-merge-egs --minibatch-size={mb_size} ark:{egs_dir}/valid_diagnostic.egs ark:- |"
     """.format(command = run_opts.command,
                dir = dir,
                iter = iter,
                mb_size = mb_size,
                model = model,
+               compute_prob_opts = compute_prob_opts,
                egs_dir = egs_dir), wait = wait)
 
     RunKaldiCommand("""
 {command} {dir}/log/compute_prob_train.{iter}.log \
-  nnet3-compute-prob "nnet3-am-copy --raw=true {model} - |" \
+  nnet3-compute-prob {compute_prob_opts} "{model}" \
        "ark,bg:nnet3-merge-egs --minibatch-size={mb_size} ark:{egs_dir}/train_diagnostic.egs ark:- |"
     """.format(command = run_opts.command,
                dir = dir,
                iter = iter,
                mb_size = mb_size,
                model = model,
+               compute_prob_opts = compute_prob_opts,
                egs_dir = egs_dir), wait = wait)
 
+def ComputeProgress(dir, iter, egs_dir, run_opts, mb_size=256, wait=False, use_raw_nnet = False):
+    if use_raw_nnet:
+        prev_model = '{0}/{1}.raw'.format(dir, iter - 1)
+        model = '{0}/{1}.raw'.format(dir, iter)
+    else:
+        prev_model = "nnet3-am-copy --raw=true {dir}/{iter}.mdl - |".format(dir, iter - 1)
+        model = "nnet3-am-copy --raw=true {dir}/{iter}.mdl - |".format(dir, iter)
 
-def ComputeProgress(dir, iter, egs_dir, run_opts, mb_size=256, wait=False):
-
-    prev_model = '{0}/{1}.mdl'.format(dir, iter - 1)
-    model = '{0}/{1}.mdl'.format(dir, iter)
     RunKaldiCommand("""
 {command} {dir}/log/progress.{iter}.log \
-nnet3-info "nnet3-am-copy --raw=true {model} - |" '&&' \
-nnet3-show-progress --use-gpu=no "nnet3-am-copy --raw=true {prev_model} - |" "nnet3-am-copy --raw=true {model} - |" \
+nnet3-info {model} '&&' \
+nnet3-show-progress --use-gpu=no {prev_model} {model} \
 "ark,bg:nnet3-merge-egs --minibatch-size={mb_size} ark:{egs_dir}/train_diagnostic.egs ark:-|"
     """.format(command = run_opts.command,
                dir = dir,
@@ -551,7 +691,8 @@ nnet3-show-progress --use-gpu=no "nnet3-am-copy --raw=true {prev_model} - |" "nn
                egs_dir = egs_dir), wait = wait)
 
 def CombineModels(dir, num_iters, num_iters_combine, egs_dir,
-                  run_opts, chunk_width = None):
+                  run_opts, chunk_width = None,
+                  use_raw_nnet = False):
     # Now do combination.  In the nnet3 setup, the logic
     # for doing averaging of subsets of the models in the case where
     # there are too many models to reliably esetimate interpolation
@@ -559,10 +700,16 @@ def CombineModels(dir, num_iters, num_iters_combine, egs_dir,
     raw_model_strings = []
     print num_iters_combine
     for iter in range(num_iters - num_iters_combine + 1, num_iters + 1):
-      model_file = '{0}/{1}.mdl'.format(dir, iter)
-      if not os.path.exists(model_file):
-          raise Exception('Model file {0} missing'.format(model_file))
-      raw_model_strings.append('"nnet3-am-copy --raw=true {0} -|"'.format(model_file))
+      if use_raw_nnet:
+          model_file = '{0}/{1}.raw'.format(dir, iter)
+          if not os.path.exists(model_file):
+              raise Exception('Model file {0} missing'.format(model_file))
+          raw_model_strings.append(model_file)
+      else:
+          model_file = '{0}/{1}.mdl'.format(dir, iter)
+          if not os.path.exists(model_file):
+              raise Exception('Model file {0} missing'.format(model_file))
+          raw_model_strings.append('"nnet3-am-copy --raw=true {0} -|"'.format(model_file))
 
     if chunk_width is not None:
         # this is an RNN model
@@ -570,17 +717,22 @@ def CombineModels(dir, num_iters, num_iters_combine, egs_dir,
     else:
         mbsize = 1024
 
+    if use_raw_nnet:
+        out_model = '{dir}/final.raw'.format(dir = dir)
+    else:
+        out_model = "|nnet3-am-copy --set-raw-nnet=- {dir}/{num_iters}.mdl {dir}/combined.mdl".format(dir = dir, num_iters = num_iters)
+
     RunKaldiCommand("""
 {command} {combine_queue_opt} {dir}/log/combine.log \
 nnet3-combine --num-iters=40 \
    --enforce-sum-to-one=true --enforce-positive-weights=true \
    --verbose=3 {raw_models} "ark,bg:nnet3-merge-egs --measure-output-frames=false --minibatch-size={mbsize} ark:{egs_dir}/combine.egs ark:-|" \
-"|nnet3-am-copy --set-raw-nnet=- {dir}/{num_iters}.mdl {dir}/combined.mdl"
-    """.format(command = run_opts.command,
+   {out_model}
+   """.format(command = run_opts.command,
                combine_queue_opt = run_opts.combine_queue_opt,
                dir = dir, raw_models = " ".join(raw_model_strings),
                mbsize = mbsize,
-               num_iters = num_iters,
+               out_model = out_model,
                egs_dir = egs_dir))
 
   # Compute the probability of the final, combined model with
@@ -589,7 +741,7 @@ nnet3-combine --num-iters=40 \
     ComputeTrainCvProbabilities(dir, 'combined', egs_dir, run_opts, wait = False)
 
 def ComputeAveragePosterior(dir, iter, egs_dir, num_archives,
-                            prior_subset_size, run_opts):
+                            prior_subset_size, run_opts, use_raw_nnet = False):
     # Note: this just uses CPUs, using a smallish subset of data.
     """ Computes the average posterior of the network"""
     import glob
@@ -601,15 +753,20 @@ def ComputeAveragePosterior(dir, iter, egs_dir, num_archives,
     else:
         egs_part = 'JOB'
 
+    if use_raw_nnet:
+        model = "{dir}/final.raw".format(dir = dir)
+    else:
+        model = "nnet3-am-copy --raw=true {dir}/combined.mdl -|".format(dir = dir)
+
     RunKaldiCommand("""
 {command} JOB=1:{num_jobs_compute_prior} {prior_queue_opt} {dir}/log/get_post.{iter}.JOB.log \
     nnet3-subset-egs --srand=JOB --n={prior_subset_size} ark:{egs_dir}/egs.{egs_part}.ark ark:- \| \
     nnet3-merge-egs --measure-output-frames=true --minibatch-size=128 ark:- ark:- \| \
     nnet3-compute-from-egs {prior_gpu_opt} --apply-exp=true \
-  "nnet3-am-copy --raw=true {dir}/combined.mdl -|" ark:- ark:- \| \
+    {model} ark:- ark:- \| \
 matrix-sum-rows ark:- ark:- \| vector-sum ark:- {dir}/post.{iter}.JOB.vec
     """.format(command = run_opts.command,
-               dir = dir,
+               dir = dir, model = model,
                num_jobs_compute_prior = run_opts.num_jobs_compute_prior,
                prior_queue_opt = run_opts.prior_queue_opt,
                iter = iter, prior_subset_size = prior_subset_size,
@@ -643,25 +800,32 @@ def RemoveEgs(egs_dir):
 
 def CleanNnetDir(nnet_dir, num_iters, egs_dir, num_iters_combine = None,
                  preserve_model_interval = 100,
-                 remove_egs = True):
+                 remove_egs = True,
+                 use_raw_nnet = False):
     try:
         if remove_egs:
             RemoveEgs(egs_dir)
 
         for iter in range(num_iters):
             RemoveModel(nnet_dir, iter, num_iters, 1,
-                        preserve_model_interval)
+                        preserve_model_interval,
+                        use_raw_nnet = use_raw_nnet)
     except (IOError, OSError) as err:
         logger.warning("Error while cleaning up the nnet directory")
         raise err
 
 def RemoveModel(nnet_dir, iter, num_iters, num_iters_combine = None,
-               preserve_model_interval = 100):
+               preserve_model_interval = 100,
+               use_raw_nnet = False):
     if iter % preserve_model_interval == 0:
         return
     if num_iters_combine is not None and iter >= num_iters - num_iters_combine + 1 :
         return
-    file_name = '{0}/{1}.mdl'.format(nnet_dir, iter)
+    if use_raw_nnet:
+        file_name = '{0}/{1}.raw'.format(nnet_dir, iter)
+    else:
+        file_name = '{0}/{1}.mdl'.format(nnet_dir, iter)
+
     if os.path.isfile(file_name):
         os.remove(file_name)
 
