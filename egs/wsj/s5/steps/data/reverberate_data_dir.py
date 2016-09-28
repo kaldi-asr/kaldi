@@ -14,21 +14,31 @@ def GetArgs():
     parser = argparse.ArgumentParser(description="Reverberate the data directory with an option "
                                                  "to add isotropic and point source noises. "
                                                  "Usage: reverberate_data_dir.py [options...] <in-data-dir> <out-data-dir> "
-                                                 "E.g. reverberate_data_dir.py --rir-list-file rir_list "
+                                                 "E.g. reverberate_data_dir.py --rir-set-parameters rir_list "
                                                  "--foreground-snrs 20:10:15:5:0 --background-snrs 20:10:15:5:0 "
                                                  "--noise-list-file noise_list --speech-rvb-probability 1 --num-replications 2 "
                                                  "--random-seed 1 data/train data/train_rvb",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument("--rir-list-file", type=str, required = True, 
-                        help="RIR information file, the format of the file is "
+    parser.add_argument("--rir-set-parameters", type=str, action='append', required = True, dest = "rir_set_para_array", 
+                        help="Specifies the parameters of an RIR set. "
+                        "Supports the specification of  mixture_weight and rir_list_file_name. The mixture weight is optional. "
+                        "The default mixture weight is the probability mass remaining after adding the mixture weights "
+                        "of all the RIR lists, uniformly divided among the RIR lists without mixture weights. "
+                        "E.g. --rir-set-parameters '0.3, rir_list' or 'rir_list' "
+                        "the format of the RIR list file is "
                         "--rir-id <string,required> --room-id <string,required> "
                         "--receiver-position-id <string,optional> --source-position-id <string,optional> "
                         "--rt-60 <float,optional> --drr <float, optional> location <rspecifier> "
                         "E.g. --rir-id 00001 --room-id 001 --receiver-position-id 001 --source-position-id 00001 "
                         "--rt60 0.58 --drr -4.885 data/impulses/Room001-00001.wav")
-    parser.add_argument("--noise-list-file", type=str, default = None,
-                        help="Noise information file, the format of the file is"
+    parser.add_argument("--noise-set-parameters", type=str, action='append', default = None, dest = "noise_set_para_array",
+                        help="Specifies the parameters of an noise set. "
+                        "Supports the specification of  mixture_weight and noise_list_file_name. The mixture weight is optional. "
+                        "The default mixture weight is the probability mass remaining after adding the mixture weights "
+                        "of all the noise lists, uniformly divided among the noise lists without mixture weights. "
+                        "E.g. --noise-set-parameters '0.3, noise_list' or 'noise_list' "
+                        "the format of the noise list file is "
                         "--noise-id <string,required> --noise-type <choices = {isotropic, point source},required> "
                         "--bg-fg-type <choices = {background, foreground}, default=background> "
                         "--room-linkage <str, specifies the room associated with the noise file. Required if isotropic> "
@@ -45,6 +55,12 @@ def GetArgs():
                         help="Probability of adding point-source noises, e.g. 0 <= p <= 1")
     parser.add_argument("--isotropic-noise-addition-probability", type=float, default = 1.0,
                         help="Probability of adding isotropic noises, e.g. 0 <= p <= 1")
+    parser.add_argument("--rir-smoothing-weight", type=float, default = 0.3,
+                        help="Smoothing weight for the RIR probabilties, e.g. 0 <= p <= 1. If p = 0, no smoothing will be done. "
+                        "The RIR distribution will be mixed with a uniform distribution according to the smoothing weight")
+    parser.add_argument("--noise-smoothing-weight", type=float, default = 0.3,
+                        help="Smoothing weight for the noise probabilties, e.g. 0 <= p <= 1. If p = 0, no smoothing will be done. "
+                        "The noise distribution will be mixed with a uniform distribution according to the smoothing weight")
     parser.add_argument("--max-noises-per-minute", type=int, default = 2,
                         help="This controls the maximum number of point-source noises that could be added to a recording according to its duration")
     parser.add_argument('--random-seed', type=int, default=0, help='seed to be used in the randomization of impulses and noises')
@@ -67,13 +83,7 @@ def CheckArgs(args):
         os.makedirs(args.output_dir)
 
     ## Check arguments.
-    if not os.path.isfile(args.rir_list_file):
-        raise Exception(args.rir_list_file + " not found")
     
-    if args.noise_list_file is not None:
-        if not os.path.isfile(args.noise_list_file):
-            raise Exception(args.noise_list_file + " not found")
-
     if args.num_replicas > 1 and args.prefix is None:
         args.prefix = "rvb"
         warnings.warn("--prefix is set to 'rvb' as --num-replications is larger than 1.")
@@ -89,6 +99,12 @@ def CheckArgs(args):
 
     if args.isotropic_noise_addition_probability < 0 or args.isotropic_noise_addition_probability > 1:
         raise Exception("--isotropic-noise-addition-probability must be between 0 and 1")
+    
+    if args.rir_smoothing_weight < 0 or args.rir_smoothing_weight > 1:
+        raise Exception("--rir-smoothing-weight must be between 0 and 1")
+
+    if args.noise_smoothing_weight < 0 or args.noise_smoothing_weight > 1:
+        raise Exception("--noise-smoothing-weight must be between 0 and 1")
 
     if args.max_noises_per_minute < 0:
         raise Exception("--max-noises-per-minute cannot be negative")
@@ -368,11 +384,17 @@ def CreateReverberatedCopy(input_dir,
                            max_noises_per_minute  # maximum number of point-source noises that can be added to a recording according to its duration
                            ):
     
+    wav_scp = ParseFileToDict(input_dir + "/wav.scp", value_processor = lambda x: " ".join(x))
     if not os.path.isfile(input_dir + "/reco2dur"):
         print("Getting the duration of the recordings...");
-        data_lib.RunKaldiCommand("wav-to-duration --read-entire-file=true scp:{0}/wav.scp ark,t:{0}/reco2dur".format(input_dir))
+        read_entire_file="false"
+        for value in wav_scp.values():
+            # we will add more checks for sox commands which modify the header as we come across these cases in our data
+            if "sox" in value and "speed" in value:
+                read_entire_file="true"
+                break
+        data_lib.RunKaldiCommand("wav-to-duration --read-entire-file={1} scp:{0}/wav.scp ark,t:{0}/reco2dur".format(input_dir, read_entire_file))
     durations = ParseFileToDict(input_dir + "/reco2dur", value_processor = lambda x: float(x[0]))
-    wav_scp = ParseFileToDict(input_dir + "/wav.scp", value_processor = lambda x: " ".join(x))
     foreground_snr_array = map(lambda x: float(x), foreground_snr_string.split(':'))
     background_snr_array = map(lambda x: float(x), background_snr_string.split(':'))
 
@@ -404,9 +426,24 @@ def CreateReverberatedCopy(input_dir,
 
 
 # This function smooths the probability distribution in the list
-def SmoothProbabilityDistribution(list, smoothing_weight=0.3):
+def SmoothProbabilityDistribution(list, smoothing_weight=0.0, target_sum=1.0):
     if len(list) > 0:
-      uniform_probability = 1 / float(len(list))
+      num_unspecified = 0
+      accumulated_prob = 0
+      for item in list:
+          if item.probability is None:
+              num_unspecified += 1
+          else:
+              accumulated_prob += item.probability
+
+      # Compute the probability for the items without specifying their probability
+      uniform_probability = 0
+      if num_unspecified > 0 and accumulated_prob < 1:
+          uniform_probability = (1 - accumulated_prob) / float(num_unspecified)
+      elif num_unspecified > 0 and accumulate_prob >= 1:
+          warnings.warn("The sum of probabilities specified by user is larger than or equal to 1. "
+                        "The items without probabilities specified will be given zero to their probabilities.")
+
       for item in list:
           if item.probability is None:
               item.probability = uniform_probability
@@ -417,15 +454,38 @@ def SmoothProbabilityDistribution(list, smoothing_weight=0.3):
       # Normalize the probability
       sum_p = sum(item.probability for item in list)
       for item in list:
-          item.probability = item.probability / sum_p
+          item.probability = item.probability / sum_p * target_sum
 
     return list
+
+
+# This function parse the array of rir set parameter strings.
+# It will assign probabilities to those rir sets which don't have a probability
+# It will also check the existence of the rir list files.
+def ParseSetParameterStrings(set_para_array):
+    set_list = []
+    for set_para in set_para_array:
+        set = lambda: None
+        setattr(set, "filename", None)
+        setattr(set, "probability", None)
+        parts = set_para.split(',')
+        if len(parts) == 2:
+            set.probability = float(parts[0])
+            set.filename = parts[1].strip()
+        else:
+            set.filename = parts[0].strip()
+        if not os.path.isfile(set.filename):
+            raise Exception(set.filename + " not found")
+        set_list.append(set)
+
+    return SmoothProbabilityDistribution(set_list)
+
 
 # This function creates the RIR list 
 # Each rir object in the list contains the following attributes:
 # rir_id, room_id, receiver_position_id, source_position_id, rt60, drr, probability
 # Please refer to the help messages in the parser for the meaning of these attributes
-def ParseRirList(rir_list_file):
+def ParseRirList(rir_set_para_array, smoothing_weight):
     rir_parser = argparse.ArgumentParser()
     rir_parser.add_argument('--rir-id', type=str, required=True, help='This id is unique for each RIR and the noise may associate with a particular RIR by refering to this id')
     rir_parser.add_argument('--room-id', type=str, required=True, help='This is the room that where the RIR is generated')
@@ -438,13 +498,15 @@ def ParseRirList(rir_list_file):
     rir_parser.add_argument('rir_rspecifier', type=str, help="""rir rspecifier, it can be either a filename or a piped command. 
                             E.g. data/impulses/Room001-00001.wav or "sox data/impulses/Room001-00001.wav -t wav - |" """)
 
-    rir_list = []
-    rir_lines = map(lambda x: x.strip(), open(rir_list_file))
-    for line in rir_lines:
-        rir = rir_parser.parse_args(shlex.split(line))
-        rir_list.append(rir)
+    set_list = ParseSetParameterStrings(rir_set_para_array)
 
-    return SmoothProbabilityDistribution(rir_list)
+    rir_list = []
+    for rir_set in set_list:
+        current_rir_list = map(lambda x: rir_parser.parse_args(shlex.split(x.strip())),open(rir_set.filename))
+        rir_list += SmoothProbabilityDistribution(current_rir_list, smoothing_weight, rir_set.probability)
+
+    return rir_list
+
 
 # This dunction checks if the inputs are approximately equal assuming they are floats.
 def almost_equal(value_1, value_2, accuracy = 10**-8):
@@ -480,7 +542,7 @@ def MakeRoomDict(rir_list):
 # Each noise object in the list contains the following attributes:
 # noise_id, noise_type, bg_fg_type, room_linkage, probability, noise_rspecifier
 # Please refer to the help messages in the parser for the meaning of these attributes
-def ParseNoiseList(noise_list_file):
+def ParseNoiseList(noise_set_para_array, smoothing_weight):
     noise_parser = argparse.ArgumentParser()
     noise_parser.add_argument('--noise-id', type=str, required=True, help='noise id')
     noise_parser.add_argument('--noise-type', type=str, required=True, help='the type of noise; i.e. isotropic or point-source', choices = ["isotropic", "point-source"])
@@ -492,24 +554,28 @@ def ParseNoiseList(noise_list_file):
     noise_parser.add_argument('noise_rspecifier', type=str, help="""noise rspecifier, it can be either a filename or a piped command.
                               E.g. type5_noise_cirline_ofc_ambient1.wav or "sox type5_noise_cirline_ofc_ambient1.wav -t wav - |" """)
 
+    set_list = ParseSetParameterStrings(noise_set_para_array)
+
     pointsource_noise_list = []
     iso_noise_dict = {}
-    noise_lines = map(lambda x: x.strip(), open(noise_list_file))
-    for line in noise_lines:
-        noise = noise_parser.parse_args(shlex.split(line))
-        if noise.noise_type == "isotropic":
-            if noise.room_linkage is None:
-                raise Exception("--room-linkage must be specified if --noise-type is isotropic")
+    for noise_set in set_list:
+        current_noise_list = map(lambda x: noise_parser.parse_args(shlex.split(x.strip())),open(noise_set.filename))
+        current_pointsource_noise_list = []
+        for noise in current_noise_list:
+            if noise.noise_type == "isotropic":
+                if noise.room_linkage is None:
+                    raise Exception("--room-linkage must be specified if --noise-type is isotropic")
+                else:
+                    if noise.room_linkage not in iso_noise_dict:
+                        iso_noise_dict[noise.room_linkage] = []
+                    iso_noise_dict[noise.room_linkage].append(noise)
             else:
-                if noise.room_linkage not in iso_noise_dict:
-                    iso_noise_dict[noise.room_linkage] = []
-                iso_noise_dict[noise.room_linkage].append(noise)
-        else:
-            pointsource_noise_list.append(noise)
+                current_pointsource_noise_list.append(noise)
+
+        pointsource_noise_list += SmoothProbabilityDistribution(current_pointsource_noise_list, smoothing_weight, noise_set.probability)
 
     # ensure the point-source noise probabilities sum to 1 
     if len(pointsource_noise_list) > 0:
-        pointsource_noise_list = SmoothProbabilityDistribution(pointsource_noise_list)
         assert almost_equal(sum(noise.probability for noise in pointsource_noise_list), 1.0)
     
     # ensure the isotropic noise source probabilities for a given room sum to 1
@@ -523,11 +589,12 @@ def ParseNoiseList(noise_list_file):
 def Main():
     args = GetArgs()
     random.seed(args.random_seed)
-    rir_list = ParseRirList(args.rir_list_file)
+    rir_list = ParseRirList(args.rir_set_para_array, args.rir_smoothing_weight)
+    print("Number of RIRs is {0}".format(len(rir_list)))
     pointsource_noise_list = []
     iso_noise_dict = {}
-    if args.noise_list_file is not None:
-        pointsource_noise_list, iso_noise_dict = ParseNoiseList(args.noise_list_file)
+    if args.noise_set_para_array is not None:
+        pointsource_noise_list, iso_noise_dict = ParseNoiseList(args.noise_set_para_array, args.noise_smoothing_weight)
         print("Number of point-source noises is {0}".format(len(pointsource_noise_list)))
         print("Number of isotropic noises is {0}".format(sum(len(iso_noise_dict[key]) for key in iso_noise_dict.keys())))
     room_dict = MakeRoomDict(rir_list)
