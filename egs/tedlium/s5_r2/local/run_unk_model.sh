@@ -1,9 +1,9 @@
-#!/usr/bin/bash
+#!/bin/bash
 
 
 utils/lang/make_unk_lm.sh data/local/dict exp/unk_lang_model
 
-utils/prepare_lang.sh --unk-fst data/make_unk/unk_fst.txt data/local/dict "<unk>" data/local/lang data/lang_unk
+utils/prepare_lang.sh --unk-fst exp/unk_lang_model/unk_fst.txt data/local/dict "<unk>" data/local/lang data/lang_unk
 
 cp data/lang/G.fst data/lang_unk/G.fst
 
