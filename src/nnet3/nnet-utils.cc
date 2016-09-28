@@ -19,7 +19,9 @@
 // limitations under the License.
 
 #include "nnet3/nnet-utils.h"
+#include "nnet3/nnet-graph.h"
 #include "nnet3/nnet-simple-component.h"
+#include "nnet3/nnet-parse.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -299,7 +301,7 @@ void SetLearningRates(const Vector<BaseFloat> &learning_rates,
   KALDI_ASSERT(i == learning_rates.Dim());
 }
 
-void GetLearningRates(const Nnet &nnet, 
+void GetLearningRates(const Nnet &nnet,
                       Vector<BaseFloat> *learning_rates) {
   learning_rates->Resize(NumUpdatableComponents(nnet));
   int32 i = 0;
@@ -493,6 +495,174 @@ std::string NnetInfo(const Nnet &nnet) {
   ostr << nnet.Info();
   return ostr.str();
 }
+
+
+void FindOrphanComponents(const Nnet &nnet, std::vector<int32> *components) {
+  int32 num_components = nnet.NumComponents(), num_nodes = nnet.NumNodes();
+  std::vector<bool> is_used(num_components, false);
+  for (int32 i = 0; i < num_nodes; i++) {
+    if (nnet.IsComponentNode(i)) {
+      int32 c = nnet.GetNode(i).u.component_index;
+      KALDI_ASSERT(c >= 0 && c < num_components);
+      is_used[c] = true;
+    }
+  }
+  components->clear();
+  for (int32 i = 0; i < num_components; i++)
+    if (!is_used[i])
+      components->push_back(i);
+}
+
+void FindOrphanNodes(const Nnet &nnet, std::vector<int32> *nodes) {
+
+  std::vector<std::vector<int32> > depend_on_graph, dependency_graph;
+  NnetToDirectedGraph(nnet, &depend_on_graph);
+  // depend_on_graph[i] is a list of all the nodes that depend on i.
+  ComputeGraphTranspose(depend_on_graph, &dependency_graph);
+  // dependency_graph[i] is a list of all the nodes that i depends on,
+  // to be computed.
+
+  // Find all nodes required to produce the outputs.
+  int32 num_nodes = nnet.NumNodes();
+  assert(num_nodes == static_cast<int32>(dependency_graph.size()));
+  std::vector<bool> node_is_required(num_nodes, false);
+  std::vector<int32> queue;
+  for (int32 i = 0; i < num_nodes; i++) {
+    if (nnet.IsOutputNode(i))
+      queue.push_back(i);
+  }
+  while (!queue.empty()) {
+    int32 i = queue.back();
+    queue.pop_back();
+    if (!node_is_required[i]) {
+      node_is_required[i] = true;
+      for (size_t j = 0; j < dependency_graph[i].size(); j++)
+        queue.push_back(dependency_graph[i][j]);
+    }
+  }
+  nodes->clear();
+  for (int32 i = 0; i < num_nodes; i++) {
+    if (!node_is_required[i])
+      nodes->push_back(i);
+  }
+}
+
+void ReadEditConfig(std::istream &edit_config_is, Nnet *nnet) {
+  std::vector<std::string> lines;
+  ReadConfigLines(edit_config_is, &lines);
+  // we process this as a sequence of lines.
+  std::vector<ConfigLine> config_lines;
+  ParseConfigLines(lines, &config_lines);
+  for (size_t i = 0; i < config_lines.size(); i++) {
+    ConfigLine &config_line = config_lines[i];
+    const std::string &directive = config_lines[i].FirstToken();
+    if (directive == "convert-to-fixed-affine") {
+      std::string name_pattern = "*";
+      // name_pattern defaults to '*' if none is given.  Note: this pattern
+      // matches names of components, not nodes.
+      config_line.GetValue("name", &name_pattern);
+      int32 num_components_changed = 0;
+      for (int32 c = 0; c < nnet->NumComponents(); c++) {
+        Component *component = nnet->GetComponent(c);
+        AffineComponent *affine = NULL;
+        if (NameMatchesPattern(nnet->GetComponentName(c).c_str(),
+                               name_pattern.c_str()) &&
+            (affine = dynamic_cast<AffineComponent*>(component))) {
+          nnet->SetComponent(c, new FixedAffineComponent(*affine));
+          num_components_changed++;
+        }
+      }
+      KALDI_LOG << "Converted " << num_components_changed
+                << " components to FixedAffineComponent.";
+    } else if (directive == "remove-orphan-nodes") {
+      bool remove_orphan_inputs = false;
+      config_line.GetValue("remove-orphan-inputs", &remove_orphan_inputs);
+      nnet->RemoveOrphanNodes(remove_orphan_inputs);
+    } else if (directive == "remove-orphan-components") {
+      nnet->RemoveOrphanComponents();
+    } else if (directive == "remove-orphans") {
+      bool remove_orphan_inputs = false;
+      config_line.GetValue("remove-orphan-inputs", &remove_orphan_inputs);
+      nnet->RemoveOrphanNodes(remove_orphan_inputs);
+      nnet->RemoveOrphanComponents();
+    } else if (directive == "set-learning-rate") {
+      std::string name_pattern = "*";
+      // name_pattern defaults to '*' if none is given.  This pattern
+      // matches names of components, not nodes.
+      config_line.GetValue("name", &name_pattern);
+      BaseFloat learning_rate = -1;
+      if (!config_line.GetValue("learning-rate", &learning_rate)) {
+        KALDI_ERR << "In edits-config, expected learning-rate to be set in line: "
+                  << config_line.WholeLine();
+      }
+      // Note: the learning rate you provide will be multiplied by any
+      // 'learning-rate-factor' that is defined in the component,
+      // so if you call SetUnderlyingLearningRate(), the actual learning
+      // rate (learning_rate_) is set to the value you provide times
+      // learning_rate_factor_.
+      UpdatableComponent *component = NULL;
+      int32 num_learning_rates_set = 0;
+      for (int32 c = 0; c < nnet->NumComponents(); c++) {
+        if (NameMatchesPattern(nnet->GetComponentName(c).c_str(),
+                               name_pattern.c_str()) &&
+            (component =
+             dynamic_cast<UpdatableComponent*>(nnet->GetComponent(c)))) {
+          component->SetUnderlyingLearningRate(learning_rate);
+          num_learning_rates_set++;
+        }
+      }
+      KALDI_LOG << "Set learning rates for " << num_learning_rates_set << " nodes.";
+    } else if (directive == "rename-node") {
+      // this is a shallow renaming of a node, and it requires that the name used is
+      // not the name of another node.
+      std::string old_name, new_name;
+      if (!config_line.GetValue("old-name", &old_name) ||
+          !config_line.GetValue("new-name", &new_name) ||
+          config_line.HasUnusedValues()) {
+        KALDI_ERR << "In edits-config, could not make sense of this rename-node "
+                  << "directive (expect old-name=xxx new-name=xxx) "
+                  << config_line.WholeLine();
+      }
+      if (nnet->GetNodeIndex(old_name) < 0)
+        KALDI_ERR << "Could not rename node from " << old_name << " to "
+                  << new_name << " because there is no node called "
+                  << old_name;
+      // further checks will happen inside SetNodeName().
+      nnet->SetNodeName(nnet->GetNodeIndex(old_name), new_name);
+    } else if (directive == "remove-output-nodes") {
+      // note: after remove-output-nodes you probably want to do 'remove-orphans'.
+      std::string name_pattern;
+      if (!config_line.GetValue("name", &name_pattern) ||
+          config_line.HasUnusedValues())
+        KALDI_ERR << "In edits-config, could not make sense of "
+                  << "remove-output-nodes directive: "
+                  << config_line.WholeLine();
+      std::vector<int32> nodes_to_remove;
+      int32 outputs_remaining = 0;
+      for (int32 n = 0; n < nnet->NumNodes(); n++) {
+        if (nnet->IsOutputNode(n)) {
+          if (NameMatchesPattern(nnet->GetNodeName(n).c_str(),
+                                 name_pattern.c_str()))
+            nodes_to_remove.push_back(n);
+          else
+            outputs_remaining++;
+        }
+      }
+      KALDI_LOG << "Removing " << nodes_to_remove.size() << " output nodes.";
+      if (outputs_remaining == 0)
+        KALDI_ERR << "All outputs were removed.";
+      nnet->RemoveSomeNodes(nodes_to_remove);
+    } else {
+      KALDI_ERR << "Directive '" << directive << "' is not currently "
+          "supported (reading edit-config).";
+    }
+    if (config_line.HasUnusedValues()) {
+      KALDI_ERR << "Could not interpret '" << config_line.UnusedValues()
+                << "' in edit config line " << config_line.WholeLine();
+    }
+  }
+}
+
 
 
 } // namespace nnet3

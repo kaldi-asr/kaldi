@@ -2794,6 +2794,10 @@ void FixedAffineComponent::InitFromConfig(ConfigLine *cfl) {
 }
 
 
+FixedAffineComponent::FixedAffineComponent(const AffineComponent &c):
+    linear_params_(c.LinearParams()),
+    bias_params_(c.BiasParams()) { }
+
 void FixedAffineComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                      const CuMatrixBase<BaseFloat> &in,
                                      CuMatrixBase<BaseFloat> *out) const  {
@@ -4857,7 +4861,8 @@ void CompositeComponent::InitFromConfig(ConfigLine *cfl) {
     Component *this_component = NULL;
     if (!nested_line.ParseLine(component_config) ||
         !nested_line.GetValue("type", &component_type) ||
-        !(this_component = NewComponentOfType(component_type))) {
+        !(this_component = NewComponentOfType(component_type)) ||
+        nested_line.FirstToken() != "") {
       DeletePointers(&components);
       KALDI_ERR << "Could not parse config line for '" << name_stream.str()
                 << "(or undefined or bad component type [type=xxx]), in "
