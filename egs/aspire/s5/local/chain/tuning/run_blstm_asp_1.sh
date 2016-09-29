@@ -10,7 +10,7 @@ affix=
 stage=11 # assuming you already ran the xent systems and the chain tdnn system
 train_stage=-10
 get_egs_stage=-10
-dir=exp/chain/blstm_asp_1
+dir=exp/chain/blstm_asp1
 decode_iter=
 
 # training options
@@ -202,14 +202,22 @@ if [ $stage -le 13 ]; then
   utils/mkgraph.sh --self-loop-scale 1.0 data/lang_pp_test $dir $dir/graph_pp
 fi
 
-exit 0;
 
+if [ $stage -le 14 ]; then
+  extra_left_context=$[$chunk_left_context+10]
+  extra_right_context=$[$chunk_right_context+10]
   # %WER 26.8 | 2120 27220 | 80.2 11.7 8.1 7.0 26.8 76.5 | -0.804 | exp/chain/blstm_asp_1/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iterfinal_pp_fg/score_9/penalty_0.0/
-  local/chain/prep_test_aspire.sh --stage 0 --decode-num-jobs 400  --affix "v7" \
-   --extra-left-context 40 --extra-right-context 40 --frames-per-chunk 150 \
-   --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
-   --ivector-scale 0.75  --tune-hyper true dev_aspire data/lang exp/chain/blstm_asp_1
 
+  local/nnet3/prep_test_aspire.sh --stage 4 --decode-num-jobs 30  --affix "v7" \
+   --extra-left-context $extra_left_context \
+   --extra-right-context $extra_right_context \
+   --frames-per-chunk $chunk_width \
+   --acwt 1.0 --post-decode-acwt 10.0 \
+   --window 10 --overlap 5 \
+   --sub-speaker-frames 6000 --max-count 75 --ivector-scale 0.75 \
+   --pass2-decode-opts "--min-active 1000" \
+   dev_aspire data/lang $dir/graph_pp $dir
+fi
 exit 0;
 
 
