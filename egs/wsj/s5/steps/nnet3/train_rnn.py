@@ -2,6 +2,7 @@
 
 
 # Copyright 2016 Vijayaditya Peddinti.
+#           2016 Vimal Manohar
 # Apache 2.0.
 
 
@@ -207,6 +208,9 @@ def GetArgs():
                         e.g. queue.pl for launching on SGE cluster
                              run.pl for launching on local machine
                         """, default = "queue.pl")
+    parser.add_argument("--egs.cmd", type=str, action = NullstrToNoneAction,
+                        dest = "egs_command",
+                        help="""Script to launch egs jobs""", default = "queue.pl")
     parser.add_argument("--use-gpu", type=str, action = StrToBoolAction,
                         choices = ["true", "false"],
                         help="Use GPU for training", default=True)
@@ -232,6 +236,8 @@ def GetArgs():
                         type=int, default=0.1,
                         help="Frequency with which reports have to be sent, measured in terms of fraction of iterations. If 0 and reporting mail has been specified then only failure notifications are sent")
 
+    parser.add_argument("--configs-dir", type=str,
+                        help="Use a different configs dir than dir/configs")
     parser.add_argument("--feat-dir", type=str, required = True,
                         help="Directory with features used for training the neural network.")
     parser.add_argument("--lang", type=str, required = True,
@@ -259,6 +265,11 @@ def ProcessArgs(args):
 
     if args.chunk_right_context < 0:
         raise Exception("--egs.chunk-right-context should be positive")
+
+
+    if args.configs_dir is not None:
+        RunKaldiCommand("cp -rT {0} {1}".format(config_dir,
+                                                '{0}/configs'.format(args.dir)))
 
     if (not os.path.exists(args.dir)) or (not os.path.exists(args.dir+"/configs")):
         raise Exception("""This scripts expects {0} to exist and have a configs
@@ -305,31 +316,10 @@ def ProcessArgs(args):
     run_opts.realign_num_jobs = args.realign_num_jobs
 
     run_opts.command = args.command
+    run_opts.egs_command = args.egs_command if args.egs_command is not None else args.command
     run_opts.num_jobs_compute_prior = args.num_jobs_compute_prior
 
     return [args, run_opts]
-
-class StrToBoolAction(argparse.Action):
-    """ A custom action to convert bools from shell format i.e., true/false
-        to python format i.e., True/False """
-    def __call__(self, parser, namespace, values, option_string=None):
-        if values == "true":
-            setattr(namespace, self.dest, True)
-        elif values == "false":
-            setattr(namespace, self.dest, False)
-        else:
-            raise Exception("Unknown value {0} for --{1}".format(values, self.dest))
-
-class NullstrToNoneAction(argparse.Action):
-    """ A custom action to convert empty strings passed by shell
-        to None in python. This is necessary as shell scripts print null strings
-        when a variable is not specified. We could use the more apt None
-        in python. """
-    def __call__(self, parser, namespace, values, option_string=None):
-            if values.strip() == "":
-                setattr(namespace, self.dest, None)
-            else:
-                setattr(namespace, self.dest, values)
 
 
 # a class to store run options
@@ -366,9 +356,9 @@ def TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archi
 
         cache_write_opt = ""
         if job == 1:
-          # an option for writing cache (storing pairs of nnet-computations and
-          # computation-requests) during training.
-          cache_write_opt="--write-cache={dir}/cache.{iter}".format(dir=dir, iter=iter+1)
+            # an option for writing cache (storing pairs of nnet-computations and
+            # computation-requests) during training.
+            cache_write_opt="--write-cache={dir}/cache.{iter}".format(dir=dir, iter=iter+1)
 
         process_handle = RunKaldiCommand("""
 {command} {train_queue_opt} {dir}/log/train.{iter}.{job}.log \
@@ -429,7 +419,6 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
         f.write(str(srand))
         f.close()
 
-
     ComputeTrainCvProbabilities(dir, iter, egs_dir, run_opts, mb_size=cv_minibatch_size)
 
     if iter > 0:
@@ -453,14 +442,14 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
         raw_model_string = "nnet3-am-copy --raw=true --learning-rate={0} {1}/{2}.mdl - |".format(learning_rate, dir, iter)
 
     if do_average:
-      cur_num_chunk_per_minibatch = num_chunk_per_minibatch
+        cur_num_chunk_per_minibatch = num_chunk_per_minibatch
     else:
-      # on iteration zero or when we just added a layer, use a smaller minibatch
-      # size (and we will later choose the output of just one of the jobs): the
-      # model-averaging isn't always helpful when the model is changing too fast
-      # (i.e. it can worsen the objective function), and the smaller minibatch
-      # size will help to keep the update stable.
-      cur_num_chunk_per_minibatch = num_chunk_per_minibatch / 2
+        # on iteration zero or when we just added a layer, use a smaller minibatch
+        # size (and we will later choose the output of just one of the jobs): the
+        # model-averaging isn't always helpful when the model is changing too fast
+        # (i.e. it can worsen the objective function), and the smaller minibatch
+        # size will help to keep the update stable.
+        cur_num_chunk_per_minibatch = num_chunk_per_minibatch / 2
 
     try:
         os.remove("{0}/.error".format(dir))
@@ -476,29 +465,21 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
     [models_to_average, best_model] = GetSuccessfulModels(num_jobs, '{0}/log/train.{1}.%.log'.format(dir,iter))
     nnets_list = []
     for n in models_to_average:
-      nnets_list.append("{0}/{1}.{2}.raw".format(dir, iter + 1, n))
+        nnets_list.append("{0}/{1}.{2}.raw".format(dir, iter + 1, n))
 
     if do_average:
         # average the output of the different jobs.
-        RunKaldiCommand("""
-{command} {dir}/log/average.{iter}.log \
-nnet3-average {nnet_list} - \| \
-nnet3-am-copy --scale={shrink} --set-raw-nnet=- {dir}/{iter}.mdl {dir}/{new_iter}.mdl
-        """.format(command = run_opts.command,
-                   dir = dir,
-                   iter = iter,
-                   nnet_list = " ".join(nnets_list),
-                   shrink = shrinkage_value,
-                   new_iter = iter + 1))
+        GetAverageNnetModel(dir = dir, iter = iter,
+                            nnets_list = " ".join(nnets_list),
+                            run_opts = run_opts,
+                            shrink = shrinkage_value)
 
     else:
         # choose the best model from different jobs
-        RunKaldiCommand("""
-{command} {dir}/log/select.{iter}.log \
-    nnet3-am-copy --scale={shrink} --set-raw-nnet={dir}/{next_iter}.{best_model_index}.raw  {dir}/{iter}.mdl {dir}/{next_iter}.mdl
-        """.format(command = run_opts.command,
-                   dir = dir, iter = iter, next_iter = iter + 1,
-                   shrink = shrinkage_value, best_model_index =  best_model))
+        GetBestNnetModel(dir = dir, iter = iter,
+                         best_model_index = best_model,
+                         run_opts = run_opts,
+                         shrink = shrinkage_value)
 
     try:
         for i in range(1, num_jobs + 1):
@@ -538,7 +519,21 @@ def Train(args, run_opts):
     config_dir = '{0}/configs'.format(args.dir)
     var_file = '{0}/vars'.format(config_dir)
 
-    [model_left_context, model_right_context, num_hidden_layers] = ParseModelConfigVarsFile(var_file)
+    variables = ParseModelConfigGenericVarsFile(var_file)
+
+    # Set some variables.
+
+    try:
+        model_left_context = variables['model_left_context']
+        model_right_context = variables['model_right_context']
+        num_hidden_layers = variables['num_hidden_layers']
+    except KeyError as e:
+        raise Exception("KeyError {0}: Variables need to be defined in {1}".format(
+            str(e), '{0}/configs'.format(args.dir)))
+
+    left_context = args.chunk_left_context + model_left_context
+    right_context = args.chunk_right_context + model_right_context
+
     # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
     # matrix.  This first config just does any initial splicing that we do;
     # we do this as it's a convenient way to get the stats for the 'lda-like'
@@ -552,8 +547,6 @@ def Train(args, run_opts):
     """.format(command = run_opts.command,
                dir = args.dir))
 
-    left_context = args.chunk_left_context + model_left_context
-    right_context = args.chunk_right_context + model_right_context
 
     default_egs_dir = '{0}/egs'.format(args.dir)
     if (args.stage <= -3) and args.egs_dir is None:
@@ -673,7 +666,7 @@ def Train(args, run_opts):
                               right_context = right_context,
                               min_deriv_time = min_deriv_time,
                               momentum = args.momentum,
-                              max_param_change= args.max_param_change,
+                              max_param_change = args.max_param_change,
                               shuffle_buffer_size = args.shuffle_buffer_size,
                               cv_minibatch_size = args.cv_minibatch_size,
                               run_opts = run_opts)
@@ -730,8 +723,7 @@ def Train(args, run_opts):
     report_handle.write(report)
     report_handle.close()
 
-    os.system("steps/info/nnet3_dir_info.sh " + args.dir)
-
+    os.system("steps/info/nnet3_dir_info.pl " + args.dir)
 
 def Main():
     [args, run_opts] = GetArgs()
@@ -743,16 +735,6 @@ def Main():
             sendMail(message, message, args.email)
         traceback.print_exc()
         raise e
-
-def SendMail(message, subject, email_id):
-    try:
-        subprocess.Popen('echo "{message}" | mail -s "{subject}" {email} '.format(
-            message = message,
-            subject = subject,
-            email = email_id), shell=True)
-    except Exception as e:
-        logger.info(" Unable to send mail due to error:\n {error}".format(error = str(e)))
-        pass
 
 if __name__ == "__main__":
     Main()

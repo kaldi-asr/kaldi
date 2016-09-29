@@ -475,24 +475,26 @@ vector-sum --binary=false {dir}/pdf_counts.* {dir}/pdf_counts
     WriteKaldiMatrix(output_file, [scaled_counts])
     ForceSymlink("../presoftmax_prior_scale.vec", "{0}/configs/presoftmax_prior_scale.vec".format(dir))
 
-def PrepareInitialAcousticModel(dir, alidir, run_opts, use_raw_nnet = False):
+def PrepareInitialAcousticModel(dir, alidir, run_opts):
     """ Adds the first layer; this will also add in the lda.mat and
         presoftmax_prior_scale.vec. It will also prepare the acoustic model
         with the transition model."""
 
+    PrepareInitialNetwork(dir, run_opts):
+
+  # Convert to .mdl, train the transitions, set the priors.
+    RunKaldiCommand("""
+{command} {dir}/log/init_mdl.log \
+    nnet3-am-init {alidir}/final.mdl {dir}/0.raw - \| \
+    nnet3-am-train-transitions - "ark:gunzip -c {alidir}/ali.*.gz|" {dir}/0.mdl
+        """.format(command = run_opts.command,
+                   dir = dir, alidir = alidir))
+
+def PrepareInitialNetwork(dir, run_opts):
     RunKaldiCommand("""
 {command} {dir}/log/add_first_layer.log \
    nnet3-init --srand=-3 {dir}/init.raw {dir}/configs/layer1.config {dir}/0.raw     """.format(command = run_opts.command,
                dir = dir))
-
-    if not use_raw_nnet:
-      # Convert to .mdl, train the transitions, set the priors.
-        RunKaldiCommand("""
-    {command} {dir}/log/init_mdl.log \
-        nnet3-am-init {alidir}/final.mdl {dir}/0.raw - \| \
-        nnet3-am-train-transitions - "ark:gunzip -c {alidir}/ali.*.gz|" {dir}/0.mdl
-            """.format(command = run_opts.command,
-                       dir = dir, alidir = alidir))
 
 def VerifyIterations(num_iters, num_epochs, num_hidden_layers,
                      num_archives, max_models_combine, add_layers_period,

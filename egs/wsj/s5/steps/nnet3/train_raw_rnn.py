@@ -573,7 +573,7 @@ def Train(args, run_opts):
 
     if (args.stage <= -1):
         logger.info("Preparing the initial acoustic model.")
-        PrepareInitialAcousticModel(args.dir, None, run_opts, use_raw_nnet = True)
+        PrepareInitialNetwork(args.dir, run_opts)
 
 
     # set num_iters so that as close as possible, we process the data $num_epochs
