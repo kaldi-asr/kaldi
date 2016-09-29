@@ -54,10 +54,6 @@ def GetArgs():
                         help="Output dimension of the linear layer at the CNN output "
                         "for dimension reduction, e.g. 256."
                         "The default zero means this layer is not needed.", default=0)
-    parser.add_argument("--cnn.cepstral-lifter", type=float, dest = "cepstral_lifter",
-                        help="The factor used for determining the liftering vector in the production of MFCC. "
-                        "User has to ensure that it matches the lifter used in MFCC generation, "
-                        "e.g. 22.0", default=22.0)
 
     # General neural network options
     parser.add_argument("--splice-indexes", type=str, required = True,
@@ -84,7 +80,7 @@ def GetArgs():
 
     parser.add_argument("--objective-type", type=str,
                         help = "the type of objective; i.e. quadratic or linear",
-                        default="linear", choices = ["linear", "quadratic"])
+                        default="linear", choices = ["linear", "quadratic", "xent"])
     parser.add_argument("--xent-regularize", type=float,
                         help="For chain models, if nonzero, add a separate output for cross-entropy "
                         "regularization (with learning-rate-factor equal to the inverse of this)",
@@ -116,6 +112,13 @@ def GetArgs():
     parser.add_argument("--use-presoftmax-prior-scale", type=str, action=nnet3_train_lib.StrToBoolAction,
                         help="if true, a presoftmax-prior-scale is added",
                         choices=['true', 'false'], default = True)
+
+    parser.add_argument(["--cepstral-lifter","--cnn.cepstral-lifter"], type=float, dest = "cepstral_lifter",
+                        help="The factor used for determining the liftering vector in the production of MFCC. "
+                        "User has to ensure that it matches the lifter used in MFCC generation, "
+                        "e.g. 22.0", default=22.0)
+    parser.add_argument("--add-idct", type=str, action=nnet3_train_lib.StrToBoolAction,
+                        help="Add an IDCT after input to convert MFCC to Fbank", default = False)
     parser.add_argument("config_dir",
                         help="Directory to write config files and variables")
 
@@ -144,6 +147,9 @@ def CheckArgs(args):
 
     if not args.feat_dim > 0:
         raise Exception("feat-dim has to be postive")
+
+    if args.add_lda and args.add_idct:
+        raise Exception("add-idct can be true only if add-lda is false")
 
     if not args.num_targets > 0:
         print(args.num_targets)
@@ -318,7 +324,7 @@ def ParseSpliceString(splice_indexes):
 # The function signature of MakeConfigs is changed frequently as it is intended for local use in this script.
 def MakeConfigs(config_dir, splice_indexes_string,
                 cnn_layer, cnn_bottleneck_dim, cepstral_lifter,
-                feat_dim, ivector_dim, num_targets, add_lda,
+                feat_dim, ivector_dim, num_targets, add_lda, add_idct,
                 nonlin_type, nonlin_input_dim, nonlin_output_dim, subset_dim,
                 nonlin_output_dim_init, nonlin_output_dim_final,
                 use_presoftmax_prior_scale,
@@ -346,8 +352,14 @@ def MakeConfigs(config_dir, splice_indexes_string,
 
     config_lines = {'components':[], 'component-nodes':[]}
 
+    if add_idct and cnn_layer is None:
+        # If CNN layer is not None, IDCT will be add inside AddCnnLayers method
+        nnet3_train_lib.WriteIdctMatrix(feat_dim, cepstral_lifter, config_dir.strip() + "/idct.mat")
+
     config_files={}
-    prev_layer_output = nodes.AddInputLayer(config_lines, feat_dim, splice_indexes[0], ivector_dim)
+    prev_layer_output = nodes.AddInputLayer(config_lines, feat_dim, splice_indexes[0],
+                        ivector_dim,
+                        idct_mat = config_dir.strip() + "/idct.mat" if add_idct and cnn_layer is None else None)
 
     # Add the init config lines for estimating the preconditioning matrices
     init_config_lines = copy.deepcopy(config_lines)
@@ -516,7 +528,7 @@ def Main():
                 splice_indexes_string = args.splice_indexes,
                 feat_dim = args.feat_dim, ivector_dim = args.ivector_dim,
                 num_targets = args.num_targets,
-                add_lda = args.add_lda,
+                add_lda = args.add_lda, add_idct = args.add_idct,
                 cnn_layer = args.cnn_layer,
                 cnn_bottleneck_dim = args.cnn_bottleneck_dim,
                 cepstral_lifter = args.cepstral_lifter,
