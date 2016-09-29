@@ -44,6 +44,10 @@ for f in $data/feats.scp $lang/phones.txt $src/final.mdl $srcdict; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1;
 done
 
+mkdir -p $dir
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt
+cp $lang/phones.txt $dir
+
 if [ -z $alidir ]; then
   alidir=${src}_ali_$(basename $data)
   if [ $stage -le 1 ]; then

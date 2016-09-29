@@ -49,6 +49,7 @@ oov_sym=`cat $lang/oov.int` || exit 1;
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 
+cp $lang/phones.txt $dir || exit 1;
 
 # Set up features.
 
