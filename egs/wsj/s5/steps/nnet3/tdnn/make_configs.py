@@ -116,6 +116,22 @@ def GetArgs():
     parser.add_argument("--use-presoftmax-prior-scale", type=str, action=nnet3_train_lib.StrToBoolAction,
                         help="if true, a presoftmax-prior-scale is added",
                         choices=['true', 'false'], default = True)
+    # arguments for ephemeral connection
+    parser.add_argument("--add-ephemeral-connection", type=str, action=nnet3_train_lib.StrToBoolAction,
+                        help="if true, a ephemeral connection with dropout connection is added to all layers.",
+                        choices=['true', 'false'], default = False)
+    parser.add_argument("--num-skips-for-ephemeral", type=int,
+                        help="Number of skip layers for ephemeral connection, the information passes from"
+                        "layer i - num_skips_for_ephemeral to layer i using full or identiry transform.",
+                        default=2)
+    parser.add_argument("--use-dropout", type=str, action=nnet3_train_lib.StrToBoolAction,
+                        help="If true, the ephemeral connection removed during training, otherwise used during whole training.",
+                        choices=['true', 'false'], default= True)
+
+    parser.add_argument("--layerwise-pretrain", type=str, action=nnet3_train_lib.StrToBoolAction,
+                        help="if true, the layers written separately in configs, otherwise "
+                        "all layers are written in {config_dir}/layer1.config.",
+                        choices=['true', 'false'], default = True)
     parser.add_argument("config_dir",
                         help="Directory to write config files and variables")
 
