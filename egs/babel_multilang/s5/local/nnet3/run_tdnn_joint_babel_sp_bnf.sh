@@ -91,44 +91,47 @@ if $use_pitch; then feat_suffix=${feat_suffix}_pitch ; fi
 if $use_entropy;then feat_suffix=${feat_suffix}_entropy ; fi  
 dir=${dir}${suffix}
 
+
 # extract high resolution MFCC features for speed-perturbed data
 # and extract alignment 
 for lang in `seq 0 $[$num_lang-1]`; do
+  echo "$0: extract 40dim MFCC + pitch for speed-perturbed data"
   local/nnet3/run_common_langs.sh --stage $stage \
     --speed-perturb $speed_perturb ${lang_list[$lang]} || exit;
 done
 
-# combine training data for all langs for training global i-vector extractor
-if [ ! -f data/multi/train${suffix}_hires/.done ]; then
-  echo ---------------------------------------------------------------------
-  echo "Pooling training data in data/multi${suffix}_hires on" `date`
-  echo ---------------------------------------------------------------------
-  mkdir -p data/multi
-  mkdir -p data/multi/train${suffix}_hires
-  combine_lang_list=""
-  for lang in `seq 0 $[$num_lang-1]`;do
-    combine_lang_list="$combine_lang_list data/${lang_list[$lang]}/train${suffix}_hires"
-  done
-  utils/combine_data.sh data/multi/train${suffix}_hires $combine_lang_list
-  utils/validate_data_dir.sh --no-feats data/multi/train${suffix}_hires
-  touch data/multi/train${suffix}_hires/.done
-fi
-# If we do not use separate initial layer per language
-# then we use ivector extractor trained on pooled data from all languages
-# using an LDA+MLLT transform arbitrarily chonsed from single language.
+# we use ivector extractor trained on pooled data from all languages
+# using an LDA+MLLT transform arbitrarily chosen from single language.
 if [ ! -f $global_extractor/.done ]; then
-  echo "Generate global i-vector extractor"
+  echo "$0: combine training data using all langs for training global i-vector extractor."
+  if [ ! -f data/multi/train${suffix}_hires/.done ]; then
+    echo ---------------------------------------------------------------------
+    echo "Pooling training data in data/multi${suffix}_hires on" `date`
+    echo ---------------------------------------------------------------------
+    mkdir -p data/multi
+    mkdir -p data/multi/train${suffix}_hires
+    combine_lang_list=""
+    for lang in `seq 0 $[$num_lang-1]`;do
+      combine_lang_list="$combine_lang_list data/${lang_list[$lang]}/train${suffix}_hires"
+    done
+    utils/combine_data.sh data/multi/train${suffix}_hires $combine_lang_list
+    utils/validate_data_dir.sh --no-feats data/multi/train${suffix}_hires
+    touch data/multi/train${suffix}_hires/.done
+  fi
+
+  echo "$0: Generate global i-vector extractor using data/multi"
   local/nnet3/run_shared_ivector_extractor.sh --global-extractor $global_extractor \
     --stage $stage $lda_mllt_lang || exit 1; 
   touch $global_extractor/.done
+
+  echo "$0: extract ivector for all languages."
+  for lang in `seq 0 $[$num_lang-1]`; do
+    local/nnet3/run_ivector_common_langs.sh --stage $stage \
+      --global-extractor $global_extractor \
+      --speed-perturb $speed_perturb ${lang_list[$lang]} || exit;
+  done
 fi
 
-# extract ivector for all languages.
-for lang in `seq 0 $[$num_lang-1]`; do
-  local/nnet3/run_ivector_common_langs.sh --stage $stage \
-    --global-extractor $global_extractor \
-    --speed-perturb $speed_perturb ${lang_list[$lang]} || exit;
-done
 
 # set num_leaves for all languages
 for lang in `seq 0 $[$num_lang-1]`; do
@@ -176,60 +179,49 @@ if [ $stage -le 9 ]; then
 fi
 
 if [ $stage -le 10 ]; then
-  echo "$0: generate separate egs directory per language for multilingual training."
+  echo "$0: generate separate egs dir per language for multilingual training."
   # sourcing the "vars" below sets
   #model_left_context=(something)
   #model_right_context=(something)
   #num_hidden_layers=(something)
   . $dir/configs/vars || exit 1;
-
-  for lang in `seq 0 $[$num_lang-1]`; do
-    egs_dir=${multi_egs_dirs[$lang]}
-    ali_dir=${multi_ali_dirs[$lang]}
-    data=data/${lang_list[$lang]}/train${suffix}${feat_suffix}
-    num_frames=$(steps/nnet2/get_num_frames.sh $data)
-    echo num_frames = $num_frames
-    # sets samples_per_iter to have approximately 
-    # same number of archives per language.
-    samples_per_iter=$[$num_frames/($avg_num_archives*$frames_per_eg)]
-    online_ivector_dir=
-    if $use_ivector; then
-      online_ivector_dir=exp/${lang_list[$lang]}/nnet3/ivectors_train${suffix}${ivector_suffix}
-    fi
-    if [ ! -d "$egs_dir" ]; then
-      echo "$0: Generate egs for ${lang_list[$lang]}"
-      if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $egs_dir/storage ]; then
-        utils/create_split_dir.pl \
-         /export/b0{3,4,5,6}/$USER/kaldi-data/egs/${lang_list[$lang]}-$(date +'%m_%d_%H_%M')/s5/$egs_dir/storage $egs_dir/storage
-      fi
-
-      extra_opts=()
-      [ ! -z "$cmvn_opts" ] && extra_opts+=(--cmvn-opts "$cmvn_opts")
-      [ ! -z "$feat_type" ] && extra_opts+=(--feat-type $feat_type)
-      [ ! -z "$online_ivector_dir" ] && extra_opts+=(--online-ivector-dir $online_ivector_dir)
-      extra_opts+=(--left-context $model_left_context)
-      extra_opts+=(--right-context $model_right_context)
-      echo "$0: calling get_egs.sh"
-      steps/nnet3/get_egs.sh $egs_opts "${extra_opts[@]}" \
-          --samples-per-iter $samples_per_iter --stage $get_egs_stage \
-          --cmd "$cmd" $egs_opts \
-          --frames-per-eg $frames_per_eg \
-          $data $ali_dir $egs_dir || exit 1;
-      
-    fi
-  done
+  if [ ! -z $multi_ivector_dirs ]
+    ivector_opts="--multi-ivector-dirs ${multi_ivector_dirs[@]}"
+  local/nnet3/prepare_multilingual_egs.sh --cmd "$decode_cmd" \
+    $ivector_opts \
+    --left-context $model_left_context --right-context $model_right_context \
+    --samples-per-iter 400000 \
+    $num_langs ${multi_data_dirs[@]} ${multi_ali_dirs[@]} ${multi_egs_dirs[@]} || exit 1;
 fi
 
 if [ $stage -le 11 ]; then
   echo "$0: training mutilingual model."
-  steps/nnet3/multilingual/train_tdnn.sh --cmd "$train_cmd" \
-  --use-ivector $use_ivector --print-interval $print_interval \
-  --num-epochs $num_epochs --cleanup false \
-  --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
-  --stage $train_stage \
-  --initial-effective-lrate 0.0017 --final-effective-lrate 0.00017 \
-  "${lang_list[@]}" "${multi_ali_dirs[@]}" "${multi_egs_dirs[@]}" \
-  $dir || exit 1;
+  common_egs_dir="${multi_egs_dirs} $megs_dir"
+  steps/nnet3/train_raw_dnn.py --stage=$train_stage \
+    --cmd="$decode_cmd" \
+    --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
+    --trainer.num-epochs 2 \
+    --trainer.optimization.num-jobs-initial 3 \
+    --trainer.optimization.num-jobs-final 16 \
+    --trainer.optimization.initial-effective-lrate 0.0017 \
+    --trainer.optimization.final-effective-lrate 0.00017 \
+    --egs.dir "${common_egs_dir[@]}" \
+    --cleanup.remove-egs $remove_egs \
+    --cleanup.preserve-model-interval 20 \
+    --use-gpu true \
+    --reporting.email="$reporting_email" \
+    --dir=$dir  || exit 1;
+
+
+
+#  steps/nnet3/multilingual/train_tdnn.sh --cmd "$train_cmd" \
+#  --use-ivector $use_ivector --print-interval $print_interval \
+#  --num-epochs $num_epochs --cleanup false \
+#  --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
+#  --stage $train_stage \
+#  --initial-effective-lrate 0.0017 --final-effective-lrate 0.00017 \
+#  "${lang_list[@]}" "${multi_ali_dirs[@]}" "${multi_egs_dirs[@]}" \
+#  $dir || exit 1;
 
 fi
 
