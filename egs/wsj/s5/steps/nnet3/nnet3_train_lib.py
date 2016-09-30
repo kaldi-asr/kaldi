@@ -460,9 +460,12 @@ vector-sum --binary=false {dir}/pdf_counts.* {dir}/pdf_counts
     import glob
     for file in glob.glob('{0}/pdf_counts.*'.format(dir)):
         os.remove(file)
-
-    smooth=0.01
     pdf_counts = ReadKaldiMatrix('{0}/pdf_counts'.format(dir))[0]
+
+    smooth = 0.01
+    WritePresoftmaxPriorScaleVector(dir, pdf_counts, smooth = smooth)
+
+def WritePresoftmaxPriorScaleVector(dir, pdf_counts, smooth = 0.01)
     total = sum(pdf_counts)
     average_count = total/len(pdf_counts)
     scales = []
@@ -694,7 +697,7 @@ nnet3-show-progress --use-gpu=no {prev_model} {model} \
 
 def CombineModels(dir, num_iters, num_iters_combine, egs_dir,
                   run_opts, chunk_width = None,
-                  use_raw_nnet = False):
+                  use_raw_nnet = False, compute_accuracy = True):
     # Now do combination.  In the nnet3 setup, the logic
     # for doing averaging of subsets of the models in the case where
     # there are too many models to reliably esetimate interpolation
@@ -737,10 +740,13 @@ nnet3-combine --num-iters=40 \
                out_model = out_model,
                egs_dir = egs_dir))
 
-  # Compute the probability of the final, combined model with
-  # the same subset we used for the previous compute_probs, as the
-  # different subsets will lead to different probs.
-    ComputeTrainCvProbabilities(dir, 'combined', egs_dir, run_opts, wait = False)
+    # Compute the probability of the final, combined model with
+    # the same subset we used for the previous compute_probs, as the
+    # different subsets will lead to different probs.
+    if use_raw_nnet:
+        ComputeTrainCvProbabilities(dir, 'final', egs_dir, run_opts, wait = False, use_raw_nnet = True, compute_accuracy = compute_accuracy)
+    else:
+        ComputeTrainCvProbabilities(dir, 'combined', egs_dir, run_opts, wait = False)
 
 def ComputeAveragePosterior(dir, iter, egs_dir, num_archives,
                             prior_subset_size, run_opts, use_raw_nnet = False):

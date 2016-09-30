@@ -1,6 +1,10 @@
 import subprocess
 import logging
 import math
+import imp
+
+nnet3_train_lib = imp.load_source('', 'steps/nnet3/nnet3_train_lib.py')
+from nnet3_train_lib import *
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -9,7 +13,6 @@ handler.setLevel(logging.INFO)
 formatter = logging.Formatter('%(asctime)s [%(filename)s:%(lineno)s - %(funcName)s - %(levelname)s ] %(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
-
 
 # this is the main method which differs between RNN and DNN training
 def TrainNewModels(dir, iter, srand, num_jobs,
