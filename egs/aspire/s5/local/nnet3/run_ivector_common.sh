@@ -3,10 +3,10 @@
 # this script is based on local/multicondition/run_nnet2_common.sh
 # minor corrections were made to dir names for nnet3
 
-stage=1
-snrs="20:10:15:5:0"
+stage=0
+foreground_snrs="20:10:15:5:0"
+background_snrs="20:10:15:5:0"
 num_data_reps=3
-ali_dir=exp/
 db_string="'air' 'rwcp' 'rvb2014'" # RIR dbs to be used in the experiment
                                       # only dbs used for ASpIRE submission system have been used here
 RIR_home=db/RIR_databases/ # parent directory of the RIR databases files
@@ -21,7 +21,7 @@ set -e
 local/multi_condition/check_version.sh || exit 1;
 
 mkdir -p exp/nnet3
-if [ $stage -le 1 ]; then
+if [ $stage -le 0 ]; then
   # prepare the impulse responses
   local/multi_condition/prepare_impulses_noises.sh --log-dir exp/make_reverb/log \
     --db-string "$db_string" \
@@ -29,6 +29,21 @@ if [ $stage -le 1 ]; then
     --RIR-home $RIR_home \
     data/impulses_noises || exit 1;
 
+  # Generate the rir_list and noise_list for the reverberate_data_dir.py to corrupt the data
+  # this script just assumes air rwcp rvb2014 databases
+  python local/multi_condition/aspire_prep_rir_noise_list.py data/impulses_noises data/impulses_noises/info
+
+  # Download Musan and generate the necessary noise_list file
+  wget --no-check-certificate http://www.openslr.org/resources/17/musan.tar.gz
+  tar -zxf musan.tar.gz
+  python local/multi_condition/musan_prep_noise_list.py  --sampling-rate 16000  musan/noise/free-sound musan/noise/free-sound/noise_list
+
+  # Download the simulated RIRs
+  wget --no-check-certificate http://www.openslr.org/resources/26/sim_rir.zip
+  unzip sim_rir.zip
+fi
+
+if [ $stage -le 1 ]; then
   # corrupt the fisher data to generate multi-condition data
   # for data_dir in train dev test; do
   for data_dir in train dev test; do
@@ -37,16 +52,21 @@ if [ $stage -le 1 ]; then
     else
       num_reps=1
     fi
-    reverb_data_dirs=
-    for i in `seq 1 $num_reps`; do
-      cur_dest_dir=" data/temp_${data_dir}_${i}"
-      local/multi_condition/reverberate_data_dir.sh --random-seed $i \
-        --snrs "$snrs" --log-dir exp/make_corrupted_wav \
-        data/${data_dir}  data/impulses_noises $cur_dest_dir
-      reverb_data_dirs+=" $cur_dest_dir"
-    done
-    utils/combine_data.sh --extra-files utt2uniq data/${data_dir}_rvb $reverb_data_dirs
-    rm -rf $reverb_data_dirs
+
+    python steps/data/reverberate_data_dir.py \
+      --prefix "rev" \
+      --rir-set-parameters "1.0, SIM_RIR/simulated_rir_mediumroom/rir_list" \
+      --noise-set-parameters musan/noise/free-sound/noise_list \
+      --foreground-snrs $foreground_snrs \
+      --background-snrs $background_snrs \
+      --speech-rvb-probability 1 \
+      --pointsource-noise-addition-probability 1 \
+      --isotropic-noise-addition-probability 1 \
+      --rir-smoothing-weight 0 \
+      --num-replications $num_reps \
+      --max-noises-per-minute 1 \
+      --random-seed 1 \
+      data/${data_dir} data/${data_dir}_rvb
   done
   # create the dev, test and eval sets from the aspire recipe
   local/multi_condition/aspire_data_prep.sh
