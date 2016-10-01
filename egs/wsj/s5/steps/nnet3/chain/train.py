@@ -116,8 +116,6 @@ def GetArgs():
                         default = 3,
                         help="ratio of frames-per-second of input alignments to"
                         " chain model's output")
-    parser.add_argument("--chain.ngram-order", type=int, dest='ngram_order',
-                        default = 3, help="")
     parser.add_argument("--chain.left-deriv-truncate", type=int,
                         dest='left_deriv_truncate',
                         default = None, help="")
