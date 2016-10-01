@@ -81,7 +81,7 @@ cp $lang/phones.txt $dir
 if [ $stage -le 1 ]; then
   echo "$0: Building biased-language-model decoding graphs..."
   steps/cleanup/make_biased_lm_graphs.sh $graph_opts \
-    --nj $nj --cmd "$decode_cmd" \
+    --nj $nj --cmd "$cmd" \
      $data $lang $dir
 fi
 
@@ -109,7 +109,7 @@ fi
 if [ $stage -le 3 ]; then
   echo "$0: Doing oracle alignment of lattices..."
   steps/cleanup/lattice_oracle_align.sh \
-    --cmd "$decode_cmd" $data $lang $dir/lats $dir/lattice_oracle
+    --cmd "$cmd" $data $lang $dir/lats $dir/lattice_oracle
 fi
 
 
