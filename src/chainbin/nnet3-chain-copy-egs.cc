@@ -35,80 +35,6 @@ int32 GetCount(double expected_count) {
     ans++;
   return ans;
 }
-void max_min_input(const NnetChainExample &eg,
-                   const int32 num_index,
-                   int32 *min_input_t,
-                   int32 *max_input_t,
-                   bool &done_input){
-  for (int32 i = 0; i < num_index; i++) {
-    const NnetIo &inputs = eg.inputs[i];
-    std::vector<Index>::const_iterator iter = inputs.indexes.begin(),
-                                        end = inputs.indexes.end();
-    // Should not have an empty input/output type.
-    KALDI_ASSERT(!inputs.indexes.empty());
-    if (inputs.name == "input") {
-      int32 min_t = iter->t, max_t = iter->t;
-      for (; iter != end; ++iter) {
-        int32 this_t = iter->t;
-        min_t = std::min(min_t, this_t);
-        max_t = std::max(max_t, this_t);
-        if (iter->n != 0) {
-          KALDI_WARN << "Example does not contain just a single example; "
-                     << "too late to do frame selection or reduce context.";
-        }
-      }
-      if (inputs.name == "input") {
-        done_input = true;
-        *min_input_t = min_t;
-        *max_input_t = max_t;
-      } 
-    } else {
-      for (; iter != end; ++iter) {
-        if (iter->n != 0) {
-          KALDI_WARN << "Example does not contain just a single example; "
-                     << "too late to do frame selection or reduce context.";
-        }
-      }
-    }
-  }
-}
-void max_min_output(const NnetChainExample &eg,
-                    const int32 num_index,
-                    int32 *min_output_t,
-                    int32 *max_output_t,
-                    bool &done_output){
-  for (int32 i = 0; i < num_index; i++) {
-    const NnetChainSupervision &outputs = eg.outputs[i];
-    std::vector<Index>::const_iterator iter = outputs.indexes.begin(),
-                                        end = outputs.indexes.end();
-    // Should not have an empty input/output type.
-    KALDI_ASSERT(!outputs.indexes.empty());
-    if (outputs.name == "output") {
-      int32 min_t = iter->t, max_t = iter->t;
-      for (; iter != end; ++iter) {
-        int32 this_t = iter->t;
-        min_t = std::min(min_t, this_t);
-        max_t = std::max(max_t, this_t);
-        if (iter->n != 0) {
-          KALDI_WARN << "Example does not contain just a single example; "
-                     << "too late to do frame selection or reduce context.";
-        }
-      }
-      if (outputs.name == "output") {
-        done_output = true;
-        *min_output_t = min_t;
-        *max_output_t = max_t;
-      } 
-    } else {
-      for (; iter != end; ++iter) {
-        if (iter->n != 0) {
-          KALDI_WARN << "Example does not contain just a single example; "
-                     << "too late to do frame selection or reduce context.";
-        }
-      }
-    }
-  }
-}
 void FilterExample(const NnetChainExample &eg,
                    int32 min_input_t,
                    int32 max_input_t,
@@ -185,8 +111,69 @@ bool ContainsSingleExample(const NnetChainExample &eg,
   bool done_input = false, done_output = false;
   int32 num_indexes_input = eg.inputs.size();
   int32 num_indexes_output = eg.outputs.size();
-  max_min_input(eg, num_indexes_input, min_input_t, max_input_t, done_input);
-  max_min_output(eg, num_indexes_output, min_output_t, max_output_t, done_output);
+  for (int32 i = 0; i < num_indexes_input; i++) {
+    const NnetIo &input = eg.inputs[i];
+    std::vector<Index>::const_iterator iter = input.indexes.begin(),
+                                        end = input.indexes.end();
+    // Should not have an empty input/output type.
+    KALDI_ASSERT(!input.indexes.empty());
+    if (input.name == "input") {
+      int32 min_t = iter->t, max_t = iter->t;
+      for (; iter != end; ++iter) {
+        int32 this_t = iter->t;
+        min_t = std::min(min_t, this_t);
+        max_t = std::max(max_t, this_t);
+        if (iter->n != 0) {
+          KALDI_WARN << "Example does not contain just a single example; "
+                     << "too late to do frame selection or reduce context.";
+          return false;
+        }
+      }
+      done_input = true;
+      *min_input_t = min_t;
+      *max_input_t = max_t;
+    } else {
+      for (; iter != end; ++iter) {
+        if (iter->n != 0) {
+          KALDI_WARN << "Example does not contain just a single example; "
+                     << "too late to do frame selection or reduce context.";
+          return false;
+        }
+      }
+    }
+  } 
+
+  for (int32 i = 0; i < num_indexes_output; i++) {
+    const NnetChainSupervision &outputs = eg.outputs[i];
+    std::vector<Index>::const_iterator iter = outputs.indexes.begin(),
+                                        end = outputs.indexes.end();
+    // Should not have an empty input/output type.
+    KALDI_ASSERT(!outputs.indexes.empty());
+    if (outputs.name == "output") {
+      int32 min_t = iter->t, max_t = iter->t;
+      for (; iter != end; ++iter) {
+        int32 this_t = iter->t;
+        min_t = std::min(min_t, this_t);
+        max_t = std::max(max_t, this_t);
+        if (iter->n != 0) {
+          KALDI_WARN << "Example does not contain just a single example; "
+                     << "too late to do frame selection or reduce context.";
+          return false;
+        }
+      }
+      done_output = true;
+      *min_output_t = min_t;
+      *max_output_t = max_t;
+    } else {
+      for (; iter != end; ++iter) {
+        if (iter->n != 0) {
+          KALDI_WARN << "Example does not contain just a single example; "
+                     << "too late to do frame selection or reduce context.";
+          return false;
+        }
+      }
+    }
+  }
   if (!done_input) {
     KALDI_WARN << "Example does not have any input named 'input'";
     return false;
@@ -198,11 +185,11 @@ bool ContainsSingleExample(const NnetChainExample &eg,
   return true;
 }
 //calculate the skip_frame length
-void CalculateSkipFram(const NnetChainExample &eg,
+void CalculateSkipFrame(const NnetChainExample &eg,
                        int32 *skip_frame_len){
   *skip_frame_len=eg.outputs[0].indexes[1].t-eg.outputs[0].indexes[0].t;
 }
-void Modify_chain_context(const NnetChainExample &eg,
+void ModifyChainExampleContext(const NnetChainExample &eg,
                           int32 left_context,
                           int32 right_context,
                           NnetChainExample *eg_out){
@@ -213,7 +200,7 @@ void Modify_chain_context(const NnetChainExample &eg,
                              &min_output_t, &max_output_t))
     KALDI_ERR << "Too late to perform frame selection/context reduction on "
               << "these examples (already merged?)";
-  CalculateSkipFram(eg, &skip_frame_len);
+  CalculateSkipFrame(eg, &skip_frame_len);
   if (left_context != -1) {
     if (min_input_t > min_output_t - left_context)
       KALDI_ERR << "You requested --left-context=" << left_context
@@ -232,7 +219,7 @@ void Modify_chain_context(const NnetChainExample &eg,
                 min_input_t, max_input_t,
                 min_output_t, max_output_t,
                 eg_out);
-} //Modify_chain_context
+} //ModifyChainExampleContext
 } //namespace nnet3
 } //namespace kaldi
 int main(int argc, char *argv[]) {
@@ -259,7 +246,7 @@ int main(int argc, char *argv[]) {
     int32 frame_shift = 0;
     int32 truncate_deriv_weights = 0;
     BaseFloat keep_proportion = 1.0;
-    int left_context = -1, right_context = -1;
+    int32 left_context = -1, right_context = -1;
     ParseOptions po(usage);
     po.Register("random", &random, "If true, will write frames to output "
                 "archives randomly, not round-robin.");
@@ -317,10 +304,10 @@ int main(int argc, char *argv[]) {
           num_written++;
         }
       } else if (count > 0) {
-        NnetChainExample eg = example_reader.Value();
-        NnetChainExample eg_out;
+        const NnetChainExample &eg = example_reader.Value();
+        NnetChainExample eg_out(eg);
         if (left_context != -1 || right_context != -1)
-          Modify_chain_context(eg, left_context, right_context, &eg_out);
+          ModifyChainExampleContext(eg, left_context, right_context, &eg_out);
         if (frame_shift != 0)
           ShiftChainExampleTimes(frame_shift, exclude_names, &eg_out);
         if (truncate_deriv_weights != 0)
