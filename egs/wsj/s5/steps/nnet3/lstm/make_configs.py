@@ -57,8 +57,8 @@ def GetArgs():
                         help="add a sigmoid layer as the final layer. Applicable only if skip-final-softmax is true.",
                         choices=['true', 'false'], default = False)
     parser.add_argument("--objective-type", type=str, default="linear",
-                        choices = ["linear", "quadratic", "xent"],
-                        help = "the type of objective; i.e. quadratic or linear or cross-entropy per dim")
+                        choices = ["linear", "quadratic"],
+                        help = "the type of objective; i.e. quadratic or linear")
 
     # LSTM options
     parser.add_argument("--num-lstm-layers", type=int,
@@ -98,7 +98,7 @@ def GetArgs():
     parser.add_argument("--cepstral-lifter", type=float, dest = "cepstral_lifter",
                         help="The factor used for determining the liftering vector in the production of MFCC. "
                         "User has to ensure that it matches the lifter used in MFCC generation, "
-                        "e.g. 22.0", default=0)
+                        "e.g. 22.0", default=22.0)
     parser.add_argument("--add-idct", type=str, action=nnet3_train_lib.StrToBoolAction,
                         help="Add an IDCT after input to convert MFCC to Fbank",
                         default = False, choices = ["true", "false"])

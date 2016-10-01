@@ -6,7 +6,6 @@
 # Apache 2.0.
 
 import logging
-import math
 import imp
 
 imp.load_source('nnet3_train_lib', 'steps/nnet3/nnet3_train_lib.py')
@@ -170,10 +169,10 @@ class RunOpts:
 # this is the main method which differs between RNN and DNN training
 def TrainNewModels(dir, iter, srand, num_jobs,
                    num_archives_processed, num_archives,
-                   raw_model_string, egs_dir, frames_per_eg,
-                   left_context, right_context,
+                   raw_model_string, egs_dir,
+                   left_context, right_context, min_deriv_time,
                    momentum, max_param_change,
-                   shuffle_buffer_size, minibatch_size,
+                   shuffle_buffer_size, num_chunk_per_minibatch,
                    cache_read_opt, run_opts):
     # We cannot easily use a single parallel SGE job to do the main training,
     # because the computation of which archive and which --frame option
@@ -188,7 +187,6 @@ def TrainNewModels(dir, iter, srand, num_jobs,
         k = num_archives_processed + job - 1 # k is a zero-based index that we will derive
                                                # the other indexes from.
         archive_index = (k % num_archives) + 1 # work out the 1-based archive index.
-        frame = (k / num_archives) % frames_per_eg
 
         cache_write_opt = ""
         if job == 1:
@@ -201,20 +199,20 @@ def TrainNewModels(dir, iter, srand, num_jobs,
   nnet3-train {parallel_train_opts} {cache_read_opt} {cache_write_opt} \
   --print-interval=10 --momentum={momentum} \
   --max-param-change={max_param_change} \
-  "{raw_model}" \
-  "ark,bg:nnet3-copy-egs --frame={frame} {context_opts} ark:{egs_dir}/egs.{archive_index}.ark ark:- | nnet3-shuffle-egs --buffer-size={shuffle_buffer_size} --srand={srand} ark:- ark:-| nnet3-merge-egs --minibatch-size={minibatch_size} --measure-output-frames=false --discard-partial-minibatches=true ark:- ark:- |" \
+  --optimization.min-deriv-time={min_deriv_time} "{raw_model}" \
+  "ark,bg:nnet3-copy-egs {context_opts} ark:{egs_dir}/egs.{archive_index}.ark ark:- | nnet3-shuffle-egs --buffer-size={shuffle_buffer_size} --srand={srand} ark:- ark:-| nnet3-merge-egs --minibatch-size={num_chunk_per_minibatch} --measure-output-frames=false --discard-partial-minibatches=true ark:- ark:- |" \
   {dir}/{next_iter}.{job}.raw
           """.format(command = run_opts.command,
                      train_queue_opt = run_opts.train_queue_opt,
                      dir = dir, iter = iter, srand = iter + srand, next_iter = iter + 1, job = job,
                      parallel_train_opts = run_opts.parallel_train_opts,
                      cache_read_opt = cache_read_opt, cache_write_opt = cache_write_opt,
-                     frame = frame,
                      momentum = momentum, max_param_change = max_param_change,
+                     min_deriv_time = min_deriv_time,
                      raw_model = raw_model_string, context_opts = context_opts,
                      egs_dir = egs_dir, archive_index = archive_index,
                      shuffle_buffer_size = shuffle_buffer_size,
-                     minibatch_size = minibatch_size),
+                     num_chunk_per_minibatch = num_chunk_per_minibatch),
           wait = False)
 
         processes.append(process_handle)
@@ -233,11 +231,11 @@ def TrainNewModels(dir, iter, srand, num_jobs,
 
 def TrainOneIteration(dir, iter, srand, egs_dir,
                       num_jobs, num_archives_processed, num_archives,
-                      learning_rate, minibatch_size,
-                      frames_per_eg, num_hidden_layers, add_layers_period,
-                      left_context, right_context,
+                      learning_rate, shrinkage_value, num_chunk_per_minibatch,
+                      num_hidden_layers, add_layers_period,
+                      left_context, right_context, min_deriv_time,
                       momentum, max_param_change, shuffle_buffer_size,
-                      run_opts,
+                      cv_minibatch_size, run_opts,
                       compute_accuracy = True, use_raw_nnet = False):
 
 
@@ -258,10 +256,10 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
         f.write(str(srand))
         f.close()
 
-    ComputeTrainCvProbabilities(dir, iter, egs_dir, run_opts, use_raw_nnet = use_raw_nnet, compute_accuracy = compute_accuracy)
+    ComputeTrainCvProbabilities(dir, iter, egs_dir, run_opts, mb_size=cv_minibatch_size, use_raw_nnet = use_raw_nnet, compute_accuracy = compute_accuracy)
 
     if iter > 0:
-        ComputeProgress(dir, iter, egs_dir, run_opts, use_raw_nnet = use_raw_nnet)
+        ComputeProgress(dir, iter, egs_dir, run_opts, mb_size=cv_minibatch_size, use_raw_nnet = use_raw_nnet)
 
     # an option for writing cache (storing pairs of nnet-computations
     # and computation-requests) during training.
@@ -288,16 +286,14 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
             raw_model_string = "nnet3-am-copy --raw=true --learning-rate={0} {1}/{2}.mdl - |".format(learning_rate, dir, iter)
 
     if do_average:
-        cur_minibatch_size = minibatch_size
-        cur_max_param_change = max_param_change
+        cur_num_chunk_per_minibatch = num_chunk_per_minibatch
     else:
         # on iteration zero or when we just added a layer, use a smaller minibatch
         # size (and we will later choose the output of just one of the jobs): the
         # model-averaging isn't always helpful when the model is changing too fast
         # (i.e. it can worsen the objective function), and the smaller minibatch
         # size will help to keep the update stable.
-        cur_minibatch_size = minibatch_size / 2
-        cur_max_param_change = float(max_param_change) / math.sqrt(2)
+        cur_num_chunk_per_minibatch = num_chunk_per_minibatch / 2
 
     try:
         os.remove("{0}/.error".format(dir))
@@ -305,10 +301,10 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
         pass
 
     TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archives,
-                   raw_model_string, egs_dir, frames_per_eg,
-                   left_context, right_context,
+                   raw_model_string, egs_dir,
+                   left_context, right_context, min_deriv_time,
                    momentum, max_param_change,
-                   shuffle_buffer_size, cur_minibatch_size,
+                   shuffle_buffer_size, cur_num_chunk_per_minibatch,
                    cache_read_opt, run_opts)
     [models_to_average, best_model] = GetSuccessfulModels(num_jobs, '{0}/log/train.{1}.%.log'.format(dir,iter))
     nnets_list = []
@@ -320,13 +316,16 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
         GetAverageNnetModel(dir = dir, iter = iter,
                             nnets_list = " ".join(nnets_list),
                             run_opts = run_opts,
-                            use_raw_nnet = use_raw_nnet)
+                            use_raw_nnet = use_raw_nnet,
+                            shrink = shrinkage_value)
+
     else:
         # choose the best model from different jobs
         GetBestNnetModel(dir = dir, iter = iter,
                          best_model_index = best_model,
                          run_opts = run_opts,
-                         use_raw_nnet = use_raw_nnet)
+                         use_raw_nnet = use_raw_nnet,
+                         shrink = shrinkage_value)
 
     try:
         for i in range(1, num_jobs + 1):
@@ -345,3 +344,5 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
         raise Exception("{0} has size 0. Something went wrong in iteration {1}".format(new_model, iter))
     if cache_read_opt and os.path.exists("{0}/cache.{1}".format(dir, iter)):
         os.remove("{0}/cache.{1}".format(dir, iter))
+
+

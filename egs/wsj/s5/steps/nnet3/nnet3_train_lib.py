@@ -440,7 +440,7 @@ def ForceSymlink(file1, file2):
             os.symlink(file1, file2)
 
 def ComputePresoftmaxPriorScale(dir, alidir, num_jobs, run_opts,
-                                presoftmax_prior_scale_power = None):
+                                presoftmax_prior_scale_power = -0.25):
 
     # getting the raw pdf count
     RunKaldiCommand("""
@@ -461,11 +461,13 @@ vector-sum --binary=false {dir}/pdf_counts.* {dir}/pdf_counts
     for file in glob.glob('{0}/pdf_counts.*'.format(dir)):
         os.remove(file)
     pdf_counts = ReadKaldiMatrix('{0}/pdf_counts'.format(dir))[0]
+    scaled_counts = SmoothPresoftmaxPriorScaleVector(pdf_counts, presoftmax_prior_scale_power = presoftmax_prior_scale_power, smooth = 0.01)
 
-    smooth = 0.01
-    WritePresoftmaxPriorScaleVector(dir, pdf_counts, smooth = smooth)
+    output_file = "{0}/presoftmax_prior_scale.vec".format(dir)
+    WriteKaldiMatrix(output_file, [scaled_counts])
+    ForceSymlink("../presoftmax_prior_scale.vec", "{0}/configs/presoftmax_prior_scale.vec".format(dir))
 
-def WritePresoftmaxPriorScaleVector(dir, pdf_counts, smooth = 0.01)
+def SmoothPresoftmaxPriorScaleVector(pdf_counts, presoftmax_prior_scale_power = -0.25, smooth = 0.01):
     total = sum(pdf_counts)
     average_count = total/len(pdf_counts)
     scales = []
@@ -473,17 +475,15 @@ def WritePresoftmaxPriorScaleVector(dir, pdf_counts, smooth = 0.01)
         scales.append(math.pow(pdf_counts[i] + smooth * average_count, presoftmax_prior_scale_power))
     num_pdfs = len(pdf_counts)
     scaled_counts = map(lambda x: x * float(num_pdfs) / sum(scales), scales)
+    return scaled_counts
 
-    output_file = "{0}/presoftmax_prior_scale.vec".format(dir)
-    WriteKaldiMatrix(output_file, [scaled_counts])
-    ForceSymlink("../presoftmax_prior_scale.vec", "{0}/configs/presoftmax_prior_scale.vec".format(dir))
 
 def PrepareInitialAcousticModel(dir, alidir, run_opts):
     """ Adds the first layer; this will also add in the lda.mat and
         presoftmax_prior_scale.vec. It will also prepare the acoustic model
         with the transition model."""
 
-    PrepareInitialNetwork(dir, run_opts):
+    PrepareInitialNetwork(dir, run_opts)
 
   # Convert to .mdl, train the transitions, set the priors.
     RunKaldiCommand("""

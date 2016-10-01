@@ -80,7 +80,7 @@ def GetArgs():
 
     parser.add_argument("--objective-type", type=str,
                         help = "the type of objective; i.e. quadratic or linear",
-                        default="linear", choices = ["linear", "quadratic", "xent"])
+                        default="linear", choices = ["linear", "quadratic"])
     parser.add_argument("--xent-regularize", type=float,
                         help="For chain models, if nonzero, add a separate output for cross-entropy "
                         "regularization (with learning-rate-factor equal to the inverse of this)",
@@ -359,7 +359,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
     config_files={}
     prev_layer_output = nodes.AddInputLayer(config_lines, feat_dim, splice_indexes[0],
                         ivector_dim,
-                        idct_mat = config_dir.strip() + "/idct.mat" if add_idct and cnn_layer is None else None)
+                        idct_mat = config_dir.strip() + "/idct.mat" if (add_idct and cnn_layer is None) else None)
 
     # Add the init config lines for estimating the preconditioning matrices
     init_config_lines = copy.deepcopy(config_lines)
