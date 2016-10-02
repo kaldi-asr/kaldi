@@ -98,7 +98,7 @@ if [ $stage -le 1 ]; then
   unpruned_lm_dir=${lm_dir}/${lm_name}.pocolm
   train_lm.py  --wordlist=${wordlist} --num-splits=10 --warm-start-ratio=20  \
                --fold-dev-into=ted ${bypass_metaparam_optim_opt} \
-               --min-counts=${min_counts} \
+               --min-counts="${min_counts}" \
                ${dir}/data/text ${order} ${lm_dir}/work ${unpruned_lm_dir}
 
   get_data_prob.py ${dir}/data/real_dev_set.txt ${unpruned_lm_dir} 2>&1 | grep -F '[perplexity'
