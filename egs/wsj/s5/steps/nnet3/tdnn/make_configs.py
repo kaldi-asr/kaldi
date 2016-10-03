@@ -227,6 +227,7 @@ def AddConvMaxpLayer(config_lines, name, input, args):
 # The ivectors are processed through an affine layer parallel to the CNN layers,
 # then concatenated with the CNN output and passed to the deeper part of the network.
 def AddCnnLayers(config_lines, cnn_layer, cnn_bottleneck_dim, cepstral_lifter, config_dir, feat_dim, splice_indexes=[0], ivector_dim=0):
+    num_learnable_params = 0
     cnn_args = ParseCnnString(cnn_layer)
     num_cnn_layers = len(cnn_args)
     # We use an Idct layer here to convert MFCC to FBANK features
@@ -244,19 +245,27 @@ def AddCnnLayers(config_lines, cnn_layer, cnn_bottleneck_dim, cepstral_lifter, c
                          'vectorization': 'yzx'}
 
     for cl in range(0, num_cnn_layers):
-        prev_layer_output = AddConvMaxpLayer(config_lines, "L{0}".format(cl), prev_layer_output, cnn_args[cl])
+        prev_layer = AddConvMaxpLayer(config_lines, "L{0}".format(cl), prev_layer_output, cnn_args[cl])
+        prev_layer_output = prev_layer['output']
+        num_learnable_params = prev_layer['num_learnable_params']
 
     if cnn_bottleneck_dim > 0:
-        prev_layer_output = nodes.AddAffineLayer(config_lines, "cnn-bottleneck", prev_layer_output, cnn_bottleneck_dim, "")
+        prev_layer = nodes.AddAffineLayer(config_lines, "cnn-bottleneck", prev_layer_output, cnn_bottleneck_dim, "")
+        prev_layer_output = prev_layer['output']
+        num_learnable_params = prev_layer['num_learnable_params']
 
     if ivector_dim > 0:
         iv_layer_output = {'descriptor':  'ReplaceIndex(ivector, t, 0)',
                            'dimension': ivector_dim}
-        iv_layer_output = nodes.AddAffineLayer(config_lines, "ivector", iv_layer_output, ivector_dim, "")
+        iv_layer = nodes.AddAffineLayer(config_lines, "ivector", iv_layer_output, ivector_dim, "")
+        iv_layer_output = iv_layer['output']
+        num_learnable_params += iv_layer['num_learnable_params']
+
         prev_layer_output['descriptor'] = 'Append({0}, {1})'.format(prev_layer_output['descriptor'], iv_layer_output['descriptor'])
         prev_layer_output['dimension'] = prev_layer_output['dimension'] + iv_layer_output['dimension']
 
-    return prev_layer_output
+    return {'output' : prev_layer_output,
+            'num_learnable_params' : num_learnable_params}
 
 def PrintConfig(file_name, config_lines):
     f = open(file_name, 'w')
@@ -337,8 +346,6 @@ def MakeConfigs(config_dir, splice_indexes_string,
 
     parsed_splice_output = ParseSpliceString(splice_indexes_string.strip())
 
-    left_context = parsed_splice_output['left_context']
-    right_context = parsed_splice_output['right_context']
     num_hidden_layers = parsed_splice_output['num_hidden_layers']
     splice_indexes = parsed_splice_output['splice_indexes']
     input_dim = len(parsed_splice_output['splice_indexes'][0]) + feat_dim + ivector_dim
@@ -349,12 +356,20 @@ def MakeConfigs(config_dir, splice_indexes_string,
 
     prior_scale_file = '{0}/presoftmax_prior_scale.vec'.format(config_dir)
 
+    # start the config generation process
     config_lines = {'components':[], 'component-nodes':[]}
-
     config_files={}
-    prev_layer_output = nodes.AddInputLayer(config_lines, feat_dim, splice_indexes[0], ivector_dim)
 
-    # Add the init config lines for estimating the preconditioning matrices
+    num_learnable_params = 0
+    num_learnable_params_xent = 0   # number of parameters in xent-branch of chain models
+
+    prev_layer = nodes.AddInputLayer(config_lines, feat_dim, splice_indexes[0], ivector_dim)
+    prev_layer_output = prev_layer['output']
+    # we moved the first splice layer to before the LDA..
+    # so the input to the first affine layer is going to [0] index
+    splice_indexes[0] = [0]
+
+    # Adding the init config lines for estimating the preconditioning matrices
     init_config_lines = copy.deepcopy(config_lines)
     init_config_lines['components'].insert(0, '# Config file for initializing neural network prior to')
     init_config_lines['components'].insert(0, '# preconditioning matrix computation')
@@ -362,19 +377,21 @@ def MakeConfigs(config_dir, splice_indexes_string,
     config_files[config_dir + '/init.config'] = init_config_lines
 
     if cnn_layer is not None:
-        prev_layer_output = AddCnnLayers(config_lines, cnn_layer, cnn_bottleneck_dim, cepstral_lifter, config_dir,
+        prev_layer = AddCnnLayers(config_lines, cnn_layer, cnn_bottleneck_dim, cepstral_lifter, config_dir,
                                          feat_dim, splice_indexes[0], ivector_dim)
+        prev_layer_output = prev_layer['output']
+        num_learnable_params += prev_layer['num_learnable_params']
 
     if add_lda:
-        prev_layer_output = nodes.AddLdaLayer(config_lines, "L0", prev_layer_output, config_dir + '/lda.mat')
+        prev_layer = nodes.AddLdaLayer(config_lines, "L0", prev_layer_output, config_dir + '/lda.mat')
+        prev_layer_output = prev_layer['output']
 
-    left_context = 0
-    right_context = 0
-    # we moved the first splice layer to before the LDA..
-    # so the input to the first affine layer is going to [0] index
-    splice_indexes[0] = [0]
-
-    if not nonlin_output_dim is None:
+    # generating the output-dims for each layer
+    if nonlin_type == "pnorm":
+        # we don't increase the output dimension for each layer
+        # we might support this in the future
+        nonlin_output_dims = [nonlin_output_dim] * num_hidden_layers
+    elif not nonlin_output_dim is None:
         nonlin_output_dims = [nonlin_output_dim] * num_hidden_layers
     elif nonlin_output_dim_init < nonlin_output_dim_final and num_hidden_layers == 1:
         raise Exception("num-hidden-layers has to be greater than 1 if relu-dim-init and relu-dim-final is different.")
@@ -385,119 +402,73 @@ def MakeConfigs(config_dir, splice_indexes_string,
         assert(nonlin_output_dims[-1] >= nonlin_output_dim_final - 1 and nonlin_output_dims[-1] <= nonlin_output_dim_final + 1) # due to rounding error
         nonlin_output_dims[-1] = nonlin_output_dim_final # It ensures that the dim of the last hidden layer is exactly the same as what is specified
 
+
+    # Adding the TDNN layers
     for i in range(0, num_hidden_layers):
-        # make the intermediate config file for layerwise discriminative training
-
-        # prepare the spliced input
-        if not (len(splice_indexes[i]) == 1 and splice_indexes[i][0] == 0):
-            try:
-                zero_index = splice_indexes[i].index(0)
-            except ValueError:
-                zero_index = None
-            # I just assume the prev_layer_output_descriptor is a simple forwarding descriptor
-            prev_layer_output_descriptor = prev_layer_output['descriptor']
-            subset_output = prev_layer_output
-            if subset_dim > 0:
-                # if subset_dim is specified the script expects a zero in the splice indexes
-                assert(zero_index is not None)
-                subset_node_config = "dim-range-node name=Tdnn_input_{0} input-node={1} dim-offset={2} dim={3}".format(i, prev_layer_output_descriptor, 0, subset_dim)
-                subset_output = {'descriptor' : 'Tdnn_input_{0}'.format(i),
-                                 'dimension' : subset_dim}
-                config_lines['component-nodes'].append(subset_node_config)
-            appended_descriptors = []
-            appended_dimension = 0
-            for j in range(len(splice_indexes[i])):
-                if j == zero_index:
-                    appended_descriptors.append(prev_layer_output['descriptor'])
-                    appended_dimension += prev_layer_output['dimension']
-                    continue
-                appended_descriptors.append('Offset({0}, {1})'.format(subset_output['descriptor'], splice_indexes[i][j]))
-                appended_dimension += subset_output['dimension']
-            prev_layer_output = {'descriptor' : "Append({0})".format(" , ".join(appended_descriptors)),
-                                 'dimension'  : appended_dimension}
-        else:
-            # this is a normal affine node
-            pass
-
         if xent_separate_forward_affine and i == num_hidden_layers - 1:
+            # xent_separate_forward_affine is only done when adding the final hidden layer
+            # this is the final layer so assert that splice index is [0]
+            assert(splice_indexes[i] == [0])
             if xent_regularize == 0.0:
                 raise Exception("xent-separate-forward-affine=True is valid only if xent-regularize is non-zero")
 
-            if nonlin_type == "relu" :
-                prev_layer_output_chain = nodes.AddAffRelNormLayer(config_lines, "Tdnn_pre_final_chain",
-                                                                   prev_layer_output, nonlin_output_dim,
-                                                                   self_repair_scale = self_repair_scale,
-                                                                   norm_target_rms = final_layer_normalize_target)
+            # we use named arguments as we do not want argument offset errors
+            num_params_fin, num_params_fin_xent = nodes.AddFinalLayersWithXentSeperateForwardAffineRegularizer(config_lines,
+                                                                                                             input = prev_layer_output,
+                                                                                                             num_targets = num_targets,
+                                                                                                             nonlin_type = nonlin_type,
+                                                                                                             nonlin_input_dim = nonlin_input_dim,
+                                                                                                             nonlin_output_dim = nonlin_output_dim,
+                                                                                                             use_presoftmax_prior_scale = use_presoftmax_prior_scale,
+                                                                                                             prior_scale_file = prior_scale_file,
+                                                                                                             include_log_softmax = include_log_softmax,
+                                                                                                             self_repair_scale = self_repair_scale,
+                                                                                                             xent_regularize = xent_regularize,
+                                                                                                             final_layer_normalize_target = final_layer_normalize_target)
 
-                prev_layer_output_xent = nodes.AddAffRelNormLayer(config_lines, "Tdnn_pre_final_xent",
-                                                                  prev_layer_output, nonlin_output_dim,
-                                                                  self_repair_scale = self_repair_scale,
-                                                                  norm_target_rms = final_layer_normalize_target)
-            elif nonlin_type == "pnorm" :
-                prev_layer_output_chain = nodes.AddAffPnormLayer(config_lines, "Tdnn_pre_final_chain",
-                                                                 prev_layer_output, nonlin_input_dim, nonlin_output_dim,
-                                                                 norm_target_rms = final_layer_normalize_target)
 
-                prev_layer_output_xent = nodes.AddAffPnormLayer(config_lines, "Tdnn_pre_final_xent",
-                                                                prev_layer_output, nonlin_input_dim, nonlin_output_dim,
-                                                                norm_target_rms = final_layer_normalize_target)
-            else:
-                raise Exception("Unknown nonlinearity type")
 
-            nodes.AddFinalLayer(config_lines, prev_layer_output_chain, num_targets,
-                               use_presoftmax_prior_scale = use_presoftmax_prior_scale,
-                               prior_scale_file = prior_scale_file,
-                               include_log_softmax = include_log_softmax)
-
-            nodes.AddFinalLayer(config_lines, prev_layer_output_xent, num_targets,
-                                ng_affine_options = " param-stddev=0 bias-stddev=0 learning-rate-factor={0} ".format(
-                                    0.5 / xent_regularize),
-                                use_presoftmax_prior_scale = use_presoftmax_prior_scale,
-                                prior_scale_file = prior_scale_file,
-                                include_log_softmax = True,
-                                name_affix = 'xent')
         else:
-            if nonlin_type == "relu":
-                prev_layer_output = nodes.AddAffRelNormLayer(config_lines, "Tdnn_{0}".format(i),
-                                                            prev_layer_output, nonlin_output_dims[i],
-                                                            self_repair_scale = self_repair_scale,
-                                                            norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
-            elif nonlin_type == "pnorm":
-                prev_layer_output = nodes.AddAffPnormLayer(config_lines, "Tdnn_{0}".format(i),
-                                                           prev_layer_output, nonlin_input_dim, nonlin_output_dim,
-                                                           norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
+            if splice_indexes[i] == ]:
+                # add a normal affine layer
+                prev_layer = nodes.AddAffineNonlinLayer(config_lines, 'Affine{0}'.format(i),
+                                                          prev_layer_output,
+                                                          nonlin_type, nonlin_input_dim, nonlin_output_dims[i],
+                                                          self_repair_scale = self_repair_scale,
+                                                          norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
             else:
-                raise Exception("Unknown nonlinearity type")
+                prev_layer = nodes.AddTdnnLayer(config_lines, 'Tdnn{0}'.format(i+1), prev_layer_output,
+                                                splice_indexes[i],
+                                                nonlin_type, nonlin_input_dim, nonlin_output_dims[i],
+                                                subset_dim = subset_dim,
+                                                self_repair_scale = self_repair_scale,
+                                                norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
+
+
             # a final layer is added after each new layer as we are generating
             # configs for layer-wise discriminative training
+            num_params_fin, num_params_fin_xent = nodes.AddFinalLayerWithXentRegularizer(config_lines,
+                                                                                         input = prev_layer_output,
+                                                                                         num_targets = num_targets,
+                                                                                         use_presoftmax_prior_scale = use_presoftmax_prior_scale,
+                                                                                         prior_scale_file = prior_scale_file,
+                                                                                         include_log_softmax = include_log_softmax,
+                                                                                         self_repair_scale = self_repair_scale,
+                                                                                         xent_regularize = xent_regularize,
+                                                                                         add_final_sigmoid = add_final_sigmoid,
+                                                                                         objective_type = objective_type)
 
-            # add_final_sigmoid adds a sigmoid as a final layer as alternative
-            # to log-softmax layer.
-            # http://ufldl.stanford.edu/wiki/index.php/Softmax_Regression#Softmax_Regression_vs._k_Binary_Classifiers
-            # This is useful when you need the final outputs to be probabilities between 0 and 1.
-            # Usually used with an objective-type such as "quadratic".
-            # Applications are k-binary classification such Ideal Ratio Mask prediction.
-            nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
-                               use_presoftmax_prior_scale = use_presoftmax_prior_scale,
-                               prior_scale_file = prior_scale_file,
-                               include_log_softmax = include_log_softmax,
-                               add_final_sigmoid = add_final_sigmoid,
-                               objective_type = objective_type)
-            if xent_regularize != 0.0:
-                nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
-                                    ng_affine_options = " param-stddev=0 bias-stddev=0 learning-rate-factor={0} ".format(
-                                          0.5 / xent_regularize),
-                                    use_presoftmax_prior_scale = use_presoftmax_prior_scale,
-                                    prior_scale_file = prior_scale_file,
-                                    include_log_softmax = True,
-                                    name_affix = 'xent')
+
+
 
         config_files['{0}/layer{1}.config'.format(config_dir, i+1)] = config_lines
         config_lines = {'components':[], 'component-nodes':[]}
 
-    left_context += int(parsed_splice_output['left_context'])
-    right_context += int(parsed_splice_output['right_context'])
+    num_learnable_params += num_params_fin
+    num_learnable_params_xent = num_params_fin_xent
 
+    left_context = int(parsed_splice_output['left_context'])
+    right_context = int(parsed_splice_output['right_context'])
     # write the files used by other scripts like steps/nnet3/get_egs.sh
     f = open(config_dir + "/vars", "w")
     print('model_left_context=' + str(left_context), file=f)
@@ -513,6 +484,8 @@ def MakeConfigs(config_dir, splice_indexes_string,
     # init.config used to train lda-mllt train
     for key in config_files.keys():
         PrintConfig(key, config_files[key])
+
+    print('This model has num_learnable_params={0:,} and num_learnable_params_xent={1:,}'.format(num_learnable_params, num_learnable_params_xent))
 
 def Main():
     args = GetArgs()
