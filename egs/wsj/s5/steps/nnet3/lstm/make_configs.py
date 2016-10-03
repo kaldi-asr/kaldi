@@ -175,8 +175,8 @@ def ParseSpliceString(splice_indexes, label_delay=None):
                 raise ValueError("invalid --splice-indexes argument, too-short element: "
                                 + splice_indexes)
 
-            if (i > 0)  and ((len(indexes) != 1) or (indexes[0] != 0)):
-                raise ValueError("elements of --splice-indexes splicing is only allowed initial layer.")
+            if (i > 0 and i < num_lstm_layers)  and ((len(indexes) != 1) or (indexes[0] != 0)):
+                raise ValueError("elements of --splice-indexes splicing is not allowed at the LSTM layer input (other than the input layer).")
 
             if not indexes == sorted(indexes):
                 raise ValueError("elements of --splice-indexes must be sorted: "
