@@ -496,6 +496,15 @@ std::string NnetInfo(const Nnet &nnet) {
   return ostr.str();
 }
 
+void SetDropoutProportion(BaseFloat dropout_proportion,
+                          Nnet *nnet) {
+  for (int32 c = 0; c < nnet->NumComponents(); c++) {
+    Component *comp = nnet->GetComponent(c);
+    DropoutComponent *dc = dynamic_cast<DropoutComponent*>(comp);
+    if (dc != NULL)
+      dc->SetDropoutProportion(dropout_proportion);
+  }
+}
 
 void FindOrphanComponents(const Nnet &nnet, std::vector<int32> *components) {
   int32 num_components = nnet.NumComponents(), num_nodes = nnet.NumNodes();

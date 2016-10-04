@@ -236,7 +236,6 @@ class Nnet {
   // Assignment operator
   Nnet& operator =(const Nnet &nnet);
 
-
   // Removes nodes that are never needed to compute any output.
   void RemoveOrphanNodes(bool remove_orphan_inputs = false);
 
@@ -247,6 +246,10 @@ class Nnet {
   // as it could ruin the graph structure if done carelessly.
   void RemoveSomeNodes(const std::vector<int32> &nodes_to_remove);
 
+  void ResetGenerators(); // resets random-number generators for all
+  // random components.  You must also set srand() for this to be
+  // effective.
+  
  private:
 
   void Destroy();
@@ -321,7 +324,6 @@ class Nnet {
   std::vector<NetworkNode> nodes_;
 
 };
-
 
 
 } // namespace nnet3

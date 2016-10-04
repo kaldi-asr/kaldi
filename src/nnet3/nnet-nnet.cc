@@ -897,7 +897,15 @@ void Nnet::RemoveOrphanNodes(bool remove_orphan_inputs) {
   RemoveSomeNodes(orphan_nodes);
 }
 
-
+void Nnet::ResetGenerators() {
+  // resets random-number generators for all random
+  // components.
+  for (int32 c = 0; c < NumComponents(); c++) {
+    RandomComponent *rc = dynamic_cast<RandomComponent*>(GetComponent(c));
+    if (rc != NULL)
+      rc->ResetGenerator();
+  }
+}
 
 } // namespace nnet3
 } // namespace kaldi
