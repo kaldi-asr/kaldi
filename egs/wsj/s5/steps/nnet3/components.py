@@ -524,12 +524,14 @@ def AddTdnnLayer(config_lines, name, input, splice_indexes,
         prev_layer = AddAffRelNormLayer(config_lines, name,
                                         prev_layer_output,
                                         nonlin_output_dim,
+                                        ng_affine_options = ng_affine_options,
                                         self_repair_scale = self_repair_scale,
                                         norm_target_rms = norm_target_rms)
         prev_layer_output = prev_layer['output']
     elif nonlin_type == "pnorm":
         prev_layer = AddAffPnormLayer(config_lines, name,
                                       prev_layer_output,
+                                      ng_affine_options = ng_affine_options,
                                       nonlin_input_dim, nonlin_output_dim,
                                       norm_target_rms = norm_target_rms)
     else:
@@ -559,12 +561,13 @@ def SpliceInput(input, splice_indexes):
         appended_descriptors.append('Offset({0}, {1})'.format(input['descriptor'], splice_indexes[j]))
         appended_dimension += input['dimension']
 
-    return {'descriptor' : "Append({0})".format(" , ".join(appended_descriptors)),
-            'dimension'  : appended_dimension}
+    return {'output' : {'descriptor' : "Append({0})".format(" , ".join(appended_descriptors)),
+                        'dimension'  : appended_dimension},
+            'num_learnable_params' : 0}
 
 # this model does not have add_final_sigmoid and objective_type options
 # as this is specific to chain training and we don't have recipes
-# with chain trianining + raw training
+# with chain trianing + raw training
 def AddFinalLayersWithXentSeperateForwardAffineRegularizer(config_lines,
                                                              input, num_targets,
                                                              nonlin_type, nonlin_input_dim, nonlin_output_dim,
@@ -574,6 +577,7 @@ def AddFinalLayersWithXentSeperateForwardAffineRegularizer(config_lines,
                                                              self_repair_scale,
                                                              xent_regularize,
                                                              final_layer_normalize_target,
+                                                             ng_affine_options,
                                                              label_delay = None):
 
     num_learnable_params = 0
@@ -581,19 +585,23 @@ def AddFinalLayersWithXentSeperateForwardAffineRegularizer(config_lines,
     if nonlin_type == "relu" :
         prev_layer_chain = AddAffRelNormLayer(config_lines, "Pre_final_chain",
                                                input, nonlin_output_dim,
+                                               ng_affine_options = ng_affine_options,
                                                self_repair_scale = self_repair_scale,
                                                norm_target_rms = final_layer_normalize_target)
         prev_layer_xent = AddAffRelNormLayer(config_lines, "Pre_final_xent",
                                               input, nonlin_output_dim,
+                                              ng_affine_options = ng_affine_options,
                                               self_repair_scale = self_repair_scale,
                                               norm_target_rms = final_layer_normalize_target)
     elif nonlin_type == "pnorm" :
         prev_layer_chain = AddAffPnormLayer(config_lines, "Pre_final_chain",
                                              input, nonlin_input_dim, nonlin_output_dim,
+                                             ng_affine_options = ng_affine_options,
                                              norm_target_rms = final_layer_normalize_target)
 
         prev_layer_xent = AddAffPnormLayer(config_lines, "Pre_final_xent",
                                             input, nonlin_input_dim, nonlin_output_dim,
+                                            ng_affine_options = ng_affine_options,
                                             norm_target_rms = final_layer_normalize_target)
     else:
         raise Exception("Unknown nonlinearity type")
@@ -604,6 +612,7 @@ def AddFinalLayersWithXentSeperateForwardAffineRegularizer(config_lines,
     num_learnable_params += prev_layer_chain['num_learnable_params']
     num_learnable_params_xent += prev_layer_xent['num_learnable_params']
 
+    # we do not add the ng_affine_options here as Final layer has different defaults
     num_learnable_params += AddFinalLayer(config_lines, prev_layer_output_chain, num_targets,
                                           use_presoftmax_prior_scale = use_presoftmax_prior_scale,
                                           prior_scale_file = prior_scale_file,
@@ -646,12 +655,12 @@ def AddFinalLayerWithXentRegularizer(config_lines, input, num_targets,
     # Usually used with an objective-type such as "quadratic".
     # Applications are k-binary classification such Ideal Ratio Mask prediction.
     num_learnable_params = AddFinalLayer(config_lines, input, num_targets,
-                       use_presoftmax_prior_scale = use_presoftmax_prior_scale,
-                       prior_scale_file = prior_scale_file,
-                       include_log_softmax = include_log_softmax,
-                       add_final_sigmoid = add_final_sigmoid,
-                       objective_type = objective_type,
-                       label_delay = label_delay)
+                                         use_presoftmax_prior_scale = use_presoftmax_prior_scale,
+                                         prior_scale_file = prior_scale_file,
+                                         include_log_softmax = include_log_softmax,
+                                         add_final_sigmoid = add_final_sigmoid,
+                                         objective_type = objective_type,
+                                         label_delay = label_delay)
 
     if xent_regularize != 0.0:
         # This block prints the configs for a separate output that will be
@@ -663,12 +672,11 @@ def AddFinalLayerWithXentRegularizer(config_lines, input, num_targets,
         # constant; and the 0.5 was tuned so as to make the relative progress
         # similar in the xent and regular final layers.
         num_learnable_params_xent = AddFinalLayer(config_lines, input, num_targets,
-                            ng_affine_options = " param-stddev=0 bias-stddev=0 learning-rate-factor={0} ".format(
-                                  0.5 / xent_regularize),
-                            use_presoftmax_prior_scale = use_presoftmax_prior_scale,
-                            prior_scale_file = prior_scale_file,
-                            include_log_softmax = True,
-                            name_affix = 'xent',
-                            label_delay = label_delay)
+                                                  ng_affine_options = " param-stddev=0 bias-stddev=0 learning-rate-factor={0} ".format(0.5 / xent_regularize),
+                                                  use_presoftmax_prior_scale = use_presoftmax_prior_scale,
+                                                  prior_scale_file = prior_scale_file,
+                                                  include_log_softmax = True,
+                                                  name_affix = 'xent',
+                                                  label_delay = label_delay)
 
     return [num_learnable_params, num_learnable_params_xent]
