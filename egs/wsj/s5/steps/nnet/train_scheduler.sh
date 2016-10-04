@@ -22,7 +22,7 @@ feature_transform=
 max_iters=20
 min_iters=0 # keep training, disable weight rejection, start learn-rate halving as usual,
 keep_lr_iters=0 # fix learning rate for N initial epochs, disable weight rejection,
-dropout_iters= # Disable dropout after 'N' initial epochs,
+dropout_schedule= # dropout-rates for N initial epochs, for example: 0.1,0.1,0.1,0.1,0.1,0.0
 start_halving_impr=0.01
 end_halving_impr=0.001
 halving_factor=0.5
@@ -31,11 +31,11 @@ halving_factor=0.5
 verbose=1
 frame_weights=
 utt_weights=
- 
+
 # End configuration.
 
 echo "$0 $@"  # Print the command line for logging
-[ -f path.sh ] && . ./path.sh; 
+[ -f path.sh ] && . ./path.sh;
 
 . parse_options.sh || exit 1;
 
@@ -59,6 +59,8 @@ dir=$6
 [ ! -d $dir ] && mkdir $dir
 [ ! -d $dir/log ] && mkdir $dir/log
 [ ! -d $dir/nnet ] && mkdir $dir/nnet
+
+dropout_array=($(echo ${dropout_schedule} | tr ',' ' '))
 
 # Skip training
 [ -e $dir/final.nnet ] && echo "'$dir/final.nnet' exists, skipping training" && exit 0
@@ -99,10 +101,11 @@ for iter in $(seq -w $max_iters); do
   # skip iteration (epoch) if already done,
   [ -e $dir/.done_iter$iter ] && echo -n "skipping... " && ls $mlp_next* && continue
 
-  # disable dropout?
-  if [ -n $dropout_iters -a $((dropout_iters+1)) -eq $iter ]; then
-    nnet-copy --dropout-retention=1.0 $mlp_best ${mlp_best}.no_dropout
-    mlp_best=${mlp_best}.no_dropout
+  # set dropout-rate from the schedule,
+  if [ -n ${dropout_array[$((${iter#0}-1))]-''} ]; then
+    dropout_rate=${dropout_array[$((${iter#0}-1))]}
+    nnet-copy --dropout-rate=$dropout_rate $mlp_best ${mlp_best}.dropout_rate${dropout_rate}
+    mlp_best=${mlp_best}.dropout_rate${dropout_rate}
   fi
 
   # training,
@@ -114,11 +117,11 @@ for iter in $(seq -w $max_iters); do
     ${frame_weights:+ "--frame-weights=$frame_weights"} \
     ${utt_weights:+ "--utt-weights=$utt_weights"} \
     "$feats_tr" "$labels_tr" $mlp_best $mlp_next \
-    2>> $log || exit 1; 
+    2>> $log || exit 1;
 
   tr_loss=$(cat $dir/log/iter${iter}.tr.log | grep "AvgLoss:" | tail -n 1 | awk '{ print $4; }')
   echo -n "TRAIN AVG.LOSS $(printf "%.4f" $tr_loss), (lrate$(printf "%.6g" $learn_rate)), "
-  
+
   # cross-validation,
   log=$dir/log/iter${iter}.cv.log; hostname>$log
   $train_tool --cross-validate=true --randomize=false --verbose=$verbose $train_tool_opts \
@@ -127,7 +130,7 @@ for iter in $(seq -w $max_iters); do
     ${utt_weights:+ "--utt-weights=$utt_weights"} \
     "$feats_cv" "$labels_cv" $mlp_next \
     2>>$log || exit 1;
-  
+
   loss_new=$(cat $dir/log/iter${iter}.cv.log | grep "AvgLoss:" | tail -n 1 | awk '{ print $4; }')
   echo -n "CROSSVAL AVG.LOSS $(printf "%.4f" $loss_new), "
 
@@ -141,7 +144,7 @@ for iter in $(seq -w $max_iters); do
     [ $iter -le $keep_lr_iters ] && mlp_best=${mlp_best}_keep-lr-iters-$keep_lr_iters
     mv $mlp_next $mlp_best
     echo "nnet accepted ($(basename $mlp_best))"
-    echo $mlp_best > $dir/.mlp_best 
+    echo $mlp_best > $dir/.mlp_best
   else
     # rejecting,
     mlp_reject=$dir/nnet/${mlp_base}_iter${iter}_learnrate${learn_rate}_tr$(printf "%.4f" $tr_loss)_cv$(printf "%.4f" $loss_new)_rejected
@@ -151,9 +154,9 @@ for iter in $(seq -w $max_iters); do
 
   # create .done file, the iteration (epoch) is completed,
   touch $dir/.done_iter$iter
-  
+
   # continue with original learn-rate,
-  [ $iter -le $keep_lr_iters ] && continue 
+  [ $iter -le $keep_lr_iters ] && continue
 
   # stopping criterion,
   rel_impr=$(bc <<< "scale=10; ($loss_prev-$loss)/$loss_prev")
@@ -171,7 +174,7 @@ for iter in $(seq -w $max_iters); do
     halving=1
     echo $halving >$dir/.halving
   fi
-  
+
   # reduce the learning-rate,
   if [ 1 == $halving ]; then
     learn_rate=$(awk "BEGIN{print($learn_rate*$halving_factor)}")
@@ -180,7 +183,7 @@ for iter in $(seq -w $max_iters); do
 done
 
 # select the best network,
-if [ $mlp_best != $mlp_init ]; then 
+if [ $mlp_best != $mlp_init ]; then
   mlp_final=${mlp_best}_final_
   ( cd $dir/nnet; ln -s $(basename $mlp_best) $(basename $mlp_final); )
   ( cd $dir; ln -s nnet/$(basename $mlp_final) final.nnet; )
