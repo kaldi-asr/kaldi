@@ -243,7 +243,7 @@ trials=data/sre08_trials/short2-short3-female.trials
 ivector-compute-plda ark:data/train_female/spk2utt \
   'ark:ivector-normalize-length scp:exp/ivectors_train_female/ivector.scp  ark:- |' \
     exp/ivectors_train_female/plda 2>exp/ivectors_train_female/log/plda.log
-ivector-plda-scoring --num-utts=ark:exp/ivectors_sre08_train_short2_female/num_utts.ark \
+ivector-plda-scoring --simple-length-normalization=true --num-utts=ark:exp/ivectors_sre08_train_short2_female/num_utts.ark \
    "ivector-copy-plda --smoothing=0.0 exp/ivectors_train_female/plda - |" \
    "ark:ivector-subtract-global-mean scp:exp/ivectors_sre08_train_short2_female/spk_ivector.scp ark:- |" \
    "ark:ivector-normalize-length scp:exp/ivectors_sre08_test_short3_female/ivector.scp ark:- | ivector-subtract-global-mean ark:- ark:- |" \
@@ -259,7 +259,7 @@ trials=data/sre08_trials/short2-short3-male.trials
 ivector-compute-plda ark:data/train_male/spk2utt \
   'ark:ivector-normalize-length scp:exp/ivectors_train_male/ivector.scp  ark:- |' \
     exp/ivectors_train_male/plda 2>exp/ivectors_train_male/log/plda.log
-ivector-plda-scoring --num-utts=ark:exp/ivectors_sre08_train_short2_male/num_utts.ark \
+ivector-plda-scoring --simple-length-normalization=true --num-utts=ark:exp/ivectors_sre08_train_short2_male/num_utts.ark \
    "ivector-copy-plda --smoothing=0.0 exp/ivectors_train_male/plda - |" \
    "ark:ivector-subtract-global-mean scp:exp/ivectors_sre08_train_short2_male/spk_ivector.scp ark:- |" \
    "ark:ivector-normalize-length scp:exp/ivectors_sre08_test_short3_male/ivector.scp ark:- | ivector-subtract-global-mean ark:- ark:- |" \
@@ -276,7 +276,7 @@ ivector-plda-scoring --num-utts=ark:exp/ivectors_sre08_train_short2_male/num_utt
 # first, female.
 trials=data/sre08_trials/short2-short3-female.trials
 cat exp/ivectors_sre08_train_short2_female/spk_ivector.scp exp/ivectors_sre08_test_short3_female/ivector.scp > female.scp
-ivector-plda-scoring --num-utts=ark:exp/ivectors_sre08_train_short2_female/num_utts.ark \
+ivector-plda-scoring --simple-length-normalization=true --num-utts=ark:exp/ivectors_sre08_train_short2_female/num_utts.ark \
    "ivector-adapt-plda $adapt_opts exp/ivectors_train_female/plda scp:female.scp -|" \
    scp:exp/ivectors_sre08_train_short2_female/spk_ivector.scp \
    "ark:ivector-normalize-length scp:exp/ivectors_sre08_test_short3_female/ivector.scp ark:- |" \
@@ -291,7 +291,7 @@ ivector-plda-scoring --num-utts=ark:exp/ivectors_sre08_train_short2_female/num_u
 # next, male.
 trials=data/sre08_trials/short2-short3-male.trials
 cat exp/ivectors_sre08_train_short2_male/spk_ivector.scp exp/ivectors_sre08_test_short3_male/ivector.scp > male.scp
-ivector-plda-scoring --num-utts=ark:exp/ivectors_sre08_train_short2_male/num_utts.ark \
+ivector-plda-scoring --simple-length-normalization=true --num-utts=ark:exp/ivectors_sre08_train_short2_male/num_utts.ark \
    "ivector-adapt-plda $adapt_opts exp/ivectors_train_male/plda scp:male.scp -|" \
    scp:exp/ivectors_sre08_train_short2_male/spk_ivector.scp \
    "ark:ivector-normalize-length scp:exp/ivectors_sre08_test_short3_male/ivector.scp ark:- |" \
