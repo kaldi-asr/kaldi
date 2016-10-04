@@ -141,6 +141,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new StatisticsPoolingComponent();
   } else if (component_type == "ConstantFunctionComponent") {
     ans = new ConstantFunctionComponent();
+  } else if (component_type == "DropoutComponent") {
+    ans = new DropoutComponent();
   }
   if (ans != NULL) {
     KALDI_ASSERT(component_type == ans->Type());

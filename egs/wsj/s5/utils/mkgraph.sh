@@ -58,6 +58,19 @@ for f in $required; do
   [ ! -f $f ] && echo "mkgraph.sh: expected $f to exist" && exit 1;
 done
 
+if [ -f $dir/HCLG.fst ]; then
+  # detect when the result already exists, and avoid overwriting it.
+  must_rebuild=false
+  for f in $required; do
+    [ $f -nt $dir/HCLG.fst ] && must_rebuild=true
+  done
+  if ! $must_rebuild; then
+    echo "$0: $dir/HCLG.fst is up to date."
+    exit 0
+  fi
+fi
+
+
 N=$(tree-info $tree | grep "context-width" | cut -d' ' -f2) || { echo "Error when getting context-width"; exit 1; }
 P=$(tree-info $tree | grep "central-position" | cut -d' ' -f2) || { echo "Error when getting central-position"; exit 1; }
 if [[ $context == mono && ($N != 1 || $P != 0) || \
@@ -129,6 +142,9 @@ if ! [ $(head -c 67 $dir/HCLG.fst | wc -c) -eq 67 ]; then
   echo "$0: it looks like the result in $dir/HCLG.fst is empty"
   exit 1
 fi
+
+# save space.
+rm $dir/HCLGa.fst $dir/Ha.fst 2>/dev/null || true
 
 # keep a copy of the lexicon and a list of silence phones with HCLG...
 # this means we can decode without reference to the $lang directory.

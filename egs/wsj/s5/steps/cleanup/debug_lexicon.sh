@@ -46,7 +46,7 @@ done
 
 mkdir -p $dir
 utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt
-cp $srcdir/phones.txt $dir
+cp $lang/phones.txt $dir
 
 if [ -z $alidir ]; then
   alidir=${src}_ali_$(basename $data)

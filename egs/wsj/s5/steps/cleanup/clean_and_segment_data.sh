@@ -75,13 +75,13 @@ cp $srcdir/tree $dir
 cp $srcdir/cmvn_opts $dir
 cp $srcdir/{splice_opts,delta_opts,final.mat,final.alimdl} $dir 2>/dev/null || true
 
-utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
-cp $srcdir/phones.txt $dir || exit 1;
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt
+cp $lang/phones.txt $dir
 
 if [ $stage -le 1 ]; then
   echo "$0: Building biased-language-model decoding graphs..."
   steps/cleanup/make_biased_lm_graphs.sh $graph_opts \
-    --nj $nj --cmd "$decode_cmd" \
+    --nj $nj --cmd "$cmd" \
      $data $lang $dir
 fi
 
@@ -109,7 +109,7 @@ fi
 if [ $stage -le 3 ]; then
   echo "$0: Doing oracle alignment of lattices..."
   steps/cleanup/lattice_oracle_align.sh \
-    --cmd "$decode_cmd" $data $lang $dir/lats $dir/lattice_oracle
+    --cmd "$cmd" $data $lang $dir/lats $dir/lattice_oracle
 fi
 
 

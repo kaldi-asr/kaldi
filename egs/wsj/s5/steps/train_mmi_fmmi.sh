@@ -66,7 +66,7 @@ silphonelist=`cat $lang/phones/silence.csl`
 mkdir -p $dir/log
 
 utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
-cp $alidir/phones.txt $dir || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 
 for f in $data/feats.scp $lang/phones.txt $dubmdir/final.dubm $alidir/final.mdl \
     $alidir/ali.1.gz $denlatdir/lat.1.gz; do

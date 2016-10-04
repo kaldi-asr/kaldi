@@ -18,7 +18,7 @@
 // limitations under the License.
 
 /**
- * @file lm-lib-test.cc
+ * @file arpa-file-parser-test.cc
  * @brief Unit tests for language model code.
  */
 

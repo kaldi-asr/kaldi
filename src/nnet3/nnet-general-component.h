@@ -28,7 +28,8 @@
 namespace kaldi {
 namespace nnet3 {
 
-/// @file  This file contains declarations of components that are not "simple",
+/// @file  nnet-general-component.h
+/// This file contains declarations of components that are not "simple",
 ///   meaning they care about the indexes they are operating on, don't return
 ///   the kSimpleComponent flag in their Properties(), and may return a different
 ///   number of outputs than inputs.

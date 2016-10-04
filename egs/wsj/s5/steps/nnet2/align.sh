@@ -54,7 +54,7 @@ for f in $srcdir/tree $srcdir/${iter}.mdl $data/feats.scp $lang/L.fst $extra_fil
 done
 
 utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
-cp $srcdir/phones.txt  $dir || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 
 cp $srcdir/{tree,${iter}.mdl} $dir || exit 1;
 

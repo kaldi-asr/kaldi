@@ -18,20 +18,7 @@
 // limitations under the License.
 
 /**
- \page kaldi_for_dummies Creating a simple ASR system in Kaldi toolkit
-
-
-<h1>
-Creating a simple ASR system in Kaldi toolkit from scratch using small
-digits corpora
-</h1>
-<h1>
-In other words: Kaldi for dummies
-</h1>
-
-<h2>
-Author: W. Zieliński
-</h2>
+ \page kaldi_for_dummies Kaldi for Dummies tutorial
 
 \tableofcontents
 
@@ -46,7 +33,7 @@ If you have ever delved through Kaldi tutorial on the official project site and
 felt a little bit lost, well, my piece of art might be the choice for you. You
 will learn how to install Kaldi, how to make it work and how to run an ASR
 system using your own audio data. As an effect you will get your first speech
-decoding results.
+decoding results.  It was created by Wit Zielinski.
 
 First of all - get to know what Kaldi actually is and why you should use it
 instead of something else. In my opinion Kaldi requires solid knowledge about
@@ -573,7 +560,6 @@ echo
 
 \section kaldi_for_dummies_results Getting results
 
-<h2>Task</h2>
 Now all you have to do is to run \c run.sh script. If I have made any mistakes
 in this tutorial, logs from the terminal should guide you how to deal with it.
 
