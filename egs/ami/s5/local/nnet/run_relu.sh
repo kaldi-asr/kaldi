@@ -57,7 +57,7 @@ lrate=0.00025
 param_std=0.02
 lr_alpha=1.0
 lr_beta=0.75
-dropout_schedule=0.8,0.8,0.8,0.8,0.8,1.0
+dropout_schedule=0.2,0.2,0.2,0.2,0.2,0.0
 gmm=$gmmdir
 graph=$graph_dir
 

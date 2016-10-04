@@ -22,7 +22,7 @@ feature_transform=
 max_iters=20
 min_iters=0 # keep training, disable weight rejection, start learn-rate halving as usual,
 keep_lr_iters=0 # fix learning rate for N initial epochs, disable weight rejection,
-dropout_schedule= # Dropout schedule for N initial epochs, for example: 0.9,0.9,0.9,0.9,0.9,1.0
+dropout_schedule= # dropout-rates for N initial epochs, for example: 0.1,0.1,0.1,0.1,0.1,0.0
 start_halving_impr=0.01
 end_halving_impr=0.001
 halving_factor=0.5
@@ -60,7 +60,7 @@ dir=$6
 [ ! -d $dir/log ] && mkdir $dir/log
 [ ! -d $dir/nnet ] && mkdir $dir/nnet
 
-retention_array=($(echo ${dropout_schedule} | tr ',' ' '))
+dropout_array=($(echo ${dropout_schedule} | tr ',' ' '))
 
 # Skip training
 [ -e $dir/final.nnet ] && echo "'$dir/final.nnet' exists, skipping training" && exit 0
@@ -101,11 +101,11 @@ for iter in $(seq -w $max_iters); do
   # skip iteration (epoch) if already done,
   [ -e $dir/.done_iter$iter ] && echo -n "skipping... " && ls $mlp_next* && continue
 
-  # set dropout schedule,
-  if [ -n ${retention_array[$((${iter#0}-1))]-''} ]; then
-    retention=${retention_array[$((${iter#0}-1))]}
-    nnet-copy --dropout-retention=$retention $mlp_best ${mlp_best}.retention${retention}
-    mlp_best=${mlp_best}.retention${retention}
+  # set dropout-rate from the schedule,
+  if [ -n ${dropout_array[$((${iter#0}-1))]-''} ]; then
+    dropout_rate=${dropout_array[$((${iter#0}-1))]}
+    nnet-copy --dropout-rate=$dropout_rate $mlp_best ${mlp_best}.dropout_rate${dropout_rate}
+    mlp_best=${mlp_best}.dropout_rate${dropout_rate}
   fi
 
   # training,
