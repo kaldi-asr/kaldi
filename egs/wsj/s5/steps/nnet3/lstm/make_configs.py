@@ -152,14 +152,11 @@ def CheckArgs(args):
     if not args.ivector_dim >= 0:
         raise Exception("ivector-dim has to be non-negative")
 
-    if args.xent_separate_forward_affine and args.add_final_sigmoid:
-        raise Exception("It does not make sense to have --add-final-sigmoid=true when xent-separate-forward-affine is true")
-
     if (args.num_lstm_layers < 1):
         raise Exception("--num-lstm-layers has to be a positive integer")
-    if (args.lstm_start_layer_index < 1):
+    if (args.lstm_start_layer_index < 0):
         raise Exception("--lstm-start-layer-index has to be a non-negative integer")
-    elif (args.lstm_layer_index > 0):
+    elif (args.lstm_start_layer_index > 0):
         warnings.warn("TDNN/Affine layers are going to be stacked before LSTM layers, we don't support shrinkage in this scenario")
 
     if (args.clipping_threshold < 0):
@@ -271,6 +268,11 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
     prev_layer = nodes.AddLdaLayer(config_lines, "L0", prev_layer_output, config_dir + '/lda.mat')
     prev_layer_output = prev_layer['output']
 
+    # we don't want to add a simple affine layer after input layer as in TDNN only configs,
+    # so we reduce the number of hidden layers and splice_indexes
+    splice_indexes = splice_indexes[1:]
+    num_hidden_layers = num_hidden_layers - 1
+
     num_layers_added = 0
     # stacking the TDNN/affine layers before the LSTM layers
     for i in range(lstm_start_layer_index):
@@ -278,7 +280,7 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
         # we will just support Relu non-linearities
         if splice_indexes[i] == [0]:
             # add a normal affine layer
-            prev_layer = nodes.AddAffRelNormLayer(configlines, 'Affine{0}'.format(num_layers_added),
+            prev_layer = nodes.AddAffRelNormLayer(config_lines, 'Affine{0}'.format(num_layers_added),
                                                   prev_layer_output,
                                                   hidden_dim,
                                                   self_repair_scale = self_repair_scale_nonlinearity,
@@ -311,7 +313,7 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
                                                                                          add_final_sigmoid = False,
                                                                                          objective_type='linear')
 
-        config_files['{0}/layer{1}.config'.format(config_dir, i+1)] = config_lines
+        config_files['{0}/layer{1}.config'.format(config_dir, num_layers_added)] = config_lines
         config_lines = {'components':[], 'component-nodes':[]}
 
 
@@ -320,8 +322,9 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
     for i in range(lstm_start_layer_index, lstm_start_layer_index + num_lstm_layers):
         num_layers_added += 1
         if splice_indexes[i] != [0]:
+            # there is a non-zero splice-indexes at this layer index so we pre-pend a tdnn layer
             warnings.warn("Adding a TDNN layer before LSTM at layer {l}"
-                          " as splice-indexes are {s} and not 0".format(i, ','.join(map(lambda x: str(x), splice_indexes[i]))))
+                          " as splice-indexes are {s} and not 0".format(l=i, s=','.join(map(lambda x: str(x), splice_indexes[i]))))
 
             prev_layer = nodes.AddTdnnLayer(config_lines, 'Tdnn{0}'.format(num_layers_added),
                                             prev_layer_output,
@@ -335,13 +338,14 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
             prev_layer_output = prev_layer['output']
             num_learnable_params += prev_layer['num_learnable_params']
 
-        if len(lstm_delay[i]) == 2: # add a bi-directional LSTM layer
+        lstm_index = i - lstm_start_layer_index
+        if len(lstm_delay[lstm_index]) == 2: # add a bi-directional LSTM layer
             prev_layer = nodes.AddBLstmLayer(config_lines, "BLstm{0}".format(num_layers_added),
                                              prev_layer_output, cell_dim,
                                              recurrent_projection_dim, non_recurrent_projection_dim,
                                              clipping_threshold, norm_based_clipping,
                                              ng_per_element_scale_options, ng_affine_options,
-                                             lstm_delay = lstm_delay[i],
+                                             lstm_delay = lstm_delay[lstm_index],
                                              self_repair_scale_nonlinearity = self_repair_scale_nonlinearity,
                                              self_repair_scale_clipgradient = self_repair_scale_clipgradient)
             prev_layer_output = prev_layer['output']
@@ -353,7 +357,7 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
                                             recurrent_projection_dim, non_recurrent_projection_dim,
                                             clipping_threshold, norm_based_clipping,
                                             ng_per_element_scale_options, ng_affine_options,
-                                            lstm_delay = lstm_delay[i][0],
+                                            lstm_delay = lstm_delay[lstm_index][0],
                                             self_repair_scale_nonlinearity = self_repair_scale_nonlinearity,
                                             self_repair_scale_clipgradient = self_repair_scale_clipgradient)
             prev_layer_output = prev_layer['output']
@@ -376,11 +380,12 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
                                                                                              add_final_sigmoid = False)
 
 
-        config_files['{0}/layer{1}.config'.format(config_dir, i+1)] = config_line
+        config_files['{0}/layer{1}.config'.format(config_dir, num_layers_added)] = config_lines
         config_lines = {'components':[], 'component-nodes':[]}
 
     # stacking TDNN/affine layers after the LSTM layers
     for i in range(lstm_start_layer_index + num_lstm_layers, num_hidden_layers):
+        num_layers_added += 1
         if xent_separate_forward_affine and i == num_hidden_layers - 1:
             # xent_separate_forward_affine is only honored only when adding the final hidden layer
             # this is the final layer so assert that splice index is [0]
@@ -403,11 +408,10 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
                                                                                                                    label_delay = label_delay,
                                                                                                                    final_layer_normalize_target = final_layer_normalize_target)
         else:
-            num_layers_added += 1
             # we will just support Relu non-linearities
             if splice_indexes[i] == [0]:
                 # add a normal affine layer
-                prev_layer = nodes.AddAffRelNormLayer(configlines, 'Affine{0}'.format(num_layers_added),
+                prev_layer = nodes.AddAffRelNormLayer(config_lines, 'Affine{0}'.format(num_layers_added),
                                                       prev_layer_output,
                                                       hidden_dim,
                                                       self_repair_scale = self_repair_scale_nonlinearity,
@@ -440,7 +444,7 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
                                                                                              add_final_sigmoid = False,
                                                                                              objective_type='linear')
 
-        config_files['{0}/layer{1}.config'.format(config_dir, i+1)] = config_lines
+        config_files['{0}/layer{1}.config'.format(config_dir, num_layers_added)] = config_lines
         config_lines = {'components':[], 'component-nodes':[]}
 
     num_learnable_params += num_params_final
