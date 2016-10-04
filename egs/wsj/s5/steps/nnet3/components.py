@@ -531,8 +531,8 @@ def AddTdnnLayer(config_lines, name, input, splice_indexes,
     elif nonlin_type == "pnorm":
         prev_layer = AddAffPnormLayer(config_lines, name,
                                       prev_layer_output,
-                                      ng_affine_options = ng_affine_options,
                                       nonlin_input_dim, nonlin_output_dim,
+                                      ng_affine_options = ng_affine_options,
                                       norm_target_rms = norm_target_rms)
     else:
         raise Exception("Unknown nonlinearity type")

@@ -14,8 +14,30 @@ chain_lib = imp.load_source('ncl', 'steps/nnet3/chain/nnet3_chain_lib.py')
 
 def GetArgs():
     # we add compulsary arguments as named arguments for readability
-    parser = argparse.ArgumentParser(description="Writes config files and variables "
-                                                 "for LSTMs creation and training",
+    parser = argparse.ArgumentParser(description="Writes config files and variables for LSTMs creation and training,"
+                                                 " it also supports adding TDNN layers before, in between and after LSTMs."
+                                                 " This is done by interpreting --splice-indexes, --num-lstm-layers and --lstm-start-layer-index.\n"
+                                                 " When the splicing indexes at a layer corresponding to an LSTM is not [0] a TDNN layer is added before it.\n"
+                                                 " e.g.\n --splice-indexes '-2,-1,0,1,2 0 0 0' --num-lstm-layers 3 --lstm-start-layer-index 0 \n"
+                                                 "      This will add 3 lstm layers.\n"
+                                                 " --splice-index '-2,-1,0,1,2 -3,0,3 -3,0,3 0' --num-lstm-layers 3 --lstm-start-layer-index 0 \n"
+                                                 "      This will add input layer with splicing -2,-1,0,1,2 followed by LDA layer, \n"
+                                                 "          TDNN layer with splicing -3,0,3 + LSTM layer,\n"
+                                                 "          TDNN layer with splicing -3,0,3 + LSTM layer,\n"
+                                                 "          and an LSTM layer\n"
+                                                 " --splice-index '-2,-1,0,1,2 -3,0,3 -3,0,3 0 0' --num-lstm-layers 3 --lstm-start-layer-index 1 \n"
+                                                 "      This will add input layer with splicing -2,-1,0,1,2 followed by LDA layer, \n"
+                                                 "          TDNN layer with splicing -3,0,3 \n"
+                                                 "          TDNN layer with splicing -3,0,3 + LSTM layer,\n"
+                                                 "          LSTM layer,\n"
+                                                 "          and an LSTM layer\n"
+                                                 " --splice-index '-2,-1,0,1,2 -3,0,3 -3,0,3 0 0 -3,0,3 -3,0,3 -3,0,3' --num-lstm-layers 3 --lstm-start-layer-index 1 \n"
+                                                 "      This will add input layer with splicing -2,-1,0,1,2 followed by LDA layer, \n"
+                                                 "          TDNN layer with splicing -3,0,3 \n"
+                                                 "          TDNN layer with splicing -3,0,3 + LSTM layer,\n"
+                                                 "          TDNN layer with splicing -3,0,3 + LSTM layer,\n"
+                                                 "          and an LSTM layer\n"
+                                                 ,
                                      epilog="See steps/nnet3/lstm/train.sh for example.")
 
     # Only one of these arguments can be specified, and one of them has to
@@ -60,6 +82,8 @@ def GetArgs():
     # LSTM options
     parser.add_argument("--num-lstm-layers", type=int,
                         help="Number of LSTM layers to be stacked", default=1)
+    parser.add_argument("--lstm-start-layer-index", type=int,
+                        help="Number of LSTM layers to be stacked", default=0)
     parser.add_argument("--cell-dim", type=int,
                         help="dimension of lstm-cell")
     parser.add_argument("--recurrent-projection-dim", type=int,
@@ -132,18 +156,23 @@ def CheckArgs(args):
         raise Exception("It does not make sense to have --add-final-sigmoid=true when xent-separate-forward-affine is true")
 
     if (args.num_lstm_layers < 1):
-        sys.exit("--num-lstm-layers has to be a positive integer")
+        raise Exception("--num-lstm-layers has to be a positive integer")
+    if (args.lstm_start_layer_index < 1):
+        raise Exception("--lstm-start-layer-index has to be a non-negative integer")
+    elif (args.lstm_layer_index > 0):
+        warnings.warn("TDNN/Affine layers are going to be stacked before LSTM layers, we don't support shrinkage in this scenario")
+
     if (args.clipping_threshold < 0):
-        sys.exit("--clipping-threshold has to be a non-negative")
+        raise Exception("--clipping-threshold has to be a non-negative")
     if args.lstm_delay is None:
         args.lstm_delay = [[-1]] * args.num_lstm_layers
     else:
         try:
             args.lstm_delay = ParseLstmDelayString(args.lstm_delay.strip())
         except ValueError:
-            sys.exit("--lstm-delay has incorrect format value. Provided value is '{0}'".format(args.lstm_delay))
+            raise Exception("--lstm-delay has incorrect format value. Provided value is '{0}'".format(args.lstm_delay))
         if len(args.lstm_delay) != args.num_lstm_layers:
-            sys.exit("--lstm-delay: Number of delays provided has to match --num-lstm-layers")
+            raise Exception("--lstm-delay: Number of delays provided has to match --num-lstm-layers")
 
     return args
 
@@ -216,13 +245,13 @@ def ParseLstmDelayString(lstm_delay):
 def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
                 splice_indexes, lstm_delay, cell_dim, hidden_dim,
                 recurrent_projection_dim, non_recurrent_projection_dim,
-                num_lstm_layers, num_hidden_layers,
+                num_lstm_layers, lstm_start_layer_index,
+                num_hidden_layers,
                 norm_based_clipping, clipping_threshold,
                 ng_per_element_scale_options, ng_affine_options,
                 label_delay, include_log_softmax, xent_regularize,
                 xent_separate_forward_affine, final_layer_normalize_target,
                 self_repair_scale_nonlinearity, self_repair_scale_clipgradient):
-
 
     num_learnable_params = 0
     num_learnable_params_xent = 0 # number of parameters in the xent branch
@@ -242,12 +271,59 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
     prev_layer = nodes.AddLdaLayer(config_lines, "L0", prev_layer_output, config_dir + '/lda.mat')
     prev_layer_output = prev_layer['output']
 
-    for i in range(num_lstm_layers):
+    num_layers_added = 0
+    # stacking the TDNN/affine layers before the LSTM layers
+    for i in range(lstm_start_layer_index):
+        num_layers_added += 1
+        # we will just support Relu non-linearities
+        if splice_indexes[i] == [0]:
+            # add a normal affine layer
+            prev_layer = nodes.AddAffRelNormLayer(configlines, 'Affine{0}'.format(num_layers_added),
+                                                  prev_layer_output,
+                                                  hidden_dim,
+                                                  self_repair_scale = self_repair_scale_nonlinearity,
+                                                  norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
+            prev_layer_output = prev_layer['output']
+            num_learnable_params = prev_layer['num_learnable_params']
+        else :
+            prev_layer = nodes.AddTdnnLayer(config_lines, 'Tdnn{0}'.format(num_layers_added),
+                                            prev_layer_output,
+                                            splice_indexes = splice_indexes[i],
+                                            nonlin_type = 'relu',
+                                            nonlin_input_dim = hidden_dim,
+                                            nonlin_output_dim = hidden_dim,
+                                            self_repair_scale = self_repair_scale_nonlinearity,
+                                            norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
+            prev_layer_output = prev_layer['output']
+            num_learnable_params = prev_layer['num_learnable_params']
+
+        # a final layer is added after each new layer as we are generating
+        # configs for layer-wise discriminative training
+        num_params_final, num_params_final_xent = nodes.AddFinalLayerWithXentRegularizer(config_lines,
+                                                                                         input = prev_layer_output,
+                                                                                         num_targets = num_targets,
+                                                                                         use_presoftmax_prior_scale = False,
+                                                                                         prior_scale_file = None,
+                                                                                         include_log_softmax = include_log_softmax,
+                                                                                         self_repair_scale = self_repair_scale_nonlinearity,
+                                                                                         xent_regularize = xent_regularize,
+                                                                                         label_delay = label_delay,
+                                                                                         add_final_sigmoid = False,
+                                                                                         objective_type='linear')
+
+        config_files['{0}/layer{1}.config'.format(config_dir, i+1)] = config_lines
+        config_lines = {'components':[], 'component-nodes':[]}
+
+
+
+    # stacking the LSTM layers
+    for i in range(lstm_start_layer_index, lstm_start_layer_index + num_lstm_layers):
+        num_layers_added += 1
         if splice_indexes[i] != [0]:
             warnings.warn("Adding a TDNN layer before LSTM at layer {l}"
                           " as splice-indexes are {s} and not 0".format(i, ','.join(map(lambda x: str(x), splice_indexes[i]))))
 
-            prev_layer = nodes.AddTdnnLayer(config_lines, 'Tdnn{0}'.format(i+1),
+            prev_layer = nodes.AddTdnnLayer(config_lines, 'Tdnn{0}'.format(num_layers_added),
                                             prev_layer_output,
                                             splice_indexes = splice_indexes[i],
                                             nonlin_type = 'relu',
@@ -260,7 +336,7 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
             num_learnable_params += prev_layer['num_learnable_params']
 
         if len(lstm_delay[i]) == 2: # add a bi-directional LSTM layer
-            prev_layer = nodes.AddBLstmLayer(config_lines, "BLstm{0}".format(i+1),
+            prev_layer = nodes.AddBLstmLayer(config_lines, "BLstm{0}".format(num_layers_added),
                                              prev_layer_output, cell_dim,
                                              recurrent_projection_dim, non_recurrent_projection_dim,
                                              clipping_threshold, norm_based_clipping,
@@ -272,7 +348,7 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
             num_learnable_params += prev_layer['num_learnable_params']
 
         else: # add a uni-directional LSTM layer
-            prev_layer = nodes.AddLstmLayer(config_lines, "Lstm{0}".format(i+1),
+            prev_layer = nodes.AddLstmLayer(config_lines, "Lstm{0}".format(num_layers_added),
                                             prev_layer_output, cell_dim,
                                             recurrent_projection_dim, non_recurrent_projection_dim,
                                             clipping_threshold, norm_based_clipping,
@@ -303,7 +379,8 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
         config_files['{0}/layer{1}.config'.format(config_dir, i+1)] = config_line
         config_lines = {'components':[], 'component-nodes':[]}
 
-    for i in range(num_lstm_layers, num_hidden_layers):
+    # stacking TDNN/affine layers after the LSTM layers
+    for i in range(lstm_start_layer_index + num_lstm_layers, num_hidden_layers):
         if xent_separate_forward_affine and i == num_hidden_layers - 1:
             # xent_separate_forward_affine is only honored only when adding the final hidden layer
             # this is the final layer so assert that splice index is [0]
@@ -326,10 +403,11 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
                                                                                                                    label_delay = label_delay,
                                                                                                                    final_layer_normalize_target = final_layer_normalize_target)
         else:
+            num_layers_added += 1
             # we will just support Relu non-linearities
             if splice_indexes[i] == [0]:
                 # add a normal affine layer
-                prev_layer = nodes.AddAffRelNormLayer(configlines, 'Affine{0}'.format(i+1),
+                prev_layer = nodes.AddAffRelNormLayer(configlines, 'Affine{0}'.format(num_layers_added),
                                                       prev_layer_output,
                                                       hidden_dim,
                                                       self_repair_scale = self_repair_scale_nonlinearity,
@@ -337,7 +415,7 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
                 prev_layer_output = prev_layer['output']
                 num_learnable_params = prev_layer['num_learnable_params']
             else :
-                prev_layer = nodes.AddTdnnLayer(config_lines, 'Tdnn{0}'.format(i+1),
+                prev_layer = nodes.AddTdnnLayer(config_lines, 'Tdnn{0}'.format(num_layers_added),
                                                 prev_layer_output,
                                                 splice_indexes = splice_indexes[i],
                                                 nonlin_type = 'relu',
@@ -376,15 +454,17 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
     print('This model has num_learnable_params={0:,} and num_learnable_params_xent={1:,}'.format(num_learnable_params, num_learnable_params_xent))
 
 
-def ProcessSpliceIndexes(config_dir, splice_indexes, label_delay, num_lstm_layers):
+def ProcessSpliceIndexes(config_dir, splice_indexes, label_delay, num_lstm_layers, lstm_start_layer_index):
     parsed_splice_output = ParseSpliceString(splice_indexes.strip(), label_delay)
     left_context = parsed_splice_output['left_context']
     right_context = parsed_splice_output['right_context']
     num_hidden_layers = parsed_splice_output['num_hidden_layers']
     splice_indexes = parsed_splice_output['splice_indexes']
 
-    if (num_hidden_layers < num_lstm_layers):
-        raise Exception("num-lstm-layers : number of lstm layers has to be greater than number of layers, decided based on splice-indexes")
+
+    if (num_hidden_layers < lstm_start_layer_index + num_lstm_layers):
+        raise Exception("num-lstm-layers : (number of lstm layers + lstm start layer index) "
+                        " has to be greater than number of layers, decided based on splice-indexes")
 
     # write the files used by other scripts like steps/nnet3/get_egs.sh
     f = open(config_dir + "/vars", "w")
@@ -399,7 +479,11 @@ def ProcessSpliceIndexes(config_dir, splice_indexes, label_delay, num_lstm_layer
 
 def Main():
     args = GetArgs()
-    [left_context, right_context, num_hidden_layers, splice_indexes] = ProcessSpliceIndexes(args.config_dir, args.splice_indexes, args.label_delay, args.num_lstm_layers)
+    [left_context, right_context, num_hidden_layers, splice_indexes] = ProcessSpliceIndexes(args.config_dir,
+                                                                                            args.splice_indexes,
+                                                                                            args.label_delay,
+                                                                                            args.num_lstm_layers,
+                                                                                            args.lstm_start_layer_index)
 
     MakeConfigs(config_dir = args.config_dir,
                 feat_dim = args.feat_dim, ivector_dim = args.ivector_dim,
@@ -410,6 +494,7 @@ def Main():
                 recurrent_projection_dim = args.recurrent_projection_dim,
                 non_recurrent_projection_dim = args.non_recurrent_projection_dim,
                 num_lstm_layers = args.num_lstm_layers,
+                lstm_start_layer_index = args.lstm_start_layer_index,
                 num_hidden_layers = num_hidden_layers,
                 norm_based_clipping = args.norm_based_clipping,
                 clipping_threshold = args.clipping_threshold,
