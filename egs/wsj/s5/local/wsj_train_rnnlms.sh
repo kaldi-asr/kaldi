@@ -114,12 +114,12 @@ echo "Training RNNLM (note: this uses a lot of memory! Run it on a big machine.)
 # since the mikolov rnnlm and faster-rnnlm have slightly different interfaces...
 if [ "$rnnlm_ver" == "faster-rnnlm" ]; then
   $cmd $dir/rnnlm.log \
-     $KALDI_ROOT/tools/$rnnlm_ver/rnnlm -threads $threads -independent -train $dir/train -valid $dir/valid \
-     -rnnlm $dir/rnnlm -hidden $hidden -seed 1 -class $class -bptt $bptt -bptt-block $bptt_block \
+     $KALDI_ROOT/tools/$rnnlm_ver/rnnlm -threads $threads -train $dir/train -valid $dir/valid \
+     -rnnlm $dir/rnnlm -hidden $hidden -seed 1 -bptt $bptt -bptt-block $bptt_block \
      $rnnlm_options -direct $direct || exit 1;
 else
   $cmd $dir/rnnlm.log \
-     $KALDI_ROOT/tools/$rnnlm_ver/rnnlm -threads $threads -independent -train $dir/train -valid $dir/valid \
+     $KALDI_ROOT/tools/$rnnlm_ver/rnnlm -independent -train $dir/train -valid $dir/valid \
      -rnnlm $dir/rnnlm -hidden $hidden -rand-seed 1 -debug 2 -class $class -bptt $bptt -bptt-block $bptt_block \
      $rnnlm_options -direct $direct -binary || exit 1;
 fi
