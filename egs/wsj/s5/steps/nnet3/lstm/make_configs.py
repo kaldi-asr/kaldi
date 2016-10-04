@@ -155,38 +155,34 @@ def PrintConfig(file_name, config_lines):
     f.close()
 
 def ParseSpliceString(splice_indexes, label_delay=None):
-    ## Work out splice_array e.g. splice_array = [ [ -3,-2,...3 ], [0], [-2,2], .. [ -8,8 ] ]
-    split1 = splice_indexes.split(" ");  # we already checked the string is nonempty.
-    if len(split1) < 1:
-        splice_indexes = "0"
-
-    left_context=0
-    right_context=0
+    splice_array = []
+    left_context = 0
+    right_context = 0
     if label_delay is not None:
         left_context = -label_delay
         right_context = label_delay
 
-    splice_array = []
+    split1 = splice_indexes.split();  # we already checked the string is nonempty.
+    if len(split1) < 1:
+        raise Exception("invalid splice-indexes argument, too short: "
+                 + splice_indexes)
     try:
-        for i in range(len(split1)):
-            indexes = map(lambda x: int(x), split1[i].strip().split(","))
-            print(indexes)
-            if len(indexes) < 1:
-                raise ValueError("invalid --splice-indexes argument, too-short element: "
-                                + splice_indexes)
-
-            if (i > 0 and i < num_lstm_layers)  and ((len(indexes) != 1) or (indexes[0] != 0)):
-                raise ValueError("elements of --splice-indexes splicing is not allowed at the LSTM layer input (other than the input layer).")
-
-            if not indexes == sorted(indexes):
-                raise ValueError("elements of --splice-indexes must be sorted: "
-                                + splice_indexes)
-            left_context += -indexes[0]
-            right_context += indexes[-1]
-            splice_array.append(indexes)
+        for string in split1:
+            split2 = string.split(",")
+            if len(split2) < 1:
+                raise Exception("invalid splice-indexes argument, too-short element: "
+                         + splice_indexes)
+            int_list = []
+            for int_str in split2:
+                int_list.append(int(int_str))
+            if not int_list == sorted(int_list):
+                raise Exception("elements of splice-indexes must be sorted: "
+                         + splice_indexes)
+            left_context += -int_list[0]
+            right_context += int_list[-1]
+            splice_array.append(int_list)
     except ValueError as e:
-        raise ValueError("invalid --splice-indexes argument " + splice_indexes + str(e))
-
+        raise Exception("invalid splice-indexes argument " + splice_indexes + str(e))
     left_context = max(0, left_context)
     right_context = max(0, right_context)
 
@@ -247,6 +243,8 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
     prev_layer_output = prev_layer['output']
 
     for i in range(num_lstm_layers):
+        if splice_indexes[i] != [0]:
+            raise Exception("Splicing is not yet supported at LSTM inputs, other than at the input layer")
         if len(lstm_delay[i]) == 2: # add a bi-directional LSTM layer
             prev_layer = nodes.AddBLstmLayer(config_lines, "BLstm{0}".format(i+1),
                                              prev_layer_output, cell_dim,
