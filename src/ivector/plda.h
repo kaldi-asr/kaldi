@@ -82,7 +82,7 @@ class Plda {
   /// before giving them to the function LogLikelihoodRatio (it's
   /// done this way for efficiency because a given iVector may be
   /// used multiple times in LogLikelihoodRatio and we don't want
-  /// do repeat the matrix multiplication
+  /// to repeat the matrix multiplication
   ///
   /// If config.normalize_length == true, it will also normalize the iVector's
   /// length by multiplying by a scalar that ensures that ivector^T inv_var
@@ -114,7 +114,8 @@ class Plda {
   /// the transformed iVectors.
   double LogLikelihoodRatio(const VectorBase<double> &transformed_train_ivector,
                             int32 num_train_utts,
-                            const VectorBase<double> &transformed_test_ivector);
+                            const VectorBase<double> &transformed_test_ivector)
+                            const;
 
 
   /// This function smooths the within-class covariance by adding to it,
