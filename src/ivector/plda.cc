@@ -117,7 +117,7 @@ double Plda::TransformIvector(const PldaConfig &config,
       / transformed_ivector->Norm(2.0);
   else
     normalization_factor = GetNormalizationFactor(*transformed_ivector,
-                                                       num_examples);
+                                                  num_examples);
   if (config.normalize_length)
     transformed_ivector->Scale(normalization_factor);
   return normalization_factor;
