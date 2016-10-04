@@ -72,7 +72,6 @@ utils/subset_data_dir.sh data/train 32000 data/train_32k
 
 # Train UBM and i-vector extractor.
 sid/train_diag_ubm.sh --cmd "$train_cmd -l mem_free=20G,ram_free=20G" \
-  --stage 0 \
   --nj 20 --num-threads 8 \
   data/train_16k $num_components \
   exp/diag_ubm_$num_components
@@ -82,7 +81,6 @@ sid/train_full_ubm.sh --nj 40 --remove-low-count-gaussians false \
   exp/diag_ubm_$num_components exp/full_ubm_$num_components
 
 sid/train_ivector_extractor.sh --cmd "$train_cmd -l mem_free=35G,ram_free=35G" \
-  --stage 0 \
   --ivector-dim 600 \
   --num-iters 5 exp/full_ubm_$num_components/final.ubm data/train \
   exp/extractor
