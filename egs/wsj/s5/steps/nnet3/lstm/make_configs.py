@@ -244,7 +244,21 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
 
     for i in range(num_lstm_layers):
         if splice_indexes[i] != [0]:
-            raise Exception("Splicing is not yet supported at LSTM inputs, other than at the input layer")
+            warnings.warn("Adding a TDNN layer before LSTM at layer {l}"
+                          " as splice-indexes are {s} and not 0".format(i, ','.join(map(lambda x: str(x), splice_indexes[i]))))
+
+            prev_layer = nodes.AddTdnnLayer(config_lines, 'Tdnn{0}'.format(i+1),
+                                            prev_layer_output,
+                                            splice_indexes = splice_indexes[i],
+                                            nonlin_type = 'relu',
+                                            nonlin_input_dim = prev_layer_output['dimension'],
+                                            nonlin_output_dim = prev_layer_output['dimension'],
+                                            self_repair_scale = self_repair_scale_nonlinearity,
+                                            norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
+
+            prev_layer_output = prev_layer['output']
+            num_learnable_params += prev_layer['num_learnable_params']
+
         if len(lstm_delay[i]) == 2: # add a bi-directional LSTM layer
             prev_layer = nodes.AddBLstmLayer(config_lines, "BLstm{0}".format(i+1),
                                              prev_layer_output, cell_dim,
