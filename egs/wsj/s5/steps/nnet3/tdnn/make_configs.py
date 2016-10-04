@@ -429,7 +429,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
 
 
         else:
-            if splice_indexes[i] == ]:
+            if splice_indexes[i] == [0]:
                 # add a normal affine layer
                 prev_layer = nodes.AddAffineNonlinLayer(config_lines, 'Affine{0}'.format(i),
                                                           prev_layer_output,

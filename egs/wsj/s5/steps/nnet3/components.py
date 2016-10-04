@@ -83,7 +83,7 @@ def AddBlockAffineLayer(config_lines, name, input, output_dim, num_blocks):
 
     return {'output' : {'descriptor' : '{0}_block_affine'.format(name),
                         'dimension' : output_dim},
-            'num_learnable_params' : input['dimension'] * output_dim}
+            'num_learnable_params' : (input['dimension']+1) * output_dim}
 
 def AddPermuteLayer(config_lines, name, input, column_map):
     components = config_lines['components']
@@ -105,7 +105,7 @@ def AddAffineLayer(config_lines, name, input, output_dim, ng_affine_options = ""
 
     return {'output' : {'descriptor':  '{0}_affine'.format(name),
                         'dimension': output_dim},
-            'num_learnable_params' : input['dimension'] * output_dim }
+            'num_learnable_params' : (input['dimension']+1) * output_dim }
 
 def AddAffRelNormLayer(config_lines, name, input, output_dim, ng_affine_options = " bias-stddev=0 ", norm_target_rms = 1.0, self_repair_scale = None):
     components = config_lines['components']
@@ -148,7 +148,7 @@ def AddConvolutionLayer(config_lines, name, input,
                        param_stddev = None, bias_stddev = None,
                        filter_bias_file = None,
                        is_updatable = True):
-    assert(input['dimension'] == input_x_dim * input_y_dim * input_z_dim)
+    assert(input['dimension'] == input_x_dim * input_y_dim * input_z_dim )
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
 
@@ -341,14 +341,14 @@ def AddLstmLayer(config_lines,
     # Parameter Definitions W*(* replaced by - to have valid names)
     components.append("# Input gate control : W_i* matrices")
     components.append("component name={0}_W_i-xr type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + recurrent_projection_dim, cell_dim, ng_affine_options))
-    num_learnable_params += (input_dim + recurrent_projection_dim) * cell_dim
+    num_learnable_params += (input_dim + recurrent_projection_dim + 1) * cell_dim
     components.append("# note : the cell outputs pass through a diagonal matrix")
     components.append("component name={0}_w_ic type=NaturalGradientPerElementScaleComponent  dim={1} {2}".format(name, cell_dim, ng_per_element_scale_options))
     num_learnable_params += cell_dim
 
     components.append("# Forget gate control : W_f* matrices")
     components.append("component name={0}_W_f-xr type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + recurrent_projection_dim, cell_dim, ng_affine_options))
-    num_learnable_params += (input_dim + recurrent_projection_dim) * cell_dim
+    num_learnable_params += (input_dim + recurrent_projection_dim + 1) * cell_dim
 
     components.append("# note : the cell outputs pass through a diagonal matrix")
     components.append("component name={0}_w_fc type=NaturalGradientPerElementScaleComponent  dim={1} {2}".format(name, cell_dim, ng_per_element_scale_options))
@@ -356,14 +356,14 @@ def AddLstmLayer(config_lines,
 
     components.append("#  Output gate control : W_o* matrices")
     components.append("component name={0}_W_o-xr type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + recurrent_projection_dim, cell_dim, ng_affine_options))
-    num_learnable_params += (input_dim + recurrent_projection_dim) * cell_dim
+    num_learnable_params += (input_dim + recurrent_projection_dim + 1) * cell_dim
     components.append("# note : the cell outputs pass through a diagonal matrix")
     components.append("component name={0}_w_oc type=NaturalGradientPerElementScaleComponent  dim={1} {2}".format(name, cell_dim, ng_per_element_scale_options))
     num_learnable_params += cell_dim
 
     components.append("# Cell input matrices : W_c* matrices")
     components.append("component name={0}_W_c-xr type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + recurrent_projection_dim, cell_dim, ng_affine_options))
-    num_learnable_params += (input_dim + recurrent_projection_dim) * cell_dim
+    num_learnable_params += (input_dim + recurrent_projection_dim + 1) * cell_dim
 
 
     components.append("# Defining the non-linearities")
@@ -416,7 +416,7 @@ def AddLstmLayer(config_lines,
     if (add_recurrent_projection and add_non_recurrent_projection):
         components.append("# projection matrices : Wrm and Wpm")
         components.append("component name={0}_W-m type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, cell_dim, recurrent_projection_dim + non_recurrent_projection_dim, ng_affine_options))
-        num_learnable_params += cell_dim * (non_recurrent_projection_dim + recurrent_projection_dim)
+        num_learnable_params += (cell_dim + 1) * (non_recurrent_projection_dim + recurrent_projection_dim)
         components.append("component name={0}_r type=ClipGradientComponent dim={1} clipping-threshold={2} norm-based-clipping={3} {4}".format(name, recurrent_projection_dim, clipping_threshold, norm_based_clipping, self_repair_clipgradient_string))
         component_nodes.append("# r_t and p_t")
         component_nodes.append("component-node name={0}_rp_t component={0}_W-m input={0}_m_t".format(name))
@@ -428,7 +428,7 @@ def AddLstmLayer(config_lines,
     elif add_recurrent_projection:
         components.append("# projection matrices : Wrm")
         components.append("component name={0}_Wrm type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, cell_dim, recurrent_projection_dim, ng_affine_options))
-        num_learnable_params += cell_dim * recurrent_projection_dim
+        num_learnable_params += (cell_dim + 1) * recurrent_projection_dim
         components.append("component name={0}_r type=ClipGradientComponent dim={1} clipping-threshold={2} norm-based-clipping={3} {4}".format(name, recurrent_projection_dim, clipping_threshold, norm_based_clipping, self_repair_clipgradient_string))
         component_nodes.append("# r_t")
         component_nodes.append("component-node name={0}_r_t_preclip component={0}_Wrm input={0}_m_t".format(name))

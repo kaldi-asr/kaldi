@@ -19,7 +19,8 @@ def GetArgs():
                                                  " This is done by interpreting --splice-indexes, --num-lstm-layers and --lstm-start-layer-index.\n"
                                                  " When the splicing indexes at a layer corresponding to an LSTM is not [0] a TDNN layer is added before it.\n"
                                                  " e.g.\n --splice-indexes '-2,-1,0,1,2 0 0 0' --num-lstm-layers 3 --lstm-start-layer-index 0 \n"
-                                                 "      This will add 3 lstm layers.\n"
+                                                 "      This will add input layer with splicing -2,-1,0,1,2 followed by LDA layer, \n"
+                                                 "      and 3 lstm layers.\n"
                                                  " --splice-index '-2,-1,0,1,2 -3,0,3 -3,0,3 0' --num-lstm-layers 3 --lstm-start-layer-index 0 \n"
                                                  "      This will add input layer with splicing -2,-1,0,1,2 followed by LDA layer, \n"
                                                  "          TDNN layer with splicing -3,0,3 + LSTM layer,\n"
@@ -83,7 +84,7 @@ def GetArgs():
     parser.add_argument("--num-lstm-layers", type=int,
                         help="Number of LSTM layers to be stacked", default=1)
     parser.add_argument("--lstm-start-layer-index", type=int,
-                        help="Number of LSTM layers to be stacked", default=0)
+                        help="layer number to start lstms from. Layer indexing starts from 0.", default=1)
     parser.add_argument("--cell-dim", type=int,
                         help="dimension of lstm-cell")
     parser.add_argument("--recurrent-projection-dim", type=int,
@@ -154,9 +155,9 @@ def CheckArgs(args):
 
     if (args.num_lstm_layers < 1):
         raise Exception("--num-lstm-layers has to be a positive integer")
-    if (args.lstm_start_layer_index < 0):
-        raise Exception("--lstm-start-layer-index has to be a non-negative integer")
-    elif (args.lstm_start_layer_index > 0):
+    if (args.lstm_start_layer_index < 1):
+        raise Exception("--lstm-start-layer-index has to be positive number.")
+    elif (args.lstm_start_layer_index > 1):
         warnings.warn("TDNN/Affine layers are going to be stacked before LSTM layers, we don't support shrinkage in this scenario")
 
     if (args.clipping_threshold < 0):
@@ -240,10 +241,9 @@ def ParseLstmDelayString(lstm_delay):
 
 
 def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
-                splice_indexes, lstm_delay, cell_dim, hidden_dim,
+                splice_indexes_string, lstm_delay, cell_dim, hidden_dim,
                 recurrent_projection_dim, non_recurrent_projection_dim,
                 num_lstm_layers, lstm_start_layer_index,
-                num_hidden_layers,
                 norm_based_clipping, clipping_threshold,
                 ng_per_element_scale_options, ng_affine_options,
                 label_delay, include_log_softmax, xent_regularize,
@@ -254,6 +254,14 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
     num_learnable_params_xent = 0 # number of parameters in the xent branch
     config_lines = {'components':[], 'component-nodes':[]}
     config_files={}
+
+
+    [left_context, right_context, num_hidden_layers, splice_indexes] = ProcessSpliceIndexes(config_dir,
+                                                                                            splice_indexes_string,
+                                                                                            label_delay,
+                                                                                            num_lstm_layers,
+                                                                                            lstm_start_layer_index)
+
 
     prev_layer = nodes.AddInputLayer(config_lines, feat_dim, splice_indexes[0], ivector_dim)
     prev_layer_output = prev_layer['output']
@@ -272,6 +280,7 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
     # so we reduce the number of hidden layers and splice_indexes
     splice_indexes = splice_indexes[1:]
     num_hidden_layers = num_hidden_layers - 1
+    lstm_start_layer_index -= 1
 
     num_layers_added = 0
     # stacking the TDNN/affine layers before the LSTM layers
@@ -455,6 +464,16 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
     for key in config_files.keys():
         PrintConfig(key, config_files[key])
 
+
+    # write the files used by other scripts like steps/nnet3/get_egs.sh
+    f = open(config_dir + "/vars", "w")
+    print('model_left_context=' + str(left_context), file=f)
+    print('model_right_context=' + str(right_context), file=f)
+    print('num_hidden_layers=' + str(num_hidden_layers), file=f)
+    # print('initial_right_context=' + str(splice_array[0][-1]), file=f)
+    f.close()
+
+
     print('This model has num_learnable_params={0:,} and num_learnable_params_xent={1:,}'.format(num_learnable_params, num_learnable_params_xent))
 
 
@@ -468,38 +487,25 @@ def ProcessSpliceIndexes(config_dir, splice_indexes, label_delay, num_lstm_layer
 
     if (num_hidden_layers < lstm_start_layer_index + num_lstm_layers):
         raise Exception("num-lstm-layers : (number of lstm layers + lstm start layer index) "
-                        " has to be greater than number of layers, decided based on splice-indexes")
+                        " has to be smaller than number of layers determined from splice-indexes")
 
-    # write the files used by other scripts like steps/nnet3/get_egs.sh
-    f = open(config_dir + "/vars", "w")
-    print('model_left_context=' + str(left_context), file=f)
-    print('model_right_context=' + str(right_context), file=f)
-    print('num_hidden_layers=' + str(num_hidden_layers), file=f)
-    # print('initial_right_context=' + str(splice_array[0][-1]), file=f)
-    f.close()
 
     return [left_context, right_context, num_hidden_layers, splice_indexes]
 
 
 def Main():
     args = GetArgs()
-    [left_context, right_context, num_hidden_layers, splice_indexes] = ProcessSpliceIndexes(args.config_dir,
-                                                                                            args.splice_indexes,
-                                                                                            args.label_delay,
-                                                                                            args.num_lstm_layers,
-                                                                                            args.lstm_start_layer_index)
 
     MakeConfigs(config_dir = args.config_dir,
                 feat_dim = args.feat_dim, ivector_dim = args.ivector_dim,
                 num_targets = args.num_targets,
-                splice_indexes = splice_indexes, lstm_delay = args.lstm_delay,
+                splice_indexes_string = args.splice_indexes, lstm_delay = args.lstm_delay,
                 cell_dim = args.cell_dim,
                 hidden_dim = args.hidden_dim,
                 recurrent_projection_dim = args.recurrent_projection_dim,
                 non_recurrent_projection_dim = args.non_recurrent_projection_dim,
                 num_lstm_layers = args.num_lstm_layers,
                 lstm_start_layer_index = args.lstm_start_layer_index,
-                num_hidden_layers = num_hidden_layers,
                 norm_based_clipping = args.norm_based_clipping,
                 clipping_threshold = args.clipping_threshold,
                 ng_per_element_scale_options = args.ng_per_element_scale_options,
