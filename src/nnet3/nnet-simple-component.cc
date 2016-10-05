@@ -86,6 +86,85 @@ void PnormComponent::Write(std::ostream &os, bool binary) const {
 }
 
 
+void DropoutComponent::Init(int32 dim, BaseFloat dropout_proportion) {
+  dropout_proportion_ = dropout_proportion;
+  dim_ = dim;
+}
+
+void DropoutComponent::InitFromConfig(ConfigLine *cfl) {
+  int32 dim = 0;
+  BaseFloat dropout_proportion = 0.0;
+  bool ok = cfl->GetValue("dim", &dim) &&
+    cfl->GetValue("dropout-proportion", &dropout_proportion);
+  if (!ok || cfl->HasUnusedValues() || dim <= 0 || 
+      dropout_proportion < 0.0 || dropout_proportion > 1.0)
+    KALDI_ERR << "Invalid initializer for layer of type " 
+              << Type() << ": \"" << cfl->WholeLine() << "\"";   
+  Init(dim, dropout_proportion);
+}
+
+std::string DropoutComponent::Info() const {
+  std::ostringstream stream;
+  stream << Type() << ", dim = " << dim_ 
+         << ", dropout-proportion = " << dropout_proportion_;
+  return stream.str();
+}
+
+void DropoutComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+                                 const CuMatrixBase<BaseFloat> &in,
+                                 CuMatrixBase<BaseFloat> *out) const {
+  KALDI_ASSERT(out->NumRows() == in.NumRows() && out->NumCols() == in.NumCols()
+               && in.NumCols() == dim_);
+
+  BaseFloat dropout = dropout_proportion_;
+  KALDI_ASSERT(dropout >= 0.0 && dropout <= 1.0);
+
+  // This const_cast is only safe assuming you don't attempt  
+  // to use multi-threaded code with the GPU.
+  const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(out); 
+
+  out->Add(-dropout); // now, a proportion "dropout" will be <0.0 
+  out->ApplyHeaviside(); // apply the function (x>0?1:0).  Now, a proportion "dropout" will 
+                         // be zero and (1 - dropout) will be 1.0.
+
+  out->MulElements(in);
+}
+
+
+void DropoutComponent::Backprop(const std::string &debug_info,
+                                const ComponentPrecomputedIndexes *indexes,
+                                const CuMatrixBase<BaseFloat> &in_value,
+                                const CuMatrixBase<BaseFloat> &out_value,
+                                const CuMatrixBase<BaseFloat> &out_deriv,
+                                Component *to_update,
+                                CuMatrixBase<BaseFloat> *in_deriv) const {
+  KALDI_ASSERT(in_value.NumRows() == out_value.NumRows() &&
+               in_value.NumCols() == out_value.NumCols());
+
+  KALDI_ASSERT(in_value.NumRows() == out_deriv.NumRows() &&
+               in_value.NumCols() == out_deriv.NumCols());
+  in_deriv->SetMatMatDivMat(out_deriv, out_value, in_value);
+}
+
+
+ 
+void DropoutComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<DropoutComponent>", "<Dim>");
+  ReadBasicType(is, binary, &dim_);
+  ExpectToken(is, binary, "<DropoutProportion>");
+  ReadBasicType(is, binary, &dropout_proportion_);
+  ExpectToken(is, binary, "</DropoutComponent>");
+}
+
+void DropoutComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<DropoutComponent>");
+  WriteToken(os, binary, "<Dim>");
+  WriteBasicType(os, binary, dim_);
+  WriteToken(os, binary, "<DropoutProportion>");
+  WriteBasicType(os, binary, dropout_proportion_);
+  WriteToken(os, binary, "</DropoutComponent>");
+}
+
 void SumReduceComponent::Init(int32 input_dim, int32 output_dim)  {
   input_dim_ = input_dim;
   output_dim_ = output_dim;
@@ -2794,6 +2873,10 @@ void FixedAffineComponent::InitFromConfig(ConfigLine *cfl) {
 }
 
 
+FixedAffineComponent::FixedAffineComponent(const AffineComponent &c):
+    linear_params_(c.LinearParams()),
+    bias_params_(c.BiasParams()) { }
+
 void FixedAffineComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                      const CuMatrixBase<BaseFloat> &in,
                                      CuMatrixBase<BaseFloat> *out) const  {
@@ -4857,7 +4940,8 @@ void CompositeComponent::InitFromConfig(ConfigLine *cfl) {
     Component *this_component = NULL;
     if (!nested_line.ParseLine(component_config) ||
         !nested_line.GetValue("type", &component_type) ||
-        !(this_component = NewComponentOfType(component_type))) {
+        !(this_component = NewComponentOfType(component_type)) ||
+        nested_line.FirstToken() != "") {
       DeletePointers(&components);
       KALDI_ERR << "Could not parse config line for '" << name_stream.str()
                 << "(or undefined or bad component type [type=xxx]), in "

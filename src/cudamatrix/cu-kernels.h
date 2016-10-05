@@ -337,11 +337,11 @@ inline void cuda_add_mat_blocks(dim3 Gr, dim3 Bl, float alpha, const float *src,
   cudaF_add_mat_blocks(Gr, Bl, alpha, src, num_row_blocks, num_col_blocks, dst,
                        d, src_stride, A_trans);
 }
-inline void cuda_add_mat_mat_div_mat(dim3 Gr, dim3 Bl, const float *A,
+inline void cuda_set_mat_mat_div_mat(dim3 Gr, dim3 Bl, const float *A,
                                      const float *B, const float *C, float *dst,
                                      MatrixDim d, int stride_a, int stride_b,
                                      int stride_c) {
-  cudaF_add_mat_mat_div_mat(Gr, Bl, A, B, C, dst, d, stride_a, stride_b,
+  cudaF_set_mat_mat_div_mat(Gr, Bl, A, B, C, dst, d, stride_a, stride_b,
                             stride_c);
 }
 inline void cuda_add_vec_to_cols(dim3 Gr, dim3 Bl, float alpha,
@@ -872,11 +872,11 @@ inline void cuda_add_mat_blocks(dim3 Gr, dim3 Bl, double alpha,
   cudaD_add_mat_blocks(Gr, Bl, alpha, src, num_row_blocks, num_col_blocks, dst,
                        d, src_stride, A_trans);
 }
-inline void cuda_add_mat_mat_div_mat(dim3 Gr, dim3 Bl, const double *A,
+inline void cuda_set_mat_mat_div_mat(dim3 Gr, dim3 Bl, const double *A,
                                      const double *B, const double *C,
                                      double *dst, MatrixDim d, int stride_a,
                                      int stride_b, int stride_c) {
-  cudaD_add_mat_mat_div_mat(Gr, Bl, A, B, C, dst, d, stride_a, stride_b,
+  cudaD_set_mat_mat_div_mat(Gr, Bl, A, B, C, dst, d, stride_a, stride_b,
                             stride_c);
 }
 inline void cuda_add_vec_to_cols(dim3 Gr, dim3 Bl, double alpha,

@@ -68,6 +68,9 @@ cp $alidir/cmvn_opts $dir 2>/dev/null # cmn/cmvn option.
 cp $alidir/delta_opts $dir 2>/dev/null
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
+
 ## Set up features.
 if [ -f $alidir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 echo "$0: feature type is $feat_type"

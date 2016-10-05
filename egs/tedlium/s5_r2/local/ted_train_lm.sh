@@ -74,31 +74,33 @@ if [ $stage -le 0 ]; then
   # note, we can't put it in ${dir}/data/text/, because then pocolm would use
   # it as one of the data sources.
   cut -d " " -f 2-  < data/dev/text  > ${dir}/data/real_dev_set.txt
-  
+
   # get wordlist
   awk '{print $1}' db/cantab-TEDLIUM/cantab-TEDLIUM.dct | sort | uniq > ${dir}/data/wordlist
 fi
 
 order=4
 
-if [ $stage -le 1 ]; then  
-  # decide on the vocabulary.                                                   
-  # Note: you'd use --wordlist if you had a previously determined word-list     
-  # that you wanted to use.                                                     
+if [ $stage -le 1 ]; then
+  # decide on the vocabulary.
+  # Note: you'd use --wordlist if you had a previously determined word-list
+  # that you wanted to use.
   # Note: if you have more than one order, use a certain amount of words as the
-  # vocab and want to restrict max memory for 'sort', 
-  # the following might be a more reasonable setting:                     
-  # train_lm.py --num-word=${num_word} --num-splits=10 --warm-start-ratio=20 ${max_memory} \
-  #             --min-counts='train=2 ted=1' \                               
-  #             --keep-int-data=true --fold-dev-into=ted ${bypass_metaparam_optim_opt} \
-  #             ${dir}/data/text ${order} ${lm_dir} 
+  # vocab and want to restrict max memory for 'sort',
   echo "$0: training the unpruned LM"
-  train_lm.py  --wordlist=${dir}/data/wordlist --num-splits=10 --warm-start-ratio=20  \
+  min_counts='train=2 ted=1'
+  wordlist=${dir}/data/wordlist
+
+  lm_name="`basename ${wordlist}`_${order}"
+  if [ -n "${min_counts}" ]; then
+    lm_name+="_`echo ${min_counts} | tr -s "[:blank:]" "_" | tr "=" "-"`"
+  fi
+  unpruned_lm_dir=${lm_dir}/${lm_name}.pocolm
+  train_lm.py  --wordlist=${wordlist} --num-splits=10 --warm-start-ratio=20  \
                --fold-dev-into=ted ${bypass_metaparam_optim_opt} \
-               --min-counts='train=2 ted=1' \
-               ${dir}/data/text ${order} ${lm_dir}
-  unpruned_lm_dir=${lm_dir}/wordlist_${order}.pocolm
-  
+               --min-counts="${min_counts}" \
+               ${dir}/data/text ${order} ${lm_dir}/work ${unpruned_lm_dir}
+
   get_data_prob.py ${dir}/data/real_dev_set.txt ${unpruned_lm_dir} 2>&1 | grep -F '[perplexity'
 
   # currently (with min-counts), this is what we have:
@@ -114,8 +116,8 @@ if [ $stage -le 2 ]; then
   prune_lm_dir.py --target-num-ngrams=$size --initial-threshold=0.02 ${unpruned_lm_dir} ${dir}/data/lm_${order}_prune_big
 
   get_data_prob.py ${dir}/data/real_dev_set.txt ${dir}/data/lm_${order}_prune_big 2>&1 | grep -F '[perplexity'
-  
-  # with min-counts: 
+
+  # with min-counts:
   # get_data_prob.py ${dir}/data/real_dev_set.txt ${dir}/data/lm_${order}_prune_big 2>&1 | grep -F '[perplexity'
   # get_data_prob.py: log-prob of data/local/local_lm/data/real_dev_set.txt given model data/local/local_lm/data/lm_4_prune_big was -5.17638942756 per word [perplexity = 177.006688203] over 18290.0 words.
 

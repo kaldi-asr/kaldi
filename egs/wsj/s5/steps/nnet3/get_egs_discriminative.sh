@@ -102,6 +102,9 @@ done
 
 mkdir -p $dir/log $dir/info || exit 1;
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
+
 nj=$(cat $denlatdir/num_jobs) || exit 1;
 
 sdata=$data/split$nj

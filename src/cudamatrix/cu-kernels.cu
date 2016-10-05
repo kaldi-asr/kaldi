@@ -584,7 +584,7 @@ static void _add_mat_blocks_trans(Real alpha, const Real* src,
 
 template<typename Real>
 __global__
-static void _add_mat_mat_div_mat(const Real* A, const Real* B, const Real* C,
+static void _set_mat_mat_div_mat(const Real* A, const Real* B, const Real* C,
                                  Real* dst, MatrixDim d, int stride_a,
                                  int stride_b, int stride_c) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -2863,10 +2863,10 @@ void cudaF_add_mat_blocks(dim3 Gr, dim3 Bl, float alpha, const float* src,
   }
 }
 
-void cudaF_add_mat_mat_div_mat(dim3 Gr, dim3 Bl, const float *A, const float *B,
+void cudaF_set_mat_mat_div_mat(dim3 Gr, dim3 Bl, const float *A, const float *B,
                                const float *C, float *dst, MatrixDim d,
                                int stride_a, int stride_b, int stride_c) {
-  _add_mat_mat_div_mat<<<Gr,Bl>>>(A,B,C,dst,d, stride_a, stride_b, stride_c);
+  _set_mat_mat_div_mat<<<Gr,Bl>>>(A,B,C,dst,d, stride_a, stride_b, stride_c);
 }
 
 void cudaF_sy_add_tr2(dim3 Gr, dim3 Bl, float alpha, float beta, const float* T,
@@ -3505,11 +3505,11 @@ void cudaD_add_mat_blocks(dim3 Gr, dim3 Bl, double alpha, const double* src,
   }
 }
 
-void cudaD_add_mat_mat_div_mat(dim3 Gr, dim3 Bl, const double *A,
+void cudaD_set_mat_mat_div_mat(dim3 Gr, dim3 Bl, const double *A,
                                const double *B, const double *C, double *dst,
                                MatrixDim d, int stride_a, int stride_b,
                                int stride_c) {
-  _add_mat_mat_div_mat<<<Gr,Bl>>>(A,B,C,dst,d,stride_a,stride_b,stride_c);
+  _set_mat_mat_div_mat<<<Gr,Bl>>>(A,B,C,dst,d,stride_a,stride_b,stride_c);
 }
 
 void cudaD_sy_add_tr2(dim3 Gr, dim3 Bl, double alpha, double beta,

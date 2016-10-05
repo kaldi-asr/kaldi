@@ -29,6 +29,8 @@ namespace kaldi {
  because "real-time decoding" can also be used to mean decoding whose speed is
  not slower than real time, even if it is applied in batch mode).
 
+ Note: see \subpage online_programs for some now-deprecated online recognizers.
+
  The approach that we took with Kaldi was to focus for the first few years
  on off-line recognition, in order to reach state of the art performance
  as quickly as possible.  Now we are making more of an effort to support

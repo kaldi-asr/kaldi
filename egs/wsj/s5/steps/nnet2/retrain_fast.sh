@@ -145,6 +145,9 @@ echo $nj > $dir/num_jobs
 cp $alidir/tree $dir
 
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
+
 if [ $stage -le -3 ] && [ -z "$egs_dir" ]; then
   echo "$0: calling get_egs.sh"
   steps/nnet2/get_egs.sh --feat-type raw --cmvn-opts "--norm-means=false --norm-vars=false" \

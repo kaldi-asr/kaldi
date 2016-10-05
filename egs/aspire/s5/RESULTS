@@ -43,3 +43,12 @@ for x in exp/*/decode_dev; do grep WER $x/wer_* | utils/best_wer.sh; done
 # local/nnet3/run_blstm.sh
 %WER 29.4 | 2120 27210 | 77.0 14.7 8.3 6.4 29.4 77.9 | -1.227 | exp/nnet3/lstm_bidirectional/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iterfinal_pp_fg/score_13/penalty_0.25/ctm.filt.filt.sys
 #Total training time is 14 days, 17:29:02
+
+# Results on ASpIRE dev data using data reverberated by simulated RIRs and point-source noises
+# --------------------------------------------------------------------------------------------
+# local/chain/run_tdnn_7b.sh
+%WER 27.0 | 2120 27219 | 78.9 12.7 8.4 6.0 27.0 74.8 | -0.577 | exp/chain/tdnn_7b/decode_dev_aspire_whole_uniformsegmented_win10_over5_v6_200jobs_iterfinal_pp_fg/score_10/penalty_0.0/ctm.filt.filt.sys
+
+# local/chain/run_blstm_7b.sh
+%WER 24.6 | 2120 27224 | 82.0 11.5 6.5 6.7 24.6 74.6 | -0.976 | exp/chain/blstm_7b/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iterfinal_pp_fg/score_8/penalty_0.75/ctm.filt.filt.sys
+
