@@ -100,8 +100,8 @@ class Compiler {
   // this sets up cindex_id_to_location_.
   void CreateLocationInfo(const std::vector<std::vector<int32> > &by_step);
 
-  // Computes the set of preceding steps that this step depends on.  Assumes
-  // CreateLocationInfo() has already been called.
+  // Computes the set of step-indexes of preceding steps that this step depends
+  // on.  Assumes CreateLocationInfo() has already been called.
   void ComputeStepDependencies(const std::vector<int32> &this_step,
                                unordered_set<int32> *dep_steps);
 

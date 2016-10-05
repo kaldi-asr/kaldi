@@ -139,7 +139,10 @@ struct NnetOptimizeOptions;  // Forward declaration.
    automatically detect that there are duplicate submatrices, and will merge
    them, as well as removing the now-unused matrix indexes.  After merging, we
    will mark the variables (i.e. row-ranges) underlying s1 and s2 as being
-   "dirty" so they can no longer be merged during the lifetime of this class.
+   "dirty" so they can no longer be merged during the lifetime of this class--
+   this is so we don't have to think to hard; we apply this optimization
+   multiple times until it makes no change (see
+   nnet-optimize.cc:VariableMerginOptimization()).
  */
 class VariableMergingOptimizer {
  public:
