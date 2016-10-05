@@ -132,7 +132,7 @@ void Compiler::ComputeDerivNeeded(
 
     unordered_set<int32>::iterator iter = input_steps.begin(),
         end = input_steps.end();
-    // if some step that we depends on needs a derivative, we need the derivative.
+    // if some step that we depend on needs a derivative, we need the derivative.
     for (; iter != end; ++iter) {
       int32 dep_step = *iter;
       KALDI_ASSERT(dep_step < step);
