@@ -1,0 +1,86 @@
+function [MDataCollapsed, CLASSES_unique] = collapse_posteriorgrams(MData,sTarget)
+% sTarget: Collapse to what? Phonetic classes (PCLASSES_UNIQUE) or
+%  just vowel vs consonant class? (default: pclass: Phonetic classes)
+% Bernd T Meyer, JHU, Apr 2016
+if nargin < 2
+  sTarget = 'pclass';
+end
+
+switch lower(sTarget)
+  case 'pclass'
+    PCLASS_NUM = [1 1 1 1 1 1 1 1 1 2 2 2 2 2 3 4 4 4 4 4 4 5 5 6 6 6 6 6 6 6 6 6 7 7 7 8 8 9 9 10 11 12];
+    CLASSES_unique = {'MONOPHTHONG','DIPHTHONG','R-COLORED-VOWEL','STOP','AFFRICATIVE','FRICATIVE','NASAL','LIQUID','SEMIVOWEL','NONSPEECHNOISE','SILENCE','SPEECHNOISE'};
+    % PCLASS = {'MONOPHTHONG','MONOPHTHONG','MONOPHTHONG','MONOPHTHONG','MONOPHTHONG','MONOPHTHONG','MONOPHTHONG','MONOPHTHONG','MONOPHTHONG','DIPHTHONG','DIPHTHONG','DIPHTHONG','DIPHTHONG','DIPHTHONG','R-COLORED-VOWEL','STOP','STOP','STOP','STOP','STOP','STOP','AFFRICATIVE','AFFRICATIVE','FRICATIVE','FRICATIVE','FRICATIVE','FRICATIVE','FRICATIVE','FRICATIVE','FRICATIVE','FRICATIVE','FRICATIVE','NASAL','NASAL','NASAL','LIQUID','LIQUID','SEMIVOWEL','SEMIVOWEL','NONSPEECHNOISE','SILENCE','SPEECHNOISE'}
+    iNumClasses = length(unique(PCLASS_NUM));
+    MDataCollapsed = zeros(iNumClasses,size(MData,2));
+    for k=1:iNumClasses
+      idx = find(PCLASS_NUM == k);
+      if ~isempty(idx)
+        MDataCollapsed(k,:) = sum(MData(idx,:),1);
+      else
+        error('This should not happen, check your matrices.');
+      end
+    end
+  case 'cv'
+    CVCLASS_NUM = [1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 3 3 3];
+    CLASSES_unique = {'VOWEL','CONSONANT','OTHER'};
+    iNumClasses = length(unique(CVCLASS_NUM));
+    MDataCollapsed = zeros(iNumClasses,size(MData,2));
+    for k=1:iNumClasses
+      idx = find(CVCLASS_NUM == k);
+      if ~isempty(idx)
+        MDataCollapsed(k,:) = sum(MData(idx,:),1);
+      else
+        error('This should not happen, check your matrices.');
+      end
+    end
+    
+    
+  otherwise
+    error(['Didn''t know how to collapse to ' sTarget])
+end
+
+% INDEX	STRING	PCLASS	PCLASS_IDX	CVCLASS	CVCLASS_IDX
+% 1	AO	MONOPHTHONG	1	VOWEL	1
+% 2	AA	MONOPHTHONG	1	VOWEL	1
+% 3	IY	MONOPHTHONG	1	VOWEL	1
+% 4	UW	MONOPHTHONG	1	VOWEL	1
+% 5	EH	MONOPHTHONG	1	VOWEL	1
+% 6	IH	MONOPHTHONG	1	VOWEL	1
+% 7	UH	MONOPHTHONG	1	VOWEL	1
+% 8	AH	MONOPHTHONG	1	VOWEL	1
+% 9	AE	MONOPHTHONG	1	VOWEL	1
+% 10	EY	DIPHTHONG	2	VOWEL	1
+% 11	AY	DIPHTHONG	2	VOWEL	1
+% 12	OW	DIPHTHONG	2	VOWEL	1
+% 13	AW	DIPHTHONG	2	VOWEL	1
+% 14	OY	DIPHTHONG	2	VOWEL	1
+% 15	ER	R-COLORED-VOWEL	3	VOWEL	1
+% 16	P	STOP	4	CONSONANT	2
+% 17	B	STOP	4	CONSONANT	2
+% 18	T	STOP	4	CONSONANT	2
+% 19	D	STOP	4	CONSONANT	2
+% 20	K	STOP	4	CONSONANT	2
+% 21	G	STOP	4	CONSONANT	2
+% 22	CH	AFFRICATIVE	5	CONSONANT	2
+% 23	JH	AFFRICATIVE	5	CONSONANT	2
+% 24	F	FRICATIVE	6	CONSONANT	2
+% 25	V	FRICATIVE	6	CONSONANT	2
+% 26	TH	FRICATIVE	6	CONSONANT	2
+% 27	DH	FRICATIVE	6	CONSONANT	2
+% 28	S	FRICATIVE	6	CONSONANT	2
+% 29	Z	FRICATIVE	6	CONSONANT	2
+% 30	SH	FRICATIVE	6	CONSONANT	2
+% 31	ZH	FRICATIVE	6	CONSONANT	2
+% 32	HH	FRICATIVE	6	CONSONANT	2
+% 33	M	NASAL	7	CONSONANT	2
+% 34	N	NASAL	7	CONSONANT	2
+% 35	NG	NASAL	7	CONSONANT	2
+% 36	L	LIQUID	8	CONSONANT	2
+% 37	R	LIQUID	8	CONSONANT	2
+% 38	Y	SEMIVOWEL	9	CONSONANT	2
+% 39	W	SEMIVOWEL	9	CONSONANT	2
+% 40	NSN	NONSPEECHNOISE	10	OTHER	3
+% 41	SIL	SILENCE	11	OTHER	3
+% 42	SPN	SPEECHNOISE	12	OTHER	3
+% 	https://en.wikipedia.org/wiki/Arpabet
