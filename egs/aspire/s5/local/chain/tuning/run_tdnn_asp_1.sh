@@ -8,7 +8,7 @@ affix=
 stage=12 # assuming you already ran the xent systems
 train_stage=-10
 get_egs_stage=-10
-dir=exp/chain/tdnn_asp_1
+dir=exp/chain/tdnn_asp1
 decode_iter=
 
 # training options
@@ -193,10 +193,15 @@ if [ $stage -le 13 ]; then
   utils/mkgraph.sh --self-loop-scale 1.0 data/lang_pp_test $dir $dir/graph_pp
 fi
 
+if [ $stage -le 14 ]; then
 # %WER 28.2 | 2120 27218 | 77.3 12.5 10.2 5.6 28.2 75.6 | -0.544 | exp/chain/tdnn_asp_1/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iterfinal_pp_fg/score_10/penalty_0.0/ctm.filt.filt.sys
-  local/chain/prep_test_aspire.sh --stage 0 --decode-num-jobs 200 --affix "v7" \
-   --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
-   --ivector-scale 0.75  --tune-hyper true dev_aspire data/lang exp/chain/tdnn_asp_1 || exit 1;
+  local/nnet3/prep_test_aspire.sh --stage 1 --decode-num-jobs 30 --affix "v7" \
+   --acwt 1.0 --post-decode-acwt 10.0 \
+   --window 10 --overlap 5 \
+   --sub-speaker-frames 6000 --max-count 75 --ivector-scale 0.75 \
+   --pass2-decode-opts "--min-active 1000" \
+   dev_aspire data/lang $dir/graph_pp $dir
+fi
 
 exit 0;
 
