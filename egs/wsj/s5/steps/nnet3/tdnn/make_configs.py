@@ -65,6 +65,8 @@ def GetArgs():
                         help="If \"true\" an LDA matrix computed from the input features "
                         "(spliced according to the first set of splice-indexes) will be used as "
                         "the first Affine layer. This affine layer's parameters are fixed during training. "
+                        "This variable needs to be set to \"false\" when using dense-targets "
+                        "or when --add-idct is set to \"true\".",
                         "If --cnn.layer is specified this option will be forced to \"false\".",
                         default=True, choices = ["false", "true"])
 
@@ -113,10 +115,13 @@ def GetArgs():
                         help="if true, a presoftmax-prior-scale is added",
                         choices=['true', 'false'], default = True)
 
+    # Options to convert input MFCC into Fbank features. This is useful when a
+    # LDA layer is not added (such as when using dense targets)
     parser.add_argument(["--cepstral-lifter","--cnn.cepstral-lifter"], type=float, dest = "cepstral_lifter",
                         help="The factor used for determining the liftering vector in the production of MFCC. "
                         "User has to ensure that it matches the lifter used in MFCC generation, "
                         "e.g. 22.0", default=22.0)
+
     parser.add_argument("--add-idct", type=str, action=nnet3_train_lib.StrToBoolAction,
                         help="Add an IDCT after input to convert MFCC to Fbank", default = False)
     parser.add_argument("config_dir",
@@ -377,6 +382,9 @@ def MakeConfigs(config_dir, splice_indexes_string,
         prev_layer_output = AddCnnLayers(config_lines, cnn_layer, cnn_bottleneck_dim, cepstral_lifter, config_dir,
                                          feat_dim, splice_indexes[0], ivector_dim)
 
+    # add_lda needs to be set "false" when using dense targets,
+    # or if the task is not a simple classification task
+    # (e.g. regression, multi-task)
     if add_lda:
         prev_layer_output = nodes.AddLdaLayer(config_lines, "L0", prev_layer_output, config_dir + '/lda.mat')
 

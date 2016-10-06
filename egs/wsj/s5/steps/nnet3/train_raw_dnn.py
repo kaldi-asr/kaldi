@@ -128,7 +128,7 @@ def Train(args, run_opts):
     config_dir = '{0}/configs'.format(args.dir)
     var_file = '{0}/vars'.format(config_dir)
 
-    variables = ParseModelConfigGenericVarsFile(var_file)
+    variables = ParseGenericConfigVarsFile(var_file)
 
     # Set some variables.
 
@@ -173,19 +173,19 @@ def Train(args, run_opts):
     if (args.stage <= -4) and args.egs_dir is None:
         logger.info("Generating egs")
 
-        GenerateEgsFromTargets(args.feat_dir, args.targets_scp, default_egs_dir,
-                    left_context, right_context,
-                    left_context, right_context, run_opts,
-                    frames_per_eg = args.frames_per_eg,
-                    srand = args.srand,
-                    egs_opts = args.egs_opts,
-                    cmvn_opts = args.cmvn_opts,
-                    online_ivector_dir = args.online_ivector_dir,
-                    samples_per_iter = args.samples_per_iter,
-                    transform_dir = args.transform_dir,
-                    stage = args.egs_stage,
-                    target_type = target_type,
-                    num_targets = num_targets)
+        GenerateEgsUsingTargets(args.feat_dir, args.targets_scp, default_egs_dir,
+                                left_context, right_context,
+                                left_context, right_context, run_opts,
+                                frames_per_eg = args.frames_per_eg,
+                                srand = args.srand,
+                                egs_opts = args.egs_opts,
+                                cmvn_opts = args.cmvn_opts,
+                                online_ivector_dir = args.online_ivector_dir,
+                                samples_per_iter = args.samples_per_iter,
+                                transform_dir = args.transform_dir,
+                                stage = args.egs_stage,
+                                target_type = target_type,
+                                num_targets = num_targets)
 
     if args.egs_dir is None:
         egs_dir = default_egs_dir
@@ -265,11 +265,11 @@ def Train(args, run_opts):
                                         shuffle_buffer_size = args.shuffle_buffer_size,
                                         run_opts = run_opts,
                                         compute_accuracy = compute_accuracy,
-                                        use_raw_nnet = True)
+                                        get_raw_nnet_from_am = False)
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain conditions
                 RemoveModel(args.dir, iter-2, num_iters, num_iters_combine,
-                            args.preserve_model_interval, use_raw_nnet = True)
+                            args.preserve_model_interval, get_raw_nnet_from_am = False)
 
             if args.email is not None:
                 reporting_iter_interval = num_iters * args.reporting_interval
@@ -284,12 +284,13 @@ def Train(args, run_opts):
 
     if args.stage <= num_iters:
         logger.info("Doing final combination to produce final.mdl")
-        CombineModels(args.dir, num_iters, num_iters_combine, egs_dir, run_opts, use_raw_nnet = True, compute_accuracy = compute_accuracy)
+        CombineModels(args.dir, num_iters, num_iters_combine, egs_dir, run_opts,
+                      get_raw_nnet_from_am = False, compute_accuracy = compute_accuracy)
 
     if include_log_softmax and args.stage <= num_iters + 1:
         logger.info("Getting average posterior for purpose of using as priors to convert posteriors into likelihoods.")
         avg_post_vec_file = ComputeAveragePosterior(args.dir, 'final', egs_dir,
-                                num_archives, args.prior_subset_size, run_opts, use_raw_nnet = True)
+                                num_archives, args.prior_subset_size, run_opts, get_raw_nnet_from_am = False)
 
     if args.cleanup:
         logger.info("Cleaning up the experiment directory {0}".format(args.dir))
@@ -302,7 +303,7 @@ def Train(args, run_opts):
         CleanNnetDir(args.dir, num_iters, egs_dir,
                      preserve_model_interval = args.preserve_model_interval,
                      remove_egs = remove_egs,
-                     use_raw_nnet = True)
+                     get_raw_nnet_from_am = False)
 
     # do some reporting
     [report, times, data] = nnet3_log_parse.GenerateAccuracyReport(args.dir)

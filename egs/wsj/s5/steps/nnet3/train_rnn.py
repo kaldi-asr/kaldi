@@ -188,7 +188,7 @@ def Train(args, run_opts):
     config_dir = '{0}/configs'.format(args.dir)
     var_file = '{0}/vars'.format(config_dir)
 
-    variables = ParseModelConfigGenericVarsFile(var_file)
+    variables = ParseGenericConfigVarsFile(var_file)
 
     # Set some variables.
 

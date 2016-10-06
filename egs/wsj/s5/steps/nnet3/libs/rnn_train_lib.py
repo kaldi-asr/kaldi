@@ -1,9 +1,12 @@
 #!/usr/bin/env python
 
-
 # Copyright 2016 Vijayaditya Peddinti.
 #           2016 Vimal Manohar
 # Apache 2.0.
+
+# This is a module with methods which will be used by scripts for training of
+# recurrent neural network acoustic model and raw model (i.e., generic neural
+# network without transition model) with frame-level objectives.
 
 import logging
 import imp
@@ -266,8 +269,8 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
     cache_read_opt = ""
     if iter > 0 and (iter <= (num_hidden_layers-1) * add_layers_period) and (iter % add_layers_period == 0):
 
-        do_average = False # if we've just mixed up, don't do averaging but take the
-                           # best.
+        do_average = False # if we've just added new hiden layer, don't do
+                           # averaging but take the best.
         cur_num_hidden_layers = 1 + iter / add_layers_period
         config_file = "{0}/configs/layer{1}.config".format(dir, cur_num_hidden_layers)
         if use_raw_nnet:
