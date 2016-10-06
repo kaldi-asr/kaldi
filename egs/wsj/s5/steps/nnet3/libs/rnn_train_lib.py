@@ -239,7 +239,7 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
                       left_context, right_context, min_deriv_time,
                       momentum, max_param_change, shuffle_buffer_size,
                       cv_minibatch_size, run_opts,
-                      compute_accuracy = True, use_raw_nnet = False):
+                      compute_accuracy = True, get_raw_nnet_from_am = True):
 
 
     # Set off jobs doing some diagnostics, in the background.
@@ -259,10 +259,10 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
         f.write(str(srand))
         f.close()
 
-    ComputeTrainCvProbabilities(dir, iter, egs_dir, run_opts, mb_size=cv_minibatch_size, use_raw_nnet = use_raw_nnet, compute_accuracy = compute_accuracy)
+    ComputeTrainCvProbabilities(dir, iter, egs_dir, run_opts, mb_size=cv_minibatch_size, get_raw_nnet_from_am = get_raw_nnet_from_am, compute_accuracy = compute_accuracy)
 
     if iter > 0:
-        ComputeProgress(dir, iter, egs_dir, run_opts, mb_size=cv_minibatch_size, use_raw_nnet = use_raw_nnet)
+        ComputeProgress(dir, iter, egs_dir, run_opts, mb_size=cv_minibatch_size, get_raw_nnet_from_am = get_raw_nnet_from_am)
 
     # an option for writing cache (storing pairs of nnet-computations
     # and computation-requests) during training.
@@ -273,20 +273,20 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
                            # averaging but take the best.
         cur_num_hidden_layers = 1 + iter / add_layers_period
         config_file = "{0}/configs/layer{1}.config".format(dir, cur_num_hidden_layers)
-        if use_raw_nnet:
-            raw_model_string = "nnet3-copy --learning-rate={lr} {dir}/{iter}.raw - | nnet3-init --srand={srand} - {config} - |".format(lr=learning_rate, dir=dir, iter=iter, srand=iter + srand, config=config_file)
-        else:
+        if get_raw_nnet_from_am:
             raw_model_string = "nnet3-am-copy --raw=true --learning-rate={lr} {dir}/{iter}.mdl - | nnet3-init --srand={srand} - {config} - |".format(lr=learning_rate, dir=dir, iter=iter, srand=iter + srand, config=config_file)
+        else:
+            raw_model_string = "nnet3-copy --learning-rate={lr} {dir}/{iter}.raw - | nnet3-init --srand={srand} - {config} - |".format(lr=learning_rate, dir=dir, iter=iter, srand=iter + srand, config=config_file)
     else:
         do_average = True
         if iter == 0:
             do_average = False   # on iteration 0, pick the best, don't average.
         else:
             cache_read_opt = "--read-cache={dir}/cache.{iter}".format(dir=dir, iter=iter)
-        if use_raw_nnet:
-            raw_model_string = "nnet3-copy --learning-rate={lr} {dir}/{iter}.raw - |".format(lr = learning_rate, dir = dir, iter = iter)
-        else:
+        if get_raw_nnet_from_am:
             raw_model_string = "nnet3-am-copy --raw=true --learning-rate={0} {1}/{2}.mdl - |".format(learning_rate, dir, iter)
+        else:
+            raw_model_string = "nnet3-copy --learning-rate={lr} {dir}/{iter}.raw - |".format(lr = learning_rate, dir = dir, iter = iter)
 
     if do_average:
         cur_num_chunk_per_minibatch = num_chunk_per_minibatch
@@ -319,7 +319,7 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
         GetAverageNnetModel(dir = dir, iter = iter,
                             nnets_list = " ".join(nnets_list),
                             run_opts = run_opts,
-                            use_raw_nnet = use_raw_nnet,
+                            get_raw_nnet_from_am = get_raw_nnet_from_am,
                             shrink = shrinkage_value)
 
     else:
@@ -327,7 +327,7 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
         GetBestNnetModel(dir = dir, iter = iter,
                          best_model_index = best_model,
                          run_opts = run_opts,
-                         use_raw_nnet = use_raw_nnet,
+                         get_raw_nnet_from_am = get_raw_nnet_from_am,
                          shrink = shrinkage_value)
 
     try:
@@ -336,10 +336,10 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
     except OSError:
         raise Exception("Error while trying to delete the raw models")
 
-    if use_raw_nnet:
-        new_model = "{0}/{1}.raw".format(dir, iter + 1)
-    else:
+    if get_raw_nnet_from_am:
         new_model = "{0}/{1}.mdl".format(dir, iter + 1)
+    else:
+        new_model = "{0}/{1}.raw".format(dir, iter + 1)
 
     if not os.path.isfile(new_model):
         raise Exception("Could not find {0}, at the end of iteration {1}".format(new_model, iter))
