@@ -22,19 +22,26 @@ data=data/train
 min_prob=0.4
 # the cut-off parameter used to select pronunciation candidates from phone
 # decoding. A smaller min-prob means more candidates will be included.
-prior_counts="3.5-1-1"
-# prior counts assigned to three exclusive pronunciations sources: 
-# reference lexicon, g2p, and phone decoding (used in the final Bayesian
-# pronunciation selection procedure). We recommend setting a larger prior
-# count for the reference lexicon, and the three counts should sum up to
-# 3 to 6 (may need tuning). e.g. '2-0.6-0.4'
+prior_mean="0.7,0.2,0.1"        
+# Mean of priors (summing up to 1) assigned to three exclusive pronunciation"
+# source: reference lexicon, g2p, and phone decoding (used in the Bayesian"
+# pronunciation selection procedure). We recommend setting a larger prior"
+# mean for the reference lexicon, e.g. '0.6,0.2,0.2'."
+prior_counts_tot=15
+# Total amount of prior counts we add to all pronunciation candidates of"
+# each word. By timing it with the prior mean of a source, and then dividing"
+# by the number of candidates (for a word) from this source, we get the"
+# prior counts we actually add to each candidate."
 variants_prob_mass=0.6
-# In the Bayesian pronunciation selection procedure, for each word, after
-# computing posteriors for all candidate pronunciations, we select so
-# many variants of prons to produce at most this amount of posterior
-# mass. It's also used in a similar fashion when we apply G2P.
-# A lower value is recommended (like 0.6-0.7) for a language whose average
-# pron variants per word is low, like ~2 for English.
+# In the Bayesian pronunciation selection procedure, for each word, we"
+# choose candidates (from all three sources) with highest posteriors"
+# until the total prob mass hit this amount."
+# It's used in a similar fashion when we apply G2P."
+variants_prob_mass2=0.9
+# In the Bayesian pronunciation selection procedure, for each word,"
+# after the total prob mass of selected candidates hit variants-prob-mass,"
+# we continue to pick up reference candidates with highest posteriors"
+# until the total prob mass hit this amount."
 affix="lex"
 # Intermediate outputs of the lexicon learning stage will be put into
 # exp/tri3_${affix}_work
@@ -50,8 +57,9 @@ stage=0
 if [ $stage -le 0 ]; then
   ref_vocab=data/local/vocab # The reference vocab is the vocab we aim to generate pronounciations for.
   cat $ref_dict/lexicon.txt | cut -f1 -d' ' | sort | uniq > $ref_vocab
-  steps/dict/learn_lexicon.sh --min-prob $min_prob --variants-prob-mass $variants_prob_mass \
-    --prior-counts $prior_counts --affix $affix --stage $lexlearn_stage \
+  steps/dict/learn_lexicon.sh --min-prob $min_prob --variants-prob-mass $variants_prob_mass --variants-prob-mass2 $variants_prob_mass2  \
+    --prior-counts-tot $prior_counts_tot --prior-mean $prior_mean \
+    --affix $affix --stage $lexlearn_stage \
     --nj 60 --oov-symbol $oov_symbol --retrain-src-mdl false --g2p-for-iv false \
     $ref_dict $ref_vocab $data exp/tri3 data/lang data/local/dict_learned_nosp
 fi

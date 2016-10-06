@@ -16,7 +16,8 @@
 # hand-derived), lexicons from G2P/phone decoding into one lexicon and then run 
 # lattice alignment on the same data, to collect acoustic evidence (soft
 # counts) of all pronunciations. Based on these statistics, and
-# user-specified prior-counts for the three sources, we then use a Bayesian
+# user-specified prior-counts (parameterized by prior mean and prior-counts-tot,
+# assuming the prior follows a Dirichlet distribution), we then use a Bayesian
 # framework to compute posteriors of all pronunciations for each word,
 # and then select best pronunciations for each word. The output is a learned lexicon
 # whose vocab matches the user-specified target-vocab. By setting apply_edits
@@ -25,7 +26,6 @@
 # in-vocab words' prons. The user can change the edits file manually and then apply
 # it to the learned lexicon using steps/dict/apply_lexicon_edits after running this script.
 
-set -x
 stage=0
 
 # Begin configuration section.  
@@ -35,7 +35,9 @@ stage=6
 oov_symbol=
 min_prob=0.3
 variants_prob_mass=0.7
-prior_counts="3.5,1,1"
+variants_prob_mass2=0.9
+prior_counts_tot=15
+prior_mean="0.7,0.2,0.1"
 g2p_for_iv=true
 affix="lex"
 num_gauss=
@@ -88,17 +90,22 @@ if [ $# -ne 6 ]; then
   echo "  --oov-symbol '$oov_symbol'   # oov symbol, like <UNK>."
   echo "  --min-prob <float>           # the cut-off parameter used to select pronunciation candidates from phone"
   echo "                               # decoding. A smaller min-prob means more candidates will be included."
-  echo "  --prior-counts               # prior counts assigned to three exclusive pronunciations sources: "
-  echo "         <float-float-float>   # reference lexicon, g2p, and phone decoding (used in the final Bayesian"
+  echo "  --prior-mean                 # Mean of priors (summing up to 1) assigned to three exclusive pronunciation"
+  echo "         <float,float,float>   # source: reference lexicon, g2p, and phone decoding (used in the Bayesian"
   echo "                               # pronunciation selection procedure). We recommend setting a larger prior"
-  echo "                               # count for the reference lexicon, and the three counts should sum up to"
-  echo "                               # 3 to 6 (may need tuning). e.g. '2-0.6-0.4'"
-  echo "  --variants-prob-mass <float> # In the Bayesian pronunciation selection procedure, for each word, after"
-  echo "                               # computing posteriors for all candidate pronunciations, we select so"
-  echo "                               # many variants of prons to produce at most this amount of posterior "
-  echo "                               # mass. It's also used in a similar fashion when we apply G2P."
-  echo "                               # A lower value is recommended (like 0.7) for a language whose average"
-  echo "                               # pron variants per word is low, like ~2 for English."
+  echo "                               # mean for the reference lexicon, e.g. '0.6,0.2,0.2'."
+  echo "  --prior-counts-tot <float>   # Total amount of prior counts we add to all pronunciation candidates of"
+  echo "                               # each word. By timing it with the prior mean of a source, and then dividing"
+  echo "                               # by the number of candidates (for a word) from this source, we get the"
+  echo "                               # prior counts we actually add to each candidate."
+  echo "  --variants-prob-mass <float> # In the Bayesian pronunciation selection procedure, for each word, we"
+  echo "                               # choose candidates (from all three sources) with highest posteriors"
+  echo "                               # until the total prob mass hit this amount."
+  echo "                               # It's used in a similar fashion when we apply G2P."
+  echo "  --variants-prob-mass2<float> # In the Bayesian pronunciation selection procedure, for each word,"
+  echo "                               # after the total prob mass of selected candidates hit variants-prob-mass,"
+  echo "                               # we continue to pick up reference candidates with highest posteriors"
+  echo "                               # until the total prob mass hit this amount."
   echo "  --g2p-for-iv <true|false>    # apply G2P for in-vocab words to get more alternative pronunciations."
   echo "  --affix                      # the affix we want to append to the dir to put the retrained model "
   echo "                               # and all intermediate outputs, like 'lex'."
@@ -122,7 +129,7 @@ dir=${src_mdl}_${affix}_work # Most outputs will be put here.
 mkdir -p $dir
 if [ $stage -le 0 ]; then
   echo "$0: Train G2P model on the reference lexicon, and do some preparatory work."
-  # steps/dict/train_g2p.sh --cmd "$decode_cmd --mem 4G" $ref_dict/lexicon.txt $dir/g2p || exit 1;
+  steps/dict/train_g2p.sh --cmd "$decode_cmd --mem 4G" $ref_dict/lexicon.txt $dir/g2p || exit 1;
     
   awk '{for (n=2;n<=NF;n++) counts[$n]++;} END{for (w in counts) printf "%s %d\n",w, counts[w];}' \
     $data/text | sort > $dir/train_counts.txt
@@ -354,9 +361,10 @@ if [ $stage -le 8 ]; then
   
   variants_counts=`cat $dir/target_num_prons_per_word` || exit 1;
   $cmd $dir/lats2/log/select_prons_bayesian.log \
-    steps/dict/select_prons_bayesian.py --alpha=$prior_counts --variants-counts=$variants_counts \
-    --variants-prob-mass=$variants_prob_mass $ref_dict/silence_phones.txt $dir/lats2/pron_stats.txt \
-    $dir/train_counts.txt $dir/ref_lexicon.txt $dir/g2p_generated_prons_pruned.txt $dir/phone_decoding_generated_prons_pruned.txt \
+    steps/dict/select_prons_bayesian.py --prior-mean=$prior_mean --prior-counts-tot=$prior_counts_tot \
+    --variants-counts=$variants_counts --variants-prob-mass=$variants_prob_mass --variants-prob-mass2=$variants_prob_mass2 \
+    $ref_dict/silence_phones.txt $dir/lats2/pron_stats.txt $dir/train_counts.txt $dir/ref_lexicon.txt \
+    $dir/g2p_generated_prons_pruned.txt $dir/phone_decoding_generated_prons_pruned.txt \
     $dir/lats2/pron_posteriors.temp $dir/lats2/out_of_ref_vocab_prons_learned.txt $dir/lats2/ref_lexicon_edits.txt
 
   # We reformat the pron_posterior file and add some comments.
