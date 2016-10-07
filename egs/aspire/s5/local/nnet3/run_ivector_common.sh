@@ -58,6 +58,7 @@ if [ $stage -le 1 ]; then
       --isotropic-noise-addition-probability 1 \
       --num-replications $num_reps \
       --max-noises-per-minute 1 \
+      --source-sampling-rate 8000 \
       data/${data_dir} data/${data_dir}_rvb
   done
   # create the dev, test and eval sets from the aspire recipe
