@@ -198,7 +198,7 @@ void UnitTestNnetModelDerivatives() {
       }
 
       KALDI_LOG << "Running forward computation";
-      computer.Forward();
+      computer.Run();
 
       const CuMatrixBase<BaseFloat> &output(computer.GetOutput("output"));
       KALDI_LOG << "Output sum for pass " << pass << " is " << output.Sum();
@@ -208,9 +208,9 @@ void UnitTestNnetModelDerivatives() {
       if (pass == 0) {
         // we need to do the backward computation (to get the model derivative)
         CuMatrix<BaseFloat> temp(output_deriv);
-        computer.AcceptOutputDeriv("output", &temp);
+        computer.AcceptInput("output", &temp);
         KALDI_LOG << "Running backward computation";
-        computer.Backward();
+        computer.Run();
       } else {
         // work out the predicted objf-change as dot-product of deriv and
         // parameter-change.  The expression below can be interpreted as
@@ -369,7 +369,7 @@ void UnitTestNnetInputDerivatives() {
       }
 
       KALDI_LOG << "Running forward computation";
-      computer.Forward();
+      computer.Run();
 
       const CuMatrixBase<BaseFloat> &output(computer.GetOutput("output"));
       KALDI_LOG << "Output sum for pass " << pass << " is " << output.Sum();
@@ -379,11 +379,11 @@ void UnitTestNnetInputDerivatives() {
       if (pass == 0) {
         // We need to compute the input derivatives.
         CuMatrix<BaseFloat> temp(output_deriv);
-        computer.AcceptOutputDeriv("output", &temp);
+        computer.AcceptInput("output", &temp);
         KALDI_LOG << "Running backward computation";
-        computer.Backward();
+        computer.Run();
         for (size_t i = 0; i < request.inputs.size(); i++) {
-          input_derivs[i] = computer.GetInputDeriv(request.inputs[i].name);
+          input_derivs[i] = computer.GetOutput(request.inputs[i].name);
           KALDI_LOG << "Input-deriv norm for '" << request.inputs[i].name
                     << "' is " << input_derivs[i].FrobeniusNorm();
         }

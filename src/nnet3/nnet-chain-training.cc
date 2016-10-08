@@ -73,10 +73,10 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
                         *nnet_, delta_nnet_);
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, chain_eg.inputs);
-  computer.Forward();
+  computer.Run();
 
   this->ProcessOutputs(chain_eg, &computer);
-  computer.Backward();
+  computer.Run();
 
   UpdateParamsWithMaxChange();
 }
@@ -134,7 +134,7 @@ void NnetChainTrainer::ProcessOutputs(const NnetChainExample &eg,
         xent_deriv.MulRowsVec(cu_deriv_weights);
     }
 
-    computer->AcceptOutputDeriv(sup.name, &nnet_output_deriv);
+    computer->AcceptInput(sup.name, &nnet_output_deriv);
 
     objf_info_[sup.name].UpdateStats(sup.name, opts_.nnet_config.print_interval,
                                      num_minibatches_processed_++,
@@ -142,7 +142,7 @@ void NnetChainTrainer::ProcessOutputs(const NnetChainExample &eg,
 
     if (use_xent) {
       xent_deriv.Scale(opts_.chain_config.xent_regularize);
-      computer->AcceptOutputDeriv(xent_name, &xent_deriv);
+      computer->AcceptInput(xent_name, &xent_deriv);
     }
   }
 }

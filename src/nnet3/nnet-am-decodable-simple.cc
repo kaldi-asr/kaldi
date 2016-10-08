@@ -261,7 +261,7 @@ void DecodableNnetSimple::DoNnetComputation(
     ivector_feats_cu.Row(0).CopyFromVec(ivector);
     computer.AcceptInput("ivector", &ivector_feats_cu);
   }
-  computer.Forward();
+  computer.Run();
   CuMatrix<BaseFloat> cu_output;
   computer.GetOutputDestructive("output", &cu_output);
   // subtract log-prior (divide by prior)

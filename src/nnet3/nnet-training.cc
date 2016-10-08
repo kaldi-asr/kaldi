@@ -68,10 +68,10 @@ void NnetTrainer::Train(const NnetExample &eg) {
                         *nnet_, delta_nnet_);
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, eg.io);
-  computer.Forward();
+  computer.Run();
 
   this->ProcessOutputs(eg, &computer);
-  computer.Backward();
+  computer.Run();
 
   UpdateParamsWithMaxChange();
 }
@@ -324,7 +324,7 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
             CuMatrix<BaseFloat> output_deriv(output.NumRows(), output.NumCols(),
                                              kUndefined);
             cu_post.CopyToMat(&output_deriv);
-            computer->AcceptOutputDeriv(output_name, &output_deriv);
+            computer->AcceptInput(output_name, &output_deriv);
           }
           break;
         }
@@ -335,7 +335,7 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
           *tot_weight = cu_post.Sum();
           *tot_objf = TraceMatMat(output, cu_post, kTrans);
           if (supply_deriv)
-            computer->AcceptOutputDeriv(output_name, &cu_post);
+            computer->AcceptInput(output_name, &cu_post);
           break;
         }
         case kCompressedMatrix: {
@@ -346,7 +346,7 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
           *tot_weight = cu_post.Sum();
           *tot_objf = TraceMatMat(output, cu_post, kTrans);
           if (supply_deriv)
-            computer->AcceptOutputDeriv(output_name, &cu_post);
+            computer->AcceptInput(output_name, &cu_post);
           break;
         }
       }
@@ -362,7 +362,7 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
       *tot_weight = diff.NumRows();
       *tot_objf = -0.5 * TraceMatMat(diff, diff, kTrans);
       if (supply_deriv)
-        computer->AcceptOutputDeriv(output_name, &diff);
+        computer->AcceptInput(output_name, &diff);
       break;
     }
     default:
