@@ -142,7 +142,7 @@ void UnitTestNnetCompute() {
       KALDI_LOG << "Input sum is " << temp.Sum();
       computer.AcceptInput(request.inputs[i].name, &temp);
     }
-    computer.Forward();
+    computer.Run();
     const CuMatrixBase<BaseFloat> &output(computer.GetOutput("output"));
 
     TestNnetDecodable(request, inputs, nnet, output);
@@ -151,15 +151,16 @@ void UnitTestNnetCompute() {
     CuMatrix<BaseFloat> output_deriv(output.NumRows(), output.NumCols());
     output_deriv.SetRandn();
     // output_deriv sum won't be informative so don't print it.
-    if (request.outputs[0].has_deriv)
-      computer.AcceptOutputDeriv("output", &output_deriv);
-    computer.Backward();
-    for (size_t i = 0; i < request.inputs.size(); i++) {
-      if (request.inputs[i].has_deriv) {
-        const CuMatrixBase<BaseFloat> &in_deriv =
-            computer.GetInputDeriv(request.inputs[i].name);
-        KALDI_LOG << "Input-deriv sum for input '"
-                  << request.inputs[i].name << "' is " << in_deriv.Sum();
+    if (request.outputs[0].has_deriv) {
+      computer.AcceptInput("output", &output_deriv);
+      computer.Run();
+      for (size_t i = 0; i < request.inputs.size(); i++) {
+        if (request.inputs[i].has_deriv) {
+          const CuMatrixBase<BaseFloat> &in_deriv =
+              computer.GetOutput(request.inputs[i].name);
+          KALDI_LOG << "Input-deriv sum for input '"
+                    << request.inputs[i].name << "' is " << in_deriv.Sum();
+        }
       }
     }
   }
@@ -171,7 +172,7 @@ void UnitTestNnetCompute() {
 int main() {
   using namespace kaldi;
   using namespace kaldi::nnet3;
-  //SetVerboseLevel(2);
+  SetVerboseLevel(4);
 
 
   for (kaldi::int32 loop = 0; loop < 2; loop++) {

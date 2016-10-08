@@ -145,6 +145,7 @@ class ComputationVariables {
       int32 matrix_index,
       std::vector<int32> *variable_indexes) const;
 
+
   // Appends to variable_indexes the sorted list of variables corresponding to a
   // submatrix index.
   void AppendVariablesForSubmatrix(
@@ -311,23 +312,20 @@ class ComputationAnalysis {
                       const Analyzer &analyzer): computation_(computation),
                                                  analyzer_(analyzer) { }
 
-  /// If the matrix underlying submatrix 's' is an input then this returns -1;
-  /// otherwise it returns the first command (read or write) that is not an
-  /// allocation command, that accesses any part of 's' [note: deallocation does
-  /// not count as a read or write operation].  If there is no such command, it
-  /// returns num_commands.
+  /// Returns the first command (read or write) that is not a kAlloc* command,
+  /// that accesses any part of 's' [note: deallocation does not count as a read
+  /// or write operation].  If there is no such command, it returns
+  /// num_commands.
   /// s must be >0 (i.e. not the empty submatrix).
   int32 FirstAccess(int32 s) const;
 
-  /// If the matrix underlying submatrix 's' is an output then this returns
-  /// num-commands; otherwise it returns the last non-deallocation command
-  /// that accesses any part of submatrix 's'; if there is no such command it
-  /// returns -1.
+  /// Returns the last non-deallocation command that accesses any part of
+  /// submatrix 's'; if there is no such command it returns -1.
   /// s must be >0 (i.e. not the empty submatrix).
   int32 LastAccess(int32 s) const;
 
   /// Returns the last command-index that accesses any part of submatrix 's' as
-  /// a write operation, or -1 if there is no such operation.  Not: deallocation
+  /// a write operation, or -1 if there is no such operation.  Note: deallocation
   /// does not count as a write operation.
   /// s must be >0 (i.e. not the empty submatrix).
   int32 LastWriteAccess(int32 s) const;
@@ -339,16 +337,13 @@ class ComputationAnalysis {
   /// s must be >0 (i.e. not the empty submatrix).
   int32 DataInvalidatedCommand(int32 c, int32 s) const;
 
-  /// If matrix 'm' is an input then this returns -1; otherwise it returns the
-  /// first command (read or write) that is not an allocation command, that
-  /// accesses any part of 'm' [note: deallocation does not count as a read or
-  /// write operation].  If there is no such command, it returns num_commands.
-  /// m must be >0 (i.e. not the empty matrix).
+  /// Returns the first command (read or write or accept-input) that is not an
+  /// kAllocate* command, that accesses any part of 'm' [note: deallocation does
+  /// not count as a read or write operation].  If there is no such command, it
+  /// returns num_commands.  m must be >0 (i.e. not the empty matrix).
   int32 FirstMatrixAccess(int32 m) const;
 
-
-  /// If matrix 'm' is an output then this returns num-commands; otherwise it
-  /// returns the last non-deallocation command that accesses any part of
+  /// Returns the last non-deallocation command that accesses any part of
   /// matrix 'm'; if there is no such command it returns -1.  m must be >0
   /// (i.e. not the empty matrix).
   int32 LastMatrixAccess(int32 m) const;

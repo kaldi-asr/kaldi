@@ -52,14 +52,11 @@ struct NnetOptimizeOptions;  // Forward declaration.
    may be sub-matrices of larger matrices.
 
    Note: the following
-     - Define last-access(submatrix) as:
-       If matrix-of(submatrix) is an output, then num-commands, otherwise the
+     - Define last-access(submatrix) as the
        last command that accesses that submatrix for either read or write.  [note:
        deallocation does not count as a read or write operation].
-     - Define first-access(submatrix) as:
-       If matrix-of(submatrix) is an input, then -1, otherwise the first command
-       that is *not* an allocation command that accessed that submatrix for either
-       read or write.
+     - Define first-access(submatrix) as the first command not of type kAlloc*
+       that accessed that submatrix for either read or write.
      - Define last-write-access(submatrix) as the last command-index that accessed
        the submatrix in a write operation, or -1 if there is no such command (this
        could happen for inputs).
@@ -99,41 +96,27 @@ struct NnetOptimizeOptions;  // Forward declaration.
    Otherwise (cases (b) and (c), in-place propagate or backprop), we insist that:
      - first-access(s2) == C
      - last-access(s1) == C
-   Note: in either case, these conditions imply that s2 is not an input and s1 is
-   not an output.
+   Note: in either case, these conditions imply that m2/s2 is not an input and m1/s1 is
+   not an output.  [i.e. s1 *may* be an input and s2 *may* be an output].
 
-   The sequence of things we have to do for a right-merge (in which we delete
-   s1,m1) is as follows:
+   We can explain the procedure for both left-merge and right-merge in one, because
+   it's the same.  Define s_to_keep and m_to_keep as s1 and m1 if we're left-merging
+   and s2 and m2 if we're right-merging, and s_to_discard and m_to_discard the opposite
+   way.
+
+   The procedure to merge in general is as follows:
+
      - All submatrices that reference m1, make them reference m2 instead.
-       [later we'll renumber so that there are no duplicates.]
-     - If m1 was an input, replace it as an input with m2 and remove the
-       command that allocated m2.
-     - If it was an assignment [case (a)], replace the assignment command with a
-       no-op.
-     - If both m1 and m2 have commands that allocate them, keep only the
-       allocation command for m2, and make sure that it zeroes the data (we can
-       later change to undefined if allowed) and that it's before the first
-       non-allocation access of m1.  Otherwise remove any allocation commands
-       (the merged variable is an input).
-     - If both m1 and m2 have commands that deallocate them, keep only the
-       deallocation command for m2, and make sure that it's after the last
-       access of m1 (otherwise delete any deallocation command, because m2 must
-       be an output).  [note: previously we kept the later of the 2 commands,
-       but this had the effect of making inaccurate the Analyzer info for
-       a matrix (m2) that might later be used.
-     - If m1 had stride_type == kStrideEqualNumCols, set m2's stride_type
-       to kStrideEqualNuMCols.
-
-
-   The sequence of things we have to do for a right-merge (in which we delete
-   s1,m1) is as follows:
-     - All submatrices that reference m2, make them reference m1 instead.
-       [later we'll renumber so that there are no duplicates.]
-     - If m2 was an output, replace it as an output with m1 and remove the
-       command that deallocated m1.
-     ... the last four bullet-points, regarding removing the assignment command,
-        and allocation and deallocation, and stride-type, are the same as for a
-        left-merge, except swap m1 and m2.
+       [later we'll renumber so that there are no duplicates.]  This automatically
+       takes care of making the input and output and allocation/deallocation
+       commands refer to the right matrix, in most cases.
+     - We need to get rid of duplicate or unnecessary allocation commands:
+       If m_to_discard is an input then get rid of the allocation command for
+       m_to_keep; otherwise get rid of the allocation command of m_to_discard.
+     - We need to get rid of duplicate or unnecessary deallocation commands:
+       If m_to_discard is an output then get rid of the deallocation command
+       for m_to_keep; otherwise get rid of the deallocation command for
+       m_to_discard.
 
    At the end when we call RemoveOrphanMatrices(), the renumbering code will
    automatically detect that there are duplicate submatrices, and will merge
@@ -173,20 +156,10 @@ class VariableMergingOptimizer {
   ///  @param s2   [in]     A submatrix-index s2 > 0
   std::pair<bool,bool> MayBeMerged(int32 command, int32 s1, int32 s2) const;
 
-  // performs the left merge.  Search for left-merge in the comment
-  // above the class declaration for details.
-  void DoLeftMerge(int32 command_index, int32 s1, int32 s2);
-
-  // performs the right merge.  Search for right-merge in the comment
-  // above the class declaration for details.
-  void DoRightMerge(int32 command_index, int32 s1, int32 s2);
-
-  // Performs the actions common to both left and right merges, regarding
-  // removing the assignment command, and allocation and deallocation (called
-  // from DoLeftMerge and DoRightMerge).  The m_to_keep and m_to_discard
-  // are the matrix-indexes we will keep and discard respectively.
-  void DoMergeCommon(int32 command_index, int32 m_to_keep,
-                     int32 m_to_discard);
+  // Merges to matrices, whether left merge or right merge.  s_to_keep and
+  // s_to_discard are the submatrix-indexes we will keep and discard
+  // respectively (these are s1 and s2 in some order.
+  void DoMerge(int32 command_index, int32 s_to_keep, int32 m_to_discard);
 
   /// Marks the variables underlying submatrix 's' as dirty
   void MarkAsDirty(int32 s);
@@ -545,21 +518,6 @@ void RenumberComputation(NnetComputation *computation);
 /// Removes commands of type kNoOperation in the computation.
 void RemoveNoOps(NnetComputation *computation);
 
-/// Wherever matrix orig_matrix_index appears in the input of the network
-/// (i.e. in computation->input_output_info), replaces it with new_matrix_index.
-/// Returns true if it did replace it.
-bool ReplaceInInput(
-    const Nnet &nnet, int32 orig_matrix_index, int32 new_matrix_index,
-    NnetComputation *computation);
-
-/// A helper function used in some optimization functions.
-/// Wherever matrix orig_matrix_index appears in the output of the network
-/// (i.e. in computation->input_output_info), replaces it with new_matrix_index.
-/// Returns true if it did replace it.
-bool ReplaceInOutput(
-    const Nnet &nnet, int32 orig_matrix_index, int32 new_matrix_index,
-    NnetComputation *computation);
-
 /// This function outputs to "submatrix_args" the addresses of a subset of
 /// arguments arg1 through arg6 in "command", that correspond to the indexes of
 /// submatrices.  This is useful in renumbering code.  Note: some of the
@@ -584,32 +542,6 @@ void IdentifySubmatrixArgs(std::vector<NnetComputation::Command> *commands,
 /// in 'indexes_multi'.
 void IdentifySubmatrixArgsInComputation(NnetComputation *computation,
                                         std::vector<int32*> *submatrix_args);
-
-
-/// This function outputs to "matrix_args" the addresses of a subset of the
-/// arguments arg1 through arg6 in "command", that correspond to the indexes of
-/// matrices.  This is useful in renumbering code.  (Note: only a few types of
-/// command use matrix indexes).
-void IdentifyMatrixArgs(NnetComputation::Command *command,
-                        std::vector<int32*> *matrix_args);
-
-/// This function outputs to "matrix_args" the addresses of a subset of the
-/// arguments arg1 through arg6 in commands in "commands", that correspond to
-/// the indexes of matrices.  This is useful in renumbering code.  (Note: only a
-/// few types of command use matrix indexes).
-void IdentifyMatrixArgs(std::vector<NnetComputation::Command> *command,
-                        std::vector<int32*> *matrix_args);
-
-/// This function outputs to "matrix_args" the addresses of indexes inside
-/// 'computation' that correspond to matrices.  These live inside
-/// computation->commands and computation->input_output_info; and if
-/// 'include_from_submatrices' is true, then the matrix-indexes present in
-/// computation->submatrices[*].matrix_index will be included too.  Zeros may be
-/// present if there were optional arguments; we do include pointers to them,
-/// but you can just ignore them.
-void IdentifyMatrixArgsInComputation(bool include_from_submatrices,
-                                     NnetComputation *computation,
-                                     std::vector<int32*> *matrix_args);
 
 
 /// Identifies in the vector of commands, arguments that correspond to indexes

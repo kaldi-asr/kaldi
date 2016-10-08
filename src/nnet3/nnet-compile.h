@@ -60,7 +60,6 @@ class Compiler {
   // multiple commands.
   struct StepInfo {
     int32 node_index;  // network-node index
-    bool is_input;  // true if step corresponds to an input to the computation.
     int32 value;  // sub-matrix index of value that this step outputs.
     int32 deriv;  // sub-matrix index of derivative at the output of this step; zero
                   // if not used (note: index zero is reserved for the empty
@@ -93,8 +92,8 @@ class Compiler {
     // backprop.
     std::vector<std::vector<std::vector<std::pair<int32,int32> > > > input_locations_list;
 
-    StepInfo(): node_index(-1), is_input(false), value(0),
-                deriv(0), precomputed_indexes_index(0) { }
+    StepInfo(): node_index(-1), value(0), deriv(0),
+                precomputed_indexes_index(0) { }
   };
 
   // this sets up cindex_id_to_location_.
@@ -143,17 +142,16 @@ class Compiler {
   // Adds to the computation object the information about the matrix sizes
   void DefineMatrices(NnetComputation *computation) const;
 
-  // sets up the input_output_info of the computation (this says where the
-  // values and derivatives for the inputs and outputs live).
-  void SetInputOutputInfo(NnetComputation *computation) const;
-
   // Sets up sub-matrix indexes for nodes of type Descriptor (needed mainly
   // because Descriptors in general have many parts corresponding to
   // feature-dimension ranges, and they live in sub-matrices.
   void DefineSubmatrices(NnetComputation *computation);
 
   // Adds to the computation object the commands to allocate the matrices.
-  void AllocateMatrices(NnetComputation *computation) const;
+  // 'whole_submatrices' is as created by computation->GetWholeSubmatrices(), it
+  // gives us the index of a submatrix containing the whole of each matrix.
+  void AllocateMatrices(const std::vector<int32> &whole_submatrices,
+                        NnetComputation *computation) const;
 
   // Sets up the precomputed indexes for each component, and sets the
   // precomputed_indexes_index value for each step.
@@ -165,7 +163,11 @@ class Compiler {
 
   // Called from DoForwardComputation, handles the case where the step corresponds
   // to a Component.
-  void AddPropagateStep(int32 step, NnetComputation *computation) const;
+  void AddForwardStepComponent(int32 step, NnetComputation *computation) const;
+
+  // Called from DoForwardComputation, handles the case where the step corresponds
+  // to an input node.
+  void AddForwardStepInput(int32 step, NnetComputation *computation) const;
 
 
   // Called from DoForwardComputation, handles the case where the step
@@ -246,7 +248,12 @@ class Compiler {
 
   // Called from DoBackwardComputation, handles the case where the step corresponds
   // to a Component.
-  void AddBackpropStep(int32 step, NnetComputation *computation) const;
+  void AddBackwardStepComponent(int32 step, NnetComputation *computation) const;
+
+  // Called from DoBackwardComputation, handles the case where the step
+  // corresponds to an input.  If applicable, this generates a command for the
+  // network to provide the derivative w.r.t. the input, to the user.
+  void AddBackwardStepInput(int32 step, NnetComputation *computation) const;
 
   // Called from DoBackwardComputation, handles the case where the step
   // corresponds to type kDescriptor.
@@ -284,10 +291,20 @@ class Compiler {
   // deinitialize all the matrices, except those that may be requested by
   // the user after the computation is done (i.e. outputs of the network,
   // and input derivatives).
-  void DeallocateMatrices(NnetComputation *computation);
+  // 'whole_submatrices' is as created by computation->GetWholeSubmatrices(), it
+  // gives us the index of a submatrix containing the whole of each matrix.
+  void DeallocateMatrices(const std::vector<int32> &whole_submatrices,
+                          NnetComputation *computation);
 
   // sets up the debug_info member of "computation".
   void OutputDebugInfo(NnetComputation *computation) const;
+
+
+  // this function, called from AddCommands, adds the output and input
+  // commands that happen after the forward pass and before the backward
+  // pass.
+  void AddCommandsAfterPropagate(const std::vector<bool> &deriv_needed,
+                                 NnetComputation *computation);
 
   void AddCommands(const std::vector<bool> &deriv_needed,
                    NnetComputation *computation);

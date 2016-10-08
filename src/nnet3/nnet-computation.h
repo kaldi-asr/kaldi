@@ -91,9 +91,9 @@ struct IoSpecification {
   void Swap(IoSpecification *other);
 
   void Read(std::istream &istream, bool binary);
-  
+
   void Write(std::ostream &ostream, bool binary) const;
-  
+
   bool operator== (const IoSpecification &other) const;
 };
 
@@ -147,7 +147,7 @@ struct ComputationRequest {
   void Read(std::istream &istream, bool binary);
 
   void Write(std::ostream &ostream, bool binary) const;
-  
+
   bool operator== (const ComputationRequest &other) const;
 };
 
@@ -158,14 +158,19 @@ struct ComputationRequest {
    the NnetComputation.  We declare it outside that class because it's so
    frequently used and we got tired of typing NnetComputation:: everywhere.
    We document the commands here.
+   Note: for operations that naturally need to operate on entire matrices
+   (i.e. allocation commands and input and output commands), we use the
+   submatrix indexes of them, which turns out to be more convenient for
+   optimization; but these submatrix indexes must refer to the whole of
+   a matrix.
 
-   - kAllocMatrixUndefined: Allocate a matrix.  arg1 = index of matrix.
-   - kAllocMatrixZeroed: Allocate and zero a matrix.  arg1 = index of matrix.
-   - kDeallocMatrix: Deallocate a matrix.  arg1 = index of matrix.
-   - kAllocMatrixFromOther: initialize matrix indexed arg1 using memory
-   from matrix indexed arg2 (using shallow swap).
-   - kAllocMatrixFromOtherZeroed: initialize matrix indexed arg1 using memory
-     from matrix indexed arg2 (using shallow swap), then zero the matrix
+   - kAllocMatrixUndefined: Allocate a matrix.  arg1 = submatrix index.
+   - kAllocMatrixZeroed: Allocate and zero a matrix.  arg1 = submatrix index.
+   - kDeallocMatrix: Deallocate a matrix.  arg1 = submatrix index.
+   - kAllocMatrixFromOther: initialize matrix with submatrix index arg1 using memory
+     from matrix with submatrix index arg2 (using shallow swap).
+   - kAllocMatrixFromOtherZeroed: initialize matrix with submatrix index arg1 using memory
+     from matrix with submatrix index arg2 (using shallow swap), then zero the matrix
      we just allocated.
    - kPropagate: Forward computation of neural net, see Component::Propagate()
      - arg1 is is component-index in neural net
@@ -204,8 +209,19 @@ struct ComputationRequest {
    - kAddRowRanges: call \ref CuMatrix::AddRowRanges() "AddRowRanges()"
      on sub-matrix arg1, with arg2 as source sub-matrix, and indexes given
      indexes_ranges[arg3].
+   - kAcceptInput: accepts a matrix of input from the user, which may be either
+     features, or derivatives w.r.t. the output.  arg1 is the submatrix index of
+     a whole matrix that the input goes to, and arg2 is the index of the network
+     node associated with it (e.g. the node of "input" or "ivector"), for
+     puroses of double checking.
+   - kProvideOutput: outputs a matrix to the user: either a network output, or a
+     matrix of derivatives w.r.t. an input.  arg1 is the submatrix index of the
+     output (which we expect to be a whole matrix), arg2 is the index of the
+     network node associated with it (e.g. the node for "output").
    - kNoOperation: does nothing (sometimes useful during optimization)
-   - kNoOperationMarker: does nothing, but used to mark end of forward commands.
+   - kNoOperationMarker: does nothing, but used to mark end of a block
+     of commands (like forward commands).
+
 */
 enum CommandType {
   kAllocMatrixUndefined, kAllocMatrixZeroed,
@@ -213,7 +229,9 @@ enum CommandType {
   kPropagate, kStoreStats, kBackprop, kBackpropNoModelUpdate,
   kMatrixCopy, kMatrixAdd, kCopyRows, kAddRows,
   kCopyRowsMulti, kCopyToRowsMulti, kAddRowsMulti, kAddToRowsMulti,
-  kAddRowRanges, kNoOperation, kNoOperationMarker };
+  kAddRowRanges, kAcceptInput, kProvideOutput,
+  kNoOperation, kNoOperationMarker };
+
 
 
 // struct NnetComputation defines the specific steps of a neural-net
@@ -272,9 +290,9 @@ struct NnetComputation {
   };
 
   // "matrices" describes the sizes of the matrices that we use as variables in
-  // the computation [note: index zero is reserved for an empty matrix].  Most
-  // commands refer to submatrices below (note: each matrix will have its own
-  // sub-matrix that just refers to the entire matrix).
+  // the computation [note: index zero is reserved for an empty matrix].  Note:
+  // we generally don't refer to matrices, even ones known to be whole matrices,
+  // using their matrix index directly, but via their submatrix indexes.
   std::vector<MatrixInfo> matrices;
 
   // debug information for each of the matrices (indexed by matrix-index), only
@@ -312,11 +330,11 @@ struct NnetComputation {
   // end-index)
   std::vector<std::vector<std::pair<int32,int32> > > indexes_ranges;
 
-  // Information about where the values and derivatives of inputs and outputs of
-  // the neural net live.  Indexed by the node_index (the same index as used for
-  // the nodes_ array in the Nnet), each pair is (value_matrix_index,
-  // deriv_matrix_index), with 0 for derivatives that are not present.
-  unordered_map<int32, std::pair<int32, int32> > input_output_info;
+//   // Information about where the values and derivatives of inputs and outputs of
+//   // the neural net live.  Indexed by the node_index (the same index as used for
+//   // the nodes_ array in the Nnet), each pair is (value_matrix_index,
+//   // deriv_matrix_index), with 0 for derivatives that are not present.
+//   unordered_map<int32, std::pair<int32, int32> > input_output_info;
 
   // The sequence of commands.
   std::vector<Command> commands;
@@ -368,6 +386,11 @@ struct NnetComputation {
   // and for parts of matrices, "m1(0:10, 20:40)".
   void GetSubmatrixStrings(const Nnet &nnet,
                            std::vector<std::string> *submat_strings) const;
+
+  // This function outputs a vector, indexed by matrix index, that gives you for
+  // each matrix, the index of a submatrix which refers to the whole of that
+  // matrix (or 0 if there is no such submatrix, which should not happen).
+  void GetWholeSubmatrices(std::vector<int32> *whole_submatrices) const;
 
 
   // This function outputs information similar to Print(), but outputs the
