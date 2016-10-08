@@ -501,7 +501,7 @@ int32 NnetComputer::GetIoMatrixIndex(const std::string &node_name, bool is_outpu
   // if you get the following error it will likely be a bug in the calling code,
   // or possibly due to giving the wrong egs.
   KALDI_ERR << "Could not "
-            << (is_output ? "provide output " : " accept input ")
+            << (is_output ? "provide output " : "accept input ")
             << "for network node " << node_name
             << " (it is not expected at this point in the computation)";
   return 0;  // Suppress compiler warnings; this line will never be reached.
