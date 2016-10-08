@@ -362,6 +362,13 @@ class ComputationRenumberer {
 };
 
 
+// Class DerivativeTimeLimiter is used inside LimitDerivativeTimes().
+// Its function is to modify the computation so that we don't work
+// with derivatives outside of a specified range of t values; this is
+// useful, for instance, in BLSTMs where you might have a fair amount of
+// left and right context in the training examples but don't want to
+// propagate the derivatives to there.
+//
 // We require that the computation have debug info set up
 // (!matrix_debug_info.empty()) and that this be the first
 // optimization you perform.  This means that the debug_info will
@@ -377,11 +384,6 @@ class DerivativeTimeLimiter {
   void LimitDerivTimes();
 
  private:
-
-  // This command ensures that for each matrix m there is a corresponding
-  // submatrix that spans the entire matrix, and stores its index in
-  // entire_submatrix_[m].
-  void EnsureMatricesHaveEntireSubmatrices();
 
   // sets up matrix_prune_info_.
   void ComputeMatrixPruneInfo();
@@ -478,7 +480,7 @@ class DerivativeTimeLimiter {
 
   // for each matrix index > 0, the index of a submatrix that consists of
   // the entirety of that matrix.
-  std::vector<int32> entire_submatrix_;
+  std::vector<int32> whole_submatrices_;
 
   std::vector<MatrixPruneInfo> matrix_prune_info_;
 
@@ -590,4 +592,3 @@ void IdentifyIndexesRangesArgs(std::vector<NnetComputation::Command> *commands,
 
 
 #endif
-

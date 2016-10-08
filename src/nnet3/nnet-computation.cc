@@ -1080,13 +1080,20 @@ NnetComputation& NnetComputation::operator = (const NnetComputation &other) {
 
 void NnetComputation::GetWholeSubmatrices(
     std::vector<int32> *whole_submatrices) const {
-  whole_submatrices->resize(matrices.size(), 0);
-  int32 num_submatrices = submatrices.size();
+  int32 num_matrices = matrices.size(),
+      num_submatrices = submatrices.size();
+  whole_submatrices->clear();
+  whole_submatrices->resize(num_matrices, 0);
   for (int32 s = 1; s < num_submatrices; s++) {
     if (IsWholeMatrix(s)) {
       int32 m = submatrices[s].matrix_index;
       (*whole_submatrices)[m] = s;
     }
+  }
+  for (int32 m = 1; m < num_matrices; m++) {
+    KALDI_ASSERT((*whole_submatrices)[m] != 0 &&
+                 "Matrix exists with no submatrix that is "
+                 "the whole of it.");
   }
 }
 
