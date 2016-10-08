@@ -314,13 +314,6 @@ void UnitTestNnetInputDerivatives() {
       compute_opts.debug = true;
     computation.ComputeCudaIndexes();
 
-    // the only reason we might need to provide the &nnet parameter is if the
-    // StoreStats() operation had been requested.  We made sure no model update
-    // is being performed.
-    NnetComputer computer(compute_opts,
-                          computation,
-                          nnet,
-                          &nnet);
 
     int32 num_directions = 3;  // must be >= 1.  Best if it's >1, will reduce
                                // the probability of random failures.
@@ -349,8 +342,18 @@ void UnitTestNnetInputDerivatives() {
     // Other passes are with various differently-perturbed versions of
     // the features.
     for (int32 pass = 0; pass <= num_directions + 1; pass++) {
+      // the only reason we might need to provide the &nnet parameter is if the
+      // StoreStats() operation had been requested.  We made sure no model update
+      // is being performed.
+      NnetComputer computer(compute_opts,
+                            computation,
+                            nnet,
+                            &nnet);
+
+
       // provide the input to the computations.
       for (size_t i = 0; i < request.inputs.size(); i++) {
+
         CuMatrix<BaseFloat> temp(inputs[i]);
         if (pass > 0 && pass <= num_directions) {  // Perturb the input randomly.
           delta_inputs[i].Resize(inputs[i].NumRows(), inputs[i].NumCols());
@@ -425,7 +428,7 @@ void UnitTestNnetInputDerivatives() {
 int main() {
   using namespace kaldi;
   using namespace kaldi::nnet3;
-  //SetVerboseLevel(2);
+  // SetVerboseLevel(4);
 
 
   for (kaldi::int32 loop = 0; loop < 2; loop++) {
@@ -444,4 +447,3 @@ int main() {
 
   return 0;
 }
-

@@ -389,7 +389,7 @@ struct NnetComputation {
 
   // This function outputs a vector, indexed by matrix index, that gives you for
   // each matrix, the index of a submatrix which refers to the whole of that
-  // matrix (or 0 if there is no such submatrix, which should not happen).
+  // matrix; it makes sure that each matrix has such a submatrix.
   void GetWholeSubmatrices(std::vector<int32> *whole_submatrices) const;
 
 

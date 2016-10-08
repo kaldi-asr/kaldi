@@ -919,7 +919,7 @@ int32 ModelUpdateConsolidator::ConsolidateSubmatrices(
     // submatrix numbered 'new_submatrix' the contents of the submatrix numbered
     // 'submatrices[i]'.  Note: we hope that a later pass of optimization
     // (VariableMergingOptimization) will remove this redundant copy by
-    // having the operation that created it right directly to the location
+    // having the operation that created it write directly to the location
     // we want it to be.
     NnetComputation::Command c(kMatrixCopy, new_submatrix, submatrices[i]);
     extra_commands_[commands[i]].push_back(c);
@@ -1123,8 +1123,8 @@ void DerivativeTimeLimiter::ModifyCommand(NnetComputation::Command *command) {
         command->arg5 = mapped_output_deriv_submatrix;
         command->arg6 = mapped_input_deriv_submatrix;
       }
-    }
       break;
+    }
     case kMatrixCopy: case kMatrixAdd:
       MapSimpleMatrixCommand(command);
       break;
@@ -1162,7 +1162,7 @@ void DerivativeTimeLimiter::MapSimpleMatrixCommand(NnetComputation::Command *c) 
     c->command_type = kNoOperation;
     return;
   }
-  // left_prune1 is the nmber of rows pruned away on the left for submatrix1.
+  // left_prune1 is the number of rows pruned away on the left for submatrix1.
   int32 orig_num_rows = computation_->submatrices[submatrix1].num_rows,
       left_prune1, left_prune2, right_prune1, right_prune2;
   GetPruneValues(submatrix1, submatrix1_mapped, &left_prune1, &right_prune1);
@@ -1184,7 +1184,7 @@ void DerivativeTimeLimiter::MapSimpleMatrixCommand(NnetComputation::Command *c) 
     } else {
       int32 num_rows = orig_num_rows - left_prune - right_prune;
       // note: the call NewSubMatrix effectively gives us a sub-matrix of a
-      // subm-matrix.
+      // sub-matrix.
       c->arg1 = computation_->NewSubMatrix(submatrix1,
                                            left_prune, num_rows, 0, -1);
       c->arg2 = computation_->NewSubMatrix(submatrix2,
@@ -1394,27 +1394,13 @@ void DerivativeTimeLimiter::LimitDerivTimes() {
       max_deriv_time_ == std::numeric_limits<BaseFloat>::max())
     return;  // nothing to do.
 
-  EnsureMatricesHaveEntireSubmatrices();
+  computation_->GetWholeSubmatrices(&whole_submatrices_);
   ComputeMatrixPruneInfo();
   ComputeSubmatrixMaps();
   ModifyCommands();
   PruneMatrices();
   RemoveNoOps(computation_);
   RenumberComputation(computation_);
-}
-
-void DerivativeTimeLimiter::EnsureMatricesHaveEntireSubmatrices() {
-  int32 num_matrices = computation_->matrices.size(),
-      num_submatrices = computation_->submatrices.size();
-  entire_submatrix_.clear();
-  entire_submatrix_.resize(num_matrices, -1);
-  entire_submatrix_[0] = 0;
-  for (int32 s = 1; s < num_submatrices; s++)
-    if (computation_->IsWholeMatrix(s))
-      entire_submatrix_[computation_->submatrices[s].matrix_index] = s;
-  for (int32 m = 1; m < num_matrices; m++)
-    if (entire_submatrix_[m] == -1)
-      entire_submatrix_[m] = computation_->NewSubMatrix(m, 0, -1, 0, -1);
 }
 
 void DerivativeTimeLimiter::ComputeMatrixPruneInfo() {
@@ -1517,20 +1503,20 @@ void DerivativeTimeLimiter::ModifyCommands() {
 // desired range are never accessed), and false otherwise.
 bool DerivativeTimeLimiter::CanLimitMatrix(const Analyzer &analyzer,
                                            int32 m) const {
-  int32 s_entire = entire_submatrix_[m];  // submatrix consisting of
+  int32 s_whole = whole_submatrices_[m];  // submatrix consisting of
                                                      // all of the matrix.
-  int32 s_mapped = submatrix_map_[s_entire];  // the matrix limited in time.
-  KALDI_ASSERT(s_mapped != 0 && s_mapped != s_entire);
-  std::vector<int32> entire_variables, mapped_variables;
-  analyzer.variables.AppendVariablesForSubmatrix(s_entire,
-                                                 &entire_variables);
+  int32 s_mapped = submatrix_map_[s_whole];  // the matrix limited in time.
+  KALDI_ASSERT(s_mapped != 0 && s_mapped != s_whole);
+  std::vector<int32> whole_variables, mapped_variables;
+  analyzer.variables.AppendVariablesForSubmatrix(s_whole,
+                                                 &whole_variables);
   analyzer.variables.AppendVariablesForSubmatrix(s_mapped,
                                                  &mapped_variables);
-  KALDI_ASSERT(entire_variables.size() > mapped_variables.size());
-  std::vector<int32> excluded_variables(entire_variables.size() -
+  KALDI_ASSERT(whole_variables.size() > mapped_variables.size());
+  std::vector<int32> excluded_variables(whole_variables.size() -
                                         mapped_variables.size());
   std::vector<int32>::iterator end_iter =
-      std::set_difference(entire_variables.begin(), entire_variables.end(),
+      std::set_difference(whole_variables.begin(), whole_variables.end(),
                           mapped_variables.begin(), mapped_variables.end(),
                           excluded_variables.begin());
   KALDI_ASSERT(end_iter == excluded_variables.end());
@@ -1579,15 +1565,24 @@ void DerivativeTimeLimiter::LimitMatrices(const std::vector<bool> &will_limit) {
         // rows to the left.
         submat_info.row_offset = new_row_begin;
       } else {
-        // This submatrix is not entirely the kept range of the matrix.
-        // We assume that this submatrix is never accessed directly (as when
-        // we modified the computation we ensured this).  We
-        // give it a valid but stupid size of num-rows=1, num-cols=1, so
-        // that if it ever does get accessed it should produce an error.
-        submat_info.row_offset = 0;
-        submat_info.num_rows = 1;
-        submat_info.col_offset = 0;
-        submat_info.num_cols = 1;
+        // This submatrix is not entirely inside the kept range of the matrix.
+        // We assume that this submatrix is never accessed directly except (if
+        // it was the whole matrix) for in allocation and deallocation commands,
+        // since when we modified the computation we ensured this.
+        if (computation_->IsWholeMatrix(s)) {
+          // If it was the whole matrix then it may be used in allocation and
+          // deallocation commands, so we should modify it to be the whole of the
+          // new matrix, which will have fewer rows than before.
+          submat_info.num_rows = matrix_num_rows;
+        } else {
+          // We believe this matrix should never be used.  We give it a valid
+          // but stupid size of num-rows=1, num-cols=1, so that if it ever does
+          // get accessed it should produce an error.
+          submat_info.row_offset = 0;
+          submat_info.num_rows = 1;
+          submat_info.col_offset = 0;
+          submat_info.num_cols = 1;
+        }
       }
     }
   }
@@ -1614,7 +1609,7 @@ void DerivativeTimeLimiter::LimitMatrices(const std::vector<bool> &will_limit) {
 void DerivativeTimeLimiter::PruneMatrices() {
   Analyzer analyzer;
   analyzer.Init(nnet_, *computation_);
-  KALDI_ASSERT(computation_->matrices.size() == entire_submatrix_.size());
+  KALDI_ASSERT(computation_->matrices.size() == whole_submatrices_.size());
   int32 num_matrices = computation_->matrices.size();
   std::vector<bool> will_limit(num_matrices, false);
   bool will_limit_at_least_one = false;
