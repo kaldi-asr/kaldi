@@ -182,9 +182,8 @@ void RemoveUnnecessaryZeroing(const Nnet &nnet,
       continue;  // nothing to do.
     if (computation->commands[allocate_command].command_type !=
         kAllocMatrixZeroed) {
-      KALDI_ASSERT(computation->commands[allocate_command].command_type ==
-                   kAllocMatrixUndefined);
-      continue;  // already leaving it undefined, so nothing to do.
+      continue;  // already leaving it undefined, or it's an input, so nothing
+                 // to do.
     }
     std::vector<int32> variables_for_matrix;
     a.variables.AppendVariablesForMatrix(matrix_index, &variables_for_matrix);
@@ -283,7 +282,8 @@ void RemoveUnnecessaryAllocation(const Nnet &nnet,
     if (command.command_type == kAllocMatrixZeroed ||
         command.command_type == kAllocMatrixUndefined ||
         command.command_type == kDeallocMatrix) {
-      int32 m = command.arg1, num_rows = computation->matrices[m].num_rows,
+      int32 s = command.arg1, m = computation->submatrices[s].matrix_index,
+          num_rows = computation->matrices[m].num_rows,
           num_cols = computation->matrices[m].num_cols,
           num_cols_mod = num_cols * (
               computation->matrices[m].stride_type == kDefaultStride ? 1 : -1);
@@ -457,6 +457,15 @@ void Optimize(const NnetOptimizeOptions &config,
 
   if (GetVerboseLevel() >= 4)
     CheckComputation(nnet, request, *computation, false);
+
+  // The following is not configurable because it is necessary for
+  // the computation to run correctly (we do it after compilation too,
+  // but the operations may have been put out of order by
+  // other optimizations.)
+  ConsolidateIoOperations(nnet, computation);
+
+  if (GetVerboseLevel() >= 4)
+    CheckComputation(nnet, request, *computation, false);
 }
 
 // ComputationRequests are distinguished by the names and indexes
@@ -612,6 +621,82 @@ const NnetComputation* CachingOptimizingCompiler::Compile(
   }
   return computation;
 }
+
+/// Split the computation up into segments bounded internally by kNoOperationMarker.
+/// For each segment, a pair of command-indexes (start, end) is output to the vector
+/// 'segments', so the commands in the segment (not including kNoOperationMarker)
+/// are numbered from start ... end - 1.
+static void SplitComputationIntoSegments(
+    const NnetComputation &computation,
+    std::vector<std::pair<int32, int32> > *segments) {
+
+  int32 num_commands = computation.commands.size();
+  segments->clear();
+  int32 cur_start = 0;
+  for (int32 c = 0; c < num_commands; c++) {
+    if (computation.commands[c].command_type == kNoOperationMarker) {
+      segments->push_back(std::pair<int32, int32>(cur_start, c));
+      cur_start = c + 1;
+    }
+  }
+  segments->push_back(std::pair<int32, int32>(cur_start, num_commands));
+}
+
+
+void ConsolidateIoOperations(const Nnet &nnet,
+                             NnetComputation *computation) {
+  // These segments, represented as (start-index, end-index),
+  // are segments of the computation separated by kNoOperationMarker.
+  std::vector<std::pair<int32, int32> > segments;
+  SplitComputationIntoSegments(*computation, &segments);
+
+  int32 num_commands = computation->commands.size();
+  std::vector<NnetComputation::Command> reordered_commands(num_commands);
+  // put kNoOperationMarker between all segments in the reordered commands.
+  for (size_t s = 0; s + 1 < segments.size(); s++)
+    reordered_commands[segments[s].second].command_type = kNoOperationMarker;
+
+  // for each segment we'll divide the commands up into those that must appear
+  // at the left (start) of the segment, those that must appear in the middle
+  // and those that must appear at the right (end).
+  std::vector<int32> left_commands, middle_commands, right_commands;
+
+  for (size_t s = 0; s < segments.size(); s++) {
+    int32 segment_start = segments[s].first,
+        segment_end = segments[s].second;
+    left_commands.clear();
+    middle_commands.clear();
+    right_commands.clear();
+    for (int32 c = segment_start; c < segment_end; c++) {
+      if (computation->commands[c].command_type == kProvideOutput &&
+          nnet.IsInputNode(computation->commands[c].arg2)) {
+        right_commands.push_back(c);
+      } else if (computation->commands[c].command_type == kProvideOutput ||
+                 computation->commands[c].command_type == kAcceptInput) {
+        left_commands.push_back(c);
+      } else {
+        middle_commands.push_back(c);
+      }
+    }
+    std::vector<int32>::const_iterator iter = left_commands.begin(),
+        end = left_commands.end();
+    int32 c = segment_start;
+    for (; iter != end; ++iter, ++c)
+      reordered_commands[c] = computation->commands[*iter];
+    iter = middle_commands.begin();
+    end = middle_commands.end();
+    for (; iter != end; ++iter, ++c)
+      reordered_commands[c] = computation->commands[*iter];
+    iter = right_commands.begin();
+    end = right_commands.end();
+    for (; iter != end; ++iter, ++c)
+      reordered_commands[c] = computation->commands[*iter];
+    KALDI_ASSERT(c == segment_end);
+  }
+  computation->commands.swap(reordered_commands);
+}
+
+
 
 
 } // namespace nnet3

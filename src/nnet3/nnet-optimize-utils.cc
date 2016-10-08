@@ -33,8 +33,12 @@ void IdentifySubmatrixArgs(NnetComputation::Command *c,
     case kAllocMatrixZeroed:
     case kAllocMatrixUndefined:
     case kDeallocMatrix:
+      submatrix_args->push_back(&c->arg1);
+      break;
     case kAllocMatrixFromOther:
     case kAllocMatrixFromOtherZeroed:
+      submatrix_args->push_back(&c->arg1);
+      submatrix_args->push_back(&c->arg2);
       break;
     case kPropagate:
       submatrix_args->push_back(&c->arg3);
@@ -64,6 +68,9 @@ void IdentifySubmatrixArgs(NnetComputation::Command *c,
     case kCopyToRowsMulti:
       submatrix_args->push_back(&c->arg1);
       break;
+    case kAcceptInput: case kProvideOutput:
+      submatrix_args->push_back(&c->arg1);
+      break;
     case kNoOperation:
     case kNoOperationMarker:
       break;
@@ -87,40 +94,13 @@ void IdentifySubmatrixArgs(std::vector<NnetComputation::Command> *commands,
 }
 
 
-void IdentifyMatrixArgs(std::vector<NnetComputation::Command> *commands,
-                        std::vector<int32*> *matrix_args) {
-  matrix_args->clear();
-  std::vector<NnetComputation::Command>::iterator iter = commands->begin(),
-      end = commands->end();
-  std::vector<int32*> this_matrix_args;
-  for (; iter != end; ++iter) {
-    IdentifyMatrixArgs(&(*iter), &this_matrix_args);
-    matrix_args->insert(matrix_args->end(),
-                        this_matrix_args.begin(),
-                        this_matrix_args.end());
-  }
-}
 
-
-void IdentifyMatrixArgsInComputation(bool include_in_submatrices,
-                                     NnetComputation *computation,
+void IdentifyMatrixArgsInComputation(NnetComputation *computation,
                                      std::vector<int32*> *matrix_args) {
-  IdentifyMatrixArgs(&(computation->commands), matrix_args);
   int32 num_submatrices = computation->submatrices.size();
-  matrix_args->reserve(matrix_args->size() +
-                       (include_in_submatrices ?
-                        computation->submatrices.size() : 0) +
-                       2 * computation->input_output_info.size());
-  if (include_in_submatrices)
-    for (int32 s = 1; s < num_submatrices; s++)
-      matrix_args->push_back(&(computation->submatrices[s].matrix_index));
-  unordered_map<int32, std::pair<int32, int32> >::iterator
-      iter = computation->input_output_info.begin(),
-      end = computation->input_output_info.end();
-  for (; iter != end; ++iter) {
-    matrix_args->push_back(&(iter->second.first));
-    matrix_args->push_back(&(iter->second.second));
-  }
+  matrix_args->reserve(computation->submatrices.size());
+  for (int32 s = 1; s < num_submatrices; s++)
+    matrix_args->push_back(&(computation->submatrices[s].matrix_index));
 }
 
 
@@ -166,25 +146,6 @@ void IdentifyIndexesArgs(std::vector<NnetComputation::Command> *commands,
 }
 
 
-
-void IdentifyMatrixArgs(NnetComputation::Command *c,
-                        std::vector<int32*> *matrix_args) {
-  matrix_args->clear();
-  switch (c->command_type) {
-    case kAllocMatrixZeroed:
-    case kAllocMatrixUndefined:
-    case kDeallocMatrix:
-      matrix_args->push_back(&c->arg1);
-      break;
-    case kAllocMatrixFromOther:
-    case kAllocMatrixFromOtherZeroed:
-      matrix_args->push_back(&c->arg1);
-      matrix_args->push_back(&c->arg2);
-      break;
-    default:
-      break;
-  }
-}
 
 // static
 int32 ComputationRenumberer::CreateRenumbering(
@@ -276,22 +237,10 @@ void ComputationRenumberer::ComputeMatrixIsUsed() {
   matrix_is_used_.clear();
   matrix_is_used_.resize(computation_->matrices.size(), false);
   matrix_is_used_[0] = true;
-
-  std::vector<int32*> matrix_args;
-  bool include_in_submatrices = false;
-  IdentifyMatrixArgsInComputation(include_in_submatrices,
-                                  computation_, &matrix_args);
-  std::vector<int32*>::iterator iter = matrix_args.begin(),
-      end = matrix_args.end();
-  for (; iter != end; ++iter) {
-    int32 matrix_index = **iter;
-    if (matrix_index > 0)
-      matrix_is_used_[matrix_index] = true;
-  }
   // We also need to take into account when matrices are used indirectly via
   // submatrices (which is actually the main way they are accessed).
-  int32 num_submatrices_orig = computation_->submatrices.size();
-  for (int32 s = 1; s < num_submatrices_orig; s++) {
+  int32 num_submatrices = computation_->submatrices.size();
+  for (int32 s = 1; s < num_submatrices; s++) {
     int32 matrix_index = computation_->submatrices[s].matrix_index;
     if (submatrix_is_used_[s])
       matrix_is_used_[matrix_index] = true;
@@ -355,20 +304,15 @@ void ComputationRenumberer::RenumberSubmatrices() {
 
 void ComputationRenumberer::RenumberMatrices() {
   std::vector<int32*> matrix_args;
-  bool include_in_submatrices = true;
-  IdentifyMatrixArgsInComputation(include_in_submatrices,
-                                  computation_, &matrix_args);
-  std::vector<int32*>::iterator iter = matrix_args.begin(),
-      end = matrix_args.end();
-  for (; iter != end; ++iter) {
-    if (**iter > 0) {
-      int32 new_matrix_index = old_to_new_matrix_[**iter];
-      // old_to_new_matrix_[s] for s > 0 is only <= 0 (actually, -1) for
-      // submatrices that are never accessed, and these should never appear
-      // in this list.
-      KALDI_ASSERT(new_matrix_index > 0);
-      **iter = new_matrix_index;
-    }
+  int32 num_submatrices = computation_->submatrices.size();
+  for (int32 s = 1; s < num_submatrices; s++) {
+    int32 *matrix_index = &(computation_->submatrices[s].matrix_index);
+    // old_to_new_matrix_[s] for s > 0 is only <= 0 (actually, -1) for
+    // submatrices that are never accessed, and these should never appear
+    // in this list.  (presumably because we renumber the submatrices first).
+    int32 new_matrix_index = old_to_new_matrix_[*matrix_index];
+    KALDI_ASSERT(new_matrix_index > 0);
+    *matrix_index = new_matrix_index;
   }
 
   std::vector<NnetComputation::MatrixInfo> new_matrices;
@@ -615,80 +559,6 @@ void RemoveNoOps(NnetComputation *computation) {
   computation->commands.resize(output_iter - computation->commands.begin());
 }
 
-/// Wherever matrix orig_matrix_index appears in the input of the network
-/// (i.e. in computation->input_output_info), replaces it with new_matrix_index.
-/// Returns true if it did replace it.
-bool ReplaceInInput(
-    const Nnet &nnet,
-    int32 orig_matrix_index, int32 new_matrix_index,
-    NnetComputation *computation) {
-  bool ans = false;
-  int32 num_matrices = computation->matrices.size();
-  KALDI_ASSERT(orig_matrix_index > 0 && orig_matrix_index < num_matrices &&
-               new_matrix_index > 0 && new_matrix_index < num_matrices);
-  unordered_map<int32, std::pair<int32, int32> >::iterator
-      iter = computation->input_output_info.begin(),
-      end = computation->input_output_info.end();
-  for (; iter != end; ++iter) {
-    int32 network_node = iter->first,
-        &value_matrix_index = iter->second.first,
-        &deriv_matrix_index = iter->second.second;
-    if (nnet.IsOutputNode(network_node)) {
-      // deriv_matrix_index would be an input to the computation.
-      if (deriv_matrix_index == orig_matrix_index) {
-        deriv_matrix_index = new_matrix_index;
-        ans = true;
-      }
-    } else {
-      // value_matrix_index would be an input to the computation.
-      if (value_matrix_index == orig_matrix_index) {
-        value_matrix_index = new_matrix_index;
-        ans = true;
-      }
-    }
-  }
-  return ans;
-}
-
-
-/// Wherever matrix orig_matrix_index appears in the output of the network
-/// (i.e. in computation->input_output_info), replaces it with new_matrix_index.
-/// Returns true if it did replace it.
-bool ReplaceInOutput(
-    const Nnet &nnet, int32 orig_matrix_index, int32 new_matrix_index,
-    NnetComputation *computation) {
-  bool ans = false;
-  int32 num_matrices = computation->matrices.size();
-  KALDI_ASSERT(orig_matrix_index > 0 && orig_matrix_index < num_matrices &&
-               new_matrix_index > 0 && new_matrix_index < num_matrices);
-  unordered_map<int32, std::pair<int32, int32> >::iterator
-      iter = computation->input_output_info.begin(),
-      end = computation->input_output_info.end();
-  for (; iter != end; ++iter) {
-    int32 network_node = iter->first,
-        &value_matrix_index = iter->second.first,
-        &deriv_matrix_index = iter->second.second;
-    if (nnet.IsOutputNode(network_node)) {
-      // value_matrix_index would be an output of the computation.
-      if (value_matrix_index == orig_matrix_index) {
-        value_matrix_index = new_matrix_index;
-        ans = true;
-      }
-    } else {
-      // deriv_matrix_index would be an output of the computation.
-      if (deriv_matrix_index == orig_matrix_index) {
-        // we'd only have derivatives for actual inputs. [note: we also allow
-        // users to provide inputs for component nodes, but these would not have
-        // derivatives.]
-        KALDI_ASSERT(nnet.IsInputNode(network_node));
-        deriv_matrix_index = new_matrix_index;
-        ans = true;
-      }
-    }
-  }
-  return ans;
-}
-
 
 VariableMergingOptimizer::VariableMergingOptimizer(
     const NnetOptimizeOptions &config,
@@ -747,10 +617,10 @@ bool VariableMergingOptimizer::MergeVariables() {
     if (s1 > 0 && s2 > 0) {
       std::pair<bool,bool> p = MayBeMerged(command_index, s1, s2);
       if (p.first) {
-        DoLeftMerge(command_index, s1, s2);
+        DoMerge(command_index, s1, s2);
         merged = true;
       } else if (p.second) {
-        DoRightMerge(command_index, s1, s2);
+        DoMerge(command_index, s2, s1);
         merged = true;
       }
     }
@@ -800,45 +670,33 @@ void VariableMergingOptimizer::MarkAsDirty(int32 s) {
   }
 }
 
-void VariableMergingOptimizer::DoRightMerge(int32 command_index,
-                                            int32 s1, int32 s2) {
-  // Prevent further optimizations touching s1 or s2 (we can
-  // try again in a later round of optimization, with a new
-  // instance of this class).
-  MarkAsDirty(s1);
-  MarkAsDirty(s2);
+void VariableMergingOptimizer::DoMerge(int32 command_index,
+                                       int32 s_to_keep,
+                                       int32 s_to_discard) {
+  // Prevent further optimizations touching either submatrix (we can try again
+  // in a later round of optimization, with a new instance of this class).
+  MarkAsDirty(s_to_keep);
+  MarkAsDirty(s_to_discard);
 
-  int32 m1 = computation_->submatrices[s1].matrix_index,
-      m2 = computation_->submatrices[s2].matrix_index;
-  KALDI_ASSERT(m1 != m2 && m1 > 0 && m2 > 0);
-  { // modify submatrices for submatrices of m1 to effectively be sub-matrices of
-    // s2 instead (they will refer to m2 as the matrix_index).
-    std::vector<int32>::const_iterator iter = matrix_to_submatrix_[m1].begin(),
-        end = matrix_to_submatrix_[m1].end();
+  int32 m_to_keep = computation_->submatrices[s_to_keep].matrix_index,
+      m_to_discard = computation_->submatrices[s_to_discard].matrix_index;
+  KALDI_ASSERT(m_to_keep != m_to_discard && m_to_keep > 0 && m_to_discard > 0);
+
+  { // modify submatrices of m_to_discard to effectively be sub-matrices of
+    // s_to_keep instead (they will refer to m_to_keep as the matrix_index).
+    std::vector<int32>::const_iterator iter =
+        matrix_to_submatrix_[m_to_discard].begin(),
+        end = matrix_to_submatrix_[m_to_discard].end();
     for (; iter != end; ++iter) {
       int32 submatrix_index = *iter;
-      KALDI_ASSERT(computation_->submatrices[submatrix_index].matrix_index==m1);
+      KALDI_ASSERT(computation_->submatrices[submatrix_index].matrix_index
+                   == m_to_discard);
       computation_->submatrices[submatrix_index] =
-          GetSubMatrixOfSubMatrix(*computation_, submatrix_index, s2);
+          GetSubMatrixOfSubMatrix(*computation_, submatrix_index,
+                                  s_to_keep);
     }
   }
-  const std::vector<MatrixAccesses> &matrix_accesses = analyzer_.matrix_accesses;
-  // - If m1 was an input, replace it as an input with m2
-  bool replaced = ReplaceInInput(nnet_, m1, m2, computation_);
-  KALDI_ASSERT(replaced == matrix_accesses[m1].is_input);
-  if (replaced) {  // Remove the command that allocates m2.
-    int32 alloc_command = matrix_accesses[m2].allocate_command;
-    KALDI_ASSERT(alloc_command != -1);
-    computation_->commands[alloc_command].command_type =
-        kNoOperation;
-  }
-  // we keep matrix m2 (so m2 is m_to_keep, m1 is m_to_discard).
-  DoMergeCommon(command_index, m2, m1);
-}
 
-void VariableMergingOptimizer::DoMergeCommon(int32 command_index,
-                                             int32 m_to_keep,
-                                             int32 m_to_discard) {
   ComputationAnalysis analysis(*computation_, analyzer_);
   NnetComputation::Command &c = computation_->commands[command_index];
   const std::vector<MatrixAccesses> &matrix_accesses =
@@ -852,52 +710,59 @@ void VariableMergingOptimizer::DoMergeCommon(int32 command_index,
     c.arg2 = -1;
   }
 
-  //   - If both m_to_keep and m_to_discard have commands that deallocate them,
-  //    keep only the allocation command for m_to_keep, and make sure it's after
-  //    the last access of m_to_discard (otherwise delete any deallocation
-  //    command).
+  //   We want to ensure that there is only one deallocation command.
+  //   If neither matrix is an output, then there will be 2 deallocation
+  //   commands and we keep the one for m_to_keep (which, if the sizes
+  //   differ, will be the larger of the two, so it's the one whose
+  //   submatrix index refers to the entirety of the matrix).
+  //   If one of them is an output, then remove the deallocation command
+  //   of whichever one is not an output.
+  //   As a simplification to the logic above: if the 'discard' matrix
+  //   has a deallocation command (i.e. if that matrix was not an output)
+  //   then remove it; otherwise remove the deallocation command of
+  //   the 'keep' matrix.
+
   int32 dealloc_keep = matrix_accesses[m_to_keep].deallocate_command,
       dealloc_discard = matrix_accesses[m_to_discard].deallocate_command;
-  if (dealloc_keep != -1 && dealloc_discard != -1) {
-    KALDI_ASSERT(analysis.LastMatrixAccess(m_to_discard) < dealloc_keep);
+  if (dealloc_discard != -1) {
     computation_->commands[dealloc_discard].command_type = kNoOperation;
   } else {
-    if (dealloc_keep != -1)
-      computation_->commands[dealloc_keep].command_type =
-          kNoOperation;
-    if (dealloc_discard != -1)
-      computation_->commands[dealloc_discard].command_type =
-          kNoOperation;
+    KALDI_ASSERT(dealloc_keep != -1);
+    computation_->commands[dealloc_keep].command_type = kNoOperation;
   }
 
-  //   - If both m_to_keep and m_to_discard have commands that allocate them,
-  //     keep only the allocation command for m_to_keep and make sure it's
-  //     before the first access of m_to_discard.
-  //     (otherwise delete any allocation command).
-  int32 alloc_keep = matrix_accesses[m_to_keep].allocate_command,
-      alloc_discard = matrix_accesses[m_to_discard].allocate_command;
-  if (alloc_keep != -1 && alloc_discard != -1) {
+  {
+    //   - Both m_to_keep and m_to_discard will have commands that allocate
+    //     them, as all matrices do (note, kAcceptInput counts as an allocation
+    //     command).  If one of them is kAcceptInput, then delete the other one.
+    //     Otherwise delete the "discard" one.  As a simplification of the logic
+    //     of the previous sentence: if the "discard" allocate command is
+    //     kAcceptInput then delete the "keep" allocate command, else delete
+    //     the "discard" allocate command.
+    //     Note: after we renumber the submatrices, they both refer to the
+    //     same underlying matrix, but we need to refer to them using a
+    //     submatrix that refers to the entire matrix.  The one we keep will
+    //     always refer to the entire matrix.  (In the case where one of
+    //     them is an input, both submatrices are guaranteed to refer to the
+    //     entire matrix).
+    int32 alloc_keep = matrix_accesses[m_to_keep].allocate_command,
+        alloc_discard = matrix_accesses[m_to_discard].allocate_command;
+
+    KALDI_ASSERT(alloc_keep != -1 && alloc_discard != -1);
     KALDI_ASSERT(analysis.FirstMatrixAccess(m_to_discard) > alloc_keep);
+
     NnetComputation::Command
         &keep_alloc_command = computation_->commands[alloc_keep],
         &discard_alloc_command = computation_->commands[alloc_discard];
-    discard_alloc_command.command_type = kNoOperation;
-    if (keep_alloc_command.command_type == kAllocMatrixUndefined) {
-      keep_alloc_command.command_type = kAllocMatrixZeroed;
-    } else if (keep_alloc_command.command_type == kAllocMatrixFromOther) {
-      keep_alloc_command.command_type = kAllocMatrixFromOtherZeroed;
+    if (discard_alloc_command.command_type == kAcceptInput) {
+      keep_alloc_command.command_type = kNoOperation;
+    } else {
+      discard_alloc_command.command_type = kNoOperation;
     }
-  } else {
-    if (alloc_keep != -1)
-      computation_->commands[alloc_keep].command_type =
-          kNoOperation;
-    if (alloc_discard != -1)
-      computation_->commands[alloc_discard].command_type =
-          kNoOperation;
   }
 
   //  If the matrix to discard had stride_type == kStrideEqualNumCols, set the
-  //  matrix to keep's stride_type to kStrideEqualNuMCols.
+  //  matrix to keep's stride_type to kStrideEqualNumCols.
   if (computation_->matrices[m_to_discard].stride_type == kStrideEqualNumCols) {
     computation_->matrices[m_to_keep].stride_type = kStrideEqualNumCols;
     // ... and perform an additional check.
@@ -907,43 +772,6 @@ void VariableMergingOptimizer::DoMergeCommon(int32 command_index,
                  computation_->matrices[m_to_keep].num_cols);
   }
 }
-
-void VariableMergingOptimizer::DoLeftMerge(int32 command_index,
-                                           int32 s1, int32 s2) {
-  // Prevent further optimizations touching s1 or s2 (we can
-  // try again in a later round of optimization, with a new
-  // instance of this class).
-  MarkAsDirty(s1);
-  MarkAsDirty(s2);
-
-  int32 m1 = computation_->submatrices[s1].matrix_index,
-      m2 = computation_->submatrices[s2].matrix_index;
-  KALDI_ASSERT(m1 != m2 && m1 > 0 && m2 > 0);
-  { // modify submatrices for submatrices of m2 to effectively be sub-matrices of
-    // s1 instead (they will refer to m1 as the matrix_index).
-    std::vector<int32>::const_iterator iter = matrix_to_submatrix_[m2].begin(),
-        end = matrix_to_submatrix_[m2].end();
-    for (; iter != end; ++iter) {
-      int32 submatrix_index = *iter;
-      KALDI_ASSERT(computation_->submatrices[submatrix_index].matrix_index==m2);
-      computation_->submatrices[submatrix_index] =
-          GetSubMatrixOfSubMatrix(*computation_, submatrix_index, s1);
-    }
-  }
-  const std::vector<MatrixAccesses> &matrix_accesses = analyzer_.matrix_accesses;
-  // - If m2 was an output, replace it as an input with m1.
-  bool replaced = ReplaceInOutput(nnet_, m2, m1, computation_);
-  KALDI_ASSERT(replaced == matrix_accesses[m2].is_output);
-  if (replaced) {  // Remove the command that deallocates m1.
-    int32 dealloc_command = matrix_accesses[m1].deallocate_command;
-    KALDI_ASSERT(dealloc_command != -1);
-    computation_->commands[dealloc_command].command_type =
-        kNoOperation;
-  }
-  // we keep matrix m1 (so m1 is m_to_keep, m2 is m_to_discard).
-  DoMergeCommon(command_index, m1, m2);
-}
-
 
 
 
@@ -1067,14 +895,14 @@ int32 ModelUpdateConsolidator::ConsolidateSubmatrices(
   int32 new_whole_submatrix = computation_->NewMatrix(num_rows, num_cols,
                                                       stride_type);
   // Add a command at the very start, to initialize this new matrix.
-  int32 new_matrix_index =
-      computation_->submatrices[new_whole_submatrix].matrix_index;
   // we can later on optimize this zeroed initialization to an undefined
   // initialization.
   extra_commands_[0].push_back(
-      NnetComputation::Command(kAllocMatrixZeroed, new_matrix_index));
+      NnetComputation::Command(kAllocMatrixZeroed, new_whole_submatrix));
   final_deallocate_commands_.push_back(
-      NnetComputation::Command(kDeallocMatrix, new_matrix_index));
+      NnetComputation::Command(kDeallocMatrix, new_whole_submatrix));
+  int32 new_matrix_index =
+      computation_->submatrices[new_whole_submatrix].matrix_index;
   if (!computation_->matrix_debug_info.empty())
     computation_->matrix_debug_info[new_matrix_index].Swap(&debug_info);
 
@@ -1311,6 +1139,7 @@ void DerivativeTimeLimiter::ModifyCommand(NnetComputation::Command *command) {
       MapAddRowRangesCommand(command);
       break;
     }
+    case kAcceptInput: case kProvideOutput:
     case kNoOperation: case kNoOperationMarker:
       break;
     default:
