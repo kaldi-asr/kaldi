@@ -29,7 +29,7 @@ chunk_width=150
 chunk_left_context=40
 chunk_right_context=0
 xent_regularize=0.025
-
+self_repair_scale=0.00001
 label_delay=5
 # decode options
 extra_left_context=
@@ -109,11 +109,12 @@ if [ $stage -le 11 ]; then
       --leftmost-questions-truncate $leftmost_questions_truncate \
       --cmd "$train_cmd" 9000 data/$train_set $lang $ali_dir $treedir
 fi
-
+repair_opts=${self_repair_scale:+" --self-repair-scale-nonlinearity $self_repair_scale "}
 if [ $stage -le 12 ]; then
   echo "$0: creating neural net configs";
 
   steps/nnet3/lstm/make_configs.py  \
+    $repair_opts \
     --feat-dir data/${train_set}_hires \
     --ivector-dir exp/nnet3/ivectors_${train_set} \
     --tree-dir $treedir \
@@ -127,7 +128,6 @@ if [ $stage -le 12 ]; then
     --recurrent-projection-dim 256 \
     --non-recurrent-projection-dim 256 \
     --label-delay $label_delay \
-    --self-repair-scale 0.00001 \
    $dir/configs || exit 1;
 
 fi
