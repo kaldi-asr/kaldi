@@ -43,14 +43,23 @@ struct CompilerOptions {
 /// nnet-optimize.h.
 class Compiler {
  public:
+  // Constructor that takes one computation request (this is the normal case).
   Compiler(const ComputationRequest &request,
+           const Nnet &nnet);
+
+  // Constructor with a sequence of computation requests, for multiple
+  // computation segments (used when creating online computations).
+  Compiler(const std::vector<const ComputationRequest*> &request,
            const Nnet &nnet);
 
   void CreateComputation(const CompilerOptions &opts,
                          NnetComputation *computation);
 
  private:
-  const ComputationRequest &request_;
+  // requests_ is the sequence of computation requests, one for each segment; it
+  // will contain just one element in the normal case, but more when we're
+  // compiling a multi-segment / 'online' computation.
+  std::vector<const ComputationRequest*> requests_;
   const Nnet &nnet_;
   ComputationGraph graph_;
 
@@ -64,6 +73,11 @@ class Compiler {
     int32 deriv;  // sub-matrix index of derivative at the output of this step; zero
                   // if not used (note: index zero is reserved for the empty
                   // matrix).
+
+    int32 segment;  // normally 0 except for online/multi-segment computations,
+                    // identifies the segment of which this step is a part (each
+                    // segment in the sequence has a different
+                    // ComputationRequest).
 
     // precomputed_indexes_index is the index into the
     // component_precomputed_indexes array in the NnetComputation, or zero if
@@ -92,7 +106,7 @@ class Compiler {
     // backprop.
     std::vector<std::vector<std::vector<std::pair<int32,int32> > > > input_locations_list;
 
-    StepInfo(): node_index(-1), value(0), deriv(0),
+    StepInfo(): node_index(-1), value(0), deriv(0), segment(0),
                 precomputed_indexes_index(0) { }
   };
 
@@ -112,12 +126,19 @@ class Compiler {
   // whether, for that step, we need to allocate the matrix of derivatives
   // (interpret this as being at the output of that step).  This variable
   // also tells us whether we need to execute the backprop code for that step.
+  //  'steps' is a vector of steps; each step is a list of cindexes.
+  //  'step_to_segment', which should have the same dimension as 'steps',
+  //    maps from step index to the segment it occurs in (only interesting
+  //    for multi-segment/online computations).
+  //  'deriv_needed' will be given the same length as 'steps'.
   void ComputeDerivNeeded(const std::vector<std::vector<int32> > &steps,
+                          const std::vector<int32> &step_to_segment,
                           std::vector<bool> *deriv_needed);
 
   // this sets up steps_, destroying the input "by_step" in the process.  It
   // also sets various matrix and sub-matrix sizes in "computation".
   void CreateStepInfo(const std::vector<bool> &deriv_needed,
+                      const std::vector<int32> &step_to_segment,
                       std::vector<std::vector<int32> > *by_step,
                       NnetComputation *computation);
 
@@ -155,7 +176,8 @@ class Compiler {
 
   // Sets up the precomputed indexes for each component, and sets the
   // precomputed_indexes_index value for each step.
-  void SetUpPrecomputedIndexes(NnetComputation *computation);
+  void SetUpPrecomputedIndexes(const std::vector<int32> &step_to_segment,
+                               NnetComputation *computation);
 
   // Adds to "computation" the command(s) for the forward computation
   // for this step.
@@ -294,19 +316,14 @@ class Compiler {
   // 'whole_submatrices' is as created by computation->GetWholeSubmatrices(), it
   // gives us the index of a submatrix containing the whole of each matrix.
   void DeallocateMatrices(const std::vector<int32> &whole_submatrices,
+                          const std::vector<int32> &step_to_segment,
                           NnetComputation *computation);
 
   // sets up the debug_info member of "computation".
   void OutputDebugInfo(NnetComputation *computation) const;
 
-
-  // this function, called from AddCommands, adds the output and input
-  // commands that happen after the forward pass and before the backward
-  // pass.
-  void AddCommandsAfterPropagate(const std::vector<bool> &deriv_needed,
-                                 NnetComputation *computation);
-
   void AddCommands(const std::vector<bool> &deriv_needed,
+                   const std::vector<int32> &step_to_segment,
                    NnetComputation *computation);
 
 };

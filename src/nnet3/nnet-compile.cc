@@ -28,30 +28,66 @@ namespace nnet3 {
 
 Compiler::Compiler(
     const ComputationRequest &request,
-    const Nnet &nnet): request_(request), nnet_(nnet) { }
+    const Nnet &nnet): nnet_(nnet) {
+  requests_.push_back(&request);
+}
 
+Compiler::Compiler(
+    const std::vector<const ComputationRequest*> &requests,
+    const Nnet &nnet): requests_(requests), nnet_(nnet) {
+  KALDI_ASSERT(requests_.size() >= 1);
+  // We are currently not supporting getting model derivatives for multi-segment
+  // (online) computations.
+  if (requests_.size() != 1) {
+    for (size_t i = 0; i < requests_.size(); i++) {
+      KALDI_ASSERT(!requests_[i]->need_model_derivative);
+      KALDI_ASSERT(requests_[i]->store_component_stats ==
+                   requests_[0]->store_component_stats);
+    }
+  }
+}
 
 void Compiler::CreateComputation(const CompilerOptions &opts,
                                  NnetComputation *computation) {
   computation->Clear();
-  ComputationGraphBuilder builder(nnet_, request_, &graph_);
-  builder.Compute();
-  if (!builder.AllOutputsAreComputable()) {
-    builder.ExplainWhyAllOutputsNotComputable();  // prints logging info
-    KALDI_ERR << "Not all outputs were computable, cannot create computation.";
+  ComputationGraphBuilder builder(nnet_, &graph_);
+  for (size_t segment = 0; segment < requests_.size(); segment++) {
+    builder.Compute(*(requests_[segment]));
+    if (!builder.AllOutputsAreComputable()) {
+      builder.ExplainWhyAllOutputsNotComputable();  // prints logging info
+      KALDI_ERR << "Not all outputs were computable, cannot create computation.";
+    }
+    builder.Prune();
   }
-  builder.Prune();
   // see function declaration's comment for meaning of "phases".
-  std::vector<std::vector<int32> > phases;
-  ComputeComputationPhases(nnet_, graph_, &phases);
+  std::vector<std::vector<std::vector<int32> > > phases_per_segment;
+  ComputeComputationPhases(nnet_, graph_, &phases_per_segment);
   std::vector<std::vector<int32> > steps;
-  ComputeComputationSteps(nnet_, request_, phases, &graph_, &steps);
-  phases.clear();
+  steps.reserve(1000);
+
+  // maps each step to the segment in which it appears.  in the normal case
+  // (non-online computation), a vector of all zeros.
+  std::vector<int32> step_to_segment;
+
+  for (size_t segment = 0; segment < requests_.size(); segment++) {
+    std::vector<std::vector<int32> > this_segment_steps;
+    ComputeComputationSteps(nnet_, *(requests_[segment]),
+                            phases_per_segment[segment], &graph_,
+                            &this_segment_steps);
+    for (size_t i = 0; i < this_segment_steps.size(); i++) {
+      steps.push_back(std::vector<int32>());
+      steps.back().swap(this_segment_steps[i]);
+      step_to_segment.push_back(segment);
+    }
+  }
+  // TODO (?) check that the total num_cindexes in the steps in >=
+  // graph->cindexes.size().  could do it inside CreateLocationInfo().
+  phases_per_segment.clear();
   CreateLocationInfo(steps);
   std::vector<bool> deriv_needed;
-  ComputeDerivNeeded(steps, &deriv_needed);
-  CreateStepInfo(deriv_needed, &steps, computation);
-  AddCommands(deriv_needed, computation);
+  ComputeDerivNeeded(steps, step_to_segment, &deriv_needed);
+  CreateStepInfo(deriv_needed, step_to_segment, &steps, computation);
+  AddCommands(deriv_needed, step_to_segment, computation);
   // the following command reorders commands so kAcceptInput and kProvideOutput
   // appear in the desired places.
   ConsolidateIoOperations(nnet_, computation);
@@ -60,8 +96,9 @@ void Compiler::CreateComputation(const CompilerOptions &opts,
 }
 
 void Compiler::AddCommands(const std::vector<bool> &deriv_needed,
+                           const std::vector<int32> &step_to_segment,
                            NnetComputation *computation) {
-  computation->need_model_derivative = request_.need_model_derivative;
+  computation->need_model_derivative = requests_[0]->need_model_derivative;
   int32 arbitrary_factor = 8;
   computation->commands.reserve(computation->matrices.size()
                                 * arbitrary_factor);
@@ -69,51 +106,27 @@ void Compiler::AddCommands(const std::vector<bool> &deriv_needed,
   std::vector<int32> whole_submatrices;
   computation->GetWholeSubmatrices(&whole_submatrices);
   AllocateMatrices(whole_submatrices, computation);
-  SetUpPrecomputedIndexes(computation);
+  SetUpPrecomputedIndexes(step_to_segment, computation);
   int32 num_steps = steps_.size();
-  for (int32 step = 0; step < num_steps; step++)
+  for (int32 step = 0; step < num_steps; step++) {
     DoForwardComputation(step, computation);
+    if (step + 1 < static_cast<int32>(step_to_segment.size()) &&
+        step_to_segment[step + 1] != step_to_segment[step]) {
+      // insert a marker that separates segments of the computation.
+      computation->commands.push_back(
+          NnetComputation::Command(kNoOperationMarker));
+    }
+  }
 
-  AddCommandsAfterPropagate(deriv_needed, computation);
-
-  for (int32 step = num_steps - 1; step >= 0; step--)
-    if (deriv_needed[step])
-      DoBackwardComputation(step, computation);
-  DeallocateMatrices(whole_submatrices, computation);
-}
-
-void Compiler::AddCommandsAfterPropagate(const std::vector<bool> &deriv_needed,
-                                         NnetComputation *computation) {
   // mark the end of the forward phase.
   computation->commands.push_back(
       NnetComputation::Command(kNoOperationMarker));
 
-  std::vector<NnetComputation::Command> deriv_input_commands;
+  for (int32 step = num_steps - 1; step >= 0; step--)
+    if (deriv_needed[step])
+      DoBackwardComputation(step, computation);
 
-  // We handle output nodes here-- add commands that relate to us providing
-  // outputs to the user; then, if applicable, we add commands to direct us to
-  // accept derivatives w.r.t. those outputs from the user.
-  int32 num_steps = steps_.size();
-  for (int32 step = 0; step < num_steps; step++) {
-    const StepInfo &step_info = steps_[step];
-    if (nnet_.IsOutputNode(step_info.node_index)) {
-      int32 node_index = step_info.node_index,
-          submatrix_index = step_info.value;
-      KALDI_ASSERT(computation->IsWholeMatrix(submatrix_index));
-      NnetComputation::Command c(kProvideOutput, submatrix_index, node_index);
-      computation->commands.push_back(c);
-      if (deriv_needed[step]) {
-        int32 deriv_submatrix_index = step_info.deriv;
-        KALDI_ASSERT(deriv_submatrix_index > 0);
-        KALDI_ASSERT(computation->IsWholeMatrix(deriv_submatrix_index));
-        NnetComputation::Command c(kAcceptInput, deriv_submatrix_index, node_index);
-        deriv_input_commands.push_back(c);
-      }
-    }
-  }
-  computation->commands.insert(computation->commands.end(),
-                               deriv_input_commands.begin(),
-                               deriv_input_commands.end());
+  DeallocateMatrices(whole_submatrices, step_to_segment, computation);
 }
 
 
@@ -153,7 +166,11 @@ void Compiler::ComputeStepDependencies(
 
 void Compiler::ComputeDerivNeeded(
     const std::vector<std::vector<int32> > &steps,
+    const std::vector<int32> &step_to_segment,
     std::vector<bool> *deriv_needed) {
+  KALDI_ASSERT(steps.size() == step_to_segment.size() &&
+               step_to_segment[0] == 0 &&
+               step_to_segment.back() + 1 == requests_.size());
   deriv_needed->clear();
   int32 num_steps = steps.size();
   deriv_needed->resize(num_steps, false);
@@ -181,24 +198,26 @@ void Compiler::ComputeDerivNeeded(
     }
     // if this step is an input and the user requested the derivative w.r.t. that
     // input, we need the derivative.
+    const ComputationRequest &request = *(requests_[step_to_segment[step]]);
+
     if (is_input) {
-      int32 input_index = request_.IndexForInput(node_name);
+      int32 input_index = request.IndexForInput(node_name);
       KALDI_ASSERT(input_index != -1);
-      if (request_.inputs[input_index].has_deriv)
+      if (request.inputs[input_index].has_deriv)
         (*deriv_needed)[step] = true;
     }
     // if this step is an output and the user is providing the derivative w.r.t. that
     // output, we need a place to store the derivative, so we set (*deriv_needed) to
     // true.
     if (nnet_.IsOutputNode(node_index)) {
-      int32 output_index = request_.IndexForOutput(node_name);
+      int32 output_index = request.IndexForOutput(node_name);
       KALDI_ASSERT(output_index != -1);
-      if (request_.outputs[output_index].has_deriv)
+      if (request.outputs[output_index].has_deriv)
         (*deriv_needed)[step] = true;
     }
     // If this is an updatable Component node and the user requested model
     // derivatives (e.g. during training), we need this step's derivative.
-    if (nnet_.IsComponentNode(node_index) && request_.need_model_derivative) {
+    if (nnet_.IsComponentNode(node_index) && request.need_model_derivative) {
       const NetworkNode &node = nnet_.GetNode(node_index);
       const Component *c = nnet_.GetComponent(node.u.component_index);
       if (c->Properties() & kUpdatableComponent)
@@ -244,6 +263,7 @@ MatrixStrideType Compiler::GetStrideType(int32 node_index) const {
 // function destroys it.
 void Compiler::CreateStepInfo(
     const std::vector<bool> &deriv_needed,
+    const std::vector<int32> &step_to_segment,
     std::vector<std::vector<int32> > *by_step,
     NnetComputation *computation) {
   KALDI_ASSERT(!by_step->empty());
@@ -252,6 +272,7 @@ void Compiler::CreateStepInfo(
   for (int32 step = 0; step < num_steps; step++) {
     StepInfo &this_info = steps_[step];
     this_info.output_cindex_ids.swap((*by_step)[step]);
+    this_info.segment = step_to_segment[step];
     int32 num_ids = this_info.output_cindex_ids.size();
     this_info.output_indexes.resize(num_ids);
     for (int32 row_index = 0; row_index < num_ids; row_index++)
@@ -336,11 +357,14 @@ void Compiler::CreateStepInfo(
 void Compiler::CreateLocationInfo(
     const std::vector<std::vector<int32> > &by_step) {
   cindex_id_to_location_.clear();
-  int32 num_cindex_ids = graph_.cindexes.size();
+  int32 num_cindex_ids = graph_.cindexes.size(),
+      total_cindex_ids = 0;
   cindex_id_to_location_.resize(num_cindex_ids, std::pair<int32,int32>(-1,-1));
   int32 num_steps = by_step.size();
   for (int32 step = 0; step < num_steps; step++) {
+    // output_cindex_ids is the cindex_ids that this step produces.
     const std::vector<int32> &output_cindex_ids = by_step[step];
+    total_cindex_ids += output_cindex_ids.size();
     int32 num_rows = output_cindex_ids.size();
     for (int32 row = 0; row < num_rows; row++) {
       int32 cindex_id = output_cindex_ids[row];
@@ -354,6 +378,11 @@ void Compiler::CreateLocationInfo(
       cindex_id_to_location_[cindex_id] = std::pair<int32,int32>(step, row);
     }
   }
+  // All cindex_ids in the graph must be present in a step, which is why
+  // we make the following assert.  In general this will be with equality,
+  // but I believe there might be some weird edge cases, maybe involving
+  // kDimRange nodes, that would make this not true.  [not 100% sure.]
+  KALDI_ASSERT(total_cindex_ids >= num_cindex_ids);
 }
 
 void Compiler::DoForwardComputation(int32 step,
@@ -383,6 +412,17 @@ void Compiler::DoForwardComputationDescriptor(
   int32 num_parts = steps_[step].value_parts.size();
   for (int32 part = 0; part < num_parts; part++)
     DoForwardComputationSumDescriptor(step, part, computation);
+  const StepInfo &step_info = steps_[step];
+  if (nnet_.IsOutputNode(step_info.node_index)) {
+    // If the node is an output then we need to add commands to provide the
+    // output to the user, and possibly to get derivatives w.r.t. the output
+    // from the user.
+    int32 node_index = step_info.node_index,
+        submatrix_index = step_info.value;
+    KALDI_ASSERT(computation->IsWholeMatrix(submatrix_index));
+    NnetComputation::Command c(kProvideOutput, submatrix_index, node_index);
+    computation->commands.push_back(c);
+  }
 }
 
 
@@ -762,6 +802,15 @@ void Compiler::DoBackwardComputationFromIndexes(
 void Compiler::DoBackwardComputationDescriptor(
     int32 step, NnetComputation *computation) {
   StepInfo &step_info = steps_[step];
+  if (nnet_.IsOutputNode(step_info.node_index) &&
+      step_info.deriv > 0) {
+    int32 deriv_submatrix_index = step_info.deriv;
+    KALDI_ASSERT(computation->IsWholeMatrix(deriv_submatrix_index));
+    NnetComputation::Command c(kAcceptInput, deriv_submatrix_index,
+                               step_info.node_index);
+    computation->commands.push_back(c);
+  }
+
   // the top-level descriptor has a bunch of parts that we concatenate features
   // over.
   int32 num_parts = step_info.value_parts.size();
@@ -834,7 +883,7 @@ void Compiler::AddForwardStepComponent(int32 step,
                              output_submatrix_index);
   computation->commands.push_back(c);
 
-  if (request_.store_component_stats) {
+  if (requests_[0]->store_component_stats) {
     const Component *c = nnet_.GetComponent(node.u.component_index);
     if (c->Properties() & kStoresStats) {
       NnetComputation::Command c(kStoreStats,
@@ -949,6 +998,7 @@ void Compiler::AllocateMatrices(const std::vector<int32> &whole_submatrices,
 
 
 void Compiler::SetUpPrecomputedIndexes(
+    const std::vector<int32> &step_to_segment,
     NnetComputation *computation) {
   int32 num_steps = steps_.size();
   KALDI_ASSERT(computation->component_precomputed_indexes.empty());
@@ -969,9 +1019,10 @@ void Compiler::SetUpPrecomputedIndexes(
 
     const Component *component = nnet_.GetComponent(component_index);
 
-    bool need_derivs = request_.NeedDerivatives();
+    const ComputationRequest &request = *(requests_[step_to_segment[step]]);
+    bool need_derivs = request.NeedDerivatives();
     ComponentPrecomputedIndexes *precomputed_indexes =
-        component->PrecomputeIndexes(request_.misc_info,
+        component->PrecomputeIndexes(request.misc_info,
                                      input_indexes, output_indexes,
                                      need_derivs);
     if (precomputed_indexes == NULL) {
@@ -986,8 +1037,8 @@ void Compiler::SetUpPrecomputedIndexes(
   }
 }
 
-
 void Compiler::DeallocateMatrices(const std::vector<int32> &whole_submatrices,
+                                  const std::vector<int32> &step_to_segment,
                                   NnetComputation *computation) {
   // This adds the commands to destroy all the matrices- but not the
   // ones that might be needed as outputs of the computation.  The ones that
@@ -1000,6 +1051,7 @@ void Compiler::DeallocateMatrices(const std::vector<int32> &whole_submatrices,
   int32 num_steps = steps_.size();
   for (int32 step = 0; step < num_steps; step++) {
     const StepInfo &step_info = steps_[step];
+    const ComputationRequest &request = *(requests_[step_to_segment[step]]);
     if (nnet_.IsOutputNode(step_info.node_index)) {
       // steps corresponding to output nodes need to have their "value" kept.
       int32 value_matrix_index =
@@ -1011,11 +1063,11 @@ void Compiler::DeallocateMatrices(const std::vector<int32> &whole_submatrices,
       // need to worry about whether outputs were requested, because if they
       // were not requested we would not be computing them in the first place).
       std::string input_name = nnet_.GetNodeNames()[step_info.node_index];
-      int32 i = 0, num_inputs = request_.inputs.size();
+      int32 i = 0, num_inputs = request.inputs.size();
       bool has_deriv = false;
       for (; i < num_inputs; i++) {
-        if (input_name == request_.inputs[i].name) {
-          has_deriv = request_.inputs[i].has_deriv;
+        if (input_name == request.inputs[i].name) {
+          has_deriv = request.inputs[i].has_deriv;
           break;
         }
       }

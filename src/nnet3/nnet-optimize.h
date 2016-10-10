@@ -261,12 +261,9 @@ void RemoveUnnecessaryAllocation(const Nnet &nnet,
                                  NnetComputation *computation);
 
 
-/// This optimization puts the I/O operations (kAcceptInput and kProvideOutput
-/// at the very beginning or end of segments of computation.  Specifically:
-/// first the computation is broken up into segments delimited by kNoOperationMarker.
-/// Then, for each segment, all I/O operations are moved to the start of the segment,
-/// *except for* kProvideOutput for inpu nodes (where the network provides an
-/// input-deriv), which is moved to the end of the segment.
+/// This optimization puts the input operations (kAcceptInput) and output
+/// operations (kProvideOutput) at the very beginning or end of segments of
+/// computation, respectively.
 void ConsolidateIoOperations(const Nnet &nnet,
                              NnetComputation *computation);
 
