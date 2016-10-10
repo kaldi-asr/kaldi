@@ -921,7 +921,7 @@ static void _add_diag_mat_mat_MTN(const Real alpha, const Real* M,
   const int tid = threadIdx.y * blockDim.x + threadIdx.x;
   const int j = blockIdx.x * blockDim.x + threadIdx.x;
 
-  if (j > dim_N.cols)
+  if (j >= dim_N.cols)
     return;
 
   // Loop along the matrix column.
@@ -1031,7 +1031,7 @@ static void _add_diag_mat_mat_MN(const Real alpha, const Real* M,
   }
 
   // output TileDim sums per thread block
-  if (tid < TileDim) {
+  if (tid < TileDim && j_n < dim_N.cols) {
     v[j_n] = alpha * smem.sum[tid] + beta * v[j_n];
   }
 }
