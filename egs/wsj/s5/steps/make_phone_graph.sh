@@ -65,6 +65,8 @@ set -e # exit on error status
 
 mkdir -p $dir/phone_graph
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt
+
 if [ $stage -le 0 ]; then
   echo "$0: creating phone LM-training data"
   gunzip -c $alidir/ali.*gz | ali-to-phones $alidir/final.mdl ark:- ark,t:- | \

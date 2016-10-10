@@ -116,8 +116,6 @@ def GetArgs():
                         default = 3,
                         help="ratio of frames-per-second of input alignments to"
                         " chain model's output")
-    parser.add_argument("--chain.ngram-order", type=int, dest='ngram_order',
-                        default = 3, help="")
     parser.add_argument("--chain.left-deriv-truncate", type=int,
                         dest='left_deriv_truncate',
                         default = None, help="")
@@ -248,7 +246,7 @@ def GetArgs():
                         help="If true, remove egs after experiment")
     parser.add_argument("--cleanup.preserve-model-interval", dest = "preserve_model_interval",
                         type=int, default=100,
-                        help="Determines iterations for which models will be preserved during cleanup. If iter % preserve_model_interval == 0 model will be preserved.")
+                        help="Determines iterations for which models will be preserved during cleanup. If mod(iter,preserve_model_interval) == 0 model will be preserved.")
 
     parser.add_argument("--reporting.email", dest = "email",
                         type=str, default=None, action = train_lib.NullstrToNoneAction,

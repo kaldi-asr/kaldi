@@ -4,10 +4,11 @@
 #           2016  Api.ai (Author: Ilya Platonov)
 # Apache 2.0
 
-# Begin configuration section.  
+# Begin configuration section.
 stage=0
 nj=4
 cmd=run.pl
+min_active=200
 max_active=7000
 beam=15.0
 lattice_beam=6.0
@@ -102,7 +103,7 @@ if $do_speex_compressing; then
   wav_rspecifier="$wav_rspecifier compress-uncompress-speex ark:- ark:- |"
 fi
 if $do_endpointing; then
-  wav_rspecifier="$wav_rspecifier extend-wav-with-silence ark:- ark:- |"  
+  wav_rspecifier="$wav_rspecifier extend-wav-with-silence ark:- ark:- |"
 fi
 
 if [ "$silence_weight" != "1.0" ]; then
@@ -134,7 +135,7 @@ if [ $stage -le 0 ]; then
   $cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
     $decoder $opts $silence_weighting_opts --do-endpointing=$do_endpointing $frame_subsampling_opt \
      --config=$online_config \
-     --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
+     --min-active=$min_active --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
      --acoustic-scale=$acwt --word-symbol-table=$graphdir/words.txt \
      $srcdir/${iter}.mdl $graphdir/HCLG.fst $spk2utt_rspecifier "$wav_rspecifier" \
       "$lat_wspecifier" || exit 1;

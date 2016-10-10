@@ -8,7 +8,7 @@ if [ "tools" != "$current_dir" ]; then
     exit 1
 fi
 
-if [ ! -f liblbfgs-1.10 ]; then
+if [ ! -d liblbfgs-1.10 ]; then
     echo Intalling libLBFGS library to support MaxEnt LMs
     bash extras/install_liblbfgs.sh || exit 1
 fi
@@ -43,7 +43,7 @@ grep ADDITIONAL_INCLUDES common/Makefile.machine.$mtype | \
     >> common/Makefile.machine.$mtype
 
 grep ADDITIONAL_LDFLAGS common/Makefile.machine.$mtype | \
-    sed 's|$| -L$(SRILM)/../liblbfgs-1.10/lib/.libs|' \
+    sed 's|$| -L$(SRILM)/../liblbfgs-1.10/lib/ -Wl,-rpath -Wl,$(SRILM)/../liblbfgs-1.10/lib/|' \
     >> common/Makefile.machine.$mtype
 
 

@@ -64,7 +64,7 @@ nj=15         # This should be set to the maximum number of jobs you are
 max_shuffle_jobs_run=50  # the shuffle jobs now include the nnet3-chain-normalize-egs command,
                          # which is fairly CPU intensive, so we can run quite a few at once
                          # without overloading the disks.
-srand=0     # rand seed for nnet3-chain-copy-egs and nnet3-chain-shuffle-egs
+srand=0     # rand seed for nnet3-chain-get-egs, nnet3-chain-copy-egs and nnet3-chain-shuffle-egs
 online_ivector_dir=  # can be used if we are including speaker information as iVectors.
 cmvn_opts=  # can be used for specifying CMVN options, if feature type is not lda (if lda,
             # it doesn't make sense to use different options than were used as input to the
@@ -321,14 +321,16 @@ if [ $stage -le 3 ]; then
     lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:$dir/lat_special.scp ark:- \| \
     chain-get-supervision $ctc_supervision_all_opts $chaindir/tree $chaindir/0.trans_mdl \
       ark:- ark:- \| \
-    nnet3-chain-get-egs $valid_ivector_opt $valid_egs_opts $chaindir/normalization.fst \
+    nnet3-chain-get-egs $valid_ivector_opt --srand=$srand \
+      $valid_egs_opts $chaindir/normalization.fst \
       "$valid_feats" ark,s,cs:- "ark:$dir/valid_all.cegs" || touch $dir/.error &
   $cmd $dir/log/create_train_subset.log \
     lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:$dir/lat_special.scp ark:- \| \
     chain-get-supervision $ctc_supervision_all_opts \
-     $chaindir/tree $chaindir/0.trans_mdl ark:- ark:- \| \
-    nnet3-chain-get-egs $train_subset_ivector_opt $valid_egs_opts $chaindir/normalization.fst \
-       "$train_subset_feats" ark,s,cs:- "ark:$dir/train_subset_all.cegs" || touch $dir/.error &
+      $chaindir/tree $chaindir/0.trans_mdl ark:- ark:- \| \
+    nnet3-chain-get-egs $train_subset_ivector_opt --srand=$srand \
+      $valid_egs_opts $chaindir/normalization.fst \
+      "$train_subset_feats" ark,s,cs:- "ark:$dir/train_subset_all.cegs" || touch $dir/.error &
   wait;
   [ -f $dir/.error ] && echo "Error detected while creating train/valid egs" && exit 1
   echo "... Getting subsets of validation examples for diagnostics and combination."
@@ -378,7 +380,7 @@ if [ $stage -le 4 ]; then
     lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:- ark:- \| \
     chain-get-supervision $ctc_supervision_all_opts \
       $chaindir/tree $chaindir/0.trans_mdl ark:- ark:- \| \
-    nnet3-chain-get-egs $ivector_opt $egs_opts \
+    nnet3-chain-get-egs $ivector_opt --srand=\$[JOB+$srand] $egs_opts \
      "$feats" ark,s,cs:- ark:- \| \
     nnet3-chain-copy-egs --random=true --srand=\$[JOB+$srand] ark:- $egs_list || exit 1;
 fi

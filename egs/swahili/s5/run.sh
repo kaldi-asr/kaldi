@@ -33,7 +33,7 @@ done
 ### Mono
 # Training
 steps/train_mono.sh --nj 20 --cmd "$train_cmd" data/train data/lang exp/system1/mono
-# Graph compilation  
+# Graph compilation
 utils/mkgraph.sh --mono data/lang exp/system1/mono exp/system1/mono/graph
 
 # Decoding
@@ -41,7 +41,7 @@ steps/decode.sh --nj 4 --cmd "$train_cmd" exp/system1/mono/graph  data/test exp/
 echo -e "Mono training done.\n"
 
 
-### Triphone 
+### Triphone
 # Training
 steps/align_si.sh --boost-silence 1.25 --nj 20 --cmd "$train_cmd" data/train data/lang exp/system1/mono exp/system1/mono_ali
 steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" 3200 30000 data/train data/lang exp/system1/mono_ali exp/system1/tri1
@@ -80,7 +80,7 @@ steps/train_sat.sh --cmd "$train_cmd" 2000 20000 data/train data/lang exp/system
 utils/mkgraph.sh data/lang  exp/system1/tri3b exp/system1/tri3b/graph
 # Decoding
 steps/decode_fmllr.sh --nj 4 --cmd "$train_cmd" exp/system1/tri3b/graph  data/test exp/system1/tri3b/decode_test
-# 
+#
 steps/align_fmllr.sh --nj 20 --cmd "$train_cmd" data/train data/lang exp/system1/tri3b exp/system1/tri3b_ali
 echo -e "SAT+FMLLR training done.\n"
 
@@ -123,7 +123,7 @@ steps/train_sgmm2.sh  --cmd "$train_cmd" 5000 12000 data/train data/lang exp/sys
 utils/mkgraph.sh data/lang exp/system1/sgmm2_5b2 exp/system1/sgmm2_5b2/graph
 # Decoding
 steps/decode_sgmm2.sh --nj 4 --cmd "$train_cmd" --transform-dir exp/system1/tri3b/decode_test exp/system1/sgmm2_5b2/graph data/test exp/system1/sgmm2_5b2/decode_test
-# 
+#
 steps/align_sgmm2.sh --nj 20 --cmd "$train_cmd" --transform-dir exp/system1/tri3b_ali  --use-graphs true --use-gselect true data/train data/lang exp/system1/sgmm2_5b2 exp/system1/sgmm2_5b2_ali  || exit 1;
 
 ## Denlats
@@ -139,7 +139,7 @@ for iter in 1 2 3 4; do
 done
 
 # Training
-steps/train_mmi_sgmm2.sh --cmd "$train_cmd" --transform-dir exp/tri3b_ali --boost 0.1 --zero-if-disjoint true data/train data/lang exp/system1/sgmm2_5b2_ali exp/system1/sgmm2_5b2_denlats exp/system1/sgmm2_5b2_mmi_b0.1_z
+steps/train_mmi_sgmm2.sh --cmd "$train_cmd" --transform-dir exp/tri3b_ali --boost 0.1 --drop-frames true data/train data/lang exp/system1/sgmm2_5b2_ali exp/system1/sgmm2_5b2_denlats exp/system1/sgmm2_5b2_mmi_b0.1_z
 # Decoding
 for iter in 1 2 3 4; do
         steps/decode_sgmm2_rescore.sh --cmd "$train_cmd" --iter $iter --transform-dir exp/system1/tri3b/decode_test data/lang data/test exp/system1/sgmm2_5b2/decode_test exp/system1/sgmm2_5b2_mmi_b0.1_z/decode_test_it$iter

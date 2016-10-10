@@ -36,10 +36,8 @@ fi
 
 # Language models (Cantab Research):
 if [ ! -e cantab-TEDLIUM ]; then
-  echo "$0: Downloading \"http://cantabresearch.com/cantab-TEDLIUM.tar.bz2\". "
-  wget --no-verbose --output-document=- http://cantabresearch.com/cantab-TEDLIUM.tar.bz2 | bzcat | tar --extract --file=- || exit 1
-  gzip cantab-TEDLIUM/cantab-TEDLIUM-pruned.lm3
-  gzip cantab-TEDLIUM/cantab-TEDLIUM-unpruned.lm4
+  echo "$0: Downloading \"http://www.openslr.org/resources/27/cantab-TEDLIUM-partial.tar.bz2\". "
+  wget --no-verbose --output-document=- http://www.openslr.org/resources/27/cantab-TEDLIUM-partial.tar.bz2 | bzcat | tar --extract --file=- || exit 1
 else
   echo "$0: directory cantab-TEDLIUM already exists, not re-downloading."
 fi

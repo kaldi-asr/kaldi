@@ -26,6 +26,7 @@ except ImportError:
     warnings.warn("""
 This script requires matplotlib and numpy. Please install them to generate plots. Proceeding with generation of tables.
 If you are on a cluster where you do not have admin rights you could try using virtualenv.""")
+    plot = False
 
 nlp = imp.load_source('nlp', 'steps/nnet3/report/nnet3_log_parse_lib.py')
 
@@ -37,8 +38,6 @@ formatter = logging.Formatter('%(asctime)s [%(filename)s:%(lineno)s - %(funcName
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 logger.info('Generating plots')
-
-
 
 
 def GetArgs():
@@ -323,6 +322,106 @@ def GenerateClippedProportionPlots(exp_dir, output_dir, plot, comparison_dir = N
             if latex_report is not None:
                 latex_report.AddFigure(figfile_name, "Clipped proportion at {0}".format(component_name))
 
+def GenerateParameterDiffPlots(exp_dir, output_dir, plot, comparison_dir = None, start_iter = 1, latex_report = None):
+    # Parameter changes
+    assert(start_iter >= 1)
+
+    comparison_dir = [] if comparison_dir is None else comparison_dir
+    dirs = [exp_dir] + comparison_dir
+    index = 0
+    stats_per_dir = {}
+    key_file = {"Parameter differences" : "parameter.diff",
+                "Relative parameter differences" : "relative_parameter.diff"}
+    stats_per_dir = {}
+    for dir in dirs:
+        stats_per_dir[dir] = {}
+        for key in key_file.keys():
+            stats_per_dir[dir][key] = nlp.ParseProgressLogsForParamDiff(dir, key, logger)
+
+    # write down the stats for the main experiment directory
+    for diff_type in key_file.keys():
+        file = open("{0}/{1}".format(output_dir, key_file[diff_type]), "w")
+        diff_per_component_per_iter = stats_per_dir[exp_dir][diff_type]['progress_per_component']
+        component_names = stats_per_dir[exp_dir][diff_type]['component_names']
+        max_iter = stats_per_dir[exp_dir][diff_type]['max_iter']
+        file.write(" ".join(["Iteration"] + component_names)+"\n")
+        total_missing_iterations = 0
+        gave_user_warning = False
+        for iter in range(max_iter + 1):
+            iter_data = [str(iter)]
+            for c in component_names:
+                try:
+                    iter_data.append(str(diff_per_component_per_iter[c][iter]))
+                except KeyError:
+                    total_missing_iterations += 1
+                    iter_data.append("NA")
+            if (total_missing_iterations/len(component_names) > 20) and not gave_user_warning :
+                logger.warning("There are more than {0} missing iterations per component. Something might be wrong.".format(total_missing_iterations/len(component_names)))
+                gave_user_warning = True
+
+            file.write(" ".join(iter_data)+"\n")
+        file.close()
+
+    if plot:
+        # get the component names
+        diff_type = key_file.keys()[0]
+        main_component_names = stats_per_dir[exp_dir][diff_type]['progress_per_component'].keys()
+        main_component_names.sort()
+        plot_component_names = set(main_component_names)
+
+        for dir in dirs:
+            try:
+                component_names = set(stats_per_dir[dir][diff_type]['progress_per_component'].keys())
+                plot_component_names = plot_component_names.intersection(component_names)
+            except KeyError:
+                continue
+        plot_component_names = list(plot_component_names)
+        plot_component_names.sort()
+        if plot_component_names != main_component_names:
+            logger.warning("The components in all the neural networks in the given experiment dirs are not the same, so comparison plots are provided only for common component names. Make sure that these are comparable experiments before analyzing these plots.")
+
+        assert(main_component_names)
+
+        fig = plt.figure()
+        logger.info("Generating parameter-difference plots for the following components:{0}".format(', '.join(main_component_names)))
+
+
+        for component_name in main_component_names:
+            fig.clf()
+            index = 0
+            plots = []
+            for dir in dirs:
+                color_val = plot_colors[index]
+                index += 1
+                iter_stats = []
+                try:
+                    for diff_type in ['Parameter differences', 'Relative parameter differences']:
+                        iter_stats.append(np.array(sorted(stats_per_dir[dir][diff_type]['progress_per_component'][component_name].items())))
+                except KeyError as e:
+                    # this component is not available in this network so lets not just plot it
+                    if dir==exp_dir:
+                        raise Exception("No parameter differences were available even in the main experiment dir for the component {0}. Something went wrong.".format(component_name))
+                    continue
+                ax = plt.subplot(211)
+                mp, = ax.plot(iter_stats[0][:,0], iter_stats[0][:,1], color=color_val, label="Parameter Differences {0}".format(dir))
+                plots.append(mp)
+                ax.set_ylabel('Parameter Differences')
+                ax.grid(True)
+
+                ax = plt.subplot(212)
+                mp, = ax.plot(iter_stats[1][:,0], iter_stats[1][:,1], color=color_val, label="Relative Parameter Differences {0}".format(dir))
+                ax.set_xlabel('Iteration')
+                ax.set_ylabel('Relative Parameter Differences')
+                ax.grid(True)
+
+            lgd = plt.legend(handles=plots, loc='lower center', bbox_to_anchor=(0.5, -0.5 + len(dirs) * -0.2 ), ncol=1, borderaxespad=0.)
+            plt.grid(True)
+            fig.suptitle("Parameter differences at {comp_name}".format(comp_name = component_name))
+            figfile_name = '{dir}/param_diff_{comp_name}.pdf'.format(dir = output_dir, comp_name = component_name)
+            fig.savefig(figfile_name, bbox_extra_artists=(lgd,), bbox_inches='tight')
+            if latex_report is not None:
+                latex_report.AddFigure(figfile_name, "Parameter differences at {0}".format(component_name))
+
 def GeneratePlots(exp_dir, output_dir, comparison_dir = None, start_iter = 1, is_chain = False):
     try:
         os.makedirs(output_dir)
@@ -352,16 +451,10 @@ def GeneratePlots(exp_dir, output_dir, comparison_dir = None, start_iter = 1, is
     logger.info("Generating clipped-proportion plots")
     GenerateClippedProportionPlots(exp_dir, output_dir, plot, comparison_dir = comparison_dir, start_iter = start_iter, latex_report = latex_report)
 
-    logger.info("Generating parameter difference files")
-    # Parameter changes
-    key_file = {"Parameter differences":"parameter.diff",
-                "Relative parameter differences":"relative_parameter.diff"}
-    for key in key_file.keys():
-        file = open("{0}/{1}".format(output_dir, key_file[key]), "w")
-        data = nlp.ParseProgressLogsForParamDiff(exp_dir, key)
-        for row in data:
-            file.write(" ".join(map(lambda x:str(x),row))+"\n")
-        file.close()
+    logger.info("Generating parameter difference plots")
+    GenerateParameterDiffPlots(exp_dir, output_dir, plot, comparison_dir = comparison_dir, start_iter = start_iter, latex_report = latex_report)
+
+
     if plot and latex_report is not None:
         has_compiled = latex_report.Close()
         if has_compiled:

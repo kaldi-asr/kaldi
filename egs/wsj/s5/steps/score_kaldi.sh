@@ -8,7 +8,6 @@
 cmd=run.pl
 stage=0
 decode_mbr=false
-reverse=false
 stats=true
 beam=6
 word_ins_penalty=0.0,0.5,1.0
@@ -29,7 +28,6 @@ if [ $# -ne 3 ]; then
   echo "    --decode_mbr (true/false)       # maximum bayes risk decoding (confusion network)."
   echo "    --min_lmwt <int>                # minumum LM-weight for lattice rescoring "
   echo "    --max_lmwt <int>                # maximum LM-weight for lattice rescoring "
-  echo "    --reverse (true/false)          # score with time reversed features "
   exit 1;
 fi
 
@@ -85,14 +83,6 @@ if [ $stage -le 0 ]; then
         lattice-best-path --word-symbol-table=$symtab ark:- ark,t:- \| \
         utils/int2sym.pl -f 2- $symtab \| \
         $hyp_filtering_cmd '>' $dir/scoring_kaldi/penalty_$wip/LMWT.txt || exit 1;
-    fi
-
-    if $reverse; then # rarely-used option, ignore this.
-      for lmwt in `seq $min_lmwt $max_lmwt`; do
-        mv $dir/scoring_kaldi/penalty_$wip/$lmwt.txt $dir/scoring_kaldi/penalty_$wip/$lmwt.txt.orig
-        awk '{ printf("%s ",$1); for(i=NF; i>1; i--){ printf("%s ",$i); } printf("\n"); }' \
-          <$dir/scoring_kaldi/penalty_$wip/$lmwt.txt.orig >$dir/scoring_kaldi/penalty_$wip/$lmwt.txt
-      done
     fi
 
     $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring_kaldi/penalty_$wip/log/score.LMWT.log \

@@ -58,8 +58,8 @@ mkdir -p $dir/log
 utils/split_data.sh $data $nj # Make sure split data-dir exists.
 sdata=$data/split$nj
 
-
-mkdir -p $dir/log
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 
 if [ $stage -le 0 ]; then
 

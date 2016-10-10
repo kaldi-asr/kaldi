@@ -111,9 +111,6 @@ void cudaF_mul_rows_vec(dim3 Gr, dim3 Bl, float *mat, const float *scale,
                         MatrixDim d);
 void cudaF_mul_rows_group_mat(dim3 Gr, dim3 Bl, float *y, const float *x,
                               MatrixDim d, int src_stride, int group_size);
-void cudaF_calc_pnorm_deriv(dim3 Gr, dim3 Bl, float *y, const float *x1,
-                            const float *x2, MatrixDim y_dim, int x1_stride,
-                            int x2_stride, int group_size, float power);
 void cudaF_diff_group_pnorm(dim3 Gr, dim3 Bl, float *id, const float *iv,
                             const float *ov, const float* od, MatrixDim id_dim,
                             int iv_stride, int ov_stride, int od_stride,
@@ -128,7 +125,7 @@ void cudaF_add_mat(dim3 Gr, dim3 Bl, float alpha, const float *src, float *dst,
 void cudaF_add_mat_blocks(dim3 Gr, dim3 Bl, float alpha, const float *src,
                           int32_cuda num_row_blocks, int32_cuda num_col_blocks,
                           float *dst, MatrixDim d, int src_stride, int A_trans);
-void cudaF_add_mat_mat_div_mat(dim3 Gr, dim3 Bl, const float *A, const float *B,
+void cudaF_set_mat_mat_div_mat(dim3 Gr, dim3 Bl, const float *A, const float *B,
                                const float *C, float *dst, MatrixDim d,
                                int stride_a, int stride_b, int stride_c);
 void cudaF_add_vec_to_cols(dim3 Gr, dim3 Bl, float alpha, const float *col,
@@ -218,7 +215,7 @@ void cudaF_block_add_mat_mat(dim3 Gr, dim3 Bl, CuBlockMatrixData *B_cu_data,
 void cudaF_softmax_reduce(size_t Gr, size_t Bl, float *y, const float *x,
                           MatrixDim d, int src_stride);
 void cudaF_log_softmax_reduce(size_t Gr, size_t Bl, float *y, const float *x,
-                              MatrixDim d, int src_stride);
+                              MatrixDim y_dim, int x_stride);
 void cudaF_soft_hinge(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d,
                       int src_stride);
 void cudaF_group_pnorm(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d,
@@ -239,6 +236,12 @@ void cudaF_tanh(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d,
                 int src_stride);
 void cudaF_diff_tanh(dim3 Gr, dim3 Bl, float *eout, const float *e,
                      const float *y, MatrixDim d, int e_stride, int y_stride);
+void cudaF_parametric_relu(dim3 Gr, dim3 Bl, float *y, const float *x,
+                           MatrixDim d, int src_stride, const float *a,
+                           const float *b);
+void cudaF_diff_parametric_relu(dim3 Gr, dim3 Bl, float *eout, const float *e,
+                                const float *y, MatrixDim d, int e_stride,
+                                int y_stride, const float *a, const float *b);
 
 void cudaF_regularize_l1(dim3 Gr, dim3 Bl, float *wei, float *grad, float l1,
                          float lr, MatrixDim d, int stride_grad);
@@ -257,6 +260,10 @@ void cudaF_randomize(dim3 Gr, dim3 Bl, float *y, const float *x,
                      MatrixDim d_in);
 void cudaF_splice(dim3 Gr, dim3 Bl, float *y, const float *x,
                   const int32_cuda *off, MatrixDim d_out, MatrixDim d_in);
+void cudaF_diff_log_softmax(dim3 Gr, dim3 Bl, const MatrixDim in_deriv_dim,
+                            const float* out_value, const int out_value_stride,
+                            const float* out_deriv, const int out_deriv_stride,
+                            float* in_deriv);
 void cudaF_one(int Gr, int Bl, float* x, int dim);
 void cudaF_copy(dim3 Gr, dim3 Bl, float *y, const float *x,
                 const int32_cuda *copy_from, MatrixDim d_out, MatrixDim d_in);
@@ -369,9 +376,6 @@ void cudaD_mul_rows_vec(dim3 Gr, dim3 Bl, double *mat, const double *scale,
                         MatrixDim d);
 void cudaD_mul_rows_group_mat(dim3 Gr, dim3 Bl, double *y, const double *x,
                               MatrixDim d, int src_stride, int group_size);
-void cudaD_calc_pnorm_deriv(dim3 Gr, dim3 Bl, double *y, const double *x1,
-                            const double *x2, MatrixDim y_dim, int x1_stride,
-                            int x2_stride, int group_size, double power);
 void cudaD_diff_group_pnorm(dim3 Gr, dim3 Bl, double *id, const double *iv,
                             const double *ov, const double* od,
                             MatrixDim id_dim, int iv_stride, int ov_stride,
@@ -387,7 +391,7 @@ void cudaD_add_mat_blocks(dim3 Gr, dim3 Bl, double alpha, const double *src,
                           int32_cuda num_row_blocks, int32_cuda num_col_blocks,
                           double *dst, MatrixDim d, int src_stride,
                           int A_trans);
-void cudaD_add_mat_mat_div_mat(dim3 Gr, dim3 Bl, const double *A,
+void cudaD_set_mat_mat_div_mat(dim3 Gr, dim3 Bl, const double *A,
                                const double *B, const double *C, double *dst,
                                MatrixDim d, int stride_a, int stride_b,
                                int stride_c);
@@ -479,7 +483,7 @@ void cudaD_block_add_mat_mat(dim3 Gr, dim3 Bl, CuBlockMatrixData *B_cu_data,
 void cudaD_softmax_reduce(size_t Gr, size_t Bl, double *y, const double *x,
                           MatrixDim d, int src_stride);
 void cudaD_log_softmax_reduce(size_t Gr, size_t Bl, double *y, const double *x,
-                              MatrixDim d, int src_stride);
+                              MatrixDim y_dim, int x_stride);
 void cudaD_soft_hinge(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d,
                       int src_stride);
 void cudaD_group_pnorm(dim3 Gr, dim3 Bl, double *y, const double *x,
@@ -501,6 +505,12 @@ void cudaD_tanh(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d,
                 int src_stride);
 void cudaD_diff_tanh(dim3 Gr, dim3 Bl, double *eout, const double *e,
                      const double *y, MatrixDim d, int e_stride, int y_stride);
+void cudaD_parametric_relu(dim3 Gr, dim3 Bl, double *y, const double *x,
+                           MatrixDim d, int src_stride, const double *a,
+                           const double *b);
+void cudaD_diff_parametric_relu(dim3 Gr, dim3 Bl, double *eout, const double *e,
+                                const double *y, MatrixDim d, int e_stride,
+                                int y_stride, const double *a, const double *b);
 
 void cudaD_regularize_l1(dim3 Gr, dim3 Bl, double *wei, double *grad, double l1,
                          double lr, MatrixDim d, int stride_grad);
@@ -519,6 +529,10 @@ void cudaD_randomize(dim3 Gr, dim3 Bl, double *y, const double *x,
                      MatrixDim d_in);
 void cudaD_splice(dim3 Gr, dim3 Bl, double *y, const double *x,
                   const int32_cuda *off, MatrixDim d_out, MatrixDim d_in);
+void cudaD_diff_log_softmax(dim3 Gr, dim3 Bl, const MatrixDim in_deriv_dim,
+                            const double* out_value, const int out_value_stride,
+                            const double* out_deriv, const int out_deriv_stride,
+                            double* in_deriv);
 void cudaD_one(int Gr, int Bl, double* x, int dim);
 void cudaD_copy(dim3 Gr, dim3 Bl, double *y, const double *x,
                 const int32_cuda *copy_from, MatrixDim d_out, MatrixDim d_in);

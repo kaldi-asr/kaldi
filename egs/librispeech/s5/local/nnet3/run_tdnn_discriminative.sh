@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo "This script has not yet been tested, you would have to comment this statement if you want to run it. Please let us know if you see any issues" && exit 1;
+
 set -o pipefail
 set -e
 # this is run_discriminative.sh
@@ -17,14 +19,20 @@ get_egs_stage=-10
 use_gpu=true  # for training
 cleanup=false  # run with --cleanup true --stage 6 to clean up (remove large things like denlats,
                # alignments and degs).
+train_set=train_960_cleaned
+gmm=tri6b_cleaned  # this is the source gmm-dir for the data-type of interest; it
+                   # should have alignments for the specified training data.
+nnet3_affix=_cleaned
 
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
-srcdir=exp/nnet3/tdnn_sp
-train_data_dir=data/train_960_sp_hires
-online_ivector_dir=exp/nnet3/ivectors_train_960_sp
+srcdir=exp/nnet3${nnet3_affix}/tdnn_sp
+gmm_dir=exp/${gmm}
+graph_dir=$gmm_dir/graph_tgsmall
+train_data_dir=data/${train_set}_sp_hires_comb
+train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
 degs_dir=                     # If provided, will skip the degs directory creation
 lats_dir=                     # If provided, will skip denlats creation
 
@@ -80,7 +88,7 @@ if [ $stage -le 1 ]; then
   nj=350 # have a high number of jobs because this could take a while, and we might
          # have some stragglers.
   steps/nnet3/align.sh  --cmd "$decode_cmd" --use-gpu false \
-    --online-ivector-dir $online_ivector_dir \
+    --online-ivector-dir $train_ivector_dir \
      --nj $nj $train_data_dir data/lang $srcdir ${srcdir}_ali ;
 
 fi
@@ -95,7 +103,7 @@ if [ -z "$lats_dir" ]; then
     subsplit=40 # number of jobs that run per job (but 2 run at a time, so total jobs is 80, giving
     # total slots = 80 * 6 = 480.
     steps/nnet3/make_denlats.sh --cmd "$decode_cmd" --determinize true \
-      --online-ivector-dir $online_ivector_dir \
+      --online-ivector-dir $train_ivector_dir \
       --nj $nj --sub-split $subsplit --num-threads "$num_threads_denlats" --config conf/decode.config \
       $train_data_dir data/lang $srcdir ${lats_dir} ;
   fi
@@ -133,7 +141,7 @@ if [ -z "$degs_dir" ]; then
     steps/nnet3/get_egs_discriminative.sh \
       --cmd "$decode_cmd --max-jobs-run $max_jobs --mem 20G" --stage $get_egs_stage --cmvn-opts "$cmvn_opts" \
       --adjust-priors $adjust_priors \
-      --online-ivector-dir $online_ivector_dir \
+      --online-ivector-dir $train_ivector_dir \
       --left-context $left_context --right-context $right_context \
       --valid-left-context $valid_left_context --valid-right-context $valid_right_context \
       --priors-left-context $valid_left_context --priors-right-context $valid_right_context $frame_subsampling_opt \
@@ -155,8 +163,8 @@ if [ $stage -le 4 ]; then
     ${degs_dir} $dir 
 fi
 
-graph_dir=exp/tri6b/graph_tgsmall
 if [ $stage -le 5 ]; then
+  rm $dir/.error 2>/dev/null || true
   for x in `seq $decode_start_epoch $num_epochs`; do
     for decode_set in test_clean test_other dev_clean dev_other; do
       (
@@ -164,21 +172,22 @@ if [ $stage -le 5 ]; then
       iter=epoch$x.adj
       
       steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" --iter $iter \
-        --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
-        $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_tgsmall_$iter || touch $dir/.error
+        --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${decode_set}_hires \
+        $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_tgsmall_$iter || exit 1
       steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
-        data/${decode_set}_hires $dir/decode_${decode_set}_{tgsmall,tgmed}_$iter  || touch $dir/.error 
+        data/${decode_set}_hires $dir/decode_${decode_set}_{tgsmall,tgmed}_$iter  || exit 1
       steps/lmrescore_const_arpa.sh \
         --cmd "$decode_cmd" data/lang_test_{tgsmall,tglarge} \
-        data/${decode_set}_hires $dir/decode_${decode_set}_{tgsmall,tglarge}_$iter || touch $dir/.error
+        data/${decode_set}_hires $dir/decode_${decode_set}_{tgsmall,tglarge}_$iter || exit 1
       steps/lmrescore_const_arpa.sh \
         --cmd "$decode_cmd" data/lang_test_{tgsmall,fglarge} \
-        data/${decode_set}_hires $dir/decode_${decode_set}_{tgsmall,fglarge}_$iter || touch $dir/.error
-      ) &
+        data/${decode_set}_hires $dir/decode_${decode_set}_{tgsmall,fglarge}_$iter || exit 1
+      ) || touch $dir/.error &
     done
   done
+  wait
+  [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
 fi
-wait;
 
 if [ $stage -le 6 ] && $cleanup; then
   # if you run with "--cleanup true --stage 6" you can clean up.

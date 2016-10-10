@@ -112,8 +112,7 @@ if [ $stage -le 2 ]; then
       set -o pipefail '&&' \
       lattice-align-words-lexicon $lang/phones/align_lexicon.int $model  "ark:gunzip -c $dir/lat.JOB.gz|" ark:- \| \
       nbest-to-ctm --frame-shift=$frame_shift --print-silence=$print_silence ark:- - \| \
-      utils/int2sym.pl -f 5 $lang/words.txt \| \
-      $filter_cmd '>' $dir/ctm.JOB || exit 1;
+      utils/int2sym.pl -f 5 $lang/words.txt '>' $dir/ctm.JOB || exit 1;
   else
     echo "$0: neither $lang/phones/word_boundary.int nor $lang/phones/align_lexicon.int exists: cannot align."
     exit 1;

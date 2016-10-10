@@ -104,6 +104,7 @@ done
 
 mkdir -p $dir/log || exit 1;
 
+cp $degs_dir/phones.txt $dir 2>/dev/null
 # copy some things
 for f in splice_opts cmvn_opts tree final.mat; do
   if [ -f $degs_dir/$f ]; then
