@@ -32,6 +32,7 @@ namespace nnet3 {
 
 static void ProcessFile(const MatrixBase<BaseFloat> &feats,
                         const MatrixBase<BaseFloat> *ivector_feats,
+                        const MatrixBase<BaseFloat> *cmn_offsets,
                         const Posterior &pdf_post,
                         const std::string &utt_id,
                         bool compress,
@@ -71,9 +72,14 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
     NnetExample eg;
     
     // call the regular input "input".
-    eg.io.push_back(NnetIo("input", - left_context,
-                           input_frames));
-
+    if (cmn_offsets != NULL) {
+      eg.io.push_back(NnetIo("input", -left_context,
+                              input_frames, 
+                              *cmn_offsets));
+    } else {
+      eg.io.push_back(NnetIo("input", - left_context,
+                             input_frames));
+    }
     // if applicable, add the iVector feature.
     if (ivector_feats != NULL) {
       // try to get closest frame to middle of window to get
@@ -143,7 +149,7 @@ int main(int argc, char *argv[]) {
     int32 num_pdfs = -1, left_context = 0, right_context = 0,
         num_frames = 1, length_tolerance = 100;
         
-    std::string ivector_rspecifier;
+    std::string ivector_rspecifier, offset_rspecifier;
     
     ParseOptions po(usage);
     po.Register("compress", &compress, "If true, write egs in "
@@ -157,6 +163,8 @@ int main(int argc, char *argv[]) {
     po.Register("num-frames", &num_frames, "Number of frames with labels "
                 "that each example contains.");
     po.Register("ivectors", &ivector_rspecifier, "Rspecifier of ivector "
+                "features, as a matrix.");
+    po.Register("offsets", &offset_rspecifier, "Rspecifier of offset "
                 "features, as a matrix.");
     po.Register("length-tolerance", &length_tolerance, "Tolerance for "
                 "difference in num-frames between feat and ivector matrices");
@@ -181,7 +189,7 @@ int main(int argc, char *argv[]) {
     RandomAccessPosteriorReader pdf_post_reader(pdf_post_rspecifier);
     NnetExampleWriter example_writer(examples_wspecifier);
     RandomAccessBaseFloatMatrixReader ivector_reader(ivector_rspecifier);
-    
+    RandomAccessBaseFloatMatrixReader offset_reader(offset_rspecifier); 
     int32 num_done = 0, num_err = 0;
     int64 num_frames_written = 0, num_egs_written = 0;
     
@@ -198,6 +206,16 @@ int main(int argc, char *argv[]) {
                      << " versus " << feats.NumRows();
           num_err++;
           continue;
+        }
+        const Matrix<BaseFloat> *cmn_offsets = NULL;
+        if (!offset_rspecifier.empty()) {
+          if (offset_reader.HasKey(key)) {
+            KALDI_WARN << "No cmn offset for utterance " << key;
+            num_err++;
+            continue;
+          } else {
+            cmn_offsets = &(offset_reader.Value(key));
+          }
         }
         const Matrix<BaseFloat> *ivector_feats = NULL;
         if (!ivector_rspecifier.empty()) {
@@ -222,7 +240,7 @@ int main(int argc, char *argv[]) {
           continue;
         }
           
-        ProcessFile(feats, ivector_feats, pdf_post, key, compress,
+        ProcessFile(feats, ivector_feats, cmn_offsets, pdf_post, key, compress,
                     num_pdfs, left_context, right_context, num_frames,
                     &num_frames_written, &num_egs_written,
                     &example_writer);

@@ -44,6 +44,9 @@ struct NnetIo {
   /// The features or labels.  GeneralMatrix may contain either a CompressedMatrix,
   /// a Matrix, or SparseMatrix (a SparseMatrix would be the natural format for posteriors).
   GeneralMatrix features;
+  
+  // It contains offsets to perturb input features.
+  Matrix<BaseFloat> offsets;
 
   /// This constructor creates NnetIo with name "name", indexes with n=0, x=0,
   /// and t values ranging from t_begin to t_begin + feats.NumRows() - 1, and
@@ -51,6 +54,13 @@ struct NnetIo {
   /// represents.
   NnetIo(const std::string &name,
          int32 t_begin, const MatrixBase<BaseFloat> &feats);
+  
+  // This constructor creates NnetIo with name "name", indexed with n=0, 
+  // and t values ranging from t_begin to t_begin + feats.NumRows() - 1, and
+  // x ranges from 0 to offset.NumRows().
+  NnetIo(const std::string &name,
+         int t_begin, const MatrixBase<BaseFloat> &feats,
+         const MatrixBase<BaseFloat> &offsets);
 
   /// This constructor sets "name" to the provided string, sets "indexes" with
   /// n=0, x=0, and t from t_begin to t_begin + labels.size() - 1, and the labels

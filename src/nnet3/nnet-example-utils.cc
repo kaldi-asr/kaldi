@@ -285,6 +285,17 @@ void RoundUpNumFrames(int32 frame_subsampling_factor,
 
 }
 
+void SelectFeatureOffset(int32 feature_offset, NnetExample *eg) {
+  std::vector<NnetIo>::const_iterator iter = eg->io.begin(),
+    end = eg->io.end();
+  for (; iter != end; ++iter) {
+    int32 num_offsets = iter->offsets.NumRows(),
+      feature_offset = feature_offset % num_offsets;
+    Vector<BaseFloat> offset_vec;
+    offset_vec.CopyRowFromMat(iter->offsets, feature_offset);
+    iter->features.AddVecToRows(offset_vec);
+  }
+}
 
 } // namespace nnet3
 } // namespace kaldi

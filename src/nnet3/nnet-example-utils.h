@@ -81,6 +81,12 @@ void RoundUpNumFrames(int32 frame_subsampling_factor,
                       int32 *num_frames_overlap);
 
 
+// This function operate on single egs (egs with a single 'n' index)
+// It will select the feature_offset row from offset matrix in NnetIo and
+// it adds this offset to features.
+void SelectFeatureOffset(int32 feature_offset, NnetExample *eg);
+
+
 } // namespace nnet3
 } // namespace kaldi
 
