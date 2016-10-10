@@ -81,7 +81,14 @@ void HmmTopology::Read(std::istream &is, bool binary) {
             ReadBasicType(is, binary, &pdf_class);
             ReadToken(is, binary, &token);
           }
-          this_entry.push_back(HmmState(pdf_class));
+          if (token == "<SelfLoopPdfClass>") {
+            int32 self_loop_pdf_class = kNoPdf;
+            ReadBasicType(is, binary, &self_loop_pdf_class);
+            this_entry.push_back(HmmState(pdf_class, self_loop_pdf_class));
+            ReadToken(is, binary, &token);
+          } else {
+            this_entry.push_back(HmmState(pdf_class));
+          }
           while (token == "<Transition>") {
             int32 dst_state;
             BaseFloat trans_prob;
@@ -125,6 +132,8 @@ void HmmTopology::Read(std::istream &is, bool binary) {
       entries_[i].resize(thist_sz);
       for (int32 j = 0 ; j < thist_sz; j++) {
         ReadBasicType(is, binary, &(entries_[i][j].pdf_class));
+        ReadBasicType(is, binary, &(entries_[i][j].self_loop_pdf_class));
+        //entries_[i][j].self_loop_pdf_class = entries_[i][j].pdf_class;
         int32 thiss_sz;
         ReadBasicType(is, binary, &thiss_sz);
         entries_[i][j].transitions.resize(thiss_sz);
@@ -162,6 +171,9 @@ void HmmTopology::Write(std::ostream &os, bool binary) const {
         if (entries_[i][j].pdf_class != kNoPdf) {
           WriteToken(os, binary, "<PdfClass>");
           WriteBasicType(os, binary, entries_[i][j].pdf_class);
+          KALDI_ASSERT(entries_[i][j].self_loop_pdf_class != kNoPdf);
+          WriteToken(os, binary, "<SelfLoopPdfClass>");
+          WriteBasicType(os, binary, entries_[i][j].self_loop_pdf_class);
         }
         for (size_t k = 0; k < entries_[i][j].transitions.size(); k++) {
           WriteToken(os, binary, "<Transition>");
@@ -182,6 +194,7 @@ void HmmTopology::Write(std::ostream &os, bool binary) const {
       WriteBasicType(os, binary, static_cast<int32>(entries_[i].size()));
       for (size_t j = 0; j < entries_[i].size(); j++) {
         WriteBasicType(os, binary, entries_[i][j].pdf_class);
+        WriteBasicType(os, binary, entries_[i][j].self_loop_pdf_class);
         WriteBasicType(os, binary, static_cast<int32>(entries_[i][j].transitions.size()));
         for (size_t k = 0; k < entries_[i][j].transitions.size(); k++) {
           WriteBasicType(os, binary, entries_[i][j].transitions[k].first);
@@ -248,7 +261,7 @@ void HmmTopology::Check() {
         if (seen_transition.count(dst_state) != 0)
           KALDI_ERR << "HmmTopology::Check(), duplicate transition found.";
         if (dst_state == k) {  // self_loop...
-          KALDI_ASSERT(entries_[i][j].pdf_class != kNoPdf && "Nonemitting states cannot have self-loops.");
+          KALDI_ASSERT(entries_[i][j].self_loop_pdf_class != kNoPdf && "Nonemitting states cannot have self-loops.");
         }
         seen_transition.insert(dst_state);
         has_trans_in[dst_state] = true;
@@ -286,8 +299,10 @@ int32 HmmTopology::NumPdfClasses(int32 phone) const {
   // will throw if phone not covered.
   const TopologyEntry &entry = TopologyForPhone(phone);
   int32 max_pdf_class = 0;
-  for (size_t i = 0; i < entry.size(); i++)
+  for (size_t i = 0; i < entry.size(); i++) {
     max_pdf_class = std::max(max_pdf_class, entry[i].pdf_class);
+    max_pdf_class = std::max(max_pdf_class, entry[i].self_loop_pdf_class);
+  }
   return max_pdf_class+1;
 }
 
