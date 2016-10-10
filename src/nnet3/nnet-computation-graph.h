@@ -62,6 +62,23 @@ struct ComputationGraph {
   /// those that are used (which will vary depending on availability).
   std::vector<std::vector<int32> > dependencies;
 
+  /// This variable is only of particular interest in a 'multi-segment'
+  /// computation, which is used while creating computations for 'online'
+  /// operation (for the kind of situation where you provide some input; run the
+  /// computation; get some output, provide some more input for larger 't'
+  /// values, etc.).  In this context, a 'segment' is a continuous range of
+  /// cindex_ids, and a segment_end is one past the end of each segment, which
+  /// is the same as the beginning of the next segment, if there is one.  In the
+  /// case of a fully-created computation graph with only one segment, this will
+  /// contain just one value which equals the number of cindex_ids.
+  /// This information is needed to correctly order the computation, because
+  ///
+  /// the computation graph itself does not contain dependencies that encode the
+  /// ordering of segments (and even if it did contain those dependencies, it's
+  /// not really compatible with the way we use the scc's in the graph structure
+  /// of the network to order the computation).
+  std::vector<int32> segment_ends;
+
   /// Maps a Cindex to an integer cindex_id.  If not present, then add it (with
   /// the corresponding "is_input" flag set to the value "input") and set
   /// *is_new to true.  If present, set is_new to false and return the existing
@@ -72,9 +89,12 @@ struct ComputationGraph {
   /// -1 if the Cindex is not present, and the user should check for this.
   int32 GetCindexId(const Cindex &cindex) const;
 
-  /// This function renumbers the cindex-ids, keeping only for which keep[c] is
-  /// true.  The "keep" array must be the same size as this->cindexes.
-  void Renumber(const std::vector<bool> &keep);
+  /// This function renumbers the cindex-ids (but only those with index c >= start_cindex_id,
+  // keeping only for which keep[c - start_cindex_id] is
+  /// true.  The "keep" array must be the same size as this->cindexes.size() -
+  /// start_cindex_id.
+  void Renumber(int32 start_cindex_id,
+                const std::vector<bool> &keep);
 
 
   /// This function, useful for debugging/visualization purposes,
@@ -97,13 +117,18 @@ struct ComputationGraph {
 class ComputationGraphBuilder {
  public:
   ComputationGraphBuilder(const Nnet &nnet,
-                          const ComputationRequest &request,
-                          ComputationGraph *graph):
-      nnet_(nnet), request_(request), graph_(graph), current_distance_(-1) { }
+                          ComputationGraph *graph);
 
-  // Does the initial computation (populating the graph and computing
-  // whether each required cindex_id is computable), without the pruning.
-  void Compute();
+  // Does the initial computation (populating the graph and computing whether
+  // each required cindex_id is computable), without the pruning.  In the normal
+  // case you call this just once with one 'request', but in the 'online' case
+  // you call Compute() [then maybe check AllOutputsAreComputable()] then
+  // Prune() multiple times, with a sequence of different requests for
+  // increasing time values.
+  // Note: it sets the class member request_ to the address of 'request', so
+  // you should not let 'request' go out of scope while this class might
+  // still use it (e.g. until you call Compute() with a different
+  void Compute(const ComputationRequest &request);
 
   // Returns true if all requested outputs are computable.  To be called after
   // Compute() but before Prune(().
@@ -211,14 +236,18 @@ class ComputationGraphBuilder {
   // PruneDependencies() to remove unused dependencies, so it will only say
   // something is required if it is really accessed in the computation.
   // We'll later use this to remove unnecessary cindexes.
-  void ComputeRequiredArray(std::vector<bool> *required) const;
+  // 'start_cindex_id' is the cindex_id from which the 'required' array is
+  // to start (normally zero, but may be nonzero in multi-segment computations);
+  // so 'required' is indexed by cindex_id - start_cindex_id.
+  void ComputeRequiredArray(int32 start_cindex_id,
+                            std::vector<bool> *required) const;
 
   // this function, to be called from Compute(), does some sanity checks to
   // verify that the internal state is consistent.
   void Check() const;
 
   const Nnet &nnet_;
-  const ComputationRequest &request_;
+  const ComputationRequest *request_;
   ComputationGraph *graph_;
 
   // this is the transpose of graph_->dependencies; it tells us
@@ -248,7 +277,7 @@ class ComputationGraphBuilder {
   std::vector<int32> usable_count_;
 
   // current_distance_ >= 0 is the distance to the output, of the cindex_ids in
-  // current_queue_;
+  // current_queue_.
   int32 current_distance_;
   // the cindex_ids in current_queue_ are at distance "current_distance" to the
   // output and have not yet had their dependencies processed.
@@ -322,23 +351,29 @@ class IndexSet {
 
    @param [in] nnet  The neural network this computation is for
    @param [in] graph  The computation graph that we're computing phases for.
-   @param [out] phases  The phases.  Suppose the computation can be completed
-                       in 20 phases, then phases->size() will be 20 at exit, and
-                       (*phases)[0] will be a sorted list of cindex_ids.  that
-                       belong to the first phase, and so on. (Remember, a
-                       cindex_id is an index into graph->cindexes; it compactly
-                       identifies a cindex.)  The sets represented by the
-                       elements of 'phases' will be disjoint and will cover all
-                       elements in [0 .. computation.cindexes.size() - 1].
+   @param [out] phases_per_segment  The phases, listed separately for each
+                segment of the computation [there will be just one segment in
+                the normal case, more in the online-recognition case].  Consider
+                just one segment for now.  Suppose the computation can be
+                completed in 20 phases, then (*phases)[0].size() will be 20 at
+                exit, and (*phases)[0][0] will be a sorted list of cindex_ids.
+                that belong to the first phase, and so on. (Remember, a
+                cindex_id is an index into graph->cindexes; it compactly
+                identifies a cindex.)  The sets represented by the int32's in
+                'phases_per_segment' will be disjoint and will cover all
+                elements in [0 .. computation.cindexes.size() - 1].
 
-                       This function will be crash if the computation cannot
-                       actualy be computed.  Note: we assume you have called
-                       PruneComputationGraph() before this function.
+                Note: we assume you have called PruneComputationGraph() before
+                this function.  Even so, this function will be crash if the
+                computation cannot actually be computed-- there are some
+                mal-formed computations where you can build the computation graph
+                but not the ordering of cindexes because there are dependencies
+                forward and backward in time that intertwine.
 */
 void ComputeComputationPhases(
     const Nnet &nnet,
     const ComputationGraph &computation_graph,
-    std::vector<std::vector<int32> > *phases);
+    std::vector<std::vector<std::vector<int32> > > *phases_per_segment);
 
 
 /**
@@ -351,9 +386,9 @@ void ComputeComputationPhases(
   - All cindex_ids within a given step correspond to the same node in the graph
   - All dependencies of cindex_ids within a given step have been computed in
     earlier steps.
-  .
-There are also some extra, more obscure properties that the sequence of steps
-must satisfy:
+
+ There are also some extra, more obscure properties that the sequence of steps
+ must satisfy:
   - Any input or output in the ComputationRequest must be in one step, with the
     Indexes in the same order as specified in the ComputationRequest.  (Note:
     inputs can be for nodes of type kComponent as well as kInput).
@@ -366,8 +401,8 @@ must satisfy:
     Indexes appearing in the same order.  (This lets us use a sub-matrix for
     the kDimRange node).
 
-The reason why computation_graph is not provided as a const argument is
-that in order to ensure the final property we may have to add a few new cindex_ids.
+ The reason why computation_graph is not provided as a const argument is that in
+ order to ensure the final property we may have to add a few new cindex_ids.
 */
 void ComputeComputationSteps(
     const Nnet &nnet,

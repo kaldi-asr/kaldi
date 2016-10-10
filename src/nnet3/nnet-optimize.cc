@@ -657,8 +657,9 @@ void ConsolidateIoOperations(const Nnet &nnet,
     reordered_commands[segments[s].second].command_type = kNoOperationMarker;
 
   // for each segment we'll divide the commands up into those that must appear
-  // at the left (start) of the segment, those that must appear in the middle
-  // and those that must appear at the right (end).
+  // at the left of the segment (kAcceptInput for inputs and output-derivs), those
+  // that must appear in the middle (most commands), those that must appear
+  // on the right (kProvideOutput for output nodes and input derivatives).
   std::vector<int32> left_commands, middle_commands, right_commands;
 
   for (size_t s = 0; s < segments.size(); s++) {
@@ -668,11 +669,9 @@ void ConsolidateIoOperations(const Nnet &nnet,
     middle_commands.clear();
     right_commands.clear();
     for (int32 c = segment_start; c < segment_end; c++) {
-      if (computation->commands[c].command_type == kProvideOutput &&
-          nnet.IsInputNode(computation->commands[c].arg2)) {
+      if (computation->commands[c].command_type == kProvideOutput) {
         right_commands.push_back(c);
-      } else if (computation->commands[c].command_type == kProvideOutput ||
-                 computation->commands[c].command_type == kAcceptInput) {
+      } else if (computation->commands[c].command_type == kAcceptInput) {
         left_commands.push_back(c);
       } else {
         middle_commands.push_back(c);

@@ -68,8 +68,8 @@ void EvaluateComputationRequest(
     const ComputationRequest &request,
     std::vector<std::vector<bool> > *is_computable) {
   ComputationGraph graph;
-  ComputationGraphBuilder builder(nnet, request, &graph);
-  builder.Compute();
+  ComputationGraphBuilder builder(nnet, &graph);
+  builder.Compute(request);
   builder.GetComputableInfo(is_computable);
   if (GetVerboseLevel() >= 2) {
     std::ostringstream graph_pretty;
