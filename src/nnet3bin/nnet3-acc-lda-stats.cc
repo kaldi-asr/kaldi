@@ -44,9 +44,9 @@ class NnetLdaStatsAccumulator {
     if (GetVerboseLevel() >= 3)
       options.debug = true;
     NnetComputer computer(options, computation, nnet_, NULL);
-    
+
     computer.AcceptInputs(nnet_, eg.io);
-    computer.Forward();
+    computer.Run();
     const CuMatrixBase<BaseFloat> &nnet_output = computer.GetOutput("output");
     AccStatsFromOutput(eg, nnet_output);
   }
@@ -105,7 +105,7 @@ class NnetLdaStatsAccumulator {
   const Nnet &nnet_;
   CachingOptimizingCompiler compiler_;
   LdaEstimate lda_stats_;
-  
+
 };
 
 }
@@ -130,22 +130,22 @@ int main(int argc, char *argv[]) {
         "e.g.:\n"
         "nnet3-acc-lda-stats 0.raw ark:1.egs 1.acc\n"
         "See also: nnet-get-feature-transform\n";
-    
+
     bool binary_write = true;
     BaseFloat rand_prune = 0.0;
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("rand-prune", &rand_prune,
-                "Randomized pruning threshold for posteriors");    
-    
+                "Randomized pruning threshold for posteriors");
+
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
     }
-    
+
     std::string nnet_rxfilename = po.GetArg(1),
         examples_rspecifier = po.GetArg(2),
         lda_accs_wxfilename = po.GetArg(3);
@@ -156,8 +156,8 @@ int main(int argc, char *argv[]) {
     NnetLdaStatsAccumulator accumulator(rand_prune, nnet);
 
     int64 num_egs = 0;
-    
-    SequentialNnetExampleReader example_reader(examples_rspecifier);    
+
+    SequentialNnetExampleReader example_reader(examples_rspecifier);
     for (; !example_reader.Done(); example_reader.Next(), num_egs++)
       accumulator.AccStats(example_reader.Value());
 
@@ -171,5 +171,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-

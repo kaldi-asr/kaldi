@@ -701,6 +701,11 @@ void NnetComputation::Read(std::istream &is, bool binary) {
   }
 
 
+  // delete any existing pointers in component_precomputed_indexes.
+  for (size_t i = 0; i < component_precomputed_indexes.size(); i++)
+    delete component_precomputed_indexes[i];
+  component_precomputed_indexes.clear();
+
   size_t num_component_precomputed_indexes;
   ExpectToken(is, binary, "<NumComponentPrecomputedIndexes>");
   ReadBasicType(is, binary, &num_component_precomputed_indexes);
