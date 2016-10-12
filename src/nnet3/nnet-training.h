@@ -160,9 +160,9 @@ class NnetTrainer {
   void ProcessOutputs(const NnetExample &eg,
                       NnetComputer *computer);
 
-  /// Applies per-component max-change and global max-change to all updatable
-  /// components in *delta_nnet_, and use *delta_nnet_ to update parameters
-  /// in *nnet_.
+  // Applies per-component max-change and global max-change to all updatable
+  // components in *delta_nnet_, and use *delta_nnet_ to update parameters
+  // in *nnet_.
   void UpdateParamsWithMaxChange();
 
   const NnetTrainerOptions config_;
