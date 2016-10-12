@@ -171,7 +171,7 @@ if [ $stage -le -2 ]; then
   echo "$0: compiling training graphs"
   text="ark:sym2int.pl --map-oov $oov -f 2- $lang/words.txt < $sdata/JOB/text|"
   $cmd JOB=1:$nj $dir/log/compile_graphs.JOB.log \
-    compile-train-graphs $dir/tree $dir/0.mdl  $lang/L.fst  \
+    compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $dir/tree $dir/0.mdl  $lang/L.fst  \
     "$text" "ark:|gzip -c >$dir/fsts.JOB.gz" || exit 1;
 fi
 
