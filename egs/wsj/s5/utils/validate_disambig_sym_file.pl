@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-#!/usr/bin/perl -w
+
 # Copyright 2016 FAU Erlangen (Author: Axel Horndasch)
 # Apache 2.0.
 #
@@ -16,8 +16,8 @@ This scripts checks if the entries of a file containing disambiguation symbols
 (word or phone level) are all valid. To be valid the symbols
 - must start with the hash mark '#',
 - must not contain any whitespace,
-- must not be equal to '#-1' (disallowed because it is used internally in some)
-  FST stuff.
+- must not be equal to '#-1' (disallowed because it is used internally in some
+  FST stuff).
 
 In case the option '--extra-disambig-syms' is used with 'true', the symbols must
 also be non-numeric (to avoid overlap with the automatically generated symbols).
@@ -27,7 +27,7 @@ Allowed options:
 
 EOU
 
-# command line options
+# Command line options
 my $extra_disambig_syms = "false";
 
 # Get the optional command line options
@@ -41,15 +41,16 @@ if (@ARGV != 1) {
 
 my $disambig_sym_file = shift @ARGV;
 
-print "$0: Checking $disambig_sym_file ...\n";
+print "$0: Checking validity of file \"$disambig_sym_file\" ...\n";
 if (-z $disambig_sym_file) {
-  print "$0: The file $disambig_sym_file is empty or does not exist, exiting ...\n"; exit 1;
+  print "$0: The file \"$disambig_sym_file\" is empty or does not exist, exiting ...\n"; exit 1;
 }
 
 if (not open(SYMS, "<$disambig_sym_file")) {
-  print "$0: Could not open file $disambig_sym_file, exiting ...\n"; exit 1;
+  print "$0: Could not open file \"$disambig_sym_file\", exiting ...\n"; exit 1;
 }
 
+# Go through the file containing disambiguation symbols line by line
 while (<SYMS>) {
   chomp;
   my $symbol = $_;
@@ -74,6 +75,6 @@ while (<SYMS>) {
   }
 }
 
-print "--> SUCCESS [validating disambiguation symbol file $disambig_sym_file]\n";
+print "--> SUCCESS [validating disambiguation symbol file \"$disambig_sym_file\"]\n";
 exit 0;
 
