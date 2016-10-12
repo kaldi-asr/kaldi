@@ -6,13 +6,8 @@
 
 # we're using python 3.x style print but want it to work in python 2.x,
 from __future__ import print_function
-import os
 import argparse
 import sys
-import warnings
-import copy
-import imp
-import ast
 
 class StrToBoolAction(argparse.Action):
     """ A custom action to convert bools from shell format i.e., true/false
@@ -110,10 +105,8 @@ def ReadLexicon(lexicon_file_handle):
                                     + ' in lexicon file.')
             word = splits[0]
             try:
-                prob = float(splits[1])
                 phones = ' '.join(splits[2:])
             except ValueError:
-                prob = 1
                 phones = ' '.join(splits[1:])
             lexicon.add((word, phones))
     return lexicon

@@ -138,9 +138,9 @@ if [ $stage -le 9 ]; then
      if ($a eq "PHONE") { if ($prev eq "END") {print $utt, " ", "<eps>", " ", $b, "\n";} else {push @phones, $b;}} $prev = $a;} ' |\
      awk 'BEGIN{merge_prev=0;} {utt=$1;word=$2;pron=$3;for (i=4;i<=NF;i++) pron=pron" "$i;
      if (word_prev == "<eps>" && word == "<eps>" && utt_prev == utt) {merge=0;pron_prev=pron_prev" "pron;} else {merge=1;} 
-     if(merge_prev==1) {printf utt_prev" "word_prev" "pron_prev"\n"};
+     if(merge_prev==1) {print utt_prev, word_prev, pron_prev;};
      merge_prev=merge; utt_prev=utt; word_prev=word; pron_prev=pron;}
-     END{if(merge_prev==1) {printf utt_prev" "word_prev" "pron_prev"\n"}}' > $dir/ctm_prons.txt
+     END{if(merge_prev==1) {print utt_prev, word_prev, pron_prev;}}' > $dir/ctm_prons.txt
   
   steps/cleanup/get_non_scored_words.py $lang > $dir/non_scored_words
   steps/cleanup/internal/get_pron_stats.py $dir/ctm_prons.txt $phone_lang/phones/silence.txt $phone_lang/phones/optional_silence.txt $dir/non_scored_words - | \

@@ -4,8 +4,6 @@
 # Apache 2.0.
 
 from __future__ import print_function
-from collections import defaultdict
-import os
 import argparse
 import sys
 
@@ -54,10 +52,8 @@ def ReadLexicon(lexicon_file_handle):
                                     + ' in lexicon file.')
             word = splits[0]
             try:
-                prob = float(splits[1])
                 phones = ' '.join(splits[2:])
             except ValueError:
-                prob = 1
                 phones = ' '.join(splits[1:])
             lexicon.add((word, phones))
     return lexicon

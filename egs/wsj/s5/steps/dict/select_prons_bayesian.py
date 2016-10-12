@@ -5,14 +5,9 @@
 
 from __future__ import print_function
 from collections import defaultdict
-import os
 import argparse
 import sys
-import warnings
-import copy
-import imp
 import math
-import numpy
 
 def GetArgs():
     parser = argparse.ArgumentParser(description = "Use a Bayesian framework to select"
@@ -27,24 +22,24 @@ def GetArgs():
                                      "The outputs are: a file specifiying posteriors of all candidate (pron_posteriors),"
                                      "a learned lexicon for words out of the ref. vocab (learned_lexicon_oov),"
                                      "and a lexicon_edits file containing suggested modifications of prons, for"
-                                     "words within the ref. vocab (ref_lexicon_edits)."
+                                     "words within the ref. vocab (ref_lexicon_edits).",
                                      epilog = "See steps/dict/learn_lexicon.sh for example.")
     parser.add_argument("--prior-mean", type = str, default = "0,0,0",
                         help = "Mean of priors (summing up to 1) assigned to three exclusive n"
                         "pronunciatio sources: reference lexicon, g2p, and phone decoding. We "
-                        "recommend setting a larger prior mean for the reference lexicon, e.g. '0.6,0.2,0.2'"
-    parser.add_argument("--prior-counts-tot", type = float, default = 15.0)
+                        "recommend setting a larger prior mean for the reference lexicon, e.g. '0.6,0.2,0.2'")
+    parser.add_argument("--prior-counts-tot", type = float, default = 15.0,
                         help = "Total amount of prior counts we add to all pronunciation candidates of"
                         "each word. By timing it with the prior mean of a source, and then dividing"
                         "by the number of candidates (for a word) from this source, we get the"
-                        "prior counts we actually add to each candidate."
+                        "prior counts we actually add to each candidate.")
     parser.add_argument("--variants-prob-mass", type = float, default = 0.7,
                         help = "For each word, we pick up candidates (from all three sources)"
-                        "with highest posteriors until the total prob mass hit this amount."
+                        "with highest posteriors until the total prob mass hit this amount.")
     parser.add_argument("--variants-prob-mass2", type = float, default = 0.9,
                         help = "For each word, after the total prob mass of selected candidates "
                         "hit variants-prob-mass, we continue to pick up reference candidates"
-                        "with highest posteriors until the total prob mass hit this amount."
+                        "with highest posteriors until the total prob mass hit this amount.")
     parser.add_argument("--variants-counts", type = int, default = 1,
                         help = "Generate upto this many variants of prons for each word out"
                         "of the ref. lexicon.")
@@ -147,10 +142,8 @@ def ReadLexicon(args, lexicon_file_handle, counts):
         if word not in counts:
             continue
         try:
-            prob = float(splits[1])
             phones = ' '.join(splits[2:])
         except ValueError:
-            prob = 1
             phones = ' '.join(splits[1:])
         lexicon[word].add(phones)
     return lexicon
@@ -252,7 +245,6 @@ def SelectPronsBayesian(args, counts, posteriors, ref_lexicon, g2p_lexicon, phon
     reference_selected = 0
     g2p_selected = 0
     phone_decoding_selected = 0
-    low_max_post_words = set()
     learned_lexicon = defaultdict(set)
 
     for word, entry in posteriors.iteritems():

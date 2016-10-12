@@ -5,7 +5,6 @@
 
 from __future__ import print_function
 from collections import defaultdict
-import os
 import argparse
 import sys
 import math
@@ -16,7 +15,7 @@ def GetArgs():
                                      "cadidates according to their soft-counts, and then select the top r * N candidates"
                                      "(For words in the reference lexicon, N = # pron variants given by the reference"
                                      "lexicon; For oov words, N = avg. # pron variants per word in the reference lexicon)."
-                                     "r is a user-specified constant, like 2."
+                                     "r is a user-specified constant, like 2.",
                                      epilog = "See steps/dict/learn_lexicon.sh for example")
 
     parser.add_argument("--r", type = float, default = "2.0",
@@ -30,7 +29,7 @@ def GetArgs():
                         "each word, based on which we prune the pron candidates.")
     parser.add_argument("pruned_prons", metavar = "<pruned-prons>", type = str,
                         help = "A file in lexicon format, which contains prons we want to" 
-                               "prune away from the pron_stats file.")
+                        "prune away from the pron_stats file.")
 
     print (' '.join(sys.argv), file=sys.stderr)
 
@@ -77,10 +76,8 @@ def ReadLexicon(ref_lexicon_handle):
                                 + ' in lexicon file.')
         word = splits[0]
         try:
-            prob = float(splits[1])
             phones = ' '.join(splits[2:])
         except ValueError:
-            prob = 1
             phones = ' '.join(splits[1:])
         ref_lexicon[word].add(phones)
     return ref_lexicon
