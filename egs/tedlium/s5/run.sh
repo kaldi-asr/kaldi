@@ -59,7 +59,7 @@ fi
 # Let's create a subset with 10k short segments to make flat-start training easier:
 if [ $stage -le 2 ]; then
   utils/subset_data_dir.sh --shortest data/train 10000 data/train_10kshort || exit 1
-  local/remove_dup_utts.sh 10 data/train_10kshort data/train_10kshort_nodup || exit 1
+  utils/data/remove_dup_utts.sh 10 data/train_10kshort data/train_10kshort_nodup || exit 1
 fi
 
 # Train

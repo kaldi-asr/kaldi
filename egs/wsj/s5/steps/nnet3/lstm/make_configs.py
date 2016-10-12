@@ -253,7 +253,7 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
 
         if xent_regularize != 0.0:
             nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
-                                include_log_softmax = True,
+                                include_log_softmax = True, label_delay = label_delay,
                                 name_affix = 'xent')
 
         config_files['{0}/layer{1}.config'.format(config_dir, i+1)] = config_lines
@@ -269,7 +269,7 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
 
         if xent_regularize != 0.0:
             nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
-                                include_log_softmax = True,
+                                include_log_softmax = True, label_delay = label_delay,
                                 name_affix = 'xent')
 
         config_files['{0}/layer{1}.config'.format(config_dir, i+1)] = config_lines

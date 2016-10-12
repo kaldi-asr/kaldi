@@ -183,14 +183,13 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
 
     if (ivector_feats != NULL) {
       // if applicable, add the iVector feature.
-      // try to get closest frame to middle of window to get
-      // a representative iVector.
-      int32 closest_frame = range_start + frames_per_eg / 2;
+      // choose iVector from a random frame in the chunk
+      int32 ivector_frame = RandInt(range_start, range_start + frames_per_eg - 1);
       KALDI_ASSERT(ivector_feats->NumRows() > 0);
-      if (closest_frame >= ivector_feats->NumRows())
-        closest_frame = ivector_feats->NumRows() - 1;
+      if (ivector_frame >= ivector_feats->NumRows())
+        ivector_frame = ivector_feats->NumRows() - 1;
       Matrix<BaseFloat> ivector(1, ivector_feats->NumCols());
-      ivector.Row(0).CopyFromVec(ivector_feats->Row(closest_frame));
+      ivector.Row(0).CopyFromVec(ivector_feats->Row(ivector_frame));
       NnetIo ivector_io("ivector", 0, ivector);
       nnet_chain_eg.inputs[1].Swap(&ivector_io);
     }
@@ -245,6 +244,7 @@ int main(int argc, char *argv[]) {
         cut_zero_frames = -1,
         frame_subsampling_factor = 1;
 
+    int32 srand_seed = 0;
     std::string ivector_rspecifier;
 
     ParseOptions po(usage);
@@ -267,6 +267,8 @@ int main(int argc, char *argv[]) {
                 "Each time we shift by --num-frames minus --num-frames-overlap.");
     po.Register("ivectors", &ivector_rspecifier, "Rspecifier of ivector "
                 "features, as a matrix.");
+    po.Register("srand", &srand_seed, "Seed for random number generator "
+                "(only relevant if --pick-random-ivector=true)");
     po.Register("length-tolerance", &length_tolerance, "Tolerance for "
                 "difference in num-frames between feat and ivector matrices");
     po.Register("frame-subsampling-factor", &frame_subsampling_factor, "Used "
@@ -274,6 +276,8 @@ int main(int argc, char *argv[]) {
                 "frame-rate of the input");
 
     po.Read(argc, argv);
+    
+    srand(srand_seed);
 
     if (po.NumArgs() < 3 || po.NumArgs() > 4) {
       po.PrintUsage();

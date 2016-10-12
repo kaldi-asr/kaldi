@@ -179,9 +179,9 @@ void MatrixBase<Real>::AddMatMat(const Real alpha,
 }
 
 template<typename Real>
-void MatrixBase<Real>::AddMatMatDivMat(const MatrixBase<Real>& A,
-                                     const MatrixBase<Real>& B,
-                                   const MatrixBase<Real>& C) {
+void MatrixBase<Real>::SetMatMatDivMat(const MatrixBase<Real>& A,
+                                       const MatrixBase<Real>& B,
+                                       const MatrixBase<Real>& C) {
   KALDI_ASSERT(A.NumRows() == B.NumRows() && A.NumCols() == B.NumCols());
   KALDI_ASSERT(A.NumRows() == C.NumRows() && A.NumCols() == C.NumCols());
   for (int32 r = 0; r < A.NumRows(); r++) { // each frame...
@@ -2727,7 +2727,6 @@ void MatrixBase<Real>::AddToRows(Real alpha, Real *const *dst) const {
       cblas_Xaxpy(num_cols, alpha, this_data, 1, dst_data, 1);
   }
 }
-
 
 template<typename Real>
 void MatrixBase<Real>::Sigmoid(const MatrixBase<Real> &src) {

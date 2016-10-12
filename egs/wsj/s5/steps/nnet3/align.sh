@@ -69,7 +69,8 @@ done
 
 cp $srcdir/{tree,${iter}.mdl} $dir || exit 1;
 
-
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 ## Set up features.  Note: these are different from the normal features
 ## because we have one rspecifier that has the features for the entire
 ## training set, not separate ones for each batch.
@@ -124,7 +125,7 @@ ivector_opts=
 if [ ! -z "$online_ivector_dir" ]; then
   ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
   # note: subsample-feats, with negative n, will repeat each feature -n times.
-  ivector_opts="--online-ivectors=scp:$online_ivector_dir/ivector_online.scp --online-ivector_period=$ivector_period"
+  ivector_opts="--online-ivectors=scp:$online_ivector_dir/ivector_online.scp --online-ivector-period=$ivector_period"
 fi
 
 echo "$0: aligning data in $data using model from $srcdir, putting alignments in $dir"

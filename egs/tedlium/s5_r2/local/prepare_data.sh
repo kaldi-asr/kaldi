@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright  2014  Nickolay V. Shmyrev 
+# Copyright  2014  Nickolay V. Shmyrev
 #            2014  Brno University of Technology (Author: Karel Vesely)
 #            2016  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
@@ -13,7 +13,7 @@ export LC_ALL=C
 
 # Prepare: test, train,
 for set in dev test train; do
-  dir=data/$set
+  dir=data/$set.orig
   mkdir -p $dir
 
   # Merge transcripts into a single 'stm' file, do some mappings:
@@ -39,7 +39,7 @@ for set in dev test train; do
           -e 's:<sil>::g' \
           -e 's:([^ ]*)$::' | \
       awk '{ $2 = "A"; print $0; }'
-  } | local/join_suffix.py > data/$set/stm
+  } | local/join_suffix.py > data/$set.orig/stm
 
   # Prepare 'text' file
   # - {NOISE} -> [NOISE] : map the tags to match symbols in dictionary
@@ -53,23 +53,23 @@ for set in dev test train; do
   cat $dir/text | cut -d" " -f 1 | awk -F"-" '{printf("%s %s %07.2f %07.2f\n", $0, $1, $2/100.0, $3/100.0)}' > $dir/segments
   cat $dir/segments | awk '{print $1, $2}' > $dir/utt2spk
   cat $dir/utt2spk | utils/utt2spk_to_spk2utt.pl > $dir/spk2utt
-  
-  # Prepare 'wav.scp', 'reco2file_and_channel' 
+
+  # Prepare 'wav.scp', 'reco2file_and_channel'
   cat $dir/spk2utt | awk -v set=$set -v pwd=$PWD '{ printf("%s sph2pipe -f wav -p %s/db/TEDLIUM_release2/%s/sph/%s.sph |\n", $1, pwd, set, $1); }' > $dir/wav.scp
   cat $dir/wav.scp | awk '{ print $1, $1, "A"; }' > $dir/reco2file_and_channel
-  
+
   # Create empty 'glm' file
   echo ';; empty.glm
   [FAKE]     =>  %HESITATION     / [ ] __ [ ] ;; hesitation token
-  ' > data/$set/glm
+  ' > data/$set.orig/glm
 
   # The training set seems to not have enough silence padding in the segmentations,
   # especially at the beginning of segments.  Extend the times.
   if [ $set == "train" ]; then
-    mv data/$set/segments data/$set/segments.temp
+    mv data/$set.orig/segments data/$set.orig/segments.temp
     utils/data/extend_segment_times.py --start-padding=0.15 \
-      --end-padding=0.1 <data/$set/segments.temp >data/$set/segments || exit 1
-    rm data/$set/segments.temp
+      --end-padding=0.1 <data/$set.orig/segments.temp >data/$set.orig/segments || exit 1
+    rm data/$set.orig/segments.temp
   fi
 
   # Check that data dirs are okay!

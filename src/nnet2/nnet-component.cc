@@ -1003,16 +1003,8 @@ void LogSoftmaxComponent::Backprop(const ChunkInfo &in_info,
   */
   in_deriv->Resize(out_deriv.NumRows(), out_deriv.NumCols());
   KALDI_ASSERT(SameDim(out_value, out_deriv) && SameDim(out_value, *in_deriv));
-  const CuMatrixBase<BaseFloat> &Y(out_value), &E(out_deriv);
-  CuMatrixBase<BaseFloat> &D (*in_deriv);
 
-  D.CopyFromMat(Y);
-  D.ApplyExp();                           // exp(y)
-  CuVector<BaseFloat> E_sum(D.NumRows()); // Initializes to zero
-  E_sum.AddColSumMat(1.0, E);             // Sum(e)
-  D.MulRowsVec(E_sum);                    // exp(y) Sum(e)
-  D.Scale(-1.0);                          // - exp(y) Sum(e)
-  D.AddMat(1.0, E, kNoTrans);             // e - exp(y_i) Sum(e)
+  in_deriv->DiffLogSoftmaxPerRow(out_value, out_deriv);
 
   // Updates stats.
   if (to_update != NULL) {
@@ -3601,7 +3593,7 @@ void DropoutComponent::Backprop(const ChunkInfo &,  //in_info,
                                 CuMatrix<BaseFloat> *in_deriv) const  {
   KALDI_ASSERT(SameDim(in_value, out_value) && SameDim(in_value, out_deriv));
   in_deriv->Resize(out_deriv.NumRows(), out_deriv.NumCols());
-  in_deriv->AddMatMatDivMat(out_deriv, out_value, in_value);
+  in_deriv->SetMatMatDivMat(out_deriv, out_value, in_value);
 }
 
 Component* DropoutComponent::Copy() const {

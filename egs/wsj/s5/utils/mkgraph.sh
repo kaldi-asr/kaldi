@@ -18,14 +18,12 @@ set -o pipefail
 tscale=1.0
 loopscale=0.1
 
-reverse=false
 remove_oov=false
 
 for x in `seq 6`; do
   [ "$1" == "--mono" ] && context=mono && shift;
   [ "$1" == "--left-biphone" ] && context=lbiphone && shift;
   [ "$1" == "--quinphone" ] && context=quinphone && shift;
-  [ "$1" == "--reverse" ] && reverse=true && shift;
   [ "$1" == "--remove-oov" ] && remove_oov=true && shift;
   [ "$1" == "--transition-scale" ] && tscale=$2 && shift 2;
   [ "$1" == "--self-loop-scale" ] && loopscale=$2 && shift 2;
@@ -37,6 +35,8 @@ if [ $# != 3 ]; then
    echo " Options:"
    echo " --mono          #  For monophone models."
    echo " --quinphone     #  For models with 5-phone context (3 is default)"
+   echo " --left-biphone  #  For left biphone models"
+   echo "For other accepted options, see top of script."
    exit 1;
 fi
 
@@ -58,6 +58,19 @@ for f in $required; do
   [ ! -f $f ] && echo "mkgraph.sh: expected $f to exist" && exit 1;
 done
 
+if [ -f $dir/HCLG.fst ]; then
+  # detect when the result already exists, and avoid overwriting it.
+  must_rebuild=false
+  for f in $required; do
+    [ $f -nt $dir/HCLG.fst ] && must_rebuild=true
+  done
+  if ! $must_rebuild; then
+    echo "$0: $dir/HCLG.fst is up to date."
+    exit 0
+  fi
+fi
+
+
 N=$(tree-info $tree | grep "context-width" | cut -d' ' -f2) || { echo "Error when getting context-width"; exit 1; }
 P=$(tree-info $tree | grep "central-position" | cut -d' ' -f2) || { echo "Error when getting central-position"; exit 1; }
 if [[ $context == mono && ($N != 1 || $P != 0) || \
@@ -66,6 +79,9 @@ if [[ $context == mono && ($N != 1 || $P != 0) || \
   echo "mkgraph.sh: mismatch between the specified context (--$context) and the one in the tree: N=$N, P=$P"
   exit 1
 fi
+
+[[ -f $2/frame_subsampling_factor && $loopscale != 1.0 ]] && \
+  echo "$0: WARNING: chain models need '--self-loop-scale 1.0'";
 
 mkdir -p $lang/tmp
 # Note: [[ ]] is like [ ] but enables certain extra constructs, e.g. || in
@@ -92,16 +108,9 @@ fi
 
 if [[ ! -s $dir/Ha.fst || $dir/Ha.fst -ot $model  \
     || $dir/Ha.fst -ot $lang/tmp/ilabels_${N}_${P} ]]; then
-  if $reverse; then
-    make-h-transducer --reverse=true --push_weights=true \
-      --disambig-syms-out=$dir/disambig_tid.int \
-      --transition-scale=$tscale $lang/tmp/ilabels_${N}_${P} $tree $model \
-      > $dir/Ha.fst  || exit 1;
-  else
-    make-h-transducer --disambig-syms-out=$dir/disambig_tid.int \
-      --transition-scale=$tscale $lang/tmp/ilabels_${N}_${P} $tree $model \
-       > $dir/Ha.fst  || exit 1;
-  fi
+  make-h-transducer --disambig-syms-out=$dir/disambig_tid.int \
+    --transition-scale=$tscale $lang/tmp/ilabels_${N}_${P} $tree $model \
+     > $dir/Ha.fst  || exit 1;
 fi
 
 if [[ ! -s $dir/HCLGa.fst || $dir/HCLGa.fst -ot $dir/Ha.fst || \
@@ -133,6 +142,9 @@ if ! [ $(head -c 67 $dir/HCLG.fst | wc -c) -eq 67 ]; then
   echo "$0: it looks like the result in $dir/HCLG.fst is empty"
   exit 1
 fi
+
+# save space.
+rm $dir/HCLGa.fst $dir/Ha.fst 2>/dev/null || true
 
 # keep a copy of the lexicon and a list of silence phones with HCLG...
 # this means we can decode without reference to the $lang directory.

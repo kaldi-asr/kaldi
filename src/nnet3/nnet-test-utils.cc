@@ -926,7 +926,7 @@ void ComputeExampleComputationRequestSimple(
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
 
-  int32 n = RandInt(0, 28);
+  int32 n = RandInt(0, 29);
   BaseFloat learning_rate = 0.001 * RandInt(1, 3);
 
   std::ostringstream os;
@@ -1218,7 +1218,13 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       if (RandInt(0, 1) == 1)
         os << " self-repair-target=" << RandUniform();
       break;
-    } 
+    }
+    case 29: {
+      *component_type = "DropoutComponent";
+      os << "dim=" << RandInt(1, 200)
+         << " dropout-proportion=" << RandUniform();
+      break;
+    }
     default:
       KALDI_ERR << "Error generating random component";
   }

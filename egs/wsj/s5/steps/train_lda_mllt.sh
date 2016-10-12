@@ -70,6 +70,10 @@ silphonelist=`cat $lang/phones/silence.csl` || exit 1;
 ciphonelist=`cat $lang/phones/context_indep.csl` || exit 1;
 
 mkdir -p $dir/log
+
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
+
 echo $nj >$dir/num_jobs
 echo "$splice_opts" >$dir/splice_opts # keep track of frame-splicing options
            # so that later stages of system building can know what they were.
@@ -227,4 +231,8 @@ steps/diagnostic/analyze_alignments.sh --cmd "$cmd" $lang $dir
 # Summarize warning messages...
 utils/summarize_warnings.pl $dir/log
 
-echo Done training system with LDA+MLLT features in $dir
+steps/info/gmm_dir_info.pl $dir
+
+echo "Done training system with LDA+MLLT features in $dir"
+
+exit 0

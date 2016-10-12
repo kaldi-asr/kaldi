@@ -6,8 +6,8 @@
 
 # begin configuration section.
 cmd=run.pl
-min_lmwt=10
-max_lmwt=20
+min_lmwt=7
+max_lmwt=17
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
@@ -41,15 +41,11 @@ $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/best_path.LMWT.log \
     "ark:gunzip -c $dir/lat.*.gz|" ark,t:$dir/scoring/LMWT.tra || exit 1;
 
 # Note: the double level of quoting for the sed command
+
 $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.log \
    cat $dir/scoring/LMWT.tra \| \
     utils/int2sym.pl -f 2- $symtab \| \
-    sed 's:\\[BREATH\\]::g' \| \
-    sed 's:\\[COUGH\\]::g' \| \
-    sed 's:\\[NOISE\\]::g' \| \
-    sed 's:\\[SMACK\\]::g' \| \
-    sed 's:\\[UH\\]::g' \| \
-    sed 's:\\[UM\\]::g' \| \
+    sed 's:\\<unk>\\]::g' \| \
     compute-wer --text --mode=present \
      ark:$dir/scoring/test_filt.txt  ark,p:- ">&" $dir/wer_LMWT || exit 1;
 

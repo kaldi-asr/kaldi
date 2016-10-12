@@ -44,6 +44,10 @@ for f in $data/feats.scp $lang/phones.txt $src/final.mdl $srcdict; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1;
 done
 
+mkdir -p $dir
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt
+cp $lang/phones.txt $dir
+
 if [ -z $alidir ]; then
   alidir=${src}_ali_$(basename $data)
   if [ $stage -le 1 ]; then
@@ -54,7 +58,7 @@ fi
 phone_lang=data/$(basename $lang)_phone_bg
 
 if [ $stage -le 2 ]; then
-  utils/make_phone_bigram_lang.sh $lang $alidir $phone_lang
+  utils/lang/make_phone_bigram_lang.sh $lang $alidir $phone_lang
 fi
 
 if [ $stage -le 3 ]; then
@@ -197,4 +201,3 @@ if [ $stage -le 11 ]; then
 
 
 fi
-

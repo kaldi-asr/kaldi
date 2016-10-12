@@ -58,6 +58,9 @@ nj=`cat $alidir/num_jobs` || exit 1;
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
+
 sdata=$data/split$nj;
 split_data.sh $data $nj || exit 1;
 
@@ -163,5 +166,8 @@ steps/diagnostic/analyze_alignments.sh --cmd "$cmd" $lang $dir
 # Summarize warning messages...
 utils/summarize_warnings.pl  $dir/log
 
+steps/info/gmm_dir_info.pl $dir
+
 echo "$0: Done training system with delta+delta-delta features in $dir"
 
+exit 0

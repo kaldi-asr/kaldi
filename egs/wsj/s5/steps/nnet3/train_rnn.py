@@ -219,7 +219,7 @@ def GetArgs():
                         help="""If true, remove egs after experiment""")
     parser.add_argument("--cleanup.preserve-model-interval", dest = "preserve_model_interval",
                         type=int, default=100,
-                        help="Determines iterations for which models will be preserved during cleanup. If iter % preserve_model_interval == 0 model will be preserved.")
+                        help="Determines iterations for which models will be preserved during cleanup. If mod(iter,preserve_model_interval) == 0 model will be preserved.")
 
     parser.add_argument("--reporting.email", dest = "email",
                         type=str, default=None, action = NullstrToNoneAction,
@@ -729,6 +729,9 @@ def Train(args, run_opts):
     report_handle = open("{dir}/accuracy.report".format(dir = args.dir), "w")
     report_handle.write(report)
     report_handle.close()
+
+    os.system("steps/info/nnet3_dir_info.sh " + args.dir)
+
 
 def Main():
     [args, run_opts] = GetArgs()

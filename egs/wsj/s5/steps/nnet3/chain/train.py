@@ -116,8 +116,6 @@ def GetArgs():
                         default = 3,
                         help="ratio of frames-per-second of input alignments to"
                         " chain model's output")
-    parser.add_argument("--chain.ngram-order", type=int, dest='ngram_order',
-                        default = 3, help="")
     parser.add_argument("--chain.left-deriv-truncate", type=int,
                         dest='left_deriv_truncate',
                         default = None, help="")
@@ -248,7 +246,7 @@ def GetArgs():
                         help="If true, remove egs after experiment")
     parser.add_argument("--cleanup.preserve-model-interval", dest = "preserve_model_interval",
                         type=int, default=100,
-                        help="Determines iterations for which models will be preserved during cleanup. If iter % preserve_model_interval == 0 model will be preserved.")
+                        help="Determines iterations for which models will be preserved during cleanup. If mod(iter,preserve_model_interval) == 0 model will be preserved.")
 
     parser.add_argument("--reporting.email", dest = "email",
                         type=str, default=None, action = train_lib.NullstrToNoneAction,
@@ -424,9 +422,9 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
             raise Exception('Exception while reading the random seed for training')
         if srand != saved_srand:
             logger.warning("The random seed provided to this iteration (srand={0}) is different from the one saved last time (srand={1}). Using srand={0}.".format(srand, saved_srand))
-    else: 
-        f = open('{0}/srand'.format(dir), 'w')                              
-        f.write(str(srand))                                                      
+    else:
+        f = open('{0}/srand'.format(dir), 'w')
+        f.write(str(srand))
         f.close()
 
     chain_lib.ComputeTrainCvProbabilities(dir, iter, egs_dir,
@@ -710,6 +708,8 @@ def Train(args, run_opts):
     report_handle = open("{dir}/accuracy.report".format(dir = args.dir), "w")
     report_handle.write(report)
     report_handle.close()
+
+    os.system("steps/info/chain_dir_info.pl " + args.dir)
 
 def Main():
     [args, run_opts] = GetArgs()

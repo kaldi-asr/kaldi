@@ -87,8 +87,8 @@ endif
 # patches for openfst. openfst_gcc41up.patch is a patch for openfst to \
 # support multi-threads when compile with g++ (gcc) version above 4.1
 openfst-$(OPENFST_VERSION)/.patched: | openfst-$(OPENFST_VERSION)
-	-cd openfst-$(OPENFST_VERSION)/src/include/fst; \
-	patch -c -p0 -N < ../../../../extras/openfst-$(OPENFST_VERSION).patch;
+	cd openfst-$(OPENFST_VERSION)/; \
+	patch -p1 -N < ../extras/openfst-$(OPENFST_VERSION).patch;
 	$(CXX) -dumpversion | awk '{if(NR==1 && $$1>"4.1") print "cd openfst-$(OPENFST_VERSION)/src/include/fst; patch -c -p0 -N < ../../../../extras/openfst_gcc41up.patch"}' | sh -
 	touch $@
 
@@ -104,7 +104,7 @@ sclite: sclite_compiled
 .PHONY: sclite_compiled
 sclite_compiled: sctk sctk_configured
 	cd sctk; \
-	$(MAKE) all && $(MAKE) install && $(MAKE) doc
+	$(MAKE) CC=$(CC) CXX=$(CXX) all && $(MAKE) install && $(MAKE) doc
 
 sctk_configured: sctk sctk/.configured
 
@@ -114,7 +114,8 @@ sctk/.configured: sctk
 
 .PHONY: sctk
 sctk: sctk-2.4.10-20151007-1312Z.tar.bz2
-	tar xojf sctk-2.4.10-20151007-1312Z.tar.bz2
+	tar xojf sctk-2.4.10-20151007-1312Z.tar.bz2 || \
+      tar --exclude '*NONE*html' -xvojf sctk-2.4.10-20151007-1312Z.tar.bz2
 	rm -rf sctk && ln -s sctk-2.4.10 sctk
 
 sctk-2.4.10-20151007-1312Z.tar.bz2:

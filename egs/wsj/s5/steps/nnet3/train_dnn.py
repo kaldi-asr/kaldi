@@ -182,7 +182,7 @@ def GetArgs():
                         help="""If true, remove egs after experiment""")
     parser.add_argument("--cleanup.preserve-model-interval", dest = "preserve_model_interval",
                         type=int, default=100,
-                        help="Determines iterations for which models will be preserved during cleanup. If iter % preserve_model_interval == 0 model will be preserved.")
+                        help="Determines iterations for which models will be preserved during cleanup. If mod(iter,preserve_model_interval) == 0 model will be preserved.")
 
     parser.add_argument("--reporting.email", dest = "email",
                         type=str, default=None, action = NullstrToNoneAction,
@@ -346,7 +346,7 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
     # Use the egs dir from the previous iteration for the diagnostics
     logger.info("Training neural net (pass {0})".format(iter))
 
-    # check if different iterations use the same random seed 
+    # check if different iterations use the same random seed
     if os.path.exists('{0}/srand'.format(dir)):
         try:
             saved_srand = int(open('{0}/srand'.format(dir), 'r').readline().strip())
@@ -354,9 +354,9 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
             raise Exception('Exception while reading the random seed for training')
         if srand != saved_srand:
             logger.warning("The random seed provided to this iteration (srand={0}) is different from the one saved last time (srand={1}). Using srand={0}.".format(srand, saved_srand))
-    else: 
-        f = open('{0}/srand'.format(dir), 'w')                              
-        f.write(str(srand))                                                      
+    else:
+        f = open('{0}/srand'.format(dir), 'w')
+        f.write(str(srand))
         f.close()
 
     ComputeTrainCvProbabilities(dir, iter, egs_dir, run_opts)
@@ -636,6 +636,8 @@ def Train(args, run_opts):
     report_handle = open("{dir}/accuracy.report".format(dir = args.dir), "w")
     report_handle.write(report)
     report_handle.close()
+
+    os.system("steps/info/nnet3_dir_info.pl " + args.dir)
 
 def Main():
     [args, run_opts] = GetArgs()

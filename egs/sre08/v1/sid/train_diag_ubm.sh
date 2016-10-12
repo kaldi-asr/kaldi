@@ -29,7 +29,6 @@ cleanup=true
 min_gaussian_weight=0.0001
 remove_low_count_gaussians=true # set this to false if you need #gauss to stay fixed.
 num_threads=32
-parallel_opts="-pe smp 32"
 delta_window=3
 delta_order=2
 # End configuration section.
@@ -51,7 +50,7 @@ if [ $# != 3 ]; then
   echo "  --stage <stage|-2>                               # stage to do partial re-run from."
   echo "  --num-gselect <n|30>                             # Number of Gaussians per frame to"
   echo "                                                   # limit computation to, for speed"
-  echo " --subsample <n|5>                                 # In main E-M phase, use every n" 
+  echo " --subsample <n|5>                                 # In main E-M phase, use every n"
   echo "                                                   # frames (a speedup)"
   echo "  --num-frames <n|500000>                          # Maximum num-frames to keep in memory"
   echo "                                                   # for model initialization"
@@ -86,6 +85,7 @@ for f in $data/feats.scp $data/vad.scp; do
    [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1
 done
 
+parallel_opts="-pe smp $num_threads"
 delta_opts="--delta-window=$delta_window --delta-order=$delta_order"
 echo $delta_opts > $dir/delta_opts
 
