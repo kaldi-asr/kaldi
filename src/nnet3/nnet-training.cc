@@ -41,9 +41,9 @@ NnetTrainer::NnetTrainer(const NnetTrainerOptions &config,
     bool is_gradient = false;  // setting this to true would disable the
                                // natural-gradient updates.
     SetZero(is_gradient, delta_nnet_);
-    const int32 num_ucs = NumUpdatableComponents(*delta_nnet_);
-    num_max_changes_per_component_applied_.resize(num_ucs, 0); 
-    num_max_changes_global_applied_ = 0;
+    const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
+    num_max_change_per_component_applied_.resize(num_updatable, 0); 
+    num_max_change_global_applied_ = 0;
   }
   if (config_.read_cache != "") {
     bool binary;
@@ -78,7 +78,7 @@ void NnetTrainer::Train(const NnetExample &eg) {
   computer.Backward();
 
   if (delta_nnet_ != NULL) {
-    UpdateParamsWithMaxChanges();
+    UpdateParamsWithMaxChange();
   }
 }
 
@@ -104,12 +104,16 @@ void NnetTrainer::ProcessOutputs(const NnetExample &eg,
   }
 }
 
-void NnetTrainer::UpdateParamsWithMaxChanges() {
+void NnetTrainer::UpdateParamsWithMaxChange() {
   KALDI_ASSERT(delta_nnet_ != NULL);
-  // computes scaling factors for per-component max-changes
-  const int32 num_ucs = NumUpdatableComponents(*delta_nnet_);
-  Vector<BaseFloat> scale_factors = Vector<BaseFloat>(num_ucs);
-  BaseFloat param_delta = 0.0;
+  // computes scaling factors for per-component max-change
+  const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
+  Vector<BaseFloat> scale_factors = Vector<BaseFloat>(num_updatable);
+  BaseFloat param_delta_squared = 0.0;
+  int32 num_max_change_per_component_applied_per_minibatch = 0;
+  BaseFloat min_scale = 1.0;
+  std::string component_name_with_min_scale;
+  BaseFloat max_change_with_min_scale;
   int32 i = 0;
   for (int32 c = 0; c < delta_nnet_->NumComponents(); c++) {
     Component *comp = delta_nnet_->GetComponent(c);
@@ -124,20 +128,26 @@ void NnetTrainer::UpdateParamsWithMaxChanges() {
       if (max_param_change_per_comp != 0.0 &&
           std::sqrt(dot_prod) > max_param_change_per_comp) {
         scale_factors(i) = max_param_change_per_comp / std::sqrt(dot_prod);
-        num_max_changes_per_component_applied_[i]++;
+        num_max_change_per_component_applied_[i]++;
+        num_max_change_per_component_applied_per_minibatch++;
         KALDI_VLOG(2) << "Parameters in " << delta_nnet_->GetComponentName(c)
                       << " change too big: " << std::sqrt(dot_prod) << " > "
-                      << "--max-change=" << max_param_change_per_comp
+                      << "max-change=" << max_param_change_per_comp
                       << ", scaling by " << scale_factors(i);
       } else {
         scale_factors(i) = 1.0;
       }
-      param_delta += std::pow(scale_factors(i), 2.0) * dot_prod;
+      if  (i == 0 || scale_factors(i) < min_scale) {
+        min_scale =  scale_factors(i);
+        component_name_with_min_scale = delta_nnet_->GetComponentName(c);
+        max_change_with_min_scale = max_param_change_per_comp;
+      }
+      param_delta_squared += std::pow(scale_factors(i), 2.0) * dot_prod;
       i++;
     }
   }
   KALDI_ASSERT(i == scale_factors.Dim());
-  param_delta = std::sqrt(param_delta);
+  BaseFloat param_delta = std::sqrt(param_delta_squared);
   // computes the scale for global max-change (with momentum)
   BaseFloat scale = (1.0 - config_.momentum);
   if (config_.max_param_change != 0.0) {
@@ -148,12 +158,26 @@ void NnetTrainer::UpdateParamsWithMaxChanges() {
         SetZero(false, delta_nnet_);
       } else {
         scale *= config_.max_param_change / param_delta;
-        num_max_changes_global_applied_++;
-        KALDI_LOG << "Parameters change too big: " << param_delta << " > "
-                  << "--max-param-change=" << config_.max_param_change
-                  << ", scaling by " << config_.max_param_change / param_delta;
+        num_max_change_global_applied_++;
       }
     }
+  }
+  if ((config_.max_param_change != 0.0 &&
+      param_delta > config_.max_param_change &&
+      param_delta - param_delta == 0.0) || min_scale < 1.0) {
+    std::ostringstream ostr;
+    if (min_scale < 1.0)
+      ostr << "Per-component max-change active on "
+           << num_max_change_per_component_applied_per_minibatch
+           << " / " << num_updatable << " Updatable Components."
+           << "(smallest factor=" << min_scale << " on "
+           << component_name_with_min_scale
+           << " with max-change=" << max_change_with_min_scale <<"). "; 
+    if (param_delta > config_.max_param_change)
+      ostr << "Global max-change factor was "
+           << config_.max_param_change / param_delta
+           << " with max-change=" << config_.max_param_change << ".";
+    KALDI_LOG << ostr.str();
   }
   // applies both of the max-change scalings all at once, component by component
   // and updates parameters
@@ -173,11 +197,11 @@ bool NnetTrainer::PrintTotalStats() const {
     ans = ans || info.PrintTotalStats(name);
   }
   if (delta_nnet_ != NULL)
-    PrintMaxChangesStats();
+    PrintMaxChangeStats();
   return ans;
 }
 
-void NnetTrainer::PrintMaxChangesStats() const {
+void NnetTrainer::PrintMaxChangeStats() const {
   KALDI_ASSERT(delta_nnet_ != NULL);
   int32 i = 0;
   for (int32 c = 0; c < delta_nnet_->NumComponents(); c++) {
@@ -187,17 +211,17 @@ void NnetTrainer::PrintMaxChangesStats() const {
       if (uc == NULL)
         KALDI_ERR << "Updatable component does not inherit from class "
                   << "UpdatableComponent; change this code.";
-      if (num_max_changes_per_component_applied_[i] > 0)
+      if (num_max_change_per_component_applied_[i] > 0)
         KALDI_LOG << "For " << delta_nnet_->GetComponentName(c)
                   << ", per-component max-change was enforced "
-                  << (100.0 * num_max_changes_per_component_applied_[i]) /
+                  << (100.0 * num_max_change_per_component_applied_[i]) /
                      num_minibatches_processed_ << " \% of the time.";
       i++;
     }
   }
-  if (num_max_changes_global_applied_ > 0)
+  if (num_max_change_global_applied_ > 0)
     KALDI_LOG << "The global max-change was enforced "
-              << (100.0 * num_max_changes_global_applied_) /
+              << (100.0 * num_max_change_global_applied_) /
                  num_minibatches_processed_ << " \% of the time.";
 }
 

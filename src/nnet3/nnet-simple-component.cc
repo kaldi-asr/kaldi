@@ -838,14 +838,14 @@ void ClipGradientComponent::RepairGradients(
   // this code to running on about half of the minibatches.
   BaseFloat repair_probability = 0.5;
   if (self_repair_clipped_proportion_threshold_ >= 1.0 ||
-      self_repair_scale_ == 0.0 || to_update->count_ == 0 ||
+      self_repair_scale_ == 0.0 || count_ == 0 ||
       RandUniform() > repair_probability)
     return;
 
   KALDI_ASSERT(self_repair_target_ >= 0.0 && self_repair_scale_ > 0.0);
 
-  BaseFloat clipped_proportion = (count_ > 0 ?
-      static_cast<BaseFloat>(to_update->num_clipped_) / to_update->count_ : 0);
+  BaseFloat clipped_proportion =
+    (count_ > 0 ? static_cast<BaseFloat>(num_clipped_) / count_ : 0);
   // in-deriv would be modified only when clipped_proportion exceeds the
   // threshold
   if (clipped_proportion <= self_repair_clipped_proportion_threshold_)
