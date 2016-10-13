@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 #===============================================================================
 # Copyright 2015 Johns Hopkins University (Author: Yenda Trmal<jtrmal@gmail.com>)
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -26,7 +26,7 @@ my $with_probs;
 my $position_independent_phones;
 
 GetOptions("with-probs" => \$with_probs,
-  "position-independent-phones" => \$position_independent_phones 
+  "position-independent-phones" => \$position_independent_phones
 );
 
 my %SYLLS;
@@ -57,7 +57,7 @@ while (my $line = <STDIN>) {
       my @phones2 = map { $_ . "_I" } @phones;
 
       if (scalar(@phones)  == 1 ) {
-        $syl = "$phones[0]_S"; 
+        $syl = "$phones[0]_S";
       } else {
         $phones2[0] =  $phones[0] . "_B" unless $position_independent_phones;
         $phones2[-1] = $phones[-1] ."_E" unless $position_independent_phones;
@@ -116,7 +116,7 @@ foreach my $syl (keys %SYLLS) {
   $REV_VOCAB{$syl} = $wordx;
 }
 
-open(my $lex_f, "|sort -u >  $ARGV[0]") or 
+open(my $lex_f, "|sort -u >  $ARGV[0]") or
 die "Cannot open the file\"$ARGV[0]\" for writing";
 
 foreach my $word (keys %VOCAB) {
@@ -125,7 +125,7 @@ foreach my $word (keys %VOCAB) {
 
 close($lex_f);
 
-open(my $word2syll_f, "|sort -u > $ARGV[1]") or 
+open(my $word2syll_f, "|sort -u > $ARGV[1]") or
 die "Cannot open the file\"$ARGV[1]\" for writing";
 
 foreach my $word (keys %LEXICON) {
@@ -141,7 +141,7 @@ foreach my $word (keys %LEXICON) {
 
 close($word2syll_f);
 
-open(my $word2ali_f, "|sort -u > $ARGV[2]") or 
+open(my $word2ali_f, "|sort -u > $ARGV[2]") or
 die "Cannot open the file\"$ARGV[2]\" for writing";
 
 foreach my $word (keys %LEXICON) {

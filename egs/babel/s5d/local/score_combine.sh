@@ -18,9 +18,9 @@
 
 
 # Script for system combination using minimum Bayes risk decoding.
-# This calls lattice-combine to create a union of lattices that have been 
+# This calls lattice-combine to create a union of lattices that have been
 # normalized by removing the total forward cost from them. The resulting lattice
-# is used as input to lattice-mbr-decode. This should not be put in steps/ or 
+# is used as input to lattice-mbr-decode. This should not be put in steps/ or
 # utils/ since the scores on the combined lattice must not be scaled.
 
 # begin configuration section.
@@ -43,7 +43,7 @@ help_message="Usage: "$(basename $0)" [options] <data-dir> <graph-dir|lang-dir> 
      or:  "$(basename $0)" data/test data/lang exp/tri1/decode exp/tri2/decode:18 exp/tri3/decode:13 exp/combine
 Options:
   --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes.
-  --min-lmwt INT                  # minumum LM-weight for lattice rescoring 
+  --min-lmwt INT                  # minumum LM-weight for lattice rescoring
   --max-lmwt INT                  # maximum LM-weight for lattice rescoring
   --lat-weights STR               # colon-separated string of lattice weights
   --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes.
@@ -70,7 +70,7 @@ decode_dirs=( $@ )  # read the remaining arguments into an array
 unset decode_dirs[${#decode_dirs[@]}-1]  # 'pop' the last argument which is odir
 num_sys=${#decode_dirs[@]}  # number of systems to combine
 
-#Let the user to set the CTM file name 
+#Let the user to set the CTM file name
 #use the data-dir name in case the user doesn't care
 if [ -z ${ctm_name} ] ; then
   ctm_name=`basename $data`
@@ -94,7 +94,7 @@ for i in `seq 0 $[num_sys-1]`; do
   offset=`echo $decode_dir | cut -d: -s -f2` # add this to the lm-weight.
   decode_dir=`echo $decode_dir | cut -d: -f1`
   [ -z "$offset" ] && offset=0
-  
+
   model=`dirname $decode_dir`/final.mdl  # model one level up from decode dir
   for f in $model $decode_dir/lat.1.gz ; do
     [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
@@ -103,7 +103,7 @@ for i in `seq 0 $[num_sys-1]`; do
     nj=`cat $decode_dir/num_jobs` || exit 1;
   else
     if [ $nj != `cat $decode_dir/num_jobs` ]; then
-      echo "$0: number of decoding jobs mismatches, $nj versus `cat $decode_dir/num_jobs`" 
+      echo "$0: number of decoding jobs mismatches, $nj versus `cat $decode_dir/num_jobs`"
       exit 1;
     fi
   fi
@@ -128,7 +128,7 @@ if [ -z "$lat_weights" ]; then
   for i in `seq $[$num_sys-1]`; do lat_weights="$lat_weights:1.0"; done
 fi
 
-if [ $stage -le 0 ]; then  
+if [ $stage -le 0 ]; then
   $cmd $parallel_opts LMWT=$min_lmwt:$max_lmwt $dir/log/combine_lats.LMWT.log \
     mkdir -p $dir/score_LMWT/ '&&' \
     lattice-combine --lat-weights=$lat_weights "${lats[@]}" ark:- \| \
@@ -155,12 +155,12 @@ if [ $stage -le 1 ]; then
       grep -v -E '<v-noise>' | \
       perl -e '@list = (); %list = ();
       while(<>) {
-        chomp; 
-        @col = split(" ", $_); 
+        chomp;
+        @col = split(" ", $_);
         push(@list, $_);
-        $key = "$col[0]" . " $col[1]"; 
+        $key = "$col[0]" . " $col[1]";
         $list{$key} = 1;
-      } 
+      }
       foreach(sort keys %list) {
         $key = $_;
         foreach(grep(/$key/, @list)) {

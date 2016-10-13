@@ -3,7 +3,7 @@ use warnings; #sed replacement for -w perl parameter
 # Copyright 2012  Johns Hopkins University (author: Daniel Povey)
 
 # makes lexicon FST -- special version only for use in keyword search
-# for allowing optional silences between words.  This version has 
+# for allowing optional silences between words.  This version has
 # no pron-probs involved, and
 # does support an optional silence, but this silence is only allowed
 # between words (where it may occur an arbitrary number of times),

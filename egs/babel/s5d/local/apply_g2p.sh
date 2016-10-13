@@ -2,7 +2,7 @@
 # Copyright 2014  Johns Hopkins University (Author: Yenda Trmal)
 # Apache 2.0
 
-# Begin configuration section.  
+# Begin configuration section.
 iters=5
 stage=0
 encoding='utf-8'
@@ -82,15 +82,15 @@ cat $output/output.* > $output/output
 #Remap the words from output file back to the original casing
 #Conversion of some of thems might have failed, so we have to be careful
 #and use the transform_map file we generated beforehand
-#Also, because the sequitur output is not readily usable as lexicon (it adds 
+#Also, because the sequitur output is not readily usable as lexicon (it adds
 #one more column with ordering of the pron. variants) convert it into the proper lexicon form
 output_lex=$output/lexicon.lex
 if [ ! -z $icu_transform ] ; then
   #also, the transform is generally N -> 1, i.e. we have to take
   #extra care of words that might have been mapped into the same one
-  perl -e 'open(WORDS, $ARGV[0]) or die "Could not open file $ARGV[0]"; 
-           while(<WORDS>) { chomp; @F=split; 
-             if ($MAP{$F[0]} ) { push @{$MAP{$F[0]}}, $F[1]; } 
+  perl -e 'open(WORDS, $ARGV[0]) or die "Could not open file $ARGV[0]";
+           while(<WORDS>) { chomp; @F=split;
+             if ($MAP{$F[0]} ) { push @{$MAP{$F[0]}}, $F[1]; }
              else { $MAP{$F[0]} = [$F[1]]; }
            }
            close(WORDS);
@@ -101,7 +101,7 @@ if [ ! -z $icu_transform ] ; then
                next;
              }
              foreach $word (@{$MAP{$F[0]}} ) {
-               print "$word\t$F[2]\t$F[3]\n"; 
+               print "$word\t$F[2]\t$F[3]\n";
              }
            }
            close(LEX);

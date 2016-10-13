@@ -20,12 +20,12 @@ elif [ "$1" == "FMLLR" ]; then
 	  $MODELDIR/graph $DEVDIR $MODELDIR/decode || exit 1
 elif [ "$1" == "SGMM" ]; then
   utils/mkgraph.sh $LANGDIR $MODELDIR $MODELDIR/graph		|| exit 1
-  
+
   steps/decode_sgmm.sh --nj 20 --cmd "$decode_cmd" --transform-dir $TRANSFORMDIR \
   	$MODELDIR/graph $DEVDIR $MODELDIR/decode		|| exit 1;
 
   steps/decode_sgmm.sh --use-fmllr true --nj 20 --cmd "$decode_cmd" --transform-dir $TRANSFORMDIR\
-  	$MODELDIR/graph $DEVDIR $MODELDIR/decode_fmllr  || exit 1;    
+  	$MODELDIR/graph $DEVDIR $MODELDIR/decode_fmllr  || exit 1;
 
 fi
 

@@ -65,7 +65,7 @@ sub substitute {
   return $cmd_out;
 }
 
-sub f { 
+sub f {
   state $iter = 0;
   my @params = @_;
   my $i = 0;
@@ -90,7 +90,7 @@ sub f {
     }
   }
   close($fh) or die "$0: The command didn't finish successfully: $!\n";
- 
+
   my $exit = $? >> 8;
   if ( $exit != 0) {
     die "$0: The command return status indicates failure: $exit\n";
@@ -100,7 +100,7 @@ sub f {
     die "$0: Matching the regexp on the  command output regexp didn't yield any results";
   }
   print "$0: Iteration $iter: " . join(" ", "[", @params, "] =>",  $result) . "\n";
- 
+
   $iter += 1;
   return -1.0 * $result+0.0;
 }
@@ -122,7 +122,7 @@ foreach my $key (sort keys %opts) {
 #my($xvec,$fx) = (\@params, 1);
 my($xvec,$fx) = powell(\&f,\@params, $ftol, $iftol);
 print "$0: Optimization finished with: " . join(" ",@$xvec, -$fx), "\n";
- 
+
 
 @params=@{$xvec};
 foreach my $v (sort keys %opts) {

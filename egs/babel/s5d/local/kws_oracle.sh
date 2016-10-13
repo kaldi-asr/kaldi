@@ -1,23 +1,23 @@
 #!/bin/bash
 
 # Copyright 2012  Johns Hopkins University (Author: Guoguo Chen, Jan Trmal)
-#           2013  Johns Hopkins University 
+#           2013  Johns Hopkins University
 # Apache 2.0.
 
 . ./path.sh
 . ./cmd.sh
 
-# Begin configuration section.  
+# Begin configuration section.
 cmd=run.pl
-acwt=0.09091 #Acoustic weight -- should not be necessary for oracle lattices 
+acwt=0.09091 #Acoustic weight -- should not be necessary for oracle lattices
 duptime=0.6  #Max time difference in which the occurences of the same KW will be seen as duplicates
 text=     # an alternative reference text to use. when not specified, the <data-dir>/text will be used
-model=    # acoustic model to use 
+model=    # acoustic model to use
 extraid=  # kws setup extra ID (kws task was setup using kws_setup.sh --extraid <id>
 stage=0   # to resume the computation from different stage
 # End configuration section.
 
-set -e 
+set -e
 set -o pipefail
 
 echo "$0 $@"  # Print the command line for logging
@@ -47,7 +47,7 @@ fi
 
 if [ -z "$model" ]; then # if --model <mdl> was not specified on the command line...
   srcdir=`dirname $decodedir`; # The model directory is one level up from decoding directory.
-  model=$srcdir/final.mdl; 
+  model=$srcdir/final.mdl;
 fi
 
 if [ -z $extraid ] ; then # the same logic as with kws_setup.sh
@@ -59,7 +59,7 @@ fi
 nj=`cat $decodedir/num_jobs`;
 
 oracledir=$decodedir/kws_oracle
-mkdir -p $oracledir 
+mkdir -p $oracledir
 mkdir -p $oracledir/log
 
 if [ $stage -le 0 ] ; then
@@ -119,17 +119,17 @@ if [ $stage -le 4 ]; then
   echo "======================================================="
   (
     echo -n "ATWV-full     "
-    grep Occurrence $oracledir/sum.txt | cut -d '|' -f 13  
+    grep Occurrence $oracledir/sum.txt | cut -d '|' -f 13
   )
 
   #-(
   #-echo -n "ATWV-invocab  "
-  #-grep Occurrence $oracledir/invocab.sum.txt | cut -d '|' -f 13  
+  #-grep Occurrence $oracledir/invocab.sum.txt | cut -d '|' -f 13
   #-) || echo "Error occured getting the invocab results"
 
   #-(
   #-echo -n "ATWV-outvocab "
-  #-grep Occurrence $oracledir/outvocab.sum.txt | cut -d '|' -f 13  
+  #-grep Occurrence $oracledir/outvocab.sum.txt | cut -d '|' -f 13
   #-) || echo "Error occured getting the outvocab results"
 
   echo "======================================================="

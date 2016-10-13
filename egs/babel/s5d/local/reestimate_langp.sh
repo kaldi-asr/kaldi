@@ -1,14 +1,14 @@
-#!/bin/bash                                                                        
+#!/bin/bash
 # Copyright (c) 2015, Johns Hopkins University ( Yenda Trmal <jtrmal@gmail.com> )
 # License: Apache 2.0
 
-# Begin configuration section.  
+# Begin configuration section.
 cmd=run.pl
 unk="<unk>"
 # End configuration section
 . ./utils/parse_options.sh
 
-set -e -o pipefail 
+set -e -o pipefail
 set -o nounset                              # Treat unset variables as an error
 
 datadir=$1

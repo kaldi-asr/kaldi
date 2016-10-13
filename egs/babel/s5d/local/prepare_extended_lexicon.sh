@@ -16,7 +16,7 @@ local/extend_lexicon.sh --cmd "$train_cmd" --cleanup false \
   --num-sent-gen $num_sent_gen --num-prons $num_prons \
   data/local/lexicon.txt data/local/lang_ext data/dev2h/text
 
-  
+
 extend_lexicon_param=()
 [ -f data/local/extend/original_oov_rates ] || exit 1;
 unk_fraction=`cat data/local/extend/original_oov_rates |\

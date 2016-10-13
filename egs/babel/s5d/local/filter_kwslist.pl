@@ -24,19 +24,19 @@ foreach my $kwentry (@{$data->{detected_kwlist}}) {
   if(ref($kwentry->{kw}) eq 'ARRAY'){
     my @arr = @{$kwentry->{kw}};
     my @newarray = ();
-    
+
     push @newarray, $arr[0];
     #$arr[0]->{tbeg} . "\n";
     for (my $i = 1; $i < scalar(@arr); $i +=1) {
-      
+
       my $found = 0;
       foreach my $kw (@newarray) {
-        if (( abs($arr[$i]->{tbeg} -  $kw->{tbeg}) < $duptime )  && 
+        if (( abs($arr[$i]->{tbeg} -  $kw->{tbeg}) < $duptime )  &&
             ( $arr[$i]->{channel} ==  $kw->{channel}) &&
             ( $arr[$i]->{file} eq  $kw->{file}) ) {
 
           $found = 1;
-          
+
         #print $arr[$i]->{tbeg} . "\n";
         }
       }
