@@ -18,7 +18,7 @@ my $segment = "";
 my $flen = 0.01;
 GetOptions('symtab=s'   => \$symtab,
            'segment=s'  => \$segment,
-           'flen=f'     => \$flen); 
+           'flen=f'     => \$flen);
 
 if ($symtab) {
   if (!open(S, "<$symtab")) {print "Fail to open symbol table: $symtab\n"; exit 1;}
@@ -82,7 +82,7 @@ while (<$source>) {
   my $uid = shift @col;
   my $words = join(" ", @col);
   @col = split(/;/, $words);
-  
+
   my $utt = $uid;
   my $sta = 0;
   if ($segment) {

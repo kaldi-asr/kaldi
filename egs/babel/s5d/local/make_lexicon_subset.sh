@@ -10,9 +10,9 @@ input_lexicon_file=$2
 output_lexicon_file=$3
 
 (
-  #find $dev_data_dir/transcription/ -name "*.txt" | xargs egrep -vx '\[[0-9.]+\]'  |cut -f 2- -d ':' | sed 's/ /\n/g' 
+  #find $dev_data_dir/transcription/ -name "*.txt" | xargs egrep -vx '\[[0-9.]+\]'  |cut -f 2- -d ':' | sed 's/ /\n/g'
   find $transcriptions -name "*.txt" | xargs egrep -vx '\[[0-9.]+\]'  |cut -f 2- -d ':' | sed 's/ /\n/g'
-) | sort -u | awk ' 
+) | sort -u | awk '
   BEGIN {
       while(( getline line< ARGV[2] ) > 0 ) {
           split(line, e, "\t")
@@ -20,7 +20,7 @@ output_lexicon_file=$3
       }
       FILENAME="-"
       i=0
-    
+
       while(( getline word< ARGV[1] ) > 0 ) {
         if (word in LEXICON)
           print LEXICON[word]

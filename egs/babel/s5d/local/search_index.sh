@@ -3,7 +3,7 @@
 # Copyright 2012  Johns Hopkins University (Author: Guoguo Chen)
 # Apache 2.0
 
-# Begin configuration section.  
+# Begin configuration section.
 cmd=run.pl
 nbest=-1
 strict=true

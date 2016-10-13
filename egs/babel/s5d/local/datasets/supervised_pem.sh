@@ -1,4 +1,4 @@
-#This script is not really supposed to be run directly 
+#This script is not really supposed to be run directly
 #Instead, it should be sourced from the decoding script
 #It makes many assumption on existence of certain environmental
 #variables as well as certain directory structure.

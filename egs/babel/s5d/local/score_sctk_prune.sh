@@ -73,12 +73,12 @@ if [ $stage -le 1 ]; then
       grep -v -E '<v-noise>' | \
       perl -e '@list = (); %list = ();
       while(<>) {
-        chomp; 
-        @col = split(" ", $_); 
+        chomp;
+        @col = split(" ", $_);
         push(@list, $_);
-        $key = "$col[0]" . " $col[1]"; 
+        $key = "$col[0]" . " $col[1]";
         $list{$key} = 1;
-      } 
+      }
       foreach(sort keys %list) {
         $key = $_;
         foreach(grep(/$key/, @list)) {
@@ -103,8 +103,8 @@ if [ $stage -le 1 ]; then
           foreach (@char) {
             $char = encode("UTF8", $_);
             $start += $dur;
-            # printf "$col[0] $col[1] $start $dur $char\n"; 
-            printf "%s %s %.2f %.2f %s %s\n", $col[0], $col[1], $start, $dur, $char, $col[5]; 
+            # printf "$col[0] $col[1] $start $dur $char\n";
+            printf "%s %s %.2f %.2f %s %s\n", $col[0], $col[1], $start, $dur, $char, $col[5];
           }
         }
       }' > $y.char.ctm
@@ -122,7 +122,7 @@ if [ $stage -le 2 ]; then
       cp $data/char.stm $dir/score_LMWT/'&&'\
       $ScoringProgram -s -r $dir/score_LMWT/char.stm stm -h $dir/score_LMWT/${name}.char.ctm ctm -o all -o dtl;
   fi
-  
+
 #  for x in $dir/score_*/*.ctm; do
 #    mv $x.filt $x;
 #    rm -f $x.filt*;

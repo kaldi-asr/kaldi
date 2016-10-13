@@ -89,12 +89,12 @@ if [ $stage -le 1 ]; then
       grep -v -E '<v-noise>' | \
       perl -e '@list = (); %list = ();
       while(<>) {
-        chomp; 
-        @col = split(" ", $_); 
+        chomp;
+        @col = split(" ", $_);
         push(@list, $_);
-        $key = "$col[0]" . " $col[1]"; 
+        $key = "$col[0]" . " $col[1]";
         $list{$key} = 1;
-      } 
+      }
       foreach(sort keys %list) {
         $key = $_;
         foreach(grep(/$key/, @list)) {

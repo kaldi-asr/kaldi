@@ -1,16 +1,16 @@
-#!/bin/bash                                                                        
+#!/bin/bash
 # Copyright (c) 2015, Johns Hopkins University ( Yenda Trmal <jtrmal@gmail.com> )
 # License: Apache 2.0
 
 help_message="Converts normal (with word level transcriptions) into syllabic\nExpects 4 parameters:\n"
-# Begin configuration section.  
+# Begin configuration section.
 boost_sil=1.0
 cmd=run.pl
 nj=4
 # End configuration section
 . ./utils/parse_options.sh
 
-set -e -o pipefail 
+set -e -o pipefail
 set -o nounset                              # Treat unset variables as an error
 
 . ./cmd.sh

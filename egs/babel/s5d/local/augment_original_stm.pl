@@ -8,7 +8,7 @@ use warnings; #sed replacement for -w perl parameter
 #As a result, the scoring will be done on per-speaker basis as well
 #As the segment from segment mapping generally do not correspond to
 #the segmentation of the original STM file, it combines the files
-#segments and utt2spk to work out the correct speaker ID for 
+#segments and utt2spk to work out the correct speaker ID for
 #the reference segment
 #In case of overlay, it will either use the previous speaker or
 #prints out an error message

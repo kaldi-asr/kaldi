@@ -81,7 +81,7 @@ if ($fixed_kwslist_out eq "-") {
   print $xml;
 } else {
   if (!open(O, ">$fixed_kwslist_out")) {
-    print "Fail to open output file: $fixed_kwslist_out\n"; 
+    print "Fail to open output file: $fixed_kwslist_out\n";
     exit 1;
   }
   print O $xml;
