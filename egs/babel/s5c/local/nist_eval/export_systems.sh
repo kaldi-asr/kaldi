@@ -2,11 +2,11 @@
 set -e
 set -o pipefail
 
-. ./cmd.sh; . ./path.sh; 
+. ./cmd.sh; . ./path.sh;
 
 
 #(
-#bash filter_data.sh  --cmd "$decode_cmd"  data/shadow.uem eval.uem exp/sgmm5_mmi_b0.1/decode_*shadow.uem_it* 
+#bash filter_data.sh  --cmd "$decode_cmd"  data/shadow.uem eval.uem exp/sgmm5_mmi_b0.1/decode_*shadow.uem_it*
 #bash filter_data.sh  --cmd "$decode_cmd"  data/shadow.uem eval.uem exp_bnf/sgmm7_mmi_b0.1/decode_*shadow.uem_it*
 #) &
 #bash filter_data.sh  --cmd "$decode_cmd"  data/shadow.uem eval.uem exp/tri6*_nnet*/decode_shadow.uem*
@@ -14,9 +14,9 @@ set -o pipefail
 
 (
 bash filter_data.sh  --cmd "$decode_cmd"  data/shadow.uem dev10h.uem exp_bnf/sgmm7_mmi_b0.1/decode_*shadow.uem_it*
-#bash filter_data.sh  --cmd "$decode_cmd"  data/shadow.uem dev10h.uem exp/sgmm5_mmi_b0.1/decode_*shadow.uem_it* 
+#bash filter_data.sh  --cmd "$decode_cmd"  data/shadow.uem dev10h.uem exp/sgmm5_mmi_b0.1/decode_*shadow.uem_it*
 ) &
-bash filter_data.sh  --cmd "$decode_cmd"  data/shadow.uem dev10h.uem exp/tri6*_nnet*/decode_shadow.uem 
+bash filter_data.sh  --cmd "$decode_cmd"  data/shadow.uem dev10h.uem exp/tri6*_nnet*/decode_shadow.uem
 wait
 
 wait

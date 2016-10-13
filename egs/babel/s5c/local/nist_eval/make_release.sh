@@ -57,7 +57,7 @@ function export_file {
       else
         echo "$source_file -> $target_file"
       fi
-      
+
     else
       echo "The file is already there, not doing anything. Either change the version (using --version), or delete that file manually)"
       exit 1
@@ -72,7 +72,7 @@ function export_kws_file {
   fixed_xml=$2
   kwlist=$3
   export_xml=$4
-  
+
   echo "Exporting KWS $source_xml as `basename $export_xml`"
   if [ -f $source_xml ] ; then
     cp $source_xml $fixed_xml.bak
@@ -110,7 +110,7 @@ function find_best_stt_result {
   local dir=$1
   local mask=$2
   local record=`(find $dir -name "*.ctm.sys" -path "$mask" -not -ipath "*rescore*" | xargs grep Avg)  | sed 's/|//g' | column -t | sort -n -k 9 | head -n 1`
-  
+
   echo $record >&2
   local file=`echo $record | awk -F ":" '{print $1}'`
   #echo $file >&2
@@ -200,7 +200,7 @@ function figure_out_scase {
   if [[ $ecf =~ IARPA-babel.*.ecf.xml ]] ; then
     local basnam=${ecf%%.ecf.xml}
     local scase=`echo $basnam | awk -F _ '{print $2}'`
-    
+
     if [[ $scase =~ conv-dev(\..*)? ]]; then
       echo "BaDev"
     elif [[ $scase =~ conv-eval(\..*)? ]]; then
@@ -211,7 +211,7 @@ function figure_out_scase {
       echo "BaDev"
       return 1
     fi
-  else 
+  else
     echo "WARNING: The ECF file  $ecf is probably not an official file" >&2
     echo "WARNING: Does not match the mask IARPA-babel.*.ecf.xml" >&2
     echo "BaDev"
@@ -225,7 +225,7 @@ function figure_out_partition {
   if [[ $ecf =~ IARPA-babel.*.ecf.xml ]] ; then
     local basnam=${ecf%%.ecf.xml}
     local scase=`echo $basnam | awk -F _ '{print $2}'`
-    
+
     if [[ $scase =~ conv-dev(\..*)? ]]; then
       echo "conv-dev"
     elif [[ $scase =~ conv-eval(\..*)? ]]; then
@@ -235,7 +235,7 @@ function figure_out_partition {
       echo "conv-dev"
       return 1
     fi
-  else 
+  else
     echo "WARNING: The ECF file  $ecf is probably not an official file" >&2
     echo "conv-dev"
     return 1
@@ -264,7 +264,7 @@ fi
 #data=data/shadow.uem
 dirid=`basename $data`
 kws_tasks="kws "
-[ -f $data/extra_kws_tasks ] &&  kws_tasks+=`cat $data/extra_kws_tasks | awk '{print $1"_kws"}'` 
+[ -f $data/extra_kws_tasks ] &&  kws_tasks+=`cat $data/extra_kws_tasks | awk '{print $1"_kws"}'`
 [ -d $data/compounds ] && compounds=`ls $data/compounds`
 
 if [ -z "$compounds" ] ; then
@@ -295,7 +295,7 @@ else
       submit_to_google $best_one $ATWV $MTWV
     ) || echo "Submission failed!"
 
-    
+
     for compound in $compounds ; do
       compound_best_one=`echo $best_one | sed "s:$master/${kws}_:$compound/${kws}_:g"`
       echo "From ($kws) $best_one going to $compound_best_one"

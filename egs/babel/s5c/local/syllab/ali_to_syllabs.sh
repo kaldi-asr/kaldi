@@ -1,8 +1,8 @@
-#!/bin/bash                                                                        
+#!/bin/bash
 # Copyright (c) 2015, Johns Hopkins University (Yenda Trmal <jtrmal@gmail.com>)
 # License: Apache 2.0
 
-# Begin configuration section.  
+# Begin configuration section.
 cmd=run.pl
 # End configuration section
 . ./utils/parse_options.sh
@@ -21,7 +21,7 @@ if [ $# != 4 ]; then
   exit 1;
 fi
 
-set -e -o pipefail 
+set -e -o pipefail
 set -o nounset                              # Treat unset variables as an error
 
 
@@ -31,20 +31,20 @@ ali=$3
 out=$4
 
 
-for f in real_words.txt lex.words2syllabs.fst ; do 
+for f in real_words.txt lex.words2syllabs.fst ; do
   [ ! -f $lang/$f ] && \
     echo "The given lang directory is probably not a syllable lang dir" && \
     echo "The file $lang/$f is missing" && \
     exit 1
 done
 
-for f in words.txt L.fst ; do 
+for f in words.txt L.fst ; do
   [ ! -f $lang/$f ] && \
     echo "The given lang directory does not contain the $f file" && \
     exit 1
 done
-  
-for f in $ali/num_jobs $ali/final.mdl $ali/ali.1.gz  ; do 
+
+for f in $ali/num_jobs $ali/final.mdl $ali/ali.1.gz  ; do
   [ ! -f $f ] && \
     echo "The given lang directory does not contain the $f file" && \
     exit 1

@@ -102,7 +102,7 @@ sub KwslistTimeCompare {
     }
   } else {
     $a->[0] cmp $b->[0];
-  } 
+  }
 }
 
 sub KwslistTimeSort {
@@ -124,7 +124,7 @@ EOU
 
 my $method = 1;
 my $power = 0.5;
-GetOptions('tolerance=f'    => \$tolerance, 
+GetOptions('tolerance=f'    => \$tolerance,
  'method=i'                 => \$method,
  'power=f'                  => \$power,
  'inv-power=f'              => sub { (my $opt, my $val) = @_; $power = 1.0/$val;});
