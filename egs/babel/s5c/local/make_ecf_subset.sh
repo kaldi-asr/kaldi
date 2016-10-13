@@ -8,7 +8,7 @@ echo "$0 $@" 1>&2 # Print the command line for logging
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;
 
-help_message="$0: generates an subset ecf file for spoken term detection evaluation. 
+help_message="$0: generates an subset ecf file for spoken term detection evaluation.
                 The first parameter specifies the descriptor of the subset,
                 the second parameter specifies the original ecf file.
                 The file will be generated in the kws subdirectory of the directory
@@ -47,6 +47,6 @@ duration=`grep -F -f $list_file $src_ecf_file | sed "s/.*dur=\"\([0-9.][0-9.]*\)
 # Output is produced here:
 (
   grep "<ecf" $src_ecf_file | sed "s/source_signal_duration=\\\"[0-9.][0-9.]*\\\"/source_signal_duration=\"$duration\"/g" | head -n 1;
-  grep -F -f $list_file $src_ecf_file 
+  grep -F -f $list_file $src_ecf_file
   echo "</ecf>"
 )

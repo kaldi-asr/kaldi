@@ -30,12 +30,12 @@ mkdir -p $datadir
 
 echo "Converting `basename $database` to kaldi directory $datadir "
 cat $database | perl -pe 's:.+(BABEL):BABEL:; s:\}\s+\{FROM\s+: :; s:\}\s+\{TO\s+: :; s:\}.+::;' | \
-  perl -ne '@K = split; 
-            $utteranceID = @K[0]; 
-            $utteranceID =~ s:[^_]+_[^_]+_[^_]+_::; 
-            $utteranceID =~ s:([^_]+)_(.+)_(inLine|scripted):${1}_A_${2}:; 
-            $utteranceID =~ s:([^_]+)_(.+)_outLine:${1}_B_${2}:; 
-            $utteranceID .= sprintf ("_%06i", (100*@K[2])); 
+  perl -ne '@K = split;
+            $utteranceID = @K[0];
+            $utteranceID =~ s:[^_]+_[^_]+_[^_]+_::;
+            $utteranceID =~ s:([^_]+)_(.+)_(inLine|scripted):${1}_A_${2}:;
+            $utteranceID =~ s:([^_]+)_(.+)_outLine:${1}_B_${2}:;
+            $utteranceID .= sprintf ("_%06i", (100*@K[2]));
             printf("%s %s %.2f %.2f\n", $utteranceID, @K[0], @K[1], @K[2]);' | sort > $datadir/segments
 
 if [ ! -z $filelist ] ; then
@@ -66,12 +66,12 @@ perl -ne '{chomp; @K=split; $utt{@K[1]}.=" @K[0]";}
 # 4. Create the wav.scp file:
 sph2pipe=`which sph2pipe || which $KALDI_ROOT/tools/sph2pipe_v2.5/sph2pipe`
 if [ $? -ne 0 ] ; then
-  echo "Could not find sph2pipe binary. Add it to PATH"  
+  echo "Could not find sph2pipe binary. Add it to PATH"
   exit 1;
 fi
 sox=`which sox`
 if [ $? -ne 0 ] ; then
-  echo "Could not find sox binary. Add it to PATH"  
+  echo "Could not find sox binary. Add it to PATH"
   exit 1;
 fi
 
@@ -84,19 +84,19 @@ echo "Creating the $datadir/wav.scp file"
     elif [ -f $audiopath/audio/$file.wav ] ; then
       echo "$file $sox $audiopath/audio/$file.wav -r 8000 -c 1 -b 16 -t wav - downsample |"
     else
-      echo "Audio file $audiopath/audio/$file.sph does not exist!" >&2 
+      echo "Audio file $audiopath/audio/$file.sph does not exist!" >&2
       exit 1
     fi
-  done | sort -u > $datadir/wav.scp 
-  if [ $? -ne 0 ] ; then 
-    echo "Error producing the wav.scp file" 
+  done | sort -u > $datadir/wav.scp
+  if [ $? -ne 0 ] ; then
+    echo "Error producing the wav.scp file"
     exit 1
   fi
-) || exit 1 
+) || exit 1
 
 l1=`wc -l $datadir/wav.scp | cut -f 1 -d ' ' `
 echo "wav.scp contains $l1 files"
-if [ ! -z $filelist ] ; then 
+if [ ! -z $filelist ] ; then
   l2=`wc -l $filelist | cut -f 1 -d ' '`
   echo "filelist `basename $filelist` contains $l2 files"
 

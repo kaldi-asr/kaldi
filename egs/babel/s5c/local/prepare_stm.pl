@@ -92,7 +92,7 @@ while ($line=<SEGMENTS>) {
     @tokens = split(/\s+/, $line);
     unless ($#tokens == 3) {
       $num_failed_parses+=1;
-      print STDERR "$0: Couldn't parse line $. in $segmentsFile\n" 
+      print STDERR "$0: Couldn't parse line $. in $segmentsFile\n"
         if ($num_failed_parses == 1);
       print STDERR ("\tLine: $line")
         if ($num_failed_parses le $num_failed_parses_max);
@@ -174,7 +174,7 @@ while ($line=<SCP>) {
     $waveform{$recordingID} =~ s:.+/::;             # remove path prefix
     $waveform{$recordingID} =~ s:\.(sph|wav)\s*$::; # remove file extension
     $channel{$recordingID} = 1                      # Default
-      unless (exists $channel{$recordingID});     
+      unless (exists $channel{$recordingID});
     ++$numRecordings;
 }
 close(SCP);
@@ -321,7 +321,7 @@ while ($line=<STM>) {
     $w =~ s:([^\x00-\x7F])(?=[^\x00-\x7F]):$1 :g; # split adjacent non-ASCII chars
     print CHARSTM ("$w\n");
 }
-close(CHARSTM);    
+close(CHARSTM);
 close(STM);
 print STDERR ("$0: Wrote char.stm file $charStmFile\n");
 

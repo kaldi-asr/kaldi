@@ -24,8 +24,8 @@ function process {
     replace+="\t"
   done
 
-  ( 
-    eval `grep "group=all"` 
+  (
+    eval `grep "group=all"`
     echo -n "threads=$total_threads"
     echo -n " cpu_time=$total_cpu_time wall_time=$clock_time"
     echo -n " human_cpu_time="`convertsecs $total_cpu_time`
@@ -43,17 +43,17 @@ local/summarize_logs.pl $dir/exp/make_*/*train*/  |  process
 
 if [ -d $dir/data/local/extend ] ; then
   legend "Extending the lexicon"
-  local/summarize_logs.pl $dir/data/local/extend/tmp/log | process 
+  local/summarize_logs.pl $dir/data/local/extend/tmp/log | process
 fi
 
 legend "Training upto stage tri5"
-local/summarize_logs.pl $dir/exp/mono*/log $dir/exp/tri{1..5}/log $dir/exp/tri{1..4}_ali*/log | process 
+local/summarize_logs.pl $dir/exp/mono*/log $dir/exp/tri{1..5}/log $dir/exp/tri{1..4}_ali*/log | process
 
 legend "SGMM2 stage training"
-local/summarize_logs.pl $dir/exp/ubm5/log $dir/exp/sgmm5/log $dir/exp/tri5_ali/log  | process 
+local/summarize_logs.pl $dir/exp/ubm5/log $dir/exp/sgmm5/log $dir/exp/tri5_ali/log  | process
 
 legend "SGMM2+bMMI stage training"
-local/summarize_logs.pl $dir/exp/sgmm5_*/log $dir/exp/ubm5/log $dir/exp/sgmm5_denlats/log/* | process 
+local/summarize_logs.pl $dir/exp/sgmm5_*/log $dir/exp/ubm5/log $dir/exp/sgmm5_denlats/log/* | process
 
 nnet=tri6_nnet
 [ ! -d $dir/exp/$nnet ] && nnet=tri6b_nnet

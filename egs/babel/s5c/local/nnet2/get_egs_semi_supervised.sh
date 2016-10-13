@@ -7,7 +7,7 @@
 # This script, which will generally be called from other neural-net training
 # scripts, extracts the training examples used to train the neural net (and also
 # the validation examples used for diagnostics), and puts them in separate archives.
-# This is similar to the script steps/nnet2/get_egs.sh, but this also extracts 
+# This is similar to the script steps/nnet2/get_egs.sh, but this also extracts
 # frames from unsupervsied data. Decode directory for unsupervised data which
 # has the best path done along with posteriors (can be done using local/combine_posteriors.sh)
 
@@ -25,15 +25,15 @@ samples_per_iter=400000 # each iteration of training, see this many samples
                         # per job.  This is just a guideline; it will pick a number
                         # that divides the number of samples in the entire data.
 transform_dir_sup=     # If supplied, overrides alidir
-transform_dir_unsup=   
+transform_dir_unsup=
 num_jobs_nnet=16    # Number of neural net jobs to run in parallel
 stage=-10
-io_opts="--max-jobs-run 5" # for jobs with a lot of I/O, limits the number running at one time. 
+io_opts="--max-jobs-run 5" # for jobs with a lot of I/O, limits the number running at one time.
 splice_width=4 # meaning +- 4 frames on each side for second LDA
 spk_vecs_dir_sup=
 spk_vecs_dir_unsup=
 random_copy=false
-weight_threshold=0.7    # Threshold on confidence factor of an unsupervised data 
+weight_threshold=0.7    # Threshold on confidence factor of an unsupervised data
                         # frame for it to not be ignored
 supervised_copies=3     # Make x copies of supervised data.
 use_frame_selection=true
@@ -70,7 +70,7 @@ if [ $# != 6 ]; then
   echo "  --supervised-copies <#copies|3>                  # Make copies of supervised data"
   echo "  --transform-dir-sup                              # Directory with transforms for supervised training data"
   echo "  --transform-dir-unsup                            # Directory with transforms for unsupervised training data"
-  
+
   exit 1;
 fi
 
@@ -109,7 +109,7 @@ cp $alidir/tree $dir
 
 awk '{print $1}' $data_sup/utt2spk | utils/shuffle_list.pl | head -$num_utts_subset > $dir/valid_uttlist
 
-# TODO (Vimal 22-Jan-14): Might need to deal unsupervised data separately 
+# TODO (Vimal 22-Jan-14): Might need to deal unsupervised data separately
 if [ -f $data_sup/utt2uniq ]; then
   echo "File $data_sup/utt2uniq exists, so augmenting valid_uttlist to"
   echo "include all perturbed versions of the same 'real' utterances."
@@ -121,7 +121,7 @@ if [ -f $data_sup/utt2uniq ]; then
   rm $dir/uniq2utt $dir/valid_uttlist.tmp
 fi
 
-# TODO (Vimal 22-Jan-14): Might need to deal unsupervised data separately 
+# TODO (Vimal 22-Jan-14): Might need to deal unsupervised data separately
 awk '{print $1}' $data_sup/utt2spk | utils/filter_scp.pl --exclude $dir/valid_uttlist | \
      head -$num_utts_subset > $dir/train_subset_uttlist
 
@@ -137,7 +137,7 @@ if [ "$norm_vars" != "$norm_vars_unsup" ]; then
 fi
 cp $alidir/norm_vars $dir 2>/dev/null
 
-## Set up features. 
+## Set up features.
 if [ -z $feat_type ]; then
   if [ -f $alidir/final.mat ] && [ ! -f $transform_dir_sup/raw_trans.1 ]; then feat_type=lda; else feat_type=raw; fi
 fi
@@ -150,7 +150,7 @@ case $feat_type in
     valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data_sup/feats.scp | apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data_sup/utt2spk scp:$data_sup/cmvn.scp scp:- ark:- |"
     train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data_sup/feats.scp | apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data_sup/utt2spk scp:$data_sup/cmvn.scp scp:- ark:- |"
    ;;
-  lda) 
+  lda)
     splice_opts=`cat $alidir/splice_opts 2>/dev/null`
     #splice_opts_unsup=`cat $latdir/../splice_opts 2>/dev/null`
     #if [ "$splice_opts" -ne "$splice_opts_unsup" ]; then
@@ -159,14 +159,14 @@ case $feat_type in
     #  exit 1
     #fi
     cp $alidir/splice_opts $dir/splice_opts 2>/dev/null
-  
+
     #if [ "`diff $alidir/final.mat $latdir/../final.mat &> /dev/null; echo $?`" -ne "0" ]; then
     #  echo "ERROR: Features mismatch for supervised and unsupervised data!"
     #  echo "LDA matrices $alidir/final.mat for supervised data and $latdir/../final.mat for unsupervised data don't match"
     #  exit 1
     #fi
 
-    cp $alidir/final.mat $dir    
+    cp $alidir/final.mat $dir
     feats_sup="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata_sup/JOB/feats.scp | apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata_sup/JOB/utt2spk scp:$sdata_sup/JOB/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
     feats_unsup="ark,s,cs:cat $sdata_unsup/JOB/feats.scp | apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata_unsup/JOB/utt2spk scp:$sdata_unsup/JOB/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
     valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data_sup/feats.scp | apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data_sup/utt2spk scp:$data_sup/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
@@ -309,18 +309,18 @@ if [ $stage -le 3 ]; then
   for (( i=0; i<supervised_copies; i++ )); do
     nj_start=$((nj_unsup + i * nj_sup))
     nj_end=$((nj_unsup + (i+1) * nj_sup))
-    
+
     egs_list=
     for n in `seq 1 $num_jobs_nnet`; do
       egs_list="$egs_list ark:$dir/egs/egs_orig.$n.$i.JOB.ark"
     done
-    
+
     $cmd $io_opts JOB=1:$nj_sup $dir/log/get_egs.$i.JOB.log \
       nnet-get-egs $nnet_context_opts "${spk_vecs_opt_sup[@]}" "$feats_sup" \
       "ark,s,cs:gunzip -c $alidir/ali.JOB.gz | ali-to-pdf $alidir/final.mdl ark:- ark:- | ali-to-post ark:- ark:- |" ark:- \| \
       nnet-copy-egs --random=true --srand=\$\(\(JOB+$nj_sup*$i\)\) ark:- $egs_list || exit 1;
 
-    #for n in `seq 1 $num_jobs_nnet`; do 
+    #for n in `seq 1 $num_jobs_nnet`; do
     #  for j in `seq 1 $nj_sup`; do
     #    mv $dir/egs/egs_orig.$n.$i.$j.ark $dir/egs/egs_orig.$n.$((nj_unsup+i*nj_sup+j)).ark || exit 1
     #  done

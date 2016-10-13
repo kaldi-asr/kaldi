@@ -98,7 +98,7 @@ use Getopt::Long;
 
 print STDERR "$0 " . join(" ", @ARGV) . "\n";
 GetOptions("fragmentMarkers=s" => \$fragMarkers,
-           "oov=s" => \$OOV_symbol, 
+           "oov=s" => \$OOV_symbol,
            "vocab=s" => \$vocabFile,
            "icu-transform=s" => \$icu_transform,
            "get-whole-transcripts=s" => \$get_whole_transcripts
@@ -112,7 +112,7 @@ if ($#ARGV == 1) {
 	print STDERR ("\tLimiting transcriptions to words in $vocabFile\n");
 	print STDERR ("\tMapping OOV tokens to \"$OOV_symbol\"\n");
 	print STDERR ("\tif they remain OOV even after removing [$fragMarkers] from either end\n") if ($fragMarkers);
-    }        
+    }
     print STDERR ("$0 ADVICE: Use full path for the Input Directory\n") unless ($inDir=~m:^/:);
 } else {
     print STDERR ("Usage: $0 [--options] InputDir OutputDir\n");
@@ -295,7 +295,7 @@ if (-d $TranscriptionDir) {
     } else {
         print STDERR ("$0 ERROR: No .txt files found $TranscriptionDir\n");
         exit(1);
-    } 
+    }
 } else {
     print STDERR ("$0 ERROR: No directory named $TranscriptionDir\n");
     exit(1);
@@ -322,8 +322,8 @@ if (-d $AudioDir) {
                 $SampleRate  = 8000; #default
                 while ($#Info>=0) {
                    $line = shift @Info;
-                   $SampleCount = $1 if ($line =~ m:sample_count -i (\d+):); 
-                   $SampleRate  = $1 if ($line =~ m:sample_rate -i (\d+):); 
+                   $SampleCount = $1 if ($line =~ m:sample_count -i (\d+):);
+                   $SampleRate  = $1 if ($line =~ m:sample_rate -i (\d+):);
                 }
                 if ($SampleCount<0) {
                     # Unable to extract a valid duration from the sphere header
@@ -342,7 +342,7 @@ if (-d $AudioDir) {
         print STDERR ("$0: Recorded durations from headers of $numFiles .sph files\n");
     } else {
         print STDERR ("$0 NOTICE: No .sph files in $AudioDir\n");
-    } 
+    }
 
     @AudioFiles = `ls ${AudioDir}/*.wav`;
     if ($#AudioFiles >= 0) {
@@ -378,8 +378,8 @@ if (-d $AudioDir) {
         print STDERR ("$0: Recorded durations from headers of $numFiles .sph files\n");
     } else {
         print STDERR ("$0 NOTICE: No .wav files in $AudioDir\n");
-    } 
-    
+    }
+
     if ( $#waveformName == 0 ) {
       print STDERR ("$0 ERROR: No audio files found!");
     }

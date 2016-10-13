@@ -23,7 +23,7 @@ sub parse_accounting_entry {
   $entry= shift @_;
 
   @elems = split " ", $entry;
-  
+
   $time=undef;
   $threads=undef;
   foreach $elem (@elems) {
@@ -96,7 +96,7 @@ foreach $c (sort (keys %fmap)) {
   $total_threads=0.0;
   foreach $fgroup (split_hundreds($fmap{$c})) {
     $lines=`grep -P "# Accounting:? " $fgroup |sed 's/.* Accounting:* *//g'`;
-    
+
     #print $lines ."\n";
 
     @entries = split "\n", $lines;

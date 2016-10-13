@@ -29,5 +29,5 @@ foreach my $kwentry (@{$data->{kw}}) {
 }
 $data->{kw} = \@filtered_kws;
 my $xml = XMLout($data, RootName=> "kwlist", KeyAttr=>'');
-print $xml; 
+print $xml;
 exit 0

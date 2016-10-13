@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 #===============================================================================
 # Copyright 2015  (Author: Yenda Trmal <jtrmal@gmail.com>)
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -33,7 +33,7 @@ my %PRON2SYL;
 open(my $f, $syllab_lexicon) or die "Cannot open file $syllab_lexicon\n";
 while (my $line = <$f>) {
   chomp $line;
-  
+
   my $syll;
   my $pron;
   my $prob;
