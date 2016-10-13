@@ -19,20 +19,21 @@ This scripts checks if the entries of a file containing disambiguation symbols
 - must not be equal to '#-1' (disallowed because it is used internally in some
   FST stuff).
 
-In case the option '--extra-disambig-syms' is used with 'true', the symbols must
+In case the option '--allow-numeric' is used with 'false', the symbols must
 also be non-numeric (to avoid overlap with the automatically generated symbols).
 
 Allowed options:
-  --extra-disambig-syms  : Indicate extra symbols  (boolean,  default = "false")
+  --allow-numeric (true|false) : Default true. If false, disallow numeric
+                                 disambiguation symbols like #0, #1 and so on.
 
 EOU
 
 # Command line options
-my $extra_disambig_syms = "false";
+my $allow_numeric = "true";
 
 # Get the optional command line options
 GetOptions(
-    "extra-disambig-syms=s" => \$extra_disambig_syms,
+    "allow-numeric=s" => \$allow_numeric,
     ) or die ($Usage);
 
 if (@ARGV != 1) {
@@ -66,7 +67,7 @@ while (<SYMS>) {
     if ($sympart eq "-1") {
       print "$0: The disambiguation symbol \"$symbol\" is not allowed, exiting ...\n"; exit 1;
     }
-    if ($extra_disambig_syms eq "true" &&
+    if ($allow_numeric eq "false" &&
 	$sympart =~/^[0-9]+$/) {
       print "$0: Since \"$symbol\" is supposed to be an extra disambiguation symbol, it must not be numeric, exiting ...\n"; exit 1;
     }

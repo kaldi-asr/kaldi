@@ -151,9 +151,9 @@ fi
 
 # In case there are extra word-level disambiguation symbols we need
 # to make sure that all symbols in the provided file are valid.
-if [[ ! -z $extra_word_disambig_syms ]]; then
-  if ! utils/validate_disambig_sym_file.pl --extra-disambig-syms $extra_word_disambig_syms; then
-    echo "Validation of disambiguation file \"$extra_word_disambig_syms\" failed."
+if [ ! -z "$extra_word_disambig_syms" ]; then
+  if ! utils/lang/validate_disambig_sym_file.pl --allow-numeric "false" $extra_word_disambig_syms; then
+    echo "$0: Validation of disambiguation file \"$extra_word_disambig_syms\" failed."
     exit 1;
   fi
 fi
@@ -292,10 +292,9 @@ echo $ndisambig > $tmpdir/lex_ndisambig
 
 # In case there are extra word-level disambiguation symbols they also
 # need to be added to the list of phone-level disambiguation symbols.
-if [[ ! -z $extra_word_disambig_syms ]]; then
+if [ ! -z "$extra_word_disambig_syms" ]; then
   # We expect a file containing valid word-level disambiguation symbols.
-  # The regular expression for awk is just a paranoia filter (e.g. for empty lines).
-  cat $extra_word_disambig_syms | awk '/^#\w+$/ { print $1 }' >> $dir/phones/disambig.txt
+  cat $extra_word_disambig_syms | awk '{ print $1 }' >> $dir/phones/disambig.txt
 fi
 
 # Create phone symbol table.
@@ -359,17 +358,15 @@ cat $tmpdir/lexiconp.txt | awk '{print $1}' | sort | uniq  | awk '
 
 # In case there are extra word-level disambiguation symbols they also
 # need to be added to words.txt
-if [[ ! -z $extra_word_disambig_syms ]]; then
-  # Since words.txt already exist, we need to extract the current word count.
+if [ ! -z "$extra_word_disambig_syms" ]; then
+  # Since words.txt already exists, we need to extract the current word count.
   word_count=`tail -n 1 $dir/words.txt | awk '{ print $2 }'`
 
   # We expect a file containing valid word-level disambiguation symbols.
-  # The regular expression for awk is just a paranoia filter (e.g. for empty lines).
-  cat $extra_word_disambig_syms | awk -v WC=$word_count '
-  /^#\w+$/
-  {
-    printf("%s %d\n", $1, ++WC);
-  }' >> $dir/words.txt || exit 1;
+  # The list of symbols is attached to the current words.txt (including
+  # a numeric identifier for each symbol).
+  cat $extra_word_disambig_syms | \
+    awk -v WC=$word_count '{ printf("%s %d\n", $1, ++WC); }' >> $dir/words.txt || exit 1;
 fi
 
 # format of $dir/words.txt:
@@ -439,10 +436,10 @@ echo '#0' >$dir/phones/wdisambig.txt
 
 # In case there are extra word-level disambiguation symbols they need
 # to be added to the existing word-level disambiguation symbols file.
-if [[ ! -z $extra_word_disambig_syms ]]; then
+if [ ! -z "$extra_word_disambig_syms" ]; then
   # We expect a file containing valid word-level disambiguation symbols.
   # The regular expression for awk is just a paranoia filter (e.g. for empty lines).
-  cat $extra_word_disambig_syms | awk '/^#\w+$/ { print $1 }' >> $dir/phones/wdisambig.txt
+  cat $extra_word_disambig_syms | awk '{ print $1 }' >> $dir/phones/wdisambig.txt
 fi
 
 utils/sym2int.pl $dir/phones.txt <$dir/phones/wdisambig.txt >$dir/phones/wdisambig_phones.int
