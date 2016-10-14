@@ -43,10 +43,9 @@ function do_filtering {
 mkdir -p $destdir
 
 # filter the utt2spk based on the set of recordings
-rm -f $destdir/utt2spk
-for i in `cat $reclist`; do
-	cat $srcdir/utt2spk | grep ^$i >> $destdir/utt2spk
-done
+cat $reclist | awk '{print "^"$0}' > $reclist.tmp
+cat $srcdir/utt2spk | grep -ewF -f $reclist.tmp > $destdir/utt2spk
+rm -f $reclist.tmp
 
 utils/utt2spk_to_spk2utt.pl < $destdir/utt2spk > $destdir/spk2utt
 do_filtering;
