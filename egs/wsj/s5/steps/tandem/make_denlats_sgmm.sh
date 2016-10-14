@@ -52,6 +52,8 @@ splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
 normft2=`cat $srcdir/normft2 2>/dev/null`
 mkdir -p $dir/log
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
+
 sdata1=$data1/split$nj
 sdata2=$data2/split$nj
 [[ -d $sdata1 && $data1/feats.scp -ot $sdata1 ]] || split_data.sh $data1 $nj || exit 1;

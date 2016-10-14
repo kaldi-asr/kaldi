@@ -82,11 +82,6 @@ int main(int argc, char *argv[]) {
     po.Register("use-gpu", &use_gpu,
         "yes|no|optional, only has effect if compiled with CUDA");
 
-    double dropout_retention = 0.0;
-    po.Register("dropout-retention", &dropout_retention,
-        "number between 0..1, controls how many neurons are preserved "
-        "(0.0 will keep the value unchanged)");
-
     po.Read(argc, argv);
 
     if (po.NumArgs() != 3 + (crossvalidate ? 0 : 1)) {
@@ -120,13 +115,9 @@ int main(int argc, char *argv[]) {
     nnet.Read(model_filename);
     nnet.SetTrainOptions(trn_opts);
 
-    if (dropout_retention > 0.0) {
-      nnet_transf.SetDropoutRetention(dropout_retention);
-      nnet.SetDropoutRetention(dropout_retention);
-    }
     if (crossvalidate) {
-      nnet_transf.SetDropoutRetention(1.0);
-      nnet.SetDropoutRetention(1.0);
+      nnet_transf.SetDropoutRate(0.0);
+      nnet.SetDropoutRate(0.0);
     }
 
     kaldi::int64 total_frames = 0;

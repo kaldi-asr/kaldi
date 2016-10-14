@@ -16,8 +16,8 @@ else
 fi
 # Language models (Cantab Research):
 if [ ! -d cantab-TEDLIUM ]; then
-    echo "Downloading \"http://cantabresearch.com/cantab-TEDLIUM.tar.bz2\". "
-    wget --no-verbose --output-document=- http://cantabresearch.com/cantab-TEDLIUM.tar.bz2 | bzcat | tar --extract --file=- || exit 1
+    echo "Downloading \"http://www.openslr.org/resources/27/cantab-TEDLIUM.tar.bz2\". "
+    wget --no-verbose --output-document=- http://www.openslr.org/resources/27/cantab-TEDLIUM.tar.bz2 | bzcat | tar --extract --file=- || exit 1
     gzip cantab-TEDLIUM/cantab-TEDLIUM-pruned.lm3
     gzip cantab-TEDLIUM/cantab-TEDLIUM-unpruned.lm4
 fi

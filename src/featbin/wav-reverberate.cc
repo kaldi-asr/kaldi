@@ -184,7 +184,8 @@ int main(int argc, char *argv[]) {
                 "A comma separated list of additive signals. "
                 "They can be either filenames or piped commands. "
                 "E.g. --additive-signals='noise1.wav,noise2.wav' or "
-                "'sox noise1.wav - |,sox noise2.wav - |' ");
+                "'sox noise1.wav - |,sox noise2.wav - |'. "
+                "Requires --snrs and --start-times.");
     po.Register("snrs", &snrs,
                 "A comma separated list of SNRs(dB). "
                 "The additive signals will be scaled according to these SNRs. "
@@ -203,13 +204,13 @@ int main(int argc, char *argv[]) {
     po.Register("duration", &duration,
                 "If nonzero, it specified the duration (secs) of the output "
                 "signal. If the duration t is less than the length of the "
-                "input signal, the first t secs of the signal is trimed, "
-                "otherwise, the signal will be repeated to"
+                "input signal, the first t secs of the signal is trimmed, "
+                "otherwise, the signal will be repeated to "
                 "fulfill the duration specified.");
     po.Register("volume", &volume,
                 "If nonzero, a scaling factor on the signal that is applied "
                 "after reverberating and possibly adding noise. "
-                "If you set this option to a nonzero value, it will be as"
+                "If you set this option to a nonzero value, it will be as "
                 "if you had also specified --normalize-output=false.");
 
     po.Read(argc, argv);
@@ -270,6 +271,9 @@ int main(int argc, char *argv[]) {
 
     std::vector<Matrix<BaseFloat> > additive_signal_matrices;
     if (!additive_signals.empty()) {
+      if (snrs.empty() || start_times.empty())
+        KALDI_ERR << "--additive-signals option requires "
+                     "--snrs and --start-times to be set.";
       std::vector<std::string> split_string;
       SplitStringToVector(additive_signals, ",", true, &split_string);
       for (size_t i = 0; i < split_string.size(); i++) {
@@ -336,6 +340,8 @@ int main(int argc, char *argv[]) {
       if (additive_signal_matrices.size() > 0) {
         Vector<BaseFloat> noise(0);
         int32 this_noise_channel = (multi_channel_output ? output_channel : noise_channel);
+        KALDI_ASSERT(additive_signal_matrices.size() == snr_vector.size());
+        KALDI_ASSERT(additive_signal_matrices.size() == start_time_vector.size());
         for (int32 i = 0; i < additive_signal_matrices.size(); i++) {
           noise.Resize(additive_signal_matrices[i].NumCols());
           noise.CopyRowFromMat(additive_signal_matrices[i], this_noise_channel);

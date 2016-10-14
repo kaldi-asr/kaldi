@@ -174,7 +174,8 @@ class NnetComputer {
                           CommandDebugInfo *info);
   // only non-const because of the way GetSubMatrix works.
   void DebugAfterExecute(int32 command,
-                         const CommandDebugInfo &info);
+                         const CommandDebugInfo &info,
+                         double command_execution_time);
 
 
 };

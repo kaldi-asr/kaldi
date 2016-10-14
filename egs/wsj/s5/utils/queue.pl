@@ -349,7 +349,7 @@ if ($queue_scriptfile !~ m:^/:) {
 
 my $syncfile = "$qdir/sync/done.$$";
 
-system("rm $queue_logfile $syncfile 2>/dev/null");
+unlink($queue_logfile, $syncfile);
 #
 # Write to the script file, and then close it.
 #
@@ -465,7 +465,7 @@ if (! $sync) { # We're not submitting with -sync y, so we
           if (rand() > 0.5) {
             system("touch $qdir/sync/.kick");
           } else {
-            system("rm $qdir/sync/.kick 2>/dev/null");
+            unlink("$qdir/sync/.kick");
           }
         }
         if ($counter++ % 10 == 0) {
@@ -501,17 +501,17 @@ if (! $sync) { # We're not submitting with -sync y, so we
           # but it hasn't, due to timestamp issues.  Changing something in the
           # directory will usually fix that.
           system("touch $qdir/sync/.kick");
-          system("rm $qdir/sync/.kick 2>/dev/null");
+          unlink("$qdir/sync/.kick");
           if ( -f $f ) { next; }   #syncfile appeared, ok
           sleep(7);
           system("touch $qdir/sync/.kick");
           sleep(1);
-          system("rm $qdir/sync/.kick 2>/dev/null");
+          unlink("qdir/sync/.kick");
           if ( -f $f ) {  next; }   #syncfile appeared, ok
           sleep(60);
           system("touch $qdir/sync/.kick");
           sleep(1);
-          system("rm $qdir/sync/.kick 2>/dev/null");
+          unlink("$qdir/sync/.kick");
           if ( -f $f ) { next; }  #syncfile appeared, ok
           $f =~ m/\.(\d+)$/ || die "Bad sync-file name $f";
           my $job_id = $1;
@@ -546,8 +546,7 @@ if (! $sync) { # We're not submitting with -sync y, so we
       }
     }
   }
-  my $all_syncfiles = join(" ", @syncfiles);
-  system("rm $all_syncfiles 2>/dev/null");
+  unlink(@syncfiles);
 }
 
 # OK, at this point we are synced; we know the job is done.

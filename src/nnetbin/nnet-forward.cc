@@ -109,8 +109,8 @@ int main(int argc, char *argv[]) {
     PdfPrior pdf_prior(prior_opts);
 
     // disable dropout,
-    nnet_transf.SetDropoutRetention(1.0);
-    nnet.SetDropoutRetention(1.0);
+    nnet_transf.SetDropoutRate(0.0);
+    nnet.SetDropoutRate(0.0);
 
     kaldi::int64 tot_t = 0;
 

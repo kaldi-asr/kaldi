@@ -130,6 +130,8 @@ bool CoverageTest(bool seps, const string &infile) {
     if (seps)
       AddSelfLoops(&sentence);
 
+    fst::ArcSort(lm_compiler->MutableFst(), fst::StdOLabelCompare());
+
     // The past must successfullycompose with the LM FST.
     fst::StdVectorFst composition;
     Compose(sentence, lm_compiler->Fst(), &composition);
