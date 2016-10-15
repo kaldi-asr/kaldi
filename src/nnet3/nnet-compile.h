@@ -110,9 +110,6 @@ class Compiler {
                 precomputed_indexes_index(0) { }
   };
 
-  // this sets up cindex_id_to_location_.
-  void CreateLocationInfo(const std::vector<std::vector<int32> > &by_step);
-
   // Computes the set of step-indexes of preceding steps that this step depends
   // on.  Assumes CreateLocationInfo() has already been called.
   void ComputeStepDependencies(const std::vector<int32> &this_step,
