@@ -28,7 +28,6 @@ namespace nnet3 {
 void UnitTestNnetCompile() {
   for (int32 n = 0; n < 20; n++) {
     struct NnetGenerationOptions gen_config;
-
     std::vector<std::string> configs;
     GenerateConfigSequence(gen_config, &configs);
     Nnet nnet;
@@ -56,6 +55,66 @@ void UnitTestNnetCompile() {
   }
 }
 
+
+// this tests compilation where there are more than one
+// computation-request... this is to test some of the
+// low-level utilities that will be used in online computation.
+void UnitTestNnetCompileMulti() {
+  for (int32 n = 0; n < 20; n++) {
+    struct NnetGenerationOptions gen_config;
+    gen_config.allow_use_of_x_dim = false;
+
+    std::vector<std::string> configs;
+    GenerateConfigSequence(gen_config, &configs);
+    Nnet nnet;
+    for (size_t j = 0; j < configs.size(); j++) {
+      KALDI_LOG << "Input config[" << j << "] is: " << configs[j];
+      std::istringstream is(configs[j]);
+      nnet.ReadConfig(is);
+    }
+
+    ComputationRequest request1, request2;
+    std::vector<Matrix<BaseFloat> > inputs1, inputs2;
+    ComputeExampleComputationRequestSimple(nnet, &request1, &inputs1);
+    ComputeExampleComputationRequestSimple(nnet, &request2, &inputs2);
+
+
+    KALDI_LOG << "Computation request 1 is:";
+    request1.Print(std::cerr);
+    KALDI_LOG << "Computation request 2 is:";
+    request2.Print(std::cerr);
+
+    std::vector<const ComputationRequest*> requests;
+    request2.store_component_stats = request1.store_component_stats;
+    request1.need_model_derivative = false;
+    request2.need_model_derivative = false;
+    requests.push_back(&request1);
+    requests.push_back(&request2);
+
+    // set all the x indexes to 1 for request 2 (they would otherwise
+    // be zero).  This ensures that there is no overlap
+    // between the inputs and outputs on the two requests.
+    for (int32 i = 0; i < request2.inputs.size(); i++)
+      for (int32 j = 0; j < request2.inputs[i].indexes.size(); j++)
+        request2.inputs[i].indexes[j].x = 1;
+    for (int32 i = 0; i < request2.outputs.size(); i++)
+      for (int32 j = 0; j < request2.outputs[i].indexes.size(); j++)
+        request2.outputs[i].indexes[j].x = 1;
+
+
+    NnetComputation computation;
+    Compiler compiler(requests, nnet);
+
+    CompilerOptions opts;
+    compiler.CreateComputation(opts, &computation);
+
+    std::ostringstream os;
+    computation.Print(os, nnet);
+    KALDI_LOG << "Generated computation is: " << os.str();
+  }
+}
+
+
 } // namespace nnet3
 } // namespace kaldi
 
@@ -65,6 +124,7 @@ int main() {
   // SetVerboseLevel(2);
 
   UnitTestNnetCompile();
+  UnitTestNnetCompileMulti();
 
   KALDI_LOG << "Nnet tests succeeded.";
 

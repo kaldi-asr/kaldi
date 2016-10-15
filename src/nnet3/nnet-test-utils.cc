@@ -1019,6 +1019,8 @@ start:
       GenerateConfigSequenceCnn(opts, configs);
       break;
     case 8:
+      if (!opts.allow_use_of_x_dim)
+        goto start;
       GenerateConfigSequenceDistribute(opts, configs);
       break;
     case 9:

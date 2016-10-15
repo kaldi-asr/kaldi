@@ -465,6 +465,7 @@ void ComputationGraphBuilder::Compute(const ComputationRequest &request) {
     KALDI_ERR << "You are calling things in the wrong order: should be "
               << "Compute(), Prune(), Compute, Prune(), ...";
   }
+  int32 cur_segment_start = graph_->cindexes.size();
   request_ = &request;
   AddInputs();
   AddOutputs();  // sets current_distance_ to 0.
@@ -474,7 +475,7 @@ void ComputationGraphBuilder::Compute(const ComputationRequest &request) {
     BuildGraphOneIter();
     // only check rarely if we're running at low verbose level.
     if (GetVerboseLevel() >= 3 || RandInt(1,  (current_distance_ + 1)) == 1)
-      Check();
+      Check(cur_segment_start);
     // TODO: come up with a scheme to delay when we call
     // UpdateAllComputableInfo().
     UpdateAllComputableInfo();
@@ -486,13 +487,13 @@ void ComputationGraphBuilder::Compute(const ComputationRequest &request) {
               << "network topology?)";
 
   if (RandInt(1, 2 * (graph_->segment_ends.size() + 1)) == 1)
-    Check();
+    Check(cur_segment_start);
 }
 
 
-void ComputationGraphBuilder::Check() const {
+void ComputationGraphBuilder::Check(int32 start_cindex_id) const {
   int32 num_cindex_ids = graph_->cindexes.size();
-  for (int32 cindex_id = 0; cindex_id < num_cindex_ids;
+  for (int32 cindex_id = start_cindex_id; cindex_id < num_cindex_ids;
        cindex_id += 1 + RandInt(0, num_cindex_ids / 100)) {
     { // check depend_on_this.
       std::vector<int32> depend_on_this = depend_on_this_[cindex_id];
@@ -513,12 +514,16 @@ void ComputationGraphBuilder::Check() const {
       KALDI_ASSERT(IsSortedAndUniq(dependencies));
       for (size_t j = 0; j < size; j++) {
         int32 dep_cindex_id = dependencies[j];
-        // make sure appears in appropriate depend_on_this_ array.
-        const std::vector<int32> &dep = depend_on_this_[dep_cindex_id];
-        KALDI_ASSERT(std::count(dep.begin(), dep.end(), cindex_id) == 1);
+        if (dep_cindex_id >= start_cindex_id) {
+          // make sure appears in appropriate depend_on_this_ array.
+          const std::vector<int32> &dep = depend_on_this_[dep_cindex_id];
+          KALDI_ASSERT(std::count(dep.begin(), dep.end(), cindex_id) == 1);
+        }
       }
     }
-    { // check usable_count_.
+
+    {
+      // check usable_count_
       int32 node_index = graph_->cindexes[cindex_id].first;
       int32 usable_count = usable_count_[cindex_id],
           usable_count_recomputed = nnet_.IsOutputNode(node_index) ? 1 : 0;
@@ -1521,423 +1526,452 @@ bool IndexSet::operator () (const Index &index) const {
 }
 
 
-
-namespace compute_computation_steps {
-// namespace for some helper functions for ComputeComputationSteps.
-
-/// Adds a "step" for each of the inputs in the ComputationRequest.
-/// Does this in the same order in which they were declared in
-/// the request (this order won't matter at all).
-/// returns the total number of cindex_ids that correspond to inputs.
-int32 AddInputSteps(const Nnet &nnet,
-                    const ComputationRequest &request,
-                    const ComputationGraph &graph,
-                    std::vector<std::vector<int32> > *steps) {
-  KALDI_ASSERT(steps->empty());
-  steps->reserve(50);  // will minimize unnecessary copies of vectors.
-  unordered_set<int32> all_nodes;  // to make sure nothing is listed twice.
-  int32 num_cindex_ids = 0;
-  for (int32 i = 0; i < request.inputs.size(); i++) {
-    int32 n = nnet.GetNodeIndex(request.inputs[i].name);
-    if (n == -1)
-      KALDI_ERR << "Network has no output with name "
-                << request.inputs[i].name;
-    // ensure no input node is listed twice.
-    KALDI_ASSERT(all_nodes.count(n) == 0 && "Invalid computation request: "
-                 "double listing of node.");
-    all_nodes.insert(n);
-    KALDI_ASSERT(!request.inputs[i].indexes.empty() &&
-                 "Computation request had no indexes for input ");
-    steps->push_back(std::vector<int32>());
-    std::vector<int32> &this_step = steps->back();
-    this_step.resize(request.inputs[i].indexes.size());
-    for (int32 j = 0; j < request.inputs[i].indexes.size(); j++) {
-      Cindex cindex(n, request.inputs[i].indexes[j]);
-      int32 cindex_id = graph.GetCindexId(cindex);
-      KALDI_ASSERT(cindex_id != -1);  // would be code error.
-      this_step[j] = cindex_id;
-    }
-    num_cindex_ids += request.inputs[i].indexes.size();
-  }
-  return num_cindex_ids;
-}
-
-
-/// Adds a "step" for each of the outputs in the ComputationRequest.  This will
-/// be done after adding steps for all the inputs and then all the
-/// non(input/output)s.  Does this in the same order in which they were declared
-/// in the request (this won't matter at all).
-void AddOutputSteps(const Nnet &nnet,
-                    const ComputationRequest &request,
-                    const ComputationGraph &graph,
-                    std::vector<std::vector<int32> > *steps) {
-  std::set<int32> all_nodes;  // to make sure nothing listed twice.
-  for (int32 i = 0; i < request.outputs.size(); i++) {
-    int32 n = nnet.GetNodeIndex(request.outputs[i].name);
-    if (n == -1)
-      KALDI_ERR << "Network has no output with name "
-                << request.outputs[i].name;
-    // ensure no output node is listed twice.
-    KALDI_ASSERT(all_nodes.count(n) == 0 && "Invalid computation request: "
-                 "double listing of node.");
-    all_nodes.insert(n);
-    KALDI_ASSERT(!request.outputs[i].indexes.empty() &&
-                 "Computation request had no indexes for output ");
-    steps->push_back(std::vector<int32>());
-    std::vector<int32> &this_step = steps->back();
-    this_step.resize(request.outputs[i].indexes.size());
-    for (int32 j = 0; j < request.outputs[i].indexes.size(); j++) {
-      Cindex cindex(n, request.outputs[i].indexes[j]);
-      int32 cindex_id = graph.GetCindexId(cindex);
-      KALDI_ASSERT(cindex_id != -1);  // would be code error.
-      this_step[j] = cindex_id;
-    }
-  }
-}
-
-/// Convert the cindex_ids in the vector "cindex_ids" to cindexes, but only
-/// keeping those that correspond to nodes of type kComponent.
-/// Asserts that none of these cindexes have the "is_input" set to true.
-/// [this is possible because we call this only for phases >1, and inputs
-/// should not be there.]
-static void ExtractOnlyComponentCindexes(const std::vector<int32> &cindex_ids,
-                                         const ComputationGraph &graph,
-                                         const Nnet &nnet,
-                                         std::vector<Cindex> *cindexes) {
-  cindexes->clear();
-  cindexes->reserve(cindex_ids.size());
-  std::vector<int32>::const_iterator iter = cindex_ids.begin(),
-                                      end = cindex_ids.end();
-  for (; iter != end; ++iter) {
-    int32 cindex_id = *iter;
-    const Cindex &cindex = graph.cindexes[cindex_id];
-    if (nnet.IsComponentNode(cindex.first)) {
-      KALDI_ASSERT(!graph.is_input[cindex_id]);
-      cindexes->push_back(cindex);
-    }
-  }
-}
-
-/// Outputs into component_steps, steps corresponding to all Cindexes that
-/// correspond to Component nodes and that are not inputs to the network.  (note
-/// that a Cindex for a Component node that's provided as an input to the
-/// network is not case we anticipate being common, but it's possible in the
-/// framework).  Note, a step is just a list of cindex_ids that can all be computed
-/// at the same time.
-static void AddComponentSteps(
+ComputationStepsComputer::ComputationStepsComputer(
     const Nnet &nnet,
-    const ComputationGraph &graph,
-    const std::vector<std::vector<int32> > &phases,
-    std::vector<std::vector<int32> > *component_steps) {
-  int32 num_phase_indexes = phases.size();
+    ComputationGraph *graph,
+    std::vector<std::vector<int32> > *steps,
+    std::vector<std::pair<int32, int32> > *locations):
+    nnet_(nnet), graph_(graph), steps_(steps), locations_(locations) {
+  steps_->clear();
+  locations_->clear();
+  int32 num_cindexes = graph_->cindexes.size();
+  // leave a little space in case a few cindexes are added (unlikely
+  // but could happen with dim-range nodes).
+  locations_->reserve(num_cindexes + num_cindexes / 10);
+  locations_->resize(num_cindexes, std::pair<int32,int32>(-1, -1));
+}
 
-  std::vector<Cindex> cindexes;
-
-  // We don't include phase_index = 0, because all inputs to the network
-  // (whether the node index is type kInput or kComponent) will be assigned to
-  // phase_index 0, and no non-inputs should be there (we checked this).
-  for (int32 phase_index = 1; phase_index < num_phase_indexes; phase_index++) {
-    ExtractOnlyComponentCindexes(phases[phase_index], graph, nnet, &cindexes);
-
-    // now "cindexes" contains all Cindexes that are from Component nodes (and
-    // we have made sure that none of these are being provided as inputs).
-    // Sorting this array gives us the ordering we want, where Cindexes from
-    // different node-ids are separated into contiguous ranges, and within each
-    // range, they are sorted by Index.
-    std::sort(cindexes.begin(), cindexes.end());
-
-    std::vector<Cindex>::iterator iter = cindexes.begin(), end = cindexes.end();
-    while (iter != end) {
-      // each pass through this while loop processes one batch of cindex_ids;
-      // each batch has a particular node-index.
-      std::vector<Cindex>::iterator cur_end = iter;
-      int32 this_node_id = iter->first;
-      while (cur_end != end && cur_end->first == this_node_id)
-        cur_end++;
-      // the range [iter, cur_end) is nonempty and contains all the same node-id.
-      int32 size = cur_end - iter;
-      component_steps->push_back(std::vector<int32>());
-      std::vector<int32> &this_step = component_steps->back();
-      this_step.resize(size);
-      for (int32 i = 0; i < size; i++, iter++)
-        this_step[i] = graph.GetCindexId(*iter);
-      KALDI_ASSERT(iter == cur_end);
-      // at this point iter will point to either the end of the "cindexes"
-      // vector, or the beginning of the next set of Cindexes to process.
+void ComputationStepsComputer::ComputeForSegment(
+    const ComputationRequest &request,
+    const std::vector<std::vector<int32> > &phases) {
+  int32 this_num_phases = phases.size();
+  for (int32 i = 0; i < this_num_phases; i++) {
+    std::vector<std::vector<Cindex> > sub_phases;
+    SplitIntoSubPhases(phases[i], &sub_phases);
+    for (size_t j = 0; j < sub_phases.size(); j++) {
+      ProcessSubPhase(request, sub_phases[j]);
     }
   }
 }
 
+void ComputationStepsComputer::ProcessInputOrOutputStep(
+    const ComputationRequest &request,
+    bool is_output,
+    const std::vector<Cindex> &sub_phase) {
+  int32 io_node = sub_phase[0].first;
+  if (is_output){
+    KALDI_ASSERT(nnet_.IsOutputNode(io_node));
+  } else {
+    KALDI_ASSERT(nnet_.IsInputNode(io_node));
+  }
+  std::string node_name = nnet_.GetNodeName(io_node);
+  const std::vector<IoSpecification> &inputs_or_outputs =
+      (is_output ? request.outputs : request.inputs);
+  int32 io_index = -1;
+  for (size_t i = 0; i < inputs_or_outputs.size(); i++)
+    if (inputs_or_outputs[i].name == node_name)
+      io_index = i;
+  KALDI_ASSERT(io_index >= 0);
+  const std::vector<Index> &io_indexes = inputs_or_outputs[io_index].indexes;
+  std::vector<Cindex> io_cindexes(io_indexes.size());
+  for (size_t i = 0, size = io_cindexes.size(); i < size; i++) {
+    io_cindexes[i].first = io_node;
+    io_cindexes[i].second = io_indexes[i];
+  }
+  KALDI_ASSERT(io_cindexes.size() == sub_phase.size());
+  // we expect the list of cindexes in 'io_cindexes' to be identical to
+  // that in 'sub_phase' (but they don't have to be in the same order)... for now we check the size, we'll spot-check
+  // that they are the same later.
+  // The actual output in 'steps' must be in the same order as
+  int32 step_index = AddStep(io_cindexes);
+  // Now spot-check that the cindexes in 'sub_phase' are the same as those
+  // we just added.  [note: they don't have to be in the same order, but
+  // they should be the same set.]
+  for (size_t i = 0; i < sub_phase.size(); i += 10) {
+    const Cindex &cindex = sub_phase[i];
+    int32 cindex_id = graph_->GetCindexId(cindex);
+    KALDI_ASSERT(cindex_id >= 0 && (*locations_)[cindex_id].first == step_index);
+  }
+}
 
-/// You call this function after calling AddInputSteps to add steps for inputs
-/// to "all_steps", then calling AddComponentSteps to output steps for
-/// components to "component_steps".  This function moves the component steps
-/// from "component_steps" to "all_steps", while preceding each component step
-/// with a corresponding step for setting up the input to that component (i.e. a
-/// step for the preceding Descriptor).  The reason we do it like this is (a) to
-/// ensure that the step for the input to the Component, which comes from a
-/// Descriptor, comes immediately before it, which is convenient; and (b)
-/// because it's possible in certain rather weird setups, some Cindexes
-/// corresponding to the Descriptors at the inputs of Components will end up
-/// being listed in two separate steps; and if we added the input-descriptor
-/// steps using the same mechanism as AddComponentSteps, we wouldn't be able to
-/// correctly capture this duplication.
-static void AddComponentInputSteps(
-    const ComputationGraph &graph,
-    std::vector<std::vector<int32> > *component_steps,
-    std::vector<std::vector<int32> > *all_steps) {
+int32 ComputationStepsComputer::AddStep(const std::vector<Cindex> &cindexes,
+                                        bool add_if_absent) {
+  int32 step_index = steps_->size();
+  steps_->push_back(std::vector<int32>());
+  std::vector<int32> &step = steps_->back();  // vector of cindex_id.
+  step.resize(cindexes.size());
+  size_t row_index = 0;
+  std::vector<Cindex>::const_iterator iter = cindexes.begin(),
+      end = cindexes.end();
+  std::vector<int32>::iterator out_iter = step.begin();
+  std::pair<int32, int32> *locations = &((*locations_)[0]);
+  if (!add_if_absent) {
+    // this version of GetCindexId will not add CindexIds.
+    for (; iter != end; ++iter, ++out_iter, ++row_index) {
+      int32 cindex_id = graph_->GetCindexId(*iter);
+      *out_iter = cindex_id;
+      locations[cindex_id].first = step_index;
+      locations[cindex_id].second = row_index;
+    }
+  } else {
+    for (; iter != end; ++iter, ++out_iter, ++row_index) {
+      bool is_input = false;  // only relevant if we have to add the cindex to
+                              // the computation graph, which we won't for
+                              // inputs (we only might for dim-range nodes).
+      bool added;
+      int32 cindex_id = graph_->GetCindexId(*iter, is_input, &added);
+      *out_iter = cindex_id;
+      if (added) {
+        KALDI_ASSERT(cindex_id == static_cast<int32>(locations_->size()));
+        locations_->resize(cindex_id + 1);
+        locations_->back().first = step_index;
+        locations_->back().second = row_index;
+        locations = &((*locations_)[0]);  // in case it was reallocated
+      } else {
+        locations[cindex_id].first = step_index;
+        locations[cindex_id].second = row_index;
+      }
+    }
+  }
+  return step_index;
+}
 
-  int32 space_for_outputs = 10;  // arbitrary.
-  all_steps->reserve(all_steps->size() +
-                     component_steps->size() * 2 + space_for_outputs);
+
+int32 ComputationStepsComputer::AddStep(std::vector<int32> *cindex_ids) {
+  int32 step_index = steps_->size();
+  KALDI_ASSERT(!cindex_ids->empty());
+  steps_->push_back(std::vector<int32>());
+  steps_->back().swap(*cindex_ids);
+  std::vector<int32>::const_iterator iter = steps_->back().begin(),
+      end = steps_->back().end();
+  int32 row_index = 0;
+  std::pair<int32,int32> *locations = &((*locations_)[0]);
+  size_t num_cindexes = graph_->cindexes.size();
+  for (; iter != end; ++iter, ++row_index) {
+    int32 cindex_id = *iter;
+    KALDI_ASSERT(static_cast<size_t>(cindex_id) < num_cindexes);
+    locations[cindex_id].first = step_index;
+    locations[cindex_id].second = row_index;
+  }
+  return step_index;
+}
 
 
-  for (size_t i = 0; i < component_steps->size(); i++) {
-    std::vector<int32> &component_step = (*component_steps)[i];
-    KALDI_ASSERT(!component_step.empty());
-    // First make a step for the descriptor at the input of this Component.
-    unordered_set<int32> descriptor_cindex_ids;
-    std::vector<int32>::iterator iter = component_step.begin(),
-        end = component_step.end();
+void ComputationStepsComputer::ConvertToCindexes(
+    const std::vector<int32> &cindex_ids,
+    std::vector<Cindex> *cindexes) const {
+  cindexes->resize(cindex_ids.size());
+  size_t num_cindexes = graph_->cindexes.size();
+  std::vector<int32>::const_iterator iter = cindex_ids.begin(),
+      end = cindex_ids.end();
+  std::vector<Cindex>::iterator out_iter = cindexes->begin();
+  for (; iter != end; ++iter, ++out_iter) {
+    int32 cindex_id = *iter;
+    KALDI_ASSERT(static_cast<size_t>(cindex_id) < num_cindexes);
+    *out_iter = graph_->cindexes[cindex_id];
+  }
+}
+
+
+void ComputationStepsComputer::ConvertToCindexIds(
+    const std::vector<Cindex> &cindexes,
+    std::vector<int32> *cindex_ids) const {
+  cindex_ids->resize(cindexes.size());
+  std::vector<Cindex>::const_iterator iter = cindexes.begin(),
+      end = cindexes.end();
+  std::vector<int32>::iterator out_iter = cindex_ids->begin();
+  for (; iter != end; ++iter, ++out_iter) {
+    int32 cindex_id = graph_->GetCindexId(*iter);
+    KALDI_ASSERT(cindex_id >= 0);
+    *out_iter = cindex_id;
+  }
+}
+
+
+// static
+void ComputationStepsComputer::ConvertToIndexes(
+    const std::vector<Cindex> &cindexes,
+    std::vector<Index> *indexes) {
+  indexes->resize(cindexes.size());
+  std::vector<Cindex>::const_iterator iter = cindexes.begin(),
+      end = cindexes.end();
+  std::vector<Index>::iterator out_iter = indexes->begin();
+  for (; iter != end; ++iter, ++out_iter)
+    *out_iter = iter->second;
+}
+
+// static
+void ComputationStepsComputer::ConvertToCindexes(
+    const std::vector<Index> &indexes,
+    int32 node_index,
+    std::vector<Cindex> *cindexes) {
+  KALDI_ASSERT(node_index >= 0);
+  cindexes->resize(indexes.size());
+  std::vector<Index>::const_iterator iter = indexes.begin(),
+      end = indexes.end();
+  std::vector<Cindex>::iterator out_iter = cindexes->begin();
+  for (; iter != end; ++iter, ++out_iter) {
+    out_iter->first = node_index;
+    out_iter->second = *iter;
+  }
+}
+
+
+
+
+void ComputationStepsComputer::ProcessComponentStep(
+    const std::vector<Cindex> &step) {
+  KALDI_ASSERT(!step.empty());
+  int32 component_node_index = step.front().first;
+  int32 component_input_index = component_node_index - 1;
+  KALDI_ASSERT(nnet_.IsComponentNode(component_node_index));
+  const NetworkNode &node = nnet_.GetNode(component_node_index);
+  int32 c = node.u.component_index;
+  const Component *component = nnet_.GetComponent(c);
+  if (component->Properties() & kSimpleComponent) {
+    // for simple components, the input cindexes will be the same as the
+    // output ones except for the node index, so we do a shortcut that's
+    // faster (no following dependencies).
+    std::vector<Cindex> input_step(step.size());
+    input_step.resize(step.size());
+    std::vector<Cindex>::iterator iter = input_step.begin(),
+        end = input_step.end();
+    std::vector<Cindex>::const_iterator src = step.begin();
+    for (; iter != end; ++iter,++src) {
+      iter->first = component_input_index;
+      iter->second = src->second;
+    }
+    AddStep(input_step);
+    AddStep(step);
+  } else {
+    std::vector<int32> step_cindex_ids;
+    ConvertToCindexIds(step, &step_cindex_ids);
+    // to get the input cindexes we need to follow dependencies back.
+    unordered_set<int32> input_cindex_ids;
+    std::vector<int32>::iterator iter = step_cindex_ids.begin(),
+        end = step_cindex_ids.end();
     for (; iter != end; ++iter) {
       int32 c = *iter;
-      const std::vector<int32> &dependencies = graph.dependencies[c];
+      const std::vector<int32> &dependencies = graph_->dependencies[c];
       std::vector<int32>::const_iterator dep_iter = dependencies.begin(),
           dep_end = dependencies.end();
       for (; dep_iter != dep_end; ++dep_iter) {
         int32 d = *dep_iter;
-        descriptor_cindex_ids.insert(d);
+        input_cindex_ids.insert(d);
       }
     }
     // Convert to Cindexes so we can sort them as Cindexes.
-    std::vector<Cindex> descriptor_cindexes;
-    descriptor_cindexes.reserve(descriptor_cindex_ids.size());
-    unordered_set<int32>::iterator set_iter = descriptor_cindex_ids.begin(),
-        set_end = descriptor_cindex_ids.end();
+    std::vector<Cindex> input_step;
+    input_step.reserve(input_cindex_ids.size());
+    unordered_set<int32>::iterator set_iter = input_cindex_ids.begin(),
+        set_end = input_cindex_ids.end();
     for (; set_iter != set_end; ++set_iter) {
       int32 c = *set_iter;
-      descriptor_cindexes.push_back(graph.cindexes[c]);
+      input_step.push_back(graph_->cindexes[c]);
     }
-    // sort the cindexes.
-    std::sort(descriptor_cindexes.begin(), descriptor_cindexes.end());
+    // sort the input cindexes.
+    std::sort(input_step.begin(), input_step.end());
 
-    // We technically allow a Component with no input, e.g. in case where for
-    // some reason it decides it has no dependencies, e.g. it has a constant
-    // output.  In this case we create an empty step, to preserve the property
-    // that the step for the Component's input comes immediately before the step
-    // for the Component itself.
-    if (!descriptor_cindexes.empty()) {
-      // Make sure all these cindexes come from the same node_id, which should
-      // be the one immediately preceding the Component node_id of
-      // "component_step".
-      int32 node_id = descriptor_cindexes.front().first;
-      KALDI_ASSERT(descriptor_cindexes.back().first == node_id &&
-                   graph.cindexes[component_step.front()].first == node_id + 1);
-    }
-    // Now that we've sorted, convert back to cindex_ids (this list will be
-    // the "step").
-    int32 size = descriptor_cindexes.size();
-    std::vector<int32> descriptor_step(size);
-    for (int32 i = 0; i < size; i++) {
-      descriptor_step[i] = graph.GetCindexId(descriptor_cindexes[i]);
-      KALDI_ASSERT(descriptor_step[i] != -1);
-    }
-    // efficiently add descriptor_step to the end of all_steps.
-    all_steps->push_back(std::vector<int32>());
-    all_steps->back().swap(descriptor_step);
+    if (component->Properties() & kReordersIndexes) {
+      std::vector<Index> indexes, input_indexes;
+      ConvertToIndexes(input_step, &input_indexes);
+      ConvertToIndexes(step, &indexes);
 
-    // efficiently add component_step to the end of all_steps (this destroys the
-    // input, which we won't be needing any more).
-    all_steps->push_back(std::vector<int32>());
-    all_steps->back().swap(component_step);
-  }
-  component_steps->clear();
-}
+      // the component wants to have the opportunity to change the
+      // order of these indexes from their default.
+      component->ReorderIndexes(&input_indexes, &indexes);
 
-
-static void CreateCindexIdToStep(
-    const ComputationGraph &graph,
-    const std::vector<std::vector<int32> > &all_steps,
-    std::vector<int32> *cindex_id_to_step) {
-  int32 num_cindex_ids = graph.cindexes.size();
-  cindex_id_to_step->clear();
-  cindex_id_to_step->resize(num_cindex_ids, -1);
-  int32 num_steps = all_steps.size();
-  for (int32 step = 0; step < num_steps; step++) {
-    std::vector<int32>::const_iterator iter = all_steps[step].begin(),
-        end = all_steps[step].end();
-    for (; iter != end; ++iter) {
-      int32 cindex_id = *iter;
-      (*cindex_id_to_step)[cindex_id] = step;
+      // Now convert back from indexes to cindexes (we know the
+      // node-index in each case)
+      std::vector<Cindex> reordered_step;
+      ConvertToCindexes(indexes, component_node_index, &reordered_step);
+      ConvertToCindexes(input_indexes, component_input_index, &input_step);
+      AddStep(input_step);
+      AddStep(reordered_step);
+    } else {
+      AddStep(input_step);
+      // it's more efficient to add the step with cindex_ids; and we have these
+      // available, so we do it that way.  (in the other branch where
+      // the flag kReordersIndexes was present, we couldn't do this because
+      // of the reordering).
+      AddStep(&step_cindex_ids);
     }
   }
 }
 
-/// This function inserts into "all_steps", which at this point should contain
-/// all but the output steps, steps corresponding to any nodes of type kDimRange.
-/// "graph" is non-const as there are situations in which we might need to
-/// add cindexes for nodes of type kDimRange.
-static void AddDimRangeSteps(
-    const Nnet &nnet,
-    ComputationGraph *graph,
-    std::vector<std::vector<int32> > *all_steps) {
-  int32 num_nodes = nnet.NumNodes();
-  bool dim_range_node_exists = false;
-  std::vector<char> is_dim_range_node(num_nodes, '\0');
-  for (int32 n = 0; n < num_nodes; n++) {
-    if (nnet.IsDimRangeNode(n)) {
-      is_dim_range_node[n] = (char)1;
-      dim_range_node_exists = true;
-    }
+
+void ComputationStepsComputer::ConvertToLocations(
+    const std::vector<int32> &cindex_ids,
+    std::vector<std::pair<int32, int32> > *locations) const {
+  locations->resize(cindex_ids.size());
+  std::vector<int32>::const_iterator iter = cindex_ids.begin(),
+      end = cindex_ids.end();
+  std::vector<std::pair<int32, int32> >::iterator out_iter =
+      locations->begin();
+  // note, locations_ and locations are different variables.
+  std::pair<int32, int32> *locations_ptr = &((*locations_)[0]);
+  size_t num_cindexes = locations_->size();
+  for (; iter != end; ++iter, ++out_iter) {
+    int32 cindex_id = *iter;
+    KALDI_ASSERT(static_cast<size_t>(cindex_id) < num_cindexes);
+    int32 step = locations_ptr[cindex_id].first,
+        row = locations_ptr[cindex_id].second;
+    KALDI_ASSERT(step >= 0);
+    out_iter->first = step;
+    out_iter->second = row;
   }
-  if (!dim_range_node_exists)
-    return;
+}
 
-  std::vector<int32> cindex_id_to_step;
-  CreateCindexIdToStep(*graph, *all_steps, &cindex_id_to_step);
-  int32 num_steps = all_steps->size();
+void ComputationStepsComputer::ProcessDimRangeSubPhase(
+    const std::vector<Cindex> &sub_phase) {
+  int32 dim_range_node = sub_phase[0].first;
+  KALDI_ASSERT(nnet_.IsDimRangeNode(dim_range_node));
+  const NetworkNode &node = nnet_.GetNode(dim_range_node);
+  // 'input_node_index' is the node index of the component or input node
+  // that this dim-range node gets its input from.
+  int32 input_node_index = node.u.node_index;
+  // input_cindexes will give us the cindexes of the component or input node
+  // that is the input to this dim-range node
+  std::vector<Cindex> input_cindexes(sub_phase);
+  for (std::vector<Cindex>::iterator iter = input_cindexes.begin(),
+           end = input_cindexes.end(); iter != end; ++iter)
+    iter->first = input_node_index;
+  std::vector<int32> input_cindex_ids;
+  ConvertToCindexIds(input_cindexes, &input_cindex_ids);
+  std::vector<std::pair<int32, int32> > locations;
+  ConvertToLocations(input_cindex_ids, &locations);
+  std::sort(locations.begin(), locations.end());
+  KALDI_ASSERT(!locations.empty());
+  std::vector<std::pair<int32, int32> >::const_iterator
+      locations_iter = locations.begin(),
+      locations_end = locations.end();
+  // Each unique .first number in locations (i.e. each source step, and they
+  // will all correspond to component-output or input steps) will generate one
+  // 'step' of type kDimRange.  Because dim-range nodes must be contiguous
+  // ranges of a source step (since they are represented as sub-matrices), for
+  // each source step we work out the first and last row-index (i.e. first and
+  // last .second member of locations) and use that to reconstruct the range.
 
-  // We are going to insert steps for nodes of type kDimRange just after the
-  // kInput or kComponent steps that the kDimRange nodes refer to.
-  // new_nodes_per_step will be a list of any nodes of type kDimRange that
-  // have input corresponding to something in that step.
-  std::vector<std::set<int32> > new_nodes_per_step(num_steps);
-  int32 num_cindex_ids = graph->cindexes.size();
-  std::vector<Cindex>::const_iterator iter = graph->cindexes.begin();
-  for (int32 i = 0; i < num_cindex_ids; i++,iter++) {
-    const Cindex &cindex = *iter;
-    int32 node_index = cindex.first;
-    if (!is_dim_range_node[node_index])
-      continue;
-    const NetworkNode &node = nnet.GetNode(node_index);
-    Cindex input_cindex(node.u.node_index, cindex.second);
-    int32 input_cindex_id = graph->GetCindexId(input_cindex);
-    KALDI_ASSERT(input_cindex_id != -1);
-    int32 input_step = cindex_id_to_step[input_cindex_id];
-    KALDI_ASSERT(input_step != -1);
-    new_nodes_per_step[input_step].insert(node_index);
-  }
-  int32 num_new_steps = 0, space_for_output = 10;
-  for (int32 step = 0; step < num_steps; step++)
-    num_new_steps += new_nodes_per_step[step].size();
+  // each element of 'steps' will be (source_step, (begin_row, end_row)) so that
+  // the source of the dim-range node is indexes begin_row ... end_row-1 in that
+  // source step.
+  std::vector<std::pair<int32, std::pair<int32, int32> > > steps;
 
-  // we'll later swap all_steps_out with all_steps.
-  std::vector<std::vector<int32> > all_steps_out;
-  all_steps_out.reserve(num_steps + num_new_steps + space_for_output);
-  for (int32 step = 0; step < num_steps; step++) {
-    std::vector<int32> &this_step = (*all_steps)[step];
-    int32 cur_out_index = all_steps_out.size();
-    all_steps_out.push_back(std::vector<int32>());  // make space for this step.
-    std::set<int32>::iterator iter = new_nodes_per_step[step].begin(),
-        end = new_nodes_per_step[step].end();
-    for (; iter != end; ++iter) {
-      int32 node = *iter, size = this_step.size();
-      std::vector<int32> new_step(size);
-      for (int32 i = 0; i < size; i++) {
-        int32 cindex_id = this_step[i];
-        Cindex dimrange_cindex(node, graph->cindexes[cindex_id].second);
-        bool input = false, is_new;
-        int32 dimrange_cindex_id = graph->GetCindexId(dimrange_cindex,
-                                                      input, &is_new);
-        new_step[i] = dimrange_cindex_id;
-        if (is_new) {  // if we newly added this cindex_id, note the dependency
-                       // on its input.
-          graph->dependencies[dimrange_cindex_id].push_back(cindex_id);
-        }
+  int32 cur_source_step = locations_iter->first,
+      cur_row_begin = locations_iter->second,
+      cur_row_end = cur_row_begin + 1;
+  while (1) {
+    ++locations_iter;
+    if (locations_iter == locations_end ||
+        locations_iter->first != cur_source_step) {
+      // we reached the end of a run of the same step.
+      std::pair<int32, std::pair<int32, int32> > this_step;
+      this_step.first = cur_source_step;
+      this_step.second.first = cur_row_begin;
+      this_step.second.second = cur_row_end;
+      steps.push_back(this_step);
+      if (locations_iter != locations_end) {
+        cur_source_step = locations_iter->first;
+        cur_row_begin = locations_iter->second;
+        cur_row_end = cur_row_begin + 1;
+      } else {
+        break;
       }
-      all_steps_out.push_back(std::vector<int32>());
-      all_steps_out.back().swap(new_step);
+    } else {
+      cur_row_end = locations_iter->second + 1;
     }
-    all_steps_out[cur_out_index].swap(this_step);
   }
-  all_steps->swap(all_steps_out);
-}
 
-
-
-/// This function would not be necessary if we had not added the ReorderIndexes
-/// function to class Component.  It is responsible for possibly modifying the
-/// order of the inputs and outputs of non-simple Components, and also possibly
-/// removing some inputs if the Component has decided it doesn't need them.  It
-/// may be a while before this is ever used for something.  An example use is
-/// that maybe in convolutional nets or simple models, some components may want,
-/// efficiency or convenience, a certain ordering of the input that differs from
-/// the normal order.
-void ReorderIndexes(const Nnet &nnet,
-                    const ComputationRequest &request,
-                    const ComputationGraph &graph,
-                    std::vector<std::vector<int32> > *steps) {
-
-  for (int32 step = 0; step < steps->size(); step++) {
-    std::vector<int32> &cindex_ids = (*steps)[step];
-    if (cindex_ids.empty()) continue;
-    int32 cindex_id = cindex_ids.front();
-    int32 node_index = graph.cindexes[cindex_id].first;
-    const NetworkNode &node = nnet.GetNode(node_index);
-    if (node.node_type != kComponent ||
-        graph.is_input[cindex_id])
-      continue;  // nothing to do if an input, or if not a Component.
-
-    int32 c = node.u.component_index;
-    const Component *component = nnet.GetComponent(c);
-    if (!(component->Properties() & kReordersIndexes))
-      continue;  // nothing to do if it doesn't modify indexes.
-    KALDI_ASSERT(step > 0);  // or should have continued already.
-
-    // preceding step will be Cindexes from the input Descriptor.
-    std::vector<int32> &input_cindex_ids = (*steps)[step - 1];
-
-    int32 size = cindex_ids.size(), input_size = input_cindex_ids.size();
-    std::vector<Index> indexes(size), input_indexes(input_size);
-
-    for (int32 i = 0; i < size; i++)
-      indexes[i] = graph.cindexes[cindex_ids[i]].second;
-    for (int32 i = 0; i < input_size; i++)
-      input_indexes[i] = graph.cindexes[input_cindex_ids[i]].second;
-
-    component->ReorderIndexes(&input_indexes, &indexes);
-    // size should not change.
-    KALDI_ASSERT(input_indexes.size() == input_size && indexes.size() == size);
-
-    if (size > 0) {
-      int32 node_index = graph.cindexes[cindex_ids.front()].first;
-      for (int32 i = 0; i < size; i++) {
-        Cindex cindex(node_index, indexes[i]);
-        cindex_ids[i] = graph.GetCindexId(cindex);
-      }
-    }
-    if (input_size > 0) {
-      int32 input_node_index = graph.cindexes[input_cindex_ids.front()].first;
-      for (int32 i = 0; i < input_size; i++) {
-        Cindex cindex(input_node_index, input_indexes[i]);
-        input_cindex_ids[i] = graph.GetCindexId(cindex);
-      }
-    }
-    // note: cindex_ids and input_cindex_ids are references, so we have
-    // changed *steps by writing to them in the above two loops.
+  for (size_t i = 0; i < steps.size(); i++) {
+    // iterating over different source steps, although normally
+    // there will be just one.
+    int32 source_step = steps[i].first,
+        row_begin = steps[i].second.first,
+        row_end = steps[i].second.second;
+    // 'source' is just the elements of the source step that we're consuming.
+    std::vector<int32> source((*steps_)[source_step].begin() + row_begin,
+                              (*steps_)[source_step].begin() + row_end);
+    std::vector<Cindex> cindexes;
+    ConvertToCindexes(source, &cindexes);
+    std::vector<Cindex>::iterator iter = cindexes.begin(),
+        end = cindexes.end();
+    for (; iter != end; ++iter)
+      iter->first = dim_range_node;
+    bool add_if_absent = true;
+    // this add_if_absent says, even if cindexes were not in the graph,
+    // add them.  This is possible in principle; it's to satisfy the
+    // requirement that DimRangeNodes be implemented as contiguous ranges
+    // of rows of component nodes or input nodes.
+    AddStep(cindexes, add_if_absent);
   }
 }
 
-} // namespace compute_computation_steps.
-
-void ComputeComputationSteps(
-    const Nnet &nnet,
+void ComputationStepsComputer::ProcessSubPhase(
     const ComputationRequest &request,
-    const std::vector<std::vector<int32> > &phases,
-    ComputationGraph *graph,
-    std::vector<std::vector<int32> > *steps) {
-  using namespace compute_computation_steps;
-  AddInputSteps(nnet, request, *graph, steps);
-  {
-    std::vector<std::vector<int32> > component_steps;
-    AddComponentSteps(nnet, *graph, phases, &component_steps);
-    AddComponentInputSteps(*graph, &component_steps, steps);
+    const std::vector<Cindex> &sub_phase) {
+  KALDI_ASSERT(!sub_phase.empty());
+  int32 node_index = sub_phase[0].first;
+  KALDI_ASSERT(sub_phase.back().first == node_index);
+  if (nnet_.IsComponentNode(node_index)) {
+    ProcessComponentStep(sub_phase);
+  } else if (nnet_.IsInputNode(node_index)) {
+    ProcessInputOrOutputStep(request, false, sub_phase);
+  } else if (nnet_.IsOutputNode(node_index)) {
+    ProcessInputOrOutputStep(request, true, sub_phase);
+  } else if (nnet_.IsDimRangeNode(node_index)) {
+    // this might turn out to be multiple steps, see the code.
+    ProcessDimRangeSubPhase(sub_phase);
+  } else if (nnet_.IsComponentInputNode(node_index)) {
+    // We actually do nothing with these sub-phases, because they are processed
+    // when we process the associated component's sub-phase/step.  Doing it this
+    // way resolves certain problems.
+    return;
+  } else {
+    KALDI_ERR << "Unknown node type.";
   }
-  // output steps don't get reordered so we do the reordering before adding
-  // them.
-  ReorderIndexes(nnet, request, *graph, steps);
-  AddDimRangeSteps(nnet, graph, steps);
-  AddOutputSteps(nnet, request, *graph, steps);
+}
+
+
+void ComputationStepsComputer::Check() const {
+  int32 num_cindexes = graph_->cindexes.size();
+  KALDI_ASSERT(locations_->size() == num_cindexes);
+  for (int32 c = 0; c < num_cindexes; c++) {
+    int32 step = (*locations_)[c].first,
+        row = (*locations_)[c].second;
+    KALDI_ASSERT(step >= 0 && row >= 0 &&
+                 (*steps_)[step][row] == c);
+  }
+}
+
+void ComputationStepsComputer::SplitIntoSubPhases(
+    const std::vector<int32> &phase,
+    std::vector<std::vector<Cindex> > *sub_phases) const {
+  std::vector<Cindex> phase_cindexes;
+  ConvertToCindexes(phase, &phase_cindexes);
+  KALDI_ASSERT(!phase_cindexes.empty());
+  std::sort(phase_cindexes.begin(), phase_cindexes.end());
+  // 'sub_phase_begins' is the indexes onto 'phase_cindees' that
+  // start a run of the same node-index
+  std::vector<size_t> segment_begins;
+  int32 cur_node_index = -1;
+  size_t size = phase_cindexes.size();
+  for (size_t i = 0; i < size; i++) {
+    if (phase_cindexes[i].first != cur_node_index) {
+      cur_node_index = phase_cindexes[i].first;
+      segment_begins.push_back(i);
+    }
+  }
+  size_t num_sub_phases = segment_begins.size();
+  segment_begins.push_back(size);
+  sub_phases->clear();
+  sub_phases->resize(num_sub_phases);
+  for (size_t i = 0; i < num_sub_phases; i++) {
+    size_t this_begin = segment_begins[i],
+        this_end = segment_begins[i+1];
+    (*sub_phases)[i].insert((*sub_phases)[i].end(),
+                            phase_cindexes.begin() + this_begin,
+                            phase_cindexes.begin() + this_end);
+  }
 }
 
 

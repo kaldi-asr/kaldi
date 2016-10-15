@@ -69,21 +69,23 @@ void Compiler::CreateComputation(const CompilerOptions &opts,
   // (non-online computation), a vector of all zeros.
   std::vector<int32> step_to_segment;
 
-  for (size_t segment = 0; segment < requests_.size(); segment++) {
-    std::vector<std::vector<int32> > this_segment_steps;
-    ComputeComputationSteps(nnet_, *(requests_[segment]),
-                            phases_per_segment[segment], &graph_,
-                            &this_segment_steps);
-    for (size_t i = 0; i < this_segment_steps.size(); i++) {
-      steps.push_back(std::vector<int32>());
-      steps.back().swap(this_segment_steps[i]);
-      step_to_segment.push_back(segment);
+
+  {
+    ComputationStepsComputer steps_computer(nnet_, &graph_, &steps,
+                                            &cindex_id_to_location_);
+
+    for (size_t segment = 0; segment < requests_.size(); segment++) {
+      steps_computer.ComputeForSegment(*(requests_[segment]),
+                                       phases_per_segment[segment]);
+      while (step_to_segment.size() < steps.size())
+        step_to_segment.push_back(segment);
+
+      // save memory, by deleting the phases we just consumed.
+      std::vector<std::vector<int32> > temp;
+      phases_per_segment[segment].swap(temp);
     }
+    steps_computer.Check();
   }
-  // TODO (?) check that the total num_cindexes in the steps in >=
-  // graph->cindexes.size().  could do it inside CreateLocationInfo().
-  phases_per_segment.clear();
-  CreateLocationInfo(steps);
   std::vector<bool> deriv_needed;
   ComputeDerivNeeded(steps, step_to_segment, &deriv_needed);
   CreateStepInfo(deriv_needed, step_to_segment, &steps, computation);
@@ -352,37 +354,6 @@ void Compiler::CreateStepInfo(
       }
     }
   }
-}
-
-void Compiler::CreateLocationInfo(
-    const std::vector<std::vector<int32> > &by_step) {
-  cindex_id_to_location_.clear();
-  int32 num_cindex_ids = graph_.cindexes.size(),
-      total_cindex_ids = 0;
-  cindex_id_to_location_.resize(num_cindex_ids, std::pair<int32,int32>(-1,-1));
-  int32 num_steps = by_step.size();
-  for (int32 step = 0; step < num_steps; step++) {
-    // output_cindex_ids is the cindex_ids that this step produces.
-    const std::vector<int32> &output_cindex_ids = by_step[step];
-    total_cindex_ids += output_cindex_ids.size();
-    int32 num_rows = output_cindex_ids.size();
-    for (int32 row = 0; row < num_rows; row++) {
-      int32 cindex_id = output_cindex_ids[row];
-      if (cindex_id_to_location_[cindex_id].first != -1) {
-        int32 node_id = graph_.cindexes[cindex_id].first;
-        if (nnet_.GetNode(node_id).node_type != kDescriptor ||
-            nnet_.GetNode(node_id + 1).node_type != kComponent)
-          KALDI_ERR << "Cindexes may appear in >1 step only if they are "
-              "Descriptors for Component inputs: code error.";
-      }
-      cindex_id_to_location_[cindex_id] = std::pair<int32,int32>(step, row);
-    }
-  }
-  // All cindex_ids in the graph must be present in a step, which is why
-  // we make the following assert.  In general this will be with equality,
-  // but I believe there might be some weird edge cases, maybe involving
-  // kDimRange nodes, that would make this not true.  [not 100% sure.]
-  KALDI_ASSERT(total_cindex_ids >= num_cindex_ids);
 }
 
 void Compiler::DoForwardComputation(int32 step,
