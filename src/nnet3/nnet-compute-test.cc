@@ -119,7 +119,7 @@ void UnitTestNnetCompute() {
     if (RandInt(0, 1) == 0) {
       NnetOptimizeOptions opt_config;
 
-      Optimize(opt_config, nnet, request, &computation);
+      Optimize(opt_config, nnet, &computation);
       {
         std::ostringstream os;
         computation.Print(os, nnet);
