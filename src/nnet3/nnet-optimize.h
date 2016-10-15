@@ -117,7 +117,6 @@ struct NnetOptimizeOptions {
 /// This is the top-level function for optimizing a computation.
 void Optimize(const NnetOptimizeOptions &config,
               const Nnet &nnet,
-              const ComputationRequest &request,
               NnetComputation *computation);
 
 // Hash function for ComputationRequest. It converts
@@ -265,7 +264,6 @@ void LimitDerivativeTimes(const Nnet &nnet,
 /// class ModelUpdateConsolidator.  Will fail if called a
 /// second time.
 void ConsolidateModelUpdate(const Nnet &nnet,
-                            const ComputationRequest &request,
                             NnetComputation *computation);
 
 /// This converts addition operations (things with Add in their names) to
@@ -278,7 +276,6 @@ void ConvertAdditionToAssignment(const Nnet &nnet,
 /// This wraps class VariableMergingOptimizer in a simplified interface.
 void VariableMergingOptimization(const NnetOptimizeOptions &config,
                                  const Nnet &nnet,
-                                 const ComputationRequest &request,
                                  NnetComputation *computation);
 
 

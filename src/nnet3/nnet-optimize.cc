@@ -341,12 +341,11 @@ void RemoveUnnecessaryAllocation(const Nnet &nnet,
 
 void VariableMergingOptimization(const NnetOptimizeOptions &config,
                                  const Nnet &nnet,
-                                 const ComputationRequest &request,
                                  NnetComputation *computation) {
   bool changed = true;
   while (changed) {
     changed = false;
-    VariableMergingOptimizer opt(config, nnet, request, computation);
+    VariableMergingOptimizer opt(config, nnet, computation);
     if (opt.MergeVariables())
       changed = true;
   }
@@ -355,10 +354,12 @@ void VariableMergingOptimization(const NnetOptimizeOptions &config,
 // This is a simplified top-level interface to the model-update consolidation
 // code from class ModelUpdateConsolidator.
 void ConsolidateModelUpdate(const Nnet &nnet,
-                            const ComputationRequest &request,
                             NnetComputation *computation) {
-  if (!request.need_model_derivative)
-    return;   // An optimization; there would be nothing to do in this case.
+  // This following if-statement is an optimization: if the computation
+  // request(s) had need_model_derivative == false, there would be nothing to
+  // optimize, so don't bother trying.
+  if (!computation->need_model_derivative)
+    return;
   ModelUpdateConsolidator consolidator(nnet, computation);
   consolidator.ConsolidateModelUpdate();
 }
@@ -416,13 +417,12 @@ void ConvertAdditionToAssignment(const Nnet &nnet,
 
 void Optimize(const NnetOptimizeOptions &config,
               const Nnet &nnet,
-              const ComputationRequest &request,
               NnetComputation *computation) {
   if (!config.optimize)
     return;
 
   if (GetVerboseLevel() >= 4)
-    CheckComputation(nnet, request, *computation, true);
+    CheckComputation(nnet, *computation, true);
 
   { // Call LimitDerivativeTimes().
     // this will do nothing unless --min-deriv-time or --max-deriv-time
@@ -436,44 +436,44 @@ void Optimize(const NnetOptimizeOptions &config,
   }
 
   if (GetVerboseLevel() >= 4)
-    CheckComputation(nnet, request, *computation, true);
+    CheckComputation(nnet, *computation, true);
 
   if (config.consolidate_model_update)
-    ConsolidateModelUpdate(nnet, request, computation);
+    ConsolidateModelUpdate(nnet, computation);
 
   if (GetVerboseLevel() >= 4)
-    CheckComputation(nnet, request, *computation, true);
+    CheckComputation(nnet, *computation, true);
 
   if (config.convert_addition)
     ConvertAdditionToAssignment(nnet, computation);
 
   if (GetVerboseLevel() >= 4)
-    CheckComputation(nnet, request, *computation, true);
+    CheckComputation(nnet, *computation, true);
 
   if (config.remove_assignments || config.backprop_in_place ||
       config.propagate_in_place)
-    VariableMergingOptimization(config, nnet, request, computation);
+    VariableMergingOptimization(config, nnet, computation);
 
   if (GetVerboseLevel() >= 4)
-    CheckComputation(nnet, request, *computation, false);
+    CheckComputation(nnet, *computation, false);
 
   if (config.initialize_undefined)
     RemoveUnnecessaryZeroing(nnet, computation);
 
   if (GetVerboseLevel() >= 4)
-    CheckComputation(nnet, request, *computation, false);
+    CheckComputation(nnet, *computation, false);
 
   if (config.move_sizing_commands)
     MoveSizingCommands(nnet, computation);
 
   if (GetVerboseLevel() >= 4)
-    CheckComputation(nnet, request, *computation, false);
+    CheckComputation(nnet, *computation, false);
 
   if (config.allocate_from_other)
     RemoveUnnecessaryAllocation(nnet, computation);
 
   if (GetVerboseLevel() >= 4)
-    CheckComputation(nnet, request, *computation, false);
+    CheckComputation(nnet, *computation, false);
 
   // The following is not configurable because it is necessary for
   // the computation to run correctly (we do it after compilation too,
@@ -482,7 +482,7 @@ void Optimize(const NnetOptimizeOptions &config,
   ConsolidateIoOperations(nnet, computation);
 
   if (GetVerboseLevel() >= 4)
-    CheckComputation(nnet, request, *computation, false);
+    CheckComputation(nnet, *computation, false);
 }
 
 // ComputationRequests are distinguished by the names and indexes
@@ -633,7 +633,7 @@ const NnetComputation* CachingOptimizingCompiler::Compile(
       ComputationChecker checker(check_config, nnet_, *computation);
       checker.Check();
     }
-    Optimize(opt_config_, nnet_, *request, computation);
+    Optimize(opt_config_, nnet_, computation);
     if (GetVerboseLevel() >= verbose_cutoff) {
       std::ostringstream os;
       computation->Print(os, nnet_);

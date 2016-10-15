@@ -563,9 +563,8 @@ void RemoveNoOps(NnetComputation *computation) {
 VariableMergingOptimizer::VariableMergingOptimizer(
     const NnetOptimizeOptions &config,
     const Nnet &nnet,
-    const ComputationRequest &request,
     NnetComputation *computation):
-    config_(config), nnet_(nnet), request_(request),
+    config_(config), nnet_(nnet),
     computation_(computation),
     already_called_merge_variables_(false) {
   analyzer_.Init(nnet, *computation);
