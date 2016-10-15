@@ -83,7 +83,7 @@ struct ComputationGraph {
   /// the corresponding "is_input" flag set to the value "input") and set
   /// *is_new to true.  If present, set is_new to false and return the existing
   /// cindex_id.
-  int32 GetCindexId(const Cindex &cindex, bool input, bool *is_new);
+  int32 GetCindexId(const Cindex &cindex, bool is_input, bool *is_new);
 
   /// Const version of GetCindexId that does not add CindexIds.  It will return
   /// -1 if the Cindex is not present, and the user should check for this.
@@ -243,8 +243,10 @@ class ComputationGraphBuilder {
                             std::vector<bool> *required) const;
 
   // this function, to be called from Compute(), does some sanity checks to
-  // verify that the internal state is consistent.
-  void Check() const;
+  // verify that the internal state is consistent.  It only does this for the
+  // current 'segment' of the computation, starting from 'start_cindex_id' (this
+  // will be 0 in normal, single-segment computations).
+  void Check(int32 start_cindex_id) const;
 
   const Nnet &nnet_;
   const ComputationRequest *request_;
@@ -377,7 +379,7 @@ void ComputeComputationPhases(
 
 
 /**
-   This function arranges the cindex_ids of the computation into a sequence of
+   This class arranges the cindex_ids of the computation into a sequence of
    lists called "steps", which will correspond roughly to the commands in the
    compiled computation.  The steps are finer than phases.  (See \ref
    dnn3_compile_steps for more info).  To summarize the properties that
@@ -386,30 +388,157 @@ void ComputeComputationPhases(
   - All cindex_ids within a given step correspond to the same node in the graph
   - All dependencies of cindex_ids within a given step have been computed in
     earlier steps.
+  - All cindex_ids within a given step share the same location when
+    computed (i.e. a matrix or submatix)
 
  There are also some extra, more obscure properties that the sequence of steps
  must satisfy:
-  - Any input or output in the ComputationRequest must be in one step, with the
-    Indexes in the same order as specified in the ComputationRequest.  (Note:
-    inputs can be for nodes of type kComponent as well as kInput).
+
+  - Any input or output specified in a ComputationRequest must be in one step,
+    with the Indexes in the same order as specified in the ComputationRequest.
+    (Note: inputs can be for nodes of type kComponent as well as kInput).
   - If a step corresponds to a node of type kComponent (and does not
     correspond to an input in the ComputationRequest), then the immediately
     preceding step must correspond to a node of type kDescriptor, and the
     sequence of Indexes in the two steps must be identical.
   - If a step corresponds to a node of type kDimRange, then there must be
-    another step corresponding to the source node, with exactly the same
+    a preceding step corresponding to the source node, with exactly the same
     Indexes appearing in the same order.  (This lets us use a sub-matrix for
-    the kDimRange node).
+    the kDimRange node).  We guarantee this by adding extra cindexes to the
+    kDimRange steps as needed.
 
  The reason why computation_graph is not provided as a const argument is that in
  order to ensure the final property we may have to add a few new cindex_ids.
 */
-void ComputeComputationSteps(
-    const Nnet &nnet,
-    const ComputationRequest &request,
-    const std::vector<std::vector<int32> > &phases,
-    ComputationGraph *computation_graph,
-    std::vector<std::vector<int32> > *steps);
+
+class ComputationStepsComputer {
+ public:
+  /// Constructor.
+  ///  @param [in] nnet        The neural network that this computation is for.
+  ///  @param [in,out]  graph  The computation graph that we're computing the steps
+  ///                          for.  It's only non-const because in certain
+  ///                          unusual cases relating to nodes of type kDimRange,
+  ///                          we may need to add new cindexes.
+  ///  @param [out] steps     The main output of this class, which is
+  ///                         a sequence of steps, each step being an ordered list of cindex_ids.
+  ///                         It just gets cleared in the constructor; it's set up
+  ///                         when you call ComputeForSegment().
+  ///  @param [out] locations The additional output of this class, which is a function
+  ///                         of the information in 'steps'.  The array
+  ///                         'locations' is indexed by cindex_id, and each one is a pair
+  ///                         (step-index, index-into-step), so that for any cindex_id c,
+  ///                         (*steps)[locations[c].first][locations[c].second] == c.
+  ///                          It's possible in principle if there are non-simple
+  ///                          Components, that for node corresponding to component-input
+  ///                          descriptors, a cindex might be present in more than one step,
+  ///                          so it doesn't follow that if (*steps)[i][j] == c, then
+  ///                          locations[c] == (i,j).
+  ComputationStepsComputer(const Nnet &nnet,
+                           ComputationGraph *graph,
+                           std::vector<std::vector<int32> > *steps,
+                           std::vector<std::pair<int32, int32> > *locations);
+
+  /// You call this once for each segment, in order (note: for normal,
+  /// non-online computations, there is only one segment).
+  void ComputeForSegment(const ComputationRequest &request,
+                         const std::vector<std::vector<int32> > &phases);
+
+  /// This is only to be called after you have called ComputeForSegment
+  /// for all the segments.
+  void Check() const;
+ private:
+
+  // Adds step(s) for one "sub-phase".  A sub-phase is the set of cindex_ids from
+  // one phase that have the same node index.  Note: for nodes that are
+  // component-input descriptors, we don't actually create the step here, we
+  // create it just before creating the step for its component, and we recreate
+  // the list of cindexes from those from the component.  The reason is that
+  // there are situations where doing it directly from the raw_step would not do
+  // the right thing (especially with non-simple components, it's possible that
+  // the cindexes component-input descriptors could be used twice by two
+  // different components)..
+  void ProcessSubPhase(const ComputationRequest &request,
+                       const std::vector<Cindex> &sub_phase);
+
+  // Called from ProcessSubPhase- for the case where it's a DimRangeNode.
+  void ProcessDimRangeSubPhase(const std::vector<Cindex> &sub_phase);
+
+  // Called from ProcessSubPhase- for the case where it's an input or output node.
+  void ProcessInputOrOutputStep(const ComputationRequest &request,
+                                bool is_output,
+                                const std::vector<Cindex> &sub_phase);
+
+  // Called from ProcessSubPhase- for the case where it's a component node.
+  void ProcessComponentStep(const std::vector<Cindex> &step);
+
+
+  // Splits a phase up into multiple "sub-phases", which are just the cindexes
+  // from a phase that are from a single node, sorted.  At this point we
+  // represent them as Cindexes, not cindex_ids.  For efficiency and because it
+  // would be discarded anyway, it discards any raw steps that correspond to
+  // component-input descriptors because these are not processed inside
+  // ProcessSubPhase().
+  void SplitIntoSubPhases(const std::vector<int32> &phase,
+                          std::vector<std::vector<Cindex> > *sub_phase) const;
+
+  // This low-level function used by functions like ProcessComponentStep,
+  // ProcessInputStep and so on, adds one step to 'steps_' (converting from
+  // Cindex to cindex_ids), and updates 'locations' appropriately.  It returns
+  // the step index that we just added (== size of steps_ at entry).
+  // If you specify add_if_absent = true, it will add any Cindexes that were
+  // not already present, to the graph.  [this option is only to be used
+  // in processing dim-range nodes.
+  int32 AddStep(const std::vector<Cindex> &cindexes,
+                bool add_if_absent = false);
+
+  // This is an alternative interface to AddStep() that takes a list of
+  // cindex_ids instead of cindexes (it's destructive of that list).
+  int32 AddStep(std::vector<int32> *cindex_ids);
+
+
+  // This utility function uses graph_ to convert a vector of cindex_ids into
+  // Cindexes.
+  void ConvertToCindexes(const std::vector<int32> &cindex_ids,
+                         std::vector<Cindex> *cindexes) const;
+
+  // Converts a vector of Cindexes to a vector of Indexes, by
+  // stripping out the node index.
+  static void ConvertToIndexes(const std::vector<Cindex> &cindexes,
+                               std::vector<Index> *indexes);
+
+  // Converts a vector of Indexes to Cindexes, using a supplied
+  // node index.
+  static void ConvertToCindexes(const std::vector<Index> &indexes,
+                                int32 node_index,
+                                std::vector<Cindex> *cindexes);
+
+
+  // This utility function uses graph_ to convert a vector of cindex_ids into
+  // Cindexes.   It will crash if the cindexes were not present in the graph.
+  void ConvertToCindexIds(const std::vector<Cindex> &cindexes,
+                          std::vector<int32> *cindex_ids) const;
+
+  // This utility function uses the 'locations_' array to convert the cindex_ids
+  // in 'cindex_ids' into an array (of the same length) of locations, i.e. of
+  // pairs (step, index-into-step), so that if cindex_ids[i] = c, then
+  // (*locations)[i] will be set to (*locations_)[c].  It will die if
+  // one of the locations was not defined, i.e. was the pair (-1, -1).
+  void ConvertToLocations(
+      const std::vector<int32> &cindex_ids,
+      std::vector<std::pair<int32, int32> > *locations) const;
+
+
+  const Nnet &nnet_;
+  ComputationGraph *graph_;
+  /// steps_ is a pointer to an output that's passed in in the constructor.
+  std::vector<std::vector<int32> > *steps_;
+  /// locations_ is a map from cindex_id to the pair of indexes into steps_ where
+  /// that cindex_id resides, so if (*locations_)[c] = (i,j), then
+  /// (*steps_)[i][j] == c.  This is also an output (we get the pointer in
+  /// the constructor).
+  std::vector<std::pair<int32, int32> > *locations_;
+};
+
 
 
 } // namespace nnet3
