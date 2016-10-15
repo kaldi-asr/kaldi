@@ -234,7 +234,6 @@ def Train(args, run_opts):
         target_type = "sparse"
         compute_accuracy = True if objective_type == "linear" else False
 
-<<<<<<< HEAD
     # If num of egs dirs in args.egs_dir > 1,
     # it is correspond to multilingual training and 
     # it should generate egs dir for each languages.
@@ -264,27 +263,6 @@ def Train(args, run_opts):
           egs_dir = default_egs_dir
       else:
           egs_dir = args.egs_dir
-=======
-    if (args.stage <= -4) and args.egs_dir is None:
-        logger.info("Generating egs")
-
-        GenerateEgsUsingTargets(args.feat_dir, args.targets_scp, default_egs_dir,
-                                left_context, right_context,
-                                left_context, right_context, run_opts,
-                                frames_per_eg = args.frames_per_eg,
-                                srand = args.srand,
-                                egs_opts = args.egs_opts,
-                                cmvn_opts = args.cmvn_opts,
-                                online_ivector_dir = args.online_ivector_dir,
-                                samples_per_iter = args.samples_per_iter,
-                                transform_dir = args.transform_dir,
-                                stage = args.egs_stage,
-                                target_type = target_type,
-                                num_targets = num_targets)
-
-    if args.egs_dir is None:
-        egs_dir = default_egs_dir
->>>>>>> 5b17a4c... raw_python_script: Addressed comments and made changes
     else:
       egs_dir = multi_egs_dir[-1]
       #if (args.stage <= -4) and not os.path.exists(egs_dir):

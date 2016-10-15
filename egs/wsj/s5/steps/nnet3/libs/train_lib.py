@@ -210,19 +210,16 @@ def TrainNewModels(dir, iter, srand, num_jobs,
   --print-interval=20 --momentum={momentum} \
   --max-param-change={max_param_change} \
   "{raw_model}" \
-  "ark,bg:nnet3-copy-egs --frame={frame} {context_opts} ark:{egs_dir}/egs.{archive_index}.ark ark:- | nnet3-shuffle-egs --buffer-size={shuffle_buffer_size} --srand={srand} ark:- ark:-| nnet3-merge-egs --minibatch-size={minibatch_size} --measure-output-frames=false --discard-partial-minibatches=true ark:- ark:- |" \
+  "{egs_for_train}" \
   {dir}/{next_iter}.{job}.raw
           """.format(command = run_opts.command,
                      train_queue_opt = run_opts.train_queue_opt,
                      dir = dir, iter = iter, srand = iter + srand, next_iter = iter + 1, job = job,
                      parallel_train_opts = run_opts.parallel_train_opts,
                      cache_read_opt = cache_read_opt, cache_write_opt = cache_write_opt,
-                     frame = frame,
                      momentum = momentum, max_param_change = max_param_change,
-                     raw_model = raw_model_string, context_opts = context_opts,
-                     egs_dir = egs_dir, archive_index = archive_index,
-                     shuffle_buffer_size = shuffle_buffer_size,
-                     minibatch_size = minibatch_size),
+                     raw_model = raw_model_string, 
+                     egs_for_train = egs_for_train_string),
           wait = False)
 
         processes.append(process_handle)

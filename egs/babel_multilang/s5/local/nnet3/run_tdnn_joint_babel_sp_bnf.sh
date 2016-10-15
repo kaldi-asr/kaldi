@@ -202,6 +202,7 @@ fi
 if [ $stage -le 11 ]; then
   echo "$0: training mutilingual model."
   common_egs_dir="${multi_egs_dirs[@]} $dir/egs"
+  echo common_egs_dir = $common_egs_dir
   steps/nnet3/train_raw_dnn.py --stage=$train_stage \
     --cmd="$decode_cmd" \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
