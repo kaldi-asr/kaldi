@@ -168,8 +168,6 @@ class RunOpts:
         self.prior_queue_opt = None
         self.parallel_train_opts = None
 
-
-
 # this is the main method which differs between RNN and DNN training
 def TrainNewModels(dir, iter, srand, num_jobs,
                    num_archives_processed, num_archives,

@@ -47,69 +47,7 @@ def GetArgs():
     parser.add_argument("--egs.frames-per-eg", type=int, dest='frames_per_eg',
                         default = 8,
                         help="Number of output labels per example")
-    parser.add_argument("--egs.transform_dir", type=str, dest='transform_dir',
-                        default = None, action = NullstrToNoneAction,
-                        help="""String to provide options directly to steps/nnet3/get_egs.sh script""")
-    parser.add_argument("--egs.dir", type=str, dest='egs_dir',
-                        default = None, action = NullstrToNoneAction,
-                        help="""Directory with egs. If specified this directory
-                        will be used rather than extracting egs""")
-    parser.add_argument("--egs.stage", type=int, dest='egs_stage',
-                        default = 0, help="Stage at which get_egs.sh should be restarted")
-    parser.add_argument("--egs.opts", type=str, dest='egs_opts',
-                        default = None, action = NullstrToNoneAction,
-                        help="""String to provide options directly to steps/nnet3/get_egs.sh script""")
-    # trainer options
-    parser.add_argument("--trainer.srand", type=int, dest='srand',
-                        default = 0,
-                        help="Sets the random seed for model initialization and egs shuffling. "
-                        "Warning: This random seed does not control all aspects of this experiment. "
-                        "There might be other random seeds used in other stages of the experiment "
-                        "like data preparation (e.g. volume perturbation).")
-    parser.add_argument("--trainer.num-epochs", type=int, dest='num_epochs',
-                        default = 8,
-                        help="Number of epochs to train the model")
-    parser.add_argument("--trainer.prior-subset-size", type=int, dest='prior_subset_size',
-                        default = 20000,
-                        help="Number of samples for computing priors")
-    parser.add_argument("--trainer.num-jobs-compute-prior", type=int, dest='num_jobs_compute_prior',
-                        default = 10,
-                        help="The prior computation jobs are single threaded and run on the CPU")
-    parser.add_argument("--trainer.max-models-combine", type=int, dest='max_models_combine',
-                        default = 20,
-                        help="The maximum number of models used in the final model combination stage. These models will themselves be averages of iteration-number ranges")
-    parser.add_argument("--trainer.shuffle-buffer-size", type=int, dest='shuffle_buffer_size',
-                        default = 5000,
-                        help="Controls randomization of the samples on each"
-                        "iteration. If 0 or a large value the randomization is"
-                        "complete, but this will consume memory and cause spikes"
-                        "in disk I/O.  Smaller is easier on disk and memory but"
-                        "less random.  It's not a huge deal though, as samples"
-                        "are anyway randomized right at the start."
-                        "(the point of this is to get data in different"
-                        "minibatches on different iterations, since in the"
-                        "preconditioning method, 2 samples in the same minibatch"
-                        "can affect each others' gradients.")
-    parser.add_argument("--trainer.add-layers-period", type=int, dest='add_layers_period',
-                        default=2,
-                        help="The number of iterations between adding layers"
-                        "during layer-wise discriminative training.")
-    parser.add_argument("--trainer.max-param-change", type=float, dest='max_param_change',
-                        default=2.0,
-                        help="The maximum change in parameters allowed per minibatch,"
-                        "measured in Frobenius norm over the entire model")
-    parser.add_argument("--trainer.samples-per-iter", type=int, dest='samples_per_iter',
-                        default=400000,
-                        help="This is really the number of egs in each archive.")
-    parser.add_argument("--trainer.lda.rand-prune", type=float, dest='rand_prune',
-                        default=4.0,
-                        help="""Value used in preconditioning matrix estimation""")
-    parser.add_argument("--trainer.lda.max-lda-jobs", type=float, dest='max_lda_jobs',
-                        default=10,
-                        help="""Max number of jobs used for LDA stats accumulation""")
 
-
-    # Parameters for the optimization
     parser.add_argument("--trainer.optimization.minibatch-size", type=float, dest='minibatch_size',
                         default = 512,
                         help="Size of the minibatch used to compute the gradient")
@@ -213,7 +151,7 @@ def Train(args, run_opts):
     # transform.
 
     if args.use_dense_targets:
-        if GetFeatDimFromScp(args.targets_scp) != num_targets:
+        if GetFeatDimFromScp(targets_scp) != num_targets:
             raise Exception("Mismatch between num-targets provided to "
                             "script vs configs")
 
@@ -272,7 +210,6 @@ def Train(args, run_opts):
                                 stage = args.egs_stage,
                                 samples_per_iter = args.samples_per_iter,
                                 egs_opts = args.egs_opts)
-        
     [egs_left_context, egs_right_context, frames_per_eg, num_archives] = VerifyEgsDir(egs_dir, feat_dim, ivector_dim, left_context, right_context)
     assert(args.frames_per_eg == frames_per_eg)
 

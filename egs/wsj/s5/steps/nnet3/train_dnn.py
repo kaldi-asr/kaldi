@@ -49,52 +49,11 @@ def GetArgs():
     parser.add_argument("--trainer.optimization.minibatch-size", type=float, dest='minibatch_size',
                         default = 512,
                         help="Size of the minibatch used to compute the gradient")
-
     parser.add_argument("--trainer.presoftmax-prior-scale-power", type=float, dest='presoftmax_prior_scale_power',
                         default=-0.25,
                         help="")
 
     # General options
-    parser.add_argument("--stage", type=int, default=-4,
-                        help="Specifies the stage of the experiment to execution from")
-    parser.add_argument("--exit-stage", type=int, default=None,
-                        help="If specified, training exits before running this stage")
-    parser.add_argument("--cmd", type=str, action = NullstrToNoneAction,
-                        dest = "command",
-                        help="""Specifies the script to launch jobs.
-                        e.g. queue.pl for launching on SGE cluster
-                             run.pl for launching on local machine
-                        """, default = "queue.pl")
-    parser.add_argument("--egs.cmd", type=str, action = NullstrToNoneAction,
-                        dest = "egs_command",
-                        help="""Script to launch egs jobs""", default = "queue.pl")
-    parser.add_argument("--use-gpu", type=str, action = StrToBoolAction,
-                        choices = ["true", "false"],
-                        help="Use GPU for training", default=True)
-    parser.add_argument("--cleanup", type=str, action = StrToBoolAction,
-                        choices = ["true", "false"],
-                        help="Clean up models after training", default=True)
-    parser.add_argument("--cleanup.remove-egs", type=str, dest='remove_egs',
-                        default = True, action = StrToBoolAction,
-                        choices = ["true", "false"],
-                        help="""If true, remove egs after experiment""")
-    parser.add_argument("--cleanup.preserve-model-interval", dest = "preserve_model_interval",
-                        type=int, default=100,
-                        help="Determines iterations for which models will be preserved during cleanup. If mod(iter,preserve_model_interval) == 0 model will be preserved.")
-
-    parser.add_argument("--reporting.email", dest = "email",
-                        type=str, default=None, action = NullstrToNoneAction,
-                        help=""" Email-id to report about the progress of the experiment.
-                              NOTE: It assumes the machine on which the script is being run can send
-                              emails from command line via. mail program. The
-                              Kaldi mailing list will not support this feature.
-                              It might require local expertise to setup. """)
-    parser.add_argument("--reporting.interval", dest = "reporting_interval",
-                        type=int, default=0.1,
-                        help="Frequency with which reports have to be sent, measured in terms of fraction of iterations. If 0 and reporting mail has been specified then only failure notifications are sent")
-
-    parser.add_argument("--configs-dir", type=str,
-                        help="Use a different configs dir than dir/configs")
     parser.add_argument("--feat-dir", type=str, required = True,
                         help="Directory with features used for training the neural network.")
     parser.add_argument("--lang", type=str, required = True,

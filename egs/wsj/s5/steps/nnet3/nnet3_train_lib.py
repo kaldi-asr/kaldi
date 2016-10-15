@@ -97,7 +97,6 @@ def StrToBool(values):
     else:
         raise ValueError
 
-
 class StrToBoolAction(argparse.Action):
     """ A custom action to convert bools from shell format i.e., true/false
         to python format i.e., True/False """
@@ -748,6 +747,8 @@ def ComputeTrainCvProbabilities(dir, iter, egs_dir, run_opts, mb_size=256,
         model = "nnet3-am-copy --raw=true {dir}/{iter}.mdl - |".format(dir = dir, iter = iter)
     else:
         model = "{dir}/{iter}.raw".format(dir = dir, iter = iter)
+
+    compute_prob_opts = "--compute-accuracy" if compute_accuracy else "";
 
     compute_prob_opts = "--compute-accuracy" if compute_accuracy else "";
     

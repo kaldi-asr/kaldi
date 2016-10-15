@@ -66,7 +66,7 @@ def GetArgs():
                         "(spliced according to the first set of splice-indexes) will be used as "
                         "the first Affine layer. This affine layer's parameters are fixed during training. "
                         "This variable needs to be set to \"false\" when using dense-targets "
-                        "or when --add-idct is set to \"true\"."
+                        "or when --add-idct is set to \"true\".",
                         "If --cnn.layer is specified this option will be forced to \"false\".",
                         default=True, choices = ["false", "true"])
 
@@ -117,8 +117,7 @@ def GetArgs():
 
     # Options to convert input MFCC into Fbank features. This is useful when a
     # LDA layer is not added (such as when using dense targets)
-    #parser.add_argument(["--cepstral-lifter","--cnn.cepstral-lifter"], type=float, dest = "cepstral_lifter",
-    parser.add_argument("--cepstral-lifter", type=float, dest = "cepstral_lifter",
+    parser.add_argument(["--cepstral-lifter","--cnn.cepstral-lifter"], type=float, dest = "cepstral_lifter",
                         help="The factor used for determining the liftering vector in the production of MFCC. "
                         "User has to ensure that it matches the lifter used in MFCC generation, "
                         "e.g. 22.0", default=22.0)
