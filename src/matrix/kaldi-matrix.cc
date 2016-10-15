@@ -1281,8 +1281,6 @@ void MatrixBase<Real>::Read(std::istream & is, bool binary, bool add) {
   CopyFromMat(tmp);
 }
 
-//TODO: remove this!
-#include <iostream>
 
 template<typename Real>
 void Matrix<Real>::Read(std::istream & is, bool binary, bool add) {
