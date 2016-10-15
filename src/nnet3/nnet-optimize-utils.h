@@ -131,7 +131,6 @@ class VariableMergingOptimizer {
  public:
   VariableMergingOptimizer(const NnetOptimizeOptions &config,
                            const Nnet &nnet,
-                           const ComputationRequest &request,
                            NnetComputation *computation);
   // Note: you can call this only once.  If it returns true, it means it has
   // merged variables.  In this case, you have the option to instantiate another
@@ -168,7 +167,6 @@ class VariableMergingOptimizer {
 
   const NnetOptimizeOptions &config_;
   const Nnet &nnet_;
-  const ComputationRequest &request_;
   NnetComputation *computation_;
 
   Analyzer analyzer_;

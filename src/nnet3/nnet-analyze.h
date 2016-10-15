@@ -417,9 +417,8 @@ class ComputationChecker {
 
 
 /// This is a convenience interface for class ComputationChecker.  Call it with
-/// check_rewrite = true only if the optimization is pre-optimization.
+/// check_rewrite = true only if the computation is pre-optimization.
 void CheckComputation(const Nnet &nnet,
-                      const ComputationRequest &request,
                       const NnetComputation &computation,
                       bool check_rewrite = false);
 

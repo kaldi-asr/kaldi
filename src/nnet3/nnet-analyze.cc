@@ -974,7 +974,6 @@ void ComputationChecker::CheckComputationDebugInfo() const {
 }
 
 void CheckComputation(const Nnet &nnet,
-                      const ComputationRequest &request,
                       const NnetComputation &computation,
                       bool check_rewrite) {
   CheckComputationOptions opts;
