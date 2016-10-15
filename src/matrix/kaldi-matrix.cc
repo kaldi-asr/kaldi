@@ -1383,7 +1383,7 @@ void Matrix<Real>::Read(std::istream & is, bool binary, bool add) {
         // Now process the data.
         if (!cur_row->empty()) data.push_back(cur_row);
         else delete(cur_row);
-        cur_row=NULL;
+        cur_row = NULL;
         if (data.empty()) { this->Resize(0, 0); return; }
         else {
           int32 num_rows = data.size(), num_cols = data[0]->size();
@@ -1398,7 +1398,7 @@ void Matrix<Real>::Read(std::istream & is, bool binary, bool add) {
             for (int32 j = 0; j < num_cols; j++)
               (*this)(i, j) = (*(data[i]))[j];
             delete data[i];
-            data[i]=NULL;
+            data[i] = NULL;
           }
         }
         return;
@@ -1439,10 +1439,10 @@ void Matrix<Real>::Read(std::istream & is, bool binary, bool add) {
     // Note, we never leave the while () loop before this
     // line (we return from it.)
  cleanup: // We only reach here in case of error in the while loop above.
-    if(cur_row!=NULL)
+    if(cur_row != NULL)
       delete cur_row;
     for (size_t i = 0; i < data.size(); i++)
-      if(data[i]!=NULL)
+      if(data[i] != NULL)
         delete data[i];    
     // and then go on to "bad" below, where we print error.
   }
