@@ -43,7 +43,7 @@ feat_suffix=_hires_mfcc # The feature suffix describing features used in multili
 # corpora
 # language list used for multilingual training
 # The map for lang-name to its abreviation can be find in
-# local/prepare_flp_langconf.sh
+# local/prepare_lang_conf.sh
 #lang_list=(AMH GRN)
 lang_list=(GRG LIT MONG TUR KAZ KUR PSH SWA TOK IGBO DHO)
 

@@ -31,6 +31,7 @@ use_flp=true
 
 
 lang=$1
+. local/prepare_lang_conf.sh --fullLP $use_flp $lang || exit 1;
 
 if $use_flp; then
 . local/prepare_flp_langconf.sh $lang
@@ -61,15 +62,16 @@ ivector_dir=$exp_dir/nnet3/ivectors_train${suffix}_gb
 mkdir -p $multidir${suffix}
 
 if [ ! -f $multidir${suffix}/.done ]; then 
- echo "$0: Train Multilingual Bottleneck network using lang list = ${lang_list_for_grg[@]}"
- ./local/nnet3/run_tdnn_joint_babel_sp_bnf.sh --dir $multidir \
-    --avg-num-archives $num_archives \
-    --global-extractor $global_extractor \
-    --train-stage $bnf_train_stage --stage $stage  || exit 1;
+  echo "$0: Train multilingual Bottleneck network using lang list = ${lang_list_for_grg[@]}"
+  ./local/nnet3/run_tdnn_joint_babel_sp_bnf.sh --dir $multidir \
+     --avg-num-archives $num_archives \
+     --global-extractor $global_extractor \
+     --train-stage $bnf_train_stage --stage $stage  || exit 1;
 
   touch $multidir${suffix}/.done
+else
+  echo "$0 Skip multilingual Bottleneck network training; you can force to run this step by deleting $multidir${suffix}/.done"
 fi
-
 
 [ ! -d $dump_bnf_dir ] && mkdir -p $dump_bnf_dir
 if [ ! -f $data_bnf_dir/.done ]; then
@@ -82,6 +84,8 @@ if [ ! -f $data_bnf_dir/.done ]; then
     $datadir $data_bnf_dir \
     $multidir $dump_bnf_dir $exp_dir/make_train_bnf || exit 1; 
   touch $data_bnf_dir/.done
+else
+  echo "$0 Skip Bottleneck feature extraction; You can force to run this step deleting $data_bnf_dir/.done."
 fi 
 
 if [ ! -d $appended_dir/.done ]; then
