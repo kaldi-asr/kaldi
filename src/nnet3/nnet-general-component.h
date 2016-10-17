@@ -440,6 +440,142 @@ class StatisticsPoolingComponentPrecomputedIndexes:
   virtual std::string Type() const { return "StatisticsPoolingComponentPrecomputedIndexes"; }
 };
 
+// BackpropTruncationComponent zeroes out the gradients every certain number
+// of frames, as well as having gradient-clipping functionality as 
+// ClipGradientComponent.
+// This component will be used to prevent gradient explosion problem in
+// recurrent neural networks
+class BackpropTruncationComponent: public Component {
+ public:
+  BackpropTruncationComponent(int32 dim,
+                        BaseFloat clipping_threshold,
+                        BaseFloat zeroing_threshold,
+                        int32 zeroing_interval,
+                        int32 recurrence_interval,
+                        int32 num_clipped,
+                        int32 num_zeroed,
+                        int32 count,
+                        int32 count_zeroing_boundaries) {
+    Init(dim, clipping_threshold,
+         zeroing_threshold, zeroing_interval, recurrence_interval,
+         num_clipped, num_zeroed, count, count_zeroing_boundaries);}
+
+  BackpropTruncationComponent(): dim_(0), clipping_threshold_(-1),
+    zeroing_threshold_(-1), zeroing_interval_(0), recurrence_interval_(0),
+    num_clipped_(0), num_zeroed_(0), count_(0), count_zeroing_boundaries_(0) { }
+
+  virtual int32 InputDim() const { return dim_; }
+  virtual int32 OutputDim() const { return dim_; }
+  virtual void InitFromConfig(ConfigLine *cfl);
+  void Init(int32 dim, BaseFloat clipping_threshold,
+            BaseFloat zeroing_threshold, int32 zeroing_interval,
+            int32 recurrence_interval, int32 num_clipped, int32 num_zeroed,
+            int32 count, int32 count_zeroing_boundaries);
+
+  virtual std::string Type() const { return "BackpropTruncationComponent"; }
+
+  virtual int32 Properties() const {
+    return kLinearInInput|kPropagateInPlace|kBackpropInPlace;
+  }
+
+  virtual void ZeroStats();
+
+  virtual Component* Copy() const {
+    return new BackpropTruncationComponent(dim_,
+                                     clipping_threshold_,
+                                     zeroing_threshold_,
+                                     zeroing_interval_,
+                                     recurrence_interval_,
+                                     num_clipped_,
+                                     num_zeroed_,
+                                     count_,
+                                     count_zeroing_boundaries_);}
+
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &, // in_value,
+                        const CuMatrixBase<BaseFloat> &, // out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual ComponentPrecomputedIndexes* PrecomputeIndexes(
+      const MiscComputationInfo &misc_info,
+      const std::vector<Index> &input_indexes,
+      const std::vector<Index> &output_indexes,
+      bool need_backprop) const;
+
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const Component &other);
+  virtual void Read(std::istream &is, bool binary); // This Read function
+  // requires that the Component has the correct type.
+  /// Write component to stream
+  virtual void Write(std::ostream &os, bool binary) const;
+  virtual std::string Info() const;
+  virtual ~BackpropTruncationComponent() {
+  }
+ private:
+  int32 dim_;  // input/output dimension
+  
+  BaseFloat clipping_threshold_;  // threshold to be used for clipping
+                                  // corresponds to max-row-norm
+
+  BaseFloat zeroing_threshold_;   // threshold to be used for zeroing
+                                  // corresponds to max-row-norm
+
+  int32 zeroing_interval_;        // the interval in number of frames that we
+                                  // would apply the zeroing of the gradient
+
+  int32 recurrence_interval_;     // together with zeroing_interval_ to decide
+                                  // the frame at which for zeroing the gradient
+
+  std::string debug_info_;   // component-node name, used in the destructor to
+                             // print out stats of self-repair
+
+  BackpropTruncationComponent &operator =
+      (const BackpropTruncationComponent &other); // Disallow.
+
+ protected:
+  // variables to store stats
+  // An element corresponds to rows of derivative matrix
+  int32 num_clipped_;  // number of elements which were clipped
+  int32 num_zeroed_;   // number of elements which were zeroed
+  int32 count_;  // number of elements which were processed
+  int32 count_zeroing_boundaries_; // number of zeroing boundaries where we may
+                                   // perform zeroing the gradient
+
+};
+
+class BackpropTruncationComponentPrecomputedIndexes:
+      public ComponentPrecomputedIndexes {
+ public:
+
+  // zeroing has the same dimension as the number of rows of out-deriv.
+  // Each element in zeroing can take two possible values: 1.0, meaning its
+  // corresponding frame is the one that we need to consider zeroing the
+  // gradient, and 0.0 otherwise
+  CuVector<BaseFloat> zeroing;
+
+  // this class has a virtual destructor so it can be deleted from a pointer
+  // to ComponentPrecomputedIndexes.
+  virtual ~BackpropTruncationComponentPrecomputedIndexes() { }
+
+  virtual ComponentPrecomputedIndexes* Copy() const {
+    return new BackpropTruncationComponentPrecomputedIndexes(*this);
+  }
+
+  virtual void Write(std::ostream &ostream, bool binary) const;
+
+  virtual void Read(std::istream &istream, bool binary);
+
+  virtual std::string Type() const {
+    return "BackpropTruncationComponentPrecomputedIndexes";
+  }
+};
+
 } // namespace nnet3
 } // namespace kaldi
 

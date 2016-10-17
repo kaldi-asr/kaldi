@@ -513,6 +513,178 @@ void GenerateConfigSequenceLstm(
   configs->push_back(os.str());
 }
 
+void GenerateConfigSequenceLstmWithTruncation(
+    const NnetGenerationOptions &opts,
+    std::vector<std::string> *configs) {
+  std::ostringstream os;
+
+  std::vector<int32> splice_context;
+  for (int32 i = -5; i < 4; i++)
+    if (Rand() % 3 == 0)
+      splice_context.push_back(i);
+  if (splice_context.empty())
+    splice_context.push_back(0);
+
+  int32 input_dim = 10 + Rand() % 20,
+      spliced_dim = input_dim * splice_context.size(),
+      output_dim = (opts.output_dim > 0 ?
+                    opts.output_dim :
+                    100 + Rand() % 200),
+      cell_dim = 40 + Rand() % 50,
+      projection_dim = std::ceil(cell_dim / (Rand() % 10 + 1));
+  int32 clipping_threshold = RandInt(6, 50),
+      zeroing_threshold = RandInt(1,  5),
+      zeroing_interval = RandInt(1, 5) * 10;
+
+  os << "input-node name=input dim=" << input_dim << std::endl;
+
+  // Parameter Definitions W*(* replaced by - to have valid names)
+  // Input gate control : Wi* matrices
+  os << "component name=Wi-xr type=NaturalGradientAffineComponent"
+     << " input-dim=" << spliced_dim + projection_dim
+     << " output-dim=" << cell_dim << std::endl;
+  os << "component name=Wic type=PerElementScaleComponent "
+     << " dim=" << cell_dim << std::endl;
+
+  // Forget gate control : Wf* matrices
+  os << "component name=Wf-xr type=NaturalGradientAffineComponent"
+     << " input-dim=" << spliced_dim + projection_dim
+     << " output-dim=" << cell_dim << std::endl;
+  os << "component name=Wfc type=PerElementScaleComponent "
+     << " dim=" << cell_dim << std::endl;
+
+  // Output gate control : Wo* matrices
+  os << "component name=Wo-xr type=NaturalGradientAffineComponent"
+     << " input-dim=" << spliced_dim + projection_dim
+     << " output-dim=" << cell_dim  << std::endl;
+  os << "component name=Woc type=PerElementScaleComponent "
+     << " dim=" << cell_dim << std::endl;
+
+  // Cell input matrices : Wc* matrices
+  os << "component name=Wc-xr type=NaturalGradientAffineComponent"
+     << " input-dim=" << spliced_dim + projection_dim
+     << " output-dim=" << cell_dim  << std::endl;
+
+
+
+  // projection matrices : Wrm and Wpm
+  os << "component name=W-m type=NaturalGradientAffineComponent "
+     << " input-dim=" << cell_dim
+     << " output-dim=" << 2 * projection_dim << std::endl;
+
+  // Output : Wyr and Wyp
+  os << "component name=Wy- type=NaturalGradientAffineComponent "
+     << " input-dim=" << 2 * projection_dim
+     << " output-dim=" << cell_dim << std::endl;
+
+  // Defining the diagonal matrices
+  // Defining the final affine transform
+  os << "component name=final_affine type=NaturalGradientAffineComponent "
+     << "input-dim=" << cell_dim << " output-dim=" << output_dim << std::endl;
+  os << "component name=logsoftmax type=LogSoftmaxComponent dim="
+     << output_dim << std::endl;
+
+  // Defining the non-linearities
+  //  declare a no-op component so that we can use a sum descriptor's output
+  //  multiple times, and to make the config more readable given the equations
+  os << "component name=i type=SigmoidComponent dim="
+     << cell_dim << std::endl;
+  os << "component name=f type=SigmoidComponent dim="
+     << cell_dim << std::endl;
+  os << "component name=o type=SigmoidComponent dim="
+     << cell_dim << std::endl;
+  os << "component name=g type=TanhComponent dim="
+     << cell_dim << std::endl;
+  os << "component name=h type=TanhComponent dim="
+     << cell_dim << std::endl;
+  os << "component name=c1 type=ElementwiseProductComponent "
+     << " input-dim=" << 2 * cell_dim
+     << " output-dim=" << cell_dim << std::endl;
+  os << "component name=c2 type=ElementwiseProductComponent "
+     << " input-dim=" << 2 * cell_dim
+     << " output-dim=" << cell_dim << std::endl;
+  os << "component name=m type=ElementwiseProductComponent "
+     << " input-dim=" << 2 * cell_dim
+     << " output-dim=" << cell_dim << std::endl;
+  os << "component name=c type=BackpropTruncationComponent dim="
+     << cell_dim
+     << " clipping-threshold=" << clipping_threshold
+     << " zeroing-threshold=" << zeroing_threshold
+     << " zeroing-interval=" << zeroing_interval
+     << " recurrence-interval=1" << std::endl;
+  os << "component name=r type=BackpropTruncationComponent dim="
+     << projection_dim
+     << " clipping-threshold=" << clipping_threshold
+     << " zeroing-threshold=" << zeroing_threshold
+     << " zeroing-interval=" << zeroing_interval
+     << " recurrence-interval=1" << std::endl;
+
+  // Defining the computations
+  std::ostringstream temp_string_stream;
+  for (size_t i = 0; i < splice_context.size(); i++) {
+    int32 offset = splice_context[i];
+    temp_string_stream << "Offset(input, " << offset << ")";
+    if (i + 1 < splice_context.size())
+      temp_string_stream << ", ";
+  }
+  std::string spliced_input = temp_string_stream.str();
+
+  std::string c_tminus1 = "IfDefined(Offset(c_t, -1))";
+  os << "component-node name=c_t component=c input=Sum(c1_t, c2_t)\n";
+
+  // i_t
+  os << "component-node name=i1 component=Wi-xr input=Append("
+     << spliced_input << ", IfDefined(Offset(r_t, -1)))\n";
+  os << "component-node name=i2 component=Wic "
+     << " input=" << c_tminus1 << std::endl;
+  os << "component-node name=i_t component=i input=Sum(i1, i2)\n";
+
+  // f_t
+  os << "component-node name=f1 component=Wf-xr input=Append("
+     << spliced_input << ", IfDefined(Offset(r_t, -1)))\n";
+  os << "component-node name=f2 component=Wfc "
+     << " input=" << c_tminus1 << std::endl;
+  os << "component-node name=f_t component=f input=Sum(f1, f2)\n";
+
+  // o_t
+  os << "component-node name=o1 component=Wo-xr input=Append("
+     << spliced_input << ", IfDefined(Offset(r_t, -1)))\n";
+  os << "component-node name=o2 component=Woc input=Sum(c1_t, c2_t)\n";
+  os << "component-node name=o_t component=o input=Sum(o1, o2)\n";
+
+  // h_t
+  os << "component-node name=h_t component=h input=Sum(c1_t, c2_t)\n";
+
+  // g_t
+  os << "component-node name=g1 component=Wc-xr input=Append("
+     << spliced_input << ", IfDefined(Offset(r_t, -1)))\n";
+  os << "component-node name=g_t component=g input=g1\n";
+
+  // parts of c_t
+  os << "component-node name=c1_t component=c1 "
+     << " input=Append(f_t, " << c_tminus1 << ")\n";
+  os << "component-node name=c2_t component=c2 input=Append(i_t, g_t)\n";
+
+  // m_t
+  os << "component-node name=m_t component=m input=Append(o_t, h_t)\n";
+
+  // r_t and p_t
+  os << "component-node name=rp_t component=W-m input=m_t\n";
+  // Splitting outputs of Wy- node
+  os << "dim-range-node name=r_t_pretrunc input-node=rp_t dim-offset=0 "
+     << "dim=" << projection_dim << std::endl;
+  os << "component-node name=r_t component=r input=r_t_pretrunc\n";
+
+  // y_t
+  os << "component-node name=y_t component=Wy- input=rp_t\n";
+
+  // Final affine transform
+  os << "component-node name=final_affine component=final_affine input=y_t\n";
+  os << "component-node name=posteriors component=logsoftmax input=final_affine\n";
+  os << "output-node name=output input=posteriors\n";
+  configs->push_back(os.str());
+}
+
 // This is a different LSTM config where computation is bunched according
 // to inputs this is not complete, it is left here for future comparisons
 void GenerateConfigSequenceLstmType2(
@@ -802,7 +974,7 @@ void GenerateConfigSequence(
     const NnetGenerationOptions &opts,
     std::vector<std::string> *configs) {
 start:
-  int32 network_type = RandInt(0, 10);
+  int32 network_type = RandInt(0, 11);
   switch(network_type) {
     case 0:
       GenerateConfigSequenceSimplest(opts, configs);
@@ -854,6 +1026,12 @@ start:
       break;
     case 10:
       GenerateConfigSequenceStatistics(opts, configs);
+      break;
+    case 11:
+      if (!opts.allow_recursion || !opts.allow_context ||
+          !opts.allow_nonlinearity)
+        goto start;
+      GenerateConfigSequenceLstmWithTruncation(opts, configs);
       break;
     default:
       KALDI_ERR << "Error generating config sequence.";

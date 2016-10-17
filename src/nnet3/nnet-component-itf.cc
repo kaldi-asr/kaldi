@@ -55,6 +55,8 @@ ComponentPrecomputedIndexes* ComponentPrecomputedIndexes::NewComponentPrecompute
     ans = new StatisticsExtractionComponentPrecomputedIndexes();
   } else if (cpi_type == "StatisticsPoolingComponentPrecomputedIndexes") {
     ans = new StatisticsPoolingComponentPrecomputedIndexes();
+  } else if (cpi_type == "BackpropTruncationComponentPrecomputedIndexes") {
+    ans = new BackpropTruncationComponentPrecomputedIndexes();
   }
   if (ans != NULL) {
     KALDI_ASSERT(cpi_type == ans->Type());
@@ -143,6 +145,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new ConstantFunctionComponent();
   } else if (component_type == "DropoutComponent") {
     ans = new DropoutComponent();
+  } else if (component_type == "BackpropTruncationComponent") {
+    ans = new BackpropTruncationComponent();
   }
   if (ans != NULL) {
     KALDI_ASSERT(component_type == ans->Type());
