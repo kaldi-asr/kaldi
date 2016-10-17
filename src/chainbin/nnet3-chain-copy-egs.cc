@@ -25,6 +25,7 @@
 
 namespace kaldi {
 namespace nnet3 {
+
 // returns an integer randomly drawn with expected value "expected_count"
 // (will be either floor(expected_count) or ceil(expected_count)).
 int32 GetCount(double expected_count) {
@@ -35,6 +36,7 @@ int32 GetCount(double expected_count) {
     ans++;
   return ans;
 }
+
 void FilterExample(const NnetChainExample &eg,
                    int32 min_input_t,
                    int32 max_input_t,
@@ -45,9 +47,9 @@ void FilterExample(const NnetChainExample &eg,
   eg_out->inputs.resize(eg.inputs.size());
   eg_out->outputs.clear();
   eg_out->outputs.resize(eg.outputs.size());
-  //process the <NnetIo> inputs
+  // process the <NnetIo> inputs
   for (size_t i = 0; i < eg.inputs.size(); i++) {
-    bool is_input_or_output;
+    bool is_input;
     int32 min_t, max_t;
     const NnetIo &io_in = eg.inputs[i];
     NnetIo &io_out = eg_out->inputs[i];
@@ -56,11 +58,11 @@ void FilterExample(const NnetChainExample &eg,
     if (name == "input") {
       min_t = min_input_t;
       max_t = max_input_t;
-      is_input_or_output = true;
+      is_input = true;
     } else {
-      is_input_or_output = false;
+      is_input = false;
     }
-    if (!is_input_or_output) {  // Just copy everything.
+    if (!is_input) {  // Just copy everything.
       io_out.indexes = io_in.indexes;
       io_out.features = io_in.features;
     } else {
@@ -73,7 +75,7 @@ void FilterExample(const NnetChainExample &eg,
       std::vector<Index>::const_iterator iter_in = indexes_in.begin(),
                                           end_in = indexes_in.end();
       std::vector<bool>::iterator iter_out = keep.begin();
-      for (; iter_in != end_in; ++iter_in,++iter_out) {
+      for (; iter_in != end_in; ++iter_in, ++iter_out) {
         int32 t = iter_in->t;
         bool is_within_range = (t >= min_t && t <= max_t);
         *iter_out = is_within_range;
@@ -92,17 +94,19 @@ void FilterExample(const NnetChainExample &eg,
                    indexes_out.size() == static_cast<size_t>(num_kept));
     }
   }
-  //process the <NnetChainSupervision> outputs, we will copy all supervision output as default
+  // process the <NnetChainSupervision> outputs, we will copy all supervision
+  // output as default
   for (size_t i = 0; i < eg.outputs.size(); i++) {
     const NnetChainSupervision &io_in = eg.outputs[i];
     NnetChainSupervision &io_out = eg_out->outputs[i];
     const std::string &name = io_in.name;
     io_out.name = name;
     io_out.indexes = io_in.indexes;
-    io_out.supervision=io_in.supervision;
-    io_out.deriv_weights=io_in.deriv_weights;
+    io_out.supervision = io_in.supervision;
+    io_out.deriv_weights = io_in.deriv_weights;
   }
 }
+
 bool ContainsSingleExample(const NnetChainExample &eg,
                            int32 *min_input_t,
                            int32 *max_input_t,
@@ -141,7 +145,7 @@ bool ContainsSingleExample(const NnetChainExample &eg,
         }
       }
     }
-  } 
+  }
 
   for (int32 i = 0; i < num_indexes_output; i++) {
     const NnetChainSupervision &outputs = eg.outputs[i];
@@ -184,23 +188,25 @@ bool ContainsSingleExample(const NnetChainExample &eg,
   }
   return true;
 }
-//calculate the skip_frame length
-void CalculateSkipFrame(const NnetChainExample &eg,
-                       int32 *skip_frame_len){
-  *skip_frame_len=eg.outputs[0].indexes[1].t-eg.outputs[0].indexes[0].t;
+
+// calculate the frame_subsampling_factor
+void CalculateFrameSubsamplingFactor(const NnetChainExample &eg,
+                                     int32 *frame_subsampling_factor) {
+  *frame_subsampling_factor = eg.outputs[0].indexes[1].t
+                              - eg.outputs[0].indexes[0].t;
 }
+
 void ModifyChainExampleContext(const NnetChainExample &eg,
-                          int32 left_context,
-                          int32 right_context,
-                          NnetChainExample *eg_out){
+                               int32 left_context,
+                               int32 right_context,
+                               const int32 frame_subsampling_factor,
+                               NnetChainExample *eg_out) {
   int32 min_input_t, max_input_t,
-        min_output_t, max_output_t,
-        skip_frame_len;
+        min_output_t, max_output_t;
   if (!ContainsSingleExample(eg, &min_input_t, &max_input_t,
                              &min_output_t, &max_output_t))
     KALDI_ERR << "Too late to perform frame selection/context reduction on "
               << "these examples (already merged?)";
-  CalculateSkipFrame(eg, &skip_frame_len);
   if (left_context != -1) {
     if (min_input_t > min_output_t - left_context)
       KALDI_ERR << "You requested --left-context=" << left_context
@@ -209,19 +215,21 @@ void ModifyChainExampleContext(const NnetChainExample &eg,
     min_input_t = std::max(min_input_t, min_output_t - left_context);
   }
   if (right_context != -1) {
-    if (max_input_t < max_output_t + right_context + skip_frame_len - 1)
+    if (max_input_t < max_output_t + right_context + frame_subsampling_factor - 1)
       KALDI_ERR << "You requested --right-context=" << right_context
                 << ", but example only has right-context of "
-                <<  (max_input_t - max_output_t -skip_frame_len + 1);
-    max_input_t = std::min(max_input_t, max_output_t + right_context + skip_frame_len - 1);
+                <<  (max_input_t - max_output_t - frame_subsampling_factor + 1);
+    max_input_t = std::min(max_input_t, max_output_t + right_context
+                  + frame_subsampling_factor - 1);
   }
   FilterExample(eg,
                 min_input_t, max_input_t,
                 min_output_t, max_output_t,
                 eg_out);
-} //ModifyChainExampleContext
-} //namespace nnet3
-} //namespace kaldi
+}  // ModifyChainExampleContext
+}  // namespace nnet3
+}  // namespace kaldi
+
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
@@ -245,6 +253,7 @@ int main(int argc, char *argv[]) {
     int32 srand_seed = 0;
     int32 frame_shift = 0;
     int32 truncate_deriv_weights = 0;
+    int32 frame_subsampling_factor = -1;
     BaseFloat keep_proportion = 1.0;
     int32 left_context = -1, right_context = -1;
     ParseOptions po(usage);
@@ -285,18 +294,21 @@ int main(int argc, char *argv[]) {
     for (int32 i = 0; i < num_outputs; i++)
       example_writers[i] = new NnetChainExampleWriter(po.GetArg(i+2));
 
-    std::vector<std::string> exclude_names; // names we never shift times of;
+    std::vector<std::string> exclude_names;  // names we never shift times of;
                                             // not configurable for now.
     exclude_names.push_back(std::string("ivector"));
 
-
     int64 num_read = 0, num_written = 0;
+
     for (; !example_reader.Done(); example_reader.Next(), num_read++) {
+      if (frame_subsampling_factor == -1)
+        CalculateFrameSubsamplingFactor(example_reader.Value(),
+                                        &frame_subsampling_factor);
       // count is normally 1; could be 0, or possibly >1.
       int32 count = GetCount(keep_proportion);
       std::string key = example_reader.Key();
-      if (frame_shift == 0 && truncate_deriv_weights == 0 && left_context == -1 &&
-          right_context == -1) {
+      if (frame_shift == 0 && truncate_deriv_weights == 0 &&
+          left_context == -1 && right_context == -1) {
         const NnetChainExample &eg = example_reader.Value();
         for (int32 c = 0; c < count; c++) {
           int32 index = (random ? Rand() : num_written) % num_outputs;
@@ -307,7 +319,8 @@ int main(int argc, char *argv[]) {
         const NnetChainExample &eg = example_reader.Value();
         NnetChainExample eg_out(eg);
         if (left_context != -1 || right_context != -1)
-          ModifyChainExampleContext(eg, left_context, right_context, &eg_out);
+          ModifyChainExampleContext(eg, left_context, right_context,
+                                    frame_subsampling_factor, &eg_out);
         if (frame_shift != 0)
           ShiftChainExampleTimes(frame_shift, exclude_names, &eg_out);
         if (truncate_deriv_weights != 0)
