@@ -81,9 +81,13 @@ void RoundUpNumFrames(int32 frame_subsampling_factor,
                       int32 *num_frames_overlap);
 
 
-// This function operate on single egs (egs with a single 'n' index)
-// It will select the feature_offset row from offset matrix in NnetIo and
-// it adds this offset to features.
+// This function operate on single egs (egs with a single 'n' index).
+// It will select row 'feature_offset' from NnetIo with name "offset" and
+// adds this row to input.features.
+// The NnetIo ivector contains ivector for all offsets in offset and 
+// its dim is real ivector_dim * num_cmn_offset.
+// This function modifies NnetIo ivector by selecting ivector subset 
+// correpsond to this feature_offset.
 void SelectFeatureOffset(int32 feature_offset, NnetExample *eg);
 
 

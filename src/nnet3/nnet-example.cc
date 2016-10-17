@@ -31,7 +31,6 @@ void NnetIo::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, name);
   WriteIndexVector(os, binary, indexes);
   features.Write(os, binary);
-  offsets.Write(os, binary);
   WriteToken(os, binary, "</NnetIo>");
   KALDI_ASSERT(static_cast<size_t>(features.NumRows()) == indexes.size());
 }
@@ -41,7 +40,6 @@ void NnetIo::Read(std::istream &is, bool binary) {
   ReadToken(is, binary, &name);
   ReadIndexVector(is, binary, &indexes);
   features.Read(is, binary);
-  offsets.Read(is, binary);
   ExpectToken(is, binary, "</NnetIo>");
 }
 
@@ -61,7 +59,6 @@ NnetIo::NnetIo(const std::string &name,
                int32 t_begin, const MatrixBase<BaseFloat> &feats):
     name(name), features(feats) {
   int32 num_rows = feats.NumRows();
-  offsets.Resize(1, feats.NumCols()); // sets single row of 0 as default offset.
   KALDI_ASSERT(num_rows > 0);
   indexes.resize(num_rows);  // sets all n,t,x to zeros.
   for (int32 i = 0; i < num_rows; i++)
@@ -69,19 +66,13 @@ NnetIo::NnetIo(const std::string &name,
 }
 
 NnetIo::NnetIo(const std::string &name,
-               int32 t_begin, const MatrixBase<BaseFloat> &feats,
-               const MatrixBase<BaseFloat> &feat_offsets):
-    name(name), features(feats), offsets(feat_offsets) {
-  int32 num_rows = feats.NumRows(),
-    num_offsets = feats.NumRows();
+               const MatrixBase<BaseFloat> &feats):
+    name(name), features(feats) {
+  int32 num_rows = feats.NumRows();
   KALDI_ASSERT(num_rows > 0);
-  indexes.resize(num_rows * num_offsets);  // sets all n,t,x to zeros.
-  for (int32 j = 0; j < num_offsets; j++) { 
-    for (int32 i = 0; i < num_rows; i++) {
-      indexes[j * num_rows + i].t = t_begin + i;
-      indexes[j * num_rows + i].x = j;
-    }
-  }
+  indexes.resize(num_rows);  // sets all n,t,x to zeros.
+  for (int32 i = 0; i < num_rows; i++)
+    indexes[i].x = i;
 }
 
 void NnetIo::Swap(NnetIo *other) {

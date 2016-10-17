@@ -306,7 +306,7 @@ int main(int argc, char *argv[]) {
                 "feature right-context that we output.");
     po.Register("select-feature-offset", &select_feature_offset, "If used, it "
                 " adds the chosen offset to the features, and would also select "
-                " the iVector that is generated for the feature offset by this value");
+                " the iVector that is generated for the feature offset by this value.");
     po.Read(argc, argv);
 
     srand(srand_seed);

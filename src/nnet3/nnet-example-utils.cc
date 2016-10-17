@@ -286,14 +286,46 @@ void RoundUpNumFrames(int32 frame_subsampling_factor,
 }
 
 void SelectFeatureOffset(int32 feature_offset, NnetExample *eg) {
-  std::vector<NnetIo>::const_iterator iter = eg->io.begin(),
+  std::vector<NnetIo>::iterator iter = eg->io.begin(),
     end = eg->io.end();
+  int32 ivec_dim, num_offsets;
+  Vector<BaseFloat> offset_vec;
   for (; iter != end; ++iter) {
-    int32 num_offsets = iter->offsets.NumRows(),
+    if (iter->name == "offsets") {
+      num_offsets = iter->features.NumRows();
       feature_offset = feature_offset % num_offsets;
-    Vector<BaseFloat> offset_vec;
-    offset_vec.CopyRowFromMat(iter->offsets, feature_offset);
-    iter->features.AddVecToRows(offset_vec);
+      Matrix<BaseFloat> offsets;
+      iter->features.GetMatrix(&offsets);
+      offset_vec.CopyRowFromMat(offsets, feature_offset);
+      break;
+    }
+  }
+
+  for (; iter != end; ++iter) {
+    if (iter->name == "input") {
+      // check all the 'n' values equal zero.
+      int32 index_size = iter->indexes.size();
+      for (int32 ind = 0; ind < index_size; ind++)
+        assert(iter->indexes[ind].n == 0);
+      Matrix<BaseFloat> features;
+      iter->features.CopyToMat(&features);
+      features.AddVecToRows(1.0, offset_vec);
+      iter->features.SwapFullMatrix(&features);
+      break;
+    }
+  }
+  for (; iter != end; ++iter) {
+    if (iter->name == "ivector") {
+      // select ivector subset correspond to feature_offset.
+      KALDI_ASSERT(iter->features.NumCols() % num_offsets == 0);
+      ivec_dim = iter->features.NumCols() / num_offsets;
+      Matrix<BaseFloat> ivec(1, iter->features.NumCols()),
+        ivec_subset(1, ivec_dim);
+      iter->features.CopyToMat(&ivec);
+      ivec_subset.CopyFromMat(ivec.Range(0, ivec.NumRows(), ivec_dim * feature_offset, ivec_dim));
+      iter->features.SwapFullMatrix(&ivec_subset);
+      break;
+    }
   }
 }
 
