@@ -179,6 +179,17 @@ void ContextDependency::Read (std::istream &is, bool binary) {
 }
 
 void ContextDependency::GetPdfInfo(const std::vector<int32> &phones,
+                                   const std::vector<std::vector<std::pair<int32, int32> > > &pdf_class_pairs,
+                                   std::vector<std::vector<std::vector<std::pair<int32, int32> > > > *pdf_info) const {
+  // Todo
+  KALDI_ASSERT(pdf_info != NULL);
+  pdf_info->resize(*std::max_element(phones.begin(), phones.end()));
+  for (size_t i = 0 ; i < phones.size(); i++) {
+    int32 phone = phones[i];
+  }
+}
+
+void ContextDependency::GetPdfInfo(const std::vector<int32> &phones,
                                    const std::vector<int32> &num_pdf_classes,  // indexed by phone,
                                    std::vector<std::vector<std::pair<int32, int32> > > *pdf_info) const {
 

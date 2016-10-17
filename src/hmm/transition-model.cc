@@ -24,66 +24,114 @@
 
 namespace kaldi {
 
-void TransitionModel::ComputeTriples(const ContextDependencyInterface &ctx_dep) {
+void TransitionModel::ComputeTuples(const ContextDependencyInterface &ctx_dep) {
   const std::vector<int32> &phones = topo_.GetPhones();
-  std::vector<std::vector<std::pair<int32, int32> > > pdf_info;
   KALDI_ASSERT(!phones.empty());
-  std::vector<int32> num_pdf_classes( 1 + *std::max_element(phones.begin(), phones.end()), -1);
-  for (size_t i = 0; i < phones.size(); i++)
-   num_pdf_classes[phones[i]] = topo_.NumPdfClasses(phones[i]);
-  ctx_dep.GetPdfInfo(phones, num_pdf_classes, &pdf_info);
-  // pdf_info is list indexed by pdf of which (phone, pdf_class) it
-  // can correspond to.
 
-  std::map<std::pair<int32, int32>, std::vector<int32> > to_hmm_state_list;
-  // to_hmm_state_list is a map from (phone, pdf_class) to the list
-  // of hmm-states in the HMM for that phone that that (phone, pdf-class)
-  // can correspond to.
-  for (size_t i = 0; i < phones.size(); i++) {  // setting up to_hmm_state_list.
-    int32 phone = phones[i];
-    const HmmTopology::TopologyEntry &entry = topo_.TopologyForPhone(phone);
-    for (int32 j = 0; j < static_cast<int32>(entry.size()); j++) {  // for each state...
-      int32 pdf_class = entry[j].pdf_class;
-      if (pdf_class != kNoPdf) {
-        to_hmm_state_list[std::make_pair(phone, pdf_class)].push_back(j);
+  if (SelfLoopEqualsForward()) {
+    // this branch deals with when self_loop_pdf_class is always the same as the pdf_class
+    std::vector<std::vector<std::pair<int32, int32> > > pdf_info;
+    std::vector<int32> num_pdf_classes( 1 + *std::max_element(phones.begin(), phones.end()), -1);
+    for (size_t i = 0; i < phones.size(); i++)
+      num_pdf_classes[phones[i]] = topo_.NumPdfClasses(phones[i]);
+    ctx_dep.GetPdfInfo(phones, num_pdf_classes, &pdf_info);
+    // pdf_info is list indexed by pdf of which (phone, pdf_class) it
+    // can correspond to.
+
+    std::map<std::pair<int32, int32>, std::vector<int32> > to_hmm_state_list;
+    // to_hmm_state_list is a map from (phone, pdf_class) to the list
+    // of hmm-states in the HMM for that phone that that (phone, pdf-class)
+    // can correspond to.
+    for (size_t i = 0; i < phones.size(); i++) {  // setting up to_hmm_state_list.
+      int32 phone = phones[i];
+      const HmmTopology::TopologyEntry &entry = topo_.TopologyForPhone(phone);
+      for (int32 j = 0; j < static_cast<int32>(entry.size()); j++) {  // for each state...
+        int32 pdf_class = entry[j].pdf_class;
+        if (pdf_class != kNoPdf) {
+          to_hmm_state_list[std::make_pair(phone, pdf_class)].push_back(j);
+        }
+      }
+    }
+
+    for (int32 pdf = 0; pdf < static_cast<int32>(pdf_info.size()); pdf++) {
+      for (size_t j = 0; j < pdf_info[pdf].size(); j++) {
+        int32 phone = pdf_info[pdf][j].first,
+            pdf_class = pdf_info[pdf][j].second;
+        const std::vector<int32> &state_vec = to_hmm_state_list[std::make_pair(phone, pdf_class)];
+        KALDI_ASSERT(!state_vec.empty());
+        // state_vec is a list of the possible HMM-states that emit this
+        // pdf_class.
+        for (size_t k = 0; k < state_vec.size(); k++) {
+          int32 hmm_state = state_vec[k];
+          tuples_.push_back(Tuple(phone, hmm_state, pdf, pdf));
+        }
+      }
+    }
+  } else {
+    std::vector<std::vector<std::vector<std::pair<int32, int32> > > > pdf_info;
+    std::vector<std::vector<std::pair<int32, int32> > > pdf_class_pairs;
+    ctx_dep.GetPdfInfo(phones, pdf_class_pairs, &pdf_info);
+    // pdf_info is list indexed by phone and Todo!!! of which (phone, pdf_class) it
+    // can correspond to.
+
+    std::vector<std::map<std::pair<int32, int32>, std::vector<int32> > > to_hmm_state_list;
+    to_hmm_state_list.resize(*std::max_element(phones.begin(), phones.end()));
+    // to_hmm_state_list is a phone-indexed set of maps from (pdf-class, self-loop pdf_class) to the list
+    // of hmm-states in the HMM for that phone that that (pdf-class, self-loop pdf-class)
+    // can correspond to.
+    for (size_t i = 0; i < phones.size(); i++) {  // setting up to_hmm_state_list.
+      int32 phone = phones[i];
+      const HmmTopology::TopologyEntry &entry = topo_.TopologyForPhone(phone);
+      std::map<std::pair<int32, int32>, std::vector<int32> > phone_to_hmm_state_list;
+      for (int32 j = 0; j < static_cast<int32>(entry.size()); j++) {  // for each state...
+        int32 pdf_class = entry[j].pdf_class, self_loop_pdf_class = entry[j].self_loop_pdf_class;
+        if (pdf_class != kNoPdf) {
+          phone_to_hmm_state_list[std::make_pair(pdf_class, self_loop_pdf_class)].push_back(j);
+        }
+      }
+      to_hmm_state_list[phone] = phone_to_hmm_state_list;
+    }
+
+    for (int32 i = 0; i < static_cast<int32>(pdf_info.size()); i++) {
+      int32 phone = phones[i];
+      for (int32 j = 0; j < static_cast<int32>(pdf_info[i].size()); j++) {
+	int32 pdf_class = pdf_class_pairs[i][j].first,
+          self_loop_pdf_class = pdf_class_pairs[i][j].second;
+        const std::vector<int32> &state_vec = to_hmm_state_list[phone][std::make_pair(pdf_class, self_loop_pdf_class)];
+        KALDI_ASSERT(!state_vec.empty());
+        for (size_t k = 0; k < state_vec.size(); k++) {
+          int32 hmm_state = state_vec[k];
+          for (size_t m = 0; m < pdf_info[i][j].size(); m++) {
+            int32 pdf = pdf_info[i][j][m].first,
+              self_loop_pdf = pdf_info[i][j][m].second;
+            tuples_.push_back(Tuple(phone, hmm_state, pdf, self_loop_pdf));
+          }
+        }
       }
     }
   }
-  for (int32 pdf = 0; pdf < static_cast<int32>(pdf_info.size()); pdf++) {
-    for (size_t j = 0; j < pdf_info[pdf].size(); j++) {
-      int32 phone = pdf_info[pdf][j].first,
-          pdf_class = pdf_info[pdf][j].second;
-      const std::vector<int32> &state_vec = to_hmm_state_list[std::make_pair(phone, pdf_class)];
-      KALDI_ASSERT(!state_vec.empty());
-      // state_vec is a list of the possible HMM-states that emit this
-      // pdf_class.
-      for (size_t k = 0; k < state_vec.size(); k++) {
-        int32 hmm_state = state_vec[k];
-        triples_.push_back(Triple(phone, hmm_state, pdf));
-      }
-    }
-  }
-
-  // now triples_ is populated with all possible triples of (phone, hmm_state, pdf).
-  std::sort(triples_.begin(), triples_.end());  // sort to enable reverse lookup.
+  // now tuples_ is populated with all possible tuples of (phone, hmm_state, pdf, self_loop_pdf).
+  std::sort(tuples_.begin(), tuples_.end());  // sort to enable reverse lookup.
   // this sorting defines the transition-ids.
 }
 
 void TransitionModel::ComputeDerived() {
-  state2id_.resize(triples_.size()+2);  // indexed by transition-state, which
+  state2id_.resize(tuples_.size()+2);  // indexed by transition-state, which
   // is one based, but also an entry for one past end of list.
 
   int32 cur_transition_id = 1;
   num_pdfs_ = 0;
   for (int32 tstate = 1;
-      tstate <= static_cast<int32>(triples_.size()+1);  // not a typo.
+      tstate <= static_cast<int32>(tuples_.size()+1);  // not a typo.
       tstate++) {
     state2id_[tstate] = cur_transition_id;
-    if (static_cast<size_t>(tstate) <= triples_.size()) {
-      int32 phone = triples_[tstate-1].phone,
-          hmm_state = triples_[tstate-1].hmm_state,
-          pdf = triples_[tstate-1].pdf;
-      num_pdfs_ = std::max(num_pdfs_, 1+pdf);
+    if (static_cast<size_t>(tstate) <= tuples_.size()) {
+      int32 phone = tuples_[tstate-1].phone,
+          hmm_state = tuples_[tstate-1].hmm_state,
+          pdf = tuples_[tstate-1].pdf,
+          self_loop_pdf = tuples_[tstate-1].self_loop_pdf;
+      num_pdfs_ = std::max(num_pdfs_, 1 + pdf);
+      num_pdfs_ = std::max(num_pdfs_, 1 + self_loop_pdf);
       const HmmTopology::HmmState &state = topo_.TopologyForPhone(phone)[hmm_state];
       int32 my_num_ids = static_cast<int32>(state.transitions.size());
       cur_transition_id += my_num_ids;  // # trans out of this state.
@@ -91,7 +139,7 @@ void TransitionModel::ComputeDerived() {
   }
 
   id2state_.resize(cur_transition_id);   // cur_transition_id is #transition-ids+1.
-  for (int32 tstate = 1; tstate <= static_cast<int32>(triples_.size()); tstate++)
+  for (int32 tstate = 1; tstate <= static_cast<int32>(tuples_.size()); tstate++)
     for (int32 tid = state2id_[tstate]; tid < state2id_[tstate+1]; tid++)
       id2state_[tid] = tstate;
 
@@ -101,10 +149,10 @@ void TransitionModel::InitializeProbs() {
   for (int32 trans_id = 1; trans_id <= NumTransitionIds(); trans_id++) {
     int32 trans_state = id2state_[trans_id];
     int32 trans_index = trans_id - state2id_[trans_state];
-    const Triple &triple = triples_[trans_state-1];
-    const HmmTopology::TopologyEntry &entry = topo_.TopologyForPhone(triple.phone);
-    KALDI_ASSERT(static_cast<size_t>(triple.hmm_state) < entry.size());
-    BaseFloat prob = entry[triple.hmm_state].transitions[trans_index].second;
+    const Tuple &tuple = tuples_[trans_state-1];
+    const HmmTopology::TopologyEntry &entry = topo_.TopologyForPhone(tuple.phone);
+    KALDI_ASSERT(static_cast<size_t>(tuple.hmm_state) < entry.size());
+    BaseFloat prob = entry[tuple.hmm_state].transitions[trans_index].second;
     if (prob <= 0.0)
       KALDI_ERR << "TransitionModel::InitializeProbs, zero "
           "probability [should remove that entry in the topology]";
@@ -129,40 +177,46 @@ void TransitionModel::Check() const {
     KALDI_ASSERT(tid == PairToTransitionId(tstate, index));
     int32 phone = TransitionStateToPhone(tstate),
         hmm_state = TransitionStateToHmmState(tstate),
-        pdf = TransitionStateToPdf(tstate);
-    KALDI_ASSERT(tstate == TripleToTransitionState(phone, hmm_state, pdf));
+        pdf = TransitionStateToPdf(tstate),
+        self_loop_pdf = TransitionStateToSelfLoopPdf(tstate);
+    KALDI_ASSERT(tstate == TupleToTransitionState(phone, hmm_state, pdf, self_loop_pdf));
     KALDI_ASSERT(log_probs_(tid) <= 0.0 && log_probs_(tid) - log_probs_(tid) == 0.0);
     // checking finite and non-positive (and not out-of-bounds).
   }
 }
 
+bool TransitionModel::SelfLoopEqualsForward() const {
+  // Todo
+  return false;
+}
+
 TransitionModel::TransitionModel(const ContextDependencyInterface &ctx_dep,
                                  const HmmTopology &hmm_topo): topo_(hmm_topo) {
-  // First thing is to get all possible triples.
-  ComputeTriples(ctx_dep);
+  // First thing is to get all possible tuples.
+  ComputeTuples(ctx_dep);
   ComputeDerived();
   InitializeProbs();
   Check();
 }
 
-int32 TransitionModel::TripleToTransitionState(int32 phone, int32 hmm_state, int32 pdf) const {
-  Triple triple(phone, hmm_state, pdf);
+int32 TransitionModel::TupleToTransitionState(int32 phone, int32 hmm_state, int32 pdf, int32 self_loop_pdf) const {
+  Tuple tuple(phone, hmm_state, pdf, self_loop_pdf);
   // Note: if this ever gets too expensive, which is unlikely, we can refactor
   // this code to sort first on pdf, and then index on pdf, so those
   // that have the same pdf are in a contiguous range.
-  std::vector<Triple>::const_iterator iter =
-      std::lower_bound(triples_.begin(), triples_.end(), triple);
-  if (iter == triples_.end() || !(*iter == triple)) {
-    KALDI_ERR << "TransitionModel::TripleToTransitionState, triple not found."
+  std::vector<Tuple>::const_iterator iter =
+      std::lower_bound(tuples_.begin(), tuples_.end(), tuple);
+  if (iter == tuples_.end() || !(*iter == tuple)) {
+    KALDI_ERR << "TransitionModel::TupleToTransitionState, tuple not found."
               << " (incompatible tree and model?)";
   }
-  // triples_ is indexed by transition_state-1, so add one.
-  return static_cast<int32>((iter - triples_.begin())) + 1;
+  // tuples_ is indexed by transition_state-1, so add one.
+  return static_cast<int32>((iter - tuples_.begin())) + 1;
 }
 
 
 int32 TransitionModel::NumTransitionIndices(int32 trans_state) const {
-  KALDI_ASSERT(static_cast<size_t>(trans_state) <= triples_.size());
+  KALDI_ASSERT(static_cast<size_t>(trans_state) <= tuples_.size());
   return static_cast<int32>(state2id_[trans_state+1]-state2id_[trans_state]);
 }
 
@@ -177,32 +231,37 @@ int32 TransitionModel::TransitionIdToTransitionIndex(int32 trans_id) const {
 }
 
 int32 TransitionModel::TransitionStateToPhone(int32 trans_state) const {
-  KALDI_ASSERT(static_cast<size_t>(trans_state) <= triples_.size());
-  return triples_[trans_state-1].phone;
+  KALDI_ASSERT(static_cast<size_t>(trans_state) <= tuples_.size());
+  return tuples_[trans_state-1].phone;
 }
 
 int32 TransitionModel::TransitionStateToPdf(int32 trans_state) const {
-  KALDI_ASSERT(static_cast<size_t>(trans_state) <= triples_.size());
-  return triples_[trans_state-1].pdf;
+  KALDI_ASSERT(static_cast<size_t>(trans_state) <= tuples_.size());
+  return tuples_[trans_state-1].pdf;
+}
+
+int32 TransitionModel::TransitionStateToSelfLoopPdf(int32 trans_state) const {
+  KALDI_ASSERT(static_cast<size_t>(trans_state) <= tuples_.size());
+  return tuples_[trans_state-1].self_loop_pdf;
 }
 
 int32 TransitionModel::TransitionStateToHmmState(int32 trans_state) const {
-  KALDI_ASSERT(static_cast<size_t>(trans_state) <= triples_.size());
-  return triples_[trans_state-1].hmm_state;
+  KALDI_ASSERT(static_cast<size_t>(trans_state) <= tuples_.size());
+  return tuples_[trans_state-1].hmm_state;
 }
 
 int32 TransitionModel::PairToTransitionId(int32 trans_state, int32 trans_index) const {
-  KALDI_ASSERT(static_cast<size_t>(trans_state) <= triples_.size());
+  KALDI_ASSERT(static_cast<size_t>(trans_state) <= tuples_.size());
   KALDI_ASSERT(trans_index < state2id_[trans_state+1] - state2id_[trans_state]);
   return state2id_[trans_state] + trans_index;
 }
 
 int32 TransitionModel::NumPhones() const {
-  int32 num_trans_state = triples_.size();
+  int32 num_trans_state = tuples_.size();
   int32 max_phone_id = 0;
   for (int32 i = 0; i < num_trans_state; ++i) {
-    if (triples_[i].phone > max_phone_id)
-      max_phone_id = triples_[i].phone;
+    if (tuples_[i].phone > max_phone_id)
+      max_phone_id = tuples_[i].phone;
   }
   return max_phone_id;
 }
@@ -212,15 +271,15 @@ bool TransitionModel::IsFinal(int32 trans_id) const {
   KALDI_ASSERT(static_cast<size_t>(trans_id) < id2state_.size());
   int32 trans_state = id2state_[trans_id];
   int32 trans_index = trans_id - state2id_[trans_state];
-  const Triple &triple = triples_[trans_state-1];
-  const HmmTopology::TopologyEntry &entry = topo_.TopologyForPhone(triple.phone);
-  KALDI_ASSERT(static_cast<size_t>(triple.hmm_state) < entry.size());
-  KALDI_ASSERT(static_cast<size_t>(triple.hmm_state) < entry.size());
+  const Tuple &tuple = tuples_[trans_state-1];
+  const HmmTopology::TopologyEntry &entry = topo_.TopologyForPhone(tuple.phone);
+  KALDI_ASSERT(static_cast<size_t>(tuple.hmm_state) < entry.size());
+  KALDI_ASSERT(static_cast<size_t>(tuple.hmm_state) < entry.size());
   KALDI_ASSERT(static_cast<size_t>(trans_index) <
-               entry[triple.hmm_state].transitions.size());
+               entry[tuple.hmm_state].transitions.size());
   // return true if the transition goes to the final state of the
   // topology entry.
-  return (entry[triple.hmm_state].transitions[trans_index].first + 1 ==
+  return (entry[tuple.hmm_state].transitions[trans_index].first + 1 ==
           static_cast<int32>(entry.size()));
 }
 
@@ -229,8 +288,8 @@ bool TransitionModel::IsSelfLoop(int32 trans_id) const {
   KALDI_ASSERT(static_cast<size_t>(trans_id) < id2state_.size());
   int32 trans_state = id2state_[trans_id];
   int32 trans_index = trans_id - state2id_[trans_state];
-  const Triple &triple = triples_[trans_state-1];
-  int32 phone = triple.phone, hmm_state = triple.hmm_state;
+  const Tuple &tuple = tuples_[trans_state-1];
+  int32 phone = tuple.phone, hmm_state = tuple.hmm_state;
   const HmmTopology::TopologyEntry &entry = topo_.TopologyForPhone(phone);
   KALDI_ASSERT(static_cast<size_t>(hmm_state) < entry.size());
   return (static_cast<size_t>(trans_index) < entry[hmm_state].transitions.size()
@@ -238,10 +297,10 @@ bool TransitionModel::IsSelfLoop(int32 trans_id) const {
 }
 
 int32 TransitionModel::SelfLoopOf(int32 trans_state) const {  // returns the self-loop transition-id,
-  KALDI_ASSERT(static_cast<size_t>(trans_state-1) < triples_.size());
-  const Triple &triple = triples_[trans_state-1];
+  KALDI_ASSERT(static_cast<size_t>(trans_state-1) < tuples_.size());
+  const Tuple &tuple = tuples_[trans_state-1];
   // or zero if does not exist.
-  int32 phone = triple.phone, hmm_state = triple.hmm_state;
+  int32 phone = tuple.phone, hmm_state = tuple.hmm_state;
   const HmmTopology::TopologyEntry &entry = topo_.TopologyForPhone(phone);
   KALDI_ASSERT(static_cast<size_t>(hmm_state) < entry.size());
   for (int32 trans_index = 0;
@@ -274,16 +333,22 @@ void TransitionModel::ComputeDerivedOfProbs() {
 void TransitionModel::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<TransitionModel>");
   topo_.Read(is, binary);
-  ExpectToken(is, binary, "<Triples>");
+  std::string token;
+  ReadToken(is, binary, &token);
   int32 size;
   ReadBasicType(is, binary, &size);
-  triples_.resize(size);
+  tuples_.resize(size);
   for (int32 i = 0; i < size; i++) {
-    ReadBasicType(is, binary, &(triples_[i].phone));
-    ReadBasicType(is, binary, &(triples_[i].hmm_state));
-    ReadBasicType(is, binary, &(triples_[i].pdf));
+    ReadBasicType(is, binary, &(tuples_[i].phone));
+    ReadBasicType(is, binary, &(tuples_[i].hmm_state));
+    ReadBasicType(is, binary, &(tuples_[i].pdf));
+    if (token == "<Tuples>")
+      ReadBasicType(is, binary, &(tuples_[i].self_loop_pdf));
+    else if (token == "<Triples>")
+      tuples_[i].self_loop_pdf = tuples_[i].pdf;
   }
-  ExpectToken(is, binary, "</Triples>");
+  ReadToken(is, binary, &token);
+  KALDI_ASSERT(token == "</Triples>" || token == "</Tuples>");
   ComputeDerived();
   ExpectToken(is, binary, "<LogProbs>");
   log_probs_.Read(is, binary);
@@ -297,16 +362,17 @@ void TransitionModel::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<TransitionModel>");
   if (!binary) os << "\n";
   topo_.Write(os, binary);
-  WriteToken(os, binary, "<Triples>");
-  WriteBasicType(os, binary, static_cast<int32>(triples_.size()));
+  WriteToken(os, binary, "<Tuples>");
+  WriteBasicType(os, binary, static_cast<int32>(tuples_.size()));
   if (!binary) os << "\n";
-  for (int32 i = 0; i < static_cast<int32> (triples_.size()); i++) {
-    WriteBasicType(os, binary, triples_[i].phone);
-    WriteBasicType(os, binary, triples_[i].hmm_state);
-    WriteBasicType(os, binary, triples_[i].pdf);
+  for (int32 i = 0; i < static_cast<int32> (tuples_.size()); i++) {
+    WriteBasicType(os, binary, tuples_[i].phone);
+    WriteBasicType(os, binary, tuples_[i].hmm_state);
+    WriteBasicType(os, binary, tuples_[i].pdf);
+    WriteBasicType(os, binary, tuples_[i].self_loop_pdf);
     if (!binary) os << "\n";
   }
-  WriteToken(os, binary, "</Triples>");
+  WriteToken(os, binary, "</Tuples>");
   if (!binary) os << "\n";
   WriteToken(os, binary, "<LogProbs>");
   if (!binary) os << "\n";
@@ -642,14 +708,14 @@ void TransitionModel::MapUpdateShared(const Vector<double> &stats,
 int32 TransitionModel::TransitionIdToPhone(int32 trans_id) const {
   KALDI_ASSERT(trans_id != 0 && static_cast<size_t>(trans_id) < id2state_.size());
   int32 trans_state = id2state_[trans_id];
-  return triples_[trans_state-1].phone;
+  return tuples_[trans_state-1].phone;
 }
 
 int32 TransitionModel::TransitionIdToPdfClass(int32 trans_id) const {
   KALDI_ASSERT(trans_id != 0 && static_cast<size_t>(trans_id) < id2state_.size());
   int32 trans_state = id2state_[trans_id];
 
-  const Triple &t = triples_[trans_state-1];
+  const Tuple &t = tuples_[trans_state-1];
   const HmmTopology::TopologyEntry &entry = topo_.TopologyForPhone(t.phone);
   KALDI_ASSERT(static_cast<size_t>(t.hmm_state) < entry.size());
   return entry[t.hmm_state].pdf_class;
@@ -659,7 +725,7 @@ int32 TransitionModel::TransitionIdToPdfClass(int32 trans_id) const {
 int32 TransitionModel::TransitionIdToHmmState(int32 trans_id) const {
   KALDI_ASSERT(trans_id != 0 && static_cast<size_t>(trans_id) < id2state_.size());
   int32 trans_state = id2state_[trans_id];
-  const Triple &t = triples_[trans_state-1];
+  const Tuple &t = tuples_[trans_state-1];
   return t.hmm_state;
 }
 
@@ -669,22 +735,23 @@ void TransitionModel::Print(std::ostream &os,
   if (occs != NULL)
     KALDI_ASSERT(occs->Dim() == NumPdfs());
   for (int32 tstate = 1; tstate <= NumTransitionStates(); tstate++) {
-    const Triple &triple = triples_[tstate-1];
-    KALDI_ASSERT(static_cast<size_t>(triple.phone) < phone_names.size());
-    std::string phone_name = phone_names[triple.phone];
+    const Tuple &tuple = tuples_[tstate-1];
+    KALDI_ASSERT(static_cast<size_t>(tuple.phone) < phone_names.size());
+    std::string phone_name = phone_names[tuple.phone];
 
     os << "Transition-state " << tstate << ": phone = " << phone_name
-       << " hmm-state = " << triple.hmm_state << " pdf = " << triple.pdf << '\n';
+       << " hmm-state = " << tuple.hmm_state << " pdf = " << tuple.pdf
+       << " self-loop-pdf = " << tuple.self_loop_pdf << '\n';
     for (int32 tidx = 0; tidx < NumTransitionIndices(tstate); tidx++) {
       int32 tid = PairToTransitionId(tstate, tidx);
       BaseFloat p = GetTransitionProb(tid);
       os << " Transition-id = " << tid << " p = " << p;
-      if (occs != NULL) os << " count of pdf = " << (*occs)(triple.pdf);
+      if (occs != NULL) os << " count of pdf = " << (*occs)(tuple.pdf);
       // now describe what it's a transition to.
       if (IsSelfLoop(tid)) os << " [self-loop]\n";
       else {
-        int32 hmm_state = triple.hmm_state;
-        const HmmTopology::TopologyEntry &entry = topo_.TopologyForPhone(triple.phone);
+        int32 hmm_state = tuple.hmm_state;
+        const HmmTopology::TopologyEntry &entry = topo_.TopologyForPhone(tuple.phone);
         KALDI_ASSERT(static_cast<size_t>(hmm_state) < entry.size());
         int32 next_hmm_state = entry[hmm_state].transitions[tidx].first;
         KALDI_ASSERT(next_hmm_state != hmm_state);
@@ -739,7 +806,7 @@ bool GetPhonesForPdfs(const TransitionModel &trans_model,
 }
 
 bool TransitionModel::Compatible(const TransitionModel &other) const {
-  return (topo_ == other.topo_ && triples_ == other.triples_ &&
+  return (topo_ == other.topo_ && tuples_ == other.tuples_ &&
           state2id_ == other.state2id_ && id2state_ == other.id2state_
           && num_pdfs_ == other.num_pdfs_);
 }

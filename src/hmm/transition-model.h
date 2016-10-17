@@ -141,13 +141,14 @@ class TransitionModel {
   /// \name Integer mapping functions
   /// @{
 
-  int32 TripleToTransitionState(int32 phone, int32 hmm_state, int32 pdf) const;
+  int32 TupleToTransitionState(int32 phone, int32 hmm_state, int32 pdf, int32 self_loop_pdf) const;
   int32 PairToTransitionId(int32 trans_state, int32 trans_index) const;
   int32 TransitionIdToTransitionState(int32 trans_id) const;
   int32 TransitionIdToTransitionIndex(int32 trans_id) const;
   int32 TransitionStateToPhone(int32 trans_state) const;
   int32 TransitionStateToHmmState(int32 trans_state) const;
   int32 TransitionStateToPdf(int32 trans_state) const;
+  int32 TransitionStateToSelfLoopPdf(int32 trans_state) const;
   int32 SelfLoopOf(int32 trans_state) const;  // returns the self-loop transition-id, or zero if
   // this state doesn't have a self-loop.
 
@@ -172,7 +173,7 @@ class TransitionModel {
   int32 NumTransitionIndices(int32 trans_state) const;
 
   /// Returns the total number of transition-states (note, these are one-based).
-  int32 NumTransitionStates() const { return triples_.size(); }
+  int32 NumTransitionStates() const { return tuples_.size(); }
 
   // NumPdfs() actually returns the highest-numbered pdf we ever saw, plus one.
   // In normal cases this should equal the number of pdfs in the system, but if you
@@ -249,30 +250,34 @@ class TransitionModel {
   void MapUpdateShared(const Vector<double> &stats,
                        const MapTransitionUpdateConfig &cfg,
                        BaseFloat *objf_impr_out, BaseFloat *count_out);
-  void ComputeTriples(const ContextDependencyInterface &ctx_dep);  // called from constructor.  initializes triples_.
+  void ComputeTuples(const ContextDependencyInterface &ctx_dep);  // called from constructor.  initializes tuples_.
   void ComputeDerived();  // called from constructor and Read function: computes state2id_ and id2state_.
   void ComputeDerivedOfProbs();  // computes quantities derived from log-probs (currently just
   // non_self_loop_log_probs_; called whenever log-probs change.
   void InitializeProbs();  // called from constructor.
   void Check() const;
+  bool SelfLoopEqualsForward() const;
 
-  struct Triple {
+  struct Tuple {
     int32 phone;
     int32 hmm_state;
     int32 pdf;
-    Triple() { }
-    Triple(int32 phone, int32 hmm_state, int32 pdf):
-        phone(phone), hmm_state(hmm_state), pdf(pdf) { }
-    bool operator < (const Triple &other) const {
+    int32 self_loop_pdf;
+    Tuple() { }
+    Tuple(int32 phone, int32 hmm_state, int32 pdf, int32 self_loop_pdf):
+      phone(phone), hmm_state(hmm_state), pdf(pdf), self_loop_pdf(self_loop_pdf) { }
+    bool operator < (const Tuple &other) const {
       if (phone < other.phone) return true;
       else if (phone > other.phone) return false;
       else if (hmm_state < other.hmm_state) return true;
       else if (hmm_state > other.hmm_state) return false;
-      else return pdf < other.pdf;
+      else if (pdf < other.pdf) return true;
+      else if (pdf > other.pdf) return false;
+      else return (self_loop_pdf < other.self_loop_pdf);
     }
-    bool operator == (const Triple &other) const {
+    bool operator == (const Tuple &other) const {
       return (phone == other.phone && hmm_state == other.hmm_state
-              && pdf == other.pdf);
+              && pdf == other.pdf && self_loop_pdf == other.self_loop_pdf);
     }
   };
 
@@ -281,7 +286,7 @@ class TransitionModel {
   /// Triples indexed by transition state minus one;
   /// the triples are in sorted order which allows us to do the reverse mapping from
   /// triple to transition state
-  std::vector<Triple> triples_;
+  std::vector<Tuple> tuples_;
 
   /// Gives the first transition_id of each transition-state; indexed by
   /// the transition-state.  Array indexed 1..num-transition-states+1 (the last one
@@ -315,7 +320,7 @@ inline int32 TransitionModel::TransitionIdToPdf(int32 trans_id) const {
   KALDI_ASSERT(static_cast<size_t>(trans_id) < id2state_.size() &&
                "Likely graph/model mismatch (graph built from wrong model?)");
   int32 trans_state = id2state_[trans_id];
-  return triples_[trans_state-1].pdf;
+  return tuples_[trans_state-1].pdf;
 }
 
 /// Works out which pdfs might correspond to the given phones.  Will return true
