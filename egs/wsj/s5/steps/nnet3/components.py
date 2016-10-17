@@ -90,7 +90,7 @@ def AddPermuteLayer(config_lines, name, input, column_map):
     return {'descriptor': '{0}_permute'.format(name),
             'dimension': input['dimension']}
 
-def AddAffineLayer(config_lines, name, input, output_dim, ng_affine_options = "", max_change_per_component = 0.25):
+def AddAffineLayer(config_lines, name, input, output_dim, ng_affine_options = "", max_change_per_component = 0.75):
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
 
@@ -103,7 +103,7 @@ def AddAffineLayer(config_lines, name, input, output_dim, ng_affine_options = ""
     return {'descriptor':  '{0}_affine'.format(name),
             'dimension': output_dim}
 
-def AddAffRelNormLayer(config_lines, name, input, output_dim, ng_affine_options = " bias-stddev=0 ", norm_target_rms = 1.0, self_repair_scale = None, max_change_per_component = 0.25):
+def AddAffRelNormLayer(config_lines, name, input, output_dim, ng_affine_options = " bias-stddev=0 ", norm_target_rms = 1.0, self_repair_scale = None, max_change_per_component = 0.75):
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
 
@@ -250,7 +250,7 @@ def AddOutputLayer(config_lines, input, label_delay = None, suffix=None, objecti
 
 def AddFinalLayer(config_lines, input, output_dim,
         ng_affine_options = " param-stddev=0 bias-stddev=0 ",
-        max_change_per_component = 0.5,
+        max_change_per_component = 1.5,
         label_delay=None,
         use_presoftmax_prior_scale = False,
         prior_scale_file = None,
@@ -296,7 +296,7 @@ def AddLstmLayer(config_lines,
                  lstm_delay = -1,
                  self_repair_scale_nonlinearity = None,
                  self_repair_scale_clipgradient = None,
-                 max_change_per_component = 0.25):
+                 max_change_per_component = 0.75):
     assert(recurrent_projection_dim >= 0 and non_recurrent_projection_dim >= 0)
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
@@ -436,7 +436,7 @@ def AddBLstmLayer(config_lines,
                   lstm_delay = [-1,1],
                   self_repair_scale_nonlinearity = None,
                   self_repair_scale_clipgradient = None,
-                  max_change_per_component = 0.25):
+                  max_change_per_component = 0.75):
     assert(len(lstm_delay) == 2 and lstm_delay[0] < 0 and lstm_delay[1] > 0)
     output_forward = AddLstmLayer(config_lines, "{0}_forward".format(name), input, cell_dim,
                                   recurrent_projection_dim, non_recurrent_projection_dim,
