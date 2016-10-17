@@ -44,12 +44,10 @@ feat_suffix=_hires_mfcc # The feature suffix describing features used in multili
 # language list used for multilingual training
 # The map for lang-name to its abreviation can be find in
 # local/prepare_lang_conf.sh
-#lang_list=(AMH GRN)
-lang_list=(GRG LIT MONG TUR KAZ KUR PSH SWA TOK IGBO DHO)
+lang_list=(101-cantonese 102-assamese 103-bengali)
 
 # The language in this list decodes using Hybrid multilingual system.
-#decode_lang_list=(CNT ASM VTN TUR HAI LAO)
-decode_lang_list=(GRG)
+decode_lang_list=(101-cantonese)
 
 dir=exp/nnet3/multi_bnf
 splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -7,2 0 0"

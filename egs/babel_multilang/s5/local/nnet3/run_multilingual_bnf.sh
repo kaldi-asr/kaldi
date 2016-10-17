@@ -24,7 +24,7 @@ num_archives=20
 speed_perturb=true
 multidir=exp/nnet3/multi_bnf_10_close_lang_plus_grg
 global_extractor=exp/multi/nnet3/extractor
-lang_list_for_grg=(GRG LIT MONG TUR KAZ KUR PSH SWA TOK IGBO DHO)
+lang_list=(404-georgian 403-dholuo 402-javanese 401-mongolian 307-amharic)
 use_flp=true
 
 . ./utils/parse_options.sh
@@ -62,7 +62,7 @@ ivector_dir=$exp_dir/nnet3/ivectors_train${suffix}_gb
 mkdir -p $multidir${suffix}
 
 if [ ! -f $multidir${suffix}/.done ]; then 
-  echo "$0: Train multilingual Bottleneck network using lang list = ${lang_list_for_grg[@]}"
+  echo "$0: Train multilingual Bottleneck network using lang list = ${lang_list[@]}"
   ./local/nnet3/run_tdnn_joint_babel_sp_bnf.sh --dir $multidir \
      --avg-num-archives $num_archives \
      --global-extractor $global_extractor \
