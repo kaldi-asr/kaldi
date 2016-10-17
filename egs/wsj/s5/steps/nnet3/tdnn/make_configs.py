@@ -43,6 +43,8 @@ def GetArgs():
                                   help="alignment directory, from which we derive the num-targets")
     num_target_group.add_argument("--tree-dir", type=str,
                                   help="directory with final.mdl, from which we derive the num-targets")
+    num_target_group.add_argument("--num-multiple-targets", type=str,
+                        help="space separated number of network targets for different languages(e.g. num-pdf-ids/num-leaves e.g. '1000 2000 3000')")
 
     # CNN options
     parser.add_argument('--cnn.layer', type=str, action='append', dest = "cnn_layer",
@@ -66,7 +68,7 @@ def GetArgs():
                         "(spliced according to the first set of splice-indexes) will be used as "
                         "the first Affine layer. This affine layer's parameters are fixed during training. "
                         "This variable needs to be set to \"false\" when using dense-targets "
-                        "or when --add-idct is set to \"true\".",
+                        "or when --add-idct is set to \"true\"."
                         "If --cnn.layer is specified this option will be forced to \"false\".",
                         default=True, choices = ["false", "true"])
 
@@ -117,7 +119,7 @@ def GetArgs():
 
     # Options to convert input MFCC into Fbank features. This is useful when a
     # LDA layer is not added (such as when using dense targets)
-    parser.add_argument(["--cepstral-lifter","--cnn.cepstral-lifter"], type=float, dest = "cepstral_lifter",
+    parser.add_argument("--cepstral-lifter", type=float, dest = "cepstral_lifter",
                         help="The factor used for determining the liftering vector in the production of MFCC. "
                         "User has to ensure that it matches the lifter used in MFCC generation, "
                         "e.g. 22.0", default=22.0)
@@ -126,7 +128,14 @@ def GetArgs():
                         help="Add an IDCT after input to convert MFCC to Fbank", default = False)
     parser.add_argument("config_dir",
                         help="Directory to write config files and variables")
-
+    # multilingual tdnn with bn layer config
+    parser.add_argument("--bottleneck-layer", type=int,
+                        help="The layer number to add bottleneck layer,"
+                        "if < 0, means this layer is not needed in network.",
+                        default=-1)
+    parser.add_argument("--bottleneck-dim", type=int,
+                        help="The bottleneck layer dimension in TDNN network e.g. 42.",
+                        default=40)
     print(' '.join(sys.argv))
 
     args = parser.parse_args()
@@ -157,8 +166,9 @@ def CheckArgs(args):
         raise Exception("add-idct can be true only if add-lda is false")
 
     if not args.num_targets > 0:
-        print(args.num_targets)
-        raise Exception("num_targets has to be positive")
+        if args.num_multiple_targets is None: 
+            print(args.num_targets)
+            raise Exception("num_targets or num_multiple_targets has to be positive")
 
     if not args.ivector_dim >= 0:
         raise Exception("ivector-dim has to be non-negative")
@@ -344,7 +354,8 @@ def MakeConfigs(config_dir, splice_indexes_string,
                 xent_regularize,
                 xent_separate_forward_affine,
                 self_repair_scale,
-                objective_type):
+                objective_type,
+                num_multiple_targets, bottleneck_layer, bottleneck_dim):
 
     parsed_splice_output = ParseSpliceString(splice_indexes_string.strip())
 
@@ -407,7 +418,15 @@ def MakeConfigs(config_dir, splice_indexes_string,
 
     for i in range(0, num_hidden_layers):
         # make the intermediate config file for layerwise discriminative training
-
+        bnf_suffix=""
+        if bottleneck_layer > -1 and i+1 == bottleneck_layer:
+            print('bottleneck layer and its dimension are {0} and {1} respectively.'.format(bottleneck_layer, bottleneck_dim))
+            nonlin_output_layer_dim = bottleneck_dim
+            bnf_suffix = "_Bottleneck"
+        elif nonlin_type == "relu":
+            nonlin_output_layer_dim = nonlin_output_dims[i] 
+        elif nonlin_type == "pnorm":
+            nonlin_output_layer_dim = nonlin_output_dim
         # prepare the spliced input
         if not (len(splice_indexes[i]) == 1 and splice_indexes[i][0] == 0):
             try:
@@ -445,21 +464,21 @@ def MakeConfigs(config_dir, splice_indexes_string,
 
             if nonlin_type == "relu" :
                 prev_layer_output_chain = nodes.AddAffRelNormLayer(config_lines, "Tdnn_pre_final_chain",
-                                                                   prev_layer_output, nonlin_output_dim,
+                                                                   prev_layer_output, nonlin_output_layer_dim,
                                                                    self_repair_scale = self_repair_scale,
                                                                    norm_target_rms = final_layer_normalize_target)
 
                 prev_layer_output_xent = nodes.AddAffRelNormLayer(config_lines, "Tdnn_pre_final_xent",
-                                                                  prev_layer_output, nonlin_output_dim,
+                                                                  prev_layer_output, nonlin_output_layer_dim,
                                                                   self_repair_scale = self_repair_scale,
                                                                   norm_target_rms = final_layer_normalize_target)
             elif nonlin_type == "pnorm" :
                 prev_layer_output_chain = nodes.AddAffPnormLayer(config_lines, "Tdnn_pre_final_chain",
-                                                                 prev_layer_output, nonlin_input_dim, nonlin_output_dim,
+                                                                 prev_layer_output, nonlin_input_dim, nonlin_output_layer_dim,
                                                                  norm_target_rms = final_layer_normalize_target)
 
                 prev_layer_output_xent = nodes.AddAffPnormLayer(config_lines, "Tdnn_pre_final_xent",
-                                                                prev_layer_output, nonlin_input_dim, nonlin_output_dim,
+                                                                prev_layer_output, nonlin_input_dim, nonlin_output_layer_dim,
                                                                 norm_target_rms = final_layer_normalize_target)
             else:
                 raise Exception("Unknown nonlinearity type")
@@ -478,13 +497,13 @@ def MakeConfigs(config_dir, splice_indexes_string,
                                 name_affix = 'xent')
         else:
             if nonlin_type == "relu":
-                prev_layer_output = nodes.AddAffRelNormLayer(config_lines, "Tdnn_{0}".format(i),
-                                                            prev_layer_output, nonlin_output_dims[i],
+                prev_layer_output = nodes.AddAffRelNormLayer(config_lines, "Tdnn{1}_{0}".format(i, bnf_suffix),
+                                                            prev_layer_output, nonlin_output_layer_dim,
                                                             self_repair_scale = self_repair_scale,
                                                             norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
             elif nonlin_type == "pnorm":
-                prev_layer_output = nodes.AddAffPnormLayer(config_lines, "Tdnn_{0}".format(i),
-                                                           prev_layer_output, nonlin_input_dim, nonlin_output_dim,
+                prev_layer_output = nodes.AddAffPnormLayer(config_lines, "Tdnn{1}_{0}".format(i, bnf_suffix),
+                                                           prev_layer_output, nonlin_input_dim, nonlin_output_layer_dim,
                                                            norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
             else:
                 raise Exception("Unknown nonlinearity type")
@@ -556,6 +575,9 @@ def MakeConfigs(config_dir, splice_indexes_string,
 
 def Main():
     args = GetArgs()
+    if args.num_multiple_targets is not None:
+      num_multiple_targets = args.num_multiple_targets.split()
+      print('Number of output targets is {0}'.format(len(num_multiple_targets)))
 
     MakeConfigs(config_dir = args.config_dir,
                 splice_indexes_string = args.splice_indexes,
@@ -578,7 +600,10 @@ def Main():
                 xent_regularize = args.xent_regularize,
                 xent_separate_forward_affine = args.xent_separate_forward_affine,
                 self_repair_scale = args.self_repair_scale_nonlinearity,
-                objective_type = args.objective_type)
+                objective_type = args.objective_type,
+                num_multiple_targets = num_multiple_targets,
+                bottleneck_layer = args.bottleneck_layer,
+                bottleneck_dim = args.bottleneck_dim)
 
 if __name__ == "__main__":
     Main()

@@ -23,6 +23,7 @@ echo "$0 $@"  # Print the command line for logging
 set -e
 
 
+cmd=queue.pl
 stage=0
 train_stage=-10
 get_egs_stage=-10
@@ -39,7 +40,6 @@ feat_suffix=_hires_mfcc # The feature suffix describing features used in multili
                         # _hires_mfcc -> 40dim MFCC
                         # _hire_mfcc_pitch -> 40dim MFCC + pitch
                         # _hires_mfcc_pitch_bnf -> 40dim MFCC +pitch + BNF
-print_interval=200
 # corpora
 # language list used for multilingual training
 # The map for lang-name to its abreviation can be find in
@@ -53,12 +53,7 @@ decode_lang_list=(AMH GRN)
 
 dir=exp/nnet3/multi_bnf
 splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -7,2 0 0"
-frames_per_eg=8
-avg_num_archives=4
-cmd=queue.pl
-num_epochs=4
-bottleneck_dim=42
-bnf_layer=5
+
 ivector_suffix=_gb # if ivector_suffix = _gb, the iVector extracted using global iVector extractor
                    # trained on pooled data from all languages.
                    # Otherwise, it uses iVector extracted using local iVector extractor.
@@ -163,7 +158,7 @@ if [ $stage -le 9 ]; then
   echo "$0: creating neural net config for multilingual setups"
    # create the config files for nnet initialization
   $cmd $dir/log/make_config.log \
-  python steps/nnet3/multilingual/make_tdnn_configs.py  \
+  python steps/nnet3/tdnn/make_configs.py  \
     --splice-indexes "$splice_indexes"  \
     --feat-dim $feat_dim \
     --ivector-dim $ivector_dim  \
