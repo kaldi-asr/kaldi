@@ -9,10 +9,7 @@ stage=1
 nj=4
 cmd=run.pl
 use_gpu=false
-bnf_name=Tdnn_Bottleneck_renorm
 ivector_dir=
-# Begin configuration.
-transform_dir=
 # End configuration options.
 
 echo "$0 $@"  # Print the command line for logging
@@ -77,19 +74,6 @@ fi
 
 feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
 ivec_feats="scp:utils/filter_scp.pl $sdata/JOB/utt2spk $ivector_dir/ivector_online.scp |"
-
-if [ ! -z "$transform_dir" ]; then
-  echo "Using transforms from $transform_dir"
-  [ ! -f $transform_dir/trans.1 ] && echo "No such file $transform_dir/trans.1" && exit 1;
-  transform_nj=`cat $transform_dir/num_jobs` || exit 1;
-  if [ "$nj" != "$transform_nj" ]; then
-    for n in $(seq $transform_nj); do cat $transform_dir/trans.$n; done >$dir/trans.ark
-    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$dir/trans.ark ark:- ark:- |"
-  else
-    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$transform_dir/trans.JOB ark:- ark:- |"
-  fi
-fi
-
 
 if [ $stage -le 1 ]; then
   echo "$0: Generating bottle-neck features"

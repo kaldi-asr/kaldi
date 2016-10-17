@@ -39,8 +39,6 @@
 
 from __future__ import print_function
 import re, os, argparse, sys, math, warnings, random, io, imp
-import numpy as np
-
 nnet3_train_lib = imp.load_source('ntl', 'steps/nnet3/nnet3_train_lib.py')
 
 def GetArgs():
@@ -123,12 +121,12 @@ def RandomLang(lang_len, tot_egs, random_selection):
 def ReadLang2weight(lang2w_file):
   f = open(lang2w_file, "r");
   if f is None:
-    sys.exit("Error opening lang2weight file " + str(lang2w_file))
+    raise Exception("Error opening lang2weight file " + str(lang2w_file))
   lang2w = []
   for line in f:
     a = line.split()
     if len(a) != 2:
-      sys.exit("bad line in lang2weight file " + line)
+      raise Exception("bad line in lang2weight file " + line)
     lang2w.append(int(a[1]))
   f.close()
   return lang2w
@@ -156,10 +154,10 @@ def Main():
   lang2len = [0] * num_langs
   for lang in range(num_langs):
     lang2len[lang] = sum(1 for line in open(scp_lists[lang]))
-    print("num of examples for language {0} is {1}".format(lang, lang2len[lang]))
+    print("Number of examples for language {0} is {1}".format(lang, lang2len[lang]))
 
   # If weights are not provided, the scaling weights
-  # are zero.
+  # are one.
   if args.lang2weight is None:
     lang2weight = [ 1.0 ] * num_langs
   else:
@@ -177,7 +175,7 @@ def Main():
   # an array of 3-tuples (lang-id, local-start-egs-line, num-egs)
   all_egs = []
   lang_len = lang2len[:]
-  tot_num_egs = np.sum(lang2len) # total num of egs in all languages
+  tot_num_egs = sum(lang2len[i] for i in range(len(lang2len))) # total num of egs in all languages
   num_archives = max(1, min(args.max_archives, tot_num_egs / args.samples_per_iter))
   
 
@@ -191,12 +189,12 @@ def Main():
       # Temporary scp.job_index.archive_index files to store egs.scp correspond to each archive.
       print("Processing archive {0} for job {1}".format(archive_index + 1, job_index + 1))
       archfile = open(args.egs_dir + "/temp/" + args.prefix + "scp." + str(job_index + 1) + "." + str(archive_index + 1), "w")
-
+      
       this_egs = [] # this will be array of 2-tuples (lang-id start-frame num-frames)
       
       num_egs = 0
       while num_egs <= this_num_egs_per_archive:
-        rem_egs = np.sum(lang_len)
+        rem_egs = sum(lang_len[i] for i in range(len(lang_len)))
         if rem_egs > 0:
           lang_id = RandomLang(lang_len, rem_egs, rand_select)
           start_egs = lang2len[lang_id] - lang_len[lang_id]
@@ -224,17 +222,17 @@ def Main():
     f = open(args.egs_dir + "/temp/" + args.prefix + "ranges." + str(archive + 1), "w")
     o = open(args.egs_dir + "/" + args.prefix + "output." + str(archive + 1), "w")
     w = open(args.egs_dir + "/" + args.prefix + "weight." + str(archive + 1), "w") 
-    scp_per_archive_file = open(args.egs_dir + "/" + args.prefix + "egs." + str(archive + 1) + ".scp", "w")
+    scp_per_archive_file = open(args.egs_dir + "/" + args.prefix + "egs." + str(archive + 1), "w")
 
     # check files befor writing.
     if f is None:
-      sys.exit("Error opening file " + args.egs_dir + "/temp/" + args.prefix + "ranges." + str(job + 1))
+      raise Exception("Error opening file " + args.egs_dir + "/temp/" + args.prefix + "ranges." + str(job + 1))
     if o is None:
-      sys.exit("Error opening file " + args.egs_dir + "/" + args.prefix + "output." + str(job + 1))
+      raise Exception("Error opening file " + args.egs_dir + "/" + args.prefix + "output." + str(job + 1))
     if w is None:
-      sys.exit("Error opening file " + args.egs_dir + "/" + args.prefix + "weight." + str(job + 1))
+      raise Exception("Error opening file " + args.egs_dir + "/" + args.prefix + "weight." + str(job + 1))
     if scp_per_archive_file is None:
-      sys.exit("Error opening file " + args.egs_dir + "/" + args.prefix + "egs." + str(archive + 1) + ".scp", "w")
+      raise Exception("Error opening file " + args.egs_dir + "/" + args.prefix + "egs." + str(archive + 1), "w")
 
     for job in range(args.num_jobs):
       # combine egs.job.archive.scp across all jobs.

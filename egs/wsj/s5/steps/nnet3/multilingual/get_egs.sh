@@ -13,7 +13,8 @@
 # Begin configuration section.
 cmd=run.pl
 minibatch_size=512      # multiple of minibatch used during training.
-num_jobs=10             # helps for better randomness across languages
+num_jobs=10             # This can be set to max number of jobs to run in parallel;
+                        # Helps for better randomness across languages
                         # per archive.
 samples_per_iter=400000 # this is the target number of egs in each archive of egs
                         # (prior to merging egs).  We probably should have called
@@ -35,30 +36,30 @@ mkdir -p $megs_dir
 mkdir -p $megs_dir/info
 
 if [ ${#args[@]} != $[$num_langs+1] ]; then
-  echo "$0: num of input example dirs provided is not compatible with num_langs $num_langs."
+  echo "$0: Number of input example dirs provided is not compatible with num_langs $num_langs."
   echo "Usage:$0 [opts] <num-input-langs,N> <lang1-egs-dir> ...<langN-egs-dir> <multilingual-egs-dir>"
   echo "Usage:$0 [opts] 2 exp/lang1/egs exp/lang2/egs exp/multi/egs"
   exit 1;
 fi
 
-required="egs.scp combine.egs.scp train_diagnostic.egs.scp valid_diagnostic.egs.scp"
+required_files="egs.scp combine.egs.scp train_diagnostic.egs.scp valid_diagnostic.egs.scp"
 train_scp_list=
 train_diagnostic_scp_list=
 valid_diagnostic_scp_list=
 combine_scp_list=
 
-# read paramter from different $egs_dir[lang]/info
-# to write in multilingual egs_dir
+# copy paramters from $egs_dir[0]/info
+# into multilingual dir egs_dir/info
 
-check_params="feat_dim ivector_dim left_context right_context frames_per_eg"
-for param in $check_params; do
+params_to_check="feat_dim ivector_dim left_context right_context frames_per_eg"
+for param in $params_to_check; do
   cat ${args[0]}/info/$param > $megs_dir/info/$param || exit 1;
 done
 
 for lang in $(seq 0 $[$num_langs-1]);do
   multi_egs_dir[$lang]=${args[$lang]}
   echo "arg[$lang] = ${args[$lang]}"
-  for f in $required; do
+  for f in $required_files; do
     if [ ! -f ${multi_egs_dir[$lang]}/$f ]; then
       echo "$0: no such a file ${multi_egs_dir[$lang]}/$f." && exit 1;
     fi
@@ -69,7 +70,7 @@ for lang in $(seq 0 $[$num_langs-1]);do
   combine_scp_list="$combine_scp_list ${args[$lang]}/combine.egs.scp"
 
   # check parameter dimension to be the same in all egs dirs
-  for f in $check_params; do
+  for f in $params_to_check; do
     f1=`cat $megs_dir/info/$param`;
     f2=`cat ${multi_egs_dir[$lang]}/info/$f`;
     if [ $f1 != $f1 ]; then

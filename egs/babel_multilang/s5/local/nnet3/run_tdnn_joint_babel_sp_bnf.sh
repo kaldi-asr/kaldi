@@ -44,12 +44,12 @@ feat_suffix=_hires_mfcc # The feature suffix describing features used in multili
 # language list used for multilingual training
 # The map for lang-name to its abreviation can be find in
 # local/prepare_flp_langconf.sh
-lang_list=(AMH GRN)
-#lang_list=(ASM CNT BNG HAI LAO  PSH  TAM  TGL  TUR  VTN  ZUL GRG)
+#lang_list=(AMH GRN)
+lang_list=(GRG LIT MONG TUR KAZ KUR PSH SWA TOK IGBO DHO)
 
 # The language in this list decodes using Hybrid multilingual system.
 #decode_lang_list=(CNT ASM VTN TUR HAI LAO)
-decode_lang_list=(AMH GRN)
+decode_lang_list=(GRG)
 
 dir=exp/nnet3/multi_bnf
 splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -7,2 0 0"
@@ -218,17 +218,17 @@ if [ $stage -le 11 ]; then
 fi
 
 # decoding different languages
-#if [ $stage -le 12 ]; then
-#  num_decode_lang=${#decode_lang_list[@]}
-#  (
-#  for lang in `seq 0 $[$num_decode_lang-1]`; do
-#    if [ ! -f $dir/${decode_lang_list[$lang]}/decode_dev10h.pem/.done ]; then 
-#      cp $dir/cmvn_opts $dir/${decode_lang_list[$lang]}/.
-#      echo "Decoding lang ${decode_lang_list[$lang]} using multilingual hybrid model $dir"
-#      run-4-anydecode-langs.sh --use-ivector $use_ivector --nnet3-dir $dir ${decode_lang_list[$lang]} || exit 1;
-#      touch $dir/${decode_lang_list[$lang]}/decode_dev10h.pem/.done
-#    fi
-#  done
-#  wait
-#  )
-#fi
+if [ $stage -le 12 ]; then
+  num_decode_lang=${#decode_lang_list[@]}
+  (
+  for lang in `seq 0 $[$num_decode_lang-1]`; do
+    if [ ! -f $dir/${decode_lang_list[$lang]}/decode_dev10h.pem/.done ]; then 
+      cp $dir/cmvn_opts $dir/${decode_lang_list[$lang]}/.
+      echo "Decoding lang ${decode_lang_list[$lang]} using multilingual hybrid model $dir"
+      run-4-anydecode-langs.sh --use-ivector $use_ivector --nnet3-dir $dir ${decode_lang_list[$lang]} || exit 1;
+      touch $dir/${decode_lang_list[$lang]}/decode_dev10h.pem/.done
+    fi
+  done
+  wait
+  )
+fi
