@@ -184,8 +184,39 @@ void ContextDependency::GetPdfInfo(const std::vector<int32> &phones,
   // Todo
   KALDI_ASSERT(pdf_info != NULL);
   pdf_info->resize(*std::max_element(phones.begin(), phones.end()));
+  EventType vec;
   for (size_t i = 0 ; i < phones.size(); i++) {
+    // loop over phones
     int32 phone = phones[i];
+    (*pdf_info)[i].resize(pdf_class_pairs[i].size());
+    for (size_t j = 0; j < pdf_class_pairs[i].size(); j++) {
+      // loop over pdf_class pairs
+      vec.resize(2);
+      int32 pdf_class = pdf_class_pairs[i][j].first,
+        self_loop_pdf_class = pdf_class_pairs[i][j].second;
+      vec[0] = std::make_pair(static_cast<EventKeyType>(P_),
+                              static_cast<EventValueType>(phone));
+      vec[1] = std::make_pair(kPdfClass, static_cast<EventValueType>(pdf_class));
+      std::sort(vec.begin(), vec.end());
+      std::vector<EventAnswerType> forward_pdfs;  // forward pdfs that can be at this pos as this phone.
+      to_pdf_->MultiMap(vec, &forward_pdfs);
+      SortAndUniq(&forward_pdfs);
+
+      vec[1] = std::make_pair(kPdfClass, static_cast<EventValueType>(self_loop_pdf_class));
+      std::sort(vec.begin(), vec.end());
+      std::vector<EventAnswerType> self_loop_pdfs;  // self-loop pdfs that can be at this pos as this phone.
+      to_pdf_->MultiMap(vec, &self_loop_pdfs);
+      SortAndUniq(&self_loop_pdfs);
+
+      // brute force enumeration
+      for (size_t m = 0; m < forward_pdfs.size(); m++) {
+        int32 pdf = forward_pdfs[m];
+        for (size_t n = 0; n < self_loop_pdfs.size(); n++) {
+          int32 self_loop_pdf = self_loop_pdfs[n];
+          (*pdf_info)[i][j].push_back(std::make_pair(pdf, self_loop_pdf));
+        }
+      }
+    }
   }
 }
 
