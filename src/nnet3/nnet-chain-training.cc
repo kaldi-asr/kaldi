@@ -55,7 +55,7 @@ NnetChainTrainer::NnetChainTrainer(const NnetChainTrainingOptions &opts,
       KALDI_WARN << "Could not open cached computation. "
                     "Probably this is the first training iteration.";
     }
-  } 
+  }
 }
 
 
@@ -75,10 +75,10 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
                         (delta_nnet_ == NULL ? nnet_ : delta_nnet_));
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, chain_eg.inputs);
-  computer.Forward();
+  computer.Run();
 
   this->ProcessOutputs(chain_eg, &computer);
-  computer.Backward();
+  computer.Run();
 
   if (delta_nnet_ != NULL) {
     BaseFloat scale = (1.0 - nnet_config.momentum);
@@ -156,7 +156,7 @@ void NnetChainTrainer::ProcessOutputs(const NnetChainExample &eg,
         xent_deriv.MulRowsVec(cu_deriv_weights);
     }
 
-    computer->AcceptOutputDeriv(sup.name, &nnet_output_deriv);
+    computer->AcceptInput(sup.name, &nnet_output_deriv);
 
     objf_info_[sup.name].UpdateStats(sup.name, opts_.nnet_config.print_interval,
                                      num_minibatches_processed_++,
@@ -164,7 +164,7 @@ void NnetChainTrainer::ProcessOutputs(const NnetChainExample &eg,
 
     if (use_xent) {
       xent_deriv.Scale(opts_.chain_config.xent_regularize);
-      computer->AcceptOutputDeriv(xent_name, &xent_deriv);
+      computer->AcceptInput(xent_name, &xent_deriv);
     }
   }
 }
@@ -189,7 +189,7 @@ NnetChainTrainer::~NnetChainTrainer() {
     Output ko(opts_.nnet_config.write_cache, opts_.nnet_config.binary_write_cache);
     compiler_.WriteCache(ko.Stream(), opts_.nnet_config.binary_write_cache);
     KALDI_LOG << "Wrote computation cache to " << opts_.nnet_config.write_cache;
-  } 
+  }
   delete delta_nnet_;
 }
 

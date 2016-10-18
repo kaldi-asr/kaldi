@@ -182,9 +182,8 @@ void RemoveUnnecessaryZeroing(const Nnet &nnet,
       continue;  // nothing to do.
     if (computation->commands[allocate_command].command_type !=
         kAllocMatrixZeroed) {
-      KALDI_ASSERT(computation->commands[allocate_command].command_type ==
-                   kAllocMatrixUndefined);
-      continue;  // already leaving it undefined, so nothing to do.
+      continue;  // already leaving it undefined, or it's an input, so nothing
+                 // to do.
     }
     std::vector<int32> variables_for_matrix;
     a.variables.AppendVariablesForMatrix(matrix_index, &variables_for_matrix);
@@ -283,7 +282,8 @@ void RemoveUnnecessaryAllocation(const Nnet &nnet,
     if (command.command_type == kAllocMatrixZeroed ||
         command.command_type == kAllocMatrixUndefined ||
         command.command_type == kDeallocMatrix) {
-      int32 m = command.arg1, num_rows = computation->matrices[m].num_rows,
+      int32 s = command.arg1, m = computation->submatrices[s].matrix_index,
+          num_rows = computation->matrices[m].num_rows,
           num_cols = computation->matrices[m].num_cols,
           num_cols_mod = num_cols * (
               computation->matrices[m].stride_type == kDefaultStride ? 1 : -1);
@@ -330,12 +330,11 @@ void RemoveUnnecessaryAllocation(const Nnet &nnet,
 
 void VariableMergingOptimization(const NnetOptimizeOptions &config,
                                  const Nnet &nnet,
-                                 const ComputationRequest &request,
                                  NnetComputation *computation) {
   bool changed = true;
   while (changed) {
     changed = false;
-    VariableMergingOptimizer opt(config, nnet, request, computation);
+    VariableMergingOptimizer opt(config, nnet, computation);
     if (opt.MergeVariables())
       changed = true;
   }
@@ -344,10 +343,12 @@ void VariableMergingOptimization(const NnetOptimizeOptions &config,
 // This is a simplified top-level interface to the model-update consolidation
 // code from class ModelUpdateConsolidator.
 void ConsolidateModelUpdate(const Nnet &nnet,
-                            const ComputationRequest &request,
                             NnetComputation *computation) {
-  if (!request.need_model_derivative)
-    return;   // An optimization; there would be nothing to do in this case.
+  // This following if-statement is an optimization: if the computation
+  // request(s) had need_model_derivative == false, there would be nothing to
+  // optimize, so don't bother trying.
+  if (!computation->need_model_derivative)
+    return;
   ModelUpdateConsolidator consolidator(nnet, computation);
   consolidator.ConsolidateModelUpdate();
 }
@@ -405,13 +406,12 @@ void ConvertAdditionToAssignment(const Nnet &nnet,
 
 void Optimize(const NnetOptimizeOptions &config,
               const Nnet &nnet,
-              const ComputationRequest &request,
               NnetComputation *computation) {
   if (!config.optimize)
     return;
 
   if (GetVerboseLevel() >= 4)
-    CheckComputation(nnet, request, *computation, true);
+    CheckComputation(nnet, *computation, true);
 
   // this will do nothing unless --min-deriv-time or --max-deriv-time was
   // set.
@@ -419,44 +419,53 @@ void Optimize(const NnetOptimizeOptions &config,
                        computation);
 
   if (GetVerboseLevel() >= 4)
-    CheckComputation(nnet, request, *computation, true);
+    CheckComputation(nnet, *computation, true);
 
   if (config.consolidate_model_update)
-    ConsolidateModelUpdate(nnet, request, computation);
+    ConsolidateModelUpdate(nnet, computation);
 
   if (GetVerboseLevel() >= 4)
-    CheckComputation(nnet, request, *computation, true);
+    CheckComputation(nnet, *computation, true);
 
   if (config.convert_addition)
     ConvertAdditionToAssignment(nnet, computation);
 
   if (GetVerboseLevel() >= 4)
-    CheckComputation(nnet, request, *computation, true);
+    CheckComputation(nnet, *computation, true);
 
   if (config.remove_assignments || config.backprop_in_place ||
       config.propagate_in_place)
-    VariableMergingOptimization(config, nnet, request, computation);
+    VariableMergingOptimization(config, nnet, computation);
 
   if (GetVerboseLevel() >= 4)
-    CheckComputation(nnet, request, *computation, false);
+    CheckComputation(nnet, *computation, false);
 
   if (config.initialize_undefined)
     RemoveUnnecessaryZeroing(nnet, computation);
 
   if (GetVerboseLevel() >= 4)
-    CheckComputation(nnet, request, *computation, false);
+    CheckComputation(nnet, *computation, false);
 
   if (config.move_sizing_commands)
     MoveSizingCommands(nnet, computation);
 
   if (GetVerboseLevel() >= 4)
-    CheckComputation(nnet, request, *computation, false);
+    CheckComputation(nnet, *computation, false);
 
   if (config.allocate_from_other)
     RemoveUnnecessaryAllocation(nnet, computation);
 
   if (GetVerboseLevel() >= 4)
-    CheckComputation(nnet, request, *computation, false);
+    CheckComputation(nnet, *computation, false);
+
+  // The following is not configurable because it is necessary for
+  // the computation to run correctly (we do it after compilation too,
+  // but the operations may have been put out of order by
+  // other optimizations.)
+  ConsolidateIoOperations(nnet, computation);
+
+  if (GetVerboseLevel() >= 4)
+    CheckComputation(nnet, *computation, false);
 }
 
 // ComputationRequests are distinguished by the names and indexes
@@ -592,7 +601,7 @@ const NnetComputation* CachingOptimizingCompiler::Compile(
       ComputationChecker checker(check_config, nnet_, *computation);
       checker.Check();
     }
-    Optimize(opt_config_, nnet_, *request, computation);
+    Optimize(opt_config_, nnet_, computation);
     if (GetVerboseLevel() >= verbose_cutoff) {
       std::ostringstream os;
       computation->Print(os, nnet_);
@@ -612,6 +621,81 @@ const NnetComputation* CachingOptimizingCompiler::Compile(
   }
   return computation;
 }
+
+/// Split the computation up into segments bounded internally by kNoOperationMarker.
+/// For each segment, a pair of command-indexes (start, end) is output to the vector
+/// 'segments', so the commands in the segment (not including kNoOperationMarker)
+/// are numbered from start ... end - 1.
+static void SplitComputationIntoSegments(
+    const NnetComputation &computation,
+    std::vector<std::pair<int32, int32> > *segments) {
+
+  int32 num_commands = computation.commands.size();
+  segments->clear();
+  int32 cur_start = 0;
+  for (int32 c = 0; c < num_commands; c++) {
+    if (computation.commands[c].command_type == kNoOperationMarker) {
+      segments->push_back(std::pair<int32, int32>(cur_start, c));
+      cur_start = c + 1;
+    }
+  }
+  segments->push_back(std::pair<int32, int32>(cur_start, num_commands));
+}
+
+
+void ConsolidateIoOperations(const Nnet &nnet,
+                             NnetComputation *computation) {
+  // These segments, represented as (start-index, end-index),
+  // are segments of the computation separated by kNoOperationMarker.
+  std::vector<std::pair<int32, int32> > segments;
+  SplitComputationIntoSegments(*computation, &segments);
+
+  int32 num_commands = computation->commands.size();
+  std::vector<NnetComputation::Command> reordered_commands(num_commands);
+  // put kNoOperationMarker between all segments in the reordered commands.
+  for (size_t s = 0; s + 1 < segments.size(); s++)
+    reordered_commands[segments[s].second].command_type = kNoOperationMarker;
+
+  // for each segment we'll divide the commands up into those that must appear
+  // at the left of the segment (kAcceptInput for inputs and output-derivs), those
+  // that must appear in the middle (most commands), those that must appear
+  // on the right (kProvideOutput for output nodes and input derivatives).
+  std::vector<int32> left_commands, middle_commands, right_commands;
+
+  for (size_t s = 0; s < segments.size(); s++) {
+    int32 segment_start = segments[s].first,
+        segment_end = segments[s].second;
+    left_commands.clear();
+    middle_commands.clear();
+    right_commands.clear();
+    for (int32 c = segment_start; c < segment_end; c++) {
+      if (computation->commands[c].command_type == kProvideOutput) {
+        right_commands.push_back(c);
+      } else if (computation->commands[c].command_type == kAcceptInput) {
+        left_commands.push_back(c);
+      } else {
+        middle_commands.push_back(c);
+      }
+    }
+    std::vector<int32>::const_iterator iter = left_commands.begin(),
+        end = left_commands.end();
+    int32 c = segment_start;
+    for (; iter != end; ++iter, ++c)
+      reordered_commands[c] = computation->commands[*iter];
+    iter = middle_commands.begin();
+    end = middle_commands.end();
+    for (; iter != end; ++iter, ++c)
+      reordered_commands[c] = computation->commands[*iter];
+    iter = right_commands.begin();
+    end = right_commands.end();
+    for (; iter != end; ++iter, ++c)
+      reordered_commands[c] = computation->commands[*iter];
+    KALDI_ASSERT(c == segment_end);
+  }
+  computation->commands.swap(reordered_commands);
+}
+
+
 
 
 } // namespace nnet3

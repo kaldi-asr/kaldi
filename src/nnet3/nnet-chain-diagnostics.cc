@@ -82,10 +82,10 @@ void NnetChainComputeProb::Compute(const NnetChainExample &chain_eg) {
                         nnet_, deriv_nnet_);
   // give the inputs to the computer object.
   computer.AcceptInputs(nnet_, chain_eg.inputs);
-  computer.Forward();
+  computer.Run();
   this->ProcessOutputs(chain_eg, &computer);
   if (nnet_config_.compute_deriv)
-    computer.Backward();
+    computer.Run();
 }
 
 void NnetChainComputeProb::ProcessOutputs(const NnetChainExample &eg,
@@ -111,15 +111,15 @@ void NnetChainComputeProb::ProcessOutputs(const NnetChainExample &eg,
     if (use_xent)
       xent_deriv.Resize(nnet_output.NumRows(), nnet_output.NumCols(),
                         kUndefined);
-      
+
     BaseFloat tot_like, tot_l2_term, tot_weight;
-    
+
     ComputeChainObjfAndDeriv(chain_config_, den_graph_,
                              sup.supervision, nnet_output,
                              &tot_like, &tot_l2_term, &tot_weight,
                              (nnet_config_.compute_deriv ? &nnet_output_deriv :
                               NULL), (use_xent ? &xent_deriv : NULL));
-    
+
     // note: in this context we don't want to apply 'sup.deriv_weights' because
     // this code is used only in combination, where it's part of an L-BFGS
     // optimization algorithm, and in that case if there is a mismatch between
@@ -134,7 +134,7 @@ void NnetChainComputeProb::ProcessOutputs(const NnetChainExample &eg,
     totals.tot_l2_term += tot_l2_term;
 
     if (nnet_config_.compute_deriv)
-      computer->AcceptOutputDeriv(sup.name, &nnet_output_deriv);
+      computer->AcceptInput(sup.name, &nnet_output_deriv);
 
     if (use_xent) {
       ChainObjectiveInfo &xent_totals = objf_info_[xent_name];

@@ -94,7 +94,7 @@ class AmNnetSimple {
   /// This function works out the left_context_ and right_context_ variables
   /// from the network (it's a rather complex calculation).  You should call
   /// this if you have structurally changed the nnet without calling SetNnet(),
-  /// e.g. using non-const GetNnet().  void SetContext();
+  /// e.g. using non-const GetNnet().
   void SetContext();
  private:
 
