@@ -54,6 +54,10 @@ def GetArgs():
                         help="Output dimension of the linear layer at the CNN output "
                         "for dimension reduction, e.g. 256."
                         "The default zero means this layer is not needed.", default=0)
+    parser.add_argument("--cnn.cepstral-lifter", type=float,
+                        help="The factor used for determining the liftering vector in the production of MFCC. "
+                        "User has to ensure that it matches the lifter used in MFCC generation, "
+                        "e.g. 22.0", default=22.0)
 
     # General neural network options
     parser.add_argument("--splice-indexes", type=str, required = True,
@@ -65,8 +69,7 @@ def GetArgs():
                         help="If \"true\" an LDA matrix computed from the input features "
                         "(spliced according to the first set of splice-indexes) will be used as "
                         "the first Affine layer. This affine layer's parameters are fixed during training. "
-                        "This variable needs to be set to \"false\" when using dense-targets "
-                        "or when --add-idct is set to \"true\".",
+                        "This variable needs to be set to \"false\" when using dense-targets. "
                         "If --cnn.layer is specified this option will be forced to \"false\".",
                         default=True, choices = ["false", "true"])
 
@@ -103,12 +106,17 @@ def GetArgs():
     relu_dim_group.add_argument("--relu-dim", type=int,
                         help="dimension of all ReLU nonlinearity layers")
     relu_dim_group.add_argument("--relu-dim-final", type=int,
-                        help="dimension of the last ReLU nonlinearity layer. Dimensions increase geometrically from the first through the last ReLU layer.", default=None)
+                        help="dimension of the last ReLU nonlinearity layer. "
+                        "Dimensions increase geometrically from the first through the last ReLU layer.",
+                        default=None)
     parser.add_argument("--relu-dim-init", type=int,
-                        help="dimension of the first ReLU nonlinearity layer. Dimensions increase geometrically from the first through the last ReLU layer.", default=None)
+                        help="dimension of the first ReLU nonlinearity layer. "
+                        "Dimensions increase geometrically from the first through the last ReLU layer.",
+                        default=None)
 
     parser.add_argument("--self-repair-scale-nonlinearity", type=float,
-                        help="A non-zero value activates the self-repair mechanism in the sigmoid and tanh non-linearities of the LSTM", default=None)
+                        help="A non-zero value activates the self-repair mechanism in the "
+                        "sigmoid and tanh non-linearities of the LSTM", default=None)
 
 
     parser.add_argument("--use-presoftmax-prior-scale", type=str, action=nnet3_train_lib.StrToBoolAction,
@@ -117,13 +125,7 @@ def GetArgs():
 
     # Options to convert input MFCC into Fbank features. This is useful when a
     # LDA layer is not added (such as when using dense targets)
-    parser.add_argument(["--cepstral-lifter","--cnn.cepstral-lifter"], type=float, dest = "cepstral_lifter",
-                        help="The factor used for determining the liftering vector in the production of MFCC. "
-                        "User has to ensure that it matches the lifter used in MFCC generation, "
-                        "e.g. 22.0", default=22.0)
 
-    parser.add_argument("--add-idct", type=str, action=nnet3_train_lib.StrToBoolAction,
-                        help="Add an IDCT after input to convert MFCC to Fbank", default = False)
     parser.add_argument("config_dir",
                         help="Directory to write config files and variables")
 
@@ -152,9 +154,6 @@ def CheckArgs(args):
 
     if not args.feat_dim > 0:
         raise Exception("feat-dim has to be postive")
-
-    if args.add_lda and args.add_idct:
-        raise Exception("add-idct can be true only if add-lda is false")
 
     if not args.num_targets > 0:
         print(args.num_targets)
@@ -237,7 +236,8 @@ def AddConvMaxpLayer(config_lines, name, input, args):
 
 # The ivectors are processed through an affine layer parallel to the CNN layers,
 # then concatenated with the CNN output and passed to the deeper part of the network.
-def AddCnnLayers(config_lines, cnn_layer, cnn_bottleneck_dim, cepstral_lifter, config_dir, feat_dim, splice_indexes=[0], ivector_dim=0):
+def AddCnnLayers(config_lines, cnn_layer, cnn_bottleneck_dim, cepstral_lifter,
+                 config_dir, feat_dim, splice_indexes=[0], ivector_dim=0):
     cnn_args = ParseCnnString(cnn_layer)
     num_cnn_layers = len(cnn_args)
     # We use an Idct layer here to convert MFCC to FBANK features
@@ -246,7 +246,8 @@ def AddCnnLayers(config_lines, cnn_layer, cnn_bottleneck_dim, cepstral_lifter, c
                          'dimension': feat_dim}
     prev_layer_output = nodes.AddFixedAffineLayer(config_lines, "Idct", prev_layer_output, config_dir.strip() + '/idct.mat')
 
-    list = [('Offset({0}, {1})'.format(prev_layer_output['descriptor'],n) if n != 0 else prev_layer_output['descriptor']) for n in splice_indexes]
+    list = [('Offset({0}, {1})'.format(prev_layer_output['descriptor'],n)
+                if n != 0 else prev_layer_output['descriptor']) for n in splice_indexes]
     splice_descriptor = "Append({0})".format(", ".join(list))
     cnn_input_dim = len(splice_indexes) * feat_dim
     prev_layer_output = {'descriptor':  splice_descriptor,
@@ -258,13 +259,15 @@ def AddCnnLayers(config_lines, cnn_layer, cnn_bottleneck_dim, cepstral_lifter, c
         prev_layer_output = AddConvMaxpLayer(config_lines, "L{0}".format(cl), prev_layer_output, cnn_args[cl])
 
     if cnn_bottleneck_dim > 0:
-        prev_layer_output = nodes.AddAffineLayer(config_lines, "cnn-bottleneck", prev_layer_output, cnn_bottleneck_dim, "")
+        prev_layer_output = nodes.AddAffineLayer(config_lines, "cnn-bottleneck",
+                                                 prev_layer_output, cnn_bottleneck_dim, "")
 
     if ivector_dim > 0:
         iv_layer_output = {'descriptor':  'ReplaceIndex(ivector, t, 0)',
                            'dimension': ivector_dim}
         iv_layer_output = nodes.AddAffineLayer(config_lines, "ivector", iv_layer_output, ivector_dim, "")
-        prev_layer_output['descriptor'] = 'Append({0}, {1})'.format(prev_layer_output['descriptor'], iv_layer_output['descriptor'])
+        prev_layer_output['descriptor'] = 'Append({0}, {1})'.format(prev_layer_output['descriptor'],
+                                                                    iv_layer_output['descriptor'])
         prev_layer_output['dimension'] = prev_layer_output['dimension'] + iv_layer_output['dimension']
 
     return prev_layer_output
@@ -334,7 +337,7 @@ def ParseSpliceString(splice_indexes):
 # The function signature of MakeConfigs is changed frequently as it is intended for local use in this script.
 def MakeConfigs(config_dir, splice_indexes_string,
                 cnn_layer, cnn_bottleneck_dim, cepstral_lifter,
-                feat_dim, ivector_dim, num_targets, add_lda, add_idct,
+                feat_dim, ivector_dim, num_targets, add_lda,
                 nonlin_type, nonlin_input_dim, nonlin_output_dim, subset_dim,
                 nonlin_output_dim_init, nonlin_output_dim_final,
                 use_presoftmax_prior_scale,
@@ -356,20 +359,17 @@ def MakeConfigs(config_dir, splice_indexes_string,
 
     if xent_separate_forward_affine:
         if splice_indexes[-1] != [0]:
-            raise Exception("--xent-separate-forward-affine option is supported only if the last-hidden layer has no splicing before it. Please use a splice-indexes with just 0 as the final splicing config.")
+            raise Exception("--xent-separate-forward-affine option is supported only if the " +
+            "last-hidden layer has no splicing before it. " +
+            "Please use a splice-indexes with just 0 as the final splicing config.")
 
     prior_scale_file = '{0}/presoftmax_prior_scale.vec'.format(config_dir)
 
     config_lines = {'components':[], 'component-nodes':[]}
 
-    if add_idct and cnn_layer is None:
-        # If CNN layer is not None, IDCT will be add inside AddCnnLayers method
-        nnet3_train_lib.WriteIdctMatrix(feat_dim, cepstral_lifter, config_dir.strip() + "/idct.mat")
-
     config_files={}
     prev_layer_output = nodes.AddInputLayer(config_lines, feat_dim, splice_indexes[0],
-                        ivector_dim,
-                        idct_mat = config_dir.strip() + "/idct.mat" if (add_idct and cnn_layer is None) else None)
+                        ivector_dim)
 
     # Add the init config lines for estimating the preconditioning matrices
     init_config_lines = copy.deepcopy(config_lines)
@@ -379,14 +379,16 @@ def MakeConfigs(config_dir, splice_indexes_string,
     config_files[config_dir + '/init.config'] = init_config_lines
 
     if cnn_layer is not None:
-        prev_layer_output = AddCnnLayers(config_lines, cnn_layer, cnn_bottleneck_dim, cepstral_lifter, config_dir,
+        prev_layer_output = AddCnnLayers(config_lines, cnn_layer, cnn_bottleneck_dim,
+                                         cepstral_lifter, config_dir,
                                          feat_dim, splice_indexes[0], ivector_dim)
 
     # add_lda needs to be set "false" when using dense targets,
     # or if the task is not a simple classification task
     # (e.g. regression, multi-task)
     if add_lda:
-        prev_layer_output = nodes.AddLdaLayer(config_lines, "L0", prev_layer_output, config_dir + '/lda.mat')
+        prev_layer_output = nodes.AddLdaLayer(config_lines, "L0",
+                                              prev_layer_output, config_dir + '/lda.mat')
 
     left_context = 0
     right_context = 0
@@ -400,9 +402,11 @@ def MakeConfigs(config_dir, splice_indexes_string,
         raise Exception("num-hidden-layers has to be greater than 1 if relu-dim-init and relu-dim-final is different.")
     else:
         # computes relu-dim for each hidden layer. They increase geometrically across layers
-        factor = pow(float(nonlin_output_dim_final) / nonlin_output_dim_init, 1.0 / (num_hidden_layers - 1)) if num_hidden_layers > 1 else 1
+        factor = pow(float(nonlin_output_dim_final) / nonlin_output_dim_init,
+                     1.0 / (num_hidden_layers - 1)) if num_hidden_layers > 1 else 1
         nonlin_output_dims = [int(round(nonlin_output_dim_init * pow(factor, i))) for i in range(0, num_hidden_layers)]
-        assert(nonlin_output_dims[-1] >= nonlin_output_dim_final - 1 and nonlin_output_dims[-1] <= nonlin_output_dim_final + 1) # due to rounding error
+        assert(nonlin_output_dims[-1] >= nonlin_output_dim_final - 1 and
+               nonlin_output_dims[-1] <= nonlin_output_dim_final + 1) # due to rounding error
         nonlin_output_dims[-1] = nonlin_output_dim_final # It ensures that the dim of the last hidden layer is exactly the same as what is specified
 
     for i in range(0, num_hidden_layers):
@@ -541,7 +545,7 @@ def Main():
                 splice_indexes_string = args.splice_indexes,
                 feat_dim = args.feat_dim, ivector_dim = args.ivector_dim,
                 num_targets = args.num_targets,
-                add_lda = args.add_lda, add_idct = args.add_idct,
+                add_lda = args.add_lda,
                 cnn_layer = args.cnn_layer,
                 cnn_bottleneck_dim = args.cnn_bottleneck_dim,
                 cepstral_lifter = args.cepstral_lifter,

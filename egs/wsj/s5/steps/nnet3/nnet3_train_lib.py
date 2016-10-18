@@ -662,15 +662,12 @@ def DoShrinkage(iter, model_file, name, non_linearity, shrink_threshold,
     return False
 
 def ComputeTrainCvProbabilities(dir, iter, egs_dir, run_opts, mb_size=256,
-                                wait = False, get_raw_nnet_from_am = True,
-                                compute_accuracy = True):
+                                wait = False, get_raw_nnet_from_am = True):
 
     if get_raw_nnet_from_am:
         model = "nnet3-am-copy --raw=true {dir}/{iter}.mdl - |".format(dir = dir, iter = iter)
     else:
         model = "{dir}/{iter}.raw".format(dir = dir, iter = iter)
-
-    compute_prob_opts = "--compute-accuracy" if compute_accuracy else "";
 
     RunKaldiCommand("""
 {command} {dir}/log/compute_prob_valid.{iter}.log \
@@ -720,7 +717,7 @@ nnet3-show-progress --use-gpu=no {prev_model} {model} \
 
 def CombineModels(dir, num_iters, num_iters_combine, egs_dir,
                   run_opts, chunk_width = None,
-                  get_raw_nnet_from_am = True, compute_accuracy = True):
+                  get_raw_nnet_from_am = True):
     # Now do combination.  In the nnet3 setup, the logic
     # for doing averaging of subsets of the models in the case where
     # there are too many models to reliably esetimate interpolation
@@ -770,8 +767,7 @@ nnet3-combine --num-iters=40 \
         ComputeTrainCvProbabilities(dir, 'combined', egs_dir, run_opts, wait = False)
     else:
         ComputeTrainCvProbabilities(dir, 'final', egs_dir, run_opts,
-                                    wait = False, get_raw_nnet_from_am = False,
-                                    compute_accuracy = compute_accuracy)
+                                    wait = False, get_raw_nnet_from_am = False)
 
 def ComputeAveragePosterior(dir, iter, egs_dir, num_archives,
                             prior_subset_size, run_opts,

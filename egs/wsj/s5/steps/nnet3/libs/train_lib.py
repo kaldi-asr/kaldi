@@ -239,7 +239,7 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
                       left_context, right_context,
                       momentum, max_param_change, shuffle_buffer_size,
                       run_opts,
-                      compute_accuracy = True, get_raw_nnet_from_am = True):
+                      get_raw_nnet_from_am = True):
 
 
     # Set off jobs doing some diagnostics, in the background.
@@ -259,12 +259,14 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
         f.write(str(srand))
         f.close()
 
+    # Sets off some background jobs to compute train and
+    # validation set objectives
     nnet3_train_lib.ComputeTrainCvProbabilities(
                     dir, iter, egs_dir, run_opts,
-                    get_raw_nnet_from_am = get_raw_nnet_from_am,
-                    compute_accuracy = compute_accuracy)
+                    get_raw_nnet_from_am = get_raw_nnet_from_am)
 
     if iter > 0:
+        # Runs in the background
         nnet3_train_lib.ComputeProgress(
                         dir, iter, egs_dir, run_opts,
                         get_raw_nnet_from_am = get_raw_nnet_from_am)

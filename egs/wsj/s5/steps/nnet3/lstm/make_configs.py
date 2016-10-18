@@ -54,8 +54,7 @@ def GetArgs():
                         help="If \"true\" an LDA matrix computed from the input features "
                         "(spliced according to the first set of splice-indexes) will be used as "
                         "the first Affine layer. This affine layer's parameters are fixed during training. "
-                        "This variable needs to be set to \"false\" when using dense-targets "
-                        "or when --add-idct is set to \"true\".",
+                        "This variable needs to be set to \"false\" when using dense-targets.",
                         default=True, choices = ["false", "true"])
     parser.add_argument("--add-final-sigmoid", type=str, action=nnet3_train_lib.StrToBoolAction,
                         help="add a sigmoid layer as the final layer. Applicable only if skip-final-softmax is true.",
@@ -99,16 +98,6 @@ def GetArgs():
     parser.add_argument("--lstm-delay", type=str, default=None,
                         help="option to have different delays in recurrence for each lstm")
 
-    # Options to convert input MFCC into Fbank features. This is useful when a
-    # LDA layer is not added (such as when using dense targets)
-    parser.add_argument("--cepstral-lifter", type=float, dest = "cepstral_lifter",
-                        help="The factor used for determining the liftering vector in the production of MFCC. "
-                        "User has to ensure that it matches the lifter used in MFCC generation, "
-                        "e.g. 22.0", default=22.0)
-    parser.add_argument("--add-idct", type=str, action=nnet3_train_lib.StrToBoolAction,
-                        help="Add an IDCT after input to convert MFCC to Fbank",
-                        default = False, choices = ["true", "false"])
-
     parser.add_argument("config_dir",
                         help="Directory to write config files and variables")
 
@@ -137,9 +126,6 @@ def CheckArgs(args):
 
     if not args.feat_dim > 0:
         raise Exception("feat-dim has to be postive")
-
-    if args.add_lda and args.add_idct:
-        raise Exception("add-idct can be true only if add-lda is false")
 
     if not args.num_targets > 0:
         print(args.num_targets)
@@ -224,7 +210,9 @@ def ParseLstmDelayString(lstm_delay):
                 raise ValueError("invalid --lstm-delay argument, too-short element: "
                                 + lstm_delay)
             elif len(indexes) == 2 and indexes[0] * indexes[1] >= 0:
-                raise ValueError('Warning: ' + str(indexes) + ' is not a standard BLSTM mode. There should be a negative delay for the forward, and a postive delay for the backward.')
+                raise ValueError('Warning: ' + str(indexes) +
+                                 ' is not a standard BLSTM mode. ' +
+                                 'There should be a negative delay for the forward, and a postive delay for the backward.')
             if len(indexes) == 2 and indexes[0] > 0: # always a negative delay followed by a postive delay
                 indexes[0], indexes[1] = indexes[1], indexes[0]
             lstm_delay_array.append(indexes)
@@ -235,7 +223,6 @@ def ParseLstmDelayString(lstm_delay):
 
 
 def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets, add_lda,
-                add_idct, cepstral_lifter,
                 splice_indexes, lstm_delay, cell_dim, hidden_dim,
                 recurrent_projection_dim, non_recurrent_projection_dim,
                 num_lstm_layers, num_hidden_layers,
@@ -247,13 +234,9 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets, add_lda,
 
     config_lines = {'components':[], 'component-nodes':[]}
 
-    if add_idct:
-        nnet3_train_lib.WriteIdctMatrix(feat_dim, cepstral_lifter, config_dir.strip() + "/idct.mat")
-
     config_files={}
     prev_layer_output = nodes.AddInputLayer(config_lines, feat_dim, splice_indexes[0],
-                        ivector_dim,
-                        idct_mat = config_dir.strip() + "/idct.mat" if add_idct else None)
+                        ivector_dim)
 
     # Add the init config lines for estimating the preconditioning matrices
     init_config_lines = copy.deepcopy(config_lines)
@@ -275,17 +258,23 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets, add_lda,
                                                     recurrent_projection_dim, non_recurrent_projection_dim,
                                                     clipping_threshold, norm_based_clipping,
                                                     ng_per_element_scale_options, ng_affine_options,
-                                                    lstm_delay = lstm_delay[i], self_repair_scale_nonlinearity = self_repair_scale_nonlinearity, self_repair_scale_clipgradient = self_repair_scale_clipgradient)
+                                                    lstm_delay = lstm_delay[i],
+                                                    self_repair_scale_nonlinearity = self_repair_scale_nonlinearity,
+                                                    self_repair_scale_clipgradient = self_repair_scale_clipgradient)
         else: # add a uni-directional LSTM layer
             prev_layer_output = nodes.AddLstmLayer(config_lines, "Lstm{0}".format(i+1),
                                                    prev_layer_output, cell_dim,
                                                    recurrent_projection_dim, non_recurrent_projection_dim,
                                                    clipping_threshold, norm_based_clipping,
                                                    ng_per_element_scale_options, ng_affine_options,
-                                                   lstm_delay = lstm_delay[i][0], self_repair_scale_nonlinearity = self_repair_scale_nonlinearity, self_repair_scale_clipgradient = self_repair_scale_clipgradient)
+                                                   lstm_delay = lstm_delay[i][0],
+                                                   self_repair_scale_nonlinearity = self_repair_scale_nonlinearity,
+                                                   self_repair_scale_clipgradient = self_repair_scale_clipgradient)
         # make the intermediate config file for layerwise discriminative
         # training
-        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options, label_delay = label_delay, include_log_softmax = include_log_softmax, add_final_sigmoid = add_final_sigmoid, objective_type = objective_type)
+        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options,
+                            label_delay = label_delay, include_log_softmax = include_log_softmax,
+                            add_final_sigmoid = add_final_sigmoid, objective_type = objective_type)
 
 
         if xent_regularize != 0.0:
@@ -302,7 +291,9 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets, add_lda,
                                                ng_affine_options, self_repair_scale = self_repair_scale_nonlinearity)
         # make the intermediate config file for layerwise discriminative
         # training
-        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options, label_delay = label_delay, include_log_softmax = include_log_softmax, add_final_sigmoid = add_final_sigmoid, objective_type = objective_type)
+        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options,
+                            label_delay = label_delay, include_log_softmax = include_log_softmax,
+                            add_final_sigmoid = add_final_sigmoid, objective_type = objective_type)
 
         if xent_regularize != 0.0:
             nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
@@ -335,7 +326,9 @@ def ProcessSpliceIndexes(config_dir, splice_indexes, label_delay, num_lstm_layer
 
 def Main():
     args = GetArgs()
-    [left_context, right_context, num_hidden_layers, splice_indexes] = ProcessSpliceIndexes(args.config_dir, args.splice_indexes, args.label_delay, args.num_lstm_layers)
+    [left_context, right_context,
+     num_hidden_layers, splice_indexes] = ProcessSpliceIndexes(args.config_dir, args.splice_indexes,
+                                                               args.label_delay, args.num_lstm_layers)
 
     # write the files used by other scripts like steps/nnet3/get_egs.sh
     f = open(args.config_dir + "/vars", "w")
@@ -352,7 +345,6 @@ def Main():
                 feat_dim = args.feat_dim, ivector_dim = args.ivector_dim,
                 num_targets = args.num_targets,
                 add_lda = args.add_lda,
-                add_idct = args.add_idct, cepstral_lifter = args.cepstral_lifter,
                 splice_indexes = splice_indexes, lstm_delay = args.lstm_delay,
                 cell_dim = args.cell_dim,
                 hidden_dim = args.hidden_dim,
