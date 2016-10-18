@@ -64,7 +64,7 @@ ln -sf sequitur-g2p sequitur
 
 
 cd sequitur-g2p
-make
+make CXX=g++ CC=gcc
 python setup.py install --prefix `pwd`
 
 cd ../
