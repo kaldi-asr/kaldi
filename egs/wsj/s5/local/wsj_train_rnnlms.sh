@@ -77,6 +77,8 @@ gunzip -c $dir/all.gz | tail -n +$heldout_sent | \
 # Note: by concatenating with $dir/wordlist.all, we are doing add-one
 # smoothing of the counts.
 
+export TMPDIR=$dir # to avoid filling up /tmp/
+
 cat $dir/train.in $dir/wordlist.all | grep -v '</s>' | grep -v '<s>' | \
   awk '{ for(x=1;x<=NF;x++) count[$x]++; } END{for(w in count){print count[w], w;}}' | \
   sort -nr > $dir/unigram.counts
