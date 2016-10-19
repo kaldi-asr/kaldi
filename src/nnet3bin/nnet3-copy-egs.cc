@@ -241,7 +241,8 @@ bool SelectFromExample(const NnetExample &eg,
     exclude_names.push_back(std::string("ivector")); // configurable.
     ShiftExampleTimes(frame_shift, exclude_names, eg_out);
   }
-  SelectFeatureOffset(feature_offset, eg_out);
+  if (feature_offset != -1)
+    SelectFeatureOffset(feature_offset, eg_out);
   return true;
 }
 
@@ -271,7 +272,7 @@ int main(int argc, char *argv[]) {
     bool random = false;
     int32 srand_seed = 0;
     int32 frame_shift = 0;
-    int32 select_feature_offset = 1;
+    int32 select_feature_offset = -1;
     BaseFloat keep_proportion = 1.0;
 
     // The following config variables, if set, can be used to extract a single
