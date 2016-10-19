@@ -99,6 +99,8 @@ class HmmTopology {
     /// but may be different to enable us to hardwire sharing of state, and may be
     /// equal to \ref kNoPdf == -1 in order to specify nonemitting states (unusual).
     int32 pdf_class;
+    /// The \ref self_loop_pdf_class self-loop pdf-class, similar to \ref pdf_class pdf-class.
+    /// They will either both be \ref kNoPdf, or neither be \ref kNoPdf.
     int32 self_loop_pdf_class;
 
     /// A list of transitions, indexed by what we call a 'transition-index'.
@@ -106,12 +108,15 @@ class HmmTopology {
     /// second is the default transition probability (before training).
     std::vector<std::pair<int32, BaseFloat> > transitions;
 
-    explicit HmmState(int32 p): pdf_class(p),self_loop_pdf_class(p) { }
-    explicit HmmState(int32 p, int32 self_p) {
-      KALDI_ASSERT((p != kNoPdf && self_p != kNoPdf) ||
-                   (p == kNoPdf && self_p == kNoPdf));
-      pdf_class = p;
-      self_loop_pdf_class = self_p;
+    explicit HmmState(int32 pdf_class) {
+      this->pdf_class = pdf_class;
+      this->self_loop_pdf_class = pdf_class;
+    }
+    explicit HmmState(int32 pdf_class, int32 self_loop_pdf_class) {
+      KALDI_ASSERT((pdf_class != kNoPdf && self_loop_pdf_class != kNoPdf) ||
+                   (pdf_class == kNoPdf && self_loop_pdf_class == kNoPdf));
+      this->pdf_class = pdf_class;
+      this->self_loop_pdf_class = self_loop_pdf_class;
     }
 
     bool operator == (const HmmState &other) const {
@@ -120,7 +125,7 @@ class HmmTopology {
               transitions == other.transitions);
     }
 
-  HmmState(): pdf_class(-1),self_loop_pdf_class(-1) { }
+    HmmState(): pdf_class(-1), self_loop_pdf_class(-1) { }
   };
 
   /// TopologyEntry is a typedef that represents the topology of

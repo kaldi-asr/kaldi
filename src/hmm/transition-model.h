@@ -155,6 +155,7 @@ class TransitionModel {
   inline int32 TransitionIdToPdf(int32 trans_id) const;
   int32 TransitionIdToPhone(int32 trans_id) const;
   int32 TransitionIdToPdfClass(int32 trans_id) const;
+  int32 TransitionIdToSelfLoopPdfClass(int32 trans_id) const;
   int32 TransitionIdToHmmState(int32 trans_id) const;
 
   /// @}

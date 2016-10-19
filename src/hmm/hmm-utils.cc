@@ -49,8 +49,8 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFst(
   const HmmTopology &topo = trans_model.GetTopo();
   const HmmTopology::TopologyEntry &entry  = topo.TopologyForPhone(phone);
 
-  // vector of the pdfs, indexed by pdf-class (pdf-classes must start from zero
-  // and be contiguous).
+  // vector of the pdfs, indexed by pdf-class and self-loop pdf-class
+  // (pdf-classes and self-loop pdf-classes must start from zero and be contiguous).
   std::vector<int32> pdfs(topo.NumPdfClasses(phone));
   for (int32 pdf_class = 0;
        pdf_class < static_cast<int32>(pdfs.size());
@@ -94,10 +94,15 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFst(
        hmm_state < static_cast<int32>(entry.size());
        hmm_state++) {
     int32 pdf_class = entry[hmm_state].pdf_class, pdf;
-    if (pdf_class == kNoPdf) pdf = kNoPdf;  // nonemitting state.
-    else {
+    int32 self_loop_pdf_class = entry[hmm_state].pdf_class, self_loop_pdf;
+    if (pdf_class == kNoPdf) {  // nonemitting state.
+      pdf = kNoPdf;
+      self_loop_pdf = kNoPdf;
+    } else {
       KALDI_ASSERT(pdf_class < static_cast<int32>(pdfs.size()));
+      KALDI_ASSERT(self_loop_pdf_class < static_cast<int32>(pdfs.size()));
       pdf = pdfs[pdf_class];
+      self_loop_pdf = pdfs[self_loop_pdf_class];
     }
     int32 trans_idx;
     for (trans_idx = 0;
@@ -118,7 +123,7 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFst(
         label = 0;
       } else {  // normal probability.
         int32 trans_state =
-            trans_model.TripleToTransitionState(phone, hmm_state, pdf);
+            trans_model.TupleToTransitionState(phone, hmm_state, pdf, self_loop_pdf);
         int32 trans_id =
             trans_model.PairToTransitionId(trans_state, trans_idx);
         log_prob = trans_model.GetTransitionLogProbIgnoringSelfLoops(trans_id);
@@ -184,9 +189,14 @@ GetHmmAsFstSimple(std::vector<int32> phone_window,
        hmm_state < static_cast<int32>(entry.size());
        hmm_state++) {
     int32 pdf_class = entry[hmm_state].pdf_class, pdf;
-    if (pdf_class == kNoPdf) pdf = kNoPdf;  // nonemitting state; not generally used.
-    else {
+    int32 self_loop_pdf_class = entry[hmm_state].self_loop_pdf_class, self_loop_pdf;
+    if (pdf_class == kNoPdf) {   // nonemitting state; not generally used.
+      pdf = kNoPdf;
+      self_loop_pdf = kNoPdf;
+    } else {
       bool ans = ctx_dep.Compute(phone_window, pdf_class, &pdf);
+      KALDI_ASSERT(ans && "Context-dependency computation failed.");
+      ans = ctx_dep.Compute(phone_window, self_loop_pdf_class, &self_loop_pdf);
       KALDI_ASSERT(ans && "Context-dependency computation failed.");
     }
     int32 trans_idx;
@@ -205,7 +215,7 @@ GetHmmAsFstSimple(std::vector<int32> phone_window,
         label = 0;
       } else {  // normal probability.
         int32 trans_state =
-            trans_model.TripleToTransitionState(phone, hmm_state, pdf);
+	  trans_model.TupleToTransitionState(phone, hmm_state, pdf, self_loop_pdf);
         int32 trans_id =
             trans_model.PairToTransitionId(trans_state, trans_idx);
         log_prob = prob_scale * trans_model.GetTransitionLogProb(trans_id);
@@ -741,12 +751,14 @@ static inline void ConvertAlignmentForPhone(
   for (int32 j = 0; j < alignment_size; j++) {
     int32 old_tid = old_phone_alignment[j];
     int32 pdf_class = old_trans_model.TransitionIdToPdfClass(old_tid);
+    int32 self_loop_pdf_class = old_trans_model.TransitionIdToSelfLoopPdfClass(old_tid);
     int32 hmm_state = old_trans_model.TransitionIdToHmmState(old_tid);
     int32 trans_idx = old_trans_model.TransitionIdToTransitionIndex(old_tid);
     int32 new_pdf = pdf_ids[pdf_class];
+    int32 new_self_loop_pdf = pdf_ids[self_loop_pdf_class];
     int32 new_trans_state =
-        new_trans_model.TripleToTransitionState(new_central_phone, hmm_state,
-                                                new_pdf);
+        new_trans_model.TupleToTransitionState(new_central_phone, hmm_state,
+                                               new_pdf, new_self_loop_pdf);
     int32 new_tid =
         new_trans_model.PairToTransitionId(new_trans_state, trans_idx);
     (*new_phone_alignment)[j] = new_tid;

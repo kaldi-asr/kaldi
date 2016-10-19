@@ -125,6 +125,11 @@ void HmmTopology::Read(std::istream &is, bool binary) {
     ReadIntegerVector(is, binary, &phone2idx_);
     int32 sz;
     ReadBasicType(is, binary, &sz);
+    bool new_topo = false;
+    if (sz == -1) {
+      new_topo = true;
+      ReadBasicType(is, binary, &sz);
+    }
     entries_.resize(sz);
     for (int32 i = 0; i < sz; i++) {
       int32 thist_sz;
@@ -132,8 +137,10 @@ void HmmTopology::Read(std::istream &is, bool binary) {
       entries_[i].resize(thist_sz);
       for (int32 j = 0 ; j < thist_sz; j++) {
         ReadBasicType(is, binary, &(entries_[i][j].pdf_class));
-        ReadBasicType(is, binary, &(entries_[i][j].self_loop_pdf_class));
-        //entries_[i][j].self_loop_pdf_class = entries_[i][j].pdf_class;
+        if (new_topo)
+          ReadBasicType(is, binary, &(entries_[i][j].self_loop_pdf_class));
+        else
+          entries_[i][j].self_loop_pdf_class = entries_[i][j].pdf_class;
         int32 thiss_sz;
         ReadBasicType(is, binary, &thiss_sz);
         entries_[i][j].transitions.resize(thiss_sz);
@@ -189,6 +196,7 @@ void HmmTopology::Write(std::ostream &os, bool binary) const {
   } else {
     WriteIntegerVector(os, binary, phones_);
     WriteIntegerVector(os, binary, phone2idx_);
+    WriteBasicType(os, binary, static_cast<int32>(-1));
     WriteBasicType(os, binary, static_cast<int32>(entries_.size()));
     for (size_t i = 0; i < entries_.size(); i++) {
       WriteBasicType(os, binary, static_cast<int32>(entries_[i].size()));
@@ -261,7 +269,8 @@ void HmmTopology::Check() {
         if (seen_transition.count(dst_state) != 0)
           KALDI_ERR << "HmmTopology::Check(), duplicate transition found.";
         if (dst_state == k) {  // self_loop...
-          KALDI_ASSERT(entries_[i][j].self_loop_pdf_class != kNoPdf && "Nonemitting states cannot have self-loops.");
+          KALDI_ASSERT(entries_[i][j].self_loop_pdf_class != kNoPdf &&
+                       "Nonemitting states cannot have self-loops.");
         }
         seen_transition.insert(dst_state);
         has_trans_in[dst_state] = true;

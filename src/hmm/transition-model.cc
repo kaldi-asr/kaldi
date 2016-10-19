@@ -29,7 +29,7 @@ void TransitionModel::ComputeTuples(const ContextDependencyInterface &ctx_dep) {
   KALDI_ASSERT(!phones.empty());
 
   if (SelfLoopEqualsForward()) {
-    // this branch deals with when self_loop_pdf_class is always the same as the pdf_class
+    // this is the case for normal models. but not fot chain models
     std::vector<std::vector<std::pair<int32, int32> > > pdf_info;
     std::vector<int32> num_pdf_classes( 1 + *std::max_element(phones.begin(), phones.end()), -1);
     for (size_t i = 0; i < phones.size(); i++)
@@ -68,11 +68,15 @@ void TransitionModel::ComputeTuples(const ContextDependencyInterface &ctx_dep) {
       }
     }
   } else {
+    // pdf_info is a set of lists indexed by phone. Each list is indexed by
+    // (pdf-class, self-loop pdf-class) of each state of that phone, and the element
+    // is a list of possible (pdf, self-loop pdf) pairs that that (pdf-class, self-loop pdf-class)
+    // pair generates.
     std::vector<std::vector<std::vector<std::pair<int32, int32> > > > pdf_info;
+    // pdf_class_pairs is a set of lists indexed by phone. Each list stores
+    // (pdf-class, self-loop pdf-class) of each state of that phone.
     std::vector<std::vector<std::pair<int32, int32> > > pdf_class_pairs;
     ctx_dep.GetPdfInfo(phones, pdf_class_pairs, &pdf_info);
-    // pdf_info is list indexed by phone and Todo!!! of which (phone, pdf_class) it
-    // can correspond to.
 
     std::vector<std::map<std::pair<int32, int32>, std::vector<int32> > > to_hmm_state_list;
     to_hmm_state_list.resize(*std::max_element(phones.begin(), phones.end()));
@@ -96,8 +100,9 @@ void TransitionModel::ComputeTuples(const ContextDependencyInterface &ctx_dep) {
       int32 phone = phones[i];
       for (int32 j = 0; j < static_cast<int32>(pdf_info[i].size()); j++) {
 	int32 pdf_class = pdf_class_pairs[i][j].first,
-          self_loop_pdf_class = pdf_class_pairs[i][j].second;
-        const std::vector<int32> &state_vec = to_hmm_state_list[phone][std::make_pair(pdf_class, self_loop_pdf_class)];
+              self_loop_pdf_class = pdf_class_pairs[i][j].second;
+        const std::vector<int32> &state_vec =
+              to_hmm_state_list[phone][std::make_pair(pdf_class, self_loop_pdf_class)];
         KALDI_ASSERT(!state_vec.empty());
         for (size_t k = 0; k < state_vec.size(); k++) {
           int32 hmm_state = state_vec[k];
@@ -187,7 +192,19 @@ void TransitionModel::Check() const {
 
 bool TransitionModel::SelfLoopEqualsForward() const {
   // Todo
-  return false;
+  const std::vector<int32> &phones = topo_.GetPhones();
+  KALDI_ASSERT(!phones.empty());
+  for (size_t i = 0; i < phones.size(); i++) {
+    int32 phone = phones[i];
+    const HmmTopology::TopologyEntry &entry = topo_.TopologyForPhone(phone);
+    for (int32 j = 0; j < static_cast<int32>(entry.size()); j++) {  // for each state...
+      int32 pdf_class = entry[j].pdf_class,
+            self_loop_pdf_class = entry[j].self_loop_pdf_class;
+      if (pdf_class != self_loop_pdf_class)
+        return false;
+    }
+  }
+  return true;
 }
 
 TransitionModel::TransitionModel(const ContextDependencyInterface &ctx_dep,
@@ -721,6 +738,15 @@ int32 TransitionModel::TransitionIdToPdfClass(int32 trans_id) const {
   return entry[t.hmm_state].pdf_class;
 }
 
+int32 TransitionModel::TransitionIdToSelfLoopPdfClass(int32 trans_id) const {
+  KALDI_ASSERT(trans_id != 0 && static_cast<size_t>(trans_id) < id2state_.size());
+  int32 trans_state = id2state_[trans_id];
+
+  const Tuple &t = tuples_[trans_state-1];
+  const HmmTopology::TopologyEntry &entry = topo_.TopologyForPhone(t.phone);
+  KALDI_ASSERT(static_cast<size_t>(t.hmm_state) < entry.size());
+  return entry[t.hmm_state].self_loop_pdf_class;
+}
 
 int32 TransitionModel::TransitionIdToHmmState(int32 trans_id) const {
   KALDI_ASSERT(trans_id != 0 && static_cast<size_t>(trans_id) < id2state_.size());

@@ -258,11 +258,14 @@ void GenerateRandomAlignment(const ContextDependencyInterface &ctx_dep,
       int32 hmm_state = path[k].first,
           transition_index = path[k].second,
           pdf_class = entry[hmm_state].pdf_class,
-          pdf_id;
+          self_loop_pdf_class = entry[hmm_state].self_loop_pdf_class,
+          pdf_id, self_loop_pdf_id;
       bool ans = ctx_dep.Compute(context_window, pdf_class, &pdf_id);
       KALDI_ASSERT(ans && "context-dependency computation failed.");
-      int32 transition_state = trans_model.TripleToTransitionState(
-          phone, hmm_state, pdf_id),
+      ans = ctx_dep.Compute(context_window, self_loop_pdf_class, &self_loop_pdf_id);
+      KALDI_ASSERT(ans && "context-dependency computation failed.");
+      int32 transition_state = trans_model.TupleToTransitionState(
+                               phone, hmm_state, pdf_id, self_loop_pdf_id),
           transition_id = trans_model.PairToTransitionId(transition_state,
                                                          transition_index);
       alignment->push_back(transition_id);
