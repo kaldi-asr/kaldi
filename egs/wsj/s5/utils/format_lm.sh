@@ -36,7 +36,7 @@ mkdir -p $out_dir
 
 echo "Converting '$lm' to FST"
 
-for f in phones.txt words.txt L.fst L_disambig.fst phones/ oov.int oov.txt; do
+for f in phones.txt words.txt topo L.fst L_disambig.fst phones/ oov.int oov.txt; do
   cp -r $lang_dir/$f $out_dir
 done
 
