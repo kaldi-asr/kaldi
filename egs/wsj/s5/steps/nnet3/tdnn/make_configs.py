@@ -11,7 +11,7 @@ import copy
 import imp
 import ast
 
-nodes = imp.load_source('', 'steps/nnet3/components_dp.py')
+nodes = imp.load_source('', 'steps/nnet3/components.py')
 nnet3_train_lib = imp.load_source('ntl', 'steps/nnet3/nnet3_train_lib.py')
 chain_lib = imp.load_source('ncl', 'steps/nnet3/chain/nnet3_chain_lib.py')
 
@@ -121,8 +121,8 @@ def GetArgs():
                         help="if true, a ephemeral connection with dropout connection is added to all layers.",
                         choices=['true', 'false'], default = False)
     parser.add_argument("--num-skips-for-ephemeral", type=int,
-                        help="Number of skip layers for ephemeral connection, which passes information from"
-                        "layer i - num_skips_for_ephemeral to layer i.",
+                        help="Number of skip layers for ephemeral connection, the information passes from"
+                        "layer i - num_skips_for_ephemeral to layer i using full or identiry transform.",
                         default=2)
     parser.add_argument("--use-dropout", type=str, action=nnet3_train_lib.StrToBoolAction,
                         help="If true, the ephemeral connection removed during training, otherwise used during whole training.",

@@ -15,7 +15,7 @@ import pprint
 import logging
 import imp, os
 import traceback
-from nnet3_train_lib_dp import *
+from nnet3_train_lib import *
 
 nnet3_log_parse = imp.load_source('', 'steps/nnet3/report/nnet3_log_parse_lib.py')
 
