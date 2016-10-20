@@ -199,19 +199,9 @@ The steps we have to do aside from just running arpa2fst are as follows:
 
 A slightly simplified version of the actual script that does this is as follows:
 \verbatim
-  gunzip -c data_prep/lm.arpa.gz | \
-     scripts/find_arpa_oovs.pl data/words.txt  > data/oovs.txt
-
-  gunzip -c data_prep/lm.arpa.gz | \
-    grep -v '<s> <s>' | \
-    grep -v '<s> </s>' | \
-    grep -v '</s> </s>' | \
-     ../src/lm/arpa2fst - | fstprint | \
-    scripts/remove_oovs.pl data/oovs.txt | \
-    scripts/eps2disambig.pl | \
-     fstcompile --isymbols=data/words.txt --osymbols=data/words.txt \
-     --keep_isymbols=false --keep_osymbols=false > data/G.fst
-  fstisstochastic data/G.fst
+gunzip -c data_prep/lm.arpa.gz | \
+  arpa2fst --disambig-symbol=#0 \
+             --read-symbol-table=data/words.txt - data/G.fst
 \endverbatim
 The last command (fstisstochastic) is a diagnostic step (see \ref fst_algo_stochastic).  
 In one typical example, it prints out the numbers:
