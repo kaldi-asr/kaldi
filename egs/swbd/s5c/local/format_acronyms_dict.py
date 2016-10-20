@@ -31,6 +31,10 @@ fin_Letter.close()
 
 for lex in fin_lex:
     items = lex.split()
+
+    if items == []:
+        continue
+
     word = items[0]
     lexicon = lex[len(items[0])+1:].strip()
     # find acronyms from words with only letters and '
