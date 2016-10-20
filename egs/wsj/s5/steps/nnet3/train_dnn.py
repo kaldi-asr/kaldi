@@ -7,13 +7,13 @@
 
 # this script is based on steps/nnet3/lstm/train.sh
 
-
+from __future__ import print_function
 import subprocess
 import argparse
 import sys
 import pprint
 import logging
-import imp
+import imp, os
 import traceback
 from nnet3_train_lib import *
 
@@ -182,7 +182,7 @@ def GetArgs():
                         help="""If true, remove egs after experiment""")
     parser.add_argument("--cleanup.preserve-model-interval", dest = "preserve_model_interval",
                         type=int, default=100,
-                        help="Determines iterations for which models will be preserved during cleanup. If mod(iter,preserve_model_interval) == 0 model will be preserved.")
+                        help="Determines iterations for which models will be preserved during cleanup. If iter % preserve_model_interval == 0 model will be preserved.")
 
     parser.add_argument("--reporting.email", dest = "email",
                         type=str, default=None, action = NullstrToNoneAction,
@@ -338,7 +338,7 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
                       frames_per_eg, num_hidden_layers, add_layers_period,
                       left_context, right_context,
                       momentum, max_param_change, shuffle_buffer_size,
-                      run_opts):
+                      run_opts, add_ephemeral_connection, dropout_proportion):
 
 
 
@@ -375,7 +375,28 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
         do_average = True
         if iter == 0:
             do_average = False   # on iteration 0, pick the best, don't average.
-        raw_model_string = "nnet3-am-copy --raw=true --learning-rate={0} {1}/{2}.mdl - |".format(learning_rate, dir, iter)
+        
+        if add_ephemeral_connection:
+          if dropout_proportion == 1.0 and not os.path.exists('{0}/configs/dropout_removed'.format(dir)):
+            # If dropout_proportion is equal to 1.0, 
+            # we replace Tdnn_{0}_relu input from sum(affine, ephemeral_affine) to affine.
+            # and remove orphan nodes and components using edits-config.
+            replace_config_str = '{0}/configs/dropout.config'.format(dir)
+            replace_config_file = open(replace_config_str, 'w')
+            for layer in range(1, num_hidden_layers):
+              print('component-node name=Tdnn_{0}_relu component=Tdnn_{0}_relu input=Tdnn_{0}_affine'.format(layer), file=replace_config_file)
+            replace_config_file.close()
+            
+            raw_model_string = "nnet3-am-copy --raw=true --nnet-config={3} --edits=remove-orphans --learning-rate={0} {1}/{2}.mdl - |".format(learning_rate, dir, iter, replace_config_str)
+            # create removed_dropout file in config 
+            remove_dropout_file = open('{0}/configs/dropout_removed'.format(dir), 'w')
+            print('removed-dropout=true', file=remove_dropout_file)
+            remove_dropout_file.close()
+
+          else:
+            raw_model_string = "nnet3-am-copy --raw=true --set-dropout-proportion={3} --learning-rate={0} {1}/{2}.mdl - |".format(learning_rate, dir, iter, dropout_proportion)
+        else:
+          raw_model_string = "nnet3-am-copy --raw=true --learning-rate={0} {1}/{2}.mdl - |".format(learning_rate, dir, iter)
 
     if do_average:
       cur_minibatch_size = minibatch_size
@@ -460,8 +481,10 @@ def Train(args, run_opts):
 
     config_dir = '{0}/configs'.format(args.dir)
     var_file = '{0}/vars'.format(config_dir)
-
-    [left_context, right_context, num_hidden_layers] = ParseModelConfigVarsFile(var_file)
+    
+    [left_context, right_context, num_hidden_layers, add_ephemeral_connection, use_dropout] = ParseModelConfigVarsFile(var_file)
+    add_ephemeral_connection = StrToBool(add_ephemeral_connection)
+    use_dropout = StrToBool(use_dropout)
     # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
     # matrix.  This first config just does any initial splicing that we do;
     # we do this as it's a convenient way to get the stats for the 'lda-like'
@@ -555,6 +578,17 @@ def Train(args, run_opts):
     # egs_dir will be updated if there is realignment
     cur_egs_dir=egs_dir
 
+    # If true, compute the dropout proportion for training.
+    # and write dropout proportion.
+    dp_prop = [1.0] * num_iters
+    if add_ephemeral_connection:
+      init_zero_dp_iter = 10 + num_hidden_layers * args.add_layers_period
+      full_dp_iter = num_iters / args.num_epochs
+      if use_dropout:
+        dp_prop = ComputeDropout(num_iters, init_zero_dp_iter, full_dp_iter)
+      else:
+        dp_prop = ComputeDropout(num_iters, num_iters, num_iters)
+
     logger.info("Training will run for {0} epochs = {1} iterations".format(args.num_epochs, num_iters))
     for iter in range(num_iters):
         if (args.exit_stage is not None) and (iter == args.exit_stage):
@@ -585,7 +619,8 @@ def Train(args, run_opts):
                               num_hidden_layers, args.add_layers_period,
                               left_context, right_context,
                               args.momentum, args.max_param_change,
-                              args.shuffle_buffer_size, run_opts)
+                              args.shuffle_buffer_size, run_opts,
+                              add_ephemeral_connection, dp_prop[iter]) 
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain conditions
                 RemoveModel(args.dir, iter-2, num_iters, num_iters_combine,

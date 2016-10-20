@@ -349,7 +349,11 @@ def MakeConfigs(config_dir, splice_indexes_string,
                 xent_regularize,
                 xent_separate_forward_affine,
                 self_repair_scale,
-                objective_type):
+                objective_type,
+                add_ephemeral_connection,
+                num_skips_for_ephemeral,
+                layerwise_pretrain,
+                use_dropout):
 
     parsed_splice_output = ParseSpliceString(splice_indexes_string.strip())
 
@@ -369,7 +373,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
 
     config_files={}
     prev_layer_output = nodes.AddInputLayer(config_lines, feat_dim, splice_indexes[0], ivector_dim)
-
+    dropout_layer_input = prev_layer_output
     # Add the init config lines for estimating the preconditioning matrices
     init_config_lines = copy.deepcopy(config_lines)
     init_config_lines['components'].insert(0, '# Config file for initializing neural network prior to')
@@ -389,7 +393,6 @@ def MakeConfigs(config_dir, splice_indexes_string,
     # we moved the first splice layer to before the LDA..
     # so the input to the first affine layer is going to [0] index
     splice_indexes[0] = [0]
-
     if not nonlin_output_dim is None:
         nonlin_output_dims = [nonlin_output_dim] * num_hidden_layers
     elif nonlin_output_dim_init < nonlin_output_dim_final and num_hidden_layers == 1:
@@ -406,34 +409,15 @@ def MakeConfigs(config_dir, splice_indexes_string,
 
         # prepare the spliced input
         if not (len(splice_indexes[i]) == 1 and splice_indexes[i][0] == 0):
-            try:
-                zero_index = splice_indexes[i].index(0)
-            except ValueError:
-                zero_index = None
-            # I just assume the prev_layer_output_descriptor is a simple forwarding descriptor
-            prev_layer_output_descriptor = prev_layer_output['descriptor']
-            subset_output = prev_layer_output
-            if subset_dim > 0:
-                # if subset_dim is specified the script expects a zero in the splice indexes
-                assert(zero_index is not None)
-                subset_node_config = "dim-range-node name=Tdnn_input_{0} input-node={1} dim-offset={2} dim={3}".format(i, prev_layer_output_descriptor, 0, subset_dim)
-                subset_output = {'descriptor' : 'Tdnn_input_{0}'.format(i),
-                                 'dimension' : subset_dim}
-                config_lines['component-nodes'].append(subset_node_config)
-            appended_descriptors = []
-            appended_dimension = 0
-            for j in range(len(splice_indexes[i])):
-                if j == zero_index:
-                    appended_descriptors.append(prev_layer_output['descriptor'])
-                    appended_dimension += prev_layer_output['dimension']
-                    continue
-                appended_descriptors.append('Offset({0}, {1})'.format(subset_output['descriptor'], splice_indexes[i][j]))
-                appended_dimension += subset_output['dimension']
-            prev_layer_output = {'descriptor' : "Append({0})".format(" , ".join(appended_descriptors)),
-                                 'dimension'  : appended_dimension}
+            prev_layer_output = nodes.GenerateDescriptor(splice_indexes[i], subset_dim, prev_layer_output)
         else:
             # this is a normal affine node
             pass
+
+        if i >= num_skips_for_ephemeral:
+          dropout_layer_output = {'descriptor' : 'Tdnn_{0}_renorm'.format(i-num_skips_for_ephemeral),
+                                  'dimension' : nonlin_output_dims[i-num_skips_for_ephemeral]}
+          dropout_layer_input = nodes.GenerateDescriptor(splice_indexes[i], subset_dim, dropout_layer_output)
 
         if xent_separate_forward_affine and i == num_hidden_layers - 1:
             if xent_regularize == 0.0:
@@ -474,10 +458,30 @@ def MakeConfigs(config_dir, splice_indexes_string,
                                 name_affix = 'xent')
         else:
             if nonlin_type == "relu":
-                prev_layer_output = nodes.AddAffRelNormLayer(config_lines, "Tdnn_{0}".format(i),
-                                                            prev_layer_output, nonlin_output_dims[i],
-                                                            self_repair_scale = self_repair_scale,
-                                                            norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
+                if add_ephemeral_connection and i > 0:
+                    dropout_name = "Tdnn_{0}".format(i-2)
+                    if i == 1:
+                      dropout_name = "Tdnn_init"
+
+                    if (nonlin_output_dim_final == nonlin_output_dim_init) and i > num_skips_for_ephemeral:
+                        prev_layer_output = nodes.AddAffRelNormWithDirectEphemeralLayer(config_lines, 
+                                                                    "Tdnn_{0}".format(i), prev_layer_output,
+                                                                    dropout_name, dropout_layer_input,
+                                                                    nonlin_output_dims[i],
+                                                                    self_repair_scale = self_repair_scale,
+                                                                    norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
+                    else:
+                        prev_layer_output = nodes.AddAffRelNormWithEphemeralLayer(config_lines, 
+                                                                    "Tdnn_{0}".format(i), prev_layer_output,
+                                                                    dropout_name, dropout_layer_input,
+                                                                    nonlin_output_dims[i],
+                                                                    self_repair_scale = self_repair_scale,
+                                                                    norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
+                else:
+                    prev_layer_output = nodes.AddAffRelNormLayer(config_lines, "Tdnn_{0}".format(i),
+                                                                prev_layer_output, nonlin_output_dims[i],
+                                                                self_repair_scale = self_repair_scale,
+                                                                norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
             elif nonlin_type == "pnorm":
                 prev_layer_output = nodes.AddAffPnormLayer(config_lines, "Tdnn_{0}".format(i),
                                                            prev_layer_output, nonlin_input_dim, nonlin_output_dim,
@@ -493,36 +497,44 @@ def MakeConfigs(config_dir, splice_indexes_string,
             # This is useful when you need the final outputs to be probabilities between 0 and 1.
             # Usually used with an objective-type such as "quadratic".
             # Applications are k-binary classification such Ideal Ratio Mask prediction.
-            nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
-                               use_presoftmax_prior_scale = use_presoftmax_prior_scale,
-                               prior_scale_file = prior_scale_file,
-                               include_log_softmax = include_log_softmax,
-                               add_final_sigmoid = add_final_sigmoid,
-                               objective_type = objective_type)
-            if xent_regularize != 0.0:
+            if layerwise_pretrain or i == num_hidden_layers - 1:
                 nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
-                                    ng_affine_options = " param-stddev=0 bias-stddev=0 learning-rate-factor={0} ".format(
-                                          0.5 / xent_regularize),
-                                    use_presoftmax_prior_scale = use_presoftmax_prior_scale,
-                                    prior_scale_file = prior_scale_file,
-                                    include_log_softmax = True,
-                                    name_affix = 'xent')
-
-        config_files['{0}/layer{1}.config'.format(config_dir, i+1)] = config_lines
-        config_lines = {'components':[], 'component-nodes':[]}
+                                   use_presoftmax_prior_scale = use_presoftmax_prior_scale,
+                                   prior_scale_file = prior_scale_file,
+                                   include_log_softmax = include_log_softmax,
+                                   add_final_sigmoid = add_final_sigmoid,
+                                   objective_type = objective_type)
+                if xent_regularize != 0.0:
+                    nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
+                                        ng_affine_options = " param-stddev=0 bias-stddev=0 learning-rate-factor={0} ".format(
+                                              0.5 / xent_regularize),
+                                        use_presoftmax_prior_scale = use_presoftmax_prior_scale,
+                                        prior_scale_file = prior_scale_file,
+                                        include_log_softmax = True,
+                                        name_affix = 'xent')
+        if layerwise_pretrain: 
+          config_files['{0}/layer{1}.config'.format(config_dir, i+1)] = config_lines
+          config_lines = {'components':[], 'component-nodes':[]}
+        elif i == num_hidden_layers - 1:
+          config_files['{0}/layer1.config'.format(config_dir)] = config_lines
 
     left_context += int(parsed_splice_output['left_context'])
     right_context += int(parsed_splice_output['right_context'])
-
     # write the files used by other scripts like steps/nnet3/get_egs.sh
     f = open(config_dir + "/vars", "w")
     print('model_left_context=' + str(left_context), file=f)
     print('model_right_context=' + str(right_context), file=f)
-    print('num_hidden_layers=' + str(num_hidden_layers), file=f)
+    if layerwise_pretrain:
+      print('num_hidden_layers=' + str(num_hidden_layers), file=f)
+    else:
+      print('num_hidden_layers=' + str(1), file=f)
+      print('num_real_hidden_layers=' + str(num_hidden_layers), file=f)
     print('num_targets=' + str(num_targets), file=f)
     print('add_lda=' + ('true' if add_lda else 'false'), file=f)
     print('include_log_softmax=' + ('true' if include_log_softmax else 'false'), file=f)
     print('objective_type=' + objective_type, file=f)
+    print('add_ephemeral_connection=' + ('true' if add_ephemeral_connection else 'false'), file=f)
+    print('use_dropout=' + ('true' if use_dropout else 'false'), file=f)
     f.close()
 
     # printing out the configs
@@ -554,7 +566,11 @@ def Main():
                 xent_regularize = args.xent_regularize,
                 xent_separate_forward_affine = args.xent_separate_forward_affine,
                 self_repair_scale = args.self_repair_scale_nonlinearity,
-                objective_type = args.objective_type)
+                objective_type = args.objective_type,
+                add_ephemeral_connection = args.add_ephemeral_connection,
+                num_skips_for_ephemeral = args.num_skips_for_ephemeral,
+                layerwise_pretrain = args.layerwise_pretrain,
+                use_dropout = args.use_dropout)
 
 if __name__ == "__main__":
     Main()
