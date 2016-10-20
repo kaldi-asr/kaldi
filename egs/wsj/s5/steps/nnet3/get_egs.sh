@@ -325,10 +325,15 @@ if [ $stage -le 4 ]; then
   for n in $(seq $num_archives_intermediate); do
     egs_list="$egs_list ark:$dir/egs_orig.JOB.$n.ark"
   done
+  # if $data/offsets.scp is defined, it will be used in generating egs.
+  offsets=
+  if [ -f $data/offsets.scp ]; then
+    offsets="--utt2spk-offsets=scp:$sdata/JOB/offsets.scp"
+  fi
   echo "$0: Generating training examples on disk"
   # The examples will go round-robin to egs_list.
   $cmd JOB=1:$nj $dir/log/get_egs.JOB.log \
-    nnet3-get-egs --num-pdfs=$num_pdfs $ivector_opt $egs_opts --num-frames=$frames_per_eg "$feats" \
+    nnet3-get-egs --num-pdfs=$num_pdfs $ivector_opt $egs_opts --num-frames=$frames_per_eg "$offsets" "$feats" \
     "ark,s,cs:filter_scp.pl $sdata/JOB/utt2spk $dir/ali.scp | ali-to-pdf $alidir/final.mdl scp:- ark:- | ali-to-post ark:- ark:- |" ark:- \| \
     nnet3-copy-egs --random=true --srand=\$[JOB+$srand] ark:- $egs_list || exit 1;
 fi

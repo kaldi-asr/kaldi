@@ -4,7 +4,7 @@ import math
 import re
 import time
 import argparse
-
+import os.path
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
@@ -131,6 +131,13 @@ def GetFeatDim(feat_dir):
     [stdout_val, stderr_val] = RunKaldiCommand("feat-to-dim --print-args=false scp:{data}/feats.scp -".format(data = feat_dir))
     feat_dim = int(stdout_val)
     return feat_dim
+
+def GetNumCmnOffsets(feat_dir):
+  num_offsets = -1;
+  if os.path.exists(feat_dir/offsets.scp):
+    [stdout_val, stderr_val] = RunKaldiCommand("feat-to-len --print-args=false scp:'head -n 1 {data}/offsets.scp |' ".format(data = feat_dir))
+    num_offsets = int(stdout_val)
+  return num_offsets
 
 def ReadKaldiMatrix(matrix_file):
     try:

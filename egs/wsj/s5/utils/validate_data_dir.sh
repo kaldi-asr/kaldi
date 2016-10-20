@@ -229,6 +229,16 @@ if [ -f $data/feats.scp ]; then
   fi
 fi
 
+if [ -f $data/offsets.scp ]; then
+  check_sorted_and_uniq $data/offsets.scp
+  cat $data/offsets.scp | awk '{print $1}' > $tmpdir/utts.offsets
+  if ! cmp -s $tmpdir/utts{,.offsets}; then
+    echo "$0: Error: in $data, utterance-ids extracted from utt2spk and features"
+    echo "$0: differ, partial diff is:"
+    partial_diff $tmpdir/utts{,.offsets}
+    exit 1;
+  fi
+fi
 
 if [ -f $data/cmvn.scp ]; then
   check_sorted_and_uniq $data/cmvn.scp

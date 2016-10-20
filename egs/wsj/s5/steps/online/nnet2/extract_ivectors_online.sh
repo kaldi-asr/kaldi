@@ -42,7 +42,8 @@ max_count=0         # The use of this option (e.g. --max-count 100) can make
                     # posterior-scaling, so assuming the posterior-scale is 0.1,
                     # --max-count 100 starts having effect after 1000 frames, or
                     # 10 seconds of data.
-
+num_cmn_offsets=-1  # If > 0, it uses offsets.scp and generates iVector for 
+                    # all random offsets version of inputs.
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -76,6 +77,9 @@ done
 
 # Set various variables.
 mkdir -p $dir/log $dir/conf
+if [ -f $data/offsets.scp ]; then
+  nj=$[$nj*4] 
+fi
 
 sdata=$data/split$nj;
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
@@ -117,8 +121,16 @@ done
 
 if [ $stage -le 0 ]; then
   echo "$0: extracting iVectors"
+  offset_opts=
+  if [ -f $data/offsets.scp ]; then
+    for i in $(seq $nj); do
+      split_feats=$sdata/$i
+      awk '{print$1,$2}' < $split_feats/spk2utt | utils/apply_map.pl -f 2 $split_feats/offsets.scp > $split_feats/spk_offsets.scp
+    done
+    offset_opts="--spk2cmn-offset=scp:$sdata/JOB/spk_offsets.scp"
+  fi
   $cmd JOB=1:$nj $dir/log/extract_ivectors.JOB.log \
-     ivector-extract-online2 --config=$ieconf ark:$sdata/JOB/spk2utt scp:$sdata/JOB/feats.scp ark:- \| \
+     ivector-extract-online2 --config=$ieconf $offset_opts ark:$sdata/JOB/spk2utt scp:$sdata/JOB/feats.scp ark:- \| \
      copy-feats --compress=$compress ark:- \
       ark,scp:$absdir/ivector_online.JOB.ark,$absdir/ivector_online.JOB.scp || exit 1;
 fi

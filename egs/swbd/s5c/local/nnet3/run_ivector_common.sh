@@ -6,7 +6,7 @@ stage=1
 train_stage=-10
 generate_alignments=true # false if doing ctc training
 speed_perturb=true
-
+num_cmn_offsets=-1
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -122,7 +122,19 @@ if [ $stage -le 7 ]; then
     data/train_100k_nodup_hires exp/nnet3/diag_ubm exp/nnet3/extractor || exit 1;
 fi
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 8 ]; then 
+  # Generates random offsets for training data
+  mfccdir=mfcc_hires
+  random_offset_opts=
+  for dataset in $train_set; do
+    if $random_offset; then
+      steps/compute_offsets.sh $random_offset_opts --cmd "$train_cmd" \
+        data/${dataset}_hires exp/make_offsets/${dataset} $mfccdir || exit 1;
+    fi
+  done
+fi
+
+if [ $stage -le 9 ]; then
   # We extract iVectors on all the train_nodup data, which will be what we
   # train the system on.
 

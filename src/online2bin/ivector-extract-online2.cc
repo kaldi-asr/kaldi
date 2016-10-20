@@ -137,11 +137,10 @@ int main(int argc, char *argv[]) {
           OnlineIvectorFeature ivector_feature(ivector_info,
                                                &matrix_feature);
           
-          ivector_feature.SetAdaptationState(*adaptation_states[offset_ind]);
+          ivector_feature.SetAdaptationState(*(adaptation_states[offset_ind]));
 
           for (int32 i = 0; i < num_ivectors; i++) {
             int32 t = i * n;
-            //SubVector<BaseFloat> ivector(ivectors, i).Range(offset_ind * ivec_dim, ivec_dim);
             SubVector<BaseFloat> ivector = ivectors.Row(i).Range(offset_ind * ivec_dim, ivec_dim);
             ivector_feature.GetFrame(t, &ivector);
           }
