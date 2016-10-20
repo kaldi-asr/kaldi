@@ -11,12 +11,13 @@
 
 set -e # exit on error
 has_fisher=true
+if false; then
 local/swbd1_data_download.sh /export/corpora3/LDC/LDC97S62
 # local/swbd1_data_download.sh /mnt/matylda2/data/SWITCHBOARD_1R2 # BUT,
 
 # prepare SWBD dictionary first since we want to find acronyms according to pronunciations
 # before mapping lexicon and transcripts
-local/swbd1_prepare_dict.sh
+#local/swbd1_prepare_dict.sh
 
 # Prepare Switchboard data. This command can also take a second optional argument
 # which specifies the directory to Switchboard documentations. Specifically, if
@@ -62,6 +63,7 @@ if $has_fisher; then
   utils/build_const_arpa_lm.sh $LM data/lang_nosp data/lang_nosp_sw1_fsh_fg
 fi
 
+fi #100
 # Data preparation and formatting for eval2000 (note: the "text" file
 # is not very much preprocessed; for actual WER reporting we'll use
 # sclite.
@@ -105,6 +107,7 @@ utils/data/remove_dup_utts.sh 200 data/train_100k data/train_100k_nodup  # 110hr
 
 # Finally, the full training set:
 utils/data/remove_dup_utts.sh 300 data/train_nodev data/train_nodup  # 286hr
+exit 1;
 ## Starting basic training on MFCC features
 steps/train_mono.sh --nj 30 --cmd "$train_cmd" \
   data/train_30kshort data/lang_nosp exp/mono

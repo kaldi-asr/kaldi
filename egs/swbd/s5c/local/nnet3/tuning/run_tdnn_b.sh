@@ -24,6 +24,7 @@ speed_perturb=true
 common_egs_dir=
 reporting_email=
 remove_egs=true
+dir=exp/nnet3/tdnn_b
 
 . ./cmd.sh
 . ./path.sh
@@ -42,7 +43,6 @@ suffix=
 if [ "$speed_perturb" == "true" ]; then
   suffix=_sp
 fi
-dir=exp/nnet3/tdnn_b
 dir=$dir${affix:+_$affix}
 dir=${dir}$suffix
 train_set=train_nodup$suffix
@@ -101,6 +101,7 @@ fi
 graph_dir=exp/tri4/graph_sw1_tg
 if [ $stage -le 11 ]; then
   for decode_set in train_dev eval2000; do
+  #for decode_set in train_dev; do
     (
     num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
     steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" \

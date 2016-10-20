@@ -117,6 +117,51 @@ def AddAffRelNormLayer(config_lines, name, input, output_dim, ng_affine_options 
     return {'descriptor':  '{0}_renorm'.format(name),
             'dimension': output_dim}
 
+def AddAffRelNormWithEphemeralLayer(config_lines, name, input, ephemeral_name, ephemeral_input, output_dim, ng_affine_options = " bias-stddev=0 ", norm_target_rms = 1.0, self_repair_scale = None):
+    components = config_lines['components']
+    component_nodes = config_lines['component-nodes']
+
+    # self_repair_scale is a constant scaling the self-repair vector computed in RectifiedLinearComponent
+    self_repair_string = "self-repair-scale={0:.10f}".format(self_repair_scale) if self_repair_scale is not None else ''
+    components.append("component name={0}_affine type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input['dimension'], output_dim, ng_affine_options))
+    components.append("component name={0}_relu type=RectifiedLinearComponent dim={1} {2}".format(name, output_dim, self_repair_string))
+    components.append("component name={0}_renorm type=NormalizeComponent dim={1} target-rms={2}".format(name, output_dim, norm_target_rms))
+
+    components.append("component name={0}_ephemeral type=NaturalGradientAffineComponent input-dim={1} output-dim={2}".format(ephemeral_name, ephemeral_input['dimension'], output_dim))
+    components.append("component name={0}_dropout_affine type=DropoutComponent dim={1} dropout-proportion=0.0".format(ephemeral_name, output_dim))
+    
+    component_nodes.append("component-node name={0}_ephemeral component={0}_ephemeral input={1}".format(ephemeral_name, ephemeral_input['descriptor']))
+    component_nodes.append("component-node name={0}_dropout_affine component={0}_dropout_affine input={0}_ephemeral".format(ephemeral_name))
+    component_nodes.append("component-node name={0}_affine component={0}_affine input={1}".format(name, input['descriptor']))
+    component_nodes.append("component-node name={0}_relu component={0}_relu input=Sum({0}_affine, {1}_dropout_affine)".format(name, ephemeral_name))
+    component_nodes.append("component-node name={0}_renorm component={0}_renorm input={0}_relu".format(name))
+
+    return {'descriptor':  '{0}_renorm'.format(name),
+            'dimension': output_dim}
+
+# no affine before ephemeral connection
+def AddAffRelNormWithDirectEphemeralLayer(config_lines, name, input, ephemeral_name, ephemeral_input, output_dim, ng_affine_options = " bias-stddev=0 ", norm_target_rms = 1.0, self_repair_scale = None):
+    components = config_lines['components']
+    component_nodes = config_lines['component-nodes']
+
+    # self_repair_scale is a constant scaling the self-repair vector computed in RectifiedLinearComponent
+    self_repair_string = "self-repair-scale={0:.10f}".format(self_repair_scale) if self_repair_scale is not None else ''
+    components.append("component name={0}_affine type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input['dimension'], output_dim, ng_affine_options))
+    components.append("component name={0}_relu type=RectifiedLinearComponent dim={1} {2}".format(name, output_dim, self_repair_string))
+    components.append("component name={0}_renorm type=NormalizeComponent dim={1} target-rms={2}".format(name, output_dim, norm_target_rms))
+
+    components.append("component name={0}_dropout type=DropoutComponent dim={1} dropout-proportion=0.0".format(ephemeral_name, ephemeral_input['dimension']))
+    components.append("component name={0}_append type=NoOpComponent dim={1}".format(name, input['dimension']))
+    
+    component_nodes.append("component-node name={0}_dropout component={0}_dropout input={1}".format(ephemeral_name, ephemeral_input['descriptor']))
+    component_nodes.append("component-node name={0}_append component={0}_append input={1}".format(name, input['descriptor']))
+    component_nodes.append("component-node name={0}_affine component={0}_affine input=Sum({0}_append, {1}_dropout)".format(name, ephemeral_name))
+    component_nodes.append("component-node name={0}_relu component={0}_relu input={0}_affine".format(name, ephemeral_name))
+    component_nodes.append("component-node name={0}_renorm component={0}_renorm input={0}_relu".format(name))
+
+    return {'descriptor':  '{0}_renorm'.format(name),
+            'dimension': output_dim}
+
 def AddAffPnormLayer(config_lines, name, input, pnorm_input_dim, pnorm_output_dim, ng_affine_options = " bias-stddev=0 ", norm_target_rms = 1.0):
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
@@ -414,6 +459,32 @@ def AddLstmLayer(config_lines,
             'descriptor': output_descriptor,
             'dimension':output_dim
             }
+def GenerateDescriptor(splice_indexes, subset_dim, prev_layer_output):
+  try:
+      zero_index = splice_indexes.index(0)
+  except ValueError:
+      zero_index = None
+  # I just assume the prev_layer_output_descriptor is a simple forwarding descriptor
+  prev_layer_output_descriptor = prev_layer_output['descriptor']
+  subset_output = prev_layer_output
+  if subset_dim > 0:
+      # if subset_dim is specified the script expects a zero in the splice indexes
+      assert(zero_index is not None)
+      subset_node_config = "dim-range-node name=Tdnn_input_{0} input-node={1} dim-offset={2} dim={3}".format(i, prev_layer_output_descriptor, 0, subset_dim)
+      subset_output = {'descriptor' : 'Tdnn_input_{0}'.format(i),
+                       'dimension' : subset_dim}
+      config_lines['component-nodes'].append(subset_node_config)
+  appended_descriptors = []
+  appended_dimension = 0
+  for j in range(len(splice_indexes)):
+      if j == zero_index:
+          appended_descriptors.append(prev_layer_output['descriptor'])
+          appended_dimension += prev_layer_output['dimension']
+          continue
+      appended_descriptors.append('Offset({0}, {1})'.format(subset_output['descriptor'], splice_indexes[j]))
+      appended_dimension += subset_output['dimension']
+  return {'descriptor' : "Append({0})".format(" , ".join(appended_descriptors)),
+                       'dimension'  : appended_dimension}
 
 def AddBLstmLayer(config_lines,
                   name, input, cell_dim,

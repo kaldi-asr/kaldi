@@ -213,22 +213,22 @@ if [ $stage -le 14 ]; then
   extra_right_context=$[$chunk_right_context+10]
   # %WER 25.5 | 2120 27212 | 81.0 11.9 7.1 6.5 25.5 75.0 | -1.022 | exp/chain/blstm_asp2/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iterfinal_pp_fg/score_8/penalty_0.5/ctm.filt.filt.sys
 
-  local/chain/prep_test_aspire.sh --stage 4 --decode-num-jobs 30  --affix "v7" \
+  local/nnet3/prep_test_aspire.sh --stage 4 --decode-num-jobs 30  --affix "v7" \
    --extra-left-context $extra_left_context \
    --extra-right-context $extra_right_context \
    --frames-per-chunk $chunk_width \
-   --sub-speaker-frames 6000 \
-   --window 10 --overlap 5 --max-count 75 \
+   --acwt 1.0 --post-decode-acwt 10.0 \
+   --window 10 --overlap 5 \
+   --sub-speaker-frames 6000 --max-count 75 --ivector-scale 0.75 \
    --pass2-decode-opts "--min-active 1000" \
-   --ivector-scale 0.75  --tune-hyper true \
-   dev_aspire data/lang exp/chain/blstm_7b
+   dev_aspire data/lang $dir/graph_pp $dir
 fi
 exit 0;
 
+#online decoding is not yet supported with RNN AMs. See https://github.com/kaldi-asr/kaldi/issues/1091
 
 # %WER 28.0 | 2120 27217 | 78.6 13.3 8.1 6.7 28.0 77.0 | -0.852 | exp/chain/blstm_asp2/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iter600_pp_fg/score_9/penalty_0.25/ctm.filt.filt.sys
 # %WER 27.1 | 2120 27217 | 78.9 13.1 7.9 6.0 27.1 75.8 | -0.944 | exp/chain/blstm_asp2/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iter700_pp_fg/score_8/penalty_0.5/ctm.filt.filt.sys
 # %WER 26.9 | 2120 27218 | 79.7 12.1 8.2 6.6 26.9 76.3 | -0.839 | exp/chain/blstm_asp2/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iter1000_pp_fg/score_10/penalty_0.0/ctm.filt.filt.sys
 # %WER 26.6 | 2120 27220 | 80.2 12.7 7.1 6.8 26.6 76.6 | -1.035 | exp/chain/blstm_asp2/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iter1200_pp_fg/score_8/penalty_0.25/ctm.filt.filt.sys
 # %WER 26.3 | 2120 27223 | 80.6 12.3 7.2 6.9 26.3 76.8 | -0.978 | exp/chain/blstm_asp2/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iter1400_pp_fg/score_9/penalty_0.0/ctm.filt.filt.sys
-

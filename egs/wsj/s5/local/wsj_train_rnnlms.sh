@@ -77,6 +77,8 @@ gunzip -c $dir/all.gz | tail -n +$heldout_sent | \
 # Note: by concatenating with $dir/wordlist.all, we are doing add-one
 # smoothing of the counts.
 
+export TMPDIR=$dir # to avoid filling up /tmp/
+
 cat $dir/train.in $dir/wordlist.all | grep -v '</s>' | grep -v '<s>' | \
   awk '{ for(x=1;x<=NF;x++) count[$x]++; } END{for(w in count){print count[w], w;}}' | \
   sort -nr > $dir/unigram.counts
@@ -114,12 +116,12 @@ echo "Training RNNLM (note: this uses a lot of memory! Run it on a big machine.)
 # since the mikolov rnnlm and faster-rnnlm have slightly different interfaces...
 if [ "$rnnlm_ver" == "faster-rnnlm" ]; then
   $cmd $dir/rnnlm.log \
-     $KALDI_ROOT/tools/$rnnlm_ver/rnnlm -threads $threads -independent -train $dir/train -valid $dir/valid \
-     -rnnlm $dir/rnnlm -hidden $hidden -seed 1 -class $class -bptt $bptt -bptt-block $bptt_block \
+     $KALDI_ROOT/tools/$rnnlm_ver/rnnlm -threads $threads -train $dir/train -valid $dir/valid \
+     -rnnlm $dir/rnnlm -hidden $hidden -seed 1 -bptt $bptt -bptt-block $bptt_block \
      $rnnlm_options -direct $direct || exit 1;
 else
   $cmd $dir/rnnlm.log \
-     $KALDI_ROOT/tools/$rnnlm_ver/rnnlm -threads $threads -independent -train $dir/train -valid $dir/valid \
+     $KALDI_ROOT/tools/$rnnlm_ver/rnnlm -independent -train $dir/train -valid $dir/valid \
      -rnnlm $dir/rnnlm -hidden $hidden -rand-seed 1 -debug 2 -class $class -bptt $bptt -bptt-block $bptt_block \
      $rnnlm_options -direct $direct -binary || exit 1;
 fi

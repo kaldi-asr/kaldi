@@ -66,8 +66,8 @@ if [ $stage -le 0 ]; then
       lattice-scale --inv-acoustic-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
       lattice-add-penalty --word-ins-penalty=$wip ark:- ark:- \| \
       lattice-prune --beam=$beam ark:- ark:- \| \
-      lattice-align-words-lexicon --output-error-lats=true --max-expand=10.0 --test=false \
-       $lang/phones/align_lexicon.int $model ark:- ark:- \| \
+      lattice-align-words --output-error-lats=true --max-expand=10.0 --test=false \
+       $lang/phones/word_boundary.int $model ark:- ark:- \| \
       lattice-to-ctm-conf --decode-mbr=$decode_mbr $frame_shift_opt ark:- - \| \
       utils/int2sym.pl -f 5 $lang/words.txt \| \
       utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \| \

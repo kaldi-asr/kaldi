@@ -34,7 +34,8 @@
 namespace kaldi {
 namespace nnet3 {
 
-/// @file  This file contains declarations of components that are "simple", meaning
+/// @file  nnet-simple-component.h
+///   This file contains declarations of components that are "simple", meaning
 ///   they don't care about the indexes they are operating on, produce one
 ///   output for one input, and return the kSimpleComponent flag in their
 ///   Properties(): for example, tanh and affine components.  In
@@ -79,10 +80,10 @@ class PnormComponent: public Component {
   int32 output_dim_;
 };
 
-// This component randomly zeros dropout_proportion of the input 
+// This component randomly zeros dropout_proportion of the input
 // and the derivatives are backpropagated through the nonzero inputs.
 // Typically this component used during training but not in test time.
-// The idea is described under the name Dropout, in the paper 
+// The idea is described under the name Dropout, in the paper
 // "Dropout: A Simple Way to Prevent Neural Networks from Overfitting".
 class DropoutComponent : public RandomComponent {
  public:
@@ -121,7 +122,6 @@ class DropoutComponent : public RandomComponent {
   virtual Component* Copy() const { return new DropoutComponent(dim_,
                                                                 dropout_proportion_); }
   virtual std::string Info() const;
-  
   void SetDropoutProportion(BaseFloat dropout_proportion) { dropout_proportion_ = dropout_proportion; }
 
  private:
@@ -129,7 +129,6 @@ class DropoutComponent : public RandomComponent {
   /// dropout-proportion is the proportion that is dropped out,
   /// e.g. if 0.1, we set 10% to zero value.
   BaseFloat dropout_proportion_;
-  
 };
 
 class ElementwiseProductComponent: public Component {
@@ -1339,7 +1338,7 @@ class ConstantFunctionComponent: public UpdatableComponent {
   virtual int32 Properties() const {
     return kSimpleComponent|
         (is_updatable_ ? kUpdatableComponent|kLinearInParameters : 0) |
-        (InputDim() == OutputDim() ? kPropagateInPlace|kBackpropInPlace: 0) |
+        (InputDim() == OutputDim() ? kPropagateInPlace: 0) |
         kBackpropAdds;
   }
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,

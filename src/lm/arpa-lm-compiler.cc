@@ -27,6 +27,7 @@
 #include "lm/arpa-lm-compiler.h"
 #include "util/stl-utils.h"
 #include "util/text-utils.h"
+#include "fstext/remove-eps-local.h"
 
 namespace kaldi {
 
@@ -71,10 +72,10 @@ class GeneralHistKey {
   std::vector<Symbol> vector_;
 };
 
-// OptimizedHistKey combiness 3 21-bit symbol ID values into one 64-bit
+// OptimizedHistKey combines 3 21-bit symbol ID values into one 64-bit
 // machine word. allowing significant memory reduction and some runtime
-// benefit over GeneralHistKey. Since 3 symbolss are enough to track history
-// in a 4-gram model, this optimized key is used for smalled models with up
+// benefit over GeneralHistKey. Since 3 symbols are enough to track history
+// in a 4-gram model, this optimized key is used for smaller models with up
 // to 4-gram and symbol values up to 2^21-1.
 //
 // See GeneralHistKey for interface requrements of a key class.
@@ -315,9 +316,36 @@ void ArpaLmCompiler::ConsumeNGram(const NGram &ngram) {
   impl_->ConsumeNGram(ngram, is_highest);
 }
 
+void ArpaLmCompiler::RemoveRedundantStates() {
+  fst::StdArc::Label backoff_symbol = sub_eps_;
+  fst::StdArc::StateId num_states = fst_.NumStates();
+  // replace the #0 symbols on the input of arcs out of redundant states (states
+  // that are not final and have only a backoff arc leaving them), with <eps>.
+  if (backoff_symbol != 0) {
+    for (fst::StdArc::StateId state = 0; state < num_states; state++) {
+      if (fst_.NumArcs(state) == 1 && fst_.Final(state) == fst::TropicalWeight::Zero()) {
+        fst::MutableArcIterator<fst::StdVectorFst> iter(&fst_, state);
+        fst::StdArc arc = iter.Value();
+        if (arc.ilabel == backoff_symbol) {
+          arc.ilabel = 0;
+          iter.SetValue(arc);
+        }
+      }
+    }
+  }
+  // we could call fst::RemoveEps, and it would have the same effect in normal
+  // cases, where backoff_symbol != 0 and there are no epsilons in unexpected
+  // places, but RemoveEpsLocal is a bit safer in case something weird is going
+  // on; it guarantees not to blow up the FST.
+  fst::RemoveEpsLocal(&fst_);
+  KALDI_LOG << "Reduced num-states from " << num_states << " to "
+            << fst_.NumStates();
+}
+
 void ArpaLmCompiler::ReadComplete() {
   fst_.SetInputSymbols(Symbols());
   fst_.SetOutputSymbols(Symbols());
+  RemoveRedundantStates();
 }
 
 }  // namespace kaldi

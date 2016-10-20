@@ -74,36 +74,41 @@ if [ $stage -le 0 ]; then
   # note, we can't put it in ${dir}/data/text/, because then pocolm would use
   # it as one of the data sources.
   cut -d " " -f 2-  < data/dev/text  > ${dir}/data/real_dev_set.txt
-  
+
   # get wordlist
   awk '{print $1}' db/cantab-TEDLIUM/cantab-TEDLIUM.dct | sort | uniq > ${dir}/data/wordlist
 fi
 
 order=4
 
-if [ $stage -le 1 ]; then  
-  # decide on the vocabulary.                                                   
-  # Note: you'd use --wordlist if you had a previously determined word-list     
-  # that you wanted to use.                                                     
+if [ $stage -le 1 ]; then
+  # decide on the vocabulary.
+  # Note: you'd use --wordlist if you had a previously determined word-list
+  # that you wanted to use.
   # Note: if you have more than one order, use a certain amount of words as the
-  # vocab and want to restrict max memory for 'sort', 
-  # the following might be a more reasonable setting:                     
-  # train_lm.py --num-word=${num_word} --num-splits=10 --warm-start-ratio=20 ${max_memory} \
-  #             --min-counts='train=2 ted=1' \                               
-  #             --keep-int-data=true --fold-dev-into=ted ${bypass_metaparam_optim_opt} \
-  #             ${dir}/data/text ${order} ${lm_dir} 
+  # vocab and want to restrict max memory for 'sort',
   echo "$0: training the unpruned LM"
-  train_lm.py  --wordlist=${dir}/data/wordlist --num-splits=10 --warm-start-ratio=20  \
+  min_counts='train=2 ted=1'
+  wordlist=${dir}/data/wordlist
+
+  lm_name="`basename ${wordlist}`_${order}"
+  if [ -n "${min_counts}" ]; then
+    lm_name+="_`echo ${min_counts} | tr -s "[:blank:]" "_" | tr "=" "-"`"
+  fi
+  unpruned_lm_dir=${lm_dir}/${lm_name}.pocolm
+  train_lm.py  --wordlist=${wordlist} --num-splits=10 --warm-start-ratio=20  \
+               --limit-unk-history=true \
                --fold-dev-into=ted ${bypass_metaparam_optim_opt} \
-               --min-counts='train=2 ted=1' \
-               ${dir}/data/text ${order} ${lm_dir}
-  unpruned_lm_dir=${lm_dir}/wordlist_${order}.pocolm
-  
+               --min-counts="${min_counts}" \
+               ${dir}/data/text ${order} ${lm_dir}/work ${unpruned_lm_dir}
+
   get_data_prob.py ${dir}/data/real_dev_set.txt ${unpruned_lm_dir} 2>&1 | grep -F '[perplexity'
 
-  # currently (with min-counts), this is what we have:
+  # current results, after adding --limit-unk-history=true:
+  # get_data_prob.py: log-prob of data/local/local_lm/data/real_dev_set.txt given model data/local/local_lm/data/wordlist_4.pocolm was -5.13486225358 per word [perplexity = 169.840923284] over 18290.0 words.
+  # older results (after adding min-counts):
   # get_data_prob.py: log-prob of data/local/local_lm/data/real_dev_set.txt given model data/local/local_lm/data/wordlist_4.pocolm was -5.13902242865 per word [perplexity = 170.514153159] over 18290.0 words.
-  # before I added min-counts, this is what we had:
+  # even older results, before adding min-counts:
   # get_data_prob.py: log-prob of data/local/local_lm/data/real_dev_set.txt given model data/local/local_lm/data/lm_4 was -5.10576291033 per word [perplexity = 164.969879761] over 18290.0 words.
 fi
 
@@ -114,8 +119,10 @@ if [ $stage -le 2 ]; then
   prune_lm_dir.py --target-num-ngrams=$size --initial-threshold=0.02 ${unpruned_lm_dir} ${dir}/data/lm_${order}_prune_big
 
   get_data_prob.py ${dir}/data/real_dev_set.txt ${dir}/data/lm_${order}_prune_big 2>&1 | grep -F '[perplexity'
-  
-  # with min-counts: 
+
+  # current results, after adding --limit-unk-history=true:
+  # get_data_prob.py: log-prob of data/local/local_lm/data/real_dev_set.txt given model data/local/local_lm/data/lm_4_prune_big was -5.17558740241 per word [perplexity = 176.90049554] over 18290.0 words.
+  # older results, after adding min-counts:
   # get_data_prob.py ${dir}/data/real_dev_set.txt ${dir}/data/lm_${order}_prune_big 2>&1 | grep -F '[perplexity'
   # get_data_prob.py: log-prob of data/local/local_lm/data/real_dev_set.txt given model data/local/local_lm/data/lm_4_prune_big was -5.17638942756 per word [perplexity = 177.006688203] over 18290.0 words.
 
@@ -132,9 +139,11 @@ if [ $stage -le 3 ]; then
 
   get_data_prob.py ${dir}/data/real_dev_set.txt ${dir}/data/lm_${order}_prune_small 2>&1 | grep -F '[perplexity'
 
-  # with min-counts:
+  # current results, after adding --limit-unk-history=true (needed for modeling OOVs and not blowing up LG.fst):
+  # get_data_prob.py: log-prob of data/local/local_lm/data/real_dev_set.txt given model data/local/local_lm/data/lm_4_prune_small was -5.28036622198 per word [perplexity = 196.441803486] over 18290.0 words.
+  # older results, after adding min-counts:
   # get_data_prob.py: log-prob of data/local/local_lm/data/real_dev_set.txt given model data/local/local_lm/data/lm_4_prune_small was -5.28346290049 per word [perplexity = 197.123843355] over 18290.0 words.
-  # before adding min-counts:
+  # even older results, before adding min-counts:
   # get_data_prob.py: log-prob of data/local/local_lm/data/real_dev_set.txt given model data/local/local_lm/data/lm_4_prune_small was -5.27623197813 per word [perplexity = 195.631341646] over 18290.0 words.
 
   format_arpa_lm.py ${dir}/data/lm_${order}_prune_small | gzip -c > ${dir}/data/arpa/${order}gram_small.arpa.gz

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo "This script has not yet been tested, you would have to comment this statement if you want to run it. Please let us know if you see any issues" && exit 1;
+
 set -o pipefail
 set -e
 # this is run_discriminative.sh
@@ -17,19 +19,19 @@ get_egs_stage=-10
 use_gpu=true  # for training
 cleanup=false  # run with --cleanup true --stage 6 to clean up (remove large things like denlats,
                # alignments and degs).
+train_set=train_960_cleaned
+gmm=tri6b_cleaned  # this is the source gmm-dir for the data-type of interest; it
+                   # should have alignments for the specified training data.
+nnet3_affix=_cleaned
 
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
-srcdir=exp/chain/tdnn_6z_sp
-. $srcdir/vars
-# sets the directory names where features, ivectors and lattices are stored
-#train_data_dir
-#train_ivector_dir
-#lat_dir
-
-online_ivector_dir=$train_ivector_dir
+srcdir=exp/chain${nnet3_affix}/tdnn_sp
+graph_dir=$srcdir/graph_tgsmall
+train_data_dir=data/${train_set}_sp_hires_comb
+train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
 degs_dir=                     # If provided, will skip the degs directory creation
 lats_dir=                     # If provided, will skip denlats creation
 
@@ -45,11 +47,11 @@ frames_overlap_per_eg=30
 truncate_deriv_weights=10
 
 ## Nnet training options
-effective_learning_rate=0.000000125
+effective_learning_rate=0.000001
 max_param_change=1
 num_jobs_nnet=4
-num_epochs=4
-regularization_opts="--xent-regularize=0.1 --l2-regularize=0.00005"          # Applicable for providing --xent-regularize and --l2-regularize options 
+num_epochs=3
+regularization_opts="--xent-regularize=0.1 --l2-regularize=0.00005"          # Applicable for providing --xent-regularize and --l2-regularize options
 minibatch_size=64
 
 ## Decode options
@@ -87,10 +89,10 @@ fi
 affix=    # Will be set if doing input frame shift
 if [ $frame_subsampling_factor -ne 1 ]; then
   if [ $stage -le 0 ]; then
-    mkdir -p ${online_ivector_dir}_fs
-    cp -r $online_ivector_dir/{conf,ivector_period} ${online_ivector_dir}_fs
+    mkdir -p ${train_ivector_dir}_fs
+    cp -r $train_ivector_dir/{conf,ivector_period} ${train_ivector_dir}_fs
 
-    rm ${online_ivector_dir}_fs/ivector_online.scp 2>/dev/null || true
+    rm ${train_ivector_dir}_fs/ivector_online.scp 2>/dev/null || true
 
     data_dirs=
     for x in `seq -$[frame_subsampling_factor/2] $[frame_subsampling_factor/2]`; do 
@@ -98,7 +100,7 @@ if [ $frame_subsampling_factor -ne 1 ]; then
         $x $train_data_dir exp/shift_hires mfcc_hires
       utils/fix_data_dir.sh ${train_data_dir}_fs$x
       data_dirs="$data_dirs ${train_data_dir}_fs$x"
-      awk -v nfs=$x '{print "fs"nfs"-"$0}' $online_ivector_dir/ivector_online.scp >> ${online_ivector_dir}_fs/ivector_online.scp
+      awk -v nfs=$x '{print "fs"nfs"-"$0}' $train_ivector_dir/ivector_online.scp >> ${train_ivector_dir}_fs/ivector_online.scp
     done
     utils/combine_data.sh ${train_data_dir}_fs $data_dirs
     for x in `seq -$[frame_subsampling_factor/2] $[frame_subsampling_factor/2]`; do 
@@ -111,11 +113,11 @@ if [ $frame_subsampling_factor -ne 1 ]; then
   affix=_fs
 fi
     
-rm ${online_ivector_dir}_fs/ivector_online.scp 2>/dev/null || true
+rm ${train_ivector_dir}_fs/ivector_online.scp 2>/dev/null || true
 for x in `seq -$[frame_subsampling_factor/2] $[frame_subsampling_factor/2]`; do 
-  awk -v nfs=$x '{print "fs"nfs"-"$0}' $online_ivector_dir/ivector_online.scp >> ${online_ivector_dir}_fs/ivector_online.scp
+  awk -v nfs=$x '{print "fs"nfs"-"$0}' $train_ivector_dir/ivector_online.scp >> ${train_ivector_dir}_fs/ivector_online.scp
 done
-online_ivector_dir=${online_ivector_dir}_fs
+train_ivector_dir=${train_ivector_dir}_fs
 
 if [ $stage -le 1 ]; then
   # hardcode no-GPU for alignment, although you could use GPU [you wouldn't
@@ -123,7 +125,7 @@ if [ $stage -le 1 ]; then
   nj=350 # have a high number of jobs because this could take a while, and we might
          # have some stragglers.
   steps/nnet3/align.sh  --cmd "$decode_cmd" --use-gpu false \
-    --online-ivector-dir $online_ivector_dir \
+    --online-ivector-dir $train_ivector_dir \
     --scale-opts "--transition-scale=1.0 --acoustic-scale=1.0 --self-loop-scale=1.0" \
     --nj $nj $train_data_dir $lang $srcdir ${srcdir}_ali${affix} ;
 fi
@@ -139,7 +141,7 @@ if [ -z "$lats_dir" ]; then
     # total slots = 80 * 6 = 480.
     steps/nnet3/make_denlats.sh --cmd "$decode_cmd" \
       --self-loop-scale 1.0 --acwt 1.0 --determinize true \
-      --online-ivector-dir $online_ivector_dir \
+      --online-ivector-dir $train_ivector_dir \
       --nj $nj --sub-split $subsplit --num-threads "$num_threads_denlats" --config conf/decode.config \
       $train_data_dir $lang $srcdir ${lats_dir} ;
   fi
@@ -172,7 +174,7 @@ if [ -z "$degs_dir" ]; then
     steps/nnet3/get_egs_discriminative.sh \
       --cmd "$decode_cmd --max-jobs-run $max_jobs --mem 20G" --stage $get_egs_stage --cmvn-opts "$cmvn_opts" \
       --adjust-priors false --acwt 1.0 \
-      --online-ivector-dir $online_ivector_dir \
+      --online-ivector-dir $train_ivector_dir \
       --left-context $left_context --right-context $right_context \
       --valid-left-context $valid_left_context --valid-right-context $valid_right_context \
       --priors-left-context $valid_left_context --priors-right-context $valid_right_context $frame_subsampling_opt \
@@ -193,8 +195,8 @@ if [ $stage -le 4 ]; then
       ${degs_dir} $dir ;
 fi
 
-graph_dir=${srcdir}/graph_test_tgsmall
 if [ $stage -le 5 ]; then
+  rm $dir/.error 2>/dev/null || true
   for x in `seq $decode_start_epoch $num_epochs`; do
     for decode_set in test_clean test_other dev_clean dev_other; do
       (
@@ -203,21 +205,22 @@ if [ $stage -le 5 ]; then
       
       steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" --iter $iter \
         --acwt 1.0 --post-decode-acwt 10.0 \
-        --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
-        $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_tgsmall_$iter || touch $dir/.error;
+        --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${decode_set}_hires \
+        $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_tgsmall_$iter || exit 1
       steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
-        data/${decode_set}_hires $dir/decode_${decode_set}_{tgsmall,tgmed}_$iter  || touch $dir/.error 
+        data/${decode_set}_hires $dir/decode_${decode_set}_{tgsmall,tgmed}_$iter  || exit 1
       steps/lmrescore_const_arpa.sh \
         --cmd "$decode_cmd" data/lang_test_{tgsmall,tglarge} \
-        data/${decode_set}_hires $dir/decode_${decode_set}_{tgsmall,tglarge}_$iter || touch $dir/.error
+        data/${decode_set}_hires $dir/decode_${decode_set}_{tgsmall,tglarge}_$iter || exit 1
       steps/lmrescore_const_arpa.sh \
         --cmd "$decode_cmd" data/lang_test_{tgsmall,fglarge} \
-        data/${decode_set}_hires $dir/decode_${decode_set}_{tgsmall,fglarge}_$iter || touch $dir/.error
-      ) &
+        data/${decode_set}_hires $dir/decode_${decode_set}_{tgsmall,fglarge}_$iter || exit 1
+      ) || touch $dir/.error &
     done
   done
+  wait
+  [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1 
 fi
-wait;
 
 if [ $stage -le 6 ] && $cleanup; then
   # if you run with "--cleanup true --stage 6" you can clean up.

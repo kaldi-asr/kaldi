@@ -13,6 +13,13 @@ formatter = logging.Formatter('%(asctime)s [%(filename)s:%(lineno)s - %(funcName
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
+def StrToBool(values):
+  if values == "true":
+    return True
+  elif values == "false":
+    return False
+  else:
+    raise ValueError
 
 def SendMail(message, subject, email_id):
     try:
@@ -185,19 +192,25 @@ def ParseModelConfigVarsFile(var_file):
         model_left_context = None
         model_right_context = None
         num_hidden_layers = None
+        add_ephemeral_connection = 'false'
+        use_dropout = 'true'
         for line in var_file_handle:
             parts = line.split('=')
             field_name = parts[0].strip()
-            field_value = parts[1]
+            field_value = parts[1].strip()
             if field_name in ['model_left_context', 'left_context']:
                 model_left_context = int(field_value)
             elif field_name in ['model_right_context', 'right_context']:
                 model_right_context = int(field_value)
             elif field_name == 'num_hidden_layers':
                 num_hidden_layers = int(field_value)
+            elif field_name == 'add_ephemeral_connection':
+                add_ephemeral_connection = field_value
+            elif field_name == 'use_dropout':
+                use_dropout = field_value
 
         if model_left_context is not None and model_right_context is not None and num_hidden_layers is not None:
-            return [model_left_context, model_right_context, num_hidden_layers]
+          return [model_left_context, model_right_context, num_hidden_layers, add_ephemeral_connection, use_dropout]
 
     except ValueError:
         # we will throw an error at the end of the function so I will just pass
@@ -700,3 +713,20 @@ def WriteIdctMatrix(feat_dim, cepstral_lifter, file_path):
         idct_matrix[k].append(0)
     WriteKaldiMatrix(file_path, idct_matrix)
 
+# num_iters is the total number of iterations
+# init_zero_dp_iter is the number of initial iterations with no dropout.
+# full_dp_iter is training iteration number, where dropout gets 1.0 after that.
+def ComputeDropout(num_iters, init_zero_dp_iter, full_dp_iter):
+  dp_prop = []
+  # zero dropout in the begining of training
+  for iter in range(init_zero_dp_iter):
+    dp_prop.append(0.0)
+
+  # gradual increase in dropout 
+  for iter in range(full_dp_iter - init_zero_dp_iter):
+    dp_prop.append(format(float(iter)/ (full_dp_iter - init_zero_dp_iter), '.2f'))
+
+  # full dropout for the rest of training
+  for iter in range(full_dp_iter, num_iters):
+    dp_prop.append(1.0)
+  return dp_prop
