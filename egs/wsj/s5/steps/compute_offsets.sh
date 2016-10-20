@@ -3,14 +3,14 @@
 # Copyright 2016 Pegah Ghahremani
 # Apache 2.0
 
-# Compute random offsets per speaker w.r.t speakers's covariance matrix.
+# Computes random offsets per speaker w.r.t speakers's covariance matrix.
 # It first computes mean per speaker and global mean.
 
 # Begin configuration section.
 cmd=run.pl
-num_cmn_offsets=5               # Number of cmn offset used to generate random offsets.
-preserve_total_covariance=false # If true, the total covariance for random offset of spks are preserved.
-cmn_offset_scale=1.0            # offset scale used to scale the covariance matrix.
+offsets_config=conf/offsets.conf
+compress=true
+# End configuration section. 
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -38,7 +38,7 @@ mkdir -p $offsetdir || exit 1;
 mkdir -p $logdir || exit 1;
 
 
-required_files="$data/feats.scp $data/spk2utt"
+required_files="$data/feats.scp $data/spk2utt $offsets_config"
 
 for f in $required_files; do
   if [ ! -f $f ]; then
@@ -48,6 +48,6 @@ for f in $required_files; do
 done
 
 $cmd $logdir/compute_rand_offset.log \ 
-  generate-random-cmn-offsets --num-cmn-offsets=$num_cmn_offsets --preserve-total-covariance=$preserve_total_covariance ark:$data/spk2utt scp:$data/feats.scp ark,scp:$offsetdir/offsets.ark,$data/offsets.scp || exit 1;
+  generate-random-cmn-offsets --config=$offsets_config ark:$data/spk2utt scp:$data/feats.scp ark:- | copy-feats --compress=$compress ark:- ark,scp:$offsetdir/offsets.ark,$data/offsets.scp || exit 1;
 
 echo "Succeeded creating random offsets for $name"

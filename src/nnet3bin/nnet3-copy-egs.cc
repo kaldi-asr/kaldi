@@ -305,8 +305,8 @@ int main(int argc, char *argv[]) {
                 "feature left-context that we output.");
     po.Register("right-context", &right_context, "Can be used to truncate the "
                 "feature right-context that we output.");
-    po.Register("select-feature-offset", &select_feature_offset, "If used, it "
-                " adds the chosen offset to the features, and would also select "
+    po.Register("select-feature-offset", &select_feature_offset, "If > -1, it "
+                " adds the chosen offset to features, and it also selects "
                 " the iVector that is generated for the feature offset by this value.");
     po.Read(argc, argv);
 

@@ -6,7 +6,8 @@ stage=1
 train_stage=-10
 generate_alignments=true # false if doing ctc training
 speed_perturb=true
-num_cmn_offsets=-1
+use_random_offset=false
+
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -125,10 +126,9 @@ fi
 if [ $stage -le 8 ]; then 
   # Generates random offsets for training data
   mfccdir=mfcc_hires
-  random_offset_opts=
   for dataset in $train_set; do
-    if $random_offset; then
-      steps/compute_offsets.sh $random_offset_opts --cmd "$train_cmd" \
+    if $use_random_offset; then
+      steps/compute_offsets.sh --offsets-config conf/offsets.conf  --cmd "$train_cmd" \
         data/${dataset}_hires exp/make_offsets/${dataset} $mfccdir || exit 1;
     fi
   done
