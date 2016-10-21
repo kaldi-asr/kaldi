@@ -814,14 +814,14 @@ The script <DFN>utils/format_lm.sh</DFN> deals with converting the ARPA-format l
 models into an OpenFst format. Here is the usage messages of that script: 
 \verbatim
 Usage: utils/format_lm.sh <lang_dir> <arpa-LM> <lexicon> <out_dir>
-  Convert ARPA-format language models to FSTs.
-  E.g.: utils/format_lm.sh data/lang data/local/lm/foo.kn.gz data/local/dict/lexicon.txt data/lang_test
+E.g.: utils/format_lm.sh data/lang data/local/lm/foo.kn.gz data/local/dict/lexicon.txt data/lang_test
+Convert ARPA-format language models to FSTs.
 \endverbatim
 Some of the key commands from that script are:
 \verbatim
-  gunzip -c $lm \
-    | arpa2fst --disambig-symbol=#0 \
-               --read-symbol-table=$out_dir/words.txt - $out_dir/G.fst
+gunzip -c $lm \
+  | arpa2fst --disambig-symbol=#0 \
+             --read-symbol-table=$out_dir/words.txt - $out_dir/G.fst
 \endverbatim
 This Kaldi program, <DFN>arpa2fst</DFN>, turns the ARPA-format language model
 into a Weight Finite State Transducer (actually, an acceptor).
