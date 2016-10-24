@@ -607,8 +607,7 @@ int32 GeneralDescriptor::NumAppendTerms() const {
   int32 ans = 0;
   switch (descriptor_type_) {
     case kNodeName: ans = 1; break;
-    case kAppend:
-    {
+    case kAppend: {
       for (size_t i = 0; i < descriptors_.size(); i++)
         ans += descriptors_[i]->NumAppendTerms();
       break;

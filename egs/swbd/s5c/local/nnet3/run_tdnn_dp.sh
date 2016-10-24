@@ -23,7 +23,7 @@ preserve_model_interval=10
 has_fisher=true
 speed_perturb=true
 layerwise_pretrain=false
-num_skips_for_ephemeral=2
+num_layer_skip_for_ephemeral=2
 common_egs_dir=exp/nnet3/tdnn_b_dp_sp/egs
 reporting_email=
 remove_egs=true
@@ -71,7 +71,7 @@ if [ $stage -le 9 ]; then
     --use-presoftmax-prior-scale true \
     --add-ephemeral-connection true \
     --layerwise-pretrain $layerwise_pretrain \
-    --num-skips-for-ephemeral $num_skips_for_ephemeral \
+    --num-layer-skip-for-ephemeral $num_layer_skip_for_ephemeral \
    $dir/configs || exit 1;
 fi
 

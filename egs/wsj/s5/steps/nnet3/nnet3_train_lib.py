@@ -192,6 +192,7 @@ def ParseModelConfigVarsFile(var_file):
         model_left_context = None
         model_right_context = None
         num_hidden_layers = None
+        num_layers_for_config = None
         add_ephemeral_connection = 'false'
         use_dropout = 'true'
         for line in var_file_handle:
@@ -204,13 +205,18 @@ def ParseModelConfigVarsFile(var_file):
                 model_right_context = int(field_value)
             elif field_name == 'num_hidden_layers':
                 num_hidden_layers = int(field_value)
+            elif field_name == 'num_layers_for_config':
+                num_layers_for_config = int(field_value)
             elif field_name == 'add_ephemeral_connection':
                 add_ephemeral_connection = field_value
             elif field_name == 'use_dropout':
                 use_dropout = field_value
+        
+        if num_layers_for_config is None:
+          num_layers_for_config = num_hidden_layers
 
         if model_left_context is not None and model_right_context is not None and num_hidden_layers is not None:
-          return [model_left_context, model_right_context, num_hidden_layers, add_ephemeral_connection, use_dropout]
+          return [model_left_context, model_right_context, num_hidden_layers, num_layers_for_config, add_ephemeral_connection, use_dropout]
 
     except ValueError:
         # we will throw an error at the end of the function so I will just pass
@@ -715,18 +721,16 @@ def WriteIdctMatrix(feat_dim, cepstral_lifter, file_path):
 
 # num_iters is the total number of iterations
 # init_zero_dp_iter is the number of initial iterations with no dropout.
-# full_dp_iter is training iteration number, where dropout gets 1.0 after that.
-def ComputeDropout(num_iters, init_zero_dp_iter, full_dp_iter):
+# The dropout incresed with dropout_schedule at each iteration.
+def ComputeDropout(num_iters, init_zero_dp_iter, dropout_schedule):
   dp_prop = []
   # zero dropout in the begining of training
   for iter in range(init_zero_dp_iter):
     dp_prop.append(0.0)
 
   # gradual increase in dropout 
-  for iter in range(full_dp_iter - init_zero_dp_iter):
-    dp_prop.append(format(float(iter)/ (full_dp_iter - init_zero_dp_iter), '.2f'))
+  for iter in range(init_zero_dp_iter, num_iters):
+    dp_rate = min(1.0, format(float(iter) * dropout_schedule, '.2f'))
+    dp_prop.append(dp_rate)
 
-  # full dropout for the rest of training
-  for iter in range(full_dp_iter, num_iters):
-    dp_prop.append(1.0)
   return dp_prop

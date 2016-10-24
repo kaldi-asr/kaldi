@@ -154,6 +154,18 @@ def GetArgs():
                         help = """ The is the maximum number of models we give to the
                                    final 'combine' stage, but these models will themselves
                                    be averages of iteration-number ranges. """)
+    # dropout option
+    parser.add_argument("--start-dropout-iter", type=int,
+                        help="Number of initial iteration with minimum dropout",
+                        default=10)
+    parser.add_argument("--dropout-schedule", type=int,
+                        help="The dropout schedule used to incease dropout with this rate at each iterations.",
+                        default=0.05)
+    parser.add_argument("--remove-dropout-iter", type=int,
+                        help="All dropout connections are removed from network at this iteration.",
+                        default=-1)
+
+
     parser.add_argument("--trainer.optimization.momentum", type=float, dest='momentum',
                         default = 0.0,
                         help="""Momentum used in update computation.
@@ -182,7 +194,8 @@ def GetArgs():
                         help="""If true, remove egs after experiment""")
     parser.add_argument("--cleanup.preserve-model-interval", dest = "preserve_model_interval",
                         type=int, default=100,
-                        help="Determines iterations for which models will be preserved during cleanup. If iter % preserve_model_interval == 0 model will be preserved.")
+                        help="Determines iterations for which models will be preserved during cleanup."
+                        "If iter % preserve_model_interval == 0 model will be preserved.")
 
     parser.add_argument("--reporting.email", dest = "email",
                         type=str, default=None, action = NullstrToNoneAction,
@@ -335,10 +348,12 @@ def TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archi
 def TrainOneIteration(dir, iter, srand, egs_dir,
                       num_jobs, num_archives_processed, num_archives,
                       learning_rate, minibatch_size,
-                      frames_per_eg, num_hidden_layers, add_layers_period,
+                      frames_per_eg, num_hidden_layers, num_layers_for_config,
+                      add_layers_period,
                       left_context, right_context,
                       momentum, max_param_change, shuffle_buffer_size,
-                      run_opts, add_ephemeral_connection, dropout_proportion):
+                      run_opts, add_ephemeral_connection, dropout_proportion,
+                      remove_dropout_iter):
 
 
 
@@ -364,7 +379,7 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
     if iter > 0:
         ComputeProgress(dir, iter, egs_dir, run_opts)
 
-    if iter > 0 and (iter <= (num_hidden_layers-1) * add_layers_period) and (iter % add_layers_period == 0):
+    if iter > 0 and (iter <= (num_layers_for_config-1) * add_layers_period) and (iter % add_layers_period == 0):
 
         do_average = False # if we've just mixed up, don't do averaging but take the
                            # best.
@@ -375,28 +390,33 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
         do_average = True
         if iter == 0:
             do_average = False   # on iteration 0, pick the best, don't average.
-        
         if add_ephemeral_connection:
-          if dropout_proportion == 1.0 and not os.path.exists('{0}/configs/dropout_removed'.format(dir)):
-            # If dropout_proportion is equal to 1.0, 
-            # we replace Tdnn_{0}_relu input from sum(affine, ephemeral_affine) to affine.
-            # and remove orphan nodes and components using edits-config.
-            replace_config_str = '{0}/configs/dropout.config'.format(dir)
-            replace_config_file = open(replace_config_str, 'w')
-            for layer in range(1, num_hidden_layers):
-              print('component-node name=Tdnn_{0}_relu component=Tdnn_{0}_relu input=Tdnn_{0}_affine'.format(layer), file=replace_config_file)
-            replace_config_file.close()
+            remove_dropout = False
+            if remove_dropout_iter == iter:
+                remove_dropout = True
+            elif remove_dropout_iter < 0 and (dropout_proportion == 1 and not os.path.exists('{0}/configs/dropout_removed'.format(dir))):
+                remove_dropout = True
             
-            raw_model_string = "nnet3-am-copy --raw=true --nnet-config={3} --edits=remove-orphans --learning-rate={0} {1}/{2}.mdl - |".format(learning_rate, dir, iter, replace_config_str)
-            # create removed_dropout file in config 
-            remove_dropout_file = open('{0}/configs/dropout_removed'.format(dir), 'w')
-            print('removed-dropout=true', file=remove_dropout_file)
-            remove_dropout_file.close()
+            if remove_dropout: 
+                # If dropout_proportion is equal to 1.0, 
+                # we replace Tdnn_{0}_relu input from sum(affine, ephemeral_affine) to affine.
+                # and remove orphan nodes and components using edits-config.
+                replace_config_str = '{0}/configs/dropout.config'.format(dir)
+                replace_config_file = open(replace_config_str, 'w')
+                for layer in range(0, num_hidden_layers):
+                  print('component-node name=Tdnn_{0}_relu component=Tdnn_{0}_relu input=Tdnn_{0}_affine'.format(layer), file=replace_config_file)
+                replace_config_file.close()
+                
+                raw_model_string = "nnet3-am-copy --raw=true --nnet-config={3} --edits=remove-orphans --learning-rate={0} {1}/{2}.mdl - |".format(learning_rate, dir, iter, replace_config_str)
+                # create removed_dropout file in config 
+                remove_dropout_file = open('{0}/configs/dropout_removed'.format(dir), 'w')
+                print('removed-dropout=true', file=remove_dropout_file)
+                remove_dropout_file.close()
 
-          else:
-            raw_model_string = "nnet3-am-copy --raw=true --set-dropout-proportion={3} --learning-rate={0} {1}/{2}.mdl - |".format(learning_rate, dir, iter, dropout_proportion)
+            else:
+                raw_model_string = "nnet3-am-copy --raw=true --set-dropout-proportion={3} --learning-rate={0} {1}/{2}.mdl - |".format(learning_rate, dir, iter, dropout_proportion)
         else:
-          raw_model_string = "nnet3-am-copy --raw=true --learning-rate={0} {1}/{2}.mdl - |".format(learning_rate, dir, iter)
+            raw_model_string = "nnet3-am-copy --raw=true --learning-rate={0} {1}/{2}.mdl - |".format(learning_rate, dir, iter)
 
     if do_average:
       cur_minibatch_size = minibatch_size
@@ -482,7 +502,8 @@ def Train(args, run_opts):
     config_dir = '{0}/configs'.format(args.dir)
     var_file = '{0}/vars'.format(config_dir)
     
-    [left_context, right_context, num_hidden_layers, add_ephemeral_connection, use_dropout] = ParseModelConfigVarsFile(var_file)
+    [left_context, right_context, num_hidden_layers, num_layers_for_config, add_ephemeral_connection, use_dropout] = ParseModelConfigVarsFile(var_file)
+
     add_ephemeral_connection = StrToBool(add_ephemeral_connection)
     use_dropout = StrToBool(use_dropout)
     # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
@@ -559,7 +580,7 @@ def Train(args, run_opts):
     num_iters=(num_archives_to_process * 2) / (args.num_jobs_initial + args.num_jobs_final)
 
     num_iters_combine = VerifyIterations(num_iters, args.num_epochs,
-                                         num_hidden_layers, num_archives_expanded,
+                                         num_layers_for_config, num_archives_expanded,
                                          args.max_models_combine, args.add_layers_period,
                                          args.num_jobs_final)
 
@@ -582,12 +603,8 @@ def Train(args, run_opts):
     # and write dropout proportion.
     dp_prop = [1.0] * num_iters
     if add_ephemeral_connection:
-      init_zero_dp_iter = 10 + num_hidden_layers * args.add_layers_period
-      full_dp_iter = num_iters / args.num_epochs
       if use_dropout:
-        dp_prop = ComputeDropout(num_iters, init_zero_dp_iter, full_dp_iter)
-      else:
-        dp_prop = ComputeDropout(num_iters, num_iters, num_iters)
+        dp_prop = ComputeDropout(num_iters, args.start_dropout_iter, args.dropout_schedule)
 
     logger.info("Training will run for {0} epochs = {1} iterations".format(args.num_epochs, num_iters))
     for iter in range(num_iters):
@@ -616,11 +633,13 @@ def Train(args, run_opts):
                               num_archives_processed, num_archives,
                               learning_rate(iter, current_num_jobs, num_archives_processed),
                               args.minibatch_size, args.frames_per_eg,
-                              num_hidden_layers, args.add_layers_period,
+                              num_hidden_layers, num_layers_for_config, 
+                              args.add_layers_period,
                               left_context, right_context,
                               args.momentum, args.max_param_change,
                               args.shuffle_buffer_size, run_opts,
-                              add_ephemeral_connection, dp_prop[iter]) 
+                              add_ephemeral_connection, dp_prop[iter],
+                              args.remove_dropout_iter) 
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain conditions
                 RemoveModel(args.dir, iter-2, num_iters, num_iters_combine,

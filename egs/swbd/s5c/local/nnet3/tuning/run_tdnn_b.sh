@@ -101,7 +101,6 @@ fi
 graph_dir=exp/tri4/graph_sw1_tg
 if [ $stage -le 11 ]; then
   for decode_set in train_dev eval2000; do
-  #for decode_set in train_dev; do
     (
     num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
     steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" \

@@ -120,9 +120,9 @@ def GetArgs():
     parser.add_argument("--add-ephemeral-connection", type=str, action=nnet3_train_lib.StrToBoolAction,
                         help="if true, a ephemeral connection with dropout connection is added to all layers.",
                         choices=['true', 'false'], default = False)
-    parser.add_argument("--num-skips-for-ephemeral", type=int,
-                        help="Number of skip layers for ephemeral connection, the information passes from"
-                        "layer i - num_skips_for_ephemeral to layer i using full or identiry transform.",
+    parser.add_argument("--num-layer-skip-for-ephemeral", type=int,
+                        help="Number of layers to skip for ephemeral connection, wheree the information passes from"
+                        "layer i - num_layer_skip_for_ephemeral to layer i using full or identity transform.",
                         default=2)
     parser.add_argument("--use-dropout", type=str, action=nnet3_train_lib.StrToBoolAction,
                         help="If true, the ephemeral connection removed during training, otherwise used during whole training.",
@@ -351,7 +351,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
                 self_repair_scale,
                 objective_type,
                 add_ephemeral_connection,
-                num_skips_for_ephemeral,
+                num_layer_skip_for_ephemeral,
                 layerwise_pretrain,
                 use_dropout):
 
@@ -414,9 +414,9 @@ def MakeConfigs(config_dir, splice_indexes_string,
             # this is a normal affine node
             pass
 
-        if i >= num_skips_for_ephemeral:
-          dropout_layer_output = {'descriptor' : 'Tdnn_{0}_renorm'.format(i-num_skips_for_ephemeral),
-                                  'dimension' : nonlin_output_dims[i-num_skips_for_ephemeral]}
+        if i >= num_layer_skip_for_ephemeral:
+          dropout_layer_output = {'descriptor' : 'Tdnn_{0}_renorm'.format(i-num_layer_skip_for_ephemeral),
+                                  'dimension' : nonlin_output_dims[i-num_layer_skip_for_ephemeral]}
           dropout_layer_input = nodes.GenerateDescriptor(splice_indexes[i], subset_dim, dropout_layer_output)
 
         if xent_separate_forward_affine and i == num_hidden_layers - 1:
@@ -462,8 +462,8 @@ def MakeConfigs(config_dir, splice_indexes_string,
                     dropout_name = "Tdnn_{0}".format(i-2)
                     if i == 1:
                       dropout_name = "Tdnn_init"
-
-                    if (nonlin_output_dim_final == nonlin_output_dim_init) and i > num_skips_for_ephemeral:
+                    # If input and output dim for layer are equal, the information directly pass to output.
+                    if (nonlin_output_dim_final == nonlin_output_dim_init) and i > num_layer_skip_for_ephemeral:
                         prev_layer_output = nodes.AddAffRelNormWithDirectEphemeralLayer(config_lines, 
                                                                     "Tdnn_{0}".format(i), prev_layer_output,
                                                                     dropout_name, dropout_layer_input,
@@ -525,10 +525,10 @@ def MakeConfigs(config_dir, splice_indexes_string,
     print('model_left_context=' + str(left_context), file=f)
     print('model_right_context=' + str(right_context), file=f)
     if layerwise_pretrain:
-      print('num_hidden_layers=' + str(num_hidden_layers), file=f)
+      print('num_layers_for_config=' + str(num_hidden_layers), file=f)
     else:
-      print('num_hidden_layers=' + str(1), file=f)
-      print('num_real_hidden_layers=' + str(num_hidden_layers), file=f)
+      print('num_layers_for_config=' + str(1), file=f)
+    print('num_hidden_layers=' + str(num_hidden_layers), file=f)
     print('num_targets=' + str(num_targets), file=f)
     print('add_lda=' + ('true' if add_lda else 'false'), file=f)
     print('include_log_softmax=' + ('true' if include_log_softmax else 'false'), file=f)
@@ -568,7 +568,7 @@ def Main():
                 self_repair_scale = args.self_repair_scale_nonlinearity,
                 objective_type = args.objective_type,
                 add_ephemeral_connection = args.add_ephemeral_connection,
-                num_skips_for_ephemeral = args.num_skips_for_ephemeral,
+                num_layer_skip_for_ephemeral = args.num_layer_skip_for_ephemeral,
                 layerwise_pretrain = args.layerwise_pretrain,
                 use_dropout = args.use_dropout)
 

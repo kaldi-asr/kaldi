@@ -146,7 +146,7 @@ int main(int argc, char *argv[]) {
       ScaleNnet(scale, &(am_nnet.GetNnet()));
     
     if (dropout > 0)
-      SetDropoutProportion(dropout, &((am_nnet.GetNnet())));
+      SetDropoutProportion(dropout, &(am_nnet.GetNnet()));
 
     if (raw) {
       WriteKaldiObject(am_nnet.GetNnet(), nnet_wxfilename, binary_write);
