@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
     BaseFloat learning_rate_scale = 1;
     std::string set_raw_nnet = "";
     bool convert_repeated_to_block = false;
-    BaseFloat scale = 1.0;
+    BaseFloat scale = 1.0, dropout = 0.0;
     std::string nnet_config, edits_config, edits_str;
 
     ParseOptions po(usage);
@@ -85,7 +85,8 @@ int main(int argc, char *argv[]) {
                 "factor");
     po.Register("scale", &scale, "The parameter matrices are scaled"
                 " by the specified value.");
-
+    po.Register("set-dropout-proportion", &dropout, "Set dropout proportion "
+                "in all DropoutComponent to this value.");
 
     po.Read(argc, argv);
 
@@ -143,6 +144,9 @@ int main(int argc, char *argv[]) {
 
     if (scale != 1.0)
       ScaleNnet(scale, &(am_nnet.GetNnet()));
+    
+    if (dropout > 0)
+      SetDropoutProportion(dropout, &(am_nnet.GetNnet()));
 
     if (raw) {
       WriteKaldiObject(am_nnet.GetNnet(), nnet_wxfilename, binary_write);

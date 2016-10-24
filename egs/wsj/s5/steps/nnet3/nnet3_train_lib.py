@@ -13,6 +13,13 @@ formatter = logging.Formatter('%(asctime)s [%(filename)s:%(lineno)s - %(funcName
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
+def StrToBool(values):
+  if values == "true":
+    return True
+  elif values == "false":
+    return False
+  else:
+    raise ValueError
 
 def SendMail(message, subject, email_id):
     try:
@@ -185,19 +192,31 @@ def ParseModelConfigVarsFile(var_file):
         model_left_context = None
         model_right_context = None
         num_hidden_layers = None
+        num_layers_for_config = None
+        add_ephemeral_connection = 'false'
+        use_dropout = 'true'
         for line in var_file_handle:
             parts = line.split('=')
             field_name = parts[0].strip()
-            field_value = parts[1]
+            field_value = parts[1].strip()
             if field_name in ['model_left_context', 'left_context']:
                 model_left_context = int(field_value)
             elif field_name in ['model_right_context', 'right_context']:
                 model_right_context = int(field_value)
             elif field_name == 'num_hidden_layers':
                 num_hidden_layers = int(field_value)
+            elif field_name == 'num_layers_for_config':
+                num_layers_for_config = int(field_value)
+            elif field_name == 'add_ephemeral_connection':
+                add_ephemeral_connection = field_value
+            elif field_name == 'use_dropout':
+                use_dropout = field_value
+        
+        if num_layers_for_config is None:
+          num_layers_for_config = num_hidden_layers
 
         if model_left_context is not None and model_right_context is not None and num_hidden_layers is not None:
-            return [model_left_context, model_right_context, num_hidden_layers]
+          return [model_left_context, model_right_context, num_hidden_layers, num_layers_for_config, add_ephemeral_connection, use_dropout]
 
     except ValueError:
         # we will throw an error at the end of the function so I will just pass
@@ -700,3 +719,18 @@ def WriteIdctMatrix(feat_dim, cepstral_lifter, file_path):
         idct_matrix[k].append(0)
     WriteKaldiMatrix(file_path, idct_matrix)
 
+# num_iters is the total number of iterations
+# init_zero_dp_iter is the number of initial iterations with no dropout.
+# The dropout incresed with dropout_schedule at each iteration.
+def ComputeDropout(num_iters, init_zero_dp_iter, dropout_schedule):
+  dp_prop = []
+  # zero dropout in the begining of training
+  for iter in range(init_zero_dp_iter):
+    dp_prop.append(0.0)
+
+  # gradual increase in dropout 
+  for iter in range(init_zero_dp_iter, num_iters):
+    dp_rate = min(1.0, format(float(iter) * dropout_schedule, '.2f'))
+    dp_prop.append(dp_rate)
+
+  return dp_prop

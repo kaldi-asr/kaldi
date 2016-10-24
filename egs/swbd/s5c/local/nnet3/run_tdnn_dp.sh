@@ -19,13 +19,15 @@
 stage=0
 affix=
 train_stage=-10
+preserve_model_interval=10
 has_fisher=true
 speed_perturb=true
-common_egs_dir=
+layerwise_pretrain=false
+num_layer_skip_for_ephemeral=2
+common_egs_dir=exp/nnet3/tdnn_b_dp_sp/egs
 reporting_email=
 remove_egs=true
-dir=exp/nnet3/tdnn_b
-
+dir=exp/nnet3/tdnn_b_dp
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
@@ -67,6 +69,9 @@ if [ $stage -le 9 ]; then
     --relu-dim-final 1024 \
     --splice-indexes "-2,-1,0,1,2 -1,1 -1,1 -1,1 -2,2 -2,2 -2,2 -4,4 0" \
     --use-presoftmax-prior-scale true \
+    --add-ephemeral-connection true \
+    --layerwise-pretrain $layerwise_pretrain \
+    --num-layer-skip-for-ephemeral $num_layer_skip_for_ephemeral \
    $dir/configs || exit 1;
 fi
 
@@ -88,7 +93,7 @@ if [ $stage -le 10 ]; then
     --trainer.optimization.final-effective-lrate 0.00017 \
     --egs.dir "$common_egs_dir" \
     --cleanup.remove-egs $remove_egs \
-    --cleanup.preserve-model-interval 100 \
+    --cleanup.preserve-model-interval $preserve_model_interval \
     --use-gpu true \
     --feat-dir=data/${train_set}_hires \
     --ali-dir $ali_dir \
@@ -100,7 +105,8 @@ fi
 
 graph_dir=exp/tri4/graph_sw1_tg
 if [ $stage -le 11 ]; then
-  for decode_set in train_dev eval2000; do
+  #for decode_set in train_dev eval2000; do
+  for decode_set in train_dev; do
     (
     num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
     steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" \
