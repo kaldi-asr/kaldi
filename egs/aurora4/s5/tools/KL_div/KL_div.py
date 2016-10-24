@@ -81,8 +81,9 @@ def KL_compute(X_matrix,Y_matrix,KL_file,num_frames,window):
                     KL_numerator_sum+=KL_numerator
                     KL_denominator_sum+=KL_denominator
                 KL_per_frame=KL_numerator_sum/KL_denominator_sum
-            KL_vec.append(expit(KL_per_frame))
+           # KL_vec.append(expit(KL_per_frame))
             KL_vec.append(KL_per_frame)
+            #KL.write(str(expit(KL_per_frame) + ' ')
             KL.write(str(KL_per_frame) + ' ')
     return KL_vec
 
