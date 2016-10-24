@@ -79,8 +79,20 @@ void Compiler::AddCommands(const std::vector<bool> &deriv_needed,
 
 void Compiler::ComputeStepDependencies(
     const std::vector<int32> &this_step,
+    int32 step_index,
     unordered_set<int32> *dep_steps) {
   dep_steps->clear();
+  if (this_step.empty())
+    return;
+  // steps always have a single node index, we can pick the first.
+  int32 node_index = graph_.cindexes[this_step[0]].first;
+  if (nnet_.IsComponentNode(node_index)) {
+    // there is only one step that a component step depends on, and it's the
+    // immediately preceding step (the component-input step).
+    KALDI_ASSERT(step_index > 0);
+    dep_steps->insert(step_index - 1);
+    return;
+  }
   std::vector<int32>::const_iterator step_iter = this_step.begin(),
       step_end = this_step.end();
   int32 prev_input_step = -1;  // this is an optimization for speed.
@@ -116,7 +128,7 @@ void Compiler::ComputeDerivNeeded(
 
     std::string node_name = nnet_.GetNodeNames()[node_index];
     unordered_set<int32> input_steps;
-    ComputeStepDependencies(this_step, &input_steps);
+    ComputeStepDependencies(this_step, step, &input_steps);
 
     unordered_set<int32>::iterator iter = input_steps.begin(),
         end = input_steps.end();
