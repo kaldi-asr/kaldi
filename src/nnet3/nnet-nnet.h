@@ -186,7 +186,7 @@ class Nnet {
 
   /// returns index associated with this node name, or -1 if no such index.
   int32 GetNodeIndex(const std::string &node_name) const;
-
+  
   /// returns index associated with this component name, or -1 if no such index.
   int32 GetComponentIndex(const std::string &node_name) const;
 

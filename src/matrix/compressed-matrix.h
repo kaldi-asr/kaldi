@@ -114,6 +114,10 @@ class CompressedMatrix {
 
   void Clear();
   
+  /// scales all elements of matrix by alpha.
+  /// It scales the floating point values in GlobalHeader by alpha. 
+  void Scale(float alpha);
+
   friend class Matrix<float>;
   friend class Matrix<double>;
  private:
@@ -163,7 +167,7 @@ class CompressedMatrix {
   static inline float CharToFloat(float p0, float p25,
                                   float p75, float p100,
                                   unsigned char value);
-  
+   
   void *data_; // first GlobalHeader, then PerColHeader (repeated), then
   // the byte data for each column (repeated).  Note: don't intersperse
   // the byte data with the PerColHeaders, because of alignment issues.

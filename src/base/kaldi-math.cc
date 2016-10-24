@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #endif
 #include <string>
+#include <numeric>
 
 namespace kaldi {
 // These routines are tested in matrix/matrix-test.cc
@@ -72,6 +73,26 @@ RandomState::RandomState() {
   // offset by one (if we didn't have the "+ 27437" in the code).  27437 is just
   // a randomly chosen prime number.
   seed = Rand() + 27437;
+}
+
+int32 RandIntDiscreteDist(const std::vector<BaseFloat> &prob, struct RandomState* state) {
+  BaseFloat prob_sum = std::accumulate(prob.begin(), prob.end(), 0.0);
+  KALDI_ASSERT(prob_sum <= 1.1 && prob_sum >= 0.99); // probability distribution sum should be one.
+  std::vector<BaseFloat> scaled_prob(prob);
+  int32 prob_size = prob.size();
+  for (int32 i = 0; i < prob_size; i++)
+    scaled_prob[i] *= 1.0 / prob_sum;
+  std::vector<BaseFloat> cdf(prob_size); // cumulative probability distribution.
+  cdf[0] = scaled_prob[0];
+  // if cdf(i) < random number < cdf(i+1), it returns i.
+  for (int32 i = 1; i < prob_size; i++) 
+    cdf[i] = cdf[i-1] + scaled_prob[i];
+  BaseFloat rand_num =  RandUniform(state);
+  if (rand_num > 1.0) rand_num = 1.0;
+  std::vector<BaseFloat>::iterator low = std::lower_bound(cdf.begin(), cdf.end(), rand_num);
+  int32 ans = low - cdf.begin();
+  KALDI_ASSERT(ans >=0 && ans < prob_size);
+  return ans; 
 }
 
 bool WithProb(BaseFloat prob, struct RandomState* state) {

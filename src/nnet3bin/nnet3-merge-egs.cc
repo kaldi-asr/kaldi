@@ -26,13 +26,15 @@
 
 namespace kaldi {
 namespace nnet3 {
-// returns the number of indexes/frames in the NnetIo named "output" in the eg,
+// returns the number of indexes/frames in the NnetIo with output 
+// including string "output" as part of its name in the eg,
 // or crashes if it is not there.
+// e.g. output-0, output-xent
 int32 NumOutputIndexes(const NnetExample &eg) {
   for (size_t i = 0; i < eg.io.size(); i++)
-    if (eg.io[i].name == "output")
+    if (eg.io[i].name.find("output") != std::string::npos)
       return eg.io[i].indexes.size();
-  KALDI_ERR << "No output named 'output' in the eg.";
+  KALDI_ERR << "No output name with string 'output' as part of its name exists in the eg.";
   return 0;  // Suppress compiler warning.
 }
 
