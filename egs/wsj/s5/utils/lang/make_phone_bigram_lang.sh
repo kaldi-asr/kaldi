@@ -20,8 +20,8 @@ echo "$0 $@"  # Print the command line for logging
 
 
 if [ $# != 3 ]; then
-  echo "Usage: utils/make_phone_bigram_lang.sh [options] <lang-dir> <ali-dir> <output-lang-dir>"
-  echo "e.g.: utils/make_phone_bigram_lang.sh data/lang exp/tri3b_ali data/lang_phone_bg"
+  echo "Usage: $0: [options] <lang-dir> <ali-dir> <output-lang-dir>"
+  echo "e.g.: $0: data/lang exp/tri3b_ali data/lang_phone_bg"
   exit 1;
 fi
 

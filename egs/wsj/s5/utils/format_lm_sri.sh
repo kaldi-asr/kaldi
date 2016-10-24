@@ -29,7 +29,7 @@ if [ $# -ne 4 ] && [ $# -ne 3 ]; then
   echo "E.g.: utils/format_lm_sri.sh data/lang data/local/lm/foo.kn.gz data/local/dict/lexicon.txt data/lang_test"
   echo "Converts ARPA-format language models to FSTs. Change the LM vocabulary using SRILM."
   echo "Note: if you want to just convert ARPA LMs to FSTs, there is a simpler way to do this"
-  echo "that doesn't require SRILM: see examples in egs/wsj/s5/local/wsj_format_local_lms.sh"
+  echo "that doesn't require SRILM: see utils/format_lm.sh"
   echo "options:"
   echo " --help                 # print this message and exit"
   echo " --srilm-opts STRING      # options to pass to SRILM tools (default: '$srilm_opts')"

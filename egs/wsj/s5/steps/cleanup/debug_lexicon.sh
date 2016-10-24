@@ -58,7 +58,7 @@ fi
 phone_lang=data/$(basename $lang)_phone_bg
 
 if [ $stage -le 2 ]; then
-  utils/make_phone_bigram_lang.sh $lang $alidir $phone_lang
+  utils/lang/make_phone_bigram_lang.sh $lang $alidir $phone_lang
 fi
 
 if [ $stage -le 3 ]; then
@@ -201,4 +201,3 @@ if [ $stage -le 11 ]; then
 
 
 fi
-
