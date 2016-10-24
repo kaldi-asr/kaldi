@@ -25,60 +25,14 @@
 #include "hmm/posterior.h"
 #include "nnet3/nnet-example.h"
 
+#include "rnnlmbin/rnnlm-utils.h"
+
 using std::string;
 using std::ifstream;
 using std::vector;
 
 using namespace kaldi;
 using namespace nnet3;
-
-// this function is copied from rnnlm-eval
-NnetExample GetEgsFromSent(const vector<int>& word_ids_in, int input_dim,
-                           const vector<int>& word_ids_out, int output_dim) {
-  SparseMatrix<BaseFloat> input_frames(word_ids_in.size() - 1, input_dim);
-
-  for (int j = 0; j < word_ids_in.size() - 1; j++) {
-    vector<std::pair<MatrixIndexT, BaseFloat> > pairs;
-    pairs.push_back(std::make_pair(word_ids_in[j], 1.0));
-    SparseVector<BaseFloat> v(input_dim, pairs);
-    input_frames.SetRow(j, v);
-  }
-
-  NnetExample eg;
-  eg.io.push_back(NnetIo("input", 0, input_frames));
-
-  Posterior posterior;
-  for (int i = 1; i < word_ids_out.size(); i++) {
-    vector<std::pair<int32, BaseFloat> > p;
-    p.push_back(std::make_pair(word_ids_out[i], 1.0));
-    posterior.push_back(p);
-  }
-
-  eg.io.push_back(NnetIo("output", output_dim, 0, posterior));
-  return eg;
-}
-
-vector<string> SplitByWhiteSpace(const string &line) {
-  std::stringstream ss(line);
-  vector<string> ans;
-  string word;
-  while (ss >> word) {
-    ans.push_back(word);
-  }
-  return ans;
-}
-
-unordered_map<string, int> ReadWordlist(string filename) {
-  unordered_map<string, int> ans;
-  ifstream ifile(filename.c_str());
-  string word;
-  int id;
-
-  while (ifile >> word >> id) {
-    ans[word] = id;
-  }
-  return ans;
-}
 
 void GenerateEgs(string text_file, const unordered_map<string, int>& wlist_in,
                  const unordered_map<string, int>& wlist_out, int history_size,
@@ -99,23 +53,23 @@ void GenerateEgs(string text_file, const unordered_map<string, int>& wlist_in,
     vector<int> word_ids_out;
 
     for (int i = 0; i < words.size(); i++) {
-      int id_in = 1;
-      int id_out = 1; // TODO(hxu) assuming OOS is always 1 in wordlists
-      {
+      int id_in = OOS_ID;
+      int id_out = OOS_ID; // TODO(hxu) assuming OOS is always 1 in wordlists
+      if (i != words.size() - 1) {
         unordered_map<string, int>::const_iterator iter = wlist_in.find(words[i]);
         if (iter != wlist_in.end()) {
           id_in = iter->second;
         }
+        word_ids_in.push_back(id_in);
       }
-      word_ids_in.push_back(id_in);
 
-      {
+      if (i != 0) {
         unordered_map<string, int>::const_iterator iter = wlist_out.find(words[i]);
         if (iter != wlist_out.end()) {
           id_out = iter->second;
         }
+        word_ids_out.push_back(id_out);
       }
-      word_ids_out.push_back(id_out);
     }
 
     NnetExample eg = GetEgsFromSent(word_ids_in, input_dim, word_ids_out, output_dim);

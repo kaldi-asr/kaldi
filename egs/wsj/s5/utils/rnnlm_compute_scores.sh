@@ -27,7 +27,7 @@ ensure_normalized_probs=false  # if true then we add the neccesary options to
 
 rnnlm=$KALDI_ROOT/tools/$rnnlm_ver/rnnlm
 
-[ ! -f $rnnlm ] && echo No such program $rnnlm && exit 1;
+[ "$rnnlm_ver" == "nnet3" ] || ( [ ! -f $rnnlm ] && echo No such program $rnnlm && exit 1;)
 
 if [ $# != 4 ]; then
   echo "Usage: rnnlm_compute_scores.sh <rnn-dir> <temp-dir> <input-text> <output-scores>"
@@ -72,6 +72,11 @@ if [ $rnnlm_ver == "faster-rnnlm" ]; then
   fi
   $rnnlm $extra_options -independent -rnnlm $dir/rnnlm -test $tempdir/text.nounk -nbest -debug 0 | \
      awk '{print $1*log(10);}' > $tempdir/loglikes.rnn
+elif [ $rnnlm_ver == "nnet3" ]; then
+# rnnlm-eval $outdir/$[$n+1].mdl $outdir/wordlist.in $outdir/wordlist.out $outdir/dev.txt $outdir/dev-probs-iter-$[$n+1].txt
+  cat $tempdir/text | sed "s=^=<s> =" | sed "s=$= </s>=" > $tempdir/text.2
+  nw=`wc -l $dir/wordlist.all | awk '{print $1}'`
+  rnnlm-eval --num-words=$nw $dir/rnnlm $dir/wordlist.in $dir/wordlist.out $tempdir/text.2 $tempdir/loglikes.rnn
 else
   # add the utterance_id as required by Mikolove's rnnlm
   paste $tempdir/ids $tempdir/text.nounk > $tempdir/id_text.nounk

@@ -9,7 +9,7 @@ LDLIBS += $(CUDA_LDLIBS)
 
 BINFILES = rnnlm-get-egs rnnlm-eval
 
-OBJFILES =
+OBJFILES = rnnlm-utils.o
 
 cuda-compiled.o: ../kaldi.mk
 
