@@ -16,10 +16,10 @@ import pprint
 import logging
 import imp
 import traceback
-from nnet3_train_lib import *
 
 nnet3_log_parse = imp.load_source('nlp', 'steps/nnet3/report/nnet3_log_parse_lib.py')
 train_lib = imp.load_source('tl', 'steps/nnet3/libs/train_lib.py')
+common_train_lib = imp.load_source('ntl', 'steps/nnet3/lib/common_train_lib.py')
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -85,9 +85,9 @@ def ProcessArgs(args):
         args.transform_dir = args.ali_dir
 
     # set the options corresponding to args.use_gpu
-    run_opts = train_lib.RunOpts()
+    run_opts = common_train_lib.RunOpts()
     if args.use_gpu:
-        if not CheckIfCudaCompiled():
+        if not common_train_lib.CheckIfCudaCompiled():
             logger.warning("""
     You are running with one thread but you have not compiled
     for CUDA.  You may be running a setup optimized for GPUs.  If you have
@@ -121,14 +121,14 @@ def Train(args, run_opts):
     logger.info("Arguments for the experiment\n{0}".format(arg_string))
 
     # Set some variables.
-    num_leaves = GetNumberOfLeaves(args.ali_dir)
-    num_jobs = GetNumberOfJobs(args.ali_dir)
-    feat_dim = GetFeatDim(args.feat_dir)
-    ivector_dim = GetIvectorDim(args.online_ivector_dir)
+    num_leaves = common_train_lib.GetNumberOfLeaves(args.ali_dir)
+    num_jobs = common_train_lib.GetNumberOfJobs(args.ali_dir)
+    feat_dim = common_train_lib.GetFeatDim(args.feat_dir)
+    ivector_dim = common_train_lib.GetIvectorDim(args.online_ivector_dir)
 
     # split the training data into parts for individual jobs
     # we will use the same number of jobs as that used for alignment
-    SplitData(args.feat_dir, num_jobs)
+    common_train_lib.SplitData(args.feat_dir, num_jobs)
     shutil.copy('{0}/tree'.format(args.ali_dir), args.dir)
     f = open('{0}/num_jobs'.format(args.dir), 'w')
     f.write(str(num_jobs))
@@ -137,7 +137,7 @@ def Train(args, run_opts):
     config_dir = '{0}/configs'.format(args.dir)
     var_file = '{0}/vars'.format(config_dir)
 
-    variables = ParseGenericConfigVarsFile(var_file)
+    variables = common_train_lib.ParseGenericConfigVarsFile(var_file)
 
     # Set some variables.
 
@@ -155,7 +155,7 @@ def Train(args, run_opts):
 
     if (args.stage <= -5):
         logger.info("Initializing a basic network for estimating preconditioning matrix")
-        RunKaldiCommand("""
+        common_train_lib.RunKaldiCommand("""
 {command} {dir}/log/nnet_init.log \
     nnet3-init --srand=-2 {dir}/configs/init.config {dir}/init.raw
     """.format(command = run_opts.command,
@@ -165,24 +165,27 @@ def Train(args, run_opts):
     if (args.stage <= -4) and args.egs_dir is None:
         logger.info("Generating egs")
 
-        GenerateEgs(args.feat_dir, args.ali_dir, default_egs_dir,
-                    left_context, right_context,
-                    left_context, right_context, run_opts,
-                    frames_per_eg = args.frames_per_eg,
-                    srand = args.srand,
-                    egs_opts = args.egs_opts,
-                    cmvn_opts = args.cmvn_opts,
-                    online_ivector_dir = args.online_ivector_dir,
-                    samples_per_iter = args.samples_per_iter,
-                    transform_dir = args.transform_dir,
-                    stage = args.egs_stage)
+        train_lib.GenerateEgs(args.feat_dir, args.ali_dir, default_egs_dir,
+                              left_context, right_context,
+                              left_context, right_context, run_opts,
+                              frames_per_eg = args.frames_per_eg,
+                              srand = args.srand,
+                              egs_opts = args.egs_opts,
+                              cmvn_opts = args.cmvn_opts,
+                              online_ivector_dir = args.online_ivector_dir,
+                              samples_per_iter = args.samples_per_iter,
+                              transform_dir = args.transform_dir,
+                              stage = args.egs_stage)
 
     if args.egs_dir is None:
         egs_dir = default_egs_dir
     else:
         egs_dir = args.egs_dir
 
-    [egs_left_context, egs_right_context, frames_per_eg, num_archives] = VerifyEgsDir(egs_dir, feat_dim, ivector_dim, left_context, right_context)
+    [egs_left_context, egs_right_context,
+     frames_per_eg, num_archives] = (
+             common_train_lib.VerifyEgsDir(egs_dir, feat_dim, ivector_dim,
+                                           left_context, right_context) )
     assert(args.frames_per_eg == frames_per_eg)
 
     if (args.num_jobs_final > num_archives):
@@ -190,27 +193,29 @@ def Train(args, run_opts):
 
     # copy the properties of the egs to dir for
     # use during decoding
-    CopyEgsPropertiesToExpDir(egs_dir, args.dir)
+    common_train_lib.CopyEgsPropertiesToExpDir(egs_dir, args.dir)
 
     if (args.stage <= -3):
         logger.info('Computing the preconditioning matrix for input features')
 
-        ComputePreconditioningMatrix(args.dir, egs_dir, num_archives, run_opts,
-                                     max_lda_jobs = args.max_lda_jobs,
-                                     rand_prune = args.rand_prune)
+        common_train_lib.ComputePreconditioningMatrix(
+                args.dir, egs_dir, num_archives, run_opts,
+                max_lda_jobs = args.max_lda_jobs,
+                rand_prune = args.rand_prune)
 
     if (args.stage <= -2):
         logger.info("Computing initial vector for FixedScaleComponent before"
                     " softmax, using priors^{prior_scale} and rescaling to"
                     " average 1".format(prior_scale = args.presoftmax_prior_scale_power))
 
-        ComputePresoftmaxPriorScale(args.dir, args.ali_dir, num_jobs, run_opts,
-                                    presoftmax_prior_scale_power = args.presoftmax_prior_scale_power)
+        common_train_lib.ComputePresoftmaxPriorScale(
+                args.dir, args.ali_dir, num_jobs, run_opts,
+                presoftmax_prior_scale_power = args.presoftmax_prior_scale_power)
 
 
     if (args.stage <= -1):
         logger.info("Preparing the initial acoustic model.")
-        PrepareInitialAcousticModel(args.dir, args.ali_dir, run_opts)
+        train_lib.PrepareInitialAcousticModel(args.dir, args.ali_dir, run_opts)
 
 
     # set num_iters so that as close as possible, we process the data $num_epochs
@@ -221,16 +226,18 @@ def Train(args, run_opts):
     num_archives_processed = 0
     num_iters=(num_archives_to_process * 2) / (args.num_jobs_initial + args.num_jobs_final)
 
-    num_iters_combine = VerifyIterations(num_iters, args.num_epochs,
+    num_iters_combine = common_train_lib.VerifyIterations(
+                                         num_iters, args.num_epochs,
                                          num_hidden_layers, num_archives_expanded,
                                          args.max_models_combine, args.add_layers_period,
                                          args.num_jobs_final)
 
-    learning_rate = lambda iter, current_num_jobs, num_archives_processed: GetLearningRate(iter, current_num_jobs, num_iters,
-                                                                   num_archives_processed,
-                                                                    num_archives_to_process,
-                                                                    args.initial_effective_lrate,
-                                                                    args.final_effective_lrate)
+    learning_rate = (lambda iter, current_num_jobs, num_archives_processed:
+                        GetLearningRate(iter, current_num_jobs, num_iters,
+                                        num_archives_processed,
+                                        num_archives_to_process,
+                                        args.initial_effective_lrate,
+                                        args.final_effective_lrate))
 
     logger.info("Training will run for {0} epochs = {1} iterations".format(args.num_epochs, num_iters))
     for iter in range(num_iters):
@@ -264,8 +271,9 @@ def Train(args, run_opts):
                                         run_opts = run_opts)
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain conditions
-                RemoveModel(args.dir, iter-2, num_iters, num_iters_combine,
-                            args.preserve_model_interval)
+                common_train_lib.RemoveModel(
+                                 args.dir, iter-2, num_iters, num_iters_combine,
+                                 args.preserve_model_interval)
 
             if args.email is not None:
                 reporting_iter_interval = num_iters * args.reporting_interval
@@ -274,23 +282,25 @@ def Train(args, run_opts):
                     [report, times, data] = nnet3_log_parse.GenerateAccuracyReport(args.dir)
                     message = report
                     subject = "Update : Expt {dir} : Iter {iter}".format(dir = args.dir, iter = iter)
-                    SendMail(message, subject, args.email)
+                    common_train_lib.SendMail(message, subject, args.email)
 
         num_archives_processed = num_archives_processed + current_num_jobs
 
     if args.stage <= num_iters:
         logger.info("Doing final combination to produce final.mdl")
-        CombineModels(args.dir, num_iters, num_iters_combine, egs_dir, run_opts)
+        train_lib.CombineModels(args.dir, num_iters, num_iters_combine, egs_dir, run_opts)
 
     if args.stage <= num_iters + 1:
         logger.info("Getting average posterior for purposes of adjusting the priors.")
-        avg_post_vec_file = ComputeAveragePosterior(args.dir, 'combined', egs_dir,
-                                num_archives, args.prior_subset_size, run_opts)
+        avg_post_vec_file = train_lib.ComputeAveragePosterior(
+                            args.dir, 'combined', egs_dir,
+                            num_archives, args.prior_subset_size, run_opts)
 
         logger.info("Re-adjusting priors based on computed posteriors")
         combined_model = "{dir}/combined.mdl".format(dir = args.dir)
         final_model = "{dir}/final.mdl".format(dir = args.dir)
-        AdjustAmPriors(args.dir, combined_model, avg_post_vec_file, final_model, run_opts)
+        train_lib.AdjustAmPriors(args.dir, combined_model, avg_post_vec_file,
+                                 final_model, run_opts)
 
     if args.cleanup:
         logger.info("Cleaning up the experiment directory {0}".format(args.dir))
@@ -300,14 +310,14 @@ def Train(args, run_opts):
             # delete it
             remove_egs = False
 
-        CleanNnetDir(args.dir, num_iters, egs_dir,
-                     preserve_model_interval = args.preserve_model_interval,
-                     remove_egs = remove_egs)
+        common_train_lib.CleanNnetDir(args.dir, num_iters, egs_dir,
+                         preserve_model_interval = args.preserve_model_interval,
+                         remove_egs = remove_egs)
 
     # do some reporting
     [report, times, data] = nnet3_log_parse.GenerateAccuracyReport(args.dir)
     if args.email is not None:
-        SendMail(report, "Update : Expt {0} : complete".format(args.dir), args.email)
+        common_train_lib.SendMail(report, "Update : Expt {0} : complete".format(args.dir), args.email)
 
     report_handle = open("{dir}/accuracy.report".format(dir = args.dir), "w")
     report_handle.write(report)
@@ -322,7 +332,7 @@ def Main():
     except Exception as e:
         if args.email is not None:
             message = "Training session for experiment {dir} died due to an error.".format(dir = args.dir)
-            SendMail(message, message, args.email)
+            common_train_lib.SendMail(message, message, args.email)
         traceback.print_exc()
         raise e
 

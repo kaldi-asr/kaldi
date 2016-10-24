@@ -1,6 +1,7 @@
 
 
 # Copyright 2016 Vijayaditya Peddinti.
+#           2016 Vimal Manohar
 # Apache 2.0.
 
 
@@ -13,7 +14,7 @@ import imp
 import os
 import sys
 
-train_lib = imp.load_source('ntl', 'steps/nnet3/nnet3_train_lib.py')
+common_train_lib = imp.load_source('ntl', 'steps/nnet3/lib/common_train_lib.py')
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -24,7 +25,7 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 def GetNumberOfLeaves(dir):
-    [stdout, stderr] = train_lib.RunKaldiCommand("am-info {0}/final.mdl 2>/dev/null | grep -w pdfs".format(dir))
+    [stdout, stderr] = common_train_lib.RunKaldiCommand("am-info {0}/final.mdl 2>/dev/null | grep -w pdfs".format(dir))
     parts = stdout.split()
     #number of pdfs 7115
     assert(' '.join(parts[0:3]) == "number of pdfs")
@@ -34,7 +35,7 @@ def GetNumberOfLeaves(dir):
     return num_leaves
 
 def CreatePhoneLm(dir, tree_dir, run_opts, lm_opts = None):
-    train_lib.RunKaldiCommand("""
+    common_train_lib.RunKaldiCommand("""
   {command} {dir}/log/make_phone_lm.log \
     chain-est-phone-lm {lm_opts} \
      "ark:gunzip -c {tree_dir}/ali.*.gz | ali-to-phones {tree_dir}/final.mdl ark:- ark:- |" \
@@ -45,7 +46,7 @@ def CreatePhoneLm(dir, tree_dir, run_opts, lm_opts = None):
                tree_dir = tree_dir))
 
 def CreateDenominatorFst(dir, tree_dir, run_opts):
-    train_lib.RunKaldiCommand("""
+    common_train_lib.RunKaldiCommand("""
     copy-transition-model {tree_dir}/final.mdl {dir}/0.trans_mdl
     {command} {dir}/log/make_den_fst.log \
     chain-make-den-fst {dir}/tree {dir}/0.trans_mdl {dir}/phone_lm.fst \
@@ -63,7 +64,7 @@ def GenerateChainEgs(dir, data, lat_dir, egs_dir,
                     frames_per_iter = 20000, frames_per_eg = 20, srand = 0,
                     egs_opts = None, cmvn_opts = None, transform_dir = None):
 
-    train_lib.RunKaldiCommand("""
+    common_train_lib.RunKaldiCommand("""
 steps/nnet3/chain/get_egs.sh {egs_opts} \
   --cmd "{command}" \
   --cmvn-opts "{cmvn_opts}" \
@@ -99,7 +100,7 @@ steps/nnet3/chain/get_egs.sh {egs_opts} \
           data = data, lat_dir = lat_dir, dir = dir, egs_dir = egs_dir,
           egs_opts = egs_opts if egs_opts is not None else '' ))
 
-# this function is exactly similar to the version in nnet3_train_lib.py
+# this function is exactly similar to the version in nnet3_common_train_lib.py
 # except it uses egs files in place of cegs files
 def ComputePreconditioningMatrix(dir, egs_dir, num_lda_jobs, run_opts,
                                  max_lda_jobs = None, rand_prune = 4.0,
@@ -110,7 +111,7 @@ def ComputePreconditioningMatrix(dir, egs_dir, num_lda_jobs, run_opts,
 
 
   # Write stats with the same format as stats for LDA.
-    train_lib.RunKaldiCommand("""
+    common_train_lib.RunKaldiCommand("""
 {command} JOB=1:{num_lda_jobs} {dir}/log/get_lda_stats.JOB.log \
  nnet3-chain-acc-lda-stats --rand-prune={rand_prune} \
     {dir}/init.raw "ark:{egs_dir}/cegs.JOB.ark" {dir}/JOB.lda_stats""".format(
@@ -124,7 +125,7 @@ def ComputePreconditioningMatrix(dir, egs_dir, num_lda_jobs, run_opts,
     lda_stat_files = map(lambda x: '{0}/{1}.lda_stats'.format(dir, x),
                          range(1, num_lda_jobs + 1))
 
-    train_lib.RunKaldiCommand("""
+    common_train_lib.RunKaldiCommand("""
 {command} {dir}/log/sum_transform_stats.log \
     sum-lda-accs {dir}/lda_stats {lda_stat_files}""".format(
         command = run_opts.command,
@@ -139,20 +140,20 @@ def ComputePreconditioningMatrix(dir, egs_dir, num_lda_jobs, run_opts,
     # Appendix C.6 of http://arxiv.org/pdf/1410.7455v6.pdf; it's a scaled variant
     # of an LDA transform but without dimensionality reduction.
 
-    train_lib.RunKaldiCommand("""
+    common_train_lib.RunKaldiCommand("""
 {command} {dir}/log/get_transform.log \
  nnet-get-feature-transform {lda_opts} {dir}/lda.mat {dir}/lda_stats
      """.format(command = run_opts.command,dir = dir,
                 lda_opts = lda_opts if lda_opts is not None else ""))
 
-    train_lib.ForceSymlink("../lda.mat", "{0}/configs/lda.mat".format(dir))
+    common_train_lib.ForceSymlink("../lda.mat", "{0}/configs/lda.mat".format(dir))
 
 def PrepareInitialAcousticModel(dir, run_opts):
     """ Adds the first layer; this will also add in the lda.mat and
         presoftmax_prior_scale.vec. It will also prepare the acoustic model
         with the transition model."""
 
-    train_lib.RunKaldiCommand("""
+    common_train_lib.RunKaldiCommand("""
 {command} {dir}/log/add_first_layer.log \
    nnet3-init --srand=-1 {dir}/init.raw {dir}/configs/layer1.config {dir}/0.raw     """.format(command = run_opts.command,
                dir = dir))
@@ -163,7 +164,7 @@ def PrepareInitialAcousticModel(dir, run_opts):
     # We ensure that they have the same mode (even if someone changed the
     # script to make one or both of them text mode) by copying them both
     # before concatenating them.
-    train_lib.RunKaldiCommand("""
+    common_train_lib.RunKaldiCommand("""
 {command} {dir}/log/init_mdl.log \
     nnet3-am-init {dir}/0.trans_mdl {dir}/0.raw {dir}/0.mdl""".format(
                    command = run_opts.command, dir = dir))
@@ -183,7 +184,7 @@ def CombineModels(dir, num_iters, num_iters_combine, num_chunk_per_minibatch,
       else:
           print('{0}: warning: model file {1} does not exist (final combination)'.format(
                   sys.argv[0], model_file))
-    train_lib.RunKaldiCommand("""
+    common_train_lib.RunKaldiCommand("""
 {command} {combine_queue_opt} {dir}/log/combine.log \
 nnet3-chain-combine --num-iters=40 \
    --l2-regularize={l2} --leaky-hmm-coefficient={leaky} \
@@ -201,14 +202,15 @@ nnet3-chain-combine --num-iters=40 \
   # Compute the probability of the final, combined model with
   # the same subset we used for the previous compute_probs, as the
   # different subsets will lead to different probs.
-    ComputeTrainCvProbabilities(dir, 'final', egs_dir, l2_regularize, xent_regularize, leaky_hmm_coefficient, run_opts, wait = False)
+    ComputeTrainCvProbabilities(dir, 'final', egs_dir, l2_regularize, xent_regularize,
+                                leaky_hmm_coefficient, run_opts, wait = False)
 
 def ComputeTrainCvProbabilities(dir, iter, egs_dir, l2_regularize, xent_regularize,
                                 leaky_hmm_coefficient, run_opts, wait = False):
 
     model = '{0}/{1}.mdl'.format(dir, iter)
 
-    train_lib.RunKaldiCommand("""
+    common_train_lib.RunKaldiCommand("""
 {command} {dir}/log/compute_prob_valid.{iter}.log \
   nnet3-chain-compute-prob --l2-regularize={l2} --leaky-hmm-coefficient={leaky} \
   --xent-regularize={xent_reg} \
@@ -220,7 +222,7 @@ def ComputeTrainCvProbabilities(dir, iter, egs_dir, l2_regularize, xent_regulari
                xent_reg = xent_regularize,
                egs_dir = egs_dir), wait = wait)
 
-    train_lib.RunKaldiCommand("""
+    common_train_lib.RunKaldiCommand("""
 {command} {dir}/log/compute_prob_train.{iter}.log \
   nnet3-chain-compute-prob --l2-regularize={l2} --leaky-hmm-coefficient={leaky} \
   --xent-regularize={xent_reg} \
@@ -238,7 +240,7 @@ def ComputeProgress(dir, iter, run_opts, wait=False):
 
     prev_model = '{0}/{1}.mdl'.format(dir, iter - 1)
     model = '{0}/{1}.mdl'.format(dir, iter)
-    train_lib.RunKaldiCommand("""
+    common_train_lib.RunKaldiCommand("""
 {command} {dir}/log/progress.{iter}.log \
 nnet3-am-info {model} '&&' \
 nnet3-show-progress --use-gpu=no "nnet3-am-copy --raw=true {prev_model} - |" "nnet3-am-copy --raw=true {model} - |"

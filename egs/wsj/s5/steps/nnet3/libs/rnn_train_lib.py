@@ -11,7 +11,7 @@
 import logging
 import imp
 
-nnet3_train_lib = imp.load_source('ntl', 'steps/nnet3/nnet3_train_lib.py')
+common_train_lib = imp.load_source('ntl', 'steps/nnet3/common_train_lib.py')
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -50,7 +50,7 @@ def TrainNewModels(dir, iter, srand, num_jobs,
             # computation-requests) during training.
             cache_write_opt="--write-cache={dir}/cache.{iter}".format(dir=dir, iter=iter+1)
 
-        process_handle = nnet3_train_lib.RunKaldiCommand("""
+        process_handle = common_train_lib.RunKaldiCommand("""
 {command} {train_queue_opt} {dir}/log/train.{iter}.{job}.log \
   nnet3-train {parallel_train_opts} {cache_read_opt} {cache_write_opt} \
   --print-interval=10 --momentum={momentum} \
@@ -114,13 +114,13 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
 
     # Sets off some background jobs to compute train and
     # validation set objectives
-    nnet3_train_lib.ComputeTrainCvProbabilities(dir, iter, egs_dir, run_opts,
+    common_train_lib.ComputeTrainCvProbabilities(dir, iter, egs_dir, run_opts,
                                                 mb_size=cv_minibatch_size,
                                                 get_raw_nnet_from_am = get_raw_nnet_from_am)
 
     if iter > 0:
         # Runs in the background
-        nnet3_train_lib.ComputeProgress(dir, iter, egs_dir, run_opts,
+        common_train_lib.ComputeProgress(dir, iter, egs_dir, run_opts,
                                         mb_size=cv_minibatch_size,
                                         get_raw_nnet_from_am = get_raw_nnet_from_am)
 
@@ -169,14 +169,14 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
                    momentum, max_param_change,
                    shuffle_buffer_size, cur_num_chunk_per_minibatch,
                    cache_read_opt, run_opts)
-    [models_to_average, best_model] = nnet3_train_lib.GetSuccessfulModels(num_jobs, '{0}/log/train.{1}.%.log'.format(dir,iter))
+    [models_to_average, best_model] = common_train_lib.GetSuccessfulModels(num_jobs, '{0}/log/train.{1}.%.log'.format(dir,iter))
     nnets_list = []
     for n in models_to_average:
         nnets_list.append("{0}/{1}.{2}.raw".format(dir, iter + 1, n))
 
     if do_average:
         # average the output of the different jobs.
-        nnet3_train_lib.GetAverageNnetModel(
+        common_train_lib.GetAverageNnetModel(
                         dir = dir, iter = iter,
                         nnets_list = " ".join(nnets_list),
                         run_opts = run_opts,
@@ -185,7 +185,7 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
 
     else:
         # choose the best model from different jobs
-        nnet3_train_lib.GetBestNnetModel(
+        common_train_lib.GetBestNnetModel(
                         dir = dir, iter = iter,
                         best_model_index = best_model,
                         run_opts = run_opts,

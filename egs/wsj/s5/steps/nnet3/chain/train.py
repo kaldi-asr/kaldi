@@ -18,8 +18,8 @@ import traceback
 import shutil
 import math
 
-train_lib = imp.load_source('ntl', 'steps/nnet3/nnet3_train_lib.py')
-chain_lib = imp.load_source('ncl', 'steps/nnet3/chain/nnet3_chain_lib.py')
+common_train_lib = imp.load_source('ctl', 'steps/nnet3/libs/common_train_lib.py')
+chain_lib = imp.load_source('ncl', 'steps/nnet3/libs/chain_train_lib.py')
 nnet3_log_parse = imp.load_source('nlp', 'steps/nnet3/report/nnet3_log_parse_lib.py')
 
 logger = logging.getLogger(__name__)
@@ -41,10 +41,10 @@ def GetArgs():
 
     # feat options
     parser.add_argument("--feat.online-ivector-dir", type=str, dest='online_ivector_dir',
-                        default = None, action = train_lib.NullstrToNoneAction,
+                        default = None, action = common_train_lib.NullstrToNoneAction,
                         help="directory with the ivectors extracted in an online fashion.")
     parser.add_argument("--feat.cmvn-opts", type=str, dest='cmvn_opts',
-                        default = None, action = train_lib.NullstrToNoneAction,
+                        default = None, action = common_train_lib.NullstrToNoneAction,
                         help="A string specifying '--norm-means' and '--norm-vars' values")
 
     # egs extraction options
@@ -65,21 +65,21 @@ def GetArgs():
                         " in the estimation of bidirectional RNN state before"
                         " prediction of the first label.")
     parser.add_argument("--egs.transform_dir", type=str, dest='transform_dir',
-                        default = None, action = train_lib.NullstrToNoneAction,
+                        default = None, action = common_train_lib.NullstrToNoneAction,
                         help="String to provide options directly to steps/nnet3/get_egs.sh script")
     parser.add_argument("--egs.dir", type=str, dest='egs_dir',
-                        default = None, action = train_lib.NullstrToNoneAction,
+                        default = None, action = common_train_lib.NullstrToNoneAction,
                         help="Directory with egs. If specified this directory "
                         "will be used rather than extracting egs")
     parser.add_argument("--egs.stage", type=int, dest='egs_stage',
                         default = -6, help="Stage at which get_egs.sh should be restarted")
     parser.add_argument("--egs.opts", type=str, dest='egs_opts',
-                        default = None, action = train_lib.NullstrToNoneAction,
+                        default = None, action = common_train_lib.NullstrToNoneAction,
                         help="String to provide options directly to steps/nnet3/get_egs.sh script")
 
     # chain options
     parser.add_argument("--chain.lm-opts", type=str, dest='lm_opts',
-                        default = None, action = train_lib.NullstrToNoneAction,
+                        default = None, action = common_train_lib.NullstrToNoneAction,
                         help="options to be be passed to chain-est-phone-lm")
     parser.add_argument("--chain.l2-regularize", type=float, dest='l2_regularize',
                         default = 0.0,
@@ -99,7 +99,7 @@ def GetArgs():
     parser.add_argument("--chain.leaky-hmm-coefficient", type=float, dest='leaky_hmm_coefficient',
                         default = 0.00001, help="")
     parser.add_argument("--chain.apply-deriv-weights", type=str, dest='apply_deriv_weights',
-                        default=True, action=train_lib.StrToBoolAction,
+                        default=True, action=common_train_lib.StrToBoolAction,
                         choices = ["true", "false"],
                         help="")
     parser.add_argument("--chain.truncate-deriv-weights", type=float, dest='truncate_deriv_weights',
@@ -134,12 +134,6 @@ def GetArgs():
     parser.add_argument("--trainer.num-epochs", type=int, dest='num_epochs',
                         default = 10,
                         help="Number of epochs to train the model")
-    parser.add_argument("--trainer.prior-subset-size", type=int, dest='prior_subset_size',
-                        default = 20000,
-                        help="Number of samples for computing priors")
-    parser.add_argument("--trainer.num-jobs-compute-prior", type=int, dest='num_jobs_compute_prior',
-                        default = 10,
-                        help="The prior computation jobs are single threaded and run on the CPU")
     parser.add_argument("--trainer.max-models-combine", type=int, dest='max_models_combine',
                         default = 20,
                         help="The maximum number of models used in the final"
@@ -230,18 +224,18 @@ def GetArgs():
                         help="Specifies the stage of the experiment to execution from")
     parser.add_argument("--exit-stage", type=int, default=None,
                         help="If specified, training exits before running this stage")
-    parser.add_argument("--cmd", type=str, action = train_lib.NullstrToNoneAction, dest="command",
+    parser.add_argument("--cmd", type=str, action = common_train_lib.NullstrToNoneAction, dest="command",
                         help="Specifies the script to launch jobs."
                         " e.g. queue.pl for launching on SGE cluster run.pl"
                         " for launching on local machine", default = "queue.pl")
-    parser.add_argument("--use-gpu", type=str, action = train_lib.StrToBoolAction,
+    parser.add_argument("--use-gpu", type=str, action = common_train_lib.StrToBoolAction,
                         choices = ["true", "false"],
                         help="Use GPU for training", default=True)
-    parser.add_argument("--cleanup", type=str, action = train_lib.StrToBoolAction,
+    parser.add_argument("--cleanup", type=str, action = common_train_lib.StrToBoolAction,
                         choices = ["true", "false"],
                         help="Clean up models after training", default=True)
     parser.add_argument("--cleanup.remove-egs", type=str, dest='remove_egs',
-                        default = True, action = train_lib.StrToBoolAction,
+                        default = True, action = common_train_lib.StrToBoolAction,
                         choices = ["true", "false"],
                         help="If true, remove egs after experiment")
     parser.add_argument("--cleanup.preserve-model-interval", dest = "preserve_model_interval",
@@ -249,7 +243,7 @@ def GetArgs():
                         help="Determines iterations for which models will be preserved during cleanup. If mod(iter,preserve_model_interval) == 0 model will be preserved.")
 
     parser.add_argument("--reporting.email", dest = "email",
-                        type=str, default=None, action = train_lib.NullstrToNoneAction,
+                        type=str, default=None, action = common_train_lib.NullstrToNoneAction,
                         help="Email-id to report about the progress of the experiment. NOTE: It assumes the machine on which the script is being run can send emails from command line via. mail program. The Kaldi mailing list will not support this feature. It might require local expertise to setup. ")
     parser.add_argument("--reporting.interval", dest = "reporting_interval",
                         type=int, default=0.1,
@@ -291,9 +285,9 @@ def ProcessArgs(args):
     if args.transform_dir is None:
         args.transform_dir = args.lat_dir
     # set the options corresponding to args.use_gpu
-    run_opts = RunOpts()
+    run_opts = common_train_lib.RunOpts()
     if args.use_gpu:
-        if not train_lib.CheckIfCudaCompiled():
+        if not common_train_lib.CheckIfCudaCompiled():
             logger.warning("""
     You are running with one thread but you have not compiled
     for CUDA.  You may be running a setup optimized for GPUs.  If you have
@@ -314,15 +308,6 @@ def ProcessArgs(args):
     run_opts.command = args.command
 
     return [args, run_opts]
-
-# a class to store run options
-class RunOpts:
-    def __init__(self):
-        self.command = None
-        self.train_queue_opt = None
-        self.combine_queue_opt = None
-        self.parallel_train_opts = None
-
 
 def TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archives,
                    raw_model_string, egs_dir,
@@ -357,7 +342,7 @@ def TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archi
         else:
             cur_cache_io_opts = cache_io_opts
 
-        process_handle = train_lib.RunKaldiCommand("""
+        process_handle = common_train_lib.RunKaldiCommand("""
 {command} {train_queue_opt} {dir}/log/train.{iter}.{job}.log \
   nnet3-chain-train {parallel_train_opts} \
   --apply-deriv-weights={app_deriv_wts} \
@@ -470,14 +455,14 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
                    frame_subsampling_factor, truncate_deriv_weights,
                    cache_io_opts, run_opts)
 
-    [models_to_average, best_model] = train_lib.GetSuccessfulModels(num_jobs, '{0}/log/train.{1}.%.log'.format(dir,iter))
+    [models_to_average, best_model] = common_train_lib.GetSuccessfulModels(num_jobs, '{0}/log/train.{1}.%.log'.format(dir,iter))
     nnets_list = []
     for n in models_to_average:
       nnets_list.append("{0}/{1}.{2}.raw".format(dir, iter + 1, n))
 
     if do_average:
         # average the output of the different jobs.
-        train_lib.RunKaldiCommand("""
+        common_train_lib.RunKaldiCommand("""
 {command} {dir}/log/average.{iter}.log \
 nnet3-average {nnet_list} - \| \
 nnet3-am-copy --scale={shrink} --set-raw-nnet=- {dir}/{iter}.mdl {dir}/{new_iter}.mdl
@@ -490,7 +475,7 @@ nnet3-am-copy --scale={shrink} --set-raw-nnet=- {dir}/{iter}.mdl {dir}/{new_iter
 
     else:
         # choose the best model from different jobs
-        train_lib.RunKaldiCommand("""
+        common_train_lib.RunKaldiCommand("""
 {command} {dir}/log/select.{iter}.log \
     nnet3-am-copy --scale={shrink} --set-raw-nnet={dir}/{next_iter}.{best_model_index}.raw  {dir}/{iter}.mdl {dir}/{next_iter}.mdl
         """.format(command = run_opts.command,
@@ -529,13 +514,13 @@ def Train(args, run_opts):
     CheckForRequiredFiles(args.feat_dir, args.tree_dir, args.lat_dir)
 
     # Set some variables.
-    num_jobs = train_lib.GetNumberOfJobs(args.tree_dir)
-    feat_dim = train_lib.GetFeatDim(args.feat_dir)
-    ivector_dim = train_lib.GetIvectorDim(args.online_ivector_dir)
+    num_jobs = common_train_lib.GetNumberOfJobs(args.tree_dir)
+    feat_dim = common_train_lib.GetFeatDim(args.feat_dir)
+    ivector_dim = common_train_lib.GetIvectorDim(args.online_ivector_dir)
 
     # split the training data into parts for individual jobs
     # we will use the same number of jobs as that used for alignment
-    train_lib.SplitData(args.feat_dir, num_jobs)
+    common_train_lib.SplitData(args.feat_dir, num_jobs)
     shutil.copy('{0}/tree'.format(args.tree_dir), args.dir)
     f = open('{0}/num_jobs'.format(args.dir), 'w')
     f.write(str(num_jobs))
@@ -544,7 +529,7 @@ def Train(args, run_opts):
     config_dir = '{0}/configs'.format(args.dir)
     var_file = '{0}/vars'.format(config_dir)
 
-    [model_left_context, model_right_context, num_hidden_layers] = train_lib.ParseModelConfigVarsFile(var_file)
+    [model_left_context, model_right_context, num_hidden_layers] = common_train_lib.ParseModelConfigVarsFile(var_file)
     # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
     # matrix.  This first config just does any initial splicing that we do;
     # we do this as it's a convenient way to get the stats for the 'lda-like'
@@ -559,7 +544,7 @@ def Train(args, run_opts):
 
     if (args.stage <= -4):
         logger.info("Initializing a basic network for estimating preconditioning matrix")
-        train_lib.RunKaldiCommand("""
+        common_train_lib.RunKaldiCommand("""
 {command} {dir}/log/nnet_init.log \
     nnet3-init --srand=-2 {dir}/configs/init.config {dir}/init.raw
     """.format(command = run_opts.command,
@@ -594,7 +579,7 @@ def Train(args, run_opts):
     else:
         egs_dir = args.egs_dir
 
-    [egs_left_context, egs_right_context, frames_per_eg, num_archives] = train_lib.VerifyEgsDir(egs_dir, feat_dim, ivector_dim, left_context, right_context)
+    [egs_left_context, egs_right_context, frames_per_eg, num_archives] = common_train_lib.VerifyEgsDir(egs_dir, feat_dim, ivector_dim, left_context, right_context)
     assert(args.chunk_width == frames_per_eg)
     num_archives_expanded = num_archives * args.frame_subsampling_factor
 
@@ -603,7 +588,7 @@ def Train(args, run_opts):
 
     # copy the properties of the egs to dir for
     # use during decoding
-    train_lib.CopyEgsPropertiesToExpDir(egs_dir, args.dir)
+    common_train_lib.CopyEgsPropertiesToExpDir(egs_dir, args.dir)
 
     if (args.stage <= -2):
         logger.info('Computing the preconditioning matrix for input features')
@@ -627,12 +612,12 @@ def Train(args, run_opts):
     num_archives_processed = 0
     num_iters=(num_archives_to_process * 2) / (args.num_jobs_initial + args.num_jobs_final)
 
-    num_iters_combine = train_lib.VerifyIterations(num_iters, args.num_epochs,
+    num_iters_combine = common_train_lib.VerifyIterations(num_iters, args.num_epochs,
                                                    num_hidden_layers, num_archives_expanded,
                                                    args.max_models_combine, args.add_layers_period,
                                                    args.num_jobs_final)
 
-    learning_rate = lambda iter, current_num_jobs, num_archives_processed: train_lib.GetLearningRate(iter, current_num_jobs, num_iters,
+    learning_rate = lambda iter, current_num_jobs, num_archives_processed: common_train_lib.GetLearningRate(iter, current_num_jobs, num_iters,
                                                                                            num_archives_processed,
                                                                                            num_archives_to_process,
                                                                                            args.initial_effective_lrate,
@@ -648,7 +633,7 @@ def Train(args, run_opts):
         if args.stage <= iter:
             if args.shrink_value != 1.0:
                 model_file = "{dir}/{iter}.mdl".format(dir = args.dir, iter = iter)
-                shrinkage_value = args.shrink_value if train_lib.DoShrinkage(iter, model_file, args.shrink_nonlinearity, args.shrink_threshold) else 1
+                shrinkage_value = args.shrink_value if common_train_lib.DoShrinkage(iter, model_file, args.shrink_nonlinearity, args.shrink_threshold) else 1
             else:
                 shrinkage_value = args.shrink_value
             logger.info("On iteration {0}, learning rate is {1} and shrink value is {2}.".format(iter, learning_rate(iter, current_num_jobs, num_archives_processed), shrinkage_value))
@@ -667,7 +652,7 @@ def Train(args, run_opts):
                               args.truncate_deriv_weights, run_opts)
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain conditions
-                train_lib.RemoveModel(args.dir, iter-2, num_iters, num_iters_combine,
+                common_train_lib.RemoveModel(args.dir, iter-2, num_iters, num_iters_combine,
                             args.preserve_model_interval)
 
             if args.email is not None:
@@ -677,7 +662,7 @@ def Train(args, run_opts):
                     [report, times, data] = nnet3_log_parse.GenerateAccuracyReport(args.dir, key="log-probability")
                     message = report
                     subject = "Update : Expt {dir} : Iter {iter}".format(dir = args.dir, iter = iter)
-                    train_lib.SendMail(message, subject, args.email)
+                    common_train_lib.SendMail(message, subject, args.email)
 
         num_archives_processed = num_archives_processed + current_num_jobs
 
@@ -696,14 +681,14 @@ def Train(args, run_opts):
             # delete it
             remove_egs = False
 
-        train_lib.CleanNnetDir(args.dir, num_iters, egs_dir,
+        common_train_lib.CleanNnetDir(args.dir, num_iters, egs_dir,
                                preserve_model_interval = args.preserve_model_interval,
                                remove_egs = remove_egs)
 
     # do some reporting
     [report, times, data] = nnet3_log_parse.GenerateAccuracyReport(args.dir, "log-probability")
     if args.email is not None:
-        train_lib.SendMail(report, "Update : Expt {0} : complete".format(args.dir), args.email)
+        common_train_lib.SendMail(report, "Update : Expt {0} : complete".format(args.dir), args.email)
 
     report_handle = open("{dir}/accuracy.report".format(dir = args.dir), "w")
     report_handle.write(report)

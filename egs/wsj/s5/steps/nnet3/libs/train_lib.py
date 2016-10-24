@@ -12,7 +12,7 @@ import logging
 import math
 import imp
 
-nnet3_train_lib = imp.load_source('ntl', 'steps/nnet3/nnet3_train_lib.py')
+common_train_lib = imp.load_source('ntl', 'steps/nnet3/common_train_lib.py')
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -25,25 +25,25 @@ logger.addHandler(handler)
 def AddCommonTrainArgs(parser):
     # feat options
     parser.add_argument("--feat.online-ivector-dir", type=str, dest='online_ivector_dir',
-                        default = None, action = NullstrToNoneAction,
+                        default = None, action = common_train_lib.NullstrToNoneAction,
                         help="""directory with the ivectors extracted in
                         an online fashion.""")
     parser.add_argument("--feat.cmvn-opts", type=str, dest='cmvn_opts',
-                        default = None, action = NullstrToNoneAction,
+                        default = None, action = common_train_lib.NullstrToNoneAction,
                         help="A string specifying '--norm-means' and '--norm-vars' values")
 
     # egs extraction options
     parser.add_argument("--egs.transform_dir", type=str, dest='transform_dir',
-                        default = None, action = NullstrToNoneAction,
+                        default = None, action = common_train_lib.NullstrToNoneAction,
                         help="""String to provide options directly to steps/nnet3/get_egs.sh script""")
     parser.add_argument("--egs.dir", type=str, dest='egs_dir',
-                        default = None, action = NullstrToNoneAction,
+                        default = None, action = common_train_lib.NullstrToNoneAction,
                         help="""Directory with egs. If specified this directory
                         will be used rather than extracting egs""")
     parser.add_argument("--egs.stage", type=int, dest='egs_stage',
                         default = 0, help="Stage at which get_egs.sh should be restarted")
     parser.add_argument("--egs.opts", type=str, dest='egs_opts',
-                        default = None, action = NullstrToNoneAction,
+                        default = None, action = common_train_lib.NullstrToNoneAction,
                         help="""String to provide options directly to steps/nnet3/get_egs.sh script""")
 
     # trainer options
@@ -124,23 +124,23 @@ def AddCommonTrainArgs(parser):
                         help="Specifies the stage of the experiment to execution from")
     parser.add_argument("--exit-stage", type=int, default=None,
                         help="If specified, training exits before running this stage")
-    parser.add_argument("--cmd", type=str, action = NullstrToNoneAction,
+    parser.add_argument("--cmd", type=str, action = common_train_lib.NullstrToNoneAction,
                         dest = "command",
                         help="""Specifies the script to launch jobs.
                         e.g. queue.pl for launching on SGE cluster
                              run.pl for launching on local machine
                         """, default = "queue.pl")
-    parser.add_argument("--egs.cmd", type=str, action = NullstrToNoneAction,
+    parser.add_argument("--egs.cmd", type=str, action = common_train_lib.NullstrToNoneAction,
                         dest = "egs_command",
                         help="""Script to launch egs jobs""", default = "queue.pl")
-    parser.add_argument("--use-gpu", type=str, action = StrToBoolAction,
+    parser.add_argument("--use-gpu", type=str, action = common_train_lib.StrToBoolAction,
                         choices = ["true", "false"],
                         help="Use GPU for training", default=True)
-    parser.add_argument("--cleanup", type=str, action = StrToBoolAction,
+    parser.add_argument("--cleanup", type=str, action = common_train_lib.StrToBoolAction,
                         choices = ["true", "false"],
                         help="Clean up models after training", default=True)
     parser.add_argument("--cleanup.remove-egs", type=str, dest='remove_egs',
-                        default = True, action = StrToBoolAction,
+                        default = True, action = common_train_lib.StrToBoolAction,
                         choices = ["true", "false"],
                         help="""If true, remove egs after experiment""")
     parser.add_argument("--cleanup.preserve-model-interval", dest = "preserve_model_interval",
@@ -148,7 +148,7 @@ def AddCommonTrainArgs(parser):
                         help="Determines iterations for which models will be preserved during cleanup. If mod(iter,preserve_model_interval) == 0 model will be preserved.")
 
     parser.add_argument("--reporting.email", dest = "email",
-                        type=str, default=None, action = NullstrToNoneAction,
+                        type=str, default=None, action = common_train_lib.NullstrToNoneAction,
                         help=""" Email-id to report about the progress of the experiment.
                               NOTE: It assumes the machine on which the script is being run can send
                               emails from command line via. mail program. The
@@ -157,16 +157,6 @@ def AddCommonTrainArgs(parser):
     parser.add_argument("--reporting.interval", dest = "reporting_interval",
                         type=int, default=0.1,
                         help="Frequency with which reports have to be sent, measured in terms of fraction of iterations. If 0 and reporting mail has been specified then only failure notifications are sent")
-
-# a class to store run options
-class RunOpts:
-    def __init__(self):
-        self.command = None
-        self.train_queue_opt = None
-        self.combine_queue_opt = None
-        self.prior_gpu_opt = None
-        self.prior_queue_opt = None
-        self.parallel_train_opts = None
 
 # this is the main method which differs between RNN and DNN training
 def TrainNewModels(dir, iter, srand, num_jobs,
@@ -197,7 +187,7 @@ def TrainNewModels(dir, iter, srand, num_jobs,
             # computation-requests) during training.
             cache_write_opt="--write-cache={dir}/cache.{iter}".format(dir=dir, iter=iter+1)
 
-        process_handle = nnet3_train_lib.RunKaldiCommand("""
+        process_handle = common_train_lib.RunKaldiCommand("""
 {command} {train_queue_opt} {dir}/log/train.{iter}.{job}.log \
   nnet3-train {parallel_train_opts} {cache_read_opt} {cache_write_opt} \
   --print-interval=10 --momentum={momentum} \
@@ -261,15 +251,13 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
 
     # Sets off some background jobs to compute train and
     # validation set objectives
-    nnet3_train_lib.ComputeTrainCvProbabilities(
-                    dir, iter, egs_dir, run_opts,
-                    get_raw_nnet_from_am = get_raw_nnet_from_am)
+    train_lib.ComputeTrainCvProbabilities(dir, iter, egs_dir, run_opts,
+                                          get_raw_nnet_from_am = get_raw_nnet_from_am)
 
     if iter > 0:
         # Runs in the background
-        nnet3_train_lib.ComputeProgress(
-                        dir, iter, egs_dir, run_opts,
-                        get_raw_nnet_from_am = get_raw_nnet_from_am)
+        train_lib.ComputeProgress(dir, iter, egs_dir, run_opts,
+                                  get_raw_nnet_from_am = get_raw_nnet_from_am)
 
     # an option for writing cache (storing pairs of nnet-computations
     # and computation-requests) during training.
@@ -312,27 +300,27 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
     except OSError:
         pass
 
-    TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archives,
-                   raw_model_string, egs_dir, frames_per_eg,
-                   left_context, right_context,
-                   momentum, max_param_change,
-                   shuffle_buffer_size, cur_minibatch_size,
-                   cache_read_opt, run_opts)
-    [models_to_average, best_model] = nnet3_train_lib.GetSuccessfulModels(num_jobs, '{0}/log/train.{1}.%.log'.format(dir,iter))
+    train_lib.TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archives,
+                             raw_model_string, egs_dir, frames_per_eg,
+                             left_context, right_context,
+                             momentum, max_param_change,
+                             shuffle_buffer_size, cur_minibatch_size,
+                             cache_read_opt, run_opts)
+    [models_to_average, best_model] = common_train_lib.GetSuccessfulModels(num_jobs, '{0}/log/train.{1}.%.log'.format(dir,iter))
     nnets_list = []
     for n in models_to_average:
         nnets_list.append("{0}/{1}.{2}.raw".format(dir, iter + 1, n))
 
     if do_average:
         # average the output of the different jobs.
-        nnet3_train_lib.GetAverageNnetModel(
+        common_train_lib.GetAverageNnetModel(
                         dir = dir, iter = iter,
                         nnets_list = " ".join(nnets_list),
                         run_opts = run_opts,
                         get_raw_nnet_from_am = get_raw_nnet_from_am)
     else:
         # choose the best model from different jobs
-        nnet3_train_lib.GetBestNnetModel(
+        common_train_lib.GetBestNnetModel(
                         dir = dir, iter = iter,
                         best_model_index = best_model,
                         run_opts = run_opts,
@@ -355,3 +343,262 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
         raise Exception("{0} has size 0. Something went wrong in iteration {1}".format(new_model, iter))
     if cache_read_opt and os.path.exists("{0}/cache.{1}".format(dir, iter)):
         os.remove("{0}/cache.{1}".format(dir, iter))
+
+def GenerateEgs(data, alidir, egs_dir,
+                left_context, right_context,
+                valid_left_context, valid_right_context,
+                run_opts, stage = 0,
+                feat_type = 'raw', online_ivector_dir = None,
+                samples_per_iter = 20000, frames_per_eg = 20, srand = 0,
+                egs_opts = None, cmvn_opts = None, transform_dir = None):
+
+    common_train_lib.RunKaldiCommand("""
+steps/nnet3/get_egs.sh {egs_opts} \
+  --cmd "{command}" \
+  --cmvn-opts "{cmvn_opts}" \
+  --feat-type {feat_type} \
+  --transform-dir "{transform_dir}" \
+  --online-ivector-dir "{ivector_dir}" \
+  --left-context {left_context} --right-context {right_context} \
+  --valid-left-context {valid_left_context} \
+  --valid-right-context {valid_right_context} \
+  --stage {stage} \
+  --samples-per-iter {samples_per_iter} \
+  --frames-per-eg {frames_per_eg} \
+  --srand {srand} \
+  {data} {alidir} {egs_dir}
+      """.format(command = run_opts.command,
+          cmvn_opts = cmvn_opts if cmvn_opts is not None else '',
+          feat_type = feat_type,
+          transform_dir = transform_dir if transform_dir is not None else '',
+          ivector_dir = online_ivector_dir if online_ivector_dir is not None else '',
+          left_context = left_context, right_context = right_context,
+          valid_left_context = valid_left_context,
+          valid_right_context = valid_right_context,
+          stage = stage, samples_per_iter = samples_per_iter,
+          frames_per_eg = frames_per_eg, srand = srand, data = data, alidir = alidir,
+          egs_dir = egs_dir,
+          egs_opts = egs_opts if egs_opts is not None else '' ))
+
+# This method generates egs directly from an scp file of targets, instead of
+# getting them from the alignments (as with the method GenerateEgs).
+# The targets are in matrix format for target_type="dense" and in posterior
+# format for target_type="sparse".
+# If using sparse targets, num_targets must be explicity specified.
+# If using dense targets, num_targets is computed by reading the feature matrix dimension.
+def GenerateEgsUsingTargets(data, targets_scp, egs_dir,
+                left_context, right_context,
+                valid_left_context, valid_right_context,
+                run_opts, stage = 0,
+                feat_type = 'raw', online_ivector_dir = None,
+                target_type = 'dense', num_targets = -1,
+                samples_per_iter = 20000, frames_per_eg = 20, srand = 0,
+                egs_opts = None, cmvn_opts = None, transform_dir = None):
+    if target_type == 'dense':
+        num_targets = common_train_lib.GetFeatDimFromScp(targets_scp)
+    else:
+        if num_targets == -1:
+            raise Exception("--num-targets is required if target-type is dense")
+
+    common_train_lib.RunKaldiCommand("""
+steps/nnet3/get_egs_targets.sh {egs_opts} \
+  --cmd "{command}" \
+  --cmvn-opts "{cmvn_opts}" \
+  --feat-type {feat_type} \
+  --transform-dir "{transform_dir}" \
+  --online-ivector-dir "{ivector_dir}" \
+  --left-context {left_context} --right-context {right_context} \
+  --valid-left-context {valid_left_context} \
+  --valid-right-context {valid_right_context} \
+  --stage {stage} \
+  --samples-per-iter {samples_per_iter} \
+  --frames-per-eg {frames_per_eg} \
+  --srand {srand} \
+  --target-type {target_type} \
+  --num-targets {num_targets} \
+  {data} {targets_scp} {egs_dir}
+      """.format(command = run_opts.egs_command,
+          cmvn_opts = cmvn_opts if cmvn_opts is not None else '',
+          feat_type = feat_type,
+          transform_dir = transform_dir if transform_dir is not None else '',
+          ivector_dir = online_ivector_dir if online_ivector_dir is not None else '',
+          left_context = left_context, right_context = right_context,
+          valid_left_context = valid_left_context,
+          valid_right_context = valid_right_context,
+          stage = stage, samples_per_iter = samples_per_iter,
+          frames_per_eg = frames_per_eg, srand = srand,
+          num_targets = num_targets,
+          data = data,
+          targets_scp = targets_scp, target_type = target_type,
+          egs_dir = egs_dir,
+          egs_opts = egs_opts if egs_opts is not None else '' ))
+
+def ComputePreconditioningMatrix(dir, egs_dir, num_lda_jobs, run_opts,
+                                 max_lda_jobs = None, rand_prune = 4.0,
+                                 lda_opts = None):
+    if max_lda_jobs is not None:
+        if num_lda_jobs > max_lda_jobs:
+            num_lda_jobs = max_lda_jobs
+
+    common_train_lib.RunKaldiCommand("""
+{command} JOB=1:{num_lda_jobs} {dir}/log/get_lda_stats.JOB.log \
+ nnet3-acc-lda-stats --rand-prune={rand_prune} \
+    {dir}/init.raw "ark:{egs_dir}/egs.JOB.ark" {dir}/JOB.lda_stats""".format(
+        command = run_opts.command,
+        num_lda_jobs = num_lda_jobs,
+        dir = dir,
+        egs_dir = egs_dir,
+        rand_prune = rand_prune))
+
+    # the above command would have generated dir/{1..num_lda_jobs}.lda_stats
+    lda_stat_files = map(lambda x: '{0}/{1}.lda_stats'.format(dir, x),
+                         range(1, num_lda_jobs + 1))
+
+    common_train_lib.RunKaldiCommand("""
+{command} {dir}/log/sum_transform_stats.log \
+    sum-lda-accs {dir}/lda_stats {lda_stat_files}""".format(
+        command = run_opts.command,
+        dir = dir, lda_stat_files = " ".join(lda_stat_files)))
+
+    for file in lda_stat_files:
+        try:
+            os.remove(file)
+        except OSError:
+            raise Exception("There was error while trying to remove lda stat files.")
+    # this computes a fixed affine transform computed in the way we described in
+    # Appendix C.6 of http://arxiv.org/pdf/1410.7455v6.pdf; it's a scaled variant
+    # of an LDA transform but without dimensionality reduction.
+
+    common_train_lib.RunKaldiCommand("""
+{command} {dir}/log/get_transform.log \
+ nnet-get-feature-transform {lda_opts} {dir}/lda.mat {dir}/lda_stats
+     """.format(command = run_opts.command,dir = dir,
+                lda_opts = lda_opts if lda_opts is not None else ""))
+
+    common_train_lib.ForceSymlink("../lda.mat", "{0}/configs/lda.mat".format(dir))
+
+
+def PrepareInitialAcousticModel(dir, alidir, run_opts):
+    """ Adds the first layer; this will also add in the lda.mat and
+        presoftmax_prior_scale.vec. It will also prepare the acoustic model
+        with the transition model."""
+
+    common_train_lib.PrepareInitialNetwork(dir, run_opts)
+
+  # Convert to .mdl, train the transitions, set the priors.
+    common_train_lib.RunKaldiCommand("""
+{command} {dir}/log/init_mdl.log \
+    nnet3-am-init {alidir}/final.mdl {dir}/0.raw - \| \
+    nnet3-am-train-transitions - "ark:gunzip -c {alidir}/ali.*.gz|" {dir}/0.mdl
+        """.format(command = run_opts.command,
+                   dir = dir, alidir = alidir))
+
+
+def ComputeTrainCvProbabilities(dir, iter, egs_dir, run_opts, mb_size=256,
+                                wait = False, get_raw_nnet_from_am = True):
+
+    if get_raw_nnet_from_am:
+        model = "nnet3-am-copy --raw=true {dir}/{iter}.mdl - |".format(dir = dir, iter = iter)
+    else:
+        model = "{dir}/{iter}.raw".format(dir = dir, iter = iter)
+
+    common_train_lib.RunKaldiCommand("""
+{command} {dir}/log/compute_prob_valid.{iter}.log \
+  nnet3-compute-prob {compute_prob_opts} "{model}" \
+        "ark,bg:nnet3-merge-egs --minibatch-size={mb_size} ark:{egs_dir}/valid_diagnostic.egs ark:- |"
+    """.format(command = run_opts.command,
+               dir = dir,
+               iter = iter,
+               mb_size = mb_size,
+               model = model,
+               compute_prob_opts = compute_prob_opts,
+               egs_dir = egs_dir), wait = wait)
+
+    common_train_lib.RunKaldiCommand("""
+{command} {dir}/log/compute_prob_train.{iter}.log \
+  nnet3-compute-prob {compute_prob_opts} "{model}" \
+       "ark,bg:nnet3-merge-egs --minibatch-size={mb_size} ark:{egs_dir}/train_diagnostic.egs ark:- |"
+    """.format(command = run_opts.command,
+               dir = dir,
+               iter = iter,
+               mb_size = mb_size,
+               model = model,
+               compute_prob_opts = compute_prob_opts,
+               egs_dir = egs_dir), wait = wait)
+
+def ComputeProgress(dir, iter, egs_dir, run_opts, mb_size=256, wait=False,
+                    get_raw_nnet_from_am = True):
+    if get_raw_nnet_from_am:
+        prev_model = "nnet3-am-copy --raw=true {dir}/{iter}.mdl - |".format(dir, iter - 1)
+        model = "nnet3-am-copy --raw=true {dir}/{iter}.mdl - |".format(dir, iter)
+    else:
+        prev_model = '{0}/{1}.raw'.format(dir, iter - 1)
+        model = '{0}/{1}.raw'.format(dir, iter)
+
+    common_train_lib.RunKaldiCommand("""
+{command} {dir}/log/progress.{iter}.log \
+nnet3-info {model} '&&' \
+nnet3-show-progress --use-gpu=no {prev_model} {model} \
+"ark,bg:nnet3-merge-egs --minibatch-size={mb_size} ark:{egs_dir}/train_diagnostic.egs ark:-|"
+    """.format(command = run_opts.command,
+               dir = dir,
+               iter = iter,
+               model = model,
+               mb_size = mb_size,
+               prev_model = prev_model,
+               egs_dir = egs_dir), wait = wait)
+
+def CombineModels(dir, num_iters, num_iters_combine, egs_dir,
+                  run_opts, chunk_width = None,
+                  get_raw_nnet_from_am = True):
+    # Now do combination.  In the nnet3 setup, the logic
+    # for doing averaging of subsets of the models in the case where
+    # there are too many models to reliably esetimate interpolation
+    # factors (max_models_combine) is moved into the nnet3-combine
+    raw_model_strings = []
+    print num_iters_combine
+    for iter in range(num_iters - num_iters_combine + 1, num_iters + 1):
+      if get_raw_nnet_from_am:
+          model_file = '{0}/{1}.mdl'.format(dir, iter)
+          if not os.path.exists(model_file):
+              raise Exception('Model file {0} missing'.format(model_file))
+          raw_model_strings.append('"nnet3-am-copy --raw=true {0} -|"'.format(model_file))
+      else:
+          model_file = '{0}/{1}.raw'.format(dir, iter)
+          if not os.path.exists(model_file):
+              raise Exception('Model file {0} missing'.format(model_file))
+          raw_model_strings.append(model_file)
+
+    if chunk_width is not None:
+        # this is an RNN model
+        mbsize = int(1024.0/(chunk_width))
+    else:
+        mbsize = 1024
+
+    if get_raw_nnet_from_am:
+        out_model = "|nnet3-am-copy --set-raw-nnet=- {dir}/{num_iters}.mdl {dir}/combined.mdl".format(dir = dir, num_iters = num_iters)
+    else:
+        out_model = '{dir}/final.raw'.format(dir = dir)
+
+    common_train_lib.RunKaldiCommand("""
+{command} {combine_queue_opt} {dir}/log/combine.log \
+nnet3-combine --num-iters=40 \
+   --enforce-sum-to-one=true --enforce-positive-weights=true \
+   --verbose=3 {raw_models} "ark,bg:nnet3-merge-egs --measure-output-frames=false --minibatch-size={mbsize} ark:{egs_dir}/combine.egs ark:-|" \
+   {out_model}
+   """.format(command = run_opts.command,
+               combine_queue_opt = run_opts.combine_queue_opt,
+               dir = dir, raw_models = " ".join(raw_model_strings),
+               mbsize = mbsize,
+               out_model = out_model,
+               egs_dir = egs_dir))
+
+    # Compute the probability of the final, combined model with
+    # the same subset we used for the previous compute_probs, as the
+    # different subsets will lead to different probs.
+    if get_raw_nnet_from_am:
+        train_lib.ComputeTrainCvProbabilities(dir, 'combined', egs_dir, run_opts, wait = False)
+    else:
+        train_lib.ComputeTrainCvProbabilities(dir, 'final', egs_dir, run_opts,
+                                              wait = False, get_raw_nnet_from_am = False)
+
