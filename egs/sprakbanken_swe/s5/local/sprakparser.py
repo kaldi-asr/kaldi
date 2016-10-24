@@ -170,19 +170,4 @@ class Session:
         vals = self.get_vars(line).split(self.delimit)
         return vals[-2]
 
-        
 
-
-
-if __name__ == '__main__':
-    
-    s = Session("/home/andreas/Desktop/aligned_corpus/da.16kHz.0565-2", 
-                "adb_0565/data/scr0565/06/05650606/r5650555.spl")
-    
-    print(s)
-    print(os.getcwd())
-    print(s.name)
-    print(s.splpath)
-    print(s.record_states)
-    print(s.validation_states)
-    pass

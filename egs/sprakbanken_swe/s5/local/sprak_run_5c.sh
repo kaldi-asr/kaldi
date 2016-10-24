@@ -14,7 +14,7 @@ test2=$3
    --mix-up 8000 \
    --initial-learning-rate 0.01 --final-learning-rate 0.001 \
    --num-hidden-layers 4 --hidden-layer-dim 1024 \
-   --cmd "$decode_cmd" \
+   --cmd "$train_cmd" \
    data/train data/lang_test_4g exp/tri4a_ali exp/nnet5c || exit 1
   
   steps/nnet2/decode.sh --cmd "$decode_cmd" --nj 10 \

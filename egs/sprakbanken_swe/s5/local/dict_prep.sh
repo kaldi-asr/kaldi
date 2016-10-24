@@ -3,13 +3,13 @@
 
 
 KALDI_ROOT=$(pwd)/../../..
-dir=data/local/dict
+dir=data/local/dict2
 mkdir -p $dir
 
 if [ ! -f $dir/sv.leksikon.tar.gz ]; then 
     ( wget http://www.nb.no/sbfil/leksikalske_databaser/leksikon/sv.leksikon.tar.gz --directory-prefix=$dir)
 fi
-wait 
+ 
 
 tar -xzf $dir/sv.leksikon.tar.gz -C $dir
 

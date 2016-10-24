@@ -14,8 +14,9 @@ local/sprak_data_prep.sh  || exit 1;
 utils/fix_data_dir.sh data/train
 
 # Perform text normalisation, prepare dict folder and LM data transcriptions
-local/dict_prep.sh
-
+# this will download the lexicon directly from sprakbanken, without changes made by the author on the original lexicon
+# local/dict_prep.sh
+local/copy_dict
 
 utils/prepare_lang.sh data/local/dict "<UNK>" data/local/lang_tmp data/lang || exit 1;
 
@@ -31,21 +32,21 @@ mfccdir=mfcctest
 # Will return a warning message because of the corrupt audio files, but compute them anyway
 # If this step fails and prints a partial diff, rerun from sprak_data_prep.sh
 
-steps/make_mfcc.sh --nj 10 --cmd $train_cmd data/test exp/make_mfcc/test test mfcc &
+steps/make_mfcc.sh --nj 10 --cmd $train_cmd data/test exp/make_mfcc/test test mfcc
 steps/make_mfcc.sh --nj 10 --cmd $train_cmd data/train exp/make_mfcc/train mfcc || exit 1;
-wait
+
 
 # Compute cepstral mean and variance normalisation
-steps/compute_cmvn_stats.sh data/test exp/make_mfcc/test mfcc &
+steps/compute_cmvn_stats.sh data/test exp/make_mfcc/test mfcc 
 steps/compute_cmvn_stats.sh data/train exp/make_mfcc/train mfcc 
 
-wait
+
 
 # Repair data set (remove corrupt data points with corrupt audio)
 
-utils/fix_data_dir.sh data/test &
+utils/fix_data_dir.sh data/test
 utils/fix_data_dir.sh data/train 
-wait
+
 
 # Train LM with irstlm
 #creates 3g or 4g dictionary and importantly G.fst
@@ -53,18 +54,18 @@ wait
 local/train_irstlm.sh data/local/transcript_lm/transcripts.uniq 4 "4g" data/lang data/local/train4_lm &> data/local/4g.log 
 
 #speed test only 120 utterances per speaker
-utils/subset_data_dir.sh --per-spk data/test 120 data/test120_p_spk &
+utils/subset_data_dir.sh --per-spk data/test 120 data/test120_p_spk 
 
 
 # Train monophone model on short utterances  AFTER THIS ONE CAN SEE THE ALIGNMNT BETWEEN FRAMES AND PHONES USING COMMAND SHOW_ALIGNMENTS 
 steps/train_mono.sh --nj 10 --cmd "$train_cmd" data/train data/lang exp/mono || exit 1;
 
 # Ensure that LMs are created
-wait
-utils/mkgraph.sh --mono data/lang_test_4g exp/mono exp/mono/graph_4g &
+
+utils/mkgraph.sh --mono data/lang_test_4g exp/mono exp/mono/graph_4g 
 
 # Ensure that all graphs are constructed
-wait 
+ 
 
 steps/decode.sh --config conf/decode.config --nj 10 --cmd "$decode_cmd" \
 	exp/mono/graph_4g data/test120_p_spk exp/mono/decode
@@ -78,7 +79,7 @@ steps/align_si.sh --nj 10 --cmd "$train_cmd" \
 steps/train_deltas.sh --cmd "$train_cmd" \
     5800 96000 data/train data/lang exp/mono_ali exp/tri1|| exit 1;
 
-wait
+
 
 #make graph    
 utils/mkgraph.sh data/lang_test_4g exp/tri1 exp/tri1/graph_4g
@@ -87,7 +88,7 @@ steps/decode.sh --config conf/decode.config --nj 10 --cmd "$decode_cmd" \
   exp/tri1/graph_4g data/test120_p_spk exp/tri1/decode_test120_p_spk
  
 
-wait
+
 
 steps/align_si.sh --nj 10 --cmd "$train_cmd" \
   data/train data/lang exp/tri1 exp/tri1_ali || exit 1;
@@ -115,7 +116,7 @@ steps/decode.sh --nj 10 --cmd "$decode_cmd" \
 steps/align_si.sh  --nj 10 --cmd "$train_cmd" \
   --use-graphs true data/train data/lang exp/tri2b exp/tri2b_ali  || exit 1;
 
-wait
+
 
 
 # From 2b system, train 3b which is LDA + MLLT + SAT.
@@ -148,7 +149,7 @@ utils/mkgraph.sh data/lang_test_4g exp/tri4a exp/tri4a/graph_4g || exit 1;
 steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
    exp/tri4a/graph_4g data/test120_p_spk exp/tri4a/decode_test120_p_spk || exit 1;
 
-wait
+
 
 # alignment used to train nnets
 steps/align_fmllr.sh --nj 10 --cmd "$train_cmd" \
