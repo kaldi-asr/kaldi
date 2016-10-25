@@ -154,7 +154,7 @@ def Train(args, run_opts):
     # transform.
 
     if (args.stage <= -5):
-        logger.info("Initializing a basic network for estimating preconditioning matrix")
+        logger.info("Initializing a basic network")
         common_train_lib.RunKaldiCommand("""
 {command} {dir}/log/nnet_init.log \
     nnet3-init --srand=-2 {dir}/configs/init.config {dir}/init.raw

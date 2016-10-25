@@ -8,6 +8,7 @@
 
 # this script is based on steps/nnet3/lstm/train.sh
 
+
 import os
 import subprocess
 import argparse
@@ -20,7 +21,6 @@ import shutil
 
 common_train_lib = imp.load_source('ntl', 'steps/nnet3/lib/common_train_lib.py')
 nnet3_log_parse = imp.load_source('nlp', 'steps/nnet3/report/nnet3_log_parse_lib.py')
-rnn_train_lib = imp.load_source('rtl', 'steps/nnet3/libs/rnn_train_lib.py')
 train_lib = imp.load_source('tl', 'steps/nnet3/libs/train_lib.py')
 
 logger = logging.getLogger(__name__)
@@ -320,27 +320,27 @@ def Train(args, run_opts):
                                )
             logger.info("On iteration {0}, learning rate is {1} and shrink value is {2}.".format(iter, learning_rate(iter, current_num_jobs, num_archives_processed), shrinkage_value))
 
-            rnn_train_lib.TrainOneIteration(
-                          dir = args.dir,
-                          iter = iter,
-                          srand = args.srand,
-                          egs_dir = egs_dir,
-                          num_jobs = current_num_jobs,
-                          num_archives_processed = num_archives_processed,
-                          num_archives = num_archives,
-                          learning_rate = learning_rate(iter, current_num_jobs, num_archives_processed),
-                          shrinkage_value = shrinkage_value,
-                          num_chunk_per_minibatch = args.num_chunk_per_minibatch,
-                          num_hidden_layers = num_hidden_layers,
-                          add_layers_period = args.add_layers_period,
-                          left_context = left_context,
-                          right_context = right_context,
-                          min_deriv_time = min_deriv_time,
-                          momentum = args.momentum,
-                          max_param_change = args.max_param_change,
-                          shuffle_buffer_size = args.shuffle_buffer_size,
-                          cv_minibatch_size = args.cv_minibatch_size,
-                          run_opts = run_opts)
+            train_lib.TrainOneIteration(
+                      dir = args.dir,
+                      iter = iter,
+                      srand = args.srand,
+                      egs_dir = egs_dir,
+                      num_jobs = current_num_jobs,
+                      num_archives_processed = num_archives_processed,
+                      num_archives = num_archives,
+                      learning_rate = learning_rate(iter, current_num_jobs, num_archives_processed),
+                      shrinkage_value = shrinkage_value,
+                      minibatch_size = args.num_chunk_per_minibatch,
+                      num_hidden_layers = num_hidden_layers,
+                      add_layers_period = args.add_layers_period,
+                      left_context = left_context,
+                      right_context = right_context,
+                      min_deriv_time = min_deriv_time,
+                      momentum = args.momentum,
+                      max_param_change = args.max_param_change,
+                      shuffle_buffer_size = args.shuffle_buffer_size,
+                      cv_minibatch_size = args.cv_minibatch_size,
+                      run_opts = run_opts)
 
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain conditions

@@ -260,24 +260,26 @@ def Train(args, run_opts):
 
             logger.info("On iteration {0}, learning rate is {1}.".format(iter, learning_rate(iter, current_num_jobs, num_archives_processed)))
 
-            train_lib.TrainOneIteration(dir = args.dir,
-                                        iter = iter,
-                                        srand = args.srand,
-                                        egs_dir = egs_dir,
-                                        num_jobs = current_num_jobs,
-                                        num_archives_processed = num_archives_processed,
-                                        num_archives = num_archives,
-                                        learning_rate = learning_rate(iter, current_num_jobs, num_archives_processed),
-                                        minibatch_size = args.minibatch_size,
-                                        frames_per_eg = args.frames_per_eg,
-                                        num_hidden_layers = num_hidden_layers,
-                                        add_layers_period = args.add_layers_period,
-                                        left_context = left_context,
-                                        right_context = right_context,
-                                        momentum = args.momentum,
-                                        max_param_change = args.max_param_change,
-                                        shuffle_buffer_size = args.shuffle_buffer_size,
-                                        run_opts = run_opts)
+            train_lib.TrainOneIteration(
+                      dir = args.dir,
+                      iter = iter,
+                      srand = args.srand,
+                      egs_dir = egs_dir,
+                      num_jobs = current_num_jobs,
+                      num_archives_processed = num_archives_processed,
+                      num_archives = num_archives,
+                      learning_rate = learning_rate(iter, current_num_jobs, num_archives_processed),
+                      minibatch_size = args.minibatch_size,
+                      frames_per_eg = args.frames_per_eg,
+                      num_hidden_layers = num_hidden_layers,
+                      add_layers_period = args.add_layers_period,
+                      left_context = left_context,
+                      right_context = right_context,
+                      momentum = args.momentum,
+                      max_param_change = args.max_param_change,
+                      shuffle_buffer_size = args.shuffle_buffer_size,
+                      run_opts = run_opts)
+
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain conditions
                 common_train_lib.RemoveModel(
