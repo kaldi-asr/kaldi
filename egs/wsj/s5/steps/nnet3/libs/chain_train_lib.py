@@ -4,17 +4,16 @@
 #           2016 Vimal Manohar
 # Apache 2.0.
 
+# This is a module with methods which will be used by scripts for training of
+# deep neural network acoustic model with chain objective.
 
-import subprocess
 import logging
 import math
-import re
-import time
 import imp
 import os
 import sys
 
-common_train_lib = imp.load_source('ntl', 'steps/nnet3/lib/common_train_lib.py')
+common_train_lib = imp.load_source('ntl', 'steps/nnet3/libs/common_train_lib.py')
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -24,7 +23,8 @@ formatter = logging.Formatter('%(asctime)s [%(filename)s:%(lineno)s - %(funcName
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
-def TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archives,
+def TrainNewModels(dir, iter, srand, num_jobs,
+                   num_archives_processed, num_archives,
                    raw_model_string, egs_dir,
                    apply_deriv_weights,
                    left_deriv_truncate, right_deriv_truncate,
@@ -33,11 +33,11 @@ def TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archi
                    shuffle_buffer_size, num_chunk_per_minibatch,
                    frame_subsampling_factor, truncate_deriv_weights,
                    cache_io_opts, run_opts):
-      # We cannot easily use a single parallel SGE job to do the main training,
-      # because the computation of which archive and which --frame option
-      # to use for each job is a little complex, so we spawn each one separately.
-      # this is no longer true for RNNs as we use do not use the --frame option
-      # but we use the same script for consistency with FF-DNN code
+    # We cannot easily use a single parallel SGE job to do the main training,
+    # because the computation of which archive and which --frame option
+    # to use for each job is a little complex, so we spawn each one separately.
+    # this is no longer true for RNNs as we use do not use the --frame option
+    # but we use the same script for consistency with FF-DNN code
 
     deriv_time_opts=""
     if left_deriv_truncate is not None:
@@ -149,16 +149,16 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
         cache_io_opts = "--read-cache={dir}/cache.{iter}".format(dir = dir, iter = iter)
 
     if do_average:
-      cur_num_chunk_per_minibatch = num_chunk_per_minibatch
-      cur_max_param_change = max_param_change
+        cur_num_chunk_per_minibatch = num_chunk_per_minibatch
+        cur_max_param_change = max_param_change
     else:
-      # on iteration zero or when we just added a layer, use a smaller minibatch
-      # size (and we will later choose the output of just one of the jobs): the
-      # model-averaging isn't always helpful when the model is changing too fast
-      # (i.e. it can worsen the objective function), and the smaller minibatch
-      # size will help to keep the update stable.
-      cur_num_chunk_per_minibatch = num_chunk_per_minibatch / 2
-      cur_max_param_change = float(max_param_change) / math.sqrt(2)
+        # on iteration zero or when we just added a layer, use a smaller minibatch
+        # size (and we will later choose the output of just one of the jobs): the
+        # model-averaging isn't always helpful when the model is changing too fast
+        # (i.e. it can worsen the objective function), and the smaller minibatch
+        # size will help to keep the update stable.
+        cur_num_chunk_per_minibatch = num_chunk_per_minibatch / 2
+        cur_max_param_change = float(max_param_change) / math.sqrt(2)
 
     TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archives,
                    raw_model_string, egs_dir,
@@ -173,7 +173,7 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
     [models_to_average, best_model] = common_train_lib.GetSuccessfulModels(num_jobs, '{0}/log/train.{1}.%.log'.format(dir,iter))
     nnets_list = []
     for n in models_to_average:
-      nnets_list.append("{0}/{1}.{2}.raw".format(dir, iter + 1, n))
+        nnets_list.append("{0}/{1}.{2}.raw".format(dir, iter + 1, n))
 
     if do_average:
         # average the output of the different jobs.
@@ -219,6 +219,7 @@ def CheckForRequiredFiles(feat_dir, tree_dir, lat_dir):
                  '{0}/num_jobs'.format(lat_dir), '{0}/splice_opts'.format(lat_dir)]:
         if not os.path.isfile(file):
             raise Exception('Expected {0} to exist.'.format(file))
+
 def GetNumberOfLeaves(dir):
     [stdout, stderr] = common_train_lib.RunKaldiCommand("am-info {0}/final.mdl 2>/dev/null | grep -w pdfs".format(dir))
     parts = stdout.split()

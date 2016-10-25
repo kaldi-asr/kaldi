@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+
 
 # Copyright 2016 Vijayaditya Peddinti.
 #           2016 Vimal Manohar
@@ -11,8 +11,9 @@
 import logging
 import math
 import imp
+import os
 
-common_train_lib = imp.load_source('ntl', 'steps/nnet3/common_train_lib.py')
+common_train_lib = imp.load_source('ntl', 'steps/nnet3/libs/common_train_lib.py')
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -27,8 +28,9 @@ def TrainNewModels(dir, iter, srand, num_jobs,
                    raw_model_string, egs_dir,
                    left_context, right_context,
                    momentum, max_param_change,
-                   shuffle_buffer_size, minibatch_size, frames_per_eg,
-                   cache_read_opt, run_opts, min_deriv_time = None):
+                   shuffle_buffer_size, minibatch_size,
+                   cache_read_opt, run_opts,
+                   frames_per_eg = -1, min_deriv_time = None):
     # We cannot easily use a single parallel SGE job to do the main training,
     # because the computation of which archive and which --frame option
     # to use for each job is a little complex, so we spawn each one separately.
@@ -36,6 +38,10 @@ def TrainNewModels(dir, iter, srand, num_jobs,
     # but we use the same script for consistency with FF-DNN code
 
     chunk_level_training = False if frames_per_eg > 0 else True
+    deriv_time_opts = (""
+                       if min_deriv_time is None
+                       else "--optimization.min-deriv-time={0}".format(min_deriv_time)
+                       )
 
     context_opts="--left-context={0} --right-context={1}".format(
                   left_context, right_context)
@@ -59,7 +65,7 @@ def TrainNewModels(dir, iter, srand, num_jobs,
   nnet3-train {parallel_train_opts} {cache_read_opt} {cache_write_opt} \
   --print-interval=10 --momentum={momentum} \
   --max-param-change={max_param_change} \
-  {optimization_opts} "{raw_model}" \
+  {deriv_time_opts} "{raw_model}" \
   "ark,bg:nnet3-copy-egs {frame_opts} {context_opts} ark:{egs_dir}/egs.{archive_index}.ark ark:- | nnet3-shuffle-egs --buffer-size={shuffle_buffer_size} --srand={srand} ark:- ark:-| nnet3-merge-egs --minibatch-size={minibatch_size} --measure-output-frames=false --discard-partial-minibatches=true ark:- ark:- |" \
   {dir}/{next_iter}.{job}.raw
           """.format(command = run_opts.command,
@@ -71,9 +77,7 @@ def TrainNewModels(dir, iter, srand, num_jobs,
                                   if chunk_level_training
                                   else "--frame={0}".format(frame),
                      momentum = momentum, max_param_change = max_param_change,
-                     optimization_opts = "--optimization.min-deriv-time={0}".format(min_deriv_time)
-                                         if min_deriv_time is not None
-                                         else "",
+                     deriv_time_opts = deriv_time_opts
                      raw_model = raw_model_string, context_opts = context_opts,
                      egs_dir = egs_dir, archive_index = archive_index,
                      shuffle_buffer_size = shuffle_buffer_size,
@@ -181,8 +185,10 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
                    raw_model_string, egs_dir,
                    left_context, right_context,
                    momentum, max_param_change,
-                   shuffle_buffer_size, cur_minibatch_size, frames_per_eg,
-                   cache_read_opt, run_opts, min_deriv_time = min_deriv_time)
+                   shuffle_buffer_size, cur_minibatch_size,
+                   cache_read_opt, run_opts,
+                   frames_per_eg = frames_per_eg,
+                   min_deriv_time = min_deriv_time)
 
     [models_to_average, best_model] = common_train_lib.GetSuccessfulModels(num_jobs, '{0}/log/train.{1}.%.log'.format(dir,iter))
     nnets_list = []
