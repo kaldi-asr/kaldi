@@ -138,6 +138,7 @@ class HmmTopology {
   // Checks that the object is valid, and throw exception otherwise.
   void Check();
 
+  bool IsHmm() const;
 
   /// Returns the topology entry (i.e. vector of HmmState) for this phone;
   /// will throw exception if phone not covered by the topology.

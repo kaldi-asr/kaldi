@@ -28,7 +28,7 @@ void TransitionModel::ComputeTuples(const ContextDependencyInterface &ctx_dep) {
   const std::vector<int32> &phones = topo_.GetPhones();
   KALDI_ASSERT(!phones.empty());
 
-  if (SelfLoopEqualsForward()) {
+  if (IsHmm()) {
     // this is the case for normal models. but not fot chain models
     std::vector<std::vector<std::pair<int32, int32> > > pdf_info;
     std::vector<int32> num_pdf_classes( 1 + *std::max_element(phones.begin(), phones.end()), -1);
@@ -190,8 +190,7 @@ void TransitionModel::Check() const {
   }
 }
 
-bool TransitionModel::SelfLoopEqualsForward() const {
-  // Todo
+bool TransitionModel::IsHmm() const {
   const std::vector<int32> &phones = topo_.GetPhones();
   KALDI_ASSERT(!phones.empty());
   for (size_t i = 0; i < phones.size(); i++) {
@@ -376,20 +375,28 @@ void TransitionModel::Read(std::istream &is, bool binary) {
 }
 
 void TransitionModel::Write(std::ostream &os, bool binary) const {
+  bool is_hmm = IsHmm();
   WriteToken(os, binary, "<TransitionModel>");
   if (!binary) os << "\n";
   topo_.Write(os, binary);
-  WriteToken(os, binary, "<Tuples>");
+  if (is_hmm)
+    WriteToken(os, binary, "<Triples>");
+  else
+    WriteToken(os, binary, "<Tuples>");
   WriteBasicType(os, binary, static_cast<int32>(tuples_.size()));
   if (!binary) os << "\n";
   for (int32 i = 0; i < static_cast<int32> (tuples_.size()); i++) {
     WriteBasicType(os, binary, tuples_[i].phone);
     WriteBasicType(os, binary, tuples_[i].hmm_state);
     WriteBasicType(os, binary, tuples_[i].pdf);
-    WriteBasicType(os, binary, tuples_[i].self_loop_pdf);
+    if (!is_hmm)
+      WriteBasicType(os, binary, tuples_[i].self_loop_pdf);
     if (!binary) os << "\n";
   }
-  WriteToken(os, binary, "</Tuples>");
+  if (is_hmm)
+    WriteToken(os, binary, "</Triples>");
+  else
+    WriteToken(os, binary, "</Tuples>");
   if (!binary) os << "\n";
   WriteToken(os, binary, "<LogProbs>");
   if (!binary) os << "\n";
@@ -760,14 +767,18 @@ void TransitionModel::Print(std::ostream &os,
                             const Vector<double> *occs) {
   if (occs != NULL)
     KALDI_ASSERT(occs->Dim() == NumPdfs());
+  bool is_hmm = IsHmm();
   for (int32 tstate = 1; tstate <= NumTransitionStates(); tstate++) {
     const Tuple &tuple = tuples_[tstate-1];
     KALDI_ASSERT(static_cast<size_t>(tuple.phone) < phone_names.size());
     std::string phone_name = phone_names[tuple.phone];
 
     os << "Transition-state " << tstate << ": phone = " << phone_name
-       << " hmm-state = " << tuple.hmm_state << " pdf = " << tuple.pdf
-       << " self-loop-pdf = " << tuple.self_loop_pdf << '\n';
+       << " hmm-state = " << tuple.hmm_state << " pdf = " << tuple.pdf;
+    if (is_hmm)
+      os << '\n';
+    else
+      os << " self-loop-pdf = " << tuple.self_loop_pdf << '\n';
     for (int32 tidx = 0; tidx < NumTransitionIndices(tstate); tidx++) {
       int32 tid = PairToTransitionId(tstate, tidx);
       BaseFloat p = GetTransitionProb(tid);

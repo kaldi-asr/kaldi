@@ -257,7 +257,7 @@ class TransitionModel {
   // non_self_loop_log_probs_; called whenever log-probs change.
   void InitializeProbs();  // called from constructor.
   void Check() const;
-  bool SelfLoopEqualsForward() const;
+  bool IsHmm() const;
 
   struct Tuple {
     int32 phone;

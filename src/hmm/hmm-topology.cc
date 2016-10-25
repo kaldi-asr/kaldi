@@ -125,9 +125,9 @@ void HmmTopology::Read(std::istream &is, bool binary) {
     ReadIntegerVector(is, binary, &phone2idx_);
     int32 sz;
     ReadBasicType(is, binary, &sz);
-    bool new_topo = false;
+    bool is_hmm = true;
     if (sz == -1) {
-      new_topo = true;
+      is_hmm = false;
       ReadBasicType(is, binary, &sz);
     }
     entries_.resize(sz);
@@ -137,10 +137,10 @@ void HmmTopology::Read(std::istream &is, bool binary) {
       entries_[i].resize(thist_sz);
       for (int32 j = 0 ; j < thist_sz; j++) {
         ReadBasicType(is, binary, &(entries_[i][j].pdf_class));
-        if (new_topo)
-          ReadBasicType(is, binary, &(entries_[i][j].self_loop_pdf_class));
-        else
+        if (is_hmm)
           entries_[i][j].self_loop_pdf_class = entries_[i][j].pdf_class;
+        else
+          ReadBasicType(is, binary, &(entries_[i][j].self_loop_pdf_class));
         int32 thiss_sz;
         ReadBasicType(is, binary, &thiss_sz);
         entries_[i][j].transitions.resize(thiss_sz);
@@ -157,6 +157,7 @@ void HmmTopology::Read(std::istream &is, bool binary) {
 
 
 void HmmTopology::Write(std::ostream &os, bool binary) const {
+  bool is_hmm = IsHmm();
   WriteToken(os, binary, "<Topology>");
   if (!binary) {  // Text-mode write.
     os << "\n";
@@ -179,8 +180,10 @@ void HmmTopology::Write(std::ostream &os, bool binary) const {
           WriteToken(os, binary, "<PdfClass>");
           WriteBasicType(os, binary, entries_[i][j].pdf_class);
           KALDI_ASSERT(entries_[i][j].self_loop_pdf_class != kNoPdf);
-          WriteToken(os, binary, "<SelfLoopPdfClass>");
-          WriteBasicType(os, binary, entries_[i][j].self_loop_pdf_class);
+          if (!is_hmm) {
+            WriteToken(os, binary, "<SelfLoopPdfClass>");
+            WriteBasicType(os, binary, entries_[i][j].self_loop_pdf_class);
+          }
         }
         for (size_t k = 0; k < entries_[i][j].transitions.size(); k++) {
           WriteToken(os, binary, "<Transition>");
@@ -196,13 +199,13 @@ void HmmTopology::Write(std::ostream &os, bool binary) const {
   } else {
     WriteIntegerVector(os, binary, phones_);
     WriteIntegerVector(os, binary, phone2idx_);
-    WriteBasicType(os, binary, static_cast<int32>(-1));
+    if (!is_hmm) WriteBasicType(os, binary, static_cast<int32>(-1));
     WriteBasicType(os, binary, static_cast<int32>(entries_.size()));
     for (size_t i = 0; i < entries_.size(); i++) {
       WriteBasicType(os, binary, static_cast<int32>(entries_[i].size()));
       for (size_t j = 0; j < entries_[i].size(); j++) {
         WriteBasicType(os, binary, entries_[i][j].pdf_class);
-        WriteBasicType(os, binary, entries_[i][j].self_loop_pdf_class);
+        if (!is_hmm) WriteBasicType(os, binary, entries_[i][j].self_loop_pdf_class);
         WriteBasicType(os, binary, static_cast<int32>(entries_[i][j].transitions.size()));
         for (size_t k = 0; k < entries_[i][j].transitions.size(); k++) {
           WriteBasicType(os, binary, entries_[i][j].transitions[k].first);
@@ -295,6 +298,22 @@ void HmmTopology::Check() {
           "contiguous and start from zero.";
     }
   }
+}
+
+bool HmmTopology::IsHmm() const {
+  const std::vector<int32> &phones = GetPhones();
+  KALDI_ASSERT(!phones.empty());
+  for (size_t i = 0; i < phones.size(); i++) {
+    int32 phone = phones[i];
+    const TopologyEntry &entry = TopologyForPhone(phone);
+    for (int32 j = 0; j < static_cast<int32>(entry.size()); j++) {  // for each state...
+      int32 pdf_class = entry[j].pdf_class,
+            self_loop_pdf_class = entry[j].self_loop_pdf_class;
+      if (pdf_class != self_loop_pdf_class)
+        return false;
+    }
+  }
+  return true;
 }
 
 const HmmTopology::TopologyEntry& HmmTopology::TopologyForPhone(int32 phone) const {  // Will throw if phone not covered.
