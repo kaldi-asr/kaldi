@@ -22,7 +22,7 @@ learning_rate_decline_factor=1.2
 . path.sh
 . parse_options.sh || exit 1;
 
-outdir=rnnlm-$initial_learning_rate-$final_learning_rate-$learning_rate_decline_factor
+outdir=rnnlm-sigmoid-$initial_learning_rate-$final_learning_rate-$learning_rate_decline_factor
 srcdir=data/local/dict
 
 #set -x
@@ -63,7 +63,7 @@ if [ $stage -le -2 ]; then
   cat > $outdir/config <<EOF
   input-node name=input dim=$num_words_in
   component name=first_affine type=NaturalGradientAffineComponent input-dim=$[$num_words_in+$hidden_dim] output-dim=$hidden_dim  
-  component name=first_nonlin type=RectifiedLinearComponent dim=$hidden_dim
+  component name=first_nonlin type=SigmoidComponent dim=$hidden_dim
   component name=first_renorm type=NormalizeComponent dim=$hidden_dim target-rms=1.0
   component name=final_affine type=NaturalGradientAffineComponent input-dim=$hidden_dim output-dim=$num_words_out
   component name=final_log_softmax type=LogSoftmaxComponent dim=$num_words_out
@@ -124,8 +124,6 @@ if [ $stage -le $num_iter ]; then
     ) &
   done
   cp $outdir/$num_iter.mdl $outdir/rnnlm
-  cp $outdir/wordlist.out $outdir/wordlist.rnn
-  touch $outdir/unk.probs
 fi
 
 

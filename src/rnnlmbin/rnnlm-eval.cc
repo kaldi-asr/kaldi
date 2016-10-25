@@ -85,7 +85,7 @@ void RnnlmEval(NnetComputeProb &computer, // can't make this const it seems
                                      word_ids_out, output_dim);
     computer.Compute(egs);
     const SimpleObjectiveInfo *info = computer.GetObjective("output");
-    ofile << info->tot_objective + oos_cost * num_oovs << " " << num_oovs << endl;
+    ofile << info->tot_objective + oos_cost * num_oovs << endl;
     computer.Reset();
   }
 }
