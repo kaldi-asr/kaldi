@@ -7,13 +7,11 @@
 # This script demonstrate how to expand a existing lexicon using a combination
 # of acoustic evidence and G2P to learn a lexicon that covers words in a target 
 # vocab, and agrees sufficiently with the acoustics. The basic idea is to 
-# train a G2P model first, using the given reference lexicon, and then apply the
-# G2P model on all oov words in acoustic training data, and then run phone 
-# level decoding on the same data and the G2P-expanded lexicon using an existing
+# run phone level decoding on acoustic training data using an existing
 # acoustice model (possibly re-trained using a G2P-expanded lexicon) to get 
-# alternative pronunciations for all words. Then we combine these three
+# alternative pronunciations for words in training data. Then we combine three
 # exclusive sources of pronunciations: the reference lexicon (supposedly 
-# hand-derived), lexicons from G2P/phone decoding into one lexicon and then run 
+# hand-derived), phone decoding, and G2P (optional) into one lexicon and then run 
 # lattice alignment on the same data, to collect acoustic evidence (soft
 # counts) of all pronunciations. Based on these statistics, and
 # user-specified prior-counts (parameterized by prior mean and prior-counts-tot,
@@ -26,19 +24,20 @@
 # in-vocab words' prons. The user can change the edits file manually and then apply
 # it to the learned lexicon using steps/dict/apply_lexicon_edits after running this script.
 
-stage=0
+set -x
 
+stage=0
 # Begin configuration section.  
 cmd=run.pl
 nj=
 stage=6
 oov_symbol=
+g2p_pron_candidates=
 min_prob=0.3
 variants_prob_mass=0.7
 variants_prob_mass2=0.9
 prior_counts_tot=15
 prior_mean="0.7,0.2,0.1"
-g2p_for_iv=true
 affix="lex"
 num_gauss=
 num_leaves=
@@ -88,6 +87,8 @@ if [ $# -ne 6 ]; then
   echo "  --cmd '$cmd'                 # command to submit jobs with (e.g. run.pl, queue.pl)"
   echo "  --nj <nj>                    # number of parallel jobs"
   echo "  --oov-symbol '$oov_symbol'   # oov symbol, like <UNK>."
+  echo "  --g2p-pron-candidates        # A lexicon file containing g2p generated pronunciations, for words in acoustic training "
+  echo "                               # data / target vocabulary. It's optional."
   echo "  --min-prob <float>           # the cut-off parameter used to select pronunciation candidates from phone"
   echo "                               # decoding. A smaller min-prob means more candidates will be included."
   echo "  --prior-mean                 # Mean of priors (summing up to 1) assigned to three exclusive pronunciation"
@@ -106,7 +107,6 @@ if [ $# -ne 6 ]; then
   echo "                               # after the total prob mass of selected candidates hit variants-prob-mass,"
   echo "                               # we continue to pick up reference candidates with highest posteriors"
   echo "                               # until the total prob mass hit this amount."
-  echo "  --g2p-for-iv <true|false>    # apply G2P for in-vocab words to get more alternative pronunciations."
   echo "  --affix                      # the affix we want to append to the dir to put the retrained model "
   echo "                               # and all intermediate outputs, like 'lex'."
   echo "  --num-gauss                  # number of gaussians for the re-trained SAT model (on top of <src-mdl>)."            
@@ -128,18 +128,16 @@ dir=${src_mdl}_${affix}_work # Most outputs will be put here.
 
 mkdir -p $dir
 if [ $stage -le 0 ]; then
-  echo "$0: Train G2P model on the reference lexicon, and do some preparatory work."
-  steps/dict/train_g2p.sh --cmd "$decode_cmd --mem 4G" $ref_dict/lexicon.txt $dir/g2p || exit 1;
-    
+  echo "$0: Some preparatory work."
+  # Get the word counts of training data.
   awk '{for (n=2;n<=NF;n++) counts[$n]++;} END{for (w in counts) printf "%s %d\n",w, counts[w];}' \
     $data/text | sort > $dir/train_counts.txt
   
+  # Get the non-scored entries and exclude them from the reference lexicon/vocab, and target_vocab.
   steps/cleanup/get_non_scored_words.py $ref_lang > $dir/non_scored_words
-  
   awk 'NR==FNR{a[$1] = 1; next} {if($1 in a) print $0}' $dir/non_scored_words \
     $ref_dict/lexicon.txt > $dir/non_scored_entries 
 
-  # Exclude non-scored entries from reference lexicon/vocab, and target_vocab.
   awk 'NR==FNR{a[$1] = 1; next} {if(!($1 in a)) print $0}' $dir/non_scored_words \
     $ref_dict/lexicon.txt | tr -s '\t' ' ' > $dir/ref_lexicon.txt
 
@@ -154,112 +152,95 @@ if [ $stage -le 0 ]; then
   python -c 'import sys; import math; print int(math.ceil(float(sys.argv[1])/float(sys.argv[2])))' \
     `wc -l $dir/ref_lexicon.txt | cut -f1 -d' '` `wc -l $dir/ref_vocab.txt | cut -f1 -d' '` \
     > $dir/target_num_prons_per_word || exit 1;
+
+  if [ -z $g2p_pron_candidates ]; then
+    # create an empty list of g2p generated prons, if it's not given.
+    touch $dir/g2p_pron_candidates
+  else
+    cp $g2p_pron_candidates $dir/g2p_pron_candidates 2>/dev/null
+  fi
 fi
 
-if [ $stage -le 1 ]; then
-  echo "$0: Create G2P-expanded lexicon, which expands the original reference lexicon to all words seen in,"
+if [ $stage -le 1 ] && $retrain_src_mdl; then
+  echo "$0: Expand the reference lexicon to cover all words in the target vocab. and then"
+  echo "   ... re-train the source acoustic model for phone decoding. "
+  mkdir -p $dir/dict_expanded_target_vocab
+  cp $ref_dict/{extra_questions.txt,optional_silence.txt,nonsilence_phones.txt,silence_phones.txt} \
+    $dir/dict_expanded_target_vocab  2>/dev/null
+  rm $dir/dict_expanded_target_vocab/lexiconp.txt 2>/dev/null
+  
+  # Get the oov words list (w.r.t ref vocab) which are in the target vocab. 
+  awk 'NR==FNR{a[$1] = 1; next} !($1 in a)' $dir/ref_lexicon.txt \
+    $dir/target_vocab.txt | sort | uniq > $dir/oov_target_vocab.txt
+
+  # Assign pronunciations from g2p_pron_candidates to oov_target_vocab. For words which
+  # cannot be found in g2p_pron_candidates, we simply ignore them.
+  awk 'NR==FNR{a[$1] = 1; next} ($1 in a)' $dir/oov_target_vocab.txt \
+    $dir/g2p_pron_candidates > $dir/g2p_prons_for_oov_target_vocab.txt
+  
+  cat $dir/non_scored_entries $dir/g2p_prons_for_oov_target_vocab.txt $dir/ref_lexicon.txt | \
+    awk 'NR==FNR{a[$1] = 1; next} ($1 in a)' $dir/target_vocab.txt - | \
+    sort | uniq > $dir/dict_expanded_target_vocab/lexicon.txt
+  
+  utils/prepare_lang.sh --phone-symbol-table $ref_lang/phones.txt $dir/dict_expanded_target_vocab
+    $oov_symbol $dir/lang_expanded_target_vocab_local $dir/lang_expanded_target_vocab || exit 1;
+  
+  # Align the acoustic training data using the given src_mdl.
+  alidir=${src_mdl}_ali_$(basename $data) 
+  steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
+    $data $dir/lang_expanded_target_vocab $src_mdl $alidir || exit 1;
+  
+  # Train another SAT system on the given data and put it in ${src_mdl}_${affix},
+  # this model will be used for phone decoding and lattice alignment later on.
+  steps/train_sat.sh --cmd "$train_cmd" $num_leaves $num_gauss \
+    $data $dir/lang_expanded_target_vocab $alidir ${src_mdl}_${affix} || exit 1;
+fi
+
+if [ $stage -le 2 ]; then
+  echo "$0: Expand the reference lexicon to cover all words seen in,"
   echo "  ... acoustic training data, and prepare corresponding dict and lang directories."
-  awk 'NR==FNR{a[$1] = 1; next} {if(!($1 in a)) print $1}' $dir/ref_vocab.txt \
+  echo "  ... This is needed when generate pron candidates from phone-decoding."
+  mkdir -p $dir/dict_expanded_train
+  cp $ref_dict/{extra_questions.txt,optional_silence.txt,nonsilence_phones.txt,silence_phones.txt} \
+    $dir/dict_expanded_train 2>/dev/null
+  rm $dir/dict_expanded_train/lexiconp.txt 2>/dev/null
+
+  # Get the oov words list (w.r.t ref vocab) which are in training data. 
+  awk 'NR==FNR{a[$1] = 1; next} {if(!($1 in a)) print $1}' $dir/ref_lexicon.txt \
     $dir/train_counts.txt | sort > $dir/oov_train.txt 
   
   awk 'NR==FNR{a[$1] = 1; next} {if(($1 in a)) b+=$2; else c+=$2} END{print c/(b+c)}' \
     $dir/ref_vocab.txt $dir/train_counts.txt > $dir/train_oov_rate
   
-  # when applying G2P for words from acoustic training data, we double the upper bound of
-  # num. pron variants per word, and use a larger var-mass (0.9, which is the default value),
-  # cause we want many candidate prons from G2P (and also from phone-decoding later) 
-  # which will be evaluated by lattice ailgnment.
-  variants_counts=`cat $dir/target_num_prons_per_word` || exit 1;
-  steps/dict/apply_g2p.sh --var-counts $[2*$variants_counts] $dir/oov_train.txt \
-    $dir/g2p $dir/g2p/oov_lex_train
+  # Assign pronunciations from g2p_pron_candidates to oov_train. For words which
+  # cannot be found in g2p_pron_candidates, we simply assign oov_symbol's pronunciaiton
+  # (like NSN) to them, in order to get phone-decoding pron candidates for them later on.
+  awk 'NR==FNR{a[$1] = 1; next} ($1 in a)' $dir/oov_train.txt \
+    $dir/g2p_pron_candidates > $dir/g2p_prons_for_oov_train.txt
+  
+  # get the pronunciation of oov_symbol.
+  oov_pron=`cat $dir/non_scored_entries | grep $oov_symbol | cut -f2- -d' '`
+  awk 'NR==FNR{a[$1] = 1; next} {if(!($1 in a)) print $1}' $dir/g2p_prons_for_oov_train.txt \
+    $dir/oov_train.txt | awk -v op=$oov_pron '{print $0" "op}' > $dir/oov_train_no_pron.txt
     
-  mkdir -p $dir/dict_g2p_expanded_train
-  cp $ref_dict/{extra_questions.txt,optional_silence.txt,nonsilence_phones.txt,silence_phones.txt} \
-    $dir/dict_g2p_expanded_train 2>/dev/null
-  rm $dir/dict_g2p_expanded_train/lexiconp.txt 2>/dev/null
-
-  cat $dir/g2p/oov_lex_train/lexicon.lex |  cut -f 1,3 -d$'\t' | cat - $dir/ref_lexicon.txt | \
-    tr -s '\t' ' ' | sort | uniq > $dir/dict_g2p_expanded_train/lexicon.nosil
-
-  cat $dir/non_scored_entries $dir/dict_g2p_expanded_train/lexicon.nosil | \
-    sort | uniq > $dir/dict_g2p_expanded_train/lexicon.txt || exit 1;
+  cat $dir/non_scored_entries $dir/oov_train_no_pron.txt $dir/g2p_prons_for_oov_train.txt $dir/ref_lexicon.txt \
+    awk 'NR==FNR{a[$1] = 1; next} ($1 in a)' $dir/train_counts.txt - | \
+    sort | uniq > $dir/dict_expanded_train/lexicon.txt || exit 1;
   
-  utils/prepare_lang.sh $dir/dict_g2p_expanded_train $oov_symbol \
-    $dir/lang_g2p_train_local $dir/lang_g2p_train || exit 1;
+  utils/prepare_lang.sh $dir/dict_expanded_train $oov_symbol \
+    $dir/lang_expanded_train_local $dir/lang_expanded_train || exit 1;
 fi
 
-if [ $stage -le 2 ] && $retrain_src_mdl; then
-  echo "$0: Make a lexicon that covers all words in the target vocab"
-  
-  mkdir -p $dir/g2p/oov_target_vocab
-  mkdir -p $dir/dict_g2p_target_vocab
-  awk 'NR==FNR{a[$1] = 1; next} !($1 in a)' $dir/dict_g2p_expanded_train/lexicon.txt \
-    $dir/target_vocab.txt | sort | uniq > $dir/oov_target_vocab.txt
-  
-  variants_counts=`cat $dir/target_num_prons_per_word` || exit 1;
-  steps/dict/apply_g2p.sh --var-counts $variants_counts --var-mass $variants_prob_mass $dir/oov_target_vocab.txt \
-    $dir/g2p $dir/g2p/oov_lex_target_vocab || exit 1;
-  
-  mkdir -p $dir/dict_g2p_target_vocab
-  cp $ref_dict/{extra_questions.txt,optional_silence.txt,nonsilence_phones.txt,silence_phones.txt} \
-    $dir/dict_g2p_target_vocab  2>/dev/null
-  rm $dir/dict_g2p_target_vocab/lexiconp.txt 2>/dev/null
-
-  cat $dir/g2p/oov_lex_target_vocab/lexicon.lex |  cut -f 1,3 -d$'\t' | \
-    cat - $dir/dict_g2p_expanded_train/lexicon.txt | tr -s '\t' ' ' | sort | uniq \
-    > $dir/dict_g2p_target_vocab/lexicon.temp
-
-  awk 'NR==FNR{a[$1] = 1; next} ($1 in a)' $dir/target_vocab.txt \
-    $dir/dict_g2p_target_vocab/lexicon.temp | sort | uniq > $dir/dict_g2p_target_vocab/lexicon.nosil
-
-  cat $dir/non_scored_entries $dir/dict_g2p_target_vocab/lexicon.nosil | sort | \
-    uniq > $dir/dict_g2p_target_vocab/lexicon.txt
-  
-  utils/prepare_lang.sh --phone-symbol-table $ref_lang/phones.txt $dir/dict_g2p_target_vocab
-    $oov_symbol $dir/lang_g2p_target_vocab_local $dir/lang_g2p_target_vocab || exit 1;
-fi
-
-if [ $stage -le 3 ] && $retrain_src_mdl; then
-  echo "$0: Re-train the given acoustic model using the above lexicon and given acoustic training data." 
-  # Align the acoustic training data using the given src_mdl.
-  alidir=${src_mdl}_ali_$(basename $data) 
-  steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
-    $data $dir/lang_g2p_target_vocab $src_mdl $alidir || exit 1;
-  
-  # Train another SAT system on the given data and put it in ${src_mdl}_${affix},
-  # this model will be used for phone decoding and lattice alignment later on.
-  steps/train_sat.sh --cmd "$train_cmd" $num_leaves $num_gauss \
-    $data $dir/lang_g2p_target_vocab $alidir ${src_mdl}_${affix} || exit 1;
-fi
-
-if [ $stage -le 4 ]; then
-  echo "$0: Run phone-level decoding on acoustic training data."
+if [ $stage -le 3 ]; then
+  echo "$0: Generate pronunciation candidates from phone-level decoding on acoustic training data.."
   mdl=$src_mdl && $retrain_src_mdl && mdl=${src_mdl}_${affix}
-  steps/cleanup/debug_lexicon.sh --nj $nj --cmd "$decode_cmd" $data $dir/lang_g2p_train \
-    $mdl $dir/dict_g2p_expanded_train/lexicon.txt $dir/phone_decode || exit 1;
-fi
-
-if [ $stage -le 5 ]; then
-  echo "$0: Get alternative pronunciations from phone decoding results (for both oov and iv words), and from G2P for iv words (optional)"
-  # Optionally, we apply G2P on in-vocab words to get more alternative pronunciations,
-  # since we've found this helpful in some cases.
-  if $g2p_for_iv; then
-    echo "$0: Applying G2P on in-vocab words as requested."
-    variants_counts=`cat $dir/target_num_prons_per_word` || exit 1;
-    steps/dict/apply_g2p.sh --var-counts $[2*$variants_counts] $dir/ref_vocab.txt \
-      $dir/g2p $dir/g2p/iv_lex || exit 1;
-    cat $dir/g2p/iv_lex/lexicon.lex |  cut -f 1,3 -d$'\t' | cat - $dir/dict_g2p_expanded_train/lexicon.nosil | \
-      tr -s '\t' ' ' | awk 'NR==FNR{gsub(/\t/," ",$0); a[$0] = 1; next} {if(!($0 in a)) print $0}' \
-      $dir/ref_lexicon.txt - | sort | uniq > $dir/g2p_generated_prons.txt || exit 1; 
-  else
-    cat $dir/dict_g2p_expanded_train/lexicon.nosil | \
-      awk 'NR==FNR{gsub(/\t/," ",$0); a[$0] = 1; next} {if(!($0 in a)) print $0}' $dir/ref_lexicon.txt - | \
-      sort | uniq > $dir/g2p_generated_prons.txt || exit 1; 
-  fi
-
+  steps/cleanup/debug_lexicon.sh --nj $nj --cmd "$decode_cmd" $data $dir/lang_expanded_train \
+    $mdl $dir/dict_expanded_train/lexicon.txt $dir/phone_decode || exit 1;
+  
   # We prune the phone-decoding generated prons relative to the largest count, by setting "min_prob",
   # and only leave prons who are not present in the reference lexicon / g2p-generated lexicon.
-  cat $dir/ref_lexicon.txt $dir/g2p_generated_prons.txt > $dir/phone_decode/filter_lexicon.txt 
+  cat $dir/ref_lexicon.txt $dir/g2p_pron_candidates.txt > $dir/phone_decode/filter_lexicon.txt 
+  
   $cmd $dir/phone_decode/log/prons_to_lexicon.log steps/dict/prons_to_lexicon.py \
     --min-prob=$min_prob --filter-lexicon=$dir/phone_decode/filter_lexicon.txt \
     $dir/phone_decode/prons.txt $dir/phone_decoding_generated_prons_unfiltered.txt
@@ -267,7 +248,7 @@ if [ $stage -le 5 ]; then
     sort | uniq > $dir/phone_decoding_generated_prons.txt || exit 1;
 fi
 
-if [ $stage -le 6 ]; then
+if [ $stage -le 4 ]; then
   echo "$0: Combine the reference lexicon and pronunciations from phone-decoding/G2P into one"
   echo "  ... lexicon, and run lattice alignment using this lexicon on acoustic training data."
   
@@ -276,7 +257,7 @@ if [ $stage -le 6 ]; then
     $dir/dict_combined/ 2>/dev/null
   rm $dir/dict_combined/lexiconp.txt 2>/dev/null
 
-  cat $dir/phone_decoding_generated_prons.txt $dir/g2p_generated_prons.txt \
+  cat $dir/phone_decoding_generated_prons.txt $dir/g2p_pron_candidates.txt \
     $dir/ref_lexicon.txt | tr -s '\t' ' ' | \
     awk 'NR==FNR{a[$1] = 1; next} ($1 in a)' $dir/train_counts.txt - | \
     cat $dir/non_scored_entries - | \
@@ -305,7 +286,7 @@ if [ $stage -le 6 ]; then
     $dir/phone_decode/phone_map.txt $dir/lats/pron_stats.txt || exit 1;
 fi
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 5 ]; then
   echo "$0: Prune the pronunciation candidates generated from G2P/phone-decoding, and re-do lattice-alignment."
   mkdir -p $dir/dict_combined2
   cp $ref_dict/{extra_questions.txt,optional_silence.txt,nonsilence_phones.txt,silence_phones.txt} \
@@ -317,10 +298,10 @@ if [ $stage -le 7 ]; then
   awk 'NR==FNR{a[$0] = 1; next} (!($0 in a))' $dir/pruned_prons.txt $dir/phone_decoding_generated_prons.txt \
     > $dir/phone_decoding_generated_prons_pruned.txt
 
-  awk 'NR==FNR{a[$0] = 1; next} (!($0 in a))' $dir/pruned_prons.txt $dir/g2p_generated_prons.txt \
-    > $dir/g2p_generated_prons_pruned.txt \
+  awk 'NR==FNR{a[$0] = 1; next} (!($0 in a))' $dir/pruned_prons.txt $dir/g2p_pron_candidates.txt \
+    > $dir/g2p_pron_candidates_pruned.txt \
 
-  cat $dir/phone_decoding_generated_prons_pruned.txt $dir/g2p_generated_prons_pruned.txt \
+  cat $dir/phone_decoding_generated_prons_pruned.txt $dir/g2p_pron_candidates_pruned.txt \
     $dir/ref_lexicon.txt | tr -s '\t' ' ' | \
     awk 'NR==FNR{a[$1] = 1; next} ($1 in a)' $dir/train_counts.txt - | \
     cat $dir/non_scored_entries - | \
@@ -349,12 +330,13 @@ if [ $stage -le 7 ]; then
     $dir/phone_decode/phone_map.txt $dir/lats2/pron_stats.txt || exit 1;
 fi
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 6 ]; then
   echo "$0: Select pronunciations according to the acoustic evidence from lattice alignment."
   # Given the acoustic evidence (soft-counts), we use a Bayesian framework to select pronunciations 
   # from three exclusive candidate sources: reference (hand-derived) lexicon, G2P and phone decoding.
   # The posteriors for all candidate prons for all words are printed into pron_posteriors.txt
   # For words which are out of the ref. vocab, the learned prons are written into out_of_ref_vocab_prons_learned.txt.
+  # Among them, for words without acoustic evidence, we just ignore them, even if pron candidates from G2P were provided).
   # For words in the ref. vocab, we instead output a human readable & editable "edits" file called
   # ref_lexicon_edits.txt, which records all proposed changes to the prons (if any). Also, a 
   # summary is printed into the log file.
@@ -364,7 +346,7 @@ if [ $stage -le 8 ]; then
     steps/dict/select_prons_bayesian.py --prior-mean=$prior_mean --prior-counts-tot=$prior_counts_tot \
     --variants-counts=$variants_counts --variants-prob-mass=$variants_prob_mass --variants-prob-mass2=$variants_prob_mass2 \
     $ref_dict/silence_phones.txt $dir/lats2/pron_stats.txt $dir/train_counts.txt $dir/ref_lexicon.txt \
-    $dir/g2p_generated_prons_pruned.txt $dir/phone_decoding_generated_prons_pruned.txt \
+    $dir/g2p_pron_candidates_pruned.txt $dir/phone_decoding_generated_prons_pruned.txt \
     $dir/lats2/pron_posteriors.temp $dir/lats2/out_of_ref_vocab_prons_learned.txt $dir/lats2/ref_lexicon_edits.txt
 
   # We reformat the pron_posterior file and add some comments.
@@ -373,32 +355,31 @@ if [ $stage -le 8 ]; then
     cat <( echo ';; <word> <source: R(eference)/G(2P)/P(hone-decoding)> <posterior> <pronunciation>') -  \
     > $dir/lats2/pron_posteriors.txt
   rm $dir/pron_posteriors.temp 2>/dev/null
-  # Remove some stuff that takes up space and are not likely to be visited by the user.
+
+  # Remove some stuff that takes up space and is unlikely to be useful later on.
   if $cleanup; then
     rm -r $dir/lats2/{fsts*,lat*} 2>/dev/null
   fi
 fi
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 7 ]; then
   echo "$0: Expand the learned lexicon further to cover words in target vocab that are."
   echo "  ... not seen in acoustic training data."
-  mkdir -p $dir/g2p/oov_learned_target_vocab
-  cat $dir/lats2/out_of_ref_vocab_prons_learned.txt $dir/ref_lexicon.txt |
-    awk 'NR==FNR{a[$1] = 1; next} !($1 in a)' - \
-      $dir/target_vocab.txt | sort | uniq > $dir/out_of_target_vocab_words.txt
-  
-  variants_counts=`cat $dir/target_num_prons_per_word` || exit 1;
-  steps/dict/apply_g2p.sh --var-counts $variants_counts --var-mass $variants_prob_mass \
-    $dir/out_of_target_vocab_words.txt $dir/g2p $dir/g2p/oov_lex_target_vocab || exit 1;
-  
   mkdir -p $dest_dict
   cp $ref_dict/{extra_questions.txt,optional_silence.txt,nonsilence_phones.txt,silence_phones.txt} \
     $dest_dict  2>/dev/null
   rm $dest_dict/lexiconp.txt 2>/dev/null
+  # Get the list of oov (w.r.t. ref vocab) without acoustic evidence, which are in the
+  # target vocab. We'll just assign to them pronunciations from g2p_pron_candidates, if any.
+  cat $dir/lats2/out_of_ref_vocab_prons_learned.txt $dir/ref_lexicon.txt | \
+    awk 'NR==FNR{a[$1] = 1; next} !($1 in a)' - \
+    $dir/target_vocab.txt | sort | uniq > $dir/oov_no_acoustics.txt
 
-  cat $dir/g2p/oov_lex_target_vocab/lexicon.lex |  cut -f 1,3 -d$'\t' | \
-    cat - $dir/lats2/out_of_ref_vocab_prons_learned.txt $dir/ref_lexicon.txt | \
-    tr -s '\t' ' ' | sort | uniq > $dest_dict/lexicon.temp
+  awk 'NR==FNR{a[$1] = 1; next} ($1 in a)' $dir/oov_no_acoustics.txt \
+    $dir/g2p_pron_candidates > $dir/g2p_prons_for_oov_no_acoustics.txt
+  
+  cat $dir/g2p_prons_for_oov_no_acoustics.txt $dir/lats2/out_of_ref_vocab_prons_learned.txt \
+    $dir/ref_lexicon.txt | tr -s '\t' ' ' | sort | uniq > $dest_dict/lexicon.temp
 
   awk 'NR==FNR{a[$1] = 1; next} ($1 in a)' $dir/target_vocab.txt \
     $dest_dict/lexicon.temp | sort | uniq > $dest_dict/lexicon.nosil
@@ -406,7 +387,7 @@ if [ $stage -le 9 ]; then
   cat $dir/non_scored_entries $dest_dict/lexicon.nosil | sort | uniq >$dest_dict/lexicon0.txt
 fi
 
-if [ $stage -le 10 ]; then
+if [ $stage -le 8 ]; then
   if [ $apply_edits ]; then
     echo "$0: Apply the ref_lexicon_edits file to the reference lexicon."
     cp $dir/lats2/ref_lexicon_edits.txt $dest_dict/lexicon_edits.txt 2>/dev/null

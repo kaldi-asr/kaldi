@@ -1,21 +1,22 @@
 #!/bin/bash
 # Copyright 2014  Johns Hopkins University (Author: Yenda Trmal)
+# Copyright 2016  Xiaohui Zhang
 # Apache 2.0
 
 # Begin configuration section.  
 iters=5
-stage=5
+stage=0
 encoding='utf-8'
-remove_tags=true
 only_words=true
-icu_transform="Any-Lower"
 cmd=run.pl
+# a list of silence phones, like data/local/dict/silence_phones.txt
+silence_phones= 
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
-. parse_options.sh || exit 1;
+. utils/parse_options.sh || exit 1;
 
 set -u
 set -e
@@ -41,23 +42,11 @@ mkdir -p $wdir/log
 
 [ ! -f $lexicon ] && echo "$0: Training lexicon does not exist." && exit 1
 
-if $only_words ; then
-  cat $lexicon | sed 's/^<.*>.*$//g' | sed 's/^#.*//g' > $wdir/lexicon_onlywords.txt
+# Optionally remove words that are mapped to a single silence phone from the lexicon.
+if $only_words && [ -z $silence_phones ]; then
+  awk 'NR==FNR{a[$1] = 1; next} {s=$2;for(i=3;i<=NF;i++) s=s" "$i;a[$1]=s;if(!(s in a)) print $1" "s}' \
+    $silence_phones > $wdir/lexicon_onlywords.txt
   lexicon=$wdir/lexicon_onlywords.txt
-fi
-
-if $remove_tags ; then
-  cat $lexicon |\
-    sed 's/_[%|"]//g' | sed 's/_[0-9]\+//g' > $wdir/lexicon_notags.txt
-  lexicon=$wdir/lexicon_notags.txt
-fi
-
-if [ ! -z $icu_transform ] ; then
-  paste \
-    <(cat $lexicon | awk '{print $1}' | uconv -f $encoding -t $encoding -x "$icu_transform") \
-    <(cat $lexicon | sed 's/^[^ \t][^ \t]*[ \t]//g') \
-  > $wdir/lexicon_transformed.txt
-  lexicon=$wdir/lexicon_transformed.txt
 fi
 
 if ! g2p=`which g2p.py` ; then
