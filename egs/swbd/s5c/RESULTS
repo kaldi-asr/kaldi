@@ -186,10 +186,10 @@ exit 0
 %WER 11.6 | 1831 21395 | 89.7 7.0 3.3 1.4 11.6 47.0 | exp/chain/tdnn_7d_sp/decode_eval2000_sw1_tg/score_10_1.0/eval2000_hires.ctm.swbd.filt.sys
 
 
-# results with chain TDNNs (2 epoch training on data reverberated with room impulse responses) (see local/chain/multi_condition/run_tdnn_7b.sh)
-%WER 10.0 | 1831 21395 | 91.0 6.0 3.0 1.1 10.0 43.8 | exp/chain/tdnn_7b_sp_rvb1_mix/decode_eval2000_sw1_fsh_fg/score_10_0.5/eval2000_hires.ctm.swbd.filt.sys
-%WER 20.0 | 2628 21594 | 82.1 11.7 6.2 2.1 20.0 55.6 | exp/chain/tdnn_7b_sp_rvb1_mix/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.callhm.filt.sys
+# results with chain TDNNs (2 epoch training on data being speed-perturbed, volume-perturbed and reverberated with room impulse responses) (see local/chain/multi_condition/run_tdnn_7b.sh)
 %WER 15.0 | 4459 42989 | 86.5 8.8 4.7 1.6 15.0 50.7 | exp/chain/tdnn_7b_sp_rvb1_mix/decode_eval2000_sw1_fsh_fg/score_10_0.5/eval2000_hires.ctm.filt.sys
+%WER 10.0 | 1831 21395 | 91.0 6.0 3.0 1.1 10.0 43.8 | exp/chain/tdnn_7b_sp_rvb1_mix/decode_eval2000_sw1_fsh_fg/score_10_0.5/eval2000_hires.ctm.swbd.filt.sys
+%WER 20.0 | 2628 21594 | 82.1 11.7 6.2 2.1 20.0 55.6 | exp/chain/tdnn_7b_sp_rvb1_mix/decode_eval2000_sw1_fsh_fg/sddcore_10_0.0/eval2000_hires.ctm.callhm.filt.sys
 
 
 # current best 'chain' models with LSTM (see local/chain/run_lstm_d.sh)
