@@ -753,8 +753,8 @@ def CleanNnetDir(nnet_dir, num_iters, egs_dir, num_iters_combine = None,
         raise err
 
 def RemoveModel(nnet_dir, iter, num_iters, num_iters_combine = None,
-               preserve_model_interval = 100,
-               get_raw_nnet_from_am = True):
+                preserve_model_interval = 100,
+                get_raw_nnet_from_am = True):
     if iter % preserve_model_interval == 0:
         return
     if num_iters_combine is not None and iter >= num_iters - num_iters_combine + 1 :

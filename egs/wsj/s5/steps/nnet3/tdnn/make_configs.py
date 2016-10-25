@@ -54,7 +54,7 @@ def GetArgs():
                         help="Output dimension of the linear layer at the CNN output "
                         "for dimension reduction, e.g. 256."
                         "The default zero means this layer is not needed.", default=0)
-    parser.add_argument("--cnn.cepstral-lifter", type=float,
+    parser.add_argument("--cnn.cepstral-lifter", type=float, dest = "cepstral_lifter",
                         help="The factor used for determining the liftering vector in the production of MFCC. "
                         "User has to ensure that it matches the lifter used in MFCC generation, "
                         "e.g. 22.0", default=22.0)
