@@ -9,6 +9,7 @@
 # this script is based on steps/nnet3/tdnn/train_raw_nnet.sh
 
 
+import os
 import subprocess
 import argparse
 import sys
@@ -17,9 +18,9 @@ import logging
 import imp
 import traceback
 
+common_train_lib = imp.load_source('ntl', 'steps/nnet3/libs/common_train_lib.py')
 nnet3_log_parse = imp.load_source('nlp', 'steps/nnet3/report/nnet3_log_parse_lib.py')
 train_lib = imp.load_source('tl', 'steps/nnet3/libs/train_lib.py')
-common_train_lib = imp.load_source('ntl', 'steps/nnet3/lib/common_train_lib.py')
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -41,8 +42,9 @@ def GetArgs():
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     conflict_handler = 'resolve')
 
-    train_lib.AddCommonTrainArgs(parser)
+    common_train_lib.AddCommonTrainArgs(parser)
 
+    # egs extraction options
     parser.add_argument("--egs.frames-per-eg", type=int, dest='frames_per_eg',
                         default = 8,
                         help="Number of output labels per example")
@@ -66,6 +68,7 @@ def GetArgs():
                         help="Directory to store the models and all other files.")
 
     print(' '.join(sys.argv))
+    print(sys.argv)
 
     args = parser.parse_args()
 
@@ -133,25 +136,22 @@ def Train(args, run_opts):
     # Set some variables.
 
     try:
-        left_context = variables['model_left_context']
-        right_context = variables['model_right_context']
+        model_left_context = variables['model_left_context']
+        model_right_context = variables['model_right_context']
         num_hidden_layers = variables['num_hidden_layers']
-        num_targets = int(variables['num_targets'])
         add_lda = common_train_lib.StrToBool(variables['add_lda'])
         include_log_softmax = common_train_lib.StrToBool(variables['include_log_softmax'])
-        objective_type = variables['objective_type']
     except KeyError as e:
         raise Exception("KeyError {0}: Variables need to be defined in {1}".format(
             str(e), '{0}/configs'.format(args.dir)))
+
+    left_context = args.chunk_left_context + model_left_context
+    right_context = args.chunk_right_context + model_right_context
+
     # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
     # matrix.  This first config just does any initial splicing that we do;
     # we do this as it's a convenient way to get the stats for the 'lda-like'
     # transform.
-
-    if args.use_dense_targets:
-        if common_train_lib.GetFeatDimFromScp(targets_scp) != num_targets:
-            raise Exception("Mismatch between num-targets provided to "
-                            "script vs configs")
 
     if (args.stage <= -5):
         logger.info("Initializing a basic network for estimating preconditioning matrix")
@@ -162,14 +162,22 @@ def Train(args, run_opts):
                dir = args.dir))
 
     default_egs_dir = '{0}/egs'.format(args.dir)
-
-    if args.use_dense_targets:
-        target_type = "dense"
-    else:
-        target_type = "sparse"
-
     if (args.stage <= -4) and args.egs_dir is None:
         logger.info("Generating egs")
+
+        if args.use_dense_targets:
+            target_type = "dense"
+            try:
+                num_targets = int(variables['num_targets'])
+            except KeyError as e:
+                raise Exception("KeyError {0}: Variables need to be defined in {1}".format(
+                    str(e), '{0}/configs'.format(args.dir)))
+            if common_train_lib.GetFeatDimFromScp(targets_scp) != num_targets:
+                raise Exception("Mismatch between num-targets provided to "
+                                "script vs configs")
+        else:
+            target_type = "sparse"
+
 
         train_lib.GenerateEgsUsingTargets(
                   args.feat_dir, args.targets_scp, default_egs_dir,
@@ -207,10 +215,9 @@ def Train(args, run_opts):
     if (add_lda and args.stage <= -3):
         logger.info('Computing the preconditioning matrix for input features')
 
-        common_train_lib.ComputePreconditioningMatrix(
-                         args.dir, egs_dir, num_archives, run_opts,
-                         max_lda_jobs = args.max_lda_jobs,
-                         rand_prune = args.rand_prune)
+        train_lib.ComputePreconditioningMatrix(args.dir, egs_dir, num_archives, run_opts,
+                                               max_lda_jobs = args.max_lda_jobs,
+                                               rand_prune = args.rand_prune)
 
 
     if (args.stage <= -1):
@@ -233,11 +240,13 @@ def Train(args, run_opts):
                                          args.num_jobs_final)
 
     learning_rate = (lambda iter, current_num_jobs, num_archives_processed:
-                        GetLearningRate(iter, current_num_jobs, num_iters,
-                                        num_archives_processed,
-                                        num_archives_to_process,
-                                        args.initial_effective_lrate,
-                                        args.final_effective_lrate))
+                        common_train_lib.GetLearningRate(
+                                         iter, current_num_jobs, num_iters,
+                                         num_archives_processed,
+                                         num_archives_to_process,
+                                         args.initial_effective_lrate,
+                                         args.final_effective_lrate)
+                    )
 
     logger.info("Training will run for {0} epochs = {1} iterations".format(args.num_epochs, num_iters))
     for iter in range(num_iters):
@@ -273,8 +282,9 @@ def Train(args, run_opts):
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain conditions
                 common_train_lib.RemoveModel(
-                        args.dir, iter-2, num_iters, num_iters_combine,
-                        args.preserve_model_interval, get_raw_nnet_from_am = False)
+                                 args.dir, iter-2, num_iters, num_iters_combine,
+                                 args.preserve_model_interval,
+                                 get_raw_nnet_from_am = False)
 
             if args.email is not None:
                 reporting_iter_interval = num_iters * args.reporting_interval

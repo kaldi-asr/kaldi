@@ -1,11 +1,14 @@
 #!/usr/bin/env python
 
+
 # Copyright 2016 Vijayaditya Peddinti.
 #           2016 Vimal Manohar
 # Apache 2.0.
 
+
 # this script is based on steps/nnet3/lstm/train.sh
 
+import os
 import subprocess
 import argparse
 import sys
@@ -14,10 +17,10 @@ import logging
 import imp
 import traceback
 
+common_train_lib = imp.load_source('ntl', 'steps/nnet3/lib/common_train_lib.py')
 nnet3_log_parse = imp.load_source('nlp', 'steps/nnet3/report/nnet3_log_parse_lib.py')
 rnn_train_lib = imp.load_source('rtl', 'steps/nnet3/libs/rnn_train_lib.py')
 train_lib = imp.load_source('tl', 'steps/nnet3/libs/train_lib.py')
-common_train_lib = imp.load_source('ntl', 'steps/nnet3/lib/common_train_lib.py')
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -59,10 +62,7 @@ def GetArgs():
                         default = 40,
                         help="""Number of left steps used in the estimation of LSTM
                         state before prediction of the first label""")
-    parser.add_argument("--egs.chunk-right-context", type=int, dest='chunk_right_context',
-                        default = 0,
-                        help="""Number of right steps used in the estimation of BLSTM
-                        state before prediction of the first label""")
+
     parser.add_argument("--trainer.samples-per-iter", type=int, dest='samples_per_iter',
                         default=20000,
                         help="""This is really the number of egs in each
@@ -112,6 +112,7 @@ def GetArgs():
                         help="Directory to store the models and all other files.")
 
     print(' '.join(sys.argv))
+    print(sys.argv)
 
     args = parser.parse_args()
 
@@ -125,10 +126,10 @@ def ProcessArgs(args):
         raise Exception("--egs.chunk-width should have a minimum value of 1")
 
     if args.chunk_left_context < 0:
-        raise Exception("--egs.chunk-left-context should be positive")
+        raise Exception("--egs.chunk-left-context should be non-negative")
 
     if args.chunk_right_context < 0:
-        raise Exception("--egs.chunk-right-context should be positive")
+        raise Exception("--egs.chunk-right-context should be non-negative")
 
     if (not os.path.exists(args.dir)) or (not os.path.exists(args.dir+"/configs")):
         raise Exception("""This scripts expects {0} to exist and have a configs
@@ -188,10 +189,8 @@ def Train(args, run_opts):
         model_left_context = variables['model_left_context']
         model_right_context = variables['model_right_context']
         num_hidden_layers = variables['num_hidden_layers']
-        num_targets = int(variables['num_targets'])
         add_lda = common_train_lib.StrToBool(variables['add_lda'])
         include_log_softmax = common_train_lib.StrToBool(variables['include_log_softmax'])
-        objective_type = variables['objective_type']
     except KeyError as e:
         raise Exception("KeyError {0}: Variables need to be defined in {1}".format(
             str(e), '{0}/configs'.format(args.dir)))
@@ -204,11 +203,6 @@ def Train(args, run_opts):
     # we do this as it's a convenient way to get the stats for the 'lda-like'
     # transform.
 
-    if args.use_dense_targets:
-        if common_train_lib.GetFeatDimFromScp(targets_scp) != num_targets:
-            raise Exception("Mismatch between num-targets provided to "
-                            "script vs configs")
-
     if (args.stage <= -4):
         logger.info("Initializing a basic network")
         common_train_lib.RunKaldiCommand("""
@@ -218,14 +212,21 @@ def Train(args, run_opts):
                dir = args.dir))
 
     default_egs_dir = '{0}/egs'.format(args.dir)
-
-    if args.use_dense_targets:
-        target_type = "dense"
-    else:
-        target_type = "sparse"
-
     if (args.stage <= -3) and args.egs_dir is None:
         logger.info("Generating egs")
+
+        if args.use_dense_targets:
+            target_type = "dense"
+            try:
+                num_targets = int(variables['num_targets'])
+            except KeyError as e:
+                raise Exception("KeyError {0}: Variables need to be defined in {1}".format(
+                    str(e), '{0}/configs'.format(args.dir)))
+            if common_train_lib.GetFeatDimFromScp(targets_scp) != num_targets:
+                raise Exception("Mismatch between num-targets provided to "
+                                "script vs configs")
+        else:
+            target_type = "sparse"
 
         train_lib.GenerateEgsUsingTargets(
                   args.feat_dir, args.targets_scp, default_egs_dir,
@@ -264,10 +265,9 @@ def Train(args, run_opts):
     if (add_lda and args.stage <= -2):
         logger.info('Computing the preconditioning matrix for input features')
 
-        common_train_lib.ComputePreconditioningMatrix(
-                         args.dir, egs_dir, num_archives, run_opts,
-                         max_lda_jobs = args.max_lda_jobs,
-                         rand_prune = args.rand_prune)
+        train_lib.ComputePreconditioningMatrix(args.dir, egs_dir, num_archives, run_opts,
+                                               max_lda_jobs = args.max_lda_jobs,
+                                               rand_prune = args.rand_prune)
 
 
     if (args.stage <= -1):
@@ -289,11 +289,14 @@ def Train(args, run_opts):
                                          args.num_jobs_final)
 
     learning_rate = (lambda iter, current_num_jobs, num_archives_processed:
-                        GetLearningRate(iter, current_num_jobs, num_iters,
-                                        num_archives_processed,
-                                        num_archives_to_process,
-                                        args.initial_effective_lrate,
-                                        args.final_effective_lrate))
+                        common_train_lib.GetLearningRate(
+                                         iter, current_num_jobs, num_iters,
+                                         num_archives_processed,
+                                         num_archives_to_process,
+                                         args.initial_effective_lrate,
+                                         args.final_effective_lrate)
+                    )
+
     if args.num_bptt_steps is None:
         num_bptt_steps = args.chunk_width
     else:
@@ -312,10 +315,12 @@ def Train(args, run_opts):
         if args.stage <= iter:
             model_file = "{dir}/{iter}.raw".format(dir = args.dir, iter = iter)
             shrinkage_value = (args.shrink_value
-                               if DoShrinkage(iter, model_file, "Lstm*",
-                                              "SigmoidComponent", args.shrink_threshold,
-                                              get_raw_nnet_from_am = False)
-                               else 1)
+                               if common_train_lib.DoShrinkage(iter, model_file,
+                                                               "SigmoidComponent",
+                                                               args.shrink_threshold,
+                                                               get_raw_nnet_from_am = False)
+                               else 1
+                               )
             logger.info("On iteration {0}, learning rate is {1} and shrink value is {2}.".format(iter, learning_rate(iter, current_num_jobs, num_archives_processed), shrinkage_value))
 
             rnn_train_lib.TrainOneIteration(
@@ -345,8 +350,9 @@ def Train(args, run_opts):
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain conditions
                 common_train_lib.RemoveModel(
-                        args.dir, iter-2, num_iters, num_iters_combine,
-                        args.preserve_model_interval, get_raw_nnet_from_am = False)
+                                 args.dir, iter-2, num_iters, num_iters_combine,
+                                 args.preserve_model_interval,
+                                 get_raw_nnet_from_am = False)
 
             if args.email is not None:
                 reporting_iter_interval = num_iters * args.reporting_interval

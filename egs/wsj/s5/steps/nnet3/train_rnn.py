@@ -8,7 +8,7 @@
 
 # this script is based on steps/nnet3/lstm/train.sh
 
-
+import os
 import subprocess
 import argparse
 import sys
@@ -16,11 +16,12 @@ import pprint
 import logging
 import imp
 import traceback
+import shutil
 
+common_train_lib = imp.load_source('ntl', 'steps/nnet3/lib/common_train_lib.py')
 nnet3_log_parse = imp.load_source('nlp', 'steps/nnet3/report/nnet3_log_parse_lib.py')
 rnn_train_lib = imp.load_source('rtl', 'steps/nnet3/libs/rnn_train_lib.py')
 train_lib = imp.load_source('tl', 'steps/nnet3/libs/train_lib.py')
-common_train_lib = imp.load_source('ntl', 'steps/nnet3/lib/common_train_lib.py')
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -62,10 +63,7 @@ def GetArgs():
                         default = 40,
                         help="""Number of left steps used in the estimation of LSTM
                         state before prediction of the first label""")
-    parser.add_argument("--egs.chunk-right-context", type=int, dest='chunk_right_context',
-                        default = 0,
-                        help="""Number of right steps used in the estimation of BLSTM
-                        state before prediction of the first label""")
+
     parser.add_argument("--trainer.samples-per-iter", type=int, dest='samples_per_iter',
                         default=20000,
                         help="""This is really the number of egs in each
@@ -111,6 +109,7 @@ def GetArgs():
                         help="Directory to store the models and all other files.")
 
     print(' '.join(sys.argv))
+    print(sys.argv)
 
     args = parser.parse_args()
 
@@ -124,10 +123,10 @@ def ProcessArgs(args):
         raise Exception("--egs.chunk-width should have a minimum value of 1")
 
     if args.chunk_left_context < 0:
-        raise Exception("--egs.chunk-left-context should be positive")
+        raise Exception("--egs.chunk-left-context should be non-negative")
 
     if args.chunk_right_context < 0:
-        raise Exception("--egs.chunk-right-context should be positive")
+        raise Exception("--egs.chunk-right-context should be non-negative")
 
     if (not os.path.exists(args.dir)) or (not os.path.exists(args.dir+"/configs")):
         raise Exception("""This scripts expects {0} to exist and have a configs
@@ -209,7 +208,7 @@ def Train(args, run_opts):
     # we do this as it's a convenient way to get the stats for the 'lda-like'
     # transform.
 
-    if (args.stage <= -4):
+    if (args.stage <= -5):
         logger.info("Initializing a basic network for estimating preconditioning matrix")
         common_train_lib.RunKaldiCommand("""
 {command} {dir}/log/nnet_init.log \
@@ -218,7 +217,7 @@ def Train(args, run_opts):
                dir = args.dir))
 
     default_egs_dir = '{0}/egs'.format(args.dir)
-    if (args.stage <= -3) and args.egs_dir is None:
+    if (args.stage <= -4) and args.egs_dir is None:
         logger.info("Generating egs")
 
         train_lib.GenerateEgs(args.feat_dir, args.ali_dir, default_egs_dir,
@@ -252,13 +251,22 @@ def Train(args, run_opts):
     # use during decoding
     common_train_lib.CopyEgsPropertiesToExpDir(egs_dir, args.dir)
 
-    if (args.stage <= -2):
+    if (args.stage <= -3):
         logger.info('Computing the preconditioning matrix for input features')
 
+        train_lib.ComputePreconditioningMatrix(args.dir, egs_dir, num_archives, run_opts,
+                                               max_lda_jobs = args.max_lda_jobs,
+                                               rand_prune = args.rand_prune)
+
+    if (args.stage <= -2):
+        logger.info("Computing initial vector for FixedScaleComponent before"
+                    " softmax, using priors^{prior_scale} and rescaling to"
+                    " average 1".format(prior_scale = args.presoftmax_prior_scale_power))
+
         common_train_lib.ComputePresoftmaxPriorScale(
-                args.dir, egs_dir, num_archives, run_opts,
-                max_lda_jobs = args.max_lda_jobs,
-                rand_prune = args.rand_prune)
+                args.dir, args.ali_dir, num_jobs, run_opts,
+                presoftmax_prior_scale_power = args.presoftmax_prior_scale_power)
+
 
     if (args.stage <= -1):
         logger.info("Preparing the initial acoustic model.")
@@ -279,11 +287,13 @@ def Train(args, run_opts):
                                          args.num_jobs_final)
 
     learning_rate = (lambda iter, current_num_jobs, num_archives_processed:
-                        GetLearningRate(iter, current_num_jobs, num_iters,
-                                        num_archives_processed,
-                                        num_archives_to_process,
-                                        args.initial_effective_lrate,
-                                        args.final_effective_lrate))
+                        common_train_lib.GetLearningRate(
+                                         iter, current_num_jobs, num_iters,
+                                         num_archives_processed,
+                                         num_archives_to_process,
+                                         args.initial_effective_lrate,
+                                         args.final_effective_lrate)
+                    )
 
     if args.num_bptt_steps is None:
         num_bptt_steps = args.chunk_width
@@ -306,7 +316,8 @@ def Train(args, run_opts):
                                if common_train_lib.DoShrinkage(iter, model_file,
                                                                "SigmoidComponent",
                                                                args.shrink_threshold)
-                               else 1)
+                               else 1
+                               )
             logger.info("On iteration {0}, learning rate is {1} and shrink value is {2}.".format(iter, learning_rate(iter, current_num_jobs, num_archives_processed), shrinkage_value))
 
             rnn_train_lib.TrainOneIteration(

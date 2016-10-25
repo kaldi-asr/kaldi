@@ -29,6 +29,155 @@ class RunOpts:
         self.prior_queue_opt = None
         self.parallel_train_opts = None
 
+def AddCommonTrainArgs(parser):
+    # feat options
+    parser.add_argument("--feat.online-ivector-dir", type=str, dest='online_ivector_dir',
+                        default = None, action = common_train_lib.NullstrToNoneAction,
+                        help="""directory with the ivectors extracted in
+                        an online fashion.""")
+    parser.add_argument("--feat.cmvn-opts", type=str, dest='cmvn_opts',
+                        default = None, action = common_train_lib.NullstrToNoneAction,
+                        help="A string specifying '--norm-means' and '--norm-vars' values")
+
+    # egs extraction options
+    parser.add_argument("--egs.chunk-left-context", type=int, dest='chunk_left_context',
+                        default = 0,
+                        help="Number of additional frames of input to the left"
+                        " of the input chunk. This extra context will be used"
+                        " in the estimation of RNN state before prediction of"
+                        " the first label. In the case of FF-DNN this extra"
+                        " context will be used to allow for frame-shifts")
+    parser.add_argument("--egs.chunk-right-context", type=int, dest='chunk_right_context',
+                        default = 0,
+                        help="Number of additional frames of input to the right"
+                        " of the input chunk. This extra context will be used"
+                        " in the estimation of bidirectional RNN state before"
+                        " prediction of the first label.")
+    parser.add_argument("--egs.transform_dir", type=str, dest='transform_dir',
+                        default = None, action = common_train_lib.NullstrToNoneAction,
+                        help="""String to provide options directly to steps/nnet3/get_egs.sh script""")
+    parser.add_argument("--egs.dir", type=str, dest='egs_dir',
+                        default = None, action = common_train_lib.NullstrToNoneAction,
+                        help="""Directory with egs. If specified this directory
+                        will be used rather than extracting egs""")
+    parser.add_argument("--egs.stage", type=int, dest='egs_stage',
+                        default = 0, help="Stage at which get_egs.sh should be restarted")
+    parser.add_argument("--egs.opts", type=str, dest='egs_opts',
+                        default = None, action = common_train_lib.NullstrToNoneAction,
+                        help="""String to provide options directly to steps/nnet3/get_egs.sh script""")
+
+    # trainer options
+    parser.add_argument("--trainer.srand", type=int, dest='srand',
+                        default = 0,
+                        help="Sets the random seed for model initialization and egs shuffling. "
+                        "Warning: This random seed does not control all aspects of this experiment. "
+                        "There might be other random seeds used in other stages of the experiment "
+                        "like data preparation (e.g. volume perturbation).")
+    parser.add_argument("--trainer.num-epochs", type=int, dest='num_epochs',
+                        default = 8,
+                        help="Number of epochs to train the model")
+    parser.add_argument("--trainer.prior-subset-size", type=int, dest='prior_subset_size',
+                        default = 20000,
+                        help="Number of samples for computing priors")
+    parser.add_argument("--trainer.num-jobs-compute-prior", type=int, dest='num_jobs_compute_prior',
+                        default = 10,
+                        help="The prior computation jobs are single threaded and run on the CPU")
+    parser.add_argument("--trainer.max-models-combine", type=int, dest='max_models_combine',
+                        default = 20,
+                        help="The maximum number of models used in the final model combination stage. These models will themselves be averages of iteration-number ranges")
+    parser.add_argument("--trainer.shuffle-buffer-size", type=int, dest='shuffle_buffer_size',
+                        default = 5000,
+                        help=""" Controls randomization of the samples on each
+                        iteration. If 0 or a large value the randomization is
+                        complete, but this will consume memory and cause spikes
+                        in disk I/O.  Smaller is easier on disk and memory but
+                        less random.  It's not a huge deal though, as samples
+                        are anyway randomized right at the start.
+                        (the point of this is to get data in different
+                        minibatches on different iterations, since in the
+                        preconditioning method, 2 samples in the same minibatch
+                        can affect each others' gradients.""")
+    parser.add_argument("--trainer.add-layers-period", type=int, dest='add_layers_period',
+                        default=2,
+                        help="The number of iterations between adding layers"
+                        "during layer-wise discriminative training.")
+    parser.add_argument("--trainer.max-param-change", type=float, dest='max_param_change',
+                        default=2.0,
+                        help="""The maximum change in parameters allowed
+                        per minibatch, measured in Frobenius norm over
+                        the entire model""")
+    parser.add_argument("--trainer.samples-per-iter", type=int, dest='samples_per_iter',
+                        default=400000,
+                        help="This is really the number of egs in each archive.")
+    parser.add_argument("--trainer.lda.rand-prune", type=float, dest='rand_prune',
+                        default=4.0,
+                        help="""Value used in preconditioning matrix estimation""")
+    parser.add_argument("--trainer.lda.max-lda-jobs", type=float, dest='max_lda_jobs',
+                        default=10,
+                        help="""Max number of jobs used for LDA stats accumulation""")
+
+    # Parameters for the optimization
+    parser.add_argument("--trainer.optimization.initial-effective-lrate", type=float, dest='initial_effective_lrate',
+                        default = 0.0003,
+                        help="Learning rate used during the initial iteration")
+    parser.add_argument("--trainer.optimization.final-effective-lrate", type=float, dest='final_effective_lrate',
+                        default = 0.00003,
+                        help="Learning rate used during the final iteration")
+    parser.add_argument("--trainer.optimization.num-jobs-initial", type=int, dest='num_jobs_initial',
+                        default = 1,
+                        help="Number of neural net jobs to run in parallel at the start of training")
+    parser.add_argument("--trainer.optimization.num-jobs-final", type=int, dest='num_jobs_final',
+                        default = 8,
+                        help="Number of neural net jobs to run in parallel at the end of training")
+    parser.add_argument("--trainer.optimization.max-models-combine", type=int, dest='max_models_combine',
+                        default = 20,
+                        help = """ The is the maximum number of models we give to the
+                                   final 'combine' stage, but these models will themselves
+                                   be averages of iteration-number ranges. """)
+    parser.add_argument("--trainer.optimization.momentum", type=float, dest='momentum',
+                        default = 0.0,
+                        help="""Momentum used in update computation.
+                        Note: we implemented it in such a way that
+                        it doesn't increase the effective learning rate.""")
+    # General options
+    parser.add_argument("--stage", type=int, default=-4,
+                        help="Specifies the stage of the experiment to execution from")
+    parser.add_argument("--exit-stage", type=int, default=None,
+                        help="If specified, training exits before running this stage")
+    parser.add_argument("--cmd", type=str, action = common_train_lib.NullstrToNoneAction,
+                        dest = "command",
+                        help="""Specifies the script to launch jobs.
+                        e.g. queue.pl for launching on SGE cluster
+                             run.pl for launching on local machine
+                        """, default = "queue.pl")
+    parser.add_argument("--egs.cmd", type=str, action = common_train_lib.NullstrToNoneAction,
+                        dest = "egs_command",
+                        help="""Script to launch egs jobs""", default = "queue.pl")
+    parser.add_argument("--use-gpu", type=str, action = common_train_lib.StrToBoolAction,
+                        choices = ["true", "false"],
+                        help="Use GPU for training", default=True)
+    parser.add_argument("--cleanup", type=str, action = common_train_lib.StrToBoolAction,
+                        choices = ["true", "false"],
+                        help="Clean up models after training", default=True)
+    parser.add_argument("--cleanup.remove-egs", type=str, dest='remove_egs',
+                        default = True, action = common_train_lib.StrToBoolAction,
+                        choices = ["true", "false"],
+                        help="""If true, remove egs after experiment""")
+    parser.add_argument("--cleanup.preserve-model-interval", dest = "preserve_model_interval",
+                        type=int, default=100,
+                        help="Determines iterations for which models will be preserved during cleanup. If mod(iter,preserve_model_interval) == 0 model will be preserved.")
+
+    parser.add_argument("--reporting.email", dest = "email",
+                        type=str, default=None, action = common_train_lib.NullstrToNoneAction,
+                        help=""" Email-id to report about the progress of the experiment.
+                              NOTE: It assumes the machine on which the script is being run can send
+                              emails from command line via. mail program. The
+                              Kaldi mailing list will not support this feature.
+                              It might require local expertise to setup. """)
+    parser.add_argument("--reporting.interval", dest = "reporting_interval",
+                        type=int, default=0.1,
+                        help="Frequency with which reports have to be sent, measured in terms of fraction of iterations. If 0 and reporting mail has been specified then only failure notifications are sent")
+
 def SendMail(message, subject, email_id):
     try:
         subprocess.Popen('echo "{message}" | mail -s "{subject}" {email} '.format(
@@ -496,7 +645,7 @@ def GetLearningRate(iter, num_jobs, num_iters, num_archives_processed,
 
     return num_jobs * effective_learning_rate
 
-def DoShrinkage(iter, model_file, name, non_linearity, shrink_threshold,
+def DoShrinkage(iter, model_file, non_linearity, shrink_threshold,
                 get_raw_nnet_from_am = True):
 
     if iter == 0:
@@ -504,9 +653,9 @@ def DoShrinkage(iter, model_file, name, non_linearity, shrink_threshold,
 
     try:
         if get_raw_nnet_from_am:
-            output, error = RunKaldiCommand("nnet3-am-info --print-args=false {model_file} | grep '{name}' | grep {non_linearity}".format(name = name, non_linearity = non_linearity, model_file = model_file))
+            output, error = RunKaldiCommand("nnet3-am-info --print-args=false {model_file} | grep {non_linearity}".format(non_linearity = non_linearity, model_file = model_file))
         else:
-            output, error = RunKaldiCommand("nnet3-info --print-args=false {model_file} | grep '{name}' | grep {non_linearity}".format(name = name, non_linearity = non_linearity, model_file = model_file))
+            output, error = RunKaldiCommand("nnet3-info --print-args=false {model_file} | grep {non_linearity}".format(non_linearity = non_linearity, model_file = model_file))
         output = output.strip().split("\n")
         # eg.
         # component name=Lstm1_f type=SigmoidComponent, dim=1280, count=5.02e+05, value-avg=[percentiles(0,1,2,5 10,20,50,80,90 95,98,99,100)=(0.06,0.17,0.19,0.24 0.28,0.33,0.44,0.62,0.79 0.96,0.99,1.0,1.0), mean=0.482, stddev=0.198], deriv-avg=[percentiles(0,1,2,5 10,20,50,80,90 95,98,99,100)=(0.0001,0.003,0.004,0.03 0.12,0.18,0.22,0.24,0.25 0.25,0.25,0.25,0.25), mean=0.198, stddev=0.0591]
