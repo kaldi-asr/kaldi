@@ -212,7 +212,9 @@ if $use_pocolm; then
     # bigrams that we've seen (this may enforce certain linguistic constraints,
     # and also stops the graph from blowing up too much once we introduce
     # phonetic context.
-    cat $dir/training.txt | awk '{ printf("<s> %s </s>\n", $0); }' | \
+    # The NF > 0 is just a double-check that there are no empty prons, which
+    # would be bad as it would allow an empty pronunciation of the unknown word.
+    cat $dir/training.txt | awk '{ if (NF > 0) printf("<s> %s </s>\n", $0); }' | \
       awk '{for(n=1;n<NF;n++) { m=n+1; seen[ $n " " $m ] = 1; }} END{for(k in seen) print k;}' \
           > $dir/allowed_bigrams
 
