@@ -507,7 +507,6 @@ void LimitDerivativeTimes(const Nnet &nnet,
                           int32 max_deriv_time,
                           NnetComputation *computation);
 
-
 /// This function detects submatrices, matrices, and members of indexes_multi
 /// and indexes that are never used (e.g. due to changes made in other
 /// optimization code), and removes them from the computation by way of suitable
@@ -532,7 +531,6 @@ void IdentifySubmatrixArgs(NnetComputation::Command *command,
 /// of the pointers may point to a zero value, for optional submatrix args.
 void IdentifySubmatrixArgs(std::vector<NnetComputation::Command> *commands,
                            std::vector<int32*> *submatrix_args);
-
 
 /// This function outputs to "submatrix_args" the addresses of integers in
 /// 'computation' that correspond to submatrices.  These may be present in
@@ -568,7 +566,18 @@ void IdentifyIndexesArgs(std::vector<NnetComputation::Command> *commands,
 void IdentifyIndexesRangesArgs(std::vector<NnetComputation::Command> *commands,
                                std::vector<int32*> *indexes_ranges_args);
 
-
+/// This function tries to optimize computation 'computation' for an 'online'
+/// computation.  It expects as input a computation with no backprop but with
+/// multiple 'segments' separated by command kNoOperation, where each segment
+/// corresponds to a new chunk of input and output.  It tries to locate a pair
+/// of segment boundaries, with command indexes c1 and c2, where the active
+/// matrices have the same debug-info other than a time offset and can be
+/// identified with each other, and the no-op command at c2 can be replaced with
+/// 'got c1', creating a computation that 'goes on forever'.
+/// It returns true if it successfully did this.  [If this happens, the
+/// whole computation may have to be regenerated with more segments.]
+bool OptimizeOnlineComputation(const Nnet &nnet,
+                               NnetComputation *computation);
 
 
 /*

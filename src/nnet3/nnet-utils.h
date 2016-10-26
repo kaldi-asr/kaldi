@@ -97,7 +97,7 @@ bool IsSimpleNnet(const Nnet &nnet);
 void ZeroComponentStats(Nnet *nnet);
 
 
-/// ComputeNnetContext computes the left-context and right-context of a nnet.
+/// ComputeSimpleNnetContext computes the left-context and right-context of a nnet.
 /// The nnet must satisfy IsSimpleNnet(nnet).
 ///
 /// It does this by constructing a ComputationRequest with a certain number of inputs
@@ -180,7 +180,7 @@ void ConvertRepeatedToBlockAffine(Nnet *nnet);
 /// Info() function (we need this in the CTC code).
 std::string NnetInfo(const Nnet &nnet);
 
-/// This function sets the dropout proportion in all dropout component to 
+/// This function sets the dropout proportion in all dropout component to
 /// dropout_proportion value.
 void SetDropoutProportion(BaseFloat dropout_proportion, Nnet *nnet);
 

@@ -1661,5 +1661,153 @@ void LimitDerivativeTimes(const Nnet &nnet,
   limiter.LimitDerivTimes();
 }
 
+
+class ComputationOnlineOptimizer {
+ public:
+  ComputationOnlineOptimizer(const Nnet &nnet,
+                             NnetComputation *computation):
+      nnet_(nnet), computation_(computation) { }
+  bool Optimize();
+
+ private:
+  // This function creates a mapping from a matrix-index > 0,
+  // to a pair (time_offset, unique_id) that represents the debug-info
+  // for that matrix-id in computation.debug_info.
+  // The output vector is indexed by the matrix-index in the computation (the
+  // zeroth member is not valid).  It requires that the
+  // The 'time_offset' is equal to the 't' value of the zeroth element of the
+  // cindexes vetor.  The 'unique_id' is an integer that uniquely identifies
+  // what we get from subtracting the 'time_offset' from each 't' value of
+  // that 'cindexes' vector, and then pairing it up with the 'is_deriv'
+  // value of the DebugInfo.  That is, if two 'cindexes' vectors differ only
+  // by a time offset, and the 'is_deriv' values are the same they will map to the same
+  // unique_id.
+  static void CreateMatrixPairs(const NnetComputation &computation,
+                                std::vector<std::pair<int32, int32> > *matrix_to_pair);
+
+
+  /// Given a list of command indexes ('segment_end_commands') which are
+  /// expected to be command indexes of the kNoOperationMarker at segment
+  /// boundaries, this function outputs for each of these command indexes a list
+  /// of matrices which are 'active' at that point in time.  By 'active' we mean
+  /// that the matrix has been written to before that time (note, we don't count
+  /// initialization with zeros as being written to); and will be read after
+  /// that time.  These is the list of matrices that 'need to be in scope'
+  /// at those points in time.  '*active_matrices' is indexed by the
+  /// same index as 'segment_end_commands', and is then a list of active
+  /// matrices, in numerical order of matrix index.
+  static void FindActiveMatrices(const NnetComputation &computation,
+                                 const std::vector<int32> &segment_end_commands,
+                                 const Analyzer &analyzer,
+                                 std::vector<std::vector<int32> > *active_matrices);
+
+
+  const Nnet &nnet_;
+  NnetComputation *computation_;
+  Analyzer analyzer_;
+  std::vector<std::pair<int32, int32> > matrix_to_pair_;
+
+  std::vector<int32> segment_end_commands_;
+
+
+};
+
+
+// static
+void ComputationOnlineOptimizer::CreateMatrixPairs(
+    const NnetComputation &computation,
+    std::vector<std::pair<int32, int32> > *matrix_to_pair) {
+  typedef unordered_map<std::vector<Cindex>, int32,
+                        CindexVectorHasher> MapType;
+  int32 cur_vector_id = 1;
+  // Note: cindex_map just maps the vector<Cindex> to a unique value,
+  // and then we manually work out a unique id that takes into
+  // account the 'is_deriv' values.
+  MapType cindex_map;
+  int32 num_matrices = computation.matrices.size();
+  matrix_to_pair->resize(num_matrices);
+  KALDI_ASSERT(computation.matrix_debug_info.size() == num_matrices);
+  for (int32 m = 1; m < num_matrices; m++) {
+    KALDI_ASSERT(!computation.matrix_debug_info[m].cindexes.empty());
+    std::vector<Cindex> cindexes = computation.matrix_debug_info[m].cindexes;
+    int32 t_offset = cindexes[0].second.t;
+    for (std::vector<Cindex>::iterator iter = cindexes.begin();
+         iter != cindexes.end(); ++iter)
+      iter->second.t -= t_offset;
+    MapType::const_iterator iter = cindex_map.find(cindexes);
+    int32 vector_id;
+    if (iter != cindex_map.end()) {
+      vector_id = iter->second;
+    } else {
+      vector_id = cur_vector_id++;
+      cindex_map[cindexes] = vector_id;
+    }
+    bool is_deriv = computation.matrix_debug_info[m].is_deriv;
+    int32 unique_id = 2 * vector_id + (is_deriv ? 1 : 0);
+    (*matrix_to_pair)[m].first = t_offset;
+    (*matrix_to_pair)[m].second = unique_id;
+  }
+}
+
+
+// static
+void ComputationOnlineOptimizer::FindActiveMatrices(
+    const NnetComputation &computation,
+    const std::vector<int32> &segment_end_commands,
+    const Analyzer &analyzer,
+    std::vector<std::vector<int32> > *active_matrices) {
+  int32 num_matrices = computation.matrices.size();
+  int32 num_segments = segment_end_commands.size();
+  active_matrices->clear();
+  active_matrices->resize(num_segments);
+  // this object just makes available some extra functions.
+  ComputationAnalysis analysis(computation, analyzer);
+  for (int32 s = 0; s + 1 < num_segments; s++) {
+    KALDI_ASSERT(segment_end_commands[s] < segment_end_commands[s+1]);
+  }
+  // the following vector gives us, for each matrix index, a submatrix index
+  // that covers the whole of that matrix (needed by interface of 'analysis' object).
+  std::vector<int32> whole_submatrices;
+  computation.GetWholeSubmatrices(&whole_submatrices);
+  for (int32 m = 1; m < num_matrices; m++) {
+    // the following are command indexes, comparable with the indexes
+    // in 'segment_end_commands'.
+    int32 s = whole_submatrices[m];  // submatrix consisting of the whole of
+                                     // 'm'.
+    int32 first_access = analysis.FirstAccess(s),
+        last_access = analysis.LastAccess(s);
+    std::vector<int32>::const_iterator iter = segment_end_commands.begin(),
+        end = segment_end_commands.end();
+    for (; iter != end; ++iter) {
+      int32 segment_end = *iter;
+      if (first_access < segment_end && last_access > segment_end) {
+        // TODO.
+      }
+    }
+  }
+
+}
+
+bool ComputationOnlineOptimizer::Optimize() {
+  analyzer_.Init(nnet_, *computation_);
+  KALDI_ASSERT(!computation_->matrix_debug_info.empty() &&
+               "You must request matrix debug info when compiling "
+               "online computations.");
+
+  // TODO.
+
+  return false;
+}
+
+
+bool OptimizeOnlineComputation(const Nnet &nnet,
+                               NnetComputation *computation) {
+  ComputationOnlineOptimizer optimizer(nnet, computation);
+  return optimizer.Optimize();
+}
+
+
+
+
 } // namespace nnet3
 } // namespace kaldi

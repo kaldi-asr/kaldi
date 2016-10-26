@@ -164,7 +164,7 @@ static void WriteCindexVectorElementBinary(
     // [node_1: index_1 index_2] [node_2: index_3 index_4]
     os.put('|');
     WriteBasicType(os, binary, node_index);
-  }  
+  }
   if (i == 0) {
     if (index.n == 0 && index.x == 0 &&
         std::abs(index.t) < 125) {
@@ -274,11 +274,11 @@ void WriteCindexVector(std::ostream &os, bool binary,
         os.put('[');
         WriteBasicType(os, binary, node_index);
         os.put(':');
-      } 
+      }
       vec[i].second.Write(os, binary);
       if (i == size - 1)
         os.put(']');
-    } 
+    }
   } else {
     for (int32 i = 0; i < size; i++)
       WriteCindexVectorElementBinary(os, vec, i);
@@ -320,7 +320,7 @@ void ReadCindexVector(std::istream &is, bool binary,
         (*vec)[i].first = (*vec)[i-1].first;
       }
       (*vec)[i].second.Read(is, binary);
-      if (i == size - 1) { 
+      if (i == size - 1) {
         is >> std::ws;
         if (is.peek() == static_cast<int>(']')) {
           is.get();
@@ -351,6 +351,19 @@ size_t CindexHasher::operator () (const Cindex &cindex) const {
       89809 * cindex.second.x;
 
 }
+
+size_t CindexVectorHasher::operator () (
+    const std::vector<Cindex> &cindex_vector) const {
+  // this is an arbitrarily chosen prime.
+  size_t kPrime = 23539, ans = 0;
+  std::vector<Cindex>::const_iterator iter = cindex_vector.begin(),
+      end = cindex_vector.end();
+  CindexHasher cindex_hasher;
+  for (; iter != end; ++iter)
+    ans = cindex_hasher(*iter) + kPrime * ans;
+  return ans;
+}
+
 
 std::ostream &operator << (std::ostream &ostream, const Index &index) {
   return ostream << '(' << index.n << ' ' << index.t << ' ' << index.x << ')';
