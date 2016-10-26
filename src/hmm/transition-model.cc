@@ -76,10 +76,20 @@ void TransitionModel::ComputeTuples(const ContextDependencyInterface &ctx_dep) {
     // pdf_class_pairs is a set of lists indexed by phone. Each list stores
     // (pdf-class, self-loop pdf-class) of each state of that phone.
     std::vector<std::vector<std::pair<int32, int32> > > pdf_class_pairs;
+    pdf_class_pairs.resize(1 + *std::max_element(phones.begin(), phones.end()));
+    for (size_t i = 0; i < phones.size(); i++) {
+      int32 phone = phones[i];
+      const HmmTopology::TopologyEntry &entry = topo_.TopologyForPhone(phone);
+      for (int32 j = 0; j < static_cast<int32>(entry.size()); j++) {  // for each state...
+        int32 pdf_class = entry[j].pdf_class, self_loop_pdf_class = entry[j].self_loop_pdf_class;
+        if (pdf_class != kNoPdf)
+          pdf_class_pairs[phone].push_back(std::make_pair(pdf_class, self_loop_pdf_class));
+      }
+    }
     ctx_dep.GetPdfInfo(phones, pdf_class_pairs, &pdf_info);
 
     std::vector<std::map<std::pair<int32, int32>, std::vector<int32> > > to_hmm_state_list;
-    to_hmm_state_list.resize(*std::max_element(phones.begin(), phones.end()));
+    to_hmm_state_list.resize(1 + *std::max_element(phones.begin(), phones.end()));
     // to_hmm_state_list is a phone-indexed set of maps from (pdf-class, self-loop pdf_class) to the list
     // of hmm-states in the HMM for that phone that that (pdf-class, self-loop pdf-class)
     // can correspond to.
@@ -96,19 +106,19 @@ void TransitionModel::ComputeTuples(const ContextDependencyInterface &ctx_dep) {
       to_hmm_state_list[phone] = phone_to_hmm_state_list;
     }
 
-    for (int32 i = 0; i < static_cast<int32>(pdf_info.size()); i++) {
+    for (int32 i = 0; i < phones.size(); i++) {
       int32 phone = phones[i];
-      for (int32 j = 0; j < static_cast<int32>(pdf_info[i].size()); j++) {
-	int32 pdf_class = pdf_class_pairs[i][j].first,
-              self_loop_pdf_class = pdf_class_pairs[i][j].second;
+      for (int32 j = 0; j < static_cast<int32>(pdf_info[phone].size()); j++) {
+	int32 pdf_class = pdf_class_pairs[phone][j].first,
+              self_loop_pdf_class = pdf_class_pairs[phone][j].second;
         const std::vector<int32> &state_vec =
               to_hmm_state_list[phone][std::make_pair(pdf_class, self_loop_pdf_class)];
         KALDI_ASSERT(!state_vec.empty());
         for (size_t k = 0; k < state_vec.size(); k++) {
           int32 hmm_state = state_vec[k];
-          for (size_t m = 0; m < pdf_info[i][j].size(); m++) {
-            int32 pdf = pdf_info[i][j][m].first,
-              self_loop_pdf = pdf_info[i][j][m].second;
+          for (size_t m = 0; m < pdf_info[phone][j].size(); m++) {
+            int32 pdf = pdf_info[phone][j][m].first,
+              self_loop_pdf = pdf_info[phone][j][m].second;
             tuples_.push_back(Tuple(phone, hmm_state, pdf, self_loop_pdf));
           }
         }

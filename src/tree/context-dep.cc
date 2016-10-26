@@ -183,17 +183,17 @@ void ContextDependency::GetPdfInfo(const std::vector<int32> &phones,
                                    std::vector<std::vector<std::vector<std::pair<int32, int32> > > > *pdf_info) const {
   // Todo
   KALDI_ASSERT(pdf_info != NULL);
-  pdf_info->resize(*std::max_element(phones.begin(), phones.end()));
+  pdf_info->resize(1 + *std::max_element(phones.begin(), phones.end()));
   EventType vec;
   for (size_t i = 0 ; i < phones.size(); i++) {
     // loop over phones
     int32 phone = phones[i];
-    (*pdf_info)[i].resize(pdf_class_pairs[i].size());
-    for (size_t j = 0; j < pdf_class_pairs[i].size(); j++) {
+    (*pdf_info)[phone].resize(pdf_class_pairs[phone].size());
+    for (size_t j = 0; j < pdf_class_pairs[phone].size(); j++) {
       // loop over pdf_class pairs
       vec.resize(2);
-      int32 pdf_class = pdf_class_pairs[i][j].first,
-        self_loop_pdf_class = pdf_class_pairs[i][j].second;
+      int32 pdf_class = pdf_class_pairs[phone][j].first,
+        self_loop_pdf_class = pdf_class_pairs[phone][j].second;
       vec[0] = std::make_pair(static_cast<EventKeyType>(P_),
                               static_cast<EventValueType>(phone));
       vec[1] = std::make_pair(kPdfClass, static_cast<EventValueType>(pdf_class));
@@ -202,6 +202,8 @@ void ContextDependency::GetPdfInfo(const std::vector<int32> &phones,
       to_pdf_->MultiMap(vec, &forward_pdfs);
       SortAndUniq(&forward_pdfs);
 
+      vec[0] = std::make_pair(static_cast<EventKeyType>(P_),
+                              static_cast<EventValueType>(phone));
       vec[1] = std::make_pair(kPdfClass, static_cast<EventValueType>(self_loop_pdf_class));
       std::sort(vec.begin(), vec.end());
       std::vector<EventAnswerType> self_loop_pdfs;  // self-loop pdfs that can be at this pos as this phone.
@@ -213,7 +215,7 @@ void ContextDependency::GetPdfInfo(const std::vector<int32> &phones,
         int32 pdf = forward_pdfs[m];
         for (size_t n = 0; n < self_loop_pdfs.size(); n++) {
           int32 self_loop_pdf = self_loop_pdfs[n];
-          (*pdf_info)[i][j].push_back(std::make_pair(pdf, self_loop_pdf));
+          (*pdf_info)[phone][j].push_back(std::make_pair(pdf, self_loop_pdf));
         }
       }
     }
