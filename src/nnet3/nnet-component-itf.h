@@ -411,7 +411,7 @@ class UpdatableComponent: public Component {
   /// Gets per-component max-change value. Note: the components themselves do
   /// not enforce the per-component max-change; it's enforced in class
   /// NnetTrainer by querying the max-changes for each component.
-  /// See NnetTrainer::UpdateParamsWithMaxChanges() in nnet3/nnet-training.cc.
+  /// See NnetTrainer::UpdateParamsWithMaxChange() in nnet3/nnet-training.cc.
   BaseFloat MaxChange() const { return max_change_; }
 
   virtual std::string Info() const;
