@@ -8,6 +8,7 @@ pm_type="entropy"
 dnndir=$1
 #langdir=$2
 srcdata=$2
+<<<<<<< HEAD
 phonemap=$3/pdf_to_pseudo_phone.txt
 postdir=$4
 #outdir=$6 #bn_feats
@@ -16,6 +17,15 @@ name=$(basename $srcdata)
 
 mkdir -p $postdir
 nj=1
+=======
+phonemapdir=$3
+postdir=$4
+#outdir=$6 #bn_feats
+name=$5 #name of the test set
+
+mkdir -p $postdir
+nj=4
+>>>>>>> Copy prior constrains files and scripts from a07
 
 ./steps/nnet/make_bn_feats.sh --nj $nj --remove-last-components 0 $postdir $srcdata $dnndir $postdir/log $postdir/data || exit 1;
 
@@ -28,7 +38,11 @@ if [ $pm_type =="entropy" ]; then
 fi
 
 for i in `seq 1 $nj`; do
+<<<<<<< HEAD
 transform-nnet-posteriors --pdf-to-pseudo-phone=$phonemap ark:$postdir/data/raw_bnfea_${name}.$i.ark ark,t:$postdir/data/monophone_bnfea_${name}.$i.txt
+=======
+transform-nnet-posteriors --pdf-to-pseudo-phone=$phonemapdir/pdf_to_pseudo_phone_bernd.txt ark:$postdir/data/raw_bnfea_${name}.$i.ark ark,t:$postdir/data/monophone_bnfea_${name}.$i.txt
+>>>>>>> Copy prior constrains files and scripts from a07
 
 copy-feats-to-htk --output-dir=$postdir/data --output-ext=mph ark,t:$postdir/data/monophone_bnfea_${name}.$i.txt
 done
