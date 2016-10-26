@@ -1,7 +1,7 @@
 // nnet3/nnet-optimize.h
 
-// Copyright      2015  Johns Hopkins University (author: Daniel Povey)
-//                2015  Xiaohui Zhang
+// Copyright      2015-2016  Johns Hopkins University (author: Daniel Povey)
+//                2015       Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //

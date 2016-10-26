@@ -606,7 +606,7 @@ static void PrintCommand(std::ostream &os,
       os << "[no-op]\n";
       break;
     case kNoOperationMarker:
-      os << "# begin backward commands\n";
+      os << "# computation segment separator [e.g., begin backward commands]\n";
       break;
     default:
       KALDI_ERR << "Un-handled command type.";
