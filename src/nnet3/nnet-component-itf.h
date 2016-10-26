@@ -373,7 +373,7 @@ class UpdatableComponent: public Component {
   UpdatableComponent(const UpdatableComponent &other):
       learning_rate_(other.learning_rate_),
       learning_rate_factor_(other.learning_rate_factor_),
-      is_gradient_(other.is_gradient_) { }
+      is_gradient_(other.is_gradient_), max_change_(other.max_change_) { }
 
   /// \brief Sets parameters to zero, and if treat_as_gradient is true,
   ///  sets is_gradient_ to true and sets learning_rate_ to 1, ignoring
@@ -381,7 +381,7 @@ class UpdatableComponent: public Component {
   virtual void SetZero(bool treat_as_gradient) = 0;
 
   UpdatableComponent(): learning_rate_(0.001), learning_rate_factor_(1.0),
-                        is_gradient_(false) { }
+                        is_gradient_(false), max_change_(0.0) { }
 
   virtual ~UpdatableComponent() { }
 
@@ -407,6 +407,12 @@ class UpdatableComponent: public Component {
   /// SetLearningRate(x), and learning_rate_factor_ != 1.0,
   /// a different value than x will returned.
   BaseFloat LearningRate() const { return learning_rate_; }
+
+  /// Gets per-component max-change value. Note: the components themselves do
+  /// not enforce the per-component max-change; it's enforced in class
+  /// NnetTrainer by querying the max-changes for each component.
+  /// See NnetTrainer::UpdateParamsWithMaxChange() in nnet3/nnet-training.cc.
+  BaseFloat MaxChange() const { return max_change_; }
 
   virtual std::string Info() const;
 
@@ -446,6 +452,7 @@ class UpdatableComponent: public Component {
                       ///< than as parameters.  Its main effect is that we disable
                       ///< any natural-gradient update and just compute the standard
                       ///< gradient.
+  BaseFloat max_change_; ///< configuration value for imposing max-change
 
  private:
   const UpdatableComponent &operator = (const UpdatableComponent &other); // Disallow.

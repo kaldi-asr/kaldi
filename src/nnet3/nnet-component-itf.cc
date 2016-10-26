@@ -183,7 +183,9 @@ bool Component::IsComputable(const MiscComputationInfo &misc_info,
 void UpdatableComponent::InitLearningRatesFromConfig(ConfigLine *cfl) {
   cfl->GetValue("learning-rate", &learning_rate_);
   cfl->GetValue("learning-rate-factor", &learning_rate_factor_);
-  if (learning_rate_ < 0.0 || learning_rate_factor_ < 0.0)
+  max_change_ = 0.0;
+  cfl->GetValue("max-change", &max_change_);
+  if (learning_rate_ < 0.0 || learning_rate_factor_ < 0.0 || max_change_ < 0.0)
     KALDI_ERR << "Bad initializer " << cfl->WholeLine();
 }
 
@@ -210,6 +212,12 @@ void UpdatableComponent::ReadUpdatableCommon(std::istream &is, bool binary) {
   } else {
     is_gradient_ = false;
   }
+  if (token == "<MaxChange>") {
+    ReadBasicType(is, binary, &max_change_);
+    ReadToken(is, binary, &token);
+  } else {
+    max_change_ = 0.0;
+  }
   if (token == "<LearningRate>") {
     ReadBasicType(is, binary, &learning_rate_);
   } else {
@@ -232,6 +240,10 @@ void UpdatableComponent::WriteUpdatableCommon(std::ostream &os,
     WriteToken(os, binary, "<IsGradient>");
     WriteBasicType(os, binary, is_gradient_);
   }
+  if (max_change_ > 0.0) {
+    WriteToken(os, binary, "<MaxChange>");
+    WriteBasicType(os, binary, max_change_);
+  }
   WriteToken(os, binary, "<LearningRate>");
   WriteBasicType(os, binary, learning_rate_);
 }
@@ -246,6 +258,8 @@ std::string UpdatableComponent::Info() const {
     stream << ", is-gradient=true";
   if (learning_rate_factor_ != 1.0)
     stream << ", learning-rate-factor=" << learning_rate_factor_;
+  if (max_change_ > 0.0)
+    stream << ", max-change=" << max_change_;
   return stream.str();
 }
 

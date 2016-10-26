@@ -34,17 +34,16 @@ NnetChainTrainer::NnetChainTrainer(const NnetChainTrainingOptions &opts,
     num_minibatches_processed_(0) {
   if (opts.nnet_config.zero_component_stats)
     ZeroComponentStats(nnet);
-  if (opts.nnet_config.momentum == 0.0 &&
-      opts.nnet_config.max_param_change == 0.0) {
-    delta_nnet_= NULL;
-  } else {
-    KALDI_ASSERT(opts.nnet_config.momentum >= 0.0 &&
-                 opts.nnet_config.max_param_change >= 0.0);
-    delta_nnet_ = nnet_->Copy();
-    bool is_gradient = false;  // setting this to true would disable the
-                               // natural-gradient updates.
-    SetZero(is_gradient, delta_nnet_);
-  }
+  KALDI_ASSERT(opts.nnet_config.momentum >= 0.0 &&
+               opts.nnet_config.max_param_change >= 0.0);
+  delta_nnet_ = nnet_->Copy();
+  bool is_gradient = false;  // setting this to true would disable the
+                             // natural-gradient updates.
+  SetZero(is_gradient, delta_nnet_);
+  const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
+  num_max_change_per_component_applied_.resize(num_updatable, 0); 
+  num_max_change_global_applied_ = 0;
+
   if (opts.nnet_config.read_cache != "") {
     bool binary;
     try {
@@ -71,8 +70,7 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
   const NnetComputation *computation = compiler_.Compile(request);
 
   NnetComputer computer(nnet_config.compute_config, *computation,
-                        *nnet_,
-                        (delta_nnet_ == NULL ? nnet_ : delta_nnet_));
+                        *nnet_, delta_nnet_);
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, chain_eg.inputs);
   computer.Forward();
@@ -80,27 +78,7 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
   this->ProcessOutputs(chain_eg, &computer);
   computer.Backward();
 
-  if (delta_nnet_ != NULL) {
-    BaseFloat scale = (1.0 - nnet_config.momentum);
-    if (nnet_config.max_param_change != 0.0) {
-      BaseFloat param_delta =
-          std::sqrt(DotProduct(*delta_nnet_, *delta_nnet_)) * scale;
-      if (param_delta > nnet_config.max_param_change) {
-        if (param_delta - param_delta != 0.0) {
-          KALDI_WARN << "Infinite parameter change, will not apply.";
-          SetZero(false, delta_nnet_);
-        } else {
-          scale *= nnet_config.max_param_change / param_delta;
-          KALDI_LOG << "Parameter change too big: " << param_delta << " > "
-                    << "--max-param-change=" << nnet_config.max_param_change
-                    << ", scaling by "
-                    << nnet_config.max_param_change / param_delta;
-        }
-      }
-    }
-    AddNnet(*delta_nnet_, scale, nnet_);
-    ScaleNnet(nnet_config.momentum, delta_nnet_);
-  }
+  UpdateParamsWithMaxChange();
 }
 
 
@@ -169,6 +147,88 @@ void NnetChainTrainer::ProcessOutputs(const NnetChainExample &eg,
   }
 }
 
+void NnetChainTrainer::UpdateParamsWithMaxChange() {
+  KALDI_ASSERT(delta_nnet_ != NULL);
+  const NnetTrainerOptions &nnet_config = opts_.nnet_config;
+  // computes scaling factors for per-component max-change
+  const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
+  Vector<BaseFloat> scale_factors = Vector<BaseFloat>(num_updatable);
+  BaseFloat param_delta_squared = 0.0;
+  int32 num_max_change_per_component_applied_per_minibatch = 0;
+  BaseFloat min_scale = 1.0;
+  std::string component_name_with_min_scale;
+  BaseFloat max_change_with_min_scale;
+  int32 i = 0;
+  for (int32 c = 0; c < delta_nnet_->NumComponents(); c++) {
+    Component *comp = delta_nnet_->GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent) {
+      UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(comp);
+      if (uc == NULL)
+        KALDI_ERR << "Updatable component does not inherit from class "
+                  << "UpdatableComponent; change this code.";
+      BaseFloat max_param_change_per_comp = uc->MaxChange();
+      KALDI_ASSERT(max_param_change_per_comp >= 0.0);
+      BaseFloat dot_prod = uc->DotProduct(*uc);
+      if (max_param_change_per_comp != 0.0 &&
+          std::sqrt(dot_prod) > max_param_change_per_comp) {
+        scale_factors(i) = max_param_change_per_comp / std::sqrt(dot_prod);
+        num_max_change_per_component_applied_[i]++;
+        num_max_change_per_component_applied_per_minibatch++;
+        KALDI_VLOG(2) << "Parameters in " << delta_nnet_->GetComponentName(c)
+                      << " change too big: " << std::sqrt(dot_prod) << " > "
+                      << "max-change=" << max_param_change_per_comp
+                      << ", scaling by " << scale_factors(i);
+      } else {
+        scale_factors(i) = 1.0;
+      }
+      if  (i == 0 || scale_factors(i) < min_scale) {
+        min_scale =  scale_factors(i);
+        component_name_with_min_scale = delta_nnet_->GetComponentName(c);
+        max_change_with_min_scale = max_param_change_per_comp;
+      }
+      param_delta_squared += std::pow(scale_factors(i), 2.0) * dot_prod;
+      i++;
+    }
+  }
+  KALDI_ASSERT(i == scale_factors.Dim());
+  BaseFloat param_delta = std::sqrt(param_delta_squared);
+  // computes the scale for global max-change (with momentum)
+  BaseFloat scale = (1.0 - nnet_config.momentum);
+  if (nnet_config.max_param_change != 0.0) {
+    param_delta *= scale;
+    if (param_delta > nnet_config.max_param_change) {
+      if (param_delta - param_delta != 0.0) {
+        KALDI_WARN << "Infinite parameter change, will not apply.";
+        SetZero(false, delta_nnet_);
+      } else {
+        scale *= nnet_config.max_param_change / param_delta;
+        num_max_change_global_applied_++;
+      }
+    }
+  }
+  if ((nnet_config.max_param_change != 0.0 &&
+      param_delta > nnet_config.max_param_change &&
+      param_delta - param_delta == 0.0) || min_scale < 1.0) {
+    std::ostringstream ostr;
+    if (min_scale < 1.0)
+      ostr << "Per-component max-change active on "
+           << num_max_change_per_component_applied_per_minibatch
+           << " / " << num_updatable << " Updatable Components."
+           << "(smallest factor=" << min_scale << " on "
+           << component_name_with_min_scale
+           << " with max-change=" << max_change_with_min_scale <<"). "; 
+    if (param_delta > nnet_config.max_param_change)
+      ostr << "Global max-change factor was "
+           << nnet_config.max_param_change / param_delta
+           << " with max-change=" << nnet_config.max_param_change << ".";
+    KALDI_LOG << ostr.str();
+  }
+  // applies both of the max-change scalings all at once, component by component
+  // and updates parameters
+  scale_factors.Scale(scale);
+  AddNnetComponents(*delta_nnet_, scale_factors, scale, nnet_);
+  ScaleNnet(nnet_config.momentum, delta_nnet_);
+}
 
 bool NnetChainTrainer::PrintTotalStats() const {
   unordered_map<std::string, ObjectiveFunctionInfo>::const_iterator
@@ -183,6 +243,29 @@ bool NnetChainTrainer::PrintTotalStats() const {
   return ans;
 }
 
+void NnetChainTrainer::PrintMaxChangeStats() const {
+  KALDI_ASSERT(delta_nnet_ != NULL);
+  int32 i = 0;
+  for (int32 c = 0; c < delta_nnet_->NumComponents(); c++) {
+    Component *comp = delta_nnet_->GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent) {
+      UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(comp);
+      if (uc == NULL)
+        KALDI_ERR << "Updatable component does not inherit from class "
+                  << "UpdatableComponent; change this code.";
+      if (num_max_change_per_component_applied_[i] > 0)
+        KALDI_LOG << "For " << delta_nnet_->GetComponentName(c)
+                  << ", per-component max-change was enforced "
+                  << (100.0 * num_max_change_per_component_applied_[i]) /
+                     num_minibatches_processed_ << " \% of the time.";
+      i++;
+    }
+  }
+  if (num_max_change_global_applied_ > 0)
+    KALDI_LOG << "The global max-change was enforced "
+              << (100.0 * num_max_change_global_applied_) /
+                 num_minibatches_processed_ << " \% of the time.";
+}
 
 NnetChainTrainer::~NnetChainTrainer() {
   if (opts_.nnet_config.write_cache != "") {

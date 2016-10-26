@@ -2671,9 +2671,10 @@ void NaturalGradientAffineComponent::Init(
   SetNaturalGradientConfigs();
   if (max_change_per_sample > 0.0)
     KALDI_WARN << "You are setting a positive max_change_per_sample for "
-               << "NaturalGradientAffineComponent. But the per-component "
-               << "gradient clipping mechansim has been removed. Instead it's currently "
-               << "done at the whole model level.";
+               << "NaturalGradientAffineComponent. But it has been deprecated. "
+               << "Please use max_change for all updatable components instead "
+               << "to activate the per-component max change mechanism.";
+  KALDI_ASSERT(max_change_per_sample >= 0.0);
   max_change_per_sample_ = max_change_per_sample;
   is_gradient_ = false;  // not configurable; there's no reason you'd want this
   update_count_ = 0.0;
@@ -3366,9 +3367,9 @@ void NaturalGradientPerElementScaleComponent::Init(
   max_change_per_minibatch_ = max_change_per_minibatch;
   if (max_change_per_minibatch > 0.0)
     KALDI_WARN << "You are setting a positive max_change_per_minibatch for "
-               << "NaturalGradientPerElementScaleComponent. But the per-component "
-               << "gradient clipping mechansim has been removed. Instead it's currently "
-               << "done at the whole model level.";
+               << "NaturalGradientPerElementScaleComponent. But it has been deprecated. "
+               << "Please use max_change for all updatable components instead "
+               << "to activate the per-component max change mechanism.";
 }
 
 void NaturalGradientPerElementScaleComponent::Init(
