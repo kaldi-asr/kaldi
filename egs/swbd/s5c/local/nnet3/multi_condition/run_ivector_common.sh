@@ -1,14 +1,12 @@
 #!/bin/bash 
 #set -e
-# this script is based on local/nnet3/run_ivector_common.sh
-# but it operates on corrupted training/dev/test data sets
+# This script is based on local/nnet3/run_ivector_common.sh.
+# It reverberates the original data with simulated room impulse responses
 
 . cmd.sh
 
 stage=1
-foreground_snrs="20:10:15:5:0"
-background_snrs="20:10:15:5:0"
-num_data_reps=1
+num_data_reps=1  # number of reverberated copies of data to generate
 clean_data_dir=train_nodup
 iv_dir=exp/nnet3_rvb
 speed_perturb=true
@@ -58,27 +56,21 @@ fi
 
 
 if [ $stage -le 3 ]; then
-  if [ ! -d "RIRS_NOISES" ]; then
-    # Download the package that includes the real RIRs, simulated RIRs, isotropic noises and point-source noises
-    wget --no-check-certificate http://www.openslr.org/resources/28/rirs_noises.zip
-    unzip rirs_noises.zip
+  if [ ! -d "simulated_rirs_8k" ]; then
+    # Download the simulated RIR package with 8k sampling rate
+    wget --no-check-certificate http://www.openslr.org/resources/26/sim_rir_8k.zip
+    unzip sim_rir_8k.zip
   fi
 
   # corrupt the data to generate reverberated data 
   # this script modifies wav.scp to include the reverberation commands, the real computation will be done at the feature extraction
   python steps/data/reverberate_data_dir.py \
     --prefix "rev" \
-    --rir-set-parameters "0.25, RIRS_NOISES/simulated_rirs/smallroom/rir_list" \
-    --rir-set-parameters "0.25, RIRS_NOISES/simulated_rirs/mediumroom/rir_list" \
-    --rir-set-parameters "0.25, RIRS_NOISES/simulated_rirs/largeroom/rir_list" \
-    --rir-set-parameters "0.25, RIRS_NOISES/real_rirs_isotropic_noises/rir_list" \
-    --foreground-snrs $foreground_snrs \
-    --background-snrs $background_snrs \
+    --rir-set-parameters "0.3, simulated_rirs_8k/smallroom/rir_list" \
+    --rir-set-parameters "0.3, simulated_rirs_8k/mediumroom/rir_list" \
+    --rir-set-parameters "0.3, simulated_rirs_8k/largeroom/rir_list" \
     --speech-rvb-probability 1 \
-    --pointsource-noise-addition-probability 1 \
-    --isotropic-noise-addition-probability 1 \
     --num-replications $num_data_reps \
-    --max-noises-per-minute 1 \
     --source-sampling-rate 8000 \
     --include-original-data true \
     data/${clean_data_dir} data/${clean_data_dir}_rvb${num_data_reps}

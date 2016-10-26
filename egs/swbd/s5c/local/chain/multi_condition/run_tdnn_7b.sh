@@ -4,14 +4,14 @@ set -e
 
 # configs for 'chain'
 affix=
-stage=12
-train_stage=$1
+stage=1
+train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
 dir=exp/chain/tdnn_7b  # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
 iv_dir=exp/nnet3_rvb
-num_data_reps=1
+num_data_reps=1        # number of reverberated copies of data to generate
 clean_train_set=train_nodup
 
 # TDNN options
@@ -59,6 +59,18 @@ fi
 # run those things.
 
 
+if [ "$speed_perturb" == "true" ]; then
+  suffix=_sp
+fi
+
+dir=${dir}${affix:+_$affix}${suffix}_rvb${num_data_reps}
+train_set=${clean_train_set}${suffix}_rvb${num_data_reps}
+lang=data/lang_chain_2y
+treedir=exp/chain/tri5_2y_tree${suffix}
+lat_dir=exp/tri4_lats_nodup${suffix}
+rvb_lat_dir=${lat_dir}_rvb${num_data_reps}
+
+
 # if we are using the speed-perturbed data we need to generate
 # alignments for it.
 # Also the data reverberation will be done in this script/
@@ -69,24 +81,11 @@ echo local/nnet3/multi_condition/run_ivector_common.sh --stage $stage \
   --num-data-reps $num_data_reps || exit 1;
 
 
-if [ "$speed_perturb" == "true" ]; then
-  suffix=_sp
-fi
-
-clean_train_set=${clean_train_set}${suffix}
-dir=${dir}${affix:+_$affix}${suffix}_rvb${num_data_reps}
-train_set=${clean_train_set}${suffix}_rvb${num_data_reps}
-lang=data/lang_chain_2y
-treedir=exp/chain/tri5_2y_tree${suffix}
-lat_dir=exp/tri4_lats_nodup${suffix}
-rvb_lat_dir=${lat_dir}_rvb${num_data_reps}
-
-
 if [ $stage -le 9 ]; then
   # Get the alignments as lattices (gives the CTC training more freedom).
   # use the same num-jobs as the alignments
   nj=$(cat exp/tri4_ali_nodup${suffix}/num_jobs) || exit 1;
-  steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" data/${clean_data_dir} \
+  steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" data/${clean_train_set}${suffix} \
     data/lang exp/tri4 $lat_dir
   rm $lat_dir/fsts.*.gz # save space
 
