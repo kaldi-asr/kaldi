@@ -5,7 +5,7 @@ use List::Util qw(sum);
 #convert the *.lats.post file(vector for each utt) into a matrix for each utt(like the output of a nnet-forward output)
 #
 open(LAT,"$ARGV[0]") or die "input:lat.1.phone.post,map_root_phones_vs_dep_phones.int output:lats.phone.posts"; #lats.pdf.post: without utt id, starting with "[", and the posts all from lats.1.gz, not from best paths
-open(MAP,"$ARGV[1]");# 42 phonemes(pdf-to-phone)
+open(MAP,"$ARGV[1]");# 42 phonemes: map_root_int_vs_dep_phones_int.map
 open(OUT,">$ARGV[2]");
 
 $num_of_phonemes=42;
@@ -47,6 +47,7 @@ foreach $k(@$array_lat) # per frame
   @arraykey=split/\s+/,$k;
   @arraykey=&splice_array_empty(@arraykey);
   $numkey=@arraykey;
+  #print $numkey."\n";
   # print "$numkey has posteriors not 0 \n";
   @array_phone_post=(0)x$num_of_phonemes;
   $phone_init_id=$hashmap{$arraykey[0]};
@@ -54,6 +55,7 @@ foreach $k(@$array_lat) # per frame
   for (my $j=0;$j<$numkey;$j+=2)
   {
     $phone_id=$hashmap{$arraykey[$j]};
+
     $phone_post=$arraykey[$j+1];
     #print "dep phone is $arraykey[$j], phone is $phone_id\n";
     if ($phone_id eq $phone_init_id)
@@ -65,6 +67,8 @@ foreach $k(@$array_lat) # per frame
       $phone_init_id=$phone_id;
       $array_phone_post[$phone_init_id-1]=$phone_post;
     } 
+
+    # print $phone_id." vs. ".$phone_init_id."\n";
     #print "post id is $phone_id, post is $phone_post \n";
   }
   #@array_phone_post=&smooth_phone_post_array(@array_phone_post);

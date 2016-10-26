@@ -13,7 +13,7 @@ BINFILES = nnet-am-info nnet-init \
    nnet-am-average nnet-am-combine nnet-am-compute nnet-am-shrink nnet-am-mixup \
    nnet-get-egs nnet-train-parallel nnet-gradient \
    nnet-select-egs nnet-combine-fast \
-   nnet-subset-egs nnet-shuffle-egs nnet-am-fix nnet-logprob  nnet-logprob2 \
+   nnet-subset-egs nnet-shuffle-egs nnet-am-fix nnet-logprob  nnet-logprob2 nnet-nonlog-prob-modified \
    nnet-logprob2-parallel nnet-logprob-parallel nnet-am-stats nnet-am-rescale \
    nnet-am-limit-rank nnet-latgen-faster-parallel nnet-to-raw-nnet nnet-compute \
    raw-nnet-concat nnet-am-limit-rank-final raw-nnet-info \
