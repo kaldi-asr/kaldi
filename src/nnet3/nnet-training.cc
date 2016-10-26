@@ -32,19 +32,16 @@ NnetTrainer::NnetTrainer(const NnetTrainerOptions &config,
     num_minibatches_processed_(0) {
   if (config.zero_component_stats)
     ZeroComponentStats(nnet);
-  if (config.momentum == 0.0 && config.max_param_change == 0.0) {
-    delta_nnet_= NULL;
-  } else {
-    KALDI_ASSERT(config.momentum >= 0.0 &&
-                 config.max_param_change >= 0.0);
-    delta_nnet_ = nnet_->Copy();
-    bool is_gradient = false;  // setting this to true would disable the
-                               // natural-gradient updates.
-    SetZero(is_gradient, delta_nnet_);
-    const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
-    num_max_change_per_component_applied_.resize(num_updatable, 0); 
-    num_max_change_global_applied_ = 0;
-  }
+  KALDI_ASSERT(config.momentum >= 0.0 &&
+               config.max_param_change >= 0.0);
+  delta_nnet_ = nnet_->Copy();
+  bool is_gradient = false;  // setting this to true would disable the
+                             // natural-gradient updates.
+  SetZero(is_gradient, delta_nnet_);
+  const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
+  num_max_change_per_component_applied_.resize(num_updatable, 0); 
+  num_max_change_global_applied_ = 0;
+
   if (config_.read_cache != "") {
     bool binary;
     try {
@@ -68,8 +65,7 @@ void NnetTrainer::Train(const NnetExample &eg) {
   const NnetComputation *computation = compiler_.Compile(request);
 
   NnetComputer computer(config_.compute_config, *computation,
-                        *nnet_,
-                        (delta_nnet_ == NULL ? nnet_ : delta_nnet_));
+                        *nnet_, delta_nnet_);
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, eg.io);
   computer.Forward();
@@ -77,9 +73,7 @@ void NnetTrainer::Train(const NnetExample &eg) {
   this->ProcessOutputs(eg, &computer);
   computer.Backward();
 
-  if (delta_nnet_ != NULL) {
-    UpdateParamsWithMaxChange();
-  }
+  UpdateParamsWithMaxChange();
 }
 
 void NnetTrainer::ProcessOutputs(const NnetExample &eg,
@@ -196,8 +190,7 @@ bool NnetTrainer::PrintTotalStats() const {
     const ObjectiveFunctionInfo &info = iter->second;
     ans = ans || info.PrintTotalStats(name);
   }
-  if (delta_nnet_ != NULL)
-    PrintMaxChangeStats();
+  PrintMaxChangeStats();
   return ans;
 }
 

@@ -34,20 +34,16 @@ NnetChainTrainer::NnetChainTrainer(const NnetChainTrainingOptions &opts,
     num_minibatches_processed_(0) {
   if (opts.nnet_config.zero_component_stats)
     ZeroComponentStats(nnet);
-  if (opts.nnet_config.momentum == 0.0 &&
-      opts.nnet_config.max_param_change == 0.0) {
-    delta_nnet_= NULL;
-  } else {
-    KALDI_ASSERT(opts.nnet_config.momentum >= 0.0 &&
-                 opts.nnet_config.max_param_change >= 0.0);
-    delta_nnet_ = nnet_->Copy();
-    bool is_gradient = false;  // setting this to true would disable the
-                               // natural-gradient updates.
-    SetZero(is_gradient, delta_nnet_);
-    const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
-    num_max_change_per_component_applied_.resize(num_updatable, 0); 
-    num_max_change_global_applied_ = 0;
-  }
+  KALDI_ASSERT(opts.nnet_config.momentum >= 0.0 &&
+               opts.nnet_config.max_param_change >= 0.0);
+  delta_nnet_ = nnet_->Copy();
+  bool is_gradient = false;  // setting this to true would disable the
+                             // natural-gradient updates.
+  SetZero(is_gradient, delta_nnet_);
+  const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
+  num_max_change_per_component_applied_.resize(num_updatable, 0); 
+  num_max_change_global_applied_ = 0;
+
   if (opts.nnet_config.read_cache != "") {
     bool binary;
     try {
@@ -74,8 +70,7 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
   const NnetComputation *computation = compiler_.Compile(request);
 
   NnetComputer computer(nnet_config.compute_config, *computation,
-                        *nnet_,
-                        (delta_nnet_ == NULL ? nnet_ : delta_nnet_));
+                        *nnet_, delta_nnet_);
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, chain_eg.inputs);
   computer.Forward();
@@ -83,9 +78,7 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
   this->ProcessOutputs(chain_eg, &computer);
   computer.Backward();
 
-  if (delta_nnet_ != NULL) {
-    UpdateParamsWithMaxChange();
-  }
+  UpdateParamsWithMaxChange();
 }
 
 
