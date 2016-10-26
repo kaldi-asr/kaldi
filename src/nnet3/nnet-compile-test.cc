@@ -19,6 +19,7 @@
 
 #include "nnet3/nnet-nnet.h"
 #include "nnet3/nnet-compile.h"
+#include "nnet3/nnet-compile-online.h"
 #include "nnet3/nnet-test-utils.h"
 
 namespace kaldi {
@@ -115,16 +116,73 @@ void UnitTestNnetCompileMulti() {
 }
 
 
+
+void UnitTestNnetCompileOnline() {
+  for (int32 n = 0; n < 20; n++) {
+    struct NnetGenerationOptions gen_config;
+    gen_config.allow_ivector = true;
+
+    std::vector<std::string> configs;
+    GenerateConfigSequence(gen_config, &configs);
+    Nnet nnet;
+    for (size_t j = 0; j < configs.size(); j++) {
+      KALDI_LOG << "Input config[" << j << "] is: " << configs[j];
+      std::istringstream is(configs[j]);
+      nnet.ReadConfig(is);
+    }
+
+    ComputationRequest request1, request2, request3;
+    int32 chunk_size_min = RandInt(5, 15);
+    int32 frame_subsampling_factor = RandInt(1, 3),
+        extra_left_context_begin = RandInt(0, 10),
+        extra_right_context = RandInt(0, 10),
+        num_sequences = RandInt(1, 2);
+    int32 chunk_size = GetChunkSize(nnet, frame_subsampling_factor,
+                                    chunk_size_min),
+        ivector_period = chunk_size;
+
+
+
+    ModifyNnetIvectorPeriod(ivector_period, &nnet);
+    KALDI_LOG << "Nnet info after modifying ivector period is: "
+              << nnet.Info();
+    CreateOnlineComputationRequestSimple(
+        nnet, chunk_size, frame_subsampling_factor,
+        ivector_period, extra_left_context_begin, extra_right_context,
+        num_sequences, &request1, &request2, &request3);
+
+    KALDI_LOG << "Computation request 1 is:";
+    request1.Print(std::cerr);
+    KALDI_LOG << "Computation request 2 is:";
+    request2.Print(std::cerr);
+    KALDI_LOG << "Computation request 3 is:";
+    request3.Print(std::cerr);
+
+    NnetOptimizeOptions optimize_opts;
+    // todo: set optimize-online=true.
+    NnetComputation computation;
+    CompileOnline(nnet, optimize_opts,
+                  request1, request2, request3,
+                  &computation);
+    KALDI_LOG << "Compiled online computation is ";
+    computation.Print(std::cerr, nnet);
+  }
+}
+
+
+
 } // namespace nnet3
 } // namespace kaldi
 
 int main() {
   using namespace kaldi;
   using namespace kaldi::nnet3;
-  // SetVerboseLevel(2);
+  SetVerboseLevel(2);
 
+  UnitTestNnetCompileOnline();
   UnitTestNnetCompile();
   UnitTestNnetCompileMulti();
+
 
   KALDI_LOG << "Nnet tests succeeded.";
 

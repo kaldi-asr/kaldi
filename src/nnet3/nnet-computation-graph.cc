@@ -956,7 +956,7 @@ void ComputationGraphBuilder::ComputeRequiredArray(
         end = dependencies.end();
     for (; iter != end; ++iter) {
       int32 d = *iter;
-      if (!(*required)[d - start_cindex_id]){
+      if (d >= start_cindex_id && !(*required)[d - start_cindex_id]){
         (*required)[d - start_cindex_id] = true;
         queue.push_back(d);
       }

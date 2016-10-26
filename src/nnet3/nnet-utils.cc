@@ -74,7 +74,7 @@ void EvaluateComputationRequest(
   if (GetVerboseLevel() >= 2) {
     std::ostringstream graph_pretty;
     graph.Print(graph_pretty, nnet.GetNodeNames());
-    KALDI_VLOG(2) << "Graph is " << graph_pretty.str();
+    KALDI_VLOG(3) << "Graph is " << graph_pretty.str();
   }
 }
 
@@ -103,9 +103,16 @@ static void ComputeSimpleNnetContextForShift(
     input.indexes.push_back(Index(n, t));
     output.indexes.push_back(Index(n, t));
   }
-  // the assumption here is that the network just requires the ivector at time
-  // t=0.
-  ivector.indexes.push_back(Index(n, 0));
+
+  // most networks will just require the ivector at time t = 0,
+  // but this might not always be the case, and some might use rounding
+  // descriptors with the iVector which might require it at an earlier
+  // frame than the regular input, so we provide the iVector in as wide a range
+  // as it might possibly be needed.
+  for (int32 t = input_start - nnet.Modulus(); t < input_end; t++) {
+    ivector.indexes.push_back(Index(n, t));
+  }
+
 
   ComputationRequest request;
   request.inputs.push_back(input);

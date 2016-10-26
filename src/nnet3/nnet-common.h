@@ -108,6 +108,11 @@ struct CindexHasher {
 };
 
 
+struct CindexVectorHasher {
+  size_t operator () (const std::vector<Cindex> &cindex_vector) const;
+};
+
+
 
 // this will only be used for pretty-printing.
 void PrintCindex(std::ostream &ostream, const Cindex &cindex,

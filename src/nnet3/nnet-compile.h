@@ -1,6 +1,6 @@
 // nnet3/nnet-compile.h
 
-// Copyright 2015    Johns Hopkins University (author: Daniel Povey)
+// Copyright 2015-2016    Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -111,8 +111,12 @@ class Compiler {
   };
 
   // Computes the set of step-indexes of preceding steps that this step depends
-  // on.  Assumes CreateLocationInfo() has already been called.
+  // on.  Assumes CreateLocationInfo() has already been called.  Requires
+  // 'step_index' only to handle a special case, that if 'this_step' is a
+  // component step, then the only step it depends on is the preceding step
+  // (which is the component-input step).
   void ComputeStepDependencies(const std::vector<int32> &this_step,
+                               int32 step_index,
                                unordered_set<int32> *dep_steps);
 
   // This function outputs to each element of "deriv_needed" a bool saying
