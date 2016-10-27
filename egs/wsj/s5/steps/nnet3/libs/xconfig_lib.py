@@ -127,7 +127,7 @@ class Descriptor:
 
         if descriptor_string != None:
             try:
-                tokens = TokenizeDescriptor(descriptor_string)
+                tokens = TokenizeDescriptor(descriptor_string, prev_names)
                 pos = 0
                 (d, pos) = ParseNewDescriptor(tokens, pos, prev_names)
                 # note: 'pos' should point to the 'end of string' marker
@@ -175,8 +175,10 @@ def IsValidLineName(name):
 # parsing the descriptor.
 # It returns a pair (d, pos) where d is the newly parsed Descriptor,
 # and 'pos' is the new position after consuming the relevant input.
-def ParseNewDescriptor(tokens, pos,
-                       prev_names):
+# 'prev_names' is so that we can find the most recent layer name for
+# expressions like Append(-3, 0, 3) which is shorthand for the most recent
+# layer spliced at those time offsets.
+def ParseNewDescriptor(tokens, pos, prev_names):
     size = len(tokens)
     first_token = tokens[pos]
     pos += 1
@@ -189,8 +191,7 @@ def ParseNewDescriptor(tokens, pos,
         pos += 1
         d.operator = first_token
         # the 1st argument of all these operators is a Descriptor.
-        (desc, pos) = ParseNewDescriptor(tokens,
-                                         pos, prev_names)
+        (desc, pos) = ParseNewDescriptor(tokens, pos, prev_names)
         d.items = [desc]
 
         if first_token == 'Offset':
@@ -230,8 +231,7 @@ def ParseNewDescriptor(tokens, pos,
                 else:
                     raise Exception("Parsing Append(), expected ')' or ',', got " + tokens[pos])
 
-                (desc, pos) = ParseNewDescriptor(tokens,
-                                                 pos, prev_names)
+                (desc, pos) = ParseNewDescriptor(tokens, pos, prev_names)
                 d.items.append(desc)
         elif first_token == 'Round':
             ExpectToken(',', tokens[pos], 'Round()')
@@ -269,35 +269,16 @@ def ParseNewDescriptor(tokens, pos,
     elif first_token in [ 'end of string', '(', ')', ',', '@' ]:
         raise Exception("Expected descriptor, got " + first_token)
     elif IsValidLineName(first_token) or first_token == '[':
-        # This section parses either a raw input/layer/output name, e.g. "affine2"
+        # This section parses a raw input/layer/output name, e.g. "affine2"
         # (which must start with an alphabetic character or underscore),
-        # or something like [-2], optionally followed by an offset like '@-3'.
-        if first_token == '[':
-            try:
-                offset_into_prev_names = int(tokens[pos])
-                assert offset_into_prev_names < 0
-                pos += 1
-            except:
-                raise Exception("Parse error: after '[', expected negative integer, got '{0}'".format(
-                                tokens[pos]))
-            ExpectToken(']', tokens[pos], 'Descriptor')
-            pos += 1
-            assert isinstance(prev_names, list)
-            if -offset_into_prev_names > len(prev_names):
-                raise Exception("Error: expression [{0}] requested, but there are "
-                                "not enough previous input or layer names to satisfy "
-                                "this.".format(offset_into_prev_names))
-            d.operator = None
-            # below, e.g. prev_names[-2] would give the last-but-one layer.
-            d.items = [prev_names[offset_into_prev_names]]
-        else:
-            # 'first_token' starts with a-z, A-Z or _, treat it
-            # as the name of a layer or input node.
-            d.operator = None
-            d.items = [first_token]
+        # optionally followed by an offset like '@-3'.
 
-        # If the layer-name or expression like [-2] is followed by '@', then
-        # we're parsing something like 'affine1@-3' or '[-2]@3'.
+        d.operator = None
+        d.items = [first_token]
+
+        # If the layer-name o is followed by '@', then
+        # we're parsing something like 'affine1@-3' which
+        # is syntactic sugar for 'Offset(affine1, 3)'.
         if tokens[pos] == '@':
             pos += 1
             try:
@@ -346,6 +327,7 @@ def ParseNewDescriptor(tokens, pos,
 # The argument 'prev_names' (for the names of previous layers and input and
 # output nodes) is needed to process expressions like [-1] meaning the most
 # recent layer, or [-2] meaning the last layer but one.
+# The default None for prev_names is only supplied for testing purposes.
 def TokenizeDescriptor(descriptor_string,
                        prev_names = None):
     # split on '(', ')', ',', '@', and space.
@@ -354,9 +336,33 @@ def TokenizeDescriptor(descriptor_string,
     # why we keep characters like '(' and ')' as tokens.
     fields = re.split(r'(\(|\)|@|,|\[|\]|\s)\s*', descriptor_string)
     ans = []
-    for f in fields:
+    i = 0
+    while i < len(fields):
+        f = fields[i]
+        i = i + 1
         # don't include fields that are space, or are empty.
-        if re.match(r'^\s*$', f) is None:
+        if re.match(r'^\s*$', f) is not None:
+            continue
+        if f == '[':
+            if i + 2 >= len(fields):
+                raise Exception("Error tokenizing string '{0}': '[' found too close "
+                                "to the end of the descriptor.".format(descriptor_string))
+            if fields[i+1] != ']':
+                raise Exception("Error tokenizing string '{0}': expected ']', got '{1}'".format(
+                    descriptor_string, fields[i+1]))
+            assert isinstance(prev_names, list)
+            try:
+                offset = int(fields[i])
+                assert offset < 0 and -offset <= len(prev_names)
+                i += 2  # consume the int and the ']'.
+            except:
+                raise Exception("Error tokenizing string '{0}': expression [{1}] has an "
+                                "invalid or out of range offset.".format(descriptor_string, fields[i]))
+            this_field = prev_names[offset]
+            assert IsValidLineName(this_field)  # should already have been
+                                                # checked, so assert.
+            ans.append(this_field)
+        else:
             ans.append(f)
 
     ans.append('end of string')
@@ -452,7 +458,7 @@ def TestLibrary():
     assert TokenizeTest("hi,there") == ['hi', ',', 'there']
     assert TokenizeTest("hi@-1,there") == ['hi', '@', '-1', ',', 'there']
     assert TokenizeTest("hi(there)") == ['hi', '(', 'there', ')']
-    assert TokenizeTest("[-1]@2") == ['[', '-1', ']', '@', '2' ]
+    assert TokenizeDescriptor("[-1]@2", ['foo', 'bar'])[:-1] == ['bar', '@', '2' ]
 
     assert Descriptor('foo').str() == 'foo'
     assert Descriptor('Sum(foo,bar)').str() == 'Sum(foo, bar)'
