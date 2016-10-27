@@ -163,7 +163,7 @@ fi
 if $use_pocolm; then
   if [ ! -e $KALDI_ROOT/tools/pocolm ]; then
     echo "$0: $KALDI_ROOT/tools/pocolm does not exist:"
-    echo " ... please do:   cd $KALDI_ROOT; extras/install_pocolm.sh"
+    echo " ... please do:  cd $KALDI_ROOT/tools; extras/install_pocolm.sh"
     echo " ... and then rerun this script."
     exit 1
   fi
