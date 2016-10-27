@@ -6,7 +6,7 @@ stage=1
 train_stage=-10
 generate_alignments=true # false if doing ctc training
 speed_perturb=true
-use_random_offset=false
+use_random_offsets=false
 
 . ./path.sh
 . ./utils/parse_options.sh
@@ -127,7 +127,7 @@ if [ $stage -le 8 ]; then
   # Generates random offsets for training data
   mfccdir=mfcc_hires
   for dataset in $train_set; do
-    if $use_random_offset; then
+    if $use_random_offsets; then
       steps/compute_offsets.sh --offsets-config conf/offsets.conf  --cmd "$train_cmd" \
         data/${dataset}_hires exp/make_offsets/${dataset} $mfccdir || exit 1;
     fi
@@ -143,11 +143,11 @@ if [ $stage -le 9 ]; then
   steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/${train_set}_hires data/${train_set}_max2_hires
 
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
-    data/${train_set}_max2_hires exp/nnet3/extractor exp/nnet3/ivectors_$train_set || exit 1;
+    data/${train_set}_max2_hires exp/nnet3/extractor exp/nnet3/ivectors_${train_set} || exit 1;
 
   for data_set in eval2000 train_dev rt03; do
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
-      data/${data_set}_hires exp/nnet3/extractor exp/nnet3/ivectors_$data_set || exit 1;
+      data/${data_set}_hires exp/nnet3/extractor exp/nnet3/ivectors_${data_set} || exit 1;
   done
 fi
 

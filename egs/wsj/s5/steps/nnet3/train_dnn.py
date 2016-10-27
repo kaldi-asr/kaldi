@@ -283,6 +283,7 @@ def TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archi
                    left_context, right_context,
                    momentum, max_param_change,
                    shuffle_buffer_size, minibatch_size,
+                   num_cmn_offsets,
                    run_opts):
       # We cannot easily use a single parallel SGE job to do the main training,
       # because the computation of which archive and which --frame option
@@ -298,7 +299,6 @@ def TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archi
                                                # the other indexes from.
         archive_index = (k % num_archives) + 1 # work out the 1-based archive index.
         frame = (k / num_archives) % frames_per_eg
-        num_cmn_offsets = GetNumCmnOffsets(feat_dir)
         offset_num = -1
         if num_cmn_offsets > 0:
           offset_num = archive_index % num_cmn_offsets
@@ -344,6 +344,7 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
                       frames_per_eg, num_hidden_layers, add_layers_period,
                       left_context, right_context,
                       momentum, max_param_change, shuffle_buffer_size,
+                      num_cmn_offsets,
                       run_opts):
 
 
@@ -405,6 +406,7 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
                    left_context, right_context,
                    momentum, max_param_change,
                    shuffle_buffer_size, cur_minibatch_size,
+                   num_cmn_offsets,
                    run_opts)
     [models_to_average, best_model] = GetSuccessfulModels(num_jobs, '{0}/log/train.{1}.%.log'.format(dir,iter))
     nnets_list = []
@@ -455,6 +457,10 @@ def Train(args, run_opts):
     num_jobs = GetNumberOfJobs(args.ali_dir)
     feat_dim = GetFeatDim(args.feat_dir)
     ivector_dim = GetIvectorDim(args.online_ivector_dir)
+    num_cmn_offsets = GetNumCmnOffsets(args.feat_dir)
+    if num_cmn_offsets > 0:
+      assert(ivector_dim % num_cmn_offsets == 0)
+      ivector_dim = ivector_dim / num_cmn_offsets
 
     # split the training data into parts for individual jobs
     # we will use the same number of jobs as that used for alignment
@@ -514,10 +520,12 @@ def Train(args, run_opts):
 
     if (args.stage <= -3):
         logger.info('Computing the preconditioning matrix for input features')
-
+        num_cmn_offsets = GetNumCmnOffsets(args.feat_dir) 
         ComputePreconditioningMatrix(args.dir, egs_dir, num_archives, run_opts,
                                      max_lda_jobs = args.max_lda_jobs,
-                                     rand_prune = args.rand_prune)
+                                     rand_prune = args.rand_prune,
+                                     select_feature_offset = (0 if num_cmn_offsets > 0 else -1))
+
 
     if (args.stage <= -2):
         logger.info("Computing initial vector for FixedScaleComponent before"
@@ -591,7 +599,7 @@ def Train(args, run_opts):
                               num_hidden_layers, args.add_layers_period,
                               left_context, right_context,
                               args.momentum, args.max_param_change,
-                              args.shuffle_buffer_size, run_opts)
+                              args.shuffle_buffer_size, num_cmn_offsets, run_opts)
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain conditions
                 RemoveModel(args.dir, iter-2, num_iters, num_iters_combine,

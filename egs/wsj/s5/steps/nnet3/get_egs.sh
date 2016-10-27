@@ -182,15 +182,19 @@ if [ -f $dir/trans.scp ]; then
   valid_feats="$valid_feats transform-feats --utt2spk=ark:$data/utt2spk scp:$dir/trans.scp ark:- ark:- |"
   train_subset_feats="$train_subset_feats transform-feats --utt2spk=ark:$data/utt2spk scp:$dir/trans.scp ark:- ark:- |"
 fi
-
+num_offsets=1
+if [ -f $data/offsets.scp ]; then
+  num_offsets=`feat-to-len --print-args=false scp:"head -n 1 $data/offsets.scp |"`
+fi
 if [ ! -z "$online_ivector_dir" ]; then
   ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
+  ivector_dim=$[$ivector_dim/$num_offsets]
   echo $ivector_dim > $dir/info/ivector_dim
   ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
 
   ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $sdata/JOB/utt2spk $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |'"
-  valid_ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |'"
-  train_subset_ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |'"
+  valid_ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- | select-feats 0-$[$ivector_dim-1] ark:- ark:- |'"
+  train_subset_ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- | select-feats 0-$[$ivector_dim-1] ark:- ark:- |'"
 else
   echo 0 >$dir/info/ivector_dim
 fi
@@ -328,12 +332,12 @@ if [ $stage -le 4 ]; then
   # if $data/offsets.scp is defined, it will be used in generating egs.
   offsets=
   if [ -f $data/offsets.scp ]; then
-    offsets="--utt2spk-offsets=scp:$sdata/JOB/offsets.scp"
+    offsets="--utt2cmn-offsets=scp:$sdata/JOB/offsets.scp"
   fi
   echo "$0: Generating training examples on disk"
   # The examples will go round-robin to egs_list.
   $cmd JOB=1:$nj $dir/log/get_egs.JOB.log \
-    nnet3-get-egs --num-pdfs=$num_pdfs $ivector_opt $egs_opts --num-frames=$frames_per_eg "$offsets" "$feats" \
+    nnet3-get-egs --num-pdfs=$num_pdfs $ivector_opt $egs_opts --num-frames=$frames_per_eg $offsets "$feats" \
     "ark,s,cs:filter_scp.pl $sdata/JOB/utt2spk $dir/ali.scp | ali-to-pdf $alidir/final.mdl scp:- ark:- | ali-to-post ark:- ark:- |" ark:- \| \
     nnet3-copy-egs --random=true --srand=\$[JOB+$srand] ark:- $egs_list || exit 1;
 fi

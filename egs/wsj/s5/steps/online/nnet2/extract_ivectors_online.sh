@@ -42,8 +42,6 @@ max_count=0         # The use of this option (e.g. --max-count 100) can make
                     # posterior-scaling, so assuming the posterior-scale is 0.1,
                     # --max-count 100 starts having effect after 1000 frames, or
                     # 10 seconds of data.
-num_cmn_offsets=-1  # If > 0, it uses offsets.scp and generates iVector for 
-                    # all random offsets version of inputs.
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -77,8 +75,11 @@ done
 
 # Set various variables.
 mkdir -p $dir/log $dir/conf
+num_cmn_offsets=-1  # If > 0, it uses offsets.scp and generates iVector for 
+                    # all random offsets version of inputs.
 if [ -f $data/offsets.scp ]; then
-  nj=$[$nj*4] 
+  num_cmn_offsets=`feat-to-len --print-args=false scp:"head -n 1 $data/offsets.scp |"` 
+  nj=$[$nj*$num_cmn_offsets] 
 fi
 
 sdata=$data/split$nj;
@@ -125,7 +126,7 @@ if [ $stage -le 0 ]; then
   if [ -f $data/offsets.scp ]; then
     for i in $(seq $nj); do
       split_feats=$sdata/$i
-      awk '{print$1,$2}' < $split_feats/spk2utt | utils/apply_map.pl -f 2 $split_feats/offsets.scp > $split_feats/spk_offsets.scp
+      awk '{print $1,$2}' < $split_feats/spk2utt | utils/apply_map.pl -f 2 $split_feats/offsets.scp > $split_feats/spk_offsets.scp
     done
     offset_opts="--spk2cmn-offset=scp:$sdata/JOB/spk_offsets.scp"
   fi

@@ -26,13 +26,16 @@ def GetSumDescriptor(inputs):
     return sum_descriptors
 
 # adds the input nodes and returns the descriptor
-def AddInputLayer(config_lines, feat_dim, splice_indexes=[0], ivector_dim=0):
+def AddInputLayer(config_lines, feat_dim, splice_indexes=[0], ivector_dim=0, offset_dim =0):
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
     output_dim = 0
     components.append('input-node name=input dim=' + str(feat_dim))
     list = [('Offset(input, {0})'.format(n) if n != 0 else 'input') for n in splice_indexes]
     output_dim += len(splice_indexes) * feat_dim
+    if offset_dim > 0:
+      components.append('input-node name=offset dim=' + str(offset_dim))
+
     if ivector_dim > 0:
         components.append('input-node name=ivector dim=' + str(ivector_dim))
         list.append('ReplaceIndex(ivector, t, 0)')

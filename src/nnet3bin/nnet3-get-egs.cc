@@ -80,7 +80,7 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
     int32 num_cmn_offsets = 1;
     if (cmn_offsets != NULL) {
       num_cmn_offsets = cmn_offsets->NumRows();
-      eg.io.push_back(NnetIo("offset", 0, *cmn_offsets));
+      eg.io.push_back(NnetIo("offset", *cmn_offsets));
     }
 
     // if applicable, add the iVector feature.
@@ -92,8 +92,11 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
       if (closest_frame >= ivector_feats->NumRows())
         closest_frame = ivector_feats->NumRows() - 1;
       int32 ivec_dim = ivector_feats->NumCols();
+      // ivectors correspond to feature offsets in "offset" appended 
+      // in ivector in order.
       KALDI_ASSERT(ivec_dim % num_cmn_offsets == 0);
       Matrix<BaseFloat> ivector(1, ivector_feats->NumCols());
+      ivector.Row(0).CopyFromVec(ivector_feats->Row(closest_frame));
       eg.io.push_back(NnetIo("ivector", 0, ivector));
     }
 
@@ -212,7 +215,7 @@ int main(int argc, char *argv[]) {
         }
         const Matrix<BaseFloat> *cmn_offsets = NULL;
         if (!utt2cmn_offsets_rspecifier.empty()) {
-          if (offset_reader.HasKey(key)) {
+          if (!offset_reader.HasKey(key)) {
             KALDI_WARN << "No cmn offset for utterance " << key;
             num_err++;
             continue;

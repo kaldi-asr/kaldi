@@ -190,7 +190,6 @@ bool SelectFromExample(const NnetExample &eg,
                        int32 left_context,
                        int32 right_context,
                        int32 frame_shift,
-                       int32 feature_offset,
                        NnetExample *eg_out) {
   int32 min_input_t, max_input_t,
       min_output_t, max_output_t;
@@ -241,8 +240,6 @@ bool SelectFromExample(const NnetExample &eg,
     exclude_names.push_back(std::string("ivector")); // configurable.
     ShiftExampleTimes(frame_shift, exclude_names, eg_out);
   }
-  if (feature_offset != -1)
-    SelectFeatureOffset(feature_offset, eg_out);
   return true;
 }
 
@@ -333,16 +330,20 @@ int main(int argc, char *argv[]) {
       int32 count = GetCount(keep_proportion);
       std::string key = example_reader.Key();
       const NnetExample &eg = example_reader.Value();
+      NnetExample offseted_eg = eg;
+      if (select_feature_offset != -1) 
+        SelectFeatureOffset(select_feature_offset, &offseted_eg);
+
       for (int32 c = 0; c < count; c++) {
         int32 index = (random ? Rand() : num_written) % num_outputs;
         if (frame_str == "" && left_context == -1 && right_context == -1 &&
             frame_shift == 0) {
-          example_writers[index]->Write(key, eg);
+          example_writers[index]->Write(key, offseted_eg);
           num_written++;
         } else { // the --frame option or context options were set.
           NnetExample eg_modified;
-          if (SelectFromExample(eg, frame_str, left_context, right_context,
-                                frame_shift, select_feature_offset, &eg_modified)) {
+          if (SelectFromExample(offseted_eg, frame_str, left_context, right_context,
+                                frame_shift, &eg_modified)) {
             // this branch of the if statement will almost always be taken (should only
             // not be taken for shorter-than-normal egs from the end of a file.
             example_writers[index]->Write(key, eg_modified);

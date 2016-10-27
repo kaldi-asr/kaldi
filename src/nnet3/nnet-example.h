@@ -51,7 +51,11 @@ struct NnetIo {
   /// represents.
   NnetIo(const std::string &name,
          int32 t_begin, const MatrixBase<BaseFloat> &feats);
-
+  /// This constructor creates NnetIo with name "name", indexed with t=0, n=0, 
+  /// and x values ranging from 0 to feats.NumRows() - 1, and
+  /// the provided features. 
+  /// This constructor can be used for initializing NnetIo object type
+  /// e.g. feature offsets in the example.
   NnetIo(const std::string &name,
          const MatrixBase<BaseFloat> &feats);
 

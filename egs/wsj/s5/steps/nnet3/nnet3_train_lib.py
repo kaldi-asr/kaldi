@@ -125,7 +125,7 @@ def GetIvectorDim(ivector_dir = None):
         return 0
     [stdout_val, stderr_val] = RunKaldiCommand("feat-to-dim --print-args=false scp:{dir}/ivector_online.scp -".format(dir = ivector_dir))
     ivector_dim = int(stdout_val)
-    return ivector_dim
+    return ivector_dim 
 
 def GetFeatDim(feat_dir):
     [stdout_val, stderr_val] = RunKaldiCommand("feat-to-dim --print-args=false scp:{data}/feats.scp -".format(data = feat_dir))
@@ -134,7 +134,7 @@ def GetFeatDim(feat_dir):
 
 def GetNumCmnOffsets(feat_dir):
   num_offsets = -1;
-  if os.path.exists(feat_dir/offsets.scp):
+  if os.path.exists("{feat_dir}/offsets.scp".format(feat_dir = feat_dir)):
     [stdout_val, stderr_val] = RunKaldiCommand("feat-to-len --print-args=false scp:'head -n 1 {data}/offsets.scp |' ".format(data = feat_dir))
     num_offsets = int(stdout_val)
   return num_offsets
@@ -270,21 +270,27 @@ def VerifyEgsDir(egs_dir, feat_dim, ivector_dim, left_context, right_context):
 
 def ComputePreconditioningMatrix(dir, egs_dir, num_lda_jobs, run_opts,
                                  max_lda_jobs = None, rand_prune = 4.0,
-                                 lda_opts = None):
+                                 lda_opts = None,
+                                 select_feature_offset = -1):
     if max_lda_jobs is not None:
         if num_lda_jobs > max_lda_jobs:
             num_lda_jobs = max_lda_jobs
 
+    egs_str=""
+    if select_feature_offset > -1:
+      egs_str="ark:nnet3-copy-egs --select-feature-offset={0} ark:{1}/egs.JOB.ark ark:- |".format(select_feature_offset, egs_dir)
+    else:
+      egs_str="ark:{0}/egs.JOB.ark".format(egs_dir)
+
     RunKaldiCommand("""
 {command} JOB=1:{num_lda_jobs} {dir}/log/get_lda_stats.JOB.log \
  nnet3-acc-lda-stats --rand-prune={rand_prune} \
-    {dir}/init.raw "ark:{egs_dir}/egs.JOB.ark" {dir}/JOB.lda_stats""".format(
+    {dir}/init.raw "{egs_str}" {dir}/JOB.lda_stats""".format(
         command = run_opts.command,
         num_lda_jobs = num_lda_jobs,
         dir = dir,
-        egs_dir = egs_dir,
+        egs_str = egs_str,
         rand_prune = rand_prune))
-
     # the above command would have generated dir/{1..num_lda_jobs}.lda_stats
     lda_stat_files = map(lambda x: '{0}/{1}.lda_stats'.format(dir, x),
                          range(1, num_lda_jobs + 1))

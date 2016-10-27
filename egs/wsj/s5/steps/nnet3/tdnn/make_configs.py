@@ -28,6 +28,9 @@ def GetArgs():
                             help="Raw feature dimension, e.g. 13")
     feat_group.add_argument("--feat-dir", type=str,
                             help="Feature directory, from which we derive the feat-dim")
+    parser.add_argument("--num-cmn-offsets", type=int, 
+                        help="Number of offsets used to perturb features",
+                        default=-1)
 
     # only one of these arguments can be specified
     ivector_group = parser.add_mutually_exclusive_group(required = False)
@@ -43,7 +46,6 @@ def GetArgs():
                                   help="alignment directory, from which we derive the num-targets")
     num_target_group.add_argument("--tree-dir", type=str,
                                   help="directory with final.mdl, from which we derive the num-targets")
-
     # CNN options
     parser.add_argument('--cnn.layer', type=str, action='append', dest = "cnn_layer",
                         help="CNN parameters at each CNN layer, e.g. --filt-x-dim=3 --filt-y-dim=8 "
@@ -133,6 +135,7 @@ def CheckArgs(args):
     ## Check arguments.
     if args.feat_dir is not None:
         args.feat_dim = nnet3_train_lib.GetFeatDim(args.feat_dir)
+        args.num_cmn_offsets = nnet3_train_lib.GetNumCmnOffsets(args.feat_dir)
 
     if args.ali_dir is not None:
         args.num_targets = nnet3_train_lib.GetNumberOfLeaves(args.ali_dir)
@@ -141,6 +144,9 @@ def CheckArgs(args):
 
     if args.ivector_dir is not None:
         args.ivector_dim = nnet3_train_lib.GetIvectorDim(args.ivector_dir)
+        if args.num_cmn_offsets > 0:
+          args.ivector_dim = args.ivector_dim / args.num_cmn_offsets
+    
 
     if not args.feat_dim > 0:
         raise Exception("feat-dim has to be postive")
@@ -333,7 +339,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
                 xent_regularize,
                 xent_separate_forward_affine,
                 self_repair_scale,
-                objective_type):
+                objective_type, num_cmn_offsets):
 
     parsed_splice_output = ParseSpliceString(splice_indexes_string.strip())
 
@@ -352,7 +358,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
     config_lines = {'components':[], 'component-nodes':[]}
 
     config_files={}
-    prev_layer_output = nodes.AddInputLayer(config_lines, feat_dim, splice_indexes[0], ivector_dim)
+    prev_layer_output = nodes.AddInputLayer(config_lines, feat_dim, splice_indexes[0], ivector_dim, offset_dim = (feat_dim if num_cmn_offsets > 0 else 0))
 
     # Add the init config lines for estimating the preconditioning matrices
     init_config_lines = copy.deepcopy(config_lines)
@@ -516,7 +522,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
 
 def Main():
     args = GetArgs()
-
+    
     MakeConfigs(config_dir = args.config_dir,
                 splice_indexes_string = args.splice_indexes,
                 feat_dim = args.feat_dim, ivector_dim = args.ivector_dim,
@@ -538,7 +544,8 @@ def Main():
                 xent_regularize = args.xent_regularize,
                 xent_separate_forward_affine = args.xent_separate_forward_affine,
                 self_repair_scale = args.self_repair_scale_nonlinearity,
-                objective_type = args.objective_type)
+                objective_type = args.objective_type, 
+                num_cmn_offsets = args.num_cmn_offsets)
 
 if __name__ == "__main__":
     Main()
