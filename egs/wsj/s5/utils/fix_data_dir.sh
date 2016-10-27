@@ -39,7 +39,7 @@ function check_sorted {
   fi
 }
 
-for x in utt2spk spk2utt feats.scp text segments wav.scp cmvn.scp vad.scp \
+for x in utt2spk spk2utt feats.scp text segments wav.scp cmvn.scp vad.scp offsets.scp \
     reco2file_and_channel spk2gender utt2lang utt2uniq utt2dur utt2num_frames; do
   if [ -f $data/$x ]; then
     cp $data/$x $data/.backup/$x
@@ -138,7 +138,7 @@ function filter_utts {
 
   maybe_wav=
   [ ! -f $data/segments ] && maybe_wav=wav.scp  # wav indexed by utts only if segments does not exist.
-  for x in feats.scp text segments utt2lang $maybe_wav; do
+  for x in feats.scp text segments utt2lang $maybe_wav offsets.scp; do
     if [ -f $data/$x ]; then
       utils/filter_scp.pl $data/$x $tmpdir/utts > $tmpdir/utts.tmp
       mv $tmpdir/utts.tmp $tmpdir/utts
@@ -158,7 +158,7 @@ function filter_utts {
     fi
   fi
 
-  for x in utt2spk utt2uniq feats.scp vad.scp text segments utt2lang utt2dur utt2num_frames $maybe_wav; do
+  for x in utt2spk utt2uniq feats.scp vad.scp text segments utt2lang utt2dur utt2num_frames $maybe_wav offsets.scp; do
     if [ -f $data/$x ]; then
       cp $data/$x $data/.backup/$x
       if ! cmp -s $data/$x <( utils/filter_scp.pl $tmpdir/utts $data/$x ) ; then

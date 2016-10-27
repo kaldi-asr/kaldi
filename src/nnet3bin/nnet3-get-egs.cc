@@ -32,6 +32,7 @@ namespace nnet3 {
 
 static void ProcessFile(const MatrixBase<BaseFloat> &feats,
                         const MatrixBase<BaseFloat> *ivector_feats,
+                        const MatrixBase<BaseFloat> *cmn_offsets,
                         const Posterior &pdf_post,
                         const std::string &utt_id,
                         bool compress,
@@ -74,6 +75,14 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
     eg.io.push_back(NnetIo("input", - left_context,
                            input_frames));
 
+    // It contains offsets to perturb input features.
+    // num_rows is num of cmn offsets and num_cols is feature dim. e.g. 40.
+    int32 num_cmn_offsets = 1;
+    if (cmn_offsets != NULL) {
+      num_cmn_offsets = cmn_offsets->NumRows();
+      eg.io.push_back(NnetIo("offset", 0, *cmn_offsets));
+    }
+
     // if applicable, add the iVector feature.
     if (ivector_feats != NULL) {
       // try to get closest frame to middle of window to get
@@ -82,8 +91,9 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
       KALDI_ASSERT(ivector_feats->NumRows() > 0);
       if (closest_frame >= ivector_feats->NumRows())
         closest_frame = ivector_feats->NumRows() - 1;
+      int32 ivec_dim = ivector_feats->NumCols();
+      KALDI_ASSERT(ivec_dim % num_cmn_offsets == 0);
       Matrix<BaseFloat> ivector(1, ivector_feats->NumCols());
-      ivector.Row(0).CopyFromVec(ivector_feats->Row(closest_frame));
       eg.io.push_back(NnetIo("ivector", 0, ivector));
     }
 
@@ -143,7 +153,7 @@ int main(int argc, char *argv[]) {
     int32 num_pdfs = -1, left_context = 0, right_context = 0,
         num_frames = 1, length_tolerance = 100;
         
-    std::string ivector_rspecifier;
+    std::string ivector_rspecifier, utt2cmn_offsets_rspecifier;
     
     ParseOptions po(usage);
     po.Register("compress", &compress, "If true, write egs in "
@@ -160,7 +170,8 @@ int main(int argc, char *argv[]) {
                 "features, as a matrix.");
     po.Register("length-tolerance", &length_tolerance, "Tolerance for "
                 "difference in num-frames between feat and ivector matrices");
-    
+    po.Register("utt2cmn-offsets", &utt2cmn_offsets_rspecifier,
+                "It maps utt to the matrix of offsets, one offset per row.");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 3) {
@@ -181,7 +192,7 @@ int main(int argc, char *argv[]) {
     RandomAccessPosteriorReader pdf_post_reader(pdf_post_rspecifier);
     NnetExampleWriter example_writer(examples_wspecifier);
     RandomAccessBaseFloatMatrixReader ivector_reader(ivector_rspecifier);
-    
+    RandomAccessBaseFloatMatrixReader offset_reader(utt2cmn_offsets_rspecifier); 
     int32 num_done = 0, num_err = 0;
     int64 num_frames_written = 0, num_egs_written = 0;
     
@@ -198,6 +209,16 @@ int main(int argc, char *argv[]) {
                      << " versus " << feats.NumRows();
           num_err++;
           continue;
+        }
+        const Matrix<BaseFloat> *cmn_offsets = NULL;
+        if (!utt2cmn_offsets_rspecifier.empty()) {
+          if (offset_reader.HasKey(key)) {
+            KALDI_WARN << "No cmn offset for utterance " << key;
+            num_err++;
+            continue;
+          } else {
+            cmn_offsets = &(offset_reader.Value(key));
+          }
         }
         const Matrix<BaseFloat> *ivector_feats = NULL;
         if (!ivector_rspecifier.empty()) {
@@ -222,7 +243,7 @@ int main(int argc, char *argv[]) {
           continue;
         }
           
-        ProcessFile(feats, ivector_feats, pdf_post, key, compress,
+        ProcessFile(feats, ivector_feats, cmn_offsets, pdf_post, key, compress,
                     num_pdfs, left_context, right_context, num_frames,
                     &num_frames_written, &num_egs_written,
                     &example_writer);

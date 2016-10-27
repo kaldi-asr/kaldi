@@ -298,13 +298,18 @@ def TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archi
                                                # the other indexes from.
         archive_index = (k % num_archives) + 1 # work out the 1-based archive index.
         frame = (k / num_archives) % frames_per_eg
+        num_cmn_offsets = GetNumCmnOffsets(feat_dir)
+        offset_num = -1
+        if num_cmn_offsets > 0:
+          offset_num = archive_index % num_cmn_offsets
+
         process_handle = RunKaldiCommand("""
 {command} {train_queue_opt} {dir}/log/train.{iter}.{job}.log \
   nnet3-train {parallel_train_opts} \
   --print-interval=10 --momentum={momentum} \
   --max-param-change={max_param_change} \
   "{raw_model}" \
-  "ark,bg:nnet3-copy-egs --frame={frame} {context_opts} ark:{egs_dir}/egs.{archive_index}.ark ark:- | nnet3-shuffle-egs --buffer-size={shuffle_buffer_size} --srand={srand} ark:- ark:-| nnet3-merge-egs --minibatch-size={minibatch_size} --measure-output-frames=false --discard-partial-minibatches=true ark:- ark:- |" \
+  "ark,bg:nnet3-copy-egs --select-feature-offset={offset_num} --frame={frame} {context_opts} ark:{egs_dir}/egs.{archive_index}.ark ark:- | nnet3-shuffle-egs --buffer-size={shuffle_buffer_size} --srand={srand} ark:- ark:-| nnet3-merge-egs --minibatch-size={minibatch_size} --measure-output-frames=false --discard-partial-minibatches=true ark:- ark:- |" \
   {dir}/{next_iter}.{job}.raw
           """.format(command = run_opts.command,
                      train_queue_opt = run_opts.train_queue_opt,
@@ -315,7 +320,8 @@ def TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archi
                      raw_model = raw_model_string, context_opts = context_opts,
                      egs_dir = egs_dir, archive_index = archive_index,
                      shuffle_buffer_size = shuffle_buffer_size,
-                     minibatch_size = minibatch_size),
+                     minibatch_size = minibatch_size,
+                     offset_num = offset_num),
           wait = False)
 
         processes.append(process_handle)

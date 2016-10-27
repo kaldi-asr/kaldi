@@ -10,6 +10,7 @@
 #  spk2utt
 #  utt2spk
 #  text
+#  offsets.scp
 #
 # It copies to another directory, possibly adding a specified prefix or a suffix
 # to the utterance and/or speaker names.  Note, the recording-ids stay the same.
@@ -79,6 +80,9 @@ if [ -f $srcdir/feats.scp ]; then
   utils/apply_map.pl -f 1 $destdir/utt_map <$srcdir/feats.scp >$destdir/feats.scp
 fi
 
+if [ -f $srcdir/offsets.scp ]; then
+  utils/apply_map.pl -f 1 $destdir/utt_map <$srcdir/offsets.scp >$destdir/offsets.scp
+fi
 
 if [ -f $srcdir/segments ]; then
   utils/apply_map.pl -f 1 $destdir/utt_map <$srcdir/segments >$destdir/segments
@@ -114,7 +118,7 @@ rm $destdir/spk_map $destdir/utt_map
 
 echo "$0: copied data from $srcdir to $destdir"
 
-for f in feats.scp cmvn.scp vad.scp utt2lang utt2uniq utt2dur utt2num_frames text wav.scp reco2file_and_channel stm glm ctm; do
+for f in feats.scp cmvn.scp vad.scp utt2lang utt2uniq utt2dur utt2num_frames text wav.scp reco2file_and_channel stm glm ctm offsets.scp; do
   if [ -f $destdir/$f ] && [ ! -f $srcdir/$f ]; then
     echo "$0: file $f exists in dest $destdir but not in src $srcdir.  Moving it to"
     echo " ... $destdir/.backup/$f"

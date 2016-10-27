@@ -74,7 +74,7 @@ if [ ! -d $s1 ]; then
 else
   need_to_split=false
   for f in utt2spk spk2utt spk2warp feats.scp text wav.scp cmvn.scp spk2gender \
-    vad.scp segments reco2file_and_channel utt2lang; do
+    vad.scp segments reco2file_and_channel utt2lang offsets.scp; do
     if [[ -f $data/$f && ( ! -f $s1/$f || $s1/$f -ot $data/$f ) ]]; then
       need_to_split=true
     fi
@@ -114,7 +114,7 @@ if [ ! -f $data/segments ]; then
 fi
 
 # split some things that are indexed by utterance.
-for f in feats.scp text vad.scp utt2lang $maybe_wav_scp; do
+for f in feats.scp text vad.scp utt2lang $maybe_wav_scp offsets.scp; do
   if [ -f $data/$f ]; then
     utils/filter_scps.pl JOB=1:$numsplit \
       $data/split${numsplit}${utt}/JOB/utt2spk $data/$f $data/split${numsplit}${utt}/JOB/$f || exit 1;

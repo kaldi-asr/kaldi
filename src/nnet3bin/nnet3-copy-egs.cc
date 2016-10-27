@@ -190,6 +190,7 @@ bool SelectFromExample(const NnetExample &eg,
                        int32 left_context,
                        int32 right_context,
                        int32 frame_shift,
+                       int32 feature_offset,
                        NnetExample *eg_out) {
   int32 min_input_t, max_input_t,
       min_output_t, max_output_t;
@@ -240,6 +241,8 @@ bool SelectFromExample(const NnetExample &eg,
     exclude_names.push_back(std::string("ivector")); // configurable.
     ShiftExampleTimes(frame_shift, exclude_names, eg_out);
   }
+  if (feature_offset != -1)
+    SelectFeatureOffset(feature_offset, eg_out);
   return true;
 }
 
@@ -269,6 +272,7 @@ int main(int argc, char *argv[]) {
     bool random = false;
     int32 srand_seed = 0;
     int32 frame_shift = 0;
+    int32 select_feature_offset = -1;
     BaseFloat keep_proportion = 1.0;
 
     // The following config variables, if set, can be used to extract a single
@@ -301,8 +305,9 @@ int main(int argc, char *argv[]) {
                 "feature left-context that we output.");
     po.Register("right-context", &right_context, "Can be used to truncate the "
                 "feature right-context that we output.");
-
-
+    po.Register("select-feature-offset", &select_feature_offset, "If > -1, it "
+                " adds the chosen offset to features, and it also selects "
+                " the iVector that is generated for the feature offset by this value.");
     po.Read(argc, argv);
 
     srand(srand_seed);
@@ -337,7 +342,7 @@ int main(int argc, char *argv[]) {
         } else { // the --frame option or context options were set.
           NnetExample eg_modified;
           if (SelectFromExample(eg, frame_str, left_context, right_context,
-                                frame_shift, &eg_modified)) {
+                                frame_shift, select_feature_offset, &eg_modified)) {
             // this branch of the if statement will almost always be taken (should only
             // not be taken for shorter-than-normal egs from the end of a file.
             example_writers[index]->Write(key, eg_modified);
