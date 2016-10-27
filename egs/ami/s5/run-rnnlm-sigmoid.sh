@@ -12,9 +12,9 @@ oos="<oos>"
 max_param_change=20
 num_iter=20
 shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of the samples
-minibatch_size=64
+minibatch_size=512
 
-initial_learning_rate=0.004
+initial_learning_rate=0.008
 final_learning_rate=0.0004
 learning_rate_decline_factor=1.2
 
@@ -22,7 +22,7 @@ learning_rate_decline_factor=1.2
 . path.sh
 . parse_options.sh || exit 1;
 
-outdir=rnnlm-sigmoid-$initial_learning_rate-$final_learning_rate-$learning_rate_decline_factor
+outdir=rnnlm-sigmoid-$initial_learning_rate-$final_learning_rate-$learning_rate_decline_factor-$minibatch_size
 srcdir=data/local/dict
 
 #set -x

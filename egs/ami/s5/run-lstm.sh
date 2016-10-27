@@ -10,11 +10,11 @@ sos="<s>"
 eos="</s>"
 oos="<oos>"
 max_param_change=20
-num_iter=20
+num_iter=15
 shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of the samples
 minibatch_size=64
 
-initial_learning_rate=0.004
+initial_learning_rate=0.008
 final_learning_rate=0.0004
 learning_rate_decline_factor=1.2
 
@@ -22,7 +22,7 @@ learning_rate_decline_factor=1.2
 . path.sh
 . parse_options.sh || exit 1;
 
-outdir=rnnlm-$initial_learning_rate-$final_learning_rate-$learning_rate_decline_factor
+outdir=lstmlm-$initial_learning_rate-$final_learning_rate-$learning_rate_decline_factor-$minibatch_size
 srcdir=data/local/dict
 
 #set -x
@@ -60,26 +60,35 @@ if [ $stage -le -3 ]; then
 fi
 
 if [ $stage -le -2 ]; then
-  cat > $outdir/config <<EOF
-  input-node name=input dim=$num_words_in
-  component name=first_affine type=NaturalGradientAffineComponent input-dim=$[$num_words_in+$hidden_dim] output-dim=$hidden_dim  
-  component name=first_nonlin type=RectifiedLinearComponent dim=$hidden_dim
-  component name=first_renorm type=NormalizeComponent dim=$hidden_dim target-rms=1.0
-  component name=final_affine type=NaturalGradientAffineComponent input-dim=$hidden_dim output-dim=$num_words_out
-  component name=final_log_softmax type=LogSoftmaxComponent dim=$num_words_out
 
-#Component nodes
-  component-node name=first_affine component=first_affine  input=Append(input, IfDefined(Offset(first_renorm, -1)))
-  component-node name=first_nonlin component=first_nonlin  input=first_affine
-  component-node name=first_renorm component=first_renorm  input=first_nonlin
-  component-node name=final_affine component=final_affine  input=first_renorm
-  component-node name=final_log_softmax component=final_log_softmax input=final_affine
-  output-node    name=output input=final_log_softmax objective=linear
-EOF
+  num_lstm_layers=1
+  cell_dim=48
+  hidden_dim=49
+  recurrent_projection_dim=50
+  non_recurrent_projection_dim=51
+  norm_based_clipping=true
+  clipping_threshold=30
+  label_delay=0  # 5
+  splice_indexes=0
+
+  ./make_lstm_configs.py \
+    --splice-indexes "$splice_indexes " \
+    --num-lstm-layers $num_lstm_layers \
+    --feat-dim $num_words_in \
+    --cell-dim $cell_dim \
+    --hidden-dim $hidden_dim \
+    --recurrent-projection-dim $recurrent_projection_dim \
+    --non-recurrent-projection-dim $non_recurrent_projection_dim \
+    --norm-based-clipping $norm_based_clipping \
+    --clipping-threshold $clipping_threshold \
+    --num-targets $num_words_out \
+    --label-delay $label_delay \
+   $outdir/configs || exit 1;
+
 fi
 
 if [ $stage -le 0 ]; then
-  nnet3-init --binary=false $outdir/config $outdir/0.mdl
+  nnet3-init --binary=false $outdir/configs/layer1.config $outdir/0.mdl
 fi
 
 
