@@ -22,7 +22,7 @@ cp $srcdict $dir/lexicon0.txt || exit 1;
 patch <local/dict.patch $dir/lexicon0.txt || exit 1;
 
 #(2a) Dictionary preparation:
-# Pre-processing (Upper-case, remove comments)
+# Pre-processing (remove comments)
 grep -v '^#' $dir/lexicon0.txt | awk 'NF>0' | sort > $dir/lexicon1.txt || exit 1;
 
 cat $dir/lexicon1.txt | awk '{ for(n=2;n<=NF;n++){ phones[$n] = 1; }} END{for (p in phones) print p;}' | \

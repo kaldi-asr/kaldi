@@ -19,7 +19,7 @@ srcdict=$srcdir/swb_ms98_transcriptions/sw-ms98-dict.text
 [ ! -f "$srcdict" ] && echo "No such file $srcdict" && exit 1;
 
 #(2a) Dictionary preparation:
-# Pre-processing (Upper-case, remove comments)
+# Pre-processing (Lower-case, remove comments)
 grep -v '^#' $srcdict | tr '[A-Z]' '[a-z]' | awk 'NF>0' | sort > $dir/lexicon1.txt || exit 1;
 
 cat $dir/lexicon1.txt | awk '{ for(n=2;n<=NF;n++){ phones[$n] = 1; }} END{for (p in phones) print p;}' | \
