@@ -70,7 +70,7 @@ def GetArgs():
                         help="Sampling rate of the source data. If a positive integer is specified with this option, "
                         "the RIRs/noises will be resampled to the rate of the source data.")
     parser.add_argument("--include-original-data", type=str, help="If true, the output data includes one copy of the original data",
-                         choices=['true', 'false'], default = False)
+                         choices=['true', 'false'], default = "false")
     parser.add_argument("input_dir",
                         help="Input data directory")
     parser.add_argument("output_dir",
@@ -89,7 +89,7 @@ def CheckArgs(args):
 
     ## Check arguments
     if args.prefix is None:
-        if args.num_replicas > 1 or args.include_original_data:
+        if args.num_replicas > 1 or args.include_original_data == "true":
             args.prefix = "rvb"
             warnings.warn("--prefix is set to 'rvb' as more than one copy of data is generated")
 
@@ -641,6 +641,11 @@ def Main():
         print("Number of isotropic noises is {0}".format(sum(len(iso_noise_dict[key]) for key in iso_noise_dict.keys())))
     room_dict = MakeRoomDict(rir_list)
 
+    if args.include_original_data == "true":
+        include_original = True
+    else:
+        include_original = False
+
     CreateReverberatedCopy(input_dir = args.input_dir,
                            output_dir = args.output_dir,
                            room_dict = room_dict,
@@ -649,7 +654,7 @@ def Main():
                            foreground_snr_string = args.foreground_snr_string,
                            background_snr_string = args.background_snr_string,
                            num_replicas = args.num_replicas,
-                           include_original = args.include_original_data,
+                           include_original = include_original,
                            prefix = args.prefix,
                            speech_rvb_probability = args.speech_rvb_probability,
                            shift_output = args.shift_output,
