@@ -517,17 +517,21 @@ void SigmoidComponent::Backprop(const std::string &debug_info,
                                 const CuMatrixBase<BaseFloat> &,
                                 const CuMatrixBase<BaseFloat> &out_value,
                                 const CuMatrixBase<BaseFloat> &out_deriv,
-                                Component *,
+                                Component *to_update_in,
                                 CuMatrixBase<BaseFloat> *in_deriv) const {
   if (in_deriv != NULL) {
     in_deriv->DiffSigmoid(out_value, out_deriv);
-    RepairGradients(out_value, in_deriv);
+    SigmoidComponent *to_update = dynamic_cast<SigmoidComponent*>(to_update_in);
+    if (to_update != NULL)
+      RepairGradients(out_value, in_deriv, to_update);
   }
 }
 
 void SigmoidComponent::RepairGradients(
     const CuMatrixBase<BaseFloat> &out_value,
-    CuMatrixBase<BaseFloat> *in_deriv) const {
+    CuMatrixBase<BaseFloat> *in_deriv,
+    SigmoidComponent *to_update) const {
+  KALDI_ASSERT(to_update != NULL);
   // maximum possible derivative of SigmoidComponent is 0.25.
   // the default lower-threshold on the derivative, below which we
   // add a term to the derivative to encourage the inputs to the sigmoid
@@ -538,6 +542,8 @@ void SigmoidComponent::RepairGradients(
   // we use this 'repair_probability' (hardcoded for now) to limit
   // this code to running on about half of the minibatches.
   BaseFloat repair_probability = 0.5;
+
+  to_update->num_dims_processed_ += dim_;
 
   if (self_repair_scale_ == 0.0 || count_ == 0.0 || deriv_sum_.Dim() != dim_ ||
       RandUniform() > repair_probability)
@@ -562,6 +568,7 @@ void SigmoidComponent::RepairGradients(
   thresholds_vec.AddVec(-1.0, deriv_sum_);
   thresholds_vec.Add(lower_threshold);
   thresholds.ApplyHeaviside();
+  to_update->num_dims_self_repaired_ += thresholds_vec.Sum();
 
   // At this point, 'thresholds_vec' contains a 1 for each dimension of
   // the output that is 'problematic', i.e. for which the avg-deriv
@@ -940,7 +947,9 @@ void TanhComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
 
 void TanhComponent::RepairGradients(
     const CuMatrixBase<BaseFloat> &out_value,
-    CuMatrixBase<BaseFloat> *in_deriv) const {
+    CuMatrixBase<BaseFloat> *in_deriv,
+    TanhComponent *to_update) const {
+  KALDI_ASSERT(to_update != NULL);
   // maximum possible derivative of SigmoidComponent is 1.0
   // the default lower-threshold on the derivative, below which we
   // add a term to the derivative to encourage the inputs to the sigmoid
@@ -951,6 +960,8 @@ void TanhComponent::RepairGradients(
   // we use this 'repair_probability' (hardcoded for now) to limit
   // this code to running on about half of the minibatches.
   BaseFloat repair_probability = 0.5;
+
+  to_update->num_dims_processed_ += dim_;
 
   if (self_repair_scale_ == 0.0 || count_ == 0.0 || deriv_sum_.Dim() != dim_ ||
       RandUniform() > repair_probability)
@@ -975,6 +986,7 @@ void TanhComponent::RepairGradients(
   thresholds_vec.AddVec(-1.0, deriv_sum_);
   thresholds_vec.Add(lower_threshold);
   thresholds.ApplyHeaviside();
+  to_update->num_dims_self_repaired_ += thresholds_vec.Sum();
 
   // At this point, 'thresholds_vec' contains a 1 for each dimension of
   // the output that is 'problematic', i.e. for which the avg-deriv
@@ -1004,12 +1016,14 @@ void TanhComponent::Backprop(const std::string &debug_info,
                              const CuMatrixBase<BaseFloat> &,
                              const CuMatrixBase<BaseFloat> &out_value,
                              const CuMatrixBase<BaseFloat> &out_deriv,
-                             Component *to_update, // may be NULL; may be identical
+                             Component *to_update_in, // may be NULL; may be identical
                              // to "this" or different.
                              CuMatrixBase<BaseFloat> *in_deriv) const {
   if (in_deriv != NULL) {
     in_deriv->DiffTanh(out_value, out_deriv);
-    RepairGradients(out_value, in_deriv);
+    TanhComponent *to_update = dynamic_cast<TanhComponent*>(to_update_in);
+    if (to_update != NULL)
+      RepairGradients(out_value, in_deriv, to_update);
   }
 }
 
@@ -1047,23 +1061,30 @@ void RectifiedLinearComponent::Backprop(
     const CuMatrixBase<BaseFloat> &, //in_value
     const CuMatrixBase<BaseFloat> &out_value,
     const CuMatrixBase<BaseFloat> &out_deriv,
-    Component *to_update,
+    Component *to_update_in,
     CuMatrixBase<BaseFloat> *in_deriv) const {
   if (in_deriv != NULL) {
     in_deriv->Heaviside(out_value);
     in_deriv->MulElements(out_deriv);
-    RepairGradients(in_deriv);
+    RectifiedLinearComponent *to_update =
+        dynamic_cast<RectifiedLinearComponent*>(to_update_in);
+    if (to_update != NULL)
+      RepairGradients(in_deriv, to_update);
   }
 }
 
 
 void RectifiedLinearComponent::RepairGradients(
-    CuMatrixBase<BaseFloat> *in_deriv) const {
+    CuMatrixBase<BaseFloat> *in_deriv,
+    RectifiedLinearComponent *to_update) const {
+  KALDI_ASSERT(to_update != NULL);
   BaseFloat default_lower_threshold = 0.05,
       default_upper_threshold = 0.95;
   // we use this 'repair_probability' (hardcoded for now) to limit
   // this code to running on about half of the minibatches.
   BaseFloat repair_probability = 0.5;
+
+  to_update->num_dims_processed_ += dim_;
 
   if (self_repair_scale_ == 0.0 || count_ == 0.0 || deriv_sum_.Dim() != dim_ ||
       RandUniform() > repair_probability)
@@ -1105,6 +1126,9 @@ void RectifiedLinearComponent::RepairGradients(
   // -self_repair_scale * (stats_mat.Row(1)  + stats_mat.Row(0) - 1).
   row0.AddVec(1.0, row1, 1.0);
   row0.Add(-1.0);
+  CuVector<BaseFloat> temp(row0);
+  temp.ApplyPow(2.0);
+  to_update->num_dims_self_repaired_ += temp.Sum();
   // [actually we need to divide by repair_probability also, to
   //  correct for the fact that we only do this on some frames.]
   row0.Scale(-self_repair_scale_ / repair_probability);

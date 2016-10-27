@@ -536,6 +536,9 @@ class NonlinearComponent: public Component {
                                // nonlinearities, not Softmax.
   double count_;
 
+  // some stats for self-repairing nonlinearities.
+  double num_dims_self_repaired_;
+  double num_dims_processed_;
 
   // some configuration values relating to self-repairing nonlinearities.
   BaseFloat self_repair_lower_threshold_;
