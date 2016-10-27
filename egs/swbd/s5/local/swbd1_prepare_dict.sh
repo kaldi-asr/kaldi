@@ -20,7 +20,7 @@ srcdict=$srcdir/swb_ms98_transcriptions/sw-ms98-dict.text
 
 #(2a) Dictionary preparation:
 # Pre-processing (Upper-case, remove comments)
-grep -v '^#' $srcdict | tr '[a-z]' '[A-Z]' | awk 'NF>0' | sort > $dir/lexicon1.txt || exit 1;
+grep -v '^#' $srcdict | tr '[A-Z]' '[a-z]' | awk 'NF>0' | sort > $dir/lexicon1.txt || exit 1;
 
 cat $dir/lexicon1.txt | awk '{ for(n=2;n<=NF;n++){ phones[$n] = 1; }} END{for (p in phones) print p;}' | \
   grep -v sil > $dir/nonsilence_phones.txt  || exit 1;
