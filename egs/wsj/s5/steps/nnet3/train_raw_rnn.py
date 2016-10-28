@@ -18,9 +18,9 @@ import logging
 import imp
 import traceback
 
-common_train_lib = imp.load_source('ntl', 'steps/nnet3/libs/common_train_lib.py')
-nnet3_log_parse = imp.load_source('nlp', 'steps/nnet3/report/nnet3_log_parse_lib.py')
-train_lib = imp.load_source('tl', 'steps/nnet3/libs/train_lib.py')
+common_train_lib = imp.load_source('', 'steps/nnet3/libs/common_train_lib.py')
+nnet3_log_parse = imp.load_source('', 'steps/nnet3/report/nnet3_log_parse_lib.py')
+train_lib = imp.load_source('', 'steps/nnet3/libs/train_lib.py')
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -47,9 +47,10 @@ def GetArgs():
         3. RNNs can also be trained with state preservation training
     """,
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    conflict_handler = 'resolve')
-
-    train_lib.AddCommonTrainArgs(parser)
+    conflict_handler = 'resolve',
+    parents=[common_train_lib.common_parser])
+    # For common options defined in common_train_lib.common_parser,
+    # see steps/nnet3/libs/common_train_lib.py
 
     # egs extraction options
     parser.add_argument("--egs.chunk-width", type=int, dest='chunk_width',
@@ -87,8 +88,6 @@ def GetArgs():
             default = 256,
             help="Size of the minibatch to be used in diagnostic jobs (use smaller value for BLSTMs to control memory usage)")
 
-
-
     # RNN specific trainer options
     parser.add_argument("--trainer.rnn.num-chunk-per-minibatch", type=int, dest='num_chunk_per_minibatch',
                         default=100,
@@ -100,7 +99,6 @@ def GetArgs():
     # General options
     parser.add_argument("--nj", type=int, default=4,
                         help="Number of parallel jobs")
-
     parser.add_argument("--use-dense-targets", type=str, action=common_train_lib.StrToBoolAction,
                        default = True, choices = ["true", "false"],
                        help="Train neural network using dense targets")
@@ -188,7 +186,7 @@ def Train(args, run_opts):
     try:
         model_left_context = variables['model_left_context']
         model_right_context = variables['model_right_context']
-        num_hidden_layers = variables['num_hidden_layers']
+        num_hidden_layers = variables['num_hidden_layers'] # this is really the number of times we add layers to the network for discriminative pretraining
         add_lda = common_train_lib.StrToBool(variables['add_lda'])
         include_log_softmax = common_train_lib.StrToBool(variables['include_log_softmax'])
     except KeyError as e:
@@ -288,7 +286,7 @@ def Train(args, run_opts):
                                          args.max_models_combine, args.add_layers_period,
                                          args.num_jobs_final)
 
-    learning_rate = (lambda iter, current_num_jobs, num_archives_processed:
+    LearningRate = (lambda iter, current_num_jobs, num_archives_processed:
                         common_train_lib.GetLearningRate(
                                          iter, current_num_jobs, num_iters,
                                          num_archives_processed,
@@ -321,7 +319,7 @@ def Train(args, run_opts):
                                                                get_raw_nnet_from_am = False)
                                else 1
                                )
-            logger.info("On iteration {0}, learning rate is {1} and shrink value is {2}.".format(iter, learning_rate(iter, current_num_jobs, num_archives_processed), shrinkage_value))
+            logger.info("On iteration {0}, learning rate is {1} and shrink value is {2}.".format(iter, LearningRate(iter, current_num_jobs, num_archives_processed), shrinkage_value))
 
             train_lib.TrainOneIteration(
                       dir = args.dir,
@@ -331,7 +329,7 @@ def Train(args, run_opts):
                       num_jobs = current_num_jobs,
                       num_archives_processed = num_archives_processed,
                       num_archives = num_archives,
-                      learning_rate = learning_rate(iter, current_num_jobs, num_archives_processed),
+                      learning_rate = LearningRate(iter, current_num_jobs, num_archives_processed),
                       shrinkage_value = shrinkage_value,
                       num_chunk_per_minibatch = args.num_chunk_per_minibatch,
                       num_hidden_layers = num_hidden_layers,

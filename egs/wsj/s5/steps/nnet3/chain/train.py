@@ -196,6 +196,9 @@ def ProcessArgs(args):
 
     return [args, run_opts]
 
+# Called from TrainOneIteration, this model does one iteration of training
+# with 'num_jobs' jobs, and
+# writes files like exp/tdnn_a/24.{1,2,3,..<num_jobs>}.raw
 def TrainNewModels(dir, iter, srand, num_jobs,
                    num_archives_processed, num_archives,
                    raw_model_string, egs_dir,

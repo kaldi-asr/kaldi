@@ -19,9 +19,9 @@ import imp
 import traceback
 import shutil
 
-common_train_lib = imp.load_source('ntl', 'steps/nnet3/lib/common_train_lib.py')
-nnet3_log_parse = imp.load_source('nlp', 'steps/nnet3/report/nnet3_log_parse_lib.py')
-train_lib = imp.load_source('tl', 'steps/nnet3/libs/train_lib.py')
+common_train_lib = imp.load_source('', 'steps/nnet3/libs/common_train_lib.py')
+nnet3_log_parse = imp.load_source('', 'steps/nnet3/report/nnet3_log_parse_lib.py')
+train_lib = imp.load_source('', 'steps/nnet3/libs/train_lib.py')
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -48,9 +48,10 @@ def GetArgs():
         3. RNNs can also be trained with state preservation training
     """,
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    conflict_handler = 'resolve')
-
-    train_lib.AddCommonTrainArgs(parser)
+    conflict_handler = 'resolve',
+    parents=[common_train_lib.common_parser])
+    # For common options defined in common_train_lib.common_parser,
+    # see steps/nnet3/libs/common_train_lib.py
 
     # egs extraction options
     parser.add_argument("--egs.chunk-width", type=int, dest='chunk_width',
@@ -87,8 +88,6 @@ def GetArgs():
     parser.add_argument("--trainer.optimization.cv-minibatch-size", type=int, dest='cv_minibatch_size',
             default = 256,
             help="Size of the minibatch to be used in diagnostic jobs (use smaller value for BLSTMs to control memory usage)")
-
-
 
     # RNN specific trainer options
     parser.add_argument("--trainer.rnn.num-chunk-per-minibatch", type=int, dest='num_chunk_per_minibatch',
@@ -195,7 +194,7 @@ def Train(args, run_opts):
     try:
         model_left_context = variables['model_left_context']
         model_right_context = variables['model_right_context']
-        num_hidden_layers = variables['num_hidden_layers']
+        num_hidden_layers = variables['num_hidden_layers'] # this is really the number of times we add layers to the network for discriminative pretraining
     except KeyError as e:
         raise Exception("KeyError {0}: Variables need to be defined in {1}".format(
             str(e), '{0}/configs'.format(args.dir)))

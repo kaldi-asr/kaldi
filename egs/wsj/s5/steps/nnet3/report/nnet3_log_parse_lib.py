@@ -5,7 +5,7 @@ from __future__ import division
 import sys, glob, re, math, datetime, argparse
 import imp
 
-ntl = imp.load_source('ntl', 'steps/nnet3/nnet3_train_lib.py')
+ntl = imp.load_source('', 'steps/nnet3/libs/common_train_lib.py')
 
 #exp/nnet3/lstm_self_repair_ld5_sp/log/progress.9.log:component name=Lstm3_i type=SigmoidComponent, dim=1280, self-repair-scale=1e-05, count=1.96e+05, value-avg=[percentiles(0,1,2,5 10,20,50,80,90 95,98,99,100)=(0.05,0.09,0.11,0.15 0.19,0.27,0.50,0.72,0.83 0.88,0.92,0.94,0.99), mean=0.502, stddev=0.23], deriv-avg=[percentiles(0,1,2,5 10,20,50,80,90 95,98,99,100)=(0.009,0.04,0.05,0.06 0.08,0.10,0.14,0.17,0.18 0.19,0.20,0.20,0.21), mean=0.134, stddev=0.0397]
 def ParseProgressLogsForNonlinearityStats(exp_dir):
