@@ -24,8 +24,8 @@
 #include "util/common-utils.h"
 #include "hmm/posterior.h"
 #include "nnet3/nnet-example.h"
-
-#include "rnnlmbin/rnnlm-utils.h"
+#include "rnnlm/rnnlm-utils.h"
+#include "nnet3/nnet-diagnostics.h"
 
 using std::string;
 using std::ifstream;
@@ -44,9 +44,9 @@ void GenerateEgs(string text_file, const unordered_map<string, int>& wlist_in,
   int input_dim = wlist_in.size();
   int output_dim = wlist_out.size();
   while (getline(ifile, line)) {
-    if (cur_line % 1000 == 0) {
-      cout << "processing line " << cur_line << endl;
-    }
+//    if (cur_line % 1000 == 0) {
+//      cout << "processing line " << cur_line << endl;
+//    }
     vector<string> words = SplitByWhiteSpace(line);
 
     vector<int> word_ids_in;
@@ -54,7 +54,7 @@ void GenerateEgs(string text_file, const unordered_map<string, int>& wlist_in,
 
     for (int i = 0; i < words.size(); i++) {
       int id_in = OOS_ID;
-      int id_out = OOS_ID; // TODO(hxu) assuming OOS is always 1 in wordlists
+      int id_out = OOS_ID;
       if (i != words.size() - 1) {
         unordered_map<string, int>::const_iterator iter = wlist_in.find(words[i]);
         if (iter != wlist_in.end()) {

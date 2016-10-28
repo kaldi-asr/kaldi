@@ -1,20 +1,11 @@
-#include <fstream>
-#include <sstream>
-
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "nnet3/nnet-example.h"
 #include "nnet3/nnet-diagnostics.h"
+#include "rnnlm/rnnlm-utils.h"
 
-using std::string;
-using std::ifstream;
-using std::ofstream;
-using std::vector;
-
-using namespace kaldi;
-using namespace nnet3;
-
-const int OOS_ID = 1;
+namespace kaldi {
+namespace nnet3 {
 
 vector<string> SplitByWhiteSpace(const string &line) {
   std::stringstream ss(line);
@@ -62,3 +53,6 @@ NnetExample GetEgsFromSent(const vector<int>& word_ids_in, int input_dim,
   eg.io.push_back(NnetIo("output", output_dim, 0, posterior));
   return eg;
 }
+
+} // namespace nnet3
+} // namespace kaldi

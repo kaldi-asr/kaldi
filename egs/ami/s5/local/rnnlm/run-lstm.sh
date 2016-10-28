@@ -1,31 +1,44 @@
 #!/bin/bash
 
-train_text=data/sdm1/cued_rnn_ce_1/train
-dev_text=data/sdm1/cued_rnn_ce_1/valid
+train_text=data/sdm1/train/text
+dev_text=data/sdm1/dev/text
+
 num_words_in=10000
 num_words_out=10100
 hidden_dim=200
+
 stage=-100
 sos="<s>"
 eos="</s>"
 oos="<oos>"
+
 max_param_change=20
-num_iter=20
+num_iters=15
+
 shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of the samples
-minibatch_size=512
+minibatch_size=64
 
 initial_learning_rate=0.008
 final_learning_rate=0.0004
 learning_rate_decline_factor=1.2
 
+num_lstm_layers=1
+cell_dim=48
+hidden_dim=49
+recurrent_projection_dim=50
+non_recurrent_projection_dim=51
+norm_based_clipping=true
+clipping_threshold=30
+label_delay=0  # 5
+splice_indexes=0
+
 . cmd.sh
 . path.sh
 . parse_options.sh || exit 1;
 
-outdir=rnnlm-sigmoid-$initial_learning_rate-$final_learning_rate-$learning_rate_decline_factor-$minibatch_size
+outdir=data/sdm1/lstm-$initial_learning_rate-$final_learning_rate-$learning_rate_decline_factor-$minibatch_size
 srcdir=data/local/dict
 
-#set -x
 set -e
 
 mkdir -p $outdir
@@ -33,7 +46,10 @@ mkdir -p $outdir
 if [ $stage -le -4 ]; then
   cat $srcdir/lexicon.txt | awk '{print $1}' | grep -v -w '!SIL' > $outdir/wordlist.all
 
-  cat $train_text $outdir/wordlist.all | sed "s= =\n=g" | grep . | sort | uniq -c | sort -k1 -n -r | awk '{print $2,$1}' > $outdir/unigramcounts.txt
+  cat $train_text | cut -d" " -f2- > $outdir/train.txt.0
+  cat $dev_text | cut -d" " -f2- > $outdir/dev.txt.0
+
+  cat $outdir/train.txt.0 $outdir/wordlist.all | sed "s= =\n=g" | grep . | sort | uniq -c | sort -k1 -n -r | awk '{print $2,$1}' > $outdir/unigramcounts.txt
 
   echo $sos 0 > $outdir/wordlist.in
   echo $oos 1 >> $outdir/wordlist.in
@@ -42,12 +58,10 @@ if [ $stage -le -4 ]; then
   echo $eos 0 > $outdir/wordlist.out
   echo $oos 1 >> $outdir/wordlist.out
 
-#  cp $outdir/wordlist.out $outdir/wordlist.rnn
-
   cat $outdir/unigramcounts.txt | head -n $num_words_out | awk '{print $1,1+NR}' >> $outdir/wordlist.out
 
-  cat $train_text | awk -v sos="$sos" -v eos="$eos" '{print sos,$0,eos}' > $outdir/train.txt
-  cat $dev_text   | awk -v sos="$sos" -v eos="$eos" '{print sos,$0,eos}' > $outdir/dev.txt
+  cat $outdir/train.txt.0 | awk -v sos="$sos" -v eos="$eos" '{print sos,$0,eos}' > $outdir/train.txt
+  cat $outdir/dev.txt.0   | awk -v sos="$sos" -v eos="$eos" '{print sos,$0,eos}' > $outdir/dev.txt
 fi
 
 num_words_in=`wc -l $outdir/wordlist.in | awk '{print $1}'`
@@ -55,31 +69,28 @@ num_words_out=`wc -l $outdir/wordlist.out | awk '{print $1}'`
 
 if [ $stage -le -3 ]; then
   rnnlm-get-egs $outdir/train.txt $outdir/wordlist.in $outdir/wordlist.out ark,t:$outdir/egs
-#  rnnlm-get-egs rnnlm/train.txt.top rnnlm/wordlist.in rnnlm/wordlist.out "ark,t:| perl -pe 's/line/\nline/g' | grep . > rnnlm/egs"
-#  rnnlm-get-egs rnnlm/train.txt.top rnnlm/wordlist.in rnnlm/wordlist.out "ark,t:rnnlm/egs"
 fi
 
 if [ $stage -le -2 ]; then
-  cat > $outdir/config <<EOF
-  input-node name=input dim=$num_words_in
-  component name=first_affine type=NaturalGradientAffineComponent input-dim=$[$num_words_in+$hidden_dim] output-dim=$hidden_dim  
-  component name=first_nonlin type=SigmoidComponent dim=$hidden_dim
-  component name=first_renorm type=NormalizeComponent dim=$hidden_dim target-rms=1.0
-  component name=final_affine type=NaturalGradientAffineComponent input-dim=$hidden_dim output-dim=$num_words_out
-  component name=final_log_softmax type=LogSoftmaxComponent dim=$num_words_out
 
-#Component nodes
-  component-node name=first_affine component=first_affine  input=Append(input, IfDefined(Offset(first_renorm, -1)))
-  component-node name=first_nonlin component=first_nonlin  input=first_affine
-  component-node name=first_renorm component=first_renorm  input=first_nonlin
-  component-node name=final_affine component=final_affine  input=first_renorm
-  component-node name=final_log_softmax component=final_log_softmax input=final_affine
-  output-node    name=output input=final_log_softmax objective=linear
-EOF
+  ./make_lstm_configs.py \
+    --splice-indexes "$splice_indexes " \
+    --num-lstm-layers $num_lstm_layers \
+    --feat-dim $num_words_in \
+    --cell-dim $cell_dim \
+    --hidden-dim $hidden_dim \
+    --recurrent-projection-dim $recurrent_projection_dim \
+    --non-recurrent-projection-dim $non_recurrent_projection_dim \
+    --norm-based-clipping $norm_based_clipping \
+    --clipping-threshold $clipping_threshold \
+    --num-targets $num_words_out \
+    --label-delay $label_delay \
+   $outdir/configs || exit 1;
+
 fi
 
 if [ $stage -le 0 ]; then
-  nnet3-init --binary=false $outdir/config $outdir/0.mdl
+  nnet3-init --binary=false $outdir/configs/layer1.config $outdir/0.mdl
 fi
 
 
@@ -89,14 +100,14 @@ cat $outdir/wordlist.all.[12] | sort -u > $outdir/wordlist.all
 #rm $outdir/wordlist.all.[12]
 
 mkdir -p $outdir/LOGs/
-if [ $stage -le $num_iter ]; then
+if [ $stage -le $num_iters ]; then
   start=1
 #  if [ $stage -gt 1 ]; then
 #    start=$stage
 #  fi
   learning_rate=$initial_learning_rate
 
-  for n in `seq $start $num_iter`; do
+  for n in `seq $start $num_iters`; do
     echo for iter $n, learning rate is $learning_rate
     [ $n -ge $stage ] && (
         $cuda_cmd $outdir/LOGs/train.rnnlm.$n.log nnet3-train \
@@ -105,7 +116,7 @@ if [ $stage -le $num_iter ]; then
     )
 
 
-    learning_rate=`echo $learning_rate | awk -v d=$learning_rate_decline_factor '{print $1/d}'`
+    learning_rate=`echo $learning_rate | awk -v d=$learning_rate_decline_factor '{printf("%f", $1/d)}'`
     if (( $(echo "$final_learning_rate > $learning_rate" |bc -l) )); then
       learning_rate=$final_learning_rate
     fi
@@ -123,8 +134,9 @@ if [ $stage -le $num_iter ]; then
       echo DEV PPL on model $n.mdl is $ppl | tee $outdir/LOGs/dev.ppl.$n.txt
     ) &
   done
-  cp $outdir/$num_iter.mdl $outdir/rnnlm
+  cp $outdir/$num_iters.mdl $outdir/rnnlm
+  cp $outdir/wordlist.out $outdir/wordlist.rnn
+  touch $outdir/unk.probs
 fi
 
-
-#./run_rnnlms.sh
+./local/rnnlm/run-rescoring.sh --rnndir $outdir/ --type lstm

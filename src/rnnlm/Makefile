@@ -1,29 +1,20 @@
 
 all:
 
-EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
 LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
 
-BINFILES = rnnlm-get-egs rnnlm-eval
+OBJFILES = rnnlm-utils.o
 
-OBJFILES =
+LIBNAME = kaldi-rnnlm
 
-cuda-compiled.o: ../kaldi.mk
-
-TESTFILES =
-
-ADDLIBS = ../rnnlm/kaldi-rnnlm.a ../nnet3/kaldi-nnet3.a ../chain/kaldi-chain.a \
+ADDLIBS = ../nnet3/kaldi-nnet3.a ../chain/kaldi-chain.a \
           ../cudamatrix/kaldi-cudamatrix.a ../decoder/kaldi-decoder.a \
           ../lat/kaldi-lat.a ../fstext/kaldi-fstext.a ../hmm/kaldi-hmm.a \
           ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
           ../tree/kaldi-tree.a ../util/kaldi-util.a ../thread/kaldi-thread.a \
           ../matrix/kaldi-matrix.a ../base/kaldi-base.a
-
-#ADDLIBS = ../util/kaldi-util.a ../thread/kaldi-thread.a \
-#          ../matrix/kaldi-matrix.a ../base/kaldi-base.a \
-#          ../nnet3/kaldi-nnet3.a ../hmm/kaldi-hmm.a ../cudamatrix/kaldi-cudamatrix.a
 
 include ../makefiles/default_rules.mk
