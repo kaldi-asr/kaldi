@@ -5,6 +5,7 @@ dev_text=data/sdm1/dev/text
 
 num_words_in=10000
 num_words_out=10100
+hidden_dim=200
 
 stage=-100
 sos="<s>"
@@ -12,30 +13,20 @@ eos="</s>"
 oos="<oos>"
 
 max_param_change=20
-num_iters=15
+num_iters=20
 
 shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of the samples
-minibatch_size=64
+minibatch_size=512
 
-initial_learning_rate=0.002
-final_learning_rate=0.0001
+initial_learning_rate=0.008
+final_learning_rate=0.0004
 learning_rate_decline_factor=1.2
-
-num_lstm_layers=1
-cell_dim=64
-hidden_dim=256
-recurrent_projection_dim=0
-non_recurrent_projection_dim=64
-norm_based_clipping=true
-clipping_threshold=30
-label_delay=0  # 5
-splice_indexes=0
 
 . cmd.sh
 . path.sh
 . parse_options.sh || exit 1;
 
-outdir=data/sdm1/lstm-$initial_learning_rate-$final_learning_rate-$learning_rate_decline_factor-$minibatch_size
+outdir=data/sdm1/rnnlm-sigmoid-$initial_learning_rate-$final_learning_rate-$learning_rate_decline_factor-$minibatch_size
 srcdir=data/local/dict
 
 set -e
@@ -71,25 +62,26 @@ if [ $stage -le -3 ]; then
 fi
 
 if [ $stage -le -2 ]; then
+  cat > $outdir/config <<EOF
+  input-node name=input dim=$num_words_in
+  component name=first_affine type=NaturalGradientAffineComponent input-dim=$[$num_words_in+$hidden_dim] output-dim=$hidden_dim  
+  component name=first_nonlin type=SigmoidComponent dim=$hidden_dim
+  component name=first_renorm type=NormalizeComponent dim=$hidden_dim target-rms=1.0
+  component name=final_affine type=NaturalGradientAffineComponent input-dim=$hidden_dim output-dim=$num_words_out
+  component name=final_log_softmax type=LogSoftmaxComponent dim=$num_words_out
 
-  steps/rnnlm/make_lstm_configs.py \
-    --splice-indexes "$splice_indexes " \
-    --num-lstm-layers $num_lstm_layers \
-    --feat-dim $num_words_in \
-    --cell-dim $cell_dim \
-    --hidden-dim $hidden_dim \
-    --recurrent-projection-dim $recurrent_projection_dim \
-    --non-recurrent-projection-dim $non_recurrent_projection_dim \
-    --norm-based-clipping $norm_based_clipping \
-    --clipping-threshold $clipping_threshold \
-    --num-targets $num_words_out \
-    --label-delay $label_delay \
-   $outdir/configs || exit 1;
-
+#Component nodes
+  component-node name=first_affine component=first_affine  input=Append(input, IfDefined(Offset(first_renorm, -1)))
+  component-node name=first_nonlin component=first_nonlin  input=first_affine
+  component-node name=first_renorm component=first_renorm  input=first_nonlin
+  component-node name=final_affine component=final_affine  input=first_renorm
+  component-node name=final_log_softmax component=final_log_softmax input=final_affine
+  output-node    name=output input=final_log_softmax objective=linear
+EOF
 fi
 
 if [ $stage -le 0 ]; then
-  nnet3-init --binary=false $outdir/configs/layer1.config $outdir/0.mdl
+  nnet3-init --binary=false $outdir/config $outdir/0.mdl
 fi
 
 
@@ -122,8 +114,7 @@ if [ $stage -le $num_iters ]; then
     [ $n -ge $stage ] && (
       nw=`wc -l $outdir/wordlist.all | awk '{print $1 - 3}'` # <s>, </s>, <oos>
       nw=`wc -l $outdir/wordlist.all | awk '{print $1}'` # <s>, </s>, <oos>
-#      nw=`wc -l data/sdm1/cued_rnn_ce_1/unigram.counts | awk '{print $1}'`
-#      $decode_cmd $outdir/dev.ppl.$n.log rnnlm-eval $outdir/$n.mdl $outdir/wordlist.in $outdir/wordlist.out $outdir/dev.txt $outdir/dev-probs-iter-$n.txt
+
       echo $decode_cmd $outdir/dev.ppl.$n.log rnnlm-eval --num-words=$nw $outdir/$n.mdl $outdir/wordlist.in $outdir/wordlist.out $outdir/dev.txt $outdir/dev-probs-iter-$n.txt
       $decode_cmd $outdir/dev.ppl.$n.log rnnlm-eval --num-words=$nw $outdir/$n.mdl $outdir/wordlist.in $outdir/wordlist.out $outdir/dev.txt $outdir/dev-probs-iter-$n.txt
       nw=`cat $outdir/dev.txt | awk '{a+=NF-1}END{print a}' `
@@ -133,8 +124,6 @@ if [ $stage -le $num_iters ]; then
     ) &
   done
   cp $outdir/$num_iters.mdl $outdir/rnnlm
-  cp $outdir/wordlist.out $outdir/wordlist.rnn
-  touch $outdir/unk.probs
 fi
 
-./local/rnnlm/run-rescoring.sh --rnndir $outdir/ --type lstm
+./local/rnnlm/run-rescoring.sh --rnndir $outdir/ --type rnn
