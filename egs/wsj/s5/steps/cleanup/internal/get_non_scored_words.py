@@ -39,11 +39,11 @@ def ReadLang(lang_dir):
     global non_scored_words
 
     if not os.path.isdir(lang_dir):
-        sys.exit("modify_ctm_edits.py expected lang/ directory {0} to "
+        sys.exit("get_non_scored_words.py expected lang/ directory {0} to "
                  "exist.".format(lang_dir))
     for f in [ '/words.txt', '/phones/silence.int', '/phones/align_lexicon.int' ]:
         if not os.path.exists(lang_dir + f):
-            sys.exit("modify_ctm_edits.py: expected file {0}{1} to exist.".format(
+            sys.exit("get_non_scored_words.py: expected file {0}{1} to exist.".format(
                     lang_dir, f))
     # read silence-phones.
     try:
@@ -51,7 +51,7 @@ def ReadLang(lang_dir):
         for line in open(lang_dir + '/phones/silence.int').readlines():
             silence_phones.add(int(line))
     except Exception as e:
-        sys.exit("modify_ctm_edits.py: problem reading file "
+        sys.exit("get_non_scored_words.py: problem reading file "
                  "{0}/phones/silence.int: {1}".format(lang_dir, str(e)))
 
     # read align_lexicon.int.
@@ -67,7 +67,7 @@ def ReadLang(lang_dir):
                     int(a[2]) in silence_phones:
                 silence_word_ints.add(int(a[0]))
     except Exception as e:
-        sys.exit("modify_ctm_edits.py: problem reading file "
+        sys.exit("get_non_scored_words.py: problem reading file "
                  "{0}/phones/align_lexicon.int: "
                  "{1}".format(lang_dir, str(e)))
 
@@ -77,11 +77,11 @@ def ReadLang(lang_dir):
             if int(integer) in silence_word_ints:
                 non_scored_words.add(word)
     except Exception as e:
-        sys.exit("modify_ctm_edits.py: problem reading file "
+        sys.exit("get_non_scored_words.py: problem reading file "
                  "{0}/words.txt.int: {1}".format(lang_dir, str(e)))
 
     if not len(non_scored_words) == len(silence_word_ints):
-        sys.exit("modify_ctm_edits.py: error getting silence words, len({0}) != len({1})",
+        sys.exit("get_non_scored_words.py: error getting silence words, len({0}) != len({1})",
                  str(non_scored_words), str(silence_word_ints))
     for word in non_scored_words:
         print(word)
