@@ -275,11 +275,20 @@ def OutputCtm(utterance_id, edits_array, ctm_array):
 def ProcessOneUtterance(utterance_id, edits_line, ctm_lines):
     try:
         # Remove the utterance-id from the beginning of the edits line
-        edits_line = edits_line[len(utterance_id) + 1:]
+        edits_fields = edits_line[len(utterance_id) + 1:]
 
-        # e.g. if edits_line is now 'i i ; see be ; my my ', edits_array will become
+        # e.g. if edits_fields is now 'i i ; see be ; my my ', edits_array will become
         #  [ ['i', 'i'], ['see', 'be'], ['my', 'my'] ]
-        edits_array = [ x.split() for x in edits_line.split(";") ]
+        fields_split = edits_fields.split()
+        first_fields, second_fields = fields_split[0::3], fields_split[1::3]
+        if (
+            len(first_fields) != len(second_fields) or
+            (len(fields_split) >= 3 and set(fields_split[2::3]) != {';'})
+        ):
+            sys.exit("get_ctm_edits.py: could not make sense of edits line: " + edits_line)
+
+        edits_array = list(zip(first_fields, second_fields))
+
         # ctm_array will now become something like [ ['1', '1.010', '0.240', 'little ' ], ... ]
         ctm_array = [ x.split() for x in ctm_lines ]
         ctm_array = []
