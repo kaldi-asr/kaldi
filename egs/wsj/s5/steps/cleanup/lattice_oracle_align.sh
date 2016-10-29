@@ -192,7 +192,7 @@ if [ $stage -le 5 ]; then
 
   $cmd $dir/log/get_ctm_edits.log \
     align-text ark:$dir/oracle_hyp.txt ark:$dir/text ark,t:-  \| \
-      steps/cleanup/get_ctm_edits.py --oov=$oov --symbol-table=$lang/words.txt \
+      steps/cleanup/internal/get_ctm_edits.py --oov=$oov --symbol-table=$lang/words.txt \
        /dev/stdin $dir/ctm $dir/ctm_edits || exit 1
 
   echo "$0: ctm with edits information appended is in $dir/ctm_edits"
