@@ -336,7 +336,7 @@ def ProcessData():
         utterance_id = a[0]
         utterance_id_len = len(utterance_id)
         this_utterance_ctm_lines = []
-        while pending_ctm_line[0:utterance_id_len] == utterance_id:
+        while len(pending_ctm_line.strip()) > 0 and pending_ctm_line.split()[0] == utterance_id:
             this_utterance_ctm_lines.append(pending_ctm_line)
             pending_ctm_line = ctm_in.readline()
         ProcessOneUtterance(utterance_id, this_edits_line,
