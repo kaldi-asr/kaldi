@@ -1,10 +1,10 @@
-#!/bin/bash
+#.!/bin/bash
 
 train_text=data/sdm1/train/text
 dev_text=data/sdm1/dev/text
 
 num_words_in=10000
-num_words_out=10100
+num_words_out=10000
 hidden_dim=200
 
 stage=-100
@@ -16,18 +16,21 @@ max_param_change=20
 num_iters=20
 
 shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of the samples
-minibatch_size=512
+minibatch_size=64
 
 initial_learning_rate=0.008
 final_learning_rate=0.0004
 learning_rate_decline_factor=1.2
 
+type=rnn
+
 . cmd.sh
 . path.sh
 . parse_options.sh || exit 1;
 
-outdir=data/sdm1/rnnlm-sigmoid-$initial_learning_rate-$final_learning_rate-$learning_rate_decline_factor-$minibatch_size
+outdir=data/sdm1/rnnlm-sigmoid-$initial_learning_rate-$final_learning_rate-$learning_rate_decline_factor-$minibatch_size-$type
 srcdir=data/local/dict
+
 
 set -e
 
@@ -36,8 +39,19 @@ mkdir -p $outdir
 if [ $stage -le -4 ]; then
   cat $srcdir/lexicon.txt | awk '{print $1}' | grep -v -w '!SIL' > $outdir/wordlist.all
 
-  cat $train_text | cut -d" " -f2- > $outdir/train.txt.0
-  cat $dev_text | cut -d" " -f2- > $outdir/dev.txt.0
+#  cat $train_text | cut -d" " -f2- > $outdir/train.txt.0
+#  cat $dev_text | cut -d" " -f2- > $outdir/dev.txt.0
+
+  cat $train_text | awk -v w=$outdir/wordlist.all \
+      'BEGIN{while((getline<w)>0) v[$1]=1;}
+      {for (i=2;i<=NF;i++) if ($i in v) printf $i" ";else printf "<unk> ";print ""}'|sed 's/ $//g' \
+      | shuf --random-source=$train_text > $outdir/train.txt.0
+
+  cat $dev_text | awk -v w=$outdir/wordlist.all \
+      'BEGIN{while((getline<w)>0) v[$1]=1;}
+      {for (i=2;i<=NF;i++) if ($i in v) printf $i" ";else printf "<unk> ";print ""}'|sed 's/ $//g' \
+      | shuf --random-source=$dev_text > $outdir/dev.txt.0
+      
 
   cat $outdir/train.txt.0 $outdir/wordlist.all | sed "s= =\n=g" | grep . | sort | uniq -c | sort -k1 -n -r | awk '{print $2,$1}' > $outdir/unigramcounts.txt
 
@@ -88,6 +102,9 @@ fi
 cat data/local/dict/lexicon.txt | awk '{print $1}' > $outdir/wordlist.all.1
 cat $outdir/wordlist.in $outdir/wordlist.out | awk '{print $1}' > $outdir/wordlist.all.2
 cat $outdir/wordlist.all.[12] | sort -u > $outdir/wordlist.all
+
+cp $outdir/wordlist.all $outdir/wordlist.rnn
+touch $outdir/unk.probs
 #rm $outdir/wordlist.all.[12]
 
 mkdir -p $outdir/log/
@@ -126,4 +143,4 @@ if [ $stage -le $num_iters ]; then
   cp $outdir/$num_iters.mdl $outdir/rnnlm
 fi
 
-./local/rnnlm/run-rescoring.sh --rnndir $outdir/ --type rnn
+./local/rnnlm/run-rescoring.sh --rnndir $outdir/ --type $type

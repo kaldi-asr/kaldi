@@ -4,7 +4,7 @@ train_text=data/sdm1/train/text
 dev_text=data/sdm1/dev/text
 
 num_words_in=10000
-num_words_out=10100
+num_words_out=10000
 
 stage=-100
 sos="<s>"
@@ -12,14 +12,14 @@ eos="</s>"
 oos="<oos>"
 
 max_param_change=20
-num_iters=15
+num_iters=30
 
 shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of the samples
-minibatch_size=64
+minibatch_size=256
 
 initial_learning_rate=0.002
 final_learning_rate=0.0001
-learning_rate_decline_factor=1.2
+learning_rate_decline_factor=1.1
 
 num_lstm_layers=1
 cell_dim=64
@@ -45,8 +45,15 @@ mkdir -p $outdir
 if [ $stage -le -4 ]; then
   cat $srcdir/lexicon.txt | awk '{print $1}' | grep -v -w '!SIL' > $outdir/wordlist.all
 
-  cat $train_text | cut -d" " -f2- > $outdir/train.txt.0
-  cat $dev_text | cut -d" " -f2- > $outdir/dev.txt.0
+  cat $train_text | awk -v w=$outdir/wordlist.all \
+      'BEGIN{while((getline<w)>0) v[$1]=1;}
+      {for (i=2;i<=NF;i++) if ($i in v) printf $i" ";else printf "<unk> ";print ""}'|sed 's/ $//g' \
+      | shuf --random-source=$train_text > $outdir/train.txt.0
+
+  cat $dev_text | awk -v w=$outdir/wordlist.all \
+      'BEGIN{while((getline<w)>0) v[$1]=1;}
+      {for (i=2;i<=NF;i++) if ($i in v) printf $i" ";else printf "<unk> ";print ""}'|sed 's/ $//g' \
+      | shuf --random-source=$dev_text > $outdir/dev.txt.0
 
   cat $outdir/train.txt.0 $outdir/wordlist.all | sed "s= =\n=g" | grep . | sort | uniq -c | sort -k1 -n -r | awk '{print $2,$1}' > $outdir/unigramcounts.txt
 
@@ -97,6 +104,8 @@ cat data/local/dict/lexicon.txt | awk '{print $1}' > $outdir/wordlist.all.1
 cat $outdir/wordlist.in $outdir/wordlist.out | awk '{print $1}' > $outdir/wordlist.all.2
 cat $outdir/wordlist.all.[12] | sort -u > $outdir/wordlist.all
 #rm $outdir/wordlist.all.[12]
+cp $outdir/wordlist.all $outdir/wordlist.rnn
+touch $outdir/unk.probs
 
 mkdir -p $outdir/log/
 if [ $stage -le $num_iters ]; then
@@ -133,8 +142,6 @@ if [ $stage -le $num_iters ]; then
     ) &
   done
   cp $outdir/$num_iters.mdl $outdir/rnnlm
-  cp $outdir/wordlist.out $outdir/wordlist.rnn
-  touch $outdir/unk.probs
 fi
 
 ./local/rnnlm/run-rescoring.sh --rnndir $outdir/ --type lstm

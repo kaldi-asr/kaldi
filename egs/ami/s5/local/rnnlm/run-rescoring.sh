@@ -25,7 +25,7 @@ for decode_set in dev eval; do
   steps/rnnlmrescore.sh \
     --rnnlm-ver nnet3 \
     --N $n --cmd "$decode_cmd --mem 16G" --inv-acwt 10 0.5 \
-    data/lang_$LM lstm \
+    data/lang_$LM $rnndir \
     data/$mic/$decode_set ${decode_dir} \
     ${decode_dir}.$type.$n-best  &
 
