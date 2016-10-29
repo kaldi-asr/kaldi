@@ -111,6 +111,7 @@ if [ $stage -le 2 ]; then
     $cmd JOB=1:$nj $dir/log/get_ctm.JOB.log \
       set -o pipefail '&&' \
       lattice-align-words-lexicon $lang/phones/align_lexicon.int $model  "ark:gunzip -c $dir/lat.JOB.gz|" ark:- \| \
+      lattice-1best ark:- ark:- \| \
       nbest-to-ctm --frame-shift=$frame_shift --print-silence=$print_silence ark:- - \| \
       utils/int2sym.pl -f 5 $lang/words.txt '>' $dir/ctm.JOB || exit 1;
   else
