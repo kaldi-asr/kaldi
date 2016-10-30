@@ -76,6 +76,7 @@ if [ $stage -le 0 ]; then
       "ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt < $sdata/JOB/text |" \
       '' '' ark:- \| \
       lattice-align-words-lexicon $lang/phones/align_lexicon.int $model ark:- ark:- \| \
+      lattice-1best ark:- ark:- \| \
       nbest-to-ctm --frame-shift=$frame_shift --print-silence=$print_silence ark:- - \| \
       utils/int2sym.pl -f 5 $lang/words.txt \| \
       gzip -c '>' $dir/ctm.JOB.gz || exit 1
