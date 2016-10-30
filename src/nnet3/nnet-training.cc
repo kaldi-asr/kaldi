@@ -136,7 +136,8 @@ void NnetTrainer::UpdateParamsWithMaxChange() {
         component_name_with_min_scale = delta_nnet_->GetComponentName(c);
         max_change_with_min_scale = max_param_change_per_comp;
       }
-      param_delta_squared += std::pow(scale_factors(i), 2.0) * dot_prod;
+      param_delta_squared += std::pow(scale_factors(i),
+                                      static_cast<BaseFloat>(2.0)) * dot_prod;
       i++;
     }
   }
