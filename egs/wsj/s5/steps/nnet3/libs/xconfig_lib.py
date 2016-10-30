@@ -39,12 +39,42 @@ class NullstrToNoneAction(argparse.Action):
             else:
                 setattr(namespace, self.dest, values)
 
+# This function, used in converting string values in config lines to
+# configuration values in self.config in layers, attempts to
+# convert 'string_value' to an instance dest_type (which is of type Type)
+# 'key' is only needed for printing errors.
+class ConvertValueToType(key, dest_type, string_value):
+    if dest_type == type(bool()):
+        if string_value == "True" or string_value == "true":
+            return True
+        elif string_value == "False" or string_value == "false":
+            return False
+        else:
+            raise Exception("Invalid configuration value {0}={1} (expected bool)".format(
+                key, string_value))
+    elif dest_type == type(int()):
+        try:
+            return int(string_value)
+        except:
+            raise Exception("Invalid configuration value {0}={1} (expected int)".format(
+                key, string_value)
+    elif dest_type == type(float()):
+        try:
+            return float(string_value)
+        except:
+            raise Exception("Invalid configuration value {0}={1} (expected int)".format(
+                key, string_value)
+    elif dest_type == type(str()):
+        return sting_value
+
 
 # This class represents a line that starts with 'input', e.g.
 # 'input name=ivector dim=100', or 'input name=input dim=40'
 class XconfigInputLine:
     # key_to_value is a dict like { 'name':'ivector', 'dim':'100' }.
-    def __init__(self, key_to_value):
+    # prev_layer_names is not used here but other constructors for lines
+    # use it, so we must too.
+    def __init__(self, key_to_value, prev_layer_names = None):
         if not 'name' in key_to_value:
             raise Exception("Config line for input does not specify name.")
         self.name = key_to_value['name']
@@ -72,6 +102,13 @@ class XconfigInputLine:
     # OutputDim().
     def OutputDim():
         return self.dim
+
+    def str(self):
+        return 'input name={0} dim={1}'.format(self.name, self.dim)
+
+    def __str__(self):
+        return self.str()
+
 
 
 # A base-class for classes representing lines of xconfig files.
@@ -319,6 +356,43 @@ def ParseNewDescriptor(tokens, pos, prev_names):
     return (d, pos)
 
 
+# This function takes a string 'descriptor_string' which might
+# look like 'Append([-1], [-2], input)', and a list of previous layer
+# names like prev_names = ['foo', 'bar', 'baz'], and replaces
+# the integers in brackets with the previous layers.  -1 means
+# the most recent previous layer ('baz' in this case), -2
+# means the last layer but one ('bar' in this case), and so on.
+# It will throw an exception if the number is out of range.
+# If there are no such expressions in the string, it's OK if
+# prev_names == None (this is useful for testing).
+def ReplaceBracketExpressionsInDescriptor(descriptor_string,
+                                         prev_names = None):
+    fields = re.split(r'(\[|\])\s*', descriptor_string)
+    out_fields = []
+    i = 0
+    while i < len(fields):
+        f = fields[i]
+        i += 1
+        if f == ']':
+            raise Exception("Unmatched ']' in descriptor")
+        elif f == '[':
+            if i + 2 >= len(fields):
+                raise Exception("Error tokenizing string '{0}': '[' found too close "
+                                "to the end of the descriptor.".format(descriptor_string))
+            assert isinstance(prev_names, list)
+            try:
+                offset = int(fields[i])
+                assert offset < 0 and -offset <= len(prev_names)
+                i += 2  # consume the int and the ']'.
+            except:
+                raise Exception("Error tokenizing string '{0}': expression [{1}] has an "
+                                "invalid or out of range offset.".format(descriptor_string, fields[i]))
+            this_field = prev_names[offset]
+            out_fields.append(this_field)
+        else:
+            out_fields.append(f)
+    return ''.join(out_fields)
+
 
 
 # tokenizes 'descriptor_string' into the tokens that may be part of Descriptors.
@@ -330,39 +404,17 @@ def ParseNewDescriptor(tokens, pos, prev_names):
 # The default None for prev_names is only supplied for testing purposes.
 def TokenizeDescriptor(descriptor_string,
                        prev_names = None):
-    # split on '(', ')', ',', '@', and space.
-    # Note: the parenthesis () in the regexp causes it to output
-    # the stuff inside the () as if it were a field, which is
-    # why we keep characters like '(' and ')' as tokens.
-    fields = re.split(r'(\(|\)|@|,|\[|\]|\s)\s*', descriptor_string)
+    # split on '(', ')', ',', '@', and space.  Note: the parenthesis () in the
+    # regexp causes it to output the stuff inside the () as if it were a field,
+    # which is how the call to re.split() keeps characters like '(' and ')' as
+    # tokens.
+    fields = re.split(r'(\(|\)|@|,|\s)\s*',
+                      ReplaceBracketExpressionsInDescriptor(descriptor_string,
+                                                            prev_names))
     ans = []
-    i = 0
-    while i < len(fields):
-        f = fields[i]
-        i = i + 1
+    for f in fields:
         # don't include fields that are space, or are empty.
-        if re.match(r'^\s*$', f) is not None:
-            continue
-        if f == '[':
-            if i + 2 >= len(fields):
-                raise Exception("Error tokenizing string '{0}': '[' found too close "
-                                "to the end of the descriptor.".format(descriptor_string))
-            if fields[i+1] != ']':
-                raise Exception("Error tokenizing string '{0}': expected ']', got '{1}'".format(
-                    descriptor_string, fields[i+1]))
-            assert isinstance(prev_names, list)
-            try:
-                offset = int(fields[i])
-                assert offset < 0 and -offset <= len(prev_names)
-                i += 2  # consume the int and the ']'.
-            except:
-                raise Exception("Error tokenizing string '{0}': expression [{1}] has an "
-                                "invalid or out of range offset.".format(descriptor_string, fields[i]))
-            this_field = prev_names[offset]
-            assert IsValidLineName(this_field)  # should already have been
-                                                # checked, so assert.
-            ans.append(this_field)
-        else:
+        if re.match(r'^\s*$', f) is None:
             ans.append(f)
 
     ans.append('end of string')
@@ -442,13 +494,16 @@ def ReadConfigFile(filename):
         ans.append(layer_object)
         prev_names.append(layer_object.Name())
 
-# turns a config line that has been parsed into
+# Uses ParseConfigLine() to turn a config line that has been parsed into
 # a first token e.g. 'affine-layer' and a key->value map like { 'dim':'1024', 'name':'affine1' },
-# into an object representing that line of the config file.
+# and then turns this into an object representing that line of the config file.
 # 'prev_names' is a list of the names of preceding lines of the
 # config file.
-def ConfigLineToObject(first_token, key_to_value, prev_names):
-    pass
+def ConfigLineToObject(config_line, prev_names = None):
+    (first_token, key_to_value) = ParseConfigLine(config_line)
+
+    if first_token == 'input':
+        return XconfigInputLine(key_to_value)
 
 
 def TestLibrary():
@@ -459,6 +514,7 @@ def TestLibrary():
     assert TokenizeTest("hi@-1,there") == ['hi', '@', '-1', ',', 'there']
     assert TokenizeTest("hi(there)") == ['hi', '(', 'there', ')']
     assert TokenizeDescriptor("[-1]@2", ['foo', 'bar'])[:-1] == ['bar', '@', '2' ]
+    assert TokenizeDescriptor("[-2].special@2", ['foo', 'bar'])[:-1] == ['foo.special', '@', '2' ]
 
     assert Descriptor('foo').str() == 'foo'
     assert Descriptor('Sum(foo,bar)').str() == 'Sum(foo, bar)'
@@ -482,6 +538,7 @@ def TestLibrary():
                    'Offset(last_but_one_layer, 3)') ]:
         if not Descriptor(x, prev_names).str() == y:
             print("Error: '{0}' != '{1}'".format(Descriptor(x).str(), y))
+
 
     print(ParseConfigLine('affine-layer input=Append(foo, bar) foo=bar'))
 
