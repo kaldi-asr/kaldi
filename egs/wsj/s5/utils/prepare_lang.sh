@@ -260,15 +260,22 @@ fi
 # add_lex_disambig.pl is responsible for adding disambiguation symbols to
 # the lexicon, for telling us how many disambiguation symbols it used,
 # and and also for modifying the unknown-word's pronunciation (if the
-# --unk-fst was provided) to the sequence "#1 #2", and reserving those
+# --unk-fst was provided) to the sequence "#1 #2 #3", and reserving those
 # disambig symbols for that purpose.
+# The #2 will later be replaced with the actual unk model.  The reason
+# for the #1 and the #3 is for disambiguation and also to keep the
+# FST compact.  If we didn't have the #1, we might have a different copy of
+# the unk-model FST, or at least some of its arcs, for each start-state from
+# which an <unk> transition comes (instead of per end-state, which is more compact);
+# and adding the #3 prevents us from potentially having 2 copies of the unk-model
+# FST due to the optional-silence [the last phone of any word gets 2 arcs].
 if [ ! -z "$unk_fst" ]; then  # if the --unk-fst option was provided...
   if "$silprob"; then
     utils/lang/internal/modify_unk_pron.py $tmpdir/lexiconp_silprob.txt "$oov_word" || exit 1
   else
     utils/lang/internal/modify_unk_pron.py $tmpdir/lexiconp.txt "$oov_word" || exit 1
   fi
-  unk_opt="--first-allowed-disambig 3"
+  unk_opt="--first-allowed-disambig 4"
 else
   unk_opt=
 fi
