@@ -108,6 +108,9 @@ check_portaudio:
 clean: rmlibdir
 	-for x in $(SUBDIRS) $(EXT_SUBDIRS); do $(MAKE) -C $$x clean; done
 
+distclean: clean
+	-for x in $(SUBDIRS) $(EXT_SUBDIRS); do $(MAKE) -C $$x distclean; done
+
 test: $(addsuffix /test, $(SUBDIRS))
 
 ext_test: $(addsuffix /test, $(EXT_SUBDIRS))
@@ -124,6 +127,8 @@ cudavalgrind:
 valgrind:
 	-for x in $(MEMTESTDIRS); do $(MAKE) -C $$x valgrind || { echo "valgrind on $$x failed"; exit 1; }; done
 
+base/.depend.mk:
+	$(MAKE) depend
 
 depend: $(addsuffix /depend, $(SUBDIRS))
 
@@ -153,7 +158,7 @@ bin fstbin gmmbin fgmmbin sgmmbin sgmm2bin featbin nnetbin nnet2bin nnet3bin cha
  lm decoder lat cudamatrix nnet nnet2 nnet3 ivector chain kws online2
 
 #2)The libraries have inter-dependencies
-base:
+base: base/.depend.mk
 matrix: base
 thread: base
 util: base matrix thread
