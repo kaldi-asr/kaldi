@@ -14,8 +14,6 @@ local/sprak_data_prep.sh  || exit 1;
 utils/fix_data_dir.sh data/train || exit 1;
 
 # Perform text normalisation, prepare dict folder and LM data transcriptions
-# this will download the lexicon directly from sprakbanken, without changes made by the author on the original lexicon
-# local/dict_prep.sh
 local/copy_dict || exit 1;
 
 utils/prepare_lang.sh data/local/dict "<UNK>" data/local/lang_tmp data/lang || exit 1;
