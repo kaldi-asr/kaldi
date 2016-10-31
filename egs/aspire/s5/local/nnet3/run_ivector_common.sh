@@ -26,7 +26,7 @@ mkdir -p exp/nnet3
 if [ $stage -le 1 ]; then
   # Download the package that includes the real RIRs, simulated RIRs, isotropic noises and point-source noises
   wget --no-check-certificate http://www.openslr.org/resources/28/rirs_noises.zip
-  unzip rirs_noise.zip
+  unzip rirs_noises.zip
 
   rvb_opts=()
   if [ "$base_rirs" == "simulated" ]; then
@@ -58,6 +58,7 @@ if [ $stage -le 1 ]; then
       --isotropic-noise-addition-probability 1 \
       --num-replications $num_reps \
       --max-noises-per-minute 1 \
+      --source-sampling-rate 8000 \
       data/${data_dir} data/${data_dir}_rvb
   done
   # create the dev, test and eval sets from the aspire recipe

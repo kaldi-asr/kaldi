@@ -3,6 +3,7 @@
 #                      Arnab Ghoshal
 #                2014  Guoguo Chen
 #                2015  Hainan Xu
+#                2016  FAU Erlangen (Author: Axel Horndasch)
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -57,8 +58,16 @@ position_dependent_phones=true
 share_silence_phones=false  # if true, then share pdfs of different silence
                             # phones together.
 sil_prob=0.5
+unk_fst=        # if you want to model the unknown-word (<oov-dict-entry>)
+                # with a phone-level LM as created by make_unk_lm.sh,
+                # provide the text-form FST via this flag, e.g. <work-dir>/unk_fst.txt
+                # where <work-dir> was the 2nd argument of make_unk_lm.sh.
 phone_symbol_table=              # if set, use a specified phones.txt file.
+extra_word_disambig_syms=        # if set, add disambiguation symbols from this file (one per line)
+                                 # to phones/disambig.txt, phones/wdisambig.txt and words.txt
 # end configuration sections
+
+echo "$0 $@"  # Print the command line for logging
 
 . utils/parse_options.sh
 
@@ -79,6 +88,13 @@ if [ $# -ne 4 ]; then
   echo "     --phone-symbol-table <filename>                 # default: \"\"; if not empty, use the provided "
   echo "                                                     # phones.txt as phone symbol table. This is useful "
   echo "                                                     # if you use a new dictionary for the existing setup."
+  echo "     --unk-fst <text-fst>                            # default: none.  e.g. exp/make_unk_lm/unk_fst.txt."
+  echo "                                                     # This is for if you want to model the unknown word"
+  echo "                                                     # via a phone-level LM rather than a special phone"
+  echo "                                                     # (this should be more useful for test-time than train-time)."
+  echo "     --extra-word-disambig-syms <filename>           # default: \"\"; if not empty, add disambiguation symbols"
+  echo "                                                     # from this file (one per line) to phones/disambig.txt,"
+  echo "                                                     # phones/wdisambig.txt and words.txt"
   exit 1;
 fi
 
@@ -105,6 +121,11 @@ if [[ ! -f $srcdir/lexiconp.txt ]]; then
   perl -ape 's/(\S+\s+)(.+)/${1}1.0\t$2/;' < $srcdir/lexicon.txt > $srcdir/lexiconp.txt || exit 1;
 fi
 
+if [ ! -z "$unk_fst" ] && [ ! -f "$unk_fst" ]; then
+  echo "$0: expected --unk-fst $unk_fst to exist as a file"
+  exit 1
+fi
+
 if ! utils/validate_dict_dir.pl $srcdir >&/dev/null; then
   utils/validate_dict_dir.pl $srcdir  # show the output.
   echo "Validation failed (second time)"
@@ -126,6 +147,15 @@ if [[ ! -z $phone_symbol_table ]]; then
   BEGIN { while ((getline < f) > 0) { sub(/_[BEIS]$/, "", $1); phones[$1] = 1; }}
   { for (x = 1; x <= NF; ++x) { if (!($x in phones)) {
       print "Phone appears in the lexicon but not in the provided phones.txt: "$x; exit 1; }}}' || exit 1;
+fi
+
+# In case there are extra word-level disambiguation symbols we need
+# to make sure that all symbols in the provided file are valid.
+if [ ! -z "$extra_word_disambig_syms" ]; then
+  if ! utils/lang/validate_disambig_sym_file.pl --allow-numeric "false" $extra_word_disambig_syms; then
+    echo "$0: Validation of disambiguation file \"$extra_word_disambig_syms\" failed."
+    exit 1;
+  fi
 fi
 
 if $position_dependent_phones; then
@@ -227,13 +257,26 @@ if $position_dependent_phones; then
   done
 fi
 
-# add disambig symbols to the lexicon in $tmpdir/lexiconp.txt
-# and produce $tmpdir/lexicon_*disambig.txt
+# add_lex_disambig.pl is responsible for adding disambiguation symbols to
+# the lexicon, for telling us how many disambiguation symbols it used,
+# and and also for modifying the unknown-word's pronunciation (if the
+# --unk-fst was provided) to the sequence "#1 #2", and reserving those
+# disambig symbols for that purpose.
+if [ ! -z "$unk_fst" ]; then  # if the --unk-fst option was provided...
+  if "$silprob"; then
+    utils/lang/internal/modify_unk_pron.py $tmpdir/lexiconp_silprob.txt "$oov_word" || exit 1
+  else
+    utils/lang/internal/modify_unk_pron.py $tmpdir/lexiconp.txt "$oov_word" || exit 1
+  fi
+  unk_opt="--first-allowed-disambig 3"
+else
+  unk_opt=
+fi
 
 if "$silprob"; then
-  ndisambig=`utils/add_lex_disambig.pl --pron-probs --sil-probs $tmpdir/lexiconp_silprob.txt $tmpdir/lexiconp_silprob_disambig.txt`
+  ndisambig=$(utils/add_lex_disambig.pl $unk_opt --pron-probs --sil-probs $tmpdir/lexiconp_silprob.txt $tmpdir/lexiconp_silprob_disambig.txt)
 else
-  ndisambig=`utils/add_lex_disambig.pl --pron-probs $tmpdir/lexiconp.txt $tmpdir/lexiconp_disambig.txt`
+  ndisambig=$(utils/add_lex_disambig.pl $unk_opt --pron-probs $tmpdir/lexiconp.txt $tmpdir/lexiconp_disambig.txt)
 fi
 ndisambig=$[$ndisambig+1]; # add one disambig symbol for silence in lexicon FST.
 echo $ndisambig > $tmpdir/lex_ndisambig
@@ -246,6 +289,13 @@ echo $ndisambig > $tmpdir/lex_ndisambig
 # !EXCLAMATION-POINT	1.0  EH2_B K_I S_I K_I L_I AH0_I M_I EY1_I SH_I AH0_I N_I P_I OY2_I N_I T_E
 
 ( for n in `seq 0 $ndisambig`; do echo '#'$n; done ) >$dir/phones/disambig.txt
+
+# In case there are extra word-level disambiguation symbols they also
+# need to be added to the list of phone-level disambiguation symbols.
+if [ ! -z "$extra_word_disambig_syms" ]; then
+  # We expect a file containing valid word-level disambiguation symbols.
+  cat $extra_word_disambig_syms | awk '{ print $1 }' >> $dir/phones/disambig.txt
+fi
 
 # Create phone symbol table.
 if [[ ! -z $phone_symbol_table ]]; then
@@ -306,6 +356,19 @@ cat $tmpdir/lexiconp.txt | awk '{print $1}' | sort | uniq  | awk '
     printf("</s> %d\n", NR+3);
   }' > $dir/words.txt || exit 1;
 
+# In case there are extra word-level disambiguation symbols they also
+# need to be added to words.txt
+if [ ! -z "$extra_word_disambig_syms" ]; then
+  # Since words.txt already exists, we need to extract the current word count.
+  word_count=`tail -n 1 $dir/words.txt | awk '{ print $2 }'`
+
+  # We expect a file containing valid word-level disambiguation symbols.
+  # The list of symbols is attached to the current words.txt (including
+  # a numeric identifier for each symbol).
+  cat $extra_word_disambig_syms | \
+    awk -v WC=$word_count '{ printf("%s %d\n", $1, ++WC); }' >> $dir/words.txt || exit 1;
+fi
+
 # format of $dir/words.txt:
 #<eps> 0
 #!EXCLAMATION-POINT 1
@@ -320,7 +383,8 @@ silphone=`cat $srcdir/optional_silence.txt` || exit 1;
    exit 1;
 
 # create $dir/phones/align_lexicon.{txt,int}.
-# This is the new-new style of lexicon aligning.
+# This is the method we use for lattice word alignment if we are not
+# using word-position-dependent phones.
 
 # First remove pron-probs from the lexicon.
 perl -ape 's/(\S+\s+)\S+\s+(.+)/$1$2/;' <$tmpdir/lexiconp.txt >$tmpdir/align_lexicon.txt
@@ -340,8 +404,9 @@ cat $dir/phones/align_lexicon.txt | utils/sym2int.pl -f 3- $dir/phones.txt | \
 # in training.
 
 if $silprob; then
-  # Usually it's the same as having a fixed-prob L.fst
-  # it matters a little bit in discriminative trainings
+  # Add silence probabilities (modlels the prob. of silence before and after each
+  # word).  On some setups this helps a bit.  See utils/dict_dir_add_pronprobs.sh
+  # and where it's called in the example scripts (run.sh).
   utils/make_lexicon_fst_silprob.pl $tmpdir/lexiconp_silprob.txt $srcdir/silprob.txt $silphone "<eps>" | \
      fstcompile --isymbols=$dir/phones.txt --osymbols=$dir/words.txt \
      --keep_isymbols=false --keep_osymbols=false |   \
@@ -368,6 +433,15 @@ cat $dir/oov.txt | utils/sym2int.pl $dir/words.txt >$dir/oov.int || exit 1;
 # symbol table words.txt, and wdisambig_phones.int contains the corresponding
 # list interpreted by the symbol table phones.txt.
 echo '#0' >$dir/phones/wdisambig.txt
+
+# In case there are extra word-level disambiguation symbols they need
+# to be added to the existing word-level disambiguation symbols file.
+if [ ! -z "$extra_word_disambig_syms" ]; then
+  # We expect a file containing valid word-level disambiguation symbols.
+  # The regular expression for awk is just a paranoia filter (e.g. for empty lines).
+  cat $extra_word_disambig_syms | awk '{ print $1 }' >> $dir/phones/wdisambig.txt
+fi
+
 utils/sym2int.pl $dir/phones.txt <$dir/phones/wdisambig.txt >$dir/phones/wdisambig_phones.int
 utils/sym2int.pl $dir/words.txt <$dir/phones/wdisambig.txt >$dir/phones/wdisambig_words.int
 
@@ -386,7 +460,6 @@ done
 utils/sym2int.pl -f 3- $dir/phones.txt <$dir/phones/roots.txt \
    > $dir/phones/roots.int || exit 1;
 
-#if $position_dependent_phones; then
 if [ -f $dir/phones/word_boundary.txt ]; then
   utils/sym2int.pl -f 1 $dir/phones.txt <$dir/phones/word_boundary.txt \
     > $dir/phones/word_boundary.int || exit 1;
@@ -415,6 +488,18 @@ else
      fstarcsort --sort_type=olabel > $dir/L_disambig.fst || exit 1;
 fi
 
+
+if [ ! -z "$unk_fst" ]; then
+  utils/lang/internal/apply_unk_lm.sh $unk_fst $dir || exit 1
+
+  if ! $position_dependent_phones; then
+    echo "$0: warning: you are using the --unk-lm option and setting --position-dependent-phones false."
+    echo " ... this will make it impossible to properly work out the word boundaries after"
+    echo " ... decoding; quite a few scripts will not work as a result, and many scoring scripts"
+    echo " ... will die."
+    sleep 4
+  fi
+fi
 
 echo "$(basename $0): validating output directory"
 ! utils/validate_lang.pl $dir && echo "$(basename $0): error validating output" &&  exit 1;

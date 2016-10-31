@@ -145,6 +145,15 @@ sub get_combine_info {
   return "";
 }
 
+sub format_float_as_string {
+  my $float = shift @_;
+  if (abs($float) >= 1.0) {
+    return sprintf("%.2f", $float);
+  } else {
+    return sprintf("%.3f", $float);
+  }
+}
+
 # this is used in get_loglike_and_accuracy to format
 # strings like ' loglike[32,48,final],train/valid=(-2.43,-2.32,-2.21/-2.84,-2.71,-2.68)'.
 sub get_printed_string {
@@ -159,8 +168,8 @@ sub get_printed_string {
   foreach my $iter (@iters_array) {
     if (defined($train_hash{$iter}) && defined($valid_hash{$iter})) {
       push @iters_to_print, $iter;
-      push @train_values_to_print, sprintf("%.2f", $train_hash{$iter});
-      push @valid_values_to_print, sprintf("%.2f", $valid_hash{$iter});
+      push @train_values_to_print, format_float_as_string($train_hash{$iter});
+      push @valid_values_to_print, format_float_as_string($valid_hash{$iter});
     }
   }
   if (@iters_to_print == 0) {  return ""; }
