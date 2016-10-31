@@ -3,6 +3,8 @@
 train_text=data/sdm1/train/text
 dev_text=data/sdm1/dev/text
 
+type=lstm
+
 num_words_in=10000
 num_words_out=10000
 
@@ -15,10 +17,10 @@ max_param_change=20
 num_iters=30
 
 shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of the samples
-minibatch_size=256
+minibatch_size=64
 
-initial_learning_rate=0.002
-final_learning_rate=0.0001
+initial_learning_rate=0.01
+final_learning_rate=0.0005
 learning_rate_decline_factor=1.1
 
 num_lstm_layers=1
@@ -35,7 +37,7 @@ splice_indexes=0
 . path.sh
 . parse_options.sh || exit 1;
 
-outdir=data/sdm1/lstm-$initial_learning_rate-$final_learning_rate-$learning_rate_decline_factor-$minibatch_size
+outdir=data/sdm1/lstm-$initial_learning_rate-$final_learning_rate-$learning_rate_decline_factor-$minibatch_size-$type
 srcdir=data/local/dict
 
 set -e
@@ -144,4 +146,4 @@ if [ $stage -le $num_iters ]; then
   cp $outdir/$num_iters.mdl $outdir/rnnlm
 fi
 
-./local/rnnlm/run-rescoring.sh --rnndir $outdir/ --type lstm
+./local/rnnlm/run-rescoring.sh --rnndir $outdir/ --type $type
