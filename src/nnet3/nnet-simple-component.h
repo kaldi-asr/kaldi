@@ -247,7 +247,8 @@ class SigmoidComponent: public NonlinearComponent {
   // this function is called from Backprop code and only does something if the
   // self-repair-scale config value is set.
   void RepairGradients(const CuMatrixBase<BaseFloat> &out_value,
-                       CuMatrixBase<BaseFloat> *in_deriv) const;
+                       CuMatrixBase<BaseFloat> *in_deriv,
+                       SigmoidComponent *to_update) const;
 
   SigmoidComponent &operator = (const SigmoidComponent &other); // Disallow.
 };
@@ -276,7 +277,8 @@ class TanhComponent: public NonlinearComponent {
   // this function is called from Backprop code and only does something if the
   // self-repair-scale config value is set.
   void RepairGradients(const CuMatrixBase<BaseFloat> &out_value,
-                       CuMatrixBase<BaseFloat> *in_deriv) const;
+                       CuMatrixBase<BaseFloat> *in_deriv,
+                       TanhComponent *to_update) const;
 
   TanhComponent &operator = (const TanhComponent &other); // Disallow.
 };
@@ -308,7 +310,8 @@ class RectifiedLinearComponent: public NonlinearComponent {
  private:
   // this function is called from Backprop code and only does something if the
   // self-repair-scale config value is set.
-  void RepairGradients(CuMatrixBase<BaseFloat> *in_deriv) const;
+  void RepairGradients(CuMatrixBase<BaseFloat> *in_deriv,
+                       RectifiedLinearComponent *to_update) const;
 
   RectifiedLinearComponent &operator = (const RectifiedLinearComponent &other); // Disallow.
 };

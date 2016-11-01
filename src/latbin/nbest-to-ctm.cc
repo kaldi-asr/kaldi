@@ -32,7 +32,12 @@ int main(int argc, char *argv[]) {
         "and must be in CompactLattice form where the transition-ids on the arcs\n"
         "have been aligned with the word boundaries... typically the input will\n"
         "be a lattice that has been piped through lattice-1best and then\n"
-        "lattice-align-words.  It outputs ctm format (with integers in place of words),\n"
+        "lattice-align-words. On the other hand, whenever we directly pipe\n"
+        "the output of lattice-align-words-lexicon into nbest-to-ctm,\n"
+        "we need to put the command `lattice-1best ark:- ark:-` between them,\n"
+        "because even for linear lattices, lattice-align-words-lexicon can\n"
+        "in certain cases produce non-linear outputs (due to disambiguity\n"
+        "in the lexicon). It outputs ctm format (with integers in place of words),\n"
         "assuming the frame length is 0.01 seconds by default (change this with the\n"
         "--frame-length option).  Note: the output is in the form\n"
         "<utterance-id> 1 <begin-time> <end-time> <word-id>\n"
@@ -42,6 +47,9 @@ int main(int argc, char *argv[]) {
         "Usage: nbest-to-ctm [options] <aligned-linear-lattice-rspecifier> <ctm-wxfilename>\n"
         "e.g.: lattice-1best --acoustic-weight=0.08333 ark:1.lats | \\\n"
         "      lattice-align-words data/lang/phones/word_boundary.int exp/dir/final.mdl ark:- ark:- | \\\n"
+        "      nbest-to-ctm ark:- 1.ctm\n"
+        "e.g.: lattice-align-words-lexicon data/lang/phones/align_lexicon.int exp/dir/final.mdl ark:1.lats ark:- | \\\n"
+        "      lattice-1best ark:- ark:- | \\\n"
         "      nbest-to-ctm ark:- 1.ctm\n";
 
     ParseOptions po(usage);

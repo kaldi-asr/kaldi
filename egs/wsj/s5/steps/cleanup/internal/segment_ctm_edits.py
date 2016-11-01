@@ -912,23 +912,23 @@ def ProcessData():
     try:
         f_in = open(args.ctm_edits_in)
     except:
-        sys.exit("modify_ctm_edits.py: error opening ctm-edits input "
+        sys.exit("segment_ctm_edits.py: error opening ctm-edits input "
                  "file {0}".format(args.ctm_edits_in))
     try:
         text_output_handle = open(args.text_out, 'w')
     except:
-        sys.exit("modify_ctm_edits.py: error opening text output "
+        sys.exit("segment_ctm_edits.py: error opening text output "
                  "file {0}".format(args.text_out))
     try:
         segments_output_handle = open(args.segments_out, 'w')
     except:
-        sys.exit("modify_ctm_edits.py: error opening segments output "
+        sys.exit("segment_ctm_edits.py: error opening segments output "
                  "file {0}".format(args.text_out))
     if args.ctm_edits_out != None:
         try:
             ctm_edits_output_handle = open(args.ctm_edits_out, 'w')
         except:
-            sys.exit("modify_ctm_edits.py: error opening ctm-edits output "
+            sys.exit("segment_ctm_edits.py: error opening ctm-edits output "
                      "file {0}".format(args.ctm_edits_out))
 
     # Most of what we're doing in the lines below is splitting the input lines
@@ -936,10 +936,10 @@ def ProcessData():
     # and then printing the modified lines.
     first_line = f_in.readline()
     if first_line == '':
-        sys.exit("modify_ctm_edits.py: empty input")
+        sys.exit("segment_ctm_edits.py: empty input")
     split_pending_line = first_line.split()
     if len(split_pending_line) == 0:
-        sys.exit("modify_ctm_edits.py: bad input line " + first_line)
+        sys.exit("segment_ctm_edits.py: bad input line " + first_line)
     cur_utterance = split_pending_line[0]
     split_lines_of_cur_utterance = []
 
@@ -966,14 +966,14 @@ def ProcessData():
         split_pending_line = next_line.split()
         if len(split_pending_line) == 0:
             if next_line != '':
-                sys.exit("modify_ctm_edits.py: got an empty or whitespace input line")
+                sys.exit("segment_ctm_edits.py: got an empty or whitespace input line")
     try:
         text_output_handle.close()
         segments_output_handle.close()
         if args.ctm_edits_out != None:
             ctm_edits_output_handle.close()
     except:
-        sys.exit("modify_ctm_edits.py: error closing one or more outputs "
+        sys.exit("segment_ctm_edits.py: error closing one or more outputs "
                  "(broken pipe or full disk?)")
 
 
@@ -982,12 +982,12 @@ def ReadNonScoredWords(non_scored_words_file):
     try:
         f = open(non_scored_words_file)
     except:
-        sys.exit("modify_ctm_edits.py: error opening file: "
+        sys.exit("segment_ctm_edits.py: error opening file: "
                  "--non-scored-words=" + non_scored_words_file)
     for line in f.readlines():
         a = line.split()
         if not len(line.split()) == 1:
-            sys.exit("modify_ctm_edits.py: bad line in non-scored-words "
+            sys.exit("segment_ctm_edits.py: bad line in non-scored-words "
                      "file {0}: {1}".format(non_scored_words_file, line))
         non_scored_words.add(a[0])
     f.close()

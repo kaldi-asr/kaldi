@@ -22,11 +22,8 @@ cp $srcdict $dir/lexicon0.txt || exit 1;
 patch <local/dict.patch $dir/lexicon0.txt || exit 1;
 
 #(2a) Dictionary preparation:
-# Pre-processing (Upper-case, remove comments)
-awk 'BEGIN{getline}($0 !~ /^#/) {print}' \
-  $dir/lexicon0.txt | sort | awk '($0 !~ /^[[:space:]]*$/) {print}' \
-   > $dir/lexicon1.txt || exit 1;
-
+# Pre-processing (remove comments)
+grep -v '^#' $dir/lexicon0.txt | awk 'NF>0' | sort > $dir/lexicon1.txt || exit 1;
 
 cat $dir/lexicon1.txt | awk '{ for(n=2;n<=NF;n++){ phones[$n] = 1; }} END{for (p in phones) print p;}' | \
   grep -v sil > $dir/nonsilence_phones.txt  || exit 1;
@@ -91,6 +88,6 @@ cat $dir/acronyms_raw.map | sort -u > $dir/acronyms.map
 pushd $dir >&/dev/null
 ln -sf lexicon5.txt lexicon.txt # This is the final lexicon.
 popd >&/dev/null
-rm $dir/lexiconp.txt
+rm $dir/lexiconp.txt 2>/dev/null
 echo Prepared input dictionary and phone-sets for Switchboard phase 1.
 

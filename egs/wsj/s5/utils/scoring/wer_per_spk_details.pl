@@ -28,6 +28,7 @@ use utf8;
 use List::Util qw[max];
 use Getopt::Long;
 use Pod::Usage;
+use open qw(:std :encoding(UTF-8));
 
 
 #use Data::Dumper;
