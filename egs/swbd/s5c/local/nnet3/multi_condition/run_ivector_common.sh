@@ -7,8 +7,8 @@
 
 stage=1
 num_data_reps=1  # number of reverberated copies of data to generate
-clean_data_dir=train_nodup
-iv_dir=exp/nnet3_rvb
+input_data_dir=train_nodup
+ivector_dir=exp/nnet3_rvb
 speed_perturb=true
 
 set -e
@@ -16,15 +16,15 @@ set -e
 . ./path.sh
 . ./utils/parse_options.sh
 
-mkdir -p $iv_dir
+mkdir -p $ivector_dir
 
 if [ "$speed_perturb" == "true" ]; then
   # perturbed data preparation
-  if [ $stage -le 1 ] && [ ! -d data/${clean_data_dir}_sp ]; then
+  if [ $stage -le 1 ] && [ ! -d data/${input_data_dir}_sp ]; then
     #Although the nnet will be trained by high resolution data, we still have to perturbe the normal data to get the alignment
     # _sp stands for speed-perturbed
 
-    for datadir in ${clean_data_dir}; do
+    for datadir in ${input_data_dir}; do
       utils/perturb_data_dir_speed.sh 0.9 data/${datadir} data/temp1
       utils/perturb_data_dir_speed.sh 1.1 data/${datadir} data/temp2
       utils/combine_data.sh data/${datadir}_tmp data/temp1 data/temp2
@@ -48,10 +48,12 @@ if [ "$speed_perturb" == "true" ]; then
   if [ $stage -le 2 ]; then
     #obtain the alignment of the perturbed data
     steps/align_fmllr.sh --nj 100 --cmd "$train_cmd" \
-      data/${clean_data_dir}_sp data/lang_nosp exp/tri4 exp/tri4_ali_nodup_sp || exit 1
+      data/${input_data_dir}_sp data/lang_nosp exp/tri4 exp/tri4_ali_nodup_sp || exit 1
   fi
 
-  clean_data_dir=${clean_data_dir}_sp
+  clean_data_dir=${input_data_dir}_sp
+else
+  clean_data_dir=${input_data_dir}
 fi
 
 
@@ -64,6 +66,7 @@ if [ $stage -le 3 ]; then
 
   # corrupt the data to generate reverberated data 
   # this script modifies wav.scp to include the reverberation commands, the real computation will be done at the feature extraction
+  # if --include-original-data is true, the original data will be mixed with its reverberated copies
   python steps/data/reverberate_data_dir.py \
     --prefix "rev" \
     --rir-set-parameters "0.3, simulated_rirs_8k/smallroom/rir_list" \
@@ -104,7 +107,7 @@ if [ $stage -le 5 ]; then
   steps/train_lda_mllt.sh --cmd "$train_cmd" --num-iters 13 \
     --splice-opts "--left-context=3 --right-context=3" \
     5500 90000 data/train_100k_nodup_hires \
-    data/lang_nosp exp/tri2_ali_100k_nodup $iv_dir/tri3b
+    data/lang_nosp exp/tri2_ali_100k_nodup $ivector_dir/tri3b
 fi
 
 train_set=${clean_data_dir}_rvb${num_data_reps}
@@ -113,7 +116,7 @@ if [ $stage -le 6 ]; then
   # To train a diagonal UBM we don't need very much data, so use the smallest subset.
   utils/subset_data_dir.sh data/${train_set}_hires 30000 data/${train_set}_30k_hires
   steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 30 --num-frames 200000 \
-    data/${train_set}_30k_hires 512 $iv_dir/tri3b $iv_dir/diag_ubm
+    data/${train_set}_30k_hires 512 $ivector_dir/tri3b $ivector_dir/diag_ubm
 fi
 
 if [ $stage -le 7 ]; then
@@ -122,7 +125,7 @@ if [ $stage -le 7 ]; then
   # 100k subset (just under half the data).
   utils/subset_data_dir.sh data/${train_set}_hires 100000 data/${train_set}_100k_hires
   steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 10 \
-    data/${train_set}_100k_hires $iv_dir/diag_ubm $iv_dir/extractor || exit 1;
+    data/${train_set}_100k_hires $ivector_dir/diag_ubm $ivector_dir/extractor || exit 1;
 fi
 
 if [ $stage -le 8 ]; then
@@ -133,11 +136,11 @@ if [ $stage -le 8 ]; then
   steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/${train_set}_hires data/${train_set}_max2_hires
 
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
-    data/${train_set}_max2_hires $iv_dir/extractor $iv_dir/ivectors_${train_set} || exit 1;
+    data/${train_set}_max2_hires $ivector_dir/extractor $ivector_dir/ivectors_${train_set} || exit 1;
   
-  for data_set in eval2000; do
+  for data_set in train_dev eval2000; do
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
-      data/${data_set}_hires $iv_dir/extractor $iv_dir/ivectors_$data_set || exit 1;
+      data/${data_set}_hires $ivector_dir/extractor $ivector_dir/ivectors_$data_set || exit 1;
   done
 fi
 
