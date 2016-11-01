@@ -744,7 +744,7 @@ void Nnet::Check(bool warn_for_orphans) const {
     }
     FindOrphanNodes(*this, &orphans);
     for (size_t i = 0; i < orphans.size(); i++) {
-      if (!IsComponentInputNode(i)) {
+      if (!IsComponentInputNode(orphans[i])) {
         // There is no point warning about component-input nodes, since the
         // warning will be printed for the corresponding component nodes..  a
         // duplicate warning might be confusing to the user, as the
