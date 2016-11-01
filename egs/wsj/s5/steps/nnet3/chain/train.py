@@ -38,9 +38,10 @@ def GetArgs():
     Trains RNN and DNN acoustic models using the 'chain' objective function.
     """,
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    conflict_handler = 'resolve')
-
-    common_train_lib.AddCommonTrainArgs(parser)
+    conflict_handler = 'resolve',
+    parents=[common_train_lib.common_parser])
+    # For common options defined in common_train_lib.common_parser,
+    # see steps/nnet3/libs/common_train_lib.py
 
     # egs extraction options
     parser.add_argument("--egs.chunk-width", type=int, dest='chunk_width',
@@ -336,15 +337,24 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
         cur_num_chunk_per_minibatch = num_chunk_per_minibatch / 2
         cur_max_param_change = float(max_param_change) / math.sqrt(2)
 
-    TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archives,
-                   raw_model_string, egs_dir,
-                   apply_deriv_weights,
-                   left_deriv_truncate, right_deriv_truncate,
-                   l2_regularize, xent_regularize, leaky_hmm_coefficient,
-                   momentum, cur_max_param_change,
-                   shuffle_buffer_size, cur_num_chunk_per_minibatch,
-                   frame_subsampling_factor, truncate_deriv_weights,
-                   cache_io_opts, run_opts)
+    TrainNewModels(dir = dir, iter = iter, srand = srand, num_jobs = num_jobs,
+                   num_archives_processed = num_archives_processed,
+                   num_archives = num_archives,
+                   raw_model_string = raw_model_string,
+                   egs_dir = egs_dir,
+                   apply_deriv_weights = apply_deriv_weights,
+                   left_deriv_truncate = left_deriv_truncate,
+                   right_deriv_truncate = right_deriv_truncate,
+                   l2_regularize = l2_regularize,
+                   xent_regularize = xent_regularize,
+                   leaky_hmm_coefficient = leaky_hmm_coefficient,
+                   momentum = momentum,
+                   max_param_change = cur_max_param_change,
+                   shuffle_buffer_size = shuffle_buffer_size,
+                   num_chunk_per_minibatch = cur_num_chunk_per_minibatch,
+                   frame_subsampling_factor = frame_subsampling_factor,
+                   truncate_deriv_weights = truncate_deriv_weights,
+                   cache_io_opts = cache_io_opts, run_opts = run_opts)
 
     [models_to_average, best_model] = common_train_lib.GetSuccessfulModels(num_jobs, '{0}/log/train.{1}.%.log'.format(dir,iter))
     nnets_list = []
@@ -524,7 +534,7 @@ def Train(args, run_opts):
                                          args.max_models_combine, args.add_layers_period,
                                          args.num_jobs_final)
 
-    learning_rate = (lambda iter, current_num_jobs, num_archives_processed:
+    LearningRate = (lambda iter, current_num_jobs, num_archives_processed:
                         common_train_lib.GetLearningRate(
                                          iter, current_num_jobs, num_iters,
                                          num_archives_processed,
@@ -541,21 +551,23 @@ def Train(args, run_opts):
         current_num_jobs = int(0.5 + args.num_jobs_initial + (args.num_jobs_final - args.num_jobs_initial) * float(iter) / num_iters)
 
         if args.stage <= iter:
-            model_file = "{dir}/{iter}.mdl".format(dir = args.dir, iter = iter)
-            shrinkage_value = (args.shrink_value
-                               if common_train_lib.DoShrinkage(iter, model_file,
-                                                               args.shrink_nonlinearity,
-                                                               args.shrink_threshold)
-                               else 1
-                               )
-            logger.info("On iteration {0}, learning rate is {1} and shrink value is {2}.".format(iter, learning_rate(iter, current_num_jobs, num_archives_processed), shrinkage_value))
+            shrinkage_value = 1.0
+            if args.shrink_value != 1.0:
+                model_file = "{dir}/{iter}.mdl".format(dir = args.dir, iter = iter)
+                shrinkage_value = (args.shrink_value
+                                   if common_train_lib.DoShrinkage(iter, model_file,
+                                                                   args.shrink_nonlinearity,
+                                                                   args.shrink_threshold)
+                                   else 1
+                                   )
+            logger.info("On iteration {0}, learning rate is {1} and shrink value is {2}.".format(iter, LearningRate(iter, current_num_jobs, num_archives_processed), shrinkage_value))
 
             TrainOneIteration(dir = args.dir, iter = iter, srand = args.srand,
                               egs_dir = egs_dir,
                               num_jobs = current_num_jobs,
-                              num_archives_processsed =  num_archives_processed,
+                              num_archives_processed =  num_archives_processed,
                               num_archives = num_archives,
-                              learning_rate = learning_rate(iter, current_num_jobs, num_archives_processed),
+                              learning_rate = LearningRate(iter, current_num_jobs, num_archives_processed),
                               shrinkage_value = shrinkage_value,
                               num_chunk_per_minibatch = args.num_chunk_per_minibatch,
                               num_hidden_layers = num_hidden_layers,
@@ -570,7 +582,7 @@ def Train(args, run_opts):
                               max_param_change = args.max_param_change,
                               shuffle_buffer_size = args.shuffle_buffer_size,
                               frame_subsampling_factor = args.frame_subsampling_factor,
-                              truncate_deriv_weight = args.truncate_deriv_weights,
+                              truncate_deriv_weights = args.truncate_deriv_weights,
                               run_opts = run_opts)
 
             if args.cleanup:

@@ -12,8 +12,7 @@ import imp
 import ast
 
 nodes = imp.load_source('', 'steps/nnet3/components.py')
-nnet3_train_lib = imp.load_source('ntl', 'steps/nnet3/nnet3_train_lib.py')
-chain_lib = imp.load_source('ncl', 'steps/nnet3/chain/nnet3_chain_lib.py')
+common_train_lib = imp.load_source('ntl', 'steps/nnet3/libs/common_train_lib.py')
 
 def GetArgs():
     # we add compulsary arguments as named arguments for readability
@@ -65,16 +64,16 @@ def GetArgs():
                         "If CNN layers are used the first set of splice indexes will be used as input "
                         "to the first CNN layer and later splice indexes will be interpreted as indexes "
                         "for the TDNNs.")
-    parser.add_argument("--add-lda", type=str, action=nnet3_train_lib.StrToBoolAction,
+    parser.add_argument("--add-lda", type=str, action=common_train_lib.StrToBoolAction,
                         help="If \"true\" an LDA matrix computed from the input features "
                         "(spliced according to the first set of splice-indexes) will be used as "
                         "the first Affine layer. This affine layer's parameters are fixed during training. "
                         "If --cnn.layer is specified this option will be forced to \"false\".",
                         default=True, choices = ["false", "true"])
 
-    parser.add_argument("--include-log-softmax", type=str, action=nnet3_train_lib.StrToBoolAction,
+    parser.add_argument("--include-log-softmax", type=str, action=common_train_lib.StrToBoolAction,
                         help="add the final softmax layer ", default=True, choices = ["false", "true"])
-    parser.add_argument("--add-final-sigmoid", type=str, action=nnet3_train_lib.StrToBoolAction,
+    parser.add_argument("--add-final-sigmoid", type=str, action=common_train_lib.StrToBoolAction,
                         help="add a final sigmoid layer as alternate to log-softmax-layer. "
                         "Can only be used if include-log-softmax is false. "
                         "This is useful in cases where you want the output to be "
@@ -89,7 +88,7 @@ def GetArgs():
                         help="For chain models, if nonzero, add a separate output for cross-entropy "
                         "regularization (with learning-rate-factor equal to the inverse of this)",
                         default=0.0)
-    parser.add_argument("--xent-separate-forward-affine", type=str, action=nnet3_train_lib.StrToBoolAction,
+    parser.add_argument("--xent-separate-forward-affine", type=str, action=common_train_lib.StrToBoolAction,
                         help="if using --xent-regularize, gives it separate last-but-one weight matrix",
                         default=False, choices = ["false", "true"])
     parser.add_argument("--final-layer-normalize-target", type=float,
@@ -113,7 +112,7 @@ def GetArgs():
                         help="A non-zero value activates the self-repair mechanism in the sigmoid and tanh non-linearities of the LSTM", default=None)
 
 
-    parser.add_argument("--use-presoftmax-prior-scale", type=str, action=nnet3_train_lib.StrToBoolAction,
+    parser.add_argument("--use-presoftmax-prior-scale", type=str, action=common_train_lib.StrToBoolAction,
                         help="if true, a presoftmax-prior-scale is added",
                         choices=['true', 'false'], default = True)
     parser.add_argument("config_dir",
@@ -132,15 +131,15 @@ def CheckArgs(args):
 
     ## Check arguments.
     if args.feat_dir is not None:
-        args.feat_dim = nnet3_train_lib.GetFeatDim(args.feat_dir)
+        args.feat_dim = common_train_lib.GetFeatDim(args.feat_dir)
 
     if args.ali_dir is not None:
-        args.num_targets = nnet3_train_lib.GetNumberOfLeaves(args.ali_dir)
+        args.num_targets = common_train_lib.GetNumberOfLeavesFromTree(args.ali_dir)
     elif args.tree_dir is not None:
-        args.num_targets = chain_lib.GetNumberOfLeaves(args.tree_dir)
+        args.num_targets = common_train_lib.GetNumberOfLeavesFromTree(args.tree_dir)
 
     if args.ivector_dir is not None:
-        args.ivector_dim = nnet3_train_lib.GetIvectorDim(args.ivector_dir)
+        args.ivector_dim = common_train_lib.GetIvectorDim(args.ivector_dir)
 
     if not args.feat_dim > 0:
         raise Exception("feat-dim has to be postive")
@@ -230,7 +229,7 @@ def AddCnnLayers(config_lines, cnn_layer, cnn_bottleneck_dim, cepstral_lifter, c
     cnn_args = ParseCnnString(cnn_layer)
     num_cnn_layers = len(cnn_args)
     # We use an Idct layer here to convert MFCC to FBANK features
-    nnet3_train_lib.WriteIdctMatrix(feat_dim, cepstral_lifter, config_dir.strip() + "/idct.mat")
+    common_train_lib.WriteIdctMatrix(feat_dim, cepstral_lifter, config_dir.strip() + "/idct.mat")
     prev_layer_output = {'descriptor':  "input",
                          'dimension': feat_dim}
     prev_layer_output = nodes.AddFixedAffineLayer(config_lines, "Idct", prev_layer_output, config_dir.strip() + '/idct.mat')

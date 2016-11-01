@@ -23,16 +23,6 @@ formatter = logging.Formatter('%(asctime)s [%(filename)s:%(lineno)s - %(funcName
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
-def GetNumberOfLeaves(dir):
-    [stdout, stderr] = common_train_lib.RunKaldiCommand("am-info {0}/final.mdl 2>/dev/null | grep -w pdfs".format(dir))
-    parts = stdout.split()
-    #number of pdfs 7115
-    assert(' '.join(parts[0:3]) == "number of pdfs")
-    num_leaves = int(parts[3])
-    if num_leaves == 0:
-        raise Exception("Number of leaves is 0")
-    return num_leaves
-
 def CreatePhoneLm(dir, tree_dir, run_opts, lm_opts = None):
     common_train_lib.RunKaldiCommand("""
   {command} {dir}/log/make_phone_lm.log \

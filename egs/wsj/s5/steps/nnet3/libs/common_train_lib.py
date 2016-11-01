@@ -184,11 +184,21 @@ nnet3-copy --scale={scale} {best_model} \
                best_model =  best_model,
                out_model = out_model, scale = scale))
 
-def GetNumberOfLeaves(alidir):
+def GetNumberOfLeavesFromTree(alidir):
     [stdout, stderr] = RunKaldiCommand("tree-info {0}/tree 2>/dev/null | grep num-pdfs".format(alidir))
     parts = stdout.split()
     assert(parts[0] == "num-pdfs")
     num_leaves = int(parts[1])
+    if num_leaves == 0:
+        raise Exception("Number of leaves is 0")
+    return num_leaves
+
+def GetNumberOfLeavesFromModel(dir):
+    [stdout, stderr] = common_train_lib.RunKaldiCommand("am-info {0}/final.mdl 2>/dev/null | grep -w pdfs".format(dir))
+    parts = stdout.split()
+    #number of pdfs 7115
+    assert(' '.join(parts[0:3]) == "number of pdfs")
+    num_leaves = int(parts[3])
     if num_leaves == 0:
         raise Exception("Number of leaves is 0")
     return num_leaves
