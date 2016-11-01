@@ -1756,6 +1756,20 @@ void CuMatrixBase<Real>::DiffXent(const CuArray<int32> &tgt,
   }
 }
 
+template<typename Real>
+void CuMatrixBase<Real>::AddSpatialRegularizationDeriv(
+    const CuMatrixBase<Real>& out_value, BaseFloat scale) {
+  KALDI_ASSERT(SameDim(*this, out_value));
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+  }
+}
 
 template<typename Real>
 void CuMatrixBase<Real>::Cholesky(CuMatrixBase<Real> *inv_cholesky) {

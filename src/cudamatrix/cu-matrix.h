@@ -334,6 +334,14 @@ class CuMatrixBase {
   void DiffLogSoftmaxPerRow(const CuMatrixBase<Real> &out_value,
                             const CuMatrixBase<Real> &out_deriv);
 
+  /// Add spatial regularization term to *this (`out_deriv`).
+  /// The regularization term is calculated from `out_value`.
+  /// Each row of `out_value` is first partitioned into several 512-D sections.
+  /// Each section is viewed as a 16x32 grid, filtered with the 3x3 kernel,
+  /// scaled with `scale` and then added to `out_deriv`.
+  void AddSpatialRegularizationDeriv(const CuMatrixBase<Real>& out_value,
+                                     BaseFloat scale);
+
   /// Differentiate the block [softmax+cross-entropy] :
   /// dE/da = posterior_mat - target_mat,
   /// 'E' is error function, 'a' is activation on softmax input
