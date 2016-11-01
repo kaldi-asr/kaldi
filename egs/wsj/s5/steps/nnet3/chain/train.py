@@ -118,11 +118,7 @@ def GetArgs():
                         " chain model's output")
     parser.add_argument("--chain.left-deriv-truncate", type=int,
                         dest='left_deriv_truncate',
-                        default = None, help="")
-    parser.add_argument("--chain.right-deriv-truncate", type=int,
-                        dest='right_deriv_truncate',
-                        default = None, help="")
-
+                        default = None, help="Deprecated. Kept for back compatibility")
 
     # trainer options
     parser.add_argument("--trainer.srand", type=int, dest='srand',
@@ -224,6 +220,12 @@ def GetArgs():
     parser.add_argument("--trainer.num-chunk-per-minibatch", type=int, dest='num_chunk_per_minibatch',
                         default=512,
                         help="Number of sequences to be processed in parallel every minibatch" )
+    parser.add_argument("--trainer.deriv-truncate-margin", type=int, dest='deriv_truncate_margin',
+                        default = None,
+                        help="If specified, it is the number of frames that the derivative will be backpropagated through the chunk boundaries, "
+                        "e.g., During BLSTM model training if the chunk-width=150 and deriv-truncate-margin=5, then the derivative will be "
+                        "backpropagated up to t=-5 and t=154 in the forward and backward LSTM sequence respectively; "
+                        "otherwise, the derivative will be backpropagated to the end of the sequence.")
 
     # General options
     parser.add_argument("--stage", type=int, default=-4,
@@ -284,6 +286,12 @@ def ProcessArgs(args):
     if args.chunk_right_context < 0:
         raise Exception("--egs.chunk-right-context should be non-negative")
 
+    if not args.left_deriv_truncate is None:
+        args.deriv_truncate_margin = -args.left_deriv_truncate
+        logger.warning("--chain.left-deriv-truncate (deprecated) is set by user, "
+                "and --trainer.deriv-truncate-margin is set to negative of that value={0}. "
+                "We recommend using the option --trainer.deriv-truncate-margin.".format(args.deriv_truncate_margin))
+
     if (not os.path.exists(args.dir)) or (not os.path.exists(args.dir+"/configs")):
         raise Exception("""This scripts expects {0} to exist and have a configs
         directory which is the output of make_configs.py script""")
@@ -330,7 +338,7 @@ def TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archi
                    left_deriv_truncate, right_deriv_truncate,
                    l2_regularize, xent_regularize, leaky_hmm_coefficient,
                    momentum, max_param_change,
-                   shuffle_buffer_size, num_chunk_per_minibatch,
+                   shuffle_buffer_size, chunk_width, num_chunk_per_minibatch,
                    frame_subsampling_factor, truncate_deriv_weights,
                    cache_io_opts, run_opts):
       # We cannot easily use a single parallel SGE job to do the main training,
@@ -340,10 +348,10 @@ def TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archi
       # but we use the same script for consistency with FF-DNN code
 
     deriv_time_opts=""
-    if left_deriv_truncate is not None:
-        deriv_time_opts += " --optimization.min-deriv-time={0}".format(left_deriv_truncate)
-    if right_deriv_truncate is not None:
-        deriv_time_opts += " --optimization.max-deriv-time={0}".format(int(chunk-width-right_deriv_truncate))
+    if not left_deriv_truncate is None:
+        deriv_time_opts += " --optimization.min-deriv-time={0}".format(-left_deriv_truncate)
+    if not right_deriv_truncate is None:
+        deriv_time_opts += " --optimization.max-deriv-time={0}".format(chunk_width - 1 + right_deriv_truncate)
 
     processes = []
     for job in range(1,num_jobs+1):
@@ -403,7 +411,7 @@ def TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archi
 
 def TrainOneIteration(dir, iter, srand, egs_dir,
                       num_jobs, num_archives_processed, num_archives,
-                      learning_rate, shrinkage_value, num_chunk_per_minibatch,
+                      learning_rate, shrinkage_value, chunk_width, num_chunk_per_minibatch,
                       num_hidden_layers, add_layers_period,
                       left_context, right_context,
                       apply_deriv_weights, left_deriv_truncate, right_deriv_truncate,
@@ -488,6 +496,7 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
                    momentum = momentum,
                    max_param_change = cur_max_param_change,
                    shuffle_buffer_size = shuffle_buffer_size,
+                   chunk_width = chunk_width,
                    num_chunk_per_minibatch = cur_num_chunk_per_minibatch,
                    frame_subsampling_factor = frame_subsampling_factor,
                    truncate_deriv_weights = truncate_deriv_weights,
@@ -686,14 +695,15 @@ def Train(args, run_opts):
                               num_archives = num_archives,
                               learning_rate = learning_rate(iter, current_num_jobs, num_archives_processed),
                               shrinkage_value = shrinkage_value,
+                              chunk_width = args.chunk_width,
                               num_chunk_per_minibatch = args.num_chunk_per_minibatch,
                               num_hidden_layers = num_hidden_layers,
                               add_layers_period = args.add_layers_period,
                               left_context = left_context,
                               right_context = right_context,
                               apply_deriv_weights = args.apply_deriv_weights,
-                              left_deriv_truncate = args.left_deriv_truncate,
-                              right_deriv_truncate = args.right_deriv_truncate,
+                              left_deriv_truncate = args.deriv_truncate_margin,
+                              right_deriv_truncate = args.deriv_truncate_margin,
                               l2_regularize = args.l2_regularize,
                               xent_regularize = args.xent_regularize,
                               leaky_hmm_coefficient = args.leaky_hmm_coefficient,

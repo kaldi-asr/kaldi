@@ -346,7 +346,7 @@ class RunOpts:
 
 def TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archives,
                    raw_model_string, egs_dir,
-                   left_context, right_context, min_deriv_time,
+                   left_context, right_context, min_deriv_time, max_deriv_time,
                    momentum, max_param_change,
                    shuffle_buffer_size, num_chunk_per_minibatch,
                    cache_read_opt, run_opts):
@@ -375,7 +375,7 @@ def TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archi
   nnet3-train {parallel_train_opts} {cache_read_opt} {cache_write_opt} \
   --print-interval=10 --momentum={momentum} \
   --max-param-change={max_param_change} \
-  --optimization.min-deriv-time={min_deriv_time} "{raw_model}" \
+  --optimization.min-deriv-time={min_deriv_time} --optimization.max-deriv-time={max_deriv_time} "{raw_model}" \
   "ark,bg:nnet3-copy-egs {context_opts} ark:{egs_dir}/egs.{archive_index}.ark ark:- | nnet3-shuffle-egs --buffer-size={shuffle_buffer_size} --srand={srand} ark:- ark:-| nnet3-merge-egs --minibatch-size={num_chunk_per_minibatch} --measure-output-frames=false --discard-partial-minibatches=true ark:- ark:- |" \
   {dir}/{next_iter}.{job}.raw
           """.format(command = run_opts.command,
@@ -384,7 +384,7 @@ def TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archi
                      parallel_train_opts = run_opts.parallel_train_opts,
                      cache_read_opt = cache_read_opt, cache_write_opt = cache_write_opt,
                      momentum = momentum, max_param_change = max_param_change,
-                     min_deriv_time = min_deriv_time,
+                     min_deriv_time = min_deriv_time, max_deriv_time = max_deriv_time,
                      raw_model = raw_model_string, context_opts = context_opts,
                      egs_dir = egs_dir, archive_index = archive_index,
                      shuffle_buffer_size = shuffle_buffer_size,
@@ -409,7 +409,7 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
                       num_jobs, num_archives_processed, num_archives,
                       learning_rate, shrinkage_value, num_chunk_per_minibatch,
                       num_hidden_layers, add_layers_period,
-                      left_context, right_context, min_deriv_time,
+                      left_context, right_context, min_deriv_time, max_deriv_time,
                       momentum, max_param_change, shuffle_buffer_size,
                       cv_minibatch_size, run_opts):
     # Set off jobs doing some diagnostics, in the background.
@@ -490,6 +490,7 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
                    left_context = left_context,
                    right_context = right_context,
                    min_deriv_time = min_deriv_time,
+                   max_deriv_time = max_deriv_time,
                    momentum = momentum,
                    max_param_change = max_param_change,
                    shuffle_buffer_size = shuffle_buffer_size,
@@ -650,11 +651,12 @@ def Train(args, run_opts):
     cur_egs_dir=egs_dir
 
     if args.num_bptt_steps is None:
-        num_bptt_steps = args.chunk_width
+        num_bptt_steps = args.chunk_width + min(10, args.chunk_left_context, args.chunk_right_context)
     else:
         num_bptt_steps = args.num_bptt_steps
 
     min_deriv_time = args.chunk_width - num_bptt_steps
+    max_deriv_time = num_bptt_steps - 1
 
 
     logger.info("Training will run for {0} epochs = {1} iterations".format(args.num_epochs, num_iters))
@@ -695,6 +697,7 @@ def Train(args, run_opts):
                               left_context = left_context,
                               right_context = right_context,
                               min_deriv_time = min_deriv_time,
+                              max_deriv_time = max_deriv_time,
                               momentum = args.momentum,
                               max_param_change= args.max_param_change,
                               shuffle_buffer_size = args.shuffle_buffer_size,
