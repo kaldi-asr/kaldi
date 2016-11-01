@@ -548,15 +548,15 @@ inline void cuda_diff_tanh(dim3 Gr, dim3 Bl, float *eout, const float *e,
   cudaF_diff_tanh(Gr, Bl, eout, e, y, d, e_stride, y_stride);
 }
 inline void cuda_parametric_relu(dim3 Gr, dim3 Bl, float *y, const float *x,
-                                 MatrixDim d, int src_stride,
-                                 const float *a, const float *b) {
-  cudaF_parametric_relu(Gr,Bl,y,x,d,src_stride,a,b);
+                                 MatrixDim d, int src_stride, const float *a,
+                                 const float *b) {
+  cudaF_parametric_relu(Gr, Bl, y, x, d, src_stride, a, b);
 }
 inline void cuda_diff_parametric_relu(dim3 Gr, dim3 Bl, float *eout,
                                       const float *e, const float *y,
                                       MatrixDim d, int e_stride, int y_stride,
                                       const float *a, const float *b) {
-  cudaF_diff_parametric_relu(Gr,Bl,eout,e,y,d,e_stride,y_stride,a,b);
+  cudaF_diff_parametric_relu(Gr, Bl, eout, e, y, d, e_stride, y_stride, a, b);
 }
 inline void cuda_heaviside(dim3 Gr, dim3 Bl, float *y, const float *x,
                            MatrixDim d, int src_stride) {
@@ -603,6 +603,17 @@ inline void cuda_diff_log_softmax(dim3 Gr, dim3 Bl,
                                   const int out_deriv_stride, float* in_deriv) {
   cudaF_diff_log_softmax(Gr, Bl, in_deriv_dim, out_value, out_value_stride,
                          out_deriv, out_deriv_stride, in_deriv);
+}
+inline void cuda_add_spatial_regularization_deriv(dim3 Gr, dim3 Bl,
+                                                  const float* out_value,
+                                                  const MatrixDim out_value_dim,
+                                                  float* out_deriv,
+                                                  const int out_deriv_stride,
+                                                  const float scale,
+                                                  float* regularization_sumsq) {
+  cudaF_add_spatial_regularization_deriv(Gr, Bl, out_value, out_value_dim,
+                                         out_deriv, out_deriv_stride, scale,
+                                         regularization_sumsq);
 }
 inline void cuda_copy_rows_from_vec(dim3 Gr, dim3 Bl, float *mat_out,
                                     MatrixDim d_out, const float *v_in) {
@@ -1087,15 +1098,15 @@ inline void cuda_diff_tanh(dim3 Gr, dim3 Bl, double *eout, const double *e,
   cudaD_diff_tanh(Gr, Bl, eout, e, y, d, e_stride, y_stride);
 }
 inline void cuda_parametric_relu(dim3 Gr, dim3 Bl, double *y, const double *x,
-                                 MatrixDim d, int src_stride,
-                                 const double *a, const double *b) {
-  cudaD_parametric_relu(Gr,Bl,y,x,d,src_stride,a,b);
+                                 MatrixDim d, int src_stride, const double *a,
+                                 const double *b) {
+  cudaD_parametric_relu(Gr, Bl, y, x, d, src_stride, a, b);
 }
 inline void cuda_diff_parametric_relu(dim3 Gr, dim3 Bl, double *eout,
                                       const double *e, const double *y,
                                       MatrixDim d, int e_stride, int y_stride,
                                       const double *a, const double *b) {
-  cudaD_diff_parametric_relu(Gr,Bl,eout,e,y,d,e_stride,y_stride,a,b);
+  cudaD_diff_parametric_relu(Gr, Bl, eout, e, y, d, e_stride, y_stride, a, b);
 }
 inline void cuda_heaviside(dim3 Gr, dim3 Bl, double *y, const double *x,
                            MatrixDim d, int src_stride) {
@@ -1140,6 +1151,14 @@ inline void cuda_diff_log_softmax(dim3 Gr, dim3 Bl,
                                   double* in_deriv) {
   cudaD_diff_log_softmax(Gr, Bl, in_deriv_dim, out_value, out_value_stride,
                          out_deriv, out_deriv_stride, in_deriv);
+}
+inline void cuda_add_spatial_regularization_deriv(
+    dim3 Gr, dim3 Bl, const double* out_value, const MatrixDim out_value_dim,
+    double* out_deriv, const int out_deriv_stride, const double scale,
+    double* regularization_sumsq) {
+  cudaD_add_spatial_regularization_deriv(Gr, Bl, out_value, out_value_dim,
+                                         out_deriv, out_deriv_stride, scale,
+                                         regularization_sumsq);
 }
 inline void cuda_copy_rows_from_vec(dim3 Gr, dim3 Bl, double *mat_out,
                                     MatrixDim d_out, const double *v_in) {

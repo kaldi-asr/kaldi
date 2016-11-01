@@ -78,7 +78,22 @@ void Group2norm(const CuMatrixBase<Real> &src,
                 CuMatrixBase<Real> *dest,
                 int32 group_stride);
 
-
+/// Add spatial regularization term to *deriv.
+/// The regularization derivative is calculated from `out_value`.
+/// Each row of `out_value` is first viewed as a 16*n grid,
+/// convoluted with the 3x3 kernel twice, scaled with `-scale`
+/// and then added to deriv.
+/// *deriv = *deriv - scale * Filter (X) (Filter (X) out_value)
+/// If regularization_sumsq is not NULL, the sum of the squared
+/// regularization term will be calculated and stored.
+template<typename Real>
+void AddSpatialRegularizationDeriv(const CuMatrixBase<Real>& out_value,
+                                   Real scale, CuMatrixBase<Real>* deriv,
+                                   Real* regularization_sumsq);
+template<typename Real>
+void CpuAddSpatialRegularizationDeriv(const MatrixBase<Real>& out_value,
+                                      Real scale, MatrixBase<Real>* deriv,
+                                      Real* regularization_sumsq);
 
 
 } // namespace cu

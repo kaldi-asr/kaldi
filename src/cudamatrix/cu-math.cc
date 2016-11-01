@@ -205,6 +205,112 @@ void Copy(const CuMatrixBase<Real> &src, const CuArray<int32> &copy_from_indices
   }
 }
 
+template<typename Real>
+void CpuAddSpatialRegularizationDeriv(const MatrixBase<Real>& out_value,
+                                      Real scale, MatrixBase<Real>* deriv,
+                                      Real* regularization_sumsq) {
+  const int kSectWidth = 16;
+  KALDI_ASSERT(SameDim(*deriv, out_value));
+
+  const int rows = out_value.NumRows();
+  const int cols = out_value.NumCols();
+  const int ext_cols = ((cols + (kSectWidth - 1)) / kSectWidth) * kSectWidth;
+  Matrix<Real> val_ext(rows, ext_cols);
+  Matrix<Real> conv1(rows, ext_cols);
+
+  val_ext.ColRange(0, cols).CopyFromMat(out_value);
+  const int image_rows = ext_cols / kSectWidth;
+  for (int32 i = 0; i < rows; i++) {
+    Real* conv1_i = conv1.Data() + i * conv1.Stride();
+    Real* val_ext_i = val_ext.Data() + i * val_ext.Stride();
+    for (int32 j = 0; j < ext_cols; j++) {
+      int image_x = j % kSectWidth;
+      int image_x_left = (image_x + (kSectWidth - 1)) % kSectWidth;
+      int image_x_right = (image_x + 1) % kSectWidth;
+      int image_y = j / kSectWidth;
+      int image_y_up = (image_y + (image_rows - 1)) % image_rows;
+      int image_y_down = (image_y + 1) % image_rows;
+      conv1_i[j] = val_ext_i[j]
+          - Real(0.125)
+              * (val_ext_i[image_y_up * kSectWidth + image_x_left]
+                  + val_ext_i[image_y_up * kSectWidth + image_x]
+                  + val_ext_i[image_y_up * kSectWidth + image_x_right]
+                  + val_ext_i[image_y * kSectWidth + image_x_left]
+                  + val_ext_i[image_y * kSectWidth + image_x_right]
+                  + val_ext_i[image_y_down * kSectWidth + image_x_left]
+                  + val_ext_i[image_y_down * kSectWidth + image_x]
+                  + val_ext_i[image_y_down * kSectWidth + image_x_right]);
+    }
+  }
+  if (regularization_sumsq) {
+    *regularization_sumsq = TraceMatMat(conv1.ColRange(0, cols),
+                                        conv1.ColRange(0, cols), kTrans);
+  }
+  for (int32 i = 0; i < rows; i++) {
+    Real* conv1_i = conv1.Data() + i * conv1.Stride();
+    Real* out_deriv_i = deriv->Data() + i * deriv->Stride();
+    for (int32 j = 0; j < cols; j++) {
+      int image_x = j % kSectWidth;
+      int image_x_left = (image_x + (kSectWidth - 1)) % kSectWidth;
+      int image_x_right = (image_x + 1) % kSectWidth;
+      int image_y = j / kSectWidth;
+      int image_y_up = (image_y + (image_rows - 1)) % image_rows;
+      int image_y_down = (image_y + 1) % image_rows;
+      out_deriv_i[j] -= scale
+          * (conv1_i[j]
+              - Real(0.125)
+                  * (conv1_i[image_y_up * kSectWidth + image_x_left]
+                      + conv1_i[image_y_up * kSectWidth + image_x]
+                      + conv1_i[image_y_up * kSectWidth + image_x_right]
+                      + conv1_i[image_y * kSectWidth + image_x_left]
+                      + conv1_i[image_y * kSectWidth + image_x_right]
+                      + conv1_i[image_y_down * kSectWidth + image_x_left]
+                      + conv1_i[image_y_down * kSectWidth + image_x]
+                      + conv1_i[image_y_down * kSectWidth + image_x_right]));
+    }
+  }
+}
+
+template<typename Real>
+void AddSpatialRegularizationDeriv(const CuMatrixBase<Real>& out_value,
+                                   Real scale, CuMatrixBase<Real>* deriv,
+                                   Real* regularization_sumsq) {
+  const unsigned int kBlockSize = 256;
+  const unsigned int kSectWidth = 16;
+  const int kActiveSize = kBlockSize - 2 * kSectWidth;
+  KALDI_ASSERT(SameDim(*deriv, out_value));
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    // The reshaped image need to have at least 2 rows.
+    // This is an implementation limit of the CUDA kernel function.
+    KALDI_ASSERT(deriv->NumCols() > kSectWidth);
+    Timer tim;
+    dim3 dimBlock(kSectWidth, kBlockSize / kSectWidth);
+    dim3 dimGrid(n_blocks(deriv->NumCols(), kActiveSize), deriv->NumRows());
+    if (regularization_sumsq) {
+      CuVector<Real> sumsq(dimGrid.x * dimGrid.y);
+      cuda_add_spatial_regularization_deriv(dimGrid, dimBlock, out_value.Data(),
+                                            out_value.Dim(), deriv->Data(),
+                                            deriv->Stride(), scale,
+                                            sumsq.Data());
+      *regularization_sumsq = sumsq.Sum();
+    } else {
+      cuda_add_spatial_regularization_deriv(dimGrid, dimBlock, out_value.Data(),
+                                            out_value.Dim(), deriv->Data(),
+                                            deriv->Stride(), scale, NULL);
+    }
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    CpuAddSpatialRegularizationDeriv(out_value.Mat(), scale, &(deriv->Mat()),
+                                     regularization_sumsq);
+  }
+}
+
+
 // instantiate the templates.
 template
 void RegularizeL1(CuMatrixBase<float> *weight, CuMatrixBase<float> *grad, float l1, float lr);
@@ -232,6 +338,24 @@ template
 void Randomize(const CuMatrixBase<double> &src,
                const CuArray<int32> &copy_from_idx,
                CuMatrixBase<double> *tgt);
+
+template
+void CpuAddSpatialRegularizationDeriv(const MatrixBase<float>& out_value,
+                                      float scale, MatrixBase<float>* deriv,
+                                      float* regularization_sumsq);
+template
+void CpuAddSpatialRegularizationDeriv(const MatrixBase<double>& out_value,
+                                      double scale, MatrixBase<double>* deriv,
+                                      double* regularization_sumsq);
+
+template
+void AddSpatialRegularizationDeriv(const CuMatrixBase<float>& out_value,
+                                   float scale, CuMatrixBase<float>* deriv,
+                                   float* regularization_sumsq);
+template
+void AddSpatialRegularizationDeriv(const CuMatrixBase<double>& out_value,
+                                   double scale, CuMatrixBase<double>* deriv,
+                                   double* regularization_sumsq);
 
 
 
