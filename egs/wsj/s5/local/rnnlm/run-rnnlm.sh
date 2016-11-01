@@ -1,12 +1,22 @@
-#!/bin/bash
+#!/bin/bash 
 
-train_text=data/sdm1/train/text
-dev_text=data/sdm1/dev/text
+# Copyright 2012  Johns Hopkins University (author: Daniel Povey)  Tony Robinson
+#           2015  Guoguo Chen
+#           2016  Hainan Xu
 
-cmd=run.pl
+# This script trains LMs on the WSJ LM-training data.
+# It requires that you have already run wsj_extend_dict.sh,
+# to get the larger-size dictionary including all of CMUdict
+# plus any OOVs and possible acronyms that we could easily 
+# derive pronunciations for.
 
-num_words_in=10000
-num_words_out=10000
+# This script takes no command-line arguments but takes the --cmd option.
+
+# Begin configuration section.
+
+num_words_in=30000
+num_words_out=50000
+hidden_dim=512
 
 stage=-100
 sos="<s>"
@@ -14,63 +24,62 @@ eos="</s>"
 oos="<oos>"
 
 max_param_change=20
-num_iters=60
+num_iters=100
 
 num_train_frames_combine=10000 # # train frames for the above.                  
 num_frames_diagnostic=2000 # number of frames for "compute_prob" jobs  
-num_archives=9
+num_archives=50
 
 shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of the samples
-minibatch_size=64
+minibatch_size=128
 
-hidden_dim=200
-initial_learning_rate=0.01
-final_learning_rate=0.001
-learning_rate_decline_factor=1.03
+initial_learning_rate=0.004
+final_learning_rate=0.0002
+learning_rate_decline_factor=1.04
 
-# LSTM parameters
-num_lstm_layers=1
-cell_dim=80
-#hidden_dim=200
-recurrent_projection_dim=0
-non_recurrent_projection_dim=64
-norm_based_clipping=true
-clipping_threshold=30
-label_delay=0  # 5
-splice_indexes=0
-
-type=rnn  # or lstm
-
-id=
+type=rnn
+cmd=run.pl
 
 . cmd.sh
-. path.sh
-. parse_options.sh || exit 1;
 
-outdir=data/sdm1/$type-sigmoid-$initial_learning_rate-$final_learning_rate-$learning_rate_decline_factor-$minibatch_size-$id
-srcdir=data/local/dict
+[ -f ./path.sh ] && . ./path.sh
+. utils/parse_options.sh
 
-set -e
-
+outdir=data/rnnlm-sigmoid-$initial_learning_rate-$final_learning_rate-$learning_rate_decline_factor-$minibatch_size-$type
+srcdir=data/local/dict_nosp_larger
 mkdir -p $outdir
 
+export PATH=$KALDI_ROOT/tools/$rnnlm_ver:$PATH
+
+if [ ! -f $srcdir/cleaned.gz -o ! -f $srcdir/lexicon.txt ]; then
+  echo "Expecting files $srcdir/cleaned.gz and $srcdir/wordlist.final to exist";
+  echo "You need to run local/wsj_extend_dict.sh before running this script."
+  exit 1;
+fi
+
 if [ $stage -le -4 ]; then
-  echo Data Preparation
   cat $srcdir/lexicon.txt | awk '{print $1}' | grep -v -w '!SIL' > $outdir/wordlist.all
 
-#  cat $train_text | cut -d" " -f2- > $outdir/train.txt.0
-#  cat $dev_text | cut -d" " -f2- > $outdir/dev.txt.0
+# Get training data with OOV words (w.r.t. our current vocab) replaced with <UNK>.
+  echo "Getting training data with OOV words replaced with <UNK> (train_nounk.gz)" 
+  gunzip -c $srcdir/cleaned.gz | awk -v w=$outdir/wordlist.all \
+    'BEGIN{while((getline<w)>0) v[$1]=1;}
+    {for (i=1;i<=NF;i++) if ($i in v) printf $i" ";else printf "<UNK> ";print ""}'|sed 's/ $//g' \
+    | gzip -c > $outdir/all.gz
 
-  cat $train_text | awk -v w=$outdir/wordlist.all \
-      'BEGIN{while((getline<w)>0) v[$1]=1;}
-      {for (i=2;i<=NF;i++) if ($i in v) printf $i" ";else printf "<unk> ";print ""}'|sed 's/ $//g' \
-      | shuf --random-source=$train_text > $outdir/train.txt.0
+  echo "Splitting data into train and validation sets."
+  heldout_sent=10000
+  gunzip -c $outdir/all.gz | head -n $heldout_sent > $outdir/dev.txt.0 # validation data
+  gunzip -c $outdir/all.gz | tail -n +$heldout_sent | \
+    shuf --random-source=$outdir/all.gz > $outdir/train.txt.0 # training data
 
-  cat $dev_text | awk -v w=$outdir/wordlist.all \
-      'BEGIN{while((getline<w)>0) v[$1]=1;}
-      {for (i=2;i<=NF;i++) if ($i in v) printf $i" ";else printf "<unk> ";print ""}'|sed 's/ $//g' \
-      | shuf --random-source=$dev_text > $outdir/dev.txt.0
-      
+# Get unigram counts from our training data, and use this to select word-list
+# for RNNLM training; e.g. 10k most frequent words.  Rest will go in a class
+# that we (manually, at the shell level) assign probabilities for words that
+# are in that class.  Note: this word-list doesn't need to include </s>; this
+# automatically gets added inside the rnnlm program.
+# Note: by concatenating with $outdir/wordlist.all, we are doing add-one
+# smoothing of the counts.
 
   cat $outdir/train.txt.0 $outdir/wordlist.all | sed "s= =\n=g" | grep . | sort | uniq -c | sort -k1 -n -r | awk '{print $2,$1}' > $outdir/unigramcounts.txt
 
@@ -85,7 +94,10 @@ if [ $stage -le -4 ]; then
 
   cat $outdir/train.txt.0 | awk -v sos="$sos" -v eos="$eos" '{print sos,$0,eos}' > $outdir/train.txt
   cat $outdir/dev.txt.0   | awk -v sos="$sos" -v eos="$eos" '{print sos,$0,eos}' > $outdir/dev.txt
+
 fi
+
+cp $outdir/wordlist.all $outdir/wordlist.rnn
 
 num_words_in=`wc -l $outdir/wordlist.in | awk '{print $1}'`
 num_words_out=`wc -l $outdir/wordlist.out | awk '{print $1}'`
@@ -93,9 +105,9 @@ num_words_out=`wc -l $outdir/wordlist.out | awk '{print $1}'`
 if [ $stage -le -3 ]; then
   echo Get Examples
   $cmd $outdir/log/get-egs.train.txt \
-    rnnlm-get-egs $outdir/train.txt $outdir/wordlist.in $outdir/wordlist.out ark,t:"| tr '\n' ' ' | sed 's=line=\nline=g' | grep . | shuf > $outdir/train.egs" &
+    rnnlm-get-egs $outdir/train.txt $outdir/wordlist.in $outdir/wordlist.out ark,t:"| tr '\n<' ' <' | perl -pe 's=</Nnet3Eg>=</Nnet3Eg>\n=g' | grep . | shuf > $outdir/train.egs" &
   $cmd $outdir/log/get-egs.dev.txt \
-    rnnlm-get-egs $outdir/dev.txt $outdir/wordlist.in $outdir/wordlist.out ark,t:"| tr '\n' ' ' | sed 's=line=\nline=g' | grep . > $outdir/dev.egs"
+    rnnlm-get-egs $outdir/dev.txt $outdir/wordlist.in $outdir/wordlist.out ark,t:"| tr '\n<' ' <' | sed 's=line=\nline=g' | grep . > $outdir/dev.egs"
 
   wait
 

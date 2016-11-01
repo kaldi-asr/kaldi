@@ -4,7 +4,7 @@ mic=sdm1
 n=50
 ngram_order=4
 rnndir=
-type=rnn
+id=rnn
 
 . ./utils/parse_options.sh
 . ./cmd.sh
@@ -27,7 +27,7 @@ for decode_set in dev eval; do
     --N $n --cmd "$decode_cmd --mem 16G" --inv-acwt 10 0.5 \
     data/lang_$LM $rnndir \
     data/$mic/$decode_set ${decode_dir} \
-    ${decode_dir}.$type.$n-best  &
+    ${decode_dir}.$id.$n-best  &
 
   continue
 
