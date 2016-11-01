@@ -28,7 +28,7 @@ nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
 tdnn_affix=  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
-common_egs_dir=  # you can set this to use previously dumped egs.
+common_egs_dir= #exp/chain/tdnn_sp_bi/egs  # you can set this to use previously dumped egs.
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -149,7 +149,7 @@ if [ $stage -le 18 ]; then
     --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
-    --chain.lm-opts="--num-extra-lm-states=2000" \
+    --chain.lm-opts="--ngram-order=5 --num-extra-lm-states=2000" \
     --egs.dir "$common_egs_dir" \
     --egs.opts "--frames-overlap-per-eg 0" \
     --egs.chunk-width 150 \
