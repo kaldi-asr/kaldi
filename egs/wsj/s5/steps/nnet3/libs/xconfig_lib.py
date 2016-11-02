@@ -8,14 +8,6 @@ import traceback
 import time
 import argparse
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-handler = logging.StreamHandler()
-handler.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s [%(filename)s:%(lineno)s - %(funcName)s - %(levelname)s ] %(message)s')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
-
 
 class StrToBoolAction(argparse.Action):
     """ A custom action to convert bools from shell format i.e., true/false
@@ -43,7 +35,7 @@ class NullstrToNoneAction(argparse.Action):
 # configuration values in self.config in layers, attempts to
 # convert 'string_value' to an instance dest_type (which is of type Type)
 # 'key' is only needed for printing errors.
-class ConvertValueToType(key, dest_type, string_value):
+def ConvertValueToType(key, dest_type, string_value):
     if dest_type == type(bool()):
         if string_value == "True" or string_value == "true":
             return True
@@ -57,73 +49,15 @@ class ConvertValueToType(key, dest_type, string_value):
             return int(string_value)
         except:
             raise Exception("Invalid configuration value {0}={1} (expected int)".format(
-                key, string_value)
+                key, string_value))
     elif dest_type == type(float()):
         try:
             return float(string_value)
         except:
             raise Exception("Invalid configuration value {0}={1} (expected int)".format(
-                key, string_value)
+                key, string_value))
     elif dest_type == type(str()):
         return sting_value
-
-
-# This class represents a line that starts with 'input', e.g.
-# 'input name=ivector dim=100', or 'input name=input dim=40'
-class XconfigInputLine:
-    # key_to_value is a dict like { 'name':'ivector', 'dim':'100' }.
-    # prev_layer_names is not used here but other constructors for lines
-    # use it, so we must too.
-    def __init__(self, key_to_value, prev_layer_names = None):
-        if not 'name' in key_to_value:
-            raise Exception("Config line for input does not specify name.")
-        self.name = key_to_value['name']
-        if not IsValidLineName(self.name):
-            raise Exception("Name '{0}' is not a valid node name.".format(self.name))
-        if not 'dim' in key_to_value:
-            raise Exception("Config line for input does not specify dimension.")
-        try:
-            self.dim = int(key_to_value['dim'])
-            assert self.dim > 0
-        except:
-            raise Exception("Dimension '{0}' is not valid.".format(key_to_value['dim']))
-
-    # This returns the name of the layer.
-    def Name():
-        return self.name
-
-    # This returns the name of the principal output of the layer.  For
-    # the input layer this is the same as the name.  For an affine layer
-    # 'affine1' it might be e.g. 'affine1.relu'.
-    def OutputName():
-        return self.name
-
-    # note: layers have a function InputDim() also, so we call this dimension function
-    # OutputDim().
-    def OutputDim():
-        return self.dim
-
-    def str(self):
-        return 'input name={0} dim={1}'.format(self.name, self.dim)
-
-    def __str__(self):
-        return self.str()
-
-
-
-# A base-class for classes representing lines of xconfig files.
-# This handles the
-class XconfigLineBase:
-    def __init__(self):
-        pass
-
-    def Name():
-        return self.name
-
-    def SetDims():
-        raise Exception("SetDims() not implemented for this class")
-
-
 
 
 
@@ -180,6 +114,19 @@ class Descriptor:
                 raise Exception("Error parsing Descriptor '{0}', specific error was: {1}".format(
                     descriptor_string, repr(e)))
 
+    # This is like the str() function, but it uses the layer_to_string function
+    # (which is a function from strings to strings) to convert layer names (or
+    # in general sub-layer names of the form 'foo.bar') to the component-node
+    # (or, in general, descriptor) names that appear in the final config file.
+    # This mechanism gives those designing layer types the freedom to name their
+    # nodes as they want.
+    def ConfigString(self, layer_to_string):
+        if self.operator is None:
+            assert len(self.items) == 1 and isinstance(self.items[0], str)
+            return layer_to_node(self.items[0])
+        else:
+            assert isinstance(self.operator, str)
+            return self.operator + '(' + ', '.join([OutputString(item, layer_to_node) for item in self.items]) + ')'
 
     def str(self):
         if self.operator is None:
@@ -191,6 +138,37 @@ class Descriptor:
 
     def __str__(self):
         return self.str()
+
+    # This function returns the dimension (i.e. the feature dimension) of the
+    # descriptor.  It takes 'layer_to_dim' which is a function from
+    # layer-names (including sub-layer names, like lstm1.memory_cell) to
+    # dimensions, e.g. you might have layer_to_dim('ivector') = 100, or
+    # layer_to_dim('affine1') = 1024.
+    # note: layer_to_dim will raise an exception if a nonexistent layer or
+    # sub-layer is requested.
+    def Dim(self, layer_to_dim):
+        if self.operator is None:
+            # base-case: self.items = [ layer_name ] (or sub-layer name, like
+            # 'lstm.memory_cell').
+            return layer_to_dim(self.items[0])
+        elif self.operator in [ 'Sum', 'Failover', 'IfDefined', 'Switch' ]:
+            # these are all operators for which all args are descriptors
+            # and must have the same dim.
+            dim = self.items[0].Dim()
+            for desc in self.items[1:]:
+                next_dim = desc.Dim()
+                if next_dim != dim:
+                    raise Exception("In descriptor {0}, different fields have different "
+                                    "dimensions: {1} != {2}".format(self.str(), dim, next_dim))
+            return dim
+        elif self.operator in [  'Offset', 'Round', 'ReplaceIndex' ]:
+            # for these operators, only the 1st arg is relevant.
+            return self.items[0].Dim()
+        elif self.operator == 'Append':
+            return sum([ x.Dim() for x in self.items])
+        else:
+            raise Exception("Unknown operator {0}".format(self.operator))
+
 
 
 # This just checks that seen_item == expected_item, and raises an
@@ -493,17 +471,6 @@ def ReadConfigFile(filename):
         layer_object = ConfigLineToObject(first_token, key_to_value, prev_names)
         ans.append(layer_object)
         prev_names.append(layer_object.Name())
-
-# Uses ParseConfigLine() to turn a config line that has been parsed into
-# a first token e.g. 'affine-layer' and a key->value map like { 'dim':'1024', 'name':'affine1' },
-# and then turns this into an object representing that line of the config file.
-# 'prev_names' is a list of the names of preceding lines of the
-# config file.
-def ConfigLineToObject(config_line, prev_names = None):
-    (first_token, key_to_value) = ParseConfigLine(config_line)
-
-    if first_token == 'input':
-        return XconfigInputLine(key_to_value)
 
 
 def TestLibrary():
