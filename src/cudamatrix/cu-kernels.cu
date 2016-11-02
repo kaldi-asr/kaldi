@@ -2629,6 +2629,20 @@ static void _diff_log_softmax(const MatrixDim in_deriv_dim,
   }
 }
 
+/// Add spatial regularization term to `out_deriv`.
+/// The regularization term is calculated from `out_value`.
+/// Each row of `out_value` is first viewed as a 16*n grid,
+/// convoluted with the 3x3 kernel, scaled with `scale`
+/// and then added to `out_deriv`.
+/// If regularization_sqsum is not NULL, the squared sum of the
+/// regularization term will be calculated and stored.
+template<typename Real>
+__global__
+static void _add_spatial_regularization_deriv(
+    const Real* out_value, const MatrixDim out_value_dim, Real* out_deriv,
+    const int out_deriv_stride, Real* regularization_sqsum,
+    const int regularization_sqsum_stride) {
+}
 
 /***********************************************************************
  * ANSI-C wrappers of CUDA kernels
@@ -3249,6 +3263,15 @@ void cudaF_diff_log_softmax(dim3 Gr, dim3 Bl, const MatrixDim in_deriv_dim,
                             float* in_deriv) {
   _diff_log_softmax<<<Gr, Bl>>>(in_deriv_dim, out_value, out_value_stride,
       out_deriv, out_deriv_stride, in_deriv);
+}
+
+void cudaF_add_spatial_regularization_deriv(
+    dim3 Gr, dim3 Bl, const float* out_value, const MatrixDim out_value_dim,
+    float* out_deriv, const int out_deriv_stride, float* regularization_sqsum,
+    const int regularization_sqsum_stride) {
+  _add_spatial_regularization_deriv<<<Gr, Bl>>>(out_value, out_value_dim,
+      out_deriv, out_deriv_stride, regularization_sqsum,
+      regularization_sqsum_stride);
 }
 
 void cudaF_copy_col_from_mat_df(int Gr, int Bl, double* v, int col,
@@ -3878,6 +3901,15 @@ void cudaD_diff_log_softmax(dim3 Gr, dim3 Bl, const MatrixDim in_deriv_dim,
                             double* in_deriv) {
   _diff_log_softmax<<<Gr, Bl>>>(in_deriv_dim, out_value, out_value_stride,
       out_deriv, out_deriv_stride, in_deriv);
+}
+
+void cudaD_add_spatial_regularization_deriv(
+    dim3 Gr, dim3 Bl, const double* out_value, const MatrixDim out_value_dim,
+    double* out_deriv, const int out_deriv_stride, double* regularization_sqsum,
+    const int regularization_sqsum_stride) {
+  _add_spatial_regularization_deriv<<<Gr, Bl>>>(out_value, out_value_dim,
+      out_deriv, out_deriv_stride, regularization_sqsum,
+      regularization_sqsum_stride);
 }
 
 void cudaD_copy_rows_from_vec(dim3 Gr, dim3 Bl, double *mat_out,

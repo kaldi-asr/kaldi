@@ -1758,12 +1758,15 @@ void CuMatrixBase<Real>::DiffXent(const CuArray<int32> &tgt,
 
 template<typename Real>
 void CuMatrixBase<Real>::AddSpatialRegularizationDeriv(
-    const CuMatrixBase<Real>& out_value, BaseFloat scale) {
+    const CuMatrixBase<Real>& out_value, BaseFloat scale,
+    BaseFloat* regularization_sqsum) {
   KALDI_ASSERT(SameDim(*this, out_value));
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-
+    dim3 dimBlock;
+    dim3 dimGrid;
+    cuda_add_spatial_regularization_deriv();
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
