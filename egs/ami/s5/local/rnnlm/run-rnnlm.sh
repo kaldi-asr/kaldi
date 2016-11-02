@@ -14,14 +14,14 @@ eos="</s>"
 oos="<oos>"
 
 max_param_change=20
-num_iters=60
+num_iters=16
 
 num_train_frames_combine=10000 # # train frames for the above.                  
 num_frames_diagnostic=2000 # number of frames for "compute_prob" jobs  
-num_archives=9
+num_archives=4
 
 shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of the samples
-minibatch_size=64
+minibatch_size=128
 
 hidden_dim=200
 initial_learning_rate=0.01
@@ -47,7 +47,7 @@ id=
 . path.sh
 . parse_options.sh || exit 1;
 
-outdir=data/sdm1/$type-sigmoid-$initial_learning_rate-$final_learning_rate-$learning_rate_decline_factor-$minibatch_size-$id
+outdir=data/sdm1/$type-$initial_learning_rate-$final_learning_rate-$learning_rate_decline_factor-$minibatch_size-$hidden_dim-$num_archives-$id
 srcdir=data/local/dict
 
 set -e
@@ -69,7 +69,8 @@ if [ $stage -le -4 ]; then
   cat $dev_text | awk -v w=$outdir/wordlist.all \
       'BEGIN{while((getline<w)>0) v[$1]=1;}
       {for (i=2;i<=NF;i++) if ($i in v) printf $i" ";else printf "<unk> ";print ""}'|sed 's/ $//g' \
-      | shuf --random-source=$dev_text > $outdir/dev.txt.0
+        > $outdir/dev.txt.0
+#      | shuf --random-source=$dev_text > $outdir/dev.txt.0
       
 
   cat $outdir/train.txt.0 $outdir/wordlist.all | sed "s= =\n=g" | grep . | sort | uniq -c | sort -k1 -n -r | awk '{print $2,$1}' > $outdir/unigramcounts.txt
@@ -89,39 +90,54 @@ fi
 
 num_words_in=`wc -l $outdir/wordlist.in | awk '{print $1}'`
 num_words_out=`wc -l $outdir/wordlist.out | awk '{print $1}'`
+num_words_total=`wc -l $outdir/unigramcounts.txt  | awk '{print $1}'`
 
 if [ $stage -le -3 ]; then
   echo Get Examples
   $cmd $outdir/log/get-egs.train.txt \
-    rnnlm-get-egs $outdir/train.txt $outdir/wordlist.in $outdir/wordlist.out ark,t:"| tr '\n' ' ' | sed 's=line=\nline=g' | grep . | shuf > $outdir/train.egs" &
+    rnnlm-get-egs $outdir/train.txt $outdir/wordlist.in $outdir/wordlist.out ark,t:"$outdir/train.egs" &
   $cmd $outdir/log/get-egs.dev.txt \
-    rnnlm-get-egs $outdir/dev.txt $outdir/wordlist.in $outdir/wordlist.out ark,t:"| tr '\n' ' ' | sed 's=line=\nline=g' | grep . > $outdir/dev.egs"
+    rnnlm-get-egs $outdir/dev.txt $outdir/wordlist.in $outdir/wordlist.out ark,t:"$outdir/dev.egs"
+
+  (
+    echo Do split
+    [ -d $outdir/splitted-text ] && rm $outdir/splitted-text -r
+    [ -d $outdir/egs ] && rm $outdir/egs -r
+    mkdir -p $outdir/splitted-text
+    mkdir -p $outdir/egs
+    split --number=l/$num_archives --numeric-suffixes=1 $outdir/train.txt $outdir/splitted-text/train.
+
+    for i in `seq 1 $num_archives`; do
+      j=$i
+      while [ ! -f $outdir/splitted-text/train.$i ]; do
+        i=0$i
+      done
+      [ "$i" != "$j" ] && mv $outdir/splitted-text/train.$i $outdir/splitted-text/train.$j.txt
+      rnnlm-get-egs $outdir/splitted-text/train.$j.txt $outdir/wordlist.in $outdir/wordlist.out ark,t:"$outdir/egs/train.$j.egs"
+    done
+  )
 
   wait
-
-  [ -d $outdir/egs ] && rm $outdir/egs -r
-  mkdir -p $outdir/egs
-
-  echo Do split
-  split --number=l/$num_archives --numeric-suffixes=1 $outdir/train.egs $outdir/egs/train.
-
-  # delete leading zero's
-  for i in `seq 1 $num_archives`; do
-    j=$i
-    while [ ! -f $outdir/egs/train.$i ]; do
-      i=0$i
-    done
-    [ "$i" != "$j" ] && mv $outdir/egs/train.$i $outdir/egs/train.$j 
-  done
 
   $cmd $outdir/log/create_train_subset_combine.log \
      nnet3-subset-egs --n=$num_train_frames_combine ark:$outdir/train.egs \
      ark,t:$outdir/train.subset.egs &                           
-  $cmd $outdir/log/create_train_subset_diagnostic.log \
-     nnet3-subset-egs --n=$num_frames_diagnostic ark:$outdir/dev.egs \
-     ark,t:$outdir/dev.subset.egs
+
+  cat $outdir/dev.txt | shuf | head -n $num_frames_diagnostic > $outdir/dev.diag.txt
+  rnnlm-get-egs $outdir/dev.diag.txt $outdir/wordlist.in $outdir/wordlist.out ark,t:"$outdir/dev.subset.egs"
+#  $cmd $outdir/log/create_train_subset_diagnostic.log \
+#     nnet3-subset-egs --n=$num_frames_diagnostic ark:$outdir/dev.egs \
+#     ark,t:$outdir/dev.subset.egs
   wait
 fi
+
+oos_ratio=`cat $outdir/dev.diag.txt | awk -v w=$outdir/wordlist.out 'BEGIN{while((getline<w)>0) v[$1]=1;}
+                                                         {for(i=2;i<=NF;i++){sum++; if(v[$i] != 1) oos++}} END{print oos/sum}'`
+
+ppl_oos_penalty=`echo $num_words_out $num_words_total $oos_ratio | awk '{print ($2-$1)^$3}'`
+
+echo dev oos ratio is $oos_ratio
+echo dev oos penalty is $ppl_oos_penalty
 
 if [ $stage -le -2 ]; then
   echo Create nnet configs
@@ -187,11 +203,17 @@ if [ $stage -le $num_iters ]; then
 
     [ $this_archive -gt $num_archives ] && this_archive=1
 
-    echo for iter $n, learning rate is $learning_rate, training on archive $this_archive
+    echo for iter $n, training on archive $this_archive, learning rate = $learning_rate
     [ $n -ge $stage ] && (
         $cuda_cmd $outdir/log/train.rnnlm.$n.log nnet3-train \
         --max-param-change=$max_param_change "nnet3-copy --learning-rate=$learning_rate $outdir/$[$n-1].mdl -|" \
-        "ark:nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$n ark:$outdir/egs/train.$this_archive ark:- | nnet3-merge-egs --minibatch-size=$minibatch_size ark:- ark:- |" $outdir/$n.mdl
+        "ark:nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$n ark:$outdir/egs/train.$this_archive.egs ark:- | nnet3-merge-egs --minibatch-size=$minibatch_size ark:- ark:- |" $outdir/$n.mdl
+
+      t=`grep "^# Accounting" $outdir/log/train.rnnlm.$n.log | sed "s/=/ /g" | awk '{print $4}'`
+      w=`wc -w $outdir/splitted-text/train.$this_archive.txt | awk '{print $1}'`
+      speed=`echo $w $t | awk '{print $1/$2}'`
+      echo Processing speed: $speed words per second
+
     )
 
     learning_rate=`echo $learning_rate | awk -v d=$learning_rate_decline_factor '{printf("%f", $1/d)}'`
@@ -207,10 +229,11 @@ if [ $stage -le $num_iters ]; then
         nnet3-compute-prob $outdir/$n.mdl ark:$outdir/dev.subset.egs 
 
       ppl=`grep Overall $outdir/log/compute_prob_valid.rnnlm.$n.log | grep like | awk '{print exp(-$8)}'`
-      echo DEV PPL on model $n.mdl is $ppl
+      ppl2=`echo $ppl $ppl_oos_penalty | awk '{print $1 * $2}'`
+      echo DEV PPL on model $n.mdl is $ppl w/o OOS penalty, $ppl2 w OOS penalty
     ) &
   done
   cp $outdir/$num_iters.mdl $outdir/rnnlm
 fi
 
-./local/rnnlm/run-rescoring.sh --rnndir $outdir/ --id $id
+#./local/rnnlm/run-rescoring.sh --rnndir $outdir/ --id $id
