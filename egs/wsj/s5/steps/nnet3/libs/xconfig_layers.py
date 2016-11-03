@@ -7,8 +7,7 @@ import sys
 import traceback
 import time
 import argparse
-from xconfig_lib import *
-
+import xconfig_utils
 
 
 # A base-class for classes representing layers of xconfig files.
@@ -29,7 +28,7 @@ class XconfigLayerBase(object):
         if not 'name' in key_to_value:
             raise RuntimeError("Expected 'name' to be specified.")
         self.name = key_to_value['name']
-        if not IsValidLineName(self.name):
+        if not xconfig_utils.IsValidLineName(self.name):
             raise RuntimeError("Invalid value: name={0}".format(key_to_value['name']))
 
         # the following, which should be overridden in the child class, sets
@@ -53,7 +52,7 @@ class XconfigLayerBase(object):
                 if not key in self.config:
                     raise RuntimeError("Configuration value {0}={1} was not expected in "
                                     "layer of type {2}".format(key, value, self.layer_type))
-                self.config[key] = ConvertValueToType(key, type(self.config[key]), value)
+                self.config[key] = xconfig_utils.ConvertValueToType(key, type(self.config[key]), value)
 
 
         self.descriptors = dict()
@@ -119,10 +118,10 @@ class XconfigLayerBase(object):
     # of type XconfigLayerBase) so that it can work out a list of the names of
     # other layers, and get dimensions from them.
     def ConvertToDescriptor(self, descriptor_string, all_layers):
-        prev_names = GetPrevNames(all_layers, self)
-        tokens = TokenizeDescriptor(descriptor_string, prev_names)
+        prev_names = xconfig_utils.GetPrevNames(all_layers, self)
+        tokens = xconfig_utils.TokenizeDescriptor(descriptor_string, prev_names)
         pos = 0
-        (descriptor, pos) = ParseNewDescriptor(tokens, pos, prev_names)
+        (descriptor, pos) = xconfig_utils.ParseNewDescriptor(tokens, pos, prev_names)
         # note: 'pos' should point to the 'end of string' marker
         # that terminates 'tokens'.
         if pos != len(tokens) - 1:
@@ -133,14 +132,14 @@ class XconfigLayerBase(object):
     # Returns the dimension of a Descriptor object.
     # This is a convenience function used in SetConfigs.
     def GetDimForDescriptor(self, descriptor, all_layers):
-        layer_to_dim_func = lambda name: GetDimFromLayerName(all_layers, self, name)
+        layer_to_dim_func = lambda name: xconfig_utils.GetDimFromLayerName(all_layers, self, name)
         return descriptor.Dim(layer_to_dim_func)
 
     # Returns the 'final' string form of a Descriptor object, as could be used
     # in config files.
     # This is a convenience function provided for use in child classes;
     def GetStringForDescriptor(self, descriptor, all_layers):
-        layer_to_string_func = lambda name: GetStringFromLayerName(all_layers, self, name)
+        layer_to_string_func = lambda name: xconfig_utils.GetStringFromLayerName(all_layers, self, name)
         return descriptor.ConfigString(layer_to_string_func)
 
     # Name() returns the name of this layer, e.g. 'affine1'.  It does not
@@ -325,7 +324,7 @@ def ParsedLineToXconfigLayer(first_token, key_to_value, prev_names):
 # 'prev_names' is a list of the names of preceding lines of the
 # config file.
 def ConfigLineToObject(config_line, prev_names = None):
-    (first_token, key_to_value) = ParseConfigLine(config_line)
+    (first_token, key_to_value) = xconfig_utils.ParseConfigLine(config_line)
     return ParsedLineToXconfigLayer(first_token, key_to_value, prev_names)
 
 
@@ -345,7 +344,7 @@ def ReadXconfigFile(xconfig_filename):
         line = f.readline()
         if line == '':
             break
-        x = ParseConfigLine(line)
+        x = xconfig_utils.ParseConfigLine(line)
         if x is None:
             continue   # line was blank or only comments.
         (first_token, key_to_value) = x

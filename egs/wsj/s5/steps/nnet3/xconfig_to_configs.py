@@ -16,8 +16,8 @@ sys.path.insert(0, 'steps/nnet3/libs/')
 # the following is in case we weren't running this from the normal directory.
 sys.path.insert(0, os.path.realpath(os.path.dirname(sys.argv[0])) + '/libs/')
 
-from xconfig_lib import *
-from xconfig_layers import *
+import xconfig_utils
+import xconfig_layers
 
 
 def GetArgs():
@@ -226,7 +226,7 @@ def WriteConfigFiles(config_dir, all_layers):
 def Main():
     args = GetArgs()
     BackUpXconfigFile(args.xconfig_file, args.config_dir)
-    all_layers = ReadXconfigFile(args.xconfig_file)
+    all_layers = xconfig_layers.ReadXconfigFile(args.xconfig_file)
     WriteExpandedXconfigFiles(args.config_dir, all_layers)
     WriteConfigFiles(args.config_dir, all_layers)
 
