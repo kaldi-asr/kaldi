@@ -14,11 +14,11 @@ eos="</s>"
 oos="<oos>"
 
 max_param_change=20
-num_iters=16
+num_iters=40
 
 num_train_frames_combine=10000 # # train frames for the above.                  
 num_frames_diagnostic=2000 # number of frames for "compute_prob" jobs  
-num_archives=4
+num_archives=20
 
 shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of the samples
 minibatch_size=128
@@ -124,7 +124,9 @@ if [ $stage -le -3 ]; then
      ark,t:$outdir/train.subset.egs &                           
 
   cat $outdir/dev.txt | shuf | head -n $num_frames_diagnostic > $outdir/dev.diag.txt
+  cat $outdir/train.txt | shuf | head -n $num_frames_diagnostic > $outdir/train.diag.txt
   rnnlm-get-egs $outdir/dev.diag.txt $outdir/wordlist.in $outdir/wordlist.out ark,t:"$outdir/dev.subset.egs"
+  rnnlm-get-egs $outdir/train.diag.txt $outdir/wordlist.in $outdir/wordlist.out ark,t:"$outdir/train_diagnostic.egs"
 #  $cmd $outdir/log/create_train_subset_diagnostic.log \
 #     nnet3-subset-egs --n=$num_frames_diagnostic ark:$outdir/dev.egs \
 #     ark,t:$outdir/dev.subset.egs
@@ -205,9 +207,17 @@ if [ $stage -le $num_iters ]; then
 
     echo for iter $n, training on archive $this_archive, learning rate = $learning_rate
     [ $n -ge $stage ] && (
+
         $cuda_cmd $outdir/log/train.rnnlm.$n.log nnet3-train \
         --max-param-change=$max_param_change "nnet3-copy --learning-rate=$learning_rate $outdir/$[$n-1].mdl -|" \
         "ark:nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$n ark:$outdir/egs/train.$this_archive.egs ark:- | nnet3-merge-egs --minibatch-size=$minibatch_size ark:- ark:- |" $outdir/$n.mdl
+
+        if [ $n -gt 0 ]; then
+          $cmd $outdir/log/progress.$n.log \
+            nnet3-show-progress --use-gpu=no $outdir/$[$n-1].mdl $outdir/$n.mdl \
+            "ark:nnet3-merge-egs ark:$outdir/train_diagnostic.egs ark:-|" '&&' \
+            nnet3-info $outdir/$n.mdl &
+        fi
 
       t=`grep "^# Accounting" $outdir/log/train.rnnlm.$n.log | sed "s/=/ /g" | awk '{print $4}'`
       w=`wc -w $outdir/splitted-text/train.$this_archive.txt | awk '{print $1}'`
