@@ -10,7 +10,7 @@ import warnings
 import copy
 import imp
 import ast
-
+from collections import defaultdict
 
 sys.path.insert(0, 'steps/nnet3/libs/')
 from xconfig_lib import *
@@ -356,23 +356,23 @@ def MakeConfigs(config_dir, splice_indexes_string,
         PrintConfig(key, config_files[key])
 
 
-def BackUpXconfigFile():
+def BackUpXconfigFile(xconfig_file, config_dir):
     # we write a copy of the xconfig file just to have a record of the original
     # input.
     try:
-        xconfig_file_out = open(args.config_dir + "/xconfig")
+        xconfig_file_out = open(config_dir + "/xconfig")
     except:
         sys.exit("{0}: error opening file {1}/xconfig for output".format(
-            sys.argv[0], args.config_dir))
+            sys.argv[0], config_dir))
     try:
-        xconfig_file_in = open(args.xconfig_file)
+        xconfig_file_in = open(xconfig_file)
     except:
-        sys.exit("{0}: error opening file {1} for input".format(sys.argv[0], args.config_dir))
+        sys.exit("{0}: error opening file {1} for input".format(sys.argv[0], config_dir))
 
-    print("# This file was copied from {0} by {1}.  It is the source\n"
-          "# from which the config files in this directory were generated.\n"
-          "# Full command line was:\n"
-          "# {2}".format(args.xconfig_file, sys.argv[0], ' '.join(sys.argv)),
+    print("# This file was created by the command:\n"
+          "# {0}\n"
+          "# It is a copy of the source from which the config files in "
+          "# this directory were generated.\n".format(' '.join(sys.argv)),
           file=xconfig_file_out)
 
     while True:
@@ -384,11 +384,88 @@ def BackUpXconfigFile():
     xconfig_file_in.close()
 
 
+def WriteExpandedXconfigFile(config_dir, all_layers):
+    try:
+        xconfig_file_out = open(config_dir + "/xconfig.expanded")
+    except:
+        sys.exit("{0}: error opening file {1}/xconfig.expanded for output".format(
+            sys.argv[0], config_dir))
+
+    print("# This file was created by {0}.  It contains the same content as\n"
+          "# ./xconfig but it was parsed, default config values were set, and\n"
+          "# it was printed from the internal representation.\n".format(sys.argv[0]),
+          file=xconfig_file_out)
+
+    for layer in all_layers:
+        print(str(layer), file=xconfig_file_out)
+    xconfig_file_out.close()
+
+
+# This function returns a map from config-file basename
+# e.g. 'init', 'ref', 'layer1' to a documentation string that goes
+# at the top of the file.
+def GetConfigHeaders():
+    ans = defaultdict(str)  # resulting dict will default to the empty string
+                            # for any config files not explicitly listed here.
+    ans['init'] = ("# This file was created by the command:\n"
+                   "# " + ' '.join(sys.argv) + "\n"
+                   "# It contains the input of the network and is used in\n"
+                   "# accumulating stats for an LDA-like transform of the\n"
+                   "# input features.\n");
+    ans['ref'] = ("# This file was created by the command:\n"
+                  "# " + ' '.join(sys.argv) + "\n"
+                  "# It contains the entire neural network, but with those\n"
+                  "# components that would normally require fixed vectors/matrices\n"
+                  "# read from disk, replaced with random initialization\n"
+                  "# (this applies to the LDA-like transform and the\n"
+                  "# presoftmax-prior-scale, if applicable).  This file\n"
+                  "# is used only to work out the left-context and right-context\n"
+                  "# of the network.\n");
+    ans['all'] = ("# This file was created by the command:\n"
+                  "# " + ' '.join(sys.argv) + "\n"
+                  "# It contains the entire neural network.  It might not be used\n"
+                  "# in the current scripts; it's provided for forward compatibility\n"
+                  "# to possible future changes.\n")
+
+    # Note: currently we just copy all lines that were going to go to 'all', into
+    # 'layer1', to avoid propagating this nastiness to the code in xconfig_layers.py
+    ans['layer1'] = ("# This file was created by the command:\n"
+                     "# " + ' '.join(sys.argv) + "\n"
+                     "# It contains the configuration of the entire neural network.\n"
+                     "# The contents are the same\n"
+                     "# as 'all.config'.  The reason this file is named this way (and\n"
+                     "# that the config file `num_hidden_layers` contains 1, even though\n"
+                     "# this file may really contain more than 1 hidden layer), is\n"
+                     "# historical... we used to create networks by adding hidden layers\n"
+                     "# one by one (discriminative pretraining), but more recently we\n"
+                     "# have found that it's better to add them all at once.  This file\n"
+                     "# exists to enable the older training scripts to work.  Note:\n"
+                     "# it contains the inputs of the neural network even though it doesn't\n"
+                     "# have to (since they are included in 'init.config').  This will\n"
+                     "# give us the flexibility to change the scripts in future.\n");
+    return ans;
+
+
+
+
+# This is where most of the work of this program happens.
+def WriteConfigFiles(config_dir, all_layers):
+    config_basename_to_lines = defaultdict(list)2
+
+    config_basename_to_header = GetConfigHeaders()
+
+
+
+
+
 def Main():
     args = GetArgs()
 
-    BackUpXconfigFile()
+    BackUpXconfigFile(args.xconfig_file, args.config_dir)
 
+    all_layers = ReadXconfigFile(args.xconfig_file)
+
+    WriteExpandedXconfigFile(args.config_dir all_layers)
 
     try:
         f =

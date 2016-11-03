@@ -278,6 +278,21 @@ class XconfigInputLayer(XconfigLayerBase):
         return ans
 
 
+# Converts a line as parsed by ParseConfigLine() into a first
+# token e.g. 'input-layer' and a key->value map, into
+# an objet inherited from XconfigLayerBase.
+# 'prev_names' is a list of previous layer names, it's needed
+# to parse things like '[-1]' (meaning: the previous layer)
+# when they appear in Desriptors.
+def ParsedLineToXconfigLayer(first_token, key_to_value, prev_names):
+    if first_token == 'input':
+        return XconfigInputLayer(first_token, key_to_value, prev_names)
+    else:
+        raise Exception("Error parsing xconfig line (no such layer type): " +
+                        first_token + ' ' +
+                        ' '.join(['{0} {1}'.format(x,y) for x,y in key_to_value.items()]))
+
+
 # Uses ParseConfigLine() to turn a config line that has been parsed into
 # a first token e.g. 'affine-layer' and a key->value map like { 'dim':'1024', 'name':'affine1' },
 # and then turns this into an object representing that line of the config file.
@@ -285,9 +300,42 @@ class XconfigInputLayer(XconfigLayerBase):
 # config file.
 def ConfigLineToObject(config_line, prev_names = None):
     (first_token, key_to_value) = ParseConfigLine(config_line)
+    return ParsedLineToXconfigLayer(first_token, key_to_value, prev_names)
 
-    if first_token == 'input':
-        return XconfigInputLayer(first_token, key_to_value)
+
+
+# This function reads an xconfig file and returns it as a list of layers
+# (usually we use the variable name 'all_layers' elsewhere for this).
+# It will die if the xconfig file is empty or if there was
+# some error parsing it.
+def ReadXconfigFile(xconfig_filename):
+    try:
+        f = open(xconfig_filename, 'r')
+    except Exception as e:
+        sys.exit("{0}: error reading xconfig file '{1}'; error was {2}".format(
+            sys.argv[0], xconfig_filename, repr(e)))
+    prev_names = []
+    all_layers = []
+    while True:
+        line = f.readline()
+        if line == '':
+            break
+        x = ParseConfigLine(config_line)
+        if x is None:
+            continue   # line was blank or only comments.
+        (first_token, key_to_value) = x
+        # the next call will raise an easy-to-understand exception if
+        # it fails.
+        this_layer = ParsedLineToXconfigLayer(first_token,
+                                              key_to_value,
+                                              prev_names)
+        prev_names.append(this_layer.Name())
+        all_layers.append(this_layer)
+    if len(all_layers) == 0:
+        raise Exception("{0}: xconfig file '{1}' is empty".format(
+            sys.argv[0], xconfig_filename))
+    f.close()
+    return all_layers
 
 
 def TestLayers():

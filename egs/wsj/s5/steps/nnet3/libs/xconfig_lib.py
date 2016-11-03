@@ -407,7 +407,7 @@ def TokenizeDescriptor(descriptor_string,
 # Note: spaces are allowed in the field names but = signs are
 # disallowed, which is why it's possible to parse them.
 # This function also removes comments (anything after '#').
-# As a special case, this function will return NULL if the line
+# As a special case, this function will return None if the line
 # is empty after removing spaces.
 def ParseConfigLine(orig_config_line):
     # Remove comments.
