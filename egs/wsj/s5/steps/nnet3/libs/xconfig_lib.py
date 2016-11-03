@@ -1,3 +1,10 @@
+# Copyright  2016  Johns Hopkins University (Author: Daniel Povey).
+# License: Apache 2.0.
+
+# This library contains various utilities that are involved in processing
+# of xconfig -> config conversion.  It contains "generic" lower-level code
+# while xconfig_layers.py contains the code specific to layer types.
+
 from __future__ import print_function
 import subprocess
 import logging
@@ -8,28 +15,92 @@ import traceback
 import time
 import argparse
 
+# [utility function used in xconfig_layers.py]
+# Given a list of objects of type XconfigLayerBase ('all_layers'),
+# including at least the layers preceding 'current_layer' (and maybe
+# more layers), return the names of layers preceding 'current_layer'
+# This will be used in parsing expressions like [-1] in descriptors
+# (which is an alias for the previous layer).
+def GetPrevNames(all_layers, current_layer):
+    prev_names = []
+    for layer in all_layers:
+        if layer is current_layer:
+            break
+        prev_names.append(layer.Name())
+    return prev_names
 
-class StrToBoolAction(argparse.Action):
-    """ A custom action to convert bools from shell format i.e., true/false
-        to python format i.e., True/False """
-    def __call__(self, parser, namespace, values, option_string=None):
-        if values == "true":
-            setattr(namespace, self.dest, True)
-        elif values == "false":
-            setattr(namespace, self.dest, False)
-        else:
-            raise Exception("Unknown value {0} for --{1}".format(values, self.dest))
+# [utility function used in xconfig_layers.py]
+# this converts a layer-name like 'ivector' or 'input', or a sub-layer name like
+# 'lstm2.memory_cell', into a dimension.  'all_layers' is a vector of objects
+# inheriting from XconfigLayerBase.  'current_layer' is provided so that the
+# function can make sure not to look in layers that appear *after* this layer
+# (because that's not allowed).
+def GetDimFromLayerName(all_layers, current_layer, full_layer_name):
+    assert isinstance(full_layer_name, str)
+    split_name = full_layer_name.split('.')
+    if len(split_name) == 0:
+        raise RuntimeError("Bad layer name: " + full_layer_name)
+    layer_name = split_name[0]
+    if len(split_name) == 1:
+        qualifier = None
+    else:
+        # we probably expect len(split_name) == 2 in this case,
+        # but no harm in allowing dots in the qualifier.
+        qualifier = '.'.join(split_name[1:])
 
-class NullstrToNoneAction(argparse.Action):
-    """ A custom action to convert empty strings passed by shell
-        to None in python. This is necessary as shell scripts print null strings
-        when a variable is not specified. We could use the more apt None
-        in python. """
-    def __call__(self, parser, namespace, values, option_string=None):
-            if values.strip() == "":
-                setattr(namespace, self.dest, None)
-            else:
-                setattr(namespace, self.dest, values)
+    for layer in all_layers:
+        if layer is current_layer:
+            break
+        if layer.Name() == layer_name:
+            if not qualifier in layer.Qualifiers():
+                raise RuntimeError("Layer '{0}' has no such qualifier: '{1}' ({0}.{1})".format(
+                    layer_name, qualifier))
+            return layer.OutputDim(qualifier)
+    # No such layer was found.
+    if layer_name in [ layer.Name() for layer in all_layers ]:
+        raise RuntimeError("Layer '{0}' was requested before it appeared in "
+                        "the xconfig file (circular dependencies or out-of-order "
+                        "layers".format(layer_name))
+    else:
+        raise RuntimeError("No such layer: '{0}'".format(layer_name))
+
+
+# [utility function used in xconfig_layers.py]
+# this converts a layer-name like 'ivector' or 'input', or a sub-layer name like
+# 'lstm2.memory_cell', into a descriptor (usually, but not required to be a simple
+# component-node name) that can appear in the generated config file.  'all_layers' is a vector of objects
+# inheriting from XconfigLayerBase.  'current_layer' is provided so that the
+# function can make sure not to look in layers that appear *after* this layer
+# (because that's not allowed).
+def GetStringFromLayerName(all_layers, current_layer, full_layer_name):
+    assert isinstance(full_layer_name, str)
+    split_name = full_layer_name.split('.')
+    if len(split_name) == 0:
+        raise RuntimeError("Bad layer name: " + full_layer_name)
+    layer_name = split_name[0]
+    if len(split_name) == 1:
+        qualifier = None
+    else:
+        # we probably expect len(split_name) == 2 in this case,
+        # but no harm in allowing dots in the qualifier.
+        qualifier = '.'.join(split_name[1:])
+
+    for layer in all_layers:
+        if layer is current_layer:
+            break
+        if layer.Name() == layer_name:
+            if not qualifier in layer.Qualifiers():
+                raise RuntimeError("Layer '{0}' has no such qualifier: '{1}' ({0}.{1})".format(
+                    layer_name, qualifier))
+            return layer.OutputName(qualifier)
+    # No such layer was found.
+    if layer_name in [ layer.Name() for layer in all_layers ]:
+        raise RuntimeError("Layer '{0}' was requested before it appeared in "
+                        "the xconfig file (circular dependencies or out-of-order "
+                        "layers".format(layer_name))
+    else:
+        raise RuntimeError("No such layer: '{0}'".format(layer_name))
+
 
 # This function, used in converting string values in config lines to
 # configuration values in self.config in layers, attempts to
@@ -57,7 +128,7 @@ def ConvertValueToType(key, dest_type, string_value):
             raise Exception("Invalid configuration value {0}={1} (expected int)".format(
                 key, string_value))
     elif dest_type == type(str()):
-        return sting_value
+        return string_value
 
 
 
@@ -123,10 +194,12 @@ class Descriptor:
     def ConfigString(self, layer_to_string):
         if self.operator is None:
             assert len(self.items) == 1 and isinstance(self.items[0], str)
-            return layer_to_node(self.items[0])
+            return layer_to_string(self.items[0])
         else:
             assert isinstance(self.operator, str)
-            return self.operator + '(' + ', '.join([OutputString(item, layer_to_node) for item in self.items]) + ')'
+            return self.operator + '(' + ', '.join(
+                    [ item.ConfigString(layer_to_string) if isinstance(item, Descriptor) else str(item)
+                      for item in self.items]) + ')'
 
     def str(self):
         if self.operator is None:
@@ -154,18 +227,18 @@ class Descriptor:
         elif self.operator in [ 'Sum', 'Failover', 'IfDefined', 'Switch' ]:
             # these are all operators for which all args are descriptors
             # and must have the same dim.
-            dim = self.items[0].Dim()
+            dim = self.items[0].Dim(layer_to_dim)
             for desc in self.items[1:]:
-                next_dim = desc.Dim()
+                next_dim = desc.Dim(layer_to_dim)
                 if next_dim != dim:
                     raise Exception("In descriptor {0}, different fields have different "
                                     "dimensions: {1} != {2}".format(self.str(), dim, next_dim))
             return dim
         elif self.operator in [  'Offset', 'Round', 'ReplaceIndex' ]:
             # for these operators, only the 1st arg is relevant.
-            return self.items[0].Dim()
+            return self.items[0].Dim(layer_to_dim)
         elif self.operator == 'Append':
-            return sum([ x.Dim() for x in self.items])
+            return sum([ x.Dim(layer_to_dim) for x in self.items])
         else:
             raise Exception("Unknown operator {0}".format(self.operator))
 

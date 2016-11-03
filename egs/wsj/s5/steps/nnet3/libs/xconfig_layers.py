@@ -9,90 +9,6 @@ import time
 import argparse
 from xconfig_lib import *
 
-# Given a list of objects of type XconfigLayerBase ('all_layers'),
-# including at least the layers preceding 'current_layer' (and maybe
-# more layers), return the names of layers preceding 'current_layer'
-# This will be used in parsing expressions like [-1] in descriptors
-# (which is an alias for the previous layer).
-def GetPrevNames(all_layers, current_layer):
-    assert current_layer in all_layers
-    prev_names = []
-    for layer in all_layers:
-        if layer is current_layer:
-            break
-        prev_names.append(layer.Name())
-    return prev_names
-
-# this converts a layer-name like 'ivector' or 'input', or a sub-layer name like
-# 'lstm2.memory_cell', into a dimension.  'all_layers' is a vector of objects
-# inheriting from XconfigLayerBase.  'current_layer' is provided so that the
-# function can make sure not to look in layers that appear *after* this layer
-# (because that's not allowed).
-def GetDimFromLayerName(all_layers, current_layer, full_layer_name):
-    assert isinstance(full_layer_name, str)
-    split_name = full_layer_name.split('.')
-    if len(split_name) == 0:
-        raise Exception("Bad layer name: " + full_layer_name)
-    layer_name = split_name[0]
-    if len(split_name) == 1:
-        qualifier = None
-    else:
-        # we probably expect len(split_name) == 2 in this case,
-        # but no harm in allowing dots in the qualifier.
-        qualifier = '.'.join(split_name[1:])
-
-    for layer in all_layers:
-        if layer is current_layer:
-            break
-        if layer.Name() == layer_name:
-            if not qualifier in layer.Qualifiers():
-                raise Exception("Layer '{0}' has no such qualifier: '{1}' ({0}.{1})".format(
-                    layer_name, qualifier))
-            return layer.OutputDim(qualifier)
-    # No such layer was found.
-    if layer_name in [ layer.Name() for layer in all_layers ]:
-        raise Exception("Layer '{0}' was requested before it appeared in "
-                        "the xconfig file (circular dependencies or out-of-order "
-                        "layers".format(layer_name))
-    else:
-        raise Exception("No such layer: '{0}'".format(layer_name))
-
-
-# this converts a layer-name like 'ivector' or 'input', or a sub-layer name like
-# 'lstm2.memory_cell', into a descriptor (usually, but not required to be a simple
-# component-node name) that can appear in the generated config file.  'all_layers' is a vector of objects
-# inheriting from XconfigLayerBase.  'current_layer' is provided so that the
-# function can make sure not to look in layers that appear *after* this layer
-# (because that's not allowed).
-def GetStringFromLayerName(all_layers, current_layer, full_layer_name):
-    assert isinstance(full_layer_name, str)
-    split_name = full_layer_name.split('.')
-    if len(split_name) == 0:
-        raise Exception("Bad layer name: " + full_layer_name)
-    layer_name = split_name[0]
-    if len(split_name) == 1:
-        qualifier = None
-    else:
-        # we probably expect len(split_name) == 2 in this case,
-        # but no harm in allowing dots in the qualifier.
-        qualifier = '.'.join(split_name[1:])
-
-    for layer in all_layers:
-        if layer is current_layer:
-            break
-        if layer.Name() == layer_name:
-            if not qualifier in layer.Qualifiers():
-                raise Exception("Layer '{0}' has no such qualifier: '{1}' ({0}.{1})".format(
-                    layer_name, qualifier))
-            return layer.OutputName(qualifier)
-    # No such layer was found.
-    if layer_name in [ layer.Name() for layer in all_layers ]:
-        raise Exception("Layer '{0}' was requested before it appeared in "
-                        "the xconfig file (circular dependencies or out-of-order "
-                        "layers".format(layer_name))
-    else:
-        raise Exception("No such layer: '{0}'".format(layer_name))
-
 
 
 # A base-class for classes representing layers of xconfig files.
@@ -105,39 +21,72 @@ class XconfigLayerBase(object):
     # The only required and 'special' values that are dealt with directly at this level, are
     # 'name' and 'input'.
     # The rest are put in self.config and are dealt with by the child classes' init functions.
-    # prev_names is an array of the names (xxx in 'name=xxx') of previous
-    # lines of the config file.
+    # all_layers is an array of objects inheriting XconfigLayerBase for all previously
+    # parsed layers.
 
-    def __init__(self, first_token, key_to_value, prev_names = None):
+    def __init__(self, first_token, key_to_value, all_layers):
         self.layer_type = first_token
         if not 'name' in key_to_value:
-            raise Exception("Expected 'name' to be specified.")
+            raise RuntimeError("Expected 'name' to be specified.")
         self.name = key_to_value['name']
         if not IsValidLineName(self.name):
-            raise Exception("Invalid value: name={0}".format(key_to_value['name']))
+            raise RuntimeError("Invalid value: name={0}".format(key_to_value['name']))
 
         # the following, which should be overridden in the child class, sets
         # default config parameters in self.config.
         self.SetDefaultConfigs()
         # The following is not to be reimplemented in child classes;
-        # sets the config files to those specified by the user.
-        self._SetConfigs(key_to_value)
+        # it sets the config values to those specified by the user, and
+        # parses any Descriptors.
+        self.SetConfigs(key_to_value, all_layers)
         # the following, which should be overridden in the child class, checks
         # that the config parameters that have been set are reasonable.
         self.CheckConfigs()
 
 
     # We broke this code out of __init__ for clarity.
-    def _SetConfigs(self, key_to_value):
+    def SetConfigs(self, key_to_value, all_layers):
         # the child-class constructor will deal with the configuration values
         # in a more specific way.
         for key,value in key_to_value.items():
-            if key != 'name' and key != 'input':
+            if key != 'name':
                 if not key in self.config:
-                    raise Exception("Configuration value {0}={1} was not expected in "
+                    raise RuntimeError("Configuration value {0}={1} was not expected in "
                                     "layer of type {2}".format(key, value, self.layer_type))
                 self.config[key] = ConvertValueToType(key, type(self.config[key]), value)
 
+
+        self.descriptors = dict()
+        self.descriptor_dims = dict()
+        # Parse Descriptors and get their dims and their 'final' string form.
+        # Put them as 4-tuples (descriptor, string, normalized-string, final-string)
+        # in self.descriptors[key]
+        for key in self.GetDescriptorConfigs():
+            if not key in self.config:
+                raise RuntimeError("{0}: object of type {1} needs to override "
+                                   "GetDescriptorConfigs()".format(sys.argv[0],
+                                                                   str(type(self))))
+            descriptor_string = self.config[key]  # input string.
+            assert isinstance(descriptor_string, str)
+            desc = self.ConvertToDescriptor(descriptor_string, all_layers)
+            desc_dim = self.GetDimForDescriptor(desc, all_layers)
+            desc_norm_str = desc.str()
+            # desc_output_str contains the "final" component names, those that
+            # appear in the actual config file (i.e. not names like
+            # 'layer.qualifier'); that's how it differs from desc_norm_str.
+            # Note: it's possible that the two strings might be the same in
+            # many, even most, cases-- it depends whether OutputName(self, qualifier)
+            # returns self.Name() + '.' + qualifier when qualifier is not None.
+            # That's up to the designer of the layer type.
+            desc_output_str = self.GetStringForDescriptor(desc, all_layers)
+            self.descriptors[key] = (desc, desc_dim, desc_norm_str, desc_output_str)
+            # the following helps to check the code by parsing it again.
+            desc2 = self.ConvertToDescriptor(desc_norm_str, all_layers)
+            desc_norm_str2 = desc2.str()
+            # if the following ever fails we'll have to do some debugging.
+            if desc_norm_str != desc_norm_str2:
+                raise RuntimeError("Likely code error: '{0}' != '{1}'".format(
+                        desc_norm_str, desc_norm_str2))
 
     # This function converts 'this' to a string which could be printed to an
     # xconfig file; in xconfig_to_configs.py we actually expand all the lines to
@@ -152,6 +101,17 @@ class XconfigLayerBase(object):
     def __str__(self):
         return self.str()
 
+
+    # This function converts any config variables in self.config which
+    # correspond to Descriptors, into a 'normalized form' derived from parsing
+    # them as Descriptors, replacing things like [-1] with the actual layer
+    # names, and regenerating them as strings.  We stored this when the
+    # object was initialized, in self.descriptors; this function just copies them
+    # back to the config.
+    def NormalizeDescriptors(self):
+        for key,tuple in self.descriptors.items():
+            self.config[key] = tuple[2]  # desc_norm_str
+
     # This function, which is a convenience function intended to be called from
     # child classes, converts a string representing a descriptor
     # ('descriptor_string') into an object of type Descriptor, and returns it.
@@ -162,15 +122,16 @@ class XconfigLayerBase(object):
         prev_names = GetPrevNames(all_layers, self)
         tokens = TokenizeDescriptor(descriptor_string, prev_names)
         pos = 0
-        (self.input, pos) = ParseNewDescriptor(tokens, pos, prev_names)
+        (descriptor, pos) = ParseNewDescriptor(tokens, pos, prev_names)
         # note: 'pos' should point to the 'end of string' marker
         # that terminates 'tokens'.
         if pos != len(tokens) - 1:
-            raise Exception("Parsing Descriptor, saw junk at end: " +
+            raise RuntimeError("Parsing Descriptor, saw junk at end: " +
                             ' '.join(tokens[pos:-1]))
+        return descriptor
 
     # Returns the dimension of a Descriptor object.
-    # This is a convenience function provided for use in child classes;
+    # This is a convenience function used in SetConfigs.
     def GetDimForDescriptor(self, descriptor, all_layers):
         layer_to_dim_func = lambda name: GetDimFromLayerName(all_layers, self, name)
         return descriptor.Dim(layer_to_dim_func)
@@ -184,24 +145,37 @@ class XconfigLayerBase(object):
 
     # Name() returns the name of this layer, e.g. 'affine1'.  It does not
     # necessarily correspond to a component name.
-    def Name():
+    def Name(self):
         return self.name
 
-    ######  Functions that should be overridden by the child class: #####
+    ######  Functions that might be overridden by the child class: #####
 
     # child classes should override this.
-    def SetDefaultConfigs():
-        raise Exception("Child classes must override SetDefaultConfigs().")
+    def SetDefaultConfigs(self):
+        raise RuntimeError("Child classes must override SetDefaultConfigs().")
 
     # child classes should override this.
-    def CheckConfigs():
+    def CheckConfigs(self):
         pass
+
+    # This function, which may be (but usually will not have to be) overrideden
+    # by child classes, returns a list of keys/names of config variables that
+    # will be interpreted as Descriptors.  It is used in the function
+    # 'NormalizeDescriptors()'.  This implementation will work
+    # layer types whose only Descriptor-valued config is 'input'.
+
+    # If a child class adds more config variables that are interpreted as
+    # descriptors (e.g. to read auxiliary inputs), or does not have an input
+    # (e.g. the XconfigInputLayer), it should override this function's
+    # implementation to something like: `return ['input', 'input2']`
+    def GetDescriptorConfigs(self):
+        return [ 'input' ]
 
     # Returns a list of all qualifiers (meaning auxiliary outputs) that this
     # layer supports.  These are either 'None' for the regular output, or a
     # string (e.g. 'projection' or 'memory_cell') for any auxiliary outputs that
     # the layer might provide.  Most layer types will not need to override this.
-    def Qualifiers():
+    def Qualifiers(self):
         return [ None ]
 
     # Called with qualifier == None, this returns the component-node name of the
@@ -213,13 +187,13 @@ class XconfigLayerBase(object):
     # a highway LSTM you need the memory-cell of a layer, so you might allow
     # qualifier='memory_cell' for such a layer type, and it would return the
     # component node or a suitable Descriptor: something like 'lstm3.c_t'
-    def OutputName(qualifier = None):
-        raise Exception("Child classes must override OutputName()")
+    def OutputName(self, qualifier = None):
+        raise RuntimeError("Child classes must override OutputName()")
 
     # The dimension that this layer outputs.  The 'qualifier' parameter is for
     # layer types which support auxiliary outputs.
-    def OutputDim(qualifier = None):
-        raise Exception("Child classes must override OutputDim()")
+    def OutputDim(self, qualifier = None):
+        raise RuntimeError("Child classes must override OutputDim()")
 
     # This function returns lines destined for the 'full' config format, as
     # would be read by the C++ programs.
@@ -229,11 +203,8 @@ class XconfigLayerBase(object):
     # [ ('init', 'input-node name=input dim=40'),
     #   ('ref', 'input-node name=input dim=40') ]
     # which would be written to config_dir/init.config and config_dir/ref.config.
-    #
-    # 'all_layers' is a vector of objects inheriting from XconfigLayerBase,
-    # which is used to get the component names and dimensions at the input.
-    def GetFullConfig(self, all_layers):
-        raise Exception("Child classes must override GetFullConfig()")
+    def GetFullConfig(self):
+        raise RuntimeError("Child classes must override GetFullConfig()")
 
 
 # This class is for lines like
@@ -252,17 +223,20 @@ class XconfigInputLayer(XconfigLayerBase):
 
     def CheckConfigs(self):
         if self.config['dim'] <= 0:
-            raise Exception("Dimension of input-layer '{0}' is not set".format(self.name))
+            raise RuntimeError("Dimension of input-layer '{0}' is not set".format(self.name))
 
-    def OutputName(qualifier = None):
+    def GetDescriptorConfigs(self):
+        return []  # there is no 'input' field in self.config.
+
+    def OutputName(self, qualifier = None):
         assert qualifier is None
         return self.name
 
-    def OutputDim(qualifier = None):
+    def OutputDim(self, qualifier = None):
         assert qualifier is None
         return self.config['dim']
 
-    def GetFullConfig(self, all_layers):
+    def GetFullConfig(self):
         # the input layers need to be printed in 'init.config' (which
         # initializes the neural network prior to the LDA), in 'ref.config',
         # which is a version of the config file used for getting left and right
@@ -271,10 +245,60 @@ class XconfigInputLayer(XconfigLayerBase):
         # In 'full.config' we write everything, this is just for reference,
         # and also for cases where we don't use the LDA-like transform.
         ans = []
-        for config_name in [ 'init', 'ref', 'full' ]:
+        for config_name in [ 'init', 'ref', 'all' ]:
             ans.append( (config_name,
                          'input-node name={0} dim={1}'.format(self.name,
                                                               self.config['dim'])))
+        return ans
+
+
+
+# This class is for lines like
+# 'output name=output input=Append(input@-1, input@0, input@1, ReplaceIndex(ivector, t, 0))'
+# This is for outputs that are not really output "layers" (there is no affine transform or
+# nonlinearity), they just directly map to an output-node in nnet3.
+class XconfigTrivialOutputLayer(XconfigLayerBase):
+    def __init__(self, first_token, key_to_value, prev_names = None):
+        assert first_token == 'output'
+        XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
+
+    def SetDefaultConfigs(self):
+        # note: self.config['input'] is a descriptor, '[-1]' means output
+        # the most recent layer.
+        self.config = { 'input':'[-1]' }
+
+    def CheckConfigs(self):
+        pass  # nothing to check; descriptor-parsing can't happen in this function.
+
+    def OutputName(self, qualifier = None):
+        assert qualifier is None
+        return self.name
+
+    def OutputDim(self, qualifier = None):
+        assert qualifier is None
+        # note: each value of self.descriptors is (descriptor, dim, normalized-string, output-string).
+        return self.descriptors['input'][1]
+
+    def GetFullConfig(self):
+        # the input layers need to be printed in 'init.config' (which
+        # initializes the neural network prior to the LDA), in 'ref.config',
+        # which is a version of the config file used for getting left and right
+        # context (it doesn't read anything for the LDA-like transform and/or
+        # presoftmax-prior-scale components)
+        # In 'full.config' we write everything, this is just for reference,
+        # and also for cases where we don't use the LDA-like transform.
+        ans = []
+
+        # note: each value of self.descriptors is (descriptor, dim,
+        # normalized-string, output-string).
+        # by 'output-string' we mean a string that can appear in
+        # config-files, i.e. it contains the 'final' names of
+        descriptor_output_str = self.descriptors['input'][3]
+
+        for config_name in [ 'ref', 'all' ]:
+            ans.append( (config_name,
+                         'output-node name={0} input={1}'.format(
+                        self.name, descriptor_output_str)))
         return ans
 
 
@@ -287,8 +311,10 @@ class XconfigInputLayer(XconfigLayerBase):
 def ParsedLineToXconfigLayer(first_token, key_to_value, prev_names):
     if first_token == 'input':
         return XconfigInputLayer(first_token, key_to_value, prev_names)
+    elif first_token == 'output':
+        return XconfigTrivialOutputLayer(first_token, key_to_value, prev_names)
     else:
-        raise Exception("Error parsing xconfig line (no such layer type): " +
+        raise RuntimeError("Error parsing xconfig line (no such layer type): " +
                         first_token + ' ' +
                         ' '.join(['{0} {1}'.format(x,y) for x,y in key_to_value.items()]))
 
@@ -314,13 +340,12 @@ def ReadXconfigFile(xconfig_filename):
     except Exception as e:
         sys.exit("{0}: error reading xconfig file '{1}'; error was {2}".format(
             sys.argv[0], xconfig_filename, repr(e)))
-    prev_names = []
     all_layers = []
     while True:
         line = f.readline()
         if line == '':
             break
-        x = ParseConfigLine(config_line)
+        x = ParseConfigLine(line)
         if x is None:
             continue   # line was blank or only comments.
         (first_token, key_to_value) = x
@@ -328,11 +353,10 @@ def ReadXconfigFile(xconfig_filename):
         # it fails.
         this_layer = ParsedLineToXconfigLayer(first_token,
                                               key_to_value,
-                                              prev_names)
-        prev_names.append(this_layer.Name())
+                                              all_layers)
         all_layers.append(this_layer)
     if len(all_layers) == 0:
-        raise Exception("{0}: xconfig file '{1}' is empty".format(
+        raise RuntimeError("{0}: xconfig file '{1}' is empty".format(
             sys.argv[0], xconfig_filename))
     f.close()
     return all_layers
