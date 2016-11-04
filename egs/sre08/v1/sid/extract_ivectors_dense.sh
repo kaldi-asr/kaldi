@@ -69,15 +69,25 @@ feats="ark,s:extract-feature-segments --frame-shift=$frame_shift_ms --frame-leng
 
 if [ $stage -le -2 ]; then
   $cmd $dir/log/extract_segments.log \
-    segmentation-init-from-segments --frame-shift=$frame_shift --label=1 $seg_fi ark:- \| \
+    segmentation-init-from-segments --frame-shift=$frame_shift --segment-label=1 $seg_fi ark:- \| \
     segmentation-split-segments --split-label=1 --overlap-length=$period --max-segment-length=$chunk_size \
     ark:- ark,scp:$dir/segmentation.ark,$dir/segmentation.scp || exit 1;
 fi
 
 if [ $stage -le -1 ]; then
-  $cmd $dir/log/create_segments.log \
-    segmentation-to-segments --frame-overlap=0 --single-speaker=true --frame-shift=$frame_shift scp:$dir/segmentation.scp ark,t:$dir/utt2spk ark,t:$dir/segments || exit 1;
+  $cmd $dir/log/create_subsegments.log \
+    segmentation-to-segments --frame-overlap=`perl -e "print ($frame_length - $frame_shift)"` \
+    --single-speaker=true --frame-shift=$frame_shift \
+    scp:$dir/segmentation.scp ark,t:/dev/null $dir/sub_segments || exit 1;
 fi
+
+utils/data/get_reco2num_frames.sh --frame-shift $frame_shift --frame-overlap $frame_overlap $data
+utils/data/subsegment_data_dir.sh $data $dir/sub_segments $dir/data_uniform_seg
+awk '{print $1" "$2}' $dir/data_uniform_seg/segments | utils/apply_map.pl -f 2 $data/reco2num_frames > $data/reco2max_frames
+utils/data/get_subsegment_feats.sh $data/feats.scp $frame_shift $frame_overlap $dir/sub_segments | utils/data/fix_subsegmented_feats.pl $data/reco2max_frames > $dir/data_uniform_seg/feats.scp
+utils/split_data.sh $dir/data_uniform_seg $nj
+
+feats="ark,s:add-deltas $delta_opts scp:$dir/data_uniform_seg/split$nj/JOB/feats.scp ark:- | apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 ark:- ark:- |"
 
 if [ $stage -le 0 ]; then
   echo "$0: extracting iVectors"
