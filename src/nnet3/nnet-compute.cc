@@ -552,7 +552,7 @@ void NnetComputer::AcceptInputs(const Nnet &nnet,
 
         // TODO(hxu) test the idea first...
         CuMatrix<BaseFloat> cu_input(io.features.NumRows(),
-                                     a->OutputDim(),
+                                     a->InputDim(),
                                      kUndefined);
         CuMatrix<BaseFloat> copied(io.features.NumRows(),
                                    io.features.NumCols(),

@@ -38,6 +38,9 @@ class LmNnet {
     nnet_ = new Nnet();
   }
   ~LmNnet() {
+    delete input_projection_;
+    delete output_projection_;
+    delete output_layer_;
     delete nnet_;
   }
   Nnet* GetNnet() {
