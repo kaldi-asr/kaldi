@@ -291,13 +291,138 @@ class XconfigTrivialOutputLayer(XconfigLayerBase):
         # note: each value of self.descriptors is (descriptor, dim,
         # normalized-string, output-string).
         # by 'output-string' we mean a string that can appear in
-        # config-files, i.e. it contains the 'final' names of
-        descriptor_output_str = self.descriptors['input'][3]
+        # config-files, i.e. it contains the 'final' names of nodes.
+        descriptor_final_str = self.descriptors['input'][3]
 
         for config_name in [ 'ref', 'all' ]:
             ans.append( (config_name,
                          'output-node name={0} input={1}'.format(
-                        self.name, descriptor_output_str)))
+                        self.name, descriptor_final_str)))
+        return ans
+
+
+# This class is for lines like
+#  'output-layer name=output dim=4257 input=Append(input@-1, input@0, input@1, ReplaceIndex(ivector, t, 0))'
+# By default this includes a log-softmax component.  The parameters are initialized to zero, as
+# this is best for output layers.
+# Parameters of the class, and their defaults:
+#   input='[-1]'             [Descriptor giving the input of the layer.]
+#   dim=-1                   [Output dimension of layer, will normally equal the number of pdfs.]
+#   include-log-softmax=true [setting it to false will omit the log-softmax component- useful for chain
+#                              models.]
+#   objective-type=linear    [the only other choice currently is 'quadratic', for use in regression
+#                             problems]
+
+#   learning-rate-factor=1.0 [Learning rate factor for the final affine component, multiplies the
+#                              standard learning rate. normally you'll leave this as-is, but for
+#                              xent regularization output layers for chain models you'll want to set
+#                              learning-rate-factor=(0.5/xent_regularize), normally
+#                              learning-rate-factor=5.0 since xent_regularize is normally 0.1.
+#   presoftmax-scale-file=''  [If set, a filename for a vector that will be used to scale the output
+#                              of the affine component before the log-softmax (if
+#                              include-log-softmax=true), or before the output (if not).  This is
+#                              helpful to avoid instability in training due to some classes having
+#                              much more data than others.  The way we normally create this vector
+#                              is to take the priors of the classes to the power -0.25 and rescale
+#                              them so the average is 1.0.  This factor -0.25 is referred to
+#                              as presoftmax_prior_scale_power in scripts.]
+#                              In the scripts this would normally be set to config_dir/presoftmax_prior_scale.vec
+class XconfigOutputLayer(XconfigLayerBase):
+    def __init__(self, first_token, key_to_value, prev_names = None):
+        assert first_token == 'output-layer'
+        XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
+
+    def SetDefaultConfigs(self):
+        # note: self.config['input'] is a descriptor, '[-1]' means output
+        # the most recent layer.
+        self.config = { 'input':'[-1]', 'dim':-1, 'include-log-softmax':True,
+                        'objective-type':'linear', 'learning-rate-factor':1.0,
+                        'include-log-softmax':True, 'presoftmax-scale-file':'' }
+
+    def CheckConfigs(self):
+        if self.config['dim'] <= 0:
+            raise RuntimeError("In output-layer, dim has invalid value {0}".format(self.config['dim']))
+        if self.config['objective-type'] != 'linear' and self.config['objective_type'] != 'quadratic':
+            raise RuntimeError("In output-layer, objective-type has invalid value {0}".format(
+                    self.config['objective-type']))
+        if self.config['learning-rate-factor'] <= 0.0:
+            raise RuntimeError("In output-layer, learning-rate-factor has invalid value {0}".format(
+                    self.config['learning-rate-factor']))
+
+        pass  # nothing to check; descriptor-parsing can't happen in this function.
+
+
+    # you cannot access the output of this layer from other layers... see
+    # comment in OutputName for the reason why.
+    def Qualifiers(self):
+        return []
+
+    def OutputName(self, qualifier = None):
+        # Note: nodes of type output-node in nnet3 may not be accessed in Descriptors,
+        # so calling this with qualifier=None doesn't make sense.  But it might make
+        # sense to make the output of the softmax layer and/or the output of the
+        # affine layer available as inputs to other layers, in some circumstances.
+        # we'll implement that when it's needed.
+        raise RuntimeError("Outputs of output-layer may not be used by other layers")
+
+    def OutputDim(self, qualifier = None):
+        # see comment in OutputName().
+        raise RuntimeError("Outputs of output-layer may not be used by other layers")
+
+    def GetFullConfig(self):
+        # the input layers need to be printed in 'init.config' (which
+        # initializes the neural network prior to the LDA), in 'ref.config',
+        # which is a version of the config file used for getting left and right
+        # context (it doesn't read anything for the LDA-like transform and/or
+        # presoftmax-prior-scale components)
+        # In 'full.config' we write everything, this is just for reference,
+        # and also for cases where we don't use the LDA-like transform.
+        ans = []
+
+        # note: each value of self.descriptors is (descriptor, dim,
+        # normalized-string, output-string).
+        # by 'descriptor_final_string' we mean a string that can appear in
+        # config-files, i.e. it contains the 'final' names of nodes.
+        descriptor_final_string = self.descriptors['input'][3]
+        input_dim = self.descriptors['input'][1]
+        output_dim = self.config['dim']
+        objective_type = self.config['objective-type']
+        learning_rate_factor = self.config['learning-rate-factor']
+        include_log_softmax = self.config['include-log-softmax']
+        presoftmax_scale_file = self.config['presoftmax-scale-file']
+
+        for config_name in [ 'ref', 'all' ]:
+            # First the affine node.
+            line = ('component name={0}.affine type=NaturalGradientAffineComponent input-dim={1} '
+                    'output-dim={2} param-stddev=0 bias-stddev=0 '.format(
+                    self.name, input_dim, output_dim) +
+                    ('learning-rate-factor={0} '.format(learning_rate_factor)
+                     if learning_rate_factor != 1.0 else ''))
+            ans.append((config_name, line))
+            line = ('component-node name={0}.affine component={0}.affine input={1}'.format(
+                    self.name, descriptor_final_string))
+            ans.append((config_name, line))
+            cur_node = '{0}.affine'.format(descriptor_final_string)
+            if presoftmax_scale_file != '' and config_name == 'all':
+                # don't use the presoftmax-scale in 'ref.config' since that file won't exist at the
+                # time we evaluate it.  (ref.config is used to find the left/right context).
+                line = ('component name={0}.fixed-scale type=FixedScaleComponent scales={1}'.format(
+                        self.name, presoftmax_scale_file))
+                ans.append((config_name, line))
+                line = ('component-node name={0}.fixed-scale component={0}.fixed-scale input={1}'.format(
+                        self.name, cur_node))
+                ans.append((config_name, line))
+                cur_node = '{0}.fixed-scale'.format(self.name)
+            if include_log_softmax:
+                line = ('component name={0}.log-softmax type=LogSoftmaxComponent dim={1}'.format(
+                        self.name, output_dim))
+                ans.append((config_name, line))
+                line = ('component-node name={0}.log-softmax component={0}.log-softmax input={1}'.format(
+                        self.name, cur_node))
+                ans.append((config_name, line))
+                cur_node = '{0}.log-softmax'.format(self.name)
+            line = ('output-node name={0} input={0}.log-softmax'.format(self.name, cur_node))
+            ans.append((config_name, line))
         return ans
 
 
@@ -312,6 +437,8 @@ def ParsedLineToXconfigLayer(first_token, key_to_value, prev_names):
         return XconfigInputLayer(first_token, key_to_value, prev_names)
     elif first_token == 'output':
         return XconfigTrivialOutputLayer(first_token, key_to_value, prev_names)
+    elif first_token == 'output-layer':
+        return XconfigOutputLayer(first_token, key_to_value, prev_names)
     else:
         raise RuntimeError("Error parsing xconfig line (no such layer type): " +
                         first_token + ' ' +

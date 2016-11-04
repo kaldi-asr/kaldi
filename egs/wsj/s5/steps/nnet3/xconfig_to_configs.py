@@ -196,9 +196,10 @@ def WriteConfigFiles(config_dir, all_layers):
             for config_basename, line in pairs:
                 config_basename_to_lines[config_basename].append(line)
         except Exception as e:
-            sys.exit('{0}: error producing config lines from xconfig '
+            print('{0}: error producing config lines from xconfig '
                      'line \'{1}\': error was: {2}'.format(sys.argv[0], str(layer),
-                                                         repr(e)))
+                                                         repr(e)), file=sys.stderr)
+            raise(e)
 
     # currently we don't expect any of the GetFullConfig functions to output to
     # config-basename 'layer1'... currently we just copy this from
@@ -216,8 +217,9 @@ def WriteConfigFiles(config_dir, all_layers):
                 print(line, file=f)
             f.close()
         except Exception as e:
-            sys.exit('{0}: error writing to config file {1}: error is {2}'.format(
-                    sys.argv[0], filename, repr(e)))
+            print('{0}: error writing to config file {1}: error is {2}'.format(
+                    sys.argv[0], filename, repr(e)), file=sys.stderr)
+            raise e
 
 
 
@@ -238,3 +240,4 @@ if __name__ == '__main__':
 
 # test:
 # mkdir -p foo; (echo 'input dim=40 name=input'; echo 'output name=output input=Append(-1,0,1)')  >xconfig; ./xconfig_to_configs.py xconfig foo
+#  mkdir -p foo; (echo 'input dim=40 name=input'; echo 'output-layer name=output dim=1924 input=Append(-1,0,1)')  >xconfig; ./xconfig_to_configs.py xconfig foo
