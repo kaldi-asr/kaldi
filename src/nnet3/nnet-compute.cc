@@ -552,12 +552,12 @@ void NnetComputer::AcceptInputs(const Nnet &nnet,
 
         // TODO(hxu) test the idea first...
         CuMatrix<BaseFloat> cu_input(io.features.NumRows(),
-                                     a->InputDim(),
+                                     a->OutputDim(),
                                      kUndefined);
         CuMatrix<BaseFloat> copied(io.features.NumRows(),
                                    io.features.NumCols(),
                                    kUndefined);
-        cu_input.CopyFromGeneralMat(io.features);
+        copied.CopyFromGeneralMat(io.features);
 
         a->Propagate(NULL, copied, &cu_input);
 //        SparseMatrix<BaseFloat> sp = io.features.GetSparseMatrix();

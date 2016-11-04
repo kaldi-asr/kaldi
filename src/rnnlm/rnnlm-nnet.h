@@ -37,12 +37,14 @@ class LmNnet {
   LmNnet() {
     nnet_ = new Nnet();
   }
+
   ~LmNnet() {
     delete input_projection_;
     delete output_projection_;
     delete output_layer_;
     delete nnet_;
   }
+
   Nnet* GetNnet() {
     return nnet_;
   }
@@ -58,6 +60,7 @@ class LmNnet {
     other->input_projection_ = input_projection_->Copy();
     other->output_projection_ = output_projection_->Copy();
     other->output_layer_ = output_layer_->Copy();
+    other->nnet_ = nnet_->Copy();
 
     return other;
   }

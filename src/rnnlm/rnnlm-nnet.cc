@@ -10,21 +10,29 @@ namespace nnet3 {
 void LmNnet::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<LmNnet>");
   input_projection_ = AffineComponent::ReadNew(is, binary);
-  nnet_->Read(is, binary);
   output_projection_ = AffineComponent::ReadNew(is, binary);
   output_layer_ = NonlinearComponent::ReadNew(is, binary);
+
+  nnet_->Read(is, binary);
+
   ExpectToken(is, binary, "</LmNnet>");
+
+  KALDI_LOG << "Successfully Read LmNnet";
 
 }
 
 void LmNnet::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<LmNnet>");
   input_projection_->Write(os, binary);
-  nnet_->Write(os, binary);
   output_projection_->Write(os, binary);
   output_layer_->Write(os, binary);
+
+  nnet_->Write(os, binary);
   WriteToken(os, binary, "</LmNnet>");
 
+  KALDI_LOG << "Successfully Write LmNnet";
+
+  //
 }
 
 void LmNnet::ReadConfig(std::istream &config_is) {

@@ -12,7 +12,7 @@ SUBDIRS = base matrix util feat tree thread gmm transform sgmm \
           ivector ivectorbin online2 online2bin lmbin chainbin rnnlmbin
 
 MEMTESTDIRS = base matrix util feat tree thread gmm transform sgmm \
-          fstext hmm lm decoder lat nnet kws chain \
+          fstext hmm lm decoder lat nnet kws chain rnnlm \
           bin fstbin gmmbin fgmmbin sgmmbin featbin \
           nnetbin latbin sgmm2 nnet2 nnet3 nnet2bin nnet3bin sgmm2bin kwsbin \
           ivector ivectorbin online2 online2bin lmbin rnnlmbin
