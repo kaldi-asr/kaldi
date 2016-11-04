@@ -160,8 +160,8 @@ void SplitSegments(int32 segment_length, int32 min_remainder,
       // with the iterator it pointing at B1. So when the iterator is
       // incremented in the for loop, it will point to B again, but whose
       // start_frame had been modified.
-      segmentation->Emplace(it, start_frame, start_frame + segment_length - 1,
-                            it->Label());
+      it = segmentation->Emplace(it, start_frame, start_frame + segment_length - 1,
+                                 it->Label());
     }
   }
 #ifdef KALDI_PARANOID

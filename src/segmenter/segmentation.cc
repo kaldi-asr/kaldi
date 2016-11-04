@@ -9,7 +9,7 @@ void Segmentation::PushBack(const Segment &seg) {
   segments_.push_back(seg);
 }
 
-SegmentList::iterator Segmentation::Insert(SegmentList::const_iterator it, 
+SegmentList::iterator Segmentation::Insert(SegmentList::iterator it, 
                                            const Segment &seg) {
   dim_++;
   return segments_.insert(it, seg);
@@ -24,7 +24,7 @@ void Segmentation::EmplaceBack(int32 start_frame, int32 end_frame, int32 class_i
   segments_.push_back(seg);
 }
 
-SegmentList::iterator Segmentation::Emplace(SegmentList::const_iterator it,
+SegmentList::iterator Segmentation::Emplace(SegmentList::iterator it,
                                             int32 start_frame, int32 end_frame, 
                                             int32 class_id) {
   dim_++;
