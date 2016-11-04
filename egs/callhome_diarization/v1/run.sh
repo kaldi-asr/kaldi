@@ -1,17 +1,20 @@
 #!/bin/bash
-# Copyright 2016   TODO for Matthew when he edits this file
-#           2016   David Snyder
+# Copyright 2016  David Snyder
+#           201   Vimal Manohar
 # Apache 2.0.
 #
 # TODO details on what this does.
-# See README.txt for more info on the required data.
+# See README for more info on the required data.
 
 . cmd.sh
 . path.sh
 set -e
 mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
+num_components=2048
+ivector_dim=128
 
+if [ 0 = 1 ]; then
 # Prepare a collection of NIST SRE data.
 # TODO: This will probably be useful for UBM, ivector extractor training, and possibly, PLDA
 #
@@ -46,5 +49,31 @@ for name in sre train callhome; do
       data/$name exp/make_vad $vaddir
   utils/fix_data_dir.sh data/$name
 done
+
+# Reduce the amount of training data for the UBM.
+utils/subset_data_dir.sh data/train 16000 data/train_16k
+utils/subset_data_dir.sh data/train 32000 data/train_32k
+
+# Train UBM and i-vector extractor.
+sid/train_diag_ubm.sh --cmd "$train_cmd -l mem_free=20G,ram_free=20G" \
+  --nj 20 --num-threads 8 \
+  --delta-order 1 \
+  data/train_16k $num_components \
+  exp/diag_ubm_$num_components
+
+sid/train_full_ubm.sh --nj 40 --remove-low-count-gaussians false \
+  --cmd "$train_cmd -l mem_free=25G,ram_free=25G" data/train_32k \
+  exp/diag_ubm_$num_components exp/full_ubm_$num_components
+
+sid/train_ivector_extractor.sh --cmd "$train_cmd -l mem_free=35G,ram_free=35G" \
+  --ivector-dim $ivector_dim \
+  --num-iters 5 exp/full_ubm_$num_components/final.ubm data/train \
+  exp/extractor_c${num_components}_i${ivector_dim}
+fi
+
+sid/extract_ivectors_dense.sh --cmd "$train_cmd --mem 15G" \
+  --chunk-size 128 --period 64 \
+  exp/extractor_c${num_components}_i${ivector_dim} data/callhome_no_segs \
+  data/callhome/segments exp/ivectors_callhome
 
 # TODO the rest of the script...
