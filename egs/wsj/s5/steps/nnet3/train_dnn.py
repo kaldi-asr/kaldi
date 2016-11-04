@@ -598,7 +598,7 @@ def Train(args, run_opts):
                     [report, times, data] = nnet3_log_parse.GenerateAccuracyReport(args.dir)
                     message = report
                     subject = "Update : Expt {dir} : Iter {iter}".format(dir = args.dir, iter = iter)
-                    sendMail(message, subject, args.email)
+                    SendMail(message, subject, args.email)
 
         num_archives_processed = num_archives_processed + current_num_jobs
 
@@ -646,7 +646,7 @@ def Main():
     except Exception as e:
         if args.email is not None:
             message = "Training session for experiment {dir} died due to an error.".format(dir = args.dir)
-            sendMail(message, message, args.email)
+            SendMail(message, message, args.email)
         traceback.print_exc()
         raise e
 

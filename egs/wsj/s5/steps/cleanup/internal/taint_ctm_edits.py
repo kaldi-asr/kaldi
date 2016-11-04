@@ -132,12 +132,12 @@ def ProcessData():
     try:
         f_in = open(args.ctm_edits_in)
     except:
-        sys.exit("modify_ctm_edits.py: error opening ctm-edits input "
+        sys.exit("taint_ctm_edits.py: error opening ctm-edits input "
                  "file {0}".format(args.ctm_edits_in))
     try:
         f_out = open(args.ctm_edits_out, 'w')
     except:
-        sys.exit("modify_ctm_edits.py: error opening ctm-edits output "
+        sys.exit("taint_ctm_edits.py: error opening ctm-edits output "
                  "file {0}".format(args.ctm_edits_out))
     num_lines_processed = 0
 
@@ -147,10 +147,10 @@ def ProcessData():
     # and then printing the modified lines.
     first_line = f_in.readline()
     if first_line == '':
-        sys.exit("modify_ctm_edits.py: empty input")
+        sys.exit("taint_ctm_edits.py: empty input")
     split_pending_line = first_line.split()
     if len(split_pending_line) == 0:
-        sys.exit("modify_ctm_edits.py: bad input line " + first_line)
+        sys.exit("taint_ctm_edits.py: bad input line " + first_line)
     cur_utterance = split_pending_line[0]
     split_lines_of_cur_utterance = []
 
@@ -170,7 +170,7 @@ def ProcessData():
         split_pending_line = next_line.split()
         if len(split_pending_line) == 0:
             if next_line != '':
-                sys.exit("modify_ctm_edits.py: got an empty or whitespace input line")
+                sys.exit("taint_ctm_edits.py: got an empty or whitespace input line")
     try:
         f_out.close()
     except:
@@ -181,13 +181,13 @@ def PrintNonScoredStats():
     if args.verbose < 1:
         return
     if num_lines == 0:
-        print("modify_ctm_edits.py: processed no input.", file = sys.stderr)
+        print("taint_ctm_edits.py: processed no input.", file = sys.stderr)
     num_lines_modified = sum(ref_change_stats.values())
     num_incorrect_lines = num_lines - num_correct_lines
     percent_lines_incorrect= '%.2f' % (num_incorrect_lines * 100.0 / num_lines)
     percent_modified = '%.2f' % (num_lines_modified * 100.0 / num_lines);
     percent_of_incorrect_modified = '%.2f' % (num_lines_modified * 100.0 / num_incorrect_lines)
-    print("modify_ctm_edits.py: processed {0} lines of ctm ({1}% of which incorrect), "
+    print("taint_ctm_edits.py: processed {0} lines of ctm ({1}% of which incorrect), "
           "of which {2} were changed fixing the reference for non-scored words "
           "({3}% of lines, or {4}% of incorrect lines)".format(
             num_lines, percent_lines_incorrect, num_lines_modified,
@@ -198,7 +198,7 @@ def PrintNonScoredStats():
                   key = lambda x: ref_change_stats[x])
     num_keys_to_print = 40 if args.verbose >= 2 else 10
 
-    print("modify_ctm_edits.py: most common edits (as percentages "
+    print("taint_ctm_edits.py: most common edits (as percentages "
           "of all such edits) are:\n" +
           ('\n'.join([ '%s [%.2f%%]' % (k, ref_change_stats[k]*100.0/num_lines_modified)
                      for k in keys[0:num_keys_to_print]]))

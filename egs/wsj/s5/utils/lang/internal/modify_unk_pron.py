@@ -14,7 +14,8 @@ from collections import defaultdict
 parser = argparse.ArgumentParser(description="""
 This script replaces the existing pronunciation of the
 unknown word in the provided lexicon, with a pronunciation
-consisting of two disambiguation symbols: #1 followed by #2.
+consisting of three disambiguation symbols: #1 followed by #2
+followed by #3.
 The #2 will later be replaced by a phone-level LM by
 apply_unk_lm.sh (called later on by prepare_lang.sh).
 Caution: this script is sensitive to the basename of the
@@ -87,7 +88,7 @@ if unk_index == -1:
 lexicon_in.close()
 
 # now modify the pron.
-split_lines[unk_index] = split_lines[unk_index][0:num_fields_before_pron] + [ '#1', '#2' ]
+split_lines[unk_index] = split_lines[unk_index][0:num_fields_before_pron] + [ '#1', '#2', '#3' ]
 
 
 try:
