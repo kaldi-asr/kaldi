@@ -27,6 +27,12 @@ def GetPrevNames(all_layers, current_layer):
         if layer is current_layer:
             break
         prev_names.append(layer.Name())
+    prev_names_set = set()
+    for name in prev_names:
+        if name in prev_names_set:
+            raise RuntimeError("{0}: Layer name {1} is used more than once.".format(
+                    sys.argv[0], name))
+        prev_names_set.add(name)
     return prev_names
 
 # [utility function used in xconfig_layers.py]

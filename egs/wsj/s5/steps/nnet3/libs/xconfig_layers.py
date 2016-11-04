@@ -349,8 +349,6 @@ class XconfigOutputLayer(XconfigLayerBase):
             raise RuntimeError("In output-layer, learning-rate-factor has invalid value {0}".format(
                     self.config['learning-rate-factor']))
 
-        pass  # nothing to check; descriptor-parsing can't happen in this function.
-
 
     # you cannot access the output of this layer from other layers... see
     # comment in OutputName for the reason why.
@@ -370,13 +368,6 @@ class XconfigOutputLayer(XconfigLayerBase):
         raise RuntimeError("Outputs of output-layer may not be used by other layers")
 
     def GetFullConfig(self):
-        # the input layers need to be printed in 'init.config' (which
-        # initializes the neural network prior to the LDA), in 'ref.config',
-        # which is a version of the config file used for getting left and right
-        # context (it doesn't read anything for the LDA-like transform and/or
-        # presoftmax-prior-scale components)
-        # In 'full.config' we write everything, this is just for reference,
-        # and also for cases where we don't use the LDA-like transform.
         ans = []
 
         # note: each value of self.descriptors is (descriptor, dim,
@@ -391,6 +382,9 @@ class XconfigOutputLayer(XconfigLayerBase):
         include_log_softmax = self.config['include-log-softmax']
         presoftmax_scale_file = self.config['presoftmax-scale-file']
 
+
+        # note: ref.config is used only for getting the left-context and right-context
+        # of the network; all.config is where we put the actual network definition.
         for config_name in [ 'ref', 'all' ]:
             # First the affine node.
             line = ('component name={0}.affine type=NaturalGradientAffineComponent input-dim={1} '
@@ -402,7 +396,7 @@ class XconfigOutputLayer(XconfigLayerBase):
             line = ('component-node name={0}.affine component={0}.affine input={1}'.format(
                     self.name, descriptor_final_string))
             ans.append((config_name, line))
-            cur_node = '{0}.affine'.format(descriptor_final_string)
+            cur_node = '{0}.affine'.format(self.name)
             if presoftmax_scale_file != '' and config_name == 'all':
                 # don't use the presoftmax-scale in 'ref.config' since that file won't exist at the
                 # time we evaluate it.  (ref.config is used to find the left/right context).
@@ -426,6 +420,114 @@ class XconfigOutputLayer(XconfigLayerBase):
         return ans
 
 
+# This class is for lines like
+#  'relu-renorm-layer name=layer1 dim=1024 input=Append(-3,0,3)'
+# or:
+#  'sigmoid-layer name=layer1 dim=1024 input=Append(-3,0,3)'
+# Here, the name of the layer itself dictates the sequence of nonlinearities
+# that are applied; the name should contain some combination of 'relu', 'renorm',
+# 'sigmoid' and 'tanh', and these nonlinearities will be added after the
+# affine component.
+#
+# The dimension specified is the output dim; the input dim is worked out from the input descriptor.
+# This class supports only nonlinearity types that do not change the dimension; we can create
+# another layer type to enable the use p-norm and similar dimension-reducing nonlinearities.
+#
+# See other configuration values below.
+#
+# Parameters of the class, and their defaults:
+#   input='[-1]'             [Descriptor giving the input of the layer.]
+#   dim=-1                   [Output dimension of layer, e.g. 1024]
+#   self-repair-scale=1.0e-05  [Affects relu, sigmoid and tanh layers.]
+#
+# Configuration values that we might one day want to add here, but which we
+# don't yet have, include target-rms (affects 'renorm' component).
+class XconfigSimpleLayer(XconfigLayerBase):
+    def __init__(self, first_token, key_to_value, prev_names = None):
+        # Here we just list some likely combinations.. you can just add any
+        # combinations you want to use, to this list.
+        assert first_token in [ 'relu-layer', 'relu-renorm-layer', 'sigmoid-layer',
+                                'tanh-layer' ]
+        XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
+
+    def SetDefaultConfigs(self):
+        # note: self.config['input'] is a descriptor, '[-1]' means output
+        # the most recent layer.
+        self.config = { 'input':'[-1]', 'dim':-1, 'self-repair-scale':1.0e-05 }
+
+    def CheckConfigs(self):
+        if self.config['dim'] <= 0:
+            raise RuntimeError("In {0}, dim has invalid value {1}".format(self.layer_type,
+                                                                          self.config['dim']))
+        if self.config['self-repair-scale'] < 0.0 or self.config['self-repair-scale'] > 1.0:
+            raise RuntimeError("In {0}, objective-type has invalid value {0}".format(
+                    self.layer_type, self.config['self-repair-scale']))
+
+    def OutputName(self, qualifier = None):
+        assert qualifier == None
+
+        split_layer_name = self.layer_type.split('-')
+        assert split_layer_name[-1] == 'layer'
+        last_nonlinearity = split_layer_name[-2]
+        # return something like: layer3.renorm
+        return '{0}.{1}'.format(self.name, last_nonlinearity)
+
+    def OutputDim(self, qualifier = None):
+        return self.config['dim']
+
+    def GetFullConfig(self):
+
+        ans = []
+
+        split_layer_name = self.layer_type.split('-')
+        assert split_layer_name[-1] == 'layer'
+        nonlinearities = split_layer_name[:-1]
+
+        # note: each value of self.descriptors is (descriptor, dim,
+        # normalized-string, output-string).
+        # by 'descriptor_final_string' we mean a string that can appear in
+        # config-files, i.e. it contains the 'final' names of nodes.
+        descriptor_final_string = self.descriptors['input'][3]
+        input_dim = self.descriptors['input'][1]
+        output_dim = self.config['dim']
+        self_repair_scale = self.config['self-repair-scale']
+
+        for config_name in [ 'ref', 'all' ]:
+            # First the affine node.
+            line = ('component name={0}.affine type=NaturalGradientAffineComponent input-dim={1} '
+                    'output-dim={2} '.format(self.name, input_dim, output_dim))
+            ans.append((config_name, line))
+            line = ('component-node name={0}.affine component={0}.affine input={1}'.format(
+                    self.name, descriptor_final_string))
+            ans.append((config_name, line))
+            cur_node = '{0}.affine'.format(self.name)
+
+            for nonlinearity in nonlinearities:
+                if nonlinearity == 'relu':
+                    line = ('component name={0}.{1} type=RectifiedLinearComponent dim={2} '
+                            'self-repair-scale={3}'.format(self.name, nonlinearity, output_dim,
+                                                           self_repair_scale))
+                elif nonlinearity == 'sigmoid':
+                    line = ('component name={0}.{1} type=SigmoidComponent dim={2} '
+                            'self-repair-scale={3}'.format(self.name, nonlinearity, output_dim,
+                                                           self_repair_scale))
+                elif nonlinearity == 'tanh':
+                    line = ('component name={0}.{1} type=TanhComponent dim={2} '
+                            'self-repair-scale={3}'.format(self.name, nonlinearity, output_dim,
+                                                           self_repair_scale))
+                elif nonlinearity == 'renorm':
+                    line = ('component name={0}.{1} type=NormalizeComponent dim={2} '.format(
+                            self.name, nonlinearity, output_dim))
+                else:
+                    raise RuntimeError("Unknown nonlinearity type: {0}".format(nonlinearity))
+                ans.append((config_name, line))
+                line = 'component-node name={0}.{1} component={0}.{1} input={2}'.format(
+                    self.name, nonlinearity, cur_node)
+                ans.append((config_name, line))
+                cur_node = '{0}.{1}'.format(self.name, nonlinearity)
+        return ans
+
+
 # Converts a line as parsed by ParseConfigLine() into a first
 # token e.g. 'input-layer' and a key->value map, into
 # an objet inherited from XconfigLayerBase.
@@ -439,6 +541,8 @@ def ParsedLineToXconfigLayer(first_token, key_to_value, prev_names):
         return XconfigTrivialOutputLayer(first_token, key_to_value, prev_names)
     elif first_token == 'output-layer':
         return XconfigOutputLayer(first_token, key_to_value, prev_names)
+    elif first_token in [ 'relu-layer', 'relu-renorm-layer', 'sigmoid-layer', 'tanh-layer' ]:
+        return XconfigSimpleLayer(first_token, key_to_value, prev_names)
     else:
         raise RuntimeError("Error parsing xconfig line (no such layer type): " +
                         first_token + ' ' +
