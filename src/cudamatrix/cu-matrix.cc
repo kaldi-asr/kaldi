@@ -1756,6 +1756,37 @@ void CuMatrixBase<Real>::DiffXent(const CuArray<int32> &tgt,
   }
 }
 
+template<typename Real>
+void CuMatrixBase<Real>::AddSpatialRegularizationDeriv(
+    const CuMatrixBase<Real>& out_value, BaseFloat scale,
+    BaseFloat* regularization_sqsum) {
+  KALDI_ASSERT(SameDim(*this, out_value));
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    const unsigned int kBlockSize = 256;
+    const unsigned int kSectWidth = 16;
+    dim3 dimBlock(kSectWidth, kBlockSize / kSectWidth);
+    dim3 dimGrid(n_blocks(this->NumCols(), kBlockSize), this->NumRows());
+    if (regularization_sqsum) {
+      CuVectorBase<Real> sqsum(dimGrid.x * dimGrid.y);
+      cuda_add_spatial_regularization_deriv(dimGrid, dimBlock, out_value.Data(),
+                                            out_value.Dim(), this->Data(),
+                                            this->Stride(), scale,
+                                            sqsum.Data());
+      *regularization_sqsum = sqsum.Sum();
+    } else {
+      cuda_add_spatial_regularization_deriv(dimGrid, dimBlock, out_value.Data(),
+                                            out_value.Dim(), this->Data(),
+                                            this->Stride(), scale, NULL);
+    }
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+
+  }
+}
 
 template<typename Real>
 void CuMatrixBase<Real>::Cholesky(CuMatrixBase<Real> *inv_cholesky) {
