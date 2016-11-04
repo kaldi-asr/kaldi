@@ -25,6 +25,7 @@
 #include "nnet3/nnet-computation.h"
 #include "nnet3/nnet-analyze.h"
 #include "nnet3/nnet-example.h"
+#include "nnet3/nnet-simple-component.h"
 
 #include <iostream>
 #include <sstream>
@@ -82,7 +83,7 @@ class NnetComputer {
   /// inputs from outputs.
   void AcceptInputs(const Nnet &nnet,
                     const std::vector<NnetIo> &io,
-                    const CuMatrix<BaseFloat> &projection = CuMatrix<BaseFloat>());
+                    AffineComponent* a = NULL);
 
 
   // Does the forward computation.

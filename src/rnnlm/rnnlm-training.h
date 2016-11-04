@@ -20,10 +20,12 @@
 #define KALDI_RNNLM_RNNLM_TRAINING_H_
 
 #include "nnet3/nnet-example.h"
+#include "nnet3/nnet-simple-component.h"
 #include "nnet3/nnet-computation.h"
 #include "nnet3/nnet-compute.h"
 #include "nnet3/nnet-optimize.h"
 #include "nnet3/nnet-example-utils.h"
+#include "rnnlm/rnnlm-nnet.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -153,7 +155,7 @@ struct ObjectiveFunctionInfo {
 class LmNnetTrainer {
  public:
   LmNnetTrainer(const LmNnetTrainerOptions &config,
-              Nnet *nnet);
+              LmNnet *nnet);
 
   // train on one minibatch.
   void Train(const NnetExample &eg);
@@ -167,8 +169,8 @@ class LmNnetTrainer {
                       NnetComputer *computer);
 
   const LmNnetTrainerOptions config_;
-  Nnet *nnet_;
-  Nnet *delta_nnet_;  // Only used if momentum != 0.0 or max-param-change !=
+  LmNnet *nnet_;
+  LmNnet *delta_nnet_;  // Only used if momentum != 0.0 or max-param-change !=
                       // 0.0.  nnet representing accumulated parameter-change
                       // (we'd call this gradient_nnet_, but due to
                       // natural-gradient update, it's better to consider it as
@@ -182,9 +184,6 @@ class LmNnetTrainer {
   int32 num_minibatches_processed_;
 
   unordered_map<std::string, ObjectiveFunctionInfo, StringHasher> objf_info_;
-
-  CuMatrix<BaseFloat> input_projection_;
-  CuMatrix<BaseFloat> output_projection_;
 };
 
 /**
@@ -227,7 +226,9 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
                               bool supply_deriv,
                               NnetComputer *computer,
                               BaseFloat *tot_weight,
-                              BaseFloat *tot_objf);
+                              BaseFloat *tot_objf,
+                              Component *output_projection_1,
+                              Component *output_projection_2);
 
 
 

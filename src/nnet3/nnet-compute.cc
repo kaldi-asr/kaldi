@@ -535,33 +535,40 @@ void NnetComputer::CheckInputs(bool check_output_deriv) const {
 
 void NnetComputer::AcceptInputs(const Nnet &nnet,
                                 const std::vector<NnetIo> &io_vec,
-                                const CuMatrix<BaseFloat> &projection) {
+                                AffineComponent* a) {
   for (size_t i = 0; i < io_vec.size(); i++) {
     const NnetIo &io = io_vec[i];
     int32 node_index = nnet.GetNodeIndex(io.name);
     if (node_index == -1)
       KALDI_ERR << "No node named '" << io.name << "' in nnet.";
     if (nnet.IsInputNode(node_index)) {
-      if (projection.NumRows() == 0) {
+      if (a == NULL) {
         CuMatrix<BaseFloat> cu_input(io.features.NumRows(),
                                      io.features.NumCols(),
                                      kUndefined);
         cu_input.CopyFromGeneralMat(io.features);
         this->AcceptInput(io.name, &cu_input);
       } else {
+
+        // TODO(hxu) test the idea first...
         CuMatrix<BaseFloat> cu_input(io.features.NumRows(),
-                                     projection.NumCols(),
+                                     a->OutputDim(),
                                      kUndefined);
+        CuMatrix<BaseFloat> copied(io.features.NumRows(),
+                                   io.features.NumCols(),
+                                   kUndefined);
+        cu_input.CopyFromGeneralMat(io.features);
 
-        SparseMatrix<BaseFloat> sp = io.features.GetSparseMatrix();
-
-        for (size_t i = 0; i < sp.NumRows(); i++) {
-          SparseVector<BaseFloat> sv = sp.Row(i);
-          int non_zero_index = -1;
-          sv.Max(&non_zero_index);
-//          cu_input.CopyRows(projection.RowData(non_zero_index));
-          cu_input.CopyRowsFromVec(projection.Row(non_zero_index));
-        }
+        a->Propagate(NULL, copied, &cu_input);
+//        SparseMatrix<BaseFloat> sp = io.features.GetSparseMatrix();
+//
+//        for (size_t i = 0; i < sp.NumRows(); i++) {
+//          SparseVector<BaseFloat> sv = sp.Row(i);
+//          int non_zero_index = -1;
+//          sv.Max(&non_zero_index);
+////          cu_input.CopyRows(projection.RowData(non_zero_index));
+//          cu_input.CopyRowsFromVec(projection.Row(non_zero_index));
+//        }
         this->AcceptInput(io.name, &cu_input);
       }
     }

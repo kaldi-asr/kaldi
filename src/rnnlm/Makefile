@@ -6,7 +6,7 @@ include ../kaldi.mk
 LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
 
-OBJFILES = rnnlm-utils.o rnnlm-training.o
+OBJFILES = rnnlm-utils.o  rnnlm-nnet.o rnnlm-training.o
 
 LIBNAME = kaldi-rnnlm
 
