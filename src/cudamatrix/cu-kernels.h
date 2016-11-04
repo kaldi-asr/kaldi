@@ -606,10 +606,10 @@ inline void cuda_diff_log_softmax(dim3 Gr, dim3 Bl,
 }
 inline void cuda_add_spatial_regularization_deriv(
     dim3 Gr, dim3 Bl, const float* out_value, const MatrixDim out_value_dim,
-    float* out_deriv, const int out_deriv_stride, float* regularization_sqsum,
-    const MatrixDim regularization_sqsum_stride) {
+    float* out_deriv, const int out_deriv_stride, const float scale,
+    float* regularization_sqsum, const MatrixDim regularization_sqsum_stride) {
   cudaF_add_spatial_regularization_deriv(Gr, Bl, out_value, out_value_dim,
-                                         out_deriv, out_deriv_stride,
+                                         out_deriv, out_deriv_stride, scale,
                                          regularization_sqsum,
                                          regularization_sqsum_stride);
 }
@@ -1152,10 +1152,10 @@ inline void cuda_diff_log_softmax(dim3 Gr, dim3 Bl,
 }
 inline void cuda_add_spatial_regularization_deriv(
     dim3 Gr, dim3 Bl, const double* out_value, const MatrixDim out_value_dim,
-    double* out_deriv, const int out_deriv_stride, double* regularization_sqsum,
-    const MatrixDim regularization_sqsum_stride) {
+    double* out_deriv, const int out_deriv_stride, const double scale,
+    double* regularization_sqsum, const MatrixDim regularization_sqsum_stride) {
   cudaD_add_spatial_regularization_deriv(Gr, Bl, out_value, out_value_dim,
-                                         out_deriv, out_deriv_stride,
+                                         out_deriv, out_deriv_stride, scale,
                                          regularization_sqsum,
                                          regularization_sqsum_stride);
 }

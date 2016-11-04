@@ -2629,19 +2629,109 @@ static void _diff_log_softmax(const MatrixDim in_deriv_dim,
   }
 }
 
-/// Add spatial regularization term to `out_deriv`.
+/// This CUDA kernel implements the idea 'spatial smoothing' as described in
+/// the paper https://arxiv.org/pdf/1610.05256v1.pdf
+///
+/// It adds spatial regularization term to `out_deriv`.
 /// The regularization term is calculated from `out_value`.
-/// Each row of `out_value` is first viewed as a 16*n grid,
-/// convoluted with the 3x3 kernel, scaled with `scale`
+/// Each row of `out_value` is first viewed as a n*16 or n*32 2D image,
+/// high-pass filtered by a 3x3 kernel, scaled with `scale`
 /// and then added to `out_deriv`.
 /// If regularization_sqsum is not NULL, the squared sum of the
 /// regularization term will be calculated and stored.
+///
+/// This CUDA kernel uses 2D grid. Each row of the grid handles one row of
+/// data matrices including `out_value` and `out_deriv`.
+/// Each thread block contains 256 threads. Each thread handles one element
+/// of the data matrices, thus we may need more than one block per grid row to
+/// cover the matrix row dim.
+/// The thread block also has 2D, with a row width of 16/32, matching the width
+/// of the image mentioned above.
 template<typename Real>
 __global__
 static void _add_spatial_regularization_deriv(
     const Real* out_value, const MatrixDim out_value_dim, Real* out_deriv,
-    const int out_deriv_stride, Real* regularization_sqsum,
+    const int out_deriv_stride, const Real scale, Real* regularization_sqsum,
     const int regularization_sqsum_stride) {
+  const unsigned int kBlockSize = 256;
+  const unsigned int kSectWidth = 16;
+  __shared__ union {
+    Real buf[kBlockSize/kSectWidth+2][kSectWidth];
+    Real sum[kBlockSize];
+  } smem;
+
+  const int i = blockIdx.y;
+  const int tid = threadIdx.y * blockDim.x + threadIdx.x;
+  const int j = blockIdx.x * kBlockSize + tid;
+
+
+  // Cache global mem data `out_value` to shared mem
+  if (threadIdx.y == 0) {
+    // Leading apron
+    if (blockIdx.x == 0) {
+      Real tmp = Real(0);
+      const int apron_j = ((out_value_dim.cols - 1) & (~(kSectWidth - 1)))
+          + threadIdx.x;
+      if (apron_j < out_value_dim.cols) {
+        tmp = out_value[i * out_value_dim.stride + apron_j];
+      }
+      smem.buf[0][threadIdx.x] = tmp;
+    } else {
+      smem.buf[0][threadIdx.x] = out_value[i * out_value_dim.stride + j
+          - kSectWidth];
+    }
+    // Tailing apron
+
+  }
+  Real val = Real(0);
+  if (j < out_value_dim.cols) {
+    val = out_value[i * out_value_dim.stride + j];
+  }
+  smem.buf[threadIdx.y + 1][threadIdx.x] = val;
+  __syncthreads();
+
+  // circular convolution and scaled adding to `out_deriv`
+  if (j < out_value_dim.cols) {
+    val -= 0.125
+        * (sbuf[(tid - kSectWidth - 1) & (kBlockSize - 1)]
+            + sbuf[(tid - kSectWidth) & (kBlockSize - 1)]
+            + sbuf[(tid - kSectWidth + 1) & (kBlockSize - 1)]
+            + sbuf[(tid - 1) & (kBlockSize - 1)]
+            + sbuf[(tid + 1) & (kBlockSize - 1)]
+            + sbuf[(tid + kSectWidth - 1) & (kBlockSize - 1)]
+            + sbuf[(tid + kSectWidth) & (kBlockSize - 1)]
+            + sbuf[(tid + kSectWidth + 1) & (kBlockSize - 1)]);
+    out_deriv[i * out_deriv_stride + j] += scale * val;
+  }
+
+  // compute the regularization value
+  if (regularization_sqsum) {
+    __syncthreads();
+    sbuf[tid] = val * val;
+    __syncthreads();
+
+    // Tree reduce to 2x warpSize elements.
+#   pragma unroll
+    for (int shift = kBlockSize / 2; shift > warpSize; shift >>= 1) {
+      if (tid < shift) {
+        sbuf[tid] += sbuf[tid + shift];
+      }
+      __syncthreads();
+    }
+
+    // Warp reduce to 1 element. Threads implicitly synchronized within a warp.
+    if (tid < warpSize) {
+#     pragma unroll
+      for (int shift = warpSize; shift > 0; shift >>= 1) {
+        sbuf[tid] += sbuf[tid + shift];
+      }
+    }
+
+    if (tid == 0) {
+      regularization_sqsum[i * regularization_sqsum_stride + blockIdx.x] =
+          sbuf[0];
+    }
+  }
 }
 
 /***********************************************************************
@@ -3267,10 +3357,10 @@ void cudaF_diff_log_softmax(dim3 Gr, dim3 Bl, const MatrixDim in_deriv_dim,
 
 void cudaF_add_spatial_regularization_deriv(
     dim3 Gr, dim3 Bl, const float* out_value, const MatrixDim out_value_dim,
-    float* out_deriv, const int out_deriv_stride, float* regularization_sqsum,
-    const int regularization_sqsum_stride) {
+    float* out_deriv, const int out_deriv_stride, const float scale,
+    float* regularization_sqsum, const int regularization_sqsum_stride) {
   _add_spatial_regularization_deriv<<<Gr, Bl>>>(out_value, out_value_dim,
-      out_deriv, out_deriv_stride, regularization_sqsum,
+      out_deriv, out_deriv_stride, scale, regularization_sqsum,
       regularization_sqsum_stride);
 }
 
@@ -3905,10 +3995,10 @@ void cudaD_diff_log_softmax(dim3 Gr, dim3 Bl, const MatrixDim in_deriv_dim,
 
 void cudaD_add_spatial_regularization_deriv(
     dim3 Gr, dim3 Bl, const double* out_value, const MatrixDim out_value_dim,
-    double* out_deriv, const int out_deriv_stride, double* regularization_sqsum,
-    const int regularization_sqsum_stride) {
+    double* out_deriv, const int out_deriv_stride, const double scale,
+    double* regularization_sqsum, const int regularization_sqsum_stride) {
   _add_spatial_regularization_deriv<<<Gr, Bl>>>(out_value, out_value_dim,
-      out_deriv, out_deriv_stride, regularization_sqsum,
+      out_deriv, out_deriv_stride, scale, regularization_sqsum,
       regularization_sqsum_stride);
 }
 
