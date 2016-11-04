@@ -528,6 +528,84 @@ class XconfigSimpleLayer(XconfigLayerBase):
         return ans
 
 
+# This class is for lines like
+#  'fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=foo/bar/lda.mat'
+#
+# The output dimension of the layer may be specified via 'dim=xxx', but if not specified,
+# the dimension defaults to the same as the input.  Note: we don't attempt to read that
+# file at the time the config is created, because in the recipes, that file is created
+# after the config files.
+#
+# See other configuration values below.
+#
+# Parameters of the class, and their defaults:
+#   input='[-1]'             [Descriptor giving the input of the layer.]
+#   dim=-1                   [Output dimension of layer; defaults to the same as the input dim.]
+#   affine-transform-file='' [Must be specified.]
+#
+# Configuration values that we might one day want to add here, but which we
+# don't yet have, include target-rms (affects 'renorm' component).
+class XconfigFixedAffineLayer(XconfigLayerBase):
+    def __init__(self, first_token, key_to_value, prev_names = None):
+        assert first_token == 'fixed-affine-layer'
+        XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
+
+    def SetDefaultConfigs(self):
+        # note: self.config['input'] is a descriptor, '[-1]' means output
+        # the most recent layer.
+        self.config = { 'input':'[-1]', 'dim':-1, 'affine-transform-file':'' }
+
+    def CheckConfigs(self):
+        if self.config['affine-transform-file'] == '':
+            raise RuntimeError("In fixed-affine-layer, affine-transform-file must be set.")
+
+    def OutputName(self, qualifier = None):
+        assert qualifier == None
+        return self.name
+
+    def OutputDim(self, qualifier = None):
+        output_dim = self.config['dim']
+        # If not set, the output-dim defaults to the input-dim.
+        if output_dim <= 0:
+            output_dim = self.descriptors['input'][1]
+        return output_dim
+
+    def GetFullConfig(self):
+        ans = []
+
+        # note: each value of self.descriptors is (descriptor, dim,
+        # normalized-string, output-string).
+        # by 'descriptor_final_string' we mean a string that can appear in
+        # config-files, i.e. it contains the 'final' names of nodes.
+        descriptor_final_string = self.descriptors['input'][3]
+        input_dim = self.descriptors['input'][1]
+        output_dim = self.config['dim']
+        transform_file = self.config['affine-transform-file']
+        if output_dim <= 0:
+            output_dim = input_dim
+
+
+        # to init.config we write an output-node with the name 'output' and
+        # with a Descriptor equal to the descriptor that's the input to this
+        # layer.  This will be used to accumulate stats to learn the LDA transform.
+        line = 'output-node name=output input={0}'.format(descriptor_final_string)
+        ans.append(('init', line))
+
+        # write the 'real' component to all.config
+        line = 'component name={0} type=FixedAffineComponent matrix={1}'.format(
+            self.name, transform_file)
+        ans.append(('all', line))
+        # write a random version of the component, with the same dims, to ref.config
+        line = 'component name={0} type=FixedAffineComponent input-dim={1} output-dim={2}'.format(
+            self.name, input_dim, output_dim)
+        ans.append(('ref', line))
+        # the component-node gets written to all.config and ref.config.
+        line = 'component-node name={0} component={0} input={1}'.format(
+            self.name, descriptor_final_string)
+        ans.append(('all', line))
+        ans.append(('ref', line))
+        return ans
+
 # Converts a line as parsed by ParseConfigLine() into a first
 # token e.g. 'input-layer' and a key->value map, into
 # an objet inherited from XconfigLayerBase.
@@ -543,10 +621,12 @@ def ParsedLineToXconfigLayer(first_token, key_to_value, prev_names):
         return XconfigOutputLayer(first_token, key_to_value, prev_names)
     elif first_token in [ 'relu-layer', 'relu-renorm-layer', 'sigmoid-layer', 'tanh-layer' ]:
         return XconfigSimpleLayer(first_token, key_to_value, prev_names)
+    elif first_token == 'fixed-affine-layer':
+        return XconfigFixedAffineLayer(first_token, key_to_value, prev_names)
     else:
         raise RuntimeError("Error parsing xconfig line (no such layer type): " +
                         first_token + ' ' +
-                        ' '.join(['{0} {1}'.format(x,y) for x,y in key_to_value.items()]))
+                        ' '.join(['{0}={1}'.format(x,y) for x,y in key_to_value.items()]))
 
 
 # Uses ParseConfigLine() to turn a config line that has been parsed into
