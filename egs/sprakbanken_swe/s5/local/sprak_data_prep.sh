@@ -62,8 +62,7 @@ if [ ! -d $dir/download/0468 ]; then
     echo "Corpus unpacked succesfully."
 fi
 
-
-sph2pipe=$KALDI_ROOT/tools/sph2pipe_v2.5/sph2pipe
+sph2pipe=$(which sph2pipe) || sph2pipe=$KALDI_ROOT/tools/sph2pipe_v2.5/sph2pipe
 if [ ! -x $sph2pipe ]; then
    echo "Could not find (or execute) the sph2pipe program at $sph2pipe . Did you run 'make' in the tools directory?";
    exit 1;
