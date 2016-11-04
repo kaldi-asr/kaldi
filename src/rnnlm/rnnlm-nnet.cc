@@ -28,6 +28,12 @@ void LmNnet::Write(std::ostream &os, bool binary) const {
 }
 
 void LmNnet::ReadConfig(std::istream &config_is) {
+
+  // TODO(hxu) will allow for more flexible types
+  input_projection_ = new NaturalGradientAffineComponent();
+  output_projection_ = new NaturalGradientAffineComponent();
+  output_layer_ =  new LogSoftmaxComponent();
+
   std::vector<string> lines(3);
   std::vector<ConfigLine> config_lines(3);
   

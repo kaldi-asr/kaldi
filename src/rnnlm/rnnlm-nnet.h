@@ -35,11 +35,10 @@ namespace nnet3 {
 class LmNnet {
  public:
   LmNnet() {
-    // TODO(hxu)
-    input_projection_ = new NaturalGradientAffineComponent();
-    output_projection_ = new NaturalGradientAffineComponent();
-    output_layer_ =  new LogSoftmaxComponent();
-  
+    nnet_ = new Nnet();
+  }
+  ~LmNnet() {
+    delete nnet_;
   }
   Nnet* GetNnet() {
     return nnet_;
