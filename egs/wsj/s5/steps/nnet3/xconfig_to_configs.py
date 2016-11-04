@@ -25,10 +25,6 @@ def GetArgs():
     parser = argparse.ArgumentParser(description='Reads an xconfig file and creates config files '
                                      'for neural net creation and training',
                                      epilog='Search egs/*/*/local/nnet3/*sh for examples')
-
-    parser.add_argument('--self-repair-scale-nonlinearity', type=float,
-                        help='A non-zero value activates the self-repair mechanism in '
-                        'nonlinearities (larger -> faster self-repair)', default=1.0e-05)
     parser.add_argument('xconfig_file',
                         help='Filename of input xconfig file')
     parser.add_argument('config_dir',
@@ -44,10 +40,6 @@ def GetArgs():
 def CheckArgs(args):
     if not os.path.exists(args.config_dir):
         os.makedirs(args.config_dir)
-    if args.self_repair_scale_nonlinearity < 0.0 or args.self_repair_scale_nonlinearity > 0.1:
-        sys.exit('{0}: invalid option --self-repair-scale-nonlinearity={1}'.format(
-            sys.argv[0], args.self_repair_scale_nonlinearity))
-
     return args
 
 
