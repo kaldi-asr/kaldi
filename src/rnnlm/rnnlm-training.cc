@@ -123,19 +123,19 @@ void LmNnetTrainer::ProcessOutputs(const NnetExample &eg,
 }
 
 bool LmNnetTrainer::PrintTotalStats() const {
-  unordered_map<std::string, ObjectiveFunctionInfo>::const_iterator
+  unordered_map<std::string, LmObjectiveFunctionInfo>::const_iterator
       iter = objf_info_.begin(),
       end = objf_info_.end();
   bool ans = false;
   for (; iter != end; ++iter) {
     const std::string &name = iter->first;
-    const ObjectiveFunctionInfo &info = iter->second;
+    const LmObjectiveFunctionInfo &info = iter->second;
     ans = ans || info.PrintTotalStats(name);
   }
   return ans;
 }
 
-void ObjectiveFunctionInfo::UpdateStats(
+void LmObjectiveFunctionInfo::UpdateStats(
     const std::string &output_name,
     int32 minibatches_per_phase,
     int32 minibatch_counter,
@@ -159,7 +159,7 @@ void ObjectiveFunctionInfo::UpdateStats(
   tot_aux_objf += this_minibatch_tot_aux_objf;
 }
 
-void ObjectiveFunctionInfo::PrintStatsForThisPhase(
+void LmObjectiveFunctionInfo::PrintStatsForThisPhase(
     const std::string &output_name,
     int32 minibatches_per_phase) const {
   int32 start_minibatch = current_phase * minibatches_per_phase,
@@ -183,7 +183,7 @@ void ObjectiveFunctionInfo::PrintStatsForThisPhase(
   }
 }
 
-bool ObjectiveFunctionInfo::PrintTotalStats(const std::string &name) const {
+bool LmObjectiveFunctionInfo::PrintTotalStats(const std::string &name) const {
   BaseFloat objf = (tot_objf / tot_weight),
         aux_objf = (tot_aux_objf / tot_weight),
         sum_objf = objf + aux_objf;

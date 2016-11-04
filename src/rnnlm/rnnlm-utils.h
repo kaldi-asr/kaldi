@@ -1,8 +1,16 @@
 #ifndef KALDI_RNNLM_UTILS_H_
 #define KALDI_RNNLM_UTILS_H_
 
+#include "util/stl-utils.h"
+#include "base/kaldi-common.h"
+#include "util/common-utils.h"
+#include "nnet3/nnet-example.h"
+#include "nnet3/nnet-diagnostics.h"
+
 #include <fstream>
 #include <sstream>
+#include <vector>
+#include <string>
 
 
 using std::string;

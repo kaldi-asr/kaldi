@@ -19,7 +19,9 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "nnet3/nnet-training.h"
+#include "rnnlm/rnnlm-training.h"
+
+#include <vector>
 
 
 int main(int argc, char *argv[]) {
@@ -43,7 +45,7 @@ int main(int argc, char *argv[]) {
 
     bool binary_write = true;
     std::string use_gpu = "yes";
-    NnetTrainerOptions train_config;
+    LmNnetTrainerOptions train_config;
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
@@ -67,10 +69,10 @@ int main(int argc, char *argv[]) {
         examples_rspecifier = po.GetArg(2),
         nnet_wxfilename = po.GetArg(3);
 
-    Nnet nnet;
+    LmNnet nnet;
     ReadKaldiObject(nnet_rxfilename, &nnet);
 
-    NnetTrainer trainer(train_config, &nnet);
+    LmNnetTrainer trainer(train_config, &nnet);
 
     SequentialNnetExampleReader example_reader(examples_rspecifier);
 

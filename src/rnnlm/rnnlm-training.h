@@ -99,10 +99,11 @@ struct LmNnetTrainerOptions {
   }
 };
 
-// This struct is used in multiple nnet training classes for keeping
-// track of objective function values.
-// Also see struct AccuracyInfo, in nnet-diagnostics.h.
-struct ObjectiveFunctionInfo {
+//// This struct is used in multiple nnet training classes for keeping
+//// track of objective function values.
+//// Also see struct AccuracyInfo, in nnet-diagnostics.h.
+//*
+struct LmObjectiveFunctionInfo {
   int32 current_phase;
 
   double tot_weight;
@@ -115,7 +116,7 @@ struct ObjectiveFunctionInfo {
   double tot_objf_this_phase;
   double tot_aux_objf_this_phase;
 
-  ObjectiveFunctionInfo():
+  LmObjectiveFunctionInfo():
       current_phase(0),
       tot_weight(0.0), tot_objf(0.0), tot_aux_objf(0.0),
       tot_weight_this_phase(0.0), tot_objf_this_phase(0.0),
@@ -138,7 +139,7 @@ struct ObjectiveFunctionInfo {
   // Prints total stats, and returns true if total stats' weight was nonzero.
   bool PrintTotalStats(const std::string &output_name) const;
 };
-
+//*/
 
 /** This class is for single-threaded training of neural nets using
     standard objective functions such as cross-entropy (implemented with
@@ -183,7 +184,7 @@ class LmNnetTrainer {
   // So we store the objective functions per output layer.
   int32 num_minibatches_processed_;
 
-  unordered_map<std::string, ObjectiveFunctionInfo, StringHasher> objf_info_;
+  unordered_map<std::string, LmObjectiveFunctionInfo, StringHasher> objf_info_;
 };
 
 /**
