@@ -30,12 +30,12 @@ class Segmentation {
     
     void PushBack(const Segment &seg);
 
-    SegmentList::iterator Insert(SegmentList::const_iterator it, 
+    SegmentList::iterator Insert(SegmentList::iterator it, 
                                  const Segment &seg);
 
     void EmplaceBack(int32 start_frame, int32 end_frame, int32 class_id);
 
-    SegmentList::iterator Emplace(SegmentList::const_iterator it,
+    SegmentList::iterator Emplace(SegmentList::iterator it,
                                   int32 start_frame, int32 end_frame, 
                                   int32 class_id);
 
