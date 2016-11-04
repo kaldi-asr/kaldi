@@ -3,45 +3,38 @@
 # This script is based on local/nnet3/run_ivector_common.sh.
 # It reverberates the original data with simulated room impulse responses
 
-. cmd.sh
+. ./cmd.sh
 
-stage=1
+stage=3
 num_data_reps=1  # number of reverberated copies of data to generate
+                 # These will be combined with the original data.
 input_data_dir=train_nodup
 ivector_dir=exp/nnet3_rvb
 speed_perturb=true
 
 set -e
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
 mkdir -p $ivector_dir
 
+# Here we recommend speed perturbation as the gains are significant.
+# The gain from speed perturbation is additive with the gain from data reverberation
 if [ "$speed_perturb" == "true" ]; then
   # perturbed data preparation
-  if [ $stage -le 1 ] && [ ! -d data/${input_data_dir}_sp ]; then
-    #Although the nnet will be trained by high resolution data, we still have to perturbe the normal data to get the alignment
+  if [ $stage -le 1 ] && [ ! -f data/${input_data_dir}_sp/feats.scp ]; then
+    # Although the nnet will be trained by high resolution data, we still have to prepare normal-resolution MFCC
+    # for purposes of getting alignments and/or lattices on the speed-perturbed data.
     # _sp stands for speed-perturbed
 
-    for datadir in ${input_data_dir}; do
-      utils/perturb_data_dir_speed.sh 0.9 data/${datadir} data/temp1
-      utils/perturb_data_dir_speed.sh 1.1 data/${datadir} data/temp2
-      utils/combine_data.sh data/${datadir}_tmp data/temp1 data/temp2
-      utils/validate_data_dir.sh --no-feats data/${datadir}_tmp
-      rm -r data/temp1 data/temp2
-
-      mfccdir=mfcc_perturbed
-      steps/make_mfcc.sh --cmd "$train_cmd" --nj 50 \
-        data/${datadir}_tmp exp/make_mfcc/${datadir}_tmp $mfccdir || exit 1;
-      steps/compute_cmvn_stats.sh data/${datadir}_tmp exp/make_mfcc/${datadir}_tmp $mfccdir || exit 1;
-      utils/fix_data_dir.sh data/${datadir}_tmp
-
-      utils/copy_data_dir.sh --spk-prefix sp1.0- --utt-prefix sp1.0- data/${datadir} data/temp0
-      utils/combine_data.sh data/${datadir}_sp data/${datadir}_tmp data/temp0
-      utils/fix_data_dir.sh data/${datadir}_sp
-      rm -r data/temp0 data/${datadir}_tmp
-    done
+    echo "$0: preparing directory for speed-perturbed data"
+    utils/data/perturb_data_dir_speed_3way.sh data/${input_data_dir} data/${input_data_dir}_sp
+    mfccdir=mfcc_perturbed
+    steps/make_mfcc.sh --cmd "$train_cmd" --nj 50 \
+      data/${input_data_dir}_sp exp/make_mfcc/${input_data_dir}_sp $mfccdir || exit 1;
+    steps/compute_cmvn_stats.sh data/${input_data_dir}_sp exp/make_mfcc/${input_data_dir}_sp $mfccdir || exit 1;
+    utils/fix_data_dir.sh data/${input_data_dir}_sp
   fi
 
 
@@ -66,6 +59,7 @@ if [ $stage -le 3 ]; then
 
   # corrupt the data to generate reverberated data 
   # this script modifies wav.scp to include the reverberation commands, the real computation will be done at the feature extraction
+  # The script will automatically normalize the probability mass of the rir sets, so user just need to input the ratio of the sets
   # if --include-original-data is true, the original data will be mixed with its reverberated copies
   python steps/data/reverberate_data_dir.py \
     --prefix "rev" \

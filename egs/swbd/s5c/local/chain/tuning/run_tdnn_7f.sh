@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 7e is as 7f, but adding the max-change-per-component to the neural net training
+# 7f is as 7e, but adding the max-change-per-component to the neural net training
 # which affects results slightly
 # local/chain/compare_wer.sh 7e 7f
 # System                       7e         7f
@@ -27,6 +27,7 @@ decode_iter=
 
 # TDNN options
 # this script uses the new tdnn config generator so it needs a final 0 to reflect that the final layer input has no splicing
+splice_indexes="-1,0,1 -1,0,1 -1,0,1 -3,0,3 -3,0,3 -6,0,6 0"
 # smoothing options
 self_repair_scale=0.00001
 # training options
@@ -84,7 +85,7 @@ local/nnet3/run_ivector_common.sh --stage $stage \
 
 
 if [ $stage -le 9 ]; then
-  # Get the alignments as lattices (gives the CTC training more freedom).
+  # Get the alignments as lattices (gives the LF-MMI training more freedom).
   # use the same num-jobs as the alignments
   nj=$(cat exp/tri4_ali_nodup$suffix/num_jobs) || exit 1;
   steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" data/$train_set \
@@ -132,7 +133,7 @@ if [ $stage -le 12 ]; then
     --ivector-dir exp/nnet3/ivectors_${train_set} \
     --tree-dir $treedir \
     $dim_opts \
-    --splice-indexes "-1,0,1 -1,0,1 -1,0,1 -3,0,3 -3,0,3 -6,0,6 0" \
+    --splice-indexes "$splice_indexes" \
     --use-presoftmax-prior-scale false \
     --xent-regularize $xent_regularize \
     --xent-separate-forward-affine true \

@@ -360,7 +360,7 @@ def GenerateReverberatedWavScp(wav_scp,  # a dictionary whose values are the Kal
                                                          max_noises_recording  # Maximum number of point-source noises that can be added
                                                          )       
 
-            # prefix with index 0, e.g. rvb0_swb0035, stangs for the original data
+            # prefix using index 0 is reserved for original data e.g. rvb0_swb0035 corresponds to the swb0035 recording in original data
             if reverberate_opts == "" or i == 0:
                 wav_corrupted_pipe = "{0}".format(wav_original_pipe) 
             else:

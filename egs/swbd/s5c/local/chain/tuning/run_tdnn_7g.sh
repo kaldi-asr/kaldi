@@ -4,7 +4,8 @@
 # which leads to better results
 # This script assumes a mixing of the original training data with its reverberated copy
 # and results in a 2-fold training set. Thus the number of epochs is halved to
-# keep the same training time.
+# keep the same training time. The model converges after 2 epochs of training,
+# The WER doesn't change much with more epochs of training.
 # local/chain/compare_wer.sh 7f 7g
 # System                       7f        7g
 # WER on train_dev(tg)      14.46     14.27
@@ -34,6 +35,7 @@ input_train_set=train_nodup
 
 # TDNN options
 # this script uses the new tdnn config generator so it needs a final 0 to reflect that the final layer input has no splicing
+splice_indexes="-1,0,1 -1,0,1 -1,0,1 -3,0,3 -3,0,3 -6,0,6 0"
 # smoothing options
 self_repair_scale=0.00001
 # training options
@@ -86,8 +88,6 @@ clean_lat_dir=exp/tri4_lats_nodup${suffix}
 lat_dir=${clean_lat_dir}_rvb${num_data_reps}
 
 
-# if we are using the speed-perturbed data we need to generate
-# alignments for it.
 # The data reverberation will be done in this script.
 local/nnet3/multi_condition/run_ivector_common.sh --stage $stage \
   --input-data-dir ${input_train_set} \
@@ -97,7 +97,7 @@ local/nnet3/multi_condition/run_ivector_common.sh --stage $stage \
 
 
 if [ $stage -le 9 ]; then
-  # Get the alignments as lattices (gives the CTC training more freedom).
+  # Get the alignments as lattices (gives the LF-MMI training more freedom).
   # use the same num-jobs as the alignments
   nj=$(cat exp/tri4_ali_nodup${suffix}/num_jobs) || exit 1;
   steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" data/${clean_train_set} \
@@ -106,6 +106,7 @@ if [ $stage -le 9 ]; then
 
 
   # Create the lattices for the reverberated data
+  # We use the lattices/alignments from the clean data for the reverberated data.
   mkdir -p $lat_dir/temp/
   lattice-copy "ark:gunzip -c $clean_lat_dir/lat.*.gz |" ark,scp:$lat_dir/temp/lats.ark,$lat_dir/temp/lats.scp
 
@@ -144,6 +145,7 @@ fi
 if [ $stage -le 11 ]; then
   # Build a tree using our new topology. This is the critically different
   # step compared with other recipes.
+  # we build the tree using the clean alignments as we empirically found that this was better.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --leftmost-questions-truncate $leftmost_questions_truncate \
       --context-opts "--context-width=2 --central-position=1" \
@@ -167,7 +169,7 @@ if [ $stage -le 12 ]; then
     --ivector-dir $ivector_dir/ivectors_${train_set} \
     --tree-dir $treedir \
     $dim_opts \
-    --splice-indexes "-1,0,1 -1,0,1 -1,0,1 -3,0,3 -3,0,3 -6,0,6 0" \
+    --splice-indexes "$splice_indexes" \
     --use-presoftmax-prior-scale false \
     --xent-regularize $xent_regularize \
     --xent-separate-forward-affine true \
@@ -181,7 +183,7 @@ fi
 if [ $stage -le 13 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
+     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/swbd-reverb-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
 
   steps/nnet3/chain/train.py --stage $train_stage \
