@@ -5,10 +5,12 @@
 
 # It's best to run the commands in this one by one.
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
+
 mfccdir=`pwd`/mfcc
 set -e
+
 # the next command produces the data in local/train_all
 local/fisher_data_prep.sh /export/corpora3/LDC/LDC2004T19 /export/corpora3/LDC/LDC2005T19 \
    /export/corpora3/LDC/LDC2004S13 /export/corpora3/LDC/LDC2005S13
@@ -42,12 +44,12 @@ utils/subset_data_dir.sh --first data/dev_and_test 5000 data/dev
 utils/subset_data_dir.sh --last data/dev_and_test 5000 data/test
 rm -r data/dev_and_test
 
-steps/compute_cmvn_stats.sh data/dev exp/make_mfcc/dev $mfccdir 
-steps/compute_cmvn_stats.sh data/test exp/make_mfcc/test $mfccdir 
+steps/compute_cmvn_stats.sh data/dev exp/make_mfcc/dev $mfccdir
+steps/compute_cmvn_stats.sh data/test exp/make_mfcc/test $mfccdir
 
 n=$[`cat data/train_all/segments | wc -l` - 10000]
 utils/subset_data_dir.sh --last data/train_all $n data/train
-steps/compute_cmvn_stats.sh data/train exp/make_mfcc/train $mfccdir 
+steps/compute_cmvn_stats.sh data/train exp/make_mfcc/train $mfccdir
 
 
 # Now-- there are 1.6 million utterances, and we want to start the monophone training
@@ -57,35 +59,35 @@ steps/compute_cmvn_stats.sh data/train exp/make_mfcc/train $mfccdir
 
 utils/subset_data_dir.sh --shortest data/train 100000 data/train_100kshort
 utils/subset_data_dir.sh  data/train_100kshort 10000 data/train_10k
-local/remove_dup_utts.sh 100 data/train_10k data/train_10k_nodup
+utils/data/remove_dup_utts.sh 100 data/train_10k data/train_10k_nodup
 utils/subset_data_dir.sh --speakers data/train 30000 data/train_30k
 utils/subset_data_dir.sh --speakers data/train 100000 data/train_100k
 
 
-# The next commands are not necessary for the scripts to run, but increase 
-# efficiency of data access by putting the mfcc's of the subset 
+# The next commands are not necessary for the scripts to run, but increase
+# efficiency of data access by putting the mfcc's of the subset
 # in a contiguous place in a file.
-( . path.sh; 
+( . ./path.sh;
   # make sure mfccdir is defined as above..
-  cp data/train_10k_nodup/feats.scp{,.bak} 
+  cp data/train_10k_nodup/feats.scp{,.bak}
   copy-feats scp:data/train_10k_nodup/feats.scp  ark,scp:$mfccdir/kaldi_fish_10k_nodup.ark,$mfccdir/kaldi_fish_10k_nodup.scp \
   && cp $mfccdir/kaldi_fish_10k_nodup.scp data/train_10k_nodup/feats.scp
 )
-( . path.sh; 
+( . ./path.sh;
   # make sure mfccdir is defined as above..
-  cp data/train_30k/feats.scp{,.bak} 
+  cp data/train_30k/feats.scp{,.bak}
   copy-feats scp:data/train_30k/feats.scp  ark,scp:$mfccdir/kaldi_fish_30k.ark,$mfccdir/kaldi_fish_30k.scp \
   && cp $mfccdir/kaldi_fish_30k.scp data/train_30k/feats.scp
 )
-( . path.sh; 
+( . ./path.sh;
   # make sure mfccdir is defined as above..
-  cp data/train_100k/feats.scp{,.bak} 
+  cp data/train_100k/feats.scp{,.bak}
   copy-feats scp:data/train_100k/feats.scp  ark,scp:$mfccdir/kaldi_fish_100k.ark,$mfccdir/kaldi_fish_100k.scp \
   && cp $mfccdir/kaldi_fish_100k.scp data/train_100k/feats.scp
 )
 
 steps/train_mono.sh --nj 10 --cmd "$train_cmd" \
-  data/train_10k_nodup data/lang exp/mono0a 
+  data/train_10k_nodup data/lang exp/mono0a
 
 steps/align_si.sh --nj 30 --cmd "$train_cmd" \
    data/train_30k data/lang exp/mono0a exp/mono0a_ali || exit 1;
@@ -125,7 +127,7 @@ steps/train_lda_mllt.sh --cmd "$train_cmd" \
 )&
 
 
-# Next we'll use fMLLR and train with SAT (i.e. on 
+# Next we'll use fMLLR and train with SAT (i.e. on
 # fMLLR features)
 
 steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
@@ -181,3 +183,6 @@ local/multi_condition/run_nnet2_ms_disc.sh
    --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
    --ivector-scale 0.75 --affix v6 --tune-hyper true test_aspire data/lang exp/nnet2_multicondition/nnet_ms_a_smbr_0.00015_nj12
  # around 71.5, as models changed after server closed
+
+
+# see local/{chain,nnet3}/* for nnet3 scripts

@@ -12,7 +12,7 @@
 # case the number of jobs must match the source directory.
 
 
-# Begin configuration section.  
+# Begin configuration section.
 stage=0
 nj=4
 cmd=run.pl
@@ -55,6 +55,9 @@ sdata=$data/split$nj
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
+
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 
 cp $srcdir/{tree,final.mdl} $dir || exit 1;
 cp $srcdir/final.alimdl $dir 2>/dev/null
@@ -100,9 +103,9 @@ else
   graphdir=$dir
   if [ $stage -le 0 ]; then
     echo "$0: compiling training graphs"
-    tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text|";   
+    tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text|";
     $cmd JOB=1:$nj $dir/log/compile_graphs.JOB.log  \
-      compile-train-graphs $dir/tree $dir/final.mdl  $lang/L.fst "$tra" \
+      compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $dir/tree $dir/final.mdl  $lang/L.fst "$tra" \
         "ark:|gzip -c >$dir/fsts.JOB.gz" || exit 1;
   fi
 fi
@@ -147,6 +150,8 @@ fi
 rm $dir/pre_ali.*.gz
 
 echo "$0: done aligning data."
+
+steps/diagnostic/analyze_alignments.sh --cmd "$cmd" $lang $dir
 
 utils/summarize_warnings.pl $dir/log
 

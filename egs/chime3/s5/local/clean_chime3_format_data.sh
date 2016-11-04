@@ -20,7 +20,7 @@ tmpdir=data/local/lm_tmp
 lexicon=data/local/lang_tmp/lexiconp.txt
 mkdir -p $tmpdir
 
-for x in et05_orig_clean dt05_orig_clean tr05_orig_clean; do 
+for x in et05_orig_clean dt05_orig_clean tr05_orig_clean; do
   mkdir -p data/$x
   cp $srcdir/${x}_wav.scp data/$x/wav.scp || exit 1;
   cp $srcdir/$x.txt data/$x/text || exit 1;
@@ -43,29 +43,15 @@ for lm_suffix in tgpr_5k; do
     cp -r data/lang/$f $test
   done
   gunzip -c $lmdir/lm_${lm_suffix}.arpa.gz | \
-   utils/find_arpa_oovs.pl $test/words.txt  > $tmpdir/oovs_${lm_suffix}.txt
-
-  # grep -v '<s> <s>' because the LM seems to have some strange and useless
-  # stuff in it with multiple <s>'s in the history.  Encountered some other similar
-  # things in a LM from Geoff.  Removing all "illegal" combinations of <s> and </s>,
-  # which are supposed to occur only at being/end of utt.  These can cause 
-  # determinization failures of CLG [ends up being epsilon cycles].
-  gunzip -c $lmdir/lm_${lm_suffix}.arpa.gz | \
-    grep -v '<s> <s>' | \
-    grep -v '</s> <s>' | \
-    grep -v '</s> </s>' | \
-    arpa2fst - | fstprint | \
-    utils/remove_oovs.pl $tmpdir/oovs_${lm_suffix}.txt | \
-    utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=$test/words.txt \
-      --osymbols=$test/words.txt  --keep_isymbols=false --keep_osymbols=false | \
-     fstrmepsilon | fstarcsort --sort_type=ilabel > $test/G.fst
+    arpa2fst --disambig-symbol=#0 \
+             --read-symbol-table=$test/words.txt - $test/G.fst
   fstisstochastic $test/G.fst
- # The output is like:
- # 9.14233e-05 -0.259833
- # we do expect the first of these 2 numbers to be close to zero (the second is
- # nonzero because the backoff weights make the states sum to >1).
- # Because of the <s> fiasco for these particular LMs, the first number is not
- # as close to zero as it could be.
+  # The output is like:
+  # 9.14233e-05 -0.259833
+  # we do expect the first of these 2 numbers to be close to zero (the second is
+  # nonzero because the backoff weights make the states sum to >1).
+  # Because of the <s> fiasco for these particular LMs, the first number is not
+  # as close to zero as it could be.
 
   # Everything below is only for diagnostic.
   # Checking that G has no cycles with empty words on them (e.g. <s>, </s>);
@@ -76,7 +62,7 @@ for lm_suffix in tgpr_5k; do
     < "$lexicon"  >$tmpdir/g/select_empty.fst.txt
   fstcompile --isymbols=$test/words.txt --osymbols=$test/words.txt $tmpdir/g/select_empty.fst.txt | \
    fstarcsort --sort_type=olabel | fstcompose - $test/G.fst > $tmpdir/g/empty_words.fst
-  fstinfo $tmpdir/g/empty_words.fst | grep cyclic | grep -w 'y' && 
+  fstinfo $tmpdir/g/empty_words.fst | grep cyclic | grep -w 'y' &&
     echo "Language model has cycles with empty words" && exit 1
   rm -r $tmpdir/g
 done

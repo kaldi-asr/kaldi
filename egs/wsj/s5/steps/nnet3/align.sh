@@ -69,7 +69,8 @@ done
 
 cp $srcdir/{tree,${iter}.mdl} $dir || exit 1;
 
-
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 ## Set up features.  Note: these are different from the normal features
 ## because we have one rspecifier that has the features for the entire
 ## training set, not separate ones for each batch.
@@ -124,7 +125,7 @@ ivector_opts=
 if [ ! -z "$online_ivector_dir" ]; then
   ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
   # note: subsample-feats, with negative n, will repeat each feature -n times.
-  ivector_opts="--online-ivectors=scp:$online_ivector_dir/ivector_online.scp --online-ivector_period=$ivector_period"
+  ivector_opts="--online-ivectors=scp:$online_ivector_dir/ivector_online.scp --online-ivector-period=$ivector_period"
 fi
 
 echo "$0: aligning data in $data using model from $srcdir, putting alignments in $dir"
@@ -139,7 +140,7 @@ if [ -f $srcdir/frame_subsampling_factor ]; then
 fi
 
 $cmd $queue_opt JOB=1:$nj $dir/log/align.JOB.log \
-  compile-train-graphs $dir/tree $srcdir/${iter}.mdl  $lang/L.fst "$tra" ark:- \| \
+  compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $dir/tree $srcdir/${iter}.mdl  $lang/L.fst "$tra" ark:- \| \
   nnet3-align-compiled $scale_opts $ivector_opts $frame_subsampling_opt \
   --frames-per-chunk=$frames_per_chunk \
   --extra-left-context=$extra_left_context \
@@ -148,6 +149,8 @@ $cmd $queue_opt JOB=1:$nj $dir/log/align.JOB.log \
   --extra-right-context-final=$extra_right_context_final \
   $gpu_opt --beam=$beam --retry-beam=$retry_beam \
   $srcdir/${iter}.mdl ark:- "$feats" "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
+
+steps/diagnostic/analyze_alignments.sh --cmd "$cmd" $lang $dir
 
 echo "$0: done aligning data."
 

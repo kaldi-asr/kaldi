@@ -52,7 +52,7 @@ void PnormComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                const CuMatrixBase<BaseFloat> &in,
                                CuMatrixBase<BaseFloat> *out) const {
   BaseFloat p = 2.0;
-  out->GroupPnorm(in, p);  // TODO: when done, replace with Group2Norm function.
+  out->GroupPnorm(in, p);
 }
 
 void PnormComponent::Backprop(const std::string &debug_info,
@@ -62,11 +62,10 @@ void PnormComponent::Backprop(const std::string &debug_info,
                               const CuMatrixBase<BaseFloat> &out_deriv,
                               Component *to_update,
                               CuMatrixBase<BaseFloat> *in_deriv) const {
-  if (!in_deriv)  return;
+  if (!in_deriv)
+    return;
   BaseFloat p = 2.0;
-  // TODO: use Group2NormDeriv when done.
-  in_deriv->GroupPnormDeriv(in_value, out_value, p);
-  in_deriv->MulRowsGroupMat(out_deriv);
+  in_deriv->DiffGroupPnorm(in_value, out_value, out_deriv, p);
 }
 
 void PnormComponent::Read(std::istream &is, bool binary) {
@@ -86,6 +85,85 @@ void PnormComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "</PnormComponent>");
 }
 
+
+void DropoutComponent::Init(int32 dim, BaseFloat dropout_proportion) {
+  dropout_proportion_ = dropout_proportion;
+  dim_ = dim;
+}
+
+void DropoutComponent::InitFromConfig(ConfigLine *cfl) {
+  int32 dim = 0;
+  BaseFloat dropout_proportion = 0.0;
+  bool ok = cfl->GetValue("dim", &dim) &&
+    cfl->GetValue("dropout-proportion", &dropout_proportion);
+  if (!ok || cfl->HasUnusedValues() || dim <= 0 || 
+      dropout_proportion < 0.0 || dropout_proportion > 1.0)
+    KALDI_ERR << "Invalid initializer for layer of type " 
+              << Type() << ": \"" << cfl->WholeLine() << "\"";   
+  Init(dim, dropout_proportion);
+}
+
+std::string DropoutComponent::Info() const {
+  std::ostringstream stream;
+  stream << Type() << ", dim = " << dim_ 
+         << ", dropout-proportion = " << dropout_proportion_;
+  return stream.str();
+}
+
+void DropoutComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+                                 const CuMatrixBase<BaseFloat> &in,
+                                 CuMatrixBase<BaseFloat> *out) const {
+  KALDI_ASSERT(out->NumRows() == in.NumRows() && out->NumCols() == in.NumCols()
+               && in.NumCols() == dim_);
+
+  BaseFloat dropout = dropout_proportion_;
+  KALDI_ASSERT(dropout >= 0.0 && dropout <= 1.0);
+
+  // This const_cast is only safe assuming you don't attempt  
+  // to use multi-threaded code with the GPU.
+  const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(out); 
+
+  out->Add(-dropout); // now, a proportion "dropout" will be <0.0 
+  out->ApplyHeaviside(); // apply the function (x>0?1:0).  Now, a proportion "dropout" will 
+                         // be zero and (1 - dropout) will be 1.0.
+
+  out->MulElements(in);
+}
+
+
+void DropoutComponent::Backprop(const std::string &debug_info,
+                                const ComponentPrecomputedIndexes *indexes,
+                                const CuMatrixBase<BaseFloat> &in_value,
+                                const CuMatrixBase<BaseFloat> &out_value,
+                                const CuMatrixBase<BaseFloat> &out_deriv,
+                                Component *to_update,
+                                CuMatrixBase<BaseFloat> *in_deriv) const {
+  KALDI_ASSERT(in_value.NumRows() == out_value.NumRows() &&
+               in_value.NumCols() == out_value.NumCols());
+
+  KALDI_ASSERT(in_value.NumRows() == out_deriv.NumRows() &&
+               in_value.NumCols() == out_deriv.NumCols());
+  in_deriv->SetMatMatDivMat(out_deriv, out_value, in_value);
+}
+
+
+ 
+void DropoutComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<DropoutComponent>", "<Dim>");
+  ReadBasicType(is, binary, &dim_);
+  ExpectToken(is, binary, "<DropoutProportion>");
+  ReadBasicType(is, binary, &dropout_proportion_);
+  ExpectToken(is, binary, "</DropoutComponent>");
+}
+
+void DropoutComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<DropoutComponent>");
+  WriteToken(os, binary, "<Dim>");
+  WriteBasicType(os, binary, dim_);
+  WriteToken(os, binary, "<DropoutProportion>");
+  WriteBasicType(os, binary, dropout_proportion_);
+  WriteToken(os, binary, "</DropoutComponent>");
+}
 
 void SumReduceComponent::Init(int32 input_dim, int32 output_dim)  {
   input_dim_ = input_dim;
@@ -439,17 +517,21 @@ void SigmoidComponent::Backprop(const std::string &debug_info,
                                 const CuMatrixBase<BaseFloat> &,
                                 const CuMatrixBase<BaseFloat> &out_value,
                                 const CuMatrixBase<BaseFloat> &out_deriv,
-                                Component *,
+                                Component *to_update_in,
                                 CuMatrixBase<BaseFloat> *in_deriv) const {
   if (in_deriv != NULL) {
     in_deriv->DiffSigmoid(out_value, out_deriv);
-    RepairGradients(out_value, in_deriv);
+    SigmoidComponent *to_update = dynamic_cast<SigmoidComponent*>(to_update_in);
+    if (to_update != NULL)
+      RepairGradients(out_value, in_deriv, to_update);
   }
 }
 
 void SigmoidComponent::RepairGradients(
     const CuMatrixBase<BaseFloat> &out_value,
-    CuMatrixBase<BaseFloat> *in_deriv) const {
+    CuMatrixBase<BaseFloat> *in_deriv,
+    SigmoidComponent *to_update) const {
+  KALDI_ASSERT(to_update != NULL);
   // maximum possible derivative of SigmoidComponent is 0.25.
   // the default lower-threshold on the derivative, below which we
   // add a term to the derivative to encourage the inputs to the sigmoid
@@ -460,6 +542,8 @@ void SigmoidComponent::RepairGradients(
   // we use this 'repair_probability' (hardcoded for now) to limit
   // this code to running on about half of the minibatches.
   BaseFloat repair_probability = 0.5;
+
+  to_update->num_dims_processed_ += dim_;
 
   if (self_repair_scale_ == 0.0 || count_ == 0.0 || deriv_sum_.Dim() != dim_ ||
       RandUniform() > repair_probability)
@@ -484,6 +568,7 @@ void SigmoidComponent::RepairGradients(
   thresholds_vec.AddVec(-1.0, deriv_sum_);
   thresholds_vec.Add(lower_threshold);
   thresholds.ApplyHeaviside();
+  to_update->num_dims_self_repaired_ += thresholds_vec.Sum();
 
   // At this point, 'thresholds_vec' contains a 1 for each dimension of
   // the output that is 'problematic', i.e. for which the avg-deriv
@@ -558,11 +643,35 @@ void ClipGradientComponent::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &clipping_threshold_);
   ExpectToken(is, binary, "<NormBasedClipping>");
   ReadBasicType(is, binary, &norm_based_clipping_);
-  ExpectToken(is, binary, "<NumElementsClipped>");
+  std::string token;
+  ReadToken(is, binary, &token);
+  if (token == "<SelfRepairClippedProportionThreshold>") {
+    ReadBasicType(is, binary, &self_repair_clipped_proportion_threshold_);
+    ExpectToken(is, binary, "<SelfRepairTarget>");
+    ReadBasicType(is, binary, &self_repair_target_);
+    ExpectToken(is, binary, "<SelfRepairScale>");
+    ReadBasicType(is, binary, &self_repair_scale_);
+    ExpectToken(is, binary, "<NumElementsClipped>");
+  } else {
+    self_repair_clipped_proportion_threshold_ = 1.0;
+    self_repair_target_ = 0.0;
+    self_repair_scale_ = 0.0;
+    KALDI_ASSERT(token == "<NumElementsClipped>");
+  }
   ReadBasicType(is, binary, &num_clipped_);
   ExpectToken(is, binary, "<NumElementsProcessed>");
   ReadBasicType(is, binary, &count_);
-  ExpectToken(is, binary, "</ClipGradientComponent>");
+  ReadToken(is, binary, &token);
+  if (token == "<NumSelfRepaired>") {
+    ReadBasicType(is, binary, &num_self_repaired_);
+    ExpectToken(is, binary, "<NumBackpropped>");
+    ReadBasicType(is, binary, &num_backpropped_);
+    ExpectToken(is, binary, "</ClipGradientComponent>");
+  } else {
+    num_self_repaired_ = 0;
+    num_backpropped_ = 0;
+    KALDI_ASSERT(token == "</ClipGradientComponent>");
+  }
 }
 
 void ClipGradientComponent::Write(std::ostream &os, bool binary) const {
@@ -573,10 +682,20 @@ void ClipGradientComponent::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, clipping_threshold_);
   WriteToken(os, binary, "<NormBasedClipping>");
   WriteBasicType(os, binary, norm_based_clipping_);
+  WriteToken(os, binary, "<SelfRepairClippedProportionThreshold>");
+  WriteBasicType(os, binary, self_repair_clipped_proportion_threshold_);
+  WriteToken(os, binary, "<SelfRepairTarget>");
+  WriteBasicType(os, binary, self_repair_target_);
+  WriteToken(os, binary, "<SelfRepairScale>");
+  WriteBasicType(os, binary, self_repair_scale_);
   WriteToken(os, binary, "<NumElementsClipped>");
   WriteBasicType(os, binary, num_clipped_);
   WriteToken(os, binary, "<NumElementsProcessed>");
   WriteBasicType(os, binary, count_);
+  WriteToken(os, binary, "<NumSelfRepaired>");
+  WriteBasicType(os, binary, num_self_repaired_);
+  WriteToken(os, binary, "<NumBackpropped>");
+  WriteBasicType(os, binary, num_backpropped_);
   WriteToken(os, binary, "</ClipGradientComponent>");
 }
 
@@ -588,20 +707,38 @@ std::string ClipGradientComponent::Info() const {
          << ", clipping-threshold=" << clipping_threshold_
          << ", clipped-proportion="
          << (count_ > 0 ? static_cast<BaseFloat>(num_clipped_)/count_ : 0);
+  if (self_repair_scale_ != 0.0)
+    stream << ", self-repair-clipped-proportion-threshold="
+           << self_repair_clipped_proportion_threshold_
+           << ", self-repair-target=" << self_repair_target_
+           << ", self-repair-scale=" << self_repair_scale_;
   return stream.str();
 }
 
 void ClipGradientComponent::Init(int32 dim,
                                  BaseFloat clipping_threshold,
                                  bool norm_based_clipping,
+                                 BaseFloat self_repair_clipped_proportion_threshold,
+                                 BaseFloat self_repair_target,
+                                 BaseFloat self_repair_scale,
                                  int32 num_clipped,
-                                 int32 count)  {
-  KALDI_ASSERT(clipping_threshold >= 0 && dim > 0);
+                                 int32 count,
+                                 int32 num_self_repaired,
+                                 int32 num_backpropped)  {
+  KALDI_ASSERT(clipping_threshold >= 0 && dim > 0 &&
+      self_repair_clipped_proportion_threshold >= 0.0 &&
+      self_repair_target >= 0.0 && self_repair_scale >= 0.0);
   dim_ = dim;
   norm_based_clipping_ = norm_based_clipping;
   clipping_threshold_ = clipping_threshold;
+  self_repair_clipped_proportion_threshold_ =
+      self_repair_clipped_proportion_threshold;
+  self_repair_target_ = self_repair_target;
+  self_repair_scale_ = self_repair_scale;
   num_clipped_ = num_clipped;
   count_ = count;
+  num_self_repaired_ = num_self_repaired;
+  num_backpropped_ = num_backpropped;
 }
 
 void ClipGradientComponent::InitFromConfig(ConfigLine *cfl) {
@@ -609,13 +746,26 @@ void ClipGradientComponent::InitFromConfig(ConfigLine *cfl) {
   bool ok = cfl->GetValue("dim", &dim);
   bool norm_based_clipping = false;
   BaseFloat clipping_threshold = 15.0;
+  BaseFloat self_repair_clipped_proportion_threshold = 0.01;
+  BaseFloat self_repair_target = 0.0;
+  BaseFloat self_repair_scale = 1.0;
   cfl->GetValue("clipping-threshold", &clipping_threshold);
   cfl->GetValue("norm-based-clipping", &norm_based_clipping);
+  cfl->GetValue("self-repair-clipped-proportion-threshold",
+                &self_repair_clipped_proportion_threshold);
+  cfl->GetValue("self-repair-target",
+                &self_repair_target);
+  cfl->GetValue("self-repair-scale", &self_repair_scale);
   if (!ok || cfl->HasUnusedValues() ||
-      clipping_threshold < 0 || dim <= 0)
+      clipping_threshold < 0 || dim <= 0 ||
+      self_repair_clipped_proportion_threshold < 0.0 ||
+      self_repair_target < 0.0 || self_repair_scale < 0.0)
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << cfl->WholeLine() << "\"";
-  Init(dim, clipping_threshold, norm_based_clipping, 0, 0);
+  Init(dim, clipping_threshold, norm_based_clipping,
+       self_repair_clipped_proportion_threshold,
+       self_repair_target,
+       self_repair_scale, 0, 0, 0, 0);
 }
 
 void ClipGradientComponent::Propagate(
@@ -628,7 +778,7 @@ void ClipGradientComponent::Propagate(
 
 void ClipGradientComponent::Backprop(const std::string &debug_info,
                              const ComponentPrecomputedIndexes *indexes,
-                             const CuMatrixBase<BaseFloat> &,
+                             const CuMatrixBase<BaseFloat> &in_value,
                              const CuMatrixBase<BaseFloat> &,
                              const CuMatrixBase<BaseFloat> &out_deriv,
                              Component *to_update_in, // may be NULL; may be identical
@@ -640,7 +790,6 @@ void ClipGradientComponent::Backprop(const std::string &debug_info,
 
   ClipGradientComponent *to_update =
       dynamic_cast<ClipGradientComponent*>(to_update_in);
-  KALDI_ASSERT(to_update != NULL);
 
   if (clipping_threshold_ > 0) {
     if (norm_based_clipping_) {
@@ -659,21 +808,118 @@ void ClipGradientComponent::Backprop(const std::string &debug_info,
         // now clipping_scales contains max(1,
         //       clipping_threshold/vector_norm)
         in_deriv->MulRowsVec(clipping_scales);
-        to_update->num_clipped_ += (clipping_scales.Dim() - num_not_scaled);
+        if (to_update != NULL)
+          to_update->num_clipped_ += (clipping_scales.Dim() - num_not_scaled);
        }
-      to_update->count_ += clipping_scales.Dim();
+      if (to_update != NULL)
+        to_update->count_ += clipping_scales.Dim();
     } else {
       // each element of the derivative matrix, is clipped to be below the
       // clipping_threshold_
       in_deriv->ApplyCeiling(clipping_threshold_);
       in_deriv->ApplyFloor(-1 * clipping_threshold_);
     }
+
+    if (to_update != NULL) {
+      to_update->num_backpropped_ += 1;
+      RepairGradients(debug_info, in_value, in_deriv, to_update);
+    }
   }
+}
+
+// This function will add a self-repair term to in-deriv, attempting to shrink
+// the maginitude of the input towards self_repair_target_.
+// This term is proportional to [-(input vector - self_repair_target_)].
+// The avarage magnitude of this term is equal to
+// [self_repair_scale_ * clipped_proportion * average norm of input derivative].
+// We use norm of input derivative when computing the magnitude so that it is
+// comparable to the magnitude of input derivative, especially when the gradient
+// explosion is actually happening.
+void ClipGradientComponent::RepairGradients(
+    const std::string &debug_info,
+    const CuMatrixBase<BaseFloat> &in_value,
+    CuMatrixBase<BaseFloat> *in_deriv, ClipGradientComponent *to_update) const {
+  KALDI_ASSERT(to_update != NULL);
+
+  // we use this 'repair_probability' (hardcoded for now) to limit
+  // this code to running on about half of the minibatches.
+  BaseFloat repair_probability = 0.5;
+  if (self_repair_clipped_proportion_threshold_ >= 1.0 ||
+      self_repair_scale_ == 0.0 || count_ == 0 ||
+      RandUniform() > repair_probability)
+    return;
+
+  KALDI_ASSERT(self_repair_target_ >= 0.0 && self_repair_scale_ > 0.0);
+
+  BaseFloat clipped_proportion =
+    (count_ > 0 ? static_cast<BaseFloat>(num_clipped_) / count_ : 0);
+  // in-deriv would be modified only when clipped_proportion exceeds the
+  // threshold
+  if (clipped_proportion <= self_repair_clipped_proportion_threshold_)
+    return;
+
+  to_update->num_self_repaired_ += 1;
+  if (to_update->debug_info_ == "") // get the component-node name
+    to_update->debug_info_ = debug_info;
+  if (to_update->num_self_repaired_ == 1)
+    KALDI_LOG << "ClipGradientComponent(node_name=" << debug_info
+              << ")'s self-repair was activated as the first time at the "
+              << to_update->num_backpropped_
+              << "-th call of Backprop() in this training job.";
+
+  // sign_mat = sign(in_value), i.e.,
+  // An element in sign_mat is 1 if its corresponding element in in_value > 0,
+  // or -1 otherwise
+  CuMatrix<BaseFloat> sign_mat(in_value);
+  sign_mat.ApplyHeaviside();
+  sign_mat.Scale(2.0);
+  sign_mat.Add(-1.0);
+
+  // repair_mat =
+  // floor(abs(in_value) - self_repair_target_, 0) .* sign(in_value)
+  CuMatrix<BaseFloat> repair_mat(in_value);
+  repair_mat.ApplyPowAbs(1.0);
+  repair_mat.Add(-self_repair_target_);
+  repair_mat.ApplyFloor(0.0);
+  repair_mat.MulElements(sign_mat);
+
+  // magnitude =
+  // self_repair_scale_ * clipped_proportion * average norm of in-deriv
+  CuVector<BaseFloat> in_deriv_norm_vec(in_deriv->NumRows());
+  in_deriv_norm_vec.AddDiagMat2(1.0, *in_deriv, kNoTrans, 0.0);
+  in_deriv_norm_vec.ApplyPow(0.5);
+  double in_deriv_norm_sum = in_deriv_norm_vec.Sum();
+  BaseFloat magnitude = self_repair_scale_ * clipped_proportion *
+                        (in_deriv_norm_sum / in_deriv_norm_vec.Dim());
+
+  CuVector<BaseFloat> repair_mat_norm_vec(repair_mat.NumRows());
+  repair_mat_norm_vec.AddDiagMat2(1.0, repair_mat, kNoTrans, 0.0);
+  repair_mat_norm_vec.ApplyPow(0.5);
+  double repair_mat_norm_sum = repair_mat_norm_vec.Sum();
+  double scale = 0.0;
+  if (repair_mat_norm_sum != 0.0)
+    scale = magnitude / (repair_mat_norm_sum / repair_mat_norm_vec.Dim());
+  // repair_mat is scaled so that on average the rows have the norm
+  // (magnitude / repair_probability). This will give higher magnitude of
+  // self-repair to input vectors that have larger absolute value, which tend to
+  // be those that are diverging.
+  in_deriv->AddMat(-scale / repair_probability, repair_mat);
+  CuVector<BaseFloat> in_deriv_repaired_norm_vec(in_deriv->NumRows());
+  in_deriv_repaired_norm_vec.AddDiagMat2(1.0, *in_deriv, kNoTrans, 0.0);
+  in_deriv_repaired_norm_vec.ApplyPow(0.5);
+  // scale in_deriv to have the same norm as that before adding the self-repair
+  // term, in order to avoid increase of the norm caused by self-repair,
+  // which may incur more clip of gradient and thus more self-repair
+  double in_deriv_repaired_norm_sum = in_deriv_repaired_norm_vec.Sum();
+  if (in_deriv_repaired_norm_sum != 0.0)
+    in_deriv->Scale(in_deriv_norm_sum / in_deriv_repaired_norm_sum);
 }
 
 void ClipGradientComponent::ZeroStats()  {
   count_ = 0.0;
   num_clipped_ = 0.0;
+  num_self_repaired_ = 0;
+  num_backpropped_ = 0;
 }
 
 void ClipGradientComponent::Scale(BaseFloat scale) {
@@ -701,7 +947,9 @@ void TanhComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
 
 void TanhComponent::RepairGradients(
     const CuMatrixBase<BaseFloat> &out_value,
-    CuMatrixBase<BaseFloat> *in_deriv) const {
+    CuMatrixBase<BaseFloat> *in_deriv,
+    TanhComponent *to_update) const {
+  KALDI_ASSERT(to_update != NULL);
   // maximum possible derivative of SigmoidComponent is 1.0
   // the default lower-threshold on the derivative, below which we
   // add a term to the derivative to encourage the inputs to the sigmoid
@@ -712,6 +960,8 @@ void TanhComponent::RepairGradients(
   // we use this 'repair_probability' (hardcoded for now) to limit
   // this code to running on about half of the minibatches.
   BaseFloat repair_probability = 0.5;
+
+  to_update->num_dims_processed_ += dim_;
 
   if (self_repair_scale_ == 0.0 || count_ == 0.0 || deriv_sum_.Dim() != dim_ ||
       RandUniform() > repair_probability)
@@ -736,6 +986,7 @@ void TanhComponent::RepairGradients(
   thresholds_vec.AddVec(-1.0, deriv_sum_);
   thresholds_vec.Add(lower_threshold);
   thresholds.ApplyHeaviside();
+  to_update->num_dims_self_repaired_ += thresholds_vec.Sum();
 
   // At this point, 'thresholds_vec' contains a 1 for each dimension of
   // the output that is 'problematic', i.e. for which the avg-deriv
@@ -765,12 +1016,14 @@ void TanhComponent::Backprop(const std::string &debug_info,
                              const CuMatrixBase<BaseFloat> &,
                              const CuMatrixBase<BaseFloat> &out_value,
                              const CuMatrixBase<BaseFloat> &out_deriv,
-                             Component *to_update, // may be NULL; may be identical
+                             Component *to_update_in, // may be NULL; may be identical
                              // to "this" or different.
                              CuMatrixBase<BaseFloat> *in_deriv) const {
   if (in_deriv != NULL) {
     in_deriv->DiffTanh(out_value, out_deriv);
-    RepairGradients(out_value, in_deriv);
+    TanhComponent *to_update = dynamic_cast<TanhComponent*>(to_update_in);
+    if (to_update != NULL)
+      RepairGradients(out_value, in_deriv, to_update);
   }
 }
 
@@ -808,23 +1061,30 @@ void RectifiedLinearComponent::Backprop(
     const CuMatrixBase<BaseFloat> &, //in_value
     const CuMatrixBase<BaseFloat> &out_value,
     const CuMatrixBase<BaseFloat> &out_deriv,
-    Component *to_update,
+    Component *to_update_in,
     CuMatrixBase<BaseFloat> *in_deriv) const {
   if (in_deriv != NULL) {
     in_deriv->Heaviside(out_value);
     in_deriv->MulElements(out_deriv);
-    RepairGradients(in_deriv);
+    RectifiedLinearComponent *to_update =
+        dynamic_cast<RectifiedLinearComponent*>(to_update_in);
+    if (to_update != NULL)
+      RepairGradients(in_deriv, to_update);
   }
 }
 
 
 void RectifiedLinearComponent::RepairGradients(
-    CuMatrixBase<BaseFloat> *in_deriv) const {
+    CuMatrixBase<BaseFloat> *in_deriv,
+    RectifiedLinearComponent *to_update) const {
+  KALDI_ASSERT(to_update != NULL);
   BaseFloat default_lower_threshold = 0.05,
       default_upper_threshold = 0.95;
   // we use this 'repair_probability' (hardcoded for now) to limit
   // this code to running on about half of the minibatches.
   BaseFloat repair_probability = 0.5;
+
+  to_update->num_dims_processed_ += dim_;
 
   if (self_repair_scale_ == 0.0 || count_ == 0.0 || deriv_sum_.Dim() != dim_ ||
       RandUniform() > repair_probability)
@@ -866,6 +1126,9 @@ void RectifiedLinearComponent::RepairGradients(
   // -self_repair_scale * (stats_mat.Row(1)  + stats_mat.Row(0) - 1).
   row0.AddVec(1.0, row1, 1.0);
   row0.Add(-1.0);
+  CuVector<BaseFloat> temp(row0);
+  temp.ApplyPow(2.0);
+  to_update->num_dims_self_repaired_ += temp.Sum();
   // [actually we need to divide by repair_probability also, to
   //  correct for the fact that we only do this on some frames.]
   row0.Scale(-self_repair_scale_ / repair_probability);
@@ -2081,7 +2344,8 @@ void PerElementOffsetComponent::UnVectorize(
 
 std::string ConstantFunctionComponent::Info() const {
   std::ostringstream stream;
-  stream << Type() << ", input-dim=" << InputDim()
+  stream << UpdatableComponent::Info()
+         << ", " << Type() << ", input-dim=" << InputDim()
          << ", output-dim=" << OutputDim()
          << ", is-updatable=" << std::boolalpha << is_updatable_
          << ", use-natural-gradient=" << std::boolalpha
@@ -2140,9 +2404,35 @@ void ConstantFunctionComponent::Backprop(
 }
 
 void ConstantFunctionComponent::Read(std::istream &is, bool binary) {
-  ExpectOneOrTwoTokens(is, binary, "<ConstantFunctionComponent>",
-                       "<InputDim>");
-  ReadBasicType(is, binary, &input_dim_);
+  std::string token;
+  ReadToken(is, binary, &token);
+  if (token == "<ConstantFunctionComponent>") {
+    ReadToken(is, binary, &token);
+  }
+  if (token == "<LearningRateFactor>") {
+    ReadBasicType(is, binary, &learning_rate_factor_);
+    ReadToken(is, binary, &token);
+  } else {
+    learning_rate_factor_ = 1.0;
+  }
+  if (token == "<IsGradient>") {
+    ReadBasicType(is, binary, &is_gradient_);
+    ReadToken(is, binary, &token);
+  } else {
+    is_gradient_ = false;
+  }
+  if (token == "<LearningRate>") {
+    ReadBasicType(is, binary, &learning_rate_);
+    ReadToken(is, binary, &token);
+  } else {
+    learning_rate_ = 0.001;
+  }
+  if (token == "<InputDim>") {
+    ReadBasicType(is, binary, &input_dim_);
+  } else {
+    KALDI_ERR << "Expected token <InputDim>, got "
+              << token;
+  }
   ExpectToken(is, binary, "<Output>");
   output_.Read(is, binary);
   ExpectToken(is, binary, "<IsUpdatable>");
@@ -2153,7 +2443,7 @@ void ConstantFunctionComponent::Read(std::istream &is, bool binary) {
 }
 
 void ConstantFunctionComponent::Write(std::ostream &os, bool binary) const {
-  WriteToken(os, binary, "<ConstantFunctionComponent>");
+  WriteUpdatableCommon(os, binary);  // Write the opening tag and learning rate
   WriteToken(os, binary, "<InputDim>");
   WriteBasicType(os, binary, input_dim_);
   WriteToken(os, binary, "<Output>");
@@ -2326,6 +2616,8 @@ void NaturalGradientAffineComponent::InitFromConfig(ConfigLine *cfl) {
   } else {
     ok = ok && cfl->GetValue("input-dim", &input_dim);
     ok = ok && cfl->GetValue("output-dim", &output_dim);
+    if (!ok)
+      KALDI_ERR << "Bad initializer " << cfl->WholeLine();
     BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
         bias_stddev = 1.0, bias_mean = 0.0;
     cfl->GetValue("param-stddev", &param_stddev);
@@ -2403,9 +2695,10 @@ void NaturalGradientAffineComponent::Init(
   SetNaturalGradientConfigs();
   if (max_change_per_sample > 0.0)
     KALDI_WARN << "You are setting a positive max_change_per_sample for "
-               << "NaturalGradientAffineComponent. But the per-component "
-               << "gradient clipping mechansim has been removed. Instead it's currently "
-               << "done at the whole model level.";
+               << "NaturalGradientAffineComponent. But it has been deprecated. "
+               << "Please use max_change for all updatable components instead "
+               << "to activate the per-component max change mechanism.";
+  KALDI_ASSERT(max_change_per_sample >= 0.0);
   max_change_per_sample_ = max_change_per_sample;
   is_gradient_ = false;  // not configurable; there's no reason you'd want this
   update_count_ = 0.0;
@@ -2605,6 +2898,10 @@ void FixedAffineComponent::InitFromConfig(ConfigLine *cfl) {
 }
 
 
+FixedAffineComponent::FixedAffineComponent(const AffineComponent &c):
+    linear_params_(c.LinearParams()),
+    bias_params_(c.BiasParams()) { }
+
 void FixedAffineComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                      const CuMatrixBase<BaseFloat> &in,
                                      CuMatrixBase<BaseFloat> *out) const  {
@@ -2802,16 +3099,7 @@ void SoftmaxComponent::Backprop(const std::string &debug_info,
     d = diag(p) e - p (p^T e).
     d_i = p_i e_i - p_i (p^T e).
   */
-  const CuMatrixBase<BaseFloat> &P(out_value), &E(out_deriv);
-  CuMatrixBase<BaseFloat> &D (*in_deriv);
-
-  D.CopyFromMat(P);
-  D.MulElements(E);
-  // At this point, D = P .* E (in matlab notation)
-  CuVector<BaseFloat> pe_vec(D.NumRows()); // For each row i, the dot product (p_t . e_t).
-  pe_vec.AddDiagMatMat(1.0, P, kNoTrans, E, kTrans, 0.0);
-
-  D.AddDiagVecMat(-1.0, pe_vec, P, kNoTrans, 1.0); // does D -= diag(pe_vec) * P.
+  in_deriv->DiffSoftmaxPerRow(out_value, out_deriv);
 }
 
 void SoftmaxComponent::StoreStats(const CuMatrixBase<BaseFloat> &out_value) {
@@ -2838,28 +3126,7 @@ void LogSoftmaxComponent::Backprop(const std::string &debug_info,
                                    CuMatrixBase<BaseFloat> *in_deriv) const {
   if (in_deriv == NULL)
     return;
-
-  /*
-    Let the output be y, then
-      y_i = x_i - log(sum_i exp(x_i))
-    where x_i is the input to the component. The Jacobian matrix of this
-    function is
-      J = I - 1 exp(y^T)
-    where 1 is a vector of ones. Let the derivative vector at the output be e,
-    and at the input be d, then we have
-      d = e - exp(y) Sum(e)
-      d_i = e_i - exp(y_i) Sum(e)
-  */
-  const CuMatrixBase<BaseFloat> &Y(out_value), &E(out_deriv);
-  CuMatrixBase<BaseFloat> &D (*in_deriv);
-
-  D.CopyFromMat(Y);
-  D.ApplyExp();                           // exp(y)
-  CuVector<BaseFloat> E_sum(D.NumRows()); // Initializes to zero
-  E_sum.AddColSumMat(1.0, E);             // Sum(e)
-  D.MulRowsVec(E_sum);                    // exp(y) Sum(e)
-  D.Scale(-1.0);                          // - exp(y) Sum(e)
-  D.AddMat(1.0, E, kNoTrans);             // e - exp(y_i) Sum(e)
+  in_deriv->DiffLogSoftmaxPerRow(out_value, out_deriv);
 }
 
 
@@ -3124,9 +3391,9 @@ void NaturalGradientPerElementScaleComponent::Init(
   max_change_per_minibatch_ = max_change_per_minibatch;
   if (max_change_per_minibatch > 0.0)
     KALDI_WARN << "You are setting a positive max_change_per_minibatch for "
-               << "NaturalGradientPerElementScaleComponent. But the per-component "
-               << "gradient clipping mechansim has been removed. Instead it's currently "
-               << "done at the whole model level.";
+               << "NaturalGradientPerElementScaleComponent. But it has been deprecated. "
+               << "Please use max_change for all updatable components instead "
+               << "to activate the per-component max change mechanism.";
 }
 
 void NaturalGradientPerElementScaleComponent::Init(
@@ -4698,7 +4965,8 @@ void CompositeComponent::InitFromConfig(ConfigLine *cfl) {
     Component *this_component = NULL;
     if (!nested_line.ParseLine(component_config) ||
         !nested_line.GetValue("type", &component_type) ||
-        !(this_component = NewComponentOfType(component_type))) {
+        !(this_component = NewComponentOfType(component_type)) ||
+        nested_line.FirstToken() != "") {
       DeletePointers(&components);
       KALDI_ERR << "Could not parse config line for '" << name_stream.str()
                 << "(or undefined or bad component type [type=xxx]), in "

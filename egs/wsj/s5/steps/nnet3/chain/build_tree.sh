@@ -66,6 +66,9 @@ cp $alidir/splice_opts $dir 2>/dev/null # frame-splicing options.
 cp $alidir/cmvn_opts $dir 2>/dev/null # cmn/cmvn option.
 cp $alidir/delta_opts $dir 2>/dev/null # delta option.
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
+
 echo $nj >$dir/num_jobs
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 
@@ -103,7 +106,7 @@ if [ $stage -le -5 ]; then
   # get feature dimension
   example_feats="`echo $feats | sed s/JOB/1/g`";
   if ! feat_dim=$(feat-to-dim "$example_feats" - 2>/dev/null) || [ -z $feat_dim ]; then
-    feat-to-dim "$example_feats"  # to see the error message.
+    feat-to-dim "$example_feats" - # to see the error message.
     echo "error getting feature dimension"
     exit 1;
   fi

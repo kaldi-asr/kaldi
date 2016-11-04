@@ -6,12 +6,12 @@ endif
 
 DOUBLE_PRECISION = 0
 CXXFLAGS = -msse -msse2 -Wall -I.. -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
-    -DHAVE_POSIX_MEMALIGN -DHAVE_CLAPACK -I ../../tools/CLAPACK/ \
-    -Wno-sign-compare -Winit-self \
+    -DHAVE_CLAPACK -I ../../tools/CLAPACK/ \
+    -Wno-sign-compare -Wno-unused-local-typedefs -Winit-self \
     -I ../../tools/CLAPACK/ \
     -I $(FSTROOT)/include \
     $(EXTRA_CXXFLAGS) \
-    -g # -O0 -DKALDI_PARANOID 
+    -g # -O0 -DKALDI_PARANOID
 
 ifeq ($(KALDI_FLAVOR), dynamic)
 CXXFLAGS += -fPIC

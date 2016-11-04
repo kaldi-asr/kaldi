@@ -1,7 +1,19 @@
 #!/bin/bash
 
-# http://www.speech.sri.com/projects/srilm/download.html
+current_path=`pwd`
+current_dir=`basename "$current_path"`
 
+if [ "tools" != "$current_dir" ]; then
+    echo "You should run this script in tools/ directory!!"
+    exit 1
+fi
+
+if [ ! -d liblbfgs-1.10 ]; then
+    echo Installing libLBFGS library to support MaxEnt LMs
+    bash extras/install_liblbfgs.sh || exit 1
+fi
+
+# http://www.speech.sri.com/projects/srilm/download.html
 if [ ! -f srilm.tgz ]; then
   echo This script cannot install SRILM in a completely automatic
   echo way because you need to put your address in a download form.
@@ -23,7 +35,20 @@ cp Makefile tmpf
 cat tmpf | awk -v pwd=`pwd` '/SRILM =/{printf("SRILM = %s\n", pwd); next;} {print;}' \
   > Makefile || exit 1;
 
-make
+mtype=`sbin/machine-type`
+
+echo HAVE_LIBLBFGS=1 >> common/Makefile.machine.$mtype
+grep ADDITIONAL_INCLUDES common/Makefile.machine.$mtype | \
+    sed 's|$| -I$(SRILM)/../liblbfgs-1.10/include|' \
+    >> common/Makefile.machine.$mtype
+
+grep ADDITIONAL_LDFLAGS common/Makefile.machine.$mtype | \
+    sed 's|$| -L$(SRILM)/../liblbfgs-1.10/lib/ -Wl,-rpath -Wl,$(SRILM)/../liblbfgs-1.10/lib/|' \
+    >> common/Makefile.machine.$mtype
+
+
+
+make || exit 1
 
 cd ..
 (

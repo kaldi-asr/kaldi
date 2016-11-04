@@ -29,10 +29,9 @@ export cuda_cmd="queue.pl --gpu 1 --mem 20G"
 if [ "$(hostname -d)" == "fit.vutbr.cz" ]; then
   # BUT cluster:
   queue="all.q@@blade,all.q@@speech"
-  gpu_queue="long.q@@gpu"
   storage="matylda5"
   export train_cmd="queue.pl -q $queue -l ram_free=1.5G,mem_free=1.5G,${storage}=1"
   export decode_cmd="queue.pl -q $queue -l ram_free=2.5G,mem_free=2.5G,${storage}=0.5"
-  export cuda_cmd="queue.pl -q $gpu_queue -l gpu=1"
+  export cuda_cmd="queue.pl -q long.q -l gpu=1"
 fi
 

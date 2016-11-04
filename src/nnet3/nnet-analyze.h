@@ -29,7 +29,7 @@ namespace nnet3 {
 
 
 /**
-   @file This file contains utilities for analyzing and checking computations,
+   @file nnet-analyze.h This file contains utilities for analyzing and checking computations,
      which are used in the optimization code.
  */
 

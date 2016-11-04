@@ -13,6 +13,7 @@ min_lmwt=5
 max_lmwt=20
 use_segments=true # if we have a segments file, use it to convert
                   # the segments to be relative to the original files.
+print_silence=false
 #end configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -61,27 +62,28 @@ if [ $stage -le 0 ]; then
     filter_cmd=cat
   fi
 
+  nj=$(cat $dir/num_jobs)
+  lats=$(for n in $(seq $nj); do echo -n "$dir/lat.$n.gz "; done)
   if [ -f $lang/phones/word_boundary.int ]; then
     $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.log \
       set -o pipefail '&&' mkdir -p $dir/score_LMWT/ '&&' \
-      lattice-1best --lm-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
+      lattice-1best --lm-scale=LMWT "ark:gunzip -c $lats|" ark:- \| \
       lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- \| \
-      nbest-to-ctm --frame-shift=$frame_shift ark:- - \| \
+      nbest-to-ctm --frame-shift=$frame_shift --print-silence=$print_silence ark:- - \| \
+      utils/int2sym.pl -f 5 $lang/words.txt \| \
+      $filter_cmd '>' $dir/score_LMWT/$name.ctm || exit 1;
+  elif [ -f $lang/phones/align_lexicon.int ]; then
+    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.log \
+      set -o pipefail '&&' mkdir -p $dir/score_LMWT/ '&&' \
+      lattice-1best --lm-scale=LMWT "ark:gunzip -c $lats|" ark:- \| \
+      lattice-align-words-lexicon $lang/phones/align_lexicon.int $model ark:- ark:- \| \
+      lattice-1best ark:- ark:- \| \
+      nbest-to-ctm --frame-shift=$frame_shift --print-silence=$print_silence ark:- - \| \
       utils/int2sym.pl -f 5 $lang/words.txt \| \
       $filter_cmd '>' $dir/score_LMWT/$name.ctm || exit 1;
   else
-    if [ ! -f $lang/phones/align_lexicon.int ]; then
-      echo "$0: neither $lang/phones/word_boundary.int nor $lang/phones/align_lexicon.int exists: cannot align."
-      exit 1;
-    fi
-
-    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.log \
-      set -o pipefail '&&' mkdir -p $dir/score_LMWT/ '&&' \
-      lattice-1best --lm-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
-      lattice-align-words-lexicon $lang/phones/align_lexicon.int $model ark:- ark:- \| \
-      nbest-to-ctm --frame-shift=$frame_shift ark:- - \| \
-      utils/int2sym.pl -f 5 $lang/words.txt \| \
-      $filter_cmd '>' $dir/score_LMWT/$name.ctm || exit 1;
+    echo "$0: neither $lang/phones/word_boundary.int nor $lang/phones/align_lexicon.int exists: cannot align."
+    exit 1;
   fi
 fi
 

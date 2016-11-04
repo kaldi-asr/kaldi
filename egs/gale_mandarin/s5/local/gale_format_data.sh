@@ -6,9 +6,9 @@
 if [ -f path.sh ]; then
   . path.sh; else
    echo "missing path.sh"; exit 1;
-fi 
+fi
 
-for dir in dev train; do 
+for dir in dev train; do
    cp -pr data/local/$dir data/$dir
 done
 
@@ -22,26 +22,13 @@ arpa_lm=data/local/lm/3gram-mincount/lm_unpruned.gz
 rm -r data/lang_dev
 cp -r data/lang data/lang_dev
 
-# grep -v '<s> <s>' etc. is only for future-proofing this script.  Our
-# LM doesn't have these "invalid combinations".  These can cause 
-# determinization failures of CLG [ends up being epsilon cycles].
-# Note: remove_oovs.pl takes a list of words in the LM that aren't in
-# our word list.  Since our LM doesn't have any, we just give it
-# /dev/null [we leave it in the script to show how you'd do it].
 gunzip -c "$arpa_lm" | \
-   grep -v '<s> <s>' | \
-   grep -v '</s> <s>' | \
-   grep -v '</s> </s>' | \
-   arpa2fst - | fstprint | \
-   utils/remove_oovs.pl /dev/null | \
-   utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=data/lang_dev/words.txt \
-     --osymbols=data/lang_dev/words.txt  --keep_isymbols=false --keep_osymbols=false | \
-    fstrmepsilon | fstarcsort --sort_type=ilabel > data/lang_dev/G.fst
-  fstisstochastic data/lang_dev/G.fst
+  arpa2fst --disambig-symbol=#0 \
+           --read-symbol-table=data/lang_test/words.txt - data/lang_test/G.fst
 
 
 echo  "Checking how stochastic G is (the first of these numbers should be small):"
-fstisstochastic data/lang_dev/G.fst 
+fstisstochastic data/lang_dev/G.fst
 
 ## Check lexicon.
 ## just have a look and make sure it seems sane.

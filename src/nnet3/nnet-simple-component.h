@@ -34,7 +34,8 @@
 namespace kaldi {
 namespace nnet3 {
 
-/// @file  This file contains declarations of components that are "simple", meaning
+/// @file  nnet-simple-component.h
+///   This file contains declarations of components that are "simple", meaning
 ///   they don't care about the indexes they are operating on, produce one
 ///   output for one input, and return the kSimpleComponent flag in their
 ///   Properties(): for example, tanh and affine components.  In
@@ -77,6 +78,59 @@ class PnormComponent: public Component {
  protected:
   int32 input_dim_;
   int32 output_dim_;
+};
+
+// This component randomly zeros dropout_proportion of the input
+// and the derivatives are backpropagated through the nonzero inputs.
+// Typically this component used during training but not in test time.
+// The idea is described under the name Dropout, in the paper
+// "Dropout: A Simple Way to Prevent Neural Networks from Overfitting".
+class DropoutComponent : public RandomComponent {
+ public:
+  void Init(int32 dim, BaseFloat dropout_proportion = 0.0);
+
+  DropoutComponent(int32 dim, BaseFloat dropout = 0.0) { Init(dim, dropout); }
+
+  DropoutComponent(): dim_(0), dropout_proportion_(0.0) { }
+
+  virtual int32 Properties() const {
+    return kLinearInInput|kBackpropInPlace|kSimpleComponent|kBackpropNeedsInput|kBackpropNeedsOutput;
+  }
+  virtual std::string Type() const { return "DropoutComponent"; }
+
+  virtual void InitFromConfig(ConfigLine *cfl);
+
+  virtual int32 InputDim() const { return dim_; }
+
+  virtual int32 OutputDim() const { return dim_; }
+
+  virtual void Read(std::istream &is, bool binary);
+
+  // Write component to stream
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+  virtual Component* Copy() const { return new DropoutComponent(dim_,
+                                                                dropout_proportion_); }
+  virtual std::string Info() const;
+
+  void SetDropoutProportion(BaseFloat dropout_proportion) { dropout_proportion_ = dropout_proportion; }
+
+ private:
+  int32 dim_;
+  /// dropout-proportion is the proportion that is dropped out,
+  /// e.g. if 0.1, we set 10% to zero value.
+  BaseFloat dropout_proportion_;
+
 };
 
 class ElementwiseProductComponent: public Component {
@@ -193,7 +247,8 @@ class SigmoidComponent: public NonlinearComponent {
   // this function is called from Backprop code and only does something if the
   // self-repair-scale config value is set.
   void RepairGradients(const CuMatrixBase<BaseFloat> &out_value,
-                       CuMatrixBase<BaseFloat> *in_deriv) const;
+                       CuMatrixBase<BaseFloat> *in_deriv,
+                       SigmoidComponent *to_update) const;
 
   SigmoidComponent &operator = (const SigmoidComponent &other); // Disallow.
 };
@@ -222,7 +277,8 @@ class TanhComponent: public NonlinearComponent {
   // this function is called from Backprop code and only does something if the
   // self-repair-scale config value is set.
   void RepairGradients(const CuMatrixBase<BaseFloat> &out_value,
-                       CuMatrixBase<BaseFloat> *in_deriv) const;
+                       CuMatrixBase<BaseFloat> *in_deriv,
+                       TanhComponent *to_update) const;
 
   TanhComponent &operator = (const TanhComponent &other); // Disallow.
 };
@@ -254,7 +310,8 @@ class RectifiedLinearComponent: public NonlinearComponent {
  private:
   // this function is called from Backprop code and only does something if the
   // self-repair-scale config value is set.
-  void RepairGradients(CuMatrixBase<BaseFloat> *in_deriv) const;
+  void RepairGradients(CuMatrixBase<BaseFloat> *in_deriv,
+                       RectifiedLinearComponent *to_update) const;
 
   RectifiedLinearComponent &operator = (const RectifiedLinearComponent &other); // Disallow.
 };
@@ -366,8 +423,8 @@ class AffineComponent: public UpdatableComponent {
   // This new function is used when mixing up:
   virtual void SetParams(const VectorBase<BaseFloat> &bias,
                          const MatrixBase<BaseFloat> &linear);
-  const CuVector<BaseFloat> &BiasParams() { return bias_params_; }
-  const CuMatrix<BaseFloat> &LinearParams() { return linear_params_; }
+  const CuVector<BaseFloat> &BiasParams() const { return bias_params_; }
+  const CuMatrix<BaseFloat> &LinearParams() const { return linear_params_; }
   explicit AffineComponent(const AffineComponent &other);
   // The next constructor is used in converting from nnet1.
   AffineComponent(const CuMatrixBase<BaseFloat> &linear_params,
@@ -526,8 +583,8 @@ class RepeatedAffineComponent: public UpdatableComponent {
   virtual void UnVectorize(const VectorBase<BaseFloat> &params);
 
   // Some functions that are specific to this class.
-  const CuVector<BaseFloat> &BiasParams() { return bias_params_; }
-  const CuMatrix<BaseFloat> &LinearParams() { return linear_params_; }
+  const CuVector<BaseFloat> &BiasParams() const { return bias_params_; }
+  const CuMatrix<BaseFloat> &LinearParams() const { return linear_params_; }
   explicit RepeatedAffineComponent(const RepeatedAffineComponent &other);
 
   void Init(int32 input_dim, int32 output_dim, int32 num_repeats,
@@ -733,6 +790,11 @@ class FixedAffineComponent: public Component {
   virtual std::string Type() const { return "FixedAffineComponent"; }
   virtual std::string Info() const;
 
+  // Copy constructor from AffineComponent-- can be used when we're done
+  // training a particular part of the model and want to efficiently disable
+  // further training.
+  FixedAffineComponent(const AffineComponent &c);
+
   /// matrix should be of size input-dim+1 to output-dim, last col is offset
   void Init(const CuMatrixBase<BaseFloat> &matrix);
 
@@ -936,23 +998,44 @@ class NoOpComponent: public NonlinearComponent {
 class ClipGradientComponent: public Component {
  public:
   ClipGradientComponent(int32 dim, BaseFloat clipping_threshold,
-                        bool norm_based_clipping, int32 num_clipped,
-                        int32 count) {
-    Init(dim, clipping_threshold, norm_based_clipping, num_clipped, count);}
+                        bool norm_based_clipping,
+                        BaseFloat self_repair_clipped_proportion_threshold,
+                        BaseFloat self_repair_target,
+                        BaseFloat self_repair_scale,
+                        int32 num_clipped,
+                        int32 count,
+                        int32 num_self_repaired,
+                        int32 num_backpropped) {
+    Init(dim, clipping_threshold, norm_based_clipping,
+         self_repair_clipped_proportion_threshold,
+         self_repair_target,
+         self_repair_scale,
+         num_clipped, count,
+         num_self_repaired, num_backpropped);}
 
   ClipGradientComponent(): dim_(0), clipping_threshold_(-1),
-    norm_based_clipping_(false), num_clipped_(0), count_(0) { }
+    norm_based_clipping_(false),
+    self_repair_clipped_proportion_threshold_(1.0),
+    self_repair_target_(0.0),
+    self_repair_scale_(0.0),
+    num_clipped_(0), count_(0),
+    num_self_repaired_(0), num_backpropped_(0) { }
 
   virtual int32 InputDim() const { return dim_; }
   virtual int32 OutputDim() const { return dim_; }
   virtual void InitFromConfig(ConfigLine *cfl);
   void Init(int32 dim, BaseFloat clipping_threshold, bool norm_based_clipping,
-            int32 num_clipped, int32 count);
+            BaseFloat self_repair_clipped_proportion_threshold,
+            BaseFloat self_repair_target,
+            BaseFloat self_repair_scale,
+            int32 num_clipped, int32 count,
+            int32 num_self_repaired, int32 num_backpropped);
 
   virtual std::string Type() const { return "ClipGradientComponent"; }
 
   virtual int32 Properties() const {
-    return kSimpleComponent|kLinearInInput|kPropagateInPlace|kBackpropInPlace;
+    return kSimpleComponent|kLinearInInput|kPropagateInPlace|kBackpropInPlace|
+           kBackpropNeedsInput;
   }
 
   virtual void ZeroStats();
@@ -961,15 +1044,20 @@ class ClipGradientComponent: public Component {
     return new ClipGradientComponent(dim_,
                                      clipping_threshold_,
                                      norm_based_clipping_,
+                                     self_repair_clipped_proportion_threshold_,
+                                     self_repair_target_,
+                                     self_repair_scale_,
                                      num_clipped_,
-                                     count_);}
+                                     count_,
+                                     num_self_repaired_,
+                                     num_backpropped_);}
 
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
                         const ComponentPrecomputedIndexes *indexes,
-                        const CuMatrixBase<BaseFloat> &, //in_value
+                        const CuMatrixBase<BaseFloat> &in_value,
                         const CuMatrixBase<BaseFloat> &, // out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
                         Component *to_update,
@@ -982,6 +1070,13 @@ class ClipGradientComponent: public Component {
   /// Write component to stream
   virtual void Write(std::ostream &os, bool binary) const;
   virtual std::string Info() const;
+  virtual ~ClipGradientComponent() {
+    if (num_self_repaired_ > 0)
+      KALDI_LOG << "ClipGradientComponent(node_name=" << debug_info_
+                << ")'s self-repair was activated " << num_self_repaired_
+                << " time(s) out of " << num_backpropped_
+                << " times of calling Backprop() in this training job.";
+  }
  private:
   int32 dim_;  // input/output dimension
   BaseFloat clipping_threshold_;  // threshold to be used for clipping
@@ -992,6 +1087,29 @@ class ClipGradientComponent: public Component {
                               // else element-wise absolute value clipping is
                               // done
 
+  // some configuration values relating to self-repairing.
+  BaseFloat self_repair_clipped_proportion_threshold_; // the threshold of
+                                                       // clipped-proportion
+                                                       // for self-repair to be
+                                                       // activated
+  BaseFloat self_repair_target_; // the target value towards which self-repair
+                                 // is trying to set for in-deriv
+  BaseFloat self_repair_scale_;  // constant scaling the self-repair vector
+  std::string debug_info_;   // component-node name, used in the destructor to
+                             // print out stats of self-repair
+
+  // this function is called from Backprop code, and only does something if the
+  // self-repair-scale config value is set and the current clipped proportion
+  // exceeds the threshold. What it does is to add a term to in-deriv that
+  // forces the input to the ClipGradientComponent to be close to some small
+  // value (e.g., 0.0 or 0.5, depending on what the input is, e.g.,
+  // Sigmoid or Tanh or Affine). The hope is that if the input is forced to be
+  // small, the parameters on the path will also tend to be small, which may
+  // help tamp down the divergence caused by gradient explosion.
+  void RepairGradients(const std::string &debug_info,
+                       const CuMatrixBase<BaseFloat> &in_value,
+                       CuMatrixBase<BaseFloat> *in_deriv,
+                       ClipGradientComponent *to_update) const;
 
   ClipGradientComponent &operator =
       (const ClipGradientComponent &other); // Disallow.
@@ -1004,6 +1122,8 @@ class ClipGradientComponent: public Component {
   // Note: no stats are stored when norm_based_clipping_ is false
   int32 num_clipped_;  // number of elements which were clipped
   int32 count_;  // number of elements which were processed
+  int32 num_self_repaired_; // number of times self-repair is activated
+  int32 num_backpropped_; //number of times backprop is called
 
 };
 
@@ -1223,7 +1343,7 @@ class ConstantFunctionComponent: public UpdatableComponent {
   virtual int32 Properties() const {
     return kSimpleComponent|
         (is_updatable_ ? kUpdatableComponent|kLinearInParameters : 0) |
-        (InputDim() == OutputDim() ? kPropagateInPlace|kBackpropInPlace: 0) |
+        (InputDim() == OutputDim() ? kPropagateInPlace: 0) |
         kBackpropAdds;
   }
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
@@ -1459,8 +1579,8 @@ class ConvolutionComponent: public UpdatableComponent {
   // Some functions that are specific to this class.
   void SetParams(const VectorBase<BaseFloat> &bias,
                  const MatrixBase<BaseFloat> &filter);
-  const CuVector<BaseFloat> &BiasParams() { return bias_params_; }
-  const CuMatrix<BaseFloat> &LinearParams() { return filter_params_; }
+  const CuVector<BaseFloat> &BiasParams() const { return bias_params_; }
+  const CuMatrix<BaseFloat> &LinearParams() const { return filter_params_; }
   void Init(int32 input_x_dim, int32 input_y_dim, int32 input_z_dim,
             int32 filt_x_dim, int32 filt_y_dim,
             int32 filt_x_step, int32 filt_y_step, int32 num_filters,

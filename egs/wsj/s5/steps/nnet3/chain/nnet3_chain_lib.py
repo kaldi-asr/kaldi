@@ -11,6 +11,7 @@ import re
 import time
 import imp
 import os
+import sys
 
 train_lib = imp.load_source('ntl', 'steps/nnet3/nnet3_train_lib.py')
 
@@ -59,7 +60,7 @@ def GenerateChainEgs(dir, data, lat_dir, egs_dir,
                     frame_subsampling_factor = 3,
                     alignment_subsampling_factor = 3,
                     feat_type = 'raw', online_ivector_dir = None,
-                    frames_per_iter = 20000, frames_per_eg = 20,
+                    frames_per_iter = 20000, frames_per_eg = 20, srand = 0,
                     egs_opts = None, cmvn_opts = None, transform_dir = None):
 
     train_lib.RunKaldiCommand("""
@@ -79,6 +80,7 @@ steps/nnet3/chain/get_egs.sh {egs_opts} \
   --stage {stage} \
   --frames-per-iter {frames_per_iter} \
   --frames-per-eg {frames_per_eg} \
+  --srand {srand} \
   {data} {dir} {lat_dir} {egs_dir}
       """.format(command = run_opts.command,
           cmvn_opts = cmvn_opts if cmvn_opts is not None else '',
@@ -93,7 +95,7 @@ steps/nnet3/chain/get_egs.sh {egs_opts} \
           frame_subsampling_factor = frame_subsampling_factor,
           alignment_subsampling_factor = alignment_subsampling_factor,
           stage = stage, frames_per_iter = frames_per_iter,
-          frames_per_eg = frames_per_eg,
+          frames_per_eg = frames_per_eg, srand = srand,
           data = data, lat_dir = lat_dir, dir = dir, egs_dir = egs_dir,
           egs_opts = egs_opts if egs_opts is not None else '' ))
 
@@ -176,9 +178,11 @@ def CombineModels(dir, num_iters, num_iters_combine, num_chunk_per_minibatch,
     raw_model_strings = []
     for iter in range(num_iters - num_iters_combine + 1, num_iters + 1):
       model_file = '{0}/{1}.mdl'.format(dir, iter)
-      if not os.path.exists(model_file):
-          raise Exception('Model file {0} missing'.format(model_file))
-      raw_model_strings.append('"nnet3-am-copy --raw=true {0} -|"'.format(model_file))
+      if os.path.exists(model_file):
+          raw_model_strings.append('"nnet3-am-copy --raw=true {0} -|"'.format(model_file))
+      else:
+          print('{0}: warning: model file {1} does not exist (final combination)'.format(
+                  sys.argv[0], model_file))
     train_lib.RunKaldiCommand("""
 {command} {combine_queue_opt} {dir}/log/combine.log \
 nnet3-chain-combine --num-iters=40 \

@@ -28,6 +28,7 @@
 #include "util/const-integer-set.h"
 #include "util/kaldi-table.h"
 #include "hmm/transition-model.h"
+#include "matrix/kaldi-matrix.h"
 
 
 namespace kaldi {
@@ -239,6 +240,22 @@ void WeightSilencePostDistributed(const TransitionModel &trans_model,
                                   const ConstIntegerSet<int32> &silence_set,
                                   BaseFloat silence_scale,
                                   Posterior *post);
+
+/// This converts a Posterior to a Matrix. The number of matrix-rows is the same
+/// as the 'post.size()', the number of matrix-columns is defined by 'post_dim'.
+/// The elements which are not specified in 'Posterior' are equal to zero.
+template <typename Real>
+void PosteriorToMatrix(const Posterior &post,
+                       const int32 post_dim, Matrix<Real> *mat);
+
+/// This converts a Posterior to a Matrix. The number of matrix-rows is the same
+/// as the 'post.size()', the number of matrix-columns is defined by 'NumPdfs'
+/// in the TransitionModel.
+/// The elements which are not specified in 'Posterior' are equal to zero.
+template <typename Real>
+void PosteriorToPdfMatrix(const Posterior &post,
+                          const TransitionModel &model,
+                          Matrix<Real> *mat);
 
 /// @} end "addtogroup posterior_group"
 

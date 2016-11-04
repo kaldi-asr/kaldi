@@ -67,6 +67,9 @@ $(BINFILES): $(LIBFILE) $(XDEPENDS)
 clean:
 	-rm -f *.o *.a *.so $(TESTFILES) $(BINFILES) $(TESTOUTPUTS) tmp* *.tmp *.testlog
 
+distclean: clean
+	-rm -f .depend.mk
+
 $(TESTFILES): $(LIBFILE) $(XDEPENDS)
 
 test_compile: $(TESTFILES)

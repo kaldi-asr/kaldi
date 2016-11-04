@@ -1,6 +1,7 @@
 // feat/feature-fbank.h
 
 // Copyright 2009-2012  Karel Vesely
+//                2016  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -23,14 +24,17 @@
 #include<map>
 #include <string>
 
+#include "feat/feature-common.h"
 #include "feat/feature-functions.h"
+#include "feat/feature-window.h"
+#include "feat/mel-computations.h"
 
 namespace kaldi {
 /// @addtogroup  feat FeatureExtraction
 /// @{
 
 
-/// FbankOptions contains basic options for computing FBANK features
+/// FbankOptions contains basic options for computing filterbank features.
 /// It only includes things that can be done in a "stateless" way, i.e.
 /// it does not include energy max-normalization.
 /// It does not include delta computation.
@@ -42,6 +46,7 @@ struct FbankOptions {
   bool raw_energy;  // If true, compute energy before preemphasis and windowing
   bool htk_compat;  // If true, put energy last (if using energy)
   bool use_log_fbank;  // if true (default), produce log-filterbank, else linear
+  bool use_power;  // if true (default), use power in filterbank analysis, else magnitude.
 
   FbankOptions(): mel_opts(23),
                  // defaults the #mel-banks to 23 for the FBANK computations.
@@ -51,7 +56,8 @@ struct FbankOptions {
                  energy_floor(0.0),  // not in log scale: a small value e.g. 1.0e-10
                  raw_energy(true),
                  htk_compat(false),
-                 use_log_fbank(true) {}
+                 use_log_fbank(true),
+                 use_power(true) {}
 
   void Register(OptionsItf *opts) {
     frame_opts.Register(opts);
@@ -67,59 +73,72 @@ struct FbankOptions {
                    "to change other parameters).");
     opts->Register("use-log-fbank", &use_log_fbank,
                    "If true, produce log-filterbank, else produce linear.");
+    opts->Register("use-power", &use_power,
+                   "If true, use power, else use magnitude.");
   }
 };
-
-class MelBanks;
 
 
 /// Class for computing mel-filterbank features; see \ref feat_mfcc for more
 /// information.
-class Fbank {
+class FbankComputer {
  public:
-  explicit Fbank(const FbankOptions &opts);
-  ~Fbank();
+  typedef FbankOptions Options;
+
+  explicit FbankComputer(const FbankOptions &opts);
+  FbankComputer(const FbankComputer &other);
 
   int32 Dim() const {
     return opts_.mel_opts.num_bins + (opts_.use_energy ? 1 : 0);
   }
 
-  /// Will throw exception on failure (e.g. if file too short for even one
-  /// frame).  The output "wave_remainder" is the last frame or two of the
-  /// waveform that it would be necessary to include in the next call to Compute
-  /// for the same utterance.  It is not exactly the un-processed part (it may
-  /// have been partly processed), it's the start of the next window that we
-  /// have not already processed.
-  void Compute(const VectorBase<BaseFloat> &wave,
-               BaseFloat vtln_warp,
-               Matrix<BaseFloat> *output,
-               Vector<BaseFloat> *wave_remainder = NULL);
+  bool NeedRawLogEnergy() { return opts_.use_energy && opts_.raw_energy; }
 
-  /// Const version of Compute()
-  void Compute(const VectorBase<BaseFloat> &wave,
+  const FrameExtractionOptions &GetFrameOptions() const {
+    return opts_.frame_opts;
+  }
+
+  /**
+     Function that computes one frame of features from
+     one frame of signal.
+
+     @param [in] signal_raw_log_energy The log-energy of the frame of the signal
+         prior to windowing and pre-emphasis, or
+         log(numeric_limits<float>::min()), whichever is greater.  Must be
+         ignored by this function if this class returns false from
+         this->NeedsRawLogEnergy().
+     @param [in] vtln_warp  The VTLN warping factor that the user wants
+         to be applied when computing features for this utterance.  Will
+         normally be 1.0, meaning no warping is to be done.  The value will
+         be ignored for feature types that don't support VLTN, such as
+         spectrogram features.
+     @param [in] signal_frame  One frame of the signal,
+       as extracted using the function ExtractWindow() using the options
+       returned by this->GetFrameOptions().  The function will use the
+       vector as a workspace, which is why it's a non-const pointer.
+     @param [out] feature  Pointer to a vector of size this->Dim(), to which
+         the computed feature will be written.
+  */
+  void Compute(BaseFloat signal_log_energy,
                BaseFloat vtln_warp,
-               Matrix<BaseFloat> *output,
-               Vector<BaseFloat> *wave_remainder = NULL) const;
-  typedef FbankOptions Options;
+               VectorBase<BaseFloat> *signal_frame,
+               VectorBase<BaseFloat> *feature);
+
+  ~FbankComputer();
+
  private:
-  void ComputeInternal(const VectorBase<BaseFloat> &wave,
-                       const MelBanks &mel_banks,
-                       Matrix<BaseFloat> *output,
-                       Vector<BaseFloat> *wave_remainder = NULL) const;
-
   const MelBanks *GetMelBanks(BaseFloat vtln_warp);
 
-  const MelBanks *GetMelBanks(BaseFloat vtln_warp,
-                              bool *must_delete) const;
 
   FbankOptions opts_;
   BaseFloat log_energy_floor_;
   std::map<BaseFloat, MelBanks*> mel_banks_;  // BaseFloat is VTLN coefficient.
-  FeatureWindowFunction feature_window_function_;
   SplitRadixRealFft<BaseFloat> *srfft_;
-  KALDI_DISALLOW_COPY_AND_ASSIGN(Fbank);
+  // Disallow assignment.
+  FbankComputer &operator =(const FbankComputer &other);
 };
 
+typedef OfflineFeatureTpl<FbankComputer> Fbank;
 
 /// @} End of "addtogroup feat"
 }  // namespace kaldi

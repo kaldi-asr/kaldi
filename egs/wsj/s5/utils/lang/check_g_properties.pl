@@ -56,14 +56,14 @@ while (<G>) {
       print "$0: validating $lang: error: line $_ in G.fst contains forbidden symbol <s> or </s>\n";
       exit(1);
     } elsif ($is_disambig{$A[2]}) {
-      print O $_;
+      print I $_;
       if ($A[3] != 0) {
         chop;
         print "$0: validating $lang: error: line $_ in G.fst has disambig on input but no epsilon on output\n";
         exit(1);
       }
     } elsif ($A[2] == 0) {
-      print O $_;
+      print I $_;
       $has_epsilons = 1;
     } elsif ($A[2] != $A[3]) {
       chop;
@@ -73,9 +73,9 @@ while (<G>) {
   }
 }
 
-close(O);  # tell 'fstcompile | fstinfo' pipeline that its input is done.
-while (<I>) {
-  if (m/cyclic\s+/) {
+close(I);  # tell 'fstcompile | fstinfo' pipeline that its input is done.
+while (<O>) {
+  if (m/cyclic\s+y/) {
     print "$0: validating $lang: error: G.fst has cycles containing only disambig symbols and epsilons.  Would cause determinization failure\n";
     exit(1);
   }

@@ -33,7 +33,6 @@
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-device.h"
 #include "cudamatrix/cu-kernels.h"
-#include "cudamatrix/cu-randkernels.h"
 #include "cudamatrix/cu-array.h"
 #include "cudamatrix/cu-math.h"
 #include "cudamatrix/cu-sparse-matrix.h"

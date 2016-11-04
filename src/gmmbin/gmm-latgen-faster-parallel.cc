@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
     BaseFloat log_sum_exp_prune = 0.0;
     LatticeFasterDecoderConfig latgen_config;
     TaskSequencerConfig sequencer_config; // has --num-threads option
-    
+
     std::string word_syms_filename;
     latgen_config.Register(&po);
     sequencer_config.Register(&po);
@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
                 "Symbol table for words [for debug output]");
     po.Register("allow-partial", &allow_partial,
                 "If true, produce output even if end state was not reached.");
-    
+
     po.Read(argc, argv);
 
     if (po.NumArgs() < 4 || po.NumArgs() > 6) {
@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
         lattice_wspecifier = po.GetArg(4),
         words_wspecifier = po.GetOptArg(5),
         alignment_wspecifier = po.GetOptArg(6);
-    
+
     TransitionModel trans_model;
     AmDiagGmm am_gmm;
     {
@@ -103,7 +103,7 @@ int main(int argc, char *argv[]) {
     Int32VectorWriter alignment_writer(alignment_wspecifier);
 
     fst::SymbolTable *word_syms = NULL;
-    if (word_syms_filename != "") 
+    if (word_syms_filename != "")
       if (!(word_syms = fst::SymbolTable::ReadText(word_syms_filename)))
         KALDI_ERR << "Could not read symbol table from file "
                    << word_syms_filename;
@@ -113,16 +113,17 @@ int main(int argc, char *argv[]) {
     int num_done = 0, num_err = 0;
     VectorFst<StdArc> *decode_fst = NULL; // only used if there is a single
                                           // decoding graph.
-    
+
     TaskSequencer<DecodeUtteranceLatticeFasterClass> sequencer(sequencer_config);
-      
+
     if (ClassifyRspecifier(fst_in_str, NULL, NULL) == kNoRspecifier) {
       SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
       // Input FST is just one FST, not a table of FSTs.
 
       decode_fst = fst::ReadFstKaldi(fst_in_str);
-      
-      {    
+      timer.Reset();
+
+      {
         for (; !feature_reader.Done(); feature_reader.Next()) {
           std::string utt = feature_reader.Key();
           Matrix<BaseFloat> *features =
@@ -134,12 +135,12 @@ int main(int argc, char *argv[]) {
             delete features;
             continue;
           }
-          
+
           LatticeFasterDecoder *decoder = new LatticeFasterDecoder(*decode_fst,
                                                                    latgen_config);
           // takes ownership of "features"
           DecodableAmDiagGmmScaled *gmm_decodable =
-              new DecodableAmDiagGmmScaled(am_gmm, trans_model, 
+              new DecodableAmDiagGmmScaled(am_gmm, trans_model,
                                            acoustic_scale,
                                            log_sum_exp_prune,
                                            features);
@@ -151,14 +152,14 @@ int main(int argc, char *argv[]) {
                   allow_partial, &alignment_writer, &words_writer,
                   &compact_lattice_writer, &lattice_writer,
                   &tot_like, &frame_count, &num_done, &num_err, NULL);
-            
+
           sequencer.Run(task); // takes ownership of "task",
           // and will delete it when done.
         }
       }
     } else { // We have different FSTs for different utterances.
       SequentialTableReader<fst::VectorFstHolder> fst_reader(fst_in_str);
-      RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);          
+      RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
       for (; !fst_reader.Done(); fst_reader.Next()) {
         std::string utt = fst_reader.Key();
         if (!feature_reader.HasKey(utt)) {
@@ -176,11 +177,11 @@ int main(int argc, char *argv[]) {
           continue;
         }
 
-        // the "decoder" object takes ownership of the new FST object. 
+        // the "decoder" object takes ownership of the new FST object.
         LatticeFasterDecoder *decoder = new LatticeFasterDecoder(
             latgen_config,
             new VectorFst<StdArc>(fst_reader.Value()));
-          
+
         // The "decodable" object takes ownership of the features.
         DecodableAmDiagGmmScaled *gmm_decodable =
             new DecodableAmDiagGmmScaled(am_gmm, trans_model, acoustic_scale,
@@ -200,7 +201,7 @@ int main(int argc, char *argv[]) {
     sequencer.Wait();
 
     delete decode_fst;
-    
+
     double elapsed = timer.Elapsed();
     KALDI_LOG << "Decoded with " << sequencer_config.num_threads << " threads.";
     KALDI_LOG << "Time taken "<< elapsed
