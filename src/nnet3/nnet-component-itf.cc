@@ -147,6 +147,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new DropoutComponent();
   } else if (component_type == "BackpropTruncationComponent") {
     ans = new BackpropTruncationComponent();
+  } else if (component_type == "SpatialRegularizationComponent") {
+    ans = new SpatialRegularizationComponent();
   }
   if (ans != NULL) {
     KALDI_ASSERT(component_type == ans->Type());

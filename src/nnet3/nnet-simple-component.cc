@@ -96,16 +96,16 @@ void DropoutComponent::InitFromConfig(ConfigLine *cfl) {
   BaseFloat dropout_proportion = 0.0;
   bool ok = cfl->GetValue("dim", &dim) &&
     cfl->GetValue("dropout-proportion", &dropout_proportion);
-  if (!ok || cfl->HasUnusedValues() || dim <= 0 || 
+  if (!ok || cfl->HasUnusedValues() || dim <= 0 ||
       dropout_proportion < 0.0 || dropout_proportion > 1.0)
-    KALDI_ERR << "Invalid initializer for layer of type " 
-              << Type() << ": \"" << cfl->WholeLine() << "\"";   
+    KALDI_ERR << "Invalid initializer for layer of type "
+              << Type() << ": \"" << cfl->WholeLine() << "\"";
   Init(dim, dropout_proportion);
 }
 
 std::string DropoutComponent::Info() const {
   std::ostringstream stream;
-  stream << Type() << ", dim = " << dim_ 
+  stream << Type() << ", dim = " << dim_
          << ", dropout-proportion = " << dropout_proportion_;
   return stream.str();
 }
@@ -119,12 +119,12 @@ void DropoutComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
   BaseFloat dropout = dropout_proportion_;
   KALDI_ASSERT(dropout >= 0.0 && dropout <= 1.0);
 
-  // This const_cast is only safe assuming you don't attempt  
+  // This const_cast is only safe assuming you don't attempt
   // to use multi-threaded code with the GPU.
-  const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(out); 
+  const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(out);
 
-  out->Add(-dropout); // now, a proportion "dropout" will be <0.0 
-  out->ApplyHeaviside(); // apply the function (x>0?1:0).  Now, a proportion "dropout" will 
+  out->Add(-dropout); // now, a proportion "dropout" will be <0.0
+  out->ApplyHeaviside(); // apply the function (x>0?1:0).  Now, a proportion "dropout" will
                          // be zero and (1 - dropout) will be 1.0.
 
   out->MulElements(in);
@@ -147,7 +147,7 @@ void DropoutComponent::Backprop(const std::string &debug_info,
 }
 
 
- 
+
 void DropoutComponent::Read(std::istream &is, bool binary) {
   ExpectOneOrTwoTokens(is, binary, "<DropoutComponent>", "<Dim>");
   ReadBasicType(is, binary, &dim_);
@@ -632,6 +632,135 @@ void NoOpComponent::Backprop(const std::string &debug_info,
                              CuMatrixBase<BaseFloat> *in_deriv) const {
   in_deriv->CopyFromMat(out_deriv);
 }
+
+// explicit
+SpatialRegularizationComponent::SpatialRegularizationComponent(
+    const SpatialRegularizationComponent &other):
+    dim_(other.dim_), regularization_scale_(other.regularization_scale_),
+    count_(other.count_), sumsq_(other.sumsq_) { }
+
+// virtual
+void SpatialRegularizationComponent::ZeroStats() {
+  sumsq_ = 0.0;
+  count_ = 0.0;
+}
+
+// virtual
+void SpatialRegularizationComponent::InitFromConfig(ConfigLine *cfl) {
+  int32 dim = 0;
+  bool ok = cfl->GetValue("dim", &dim);
+  BaseFloat regularization_scale = 0.1;
+  cfl->GetValue("regularization-scale", &regularization_scale);
+  if (!ok || cfl->HasUnusedValues() || regularization_scale < 0.0 || dim <= 0)
+    KALDI_ERR << "Invalid initializer for layer of type "
+              << Type() << ": \"" << cfl->WholeLine() << "\"";
+  Init(dim, regularization_scale);
+}
+
+
+void SpatialRegularizationComponent::Init(int32 dim, BaseFloat regularization_scale) {
+  KALDI_ASSERT(dim > 0 && regularization_scale >= 0.0);
+  dim_ = dim;
+  regularization_scale_ = regularization_scale;
+  count_ = 0.0;
+  sumsq_ = 0.0;
+}
+
+void SpatialRegularizationComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<SpatialRegularizationComponent>",
+                       "<Dim>");
+  ReadBasicType(is, binary, &dim_);
+  ExpectToken(is, binary, "<RegularizationScale>");
+  ReadBasicType(is, binary, &regularization_scale_);
+  ExpectToken(is, binary, "<Count>");
+  ReadBasicType(is, binary, &count_);
+  ExpectToken(is, binary, "<Sumsq>");
+  ReadBasicType(is, binary, &sumsq_);
+  ExpectToken(is, binary, "</SpatialRegularizationComponent>");
+}
+
+
+void SpatialRegularizationComponent::Write(std::ostream &os,
+                                           bool binary) const {
+  WriteToken(os, binary, "<SpatialRegularizationComponent>");
+  WriteToken(os, binary, "<Dim>");
+  WriteBasicType(os, binary, dim_);
+  WriteToken(os, binary, "<RegularizationScale>");
+  WriteBasicType(os, binary, regularization_scale_);
+  WriteToken(os, binary, "<Count>");
+  WriteBasicType(os, binary, count_);
+  WriteToken(os, binary, "<Sumsq>");
+  WriteBasicType(os, binary, sumsq_);
+  WriteToken(os, binary, "</SpatialRegularizationComponent>");
+}
+
+void SpatialRegularizationComponent::Scale(BaseFloat scale) {
+  count_ *= scale;
+  sumsq_ *= scale;
+}
+
+void SpatialRegularizationComponent::Add(BaseFloat alpha,
+                                         const Component &other_in) {
+  const SpatialRegularizationComponent *other =
+      dynamic_cast<const SpatialRegularizationComponent*>(&other_in);
+  KALDI_ASSERT(other != NULL);
+  count_ += alpha * other->count_;
+  sumsq_ += alpha * other->sumsq_;
+}
+
+void SpatialRegularizationComponent::Propagate(
+    const ComponentPrecomputedIndexes *indexes,
+    const CuMatrixBase<BaseFloat> &in,
+    CuMatrixBase<BaseFloat> *out) const {
+  if (out != &in)
+    out->CopyFromMat(in);
+}
+
+void SpatialRegularizationComponent::Backprop(
+    const std::string &debug_info,
+    const ComponentPrecomputedIndexes *indexes,
+    const CuMatrixBase<BaseFloat> &, //in_value
+    const CuMatrixBase<BaseFloat> &out_value,
+    const CuMatrixBase<BaseFloat> &out_deriv,
+    Component *to_update_in,
+    CuMatrixBase<BaseFloat> *in_deriv) const {
+  if (in_deriv != &out_deriv)
+    in_deriv->CopyFromMat(out_deriv);
+  // accumulate stats only every other time.
+  bool compute_sumsq = (to_update_in != NULL && RandInt(0, 1) == 0);
+
+  BaseFloat sumsq;
+  in_deriv->AddSpatialRegularizationDeriv(out_value,
+                                          regularization_scale_,
+                                          (compute_sumsq ? &sumsq : NULL));
+  if (compute_sumsq) {
+    SpatialRegularizationComponent *to_update =
+        dynamic_cast<SpatialRegularizationComponent*>(to_update_in);
+    KALDI_ASSERT(to_update != NULL);
+    to_update->count_ += out_value.NumRows();
+    to_update->sumsq_ += sumsq;
+  }
+}
+
+std::string SpatialRegularizationComponent::Info() const {
+  std::ostringstream stream;
+  stream << Component::Info()
+         << ", regularization-scale=" << regularization_scale_;
+  if (count_ != 0) {
+    // raw-sumsq-per-frame is the sumsq summed over all dimensions, per
+    // frame.  raw-sumsq-per-dim is the average sumsq for each pixel of the image,
+    // per frame.  scaled-sumsq-per-frame is the value that gets added
+    // to the objective function per frame, and you could add it to the
+    // objective function per frame.
+    stream << ", count=" << count_
+           << ", raw-sumsq-per-frame=" << (sumsq_ / count_)
+           << ", raw-sumsq-per-dim=" << (sumsq_ / (count_ * dim_))
+           << ", scaled-sumsq-per-frame="
+           << (sumsq_ * regularization_scale_ / count_);
+  }
+  return stream.str();
+}
+
 
 void ClipGradientComponent::Read(std::istream &is, bool binary) {
   // might not see the "<NaturalGradientAffineComponent>" part because

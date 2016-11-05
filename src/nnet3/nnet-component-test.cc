@@ -25,9 +25,9 @@ namespace kaldi {
 namespace nnet3 {
 // Reset seeds for test time for RandomComponent
 static void ResetSeed(int32 rand_seed, const Component &c) {
-  RandomComponent *rand_component = 
+  RandomComponent *rand_component =
     const_cast<RandomComponent*>(dynamic_cast<const RandomComponent*>(&c));
-  
+
   if (rand_component != NULL) {
     srand(rand_seed);
     rand_component->ResetGenerator();
@@ -198,7 +198,7 @@ void TestSimpleComponentPropagateProperties(const Component &c) {
   int32 properties = c.Properties();
   Component *c_copy = NULL, *c_copy_scaled = NULL;
   int32 rand_seed = Rand();
- 
+
   if (RandInt(0, 1) == 0)
     c_copy = c.Copy();  // This will test backprop with an updatable component.
   if (RandInt(0, 1) == 0 &&
@@ -234,7 +234,7 @@ void TestSimpleComponentPropagateProperties(const Component &c) {
   if ((properties & kPropagateAdds) && (properties & kPropagateInPlace)) {
     KALDI_ERR << "kPropagateAdds and kPropagateInPlace flags are incompatible.";
   }
-  
+
   ResetSeed(rand_seed, c);
   c.Propagate(NULL, input_data, &output_data1);
 
@@ -327,7 +327,7 @@ bool TestSimpleComponentDataDerivative(const Component &c,
       output_deriv(num_rows, output_dim, kSetZero, output_stride_type);
   input_data.SetRandn();
   output_deriv.SetRandn();
- 
+
   ResetSeed(rand_seed, c);
   c.Propagate(NULL, input_data, &output_data);
 
@@ -483,6 +483,116 @@ bool TestSimpleComponentModelDerivative(const Component &c,
   }
 }
 
+// this is a simple reference implementation of the 'regularization_sumsq'
+// computed by CuMatrix::AddSpatialRegularizationDeriv.
+BaseFloat FilteredSpatialSumsq(const CuMatrix<BaseFloat> &output_data) {
+  Matrix<BaseFloat> data(output_data);
+  int32 num_rows = (data.NumCols() + 15) / 16,
+      num_cols = 16;
+  double ans = 0.0;
+  for (int32 i = 0; i < data.NumRows(); i++) {
+    Matrix<BaseFloat> image(num_rows, num_cols),
+        highpass_image(num_rows, num_cols);
+    for (int32 j = 0; j < num_rows; j++) {
+      for (int32 k = 0; k < num_cols; k++) {
+        int32 l = (j * num_cols) + k;
+        if (l < output_data.NumCols()) {
+          image(j, k) = output_data(i, l);
+        }
+      }
+    }
+    for (int32 j = 0; j < num_rows; j++) {
+      for (int32 k = 0; k < num_cols; k++) {
+        int32 jm1 = (j + num_rows - 1) % num_rows,  // the + num_rows is to
+                                                    // ensure it's positive so %
+                                                    // is really modulus.
+            jp1 = (j + 1) % num_rows,
+            km1 = (k + num_cols - 1) % num_cols,
+            kp1 = (k + 1) % num_cols;
+        highpass_image(j, k) = image(j, k) - 0.125 * (
+            image(jm1, km1) + image(jm1, k) + image(jm1, kp1) +
+            image(j, km1) + image(j, kp1) +
+            image(jp1, km1) + image(jp1, k) + image(jp1, kp1));
+      }
+    }
+    ans += TraceMatMat(highpass_image, highpass_image, kTrans);
+  }
+  return ans;
+}
+
+
+void TestSpatialRegularizationComponentDataDerivative() {
+
+  { // first test FilteredSpatialSumsq in a basic way..
+    CuMatrix<BaseFloat> test_mat(RandInt(1, 100), RandInt(1, 10) * 16);
+    test_mat.Set(3.0);  // Set to a constant.
+    // make sure the filtered spatial sumsq is zero... it would send any
+    // constant matrix to zero, only if the num_cols is a multiple of 16.
+    KALDI_ASSERT(std::abs(FilteredSpatialSumsq(test_mat)) < 0.1);
+  }
+
+  int32 dim = 16 * RandInt(3, 30),
+      num_rows = RandInt(1, 100);
+  BaseFloat regularization_scale = 0.5 * RandInt(1, 3);
+  BaseFloat perturb_delta = 1.0e-04;
+
+  SpatialRegularizationComponent c;
+  c.Init(dim, regularization_scale);
+
+  TestNnetComponentIo(&c);
+
+  CuMatrix<BaseFloat> input_data(num_rows, dim, kSetZero),
+      output_deriv(num_rows, dim, kSetZero),
+      input_deriv(num_rows, dim, kSetZero),
+      empty_mat;
+  input_data.SetRandn();
+  output_deriv.SetRandn();
+
+
+  c.Propagate(NULL, input_data, &input_data);
+
+  c.Backprop("foobar", NULL,
+             empty_mat,
+             input_data, // note, input == output.
+             output_deriv,
+             NULL,
+             &input_deriv);
+
+  int32 test_dim = 3;
+  // note, sometimes we use input_data where we'd normally use output_data,
+  // since in this case they are the same.
+  BaseFloat original_objf = TraceMatMat(output_deriv, input_data, kTrans)
+      -0.5 * regularization_scale * FilteredSpatialSumsq(input_data);
+
+
+  Vector<BaseFloat> measured_objf_change(test_dim),
+      predicted_objf_change(test_dim);
+  for (int32 i = 0; i < test_dim; i++) {
+    CuMatrix<BaseFloat> perturbed_input_data(num_rows, dim, kSetZero);
+    perturbed_input_data.SetRandn();
+    perturbed_input_data.Scale(perturb_delta);
+    // at this point, perturbed_input_data contains the offset at the input data.
+    predicted_objf_change(i) = TraceMatMat(perturbed_input_data, input_deriv,
+                                           kTrans);
+    perturbed_input_data.AddMat(1.0, input_data);
+    // note, propagate does nothing so we don't need to do it, just measure the objf on the input
+    // data.
+
+    measured_objf_change(i) = TraceMatMat(output_deriv, perturbed_input_data, kTrans)
+        -0.5 * regularization_scale * FilteredSpatialSumsq(perturbed_input_data) -
+        original_objf;
+  }
+  KALDI_LOG << "Predicted objf-change = " << predicted_objf_change;
+  KALDI_LOG << "Measured objf-change = " << measured_objf_change;
+  BaseFloat threshold = 0.05;
+  bool ans = ApproxEqual(predicted_objf_change, measured_objf_change, threshold);
+  if (!ans)
+    KALDI_ERR << "Data-derivative test for SpatialRegularizationComponent failed\n"
+              << ", dim=" << dim;
+}
+
+
+
 
 void UnitTestNnetComponent() {
   for (int32 n = 0; n < 200; n++)  {
@@ -512,6 +622,9 @@ void UnitTestNnetComponent() {
       KALDI_ERR << "Component model-derivative test failed";
 
     delete c;
+  }
+  for (int32 i = 0; i < 3; i++) {
+    TestSpatialRegularizationComponentDataDerivative();
   }
 }
 
