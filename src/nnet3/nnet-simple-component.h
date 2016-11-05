@@ -991,6 +991,67 @@ class NoOpComponent: public NonlinearComponent {
   NoOpComponent &operator = (const NoOpComponent &other); // Disallow.
 };
 
+
+// This implements spatial smoothing as desribed in
+// https://arxiv.org/pdf/1610.05256v1.pdf.
+// In the forward pass it does nothing (just copies the input), but in
+// the backward pass it adds something to the derivative that enforces
+// spatial smoothing.  It (arbitrarily) views its input as an image (a 16
+// x n image, padding with zeros as needed), and in backprop it adds a term to
+// the derivative that reflects the derivative of that regularization term.
+// The component also stores the regularization term internally, for diagnostics.
+// The regularization term (which gets added to the objective function)
+// is   -0.5 * regularization_scale_ * sum-squared-of-filtered-image
+// The (high-pass) filtered image is obtained by taking this 16 x n image, and
+// circularly convolving it with a 3 x 3 kernel where the center pixel is 1 and
+// the remaining pixels are -1/8.
+class SpatialRegularizationComponent: public Component {
+ public:
+  explicit SpatialRegularizationComponent(const SpatialRegularizationComponent &other);
+  virtual int32 InputDim() const { return dim_; }
+  virtual int32 OutputDim() const { return dim_; }
+  void Init(int32 dim, BaseFloat regularization_scale);
+  virtual void InitFromConfig(ConfigLine *cfl);
+  virtual void Read(std::istream &is, bool binary);
+  virtual void ZeroStats();
+  virtual std::string Info() const;
+  virtual void Write(std::ostream &os, bool binary) const;
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const Component &other);
+  SpatialRegularizationComponent(): dim_(-1), regularization_scale_(0.0) { }
+  virtual std::string Type() const { return "SpatialRegularizationComponent"; }
+  virtual Component* Copy() const { return new SpatialRegularizationComponent(*this); }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kLinearInInput|kBackpropNeedsOutput|
+        kPropagateInPlace|kBackpropInPlace;
+  }
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &, //in_value
+                        const CuMatrixBase<BaseFloat> &out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+ private:
+  int32 dim_;
+  // regularization_scale is a scale on the regularization's contribution to the
+  // objective function; the derivatives are scaled by this value.
+  BaseFloat regularization_scale_;
+  // count_ is the count of number of frames we processed and stored the
+  // regularization stats for.  We store it as double because we need it
+  // to work the right way with the Add() and Scale() functions.
+  double count_;
+  // sum-square of the filtered image.
+  double sumsq_;
+
+  SpatialRegularizationComponent &operator = (const SpatialRegularizationComponent &other); // Disallow.
+};
+
+
+
 // ClipGradientComponent just duplicates its input, but clips gradients
 // during backpropagation if they cross a predetermined threshold.
 // This component will be used to prevent gradient explosion problem in
