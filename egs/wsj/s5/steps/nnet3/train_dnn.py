@@ -301,7 +301,7 @@ def TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archi
         frame = (k / num_archives) % frames_per_eg
         offset_num = -1
         if num_cmn_offsets > 0:
-          offset_num = archive_index % num_cmn_offsets
+          offset_num = (archive_index - 1) % num_cmn_offsets
 
         process_handle = RunKaldiCommand("""
 {command} {train_queue_opt} {dir}/log/train.{iter}.{job}.log \
@@ -621,10 +621,11 @@ def Train(args, run_opts):
         CombineModels(args.dir, num_iters, num_iters_combine, egs_dir, run_opts)
 
     if args.stage <= num_iters + 1:
+
         logger.info("Getting average posterior for purposes of adjusting the priors.")
         avg_post_vec_file = ComputeAveragePosterior(args.dir, 'combined', egs_dir,
-                                num_archives, args.prior_subset_size, run_opts)
-
+                                num_archives, args.prior_subset_size, run_opts,
+                                (0 if num_cmn_offsets > 1 else -1))
         logger.info("Re-adjusting priors based on computed posteriors")
         combined_model = "{dir}/combined.mdl".format(dir = args.dir)
         final_model = "{dir}/final.mdl".format(dir = args.dir)

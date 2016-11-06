@@ -312,6 +312,7 @@ void SelectFeatureOffset(int32 feature_offset, NnetExample *eg) {
       Matrix<BaseFloat> features(iter->features.NumRows(), iter->features.NumCols());
       features.AddVecToRows(1.0, offset_vec);
       iter->features.AddToMat(1.0, &features);
+      iter->features = features;
     }
     if (iter->name == "ivector") {
       // select ivector subset correspond to feature_offset.

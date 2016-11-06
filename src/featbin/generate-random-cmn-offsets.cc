@@ -118,6 +118,7 @@ int main(int argc, char *argv[]) {
     Matrix<double> global_stats,
       spk_cov;
     bool is_global_init = false;
+    int32 num_spks = 0;
     Vector<double> spk_mean_sum;
     std::map<std::string, Vector<double> > spk_means;
     std::map<std::string, std::vector<std::string> > spk_uttlist;
@@ -152,7 +153,6 @@ int main(int argc, char *argv[]) {
       double count = stats(0, feat_dim);
       spk_mean.Scale(1.0/count);
       spk_means[spk] = spk_mean;
-
       // Initialize global stats to accumulate stats for all data.
       if (!is_global_init) {
         InitCmvnStats(feat_dim, &global_stats);
@@ -165,22 +165,27 @@ int main(int argc, char *argv[]) {
       // as sum_{i=0}^n (m_i - g)^T (m_i - g), where m_i is spk mean for 
       // speaker i and g is the gloabl mean.
       // add sum_{i=0}^n m_i^T * m_i
+      num_spks++;
       spk_cov.AddVecVec(1.0, spk_mean, spk_mean);
       spk_mean_sum.AddVec(1.0, spk_mean);
       global_stats.AddMat(1.0, stats);
     }
     // global_mean (g) is the global mean for all frames.
     Vector<double> global_mean(global_stats.Row(0).Range(0, feat_dim));
+
     double global_count = global_stats(0, feat_dim);
     global_mean.Scale(1.0 / global_count);
 
+    Vector<double> global_mean2(spk_mean_sum); 
+    global_mean2.Scale(1.0 / num_spks);
     // add term -2 * (sum_{i=0}^n m_i^T) g
-    spk_cov.AddVecVec(-2.0, spk_mean_sum, global_mean);
+    spk_cov.AddVecVec(-2.0, spk_mean_sum, global_mean2);
     
     // add term gT * g
-    spk_cov.AddVecVec(1.0, global_mean, global_mean);
+    spk_cov.AddVecVec(1.0, global_mean2, global_mean2);
+    spk_cov.Scale(1.0 / num_spks);
     // compute sigma as spk_cov^0.5 for matrix w.r.t its svd decomposition.
-    Matrix<double> sigma(feat_dim, feat_dim);
+    Matrix<double> sigma(spk_cov);
     sigma.Power(0.5);
     // Generate random cmn offset for each speaker, and copy same cmn offsets
     // for all spk's utterances.
@@ -190,19 +195,19 @@ int main(int argc, char *argv[]) {
       std::string spk_name = iter->first;
       // centered_spk_mean for spk i is cenetered mean defined as m_i - g
       Vector<double> centered_spk_mean(spk_means[spk_name]);
-      centered_spk_mean.AddVec(-1.0, global_mean);
+      centered_spk_mean.AddVec(-1.0, global_mean2);
       
       Vector<double> offset_mean(feat_dim);
       if (!zero_mean)
         offset_mean.AddVec(-1.0, centered_spk_mean);
 
       GenerateRandomOffset(offset_mean, sigma, &spk_offsets);
-      spk_offsets.Row(0).Set(0.0);
       if (!preserve_total_covariance) 
         spk_offsets.Scale(cmn_offset_scale);
       else
         PreserveTotalCovariance(cmn_offset_scale, centered_spk_mean, &spk_offsets);
 
+      spk_offsets.Row(0).Set(0.0);
       std::vector<std::string> uttlist = spk_uttlist[spk_name];
       // cmn_offset indexed by itterance. This makes it easier to copy across data dir.
       for (size_t i = 0; i < uttlist.size(); i++) {

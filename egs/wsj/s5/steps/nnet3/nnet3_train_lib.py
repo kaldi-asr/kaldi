@@ -602,7 +602,7 @@ nnet3-combine --num-iters=40 \
     ComputeTrainCvProbabilities(dir, 'combined', egs_dir, run_opts, wait = False)
 
 def ComputeAveragePosterior(dir, iter, egs_dir, num_archives,
-                            prior_subset_size, run_opts):
+                            prior_subset_size, run_opts, select_feature_offset = -1):
     # Note: this just uses CPUs, using a smallish subset of data.
     """ Computes the average posterior of the network"""
     import glob
@@ -613,20 +613,26 @@ def ComputeAveragePosterior(dir, iter, egs_dir, num_archives,
         egs_part = 1
     else:
         egs_part = 'JOB'
-
+   
+    egs_str=""
+    if select_feature_offset > -1:
+      egs_str="ark:nnet3-copy-egs --select-feature-offset={0} ark:{1}/egs.{2}.ark ark:- |".format(select_feature_offset, egs_dir, egs_part)
+    else:
+      egs_str="ark:{0}/egs.{1}.ark".format(egs_dir, egs_part)
+    # num_jobs_compute_prior = run_opts.num_jobs_compute_prior 
     RunKaldiCommand("""
-{command} JOB=1:{num_jobs_compute_prior} {prior_queue_opt} {dir}/log/get_post.{iter}.JOB.log \
-    nnet3-subset-egs --srand=JOB --n={prior_subset_size} ark:{egs_dir}/egs.{egs_part}.ark ark:- \| \
+{command} JOB=5:{num_jobs_compute_prior} {prior_queue_opt} {dir}/log/get_post.{iter}.JOB.log \
+    nnet3-subset-egs --srand=JOB --n={prior_subset_size} "{egs_str}" ark:- \| \
     nnet3-merge-egs --measure-output-frames=true --minibatch-size=128 ark:- ark:- \| \
     nnet3-compute-from-egs {prior_gpu_opt} --apply-exp=true \
   "nnet3-am-copy --raw=true {dir}/combined.mdl -|" ark:- ark:- \| \
 matrix-sum-rows ark:- ark:- \| vector-sum ark:- {dir}/post.{iter}.JOB.vec
     """.format(command = run_opts.command,
                dir = dir,
-               num_jobs_compute_prior = run_opts.num_jobs_compute_prior,
+               num_jobs_compute_prior = run_opts.num_jobs_compute_prior, 
                prior_queue_opt = run_opts.prior_queue_opt,
                iter = iter, prior_subset_size = prior_subset_size,
-               egs_dir = egs_dir, egs_part = egs_part,
+               egs_str = egs_str,
                prior_gpu_opt = run_opts.prior_gpu_opt))
 
     # make sure there is time for $dir/post.{iter}.*.vec to appear.

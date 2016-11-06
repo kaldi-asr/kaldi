@@ -7,7 +7,7 @@
 # It first computes mean per speaker and global mean.
 
 # Begin configuration section.
-cmd=run.pl
+cmd=
 offsets_config=conf/offsets.conf
 compress=true
 # End configuration section. 
