@@ -5,7 +5,7 @@
 
 . ./cmd.sh
 
-stage=3
+stage=1
 num_data_reps=1  # number of reverberated copies of data to generate
                  # These will be combined with the original data.
 input_data_dir=train_nodup
@@ -98,6 +98,8 @@ fi
 
 # ivector extractor training
 if [ $stage -le 5 ]; then
+  # Here it is good enough to train the lda_mllt transform with the clean data
+  # as it only affects the diagonal GMM which is just used to initialize the full GMM
   steps/train_lda_mllt.sh --cmd "$train_cmd" --num-iters 13 \
     --splice-opts "--left-context=3 --right-context=3" \
     5500 90000 data/train_100k_nodup_hires \
