@@ -72,7 +72,7 @@ class LmNnet {
     return dynamic_cast<AffineComponent*>(output_projection_);
   }
   NonlinearComponent* N() {
-    return dynamic_cast<NonlinearComponent*>(output_projection_);
+    return dynamic_cast<NonlinearComponent*>(output_layer_);
   }
 
  private:

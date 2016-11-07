@@ -34,6 +34,8 @@ LmNnetTrainer::LmNnetTrainer(const LmNnetTrainerOptions &config,
   {
   if (config.zero_component_stats)
     ZeroComponentStats(nnet->GetNnet());
+    nnet_->I()->ZeroStats();
+    nnet_->O()->ZeroStats();
   if (config.momentum == 0.0 && config.max_param_change == 0.0) {
     delta_nnet_= NULL;
   } else {
@@ -43,6 +45,8 @@ LmNnetTrainer::LmNnetTrainer(const LmNnetTrainerOptions &config,
     bool is_gradient = false;  // setting this to true would disable the
                                // natural-gradient updates.
     SetZero(is_gradient, delta_nnet_->GetNnet());
+    nnet_->I()->SetZero(is_gradient);
+    nnet_->O()->SetZero(is_gradient);
   }
   if (config_.read_cache != "") {
     bool binary;
@@ -82,11 +86,18 @@ void LmNnetTrainer::Train(const NnetExample &eg) {
     BaseFloat scale = (1.0 - config_.momentum);
     if (config_.max_param_change != 0.0) {
       BaseFloat param_delta =
-          std::sqrt(DotProduct(*delta_nnet_->GetNnet(), *delta_nnet_->GetNnet())) * scale;
+          DotProduct(*delta_nnet_->GetNnet(), *delta_nnet_->GetNnet());
+      param_delta += delta_nnet_->I()->DotProduct(*delta_nnet_->I());
+      param_delta += delta_nnet_->O()->DotProduct(*delta_nnet_->O());
+
+      param_delta = std::sqrt(param_delta) * scale;
+//          std::sqrt(DotProduct(*delta_nnet_->GetNnet(), *delta_nnet_->GetNnet())) * scale;
       if (param_delta > config_.max_param_change) {
         if (param_delta - param_delta != 0.0) {
           KALDI_WARN << "Infinite parameter change, will not apply.";
           SetZero(false, delta_nnet_->GetNnet());
+          delta_nnet_->I()->SetZero(false);
+          delta_nnet_->O()->SetZero(false);
         } else {
           scale *= config_.max_param_change / param_delta;
           KALDI_LOG << "Parameter change too big: " << param_delta << " > "
@@ -96,7 +107,11 @@ void LmNnetTrainer::Train(const NnetExample &eg) {
       }
     }
     AddNnet(*delta_nnet_->GetNnet(), scale, nnet_->GetNnet());
+    nnet_->I()->Add(scale, *delta_nnet_->I());
+    nnet_->O()->Add(scale, *delta_nnet_->O());
     ScaleNnet(config_.momentum, delta_nnet_->GetNnet());
+    nnet_->I()->Scale(config_.momentum);
+    nnet_->O()->Scale(config_.momentum);
   }
 }
 
