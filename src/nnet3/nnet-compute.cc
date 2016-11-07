@@ -550,10 +550,14 @@ void NnetComputer::AcceptInputs(const Nnet &nnet,
         this->AcceptInput(io.name, &cu_input);
       } else {
 
-        // TODO(hxu) test the idea first...
+
+        // cu_input is the input to put to computer
         CuMatrix<BaseFloat> cu_input(io.features.NumRows(),
                                      a->OutputDim(),
                                      kUndefined);
+
+        // TODO(hxu) test the idea first...
+        // copied is the input to the LmNnet, will change to using SparseMatrix
         CuMatrix<BaseFloat> copied(io.features.NumRows(),
                                    io.features.NumCols(),
                                    kUndefined);

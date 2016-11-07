@@ -82,6 +82,17 @@ void LmNnetTrainer::Train(const NnetExample &eg) {
   this->ProcessOutputs(eg, &computer);
   computer.Backward();
 
+  // TODO(hxu) add code for the first layer
+  // computer.GetInputDeriv("input")
+  {
+    CuMatrix<BaseFloat> first_deriv = computer.GetInputDeriv("input");
+
+    CuMatrix<BaseFloat> place_holder;
+    input_projection_->Backprop("", NULL, output_0, place_holder,
+                     between_deriv, output_projection_1, &input_deriv);
+
+  }
+
   if (delta_nnet_ != NULL) {
     BaseFloat scale = (1.0 - config_.momentum);
     if (config_.max_param_change != 0.0) {
@@ -127,6 +138,8 @@ void LmNnetTrainer::ProcessOutputs(const NnetExample &eg,
       ObjectiveType obj_type = nnet_->GetNnet()->GetNode(node_index).u.objective_type;
       BaseFloat tot_weight, tot_objf;
       bool supply_deriv = true;
+
+      // the following function adds the computation of special layers
       ComputeObjectiveFunction(io.features, obj_type, io.name,
                                supply_deriv, computer,
                                &tot_weight, &tot_objf, nnet_->O(), nnet_->N());
@@ -286,7 +299,7 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
 
             cu_post.CopyToMat(&output_deriv);
             CuMatrix<BaseFloat> place_holder;
-            output_projection_2->Backprop("", NULL, place_holder , output,
+            output_projection_2->Backprop("", NULL, place_holder, output,
                              output_deriv, output_projection_2, &between_deriv);
             output_projection_1->Backprop("", NULL, output_0, place_holder,
                              between_deriv, output_projection_1, &input_deriv);
