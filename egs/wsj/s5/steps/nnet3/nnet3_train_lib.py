@@ -120,12 +120,19 @@ def GetNumberOfJobs(alidir):
     except IOError, ValueError:
         raise Exception('Exception while reading the number of alignment jobs')
     return num_jobs
+
 def GetIvectorDim(ivector_dir = None):
     if ivector_dir is None:
         return 0
     [stdout_val, stderr_val] = RunKaldiCommand("feat-to-dim --print-args=false scp:{dir}/ivector_online.scp -".format(dir = ivector_dir))
     ivector_dim = int(stdout_val)
     return ivector_dim
+
+def GetIvectorPeriod(ivector_dir = None):
+    if ivector_dir is None:
+        return 0
+    return int(open('{0}/ivector_period'.format(ivector_dir), 'r').readline().strip())
+
 
 def GetFeatDim(feat_dir):
     [stdout_val, stderr_val] = RunKaldiCommand("feat-to-dim --print-args=false scp:{data}/feats.scp -".format(data = feat_dir))
@@ -178,6 +185,7 @@ def CopyEgsPropertiesToExpDir(egs_dir, dir):
 def SplitData(data, num_jobs):
    RunKaldiCommand("utils/split_data.sh {data} {num_jobs}".format(data = data,
                                                                   num_jobs = num_jobs))
+   return '{0}/split{1}'.format(data,int(num_jobs))
 
 def ParseModelConfigVarsFile(var_file):
     try:

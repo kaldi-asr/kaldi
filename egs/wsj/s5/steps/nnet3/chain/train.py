@@ -19,6 +19,7 @@ import shutil
 import math
 
 train_lib = imp.load_source('ntl', 'steps/nnet3/nnet3_train_lib.py')
+get_egs = imp.load_source('nge', 'steps/nnet3/chain/get_egs.py')
 chain_lib = imp.load_source('ncl', 'steps/nnet3/chain/nnet3_chain_lib.py')
 nnet3_log_parse = imp.load_source('nlp', 'steps/nnet3/report/nnet3_log_parse_lib.py')
 
@@ -30,7 +31,6 @@ formatter = logging.Formatter('%(asctime)s [%(filename)s:%(lineno)s - %(funcName
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 logger.info('Starting chain model trainer (train.py)')
-
 
 def GetArgs():
     # we add compulsary arguments as named arguments for readability
@@ -48,25 +48,38 @@ def GetArgs():
                         help="A string specifying '--norm-means' and '--norm-vars' values")
 
     # egs extraction options
-    parser.add_argument("--egs.chunk-width", type=int, dest='chunk_width',
-                        default = 150,
-                        help="Number of output labels in each example. Caution: if you double this you should halve --trainer.samples-per-iter.")
-    parser.add_argument("--egs.chunk-left-context", type=int, dest='chunk_left_context',
+    parser.add_argument("--egs.chunk-widths", type=str, dest='chunk_widths',
+                        default = "150",
+                        help="A string specifying the number of output labels in each example."
+                             " Sample format '100 125 150 175'"
+                             " Caution: if you double this you should halve --trainer.samples-per-iter.")
+    parser.add_argument("--egs.min-chunk-left-context", type=int, dest='min_chunk_left_context',
                         default = 0,
                         help="Number of additional frames of input to the left"
                         " of the input chunk. This extra context will be used"
                         " in the estimation of RNN state before prediction of"
                         " the first label. In the case of FF-DNN this extra"
                         " context will be used to allow for frame-shifts")
-    parser.add_argument("--egs.chunk-right-context", type=int, dest='chunk_right_context',
+    parser.add_argument("--egs.min-chunk-right-context", type=int, dest='min_chunk_right_context',
                         default = 0,
                         help="Number of additional frames of input to the right"
                         " of the input chunk. This extra context will be used"
                         " in the estimation of bidirectional RNN state before"
                         " prediction of the first label.")
-    parser.add_argument("--egs.transform_dir", type=str, dest='transform_dir',
-                        default = None, action = train_lib.NullstrToNoneAction,
-                        help="String to provide options directly to steps/nnet3/get_egs.sh script")
+    parser.add_argument("--egs.max-chunk-left-context", type=int, dest='max_chunk_left_context',
+                        default = 0,
+                        help="Number of additional frames of input to the left"
+                        " of the input chunk. This extra context will be used"
+                        " in the estimation of RNN state before prediction of"
+                        " the first label. In the case of FF-DNN this extra"
+                        " context will be used to allow for frame-shifts")
+    parser.add_argument("--egs.max-chunk-right-context", type=int, dest='max_chunk_right_context',
+                        default = 0,
+                        help="Number of additional frames of input to the right"
+                        " of the input chunk. This extra context will be used"
+                        " in the estimation of bidirectional RNN state before"
+                        " prediction of the first label.")
+
     parser.add_argument("--egs.dir", type=str, dest='egs_dir',
                         default = None, action = train_lib.NullstrToNoneAction,
                         help="Directory with egs. If specified this directory "
@@ -275,21 +288,26 @@ def GetArgs():
 
 def ProcessArgs(args):
     # process the options
-    if args.chunk_width < 1:
-        raise Exception("--egs.chunk-width should have a minimum value of 1")
+    chunk_widths = []
+    for chunk_width in args.chunk_widths.split():
+        if int(chunk_width) < 1:
+            raise Exception("--egs.chunk-widths should have a minimum value of 1")
+        chunk_widths.append(int(chunk_width))
+    args.chunk_widths = chunk_widths
 
-    if args.chunk_left_context < 0:
-        raise Exception("--egs.chunk-left-context should be non-negative")
 
-    if args.chunk_right_context < 0:
-        raise Exception("--egs.chunk-right-context should be non-negative")
+    if ((args.min_chunk_left_context < 0) or (args.min_chunk_right_context < 0)
+        or (args.max_chunk_left_context < 0) or (args.max_chunk_right_context < 0)):
+        raise Exception("--egs.{min,max}-chunk-{left-right}-context should be non-negative")
+
+    if ((args.min_chunk_left_context > args.max_chunk_left_context) or
+        (args.min_chunk_right_context > args.max_chunk_right_context)):
+        raise Exception("--egs.{min,max}-chunk-{left-right}-context ranges not properly specified")
 
     if (not os.path.exists(args.dir)) or (not os.path.exists(args.dir+"/configs")):
         raise Exception("""This scripts expects {0} to exist and have a configs
-        directory which is the output of make_configs.py script""")
+        directory which is the output of make_configs.py script""".format(args.dir))
 
-    if args.transform_dir is None:
-        args.transform_dir = args.lat_dir
     # set the options corresponding to args.use_gpu
     run_opts = RunOpts()
     if args.use_gpu:
@@ -322,7 +340,6 @@ class RunOpts:
         self.train_queue_opt = None
         self.combine_queue_opt = None
         self.parallel_train_opts = None
-
 
 def TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archives,
                    raw_model_string, egs_dir,
@@ -565,37 +582,41 @@ def Train(args, run_opts):
     """.format(command = run_opts.command,
                dir = args.dir))
 
-    left_context = args.chunk_left_context + model_left_context
-    right_context = args.chunk_right_context + model_right_context
+    min_left_context = args.min_chunk_left_context + model_left_context
+    max_left_context = args.max_chunk_left_context + model_left_context
+    min_right_context = args.min_chunk_right_context + model_right_context
+    max_right_context = args.max_chunk_right_context + model_right_context
 
     default_egs_dir = '{0}/egs'.format(args.dir)
     if (args.stage <= -3) and args.egs_dir is None:
         logger.info("Generating egs")
         # this is where get_egs.sh is called.
-        chain_lib.GenerateChainEgs(args.dir, args.feat_dir, args.lat_dir, default_egs_dir,
-                                    left_context + args.frame_subsampling_factor/2,
-                                    right_context + args.frame_subsampling_factor/2,
-                                    run_opts,
-                                    left_tolerance = args.left_tolerance,
-                                    right_tolerance = args.right_tolerance,
-                                    frame_subsampling_factor = args.frame_subsampling_factor,
-                                    alignment_subsampling_factor = args.alignment_subsampling_factor,
-                                    frames_per_eg = args.chunk_width,
-                                    egs_opts = args.egs_opts,
-                                    cmvn_opts = args.cmvn_opts,
-                                    online_ivector_dir = args.online_ivector_dir,
-                                    frames_per_iter = args.frames_per_iter,
-                                    srand = args.srand,
-                                    transform_dir = args.transform_dir,
-                                    stage = args.egs_stage)
+        get_egs.GenerateChainEgs(args.dir, args.lat_dir,
+                                 default_egs_dir, args.feat_dir,
+                                 online_ivector_dir = args.online_ivector_dir,
+                                 min_chunk_left_context = min_left_context + args.frame_subsampling_factor/2,
+                                 max_chunk_left_context = max_left_context + args.frame_subsampling_factor/2,
+                                 min_chunk_right_context = min_right_context + args.frame_subsampling_factor/2,
+                                 max_chunk_right_context = max_right_context + args.frame_subsampling_factor/2,
+                                 cmd = run_opts.command,
+                                 left_tolerance = args.left_tolerance,
+                                 right_tolerance = args.right_tolerance,
+                                 frame_subsampling_factor = args.frame_subsampling_factor,
+                                 alignment_subsampling_factor = args.alignment_subsampling_factor,
+                                 chunk_widths = args.chunk_widths,
+                                 cmvn_opts = args.cmvn_opts,
+                                 frames_per_iter = args.frames_per_iter,
+                                 stage = args.egs_stage)
 
     if args.egs_dir is None:
         egs_dir = default_egs_dir
     else:
         egs_dir = args.egs_dir
 
-    [egs_left_context, egs_right_context, frames_per_eg, num_archives] = train_lib.VerifyEgsDir(egs_dir, feat_dim, ivector_dim, left_context, right_context)
-    assert(args.chunk_width == frames_per_eg)
+    num_archives = chain_lib.VerifyEgsDir(egs_dir, feat_dim, ivector_dim,
+                                  min_left_context, min_right_context,
+                                  max_left_context, max_right_context,
+                                  args.chunk_widths)
     num_archives_expanded = num_archives * args.frame_subsampling_factor
 
     if (args.num_jobs_final > num_archives_expanded):
