@@ -69,15 +69,12 @@ NnetExample LmNnetTrainer::ProcessEgInputs(NnetExample eg, AffineComponent* a) {
       new_input_.Resize(io.features.NumRows(),
                        a->OutputDim(),
                        kUndefined);
+      old_input_.Resize(io.features.NumRows(),
+                       io.features.NumCols(),
+                       kUndefined);
+      old_input_.CopyFromGeneralMat(io.features);
 
-      // TODO(hxu) test the idea first...
-      // copied is the input to the LmNnet, will change to using SparseMatrix
-      CuMatrix<BaseFloat> copied(io.features.NumRows(),
-                                 io.features.NumCols(),
-                                 kUndefined);
-      copied.CopyFromGeneralMat(io.features);
-
-      a->Propagate(NULL, copied, &new_input_);
+      a->Propagate(NULL, old_input_, &new_input_);
       //        SparseMatrix<BaseFloat> sp = io.features.GetSparseMatrix();
       //
       //        for (size_t i = 0; i < sp.NumRows(); i++) {
@@ -128,8 +125,8 @@ void LmNnetTrainer::Train(const NnetExample &eg) {
     CuMatrix<BaseFloat> first_deriv(computer.GetInputDeriv("input"));
 
     CuMatrix<BaseFloat> place_holder;
-    nnet_->I()->Backprop("", NULL, new_input_, place_holder,
-                     first_deriv, NULL, NULL);
+    nnet_->I()->Backprop("", NULL, old_input_, place_holder,
+                     first_deriv, delta_nnet_->I(), NULL);
 
   }
 
@@ -182,7 +179,7 @@ void LmNnetTrainer::ProcessOutputs(const NnetExample &eg,
       // the following function adds the computation of special layers
       ComputeObjectiveFunction(io.features, obj_type, io.name,
                                supply_deriv, computer,
-                               &tot_weight, &tot_objf, nnet_->O(), nnet_->N());
+                               &tot_weight, &tot_objf, nnet_->O(), nnet_->N(), delta_nnet_);
       objf_info_[io.name].UpdateStats(io.name, config_.print_interval,
                                       num_minibatches_processed_++,
                                       tot_weight, tot_objf);
@@ -305,7 +302,8 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
                               BaseFloat *tot_weight,
                               BaseFloat *tot_objf,
                               Component *output_projection_1,
-                              Component *output_projection_2) {
+                              Component *output_projection_2,
+                              LmNnet *nnet) {
   const CuMatrixBase<BaseFloat> &output_0 = computer->GetOutput(output_name);
 
   const CuMatrix<BaseFloat> &output = ProcessOutput(output_0, output_projection_1,
@@ -340,9 +338,9 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
             cu_post.CopyToMat(&output_deriv);
             CuMatrix<BaseFloat> place_holder;
             output_projection_2->Backprop("", NULL, place_holder, output,
-                             output_deriv, output_projection_2, &between_deriv);
+                             output_deriv, NULL, &between_deriv);
             output_projection_1->Backprop("", NULL, output_0, place_holder,
-                             between_deriv, output_projection_1, &input_deriv);
+                             between_deriv, nnet->O(), &input_deriv);
 
             computer->AcceptOutputDeriv(output_name, &input_deriv);
           }

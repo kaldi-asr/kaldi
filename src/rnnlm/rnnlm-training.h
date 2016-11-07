@@ -172,7 +172,12 @@ class LmNnetTrainer {
 
   const LmNnetTrainerOptions config_;
   CuMatrix<BaseFloat> new_input_;
+  CuMatrix<BaseFloat> old_input_;
+
+  // this pointer is not owned
   LmNnet *nnet_;
+
+  // this pointer is owned
   LmNnet *delta_nnet_;  // Only used if momentum != 0.0 or max-param-change !=
                       // 0.0.  nnet representing accumulated parameter-change
                       // (we'd call this gradient_nnet_, but due to
@@ -231,7 +236,8 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
                               BaseFloat *tot_weight,
                               BaseFloat *tot_objf,
                               Component *output_projection_1,
-                              Component *output_projection_2);
+                              Component *output_projection_2,
+                              LmNnet *delta_nnet);
 
 
 
