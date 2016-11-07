@@ -16,7 +16,7 @@
 # If you want to run without GPU you'd have to call train_tdnn.sh with --gpu false,
 # --num-threads 16 and --minibatch-size 128.
 
-stage=0
+stage=8
 egs_stage=-1
 affix=
 train_stage=-10

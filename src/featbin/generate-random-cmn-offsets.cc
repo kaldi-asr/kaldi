@@ -77,7 +77,8 @@ int main(int argc, char *argv[]) {
         " ark:data/train/spk2utt scp:data/train/feats.scp ark,scp:cmn_offset_per_spk.ark,cmn_offset_per_spk.scp \n";
     ParseOptions po(usage);
     
-    bool  preserve_total_covariance = false, zero_mean = false;
+    bool  preserve_total_covariance = false, zero_mean = false,
+      check_offset_spk_cov = false;
 
     int32 num_cmn_offsets = 5, 
       srand_seed = 0;
@@ -93,17 +94,20 @@ int main(int argc, char *argv[]) {
     po.Register("weights", &weights_rspecifier, "rspecifier for a vector of floats "
                 "for each utterance, that's a per-frame weight.");
     po.Register("zero-mean-offsets", &zero_mean, 
-                "If true, the random offsets generated using zero mean distribution."); 
+                "If true, the random offsets generated using zero mean distribution.");
+    po.Register("cov-self-check", &check_offset_spk_cov, 
+                "If true, the spk covariance for new shifted speakers are computed"
+                " and eigenvalues for orig cov^-1 * shifted-cov is printed"
+                " for self-check.");  
     po.Read(argc, argv);
 
     if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
     }
-
    
     std::string spk2utt_rspecifier = po.GetArg(1),
-      feat_rspecifier = po.GetArg(2),
+     feat_rspecifier = po.GetArg(2),
       cmn_wspecifier = po.GetArg(3);
     DoubleMatrixWriter cmn_writer(cmn_wspecifier); 
    
@@ -175,18 +179,26 @@ int main(int argc, char *argv[]) {
 
     double global_count = global_stats(0, feat_dim);
     global_mean.Scale(1.0 / global_count);
-
-    Vector<double> global_mean2(spk_mean_sum); 
-    global_mean2.Scale(1.0 / num_spks);
-    // add term -2 * (sum_{i=0}^n m_i^T) g
-    spk_cov.AddVecVec(-2.0, spk_mean_sum, global_mean2);
     
-    // add term gT * g
-    spk_cov.AddVecVec(1.0, global_mean2, global_mean2);
+    // spk_means_mean = 1/num_spks (sum_{i=0}^num_spks m_i)
+    Vector<double> spk_means_mean(spk_mean_sum); 
+    spk_means_mean.Scale(1.0 / num_spks);
+    // add term -2 * (sum_{i=0}^n m_i^T) g
+    spk_cov.AddVecVec(-2.0, spk_mean_sum, spk_means_mean);
+    
+    // add term num_spks * gT * g
+    spk_cov.AddVecVec(num_spks, spk_means_mean, spk_means_mean);
     spk_cov.Scale(1.0 / num_spks);
     // compute sigma as spk_cov^0.5 for matrix w.r.t its svd decomposition.
     Matrix<double> sigma(spk_cov);
     sigma.Power(0.5);
+    
+    // used to check offset spk cov vs orig spk cov.
+    Matrix<double> offset_spk_cov(feat_dim, feat_dim);
+    Vector<double> offset_spk_mean(feat_dim), 
+      offset_spk_mean_sum(feat_dim);
+    int32 num_offset_spks = 0;
+
     // Generate random cmn offset for each speaker, and copy same cmn offsets
     // for all spk's utterances.
     for (std::map<std::string, Vector<double>>::const_iterator 
@@ -195,12 +207,12 @@ int main(int argc, char *argv[]) {
       std::string spk_name = iter->first;
       // centered_spk_mean for spk i is cenetered mean defined as m_i - g
       Vector<double> centered_spk_mean(spk_means[spk_name]);
-      centered_spk_mean.AddVec(-1.0, global_mean2);
+      centered_spk_mean.AddVec(-1.0, spk_means_mean);
       
       Vector<double> offset_mean(feat_dim);
       if (!zero_mean)
         offset_mean.AddVec(-1.0, centered_spk_mean);
-
+      
       GenerateRandomOffset(offset_mean, sigma, &spk_offsets);
       if (!preserve_total_covariance) 
         spk_offsets.Scale(cmn_offset_scale);
@@ -209,11 +221,66 @@ int main(int argc, char *argv[]) {
 
       spk_offsets.Row(0).Set(0.0);
       std::vector<std::string> uttlist = spk_uttlist[spk_name];
+      
       // cmn_offset indexed by itterance. This makes it easier to copy across data dir.
       for (size_t i = 0; i < uttlist.size(); i++) {
         std::string utt = uttlist[i];
         cmn_writer.Write(utt, spk_offsets);
       }
+
+      // If check_offset_spk_cov is true, the spk covariance for 
+      // offseted speakers C' computed and the eigenvalue for T = (C^-1 C')
+      // computed and checks if these eigenvalues are close to 1.
+      // each offset of each spks counted as different spk.
+      if (check_offset_spk_cov) {
+        for (int32 offset_ind = 0; offset_ind < num_cmn_offsets; offset_ind++) {
+          Matrix<double> offset_stats;
+          bool is_init_for_offset = false;
+          for (size_t i = 0; i < uttlist.size(); i++) {
+            std::string utt = uttlist[i];
+            const Matrix<BaseFloat> &feats = feat_reader.Value(utt);
+            Matrix<BaseFloat> offset_feats(feats);
+            offset_feats.AddVecToRows(1.0, spk_offsets.Row(offset_ind));
+            if (!is_init_for_offset) {
+              InitCmvnStats(offset_feats.NumCols(), &offset_stats);
+              is_init_for_offset = true;
+            }
+            AccCmvnStatsWrapper(utt, offset_feats, &weights_reader, &offset_stats);
+          }
+          Vector<double> offset_spk_mean(offset_stats.Row(0).Range(0, feat_dim));
+          double num_utt = offset_stats(0, feat_dim);
+          offset_spk_mean.Scale(1.0 /  num_utt);
+          // add sum_{i=0}^n m_i^T * m_i
+          num_offset_spks++;
+          offset_spk_cov.AddVecVec(1.0, offset_spk_mean, offset_spk_mean);
+          // sum{i=0}^n m_i
+          offset_spk_mean_sum.AddVec(1.0, offset_spk_mean);
+        }
+      }
+    }
+    // check offseted spk covariance
+    if (check_offset_spk_cov) {
+      Vector<double> offset_spk_means_mean(offset_spk_mean_sum);
+      // g = 1/num_spks({i=0}^n m_i)
+      offset_spk_means_mean.Scale(1.0 / num_offset_spks);
+      // add term -2 * (sum_{i=0}^n m_i^T) g
+      offset_spk_cov.AddVecVec(-2.0, offset_spk_mean_sum, offset_spk_means_mean);
+      // add term num_spks * (gT * g)
+      offset_spk_cov.AddVecVec(num_offset_spks, offset_spk_means_mean, offset_spk_means_mean);
+      offset_spk_cov.Scale(1.0 / num_offset_spks);
+      Matrix<double> spk_cov_inv(spk_cov);
+      spk_cov_inv.Power(-1.0);
+      // compute (inverse of orig spk-cov *  offseted spk-cov)
+      // the eigenvalue for C^-1 * offset_C should be close to 1.
+      Matrix<double> c_inv_offset_c(feat_dim, feat_dim);
+      c_inv_offset_c.AddMatMat(1.0, spk_cov_inv, kNoTrans, offset_spk_cov, kNoTrans, 0.0);
+      Matrix<double> eigen_vec(feat_dim, feat_dim);
+      Vector<double> eig_real(feat_dim), eig_imag(feat_dim);
+      c_inv_offset_c.Eig(&eigen_vec, &eig_real, &eig_imag);
+      KALDI_LOG << "eigenvals for c^-1 * offset_c = " << eig_real;
+      eig_real.Add(-1.0); 
+      double offset_l2_norm = eig_real.Norm(2.0); 
+      KALDI_LOG << "  l2norm(Eig(c^-1 * offset_c - I)) = " << offset_l2_norm; 
     }
   } catch(const std::exception &e) {
     std::cerr << e.what();
