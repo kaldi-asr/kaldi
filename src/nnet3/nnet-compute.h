@@ -82,8 +82,7 @@ class NnetComputer {
   /// with CCTC examples too).  It needs "nnet" only in order to distinguish
   /// inputs from outputs.
   void AcceptInputs(const Nnet &nnet,
-                    const std::vector<NnetIo> &io,
-                    AffineComponent* a = NULL);
+                    const std::vector<NnetIo> &io);
 
 
   // Does the forward computation.

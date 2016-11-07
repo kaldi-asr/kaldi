@@ -61,6 +61,39 @@ LmNnetTrainer::LmNnetTrainer(const LmNnetTrainerOptions &config,
   } 
 }
 
+NnetExample LmNnetTrainer::ProcessEgInputs(NnetExample eg, AffineComponent* a) {
+  for (size_t i = 0; i < eg.io.size(); i++) {
+    NnetIo &io = eg.io[i];
+
+    if (io.name == "input") {
+      new_input_.Resize(io.features.NumRows(),
+                       a->OutputDim(),
+                       kUndefined);
+
+      // TODO(hxu) test the idea first...
+      // copied is the input to the LmNnet, will change to using SparseMatrix
+      CuMatrix<BaseFloat> copied(io.features.NumRows(),
+                                 io.features.NumCols(),
+                                 kUndefined);
+      copied.CopyFromGeneralMat(io.features);
+
+      a->Propagate(NULL, copied, &new_input_);
+      //        SparseMatrix<BaseFloat> sp = io.features.GetSparseMatrix();
+      //
+      //        for (size_t i = 0; i < sp.NumRows(); i++) {
+      //          SparseVector<BaseFloat> sv = sp.Row(i);
+      //          int non_zero_index = -1;
+      //          sv.Max(&non_zero_index);
+      ////          cu_input.CopyRows(projection.RowData(non_zero_index));
+      //          cu_input.CopyRowsFromVec(projection.Row(non_zero_index));
+      //        }
+      Matrix<BaseFloat> input(new_input_);
+      io.features = input;
+    }
+  }
+  return eg;
+}
+
 void LmNnetTrainer::Train(const NnetExample &eg) {
   bool need_model_derivative = true;
   ComputationRequest request;
@@ -73,8 +106,11 @@ void LmNnetTrainer::Train(const NnetExample &eg) {
                         *nnet_->GetNnet(),
                         (delta_nnet_ == NULL ? nnet_->GetNnet() :
                                delta_nnet_->GetNnet()));
+
+  NnetExample new_eg = ProcessEgInputs(eg, nnet_->I());
+
   // give the inputs to the computer object.
-  computer.AcceptInputs(*nnet_->GetNnet(), eg.io, nnet_->I());
+  computer.AcceptInputs(*nnet_->GetNnet(), new_eg.io);
   computer.Forward();
 
   // in ProcessOutputs() we first do the last Forward propagation
@@ -85,11 +121,11 @@ void LmNnetTrainer::Train(const NnetExample &eg) {
   // TODO(hxu) add code for the first layer
   // computer.GetInputDeriv("input")
   {
-    CuMatrix<BaseFloat> first_deriv = computer.GetInputDeriv("input");
+    CuMatrix<BaseFloat> first_deriv(computer.GetInputDeriv("input"));
 
     CuMatrix<BaseFloat> place_holder;
-    input_projection_->Backprop("", NULL, output_0, place_holder,
-                     between_deriv, output_projection_1, &input_deriv);
+    nnet_->I()->Backprop("", NULL, new_input_, place_holder,
+                     first_deriv, NULL, NULL);
 
   }
 

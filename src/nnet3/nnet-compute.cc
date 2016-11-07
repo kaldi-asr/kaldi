@@ -534,47 +534,18 @@ void NnetComputer::CheckInputs(bool check_output_deriv) const {
 }
 
 void NnetComputer::AcceptInputs(const Nnet &nnet,
-                                const std::vector<NnetIo> &io_vec,
-                                AffineComponent* a) {
+                                const std::vector<NnetIo> &io_vec) {
   for (size_t i = 0; i < io_vec.size(); i++) {
     const NnetIo &io = io_vec[i];
     int32 node_index = nnet.GetNodeIndex(io.name);
     if (node_index == -1)
       KALDI_ERR << "No node named '" << io.name << "' in nnet.";
     if (nnet.IsInputNode(node_index)) {
-      if (a == NULL) {
-        CuMatrix<BaseFloat> cu_input(io.features.NumRows(),
-                                     io.features.NumCols(),
-                                     kUndefined);
-        cu_input.CopyFromGeneralMat(io.features);
-        this->AcceptInput(io.name, &cu_input);
-      } else {
-
-
-        // cu_input is the input to put to computer
-        CuMatrix<BaseFloat> cu_input(io.features.NumRows(),
-                                     a->OutputDim(),
-                                     kUndefined);
-
-        // TODO(hxu) test the idea first...
-        // copied is the input to the LmNnet, will change to using SparseMatrix
-        CuMatrix<BaseFloat> copied(io.features.NumRows(),
+      CuMatrix<BaseFloat> cu_input(io.features.NumRows(),
                                    io.features.NumCols(),
                                    kUndefined);
-        copied.CopyFromGeneralMat(io.features);
-
-        a->Propagate(NULL, copied, &cu_input);
-//        SparseMatrix<BaseFloat> sp = io.features.GetSparseMatrix();
-//
-//        for (size_t i = 0; i < sp.NumRows(); i++) {
-//          SparseVector<BaseFloat> sv = sp.Row(i);
-//          int non_zero_index = -1;
-//          sv.Max(&non_zero_index);
-////          cu_input.CopyRows(projection.RowData(non_zero_index));
-//          cu_input.CopyRowsFromVec(projection.Row(non_zero_index));
-//        }
-        this->AcceptInput(io.name, &cu_input);
-      }
+      cu_input.CopyFromGeneralMat(io.features);
+      this->AcceptInput(io.name, &cu_input);
     }
   }
 }

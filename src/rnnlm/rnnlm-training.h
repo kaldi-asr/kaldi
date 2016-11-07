@@ -166,10 +166,12 @@ class LmNnetTrainer {
 
   ~LmNnetTrainer();
  private:
+  NnetExample ProcessEgInputs(NnetExample eg, AffineComponent* a);
   void ProcessOutputs(const NnetExample &eg,
                       NnetComputer *computer);
 
   const LmNnetTrainerOptions config_;
+  CuMatrix<BaseFloat> new_input_;
   LmNnet *nnet_;
   LmNnet *delta_nnet_;  // Only used if momentum != 0.0 or max-param-change !=
                       // 0.0.  nnet representing accumulated parameter-change
