@@ -407,9 +407,6 @@ void ConvertAdditionToAssignment(const Nnet &nnet,
 void Optimize(const NnetOptimizeOptions &config,
               const Nnet &nnet,
               NnetComputation *computation) {
-  if (!config.optimize)
-    return;
-
   if (GetVerboseLevel() >= 4)
     CheckComputation(nnet, *computation, true);
 
@@ -421,42 +418,52 @@ void Optimize(const NnetOptimizeOptions &config,
   if (GetVerboseLevel() >= 4)
     CheckComputation(nnet, *computation, true);
 
-  if (config.consolidate_model_update)
+  if (config.optimize && config.consolidate_model_update)
     ConsolidateModelUpdate(nnet, computation);
 
   if (GetVerboseLevel() >= 4)
     CheckComputation(nnet, *computation, true);
 
-  if (config.convert_addition)
+  if (config.optimize && config.convert_addition) {
     ConvertAdditionToAssignment(nnet, computation);
+    if (GetVerboseLevel() >= 4)
+      CheckComputation(nnet, *computation, true);
+  }
 
-  if (GetVerboseLevel() >= 4)
-    CheckComputation(nnet, *computation, true);
-
-  if (config.remove_assignments || config.backprop_in_place ||
-      config.propagate_in_place)
+  if (config.optimize &&
+      (config.remove_assignments || config.backprop_in_place ||
+       config.propagate_in_place)) {
     VariableMergingOptimization(config, nnet, computation);
+    if (GetVerboseLevel() >= 4)
+      CheckComputation(nnet, *computation, false);
+  }
 
-  if (GetVerboseLevel() >= 4)
-    CheckComputation(nnet, *computation, false);
-
-  if (config.initialize_undefined)
+  if (config.optimize && config.initialize_undefined) {
     RemoveUnnecessaryZeroing(nnet, computation);
+    if (GetVerboseLevel() >= 4)
+      CheckComputation(nnet, *computation, false);
+  }
 
-  if (GetVerboseLevel() >= 4)
-    CheckComputation(nnet, *computation, false);
-
-  if (config.move_sizing_commands)
+  if (config.optimize && config.move_sizing_commands) {
     MoveSizingCommands(nnet, computation);
+    if (GetVerboseLevel() >= 4)
+      CheckComputation(nnet, *computation, false);
+  }
 
-  if (GetVerboseLevel() >= 4)
-    CheckComputation(nnet, *computation, false);
+  // the online computation optimization has to go before
+  // 'RemoveUnnecessaryAllocation()'.  We don't gate this by 'config.optimize'
+  // because it's necessary for online computation to run.
+  if (config.optimize_online_computation){
+    OptimizeOnlineComputation(nnet, computation);
+    if (GetVerboseLevel() >= 4)
+      CheckComputation(nnet, *computation, false);
+  }
 
-  if (config.allocate_from_other)
+  if (config.optimize && config.allocate_from_other) {
     RemoveUnnecessaryAllocation(nnet, computation);
-
-  if (GetVerboseLevel() >= 4)
-    CheckComputation(nnet, *computation, false);
+    if (GetVerboseLevel() >= 4)
+      CheckComputation(nnet, *computation, false);
+  }
 
   // The following is not configurable because it is necessary for
   // the computation to run correctly (we do it after compilation too,

@@ -1670,8 +1670,13 @@ class ComputationOnlineOptimizer {
   bool Optimize();
 
  private:
+
+  // Figures out the time shift between the successive computation requests.
+  static int32 FindTimeShift(const NnetComputation &computation,
+                             const std::vector<int32> &segment_ends);
+
   // This function creates a mapping from a matrix-index > 0,
-  // to a pair (time_offset, unique_id) that represents the debug-info
+  // to a pair (unique_id, time_offset) that represents the debug-info
   // for that matrix-id in computation.debug_info.
   // The output vector is indexed by the matrix-index in the computation (the
   // zeroth member is not valid).  It requires that the
@@ -1682,8 +1687,81 @@ class ComputationOnlineOptimizer {
   // value of the DebugInfo.  That is, if two 'cindexes' vectors differ only
   // by a time offset, and the 'is_deriv' values are the same they will map to the same
   // unique_id.
+  // The output 'matrix_to_pair' is indexed by matrix index (the zeroth element is
+  // not set).
   static void CreateMatrixPairs(const NnetComputation &computation,
                                 std::vector<std::pair<int32, int32> > *matrix_to_pair);
+
+
+  // This very simple helper function reverses the map 'matrix_to_pair' so we can
+  // do the reverse lookup.  It outputs a map from pair to matrix index m, where
+  // 1 <= m < matrix_to_pair.size().
+  static void GetPairToMatrixMap(
+      std::vector<std::pair<int32, int32> > &matrix_to_pair,
+      unordered_map<std::pair<int32, int32>, int32, PairHasher<int32> > *pair_to_matrix);
+
+
+  // Given a vector of lists, one list for each segment, of the active matrices
+  // at the end of that segment, this function converts those lists into a
+  // different representation where each matrix is reprented as a pair instead
+  // of as a single int32.  'active_pairs' will have the same dimensions as
+  // 'active_matrices'.
+  static void ConvertListsToPairLists(
+      const std::vector<std::vector<int32> > &active_matrices,
+      const std::vector<std::pair<int32, int32> > &matrix_to_pair,
+      std::vector<std::vector<std::pair<int32, int32> > > *active_pairs);
+
+  // This function modifies the lists of active matrices per segment
+  // (represented as pairs) in 'active_pairs' by sorting them and
+  // then subtracting the time-offset of the first pair in each
+  // list ((*active_pair)[seg][0].second), from all elements in that list.
+  // It puts the subtracted offset in (*time_offsets)[seg].  This change
+  // of representation makes it easy to tell whether the sets of active
+  // matrices for different segments are identical up to a time-offset.
+  static void NormalizePairLists(
+      std::vector<std::vector<std::pair<int32, int32> > > *active_pairs,
+      std::vector<int32> *time_offsets);
+
+  // This function looks in the matrix 'active_pairs' for the first pair of
+  // identical values, i.e. it is looking for i < j for which
+  // normalized_active_pairs[i] == normalized_active_pairs[j].  If there
+  // is such a pair it outputs them to *seg1 and *seg2, and returns true;
+  // otherwise it returns false.
+  //
+  // Update to the above: It turns out that under some circumstances, the
+  //  original function found repeats that were not "really" repeats (the
+  //  matrices were not time shifted) The situation was a bit obscure (it was a
+  //  non-recurrent setup with a lot of extra-right-context, where some inputs
+  //  were never used), but to prevent it happening again we are now checking
+  //  in addition to the above, that the time-shift between the segments
+  //  (i.e. time_offsets[j] - time_offsets[i]), has the "expected value"
+  //  based on the assumption that each segment should be shifted relative
+  //  to the previous segment, by 'time_shift_per_segment'.
+  static bool FindFirstRepeat(
+      const std::vector<std::vector<std::pair<int32, int32> > > &normalized_active_pairs,
+      const std::vector<int32> &time_offsets,
+      int32 time_shift_per_segment,
+      int32 *seg1, int32 *seg2);
+
+  // Converts a list of pairs (e.g. one of the elements of the output of
+  // 'ConvertListsToPairLists)', back into a list of matrix indexes, using the
+  // map 'pair_to_matrix'.
+  static void PairListToMatrixList(
+      const std::vector<std::pair<int32, int32> > &pair_list,
+      const unordered_map<std::pair<int32, int32>, int32, PairHasher<int32> > &pair_to_matrix,
+      std::vector<int32> *matrix_list);
+
+
+  // This function just does some checking (via asserts), that
+  // the lists of matrices 'list1' and 'list2' are of the same length,
+  // that time_difference > 0, that each matrix with index m = list2[i] is of the
+  // same dimension as the list1[i], with Cindexes that are the same except for
+  // the time index being greater by 'time_difference'
+  static void CheckIdentifiedMatrices(
+      const NnetComputation &computation,
+      const std::vector<int32> &list1,
+      const std::vector<int32> &list2,
+      int32 time_difference);
 
 
   /// Given a list of command indexes ('segment_end_commands') which are
@@ -1697,8 +1775,8 @@ class ComputationOnlineOptimizer {
   /// same index as 'segment_end_commands', and is then a list of active
   /// matrices, in numerical order of matrix index.
   static void FindActiveMatrices(const NnetComputation &computation,
-                                 const std::vector<int32> &segment_end_commands,
                                  const Analyzer &analyzer,
+                                 const std::vector<int32> &segment_end_commands,
                                  std::vector<std::vector<int32> > *active_matrices);
 
 
@@ -1712,6 +1790,56 @@ class ComputationOnlineOptimizer {
 
 };
 
+
+// static
+int32 ComputationOnlineOptimizer::FindTimeShift(
+    const NnetComputation &computation,
+    const std::vector<int32> &segment_ends) {
+  KALDI_ASSERT(segment_ends.size() >= 3);
+  // Ignore the first segment as it tends to be a special case
+  // (it has more left context),
+  int32 second_segment_begin = segment_ends[0],
+      third_segment_begin = segment_ends[1],
+      fourth_segment_begin = segment_ends[2];
+  int32 first_output_command_seg2 = -1,
+      first_output_command_seg3 = -1;
+  for (int32 c = second_segment_begin; c < third_segment_begin; c++)
+    if (computation.commands[c].command_type == kProvideOutput &&
+        first_output_command_seg2 < 0)
+      first_output_command_seg2 = c;
+  for (int32 c = third_segment_begin; c < fourth_segment_begin; c++)
+    if (computation.commands[c].command_type == kProvideOutput &&
+        first_output_command_seg3 < 0)
+      first_output_command_seg3 = c;
+  if (first_output_command_seg2 < 0 ||
+      first_output_command_seg3 < 0)
+    KALDI_ERR << "Could not locate output commands for segments 2 and 3.";
+  const NnetComputation::Command
+      &command2 = computation.commands[first_output_command_seg2],
+      &command3 = computation.commands[first_output_command_seg3];
+  int32 seg2_node = command2.arg2, seg3_node = command3.arg2;
+  KALDI_ASSERT(seg2_node == seg3_node);
+  int32 seg2_submatrix = command2.arg1,
+      seg3_submatrix = command3.arg1;
+  KALDI_ASSERT(computation.IsWholeMatrix(seg2_submatrix) &&
+               computation.IsWholeMatrix(seg3_submatrix));
+  int32 seg2_matrix = computation.submatrices[seg2_submatrix].matrix_index,
+      seg3_matrix = computation.submatrices[seg3_submatrix].matrix_index;
+  KALDI_ASSERT(computation.matrices[seg2_matrix].num_rows ==
+               computation.matrices[seg3_matrix].num_rows);
+  KALDI_ASSERT(!computation.matrix_debug_info.empty());
+  const NnetComputation::MatrixDebugInfo
+      &debug_info2 = computation.matrix_debug_info[seg2_matrix],
+      &debug_info3 = computation.matrix_debug_info[seg3_matrix];
+  int32 t_offset = debug_info3.cindexes[0].second.t -
+      debug_info2.cindexes[0].second.t;
+  int32 num_rows = debug_info2.cindexes.size();
+  for (int32 r = 0; r < num_rows; r++) {
+    KALDI_ASSERT(debug_info3.cindexes[r].second.t ==
+                 debug_info2.cindexes[r].second.t + t_offset);
+  }
+  return t_offset;
+}
 
 // static
 void ComputationOnlineOptimizer::CreateMatrixPairs(
@@ -1744,27 +1872,135 @@ void ComputationOnlineOptimizer::CreateMatrixPairs(
     }
     bool is_deriv = computation.matrix_debug_info[m].is_deriv;
     int32 unique_id = 2 * vector_id + (is_deriv ? 1 : 0);
-    (*matrix_to_pair)[m].first = t_offset;
-    (*matrix_to_pair)[m].second = unique_id;
+    (*matrix_to_pair)[m].first = unique_id;
+    (*matrix_to_pair)[m].second = t_offset;
+  }
+}
+
+// static
+void ComputationOnlineOptimizer::GetPairToMatrixMap(
+      std::vector<std::pair<int32, int32> > &matrix_to_pair,
+      unordered_map<std::pair<int32, int32>, int32, PairHasher<int32> > *pair_to_matrix) {
+  int32 num_matrices = matrix_to_pair.size();
+  // actually there are one fewer matrices than num_matrices.
+  pair_to_matrix->clear();
+  for (int32 m = 1; m < num_matrices; m++)
+    (*pair_to_matrix)[matrix_to_pair[m]] = m;
+}
+
+
+// static
+void ComputationOnlineOptimizer::ConvertListsToPairLists(
+      const std::vector<std::vector<int32> > &active_matrices,
+      const std::vector<std::pair<int32, int32> > &matrix_to_pair,
+      std::vector<std::vector<std::pair<int32, int32> > > *active_pairs) {
+  active_pairs->clear();
+  active_pairs->resize(active_matrices.size());
+  int32 num_matrices = matrix_to_pair.size();
+  for (size_t seg = 0; seg < active_matrices.size(); seg++) {
+    const std::vector<int32> &this_active_matrix_list = active_matrices[seg];
+    std::vector<std::pair<int32, int32> > &this_active_pair_list =
+        (*active_pairs)[seg];
+    this_active_pair_list.resize(this_active_matrix_list.size());
+    std::vector<int32>::const_iterator iter = this_active_matrix_list.begin(),
+        end = this_active_matrix_list.end();
+    std::vector<std::pair<int32, int32> >::iterator
+        out_iter = this_active_pair_list.begin();
+    for (; iter != end; ++iter, ++out_iter) {
+      KALDI_ASSERT(*iter > 0 && *iter < num_matrices);
+      *out_iter = matrix_to_pair[*iter];
+    }
+  }
+}
+
+// static
+void ComputationOnlineOptimizer::NormalizePairLists(
+    std::vector<std::vector<std::pair<int32, int32> > > *active_pairs,
+    std::vector<int32> *time_offsets) {
+  int32 num_segments = active_pairs->size();
+  time_offsets->resize(num_segments);
+  for (int32 seg = 0; seg < num_segments; seg++) {
+    std::vector<std::pair<int32, int32> > &this_pairs = (*active_pairs)[seg];
+    std::sort(this_pairs.begin(), this_pairs.end());
+    int32 this_offset;
+    if (!this_pairs.empty()) {
+      this_offset = this_pairs[0].second;
+    } else {
+      // if this_pairs is empty, produce arbitrary offsets that are increasing
+      // (this will keep some self-testing code happy).
+      if (seg == 0) { this_offset = 0; }
+      else { this_offset = (*time_offsets)[seg - 1] + 1; }
+    }
+    (*time_offsets)[seg] = this_offset;
+    std::vector<std::pair<int32, int32> >::iterator
+        iter = this_pairs.begin(), end = this_pairs.end();
+    for (; iter != end; ++iter)
+      iter->second -= this_offset;
   }
 }
 
 
 // static
+bool ComputationOnlineOptimizer::FindFirstRepeat(
+    const std::vector<std::vector<std::pair<int32, int32> > > &normalized_active_pairs,
+    const std::vector<int32> &time_offsets,
+    int32 time_shift_per_segment,
+    int32 *seg1, int32 *seg2) {
+  int32 num_segments = normalized_active_pairs.size();
+  // This algorithm may seem like it would be very slow, but the number of
+  // segments will normally be quite small (e.g. 10), and the comparison of
+  // elements of 'normalized_active_pairs' should be fast in cases where they
+  // differ.
+  for (int32 s = 0; s < num_segments; s++) {
+    for (int32 t = s + 1; t < num_segments; t++) {
+      if (time_offsets[t] - time_offsets[s] == (t - s) * time_shift_per_segment
+          && normalized_active_pairs[s] == normalized_active_pairs[t]) {
+        *seg1 = s;
+        *seg2 = t;
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+// static
+void ComputationOnlineOptimizer::PairListToMatrixList(
+    const std::vector<std::pair<int32, int32> > &pair_list,
+    const unordered_map<std::pair<int32, int32>, int32, PairHasher<int32> > &pair_to_matrix,
+    std::vector<int32> *matrix_list) {
+  matrix_list->resize(pair_list.size());
+  std::vector<std::pair<int32, int32> >::const_iterator
+      iter = pair_list.begin(), end = pair_list.end();
+  std::vector<int32>::iterator out_iter = matrix_list->begin();
+  for (; iter != end; ++iter, ++out_iter) {
+    unordered_map<std::pair<int32, int32>, int32,
+                  PairHasher<int32> >::const_iterator
+        map_iter = pair_to_matrix.find(*iter);
+    if (map_iter == pair_to_matrix.end()) {
+      KALDI_ERR << "Could not find pair in map (code error)";
+    }
+    *out_iter = map_iter->second;
+  }
+}
+
+
+
+// static
 void ComputationOnlineOptimizer::FindActiveMatrices(
     const NnetComputation &computation,
-    const std::vector<int32> &segment_end_commands,
     const Analyzer &analyzer,
+    const std::vector<int32> &segment_end_commands,
     std::vector<std::vector<int32> > *active_matrices) {
   int32 num_matrices = computation.matrices.size();
   int32 num_segments = segment_end_commands.size();
   active_matrices->clear();
   active_matrices->resize(num_segments);
-  // this object just makes available some extra functions.
+  // this object just makes available some extra functions, vs. the Analyzer
+  // object.
   ComputationAnalysis analysis(computation, analyzer);
-  for (int32 s = 0; s + 1 < num_segments; s++) {
-    KALDI_ASSERT(segment_end_commands[s] < segment_end_commands[s+1]);
-  }
+  KALDI_ASSERT(IsSortedAndUniq(segment_end_commands));
+
   // the following vector gives us, for each matrix index, a submatrix index
   // that covers the whole of that matrix (needed by interface of 'analysis' object).
   std::vector<int32> whole_submatrices;
@@ -1772,21 +2008,56 @@ void ComputationOnlineOptimizer::FindActiveMatrices(
   for (int32 m = 1; m < num_matrices; m++) {
     // the following are command indexes, comparable with the indexes
     // in 'segment_end_commands'.
-    int32 s = whole_submatrices[m];  // submatrix consisting of the whole of
+    int32 s = whole_submatrices[m],  // submatrix consisting of the whole of
                                      // 'm'.
-    int32 first_access = analysis.FirstAccess(s),
+        first_access = analysis.FirstAccess(s),
         last_access = analysis.LastAccess(s);
-    std::vector<int32>::const_iterator iter = segment_end_commands.begin(),
-        end = segment_end_commands.end();
-    for (; iter != end; ++iter) {
-      int32 segment_end = *iter;
+    for (int32 seg = 0; seg < num_segments; seg++) {
+      int32 segment_end = segment_end_commands[seg];
       if (first_access < segment_end && last_access > segment_end) {
-        // TODO.
+        // If the block of time during which the matrix is accessed, includes
+        // this segment end-point, then the matrix is considered 'active' at
+        // that time.
+        (*active_matrices)[seg].push_back(m);
       }
     }
   }
-
 }
+
+// static
+void ComputationOnlineOptimizer::CheckIdentifiedMatrices(
+    const NnetComputation &computation,
+    const std::vector<int32> &list1,
+    const std::vector<int32> &list2,
+    int32 time_difference) {
+  KALDI_ASSERT(time_difference > 0);
+  KALDI_ASSERT(list1.size() == list2.size());
+  KALDI_ASSERT(!computation.matrix_debug_info.empty());
+  for (size_t i = 0; i < list1.size(); i++) {
+    int32 m1 = list1[i], m2 = list2[i];
+    const NnetComputation::MatrixInfo
+        &matrix_info1 = computation.matrices[m1],
+        &matrix_info2 = computation.matrices[m2];
+    KALDI_ASSERT(matrix_info1.num_rows == matrix_info2.num_rows &&
+                 matrix_info1.num_cols == matrix_info2.num_cols &&
+                 matrix_info1.stride_type == matrix_info2.stride_type);
+    const NnetComputation::MatrixDebugInfo
+        &debug_info1 = computation.matrix_debug_info[m1],
+        &debug_info2 = computation.matrix_debug_info[m2];
+    KALDI_ASSERT(debug_info1.is_deriv == debug_info2.is_deriv);
+    KALDI_ASSERT(debug_info1.cindexes.size() == debug_info2.cindexes.size());
+    std::vector<Cindex>::const_iterator iter1 = debug_info1.cindexes.begin(),
+        end1 = debug_info1.cindexes.end(),
+        iter2 = debug_info2.cindexes.begin();
+    for (; iter1 != end1; iter1++,iter2++) {
+      KALDI_ASSERT(iter2->first == iter1->first &&
+                   iter2->second.n == iter1->second.n &&
+                   iter2->second.t == iter1->second.t + time_difference &&
+                   iter2->second.x == iter1->second.x);
+    }
+  }
+}
+
 
 bool ComputationOnlineOptimizer::Optimize() {
   analyzer_.Init(nnet_, *computation_);
@@ -1794,9 +2065,73 @@ bool ComputationOnlineOptimizer::Optimize() {
                "You must request matrix debug info when compiling "
                "online computations.");
 
-  // TODO.
+  // get the indexes of the separator commands at the ends of segments.
+  std::vector<int32> segment_ends;
+  GetSegmentEnds(*computation_, &segment_ends);
+  int32 time_shift_per_segment = FindTimeShift(*computation_,
+                                               segment_ends);
 
-  return false;
+  // Ignore the end of the very last segment- it is not a candidate for a
+  // 'splice point'.  What we're doing here is like creating a tape loop; we
+  // have to find a place where the list of variables is the same except for a
+  // time offset.
+  // [note: it's not exactly like a tape loop because the prologue can
+  // vary... the sequence is of the form like a b b b b b .. ]
+  segment_ends.pop_back();
+
+
+  std::vector<std::vector<int32> > active_matrices;
+  // Find the list of matrices active at each of those segment-end-command
+  // times.
+  FindActiveMatrices(*computation_, analyzer_, segment_ends,
+                     &active_matrices);
+
+  // Find a representation of the matrices of the computation as pairs
+  // (unique_id, time_offset) that are more amenable to finding
+  // matrices that represet lists of Cindexes that differ only by
+  // a time offset.
+  std::vector<std::pair<int32, int32> > matrix_to_pair;
+  CreateMatrixPairs(*computation_, &matrix_to_pair);
+
+  // Create the reverse map from pair to matrix index; we'll need it.
+  unordered_map<std::pair<int32, int32>, int32, PairHasher<int32> > pair_to_matrix;
+  GetPairToMatrixMap(matrix_to_pair, &pair_to_matrix);
+
+  // get lists of matrix per segment in the pair representation.
+  std::vector<std::vector<std::pair<int32, int32> > > pair_lists;
+  ConvertListsToPairLists(active_matrices, matrix_to_pair,
+                          &pair_lists);
+
+  std::vector<int32> time_offsets;
+  NormalizePairLists(&pair_lists, &time_offsets);
+
+  int32 seg1, seg2;
+
+  if (!FindFirstRepeat(pair_lists,
+                       time_offsets,
+                       time_shift_per_segment,
+                       &seg1, &seg2)) {
+    KALDI_VLOG(2) << "Could not find repeats of variables.";
+    return false;
+  }
+
+  // reverse the normalization for segments seg1 and seg2.
+  for (size_t i = 0; i < pair_lists[seg1].size(); i++)
+    pair_lists[seg1][i].second += time_offsets[seg1];
+  for (size_t i = 0; i < pair_lists[seg2].size(); i++)
+    pair_lists[seg2][i].second += time_offsets[seg2];
+  std::vector<int32> seg1_matrices, seg2_matrices;
+  PairListToMatrixList(pair_lists[seg1], pair_to_matrix, &seg1_matrices);
+  PairListToMatrixList(pair_lists[seg2], pair_to_matrix, &seg2_matrices);
+
+  int32 time_difference = time_offsets[seg2] - time_offsets[seg1];
+  CheckIdentifiedMatrices(*computation_, seg1_matrices, seg2_matrices,
+                          time_difference);
+
+  // HERE, do whatever kind of identification we have to do between the two
+  // lists of matrices.
+
+  return true;
 }
 
 

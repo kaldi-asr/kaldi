@@ -46,6 +46,10 @@ struct NnetOptimizeOptions {
   bool allocate_from_other;
   int32 min_deriv_time;
   int32 max_deriv_time;
+  // optimize_online_computation is a 'hidden config' not available from
+  // the command line; it's set to true to enable the optimization for
+  // online computation that turns a linear computation into a loop.
+  bool optimize_online_computation;
 
   NnetOptimizeOptions(): optimize(true),
                          consolidate_model_update(true),
@@ -59,7 +63,8 @@ struct NnetOptimizeOptions {
                          move_sizing_commands(true),
                          allocate_from_other(true),
                          min_deriv_time(std::numeric_limits<int32>::min()),
-                         max_deriv_time(std::numeric_limits<int32>::max()) { }
+                         max_deriv_time(std::numeric_limits<int32>::max()),
+                         optimize_online_computation(false) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("optimize", &optimize, "Set this to false to turn off all "
