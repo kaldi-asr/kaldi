@@ -100,6 +100,10 @@ void LmNnetTrainer::Train(const NnetExample &eg) {
   GetComputationRequest(*nnet_->GetNnet(), eg, need_model_derivative,
                         config_.store_component_stats,
                         &request);
+
+  KALDI_ASSERT(request.inputs.size() == 1);
+  request.inputs[0].has_deriv = true;
+
   const NnetComputation *computation = compiler_.Compile(request);
 
   NnetComputer computer(config_.compute_config, *computation,
