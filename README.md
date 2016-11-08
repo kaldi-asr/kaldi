@@ -46,8 +46,8 @@ Development pattern for contributors
 3. [Generate a pull request](https://help.github.com/articles/creating-a-pull-request/)
    through the Web interface of GitHub.
 4. As a general rule, please follow [Google C++ Style Guide]
-   (https://google-styleguide.googlecode.com/svn/trunk/cppguide.html).
+   (https://google.github.io/styleguide/cppguide.html).
    There are a [few exceptions in Kaldi](http://kaldi-asr.org/doc/style.html).
    You can use the [Google's cpplint.py]
-   (https://google-styleguide.googlecode.com/svn/trunk/cpplint/cpplint.py)
+   (https://raw.githubusercontent.com/google/styleguide/gh-pages/cpplint/cpplint.py)
    to verify that your code is free of basic mistakes.
