@@ -1,13 +1,15 @@
 #!/bin/bash
 
-# 7g is as 7f, but reverberating the training data with room impulse responses
-# which leads to better results
+# This script (multi_condition/run_tdnn_7f.sh) is the reverberated version of
+# tuning/run_tdnn_7f.sh. It reverberates the training data with room impulse responses
+# which leads to better results.
+# (The reverberation of data is done in multi_condition/run_ivector_common.sh)
 # This script assumes a mixing of the original training data with its reverberated copy
 # and results in a 2-fold training set. Thus the number of epochs is halved to
 # keep the same training time. The model converges after 2 epochs of training,
 # The WER doesn't change much with more epochs of training.
-# local/chain/compare_wer.sh 7f 7g
-# System                       7f        7g
+# local/chain/compare_wer.sh tuning/7f multi_condition/7f
+# System                 tuning/7f  multi_condition/7f
 # WER on train_dev(tg)      14.46     14.27
 # WER on train_dev(fg)      13.23     13.16
 # WER on eval2000(tg)        17.0      16.3
@@ -26,7 +28,7 @@ stage=1
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_7g  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_7f  # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
 ivector_dir=exp/nnet3_rvb
 num_data_reps=1        # number of reverberated copies of data to generate
@@ -78,7 +80,7 @@ if [ "$speed_perturb" == "true" ]; then
   suffix=_sp
 fi
 
-dir=${dir}${affix:+_$affix}$suffix
+dir=${dir}${affix:+_$affix}${suffix}_rvb${num_data_reps}
 clean_train_set=${input_train_set}${suffix}
 train_set=${clean_train_set}_rvb${num_data_reps}
 ali_dir=exp/tri4_ali_nodup$suffix
