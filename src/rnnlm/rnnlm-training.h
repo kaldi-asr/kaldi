@@ -166,7 +166,7 @@ class LmNnetTrainer {
 
   ~LmNnetTrainer();
  private:
-  NnetExample ProcessEgInputs(NnetExample eg, AffineComponent* a);
+  NnetExample ProcessEgInputs(NnetExample eg, const AffineComponent& a);
   void ProcessOutputs(const NnetExample &eg,
                       NnetComputer *computer);
 
@@ -235,8 +235,8 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
                               NnetComputer *computer,
                               BaseFloat *tot_weight,
                               BaseFloat *tot_objf,
-                              Component *output_projection_1,
-                              Component *output_projection_2,
+                              const Component *output_projection_1,
+                              const Component *output_projection_2,
                               LmNnet *delta_nnet);
 
 
