@@ -140,7 +140,7 @@ if [ -f $srcdir/frame_subsampling_factor ]; then
 fi
 
 $cmd $queue_opt JOB=1:$nj $dir/log/align.JOB.log \
-  compile-train-graphs $dir/tree $srcdir/${iter}.mdl  $lang/L.fst "$tra" ark:- \| \
+  compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $dir/tree $srcdir/${iter}.mdl  $lang/L.fst "$tra" ark:- \| \
   nnet3-align-compiled $scale_opts $ivector_opts $frame_subsampling_opt \
   --frames-per-chunk=$frames_per_chunk \
   --extra-left-context=$extra_left_context \

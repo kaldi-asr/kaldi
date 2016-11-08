@@ -228,7 +228,7 @@ sub SplitLongSegment {
                            $aligned_ctm->[$seg_end_index]->[2] -
                            $aligned_ctm->[$seg_start_index]->[1];
   my $current_seg_index = $seg_start_index;
-  my $aligned_ctm_size = keys($aligned_ctm);    
+  my $aligned_ctm_size = scalar(@{$aligned_ctm});    
   while ($current_seg_length > 1.5 * $max_seg_length && $current_seg_index < $aligned_ctm_size-1) {
     my $split_point = GetSplitPoint($aligned_ctm, $current_seg_index,
                                     $seg_end_index, $max_seg_length);

@@ -151,10 +151,19 @@ class NnetTrainer {
   // Prints out the final stats, and return true if there was a nonzero count.
   bool PrintTotalStats() const;
 
+  // Prints out the max-change stats (if nonzero): the percentage of time that
+  // per-component max-change and global max-change were enforced.
+  void PrintMaxChangeStats() const;
+
   ~NnetTrainer();
  private:
   void ProcessOutputs(const NnetExample &eg,
                       NnetComputer *computer);
+
+  // Applies per-component max-change and global max-change to all updatable
+  // components in *delta_nnet_, and use *delta_nnet_ to update parameters
+  // in *nnet_.
+  void UpdateParamsWithMaxChange();
 
   const NnetTrainerOptions config_;
   Nnet *nnet_;
@@ -169,6 +178,10 @@ class NnetTrainer {
   // normal case there will be just one output layer named "output".
   // So we store the objective functions per output layer.
   int32 num_minibatches_processed_;
+
+  // stats for max-change.
+  std::vector<int32> num_max_change_per_component_applied_;
+  int32 num_max_change_global_applied_;
 
   unordered_map<std::string, ObjectiveFunctionInfo, StringHasher> objf_info_;
 };
