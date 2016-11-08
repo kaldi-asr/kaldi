@@ -77,17 +77,21 @@ def GetArgs():
 
     # Gradient clipper options
     parser.add_argument("--norm-based-clipping", type=str, action=nnet3_train_lib.StrToBoolAction,
-                        help="use norm based clipping in ClipGradient components (deprecated)", default=True, choices = ["false", "true"])
+                        help="Outdated option retained for back compatibility, has no effect.",
+                        default=True, choices = ["false", "true"])
     parser.add_argument("--clipping-threshold", type=float,
-                        help="clipping threshold used in BackpropTruncation components, if clipping-threshold=0 no clipping is done", default=30)
+                        help="clipping threshold used in BackpropTruncation components, "
+                        "if clipping-threshold=0 no clipping is done", default=30)
     parser.add_argument("--zeroing-threshold", type=float,
-                        help="zeroing threshold used in BackpropTruncation components, if zeroing-threshold=0 no clipping is done", default=3.0)
+                        help="zeroing threshold used in BackpropTruncation components, "
+                        "if zeroing-threshold=0 no periodic zeroing is done", default=3.0)
     parser.add_argument("--zeroing-interval", type=int,
                         help="zeroing interval used in BackpropTruncation components", default=20)
     parser.add_argument("--self-repair-scale-nonlinearity", type=float,
                         help="A non-zero value activates the self-repair mechanism in the sigmoid and tanh non-linearities of the LSTM", default=0.00001)
     parser.add_argument("--self-repair-scale-clipgradient", type=float,
-                        help="A non-zero value activates the self-repair mechanism in the ClipGradient component of the LSTM (deprecated)", default=1.0)
+                        help="Outdated option retained for back compatibility, has no effect.",
+                        default=1.0)
 
     # Delay options
     parser.add_argument("--label-delay", type=int, default=None,
@@ -138,7 +142,7 @@ def CheckArgs(args):
     if (args.num_lstm_layers < 1):
         sys.exit("--num-lstm-layers has to be a positive integer")
     if (args.clipping_threshold < 0 or args.zeroing_threshold < 0):
-        sys.exit("--clipping-threshold and --zeroing-threshold has to be a non-negative")
+        sys.exit("--clipping-threshold and --zeroing-threshold have to be non-negative")
     if not args.zeroing_interval > 0:
         raise Exception("--zeroing-interval has to be positive")
     if args.lstm_delay is None:

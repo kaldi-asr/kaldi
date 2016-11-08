@@ -355,7 +355,10 @@ def AddLstmLayer(config_lines,
     components.append("component name={0}_c1 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
     components.append("component name={0}_c2 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
     components.append("component name={0}_m type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
-    components.append("component name={0}_c type=BackpropTruncationComponent dim={1} clipping-threshold={2} zeroing-threshold={3} zeroing-interval={4} recurrence-interval={5}".format(name, cell_dim, clipping_threshold, zeroing_threshold, zeroing_interval, abs(lstm_delay)))
+    components.append("component name={0}_c type=BackpropTruncationComponent dim={1} "
+        "clipping-threshold={2} zeroing-threshold={3} zeroing-interval={4} "
+        "recurrence-interval={5}".format(name, cell_dim, clipping_threshold, zeroing_threshold,
+        zeroing_interval, abs(lstm_delay)))
 
     # c1_t and c2_t defined below
     component_nodes.append("component-node name={0}_c_t component={0}_c input=Sum({0}_c1_t, {0}_c2_t)".format(name))
@@ -394,7 +397,10 @@ def AddLstmLayer(config_lines,
     if (add_recurrent_projection and add_non_recurrent_projection):
         components.append("# projection matrices : Wrm and Wpm")
         components.append("component name={0}_W-m type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3} {4}".format(name, cell_dim, recurrent_projection_dim + non_recurrent_projection_dim, ng_affine_options, max_change_options))
-        components.append("component name={0}_r type=BackpropTruncationComponent dim={1} clipping-threshold={2} zeroing-threshold={3} zeroing-interval={4} recurrence-interval={5}".format(name, recurrent_projection_dim, clipping_threshold, zeroing_threshold, zeroing_interval, abs(lstm_delay)))
+        components.append("component name={0}_r type=BackpropTruncationComponent dim={1} "
+            "clipping-threshold={2} zeroing-threshold={3} zeroing-interval={4} "
+            "recurrence-interval={5}".format(name, recurrent_projection_dim, clipping_threshold,
+            zeroing_threshold, zeroing_interval, abs(lstm_delay)))
         component_nodes.append("# r_t and p_t")
         component_nodes.append("component-node name={0}_rp_t component={0}_W-m input={0}_m_t".format(name))
         component_nodes.append("dim-range-node name={0}_r_t_preclip input-node={0}_rp_t dim-offset=0 dim={1}".format(name, recurrent_projection_dim))
@@ -404,8 +410,12 @@ def AddLstmLayer(config_lines,
 
     elif add_recurrent_projection:
         components.append("# projection matrices : Wrm")
-        components.append("component name={0}_Wrm type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3} {4}".format(name, cell_dim, recurrent_projection_dim, ng_affine_options, max_change_options))
-        components.append("component name={0}_r type=BackpropTruncationComponent dim={1} clipping-threshold={2} zeroing-threshold={3} zeroing-interval={4} recurrence-interval={5}".format(name, recurrent_projection_dim, clipping_threshold, zeroing_threshold, zeroing_interval, abs(lstm_delay)))
+        components.append("component name={0}_Wrm type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3} {4}".format(
+            name, cell_dim, recurrent_projection_dim, ng_affine_options, max_change_options))
+        components.append("component name={0}_r type=BackpropTruncationComponent dim={1} "
+            "clipping-threshold={2} zeroing-threshold={3} zeroing-interval={4} "
+            "recurrence-interval={5}".format(name, recurrent_projection_dim, clipping_threshold,
+            zeroing_threshold, zeroing_interval, abs(lstm_delay)))
         component_nodes.append("# r_t")
         component_nodes.append("component-node name={0}_r_t_preclip component={0}_Wrm input={0}_m_t".format(name))
         component_nodes.append("component-node name={0}_r_t component={0}_r input={0}_r_t_preclip".format(name))
@@ -413,7 +423,10 @@ def AddLstmLayer(config_lines,
         output_dim = recurrent_projection_dim
 
     else:
-        components.append("component name={0}_r type=BackpropTruncationComponent dim={1} clipping-threshold={2} zeroing-threshold={3} zeroing-interval={4} recurrence-interval={5}".format(name, cell_dim, clipping_threshold, zeroing_threshold, zeroing_interval, abs(lstm_delay)))
+        components.append("component name={0}_r type=BackpropTruncationComponent dim={1} "
+            "clipping-threshold={2} zeroing-threshold={3} zeroing-interval={4} "
+            "recurrence-interval={5}".format(name, cell_dim, clipping_threshold,
+            zeroing_threshold, zeroing_interval, abs(lstm_delay)))
         component_nodes.append("component-node name={0}_r_t component={0}_r input={0}_m_t".format(name))
         output_descriptor = '{0}_r_t'.format(name)
         output_dim = cell_dim

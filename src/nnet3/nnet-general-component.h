@@ -448,17 +448,12 @@ class StatisticsPoolingComponentPrecomputedIndexes:
 class BackpropTruncationComponent: public Component {
  public:
   BackpropTruncationComponent(int32 dim,
-                        BaseFloat clipping_threshold,
-                        BaseFloat zeroing_threshold,
-                        int32 zeroing_interval,
-                        int32 recurrence_interval,
-                        int32 num_clipped,
-                        int32 num_zeroed,
-                        int32 count,
-                        int32 count_zeroing_boundaries) {
-    Init(dim, clipping_threshold,
-         zeroing_threshold, zeroing_interval, recurrence_interval,
-         num_clipped, num_zeroed, count, count_zeroing_boundaries);}
+                              BaseFloat clipping_threshold,
+                              BaseFloat zeroing_threshold,
+                              int32 zeroing_interval,
+                              int32 recurrence_interval) {
+    Init(dim, clipping_threshold, zeroing_threshold,
+        zeroing_interval, recurrence_interval);}
 
   BackpropTruncationComponent(): dim_(0), clipping_threshold_(-1),
     zeroing_threshold_(-1), zeroing_interval_(0), recurrence_interval_(0),
@@ -469,8 +464,7 @@ class BackpropTruncationComponent: public Component {
   virtual void InitFromConfig(ConfigLine *cfl);
   void Init(int32 dim, BaseFloat clipping_threshold,
             BaseFloat zeroing_threshold, int32 zeroing_interval,
-            int32 recurrence_interval, int32 num_clipped, int32 num_zeroed,
-            int32 count, int32 count_zeroing_boundaries);
+            int32 recurrence_interval);
 
   virtual std::string Type() const { return "BackpropTruncationComponent"; }
 
@@ -480,16 +474,7 @@ class BackpropTruncationComponent: public Component {
 
   virtual void ZeroStats();
 
-  virtual Component* Copy() const {
-    return new BackpropTruncationComponent(dim_,
-                                     clipping_threshold_,
-                                     zeroing_threshold_,
-                                     zeroing_interval_,
-                                     recurrence_interval_,
-                                     num_clipped_,
-                                     num_zeroed_,
-                                     count_,
-                                     count_zeroing_boundaries_);}
+  virtual Component* Copy() const;
 
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
@@ -518,22 +503,27 @@ class BackpropTruncationComponent: public Component {
   virtual ~BackpropTruncationComponent() {
   }
  private:
-  int32 dim_;  // input/output dimension
+  // input/output dimension
+  int32 dim_;
   
-  BaseFloat clipping_threshold_;  // threshold to be used for clipping
-                                  // corresponds to max-row-norm
+  // threshold (e.g., 30) to be used for clipping corresponds to max-row-norm
+  BaseFloat clipping_threshold_;
 
-  BaseFloat zeroing_threshold_;   // threshold to be used for zeroing
-                                  // corresponds to max-row-norm
+  // threshold (e.g., 3) to be used for zeroing corresponds to max-row-norm
+  BaseFloat zeroing_threshold_;
 
-  int32 zeroing_interval_;        // the interval in number of frames that we
-                                  // would apply the zeroing of the gradient
+  // interval (e.g., 20, in number of frames) at which we would zero the
+  // gradient if the norm of the gradient is above zeroing_threshold_
+  int32 zeroing_interval_;
 
-  int32 recurrence_interval_;     // together with zeroing_interval_ to decide
-                                  // the frame at which for zeroing the gradient
+  // recurrence_interval_ should be the absolute recurrence offset used in RNNs
+  // (e.g., 3). It is used to see whether the index the component is processing,
+  // crosses a boundary that's a multiple of zeroing_interval_ frames.
+  int32 recurrence_interval_;
 
-  std::string debug_info_;   // component-node name, used in the destructor to
-                             // print out stats of self-repair
+  // component-node name, used in the destructor to print out stats of
+  // self-repair
+  std::string debug_info_;
 
   BackpropTruncationComponent &operator =
       (const BackpropTruncationComponent &other); // Disallow.
@@ -541,11 +531,12 @@ class BackpropTruncationComponent: public Component {
  protected:
   // variables to store stats
   // An element corresponds to rows of derivative matrix
-  int32 num_clipped_;  // number of elements which were clipped
-  int32 num_zeroed_;   // number of elements which were zeroed
-  int32 count_;  // number of elements which were processed
-  int32 count_zeroing_boundaries_; // number of zeroing boundaries where we may
-                                   // perform zeroing the gradient
+  double num_clipped_;  // number of elements which were clipped
+  double num_zeroed_;   // number of elements which were zeroed
+  double count_;  // number of elements which were processed
+  double count_zeroing_boundaries_; // number of zeroing boundaries where we had
+                                    // the opportunity to perform zeroing
+                                    // the gradient
 
 };
 
@@ -554,10 +545,16 @@ class BackpropTruncationComponentPrecomputedIndexes:
  public:
 
   // zeroing has the same dimension as the number of rows of out-deriv.
-  // Each element in zeroing can take two possible values: 1.0, meaning its
-  // corresponding frame is the one that we need to consider zeroing the
-  // gradient, and 0.0 otherwise
+  // Each element in zeroing can take two possible values: -1.0, meaning its
+  // corresponding frame is one that we need to consider zeroing the
+  // gradient of, and 0.0 otherwise
   CuVector<BaseFloat> zeroing;
+
+  // caches the negative sum of elements in zeroing for less CUDA calls
+  // (the sum is computed by CPU). Note that this value would be positive.
+  BaseFloat zeroing_sum;
+
+  BackpropTruncationComponentPrecomputedIndexes(): zeroing_sum(0.0) {}
 
   // this class has a virtual destructor so it can be deleted from a pointer
   // to ComponentPrecomputedIndexes.

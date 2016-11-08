@@ -936,6 +936,8 @@ void BackpropTruncationComponentPrecomputedIndexes::Write(std::ostream &ostream,
              "<BackpropTruncationComponentPrecomputedIndexes>");
   WriteToken(ostream, binary, "<Zeroing>");
   zeroing.Write(ostream, binary);
+  WriteToken(ostream, binary, "<ZeroingSum>");
+  WriteBasicType(ostream, binary, zeroing_sum);
   WriteToken(ostream, binary,
              "</BackpropTruncationComponentPrecomputedIndexes>");
 }
@@ -946,6 +948,8 @@ void BackpropTruncationComponentPrecomputedIndexes::Read(std::istream &istream,
                        "<BackpropTruncationComponentPrecomputedIndexes>",
                        "<Zeroing>");
   zeroing.Read(istream, binary);
+  ExpectToken(istream, binary, "<ZeroingSum>");
+  ReadBasicType(istream, binary, &zeroing_sum);
   ExpectToken(istream, binary,
               "</BackpropTruncationComponentPrecomputedIndexes>");
 }
@@ -955,11 +959,13 @@ std::string BackpropTruncationComponent::Info() const {
   stream << Type() << ", dim=" << dim_
          << ", clipping-threshold=" << clipping_threshold_
          << ", clipped-proportion="
-         << (count_ > 0 ? static_cast<BaseFloat>(num_clipped_)/count_ : 0)
+         << (count_ > 0.0 ? num_clipped_ / count_ : 0)
          << ", zeroing-threshold=" << zeroing_threshold_
          << ", zeroed-proportion="
-         << (count_zeroing_boundaries_ > 0 ?
-             static_cast<BaseFloat>(num_zeroed_)/count_zeroing_boundaries_ : 0);
+         << (count_zeroing_boundaries_ > 0.0 ?
+             num_zeroed_ / count_zeroing_boundaries_ : 0)
+         << ", count-zeroing-boundaries="
+         << static_cast<int32>(count_zeroing_boundaries_);
   return stream.str();
 }
 
@@ -967,11 +973,7 @@ void BackpropTruncationComponent::Init(int32 dim,
                                  BaseFloat clipping_threshold,
                                  BaseFloat zeroing_threshold,
                                  int32 zeroing_interval,
-                                 int32 recurrence_interval,
-                                 int32 num_clipped,
-                                 int32 num_zeroed,
-                                 int32 count,
-                                 int32 count_zeroing_boundaries) {
+                                 int32 recurrence_interval) {
   KALDI_ASSERT(clipping_threshold >= 0 && zeroing_threshold >= 0 &&
       zeroing_interval > 0 && recurrence_interval > 0 && dim > 0);
   dim_ = dim;
@@ -979,10 +981,10 @@ void BackpropTruncationComponent::Init(int32 dim,
   zeroing_threshold_ = zeroing_threshold;
   zeroing_interval_ = zeroing_interval;
   recurrence_interval_ = recurrence_interval;
-  num_clipped_ = num_clipped;
-  num_zeroed_ = num_zeroed;
-  count_ = count;
-  count_zeroing_boundaries_ = count_zeroing_boundaries;
+  num_clipped_ = 0.0;
+  num_zeroed_ = 0.0;
+  count_ = 0.0;
+  count_zeroing_boundaries_ = 0.0;
 }
 
 // virtual
@@ -1002,7 +1004,22 @@ void BackpropTruncationComponent::InitFromConfig(ConfigLine *cfl) {
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << cfl->WholeLine() << "\"";
   Init(dim, clipping_threshold, zeroing_threshold,
-       zeroing_interval, recurrence_interval, 0, 0, 0, 0);
+      zeroing_interval, recurrence_interval);
+}
+
+// virtual 
+Component* BackpropTruncationComponent::Copy() const {
+  BackpropTruncationComponent *ans = new BackpropTruncationComponent();
+  ans->dim_ = dim_;
+  ans->clipping_threshold_ = clipping_threshold_;
+  ans->zeroing_threshold_ = zeroing_threshold_;
+  ans->zeroing_interval_ = zeroing_interval_;
+  ans->recurrence_interval_ = recurrence_interval_;
+  ans->num_clipped_ = num_clipped_;
+  ans->num_zeroed_ = num_zeroed_;
+  ans->count_ = count_;
+  ans->count_zeroing_boundaries_ = count_zeroing_boundaries_;
+  return ans;
 }
 
 // virtual
@@ -1015,18 +1032,29 @@ BackpropTruncationComponent::PrecomputeIndexes(
   int32 num_input_indexes = input_indexes.size(),
       num_output_indexes = output_indexes.size();
   KALDI_ASSERT(num_input_indexes == num_output_indexes);
-  BackpropTruncationComponentPrecomputedIndexes *ans = new
-      BackpropTruncationComponentPrecomputedIndexes();
-  ans->zeroing.Resize(num_output_indexes);
+  Vector<BaseFloat> zeroing_cpu(num_output_indexes);
 
   for (int32 i = 0; i < num_output_indexes; i++) {
     const int32 output_n = output_indexes[i].n;
     const int32 output_t = output_indexes[i].t;
-    if ((output_t - output_n % zeroing_interval_) / zeroing_interval_ == 
-        (output_t - output_n % zeroing_interval_ - recurrence_interval_) /
-        zeroing_interval_ + 1)
-      ans->zeroing(i) = 1.0;
+    // checks if output_t crosses a boundary that is a multiple of
+    // zeroing_interval_. Note that frame (output_t - recurrence_interval_) is
+    // right before frame output_t in RNNs. If the range
+    // [output_t - recurrence_interval_, output_t] contains a multiple of
+    // zeroing_interval_, then frame output_t crosses the boundary.
+    // output_n is used to shift where we put the boundary, so that
+    // we don't always zero out gradients on frame 0. It will help avoid
+    // learning utterance-boundary effects.
+    if (DivideRoundingDown(output_t - output_n, zeroing_interval_) !=
+        DivideRoundingDown(output_t - recurrence_interval_ - output_n,
+        zeroing_interval_))
+      zeroing_cpu(i) = -1.0;
   }
+
+  BackpropTruncationComponentPrecomputedIndexes *ans = new
+      BackpropTruncationComponentPrecomputedIndexes();
+  ans->zeroing = zeroing_cpu;
+  ans->zeroing_sum = -zeroing_cpu.Sum();
   return ans;
 }
 
@@ -1093,12 +1121,12 @@ void BackpropTruncationComponent::Backprop(const std::string &debug_info,
   // now the element of zeroing_scales_vec is 1.0 if its corresponding
   // sample's norm exceeds zero_threshold, and 0.0 otherwise
   zeroing_scales_vec.MulElements(indexes->zeroing);
+  // now the element of zeroing_scales_vec is -1.0 if we want to zero its
+  // corresponding sample's gradient, and 0.0 otherwise
   if (to_update != NULL) {
-    to_update->num_zeroed_ += static_cast<int32>(zeroing_scales_vec.Sum());
-    to_update->count_zeroing_boundaries_ +=
-        static_cast<int32>(indexes->zeroing.Sum());
+    to_update->num_zeroed_ -= zeroing_scales_vec.Sum(); // since it is negative
+    to_update->count_zeroing_boundaries_ += indexes->zeroing_sum;
   }
-  zeroing_scales_vec.Scale(-1.0);
   zeroing_scales_vec.Add(1.0);
   // now the element of zeroing_scales_vec is 0.0 if we want to zero its
   // corresponding sample's gradient, and 1.0 otherwise
@@ -1112,10 +1140,10 @@ void BackpropTruncationComponent::Backprop(const std::string &debug_info,
 
 // virtual
 void BackpropTruncationComponent::ZeroStats()  {
-  count_ = 0;
-  count_zeroing_boundaries_ = 0;
-  num_clipped_ = 0;
-  num_zeroed_ = 0;
+  count_ = 0.0;
+  count_zeroing_boundaries_ = 0.0;
+  num_clipped_ = 0.0;
+  num_zeroed_ = 0.0;
 }
 
 // virtual
