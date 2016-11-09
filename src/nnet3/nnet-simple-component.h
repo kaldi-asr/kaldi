@@ -337,6 +337,11 @@ class AffineComponent: public UpdatableComponent {
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
+
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const SparseMatrix<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+
   virtual void Backprop(const std::string &debug_info,
                         const ComponentPrecomputedIndexes *indexes,
                         const CuMatrixBase<BaseFloat> &in_value,
