@@ -40,12 +40,6 @@ echo SIL > $dir/silence_phones.txt
 echo SIL > $dir/optional_silence.txt
 
 
-
-
-
-wait
-
-
 ## TODO: add cleanup commands
 
 echo "Dictionary preparation succeeded"
