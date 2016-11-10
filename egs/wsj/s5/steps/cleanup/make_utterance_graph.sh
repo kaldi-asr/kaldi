@@ -55,9 +55,11 @@ done
 
 mkdir -p $graph_dir/sub_graphs
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $model_dir/phones.txt
+
 # If --ngram-order is larger than 1, we will have to use SRILM
 if [ $ngram_order -gt 1 ]; then
-  ngram_count=`which ngram-count`;
+  ngram_count=`which ngram-count` || true
   if [ -z $ngram_count ]; then
     if uname -a | grep 64 >/dev/null; then # some kind of 64 bit...
       sdir=`pwd`/../../../tools/srilm/bin/i686-m64
@@ -89,7 +91,10 @@ P=`tree-info --print-args=false $model_dir/tree |\
 if [ -f $graph_dir/sub_graphs/HCLG.fsts.scp ]; then
   rm $graph_dir/sub_graphs/HCLG.fsts.scp
 fi
-while read line; do
+
+cat $text | utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt | \
+ utils/int2sym.pl -f 2- $lang/words.txt | \
+ while read line; do
   uttid=`echo $line | cut -d ' ' -f 1`
   words=`echo $line | cut -d ' ' -f 2-`
 
@@ -105,16 +110,12 @@ while read line; do
       utils/make_unigram_grammar.pl | fstcompile |\
       fstarcsort --sort_type=ilabel > $wdir/G.fst || exit 1;
   else
-    echo $words | awk -v voc=$lang/words.txt -v oov="$oov_txt" '
-      BEGIN{ while((getline<voc)>0) { invoc[$1]=1; } } {
-      for (x=1;x<=NF;x++) {
-      if (invoc[$x]) { printf("%s ", $x); } else { printf("%s ", oov); } }
-      printf("\n"); }' > $wdir/text
-    ngram-count -text $wdir/text -order $ngram_order "$srilm_options" -lm - |\
-      arpa2fst - | fstprint | utils/eps2disambig.pl | utils/s2eps.pl |\
-      fstcompile --isymbols=$lang/words.txt --osymbols=$lang/words.txt  \
-      --keep_isymbols=false --keep_osymbols=false |\
-      fstrmepsilon | fstarcsort --sort_type=ilabel > $wdir/G.fst || exit 1;
+     echo $words | \
+     perl -ane '@A = split; for ($n=0;$n<@A;$n++) { print "$A[$n] "; if(($n+1)%30000 == 0 || $n+1==@A) {print "\n";} }' \
+     > $wdir/text
+     ngram-count -text $wdir/text -order $ngram_order "$srilm_options" -lm - | \
+      arpa2fst --disambig-symbol=#0 \
+             --read-symbol-table=$lang/words.txt - $wdir/G.fst || exit 1;
   fi
   fstisstochastic $wdir/G.fst || echo "$0: $uttid/G.fst not stochastic."
 
@@ -134,7 +135,7 @@ while read line; do
 
   make-h-transducer --disambig-syms-out=$wdir/disambig_tid.int \
     --transition-scale=$tscale $wdir/ilabels_${N}_${P} \
-    $model_dir/tree $model_dir/final.mdl > $wdir/Ha.fst 
+    $model_dir/tree $model_dir/final.mdl > $wdir/Ha.fst
 
   # Builds HCLGa.fst
   fsttablecompose $wdir/Ha.fst $wdir/CLG.fst | \
@@ -143,10 +144,10 @@ while read line; do
     fstminimizeencoded > $wdir/HCLGa.fst
   fstisstochastic $wdir/HCLGa.fst ||\
     echo "$0: $uttid/HCLGa.fst is not stochastic"
-  
+
   add-self-loops --self-loop-scale=$loopscale --reorder=true \
     $model_dir/final.mdl < $wdir/HCLGa.fst > $wdir/HCLG.fst
-  
+
   if [ $tscale == 1.0 -a $loopscale == 1.0 ]; then
     fstisstochastic $wdir/HCLG.fst ||\
       echo "$0: $uttid/HCLG.fst is not stochastic."
@@ -154,7 +155,7 @@ while read line; do
 
   echo "$uttid $wdir/HCLG.fst" >> $graph_dir/sub_graphs/HCLG.fsts.scp
   echo
-done < $text
+ done
 
 # Copies files from lang directory.
 mkdir -p $graph_dir

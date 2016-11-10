@@ -1,6 +1,7 @@
 // nnet3/nnet-training.cc
 
 // Copyright      2015    Johns Hopkins University (author: Daniel Povey)
+//                2015    Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -31,15 +32,27 @@ NnetTrainer::NnetTrainer(const NnetTrainerOptions &config,
     num_minibatches_processed_(0) {
   if (config.zero_component_stats)
     ZeroComponentStats(nnet);
-  if (config.momentum == 0.0) {
-    delta_nnet_= NULL;
-  } else {
-    KALDI_ASSERT(config.momentum >= 0.0);
-    delta_nnet_ = nnet_->Copy();
-    bool is_gradient = false;  // setting this to true would disable the
-                               // natural-gradient updates.
-    SetZero(is_gradient, delta_nnet_);
-  }
+  KALDI_ASSERT(config.momentum >= 0.0 &&
+               config.max_param_change >= 0.0);
+  delta_nnet_ = nnet_->Copy();
+  bool is_gradient = false;  // setting this to true would disable the
+                             // natural-gradient updates.
+  SetZero(is_gradient, delta_nnet_);
+  const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
+  num_max_change_per_component_applied_.resize(num_updatable, 0); 
+  num_max_change_global_applied_ = 0;
+
+  if (config_.read_cache != "") {
+    bool binary;
+    try {
+      Input ki(config_.read_cache, &binary);
+      compiler_.ReadCache(ki.Stream(), binary);
+      KALDI_LOG << "Read computation cache from " << config_.read_cache;
+    } catch (...) {
+      KALDI_WARN << "Could not open cached computation. "
+                    "Probably this is the first training iteration.";
+    }
+  } 
 }
 
 
@@ -52,19 +65,15 @@ void NnetTrainer::Train(const NnetExample &eg) {
   const NnetComputation *computation = compiler_.Compile(request);
 
   NnetComputer computer(config_.compute_config, *computation,
-                        *nnet_,
-                        (config_.momentum == 0.0 ? nnet_ : delta_nnet_));
+                        *nnet_, delta_nnet_);
   // give the inputs to the computer object.
-  computer.AcceptInputs(*nnet_, eg);
+  computer.AcceptInputs(*nnet_, eg.io);
   computer.Forward();
 
   this->ProcessOutputs(eg, &computer);
   computer.Backward();
 
-  if (config_.momentum != 0.0) {
-    AddNnet(*delta_nnet_, 1.0 - config_.momentum, nnet_);
-    ScaleNnet(config_.momentum, delta_nnet_);
-  }
+  UpdateParamsWithMaxChange();
 }
 
 void NnetTrainer::ProcessOutputs(const NnetExample &eg,
@@ -89,6 +98,89 @@ void NnetTrainer::ProcessOutputs(const NnetExample &eg,
   }
 }
 
+void NnetTrainer::UpdateParamsWithMaxChange() {
+  KALDI_ASSERT(delta_nnet_ != NULL);
+  // computes scaling factors for per-component max-change
+  const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
+  Vector<BaseFloat> scale_factors = Vector<BaseFloat>(num_updatable);
+  BaseFloat param_delta_squared = 0.0;
+  int32 num_max_change_per_component_applied_per_minibatch = 0;
+  BaseFloat min_scale = 1.0;
+  std::string component_name_with_min_scale;
+  BaseFloat max_change_with_min_scale;
+  int32 i = 0;
+  for (int32 c = 0; c < delta_nnet_->NumComponents(); c++) {
+    Component *comp = delta_nnet_->GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent) {
+      UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(comp);
+      if (uc == NULL)
+        KALDI_ERR << "Updatable component does not inherit from class "
+                  << "UpdatableComponent; change this code.";
+      BaseFloat max_param_change_per_comp = uc->MaxChange();
+      KALDI_ASSERT(max_param_change_per_comp >= 0.0);
+      BaseFloat dot_prod = uc->DotProduct(*uc);
+      if (max_param_change_per_comp != 0.0 &&
+          std::sqrt(dot_prod) > max_param_change_per_comp) {
+        scale_factors(i) = max_param_change_per_comp / std::sqrt(dot_prod);
+        num_max_change_per_component_applied_[i]++;
+        num_max_change_per_component_applied_per_minibatch++;
+        KALDI_VLOG(2) << "Parameters in " << delta_nnet_->GetComponentName(c)
+                      << " change too big: " << std::sqrt(dot_prod) << " > "
+                      << "max-change=" << max_param_change_per_comp
+                      << ", scaling by " << scale_factors(i);
+      } else {
+        scale_factors(i) = 1.0;
+      }
+      if  (i == 0 || scale_factors(i) < min_scale) {
+        min_scale =  scale_factors(i);
+        component_name_with_min_scale = delta_nnet_->GetComponentName(c);
+        max_change_with_min_scale = max_param_change_per_comp;
+      }
+      param_delta_squared += std::pow(scale_factors(i),
+                                      static_cast<BaseFloat>(2.0)) * dot_prod;
+      i++;
+    }
+  }
+  KALDI_ASSERT(i == scale_factors.Dim());
+  BaseFloat param_delta = std::sqrt(param_delta_squared);
+  // computes the scale for global max-change (with momentum)
+  BaseFloat scale = (1.0 - config_.momentum);
+  if (config_.max_param_change != 0.0) {
+    param_delta *= scale;
+    if (param_delta > config_.max_param_change) {
+      if (param_delta - param_delta != 0.0) {
+        KALDI_WARN << "Infinite parameter change, will not apply.";
+        SetZero(false, delta_nnet_);
+      } else {
+        scale *= config_.max_param_change / param_delta;
+        num_max_change_global_applied_++;
+      }
+    }
+  }
+  if ((config_.max_param_change != 0.0 &&
+      param_delta > config_.max_param_change &&
+      param_delta - param_delta == 0.0) || min_scale < 1.0) {
+    std::ostringstream ostr;
+    if (min_scale < 1.0)
+      ostr << "Per-component max-change active on "
+           << num_max_change_per_component_applied_per_minibatch
+           << " / " << num_updatable << " Updatable Components."
+           << "(smallest factor=" << min_scale << " on "
+           << component_name_with_min_scale
+           << " with max-change=" << max_change_with_min_scale <<"). "; 
+    if (param_delta > config_.max_param_change)
+      ostr << "Global max-change factor was "
+           << config_.max_param_change / param_delta
+           << " with max-change=" << config_.max_param_change << ".";
+    KALDI_LOG << ostr.str();
+  }
+  // applies both of the max-change scalings all at once, component by component
+  // and updates parameters
+  scale_factors.Scale(scale);
+  AddNnetComponents(*delta_nnet_, scale_factors, scale, nnet_);
+  ScaleNnet(config_.momentum, delta_nnet_);
+}
+
 bool NnetTrainer::PrintTotalStats() const {
   unordered_map<std::string, ObjectiveFunctionInfo>::const_iterator
       iter = objf_info_.begin(),
@@ -99,7 +191,32 @@ bool NnetTrainer::PrintTotalStats() const {
     const ObjectiveFunctionInfo &info = iter->second;
     ans = ans || info.PrintTotalStats(name);
   }
+  PrintMaxChangeStats();
   return ans;
+}
+
+void NnetTrainer::PrintMaxChangeStats() const {
+  KALDI_ASSERT(delta_nnet_ != NULL);
+  int32 i = 0;
+  for (int32 c = 0; c < delta_nnet_->NumComponents(); c++) {
+    Component *comp = delta_nnet_->GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent) {
+      UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(comp);
+      if (uc == NULL)
+        KALDI_ERR << "Updatable component does not inherit from class "
+                  << "UpdatableComponent; change this code.";
+      if (num_max_change_per_component_applied_[i] > 0)
+        KALDI_LOG << "For " << delta_nnet_->GetComponentName(c)
+                  << ", per-component max-change was enforced "
+                  << (100.0 * num_max_change_per_component_applied_[i]) /
+                     num_minibatches_processed_ << " \% of the time.";
+      i++;
+    }
+  }
+  if (num_max_change_global_applied_ > 0)
+    KALDI_LOG << "The global max-change was enforced "
+              << (100.0 * num_max_change_global_applied_) /
+                 num_minibatches_processed_ << " \% of the time.";
 }
 
 void ObjectiveFunctionInfo::UpdateStats(
@@ -107,7 +224,8 @@ void ObjectiveFunctionInfo::UpdateStats(
     int32 minibatches_per_phase,
     int32 minibatch_counter,
     BaseFloat this_minibatch_weight,
-    BaseFloat this_minibatch_tot_objf) {
+    BaseFloat this_minibatch_tot_objf,
+    BaseFloat this_minibatch_tot_aux_objf) {
   int32 phase = minibatch_counter / minibatches_per_phase;
   if (phase != current_phase) {
     KALDI_ASSERT(phase == current_phase + 1); // or doesn't really make sense.
@@ -115,11 +233,14 @@ void ObjectiveFunctionInfo::UpdateStats(
     current_phase = phase;
     tot_weight_this_phase = 0.0;
     tot_objf_this_phase = 0.0;
+    tot_aux_objf_this_phase = 0.0;
   }
   tot_weight_this_phase += this_minibatch_weight;
   tot_objf_this_phase += this_minibatch_tot_objf;
+  tot_aux_objf_this_phase += this_minibatch_tot_aux_objf;
   tot_weight += this_minibatch_weight;
   tot_objf += this_minibatch_tot_objf;
+  tot_aux_objf += this_minibatch_tot_aux_objf;
 }
 
 void ObjectiveFunctionInfo::PrintStatsForThisPhase(
@@ -127,33 +248,50 @@ void ObjectiveFunctionInfo::PrintStatsForThisPhase(
     int32 minibatches_per_phase) const {
   int32 start_minibatch = current_phase * minibatches_per_phase,
       end_minibatch = start_minibatch + minibatches_per_phase - 1;
-  KALDI_LOG << "Average objective function for '" << output_name
-            << "' for minibatches " << start_minibatch
-            << '-' << end_minibatch << " is "
-            << (tot_objf_this_phase / tot_weight_this_phase) << " over "
-            << tot_weight_this_phase << " frames.";
+
+  if (tot_aux_objf_this_phase == 0.0) {
+    KALDI_LOG << "Average objective function for '" << output_name
+              << "' for minibatches " << start_minibatch
+              << '-' << end_minibatch << " is "
+              << (tot_objf_this_phase / tot_weight_this_phase) << " over "
+              << tot_weight_this_phase << " frames.";
+  } else {
+    BaseFloat objf = (tot_objf_this_phase / tot_weight_this_phase),
+        aux_objf = (tot_aux_objf_this_phase / tot_weight_this_phase),
+        sum_objf = objf + aux_objf;
+    KALDI_LOG << "Average objective function for '" << output_name
+              << "' for minibatches " << start_minibatch
+              << '-' << end_minibatch << " is "
+              << objf << " + " << aux_objf << " = " << sum_objf
+              << " over " << tot_weight_this_phase << " frames.";
+  }
 }
 
 bool ObjectiveFunctionInfo::PrintTotalStats(const std::string &name) const {
-  KALDI_LOG << "Overall average objective function for '" << name << "' is "
-            << (tot_objf / tot_weight) << " over " << tot_weight << " frames.";
+  BaseFloat objf = (tot_objf / tot_weight),
+        aux_objf = (tot_aux_objf / tot_weight),
+        sum_objf = objf + aux_objf;
+  if (tot_aux_objf == 0.0) {
+    KALDI_LOG << "Overall average objective function for '" << name << "' is "
+              << (tot_objf / tot_weight) << " over " << tot_weight << " frames.";
+  } else {
+    KALDI_LOG << "Overall average objective function for '" << name << "' is "
+              << objf << " + " << aux_objf << " = " << sum_objf        
+              << " over " << tot_weight << " frames.";
+  }
   KALDI_LOG << "[this line is to be parsed by a script:] "
             << "log-prob-per-frame="
-            << (tot_objf / tot_weight);
+            << objf;
   return (tot_weight != 0.0);
 }
 
 NnetTrainer::~NnetTrainer() {
-  if (delta_nnet_) {
-    // This last AddNnet call is to ensure we don't 'lose' the gradient that we
-    // have left remaining in 'delta_nnet_'- we apply it the same as if we had
-    // continued with the momentum update with zero gradients for a bunch of
-    // steps.  This may not be 100% ideal for stability, but it ensures we don't
-    // 'waste' any data- and anyway, just one step isn't really enough for
-    // instability to get started.
-    AddNnet(*delta_nnet_, 1.0, nnet_);
-    delete delta_nnet_;
-  }
+  if (config_.write_cache != "") {
+    Output ko(config_.write_cache, config_.binary_write_cache);
+    compiler_.WriteCache(ko.Stream(), config_.binary_write_cache);
+    KALDI_LOG << "Wrote computation cache to " << config_.write_cache;
+  } 
+  delete delta_nnet_;
 }
 
 void ComputeObjectiveFunction(const GeneralMatrix &supervision,

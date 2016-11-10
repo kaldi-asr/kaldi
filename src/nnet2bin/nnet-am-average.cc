@@ -17,6 +17,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#include <algorithm>
+
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "hmm/transition-model.h"
@@ -51,9 +53,62 @@ void GetWeights(const std::string &weights_str,
   }
 }
 
+
+
+std::vector<bool> GetSkipLayers(const std::string &skip_layers_str,
+                                const int32 first_layer_idx,
+                                const int32 last_layer_idx) {
+
+  std::vector<bool> skip_layers(last_layer_idx, false);
+
+  if (skip_layers_str.empty()) {
+    return skip_layers;
+  }
+
+  std::vector<int> layer_indices;
+  bool ret = SplitStringToIntegers(skip_layers_str, ":", true, &layer_indices);
+  if (!ret) {
+    KALDI_ERR << "Cannot parse the skip layers specifier. It should be"
+              << "colon-separated list of integers";
+  }
+
+  int min_elem = std::numeric_limits<int>().max(),
+      max_elem = std::numeric_limits<int>().min();
+
+  std::vector<int>::iterator it;
+  for ( it = layer_indices.begin(); it != layer_indices.end(); ++it ) {
+    if ( *it < 0 )
+      *it = last_layer_idx + *it;  // convert the negative indices to
+                                       // correct indices -- -1 would be the
+                                       // last one, -2 the one before the last
+                                       // and so on.
+    if (*it > max_elem)
+      max_elem = *it;
+
+    if (*it < min_elem)
+      min_elem = *it;
+  }
+
+  if (max_elem >= last_layer_idx) {
+    KALDI_ERR << "--skip-layers option has to be a colon-separated list"
+              << "of indices which are supposed to be skipped.\n"
+              << "Maximum expected index: " << last_layer_idx
+              << " got: " << max_elem ;
+  }
+  if (min_elem < first_layer_idx) {
+    KALDI_ERR << "--skip-layers option has to be a colon-separated list"
+              << "of indices which are supposed to be skipped.\n"
+              << "Minimum expected index: " << first_layer_idx
+              << " got: " << min_elem ;
+  }
+
+  for ( it = layer_indices.begin(); it != layer_indices.end(); ++it ) {
+    skip_layers[*it] = true;
+  }
+  return skip_layers;
 }
 
-
+}
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
@@ -81,11 +136,17 @@ int main(int argc, char *argv[]) {
     po.Register("binary", &binary_write, "Write output in binary mode");
     string weights_str;
     bool skip_last_layer = false;
+    string skip_layers_str;
     po.Register("weights", &weights_str, "Colon-separated list of weights, one "
                 "for each input model.  These will be normalized to sum to one.");
     po.Register("skip-last-layer", &skip_last_layer, "If true, averaging of "
                 "the last updatable layer is skipped (result comes from model1)");
-    
+    po.Register("skip-layers", &skip_layers_str, "Colon-separated list of "
+                "indices of the layers that should be skipped during averaging."
+                "Be careful: this parameter uses an absolute indexing of "
+                "layers, i.e. iterates over all components, not over updatable "
+                "ones only.");
+
     po.Read(argc, argv);
 
     if (po.NumArgs() < 2) {
@@ -110,22 +171,43 @@ int main(int argc, char *argv[]) {
 
     vector<BaseFloat> model_weights;
     GetWeights(weights_str, num_inputs, &model_weights);
-    
+
     int32 c_begin = 0,
         c_end = (skip_last_layer ?
                  am_nnet1.GetNnet().LastUpdatableComponent() :
                  am_nnet1.GetNnet().NumComponents());
     KALDI_ASSERT(c_end != -1 && "Network has no updatable components.");
-    
+
+    int32 last_layer_idx = am_nnet1.GetNnet().NumComponents();
+    vector<bool> skip_layers = GetSkipLayers(skip_layers_str,
+                                             0,
+                                             last_layer_idx);
+
     // scale the components - except the last layer, if skip_last_layer == true.
     for (int32 c = c_begin; c < c_end; c++) {
+      if (skip_layers[c]) {
+        KALDI_VLOG(2) << "Not averaging layer " << c << " (as requested)";
+        continue;
+      }
+      bool updated = false;
       UpdatableComponent *uc =
         dynamic_cast<UpdatableComponent*>(&(am_nnet1.GetNnet().GetComponent(c)));
-      if (uc != NULL)  uc->Scale(model_weights[0]);
+      if (uc != NULL)  {
+        KALDI_VLOG(2) << "Averaging layer " << c << " (UpdatableComponent)";
+        uc->Scale(model_weights[0]);
+        updated = true;
+      }
       NonlinearComponent *nc =
         dynamic_cast<NonlinearComponent*>(&(am_nnet1.GetNnet().GetComponent(c)));
-      if (nc != NULL)
+      if (nc != NULL) {
+        KALDI_VLOG(2) << "Averaging layer " << c << " (NonlinearComponent)";
         nc->Scale(model_weights[0]);
+        updated = true;
+      }
+      if (! updated) {
+        KALDI_VLOG(2) << "Not averaging layer " << c
+          << " (unscalable component)";
+      }
     }
 
     for (int32 i = 2; i <= num_inputs; i++) {
@@ -137,6 +219,8 @@ int main(int argc, char *argv[]) {
       am_nnet.Read(ki.Stream(), binary_read);
 
       for (int32 c = c_begin; c < c_end; c++) {
+        if (skip_layers[c]) continue;
+
         UpdatableComponent *uc_average =
           dynamic_cast<UpdatableComponent*>(&(am_nnet1.GetNnet().GetComponent(c)));
         const UpdatableComponent *uc_this =

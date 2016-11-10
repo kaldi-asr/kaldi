@@ -122,6 +122,9 @@ fi
 mkdir -p $dir/log || exit 1;
 [ -z "$degs_dir" ] && mkdir -p $dir/degs
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
+
 sdata=$data/split$nj
 utils/split_data.sh $data $nj
 
@@ -359,7 +362,7 @@ while [ $x -lt $num_iters ]; do
        --criterion=$criterion --drop-frames=$drop_frames \
        --one-silence-class=$one_silence_class --boost=$boost \
        --acoustic-scale=$acoustic_scale $dir/$x.mdl \
-       "ark:nnet-combine-egs-discriminative ark:$degs_dir/degs.JOB.$[$x%$iters_per_epoch].ark ark:- |" \
+       "ark,bg:nnet-combine-egs-discriminative ark:$degs_dir/degs.JOB.$[$x%$iters_per_epoch].ark ark:- |" \
         $dir/$[$x+1].JOB.mdl \
       || exit 1;
 

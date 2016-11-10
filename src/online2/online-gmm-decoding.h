@@ -71,10 +71,10 @@ struct OnlineGmmDecodingAdaptationPolicyConfig {
     opts->Register("adaptation-first-utt-ratio", &adaptation_first_utt_ratio,
                    "Ratio that controls frequency of fMLLR adaptation for first "
                    "utterance of each speaker");
-    opts->Register("adaptation-delay", &adaptation_first_utt_delay,
+    opts->Register("adaptation-delay", &adaptation_delay,
                    "Delay before first basis-fMLLR adaptation for not-first "
                    "utterances of each speaker");
-    opts->Register("adaptation-ratio", &adaptation_first_utt_ratio,
+    opts->Register("adaptation-ratio", &adaptation_ratio,
                    "Ratio that controls frequency of fMLLR adaptation for "
                    "not-first utterances of each speaker");
   }

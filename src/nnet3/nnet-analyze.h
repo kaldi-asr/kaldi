@@ -29,7 +29,7 @@ namespace nnet3 {
 
 
 /**
-   @file This file contains utilities for analyzing and checking computations,
+   @file nnet-analyze.h This file contains utilities for analyzing and checking computations,
      which are used in the optimization code.
  */
 
@@ -395,7 +395,6 @@ class ComputationChecker {
  public:
   ComputationChecker(const CheckComputationOptions &config,
                      const Nnet &nnet,
-                     const ComputationRequest &request,
                      const NnetComputation &computation);
   void Check();  // call this only once.
  private:
@@ -411,11 +410,12 @@ class ComputationChecker {
   void CheckComputationRewrite() const;
   // check matrix accesses make sense.
   void CheckComputationMatrixAccesses() const;
+  // check debug_info has the correct size, if used.
+  void CheckComputationDebugInfo() const;
 
 
   const CheckComputationOptions &config_;
   const Nnet &nnet_;
-  const ComputationRequest &request_;
   const NnetComputation &computation_;
   Analyzer a_;
 };

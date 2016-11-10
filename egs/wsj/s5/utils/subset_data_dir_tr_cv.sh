@@ -64,7 +64,7 @@ if $uttbase; then
   P_utt=$((N * cv_utt_percent / 100))
   N_head=$((N -P_utt))
   #move the boundary so it is located on speaker change
-  N_head=$(cat $srcdir/utt2spk | uniq -f1 -c | awk '{ if(n+$1<='$N_head') { n += $1 } else { nextfile } } END{ print n }')
+  N_head=$(cat $srcdir/utt2spk | uniq -f1 -c | awk 'BEGIN{n=0} { if(n+$1<='$N_head') { n += $1 } else { nextfile } } END{if(n==0)n='$N_head'; print n }')
   #the rest of the data will be that big
   N_tail=$((N-N_head))
 

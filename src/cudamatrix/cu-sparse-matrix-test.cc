@@ -187,6 +187,7 @@ void CudaSparseMatrixUnitTest() {
 int main() {
   for (kaldi::int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1
+    kaldi::CuDevice::Instantiate().SetDebugStrideMode(true);
     if (loop == 0)
       kaldi::CuDevice::Instantiate().SelectGpuId("no");
     else

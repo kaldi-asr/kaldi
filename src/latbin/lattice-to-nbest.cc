@@ -40,13 +40,13 @@ int main(int argc, char *argv[]) {
         "lattices).\n"
         "Usage: lattice-to-nbest [options] <lattice-rspecifier> <lattice-wspecifier>\n"
         " e.g.: lattice-to-nbest --acoustic-scale=0.1 --n=10 ark:1.lats ark:nbest.lats\n";
-      
+
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 1.0, lm_scale = 1.0;
     bool random = false;
     int32 srand_seed = 0;
     int32 n = 1;
-    
+
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
     po.Register("lm-scale", &lm_scale, "Scaling factor for language model scores.");
     po.Register("n", &n, "Number of distinct paths");
@@ -54,12 +54,12 @@ int main(int argc, char *argv[]) {
                 "If true, generate n random paths instead of n-best paths");
     po.Register("srand", &srand_seed, "Seed for random number generator "
                 "(only relevant if --random=true)");
-    
-    
+
+
     po.Read(argc, argv);
 
     KALDI_ASSERT(n > 0);
-    srand(srand_seed);        
+    srand(srand_seed);
 
     if (po.NumArgs() != 2) {
       po.PrintUsage();
@@ -72,10 +72,10 @@ int main(int argc, char *argv[]) {
 
     // Read as regular lattice.
     SequentialLatticeReader lattice_reader(lats_rspecifier);
-    
+
     // Write as compact lattice.
-    CompactLatticeWriter compact_nbest_writer(lats_wspecifier); 
-    
+    CompactLatticeWriter compact_nbest_writer(lats_wspecifier);
+
     int32 n_done = 0;
     int64 n_paths_out = 0;
 
@@ -100,7 +100,7 @@ int main(int argc, char *argv[]) {
         }
         fst::ConvertNbestToVector(nbest_lat, &nbest_lats);
       }
-      
+
       if (nbest_lats.empty()) {
         KALDI_WARN << "Possibly empty lattice for utterance-id " << key
                    << "(no N-best entries)";
@@ -120,7 +120,7 @@ int main(int argc, char *argv[]) {
         n_paths_out += nbest_lats.size();
       }
     }
-      
+
     KALDI_LOG << "Done applying N-best algorithm to " << n_done << " lattices with n = "
               << n << ", average actual #paths is "
               << (n_paths_out/(n_done+1.0e-20));

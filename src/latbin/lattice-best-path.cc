@@ -37,9 +37,9 @@ int main(int argc, char *argv[]) {
         "Generate 1-best path through lattices; output as transcriptions and alignments\n"
         "Note: if you want output as FSTs, use lattice-1best; if you want output\n"
         "with acoustic and LM scores, use lattice-1best | nbest-to-linear\n"
-        "Usage: lattice-best-path [options]  lattice-rspecifier [ transcriptions-wspecifier [ alignments-wspecifier] ]\n"
+        "Usage: lattice-best-path [options]  <lattice-rspecifier> [ <transcriptions-wspecifier> [ <alignments-wspecifier>] ]\n"
         " e.g.: lattice-best-path --acoustic-scale=0.1 ark:1.lats ark:1.tra ark:1.ali\n";
-      
+
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 1.0;
     BaseFloat lm_scale = 1.0;
@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
     po.Register("lm-scale", &lm_scale, "Scaling factor for LM probabilities. "
                 "Note: the ratio acoustic-scale/lm-scale is all that matters.");
     po.Register("word-symbol-table", &word_syms_filename, "Symbol table for words [for debug output]");
-    
+
     po.Read(argc, argv);
 
     if (po.NumArgs() < 1 || po.NumArgs() > 3) {
@@ -62,13 +62,13 @@ int main(int argc, char *argv[]) {
         alignments_wspecifier = po.GetOptArg(3);
 
     SequentialCompactLatticeReader clat_reader(lats_rspecifier);
-    
+
     Int32VectorWriter transcriptions_writer(transcriptions_wspecifier);
 
     Int32VectorWriter alignments_writer(alignments_wspecifier);
 
     fst::SymbolTable *word_syms = NULL;
-    if (word_syms_filename != "") 
+    if (word_syms_filename != "")
       if (!(word_syms = fst::SymbolTable::ReadText(word_syms_filename)))
         KALDI_ERR << "Could not read symbol table from file "
                    << word_syms_filename;
@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
     int32 n_done = 0, n_fail = 0;
     int64 n_frame = 0;
     LatticeWeight tot_weight = LatticeWeight::One();
-    
+
     for (; !clat_reader.Done(); clat_reader.Next()) {
       std::string key = clat_reader.Key();
       CompactLattice clat = clat_reader.Value();
@@ -98,7 +98,7 @@ int main(int argc, char *argv[]) {
         GetLinearSymbolSequence(best_path, &alignment, &words, &weight);
         KALDI_LOG << "For utterance " << key << ", best cost "
                   << weight.Value1() << " + " << weight.Value2() << " = "
-                  << (weight.Value1() + weight.Value2()) 
+                  << (weight.Value1() + weight.Value2())
                   << " over " << alignment.size() << " frames.";
         if (transcriptions_wspecifier != "")
           transcriptions_writer.Write(key, words);
@@ -121,12 +121,12 @@ int main(int argc, char *argv[]) {
     }
 
     BaseFloat tot_weight_float = tot_weight.Value1() + tot_weight.Value2();
-    KALDI_LOG << "Overall score per frame is " << (tot_weight_float/n_frame)
+    KALDI_LOG << "Overall cost per frame is " << (tot_weight_float/n_frame)
               << " = " << (tot_weight.Value1()/n_frame) << " [graph]"
               << " + " << (tot_weight.Value2()/n_frame) << " [acoustic]"
               << " over " << n_frame << " frames.";
     KALDI_LOG << "Done " << n_done << " lattices, failed for " << n_fail;
-    
+
     delete word_syms;
     if (n_done != 0) return 0;
     else return 1;

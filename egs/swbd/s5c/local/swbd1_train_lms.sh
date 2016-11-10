@@ -75,7 +75,7 @@ export LC_ALL=C
 
 heldout_sent=10000
 cut -d' ' -f2- $text | gzip -c > $dir/train.all.gz
-cut -d' ' -f2- $text | tail -n +$heldout_sent | gzip -c > $dir/train.gz
+cut -d' ' -f2- $text | tail -n +$(($heldout_sent+1)) | gzip -c > $dir/train.gz
 cut -d' ' -f2- $text | head -n $heldout_sent > $dir/heldout
 
 cut -d' ' -f1 $lexicon > $dir/wordlist

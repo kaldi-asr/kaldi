@@ -51,6 +51,8 @@ dir=$5
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
+
 sdata1=$data1/split$nj
 sdata2=$data2/split$nj
 [[ -d $sdata1 && $data1/feats.scp -ot $sdata1 ]] || split_data.sh $data1 $nj || exit 1;
@@ -87,10 +89,10 @@ normft2=`cat $srcdir/normft2 2>/dev/null`
 if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 
 case $feat_type in
-  delta) 
+  delta)
   	echo "$0: feature type is $feat_type"
   	;;
-  lda) 
+  lda)
 	  echo "$0: feature type is $feat_type"
     cp $srcdir/{lda,final}.mat $dir/ || exit 1;
     ;;
@@ -107,7 +109,7 @@ elif [ "$feat_type" == "lda" ]; then
   feats1="$feats1 splice-feats $splice_opts ark:- ark:- | transform-feats $dir/lda.mat ark:- ark:- |"
 fi
 
-# set up feature stream 2;  this are usually bottleneck or posterior features, 
+# set up feature stream 2;  this are usually bottleneck or posterior features,
 # which may be normalized if desired
 feats2="scp:$sdata2/JOB/feats.scp"
 
@@ -155,7 +157,7 @@ else
   fi
 fi
 
-if [ $sub_split -eq 1 ]; then 
+if [ $sub_split -eq 1 ]; then
   $cmd JOB=1:$nj $dir/log/decode_den.JOB.log \
    sgmm2-latgen-faster $spkvecs_opt "$gselect_opt" --beam=$beam \
      --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
@@ -165,18 +167,14 @@ else
   for n in `seq $nj`; do
     if [ -f $dir/.done.$n ] && [ $dir/.done.$n -nt $srcdir/final.mdl ]; then
       echo "Not processing subset $n as already done (delete $dir/.done.$n if not)";
-    else 
-      ssdata1=$data1/split$nj/$n/split$sub_split;
-      if [ ! -d $ssdata1 ] || [ $ssdata1 -ot $sdata1/$n/feats.scp ]; then
-        split_data.sh --per-utt $sdata1/$n $sub_split || exit 1;
-      fi
-      ssdata2=$data2/split$nj/$n/split$sub_split;
-      if [ ! -d $ssdata2 ] || [ $ssdata2 -ot $sdata2/$n/feats.scp ]; then
-        split_data.sh --per-utt $sdata2/$n $sub_split || exit 1;
-      fi
+    else
+      ssdata1=$data1/split$nj/$n/split${sub_split}utt;
+      split_data.sh --per-utt $sdata1/$n $sub_split || exit 1;
+      ssdata2=$data2/split$nj/$n/split${sub_split}utt;
+      split_data.sh --per-utt $sdata2/$n $sub_split || exit 1;
       mkdir -p $dir/log/$n
       mkdir -p $dir/part
-      feats_subset=`echo $feats | sed "s/trans.JOB/trans.$n/g" | sed s:JOB/:$n/split$sub_split/JOB/:g`
+      feats_subset=`echo $feats | sed "s/trans.JOB/trans.$n/g" | sed s:JOB/:$n/split${sub_split}utt/JOB/:g`
       spkvecs_opt_subset=`echo $spkvecs_opt | sed "s/JOB/$n/g"`
       gselect_opt_subset=`echo $gselect_opt | sed "s/JOB/$n/g"`
       $cmd JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \

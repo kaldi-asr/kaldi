@@ -44,7 +44,7 @@ struct RegtreeFmllrOptions {
 
   RegtreeFmllrOptions(): update_type("full"), min_count(1000.0),
                          num_iters(10), use_regtree(true) { }
-  
+
   void Register(OptionsItf *opts) {
     opts->Register("fmllr-update-type", &update_type,
                    "Update type for fMLLR (\"full\"|\"diag\"|\"offset\"|\"none\")");
@@ -138,7 +138,7 @@ typedef RandomAccessTableReader< KaldiObjectHolder<RegtreeFmllrDiagGmm> >
             RandomAccessRegtreeFmllrDiagGmmReader;
 typedef RandomAccessTableReaderMapped< KaldiObjectHolder<RegtreeFmllrDiagGmm> >
             RandomAccessRegtreeFmllrDiagGmmReaderMapped;
-typedef SequentialTableReader< KaldiObjectHolder<RegtreeFmllrDiagGmm> >  RegtreeFmllrDiagGmmSeqReader;  
+typedef SequentialTableReader< KaldiObjectHolder<RegtreeFmllrDiagGmm> >  RegtreeFmllrDiagGmmSeqReader;
 
 /** \class RegtreeFmllrDiagGmmAccs
  *  Class for computing the accumulators needed for the maximum-likelihood
@@ -154,7 +154,10 @@ class RegtreeFmllrDiagGmmAccs {
   void SetZero();
 
   /// Accumulate stats for a single GMM in the model; returns log likelihood.
-  /// This does not work with multiple feature transforms.
+  /// This does not work if the features have already been transformed
+  /// with multiple feature transforms (so you can't use use this to
+  /// do a 2nd pass of regression-tree fMLLR estimation, which as I write
+  /// (Dan, 2016) I'm not sure that this framework even supports.
   BaseFloat AccumulateForGmm(const RegressionTree &regtree,
                              const AmDiagGmm &am,
                              const VectorBase<BaseFloat> &data,

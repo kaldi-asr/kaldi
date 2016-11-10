@@ -6,6 +6,7 @@
 # End configuration section
 set -e -o pipefail
 
+
 errcho() { echo "$@" 1>&2; }
 
 errcho "****() Installing IRSTLM"
@@ -54,12 +55,11 @@ fi
   [ ! -z ${IRSTLM} ] && \
     echo >&2 "IRSTLM config is already in env.sh" && exit
 
-  wd=`pwd`
-  wd=`readlink -f $wd`
+  wd=`pwd -P`
 
   echo "export IRSTLM=$wd/irstlm"
   echo "export PATH=\${PATH}:\${IRSTLM}/bin"
 ) >> env.sh
 
 errcho "***() Installation of IRSTLM finished successfully"
-errcho "***() Please source the tools/env.sh in your path.sh to enable it"
+errcho "***() Please source the tools/extras/env.sh in your path.sh to enable it"

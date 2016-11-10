@@ -362,7 +362,6 @@ template<class Arc>
 void TableCompose(const Fst<Arc> &ifst1, const Fst<Arc> &ifst2,
                   MutableFst<Arc> *ofst,
                   TableComposeCache<Fst<Arc> > *cache) {
-  typedef Matcher< Fst<Arc> > M;
   typedef Fst<Arc> F;
   assert(cache != NULL);
   CacheOptions nopts;

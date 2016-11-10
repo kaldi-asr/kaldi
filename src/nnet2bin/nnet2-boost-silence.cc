@@ -1,4 +1,4 @@
-// nnet2bin/nnet-boost-silence.cc
+// nnet2bin/nnet2-boost-silence.cc
 
 // Copyright 2012  Johns Hopkins University (author:  Daniel Povey)
 

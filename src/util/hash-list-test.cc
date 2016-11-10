@@ -19,8 +19,8 @@
 // limitations under the License.
 
 
-#include "hash-list.h"
-#include <map> // for baseline.
+#include "util/hash-list.h"
+#include <map>  // for baseline.
 #include <cstdlib>
 #include <iostream>
 
@@ -45,7 +45,6 @@ template<class Int, class T> void TestHashList() {
   std::map<Int, T> m2;
 
   for (int i = 0; i < 100; i++) {
-
     m2.clear();
     for (typename std::map<Int, T>::const_iterator iter = m1.begin();
         iter != m1.end();
@@ -56,8 +55,9 @@ template<class Int, class T> void TestHashList() {
 
     Elem *h = hash.Clear(), *tmp;
 
-    hash.SetSize(100 + Rand() % 100);  // note, SetSize is relatively cheap operation as long
-    // as we are not increasing the size more than it's ever previously been increased to.
+    hash.SetSize(100 + Rand() % 100);  // note, SetSize is relatively cheap
+    // operation as long as we are not increasing the size more than it's ever
+    // previously been increased to.
 
     for (; h != NULL; h = tmp) {
       hash.Insert(h->key + 1, h->val);
@@ -77,7 +77,7 @@ template<class Int, class T> void TestHashList() {
       bool found_m1 = (m1.find(key) != m1.end());
       if (found_m1) m1[key];
       Elem *e = hash.Find(key);
-      KALDI_ASSERT( (e != NULL) == found_m1 );
+      KALDI_ASSERT((e != NULL) == found_m1);
       if (found_m1)
         KALDI_ASSERT(m1[key] == e->val);
     }
@@ -89,7 +89,7 @@ template<class Int, class T> void TestHashList() {
 
 
 
-} // end namespace kaldi
+}  // end namespace kaldi
 
 
 
@@ -98,8 +98,8 @@ int main() {
   for (size_t i = 0;i < 3;i++) {
     TestHashList<int, unsigned int>();
     TestHashList<unsigned int, int>();
-    TestHashList<short int, long int>();
-    TestHashList<short unsigned int, long int>();
+    TestHashList<int16, int32>();
+    TestHashList<int16, int32>();
     TestHashList<char, unsigned char>();
     TestHashList<unsigned char, int>();
   }

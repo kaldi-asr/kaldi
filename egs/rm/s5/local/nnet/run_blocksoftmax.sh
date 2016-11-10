@@ -28,17 +28,14 @@ wsj_ali=../../wsj/s5/exp/tri4b_ali_si284
 stage=0
 . utils/parse_options.sh || exit 1;
 
-set -u 
-set -e
-set -o pipefail
-set -x
+set -euxo pipefail
 
 # Make the FBANK features,
-if [ $stage -le 0 ]; then
+[ ! -e $dev ] && if [ $stage -le 0 ]; then
   # Make datadir copies,
-  utils/copy_data_dir.sh $dev_original $dev; rm $dev/{cmvn,feats}.scp 2>/dev/null
-  utils/copy_data_dir.sh $train_original $train; rm $train/{cmvn,feats}.scp 2>/dev/null
-  utils/copy_data_dir.sh --utt-prefix wsj_ --spk-prefix wsj_ $wsj_original $wsj; rm $wsj/{cmvn,feats}.scp 2>/dev/null
+  utils/copy_data_dir.sh $dev_original $dev; rm $dev/{cmvn,feats}.scp
+  utils/copy_data_dir.sh $train_original $train; rm $train/{cmvn,feats}.scp
+  utils/copy_data_dir.sh --utt-prefix wsj --spk-prefix wsj $wsj_original $wsj; rm $wsj/{cmvn,feats}.scp
   
   # Feature extraction,
   # Dev set,
@@ -46,11 +43,11 @@ if [ $stage -le 0 ]; then
     $dev $dev/log $dev/data
   steps/compute_cmvn_stats.sh $dev $dev/log $dev/data
   # Training set,
-  steps/make_fbank_pitch.sh --nj 10 --cmd "$train_cmd -tc 10" \
+  steps/make_fbank_pitch.sh --nj 10 --cmd "$train_cmd --max-jobs-run 10" \
     $train $train/log $train/data
   steps/compute_cmvn_stats.sh $train $train/log $train/data
   # Wsj,
-  steps/make_fbank_pitch.sh --nj 10 --cmd "$train_cmd -tc 10" \
+  steps/make_fbank_pitch.sh --nj 10 --cmd "$train_cmd --max-jobs-run 10" \
     $wsj $wsj/log $wsj/data
   steps/compute_cmvn_stats.sh $wsj $wsj/log $wsj/data
 

@@ -1,7 +1,15 @@
 #!/bin/bash
 
+# Copyright 2012-2014  Brno University of Technology (Author: Karel Vesely)
+# Apache 2.0
+
+# This example shows how to train a simple autoencoder network.
+# We use <tanh>, little different training hyperparameters and MSE objective.
+
 . path.sh
 . cmd.sh
+
+set -eu
 
 # Train,
 dir=exp/autoencoder

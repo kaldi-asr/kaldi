@@ -2,6 +2,7 @@
 
 # Copyright 2014  Johns Hopkins University (authors: Daniel Povey, Yenda Trmal)
 #           2014  Guoguo Chen
+#           2015  MIT Lincoln Labs (author: Fred Richardson)
 # Apache 2.0.
 
 # This script takes an input lexicon (e.g. lexicon.txt) and generates likely
@@ -351,7 +352,17 @@ if [ $stage -le $g2p_iters ]; then
     g2p.py -V $var_mass --variants-number $var_counts --encoding $encoding \
       --model $dir/p2g.model.final --apply - \
     \> $dir/p2g_output.JOB || exit 1;
-  cat $dir/p2g_output.* > $dir/p2g_output
+  perl -wlne 'use strict;
+            our %P;
+            my ($prn,$num,$prb,$spl)=m/^(\S+)\s+(\S+)\s+(\S+)\s+(.*)$/;
+            my $tok=$prn."=".$spl;
+            $P{$tok} = [ $num, $prb ] unless (defined($P{$tok}) && $P{$tok}[1] < $prb);
+            END {
+                map{ my ($prn,$spl)=m/^(.*)=(.*)$/;
+                     my ($num, $prb) = @{$P{$tok}};
+                     print join("\t",$prn,$num,$prb,$spl)
+                   } sort keys %P
+            }' $dir/p2g_output.* > $dir/p2g_output
   rm $dir/p2g_output.*
 fi
 

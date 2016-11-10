@@ -50,8 +50,8 @@ fi
 cd $dir
 MIC=primary
 
-# unfortunately, we need a pointer to HTK baseline 
-# since the corpus does NOT contain the data set descriptions 
+# unfortunately, we need a pointer to HTK baseline
+# since the corpus does NOT contain the data set descriptions
 # for the REVERB Challenge
 taskFileDir=$dir/../reverb_tools/ReleasePackage/reverb_tools_for_asr_ver2.0/taskFiles/1ch
 #taskFiles=`ls $taskFileDir/*Data_dt_for_*`
@@ -108,9 +108,9 @@ echo "Data preparation for $set succeeded"
 
 
 mfccdir=mfcc/$dataset
-#for x in test_eval92_clean test_eval92_5k_clean dev_dt_05_clean dev_dt_20_clean train_si84_clean; do 
-#for x in si_tr; do 
-steps/make_mfcc.sh --nj 10 \
+#for x in test_eval92_clean test_eval92_5k_clean dev_dt_05_clean dev_dt_20_clean train_si84_clean; do
+#for x in si_tr; do
+steps/make_mfcc.sh --cmd "$train_cmd" --nj 10 \
   data/$dataset/$set exp/make_mfcc/$dataset/$set $mfccdir || exit 1;
 steps/compute_cmvn_stats.sh data/$dataset/$set exp/make_mfcc/$dataset/$set $mfccdir || exit 1;
 

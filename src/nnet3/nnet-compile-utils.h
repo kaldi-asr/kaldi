@@ -42,7 +42,7 @@ namespace nnet3 {
    size), but the maximum size of the lists will usually be fairly small e.g. no
    more than 4 or so, as it represents the number of terms in a hand-coded
    summation expression.
-   
+
    The use of this function is in interpreting a command to set each row of
    a matrix to a sum of terms.  Each pair represents an input term, interpreted
    as (index-of-matrix, row-index), which represents a vector that will form
@@ -94,15 +94,42 @@ void SplitLocationsBackward(
     std::vector<std::vector<std::pair<int32, int32> > > *split_lists);
 
 
-/* If it is the case for some i >= 0 that all the .first elements of
+/** If it is the case for some i >= 0 that all the .first elements of
    "location_vector" are either i or -1, then output i to first_value and the
    .second elements into "second_values", and return true.  Otherwise return
    false and the outputs are don't-cares. */
 bool ConvertToIndexes(
     const std::vector<std::pair<int32, int32> > &location_vector,
-    int32 *first_value,    
+    int32 *first_value,
     std::vector<int32> *second_values);
 
+/** This function returns true if for each integer i != -1, all the indexes j at
+    which indexes[j] == i are consecutive with no gaps (more formally: if j1 <
+    j2 < j3 and indexes[j1] != -1 and indexes[j1] == indexes[j3], then
+    indexes[j1] == indexes[j2]).  For example, the vector [ 1 2 1 ] lacks the
+    contiguous property because 1 appears in two places with a different number
+    in the middle.  If the vector has the contiguous property, this function
+    also outputs to "reverse_indexes" the begin and end of these ranges, so that
+    indexes[j] == i for all j such that (*reverse_indexes)[i].first <= j && j <
+    (*reverse_indexes)[i].second. */
+bool HasContiguousProperty(const std::vector<int32> &indexes,
+                           std::vector<std::pair<int32, int32> > *reverse_indexes);
+
+
+/** This function takes a vector of indexes and splits it up into as separate
+    vectors of the same size, as needed to ensure that the 'contiguous property' holds.
+    This is done via padding with -1's.  An example will clarify this.  Suppose the
+    input is:
+      [ -1  1  1  1  2  2  1  1 ]
+    which lacks the contiguous property because 1's appear in 2 different places, it
+    would split it up as
+      [ -1  1  1  1  2  2 -1 -1 ]
+      [ -1 -1 -1 -1 -1 -1  1  1 ]
+    If 'indexes' is empty or only contains -1's, 'indexes_out' will be empty.
+ */
+void EnsureContiguousProperty(
+    const std::vector<int32> &indexes,
+    std::vector<std::vector<int32> > *indexes_out);
 
 
 

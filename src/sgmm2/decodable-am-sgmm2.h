@@ -135,4 +135,4 @@ class DecodableAmSgmm2Scaled : public DecodableAmSgmm2 {
 
 }  // namespace kaldi
 
-#endif  // KALDI_DECODER_DECODABLE_AM_SGMM_H_
+#endif  // KALDI_SGMM2_DECODABLE_AM_SGMM2_H_

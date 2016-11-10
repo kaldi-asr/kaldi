@@ -54,7 +54,7 @@ class VectorBase {
   /// chosen with probability proportional to the corresponding
   /// element.  Requires that this->Min() >= 0 and this->Sum() > 0.
   MatrixIndexT RandCategorical() const;
-  
+
   /// Returns the  dimension of the vector.
   inline MatrixIndexT Dim() const { return dim_; }
 
@@ -107,10 +107,6 @@ class VectorBase {
   template<typename OtherReal>
   void CopyFromPacked(const PackedMatrix<OtherReal> &M);
 
-  /// Copy data from a SparseMatrix.
-  template<typename OtherReal>
-  void CopyFromSmat(const SparseMatrix<OtherReal> &M);
-  
   /// Copy data from another vector of different type (double vs. float)
   template<typename OtherReal>
   void CopyFromVec(const VectorBase<OtherReal> &v);
@@ -119,7 +115,7 @@ class VectorBase {
   template<typename OtherReal>
   void CopyFromVec(const CuVectorBase<OtherReal> &v);
 
-  
+
   /// Apply natural log to all elements.  Throw if any element of
   /// the vector is negative (but doesn't complain about zero; the
   /// log will be -infinity
@@ -139,7 +135,7 @@ class VectorBase {
 
   /// Applies ceiling to all elements. Returns number of elements changed.
   MatrixIndexT ApplyCeiling(Real ceil_val);
-  
+
   /// Applies floor to all elements. Returns number of elements floored.
   MatrixIndexT ApplyFloor(const VectorBase<Real> &floor_vec);
 
@@ -158,7 +154,7 @@ class VectorBase {
   /// Sets each element of *this to the sigmoid function of the corresponding
   /// element of "src".
   void Sigmoid(const VectorBase<Real> &src);
-  
+
   /// Take all  elements of vector to a power.
   void ApplyPow(Real power);
 
@@ -166,13 +162,13 @@ class VectorBase {
   /// Include the sign of the input element if include_sign == true.
   /// If power is negative and the input value is zero, the output is set zero.
   void ApplyPowAbs(Real power, bool include_sign=false);
-  
+
   /// Compute the p-th norm of the vector.
   Real Norm(Real p) const;
-  
+
   /// Returns true if ((*this)-other).Norm(2.0) <= tol * (*this).Norm(2.0).
   bool ApproxEqual(const VectorBase<Real> &other, float tol = 0.01) const;
-  
+
   /// Invert all elements.
   void InvertElements();
 
@@ -201,7 +197,7 @@ class VectorBase {
                   const MatrixTransposeType trans,  const VectorBase<Real> &v,
                   const Real beta); // **beta previously defaulted to 0.0**
 
-  
+
   /// Add symmetric positive definite matrix times vector:
   ///  this <-- beta*this + alpha*M*v.   Calls BLAS SPMV.
   void AddSpVec(const Real alpha, const SpMatrix<Real> &M,
@@ -275,7 +271,7 @@ class VectorBase {
   /// Extracts a row of the symmetric matrix S.
   template<typename OtherReal>
   void CopyRowFromSp(const SpMatrix<OtherReal> &S, MatrixIndexT row);
-  
+
   /// Extracts a column of the matrix M.
   template<typename OtherReal>
   void CopyColFromMat(const MatrixBase<OtherReal> &M , MatrixIndexT col);
@@ -299,14 +295,14 @@ class VectorBase {
   /// Returns the maximum value of any element, and the associated index.
   /// Error if vector is empty.
   Real Max(MatrixIndexT *index) const;
-  
+
   /// Returns the minimum value of any element, or +infinity for the empty vector.
   Real Min() const;
 
   /// Returns the minimum value of any element, and the associated index.
   /// Error if vector is empty.
   Real Min(MatrixIndexT *index) const;
-  
+
   /// Returns sum of the elements
   Real Sum() const;
 
@@ -317,7 +313,7 @@ class VectorBase {
 
   /// Does *this = alpha * (sum of rows of M) + beta * *this.
   void AddRowSumMat(Real alpha, const MatrixBase<Real> &M, Real beta = 1.0);
-  
+
   /// Does *this = alpha * (sum of columns of M) + beta * *this.
   void AddColSumMat(Real alpha, const MatrixBase<Real> &M, Real beta = 1.0);
 
@@ -332,7 +328,7 @@ class VectorBase {
   /// as you would expect.
   void AddDiagMatMat(Real alpha, const MatrixBase<Real> &M, MatrixTransposeType transM,
                      const MatrixBase<Real> &N, MatrixTransposeType transN,
-                     Real beta = 1.0);  
+                     Real beta = 1.0);
 
   /// Returns log(sum(exp())) without exp overflow
   /// If prune > 0.0, ignores terms less than the max - prune.
@@ -420,12 +416,6 @@ class Vector: public VectorBase<Real> {
     this->CopyFromVec(v);
   }
 
-  template<typename OtherReal>
-  explicit Vector(const SparseMatrix<OtherReal> &smat) : VectorBase<Real>() {
-    Resize(smat.NumElements(), kUndefined);
-    this->CopyFromSmat(smat);
-  }
-
 // Took this out since it is unsafe : Arnab
 //  /// Constructor from a pointer and a size; copies the data to a location
 //  /// it owns.
@@ -508,7 +498,7 @@ class SubVector : public VectorBase<Real> {
     VectorBase<Real>::data_ = const_cast<Real*> (M.Data());
     VectorBase<Real>::dim_   = (M.NumRows()*(M.NumRows()+1))/2;
   }
-  
+
   /// Copy constructor
   SubVector(const SubVector &other) : VectorBase<Real> () {
     // this copy constructor needed for Range() to work in base class.

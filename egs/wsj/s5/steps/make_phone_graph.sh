@@ -4,7 +4,7 @@
 
 # Copyright 2013  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
-# This script makes a phone-based LM, without smoothing to unigram, that 
+# This script makes a phone-based LM, without smoothing to unigram, that
 # is to be used for segmentation, and uses that together with a model to
 # make a decoding graph.
 # Uses SRILM.
@@ -46,7 +46,7 @@ done
 loc=`which ngram-count`;
 if [ -z $loc ]; then
   if uname -a | grep 64 >/dev/null; then # some kind of 64 bit...
-    sdir=`pwd`/../../../tools/srilm/bin/i686-m64 
+    sdir=`pwd`/../../../tools/srilm/bin/i686-m64
   else
     sdir=`pwd`/../../../tools/srilm/bin/i686
   fi
@@ -64,6 +64,8 @@ fi
 set -e # exit on error status
 
 mkdir -p $dir/phone_graph
+
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt
 
 if [ $stage -le 0 ]; then
   echo "$0: creating phone LM-training data"
@@ -92,17 +94,14 @@ fi
 
 if [ $stage -le 3 ]; then
   echo "$0: creating G_phones.fst from ARPA"
-  gunzip -c $dir/phone_graph/arpa_noug.gz | arpa2fst - - | fstprint | \
-    utils/eps2disambig.pl | utils/s2eps.pl | \
-    awk '{if (NF < 5 || $5 < 100.0) { print; }}' | \
-    fstcompile --isymbols=$lang/phones.txt --osymbols=$lang/phones.txt \
-       --keep_isymbols=false --keep_osymbols=false | \
-    fstconnect | \
-    fstrmepsilon > $dir/phone_graph/G_phones.fst
-   fstisstochastic $dir/phone_graph/G_phones.fst  || echo "[info]: G_phones not stochastic."
+  gunzip -c $dir/phone_graph/arpa_noug.gz | \
+    arpa2fst --disambig-symbol=#0 --read-symbol-table=$lang/phones.txt - - | \
+    fstprint | awk '{if (NF < 5 || $5 < 100.0) { print; }}' | fstcompile | \
+    fstconnect > $dir/phone_graph/G_phones.fst
+  fstisstochastic $dir/phone_graph/G_phones.fst || echo "[info]: G_phones not stochastic."
 fi
 
-  
+
 if [ $stage -le 4 ]; then
   echo "$0: creating CLG."
 
@@ -118,7 +117,7 @@ if [ $stage -le 5 ]; then
   echo "$0: creating Ha.fst"
   make-h-transducer --disambig-syms-out=$dir/phone_graph/disambig_tid.int \
     --transition-scale=$tscale $dir/phone_graph/ilabels_${N}_${P} $dir/tree $dir/final.mdl \
-       > $dir/phone_graph/Ha.fst 
+       > $dir/phone_graph/Ha.fst
 fi
 
 if [ $stage -le 6 ]; then
@@ -135,7 +134,7 @@ if [ $stage -le 7 ]; then
     $dir/final.mdl < $dir/phone_graph/HCLGa.fst > $dir/phone_graph/HCLG.fst || exit 1;
 
   if [ $tscale == 1.0 -a $loopscale == 1.0 ]; then
-    # No point doing this test if transition-scale not 1, as it is bound to fail. 
+    # No point doing this test if transition-scale not 1, as it is bound to fail.
     fstisstochastic $dir/phone_graph/HCLG.fst || echo "[info]: final HCLG is not stochastic."
   fi
 

@@ -1,4 +1,4 @@
-// util/simple-options.hh
+// util/simple-options.h
 
 // Copyright 2013  Tanel Alumae, Tallinn University of Technology
 
@@ -32,7 +32,8 @@ namespace kaldi {
 
 /// The class SimpleOptions is an implementation of OptionsItf that allows
 /// setting and getting option values programmatically, i.e., via getter
-/// and setter methods. It doesn't provide any command line parsing functionality.
+/// and setter methods. It doesn't provide any command line parsing
+/// functionality.
 /// The class ParseOptions should be used for command-line options.
 class SimpleOptions : public OptionsItf {
  public:

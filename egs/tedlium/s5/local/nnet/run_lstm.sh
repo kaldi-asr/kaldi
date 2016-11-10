@@ -29,7 +29,7 @@ stage=0
   steps/compute_cmvn_stats.sh $dev $dev/log $dev/data || exit 1;
   # Training set
   utils/copy_data_dir.sh $train_original $train || exit 1; rm $train/{cmvn,feats}.scp
-  steps/make_fbank_pitch.sh --nj 10 --cmd "$train_cmd -tc 10" \
+  steps/make_fbank_pitch.sh --nj 10 --cmd "$train_cmd --max-jobs-run 10" \
      $train $train/log $train/data || exit 1;
   steps/compute_cmvn_stats.sh $train $train/log $train/data || exit 1;
   # Split the training set
@@ -46,7 +46,7 @@ if [ $stage -le 1 ]; then
     steps/nnet/train.sh --network-type lstm --learn-rate 0.00001 \
       --cmvn-opts "--norm-means=true --norm-vars=true" --feat-type plain --splice 0 \
       --proto-opts "--clip-gradient 5.0" \
-      --train-opts "--momentum 0.9 --halving-factor 0.65" \
+      --train-tool-opts "--momentum 0.9 --halving-factor 0.65" \
       --train-tool "nnet-train-lstm-streams --num-stream=4 --targets-delay=5" \
     ${train}_tr90 ${train}_cv10 data/lang $ali $ali $dir || exit 1;
 

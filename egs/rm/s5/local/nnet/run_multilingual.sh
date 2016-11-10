@@ -58,7 +58,7 @@ if [ $stage -le 0 ]; then
     tgt_dir=$data/${code}_$(basename $dir)
     utils/copy_data_dir.sh --utt-suffix _$code --spk-suffix _$code $dir $tgt_dir; rm $tgt_dir/{feats,cmvn}.scp || true # remove features,
     # extract features, get cmvn stats,
-    steps/make_fbank_pitch.sh --nj 30 --cmd "$train_cmd -tc 10" $tgt_dir{,/log,/data}
+    steps/make_fbank_pitch.sh --nj 30 --cmd "$train_cmd --max-jobs-run 10" $tgt_dir{,/log,/data}
     steps/compute_cmvn_stats.sh $tgt_dir{,/log,/data}
     # split lists 90% train / 10% held-out,
     utils/subset_data_dir_tr_cv.sh $tgt_dir ${tgt_dir}_tr90 ${tgt_dir}_cv10
@@ -89,7 +89,7 @@ objective_function="multitask$(echo ${ali_dim[@]} | tr ' ' '\n' | \
 echo "Multitask objective function: $objective_function"
 
 # DNN training will be in $dir, the alignments are prepared beforehand,
-dir=exp/dnn4g-multilingual${num_langs}-$(echo $lang_code_csl | tr ',' '-') 
+dir=exp/dnn4g-multilingual${num_langs}-$(echo $lang_code_csl | tr ',' '-')-${nnet_type} 
 [ ! -e $dir ] && mkdir -p $dir
 echo "$lang_code_csl" >$dir/lang_code_csl
 echo "$ali_dir_csl" >$dir/ali_dir_csl
@@ -119,9 +119,10 @@ fi
 if [ $stage -le 2 ]; then  
   case $nnet_type in
     bn)
+    # Bottleneck network (40 dimensional bottleneck is good for fMLLR),
     $cuda_cmd $dir/log/train_nnet.log \
       steps/nnet/train.sh --learn-rate 0.008 \
-        --hid-layers 2 --hid-dim 1500 --bn-dim 80 \
+        --hid-layers 2 --hid-dim 1500 --bn-dim 40 \
         --cmvn-opts "--norm-means=true --norm-vars=false" \
         --feat-type "traps" --splice 5 --traps-dct-basis 6 \
         --labels "scp:$dir/ali-post/combined.scp" --num-tgt $output_dim \
@@ -129,7 +130,38 @@ if [ $stage -le 2 ]; then
         --train-tool "nnet-train-frmshuff --objective-function=$objective_function" \
         ${data_tr90} ${data_cv10} lang-dummy ali-dummy ali-dummy $dir
     ;;
+    sbn)
+    # Stacked Bottleneck Netowork, no fMLLR in between,
+    bn1_dim=80
+    bn2_dim=30
+    # Train 1st part,
+    dir_part1=${dir}_part1
+    $cuda_cmd ${dir}_part1/log/train_nnet.log \
+      steps/nnet/train.sh --learn-rate 0.008 \
+        --hid-layers 2 --hid-dim 1500 --bn-dim $bn1_dim \
+        --cmvn-opts "--norm-means=true --norm-vars=false" \
+        --feat-type "traps" --splice 5 --traps-dct-basis 6 \
+        --labels "scp:$dir/ali-post/combined.scp" --num-tgt $output_dim \
+        --proto-opts "--block-softmax-dims=${ali_dim_csl}" \
+        --train-tool "nnet-train-frmshuff --objective-function=$objective_function" \
+        ${data_tr90} ${data_cv10} lang-dummy ali-dummy ali-dummy $dir_part1
+    # Compose feature_transform for 2nd part,
+    nnet-initialize <(echo "<Splice> <InputDim> $bn1_dim <OutputDim> $((13*bn1_dim)) <BuildVector> -10 -5:5 10 </BuildVector>") \
+      $dir_part1/splice_for_bottleneck.nnet 
+    nnet-concat $dir_part1/final.feature_transform "nnet-copy --remove-last-components=4 $dir_part1/final.nnet - |" \
+      $dir_part1/splice_for_bottleneck.nnet $dir_part1/final.feature_transform.part1
+    # Train 2nd part,
+    $cuda_cmd $dir/log/train_nnet.log \
+      steps/nnet/train.sh --learn-rate 0.008 \
+        --feature-transform $dir_part1/final.feature_transform.part1 \
+        --hid-layers 2 --hid-dim 1500 --bn-dim $bn2_dim \
+        --labels "scp:$dir/ali-post/combined.scp" --num-tgt $output_dim \
+        --proto-opts "--block-softmax-dims=${ali_dim_csl}" \
+        --train-tool "nnet-train-frmshuff --objective-function=$objective_function" \
+        ${data_tr90} ${data_cv10} lang-dummy ali-dummy ali-dummy $dir
+    ;;
     dnn_small)
+    # 4 hidden layers, 1024 sigmoid neurons,  
     $cuda_cmd $dir/log/train_nnet.log \
       steps/nnet/train.sh --learn-rate 0.008 \
         --cmvn-opts "--norm-means=true --norm-vars=true" \
@@ -140,6 +172,7 @@ if [ $stage -le 2 ]; then
         ${data_tr90} ${data_cv10} lang-dummy ali-dummy ali-dummy $dir
     ;;
     dnn)
+    # 6 hidden layers, 2048 simgoid neurons,
     $cuda_cmd $dir/log/train_nnet.log \
       steps/nnet/train.sh --learn-rate 0.008 \
         --hid-layers 6 --hid-dim 2048 \

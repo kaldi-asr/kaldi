@@ -65,9 +65,9 @@ fi
 if [ $stage -le 3 ]; then
   # I tested the following with  --max-temp-archives 3 
   # to test other branches of the code.
-  # the -tc 5 limits the I/O.
+  # the --max-jobs-run 5 limits the I/O.
   steps/online/nnet2/get_egs_discriminative2.sh \
-    --cmd "$decode_cmd -tc 5" \
+    --cmd "$decode_cmd --max-jobs-run 5" \
     --criterion $criterion --drop-frames $drop_frames \
      data/train data/lang ${srcdir}{_ali,_denlats,,_degs} || exit 1;
 fi

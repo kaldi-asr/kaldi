@@ -88,6 +88,8 @@ utils/split_data.sh $data $nj
 mkdir -p $dir/log
 cp $alidir/tree $dir
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 
 # Get list of validation utterances. 
 awk '{print $1}' $data/utt2spk | utils/shuffle_list.pl | head -$num_utts_subset \
@@ -199,7 +201,6 @@ if [ $stage -le 2 ]; then
     gzip -c >$dir/ali_special.gz || exit 1;
   set +o pipefail; # unset the pipefail option.
 
-  all_ids=$(seq -s, $nj)  # e.g. 1,2,...39,40
   $cmd $dir/log/create_valid_subset.log \
     nnet-get-egs $ivectors_opt $nnet_context_opts "$valid_feats" \
     "ark,s,cs:gunzip -c $dir/ali_special.gz | ali-to-pdf $alidir/final.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \

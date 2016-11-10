@@ -22,6 +22,10 @@ frames_per_eg=8   # number of frames of labels per example.  more->less disk spa
 left_context=4    # amount of left-context per eg (i.e. extra frames of input features
                   # not present in the output supervision).
 right_context=4   # amount of right-context per eg.
+valid_left_context=   # amount of left_context for validation egs, typically used in
+                      # recurrent architectures to ensure matched condition with
+                      # training egs
+valid_right_context=  # amount of right_context for validation egs
 compress=true   # set this to false to disable compression (e.g. if you want to see whether
                 # results are affected).
 
@@ -35,9 +39,11 @@ num_utts_subset=300     # number of utterances in validation and training
 num_valid_frames_combine=0 # #valid frames for combination weights at the very end.
 num_train_frames_combine=10000 # # train frames for the above.
 num_frames_diagnostic=4000 # number of frames for "compute_prob" jobs
-samples_per_iter=400000 # each iteration of training, see this many samples
-                        # per job.  This is just a guideline; it will pick a number
-                        # that divides the number of samples in the entire data.
+samples_per_iter=400000 # this is the target number of egs in each archive of egs
+                        # (prior to merging egs).  We probably should have called
+                        # it egs_per_iter. This is just a guideline; it will pick
+                        # a number that divides the number of samples in the
+                        # entire data.
 
 transform_dir=     # If supplied, overrides alidir as the place to find fMLLR transforms
 
@@ -45,6 +51,7 @@ stage=0
 nj=6         # This should be set to the maximum number of jobs you are
              # comfortable to run in parallel; you can increase it if your disk
              # speed is greater and you have more machines.
+srand=0     # rand seed for nnet3-copy-egs and nnet3-shuffle-egs
 online_ivector_dir=  # can be used if we are including speaker information as iVectors.
 cmvn_opts=  # can be used for specifying CMVN options, if feature type is not lda (if lda,
             # it doesn't make sense to use different options than were used as input to the
@@ -54,7 +61,6 @@ echo "$0 $@"  # Print the command line for logging
 
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
-
 
 if [ $# != 3 ]; then
   echo "Usage: $0 [opts] <data> <ali-dir> <egs-dir>"
@@ -66,8 +72,7 @@ if [ $# != 3 ]; then
   echo "                                                   # parallel (increase this only if you have good disk and"
   echo "                                                   # network speed).  default=6"
   echo "  --cmd (utils/run.pl;utils/queue.pl <queue opts>) # how to run jobs."
-  echo "  --samples-per-iter <#samples;400000>             # Number of samples of data to process per iteration, per"
-  echo "                                                   # process."
+  echo "  --samples-per-iter <#samples;400000>             # Target number of egs per archive (option is badly named)"
   echo "  --feat-type <lda|raw>                            # (raw is the default).  The feature type you want"
   echo "                                                   # to use as input to the neural net."
   echo "  --frames-per-eg <frames;8>                       # number of frames per eg on disk"
@@ -101,6 +106,14 @@ mkdir -p $dir/log $dir/info
 cp $alidir/tree $dir
 
 num_ali_jobs=$(cat $alidir/num_jobs) || exit 1;
+
+
+num_utts=$(cat $data/utt2spk | wc -l)
+if ! [ $num_utts -gt $[$num_utts_subset*4] ]; then
+  echo "$0: number of utterances $num_utts in your training data is too small versus --num-utts-subset=$num_utts_subset"
+  echo "... you probably have so little data that it doesn't make sense to train a neural net."
+  exit 1
+fi
 
 # Get list of validation utterances.
 awk '{print $1}' $data/utt2spk | utils/shuffle_list.pl | head -$num_utts_subset \
@@ -166,8 +179,8 @@ esac
 
 if [ -f $dir/trans.scp ]; then
   feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk scp:$dir/trans.scp ark:- ark:- |"
-  valid_feats="$valid_feats transform-feats --utt2spk=ark:$data/utt2spk scp:$dir/trans.scp|' ark:- ark:- |"
-  train_subset_feats="$train_subset_feats transform-feats --utt2spk=ark:$data/utt2spk scp:$dir/trans.scp|' ark:- ark:- |"
+  valid_feats="$valid_feats transform-feats --utt2spk=ark:$data/utt2spk scp:$dir/trans.scp ark:- ark:- |"
+  train_subset_feats="$train_subset_feats transform-feats --utt2spk=ark:$data/utt2spk scp:$dir/trans.scp ark:- ark:- |"
 fi
 
 if [ ! -z "$online_ivector_dir" ]; then
@@ -209,7 +222,6 @@ while $reduce_frames_per_eg && [ $frames_per_eg -gt 1 ] && \
 done
 $reduced && echo "$0: reduced frames_per_eg to $frames_per_eg because amount of data is small."
 
-
 # We may have to first create a smaller number of larger archives, with number
 # $num_archives_intermediate, if $num_archives is more than the maximum number
 # of open filehandles that the system allows per process (ulimit -n).
@@ -218,7 +230,7 @@ num_archives_intermediate=$num_archives
 archives_multiple=1
 while [ $[$num_archives_intermediate+4] -gt $max_open_filehandles ]; do
   archives_multiple=$[$archives_multiple+1]
-  num_archives_intermediate=$[$num_archives/$archives_multiple];
+  num_archives_intermediate=$[$num_archives/$archives_multiple+1];
 done
 # now make sure num_archives is an exact multiple of archives_multiple.
 num_archives=$[$archives_multiple*$num_archives_intermediate]
@@ -256,6 +268,10 @@ fi
 
 egs_opts="--left-context=$left_context --right-context=$right_context --compress=$compress"
 
+[ -z $valid_left_context ] &&  valid_left_context=$left_context;
+[ -z $valid_right_context ] &&  valid_right_context=$right_context;
+valid_egs_opts="--left-context=$valid_left_context --right-context=$valid_right_context --compress=$compress"
+
 echo $left_context > $dir/info/left_context
 echo $right_context > $dir/info/right_context
 num_pdfs=$(tree-info --print-args=false $alidir/tree | grep num-pdfs | awk '{print $2}')
@@ -268,11 +284,11 @@ if [ $stage -le 3 ]; then
     <$dir/ali.scp >$dir/ali_special.scp
 
   $cmd $dir/log/create_valid_subset.log \
-    nnet3-get-egs --num-pdfs=$num_pdfs $valid_ivector_opt $egs_opts "$valid_feats" \
+    nnet3-get-egs --num-pdfs=$num_pdfs $valid_ivector_opt $valid_egs_opts "$valid_feats" \
     "ark,s,cs:ali-to-pdf $alidir/final.mdl scp:$dir/ali_special.scp ark:- | ali-to-post ark:- ark:- |" \
     "ark:$dir/valid_all.egs" || touch $dir/.error &
   $cmd $dir/log/create_train_subset.log \
-    nnet3-get-egs --num-pdfs=$num_pdfs $train_subset_ivector_opt $egs_opts "$train_subset_feats" \
+    nnet3-get-egs --num-pdfs=$num_pdfs $train_subset_ivector_opt $valid_egs_opts "$train_subset_feats" \
      "ark,s,cs:ali-to-pdf $alidir/final.mdl scp:$dir/ali_special.scp ark:- | ali-to-post ark:- ark:- |" \
      "ark:$dir/train_subset_all.egs" || touch $dir/.error &
   wait;
@@ -314,7 +330,7 @@ if [ $stage -le 4 ]; then
   $cmd JOB=1:$nj $dir/log/get_egs.JOB.log \
     nnet3-get-egs --num-pdfs=$num_pdfs $ivector_opt $egs_opts --num-frames=$frames_per_eg "$feats" \
     "ark,s,cs:filter_scp.pl $sdata/JOB/utt2spk $dir/ali.scp | ali-to-pdf $alidir/final.mdl scp:- ark:- | ali-to-post ark:- ark:- |" ark:- \| \
-    nnet3-copy-egs --random=true --srand=JOB ark:- $egs_list || exit 1;
+    nnet3-copy-egs --random=true --srand=\$[JOB+$srand] ark:- $egs_list || exit 1;
 fi
 
 if [ $stage -le 5 ]; then
@@ -330,7 +346,7 @@ if [ $stage -le 5 ]; then
 
   if [ $archives_multiple == 1 ]; then # normal case.
     $cmd --max-jobs-run $nj JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
-      nnet3-shuffle-egs --srand=JOB "ark:cat $egs_list|" ark:$dir/egs.JOB.ark  || exit 1;
+      nnet3-shuffle-egs --srand=\$[JOB+$srand] "ark:cat $egs_list|" ark:$dir/egs.JOB.ark  || exit 1;
   else
     # we need to shuffle the 'intermediate archives' and then split into the
     # final archives.  we create soft links to manage this splitting, because
@@ -346,7 +362,7 @@ if [ $stage -le 5 ]; then
       done
     done
     $cmd --max-jobs-run $nj JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
-      nnet3-shuffle-egs --srand=JOB "ark:cat $egs_list|" ark:- \| \
+      nnet3-shuffle-egs --srand=\$[JOB+$srand] "ark:cat $egs_list|" ark:- \| \
       nnet3-copy-egs ark:- $output_archives || exit 1;
   fi
 

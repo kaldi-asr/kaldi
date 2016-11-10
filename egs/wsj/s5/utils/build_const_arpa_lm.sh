@@ -33,7 +33,6 @@ mkdir -p $new_lang
 mkdir -p $new_lang
 cp -r $old_lang/* $new_lang
 
-
 unk=`cat $new_lang/oov.int`
 bos=`grep "<s>" $new_lang/words.txt | awk '{print $2}'`
 eos=`grep "</s>" $new_lang/words.txt | awk '{print $2}'`

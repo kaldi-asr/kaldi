@@ -33,7 +33,7 @@ dir=$3
 
 model=$(dirname $dir)/final.mdl # assume model one level up from decoding dir.
 
-for f in $lang/words.txt $lang/phones/word_boundary.int $model $dir/lat.1.gz; do
+for f in $lang/words.txt $lang/phones/align_lexicon.int $model $dir/lat.1.gz; do
   [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
 done
 
@@ -50,7 +50,8 @@ nj=$(cat $dir/num_jobs)
 # convert the lattices (individually, gzipped)
 $cmd $parallel_opts JOB=1:$nj $dir/$dirname/log/lat_convert.JOB.log \
   mkdir -p $dir/$dirname/JOB/ '&&' \
-  lattice-align-words-lexicon --output-error-lats=true --output-if-empty=true $lang/phones/align_lexicon.int $model "ark:gunzip -c $dir/lat.JOB.gz |" ark,t:- \| \
+  lattice-align-words-lexicon --output-error-lats=true --output-if-empty=true \
+    $lang/phones/align_lexicon.int $model "ark:gunzip -c $dir/lat.JOB.gz |" ark,t:- \| \
   utils/int2sym.pl -f 3 $lang/words.txt \| \
   utils/convert_slf.pl $word_to_node_arg - $dir/$dirname/JOB/ || exit 1
 

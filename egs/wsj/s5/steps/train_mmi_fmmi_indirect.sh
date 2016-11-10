@@ -63,6 +63,10 @@ dir=$6
 silphonelist=`cat $lang/phones/silence.csl`
 mkdir -p $dir/log
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+utils/lang/check_phones_compatible.sh $lang/phones.txt $dubmdir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
+
 for f in $data/feats.scp $lang/phones.txt $dubmdir/final.dubm $alidir/final.mdl \
   $alidir/ali.1.gz $denlatdir/lat.1.gz; do
   [ ! -f $f ] && echo "Expected file $f to exist" && exit 1;
@@ -74,9 +78,11 @@ nj=`cat $alidir/num_jobs` || exit 1;
 sdata=$data/split$nj
 splice_opts=`cat $alidir/splice_opts 2>/dev/null` # frame-splicing options.
 cmvn_opts=`cat $alidir/cmvn_opts 2>/dev/null`
+delta_opts=`cat $alidir/delta_opts 2>/dev/null`
 mkdir -p $dir/log
 cp $alidir/splice_opts $dir 2>/dev/null # frame-splicing options.
 cp $alidir/cmvn_opts $dir 2>/dev/null # cmn/cmvn option.
+cp $alidir/delta_opts $dir 2>/dev/null
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 
 
@@ -85,7 +91,7 @@ echo "$0: feature type is $feat_type"
 
 # Note: $feats is the features before fMPE.
 case $feat_type in
-  delta) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
+  delta) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas $delta_opts ark:- ark:- |";;
   lda) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
     cp $alidir/final.mat $dir    
     ;;

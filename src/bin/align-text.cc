@@ -47,7 +47,9 @@ int main(int argc, char *argv[]) {
         "\n"
         "Usage: align-text [options] <text1-rspecifier> <text2-rspecifier> \\\n"
         "                              <alignment-wspecifier>\n"
-        " e.g.: align-text ark:text1.txt ark:text2.txt ark,t:alignment.txt\n";
+        " e.g.: align-text ark:text1.txt ark:text2.txt ark,t:alignment.txt\n"
+        "See also: compute-wer,\n"
+        "Example scoring script: egs/wsj/s5/steps/score_kaldi.sh\n";
 
     ParseOptions po(usage);
 

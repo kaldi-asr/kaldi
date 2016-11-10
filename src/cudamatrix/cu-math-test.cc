@@ -1,4 +1,4 @@
-// cudamatrix/cuda-math-test.cc
+// cudamatrix/cu-math-test.cc
 
 // Copyright 2013 Johns Hopkins University (Author: David Snyder)
 
@@ -155,6 +155,7 @@ template<typename Real> void CudaMathUnitTest() {
 int main() {
   for (int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1
+    CuDevice::Instantiate().SetDebugStrideMode(true);
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no"); // -1 means no GPU
     else

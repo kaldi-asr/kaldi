@@ -12,6 +12,11 @@ function add_packages {
   opensuse_packages="$opensuse_packages $3";
 }
 
+if ! which which >&/dev/null; then
+  echo "$0: which is not installed."
+  add_packages which debianutils which
+fi
+
 if ! which g++ >&/dev/null; then
   echo "$0: g++ is not installed."
   add_packages gcc-c++ g++ gcc-c++
@@ -22,12 +27,17 @@ if ! echo "#include <zlib.h>" | gcc -E - >&/dev/null; then
   add_packages zlib-devel zlib1g-dev zlib-devel
 fi
 
-for f in make gcc automake libtool autoconf patch grep bzip2 gzip wget git; do
+for f in make gcc automake autoconf patch grep bzip2 gzip wget git; do
   if ! which $f >&/dev/null; then
     echo "$0: $f is not installed."
     add_packages $f $f $f
   fi
 done
+
+if ! which libtoolize >&/dev/null && ! which glibtoolize >&/dev/null; then
+  echo "$0: neither libtoolize nor glibtoolize is installed"
+  add_packages libtool libtool libtool
+fi
 
 if ! which svn >&/dev/null; then
   echo "$0: subversion is not installed"
@@ -58,7 +68,10 @@ fi
 printed=false
 status=0
 
-if which apt-get >&/dev/null; then
+if which apt-get >&/dev/null && ! which zypper >/dev/null; then
+  # if we're using apt-get [but we're not OpenSuse, which uses zypper as the
+  # primary installer, but sometimes installs apt-get for some compatibility
+  # reason without it really working]...
   if [ ! -z "$debian_packages" ]; then
     echo "$0: we recommend that you run (our best guess):"
     echo " sudo apt-get install $debian_packages"
@@ -72,7 +85,7 @@ if which apt-get >&/dev/null; then
   fi
   # Debian systems generally link /bin/sh to dash, which doesn't work
   # with some scripts as it doesn't expand x.{1,2}.y to x.1.y x.2.y
-  if [ $(readlink /bin/sh) == "dash" ]; then
+  if [ "$(readlink /bin/sh)" == "dash" ]; then
     echo "/bin/sh is linked to dash, and currently some of the scripts will not run"
     echo "properly.  We recommend to run:"
     echo " sudo ln -s -f bash /bin/sh"
@@ -95,10 +108,10 @@ if which yum >&/dev/null; then
 fi
 
 if which zypper >&/dev/null; then
-  if [ ! -z "$opensuse_packages" ]; then 
+  if [ ! -z "$opensuse_packages" ]; then
     echo "$0: we recommend that you run (our best guess):"
     echo " sudo zypper install $opensuse_packages"
-    printed=true 
+    printed=true
     status=1
   fi
   if ! zypper search -i | grep -E 'libatlas3|libatlas3-devel' >/dev/null; then
@@ -117,7 +130,7 @@ if [ ! -z "$debian_packages" ]; then
 fi
 
 
-if [ $(pwd | wc -w) -gt 1 ]; then 
+if [ $(pwd | wc -w) -gt 1 ]; then
   echo "*** $0: Warning: Kaldi scripts will fail if the directory name contains a space."
   echo "***  (it's OK if you just want to compile a few tools -> disable this check)."
   status=1;
@@ -129,9 +142,16 @@ if which grep >&/dev/null && pwd | grep -E 'JOB|LMWT' >/dev/null; then
   status=1;
 fi
 
+if [ -f /usr/lib64/libfst.so.1 ] || [ -f /usr/local/include/fst.h ] || \
+   [ -f /usr/include/fst/fst.h ] || [ -f /usr/local/bin/fstinfo ]; then
+  echo "*** $0: Kaldi cannot be installed (for now) if you have OpenFst"
+  echo "***   installed in system space (version mismatches, etc.)"
+  echo "***   Please try to uninstall it."
+  status=1
+fi
+
 if ! $printed && [ $status -eq 0 ]; then
   echo "$0: all OK."
 fi
-
 
 exit $status
