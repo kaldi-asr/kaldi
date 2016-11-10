@@ -1,7 +1,7 @@
 // ivector/plda.cc
 
-// Copyright      2013     Daniel Povey
-//           2015-2016     David Snyder
+// Copyright 2013     Daniel Povey
+//           2015     David Snyder
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -36,6 +36,8 @@ static void ComputeNormalizingTransform(const SpMatrix<Real> &covar,
 
 void Plda::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<Plda>");
+  within_var_.Write(os, binary);
+  between_var_.Write(os, binary);
   mean_.Write(os, binary);
   transform_.Write(os, binary);
   psi_.Write(os, binary);
@@ -44,6 +46,8 @@ void Plda::Write(std::ostream &os, bool binary) const {
 
 void Plda::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<Plda>");
+  within_var_.Read(is, binary);
+  between_var_.Read(is, binary);
   mean_.Read(is, binary);
   transform_.Read(is, binary);
   psi_.Read(is, binary);
@@ -215,36 +219,33 @@ void Plda::SmoothWithinClassCovariance(double smoothing_factor) {
   ComputeDerivedVars();
 }
 
+// TODO transform within and between variances and recompute derived variables.
+// mainly used for projecting between and within var to lower dimensional space.
 void Plda::ApplyTransform(const Matrix<double> &transform) {
-  // Multiply the old mean_ by the input transform.
   Vector<double> mean_new(transform.NumRows());
   mean_new.AddMatVec(1.0, transform, kNoTrans, mean_, 0.0);
   mean_.Resize(transform.NumRows());
   mean_.CopyFromVec(mean_new);
-  KALDI_LOG << "Norm of mean of iVector distribution is "
-            << mean_.Norm(2.0);
 
-  // Now Dim() == transform.NumRows().
-  SpMatrix<double> between_var(Dim()),
-                   within_var(Dim());
+  // TODO transform Use AddMat2Sp
+  // TODO at this point Dim() should equal transform.NumRows()
+  SpMatrix<double> between_var_new(Dim());
+  SpMatrix<double> within_var_new(Dim());
+  between_var_new.AddMat2Sp(1.0, transform, kNoTrans, between_var_, 0.0);
+  within_var_new.AddMat2Sp(1.0, transform, kNoTrans, within_var_, 0.0);
+  between_var_.Resize(Dim());
+  within_var_.Resize(Dim());
+  between_var_.CopyFromSp(between_var_new);
+  within_var_.CopyFromSp(within_var_new);
 
-  // At this point the between variance is a diagonal matrix given by
-  // psi_ and within_var is the identity.  Now transform the variances
-  // using the input transform.
-  between_var.AddMat2Vec(1.0, transform, kNoTrans, psi_, 0.0);
-  within_var.AddMat2(1.0, transform, kNoTrans, 0.0);
-
-  // The remainder of the function is similar to PldaEstimator::GetOutput()
-  // in that it recomputes transform that diagonalizes the between variance
-  // and makes the within variance unit.
   Matrix<double> transform1(Dim(), Dim());
-  ComputeNormalizingTransform(within_var, &transform1);
+  ComputeNormalizingTransform(within_var_, &transform1);
   // now transform is a matrix that if we project with it,
   // within_var_ becomes unit.
 
   // between_var_proj is between_var after projecting with transform1.
   SpMatrix<double> between_var_proj(Dim());
-  between_var_proj.AddMat2Sp(1.0, transform1, kNoTrans, between_var, 0.0);
+  between_var_proj.AddMat2Sp(1.0, transform1, kNoTrans, between_var_, 0.0);
 
   Matrix<double> U(Dim(), Dim());
   Vector<double> s(Dim());
@@ -265,6 +266,7 @@ void Plda::ApplyTransform(const Matrix<double> &transform) {
   // (i.e. U^T U diag(s) U U^T = diag(s)).  The final transform that
   // makes within_var_ unit and between_var_ diagonal is U^T transform1,
   // i.e. first transform1 and then U^T.
+
   transform_.Resize(Dim(), Dim());
   transform_.AddMatMat(1.0, U, kTrans, transform1, kNoTrans, 0.0);
   psi_.Resize(Dim());
@@ -272,6 +274,12 @@ void Plda::ApplyTransform(const Matrix<double> &transform) {
 
   KALDI_LOG << "Diagonal of between-class variance in normalized space is " << s;
   ComputeDerivedVars();
+  KALDI_LOG << "within_var_ = " << within_var_;
+  KALDI_LOG << "between_var_ = " << between_var_;
+  KALDI_LOG << "mean_ = " << mean_;
+  KALDI_LOG << "transform_ = " << transform_;
+  KALDI_LOG << "psi_ = " << psi_;
+  KALDI_LOG << "offset_ = " << offset_;
 }
 
 void PldaStats::AddSamples(double weight,
@@ -528,6 +536,10 @@ void PldaEstimator::GetOutput(Plda *plda) {
   plda->mean_.Scale(1.0 / stats_.class_weight_);
   KALDI_LOG << "Norm of mean of iVector distribution is "
             << plda->mean_.Norm(2.0);
+  // TODO
+  plda->between_var_ = between_var_;
+  plda->within_var_ = within_var_;
+  // END TOO
 
   Matrix<double> transform1(Dim(), Dim());
   ComputeNormalizingTransform(within_var_, &transform1);

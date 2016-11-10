@@ -16,7 +16,8 @@ BINFILES = ivector-extractor-init ivector-extractor-acc-stats \
            logistic-regression-train logistic-regression-eval \
            logistic-regression-copy create-split-from-vad \
            ivector-extract-online ivector-adapt-plda \
-	   ivector-extract-dense ivector-diarization-plda-scoring ivector-cluster
+	   ivector-extract-dense ivector-diarization-plda-scoring \
+           agglomerative-cluster
 
 OBJFILES =
 
@@ -27,6 +28,6 @@ TESTFILES =
 
 ADDLIBS = ../ivector/kaldi-ivector.a ../hmm/kaldi-hmm.a ../gmm/kaldi-gmm.a \
           ../tree/kaldi-tree.a ../util/kaldi-util.a ../thread/kaldi-thread.a \
-          ../matrix/kaldi-matrix.a ../base/kaldi-base.a 
+          ../matrix/kaldi-matrix.a ../base/kaldi-base.a ../segmenter/kaldi-segmenter.a
 
 include ../makefiles/default_rules.mk

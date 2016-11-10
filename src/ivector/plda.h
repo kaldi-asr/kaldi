@@ -76,6 +76,8 @@ class Plda {
   Plda() { }
 
   explicit Plda(const Plda &other):
+    within_var_(other.within_var_),
+    between_var_(other.between_var_),
     mean_(other.mean_),
     transform_(other.transform_),
     psi_(other.psi_),
@@ -131,9 +133,7 @@ class Plda {
   /// psi_ were as a result very large.
   void SmoothWithinClassCovariance(double smoothing_factor);
 
-  /// TODO Apply a transform to the PLDA model.  This is mostly used for
-  /// projecting the parameters of the model into a lower dimensional space,
-  /// typically for speaker diarization.
+  /// TODO transform PLDA model
   void ApplyTransform(const Matrix<double> &transform);
 
   int32 Dim() const { return mean_.Dim(); }
@@ -144,6 +144,8 @@ class Plda {
   friend class PldaEstimator;
   friend class PldaUnsupervisedAdaptor;
 
+  SpMatrix<double> within_var_; // TODO
+  SpMatrix<double> between_var_; // TODO
   Vector<double> mean_;  // mean of samples in original space.
   Matrix<double> transform_; // of dimension Dim() by Dim();
                              // this transform makes within-class covar unit
@@ -154,6 +156,8 @@ class Plda {
   Vector<double> offset_;  // derived variable: -1.0 * transform_ * mean_
 
  private:
+  //KALDI_DISALLOW_COPY_AND_ASSIGN(Plda);
+  /// TODO
   Plda &operator = (const Plda &other);
   /// This returns a normalization factor, which is a quantity we
   /// must multiply "transformed_ivector" by so that it has the length
