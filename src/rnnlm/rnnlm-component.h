@@ -28,13 +28,13 @@ namespace kaldi {
 namespace rnnlm {
 
 //using namespace nnet3;
-//using nnet3::UpdatableComponent;
-//using nnet3::NonlinearComponent;
+//using nnet3::LmUpdatableComponent;
+//using nnet3::LmNonlinearComponent;
 //using nnet3::Component;
 //using nnet3::ConfigLine;
 //using nnet3::ComponentPrecomputedIndexes;
 //using nnet3::kSimpleComponent;
-//using nnet3::kUpdatableComponent;
+//using nnet3::kLmUpdatableComponent;
 //using nnet3::kLinearInParameters;
 //using nnet3::kBackpropNeedsInput;
 //using nnet3::kBackpropAdds;
@@ -42,16 +42,16 @@ namespace rnnlm {
 //using nnet3::kStoresStats;
 //using nnet3::ConfigLine;
 
-class FixedAffineComponent;
-class SoftmaxComponent;
-class LogSoftmaxComponent;
+class LmFixedAffineComponent;
+class LmSoftmaxComponent;
+class LmLogSoftmaxComponent;
 
 // Affine means a linear function plus an offset.
 // Note: although this class can be instantiated, it also
 // functions as a base-class for more specialized versions of
 // AffineComponent.
-class AffineComponent: public UpdatableComponent {
-  friend class SoftmaxComponent; // Friend declaration relates to mixing up.
+class LmAffineComponent: public LmUpdatableComponent {
+  friend class LmSoftmaxComponent; // Friend declaration relates to mixing up.
  public:
 
   virtual int32 InputDim() const { return linear_params_.NumCols(); }
@@ -60,8 +60,8 @@ class AffineComponent: public UpdatableComponent {
   virtual std::string Info() const;
   virtual void InitFromConfig(ConfigLine *cfl);
 
-  AffineComponent() { } // use Init to really initialize.
-  virtual std::string Type() const { return "AffineComponent"; }
+  LmAffineComponent() { } // use Init to really initialize.
+  virtual std::string Type() const { return "LmAffineComponent"; }
   virtual int32 Properties() const {
     return kSimpleComponent|kUpdatableComponent|kLinearInParameters|
         kBackpropNeedsInput|kBackpropAdds;
@@ -81,21 +81,21 @@ class AffineComponent: public UpdatableComponent {
                         const MatrixBase<BaseFloat> &in_value,
                         const MatrixBase<BaseFloat> &, // out_value
                         const MatrixBase<BaseFloat> &out_deriv,
-                        Component *to_update,
+                        LmComponent *to_update,
                         MatrixBase<BaseFloat> *in_deriv) const;
 
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
 
-  virtual Component* Copy() const;
+  virtual LmComponent* Copy() const;
 
 
-  // Some functions from base-class UpdatableComponent.
+  // Some functions from base-class LmUpdatableComponent.
   virtual void Scale(BaseFloat scale);
-  virtual void Add(BaseFloat alpha, const Component &other);
+  virtual void Add(BaseFloat alpha, const LmComponent &other);
   virtual void SetZero(bool treat_as_gradient);
   virtual void PerturbParams(BaseFloat stddev);
-  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
+  virtual BaseFloat DotProduct(const LmUpdatableComponent &other) const;
   virtual int32 NumParameters() const;
   virtual void Vectorize(VectorBase<BaseFloat> *params) const;
   virtual void UnVectorize(const VectorBase<BaseFloat> &params);
@@ -107,9 +107,9 @@ class AffineComponent: public UpdatableComponent {
                          const MatrixBase<BaseFloat> &linear);
   const Vector<BaseFloat> &BiasParams() { return bias_params_; }
   const Matrix<BaseFloat> &LinearParams() { return linear_params_; }
-  explicit AffineComponent(const AffineComponent &other);
+  explicit LmAffineComponent(const LmAffineComponent &other);
   // The next constructor is used in converting from nnet1.
-  AffineComponent(const MatrixBase<BaseFloat> &linear_params,
+  LmAffineComponent(const MatrixBase<BaseFloat> &linear_params,
                   const VectorBase<BaseFloat> &bias_params,
                   BaseFloat learning_rate);
   void Init(int32 input_dim, int32 output_dim,
@@ -124,13 +124,13 @@ class AffineComponent: public UpdatableComponent {
   // together.  They return a pointer to a new Component equivalent to
   // the sequence of two components.  We haven't implemented this for
   // FixedLinearComponent yet.
-  Component *CollapseWithNext(const AffineComponent &next) const ;
-  Component *CollapseWithNext(const FixedAffineComponent &next) const;
+  Component *CollapseWithNext(const LmAffineComponent &next) const ;
+//  Component *CollapseWithNext(const LmFixedAffineComponent &next) const;
 //  Component *CollapseWithNext(const FixedScaleComponent &next) const;
-  Component *CollapseWithPrevious(const FixedAffineComponent &prev) const;
+//  Component *CollapseWithPrevious(const LmFixedAffineComponent &prev) const;
 
  protected:
-  friend class NaturalGradientAffineComponent;
+//  friend class NaturalGradientAffineComponent;
   // This function Update() is for extensibility; child classes may override
   // this, e.g. for natural gradient update.
   virtual void Update(
@@ -145,17 +145,17 @@ class AffineComponent: public UpdatableComponent {
       const MatrixBase<BaseFloat> &in_value,
       const MatrixBase<BaseFloat> &out_deriv);
 
-  const AffineComponent &operator = (const AffineComponent &other); // Disallow.
+  const LmAffineComponent &operator = (const LmAffineComponent &other); // Disallow.
   Matrix<BaseFloat> linear_params_;
   Vector<BaseFloat> bias_params_;
 };
 
-class SoftmaxComponent: public NonlinearComponent {
+class LmSoftmaxComponent: public LmNonlinearComponent {
  public:
-  explicit SoftmaxComponent(const SoftmaxComponent &other):
-      NonlinearComponent(other) { }
-  SoftmaxComponent() { }
-  virtual std::string Type() const { return "SoftmaxComponent"; }
+  explicit LmSoftmaxComponent(const LmSoftmaxComponent &other):
+      LmNonlinearComponent(other) { }
+  LmSoftmaxComponent() { }
+  virtual std::string Type() const { return "LmSoftmaxComponent"; }
   virtual int32 Properties() const {
     return kSimpleComponent|kBackpropNeedsOutput|kStoresStats;
   }
@@ -167,21 +167,21 @@ class SoftmaxComponent: public NonlinearComponent {
                         const MatrixBase<BaseFloat> &in_value,
                         const MatrixBase<BaseFloat> &out_value,
                         const MatrixBase<BaseFloat> &out_deriv,
-                        Component *to_update,
+                        LmComponent *to_update,
                         MatrixBase<BaseFloat> *in_deriv) const;
   virtual void StoreStats(const MatrixBase<BaseFloat> &out_value);
 
-  virtual Component* Copy() const { return new SoftmaxComponent(*this); }
+  virtual LmComponent* Copy() const { return new LmSoftmaxComponent(*this); }
  private:
-  SoftmaxComponent &operator = (const SoftmaxComponent &other); // Disallow.
+  LmSoftmaxComponent &operator = (const LmSoftmaxComponent &other); // Disallow.
 };
 
-class LogSoftmaxComponent: public NonlinearComponent {
+class LmLogSoftmaxComponent: public LmNonlinearComponent {
  public:
-  explicit LogSoftmaxComponent(const LogSoftmaxComponent &other):
-      NonlinearComponent(other) { }
-  LogSoftmaxComponent() { }
-  virtual std::string Type() const { return "LogSoftmaxComponent"; }
+  explicit LmLogSoftmaxComponent(const LmLogSoftmaxComponent &other):
+      LmNonlinearComponent(other) { }
+  LmLogSoftmaxComponent() { }
+  virtual std::string Type() const { return "LmLogSoftmaxComponent"; }
   virtual int32 Properties() const {
     return kSimpleComponent|kBackpropNeedsOutput|kStoresStats;
   }
@@ -193,14 +193,15 @@ class LogSoftmaxComponent: public NonlinearComponent {
                         const MatrixBase<BaseFloat> &in_value,
                         const MatrixBase<BaseFloat> &out_value,
                         const MatrixBase<BaseFloat> &out_deriv,
-                        Component *to_update,
+                        LmComponent *to_update,
                         MatrixBase<BaseFloat> *in_deriv) const;
 
-  virtual Component* Copy() const { return new LogSoftmaxComponent(*this); }
+  virtual LmComponent* Copy() const { return new LmLogSoftmaxComponent(*this); }
  private:
-  LogSoftmaxComponent &operator = (const LogSoftmaxComponent &other); // Disallow.
+  LmLogSoftmaxComponent &operator = (const LmLogSoftmaxComponent &other); // Disallow.
 };
 
+/*
 /// Keywords: natural gradient descent, NG-SGD, naturalgradient.  For
 /// the top-level of the natural gradient code look here, and also in
 /// nnet-precondition-online.h.
@@ -286,14 +287,14 @@ class NaturalGradientAffineComponent: public AffineComponent {
       const MatrixBase<BaseFloat> &in_value,
       const MatrixBase<BaseFloat> &out_deriv);
 };
-
+*/
 
 /// FixedAffineComponent is an affine transform that is supplied
 /// at network initialization time and is not trainable.
-class FixedAffineComponent: public Component {
+class LmFixedAffineComponent: public LmComponent {
  public:
-  FixedAffineComponent() { }
-  virtual std::string Type() const { return "FixedAffineComponent"; }
+  LmFixedAffineComponent() { }
+  virtual std::string Type() const { return "LmFixedAffineComponent"; }
   virtual std::string Info() const;
 
   /// matrix should be of size input-dim+1 to output-dim, last col is offset
@@ -315,11 +316,11 @@ class FixedAffineComponent: public Component {
                         const MatrixBase<BaseFloat> &in_value,
                         const MatrixBase<BaseFloat> &, // out_value
                         const MatrixBase<BaseFloat> &out_deriv,
-                        Component *to_update,
+                        LmComponent *to_update,
                         MatrixBase<BaseFloat> *in_deriv) const;
 
 
-  virtual Component* Copy() const;
+  virtual LmComponent* Copy() const;
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
 
@@ -330,7 +331,7 @@ class FixedAffineComponent: public Component {
   Matrix<BaseFloat> linear_params_;
   Vector<BaseFloat> bias_params_;
 
-  KALDI_DISALLOW_COPY_AND_ASSIGN(FixedAffineComponent);
+  KALDI_DISALLOW_COPY_AND_ASSIGN(LmFixedAffineComponent);
 };
 
 

@@ -5,13 +5,13 @@
 #include "nnet3/nnet-utils.h"
 
 namespace kaldi {
-namespace nnet3 {
+namespace rnnlm {
 
 void LmNnet::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<LmNnet>");
-  input_projection_ = AffineComponent::ReadNew(is, binary);
-  output_projection_ = AffineComponent::ReadNew(is, binary);
-  output_layer_ = NonlinearComponent::ReadNew(is, binary);
+  input_projection_ = LmAffineComponent::ReadNew(is, binary);
+  output_projection_ = LmAffineComponent::ReadNew(is, binary);
+  output_layer_ = LmNonlinearComponent::ReadNew(is, binary);
 
   nnet_->Read(is, binary);
 
@@ -38,9 +38,9 @@ void LmNnet::Write(std::ostream &os, bool binary) const {
 void LmNnet::ReadConfig(std::istream &config_is) {
 
   // TODO(hxu) will allow for more flexible types
-  input_projection_ = new NaturalGradientAffineComponent();
-  output_projection_ = new NaturalGradientAffineComponent();
-  output_layer_ =  new LogSoftmaxComponent();
+  input_projection_ = new LmAffineComponent();
+  output_projection_ = new LmAffineComponent();
+  output_layer_ =  new LmLogSoftmaxComponent();
 
   std::vector<string> lines(3);
   std::vector<ConfigLine> config_lines(3);

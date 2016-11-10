@@ -3,38 +3,37 @@
 #include <sstream>
 #include <algorithm>
 #include <iomanip>
-#include "nnet3/nnet-parse.h"
-#include "nnet3/nnet-parse.h"
+#include "rnnlm/nnet-parse.h"
 #include "rnnlm/rnnlm-component.h"
 
 namespace kaldi {
 namespace rnnlm {
 
-void AffineComponent::Scale(BaseFloat scale) {
+void LmAffineComponent::Scale(BaseFloat scale) {
   linear_params_.Scale(scale);
   bias_params_.Scale(scale);
 }
 
-void AffineComponent::Resize(int32 input_dim, int32 output_dim) {
+void LmAffineComponent::Resize(int32 input_dim, int32 output_dim) {
   KALDI_ASSERT(input_dim > 0 && output_dim > 0);
   bias_params_.Resize(output_dim);
   linear_params_.Resize(output_dim, input_dim);
 }
 
-void AffineComponent::Add(BaseFloat alpha, const Component &other_in) {
-  const AffineComponent *other =
-      dynamic_cast<const AffineComponent*>(&other_in);
+void LmAffineComponent::Add(BaseFloat alpha, const LmComponent &other_in) {
+  const LmAffineComponent *other =
+      dynamic_cast<const LmAffineComponent*>(&other_in);
   KALDI_ASSERT(other != NULL);
   linear_params_.AddMat(alpha, other->linear_params_);
   bias_params_.AddVec(alpha, other->bias_params_);
 }
 
-AffineComponent::AffineComponent(const AffineComponent &component):
-    UpdatableComponent(component),
+LmAffineComponent::LmAffineComponent(const LmAffineComponent &component):
+    LmUpdatableComponent(component),
     linear_params_(component.linear_params_),
     bias_params_(component.bias_params_) { }
 
-AffineComponent::AffineComponent(const MatrixBase<BaseFloat> &linear_params,
+LmAffineComponent::LmAffineComponent(const MatrixBase<BaseFloat> &linear_params,
                                  const VectorBase<BaseFloat> &bias_params,
                                  BaseFloat learning_rate):
     linear_params_(linear_params),
@@ -46,7 +45,7 @@ AffineComponent::AffineComponent(const MatrixBase<BaseFloat> &linear_params,
 
 
 
-void AffineComponent::SetZero(bool treat_as_gradient) {
+void LmAffineComponent::SetZero(bool treat_as_gradient) {
   if (treat_as_gradient) {
     SetActualLearningRate(1.0);
     is_gradient_ = true;
@@ -55,14 +54,14 @@ void AffineComponent::SetZero(bool treat_as_gradient) {
   bias_params_.SetZero();
 }
 
-void AffineComponent::SetParams(const VectorBase<BaseFloat> &bias,
+void LmAffineComponent::SetParams(const VectorBase<BaseFloat> &bias,
                                 const MatrixBase<BaseFloat> &linear) {
   bias_params_ = bias;
   linear_params_ = linear;
   KALDI_ASSERT(bias_params_.Dim() == linear_params_.NumRows());
 }
 
-void AffineComponent::PerturbParams(BaseFloat stddev) {
+void LmAffineComponent::PerturbParams(BaseFloat stddev) {
   Matrix<BaseFloat> temp_linear_params(linear_params_);
   temp_linear_params.SetRandn();
   linear_params_.AddMat(stddev, temp_linear_params);
@@ -72,27 +71,27 @@ void AffineComponent::PerturbParams(BaseFloat stddev) {
   bias_params_.AddVec(stddev, temp_bias_params);
 }
 
-std::string AffineComponent::Info() const {
+std::string LmAffineComponent::Info() const {
   std::ostringstream stream;
-  stream << UpdatableComponent::Info();
+  stream << LmUpdatableComponent::Info();
   PrintParameterStats(stream, "linear-params", linear_params_);
   PrintParameterStats(stream, "bias", bias_params_, true);
   return stream.str();
 }
 
-Component* AffineComponent::Copy() const {
-  AffineComponent *ans = new AffineComponent(*this);
+LmComponent* LmAffineComponent::Copy() const {
+  LmAffineComponent *ans = new LmAffineComponent(*this);
   return ans;
 }
 
-BaseFloat AffineComponent::DotProduct(const UpdatableComponent &other_in) const {
-  const AffineComponent *other =
-      dynamic_cast<const AffineComponent*>(&other_in);
+BaseFloat LmAffineComponent::DotProduct(const LmUpdatableComponent &other_in) const {
+  const LmAffineComponent *other =
+      dynamic_cast<const LmAffineComponent*>(&other_in);
   return TraceMatMat(linear_params_, other->linear_params_, kTrans)
       + VecVec(bias_params_, other->bias_params_);
 }
 
-void AffineComponent::Init(int32 input_dim, int32 output_dim,
+void LmAffineComponent::Init(int32 input_dim, int32 output_dim,
                            BaseFloat param_stddev, BaseFloat bias_stddev) {
   linear_params_.Resize(output_dim, input_dim);
   bias_params_.Resize(output_dim);
@@ -103,7 +102,7 @@ void AffineComponent::Init(int32 input_dim, int32 output_dim,
   bias_params_.Scale(bias_stddev);
 }
 
-void AffineComponent::Init(std::string matrix_filename) {
+void LmAffineComponent::Init(std::string matrix_filename) {
   Matrix<BaseFloat> mat;
   ReadKaldiObject(matrix_filename, &mat); // will abort on failure.
   KALDI_ASSERT(mat.NumCols() >= 2);
@@ -114,7 +113,7 @@ void AffineComponent::Init(std::string matrix_filename) {
   bias_params_.CopyColFromMat(mat, input_dim);
 }
 
-void AffineComponent::InitFromConfig(ConfigLine *cfl) {
+void LmAffineComponent::InitFromConfig(ConfigLine *cfl) {
   bool ok = true;
   std::string matrix_filename;
   int32 input_dim = -1, output_dim = -1;
@@ -144,7 +143,7 @@ void AffineComponent::InitFromConfig(ConfigLine *cfl) {
     KALDI_ERR << "Bad initializer " << cfl->WholeLine();
 }
 
-void AffineComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+void LmAffineComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                 const MatrixBase<BaseFloat> &in,
                                  MatrixBase<BaseFloat> *out) const {
 
@@ -154,7 +153,7 @@ void AffineComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
   out->AddMatMat(1.0, in, kNoTrans, linear_params_, kTrans, 1.0);
 }
 
-void AffineComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+void LmAffineComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                 const SparseMatrix<BaseFloat> &sp,
                                 MatrixBase<BaseFloat> *out) const {
 
@@ -168,29 +167,27 @@ void AffineComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
     sv.Max(&non_zero_index);
     vis.push_back(non_zero_index);
   }
-//  Array<MatrixIndexT> cu_indexes(vis);
 
-  cpu_out_transpose.AddCols(linear_params_.Mat(), vis.data());
+  cpu_out_transpose.AddCols(linear_params_, vis.data());
   out->CopyFromMat(cpu_out_transpose, kTrans);
-
-  out->AddVecToRows(1.0, bias_params_, 1.0); // copies bias_params_ to each row
+  out->AddVecToRows(1.0, bias_params_);
 }
 
-void AffineComponent::UpdateSimple(const MatrixBase<BaseFloat> &in_value,
+void LmAffineComponent::UpdateSimple(const MatrixBase<BaseFloat> &in_value,
                                    const MatrixBase<BaseFloat> &out_deriv) {
   bias_params_.AddRowSumMat(learning_rate_, out_deriv, 1.0);
   linear_params_.AddMatMat(learning_rate_, out_deriv, kTrans,
                            in_value, kNoTrans, 1.0);
 }
 
-void AffineComponent::Backprop(const std::string &debug_info,
+void LmAffineComponent::Backprop(const std::string &debug_info,
                                const ComponentPrecomputedIndexes *indexes,
                                const MatrixBase<BaseFloat> &in_value,
                                const MatrixBase<BaseFloat> &, // out_value
                                const MatrixBase<BaseFloat> &out_deriv,
-                               Component *to_update_in,
+                               LmComponent *to_update_in,
                                MatrixBase<BaseFloat> *in_deriv) const {
-  AffineComponent *to_update = dynamic_cast<AffineComponent*>(to_update_in);
+  LmAffineComponent *to_update = dynamic_cast<LmAffineComponent*>(to_update_in);
 
   // Propagate the derivative back to the input.
   // add with coefficient 1.0 since property kBackpropAdds is true.
@@ -210,7 +207,7 @@ void AffineComponent::Backprop(const std::string &debug_info,
   }
 }
 
-void AffineComponent::Read(std::istream &is, bool binary) {
+void LmAffineComponent::Read(std::istream &is, bool binary) {
   ReadUpdatableCommon(is, binary);  // read opening tag and learning rate.
   ExpectToken(is, binary, "<LinearParams>");
   linear_params_.Read(is, binary);
@@ -218,10 +215,10 @@ void AffineComponent::Read(std::istream &is, bool binary) {
   bias_params_.Read(is, binary);
   ExpectToken(is, binary, "<IsGradient>");
   ReadBasicType(is, binary, &is_gradient_);
-  ExpectToken(is, binary, "</AffineComponent>");
+  ExpectToken(is, binary, "</LmAffineComponent>");
 }
 
-void AffineComponent::Write(std::ostream &os, bool binary) const {
+void LmAffineComponent::Write(std::ostream &os, bool binary) const {
   WriteUpdatableCommon(os, binary);  // Write opening tag and learning rate
   WriteToken(os, binary, "<LinearParams>");
   linear_params_.Write(os, binary);
@@ -229,64 +226,63 @@ void AffineComponent::Write(std::ostream &os, bool binary) const {
   bias_params_.Write(os, binary);
   WriteToken(os, binary, "<IsGradient>");
   WriteBasicType(os, binary, is_gradient_);
-  WriteToken(os, binary, "</AffineComponent>");
+  WriteToken(os, binary, "</LmAffineComponent>");
 }
 
-int32 AffineComponent::NumParameters() const {
+int32 LmAffineComponent::NumParameters() const {
   return (InputDim() + 1) * OutputDim();
 }
-void AffineComponent::Vectorize(VectorBase<BaseFloat> *params) const {
+void LmAffineComponent::Vectorize(VectorBase<BaseFloat> *params) const {
   KALDI_ASSERT(params->Dim() == this->NumParameters());
   params->Range(0, InputDim() * OutputDim()).CopyRowsFromMat(linear_params_);
   params->Range(InputDim() * OutputDim(),
                 OutputDim()).CopyFromVec(bias_params_);
 }
-void AffineComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
+void LmAffineComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
   KALDI_ASSERT(params.Dim() == this->NumParameters());
   linear_params_.CopyRowsFromVec(params.Range(0, InputDim() * OutputDim()));
   bias_params_.CopyFromVec(params.Range(InputDim() * OutputDim(),
                                         OutputDim()));
 }
 
-Component *AffineComponent::CollapseWithNext(
-    const AffineComponent &next_component) const {
-  AffineComponent *ans = dynamic_cast<AffineComponent*>(this->Copy());
-  KALDI_ASSERT(ans != NULL);
-  // Note: it's possible that "ans" is really of a derived type such
-  // as AffineComponentPreconditioned, but this will still work.
-  // the "copy" call will copy things like learning rates, "alpha" value
-  // for preconditioned component, etc.
-  ans->linear_params_.Resize(next_component.OutputDim(), InputDim());
-  ans->bias_params_ = next_component.bias_params_;
+//LmComponent *LmAffineComponent::CollapseWithNext( const LmAffineComponent &next_component) const {
+//  LmAffineComponent *ans = dynamic_cast<LmAffineComponent*>(this->Copy());
+//  KALDI_ASSERT(ans != NULL);
+//  // Note: it's possible that "ans" is really of a derived type such
+//  // as LmAffineComponentPreconditioned, but this will still work.
+//  // the "copy" call will copy things like learning rates, "alpha" value
+//  // for preconditioned component, etc.
+//  ans->linear_params_.Resize(next_component.OutputDim(), InputDim());
+//  ans->bias_params_ = next_component.bias_params_;
+//
+//  ans->linear_params_.AddMatMat(1.0, next_component.linear_params_, kNoTrans,
+//                                this->linear_params_, kNoTrans, 0.0);
+//  ans->bias_params_.AddMatVec(1.0, next_component.linear_params_, kNoTrans,
+//                              this->bias_params_, 1.0);
+//  return ans;
+//}
+//
+//Component *LmAffineComponent::CollapseWithNext(
+//    const LmFixedAffineComponent &next_component) const {
+//  // If at least one was non-updatable, make the whole non-updatable.
+//  LmFixedAffineComponent *ans =
+//      dynamic_cast<LmFixedAffineComponent*>(next_component.Copy());
+//  KALDI_ASSERT(ans != NULL);
+//  ans->linear_params_.Resize(next_component.OutputDim(), InputDim());
+//  ans->bias_params_ = next_component.bias_params_;
+//
+//  ans->linear_params_.AddMatMat(1.0, next_component.linear_params_, kNoTrans,
+//                                this->linear_params_, kNoTrans, 0.0);
+//  ans->bias_params_.AddMatVec(1.0, next_component.linear_params_, kNoTrans,
+//                              this->bias_params_, 1.0);
+//  return ans;
+//}
 
-  ans->linear_params_.AddMatMat(1.0, next_component.linear_params_, kNoTrans,
-                                this->linear_params_, kNoTrans, 0.0);
-  ans->bias_params_.AddMatVec(1.0, next_component.linear_params_, kNoTrans,
-                              this->bias_params_, 1.0);
-  return ans;
-}
-
-Component *AffineComponent::CollapseWithNext(
-    const FixedAffineComponent &next_component) const {
-  // If at least one was non-updatable, make the whole non-updatable.
-  FixedAffineComponent *ans =
-      dynamic_cast<FixedAffineComponent*>(next_component.Copy());
-  KALDI_ASSERT(ans != NULL);
-  ans->linear_params_.Resize(next_component.OutputDim(), InputDim());
-  ans->bias_params_ = next_component.bias_params_;
-
-  ans->linear_params_.AddMatMat(1.0, next_component.linear_params_, kNoTrans,
-                                this->linear_params_, kNoTrans, 0.0);
-  ans->bias_params_.AddMatVec(1.0, next_component.linear_params_, kNoTrans,
-                              this->bias_params_, 1.0);
-  return ans;
-}
-
-//Component *AffineComponent::CollapseWithNext(
+//Component *LmAffineComponent::CollapseWithNext(
 //    const FixedScaleComponent &next_component) const {
 //  KALDI_ASSERT(this->OutputDim() == next_component.InputDim());
-//  AffineComponent *ans =
-//      dynamic_cast<AffineComponent*>(this->Copy());
+//  LmAffineComponent *ans =
+//      dynamic_cast<LmAffineComponent*>(this->Copy());
 //  KALDI_ASSERT(ans != NULL);
 //  ans->linear_params_.MulRowsVec(next_component.scales_);
 //  ans->bias_params_.MulElements(next_component.scales_);
@@ -294,31 +290,31 @@ Component *AffineComponent::CollapseWithNext(
 //  return ans;
 //}
 
-Component *AffineComponent::CollapseWithPrevious(
-    const FixedAffineComponent &prev_component) const {
-  // If at least one was non-updatable, make the whole non-updatable.
-  FixedAffineComponent *ans =
-      dynamic_cast<FixedAffineComponent*>(prev_component.Copy());
-  KALDI_ASSERT(ans != NULL);
+//Component *LmAffineComponent::CollapseWithPrevious(
+//    const LmFixedAffineComponent &prev_component) const {
+//  // If at least one was non-updatable, make the whole non-updatable.
+//  LmFixedAffineComponent *ans =
+//      dynamic_cast<LmFixedAffineComponent*>(prev_component.Copy());
+//  KALDI_ASSERT(ans != NULL);
+//
+//  ans->linear_params_.Resize(this->OutputDim(), prev_component.InputDim());
+//  ans->bias_params_ = this->bias_params_;
+//
+//  ans->linear_params_.AddMatMat(1.0, this->linear_params_, kNoTrans,
+//                                prev_component.linear_params_, kNoTrans, 0.0);
+//  ans->bias_params_.AddMatVec(1.0, this->linear_params_, kNoTrans,
+//                              prev_component.bias_params_, 1.0);
+//  return ans;
+//}
 
-  ans->linear_params_.Resize(this->OutputDim(), prev_component.InputDim());
-  ans->bias_params_ = this->bias_params_;
-
-  ans->linear_params_.AddMatMat(1.0, this->linear_params_, kNoTrans,
-                                prev_component.linear_params_, kNoTrans, 0.0);
-  ans->bias_params_.AddMatVec(1.0, this->linear_params_, kNoTrans,
-                              prev_component.bias_params_, 1.0);
-  return ans;
-}
-
-
-NaturalGradientAffineComponent::NaturalGradientAffineComponent():
+/*
+NaturalGradientLmAffineComponent::NaturalGradientLmAffineComponent():
     max_change_per_sample_(0.0),
     update_count_(0.0), active_scaling_count_(0.0),
     max_change_scale_stats_(0.0) { }
 
 // virtual
-void NaturalGradientAffineComponent::Resize(
+void NaturalGradientLmAffineComponent::Resize(
     int32 input_dim, int32 output_dim) {
   KALDI_ASSERT(input_dim > 1 && output_dim > 1);
   if (rank_in_ >= input_dim) rank_in_ = input_dim - 1;
@@ -332,7 +328,7 @@ void NaturalGradientAffineComponent::Resize(
 }
 
 
-void NaturalGradientAffineComponent::Read(std::istream &is, bool binary) {
+void NaturalGradientLmAffineComponent::Read(std::istream &is, bool binary) {
   ReadUpdatableCommon(is, binary);  // Read the opening tag and learning rate
   ExpectToken(is, binary, "<LinearParams>");
   linear_params_.Read(is, binary);
@@ -362,14 +358,14 @@ void NaturalGradientAffineComponent::Read(std::istream &is, bool binary) {
     ReadBasicType(is, binary, &max_change_scale_stats_);
     ReadToken(is, binary, &token);
   }
-  if (token != "<NaturalGradientAffineComponent>" &&
-      token != "</NaturalGradientAffineComponent>")
-    KALDI_ERR << "Expected <NaturalGradientAffineComponent> or "
-              << "</NaturalGradientAffineComponent>, got " << token;
+  if (token != "<NaturalGradientLmAffineComponent>" &&
+      token != "</NaturalGradientLmAffineComponent>")
+    KALDI_ERR << "Expected <NaturalGradientLmAffineComponent> or "
+              << "</NaturalGradientLmAffineComponent>, got " << token;
   SetNaturalGradientConfigs();
 }
 
-void NaturalGradientAffineComponent::InitFromConfig(ConfigLine *cfl) {
+void NaturalGradientLmAffineComponent::InitFromConfig(ConfigLine *cfl) {
   bool ok = true;
   std::string matrix_filename;
   BaseFloat num_samples_history = 2000.0, alpha = 4.0,
@@ -415,7 +411,7 @@ void NaturalGradientAffineComponent::InitFromConfig(ConfigLine *cfl) {
     KALDI_ERR << "Bad initializer " << cfl->WholeLine();
 }
 
-void NaturalGradientAffineComponent::SetNaturalGradientConfigs() {
+void NaturalGradientLmAffineComponent::SetNaturalGradientConfigs() {
   preconditioner_in_.SetRank(rank_in_);
   preconditioner_in_.SetNumSamplesHistory(num_samples_history_);
   preconditioner_in_.SetAlpha(alpha_);
@@ -426,7 +422,7 @@ void NaturalGradientAffineComponent::SetNaturalGradientConfigs() {
   preconditioner_out_.SetUpdatePeriod(update_period_);
 }
 
-void NaturalGradientAffineComponent::Init(
+void NaturalGradientLmAffineComponent::Init(
     int32 rank_in, int32 rank_out,
     int32 update_period, BaseFloat num_samples_history, BaseFloat alpha,
     BaseFloat max_change_per_sample,
@@ -453,7 +449,7 @@ void NaturalGradientAffineComponent::Init(
   max_change_scale_stats_ = 0.0;
 }
 
-void NaturalGradientAffineComponent::Init(
+void NaturalGradientLmAffineComponent::Init(
     int32 input_dim, int32 output_dim,
     BaseFloat param_stddev, BaseFloat bias_stddev, BaseFloat bias_mean,
     int32 rank_in, int32 rank_out, int32 update_period,
@@ -476,7 +472,7 @@ void NaturalGradientAffineComponent::Init(
   SetNaturalGradientConfigs();
   if (max_change_per_sample > 0.0)
     KALDI_WARN << "You are setting a positive max_change_per_sample for "
-               << "NaturalGradientAffineComponent. But the per-component "
+               << "NaturalGradientLmAffineComponent. But the per-component "
                << "gradient clipping mechansim has been removed. Instead it's currently "
                << "done at the whole model level.";
   max_change_per_sample_ = max_change_per_sample;
@@ -486,7 +482,7 @@ void NaturalGradientAffineComponent::Init(
   max_change_scale_stats_ = 0.0;
 }
 
-void NaturalGradientAffineComponent::Write(std::ostream &os,
+void NaturalGradientLmAffineComponent::Write(std::ostream &os,
                                            bool binary) const {
   WriteUpdatableCommon(os, binary);  // Write the opening tag and learning rate
   WriteToken(os, binary, "<LinearParams>");
@@ -513,10 +509,10 @@ void NaturalGradientAffineComponent::Write(std::ostream &os,
   WriteBasicType(os, binary, active_scaling_count_);
   WriteToken(os, binary, "<MaxChangeScaleStats>");
   WriteBasicType(os, binary, max_change_scale_stats_);
-  WriteToken(os, binary, "</NaturalGradientAffineComponent>");
+  WriteToken(os, binary, "</NaturalGradientLmAffineComponent>");
 }
 
-std::string NaturalGradientAffineComponent::Info() const {
+std::string NaturalGradientLmAffineComponent::Info() const {
   std::ostringstream stream;
   stream << UpdatableComponent::Info();
   PrintParameterStats(stream, "linear-params", linear_params_);
@@ -535,13 +531,13 @@ std::string NaturalGradientAffineComponent::Info() const {
   return stream.str();
 }
 
-Component* NaturalGradientAffineComponent::Copy() const {
-  return new NaturalGradientAffineComponent(*this);
+Component* NaturalGradientLmAffineComponent::Copy() const {
+  return new NaturalGradientLmAffineComponent(*this);
 }
 
-NaturalGradientAffineComponent::NaturalGradientAffineComponent(
-    const NaturalGradientAffineComponent &other):
-    AffineComponent(other),
+NaturalGradientLmAffineComponent::NaturalGradientLmAffineComponent(
+    const NaturalGradientLmAffineComponent &other):
+    LmAffineComponent(other),
     rank_in_(other.rank_in_),
     rank_out_(other.rank_out_),
     update_period_(other.update_period_),
@@ -556,7 +552,7 @@ NaturalGradientAffineComponent::NaturalGradientAffineComponent(
   SetNaturalGradientConfigs();
 }
 
-void NaturalGradientAffineComponent::Update(
+void NaturalGradientLmAffineComponent::Update(
     const std::string &debug_info,
     const MatrixBase<BaseFloat> &in_value,
     const MatrixBase<BaseFloat> &out_deriv) {
@@ -609,13 +605,13 @@ void NaturalGradientAffineComponent::Update(
                            in_value_precon_part, kNoTrans, 1.0);
 }
 
-void NaturalGradientAffineComponent::ZeroStats()  {
+void NaturalGradientLmAffineComponent::ZeroStats()  {
   update_count_ = 0.0;
   max_change_scale_stats_ = 0.0;
   active_scaling_count_ = 0.0;
 }
 
-void NaturalGradientAffineComponent::Scale(BaseFloat scale) {
+void NaturalGradientLmAffineComponent::Scale(BaseFloat scale) {
   update_count_ *= scale;
   max_change_scale_stats_ *= scale;
   active_scaling_count_ *= scale;
@@ -623,9 +619,9 @@ void NaturalGradientAffineComponent::Scale(BaseFloat scale) {
   bias_params_.Scale(scale);
 }
 
-void NaturalGradientAffineComponent::Add(BaseFloat alpha, const Component &other_in) {
-  const NaturalGradientAffineComponent *other =
-      dynamic_cast<const NaturalGradientAffineComponent*>(&other_in);
+void NaturalGradientLmAffineComponent::Add(BaseFloat alpha, const Component &other_in) {
+  const NaturalGradientLmAffineComponent *other =
+      dynamic_cast<const NaturalGradientLmAffineComponent*>(&other_in);
   KALDI_ASSERT(other != NULL);
   update_count_ += alpha * other->update_count_;
   max_change_scale_stats_ += alpha * other->max_change_scale_stats_;
@@ -633,23 +629,24 @@ void NaturalGradientAffineComponent::Add(BaseFloat alpha, const Component &other
   linear_params_.AddMat(alpha, other->linear_params_);
   bias_params_.AddVec(alpha, other->bias_params_);
 }
+*/
 
-std::string FixedAffineComponent::Info() const {
+std::string LmFixedAffineComponent::Info() const {
   std::ostringstream stream;
-  stream << Component::Info();
+  stream << LmComponent::Info();
   PrintParameterStats(stream, "linear-params", linear_params_);
   PrintParameterStats(stream, "bias", bias_params_, true);
   return stream.str();
 }
 
-void FixedAffineComponent::Init(const MatrixBase<BaseFloat> &mat) {
+void LmFixedAffineComponent::Init(const MatrixBase<BaseFloat> &mat) {
   KALDI_ASSERT(mat.NumCols() > 1);
   linear_params_ = mat.Range(0, mat.NumRows(), 0, mat.NumCols() - 1);
   bias_params_.Resize(mat.NumRows());
   bias_params_.CopyColFromMat(mat, mat.NumCols() - 1);
 }
 
-void FixedAffineComponent::InitFromConfig(ConfigLine *cfl) {
+void LmFixedAffineComponent::InitFromConfig(ConfigLine *cfl) {
   std::string filename;
   // Two forms allowed: "matrix=<rxfilename>", or "input-dim=x output-dim=y"
   // (for testing purposes only).
@@ -678,19 +675,19 @@ void FixedAffineComponent::InitFromConfig(ConfigLine *cfl) {
 }
 
 
-void FixedAffineComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+void LmFixedAffineComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                      const MatrixBase<BaseFloat> &in,
                                      MatrixBase<BaseFloat> *out) const  {
   out->CopyRowsFromVec(bias_params_); // Adds the bias term first.
   out->AddMatMat(1.0, in, kNoTrans, linear_params_, kTrans, 1.0);
 }
 
-void FixedAffineComponent::Backprop(const std::string &debug_info,
+void LmFixedAffineComponent::Backprop(const std::string &debug_info,
                                     const ComponentPrecomputedIndexes *indexes,
                                     const MatrixBase<BaseFloat> &, //in_value
                                     const MatrixBase<BaseFloat> &, //out_value
                                     const MatrixBase<BaseFloat> &out_deriv,
-                                    Component *, //to_update
+                                    LmComponent *, //to_update
                                     MatrixBase<BaseFloat> *in_deriv) const {
   // kBackpropAdds is true. It's the user's responsibility to zero out
   // <in_deriv> if they need it to be so.
@@ -699,49 +696,53 @@ void FixedAffineComponent::Backprop(const std::string &debug_info,
                         linear_params_, kNoTrans, 1.0);
 }
 
-Component* FixedAffineComponent::Copy() const {
-  FixedAffineComponent *ans = new FixedAffineComponent();
+LmComponent* LmFixedAffineComponent::Copy() const {
+  LmFixedAffineComponent *ans = new LmFixedAffineComponent();
   ans->linear_params_ = linear_params_;
   ans->bias_params_ = bias_params_;
   return ans;
 }
 
-void FixedAffineComponent::Write(std::ostream &os, bool binary) const {
-  WriteToken(os, binary, "<FixedAffineComponent>");
+void LmFixedAffineComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<LmFixedAffineComponent>");
   WriteToken(os, binary, "<LinearParams>");
   linear_params_.Write(os, binary);
   WriteToken(os, binary, "<BiasParams>");
   bias_params_.Write(os, binary);
-  WriteToken(os, binary, "</FixedAffineComponent>");
+  WriteToken(os, binary, "</LmFixedAffineComponent>");
 }
 
-void FixedAffineComponent::Read(std::istream &is, bool binary) {
-  ExpectOneOrTwoTokens(is, binary, "<FixedAffineComponent>", "<LinearParams>");
+void LmFixedAffineComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<LmFixedAffineComponent>", "<LinearParams>");
   linear_params_.Read(is, binary);
   ExpectToken(is, binary, "<BiasParams>");
   bias_params_.Read(is, binary);
-  ExpectToken(is, binary, "</FixedAffineComponent>");
+  ExpectToken(is, binary, "</LmFixedAffineComponent>");
 }
 
-void SoftmaxComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+void LmSoftmaxComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                  const MatrixBase<BaseFloat> &in,
                                  MatrixBase<BaseFloat> *out) const {
   // Apply softmax function to each row of the output...
   // for that row, we do
   // x_i = exp(x_i) / sum_j exp(x_j).
-  out->ApplySoftMaxPerRow(in);
+//  out->ApplySoftMaxPerRow(in);
+  out->CopyFromMat(in);
+  for(MatrixIndexT r = 0; r < out->NumRows(); r++) {                           
+    out->Row(r).ApplySoftMax();                                                
+  }    
 
   // This floor on the output helps us deal with
   // almost-zeros in a way that doesn't lead to overflow.
   out->ApplyFloor(1.0e-20);
 }
 
-void SoftmaxComponent::Backprop(const std::string &debug_info,
+void LmSoftmaxComponent::Backprop(const std::string &debug_info,
                                 const ComponentPrecomputedIndexes *indexes,
                                 const MatrixBase<BaseFloat> &, // in_value,
                                 const MatrixBase<BaseFloat> &out_value,
                                 const MatrixBase<BaseFloat> &out_deriv,
-                                Component *to_update_in,
+                                LmComponent *to_update_in,
                                 MatrixBase<BaseFloat> *in_deriv) const {
   if (in_deriv == NULL)
     return;
@@ -755,34 +756,60 @@ void SoftmaxComponent::Backprop(const std::string &debug_info,
     d = diag(p) e - p (p^T e).
     d_i = p_i e_i - p_i (p^T e).
   */
-  in_deriv->DiffSoftmaxPerRow(out_value, out_deriv);
+//  in_deriv->DiffSoftmaxPerRow(out_value, out_deriv);
+
+  const MatrixBase<BaseFloat> &P(out_value), &E(out_deriv);                               
+  MatrixBase<BaseFloat> &D(*in_deriv);                                               
+                                                                               
+  D.CopyFromMat(P);                                                           
+  D.MulElements(E);                                                           
+  // At this point, D = P .* E (in matlab notation)                           
+  Vector<BaseFloat> pe_vec(D.NumRows()); // For each row i, the dot product (p_t . e_t).
+  pe_vec.AddDiagMatMat(1.0, P, kNoTrans, E, kTrans, 0.0);                     
+                                                                               
+  D.AddDiagVecMat(-1.0, pe_vec, P, kNoTrans, 1.0); // does D -= diag(pe_vec) * P.
 }
 
-void SoftmaxComponent::StoreStats(const MatrixBase<BaseFloat> &out_value) {
+void LmSoftmaxComponent::StoreStats(const MatrixBase<BaseFloat> &out_value) {
   // We don't store derivative stats for this component type, just activation
   // stats.
   StoreStatsInternal(out_value, NULL);
 }
 
 
-void LogSoftmaxComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+void LmLogSoftmaxComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                     const MatrixBase<BaseFloat> &in,
                                     MatrixBase<BaseFloat> *out) const {
   // Applies log softmax function to each row of the output. For each row, we do
   // x_i = x_i - log(sum_j exp(x_j))
-  out->ApplyLogSoftMaxPerRow(in);
+//  out->ApplyLogSoftMaxPerRow(in);
+  out->CopyFromMat(in);
+  for(MatrixIndexT r = 0; r < out->NumRows(); r++) {                           
+    out->Row(r).ApplyLogSoftMax();                                                
+  }    
 }
 
-void LogSoftmaxComponent::Backprop(const std::string &debug_info,
+void LmLogSoftmaxComponent::Backprop(const std::string &debug_info,
                                    const ComponentPrecomputedIndexes *indexes,
                                    const MatrixBase<BaseFloat> &, // in_value
                                    const MatrixBase<BaseFloat> &out_value,
                                    const MatrixBase<BaseFloat> &out_deriv,
-                                   Component *, // to_update
+                                   LmComponent *, // to_update
                                    MatrixBase<BaseFloat> *in_deriv) const {
   if (in_deriv == NULL)
     return;
-  in_deriv->DiffLogSoftmaxPerRow(out_value, out_deriv);
+//  in_deriv->DiffLogSoftmaxPerRow(out_value, out_deriv);
+
+  const MatrixBase<BaseFloat> &Y(out_value), &E(out_deriv);                      
+  MatrixBase<BaseFloat> &D(*in_deriv);                                               
+                                                                              
+  D.CopyFromMat(Y);                                                           
+  D.ApplyExp();                           // exp(y)                           
+  Vector<BaseFloat> E_sum(D.NumRows()); // Initializes to zero                   
+  E_sum.AddColSumMat(1.0, E);             // Sum(e)                           
+  D.MulRowsVec(E_sum);                    // exp(y) Sum(e)                    
+  D.Scale(-1.0);                          // - exp(y) Sum(e)                  
+  D.AddMat(1.0, E, kNoTrans);             // e - exp(y_i) Sum(e) 
 }
 
 

@@ -40,14 +40,14 @@ namespace rnnlm {
 // int32 properties = kSimpleComponent|kBackpropNeedsOutput.
 
 /**
- * Class UpdatableComponent is a Component which has trainable parameters; it
+ * Class LmUpdatableComponent is a Component which has trainable parameters; it
  * extends the interface of Component.  This is a base-class for Components with
- * parameters.  See comment by declaration of kUpdatableComponent.
+ * parameters.  See comment by declaration of kLmUpdatableComponent.
  * The functions in this interface must only be called if the component returns
  * the kUpdatable flag.
  */
 
-class Component {
+class LmComponent {
  public:
   /// \brief Propagate function.
   ///   \param [in] indexes  A pointer to some information output by this class's
@@ -83,7 +83,7 @@ class Component {
   ///   \param [out] to_update  If model update is desired, the Component
   ///       to be updated, else NULL.  Does not have to be identical to this.
   ///       If supplied, you can assume that
-  ///       to_update->Properties() & kUpdatableComponent is nonzero.
+  ///       to_update->Properties() & kLmUpdatableComponent is nonzero.
   ///   \param [out] in_deriv   The derivative at the input of this component,
   ///       if needed (else NULL).   If  Properties()&kBackpropInPlace, may be
   ///       the same matrix as out_deriv.  If Properties()&kBackpropAdds, this
@@ -94,7 +94,7 @@ class Component {
                         const MatrixBase<BaseFloat> &in_value,
                         const MatrixBase<BaseFloat> &out_value,
                         const MatrixBase<BaseFloat> &out_deriv,
-                        Component *to_update, // may be NULL; may be identical
+                        LmComponent *to_update, // may be NULL; may be identical
                                               // to "this" or different.
                         MatrixBase<BaseFloat> *in_deriv) const = 0;
 
@@ -239,14 +239,14 @@ class Component {
   virtual int32 Properties() const = 0;
 
   /// \brief Read component from stream (works out its type).  Dies on error.
-  static Component* ReadNew(std::istream &is, bool binary);
+  static LmComponent* ReadNew(std::istream &is, bool binary);
 
   /// \brief Copies component (deep copy).
-  virtual Component* Copy() const = 0;
+  virtual LmComponent* Copy() const = 0;
 
   /// \brief Returns a new Component of the given type e.g. "SoftmaxComponent",
   ///   or NULL if no such component type exists.
-  static Component *NewComponentOfType(const std::string &type);
+  static LmComponent *NewComponentOfType(const std::string &type);
 
   /// \brief Read function (used after we know the type of the Component);
   ///   accepts input that is missing the token that describes the component
@@ -262,32 +262,32 @@ class Component {
   virtual std::string Info() const;
 
   /// This virtual function when called by
-  //    -- an UpdatableComponent scales the parameters
-  ///      by "scale" when called by an UpdatableComponent.
+  //    -- an LmUpdatableComponent scales the parameters
+  ///      by "scale" when called by an LmUpdatableComponent.
   //    -- a Nonlinear component it relates to scaling activation stats, not parameters.
   virtual void Scale(BaseFloat scale) {};
 
   /// This virtual function when called by
-  ///    -- an UpdatableComponent adds the parameters of
+  ///    -- an LmUpdatableComponent adds the parameters of
   ///      another updatable component, times some constant, to the current
   ///      parameters.
-  ///    -- a NonlinearComponent it relates to adding stats
+  ///    -- a LmNonlinearComponent it relates to adding stats
   /// Otherwise it should do nothing.
-  virtual void Add(BaseFloat alpha, const Component &other) {};
+  virtual void Add(BaseFloat alpha, const LmComponent &other) {};
 
-  Component() { }
+  LmComponent() { }
 
-  virtual ~Component() { }
+  virtual ~LmComponent() { }
 
  private:
-  KALDI_DISALLOW_COPY_AND_ASSIGN(Component);
+  KALDI_DISALLOW_COPY_AND_ASSIGN(LmComponent);
 };
 
 
 
-class UpdatableComponent: public Component {
+class LmUpdatableComponent: public LmComponent {
  public:
-  UpdatableComponent(const UpdatableComponent &other):
+  LmUpdatableComponent(const LmUpdatableComponent &other):
       learning_rate_(other.learning_rate_),
       learning_rate_factor_(other.learning_rate_factor_),
       is_gradient_(other.is_gradient_) { }
@@ -297,15 +297,15 @@ class UpdatableComponent: public Component {
   ///  learning_rate_factor_.
   virtual void SetZero(bool treat_as_gradient) = 0;
 
-  UpdatableComponent(): learning_rate_(0.001), learning_rate_factor_(1.0),
+  LmUpdatableComponent(): learning_rate_(0.001), learning_rate_factor_(1.0),
                         is_gradient_(false) { }
 
-  virtual ~UpdatableComponent() { }
+  virtual ~LmUpdatableComponent() { }
 
   /// \brief Computes dot-product between parameters of two instances of a
   ///  Component.  Can be used for computing parameter-norm of an
-  ///  UpdatableComponent.
-  virtual BaseFloat DotProduct(const UpdatableComponent &other) const = 0;
+  ///  LmUpdatableComponent.
+  virtual BaseFloat DotProduct(const LmUpdatableComponent &other) const = 0;
 
   /// This function is to be used in testing.  It adds unit noise times "stddev"
   /// to the parameters of the component.
@@ -365,18 +365,18 @@ class UpdatableComponent: public Component {
                       ///< gradient.
 
  private:
-  const UpdatableComponent &operator = (const UpdatableComponent &other); // Disallow.
+  const LmUpdatableComponent &operator = (const LmUpdatableComponent &other); // Disallow.
 };
 
 /// This kind of Component is a base-class for things like sigmoid, softmax and
 /// ReLU: nonlinearities that don't change the dimension.  It takes care of
 /// storing statistics on the average activations and derivatives encountered
 /// during training.
-class NonlinearComponent: public Component {
+class LmNonlinearComponent: public LmComponent {
  public:
 
-  NonlinearComponent();
-  explicit NonlinearComponent(const NonlinearComponent &other);
+  LmNonlinearComponent();
+  explicit LmNonlinearComponent(const LmNonlinearComponent &other);
 
   virtual int32 InputDim() const { return dim_; }
   virtual int32 OutputDim() const { return dim_; }
@@ -413,9 +413,9 @@ class NonlinearComponent: public Component {
   virtual void Write(std::ostream &os, bool binary) const;
 
   virtual void Scale(BaseFloat scale);
-  virtual void Add(BaseFloat alpha, const Component &other);
+  virtual void Add(BaseFloat alpha, const LmComponent &other);
 
-  // The following functions are unique to NonlinearComponent.
+  // The following functions are unique to LmNonlinearComponent.
   // They mostly relate to diagnostics.
   const Vector<double> &ValueSum() const { return value_sum_; }
   const Vector<double> &DerivSum() const { return deriv_sum_; }
@@ -438,7 +438,7 @@ class NonlinearComponent: public Component {
                           const MatrixBase<BaseFloat> *deriv = NULL);
 
 
-  const NonlinearComponent &operator = (const NonlinearComponent &other); // Disallow.
+  const LmNonlinearComponent &operator = (const LmNonlinearComponent &other); // Disallow.
   int32 dim_;
   Vector<double> value_sum_; // stats at the output.
   Vector<double> deriv_sum_; // stats of the derivative of the nonlinearity

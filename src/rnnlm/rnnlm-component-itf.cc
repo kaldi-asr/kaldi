@@ -35,12 +35,12 @@ using namespace nnet3;
 namespace rnnlm {
 
 // static
-Component* Component::ReadNew(std::istream &is, bool binary) {
+LmComponent* LmComponent::ReadNew(std::istream &is, bool binary) {
   std::string token;
   ReadToken(is, binary, &token); // e.g. "<SigmoidComponent>".
   token.erase(0, 1); // erase "<".
   token.erase(token.length()-1); // erase ">".
-  Component *ans = NewComponentOfType(token);
+  LmComponent *ans = NewComponentOfType(token);
   if (!ans)
     KALDI_ERR << "Unknown component type " << token;
   ans->Read(is, binary);
@@ -49,18 +49,18 @@ Component* Component::ReadNew(std::istream &is, bool binary) {
 
 
 // static
-Component* Component::NewComponentOfType(const std::string &component_type) {
-  Component *ans = NULL;
-  if (component_type == "SoftmaxComponent") {
-    ans = new SoftmaxComponent();
-  } else if (component_type == "LogSoftmaxComponent") {
-    ans = new LogSoftmaxComponent();
-  } else if (component_type == "AffineComponent") {
-    ans = new AffineComponent();
-  } else if (component_type == "NaturalGradientAffineComponent") {
-    ans = new NaturalGradientAffineComponent();
-  } else if (component_type == "FixedAffineComponent") {
-    ans = new FixedAffineComponent();
+LmComponent* LmComponent::NewComponentOfType(const std::string &component_type) {
+  LmComponent *ans = NULL;
+  if (component_type == "LmSoftmaxComponent") {
+    ans = new LmSoftmaxComponent();
+  } else if (component_type == "LmLogSoftmaxComponent") {
+    ans = new LmLogSoftmaxComponent();
+  } else if (component_type == "LmAffineComponent") {
+    ans = new LmAffineComponent();
+//  } else if (component_type == "NaturalGradientAffineComponent") {
+//    ans = new LmNaturalGradientAffineComponent();
+  } else if (component_type == "LmFixedAffineComponent") {
+    ans = new LmFixedAffineComponent();
   }
   if (ans != NULL) {
     KALDI_ASSERT(component_type == ans->Type());
@@ -68,21 +68,21 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
   return ans;
 }
 
-std::string Component::Info() const {
+std::string LmComponent::Info() const {
   std::stringstream stream;
   stream << Type() << ", input-dim=" << InputDim()
          << ", output-dim=" << OutputDim();
   return stream.str();
 }
 
-void Component::GetInputIndexes(const MiscComputationInfo &misc_info,
+void LmComponent::GetInputIndexes(const MiscComputationInfo &misc_info,
                                 const Index &output_index,
                                 std::vector<Index> *input_indexes) const {
   input_indexes->resize(1);
   (*input_indexes)[0] = output_index;
 }
 
-bool Component::IsComputable(const MiscComputationInfo &misc_info,
+bool LmComponent::IsComputable(const MiscComputationInfo &misc_info,
                              const Index &output_index,
                              const IndexSet &input_index_set,
                              std::vector<Index> *used_inputs) const {
@@ -98,7 +98,7 @@ bool Component::IsComputable(const MiscComputationInfo &misc_info,
 }
 
 
-void UpdatableComponent::InitLearningRatesFromConfig(ConfigLine *cfl) {
+void LmUpdatableComponent::InitLearningRatesFromConfig(ConfigLine *cfl) {
   cfl->GetValue("learning-rate", &learning_rate_);
   cfl->GetValue("learning-rate-factor", &learning_rate_factor_);
   if (learning_rate_ < 0.0 || learning_rate_factor_ < 0.0)
@@ -106,7 +106,7 @@ void UpdatableComponent::InitLearningRatesFromConfig(ConfigLine *cfl) {
 }
 
 
-void UpdatableComponent::ReadUpdatableCommon(std::istream &is, bool binary) {
+void LmUpdatableComponent::ReadUpdatableCommon(std::istream &is, bool binary) {
   std::ostringstream opening_tag;
   opening_tag << '<' << this->Type() << '>';
   std::string token;
@@ -136,7 +136,7 @@ void UpdatableComponent::ReadUpdatableCommon(std::istream &is, bool binary) {
   }
 }
 
-void UpdatableComponent::WriteUpdatableCommon(std::ostream &os,
+void LmUpdatableComponent::WriteUpdatableCommon(std::ostream &os,
                                               bool binary) const {
   std::ostringstream opening_tag;
   opening_tag << '<' << this->Type() << '>';
@@ -155,7 +155,7 @@ void UpdatableComponent::WriteUpdatableCommon(std::ostream &os,
 }
 
 
-std::string UpdatableComponent::Info() const {
+std::string LmUpdatableComponent::Info() const {
   std::stringstream stream;
   stream << Type() << ", input-dim=" << InputDim()
          << ", output-dim=" << OutputDim() << ", learning-rate="
@@ -167,7 +167,7 @@ std::string UpdatableComponent::Info() const {
   return stream.str();
 }
 
-void NonlinearComponent::StoreStatsInternal(
+void LmNonlinearComponent::StoreStatsInternal(
     const MatrixBase<BaseFloat> &out_value,
     const MatrixBase<BaseFloat> *deriv) {
   KALDI_ASSERT(out_value.NumCols() == InputDim());
@@ -196,13 +196,13 @@ void NonlinearComponent::StoreStatsInternal(
   }
 }
 
-void NonlinearComponent::ZeroStats() {
+void LmNonlinearComponent::ZeroStats() {
   value_sum_.SetZero();
   deriv_sum_.SetZero();
   count_ = 0.0;
 }
 
-std::string NonlinearComponent::Info() const {
+std::string LmNonlinearComponent::Info() const {
   std::stringstream stream;
   if (InputDim() == OutputDim())
     stream << Type() << ", dim=" << InputDim();
@@ -232,15 +232,15 @@ std::string NonlinearComponent::Info() const {
   return stream.str();
 }
 
-void NonlinearComponent::Scale(BaseFloat scale) {
+void LmNonlinearComponent::Scale(BaseFloat scale) {
   value_sum_.Scale(scale);
   deriv_sum_.Scale(scale);
   count_ *= scale;
 }
 
-void NonlinearComponent::Add(BaseFloat alpha, const Component &other_in) {
-  const NonlinearComponent *other =
-      dynamic_cast<const NonlinearComponent*>(&other_in);
+void LmNonlinearComponent::Add(BaseFloat alpha, const LmComponent &other_in) {
+  const LmNonlinearComponent *other =
+      dynamic_cast<const LmNonlinearComponent*>(&other_in);
   KALDI_ASSERT(other != NULL);
   if (value_sum_.Dim() == 0 && other->value_sum_.Dim() != 0)
     value_sum_.Resize(other->value_sum_.Dim());
@@ -253,7 +253,7 @@ void NonlinearComponent::Add(BaseFloat alpha, const Component &other_in) {
   count_ += alpha * other->count_;
 }
 
-void NonlinearComponent::Read(std::istream &is, bool binary) {
+void LmNonlinearComponent::Read(std::istream &is, bool binary) {
   std::ostringstream ostr_beg, ostr_end;
   ostr_beg << "<" << Type() << ">"; // e.g. "<SigmoidComponent>"
   ostr_end << "</" << Type() << ">"; // e.g. "</SigmoidComponent>"
@@ -288,7 +288,7 @@ void NonlinearComponent::Read(std::istream &is, bool binary) {
   }
 }
 
-void NonlinearComponent::Write(std::ostream &os, bool binary) const {
+void LmNonlinearComponent::Write(std::ostream &os, bool binary) const {
   std::ostringstream ostr_beg, ostr_end;
   ostr_beg << "<" << Type() << ">"; // e.g. "<SigmoidComponent>"
   ostr_end << "</" << Type() << ">"; // e.g. "</SigmoidComponent>"
@@ -324,20 +324,20 @@ void NonlinearComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, ostr_end.str());
 }
 
-NonlinearComponent::NonlinearComponent():
+LmNonlinearComponent::LmNonlinearComponent():
     dim_(-1), count_(0.0),
     self_repair_lower_threshold_(kUnsetThreshold),
     self_repair_upper_threshold_(kUnsetThreshold),
     self_repair_scale_(0.0) { }
 
-NonlinearComponent::NonlinearComponent(const NonlinearComponent &other):
+LmNonlinearComponent::LmNonlinearComponent(const LmNonlinearComponent &other):
     dim_(other.dim_), value_sum_(other.value_sum_), deriv_sum_(other.deriv_sum_),
     count_(other.count_),
     self_repair_lower_threshold_(other.self_repair_lower_threshold_),
     self_repair_upper_threshold_(other.self_repair_upper_threshold_),
     self_repair_scale_(other.self_repair_scale_) { }
 
-void NonlinearComponent::InitFromConfig(ConfigLine *cfl) {
+void LmNonlinearComponent::InitFromConfig(ConfigLine *cfl) {
   bool ok = cfl->GetValue("dim", &dim_);
   cfl->GetValue("self-repair-lower-threshold", &self_repair_lower_threshold_);
   cfl->GetValue("self-repair-upper-threshold", &self_repair_upper_threshold_);

@@ -28,7 +28,7 @@
 #include "rnnlm/rnnlm-nnet.h"
 
 namespace kaldi {
-namespace nnet3 {
+namespace rnnlm {
 
 struct LmNnetTrainerOptions {
   bool zero_component_stats;
@@ -166,13 +166,13 @@ class LmNnetTrainer {
 
   ~LmNnetTrainer();
  private:
-  NnetExample ProcessEgInputs(NnetExample eg, const AffineComponent& a);
+  NnetExample ProcessEgInputs(NnetExample eg, const LmAffineComponent& a);
   void ProcessOutputs(const NnetExample &eg,
                       NnetComputer *computer);
 
   const LmNnetTrainerOptions config_;
-  CuMatrix<BaseFloat> new_input_;
-  CuMatrix<BaseFloat> old_input_;
+  Matrix<BaseFloat> new_input_;
+  Matrix<BaseFloat> old_input_;
 
   // this pointer is not owned
   LmNnet *nnet_;
@@ -235,8 +235,8 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
                               NnetComputer *computer,
                               BaseFloat *tot_weight,
                               BaseFloat *tot_objf,
-                              const Component *output_projection_1,
-                              const Component *output_projection_2,
+                              const LmComponent *output_projection_1,
+                              const LmComponent *output_projection_2,
                               LmNnet *delta_nnet);
 
 

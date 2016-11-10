@@ -22,7 +22,7 @@
 #include "util/kaldi-io.h"
 #include "matrix/matrix-lib.h"
 #include "nnet3/nnet-nnet.h"
-#include "nnet3/nnet-simple-component.h"
+#include "rnnlm/rnnlm-component.h"
 
 #include <iostream>
 #include <sstream>
@@ -30,7 +30,7 @@
 #include <map>
 
 namespace kaldi {
-namespace nnet3 {
+namespace rnnlm {
 
 class LmNnet {
  public:
@@ -65,20 +65,20 @@ class LmNnet {
     return other;
   }
 
-  AffineComponent* I() {
-    return dynamic_cast<AffineComponent*>(input_projection_);
+  LmAffineComponent* I() {
+    return dynamic_cast<LmAffineComponent*>(input_projection_);
   }
-  AffineComponent* O() {
-    return dynamic_cast<AffineComponent*>(output_projection_);
+  LmAffineComponent* O() {
+    return dynamic_cast<LmAffineComponent*>(output_projection_);
   }
-  NonlinearComponent* N() {
-    return dynamic_cast<NonlinearComponent*>(output_layer_);
+  LmNonlinearComponent* N() {
+    return dynamic_cast<LmNonlinearComponent*>(output_layer_);
   }
 
  private:
-  Component* input_projection_;      // Affine
-  Component* output_projection_;    // Affine
-  Component* output_layer_;         // Softmax 
+  LmComponent* input_projection_;      // Affine
+  LmComponent* output_projection_;    // Affine
+  LmComponent* output_layer_;         // Softmax 
   Nnet* nnet_;
 };
 
