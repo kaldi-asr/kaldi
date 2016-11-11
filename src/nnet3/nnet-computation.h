@@ -221,6 +221,12 @@ struct ComputationRequest {
    - kNoOperation: does nothing (sometimes useful during optimization)
    - kNoOperationMarker: does nothing, but used to mark end of a block
      of commands (like forward commands).
+   - kNoOperationLabel: does nothing, but is the destination for
+     the kGotoLabel command.
+   - kGotoLabel: jumps to the kNoOperationLabel command.  arg1 must
+     be set to the location of that command.  Since there are no
+     conditionals, this should be the last command, as remaining
+     commands will be unreachable.
 
 */
 enum CommandType {
@@ -230,7 +236,7 @@ enum CommandType {
   kMatrixCopy, kMatrixAdd, kCopyRows, kAddRows,
   kCopyRowsMulti, kCopyToRowsMulti, kAddRowsMulti, kAddToRowsMulti,
   kAddRowRanges, kAcceptInput, kProvideOutput,
-  kNoOperation, kNoOperationMarker };
+  kNoOperation, kNoOperationMarker, kNoOperationLabel, kGotoLabel };
 
 
 

@@ -381,11 +381,22 @@ struct CheckComputationOptions {
   // do the check_rewrite check only for a non-optimized computation, it may
   // legitimately fail after optimization.  see code for details.
   bool check_rewrite;
+  // If 'check_unused_variables' is true, it checks for unused variables
+  // (e.g. unused partsof matrices).  We only set it false for online
+  // computations, where there can be instances where a part of a matrix is
+  // apparently never accessed (until we consider that the matrix is swapped
+  // with another).
+  bool check_unused_variables;
 
-  CheckComputationOptions(): check_rewrite(false) { }
+  CheckComputationOptions():
+      check_rewrite(false), check_unused_variables(true) { }
 };
 
 
+// Note: this checker class does not work for online computations (that have a
+// kGoto statement), but the function CheckComputation() is able to detect such
+// computations and modify them in such a way that they can be checked by this
+// class (and then do extra checks).
 class ComputationChecker {
  public:
   ComputationChecker(const CheckComputationOptions &config,
@@ -395,10 +406,6 @@ class ComputationChecker {
  private:
   // various dimension consistency checks and checks on properties.
   void CheckComputationIndexes() const;
-  // make sure Propagate comes before kNoOpMarker and Backprop comes after it,
-  // and that the value of forward_computation_end matches the position of
-  // kNoOpMarker.
-  void CheckComputationOrder() const;
   // checks for a situation where an undefined variable is read.
   void CheckComputationUndefined() const;
   // checks that all writes are done before reads.  details with implementation.
@@ -426,6 +433,8 @@ void GetSegmentEnds(const NnetComputation &computation,
 
 /// This is a convenience interface for class ComputationChecker.  Call it with
 /// check_rewrite = true only if the computation is pre-optimization.
+/// If the computation is an 'online' computation, this function treats
+/// it specially.
 void CheckComputation(const Nnet &nnet,
                       const NnetComputation &computation,
                       bool check_rewrite = false);
