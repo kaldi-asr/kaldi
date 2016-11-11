@@ -9,8 +9,8 @@
 
 
 #  Example command lines:
-# ./configure
 # ./configure --shared  ## shared libraries.
+# ./configure
 # ./configure --mkl-root=/opt/intel/mkl
 # ./configure --mkl-root=/opt/intel/mkl --threaded-math=yes
 # ./configure --mkl-root=/opt/intel/mkl --threaded-math=yes --mkl-threading=tbb
