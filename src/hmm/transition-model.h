@@ -252,6 +252,8 @@ class TransitionModel {
                        const MapTransitionUpdateConfig &cfg,
                        BaseFloat *objf_impr_out, BaseFloat *count_out);
   void ComputeTuples(const ContextDependencyInterface &ctx_dep);  // called from constructor.  initializes tuples_.
+  void ComputeTuplesIsHmm(const ContextDependencyInterface &ctx_dep);
+  void ComputeTuplesNotHmm(const ContextDependencyInterface &ctx_dep);
   void ComputeDerived();  // called from constructor and Read function: computes state2id_ and id2state_.
   void ComputeDerivedOfProbs();  // computes quantities derived from log-probs (currently just
   // non_self_loop_log_probs_; called whenever log-probs change.

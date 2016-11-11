@@ -24,7 +24,7 @@ cluster_thresh=-1  # for build-tree control final bottom-up clustering of leaves
 frame_subsampling_factor=1
 leftmost_questions_truncate=10
 tree_stats_opts=
-cluster_phones_opts="--pdf-class-list=0"
+cluster_phones_opts=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -65,6 +65,9 @@ mkdir -p $dir/log
 cp $alidir/splice_opts $dir 2>/dev/null # frame-splicing options.
 cp $alidir/cmvn_opts $dir 2>/dev/null # cmn/cmvn option.
 cp $alidir/delta_opts $dir 2>/dev/null # delta option.
+
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 
 echo $nj >$dir/num_jobs
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;

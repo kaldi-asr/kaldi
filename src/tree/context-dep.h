@@ -20,6 +20,7 @@
 #ifndef KALDI_TREE_CONTEXT_DEP_H_
 #define KALDI_TREE_CONTEXT_DEP_H_
 
+#include <set>
 #include "itf/context-dep-itf.h"
 #include "tree/event-map.h"
 #include "matrix/matrix-lib.h"
@@ -113,23 +114,39 @@ class ContextDependency: public ContextDependencyInterface {
   /// list of possible (forward-transition-pdf-id, self-loop-pdf-id) that
   /// we can have.
   /// This is less efficient than the other version of GetPdfInfo().
-  virtual void GetPdfInfo(const std::vector<int32> &phones,
-                  const std::vector<std::vector<std::pair<int32, int32> > > &pdf_class_pairs,
-                  std::vector<std::vector<std::vector<std::pair<int32, int32> > > > *pdf_info)
+  virtual void GetPdfInfo(
+      const std::vector<int32> &phones,
+      const std::vector<std::vector<std::pair<int32, int32> > > &pdf_class_pairs,
+      std::vector<std::vector<std::vector<std::pair<int32, int32> > > > *pdf_info)
       const;
 
   /// GetPdfInfo returns a vector indexed by pdf-id, saying for each pdf which
   /// pairs of (phone, pdf-class) it can correspond to.  (Usually just one).
   /// c.f. hmm/hmm-topology.h for meaning of pdf-class.
-  virtual void GetPdfInfo(const std::vector<int32> &phones,  // list of phones
-                  const std::vector<int32> &num_pdf_classes,  // indexed by phone,
-                  std::vector<std::vector<std::pair<int32, int32> > > *pdf_info)
+  virtual void GetPdfInfo(
+      const std::vector<int32> &phones,  // list of phones
+      const std::vector<int32> &num_pdf_classes,  // indexed by phone,
+      std::vector<std::vector<std::pair<int32, int32> > > *pdf_info)
       const;
 
  private:
   int32 N_;  //
   int32 P_;
   EventMap *to_pdf_;  // owned here.
+
+  // 'context' is the context-window of phones, of
+  // length N, with -1 for those positions where phones 
+  // that are currently unknown, treated as wildcards; at least 
+  // the central phone [position P] must be a real phone, i.e. 
+  // not -1. 
+  // This function inserts any allowed pairs (forward_pdf, self_loop_pdf) 
+  // to the set "pairs".
+  void EnumeratePairs(
+      const std::vector<int32> &phones,
+      int32 self_loop_pdf_class, int32 forward_pdf_class,
+      const std::vector<int32> &context,
+      unordered_set<std::pair<int32,int32>, PairHasher<int32> > *pairs)
+      const;
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(ContextDependency);
 };

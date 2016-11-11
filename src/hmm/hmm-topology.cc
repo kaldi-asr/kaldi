@@ -199,6 +199,8 @@ void HmmTopology::Write(std::ostream &os, bool binary) const {
   } else {
     WriteIntegerVector(os, binary, phones_);
     WriteIntegerVector(os, binary, phone2idx_);
+    // -1 is put here as a signal that the object has the new,
+    // extended format with SelfLoopPdfClass
     if (!is_hmm) WriteBasicType(os, binary, static_cast<int32>(-1));
     WriteBasicType(os, binary, static_cast<int32>(entries_.size()));
     for (size_t i = 0; i < entries_.size(); i++) {
