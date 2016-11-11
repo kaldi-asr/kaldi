@@ -36,8 +36,6 @@ static void ComputeNormalizingTransform(const SpMatrix<Real> &covar,
 
 void Plda::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<Plda>");
-  within_var_.Write(os, binary);
-  between_var_.Write(os, binary);
   mean_.Write(os, binary);
   transform_.Write(os, binary);
   psi_.Write(os, binary);
@@ -46,8 +44,6 @@ void Plda::Write(std::ostream &os, bool binary) const {
 
 void Plda::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<Plda>");
-  within_var_.Read(is, binary);
-  between_var_.Read(is, binary);
   mean_.Read(is, binary);
   transform_.Read(is, binary);
   psi_.Read(is, binary);
@@ -219,33 +215,40 @@ void Plda::SmoothWithinClassCovariance(double smoothing_factor) {
   ComputeDerivedVars();
 }
 
-// TODO transform within and between variances and recompute derived variables.
-// mainly used for projecting between and within var to lower dimensional space.
 void Plda::ApplyTransform(const Matrix<double> &transform) {
+  // Apply transform to mean_.
   Vector<double> mean_new(transform.NumRows());
   mean_new.AddMatVec(1.0, transform, kNoTrans, mean_, 0.0);
   mean_.Resize(transform.NumRows());
   mean_.CopyFromVec(mean_new);
 
-  // TODO transform Use AddMat2Sp
-  // TODO at this point Dim() should equal transform.NumRows()
-  SpMatrix<double> between_var_new(Dim());
-  SpMatrix<double> within_var_new(Dim());
-  between_var_new.AddMat2Sp(1.0, transform, kNoTrans, between_var_, 0.0);
-  within_var_new.AddMat2Sp(1.0, transform, kNoTrans, within_var_, 0.0);
-  between_var_.Resize(Dim());
-  within_var_.Resize(Dim());
-  between_var_.CopyFromSp(between_var_new);
-  within_var_.CopyFromSp(within_var_new);
+  SpMatrix<double> between_var(transform.NumCols()),
+                   within_var(transform.NumCols()),
+                   psi_mat(transform.NumCols()),
+                   between_var_new(Dim()),
+                   within_var_new(Dim());
+  Matrix<double> transform_invert(transform_);
+  // Next, compute the between_var and within_var that existed
+  // prior to diagonalization.
+  psi_mat.AddDiagVec(1.0, psi_);
+  transform_invert.Invert();
+  within_var.AddMat2(1.0, transform_invert, kNoTrans, 0.0);
+  between_var.AddMat2Sp(1.0, transform_invert, kNoTrans, psi_mat, 0.0);
 
+  // Next, transform the variances using the input transformation.
+  between_var_new.AddMat2Sp(1.0, transform, kNoTrans, between_var, 0.0);
+  within_var_new.AddMat2Sp(1.0, transform, kNoTrans, within_var, 0.0);
+
+  // Finally, we need to recompute psi_ and transform_. The remainder of
+  // the code in this function  is a lightly modified copy of
+  // PldaEstimator::GetOutput().
   Matrix<double> transform1(Dim(), Dim());
-  ComputeNormalizingTransform(within_var_, &transform1);
+  ComputeNormalizingTransform(within_var_new, &transform1);
   // now transform is a matrix that if we project with it,
-  // within_var_ becomes unit.
-
+  // within_var becomes unit.
   // between_var_proj is between_var after projecting with transform1.
   SpMatrix<double> between_var_proj(Dim());
-  between_var_proj.AddMat2Sp(1.0, transform1, kNoTrans, between_var_, 0.0);
+  between_var_proj.AddMat2Sp(1.0, transform1, kNoTrans, between_var_new, 0.0);
 
   Matrix<double> U(Dim(), Dim());
   Vector<double> s(Dim());
@@ -264,22 +267,13 @@ void Plda::ApplyTransform(const Matrix<double> &transform) {
 
   // The transform U^T will make between_var_proj diagonal with value s
   // (i.e. U^T U diag(s) U U^T = diag(s)).  The final transform that
-  // makes within_var_ unit and between_var_ diagonal is U^T transform1,
+  // makes within_var unit and between_var diagonal is U^T transform1,
   // i.e. first transform1 and then U^T.
-
   transform_.Resize(Dim(), Dim());
   transform_.AddMatMat(1.0, U, kTrans, transform1, kNoTrans, 0.0);
   psi_.Resize(Dim());
   psi_.CopyFromVec(s);
-
-  KALDI_LOG << "Diagonal of between-class variance in normalized space is " << s;
   ComputeDerivedVars();
-  KALDI_LOG << "within_var_ = " << within_var_;
-  KALDI_LOG << "between_var_ = " << between_var_;
-  KALDI_LOG << "mean_ = " << mean_;
-  KALDI_LOG << "transform_ = " << transform_;
-  KALDI_LOG << "psi_ = " << psi_;
-  KALDI_LOG << "offset_ = " << offset_;
 }
 
 void PldaStats::AddSamples(double weight,

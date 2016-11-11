@@ -76,8 +76,6 @@ class Plda {
   Plda() { }
 
   explicit Plda(const Plda &other):
-    within_var_(other.within_var_),
-    between_var_(other.between_var_),
     mean_(other.mean_),
     transform_(other.transform_),
     psi_(other.psi_),
@@ -133,7 +131,9 @@ class Plda {
   /// psi_ were as a result very large.
   void SmoothWithinClassCovariance(double smoothing_factor);
 
-  /// TODO transform PLDA model
+  /// Apply a transform to the PLDA model.  This is mostly used for
+  /// projecting the parameters of the model into a lower dimensional space,
+  /// typically for speaker diarization.
   void ApplyTransform(const Matrix<double> &transform);
 
   int32 Dim() const { return mean_.Dim(); }
