@@ -177,7 +177,7 @@ void UnitTestNnetCompileOnline() {
 int main() {
   using namespace kaldi;
   using namespace kaldi::nnet3;
-  SetVerboseLevel(2);
+  SetVerboseLevel(4);
 
   UnitTestNnetCompileOnline();
   UnitTestNnetCompile();

@@ -73,6 +73,8 @@ void IdentifySubmatrixArgs(NnetComputation::Command *c,
       break;
     case kNoOperation:
     case kNoOperationMarker:
+    case kNoOperationLabel:
+    case kGotoLabel:
       break;
     default:
       KALDI_ERR << "Unknown command type.";
@@ -1724,19 +1726,21 @@ class ComputationOnlineOptimizer {
 
   // This function looks in the matrix 'active_pairs' for the first pair of
   // identical values, i.e. it is looking for i < j for which
-  // normalized_active_pairs[i] == normalized_active_pairs[j].  If there
-  // is such a pair it outputs them to *seg1 and *seg2, and returns true;
-  // otherwise it returns false.
+  // normalized_active_pairs[i] == normalized_active_pairs[j].  (However, the
+  // pair i,j must satisfy an extra condition, see below).  If a pair
+  // i,j exists satisfying these conditions, this function outputs them to *seg1
+  // and *seg2, and returns true; otherwise it returns false.
   //
-  // Update to the above: It turns out that under some circumstances, the
-  //  original function found repeats that were not "really" repeats (the
-  //  matrices were not time shifted) The situation was a bit obscure (it was a
-  //  non-recurrent setup with a lot of extra-right-context, where some inputs
-  //  were never used), but to prevent it happening again we are now checking
-  //  in addition to the above, that the time-shift between the segments
-  //  (i.e. time_offsets[j] - time_offsets[i]), has the "expected value"
-  //  based on the assumption that each segment should be shifted relative
-  //  to the previous segment, by 'time_shift_per_segment'.
+  // Extra condition:
+  // It turns out that under some circumstances, we can
+  // fine repeats that were not "really" repeats (the matrices were not time
+  // shifted) The situation was a bit obscure (it was a non-recurrent setup with
+  // a lot of extra-right-context, where some inputs were never used), but to
+  // prevent it happening again we are now checking in addition to the above,
+  // that the time-shift between the segments (i.e. time_offsets[j] -
+  // time_offsets[i]), has the "expected value" based on the assumption that
+  // each segment should be shifted relative to the previous segment, by
+  // 'time_shift_per_segment'.
   static bool FindFirstRepeat(
       const std::vector<std::vector<std::pair<int32, int32> > > &normalized_active_pairs,
       const std::vector<int32> &time_offsets,
@@ -1764,6 +1768,43 @@ class ComputationOnlineOptimizer {
       int32 time_difference);
 
 
+  // Given two command indexes command1 < command2 pointing to commands of type
+  // kNoOperationMarker, this function modifies the computation by
+  // removing all commands after command2, replacing command2 with a kGotoLabel
+  // command pointing to command1  and then inserting just before command1
+  // a marker of type kNoOperationLabel.
+  static void FormInfiniteLoop(int32 command1, int32 command2,
+                               NnetComputation *computation);
+
+  // This is to be called after FormInfiniteLoop.  It inserts, just before
+  // the final kGotoLabel command, commands that initialize
+  // each of the matrices in list 'matrices1' from the corresponding
+  // matrix in 'matrices2', using the kAllocMatrixFromOther command.
+  // This effectively does, for example, matrices1[i] = matrices2[i],
+  // while initializing matrices1[i] and deallocating matrices2[i];
+  // it's implemented as a shallow swap.
+  // It does this in such an order that even if the two lists are
+  // not disjoint, the right thing happens.
+  static void AddMatrixSwapCommands(
+      const std::vector<int32> &matrices1,
+      const std::vector<int32> &matrices2,
+      NnetComputation *computation);
+
+
+  // Called from AddMatrixSwapCommands, this function figures out for us
+  // an acceptable order in which to execute the kAllocMatrixFromOther
+  // commands.  This is easy to do if matrices1 and matrices2 are disjoint
+  // sets, but has to be done more carefully if they overlap.
+  // The output is a list of pairs where each pair (a, b) comes from
+  // from matrices1 and matrices2 in the same position, i.e.
+  // a = matrices1[i] and b = matrices2[i].
+  static void GetMatrixSwapOrder(
+      const std::vector<int32> &matrices1,
+      const std::vector<int32> &matrices2,
+      std::vector<std::pair<int32, int32> > *swaps);
+
+
+
   /// Given a list of command indexes ('segment_end_commands') which are
   /// expected to be command indexes of the kNoOperationMarker at segment
   /// boundaries, this function outputs for each of these command indexes a list
@@ -1774,6 +1815,7 @@ class ComputationOnlineOptimizer {
   /// at those points in time.  '*active_matrices' is indexed by the
   /// same index as 'segment_end_commands', and is then a list of active
   /// matrices, in numerical order of matrix index.
+  /// Note: for each i, (*active_matrices)[i] will be sorted and unique.
   static void FindActiveMatrices(const NnetComputation &computation,
                                  const Analyzer &analyzer,
                                  const std::vector<int32> &segment_end_commands,
@@ -1951,10 +1993,22 @@ bool ComputationOnlineOptimizer::FindFirstRepeat(
   // segments will normally be quite small (e.g. 10), and the comparison of
   // elements of 'normalized_active_pairs' should be fast in cases where they
   // differ.
+  KALDI_ASSERT(num_segments >= 2);
+
+  bool perform_time_offset_check = true;
+  if (normalized_active_pairs.back().empty()) {
+    // If there are no variables active after the end of the last-but-one segment
+    // (which is the last element in segment_ends, since we remove the end of the
+    // very last segment), then don't perform the check related to
+    // time-offsets, it's not relevant.  [this would probably be a computation
+    // that doesn't require any context].
+    perform_time_offset_check = false;
+  }
   for (int32 s = 0; s < num_segments; s++) {
     for (int32 t = s + 1; t < num_segments; t++) {
-      if (time_offsets[t] - time_offsets[s] == (t - s) * time_shift_per_segment
-          && normalized_active_pairs[s] == normalized_active_pairs[t]) {
+      if ((!perform_time_offset_check ||
+           time_offsets[t]-time_offsets[s] == (t-s) * time_shift_per_segment) &&
+          normalized_active_pairs[s] == normalized_active_pairs[t]) {
         *seg1 = s;
         *seg2 = t;
         return true;
@@ -2059,6 +2113,114 @@ void ComputationOnlineOptimizer::CheckIdentifiedMatrices(
 }
 
 
+// static
+void ComputationOnlineOptimizer::GetMatrixSwapOrder(
+    const std::vector<int32> &matrices1,
+    const std::vector<int32> &matrices2,
+    std::vector<std::pair<int32, int32> > *swaps) {
+  KALDI_ASSERT(matrices1.size() == matrices2.size());
+  swaps->clear();
+  int32 num_matrices = matrices1.size();
+  std::vector<bool> processed(num_matrices, false);
+  std::vector<int32> queue;
+
+  // num_loops is just for infinite-loop detection.
+  int32 num_loops = 0;
+  for (; static_cast<int32>(swaps->size()) < num_matrices; num_loops++) {
+    for (int32 i = 0; i < num_matrices; i++) {
+      if (processed[i])
+        continue;
+      int32 m1 = matrices1[i], m2 = matrices2[i];
+      std::vector<int32>::const_iterator iter =
+          std::lower_bound(matrices2.begin(), matrices2.end(), m1);
+      if (iter == matrices2.end() || *iter != m1) {
+        // Matrix m1 does not appear in the list 'matrices2', so
+        // we are safe to process it at any time.
+        swaps->push_back(std::pair<int32,int32>(m1, m2));
+        processed[i] = true;
+      } else {
+        int32 m1_pos_in_matrices2 = iter - matrices2.begin();
+        if (processed[m1_pos_in_matrices2]) {
+          // We're safe to do this swap now, because the matrix m1 has already
+          // appeared on the RHS of a swap, and by this point has been
+          // deallocated, in effect.
+          swaps->push_back(std::pair<int32,int32>(m1, m2));
+          processed[i] = true;
+        }
+        // else do nothing, we cannot process m1 yet because
+        // at this point in the computation it is still allocated.
+      }
+    }
+    // The following assert is to check that we don't loop infinitely.  We can
+    // prove that infinite looping won't happen, after on proving that there can
+    // be no cycles like (m1, m2), (m2, m3), (m3, m1) (the length of 3 is chosen
+    // arbitrarily as an example).  If such a cycle existed, we can reach a
+    // contradiction based on the time-index (t) of the first cindex in m1.
+    // Define t1 = that time index, t2 the same for m2, t3 the same for m3.  The
+    // existence of the three pairs [as pairs like (matrices1[i], matrices2[i])]
+    // implies that t2 > t1, t3 > t2, and t1 > t3 respectively, but this is
+    // impossible.
+    // This shows that all chains of dependencies must terminate.
+    KALDI_ASSERT(num_loops <= num_matrices);
+  }
+}
+
+// static
+void ComputationOnlineOptimizer::AddMatrixSwapCommands(
+    const std::vector<int32> &matrices1,
+    const std::vector<int32> &matrices2,
+    NnetComputation *computation) {
+  std::vector<std::pair<int32, int32> > swaps;
+  // Note: in 'easy' cases where matrices1 and matrices2 are disjoint,
+  // 'swaps' will just be the vector { (matrices1[0],matrices2[0]),
+  // (matrices1[1],matrices2[1]), ... },
+  // but in some cases these may need to get reordered.
+  GetMatrixSwapOrder(matrices1, matrices2, &swaps);
+
+  NnetComputation::Command goto_label_command = computation->commands.back();
+  KALDI_ASSERT(goto_label_command.command_type == kGotoLabel);
+  computation->commands.pop_back();
+
+  // the following vector gives us, for each matrix index, a submatrix index
+  // that covers the whole of that matrix (needed because the commands
+  // require submatrix indexes)
+  std::vector<int32> whole_submatrices;
+  computation->GetWholeSubmatrices(&whole_submatrices);
+  size_t num_matrices = whole_submatrices.size();
+
+  for (size_t i = 0; i < swaps.size(); i++) {
+    int32 m1 = swaps[i].first, m2 = swaps[i].second;
+    KALDI_ASSERT(static_cast<size_t>(m1) < num_matrices &&
+                 static_cast<size_t>(m2) < num_matrices);
+    int32 s1 = whole_submatrices[m1], s2 = whole_submatrices[m2];
+    computation->commands.push_back(
+        NnetComputation::Command(
+            kAllocMatrixFromOther, s1, s2));
+  }
+  computation->commands.push_back(goto_label_command);
+}
+
+// static
+void ComputationOnlineOptimizer::FormInfiniteLoop(
+    int32 command1, int32 command2,
+    NnetComputation *computation) {
+  KALDI_ASSERT(static_cast<int32>(computation->commands.size()) >=
+               command2 + 1 && command1 < command2);
+  KALDI_ASSERT(
+      computation->commands[command1].command_type == kNoOperationMarker &&
+      computation->commands[command2].command_type == kNoOperationMarker);
+  // Remove any commands after 'command2'.
+  computation->commands.resize(command2 + 1);
+  computation->commands[command2].command_type = kGotoLabel;
+  computation->commands[command2].arg1 = command1;
+  NnetComputation::Command c(kNoOperationLabel);
+  computation->commands.insert(computation->commands.begin() + command1,
+                               c);
+  // Now the kNoOperationLabel command is at position 'command1'.
+}
+
+
+
 bool ComputationOnlineOptimizer::Optimize() {
   analyzer_.Init(nnet_, *computation_);
   KALDI_ASSERT(!computation_->matrix_debug_info.empty() &&
@@ -2105,8 +2267,9 @@ bool ComputationOnlineOptimizer::Optimize() {
   std::vector<int32> time_offsets;
   NormalizePairLists(&pair_lists, &time_offsets);
 
+  // Note: seg1 and seg2 are indexes into 'segment_ends', representing
+  // points in time (that happen to be the ends of segments).
   int32 seg1, seg2;
-
   if (!FindFirstRepeat(pair_lists,
                        time_offsets,
                        time_shift_per_segment,
@@ -2128,19 +2291,44 @@ bool ComputationOnlineOptimizer::Optimize() {
   CheckIdentifiedMatrices(*computation_, seg1_matrices, seg2_matrices,
                           time_difference);
 
-  // HERE, do whatever kind of identification we have to do between the two
-  // lists of matrices.
+
+  FormInfiniteLoop(segment_ends[seg1], segment_ends[seg2], computation_);
+
+  AddMatrixSwapCommands(seg1_matrices, seg2_matrices, computation_);
+
+  RenumberComputation(computation_);
+
+  FixGotoLabel(computation_);
 
   return true;
 }
 
 
-bool OptimizeOnlineComputation(const Nnet &nnet,
+void OptimizeOnlineComputation(const Nnet &nnet,
                                NnetComputation *computation) {
   ComputationOnlineOptimizer optimizer(nnet, computation);
-  return optimizer.Optimize();
+  optimizer.Optimize();
 }
 
+
+void FixGotoLabel(NnetComputation *computation) {
+  int32 num_commands = computation->commands.size();
+  if (num_commands == 0)
+    return;
+  if (computation->commands[num_commands-1].command_type == kGotoLabel) {
+    int32 dest_command = computation->commands[num_commands-1].arg1;
+    if (static_cast<size_t>(dest_command) <  computation->commands.size() &&
+        computation->commands[dest_command].command_type == kNoOperationLabel)
+      return;  // nothing to fix.
+    for (int32 c = 0; c + 1 < num_commands; c++) {
+      if (computation->commands[c].command_type == kNoOperationLabel) {
+        computation->commands[num_commands-1].arg1 = c;
+        return;
+      }
+    }
+    KALDI_ERR << "Label not found.";
+  }
+}
 
 
 
