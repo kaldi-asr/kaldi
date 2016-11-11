@@ -275,6 +275,10 @@ void NnetComputation::Command::Read(std::istream &is, bool binary) {
       command_type = kNoOperation;
     } else if (command_type_str == "kNoOperationMarker") {
       command_type = kNoOperationMarker;
+    } else if (command_type_str == "kNoOperationLabel") {
+      command_type = kNoOperationLabel;
+    } else if (command_type_str == "kGotoLabel") {
+      command_type = kGotoLabel;
     } else {
       KALDI_ERR << "Un-handled command type.";
     }
@@ -367,6 +371,12 @@ void NnetComputation::Command::Write(std::ostream &os, bool binary) const {
         break;
       case kNoOperationMarker:
         os << "kNoOperationMarker\n";
+        break;
+      case kNoOperationLabel:
+        os << "kNoOperationLabel\n";
+        break;
+      case kGotoLabel:
+        os << "kGotoLabel\n";
         break;
       default:
         KALDI_ERR << "Un-handled command type.";
@@ -597,6 +607,12 @@ static void PrintCommand(std::ostream &os,
       break;
     case kNoOperationMarker:
       os << "# computation segment separator [e.g., begin backward commands]\n";
+      break;
+    case kNoOperationLabel:
+      os << "[label for goto statement]\n";
+      break;
+    case kGotoLabel:
+      os << "goto c" << c.arg1 << "\n";
       break;
     default:
       KALDI_ERR << "Un-handled command type.";

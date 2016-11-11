@@ -574,10 +574,18 @@ void IdentifyIndexesRangesArgs(std::vector<NnetComputation::Command> *commands,
 /// matrices have the same debug-info other than a time offset and can be
 /// identified with each other, and the no-op command at c2 can be replaced with
 /// 'got c1', creating a computation that 'goes on forever'.
-/// It returns true if it successfully did this.  [If this happens, the
-/// whole computation may have to be regenerated with more segments.]
-bool OptimizeOnlineComputation(const Nnet &nnet,
+/// If it can't do this, it does nothing.  You can figure out that this is the
+/// case by checking whether kGotoLabel is the last command in the computation.
+/// [If this optimization fails, the whole computation may have to be
+/// regenerated with more segments.]
+void OptimizeOnlineComputation(const Nnet &nnet,
                                NnetComputation *computation);
+
+
+/// This function ensures that the arg1 of a final command of type kGotoLabel is
+/// the same as the command with type kNoOperationLabel.  This is necessary
+/// if you do any other type of optimization after 'OptimizeOnlineComputation()'.
+void FixGotoLabel(NnetComputation *computation);
 
 
 /*

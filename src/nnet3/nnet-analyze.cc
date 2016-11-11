@@ -212,7 +212,7 @@ std::string ComputationVariables::DescribeVariable(int32 variable) const {
       num_column_variables = column_split_points_[matrix_index].size() - 1,
       num_row_variables = row_split_points_[matrix_index].size() - 1,
       column_variable = offset % num_column_variables,
-      row_variable = offset / num_row_variables;
+      row_variable = offset / num_column_variables;
   KALDI_ASSERT(column_variable >= 0 && row_variable >= 0 &&
                row_variable < num_row_variables &&
                column_variable < num_column_variables);
@@ -381,6 +381,8 @@ void ComputeCommandAttributes(
       }
       case kNoOperation:
       case kNoOperationMarker:
+      case kNoOperationLabel:
+      case kGotoLabel:
         break;
       default:
         KALDI_ERR << "Unknown command type.";
@@ -558,7 +560,6 @@ ComputationChecker::ComputationChecker(
 void ComputationChecker::Check() {
   CheckComputationIndexes();
   a_.Init(nnet_, computation_);
-  CheckComputationOrder();
   CheckComputationMatrixAccesses();
   CheckComputationUndefined();
   CheckComputationDebugInfo();
@@ -580,8 +581,12 @@ void ComputationChecker::CheckComputationRewrite() const {
   for (int32 v = 0; v < num_variables; v++) {
     const std::vector<Access> &accesses = a_.variable_accesses[v];
     if (accesses.empty()) {
-      KALDI_ERR << "Variable " << v << " = " << a_.variables.DescribeVariable(v)
-                << "is never used.";
+      if (config_.check_unused_variables) {
+        KALDI_ERR << "Variable " << v << " = " << a_.variables.DescribeVariable(v)
+                  << " is never used.";
+      } else {
+        continue;
+      }
     }
     int32 num_accesses = accesses.size();
     int32 first_pure_read = -1;
@@ -597,8 +602,8 @@ void ComputationChecker::CheckComputationRewrite() const {
         if (accesses[access].access_type != kReadAccess) {
           KALDI_ERR << "Variable " << v << " = "
                     << a_.variables.DescribeVariable(v)
-                    << "is modified after being read "
-                    << "(this is not expected before optimization)";
+                    << " is modified after being read"
+                    << " (this is not expected before optimization)";
         }
       }
     }
@@ -613,13 +618,17 @@ void ComputationChecker::CheckComputationUndefined() const {
   int32 num_variables = a_.variable_accesses.size();
   for (int32 v = 0; v < num_variables; v++) {
     const std::vector<Access> &accesses = a_.variable_accesses[v];
-    if (accesses.empty())
-      KALDI_ERR << "Variable " << v << " == "
-                << a_.variables.DescribeVariable(v) << "is never used.";
-    if (accesses[0].access_type != kWriteAccess)
-      KALDI_ERR << "Variable " << v << " == "
-                << a_.variables.DescribeVariable(v)
-                << " is read before it is written to";
+    if (accesses.empty()) {
+      if (config_.check_unused_variables) {
+        KALDI_ERR << "Variable " << v << " == "
+                  << a_.variables.DescribeVariable(v) << "is never used.";
+      }
+    } else {
+      if (accesses[0].access_type != kWriteAccess)
+        KALDI_ERR << "Variable " << v << " == "
+                  << a_.variables.DescribeVariable(v)
+                  << " is read before it is written to";
+    }
   }
 }
 
@@ -637,7 +646,7 @@ void ComputationChecker::CheckComputationMatrixAccesses() const {
   for (int32 matrix_index = 1; matrix_index < num_matrices; matrix_index++) {
     const MatrixAccesses &accesses = a_.matrix_accesses[matrix_index];
     if (accesses.allocate_command == -1)
-      KALDI_ERR << "Matrix m" << matrix_index << "is not initialized.";
+      KALDI_ERR << "Matrix m" << matrix_index << " is not initialized.";
     if (accesses.accesses.empty()) {
       KALDI_ERR << "Matrix m" << matrix_index << " is never accessed.";
     } else if (accesses.accesses.front().command_index <
@@ -917,46 +926,21 @@ void ComputationChecker::CheckComputationIndexes() const {
       }
       case kNoOperation:
       case kNoOperationMarker:
+      case kNoOperationLabel:
         break;
+      case kGotoLabel: {
+        int32 label_index = c.arg1;
+        if (label_index < 0 || label_index >= command_index ||
+            computation_.commands[label_index].command_type != kNoOperationLabel)
+          KALDI_ERR << "kGotoLabel command has invalid destination index.";
+        break;
+        if (command_index + 1 != num_commands) {
+          KALDI_ERR << "kGotoLabel is not the last command in the computation";
+        }
+      }
       default:
         KALDI_ERR << "Unknown command type.";
     }
-  }
-}
-
-
-// make sure Propagate comes before kNoOperationMarker and Backprop comes after
-// it, and that the value of computation_computation_end matches the position of
-// kNoOpMarker.
-void ComputationChecker::CheckComputationOrder() const {
-  int32 num_commands = computation_.commands.size();
-  int32 num_markers = 0, marker_location = 0;
-  for (int32 c = 0; c < num_commands; c++) {
-    if (computation_.commands[c].command_type ==
-        kNoOperationMarker) {
-      marker_location = c;
-      num_markers++;
-    }
-  }
-  if (num_markers != 1)
-    KALDI_ERR << "Expected exactly one kNoOperationMarker marker.";
-
-  for (int32 c = 0; c < num_commands; c++) {
-    CommandType command_type =
-        computation_.commands[c].command_type;
-    if (c != marker_location &&
-        command_type == kNoOperationMarker)
-      KALDI_ERR << "Found kNoOpMarker in unexpected place";
-    if (c < marker_location &&
-        (command_type == kBackprop ||
-         command_type == kBackpropNoModelUpdate))
-      KALDI_ERR << "Backprop occurs before kNoOpMarker";
-    if (c > marker_location &&
-        command_type == kPropagate)
-      KALDI_ERR << "Propagate occurs after kNoOpMarker";
-    if (c > marker_location &&
-        command_type == kStoreStats)
-      KALDI_ERR << "StoreStats occurs after kNoOpMarker";
   }
 }
 
@@ -973,13 +957,55 @@ void ComputationChecker::CheckComputationDebugInfo() const {
   }
 }
 
+
+// note: 'computation' is not a reference, it's copied so that we
+// can modify it internally.
+static void CheckComputationOnline(const Nnet &nnet,
+                                   NnetComputation computation,
+                                   bool check_rewrite) {
+  int32 num_commands = computation.commands.size();
+  KALDI_ASSERT(computation.commands[num_commands-1].command_type == kGotoLabel);
+  for (int32 c = num_commands - 2;
+       c >= 0 && computation.commands[c].command_type == kAllocMatrixFromOther;
+       c--) {
+    // this command can be interpreted as "initialize matrix referred to by
+    // c.arg2 with the matrix referred to by c.arg2".
+    // Because this would be interpreted by the analysis code as initializing a
+    // matrix that has already been initialized, we turn this into a command
+    // that just deallocates the matrix in c.arg2. [note: all these indexes
+    // are actually submatrix indexes].
+    computation.commands[c].command_type = kDeallocMatrix;
+    std::swap(computation.commands[c].arg1, computation.commands[c].arg2);
+  }
+
+  CheckComputationOptions opts;
+  opts.check_rewrite = check_rewrite;
+  opts.check_unused_variables = false;
+  // We can always do this check with online computations, since they do not
+  // have the RemoveUnnecessaryAllocation() optimization applied.
+  ComputationChecker checker(opts, nnet, computation);
+  checker.Check();
+}
+
 void CheckComputation(const Nnet &nnet,
                       const NnetComputation &computation,
                       bool check_rewrite) {
-  CheckComputationOptions opts;
-  opts.check_rewrite = check_rewrite;
-  ComputationChecker checker(opts, nnet, computation);
-  checker.Check();
+  try {
+    if (!computation.commands.empty() &&
+        computation.commands.back().command_type == kGotoLabel) {
+      // Online computations need to be treated specially.
+      CheckComputationOnline(nnet, computation, check_rewrite);
+    } else {
+      CheckComputationOptions opts;
+      opts.check_rewrite = check_rewrite;
+      ComputationChecker checker(opts, nnet, computation);
+      checker.Check();
+    }
+  } catch (...) {
+    computation.Print(std::cerr, nnet);
+    KALDI_ERR << "Computation check failed for computation printed above "
+        "(actual error message is above computation)";
+  }
 }
 
 void ComputeMatrixToSubmatrix(

@@ -325,6 +325,7 @@ void RemoveUnnecessaryAllocation(const Nnet &nnet,
           kAllocMatrixFromOtherZeroed;
   }
   RemoveNoOps(computation);
+  FixGotoLabel(computation);
 }
 
 
@@ -459,7 +460,11 @@ void Optimize(const NnetOptimizeOptions &config,
       CheckComputation(nnet, *computation, false);
   }
 
-  if (config.optimize && config.allocate_from_other) {
+  if (config.optimize && config.allocate_from_other &&
+      !config.optimize_online_computation) {
+    // Don't do this if it's an online computation because we're not sure if it
+    // would be correct in that case, as written.  In any case the performance
+    // benefit is tiny.
     RemoveUnnecessaryAllocation(nnet, computation);
     if (GetVerboseLevel() >= 4)
       CheckComputation(nnet, *computation, false);
@@ -470,6 +475,9 @@ void Optimize(const NnetOptimizeOptions &config,
   // but the operations may have been put out of order by
   // other optimizations.)
   ConsolidateIoOperations(nnet, computation);
+
+  if (config.optimize_online_computation)
+    FixGotoLabel(computation);
 
   if (GetVerboseLevel() >= 4)
     CheckComputation(nnet, *computation, false);
@@ -629,10 +637,10 @@ const NnetComputation* CachingOptimizingCompiler::Compile(
   return computation;
 }
 
-/// Split the computation up into segments bounded internally by kNoOperationMarker.
-/// For each segment, a pair of command-indexes (start, end) is output to the vector
-/// 'segments', so the commands in the segment (not including kNoOperationMarker)
-/// are numbered from start ... end - 1.
+/// Split the computation up into segments bounded by kNoOperationMarker.  For
+/// each segment, a pair of command-indexes (start, end) is output to the vector
+/// 'segments', so the commands in the segment (not including
+/// kNoOperationMarker) are numbered from start ... end - 1.
 static void SplitComputationIntoSegments(
     const NnetComputation &computation,
     std::vector<std::pair<int32, int32> > *segments) {
@@ -652,6 +660,10 @@ static void SplitComputationIntoSegments(
 
 void ConsolidateIoOperations(const Nnet &nnet,
                              NnetComputation *computation) {
+  bool ends_with_goto =
+      (!computation->commands.empty() &&
+       computation->commands.back().command_type == kGotoLabel);
+
   // These segments, represented as (start-index, end-index),
   // are segments of the computation separated by kNoOperationMarker.
   std::vector<std::pair<int32, int32> > segments;
@@ -700,6 +712,24 @@ void ConsolidateIoOperations(const Nnet &nnet,
     KALDI_ASSERT(c == segment_end);
   }
   computation->commands.swap(reordered_commands);
+
+  if (ends_with_goto) {
+    // If, before this operation, the last command was kGotoLael, remove all
+    // commands that have been reordered to go after the kGotoLabel command
+    // [they would be unreachable anyway.]  This relates to online computations.
+    // It may seem wrong that we are just removing these
+    // kAcceptInput/kProvideOutput commands, but the reason it's OK
+    // (and preserves equivalence with the code prior to this function call),
+    // is that the corresponding commands have also been moved past the
+    // kNoOperationLabel command that the goto jumps to, so those commands
+    // will actually get run.
+    // We don't actually check this here (it would lead to a crash when
+    // the computation was executed, if something is wrong in this logic).
+    while (!computation->commands.empty() &&
+           computation->commands.back().command_type != kGotoLabel)
+      computation->commands.pop_back();
+    FixGotoLabel(computation);
+  }
 }
 
 
