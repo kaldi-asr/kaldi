@@ -1,4 +1,4 @@
-// nnet3/nnet-compile-online.cc
+// nnet3/nnet-compile-looped.cc
 
 // Copyright      2016  Johns Hopkins University (author: Daniel Povey)
 
@@ -17,7 +17,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "nnet3/nnet-compile-online.h"
+#include "nnet3/nnet-compile-looped.h"
 #include "nnet3/nnet-utils.h"
 
 namespace kaldi {
@@ -136,7 +136,7 @@ static void CreateComputationRequestInternal(
 }
 
 
-void CreateOnlineComputationRequestSimple(const Nnet &nnet,
+void CreateLoopedComputationRequestSimple(const Nnet &nnet,
                                           int32 chunk_size,
                                           int32 frame_subsampling_factor,
                                           int32 ivector_period,
@@ -249,7 +249,7 @@ static bool ExtrapolateComputationRequest(
 }
 
 
-/* Internal version of CompileOnline where
+/* Internal version of CompileLooped where
    you specify the the number of computation requests (must be >= 3).
    Returns true on success.
    It's possible for the optimization to fail if you give too small
@@ -257,7 +257,7 @@ static bool ExtrapolateComputationRequest(
    and in that case this function will return false and you should re-try
    with a higher value of num_requests.
  */
-static bool CompileOnlineInternal(
+static bool CompileLoopedInternal(
     const Nnet &nnet,
     NnetOptimizeOptions optimize_opts,
     const ComputationRequest &request1,
@@ -291,7 +291,7 @@ static bool CompileOnlineInternal(
   Compiler compiler(requests, nnet);
   CompilerOptions compiler_opts;
   compiler.CreateComputation(compiler_opts, computation);
-  optimize_opts.optimize_online_computation = true;
+  optimize_opts.optimize_looped_computation = true;
 
   Optimize(optimize_opts, nnet, computation);
 
@@ -299,7 +299,7 @@ static bool CompileOnlineInternal(
       computation->commands.back().command_type == kGotoLabel;
 }
 
-void CompileOnline(const Nnet &nnet,
+void CompileLooped(const Nnet &nnet,
                    const NnetOptimizeOptions &optimize_opts,
                    const ComputationRequest &request1,
                    const ComputationRequest &request2,
@@ -310,17 +310,17 @@ void CompileOnline(const Nnet &nnet,
 
   for (num_requests = num_requests1; num_requests <= max_requests;
        num_requests *= factor) {
-    if (CompileOnlineInternal(nnet, optimize_opts,
+    if (CompileLoopedInternal(nnet, optimize_opts,
                              request1, request2, request3,
                              num_requests, computation)) {
       return;
     } else {
-      KALDI_VLOG(2) << "Online compilation failed with "
+      KALDI_VLOG(2) << "Looped compilation failed with "
                     << num_requests << " requests, trying "
                     << (num_requests * factor);
     }
   }
-  KALDI_ERR << "Online compilation failed with "
+  KALDI_ERR << "Looped compilation failed with "
             << (num_requests/factor) << " requests, which "
             << "we expect should be enough... something "
             << "went wrong.";

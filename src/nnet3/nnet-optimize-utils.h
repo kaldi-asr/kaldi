@@ -566,7 +566,7 @@ void IdentifyIndexesArgs(std::vector<NnetComputation::Command> *commands,
 void IdentifyIndexesRangesArgs(std::vector<NnetComputation::Command> *commands,
                                std::vector<int32*> *indexes_ranges_args);
 
-/// This function tries to optimize computation 'computation' for an 'online'
+/// This function tries to optimize computation 'computation' for an 'looped'
 /// computation.  It expects as input a computation with no backprop but with
 /// multiple 'segments' separated by command kNoOperation, where each segment
 /// corresponds to a new chunk of input and output.  It tries to locate a pair
@@ -578,13 +578,13 @@ void IdentifyIndexesRangesArgs(std::vector<NnetComputation::Command> *commands,
 /// case by checking whether kGotoLabel is the last command in the computation.
 /// [If this optimization fails, the whole computation may have to be
 /// regenerated with more segments.]
-void OptimizeOnlineComputation(const Nnet &nnet,
+void OptimizeLoopedComputation(const Nnet &nnet,
                                NnetComputation *computation);
 
 
 /// This function ensures that the arg1 of a final command of type kGotoLabel is
 /// the same as the command with type kNoOperationLabel.  This is necessary
-/// if you do any other type of optimization after 'OptimizeOnlineComputation()'.
+/// if you do any other type of optimization after 'OptimizeLoopedComputation()'.
 void FixGotoLabel(NnetComputation *computation);
 
 
