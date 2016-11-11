@@ -19,7 +19,7 @@
 
 #include "nnet3/nnet-nnet.h"
 #include "nnet3/nnet-compile.h"
-#include "nnet3/nnet-compile-online.h"
+#include "nnet3/nnet-compile-looped.h"
 #include "nnet3/nnet-test-utils.h"
 
 namespace kaldi {
@@ -59,7 +59,7 @@ void UnitTestNnetCompile() {
 
 // this tests compilation where there are more than one
 // computation-request... this is to test some of the
-// low-level utilities that will be used in online computation.
+// low-level utilities that will be used in looped computation.
 void UnitTestNnetCompileMulti() {
   for (int32 n = 0; n < 20; n++) {
     struct NnetGenerationOptions gen_config;
@@ -117,7 +117,7 @@ void UnitTestNnetCompileMulti() {
 
 
 
-void UnitTestNnetCompileOnline() {
+void UnitTestNnetCompileLooped() {
   for (int32 n = 0; n < 20; n++) {
     struct NnetGenerationOptions gen_config;
     gen_config.allow_ivector = true;
@@ -146,7 +146,7 @@ void UnitTestNnetCompileOnline() {
     ModifyNnetIvectorPeriod(ivector_period, &nnet);
     KALDI_LOG << "Nnet info after modifying ivector period is: "
               << nnet.Info();
-    CreateOnlineComputationRequestSimple(
+    CreateLoopedComputationRequestSimple(
         nnet, chunk_size, frame_subsampling_factor,
         ivector_period, extra_left_context_begin, extra_right_context,
         num_sequences, &request1, &request2, &request3);
@@ -159,12 +159,12 @@ void UnitTestNnetCompileOnline() {
     request3.Print(std::cerr);
 
     NnetOptimizeOptions optimize_opts;
-    // todo: set optimize-online=true.
+    // todo: set optimize-looped=true.
     NnetComputation computation;
-    CompileOnline(nnet, optimize_opts,
+    CompileLooped(nnet, optimize_opts,
                   request1, request2, request3,
                   &computation);
-    KALDI_LOG << "Compiled online computation is ";
+    KALDI_LOG << "Compiled looped computation is ";
     computation.Print(std::cerr, nnet);
   }
 }
@@ -179,7 +179,7 @@ int main() {
   using namespace kaldi::nnet3;
   SetVerboseLevel(4);
 
-  UnitTestNnetCompileOnline();
+  UnitTestNnetCompileLooped();
   UnitTestNnetCompile();
   UnitTestNnetCompileMulti();
 

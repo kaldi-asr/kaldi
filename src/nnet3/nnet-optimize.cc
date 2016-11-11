@@ -451,18 +451,18 @@ void Optimize(const NnetOptimizeOptions &config,
       CheckComputation(nnet, *computation, false);
   }
 
-  // the online computation optimization has to go before
+  // the looped computation optimization has to go before
   // 'RemoveUnnecessaryAllocation()'.  We don't gate this by 'config.optimize'
-  // because it's necessary for online computation to run.
-  if (config.optimize_online_computation){
-    OptimizeOnlineComputation(nnet, computation);
+  // because it's necessary for looped computation to run.
+  if (config.optimize_looped_computation){
+    OptimizeLoopedComputation(nnet, computation);
     if (GetVerboseLevel() >= 4)
       CheckComputation(nnet, *computation, false);
   }
 
   if (config.optimize && config.allocate_from_other &&
-      !config.optimize_online_computation) {
-    // Don't do this if it's an online computation because we're not sure if it
+      !config.optimize_looped_computation) {
+    // Don't do this if it's an looped computation because we're not sure if it
     // would be correct in that case, as written.  In any case the performance
     // benefit is tiny.
     RemoveUnnecessaryAllocation(nnet, computation);
@@ -476,7 +476,7 @@ void Optimize(const NnetOptimizeOptions &config,
   // other optimizations.)
   ConsolidateIoOperations(nnet, computation);
 
-  if (config.optimize_online_computation)
+  if (config.optimize_looped_computation)
     FixGotoLabel(computation);
 
   if (GetVerboseLevel() >= 4)
@@ -716,7 +716,7 @@ void ConsolidateIoOperations(const Nnet &nnet,
   if (ends_with_goto) {
     // If, before this operation, the last command was kGotoLael, remove all
     // commands that have been reordered to go after the kGotoLabel command
-    // [they would be unreachable anyway.]  This relates to online computations.
+    // [they would be unreachable anyway.]  This relates to looped computations.
     // It may seem wrong that we are just removing these
     // kAcceptInput/kProvideOutput commands, but the reason it's OK
     // (and preserves equivalence with the code prior to this function call),
