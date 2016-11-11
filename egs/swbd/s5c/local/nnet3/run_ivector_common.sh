@@ -145,7 +145,7 @@ if [ $stage -le 9 ]; then
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
     data/${train_set}_max2_hires exp/nnet3/extractor exp/nnet3/ivectors_${train_set} || exit 1;
 
-  for data_set in eval2000 train_dev rt03; do
+  for data_set in eval2000 train_dev; do
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
       data/${data_set}_hires exp/nnet3/extractor exp/nnet3/ivectors_${data_set} || exit 1;
   done
