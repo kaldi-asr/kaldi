@@ -1,4 +1,4 @@
-// nnet3/nnet-compile-online.h
+// nnet3/nnet-compile-looped.h
 
 // Copyright      2016  Johns Hopkins University (author: Daniel Povey)
 
@@ -17,8 +17,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_NNET3_NNET_COMPILE_ONLINE_H_
-#define KALDI_NNET3_NNET_COMPILE_ONLINE_H_
+#ifndef KALDI_NNET3_NNET_COMPILE_LOOPED_H_
+#define KALDI_NNET3_NNET_COMPILE_LOOPED_H_
 
 #include "nnet3/nnet-optimize.h"
 #include "nnet3/nnet-utils.h"
@@ -30,9 +30,9 @@ namespace nnet3 {
 
 
 /**
-   CompileOnline() provides an internal interface for 'online' computation.
+   CompileLooped() provides an internal interface for 'looped' computation.
    It's usable for inference only (not training), meaning that backprop is
-   not supported (for now, at least).  CompileOnline() allows you to do the
+   not supported (for now, at least).  CompileLooped() allows you to do the
    neural net computation for small chunks with increasing 't' values, and
    naturally cache the intermediate activations (rather than recomputing them
    every time you see new input data).
@@ -58,7 +58,7 @@ namespace nnet3 {
 
    That's done in the optimization code.
  */
-void CompileOnline(const Nnet &nnet,
+void CompileLooped(const Nnet &nnet,
                    const NnetOptimizeOptions &optimize_opts,
                    const ComputationRequest &request1,
                    const ComputationRequest &request2,
@@ -69,7 +69,7 @@ void CompileOnline(const Nnet &nnet,
   This function gives you a suitable chunk size, which is the smallest number >=
   'advised_chunk_size' that is an exact multiple of nnet.Modulus() and
   frame_subsampling_factor.  This will ensure that all the chunks have the same
-  structure, which makes compiling the online computation a little more
+  structure, which makes compiling the looped computation a little more
   straightforward.
  */
 int32 GetChunkSize(const Nnet &nnet,
@@ -83,7 +83,7 @@ int32 GetChunkSize(const Nnet &nnet,
    We normally train neural networks that expect to see an iVector at frame zero
    only; this is because we train on fixed-size chunks and the iVector doesn't
    change that much within each chunk.  However, expecting just one iVector
-   isn't that convenient for online recognition because it changes with
+   isn't that convenient for looped recognition because it changes with
    time, so we modify the iVector input period in the network by replacing
    expressions like ReplaceIndex(ivector, t, 0) or just "t", with
    Round(ivector, 10) [assuming ivector_period == 10].  This won't work
@@ -99,14 +99,14 @@ void ModifyNnetIvectorPeriod(int32 ivector_period,
                              Nnet *nnet);
 
 /**
-  This function creates computation request suitable for giving to ComputeOnline().
+  This function creates computation request suitable for giving to ComputeLooped().
   It's intended for use with a 'simple' nnet (one satisfying IsSimpleNnet()), and this
   basically means that the inputs must be named "input" and possibly "ivector",
   and that there is an output named "output", and that those are the ones you
   care about (it won't generate any other outputs or use any other inputs).
 
-  If you want to use online computation for different types of neural net, you
-  should use the deeper interface, CompileOnline().
+  If you want to use looped computation for different types of neural net, you
+  should use the deeper interface, CompileLooped().
 
    @param [in] nnet   The neural net this computation request is to be used with.
                This is used to check whether the neural net accepts iVectors,
@@ -140,7 +140,7 @@ void ModifyNnetIvectorPeriod(int32 ivector_period,
                normally this will be just 1, but it can be increased to allow
                simultaneous operation on multiple streams of input.
    @param [out] request1 The first of the 3 requests that this function
-               generates, that the user should then supply to CompileOnline().
+               generates, that the user should then supply to CompileLooped().
                Note: this will tend to be the largest computation request in
                terms of input, because we have to provide enough left and right
                context that it can evaluate the first chunk.  Note: as
@@ -152,7 +152,7 @@ void ModifyNnetIvectorPeriod(int32 ivector_period,
    @param [out] request3  The third of the 3 requests that this function generates.
                 It will be the same as request2, except for a time offset.
 */
-void CreateOnlineComputationRequestSimple(const Nnet &nnet,
+void CreateLoopedComputationRequestSimple(const Nnet &nnet,
                                           int32 chunk_size,
                                           int32 frame_subsampling_factor,
                                           int32 ivector_period,
@@ -163,12 +163,12 @@ void CreateOnlineComputationRequestSimple(const Nnet &nnet,
                                           ComputationRequest *request2,
                                           ComputationRequest *request3);
 
-struct NnetSimpleOnlineComputationOptions {
-
+struct NnetSimpleLoopedComputationOptions {
+  // TODO
 };
 
 void CreateLoopedComputationSimple(
-    const Nnet &nnet, // ... TODO...
+    const Nnet &nnet // ... TODO...
                                    );
 
 

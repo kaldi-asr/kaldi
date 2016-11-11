@@ -1664,9 +1664,9 @@ void LimitDerivativeTimes(const Nnet &nnet,
 }
 
 
-class ComputationOnlineOptimizer {
+class ComputationLoopedOptimizer {
  public:
-  ComputationOnlineOptimizer(const Nnet &nnet,
+  ComputationLoopedOptimizer(const Nnet &nnet,
                              NnetComputation *computation):
       nnet_(nnet), computation_(computation) { }
   bool Optimize();
@@ -1834,7 +1834,7 @@ class ComputationOnlineOptimizer {
 
 
 // static
-int32 ComputationOnlineOptimizer::FindTimeShift(
+int32 ComputationLoopedOptimizer::FindTimeShift(
     const NnetComputation &computation,
     const std::vector<int32> &segment_ends) {
   KALDI_ASSERT(segment_ends.size() >= 3);
@@ -1884,7 +1884,7 @@ int32 ComputationOnlineOptimizer::FindTimeShift(
 }
 
 // static
-void ComputationOnlineOptimizer::CreateMatrixPairs(
+void ComputationLoopedOptimizer::CreateMatrixPairs(
     const NnetComputation &computation,
     std::vector<std::pair<int32, int32> > *matrix_to_pair) {
   typedef unordered_map<std::vector<Cindex>, int32,
@@ -1920,7 +1920,7 @@ void ComputationOnlineOptimizer::CreateMatrixPairs(
 }
 
 // static
-void ComputationOnlineOptimizer::GetPairToMatrixMap(
+void ComputationLoopedOptimizer::GetPairToMatrixMap(
       std::vector<std::pair<int32, int32> > &matrix_to_pair,
       unordered_map<std::pair<int32, int32>, int32, PairHasher<int32> > *pair_to_matrix) {
   int32 num_matrices = matrix_to_pair.size();
@@ -1932,7 +1932,7 @@ void ComputationOnlineOptimizer::GetPairToMatrixMap(
 
 
 // static
-void ComputationOnlineOptimizer::ConvertListsToPairLists(
+void ComputationLoopedOptimizer::ConvertListsToPairLists(
       const std::vector<std::vector<int32> > &active_matrices,
       const std::vector<std::pair<int32, int32> > &matrix_to_pair,
       std::vector<std::vector<std::pair<int32, int32> > > *active_pairs) {
@@ -1956,7 +1956,7 @@ void ComputationOnlineOptimizer::ConvertListsToPairLists(
 }
 
 // static
-void ComputationOnlineOptimizer::NormalizePairLists(
+void ComputationLoopedOptimizer::NormalizePairLists(
     std::vector<std::vector<std::pair<int32, int32> > > *active_pairs,
     std::vector<int32> *time_offsets) {
   int32 num_segments = active_pairs->size();
@@ -1983,7 +1983,7 @@ void ComputationOnlineOptimizer::NormalizePairLists(
 
 
 // static
-bool ComputationOnlineOptimizer::FindFirstRepeat(
+bool ComputationLoopedOptimizer::FindFirstRepeat(
     const std::vector<std::vector<std::pair<int32, int32> > > &normalized_active_pairs,
     const std::vector<int32> &time_offsets,
     int32 time_shift_per_segment,
@@ -2019,7 +2019,7 @@ bool ComputationOnlineOptimizer::FindFirstRepeat(
 }
 
 // static
-void ComputationOnlineOptimizer::PairListToMatrixList(
+void ComputationLoopedOptimizer::PairListToMatrixList(
     const std::vector<std::pair<int32, int32> > &pair_list,
     const unordered_map<std::pair<int32, int32>, int32, PairHasher<int32> > &pair_to_matrix,
     std::vector<int32> *matrix_list) {
@@ -2041,7 +2041,7 @@ void ComputationOnlineOptimizer::PairListToMatrixList(
 
 
 // static
-void ComputationOnlineOptimizer::FindActiveMatrices(
+void ComputationLoopedOptimizer::FindActiveMatrices(
     const NnetComputation &computation,
     const Analyzer &analyzer,
     const std::vector<int32> &segment_end_commands,
@@ -2079,7 +2079,7 @@ void ComputationOnlineOptimizer::FindActiveMatrices(
 }
 
 // static
-void ComputationOnlineOptimizer::CheckIdentifiedMatrices(
+void ComputationLoopedOptimizer::CheckIdentifiedMatrices(
     const NnetComputation &computation,
     const std::vector<int32> &list1,
     const std::vector<int32> &list2,
@@ -2114,7 +2114,7 @@ void ComputationOnlineOptimizer::CheckIdentifiedMatrices(
 
 
 // static
-void ComputationOnlineOptimizer::GetMatrixSwapOrder(
+void ComputationLoopedOptimizer::GetMatrixSwapOrder(
     const std::vector<int32> &matrices1,
     const std::vector<int32> &matrices2,
     std::vector<std::pair<int32, int32> > *swaps) {
@@ -2166,7 +2166,7 @@ void ComputationOnlineOptimizer::GetMatrixSwapOrder(
 }
 
 // static
-void ComputationOnlineOptimizer::AddMatrixSwapCommands(
+void ComputationLoopedOptimizer::AddMatrixSwapCommands(
     const std::vector<int32> &matrices1,
     const std::vector<int32> &matrices2,
     NnetComputation *computation) {
@@ -2201,7 +2201,7 @@ void ComputationOnlineOptimizer::AddMatrixSwapCommands(
 }
 
 // static
-void ComputationOnlineOptimizer::FormInfiniteLoop(
+void ComputationLoopedOptimizer::FormInfiniteLoop(
     int32 command1, int32 command2,
     NnetComputation *computation) {
   KALDI_ASSERT(static_cast<int32>(computation->commands.size()) >=
@@ -2221,11 +2221,11 @@ void ComputationOnlineOptimizer::FormInfiniteLoop(
 
 
 
-bool ComputationOnlineOptimizer::Optimize() {
+bool ComputationLoopedOptimizer::Optimize() {
   analyzer_.Init(nnet_, *computation_);
   KALDI_ASSERT(!computation_->matrix_debug_info.empty() &&
                "You must request matrix debug info when compiling "
-               "online computations.");
+               "looped computations.");
 
   // get the indexes of the separator commands at the ends of segments.
   std::vector<int32> segment_ends;
@@ -2304,9 +2304,9 @@ bool ComputationOnlineOptimizer::Optimize() {
 }
 
 
-void OptimizeOnlineComputation(const Nnet &nnet,
+void OptimizeLoopedComputation(const Nnet &nnet,
                                NnetComputation *computation) {
-  ComputationOnlineOptimizer optimizer(nnet, computation);
+  ComputationLoopedOptimizer optimizer(nnet, computation);
   optimizer.Optimize();
 }
 
