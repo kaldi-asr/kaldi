@@ -3,8 +3,8 @@
 set -e -o pipefail
 
 
-# This script is called from local/nnet3/run_tdnn.sh and local/chain/run_tdnn.sh (and may eventually
-# be called by more scripts).  It contains the common feature preparation and iVector-related parts
+# This script is called from local/chain/multi_condition/run_tdnn.sh.
+# It contains the common feature preparation and iVector-related parts
 # of the script.  See those scripts for examples of usage.
 
 stage=1
@@ -24,7 +24,7 @@ nnet3_affix=_cleaned     # affix for exp/$mic/nnet3 directory to put iVector stu
                          # becomes exp/$mic/nnet3_cleaned or whatever.
 num_data_reps=1
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -144,7 +144,6 @@ if [ $stage -le 3 ]; then
 
   utils/combine_data.sh data/${mic}/${train_set}_sp_rvb_hires data/${mic}/${train_set}_sp_hires ${datadir}_rvb${num_data_reps}_hires
   utils/combine_data.sh data/${mic}/${train_set}_sp_rvb_hires_comb data/${mic}/${train_set}_sp_hires_comb ${datadir}_rvb${num_data_reps}_hires_comb
-exit
 fi
 
 

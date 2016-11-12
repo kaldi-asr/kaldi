@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # This is a chain-training script with TDNN neural networks.
-# This script inherits from local/chain/run_tdnn.sh, but adding
+# This script is based on local/chain/run_tdnn.sh, but adding
 # the reverberated IHM data into the train set.
 # This script obtains better results on both IHM and SDM tasks.
 
@@ -9,6 +9,7 @@
 
 # local/chain/multi_condition/run_tdnn.sh --mic ihm --train-set train_cleaned --gmm tri3_cleaned &
 # local/chain/multi_condition/run_tdnn.sh --mic sdm1 --use-ihm-ali true --train-set train_cleaned --gmm tri3_cleaned &
+# local/chain/multi_condition/run_tdnn.sh --mic mdm8 --use-ihm-ali true --train-set train_cleaned --gmm tri3_cleaned &
 
 
 set -e -o pipefail
@@ -24,7 +25,6 @@ train_set=train_cleaned
 gmm=tri3_cleaned  # the gmm for the target data
 ihm_gmm=tri3_cleaned  # the gmm for the IHM system (if --use-ihm-ali true).
 num_threads_ubm=32
-add_reverberated_data=true
 num_data_reps=1
 
 # The rest are configs specific to this script.  Most of the parameters
@@ -41,6 +41,15 @@ echo "$0 $@"  # Print the command line for logging
 . ./path.sh
 . ./utils/parse_options.sh
 
+if ! $use_ihm_ali; then
+  [ "$mic" != "ihm" ] && \
+    echo "$0: you cannot specify --use-ihm-ali false if the microphone is not ihm." && \
+    exit 1;
+else
+  [ "$mic" == "ihm" ] && \
+    echo "$0: you must specify --use-ihm-ali false if the microphone is ihm." && \
+    exit 1;
+fi
 
 if ! cuda-compiled; then
   cat <<EOF && exit 1
@@ -51,10 +60,7 @@ EOF
 fi
 
 nnet3_affix=_cleaned
-
-if [ "$add_reverberated_data" == "true" ]; then
-  rvb_affix=_rvb
-fi
+rvb_affix=_rvb
 
 
 if $use_ihm_ali; then
@@ -153,7 +159,6 @@ if [ $stage -le 13 ]; then
     data/lang $gmm_dir $original_lat_dir
   rm $original_lat_dir/fsts.*.gz # save space
 
-if [ "$add_reverberated_data" == "true" ]; then
   lat_dir_ihmdata=exp/ihm/chain${nnet3_affix}/${gmm}_${train_set}_sp_comb_lats
 
   mkdir -p $lat_dir/temp/
@@ -177,8 +182,6 @@ if [ "$add_reverberated_data" == "true" ]; then
   for f in cmvn_opts final.mdl splice_opts tree; do
     cp $original_lat_dir/$f $lat_dir/$f
   done
-fi
-
 fi
 
 
@@ -219,7 +222,7 @@ fi
 if [ $stage -le 16 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/ami-$(date +'%m_%d_%H_%M')/s5b/$dir/egs/storage $dir/egs/storage
+     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/ami-rvb$(date +'%m_%d_%H_%M')/s5b/$dir/egs/storage $dir/egs/storage
   fi
 
  touch $dir/egs/.nodelete # keep egs around when that run dies.

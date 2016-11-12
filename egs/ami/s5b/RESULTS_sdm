@@ -75,7 +75,7 @@
 %WER 45.1 | 13296 89971 | 59.1 23.4 17.6 4.2 45.1 69.5 | 0.591 | exp/sdm1/chain/tdnn_sp_bi_ihmali/decode_eval/ascore_8/eval_hires_o4.ctm.filt.sys
 
 # local/chain/multi_condition/run_tdnn.sh --mic sdm1 --use-ihm-ali true --train-set train_cleaned --gmm tri3_cleaned &
-# cleanup + chain TDNN model, cleaned data and alignments from ihm data.
+# cleanup + chain TDNN model, SDM original + IHM reverberated data, alignments from ihm data.
 # *** best system ***
 # for d in exp/sdm1/chain_cleaned_rvb/tdnn_sp_rvb_bi_ihmali/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
 %WER 38.6 | 14760 94502 | 65.3 19.3 15.4 3.9 38.6 64.9 | 0.599 | exp/sdm1/chain_cleaned_rvb/tdnn_sp_rvb_bi_ihmali/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
