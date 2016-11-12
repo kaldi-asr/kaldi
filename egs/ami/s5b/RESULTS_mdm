@@ -65,7 +65,6 @@
 
 # cleanup + chain TDNN model, alignments from IHM data (IHM alignments help).
 # local/chain/run_tdnn.sh --mic mdm8 --use-ihm-ali true --stage 12 &
-# *** best system ***
 # for d in exp/mdm8/chain_cleaned/tdnn_sp_bi_ihmali/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
 %WER 37.4 | 15286 94509 | 66.6 18.0 15.5 3.9 37.4 62.8 | 0.624 | exp/mdm8/chain_cleaned/tdnn_sp_bi_ihmali/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
 %WER 40.6 | 13381 89982 | 62.7 18.9 18.3 3.3 40.6 67.6 | 0.594 | exp/mdm8/chain_cleaned/tdnn_sp_bi_ihmali/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
@@ -78,4 +77,10 @@
 %WER 37.9 | 15635 94514 | 66.5 19.1 14.4 4.4 37.9 61.2 | 0.646 | exp/mdm8/chain/tdnn_sp_bi_ihmali/decode_dev/ascore_8/dev_hires_o4.ctm.filt.sys
 %WER 41.5 | 13884 89975 | 62.3 20.3 17.4 3.8 41.5 66.0 | 0.621 | exp/mdm8/chain/tdnn_sp_bi_ihmali/decode_eval/ascore_8/eval_hires_o4.ctm.filt.sys
 
+# local/chain/multi_condition/run_tdnn.sh --mic mdm8 --use-ihm-ali true --train-set train_cleaned --gmm tri3_cleaned
+# cleanup + chain TDNN model, MDM original + IHM reverberated data, alignments from IHM data
+# *** best system ***
+# for d in exp/mdm8/chain_cleaned_rvb/tdnn_sp_rvb_bi_ihmali/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
+%WER 35.8 | 14512 94498 | 68.2 17.2 14.6 4.0 35.8 64.9 | 0.632 | exp/mdm8/chain_cleaned_rvb/tdnn_sp_rvb_bi_ihmali/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
+%WER 39.1 | 13651 89967 | 64.3 18.4 17.3 3.3 39.1 65.2 | 0.607 | exp/mdm8/chain_cleaned_rvb/tdnn_sp_rvb_bi_ihmali/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
 
