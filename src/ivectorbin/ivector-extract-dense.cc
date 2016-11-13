@@ -1,7 +1,7 @@
 // ivectorbin/ivector-extract-dense.cc
 
-// Copyright 2013  Daniel Povey
-// Copyright 2016  Matthew Maciejewski
+// Copyright 2016  David Snyder
+//           2016  Matthew Maciejewski
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -18,7 +18,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-
+#include <iomanip>
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
@@ -28,84 +28,75 @@
 
 namespace kaldi {
 
-struct Segments {
-  std::string segment;
-  double start, end;
-};
+void GetChunkRange(int32 num_rows, int32 chunk_num, int32 chunk_size,
+  int32 period, int32 min_chunk, int32 *chunk_start, int32 *chunk_end) {
+  int32 offset = std::min(chunk_size, num_rows - chunk_num * period);
 
-void PrepareSegments (const std::string segments_rxfilename,
-		      unordered_map<std::string, std::vector<Segments*> > *record2seg) {
-  
-  Input ki(segments_rxfilename);
-
-  std::string line;
-  while (std::getline(ki.Stream(), line)) {
-    std::vector<std::string> split_line;
-    // Split the line by space or tab and check the number of fields in each
-    // line. There must be 4 fields--segment name , reacording wav file name,
-    // start time, end time; 5th field (channel info) is optional.
-    SplitStringToVector(line, " \t\r", true, &split_line);
-    if (split_line.size() != 4 && split_line.size() != 5) {
-      KALDI_WARN << "Invalid line in segments file: " << line;
-      continue;
-    }
-    std::string segment = split_line[0],
-        recording = split_line[1],
-        start_str = split_line[2],
-        end_str = split_line[3];
-
-    // Convert the start time and endtime to real from string. Segment is
-    // ignored if start or end time cannot be converted to real.
-    double start, end;
-    if (!ConvertStringToReal(start_str, &start)) {
-      KALDI_WARN << "Invalid line in segments file [bad start]: " << line;
-      continue;
-    }
-    if (!ConvertStringToReal(end_str, &end)) {
-      KALDI_WARN << "Invalid line in segments file [bad end]: " << line;
-      continue;
-    }
-    // start time must not be negative; start time must not be greater than
-    // end time, except if end time is -1
-    if (start < 0 || (end != -1.0 && end <= 0) || ((start >= end) && (end > 0))) {
-      KALDI_WARN << "Invalid line in segments file [empty or invalid segment]: "
-                 << line;
-      continue;
-    }
-    
-    unordered_map<std::string, std::vector<Segments*> >::const_iterator
-	iter = record2seg->find(recording);
-    if (iter == record2seg->end()) {
-      record2seg->insert(std::make_pair<std::string, std::vector<Segments*> >
-				(recording, std::vector<Segments*>()));
-    }
-    Segments *seg = new Segments();
-    seg->segment = segment;
-    seg->start = start;
-    seg->end = end;
-    (*record2seg)[recording].push_back(seg);
-  }
-
+  // If the chunk is less than the target minimum chunk, shift its starting
+  // point to the left.
+  int32 adjust = offset < min_chunk ? min_chunk - offset : 0;
+  *chunk_start = std::max(chunk_num * period - adjust, 0);
+  *chunk_end = chunk_num * period + offset;
 }
-	
-void IvectorExtract(const IvectorExtractor &extractor,
-                   std::string utt,
-                   const Matrix<BaseFloat> &feats_temp,
-                   const Posterior &posterior,
-                   Vector<BaseFloat> *ivector_out,
-                   double *tot_auxf_change) {
+
+int32 ProcessSegment(const std::string line, std::string *segment,
+  std::string *recording, BaseFloat *start, BaseFloat *end) {
+  std::vector<std::string> split_line;
+  // Split the line by space or tab and check the number of fields in each
+  // line. There must be 4 fields--segment name , reacording wav file name,
+  // start time, end time; 5th field (channel info) is optional.
+  SplitStringToVector(line, " \t\r", true, &split_line);
+  if (split_line.size() != 4 && split_line.size() != 5)
+    return 0;
+  (*segment) = split_line[0];
+  (*recording) = split_line[1];
+  std::string start_str = split_line[2],
+              end_str = split_line[3];
+  // Convert the start time and endtime to real from string. Segment is
+  // ignored if start or end time cannot be converted to real.
+  if (!ConvertStringToReal(start_str, start))
+    return 0;
+  if (!ConvertStringToReal(end_str, end))
+    return 0;
+  // start time must not be negative; start time must not be greater than
+  // end time, except if end time is -1
+  if (*start < 0 || (*end != -1.0 && *end <= 0) || ((*start >= *end)
+    && (*end > 0)))
+    return 0;
+  return 1;
+}
+
+int32 NumChunks(int32 num_rows, int32 chunk_size, int32 period) {
+  int32 num_chunks;
+  if (chunk_size >= period) {
+    num_chunks = std::max(static_cast<int32>(ceil((num_rows
+      - chunk_size + period) / static_cast<BaseFloat>(period))), 1);
+  } else {
+    num_chunks = static_cast<int32>(num_rows / period) + 1;
+  }
+  return num_chunks;
+}
+
+
+void IvectorExtractFromChunk(const IvectorExtractor &extractor,
+  std::string utt, const Matrix<BaseFloat> &feat_temp,
+  const Posterior &post, int32 chunk_start, int32 chunk_end,
+  Vector<BaseFloat> *ivector_out, double *tot_auxf_change) {
 
   bool need_2nd_order_stats = false;
   Vector<double> ivector(extractor.IvectorDim());
   double auxf_change;
-  Matrix<double> feats(feats_temp);
+
+  SubMatrix<BaseFloat> sub_feat(feat_temp, chunk_start,
+    chunk_end - chunk_start, 0, feat_temp.NumCols());
+  Posterior sub_post = std::vector<std::vector<std::pair<int32, BaseFloat> > >
+            (&post[chunk_start], &post[chunk_end]);
 
   IvectorExtractorUtteranceStats utt_stats(extractor.NumGauss(),
                                            extractor.FeatDim(),
                                            need_2nd_order_stats);
-    
-  utt_stats.AccStats(feats_temp, posterior);
-  
+  utt_stats.AccStats(sub_feat, sub_post);
+
   ivector(0) = extractor.PriorOffset();
 
   if (tot_auxf_change != NULL) {
@@ -118,7 +109,7 @@ void IvectorExtract(const IvectorExtractor &extractor,
   }
 
   if (tot_auxf_change != NULL) {
-    double T = TotalPosterior(posterior);
+    double T = TotalPosterior(sub_post);
     *tot_auxf_change += auxf_change;
     KALDI_VLOG(2) << "Auxf change for utterance " << utt << " was "
                   << (auxf_change / T) << " per frame over " << T
@@ -155,8 +146,10 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     bool compute_objf_change = true;
     int32 chunk_size = 100,
+          min_chunk = 20,
 	  period = 50;
     double frame_shift = 0.01;
+    std::string segment_rxfilename;
     IvectorEstimationOptions opts;
     TaskSequencerConfig sequencer_config;
     po.Register("compute-objf-change", &compute_objf_change,
@@ -165,127 +158,142 @@ int main(int argc, char *argv[]) {
                 "with --verbose=2 for per-utterance information");
     po.Register("chunk-size", &chunk_size,
 		"Size of the sliding window in frames.");
-    po.Register("period", &period,
-		"Offset of each window in frames.");
-    po.Register("frame-shift", &frame_shift,
-		"With of frames. Used to compute ivector ranges.");
-    
+    po.Register("period", &period, "How frequently we compute a new iVector.");
+    po.Register("frame-shift", &frame_shift, "Frame shift in milliseconds.");
+    po.Register("segment-rxfilename", &segment_rxfilename,
+		"Supply if input features were extracted from segments.");
+    po.Register("min-chunk-size", &min_chunk, "Minimum size (in frames) after "
+                "splitting segments larger than chunk-size.");
+
     opts.Register(&po);
     sequencer_config.Register(&po);
-    
+
     po.Read(argc, argv);
-    
-    if (po.NumArgs() != 7) {
+
+    if (po.NumArgs() != 4 && po.NumArgs() != 6) {
       po.PrintUsage();
       exit(1);
     }
 
     std::string ivector_extractor_rxfilename = po.GetArg(1),
-	segments_rxfilename = po.GetArg(2),
-	feature_rspecifier = po.GetArg(3),
-	posterior_rspecifier = po.GetArg(4),
-	ivectors_wspecifier = po.GetArg(5),
-	ivector_ranges_wspecifier = po.GetArg(6),
-	ivector_weights_wspecifier = po.GetArg(7);
-
-    double tot_auxf_change = 0.0, tot_t = 0.0;
-    int32 num_done = 0, num_err = 0;
-    
+      feature_rspecifier = po.GetArg(2),
+      posterior_rspecifier = po.GetArg(3);
     IvectorExtractor extractor;
     ReadKaldiObject(ivector_extractor_rxfilename, &extractor);
-  
-    unordered_map<std::string, std::vector<Segments*> > record2seg;
-    PrepareSegments(segments_rxfilename, &record2seg);
-
-    RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
     RandomAccessPosteriorReader posterior_reader(posterior_rspecifier);
-    BaseFloatMatrixWriter ivectors_writer(ivectors_wspecifier);
-    TokenVectorWriter ivector_ranges_writer(ivector_ranges_wspecifier);
-    TokenVectorWriter ivector_weights_writer(ivector_weights_wspecifier);
+    double tot_auxf_change = 0.0, tot_t = 0.0;
+    double *auxf_ptr = (compute_objf_change ? &tot_auxf_change : NULL );
+    int32 num_done = 0, num_err = 0;
 
-    for (unordered_map<std::string, std::vector<Segments*> >::iterator iter = record2seg.begin();
-         iter != record2seg.end(); ++iter) {
-      std::vector<Matrix<BaseFloat> > ivector_list;
-      std::vector<std::string> ivector_ranges;
-      std::vector<std::string> ivector_weights;
-      int32 tot_size = 0;
-      for (int32 seg_num = 0; seg_num < iter->second.size(); seg_num++) {
-        std::string utt = iter->second[seg_num]->segment;
-        if (!posterior_reader.HasKey(utt)) {
-          KALDI_WARN << "No posteriors for utterance " << utt;
+    if (po.NumArgs() == 4) {
+      std::string ivector_wspecifier = po.GetArg(4);
+      SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
+      BaseFloatVectorWriter ivector_writer(ivector_wspecifier);
+      for (; !feature_reader.Done(); feature_reader.Next()) {
+        std::string utt = feature_reader.Key();
+        const Matrix<BaseFloat> &feat = feature_reader.Value();
+        Posterior post = posterior_reader.Value(utt);
+        if (static_cast<int32>(post.size()) != feat.NumRows()) {
+          KALDI_WARN << "Size mismatch between posterior " << post.size()
+            << " and features " << feat.NumRows() << " for utterance " << utt;
           num_err++;
           continue;
         }
-        const Matrix<BaseFloat> &mat = feature_reader.Value(utt);
-        Posterior posterior = posterior_reader.Value(utt);
-      
-        if (static_cast<int32>(posterior.size()) != mat.NumRows()) {
-          KALDI_WARN << "Size mismatch between posterior " << posterior.size()
-                     << " and features " << mat.NumRows() << " for utterance "
-                     << utt;
-          num_err++;
-          continue;
-        }
-
-        double *auxf_ptr = (compute_objf_change ? &tot_auxf_change : NULL );
-
-        double this_t = opts.acoustic_weight * TotalPosterior(posterior),
-            max_count_scale = 1.0;
+        double this_t = opts.acoustic_weight * TotalPosterior(post),
+          max_count_scale = 1.0;
         if (opts.max_count > 0 && this_t > opts.max_count) {
           max_count_scale = opts.max_count / this_t;
-          KALDI_LOG << "Scaling stats for utterance " << utt << " by scale "
-                    << max_count_scale << " due to --max-count="
-                    << opts.max_count;
+          KALDI_LOG << "Scaling stats for utterance " << utt
+            << " by scale " << max_count_scale << " due to --max-count="
+            << opts.max_count;
           this_t = opts.max_count;
         }
         ScalePosterior(opts.acoustic_weight * max_count_scale,
-                       &posterior);
-        // note: now, this_t == sum of posteriors.
-
-        int32 num_chunks = std::max(static_cast<int32>(ceil((mat.NumRows() - chunk_size
-					+ period) / static_cast<BaseFloat>(period))), 1);
-        Matrix<BaseFloat> ivectors(num_chunks, extractor.IvectorDim());
+                       &post);
+        int32 num_chunks = NumChunks(feat.NumRows(), chunk_size, period);
         for (int32 i = 0; i < num_chunks; i++) {
           Vector<BaseFloat> ivector(extractor.IvectorDim());
-          int32 window = std::min(chunk_size, mat.NumRows() - i * period);
-          SubMatrix<BaseFloat> sub_mat(mat, i * period, window, 0, mat.NumCols());
-          IvectorExtract(extractor, utt, Matrix<BaseFloat>(sub_mat),
-  		         std::vector<std::vector<std::pair<int32, BaseFloat> > >
-  		         (&posterior[i * period], &posterior[i * period + window]),
-      		         &ivector, auxf_ptr);
-          ivectors.CopyRowFromVec(ivector, i);
-
-	  std::stringstream ss;
-	  double start = iter->second[seg_num]->start;
-	  ss << start + i * period * frame_shift << ","
-	     << start + (i * period + window) * frame_shift;
-	  ivector_ranges.push_back(ss.str());
-	  ss.str(std::string());
-	  ss << window;
-	  ivector_weights.push_back(ss.str());
+          int32 chunk_start, chunk_end;
+          GetChunkRange(feat.NumRows(), i, chunk_size, period, min_chunk,
+            &chunk_start, &chunk_end);
+          IvectorExtractFromChunk(extractor, utt, feat, post, chunk_start,
+            chunk_end, &ivector, auxf_ptr);
+          std::stringstream ss_segment;
+          ss_segment << utt << "-"
+            << std::setw(6) << std::setfill('0') << chunk_start << std::setw(1)
+            << "-" << std::setw(6) << std::setfill('0') << chunk_end;
+          std::string segment = ss_segment.str();
+          ivector_writer.Write(segment, ivector);
+          tot_t += this_t;
+          num_done++;
         }
-	ivector_list.push_back(ivectors);
-	tot_size += num_chunks;
-
-        tot_t += this_t;
-        num_done++;
-
-	delete iter->second[seg_num];
       }
-      Matrix<BaseFloat> recording_ivectors(tot_size, extractor.IvectorDim());
-      int32 start_ind = 0;
-      for (std::vector<Matrix<BaseFloat> >::iterator vec_iter = ivector_list.begin();
-	   vec_iter != ivector_list.end(); ++vec_iter) {
-        SubMatrix<BaseFloat> recording_ivectors_sub(recording_ivectors,
-			start_ind, vec_iter->NumRows(), 0, extractor.IvectorDim());
-	recording_ivectors_sub.CopyFromMat(*vec_iter);
-	start_ind += vec_iter->NumRows();
+    } else {
+      std::string segments_rxfilename = po.GetArg(4),
+      ivector_wspecifier = po.GetArg(5),
+      segments_wxfilename = po.GetArg(6);
+      Input ki(segments_rxfilename);
+      RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
+      BaseFloatVectorWriter ivector_writer(ivector_wspecifier);
+      Output segments_output(segments_wxfilename, false);
+      std::string line;
+      while (std::getline(ki.Stream(), line)) {
+        std::string segment,
+                    recording;
+        BaseFloat start,
+              end;
+        if (!ProcessSegment(line, &segment, &recording, &start, &end)) {
+          KALDI_WARN << "Invalid line in segments file: " << line;
+          num_err++;
+          continue;
+        }
+        const Matrix<BaseFloat> &feat = feature_reader.Value(segment);
+        Posterior post = posterior_reader.Value(segment);
+        if (static_cast<int32>(post.size()) != feat.NumRows()) {
+          KALDI_WARN << "Size mismatch between posterior " << post.size()
+            << " and features " << feat.NumRows() << " for utterance "
+            << segment;
+          num_err++;
+          continue;
+        }
+        double this_t = opts.acoustic_weight * TotalPosterior(post),
+          max_count_scale = 1.0;
+        if (opts.max_count > 0 && this_t > opts.max_count) {
+          max_count_scale = opts.max_count / this_t;
+          KALDI_LOG << "Scaling stats for utterance " << segment
+            << " by scale " << max_count_scale << " due to --max-count="
+            << opts.max_count;
+          this_t = opts.max_count;
+        }
+        ScalePosterior(opts.acoustic_weight * max_count_scale,
+                       &post);
+        int32 num_chunks = NumChunks(feat.NumRows(), chunk_size, period);
+        for (int32 i = 0; i < num_chunks; i++) {
+          Vector<BaseFloat> ivector(extractor.IvectorDim());
+          int32 seg_start = static_cast<int32>(start / frame_shift),
+            chunk_start, chunk_end;
+          GetChunkRange(feat.NumRows(), i, chunk_size, period, min_chunk,
+            &chunk_start, &chunk_end);
+          IvectorExtractFromChunk(extractor, segment, feat, post, chunk_start,
+            chunk_end, &ivector, auxf_ptr);
+
+          std::stringstream ss_subsegment;
+          ss_subsegment << recording << "-" << std::setw(6)
+            << std::setfill('0') << seg_start + chunk_start << std::setw(1)
+            << "-" << std::setw(6) << std::setfill('0')
+            << seg_start + chunk_end;
+          std::string subsegment = ss_subsegment.str();
+
+          ivector_writer.Write(subsegment, ivector);
+
+          segments_output.Stream() << subsegment << " " << recording << " "
+            << start + chunk_start * frame_shift << " "
+            << start + chunk_end * frame_shift << "\n";
+          tot_t += this_t;
+          num_done++;
+        }
       }
-      ivectors_writer.Write(iter->first, recording_ivectors);
-      ivector_ranges_writer.Write(iter->first, ivector_ranges);
-      ivector_weights_writer.Write(iter->first, ivector_weights);
     }
-
     KALDI_LOG << "Done " << num_done << " files, " << num_err
               << " with errors.  Total (weighted) frames " << tot_t;
     if (compute_objf_change)
