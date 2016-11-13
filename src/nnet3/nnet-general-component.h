@@ -440,6 +440,139 @@ class StatisticsPoolingComponentPrecomputedIndexes:
   virtual std::string Type() const { return "StatisticsPoolingComponentPrecomputedIndexes"; }
 };
 
+// BackpropTruncationComponent zeroes out the gradients every certain number
+// of frames, as well as having gradient-clipping functionality as 
+// ClipGradientComponent.
+// This component will be used to prevent gradient explosion problem in
+// recurrent neural networks
+class BackpropTruncationComponent: public Component {
+ public:
+  BackpropTruncationComponent(int32 dim,
+                              BaseFloat clipping_threshold,
+                              BaseFloat zeroing_threshold,
+                              int32 zeroing_interval,
+                              int32 recurrence_interval) {
+    Init(dim, clipping_threshold, zeroing_threshold,
+        zeroing_interval, recurrence_interval);}
+
+  BackpropTruncationComponent(): dim_(0), clipping_threshold_(-1),
+    zeroing_threshold_(-1), zeroing_interval_(0), recurrence_interval_(0),
+    num_clipped_(0), num_zeroed_(0), count_(0), count_zeroing_boundaries_(0) { }
+
+  virtual int32 InputDim() const { return dim_; }
+  virtual int32 OutputDim() const { return dim_; }
+  virtual void InitFromConfig(ConfigLine *cfl);
+  void Init(int32 dim, BaseFloat clipping_threshold,
+            BaseFloat zeroing_threshold, int32 zeroing_interval,
+            int32 recurrence_interval);
+
+  virtual std::string Type() const { return "BackpropTruncationComponent"; }
+
+  virtual int32 Properties() const {
+    return kLinearInInput|kPropagateInPlace|kBackpropInPlace;
+  }
+
+  virtual void ZeroStats();
+
+  virtual Component* Copy() const;
+
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &, // in_value,
+                        const CuMatrixBase<BaseFloat> &, // out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual ComponentPrecomputedIndexes* PrecomputeIndexes(
+      const MiscComputationInfo &misc_info,
+      const std::vector<Index> &input_indexes,
+      const std::vector<Index> &output_indexes,
+      bool need_backprop) const;
+
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const Component &other);
+  virtual void Read(std::istream &is, bool binary); // This Read function
+  // requires that the Component has the correct type.
+  /// Write component to stream
+  virtual void Write(std::ostream &os, bool binary) const;
+  virtual std::string Info() const;
+  virtual ~BackpropTruncationComponent() {
+  }
+ private:
+  // input/output dimension
+  int32 dim_;
+  
+  // threshold (e.g., 30) to be used for clipping corresponds to max-row-norm
+  BaseFloat clipping_threshold_;
+
+  // threshold (e.g., 3) to be used for zeroing corresponds to max-row-norm
+  BaseFloat zeroing_threshold_;
+
+  // interval (e.g., 20, in number of frames) at which we would zero the
+  // gradient if the norm of the gradient is above zeroing_threshold_
+  int32 zeroing_interval_;
+
+  // recurrence_interval_ should be the absolute recurrence offset used in RNNs
+  // (e.g., 3). It is used to see whether the index the component is processing,
+  // crosses a boundary that's a multiple of zeroing_interval_ frames.
+  int32 recurrence_interval_;
+
+  // component-node name, used in the destructor to print out stats of
+  // self-repair
+  std::string debug_info_;
+
+  BackpropTruncationComponent &operator =
+      (const BackpropTruncationComponent &other); // Disallow.
+
+ protected:
+  // variables to store stats
+  // An element corresponds to rows of derivative matrix
+  double num_clipped_;  // number of elements which were clipped
+  double num_zeroed_;   // number of elements which were zeroed
+  double count_;  // number of elements which were processed
+  double count_zeroing_boundaries_; // number of zeroing boundaries where we had
+                                    // the opportunity to perform zeroing
+                                    // the gradient
+
+};
+
+class BackpropTruncationComponentPrecomputedIndexes:
+      public ComponentPrecomputedIndexes {
+ public:
+
+  // zeroing has the same dimension as the number of rows of out-deriv.
+  // Each element in zeroing can take two possible values: -1.0, meaning its
+  // corresponding frame is one that we need to consider zeroing the
+  // gradient of, and 0.0 otherwise
+  CuVector<BaseFloat> zeroing;
+
+  // caches the negative sum of elements in zeroing for less CUDA calls
+  // (the sum is computed by CPU). Note that this value would be positive.
+  BaseFloat zeroing_sum;
+
+  BackpropTruncationComponentPrecomputedIndexes(): zeroing_sum(0.0) {}
+
+  // this class has a virtual destructor so it can be deleted from a pointer
+  // to ComponentPrecomputedIndexes.
+  virtual ~BackpropTruncationComponentPrecomputedIndexes() { }
+
+  virtual ComponentPrecomputedIndexes* Copy() const {
+    return new BackpropTruncationComponentPrecomputedIndexes(*this);
+  }
+
+  virtual void Write(std::ostream &ostream, bool binary) const;
+
+  virtual void Read(std::istream &istream, bool binary);
+
+  virtual std::string Type() const {
+    return "BackpropTruncationComponentPrecomputedIndexes";
+  }
+};
+
 } // namespace nnet3
 } // namespace kaldi
 

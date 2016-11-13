@@ -290,12 +290,12 @@ def AddLstmLayer(config_lines,
                  recurrent_projection_dim = 0,
                  non_recurrent_projection_dim = 0,
                  clipping_threshold = 1.0,
-                 norm_based_clipping = "false",
+                 zeroing_threshold = 3.0,
+                 zeroing_interval = 20,
                  ng_per_element_scale_options = "",
                  ng_affine_options = "",
                  lstm_delay = -1,
                  self_repair_scale_nonlinearity = None,
-                 self_repair_scale_clipgradient = None,
                  max_change_per_component = 0.75):
     assert(recurrent_projection_dim >= 0 and non_recurrent_projection_dim >= 0)
     components = config_lines['components']
@@ -320,8 +320,6 @@ def AddLstmLayer(config_lines,
     # self_repair_scale_nonlinearity is a constant scaling the self-repair vector computed in derived classes of NonlinearComponent,
     # i.e.,  SigmoidComponent, TanhComponent and RectifiedLinearComponent
     self_repair_nonlinearity_string = "self-repair-scale={0:.10f}".format(self_repair_scale_nonlinearity) if self_repair_scale_nonlinearity is not None else ''
-    # self_repair_scale_clipgradient is a constant scaling the self-repair vector computed in ClipGradientComponent
-    self_repair_clipgradient_string = "self-repair-scale={0:.2f}".format(self_repair_scale_clipgradient) if self_repair_scale_clipgradient is not None else ''
     # Natural gradient per element scale parameters
     ng_per_element_scale_options += " param-mean=0.0 param-stddev=1.0 "
     # Per-component max-change option
@@ -357,7 +355,10 @@ def AddLstmLayer(config_lines,
     components.append("component name={0}_c1 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
     components.append("component name={0}_c2 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
     components.append("component name={0}_m type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
-    components.append("component name={0}_c type=ClipGradientComponent dim={1} clipping-threshold={2} norm-based-clipping={3} {4}".format(name, cell_dim, clipping_threshold, norm_based_clipping, self_repair_clipgradient_string))
+    components.append("component name={0}_c type=BackpropTruncationComponent dim={1} "
+        "clipping-threshold={2} zeroing-threshold={3} zeroing-interval={4} "
+        "recurrence-interval={5}".format(name, cell_dim, clipping_threshold, zeroing_threshold,
+        zeroing_interval, abs(lstm_delay)))
 
     # c1_t and c2_t defined below
     component_nodes.append("component-node name={0}_c_t component={0}_c input=Sum({0}_c1_t, {0}_c2_t)".format(name))
@@ -396,7 +397,10 @@ def AddLstmLayer(config_lines,
     if (add_recurrent_projection and add_non_recurrent_projection):
         components.append("# projection matrices : Wrm and Wpm")
         components.append("component name={0}_W-m type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3} {4}".format(name, cell_dim, recurrent_projection_dim + non_recurrent_projection_dim, ng_affine_options, max_change_options))
-        components.append("component name={0}_r type=ClipGradientComponent dim={1} clipping-threshold={2} norm-based-clipping={3} {4}".format(name, recurrent_projection_dim, clipping_threshold, norm_based_clipping, self_repair_clipgradient_string))
+        components.append("component name={0}_r type=BackpropTruncationComponent dim={1} "
+            "clipping-threshold={2} zeroing-threshold={3} zeroing-interval={4} "
+            "recurrence-interval={5}".format(name, recurrent_projection_dim, clipping_threshold,
+            zeroing_threshold, zeroing_interval, abs(lstm_delay)))
         component_nodes.append("# r_t and p_t")
         component_nodes.append("component-node name={0}_rp_t component={0}_W-m input={0}_m_t".format(name))
         component_nodes.append("dim-range-node name={0}_r_t_preclip input-node={0}_rp_t dim-offset=0 dim={1}".format(name, recurrent_projection_dim))
@@ -406,8 +410,12 @@ def AddLstmLayer(config_lines,
 
     elif add_recurrent_projection:
         components.append("# projection matrices : Wrm")
-        components.append("component name={0}_Wrm type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3} {4}".format(name, cell_dim, recurrent_projection_dim, ng_affine_options, max_change_options))
-        components.append("component name={0}_r type=ClipGradientComponent dim={1} clipping-threshold={2} norm-based-clipping={3} {4}".format(name, recurrent_projection_dim, clipping_threshold, norm_based_clipping, self_repair_clipgradient_string))
+        components.append("component name={0}_Wrm type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3} {4}".format(
+            name, cell_dim, recurrent_projection_dim, ng_affine_options, max_change_options))
+        components.append("component name={0}_r type=BackpropTruncationComponent dim={1} "
+            "clipping-threshold={2} zeroing-threshold={3} zeroing-interval={4} "
+            "recurrence-interval={5}".format(name, recurrent_projection_dim, clipping_threshold,
+            zeroing_threshold, zeroing_interval, abs(lstm_delay)))
         component_nodes.append("# r_t")
         component_nodes.append("component-node name={0}_r_t_preclip component={0}_Wrm input={0}_m_t".format(name))
         component_nodes.append("component-node name={0}_r_t component={0}_r input={0}_r_t_preclip".format(name))
@@ -415,7 +423,10 @@ def AddLstmLayer(config_lines,
         output_dim = recurrent_projection_dim
 
     else:
-        components.append("component name={0}_r type=ClipGradientComponent dim={1} clipping-threshold={2} norm-based-clipping={3} {4}".format(name, cell_dim, clipping_threshold, norm_based_clipping, self_repair_clipgradient_string))
+        components.append("component name={0}_r type=BackpropTruncationComponent dim={1} "
+            "clipping-threshold={2} zeroing-threshold={3} zeroing-interval={4} "
+            "recurrence-interval={5}".format(name, cell_dim, clipping_threshold,
+            zeroing_threshold, zeroing_interval, abs(lstm_delay)))
         component_nodes.append("component-node name={0}_r_t component={0}_r input={0}_m_t".format(name))
         output_descriptor = '{0}_r_t'.format(name)
         output_dim = cell_dim
@@ -430,29 +441,41 @@ def AddBLstmLayer(config_lines,
                   recurrent_projection_dim = 0,
                   non_recurrent_projection_dim = 0,
                   clipping_threshold = 1.0,
-                  norm_based_clipping = "false",
+                  zeroing_threshold = 3.0,
+                  zeroing_interval = 20,
                   ng_per_element_scale_options = "",
                   ng_affine_options = "",
                   lstm_delay = [-1,1],
                   self_repair_scale_nonlinearity = None,
-                  self_repair_scale_clipgradient = None,
                   max_change_per_component = 0.75):
     assert(len(lstm_delay) == 2 and lstm_delay[0] < 0 and lstm_delay[1] > 0)
-    output_forward = AddLstmLayer(config_lines, "{0}_forward".format(name), input, cell_dim,
-                                  recurrent_projection_dim, non_recurrent_projection_dim,
-                                  clipping_threshold, norm_based_clipping,
-                                  ng_per_element_scale_options, ng_affine_options,
+    output_forward = AddLstmLayer(config_lines = config_lines,
+                                  name = "{0}_forward".format(name),
+                                  input = input,
+                                  cell_dim = cell_dim,
+                                  recurrent_projection_dim = recurrent_projection_dim,
+                                  non_recurrent_projection_dim = non_recurrent_projection_dim,
+                                  clipping_threshold = clipping_threshold,
+                                  zeroing_threshold = zeroing_threshold,
+                                  zeroing_interval = zeroing_interval,
+                                  ng_per_element_scale_options = ng_per_element_scale_options,
+                                  ng_affine_options = ng_affine_options,
                                   lstm_delay = lstm_delay[0],
                                   self_repair_scale_nonlinearity = self_repair_scale_nonlinearity,
-                                  self_repair_scale_clipgradient = self_repair_scale_clipgradient,
                                   max_change_per_component = max_change_per_component)
-    output_backward = AddLstmLayer(config_lines, "{0}_backward".format(name), input, cell_dim,
-                                   recurrent_projection_dim, non_recurrent_projection_dim,
-                                   clipping_threshold, norm_based_clipping,
-                                   ng_per_element_scale_options, ng_affine_options,
+    output_backward = AddLstmLayer(config_lines = config_lines,
+                                   name = "{0}_backward".format(name),
+                                   input = input,
+                                   cell_dim = cell_dim,
+                                   recurrent_projection_dim = recurrent_projection_dim,
+                                   non_recurrent_projection_dim = non_recurrent_projection_dim,
+                                   clipping_threshold = clipping_threshold,
+                                   zeroing_threshold = zeroing_threshold,
+                                   zeroing_interval = zeroing_interval,
+                                   ng_per_element_scale_options = ng_per_element_scale_options,
+                                   ng_affine_options = ng_affine_options,
                                    lstm_delay = lstm_delay[1],
                                    self_repair_scale_nonlinearity = self_repair_scale_nonlinearity,
-                                   self_repair_scale_clipgradient = self_repair_scale_clipgradient,
                                    max_change_per_component = max_change_per_component)
     output_descriptor = 'Append({0}, {1})'.format(output_forward['descriptor'], output_backward['descriptor'])
     output_dim = output_forward['dimension'] + output_backward['dimension']
