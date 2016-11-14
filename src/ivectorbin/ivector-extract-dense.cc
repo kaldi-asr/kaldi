@@ -170,7 +170,7 @@ int main(int argc, char *argv[]) {
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 4 && po.NumArgs() != 6) {
+    if (po.NumArgs() != 5 && po.NumArgs() != 7) {
       po.PrintUsage();
       exit(1);
     }
@@ -185,10 +185,12 @@ int main(int argc, char *argv[]) {
     double *auxf_ptr = (compute_objf_change ? &tot_auxf_change : NULL );
     int32 num_done = 0, num_err = 0;
 
-    if (po.NumArgs() == 4) {
-      std::string ivector_wspecifier = po.GetArg(4);
+    if (po.NumArgs() == 5) {
+      std::string ivector_wspecifier = po.GetArg(4),
+        utt2spk_wspecifier = po.GetArg(5);
       SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
       BaseFloatVectorWriter ivector_writer(ivector_wspecifier);
+      TokenWriter utt2spk_writer(utt2spk_wspecifier);
       for (; !feature_reader.Done(); feature_reader.Next()) {
         std::string utt = feature_reader.Key();
         const Matrix<BaseFloat> &feat = feature_reader.Value();
@@ -224,6 +226,7 @@ int main(int argc, char *argv[]) {
             << "-" << std::setw(6) << std::setfill('0') << chunk_end;
           std::string segment = ss_segment.str();
           ivector_writer.Write(segment, ivector);
+          utt2spk_writer.Write(segment, utt);
           tot_t += this_t;
           num_done++;
         }
@@ -231,10 +234,12 @@ int main(int argc, char *argv[]) {
     } else {
       std::string segments_rxfilename = po.GetArg(4),
       ivector_wspecifier = po.GetArg(5),
-      segments_wxfilename = po.GetArg(6);
+      segments_wxfilename = po.GetArg(6),
+      utt2spk_wspecifier = po.GetArg(7);
       Input ki(segments_rxfilename);
       RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
       BaseFloatVectorWriter ivector_writer(ivector_wspecifier);
+      TokenWriter utt2spk_writer(utt2spk_wspecifier);
       Output segments_output(segments_wxfilename, false);
       std::string line;
       while (std::getline(ki.Stream(), line)) {
@@ -285,7 +290,7 @@ int main(int argc, char *argv[]) {
           std::string subsegment = ss_subsegment.str();
 
           ivector_writer.Write(subsegment, ivector);
-
+          utt2spk_writer.Write(subsegment, recording);
           segments_output.Stream() << subsegment << " " << recording << " "
             << start + chunk_start * frame_shift << " "
             << start + chunk_end * frame_shift << "\n";
