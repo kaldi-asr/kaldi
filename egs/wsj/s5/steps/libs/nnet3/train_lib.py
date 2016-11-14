@@ -15,7 +15,7 @@ import os
 
 common_train_lib = imp.load_source('ntl', 'steps/nnet3/libs/common_train_lib.py')
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__ + ".train_lib")
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
@@ -132,15 +132,15 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
 
     # Sets off some background jobs to compute train and
     # validation set objectives
-    train_lib.ComputeTrainCvProbabilities(dir, iter, egs_dir, run_opts,
-                                          mb_size = cv_minibatch_size,
-                                          get_raw_nnet_from_am = get_raw_nnet_from_am)
+    ComputeTrainCvProbabilities(dir, iter, egs_dir, run_opts,
+                                mb_size = cv_minibatch_size,
+                                get_raw_nnet_from_am = get_raw_nnet_from_am)
 
     if iter > 0:
         # Runs in the background
-        train_lib.ComputeProgress(dir, iter, egs_dir, run_opts,
-                                  mb_size = cv_minibatch_size,
-                                  get_raw_nnet_from_am = get_raw_nnet_from_am)
+        ComputeProgress(dir, iter, egs_dir, run_opts,
+                        mb_size = cv_minibatch_size,
+                        get_raw_nnet_from_am = get_raw_nnet_from_am)
 
     # an option for writing cache (storing pairs of nnet-computations
     # and computation-requests) during training.
@@ -394,33 +394,31 @@ def ComputeTrainCvProbabilities(dir, iter, egs_dir, run_opts, mb_size=256,
 
     common_train_lib.RunKaldiCommand("""
 {command} {dir}/log/compute_prob_valid.{iter}.log \
-  nnet3-compute-prob {compute_prob_opts} "{model}" \
+  nnet3-compute-prob "{model}" \
         "ark,bg:nnet3-merge-egs --minibatch-size={mb_size} ark:{egs_dir}/valid_diagnostic.egs ark:- |"
     """.format(command = run_opts.command,
                dir = dir,
                iter = iter,
                mb_size = mb_size,
                model = model,
-               compute_prob_opts = compute_prob_opts,
                egs_dir = egs_dir), wait = wait)
 
     common_train_lib.RunKaldiCommand("""
 {command} {dir}/log/compute_prob_train.{iter}.log \
-  nnet3-compute-prob {compute_prob_opts} "{model}" \
+  nnet3-compute-prob "{model}" \
        "ark,bg:nnet3-merge-egs --minibatch-size={mb_size} ark:{egs_dir}/train_diagnostic.egs ark:- |"
     """.format(command = run_opts.command,
                dir = dir,
                iter = iter,
                mb_size = mb_size,
                model = model,
-               compute_prob_opts = compute_prob_opts,
                egs_dir = egs_dir), wait = wait)
 
 def ComputeProgress(dir, iter, egs_dir, run_opts, mb_size=256, wait=False,
                     get_raw_nnet_from_am = True):
     if get_raw_nnet_from_am:
-        prev_model = "nnet3-am-copy --raw=true {dir}/{iter}.mdl - |".format(dir, iter - 1)
-        model = "nnet3-am-copy --raw=true {dir}/{iter}.mdl - |".format(dir, iter)
+        prev_model = "nnet3-am-copy --raw=true {0}/{1}.mdl - |".format(dir, iter - 1)
+        model = "nnet3-am-copy --raw=true {0}/{1}.mdl - |".format(dir, iter)
     else:
         prev_model = '{0}/{1}.raw'.format(dir, iter - 1)
         model = '{0}/{1}.raw'.format(dir, iter)
@@ -466,7 +464,7 @@ def CombineModels(dir, num_iters, num_iters_combine, egs_dir,
         mbsize = 1024
 
     if get_raw_nnet_from_am:
-        out_model = "|nnet3-am-copy --set-raw-nnet=- {dir}/{num_iters}.mdl {dir}/combined.mdl".format(dir = dir, num_iters = num_iters)
+        out_model = "| nnet3-am-copy --set-raw-nnet=- {dir}/{num_iters}.mdl {dir}/combined.mdl".format(dir = dir, num_iters = num_iters)
     else:
         out_model = '{dir}/final.raw'.format(dir = dir)
 
@@ -475,7 +473,7 @@ def CombineModels(dir, num_iters, num_iters_combine, egs_dir,
 nnet3-combine --num-iters=40 \
    --enforce-sum-to-one=true --enforce-positive-weights=true \
    --verbose=3 {raw_models} "ark,bg:nnet3-merge-egs --measure-output-frames=false --minibatch-size={mbsize} ark:{egs_dir}/combine.egs ark:-|" \
-   {out_model}
+   "{out_model}"
    """.format(command = run_opts.command,
                combine_queue_opt = run_opts.combine_queue_opt,
                dir = dir, raw_models = " ".join(raw_model_strings),
@@ -487,8 +485,8 @@ nnet3-combine --num-iters=40 \
     # the same subset we used for the previous compute_probs, as the
     # different subsets will lead to different probs.
     if get_raw_nnet_from_am:
-        train_lib.ComputeTrainCvProbabilities(dir, 'combined', egs_dir, run_opts, wait = False)
+        ComputeTrainCvProbabilities(dir, 'combined', egs_dir, run_opts, wait = False)
     else:
-        train_lib.ComputeTrainCvProbabilities(dir, 'final', egs_dir, run_opts,
-                                              wait = False, get_raw_nnet_from_am = False)
+        ComputeTrainCvProbabilities(dir, 'final', egs_dir, run_opts,
+                                    wait = False, get_raw_nnet_from_am = False)
 

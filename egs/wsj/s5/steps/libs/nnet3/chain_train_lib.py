@@ -17,11 +17,11 @@ common_train_lib = imp.load_source('ntl', 'steps/nnet3/libs/common_train_lib.py'
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-handler = logging.StreamHandler()
-handler.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s [%(filename)s:%(lineno)s - %(funcName)s - %(levelname)s ] %(message)s')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+#handler = logging.StreamHandler()
+#handler.setLevel(logging.INFO)
+#formatter = logging.Formatter('%(asctime)s [%(filename)s:%(lineno)s - %(funcName)s - %(levelname)s ] %(message)s')
+#handler.setFormatter(formatter)
+#logger.addHandler(handler)
 
 def CreatePhoneLm(dir, tree_dir, run_opts, lm_opts = None):
     common_train_lib.RunKaldiCommand("""

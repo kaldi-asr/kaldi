@@ -11,7 +11,7 @@ import re
 import time
 import argparse
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__ + ".common_train_lib")
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
@@ -134,19 +134,19 @@ def GetAverageNnetModel(dir, iter, nnets_list, run_opts,
     if shrink is not None:
         scale = shrink
 
-    new_iter = iter + 1
+    next_iter = iter + 1
     if get_raw_nnet_from_am:
         out_model = """- \| nnet3-am-copy --set-raw-nnet=- --scale={scale} \
-{dir}/{iter}.mdl {dir}/{new_iter}.mdl""".format(dir = dir, iter = iter,
-                                                new_iter = new_iter,
+{dir}/{iter}.mdl {dir}/{next_iter}.mdl""".format(dir = dir, iter = iter,
+                                                next_iter = next_iter,
                                                 scale = scale)
     else:
         if shrink is not None:
             out_model = """- \| nnet3-copy --scale={scale} \
-- {dir}/{new_iter}.raw""".format(dir = dir, new_iter = new_iter, scale = scale)
+- {dir}/{next_iter}.raw""".format(dir = dir, next_iter = next_iter, scale = scale)
         else:
-            out_model = "{dir}/{new_iter}.raw".format(dir = dir,
-                                                      new_iter = new_iter)
+            out_model = "{dir}/{next_iter}.raw".format(dir = dir,
+                                                      next_iter = next_iter)
 
     RunKaldiCommand("""
 {command} {dir}/log/average.{iter}.log \
@@ -171,7 +171,7 @@ def GetBestNnetModel(dir, iter, best_model_index, run_opts,
     if get_raw_nnet_from_am:
         out_model = """- \| nnet3-am-copy --set-raw-nnet=- \
 {dir}/{iter}.mdl {dir}/{next_iter}.mdl""".format(dir = dir, iter = iter,
-                                                 new_iter = iter + 1)
+                                                 next_iter = iter + 1)
     else:
         out_model = '{dir}/{next_iter}.raw'.format(dir = dir,
                                                    next_iter = iter + 1)
@@ -562,7 +562,7 @@ def ComputeAveragePosterior(dir, iter, egs_dir, num_archives,
     nnet3-subset-egs --srand=JOB --n={prior_subset_size} ark:{egs_dir}/egs.{egs_part}.ark ark:- \| \
     nnet3-merge-egs --measure-output-frames=true --minibatch-size=128 ark:- ark:- \| \
     nnet3-compute-from-egs {prior_gpu_opt} --apply-exp=true \
-    {model} ark:- ark:- \| \
+    "{model}" ark:- ark:- \| \
 matrix-sum-rows ark:- ark:- \| vector-sum ark:- {dir}/post.{iter}.JOB.vec
     """.format(command = run_opts.command,
                dir = dir, model = model,
@@ -588,7 +588,7 @@ matrix-sum-rows ark:- ark:- \| vector-sum ark:- {dir}/post.{iter}.JOB.vec
 def AdjustAmPriors(dir, input_model, avg_posterior_vector, output_model, run_opts):
     RunKaldiCommand("""
 {command} {dir}/log/adjust_priors.final.log \
-nnet3-am-adjust-priors {input_model} {avg_posterior_vector} {output_model}
+nnet3-am-adjust-priors "{input_model}" {avg_posterior_vector} "{output_model}"
     """.format(command = run_opts.command,
                dir = dir, input_model = input_model,
                avg_posterior_vector = avg_posterior_vector,
@@ -753,6 +753,11 @@ common_parser.add_argument("--trainer.lda.rand-prune", type=float, dest='rand_pr
 common_parser.add_argument("--trainer.lda.max-lda-jobs", type=float, dest='max_lda_jobs',
                            default=10,
                            help="""Max number of jobs used for LDA stats accumulation""")
+common_parser.add_argument("--trainer.presoftmax-prior-scale-power", type=float,
+                           dest='presoftmax_prior_scale_power',
+                           default=-0.25,
+                           help="")
+
 
 # Parameters for the optimization
 common_parser.add_argument("--trainer.optimization.initial-effective-lrate", type=float, dest='initial_effective_lrate',

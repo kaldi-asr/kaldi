@@ -1,13 +1,10 @@
 #!/usr/bin/env python
 
-
 # Copyright 2016 Vijayaditya Peddinti.
 #           2016 Vimal Manohar
 # Apache 2.0.
 
-
 # this script is based on steps/nnet3/lstm/train.sh
-
 
 import os
 import subprocess
@@ -19,9 +16,13 @@ import imp
 import traceback
 import shutil
 
-common_train_lib = imp.load_source('', 'steps/nnet3/libs/common_train_lib.py')
+sys.path.append("steps/libs")
+
+import common as common_lib
+import nnet3.train.common  as common_train_lib
+import nnet3.train.frame_level_objf as train_lib
+
 nnet3_log_parse = imp.load_source('', 'steps/nnet3/report/nnet3_log_parse_lib.py')
-train_lib = imp.load_source('', 'steps/nnet3/libs/train_lib.py')
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -49,19 +50,19 @@ def GetArgs():
     """,
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     conflict_handler = 'resolve',
-    parents=[common_train_lib.common_parser])
+    parents=[common_train_lib.CommonParser.parser])
     # For common options defined in common_train_lib.common_parser,
     # see steps/nnet3/libs/common_train_lib.py
 
     # egs extraction options
     parser.add_argument("--egs.chunk-width", type=int, dest='chunk_width',
-                        default = 20,
+                        default=20,
                         help="""Number of output labels in the sequence
                         used to train an LSTM.
                         Caution: if you double this you should halve
                         --trainer.samples-per-iter.""")
     parser.add_argument("--egs.chunk-left-context", type=int, dest='chunk_left_context',
-                        default = 40,
+                        default=40,
                         help="""Number of left steps used in the estimation of LSTM
                         state before prediction of the first label""")
 
@@ -75,18 +76,18 @@ def GetArgs():
 
     # Parameters for the optimization
     parser.add_argument("--trainer.optimization.momentum", type=float, dest='momentum',
-                        default = 0.5,
+                        default=0.5,
                         help="""Momentum used in update computation.
                         Note: we implemented it in such a way that
                         it doesn't increase the effective learning rate.""")
     parser.add_argument("--trainer.optimization.shrink-value", type=float, dest='shrink_value',
-                        default = 0.99,
+                        default=0.99,
                         help="Scaling factor used for scaling the parameter matrices when the derivative averages are below the shrink-threshold at the non-linearities")
     parser.add_argument("--trainer.optimization.shrink-threshold", type=float, dest='shrink_threshold',
-                        default = 0.15,
+                        default=0.15,
                         help="If the derivative averages are below this threshold we scale the parameter matrices with the shrink-value. It is less than 0.25 for sigmoid non-linearities.")
     parser.add_argument("--trainer.optimization.cv-minibatch-size", type=int, dest='cv_minibatch_size',
-            default = 256,
+            default=256,
             help="Size of the minibatch to be used in diagnostic jobs (use smaller value for BLSTMs to control memory usage)")
 
     # RNN specific trainer options
@@ -98,13 +99,13 @@ def GetArgs():
                         help="The number of time steps to back-propagate from the last label in the chunk. By default it is same as the chunk-width." )
 
     # General options
-    parser.add_argument("--feat-dir", type=str, required = True,
+    parser.add_argument("--feat-dir", type=str, required=True,
                         help="Directory with features used for training the neural network.")
-    parser.add_argument("--lang", type=str, required = True,
+    parser.add_argument("--lang", type=str, required=True,
                         help="Language directory")
-    parser.add_argument("--ali-dir", type=str, required = True,
+    parser.add_argument("--ali-dir", type=str, required=True,
                         help="Directory with alignments used for training the neural network.")
-    parser.add_argument("--dir", type=str, required = True,
+    parser.add_argument("--dir", type=str, required=True,
                         help="Directory to store the models and all other files.")
 
     print(' '.join(sys.argv))
@@ -137,7 +138,7 @@ def ProcessArgs(args):
     # set the options corresponding to args.use_gpu
     run_opts = common_train_lib.RunOpts()
     if args.use_gpu:
-        if not common_train_lib.CheckIfCudaCompiled():
+        if not common_lib.CheckIfCudaCompiled():
             logger.warning("""
     You are running with one thread but you have not compiled
     for CUDA.  You may be running a setup optimized for GPUs.  If you have
@@ -171,14 +172,14 @@ def Train(args, run_opts):
     logger.info("Arguments for the experiment\n{0}".format(arg_string))
 
     # Set some variables.
-    num_leaves = common_train_lib.GetNumberOfLeaves(args.ali_dir)
-    num_jobs = common_train_lib.GetNumberOfJobs(args.ali_dir)
-    feat_dim = common_train_lib.GetFeatDim(args.feat_dir)
-    ivector_dim = common_train_lib.GetIvectorDim(args.online_ivector_dir)
+    num_leaves = common_lib.GetNumberOfLeavesFromTree(args.ali_dir)
+    num_jobs = common_lib.GetNumberOfJobs(args.ali_dir)
+    feat_dim = common_lib.GetFeatDim(args.feat_dir)
+    ivector_dim = common_lib.GetIvectorDim(args.online_ivector_dir)
 
     # split the training data into parts for individual jobs
     # we will use the same number of jobs as that used for alignment
-    common_train_lib.SplitData(args.feat_dir, num_jobs)
+    common_lib.SplitData(args.feat_dir, num_jobs)
     shutil.copy('{0}/tree'.format(args.ali_dir), args.dir)
     f = open('{0}/num_jobs'.format(args.dir), 'w')
     f.write(str(num_jobs))
@@ -190,7 +191,6 @@ def Train(args, run_opts):
     variables = common_train_lib.ParseGenericConfigVarsFile(var_file)
 
     # Set some variables.
-
     try:
         model_left_context = variables['model_left_context']
         model_right_context = variables['model_right_context']
@@ -209,28 +209,29 @@ def Train(args, run_opts):
 
     if (args.stage <= -5):
         logger.info("Initializing a basic network for estimating preconditioning matrix")
-        common_train_lib.RunKaldiCommand("""
+        common_lib.RunKaldiCommand("""
 {command} {dir}/log/nnet_init.log \
     nnet3-init --srand=-2 {dir}/configs/init.config {dir}/init.raw
-    """.format(command = run_opts.command,
-               dir = args.dir))
+    """.format(command=run_opts.command,
+               dir=args.dir))
 
     default_egs_dir = '{0}/egs'.format(args.dir)
     if (args.stage <= -4) and args.egs_dir is None:
         logger.info("Generating egs")
 
-        train_lib.GenerateEgs(args.feat_dir, args.ali_dir, default_egs_dir,
-                              left_context, right_context,
-                              args.chunk_width + left_context,
-                              args.chunk_width + right_context, run_opts,
-                              frames_per_eg = args.chunk_width,
-                              srand = args.srand,
-                              egs_opts = args.egs_opts,
-                              cmvn_opts = args.cmvn_opts,
-                              online_ivector_dir = args.online_ivector_dir,
-                              samples_per_iter = args.samples_per_iter,
-                              transform_dir = args.transform_dir,
-                              stage = args.egs_stage)
+        train_lib.acoustic_model.GenerateEgs(
+            args.feat_dir, args.ali_dir, default_egs_dir,
+            left_context, right_context,
+            args.chunk_width + left_context,
+            args.chunk_width + right_context, run_opts,
+            frames_per_eg=args.chunk_width,
+            srand=args.srand,
+            egs_opts=args.egs_opts,
+            cmvn_opts=args.cmvn_opts,
+            online_ivector_dir=args.online_ivector_dir,
+            samples_per_iter=args.samples_per_iter,
+            transform_dir=args.transform_dir,
+            stage=args.egs_stage)
 
     if args.egs_dir is None:
         egs_dir = default_egs_dir
@@ -253,18 +254,19 @@ def Train(args, run_opts):
     if (args.stage <= -3):
         logger.info('Computing the preconditioning matrix for input features')
 
-        train_lib.ComputePreconditioningMatrix(args.dir, egs_dir, num_archives, run_opts,
-                                               max_lda_jobs = args.max_lda_jobs,
-                                               rand_prune = args.rand_prune)
+        train_lib.common.ComputePreconditioningMatrix(
+            args.dir, egs_dir, num_archives, run_opts,
+            max_lda_jobs=args.max_lda_jobs,
+            rand_prune=args.rand_prune)
 
     if (args.stage <= -2):
         logger.info("Computing initial vector for FixedScaleComponent before"
                     " softmax, using priors^{prior_scale} and rescaling to"
-                    " average 1".format(prior_scale = args.presoftmax_prior_scale_power))
+                    " average 1".format(prior_scale=args.presoftmax_prior_scale_power))
 
         common_train_lib.ComputePresoftmaxPriorScale(
-                args.dir, args.ali_dir, num_jobs, run_opts,
-                presoftmax_prior_scale_power = args.presoftmax_prior_scale_power)
+            args.dir, args.ali_dir, num_jobs, run_opts,
+            presoftmax_prior_scale_power=args.presoftmax_prior_scale_power)
 
 
     if (args.stage <= -1):
@@ -280,18 +282,18 @@ def Train(args, run_opts):
     num_iters=(num_archives_to_process * 2) / (args.num_jobs_initial + args.num_jobs_final)
 
     num_iters_combine = common_train_lib.VerifyIterations(
-                                         num_iters, args.num_epochs,
-                                         num_hidden_layers, num_archives,
-                                         args.max_models_combine, args.add_layers_period,
-                                         args.num_jobs_final)
+        num_iters, args.num_epochs,
+        num_hidden_layers, num_archives,
+        args.max_models_combine, args.add_layers_period,
+        args.num_jobs_final)
 
-    learning_rate = (lambda iter, current_num_jobs, num_archives_processed:
+    LearningRate = (lambda iter, current_num_jobs, num_archives_processed:
                         common_train_lib.GetLearningRate(
-                                         iter, current_num_jobs, num_iters,
-                                         num_archives_processed,
-                                         num_archives_to_process,
-                                         args.initial_effective_lrate,
-                                         args.final_effective_lrate)
+                            iter, current_num_jobs, num_iters,
+                            num_archives_processed,
+                            num_archives_to_process,
+                            args.initial_effective_lrate,
+                            args.final_effective_lrate)
                     )
 
     if args.num_bptt_steps is None:
@@ -303,6 +305,7 @@ def Train(args, run_opts):
 
 
     logger.info("Training will run for {0} epochs = {1} iterations".format(args.num_epochs, num_iters))
+
     for iter in range(num_iters):
         if (args.exit_stage is not None) and (iter == args.exit_stage):
             logger.info("Exiting early due to --exit-stage {0}".format(iter))
@@ -310,36 +313,40 @@ def Train(args, run_opts):
         current_num_jobs = int(0.5 + args.num_jobs_initial + (args.num_jobs_final - args.num_jobs_initial) * float(iter) / num_iters)
 
         if args.stage <= iter:
-            model_file = "{dir}/{iter}.mdl".format(dir = args.dir, iter = iter)
-            shrinkage_value = (args.shrink_value
-                               if common_train_lib.DoShrinkage(iter, model_file,
-                                                               "SigmoidComponent",
-                                                               args.shrink_threshold)
-                               else 1
-                               )
-            logger.info("On iteration {0}, learning rate is {1} and shrink value is {2}.".format(iter, learning_rate(iter, current_num_jobs, num_archives_processed), shrinkage_value))
+            model_file = "{dir}/{iter}.mdl".format(dir=args.dir, iter=iter)
 
-            train_lib.TrainOneIteration(
-                      dir = args.dir,
-                      iter = iter,
-                      srand = args.srand,
-                      egs_dir = egs_dir,
-                      num_jobs = current_num_jobs,
-                      num_archives_processed = num_archives_processed,
-                      num_archives = num_archives,
-                      learning_rate = learning_rate(iter, current_num_jobs, num_archives_processed),
-                      shrinkage_value = shrinkage_value,
-                      minibatch_size = args.num_chunk_per_minibatch,
-                      num_hidden_layers = num_hidden_layers,
-                      add_layers_period = args.add_layers_period,
-                      left_context = left_context,
-                      right_context = right_context,
-                      min_deriv_time = min_deriv_time,
-                      momentum = args.momentum,
-                      max_param_change = args.max_param_change,
-                      shuffle_buffer_size = args.shuffle_buffer_size,
-                      cv_minibatch_size = args.cv_minibatch_size,
-                      run_opts = run_opts)
+            shrinkage_value = 1.0
+            if args.shrink_value != 1.0:
+                shrinkage_value = (args.shrink_value
+                                   if common_train_lib.DoShrinkage(
+                                        iter, model_file, "SigmoidComponent",
+                                        args.shrink_threshold)
+                                   else 1
+                                   )
+            logger.info("On iteration {0}, learning rate is {1} and shrink value is {2}.".format(
+                iter, LearningRate(iter, current_num_jobs, num_archives_processed), shrinkage_value))
+
+            train_lib.common.TrainOneIteration(
+                dir=args.dir,
+                iter=iter,
+                srand=args.srand,
+                egs_dir=egs_dir,
+                num_jobs=current_num_jobs,
+                num_archives_processed=num_archives_processed,
+                num_archives=num_archives,
+                learning_rate=LearningRate(iter, current_num_jobs, num_archives_processed),
+                shrinkage_value=shrinkage_value,
+                minibatch_size=args.num_chunk_per_minibatch,
+                num_hidden_layers=num_hidden_layers,
+                add_layers_period=args.add_layers_period,
+                left_context=left_context,
+                right_context=right_context,
+                min_deriv_time=min_deriv_time,
+                momentum=args.momentum,
+                max_param_change=args.max_param_change,
+                shuffle_buffer_size=args.shuffle_buffer_size,
+                cv_minibatch_size=args.cv_minibatch_size,
+                run_opts=run_opts)
 
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain conditions
@@ -353,25 +360,26 @@ def Train(args, run_opts):
                 # lets do some reporting
                     [report, times, data] = nnet3_log_parse.GenerateAccuracyReport(args.dir)
                     message = report
-                    subject = "Update : Expt {dir} : Iter {iter}".format(dir = args.dir, iter = iter)
+                    subject = "Update : Expt {dir} : Iter {iter}".format(dir=args.dir, iter=iter)
                     common_train_lib.SendMail(message, subject, args.email)
 
         num_archives_processed = num_archives_processed + current_num_jobs
 
     if args.stage <= num_iters:
         logger.info("Doing final combination to produce final.mdl")
-        train_lib.CombineModels(args.dir, num_iters, num_iters_combine, egs_dir,
-                                run_opts, chunk_width = args.chunk_width)
+        train_lib.common.CombineModels(args.dir, num_iters, num_iters_combine,
+                                       egs_dir,
+                                       run_opts, chunk_width=args.chunk_width)
 
     if args.stage <= num_iters + 1:
         logger.info("Getting average posterior for purposes of adjusting the priors.")
         avg_post_vec_file = train_lib.ComputeAveragePosterior(
-                            args.dir, 'combined', egs_dir,
-                            num_archives, args.prior_subset_size, run_opts)
+            args.dir, 'combined', egs_dir,
+            num_archives, args.prior_subset_size, run_opts)
 
         logger.info("Re-adjusting priors based on computed posteriors")
-        combined_model = "{dir}/combined.mdl".format(dir = args.dir)
-        final_model = "{dir}/final.mdl".format(dir = args.dir)
+        combined_model = "{dir}/combined.mdl".format(dir=args.dir)
+        final_model = "{dir}/final.mdl".format(dir=args.dir)
         train_lib.AdjustAmPriors(args.dir, combined_model, avg_post_vec_file,
                                  final_model, run_opts)
 
@@ -383,16 +391,18 @@ def Train(args, run_opts):
             # delete it
             remove_egs = False
 
-        common_train_lib.CleanNnetDir(args.dir, num_iters, egs_dir,
-                         preserve_model_interval = args.preserve_model_interval,
-                         remove_egs = remove_egs)
+        common_train_lib.CleanNnetDir(
+            args.dir, num_iters, egs_dir,
+            preserve_model_interval=args.preserve_model_interval,
+            remove_egs=remove_egs)
 
     # do some reporting
     [report, times, data] = nnet3_log_parse.GenerateAccuracyReport(args.dir)
     if args.email is not None:
-        common_train_lib.SendMail(report, "Update : Expt {0} : complete".format(args.dir), args.email)
+        common_lib.SendMail(report, "Update : Expt {0} : complete".format(
+                                      args.dir), args.email)
 
-    report_handle = open("{dir}/accuracy.report".format(dir = args.dir), "w")
+    report_handle = open("{dir}/accuracy.report".format(dir=args.dir), "w")
     report_handle.write(report)
     report_handle.close()
 
@@ -404,8 +414,8 @@ def Main():
         Train(args, run_opts)
     except Exception as e:
         if args.email is not None:
-            message = "Training session for experiment {dir} died due to an error.".format(dir = args.dir)
-            common_train_lib.SendMail(message, message, args.email)
+            message = "Training session for experiment {dir} died due to an error.".format(dir=args.dir)
+            common_lib.SendMail(message, message, args.email)
         traceback.print_exc()
         raise e
 

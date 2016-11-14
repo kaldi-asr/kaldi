@@ -40,31 +40,31 @@ def GetArgs():
     DNNs include simple DNNs, TDNNs and CNNs.
     """,
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    conflict_handler = 'resolve',
+    conflict_handler='resolve',
     parents=[common_train_lib.common_parser])
     # For common options defined in common_train_lib.common_parser,
     # see steps/nnet3/libs/common_train_lib.py
 
     # egs extraction options
     parser.add_argument("--egs.frames-per-eg", type=int, dest='frames_per_eg',
-                        default = 8,
+                        default=8,
                         help="Number of output labels per example")
 
     parser.add_argument("--trainer.optimization.minibatch-size", type=float, dest='minibatch_size',
-                        default = 512,
+                        default=512,
                         help="Size of the minibatch used to compute the gradient")
 
     # General options
     parser.add_argument("--nj", type=int, default=4,
                         help="Number of parallel jobs")
     parser.add_argument("--use-dense-targets", type=str, action=common_train_lib.StrToBoolAction,
-                       default = True, choices = ["true", "false"],
+                       default=True, choices=["true", "false"],
                        help="Train neural network using dense targets")
-    parser.add_argument("--feat-dir", type=str, required = True,
+    parser.add_argument("--feat-dir", type=str, required=True,
                         help="Directory with features used for training the neural network.")
-    parser.add_argument("--targets-scp", type=str, required = True,
+    parser.add_argument("--targets-scp", type=str, required=True,
                         help="Target for training neural network.")
-    parser.add_argument("--dir", type=str, required = True,
+    parser.add_argument("--dir", type=str, required=True,
                         help="Directory to store the models and all other files.")
 
     print(' '.join(sys.argv))
@@ -158,8 +158,8 @@ def Train(args, run_opts):
         common_train_lib.RunKaldiCommand("""
 {command} {dir}/log/nnet_init.log \
     nnet3-init --srand=-2 {dir}/configs/init.config {dir}/init.raw
-    """.format(command = run_opts.command,
-               dir = args.dir))
+    """.format(command=run_opts.command,
+               dir=args.dir))
 
     default_egs_dir = '{0}/egs'.format(args.dir)
     if (args.stage <= -4) and args.egs_dir is None:
@@ -183,16 +183,16 @@ def Train(args, run_opts):
                   args.feat_dir, args.targets_scp, default_egs_dir,
                   left_context, right_context,
                   left_context, right_context, run_opts,
-                  frames_per_eg = args.frames_per_eg,
-                  srand = args.srand,
-                  egs_opts = args.egs_opts,
-                  cmvn_opts = args.cmvn_opts,
-                  online_ivector_dir = args.online_ivector_dir,
-                  samples_per_iter = args.samples_per_iter,
-                  transform_dir = args.transform_dir,
-                  stage = args.egs_stage,
-                  target_type = target_type,
-                  num_targets = num_targets)
+                  frames_per_eg=args.frames_per_eg,
+                  srand=args.srand,
+                  egs_opts=args.egs_opts,
+                  cmvn_opts=args.cmvn_opts,
+                  online_ivector_dir=args.online_ivector_dir,
+                  samples_per_iter=args.samples_per_iter,
+                  transform_dir=args.transform_dir,
+                  stage=args.egs_stage,
+                  target_type=target_type,
+                  num_targets=num_targets)
 
     if args.egs_dir is None:
         egs_dir = default_egs_dir
@@ -216,8 +216,8 @@ def Train(args, run_opts):
         logger.info('Computing the preconditioning matrix for input features')
 
         train_lib.ComputePreconditioningMatrix(args.dir, egs_dir, num_archives, run_opts,
-                                               max_lda_jobs = args.max_lda_jobs,
-                                               rand_prune = args.rand_prune)
+                                               max_lda_jobs=args.max_lda_jobs,
+                                               rand_prune=args.rand_prune)
 
 
     if (args.stage <= -1):
@@ -256,35 +256,35 @@ def Train(args, run_opts):
         current_num_jobs = int(0.5 + args.num_jobs_initial + (args.num_jobs_final - args.num_jobs_initial) * float(iter) / num_iters)
 
         if args.stage <= iter:
-            model_file = "{dir}/{iter}.raw".format(dir = args.dir, iter = iter)
+            model_file = "{dir}/{iter}.raw".format(dir=args.dir, iter=iter)
 
             logger.info("On iteration {0}, learning rate is {1}.".format(iter, LearningRate(iter, current_num_jobs, num_archives_processed)))
 
-            train_lib.TrainOneIteration(dir = args.dir,
-                                        iter = iter,
-                                        srand = args.srand,
-                                        egs_dir = egs_dir,
-                                        num_jobs = current_num_jobs,
-                                        num_archives_processed = num_archives_processed,
-                                        num_archives = num_archives,
-                                        learning_rate = LearningRate(iter, current_num_jobs, num_archives_processed),
-                                        minibatch_size = args.minibatch_size,
-                                        frames_per_eg = args.frames_per_eg,
-                                        num_hidden_layers = num_hidden_layers,
-                                        add_layers_period = args.add_layers_period,
-                                        left_context = left_context,
-                                        right_context = right_context,
-                                        momentum = args.momentum,
-                                        max_param_change = args.max_param_change,
-                                        shuffle_buffer_size = args.shuffle_buffer_size,
-                                        run_opts = run_opts,
-                                        get_raw_nnet_from_am = False)
+            train_lib.TrainOneIteration(dir=args.dir,
+                                        iter=iter,
+                                        srand=args.srand,
+                                        egs_dir=egs_dir,
+                                        num_jobs=current_num_jobs,
+                                        num_archives_processed=num_archives_processed,
+                                        num_archives=num_archives,
+                                        learning_rate=LearningRate(iter, current_num_jobs, num_archives_processed),
+                                        minibatch_size=args.minibatch_size,
+                                        frames_per_eg=args.frames_per_eg,
+                                        num_hidden_layers=num_hidden_layers,
+                                        add_layers_period=args.add_layers_period,
+                                        left_context=left_context,
+                                        right_context=right_context,
+                                        momentum=args.momentum,
+                                        max_param_change=args.max_param_change,
+                                        shuffle_buffer_size=args.shuffle_buffer_size,
+                                        run_opts=run_opts,
+                                        get_raw_nnet_from_am=False)
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain conditions
                 common_train_lib.RemoveModel(
                                  args.dir, iter-2, num_iters, num_iters_combine,
                                  args.preserve_model_interval,
-                                 get_raw_nnet_from_am = False)
+                                 get_raw_nnet_from_am=False)
 
             if args.email is not None:
                 reporting_iter_interval = num_iters * args.reporting_interval
@@ -292,7 +292,7 @@ def Train(args, run_opts):
                 # lets do some reporting
                     [report, times, data] = nnet3_log_parse.GenerateAccuracyReport(args.dir)
                     message = report
-                    subject = "Update : Expt {dir} : Iter {iter}".format(dir = args.dir, iter = iter)
+                    subject = "Update : Expt {dir} : Iter {iter}".format(dir=args.dir, iter=iter)
                     common_train_lib.SendMail(message, subject, args.email)
 
         num_archives_processed = num_archives_processed + current_num_jobs
@@ -300,14 +300,14 @@ def Train(args, run_opts):
     if args.stage <= num_iters:
         logger.info("Doing final combination to produce final.raw")
         train_lib.CombineModels(args.dir, num_iters, num_iters_combine, egs_dir,
-                                run_opts, get_raw_nnet_from_am = False)
+                                run_opts, get_raw_nnet_from_am=False)
 
     if include_log_softmax and args.stage <= num_iters + 1:
         logger.info("Getting average posterior for purpose of using as priors to convert posteriors into likelihoods.")
         avg_post_vec_file = train_lib.ComputeAveragePosterior(
                             args.dir, 'final', egs_dir,
                             num_archives, args.prior_subset_size, run_opts,
-                            get_raw_nnet_from_am = False)
+                            get_raw_nnet_from_am=False)
 
     if args.cleanup:
         logger.info("Cleaning up the experiment directory {0}".format(args.dir))
@@ -318,16 +318,16 @@ def Train(args, run_opts):
             remove_egs = False
 
         common_train_lib.CleanNnetDir(args.dir, num_iters, egs_dir,
-                         preserve_model_interval = args.preserve_model_interval,
-                         remove_egs = remove_egs,
-                         get_raw_nnet_from_am = False)
+                         preserve_model_interval=args.preserve_model_interval,
+                         remove_egs=remove_egs,
+                         get_raw_nnet_from_am=False)
 
     # do some reporting
     [report, times, data] = nnet3_log_parse.GenerateAccuracyReport(args.dir)
     if args.email is not None:
         common_train_lib.SendMail(report, "Update : Expt {0} : complete".format(args.dir), args.email)
 
-    report_handle = open("{dir}/accuracy.report".format(dir = args.dir), "w")
+    report_handle = open("{dir}/accuracy.report".format(dir=args.dir), "w")
     report_handle.write(report)
     report_handle.close()
 
@@ -339,7 +339,7 @@ def Main():
         Train(args, run_opts)
     except Exception as e:
         if args.email is not None:
-            message = "Training session for experiment {dir} died due to an error.".format(dir = args.dir)
+            message = "Training session for experiment {dir} died due to an error.".format(dir=args.dir)
             common_train_lib.SendMail(message, message, args.email)
         traceback.print_exc()
         raise e
