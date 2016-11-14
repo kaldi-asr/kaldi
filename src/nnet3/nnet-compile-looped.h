@@ -163,13 +163,6 @@ void CreateLoopedComputationRequestSimple(const Nnet &nnet,
                                           ComputationRequest *request2,
                                           ComputationRequest *request3);
 
-struct NnetSimpleLoopedComputationOptions {
-  // TODO
-};
-
-void CreateLoopedComputationSimple(
-    const Nnet &nnet // ... TODO...
-                                   );
 
 
 

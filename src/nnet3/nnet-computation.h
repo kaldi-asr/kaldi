@@ -168,7 +168,9 @@ struct ComputationRequest {
    - kAllocMatrixZeroed: Allocate and zero a matrix.  arg1 = submatrix index.
    - kDeallocMatrix: Deallocate a matrix.  arg1 = submatrix index.
    - kAllocMatrixFromOther: initialize matrix with submatrix index arg1 using memory
-     from matrix with submatrix index arg2 (using shallow swap).
+     from matrix with submatrix index arg2 (using shallow swap).  Note: the
+     code relating to the 'looped' computation relies on the fact that this is
+     a swap, so kSwapMatrix might be a better name, but we're keeping the old name.
    - kAllocMatrixFromOtherZeroed: initialize matrix with submatrix index arg1 using memory
      from matrix with submatrix index arg2 (using shallow swap), then zero the matrix
      we just allocated.

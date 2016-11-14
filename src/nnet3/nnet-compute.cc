@@ -145,8 +145,8 @@ void NnetComputer::DebugAfterExecute(int32 command,
 }
 
 
-void NnetComputer::ExecuteCommand(int32 command) {
-  const NnetComputation::Command &c = computation_.commands[command];
+void NnetComputer::ExecuteCommand() {
+  const NnetComputation::Command &c = computation_.commands[program_counter_];
   int32 m1, m2;
   try {
     switch (c.command_type) {
@@ -279,7 +279,11 @@ void NnetComputer::ExecuteCommand(int32 command) {
         dest.AddRowRanges(src, pairs);
         break;
       }
-      case kNoOperation: case kNoOperationMarker:
+      case kNoOperation: case kNoOperationMarker: case kNoOperationLabel:
+        break;
+      case kGotoLabel:
+        KALDI_ASSERT(computation_.commands[c.arg1].command_type == kNoOperationLabel);
+        program_counter_ = c.arg1;
         break;
       default:
         KALDI_ERR << "Invalid command in computation";
@@ -290,12 +294,12 @@ void NnetComputer::ExecuteCommand(int32 command) {
       computation_.GetCommandStrings(nnet_, &preamble, &command_strings_);
       KALDI_WARN << "Printing some background info since error was detected";
       KALDI_LOG << preamble;
-      for (int32 prev_c = 0; prev_c < command; prev_c++)
+      for (int32 prev_c = 0; prev_c < program_counter_; prev_c++)
         KALDI_LOG << command_strings_[prev_c];
     }
     // the following will re-throw the error, but now we've printed more info
     // about what went wrong.
-    KALDI_ERR << "Error running command " << command_strings_[command];
+    KALDI_ERR << "Error running command " << command_strings_[program_counter_];
   }
 }
 
@@ -381,7 +385,7 @@ void NnetComputer::Run() {
     }
     if (debug_)
       DebugBeforeExecute(program_counter_, &info);
-    ExecuteCommand(program_counter_);
+    ExecuteCommand();
     if (debug_) {
       double total_elapsed_now = timer.Elapsed();
       DebugAfterExecute(program_counter_, info,

@@ -129,8 +129,8 @@ class NnetComputer {
   std::vector<CuMatrix<BaseFloat> > matrices_;
 
 
-  // executes the command in computation_.commands[command].
-  void ExecuteCommand(int32 command);
+  // executes the command in computation_.commands[program_counter_].
+  void ExecuteCommand();
 
   // Returns the matrix index where the input (if is_output==false) or output
   // matrix index for "node_name" is stored.  This looks at the next command (at
