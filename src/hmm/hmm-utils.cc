@@ -49,8 +49,8 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFst(
   const HmmTopology &topo = trans_model.GetTopo();
   const HmmTopology::TopologyEntry &entry  = topo.TopologyForPhone(phone);
 
-  // vector of the pdfs, indexed by pdf-class and self-loop pdf-class
-  // (pdf-classes and self-loop pdf-classes must start from zero and be contiguous).
+  // vector of the pdfs, indexed by pdf-class (pdf-classes must start from zero
+  // and be contiguous).
   std::vector<int32> pdfs(topo.NumPdfClasses(phone));
   for (int32 pdf_class = 0;
        pdf_class < static_cast<int32>(pdfs.size());
@@ -94,7 +94,7 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFst(
        hmm_state < static_cast<int32>(entry.size());
        hmm_state++) {
     int32 pdf_class = entry[hmm_state].pdf_class, pdf;
-    int32 self_loop_pdf_class = entry[hmm_state].pdf_class, self_loop_pdf;
+    int32 self_loop_pdf_class = entry[hmm_state].self_loop_pdf_class, self_loop_pdf;
     if (pdf_class == kNoPdf) {  // nonemitting state.
       pdf = kNoPdf;
       self_loop_pdf = kNoPdf;

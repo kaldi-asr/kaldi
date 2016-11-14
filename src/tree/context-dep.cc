@@ -183,7 +183,6 @@ void ContextDependency::EnumeratePairs(
     int32 self_loop_pdf_class, int32 forward_pdf_class,
     const std::vector<int32> &phone_window,
     unordered_set<std::pair<int32, int32>, PairHasher<int32> > *pairs) const {
-  int32 position = 0;
   std::vector<int32> new_phone_window(phone_window);
   EventType vec;
 
@@ -223,7 +222,8 @@ void ContextDependency::EnumeratePairs(
   } else {
     // Choose 'position' as a phone position in 'context' that's currently
     // 0, and that is as close as possible to the central position P.
-    int32 min_dist = N_ + 1;
+    int32 position = 0;
+    int32 min_dist = N_ - 1;
     for (int32 i = 0; i < N_; i++) {
       int32 dist = (P_ - i > 0) ? (P_ - i) : (i - P_);
       if (phone_window[i] == 0 && dist < min_dist) {
@@ -231,6 +231,7 @@ void ContextDependency::EnumeratePairs(
         min_dist = dist;
       }
     }
+    KALDI_ASSERT(min_dist < N_);
 
     for (size_t i = 0 ; i < phones.size(); i++) {
       new_phone_window[position] = phones[i];
@@ -269,6 +270,7 @@ void ContextDependency::GetPdfInfo(
                            end = pairs.end();
       for (; iter != end; ++iter)
         (*pdf_info)[phone][j].push_back(*iter);
+      std::sort( ((*pdf_info)[phone][j]).begin(),  ((*pdf_info)[phone][j]).end());
     }
   }
 }

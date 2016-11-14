@@ -138,6 +138,14 @@ class HmmTopology {
   // Checks that the object is valid, and throw exception otherwise.
   void Check();
 
+  /// Returns true if this HmmTopology is really 'hmm-like', i.e. the pdf-class on
+  /// the self-loops and forward transitions of all states are identical. [note: in HMMs,
+  /// the densities are associated with the states.] We have extended this to
+  /// support 'non-hmm-like' topologies (where those pdf-classes are different),
+  /// in order to make for more compact decoding graphs in our so-called 'chain models'
+  /// (AKA lattice-free MMI), where we use 1-state topologies that have different pdf-classes
+  /// for the self-loop and the forward transition. Note that we always use the 'reorder=true'
+  /// option so the 'forward transition' actually comes before the self-loop.
   bool IsHmm() const;
 
   /// Returns the topology entry (i.e. vector of HmmState) for this phone;

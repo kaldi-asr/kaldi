@@ -20,7 +20,7 @@
 #ifndef KALDI_TREE_CONTEXT_DEP_H_
 #define KALDI_TREE_CONTEXT_DEP_H_
 
-#include <set>
+#include "util/stl-utils.h"
 #include "itf/context-dep-itf.h"
 #include "tree/event-map.h"
 #include "matrix/matrix-lib.h"
@@ -97,6 +97,18 @@ class ContextDependency: public ContextDependencyInterface {
 
   const EventMap &ToPdfMap() const { return *to_pdf_; }
 
+  /// GetPdfInfo returns a vector indexed by pdf-id, saying for each pdf which
+  /// pairs of (phone, pdf-class) it can correspond to.  (Usually just one).
+  /// c.f. hmm/hmm-topology.h for meaning of pdf-class.
+  /// This is the old, simpler interface of GetPdfInfo(), and that this one can
+  /// only be called if the HmmTopology object's IsHmm() function call returns
+  /// true.
+  virtual void GetPdfInfo(
+      const std::vector<int32> &phones,  // list of phones
+      const std::vector<int32> &num_pdf_classes,  // indexed by phone,
+      std::vector<std::vector<std::pair<int32, int32> > > *pdf_info)
+      const;
+
   /// This function outputs information about what possible pdf-ids can
   /// be generated for HMM-states; it covers the general case where
   /// the self-loop pdf-class may be different from the forward-transition
@@ -118,15 +130,6 @@ class ContextDependency: public ContextDependencyInterface {
       const std::vector<int32> &phones,
       const std::vector<std::vector<std::pair<int32, int32> > > &pdf_class_pairs,
       std::vector<std::vector<std::vector<std::pair<int32, int32> > > > *pdf_info)
-      const;
-
-  /// GetPdfInfo returns a vector indexed by pdf-id, saying for each pdf which
-  /// pairs of (phone, pdf-class) it can correspond to.  (Usually just one).
-  /// c.f. hmm/hmm-topology.h for meaning of pdf-class.
-  virtual void GetPdfInfo(
-      const std::vector<int32> &phones,  // list of phones
-      const std::vector<int32> &num_pdf_classes,  // indexed by phone,
-      std::vector<std::vector<std::pair<int32, int32> > > *pdf_info)
       const;
 
  private:
