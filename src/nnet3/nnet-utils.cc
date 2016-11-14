@@ -707,6 +707,14 @@ void ReadEditConfig(std::istream &edit_config_is, Nnet *nnet) {
 }
 
 
+/// Returns true if 'nnet' has some kind of recurrency.
+bool NnetIsRecurrent(const Nnet &nnet) {
+  std::vector<std::vector<int32> > graph;
+  NnetToDirectedGraph(nnet, &graph);
+  return GraphHasCycles(graph);
+}
+
+
 
 } // namespace nnet3
 } // namespace kaldi

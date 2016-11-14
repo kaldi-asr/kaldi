@@ -266,6 +266,11 @@ void RemoveUnnecessaryAllocation(const Nnet &nnet,
 /// This optimization puts the input operations (kAcceptInput) and output
 /// operations (kProvideOutput) at the very beginning or end of segments of
 /// computation, respectively.
+///
+/// This is actually necessary for computations to be run easily, because if these
+/// commands were interspersed with the regular commands, you'd have to
+/// call computer.Run() between the individual AcceptInput() and GetOutput()
+/// function calls.
 void ConsolidateIoOperations(const Nnet &nnet,
                              NnetComputation *computation);
 

@@ -151,6 +151,9 @@ void AddNnet(const Nnet &src, BaseFloat alpha, Nnet *dest);
 void AddNnetComponents(const Nnet &src, const Vector<BaseFloat> &alphas,
                        BaseFloat scale, Nnet *dest);
 
+/// Returns true if 'nnet' has some kind of recurrency.
+bool NnetIsRecurrent(const Nnet &nnet);
+
 /// Returns the total of the number of parameters in the updatable components of
 /// the nnet.
 int32 NumParameters(const Nnet &src);
