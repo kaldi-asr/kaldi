@@ -85,8 +85,10 @@ void DecodableNnetSimpleLoopedInfo::Init(
   CompileLooped(*nnet, opts_.optimize_config, request1, request2, request3,
                 &computation_);
   computation_.ComputeCudaIndexes();
-  KALDI_LOG << "Computation is:";
-  computation_.Print(std::cerr, *nnet);
+  if (GetVerboseLevel() >= 3) {
+    KALDI_VLOG(3) << "Computation is:";
+    computation_.Print(std::cerr, *nnet);
+  }
 }
 
 
@@ -141,7 +143,8 @@ void DecodableNnetSimpleLooped::AdvanceChunk() {
     // note: end is last plus one.
     end_input_frame = info_.frames_per_chunk_ + info_.frames_right_context_;
   } else {
-    begin_input_frame = num_chunks_computed_ * info_.frames_per_chunk_;
+    begin_input_frame = num_chunks_computed_ * info_.frames_per_chunk_ +
+        info_.frames_right_context_;
     end_input_frame = begin_input_frame + info_.frames_per_chunk_;
   }
   CuMatrix<BaseFloat> feats_chunk(end_input_frame - begin_input_frame,

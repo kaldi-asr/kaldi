@@ -171,9 +171,9 @@ int main(int argc, char *argv[]) {
           }
 
 
-        DecodableAmNnetSimpleLooped nnet_decodable(
-            decodable_info, trans_model, features, ivector, online_ivectors,
-            online_ivector_period);
+          DecodableAmNnetSimpleLooped nnet_decodable(
+              decodable_info, trans_model, features, ivector, online_ivectors,
+              online_ivector_period);
 
           double like;
           if (DecodeUtteranceLatticeFaster(
