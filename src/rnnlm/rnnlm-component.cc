@@ -162,7 +162,7 @@ void LmAffineComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
   Matrix<BaseFloat> cpu_out_transpose(out->NumCols(), out->NumRows());
 
   for (size_t i = 0; i < sp.NumRows(); i++) {
-    SparseVector<BaseFloat> sv = sp.Row(i);
+    const SparseVector<BaseFloat> &sv = sp.Row(i);
     int non_zero_index = -1;
     sv.Max(&non_zero_index);
     vis.push_back(non_zero_index);
@@ -171,6 +171,33 @@ void LmAffineComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
   cpu_out_transpose.AddCols(linear_params_, vis.data());
   out->CopyFromMat(cpu_out_transpose, kTrans);
   out->AddVecToRows(1.0, bias_params_);
+}
+
+void LmAffineComponent::UpdateSimple(const SparseMatrix<BaseFloat> &in_value,
+                                   const MatrixBase<BaseFloat> &out_deriv) {
+  std::vector<MatrixIndexT> vis;
+
+  bias_params_.AddRowSumMat(learning_rate_, out_deriv, 1.0);
+//  linear_params_.AddMatMat(learning_rate_, out_deriv, kTrans,
+//                           in_value, kNoTrans, 1.0);
+  const SparseMatrix<BaseFloat> &sp = in_value;
+
+//  KALDI_LOG << "Number of elements in sparse matrix is " << sp.NumElements();
+  for (size_t i = 0; i < sp.NumRows(); i++) {
+    const SparseVector<BaseFloat> &sv = sp.Row(i);
+    int non_zero_index = -1;
+    sv.Max(&non_zero_index);
+    vis.push_back(non_zero_index);
+  }
+
+  for (int i = 0; i < vis.size(); i++) {
+    MatrixIndexT j = vis[i];
+    // in_value(i, j) = 1
+    for (int k = 0; k < out_deriv.NumCols(); k++) {
+      linear_params_(k, j) += out_deriv(k, i);
+      KALDI_LOG << k << ", " << j << " added " << out_deriv(k, i);
+    }
+  }
 }
 
 void LmAffineComponent::UpdateSimple(const MatrixBase<BaseFloat> &in_value,
@@ -206,6 +233,34 @@ void LmAffineComponent::Backprop(const std::string &debug_info,
       to_update->Update(debug_info, in_value, out_deriv);  // by child classes.
   }
 }
+
+void LmAffineComponent::Backprop(const std::string &debug_info,
+                               const ComponentPrecomputedIndexes *indexes,
+                               const SparseMatrix<BaseFloat> &in_value,
+                               const MatrixBase<BaseFloat> &, // out_value
+                               const MatrixBase<BaseFloat> &out_deriv,
+                               LmComponent *to_update_in,
+                               MatrixBase<BaseFloat> *in_deriv) const {
+  LmAffineComponent *to_update = dynamic_cast<LmAffineComponent*>(to_update_in);
+
+  // Propagate the derivative back to the input.
+  // add with coefficient 1.0 since property kBackpropAdds is true.
+  // If we wanted to add with coefficient 0.0 we'd need to zero the
+  // in_deriv, in case of infinities.
+  if (in_deriv)
+    in_deriv->AddMatMat(1.0, out_deriv, kNoTrans, linear_params_, kNoTrans,
+                        1.0);
+
+  if (to_update != NULL) {
+    // Next update the model (must do this 2nd so the derivatives we propagate
+    // are accurate, in case this == to_update_in.)
+    if (to_update->is_gradient_)
+      to_update->UpdateSimple(in_value, out_deriv);
+    else  // the call below is to a virtual function that may be re-implemented
+      to_update->Update(debug_info, in_value, out_deriv);  // by child classes.
+  }
+}
+
 
 void LmAffineComponent::Read(std::istream &is, bool binary) {
   ReadUpdatableCommon(is, binary);  // read opening tag and learning rate.

@@ -85,6 +85,14 @@ class LmAffineComponent: public LmUpdatableComponent {
                         LmComponent *to_update,
                         MatrixBase<BaseFloat> *in_deriv) const;
 
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const SparseMatrix<BaseFloat> &in_value,
+                        const MatrixBase<BaseFloat> &, // out_value
+                        const MatrixBase<BaseFloat> &out_deriv,
+                        LmComponent *to_update,
+                        MatrixBase<BaseFloat> *in_deriv) const;
+
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
 
@@ -140,10 +148,21 @@ class LmAffineComponent: public LmUpdatableComponent {
       const MatrixBase<BaseFloat> &out_deriv) {
     UpdateSimple(in_value, out_deriv);
   }
+
+  virtual void Update(
+      const std::string &debug_info,
+      const SparseMatrix<BaseFloat> &in_value,
+      const MatrixBase<BaseFloat> &out_deriv) {
+    UpdateSimple(in_value, out_deriv);
+  }
   // UpdateSimple is used when *this is a gradient.  Child classes may override
   // this if needed, but typically won't need to.
   virtual void UpdateSimple(
       const MatrixBase<BaseFloat> &in_value,
+      const MatrixBase<BaseFloat> &out_deriv);
+
+  virtual void UpdateSimple(
+      const SparseMatrix<BaseFloat> &in_value,
       const MatrixBase<BaseFloat> &out_deriv);
 
   const LmAffineComponent &operator = (const LmAffineComponent &other); // Disallow.

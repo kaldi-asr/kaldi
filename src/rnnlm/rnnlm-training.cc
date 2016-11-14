@@ -72,12 +72,14 @@ NnetExample LmNnetTrainer::ProcessEgInputs(NnetExample eg,
                         kUndefined);
 
       // the following lines would be deleted (along with the old_input_ variable) TODO(hxu) leave it for debuging now
+      old_input_ = io.features.GetSparseMatrix();
 //      old_input_.Resize(io.features.NumRows(),
 //                        io.features.NumCols(),
 //                        kUndefined);
 //      old_input_.CopyFromGeneralMat(io.features);
-
-      a.Propagate(NULL, io.features.GetSparseMatrix(), &new_input_);
+//
+      a.Propagate(NULL, old_input_, &new_input_);
+//      a.Propagate(NULL, io.features.GetSparseMatrix(), &new_input_);
       //        SparseMatrix<BaseFloat> sp = io.features.GetSparseMatrix();
       //
       //        for (size_t i = 0; i < sp.NumRows(); i++) {
@@ -87,8 +89,8 @@ NnetExample LmNnetTrainer::ProcessEgInputs(NnetExample eg,
       ////          cu_input.CopyRows(projection.RowData(non_zero_index));
       //          cu_input.CopyRowsFromVec(projection.Row(non_zero_index));
       //        }
-      Matrix<BaseFloat> input(new_input_);
-      io.features = input;
+//      Matrix<BaseFloat> input(new_input_);
+      io.features = new_input_;
     }
   }
   return eg;

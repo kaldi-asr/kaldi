@@ -174,7 +174,7 @@ class LmNnetTrainer {
 
   const LmNnetTrainerOptions config_;
   Matrix<BaseFloat> new_input_;
-  Matrix<BaseFloat> old_input_;
+  SparseMatrix<BaseFloat> old_input_;
 
   // this pointer is not owned
   LmNnet *nnet_;
