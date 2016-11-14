@@ -147,7 +147,112 @@ void IdentifyIndexesArgs(std::vector<NnetComputation::Command> *commands,
   }
 }
 
+// We declare this class in the .cc file, we don't need to export it.
+// It's used inside RenumberComputation.
+class ComputationRenumberer {
+ public:
+  ComputationRenumberer(NnetComputation *computation):
+      computation_(computation) { }
 
+  void Renumber();
+ private:
+  // this function removes unused vectors within the indexes_multi_ array, i.e.
+  // ones that are not referenced in the computation.
+  void RemoveUnusedIndexesMulti();
+  // this function computes the submatrix_is_used_ vector, saying whether each
+  // of the original submatrices is referenced somewhere.
+  void ComputeSubmatrixIsUsed();
+  // this function computes the matrix_is_used_ vector (from the
+  // submatrix_is_used_ vector, from computation_->input_output_info, and from
+  // computation_->commands, saying whether each of the original matrices is
+  // referenced somewhere, directly or indirectly.
+  void ComputeMatrixIsUsed();
+  // This function sets up mappings from old to new matrix and submatrix indexes,
+  // writing to num_{,sub}matrices_new_ and old_to_new_{,sub}matrix_.
+  void SetUpMappings();
+  // This function renumbers submatrix indexes appearing within commands and
+  // indexes_multi_, and then removes unused submatrices from the list of
+  // submatrices while leaving the matrix-indexes at their old values (they will
+  // be mapped by RenumberMatrices()).
+  void RenumberSubmatrices();
+  // renumber matrix indexes appearing within 'commmands', within 'submatrices'
+  // and 'input_output_info'; renumber 'matrices' and if applicable
+  // 'debug_info'.
+  void RenumberMatrices();
+  // removes duplicates within the indexes_multi array itself.
+  void RemoveIndexesMultiDuplicates();
+  // removes unused elements and duplicates within 'computation->indexes'
+  void RenumberIndexes();
+  // removes unused elements and duplicates within 'computation->indexes_ranges'
+  void RenumberIndexesRanges();
+
+  struct SubMatrixHasher {
+    SubMatrixHasher() { }
+    size_t operator () (const NnetComputation::SubMatrixInfo &submat) const {
+      // these numbers are arbitrarily chosen primes.
+      return submat.matrix_index +
+          19553 * submat.row_offset +
+          29297 * submat.num_rows +
+          42209 * submat.col_offset +
+          56527 * submat.num_cols;
+    }
+  };
+
+
+  // Here, T will be int32 or std::pair<int32,int32>
+  template <class T>
+  struct PointerCompare {
+    // This provides an operator < on two vectors of ints or pairs of ints.  It
+    // is designed to provide a total order on the vectors while accessing as
+    // small a portion of the vectors' data as possible.  It's used in removing
+    // duplicates from computation_->indexes_multi and computation_->indexes.
+    // First it compares the length, then it does lexicographical compare.
+    bool operator ()(const std::vector<T> *ptr1,
+                     const std::vector<T> *ptr2) const {
+      size_t size1 = ptr1->size(), size2 = ptr2->size();
+      if (size1 < size2) return true;
+      else if (size1 > size2) return false;
+      else return (*ptr1 < *ptr2);  // use the std::vector operator <, which is
+                                    // lexicographical comparison.
+    }
+  };
+
+  /// creates a renumbering that removes the elements in "to_remove",
+  /// e.g. if old_num_elements = 3 and to_remove = [1], would output
+  /// the vector [ 0, -1, 1 ].
+  static void CreateRenumbering(int32 old_num_elements,
+                                const std::vector<int32> &to_remove,
+                                std::vector<int32> *renumbering);
+
+  /// creates a renumbering from old to new index that removes the unused
+  /// elements, e.g. if used == [ true, false, true, true], would output the
+  /// vector [ 0, -1, 1, 2 ].  Returns number of new elements, i.e. the
+  /// number of elements of 'used' that were true.
+  static int32 CreateRenumbering(const std::vector<bool> &used,
+                                 std::vector<int32> *renumbering);
+
+  // vector of bool indexed by original submatrix-index, that is true if a
+  // submatrix-index is used somewhere in the computation (always true for
+  // the zeroth element).
+  std::vector<bool> submatrix_is_used_;
+  // vector of bool indexed by original submatrix-index, that is true if a
+  // submatrix-index will be kept; this is like submatrix_is_used_; but for
+  // duplicate submatrices, all but the first duplicate will be marked false).
+  std::vector<bool> submatrix_is_kept_;
+  // vector of bool indexed by original-matrix-index > 0, that is true if a
+  // matrix-index is used somewhere in the computation, directly or indirectly.
+  // always true for the zeroth element.
+  std::vector<bool> matrix_is_used_;
+  NnetComputation *computation_;
+  int32 num_matrices_new_;
+  int32 num_submatrices_new_;
+  std::vector<int32> old_to_new_matrix_; // numbered by orig-matrix-index, gives
+                                         // new-matrix-index.  -1 for removed
+                                         // ones.
+  std::vector<int32> old_to_new_submatrix_; // numbered by orig-submatrix-index,
+                                            // gives new-submatrix-index.  -1
+                                            // for removed ones.
+};
 
 // static
 int32 ComputationRenumberer::CreateRenumbering(
@@ -547,6 +652,7 @@ void RenumberComputation(NnetComputation *computation) {
   renumberer.Renumber();
 }
 
+
 void RemoveNoOps(NnetComputation *computation) {
   std::vector<NnetComputation::Command>::iterator
       input_iter = computation->commands.begin(),
@@ -844,6 +950,77 @@ std::pair<bool,bool> VariableMergingOptimizer::MayBeMerged(
   return std::pair<bool,bool>(false,false);
 }
 
+
+/** This class is responsible for consolidating the model-update part of
+    backprop commands, for components in (e.g.) recurrent networks that need to
+    have many separate backprop commands, into more efficient single commands
+    operating on consolidated data in larger matrices.  This is useful for
+    recurrent networks.  */
+class ModelUpdateConsolidator {
+ public:
+  ModelUpdateConsolidator(const Nnet &nnet,
+                          NnetComputation *computation);
+  void ConsolidateModelUpdate();
+ private:
+  void ConsolidateUpdateForComponent(
+      int32 component,
+      const std::vector<int32> &backprop_commands);
+
+  /// This function, called at the end of ConsolidateModelUpdate(), takes the
+  /// commands that we have put in extra_commands_, final_commands_ and
+  /// final_deallocate_commands_, and puts them in the appropriate place in
+  /// computation->commands_.
+  void AddCommandsToComputation();
+
+  /// You call this function when you want to consolidate the values of a list
+  /// of submatrices taken just prior to particular commands.  The input
+  /// 'commands' and 'submatrices' lists must be the same size, and size must be
+  /// > 1.  This function will create a new matrix that is the row-wise
+  /// concatentation of all these submatrices, with values taken just prior to
+  /// the respective command indexes.  This function will will add to
+  /// extra_commands_ the commands to do the copying at the appropriate places
+  /// (at the supplied command indexes; they will be inserted just before).  The
+  /// return value is the submatrix index of a submatrix that represents the
+  /// whole of the consolidated matrix.  This command will insert, at the
+  /// beginning of the computation (in extra_commands_[0]), a command to
+  /// initialize the matrix; and will append to final_deallocate_commands_ the
+  /// commands to deallocate the matrix.  If computation_->matrix_debug_info is
+  /// nonempty, this function will also update computation_->matrix_debug_info
+  /// with suitable values for the newly added matrix
+  int32 ConsolidateSubmatrices(
+      const std::vector<int32> &commands,
+      const std::vector<int32> &submatrices);
+
+  /// This function, called from ConsolidateSubmatrices, will
+  /// update 'debug_info' by appending the corresponding 'indexes' from
+  /// the existing debug info for this submatrix.  It will also set
+  /// the 'is_deriv' of '*debug_info' to the same value as the
+  /// debug info for 'submatrix_index', and set the 'node_index' to the
+  /// 'node_index' in the debug info for that submatrix-index.
+  /// It requires that computation_->matrix_debug_info be nonempty.
+  void AppendDebugInfoForSubmatrix(
+      int32 submatrix_index,
+      NnetComputation::MatrixDebugInfo *debug_info) const;
+
+  const Nnet &nnet_;
+  NnetComputation *computation_;
+
+  // Indexed by the original command index in *computation_ (and sized to the
+  // original number of commands in *computation_ before we added anything),
+  // extra_commands_[c] contains a list of commands that need to be inserted
+  // just before command c in the previously existing computation.
+  std::vector<std::vector<NnetComputation::Command> > extra_commands_;
+
+  // This is as list of kBackprop commands that will be placed after the
+  // commands in 'computation_->commands' and 'extra_commands_', but before
+  // the 'final_deallocate_commands_'.
+  std::vector<NnetComputation::Command> final_commands_;
+  // This is a list of commands to deallocate our 'consolidated' matrices; the
+  // commands will be placed after the commands in 'final_commands_'.
+  std::vector<NnetComputation::Command> final_deallocate_commands_;
+};
+
+
 void ModelUpdateConsolidator::AppendDebugInfoForSubmatrix(
     int32 submatrix_index,
     NnetComputation::MatrixDebugInfo *debug_info) const {
@@ -866,7 +1043,6 @@ void ModelUpdateConsolidator::AppendDebugInfoForSubmatrix(
                              src_info.cindexes.begin() + row_begin,
                              src_info.cindexes.begin() + row_end);
 }
-
 
 // see comment by declaration in header.
 int32 ModelUpdateConsolidator::ConsolidateSubmatrices(
@@ -1040,6 +1216,19 @@ void ModelUpdateConsolidator::ConsolidateModelUpdate() {
   // variables, to computation_->commands.
   AddCommandsToComputation();
 }
+
+
+void ConsolidateModelUpdate(const Nnet &nnet,
+                            NnetComputation *computation) {
+  // This following if-statement is an optimization: if the computation
+  // request(s) had need_model_derivative == false, there would be nothing to
+  // optimize, so don't bother trying.
+  if (!computation->need_model_derivative)
+    return;
+  ModelUpdateConsolidator consolidator(nnet, computation);
+  consolidator.ConsolidateModelUpdate();
+}
+
 
 // inline
 void DerivativeTimeLimiter::GetPruneValues(int32 initial_submatrix,
@@ -2315,18 +2504,29 @@ void FixGotoLabel(NnetComputation *computation) {
   int32 num_commands = computation->commands.size();
   if (num_commands == 0)
     return;
-  if (computation->commands[num_commands-1].command_type == kGotoLabel) {
-    int32 dest_command = computation->commands[num_commands-1].arg1;
-    if (static_cast<size_t>(dest_command) <  computation->commands.size() &&
-        computation->commands[dest_command].command_type == kNoOperationLabel)
-      return;  // nothing to fix.
-    for (int32 c = 0; c + 1 < num_commands; c++) {
-      if (computation->commands[c].command_type == kNoOperationLabel) {
-        computation->commands[num_commands-1].arg1 = c;
-        return;
+  for (int32 c = num_commands - 1; c >= 0; c--) {
+    if (computation->commands[c].command_type == kGotoLabel) {
+      int32 dest_command = computation->commands[c].arg1;
+      if (static_cast<size_t>(dest_command) <  computation->commands.size() &&
+          computation->commands[dest_command].command_type == kNoOperationLabel)
+        return;  // nothing to fix.
+      for (int32 d = 0; d + 1 < num_commands; d++) {
+        if (computation->commands[d].command_type == kNoOperationLabel) {
+          computation->commands[c].arg1 = d;
+          return;
+        }
       }
+      KALDI_ERR << "Label not found.";
+    } else if (computation->commands[c].command_type == kProvideOutput) {
+      // sometimes kProvideOutput commands are temporarily ordered after
+      // the kGotoLabel command, and we need to work in that case.
+      continue;
+    } else {
+      // it loks like there is no 'goto' command in this computation-
+      // if there were, it would be right at the end, possibly followed by
+      // kProvideOutput commands.
+      break;
     }
-    KALDI_ERR << "Label not found.";
   }
 }
 

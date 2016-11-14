@@ -863,6 +863,8 @@ start:
       GenerateConfigSequenceCompositeBlock(opts, configs);
       break;
     case 10:
+      if (!opts.allow_statistics_pooling)
+        goto start;
       GenerateConfigSequenceStatistics(opts, configs);
       break;
     default:
