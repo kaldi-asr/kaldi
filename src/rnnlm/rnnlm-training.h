@@ -30,6 +30,8 @@
 namespace kaldi {
 namespace rnnlm {
 
+using namespace nnet3;
+
 struct LmNnetTrainerOptions {
   bool zero_component_stats;
   bool store_component_stats;

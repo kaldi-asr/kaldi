@@ -22,6 +22,7 @@
 #include "nnet3/nnet-common.h"
 #include "rnnlm/rnnlm-component-itf.h"
 #include "nnet3/natural-gradient-online.h"
+#include "rnnlm/nnet-parse.h"
 #include <iostream>
 
 namespace kaldi {
@@ -124,7 +125,7 @@ class LmAffineComponent: public LmUpdatableComponent {
   // together.  They return a pointer to a new Component equivalent to
   // the sequence of two components.  We haven't implemented this for
   // FixedLinearComponent yet.
-  Component *CollapseWithNext(const LmAffineComponent &next) const ;
+  LmComponent *CollapseWithNext(const LmAffineComponent &next) const ;
 //  Component *CollapseWithNext(const LmFixedAffineComponent &next) const;
 //  Component *CollapseWithNext(const FixedScaleComponent &next) const;
 //  Component *CollapseWithPrevious(const LmFixedAffineComponent &prev) const;

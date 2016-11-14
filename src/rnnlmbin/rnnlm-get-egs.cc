@@ -32,6 +32,7 @@ using std::ifstream;
 using std::vector;
 
 using namespace kaldi;
+using namespace rnnlm;
 using namespace nnet3;
 
 void GenerateEgs(string text_file, const unordered_map<string, int>& wlist_in,

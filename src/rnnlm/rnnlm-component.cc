@@ -814,5 +814,5 @@ void LmLogSoftmaxComponent::Backprop(const std::string &debug_info,
 
 
 
-} // namespace nnet3
+} // namespace rnnlm
 } // namespace kaldi

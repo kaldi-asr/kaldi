@@ -1,7 +1,7 @@
 #include "rnnlm/rnnlm-utils.h"
 
 namespace kaldi {
-namespace nnet3 {
+namespace rnnlm {
 
 vector<string> SplitByWhiteSpace(const string &line) {
   std::stringstream ss(line);
@@ -37,7 +37,7 @@ NnetExample GetEgsFromSent(const vector<int>& word_ids_in, int input_dim,
   }
 
   NnetExample eg;
-  eg.io.push_back(NnetIo("input", 0, input_frames));
+  eg.io.push_back(nnet3::NnetIo("input", 0, input_frames));
 
   Posterior posterior;
   for (int i = 0; i < word_ids_out.size(); i++) {
@@ -46,7 +46,7 @@ NnetExample GetEgsFromSent(const vector<int>& word_ids_in, int input_dim,
     posterior.push_back(p);
   }
 
-  eg.io.push_back(NnetIo("output", output_dim, 0, posterior));
+  eg.io.push_back(nnet3::NnetIo("output", output_dim, 0, posterior));
   return eg;
 }
 

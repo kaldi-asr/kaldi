@@ -35,7 +35,7 @@ namespace rnnlm {
 class LmNnet {
  public:
   LmNnet() {
-    nnet_ = new Nnet();
+    nnet_ = new nnet3::Nnet();
   }
 
   ~LmNnet() {
@@ -45,7 +45,7 @@ class LmNnet {
     delete nnet_;
   }
 
-  Nnet* GetNnet() {
+  nnet3::Nnet* GetNnet() {
     return nnet_;
   }
 
@@ -79,7 +79,7 @@ class LmNnet {
   LmComponent* input_projection_;      // Affine
   LmComponent* output_projection_;    // Affine
   LmComponent* output_layer_;         // Softmax 
-  Nnet* nnet_;
+  nnet3::Nnet* nnet_;
 };
 
 }

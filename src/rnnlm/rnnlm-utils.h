@@ -19,7 +19,9 @@ using std::ofstream;
 using std::vector;
 
 namespace kaldi {
-namespace nnet3 {
+namespace rnnlm {
+
+using nnet3::NnetExample;
 
 const int OOS_ID = 1;
 

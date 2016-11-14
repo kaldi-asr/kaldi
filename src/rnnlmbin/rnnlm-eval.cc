@@ -29,6 +29,7 @@ using std::vector;
 
 using namespace kaldi;
 using namespace nnet3;
+using namespace rnnlm;
 
 void RnnlmEval(NnetComputeProb &computer, // can't make this const it seems
                const unordered_map<string, int>& wlist_in,

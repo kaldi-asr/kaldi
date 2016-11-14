@@ -23,29 +23,95 @@
 #define KALDI_RNNLM_RNNLM_COMPONENT_ITF_H_
 
 #include "nnet3/nnet-common.h"
+#include "rnnlm/nnet-parse.h"
 #include "nnet3/nnet-parse.h"
 #include "base/kaldi-error.h"
 #include "thread/kaldi-mutex.h"
-#include "nnet3/nnet-component-itf.h"
+
+//#include "nnet3/nnet-component-itf.h"
+//#include "rnnlm/rnnlm-component-itf.h"
+//#include "nnet3/nnet-computation-graph.h"
 #include <iostream>
 
 namespace kaldi {
-using namespace nnet3;
+
+namespace nnet3 {
+  class IndexSet;
+}
+
 namespace rnnlm {
 
 
-// enum used to store various binary component properties.
-// We give it a name ComponentProperties, but don't use this
-// type for the bitmasks: instead use int32 for this type, e.g.
-// int32 properties = kSimpleComponent|kBackpropNeedsOutput.
+using nnet3::MiscComputationInfo;
+using nnet3::Index;
+using nnet3::ConfigLine;
+using nnet3::SummarizeVector;
+using nnet3::ExpectOneOrTwoTokens;
 
-/**
- * Class LmUpdatableComponent is a Component which has trainable parameters; it
- * extends the interface of Component.  This is a base-class for Components with
- * parameters.  See comment by declaration of kLmUpdatableComponent.
- * The functions in this interface must only be called if the component returns
- * the kUpdatable flag.
- */
+enum ComponentProperties {
+  kSimpleComponent = 0x001,  // true if number of rows of input equals number of rows
+                             // of output and this component doesn't care about the indexes
+                             // (i.e. it maps each row of input to each row of output without
+                             // regard to the index values).  Will normally be true.
+  kUpdatableComponent = 0x002,  // true if the component has parameters that can
+                                // be updated.  Components that return this flag
+                                // must be dynamic_castable to type
+                                // UpdatableComponent (but components of type
+                                // UpdatableComponent do not have to return this
+                                // flag, e.g.  if this instance is not really
+                                // updatable).
+  kLinearInInput = 0x004,    // true if the component's output is always a
+                             // linear function of its input, i.e. alpha times
+                             // input gives you alpha times output.
+  kLinearInParameters = 0x008, // true if an updatable component's output is always a
+                               // linear function of its parameters, i.e. alpha times
+                               // parameters gives you alpha times output.  This is true
+                               // for all updatable components we envisage.
+  kPropagateInPlace = 0x010,  // true if we can do the propagate operation in-place
+                              // (input and output matrices are the same).
+                              // Note: if doing backprop, you'd also need to check
+                              // that the kBackpropNeedsInput property is not true.
+  kPropagateAdds = 0x020,  // true if the Propagate function adds to, rather
+                           // than setting, its output.  The Component chooses
+                           // whether to add or set, and the calling code has to
+                           // accommodate it.
+  kReordersIndexes = 0x040,  // true if the ReorderIndexes function might reorder
+                             // the indexes (otherwise we can skip calling it).
+                             // Must not be set for simple components.
+  kBackpropAdds = 0x080,   // true if the Backprop function adds to, rather than
+                           // setting, the "in_deriv" output.  The Component
+                           // chooses whether to add or set, and the calling
+                           // code has to accommodate it.  Note: in the case of
+                           // in-place backprop, this flag has no effect.
+  kBackpropNeedsInput = 0x100,  // true if backprop operation needs access to
+                                // forward-pass input.
+  kBackpropNeedsOutput = 0x200,  // true if backprop operation needs access to
+                                 // forward-pass output (e.g. true for Sigmoid).
+  kBackpropInPlace = 0x400,   // true if we can do the backprop operation in-place
+                             // (input and output matrices may be the same).
+  kStoresStats = 0x800,      // true if the StoreStats operation stores
+                             // statistics e.g. on average node activations and
+                             // derivatives of the nonlinearity, (as it does for
+                             // Tanh, Sigmoid, ReLU and Softmax).
+  kInputContiguous = 0x1000,  // true if the component requires its input data (and
+                              // input derivatives) to have Stride()== NumCols().
+  kOutputContiguous = 0x2000  // true if the component requires its input data (and
+                              // output derivatives) to have Stride()== NumCols().
+};
+
+class ComponentPrecomputedIndexes {
+ public:
+  virtual ComponentPrecomputedIndexes *Copy() const = 0;
+  virtual void Write(std::ostream &os, bool binary) const = 0;
+  virtual void Read(std::istream &os, bool binary) = 0;
+  virtual std::string Type() const = 0;
+  static ComponentPrecomputedIndexes* ReadNew(std::istream &is, bool binary);
+  // cpi stands for component_precomputed_indexes
+  static ComponentPrecomputedIndexes* NewComponentPrecomputedIndexesOfType(
+                                           const std::string &cpi_type);
+  virtual ~ComponentPrecomputedIndexes() { }
+};
+
 
 class LmComponent {
  public:
@@ -167,7 +233,7 @@ class LmComponent {
   ///   one Index.
   virtual bool IsComputable(const MiscComputationInfo &misc_info,
                             const Index &output_index,
-                            const IndexSet &input_index_set,
+                            const nnet3::IndexSet &input_index_set,
                             std::vector<Index> *used_inputs) const;
 
   /// \brief This function only does something interesting for non-simple

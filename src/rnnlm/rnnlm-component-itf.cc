@@ -24,14 +24,14 @@
 #include "rnnlm/rnnlm-component-itf.h"
 #include "rnnlm/rnnlm-component.h"
 #include "nnet3/nnet-general-component.h"
-#include "nnet3/nnet-parse.h"
+#include "rnnlm/nnet-parse.h"
 #include "nnet3/nnet-computation-graph.h"
 
 // \file This file contains some more-generic component code: things in base classes.
 //       See nnet-component.cc for the code of the actual Components.
 
 namespace kaldi {
-using namespace nnet3;
+//using namespace nnet3;
 namespace rnnlm {
 
 // static
@@ -84,7 +84,7 @@ void LmComponent::GetInputIndexes(const MiscComputationInfo &misc_info,
 
 bool LmComponent::IsComputable(const MiscComputationInfo &misc_info,
                              const Index &output_index,
-                             const IndexSet &input_index_set,
+                             const nnet3::IndexSet &input_index_set,
                              std::vector<Index> *used_inputs) const {
   // the default Component dependency is for an output index to map directly to
   // the same input index, which is required to compute the output.
