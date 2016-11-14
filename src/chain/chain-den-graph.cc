@@ -220,6 +220,30 @@ static void SortOnTransitionCount(fst::StdVectorFst *fst) {
 
 void DenGraphMinimizeWrapper(fst::StdVectorFst *fst) {
   for (int32 i = 1; i <= 3; i++) {
+    fst::StdVectorFst fst_reversed;
+    fst::Reverse(*fst, &fst_reversed);
+    fst::PushSpecial(&fst_reversed, fst::kDelta * 0.01);
+    MinimizeAcceptorNoPush(&fst_reversed);
+    fst::Reverse(fst_reversed, fst);
+    KALDI_LOG << "Number of states and arcs in transition-id FST after reversed "
+              << "minimization is " << fst->NumStates() << " and "
+              << NumArcs(*fst) << " (pass " << i << ")";
+    fst::PushSpecial(fst, fst::kDelta * 0.01);
+    MinimizeAcceptorNoPush(fst);
+    KALDI_LOG << "Number of states and arcs in transition-id FST after regular "
+              << "minimization is " << fst->NumStates() << " and "
+              << NumArcs(*fst) << " (pass " << i << ")";
+  }
+  fst::RmEpsilon(fst);
+  KALDI_LOG << "Number of states and arcs in transition-id FST after "
+            << "removing any epsilons introduced by reversal is "
+            << fst->NumStates() << " and "
+            << NumArcs(*fst);
+  fst::PushSpecial(fst, fst::kDelta * 0.01);
+}
+  /*
+void DenGraphMinimizeWrapper(fst::StdVectorFst *fst) {
+  for (int32 i = 1; i <= 3; i++) {
     fst::PushSpecial(fst, fst::kDelta * 0.01);
     MinimizeAcceptorNoPush(fst);
     KALDI_LOG << "Number of states and arcs in transition-id FST after regular "
@@ -241,7 +265,7 @@ void DenGraphMinimizeWrapper(fst::StdVectorFst *fst) {
             << NumArcs(*fst);
   fst::PushSpecial(fst, fst::kDelta * 0.01);
 }
-
+  */
 
 static void PrintDenGraphStats(const fst::StdVectorFst &den_graph) {
   int32 num_states = den_graph.NumStates();
@@ -347,7 +371,7 @@ void CreateDenominatorFst(const ContextDependency &ctx_dep,
 
   BaseFloat self_loop_scale = 1.0;  // We have to be careful to use the same
                                     // value in test time.
-  bool reorder = false;
+  bool reorder = true;
   // add self-loops to the FST with transition-ids as its labels.
   AddSelfLoops(trans_model, disambig_syms_h, self_loop_scale, reorder,
                &transition_id_fst);
