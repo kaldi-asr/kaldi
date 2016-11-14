@@ -38,6 +38,12 @@ ArpaFileParser::ArpaFileParser(ArpaParseOptions options,
 ArpaFileParser::~ArpaFileParser() {
 }
 
+std::string rtrim(const std::string &str) {
+  std::string ret = str;
+  ret.erase(ret.find_last_not_of(" \n\r\t")+1);
+  return ret;
+}
+
 void ArpaFileParser::Read(std::istream &is, bool binary) {
   if (binary) {
     KALDI_ERR << "binary-mode reading is not implemented for ArpaFileParser";
@@ -83,6 +89,8 @@ void ArpaFileParser::Read(std::istream &is, bool binary) {
   bool keyword_found = false;
   while (++line_number_, getline(is, current_line_) && !is.eof()) {
     if (current_line_.empty()) continue;
+
+    current_line_ = rtrim(current_line_);
 
     // Continue skipping lines until the \data\ marker alone on a line is found.
     if (!keyword_found) {
@@ -147,6 +155,7 @@ void ArpaFileParser::Read(std::istream &is, bool binary) {
     int32 ngram_count = 0;
     while (++line_number_, getline(is, current_line_) && !is.eof()) {
       if (current_line_.empty()) continue;
+      current_line_ = rtrim(current_line_);
       if (current_line_[0] == '\\') break;
 
       std::vector<std::string> col;
