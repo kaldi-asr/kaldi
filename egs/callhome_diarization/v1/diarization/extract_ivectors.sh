@@ -29,17 +29,19 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 if [ $# != 3 ]; then
   echo "Usage: $0 <extractor-dir> <data> <ivector-dir>"
-  echo " e.g.: $0 exp/extractor_2048_male data/train_male exp/ivectors_male"
+  echo " e.g.: $0 exp/extractor data/train exp/ivectors"
   echo "main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config containing options"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
-  echo "  --num-iters <#iters|10>                          # Number of iterations of E-M"
   echo "  --nj <n|10>                                      # Number of jobs (also see num-processes and num-threads)"
-  echo "  --num-threads <n|8>                              # Number of threads for each process"
   echo "  --stage <stage|0>                                # To control partial reruns"
   echo "  --num-gselect <n|20>                             # Number of Gaussians to select using"
   echo "                                                   # diagonal model."
   echo "  --min-post <min-post|0.025>                      # Pruning threshold for posteriors"
+  echo "  --chunk-size <n|150>                             # Size of chunks from which to extract iVectors"
+  echo "  --period <n|50>                                  # Frequency that iVectors are computed"
+  echo "  --min-chunks-size <n|25>                         # Minimum chunk-size after splitting larger segments"
+  echo "  --use-vad <bool|false>                           # If true, use vad.scp instead of segments"
   exit 1;
 fi
 
@@ -63,6 +65,7 @@ sdata=$data/split$nj;
 utils/split_data.sh $data $nj || exit 1;
 
 delta_opts=`cat $srcdir/delta_opts 2>/dev/null`
+echo $nj > $dir/num_jobs
 
 if $use_vad ; then
   feats="ark,s,cs:add-deltas $delta_opts scp:$sdata/JOB/feats.scp ark:- | select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- |"
