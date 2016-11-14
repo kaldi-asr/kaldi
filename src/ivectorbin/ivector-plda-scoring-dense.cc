@@ -1,4 +1,4 @@
-// ivectorbin/ivector-diarization-plda-scoring.cc
+// ivectorbin/ivector-plda-scoring-dense.cc
 
 // Copyright 2016  David Snyder
 

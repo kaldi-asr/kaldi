@@ -42,10 +42,10 @@ int main(int argc, char *argv[]) {
       "   ark,t:cluster_ranges.1.ark\n";
 
     ParseOptions po(usage);
-    std::string utt2num_rxfilename;
+    std::string utt2num_rspecifier;
     BaseFloat threshold = 0.5;
 
-    po.Register("utt2num-rxfilename", &utt2num_rxfilename,
+    po.Register("utt2num-rspecifier", &utt2num_rspecifier,
       "If supplied, clustering creates exactly this many clusters for each"
       "utterance and the option --threshold is ignored.");
     po.Register("threshold", &threshold, "Merging clusters if their distance"
@@ -67,6 +67,7 @@ int main(int argc, char *argv[]) {
     // order than here.
     SequentialBaseFloatMatrixReader scores_reader(scores_rspecifier);
     RandomAccessTokenVectorReader utt2seg_reader(seg_rspecifier);
+    RandomAccessInt32Reader utt2num_reader(utt2num_rspecifier);
     Int32Writer label_writer(label_wspecifier);
 
     for (; !scores_reader.Done(); scores_reader.Next()) {
@@ -83,9 +84,13 @@ int main(int argc, char *argv[]) {
         points.insert(i);
         clusterables.push_back(new GroupClusterable(points, &scores));
       }
-      // TODO make if statement for handling utt2num or not
-      //int32 num_speakers = utt2num_reader.Value(utt);
-      ClusterBottomUp(clusterables, threshold, 1, NULL, &spk_ids);
+      if (utt2num_rspecifier.size()) {
+        int32 num_speakers = utt2num_reader.Value(utt);
+        ClusterBottomUp(clusterables, std::numeric_limits<BaseFloat>::max(),
+          num_speakers, NULL, &spk_ids);
+      } else {
+        ClusterBottomUp(clusterables, threshold, 1, NULL, &spk_ids);
+      }
 
       for (int32 i = 0; i < spk_ids.size(); i++) {
         label_writer.Write(seglist[i], spk_ids[i]);
