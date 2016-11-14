@@ -54,9 +54,9 @@ for f in $srcdir/final.ie $srcdir/final.ubm $data/feats.scp ; do
 done
 
 if $use_vad ; then
-  [ ! -f $data/vad.scp ] && echo "No such file $data/vad.scp";
+  [ ! -f $data/vad.scp ] && echo "No such file $data/vad.scp" && exit 1;
 else
-  [ ! -f $data/segments ] && echo "No such file $data/segments";
+  [ ! -f $data/segments ] && echo "No such file $data/segments" && exit 1;
 fi
 
 # Set various variables.
