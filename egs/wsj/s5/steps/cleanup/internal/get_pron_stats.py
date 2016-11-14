@@ -8,8 +8,21 @@ import argparse
 import sys
 import warnings
 
-# Collect pronounciation stats from a ctm_prons.txt file (containing entries: utt_id word phone_1...phone_N
-# which must be consecutive in time) and output the stats (format: count word pronounciation) into prons.txt
+# Collect pronounciation stats from a ctm_prons.txt file of the form output
+# by steps/cleanup/debug_lexicon.sh.  This input file has lines of the form:
+#  utt_id word phone1 phone2 .. phoneN
+#  e.g.
+#  foo-bar123-342  hello h eh l l ow
+# (and this script does require that lines from the same utterance be ordered in
+# order of time).
+# The output of this program is word pronunciation stats of the form:
+#  count word phone1 .. phoneN
+#  e.g.:
+#  24.0  hello h ax l l ow
+# This program uses various heuristics to account for the fact that in the input ctm_prons.txt
+# file may not always be well aligned.  As a result of some of these heuristics the counts will
+# not always be integers.
+
 def GetArgs():
     parser = argparse.ArgumentParser(description = "Accumulate pronounciation statistics from "
                                      "a ctm_prons.txt file.",
@@ -55,7 +68,8 @@ def ReadEntries(file_handle):
 
 # Basically, this function generates an "info" list from a ctm_prons file.
 # Each entry in the list represents the pronounciation candidate(s) of a word.
-# For each non-<eps> word, the entry is a list: [utt_id, word, set(prnounciation_candidates)].
+# For each non-<eps> word, the entry is a list: [utt_id, word, set(pronunciation_candidates)]. e.g:
+# [911Mothers_2010W-0010916-0012901-1, other, set('AH DH ER', 'AH DH ER K AH N')]
 # For each <eps>, we split the phones it aligns to into two parts: "nonsil_left", 
 # which includes phones before the first silphone, and "nonsil_right", which includes
 # phones after the last silphone. For example, for <eps> : 'V SIL B AH SIL', 
@@ -112,6 +126,12 @@ def GetStatsFromCtmProns(silphones, optional_silence, non_scored_words, ctm_pron
         # extract the nonsil_left and nonsil_right segments, and then try to
         # append nonsil_left to the pron candidates of preceding word, getting
         # extended pron candidates.
+        # Note: the ctm_pron file may have cases like:
+        # KevinStone_2010U-0024782-0025580-1 [UH] EH
+        # KevinStone_2010U-0024782-0025580-1 fda F T
+        # KevinStone_2010U-0024782-0025580-1 [NOISE] IY EY
+        # which means non-scored-words (except oov symbol <unk>/<UNK>) behaves like <eps>.
+        # So we apply the same merging method in these cases.
         if word == '<eps>' or (word in non_scored_words and word != '<unk>' and word != '<UNK>'):
             nonsil_left = []
             nonsil_right = [] 

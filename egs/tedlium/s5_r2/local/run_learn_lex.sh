@@ -12,41 +12,42 @@
 . ./path.sh
 
 oov_symbol="<unk>"
-g2p_mdl_dir=
 # The user may have an English g2p model ready.
+g2p_mdl_dir=
+# The dir which contains the reference lexicon (most probably hand-derived)
+# we want to expand/improve, and nonsilence_phones.txt,.etc which we need  
+# for building new dict dirs.
 ref_dict=data/local/dict
-# The dir which contains the reference lexicon (most probably hand-derived)"
-# we want to expand/improve, and nonsilence_phones.txt,.etc which we need " 
-# for building new dict dirs."
+# acoustic training data we use to get alternative
+# pronunciations and collet acoustic evidence.
 data=data/train
-# acoustic training data we use to get alternative"
-# pronunciations and collet acoustic evidence."
-min_prob=0.4
 # the cut-off parameter used to select pronunciation candidates from phone
-# decoding. A smaller min-prob means more candidates will be included.
+# decoding. We remove pronunciations with probabilities less than this value
+# after normalizing the probs s.t. the max-prob is 1.0 for each word."
+min_prob=0.4
+# Mean of priors (summing up to 1) assigned to three exclusive pronunciation
+# source: reference lexicon, g2p, and phone decoding (used in the Bayesian
+# pronunciation selection procedure). We recommend setting a larger prior
+# mean for the reference lexicon, e.g. '0.6,0.2,0.2'.
 prior_mean="0.7,0.2,0.1"        
-# Mean of priors (summing up to 1) assigned to three exclusive pronunciation"
-# source: reference lexicon, g2p, and phone decoding (used in the Bayesian"
-# pronunciation selection procedure). We recommend setting a larger prior"
-# mean for the reference lexicon, e.g. '0.6,0.2,0.2'."
+# Total amount of prior counts we add to all pronunciation candidates of
+# each word. By multiplying it with the prior mean of a source, and then dividing
+# by the number of candidates (for a word) from this source, we get the
+# prior counts we actually add to each candidate.
 prior_counts_tot=15
-# Total amount of prior counts we add to all pronunciation candidates of"
-# each word. By timing it with the prior mean of a source, and then dividing"
-# by the number of candidates (for a word) from this source, we get the"
-# prior counts we actually add to each candidate."
+# In the Bayesian pronunciation selection procedure, for each word, we
+# choose candidates (from all three sources) with highest posteriors
+# until the total prob mass hit this amount.
+# It's used in a similar fashion when we apply G2P.
 variants_prob_mass=0.6
-# In the Bayesian pronunciation selection procedure, for each word, we"
-# choose candidates (from all three sources) with highest posteriors"
-# until the total prob mass hit this amount."
-# It's used in a similar fashion when we apply G2P."
-variants_prob_mass2=0.95
-# In the Bayesian pronunciation selection procedure, for each word,"
-# after the total prob mass of selected candidates hit variants-prob-mass,"
-# we continue to pick up reference candidates with highest posteriors"
-# until the total prob mass hit this amount."
-affix="lex"
+# In the Bayesian pronunciation selection procedure, for each word,
+# after the total prob mass of selected candidates hit variants-prob-mass,
+# we continue to pick up reference candidates with highest posteriors
+# until the total prob mass hit this amount (must >= variants_prob_mass).
+variants_prob_mass_ref=0.95
 # Intermediate outputs of the lexicon learning stage will be put into
 # exp/tri3_${affix}_work
+affix="lex"
 nj=35
 decode_nj=30
 lexlearn_stage=0
@@ -56,10 +57,10 @@ stage=0
 
 
 # The reference vocab is the list of words which we already have hand-derived pronunciations.
-ref_vocab=data/local/vocab
-cat $ref_dict/lexicon.txt | cut -f1 -d' ' | sort | uniq > $ref_vocab || exit 1; 
+ref_vocab=data/local/vocab.txt
+cat $ref_dict/lexicon.txt | awk '{print $1}' | sort | uniq > $ref_vocab || exit 1; 
 
-# Get a list of pronunciation candidates for oov words (w.r.t the reference lexicon)
+# Get a G2P generated lexicon for oov words (w.r.t the reference lexicon)
 # in acoustic training data.
 if [ $stage -le 0 ]; then
   if [ -z $g2p_mdl_dir ]; then
@@ -69,16 +70,16 @@ if [ $stage -le 0 ]; then
   awk '{for (n=2;n<=NF;n++) vocab[$n]=1;} END{for (w in vocab) printf "%s %d\n",w;}' \
     $data/text | sort > $data/train_vocab.txt || exit 1;
   awk 'NR==FNR{a[$1] = 1; next} {if(!($1 in a)) print $1}' $ref_vocab \
-    $dir/train_vocab.txt | sort > $data/oov_train.txt exit 1;
+    $data/train_vocab.txt | sort > $data/oov_train.txt || exit 1;
   steps/dict/apply_g2p.sh --var-counts 4 $data/oov_train.txt \
     $g2p_mdl_dir exp/g2p/oov_lex_train || exit 1;
-  cat exp/g2p/oov_lex_train/lexicon.lex |  cut -f 1,3 -d$'\t' | \
-    tr -s '\t' ' ' | sort | uniq > exp/g2p_pron_candidates_oov_train || exit 1;
+  cat exp/g2p/oov_lex_train/lexicon.lex | awk '{print $1,$3}' | \
+    tr -s '\t' ' ' | sort | uniq > $data/lexicon_oov_g2p.txt || exit 1;
 fi
 
 # Learn a lexicon based on the acoustic training data and the reference lexicon.
 if [ $stage -le 1 ]; then
-  steps/dict/learn_lexicon.sh --g2p-pron-candidates "exp/g2p_pron_candidates_oov_train" \
+  steps/dict/learn_lexicon.sh --g2p-pron-candidates "$data/lexicon_oov_g2p.txt" \
     --min-prob $min_prob --variants-prob-mass $variants_prob_mass \
     --variants-prob-mass2 $variants_prob_mass2  \
     --prior-counts-tot $prior_counts_tot --prior-mean $prior_mean \

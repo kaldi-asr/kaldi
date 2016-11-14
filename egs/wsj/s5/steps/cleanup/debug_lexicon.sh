@@ -68,7 +68,7 @@ fi
 if [ $stage -le 4 ]; then
   steps/decode_si.sh --skip-scoring true \
     --cmd "$cmd" --nj $nj --transform-dir $alidir \
-    --acwt 0.1 --beam 10.0 --lattice-beam 5.0 --max-active 2500 \
+    --acwt 0.25 --beam 10.0 --lattice-beam 5.0 --max-active 2500 \
     $src/graph_phone_bg $data $src/decode_$(basename $data)_phone_bg
 fi
 

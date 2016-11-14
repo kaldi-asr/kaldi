@@ -8,16 +8,24 @@ import argparse
 import sys
 
 def GetArgs():
-    parser = argparse.ArgumentParser(description = "Applyccumulate statistics from lattice-alignment"
-                                     "outputs for lexicon learning",
-                                     epilog = "See steps/dict/expand_lex_learned.sh for example")
+    parser = argparse.ArgumentParser(description = "Apply an lexicon edits file (output from steps/dict/select_prons_bayesian.py)to an input lexicon"
+                                     "to produce a learned lexicon.",
+                                     epilog = "See steps/dict/learn_lexicon.sh for example")
 
     parser.add_argument("in_lexicon", metavar='<in-lexicon>', type = str,
-                        help = "Read input lexicon.")
+                        help = "Input lexicon. Each line is <word> <pron>")
     parser.add_argument("lexicon_edits_file", metavar='<lexicon-edits-file>', type = str,
-                        help = "Read lexicon edits file.")
+                        help = "Input lexicon edits file containing human-readable & editable"
+                               "pronounciation info.  The info for each word is like:"
+                         "------------ an 4086.0 --------------"
+                         "R  | Y |  2401.6 |  AH N"
+                         "R  | Y |  640.8 |  AE N"
+                         "P  | Y |  1035.5 |  IH N"
+                         "R(ef), P(hone-decoding) represents the pronunciation source"
+                         "Y/N means the recommended decision of including this pron or not"
+                         "and the numbers are soft counts accumulated from lattice-align-word outputs. See steps/dict/select_prons_bayesian.py for more details.")
     parser.add_argument("out_lexicon", metavar='<out-lexicon>', type = str,
-                        help = "Write output lexicon.")
+                        help = "Output lexicon to this file.")
 
     print (' '.join(sys.argv), file=sys.stderr)
 
