@@ -325,7 +325,7 @@ class RunOpts:
 
 
 def TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archives,
-                   raw_model_string, egs_dir,
+                   raw_model_string, egs_dir, left_context, right_context,
                    apply_deriv_weights,
                    left_deriv_truncate, right_deriv_truncate,
                    l2_regularize, xent_regularize, leaky_hmm_coefficient,
@@ -366,7 +366,7 @@ def TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archi
   --print-interval=10 --momentum={momentum} \
   --max-param-change={max_param_change} \
    "{raw_model}" {dir}/den.fst \
-  "ark,bg:nnet3-chain-copy-egs --truncate-deriv-weights={trunc_deriv} --frame-shift={fr_shft} ark:{egs_dir}/cegs.{archive_index}.ark ark:- | nnet3-chain-shuffle-egs --buffer-size={shuffle_buffer_size} --srand={srand} ark:- ark:-| nnet3-chain-merge-egs --minibatch-size={num_chunk_per_minibatch} ark:- ark:- |" \
+  "ark,bg:nnet3-chain-copy-egs --left-context={lc} --right-context={rc} --truncate-deriv-weights={trunc_deriv} --frame-shift={fr_shft} ark:{egs_dir}/cegs.{archive_index}.ark ark:- | nnet3-chain-shuffle-egs --buffer-size={shuffle_buffer_size} --srand={srand} ark:- ark:-| nnet3-chain-merge-egs --minibatch-size={num_chunk_per_minibatch} ark:- ark:- |" \
   {dir}/{next_iter}.{job}.raw
           """.format(command = run_opts.command,
                      train_queue_opt = run_opts.train_queue_opt,
@@ -379,11 +379,12 @@ def TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archi
                      parallel_train_opts = run_opts.parallel_train_opts,
                      momentum = momentum, max_param_change = max_param_change,
                      raw_model = raw_model_string,
-                     egs_dir = egs_dir, archive_index = archive_index,
+                     egs_dir = egs_dir, lc=left_context, rc=right_context,
+                     archive_index = archive_index,
                      shuffle_buffer_size = shuffle_buffer_size,
                      cache_io_opts = cur_cache_io_opts,
                      num_chunk_per_minibatch = num_chunk_per_minibatch),
-          wait = False)
+                     wait = False)
 
         processes.append(process_handle)
 
@@ -404,6 +405,7 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
                       num_jobs, num_archives_processed, num_archives,
                       learning_rate, shrinkage_value, num_chunk_per_minibatch,
                       num_hidden_layers, add_layers_period,
+                      left_context, right_context,
                       apply_deriv_weights, left_deriv_truncate, right_deriv_truncate,
                       l2_regularize, xent_regularize, leaky_hmm_coefficient,
                       momentum, max_param_change, shuffle_buffer_size,
@@ -427,8 +429,15 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
         f.write(str(srand))
         f.close()
 
-    chain_lib.ComputeTrainCvProbabilities(dir, iter, egs_dir,
-            l2_regularize, xent_regularize, leaky_hmm_coefficient, run_opts)
+    chain_lib.ComputeTrainCvProbabilities(dir = dir,
+                                          iter = iter,
+                                          egs_dir = egs_dir,
+                                          left_context = left_context,
+                                          right_context = right_context,
+                                          l2_regularize = l2_regularize,
+                                          xent_regularize = xent_regularize,
+                                          leaky_hmm_coefficient = leaky_hmm_coefficient,
+                                          run_opts = run_opts)
 
     if iter > 0:
         chain_lib.ComputeProgress(dir, iter, run_opts)
@@ -460,15 +469,30 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
       cur_num_chunk_per_minibatch = num_chunk_per_minibatch / 2
       cur_max_param_change = float(max_param_change) / math.sqrt(2)
 
-    TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archives,
-                   raw_model_string, egs_dir,
-                   apply_deriv_weights,
-                   left_deriv_truncate, right_deriv_truncate,
-                   l2_regularize, xent_regularize, leaky_hmm_coefficient,
-                   momentum, cur_max_param_change,
-                   shuffle_buffer_size, cur_num_chunk_per_minibatch,
-                   frame_subsampling_factor, truncate_deriv_weights,
-                   cache_io_opts, run_opts)
+    TrainNewModels(dir = dir,
+                   iter = iter,
+                   srand = srand,
+                   num_jobs = num_jobs,
+                   num_archives_processed = num_archives_processed,
+                   num_archives = num_archives,
+                   raw_model_string = raw_model_string,
+                   egs_dir = egs_dir,
+                   left_context = left_context,
+                   right_context = right_context,
+                   apply_deriv_weights = apply_deriv_weights,
+                   left_deriv_truncate = left_deriv_truncate,
+                   right_deriv_truncate = right_deriv_truncate,
+                   l2_regularize = l2_regularize,
+                   xent_regularize = xent_regularize,
+                   leaky_hmm_coefficient = leaky_hmm_coefficient,
+                   momentum = momentum,
+                   max_param_change = cur_max_param_change,
+                   shuffle_buffer_size = shuffle_buffer_size,
+                   num_chunk_per_minibatch = cur_num_chunk_per_minibatch,
+                   frame_subsampling_factor = frame_subsampling_factor,
+                   truncate_deriv_weights = truncate_deriv_weights,
+                   cache_io_opts = cache_io_opts,
+                   run_opts = run_opts)
 
     [models_to_average, best_model] = train_lib.GetSuccessfulModels(num_jobs, '{0}/log/train.{1}.%.log'.format(dir,iter))
     nnets_list = []
@@ -653,18 +677,32 @@ def Train(args, run_opts):
                 shrinkage_value = args.shrink_value
             logger.info("On iteration {0}, learning rate is {1} and shrink value is {2}.".format(iter, learning_rate(iter, current_num_jobs, num_archives_processed), shrinkage_value))
 
-            TrainOneIteration(args.dir, iter, args.srand, egs_dir, current_num_jobs,
-                              num_archives_processed, num_archives,
-                              learning_rate(iter, current_num_jobs, num_archives_processed),
-                              shrinkage_value,
-                              args.num_chunk_per_minibatch,
-                              num_hidden_layers, args.add_layers_period,
-                              args.apply_deriv_weights, args.left_deriv_truncate, args.right_deriv_truncate,
-                              args.l2_regularize, args.xent_regularize, args.leaky_hmm_coefficient,
-                              args.momentum, args.max_param_change,
-                              args.shuffle_buffer_size,
-                              args.frame_subsampling_factor,
-                              args.truncate_deriv_weights, run_opts)
+            TrainOneIteration(dir = args.dir,
+                              iter = iter,
+                              srand = args.srand,
+                              egs_dir = egs_dir,
+                              num_jobs = current_num_jobs,
+                              num_archives_processed = num_archives_processed,
+                              num_archives = num_archives,
+                              learning_rate = learning_rate(iter, current_num_jobs, num_archives_processed),
+                              shrinkage_value = shrinkage_value,
+                              num_chunk_per_minibatch = args.num_chunk_per_minibatch,
+                              num_hidden_layers = num_hidden_layers,
+                              add_layers_period = args.add_layers_period,
+                              left_context = left_context,
+                              right_context = right_context,
+                              apply_deriv_weights = args.apply_deriv_weights,
+                              left_deriv_truncate = args.left_deriv_truncate,
+                              right_deriv_truncate = args.right_deriv_truncate,
+                              l2_regularize = args.l2_regularize,
+                              xent_regularize = args.xent_regularize,
+                              leaky_hmm_coefficient = args.leaky_hmm_coefficient,
+                              momentum = args.momentum,
+                              max_param_change = args.max_param_change,
+                              shuffle_buffer_size = args.shuffle_buffer_size,
+                              frame_subsampling_factor = args.frame_subsampling_factor,
+                              truncate_deriv_weights = args.truncate_deriv_weights,
+                              run_opts = run_opts)
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain conditions
                 train_lib.RemoveModel(args.dir, iter-2, num_iters, num_iters_combine,
@@ -683,10 +721,17 @@ def Train(args, run_opts):
 
     if args.stage <= num_iters:
         logger.info("Doing final combination to produce final.mdl")
-        chain_lib.CombineModels(args.dir, num_iters, num_iters_combine,
-                args.num_chunk_per_minibatch, egs_dir,
-                args.leaky_hmm_coefficient, args.l2_regularize,
-                args.xent_regularize, run_opts)
+        chain_lib.CombineModels(dir = args.dir,
+                                num_iters = num_iters,
+                                num_iters_combine = num_iters_combine,
+                                num_chunk_per_minibatch = args.num_chunk_per_minibatch,
+                                egs_dir = egs_dir,
+                                left_context = left_context,
+                                right_context = right_context,
+                                leaky_hmm_coefficient = args.leaky_hmm_coefficient,
+                                l2_regularize = args.l2_regularize,
+                                xent_regularize = args.xent_regularize,
+                                run_opts = run_opts)
 
     if args.cleanup:
         logger.info("Cleaning up the experiment directory {0}".format(args.dir))

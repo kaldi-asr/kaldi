@@ -430,10 +430,22 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
         f.close()
 
 
-    ComputeTrainCvProbabilities(dir, iter, egs_dir, run_opts, mb_size=cv_minibatch_size)
+    ComputeTrainCvProbabilities(dir = dir,
+                                iter = iter,
+                                egs_dir = egs_dir,
+                                left_context = left_context,
+                                right_context = right_context,
+                                run_opts = run_opts,
+                                mb_size=cv_minibatch_size)
 
     if iter > 0:
-        ComputeProgress(dir, iter, egs_dir, run_opts, mb_size=cv_minibatch_size)
+        ComputeProgress(dir = dir,
+                        iter = iter,
+                        egs_dir = egs_dir,
+                        left_context = left_context,
+                        right_context = right_context,
+                        run_opts = run_opts,
+                        mb_size=cv_minibatch_size)
 
     # an option for writing cache (storing pairs of nnet-computations
     # and computation-requests) during training.
@@ -467,12 +479,23 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
     except OSError:
         pass
 
-    TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archives,
-                   raw_model_string, egs_dir,
-                   left_context, right_context, min_deriv_time,
-                   momentum, max_param_change,
-                   shuffle_buffer_size, cur_num_chunk_per_minibatch,
-                   cache_read_opt, run_opts)
+    TrainNewModels(dir = dir,
+                   iter = iter,
+                   srand = srand,
+                   num_jobs = num_jobs,
+                   num_archives_processed = num_archives_processed,
+                   num_archives = num_archives,
+                   raw_model_string = raw_model_string,
+                   egs_dir = egs_dir,
+                   left_context = left_context,
+                   right_context = right_context,
+                   min_deriv_time = min_deriv_time,
+                   momentum = momentum,
+                   max_param_change = max_param_change,
+                   shuffle_buffer_size = shuffle_buffer_size,
+                   num_chunk_per_minibatch = cur_num_chunk_per_minibatch,
+                   cache_read_opt = cache_read_opt,
+                   run_opts = run_opts)
     [models_to_average, best_model] = GetSuccessfulModels(num_jobs, '{0}/log/train.{1}.%.log'.format(dir,iter))
     nnets_list = []
     for n in models_to_average:
@@ -696,13 +719,25 @@ def Train(args, run_opts):
 
     if args.stage <= num_iters:
         logger.info("Doing final combination to produce final.mdl")
-        CombineModels(args.dir, num_iters, num_iters_combine, egs_dir, run_opts,
-                chunk_width = args.chunk_width)
+        CombineModels(dir = args.dir,
+                      num_iters = num_iters,
+                      num_iters_combine = num_iters_combine,
+                      egs_dir = egs_dir,
+                      left_context = left_context,
+                      right_context = right_context,
+                      run_opts = run_opts,
+                      chunk_width = args.chunk_width)
 
     if args.stage <= num_iters + 1:
         logger.info("Getting average posterior for purposes of adjusting the priors.")
-        avg_post_vec_file = ComputeAveragePosterior(args.dir, 'combined', egs_dir,
-                                num_archives, args.prior_subset_size, run_opts)
+        avg_post_vec_file = ComputeAveragePosterior(dir = args.dir,
+                                                    iter = 'combined',
+                                                    egs_dir = egs_dir,
+                                                    num_archives = num_archives,
+                                                    prior_subset_size = args.prior_subset_size,
+                                                    left_context = left_context,
+                                                    right_context = right_context,
+                                                    run_opts = run_opts)
 
         logger.info("Re-adjusting priors based on computed posteriors")
         combined_model = "{dir}/combined.mdl".format(dir = args.dir)
