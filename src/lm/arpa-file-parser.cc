@@ -38,10 +38,8 @@ ArpaFileParser::ArpaFileParser(ArpaParseOptions options,
 ArpaFileParser::~ArpaFileParser() {
 }
 
-std::string rtrim(const std::string &str) {
-  std::string ret = str;
-  ret.erase(ret.find_last_not_of(" \n\r\t")+1);
-  return ret;
+void TrimTrailingWhitespace(std::string *str) {
+  str->erase(str->find_last_not_of(" \n\r\t") + 1);
 }
 
 void ArpaFileParser::Read(std::istream &is, bool binary) {
@@ -90,7 +88,7 @@ void ArpaFileParser::Read(std::istream &is, bool binary) {
   while (++line_number_, getline(is, current_line_) && !is.eof()) {
     if (current_line_.empty()) continue;
 
-    current_line_ = rtrim(current_line_);
+    TrimTrailingWhitespace(&current_line_);
 
     // Continue skipping lines until the \data\ marker alone on a line is found.
     if (!keyword_found) {
@@ -155,8 +153,25 @@ void ArpaFileParser::Read(std::istream &is, bool binary) {
     int32 ngram_count = 0;
     while (++line_number_, getline(is, current_line_) && !is.eof()) {
       if (current_line_.empty()) continue;
-      current_line_ = rtrim(current_line_);
-      if (current_line_[0] == '\\') break;
+      if (current_line_[0] == '\\') {
+        TrimTrailingWhitespace(&current_line_);
+        std::ostringstream next_keyword;
+        next_keyword << "\\" << cur_order + 1 << "-grams:";
+        if ((current_line_ != next_keyword.str()) && (current_line_ != "\\end\\")) {
+          if (ShouldWarn()) {
+            KALDI_WARN << "ignoring possible directive '" << current_line_
+                       << "' expecting '" << next_keyword.str() << "'";
+
+            if (warning_count_ > 0 && warning_count_ > (uint32)options_.max_warnings) {
+              KALDI_WARN << "Of " << warning_count_ << " parse warnings, "
+                         << options_.max_warnings << " were reported. Run program with "
+                         << "--max_warnings=-1 to see all warnings";
+            }
+          }
+        } else {
+          break;
+        }
+      }
 
       std::vector<std::string> col;
       SplitStringToVector(current_line_, " \t", true, &col);
