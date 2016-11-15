@@ -109,3 +109,18 @@ if [ $stage -le 1 ]; then
     for j in $(seq $nj); do cat $dir/segments.$j; done >$dir/segments || exit 1;
   fi
 fi
+
+if [ $stage -le 2 ]; then
+  echo "$0: Computing mean of iVectors"
+  $cmd $dir/log/mean.log \
+    ivector-mean scp:$dir/ivector.scp $dir/mean.vec || exit 1;
+fi
+
+if [ $stage -le 3 ]; then
+  ivector_dim=`feat-to-dim scp:$dir/ivector.scp ark,t:- | head -n 1 | awk '{print $2}'`
+  echo "$0: Computing whitening transform"
+  $cmd $dir/log/transform.log \
+    est-pca --read-vectors=true --normalize-mean=false \
+      --normalize-variance=true --dim=$ivector_dim \
+      scp:$dir/ivector.scp $dir/transform.mat || exit 1;
+fi

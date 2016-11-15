@@ -74,6 +74,43 @@ diarization/extract_ivectors.sh --cmd "$train_cmd --mem 25G" \
   --min-chunk-size 100 exp/extractor_c${num_components}_i${ivector_dim} \
   data/sre exp/ivectors_sre
 
-exit 1;
-# The rest of this script is TODO, for now
+diarization/extract_ivectors.sh --cmd "$train_cmd --mem 20G" \
+  --nj 40 --use-vad false --chunk-size 150 --period 75 \
+  --min-chunk-size 50 exp/extractor_c${num_components}_i${ivector_dim} \
+  data/callhome1 exp/ivectors_callhome1
+
+diarization/extract_ivectors.sh --cmd "$train_cmd --mem 20G" \
+  --nj 40 --use-vad false --chunk-size 150 --period 75 \
+  --min-chunk-size 50 exp/extractor_c${num_components}_i${ivector_dim} \
+  data/callhome2 exp/ivectors_callhome2
+
+# TODO: Probably this should be in its own script and submitted as a job
+ivector-compute-plda ark:exp/ivectors_sre/spk2utt "ark:ivector-subtract-global-mean scp:exp/ivectors_sre/ivector.scp ark:- | transform-vec exp/ivectors_callhome1/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" exp/ivectors_callhome1/plda 2> exp/ivectors_callhome1/log/plda.log
+
+ivector-compute-plda ark:exp/ivectors_sre/spk2utt "ark:ivector-subtract-global-mean scp:exp/ivectors_sre/ivector.scp ark:- | transform-vec exp/ivectors_callhome2/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" exp/ivectors_callhome2/plda 2> exp/ivectors_callhome2/log/plda.log
+
+diarization/compute_plda_calibration.sh --cmd "$train_cmd --mem 4G" \
+  --nj 20 exp/ivectors_callhome2
+
+diarization/compute_plda_calibration.sh --cmd "$train_cmd --mem 4G" \
+  --nj 20 exp/ivectors_callhome1
+
+diarization/score_plda.sh --cmd "$train_cmd --mem 4G" \
+  --nj 20 exp/ivectors_callhome2 exp/ivectors_callhome1
+
+diarization/score_plda.sh --cmd "$train_cmd --mem 4G" \
+  --nj 20 exp/ivectors_callhome1 exp/ivectors_callhome2
+
+diarization/cluster.sh --cmd "$train_cmd --mem 4G" \
+  --nj 20 --threshold `cat exp/ivectors_callhome2/threshold.txt` \
+  exp/ivectors_callhome1
+
+diarization/cluster.sh --cmd "$train_cmd --mem 4G" \
+  --nj 20 --threshold `cat exp/ivectors_callhome1/threshold.txt` \
+  exp/ivectors_callhome2
+
+python diarization/make_rttm.py exp/ivectors_callhome1/segments exp/ivectors_callhome1/labels.txt > callhome1.rttm
+python diarization/make_rttm.py exp/ivectors_callhome2/segments exp/ivectors_callhome2/labels.txt > callhome2.rttm
+cat callhome1.rttm callhome2.rttm > callhome.rttm
+perl local/md-eval.pl -1 -c 0.25 -r local/fullref.rttm -s callhome.rttm | tee results.txt
 
