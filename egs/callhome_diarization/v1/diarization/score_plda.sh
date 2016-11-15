@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# Copyright     2013  Daniel Povey
-#               2016  David Snyder
+# Copyright    2016  David Snyder
 # Apache 2.0.
 
 # This script extracts iVectors for a set of utterances, given
@@ -22,8 +21,8 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 
 if [ $# != 2 ]; then
-  echo "Usage: $0 <extractor-dir> <data> <ivector-dir>"
-  echo " e.g.: $0 exp/extractor data/train exp/ivectors"
+  echo "Usage: $0 <held-out-dir> <test-dir>"
+  echo " e.g.: $0 exp/ivectors_callhome_heldout exp/ivectors_callhome_test"
   echo "main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config containing options"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."

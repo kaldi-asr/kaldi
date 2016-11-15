@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Copyright 2016  Matthew Maciejewski
+#           2016  David Snyder
 # Apache 2.0.
 
 if [ $# -ne 3 ]; then
