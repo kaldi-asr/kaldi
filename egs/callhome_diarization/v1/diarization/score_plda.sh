@@ -3,8 +3,8 @@
 # Copyright    2016  David Snyder
 # Apache 2.0.
 
-# This script extracts iVectors for a set of utterances, given
-# features and a trained iVector extractor.
+# TODO This script computes PLDA scores from pairs of ivectors extracted
+# from segments of a recording.
 
 # Begin configuration section.
 cmd="run.pl"

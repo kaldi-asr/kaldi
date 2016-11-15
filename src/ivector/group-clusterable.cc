@@ -23,6 +23,7 @@
 namespace kaldi {
 
 BaseFloat GroupClusterable::Objf() const {
+  // TODO (current only using Distance())
   return total_distance_;
 }
 
@@ -73,6 +74,7 @@ Clusterable *GroupClusterable::Copy() const {
 }
 
 void GroupClusterable::Scale(BaseFloat f) {
+  // TODO
   return;
 }
 

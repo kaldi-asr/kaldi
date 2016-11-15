@@ -1,9 +1,10 @@
 #!/bin/bash
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 #           2013  Daniel Povey
+#           2016  David Snyder
 
 # This trains a full-covariance UBM from an existing (diagonal or full) UBM,
-# for a specified number of iterations.  This is for speaker-id systems
+# for a specified number of iterations.  This is for diarization systems
 # (we use features specialized for that, and vad).
 
 # Begin configuration section.

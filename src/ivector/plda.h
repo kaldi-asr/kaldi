@@ -144,8 +144,6 @@ class Plda {
   friend class PldaEstimator;
   friend class PldaUnsupervisedAdaptor;
 
-  SpMatrix<double> within_var_; // TODO
-  SpMatrix<double> between_var_; // TODO
   Vector<double> mean_;  // mean of samples in original space.
   Matrix<double> transform_; // of dimension Dim() by Dim();
                              // this transform makes within-class covar unit
@@ -156,8 +154,6 @@ class Plda {
   Vector<double> offset_;  // derived variable: -1.0 * transform_ * mean_
 
  private:
-  //KALDI_DISALLOW_COPY_AND_ASSIGN(Plda);
-  /// TODO
   Plda &operator = (const Plda &other);
   /// This returns a normalization factor, which is a quantity we
   /// must multiply "transformed_ivector" by so that it has the length

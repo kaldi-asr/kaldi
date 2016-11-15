@@ -4,8 +4,10 @@
 #               2016  David Snyder
 # Apache 2.0.
 
-# This script extracts iVectors for a set of utterances, given
-# features and a trained iVector extractor.
+# TODO This script extracts iVectors for a set of utterances, given
+# features and a trained iVector extractor.  It is based on the
+# script sid/extract_ivectors.sh, but uses ivector-extract-dense
+# to extract ivectors from overlapping chunks.
 
 # Begin configuration section.
 nj=30

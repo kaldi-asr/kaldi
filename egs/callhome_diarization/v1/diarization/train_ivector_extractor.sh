@@ -1,8 +1,10 @@
 #!/bin/bash
 
 # Copyright   2013  Daniel Povey
-#             2014  David Snyder
+#             2016  David Snyder
 # Apache 2.0.
+
+# TODO, this is a lightly modified version for diarization
 
 # This script trains the i-vector extractor.  Note: there are 3 separate levels
 # of parallelization: num_threads, num_processes, and num_jobs.  This may seem a

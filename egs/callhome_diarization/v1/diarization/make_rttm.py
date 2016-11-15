@@ -2,7 +2,7 @@
 
 # Copyright  2016  David Snyder
 # Apache 2.0.
-# TODO, script needs some work
+# TODO, script needs some work, error handling, etc
 
 import sys
 
@@ -55,7 +55,6 @@ for l in diarization1:
     s, e, label = t[i].split(',')
     s_next, e_next, label_next = t[i+1].split(',')
     if float(e) == float(s_next) and label == label_next:
-    #if float(e) == float(s_next):
       t[i+1] = ','.join([s, e_next, label_next])
     else:
       rhs += " " + s + "," + e + "," + label

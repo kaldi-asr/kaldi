@@ -3,13 +3,11 @@
 # Copyright  2016  David Snyder
 # Apache 2.0.
 
-# This script extracts iVectors for a set of utterances, given
-# features and a trained iVector extractor.
+# TODO This script computes the stopping threshold used in clustering.
 
 # Begin configuration section.
 cmd="run.pl"
 stage=0
-subsample=10
 target_energy=0.1
 nj=10
 cleanup=true

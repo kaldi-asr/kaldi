@@ -2,11 +2,11 @@
 
 # Copyright   2012  Johns Hopkins University (Author: Daniel Povey)
 #             2013  Daniel Povey
-#             2014  David Snyder
+#             2016  David Snyder
 # Apache 2.0.
 
 # This is a modified version of steps/train_diag_ubm.sh, specialized for
-# speaker-id, that does not require to start with a trained model, that applies
+# diarization, that does not require to start with a trained model, that applies
 # sliding-window CMVN, and that expects voice activity detection (vad.scp) in
 # the data directory.  We initialize the GMM using gmm-global-init-from-feats,
 # which sets the means to random data points and then does some iterations of

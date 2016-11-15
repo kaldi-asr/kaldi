@@ -23,17 +23,6 @@
 
 namespace kaldi {
 
-template<class Real>
-static void ComputeNormalizingTransform(const SpMatrix<Real> &covar,
-                                        MatrixBase<Real> *proj) {
-  int32 dim = covar.NumRows();
-  TpMatrix<Real> C(dim);  // Cholesky of covar, covar = C C^T
-  C.Cholesky(covar);
-  C.Invert();  // The matrix that makes covar unit is C^{-1}, because
-               // C^{-1} covar C^{-T} = C^{-1} C C^T C^{-T} = I.
-  proj->CopyFromTp(C, kNoTrans);  // set "proj" to C^{-1}.
-}
-
 void Plda::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<Plda>");
   mean_.Write(os, binary);
@@ -51,13 +40,22 @@ void Plda::Read(std::istream &is, bool binary) {
   ComputeDerivedVars();
 }
 
+template<class Real>
+static void ComputeNormalizingTransform(const SpMatrix<Real> &covar,
+                                        MatrixBase<Real> *proj) {
+  int32 dim = covar.NumRows();
+  TpMatrix<Real> C(dim);  // Cholesky of covar, covar = C C^T
+  C.Cholesky(covar);
+  C.Invert();  // The matrix that makes covar unit is C^{-1}, because
+               // C^{-1} covar C^{-T} = C^{-1} C C^T C^{-T} = I.
+  proj->CopyFromTp(C, kNoTrans);  // set "proj" to C^{-1}.
+}
 
 void Plda::ComputeDerivedVars() {
   KALDI_ASSERT(Dim() > 0);
   offset_.Resize(Dim());
   offset_.AddMatVec(-1.0, transform_, kNoTrans, mean_, 0.0);
 }
-
 
 /**
    This comment explains the thinking behind the function LogLikelihoodRatio.
@@ -530,10 +528,6 @@ void PldaEstimator::GetOutput(Plda *plda) {
   plda->mean_.Scale(1.0 / stats_.class_weight_);
   KALDI_LOG << "Norm of mean of iVector distribution is "
             << plda->mean_.Norm(2.0);
-  // TODO
-  plda->between_var_ = between_var_;
-  plda->within_var_ = within_var_;
-  // END TOO
 
   Matrix<double> transform1(Dim(), Dim());
   ComputeNormalizingTransform(within_var_, &transform1);

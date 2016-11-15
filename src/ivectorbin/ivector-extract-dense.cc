@@ -77,7 +77,6 @@ int32 NumChunks(int32 num_rows, int32 chunk_size, int32 period) {
   return num_chunks;
 }
 
-
 void IvectorExtractFromChunk(const IvectorExtractor &extractor,
   std::string utt, const Matrix<BaseFloat> &feat_temp,
   const Posterior &post, int32 chunk_start, int32 chunk_end,

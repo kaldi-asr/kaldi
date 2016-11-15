@@ -27,10 +27,8 @@
 
 namespace kaldi {
 
-
 class GroupClusterable: public Clusterable {
  public:
-  // TODO see if scores should be const
   GroupClusterable(const std::set<int32> &points,
     const Matrix<BaseFloat> *scores):
   points_(points),
@@ -59,8 +57,6 @@ class GroupClusterable: public Clusterable {
 
  private:
   std::set<int32> points_;
-  // TODO
-  //const Matrix<BaseFloat> * const scores_; // Scores between all elements
   const Matrix<BaseFloat> * scores_; // Scores between all elements
   BaseFloat total_distance_;
 };
