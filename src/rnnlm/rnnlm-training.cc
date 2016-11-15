@@ -129,8 +129,21 @@ void LmNnetTrainer::Train(const NnetExample &eg) {
 
     Matrix<BaseFloat> place_holder;
 
+    LmAffineComponent *TODO = dynamic_cast<LmAffineComponent*>(delta_nnet_->I()->Copy());
+
     nnet_->I()->Backprop("", NULL, old_input_, place_holder,
                      first_deriv, delta_nnet_->I(), NULL);
+
+    nnet_->I()->Backprop("", NULL, old_input_, place_holder,
+                     first_deriv, TODO, NULL);
+
+    BaseFloat i1 = TODO->DotProduct(*TODO);
+
+    TODO->Add(-1, *delta_nnet_->I());
+
+    BaseFloat i2 = TODO->DotProduct(*TODO);
+    KALDI_LOG << "the 2nd number should be 0: " << i1 << " " << i2;
+
 
   }
 
@@ -284,10 +297,10 @@ LmNnetTrainer::~LmNnetTrainer() {
   delete delta_nnet_;
 }
 
-Matrix<BaseFloat> ProcessOutput(const MatrixBase<BaseFloat> &output_0,
-                                  const LmComponent *output_projection_1,
-                                  const LmComponent *output_projection_2) {
-  Matrix<BaseFloat> ans(output_0.NumRows(), output_projection_1->OutputDim());
+CuMatrix<BaseFloat> ProcessOutput(const CuMatrixBase<BaseFloat> &output_0,
+                                  const Component *output_projection_1,
+                                  const Component *output_projection_2) {
+  CuMatrix<BaseFloat> ans(output_0.NumRows(), output_projection_1->OutputDim());
 
 //  Matrix<BaseFloat> cpu_output(output_0);
 
@@ -304,16 +317,16 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
                               NnetComputer *computer,
                               BaseFloat *tot_weight,
                               BaseFloat *tot_objf,
-                              const LmComponent *output_projection_1,
-                              const LmComponent *output_projection_2,
+                              const Component *output_projection_1,
+                              const Component *output_projection_2,
                               LmNnet *nnet) {
   const CuMatrixBase<BaseFloat> &output_0_gpu = computer->GetOutput(output_name);
   Matrix<BaseFloat> output_0(output_0_gpu);
 //  const MatrixBase<BaseFloat> output_1;
   
 
-  const Matrix<BaseFloat> &output =
-              ProcessOutput(output_0, output_projection_1, output_projection_2); 
+  const CuMatrix<BaseFloat> &output =
+              ProcessOutput(output_0_gpu, output_projection_1, output_projection_2); 
 
   if (output.NumCols() != supervision.NumCols())
     KALDI_ERR << "Nnet versus example output dimension (num-classes) "
@@ -326,7 +339,7 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
       switch (supervision.Type()) {
         case kSparseMatrix: {
           const SparseMatrix<BaseFloat> &post = supervision.GetSparseMatrix();
-          SparseMatrix<BaseFloat> cu_post(post);
+          CuSparseMatrix<BaseFloat> cu_post(post);
           // The cross-entropy objective is computed by a simple dot product,
           // because after the LogSoftmaxLayer, the output is already in the form
           // of log-likelihoods that are normalized to sum to one.
@@ -334,28 +347,28 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
           *tot_objf = TraceMatSmat(output, cu_post, kTrans);
           if (supply_deriv) {
             // the derivative on the real output
-            Matrix<BaseFloat> output_deriv(output.NumRows(), output.NumCols(),
+            CuMatrix<BaseFloat> output_deriv(output.NumRows(), output.NumCols(),
                                              kSetZero);
 
             // the derivative after the affine layer (before the nonlin)
-            Matrix<BaseFloat> between_deriv(output.NumRows(), output.NumCols(),
+            CuMatrix<BaseFloat> between_deriv(output.NumRows(), output.NumCols(),
                                               kSetZero);
 
             // the derivative of the 'nnet3' part
-            Matrix<BaseFloat> input_deriv(output.NumRows(), output_0.NumCols(),
+            CuMatrix<BaseFloat> input_deriv(output.NumRows(), output_0.NumCols(),
                                             kSetZero);
 
             cu_post.CopyToMat(&output_deriv);
-            Matrix<BaseFloat> place_holder;
+            CuMatrix<BaseFloat> place_holder;
             output_projection_2->Backprop("", NULL, place_holder, output,
                              output_deriv, NULL, &between_deriv);
 
-            output_projection_1->Backprop("", NULL, output_0, place_holder,
-                             between_deriv, nnet->O(), &input_deriv);
+            output_projection_1->Backprop("", NULL, output_0_gpu, place_holder,
+                                 between_deriv, nnet->O(), &input_deriv);
 
-            CuMatrix<BaseFloat> input_deriv_gpu(input_deriv);
+//            CuMatrix<BaseFloat> input_deriv_gpu(input_deriv);
 
-            computer->AcceptOutputDeriv(output_name, &input_deriv_gpu);
+            computer->AcceptOutputDeriv(output_name, &input_deriv);
           }
           break;
         }

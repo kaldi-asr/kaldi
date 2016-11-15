@@ -23,6 +23,7 @@
 #include "matrix/matrix-lib.h"
 #include "nnet3/nnet-nnet.h"
 #include "rnnlm/rnnlm-component.h"
+#include "nnet3/nnet-simple-component.h"
 
 #include <iostream>
 #include <sstream>
@@ -30,7 +31,17 @@
 #include <map>
 
 namespace kaldi {
+
+//namespace nnet3 {
+//  class AffineComponent;
+//  class NonlinearComponent;
+//}
+
 namespace rnnlm {
+
+using nnet3::Component;
+//using nnet3::AffineComponent;
+//using nnet3::NonlinearComponent;
 
 class LmNnet {
  public:
@@ -68,17 +79,17 @@ class LmNnet {
   LmAffineComponent* I() {
     return dynamic_cast<LmAffineComponent*>(input_projection_);
   }
-  LmAffineComponent* O() {
-    return dynamic_cast<LmAffineComponent*>(output_projection_);
+  nnet3::AffineComponent* O() {
+    return dynamic_cast<nnet3::AffineComponent*>(output_projection_);
   }
-  LmNonlinearComponent* N() {
-    return dynamic_cast<LmNonlinearComponent*>(output_layer_);
+  nnet3::NonlinearComponent* N() {
+    return dynamic_cast<nnet3::NonlinearComponent*>(output_layer_);
   }
 
  private:
   LmComponent* input_projection_;      // Affine
-  LmComponent* output_projection_;    // Affine
-  LmComponent* output_layer_;         // Softmax 
+  nnet3::Component* output_projection_;    // Affine
+  nnet3::Component* output_layer_;         // Softmax 
   nnet3::Nnet* nnet_;
 };
 

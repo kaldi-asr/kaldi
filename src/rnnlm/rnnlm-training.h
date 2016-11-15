@@ -237,8 +237,8 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
                               NnetComputer *computer,
                               BaseFloat *tot_weight,
                               BaseFloat *tot_objf,
-                              const LmComponent *output_projection_1,
-                              const LmComponent *output_projection_2,
+                              const Component *output_projection_1,
+                              const Component *output_projection_2,
                               LmNnet *delta_nnet);
 
 

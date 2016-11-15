@@ -195,7 +195,7 @@ void LmAffineComponent::UpdateSimple(const SparseMatrix<BaseFloat> &in_value,
     // in_value(i, j) = 1
     for (int k = 0; k < out_deriv.NumCols(); k++) {
       linear_params_(k, j) += out_deriv(k, i);
-      KALDI_LOG << k << ", " << j << " added " << out_deriv(k, i);
+//      KALDI_LOG << k << ", " << j << " added " << out_deriv(k, i);
     }
   }
 }
