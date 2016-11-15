@@ -8,13 +8,14 @@
 nnet3 neural networks.
 """
 
-import sys
 import logging
 import math
 import re
 import time
-import argparse
 import shutil
+import glob
+import os
+import argparse
 
 import common as common_lib
 
@@ -22,7 +23,8 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s [%(filename)s:%(lineno)s - %(funcName)s - %(levelname)s ] %(message)s')
+formatter = logging.Formatter("%(asctime)s [%(filename)s:%(lineno)s - "
+                              "%(funcName)s - %(levelname)s ] %(message)s")
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
@@ -44,10 +46,13 @@ class RunOpts:
         self.parallel_train_opts = None
 
 
-def GetSuccessfulModels(num_models, log_file_pattern, difference_threshold=1.0):
+def get_successful_models(num_models, log_file_pattern,
+                          difference_threshold=1.0):
     assert(num_models > 0)
 
-    parse_regex = re.compile("LOG .* Overall average objective function for 'output' is ([0-9e.\-+]+) over ([0-9e.\-+]+) frames")
+    parse_regex = re.compile(
+        "LOG .* Overall average objective function for "
+        "'output' is ([0-9e.\-+]+) over ([0-9e.\-+]+) frames")
     objf = []
     for i in range(num_models):
         model_num = i + 1
@@ -60,8 +65,8 @@ def GetSuccessfulModels(num_models, log_file_pattern, difference_threshold=1.0):
             mat_obj = parse_regex.search(lines[-1*line_num])
             if mat_obj is not None:
                 this_objf = float(mat_obj.groups()[0])
-                break;
-        objf.append(this_objf);
+                break
+        objf.append(this_objf)
     max_index = objf.index(max(objf))
     accepted_models = []
     for i in range(num_models):
@@ -69,88 +74,86 @@ def GetSuccessfulModels(num_models, log_file_pattern, difference_threshold=1.0):
             accepted_models.append(i+1)
 
     if len(accepted_models) != num_models:
-        logger.warn("""Only {0}/{1} of the models have been accepted
-for averaging, based on log files {2}.""".format(len(accepted_models),
-                                                 num_models, log_file_pattern))
+        logger.warn("Only {0}/{1} of the models have been accepted "
+                    "for averaging, based on log files {2}.".format(
+                        len(accepted_models),
+                        num_models, log_file_pattern))
 
     return [accepted_models, max_index+1]
 
 
-def GetAverageNnetModel(dir, iter, nnets_list, run_opts,
-                        get_raw_nnet_from_am=True, shrink=None):
+def get_average_nnet_model(dir, iter, nnets_list, run_opts,
+                           get_raw_nnet_from_am=True, shrink=None):
     scale = 1.0
     if shrink is not None:
         scale = shrink
 
     next_iter = iter + 1
     if get_raw_nnet_from_am:
-        out_model = """- \| nnet3-am-copy --set-raw-nnet=- --scale={scale} \
-{dir}/{iter}.mdl {dir}/{next_iter}.mdl""".format(dir=dir, iter=iter,
-                                                 next_iter=next_iter,
-                                                 scale=scale)
+        out_model = ("""- \| nnet3-am-copy --set-raw-nnet=- --scale={scale} \
+                        {dir}/{iter}.mdl {dir}/{next_iter}.mdl""".format(
+                            dir=dir, iter=iter,
+                            next_iter=next_iter,
+                            scale=scale))
     else:
         if shrink is not None:
             out_model = """- \| nnet3-copy --scale={scale} \
-- {dir}/{next_iter}.raw""".format(dir=dir, next_iter=next_iter, scale=scale)
+                           - {dir}/{next_iter}.raw""".format(
+                                   dir=dir, next_iter=next_iter, scale=scale)
         else:
             out_model = "{dir}/{next_iter}.raw".format(dir=dir,
                                                        next_iter=next_iter)
 
-    common_lib.RunKaldiCommand("""
-{command} {dir}/log/average.{iter}.log \
-nnet3-average {nnets_list} \
-{out_model}""".format(command=run_opts.command,
-                      dir=dir,
-                      iter=iter,
-                      nnets_list=nnets_list,
-                      out_model=out_model))
+    common_lib.run_kaldi_command(
+        """{command} {dir}/log/average.{iter}.log \
+                nnet3-average {nnets_list} \
+                {out_model}""".format(command=run_opts.command,
+                                      dir=dir,
+                                      iter=iter,
+                                      nnets_list=nnets_list,
+                                      out_model=out_model))
 
 
-def GetBestNnetModel(dir, iter, best_model_index, run_opts,
-                     get_raw_nnet_from_am=True, shrink=None):
+def get_best_nnet_model(dir, iter, best_model_index, run_opts,
+                        get_raw_nnet_from_am=True, shrink=None):
     scale = 1.0
     if shrink is not None:
         scale = shrink
 
-    best_model = '{dir}/{next_iter}.{best_model_index}.raw'.format(
+    best_model = "{dir}/{next_iter}.{best_model_index}.raw".format(
             dir=dir,
             next_iter=iter + 1,
             best_model_index=best_model_index)
 
     if get_raw_nnet_from_am:
-        out_model = """- \| nnet3-am-copy --set-raw-nnet=- \
-{dir}/{iter}.mdl {dir}/{next_iter}.mdl""".format(dir=dir, iter=iter,
-                                                 next_iter=iter + 1)
+        out_model = ("""- \| nnet3-am-copy --set-raw-nnet=- \
+                        {dir}/{iter}.mdl {dir}/{next_iter}.mdl""".format(
+                            dir=dir, iter=iter, next_iter=iter + 1))
     else:
-        out_model = '{dir}/{next_iter}.raw'.format(dir=dir,
+        out_model = "{dir}/{next_iter}.raw".format(dir=dir,
                                                    next_iter=iter + 1)
 
-    common_lib.RunKaldiCommand("""
-{command} {dir}/log/select.{iter}.log \
-nnet3-copy --scale={scale} {best_model} \
-{out_model}""".format(command=run_opts.command,
-                      dir=dir, iter=iter,
-                      best_model=best_model,
-                      out_model=out_model, scale=scale))
+    common_lib.run_kaldi_command(
+        """{command} {dir}/log/select.{iter}.log \
+                nnet3-copy --scale={scale} {best_model} \
+                {out_model}""".format(command=run_opts.command,
+                                      dir=dir, iter=iter,
+                                      best_model=best_model,
+                                      out_model=out_model, scale=scale))
 
 
-def CopyEgsPropertiesToExpDir(egs_dir, dir):
+def copy_egs_properties_to_exp_dir(egs_dir, dir):
     try:
         for file in ['cmvn_opts', 'splice_opts', 'final.mat']:
             file_name = '{dir}/{file}'.format(dir=egs_dir, file=file)
             if os.path.isfile(file_name):
                 shutil.copy2(file_name, dir)
     except IOError:
-        raise Exception("Error while trying to copy egs property files to {dir}".format(dir=dir))
+        raise Exception("Error while trying to copy egs "
+                        "property files to {dir}".format(dir=dir))
 
 
-def SplitData(data, num_jobs):
-   common_lib.RunKaldiCommand(
-           "utils/split_data.sh {data} {num_jobs}".format(data=data,
-                                                          num_jobs=num_jobs))
-
-
-def ParseGenericConfigVarsFile(var_file):
+def parse_generic_config_vars_file(var_file):
     variables = {}
     try:
         var_file_handle = open(var_file, 'r')
@@ -174,88 +177,106 @@ def ParseGenericConfigVarsFile(var_file):
     raise Exception('Error while parsing the file {0}'.format(var_file))
 
 
-def VerifyEgsDir(egs_dir, feat_dim, ivector_dim, left_context, right_context):
+def verify_egs_dir(egs_dir, feat_dim, ivector_dim,
+                   left_context, right_context):
     try:
-        egs_feat_dim = int(open('{0}/info/feat_dim'.format(egs_dir)).readline())
-        egs_ivector_dim = int(open('{0}/info/ivector_dim'.format(egs_dir)).readline())
-        egs_left_context = int(open('{0}/info/left_context'.format(egs_dir)).readline())
-        egs_right_context = int(open('{0}/info/right_context'.format(egs_dir)).readline())
+        egs_feat_dim = int(open('{0}/info/feat_dim'.format(
+                                egs_dir)).readline())
+        egs_ivector_dim = int(open('{0}/info/ivector_dim'.format(
+                                egs_dir)).readline())
+        egs_left_context = int(open('{0}/info/left_context'.format(
+                                egs_dir)).readline())
+        egs_right_context = int(open('{0}/info/right_context'.format(
+                                egs_dir)).readline())
         if (feat_dim != egs_feat_dim) or (ivector_dim != egs_ivector_dim):
-            raise Exception('There is mismatch between featdim/ivector_dim of the current experiment and the provided egs directory')
+            raise Exception("There is mismatch between featdim/ivector_dim of "
+                            "the current experiment and the provided "
+                            "egs directory")
 
-        if (egs_left_context < left_context) or (egs_right_context < right_context):
+        if (egs_left_context < left_context or
+                egs_right_context < right_context):
             raise Exception('The egs have insufficient context')
 
-        frames_per_eg = int(open('{0}/info/frames_per_eg'.format(egs_dir)).readline())
-        num_archives = int(open('{0}/info/num_archives'.format(egs_dir)).readline())
+        frames_per_eg = int(open('{0}/info/frames_per_eg'.format(
+                                egs_dir)).readline())
+        num_archives = int(open('{0}/info/num_archives'.format(
+                                egs_dir)).readline())
 
-        return [egs_left_context, egs_right_context, frames_per_eg, num_archives]
-    except IOError, ValueError:
-        raise Exception('The egs dir {0} has missing or malformed files'.format(egs_dir))
+        return [egs_left_context, egs_right_context,
+                frames_per_eg, num_archives]
+    except (IOError, ValueError) as e:
+        raise Exception("The egs dir {0} has missing or "
+                        "malformed files: {1}".format(egs_dir, e.str()))
 
 
-def ComputePresoftmaxPriorScale(dir, alidir, num_jobs, run_opts,
-                                presoftmax_prior_scale_power=-0.25):
+def compute_presoftmax_prior_scale(dir, alidir, num_jobs, run_opts,
+                                   presoftmax_prior_scale_power=-0.25):
 
     # getting the raw pdf count
-    common_lib.RunKaldiCommand("""
-{command} JOB=1:{num_jobs} {dir}/log/acc_pdf.JOB.log \
-ali-to-post "ark:gunzip -c {alidir}/ali.JOB.gz|" ark:- \| \
-post-to-tacc --per-pdf=true  {alidir}/final.mdl ark:- {dir}/pdf_counts.JOB
-     """.format(command = run_opts.command,
-                num_jobs=num_jobs,
-                dir=dir,
-                alidir=alidir))
+    common_lib.run_kaldi_command(
+        """{command} JOB=1:{num_jobs} {dir}/log/acc_pdf.JOB.log \
+                ali-to-post "ark:gunzip -c {alidir}/ali.JOB.gz|" ark:- \| \
+                post-to-tacc --per-pdf=true  {alidir}/final.mdl ark:- \
+                {dir}/pdf_counts.JOB""".format(command=run_opts.command,
+                                               num_jobs=num_jobs,
+                                               dir=dir,
+                                               alidir=alidir))
 
-    common_lib.RunKaldiCommand("""
-{command} {dir}/log/sum_pdf_counts.log \
-vector-sum --binary=false {dir}/pdf_counts.* {dir}/pdf_counts
-       """.format(command=run_opts.command,  dir=dir))
+    common_lib.run_kaldi_command(
+        """{command} {dir}/log/sum_pdf_counts.log \
+                vector-sum --binary=false {dir}/pdf_counts.* {dir}/pdf_counts \
+        """.format(command=run_opts.command,  dir=dir))
 
-    import glob
     for file in glob.glob('{0}/pdf_counts.*'.format(dir)):
         os.remove(file)
-    pdf_counts = common_lib.ReadKaldiMatrix('{0}/pdf_counts'.format(dir))[0]
-    scaled_counts = SmoothPresoftmaxPriorScaleVector(
+    pdf_counts = common_lib.read_kaldi_matrix('{0}/pdf_counts'.format(dir))[0]
+    scaled_counts = smooth_presoftmax_prior_scale_vector(
             pdf_counts,
             presoftmax_prior_scale_power=presoftmax_prior_scale_power,
             smooth=0.01)
 
     output_file = "{0}/presoftmax_prior_scale.vec".format(dir)
-    common_lib.WriteKaldiMatrix(output_file, [scaled_counts])
-    common_lib.ForceSymlink("../presoftmax_prior_scale.vec",
-                            "{0}/configs/presoftmax_prior_scale.vec".format(dir))
+    common_lib.write_kaldi_matrix(output_file, [scaled_counts])
+    common_lib.force_symlink("../presoftmax_prior_scale.vec",
+                             "{0}/configs/presoftmax_prior_scale.vec".format(
+                                dir))
 
 
-def SmoothPresoftmaxPriorScaleVector(pdf_counts, presoftmax_prior_scale_power=-0.25, smooth=0.01):
+def smooth_presoftmax_prior_scale_vector(pdf_counts,
+                                         presoftmax_prior_scale_power=-0.25,
+                                         smooth=0.01):
     total = sum(pdf_counts)
     average_count = total/len(pdf_counts)
     scales = []
     for i in range(len(pdf_counts)):
-        scales.append(math.pow(pdf_counts[i] + smooth * average_count, presoftmax_prior_scale_power))
+        scales.append(math.pow(pdf_counts[i] + smooth * average_count,
+                               presoftmax_prior_scale_power))
     num_pdfs = len(pdf_counts)
     scaled_counts = map(lambda x: x * float(num_pdfs) / sum(scales), scales)
     return scaled_counts
 
 
-def PrepareInitialNetwork(dir, run_opts):
-    common_lib.RunKaldiCommand("""
-{command} {dir}/log/add_first_layer.log \
-nnet3-init --srand=-3 {dir}/init.raw {dir}/configs/layer1.config \
-{dir}/0.raw""".format(command=run_opts.command,
-                      dir=dir))
+def prepare_initial_network(dir, run_opts):
+    common_lib.run_kaldi_command(
+        """{command} {dir}/log/add_first_layer.log \
+                nnet3-init --srand=-3 {dir}/init.raw \
+                {dir}/configs/layer1.config {dir}/0.raw""".format(
+                    command=run_opts.command,
+                    dir=dir))
 
 
-def VerifyIterations(num_iters, num_epochs, num_hidden_layers,
-                     num_archives, max_models_combine,
-                     add_layers_period, num_jobs_final):
+def verify_iterations(num_iters, num_epochs, num_hidden_layers,
+                      num_archives, max_models_combine,
+                      add_layers_period, num_jobs_final):
     """ Verifies that number of iterations are sufficient for various
         phases of training."""
 
     finish_add_layers_iter = num_hidden_layers * add_layers_period
 
     if num_iters <= (finish_add_layers_iter + 2):
-        raise Exception(' There are insufficient number of epochs. These are not even sufficient for layer-wise discriminatory training.')
+        raise Exception("There are insufficient number of epochs. "
+                        "These are not even sufficient for "
+                        "layer-wise discriminatory training.")
 
     approx_iters_per_epoch_final = num_archives/num_jobs_final
     # First work out how many iterations we want to combine over in the final
@@ -288,8 +309,8 @@ def VerifyIterations(num_iters, num_epochs, num_hidden_layers,
     return models_to_combine
 
 
-def GetRealignIters(realign_times, num_iters,
-                    num_jobs_initial, num_jobs_final):
+def get_realign_iters(realign_times, num_iters,
+                      num_jobs_initial, num_jobs_final):
     """ Takes the realign_times string and identifies the approximate
         iterations at which realignments have to be done.
 
@@ -303,8 +324,10 @@ def GetRealignIters(realign_times, num_iters,
         if num_jobs_initial == num_jobs_final:
             realign_iter = int(0.5 + num_iters * realign_time)
         else:
-            realign_iter = math.sqrt((1 - realign_time) * math.pow(num_jobs_initial, 2)
-                            + realign_time * math.pow(num_jobs_final, 2))
+            realign_iter = math.sqrt((1 - realign_time)
+                                     * math.pow(num_jobs_initial, 2)
+                                     + realign_time * math.pow(num_jobs_final,
+                                                               2))
             realign_iter = realign_iter - num_jobs_initial
             realign_iter = realign_iter / (num_jobs_final - num_jobs_initial)
             realign_iter = realign_iter * num_iters
@@ -313,91 +336,105 @@ def GetRealignIters(realign_times, num_iters,
     return realign_iters
 
 
-def Align(dir, data, lang, run_opts, iter=None, transform_dir=None,
+def align(dir, data, lang, run_opts, iter=None, transform_dir=None,
           online_ivector_dir=None):
 
-    alidir = '{dir}/ali{ali_suffix}'.format(dir=dir,
-               ali_suffix="_iter_{0}".format(iter) if iter is not None else "")
+    alidir = '{dir}/ali{ali_suffix}'.format(
+            dir=dir,
+            ali_suffix="_iter_{0}".format(iter) if iter is not None else "")
 
     logger.info("Aligning the data{gpu}with {num_jobs} jobs.".format(
         gpu=" using gpu " if run_opts.realign_use_gpu else " ",
-        num_jobs=run_opts.realign_num_jobs ))
-    common_lib.RunKaldiCommand("""
-steps/nnet3/align.sh --nj {num_jobs_align} --cmd "{align_cmd} {align_queue_opt}" \
-        --use-gpu {align_use_gpu} \
-        --transform-dir "{transform_dir}" \
-        --online-ivector-dir "{online_ivector_dir}" \
-        --iter "{iter}" {data} {lang} {dir} {alidir}
-    """.format(dir=dir, align_use_gpu="yes" if run_opts.realign_use_gpu else "no",
-               align_cmd=run_opts.realign_command,
-               align_queue_opt=run_opts.realign_queue_opt,
-               num_jobs_align=run_opts.realign_num_jobs,
-               transform_dir=transform_dir if transform_dir is not None else "",
-               online_ivector_dir=online_ivector_dir if online_ivector_dir is not None else "",
-               iter=iter if iter is not None else "",
-               alidir=alidir,
-               lang=lang, data=data))
+        num_jobs=run_opts.realign_num_jobs))
+    common_lib.run_kaldi_command(
+        """steps/nnet3/align.sh --nj {num_jobs_align} \
+                --cmd "{align_cmd} {align_queue_opt}" \
+                --use-gpu {align_use_gpu} \
+                --transform-dir "{transform_dir}" \
+                --online-ivector-dir "{online_ivector_dir}" \
+                --iter "{iter}" {data} {lang} {dir} {alidir}""".format(
+                    dir=dir, align_use_gpu=("yes"
+                                            if run_opts.realign_use_gpu
+                                            else "no"),
+                    align_cmd=run_opts.realign_command,
+                    align_queue_opt=run_opts.realign_queue_opt,
+                    num_jobs_align=run_opts.realign_num_jobs,
+                    transform_dir=(transform_dir
+                                   if transform_dir is not None
+                                   else ""),
+                    online_ivector_dir=(online_ivector_dir
+                                        if online_ivector_dir is not None
+                                        else ""),
+                    iter=iter if iter is not None else "",
+                    alidir=alidir,
+                    lang=lang, data=data))
     return alidir
 
 
-def Realign(dir, iter, feat_dir, lang, prev_egs_dir, cur_egs_dir,
+def realign(dir, iter, feat_dir, lang, prev_egs_dir, cur_egs_dir,
             prior_subset_size, num_archives, run_opts,
             transform_dir=None, online_ivector_dir=None):
     raise Exception("Realignment stage has not been implemented in nnet3")
-    logger.info("Getting average posterior for purposes of adjusting the priors.")
+    logger.info("Getting average posterior for purposes of adjusting "
+                "the priors.")
     # Note: this just uses CPUs, using a smallish subset of data.
     # always use the first egs archive, which makes the script simpler;
     # we're using different random subsets of it.
 
-    avg_post_vec_file = ComputeAveragePosterior(
+    avg_post_vec_file = compute_average_posterior(
             dir, iter, prev_egs_dir,
             num_archives, prior_subset_size, run_opts)
 
     avg_post_vec_file = "{dir}/post.{iter}.vec".format(dir=dir, iter=iter)
     logger.info("Re-adjusting priors based on computed posteriors")
     model = '{0}/{1}.mdl'.format(dir, iter)
-    AdjustAmPriors(dir, model, avg_post_vec_file, model, run_opts)
+    adjust_am_priors(dir, model, avg_post_vec_file, model, run_opts)
 
-    alidir = Align(dir, feat_dir, lang, run_opts, iter,
+    alidir = align(dir, feat_dir, lang, run_opts, iter,
                    transform_dir, online_ivector_dir)
-    common_lib.RunKaldiCommand("""
-steps/nnet3/relabel_egs.sh --cmd "{command}" --iter {iter} {alidir} \
-    {prev_egs_dir} {cur_egs_dir}""".format(
-            command=run_opts.command,
-            iter=iter,
-            dir=dir,
-            alidir=alidir,
-            prev_egs_dir=prev_egs_dir,
-            cur_egs_dir=cur_egs_dir))
+    common_lib.run_kaldi_command(
+        """steps/nnet3/relabel_egs.sh --cmd "{command}" --iter {iter} \
+                {alidir} {prev_egs_dir} {cur_egs_dir}""".format(
+                    command=run_opts.command,
+                    iter=iter,
+                    dir=dir,
+                    alidir=alidir,
+                    prev_egs_dir=prev_egs_dir,
+                    cur_egs_dir=cur_egs_dir))
 
 
-def GetLearningRate(iter, num_jobs, num_iters, num_archives_processed,
-                    num_archives_to_process,
-                    initial_effective_lrate, final_effective_lrate):
+def get_learning_rate(iter, num_jobs, num_iters, num_archives_processed,
+                      num_archives_to_process,
+                      initial_effective_lrate, final_effective_lrate):
     if iter + 1 >= num_iters:
         effective_learning_rate = final_effective_lrate
     else:
         effective_learning_rate = (
-            initial_effective_lrate * math.exp(num_archives_processed *
-                math.log(final_effective_lrate/ initial_effective_lrate)/num_archives_to_process))
+                initial_effective_lrate
+                * math.exp(num_archives_processed
+                           * math.log(final_effective_lrate
+                                      / initial_effective_lrate)
+                           / num_archives_to_process))
 
     return num_jobs * effective_learning_rate
 
 
-def DoShrinkage(iter, model_file, non_linearity, shrink_threshold,
-                get_raw_nnet_from_am=True):
+def do_shrinkage(iter, model_file, non_linearity, shrink_threshold,
+                 get_raw_nnet_from_am=True):
 
     if iter == 0:
         return True
 
     try:
         if get_raw_nnet_from_am:
-            output, error = common_lib.RunKaldiCommand(
-                "nnet3-am-info --print-args=false {model_file} | grep {non_linearity}".format(
+            output, error = common_lib.run_kaldi_command(
+                "nnet3-am-info --print-args=false {model_file} | "
+                "grep {non_linearity}".format(
                     non_linearity=non_linearity, model_file=model_file))
         else:
-            output, error = common_lib.RunKaldiCommand(
-                "nnet3-info --print-args=false {model_file} | grep {non_linearity}".format(
+            output, error = common_lib.run_kaldi_command(
+                "nnet3-info --print-args=false {model_file} | "
+                "grep {non_linearity}".format(
                     non_linearity=non_linearity, model_file=model_file))
         output = output.strip().split("\n")
         # eg.
@@ -409,7 +446,8 @@ def DoShrinkage(iter, model_file, non_linearity, shrink_threshold,
         for line in output:
             mat_obj = mean_pattern.search(line)
             if mat_obj is None:
-                raise Exception("Something went wrong, unable to find deriv-avg in the line \n{0}".format(line))
+                raise Exception("Something went wrong, unable to find "
+                                "deriv-avg in the line \n{0}".format(line))
             mean_deriv = float(mat_obj.groups()[0])
             total_mean_deriv += mean_deriv
             num_derivs += 1
@@ -421,13 +459,12 @@ def DoShrinkage(iter, model_file, non_linearity, shrink_threshold,
     return False
 
 
-def ComputeAveragePosterior(dir, iter, egs_dir, num_archives,
-                            prior_subset_size, run_opts,
-                            get_raw_nnet_from_am=True):
+def compute_average_posterior(dir, iter, egs_dir, num_archives,
+                              prior_subset_size, run_opts,
+                              get_raw_nnet_from_am=True):
     """ Computes the average posterior of the network
     Note: this just uses CPUs, using a smallish subset of data.
     """
-    import glob
     for file in glob.glob('{0}/post.{1}.*.vec'.format(dir, iter)):
         os.remove(file)
 
@@ -437,29 +474,33 @@ def ComputeAveragePosterior(dir, iter, egs_dir, num_archives,
         egs_part = 'JOB'
 
     if get_raw_nnet_from_am:
-        model = "nnet3-am-copy --raw=true {dir}/combined.mdl -|".format(dir=dir)
+        model = "nnet3-am-copy --raw=true {0}/combined.mdl -|".format(dir)
     else:
         model = "{dir}/final.raw".format(dir=dir)
 
-    common_lib.RunKaldiCommand("""
-{command} JOB=1:{num_jobs_compute_prior} {prior_queue_opt} {dir}/log/get_post.{iter}.JOB.log \
-    nnet3-subset-egs --srand=JOB --n={prior_subset_size} ark:{egs_dir}/egs.{egs_part}.ark ark:- \| \
-    nnet3-merge-egs --measure-output-frames=true --minibatch-size=128 ark:- ark:- \| \
-    nnet3-compute-from-egs {prior_gpu_opt} --apply-exp=true \
-    "{model}" ark:- ark:- \| \
-matrix-sum-rows ark:- ark:- \| vector-sum ark:- {dir}/post.{iter}.JOB.vec
-    """.format(command=run_opts.command,
-               dir=dir, model=model,
-               num_jobs_compute_prior=run_opts.num_jobs_compute_prior,
-               prior_queue_opt=run_opts.prior_queue_opt,
-               iter=iter, prior_subset_size=prior_subset_size,
-               egs_dir=egs_dir, egs_part=egs_part,
-               prior_gpu_opt=run_opts.prior_gpu_opt))
+    common_lib.run_kaldi_command(
+        """{command} JOB=1:{num_jobs_compute_prior} {prior_queue_opt} \
+                {dir}/log/get_post.{iter}.JOB.log \
+                nnet3-subset-egs --srand=JOB --n={prior_subset_size} \
+                ark:{egs_dir}/egs.{egs_part}.ark ark:- \| \
+                nnet3-merge-egs --measure-output-frames=true \
+                --minibatch-size=128 ark:- ark:- \| \
+                nnet3-compute-from-egs {prior_gpu_opt} --apply-exp=true \
+                "{model}" ark:- ark:- \| \
+                matrix-sum-rows ark:- ark:- \| vector-sum ark:- \
+                {dir}/post.{iter}.JOB.vec""".format(
+                    command=run_opts.command,
+                    dir=dir, model=model,
+                    num_jobs_compute_prior=run_opts.num_jobs_compute_prior,
+                    prior_queue_opt=run_opts.prior_queue_opt,
+                    iter=iter, prior_subset_size=prior_subset_size,
+                    egs_dir=egs_dir, egs_part=egs_part,
+                    prior_gpu_opt=run_opts.prior_gpu_opt))
 
     # make sure there is time for $dir/post.{iter}.*.vec to appear.
     time.sleep(5)
     avg_post_vec_file = "{dir}/post.{iter}.vec".format(dir=dir, iter=iter)
-    common_lib.RunKaldiCommand("""
+    common_lib.run_kaldi_command("""
 {command} {dir}/log/vector_sum.{iter}.log \
     vector-sum {dir}/post.{iter}.*.vec {output_file}
         """.format(command=run_opts.command,
@@ -470,40 +511,43 @@ matrix-sum-rows ark:- ark:- \| vector-sum ark:- {dir}/post.{iter}.JOB.vec
     return avg_post_vec_file
 
 
-def AdjustAmPriors(dir, input_model, avg_posterior_vector, output_model, run_opts):
-    common_lib.RunKaldiCommand("""
-{command} {dir}/log/adjust_priors.final.log \
-    nnet3-am-adjust-priors "{input_model}" {avg_posterior_vector} "{output_model}"
-    """.format(command=run_opts.command,
-               dir=dir, input_model=input_model,
-               avg_posterior_vector=avg_posterior_vector,
-               output_model=output_model))
+def adjust_am_priors(dir, input_model, avg_posterior_vector, output_model,
+                     run_opts):
+    common_lib.run_kaldi_command(
+        """{command} {dir}/log/adjust_priors.final.log \
+                nnet3-am-adjust-priors "{input_model}" {avg_posterior_vector} \
+                "{output_model}" """.format(
+                    command=run_opts.command,
+                    dir=dir, input_model=input_model,
+                    avg_posterior_vector=avg_posterior_vector,
+                    output_model=output_model))
 
 
-def RemoveEgs(egs_dir):
-    common_lib.RunKaldiCommand("steps/nnet2/remove_egs.sh {egs_dir}".format(egs_dir=egs_dir))
+def remove_egs(egs_dir):
+    common_lib.run_kaldi_command("steps/nnet2/remove_egs.sh {egs_dir}".format(
+                                    egs_dir=egs_dir))
 
 
-def CleanNnetDir(nnet_dir, num_iters, egs_dir,
-                 preserve_model_interval=100,
-                 remove_egs=True,
-                 get_raw_nnet_from_am=True):
+def clean_nnet_dir(nnet_dir, num_iters, egs_dir,
+                   preserve_model_interval=100,
+                   remove_egs=True,
+                   get_raw_nnet_from_am=True):
     try:
         if remove_egs:
-            RemoveEgs(egs_dir)
+            remove_egs(egs_dir)
 
         for iter in range(num_iters):
-            RemoveModel(nnet_dir, iter, num_iters, None,
-                        preserve_model_interval,
-                        get_raw_nnet_from_am=get_raw_nnet_from_am)
+            remove_model(nnet_dir, iter, num_iters, None,
+                         preserve_model_interval,
+                         get_raw_nnet_from_am=get_raw_nnet_from_am)
     except (IOError, OSError) as err:
         logger.warning("Error while cleaning up the nnet directory")
         raise err
 
 
-def RemoveModel(nnet_dir, iter, num_iters, models_to_combine=None,
-                preserve_model_interval=100,
-                get_raw_nnet_from_am=True):
+def remove_model(nnet_dir, iter, num_iters, models_to_combine=None,
+                 preserve_model_interval=100,
+                 get_raw_nnet_from_am=True):
     if iter % preserve_model_interval == 0:
         return
     if models_to_combine is not None and iter in models_to_combine:
@@ -527,162 +571,209 @@ class CommonParser:
     """
 
     def __init__(self):
-        self.parser = argparser.ArgumentParser(add_help=False)
+        self.parser = argparse.ArgumentParser(add_help=False)
 
         # feat options
-        self.parser.add_argument("--feat.online-ivector-dir", type=str, dest='online_ivector_dir',
-                                 default = None, action = NullstrToNoneAction,
-                                 help="""directory with the ivectors extracted in
-                                 an online fashion.""")
-        self.parser.add_argument("--feat.cmvn-opts", type=str, dest='cmvn_opts',
-                                 default = None, action = NullstrToNoneAction,
-                                 help="A string specifying '--norm-means' and '--norm-vars' values")
+        self.parser.add_argument("--feat.online-ivector-dir", type=str,
+                                 dest='online_ivector_dir', default=None,
+                                 action=common_lib.NullstrToNoneAction,
+                                 help="""directory with the ivectors extracted
+                                 in an online fashion.""")
+        self.parser.add_argument("--feat.cmvn-opts", type=str,
+                                 dest='cmvn_opts', default=None,
+                                 action=common_lib.NullstrToNoneAction,
+                                 help="A string specifying '--norm-means' "
+                                 "and '--norm-vars' values")
 
         # egs extraction options
-        self.parser.add_argument("--egs.chunk-left-context", type=int, dest='chunk_left_context',
-                                 default = 0,
-                                 help="Number of additional frames of input to the left"
-                                 " of the input chunk. This extra context will be used"
-                                 " in the estimation of RNN state before prediction of"
-                                 " the first label. In the case of FF-DNN this extra"
-                                 " context will be used to allow for frame-shifts")
-        self.parser.add_argument("--egs.chunk-right-context", type=int, dest='chunk_right_context',
-                                 default = 0,
-                                 help="Number of additional frames of input to the right"
-                                 " of the input chunk. This extra context will be used"
-                                 " in the estimation of bidirectional RNN state before"
-                                 " prediction of the first label.")
-        self.parser.add_argument("--egs.transform_dir", type=str, dest='transform_dir',
-                                 default = None, action = NullstrToNoneAction,
-                                 help="""String to provide options directly to steps/nnet3/get_egs.sh script""")
+        self.parser.add_argument("--egs.chunk-left-context", type=int,
+                                 dest='chunk_left_context', default=0,
+                                 help="""Number of additional frames of input
+                                 to the left of the input chunk. This extra
+                                 context will be used in the estimation of RNN
+                                 state before prediction of the first label. In
+                                 the case of FF-DNN this extra context will be
+                                 used to allow for frame-shifts""")
+        self.parser.add_argument("--egs.chunk-right-context", type=int,
+                                 dest='chunk_right_context', default=0,
+                                 help="""Number of additional frames of input
+                                 to the right of the input chunk. This extra
+                                 context will be used in the estimation of
+                                 bidirectional RNN state before prediction of
+                                 the first label.""")
+        self.parser.add_argument("--egs.transform_dir", type=str,
+                                 dest='transform_dir', default=None,
+                                 action=common_lib.NullstrToNoneAction,
+                                 help="String to provide options directly to "
+                                 "steps/nnet3/get_egs.sh script")
         self.parser.add_argument("--egs.dir", type=str, dest='egs_dir',
-                                 default = None, action = NullstrToNoneAction,
-                                 help="""Directory with egs. If specified this directory
-                                 will be used rather than extracting egs""")
+                                 default=None,
+                                 action=common_lib.NullstrToNoneAction,
+                                 help="""Directory with egs. If specified this
+                                 directory will be used rather than extracting
+                                 egs""")
         self.parser.add_argument("--egs.stage", type=int, dest='egs_stage',
-                                 default = 0, help="Stage at which get_egs.sh should be restarted")
+                                 default=0,
+                                 help="Stage at which get_egs.sh should be "
+                                 "restarted")
         self.parser.add_argument("--egs.opts", type=str, dest='egs_opts',
-                                 default = None, action = NullstrToNoneAction,
-                                 help="""String to provide options directly to steps/nnet3/get_egs.sh script""")
+                                 default=None,
+                                 action=common_lib.NullstrToNoneAction,
+                                 help="""String to provide options directly
+                                 to steps/nnet3/get_egs.sh script""")
 
         # trainer options
         self.parser.add_argument("--trainer.srand", type=int, dest='srand',
-                                 default = 0,
-                                 help="Sets the random seed for model initialization and egs shuffling. "
-                                 "Warning: This random seed does not control all aspects of this experiment. "
-                                 "There might be other random seeds used in other stages of the experiment "
-                                 "like data preparation (e.g. volume perturbation).")
-        self.parser.add_argument("--trainer.num-epochs", type=int, dest='num_epochs',
-                                 default = 8,
+                                 default=0,
+                                 help="""Sets the random seed for model
+                                 initialization and egs shuffling.
+                                 Warning: This random seed does not control all
+                                 aspects of this experiment.  There might be
+                                 other random seeds used in other stages of the
+                                 experiment like data preparation (e.g. volume
+                                 perturbation).""")
+        self.parser.add_argument("--trainer.num-epochs", type=int,
+                                 dest='num_epochs', default=8,
                                  help="Number of epochs to train the model")
-        self.parser.add_argument("--trainer.prior-subset-size", type=int, dest='prior_subset_size',
-                                 default = 20000,
+        self.parser.add_argument("--trainer.prior-subset-size", type=int,
+                                 dest='prior_subset_size', default=20000,
                                  help="Number of samples for computing priors")
-        self.parser.add_argument("--trainer.num-jobs-compute-prior", type=int, dest='num_jobs_compute_prior',
-                                 default = 10,
-                                 help="The prior computation jobs are single threaded and run on the CPU")
-        self.parser.add_argument("--trainer.max-models-combine", type=int, dest='max_models_combine',
-                                 default = 20,
-                                 help="The maximum number of models used in the final model combination stage. "
-                                 "These models will themselves be averages of iteration-number ranges")
-        self.parser.add_argument("--trainer.shuffle-buffer-size", type=int, dest='shuffle_buffer_size',
-                                 default = 5000,
-                                 help=""" Controls randomization of the samples on each
-                                 iteration. If 0 or a large value the randomization is
-                                 complete, but this will consume memory and cause spikes
-                                 in disk I/O.  Smaller is easier on disk and memory but
-                                 less random.  It's not a huge deal though, as samples
-                                 are anyway randomized right at the start.
-                                 (the point of this is to get data in different
-                                 minibatches on different iterations, since in the
-                                 preconditioning method, 2 samples in the same minibatch
-                                 can affect each others' gradients.""")
-        self.parser.add_argument("--trainer.add-layers-period", type=int, dest='add_layers_period',
-                                 default=2,
-                                 help="The number of iterations between adding layers"
-                                 "during layer-wise discriminative training.")
-        self.parser.add_argument("--trainer.max-param-change", type=float, dest='max_param_change',
-                                 default=2.0,
-                                 help="""The maximum change in parameters allowed
-                                 per minibatch, measured in Frobenius norm over
-                                 the entire model""")
-        self.parser.add_argument("--trainer.samples-per-iter", type=int, dest='samples_per_iter',
-                                 default=400000,
-                                 help="This is really the number of egs in each archive.")
-        self.parser.add_argument("--trainer.lda.rand-prune", type=float, dest='rand_prune',
-                                 default=4.0,
-                                 help="""Value used in preconditioning matrix estimation""")
-        self.parser.add_argument("--trainer.lda.max-lda-jobs", type=float, dest='max_lda_jobs',
-                                 default=10,
-                                 help="""Max number of jobs used for LDA stats accumulation""")
-        self.parser.add_argument("--trainer.presoftmax-prior-scale-power", type=float,
+        self.parser.add_argument("--trainer.num-jobs-compute-prior", type=int,
+                                 dest='num_jobs_compute_prior', default=10,
+                                 help="The prior computation jobs are single "
+                                 "threaded and run on the CPU")
+        self.parser.add_argument("--trainer.max-models-combine", type=int,
+                                 dest='max_models_combine', default=20,
+                                 help="""The maximum number of models used in
+                                 the final model combination stage.  These
+                                 models will themselves be averages of
+                                 iteration-number ranges""")
+        self.parser.add_argument("--trainer.shuffle-buffer-size", type=int,
+                                 dest='shuffle_buffer_size', default=5000,
+                                 help=""" Controls randomization of the samples
+                                 on each iteration. If 0 or a large value the
+                                 randomization is complete, but this will
+                                 consume memory and cause spikes in disk I/O.
+                                 Smaller is easier on disk and memory but less
+                                 random.  It's not a huge deal though, as
+                                 samples are anyway randomized right at the
+                                 start.  (the point of this is to get data in
+                                 different minibatches on different iterations,
+                                 since in the preconditioning method, 2 samples
+                                 in the same minibatch can affect each others'
+                                 gradients.""")
+        self.parser.add_argument("--trainer.add-layers-period", type=int,
+                                 dest='add_layers_period', default=2,
+                                 help="""The number of iterations between
+                                 adding layers during layer-wise discriminative
+                                 training.""")
+        self.parser.add_argument("--trainer.max-param-change", type=float,
+                                 dest='max_param_change', default=2.0,
+                                 help="""The maximum change in parameters
+                                 allowed per minibatch, measured in Frobenius
+                                 norm over the entire model""")
+        self.parser.add_argument("--trainer.samples-per-iter", type=int,
+                                 dest='samples_per_iter', default=400000,
+                                 help="This is really the number of egs in "
+                                 "each archive.")
+        self.parser.add_argument("--trainer.lda.rand-prune", type=float,
+                                 dest='rand_prune', default=4.0,
+                                 help="Value used in preconditioning "
+                                 "matrix estimation")
+        self.parser.add_argument("--trainer.lda.max-lda-jobs", type=float,
+                                 dest='max_lda_jobs', default=10,
+                                 help="Max number of jobs used for "
+                                 "LDA stats accumulation")
+        self.parser.add_argument("--trainer.presoftmax-prior-scale-power",
+                                 type=float,
                                  dest='presoftmax_prior_scale_power',
                                  default=-0.25,
-                                 help="")
-
+                                 help="Scale on presofmax prior")
 
         # Parameters for the optimization
-        self.parser.add_argument("--trainer.optimization.initial-effective-lrate", type=float, dest='initial_effective_lrate',
-                                 default = 0.0003,
-                                 help="Learning rate used during the initial iteration")
-        self.parser.add_argument("--trainer.optimization.final-effective-lrate", type=float, dest='final_effective_lrate',
-                                 default = 0.00003,
-                                 help="Learning rate used during the final iteration")
-        self.parser.add_argument("--trainer.optimization.num-jobs-initial", type=int, dest='num_jobs_initial',
-                                 default = 1,
-                                 help="Number of neural net jobs to run in parallel at the start of training")
-        self.parser.add_argument("--trainer.optimization.num-jobs-final", type=int, dest='num_jobs_final',
-                                 default = 8,
-                                 help="Number of neural net jobs to run in parallel at the end of training")
-        self.parser.add_argument("--trainer.optimization.max-models-combine", type=int, dest='max_models_combine',
-                                 default = 20,
-                                 help = """The is the maximum number of models we give to the
-                                           final 'combine' stage, but these models will themselves
-                                           be averages of iteration-number ranges. """)
-        self.parser.add_argument("--trainer.optimization.momentum", type=float, dest='momentum',
-                                 default = 0.0,
+        self.parser.add_argument(
+            "--trainer.optimization.initial-effective-lrate", type=float,
+            dest='initial_effective_lrate', default=0.0003,
+            help="Learning rate used during the initial iteration")
+        self.parser.add_argument(
+            "--trainer.optimization.final-effective-lrate", type=float,
+            dest='final_effective_lrate', default=0.00003,
+            help="Learning rate used during the final iteration")
+        self.parser.add_argument("--trainer.optimization.num-jobs-initial",
+                                 type=int, dest='num_jobs_initial', default=1,
+                                 help="Number of neural net jobs to run in "
+                                 "parallel at the start of training")
+        self.parser.add_argument("--trainer.optimization.num-jobs-final",
+                                 type=int, dest='num_jobs_final', default=8,
+                                 help="Number of neural net jobs to run in "
+                                 "parallel at the end of training")
+        self.parser.add_argument("--trainer.optimization.max-models-combine",
+                                 type=int, dest='max_models_combine',
+                                 default=20,
+                                 help="""The is the maximum number of models we
+                                 give to the final 'combine' stage, but these
+                                 models will themselves be averages of
+                                 iteration-number ranges.""")
+        self.parser.add_argument("--trainer.optimization.momentum", type=float,
+                                 dest='momentum', default=0.0,
                                  help="""Momentum used in update computation.
-                                 Note: we implemented it in such a way that
-                                 it doesn't increase the effective learning rate.""")
+                                 Note: we implemented it in such a way that it
+                                 doesn't increase the effective learning
+                                 rate.""")
+
         # General options
         self.parser.add_argument("--stage", type=int, default=-4,
-                                 help="Specifies the stage of the experiment to execution from")
+                                 help="Specifies the stage of the experiment "
+                                 "to execution from")
         self.parser.add_argument("--exit-stage", type=int, default=None,
-                                 help="If specified, training exits before running this stage")
-        self.parser.add_argument("--cmd", type=str, action = NullstrToNoneAction,
-                                 dest = "command",
+                                 help="If specified, training exits before "
+                                 "running this stage")
+        self.parser.add_argument("--cmd", type=str, dest="command",
+                                 action=common_lib.NullstrToNoneAction,
                                  help="""Specifies the script to launch jobs.
                                  e.g. queue.pl for launching on SGE cluster
                                         run.pl for launching on local machine
-                                 """, default = "queue.pl")
-        self.parser.add_argument("--egs.cmd", type=str, action = NullstrToNoneAction,
-                                 dest = "egs_command",
-                                 help="""Script to launch egs jobs""", default = "queue.pl")
-        self.parser.add_argument("--use-gpu", type=str, action = StrToBoolAction,
-                                 choices = ["true", "false"],
+                                 """, default="queue.pl")
+        self.parser.add_argument("--egs.cmd", type=str, dest="egs_command",
+                                 action=common_lib.NullstrToNoneAction,
+                                 default="queue.pl",
+                                 help="Script to launch egs jobs")
+        self.parser.add_argument("--use-gpu", type=str,
+                                 action=common_lib.StrToBoolAction,
+                                 choices=["true", "false"],
                                  help="Use GPU for training", default=True)
-        self.parser.add_argument("--cleanup", type=str, action = StrToBoolAction,
-                                 choices = ["true", "false"],
-                                 help="Clean up models after training", default=True)
-        self.parser.add_argument("--cleanup.remove-egs", type=str, dest='remove_egs',
-                                 default = True, action = StrToBoolAction,
-                                 choices = ["true", "false"],
-                                 help="""If true, remove egs after experiment""")
-        self.parser.add_argument("--cleanup.preserve-model-interval", dest = "preserve_model_interval",
+        self.parser.add_argument("--cleanup", type=str,
+                                 action=common_lib.StrToBoolAction,
+                                 choices=["true", "false"], default=True,
+                                 help="Clean up models after training")
+        self.parser.add_argument("--cleanup.remove-egs", type=str,
+                                 dest='remove_egs', default=True,
+                                 action=common_lib.StrToBoolAction,
+                                 choices=["true", "false"],
+                                 help="If true, remove egs after experiment")
+        self.parser.add_argument("--cleanup.preserve-model-interval",
+                                 dest="preserve_model_interval",
                                  type=int, default=100,
-                                 help="Determines iterations for which models will be preserved during cleanup. "
-                                 "If mod(iter,preserve_model_interval) == 0 model will be preserved.")
+                                 help="""Determines iterations for which models
+                                 will be preserved during cleanup.
+                                 If mod(iter,preserve_model_interval) == 0
+                                 model will be preserved.""")
 
-        self.parser.add_argument("--reporting.email", dest = "email",
-                                 type=str, default=None, action = NullstrToNoneAction,
-                                 help=""" Email-id to report about the progress of the experiment.
-                                         NOTE: It assumes the machine on which the script is being run can send
-                                         emails from command line via. mail program. The
-                                         Kaldi mailing list will not support this feature.
-                                         It might require local expertise to setup. """)
-        self.parser.add_argument("--reporting.interval", dest = "reporting_interval",
+        self.parser.add_argument("--reporting.email", dest="email",
+                                 type=str, default=None,
+                                 action=common_lib.NullstrToNoneAction,
+                                 help=""" Email-id to report about the progress
+                                 of the experiment.  NOTE: It assumes the
+                                 machine on which the script is being run can
+                                 send emails from command line via. mail
+                                 program. The Kaldi mailing list will not
+                                 support this feature.  It might require local
+                                 expertise to setup. """)
+        self.parser.add_argument("--reporting.interval",
+                                 dest="reporting_interval",
                                  type=int, default=0.1,
-                                 help="Frequency with which reports have to be sent, "
-                                 "measured in terms of fraction of iterations. "
-                                 "If 0 and reporting mail has been specified then only failure notifications are sent")
-
+                                 help="""Frequency with which reports have to
+                                 be sent, measured in terms of fraction of
+                                 iterations.
+                                 If 0 and reporting mail has been specified
+                                 then only failure notifications are sent""")
