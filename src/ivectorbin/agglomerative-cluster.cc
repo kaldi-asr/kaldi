@@ -24,12 +24,9 @@
 #include "tree/cluster-utils.h"
 #include "tree/clusterable-classes.h"
 #include "ivector/group-clusterable.h"
-#include "segmenter/segmentation-utils.h"
-#include "segmenter/segmentation.h"
 
 int main(int argc, char *argv[]) {
   using namespace kaldi;
-  using namespace segmenter;
   typedef kaldi::int32 int32;
   typedef kaldi::int64 int64;
   try {
@@ -92,12 +89,8 @@ int main(int argc, char *argv[]) {
       } else {
         ClusterBottomUp(clusterables, threshold, 1, NULL, &spk_ids);
       }
-
-      for (int32 i = 0; i < spk_ids.size(); i++) {
+      for (int32 i = 0; i < spk_ids.size(); i++)
         label_writer.Write(seglist[i], spk_ids[i]);
-        //KALDI_LOG << seglist[i] << " " << spk_ids[i];
-      }
-      // TODO write out new segmentation here
       DeletePointers(&clusterables);
     }
     return 0;
