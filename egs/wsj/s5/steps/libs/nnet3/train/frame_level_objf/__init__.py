@@ -6,3 +6,5 @@
 """ This library has classes and methods commonly used for training nnet3
 neural networks with frame-level objectives.
 """
+
+__all__ = ["common", "raw_model", "acoustic_model"]

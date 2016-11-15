@@ -1,23 +1,23 @@
 
 
-# Copyright 2016 Vijayaditya Peddinti.
-#           2016 Vimal Manohar
+# Copyright 2016    Vijayaditya Peddinti.
+#           2016    Vimal Manohar
 # Apache 2.0
 
 """This module contains classes and methods common to training of
 nnet3 neural networks.
 """
 
+import argparse
+import glob
 import logging
+import os
 import math
 import re
-import time
 import shutil
-import glob
-import os
-import argparse
+import time
 
-import common as common_lib
+import libs.common as common_lib
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -309,100 +309,6 @@ def verify_iterations(num_iters, num_epochs, num_hidden_layers,
     return models_to_combine
 
 
-def get_realign_iters(realign_times, num_iters,
-                      num_jobs_initial, num_jobs_final):
-    """ Takes the realign_times string and identifies the approximate
-        iterations at which realignments have to be done.
-
-    realign_times is a space seperated string of values between 0 and 1
-    """
-
-    realign_iters = []
-    for realign_time in realign_times.split():
-        realign_time = float(realign_time)
-        assert(realign_time > 0 and realign_time < 1)
-        if num_jobs_initial == num_jobs_final:
-            realign_iter = int(0.5 + num_iters * realign_time)
-        else:
-            realign_iter = math.sqrt((1 - realign_time)
-                                     * math.pow(num_jobs_initial, 2)
-                                     + realign_time * math.pow(num_jobs_final,
-                                                               2))
-            realign_iter = realign_iter - num_jobs_initial
-            realign_iter = realign_iter / (num_jobs_final - num_jobs_initial)
-            realign_iter = realign_iter * num_iters
-        realign_iters.append(int(realign_iter))
-
-    return realign_iters
-
-
-def align(dir, data, lang, run_opts, iter=None, transform_dir=None,
-          online_ivector_dir=None):
-
-    alidir = '{dir}/ali{ali_suffix}'.format(
-            dir=dir,
-            ali_suffix="_iter_{0}".format(iter) if iter is not None else "")
-
-    logger.info("Aligning the data{gpu}with {num_jobs} jobs.".format(
-        gpu=" using gpu " if run_opts.realign_use_gpu else " ",
-        num_jobs=run_opts.realign_num_jobs))
-    common_lib.run_kaldi_command(
-        """steps/nnet3/align.sh --nj {num_jobs_align} \
-                --cmd "{align_cmd} {align_queue_opt}" \
-                --use-gpu {align_use_gpu} \
-                --transform-dir "{transform_dir}" \
-                --online-ivector-dir "{online_ivector_dir}" \
-                --iter "{iter}" {data} {lang} {dir} {alidir}""".format(
-                    dir=dir, align_use_gpu=("yes"
-                                            if run_opts.realign_use_gpu
-                                            else "no"),
-                    align_cmd=run_opts.realign_command,
-                    align_queue_opt=run_opts.realign_queue_opt,
-                    num_jobs_align=run_opts.realign_num_jobs,
-                    transform_dir=(transform_dir
-                                   if transform_dir is not None
-                                   else ""),
-                    online_ivector_dir=(online_ivector_dir
-                                        if online_ivector_dir is not None
-                                        else ""),
-                    iter=iter if iter is not None else "",
-                    alidir=alidir,
-                    lang=lang, data=data))
-    return alidir
-
-
-def realign(dir, iter, feat_dir, lang, prev_egs_dir, cur_egs_dir,
-            prior_subset_size, num_archives, run_opts,
-            transform_dir=None, online_ivector_dir=None):
-    raise Exception("Realignment stage has not been implemented in nnet3")
-    logger.info("Getting average posterior for purposes of adjusting "
-                "the priors.")
-    # Note: this just uses CPUs, using a smallish subset of data.
-    # always use the first egs archive, which makes the script simpler;
-    # we're using different random subsets of it.
-
-    avg_post_vec_file = compute_average_posterior(
-            dir, iter, prev_egs_dir,
-            num_archives, prior_subset_size, run_opts)
-
-    avg_post_vec_file = "{dir}/post.{iter}.vec".format(dir=dir, iter=iter)
-    logger.info("Re-adjusting priors based on computed posteriors")
-    model = '{0}/{1}.mdl'.format(dir, iter)
-    adjust_am_priors(dir, model, avg_post_vec_file, model, run_opts)
-
-    alidir = align(dir, feat_dir, lang, run_opts, iter,
-                   transform_dir, online_ivector_dir)
-    common_lib.run_kaldi_command(
-        """steps/nnet3/relabel_egs.sh --cmd "{command}" --iter {iter} \
-                {alidir} {prev_egs_dir} {cur_egs_dir}""".format(
-                    command=run_opts.command,
-                    iter=iter,
-                    dir=dir,
-                    alidir=alidir,
-                    prev_egs_dir=prev_egs_dir,
-                    cur_egs_dir=cur_egs_dir))
-
-
 def get_learning_rate(iter, num_jobs, num_iters, num_archives_processed,
                       num_archives_to_process,
                       initial_effective_lrate, final_effective_lrate):
@@ -438,7 +344,13 @@ def do_shrinkage(iter, model_file, non_linearity, shrink_threshold,
                     non_linearity=non_linearity, model_file=model_file))
         output = output.strip().split("\n")
         # eg.
-        # component name=Lstm1_f type=SigmoidComponent, dim=1280, count=5.02e+05, value-avg=[percentiles(0,1,2,5 10,20,50,80,90 95,98,99,100)=(0.06,0.17,0.19,0.24 0.28,0.33,0.44,0.62,0.79 0.96,0.99,1.0,1.0), mean=0.482, stddev=0.198], deriv-avg=[percentiles(0,1,2,5 10,20,50,80,90 95,98,99,100)=(0.0001,0.003,0.004,0.03 0.12,0.18,0.22,0.24,0.25 0.25,0.25,0.25,0.25), mean=0.198, stddev=0.0591]
+        # component name=Lstm1_f type=SigmoidComponent, dim=1280,
+        # count=5.02e+05, value-avg=[percentiles(0,1,2,5 10,20,50,80,90
+        # 95,98,99,100)=(0.06,0.17,0.19,0.24 0.28,0.33,0.44,0.62,0.79
+        # 0.96,0.99,1.0,1.0), mean=0.482, stddev=0.198],
+        # deriv-avg=[percentiles(0,1,2,5 10,20,50,80,90
+        # 95,98,99,100)=(0.0001,0.003,0.004,0.03 0.12,0.18,0.22,0.24,0.25
+        # 0.25,0.25,0.25,0.25), mean=0.198, stddev=0.0591]
 
         mean_pattern = re.compile(".*deriv-avg=.*mean=([0-9\.]+).*")
         total_mean_deriv = 0
@@ -457,70 +369,6 @@ def do_shrinkage(iter, model_file, non_linearity, shrink_threshold,
         raise Exception("Error while parsing the model info output")
 
     return False
-
-
-def compute_average_posterior(dir, iter, egs_dir, num_archives,
-                              prior_subset_size, run_opts,
-                              get_raw_nnet_from_am=True):
-    """ Computes the average posterior of the network
-    Note: this just uses CPUs, using a smallish subset of data.
-    """
-    for file in glob.glob('{0}/post.{1}.*.vec'.format(dir, iter)):
-        os.remove(file)
-
-    if run_opts.num_jobs_compute_prior > num_archives:
-        egs_part = 1
-    else:
-        egs_part = 'JOB'
-
-    if get_raw_nnet_from_am:
-        model = "nnet3-am-copy --raw=true {0}/combined.mdl -|".format(dir)
-    else:
-        model = "{dir}/final.raw".format(dir=dir)
-
-    common_lib.run_kaldi_command(
-        """{command} JOB=1:{num_jobs_compute_prior} {prior_queue_opt} \
-                {dir}/log/get_post.{iter}.JOB.log \
-                nnet3-subset-egs --srand=JOB --n={prior_subset_size} \
-                ark:{egs_dir}/egs.{egs_part}.ark ark:- \| \
-                nnet3-merge-egs --measure-output-frames=true \
-                --minibatch-size=128 ark:- ark:- \| \
-                nnet3-compute-from-egs {prior_gpu_opt} --apply-exp=true \
-                "{model}" ark:- ark:- \| \
-                matrix-sum-rows ark:- ark:- \| vector-sum ark:- \
-                {dir}/post.{iter}.JOB.vec""".format(
-                    command=run_opts.command,
-                    dir=dir, model=model,
-                    num_jobs_compute_prior=run_opts.num_jobs_compute_prior,
-                    prior_queue_opt=run_opts.prior_queue_opt,
-                    iter=iter, prior_subset_size=prior_subset_size,
-                    egs_dir=egs_dir, egs_part=egs_part,
-                    prior_gpu_opt=run_opts.prior_gpu_opt))
-
-    # make sure there is time for $dir/post.{iter}.*.vec to appear.
-    time.sleep(5)
-    avg_post_vec_file = "{dir}/post.{iter}.vec".format(dir=dir, iter=iter)
-    common_lib.run_kaldi_command("""
-{command} {dir}/log/vector_sum.{iter}.log \
-    vector-sum {dir}/post.{iter}.*.vec {output_file}
-        """.format(command=run_opts.command,
-                   dir=dir, iter=iter, output_file=avg_post_vec_file))
-
-    for file in glob.glob('{0}/post.{1}.*.vec'.format(dir, iter)):
-        os.remove(file)
-    return avg_post_vec_file
-
-
-def adjust_am_priors(dir, input_model, avg_posterior_vector, output_model,
-                     run_opts):
-    common_lib.run_kaldi_command(
-        """{command} {dir}/log/adjust_priors.final.log \
-                nnet3-am-adjust-priors "{input_model}" {avg_posterior_vector} \
-                "{output_model}" """.format(
-                    command=run_opts.command,
-                    dir=dir, input_model=input_model,
-                    avg_posterior_vector=avg_posterior_vector,
-                    output_model=output_model))
 
 
 def remove_egs(egs_dir):

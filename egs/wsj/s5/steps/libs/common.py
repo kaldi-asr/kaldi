@@ -8,12 +8,12 @@
 commonly used in many kaldi python scripts.
 """
 
-import subprocess
 import argparse
 import logging
-import os
-import threading
 import math
+import os
+import subprocess
+import threading
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -27,14 +27,14 @@ logger.addHandler(handler)
 
 def send_mail(message, subject, email_id):
     try:
-        subprocess.Popen('echo "{message}"| mail -s "{subject}" {email}'.format(
-            message=message,
-            subject=subject,
-            email=email_id), shell=True)
+        subprocess.Popen(
+            'echo "{message}" | mail -s "{subject}" {email}'.format(
+                message=message,
+                subject=subject,
+                email=email_id), shell=True)
     except Exception as e:
-        logger.info(
-            " Unable to send mail due to error:\n {error}".format(
-                error=str(e)))
+        logger.info("Unable to send mail due to error:\n {error}".format(
+                        error=str(e)))
         pass
 
 
@@ -60,10 +60,9 @@ class StrToBoolAction(argparse.Action):
 
 
 class NullstrToNoneAction(argparse.Action):
-    """ A custom action to convert empty strings passed by shell
-        to None in python. This is necessary as shell scripts print null strings
-        when a variable is not specified. We could use the more apt None
-        in python. """
+    """ A custom action to convert empty strings passed by shell to None in
+    python. This is necessary as shell scripts print null strings when a
+    variable is not specified. We could use the more apt None in python. """
 
     def __call__(self, parser, namespace, values, option_string=None):
         if values.strip() == "":
@@ -72,7 +71,7 @@ class NullstrToNoneAction(argparse.Action):
             setattr(namespace, self.dest, values)
 
 
-def CheckIfCudaCompiled():
+def check_if_cuda_compiled():
     p = subprocess.Popen("cuda-compiled")
     p.communicate()
     if p.returncode == 1:
@@ -84,8 +83,9 @@ def CheckIfCudaCompiled():
 class KaldiCommandException(Exception):
 
     def __init__(self, command, err):
-        Exception.__init__(self, "There was an error while running the command "
-                                 "{0}\n{1}\n{2}".format(command, "-"*10, err))
+        Exception.__init__(self,
+                           "There was an error while running the command "
+                           "{0}\n{1}\n{2}".format(command, "-"*10, err))
 
 
 class ListNode():
@@ -130,7 +130,7 @@ class LinkedList():
     def __iter__(self):
         return LinkedListIterator(self.__head)
 
-    def Push(self, node):
+    def push(self, node):
         """Pushes the node <node> at the "front" of the linked list
         """
         node.next_node = self.__head
@@ -138,7 +138,7 @@ class LinkedList():
         self.__head.previous_node = node
         self.__head = node
 
-    def Pop(self):
+    def pop(self):
         """Pops the last node out of the list"""
         old_last_node = self.__tail
         to_be_last = self.__tail.previous_node
@@ -150,7 +150,7 @@ class LinkedList():
 
         return old_last_node
 
-    def Remove(self, node):
+    def remove(self, node):
         """Removes and returns node, and connects the previous and next
         nicely
         """
@@ -171,7 +171,7 @@ class BackgroundProcessHandler():
     script waits until all the processes end before exiting
 
     A top-level script is expected to instantiate an object of this class
-    and pass it to all calls of RunKaldiCommand that are to be run in the
+    and pass it to all calls of run_kaldi_command that are to be run in the
     background. The background processes are queued and these are polled
     in a parallel thread at set interval to check for failures.
     The top-level script can ensure at the end ensure that all processes are
@@ -185,37 +185,38 @@ class BackgroundProcessHandler():
     def __init__(self, polling_time=600):
         self.__process_queue = LinkedList()
         self.__polling_time = polling_time
-        self.Poll()
+        self.poll()
 
-    def Poll(self):
+    def poll(self):
         for n in self.__process_queue:
-            if self.IsProcessDone(n.data):
-                self.EnsureProcessIsDone(n.data)
-        threading.Timer(self.__polling_time, self.Poll).start()
+            if self.is_process_done(n.data):
+                self.ensure_process_is_done(n.data)
+                self.__process_queue.remove(n)
+        threading.Timer(self.__polling_time, self.poll).start()
 
-    def AddProcess(self, t):
+    def add_process(self, t):
         """ Add a (process handle, command) tuple to the queue
         """
         self.__process_queue.Push(ListNode(data=t))
 
-    def IsProcessDone(self, t):
+    def is_process_done(self, t):
         p, command = t
         if p.poll() is None:
             return False
         return True
 
-    def EnsureProcessIsDone(self, t):
+    def ensure_process_is_done(self, t):
         p, command = t
         [stdout, stderr] = p.communicate()
         if p.returncode is not 0:
             raise KaldiCommandException(command, stderr)
 
-    def EnsureProcessesAreDone(self):
+    def ensure_processes_are_done(self):
         for n in self.__process_queue:
-            self.EnsureProcessIsDone(n.data)
+            self.ensure_process_is_done(n.data)
 
 
-def RunKaldiCommand(command, wait=True, background_process_handler=None):
+def run_kaldi_command(command, wait=True, background_process_handler=None):
     """ Runs commands frequently seen in Kaldi scripts. These are usually a
         sequence of commands connected by pipes, so we use shell=True.
 
@@ -234,7 +235,7 @@ def RunKaldiCommand(command, wait=True, background_process_handler=None):
 
     if background_process_handler is not None:
         wait = False
-        background_process_handler.AddProcess((p, command))
+        background_process_handler.add_process((p, command))
 
     if wait:
         [stdout, stderr] = p.communicate()
@@ -245,8 +246,8 @@ def RunKaldiCommand(command, wait=True, background_process_handler=None):
         return p
 
 
-def GetNumberOfLeavesFromTree(alidir):
-    [stdout, stderr] = RunKaldiCommand(
+def get_number_of_leaves_from_tree(alidir):
+    [stdout, stderr] = run_kaldi_command(
         "tree-info {0}/tree 2>/dev/null | grep num-pdfs".format(alidir))
     parts = stdout.split()
     assert(parts[0] == "num-pdfs")
@@ -256,8 +257,8 @@ def GetNumberOfLeavesFromTree(alidir):
     return num_leaves
 
 
-def GetNumberOfLeavesFromModel(dir):
-    [stdout, stderr] = RunKaldiCommand(
+def get_number_of_leaves_from_model(dir):
+    [stdout, stderr] = run_kaldi_command(
         "am-info {0}/final.mdl 2>/dev/null | grep -w pdfs".format(dir))
     parts = stdout.split()
     # number of pdfs 7115
@@ -268,31 +269,27 @@ def GetNumberOfLeavesFromModel(dir):
     return num_leaves
 
 
-def GetNumberOfJobs(alidir):
+def get_number_of_jobs(alidir):
     try:
-        num_jobs = int(
-            open(
-                '{0}/num_jobs'.format(alidir),
-                'r').readline().strip())
+        num_jobs = int(open('{0}/num_jobs'.format(alidir)).readline().strip())
     except (IOError, ValueError) as e:
-        raise Exception(
-            'Exception while reading the number of alignment jobs: {0}'.format(
-                e.str()))
+        raise Exception("Exception while reading the "
+                        "number of alignment jobs: {0}".format(e.str()))
     return num_jobs
 
 
-def GetIvectorDim(ivector_dir=None):
+def get_ivector_dim(ivector_dir=None):
     if ivector_dir is None:
         return 0
-    [stdout_val, stderr_val] = RunKaldiCommand(
+    [stdout_val, stderr_val] = run_kaldi_command(
         "feat-to-dim --print-args=false "
         "scp:{dir}/ivector_online.scp -".format(dir=ivector_dir))
     ivector_dim = int(stdout_val)
     return ivector_dim
 
 
-def GetFeatDim(feat_dir):
-    [stdout_val, stderr_val] = RunKaldiCommand(
+def get_feat_dim(feat_dir):
+    [stdout_val, stderr_val] = run_kaldi_command(
         "feat-to-dim --print-args=false "
         "scp:{data}/feats.scp -".format(data=feat_dir))
     feat_dim = int(stdout_val)
@@ -300,7 +297,7 @@ def GetFeatDim(feat_dir):
 
 
 def get_feat_dim_from_scp(feat_scp):
-    [stdout_val, stderr_val] = RunKaldiCommand(
+    [stdout_val, stderr_val] = run_kaldi_command(
         "feat-to-dim --print-args=false "
         "scp:{feat_scp} -".format(feat_scp=feat_scp))
     feat_dim = int(stdout_val)
@@ -308,12 +305,12 @@ def get_feat_dim_from_scp(feat_scp):
 
 
 def split_data(data, num_jobs):
-    RunKaldiCommand("utils/split_data.sh {data} {num_jobs}".format(
+    run_kaldi_command("utils/split_data.sh {data} {num_jobs}".format(
                         data=data,
                         num_jobs=num_jobs))
 
 
-def ReadKaldiMatrix(matrix_file):
+def read_kaldi_matrix(matrix_file):
     try:
         lines = map(lambda x: x.split(), open(matrix_file).readlines())
         first_field = lines[0][0]
@@ -328,31 +325,30 @@ def ReadKaldiMatrix(matrix_file):
             lines[i] = map(lambda x: int(float(x)), lines[i])
         return lines
     except IOError:
-        raise Exception(
-            "Error while reading the kaldi matrix file {0}".format(matrix_file))
+        raise Exception("Error while reading the kaldi matrix file "
+                        "{0}".format(matrix_file))
 
 
-def WriteKaldiMatrix(output_file, matrix):
+def write_kaldi_matrix(output_file, matrix):
     # matrix is a list of lists
-    file = open(output_file, 'w')
-    file.write("[ ")
-    num_rows = len(matrix)
-    if num_rows == 0:
-        raise Exception("Matrix is empty")
-    num_cols = len(matrix[0])
+    with open(output_file, 'w') as f:
+        f.write("[ ")
+        num_rows = len(matrix)
+        if num_rows == 0:
+            raise Exception("Matrix is empty")
+        num_cols = len(matrix[0])
 
-    for row_index in range(len(matrix)):
-        if num_cols != len(matrix[row_index]):
-            raise Exception(
-                "All the rows of a matrix are expected to have the same length")
-        file.write(" ".join(map(lambda x: str(x), matrix[row_index])))
-        if row_index != num_rows - 1:
-            file.write("\n")
-    file.write(" ]")
-    file.close()
+        for row_index in range(len(matrix)):
+            if num_cols != len(matrix[row_index]):
+                raise Exception("All the rows of a matrix are expected to "
+                                "have the same length")
+            f.write(" ".join(map(lambda x: str(x), matrix[row_index])))
+            if row_index != num_rows - 1:
+                f.write("\n")
+        f.write(" ]")
 
 
-def ForceSymlink(file1, file2):
+def force_symlink(file1, file2):
     import errno
     try:
         os.symlink(file1, file2)
@@ -362,7 +358,7 @@ def ForceSymlink(file1, file2):
             os.symlink(file1, file2)
 
 
-def ComputeLifterCoeffs(lifter, dim):
+def compute_lifter_coeffs(lifter, dim):
     coeffs = [0] * dim
     for i in range(0, dim):
         coeffs[i] = 1.0 + 0.5 * lifter * math.sin(math.pi * i / float(lifter))
@@ -370,7 +366,7 @@ def ComputeLifterCoeffs(lifter, dim):
     return coeffs
 
 
-def ComputeIdctMatrix(K, N, cepstral_lifter=0):
+def compute_idct_matrix(K, N, cepstral_lifter=0):
     matrix = [[0] * K for i in range(N)]
     # normalizer for X_0
     normalizer = math.sqrt(1.0 / float(N))
@@ -384,7 +380,7 @@ def ComputeIdctMatrix(K, N, cepstral_lifter=0):
                 k] = normalizer * math.cos(math.pi / float(N) * (n + 0.5) * k)
 
     if cepstral_lifter != 0:
-        lifter_coeffs = ComputeLifterCoeffs(cepstral_lifter, K)
+        lifter_coeffs = compute_lifter_coeffs(cepstral_lifter, K)
         for k in range(0, K):
             for n in range(0, N):
                 matrix[n][k] = matrix[n][k] / lifter_coeffs[k]
@@ -392,11 +388,11 @@ def ComputeIdctMatrix(K, N, cepstral_lifter=0):
     return matrix
 
 
-def WriteIdctMatrix(feat_dim, cepstral_lifter, file_path):
+def write_idct_matrix(feat_dim, cepstral_lifter, file_path):
     # generate the IDCT matrix and write to the file
-    idct_matrix = ComputeIdctMatrix(feat_dim, feat_dim, cepstral_lifter)
+    idct_matrix = compute_idct_matrix(feat_dim, feat_dim, cepstral_lifter)
     # append a zero column to the matrix, this is the bias of the fixed affine
     # component
     for k in range(0, feat_dim):
         idct_matrix[k].append(0)
-    WriteKaldiMatrix(file_path, idct_matrix)
+    write_kaldi_matrix(file_path, idct_matrix)

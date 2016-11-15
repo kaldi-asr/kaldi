@@ -1,7 +1,7 @@
 
 
-# Copyright 2016 Vijayaditya Peddinti.
-#           2016 Vimal Manohar
+# Copyright 2016    Vijayaditya Peddinti.
+#           2016    Vimal Manohar
 # Apache 2.0.
 
 """ This is a module with methods which will be used by scripts for training of
@@ -9,173 +9,177 @@ deep neural network acoustic model with chain objective.
 """
 
 import logging
-import math
-import imp
 import os
 import sys
-import libs.nnet3.train.common as common_train_lib
+
 import libs.common as common_lib
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-#handler = logging.StreamHandler()
-#handler.setLevel(logging.INFO)
-#formatter = logging.Formatter('%(asctime)s [%(filename)s:%(lineno)s - %(funcName)s - %(levelname)s ] %(message)s')
-#handler.setFormatter(formatter)
-#logger.addHandler(handler)
+handler = logging.StreamHandler()
+handler.setLevel(logging.INFO)
+formatter = logging.Formatter("%(asctime)s [%(filename)s:%(lineno)s - "
+                              "%(funcName)s - %(levelname)s ] %(message)s")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 
-def CreatePhoneLm(dir, tree_dir, run_opts, lm_opts=None):
+def create_phone_lm(dir, tree_dir, run_opts, lm_opts=None):
     """Create a phone LM for chain training
 
     This method trains a phone LM for chain training using the alignments
     in "tree_dir"
     """
-    common_lib.RunKaldiCommand("""
-{command} {dir}/log/make_phone_lm.log \
-    chain-est-phone-lm {lm_opts} \
-    "ark:gunzip -c {tree_dir}/ali.*.gz | ali-to-phones {tree_dir}/final.mdl ark:- ark:- |" \
-    {dir}/phone_lm.fst""".format(command=run_opts.command,
-                                 dir=dir,
-                                 lm_opts=lm_opts if lm_opts is not None else '',
-                                 tree_dir=tree_dir))
+    common_lib.run_kaldi_command(
+        """{command} {dir}/log/make_phone_lm.log \
+                chain-est-phone-lm {lm_opts} \
+                "ark:gunzip -c {tree_dir}/ali.*.gz | """
+        """ali-to-phones {tree_dir}/final.mdl ark:- ark:- |" \
+                {dir}/phone_lm.fst""".format(
+                    command=run_opts.command, dir=dir,
+                    lm_opts=lm_opts if lm_opts is not None else '',
+                    tree_dir=tree_dir))
 
 
-def CreateDenominatorFst(dir, tree_dir, run_opts):
-    common_lib.RunKaldiCommand("""
-copy-transition-model {tree_dir}/final.mdl {dir}/0.trans_mdl
-{command} {dir}/log/make_den_fst.log \
-    chain-make-den-fst {dir}/tree {dir}/0.trans_mdl {dir}/phone_lm.fst \
-    {dir}/den.fst {dir}/normalization.fst
-    """.format(tree_dir=tree_dir, dir=dir, command=run_opts.command))
+def create_denominator_fst(dir, tree_dir, run_opts):
+    common_lib.run_kaldi_command(
+        """copy-transition-model {tree_dir}/final.mdl {dir}/0.trans_mdl
+           {command} {dir}/log/make_den_fst.log \
+                   chain-make-den-fst {dir}/tree {dir}/0.trans_mdl \
+                   {dir}/phone_lm.fst \
+                   {dir}/den.fst {dir}/normalization.fst""".format(
+                       tree_dir=tree_dir, dir=dir, command=run_opts.command))
 
 
-def GenerateChainEgs(dir, data, lat_dir, egs_dir,
-                    left_context, right_context,
-                    run_opts, stage=0,
-                    valid_left_context=None, valid_right_context=None,
-                    left_tolerance=None, right_tolerance=None,
-                    frame_subsampling_factor=3,
-                    alignment_subsampling_factor=3,
-                    feat_type='raw', online_ivector_dir=None,
-                    frames_per_iter=20000, frames_per_eg=20, srand=0,
-                    egs_opts=None, cmvn_opts=None, transform_dir=None):
+def generate_chain_egs(dir, data, lat_dir, egs_dir,
+                       left_context, right_context,
+                       run_opts, stage=0,
+                       valid_left_context=None, valid_right_context=None,
+                       left_tolerance=None, right_tolerance=None,
+                       frame_subsampling_factor=3,
+                       alignment_subsampling_factor=3,
+                       feat_type='raw', online_ivector_dir=None,
+                       frames_per_iter=20000, frames_per_eg=20, srand=0,
+                       egs_opts=None, cmvn_opts=None, transform_dir=None):
     """Wrapper for steps/nnet3/chain/get_egs.sh
 
     See options in that script.
     """
 
-    common_lib.RunKaldiCommand("""
-steps/nnet3/chain/get_egs.sh {egs_opts} \
-  --cmd "{command}" \
-  --cmvn-opts "{cmvn_opts}" \
-  --feat-type {feat_type} \
-  --transform-dir "{transform_dir}" \
-  --online-ivector-dir "{ivector_dir}" \
-  --left-context {left_context} --right-context {right_context} \
-  --valid-left-context '{valid_left_context}' \
-  --valid-right-context '{valid_right_context}' \
-  --left-tolerance '{left_tolerance}' \
-  --right-tolerance '{right_tolerance}' \
-  --frame-subsampling-factor {frame_subsampling_factor} \
-  --alignment-subsampling-factor {alignment_subsampling_factor} \
-  --stage {stage} \
-  --frames-per-iter {frames_per_iter} \
-  --frames-per-eg {frames_per_eg} \
-  --srand {srand} \
-  {data} {dir} {lat_dir} {egs_dir}
-      """.format(command=run_opts.command,
-                 cmvn_opts=cmvn_opts if cmvn_opts is not None else '',
-                 feat_type=feat_type,
-                 transform_dir=transform_dir
-                               if transform_dir is not None
-                               else '',
-                 ivector_dir=online_ivector_dir
-                             if online_ivector_dir is not None
-                             else '',
-                 left_context=left_context, right_context=right_context,
-                 valid_left_context=valid_left_context
-                                    if valid_left_context is not None
-                                    else '',
-                 valid_right_context=valid_right_context
-                                     if valid_right_context is not None
-                                     else '',
-                 left_tolerance=left_tolerance
-                                if left_tolerance is not None
-                                else '',
-                 right_tolerance=right_tolerance
-                                 if right_tolerance is not None
-                                 else '',
-                 frame_subsampling_factor=frame_subsampling_factor,
-                 alignment_subsampling_factor=alignment_subsampling_factor,
-                 stage=stage, frames_per_iter=frames_per_iter,
-                 frames_per_eg=frames_per_eg, srand=srand,
-                 data=data, lat_dir=lat_dir, dir=dir, egs_dir=egs_dir,
-                 egs_opts=egs_opts if egs_opts is not None else ''))
+    common_lib.run_kaldi_command(
+        """steps/nnet3/chain/get_egs.sh {egs_opts} \
+                --cmd "{command}" \
+                --cmvn-opts "{cmvn_opts}" \
+                --feat-type {feat_type} \
+                --transform-dir "{transform_dir}" \
+                --online-ivector-dir "{ivector_dir}" \
+                --left-context {left_context} --right-context {right_context} \
+                --valid-left-context '{valid_left_context}' \
+                --valid-right-context '{valid_right_context}' \
+                --left-tolerance '{left_tolerance}' \
+                --right-tolerance '{right_tolerance}' \
+                --frame-subsampling-factor {frame_subsampling_factor} \
+                --alignment-subsampling-factor {alignment_subsampling_factor} \
+                --stage {stage} \
+                --frames-per-iter {frames_per_iter} \
+                --frames-per-eg {frames_per_eg} \
+                --srand {srand} \
+                {data} {dir} {lat_dir} {egs_dir}""".format(
+                    command=run_opts.command,
+                    cmvn_opts=cmvn_opts if cmvn_opts is not None else '',
+                    feat_type=feat_type,
+                    transform_dir=(transform_dir
+                                   if transform_dir is not None
+                                   else ''),
+                    ivector_dir=(online_ivector_dir
+                                 if online_ivector_dir is not None
+                                 else ''),
+                    left_context=left_context, right_context=right_context,
+                    valid_left_context=(valid_left_context
+                                        if valid_left_context is not None
+                                        else ''),
+                    valid_right_context=(valid_right_context
+                                         if valid_right_context is not None
+                                         else ''),
+                    left_tolerance=(left_tolerance
+                                    if left_tolerance is not None
+                                    else ''),
+                    right_tolerance=(right_tolerance
+                                     if right_tolerance is not None
+                                     else ''),
+                    frame_subsampling_factor=frame_subsampling_factor,
+                    alignment_subsampling_factor=alignment_subsampling_factor,
+                    stage=stage, frames_per_iter=frames_per_iter,
+                    frames_per_eg=frames_per_eg, srand=srand,
+                    data=data, lat_dir=lat_dir, dir=dir, egs_dir=egs_dir,
+                    egs_opts=egs_opts if egs_opts is not None else ''))
 
 
-def ComputePreconditioningMatrix(dir, egs_dir, num_lda_jobs, run_opts,
-                                 max_lda_jobs=None, rand_prune=4.0,
-                                 lda_opts=None):
-    """ Function for calling binaries to estimate and write LDA matrix from cegs
+def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
+                                   max_lda_jobs=None, rand_prune=4.0,
+                                   lda_opts=None):
+    """ Function to estimate and write LDA matrix from cegs
 
-    This function is exactly similar to the version in
-    libs/nnet3/train/common.py
-    except it uses egs files in place of cegs files.
-
+    This function is exactly similar to the version in module
+    libs.nnet3.train.frame_level_objf.common except this uses cegs instead of
+    egs files.
     """
-
     if max_lda_jobs is not None:
         if num_lda_jobs > max_lda_jobs:
             num_lda_jobs = max_lda_jobs
 
-  # Write stats with the same format as stats for LDA.
-    common_lib.RunKaldiCommand("""
-{command} JOB=1:{num_lda_jobs} {dir}/log/get_lda_stats.JOB.log \
-    nnet3-chain-acc-lda-stats --rand-prune={rand_prune} \
-    {dir}/init.raw "ark:{egs_dir}/cegs.JOB.ark" {dir}/JOB.lda_stats""".format(
-        command=run_opts.command,
-        num_lda_jobs=num_lda_jobs,
-        dir=dir,
-        egs_dir=egs_dir,
-        rand_prune=rand_prune))
+    # Write stats with the same format as stats for LDA.
+    common_lib.run_kaldi_command(
+        """{command} JOB=1:{num_lda_jobs} {dir}/log/get_lda_stats.JOB.log \
+                nnet3-chain-acc-lda-stats --rand-prune={rand_prune} \
+                {dir}/init.raw "ark:{egs_dir}/cegs.JOB.ark" \
+                {dir}/JOB.lda_stats""".format(
+                    command=run_opts.command,
+                    num_lda_jobs=num_lda_jobs,
+                    dir=dir,
+                    egs_dir=egs_dir,
+                    rand_prune=rand_prune))
 
     # the above command would have generated dir/{1..num_lda_jobs}.lda_stats
-    lda_stat_files=map(lambda x: '{0}/{1}.lda_stats'.format(dir, x),
-                       range(1, num_lda_jobs + 1))
+    lda_stat_files = map(lambda x: '{0}/{1}.lda_stats'.format(dir, x),
+                         range(1, num_lda_jobs + 1))
 
-    common_lib.RunKaldiCommand("""
-{command} {dir}/log/sum_transform_stats.log \
-    sum-lda-accs {dir}/lda_stats {lda_stat_files}""".format(
-        command=run_opts.command,
-        dir=dir, lda_stat_files=" ".join(lda_stat_files)))
+    common_lib.run_kaldi_command(
+        """{command} {dir}/log/sum_transform_stats.log \
+                sum-lda-accs {dir}/lda_stats {lda_stat_files}""".format(
+                    command=run_opts.command,
+                    dir=dir, lda_stat_files=" ".join(lda_stat_files)))
 
     for file in lda_stat_files:
         try:
             os.remove(file)
         except OSError:
-            raise Exception("There was error while trying to remove lda stat files.")
-    # this computes a fixed affine transform computed in the way we described in
-    # Appendix C.6 of http://arxiv.org/pdf/1410.7455v6.pdf; it's a scaled variant
-    # of an LDA transform but without dimensionality reduction.
+            raise Exception("There was error while trying to remove "
+                            "lda stat files.")
+    # this computes a fixed affine transform computed in the way we described
+    # in Appendix C.6 of http://arxiv.org/pdf/1410.7455v6.pdf; it's a scaled
+    # variant of an LDA transform but without dimensionality reduction.
 
-    common_lib.RunKaldiCommand("""
-{command} {dir}/log/get_transform.log \
-    nnet-get-feature-transform {lda_opts} {dir}/lda.mat {dir}/lda_stats
-    """.format(command=run_opts.command, dir=dir,
-               lda_opts=lda_opts if lda_opts is not None else ""))
+    common_lib.run_kaldi_command(
+        """{command} {dir}/log/get_transform.log \
+                nnet-get-feature-transform {lda_opts} {dir}/lda.mat \
+                {dir}/lda_stats""".format(
+                    command=run_opts.command, dir=dir,
+                    lda_opts=lda_opts if lda_opts is not None else ""))
 
-    common_lib.ForceSymlink("../lda.mat", "{0}/configs/lda.mat".format(dir))
+    common_lib.force_symlink("../lda.mat", "{0}/configs/lda.mat".format(dir))
 
-def PrepareInitialAcousticModel(dir, run_opts):
+
+def prepare_initial_acoustic_model(dir, run_opts):
     """ Adds the first layer; this will also add in the lda.mat and
         presoftmax_prior_scale.vec. It will also prepare the acoustic model
         with the transition model."""
 
-    common_lib.RunKaldiCommand("""
-{command} {dir}/log/add_first_layer.log \
-   nnet3-init --srand=-1 {dir}/init.raw {dir}/configs/layer1.config {dir}/0.raw
-   """.format(command=run_opts.command, dir=dir))
+    common_lib.run_kaldi_command(
+        """{command} {dir}/log/add_first_layer.log \
+                nnet3-init --srand=-1 {dir}/init.raw \
+                {dir}/configs/layer1.config {dir}/0.raw
+        """.format(command=run_opts.command, dir=dir))
 
     # The model-format for a 'chain' acoustic model is just the transition
     # model and then the raw nnet, so we can use 'cat' to create this, as
@@ -183,15 +187,15 @@ def PrepareInitialAcousticModel(dir, run_opts):
     # We ensure that they have the same mode (even if someone changed the
     # script to make one or both of them text mode) by copying them both
     # before concatenating them.
-    common_lib.RunKaldiCommand("""
-{command} {dir}/log/init_mdl.log \
-    nnet3-am-init {dir}/0.trans_mdl {dir}/0.raw {dir}/0.mdl""".format(
-        command=run_opts.command, dir=dir))
+    common_lib.run_kaldi_command(
+        """{command} {dir}/log/init_mdl.log \
+                nnet3-am-init {dir}/0.trans_mdl {dir}/0.raw \
+                {dir}/0.mdl""".format(command=run_opts.command, dir=dir))
 
 
-def CombineModels(dir, num_iters, num_iters_combine, num_chunk_per_minibatch,
-                  egs_dir, leaky_hmm_coefficient, l2_regularize,
-                  xent_regularize, run_opts):
+def combine_models(dir, num_iters, num_iters_combine, num_chunk_per_minibatch,
+                   egs_dir, leaky_hmm_coefficient, l2_regularize,
+                   xent_regularize, run_opts, background_process_handler=None):
     """ Function to do model combination
 
     In the nnet3 setup, the logic
@@ -202,81 +206,308 @@ def CombineModels(dir, num_iters, num_iters_combine, num_chunk_per_minibatch,
 
     raw_model_strings = []
     for iter in range(num_iters - num_iters_combine + 1, num_iters + 1):
-      model_file = '{0}/{1}.mdl'.format(dir, iter)
-      if os.path.exists(model_file):
-          raw_model_strings.append('"nnet3-am-copy --raw=true {0} -|"'.format(model_file))
-      else:
-          print('{0}: warning: model file {1} does not exist (final combination)'.format(
-                  sys.argv[0], model_file))
-    common_lib.RunKaldiCommand("""
-{command} {combine_queue_opt} {dir}/log/combine.log \
-nnet3-chain-combine --num-iters=40 \
-   --l2-regularize={l2} --leaky-hmm-coefficient={leaky} \
-   --enforce-sum-to-one=true --enforce-positive-weights=true \
-   --verbose=3 {dir}/den.fst {raw_models} """
-   """ "ark,bg:nnet3-chain-merge-egs --minibatch-size={num_chunk_per_minibatch} ark:{egs_dir}/combine.cegs ark:-|" \
-    "|nnet3-am-copy --set-raw-nnet=- {dir}/{num_iters}.mdl {dir}/final.mdl"
-    """.format(command=run_opts.command,
-               combine_queue_opt=run_opts.combine_queue_opt,
-               l2=l2_regularize, leaky=leaky_hmm_coefficient,
-               dir=dir, raw_models=" ".join(raw_model_strings),
-               num_chunk_per_minibatch=num_chunk_per_minibatch,
-               num_iters=num_iters,
-               egs_dir=egs_dir))
+        model_file = '{0}/{1}.mdl'.format(dir, iter)
+        if os.path.exists(model_file):
+            raw_model_strings.append(
+                '"nnet3-am-copy --raw=true {0} -|"'.format(model_file))
+        else:
+            print("{0}: warning: model file {1} does not exist "
+                  "(final combination)".format(sys.argv[0], model_file))
+
+    common_lib.run_kaldi_command(
+        """{command} {combine_queue_opt} {dir}/log/combine.log \
+                nnet3-chain-combine --num-iters=40 \
+                --l2-regularize={l2} --leaky-hmm-coefficient={leaky} \
+                --enforce-sum-to-one=true --enforce-positive-weights=true \
+                --verbose=3 {dir}/den.fst {raw_models} """
+        """ "ark,bg:nnet3-chain-merge-egs """
+        """--minibatch-size={num_chunk_per_minibatch} """
+        """ark:{egs_dir}/combine.cegs ark:-|" - \| \
+                nnet3-am-copy --set-raw-nnet=- {dir}/{num_iters}.mdl \
+                {dir}/final.mdl""".format(
+                    command=run_opts.command,
+                    combine_queue_opt=run_opts.combine_queue_opt,
+                    l2=l2_regularize, leaky=leaky_hmm_coefficient,
+                    dir=dir, raw_models=" ".join(raw_model_strings),
+                    num_chunk_per_minibatch=num_chunk_per_minibatch,
+                    num_iters=num_iters,
+                    egs_dir=egs_dir))
 
     # Compute the probability of the final, combined model with
     # the same subset we used for the previous compute_probs, as the
     # different subsets will lead to different probs.
-    ComputeTrainCvProbabilities(dir, 'final', egs_dir, l2_regularize, xent_regularize,
-                                leaky_hmm_coefficient, run_opts, wait=False)
+    compute_train_cv_probabilities(
+        dir, 'final', egs_dir, l2_regularize, xent_regularize,
+        leaky_hmm_coefficient, run_opts, wait=False,
+        background_process_handler=background_process_handler)
 
 
-def ComputeTrainCvProbabilities(dir, iter, egs_dir, l2_regularize, xent_regularize,
-                                leaky_hmm_coefficient, run_opts, wait=False):
+def compute_train_cv_probabilities(dir, iter, egs_dir, l2_regularize,
+                                   xent_regularize, leaky_hmm_coefficient,
+                                   run_opts, wait=False,
+                                   background_process_handler=None):
 
     model = '{0}/{1}.mdl'.format(dir, iter)
 
-    common_lib.RunKaldiCommand("""
-{command} {dir}/log/compute_prob_valid.{iter}.log \
-    nnet3-chain-compute-prob --l2-regularize={l2} --leaky-hmm-coefficient={leaky} \
-    --xent-regularize={xent_reg} \
-    "nnet3-am-copy --raw=true {model} - |" {dir}/den.fst \
-    "ark,bg:nnet3-chain-merge-egs ark:{egs_dir}/valid_diagnostic.cegs ark:- |"
-    """.format(command=run_opts.command,
-               dir=dir, iter=iter, model=model,
-               l2=l2_regularize, leaky=leaky_hmm_coefficient,
-               xent_reg=xent_regularize,
-               egs_dir=egs_dir), wait=wait)
+    common_lib.run_kaldi_command(
+        """{command} {dir}/log/compute_prob_valid.{iter}.log \
+                nnet3-chain-compute-prob --l2-regularize={l2} \
+                --leaky-hmm-coefficient={leaky} --xent-regularize={xent_reg} \
+                "nnet3-am-copy --raw=true {model} - |" {dir}/den.fst \
+                "ark,bg:nnet3-chain-merge-egs """
+        """ark:{egs_dir}/valid_diagnostic.cegs ark:- |"
+        """.format(command=run_opts.command,
+                   dir=dir, iter=iter, model=model,
+                   l2=l2_regularize, leaky=leaky_hmm_coefficient,
+                   xent_reg=xent_regularize,
+                   egs_dir=egs_dir), wait=wait,
+        background_process_handler=background_process_handler)
 
-    common_lib.RunKaldiCommand("""
-{command} {dir}/log/compute_prob_train.{iter}.log \
-    nnet3-chain-compute-prob --l2-regularize={l2} --leaky-hmm-coefficient={leaky} \
-    --xent-regularize={xent_reg} \
-    "nnet3-am-copy --raw=true {model} - |" {dir}/den.fst \
-    "ark,bg:nnet3-chain-merge-egs ark:{egs_dir}/train_diagnostic.cegs ark:- |"
-    """.format(command=run_opts.command,
-               dir=dir,
-               iter=iter,
-               model=model,
-               l2=l2_regularize, leaky=leaky_hmm_coefficient,
-               xent_reg=xent_regularize,
-               egs_dir=egs_dir), wait=wait)
+    common_lib.run_kaldi_command(
+        """{command} {dir}/log/compute_prob_train.{iter}.log \
+                nnet3-chain-compute-prob --l2-regularize={l2} \
+                --leaky-hmm-coefficient={leaky} --xent-regularize={xent_reg} \
+                "nnet3-am-copy --raw=true {model} - |" {dir}/den.fst \
+                "ark,bg:nnet3-chain-merge-egs """
+        """ark:{egs_dir}/train_diagnostic.cegs ark:- |"
+        """.format(command=run_opts.command,
+                   dir=dir,
+                   iter=iter,
+                   model=model,
+                   l2=l2_regularize, leaky=leaky_hmm_coefficient,
+                   xent_reg=xent_regularize,
+                   egs_dir=egs_dir), wait=wait,
+        background_process_handler=background_process_handler)
 
 
-def ComputeProgress(dir, iter, run_opts, wait=False):
+def compute_progress(dir, iter, run_opts, wait=False,
+                     background_process_handler=None):
 
     prev_model = '{0}/{1}.mdl'.format(dir, iter - 1)
     model = '{0}/{1}.mdl'.format(dir, iter)
 
-    common_lib.RunKaldiCommand("""
-{command} {dir}/log/progress.{iter}.log \
-    nnet3-am-info {model} '&&' \
-    nnet3-show-progress --use-gpu=no "nnet3-am-copy --raw=true {prev_model} - |" \
-    "nnet3-am-copy --raw=true {model} - |"
-    """.format(command=run_opts.command,
-               dir=dir,
-               iter=iter,
-               model=model,
-               prev_model=prev_model), wait=wait)
+    common_lib.run_kaldi_command(
+        """{command} {dir}/log/progress.{iter}.log \
+                nnet3-am-info {model} '&&' \
+                nnet3-show-progress --use-gpu=no \
+                    "nnet3-am-copy --raw=true {prev_model} - |" \
+                    "nnet3-am-copy --raw=true {model} - |"
+        """.format(command=run_opts.command,
+                   dir=dir,
+                   iter=iter,
+                   model=model,
+                   prev_model=prev_model), wait=wait,
+        background_process_handler=background_process_handler)
+
+# Called from TrainOneIteration, this model does one iteration of training
+# with 'num_jobs' jobs, and
+# writes files like exp/tdnn_a/24.{1,2,3,..<num_jobs>}.raw
+def TrainNewModels(dir, iter, srand, num_jobs,
+                   num_archives_processed, num_archives,
+                   raw_model_string, egs_dir,
+                   apply_deriv_weights,
+                   left_deriv_truncate, right_deriv_truncate,
+                   l2_regularize, xent_regularize, leaky_hmm_coefficient,
+                   momentum, max_param_change,
+                   shuffle_buffer_size, num_chunk_per_minibatch,
+                   frame_subsampling_factor, truncate_deriv_weights,
+                   cache_io_opts, run_opts):
+    # We cannot easily use a single parallel SGE job to do the main training,
+    # because the computation of which archive and which --frame option
+    # to use for each job is a little complex, so we spawn each one separately.
+    # this is no longer true for RNNs as we use do not use the --frame option
+    # but we use the same script for consistency with FF-DNN code
+
+    deriv_time_opts=""
+    if left_deriv_truncate is not None:
+        deriv_time_opts += " --optimization.min-deriv-time={0}".format(left_deriv_truncate)
+    if right_deriv_truncate is not None:
+        deriv_time_opts += " --optimization.max-deriv-time={0}".format(int(chunk-width-right_deriv_truncate))
+
+    processes = []
+    for job in range(1,num_jobs+1):
+        k = num_archives_processed + job - 1 # k is a zero-based index that we will derive
+                                               # the other indexes from.
+        archive_index = (k % num_archives) + 1 # work out the 1-based archive index.
+        frame_shift = (archive_index + k/num_archives) % frame_subsampling_factor
+        # previous : frame_shift = (k/num_archives) % frame_subsampling_factor
+        if job == 1:
+            cur_cache_io_opts = cache_io_opts + " --write-cache={dir}/cache.{next_iter}".format(dir = dir, next_iter = iter + 1)
+        else:
+            cur_cache_io_opts = cache_io_opts
+
+        process_handle = common_train_lib.RunKaldiCommand("""
+{command} {train_queue_opt} {dir}/log/train.{iter}.{job}.log \
+  nnet3-chain-train {parallel_train_opts} \
+  --apply-deriv-weights={app_deriv_wts} \
+  --l2-regularize={l2} --leaky-hmm-coefficient={leaky} \
+  {cache_io_opts}  --xent-regularize={xent_reg} {deriv_time_opts} \
+  --print-interval=10 --momentum={momentum} \
+  --max-param-change={max_param_change} \
+   "{raw_model}" {dir}/den.fst \
+  "ark,bg:nnet3-chain-copy-egs --truncate-deriv-weights={trunc_deriv} --frame-shift={fr_shft} ark:{egs_dir}/cegs.{archive_index}.ark ark:- | nnet3-chain-shuffle-egs --buffer-size={shuffle_buffer_size} --srand={srand} ark:- ark:-| nnet3-chain-merge-egs --minibatch-size={num_chunk_per_minibatch} ark:- ark:- |" \
+  {dir}/{next_iter}.{job}.raw
+          """.format(command = run_opts.command,
+                     train_queue_opt = run_opts.train_queue_opt,
+                     dir = dir, iter = iter, srand = iter + srand, next_iter = iter + 1, job = job,
+                     deriv_time_opts = deriv_time_opts,
+                     trunc_deriv = truncate_deriv_weights,
+                     app_deriv_wts = apply_deriv_weights,
+                     fr_shft = frame_shift, l2 = l2_regularize,
+                     xent_reg = xent_regularize, leaky = leaky_hmm_coefficient,
+                     parallel_train_opts = run_opts.parallel_train_opts,
+                     momentum = momentum, max_param_change = max_param_change,
+                     raw_model = raw_model_string,
+                     egs_dir = egs_dir, archive_index = archive_index,
+                     shuffle_buffer_size = shuffle_buffer_size,
+                     cache_io_opts = cur_cache_io_opts,
+                     num_chunk_per_minibatch = num_chunk_per_minibatch),
+          wait = False)
+
+        processes.append(process_handle)
+
+    all_success = True
+    for process in processes:
+        process.wait()
+        [stdout_value, stderr_value] = process.communicate()
+        if stderr_value.strip() != '':
+            print(stderr_value)
+        if process.returncode != 0:
+            all_success = False
+
+    if not all_success:
+        open('{0}/.error'.format(dir), 'w').close()
+        raise Exception("There was error during training iteration {0}".format(iter))
+
+
+
+def TrainOneIteration(dir, iter, srand, egs_dir,
+                      num_jobs, num_archives_processed, num_archives,
+                      learning_rate, shrinkage_value, num_chunk_per_minibatch,
+                      num_hidden_layers, add_layers_period,
+                      apply_deriv_weights, left_deriv_truncate, right_deriv_truncate,
+                      l2_regularize, xent_regularize, leaky_hmm_coefficient,
+                      momentum, max_param_change, shuffle_buffer_size,
+                      frame_subsampling_factor, truncate_deriv_weights,
+                      run_opts):
+
+    # Set off jobs doing some diagnostics, in the background.
+    # Use the egs dir from the previous iteration for the diagnostics
+    logger.info("Training neural net (pass {0})".format(iter))
+
+    # check if different iterations use the same random seed
+    if os.path.exists('{0}/srand'.format(dir)):
+        try:
+            saved_srand = int(open('{0}/srand'.format(dir), 'r').readline().strip())
+        except IOError, ValueError:
+            raise Exception('Exception while reading the random seed for training')
+        if srand != saved_srand:
+            logger.warning("The random seed provided to this iteration (srand={0}) is different from the one saved last time (srand={1}). Using srand={0}.".format(srand, saved_srand))
+    else:
+        f = open('{0}/srand'.format(dir), 'w')
+        f.write(str(srand))
+        f.close()
+
+    chain_lib.ComputeTrainCvProbabilities(dir, iter, egs_dir,
+            l2_regularize, xent_regularize, leaky_hmm_coefficient, run_opts)
+
+    if iter > 0:
+        chain_lib.ComputeProgress(dir, iter, run_opts)
+
+    if iter > 0 and (iter <= (num_hidden_layers-1) * add_layers_period) and (iter % add_layers_period == 0):
+
+        do_average = False # if we've just mixed up, don't do averaging but take the
+                           # best.
+        cur_num_hidden_layers = 1 + iter / add_layers_period
+        config_file = "{0}/configs/layer{1}.config".format(dir, cur_num_hidden_layers)
+        raw_model_string = "nnet3-am-copy --raw=true --learning-rate={lr} {dir}/{iter}.mdl - | nnet3-init --srand={srand} - {config} - |".format(lr=learning_rate, dir=dir, iter=iter, srand=iter + srand, config=config_file)
+        cache_io_opts = ""
+    else:
+        do_average = True
+        if iter == 0:
+            do_average = False   # on iteration 0, pick the best, don't average.
+        raw_model_string = "nnet3-am-copy --raw=true --learning-rate={0} {1}/{2}.mdl - |".format(learning_rate, dir, iter)
+        cache_io_opts = "--read-cache={dir}/cache.{iter}".format(dir = dir, iter = iter)
+
+    if do_average:
+        cur_num_chunk_per_minibatch = num_chunk_per_minibatch
+        cur_max_param_change = max_param_change
+    else:
+        # on iteration zero or when we just added a layer, use a smaller minibatch
+        # size (and we will later choose the output of just one of the jobs): the
+        # model-averaging isn't always helpful when the model is changing too fast
+        # (i.e. it can worsen the objective function), and the smaller minibatch
+        # size will help to keep the update stable.
+        cur_num_chunk_per_minibatch = num_chunk_per_minibatch / 2
+        cur_max_param_change = float(max_param_change) / math.sqrt(2)
+
+    TrainNewModels(dir = dir, iter = iter, srand = srand, num_jobs = num_jobs,
+                   num_archives_processed = num_archives_processed,
+                   num_archives = num_archives,
+                   raw_model_string = raw_model_string,
+                   egs_dir = egs_dir,
+                   apply_deriv_weights = apply_deriv_weights,
+                   left_deriv_truncate = left_deriv_truncate,
+                   right_deriv_truncate = right_deriv_truncate,
+                   l2_regularize = l2_regularize,
+                   xent_regularize = xent_regularize,
+                   leaky_hmm_coefficient = leaky_hmm_coefficient,
+                   momentum = momentum,
+                   max_param_change = cur_max_param_change,
+                   shuffle_buffer_size = shuffle_buffer_size,
+                   num_chunk_per_minibatch = cur_num_chunk_per_minibatch,
+                   frame_subsampling_factor = frame_subsampling_factor,
+                   truncate_deriv_weights = truncate_deriv_weights,
+                   cache_io_opts = cache_io_opts, run_opts = run_opts)
+
+    [models_to_average, best_model] = common_train_lib.GetSuccessfulModels(num_jobs, '{0}/log/train.{1}.%.log'.format(dir,iter))
+    nnets_list = []
+    for n in models_to_average:
+        nnets_list.append("{0}/{1}.{2}.raw".format(dir, iter + 1, n))
+
+    if do_average:
+        # average the output of the different jobs.
+        common_train_lib.RunKaldiCommand("""
+{command} {dir}/log/average.{iter}.log \
+nnet3-average {nnet_list} - \| \
+nnet3-am-copy --scale={shrink} --set-raw-nnet=- {dir}/{iter}.mdl {dir}/{new_iter}.mdl
+        """.format(command = run_opts.command,
+                   dir = dir,
+                   iter = iter,
+                   nnet_list = " ".join(nnets_list),
+                   shrink = shrinkage_value,
+                   new_iter = iter + 1))
+
+    else:
+        # choose the best model from different jobs
+        common_train_lib.RunKaldiCommand("""
+{command} {dir}/log/select.{iter}.log \
+    nnet3-am-copy --scale={shrink} --set-raw-nnet={dir}/{next_iter}.{best_model_index}.raw  {dir}/{iter}.mdl {dir}/{next_iter}.mdl
+        """.format(command = run_opts.command,
+                   dir = dir, iter = iter, next_iter = iter + 1,
+                   shrink = shrinkage_value, best_model_index =  best_model))
+
+    try:
+        for i in range(1, num_jobs + 1):
+            os.remove("{0}/{1}.{2}.raw".format(dir, iter + 1, i))
+    except OSError:
+        raise Exception("Error while trying to delete the raw models")
+
+    new_model = "{0}/{1}.mdl".format(dir, iter + 1)
+
+    if not os.path.isfile(new_model):
+        raise Exception("Could not find {0}, at the end of iteration {1}".format(new_model, iter))
+    elif os.stat(new_model).st_size == 0:
+        raise Exception("{0} has size 0. Something went wrong in iteration {1}".format(new_model, iter))
+    if os.path.exists("{0}/cache.{1}".format(dir, iter)):
+        os.remove("{0}/cache.{1}".format(dir, iter))
+
+def CheckForRequiredFiles(feat_dir, tree_dir, lat_dir):
+    for file in ['{0}/feats.scp'.format(feat_dir), '{0}/ali.1.gz'.format(tree_dir),
+                 '{0}/final.mdl'.format(tree_dir), '{0}/tree'.format(tree_dir),
+                 '{0}/lat.1.gz'.format(lat_dir), '{0}/final.mdl'.format(lat_dir),
+                 '{0}/num_jobs'.format(lat_dir), '{0}/splice_opts'.format(lat_dir)]:
+        if not os.path.isfile(file):
+            raise Exception('Expected {0} to exist.'.format(file))
 
 
