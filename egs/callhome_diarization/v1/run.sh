@@ -93,38 +93,50 @@ ivector-compute-plda ark:exp/ivectors_sre/spk2utt "ark:ivector-subtract-global-m
 
 ivector-compute-plda ark:exp/ivectors_sre/spk2utt "ark:ivector-subtract-global-mean scp:exp/ivectors_sre/ivector.scp ark:- | transform-vec exp/ivectors_callhome2/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" exp/ivectors_callhome2/plda 2> exp/ivectors_callhome2/log/plda.log
 
+# TODO: Perform PLDA scoring on all pairs of segments for each recording.
+diarization/score_plda.sh --cmd "$train_cmd --mem 4G" \
+  --nj 20 exp/ivectors_callhome2 exp/ivectors_callhome1 \
+  exp/ivectors_callhome1/plda_scores
+
+diarization/score_plda.sh --cmd "$train_cmd --mem 4G" \
+  --nj 20 exp/ivectors_callhome1 exp/ivectors_callhome2 \
+  exp/ivectors_callhome2/plda_scores
+
 # TODO: This performs unsupervised calibration.  Each partition is used
 # as a held-out dataset to compute the stopping criteria used
 # to cluster the other partition.
 diarization/compute_plda_calibration.sh --cmd "$train_cmd --mem 4G" \
-  --nj 20 exp/ivectors_callhome2
+  --nj 20 exp/ivectors_callhome2 exp/ivectors_callhome2/plda_scores
 
 diarization/compute_plda_calibration.sh --cmd "$train_cmd --mem 4G" \
-  --nj 20 exp/ivectors_callhome1
-
-# TODO: Perform PLDA scoring on all pairs of segments for each recording.
-diarization/score_plda.sh --cmd "$train_cmd --mem 4G" \
-  --nj 20 exp/ivectors_callhome2 exp/ivectors_callhome1
-
-diarization/score_plda.sh --cmd "$train_cmd --mem 4G" \
-  --nj 20 exp/ivectors_callhome1 exp/ivectors_callhome2
+  --nj 20 exp/ivectors_callhome1 exp/ivectors_callhome1/plda_scores
 
 # TODO: Cluster the PLDA scores using agglomerative hierarchical clustering.
 # Note that the stopping threshold is computed on a different partition of
 # Callhome than the one we're currently clustering.
-# TODO: Need an option to specify number of speakers. This should also be evaluated here.
 diarization/cluster.sh --cmd "$train_cmd --mem 4G" \
-  --nj 20 --threshold `cat exp/ivectors_callhome2/threshold.txt` \
-  exp/ivectors_callhome1
+  --nj 20 --threshold `cat exp/ivectors_callhome2/plda_scores/threshold.txt` \
+  exp/ivectors_callhome1/plda_scores exp/ivectors_callhome1/plda_scores
 
 diarization/cluster.sh --cmd "$train_cmd --mem 4G" \
-  --nj 20 --threshold `cat exp/ivectors_callhome1/threshold.txt` \
-  exp/ivectors_callhome2
+  --nj 20 --threshold `cat exp/ivectors_callhome1/plda_scores/threshold.txt` \
+  exp/ivectors_callhome2/plda_scores exp/ivectors_callhome2/plda_scores
 
-python diarization/make_rttm.py exp/ivectors_callhome1/segments exp/ivectors_callhome1/labels.txt > callhome1.rttm
-python diarization/make_rttm.py exp/ivectors_callhome2/segments exp/ivectors_callhome2/labels.txt > callhome2.rttm
-cat callhome1.rttm callhome2.rttm > callhome.rttm
-
+# Result using using unsupervised calibration
 # OVERALL SPEAKER DIARIZATION ERROR = 10.32 percent of scored speaker time  `(ALL)
-perl local/md-eval.pl -1 -c 0.25 -r local/fullref.rttm -s callhome.rttm | tee results.txt
+cat exp/ivectors_callhome1/plda_scores/rttm exp/ivectors_callhome2/plda_scores/rttm \
+  | perl local/md-eval.pl -1 -c 0.25 -r local/fullref.rttm -s - 2> /dev/null | tee
 
+diarization/cluster.sh --cmd "$train_cmd --mem 4G" \
+  --nj 20 --utt2num data/callhome/utt2num \
+  exp/ivectors_callhome1/plda_scores exp/ivectors_callhome1/plda_scores_num_spk
+
+diarization/cluster.sh --cmd "$train_cmd --mem 4G" \
+  --nj 20 --utt2num data/callhome/utt2num \
+  exp/ivectors_callhome2/plda_scores exp/ivectors_callhome2/plda_scores_num_spk
+
+# Result if the number of speakers is known in advance
+# OVERALL SPEAKER DIARIZATION ERROR = 9.26 percent of scored speaker time  `(ALL)
+cat exp/ivectors_callhome1/plda_scores_num_spk/rttm \
+  exp/ivectors_callhome2/plda_scores_num_spk/rttm \
+  | perl local/md-eval.pl -1 -c 0.25 -r local/fullref.rttm -s - 2> /dev/null | tee

@@ -20,9 +20,9 @@ if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
 
-if [ $# != 2 ]; then
-  echo "Usage: $0 <held-out-dir> <test-dir>"
-  echo " e.g.: $0 exp/ivectors_callhome_heldout exp/ivectors_callhome_test"
+if [ $# != 3 ]; then
+  echo "Usage: $0 <plda-dir> <ivector-dir> <output-dir>"
+  echo " e.g.: $0 exp/ivectors_callhome_heldout exp/ivectors_callhome_test exp/ivectors_callhome_test"
   echo "main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config containing options"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
@@ -35,19 +35,21 @@ if [ $# != 2 ]; then
 fi
 
 pldadir=$1
-dir=$2
-
-cat $nj > $dir/num_jobs
+ivecdir=$2
+dir=$3
 
 mkdir -p $dir/tmp
 
-for f in $dir/ivector.scp $dir/spk2utt $dir/utt2spk $dir/segments $pldadir/plda $pldadir/mean.vec $pldadir/transform.mat; do
+for f in $ivecdir/ivector.scp $ivecdir/spk2utt $ivecdir/utt2spk $ivecdir/segments $pldadir/plda $pldadir/mean.vec $pldadir/transform.mat; do
   [ ! -f $f ] && echo "No such file $f" && exit 1;
 done
-cp $dir/ivector.scp $dir/tmp/feats.scp
-cp $dir/spk2utt $dir/tmp/
-cp $dir/utt2spk $dir/tmp/
-cp $dir/segments $dir/tmp/
+cp $ivecdir/ivector.scp $dir/tmp/feats.scp
+cp $ivecdir/spk2utt $dir/tmp/
+cp $ivecdir/utt2spk $dir/tmp/
+cp $ivecdir/segments $dir/tmp/
+cp $ivecdir/spk2utt $dir/
+cp $ivecdir/utt2spk $dir/
+cp $ivecdir/segments $dir/
 
 utils/fix_data_dir.sh $dir/tmp > /dev/null
 

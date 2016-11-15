@@ -19,9 +19,9 @@ if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
 
-if [ $# != 1 ]; then
-  echo "Usage: $0 <ivector-dir>"
-  echo " e.g.: $0 exp/ivectors"
+if [ $# != 2 ]; then
+  echo "Usage: $0 <ivector-dir> <output-dir>"
+  echo " e.g.: $0 exp/ivectors_callhome/ exp/ivectors_callhome/plda"
   echo "main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config containing options"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
@@ -33,17 +33,18 @@ if [ $# != 1 ]; then
   exit 1;
 fi
 
-dir=$1
+ivecdir=$1
+dir=$2
 
 mkdir -p $dir/tmp
 
-for f in $dir/ivector.scp $dir/spk2utt $dir/utt2spk $dir/segments $dir/plda $dir/mean.vec $dir/transform.mat; do
+for f in $ivecdir/ivector.scp $ivecdir/spk2utt $ivecdir/utt2spk $ivecdir/segments $ivecdir/plda $ivecdir/mean.vec $ivecdir/transform.mat; do
   [ ! -f $f ] && echo "No such file $f" && exit 1;
 done
-cp $dir/ivector.scp $dir/tmp/feats.scp
-cp $dir/spk2utt $dir/tmp/
-cp $dir/utt2spk $dir/tmp/
-cp $dir/segments $dir/tmp/
+cp $ivecdir/ivector.scp $dir/tmp/feats.scp
+cp $ivecdir/spk2utt $dir/tmp/
+cp $ivecdir/utt2spk $dir/tmp/
+cp $ivecdir/segments $dir/tmp/
 
 utils/fix_data_dir.sh $dir/tmp > /dev/null
 
@@ -53,11 +54,11 @@ utils/split_data.sh $dir/tmp $nj || exit 1;
 # Set various variables.
 mkdir -p $dir/log
 
-feats="ark:ivector-subtract-global-mean $dir/mean.vec scp:$sdata/JOB/feats.scp ark:- | transform-vec $dir/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |"
+feats="ark:ivector-subtract-global-mean $ivecdir/mean.vec scp:$sdata/JOB/feats.scp ark:- | transform-vec $ivecdir/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |"
 if [ $stage -le 0 ]; then
   echo "$0: Computing calibration thresholds"
   $cmd JOB=1:$nj $dir/log/compute_calibration.JOB.log \
-    ivector-plda-scoring-dense --target-energy=$target_energy $dir/plda \
+    ivector-plda-scoring-dense --target-energy=$target_energy $ivecdir/plda \
       ark:$sdata/JOB/spk2utt "$feats" ark:- \
       \| compute-calibration ark:- $dir/threshold.JOB.txt || exit 1;
 fi

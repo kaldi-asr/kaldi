@@ -11,6 +11,7 @@ stage=0
 nj=10
 cleanup=true
 threshold=0.5
+utt2num=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -19,9 +20,9 @@ if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
 
-if [ $# != 1 ]; then
-  echo "Usage: $0 <extractor-dir> <data> <ivector-dir>"
-  echo " e.g.: $0 exp/extractor data/train exp/ivectors"
+if [ $# != 2 ]; then
+  echo "Usage: $0 <src-dir> <dir>"
+  echo " e.g.: $0 exp/ivectors_callhome exp/ivectors_callhome/results"
   echo "main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config containing options"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
@@ -33,19 +34,23 @@ if [ $# != 1 ]; then
   exit 1;
 fi
 
-dir=$1
+srcdir=$1
+dir=$2
 
 mkdir -p $dir/tmp
 
-for f in $dir/scores.scp $dir/spk2utt $dir/utt2spk $dir/segments ; do
+for f in $srcdir/scores.scp $srcdir/spk2utt $srcdir/utt2spk $srcdir/segments ; do
   [ ! -f $f ] && echo "No such file $f" && exit 1;
 done
 
-cp $dir/spk2utt $dir/tmp/
-cp $dir/utt2spk $dir/tmp/
-cp $dir/segments $dir/tmp/
-
+cp $srcdir/spk2utt $dir/tmp/
+cp $srcdir/utt2spk $dir/tmp/
+cp $srcdir/segments $dir/tmp/
 utils/fix_data_dir.sh $dir/tmp > /dev/null
+
+if [ ! -z $utt2num ]; then
+  utt2num="ark,t:$utt2num"
+fi
 
 sdata=$dir/tmp/split$nj;
 utils/split_data.sh $dir/tmp $nj || exit 1;
@@ -53,18 +58,23 @@ utils/split_data.sh $dir/tmp $nj || exit 1;
 # Set various variables.
 mkdir -p $dir/log
 
-feats="utils/filter_scp.pl $sdata/JOB/spk2utt $dir/scores.scp |"
+feats="utils/filter_scp.pl $sdata/JOB/spk2utt $srcdir/scores.scp |"
 if [ $stage -le 0 ]; then
   echo "$0: clustering scores"
   $cmd JOB=1:$nj $dir/log/agglomerative_cluster.JOB.log \
     agglomerative-cluster --threshold=$threshold \
-      scp:"$feats" ark,t:$sdata/JOB/spk2utt \
-      ark,t:$dir/labels.JOB.txt || exit 1;
+      --utt2num-rspecifier=$utt2num scp:"$feats" \
+      ark,t:$sdata/JOB/spk2utt ark,t:$dir/labels.JOB || exit 1;
 fi
 
 if [ $stage -le 1 ]; then
-  echo "$0: combining "
-  for j in $(seq $nj); do cat $dir/labels.$j.txt; done >$dir/labels.txt || exit 1;
+  echo "$0: combining labels"
+  for j in $(seq $nj); do cat $dir/labels.$j; done > $dir/labels || exit 1;
+fi
+
+if [ $stage -le 2 ]; then
+  echo "$0: computing RTTM"
+  python diarization/make_rttm.py $srcdir/segments $dir/labels > $dir/rttm || exit 1;
 fi
 
 if $cleanup ; then
