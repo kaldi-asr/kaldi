@@ -18,9 +18,9 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include <sstream>
-
 #include <fst/fstlib.h>
+
+#include <sstream>
 
 #include "base/kaldi-error.h"
 #include "base/kaldi-math.h"
@@ -157,15 +157,18 @@ void ArpaFileParser::Read(std::istream &is, bool binary) {
         TrimTrailingWhitespace(&current_line_);
         std::ostringstream next_keyword;
         next_keyword << "\\" << cur_order + 1 << "-grams:";
-        if ((current_line_ != next_keyword.str()) && (current_line_ != "\\end\\")) {
+        if ((current_line_ != next_keyword.str()) &&
+            (current_line_ != "\\end\\")) {
           if (ShouldWarn()) {
             KALDI_WARN << "ignoring possible directive '" << current_line_
                        << "' expecting '" << next_keyword.str() << "'";
 
-            if (warning_count_ > 0 && warning_count_ > (uint32)options_.max_warnings) {
+            if (warning_count_ > 0 &&
+                warning_count_ > static_cast<uint32>(options_.max_warnings)) {
               KALDI_WARN << "Of " << warning_count_ << " parse warnings, "
-                         << options_.max_warnings << " were reported. Run program with "
-                         << "--max_warnings=-1 to see all warnings";
+                         << options_.max_warnings << " were reported. "
+                         << "Run program with --max_warnings=-1 "
+                         << "to see all warnings";
             }
           }
         } else {
@@ -207,7 +210,7 @@ void ArpaFileParser::Read(std::istream &is, bool binary) {
           } else {
             word = symbols_->Find(col[1 + index]);
             if (word == fst::SymbolTable::kNoSymbol) {
-              switch(options_.oov_handling) {
+              switch (options_.oov_handling) {
                 case ArpaParseOptions::kReplaceWithUnk:
                   word = options_.unk_symbol;
                   break;
@@ -251,7 +254,8 @@ void ArpaFileParser::Read(std::istream &is, bool binary) {
     PARSE_ERR << "invalid or unexpected directive line, expecting \\end\\";
   }
 
-  if (warning_count_ > 0 && warning_count_ > (uint32)options_.max_warnings) {
+  if (warning_count_ > 0 &&
+      warning_count_ > static_cast<uint32>(options_.max_warnings)) {
     KALDI_WARN << "Of " << warning_count_ << " parse warnings, "
                << options_.max_warnings << " were reported. Run program with "
                << "--max_warnings=-1 to see all warnings";
@@ -270,7 +274,7 @@ std::string ArpaFileParser::LineReference() const {
 }
 
 bool ArpaFileParser::ShouldWarn() {
- return ++warning_count_ <= (uint32)options_.max_warnings;
+  return ++warning_count_ <= static_cast<uint32>(options_.max_warnings);
 }
 
 }  // namespace kaldi
