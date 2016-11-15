@@ -54,6 +54,16 @@ def get_args():
                         default=8,
                         help="Number of output labels per example")
 
+    # trainer options
+    parser.add_argument("--trainer.prior-subset-size", type=int,
+                        dest='prior_subset_size', default=20000,
+                        help="Number of samples for computing priors")
+    parser.add_argument("--trainer.num-jobs-compute-prior", type=int,
+                        dest='num_jobs_compute_prior', default=10,
+                        help="The prior computation jobs are single "
+                        "threaded and run on the CPU")
+
+    # Parameters for the optimization
     parser.add_argument("--trainer.optimization.minibatch-size",
                         type=float, dest='minibatch_size', default=512,
                         help="Size of the minibatch used to compute the "

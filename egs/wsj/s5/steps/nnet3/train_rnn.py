@@ -75,14 +75,23 @@ def get_args():
                         archive.  Each eg has 'chunk_width' frames in it--
                         for chunk_width=20, this value (20k) is equivalent
                         to the 400k number that we use as a default in
-                        regular DNN training.""")
+                        regular DNN training.
+                        Overrides the default value in CommonParser.""")
+    parser.add_argument("--trainer.prior-subset-size", type=int,
+                        dest='prior_subset_size', default=20000,
+                        help="Number of samples for computing priors")
+    parser.add_argument("--trainer.num-jobs-compute-prior", type=int,
+                        dest='num_jobs_compute_prior', default=10,
+                        help="The prior computation jobs are single "
+                        "threaded and run on the CPU")
 
     # Parameters for the optimization
     parser.add_argument("--trainer.optimization.momentum", type=float,
                         dest='momentum', default=0.5,
                         help="""Momentum used in update computation.
                         Note: we implemented it in such a way that
-                        it doesn't increase the effective learning rate.""")
+                        it doesn't increase the effective learning rate.
+                        Overrides the default value in CommonParser""")
     parser.add_argument("--trainer.optimization.shrink-value", type=float,
                         dest='shrink_value', default=0.99,
                         help="""Scaling factor used for scaling the parameter

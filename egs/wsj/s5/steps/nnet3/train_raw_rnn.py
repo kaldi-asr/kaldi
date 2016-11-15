@@ -13,7 +13,6 @@ import argparse
 import logging
 import pprint
 import os
-import subprocess
 import sys
 import traceback
 
@@ -67,27 +66,38 @@ def get_args():
     parser.add_argument("--egs.chunk-left-context", type=int,
                         dest='chunk_left_context', default=40,
                         help="""Number of left steps used in the estimation of
-                        LSTM state before prediction of the first label""")
+                        LSTM state before prediction of the first label.
+                        Overrides the default value in CommonParser""")
 
+    # trainer options
     parser.add_argument("--trainer.samples-per-iter", type=int,
                         dest='samples_per_iter', default=20000,
                         help="""This is really the number of egs in each
                         archive.  Each eg has 'chunk_width' frames in it--
                         for chunk_width=20, this value (20k) is equivalent
                         to the 400k number that we use as a default in
-                        regular DNN training.""")
+                        regular DNN training.
+                        Overrides the default value in CommonParser.""")
+    parser.add_argument("--trainer.prior-subset-size", type=int,
+                        dest='prior_subset_size', default=20000,
+                        help="Number of samples for computing priors")
+    parser.add_argument("--trainer.num-jobs-compute-prior", type=int,
+                        dest='num_jobs_compute_prior', default=10,
+                        help="The prior computation jobs are single "
+                        "threaded and run on the CPU")
 
     # Parameters for the optimization
     parser.add_argument("--trainer.optimization.momentum", type=float,
                         dest='momentum', default=0.5,
                         help="""Momentum used in update computation.
                         Note: we implemented it in such a way that
-                        it doesn't increase the effective learning rate.""")
+                        it doesn't increase the effective learning rate.
+                        Overrides the default value in CommonParser""")
     parser.add_argument("--trainer.optimization.shrink-value", type=float,
                         dest='shrink_value', default=0.99,
                         help="""Scaling factor used for scaling the parameter
                         matrices when the derivative averages are below the
-                        shrink-threshold at the non-linearities")
+                        shrink-threshold at the non-linearities""")
     parser.add_argument("--trainer.optimization.shrink-threshold", type=float,
                         dest='shrink_threshold', default=0.15,
                         help="""If the derivative averages are below this
@@ -104,7 +114,7 @@ def get_args():
     parser.add_argument("--trainer.rnn.num-chunk-per-minibatch", type=int,
                         dest='num_chunk_per_minibatch', default=100,
                         help="Number of sequences to be processed in "
-                        "parallel every minibatch" )
+                        "parallel every minibatch")
     parser.add_argument("--trainer.rnn.num-bptt-steps", type=int,
                         dest='num_bptt_steps', default=None,
                         help="""The number of time steps to back-propagate from
@@ -135,6 +145,7 @@ def get_args():
     [args, run_opts] = process_args(args)
 
     return [args, run_opts]
+
 
 def process_args(args):
     """ Process the options got from get_args()
@@ -206,11 +217,6 @@ def train(args, run_opts, background_process_handler):
     feat_dim = common_lib.get_feat_dim(args.feat_dir)
     ivector_dim = common_lib.get_ivector_dim(args.online_ivector_dir)
 
-    # split the training data into parts for individual jobs
-    common_lib.split_data(args.feat_dir, num_jobs)
-    with open('{0}/num_jobs'.format(args.dir), 'w') as f:
-        f.write(str(num_jobs))
-
     config_dir = '{0}/configs'.format(args.dir)
     var_file = '{0}/vars'.format(config_dir)
 
@@ -257,8 +263,9 @@ def train(args, run_opts, background_process_handler):
             except KeyError as e:
                 raise Exception("KeyError {0}: Variables need to be defined "
                                 "in {1}".format(
-                    str(e), '{0}/configs'.format(args.dir)))
-            if common_lib.get_feat_dim_from_scp(targets_scp) != num_targets:
+                                    str(e), '{0}/configs'.format(args.dir)))
+            if (common_lib.get_feat_dim_from_scp(args.targets_scp)
+                    != num_targets):
                 raise Exception("Mismatch between num-targets provided to "
                                 "script vs configs")
         else:
@@ -308,7 +315,6 @@ def train(args, run_opts, background_process_handler):
             args.dir, egs_dir, num_archives, run_opts,
             max_lda_jobs=args.max_lda_jobs,
             rand_prune=args.rand_prune)
-
 
     if (args.stage <= -1):
         logger.info("Preparing the initial network.")
@@ -368,8 +374,9 @@ def train(args, run_opts, background_process_handler):
                                    )
             logger.info("On iteration {0}, learning rate is {1} and "
                         "shrink value is {2}.".format(
-                iter, learning_rate(iter, current_num_jobs,
-                                    num_archives_processed), shrinkage_value))
+                            iter, learning_rate(iter, current_num_jobs,
+                                                num_archives_processed),
+                            shrinkage_value))
 
             train_lib.common.train_one_iteration(
                 dir=args.dir,
@@ -428,7 +435,7 @@ def train(args, run_opts, background_process_handler):
     if include_log_softmax and args.stage <= num_iters + 1:
         logger.info("Getting average posterior for purposes of "
                     "adjusting the priors.")
-        avg_post_vec_file = train_lib.common.compute_average_posterior(
+        train_lib.common.compute_average_posterior(
             args.dir, 'final', egs_dir,
             num_archives, args.prior_subset_size, run_opts,
             get_raw_nnet_from_am=False)

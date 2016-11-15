@@ -184,9 +184,8 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                            "time (srand={1}). Using srand={0}.".format(
                                srand, saved_srand))
     else:
-        f = open('{0}/srand'.format(dir), 'w')
-        f.write(str(srand))
-        f.close()
+        with open('{0}/srand'.format(dir), 'w') as f:
+            f.write(str(srand))
 
     # Sets off some background jobs to compute train and
     # validation set objectives
@@ -206,7 +205,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
     # an option for writing cache (storing pairs of nnet-computations
     # and computation-requests) during training.
     cache_read_opt = ""
-    if (iter > 0 and iter <= (num_hidden_layers-1) * add_layers_period
+    if (iter > 0 and (iter <= (num_hidden_layers-1) * add_layers_period)
             and iter % add_layers_period == 0):
 
         # if we've just added new hiden layer, don't do averaging but take the
@@ -215,8 +214,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
 
         cur_num_hidden_layers = 1 + iter / add_layers_period
         config_file = "{0}/configs/layer{1}.config".format(
-                dir,
-                cur_num_hidden_layers)
+            dir, cur_num_hidden_layers)
         if get_raw_nnet_from_am:
             raw_model_string = ("nnet3-am-copy --raw=true "
                                 "--learning-rate={lr} {dir}/{iter}.mdl - | "
@@ -277,7 +275,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      background_process_handler=background_process_handler)
 
     [models_to_average, best_model] = common_train_lib.get_successful_models(
-            num_jobs, '{0}/log/train.{1}.%.log'.format(dir, iter))
+         num_jobs, '{0}/log/train.{1}.%.log'.format(dir, iter))
     nnets_list = []
     for n in models_to_average:
         nnets_list.append("{0}/{1}.{2}.raw".format(dir, iter + 1, n))
@@ -328,6 +326,7 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
         if num_lda_jobs > max_lda_jobs:
             num_lda_jobs = max_lda_jobs
 
+    # Write stats with the same format as stats for LDA.
     common_lib.run_kaldi_command(
         """{command} JOB=1:{num_lda_jobs} {dir}/log/get_lda_stats.JOB.log \
                 nnet3-acc-lda-stats --rand-prune={rand_prune} \
@@ -361,20 +360,22 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
 
     common_lib.run_kaldi_command(
         """{command} {dir}/log/get_transform.log \
-                nnet-get-feature-transform \
-                {lda_opts} {dir}/lda.mat {dir}/lda_stats
-        """.format(command=run_opts.command, dir=dir,
-                   lda_opts=lda_opts if lda_opts is not None else ""))
+                nnet-get-feature-transform {lda_opts} {dir}/lda.mat \
+                {dir}/lda_stats""".format(
+                    command=run_opts.command, dir=dir,
+                    lda_opts=lda_opts if lda_opts is not None else ""))
 
     common_lib.force_symlink("../lda.mat", "{0}/configs/lda.mat".format(dir))
 
 
-def prepare_initial_acoustic_model(dir, alidir, run_opts):
+def prepare_initial_acoustic_model(dir, alidir, run_opts,
+                                   srand=-3):
     """ Adds the first layer; this will also add in the lda.mat and
         presoftmax_prior_scale.vec. It will also prepare the acoustic model
         with the transition model."""
 
-    common_lib.prepare_initial_network(dir, run_opts)
+    common_train_lib.prepare_initial_network(dir, run_opts,
+                                             srand=srand)
 
     # Convert to .mdl, train the transitions, set the priors.
     common_lib.run_kaldi_command(
@@ -453,8 +454,9 @@ def compute_progress(dir, iter, egs_dir, run_opts, mb_size=256,
 def combine_models(dir, num_iters, models_to_combine, egs_dir,
                    run_opts, background_process_handler=None,
                    chunk_width=None, get_raw_nnet_from_am=True):
-    """
-    Now do combination.  In the nnet3 setup, the logic
+    """ Function to do model combination
+
+    In the nnet3 setup, the logic
     for doing averaging of subsets of the models in the case where
     there are too many models to reliably esetimate interpolation
     factors (max_models_combine) is moved into the nnet3-combine.

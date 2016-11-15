@@ -146,7 +146,9 @@ def get_args():
                         shrink-nonlinearity type""")
 
     # RNN specific trainer options
-    parser.add_argument("--trainer.num-chunk-per-minibatch", type=int,
+    parser.add_argument("--trainer.num-chunk-per-minibatch",
+                        "--trainer.rnn.num-chunk-per-minibatch",
+                        type=int,
                         dest='num_chunk_per_minibatch', default=512,
                         help="Number of sequences to be processed in "
                         "parallel every minibatch")
@@ -419,6 +421,7 @@ def train(args, run_opts, background_process_handler):
                                             num_archives_processed),
                 shrinkage_value=shrinkage_value,
                 num_chunk_per_minibatch=args.num_chunk_per_minibatch,
+                chunk_width=args.chunk_width,
                 num_hidden_layers=num_hidden_layers,
                 add_layers_period=args.add_layers_period,
                 apply_deriv_weights=args.apply_deriv_weights,

@@ -15,7 +15,6 @@ import os
 import math
 import re
 import shutil
-import time
 
 import libs.common as common_lib
 
@@ -256,12 +255,12 @@ def smooth_presoftmax_prior_scale_vector(pdf_counts,
     return scaled_counts
 
 
-def prepare_initial_network(dir, run_opts):
+def prepare_initial_network(dir, run_opts, srand=-3):
     common_lib.run_kaldi_command(
         """{command} {dir}/log/add_first_layer.log \
-                nnet3-init --srand=-3 {dir}/init.raw \
+                nnet3-init --srand={srand} {dir}/init.raw \
                 {dir}/configs/layer1.config {dir}/0.raw""".format(
-                    command=run_opts.command,
+                    command=run_opts.command, srand=srand,
                     dir=dir))
 
 
@@ -483,19 +482,6 @@ class CommonParser:
         self.parser.add_argument("--trainer.num-epochs", type=int,
                                  dest='num_epochs', default=8,
                                  help="Number of epochs to train the model")
-        self.parser.add_argument("--trainer.prior-subset-size", type=int,
-                                 dest='prior_subset_size', default=20000,
-                                 help="Number of samples for computing priors")
-        self.parser.add_argument("--trainer.num-jobs-compute-prior", type=int,
-                                 dest='num_jobs_compute_prior', default=10,
-                                 help="The prior computation jobs are single "
-                                 "threaded and run on the CPU")
-        self.parser.add_argument("--trainer.max-models-combine", type=int,
-                                 dest='max_models_combine', default=20,
-                                 help="""The maximum number of models used in
-                                 the final model combination stage.  These
-                                 models will themselves be averages of
-                                 iteration-number ranges""")
         self.parser.add_argument("--trainer.shuffle-buffer-size", type=int,
                                  dest='shuffle_buffer_size', default=5000,
                                  help=""" Controls randomization of the samples
@@ -556,12 +542,13 @@ class CommonParser:
                                  help="Number of neural net jobs to run in "
                                  "parallel at the end of training")
         self.parser.add_argument("--trainer.optimization.max-models-combine",
+                                 "--trainer.max-models-combine",
                                  type=int, dest='max_models_combine',
                                  default=20,
-                                 help="""The is the maximum number of models we
-                                 give to the final 'combine' stage, but these
+                                 help="""The maximum number of models used in
+                                 the final model combination stage.  These
                                  models will themselves be averages of
-                                 iteration-number ranges.""")
+                                 iteration-number ranges""")
         self.parser.add_argument("--trainer.optimization.momentum", type=float,
                                  dest='momentum', default=0.0,
                                  help="""Momentum used in update computation.
