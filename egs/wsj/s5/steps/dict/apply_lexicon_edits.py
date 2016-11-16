@@ -13,7 +13,7 @@ def GetArgs():
                                      epilog = "See steps/dict/learn_lexicon.sh for example")
 
     parser.add_argument("in_lexicon", metavar='<in-lexicon>', type = str,
-                        help = "Input lexicon. Each line is <word> <pron>")
+                        help = "Input lexicon. Each line must be <word> <phones>.")
     parser.add_argument("lexicon_edits_file", metavar='<lexicon-edits-file>', type = str,
                         help = "Input lexicon edits file containing human-readable & editable"
                                "pronounciation info.  The info for each word is like:"
@@ -59,10 +59,7 @@ def ReadLexicon(lexicon_file_handle):
                 raise Exception('Invalid format of line ' + line
                                     + ' in lexicon file.')
             word = splits[0]
-            try:
-                phones = ' '.join(splits[2:])
-            except ValueError:
-                phones = ' '.join(splits[1:])
+            phones = ' '.join(splits[1:])
             lexicon.add((word, phones))
     return lexicon
 
@@ -76,8 +73,8 @@ def ApplyLexiconEdits(lexicon, lexicon_edits_file_handle):
             if line.startswith('---'):
                 splits = line.strip().strip('-').strip().split()
                 if len(splits) != 2:
-                    print(splits)
-                    raise Exception('1Invalid format of line ' + line
+                    print(splits, file=sys.stderr)
+                    raise Exception('Invalid format of line ' + line
                                         + ' in lexicon edits file.')
                 word = splits[0].strip()
             else:
@@ -85,7 +82,7 @@ def ApplyLexiconEdits(lexicon, lexicon_edits_file_handle):
             # from a line like: 'P  | Y |  42.0 |  M AY K R AH F OW N Z'
                 splits = line.split('|')
                 if len(splits) != 4:
-                    raise Exception('2Invalid format of line ' + line
+                    raise Exception('Invalid format of line ' + line
                                         + ' in lexicon edits file.')
                 pron = splits[3].strip()
                 if splits[1].strip() == 'Y':
@@ -93,7 +90,7 @@ def ApplyLexiconEdits(lexicon, lexicon_edits_file_handle):
                 elif splits[1].strip() == 'N':
                     lexicon.discard((word, pron))
                 else:
-                    raise Exception('3Invalid format of line ' + line
+                    raise Exception('Invalid format of line ' + line
                                         + ' in lexicon edits file.')
     return lexicon
 

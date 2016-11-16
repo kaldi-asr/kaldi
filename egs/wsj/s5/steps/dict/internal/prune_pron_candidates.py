@@ -26,7 +26,8 @@ def GetArgs():
                         "each line must be <soft-counts> <word> <phones>")
     parser.add_argument("ref_lexicon", metavar = "<ref-lexicon>", type = str,
                         help = "Reference lexicon file, where we obtain # pron variants for"
-                        "each word, based on which we prune the pron candidates.")
+                        "each word, based on which we prune the pron candidates."
+                        "Each line must be <word> <phones>")
     parser.add_argument("pruned_prons", metavar = "<pruned-prons>", type = str,
                         help = "An output file in lexicon format, which contains prons we want to" 
                         "prune off from the pron_stats file.")
@@ -75,10 +76,7 @@ def ReadLexicon(ref_lexicon_handle):
             raise Exception('Invalid format of line ' + line
                                 + ' in lexicon file.')
         word = splits[0]
-        try:
-            phones = ' '.join(splits[2:])
-        except ValueError:
-            phones = ' '.join(splits[1:])
+        phones = ' '.join(splits[1:])
         ref_lexicon[word].add(phones)
     return ref_lexicon
 

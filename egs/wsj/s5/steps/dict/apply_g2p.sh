@@ -64,18 +64,18 @@ if [ $stage -le 0 ]; then
 fi
 cat $output/output.* > $output/output
 
-#Remap the words from output file back to the original casing
-#Conversion of some of thems might have failed, so we have to be careful
-#and use the transform_map file we generated beforehand
-#Also, because the sequitur output is not readily usable as lexicon (it adds 
-#one more column with ordering of the pron. variants) convert it into the proper lexicon form
+# Remap the words from output file back to the original casing
+# Conversion of some of thems might have failed, so we have to be careful
+# and use the transform_map file we generated beforehand
+# Also, because the sequitur output is not readily usable as lexicon (it adds 
+# one more column with ordering of the pron. variants) convert it into the proper lexicon form
 output_lex=$output/lexicon.lex
 
-#Just convert it to a proper lexicon format
+# Just convert it to a proper lexicon format
 cut -f 1,3,4 $output/output > $output_lex
 
-#Some words might have been removed or skipped during the process,
-#let's check it and warn the user if so...
+# Some words might have been removed or skipped during the process,
+# let's check it and warn the user if so...
 nlex=`cut -f 1 $output_lex | sort -u | wc -l`
 nwlist=`cut -f 1 $output/wordlist.txt | sort -u | wc -l`
 if [ $nlex -ne $nwlist ] ; then

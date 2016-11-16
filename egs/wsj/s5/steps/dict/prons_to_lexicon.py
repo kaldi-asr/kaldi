@@ -43,9 +43,11 @@ def GetArgs():
                         help = "Remove pronunciation with probabilities less "
                         "than this value after normalization.")
     parser.add_argument("--filter-lexicon", metavar='<filter-lexicon>', type = str, default = '',
-                        help = "Exclude entries in this filter lexicon from the output lexicon.")
+                        help = "Exclude entries in this filter lexicon from the output lexicon."
+                        "each line must be <word> <phones>")
     parser.add_argument("stats_file", metavar='<stats-file>', type = str,
-                        help = "Input file containing pronunciation statistics; "
+                        help = "Input file containing pronunciation statistics, representing how many times "
+                        "each word-pronunciation appear in the phonetic decoding results."
                         "each line must be <counts> <word> <phones>")
     parser.add_argument("out_lexicon", metavar='<out-lexicon>', type = str,
                         help = "Output lexicon.")
@@ -108,10 +110,7 @@ def ReadLexicon(lexicon_file_handle):
                 raise Exception('Invalid format of line ' + line
                                     + ' in lexicon file.')
             word = splits[0]
-            try:
-                phones = ' '.join(splits[2:])
-            except ValueError:
-                phones = ' '.join(splits[1:])
+            phones = ' '.join(splits[1:])
             lexicon.add((word, phones))
     return lexicon
 
@@ -165,12 +164,12 @@ def WriteLexicon(args, lexicon, filter_lexicon):
         words.add(entry[0])
         print("{0} {1}".format(entry[0], entry[1]),
                 file = args.out_lexicon_handle)
-    print ("Before pruning, the total num. pronunciations is: {}".format(len(lexicon)))
-    print ("Removed {0} pronunciations by setting min_prob {1}".format(num_removed, args.min_prob))
-    print ("Filtered out {} pronunciations in the filter lexicon.".format(num_filtered))
+    print ("Before pruning, the total num. pronunciations is: {}".format(len(lexicon)), file=sys.stderr)
+    print ("Removed {0} pronunciations by setting min_prob {1}".format(num_removed, args.min_prob), file=sys.stderr)
+    print ("Filtered out {} pronunciations in the filter lexicon.".format(num_filtered), file=sys.stderr)
     num_prons_from_phone_decoding = len(lexicon) - num_removed - num_filtered
     print ("Num. pronunciations in the output lexicon, which solely come from phone decoding"
-           "is {0}. num. words is {1}".format(num_prons_from_phone_decoding, len(words)))
+           "is {0}. num. words is {1}".format(num_prons_from_phone_decoding, len(words)), file=sys.stderr)
 
 def Main():
     args = GetArgs()

@@ -12,8 +12,8 @@ import math
 def GetArgs():
     parser = argparse.ArgumentParser(description = "Use a Bayesian framework to select"
                                      "pronunciation candidates from three sources: reference lexicon"
-                                     ", G2P lexicon and phone-decoding lexicon. The inputs are a word-stats file,"
-                                     "a pron-stats file, and three source lexicons (ref/G2P/phone-decoding)."
+                                     ", G2P lexicon and phonetic-decoding lexicon. The inputs are a word-stats file,"
+                                     "a pron-stats file, and three source lexicons (ref/G2P/phonetic-decoding)."
                                      "We assume the pronunciations for each word follow a Categorical distribution"
                                      "with Dirichlet priors. Thus, with user-specified prior counts (parameterized by"
                                      "prior-mean and prior-count-tot) and observed counts from the pron-stats file, "
@@ -26,7 +26,7 @@ def GetArgs():
                                      epilog = "See steps/dict/learn_lexicon.sh for example.")
     parser.add_argument("--prior-mean", type = str, default = "0,0,0",
                         help = "Mean of priors (summing up to 1) assigned to three exclusive n"
-                        "pronunciatio sources: reference lexicon, g2p, and phone decoding. We "
+                        "pronunciatio sources: reference lexicon, g2p, and phonetic decoding. We "
                         "recommend setting a larger prior mean for the reference lexicon, e.g. '0.6,0.2,0.2'")
     parser.add_argument("--prior-counts-tot", type = float, default = 15.0,
                         help = "Total amount of prior counts we add to all pronunciation candidates of"
@@ -43,7 +43,7 @@ def GetArgs():
     parser.add_argument("--variants-counts", type = int, default = 1,
                         help = "Generate upto this many variants of prons for each word out"
                         "of the ref. lexicon.")
-    parser.add_argument("silence_file", metavar = "<silphone-file>", type = str,
+    parser.add_argument("silence_file", metavar = "<silphonetic-file>", type = str,
                         help = "File containing a list of silence phones.")
     parser.add_argument("pron_stats_file", metavar = "<stats-file>", type = str,
                         help = "File containing pronunciation statistics from lattice alignment; "
@@ -52,11 +52,14 @@ def GetArgs():
                         help = "File containing word counts in acoustic training data; "
                         "each line must be <word> <count>.")
     parser.add_argument("ref_lexicon", metavar = "<reference-lexicon>", type = str,
-                        help = "The reference lexicon (most probably hand-derived).")
+                        help = "The reference lexicon (most probably hand-derived)."
+                        "Each line must be <word> <phones>")
     parser.add_argument("g2p_lexicon", metavar = "<g2p-expanded-lexicon>", type = str,
-                        help = "Candidate ronouciations from G2P results.")
-    parser.add_argument("phone_decoding_lexicon", metavar = "<prons-in-acoustic-evidence>", type = str,
-                        help = "Candidate ronouciations from phone decoding results.")
+                        help = "Candidate ronouciations from G2P results."
+                        "Each line must be <word> <phones>")
+    parser.add_argument("phonetic_decoding_lexicon", metavar = "<prons-in-acoustic-evidence>", type = str,
+                        help = "Candidate ronouciations from phonetic decoding results."
+                        "Each line must be <word> <phones>")
     parser.add_argument("pron_posteriors", metavar = "<pron-posteriors>", type = str,
                         help = "Output file containing posteriors of all candidate prons for each word,"
                         "based on which we select prons to construct the learned lexicon."
@@ -93,7 +96,7 @@ def CheckArgs(args):
     args.word_counts_file_handle = open(args.word_counts_file)
     args.ref_lexicon_handle = open(args.ref_lexicon)
     args.g2p_lexicon_handle = open(args.g2p_lexicon)
-    args.phone_decoding_handle = open(args.phone_decoding_lexicon)
+    args.phonetic_decoding_lexicon_handle = open(args.phonetic_decoding_lexicon)
     args.pron_posteriors_handle = open(args.pron_posteriors, "w")
     args.learned_lexicon_oov_handle = open(args.learned_lexicon_oov, "w")
     args.ref_lexicon_edits_handle = open(args.ref_lexicon_edits, "w")
@@ -149,20 +152,17 @@ def ReadLexicon(args, lexicon_file_handle, counts):
         word = splits[0]
         if word not in counts:
             continue
-        try:
-            phones = ' '.join(splits[2:])
-        except ValueError:
-            phones = ' '.join(splits[1:])
+        phones = ' '.join(splits[1:])
         lexicon[word].add(phones)
     return lexicon
 
-def FilterPhoneDecodingLexicon(args, phone_decoding_lexicon, stats):
+def FilterPhoneticDecodingLexicon(args, phonetic_decoding_lexicon, stats):
     # We want to remove all candidates which contains silence phones
     silphones = set()
     for line in args.silence_file_handle:
         silphones.add(line.strip())
     rejected_candidates = set()
-    for word, prons in phone_decoding_lexicon.iteritems():
+    for word, prons in phonetic_decoding_lexicon.iteritems():
         for pron in prons:
             for phone in pron.split():
                 if phone in silphones:
@@ -172,15 +172,15 @@ def FilterPhoneDecodingLexicon(args, phone_decoding_lexicon, stats):
                    else:
                        count = 0
                    rejected_candidates.add((word, pron))
-                   print('WARNING: removing the candidate pronunciation from phone-decoding: {0}:'
-                         '{1} whose soft-count from lattice-alignment is {2} cause it contains at'
-                         'least one silence phone.'.format(word, pron, count))
+                   print('WARNING: removing the candidate pronunciation from phonetic-decoding: {0}: '
+                         '"{1}" whose soft-count from lattice-alignment is {2}, cause it contains at'
+                         ' least one silence phone.'.format(word, pron, count), file=sys.stderr)
                    break
     for word, pron in rejected_candidates:
-        phone_decoding_lexicon[word].remove(pron)
-    return phone_decoding_lexicon, stats
+        phonetic_decoding_lexicon[word].remove(pron)
+    return phonetic_decoding_lexicon, stats
 
-def ComputePriorCounts(args, counts, ref_lexicon, g2p_lexicon, phone_decoding_lexicon):
+def ComputePriorCounts(args, counts, ref_lexicon, g2p_lexicon, phonetic_decoding_lexicon):
     prior_counts = defaultdict(list)
     # In case one source is absent for a word, we set zero prior to this source, 
     # and then re-normalize the prior mean parameters s.t. they sum up to one.
@@ -190,21 +190,21 @@ def ComputePriorCounts(args, counts, ref_lexicon, g2p_lexicon, phone_decoding_le
             prior_mean[0] = 0
         if word not in g2p_lexicon:
             prior_mean[1] = 0
-        if word not in phone_decoding_lexicon:
+        if word not in phonetic_decoding_lexicon:
             prior_mean[2] = 0
         prior_mean_sum = sum(prior_mean)
         try:
             prior_mean = [t / prior_mean_sum for t in prior_mean] 
         except ZeroDivisionError:
-            print('WARNING: word {} appears in train_counts but not in any lexicon.'.format(word))
+            print('WARNING: word {} appears in train_counts but not in any lexicon.'.format(word), file=sys.stderr)
         prior_counts[word] = [t * args.prior_counts_tot for t in prior_mean] 
     return prior_counts
 
-def ComputePosteriors(args, stats, ref_lexicon, g2p_lexicon, phone_decoding_lexicon, prior_counts):
+def ComputePosteriors(args, stats, ref_lexicon, g2p_lexicon, phonetic_decoding_lexicon, prior_counts):
     posteriors = defaultdict(list) # This dict stores a list of (pronunciation, posterior)
     # pairs for each word, where the posteriors are normalized soft counts. Before normalization,
     # The soft-counts were augmented by a user-specified prior count, according the source 
-    # (ref/G2P/phone-decoding) of this pronunciation.
+    # (ref/G2P/phonetic-decoding) of this pronunciation.
 
     for word, prons in ref_lexicon.iteritems():
         for pron in prons:
@@ -217,19 +217,19 @@ def ComputePosteriors(args, stats, ref_lexicon, g2p_lexicon, phone_decoding_lexi
             c = prior_counts[word][1] / len(g2p_lexicon[word]) + stats.get((word, pron), 0)
             posteriors[word].append((pron, c))
 
-    for word, prons in phone_decoding_lexicon.iteritems():
+    for word, prons in phonetic_decoding_lexicon.iteritems():
         for pron in prons:
-            c = prior_counts[word][2] / len(phone_decoding_lexicon[word]) + stats.get((word, pron), 0)
+            c = prior_counts[word][2] / len(phonetic_decoding_lexicon[word]) + stats.get((word, pron), 0)
             posteriors[word].append((pron, c))
 
     num_prons_from_ref = sum(len(ref_lexicon[i]) for i in ref_lexicon)
     num_prons_from_g2p = sum(len(g2p_lexicon[i]) for i in g2p_lexicon)
-    num_prons_from_phone_decoding = sum(len(phone_decoding_lexicon[i]) for i in phone_decoding_lexicon)
-    print ("---------------------------------------------------------------------------------------------------")
-    print ('Total num. words is {}:'.format(len(posteriors)))
+    num_prons_from_phonetic_decoding = sum(len(phonetic_decoding_lexicon[i]) for i in phonetic_decoding_lexicon)
+    print ("---------------------------------------------------------------------------------------------------", file=sys.stderr)
+    print ('Total num. words is {}:'.format(len(posteriors)), file=sys.stderr)
     print ('{0} candidate prons came from the reference lexicon; {1} came from G2P;{2} came from'
-           'phone_decoding'.format(num_prons_from_ref, num_prons_from_g2p, num_prons_from_phone_decoding))
-    print ("---------------------------------------------------------------------------------------------------")
+           'phonetic_decoding'.format(num_prons_from_ref, num_prons_from_g2p, num_prons_from_phonetic_decoding), file=sys.stderr)
+    print ("---------------------------------------------------------------------------------------------------", file=sys.stderr)
 
     # Normalize the augmented soft counts to get posteriors.
     count_sum = defaultdict(float) # This dict stores the pronunciation which has 
@@ -238,8 +238,6 @@ def ComputePosteriors(args, stats, ref_lexicon, g2p_lexicon, phone_decoding_lexi
     for word in posteriors:
         # each entry is a pair: (prounciation, count)
         count_sum[word] = sum([entry[1] for entry in posteriors[word]])
-        if count_sum[word] == 0:
-            print(word, posteriors[word], prior_counts[word] )
     
     for word, entry in posteriors.iteritems():
         new_entry = []
@@ -249,17 +247,17 @@ def ComputePosteriors(args, stats, ref_lexicon, g2p_lexicon, phone_decoding_lexi
             source = 'R'
             if word in g2p_lexicon and pron in g2p_lexicon[word]:
                 source = 'G'
-            elif word in phone_decoding_lexicon and pron in phone_decoding_lexicon[word]:
+            elif word in phonetic_decoding_lexicon and pron in phonetic_decoding_lexicon[word]:
                 source = 'P'
             print(word, source, "%3.2f" % post, pron, file=args.pron_posteriors_handle)
         del entry[:]
         entry.extend(sorted(new_entry, key=lambda new_entry: new_entry[1]))
     return posteriors
 
-def SelectPronsBayesian(args, counts, posteriors, ref_lexicon, g2p_lexicon, phone_decoding_lexicon):
+def SelectPronsBayesian(args, counts, posteriors, ref_lexicon, g2p_lexicon, phonetic_decoding_lexicon):
     reference_selected = 0
     g2p_selected = 0
-    phone_decoding_selected = 0
+    phonetic_decoding_selected = 0
     learned_lexicon = defaultdict(set)
 
     for word, entry in posteriors.iteritems():
@@ -278,8 +276,9 @@ def SelectPronsBayesian(args, counts, posteriors, ref_lexicon, g2p_lexicon, phon
                 variants_counts = variants_counts_ref
                 variants_prob_mass = 1.0
         last_post = 0.0
-        while (num_variants < variants_counts and post_tot < variants_prob_mass)
-               or (len(entry) > 0 and entry[-1][1] == last_post):
+        while ((num_variants < variants_counts and post_tot < variants_prob_mass)
+               or (len(entry) > 0 and entry[-1][1] == last_post)): # this conditions 
+               # means the posterior of the current pron is the same as the one we just included.
             try:
                 pron, post = entry.pop()
                 last_post = post
@@ -293,7 +292,7 @@ def SelectPronsBayesian(args, counts, posteriors, ref_lexicon, g2p_lexicon, phon
             elif word in g2p_lexicon and pron in g2p_lexicon[word]:
                 g2p_selected += 1
             else:
-                phone_decoding_selected += 1
+                phonetic_decoding_selected += 1
 
         while (num_variants < variants_counts and post_tot < args.variants_prob_mass_ref):
             try:
@@ -306,23 +305,23 @@ def SelectPronsBayesian(args, counts, posteriors, ref_lexicon, g2p_lexicon, phon
                 num_variants += 1
                 reference_selected += 1
 
-    num_prons_tot = reference_selected + g2p_selected + phone_decoding_selected
-    print('---------------------------------------------------------------------------------------------------')
-    print ('Num. words in the learned lexicon: {0} num. selected prons: {1}'.format(len(learned_lexicon), num_prons_tot))
+    num_prons_tot = reference_selected + g2p_selected + phonetic_decoding_selected
+    print('---------------------------------------------------------------------------------------------------', file=sys.stderr)
+    print ('Num. words in the learned lexicon: {0} num. selected prons: {1}'.format(len(learned_lexicon), num_prons_tot), file=sys.stderr)
     print ('{0} selected prons came from reference candidate prons; {1} came from G2P candidate prons;'
-           '{2} came from phone-decoding candidate prons.'.format(reference_selected, g2p_selected, phone_decoding_selected)) 
+           '{2} came from phonetic-decoding candidate prons.'.format(reference_selected, g2p_selected, phonetic_decoding_selected), file=sys.stderr) 
     return learned_lexicon
 
-def WriteEditsAndSummary(args, learned_lexicon, ref_lexicon, phone_decoding_lexicon, g2p_lexicon, counts, stats):
+def WriteEditsAndSummary(args, learned_lexicon, ref_lexicon, phonetic_decoding_lexicon, g2p_lexicon, counts, stats):
     # Note that learned_lexicon and ref_lexicon are dicts of sets of prons, while the other two lexicons are sets of (word, pron) pairs.
-    thr = 3
+    threshold = 3
     words = [defaultdict(set) for i in range(4)] # "words" contains four bins, where we
-    # classify each word into, according to whether it's count > thr,
+    # classify each word into, according to whether it's count > threshold,
     # and whether it's OOVs w.r.t the reference lexicon.
 
     src = {}
     print("# Note: This file contains pronunciation info for words who have candidate"
-          "prons from G2P/phone-decoding accepted in the learned lexicon."
+          "prons from G2P/phonetic-decoding accepted in the learned lexicon."
           ", sorted by their counts in acoustic training data, "
           ,file=args.ref_lexicon_edits_handle)
     print("# 1st Col: source of the candidate pron: G(2P) / P(hone-decoding) / R(eference)."
@@ -339,7 +338,7 @@ def WriteEditsAndSummary(args, learned_lexicon, ref_lexicon, phone_decoding_lexi
         flags = ['0' for i in range(3)] # "flags" contains three binary indicators, 
         # indicating where this word's pronunciations come from.
         for pron in learned_lexicon[word]:
-            if word in phone_decoding_lexicon and pron in phone_decoding_lexicon[word]:
+            if word in phonetic_decoding_lexicon and pron in phonetic_decoding_lexicon[word]:
                 flags[0] = '1'
                 src[(word, pron)] = 'P'
             if word in ref_lexicon and pron in ref_lexicon[word]:
@@ -356,12 +355,12 @@ def WriteEditsAndSummary(args, learned_lexicon, ref_lexicon, phone_decoding_lexi
                     break
             if not all_ref_prons_accepted or flags[0] == '1' or flags[2] == '1':
                 words_to_edit.append((word, counts[word]))
-            if count > thr:
+            if count > threshold:
                 words[0][flags[0] + flags[1] + flags[2]].add(word)
             else:
                 words[1][flags[0] + flags[1] + flags[2]].add(word)
         else:
-            if count > thr: 
+            if count > threshold: 
                 words[2][flags[0] + flags[2]].add(word)
             else:
                 words[3][flags[0] + flags[2]].add(word)
@@ -375,42 +374,41 @@ def WriteEditsAndSummary(args, learned_lexicon, ref_lexicon, phone_decoding_lexi
         for pron in ref_lexicon[word]:
             if pron not in learned_lexicon[word]:
                 soft_count = stats.get((word, pron), 0)
-                print('R {} | N | {} {:.1f%} | '.format(soft_count, pron), 
-                      file=args.ref_lexicon_edits_handle)
-    print("Here are the words whose reference pron candidates were all declined", words[0]['100'])
-    print("-------------------------------------------------Summary------------------------------------------")
-    print("In the learned lexicon, out of those", len(ref_lexicon), "words from the vocab of the reference lexicon:") 
-    print("  For those frequent words whose counts in the training text > ", thr, ":") 
+                print('R  | N |  {:.2f} | {} '.format(soft_count, pron), file=args.ref_lexicon_edits_handle)
+    print("Here are the words whose reference pron candidates were all declined", words[0]['100'], file=sys.stderr)
+    print("-------------------------------------------------Summary------------------------------------------", file=sys.stderr)
+    print("In the learned lexicon, out of those", len(ref_lexicon), "words from the vocab of the reference lexicon:", file=sys.stderr) 
+    print("  For those frequent words whose counts in the training text > ", threshold, ":", file=sys.stderr) 
     num_freq_ivs_from_all_sources = len(words[0]['111']) + len(words[0]['110']) + len(words[0]['011'])
-    num_freq_ivs_from_g2p_or_phone_decoding = len(words[0]['101']) + len(words[0]['001']) + len(words[0]['100'])
+    num_freq_ivs_from_g2p_or_phonetic_decoding = len(words[0]['101']) + len(words[0]['001']) + len(words[0]['100'])
     num_freq_ivs_from_ref = len(words[0]['010'])
     num_infreq_ivs_from_all_sources = len(words[1]['111']) + len(words[1]['110']) + len(words[1]['011'])
-    num_infreq_ivs_from_g2p_or_phone_decoding = len(words[1]['101']) + len(words[1]['001']) + len(words[1]['100'])
+    num_infreq_ivs_from_g2p_or_phonetic_decoding = len(words[1]['101']) + len(words[1]['001']) + len(words[1]['100'])
     num_infreq_ivs_from_ref = len(words[1]['010'])
-    print(' {} words\' selected prons came from the reference lexicon, G2P/phone-decoding.'.format(num_freq_ivs_from_all_sources))
-    print(' {} words\' selected prons come from G2P/phone-decoding-generated.'.format(num_freq_ivs_from_g2p_or_phone_decoding)) 
-    print(' {} words\' selected prons came from the reference lexicon only.'.format(num_freq_ivs_from_ref)) 
-    print('  For those words whose counts in the training text <= {}:'.format(thr)) 
-    print(' {} words\' selected prons came from the reference lexicon, G2P/phone-decoding.'.format(num_infreq_ivs_from_all_sources))
-    print(' {} words\' selected prons come from G2P/phone-decoding-generated.'.format(num_infreq_ivs_from_g2p_or_phone_decoding)) 
-    print(' {} words\' selected prons came from the reference lexicon only.'.format(num_infreq_ivs_from_ref)) 
-    print("---------------------------------------------------------------------------------------------------")
+    print(' {} words\' selected prons came from the reference lexicon, G2P/phonetic-decoding.'.format(num_freq_ivs_from_all_sources), file=sys.stderr)
+    print(' {} words\' selected prons come from G2P/phonetic-decoding-generated.'.format(num_freq_ivs_from_g2p_or_phonetic_decoding), file=sys.stderr) 
+    print(' {} words\' selected prons came from the reference lexicon only.'.format(num_freq_ivs_from_ref), file=sys.stderr) 
+    print('  For those words whose counts in the training text <= {}:'.format(threshold), file=sys.stderr) 
+    print(' {} words\' selected prons came from the reference lexicon, G2P/phonetic-decoding.'.format(num_infreq_ivs_from_all_sources), file=sys.stderr)
+    print(' {} words\' selected prons come from G2P/phonetic-decoding-generated.'.format(num_infreq_ivs_from_g2p_or_phonetic_decoding), file=sys.stderr) 
+    print(' {} words\' selected prons came from the reference lexicon only.'.format(num_infreq_ivs_from_ref), file=sys.stderr) 
+    print("---------------------------------------------------------------------------------------------------", file=sys.stderr)
     num_oovs = len(learned_lexicon) - len(ref_lexicon)
     num_freq_oovs_from_both_sources = len(words[2]['11'])
-    num_freq_oovs_from_phone_decoding = len(words[2]['10'])
+    num_freq_oovs_from_phonetic_decoding = len(words[2]['10'])
     num_freq_oovs_from_g2p = len(words[2]['01'])
     num_infreq_oovs_from_both_sources = len(words[3]['11'])
-    num_infreq_oovs_from_phone_decoding = len(words[3]['10'])
+    num_infreq_oovs_from_phonetic_decoding = len(words[3]['10'])
     num_infreq_oovs_from_g2p = len(words[3]['01'])
-    print('  In the learned lexicon, out of those {} OOV words (w.r.t the reference lexicon):'.format(num_oovs))
-    print('  For those words whose counts in the training text > {}:'.format(thr))
-    print('    {} words\' selected prons came from G2P and phone-decoding.'.format(num_freq_oovs_from_both_sources))
-    print('    {} words\' selected prons came from phone decoding only.'.format(num_freq_oovs_from_phone_decoding)) 
-    print('    {} words\' selected prons came from G2P only.'.format(num_freq_oovs_from_g2p)) 
-    print('  For those words whose counts in the training text <= {}:'.format(thr)) 
-    print('    {} words\' selected prons came from G2P and phone-decoding.'.format(num_infreq_oovs_from_both_sources))
-    print('    {} words\' selected prons came from phone decoding only.'.format(num_infreq_oovs_from_phone_decoding)) 
-    print('    {} words\' selected prons came from G2P only.'.format(num_infreq_oovs_from_g2p)) 
+    print('  In the learned lexicon, out of those {} OOV words (w.r.t the reference lexicon):'.format(num_oovs), file=sys.stderr)
+    print('  For those words whose counts in the training text > {}:'.format(threshold), file=sys.stderr)
+    print('    {} words\' selected prons came from G2P and phonetic-decoding.'.format(num_freq_oovs_from_both_sources), file=sys.stderr)
+    print('    {} words\' selected prons came from phonetic decoding only.'.format(num_freq_oovs_from_phonetic_decoding), file=sys.stderr) 
+    print('    {} words\' selected prons came from G2P only.'.format(num_freq_oovs_from_g2p), file=sys.stderr) 
+    print('  For those words whose counts in the training text <= {}:'.format(threshold), file=sys.stderr) 
+    print('    {} words\' selected prons came from G2P and phonetic-decoding.'.format(num_infreq_oovs_from_both_sources), file=sys.stderr)
+    print('    {} words\' selected prons came from phonetic decoding only.'.format(num_infreq_oovs_from_phonetic_decoding), file=sys.stderr) 
+    print('    {} words\' selected prons came from G2P only.'.format(num_infreq_oovs_from_g2p), file=sys.stderr) 
 
 def WriteLearnedLexiconOov(learned_lexicon, ref_lexicon, file_handle):
     for word, prons in learned_lexicon.iteritems():
@@ -426,22 +424,22 @@ def Main():
     counts = ReadWordCounts(args.word_counts_file_handle)
     ref_lexicon = ReadLexicon(args, args.ref_lexicon_handle, counts)
     g2p_lexicon = ReadLexicon(args, args.g2p_lexicon_handle, counts)
-    phone_decoding_lexicon =  ReadLexicon(args, args.phone_decoding_handle, counts)
+    phonetic_decoding_lexicon =  ReadLexicon(args, args.phonetic_decoding_lexicon_handle, counts)
     stats = ReadPronStats(args.pron_stats_file_handle)
-    phone_decoding_lexicon, stats = FilterPhoneDecodingLexicon(args, phone_decoding_lexicon, stats)
+    phonetic_decoding_lexicon, stats = FilterPhoneticDecodingLexicon(args, phonetic_decoding_lexicon, stats)
    
     # Compute prior counts
-    prior_counts = ComputePriorCounts(args, counts, ref_lexicon, g2p_lexicon, phone_decoding_lexicon)
+    prior_counts = ComputePriorCounts(args, counts, ref_lexicon, g2p_lexicon, phonetic_decoding_lexicon)
     # Compute posteriors, and then select prons to construct the learned lexicon.
-    posteriors = ComputePosteriors(args, stats, ref_lexicon, g2p_lexicon, phone_decoding_lexicon, prior_counts)
+    posteriors = ComputePosteriors(args, stats, ref_lexicon, g2p_lexicon, phonetic_decoding_lexicon, prior_counts)
 
     # Select prons to construct the learned lexicon.
-    learned_lexicon = SelectPronsBayesian(args, counts, posteriors, ref_lexicon, g2p_lexicon, phone_decoding_lexicon)
+    learned_lexicon = SelectPronsBayesian(args, counts, posteriors, ref_lexicon, g2p_lexicon, phonetic_decoding_lexicon)
     
     # Write the learned prons for words out of the ref. vocab into learned_lexicon_oov.
     WriteLearnedLexiconOov(learned_lexicon, ref_lexicon, args.learned_lexicon_oov_handle)
-    # Edits will be printed into ref_lexicon_edits, and the summary will be printed into stdout.
-    WriteEditsAndSummary(args, learned_lexicon, ref_lexicon, phone_decoding_lexicon, g2p_lexicon, counts, stats)
+    # Edits will be printed into ref_lexicon_edits, and the summary will be printed into stderr.
+    WriteEditsAndSummary(args, learned_lexicon, ref_lexicon, phonetic_decoding_lexicon, g2p_lexicon, counts, stats)
 
 if __name__ == "__main__":
     Main()

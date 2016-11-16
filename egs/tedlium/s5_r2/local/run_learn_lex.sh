@@ -45,13 +45,12 @@ variants_prob_mass=0.6
 # we continue to pick up reference candidates with highest posteriors
 # until the total prob mass hit this amount (must >= variants_prob_mass).
 variants_prob_mass_ref=0.95
-# Intermediate outputs of the lexicon learning stage will be put into
-# exp/tri3_${affix}_work
-affix="lex"
+# Intermediate outputs of the lexicon learning stage will be put into dir
+dir=exp/tri3_lex_work
 nj=35
 decode_nj=30
-lexlearn_stage=0
 stage=0
+lexlearn_stage=0
 
 . utils/parse_options.sh # accept options
 
@@ -67,25 +66,25 @@ if [ $stage -le 0 ]; then
     g2p_mdl_dir=exp/g2p
     steps/dict/train_g2p.sh --cmd "$decode_cmd --mem 4G" $ref_dict/lexicon.txt $g2p_mdl_dir || exit 1;
   fi
-  awk '{for (n=2;n<=NF;n++) vocab[$n]=1;} END{for (w in vocab) printf "%s %d\n",w;}' \
-    $data/text | sort > $data/train_vocab.txt || exit 1;
+  awk '{for (n=2;n<=NF;n++) vocab[$n]=1;} END{for (w in vocab) printf "%s\n",w;}' \
+    $data/text | sort -u > $data/train_vocab.txt || exit 1;
   awk 'NR==FNR{a[$1] = 1; next} {if(!($1 in a)) print $1}' $ref_vocab \
     $data/train_vocab.txt | sort > $data/oov_train.txt || exit 1;
   steps/dict/apply_g2p.sh --var-counts 4 $data/oov_train.txt \
     $g2p_mdl_dir exp/g2p/oov_lex_train || exit 1;
-  cat exp/g2p/oov_lex_train/lexicon.lex | awk '{print $1,$3}' | \
+  cat exp/g2p/oov_lex_train/lexicon.lex | cut -f1,3 | \
     tr -s '\t' ' ' | sort | uniq > $data/lexicon_oov_g2p.txt || exit 1;
 fi
 
 # Learn a lexicon based on the acoustic training data and the reference lexicon.
 if [ $stage -le 1 ]; then
-  steps/dict/learn_lexicon.sh --g2p-pron-candidates "$data/lexicon_oov_g2p.txt" \
+  steps/dict/learn_lexicon.sh --lexicon-g2p "$data/lexicon_oov_g2p.txt" \
     --min-prob $min_prob --variants-prob-mass $variants_prob_mass \
-    --variants-prob-mass2 $variants_prob_mass2  \
+    --variants-prob-mass-ref $variants_prob_mass_ref  \
     --prior-counts-tot $prior_counts_tot --prior-mean $prior_mean \
-    --affix $affix --stage $lexlearn_stage \
-    --nj 60 --oov-symbol $oov_symbol --retrain-src-mdl false \
-    $ref_dict $ref_vocab $data exp/tri3 data/lang data/local/dict_learned_nosp || exit 1;
+    --stage $lexlearn_stage --nj 60 --oov-symbol $oov_symbol --retrain-src-mdl true \
+    $ref_dict $ref_vocab $data exp/tri3 data/lang data/local/dict_learned_nosp \
+    $dir || exit 1;
 fi
 
 # Add pronounciation probs to the learned lexicon.
@@ -133,3 +132,5 @@ if [ $stage -le 3 ]; then
   ) &
   done
 fi
+
+wait

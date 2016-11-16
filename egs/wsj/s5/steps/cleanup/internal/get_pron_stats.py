@@ -29,15 +29,19 @@ def GetArgs():
                                      epilog = "See steps/cleanup/debug_lexicon.sh for example")
     parser.add_argument("ctm_prons_file", metavar = "<ctm-prons-file>", type = str,
                         help = "File containing word-pronounciation alignments obtained from a ctm file; "
+                        "It represents phonetic decoding results, aligned with word boundaries obtained"
+                        "from forced alignments."
                         "each line must be <utt_id> <word> <phones>")
     parser.add_argument("silence_file", metavar = "<silphone-file>", type = str,
                         help = "File containing a list of silence phones.")
     parser.add_argument("optional_silence_file", metavar = "<optional_silence>", type = str,
-                        help = "File containing the optional silence phone. We'll be replacing empty prons by this.")
+                        help = "File containing the optional silence phone. We'll be replacing empty prons by this,"
+                        "because empty prons would cause a problem for lattice word alignment.")
     parser.add_argument("non_scored_words_file", metavar = "<non-scored-words-file>", type = str,
                         help = "File containing a list of non-scored words.")
     parser.add_argument("stats_file", metavar = "<stats-file>", type = str,
-                        help = "Write accumulated statitistics to this file;"
+                        help = "Write accumulated statitistics to this file; each line represents how many times "
+                        "a specific word-pronunciation pair appears in the phonetic decoding results (ctm_pron_file)."
                         "each line is <count> <word> <phones>")
     print (' '.join(sys.argv), file=sys.stderr)
 
