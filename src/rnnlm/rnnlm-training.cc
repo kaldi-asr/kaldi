@@ -78,7 +78,21 @@ NnetExample LmNnetTrainer::ProcessEgInputs(NnetExample eg,
 //                        kUndefined);
 //      old_input_.CopyFromGeneralMat(io.features);
 //
+/*
+      Matrix<BaseFloat> test_input(old_input_.NumRows(), old_input_.NumCols());
+      old_input_.CopyToMat(&test_input);
+
+      Matrix<BaseFloat> test_output(io.features.NumRows(),
+                                    a.OutputDim());
+      a.Propagate(NULL, test_input, &test_output);
+*/
       a.Propagate(NULL, old_input_, &new_input_);
+
+//      test_output.AddMat(-1, new_input_);
+//
+//      BaseFloat i1 = test_output.FrobeniusNorm();
+//        KALDI_LOG << "debug forward-prop: the 1st  number should be 0: " << i1; 
+
 //      a.Propagate(NULL, io.features.GetSparseMatrix(), &new_input_);
       //        SparseMatrix<BaseFloat> sp = io.features.GetSparseMatrix();
       //
@@ -129,21 +143,29 @@ void LmNnetTrainer::Train(const NnetExample &eg) {
 
     Matrix<BaseFloat> place_holder;
 
-    LmAffineComponent *TODO = dynamic_cast<LmAffineComponent*>(delta_nnet_->I()->Copy());
+//    LmAffineComponent *TODO = dynamic_cast<LmAffineComponent*>(delta_nnet_->I()->Copy());
+
+//    BaseFloat i1 = TODO->DotProduct(*TODO);
 
     nnet_->I()->Backprop("", NULL, old_input_, place_holder,
                      first_deriv, delta_nnet_->I(), NULL);
 
-    nnet_->I()->Backprop("", NULL, old_input_, place_holder,
-                     first_deriv, TODO, NULL);
-
-    BaseFloat i1 = TODO->DotProduct(*TODO);
-
-    TODO->Add(-1, *delta_nnet_->I());
-
-    BaseFloat i2 = TODO->DotProduct(*TODO);
-    KALDI_LOG << "the 2nd number should be 0: " << i1 << " " << i2;
-
+    // TODO(hxu) some debug code - convert to Matrix and call the original backprop
+    // and compare the diff
+//    Matrix<BaseFloat> regular_mat(old_input_.NumRows(), old_input_.NumCols());
+//
+//    old_input_.CopyToMat(&regular_mat);
+//
+//    nnet_->I()->Backprop("", NULL, regular_mat, place_holder,
+//                     first_deriv, TODO, NULL);
+//
+//    BaseFloat i2 = TODO->DotProduct(*TODO);
+//
+//    TODO->Add(-1, *delta_nnet_->I());
+//
+//    BaseFloat i3 = TODO->DotProduct(*TODO);
+//    KALDI_LOG << "debug backprop: the 1st and 3rd number should be 0: " << i1 << " " << i2 << " " << i3;
+//
 
   }
 

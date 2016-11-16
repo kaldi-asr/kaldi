@@ -18,14 +18,14 @@ num_iters=40
 
 num_train_frames_combine=10000 # # train frames for the above.                  
 num_frames_diagnostic=2000 # number of frames for "compute_prob" jobs  
-num_archives=8
+num_archives=20
 
 shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of the samples
 minibatch_size=128
 
 hidden_dim=200
-initial_learning_rate=0.001
-final_learning_rate=0.0001
+initial_learning_rate=0.01
+final_learning_rate=0.001
 learning_rate_decline_factor=1.03
 
 # LSTM parameters
@@ -47,7 +47,7 @@ id=
 . path.sh
 . parse_options.sh || exit 1;
 
-outdir=data/sdm1/new-rnnlm-$type-$initial_learning_rate-$final_learning_rate-$learning_rate_decline_factor-$minibatch_size-$hidden_dim-$num_archives-$id
+outdir=data/sdm1/$type-$initial_learning_rate-$final_learning_rate-$learning_rate_decline_factor-$minibatch_size-$hidden_dim-$num_archives-$id
 srcdir=data/local/dict
 
 set -e
@@ -146,41 +146,41 @@ if [ $stage -le -2 ]; then
 
   if [ "$type" == "rnn" ]; then
   cat > $outdir/config <<EOF
-  input-dim=$num_words_in output-dim=$hidden_dim
-  input-dim=$hidden_dim output-dim=$num_words_out
-  dim=$num_words_out
-
-  input-node name=input dim=$hidden_dim
+  input-node name=input dim=$num_words_in
+  component name=first_affine type=NaturalGradientAffineComponent input-dim=$[$num_words_in+$hidden_dim] output-dim=$hidden_dim  
   component name=first_nonlin type=SigmoidComponent dim=$hidden_dim
   component name=first_renorm type=NormalizeComponent dim=$hidden_dim target-rms=1.0
-  component name=hidden_affine type=AffineComponent input-dim=$hidden_dim output-dim=$hidden_dim
+  component name=final_affine type=NaturalGradientAffineComponent input-dim=$hidden_dim output-dim=$num_words_out
+  component name=final_log_softmax type=LogSoftmaxComponent dim=$num_words_out
 
 #Component nodes
-  component-node name=first_nonlin component=first_nonlin  input=Sum(input, hidden_affine)
+  component-node name=first_affine component=first_affine  input=Append(input, IfDefined(Offset(first_renorm, -1)))
+  component-node name=first_nonlin component=first_nonlin  input=first_affine
   component-node name=first_renorm component=first_renorm  input=first_nonlin
-  component-node name=hidden_affine component=hidden_affine  input=IfDefined(Offset(first_renorm, -1))
-  output-node    name=output input=first_renorm objective=linear
+  component-node name=final_affine component=final_affine  input=first_renorm
+  component-node name=final_log_softmax component=final_log_softmax input=final_affine
+  output-node    name=output input=final_log_softmax objective=linear
 EOF
-#  elif [ "$type" == "lstm" ]; then
-#    steps/rnnlm/make_lstm_configs.py \
-#      --splice-indexes "$splice_indexes " \
-#      --num-lstm-layers $num_lstm_layers \
-#      --feat-dim $num_words_in \
-#      --cell-dim $cell_dim \
-#      --hidden-dim $hidden_dim \
-#      --recurrent-projection-dim $recurrent_projection_dim \
-#      --non-recurrent-projection-dim $non_recurrent_projection_dim \
-#      --norm-based-clipping $norm_based_clipping \
-#      --clipping-threshold $clipping_threshold \
-#      --num-targets $num_words_out \
-#      --label-delay $label_delay \
-#     $outdir/configs || exit 1;
-#    cp $outdir/configs/layer1.config $outdir/config
+  elif [ "$type" == "lstm" ]; then
+    steps/rnnlm/make_lstm_configs.py \
+      --splice-indexes "$splice_indexes " \
+      --num-lstm-layers $num_lstm_layers \
+      --feat-dim $num_words_in \
+      --cell-dim $cell_dim \
+      --hidden-dim $hidden_dim \
+      --recurrent-projection-dim $recurrent_projection_dim \
+      --non-recurrent-projection-dim $non_recurrent_projection_dim \
+      --norm-based-clipping $norm_based_clipping \
+      --clipping-threshold $clipping_threshold \
+      --num-targets $num_words_out \
+      --label-delay $label_delay \
+     $outdir/configs || exit 1;
+    cp $outdir/configs/layer1.config $outdir/config
   fi
 fi
 
 if [ $stage -le 0 ]; then
-  rnnlm-init --binary=false $outdir/config $outdir/0.mdl
+  nnet3-init --binary=false $outdir/config $outdir/0.mdl
 fi
 
 cat data/local/dict/lexicon.txt | awk '{print $1}' > $outdir/wordlist.all.1
@@ -208,25 +208,21 @@ if [ $stage -le $num_iters ]; then
     echo for iter $n, training on archive $this_archive, learning rate = $learning_rate
     [ $n -ge $stage ] && (
 
-        $cuda_cmd $outdir/log/train.rnnlm.$n.log rnnlm-train \
-        --max-param-change=$max_param_change "rnnlm-copy --learning-rate=$learning_rate $outdir/$[$n-1].mdl -|" \
+        $cuda_cmd $outdir/log/train.rnnlm.$n.log nnet3-train \
+        --max-param-change=$max_param_change "nnet3-copy --learning-rate=$learning_rate $outdir/$[$n-1].mdl -|" \
         "ark:nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$n ark:$outdir/egs/train.$this_archive.egs ark:- | nnet3-merge-egs --minibatch-size=$minibatch_size ark:- ark:- |" $outdir/$n.mdl
 
-        false && (
         if [ $n -gt 0 ]; then
           $cmd $outdir/log/progress.$n.log \
             nnet3-show-progress --use-gpu=no $outdir/$[$n-1].mdl $outdir/$n.mdl \
             "ark:nnet3-merge-egs ark:$outdir/train_diagnostic.egs ark:-|" '&&' \
             nnet3-info $outdir/$n.mdl &
         fi
-        )
 
       t=`grep "^# Accounting" $outdir/log/train.rnnlm.$n.log | sed "s/=/ /g" | awk '{print $4}'`
       w=`wc -w $outdir/splitted-text/train.$this_archive.txt | awk '{print $1}'`
       speed=`echo $w $t | awk '{print $1/$2}'`
-      echo Processing speed: $speed words per second \($w words in $t seconds\)
-
-      grep parse $outdir/log/train.rnnlm.$n.log | awk -F '-' '{print "Training PPL is " exp($NF)}'
+      echo Processing speed: $speed words per second
 
     )
 
@@ -235,7 +231,7 @@ if [ $stage -le $num_iters ]; then
       learning_rate=$final_learning_rate
     fi
 
-    false && [ $n -ge $stage ] && (
+    [ $n -ge $stage ] && (
 
       $decode_cmd $outdir/log/compute_prob_train.rnnlm.$n.log \
         nnet3-compute-prob $outdir/$n.mdl ark:$outdir/train.subset.egs &

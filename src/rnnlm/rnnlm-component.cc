@@ -186,15 +186,17 @@ void LmAffineComponent::UpdateSimple(const SparseMatrix<BaseFloat> &in_value,
   for (size_t i = 0; i < sp.NumRows(); i++) {
     const SparseVector<BaseFloat> &sv = sp.Row(i);
     int non_zero_index = -1;
-    sv.Max(&non_zero_index);
+    ApproxEqual(sv.Max(&non_zero_index), 1.0);
     vis.push_back(non_zero_index);
   }
+  KALDI_ASSERT(vis.size() == sp.NumRows());
 
   for (int i = 0; i < vis.size(); i++) {
     MatrixIndexT j = vis[i];
-    // in_value(i, j) = 1
+    // i.e. in_value (i, j) = 1
+
     for (int k = 0; k < out_deriv.NumCols(); k++) {
-      linear_params_(k, j) += out_deriv(k, i);
+      linear_params_(k, j) += learning_rate_ * out_deriv(i, k);
 //      KALDI_LOG << k << ", " << j << " added " << out_deriv(k, i);
     }
   }
