@@ -277,6 +277,26 @@ int32 TransitionModel::TransitionStateToPdf(int32 trans_state) const {
   return tuples_[trans_state-1].pdf;
 }
 
+int32 TransitionModel::TransitionStateToForwardPdfClass(
+    int32 trans_state) const {
+  KALDI_ASSERT(static_cast<size_t>(trans_state) <= tuples_.size());
+  const Tuple &t = tuples_[trans_state-1];
+  const HmmTopology::TopologyEntry &entry = topo_.TopologyForPhone(t.phone);
+  KALDI_ASSERT(static_cast<size_t>(t.hmm_state) < entry.size());
+  return entry[t.hmm_state].pdf_class;
+}
+
+
+int32 TransitionModel::TransitionStateToSelfLoopPdfClass(
+    int32 trans_state) const {
+  KALDI_ASSERT(static_cast<size_t>(trans_state) <= tuples_.size());
+  const Tuple &t = tuples_[trans_state-1];
+  const HmmTopology::TopologyEntry &entry = topo_.TopologyForPhone(t.phone);
+  KALDI_ASSERT(static_cast<size_t>(t.hmm_state) < entry.size());
+  return entry[t.hmm_state].self_loop_pdf_class;
+}
+
+
 int32 TransitionModel::TransitionStateToSelfLoopPdf(int32 trans_state) const {
   KALDI_ASSERT(static_cast<size_t>(trans_state) <= tuples_.size());
   return tuples_[trans_state-1].self_loop_pdf;
@@ -321,17 +341,6 @@ bool TransitionModel::IsFinal(int32 trans_id) const {
 }
 
 
-bool TransitionModel::IsSelfLoop(int32 trans_id) const {
-  KALDI_ASSERT(static_cast<size_t>(trans_id) < id2state_.size());
-  int32 trans_state = id2state_[trans_id];
-  int32 trans_index = trans_id - state2id_[trans_state];
-  const Tuple &tuple = tuples_[trans_state-1];
-  int32 phone = tuple.phone, hmm_state = tuple.hmm_state;
-  const HmmTopology::TopologyEntry &entry = topo_.TopologyForPhone(phone);
-  KALDI_ASSERT(static_cast<size_t>(hmm_state) < entry.size());
-  return (static_cast<size_t>(trans_index) < entry[hmm_state].transitions.size()
-          && entry[hmm_state].transitions[trans_index].first == hmm_state);
-}
 
 int32 TransitionModel::SelfLoopOf(int32 trans_state) const {  // returns the self-loop transition-id,
   KALDI_ASSERT(static_cast<size_t>(trans_state-1) < tuples_.size());
@@ -763,18 +772,12 @@ int32 TransitionModel::TransitionIdToPdfClass(int32 trans_id) const {
   const Tuple &t = tuples_[trans_state-1];
   const HmmTopology::TopologyEntry &entry = topo_.TopologyForPhone(t.phone);
   KALDI_ASSERT(static_cast<size_t>(t.hmm_state) < entry.size());
-  return entry[t.hmm_state].pdf_class;
+  if (IsSelfLoop(trans_id))
+    return entry[t.hmm_state].self_loop_pdf_class;
+  else
+    return entry[t.hmm_state].pdf_class;
 }
 
-int32 TransitionModel::TransitionIdToSelfLoopPdfClass(int32 trans_id) const {
-  KALDI_ASSERT(trans_id != 0 && static_cast<size_t>(trans_id) < id2state_.size());
-  int32 trans_state = id2state_[trans_id];
-
-  const Tuple &t = tuples_[trans_state-1];
-  const HmmTopology::TopologyEntry &entry = topo_.TopologyForPhone(t.phone);
-  KALDI_ASSERT(static_cast<size_t>(t.hmm_state) < entry.size());
-  return entry[t.hmm_state].self_loop_pdf_class;
-}
 
 int32 TransitionModel::TransitionIdToHmmState(int32 trans_id) const {
   KALDI_ASSERT(trans_id != 0 && static_cast<size_t>(trans_id) < id2state_.size());
@@ -868,5 +871,30 @@ bool TransitionModel::Compatible(const TransitionModel &other) const {
           state2id_ == other.state2id_ && id2state_ == other.id2state_
           && num_pdfs_ == other.num_pdfs_);
 }
+
+bool TransitionModel::IsSelfLoop(int32 trans_id) const {
+  KALDI_ASSERT(static_cast<size_t>(trans_id) < id2state_.size());
+  int32 trans_state = id2state_[trans_id];
+  int32 trans_index = trans_id - state2id_[trans_state];
+  const Tuple &tuple = tuples_[trans_state-1];
+  int32 phone = tuple.phone, hmm_state = tuple.hmm_state;
+  const HmmTopology::TopologyEntry &entry = topo_.TopologyForPhone(phone);
+  KALDI_ASSERT(static_cast<size_t>(hmm_state) < entry.size());
+  return (static_cast<size_t>(trans_index) < entry[hmm_state].transitions.size()
+          && entry[hmm_state].transitions[trans_index].first == hmm_state);
+}
+
+int32 TransitionModel::TransitionIdToPdf(int32 trans_id) const {
+  // If a lot of time is spent here we may create an extra array
+  // to handle this.
+  KALDI_ASSERT(static_cast<size_t>(trans_id) < id2state_.size() &&
+               "Likely graph/model mismatch (graph built from wrong model?)");
+  int32 trans_state = id2state_[trans_id];
+  if (IsSelfLoop(trans_id))
+    return tuples_[trans_state-1].self_loop_pdf;
+  else
+    return tuples_[trans_state-1].pdf;
+}
+
 
 } // End namespace kaldi

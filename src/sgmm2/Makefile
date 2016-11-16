@@ -12,8 +12,8 @@ OBJFILES = am-sgmm2.o estimate-am-sgmm2.o estimate-am-sgmm2-ebw.o fmllr-sgmm2.o 
 
 LIBNAME = kaldi-sgmm2
 
-ADDLIBS = ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
+ADDLIBS = ../hmm/kaldi-hmm.a ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
           ../tree/kaldi-tree.a ../util/kaldi-util.a ../thread/kaldi-thread.a \
-          ../matrix/kaldi-matrix.a ../base/kaldi-base.a 
+          ../matrix/kaldi-matrix.a ../base/kaldi-base.a
 
 include ../makefiles/default_rules.mk

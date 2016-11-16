@@ -1,6 +1,8 @@
 #!/bin/bash
 
-# this script is a modified version of swbd/run_tdnn_5f.sh
+# This is modified from run_tdnn_5f.sh, to use the old topology, as a baseline
+# to test the modified transition-model code (by which we hope to be able to
+# create more compact decoding graphs for chain models).
 
 set -e
 
@@ -8,7 +10,7 @@ set -e
 stage=0
 train_stage=-10
 get_egs_stage=-10
-dir=exp/chain/tdnn_5f
+dir=exp/chain/tdnn_5g
 
 # training options
 num_epochs=12
@@ -43,8 +45,8 @@ fi
 # run those things.
 
 ali_dir=exp/tri3b_ali
-treedir=exp/chain/tri4_2y_tree
-lang=data/lang_chain_2y
+treedir=exp/chain/tri4_5g_tree
+lang=data/lang_chain_5g
 
 local/online/run_nnet2_common.sh --stage $stage || exit 1;
 
@@ -67,7 +69,7 @@ if [ $stage -le 5 ]; then
   nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
   # Use our special topology... note that later on may have to tune this
   # topology.
-  steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >$lang/topo
+  steps/nnet3/chain/gen_topo_orig.py $nonsilphonelist $silphonelist >$lang/topo
 fi
 
 if [ $stage -le 6 ]; then

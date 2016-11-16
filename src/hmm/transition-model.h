@@ -147,15 +147,16 @@ class TransitionModel {
   int32 TransitionIdToTransitionIndex(int32 trans_id) const;
   int32 TransitionStateToPhone(int32 trans_state) const;
   int32 TransitionStateToHmmState(int32 trans_state) const;
+  int32 TransitionStateToForwardPdfClass(int32 trans_state) const;
+  int32 TransitionStateToSelfLoopPdfClass(int32 trans_state) const;
   int32 TransitionStateToPdf(int32 trans_state) const;
   int32 TransitionStateToSelfLoopPdf(int32 trans_state) const;
   int32 SelfLoopOf(int32 trans_state) const;  // returns the self-loop transition-id, or zero if
   // this state doesn't have a self-loop.
 
-  inline int32 TransitionIdToPdf(int32 trans_id) const;
+  int32 TransitionIdToPdf(int32 trans_id) const;
   int32 TransitionIdToPhone(int32 trans_id) const;
   int32 TransitionIdToPdfClass(int32 trans_id) const;
-  int32 TransitionIdToSelfLoopPdfClass(int32 trans_id) const;
   int32 TransitionIdToHmmState(int32 trans_id) const;
 
   /// @}
@@ -316,15 +317,6 @@ class TransitionModel {
   DISALLOW_COPY_AND_ASSIGN(TransitionModel);
 
 };
-
-inline int32 TransitionModel::TransitionIdToPdf(int32 trans_id) const {
-  // If a lot of time is spent here we may create an extra array
-  // to handle this.
-  KALDI_ASSERT(static_cast<size_t>(trans_id) < id2state_.size() &&
-               "Likely graph/model mismatch (graph built from wrong model?)");
-  int32 trans_state = id2state_[trans_id];
-  return tuples_[trans_state-1].pdf;
-}
 
 /// Works out which pdfs might correspond to the given phones.  Will return true
 /// if these pdfs correspond *just* to these phones, false if these pdfs are also

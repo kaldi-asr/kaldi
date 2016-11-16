@@ -749,12 +749,15 @@ static inline void ConvertAlignmentForPhone(
   // the topologies and lengths match -> we can directly transfer
   // the alignment.
   for (int32 j = 0; j < alignment_size; j++) {
-    int32 old_tid = old_phone_alignment[j];
-    int32 pdf_class = old_trans_model.TransitionIdToPdfClass(old_tid);
-    int32 self_loop_pdf_class = old_trans_model.TransitionIdToSelfLoopPdfClass(old_tid);
+    int32 old_tid = old_phone_alignment[j],
+        old_tstate = old_trans_model.TransitionIdToTransitionState(old_tid);
+    int32 forward_pdf_class =
+        old_trans_model.TransitionStateToForwardPdfClass(old_tstate),
+        self_loop_pdf_class =
+        old_trans_model.TransitionStateToSelfLoopPdfClass(old_tstate);
     int32 hmm_state = old_trans_model.TransitionIdToHmmState(old_tid);
     int32 trans_idx = old_trans_model.TransitionIdToTransitionIndex(old_tid);
-    int32 new_pdf = pdf_ids[pdf_class];
+    int32 new_pdf = pdf_ids[forward_pdf_class];
     int32 new_self_loop_pdf = pdf_ids[self_loop_pdf_class];
     int32 new_trans_state =
         new_trans_model.TupleToTransitionState(new_central_phone, hmm_state,
