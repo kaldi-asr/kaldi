@@ -359,10 +359,14 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
         f.write(str(srand))
         f.close()
 
-    ComputeTrainCvProbabilities(dir, iter, egs_dir, run_opts)
+    ComputeTrainCvProbabilities(dir=dir, iter=iter, egs_dir=egs_dir,
+                                left_context=left_context, right_context=right_context,
+                                run_opts=run_opts)
 
     if iter > 0:
-        ComputeProgress(dir, iter, egs_dir, run_opts)
+        ComputeProgress(dir=dir, iter=iter, egs_dir=egs_dir,
+                        left_context=left_context, right_context=right_context,
+                        run_opts=run_opts)
 
     if iter > 0 and (iter <= (num_hidden_layers-1) * add_layers_period) and (iter % add_layers_period == 0):
 
@@ -578,14 +582,24 @@ def Train(args, run_opts):
 
             logger.info("On iteration {0}, learning rate is {1}.".format(iter, learning_rate(iter, current_num_jobs, num_archives_processed)))
 
-            TrainOneIteration(args.dir, iter, args.srand, egs_dir, current_num_jobs,
-                              num_archives_processed, num_archives,
-                              learning_rate(iter, current_num_jobs, num_archives_processed),
-                              args.minibatch_size, args.frames_per_eg,
-                              num_hidden_layers, args.add_layers_period,
-                              left_context, right_context,
-                              args.momentum, args.max_param_change,
-                              args.shuffle_buffer_size, run_opts)
+            TrainOneIteration(dir = args.dir,
+                              iter = iter,
+                              srand = args.srand,
+                              egs_dir = egs_dir,
+                              num_jobs = current_num_jobs,
+                              num_archives_processed = num_archives_processed,
+                              num_archives = num_archives,
+                              learning_rate = learning_rate(iter, current_num_jobs, num_archives_processed),
+                              minibatch_size = args.minibatch_size,
+                              frames_per_eg = args.frames_per_eg,
+                              num_hidden_layers = num_hidden_layers,
+                              add_layers_period = args.add_layers_period,
+                              left_context = left_context,
+                              right_context = right_context,
+                              momentum = args.momentum,
+                              max_param_change = args.max_param_change,
+                              shuffle_buffer_size = args.shuffle_buffer_size,
+                              run_opts = run_opts)
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain conditions
                 RemoveModel(args.dir, iter-2, num_iters, num_iters_combine,
@@ -604,12 +618,24 @@ def Train(args, run_opts):
 
     if args.stage <= num_iters:
         logger.info("Doing final combination to produce final.mdl")
-        CombineModels(args.dir, num_iters, num_iters_combine, egs_dir, run_opts)
+        CombineModels(dir = args.dir,
+                      num_iters = num_iters,
+                      num_iters_combine = num_iters_combine,
+                      egs_dir = egs_dir,
+                      left_context = left_context,
+                      right_context = right_context,
+                      run_opts = run_opts)
 
     if args.stage <= num_iters + 1:
         logger.info("Getting average posterior for purposes of adjusting the priors.")
-        avg_post_vec_file = ComputeAveragePosterior(args.dir, 'combined', egs_dir,
-                                num_archives, args.prior_subset_size, run_opts)
+        avg_post_vec_file = ComputeAveragePosterior(dir = args.dir,
+                                                    iter = 'combined',
+                                                    egs_dir = egs_dir,
+                                                    num_archives = num_archives,
+                                                    prior_subset_size = args.prior_subset_size,
+                                                    left_context = left_context,
+                                                    right_context = right_context,
+                                                    run_opts = run_opts)
 
         logger.info("Re-adjusting priors based on computed posteriors")
         combined_model = "{dir}/combined.mdl".format(dir = args.dir)
