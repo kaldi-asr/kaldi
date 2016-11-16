@@ -84,7 +84,7 @@ def GetArgs():
                         "if clipping-threshold=0 no clipping is done", default=30)
     parser.add_argument("--zeroing-threshold", type=float,
                         help="zeroing threshold used in BackpropTruncation components, "
-                        "if zeroing-threshold=0 no periodic zeroing is done", default=3.0)
+                        "if zeroing-threshold=0 no periodic zeroing is done", default=15.0)
     parser.add_argument("--zeroing-interval", type=int,
                         help="zeroing interval used in BackpropTruncation components", default=20)
     parser.add_argument("--self-repair-scale-nonlinearity", type=float,
