@@ -258,7 +258,7 @@ if ! $position_dependent_phones; then
     # We don't need to take into account the disambig symbol because we compose on
     # the right with this FST, and it doesn't appear on the output side.
     cat $dir/all_nonsil_phones | \
-      awk -v '{ph[$1]=1} END{ for (p in ph) { print 0,1,p,p; print 1,2,p,p; print 2,2,p,p; }
+      awk '{ph[$1]=1} END{ for (p in ph) { print 0,1,p,p; print 1,2,p,p; print 2,2,p,p; }
                  print 2,0.0; }' > $dir/constraint_fst.txt
   fi
 else

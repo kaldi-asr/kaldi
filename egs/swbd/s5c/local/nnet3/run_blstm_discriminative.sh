@@ -8,8 +8,7 @@ set -e
 # note: this relies on having a cluster that has plenty of CPUs as well as GPUs,
 # since the lattice generation runs in about real-time, so takes of the order of
 # 1000 hours of CPU time.
-# 
-. cmd.sh
+#
 
 
 stage=0
@@ -26,7 +25,7 @@ extra_right_context=40
 extra_left_context_initial=-1
 extra_right_context_final=-1
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -52,9 +51,9 @@ effective_learning_rate=0.0000125
 max_param_change=1
 num_jobs_nnet=4
 num_epochs=4
-regularization_opts=          # Applicable for providing --xent-regularize and --l2-regularize options 
+regularization_opts=          # Applicable for providing --xent-regularize and --l2-regularize options
 minibatch_size=64
-adjust_priors=true            # May need to be set to false 
+adjust_priors=true            # May need to be set to false
                               # because it does not help in some setups
 modify_learning_rates=true
 last_layer_factor=0.1
@@ -64,8 +63,8 @@ decode_start_epoch=1 # can be used to avoid decoding all epochs, e.g. if we deci
 
 if $use_gpu; then
   if ! cuda-compiled; then
-    cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+    cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.  Otherwise, call this script with --use-gpu false
 EOF
@@ -102,7 +101,7 @@ fi
 if [ -z "$lats_dir" ]; then
   lats_dir=${srcdir}_denlats
   if [ $stage -le 2 ]; then
-    nj=50  
+    nj=50
     # this doesn't really affect anything strongly, except the num-jobs for one of
     # the phases of get_egs_discriminative.sh below.
     num_threads_denlats=6
@@ -115,8 +114,8 @@ if [ -z "$lats_dir" ]; then
   fi
 fi
 
-model_left_context=`nnet3-am-info $srcdir/final.mdl | grep "left-context:" | awk '{print $2}'` 
-model_right_context=`nnet3-am-info $srcdir/final.mdl | grep "right-context:" | awk '{print $2}'` 
+model_left_context=`nnet3-am-info $srcdir/final.mdl | grep "left-context:" | awk '{print $2}'`
+model_right_context=`nnet3-am-info $srcdir/final.mdl | grep "right-context:" | awk '{print $2}'`
 
 left_context=$[model_left_context + extra_left_context]
 right_context=$[model_right_context + extra_right_context]
@@ -129,7 +128,7 @@ if [ -f $srcdir/frame_subsampling_factor ]; then
   frame_subsampling_opt="--frame-subsampling-factor $(cat $srcdir/frame_subsampling_factor)"
 fi
 
-cmvn_opts=`cat $srcdir/cmvn_opts` 
+cmvn_opts=`cat $srcdir/cmvn_opts`
 
 if [ -z "$degs_dir" ]; then
   degs_dir=${srcdir}_degs
@@ -166,7 +165,7 @@ if [ $stage -le 4 ]; then
     --regularization-opts "$regularization_opts" \
     --truncate-deriv-weights $truncate_deriv_weights --adjust-priors $adjust_priors \
     --modify-learning-rates $modify_learning_rates --last-layer-factor $last_layer_factor \
-    ${degs_dir} $dir 
+    ${degs_dir} $dir
 fi
 
 graph_dir=exp/tri4/graph_sw1_tg
@@ -176,7 +175,7 @@ if [ $stage -le 5 ]; then
       (
       num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
       iter=epoch$x.adj
-      
+
       steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" --iter $iter \
         --online-ivector-dir exp/nnet3/ivectors_${decode_set} $context_opts \
         $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_sw1_tg_$iter ;
