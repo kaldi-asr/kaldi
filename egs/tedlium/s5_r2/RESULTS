@@ -73,6 +73,16 @@ for x in exp/nnet3_cleaned/tdnn_sp/decode_*; do grep Sum $x/*ore*/*ys | utils/be
 %WER 11.9 | 507 17783 | 90.0 7.0 3.0 1.9 11.9 81.9 | -0.072 | exp/nnet3_cleaned/tdnn_sp/decode_dev_rescore/score_11_0.0/ctm.filt.filt.sys
 %WER 10.8 | 1155 27500 | 90.6 6.7 2.7 1.4 10.8 76.6 | -0.101 | exp/nnet3_cleaned/tdnn_sp/decode_test_rescore/score_11_0.0/ctm.filt.filt.sys
 
+# BLSTM small LM
+# The results are with ClipGradientComponent and without deriv_time fix, so it may not reflect the latest changes
+# for x in exp/nnet3_cleaned/lstm_bidirectional_sp/decode_*; do grep Sum $x/*ore*/*ys | utils/best_wer.sh; done
+%WER 11.1 | 507 17783 | 90.5 6.8 2.7 1.6 11.1 80.7 | -0.251 | exp/nnet3_cleaned/lstm_bidirectional_sp/decode_dev/score_10_0.0/ctm.filt.filt.sys
+%WER 10.2 | 1155 27500 | 91.0 6.4 2.6 1.2 10.2 75.5 | -0.278 | exp/nnet3_cleaned/lstm_bidirectional_sp/decode_test/score_10_0.0/ctm.filt.filt.sys
+
+# BLSTM large LM
+%WER 10.6 | 507 17783 | 91.0 6.5 2.5 1.6 10.6 79.3 | -0.275 | exp/nnet3_cleaned/lstm_bidirectional_sp/decode_dev_rescore/score_10_0.0/ctm.filt.filt.sys
+%WER 9.9 | 1155 27500 | 91.3 6.1 2.6 1.2 9.9 74.1 | -0.306 | exp/nnet3_cleaned/lstm_bidirectional_sp/decode_test_rescore/score_10_0.0/ctm.filt.filt.sys
+
   # nnet3 results without cleanup, run with:
   # local/nnet3/run_tdnn.sh --train-set train --gmm tri3 --nnet3-affix ""
   # This is only about 0.1% worse than the baseline with cleanup... the cleanup helps
