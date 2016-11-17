@@ -190,14 +190,19 @@ def train_one_iteration(dir, iter, srand, egs_dir,
     # Sets off some background jobs to compute train and
     # validation set objectives
     compute_train_cv_probabilities(
-        dir, iter, egs_dir, run_opts,
+        dir=dir, iter=iter, egs_dir=egs_dir,
+        left_context=left_context, right_context=right_context,
+        run_opts=run_opts,
         mb_size=cv_minibatch_size,
         get_raw_nnet_from_am=get_raw_nnet_from_am, wait=False,
         background_process_handler=background_process_handler)
 
     if iter > 0:
         # Runs in the background
-        compute_progress(dir, iter, egs_dir, run_opts,
+        compute_progress(dir=dir, iter=iter, egs_dir=egs_dir,
+                         left_context=left_context,
+                         right_context=right_context,
+                         run_opts=run_opts,
                          mb_size=cv_minibatch_size, wait=False,
                          get_raw_nnet_from_am=get_raw_nnet_from_am,
                          background_process_handler=background_process_handler)
@@ -263,13 +268,15 @@ def train_one_iteration(dir, iter, srand, egs_dir,
     except OSError:
         pass
 
-    train_new_models(dir, iter, srand, num_jobs,
-                     num_archives_processed, num_archives,
-                     raw_model_string, egs_dir,
-                     left_context, right_context,
-                     momentum, cur_max_param_change,
-                     shuffle_buffer_size, cur_minibatch_size,
-                     cache_read_opt, run_opts,
+    train_new_models(dir=dir, iter=iter, srand=srand, num_jobs=num_jobs,
+                     num_archives_processed=num_archives_processed,
+                     num_archives=num_archives,
+                     raw_model_string=raw_model_string, egs_dir=egs_dir,
+                     left_context=left_context, right_context=right_context,
+                     momentum=momentum, max_param_change=cur_max_param_change,
+                     shuffle_buffer_size=shuffle_buffer_size,
+                     minibatch_size=cur_minibatch_size,
+                     cache_read_opt=cache_read_opt, run_opts=run_opts,
                      frames_per_eg=frames_per_eg,
                      min_deriv_time=min_deriv_time,
                      background_process_handler=background_process_handler)
@@ -387,44 +394,52 @@ def prepare_initial_acoustic_model(dir, alidir, run_opts,
                    dir=dir, alidir=alidir))
 
 
-def compute_train_cv_probabilities(dir, iter, egs_dir, run_opts, mb_size=256,
+def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
+                                   right_context, run_opts, mb_size=256,
                                    wait=False, background_process_handler=None,
                                    get_raw_nnet_from_am=True):
-
     if get_raw_nnet_from_am:
         model = "nnet3-am-copy --raw=true {dir}/{iter}.mdl - |".format(
                     dir=dir, iter=iter)
     else:
         model = "{dir}/{iter}.raw".format(dir=dir, iter=iter)
 
+    context_opts = "--left-context={lc} --right-context={rc}".format(
+        lc=left_context, rc=right_context)
+
     common_lib.run_kaldi_command(
         """ {command} {dir}/log/compute_prob_valid.{iter}.log \
                 nnet3-compute-prob "{model}" \
-                "ark,bg:nnet3-merge-egs --minibatch-size={mb_size} """
-        """ark:{egs_dir}/valid_diagnostic.egs ark:- |"
-        """.format(command=run_opts.command,
-                   dir=dir,
-                   iter=iter,
-                   mb_size=mb_size,
-                   model=model,
-                   egs_dir=egs_dir), wait=wait,
-        background_process_handler=background_process_handler)
+                "ark,bg:nnet3-copy-egs {context_opts} \
+                    ark:{egs_dir}/valid_diagnostic.egs ark:- | \
+                    nnet3-merge-egs --minibatch-size={mb_size} ark:- \
+                    ark:- |" """.format(command=run_opts.command,
+                                        dir=dir,
+                                        iter=iter,
+                                        context_opts=context_opts,
+                                        mb_size=mb_size,
+                                        model=model,
+                                        egs_dir=egs_dir),
+        wait=wait, background_process_handler=background_process_handler)
 
     common_lib.run_kaldi_command(
         """{command} {dir}/log/compute_prob_train.{iter}.log \
                 nnet3-compute-prob "{model}" \
-                "ark,bg:nnet3-merge-egs --minibatch-size={mb_size} """
-        """ark:{egs_dir}/train_diagnostic.egs ark:- |"
-        """.format(command=run_opts.command,
-                   dir=dir,
-                   iter=iter,
-                   mb_size=mb_size,
-                   model=model,
-                   egs_dir=egs_dir), wait=wait,
-        background_process_handler=background_process_handler)
+                "ark,bg:nnet3-copy-egs {context_opts} \
+                    ark:{egs_dir}/train_diagnostic.egs ark:- | \
+                    nnet3-merge-egs --minibatch-size={mb_size} ark:- \
+                    ark:- |" """.format(command=run_opts.command,
+                                        dir=dir,
+                                        iter=iter,
+                                        context_opts=context_opts,
+                                        mb_size=mb_size,
+                                        model=model,
+                                        egs_dir=egs_dir),
+        wait=wait, background_process_handler=background_process_handler)
 
 
-def compute_progress(dir, iter, egs_dir, run_opts, mb_size=256,
+def compute_progress(dir, iter, egs_dir, left_context, right_context,
+                     run_opts, mb_size=256,
                      background_process_handler=None, wait=False,
                      get_raw_nnet_from_am=True):
     if get_raw_nnet_from_am:
@@ -435,23 +450,28 @@ def compute_progress(dir, iter, egs_dir, run_opts, mb_size=256,
         prev_model = '{0}/{1}.raw'.format(dir, iter - 1)
         model = '{0}/{1}.raw'.format(dir, iter)
 
+    context_opts = "--left-context={lc} --right-context={rc}".format(
+        lc=left_context, rc=right_context)
+
     common_lib.run_kaldi_command(
             """{command} {dir}/log/progress.{iter}.log \
                     nnet3-info {model} '&&' \
                     nnet3-show-progress --use-gpu=no {prev_model} {model} \
-                    "ark,bg:nnet3-merge-egs --minibatch-size={mb_size} """
-            """ark:{egs_dir}/train_diagnostic.egs ark:-|"
-            """.format(command=run_opts.command,
-                       dir=dir,
-                       iter=iter,
-                       model=model,
-                       mb_size=mb_size,
-                       prev_model=prev_model,
-                       egs_dir=egs_dir), wait=wait,
-            background_process_handler=background_process_handler)
+                    "ark,bg:nnet3-copy-egs {context_opts} \
+                        ark:{egs_dir}/train_diagnostic.egs ark:- | \
+                        nnet3-merge-egs --minibatch-size={mb_size} ark:- \
+                        ark:- |" """.format(command=run_opts.command,
+                                            dir=dir,
+                                            iter=iter,
+                                            model=model,
+                                            mb_size=mb_size,
+                                            prev_model=prev_model,
+                                            egs_dir=egs_dir),
+            wait=wait, background_process_handler=background_process_handler)
 
 
 def combine_models(dir, num_iters, models_to_combine, egs_dir,
+                   left_context, right_context,
                    run_opts, background_process_handler=None,
                    chunk_width=None, get_raw_nnet_from_am=True):
     """ Function to do model combination
@@ -491,17 +511,23 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
     else:
         out_model = '{dir}/final.raw'.format(dir=dir)
 
+    context_opts = "--left-context={lc} --right-context={rc}".format(
+        lc=left_context, rc=right_context)
+
     common_lib.run_kaldi_command(
         """{command} {combine_queue_opt} {dir}/log/combine.log \
                 nnet3-combine --num-iters=40 \
                 --enforce-sum-to-one=true --enforce-positive-weights=true \
                 --verbose=3 {raw_models} \
-                "ark,bg:nnet3-merge-egs --measure-output-frames=false """
-        """--minibatch-size={mbsize} ark:{egs_dir}/combine.egs ark:-|" \
+                "ark,bg:nnet3-copy-egs {context_opts} \
+                    ark:{egs_dir}/combine.egs ark:- | \
+                        nnet3-merge-egs --measure-output-frames=false \
+                        --minibatch-size={mbsize} ark:- ark:- |" \
                 "{out_model}"
         """.format(command=run_opts.command,
                    combine_queue_opt=run_opts.combine_queue_opt,
                    dir=dir, raw_models=" ".join(raw_model_strings),
+                   context_opts=context_opts,
                    mbsize=mbsize,
                    out_model=out_model,
                    egs_dir=egs_dir))
@@ -511,11 +537,15 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
     # different subsets will lead to different probs.
     if get_raw_nnet_from_am:
         compute_train_cv_probabilities(
-            dir, 'combined', egs_dir, run_opts, wait=False,
+            dir=dir, iter='combined', egs_dir=egs_dir,
+            left_context=left_context, right_context=right_context,
+            run_opts=run_opts, wait=False,
             background_process_handler=background_process_handler)
     else:
         compute_train_cv_probabilities(
-            dir, 'final', egs_dir, run_opts, wait=False,
+            dir=dir, iter='final', egs_dir=egs_dir,
+            left_context=left_context, right_context=right_context,
+            run_opts=run_opts, wait=False,
             background_process_handler=background_process_handler,
             get_raw_nnet_from_am=False)
 
@@ -583,8 +613,8 @@ def align(dir, data, lang, run_opts, iter=None, transform_dir=None,
 
 
 def realign(dir, iter, feat_dir, lang, prev_egs_dir, cur_egs_dir,
-            prior_subset_size, num_archives, run_opts,
-            transform_dir=None, online_ivector_dir=None):
+            prior_subset_size, num_archives, left_context, right_context,
+            run_opts, transform_dir=None, online_ivector_dir=None):
     raise Exception("Realignment stage has not been implemented in nnet3")
     logger.info("Getting average posterior for purposes of adjusting "
                 "the priors.")
@@ -593,8 +623,10 @@ def realign(dir, iter, feat_dir, lang, prev_egs_dir, cur_egs_dir,
     # we're using different random subsets of it.
 
     avg_post_vec_file = compute_average_posterior(
-            dir, iter, prev_egs_dir,
-            num_archives, prior_subset_size, run_opts)
+            dir=dir, iter=iter, egs_dir=prev_egs_dir,
+            num_archives=num_archives, prior_subset_size=prior_subset_size,
+            left_context=left_context, right_context=right_context,
+            run_opts=run_opts)
 
     avg_post_vec_file = "{dir}/post.{iter}.vec".format(dir=dir, iter=iter)
     logger.info("Re-adjusting priors based on computed posteriors")
@@ -627,8 +659,8 @@ def adjust_am_priors(dir, input_model, avg_posterior_vector, output_model,
 
 
 def compute_average_posterior(dir, iter, egs_dir, num_archives,
-                              prior_subset_size, run_opts,
-                              get_raw_nnet_from_am=True):
+                              prior_subset_size, left_context, right_context,
+                              run_opts, get_raw_nnet_from_am=True):
     """ Computes the average posterior of the network
     Note: this just uses CPUs, using a smallish subset of data.
     """
@@ -645,11 +677,16 @@ def compute_average_posterior(dir, iter, egs_dir, num_archives,
     else:
         model = "{dir}/final.raw".format(dir=dir)
 
+    context_opts = "--left-context={lc} --right-context={rc}".format(
+        lc=left_context, rc=right_context)
+
     common_lib.run_kaldi_command(
         """{command} JOB=1:{num_jobs_compute_prior} {prior_queue_opt} \
                 {dir}/log/get_post.{iter}.JOB.log \
-                nnet3-subset-egs --srand=JOB --n={prior_subset_size} \
+                nnet3-copy-egs {context_opts} \
                 ark:{egs_dir}/egs.{egs_part}.ark ark:- \| \
+                nnet3-subset-egs --srand=JOB --n={prior_subset_size} \
+                ark:- ark:- \| \
                 nnet3-merge-egs --measure-output-frames=true \
                 --minibatch-size=128 ark:- ark:- \| \
                 nnet3-compute-from-egs {prior_gpu_opt} --apply-exp=true \
@@ -662,6 +699,7 @@ def compute_average_posterior(dir, iter, egs_dir, num_archives,
                     prior_queue_opt=run_opts.prior_queue_opt,
                     iter=iter, prior_subset_size=prior_subset_size,
                     egs_dir=egs_dir, egs_part=egs_part,
+                    context_opts=context_opts,
                     prior_gpu_opt=run_opts.prior_gpu_opt))
 
     # make sure there is time for $dir/post.{iter}.*.vec to appear.

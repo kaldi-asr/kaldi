@@ -417,9 +417,9 @@ class CommonParser:
     in steps/nnet3/train*.py and steps/nnet3/chain/train.py
     """
 
-    def __init__(self):
-        self.parser = argparse.ArgumentParser(add_help=False)
+    parser = argparse.ArgumentParser(add_help=False)
 
+    def __init__(self):
         # feat options
         self.parser.add_argument("--feat.online-ivector-dir", type=str,
                                  dest='online_ivector_dir', default=None,
@@ -612,3 +612,9 @@ class CommonParser:
                                  iterations.
                                  If 0 and reporting mail has been specified
                                  then only failure notifications are sent""")
+        self.parser.add_argument("--background-polling-time",
+                                 dest="background_polling_time",
+                                 type=float, default=60,
+                                 help="""Polling frequency in seconds at which
+                                 the background process handler checks for
+                                 errors in the processes.""")

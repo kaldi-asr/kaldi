@@ -115,10 +115,10 @@ class LinkedListIterator():
         if self.__current is None:
             raise StopIteration()
 
-        data = self.__current.data
+        node = self.__current
         self.__current = self.__current.next_node
 
-        return data
+        return node
 
 
 class LinkedList():
@@ -126,6 +126,7 @@ class LinkedList():
     def __init__(self):
         self.__head = None
         self.__tail = None
+        self.__size = 0
 
     def __iter__(self):
         return LinkedListIterator(self.__head)
@@ -133,13 +134,21 @@ class LinkedList():
     def push(self, node):
         """Pushes the node <node> at the "front" of the linked list
         """
+        if self.__head == None:
+            self.__head = node
+            return
         node.next_node = self.__head
         node.previous_node = None
         self.__head.previous_node = node
         self.__head = node
+        self.__size += 1
 
     def pop(self):
         """Pops the last node out of the list"""
+
+        if self.__tail is None:
+            return None
+
         old_last_node = self.__tail
         to_be_last = self.__tail.previous_node
         to_be_last.next_node = None
@@ -147,6 +156,7 @@ class LinkedList():
 
         # Set the last node to the "to_be_last"
         self.__tail = to_be_last
+        self.__size -= 1
 
         return old_last_node
 
@@ -157,14 +167,23 @@ class LinkedList():
         next_node = node.next_node
         previous_node = node.previous_node
 
-        previous_node.next_node = next_node
-        next_node.previous_node = previous_node
+        if previous_node is not None:
+            previous_node.next_node = next_node
+
+        if next_node is not None:
+            next_node.previous_node = previous_node
 
         # Make it "free"
         node.next_node = node.previous_node = None
+        self.__size -= 1
 
         return node
 
+    def size():
+        return self.__size
+
+    def is_not_empty():
+        return self.__size != 0
 
 class BackgroundProcessHandler():
     """ This class handles background processes to ensure that a top-level
@@ -185,19 +204,35 @@ class BackgroundProcessHandler():
     def __init__(self, polling_time=600):
         self.__process_queue = LinkedList()
         self.__polling_time = polling_time
-        self.poll()
+        self.__timer = None
+        self.__is_running = False
+
+    def __run():
+        self.__is_running = False
+        if self.poll():
+            self.start()
+
+    def start(self):
+        if not self.__is_running:
+            self.__timer = Timer(self.__polling_time, self.__run())
+            self.__timer.start()
+            self.__is_running = True
+
+    def stop(self):
+        self.__timer.cancel()
+        self.__is_running = False
 
     def poll(self):
         for n in self.__process_queue:
             if self.is_process_done(n.data):
-                self.ensure_process_is_done(n.data)
-                self.__process_queue.remove(n)
-        threading.Timer(self.__polling_time, self.poll).start()
+                self.ensure_process_is_done(n)
+        return self.__process_queue.is_not_empty()
 
     def add_process(self, t):
         """ Add a (process handle, command) tuple to the queue
         """
-        self.__process_queue.Push(ListNode(data=t))
+        self.__process_queue.push(ListNode(data=t))
+        self.start()
 
     def is_process_done(self, t):
         p, command = t
@@ -205,15 +240,21 @@ class BackgroundProcessHandler():
             return False
         return True
 
-    def ensure_process_is_done(self, t):
-        p, command = t
+    def ensure_process_is_done(self, n):
+        p, command = n.data
+        logger.info("Waiting for process '{0}' to end".format(command))
         [stdout, stderr] = p.communicate()
         if p.returncode is not 0:
             raise KaldiCommandException(command, stderr)
+        self.__process_queue.remove(n)
 
     def ensure_processes_are_done(self):
         for n in self.__process_queue:
-            self.ensure_process_is_done(n.data)
+            self.ensure_process_is_done(n)
+        self.stop()
+
+    def __del__(self):
+        self.stop()
 
 
 def run_kaldi_command(command, wait=True, background_process_handler=None):
