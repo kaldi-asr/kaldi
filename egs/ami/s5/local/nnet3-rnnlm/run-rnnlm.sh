@@ -147,10 +147,10 @@ if [ $stage -le -2 ]; then
   if [ "$type" == "rnn" ]; then
   cat > $outdir/config <<EOF
   input-node name=input dim=$num_words_in
-  component name=first_affine type=NaturalGradientAffineComponent input-dim=$[$num_words_in+$hidden_dim] output-dim=$hidden_dim  
+  component name=first_affine type=AffineComponent input-dim=$[$num_words_in+$hidden_dim] output-dim=$hidden_dim  
   component name=first_nonlin type=SigmoidComponent dim=$hidden_dim
   component name=first_renorm type=NormalizeComponent dim=$hidden_dim target-rms=1.0
-  component name=final_affine type=NaturalGradientAffineComponent input-dim=$hidden_dim output-dim=$num_words_out
+  component name=final_affine type=AffineComponent input-dim=$hidden_dim output-dim=$num_words_out
   component name=final_log_softmax type=LogSoftmaxComponent dim=$num_words_out
 
 #Component nodes
@@ -160,6 +160,21 @@ if [ $stage -le -2 ]; then
   component-node name=final_affine component=final_affine  input=first_renorm
   component-node name=final_log_softmax component=final_log_softmax input=final_affine
   output-node    name=output input=final_log_softmax objective=linear
+
+#  input-node name=input dim=$num_words_in
+#  component name=first_affine type=NaturalGradientAffineComponent input-dim=$[$num_words_in+$hidden_dim] output-dim=$hidden_dim  
+#  component name=first_nonlin type=SigmoidComponent dim=$hidden_dim
+#  component name=first_renorm type=NormalizeComponent dim=$hidden_dim target-rms=1.0
+#  component name=final_affine type=NaturalGradientAffineComponent input-dim=$hidden_dim output-dim=$num_words_out
+#  component name=final_log_softmax type=LogSoftmaxComponent dim=$num_words_out
+#
+##Component nodes
+#  component-node name=first_affine component=first_affine  input=Append(input, IfDefined(Offset(first_renorm, -1)))
+#  component-node name=first_nonlin component=first_nonlin  input=first_affine
+#  component-node name=first_renorm component=first_renorm  input=first_nonlin
+#  component-node name=final_affine component=final_affine  input=first_renorm
+#  component-node name=final_log_softmax component=final_log_softmax input=final_affine
+#  output-node    name=output input=final_log_softmax objective=linear
 EOF
   elif [ "$type" == "lstm" ]; then
     steps/rnnlm/make_lstm_configs.py \
@@ -222,7 +237,9 @@ if [ $stage -le $num_iters ]; then
       t=`grep "^# Accounting" $outdir/log/train.rnnlm.$n.log | sed "s/=/ /g" | awk '{print $4}'`
       w=`wc -w $outdir/splitted-text/train.$this_archive.txt | awk '{print $1}'`
       speed=`echo $w $t | awk '{print $1/$2}'`
-      echo Processing speed: $speed words per second
+      echo Processing speed: $speed words per second \($w words in $t seconds\)
+
+      grep parse $outdir/log/train.rnnlm.$n.log | awk -F '-' '{print "Training PPL is " exp($NF)}'
 
     )
 
@@ -231,7 +248,7 @@ if [ $stage -le $num_iters ]; then
       learning_rate=$final_learning_rate
     fi
 
-    [ $n -ge $stage ] && (
+    false && [ $n -ge $stage ] && (
 
       $decode_cmd $outdir/log/compute_prob_train.rnnlm.$n.log \
         nnet3-compute-prob $outdir/$n.mdl ark:$outdir/train.subset.egs &
