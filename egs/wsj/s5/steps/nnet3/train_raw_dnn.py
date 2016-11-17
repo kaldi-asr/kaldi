@@ -406,7 +406,7 @@ def main():
                        "died due to an error.".format(dir=args.dir))
             common_lib.send_mail(message, message, args.email)
         traceback.print_exc()
-        background_process_handler.timer.cancel()
+        background_process_handler.stop()
         raise e
 
 
