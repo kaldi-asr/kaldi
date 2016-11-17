@@ -122,8 +122,8 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
 def train_new_models(dir, iter, srand, num_jobs,
                      num_archives_processed, num_archives,
                      raw_model_string, egs_dir, left_context, right_context,
-                     apply_deriv_weights, chunk_width,
-                     left_deriv_truncate, right_deriv_truncate,
+                     apply_deriv_weights,
+                     min_deriv_time, max_deriv_time,
                      l2_regularize, xent_regularize, leaky_hmm_coefficient,
                      momentum, max_param_change,
                      shuffle_buffer_size, num_chunk_per_minibatch,
@@ -143,12 +143,12 @@ def train_new_models(dir, iter, srand, num_jobs,
     """
 
     deriv_time_opts = []
-    if left_deriv_truncate is not None:
+    if min_deriv_time is not None:
         deriv_time_opts.append("--optimization.min-deriv-time={0}".format(
-                                    left_deriv_truncate))
-    if right_deriv_truncate is not None:
+                                    min_deriv_time))
+    if max_deriv_time is not None:
         deriv_time_opts.append("--optimization.max-deriv-time={0}".format(
-                                    int(chunk_width-right_deriv_truncate)))
+                                    int(max_deriv_time)))
 
     processes = []
     for job in range(1, num_jobs+1):
@@ -223,11 +223,11 @@ def train_new_models(dir, iter, srand, num_jobs,
 def train_one_iteration(dir, iter, srand, egs_dir,
                         num_jobs, num_archives_processed, num_archives,
                         learning_rate, shrinkage_value,
-                        num_chunk_per_minibatch, chunk_width,
+                        num_chunk_per_minibatch,
                         num_hidden_layers, add_layers_period,
                         left_context, right_context,
-                        apply_deriv_weights, left_deriv_truncate,
-                        right_deriv_truncate,
+                        apply_deriv_weights, min_deriv_time,
+                        max_deriv_time,
                         l2_regularize, xent_regularize,
                         leaky_hmm_coefficient,
                         momentum, max_param_change, shuffle_buffer_size,
@@ -318,9 +318,8 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      egs_dir=egs_dir,
                      left_context=left_context, right_context=right_context,
                      apply_deriv_weights=apply_deriv_weights,
-                     chunk_width=chunk_width,
-                     left_deriv_truncate=left_deriv_truncate,
-                     right_deriv_truncate=right_deriv_truncate,
+                     min_deriv_time=min_deriv_time,
+                     max_deriv_time=max_deriv_time,
                      l2_regularize=l2_regularize,
                      xent_regularize=xent_regularize,
                      leaky_hmm_coefficient=leaky_hmm_coefficient,

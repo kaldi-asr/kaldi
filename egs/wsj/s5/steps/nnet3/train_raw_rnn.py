@@ -119,7 +119,7 @@ def get_args():
                         dest='num_bptt_steps', default=None,
                         help="""The number of time steps to back-propagate from
                         the last label in the chunk. By default it is same as
-                        the chunk-width.""")
+                        the (chunk-width + 10).""")
 
     # General options
     parser.add_argument("--nj", type=int, default=4,
@@ -344,11 +344,14 @@ def train(args, run_opts, background_process_handler):
                                                   args.final_effective_lrate)
 
     if args.num_bptt_steps is None:
-        num_bptt_steps = args.chunk_width
+        # num_bptt_steps is set to (chunk_width + 10) by default
+        num_bptt_steps = args.chunk_width + min(10, args.chunk_left_context,
+                                                args.chunk_right_context)
     else:
         num_bptt_steps = args.num_bptt_steps
 
     min_deriv_time = args.chunk_width - num_bptt_steps
+    max_deriv_time = num_bptt_steps - 1
 
     logger.info("Training will run for {0} epochs = "
                 "{1} iterations".format(args.num_epochs, num_iters))
@@ -390,12 +393,13 @@ def train(args, run_opts, background_process_handler):
                 learning_rate=learning_rate(iter, current_num_jobs,
                                             num_archives_processed),
                 shrinkage_value=shrinkage_value,
-                num_chunk_per_minibatch=args.num_chunk_per_minibatch,
+                minibatch_size=args.num_chunk_per_minibatch,
                 num_hidden_layers=num_hidden_layers,
                 add_layers_period=args.add_layers_period,
                 left_context=left_context,
                 right_context=right_context,
                 min_deriv_time=min_deriv_time,
+                max_deriv_time=max_deriv_time,
                 momentum=args.momentum,
                 max_param_change=args.max_param_change,
                 shuffle_buffer_size=args.shuffle_buffer_size,

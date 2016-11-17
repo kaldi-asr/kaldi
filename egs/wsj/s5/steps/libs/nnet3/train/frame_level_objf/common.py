@@ -9,9 +9,11 @@ deep neural network acoustic model and raw model (i.e., generic neural
 network without transition model) with frame-level objectives.
 """
 
+import glob
 import logging
 import math
 import os
+import time
 
 import libs.common as common_lib
 import libs.nnet3.train.common as common_train_lib
@@ -33,7 +35,8 @@ def train_new_models(dir, iter, srand, num_jobs,
                      momentum, max_param_change,
                      shuffle_buffer_size, minibatch_size,
                      cache_read_opt, run_opts,
-                     frames_per_eg=-1, min_deriv_time=None,
+                     frames_per_eg=-1,
+                     min_deriv_time=None, max_deriv_time=None,
                      background_process_handler=None):
     """ Called from train_one_iteration(), this model does one iteration of
     training with 'num_jobs' jobs, and writes files like
@@ -59,11 +62,13 @@ def train_new_models(dir, iter, srand, num_jobs,
 
     chunk_level_training = False if frames_per_eg > 0 else True
 
-    deriv_time_opts = (""
-                       if min_deriv_time is None
-                       else "--optimization.min-deriv-time={0}".format(
-                           min_deriv_time)
-                       )
+    deriv_time_opts = []
+    if min_deriv_time is not None:
+        deriv_time_opts.append("--optimization.min-deriv-time={0}".format(
+                           min_deriv_time))
+    if max_deriv_time is not None:
+        deriv_time_opts.append("--optimization.max-deriv-time={0}".format(
+                           max_deriv_time))
 
     context_opts = "--left-context={0} --right-context={1}".format(
         left_context, right_context)
@@ -113,7 +118,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                                     if chunk_level_training
                                     else "--frame={0}".format(frame)),
                         momentum=momentum, max_param_change=max_param_change,
-                        deriv_time_opts=deriv_time_opts,
+                        deriv_time_opts=" ".join(deriv_time_opts),
                         raw_model=raw_model_string, context_opts=context_opts,
                         egs_dir=egs_dir, archive_index=archive_index,
                         shuffle_buffer_size=shuffle_buffer_size,
@@ -144,7 +149,8 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         momentum, max_param_change, shuffle_buffer_size,
                         run_opts,
                         cv_minibatch_size=256, frames_per_eg=-1,
-                        min_deriv_time=None, shrinkage_value=1.0,
+                        min_deriv_time=None, max_deriv_time=None,
+                        shrinkage_value=1.0,
                         get_raw_nnet_from_am=True,
                         background_process_handler=None):
     """ Called from steps/nnet3/train_*.py scripts for one iteration of neural
@@ -279,6 +285,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      cache_read_opt=cache_read_opt, run_opts=run_opts,
                      frames_per_eg=frames_per_eg,
                      min_deriv_time=min_deriv_time,
+                     max_deriv_time=max_deriv_time,
                      background_process_handler=background_process_handler)
 
     [models_to_average, best_model] = common_train_lib.get_successful_models(
@@ -445,6 +452,7 @@ def compute_progress(dir, iter, egs_dir, left_context, right_context,
                                             dir=dir,
                                             iter=iter,
                                             model=model,
+                                            context_opts=context_opts,
                                             mb_size=mb_size,
                                             prev_model=prev_model,
                                             egs_dir=egs_dir),

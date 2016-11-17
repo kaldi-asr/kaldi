@@ -99,10 +99,8 @@ def get_args():
                         "alignments to chain model's output")
     parser.add_argument("--chain.left-deriv-truncate", type=int,
                         dest='left_deriv_truncate',
-                        default=None, help="")
-    parser.add_argument("--chain.right-deriv-truncate", type=int,
-                        dest='right_deriv_truncate',
-                        default=None, help="")
+                        default=None,
+                        help="Deprecated. Kept for back compatibility")
 
     # trainer options
     parser.add_argument("--trainer.num-epochs", type=int, dest='num_epochs',
@@ -152,6 +150,16 @@ def get_args():
                         dest='num_chunk_per_minibatch', default=512,
                         help="Number of sequences to be processed in "
                         "parallel every minibatch")
+    parser.add_argument("--trainer.deriv-truncate-margin", type=int,
+                        dest='deriv_truncate_margin', default=None,
+                        help="""If specified, it is the number of frames that
+                        the derivative will be backpropagated through the chunk
+                        boundaries, e.g., During BLSTM model training if the
+                        chunk-width=150 and deriv-truncate-margin=5, then the
+                        derivative will be backpropagated up to t=-5 and t=154
+                        in the forward and backward LSTM sequence respectively;
+                        otherwise, the derivative will be backpropagated to the
+                        end of the sequence.""")
 
     # General options
     parser.add_argument("--feat-dir", type=str, required=True,
@@ -188,6 +196,15 @@ def process_args(args):
 
     if args.chunk_right_context < 0:
         raise Exception("--egs.chunk-right-context should be non-negative")
+
+    if not args.left_deriv_truncate is None:
+        args.deriv_truncate_margin = -args.left_deriv_truncate
+        logger.warning(
+            "--chain.left-deriv-truncate (deprecated) is set by user, and "
+            "--trainer.deriv-truncate-margin is set to negative of that "
+            "value={0}. We recommend using the option "
+            "--trainer.deriv-truncate-margin.".format(
+                args.deriv_truncate_margin))
 
     if (not os.path.exists(args.dir)
             or not os.path.exists(args.dir+"/configs")):
@@ -382,6 +399,12 @@ def train(args, run_opts, background_process_handler):
                                                   args.initial_effective_lrate,
                                                   args.final_effective_lrate)
 
+    min_deriv_time = None
+    max_deriv_time = None
+    if not args.deriv_truncate_margin is None:
+        min_deriv_time = -args.deriv_truncate_margin
+        max_deriv_time = args.chunk_width - 1 + args.deriv_truncate_margin
+
     logger.info("Training will run for {0} epochs = "
                 "{1} iterations".format(args.num_epochs, num_iters))
 
@@ -428,8 +451,8 @@ def train(args, run_opts, background_process_handler):
                 left_context=left_context,
                 right_context=right_context,
                 apply_deriv_weights=args.apply_deriv_weights,
-                left_deriv_truncate=args.left_deriv_truncate,
-                right_deriv_truncate=args.right_deriv_truncate,
+                min_deriv_time=min_deriv_time,
+                max_deriv_time=max_deriv_time,
                 l2_regularize=args.l2_regularize,
                 xent_regularize=args.xent_regularize,
                 leaky_hmm_coefficient=args.leaky_hmm_coefficient,
