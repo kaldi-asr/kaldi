@@ -375,25 +375,6 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
     common_lib.force_symlink("../lda.mat", "{0}/configs/lda.mat".format(dir))
 
 
-def prepare_initial_acoustic_model(dir, alidir, run_opts,
-                                   srand=-3):
-    """ Adds the first layer; this will also add in the lda.mat and
-        presoftmax_prior_scale.vec. It will also prepare the acoustic model
-        with the transition model."""
-
-    common_train_lib.prepare_initial_network(dir, run_opts,
-                                             srand=srand)
-
-    # Convert to .mdl, train the transitions, set the priors.
-    common_lib.run_kaldi_command(
-        """{command} {dir}/log/init_mdl.log \
-                nnet3-am-init {alidir}/final.mdl {dir}/0.raw - \| \
-                nnet3-am-train-transitions - \
-                "ark:gunzip -c {alidir}/ali.*.gz|" {dir}/0.mdl
-        """.format(command=run_opts.command,
-                   dir=dir, alidir=alidir))
-
-
 def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
                                    right_context, run_opts, mb_size=256,
                                    wait=False, background_process_handler=None,

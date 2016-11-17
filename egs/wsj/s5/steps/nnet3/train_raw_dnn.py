@@ -46,7 +46,7 @@ def get_args():
         DNNs include simple DNNs, TDNNs and CNNs.""",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         conflict_handler='resolve',
-        parents=[common_train_lib.CommonParser.parser])
+        parents=[common_train_lib.CommonParser().parser])
 
     # egs extraction options
     parser.add_argument("--egs.frames-per-eg", type=int, dest='frames_per_eg',
@@ -108,7 +108,7 @@ def process_args(args):
                         "make_configs.py script")
 
     # set the options corresponding to args.use_gpu
-    run_opts = common_lib.RunOpts()
+    run_opts = common_train_lib.RunOpts()
     if args.use_gpu:
         if not common_lib.check_if_cuda_compiled():
             logger.warning(

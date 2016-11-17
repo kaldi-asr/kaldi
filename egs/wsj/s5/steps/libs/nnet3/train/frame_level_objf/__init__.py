@@ -7,4 +7,8 @@
 neural networks with frame-level objectives.
 """
 
+import common
+import raw_model
+import acoustic_model
+
 __all__ = ["common", "raw_model", "acoustic_model"]

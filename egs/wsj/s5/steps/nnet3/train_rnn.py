@@ -55,7 +55,7 @@ def get_args():
             3. RNNs can also be trained with state preservation training""",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         conflict_handler='resolve',
-        parents=[common_train_lib.CommonParser.parser])
+        parents=[common_train_lib.CommonParser().parser])
 
     # egs extraction options
     parser.add_argument("--egs.chunk-width", type=int, dest='chunk_width',
@@ -166,7 +166,7 @@ def process_args(args):
         args.transform_dir = args.ali_dir
 
     # set the options corresponding to args.use_gpu
-    run_opts = common_lib.RunOpts()
+    run_opts = common_train_lib.RunOpts()
     if args.use_gpu:
         if not common_lib.check_if_cuda_compiled():
             logger.warning(

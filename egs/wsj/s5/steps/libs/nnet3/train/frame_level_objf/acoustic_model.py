@@ -11,6 +11,8 @@ training of deep neural network acoustic model with frame-level objective.
 import logging
 
 import libs.common as common_lib
+import libs.nnet3.train.common as common_train_lib
+
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -67,3 +69,24 @@ def generate_egs(data, alidir, egs_dir,
                    frames_per_eg=frames_per_eg, srand=srand, data=data,
                    alidir=alidir, egs_dir=egs_dir,
                    egs_opts=egs_opts if egs_opts is not None else ''))
+
+
+def prepare_initial_acoustic_model(dir, alidir, run_opts,
+                                   srand=-3):
+    """ Adds the first layer; this will also add in the lda.mat and
+        presoftmax_prior_scale.vec. It will also prepare the acoustic model
+        with the transition model."""
+
+    common_train_lib.prepare_initial_network(dir, run_opts,
+                                             srand=srand)
+
+    # Convert to .mdl, train the transitions, set the priors.
+    common_lib.run_kaldi_command(
+        """{command} {dir}/log/init_mdl.log \
+                nnet3-am-init {alidir}/final.mdl {dir}/0.raw - \| \
+                nnet3-am-train-transitions - \
+                "ark:gunzip -c {alidir}/ali.*.gz|" {dir}/0.mdl
+        """.format(command=run_opts.command,
+                   dir=dir, alidir=alidir))
+
+

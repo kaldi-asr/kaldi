@@ -214,12 +214,13 @@ class BackgroundProcessHandler():
 
     def start(self):
         if not self.__is_running:
-            self.__timer = Timer(self.__polling_time, self.__run())
+            self.__timer = threading.Timer(self.__polling_time, self.__run())
             self.__timer.start()
             self.__is_running = True
 
     def stop(self):
-        self.__timer.cancel()
+        if self.__timer is not None:
+            self.__timer.cancel()
         self.__is_running = False
 
     def poll(self):
