@@ -335,10 +335,10 @@ class RunOpts:
 def TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archives,
                    raw_model_string, egs_dir, left_context, right_context,
                    apply_deriv_weights,
-                   left_deriv_truncate, right_deriv_truncate,
+                   min_deriv_time, max_deriv_time,
                    l2_regularize, xent_regularize, leaky_hmm_coefficient,
                    momentum, max_param_change,
-                   shuffle_buffer_size, chunk_width, num_chunk_per_minibatch,
+                   shuffle_buffer_size, num_chunk_per_minibatch,
                    frame_subsampling_factor, truncate_deriv_weights,
                    cache_io_opts, run_opts):
       # We cannot easily use a single parallel SGE job to do the main training,
@@ -348,10 +348,10 @@ def TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archi
       # but we use the same script for consistency with FF-DNN code
 
     deriv_time_opts=""
-    if not left_deriv_truncate is None:
-        deriv_time_opts += " --optimization.min-deriv-time={0}".format(-left_deriv_truncate)
-    if not right_deriv_truncate is None:
-        deriv_time_opts += " --optimization.max-deriv-time={0}".format(chunk_width - 1 + right_deriv_truncate)
+    if not min_deriv_time is None:
+        deriv_time_opts += " --optimization.min-deriv-time={0}".format(min_deriv_time)
+    if not max_deriv_time is None:
+        deriv_time_opts += " --optimization.max-deriv-time={0}".format(max_deriv_time)
 
     processes = []
     for job in range(1,num_jobs+1):
@@ -411,10 +411,10 @@ def TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archi
 
 def TrainOneIteration(dir, iter, srand, egs_dir,
                       num_jobs, num_archives_processed, num_archives,
-                      learning_rate, shrinkage_value, chunk_width, num_chunk_per_minibatch,
+                      learning_rate, shrinkage_value, num_chunk_per_minibatch,
                       num_hidden_layers, add_layers_period,
                       left_context, right_context,
-                      apply_deriv_weights, left_deriv_truncate, right_deriv_truncate,
+                      apply_deriv_weights, min_deriv_time, max_deriv_time,
                       l2_regularize, xent_regularize, leaky_hmm_coefficient,
                       momentum, max_param_change, shuffle_buffer_size,
                       frame_subsampling_factor, truncate_deriv_weights,
@@ -488,15 +488,14 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
                    left_context = left_context,
                    right_context = right_context,
                    apply_deriv_weights = apply_deriv_weights,
-                   left_deriv_truncate = left_deriv_truncate,
-                   right_deriv_truncate = right_deriv_truncate,
+                   min_deriv_time = min_deriv_time,
+                   max_deriv_time = max_deriv_time,
                    l2_regularize = l2_regularize,
                    xent_regularize = xent_regularize,
                    leaky_hmm_coefficient = leaky_hmm_coefficient,
                    momentum = momentum,
                    max_param_change = cur_max_param_change,
                    shuffle_buffer_size = shuffle_buffer_size,
-                   chunk_width = chunk_width,
                    num_chunk_per_minibatch = cur_num_chunk_per_minibatch,
                    frame_subsampling_factor = frame_subsampling_factor,
                    truncate_deriv_weights = truncate_deriv_weights,
@@ -671,6 +670,12 @@ def Train(args, run_opts):
                                                                                            args.initial_effective_lrate,
                                                                                            args.final_effective_lrate)
 
+    min_deriv_time = None
+    max_deriv_time = None
+    if not args.deriv_truncate_margin is None:
+        min_deriv_time = -args.deriv_truncate_margin
+        max_deriv_time = args.chunk_width - 1 + args.deriv_truncate_margin
+
     logger.info("Training will run for {0} epochs = {1} iterations".format(args.num_epochs, num_iters))
     for iter in range(num_iters):
         if (args.exit_stage is not None) and (iter == args.exit_stage):
@@ -695,15 +700,14 @@ def Train(args, run_opts):
                               num_archives = num_archives,
                               learning_rate = learning_rate(iter, current_num_jobs, num_archives_processed),
                               shrinkage_value = shrinkage_value,
-                              chunk_width = args.chunk_width,
                               num_chunk_per_minibatch = args.num_chunk_per_minibatch,
                               num_hidden_layers = num_hidden_layers,
                               add_layers_period = args.add_layers_period,
                               left_context = left_context,
                               right_context = right_context,
                               apply_deriv_weights = args.apply_deriv_weights,
-                              left_deriv_truncate = args.deriv_truncate_margin,
-                              right_deriv_truncate = args.deriv_truncate_margin,
+                              min_deriv_time = min_deriv_time,
+                              max_deriv_time = max_deriv_time,
                               l2_regularize = args.l2_regularize,
                               xent_regularize = args.xent_regularize,
                               leaky_hmm_coefficient = args.leaky_hmm_coefficient,

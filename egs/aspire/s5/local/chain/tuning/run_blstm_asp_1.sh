@@ -187,7 +187,7 @@ if [ $stage -le 12 ]; then
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.optimization.shrink-value 0.99 \
     --trainer.optimization.momentum 0.0 \
-    --trainer.deriv-truncate-margin 0 \
+    --trainer.deriv-truncate-margin 10 \
     --cleanup.remove-egs $remove_egs \
     --feat-dir data/train_rvb_min${min_seg_len}_hires \
     --tree-dir $treedir \

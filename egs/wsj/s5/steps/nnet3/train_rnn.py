@@ -194,7 +194,7 @@ def GetArgs():
                         help="Number of sequences to be processed in parallel every minibatch" )
     parser.add_argument("--trainer.rnn.num-bptt-steps", type=int, dest='num_bptt_steps',
                         default=None,
-                        help="The number of time steps to back-propagate from the last label in the chunk. By default it is same as the chunk-width." )
+                        help="The number of time steps to back-propagate from the last label in the chunk. By default it is set to (chunk-width + 10)." )
 
     # General options
     parser.add_argument("--stage", type=int, default=-4,
@@ -651,6 +651,7 @@ def Train(args, run_opts):
     cur_egs_dir=egs_dir
 
     if args.num_bptt_steps is None:
+        # num_bptt_steps is set to (chunk_width + 10) by default
         num_bptt_steps = args.chunk_width + min(10, args.chunk_left_context, args.chunk_right_context)
     else:
         num_bptt_steps = args.num_bptt_steps
