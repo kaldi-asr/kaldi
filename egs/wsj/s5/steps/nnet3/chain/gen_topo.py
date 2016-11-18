@@ -44,7 +44,7 @@ print("</ForPhones>")
 # We make the transition-probs 0.5 so they normalize, to keep the code happy.
 # In fact, we always set the transition probability scale to 0.0 in the 'chain'
 # code, so they are never used.
-print("<State> 0 <PdfClass> 0 <SelfLoopPdfClass> 1 <Transition> 0 0.5 <Transition> 1 0.5 </State>")
+print("<State> 0 <ForwardPdfClass> 0 <SelfLoopPdfClass> 1 <Transition> 0 0.5 <Transition> 1 0.5 </State>")
 print("<State> 1 </State>")
 print("</TopologyEntry>")
 print("</Topology>")

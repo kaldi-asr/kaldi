@@ -61,7 +61,7 @@ void TestHmmTopology() {
   std::string chain_input_str = "<Topology>\n"
       "<TopologyEntry>\n"
       "<ForPhones> 1 2 3 4 5 6 7 8 9 </ForPhones>\n"
-      " <State> 0 <PdfClass> 0 <SelfLoopPdfClass> 1\n"
+      " <State> 0 <ForwardPdfClass> 0 <SelfLoopPdfClass> 1\n"
       "  <Transition> 0 0.5\n"
       "  <Transition> 1 0.5\n"
       " </State> \n"

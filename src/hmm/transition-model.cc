@@ -56,7 +56,7 @@ void TransitionModel::ComputeTuplesIsHmm(const ContextDependencyInterface &ctx_d
     int32 phone = phones[i];
     const HmmTopology::TopologyEntry &entry = topo_.TopologyForPhone(phone);
     for (int32 j = 0; j < static_cast<int32>(entry.size()); j++) {  // for each state...
-      int32 pdf_class = entry[j].pdf_class;
+      int32 pdf_class = entry[j].forward_pdf_class;
       if (pdf_class != kNoPdf) {
         to_hmm_state_list[std::make_pair(phone, pdf_class)].push_back(j);
       }
@@ -96,9 +96,9 @@ void TransitionModel::ComputeTuplesNotHmm(const ContextDependencyInterface &ctx_
     int32 phone = phones[i];
     const HmmTopology::TopologyEntry &entry = topo_.TopologyForPhone(phone);
     for (int32 j = 0; j < static_cast<int32>(entry.size()); j++) {  // for each state...
-      int32 pdf_class = entry[j].pdf_class, self_loop_pdf_class = entry[j].self_loop_pdf_class;
-      if (pdf_class != kNoPdf)
-        pdf_class_pairs[phone].push_back(std::make_pair(pdf_class, self_loop_pdf_class));
+      int32 forward_pdf_class = entry[j].forward_pdf_class, self_loop_pdf_class = entry[j].self_loop_pdf_class;
+      if (forward_pdf_class != kNoPdf)
+        pdf_class_pairs[phone].push_back(std::make_pair(forward_pdf_class, self_loop_pdf_class));
     }
   }
   ctx_dep.GetPdfInfo(phones, pdf_class_pairs, &pdf_info);
@@ -113,9 +113,9 @@ void TransitionModel::ComputeTuplesNotHmm(const ContextDependencyInterface &ctx_
     const HmmTopology::TopologyEntry &entry = topo_.TopologyForPhone(phone);
     std::map<std::pair<int32, int32>, std::vector<int32> > phone_to_hmm_state_list;
     for (int32 j = 0; j < static_cast<int32>(entry.size()); j++) {  // for each state...
-      int32 pdf_class = entry[j].pdf_class, self_loop_pdf_class = entry[j].self_loop_pdf_class;
-      if (pdf_class != kNoPdf) {
-        phone_to_hmm_state_list[std::make_pair(pdf_class, self_loop_pdf_class)].push_back(j);
+      int32 forward_pdf_class = entry[j].forward_pdf_class, self_loop_pdf_class = entry[j].self_loop_pdf_class;
+      if (forward_pdf_class != kNoPdf) {
+        phone_to_hmm_state_list[std::make_pair(forward_pdf_class, self_loop_pdf_class)].push_back(j);
       }
     }
     to_hmm_state_list[phone] = phone_to_hmm_state_list;
@@ -154,9 +154,9 @@ void TransitionModel::ComputeDerived() {
     if (static_cast<size_t>(tstate) <= tuples_.size()) {
       int32 phone = tuples_[tstate-1].phone,
           hmm_state = tuples_[tstate-1].hmm_state,
-          pdf = tuples_[tstate-1].pdf,
+          forward_pdf = tuples_[tstate-1].forward_pdf,
           self_loop_pdf = tuples_[tstate-1].self_loop_pdf;
-      num_pdfs_ = std::max(num_pdfs_, 1 + pdf);
+      num_pdfs_ = std::max(num_pdfs_, 1 + forward_pdf);
       num_pdfs_ = std::max(num_pdfs_, 1 + self_loop_pdf);
       const HmmTopology::HmmState &state = topo_.TopologyForPhone(phone)[hmm_state];
       int32 my_num_ids = static_cast<int32>(state.transitions.size());
@@ -165,11 +165,17 @@ void TransitionModel::ComputeDerived() {
   }
 
   id2state_.resize(cur_transition_id);   // cur_transition_id is #transition-ids+1.
+  id2pdf_id_.resize(cur_transition_id);
   for (int32 tstate = 1; tstate <= static_cast<int32>(tuples_.size()); tstate++)
-    for (int32 tid = state2id_[tstate]; tid < state2id_[tstate+1]; tid++)
+    for (int32 tid = state2id_[tstate]; tid < state2id_[tstate+1]; tid++) {
       id2state_[tid] = tstate;
-
+      if (IsSelfLoop(tid))
+        id2pdf_id_[tid] = tuples_[tstate-1].self_loop_pdf;
+      else
+        id2pdf_id_[tid] = tuples_[tstate-1].forward_pdf;
+    }
 }
+
 void TransitionModel::InitializeProbs() {
   log_probs_.Resize(NumTransitionIds()+1);  // one-based array, zeroth element empty.
   for (int32 trans_id = 1; trans_id <= NumTransitionIds(); trans_id++) {
@@ -203,9 +209,9 @@ void TransitionModel::Check() const {
     KALDI_ASSERT(tid == PairToTransitionId(tstate, index));
     int32 phone = TransitionStateToPhone(tstate),
         hmm_state = TransitionStateToHmmState(tstate),
-        pdf = TransitionStateToPdf(tstate),
+        forward_pdf = TransitionStateToForwardPdf(tstate),
         self_loop_pdf = TransitionStateToSelfLoopPdf(tstate);
-    KALDI_ASSERT(tstate == TupleToTransitionState(phone, hmm_state, pdf, self_loop_pdf));
+    KALDI_ASSERT(tstate == TupleToTransitionState(phone, hmm_state, forward_pdf, self_loop_pdf));
     KALDI_ASSERT(log_probs_(tid) <= 0.0 && log_probs_(tid) - log_probs_(tid) == 0.0);
     // checking finite and non-positive (and not out-of-bounds).
   }
@@ -218,9 +224,7 @@ bool TransitionModel::IsHmm() const {
     int32 phone = phones[i];
     const HmmTopology::TopologyEntry &entry = topo_.TopologyForPhone(phone);
     for (int32 j = 0; j < static_cast<int32>(entry.size()); j++) {  // for each state...
-      int32 pdf_class = entry[j].pdf_class,
-            self_loop_pdf_class = entry[j].self_loop_pdf_class;
-      if (pdf_class != self_loop_pdf_class)
+      if (entry[j].forward_pdf_class != entry[j].self_loop_pdf_class)
         return false;
     }
   }
@@ -272,9 +276,9 @@ int32 TransitionModel::TransitionStateToPhone(int32 trans_state) const {
   return tuples_[trans_state-1].phone;
 }
 
-int32 TransitionModel::TransitionStateToPdf(int32 trans_state) const {
+int32 TransitionModel::TransitionStateToForwardPdf(int32 trans_state) const {
   KALDI_ASSERT(static_cast<size_t>(trans_state) <= tuples_.size());
-  return tuples_[trans_state-1].pdf;
+  return tuples_[trans_state-1].forward_pdf;
 }
 
 int32 TransitionModel::TransitionStateToForwardPdfClass(
@@ -283,7 +287,7 @@ int32 TransitionModel::TransitionStateToForwardPdfClass(
   const Tuple &t = tuples_[trans_state-1];
   const HmmTopology::TopologyEntry &entry = topo_.TopologyForPhone(t.phone);
   KALDI_ASSERT(static_cast<size_t>(t.hmm_state) < entry.size());
-  return entry[t.hmm_state].pdf_class;
+  return entry[t.hmm_state].forward_pdf_class;
 }
 
 
@@ -387,11 +391,11 @@ void TransitionModel::Read(std::istream &is, bool binary) {
   for (int32 i = 0; i < size; i++) {
     ReadBasicType(is, binary, &(tuples_[i].phone));
     ReadBasicType(is, binary, &(tuples_[i].hmm_state));
-    ReadBasicType(is, binary, &(tuples_[i].pdf));
+    ReadBasicType(is, binary, &(tuples_[i].forward_pdf));
     if (token == "<Tuples>")
       ReadBasicType(is, binary, &(tuples_[i].self_loop_pdf));
     else if (token == "<Triples>")
-      tuples_[i].self_loop_pdf = tuples_[i].pdf;
+      tuples_[i].self_loop_pdf = tuples_[i].forward_pdf;
   }
   ReadToken(is, binary, &token);
   KALDI_ASSERT(token == "</Triples>" || token == "</Tuples>");
@@ -418,7 +422,7 @@ void TransitionModel::Write(std::ostream &os, bool binary) const {
   for (int32 i = 0; i < static_cast<int32> (tuples_.size()); i++) {
     WriteBasicType(os, binary, tuples_[i].phone);
     WriteBasicType(os, binary, tuples_[i].hmm_state);
-    WriteBasicType(os, binary, tuples_[i].pdf);
+    WriteBasicType(os, binary, tuples_[i].forward_pdf);
     if (!is_hmm)
       WriteBasicType(os, binary, tuples_[i].self_loop_pdf);
     if (!binary) os << "\n";
@@ -593,8 +597,12 @@ void TransitionModel::MleUpdateShared(const Vector<double> &stats,
   std::map<int32, std::set<int32> > pdf_to_tstate;
 
   for (int32 tstate = 1; tstate <= NumTransitionStates(); tstate++) {
-    int32 pdf = TransitionStateToPdf(tstate);
+    int32 pdf = TransitionStateToForwardPdf(tstate);
     pdf_to_tstate[pdf].insert(tstate);
+    if (!IsHmm()) {
+      pdf = TransitionStateToSelfLoopPdf(tstate);
+      pdf_to_tstate[pdf].insert(tstate);
+    }
   }
   std::map<int32, std::set<int32> >::iterator map_iter;
   for (map_iter = pdf_to_tstate.begin();
@@ -687,8 +695,12 @@ void TransitionModel::MapUpdateShared(const Vector<double> &stats,
   std::map<int32, std::set<int32> > pdf_to_tstate;
 
   for (int32 tstate = 1; tstate <= NumTransitionStates(); tstate++) {
-    int32 pdf = TransitionStateToPdf(tstate);
+    int32 pdf = TransitionStateToForwardPdf(tstate);
     pdf_to_tstate[pdf].insert(tstate);
+    if (!IsHmm()) {
+      pdf = TransitionStateToSelfLoopPdf(tstate);
+      pdf_to_tstate[pdf].insert(tstate);
+    }
   }
   std::map<int32, std::set<int32> >::iterator map_iter;
   for (map_iter = pdf_to_tstate.begin();
@@ -775,7 +787,7 @@ int32 TransitionModel::TransitionIdToPdfClass(int32 trans_id) const {
   if (IsSelfLoop(trans_id))
     return entry[t.hmm_state].self_loop_pdf_class;
   else
-    return entry[t.hmm_state].pdf_class;
+    return entry[t.hmm_state].forward_pdf_class;
 }
 
 
@@ -798,16 +810,22 @@ void TransitionModel::Print(std::ostream &os,
     std::string phone_name = phone_names[tuple.phone];
 
     os << "Transition-state " << tstate << ": phone = " << phone_name
-       << " hmm-state = " << tuple.hmm_state << " pdf = " << tuple.pdf;
+       << " hmm-state = " << tuple.hmm_state;
     if (is_hmm)
-      os << '\n';
+      os << " pdf = " << tuple.forward_pdf << '\n';
     else
-      os << " self-loop-pdf = " << tuple.self_loop_pdf << '\n';
+      os << " forward-pdf = " << tuple.forward_pdf << " self-loop-pdf = "
+         << tuple.self_loop_pdf << '\n';
     for (int32 tidx = 0; tidx < NumTransitionIndices(tstate); tidx++) {
       int32 tid = PairToTransitionId(tstate, tidx);
       BaseFloat p = GetTransitionProb(tid);
       os << " Transition-id = " << tid << " p = " << p;
-      if (occs != NULL) os << " count of pdf = " << (*occs)(tuple.pdf);
+      if (occs != NULL) {
+        if (IsSelfLoop(tid))
+          os << " count of pdf = " << (*occs)(tuple.self_loop_pdf);
+        else
+          os << " count of pdf = " << (*occs)(tuple.forward_pdf);
+      }
       // now describe what it's a transition to.
       if (IsSelfLoop(tid)) os << " [self-loop]\n";
       else {
@@ -830,14 +848,18 @@ bool GetPdfsForPhones(const TransitionModel &trans_model,
   pdfs->clear();
   for (int32 tstate = 1; tstate <= trans_model.NumTransitionStates(); tstate++) {
     if (std::binary_search(phones.begin(), phones.end(),
-                          trans_model.TransitionStateToPhone(tstate)))
-      pdfs->push_back(trans_model.TransitionStateToPdf(tstate));
+             trans_model.TransitionStateToPhone(tstate))) {
+      pdfs->push_back(trans_model.TransitionStateToForwardPdf(tstate));
+      pdfs->push_back(trans_model.TransitionStateToSelfLoopPdf(tstate));
+    }
   }
   SortAndUniq(pdfs);
 
   for (int32 tstate = 1; tstate <= trans_model.NumTransitionStates(); tstate++)
-    if (std::binary_search(pdfs->begin(), pdfs->end(),
-                          trans_model.TransitionStateToPdf(tstate))
+    if ((std::binary_search(pdfs->begin(), pdfs->end(),
+                          trans_model.TransitionStateToForwardPdf(tstate)) ||
+         std::binary_search(pdfs->begin(), pdfs->end(),
+                          trans_model.TransitionStateToSelfLoopPdf(tstate)))
        && !std::binary_search(phones.begin(), phones.end(),
                               trans_model.TransitionStateToPhone(tstate)))
       return false;
@@ -852,7 +874,9 @@ bool GetPhonesForPdfs(const TransitionModel &trans_model,
   phones->clear();
   for (int32 tstate = 1; tstate <= trans_model.NumTransitionStates(); tstate++) {
     if (std::binary_search(pdfs.begin(), pdfs.end(),
-                           trans_model.TransitionStateToPdf(tstate)))
+                           trans_model.TransitionStateToForwardPdf(tstate)) ||
+        std::binary_search(pdfs.begin(), pdfs.end(),
+                           trans_model.TransitionStateToSelfLoopPdf(tstate)))
       phones->push_back(trans_model.TransitionStateToPhone(tstate));
   }
   SortAndUniq(phones);
@@ -860,8 +884,10 @@ bool GetPhonesForPdfs(const TransitionModel &trans_model,
   for (int32 tstate = 1; tstate <= trans_model.NumTransitionStates(); tstate++)
     if (std::binary_search(phones->begin(), phones->end(),
                            trans_model.TransitionStateToPhone(tstate))
-        && !std::binary_search(pdfs.begin(), pdfs.end(),
-                               trans_model.TransitionStateToPdf(tstate)))
+        && !(std::binary_search(pdfs.begin(), pdfs.end(),
+                               trans_model.TransitionStateToForwardPdf(tstate)) &&
+             std::binary_search(pdfs.begin(), pdfs.end(),
+                               trans_model.TransitionStateToSelfLoopPdf(tstate))) )
       return false;
   return true;
 }
@@ -883,18 +909,5 @@ bool TransitionModel::IsSelfLoop(int32 trans_id) const {
   return (static_cast<size_t>(trans_index) < entry[hmm_state].transitions.size()
           && entry[hmm_state].transitions[trans_index].first == hmm_state);
 }
-
-int32 TransitionModel::TransitionIdToPdf(int32 trans_id) const {
-  // If a lot of time is spent here we may create an extra array
-  // to handle this.
-  KALDI_ASSERT(static_cast<size_t>(trans_id) < id2state_.size() &&
-               "Likely graph/model mismatch (graph built from wrong model?)");
-  int32 trans_state = id2state_[trans_id];
-  if (IsSelfLoop(trans_id))
-    return tuples_[trans_state-1].self_loop_pdf;
-  else
-    return tuples_[trans_state-1].pdf;
-}
-
 
 } // End namespace kaldi

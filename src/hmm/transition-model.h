@@ -53,7 +53,7 @@ namespace kaldi {
 //           phone:  a phone index (1, 2, 3 ...)
 //       HMM-state:  a number (0, 1, 2...) that indexes TopologyEntry (see hmm-topology.h)
 //          pdf-id:  a number output by the Compute function of ContextDependency (it
-//                   indexes pdf's).  Zero-based.
+//                   indexes pdf's, either forward or self-loop).  Zero-based.
 // transition-state:  the states for which we estimate transition probabilities for transitions
 //                    out of them.  In some topologies, will map one-to-one with pdf-ids.
 //                    One-based, since it appears on FSTs.
@@ -66,14 +66,15 @@ namespace kaldi {
 //                    One-based, since it appears on FSTs.
 //
 // List of the possible mappings TransitionModel can do:
-//             (phone, HMM-state, pdf-id) -> transition-state
-//   (transition-state, transition-index) -> transition-id
+//   (phone, HMM-state, forward-pdf-id, self-loop-pdf-id) -> transition-state
+//                   (transition-state, transition-index) -> transition-id
 //  Reverse mappings:
 //                        transition-id -> transition-state
 //                        transition-id -> transition-index
 //                     transition-state -> phone
 //                     transition-state -> HMM-state
-//                     transition-state -> pdf-id
+//                     transition-state -> forward-pdf-id
+//                     transition-state -> self-loop-pdf-id
 //
 // The main things the TransitionModel object can do are:
 //    Get initialized (need ContextDependency and HmmTopology objects).
@@ -149,12 +150,12 @@ class TransitionModel {
   int32 TransitionStateToHmmState(int32 trans_state) const;
   int32 TransitionStateToForwardPdfClass(int32 trans_state) const;
   int32 TransitionStateToSelfLoopPdfClass(int32 trans_state) const;
-  int32 TransitionStateToPdf(int32 trans_state) const;
+  int32 TransitionStateToForwardPdf(int32 trans_state) const;
   int32 TransitionStateToSelfLoopPdf(int32 trans_state) const;
   int32 SelfLoopOf(int32 trans_state) const;  // returns the self-loop transition-id, or zero if
   // this state doesn't have a self-loop.
 
-  int32 TransitionIdToPdf(int32 trans_id) const;
+  inline int32 TransitionIdToPdf(int32 trans_id) const;
   int32 TransitionIdToPhone(int32 trans_id) const;
   int32 TransitionIdToPdfClass(int32 trans_id) const;
   int32 TransitionIdToHmmState(int32 trans_id) const;
@@ -265,23 +266,23 @@ class TransitionModel {
   struct Tuple {
     int32 phone;
     int32 hmm_state;
-    int32 pdf;
+    int32 forward_pdf;
     int32 self_loop_pdf;
     Tuple() { }
-    Tuple(int32 phone, int32 hmm_state, int32 pdf, int32 self_loop_pdf):
-      phone(phone), hmm_state(hmm_state), pdf(pdf), self_loop_pdf(self_loop_pdf) { }
+    Tuple(int32 phone, int32 hmm_state, int32 forward_pdf, int32 self_loop_pdf):
+      phone(phone), hmm_state(hmm_state), forward_pdf(forward_pdf), self_loop_pdf(self_loop_pdf) { }
     bool operator < (const Tuple &other) const {
       if (phone < other.phone) return true;
       else if (phone > other.phone) return false;
       else if (hmm_state < other.hmm_state) return true;
       else if (hmm_state > other.hmm_state) return false;
-      else if (pdf < other.pdf) return true;
-      else if (pdf > other.pdf) return false;
+      else if (forward_pdf < other.forward_pdf) return true;
+      else if (forward_pdf > other.forward_pdf) return false;
       else return (self_loop_pdf < other.self_loop_pdf);
     }
     bool operator == (const Tuple &other) const {
       return (phone == other.phone && hmm_state == other.hmm_state
-              && pdf == other.pdf && self_loop_pdf == other.self_loop_pdf);
+              && forward_pdf == other.forward_pdf && self_loop_pdf == other.self_loop_pdf);
     }
   };
 
@@ -301,6 +302,8 @@ class TransitionModel {
   /// state (indexed by transition-id).
   std::vector<int32> id2state_;
 
+  std::vector<int32> id2pdf_id_;
+
   /// For each transition-id, the corresponding log-prob.  Indexed by transition-id.
   Vector<BaseFloat> log_probs_;
 
@@ -317,6 +320,12 @@ class TransitionModel {
   DISALLOW_COPY_AND_ASSIGN(TransitionModel);
 
 };
+
+inline int32 TransitionModel::TransitionIdToPdf(int32 trans_id) const {
+  KALDI_ASSERT(static_cast<size_t>(trans_id) < id2pdf_id_.size() &&
+               "Likely graph/model mismatch (graph built from wrong model?)");
+  return id2pdf_id_[trans_id];
+}
 
 /// Works out which pdfs might correspond to the given phones.  Will return true
 /// if these pdfs correspond *just* to these phones, false if these pdfs are also

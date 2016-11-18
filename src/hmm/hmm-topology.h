@@ -95,11 +95,12 @@ class HmmTopology {
  public:
   /// A structure defined inside HmmTopology to represent a HMM state.
   struct HmmState {
-    /// The \ref pdf_class pdf-class, typically 0, 1 or 2 (the same as the HMM-state index),
+    /// The \ref pdf_class forward-pdf-class, typically 0, 1 or 2 (the same as the HMM-state index),
     /// but may be different to enable us to hardwire sharing of state, and may be
     /// equal to \ref kNoPdf == -1 in order to specify nonemitting states (unusual).
-    int32 pdf_class;
-    /// The \ref self_loop_pdf_class self-loop pdf-class, similar to \ref pdf_class pdf-class.
+    int32 forward_pdf_class;
+
+    /// The \ref pdf_class self-loop pdf-class, similar to \ref pdf_class forward-pdf-class.
     /// They will either both be \ref kNoPdf, or neither be \ref kNoPdf.
     int32 self_loop_pdf_class;
 
@@ -109,23 +110,23 @@ class HmmTopology {
     std::vector<std::pair<int32, BaseFloat> > transitions;
 
     explicit HmmState(int32 pdf_class) {
-      this->pdf_class = pdf_class;
+      this->forward_pdf_class = pdf_class;
       this->self_loop_pdf_class = pdf_class;
     }
-    explicit HmmState(int32 pdf_class, int32 self_loop_pdf_class) {
-      KALDI_ASSERT((pdf_class != kNoPdf && self_loop_pdf_class != kNoPdf) ||
-                   (pdf_class == kNoPdf && self_loop_pdf_class == kNoPdf));
-      this->pdf_class = pdf_class;
+    explicit HmmState(int32 forward_pdf_class, int32 self_loop_pdf_class) {
+      KALDI_ASSERT((forward_pdf_class != kNoPdf && self_loop_pdf_class != kNoPdf) ||
+                   (forward_pdf_class == kNoPdf && self_loop_pdf_class == kNoPdf));
+      this->forward_pdf_class = forward_pdf_class;
       this->self_loop_pdf_class = self_loop_pdf_class;
     }
 
     bool operator == (const HmmState &other) const {
-      return (pdf_class == other.pdf_class &&
+      return (forward_pdf_class == other.forward_pdf_class &&
               self_loop_pdf_class == other.self_loop_pdf_class &&
               transitions == other.transitions);
     }
 
-    HmmState(): pdf_class(-1), self_loop_pdf_class(-1) { }
+    HmmState(): forward_pdf_class(-1), self_loop_pdf_class(-1) { }
   };
 
   /// TopologyEntry is a typedef that represents the topology of

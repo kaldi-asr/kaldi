@@ -14,7 +14,7 @@ OBJFILES = regression-tree.o regtree-mllr-diag-gmm.o lda-estimate.o \
 
 LIBNAME = kaldi-transform
 
-ADDLIBS = ../hmm/kaldi-hmm.a ../gmm/kaldi-gmm.a ../tree/kaldi-tree.a \
+ADDLIBS = ../gmm/kaldi-gmm.a ../tree/kaldi-tree.a \
           ../util/kaldi-util.a ../thread/kaldi-thread.a \
           ../matrix/kaldi-matrix.a ../base/kaldi-base.a
 

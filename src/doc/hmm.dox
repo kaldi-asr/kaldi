@@ -92,9 +92,9 @@ great loss.
 The pdf-class is a concept that relates to the HmmTopology object.  The
 HmmTopology object specifies a prototype HMM for each phone.  Each
 numbered state of a
-"prototype HMM" has two variables "pdf_class" and "self_loop_pdf_class".
+"prototype HMM" has two variables "forward_pdf_class" and "self_loop_pdf_class".
 The "self_loop_pdf_class" is a kind of pdf-class that is associated
-with self-loop transition. It is by default identical to "pdf_class",
+with self-loop transition. It is by default identical to "forward_pdf_class",
 but it can be used to define less-convectional HMM topologies
 where the pdfs on the self-loop and forward transitions are different.
 If two states have the same
@@ -130,7 +130,7 @@ context dependent HMM state depend on the following four things (you could view
 them as a 4-tuple):
   - The phone (whose HMM we are in)
   - The source HMM-state (as interpreted by the HmmTopology object, i.e.  normally 0, 1 or 2)
-  - The (\ref pdf_id "pdf-id",\ref pdf_id "self-loop pdf-id") pair
+  - The (\ref pdf_id "forward-pdf-id",\ref pdf_id "self-loop pdf-id") pair
     (i.e. the indexes of the forward and self-loop pdfs associated with the state)
   - The index of the transition in the HmmTopology object.
 
