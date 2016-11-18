@@ -225,9 +225,12 @@ if [ $stage -le 14 ]; then
   [ ! -z $decode_iter ] && model_opts=" --iter $decode_iter ";
   for decode_set in dev eval; do
       (
-      num_jobs=`cat data/$mic/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
+      nj_dev=`cat data/$mic/${decode_set}_hires/spk2utt | wc -l`
+      if [ $nj_dev -gt $nj ]; then
+        nj_dev=$nj
+      fi
       decode_dir=${dir}/decode_${decode_set}
-      steps/nnet3/decode.sh --nj 250 --cmd "$decode_cmd" \
+      steps/nnet3/decode.sh --nj $nj_dev --cmd "$decode_cmd" \
           $model_opts \
           --extra-left-context $extra_left_context \
           --extra-right-context $extra_right_context \

@@ -7,6 +7,7 @@ remove_egs=true
 use_ihm_ali=false
 train_set=train_cleaned
 ihm_gmm=tri3
+gmm=tri3a_cleaned
 nnet3_affix=_cleaned
 
 # BLSTM params
@@ -32,6 +33,7 @@ local/nnet3/run_lstm.sh --affix $affix \
                          --srand $srand \
                          --train-stage $train_stage \
                          --train-set $train_set \
+                         --gmm $gmm \
                          --ihm-gmm $ihm_gmm \
                          --nnet3-affix $nnet3_affix \
                          --lstm-delay " [-1,1] [-2,2] [-3,3] " \
@@ -49,4 +51,3 @@ local/nnet3/run_lstm.sh --affix $affix \
                          --num-epochs $num_epochs \
                          --use-ihm-ali $use_ihm_ali \
                          --remove-egs $remove_egs
-

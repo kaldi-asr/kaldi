@@ -45,9 +45,11 @@ tdnn_affix=  #affix for TDNN directory e.g. "a" or "b", in case we change the co
 # Options which are not passed through to run_ivector_common.sh
 train_stage=-10
 splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -7,2 -3,3 0 0"
-remove_egs=true
+remove_egs=false
 relu_dim=850
 num_epochs=3
+
+common_egs_dir=
 
 . cmd.sh
 . ./path.sh
@@ -122,30 +124,55 @@ fi
 [ ! -f $ali_dir/ali.1.gz ] && echo  "$0: expected $ali_dir/ali.1.gz to exist" && exit 1
 
 if [ $stage -le 12 ]; then
+  steps/nnet3/tdnn/make_configs.py \
+    --self-repair-scale-nonlinearity 0.00001 \
+    --feat-dir $train_data_dir \
+    --ivector-dir $train_ivector_dir \
+    --ali-dir $ali_dir \
+    --relu-dim $relu_dim \
+    --splice-indexes "$splice_indexes" \
+    --use-presoftmax-prior-scale true \
+    --include-log-softmax true \
+    --final-layer-normalize-target 1.0 \
+   $dir/configs || exit 1;
+fi
+
+if [ $stage -le 13 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/ami-$(date +'%m_%d_%H_%M')/s5b/$dir/egs/storage $dir/egs/storage
   fi
 
-  steps/nnet3/tdnn/train.sh --stage $train_stage \
-    --num-epochs $num_epochs --num-jobs-initial 2 --num-jobs-final 12 \
-    --splice-indexes "$splice_indexes" \
-    --feat-type raw \
-    --online-ivector-dir ${train_ivector_dir} \
-    --cmvn-opts "--norm-means=false --norm-vars=false" \
-    --initial-effective-lrate 0.0015 --final-effective-lrate 0.00015 \
+  steps/nnet3/train_dnn.py --stage $train_stage \
     --cmd "$decode_cmd" \
-    --relu-dim "$relu_dim" \
-    --remove-egs "$remove_egs" \
-    $train_data_dir data/lang $ali_dir $dir
+    --feat.online-ivector-dir $train_ivector_dir \
+    --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
+    --egs.dir "$common_egs_dir" \
+    --trainer.samples-per-iter 400000 \
+    --trainer.num-epochs $num_epochs \
+    --trainer.optimization.num-jobs-initial 2 \
+    --trainer.optimization.num-jobs-final 12 \
+    --trainer.optimization.initial-effective-lrate 0.0015 \
+    --trainer.optimization.final-effective-lrate 0.00015 \
+    --trainer.max-param-change 2.0 \
+    --cleanup.remove-egs "$remove_egs" \
+    --cleanup true \
+    --feat-dir $train_data_dir \
+    --lang data/lang \
+    --ali-dir $ali_dir \
+    --dir $dir
 fi
 
-if [ $stage -le 12 ]; then
+if [ $stage -le 14 ]; then
   rm $dir/.error || true 2>/dev/null
   for decode_set in dev eval; do
       (
+      nj_dev=`cat data/$mic/${decode_set}_hires/spk2utt | wc -l`
+      if [ $nj_dev -gt $nj ]; then
+        nj_dev=$nj
+      fi
       decode_dir=${dir}/decode_${decode_set}
-      steps/nnet3/decode.sh --nj $nj --cmd "$decode_cmd" \
+      steps/nnet3/decode.sh --nj $nj_dev --cmd "$decode_cmd" \
           --online-ivector-dir exp/$mic/nnet3${nnet3_affix}/ivectors_${decode_set}_hires \
          $graph_dir data/$mic/${decode_set}_hires $decode_dir
       ) &
