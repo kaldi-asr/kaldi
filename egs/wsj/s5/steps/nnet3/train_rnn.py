@@ -21,7 +21,7 @@ import libs.nnet3.train.frame_level_objf as train_lib
 import libs.nnet3.report.log_parse as nnet3_log_parse
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('libs')
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
@@ -461,7 +461,7 @@ def train(args, run_opts, background_process_handler):
             remove_egs = False
 
         common_train_lib.clean_nnet_dir(
-            args.dir, num_iters, egs_dir,
+            nnet_dir=args.dir, num_iters=num_iters, egs_dir=egs_dir,
             preserve_model_interval=args.preserve_model_interval,
             remove_egs=remove_egs)
 

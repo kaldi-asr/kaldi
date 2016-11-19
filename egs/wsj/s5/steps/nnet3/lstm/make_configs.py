@@ -75,7 +75,7 @@ def GetArgs():
                         help="options to be supplied to NaturalGradientAffineComponent", default="")
 
     # Gradient clipper options
-    parser.add_argument("--norm-based-clipping", type=str, action=nnet3_train_lib.StrToBoolAction,
+    parser.add_argument("--norm-based-clipping", type=str, action=common_lib.StrToBoolAction,
                         help="Outdated option retained for back compatibility, has no effect.",
                         default=True, choices = ["false", "true"])
     parser.add_argument("--clipping-threshold", type=float,

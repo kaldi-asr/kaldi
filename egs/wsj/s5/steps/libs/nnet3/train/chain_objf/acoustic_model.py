@@ -17,13 +17,7 @@ import libs.common as common_lib
 import libs.nnet3.train.common as common_train_lib
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-handler = logging.StreamHandler()
-handler.setLevel(logging.INFO)
-formatter = logging.Formatter("%(asctime)s [%(filename)s:%(lineno)s - "
-                              "%(funcName)s - %(levelname)s ] %(message)s")
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+logger.addHandler(NullHandler())
 
 
 def create_phone_lm(dir, tree_dir, run_opts, lm_opts=None):

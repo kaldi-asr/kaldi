@@ -14,13 +14,7 @@ import logging
 import libs.common as common_lib
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-handler = logging.StreamHandler()
-handler.setLevel(logging.INFO)
-formatter = logging.Formatter("%(asctime)s [%(filename)s:%(lineno)s - "
-                              "%(funcName)s - %(levelname)s ] %(message)s")
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+logger.addHandler(NullHandler())
 
 
 def generate_egs_using_targets(data, targets_scp, egs_dir,

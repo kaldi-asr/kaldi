@@ -16,13 +16,7 @@ import subprocess
 import threading
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-handler = logging.StreamHandler()
-handler.setLevel(logging.INFO)
-formatter = logging.Formatter("%(asctime)s [%(filename)s:%(lineno)s - "
-                              "%(funcName)s - %(levelname)s ] %(message)s")
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+logger.addHandler(logging.NullHandler())
 
 
 def send_mail(message, subject, email_id):
@@ -88,103 +82,6 @@ class KaldiCommandException(Exception):
                            "{0}\n{1}\n{2}".format(command, "-"*10, err))
 
 
-class ListNode():
-    """ A structure to store a node in a doubly linked-list
-
-    Attributes:
-        data: Any object that is to be stored
-        next_node: A reference to the next object
-        previous_node: A reference to the previous object
-    """
-
-    def __init__(self, data=None, next_node=None, previous_node=None):
-        self.data = data
-        self.next_node = next_node
-        self.previous_node = previous_node
-
-
-class LinkedListIterator():
-
-    def __init__(self, node):
-        self.__current = node
-
-    def __iter__(self):
-        return self
-
-    def next(self):
-        if self.__current is None:
-            raise StopIteration()
-
-        node = self.__current
-        self.__current = self.__current.next_node
-
-        return node
-
-
-class LinkedList():
-
-    def __init__(self):
-        self.__head = None
-        self.__tail = None
-        self.__size = 0
-
-    def __iter__(self):
-        return LinkedListIterator(self.__head)
-
-    def push(self, node):
-        """Pushes the node <node> at the "front" of the linked list
-        """
-        if self.__head == None:
-            self.__head = node
-            return
-        node.next_node = self.__head
-        node.previous_node = None
-        self.__head.previous_node = node
-        self.__head = node
-        self.__size += 1
-
-    def pop(self):
-        """Pops the last node out of the list"""
-
-        if self.__tail is None:
-            return None
-
-        old_last_node = self.__tail
-        to_be_last = self.__tail.previous_node
-        to_be_last.next_node = None
-        old_last_node.previous_node = None
-
-        # Set the last node to the "to_be_last"
-        self.__tail = to_be_last
-        self.__size -= 1
-
-        return old_last_node
-
-    def remove(self, node):
-        """Removes and returns node, and connects the previous and next
-        nicely
-        """
-        next_node = node.next_node
-        previous_node = node.previous_node
-
-        if previous_node is not None:
-            previous_node.next_node = next_node
-
-        if next_node is not None:
-            next_node.previous_node = previous_node
-
-        # Make it "free"
-        node.next_node = node.previous_node = None
-        self.__size -= 1
-
-        return node
-
-    def size():
-        return self.__size
-
-    def is_not_empty():
-        return self.__size != 0
-
 class BackgroundProcessHandler():
     """ This class handles background processes to ensure that a top-level
     script waits until all the processes end before exiting
@@ -198,41 +95,70 @@ class BackgroundProcessHandler():
 
     Attributes:
         __process_queue: Stores a list of process handles and command tuples
-
+        __polling_time: The time after which the processes are polled
+        __timer: Internal timer object
+        __is_running: Stores whether a timer is running
     """
 
     def __init__(self, polling_time=600):
-        self.__process_queue = LinkedList()
+        self.__process_queue = []
         self.__polling_time = polling_time
         self.__timer = None
+        self.__lock = threading.Lock()
         self.__is_running = False
 
-    def __run():
+    def __run(self):
+        """ Internal function to run a poll. Calls poll(). """
+        assert(self.__is_running)
         self.__is_running = False
+        logger.debug("Polling...")
         if self.poll():
+            # If there are any more background processes running,
+            # start a new timer
             self.start()
 
     def start(self):
+        """ Start the background process handler.
+
+        Repeatedly calls itself through the __run() method every
+        __polling_time seconds.
+        """
         if not self.__is_running:
-            self.__timer = threading.Timer(self.__polling_time, self.__run())
-            self.__timer.start()
+            self.__timer = threading.Timer(self.__polling_time, self.__run)
+            logger.debug("Starting new timer...")
             self.__is_running = True
+            self.__timer.start()
 
     def stop(self):
+        """ Stop the background process handler by cancelling any running timer.
+        """
         if self.__timer is not None:
             self.__timer.cancel()
         self.__is_running = False
 
     def poll(self):
-        for n in self.__process_queue:
-            if self.is_process_done(n.data):
-                self.ensure_process_is_done(n)
-        return self.__process_queue.is_not_empty()
+        """ Poll background processes and check their statuses.
+
+        Returns True if any processes are still in the queue.
+        """
+        with self.__lock:
+            remaining_processes = []
+            for t in self.__process_queue:
+                if self.is_process_done(t):
+                    self.ensure_process_is_done(t)
+                else:
+                    remaining_processes.append(t)
+            self.__process_queue = remaining_processes
+            num_processes = len(self.__process_queue)
+            logger.debug("Number of processes remaining is {0}...".format(
+                            num_processes))
+        return (num_processes > 0)
 
     def add_process(self, t):
-        """ Add a (process handle, command) tuple to the queue
+        """ Add a (process handle, command) tuple to the queue.
         """
-        self.__process_queue.push(ListNode(data=t))
+        with self.__lock:
+            self.__process_queue.append(t)
         self.start()
 
     def is_process_done(self, t):
@@ -241,21 +167,26 @@ class BackgroundProcessHandler():
             return False
         return True
 
-    def ensure_process_is_done(self, n):
-        p, command = n.data
-        logger.info("Waiting for process '{0}' to end".format(command))
+    def ensure_process_is_done(self, t):
+        p, command = t
+        logger.debug("Waiting for process '{0}' to end".format(command))
         [stdout, stderr] = p.communicate()
         if p.returncode is not 0:
             raise KaldiCommandException(command, stderr)
-        self.__process_queue.remove(n)
 
     def ensure_processes_are_done(self):
-        for n in self.__process_queue:
-            self.ensure_process_is_done(n)
+        self.__process_queue.reverse()
+        while len(self.__process_queue) > 0:
+            t = self.__process_queue.pop()
+            self.ensure_process_is_done(t)
         self.stop()
 
     def __del__(self):
         self.stop()
+
+    def debug(self):
+        for p, command in self.__process_queue:
+            logger.info("Process '{0}' is running".format(command))
 
 
 def run_kaldi_command(command, wait=True, background_process_handler=None):
