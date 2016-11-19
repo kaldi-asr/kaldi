@@ -55,12 +55,12 @@ LmComponent* LmComponent::NewComponentOfType(const std::string &component_type) 
     ans = new LmSoftmaxComponent();
   } else if (component_type == "LmLogSoftmaxComponent") {
     ans = new LmLogSoftmaxComponent();
-  } else if (component_type == "LmAffineComponent") {
-    ans = new LmAffineComponent();
+  } else if (component_type == "LmLinearComponent") {
+    ans = new LmLinearComponent();
 //  } else if (component_type == "NaturalGradientAffineComponent") {
 //    ans = new LmNaturalGradientAffineComponent();
-  } else if (component_type == "LmFixedAffineComponent") {
-    ans = new LmFixedAffineComponent();
+//  } else if (component_type == "LmFixedAffineComponent") {
+//    ans = new LmFixedAffineComponent();
   }
   if (ans != NULL) {
     KALDI_ASSERT(component_type == ans->Type());

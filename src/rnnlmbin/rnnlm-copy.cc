@@ -67,7 +67,10 @@ int main(int argc, char *argv[]) {
     
     if (learning_rate >= 0) {
       SetLearningRate(learning_rate, nnet.GetNnet());
-      nnet.I()->SetUnderlyingLearningRate(learning_rate);
+      LmUpdatableComponent *p;
+      if ((p = dynamic_cast<LmUpdatableComponent*>(nnet.I())) != NULL) {
+        p->SetUnderlyingLearningRate(learning_rate);
+      }
       nnet.O()->SetUnderlyingLearningRate(learning_rate);
     }
 

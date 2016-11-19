@@ -51,7 +51,7 @@ class LmLogSoftmaxComponent;
 // Note: although this class can be instantiated, it also
 // functions as a base-class for more specialized versions of
 // AffineComponent.
-class LmAffineComponent: public LmUpdatableComponent {
+class LmLinearComponent: public LmUpdatableComponent {
   friend class LmSoftmaxComponent; // Friend declaration relates to mixing up.
  public:
 
@@ -61,8 +61,8 @@ class LmAffineComponent: public LmUpdatableComponent {
   virtual std::string Info() const;
   virtual void InitFromConfig(ConfigLine *cfl);
 
-  LmAffineComponent() { } // use Init to really initialize.
-  virtual std::string Type() const { return "LmAffineComponent"; }
+  LmLinearComponent() { } // use Init to really initialize.
+  virtual std::string Type() const { return "LmLinearComponent"; }
   virtual int32 Properties() const {
     return kSimpleComponent|kUpdatableComponent|kLinearInParameters|
         kBackpropNeedsInput|kBackpropAdds;
@@ -112,17 +112,17 @@ class LmAffineComponent: public LmUpdatableComponent {
   // Some functions that are specific to this class.
 
   // This new function is used when mixing up:
-  virtual void SetParams(const VectorBase<BaseFloat> &bias,
+  virtual void SetParams(//const VectorBase<BaseFloat> &bias,
                          const MatrixBase<BaseFloat> &linear);
-  const Vector<BaseFloat> &BiasParams() { return bias_params_; }
+//  const Vector<BaseFloat> &BiasParams() { return bias_params_; }
   const Matrix<BaseFloat> &LinearParams() { return linear_params_; }
-  explicit LmAffineComponent(const LmAffineComponent &other);
+  explicit LmLinearComponent(const LmLinearComponent &other);
   // The next constructor is used in converting from nnet1.
-  LmAffineComponent(const MatrixBase<BaseFloat> &linear_params,
-                  const VectorBase<BaseFloat> &bias_params,
+  LmLinearComponent(const MatrixBase<BaseFloat> &linear_params,
+//                  const VectorBase<BaseFloat> &bias_params,
                   BaseFloat learning_rate);
   void Init(int32 input_dim, int32 output_dim,
-            BaseFloat param_stddev, BaseFloat bias_stddev);
+            BaseFloat param_stddev);//, BaseFloat bias_stddev);
   void Init(std::string matrix_filename);
 
   // This function resizes the dimensions of the component, setting the
@@ -133,7 +133,7 @@ class LmAffineComponent: public LmUpdatableComponent {
   // together.  They return a pointer to a new Component equivalent to
   // the sequence of two components.  We haven't implemented this for
   // FixedLinearComponent yet.
-  LmComponent *CollapseWithNext(const LmAffineComponent &next) const ;
+  LmComponent *CollapseWithNext(const LmLinearComponent &next) const ;
 //  Component *CollapseWithNext(const LmFixedAffineComponent &next) const;
 //  Component *CollapseWithNext(const FixedScaleComponent &next) const;
 //  Component *CollapseWithPrevious(const LmFixedAffineComponent &prev) const;
@@ -165,9 +165,9 @@ class LmAffineComponent: public LmUpdatableComponent {
       const SparseMatrix<BaseFloat> &in_value,
       const MatrixBase<BaseFloat> &out_deriv);
 
-  const LmAffineComponent &operator = (const LmAffineComponent &other); // Disallow.
+  const LmLinearComponent &operator = (const LmLinearComponent &other); // Disallow.
   Matrix<BaseFloat> linear_params_;
-  Vector<BaseFloat> bias_params_;
+//  Vector<BaseFloat> bias_params_;
 };
 
 class LmSoftmaxComponent: public LmNonlinearComponent {
@@ -182,6 +182,11 @@ class LmSoftmaxComponent: public LmNonlinearComponent {
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
                          const MatrixBase<BaseFloat> &in,
                          MatrixBase<BaseFloat> *out) const;
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const SparseMatrix<BaseFloat> &in,
+                         MatrixBase<BaseFloat> *out) const {
+    KALDI_ASSERT(0);
+  }
   virtual void Backprop(const std::string &debug_info,
                         const ComponentPrecomputedIndexes *indexes,
                         const MatrixBase<BaseFloat> &in_value,
@@ -189,6 +194,15 @@ class LmSoftmaxComponent: public LmNonlinearComponent {
                         const MatrixBase<BaseFloat> &out_deriv,
                         LmComponent *to_update,
                         MatrixBase<BaseFloat> *in_deriv) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const SparseMatrix<BaseFloat> &in_value,
+                        const MatrixBase<BaseFloat> &out_value,
+                        const MatrixBase<BaseFloat> &out_deriv,
+                        LmComponent *to_update,
+                        MatrixBase<BaseFloat> *in_deriv) const {
+    KALDI_ASSERT(0);
+  }
   virtual void StoreStats(const MatrixBase<BaseFloat> &out_value);
 
   virtual LmComponent* Copy() const { return new LmSoftmaxComponent(*this); }
@@ -208,6 +222,11 @@ class LmLogSoftmaxComponent: public LmNonlinearComponent {
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
                          const MatrixBase<BaseFloat> &in,
                          MatrixBase<BaseFloat> *out) const;
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const SparseMatrix<BaseFloat> &in,
+                         MatrixBase<BaseFloat> *out) const {
+    KALDI_ASSERT(0);
+  }
   virtual void Backprop(const std::string &debug_info,
                         const ComponentPrecomputedIndexes *indexes,
                         const MatrixBase<BaseFloat> &in_value,
@@ -215,6 +234,15 @@ class LmLogSoftmaxComponent: public LmNonlinearComponent {
                         const MatrixBase<BaseFloat> &out_deriv,
                         LmComponent *to_update,
                         MatrixBase<BaseFloat> *in_deriv) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const SparseMatrix<BaseFloat> &in_value,
+                        const MatrixBase<BaseFloat> &out_value,
+                        const MatrixBase<BaseFloat> &out_deriv,
+                        LmComponent *to_update,
+                        MatrixBase<BaseFloat> *in_deriv) const {
+    KALDI_ASSERT(0);
+  }
 
   virtual LmComponent* Copy() const { return new LmLogSoftmaxComponent(*this); }
  private:
@@ -338,6 +366,17 @@ class LmFixedAffineComponent: public LmComponent {
                         const MatrixBase<BaseFloat> &out_deriv,
                         LmComponent *to_update,
                         MatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const SparseMatrix<BaseFloat> &in,
+                         MatrixBase<BaseFloat> *out) const {} //TODO
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const SparseMatrix<BaseFloat> &in_value,
+                        const MatrixBase<BaseFloat> &, // out_value
+                        const MatrixBase<BaseFloat> &out_deriv,
+                        LmComponent *to_update,
+                        MatrixBase<BaseFloat> *in_deriv) const {} // TODO
 
 
   virtual LmComponent* Copy() const;

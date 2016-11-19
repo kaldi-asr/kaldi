@@ -45,8 +45,13 @@ LmNnetTrainer::LmNnetTrainer(const LmNnetTrainerOptions &config,
     bool is_gradient = false;  // setting this to true would disable the
                                // natural-gradient updates.
     SetZero(is_gradient, delta_nnet_->GetNnet());
-    delta_nnet_->I()->SetZero(is_gradient);
-    delta_nnet_->O()->SetZero(is_gradient);
+    LmUpdatableComponent* p;
+    if ((p = dynamic_cast<LmUpdatableComponent*>(delta_nnet_->I())) != NULL) {
+      p->SetZero(is_gradient);
+    }
+    if ((p = dynamic_cast<LmUpdatableComponent*>(delta_nnet_->O())) != NULL) {
+      p->SetZero(is_gradient);
+    }
   }
   if (config_.read_cache != "") {
     bool binary;
@@ -62,7 +67,7 @@ LmNnetTrainer::LmNnetTrainer(const LmNnetTrainerOptions &config,
 }
 
 NnetExample LmNnetTrainer::ProcessEgInputs(NnetExample eg,
-                                           const LmAffineComponent& a) {
+                                           const LmComponent& a) {
   for (size_t i = 0; i < eg.io.size(); i++) {
     NnetIo &io = eg.io[i];
 
@@ -143,7 +148,7 @@ void LmNnetTrainer::Train(const NnetExample &eg) {
 
     Matrix<BaseFloat> place_holder;
 
-//    LmAffineComponent *TODO = dynamic_cast<LmAffineComponent*>(delta_nnet_->I()->Copy());
+//    LmLinearComponent *TODO = dynamic_cast<LmLinearComponent*>(delta_nnet_->I()->Copy());
 
 //    BaseFloat i1 = TODO->DotProduct(*TODO);
 
@@ -175,7 +180,10 @@ void LmNnetTrainer::Train(const NnetExample &eg) {
       BaseFloat param_delta =
           DotProduct(*delta_nnet_->GetNnet(), *delta_nnet_->GetNnet());
 //      KALDI_LOG << "param_delta currently " << param_delta;
-      param_delta += delta_nnet_->I()->DotProduct(*delta_nnet_->I());
+      LmUpdatableComponent *p;
+      if ((p = dynamic_cast<LmUpdatableComponent*>(delta_nnet_->I())) != NULL) {
+        param_delta += p->DotProduct(*p);
+      }
 //      KALDI_LOG << "param_delta currently " << param_delta;
       param_delta += delta_nnet_->O()->DotProduct(*delta_nnet_->O());
 //      KALDI_LOG << "param_delta currently " << param_delta;
@@ -186,7 +194,10 @@ void LmNnetTrainer::Train(const NnetExample &eg) {
         if (param_delta - param_delta != 0.0) {
           KALDI_WARN << "Infinite parameter change, will not apply.";
           SetZero(false, delta_nnet_->GetNnet());
-          delta_nnet_->I()->SetZero(false);
+          LmUpdatableComponent *p;
+          if ((p = dynamic_cast<LmUpdatableComponent*>(delta_nnet_->I())) != NULL) {
+            p->SetZero(false);
+          }
           delta_nnet_->O()->SetZero(false);
         } else {
           scale *= config_.max_param_change / param_delta;

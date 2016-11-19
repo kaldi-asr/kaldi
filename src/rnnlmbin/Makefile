@@ -7,7 +7,7 @@ include ../kaldi.mk
 LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
 
-BINFILES = rnnlm-get-egs rnnlm-eval rnnlm-train rnnlm-init rnnlm-copy
+BINFILES = rnnlm-get-egs rnnlm-eval rnnlm-train rnnlm-init rnnlm-copy rnnlm-info \
 
 OBJFILES =
 

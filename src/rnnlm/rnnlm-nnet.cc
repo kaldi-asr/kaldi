@@ -2,6 +2,7 @@
 #include <sstream>
 #include "rnnlm/rnnlm-nnet.h"
 #include "nnet3/nnet-parse.h"
+#include "nnet3/nnet-nnet.h"
 #include "nnet3/nnet-utils.h"
 
 namespace kaldi {
@@ -12,10 +13,39 @@ using nnet3::LogSoftmaxComponent;
 
 namespace rnnlm {
 
+std::string LmNnet::Info() const {
+  std::ostringstream os;
+  int num_params_this = 0;
+  LmUpdatableComponent *p;
+  if ((p = dynamic_cast<LmUpdatableComponent*>(input_projection_)) != NULL) {
+    num_params_this += p->NumParameters();
+  }
+  nnet3::UpdatableComponent *p2;
+  if ((p2 = dynamic_cast<nnet3::UpdatableComponent*>(output_projection_)) != NULL) {
+    num_params_this += p->NumParameters();
+  }
+  if ((p2 = dynamic_cast<nnet3::UpdatableComponent*>(output_layer_)) != NULL) {
+    num_params_this += p->NumParameters();
+  }
+  os << "num-parameters: " << NumParameters(*this->nnet_) + num_params_this << "\n";
+  os << "internal nnet info: \n" 
+     << nnet_->Info();
+//  os << "modulus: " << this->Modulus() << "\n";
+//  std::vector<std::string> config_lines;
+//  bool include_dim = true;
+//  nnet_->GetConfigLines(include_dim, &config_lines);
+//  for (size_t i = 0; i < config_lines.size(); i++)
+//    os << config_lines[i] << "\n";
+//  // Get component info.
+//  for (size_t i = 0; i < nnet_->components_.size(); i++)
+//    os << "component name=" << nnet_->component_names_[i]
+//       << " type=" << nnet_->components_[i]->Info() << "\n";
+  return os.str();
+}
 
 void LmNnet::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<LmNnet>");
-  input_projection_ = LmAffineComponent::ReadNew(is, binary);
+  input_projection_ = LmLinearComponent::ReadNew(is, binary);
   output_projection_ = AffineComponent::ReadNew(is, binary);
   output_layer_ = NonlinearComponent::ReadNew(is, binary);
 
@@ -44,7 +74,7 @@ void LmNnet::Write(std::ostream &os, bool binary) const {
 void LmNnet::ReadConfig(std::istream &config_is) {
 
   // TODO(hxu) will allow for more flexible types
-  input_projection_ = new LmAffineComponent();
+  input_projection_ = new LmLinearComponent();
   output_projection_ = new AffineComponent();
   output_layer_ =  new LogSoftmaxComponent();
 

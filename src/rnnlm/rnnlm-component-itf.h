@@ -130,6 +130,10 @@ class LmComponent {
                          const MatrixBase<BaseFloat> &in,
                          MatrixBase<BaseFloat> *out) const = 0;
 
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const SparseMatrix<BaseFloat> &in,
+                         MatrixBase<BaseFloat> *out) const = 0;
+
   /// \brief Backprop function; depending on which of the arguments 'to_update'
   ///     and 'in_deriv' are non-NULL, this can compute input-data derivatives
   ///     and/or perform model update.
@@ -158,6 +162,15 @@ class LmComponent {
   virtual void Backprop(const std::string &debug_info,
                         const ComponentPrecomputedIndexes *indexes,
                         const MatrixBase<BaseFloat> &in_value,
+                        const MatrixBase<BaseFloat> &out_value,
+                        const MatrixBase<BaseFloat> &out_deriv,
+                        LmComponent *to_update, // may be NULL; may be identical
+                                              // to "this" or different.
+                        MatrixBase<BaseFloat> *in_deriv) const = 0;
+
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const SparseMatrix<BaseFloat> &in_value,
                         const MatrixBase<BaseFloat> &out_value,
                         const MatrixBase<BaseFloat> &out_deriv,
                         LmComponent *to_update, // may be NULL; may be identical

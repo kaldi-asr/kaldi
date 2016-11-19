@@ -168,7 +168,7 @@ class LmNnetTrainer {
 
   ~LmNnetTrainer();
  private:
-  NnetExample ProcessEgInputs(NnetExample eg, const LmAffineComponent& a);
+  NnetExample ProcessEgInputs(NnetExample eg, const LmComponent& a);
   void ProcessOutputs(const NnetExample &eg,
                       NnetComputer *computer);
 

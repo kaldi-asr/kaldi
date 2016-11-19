@@ -60,6 +60,8 @@ class LmNnet {
     return nnet_;
   }
 
+  std::string Info() const;
+
   void Read(std::istream &is, bool binary);
 
   void ReadConfig(std::istream &config_file);
@@ -76,8 +78,8 @@ class LmNnet {
     return other;
   }
 
-  LmAffineComponent* I() {
-    return dynamic_cast<LmAffineComponent*>(input_projection_);
+  LmComponent* I() {
+    return dynamic_cast<LmComponent*>(input_projection_);
   }
   nnet3::AffineComponent* O() {
     return dynamic_cast<nnet3::AffineComponent*>(output_projection_);
