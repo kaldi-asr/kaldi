@@ -14,7 +14,7 @@ import logging
 import libs.common as common_lib
 
 logger = logging.getLogger(__name__)
-logger.addHandler(NullHandler())
+logger.addHandler(logging.NullHandler())
 
 
 def generate_egs_using_targets(data, targets_scp, egs_dir,

@@ -15,7 +15,7 @@ import libs.nnet3.train.common as common_train_lib
 
 
 logger = logging.getLogger(__name__)
-logger.addHandler(NullHandler())
+logger.addHandler(logging.NullHandler())
 
 
 def generate_egs(data, alidir, egs_dir,

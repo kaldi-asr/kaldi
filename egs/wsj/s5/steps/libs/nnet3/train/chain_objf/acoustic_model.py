@@ -17,7 +17,7 @@ import libs.common as common_lib
 import libs.nnet3.train.common as common_train_lib
 
 logger = logging.getLogger(__name__)
-logger.addHandler(NullHandler())
+logger.addHandler(logging.NullHandler())
 
 
 def create_phone_lm(dir, tree_dir, run_opts, lm_opts=None):
@@ -122,8 +122,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                      momentum, max_param_change,
                      shuffle_buffer_size, num_chunk_per_minibatch,
                      frame_subsampling_factor, truncate_deriv_weights,
-                     cache_io_opts, run_opts,
-                     background_process_handler=None):
+                     cache_io_opts, run_opts):
     """
     Called from train_one_iteration(), this method trains new models
     with 'num_jobs' jobs, and
@@ -194,8 +193,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                         buf_size=shuffle_buffer_size,
                         cache_io_opts=cur_cache_io_opts,
                         num_chunk_per_mb=num_chunk_per_minibatch),
-            wait=False,
-            background_process_handler=background_process_handler)
+            wait=False)
 
         processes.append(process_handle)
 
@@ -323,8 +321,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      num_chunk_per_minibatch=cur_num_chunk_per_minibatch,
                      frame_subsampling_factor=frame_subsampling_factor,
                      truncate_deriv_weights=truncate_deriv_weights,
-                     cache_io_opts=cache_io_opts, run_opts=run_opts,
-                     background_process_handler=background_process_handler)
+                     cache_io_opts=cache_io_opts, run_opts=run_opts)
 
     [models_to_average, best_model] = common_train_lib.get_successful_models(
          num_jobs, '{0}/log/train.{1}.%.log'.format(dir, iter))

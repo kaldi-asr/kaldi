@@ -19,7 +19,7 @@ import libs.common as common_lib
 import libs.nnet3.train.common as common_train_lib
 
 logger = logging.getLogger(__name__)
-logger.addHandler(NullHandler())
+logger.addHandler(logging.NullHandler())
 
 
 def train_new_models(dir, iter, srand, num_jobs,
@@ -30,8 +30,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                      shuffle_buffer_size, minibatch_size,
                      cache_read_opt, run_opts,
                      frames_per_eg=-1,
-                     min_deriv_time=None, max_deriv_time=None,
-                     background_process_handler=None):
+                     min_deriv_time=None, max_deriv_time=None):
     """ Called from train_one_iteration(), this model does one iteration of
     training with 'num_jobs' jobs, and writes files like
     exp/tdnn_a/24.{1,2,3,..<num_jobs>}.raw
@@ -116,8 +115,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                         raw_model=raw_model_string, context_opts=context_opts,
                         egs_dir=egs_dir, archive_index=archive_index,
                         shuffle_buffer_size=shuffle_buffer_size,
-                        minibatch_size=minibatch_size), wait=False,
-            background_process_handler=background_process_handler)
+                        minibatch_size=minibatch_size), wait=False)
 
         processes.append(process_handle)
 
@@ -279,8 +277,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      cache_read_opt=cache_read_opt, run_opts=run_opts,
                      frames_per_eg=frames_per_eg,
                      min_deriv_time=min_deriv_time,
-                     max_deriv_time=max_deriv_time,
-                     background_process_handler=background_process_handler)
+                     max_deriv_time=max_deriv_time)
 
     [models_to_average, best_model] = common_train_lib.get_successful_models(
          num_jobs, '{0}/log/train.{1}.%.log'.format(dir, iter))
@@ -437,8 +434,8 @@ def compute_progress(dir, iter, egs_dir, left_context, right_context,
 
     common_lib.run_kaldi_command(
             """{command} {dir}/log/progress.{iter}.log \
-                    nnet3-info {model} '&&' \
-                    nnet3-show-progress --use-gpu=no {prev_model} {model} \
+                    nnet3-info "{model}" '&&' \
+                    nnet3-show-progress --use-gpu=no "{prev_model}" "{model}" \
                     "ark,bg:nnet3-copy-egs {context_opts} \
                         ark:{egs_dir}/train_diagnostic.egs ark:- | \
                         nnet3-merge-egs --minibatch-size={mb_size} ark:- \
