@@ -369,14 +369,18 @@ class LmFixedAffineComponent: public LmComponent {
 
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
                          const SparseMatrix<BaseFloat> &in,
-                         MatrixBase<BaseFloat> *out) const {} //TODO
+                         MatrixBase<BaseFloat> *out) const {
+    KALDI_ASSERT(0);
+  } //TODO
   virtual void Backprop(const std::string &debug_info,
                         const ComponentPrecomputedIndexes *indexes,
                         const SparseMatrix<BaseFloat> &in_value,
                         const MatrixBase<BaseFloat> &, // out_value
                         const MatrixBase<BaseFloat> &out_deriv,
                         LmComponent *to_update,
-                        MatrixBase<BaseFloat> *in_deriv) const {} // TODO
+                        MatrixBase<BaseFloat> *in_deriv) const { // TODO
+    KALDI_ASSERT(0);
+  } //TODO
 
 
   virtual LmComponent* Copy() const;

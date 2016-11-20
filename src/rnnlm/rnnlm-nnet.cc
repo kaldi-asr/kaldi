@@ -74,21 +74,28 @@ void LmNnet::Write(std::ostream &os, bool binary) const {
 void LmNnet::ReadConfig(std::istream &config_is) {
 
   // TODO(hxu) will allow for more flexible types
-  input_projection_ = new LmLinearComponent();
-  output_projection_ = new AffineComponent();
-  output_layer_ =  new LogSoftmaxComponent();
+//  input_projection_ = new LmLinearComponent();
+//  output_projection_ = new AffineComponent();
+//  output_layer_ =  new LogSoftmaxComponent();
 
+  std::vector<string> type(3);
   std::vector<string> lines(3);
   std::vector<ConfigLine> config_lines(3);
   
   for (int i = 0; i < 3; i++) {
+    config_is >> type[i];
     getline(config_is, lines[i]);
     config_lines[i].ParseLine(lines[i]);
   }
 
   int i = 0; 
+  input_projection_ = LmComponent::NewComponentOfType(type[i]);
   input_projection_->InitFromConfig(&config_lines[i++]);
+
+  output_projection_ = Component::NewComponentOfType(type[i]);
   output_projection_->InitFromConfig(&config_lines[i++]);
+
+  output_layer_ = Component::NewComponentOfType(type[i]);
   output_layer_->InitFromConfig(&config_lines[i++]);
 
   nnet_->ReadConfig(config_is);

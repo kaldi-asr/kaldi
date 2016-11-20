@@ -146,9 +146,9 @@ if [ $stage -le -2 ]; then
 
   if [ "$type" == "rnn" ]; then
   cat > $outdir/config <<EOF
-  input-dim=$num_words_in output-dim=$hidden_dim
-  input-dim=$hidden_dim output-dim=$num_words_out
-  dim=$num_words_out
+  LmLinearComponent input-dim=$num_words_in output-dim=$hidden_dim
+  AffineComponent input-dim=$hidden_dim output-dim=$num_words_out
+  LogSoftmaxComponent dim=$num_words_out
 
   input-node name=input dim=$hidden_dim
   component name=first_nonlin type=SigmoidComponent dim=$hidden_dim
