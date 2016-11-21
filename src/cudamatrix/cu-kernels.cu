@@ -2630,6 +2630,64 @@ static void _diff_log_softmax(const MatrixDim in_deriv_dim,
 }
 
 
+/**
+ this function computes the core part of the LSTM nonlinearity.
+ @param [in] in      A matrix, of dimension num_rows by 5*cell_dim
+                     (i.e. its num-cols must be a multiple of 5).
+                     The column-space is interpreted as 5
+                     consecutive blocks, each of dimension cell_dim,
+                     which we name:
+                     (i_part, f_part, c_part, o_part, c_{t-1}).
+ @param [in] params  A matrix, of dimension 3 by cell_dim,
+                     with rows containing the 3 diagonal parameter matrices
+                     used in LSTMs, namely
+                     w_{ic}, w_{fc} and w_{oc}.
+ @param [out] out    A matrix, of dimension num_rows by 2*cell_dim.
+                     The quantities c_t and m_t respectively are put there
+                     (in two blocks of column-dimension cell_dim),
+                     according to the following equations:
+
+                     i_t = Sigmoid(i_part + w_{ic}*c_{t-1})
+                     f_t = Sigmoid(f_part + w_{fc}*c_{t-1})
+                     c_t = f_t*c_{t-1} + i_t * Tanh(c_part)
+                     o_t = Sigmoid(o_part + w_{oc}*c_t)
+                     m_t = o_t * Tanh(c_t)
+
+We use 1D thread block with CU1DBLOCK threads.
+It works best when cell_dim is a multiple of CU1DBLOCK.
+We use 1d Grid. Each block is working on one row of the in and out matrices.
+*/
+template<typename Real>
+__global__
+static void _lstm_nonlinearity(const Real* in, const int in_stride,
+                               const Real* params, const int params_stride,
+                               const int out_stride, const int cell_dim,
+                               const int num_rows, Real* out) {
+  const int tid = threadIdx.x;
+  const int i = blockIdx.x;
+  const Real* i_part = in + i * in_stride;
+  const Real* f_part = in + i * in_stride + cell_dim;
+  const Real* c_part = in + i * in_stride + cell_dim * 2;
+  const Real* o_part = in + i * in_stride + cell_dim * 3;
+  const Real* c_tm1 = in + i * in_stride + cell_dim * 4;
+  const Real* w_ic = params;
+  const Real* w_fc = params + params_stride;
+  const Real* w_oc = params + params_stride * 2;
+  Real* c_t = out + i * out_stride;
+  Real* m_t = out + i * out_stride + cell_dim;
+
+  for (int j = tid; j < cell_dim; j += CU1DBLOCK) {
+    Real c_tm1_j = c_tm1[j];
+    Real i_t_j = Real(1) / (Real(1) + exp(-i_part[j] - w_ic[j] * c_tm1_j));
+    Real f_t_j = Real(1) / (Real(1) + exp(-f_part[j] - w_fc[j] * c_tm1_j));
+    Real c_t_j = f_t_j * c_tm1_j + i_t_j * tanh(c_part[j]);
+    Real o_t_j = Real(1) / (Real(1) + exp(-o_part[j] - w_oc[j] * c_t_j));
+    c_t[j] = c_t_j;
+    m_t[j] = o_t_j * tanh(c_t_j);
+  }
+}
+
+
 /***********************************************************************
  * ANSI-C wrappers of CUDA kernels
  */
@@ -4031,3 +4089,20 @@ void cudaD_trace_mat_smat_trans(dim3 Gr, dim3 Bl, const double* mat_in,
   _trace_mat_smat_trans<<<Gr,Bl>>>(mat_in, smat_in, mat_d_in, smat_d_in,
       trace_vec_out);
 }
+void cudaD_lstm_nonlinearity(dim3 Gr, dim3 Bl, const double* in,
+                             const int in_stride, const double* params,
+                             const int params_stride, const int out_stride,
+                             const int cell_dim, const int num_rows,
+                             double* out) {
+  _lstm_nonlinearity<<<Gr, Bl>>>(in, in_stride, params, params_stride,
+      out_stride, cell_dim, num_rows, out);
+}
+void cudaF_lstm_nonlinearity(dim3 Gr, dim3 Bl, const float* in,
+                             const int in_stride, const float* params,
+                             const int params_stride, const int out_stride,
+                             const int cell_dim, const int num_rows,
+                             float* out) {
+  _lstm_nonlinearity<<<Gr, Bl>>>(in, in_stride, params, params_stride,
+      out_stride, cell_dim, num_rows, out);
+}
+

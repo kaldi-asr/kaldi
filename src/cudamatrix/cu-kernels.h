@@ -1242,6 +1242,23 @@ inline cublasStatus_t cuda_scal(cublasHandle_t handle, int n, double alpha,
   return cublasDscal_v2(handle, n, &alpha, x, incx);
 }
 
+inline void cuda_lstm_nonlinearity(dim3 Gr, dim3 Bl, const double* in,
+                                   const int in_stride, const double* params,
+                                   const int params_stride,
+                                   const int out_stride, const int cell_dim,
+                                   const int num_rows, double* out) {
+  cudaD_lstm_nonlinearity(Gr, Bl, in, in_stride, params, params_stride,
+                          out_stride, cell_dim, num_rows, out);
+}
+inline void cuda_lstm_nonlinearity(dim3 Gr, dim3 Bl, const float* in,
+                                   const int in_stride, const float* params,
+                                   const int params_stride,
+                                   const int out_stride, const int cell_dim,
+                                   const int num_rows, float* out) {
+  cudaF_lstm_nonlinearity(Gr, Bl, in, in_stride, params, params_stride,
+                          out_stride, cell_dim, num_rows, out);
+}
+
 } // namespace kaldi
 
 #endif // HAVE_CUDA

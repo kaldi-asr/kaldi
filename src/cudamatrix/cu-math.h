@@ -102,10 +102,15 @@ void Group2norm(const CuMatrixBase<Real> &src,
                      m_t = o_t * Tanh(c_t)
 
 
-*/
-void ComputeLstmNonlinearity(const CuMatrixBase<BaseFloat> &input,
-                             const CuMatrixBase<BaseFloat> &params,
-                             CuMatrixBase<BaseFloat> *output);
+ */
+template<typename Real>
+void CpuComputeLstmNonlinearity(const MatrixBase<Real> &input,
+                                const MatrixBase<Real> &params,
+                                MatrixBase<Real> *output);
+template<typename Real>
+void ComputeLstmNonlinearity(const CuMatrixBase<Real> &input,
+                             const CuMatrixBase<Real> &params,
+                             CuMatrixBase<Real> *output);
 
 
 /**

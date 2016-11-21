@@ -139,15 +139,60 @@ static void UnitTestCuMathSplice() {
   }
 }
 
+template<typename Real>
+static void UnitTestCuMathComputeLstmNonlinearity() {
+  for (int i = 0; i < 3; i++) {
+    int32 num_rows = 1 + Rand() % 100;
+    int32 cell_dim = 1 + Rand() % 2000;
+    Matrix<Real> Hinput(num_rows, 5 * cell_dim);
+    Matrix<Real> Hparams(3, cell_dim);
+    Matrix<Real> Houtput(num_rows, 2 * cell_dim);
+    Hinput.SetRandn();
+    Hparams.SetRandn();
+
+    CuMatrix<Real> Dinput(Hinput);
+    CuMatrix<Real> Dparams(Hparams);
+    CuMatrix<Real> Doutput(Houtput);
+
+    cu::CpuComputeLstmNonlinearity(Hinput, Hparams, &Houtput);
+    cu::ComputeLstmNonlinearity(Dinput, Dparams, &Doutput);
+
+    Matrix<Real> HDoutput(Doutput);
+    AssertEqual(Houtput, HDoutput);
+  }
+
+  for (int i = 16; i <= 1024; i *= 2) {
+    BaseFloat time_in_secs = 0.025;
+    int32 num_rows = i;
+    int32 cell_dim = i;
+    CuMatrix<Real> input(num_rows, 5 * cell_dim);
+    CuMatrix<Real> params(3, cell_dim);
+    CuMatrix<Real> output(num_rows, 2 * cell_dim);
+    input.SetRandn();
+    params.SetRandn();
+
+    Timer tim;
+    int32 iter = 0;
+    for (; tim.Elapsed() < time_in_secs; iter++)
+      cu::ComputeLstmNonlinearity(input, params, &output);
+
+    BaseFloat gflops = ((BaseFloat) i * i * iter) / (tim.Elapsed() * 1.0e+09);
+    KALDI_LOG << "For ComputeLstmNonlinearity"
+              << (sizeof(Real)==8 ? "<double>" : "<float>") << ", for dim = "
+              << i << ", speed was " << gflops << " gigaflops";
+  }
+}
+
 template<typename Real> void CudaMathUnitTest() {
-  #if HAVE_CUDA == 1  
-    if (CuDevice::Instantiate().DoublePrecisionSupported())
-  #endif
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().DoublePrecisionSupported())
+#endif
+
+  UnitTestCuMathComputeLstmNonlinearity<Real>();
   UnitTestCuMathRandomize<Real>();
   UnitTestCuMathSplice<Real>();
   UnitTestCuMathCopy<Real>();
 }
-
 
 } // namespace kaldi
 
