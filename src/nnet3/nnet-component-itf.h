@@ -544,6 +544,7 @@ class NonlinearComponent: public Component {
   BaseFloat self_repair_lower_threshold_;
   BaseFloat self_repair_upper_threshold_;
   BaseFloat self_repair_scale_;
+  BaseFloat self_repair_margin_threshold_;
 
   // The mutex is used in UpdateStats, only for resizing vectors.
   Mutex mutex_;

@@ -532,18 +532,16 @@ void SigmoidComponent::RepairGradients(
     CuMatrixBase<BaseFloat> *in_deriv,
     SigmoidComponent *to_update) const {
   KALDI_ASSERT(to_update != NULL);
-  // maximum possible derivative of SigmoidComponent is 0.25.
-  // the default lower-threshold on the derivative, below which we
-  // add a term to the derivative to encourage the inputs to the sigmoid
-  // to be closer to zero, is 0.05, which means the derivative is on average
-  // 5 times smaller than its maximum possible value.
-  BaseFloat default_lower_threshold = 0.05;
+  // minimum margin between the actual output value and the asymptotic
+  // output value of sigmoid (1 and 0), below which we add a term to the
+  // derivative to encourage the inputs to the sigmoid to get closer to zero.
+  BaseFloat default_margin_threshold = 0.05;
 
   // we use this 'repair_probability' (hardcoded for now) to limit
   // this code to running on about half of the minibatches.
   BaseFloat repair_probability = 0.5;
 
-  to_update->num_dims_processed_ += dim_;
+  to_update->num_dims_processed_ += out_value.NumRows() * dim_;
 
   if (self_repair_scale_ == 0.0 || count_ == 0.0 || deriv_sum_.Dim() != dim_ ||
       RandUniform() > repair_probability)
@@ -552,28 +550,32 @@ void SigmoidComponent::RepairGradients(
   // check that the self-repair scale is in a reasonable range.
   KALDI_ASSERT(self_repair_scale_ > 0.0 && self_repair_scale_ < 0.1);
   BaseFloat unset = kUnsetThreshold; // -1000.0
-  BaseFloat lower_threshold = (self_repair_lower_threshold_ == unset ?
-                               default_lower_threshold :
-                               self_repair_lower_threshold_) *
-      count_;
-  if (self_repair_upper_threshold_ != unset) {
-    KALDI_ERR << "Do not set the self-repair-upper-threshold for sigmoid "
-              << "components, it does nothing.";
-  }
+  BaseFloat margin_threshold = (self_repair_margin_threshold_ == unset ?
+                               default_margin_threshold :
+                               self_repair_margin_threshold_);
 
-  // thresholds_vec is actually a 1-row matrix.  (the ApplyHeaviside
-  // function isn't defined for vectors).
-  CuMatrix<BaseFloat> thresholds(1, dim_);
-  CuSubVector<BaseFloat> thresholds_vec(thresholds, 0);
-  thresholds_vec.AddVec(-1.0, deriv_sum_);
-  thresholds_vec.Add(lower_threshold);
-  thresholds.ApplyHeaviside();
-  to_update->num_dims_self_repaired_ += thresholds_vec.Sum();
+  // repair_mat = out_value * 2 - 1
+  // sign_mat = sign(out_value * 2 - 1), i.e., an element in sign_mat is 1
+  // if its corresponding element in out_value*2-1 > 0, or -1 otherwise
+  CuMatrix<BaseFloat> repair_mat(out_value);
+  repair_mat.Scale(2.0);
+  repair_mat.Add(-1.0);
+  CuMatrix<BaseFloat> sign_mat(repair_mat);
+  sign_mat.ApplyHeaviside();
+  sign_mat.Scale(2.0);
+  sign_mat.Add(-1.0);
 
-  // At this point, 'thresholds_vec' contains a 1 for each dimension of
-  // the output that is 'problematic', i.e. for which the avg-deriv
-  // is less than the self-repair lower threshold, and a 0 for
-  // each dimension that is not problematic.
+  repair_mat.ApplyPowAbs(1.0);
+  repair_mat.Add(-margin_threshold * 2.0); // as out_value was also scaled by 2
+  repair_mat.ApplyFloor(0.0);
+  repair_mat.MulElements(sign_mat);
+  // scales by 10 so that the absolute value of each element is in the range
+  // [0.0,1.0]
+  repair_mat.Scale(10.0);
+  CuMatrix<BaseFloat> zero_mat(out_value.NumRows(), out_value.NumCols());
+  CuMatrix<BaseFloat> mask(out_value.NumRows(), out_value.NumCols());
+  repair_mat.EqualElementMask(zero_mat, &mask);
+  to_update->num_dims_self_repaired_ += mask.Sum();
 
   // what we want to do is to add
   // -self_repair_scale_ / repair_probability times (2 * output-valiue - 1.0)
@@ -587,16 +589,8 @@ void SigmoidComponent::RepairGradients(
   // for inputs < 0 and negative for inputs > 0.
 
   // We can rearrange the above as: for only the problematic columns,
-  //   input-deriv -= 2 * self-repair-scale / repair-probabilty * output
-  //   input-deriv +=  self-repair-scale / repair-probabilty
-  // which we can write as:
-  //   input-deriv -= 2 * self-repair-scale / repair-probabilty * output * thresholds-vec
-  //   input-deriv +=  self-repair-scale / repair-probabilty * thresholds-vec
-
-  in_deriv->AddMatDiagVec(-2.0 * self_repair_scale_ / repair_probability,
-                          out_value, kNoTrans, thresholds_vec);
-  in_deriv->AddVecToRows(self_repair_scale_ / repair_probability,
-                         thresholds_vec);
+  // input-deriv -= self-repair-scale / repair-probabilty * repair_mat
+  in_deriv->AddMat(-self_repair_scale_ / repair_probability, repair_mat);
 }
 
 
@@ -950,18 +944,16 @@ void TanhComponent::RepairGradients(
     CuMatrixBase<BaseFloat> *in_deriv,
     TanhComponent *to_update) const {
   KALDI_ASSERT(to_update != NULL);
-  // maximum possible derivative of SigmoidComponent is 1.0
-  // the default lower-threshold on the derivative, below which we
-  // add a term to the derivative to encourage the inputs to the sigmoid
-  // to be closer to zero, is 0.2, which means the derivative is on average
-  // 5 times smaller than its maximum possible value.
-  BaseFloat default_lower_threshold = 0.2;
+  // minimum margin between the actual output value and the asymptotic
+  // output value of tanh (1 and -1), below which we add a term to the
+  // derivative to encourage the inputs to the tanh to get closer to zero.
+  BaseFloat default_margin_threshold = 0.1;
 
   // we use this 'repair_probability' (hardcoded for now) to limit
   // this code to running on about half of the minibatches.
   BaseFloat repair_probability = 0.5;
 
-  to_update->num_dims_processed_ += dim_;
+  to_update->num_dims_processed_ += out_value.NumRows() * dim_;
 
   if (self_repair_scale_ == 0.0 || count_ == 0.0 || deriv_sum_.Dim() != dim_ ||
       RandUniform() > repair_probability)
@@ -970,28 +962,32 @@ void TanhComponent::RepairGradients(
   // check that the self-repair scale is in a reasonable range.
   KALDI_ASSERT(self_repair_scale_ > 0.0 && self_repair_scale_ < 0.1);
   BaseFloat unset = kUnsetThreshold; // -1000.0
-  BaseFloat lower_threshold = (self_repair_lower_threshold_ == unset ?
-                               default_lower_threshold :
-                               self_repair_lower_threshold_) *
-      count_;
-  if (self_repair_upper_threshold_ != unset) {
-    KALDI_ERR << "Do not set the self-repair-upper-threshold for sigmoid "
-              << "components, it does nothing.";
-  }
+  BaseFloat margin_threshold = (self_repair_margin_threshold_ == unset ?
+                                default_margin_threshold :
+                                self_repair_margin_threshold_);
 
-  // thresholds_vec is actually a 1-row matrix.  (the ApplyHeaviside
-  // function isn't defined for vectors).
-  CuMatrix<BaseFloat> thresholds(1, dim_);
-  CuSubVector<BaseFloat> thresholds_vec(thresholds, 0);
-  thresholds_vec.AddVec(-1.0, deriv_sum_);
-  thresholds_vec.Add(lower_threshold);
-  thresholds.ApplyHeaviside();
-  to_update->num_dims_self_repaired_ += thresholds_vec.Sum();
+  // sign_mat = sign(out_value), i.e.,
+  // An element in sign_mat is 1 if its corresponding element in out_value > 0,
+  // or -1 otherwise
+  CuMatrix<BaseFloat> sign_mat(out_value);
+  sign_mat.ApplyHeaviside();
+  sign_mat.Scale(2.0);
+  sign_mat.Add(-1.0);
 
-  // At this point, 'thresholds_vec' contains a 1 for each dimension of
-  // the output that is 'problematic', i.e. for which the avg-deriv
-  // is less than the self-repair lower threshold, and a 0 for
-  // each dimension that is not problematic.
+  // repair_mat =
+  // floor(abs(out_value) - margin_threshold, 0) .* sign(out_value)
+  CuMatrix<BaseFloat> repair_mat(out_value);
+  repair_mat.ApplyPowAbs(1.0);
+  repair_mat.Add(-margin_threshold);
+  repair_mat.ApplyFloor(0.0);
+  repair_mat.MulElements(sign_mat);
+  // scales by 10 so that the absolute value of each element is in the range
+  // [0.0,1.0]
+  repair_mat.Scale(10.0);
+  CuMatrix<BaseFloat> zero_mat(out_value.NumRows(), out_value.NumCols());
+  CuMatrix<BaseFloat> mask(out_value.NumRows(), out_value.NumCols());
+  repair_mat.EqualElementMask(zero_mat, &mask);
+  to_update->num_dims_self_repaired_ += mask.Sum();
 
   // what we want to do is to add -self_repair_scale_ / repair_probability times
   // output-valiue) to the input derivative for each problematic dimension.
@@ -1002,13 +998,9 @@ void TanhComponent::RepairGradients(
   // available.  We could use just about any function that is positive for
   // inputs < 0 and negative for inputs > 0.
 
-  // We can rearrange the above as: for only the problematic columns,
-  //   input-deriv -= self-repair-scale / repair-probabilty * output
-  // which we can write as:
-  //   input-deriv -=  self-repair-scale / repair-probabilty * output * thresholds-vec
-
-  in_deriv->AddMatDiagVec(-self_repair_scale_ / repair_probability,
-                          out_value, kNoTrans, thresholds_vec);
+  // We can rearrange the above as:
+  // input-deriv -= self-repair-scale / repair-probabilty * repair_mat
+  in_deriv->AddMat(-self_repair_scale_ / repair_probability, repair_mat);
 }
 
 void TanhComponent::Backprop(const std::string &debug_info,

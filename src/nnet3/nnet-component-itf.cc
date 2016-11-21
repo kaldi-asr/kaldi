@@ -319,6 +319,8 @@ std::string NonlinearComponent::Info() const {
     stream << ", self-repair-upper-threshold=" << self_repair_upper_threshold_;
   if (self_repair_scale_ != 0.0)
     stream << ", self-repair-scale=" << self_repair_scale_;
+  if (self_repair_margin_threshold_ != BaseFloat(kUnsetThreshold))
+    stream << ", self-repair-margin-threshold=" << self_repair_margin_threshold_;
   if (count_ > 0 && value_sum_.Dim() == dim_ &&  deriv_sum_.Dim() == dim_) {
     stream << ", count=" << std::setprecision(3) << count_
            << std::setprecision(6);
@@ -399,6 +401,10 @@ void NonlinearComponent::Read(std::istream &is, bool binary) {
     ReadBasicType(is, binary, &self_repair_scale_);
     ReadToken(is, binary, &token);
   }
+  if (token == "<SelfRepairMarginThreshold>") {
+    ReadBasicType(is, binary, &self_repair_margin_threshold_);
+    ReadToken(is, binary, &token);
+  }
   if (token != ostr_end.str()) {
     KALDI_ERR << "Expected token " << ostr_end.str()
               << ", got " << token;
@@ -442,6 +448,10 @@ void NonlinearComponent::Write(std::ostream &os, bool binary) const {
     WriteToken(os, binary, "<SelfRepairScale>");
     WriteBasicType(os, binary, self_repair_scale_);
   }
+  if (self_repair_margin_threshold_ != kUnsetThreshold) {
+    WriteToken(os, binary, "<SelfRepairMarginThreshold>");
+    WriteBasicType(os, binary, self_repair_margin_threshold_);
+  }
   WriteToken(os, binary, ostr_end.str());
 }
 
@@ -450,7 +460,7 @@ NonlinearComponent::NonlinearComponent():
     num_dims_self_repaired_(0.0), num_dims_processed_(0.0),
     self_repair_lower_threshold_(kUnsetThreshold),
     self_repair_upper_threshold_(kUnsetThreshold),
-    self_repair_scale_(0.0) { }
+    self_repair_scale_(0.0), self_repair_margin_threshold_(kUnsetThreshold) { }
 
 NonlinearComponent::NonlinearComponent(const NonlinearComponent &other):
     dim_(other.dim_), value_sum_(other.value_sum_), deriv_sum_(other.deriv_sum_),
@@ -459,13 +469,15 @@ NonlinearComponent::NonlinearComponent(const NonlinearComponent &other):
     num_dims_processed_(other.num_dims_processed_),
     self_repair_lower_threshold_(other.self_repair_lower_threshold_),
     self_repair_upper_threshold_(other.self_repair_upper_threshold_),
-    self_repair_scale_(other.self_repair_scale_) { }
+    self_repair_scale_(other.self_repair_scale_),
+    self_repair_margin_threshold_(other.self_repair_margin_threshold_) { }
 
 void NonlinearComponent::InitFromConfig(ConfigLine *cfl) {
   bool ok = cfl->GetValue("dim", &dim_);
   cfl->GetValue("self-repair-lower-threshold", &self_repair_lower_threshold_);
   cfl->GetValue("self-repair-upper-threshold", &self_repair_upper_threshold_);
   cfl->GetValue("self-repair-scale", &self_repair_scale_);
+  cfl->GetValue("self-repair-margin-threshold", &self_repair_margin_threshold_);
   if (!ok || cfl->HasUnusedValues() || dim_ <= 0)
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << cfl->WholeLine() << "\"";
