@@ -205,7 +205,8 @@ void LmNnetTrainer::ProcessOutputs(const NnetExample &eg,
       // the following function adds the computation of special layers
       ComputeObjectiveFunction(io.features, obj_type, io.name,
                                supply_deriv, computer,
-                               &tot_weight, &tot_objf, nnet_->O(), nnet_->N(), delta_nnet_);
+                               &tot_weight, &tot_objf, nnet_->O(), nnet_->N(),
+                               &new_output_, delta_nnet_);
 
       objf_info_[io.name].UpdateStats(io.name, config_.print_interval,
                                       num_minibatches_processed_++,
@@ -324,18 +325,20 @@ void LmNnetTrainer::ComputeObjectiveFunction(const GeneralMatrix &supervision,
                               BaseFloat *tot_objf,
                               const Component *output_projection_1,
                               const Component *output_projection_2,
-                              LmNnet *nnet) {
+                              CuMatrix<BaseFloat> *new_output,
+                              LmNnet *nnet
+                              ) {
   const CuMatrixBase<BaseFloat> &output_0_gpu = computer->GetOutput(output_name);
-  Matrix<BaseFloat> output_0(output_0_gpu);
+//  Matrix<BaseFloat> output_0(output_0_gpu);
 //  const MatrixBase<BaseFloat> output_1;
   
 
-  const CuMatrix<BaseFloat> &output =
+  *new_output =
               ProcessOutput(output_0_gpu, output_projection_1, output_projection_2); 
 
-  if (output.NumCols() != supervision.NumCols())
+  if (new_output->NumCols() != supervision.NumCols())
     KALDI_ERR << "Nnet versus example output dimension (num-classes) "
-              << "mismatch for '" << output_name << "': " << output.NumCols()
+              << "mismatch for '" << output_name << "': " << new_output->NumCols()
               << " (nnet) vs. " << supervision.NumCols() << " (egs)\n";
 
   switch (objective_type) {
@@ -349,23 +352,26 @@ void LmNnetTrainer::ComputeObjectiveFunction(const GeneralMatrix &supervision,
           // because after the LogSoftmaxLayer, the output is already in the form
           // of log-likelihoods that are normalized to sum to one.
           *tot_weight = cu_post.Sum();
-          *tot_objf = TraceMatSmat(output, cu_post, kTrans);
+          *tot_objf = TraceMatSmat(*new_output, cu_post, kTrans);
           if (supply_deriv && nnet != NULL) {
             // the derivative on the real output
-            CuMatrix<BaseFloat> output_deriv(output.NumRows(), output.NumCols(),
+            CuMatrix<BaseFloat> output_deriv(new_output->NumRows(),
+                                             new_output->NumCols(),
                                              kSetZero);
 
             // the derivative after the affine layer (before the nonlin)
-            CuMatrix<BaseFloat> between_deriv(output.NumRows(), output.NumCols(),
+            CuMatrix<BaseFloat> between_deriv(new_output->NumRows(),
+                                              new_output->NumCols(),
                                               kSetZero);
 
             // the derivative of the 'nnet3' part
-            CuMatrix<BaseFloat> input_deriv(output.NumRows(), output_0.NumCols(),
+            CuMatrix<BaseFloat> input_deriv(new_output->NumRows(),
+                                            output_0_gpu.NumCols(),
                                             kSetZero);
 
             cu_post.CopyToMat(&output_deriv);
             CuMatrix<BaseFloat> place_holder;
-            output_projection_2->Backprop("", NULL, place_holder, output,
+            output_projection_2->Backprop("", NULL, place_holder, *new_output,
                              output_deriv, NULL, &between_deriv);
 
             output_projection_1->Backprop("", NULL, output_0_gpu, place_holder,

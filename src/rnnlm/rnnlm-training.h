@@ -167,6 +167,7 @@ class LmNnetTrainer {
                               BaseFloat *tot_objf,
                               const Component *output_projection_1,
                               const Component *output_projection_2,
+                              CuMatrix<BaseFloat> *new_output,
                               LmNnet *delta_nnet = NULL);
 
   LmNnetTrainer(const LmNnetTrainerOptions &config,
@@ -189,6 +190,7 @@ class LmNnetTrainer {
   const LmNnetTrainerOptions config_;
   Matrix<BaseFloat> new_input_;
   SparseMatrix<BaseFloat> old_input_;
+  CuMatrix<BaseFloat> new_output_;
 
   // this pointer is not owned
   LmNnet *nnet_;

@@ -101,7 +101,7 @@ class LmNnetComputeProb {
 
   // if config.compute_deriv == true, returns a reference to the
   // computed derivative.  Otherwise crashes.
-//  const Nnet &GetDeriv() const;
+  const LmNnet &GetDeriv() const;
 
   ~LmNnetComputeProb();
  private:

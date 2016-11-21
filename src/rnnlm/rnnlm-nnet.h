@@ -72,7 +72,7 @@ class LmNnet {
     return nnet_;
   }
 
-  nnet3::Nnet& Nnet() const {
+  const nnet3::Nnet& Nnet() const {
     return *nnet_;
   }
 

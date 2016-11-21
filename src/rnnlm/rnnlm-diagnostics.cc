@@ -37,14 +37,14 @@ LmNnetComputeProb::LmNnetComputeProb(const LmNnetComputeProbOptions &config,
   }
 }
 
-//const Nnet &LmNnetComputeProb::GetDeriv() const {
-//  if (deriv_nnet_ == NULL)
-//    KALDI_ERR << "GetDeriv() called when no derivatives were requested.";
-//  return *deriv_nnet_;
-//}
+const LmNnet &LmNnetComputeProb::GetDeriv() const {
+  if (deriv_nnet_ == NULL)
+    KALDI_ERR << "GetDeriv() called when no derivatives were requested.";
+  return *deriv_nnet_;
+}
 
 LmNnetComputeProb::~LmNnetComputeProb() {
-//  delete deriv_nnet_;  // delete does nothing if pointer is NULL.
+  delete deriv_nnet_;  // delete does nothing if pointer is NULL.
 }
 
 void LmNnetComputeProb::Reset() {
@@ -66,7 +66,7 @@ void LmNnetComputeProb::Compute(const NnetExample &eg) {
                         &request);
   const NnetComputation *computation = compiler_.Compile(request);
   NnetComputer computer(config_.compute_config, *computation,
-                        nnet_.Nnet(), deriv_nnet_->GetNnet());
+                        nnet_.Nnet(), (deriv_nnet_ != NULL? deriv_nnet_->GetNnet(): NULL));
   // give the inputs to the computer object.
   NnetExample new_eg = LmNnetTrainer::ProcessEgInputs(eg, *nnet_.I());
 
@@ -89,18 +89,20 @@ void LmNnetComputeProb::ProcessOutputs(const NnetExample &eg,
       KALDI_ERR << "Network has no output named " << io.name;
     ObjectiveType obj_type = nnet_.Nnet().GetNode(node_index).u.objective_type;
     if (nnet_.Nnet().IsOutputNode(node_index)) {
-      const CuMatrixBase<BaseFloat> &output = computer->GetOutput(io.name);
-      if (output.NumCols() != io.features.NumCols()) {
-        KALDI_ERR << "Nnet versus example output dimension (num-classes) "
-                  << "mismatch for '" << io.name << "': " << output.NumCols()
-                  << " (nnet) vs. " << io.features.NumCols() << " (egs)\n";
-      }
+//      const CuMatrixBase<BaseFloat> &output = computer->GetOutput(io.name);
+      CuMatrix<BaseFloat> output(io.features.NumRows(), nnet_.N()->OutputDim());
+      // now they're not equal since we have an extra transform matrix
+//      if (output.NumCols() != io.features.NumCols()) {
+//        KALDI_ERR << "Nnet versus example output dimension (num-classes) "
+//                  << "mismatch for '" << io.name << "': " << output.NumCols()
+//                  << " (nnet) vs. " << io.features.NumCols() << " (egs)\n";
+//      }
       {
         BaseFloat tot_weight, tot_objf;
         bool supply_deriv = config_.compute_deriv;
         LmNnetTrainer::ComputeObjectiveFunction(io.features, obj_type, io.name,
                                  supply_deriv, computer,
-                                 &tot_weight, &tot_objf, nnet_.O(), nnet_.N()
+                                 &tot_weight, &tot_objf, nnet_.O(), nnet_.N(), &output
                                  );
         SimpleObjectiveInfo &totals = objf_info_[io.name];
         totals.tot_weight += tot_weight;
