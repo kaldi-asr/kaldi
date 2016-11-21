@@ -51,7 +51,7 @@ lang=data/lang_chain_5g
 local/online/run_nnet2_common.sh --stage $stage || exit 1;
 
 if [ $stage -le 4 ]; then
-  # Get the alignments as lattices (gives the CTC training more freedom).
+  # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
   nj=$(cat exp/tri3b_ali/num_jobs) || exit 1;
   steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" data/train \
