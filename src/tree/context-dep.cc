@@ -188,15 +188,10 @@ void ContextDependency::EnumeratePairs(
 
   std::vector<EventAnswerType> forward_pdfs, self_loop_pdfs;
 
-  int32 forward_pdf, self_loop_pdf;
-  if (Compute(phone_window, forward_pdf_class, &forward_pdf) &&
-      Compute(phone_window, self_loop_pdf_class, &self_loop_pdf))
-    pairs->insert(std::make_pair(forward_pdf, self_loop_pdf));
-
   // get list of possible forward pdfs
   vec.clear();
   for (size_t i = 0; i < N_; i++)
-    if (phone_window[i] > 0)
+    if (phone_window[i] >= 0)
       vec.push_back(std::make_pair(static_cast<EventKeyType>(i),
                                    static_cast<EventValueType>(phone_window[i])));
   vec.push_back(std::make_pair(kPdfClass, static_cast<EventValueType>(forward_pdf_class)));
@@ -207,7 +202,7 @@ void ContextDependency::EnumeratePairs(
   // get list of possible self-loop pdfs
   vec.clear();
   for (size_t i = 0; i < N_; i++)
-    if (phone_window[i] > 0)
+    if (phone_window[i] >= 0)
       vec.push_back(std::make_pair(static_cast<EventKeyType>(i),
                                    static_cast<EventValueType>(phone_window[i])));
   vec.push_back(std::make_pair(kPdfClass, static_cast<EventValueType>(self_loop_pdf_class)));
@@ -221,17 +216,22 @@ void ContextDependency::EnumeratePairs(
         pairs->insert(std::make_pair(forward_pdfs[m], self_loop_pdfs[n]));
   } else {
     // Choose 'position' as a phone position in 'context' that's currently
-    // 0, and that is as close as possible to the central position P.
+    // -1, and that is as close as possible to the central position P.
     int32 position = 0;
     int32 min_dist = N_ - 1;
     for (int32 i = 0; i < N_; i++) {
       int32 dist = (P_ - i > 0) ? (P_ - i) : (i - P_);
-      if (phone_window[i] == 0 && dist < min_dist) {
+      if (phone_window[i] == -1 && dist < min_dist) {
         position = i;
         min_dist = dist;
       }
     }
     KALDI_ASSERT(min_dist < N_);
+    KALDI_ASSERT(position != P_);
+
+    new_phone_window[position] = 0;
+    EnumeratePairs(phones, self_loop_pdf_class, forward_pdf_class,
+                   new_phone_window, pairs);
 
     for (size_t i = 0 ; i < phones.size(); i++) {
       new_phone_window[position] = phones[i];
@@ -259,10 +259,10 @@ void ContextDependency::GetPdfInfo(
       int32 pdf_class = pdf_class_pairs[phone][j].first,
             self_loop_pdf_class = pdf_class_pairs[phone][j].second;
       for (size_t win_start = 0; win_start < phone_window.size(); win_start++) {
-	if (win_start != P_)
-          phone_window[win_start] = 0;
-	else
-	  phone_window[win_start] = phone;
+        if (win_start != P_)
+          phone_window[win_start] = -1;
+        else
+          phone_window[win_start] = phone;
       }
       unordered_set<std::pair<int32, int32>, PairHasher<int32> > pairs;
       EnumeratePairs(phones, self_loop_pdf_class, pdf_class, phone_window, &pairs);

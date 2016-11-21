@@ -139,7 +139,7 @@ if [ $stage -le 10 ]; then
   # the lang directory.
   utils/mkgraph.sh --self-loop-scale 1.0 data/lang $dir $dir/graph
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-    --extra-left-context 20 --scoring-opts "--min-lmwt 1" \
+    --scoring-opts "--min-lmwt 1" \
     --nj 20 --cmd "$decode_cmd" \
     --online-ivector-dir exp/nnet2_online/ivectors_test \
     $dir/graph data/test $dir/decode || exit 1;
@@ -148,7 +148,6 @@ fi
 if [ $stage -le 11 ]; then
   utils/mkgraph.sh --self-loop-scale 1.0 data/lang_ug $dir $dir/graph_ug
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-    --extra-left-context 20 \
     --nj 20 --cmd "$decode_cmd" \
     --online-ivector-dir exp/nnet2_online/ivectors_test \
     $dir/graph_ug data/test $dir/decode_ug || exit 1;

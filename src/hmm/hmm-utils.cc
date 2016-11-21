@@ -215,7 +215,7 @@ GetHmmAsFstSimple(std::vector<int32> phone_window,
         label = 0;
       } else {  // normal probability.
         int32 trans_state =
-	  trans_model.TupleToTransitionState(phone, hmm_state, forward_pdf, self_loop_pdf);
+            trans_model.TupleToTransitionState(phone, hmm_state, forward_pdf, self_loop_pdf);
         int32 trans_id =
             trans_model.PairToTransitionId(trans_state, trans_idx);
         log_prob = prob_scale * trans_model.GetTransitionLogProb(trans_id);
