@@ -22,10 +22,10 @@ std::string LmNnet::Info() const {
   }
   nnet3::UpdatableComponent *p2;
   if ((p2 = dynamic_cast<nnet3::UpdatableComponent*>(output_projection_)) != NULL) {
-    num_params_this += p->NumParameters();
+    num_params_this += p2->NumParameters();
   }
   if ((p2 = dynamic_cast<nnet3::UpdatableComponent*>(output_layer_)) != NULL) {
-    num_params_this += p->NumParameters();
+    num_params_this += p2->NumParameters();
   }
   os << "num-parameters: " << NumParameters(*this->nnet_) + num_params_this << "\n";
   os << "internal nnet info: \n" 

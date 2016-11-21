@@ -33,9 +33,7 @@ LmNnetTrainer::LmNnetTrainer(const LmNnetTrainerOptions &config,
 //    output_projection_(config_.output_dim, config_.nnet_output_dim)
   {
   if (config.zero_component_stats)
-    ZeroComponentStats(nnet->GetNnet());
-    nnet_->I()->ZeroStats();
-    nnet_->O()->ZeroStats();
+    nnet->ZeroStats();
   if (config.momentum == 0.0 && config.max_param_change == 0.0) {
     delta_nnet_= NULL;
   } else {
@@ -44,14 +42,7 @@ LmNnetTrainer::LmNnetTrainer(const LmNnetTrainerOptions &config,
     delta_nnet_ = nnet_->Copy();
     bool is_gradient = false;  // setting this to true would disable the
                                // natural-gradient updates.
-    SetZero(is_gradient, delta_nnet_->GetNnet());
-    LmUpdatableComponent* p;
-    if ((p = dynamic_cast<LmUpdatableComponent*>(delta_nnet_->I())) != NULL) {
-      p->SetZero(is_gradient);
-    }
-    if ((p = dynamic_cast<LmUpdatableComponent*>(delta_nnet_->O())) != NULL) {
-      p->SetZero(is_gradient);
-    }
+    delta_nnet_->SetZero(is_gradient);
   }
   if (config_.read_cache != "") {
     bool binary;
@@ -67,49 +58,31 @@ LmNnetTrainer::LmNnetTrainer(const LmNnetTrainerOptions &config,
 }
 
 NnetExample LmNnetTrainer::ProcessEgInputs(NnetExample eg,
-                                           const LmComponent& a) {
+                                           const LmComponent& a,
+                                           SparseMatrix<BaseFloat> *old_input,
+                                           Matrix<BaseFloat> *new_input) {
   for (size_t i = 0; i < eg.io.size(); i++) {
     NnetIo &io = eg.io[i];
 
     if (io.name == "input") {
-      new_input_.Resize(io.features.NumRows(),
-                        a.OutputDim(),
-                        kUndefined);
+      if (old_input != NULL && new_input != NULL) {
+        new_input->Resize(io.features.NumRows(),
+                          a.OutputDim(),
+                          kUndefined);
 
-      // the following lines would be deleted (along with the old_input_ variable) TODO(hxu) leave it for debuging now
-      old_input_ = io.features.GetSparseMatrix();
-//      old_input_.Resize(io.features.NumRows(),
-//                        io.features.NumCols(),
-//                        kUndefined);
-//      old_input_.CopyFromGeneralMat(io.features);
-//
-/*
-      Matrix<BaseFloat> test_input(old_input_.NumRows(), old_input_.NumCols());
-      old_input_.CopyToMat(&test_input);
+        *old_input = io.features.GetSparseMatrix();
+        a.Propagate(NULL, *old_input, new_input);
+        io.features = *new_input;
+      } else {
+        Matrix<BaseFloat> new_input;
+        new_input.Resize(io.features.NumRows(),
+                          a.OutputDim(),
+                          kUndefined);
 
-      Matrix<BaseFloat> test_output(io.features.NumRows(),
-                                    a.OutputDim());
-      a.Propagate(NULL, test_input, &test_output);
-*/
-      a.Propagate(NULL, old_input_, &new_input_);
-
-//      test_output.AddMat(-1, new_input_);
-//
-//      BaseFloat i1 = test_output.FrobeniusNorm();
-//        KALDI_LOG << "debug forward-prop: the 1st  number should be 0: " << i1; 
-
-//      a.Propagate(NULL, io.features.GetSparseMatrix(), &new_input_);
-      //        SparseMatrix<BaseFloat> sp = io.features.GetSparseMatrix();
-      //
-      //        for (size_t i = 0; i < sp.NumRows(); i++) {
-      //          SparseVector<BaseFloat> sv = sp.Row(i);
-      //          int non_zero_index = -1;
-      //          sv.Max(&non_zero_index);
-      ////          cu_input.CopyRows(projection.RowData(non_zero_index));
-      //          cu_input.CopyRowsFromVec(projection.Row(non_zero_index));
-      //        }
-//      Matrix<BaseFloat> input(new_input_);
-      io.features = new_input_;
+//        *old_input = io.features.GetSparseMatrix();
+        a.Propagate(NULL, io.features.GetSparseMatrix(), &new_input);
+        io.features = new_input;
+      }
     }
   }
   return eg;
@@ -132,7 +105,7 @@ void LmNnetTrainer::Train(const NnetExample &eg) {
                         (delta_nnet_ == NULL ? nnet_->GetNnet() :
                                delta_nnet_->GetNnet()));
 
-  NnetExample new_eg = ProcessEgInputs(eg, *nnet_->I());
+  NnetExample new_eg = ProcessEgInputs(eg, *nnet_->I(), &old_input_, &new_input_);
 
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_->GetNnet(), new_eg.io);
@@ -153,7 +126,7 @@ void LmNnetTrainer::Train(const NnetExample &eg) {
 //    BaseFloat i1 = TODO->DotProduct(*TODO);
 
     nnet_->I()->Backprop("", NULL, old_input_, place_holder,
-                     first_deriv, delta_nnet_->I(), NULL);
+                     first_deriv, delta_nnet_->input_projection_, NULL);
 
     // TODO(hxu) some debug code - convert to Matrix and call the original backprop
     // and compare the diff
@@ -180,8 +153,8 @@ void LmNnetTrainer::Train(const NnetExample &eg) {
       BaseFloat param_delta =
           DotProduct(*delta_nnet_->GetNnet(), *delta_nnet_->GetNnet());
 //      KALDI_LOG << "param_delta currently " << param_delta;
-      LmUpdatableComponent *p;
-      if ((p = dynamic_cast<LmUpdatableComponent*>(delta_nnet_->I())) != NULL) {
+      const LmUpdatableComponent *p;
+      if ((p = dynamic_cast<const LmUpdatableComponent*>(delta_nnet_->I())) != NULL) {
         param_delta += p->DotProduct(*p);
       }
 //      KALDI_LOG << "param_delta currently " << param_delta;
@@ -193,12 +166,7 @@ void LmNnetTrainer::Train(const NnetExample &eg) {
       if (param_delta > config_.max_param_change) {
         if (param_delta - param_delta != 0.0) {
           KALDI_WARN << "Infinite parameter change, will not apply.";
-          SetZero(false, delta_nnet_->GetNnet());
-          LmUpdatableComponent *p;
-          if ((p = dynamic_cast<LmUpdatableComponent*>(delta_nnet_->I())) != NULL) {
-            p->SetZero(false);
-          }
-          delta_nnet_->O()->SetZero(false);
+          delta_nnet_->SetZero(false);
         } else {
           scale *= config_.max_param_change / param_delta;
           KALDI_LOG << "Parameter change too big: " << param_delta << " > "
@@ -207,13 +175,17 @@ void LmNnetTrainer::Train(const NnetExample &eg) {
         }
       }
     }
-    AddNnet(*delta_nnet_->GetNnet(), scale, nnet_->GetNnet());
-    nnet_->I()->Add(scale, *delta_nnet_->I());
-    nnet_->O()->Add(scale, *delta_nnet_->O());
 
-    ScaleNnet(config_.momentum, delta_nnet_->GetNnet());
-    delta_nnet_->I()->Scale(config_.momentum);
-    delta_nnet_->O()->Scale(config_.momentum);
+    nnet_->Add(*delta_nnet_, scale);
+    nnet_->Scale(config_.momentum);
+
+//    AddNnet(*delta_nnet_->GetNnet(), scale, nnet_->GetNnet());
+//    nnet_->I()->Add(scale, *delta_nnet_->I());
+//    nnet_->O()->Add(scale, *delta_nnet_->O());
+//
+//    ScaleNnet(config_.momentum, delta_nnet_->GetNnet());
+//    delta_nnet_->I()->Scale(config_.momentum);
+//    delta_nnet_->O()->Scale(config_.momentum);
   }
 }
 
@@ -343,7 +315,7 @@ CuMatrix<BaseFloat> ProcessOutput(const CuMatrixBase<BaseFloat> &output_0,
   return ans;
 }
 
-void ComputeObjectiveFunction(const GeneralMatrix &supervision,
+void LmNnetTrainer::ComputeObjectiveFunction(const GeneralMatrix &supervision,
                               ObjectiveType objective_type,
                               const std::string &output_name,
                               bool supply_deriv,
@@ -378,7 +350,7 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
           // of log-likelihoods that are normalized to sum to one.
           *tot_weight = cu_post.Sum();
           *tot_objf = TraceMatSmat(output, cu_post, kTrans);
-          if (supply_deriv) {
+          if (supply_deriv && nnet != NULL) {
             // the derivative on the real output
             CuMatrix<BaseFloat> output_deriv(output.NumRows(), output.NumCols(),
                                              kSetZero);
@@ -397,7 +369,7 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
                              output_deriv, NULL, &between_deriv);
 
             output_projection_1->Backprop("", NULL, output_0_gpu, place_holder,
-                                 between_deriv, nnet->O(), &input_deriv);
+                                 between_deriv, nnet->output_projection_, &input_deriv);
 
 //            CuMatrix<BaseFloat> input_deriv_gpu(input_deriv);
 

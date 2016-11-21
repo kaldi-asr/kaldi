@@ -26,6 +26,7 @@
 #include "nnet3/nnet-optimize.h"
 #include "nnet3/nnet-example-utils.h"
 #include "rnnlm/rnnlm-nnet.h"
+#include "nnet3/nnet-utils.h"
 
 namespace kaldi {
 namespace rnnlm {
@@ -157,6 +158,17 @@ struct LmObjectiveFunctionInfo {
  */
 class LmNnetTrainer {
  public:
+ static void ComputeObjectiveFunction(const GeneralMatrix &supervision,
+                              ObjectiveType objective_type,
+                              const std::string &output_name,
+                              bool supply_deriv,
+                              NnetComputer *computer,
+                              BaseFloat *tot_weight,
+                              BaseFloat *tot_objf,
+                              const Component *output_projection_1,
+                              const Component *output_projection_2,
+                              LmNnet *delta_nnet = NULL);
+
   LmNnetTrainer(const LmNnetTrainerOptions &config,
               LmNnet *nnet);
 
@@ -165,10 +177,12 @@ class LmNnetTrainer {
 
   // Prints out the final stats, and return true if there was a nonzero count.
   bool PrintTotalStats() const;
+  static NnetExample ProcessEgInputs(NnetExample eg, const LmComponent& a,
+                                     SparseMatrix<BaseFloat> *old_input = NULL,
+                                     Matrix<BaseFloat> *new_input = NULL);
 
   ~LmNnetTrainer();
  private:
-  NnetExample ProcessEgInputs(NnetExample eg, const LmComponent& a);
   void ProcessOutputs(const NnetExample &eg,
                       NnetComputer *computer);
 
@@ -230,17 +244,6 @@ class LmNnetTrainer {
   @param [out] tot_objf      The total objective function; divide this by the
                              tot_weight to get the normalized objective function.
 */
-void ComputeObjectiveFunction(const GeneralMatrix &supervision,
-                              ObjectiveType objective_type,
-                              const std::string &output_name,
-                              bool supply_deriv,
-                              NnetComputer *computer,
-                              BaseFloat *tot_weight,
-                              BaseFloat *tot_objf,
-                              const Component *output_projection_1,
-                              const Component *output_projection_2,
-                              LmNnet *delta_nnet);
-
 
 
 } // namespace nnet3

@@ -24,6 +24,7 @@
 #include "nnet3/nnet-nnet.h"
 #include "rnnlm/rnnlm-component.h"
 #include "nnet3/nnet-simple-component.h"
+#include "nnet3/nnet-utils.h"
 
 #include <iostream>
 #include <sstream>
@@ -45,6 +46,17 @@ using nnet3::Component;
 
 class LmNnet {
  public:
+  friend class LmNnetTrainer;
+//  friend void ComputeObjectiveFunction(const GeneralMatrix &supervision,
+//                              nnet3::ObjectiveType objective_type,
+//                              const std::string &output_name,
+//                              bool supply_deriv,
+//                              nnet3::NnetComputer *computer,
+//                              BaseFloat *tot_weight,
+//                              BaseFloat *tot_objf,
+//                              const Component *output_projection_1,
+//                              const Component *output_projection_2,
+//                              LmNnet *nnet);
   LmNnet() {
     nnet_ = new nnet3::Nnet();
   }
@@ -58,6 +70,10 @@ class LmNnet {
 
   nnet3::Nnet* GetNnet() {
     return nnet_;
+  }
+
+  nnet3::Nnet& Nnet() const {
+    return *nnet_;
   }
 
   std::string Info() const;
@@ -78,14 +94,65 @@ class LmNnet {
     return other;
   }
 
-  LmComponent* I() {
-    return dynamic_cast<LmComponent*>(input_projection_);
+  void Add(const LmNnet &other, BaseFloat scale) {
+    nnet3::AddNnet(other.Nnet(), scale, nnet_);
+    input_projection_->Add(scale, *other.I());
+    output_projection_->Add(scale, *other.O());
+    
   }
-  nnet3::AffineComponent* O() {
-    return dynamic_cast<nnet3::AffineComponent*>(output_projection_);
+
+  void Scale(BaseFloat scale) {
+    nnet3::ScaleNnet(scale, nnet_);
+    input_projection_->Scale(scale);
+    output_projection_->Scale(scale);
+    
   }
-  nnet3::NonlinearComponent* N() {
-    return dynamic_cast<nnet3::NonlinearComponent*>(output_layer_);
+
+  void ZeroStats() {
+    nnet3::ZeroComponentStats(nnet_);
+    input_projection_->ZeroStats();
+    output_projection_->ZeroStats();
+    output_layer_->ZeroStats();
+  }
+
+  void SetZero(bool is_gradient) {
+    nnet3::SetZero(is_gradient, nnet_);
+    LmUpdatableComponent* p;
+    if ((p = dynamic_cast<LmUpdatableComponent*>(input_projection_)) != NULL) {
+      p->SetZero(is_gradient);
+    }
+
+    nnet3::UpdatableComponent* p2;
+    if ((p2 = dynamic_cast<nnet3::UpdatableComponent*>(output_projection_)) != NULL) {
+      p2->SetZero(is_gradient);
+    }
+
+    if ((p2 = dynamic_cast<nnet3::UpdatableComponent*>(output_layer_)) != NULL) {
+      p2->SetZero(is_gradient);
+    }
+  }
+
+  void SetLearningRate(BaseFloat learning_rate) {
+    nnet3::SetLearningRate(learning_rate, nnet_);
+    LmUpdatableComponent *p;
+    if ((p = dynamic_cast<LmUpdatableComponent*>(input_projection_)) != NULL) {
+      p->SetUnderlyingLearningRate(learning_rate);
+    }
+    nnet3::UpdatableComponent *p2;
+    if ((p2 = dynamic_cast<nnet3::UpdatableComponent*>(output_projection_)) != NULL) {
+      p2->SetUnderlyingLearningRate(learning_rate);
+    }
+
+  }
+
+  const LmComponent* I() const {
+    return dynamic_cast<const LmComponent*>(input_projection_);
+  }
+  const nnet3::AffineComponent* O() const {
+    return dynamic_cast<const nnet3::AffineComponent*>(output_projection_);
+  }
+  const nnet3::NonlinearComponent* N() const {
+    return dynamic_cast<const nnet3::NonlinearComponent*>(output_layer_);
   }
 
  private:

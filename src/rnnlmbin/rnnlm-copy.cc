@@ -66,12 +66,7 @@ int main(int argc, char *argv[]) {
     ReadKaldiObject(raw_nnet_rxfilename, &nnet);
     
     if (learning_rate >= 0) {
-      SetLearningRate(learning_rate, nnet.GetNnet());
-      LmUpdatableComponent *p;
-      if ((p = dynamic_cast<LmUpdatableComponent*>(nnet.I())) != NULL) {
-        p->SetUnderlyingLearningRate(learning_rate);
-      }
-      nnet.O()->SetUnderlyingLearningRate(learning_rate);
+      nnet.SetLearningRate(learning_rate);
     }
 
     WriteKaldiObject(nnet, raw_nnet_wxfilename, binary_write);

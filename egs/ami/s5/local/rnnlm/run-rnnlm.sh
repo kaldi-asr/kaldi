@@ -235,12 +235,12 @@ if [ $stage -le $num_iters ]; then
       learning_rate=$final_learning_rate
     fi
 
-    false && [ $n -ge $stage ] && (
+    true && [ $n -ge $stage ] && (
 
       $decode_cmd $outdir/log/compute_prob_train.rnnlm.$n.log \
-        nnet3-compute-prob $outdir/$n.mdl ark:$outdir/train.subset.egs &
+        rnnlm-compute-prob $outdir/$n.mdl ark:$outdir/train.subset.egs &
       $decode_cmd $outdir/log/compute_prob_valid.rnnlm.$n.log \
-        nnet3-compute-prob $outdir/$n.mdl ark:$outdir/dev.subset.egs 
+        rnnlm-compute-prob $outdir/$n.mdl ark:$outdir/dev.subset.egs 
 
       ppl=`grep Overall $outdir/log/compute_prob_valid.rnnlm.$n.log | grep like | awk '{print exp(-$8)}'`
       ppl2=`echo $ppl $ppl_oos_penalty | awk '{print $1 * $2}'`
