@@ -229,6 +229,10 @@ void ContextDependency::EnumeratePairs(
     KALDI_ASSERT(min_dist < N_);
     KALDI_ASSERT(position != P_);
 
+    // The next two lines have to do with how BOS/EOS effects are handled in
+    // phone context.  Zero phone value in a non-central position (i.e. not
+    // position P_...  and 'position' will never equal P_) means 'there is no
+    // phone here because we're at BOS or EOS'.
     new_phone_window[position] = 0;
     EnumeratePairs(phones, self_loop_pdf_class, forward_pdf_class,
                    new_phone_window, pairs);
@@ -248,7 +252,7 @@ void ContextDependency::GetPdfInfo(
 
   KALDI_ASSERT(pdf_info != NULL);
   pdf_info->resize(1 + *std::max_element(phones.begin(), phones.end()));
-  std::vector<int32> phone_window(N_);
+  std::vector<int32> phone_window(N_, -1);
   EventType vec;
   for (size_t i = 0 ; i < phones.size(); i++) {
     // loop over phones
@@ -258,12 +262,8 @@ void ContextDependency::GetPdfInfo(
       // loop over pdf_class pairs
       int32 pdf_class = pdf_class_pairs[phone][j].first,
             self_loop_pdf_class = pdf_class_pairs[phone][j].second;
-      for (size_t win_start = 0; win_start < phone_window.size(); win_start++) {
-        if (win_start != P_)
-          phone_window[win_start] = -1;
-        else
-          phone_window[win_start] = phone;
-      }
+      phone_window[P_] = phone;
+
       unordered_set<std::pair<int32, int32>, PairHasher<int32> > pairs;
       EnumeratePairs(phones, self_loop_pdf_class, pdf_class, phone_window, &pairs);
       unordered_set<std::pair<int32, int32>, PairHasher<int32> >::iterator iter = pairs.begin(),

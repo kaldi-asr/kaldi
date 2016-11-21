@@ -80,7 +80,7 @@ that the transition probabilities in the HmmTopology object are generally not
 used after initializing the TransitionModel object.  There is an exception to
 this, however; for nonemitting states that are non-final (i.e. those that have
 transitions out of them but no \<PdfClass\> entry), Kaldi does not train the
-7transition probabilities and instead it uses the probabilities given in the
+transition probabilities and instead it uses the probabilities given in the
 HmmTopology object.  The decision not to support trainable transition probabilities
 for non-emitting states simplifies our training mechanisms, and since it is not
 normal to have non-emitting states with transitions, we felt that this was no
