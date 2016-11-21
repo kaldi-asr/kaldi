@@ -1655,6 +1655,129 @@ class ConvolutionComponent: public UpdatableComponent {
 };
 
 
+// LstmNonlinearityComponent is a component that implements part of an LSTM, by
+// combining together the sigmoids and tanh's, plus some diagonal terms, into
+// a single block.
+// We will refer to the LSTM formulation used in
+//
+// Long Short-Term Memory Recurrent Neural Network Architectures for Large Scale Acoustic Modeling"
+// by H. Sak et al,
+// http://static.googleusercontent.com/media/research.google.com/en//pubs/archive/43905.pdf.
+//
+// Suppose the cell dimension is C.  Then outside this component, we compute
+// the 4 * C-dimensional quantity consisting of 4 blocks as follows, by a single
+// matrix multiplication:
+//
+// i_part = W_{ix} x_t + W_{im} m_{t-1} + b_i
+// f_part = W_{fx} x_t + W_{fm} m_{t-1} + b_f
+// c_part = W_{cx} x_t + W_{cm} m_{t-1} + b_c
+// o_part = W_{cx} x_t + W_{om} m_{t-1} + b_o
+//
+// The part of the computation that takes place in this component is as follows.
+// Its input is of dimension 5C, consisting of 5 blocks: (i_part, f_part, c_part, o_part, and
+// c_{t-1}).  Its output is of dimension 2C, consisting of 2 blocks: c_t and m_t.
+//
+// To recap: the input is (i_part, f_part, c_part, o_part, c_{t-1}); the output is (c_t, m_t).
+//
+//
+// This component has parameters, 3C of them in total: the diagonal matrices w_i, w_f
+// and w_o.
+//
+//
+// In the forward pass (Propagate), this component computes the following:
+//
+//    i_t = Sigmoid(i_part + w_{ic}*c_{t-1})   (1)
+//    f_t = Sigmoid(f_part + w_{fc}*c_{t-1})   (2)
+//    c_t = f_t*c_{t-1} + i_t * Tanh(c_part)   (3)
+//    o_t = Sigmoid(o_part + w_{oc}*c_t)       (4)
+//    m_t = o_t * Tanh(c_t)                    (5)
+//   # note: the outputs are just c_t and m_t.
+//
+// The backprop is as you would think, but for the "self-repair" we need to pass
+// in additional vectors (of the same dim as the parameters of the layer) that
+// dictate whether or not we add an additional term to the backpropagated
+// derivatives.  (This term helps force the input to the nonlinearities into the
+// range where the derivatives are not too small).
+//
+// This component stores stats of the same form as are normally stored by the
+// StoreStats() functions for the sigmoid and tanh units, i.e. averages of the
+// activations and derivatives, but this is done inside the Backprop() functions.
+// [the StoreStats() functions don't take the input data as an argument, so
+// storing this data that way is impossible, and anyway it's more efficient to
+// do it as part of backprop.]
+class LstmNonlinearityComponent: public UpdatableComponent {
+ public:
+
+  virtual std::string Info() const;
+
+  virtual void InitFromConfig(ConfigLine *cfl);
+
+  NaturalGradientPerElementScaleComponent() { } // use Init to really initialize.
+  virtual std::string Type() const {
+    return "NaturalGradientPerElementScaleComponent";
+  }
+
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual Component* Copy() const;
+
+  // Some functions that are specific to this class:
+  explicit NaturalGradientPerElementScaleComponent(
+      const NaturalGradientPerElementScaleComponent &other);
+
+  void Init(int32 dim, BaseFloat param_mean,
+            BaseFloat param_stddev, int32 rank, int32 update_period,
+            BaseFloat num_samples_history, BaseFloat alpha,
+            BaseFloat max_change_per_minibatch);
+  void Init(std::string vector_filename,
+            int32 rank, int32 update_period, BaseFloat num_samples_history,
+            BaseFloat alpha, BaseFloat max_change_per_minibatch);
+
+ private:
+
+
+  // Notation: C is the cell dimension; it equals params_.NumCols().
+
+  // The dimension of the parameter matrix is (3 x C);
+  // it contains the 3 diagonal parameter matrices w_i, w_f and w_o.
+  CuMatrix<BaseFloat> params_;
+
+  // Of dimension 5 * C, with a row for each of the Sigmoid/Tanh functions in
+  // equations (1) through (5), this is the sum of the values of the nonliearities
+  // (used for diagnostics only).  It is comparable to value_sum_ vector
+  // in base-class NonlinearComponent.
+  // Note: to save time and simplify the code, when using GPU we don't always
+  // store stats for all of the members of the minibatch, just a subset.
+  CuMatrix<double> value_sum_;
+
+  // Of dimension 5 * C, with a row for each of the Sigmoid/Tanh functions in
+  // equations (1) through (5), this is the sum of the derivatives of the
+  // nonliearities (used for diagnostics and to control self-repair).  It is
+  // comparable to the deriv_sum_ vector in base-class
+  // NonlinearComponent.
+  // Note: to save time and simplify the code, when using GPU we don't always
+  // store stats for all of the members of the minibatch, just a subset.
+  CuMatrix<double> deriv_sum_;
+
+  // The total count (number of frames) corresponding to the stats in value_sum_
+  // and deriv_sum_.
+  double count_;
+
+
+  // Preconditioner for the parameters of this component [operates in the space
+  // of dimension C].
+  // The preconditioner stores its own configuration values; we write and read
+  // these, but not the preconditioner object itself.
+  OnlineNaturalGradient preconditioner_;
+
+  const LstmNonlinearityComponent &operator
+      = (const LstmNonlinearityComponent &other); // Disallow.
+};
+
+
+
+
 /*
  * MaxPoolingComponent :
  * Maxpooling component was firstly used in ConvNet for selecting an
