@@ -532,9 +532,9 @@ void TestSpatialRegularizationComponentDataDerivative() {
   }
 
   int32 dim = 16 * RandInt(3, 30),
-      num_rows = RandInt(1, 100);
+      num_rows = RandInt(1, 50);
   BaseFloat regularization_scale = 0.5 * RandInt(1, 3);
-  BaseFloat perturb_delta = 1.0e-04;
+  BaseFloat perturb_delta = 5.0e-04;
 
   SpatialRegularizationComponent c;
   c.Init(dim, regularization_scale);
@@ -558,7 +558,7 @@ void TestSpatialRegularizationComponentDataDerivative() {
              NULL,
              &input_deriv);
 
-  int32 test_dim = 3;
+  int32 test_dim = 7;
   // note, sometimes we use input_data where we'd normally use output_data,
   // since in this case they are the same.
   BaseFloat original_objf = TraceMatMat(output_deriv, input_data, kTrans)
@@ -584,7 +584,7 @@ void TestSpatialRegularizationComponentDataDerivative() {
   }
   KALDI_LOG << "Predicted objf-change = " << predicted_objf_change;
   KALDI_LOG << "Measured objf-change = " << measured_objf_change;
-  BaseFloat threshold = 0.05;
+  BaseFloat threshold = 0.1;
   bool ans = ApproxEqual(predicted_objf_change, measured_objf_change, threshold);
   if (!ans)
     KALDI_ERR << "Data-derivative test for SpatialRegularizationComponent failed\n"

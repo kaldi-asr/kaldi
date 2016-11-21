@@ -727,12 +727,11 @@ void SpatialRegularizationComponent::Backprop(
   if (in_deriv != &out_deriv)
     in_deriv->CopyFromMat(out_deriv);
   // accumulate stats only every other time.
-  bool compute_sumsq = (to_update_in != NULL && RandInt(0, 1) == 0);
+  bool compute_sumsq = (to_update_in != NULL && RandInt(0, 3) == 0);
 
   BaseFloat sumsq;
-  in_deriv->AddSpatialRegularizationDeriv(out_value,
-                                          regularization_scale_,
-                                          (compute_sumsq ? &sumsq : NULL));
+  cu::AddSpatialRegularizationDeriv(out_value, regularization_scale_, in_deriv,
+                                    (compute_sumsq ? &sumsq : NULL));
   if (compute_sumsq) {
     SpatialRegularizationComponent *to_update =
         dynamic_cast<SpatialRegularizationComponent*>(to_update_in);

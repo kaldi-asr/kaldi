@@ -977,6 +977,31 @@ template<typename Real> void TestCuMatrixAddRowRanges(int32 dim) {
             << dim << ", speed was " << gflops << " gigaflops.";
 }
 
+template<typename Real> void TestCuMatrixAddSpatialRegularizationDeriv(
+    int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  const int32 cols = dim > 16 ? dim : 17;
+  CuMatrix<Real> M(dim, cols), N(dim, cols);
+  Real sumsq;
+  Real scale = 0.12345;
+  M.SetRandn();
+  N.SetRandn();
+
+  Timer tim;
+  int32 iter = 0;
+  for (; tim.Elapsed() < time_in_secs; iter++) {
+//    cu::AddSpatialRegularizationDeriv(N, scale, &M, &sumsq);
+    cu::AddSpatialRegularizationDeriv(N, scale, &M, (Real*)NULL);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For AddSpatialRegularizationDeriv" << NameOf<Real>()
+            << ", for dim = " << dim << ", speed was " << gflops
+            << " gigaflops.";
+}
+
+
 template<typename Real> void CudaMatrixSpeedTest() {
   std::vector<int32> sizes;
   sizes.push_back(16);
@@ -1077,6 +1102,8 @@ template<typename Real> void CudaMatrixSpeedTest() {
     TestCuMatrixMax<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixMin<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixAddSpatialRegularizationDeriv<Real>(sizes[s]);
 }
 
 
