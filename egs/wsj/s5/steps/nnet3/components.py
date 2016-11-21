@@ -484,4 +484,104 @@ def AddBLstmLayer(config_lines,
             'descriptor': output_descriptor,
             'dimension':output_dim
             }
- 
+
+# Equations that specify a Gated Recurrent Unit (GRU) layer
+# (modified from Eqn. (10) in the paper http://arxiv.org/pdf/1512.02595v1.pdf,
+# input: x(t), output: y(t), recurrent connection: h(t), p(t)
+# r(t) = sigmoid(Wrx * x(t) + Wrp * p(t-1) + br)
+# z(t) = sigmoid(Wzx * x(t) + Wzp * p(t-1) + bz)
+# h_tilt(t) = tanh(Whx * x(t) + r(t) .* (Whp * p(t-1)) + bh)
+# h(t) = z(t) .* h_tilt(t) + (1 - z(t)) .* h(t-1)
+# rp(t) = Wm * h(t) + bm
+# p(t) = first #recurrent_projection_dim of rp(t)
+# y(t) = rp(t)
+def AddGruLayer(config_lines,
+                name, input, cell_dim,
+                recurrent_projection_dim,
+                non_recurrent_projection_dim,
+                scale_minus_one_file, bias_one_file,
+                clipping_threshold = 1.0,
+                norm_based_clipping = "false",
+                ng_per_element_scale_options = "",
+                ng_affine_options = "",
+                gru_delay = -1,
+                self_repair_scale_nonlinearity = None,
+                self_repair_scale_clipgradient = None):
+    assert(cell_dim > 0 and recurrent_projection_dim > 0 and non_recurrent_projection_dim > 0)
+    components = config_lines['components']
+    component_nodes = config_lines['component-nodes']
+
+    input_descriptor = input['descriptor']
+    input_dim = input['dimension']
+    name = name.strip()
+
+    # self_repair_scale_nonlinearity is a constant scaling the self-repair vector computed in derived classes of NonlinearComponent,
+    # i.e.,  SigmoidComponent, TanhComponent and RectifiedLinearComponent
+    self_repair_nonlinearity_string = "self-repair-scale={0:.10f}".format(self_repair_scale_nonlinearity) if self_repair_scale_nonlinearity is not None else ''
+    # self_repair_scale_clipgradient is a constant scaling the self-repair vector computed in ClipGradientComponent
+    self_repair_clipgradient_string = "self-repair-scale={0:.2f}".format(self_repair_scale_clipgradient) if self_repair_scale_clipgradient is not None else ''
+
+    # Parameter Definitions of affine matrix W_rz-xp (appended large matrix of W_r-xp and W_z-xp) for reset gate r(t) and update gate z(t)
+    components.append("# Define affine matrices for reset gate and update gate: W_*-xh")
+    components.append("component name={0}_W_rz-xp type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + recurrent_projection_dim, 2 * cell_dim, ng_affine_options))
+    components.append("component name={0}_W_rz-h type=NaturalGradientPerElementScaleComponent dim={1} {2}".format(name, 2 * cell_dim, ng_per_element_scale_options))
+
+    # Parameter Definitions W_h-* for h_tilt
+    components.append("# Define the affine matrix for current hidden output control: W_h-*")
+    components.append("component name={0}_W_h-x type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim, cell_dim, ng_affine_options))
+    components.append("component name={0}_W_h-p type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, recurrent_projection_dim, cell_dim, ng_affine_options))
+
+    components.append("# Defining the non-linearities")
+    components.append("component name={0}_rz type=SigmoidComponent dim={1} {2}".format(name, 2 * cell_dim, self_repair_nonlinearity_string))
+    components.append("component name={0}_h_tilt type=TanhComponent dim={1} {2}".format(name, cell_dim, self_repair_nonlinearity_string))
+
+    components.append("# Defining the hidden node computations")
+    components.append("component name={0}_rh type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
+    components.append("component name={0}_h1 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
+    components.append("component name={0}_h2 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
+    components.append("component name={0}_h type=ClipGradientComponent dim={1} clipping-threshold={2} norm-based-clipping={3} {4}".format(name, cell_dim, clipping_threshold, norm_based_clipping, self_repair_clipgradient_string))
+    components.append("component name={0}_p type=ClipGradientComponent dim={1} clipping-threshold={2} norm-based-clipping={3} {4}".format(name, recurrent_projection_dim, clipping_threshold, norm_based_clipping, self_repair_clipgradient_string))
+
+    components.append("# Defining fixed scale/bias component for (1 - z_t)")
+    components.append("component name={0}_fixed_scale_minus_one type=FixedScaleComponent scales={1}".format(name, scale_minus_one_file))
+    components.append("component name={0}_fixed_bias_one type=FixedBiasComponent bias={1}".format(name, bias_one_file))
+
+    component_nodes.append("# r_t and z_t")
+    component_nodes.append("component-node name={0}_rz1 component={0}_W_rz-xp input=Append({1}, IfDefined(Offset({0}_p_t, {2})))".format(name, input_descriptor, gru_delay))
+    component_nodes.append("component-node name={0}_rz2 component={0}_W_rz-h input=Append(IfDefined(Offset({0}_h_t, {1})), IfDefined(Offset({0}_h_t, {1})))".format(name, gru_delay))
+    component_nodes.append("component-node name={0}_rz_t component={0}_rz input=Sum({0}_rz1, {0}_rz2)".format(name)) 
+    component_nodes.append("dim-range-node name={0}_r_t input-node={0}_rz_t dim-offset=0 dim={1}".format(name, cell_dim))
+    component_nodes.append("dim-range-node name={0}_z_t input-node={0}_rz_t dim-offset={2} dim={1}".format(name, cell_dim, cell_dim))
+
+    component_nodes.append("# h_tilt_t")
+    component_nodes.append("component-node name={0}_h_tilt1_pre component={0}_W_h-p input=IfDefined(Offset({0}_p_t, {1}))".format(name, gru_delay))
+    component_nodes.append("component-node name={0}_h_tilt1 component={0}_rh input=Append({0}_r_t, {0}_h_tilt1_pre)".format(name))
+    component_nodes.append("component-node name={0}_h_tilt2 component={0}_W_h-x input={1}".format(name, input_descriptor))
+    component_nodes.append("component-node name={0}_h_tilt_t component={0}_h_tilt input=Sum({0}_h_tilt1, {0}_h_tilt2)".format(name))
+
+    component_nodes.append("# The following two lines are to implement (1 - z_t)")
+    component_nodes.append("component-node name={0}_minus_z_t component={0}_fixed_scale_minus_one input={0}_z_t".format(name))
+    component_nodes.append("component-node name={0}_one_minus_z_t component={0}_fixed_bias_one input={0}_minus_z_t".format(name))
+
+    component_nodes.append("# h_t") 
+    component_nodes.append("component-node name={0}_h1_t component={0}_h1 input=Append({0}_z_t, {0}_h_tilt_t)".format(name))
+    component_nodes.append("component-node name={0}_h2_t component={0}_h2 input=Append({0}_one_minus_z_t, IfDefined(Offset({0}_h_t, {1})))".format(name, gru_delay))
+    
+    components.append("# projection matrices : W-m; and nonlinearity transform : relu and renorm")
+    components.append("component name={0}_W-m type=NaturalGradientAffineComponent input-dim={1} output-dim={2} bias-stddev=0".format(name, cell_dim, recurrent_projection_dim + non_recurrent_projection_dim))
+
+    component_nodes.append("# h_t and p_t")
+    component_nodes.append("component-node name={0}_h_t component={0}_h input=Sum({0}_h1_t, {0}_h2_t)".format(name))
+    component_nodes.append("component-node name={0}_rp_t component={0}_W-m input=Sum({0}_h1_t, {0}_h2_t)".format(name))
+    component_nodes.append("dim-range-node name={0}_p_t_preclip input-node={0}_rp_t dim-offset=0 dim={1}".format(name, recurrent_projection_dim))
+    component_nodes.append("component-node name={0}_p_t component={0}_p input={0}_p_t_preclip".format(name))
+
+    output_descriptor = '{0}_rp_t'.format(name)
+    output_dim = recurrent_projection_dim + non_recurrent_projection_dim
+
+    return {
+            'descriptor': output_descriptor,
+            'dimension':output_dim
+            }
+
+
