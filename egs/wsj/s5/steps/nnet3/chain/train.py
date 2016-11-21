@@ -599,14 +599,15 @@ def Train(args, run_opts):
 
     left_context = args.chunk_left_context + model_left_context
     right_context = args.chunk_right_context + model_right_context
+    egs_left_context = left_context + args.frame_subsampling_factor/2
+    egs_right_context = right_context + args.frame_subsampling_factor/2
 
     default_egs_dir = '{0}/egs'.format(args.dir)
     if (args.stage <= -3) and args.egs_dir is None:
         logger.info("Generating egs")
         # this is where get_egs.sh is called.
         chain_lib.GenerateChainEgs(args.dir, args.feat_dir, args.lat_dir, default_egs_dir,
-                                    left_context + args.frame_subsampling_factor/2,
-                                    right_context + args.frame_subsampling_factor/2,
+                                    egs_left_context, egs_right_context,
                                     run_opts,
                                     left_tolerance = args.left_tolerance,
                                     right_tolerance = args.right_tolerance,
@@ -626,7 +627,7 @@ def Train(args, run_opts):
     else:
         egs_dir = args.egs_dir
 
-    [egs_left_context, egs_right_context, frames_per_eg, num_archives] = train_lib.VerifyEgsDir(egs_dir, feat_dim, ivector_dim, left_context, right_context)
+    [egs_left_context, egs_right_context, frames_per_eg, num_archives] = train_lib.VerifyEgsDir(egs_dir, feat_dim, ivector_dim, egs_left_context, egs_right_context)
     assert(args.chunk_width == frames_per_eg)
     num_archives_expanded = num_archives * args.frame_subsampling_factor
 
