@@ -1,29 +1,13 @@
 #!/bin/bash
 
-# 6j is same as 6i but using the xconfig format of network specification.
-# Also, the model is trained without layer-wise discriminative pretraining.
-# Another minor change is that the final-affine component has param-stddev-0
-# and bias-stddev=0 initialization.
-# This run also accounts for changes in training due to the BackpropTruncationComponent
-
-#System                 blstm_6i  blstm_6j
-#WER on train_dev(tg)      14.11     13.80
-#WER on train_dev(fg)      13.04     12.64
-#WER on eval2000(tg)        16.2      15.6
-#WER on eval2000(fg)        14.6      14.2
-#Final train prob     -0.0615713-0.0552637
-#Final valid prob     -0.0829338-0.0765151
-#Final train prob (xent)      -1.16518 -0.777318
-#Final valid prob (xent)      -1.26028 -0.912595
-
 set -e
 
 # configs for 'chain'
-stage=12
-train_stage=-10
+stage=13
+train_stage=123
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/blstm_6j  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_lstm_1b # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
 decode_dir_affix=
 
@@ -31,18 +15,17 @@ decode_dir_affix=
 leftmost_questions_truncate=-1
 chunk_width=150
 chunk_left_context=40
-chunk_right_context=40
+chunk_right_context=0
 xent_regularize=0.025
 self_repair_scale=0.00001
-label_delay=0
-
+label_delay=5
 # decode options
 extra_left_context=50
-extra_right_context=50
+extra_right_context=0
 frames_per_chunk=
 
 remove_egs=false
-common_egs_dir=
+common_egs_dir=exp/chain/tdnn_lstm_1a_ld5_sp/egs
 
 affix=
 # End configuration section.
@@ -132,18 +115,22 @@ if [ $stage -le 12 ]; then
   # the use of short notation for the descriptor
   fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
+  # the first splicing is moved before the lda layer, so no splicing here
+  relu-renorm-layer name=tdnn1 dim=1024
+  relu-renorm-layer name=tdnn2 input=Append(-1,0,1) dim=1024
+  relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
+
   # check steps/libs/nnet3/xconfig/lstm.py for the other options and defaults
-  lstmp-layer name=blstm1-forward input=lda cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
-  lstmp-layer name=blstm1-backward input=lda cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=3
-
-  lstmp-layer name=blstm2-forward input=Append(blstm1-forward, blstm1-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
-  lstmp-layer name=blstm2-backward input=Append(blstm1-forward, blstm1-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=3
-
-  lstmp-layer name=blstm3-forward input=Append(blstm2-forward, blstm2-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
-  lstmp-layer name=blstm3-backward input=Append(blstm2-forward, blstm2-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=3
+  lstmp-layer name=lstm1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
+  relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
+  relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
+  lstmp-layer name=lstm2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
+  relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
+  relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
+  lstmp-layer name=lstm3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
 
   ## adding the layers for chain branch
-  output-layer name=output input=Append(blstm3-forward, blstm3-backward) output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
+  output-layer name=output input=lstm3 output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
 
   # adding the layers for xent branch
   # This block prints the configs for a separate output that will be
@@ -154,7 +141,7 @@ if [ $stage -le 12 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  output-layer name=output-xent input=Append(blstm3-forward, blstm3-backward) output-delay=$label_delay dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+  output-layer name=output-xent input=lstm3 output-delay=$label_delay dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
@@ -218,7 +205,7 @@ if [ $stage -le 15 ]; then
   fi
   for decode_set in train_dev eval2000; do
       (
-      steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
+       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
           --nj 50 --cmd "$decode_cmd" $iter_opts \
           --extra-left-context $extra_left_context  \
           --extra-right-context $extra_right_context  \
