@@ -165,8 +165,10 @@ def get_args():
     parser.add_argument("--feat-dir", type=str, required=True,
                         help="Directory with features used for training "
                         "the neural network.")
-    parser.add_argument("--tree-dir", type=str, required=True,
-                        help="Tree directory")
+    parser.add_argument("--tree-dir", type=str, required = True,
+                        help="""Directory containing the tree to use for this
+                        model (we also expect final.mdl and ali.*.gz in that
+                        directory""")
     parser.add_argument("--lat-dir", type=str, required=True,
                         help="Directory with numerator lattices "
                         "used for training the neural network.")

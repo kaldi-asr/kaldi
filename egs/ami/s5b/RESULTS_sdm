@@ -46,6 +46,12 @@
 %WER 41.6 | 14493 94516 | 63.3 23.5 13.2 4.9 41.6 66.8 | 0.639 | exp/sdm1/nnet3/tdnn_sp_ihmali/decode_dev/ascore_13/dev_hires_o4.ctm.filt.sys
 %WER 46.0 | 13597 89967 | 57.5 24.9 17.6 3.6 46.0 68.1 | 0.601 | exp/sdm1/nnet3/tdnn_sp_ihmali/decode_eval/ascore_14/eval_hires_o4.ctm.filt.sys
 
+# xent BLSTM system; cleaned data and IHM alignments.
+# local/nnet3/run_blstm.sh --mic sdm1 --use-ihm-ali true
+# for d in exp/sdm1/nnet3_cleaned/lstm_bidirectional_sp/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
+# Note: the results are with ClipGradientComponent, which may be different from with BackpropTruncationComponent
+%WER 37.8 | 14633 94518 | 67.1 22.3 10.7 4.9 37.8 64.2 | 0.745 | exp/sdm1/nnet3_cleaned/lstm_bidirectional_sp_ihmali/decode_dev/ascore_11/dev_hires_o4.ctm.filt.sys
+%WER 41.4 | 13809 89628 | 62.7 24.1 13.2 4.1 41.4 65.2 | 0.723 | exp/sdm1/nnet3_cleaned/lstm_bidirectional_sp_ihmali/decode_eval/ascore_11/eval_hires_o4.ctm.filt.sys
 
 # =========================
 

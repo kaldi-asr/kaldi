@@ -102,12 +102,22 @@ class LatexReport:
         lat_file.close()
         logger.info("Compiling the latex report.")
         try:
-            proc = subprocess.Popen(['pdflatex', '-output-directory='+str(dir_name), latex_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            proc = subprocess.Popen(['pdflatex', '-interaction=batchmode', '-output-directory='+str(dir_name), latex_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             proc.communicate()
         except Exception as e:
             logger.warning("There was an error compiling the latex file {0}, please do it manually.".format(latex_file))
             return False
         return True
+
+def LatexCompliantName(name_string):
+    # this function is required as latex does not allow all the component names
+    # allowed by nnet3.
+    # Identified incompatibilities :
+    #   1. latex does not allow dot(.) in file names
+    #
+    node_name_string = re.sub("\.", "_dot_", name_string)
+
+    return node_name_string
 
 def GenerateAccuracyPlots(exp_dir, output_dir, plot, key = 'accuracy', file_basename = 'accuracy', comparison_dir = None, start_iter = 1, latex_report = None):
     assert(start_iter >= 1)
@@ -240,7 +250,8 @@ def GenerateNonlinStatsPlots(exp_dir, output_dir, plot, comparison_dir = None, s
             lgd = plt.legend(handles=plots, loc='lower center', bbox_to_anchor=(0.5, -0.5 + len(dirs) * -0.2 ), ncol=1, borderaxespad=0.)
             plt.grid(True)
             fig.suptitle("Mean and stddev of the value and derivative at {comp_name}".format(comp_name = component_name))
-            figfile_name = '{dir}/nonlinstats_{comp_name}.pdf'.format(dir = output_dir, comp_name = component_name)
+            comp_name = LatexCompliantName(component_name)
+            figfile_name = '{dir}/nonlinstats_{comp_name}.pdf'.format(dir = output_dir, comp_name = comp_name)
             fig.savefig(figfile_name, bbox_extra_artists=(lgd,), bbox_inches='tight')
             if latex_report is not None:
                 latex_report.AddFigure(figfile_name, "Mean and stddev of the value and derivative at {0}".format(component_name))
@@ -317,7 +328,8 @@ def GenerateClippedProportionPlots(exp_dir, output_dir, plot, comparison_dir = N
             lgd = plt.legend(handles=plots, loc='lower center', bbox_to_anchor=(0.5, -0.5 + len(dirs) * -0.2 ), ncol=1, borderaxespad=0.)
             plt.grid(True)
             fig.suptitle("Clipped-proportion value at {comp_name}".format(comp_name = component_name))
-            figfile_name = '{dir}/clipped_proportion_{comp_name}.pdf'.format(dir = output_dir, comp_name = component_name)
+            comp_name = LatexCompliantName(component_name)
+            figfile_name = '{dir}/clipped_proportion_{comp_name}.pdf'.format(dir = output_dir, comp_name = comp_name)
             fig.savefig(figfile_name, bbox_extra_artists=(lgd,), bbox_inches='tight')
             if latex_report is not None:
                 latex_report.AddFigure(figfile_name, "Clipped proportion at {0}".format(component_name))
@@ -417,7 +429,8 @@ def GenerateParameterDiffPlots(exp_dir, output_dir, plot, comparison_dir = None,
             lgd = plt.legend(handles=plots, loc='lower center', bbox_to_anchor=(0.5, -0.5 + len(dirs) * -0.2 ), ncol=1, borderaxespad=0.)
             plt.grid(True)
             fig.suptitle("Parameter differences at {comp_name}".format(comp_name = component_name))
-            figfile_name = '{dir}/param_diff_{comp_name}.pdf'.format(dir = output_dir, comp_name = component_name)
+            comp_name = LatexCompliantName(component_name)
+            figfile_name = '{dir}/param_diff_{comp_name}.pdf'.format(dir = output_dir, comp_name = comp_name)
             fig.savefig(figfile_name, bbox_extra_artists=(lgd,), bbox_inches='tight')
             if latex_report is not None:
                 latex_report.AddFigure(figfile_name, "Parameter differences at {0}".format(component_name))

@@ -96,7 +96,7 @@ def AddAffineLayer(config_lines, name, input, output_dim, ng_affine_options = ""
 
     # Per-component max-change option
     max_change_options = "max-change={0:.2f}".format(max_change_per_component) if max_change_per_component is not None else ''
- 
+
     components.append("component name={0}_affine type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3} {4}".format(name, input['dimension'], output_dim, ng_affine_options, max_change_options))
     component_nodes.append("component-node name={0}_affine component={0}_affine input={1}".format(name, input['descriptor']))
 
@@ -111,7 +111,7 @@ def AddAffRelNormLayer(config_lines, name, input, output_dim, ng_affine_options 
     self_repair_string = "self-repair-scale={0:.10f}".format(self_repair_scale) if self_repair_scale is not None else ''
     # Per-component max-change option
     max_change_options = "max-change={0:.2f}".format(max_change_per_component) if max_change_per_component is not None else ''
- 
+
     components.append("component name={0}_affine type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3} {4}".format(name, input['dimension'], output_dim, ng_affine_options, max_change_options))
     components.append("component name={0}_relu type=RectifiedLinearComponent dim={1} {2}".format(name, output_dim, self_repair_string))
     components.append("component name={0}_renorm type=NormalizeComponent dim={1} target-rms={2}".format(name, output_dim, norm_target_rms))
@@ -484,4 +484,4 @@ def AddBLstmLayer(config_lines,
             'descriptor': output_descriptor,
             'dimension':output_dim
             }
- 
+

@@ -2,8 +2,10 @@
 
 # Copyright 2012  Johns Hopkins University (author: Daniel Povey)
 
-# This script was modified around 11.11.2016, when the code was extended to
-# support having a different pdf-class on the self loop.
+# This file is as ./gen_topo.py used to be (before we extended the transition-model
+# code to support having a different self-loop pdf-class).  It is included
+# here for baseline and testing purposes.
+
 
 # Generate a topology file.  This allows control of the number of states in the
 # non-silence HMMs, and in the silence HMMs.  This is a modified version of
@@ -44,8 +46,8 @@ print("</ForPhones>")
 # We make the transition-probs 0.5 so they normalize, to keep the code happy.
 # In fact, we always set the transition probability scale to 0.0 in the 'chain'
 # code, so they are never used.
-print("<State> 0 <ForwardPdfClass> 0 <SelfLoopPdfClass> 1 <Transition> 0 0.5 <Transition> 1 0.5 </State>")
-print("<State> 1 </State>")
+print("<State> 0 <PdfClass> 0 <Transition> 1 0.5 <Transition> 2 0.5 </State>")
+print("<State> 1 <PdfClass> 1 <Transition> 1 0.5 <Transition> 2 0.5 </State>")
+print("<State> 2 </State>")
 print("</TopologyEntry>")
 print("</Topology>")
-
