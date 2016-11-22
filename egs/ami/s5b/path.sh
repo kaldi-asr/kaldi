@@ -10,4 +10,6 @@ SRILM=$KALDI_ROOT/tools/srilm/bin/i686-m64
 BEAMFORMIT=$KALDI_ROOT/tools/BeamformIt
 
 export PATH=$PATH:$LMBIN:$BEAMFORMIT:$SRILM
-
+export PATH=$PATH:$KALDI_ROOT/tools/sph2pipe_v2.5
+export PATH=$PATH:/home/vmanoha1/kaldi-waveform/src/segmenterbin
+export PATH=$PATH:$KALDI_ROOT/tools/sctk/bin
