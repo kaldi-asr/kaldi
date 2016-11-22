@@ -118,40 +118,16 @@ void LmNnetTrainer::Train(const NnetExample &eg) {
 
   {
     Matrix<BaseFloat> first_deriv(computer.GetInputDeriv("input"));
-
     Matrix<BaseFloat> place_holder;
-
-//    LmLinearComponent *TODO = dynamic_cast<LmLinearComponent*>(delta_nnet_->I()->Copy());
-
-//    BaseFloat i1 = TODO->DotProduct(*TODO);
-
     nnet_->I()->Backprop("", NULL, old_input_, place_holder,
                      first_deriv, delta_nnet_->input_projection_, NULL);
-
-    // TODO(hxu) some debug code - convert to Matrix and call the original backprop
-    // and compare the diff
-//    Matrix<BaseFloat> regular_mat(old_input_.NumRows(), old_input_.NumCols());
-//
-//    old_input_.CopyToMat(&regular_mat);
-//
-//    nnet_->I()->Backprop("", NULL, regular_mat, place_holder,
-//                     first_deriv, TODO, NULL);
-//
-//    BaseFloat i2 = TODO->DotProduct(*TODO);
-//
-//    TODO->Add(-1, *delta_nnet_->I());
-//
-//    BaseFloat i3 = TODO->DotProduct(*TODO);
-//    KALDI_LOG << "debug backprop: the 1st and 3rd number should be 0: " << i1 << " " << i2 << " " << i3;
-//
-
   }
 
   if (delta_nnet_ != NULL) {
     BaseFloat scale = (1.0 - config_.momentum);
     if (config_.max_param_change != 0.0) {
       BaseFloat param_delta =
-          DotProduct(*delta_nnet_->GetNnet(), *delta_nnet_->GetNnet());
+          DotProduct(delta_nnet_->Nnet(), delta_nnet_->Nnet());
 //      KALDI_LOG << "param_delta currently " << param_delta;
       const LmUpdatableComponent *p;
       if ((p = dynamic_cast<const LmUpdatableComponent*>(delta_nnet_->I())) != NULL) {
@@ -177,15 +153,7 @@ void LmNnetTrainer::Train(const NnetExample &eg) {
     }
 
     nnet_->Add(*delta_nnet_, scale);
-    nnet_->Scale(config_.momentum);
-
-//    AddNnet(*delta_nnet_->GetNnet(), scale, nnet_->GetNnet());
-//    nnet_->I()->Add(scale, *delta_nnet_->I());
-//    nnet_->O()->Add(scale, *delta_nnet_->O());
-//
-//    ScaleNnet(config_.momentum, delta_nnet_->GetNnet());
-//    delta_nnet_->I()->Scale(config_.momentum);
-//    delta_nnet_->O()->Scale(config_.momentum);
+    delta_nnet_->Scale(config_.momentum);
   }
 }
 
@@ -333,8 +301,7 @@ void LmNnetTrainer::ComputeObjectiveFunction(const GeneralMatrix &supervision,
 //  const MatrixBase<BaseFloat> output_1;
   
 
-  *new_output =
-              ProcessOutput(output_0_gpu, output_projection_1, output_projection_2); 
+  *new_output = ProcessOutput(output_0_gpu, output_projection_1, output_projection_2); 
 
   if (new_output->NumCols() != supervision.NumCols())
     KALDI_ERR << "Nnet versus example output dimension (num-classes) "
@@ -376,8 +343,6 @@ void LmNnetTrainer::ComputeObjectiveFunction(const GeneralMatrix &supervision,
 
             output_projection_1->Backprop("", NULL, output_0_gpu, place_holder,
                                  between_deriv, nnet->output_projection_, &input_deriv);
-
-//            CuMatrix<BaseFloat> input_deriv_gpu(input_deriv);
 
             computer->AcceptOutputDeriv(output_name, &input_deriv);
           }

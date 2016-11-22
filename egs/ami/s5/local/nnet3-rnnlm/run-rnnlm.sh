@@ -265,7 +265,7 @@ if [ $stage -le $num_iters ]; then
       learning_rate=$final_learning_rate
     fi
 
-    false && [ $n -ge $stage ] && (
+    [ $n -ge $stage ] && (
 
       $decode_cmd $outdir/log/compute_prob_train.rnnlm.$n.log \
         nnet3-compute-prob $outdir/$n.mdl ark:$outdir/train.subset.egs &
