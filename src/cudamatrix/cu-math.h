@@ -195,21 +195,30 @@ void ComputeLstmNonlinearity(const CuMatrixBase<Real> &input,
                      diagnostics.
 */
 
-void BackpropLstmNonlinearity(const CuMatrixBase<BaseFloat> &input,
-                              const CuMatrixBase<BaseFloat> &params,
-                              const CuMatrixBase<BaseFloat> &output_deriv,
+template<typename Real>
+void BackpropLstmNonlinearity(const CuMatrixBase<Real> &input,
+                              const CuMatrixBase<Real> &params,
+                              const CuMatrixBase<Real> &output_deriv,
                               const CuMatrixBase<double> &deriv_sum_in,
-                              const CuVectorBase<BaseFloat> &self_repair_config,
+                              const CuVectorBase<Real> &self_repair_config,
                               double count_in,
-                              CuMatrixBase<BaseFloat> *input_deriv,
-                              CuMatrixBase<BaseFloat> *params_deriv,
+                              CuMatrixBase<Real> *input_deriv,
+                              CuMatrixBase<Real> *params_deriv,
                               CuMatrixBase<double> *value_sum_out,
                               CuMatrixBase<double> *deriv_sum_out,
-                              CuMatrixBase<BaseFloat> *self_repair_sum_out);
-
-
-
-
+                              CuMatrixBase<Real> *self_repair_sum_out);
+template<typename Real>
+void CpuBackpropLstmNonlinearity(const MatrixBase<Real> &input,
+                                 const MatrixBase<Real> &params,
+                                 const MatrixBase<Real> &output_deriv,
+                                 const MatrixBase<double> &deriv_sum_in,
+                                 const VectorBase<Real> &self_repair_config,
+                                 double count_in,
+                                 MatrixBase<Real> *input_deriv,
+                                 MatrixBase<Real> *params_deriv,
+                                 MatrixBase<double> *value_sum_out,
+                                 MatrixBase<double> *deriv_sum_out,
+                                 MatrixBase<Real> *self_repair_sum_out);
 
 } // namespace cu
 } // namespace kaldi
