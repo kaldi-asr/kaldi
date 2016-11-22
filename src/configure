@@ -14,12 +14,14 @@
 # ./configure --mkl-root=/opt/intel/mkl
 # ./configure --mkl-root=/opt/intel/mkl --threaded-math=yes
 # ./configure --mkl-root=/opt/intel/mkl --threaded-math=yes --mkl-threading=tbb
-#        This is for MKL 11.3 -- which does not seem  to provide Intel OMP libs
+#        # This is for MKL 11.3, which does not seem  to provide Intel OMP libs
 # ./configure  --openblas-root=../tools/OpenBLAS/install  # before doing
 #        # this, cd to ../tools and type "make openblas".  Note:
 #        # this is not working correctly on all platforms, do "make test"
 #        # and look out for segmentation faults.
 # ./configure --atlas-root=../tools/ATLAS/build
+# ./configure --use-cuda=no   # disable CUDA detection (will build cpu-only
+#                             # version of kaldi even on CUDA-enabled machine
 
 #This should be incremented after every significant change of the configure script
 #I.e. after each change that affects the kaldi.mk or the build system as whole

@@ -145,6 +145,12 @@ void ScaleNnetComponents(const Vector<BaseFloat> &scales,
 /// stored stats).
 void AddNnet(const Nnet &src, BaseFloat alpha, Nnet *dest);
 
+/// Does *dest += alpha * src for updatable components (affect nnet parameters),
+/// and *dest += scale * src for other components (affect stored stats).
+/// Here, alphas is a vector of size equal to the number of updatable components
+void AddNnetComponents(const Nnet &src, const Vector<BaseFloat> &alphas,
+                       BaseFloat scale, Nnet *dest);
+
 /// Returns the total of the number of parameters in the updatable components of
 /// the nnet.
 int32 NumParameters(const Nnet &src);

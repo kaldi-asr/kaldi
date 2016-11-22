@@ -130,6 +130,7 @@ if [ $stage -le 12 ]; then
     --recurrent-projection-dim 256 \
     --non-recurrent-projection-dim 256 \
     --label-delay $label_delay \
+    --self-repair-scale-clipgradient 1.0 \
    $dir/configs || exit 1;
 
 fi
