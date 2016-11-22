@@ -313,6 +313,9 @@ def train(args, run_opts, background_process_handler):
                     {dir}/init.raw""".format(command=run_opts.command,
                                              dir=args.dir))
 
+    egs_left_context = left_context + args.frame_subsampling_factor/2
+    egs_right_context = right_context + args.frame_subsampling_factor/2
+
     default_egs_dir = '{0}/egs'.format(args.dir)
     if (args.stage <= -3) and args.egs_dir is None:
         logger.info("Generating egs")
@@ -320,13 +323,8 @@ def train(args, run_opts, background_process_handler):
         chain_lib.generate_chain_egs(
             dir=args.dir, data=args.feat_dir,
             lat_dir=args.lat_dir, egs_dir=default_egs_dir,
-            left_context=left_context + args.frame_subsampling_factor/2,
-            right_context=right_context + args.frame_subsampling_factor/2,
-            valid_left_context=(left_context + args.frame_subsampling_factor/2
-                                + args.chunk_width),
-            valid_right_context=(right_context
-                                 + args.frame_subsampling_factor/2
-                                 + args.chunk_width),
+            left_context=egs_left_context,
+            right_context=egs_right_context,
             run_opts=run_opts,
             left_tolerance=args.left_tolerance,
             right_tolerance=args.right_tolerance,
@@ -349,7 +347,7 @@ def train(args, run_opts, background_process_handler):
     [egs_left_context, egs_right_context,
      frames_per_eg, num_archives] = (
         common_train_lib.verify_egs_dir(egs_dir, feat_dim, ivector_dim,
-                                        left_context, right_context))
+                                        egs_left_context, egs_right_context))
     assert(args.chunk_width == frames_per_eg)
     num_archives_expanded = num_archives * args.frame_subsampling_factor
 
@@ -445,7 +443,6 @@ def train(args, run_opts, background_process_handler):
                                             num_archives_processed),
                 shrinkage_value=shrinkage_value,
                 num_chunk_per_minibatch=args.num_chunk_per_minibatch,
-                chunk_width=args.chunk_width,
                 num_hidden_layers=num_hidden_layers,
                 add_layers_period=args.add_layers_period,
                 left_context=left_context,
@@ -494,7 +491,7 @@ def train(args, run_opts, background_process_handler):
             egs_dir=egs_dir,
             left_context=left_context, right_context=right_context,
             leaky_hmm_coefficient=args.leaky_hmm_coefficient,
-            l2regularize=args.l2_regularize,
+            l2_regularize=args.l2_regularize,
             xent_regularize=args.xent_regularize,
             run_opts=run_opts,
             background_process_handler=background_process_handler)

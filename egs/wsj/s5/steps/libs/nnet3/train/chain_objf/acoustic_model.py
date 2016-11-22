@@ -182,6 +182,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                         dir=dir, iter=iter, srand=iter + srand,
                         next_iter=iter + 1, job=job,
                         deriv_time_opts=" ".join(deriv_time_opts),
+                        lc=left_context, rc=right_context,
                         trunc_deriv=truncate_deriv_weights,
                         app_deriv_wts=apply_deriv_weights,
                         fr_shft=frame_shift, l2=l2_regularize,
@@ -198,18 +199,20 @@ def train_new_models(dir, iter, srand, num_jobs,
         processes.append(process_handle)
 
     all_success = True
+    error_strs = []
     for process in processes:
         process.wait()
         [stdout_value, stderr_value] = process.communicate()
         if stderr_value.strip() != '':
-            print(stderr_value)
+            error_strs.append(stderr_value.strip())
         if process.returncode != 0:
             all_success = False
 
     if not all_success:
         open('{0}/.error'.format(dir), 'w').close()
         raise Exception("There was error during training "
-                        "iteration {0}".format(iter))
+                        "iteration {0}:\n{1}".format(iter,
+                                                     "\n".join(error_strs)))
 
 
 def train_one_iteration(dir, iter, srand, egs_dir,
@@ -548,7 +551,7 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch,
                     lc=left_context, rc=right_context,
                     l2=l2_regularize, leaky=leaky_hmm_coefficient,
                     dir=dir, raw_models=" ".join(raw_model_strings),
-                    num_chunk_per_minibatch=num_chunk_per_minibatch,
+                    num_chunk_per_mb=num_chunk_per_minibatch,
                     num_iters=num_iters,
                     egs_dir=egs_dir))
 
