@@ -332,7 +332,7 @@ void BackpropLstmNonlinearity(const CuMatrixBase<BaseFloat> &input,
                  value_sum_out->NumCols() == cell_dim &&
                  SameDim(*value_sum_out, *deriv_sum_out) &&
                  self_repair_sum_out->NumRows() == 5 &&
-                 value_sum_out->NumCols() == cell_dim);
+                 self_repair_sum_out->NumCols() == cell_dim);
   }
 
 
