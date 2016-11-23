@@ -136,7 +136,7 @@ void ComputeLstmNonlinearity(const CuMatrixBase<Real> &input,
                      A matrix, of dimension 3 by C, with rows containing the three
                      diagonal parameter matrices used in LSTMs, namely
                      w_{ic}, w_{fc} and w_{oc}.
- @param [out] output_deriv
+ @param [in] output_deriv
                      A matrix, of dimension N by 2C, containing the derivative of the
                      objective function we're backpropagating, w.r.t. the quantities
                      c_t and m_t (in two blocks of column-dimension C).

@@ -559,6 +559,8 @@ void CpuBackpropLstmNonlinearity(const MatrixBase<Real> &input,
   }
 }
 
+
+
 template<typename Real>
 void BackpropLstmNonlinearity(const CuMatrixBase<Real> &input,
                               const CuMatrixBase<Real> &params,
@@ -605,12 +607,90 @@ void BackpropLstmNonlinearity(const CuMatrixBase<Real> &input,
 
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    KALDI_ERR << "CUDA version not implemented";
-  // notes for Shiyin:
-    //  You could do an 'easy' initial version where we have have one thread per dimension,
-    //  and you can try optimizing this later on.
-    //  Since the cell-dim is usually quite large, like 1024, this is fairly reasonable.
-    // But up to you.
+    Timer tim;
+    // Each thread block is working on 1 row of the data.
+    // It's best that cell dim is a multiple fo CU1DBLOCK
+
+
+    // Use 2D block (8x32 threads) as we need to compute column sum.
+    // Use 1D grid to cover the data matrix width `cell_dim`.
+    const int kWarpSize = 32;
+    dim3 dimBlock(kWarpSize, CU1DBLOCK / kWarpSize);
+//    dim3 dimGrid(n_blocks(cell_dim, dimBlock.x),
+//                 n_blocks(num_rows, dimBlock.y));
+//    if (dimGrid.x * dimGrid.y > 1024) {
+//      dimGrid.y = std::max(1024 / dimGrid.x, 1);
+//    }
+    dim3 dimGrid(n_blocks(cell_dim, dimBlock.x));
+    if (input_deriv == NULL) {
+      if (params_deriv == NULL) {
+        cuda_diff_lstm_nonlinearity(dimGrid, dimBlock, cell_dim, num_rows,
+                                    input.Data(), input.Stride(), params.Data(),
+                                    params.Stride(), output_deriv.Data(),
+                                    output_deriv.Stride(), deriv_sum_in.Data(),
+                                    deriv_sum_in.Stride(),
+                                    self_repair_config.Data(), count_in + 1,
+                                    NULL,
+                                    0,
+                                    NULL,
+                                    0,
+                                    NULL,
+                                    0,
+                                    NULL,
+                                    0,
+                                    NULL,
+                                    0);
+
+      } else {
+        cuda_diff_lstm_nonlinearity(dimGrid, dimBlock, cell_dim, num_rows,
+                                    input.Data(), input.Stride(), params.Data(),
+                                    params.Stride(), output_deriv.Data(),
+                                    output_deriv.Stride(), deriv_sum_in.Data(),
+                                    deriv_sum_in.Stride(),
+                                    self_repair_config.Data(), count_in + 1,
+                                    NULL,
+                                    0, params_deriv->Data(),
+                                    params_deriv->Stride(),
+                                    value_sum_out->Data(),
+                                    value_sum_out->Stride(),
+                                    deriv_sum_out->Data(),
+                                    deriv_sum_out->Stride(),
+                                    self_repair_sum_out->Data(),
+                                    self_repair_sum_out->Stride());
+      }
+    } else {
+      if (params_deriv == NULL) {
+        cuda_diff_lstm_nonlinearity(dimGrid, dimBlock, cell_dim, num_rows,
+                                    input.Data(), input.Stride(), params.Data(),
+                                    params.Stride(), output_deriv.Data(),
+                                    output_deriv.Stride(), deriv_sum_in.Data(),
+                                    deriv_sum_in.Stride(),
+                                    self_repair_config.Data(), count_in + 1,
+                                    input_deriv->Data(), input_deriv->Stride(),
+                                    NULL,
+                                    0, NULL, 0, NULL, 0, NULL, 0);
+      } else {
+        cuda_diff_lstm_nonlinearity(dimGrid, dimBlock, cell_dim, num_rows,
+                                    input.Data(), input.Stride(), params.Data(),
+                                    params.Stride(), output_deriv.Data(),
+                                    output_deriv.Stride(), deriv_sum_in.Data(),
+                                    deriv_sum_in.Stride(),
+                                    self_repair_config.Data(), count_in + 1,
+                                    input_deriv->Data(), input_deriv->Stride(),
+                                    params_deriv->Data(),
+                                    params_deriv->Stride(),
+                                    value_sum_out->Data(),
+                                    value_sum_out->Stride(),
+                                    deriv_sum_out->Data(),
+                                    deriv_sum_out->Stride(),
+                                    self_repair_sum_out->Data(),
+                                    self_repair_sum_out->Stride());
+      }
+    }
+
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
   {

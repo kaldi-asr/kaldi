@@ -1712,9 +1712,9 @@ class LstmNonlinearityComponent: public UpdatableComponent {
 
   virtual void InitFromConfig(ConfigLine *cfl);
 
-  NaturalGradientPerElementScaleComponent() { } // use Init to really initialize.
+  LstmNonlinearityComponent() { } // use Init to really initialize.
   virtual std::string Type() const {
-    return "NaturalGradientPerElementScaleComponent";
+    return "LstmNonlinearityComponent";
   }
 
   virtual void Read(std::istream &is, bool binary);
@@ -1723,8 +1723,8 @@ class LstmNonlinearityComponent: public UpdatableComponent {
   virtual Component* Copy() const;
 
   // Some functions that are specific to this class:
-  explicit NaturalGradientPerElementScaleComponent(
-      const NaturalGradientPerElementScaleComponent &other);
+  explicit LstmNonlinearityComponent(
+      const LstmNonlinearityComponent &other);
 
   void Init(int32 dim, BaseFloat param_mean,
             BaseFloat param_stddev, int32 rank, int32 update_period,

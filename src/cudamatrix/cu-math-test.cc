@@ -161,7 +161,7 @@ static void UnitTestCuMathComputeLstmNonlinearity() {
     AssertEqual(Houtput, HDoutput);
   }
 
-  for (int i = 16; i <= 1024; i *= 2) {
+  for (int i = 16; i <= 2048; i *= 2) {
     BaseFloat time_in_secs = 0.025;
     int32 num_rows = i;
     int32 cell_dim = i;
@@ -290,6 +290,161 @@ void UnitTestLstmNonlinearity() {
   }
 }
 
+template<typename Real>
+static void UnitTestBackpropLstmNonlinearity() {
+  for (int i = 0; i < 3; i++) {
+    int32 num_rows = 1 + Rand() % 200;
+    int32 cell_dim = 1 + Rand() % 2000;
+//    KALDI_LOG << num_rows << ", " << cell_dim;
+
+    Matrix<Real> hinput(num_rows, 5 * cell_dim);
+    Matrix<Real> hparams(3, cell_dim);
+    Matrix<Real> houtput_deriv(num_rows, 2 * cell_dim);
+    Matrix<double> hderiv_sum_in(5, cell_dim);
+    Vector<Real> hself_repair_config(10);
+    double count_in;
+    Matrix<Real> hinput_deriv(num_rows, 5 * cell_dim);
+    Matrix<Real> hparams_deriv(3, cell_dim);
+    Matrix<double> hvalue_sum_out(5, cell_dim);
+    Matrix<double> hderiv_sum_out(5, cell_dim);
+    Matrix<Real> hself_repair_sum_out(5, cell_dim);
+
+    hinput.SetRandn();
+    hparams.SetRandn();
+    houtput_deriv.SetRandn();
+    hderiv_sum_in.SetRandn();
+    hself_repair_config.SetRandn();
+    count_in = Rand() % num_rows;
+
+    hinput_deriv.SetRandn();
+    hparams_deriv.SetRandn();
+    hvalue_sum_out.SetRandn();
+    hderiv_sum_out.SetRandn();
+    hself_repair_sum_out.SetRandn();
+
+    CuMatrix<Real> dinput(hinput);
+    CuMatrix<Real> dparams(hparams);
+    CuMatrix<Real> doutput_deriv(houtput_deriv);
+    CuMatrix<double> dderiv_sum_in(hderiv_sum_in);
+    CuVector<Real> dself_repair_config(hself_repair_config);
+
+    CuMatrix<Real> dinput_deriv(hinput_deriv);
+    CuMatrix<Real> dparams_deriv(hparams_deriv);
+    CuMatrix<double> dvalue_sum_out(hvalue_sum_out);
+    CuMatrix<double> dderiv_sum_out(hderiv_sum_out);
+    CuMatrix<Real> dself_repair_sum_out(hself_repair_sum_out);
+
+    cu::CpuBackpropLstmNonlinearity(hinput, hparams, houtput_deriv,
+                                    hderiv_sum_in, hself_repair_config,
+                                    count_in, (MatrixBase<Real>*) NULL,
+                                    (MatrixBase<Real>*) NULL,
+                                    (MatrixBase<double>*) NULL,
+                                    (MatrixBase<double>*) NULL,
+                                    (MatrixBase<Real>*) NULL);
+    cu::BackpropLstmNonlinearity(dinput, dparams, doutput_deriv, dderiv_sum_in,
+                                 dself_repair_config, count_in,
+                                 (CuMatrixBase<Real>*) NULL,
+                                 (CuMatrixBase<Real>*) NULL,
+                                 (CuMatrixBase<double>*) NULL,
+                                 (CuMatrixBase<double>*) NULL,
+                                 (CuMatrixBase<Real>*) NULL);
+
+    cu::CpuBackpropLstmNonlinearity(hinput, hparams, houtput_deriv,
+                                    hderiv_sum_in, hself_repair_config,
+                                    count_in, (MatrixBase<Real>*) NULL,
+                                    &hparams_deriv, &hvalue_sum_out,
+                                    &hderiv_sum_out, &hself_repair_sum_out);
+    cu::BackpropLstmNonlinearity(dinput, dparams, doutput_deriv, dderiv_sum_in,
+                                 dself_repair_config, count_in,
+                                 (CuMatrixBase<Real>*) NULL, &dparams_deriv,
+                                 &dvalue_sum_out, &dderiv_sum_out,
+                                 &dself_repair_sum_out);
+
+    cu::CpuBackpropLstmNonlinearity(hinput, hparams, houtput_deriv,
+                                    hderiv_sum_in, hself_repair_config,
+                                    count_in, &hinput_deriv,
+                                    (MatrixBase<Real>*) NULL,
+                                    (MatrixBase<double>*) NULL,
+                                    (MatrixBase<double>*) NULL,
+                                    (MatrixBase<Real>*) NULL);
+    cu::BackpropLstmNonlinearity(dinput, dparams, doutput_deriv, dderiv_sum_in,
+                                 dself_repair_config, count_in, &dinput_deriv,
+                                 (CuMatrixBase<Real>*) NULL,
+                                 (CuMatrixBase<double>*) NULL,
+                                 (CuMatrixBase<double>*) NULL,
+                                 (CuMatrixBase<Real>*) NULL);
+
+    cu::CpuBackpropLstmNonlinearity(hinput, hparams, houtput_deriv,
+                                    hderiv_sum_in, hself_repair_config,
+                                    count_in, &hinput_deriv, &hparams_deriv,
+                                    &hvalue_sum_out, &hderiv_sum_out,
+                                    &hself_repair_sum_out);
+    cu::BackpropLstmNonlinearity(dinput, dparams, doutput_deriv, dderiv_sum_in,
+                                 dself_repair_config, count_in, &dinput_deriv,
+                                 &dparams_deriv, &dvalue_sum_out,
+                                 &dderiv_sum_out, &dself_repair_sum_out);
+
+    Matrix<Real> hdinput_deriv(dinput_deriv);
+    Matrix<Real> hdparams_deriv(dparams_deriv);
+    Matrix<double> hdvalue_sum_out(dvalue_sum_out);
+    Matrix<double> hdderiv_sum_out(dderiv_sum_out);
+    Matrix<Real> hdself_repair_sum_out(dself_repair_sum_out);
+
+//    KALDI_LOG<< "input_deriv" << hinput_deriv << "d" << hdinput_deriv;
+//    KALDI_LOG<< "hparams_deriv" << hparams_deriv << "d" << hdparams_deriv;
+//    KALDI_LOG<< "hvalue_sum_out" << hvalue_sum_out << "d" << hdvalue_sum_out;
+//    KALDI_LOG<< "hderiv_sum_out" << hderiv_sum_out << "d" << hdderiv_sum_out;
+//    KALDI_LOG<< "hself_repair_sum_out" << hself_repair_sum_out << "d" << hdself_repair_sum_out;
+
+    AssertEqual(hinput_deriv, hdinput_deriv);
+    AssertEqual(hparams_deriv, hdparams_deriv);
+    AssertEqual(hvalue_sum_out, hdvalue_sum_out);
+    AssertEqual(hderiv_sum_out, hdderiv_sum_out);
+    AssertEqual(hself_repair_sum_out, hdself_repair_sum_out);
+  }
+
+  for (int i = 16; i <= 2048; i *= 2) {
+    BaseFloat time_in_secs = 0.025;
+    int32 num_rows = i;
+    int32 cell_dim = i;
+
+    CuMatrix<Real> input(num_rows, 5 * cell_dim);
+    CuMatrix<Real> params(3, cell_dim);
+    CuMatrix<Real> output_deriv(num_rows, 2 * cell_dim);
+    CuMatrix<double> deriv_sum_in(5, cell_dim);
+    CuVector<Real> self_repair_config(10);
+    double count_in;
+
+    CuMatrix<Real> input_deriv(num_rows, 5 * cell_dim);
+    CuMatrix<Real> params_deriv(3, cell_dim);
+    CuMatrix<double> value_sum_out(5, cell_dim);
+    CuMatrix<double> deriv_sum_out(5, cell_dim);
+    CuMatrix<Real> self_repair_sum_out(5, cell_dim);
+
+    input.SetRandn();
+    params.SetRandn();
+    output_deriv.SetRandn();
+    deriv_sum_in.SetRandn();
+    self_repair_config.SetRandn();
+    count_in = Rand() % num_rows;
+
+    Timer tim;
+    int32 iter = 0;
+    for (; tim.Elapsed() < time_in_secs; iter++)
+      cu::BackpropLstmNonlinearity(input, params, output_deriv, deriv_sum_in,
+                                   self_repair_config, count_in, &input_deriv,
+                                   &params_deriv, &value_sum_out,
+                                   &deriv_sum_out, &self_repair_sum_out);
+
+
+    BaseFloat gflops = ((BaseFloat) i * i * iter) / (tim.Elapsed() * 1.0e+09);
+    KALDI_LOG << "For BackpropLstmNonlinearity"
+              << (sizeof(Real) == 8 ? "<double>" : "<float>") << ", for dim = "
+              << i << ", speed was " << gflops << " gigaflops";
+  }
+}
+
+
 template<typename Real> void CudaMathUnitTest() {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().DoublePrecisionSupported())
@@ -300,6 +455,7 @@ template<typename Real> void CudaMathUnitTest() {
   UnitTestCuMathSplice<Real>();
   UnitTestCuMathCopy<Real>();
   UnitTestLstmNonlinearity();
+  UnitTestBackpropLstmNonlinearity<Real>();
 }
 
 } // namespace kaldi
