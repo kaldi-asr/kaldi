@@ -120,20 +120,16 @@ def train_new_models(dir, iter, srand, num_jobs,
         processes.append(process_handle)
 
     all_success = True
-    error_strs = []
     for process in processes:
         process.wait()
-        [stdout_value, stderr_value] = process.communicate()
-        if stderr_value.strip() != '':
-            error_strs.append(stderr_value.strip())
+        process.communicate()
         if process.returncode != 0:
             all_success = False
 
     if not all_success:
         open('{0}/.error'.format(dir), 'w').close()
         raise Exception("There was error during training "
-                        "iteration {0}:\n{1}".format(iter,
-                                                     "\n".join(error_strs)))
+                        "iteration {0}".format(iter)
 
 
 def train_one_iteration(dir, iter, srand, egs_dir,

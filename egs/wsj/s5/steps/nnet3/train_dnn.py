@@ -208,8 +208,7 @@ def train(args, run_opts, background_process_handler):
         train_lib.acoustic_model.generate_egs(
             data=args.feat_dir, alidir=args.ali_dir, egs_dir=default_egs_dir,
             left_context=left_context, right_context=right_context,
-            valid_left_context=left_context,
-            valid_right_context=right_context,
+            valid_left_context=left_context, valid_right_context=right_context,
             run_opts=run_opts,
             frames_per_eg=args.frames_per_eg,
             srand=args.srand,
