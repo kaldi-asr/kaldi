@@ -705,9 +705,9 @@ MatrixIndexT GeneralMatrix::NumCols() const {
 }
 
 
-void GeneralMatrix::Compress() {
+void GeneralMatrix::Compress(int32 format) {
   if (mat_.NumRows() != 0) {
-    cmat_.CopyFromMat(mat_);
+    cmat_.CopyFromMat(mat_, format);
     mat_.Resize(0, 0);
   }
 }

@@ -154,12 +154,12 @@ void NnetExample::Read(std::istream &is, bool binary) {
 }
 
 
-void NnetExample::Compress() {
+void NnetExample::Compress(int32 format) {
   std::vector<NnetIo>::iterator iter = io.begin(), end = io.end();
   // calling features.Compress() will do nothing if they are sparse or already
   // compressed.
   for (; iter != end; ++iter)
-    iter->features.Compress();
+    iter->features.Compress(format);
 }
 
 } // namespace nnet3
