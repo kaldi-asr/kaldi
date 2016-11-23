@@ -246,7 +246,7 @@ def train(args, run_opts, background_process_handler):
 
     if (args.stage <= -4):
         logger.info("Initializing a basic network")
-        common_lib.run_kaldi_command(
+        common_lib.run_job(
             """{command} {dir}/log/nnet_init.log \
                     nnet3-init --srand=-2 {dir}/configs/init.config \
                     {dir}/init.raw""".format(command=run_opts.command,
@@ -473,8 +473,8 @@ def train(args, run_opts, background_process_handler):
     with open("{dir}/accuracy.report".format(dir=args.dir), "w") as f:
         f.write(report)
 
-    common_lib.run_kaldi_command("steps/info/nnet3_dir_info.pl "
-                                 "{0}".format(args.dir))
+    common_lib.run_job("steps/info/nnet3_dir_info.pl "
+                       "{0}".format(args.dir))
 
 
 def main():

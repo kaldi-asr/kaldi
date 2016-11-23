@@ -26,11 +26,11 @@ def create_phone_lm(dir, tree_dir, run_opts, lm_opts=None):
     This method trains a phone LM for chain training using the alignments
     in "tree_dir"
     """
-    common_lib.run_kaldi_command(
+    common_lib.run_job(
         """{command} {dir}/log/make_phone_lm.log \
                 chain-est-phone-lm {lm_opts} \
-                "ark:gunzip -c {tree_dir}/ali.*.gz | """
-        """ali-to-phones {tree_dir}/final.mdl ark:- ark:- |" \
+                "ark:gunzip -c {tree_dir}/ali.*.gz | \
+                    ali-to-phones {tree_dir}/final.mdl ark:- ark:- |" \
                 {dir}/phone_lm.fst""".format(
                     command=run_opts.command, dir=dir,
                     lm_opts=lm_opts if lm_opts is not None else '',
@@ -38,10 +38,10 @@ def create_phone_lm(dir, tree_dir, run_opts, lm_opts=None):
 
 
 def create_denominator_fst(dir, tree_dir, run_opts):
-    common_lib.run_kaldi_command(
+    common_lib.run_job(
         """copy-transition-model {tree_dir}/final.mdl \
                 {dir}/0.trans_mdl""".format(dir=dir, tree_dir=tree_dir))
-    common_lib.run_kaldi_command(
+    common_lib.run_job(
         """{command} {dir}/log/make_den_fst.log \
                    chain-make-den-fst {dir}/tree {dir}/0.trans_mdl \
                    {dir}/phone_lm.fst \
@@ -64,7 +64,7 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
     See options in that script.
     """
 
-    common_lib.run_kaldi_command(
+    common_lib.run_job(
         """steps/nnet3/chain/get_egs.sh {egs_opts} \
                 --cmd "{command}" \
                 --cmvn-opts "{cmvn_opts}" \
@@ -158,7 +158,7 @@ def train_new_models(dir, iter, srand, num_jobs,
         else:
             cur_cache_io_opts = cache_io_opts
 
-        process_handle = common_lib.run_kaldi_command(
+        process_handle = common_lib.run_job(
             """{command} {train_queue_opt} {dir}/log/train.{iter}.{job}.log \
                     nnet3-chain-train {parallel_train_opts} \
                     --apply-deriv-weights={app_deriv_wts} \
@@ -390,7 +390,7 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
             num_lda_jobs = max_lda_jobs
 
     # Write stats with the same format as stats for LDA.
-    common_lib.run_kaldi_command(
+    common_lib.run_job(
         """{command} JOB=1:{num_lda_jobs} {dir}/log/get_lda_stats.JOB.log \
                 nnet3-chain-acc-lda-stats --rand-prune={rand_prune} \
                 {dir}/init.raw "ark:{egs_dir}/cegs.JOB.ark" \
@@ -405,7 +405,7 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
     lda_stat_files = map(lambda x: '{0}/{1}.lda_stats'.format(dir, x),
                          range(1, num_lda_jobs + 1))
 
-    common_lib.run_kaldi_command(
+    common_lib.run_job(
         """{command} {dir}/log/sum_transform_stats.log \
                 sum-lda-accs {dir}/lda_stats {lda_stat_files}""".format(
                     command=run_opts.command,
@@ -421,7 +421,7 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
     # in Appendix C.6 of http://arxiv.org/pdf/1410.7455v6.pdf; it's a scaled
     # variant of an LDA transform but without dimensionality reduction.
 
-    common_lib.run_kaldi_command(
+    common_lib.run_job(
         """{command} {dir}/log/get_transform.log \
                 nnet-get-feature-transform {lda_opts} {dir}/lda.mat \
                 {dir}/lda_stats""".format(
@@ -445,7 +445,7 @@ def prepare_initial_acoustic_model(dir, run_opts, srand=-1):
     # We ensure that they have the same mode (even if someone changed the
     # script to make one or both of them text mode) by copying them both
     # before concatenating them.
-    common_lib.run_kaldi_command(
+    common_lib.run_job(
         """{command} {dir}/log/init_mdl.log \
                 nnet3-am-init {dir}/0.trans_mdl {dir}/0.raw \
                 {dir}/0.mdl""".format(command=run_opts.command, dir=dir))
@@ -458,7 +458,7 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
                                    background_process_handler=None):
     model = '{0}/{1}.mdl'.format(dir, iter)
 
-    common_lib.run_kaldi_command(
+    common_lib.run_job(
         """{command} {dir}/log/compute_prob_valid.{iter}.log \
                 nnet3-chain-compute-prob --l2-regularize={l2} \
                 --leaky-hmm-coefficient={leaky} --xent-regularize={xent_reg} \
@@ -473,7 +473,7 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
                    egs_dir=egs_dir), wait=wait,
         background_process_handler=background_process_handler)
 
-    common_lib.run_kaldi_command(
+    common_lib.run_job(
         """{command} {dir}/log/compute_prob_train.{iter}.log \
                 nnet3-chain-compute-prob --l2-regularize={l2} \
                 --leaky-hmm-coefficient={leaky} --xent-regularize={xent_reg} \
@@ -495,7 +495,7 @@ def compute_progress(dir, iter, run_opts, wait=False,
     prev_model = '{0}/{1}.mdl'.format(dir, iter - 1)
     model = '{0}/{1}.mdl'.format(dir, iter)
 
-    common_lib.run_kaldi_command(
+    common_lib.run_job(
         """{command} {dir}/log/progress.{iter}.log \
                 nnet3-am-info {model} '&&' \
                 nnet3-show-progress --use-gpu=no \
@@ -534,7 +534,7 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch,
             print("{0}: warning: model file {1} does not exist "
                   "(final combination)".format(sys.argv[0], model_file))
 
-    common_lib.run_kaldi_command(
+    common_lib.run_job(
         """{command} {combine_queue_opt} {dir}/log/combine.log \
                 nnet3-chain-combine --num-iters=40 \
                 --l2-regularize={l2} --leaky-hmm-coefficient={leaky} \

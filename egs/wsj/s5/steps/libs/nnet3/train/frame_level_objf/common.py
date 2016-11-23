@@ -84,7 +84,7 @@ def train_new_models(dir, iter, srand, num_jobs,
             cache_write_opt = "--write-cache={dir}/cache.{iter}".format(
                 dir=dir, iter=iter+1)
 
-        process_handle = common_lib.run_kaldi_command(
+        process_handle = common_lib.run_job(
             """{command} {train_queue_opt} {dir}/log/train.{iter}.{job}.log \
                     nnet3-train {parallel_train_opts} {cache_read_opt} \
                     {cache_write_opt} --print-interval=10 \
@@ -335,7 +335,7 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
             num_lda_jobs = max_lda_jobs
 
     # Write stats with the same format as stats for LDA.
-    common_lib.run_kaldi_command(
+    common_lib.run_job(
         """{command} JOB=1:{num_lda_jobs} {dir}/log/get_lda_stats.JOB.log \
                 nnet3-acc-lda-stats --rand-prune={rand_prune} \
                 {dir}/init.raw "ark:{egs_dir}/egs.JOB.ark" \
@@ -350,7 +350,7 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
     lda_stat_files = map(lambda x: '{0}/{1}.lda_stats'.format(dir, x),
                          range(1, num_lda_jobs + 1))
 
-    common_lib.run_kaldi_command(
+    common_lib.run_job(
         """{command} {dir}/log/sum_transform_stats.log \
                 sum-lda-accs {dir}/lda_stats {lda_stat_files}""".format(
                     command=run_opts.command,
@@ -366,7 +366,7 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
     # in Appendix C.6 of http://arxiv.org/pdf/1410.7455v6.pdf; it's a scaled
     # variant of an LDA transform but without dimensionality reduction.
 
-    common_lib.run_kaldi_command(
+    common_lib.run_job(
         """{command} {dir}/log/get_transform.log \
                 nnet-get-feature-transform {lda_opts} {dir}/lda.mat \
                 {dir}/lda_stats""".format(
@@ -389,7 +389,7 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
     context_opts = "--left-context={lc} --right-context={rc}".format(
         lc=left_context, rc=right_context)
 
-    common_lib.run_kaldi_command(
+    common_lib.run_job(
         """ {command} {dir}/log/compute_prob_valid.{iter}.log \
                 nnet3-compute-prob "{model}" \
                 "ark,bg:nnet3-copy-egs {context_opts} \
@@ -404,7 +404,7 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
                                         egs_dir=egs_dir),
         wait=wait, background_process_handler=background_process_handler)
 
-    common_lib.run_kaldi_command(
+    common_lib.run_job(
         """{command} {dir}/log/compute_prob_train.{iter}.log \
                 nnet3-compute-prob "{model}" \
                 "ark,bg:nnet3-copy-egs {context_opts} \
@@ -435,7 +435,7 @@ def compute_progress(dir, iter, egs_dir, left_context, right_context,
     context_opts = "--left-context={lc} --right-context={rc}".format(
         lc=left_context, rc=right_context)
 
-    common_lib.run_kaldi_command(
+    common_lib.run_job(
             """{command} {dir}/log/progress.{iter}.log \
                     nnet3-info "{model}" '&&' \
                     nnet3-show-progress --use-gpu=no "{prev_model}" "{model}" \
@@ -497,7 +497,7 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
     context_opts = "--left-context={lc} --right-context={rc}".format(
         lc=left_context, rc=right_context)
 
-    common_lib.run_kaldi_command(
+    common_lib.run_job(
         """{command} {combine_queue_opt} {dir}/log/combine.log \
                 nnet3-combine --num-iters=40 \
                 --enforce-sum-to-one=true --enforce-positive-weights=true \
@@ -570,7 +570,7 @@ def align(dir, data, lang, run_opts, iter=None, transform_dir=None,
     logger.info("Aligning the data{gpu}with {num_jobs} jobs.".format(
         gpu=" using gpu " if run_opts.realign_use_gpu else " ",
         num_jobs=run_opts.realign_num_jobs))
-    common_lib.run_kaldi_command(
+    common_lib.run_job(
         """steps/nnet3/align.sh --nj {num_jobs_align} \
                 --cmd "{align_cmd} {align_queue_opt}" \
                 --use-gpu {align_use_gpu} \
@@ -618,7 +618,7 @@ def realign(dir, iter, feat_dir, lang, prev_egs_dir, cur_egs_dir,
 
     alidir = align(dir, feat_dir, lang, run_opts, iter,
                    transform_dir, online_ivector_dir)
-    common_lib.run_kaldi_command(
+    common_lib.run_job(
         """steps/nnet3/relabel_egs.sh --cmd "{command}" --iter {iter} \
                 {alidir} {prev_egs_dir} {cur_egs_dir}""".format(
                     command=run_opts.command,
@@ -631,7 +631,7 @@ def realign(dir, iter, feat_dir, lang, prev_egs_dir, cur_egs_dir,
 
 def adjust_am_priors(dir, input_model, avg_posterior_vector, output_model,
                      run_opts):
-    common_lib.run_kaldi_command(
+    common_lib.run_job(
         """{command} {dir}/log/adjust_priors.final.log \
                 nnet3-am-adjust-priors "{input_model}" {avg_posterior_vector} \
                 "{output_model}" """.format(
@@ -663,7 +663,7 @@ def compute_average_posterior(dir, iter, egs_dir, num_archives,
     context_opts = "--left-context={lc} --right-context={rc}".format(
         lc=left_context, rc=right_context)
 
-    common_lib.run_kaldi_command(
+    common_lib.run_job(
         """{command} JOB=1:{num_jobs_compute_prior} {prior_queue_opt} \
                 {dir}/log/get_post.{iter}.JOB.log \
                 nnet3-copy-egs {context_opts} \
@@ -688,9 +688,9 @@ def compute_average_posterior(dir, iter, egs_dir, num_archives,
     # make sure there is time for $dir/post.{iter}.*.vec to appear.
     time.sleep(5)
     avg_post_vec_file = "{dir}/post.{iter}.vec".format(dir=dir, iter=iter)
-    common_lib.run_kaldi_command("""
-{command} {dir}/log/vector_sum.{iter}.log \
-    vector-sum {dir}/post.{iter}.*.vec {output_file}
+    common_lib.run_job(
+        """{command} {dir}/log/vector_sum.{iter}.log \
+                vector-sum {dir}/post.{iter}.*.vec {output_file}
         """.format(command=run_opts.command,
                    dir=dir, iter=iter, output_file=avg_post_vec_file))
 

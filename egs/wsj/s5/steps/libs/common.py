@@ -75,11 +75,14 @@ def check_if_cuda_compiled():
 
 
 class KaldiCommandException(Exception):
-
-    def __init__(self, command, err):
+    """ An Exception class that throws an error string with the
+    kaldi command that caused the error and the error string captured.
+    """
+    def __init__(self, command, err = None):
         Exception.__init__(self,
                            "There was an error while running the command "
-                           "{0}\n{1}\n{2}".format(command, "-"*10, err))
+                           "{0}\n{1}\n{2}".format(command, "-"*10,
+                                                  "" if err is None else err))
 
 
 class BackgroundProcessHandler():
@@ -189,9 +192,12 @@ class BackgroundProcessHandler():
             logger.info("Process '{0}' is running".format(command))
 
 
-def run_kaldi_command(command, wait=True, background_process_handler=None):
-    """ Runs commands frequently seen in Kaldi scripts. These are usually a
-        sequence of commands connected by pipes, so we use shell=True.
+def run_job(command, wait=True, background_process_handler=None):
+    """ Runs a kaldi job, usually using a script such as queue.pl and
+        run.pl, and redirects the stdout and stderr to the parent
+        process's streams.
+        These are usually a sequence of commands connected by pipes, so we use
+        shell=True.
 
     Args:
         background_process_handler: An object of the BackgroundProcessHandler
@@ -201,7 +207,35 @@ def run_kaldi_command(command, wait=True, background_process_handler=None):
             background_process_handler is provided, this option will be
             ignored and the process will be run in the background.
     """
-    # logger.info("Running the command\n{0}".format(command))
+    p = subprocess.Popen(command, shell=True)
+
+    if background_process_handler is not None:
+        wait = False
+        background_process_handler.add_process((p, command))
+
+    if wait:
+        p.communicate()
+        if p.returncode is not 0:
+            raise KaldiCommandException(command)
+        return None
+    else:
+        return p
+
+
+def run_kaldi_command(command, wait=True, background_process_handler=None):
+    """ Runs commands frequently seen in Kaldi scripts and
+        captures the stdout and stderr.
+        These are usually a sequence of commands connected by pipes, so we use
+        shell=True.
+
+    Args:
+        background_process_handler: An object of the BackgroundProcessHandler
+            class that is instantiated by the top-level script. If this is
+            provided, then the created process handle is added to the object.
+        wait: If True, wait until the process is completed. However, if the
+            background_process_handler is provided, this option will be
+            ignored and the process will be run in the background.
+    """
     p = subprocess.Popen(command, shell=True,
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE)
