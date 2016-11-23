@@ -39,7 +39,7 @@ NnetTrainer::NnetTrainer(const NnetTrainerOptions &config,
                              // natural-gradient updates.
   SetZero(is_gradient, delta_nnet_);
   const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
-  num_max_change_per_component_applied_.resize(num_updatable, 0); 
+  num_max_change_per_component_applied_.resize(num_updatable, 0);
   num_max_change_global_applied_ = 0;
 
   if (config_.read_cache != "") {
@@ -52,7 +52,7 @@ NnetTrainer::NnetTrainer(const NnetTrainerOptions &config,
       KALDI_WARN << "Could not open cached computation. "
                     "Probably this is the first training iteration.";
     }
-  } 
+  }
 }
 
 
@@ -88,9 +88,12 @@ void NnetTrainer::ProcessOutputs(const NnetExample &eg,
       ObjectiveType obj_type = nnet_->GetNode(node_index).u.objective_type;
       BaseFloat tot_weight, tot_objf;
       bool supply_deriv = true;
+      const Vector<BaseFloat> *deriv_weights = NULL;
+      if (config_.apply_deriv_weights && io.deriv_weights.Dim() > 0)
+        deriv_weights = &(io.deriv_weights);
       ComputeObjectiveFunction(io.features, obj_type, io.name,
                                supply_deriv, computer,
-                               &tot_weight, &tot_objf);
+                               &tot_weight, &tot_objf, deriv_weights);
       objf_info_[io.name].UpdateStats(io.name, config_.print_interval,
                                       num_minibatches_processed_++,
                                       tot_weight, tot_objf);
@@ -167,7 +170,7 @@ void NnetTrainer::UpdateParamsWithMaxChange() {
            << " / " << num_updatable << " Updatable Components."
            << "(smallest factor=" << min_scale << " on "
            << component_name_with_min_scale
-           << " with max-change=" << max_change_with_min_scale <<"). "; 
+           << " with max-change=" << max_change_with_min_scale <<"). ";
     if (param_delta > config_.max_param_change)
       ostr << "Global max-change factor was "
            << config_.max_param_change / param_delta
@@ -276,7 +279,7 @@ bool ObjectiveFunctionInfo::PrintTotalStats(const std::string &name) const {
               << (tot_objf / tot_weight) << " over " << tot_weight << " frames.";
   } else {
     KALDI_LOG << "Overall average objective function for '" << name << "' is "
-              << objf << " + " << aux_objf << " = " << sum_objf        
+              << objf << " + " << aux_objf << " = " << sum_objf
               << " over " << tot_weight << " frames.";
   }
   KALDI_LOG << "[this line is to be parsed by a script:] "
@@ -290,7 +293,7 @@ NnetTrainer::~NnetTrainer() {
     Output ko(config_.write_cache, config_.binary_write_cache);
     compiler_.WriteCache(ko.Stream(), config_.binary_write_cache);
     KALDI_LOG << "Wrote computation cache to " << config_.write_cache;
-  } 
+  }
   delete delta_nnet_;
 }
 
@@ -300,7 +303,8 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
                               bool supply_deriv,
                               NnetComputer *computer,
                               BaseFloat *tot_weight,
-                              BaseFloat *tot_objf) {
+                              BaseFloat *tot_objf,
+                              const VectorBase<BaseFloat> *deriv_weights) {
   const CuMatrixBase<BaseFloat> &output = computer->GetOutput(output_name);
 
   if (output.NumCols() != supervision.NumCols())
@@ -309,6 +313,51 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
               << " (nnet) vs. " << supervision.NumCols() << " (egs)\n";
 
   switch (objective_type) {
+    case kXentPerDim: {
+      // objective is x * log(y) + (1-x) * log(1-y)
+      CuMatrix<BaseFloat> cu_post(supervision.NumRows(), supervision.NumCols(),
+                                  kUndefined);  // x
+      cu_post.CopyFromGeneralMat(supervision);
+
+      CuMatrix<BaseFloat> n_cu_post(cu_post.NumRows(), cu_post.NumCols());
+      n_cu_post.Set(1.0);
+      n_cu_post.AddMat(-1.0, cu_post);          // 1-x
+
+      CuMatrix<BaseFloat> log_prob(output);     // y
+      log_prob.ApplyLog();                      // log(y)
+
+      CuMatrix<BaseFloat> n_output(output.NumRows(), 
+                                   output.NumCols(), kSetZero);
+      n_output.Set(1.0);
+      n_output.AddMat(-1.0, output);            // 1-y
+      n_output.ApplyLog();                      // log(1-y)
+
+      BaseFloat num_elements = static_cast<BaseFloat>(cu_post.NumRows());
+      if (deriv_weights) {
+        CuVector<BaseFloat> cu_deriv_weights(*deriv_weights);
+        num_elements = cu_deriv_weights.Sum();
+        cu_post.MulRowsVec(cu_deriv_weights);
+        n_cu_post.MulRowsVec(cu_deriv_weights);
+      }
+
+      *tot_weight = num_elements * cu_post.NumCols();
+      *tot_objf = TraceMatMat(log_prob, cu_post, kTrans)
+                  + TraceMatMat(n_output, n_cu_post, kTrans);
+
+      if (supply_deriv) {
+        // deriv is x / y - (1-x) / (1-y)
+        n_output.ApplyExp();                    // 1-y
+        n_cu_post.DivElements(n_output);        // 1-x / (1-y)
+
+        log_prob.ApplyExp();                    // y
+        cu_post.DivElements(log_prob);          // x / y
+
+        cu_post.AddMat(-1.0, n_cu_post);        // x / y - (1-x) / (1-y)
+        computer->AcceptOutputDeriv(output_name, &cu_post);
+      }
+
+      break;
+    }
     case kLinear: {
       // objective is x * y.
       switch (supervision.Type()) {
@@ -318,20 +367,38 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
           // The cross-entropy objective is computed by a simple dot product,
           // because after the LogSoftmaxLayer, the output is already in the form
           // of log-likelihoods that are normalized to sum to one.
-          *tot_weight = cu_post.Sum();
-          *tot_objf = TraceMatSmat(output, cu_post, kTrans);
-          if (supply_deriv) {
+          if (deriv_weights) {
             CuMatrix<BaseFloat> output_deriv(output.NumRows(), output.NumCols(),
                                              kUndefined);
             cu_post.CopyToMat(&output_deriv);
-            computer->AcceptOutputDeriv(output_name, &output_deriv);
+            CuVector<BaseFloat> cu_deriv_weights(*deriv_weights);
+            output_deriv.MulRowsVec(cu_deriv_weights);
+            *tot_weight = cu_deriv_weights.Sum();
+            *tot_objf = TraceMatMat(output, output_deriv, kTrans);
+            if (supply_deriv) {
+              computer->AcceptOutputDeriv(output_name, &output_deriv);
+            }
+          } else {
+            *tot_weight = cu_post.Sum();
+            *tot_objf = TraceMatSmat(output, cu_post, kTrans);
+            if (supply_deriv) {
+              CuMatrix<BaseFloat> output_deriv(output.NumRows(), output.NumCols(),
+                                               kUndefined);
+              cu_post.CopyToMat(&output_deriv);
+              computer->AcceptOutputDeriv(output_name, &output_deriv);
+            }
           }
+
           break;
         }
         case kFullMatrix: {
           // there is a redundant matrix copy in here if we're not using a GPU
           // but we don't anticipate this code branch being used in many cases.
           CuMatrix<BaseFloat> cu_post(supervision.GetFullMatrix());
+          if (deriv_weights) {
+            CuVector<BaseFloat> cu_deriv_weights(*deriv_weights);
+            cu_post.MulRowsVec(cu_deriv_weights);
+          }
           *tot_weight = cu_post.Sum();
           *tot_objf = TraceMatMat(output, cu_post, kTrans);
           if (supply_deriv)
@@ -343,6 +410,10 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
           supervision.GetMatrix(&post);
           CuMatrix<BaseFloat> cu_post;
           cu_post.Swap(&post);
+          if (deriv_weights) {
+            CuVector<BaseFloat> cu_deriv_weights(*deriv_weights);
+            cu_post.MulRowsVec(cu_deriv_weights);
+          }
           *tot_weight = cu_post.Sum();
           *tot_objf = TraceMatMat(output, cu_post, kTrans);
           if (supply_deriv)
@@ -360,6 +431,11 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
       diff.CopyFromGeneralMat(supervision);
       diff.AddMat(-1.0, output);
       *tot_weight = diff.NumRows();
+      if (deriv_weights) {
+        CuVector<BaseFloat> cu_deriv_weights(*deriv_weights);
+        diff.MulRowsVec(cu_deriv_weights);
+        *tot_weight = deriv_weights->Sum();
+      }
       *tot_objf = -0.5 * TraceMatMat(diff, diff, kTrans);
       if (supply_deriv)
         computer->AcceptOutputDeriv(output_name, &diff);

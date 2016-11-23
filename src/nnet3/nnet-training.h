@@ -42,6 +42,8 @@ struct NnetTrainerOptions {
   BaseFloat max_param_change;
   NnetOptimizeOptions optimize_config;
   NnetComputeOptions compute_config;
+  bool apply_deriv_weights;
+
   NnetTrainerOptions():
       zero_component_stats(true),
       store_component_stats(true),
@@ -49,7 +51,8 @@ struct NnetTrainerOptions {
       debug_computation(false),
       momentum(0.0),
       binary_write_cache(true),
-      max_param_change(2.0) { }
+      max_param_change(2.0),
+      apply_deriv_weights(true) { }
   void Register(OptionsItf *opts) {
     opts->Register("store-component-stats", &store_component_stats,
                    "If true, store activations and derivatives for nonlinear "
@@ -69,6 +72,9 @@ struct NnetTrainerOptions {
                    "so that the 'effective' learning rate is the same as "
                    "before (because momentum would normally increase the "
                    "effective learning rate by 1/(1-momentum))");
+    opts->Register("apply-deriv-weights", &apply_deriv_weights,
+                   "If true, apply the per-frame derivative weights stored with "
+                   "the example");
     opts->Register("read-cache", &read_cache, "the location where we can read "
                    "the cached computation from");
     opts->Register("write-cache", &write_cache, "the location where we want to "
@@ -226,7 +232,8 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
                               bool supply_deriv,
                               NnetComputer *computer,
                               BaseFloat *tot_weight,
-                              BaseFloat *tot_objf);
+                              BaseFloat *tot_objf,
+                              const VectorBase<BaseFloat>* deriv_weights = NULL);
 
 
 

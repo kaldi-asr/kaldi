@@ -36,7 +36,6 @@ struct SimpleObjectiveInfo {
   double tot_objective;
   SimpleObjectiveInfo(): tot_weight(0.0),
                          tot_objective(0.0) { }
-
 };
 
 
@@ -44,12 +43,15 @@ struct NnetComputeProbOptions {
   bool debug_computation;
   bool compute_deriv;
   bool compute_accuracy;
+  bool apply_deriv_weights;
+
   NnetOptimizeOptions optimize_config;
   NnetComputeOptions compute_config;
   NnetComputeProbOptions():
       debug_computation(false),
       compute_deriv(false),
-      compute_accuracy(true) { }
+      compute_accuracy(true),
+      apply_deriv_weights(true) { }
   void Register(OptionsItf *opts) {
     // compute_deriv is not included in the command line options
     // because it's not relevant for nnet3-compute-prob.
@@ -57,6 +59,9 @@ struct NnetComputeProbOptions {
                    "debug for the actual computation (very verbose!)");
     opts->Register("compute-accuracy", &compute_accuracy, "If true, compute "
                    "accuracy values as well as objective functions");
+    opts->Register("apply-deriv-weights", &apply_deriv_weights,
+                   "Apply per-frame deriv weights");
+
     // register the optimization options with the prefix "optimization".
     ParseOptions optimization_opts("optimization", opts);
     optimize_config.Register(&optimization_opts);
@@ -102,6 +107,7 @@ class NnetComputeProb {
   const Nnet &GetDeriv() const;
 
   ~NnetComputeProb();
+
  private:
   void ProcessOutputs(const NnetExample &eg,
                       NnetComputer *computer);
@@ -152,7 +158,8 @@ class NnetComputeProb {
 void ComputeAccuracy(const GeneralMatrix &supervision,
                      const CuMatrixBase<BaseFloat> &nnet_output,
                      BaseFloat *tot_weight,
-                     BaseFloat *tot_accuracy);
+                     BaseFloat *tot_accuracy,
+                     const Vector<BaseFloat> *deriv_weights = NULL);
 
 
 } // namespace nnet3

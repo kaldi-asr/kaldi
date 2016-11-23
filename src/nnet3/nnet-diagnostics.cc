@@ -92,20 +92,24 @@ void NnetComputeProb::ProcessOutputs(const NnetExample &eg,
                   << "mismatch for '" << io.name << "': " << output.NumCols()
                   << " (nnet) vs. " << io.features.NumCols() << " (egs)\n";
       }
+
+      const Vector<BaseFloat> *deriv_weights = NULL;
+      if (config_.apply_deriv_weights && io.deriv_weights.Dim() > 0)
+        deriv_weights = &(io.deriv_weights);
       {
         BaseFloat tot_weight, tot_objf;
         bool supply_deriv = config_.compute_deriv;
         ComputeObjectiveFunction(io.features, obj_type, io.name,
                                  supply_deriv, computer,
-                                 &tot_weight, &tot_objf);
+                                 &tot_weight, &tot_objf, deriv_weights);
         SimpleObjectiveInfo &totals = objf_info_[io.name];
         totals.tot_weight += tot_weight;
         totals.tot_objective += tot_objf;
       }
-      if (obj_type == kLinear && config_.compute_accuracy) {
+      if (config_.compute_accuracy) {
         BaseFloat tot_weight, tot_accuracy;
         ComputeAccuracy(io.features, output,
-                        &tot_weight, &tot_accuracy);
+                        &tot_weight, &tot_accuracy, deriv_weights);
         SimpleObjectiveInfo &totals = accuracy_info_[io.name];
         totals.tot_weight += tot_weight;
         totals.tot_objective += tot_accuracy;
@@ -156,7 +160,8 @@ bool NnetComputeProb::PrintTotalStats() const {
 void ComputeAccuracy(const GeneralMatrix &supervision,
                      const CuMatrixBase<BaseFloat> &nnet_output,
                      BaseFloat *tot_weight_out,
-                     BaseFloat *tot_accuracy_out) {
+                     BaseFloat *tot_accuracy_out,
+                     const Vector<BaseFloat> *deriv_weights) {
   int32 num_rows = nnet_output.NumRows(),
       num_cols = nnet_output.NumCols();
   KALDI_ASSERT(supervision.NumRows() == num_rows &&
@@ -181,24 +186,27 @@ void ComputeAccuracy(const GeneralMatrix &supervision,
       for (int32 r = 0; r < num_rows; r++) {
         SubVector<BaseFloat> vec(mat, r);
         BaseFloat row_sum = vec.Sum();
-        KALDI_ASSERT(row_sum >= 0.0);
+        // KALDI_ASSERT(row_sum >= 0.0); // For conventional ASR systems
         int32 best_index;
         vec.Max(&best_index);  // discard max value.
+        if (deriv_weights)
+          row_sum  *= (*deriv_weights)(r);
         tot_weight += row_sum;
         if (best_index == best_index_cpu[r])
           tot_accuracy += row_sum;
       }
       break;
-
     }
     case kFullMatrix: {
       const Matrix<BaseFloat> &mat = supervision.GetFullMatrix();
       for (int32 r = 0; r < num_rows; r++) {
         SubVector<BaseFloat> vec(mat, r);
         BaseFloat row_sum = vec.Sum();
-        KALDI_ASSERT(row_sum >= 0.0);
+        // KALDI_ASSERT(row_sum >= 0.0); // For conventional ASR systems
         int32 best_index;
         vec.Max(&best_index);  // discard max value.
+        if (deriv_weights)
+          row_sum  *= (*deriv_weights)(r);
         tot_weight += row_sum;
         if (best_index == best_index_cpu[r])
           tot_accuracy += row_sum;
@@ -212,6 +220,8 @@ void ComputeAccuracy(const GeneralMatrix &supervision,
         BaseFloat row_sum = row.Sum();
         int32 best_index;
         row.Max(&best_index);
+        if (deriv_weights)
+          row_sum  *= (*deriv_weights)(r);
         KALDI_ASSERT(best_index < num_cols);
         tot_weight += row_sum;
         if (best_index == best_index_cpu[r])

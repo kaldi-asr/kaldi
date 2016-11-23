@@ -137,6 +137,7 @@ void FilterExample(const NnetExample &eg,
     if (!is_input_or_output) {  // Just copy everything.
       io_out.indexes = io_in.indexes;
       io_out.features = io_in.features;
+      io_out.deriv_weights = io_in.deriv_weights;
     } else {
       const std::vector<Index> &indexes_in = io_in.indexes;
       std::vector<Index> &indexes_out = io_out.indexes;
@@ -157,6 +158,19 @@ void FilterExample(const NnetExample &eg,
         }
       }
       KALDI_ASSERT(iter_out == keep.end());
+
+      if (io_in.deriv_weights.Dim() > 0) {
+        io_out.deriv_weights.Resize(num_kept, kUndefined);
+        int32 in_dim = 0, out_dim = 0;
+        iter_out = keep.begin();
+        for (; iter_out != keep.end(); ++iter_out, in_dim++) {
+          if (*iter_out)
+            io_out.deriv_weights(out_dim++) = io_in.deriv_weights(in_dim);
+        }
+        KALDI_ASSERT(out_dim == num_kept);
+        KALDI_ASSERT(iter_out == keep.end());
+      }
+
       if (num_kept == 0)
         KALDI_ERR << "FilterExample removed all indexes for '" << name << "'";
 
