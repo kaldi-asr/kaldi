@@ -926,7 +926,7 @@ void ComputeExampleComputationRequestSimple(
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
 
-  int32 n = RandInt(0, 29);
+  int32 n = RandInt(0, 32);
   BaseFloat learning_rate = 0.001 * RandInt(1, 3);
 
   std::ostringstream os;
@@ -1223,6 +1223,20 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       *component_type = "DropoutComponent";
       os << "dim=" << RandInt(1, 200)
          << " dropout-proportion=" << RandUniform();
+    } 
+    case 30: {
+      *component_type = "LogComponent";
+      os << "dim=" << RandInt(1, 50);
+      break;
+    }
+    case 31: {
+      *component_type = "ExpComponent";
+      os << "dim=" << RandInt(1, 50);
+      break;
+    }
+    case 32: {
+      *component_type = "ScaleGradientComponent";
+      os << "dim=" << RandInt(1, 100);
       break;
     }
     default:

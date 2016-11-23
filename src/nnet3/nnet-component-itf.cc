@@ -117,6 +117,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new NoOpComponent();
   } else if (component_type == "ClipGradientComponent") {
     ans = new ClipGradientComponent();
+  } else if (component_type == "ScaleGradientComponent") {
+    ans = new ScaleGradientComponent();
   } else if (component_type == "ElementwiseProductComponent") {
     ans = new ElementwiseProductComponent();
   } else if (component_type == "ConvolutionComponent") {
