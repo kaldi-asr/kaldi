@@ -97,6 +97,11 @@ class NnetComputeProb {
   // or NULL if there is no such info.
   const SimpleObjectiveInfo *GetObjective(const std::string &output_name) const;
 
+  // return objective info for all outputs
+  const unordered_map<std::string, SimpleObjectiveInfo, StringHasher> & GetAllObjectiveInfo() const {
+    return objf_info_;
+  }
+
   // if config.compute_deriv == true, returns a reference to the
   // computed derivative.  Otherwise crashes.
   const Nnet &GetDeriv() const;
