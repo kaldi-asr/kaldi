@@ -783,6 +783,13 @@ Nnet& Nnet::operator =(const Nnet &nnet) {
 
 std::string Nnet::Info() const {
   std::ostringstream os;
+
+  if(IsSimpleNnet(*this))  {
+    int32 left_context, right_context;
+    ComputeSimpleNnetContext(*this, &left_context, &right_context);
+    os << "left-context: " << left_context << "\n";
+    os << "right-context: " << right_context << "\n";
+  }
   os << "num-parameters: " << NumParameters(*this) << "\n";
   os << "modulus: " << this->Modulus() << "\n";
   std::vector<std::string> config_lines;

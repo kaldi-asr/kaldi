@@ -96,16 +96,16 @@ void DropoutComponent::InitFromConfig(ConfigLine *cfl) {
   BaseFloat dropout_proportion = 0.0;
   bool ok = cfl->GetValue("dim", &dim) &&
     cfl->GetValue("dropout-proportion", &dropout_proportion);
-  if (!ok || cfl->HasUnusedValues() || dim <= 0 || 
+  if (!ok || cfl->HasUnusedValues() || dim <= 0 ||
       dropout_proportion < 0.0 || dropout_proportion > 1.0)
-    KALDI_ERR << "Invalid initializer for layer of type " 
-              << Type() << ": \"" << cfl->WholeLine() << "\"";   
+    KALDI_ERR << "Invalid initializer for layer of type "
+              << Type() << ": \"" << cfl->WholeLine() << "\"";
   Init(dim, dropout_proportion);
 }
 
 std::string DropoutComponent::Info() const {
   std::ostringstream stream;
-  stream << Type() << ", dim = " << dim_ 
+  stream << Type() << ", dim = " << dim_
          << ", dropout-proportion = " << dropout_proportion_;
   return stream.str();
 }
@@ -119,12 +119,12 @@ void DropoutComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
   BaseFloat dropout = dropout_proportion_;
   KALDI_ASSERT(dropout >= 0.0 && dropout <= 1.0);
 
-  // This const_cast is only safe assuming you don't attempt  
+  // This const_cast is only safe assuming you don't attempt
   // to use multi-threaded code with the GPU.
-  const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(out); 
+  const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(out);
 
-  out->Add(-dropout); // now, a proportion "dropout" will be <0.0 
-  out->ApplyHeaviside(); // apply the function (x>0?1:0).  Now, a proportion "dropout" will 
+  out->Add(-dropout); // now, a proportion "dropout" will be <0.0
+  out->ApplyHeaviside(); // apply the function (x>0?1:0).  Now, a proportion "dropout" will
                          // be zero and (1 - dropout) will be 1.0.
 
   out->MulElements(in);
@@ -147,7 +147,7 @@ void DropoutComponent::Backprop(const std::string &debug_info,
 }
 
 
- 
+
 void DropoutComponent::Read(std::istream &is, bool binary) {
   ExpectOneOrTwoTokens(is, binary, "<DropoutComponent>", "<Dim>");
   ReadBasicType(is, binary, &dim_);

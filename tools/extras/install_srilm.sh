@@ -29,6 +29,15 @@ mkdir -p srilm
 cd srilm
 tar -xvzf ../srilm.tgz
 
+major=`awk -F. '{ print $1 }' RELEASE`
+minor=`awk -F. '{ print $2 }' RELEASE`
+micro=`awk -F. '{ print $3 }' RELEASE`
+
+if [ $major -le 1 ] && [ $minor -le 7 ] && [ $micro -le 1 ]; then
+  echo "Detected version 1.7.1 or earlier. Applying patch."
+  patch -p0 < ../extras/srilm.patch
+fi
+
 # set the SRILM variable in the top-level Makefile to this directory.
 cp Makefile tmpf
 
