@@ -922,6 +922,87 @@ void ClipGradientComponent::Add(BaseFloat alpha, const Component &other_in) {
   num_clipped_ += alpha * other->num_clipped_;
 }
 
+
+void ScaleGradientComponent::Init(const CuVectorBase<BaseFloat> &scales) {
+  KALDI_ASSERT(scales.Dim() != 0);
+  scales_ = scales;
+}
+
+
+void ScaleGradientComponent::InitFromConfig(ConfigLine *cfl) {
+  std::string filename;
+  // Accepts "scales" config (for filename) or "dim" -> random init, for testing.
+  if (cfl->GetValue("scales", &filename)) {
+    if (cfl->HasUnusedValues())
+      KALDI_ERR << "Invalid initializer for layer of type "
+                << Type() << ": \"" << cfl->WholeLine() << "\"";
+    CuVector<BaseFloat> vec;
+    ReadKaldiObject(filename, &vec);
+    Init(vec);
+  } else {
+    int32 dim;
+    BaseFloat scale = 1.0;
+    bool scale_ok = cfl->GetValue("scale", &scale);
+    if (!cfl->GetValue("dim", &dim) || cfl->HasUnusedValues())
+      KALDI_ERR << "Invalid initializer for layer of type "
+                << Type() << ": \"" << cfl->WholeLine() << "\"";
+    KALDI_ASSERT(dim > 0);
+    CuVector<BaseFloat> vec(dim);
+    if (scale_ok) {
+      vec.Set(scale);
+    } else {
+      vec.SetRandn();
+    }
+    Init(vec);
+  }
+}
+
+
+std::string ScaleGradientComponent::Info() const {
+  std::ostringstream stream;
+  stream << Component::Info();
+  PrintParameterStats(stream, "scales", scales_, true);
+  return stream.str();
+}
+
+void ScaleGradientComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+                                       const CuMatrixBase<BaseFloat> &in,
+                                       CuMatrixBase<BaseFloat> *out) const {
+  out->CopyFromMat(in);  // does nothing if same matrix.
+}
+
+void ScaleGradientComponent::Backprop(const std::string &debug_info,
+                                      const ComponentPrecomputedIndexes *indexes,
+                                      const CuMatrixBase<BaseFloat> &, // in_value
+                                      const CuMatrixBase<BaseFloat> &, // out_value
+                                      const CuMatrixBase<BaseFloat> &out_deriv,
+                                      Component *, // to_update
+                                      CuMatrixBase<BaseFloat> *in_deriv) const {
+  in_deriv->CopyFromMat(out_deriv);  // does nothing if same memory.
+  in_deriv->MulColsVec(scales_);
+}
+
+Component* ScaleGradientComponent::Copy() const {
+  ScaleGradientComponent *ans = new ScaleGradientComponent();
+  ans->scales_ = scales_;
+  return ans;
+}
+
+
+void ScaleGradientComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<ScaleGradientComponent>");
+  WriteToken(os, binary, "<Scales>");
+  scales_.Write(os, binary);
+  WriteToken(os, binary, "</ScaleGradientComponent>");
+}
+
+void ScaleGradientComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<ScaleGradientComponent>", "<Scales>");
+  scales_.Read(is, binary);
+  ExpectToken(is, binary, "</ScaleGradientComponent>");
+}
+
+
 void TanhComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                               const CuMatrixBase<BaseFloat> &in,
                               CuMatrixBase<BaseFloat> *out) const {
