@@ -1,6 +1,9 @@
 #!/bin/bash
 
-# this script is a modified version of swbd/run_tdnn_5f.sh
+# this script is a modified version of run_tdnn_5g.sh. It uses
+# the new transition model and the python version of training scripts.
+
+
 
 set -e
 
@@ -8,7 +11,7 @@ set -e
 stage=0
 train_stage=-10
 get_egs_stage=-10
-dir=exp/chain/tdnn_5f
+dir=exp/chain/tdnn_5n
 
 # training options
 num_epochs=12
@@ -43,13 +46,13 @@ fi
 # run those things.
 
 ali_dir=exp/tri3b_ali
-treedir=exp/chain/tri4_2y_tree
-lang=data/lang_chain_2y
+treedir=exp/chain/tri4_5n_tree
+lang=data/lang_chain_5n
 
 local/online/run_nnet2_common.sh --stage $stage || exit 1;
 
 if [ $stage -le 4 ]; then
-  # Get the alignments as lattices (gives the CTC training more freedom).
+  # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
   nj=$(cat exp/tri3b_ali/num_jobs) || exit 1;
   steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" data/train \
@@ -78,51 +81,73 @@ if [ $stage -le 6 ]; then
 fi
 
 if [ $stage -le 7 ]; then
-  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
+  mkdir -p $dir
+
+  echo "$0: creating neural net configs";
+
+  steps/nnet3/tdnn/make_configs.py \
+    --self-repair-scale-nonlinearity 0.00001 \
+    --feat-dir data/train \
+    --ivector-dir exp/nnet2_online/ivectors \
+    --tree-dir $treedir \
+    --relu-dim 450 \
+    --splice-indexes "-1,0,1 -2,-1,0,1 -3,0,3 -6,-3,0 0" \
+    --use-presoftmax-prior-scale false \
     --xent-regularize 0.1 \
-    --leaky-hmm-coefficient 0.1 \
-    --l2-regularize 0.00005 \
-    --jesus-opts "--jesus-forward-input-dim 200  --jesus-forward-output-dim 500 --jesus-hidden-dim 2000 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25" \
-    --splice-indexes "-1,0,1 -2,-1,0,1 -3,0,3 -6,-3,0" \
-    --apply-deriv-weights false \
-    --frames-per-iter 1000000 \
-    --lm-opts "--num-extra-lm-states=200" \
-    --get-egs-stage $get_egs_stage \
-    --minibatch-size $minibatch_size \
-    --egs-opts "--frames-overlap-per-eg 0" \
-    --frames-per-eg $frames_per_eg \
-    --num-epochs $num_epochs --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
-    --feat-type raw \
-    --online-ivector-dir exp/nnet2_online/ivectors \
-    --cmvn-opts "--norm-means=false --norm-vars=false" \
-    --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
-    --max-param-change $max_param_change \
-    --cmd "$decode_cmd" \
-    --remove-egs $remove_egs \
-    data/train $treedir exp/tri3b_lats $dir  || exit 1;
+    --xent-separate-forward-affine true \
+    --include-log-softmax false \
+    --final-layer-normalize-target 1.0 \
+   $dir/configs || exit 1;
 fi
 
 if [ $stage -le 8 ]; then
+ steps/nnet3/chain/train.py --stage $train_stage \
+    --cmd "$decode_cmd" \
+    --feat.online-ivector-dir exp/nnet2_online/ivectors \
+    --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
+    --chain.xent-regularize 0.1 \
+    --chain.leaky-hmm-coefficient 0.1 \
+    --chain.l2-regularize 0.00005 \
+    --chain.apply-deriv-weights false \
+    --chain.lm-opts="--num-extra-lm-states=200" \
+    --egs.dir "$common_egs_dir" \
+    --egs.opts "--frames-overlap-per-eg 0" \
+    --egs.chunk-width $frames_per_eg \
+    --trainer.num-chunk-per-minibatch $minibatch_size \
+    --trainer.frames-per-iter 1000000 \
+    --trainer.num-epochs $num_epochs \
+    --trainer.optimization.num-jobs-initial $num_jobs_initial \
+    --trainer.optimization.num-jobs-final $num_jobs_final \
+    --trainer.optimization.initial-effective-lrate $initial_effective_lrate \
+    --trainer.optimization.final-effective-lrate $final_effective_lrate \
+    --trainer.max-param-change $max_param_change \
+    --cleanup.remove-egs true \
+    --feat-dir data/train \
+    --tree-dir $treedir \
+    --lat-dir exp/tri3b_lats \
+    --dir $dir
+fi
+
+if [ $stage -le 9 ]; then
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 4 \
     data/test exp/nnet2_online/extractor exp/nnet2_online/ivectors_test || exit 1;
 fi
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 10 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
   utils/mkgraph.sh --self-loop-scale 1.0 data/lang $dir $dir/graph
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-    --extra-left-context 20 --scoring-opts "--min-lmwt 1" \
+    --scoring-opts "--min-lmwt 1" \
     --nj 20 --cmd "$decode_cmd" \
     --online-ivector-dir exp/nnet2_online/ivectors_test \
     $dir/graph data/test $dir/decode || exit 1;
 fi
 
-if [ $stage -le 10 ]; then
+if [ $stage -le 11 ]; then
   utils/mkgraph.sh --self-loop-scale 1.0 data/lang_ug $dir $dir/graph_ug
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-    --extra-left-context 20 \
     --nj 20 --cmd "$decode_cmd" \
     --online-ivector-dir exp/nnet2_online/ivectors_test \
     $dir/graph_ug data/test $dir/decode_ug || exit 1;
