@@ -129,7 +129,7 @@ def train_new_models(dir, iter, srand, num_jobs,
     if not all_success:
         open('{0}/.error'.format(dir), 'w').close()
         raise Exception("There was error during training "
-                        "iteration {0}".format(iter)
+                        "iteration {0}".format(iter))
 
 
 def train_one_iteration(dir, iter, srand, egs_dir,
