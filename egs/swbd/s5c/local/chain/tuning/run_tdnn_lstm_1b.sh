@@ -1,5 +1,17 @@
 #!/bin/bash
 
+# Unlike 1a this setup interleaves the TDNN and LSTM layers.
+
+#System               tdnn_lstm_1a_ld5tdnn_lstm_1b_ld5
+#WER on train_dev(tg)      13.42     13.00
+#WER on train_dev(fg)      12.42     12.03
+#WER on eval2000(tg)        15.7      15.3
+#WER on eval2000(fg)        14.2      13.9
+#Final train prob     -0.0538088 -0.056294
+#Final valid prob     -0.0800484-0.0813322
+#Final train prob (xent)       -0.7603 -0.777787
+#Final valid prob (xent)     -0.949909 -0.939146
+
 set -e
 
 # configs for 'chain'
