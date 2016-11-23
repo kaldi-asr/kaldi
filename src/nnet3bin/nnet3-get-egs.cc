@@ -32,9 +32,12 @@ namespace nnet3 {
 
 static void ProcessFile(const MatrixBase<BaseFloat> &feats,
                         const MatrixBase<BaseFloat> *ivector_feats,
+                        const VectorBase<BaseFloat> *deriv_weights,
                         const Posterior &pdf_post,
                         const std::string &utt_id,
                         bool compress,
+                        int32 input_compress_format,
+                        int32 feats_compress_format,
                         int32 num_pdfs,
                         int32 left_context,
                         int32 right_context,
@@ -42,16 +45,16 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
                         int64 *num_frames_written,
                         int64 *num_egs_written,
                         NnetExampleWriter *example_writer) {
-  KALDI_ASSERT(feats.NumRows() == static_cast<int32>(pdf_post.size()));
-  
-  for (int32 t = 0; t < feats.NumRows(); t += frames_per_eg) {
+  //KALDI_ASSERT(feats.NumRows() == static_cast<int32>(pdf_post.size()));
+  int32 min_size = std::min(feats.NumRows(), static_cast<int32>(pdf_post.size()));
+  for (int32 t = 0; t < min_size; t += frames_per_eg) {
 
     // actual_frames_per_eg is the number of frames with nonzero
     // posteriors.  At the end of the file we pad with zero posteriors
     // so that all examples have the same structure (prevents the need
     // for recompilations).
     int32 actual_frames_per_eg = std::min(frames_per_eg,
-                                          feats.NumRows() - t);
+                                          min_size - t);
 
 
     int32 tot_frames = left_context + frames_per_eg + right_context;
@@ -62,7 +65,7 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
     for (int32 j = -left_context; j < frames_per_eg + right_context; j++) {
       int32 t2 = j + t;
       if (t2 < 0) t2 = 0;
-      if (t2 >= feats.NumRows()) t2 = feats.NumRows() - 1;
+      if (t2 >= min_size) t2 = min_size - 1;
       SubVector<BaseFloat> src(feats, t2),
           dest(input_frames, j + left_context);
       dest.CopyFromVec(src);
@@ -73,9 +76,12 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
     // call the regular input "input".
     eg.io.push_back(NnetIo("input", - left_context,
                            input_frames));
+    
+    if (compress)
+      eg.io.back().Compress(input_compress_format);
 
     // if applicable, add the iVector feature.
-    if (ivector_feats != NULL) {
+    if (ivector_feats) {
       // try to get closest frame to middle of window to get
       // a representative iVector.
       int32 closest_frame = t + (actual_frames_per_eg / 2);
@@ -92,10 +98,20 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
     for (int32 i = 0; i < actual_frames_per_eg; i++)
       labels[i] = pdf_post[t + i];
     // remaining posteriors for frames are empty.
-    eg.io.push_back(NnetIo("output", num_pdfs, 0, labels));
+
+    if (!deriv_weights) {
+      eg.io.push_back(NnetIo("output", num_pdfs, 0, labels));
+    } else {
+      Vector<BaseFloat> this_deriv_weights(frames_per_eg);
+      int32 frames_to_copy = std::min(t + actual_frames_per_eg, deriv_weights->Dim()) - t; 
+      this_deriv_weights.Range(0, frames_to_copy).CopyFromVec(deriv_weights->Range(t, frames_to_copy));
+      if (this_deriv_weights.Sum() == 0) continue;  // Ignore frames that have frame weights 0
+      eg.io.push_back(NnetIo("output", this_deriv_weights, num_pdfs, 0, labels));
+    }
+
     
     if (compress)
-      eg.Compress();
+      eg.Compress(feats_compress_format);
       
     std::ostringstream os;
     os << utt_id << "-" << t;
@@ -140,14 +156,19 @@ int main(int argc, char *argv[]) {
         
 
     bool compress = true;
+    int32 input_compress_format = 0, feats_compress_format = 0;
     int32 num_pdfs = -1, left_context = 0, right_context = 0,
         num_frames = 1, length_tolerance = 100;
         
-    std::string ivector_rspecifier;
+    std::string ivector_rspecifier, deriv_weights_rspecifier;
     
     ParseOptions po(usage);
     po.Register("compress", &compress, "If true, write egs in "
                 "compressed format.");
+    po.Register("compress-format", &feats_compress_format, "Format for "
+                "compressing all feats in general");
+    po.Register("input-compress-format", &input_compress_format, "Format for "
+                "compressing input feats e.g. Use 2 for compressing wave");
     po.Register("num-pdfs", &num_pdfs, "Number of pdfs in the acoustic "
                 "model");
     po.Register("left-context", &left_context, "Number of frames of left "
@@ -160,6 +181,11 @@ int main(int argc, char *argv[]) {
                 "features, as a matrix.");
     po.Register("length-tolerance", &length_tolerance, "Tolerance for "
                 "difference in num-frames between feat and ivector matrices");
+    po.Register("deriv-weights-rspecifier", &deriv_weights_rspecifier,
+                "Per-frame weights (only binary - 0 or 1) that specifies "
+                "whether a frame's gradient must be backpropagated or not. "
+                "Not specifying this is equivalent to specifying a vector of "
+                "all 1s.");
     
     po.Read(argc, argv);
 
@@ -181,6 +207,7 @@ int main(int argc, char *argv[]) {
     RandomAccessPosteriorReader pdf_post_reader(pdf_post_rspecifier);
     NnetExampleWriter example_writer(examples_wspecifier);
     RandomAccessBaseFloatMatrixReader ivector_reader(ivector_rspecifier);
+    RandomAccessBaseFloatVectorReader deriv_weights_reader(deriv_weights_rspecifier);
     
     int32 num_done = 0, num_err = 0;
     int64 num_frames_written = 0, num_egs_written = 0;
@@ -192,12 +219,16 @@ int main(int argc, char *argv[]) {
         KALDI_WARN << "No pdf-level posterior for key " << key;
         num_err++;
       } else {
-        const Posterior &pdf_post = pdf_post_reader.Value(key);
-        if (pdf_post.size() != feats.NumRows()) {
+        Posterior pdf_post = pdf_post_reader.Value(key);
+        if (abs(static_cast<int32>(pdf_post.size()) - feats.NumRows()) > length_tolerance
+            || pdf_post.size() < feats.NumRows()) {
           KALDI_WARN << "Posterior has wrong size " << pdf_post.size()
                      << " versus " << feats.NumRows();
           num_err++;
           continue;
+        }
+        while (static_cast<int32>(pdf_post.size()) > feats.NumRows()) {
+          pdf_post.pop_back();
         }
         const Matrix<BaseFloat> *ivector_feats = NULL;
         if (!ivector_rspecifier.empty()) {
@@ -212,7 +243,7 @@ int main(int argc, char *argv[]) {
           }
         }
 
-        if (ivector_feats != NULL &&
+        if (ivector_feats &&
             (abs(feats.NumRows() - ivector_feats->NumRows()) > length_tolerance
              || ivector_feats->NumRows() == 0)) {
           KALDI_WARN << "Length difference between feats " << feats.NumRows()
@@ -221,8 +252,33 @@ int main(int argc, char *argv[]) {
           num_err++;
           continue;
         }
+
+        const Vector<BaseFloat> *deriv_weights = NULL;
+        if (!deriv_weights_rspecifier.empty()) {
+          if (!deriv_weights_reader.HasKey(key)) {
+            KALDI_WARN << "No deriv weights for utterance " << key;
+            num_err++;
+            continue;
+          } else {
+            // this address will be valid until we call HasKey() or Value()
+            // again.
+            deriv_weights = &(deriv_weights_reader.Value(key));
+          }
+        }
+
+        if (deriv_weights && 
+            (abs(feats.NumRows() - deriv_weights->Dim()) > length_tolerance
+            || deriv_weights->Dim() == 0)) {
+          KALDI_WARN << "Length difference between feats " << feats.NumRows()
+                     << " and deriv weights " << deriv_weights->Dim()
+                     << " exceeds tolerance " << length_tolerance;
+          num_err++;
+          continue;
+        }
+
           
-        ProcessFile(feats, ivector_feats, pdf_post, key, compress,
+        ProcessFile(feats, ivector_feats, deriv_weights, pdf_post, 
+                    key, compress, input_compress_format, feats_compress_format, 
                     num_pdfs, left_context, right_context, num_frames,
                     &num_frames_written, &num_egs_written,
                     &example_writer);
