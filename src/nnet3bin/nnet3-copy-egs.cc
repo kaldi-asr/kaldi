@@ -23,9 +23,28 @@
 #include "hmm/transition-model.h"
 #include "nnet3/nnet-example.h"
 #include "nnet3/nnet-example-utils.h"
+#include <algorithm>
 
 namespace kaldi {
 namespace nnet3 {
+
+bool KeepOutputs(const std::vector<std::string> &keep_outputs, 
+                 NnetExample *eg) {
+  std::vector<NnetIo> io_new;
+  int32 num_outputs = 0;
+  for (std::vector<NnetIo>::iterator it = eg->io.begin();
+        it != eg->io.end(); ++it) {
+    if (it->name.find("output") != std::string::npos) {
+      if (!std::binary_search(keep_outputs.begin(), keep_outputs.end(), it->name)) 
+        continue;
+      num_outputs++;
+    } 
+    io_new.push_back(*it);
+  }
+  eg->io.swap(io_new);
+
+  return num_outputs;
+}
 
 // returns an integer randomly drawn with expected value "expected_count"
 // (will be either floor(expected_count) or ceil(expected_count)).
@@ -257,6 +276,22 @@ bool SelectFromExample(const NnetExample &eg,
   return true;
 }
 
+bool RemoveZeroDerivOutputs(NnetExample *eg) {
+  std::vector<NnetIo> io_new;
+  int32 num_outputs = 0;
+  for (std::vector<NnetIo>::iterator it = eg->io.begin();
+        it != eg->io.end(); ++it) {
+    if (it->name.find("output") != std::string::npos) {
+      if (it->deriv_weights.Dim() > 0 && it->deriv_weights.Sum() == 0)
+        continue;
+      num_outputs++;
+    } 
+    io_new.push_back(*it);
+  }
+  eg->io.swap(io_new);
+
+  return (num_outputs > 0);
+}
 
 } // namespace nnet3
 } // namespace kaldi
@@ -284,6 +319,8 @@ int main(int argc, char *argv[]) {
     int32 srand_seed = 0;
     int32 frame_shift = 0;
     BaseFloat keep_proportion = 1.0;
+    std::string keep_outputs_str;
+    bool remove_zero_deriv_outputs = false;
 
     // The following config variables, if set, can be used to extract a single
     // frame of labels from a multi-frame example, and/or to reduce the amount
@@ -315,7 +352,11 @@ int main(int argc, char *argv[]) {
                 "feature left-context that we output.");
     po.Register("right-context", &right_context, "Can be used to truncate the "
                 "feature right-context that we output.");
-
+    po.Register("keep-outputs", &keep_outputs_str, "Comma separated list of "
+                "output nodes to keep");
+    po.Register("remove-zero-deriv-outputs", &remove_zero_deriv_outputs,
+                "Remove outputs that do not contribute to the objective "
+                "because of zero deriv-weights");
 
     po.Read(argc, argv);
 
@@ -335,17 +376,29 @@ int main(int argc, char *argv[]) {
     for (int32 i = 0; i < num_outputs; i++)
       example_writers[i] = new NnetExampleWriter(po.GetArg(i+2));
 
+    std::vector<std::string> keep_outputs;
+    if (!keep_outputs_str.empty()) {
+      SplitStringToVector(keep_outputs_str, ",:", true, &keep_outputs);
+      std::sort(keep_outputs.begin(), keep_outputs.end());
+    }
 
     int64 num_read = 0, num_written = 0;
     for (; !example_reader.Done(); example_reader.Next(), num_read++) {
       // count is normally 1; could be 0, or possibly >1.
       int32 count = GetCount(keep_proportion);
       std::string key = example_reader.Key();
-      const NnetExample &eg = example_reader.Value();
+      NnetExample eg(example_reader.Value());
+      
+      if (!keep_outputs_str.empty()) {
+        if (!KeepOutputs(keep_outputs, &eg)) continue;
+      }
+
       for (int32 c = 0; c < count; c++) {
         int32 index = (random ? Rand() : num_written) % num_outputs;
         if (frame_str == "" && left_context == -1 && right_context == -1 &&
             frame_shift == 0) {
+          if (remove_zero_deriv_outputs) 
+            if (!RemoveZeroDerivOutputs(&eg)) continue;
           example_writers[index]->Write(key, eg);
           num_written++;
         } else { // the --frame option or context options were set.
@@ -354,6 +407,8 @@ int main(int argc, char *argv[]) {
                                 frame_shift, &eg_modified)) {
             // this branch of the if statement will almost always be taken (should only
             // not be taken for shorter-than-normal egs from the end of a file.
+            if (remove_zero_deriv_outputs) 
+              if (!RemoveZeroDerivOutputs(&eg_modified)) continue;
             example_writers[index]->Write(key, eg_modified);
             num_written++;
           }

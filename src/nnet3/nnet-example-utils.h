@@ -80,6 +80,8 @@ void RoundUpNumFrames(int32 frame_subsampling_factor,
                       int32 *num_frames,
                       int32 *num_frames_overlap);
 
+// Returns the number of outputs in an eg
+int32 NumOutputs(const NnetExample &eg);
 
 } // namespace nnet3
 } // namespace kaldi

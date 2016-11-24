@@ -128,6 +128,9 @@ NnetIo::NnetIo(const std::string &name,
 }
 
 void NnetExample::Write(std::ostream &os, bool binary) const {
+#ifdef KALDI_PARANOID
+  KALDI_ASSERT(NumOutputs(eg) > 0);
+#endif
   // Note: weight, label, input_frames and spk_info are members.  This is a
   // struct.
   WriteToken(os, binary, "<Nnet3Eg>");

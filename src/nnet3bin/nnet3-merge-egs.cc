@@ -26,8 +26,10 @@
 
 namespace kaldi {
 namespace nnet3 {
-// returns the number of indexes/frames in the NnetIo named "output" in the eg,
-// or crashes if it is not there.
+// returns the number of indexes/frames in the output NnetIo
+// assumes the output name starts with "output" and only looks at the 
+// first such output to get the indexes size.
+// crashes if it there is no such output
 int32 NumOutputIndexes(const NnetExample &eg) {
   for (size_t i = 0; i < eg.io.size(); i++)
     if (eg.io[i].name.find("output") != std::string::npos)
