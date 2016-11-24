@@ -43,5 +43,9 @@ utils/data/combine_data.sh $destdir ${srcdir} ${destdir}_speed0.9 ${destdir}_spe
 rm -r ${destdir}_speed0.9 ${destdir}_speed1.1
 
 echo "$0: generated 3-way speed-perturbed version of data in $srcdir, in $destdir"
-utils/validate_data_dir.sh --no-feats $destdir
+if [ -f $srcdir/text ]; then
+  utils/validate_data_dir.sh --no-feats $destdir
+else
+  utils/validate_data_dir.sh --no-feats --no-text $destdir
+fi
 
