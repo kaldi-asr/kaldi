@@ -51,31 +51,11 @@ for f in $dir/orig_segmentation.1.gz $data_dir/segments; do
   fi
 done
 
-cat <<EOF > $dir/segmentation.conf
-pad_length=$pad_length          # Pad speech segments by this many frames on either side
-max_blend_length=$max_blend_length  # Maximum duration of speech that will be removed as part
-                       # of smoothing process. This is only if there are no other
-                       # speech segments nearby.
-max_intersegment_length=$max_intersegment_length  # Merge nearby speech segments if the silence
-                            # between them is less than this many frames.
-post_pad_length=$post_pad_length        # Pad speech segments by this many frames on either side
-                          # after the merging process using max_intersegment_length
-max_segment_length=$max_segment_length   # Segments that are longer than this are split into
-                          # overlapping frames.
-overlap_length=$overlap_length        # Overlapping frames when segments are split.
-                          # See the above option.
-min_silence_length=$min_silence_length     # Min silence length at which to split very long segments
-
-frame_shift=$frame_shift
-EOF
-
 nj=`cat $dir/num_jobs` || exit 1
 
-if [ $stage -le 1 ]; then
-  rm -r $segmented_data_dir || true
-  utils/data/convert_data_dir_to_whole.sh $data_dir $segmented_data_dir || exit 1
-  rm $segmented_data_dir/text
-fi
+[ $pad_length -eq -1 ] && pad_length=
+[ $post_pad_length -eq -1 ] && post_pad_length=
+[ $max_blend_length -eq -1 ] && max_blend_length=
 
 if [ $stage -le 2 ]; then
   # Post-process the orignal SAD segmentation using the following steps:
@@ -94,10 +74,10 @@ if [ $stage -le 2 ]; then
   $cmd JOB=1:$nj $dir/log/post_process_segmentation.JOB.log \
     gunzip -c $dir/orig_segmentation.JOB.gz \| \
     segmentation-post-process --merge-adjacent-segments --max-intersegment-length=0 ark:- ark:- \| \
-    segmentation-post-process --max-blend-length=$max_blend_length --blend-short-segments-class=1 ark:- ark:- \| \
-    segmentation-post-process --remove-labels=0 --pad-label=1 --pad-length=$pad_length ark:- ark:- \| \
+    segmentation-post-process ${max_blend_length:+--max-blend-length=$max_blend_length --blend-short-segments-class=1} ark:- ark:- \| \
+    segmentation-post-process --remove-labels=0 ${pad_length:+--pad-label=1 --pad-length=$pad_length} ark:- ark:- \| \
     segmentation-post-process --merge-adjacent-segments --max-intersegment-length=$max_intersegment_length ark:- ark:- \| \
-    segmentation-post-process --pad-label=1 --pad-length=$post_pad_length ark:- ark:- \| \
+    segmentation-post-process ${post_pad_length:+--pad-label=1 --pad-length=$post_pad_length} ark:- ark:- \| \
     segmentation-split-segments --alignments="ark,s,cs:gunzip -c $dir/orig_segmentation.JOB.gz | segmentation-to-ali ark:- ark:- |" \
     --max-segment-length=$max_segment_length --min-alignment-chunk-length=$min_silence_length --ali-label=0 ark:- ark:- \| \
     segmentation-split-segments \
@@ -118,12 +98,3 @@ if [ ! -s $segmented_data_dir/utt2spk ] || [ ! -s $segmented_data_dir/segments ]
   echo "$0: Segmentation failed to generate segments or utt2spk!"
   exit 1
 fi
-
-utils/utt2spk_to_spk2utt.pl $segmented_data_dir/utt2spk > $segmented_data_dir/spk2utt || exit 1
-utils/fix_data_dir.sh $segmented_data_dir
-
-if [ ! -s $segmented_data_dir/utt2spk ] || [ ! -s $segmented_data_dir/segments ]; then
-  echo "$0: Segmentation failed to generate segments or utt2spk!"
-  exit 1
-fi
-
