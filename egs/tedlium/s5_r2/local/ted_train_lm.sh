@@ -58,9 +58,8 @@ if [ $stage -le 0 ]; then
 
   rm ${dir}/data/text/* 2>/dev/null || true
 
-  # cantab-TEDLIUM is the larger data source.  gzip it.
-  gunzip db/TEDLIUM_release2/LM/*.en.gz
-  cat db/TEDLIUM_release2/LM/*.en | sed 's/ <\/s>//g' | local/join_suffix.py | gzip -c  > ${dir}/data/text/train.txt.gz
+  # Unzip TEDLIUM 6 data sources, normalize apostrophe+suffix to previous word, gzip the result.
+  gunzip -c db/TEDLIUM_release2/LM/*.en.gz | sed 's/ <\/s>//g' | local/join_suffix.py | gzip -c  > ${dir}/data/text/train.txt.gz
   # use a subset of the annotated training data as the dev set .
   # Note: the name 'dev' is treated specially by pocolm, it automatically
   # becomes the dev set.
