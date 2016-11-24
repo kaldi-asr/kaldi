@@ -519,7 +519,7 @@ std::string SummarizeVector(const Vector<BaseFloat> &vec) {
 
 void PrintParameterStats(std::ostringstream &os,
                          const std::string &name,
-                         const CuVector<BaseFloat> &params,
+                         const CuVectorBase<BaseFloat> &params,
                          bool include_mean) {
   os << std::setprecision(4);
   os << ", " << name << '-';
