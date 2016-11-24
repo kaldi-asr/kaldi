@@ -56,6 +56,35 @@ def AddNoOpLayer(config_lines, name, input):
     return {'descriptor':  '{0}_noop'.format(name),
             'dimension': input['dimension']}
 
+def AddGradientScaleLayer(config_lines, name, input, scale = 1.0, scales_vec = None):
+    components = config_lines['components']
+    component_nodes = config_lines['component-nodes']
+
+    if scales_vec is None:
+        components.append('component name={0}_gradient_scale type=ScaleGradientComponent dim={1} scale={2}'.format(name, input['dimension'], scale))
+    else:
+        components.append('component name={0}_gradient_scale type=ScaleGradientComponent scales={2}'.format(name, scales_vec))
+
+    component_nodes.append('component-node name={0}_gradient_scale component={0}_gradient_scale input={1}'.format(name, input['descriptor']))
+
+    return {'descriptor':  '{0}_gradient_scale'.format(name),
+            'dimension': input['dimension']}
+
+def AddFixedScaleLayer(config_lines, name, input,
+                       scale = 1.0, scales_vec = None):
+    components = config_lines['components']
+    component_nodes = config_lines['component-nodes']
+
+    if scales_vec is None:
+        components.append('component name={0}-fixed-scale type=FixedScaleComponent dim={1} scale={2}'.format(name, input['dimension'], scale))
+    else:
+        components.append('component name={0}-fixed-scale type=FixedScaleComponent scales={2}'.format(name, scales_vec))
+
+    component_nodes.append('component-node name={0}-fixed-scale component={0}-fixed-scale input={1}'.format(name, input['descriptor']))
+
+    return {'descriptor':  '{0}-fixed-scale'.format(name),
+            'dimension': input['dimension']}
+
 def AddLdaLayer(config_lines, name, input, lda_file):
     return AddFixedAffineLayer(config_lines, name, input, lda_file)
 
@@ -471,7 +500,9 @@ def AddFinalLayer(config_lines, input, output_dim,
         include_log_softmax = True,
         add_final_sigmoid = False,
         name_affix = None,
-        objective_type = "linear"):
+        objective_type = "linear",
+        objective_scale = 1.0,
+        objective_scales_vec = None):
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
 
@@ -497,6 +528,9 @@ def AddFinalLayer(config_lines, input, output_dim,
         prev_layer_output = AddSigmoidLayer(config_lines, final_node_prefix, prev_layer_output)
     # we use the same name_affix as a prefix in for affine/scale nodes but as a
     # suffix for output node
+    if (objective_scale != 1.0 or objective_scales_vec is not None):
+        prev_layer_output = AddGradientScaleLayer(config_lines, final_node_prefix, prev_layer_output, objective_scale, objective_scales_vec)
+
     AddOutputLayer(config_lines, prev_layer_output, label_delay, suffix = name_affix, objective_type = objective_type)
 
 def AddLstmLayer(config_lines,
