@@ -1,6 +1,17 @@
 #!/bin/bash
 
-# 7l is based on 7h, but adding an lowrank module pre the xent
+# 7l is based on 7h, but adding a 64 dim lowrank module in the xent branch
+#System                   tdnn_7h    tdnn_7l
+#WER on train_dev(tg)     13.84      13.83
+#WER on train_dev(fg)     12.84      12.88
+#WER on eval2000(tg)      16.5       16.4
+#WER on eval2000(fg)      14.8       14.7
+#Final train prob         -0.089     -0.090
+#Final valid prob         -0.113     -0.116
+#Final train prob (xent)  -1.25      -1.38
+#Final valid prob (xent)  -1.36      -1.48
+#Time consuming one iter  53.56s     48.18s  
+#Time reduction percent   10.1%
 set -e
 
 # configs for 'chain'
