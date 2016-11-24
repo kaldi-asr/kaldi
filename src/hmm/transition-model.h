@@ -53,7 +53,7 @@ namespace kaldi {
 //           phone:  a phone index (1, 2, 3 ...)
 //       HMM-state:  a number (0, 1, 2...) that indexes TopologyEntry (see hmm-topology.h)
 //          pdf-id:  a number output by the Compute function of ContextDependency (it
-//                   indexes pdf's).  Zero-based.
+//                   indexes pdf's, either forward or self-loop).  Zero-based.
 // transition-state:  the states for which we estimate transition probabilities for transitions
 //                    out of them.  In some topologies, will map one-to-one with pdf-ids.
 //                    One-based, since it appears on FSTs.
@@ -66,14 +66,15 @@ namespace kaldi {
 //                    One-based, since it appears on FSTs.
 //
 // List of the possible mappings TransitionModel can do:
-//             (phone, HMM-state, pdf-id) -> transition-state
-//   (transition-state, transition-index) -> transition-id
+//   (phone, HMM-state, forward-pdf-id, self-loop-pdf-id) -> transition-state
+//                   (transition-state, transition-index) -> transition-id
 //  Reverse mappings:
 //                        transition-id -> transition-state
 //                        transition-id -> transition-index
 //                     transition-state -> phone
 //                     transition-state -> HMM-state
-//                     transition-state -> pdf-id
+//                     transition-state -> forward-pdf-id
+//                     transition-state -> self-loop-pdf-id
 //
 // The main things the TransitionModel object can do are:
 //    Get initialized (need ContextDependency and HmmTopology objects).
@@ -141,13 +142,16 @@ class TransitionModel {
   /// \name Integer mapping functions
   /// @{
 
-  int32 TripleToTransitionState(int32 phone, int32 hmm_state, int32 pdf) const;
+  int32 TupleToTransitionState(int32 phone, int32 hmm_state, int32 pdf, int32 self_loop_pdf) const;
   int32 PairToTransitionId(int32 trans_state, int32 trans_index) const;
   int32 TransitionIdToTransitionState(int32 trans_id) const;
   int32 TransitionIdToTransitionIndex(int32 trans_id) const;
   int32 TransitionStateToPhone(int32 trans_state) const;
   int32 TransitionStateToHmmState(int32 trans_state) const;
-  int32 TransitionStateToPdf(int32 trans_state) const;
+  int32 TransitionStateToForwardPdfClass(int32 trans_state) const;
+  int32 TransitionStateToSelfLoopPdfClass(int32 trans_state) const;
+  int32 TransitionStateToForwardPdf(int32 trans_state) const;
+  int32 TransitionStateToSelfLoopPdf(int32 trans_state) const;
   int32 SelfLoopOf(int32 trans_state) const;  // returns the self-loop transition-id, or zero if
   // this state doesn't have a self-loop.
 
@@ -172,7 +176,7 @@ class TransitionModel {
   int32 NumTransitionIndices(int32 trans_state) const;
 
   /// Returns the total number of transition-states (note, these are one-based).
-  int32 NumTransitionStates() const { return triples_.size(); }
+  int32 NumTransitionStates() const { return tuples_.size(); }
 
   // NumPdfs() actually returns the highest-numbered pdf we ever saw, plus one.
   // In normal cases this should equal the number of pdfs in the system, but if you
@@ -249,30 +253,36 @@ class TransitionModel {
   void MapUpdateShared(const Vector<double> &stats,
                        const MapTransitionUpdateConfig &cfg,
                        BaseFloat *objf_impr_out, BaseFloat *count_out);
-  void ComputeTriples(const ContextDependencyInterface &ctx_dep);  // called from constructor.  initializes triples_.
+  void ComputeTuples(const ContextDependencyInterface &ctx_dep);  // called from constructor.  initializes tuples_.
+  void ComputeTuplesIsHmm(const ContextDependencyInterface &ctx_dep);
+  void ComputeTuplesNotHmm(const ContextDependencyInterface &ctx_dep);
   void ComputeDerived();  // called from constructor and Read function: computes state2id_ and id2state_.
   void ComputeDerivedOfProbs();  // computes quantities derived from log-probs (currently just
   // non_self_loop_log_probs_; called whenever log-probs change.
   void InitializeProbs();  // called from constructor.
   void Check() const;
+  bool IsHmm() const;
 
-  struct Triple {
+  struct Tuple {
     int32 phone;
     int32 hmm_state;
-    int32 pdf;
-    Triple() { }
-    Triple(int32 phone, int32 hmm_state, int32 pdf):
-        phone(phone), hmm_state(hmm_state), pdf(pdf) { }
-    bool operator < (const Triple &other) const {
+    int32 forward_pdf;
+    int32 self_loop_pdf;
+    Tuple() { }
+    Tuple(int32 phone, int32 hmm_state, int32 forward_pdf, int32 self_loop_pdf):
+      phone(phone), hmm_state(hmm_state), forward_pdf(forward_pdf), self_loop_pdf(self_loop_pdf) { }
+    bool operator < (const Tuple &other) const {
       if (phone < other.phone) return true;
       else if (phone > other.phone) return false;
       else if (hmm_state < other.hmm_state) return true;
       else if (hmm_state > other.hmm_state) return false;
-      else return pdf < other.pdf;
+      else if (forward_pdf < other.forward_pdf) return true;
+      else if (forward_pdf > other.forward_pdf) return false;
+      else return (self_loop_pdf < other.self_loop_pdf);
     }
-    bool operator == (const Triple &other) const {
+    bool operator == (const Tuple &other) const {
       return (phone == other.phone && hmm_state == other.hmm_state
-              && pdf == other.pdf);
+              && forward_pdf == other.forward_pdf && self_loop_pdf == other.self_loop_pdf);
     }
   };
 
@@ -281,7 +291,7 @@ class TransitionModel {
   /// Triples indexed by transition state minus one;
   /// the triples are in sorted order which allows us to do the reverse mapping from
   /// triple to transition state
-  std::vector<Triple> triples_;
+  std::vector<Tuple> tuples_;
 
   /// Gives the first transition_id of each transition-state; indexed by
   /// the transition-state.  Array indexed 1..num-transition-states+1 (the last one
@@ -291,6 +301,8 @@ class TransitionModel {
   /// For each transition-id, the corresponding transition
   /// state (indexed by transition-id).
   std::vector<int32> id2state_;
+
+  std::vector<int32> id2pdf_id_;
 
   /// For each transition-id, the corresponding log-prob.  Indexed by transition-id.
   Vector<BaseFloat> log_probs_;
@@ -310,12 +322,9 @@ class TransitionModel {
 };
 
 inline int32 TransitionModel::TransitionIdToPdf(int32 trans_id) const {
-  // If a lot of time is spent here we may create an extra array
-  // to handle this.
-  KALDI_ASSERT(static_cast<size_t>(trans_id) < id2state_.size() &&
+  KALDI_ASSERT(static_cast<size_t>(trans_id) < id2pdf_id_.size() &&
                "Likely graph/model mismatch (graph built from wrong model?)");
-  int32 trans_state = id2state_[trans_id];
-  return triples_[trans_state-1].pdf;
+  return id2pdf_id_[trans_id];
 }
 
 /// Works out which pdfs might correspond to the given phones.  Will return true

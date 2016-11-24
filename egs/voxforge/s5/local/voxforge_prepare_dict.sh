@@ -12,7 +12,7 @@ echo "=== Preparing the dictionary ..."
 
 if [ ! -f $locdict/cmudict/cmudict.0.7a ]; then
   echo "--- Downloading CMU dictionary ..."
-  mkdir -p $locdict 
+  mkdir -p $locdict
   svn co http://svn.code.sf.net/p/cmusphinx/code/trunk/cmudict \
     $locdict/cmudict || exit 1;
 fi
@@ -64,6 +64,7 @@ g2p.py --model=conf/g2p_model --apply $locdict/vocab-oov.txt > $locdict/lexicon-
 
 cat $locdict/lexicon-oov.txt $locdict/lexicon-iv.txt |\
   sort > $locdict/lexicon.txt
+rm $locdict/lexiconp.txt 2>/dev/null || true
 
 echo "--- Prepare phone lists ..."
 echo SIL > $locdict/silence_phones.txt

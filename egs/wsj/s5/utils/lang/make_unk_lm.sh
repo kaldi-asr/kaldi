@@ -163,7 +163,7 @@ fi
 if $use_pocolm; then
   if [ ! -e $KALDI_ROOT/tools/pocolm ]; then
     echo "$0: $KALDI_ROOT/tools/pocolm does not exist:"
-    echo " ... please do:   cd $KALDI_ROOT; extras/install_pocolm.sh"
+    echo " ... please do:  cd $KALDI_ROOT/tools; extras/install_pocolm.sh"
     echo " ... and then rerun this script."
     exit 1
   fi
@@ -212,7 +212,9 @@ if $use_pocolm; then
     # bigrams that we've seen (this may enforce certain linguistic constraints,
     # and also stops the graph from blowing up too much once we introduce
     # phonetic context.
-    cat $dir/training.txt | awk '{ printf("<s> %s </s>\n", $0); }' | \
+    # The NF > 0 is just a double-check that there are no empty prons, which
+    # would be bad as it would allow an empty pronunciation of the unknown word.
+    cat $dir/training.txt | awk '{ if (NF > 0) printf("<s> %s </s>\n", $0); }' | \
       awk '{for(n=1;n<NF;n++) { m=n+1; seen[ $n " " $m ] = 1; }} END{for(k in seen) print k;}' \
           > $dir/allowed_bigrams
 
@@ -256,7 +258,7 @@ if ! $position_dependent_phones; then
     # We don't need to take into account the disambig symbol because we compose on
     # the right with this FST, and it doesn't appear on the output side.
     cat $dir/all_nonsil_phones | \
-      awk -v '{ph[$1]=1} END{ for (p in ph) { print 0,1,p,p; print 1,2,p,p; print 2,2,p,p; }
+      awk '{ph[$1]=1} END{ for (p in ph) { print 0,1,p,p; print 1,2,p,p; print 2,2,p,p; }
                  print 2,0.0; }' > $dir/constraint_fst.txt
   fi
 else

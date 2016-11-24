@@ -54,7 +54,7 @@ runvx cd tools
 runvx make openfst $CCC CXXFLAGS="$CF" -j$MAXPAR
 cd ..
 runvx cd src
-runvx ./configure --use-cuda=no  --mathlib=OPENBLAS --openblas-root=$XROOT/usr
+runvx ./configure --shared --use-cuda=no  --mathlib=OPENBLAS --openblas-root=$XROOT/usr
 
 make_kaldi() {
   runvx make "$@" $CCC EXTRA_CXXFLAGS="$CF" EXTRA_LDLIBS="$LDF"
