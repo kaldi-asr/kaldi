@@ -3,23 +3,21 @@
 # 6j is same as 6i but using the xconfig format of network specification.
 # Also, the model is trained without layer-wise discriminative pretraining.
 # Another minor change is that the final-affine component has param-stddev-0
-# and bias-stddev=0 initialization.
+# and bias-stddev=0 initialization. The results also account for changes
+# due to BackpropTruncationComponent in place of ClipGradientComponent.
+# Note that removal of layerwise discriminative pretraining does not result
+# in a lot of improvement in LSTMs, compared to TDNNs (7f vs 7g).
 
-
-
-# This run is affected by the bug that per-element-scale components do not have
-# max-change. The updated results without the bug will be submitted soon.
 #System               lstm_6i_ld5  lstm_6j_ld5
-#WER on train_dev(tg)      14.65     14.43
-#WER on train_dev(fg)      13.38     13.17
-#WER on eval2000(tg)        16.9      16.9
-#WER on eval2000(fg)        15.4      15.3
-#Final train prob     -0.0751668-0.0795697
-#Final valid prob     -0.0928206-0.0926466
-#Final train prob (xent)      -1.34549  -1.16067
-#Final valid prob (xent)      -1.41301  -1.23679
+#WER on train_dev(tg)      14.65     14.66
+#WER on train_dev(fg)      13.38     13.42
+#WER on eval2000(tg)        16.9      16.8
+#WER on eval2000(fg)        15.4      15.4
+#Final train prob     -0.0751668-0.0824531
+#Final valid prob     -0.0928206-0.0989325
+#Final train prob (xent)      -1.34549  -1.15506
+#Final valid prob (xent)      -1.41301  -1.24364
 #
-
 set -e
 
 # configs for 'chain'

@@ -592,7 +592,6 @@ class XconfigBasicLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
         # Here we just list some likely combinations.. you can just add any
         # combinations you want to use, to this list.
-        print(first_token)
         assert first_token in [ 'relu-layer', 'relu-renorm-layer', 'sigmoid-layer',
                                 'tanh-layer' ]
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
@@ -604,17 +603,9 @@ class XconfigBasicLayer(XconfigLayerBase):
         self.config = { 'input':'[-1]',
                         'dim':-1,
                         'max-change' : 0.75,
-                        'bias-stddev' : 0,
-                        'param-stddev' : -1, # default value is derived
                         'self-repair-scale' : 1.0e-05,
                         'target-rms' : 1.0,
                         'ng-affine-options' : ''}
-
-    def set_derived_configs(self):
-        super(XconfigBasicLayer, self).set_derived_configs()
-        if self.config['param-stddev'] < 0:
-            self.config['param-stddev'] = 1.0 / self.descriptors['input']['dim']
-
 
     def check_configs(self):
         if self.config['dim'] < 0:
@@ -642,87 +633,100 @@ class XconfigBasicLayer(XconfigLayerBase):
             output_dim = self.descriptors['input']['dim']
         return output_dim
 
+
     def get_full_config(self):
-
         ans = []
+        config_lines = self._generate_config()
 
+        for line in config_lines:
+            for config_name in ['ref', 'final']:
+                # we do not support user specified matrices in this layer
+                # so 'ref' and 'final' configs are the same.
+                ans.append((config_name, line))
+        return ans
+
+
+    def _generate_config(self):
         split_layer_name = self.layer_type.split('-')
         assert split_layer_name[-1] == 'layer'
         nonlinearities = split_layer_name[:-1]
 
         # by 'descriptor_final_string' we mean a string that can appear in
         # config-files, i.e. it contains the 'final' names of nodes.
-        descriptor_final_string = self.descriptors['input']['final-string']
+        input_desc = self.descriptors['input']['final-string']
         input_dim = self.descriptors['input']['dim']
+
+        # the child classes e.g. tdnn might want to process the input
+        # before adding the other components
+
+        return self._add_components(input_desc, input_dim, nonlinearities)
+
+    def _add_components(self, input_desc, input_dim, nonlinearities):
         output_dim = self.output_dim()
         self_repair_scale = self.config['self-repair-scale']
         target_rms = self.config['target-rms']
-        param_stddev = self.config['param-stddev']
-        bias_stddev = self.config['bias-stddev']
         max_change = self.config['max-change']
         ng_opt_str = self.config['ng-affine-options']
 
-        for config_name in [ 'ref', 'final' ]:
-            # First the affine node.
-            line = ('component name={0}.affine'
-                    ' type=NaturalGradientAffineComponent'
-                    ' input-dim={1}'
-                    ' output-dim={2}'
-                    ' param-stddev={3}'
-                    ' bias-stddev={4}'
-                    ' max-change={5}'
-                    ' {6}'
-                    ''.format(self.name, input_dim, output_dim,
-                        param_stddev, bias_stddev, max_change, ng_opt_str))
-            ans.append((config_name, line))
+        configs = []
+        # First the affine node.
+        line = ('component name={0}.affine'
+                ' type=NaturalGradientAffineComponent'
+                ' input-dim={1}'
+                ' output-dim={2}'
+                ' max-change={3}'
+                ' {4}'
+                ''.format(self.name, input_dim, output_dim,
+                    max_change, ng_opt_str))
+        configs.append(line)
 
-            line = ('component-node name={0}.affine'
-                    ' component={0}.affine input={1}'
-                    ''.format(self.name, descriptor_final_string))
-            ans.append((config_name, line))
-            cur_node = '{0}.affine'.format(self.name)
+        line = ('component-node name={0}.affine'
+                ' component={0}.affine input={1}'
+                ''.format(self.name, input_desc))
+        configs.append(line)
+        cur_node = '{0}.affine'.format(self.name)
 
-            for nonlinearity in nonlinearities:
-                if nonlinearity == 'relu':
-                    line = ('component name={0}.{1}'
-                            ' type=RectifiedLinearComponent dim={2}'
-                            ' self-repair-scale={3}'
-                            ''.format(self.name, nonlinearity, output_dim,
-                                self_repair_scale))
+        for nonlinearity in nonlinearities:
+            if nonlinearity == 'relu':
+                line = ('component name={0}.{1}'
+                        ' type=RectifiedLinearComponent dim={2}'
+                        ' self-repair-scale={3}'
+                        ''.format(self.name, nonlinearity, output_dim,
+                            self_repair_scale))
 
-                elif nonlinearity == 'sigmoid':
-                    line = ('component name={0}.{1}'
-                            ' type=SigmoidComponent dim={2}'
-                            ' self-repair-scale={3}'
-                            ''.format(self.name, nonlinearity, output_dim,
-                                self_repair_scale))
+            elif nonlinearity == 'sigmoid':
+                line = ('component name={0}.{1}'
+                        ' type=SigmoidComponent dim={2}'
+                        ' self-repair-scale={3}'
+                        ''.format(self.name, nonlinearity, output_dim,
+                            self_repair_scale))
 
-                elif nonlinearity == 'tanh':
-                    line = ('component name={0}.{1}'
-                            ' type=TanhComponent dim={2}'
-                            ' self-repair-scale={3}'
-                            ''.format(self.name, nonlinearity, output_dim,
-                                self_repair_scale))
+            elif nonlinearity == 'tanh':
+                line = ('component name={0}.{1}'
+                        ' type=TanhComponent dim={2}'
+                        ' self-repair-scale={3}'
+                        ''.format(self.name, nonlinearity, output_dim,
+                            self_repair_scale))
 
-                elif nonlinearity == 'renorm':
-                    line = ('component name={0}.{1}'
-                            ' type=NormalizeComponent dim={2}'
-                            ' target-rms={3}'
-                            ''.format(self.name, nonlinearity, output_dim,
-                                target_rms))
+            elif nonlinearity == 'renorm':
+                line = ('component name={0}.{1}'
+                        ' type=NormalizeComponent dim={2}'
+                        ' target-rms={3}'
+                        ''.format(self.name, nonlinearity, output_dim,
+                            target_rms))
 
-                else:
-                    raise xparser_error("Unknown nonlinearity type:"
-                            "{0}".format(nonlinearity), self.str())
+            else:
+                raise xparser_error("Unknown nonlinearity type:"
+                        "{0}".format(nonlinearity), self.str())
 
-                ans.append((config_name, line))
-                line = ('component-node name={0}.{1}'
-                        ' component={0}.{1} input={2}'
-                        ''.format(self.name, nonlinearity, cur_node))
+            configs.append(line)
+            line = ('component-node name={0}.{1}'
+                    ' component={0}.{1} input={2}'
+                    ''.format(self.name, nonlinearity, cur_node))
 
-                ans.append((config_name, line))
-                cur_node = '{0}.{1}'.format(self.name, nonlinearity)
-        return ans
+            configs.append(line)
+            cur_node = '{0}.{1}'.format(self.name, nonlinearity)
+        return configs
 
 
 # This class is for lines like
