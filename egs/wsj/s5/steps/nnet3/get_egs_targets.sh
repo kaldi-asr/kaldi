@@ -24,6 +24,8 @@ feat_type=raw       # set it to 'lda' to use LDA features.
 target_type=sparse  # dense to have dense targets, 
                     # sparse to have posteriors targets
 num_targets=        # required for target-type=sparse with raw nnet
+deriv_weights_scp=
+l2_regularizer_targets=
 frames_per_eg=8   # number of frames of labels per example.  more->less disk space and
                   # less time preparing egs, but more I/O during training.
                   # note: the script may reduce this if reduce_frames_per_eg is true.
@@ -44,6 +46,12 @@ reduce_frames_per_eg=true  # If true, this script may reduce the frames_per_eg
                            # equal to the user-specified value.
 num_utts_subset=300     # number of utterances in validation and training
                         # subsets used for shrinkage and diagnostics.
+num_utts_subset_valid=  # number of utterances in validation 
+                        # subsets used for shrinkage and diagnostics
+                        # if provided, overrides num-utts-subset
+num_utts_subset_train=  # number of utterances in training
+                        # subsets used for shrinkage and diagnostics.
+                        # if provided, overrides num-utts-subset
 num_valid_frames_combine=0 # #valid frames for combination weights at the very end.
 num_train_frames_combine=10000 # # train frames for the above.
 num_frames_diagnostic=4000 # number of frames for "compute_prob" jobs
@@ -59,6 +67,7 @@ stage=0
 nj=6         # This should be set to the maximum number of jobs you are
              # comfortable to run in parallel; you can increase it if your disk
              # speed is greater and you have more machines.
+srand=0     # rand seed for nnet3-copy-egs and nnet3-shuffle-egs
 online_ivector_dir=  # can be used if we are including speaker information as iVectors.
 cmvn_opts=  # can be used for specifying CMVN options, if feature type is not lda (if lda,
             # it doesn't make sense to use different options than were used as input to the
@@ -111,9 +120,18 @@ utils/split_data.sh $data $nj
 
 mkdir -p $dir/log $dir/info
 
+[ -z "$num_utts_subset_valid" ] && num_utts_subset_valid=$num_utts_subset
+[ -z "$num_utts_subset_train" ] && num_utts_subset_train=$num_utts_subset
+
+num_utts=$(cat $data/utt2spk | wc -l)
+if ! [ $num_utts -gt $[$num_utts_subset_valid*4] ]; then
+  echo "$0: number of utterances $num_utts in your training data is too small versus --num-utts-subset=$num_utts_subset"
+  echo "... you probably have so little data that it doesn't make sense to train a neural net."
+  exit 1
+fi
 
 # Get list of validation utterances.
-awk '{print $1}' $data/utt2spk | utils/shuffle_list.pl | head -$num_utts_subset | sort \
+awk '{print $1}' $data/utt2spk | utils/shuffle_list.pl | head -$num_utts_subset_valid | sort \
     > $dir/valid_uttlist || exit 1;
 
 if [ -f $data/utt2uniq ]; then  # this matters if you use data augmentation.
@@ -128,7 +146,7 @@ if [ -f $data/utt2uniq ]; then  # this matters if you use data augmentation.
 fi
 
 awk '{print $1}' $data/utt2spk | utils/filter_scp.pl --exclude $dir/valid_uttlist | \
-   utils/shuffle_list.pl | head -$num_utts_subset | sort > $dir/train_subset_uttlist || exit 1;
+   utils/shuffle_list.pl | head -$num_utts_subset_train > $dir/train_subset_uttlist || exit 1;
 
 if [ ! -z "$transform_dir" ] && [ -f $transform_dir/trans.1 ] && [ $feat_type != "raw" ]; then
   echo "$0: using transforms from $transform_dir"
@@ -145,15 +163,33 @@ if [ -f $transform_dir/raw_trans.1 ] && [ $feat_type == "raw" ]; then
   fi
 fi
 
+nj_subset=$nj
 
+if [ $nj_subset -gt `cat $dir/train_subset_uttlist | wc -l` ]; then
+  nj_subset=`cat $dir/train_subset_uttlist | wc -l`
+fi
+
+if [ $nj_subset -gt `cat $dir/valid_uttlist | wc -l` ]; then
+  nj_subset=`cat $dir/valid_uttlist | wc -l`
+fi
+
+valid_uttlist_all=
+train_subset_uttlist_all=
+for n in `seq $nj_subset`; do 
+  valid_uttlist_all="$valid_uttlist_all $dir/valid_uttlist.$n"
+  train_subset_uttlist_all="$train_subset_uttlist_all $dir/train_subset_uttlist.$n"
+done
+
+utils/split_scp.pl $dir/valid_uttlist $valid_uttlist_all
+utils/split_scp.pl $dir/train_subset_uttlist $train_subset_uttlist_all
 
 ## Set up features.
 echo "$0: feature type is $feat_type"
 
 case $feat_type in
   raw) feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:- ark:- |"
-    valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
-    train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
+    valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist.JOB $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
+    train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist.JOB $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
     echo $cmvn_opts >$dir/cmvn_opts # caution: the top-level nnet training script should copy this to its own dir now.
    ;;
   lda)
@@ -164,8 +200,8 @@ case $feat_type in
        echo "You cannot supply --cmvn-opts option if feature type is LDA." && exit 1;
     cmvn_opts=$(cat $dir/cmvn_opts)
     feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
-    valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
-    train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
+    valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist.JOB $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
+    train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist.JOB $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
     ;;
   *) echo "$0: invalid feature type --feat-type '$feat_type'" && exit 1;
 esac
@@ -182,8 +218,8 @@ if [ ! -z "$online_ivector_dir" ]; then
   ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
 
   ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $sdata/JOB/utt2spk $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |'"
-  valid_ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |'"
-  train_subset_ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |'"
+  valid_ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist.JOB $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |'"
+  train_subset_ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist.JOB $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |'"
 else
   echo 0 >$dir/info/ivector_dim
 fi
@@ -255,9 +291,13 @@ fi
 
 egs_opts="--left-context=$left_context --right-context=$right_context --compress=$compress"
 
+[ ! -z "$deriv_weights_scp" ] && egs_opts="$egs_opts --deriv-weights-rspecifier=scp:$deriv_weights_scp"
+[ ! -z "$l2_regularizer_targets" ] && egs_opts="$egs_opts --l2reg-targets-rspecifier=scp:$l2_regularizer_targets"
+
 [ -z $valid_left_context ] &&  valid_left_context=$left_context;
 [ -z $valid_right_context ] &&  valid_right_context=$right_context;
 valid_egs_opts="--left-context=$valid_left_context --right-context=$valid_right_context --compress=$compress"
+[ ! -z "$deriv_weights_scp" ] && valid_egs_opts="$valid_egs_opts --deriv-weights-rspecifier=scp:$deriv_weights_scp"
 
 echo $left_context > $dir/info/left_context
 echo $right_context > $dir/info/right_context
@@ -281,15 +321,15 @@ case $target_type in
   "dense") 
     get_egs_program="nnet3-get-egs-dense-targets --num-targets=$num_targets"
 
-    targets="ark:utils/filter_scp.pl --exclude $dir/valid_uttlist $targets_scp_split | copy-feats scp:- ark:- |"
-    valid_targets="ark:utils/filter_scp.pl $dir/valid_uttlist $targets_scp | copy-feats scp:- ark:- |"
-    train_subset_targets="ark:utils/filter_scp.pl $dir/train_subset_uttlist $targets_scp | copy-feats scp:- ark:- |"
+    targets="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $targets_scp_split | copy-feats scp:- ark:- |"
+    valid_targets="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist.JOB $targets_scp | copy-feats scp:- ark:- |"
+    train_subset_targets="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist.JOB $targets_scp | copy-feats scp:- ark:- |"
     ;;
   "sparse")
     get_egs_program="nnet3-get-egs --num-pdfs=$num_targets"
-    targets="ark:utils/filter_scp.pl --exclude $dir/valid_uttlist $targets_scp_split | ali-to-post scp:- ark:- |"
-    valid_targets="ark:utils/filter_scp.pl $dir/valid_uttlist $targets_scp | ali-to-post scp:- ark:- |" 
-    train_subset_targets="ark:utils/filter_scp.pl $dir/train_subset_uttlist $targets_scp | ali-to-post scp:- ark:- |"
+    targets="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $targets_scp_split | ali-to-post scp:- ark:- |"
+    valid_targets="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist.JOB $targets_scp | ali-to-post scp:- ark:- |" 
+    train_subset_targets="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist.JOB $targets_scp | ali-to-post scp:- ark:- |"
     ;;
   default)
     echo "$0: Unknown --target-type $target_type. Choices are dense and sparse"
@@ -299,31 +339,43 @@ esac
 if [ $stage -le 3 ]; then
   echo "$0: Getting validation and training subset examples."
   rm -f $dir/.error 2>/dev/null
-  $cmd $dir/log/create_valid_subset.log \
+  $cmd JOB=1:$nj_subset $dir/log/create_valid_subset.JOB.log \
     $get_egs_program \
     $valid_ivector_opt $valid_egs_opts "$valid_feats" \
     "$valid_targets" \
-    "ark:$dir/valid_all.egs" || touch $dir/.error &
-  $cmd $dir/log/create_train_subset.log \
+    "ark:$dir/valid_all.JOB.egs" || touch $dir/.error &
+  $cmd JOB=1:$nj_subset $dir/log/create_train_subset.JOB.log \
     $get_egs_program \
     $train_subset_ivector_opt $valid_egs_opts "$train_subset_feats" \
     "$train_subset_targets" \
-    "ark:$dir/train_subset_all.egs" || touch $dir/.error &
+    "ark:$dir/train_subset_all.JOB.egs" || touch $dir/.error &
   wait;
+
+  valid_egs_all=
+  train_subset_egs_all=
+  for n in `seq $nj_subset`; do
+    valid_egs_all="$valid_egs_all $dir/valid_all.$n.egs"
+    train_subset_egs_all="$train_subset_egs_all $dir/train_subset_all.$n.egs"
+  done
+
   [ -f $dir/.error ] && echo "Error detected while creating train/valid egs" && exit 1
   echo "... Getting subsets of validation examples for diagnostics and combination."
   $cmd $dir/log/create_valid_subset_combine.log \
-    nnet3-subset-egs --n=$num_valid_frames_combine ark:$dir/valid_all.egs \
+    cat $valid_egs_all \| \
+    nnet3-subset-egs --n=$num_valid_frames_combine ark:- \
     ark:$dir/valid_combine.egs || touch $dir/.error &
   $cmd $dir/log/create_valid_subset_diagnostic.log \
-    nnet3-subset-egs --n=$num_frames_diagnostic ark:$dir/valid_all.egs \
+    cat $valid_egs_all \| \
+    nnet3-subset-egs --n=$num_frames_diagnostic ark:- \
     ark:$dir/valid_diagnostic.egs || touch $dir/.error &
 
   $cmd $dir/log/create_train_subset_combine.log \
-    nnet3-subset-egs --n=$num_train_frames_combine ark:$dir/train_subset_all.egs \
+    cat $train_subset_egs_all \| \
+    nnet3-subset-egs --n=$num_train_frames_combine ark:- \
     ark:$dir/train_combine.egs || touch $dir/.error &
   $cmd $dir/log/create_train_subset_diagnostic.log \
-    nnet3-subset-egs --n=$num_frames_diagnostic ark:$dir/train_subset_all.egs \
+    cat $train_subset_egs_all \| \
+    nnet3-subset-egs --n=$num_frames_diagnostic ark:- \
     ark:$dir/train_diagnostic.egs || touch $dir/.error &
   wait
   sleep 5  # wait for file system to sync.
@@ -332,7 +384,7 @@ if [ $stage -le 3 ]; then
   for f in $dir/{combine,train_diagnostic,valid_diagnostic}.egs; do
     [ ! -s $f ] && echo "No examples in file $f" && exit 1;
   done
-  rm -f $dir/valid_all.egs $dir/train_subset_all.egs $dir/{train,valid}_combine.egs
+  rm $dir/valid_all.*.egs $dir/train_subset_all.*.egs $dir/{train,valid}_combine.egs
 fi
 
 if [ $stage -le 4 ]; then
@@ -349,7 +401,7 @@ if [ $stage -le 4 ]; then
     $get_egs_program \
     $ivector_opt $egs_opts --num-frames=$frames_per_eg "$feats" "$targets" \
     ark:- \| \
-    nnet3-copy-egs --random=true --srand=JOB ark:- $egs_list || exit 1;
+    nnet3-copy-egs --random=true --srand=\$[JOB+$srand] ark:- $egs_list || exit 1;
 fi
 
 if [ $stage -le 5 ]; then
@@ -365,7 +417,7 @@ if [ $stage -le 5 ]; then
 
   if [ $archives_multiple == 1 ]; then # normal case.
     $cmd --max-jobs-run $nj JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
-      nnet3-shuffle-egs --srand=JOB "ark:cat $egs_list|" ark:$dir/egs.JOB.ark  || exit 1;
+      nnet3-shuffle-egs --srand=\$[JOB+$srand] "ark:cat $egs_list|" ark:$dir/egs.JOB.ark  || exit 1;
   else
     # we need to shuffle the 'intermediate archives' and then split into the
     # final archives.  we create soft links to manage this splitting, because
@@ -381,11 +433,13 @@ if [ $stage -le 5 ]; then
       done
     done
     $cmd --max-jobs-run $nj JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
-      nnet3-shuffle-egs --srand=JOB "ark:cat $egs_list|" ark:- \| \
+      nnet3-shuffle-egs --srand=\$[JOB+$srand] "ark:cat $egs_list|" ark:- \| \
       nnet3-copy-egs ark:- $output_archives || exit 1;
   fi
 
 fi
+
+wait
 
 if [ $stage -le 6 ]; then
   echo "$0: removing temporary archives"
@@ -400,10 +454,11 @@ if [ $stage -le 6 ]; then
     # there are some extra soft links that we should delete.
     for f in $dir/egs.*.*.ark; do rm $f; done
   fi
-  echo "$0: removing temporary"
+  echo "$0: removing temporary stuff"
   # Ignore errors below because trans.* might not exist.
   rm -f $dir/trans.{ark,scp} $dir/targets.*.scp 2>/dev/null
 fi
 
-echo "$0: Finished preparing training examples"
+wait
 
+echo "$0: Finished preparing training examples"
