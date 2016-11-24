@@ -35,10 +35,13 @@ int main(int argc, char *argv[]) {
         "Useful for speaker-id; see also apply-cmvn-online\n"
         "\n"
         "Usage: apply-cmvn-sliding [options] <feats-rspecifier> <feats-wspecifier>\n";
-    
+
+    std::string skip_dims_str;
     ParseOptions po(usage);
     SlidingWindowCmnOptions opts;
     opts.Register(&po);
+    po.Register("skip-dims", &skip_dims_str, "Dimensions for which to skip "
+                "normalization: colon-separated list of integers, e.g. 13:14:15)");
 
     po.Read(argc, argv);
 
@@ -47,15 +50,24 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
+    std::vector<int32> skip_dims;  // optionally use "fake"
+                                   // (zero-mean/unit-variance) stats for some
+                                   // dims to disable normalization.
+    if (!SplitStringToIntegers(skip_dims_str, ":", false, &skip_dims)) {
+      KALDI_ERR << "Bad --skip-dims option (should be colon-separated list of "
+                <<  "integers)";
+    }
+
+
     int32 num_done = 0, num_err = 0;
-    
+
     std::string feat_rspecifier = po.GetArg(1);
     std::string feat_wspecifier = po.GetArg(2);
 
     SequentialBaseFloatMatrixReader feat_reader(feat_rspecifier);
     BaseFloatMatrixWriter feat_writer(feat_wspecifier);
-    
-    for (;!feat_reader.Done(); feat_reader.Next()) {
+
+    for (; !feat_reader.Done(); feat_reader.Next()) {
       std::string utt = feat_reader.Key();
       Matrix<BaseFloat> feat(feat_reader.Value());
       if (feat.NumRows() == 0) {
@@ -67,7 +79,7 @@ int main(int argc, char *argv[]) {
                                   feat.NumCols(), kUndefined);
 
       SlidingWindowCmn(opts, feat, &cmvn_feat);
-      
+
       feat_writer.Write(utt, cmvn_feat);
       num_done++;
     }
