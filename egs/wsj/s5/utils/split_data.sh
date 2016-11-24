@@ -16,8 +16,13 @@
 # limitations under the License.
 
 split_per_spk=true
+split_per_reco=false
 if [ "$1" == "--per-utt" ]; then
   split_per_spk=false
+  shift
+elif [ "$1" == "--per-reco" ]; then
+  split_per_spk=false
+  split_per_reco=true
   shift
 fi
 
@@ -59,10 +64,14 @@ if [ -f $data/text ] && [ $nu -ne $nt ]; then
   echo "** use utils/fix_data_dir.sh to fix this."
 fi
 
-
 if $split_per_spk; then
   utt2spk_opt="--utt2spk=$data/utt2spk"
   utt=""
+elif $split_per_reco; then
+  utils/data/get_reco2utt.sh $data
+  utils/spk2utt_to_utt2spk.pl $data/reco2utt > $data/utt2reco
+  utt2spk_opt="--utt2spk=$data/utt2reco"
+  utt="reco"
 else
   utt2spk_opt=
   utt="utt"
@@ -86,6 +95,7 @@ if ! $need_to_split; then
 fi
 
 utt2spks=$(for n in `seq $numsplit`; do echo $data/split${numsplit}${utt}/$n/utt2spk; done)
+utt2recos=$(for n in `seq $numsplit`; do echo $data/split${numsplit}${utt}/$n/utt2reco; done)
 
 directories=$(for n in `seq $numsplit`; do echo $data/split${numsplit}${utt}/$n; done)
 
@@ -100,11 +110,20 @@ fi
 which lockfile >&/dev/null && lockfile -l 60 $data/.split_lock
 trap 'rm -f $data/.split_lock' EXIT HUP INT PIPE TERM
 
-utils/split_scp.pl $utt2spk_opt $data/utt2spk $utt2spks || exit 1
+if $split_per_reco; then
+  utils/split_scp.pl $utt2spk_opt $data/utt2reco $utt2recos || exit 1
+else
+  utils/split_scp.pl $utt2spk_opt $data/utt2spk $utt2spks || exit 1
+fi
 
 for n in `seq $numsplit`; do
   dsn=$data/split${numsplit}${utt}/$n
-  utils/utt2spk_to_spk2utt.pl $dsn/utt2spk > $dsn/spk2utt || exit 1;
+
+  if $split_per_reco; then
+    utils/filter_scp.pl $dsn/utt2reco $data/utt2spk > $dsn/utt2spk
+  fi
+
+  utils/utt2spk_to_spk2utt.pl $dsn/utt2spk > $dsn/spk2utt || exit 1
 done
 
 maybe_wav_scp=
