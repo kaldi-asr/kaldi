@@ -204,7 +204,7 @@ std::string SummarizeVector(const Vector<BaseFloat> &vec);
  */
 void PrintParameterStats(std::ostringstream &os,
                          const std::string &name,
-                         const CuVector<BaseFloat> &params,
+                         const CuVectorBase<BaseFloat> &params,
                          bool include_mean = false);
 
 /** Print to 'os' some information about the mean and standard deviation of

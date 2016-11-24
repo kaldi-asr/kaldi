@@ -520,11 +520,11 @@ void CpuBackpropLstmNonlinearity(const MatrixBase<Real> &input,
       Real di_part = di_t_input;
 
       if (input_deriv_mat != NULL) {
-        (*input_deriv_mat)(r, c) += di_part;
-        (*input_deriv_mat)(r, c + cell_dim) += df_part;
-        (*input_deriv_mat)(r, c + 2 * cell_dim) += dc_part;
-        (*input_deriv_mat)(r, c + 3 * cell_dim) += do_part;
-        (*input_deriv_mat)(r, c + 4 * cell_dim) += dc_prev;
+        (*input_deriv_mat)(r, c) = di_part;
+        (*input_deriv_mat)(r, c + cell_dim) = df_part;
+        (*input_deriv_mat)(r, c + 2 * cell_dim) = dc_part;
+        (*input_deriv_mat)(r, c + 3 * cell_dim) = do_part;
+        (*input_deriv_mat)(r, c + 4 * cell_dim) = dc_prev;
       }
     }
 

@@ -104,13 +104,15 @@ void Group2norm(const CuMatrixBase<Real> &src,
 
  */
 template<typename Real>
-void CpuComputeLstmNonlinearity(const MatrixBase<Real> &input,
-                                const MatrixBase<Real> &params,
-                                MatrixBase<Real> *output);
-template<typename Real>
 void ComputeLstmNonlinearity(const CuMatrixBase<Real> &input,
                              const CuMatrixBase<Real> &params,
                              CuMatrixBase<Real> *output);
+// This is a version of ComputeLstmNonlinearity that only uses the CPU
+// even if a GPU is available. It's made available for testing purposes.
+template<typename Real>
+void CpuComputeLstmNonlinearity(const MatrixBase<Real> &input,
+                                const MatrixBase<Real> &params,
+                                MatrixBase<Real> *output);
 
 
 /**
@@ -207,6 +209,8 @@ void BackpropLstmNonlinearity(const CuMatrixBase<Real> &input,
                               CuMatrixBase<double> *value_sum_out,
                               CuMatrixBase<double> *deriv_sum_out,
                               CuMatrixBase<Real> *self_repair_sum_out);
+// This is a version of BackpropLstmNonlinearity that only uses the CPU
+// even if a GPU is available. It's made available for testing purposes.
 template<typename Real>
 void CpuBackpropLstmNonlinearity(const MatrixBase<Real> &input,
                                  const MatrixBase<Real> &params,

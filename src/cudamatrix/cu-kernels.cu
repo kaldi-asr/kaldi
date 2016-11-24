@@ -2900,11 +2900,11 @@ static void _diff_lstm_nonlinearity(const int cell_dim, const int num_rows,
       const Real di_part = di_t_input;
 
       if (input_deriv) {
-        input_deriv[i * input_deriv_stride + j] += di_part;
-        input_deriv[i * input_deriv_stride + j + cell_dim] += df_part;
-        input_deriv[i * input_deriv_stride + j + cell_dim * 2] += dc_part;
-        input_deriv[i * input_deriv_stride + j + cell_dim * 3] += do_part;
-        input_deriv[i * input_deriv_stride + j + cell_dim * 4] += dc_prev;
+        input_deriv[i * input_deriv_stride + j] = di_part;
+        input_deriv[i * input_deriv_stride + j + cell_dim] = df_part;
+        input_deriv[i * input_deriv_stride + j + cell_dim * 2] = dc_part;
+        input_deriv[i * input_deriv_stride + j + cell_dim * 3] = do_part;
+        input_deriv[i * input_deriv_stride + j + cell_dim * 4] = dc_prev;
       }
     }
   }

@@ -180,6 +180,8 @@ class NormalizeComponent: public Component {
     Init(input_dim, target_rms, add_log_stddev);
   }
   explicit NormalizeComponent(const NormalizeComponent &other);
+  // note: there is some special code in NonlinerComponent::Info() that
+  // specifically caters to this class.
   virtual int32 Properties() const {
     return (add_log_stddev_ ?
             kSimpleComponent|kBackpropNeedsInput|kBackpropAdds :
@@ -1560,7 +1562,6 @@ class ConvolutionComponent: public UpdatableComponent {
               const std::vector<CuSubMatrix<BaseFloat> *>& out_deriv_batch);
 
 
-
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
 
@@ -1708,33 +1709,60 @@ class ConvolutionComponent: public UpdatableComponent {
 class LstmNonlinearityComponent: public UpdatableComponent {
  public:
 
+  virtual int32 InputDim() const;
+  virtual int32 OutputDim() const;
   virtual std::string Info() const;
-
   virtual void InitFromConfig(ConfigLine *cfl);
-
   LstmNonlinearityComponent() { } // use Init to really initialize.
-  virtual std::string Type() const {
-    return "LstmNonlinearityComponent";
+  virtual std::string Type() const { return "LstmNonlinearityComponent"; }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kUpdatableComponent|kBackpropNeedsInput;
   }
+
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &, // out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update_in,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
 
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
 
   virtual Component* Copy() const;
 
+  // Some functions from base-class UpdatableComponent.
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const Component &other);
+  virtual void SetZero(bool treat_as_gradient);
+  virtual void PerturbParams(BaseFloat stddev);
+  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
+  virtual int32 NumParameters() const;
+  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
+  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+
   // Some functions that are specific to this class:
   explicit LstmNonlinearityComponent(
       const LstmNonlinearityComponent &other);
 
-  void Init(int32 dim, BaseFloat param_mean,
-            BaseFloat param_stddev, int32 rank, int32 update_period,
-            BaseFloat num_samples_history, BaseFloat alpha,
-            BaseFloat max_change_per_minibatch);
+  void Init(int32 cell_dim, BaseFloat param_stddev,
+            BaseFloat tanh_self_repair_threshold,
+            BaseFloat sigmoid_self_repair_threshold,
+            BaseFloat self_repair_scale);
+
   void Init(std::string vector_filename,
             int32 rank, int32 update_period, BaseFloat num_samples_history,
             BaseFloat alpha, BaseFloat max_change_per_minibatch);
 
  private:
+
+  // Initializes the natural-gradient object with the configuration we
+  // use for this object, which for now is hardcoded at the C++ level.
+  void InitNaturalGradient();
 
 
   // Notation: C is the cell dimension; it equals params_.NumCols().
@@ -1747,8 +1775,6 @@ class LstmNonlinearityComponent: public UpdatableComponent {
   // equations (1) through (5), this is the sum of the values of the nonliearities
   // (used for diagnostics only).  It is comparable to value_sum_ vector
   // in base-class NonlinearComponent.
-  // Note: to save time and simplify the code, when using GPU we don't always
-  // store stats for all of the members of the minibatch, just a subset.
   CuMatrix<double> value_sum_;
 
   // Of dimension 5 * C, with a row for each of the Sigmoid/Tanh functions in
@@ -1756,14 +1782,25 @@ class LstmNonlinearityComponent: public UpdatableComponent {
   // nonliearities (used for diagnostics and to control self-repair).  It is
   // comparable to the deriv_sum_ vector in base-class
   // NonlinearComponent.
-  // Note: to save time and simplify the code, when using GPU we don't always
-  // store stats for all of the members of the minibatch, just a subset.
   CuMatrix<double> deriv_sum_;
+
+  // This matrix has dimension 10.  The contents are a block of 5 self-repair
+  // thresholds (typically "0.05 0.05 0.2 0.05 0.2"), then a block of 5
+  // self-repair scales (typically all 0.00001).  These are for each of the 5
+  // nonlinearities in the LSTM component in turn (see comments in cu-math.h for
+  // more info).
+  CuVector<BaseFloat> self_repair_config_;
+
+  // This matrix has dimension 5.  For each of the 5 nonlinearities in the LSTM
+  // component (see comments in cu-math.h for more info), it contains the total,
+  // over all frames represented in count_, of the number of dimensions that
+  // were subject to self_repair.  To get the self-repair proportion you should
+  // divide by (count_ times cell_dim_).
+  CuVector<double> self_repair_total_;
 
   // The total count (number of frames) corresponding to the stats in value_sum_
   // and deriv_sum_.
   double count_;
-
 
   // Preconditioner for the parameters of this component [operates in the space
   // of dimension C].
