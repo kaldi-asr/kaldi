@@ -1,69 +1,10 @@
 #!/bin/bash
-
-# _2i is as _2d but with a new set of code for estimating the LM, in which we compute
-# the log-like change when deciding which states to back off.  The code is not the same
-# as the one in 2{f,g,h}.  We have only the options --num-extra-lm-states=2000.  By
-# default it estimates a 4-gram, with 3-gram as the no-prune order.  So the configuration
-# is quite similar to 2d, except new/more-exact code is used.
-
-# see table in run_tdnn_2a.sh for results
-
-# _2d is as _2c but with different LM options:
-# --lm-opts "--ngram-order=4 --leftmost-context-questions=/dev/null --num-extra-states=2000"
-# ... this gives us a kind of pruned 4-gram language model, instead of a 3-gram.
-# the --leftmost-context-questions=/dev/null option overrides the leftmost-context-questions
-# provided from the tree-building, and effectively puts the leftmost context position as a single
-# set.
-#   This seems definitely helpful: on train_dev, with tg improvement is 18.12->17.55 and with fg
-#  from 16.73->16.14; and on eval2000, with tg from 19.8->19.5 and with fg from 17.8->17.6.
-
-# _2c is as _2a but after a code change in which we start using transition-scale
-# and self-loop-scale of 1 instead of zero in training; we change the options to
-# mkgraph used in testing, to set the scale to 1.0.  This shouldn't affect
-# results at all; it's is mainly for convenience in pushing weights in graphs,
-# and checking that graphs are stochastic.
-
-# _2a is as _z but setting --lm-opts "--num-extra-states=8000".
-
-# _z is as _x but setting  --lm-opts "--num-extra-states=2000".
-# (see also y, which has --num-extra-states=500).
-
-# _x is as _s but setting  --lm-opts "--num-extra-states=0".
-#  this is a kind of repeat of the u->v experiment, where it seemed to make things
-#  worse, but there were other factors involved in that so I want to be sure.
-
-# _s is as _q but setting pdf-boundary-penalty to 0.0
-# This is helpful: 19.8->18.0 after fg rescoring on all of eval2000,
-# and 18.07 -> 16.96 on train_dev, after fg rescoring.
-
-# _q is as _p except making the same change as from n->o, which
-# reduces the parameters to try to reduce over-training.  We reduce
-# relu-dim from 1024 to 850, and target num-states from 12k to 9k,
-# and modify the splicing setup.
-# note: I don't rerun the tree-building, I just use the '5o' treedir.
-
-# _p is as _m except with a code change in which we switch to a different, more
-# exact mechanism to deal with the edges of the egs, and correspondingly
-# different script options... we now dump weights with the egs, and apply the
-# weights to the derivative w.r.t. the output instead of using the
-# --min-deriv-time and --max-deriv-time options.  Increased the frames-overlap
-# to 30 also.  This wil.  give 10 frames on each side with zero derivs, then
-# ramping up to a weight of 1.0 over 10 frames.
-
-# _m is as _k but after a code change that makes the denominator FST more
-# compact.  I am rerunning in order to verify that the WER is not changed (since
-# it's possible in principle that due to edge effects related to weight-pushing,
-# the results could be a bit different).
-#  The results are inconsistently different but broadly the same.  On all of eval2000,
-#  the change k->m is 20.7->20.9 with tg LM and 18.9->18.6 after rescoring.
-#  On the train_dev data, the change is  19.3->18.9 with tg LM and 17.6->17.6 after rescoring.
-
-
-# _k is as _i but reverting the g->h change, removing the --scale-max-param-change
-# option and setting max-param-change to 1..  Using the same egs.
-
+# _2i is as _i but it uses speaker perturbation combined with speed perturbation.
 # _i is as _h but longer egs: 150 frames instead of 75, and
 # 128 elements per minibatch instead of 256.
+# be cautious comparing the valid probs with h though, because
+# we fixed the utt2uniq bug at this point, so from h on, the valid probs
+# are properly held out.
 
 # _h is as _g but different application of max-param-change (use --scale-max-param-change true)
 
@@ -93,21 +34,23 @@
 set -e
 
 # configs for 'chain'
-stage=12
+stage=1
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
+speaker_perturb=true
 dir=exp/chain/tdnn_2i  # Note: _sp will get added to this if $speed_perturb == true.
 
 # TDNN options
-splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -6,3 -6,3"
+splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -9,0,9 0"
 
 # training options
 num_epochs=4
 initial_effective_lrate=0.001
 final_effective_lrate=0.0001
 leftmost_questions_truncate=30
-max_param_change=1.0
+max_param_change=0.3333
+scale_max_param_change=true
 final_layer_normalize_target=0.5
 num_jobs_initial=3
 num_jobs_final=16
@@ -138,16 +81,19 @@ suffix=
 if [ "$speed_perturb" == "true" ]; then
   suffix=_sp
 fi
+if [ "$speaker_perturb" == "true" ]; then
+  suffix=$suffix"_fp"
+fi
 
 dir=${dir}$suffix
 train_set=train_nodup$suffix
 ali_dir=exp/tri4_ali_nodup$suffix
-treedir=exp/chain/tri5o_tree$suffix
+treedir=exp/chain/tri5f_tree$suffix
 
 # if we are using the speed-perturbed data we need to generate
 # alignments for it.
-local/nnet3/run_ivector_common.sh --stage $stage \
-  --speed-perturb $speed_perturb \
+local/nnet3/run_ivector_common_2.sh --stage $stage \
+  --speed-perturb $speed_perturb --speaker-perturb $speaker_perturb \
   --generate-alignments $speed_perturb || exit 1;
 
 
@@ -161,6 +107,7 @@ if [ $stage -le 9 ]; then
 fi
 
 
+if false; then #100
 if [ $stage -le 10 ]; then
   # Create a version of the lang/ directory that has one state per phone in the
   # topo file. [note, it really has two states.. the first one is only repeated
@@ -179,23 +126,23 @@ if [ $stage -le 11 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --leftmost-questions-truncate $leftmost_questions_truncate \
-      --cmd "$train_cmd" 9000 data/$train_set data/lang_chain_d $ali_dir $treedir
+      --cmd "$train_cmd" 12000 data/$train_set data/lang_chain_d $ali_dir $treedir
 fi
+fi #100
 
 if [ $stage -le 12 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
+     /export/b0{1,2,3,4}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
 
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
-    --pdf-boundary-penalty 0.0 \
-    --lm-opts "--num-extra-lm-states=2000" \
     --get-egs-stage $get_egs_stage \
+    --left-deriv-truncate 5  --right-deriv-truncate 5  --right-tolerance 5 \
     --minibatch-size $minibatch_size \
-    --egs-opts "--frames-overlap-per-eg 30" \
+    --egs-opts "--frames-overlap-per-eg 10 --nj 40" \
     --frames-per-eg $frames_per_eg \
     --num-epochs $num_epochs --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
     --splice-indexes "$splice_indexes" \
@@ -205,7 +152,7 @@ if [ $stage -le 12 ]; then
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
     --max-param-change $max_param_change \
     --final-layer-normalize-target $final_layer_normalize_target \
-    --relu-dim 850 \
+    --relu-dim 1024 \
     --cmd "$decode_cmd" \
     --remove-egs $remove_egs \
     data/${train_set}_hires $treedir exp/tri4_lats_nodup$suffix $dir  || exit 1;
@@ -215,7 +162,8 @@ if [ $stage -le 13 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_sw1_tg $dir $dir/graph_sw1_tg
+  utils/mkgraph.sh --transition-scale 0.0 \
+      --self-loop-scale 0.0 data/lang_sw1_tg $dir $dir/graph_sw1_tg
 fi
 
 decode_suff=sw1_tg
