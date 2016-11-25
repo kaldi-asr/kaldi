@@ -249,7 +249,17 @@ class Nnet {
   void ResetGenerators(); // resets random-number generators for all
   // random components.  You must also set srand() for this to be
   // effective.
-  
+
+
+  // This function outputs to "config_lines" the lines of a config file.  If you
+  // provide include_dim=false, this will enable you to reconstruct the nodes in
+  // the network (but not the components, which need to be written separately).
+  // If you provide include_dim=true, it also adds extra information about
+  // node dimensions which is useful for a human reader but won't be
+  // accepted as the config-file format.
+  void GetConfigLines(bool include_dim,
+                      std::vector<std::string> *config_lines) const;
+
  private:
 
   void Destroy();
@@ -261,14 +271,6 @@ class Nnet {
   // include dimension information that would not be provided in a config file.
   std::string GetAsConfigLine(int32 node_index, bool include_dim) const;
 
-  // This function outputs to "config_lines" the lines of a config file.  If you
-  // provide include_dim=false, this will enable you to reconstruct the nodes in
-  // the network (but not the components, which need to be written separately).
-  // If you provide include_dim=true, it also adds extra information about
-  // node dimensions which is useful for a human reader but won't be
-  // accepted as the config-file format.
-  void GetConfigLines(bool include_dim,
-                      std::vector<std::string> *config_lines) const;
 
   // This function is used when reading config files; it exists in order to
   // handle replacement of existing nodes.  The two input vectors have the same

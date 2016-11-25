@@ -51,7 +51,7 @@ void ShiftExampleTimes(int32 t_offset,
 
 /**  This function takes a NnetExample (which should already have been
      frame-selected, if desired, and merged into a minibatch) and produces a
-     ComputationRequest.  It ssumes you don't want the derivatives w.r.t. the
+     ComputationRequest.  It assumes you don't want the derivatives w.r.t. the
      inputs; if you do, you can create/modify the ComputationRequest manually.
      Assumes that if need_model_derivative is true, you will be supplying
      derivatives w.r.t. all outputs.

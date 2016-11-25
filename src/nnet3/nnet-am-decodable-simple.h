@@ -33,6 +33,11 @@ namespace kaldi {
 namespace nnet3 {
 
 
+// See also the decodable object in decodable-simple-looped.h, which is better
+// and faster in most situations, including TDNNs and LSTMs (but not for
+// BLSTMs).
+
+
 // Note: the 'simple' in the name means it applies to networks
 // for which IsSimpleNnet(nnet) would return true.
 struct NnetSimpleComputationOptions {
@@ -251,9 +256,11 @@ class DecodableAmNnetSimple: public DecodableInterface {
      @param [in] opts   The options class.  Warning: it includes an acoustic
                         weight, whose default is 0.1; you may sometimes want to
                         change this to 1.0.
-     @param [in] nnet   The neural net that we're going to do the computation with
-     @param [in] priors Vector of priors-- if supplied and nonempty, we subtract
-                        the log of these priors from the nnet output.
+     @param [in] trans_model  The transition model to use.  This takes care of the
+                        mapping from transition-id (which is an arg to
+                        LogLikelihood()) to pdf-id (which is used internally).
+     @param [in] am_nnet   The neural net that we're going to do the computation with;
+                         we also get the priors to divide by, if applicable, from here.
      @param [in] feats   A pointer to the input feature matrix; must be non-NULL.
                          We
      @param [in] ivector If you are using iVectors estimated in batch mode,
@@ -329,13 +336,12 @@ class DecodableAmNnetSimpleParallel: public DecodableInterface {
      @param [in] opts   The options class.  Warning: it includes an acoustic
                         weight, whose default is 0.1; you may sometimes want to
                         change this to 1.0.
-     @param [in] nnet   The neural net that we're going to do the computation with
-     @param [in] priors Vector of priors-- if supplied and nonempty, we subtract
-                        the log of these priors from the nnet output.
+     @param [in] trans_model  The transition model to use.  This takes care of the
+                        mapping from transition-id (which is an arg to
+                        LogLikelihood()) to pdf-id (which is used internally).
+     @param [in] am_nnet The neural net that we're going to do the computation with;
+                        it may provide priors to divide by.
      @param [in] feats   A pointer to the input feature matrix; must be non-NULL.
-                         We
-     @param [in] ivector If you are using iVectors estimated in batch mode,
-                         a pointer to the iVector, else NULL.
      @param [in] ivector If you are using iVectors estimated in batch mode,
                          a pointer to the iVector, else NULL.
      @param [in] online_ivectors

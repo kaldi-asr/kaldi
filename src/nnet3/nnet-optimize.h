@@ -1,7 +1,7 @@
 // nnet3/nnet-optimize.h
 
-// Copyright      2015  Johns Hopkins University (author: Daniel Povey)
-//                2015  Xiaohui Zhang
+// Copyright      2015-2016  Johns Hopkins University (author: Daniel Povey)
+//                2015       Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -46,6 +46,10 @@ struct NnetOptimizeOptions {
   bool allocate_from_other;
   int32 min_deriv_time;
   int32 max_deriv_time;
+  // optimize_looped_computation is a 'hidden config' not available from
+  // the command line; it's set to true to enable the optimization for
+  // looped computation that turns a linear computation into a loop.
+  bool optimize_looped_computation;
 
   NnetOptimizeOptions(): optimize(true),
                          consolidate_model_update(true),
@@ -59,7 +63,8 @@ struct NnetOptimizeOptions {
                          move_sizing_commands(true),
                          allocate_from_other(true),
                          min_deriv_time(std::numeric_limits<int32>::min()),
-                         max_deriv_time(std::numeric_limits<int32>::max()) { }
+                         max_deriv_time(std::numeric_limits<int32>::max()),
+                         optimize_looped_computation(false) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("optimize", &optimize, "Set this to false to turn off all "
@@ -108,7 +113,6 @@ struct NnetOptimizeOptions {
 /// This is the top-level function for optimizing a computation.
 void Optimize(const NnetOptimizeOptions &config,
               const Nnet &nnet,
-              const ComputationRequest &request,
               NnetComputation *computation);
 
 // Hash function for ComputationRequest. It converts
@@ -228,7 +232,6 @@ void LimitDerivativeTimes(const Nnet &nnet,
 /// class ModelUpdateConsolidator.  Will fail if called a
 /// second time.
 void ConsolidateModelUpdate(const Nnet &nnet,
-                            const ComputationRequest &request,
                             NnetComputation *computation);
 
 /// This converts addition operations (things with Add in their names) to
@@ -241,7 +244,6 @@ void ConvertAdditionToAssignment(const Nnet &nnet,
 /// This wraps class VariableMergingOptimizer in a simplified interface.
 void VariableMergingOptimization(const NnetOptimizeOptions &config,
                                  const Nnet &nnet,
-                                 const ComputationRequest &request,
                                  NnetComputation *computation);
 
 
@@ -260,6 +262,17 @@ void MoveSizingCommands(const Nnet &nnet, NnetComputation *computation);
 void RemoveUnnecessaryAllocation(const Nnet &nnet,
                                  NnetComputation *computation);
 
+
+/// This optimization puts the input operations (kAcceptInput) and output
+/// operations (kProvideOutput) at the very beginning or end of segments of
+/// computation, respectively.
+///
+/// This is actually necessary for computations to be run easily, because if these
+/// commands were interspersed with the regular commands, you'd have to
+/// call computer.Run() between the individual AcceptInput() and GetOutput()
+/// function calls.
+void ConsolidateIoOperations(const Nnet &nnet,
+                             NnetComputation *computation);
 
 
 
