@@ -34,8 +34,12 @@ int main(int argc, char *argv[]) {
         "e.g.: matrix-sum-rows ark:- ark:- | vector-sum ark:- sum.vec\n"
         "See also: matrix-sum, vector-sum\n";
 
+    bool do_average = false;
 
     ParseOptions po(usage);
+
+    po.Register("do-average", &do_average,
+                "Do average instead of sum");
 
     po.Read(argc, argv);
 
@@ -45,28 +49,28 @@ int main(int argc, char *argv[]) {
     }
     std::string rspecifier = po.GetArg(1);
     std::string wspecifier = po.GetArg(2);
-    
+
     SequentialBaseFloatMatrixReader mat_reader(rspecifier);
     BaseFloatVectorWriter vec_writer(wspecifier);
-    
+
     int32 num_done = 0;
     int64 num_rows_done = 0;
-    
+
     for (; !mat_reader.Done(); mat_reader.Next()) {
       std::string key = mat_reader.Key();
       Matrix<double> mat(mat_reader.Value());
       Vector<double> vec(mat.NumCols());
-      vec.AddRowSumMat(1.0, mat, 0.0);
+      vec.AddRowSumMat(!do_average ? 1.0 : 1.0 / mat.NumRows(), mat, 0.0);
       // Do the summation in double, to minimize roundoff.
       Vector<BaseFloat> float_vec(vec);
       vec_writer.Write(key, float_vec);
       num_done++;
       num_rows_done += mat.NumRows();
     }
-    
+
     KALDI_LOG << "Summed rows " << num_done << " matrices, "
               << num_rows_done << " rows in total.";
-    
+
     return (num_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();
