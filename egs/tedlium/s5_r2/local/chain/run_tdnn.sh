@@ -149,7 +149,7 @@ if [ $stage -le 18 ]; then
     --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
-    --chain.lm-opts="--ngram-order=5 --num-extra-lm-states=2000" \
+    --chain.lm-opts="--ngram-order=4 --num-extra-lm-states=2000" \
     --egs.dir "$common_egs_dir" \
     --egs.opts "--frames-overlap-per-eg 0" \
     --egs.chunk-width 150 \
