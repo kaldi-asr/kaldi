@@ -15,6 +15,7 @@ import os
 import sys
 import traceback
 
+sys.path.insert(0, 'steps')
 import libs.nnet3.train.common as common_train_lib
 import libs.common as common_lib
 import libs.nnet3.train.frame_level_objf as train_lib

@@ -78,7 +78,7 @@ class KaldiCommandException(Exception):
     """ An Exception class that throws an error string with the
     kaldi command that caused the error and the error string captured.
     """
-    def __init__(self, command, err = None):
+    def __init__(self, command, err=None):
         Exception.__init__(self,
                            "There was an error while running the command "
                            "{0}\n{1}\n{2}".format(command, "-"*10,
@@ -281,7 +281,7 @@ def get_number_of_jobs(alidir):
         num_jobs = int(open('{0}/num_jobs'.format(alidir)).readline().strip())
     except (IOError, ValueError) as e:
         raise Exception("Exception while reading the "
-                        "number of alignment jobs: {0}".format(e.str()))
+                        "number of alignment jobs: {0}".format(e.errstr))
     return num_jobs
 
 

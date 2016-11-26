@@ -12,6 +12,7 @@ import imp
 import ast
 
 nodes = imp.load_source('', 'steps/nnet3/components.py')
+sys.path.insert(0, 'steps')
 import libs.common as common_lib
 
 def GetArgs():
