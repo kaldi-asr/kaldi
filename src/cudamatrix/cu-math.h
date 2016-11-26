@@ -78,6 +78,23 @@ void Group2norm(const CuMatrixBase<Real> &src,
                 CuMatrixBase<Real> *dest,
                 int32 group_stride);
 
+/// Normalize nonlinearity modifies the vector of activations
+/// by scaling it so that the root-mean-square equals 1.0.
+///
+/// The output y_i = scale * x_i,
+/// and we want to RMS value of the y_i to equal target_rms,
+/// so y^t y = D * target_rms^2 (if y is one row of the input).
+/// we need to have scale = 1.0 / sqrt(x^t x / (D * target_rms^2)).
+/// there is also flooring involved, to avoid division-by-zero
+/// problems.  It's important for the backprop, that the floor's
+/// square root is exactly representable as float.
+/// If add_log_stddev_ is true, log(max(epsi, sqrt(x^t x / D)))
+/// is an extra dimension of the output.
+template<typename Real>
+void NormalizePerRow(const CuMatrixBase<Real>& in, const Real target_rms,
+                     const bool add_log_stddev, CuMatrixBase<Real>* out);
+
+
 
 
 
