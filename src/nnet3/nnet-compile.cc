@@ -156,13 +156,18 @@ void Compiler::ComputeDerivNeeded(
       if (request_.outputs[output_index].has_deriv)
         (*deriv_needed)[step] = true;
     }
-    // If this is an updatable Component node and the user requested model
-    // derivatives (e.g. during training), we need this step's derivative.
+    // If this is an updatable Component node with a nonzero learning rate and
+    // the user requested model derivatives (e.g. during training), we need this
+    // step's derivative.
     if (nnet_.IsComponentNode(node_index) && request_.need_model_derivative) {
       const NetworkNode &node = nnet_.GetNode(node_index);
       const Component *c = nnet_.GetComponent(node.u.component_index);
-      if (c->Properties() & kUpdatableComponent)
-        (*deriv_needed)[step] = true;
+      if (c->Properties() & kUpdatableComponent) {
+        const UpdatableComponent *u = dynamic_cast<const UpdatableComponent*>(c);
+        KALDI_ASSERT(u != NULL);
+        if (u->LearningRate() != 0)
+          (*deriv_needed)[step] = true;
+      }
     }
   }
   if (GetVerboseLevel() >= 5) {
