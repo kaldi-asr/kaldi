@@ -555,8 +555,8 @@ void SigmoidComponent::RepairGradients(
                                self_repair_margin_threshold_);
 
   // repair_mat = out_value * 2 - 1
-  // sign_mat = sign(out_value * 2 - 1), i.e., an element in sign_mat is 1
-  // if its corresponding element in out_value*2-1 > 0, or -1 otherwise
+  // sign_mat = sign(repair_mat), i.e., an element in sign_mat is 1
+  // if its corresponding element in repair_mat > 0, or -1 otherwise
   CuMatrix<BaseFloat> repair_mat(out_value);
   repair_mat.Scale(2.0);
   repair_mat.Add(-1.0);
@@ -567,15 +567,14 @@ void SigmoidComponent::RepairGradients(
 
   repair_mat.ApplyPowAbs(1.0);
   repair_mat.Add(-margin_threshold * 2.0); // as out_value was also scaled by 2
+  CuMatrix<BaseFloat> mask(out_value.NumRows(), out_value.NumCols());
+  mask.Heaviside(repair_mat);
+  to_update->num_dims_self_repaired_ += mask.Sum();
   repair_mat.ApplyFloor(0.0);
   repair_mat.MulElements(sign_mat);
-  // scales by 10 so that the absolute value of each element is in the range
-  // [0.0,1.0]
-  repair_mat.Scale(10.0);
-  CuMatrix<BaseFloat> zero_mat(out_value.NumRows(), out_value.NumCols());
-  CuMatrix<BaseFloat> mask(out_value.NumRows(), out_value.NumCols());
-  repair_mat.EqualElementMask(zero_mat, &mask);
-  to_update->num_dims_self_repaired_ += mask.Sum();
+  // rescales repair_mat so that the absolute values of its elements is the
+  // range [0.0,1.0]
+  repair_mat.Scale(1.0 / (margin_threshold * 2.0));
 
   // what we want to do is to add
   // -self_repair_scale_ / repair_probability times (2 * output-valiue - 1.0)
@@ -979,15 +978,14 @@ void TanhComponent::RepairGradients(
   CuMatrix<BaseFloat> repair_mat(out_value);
   repair_mat.ApplyPowAbs(1.0);
   repair_mat.Add(-margin_threshold);
+  CuMatrix<BaseFloat> mask(out_value.NumRows(), out_value.NumCols());
+  mask.Heaviside(repair_mat);
+  to_update->num_dims_self_repaired_ += mask.Sum();
   repair_mat.ApplyFloor(0.0);
   repair_mat.MulElements(sign_mat);
-  // scales by 10 so that the absolute value of each element is in the range
-  // [0.0,1.0]
-  repair_mat.Scale(10.0);
-  CuMatrix<BaseFloat> zero_mat(out_value.NumRows(), out_value.NumCols());
-  CuMatrix<BaseFloat> mask(out_value.NumRows(), out_value.NumCols());
-  repair_mat.EqualElementMask(zero_mat, &mask);
-  to_update->num_dims_self_repaired_ += mask.Sum();
+  // rescales repair_mat so that the absolute values of its elements are in the
+  // range [0.0,1.0]
+  repair_mat.Scale(1.0 / margin_threshold);
 
   // what we want to do is to add -self_repair_scale_ / repair_probability times
   // output-valiue) to the input derivative for each problematic dimension.
