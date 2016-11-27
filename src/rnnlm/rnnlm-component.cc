@@ -9,6 +9,230 @@
 namespace kaldi {
 namespace rnnlm {
 
+void AffineSampleLogSoftmaxComponent::Scale(BaseFloat scale) {
+  linear_params_.Scale(scale);
+  bias_params_.Scale(scale);
+}
+
+void AffineSampleLogSoftmaxComponent::Resize(int32 input_dim, int32 output_dim) {
+  KALDI_ASSERT(input_dim > 0 && output_dim > 0);
+  bias_params_.Resize(output_dim);
+  linear_params_.Resize(output_dim, input_dim);
+}
+
+void AffineSampleLogSoftmaxComponent::Add(BaseFloat alpha, const LmComponent &other_in) {
+  const AffineSampleLogSoftmaxComponent *other =
+      dynamic_cast<const AffineSampleLogSoftmaxComponent*>(&other_in);
+  KALDI_ASSERT(other != NULL);
+  linear_params_.AddMat(alpha, other->linear_params_);
+  bias_params_.AddVec(alpha, other->bias_params_);
+}
+
+AffineSampleLogSoftmaxComponent::AffineSampleLogSoftmaxComponent(const AffineSampleLogSoftmaxComponent &component):
+    LmUpdatableComponent(component),
+    linear_params_(component.linear_params_),
+    bias_params_(component.bias_params_) { }
+
+AffineSampleLogSoftmaxComponent::AffineSampleLogSoftmaxComponent(const MatrixBase<BaseFloat> &linear_params,
+                                 const VectorBase<BaseFloat> &bias_params,
+                                 BaseFloat learning_rate):
+    linear_params_(linear_params),
+    bias_params_(bias_params) {
+  SetUnderlyingLearningRate(learning_rate);
+  KALDI_ASSERT(linear_params.NumRows() == bias_params.Dim()&&
+               bias_params.Dim() != 0);
+}
+
+
+
+void AffineSampleLogSoftmaxComponent::SetZero(bool treat_as_gradient) {
+  if (treat_as_gradient) {
+    SetActualLearningRate(1.0);
+    is_gradient_ = true;
+  }
+  linear_params_.SetZero();
+  bias_params_.SetZero();
+}
+
+void AffineSampleLogSoftmaxComponent::SetParams(const VectorBase<BaseFloat> &bias,
+                                const MatrixBase<BaseFloat> &linear) {
+  bias_params_ = bias;
+  linear_params_ = linear;
+  KALDI_ASSERT(bias_params_.Dim() == linear_params_.NumRows());
+}
+
+void AffineSampleLogSoftmaxComponent::PerturbParams(BaseFloat stddev) {
+  Matrix<BaseFloat> temp_linear_params(linear_params_);
+  temp_linear_params.SetRandn();
+  linear_params_.AddMat(stddev, temp_linear_params);
+
+  Vector<BaseFloat> temp_bias_params(bias_params_);
+  temp_bias_params.SetRandn();
+  bias_params_.AddVec(stddev, temp_bias_params);
+}
+
+std::string AffineSampleLogSoftmaxComponent::Info() const {
+  std::ostringstream stream;
+  stream << LmUpdatableComponent::Info();
+  PrintParameterStats(stream, "linear-params", linear_params_);
+  PrintParameterStats(stream, "bias", bias_params_, true);
+  return stream.str();
+}
+
+LmComponent* AffineSampleLogSoftmaxComponent::Copy() const {
+  AffineSampleLogSoftmaxComponent *ans = new AffineSampleLogSoftmaxComponent(*this);
+  return ans;
+}
+
+BaseFloat AffineSampleLogSoftmaxComponent::DotProduct(const LmUpdatableComponent &other_in) const {
+  const AffineSampleLogSoftmaxComponent *other =
+      dynamic_cast<const AffineSampleLogSoftmaxComponent*>(&other_in);
+  return TraceMatMat(linear_params_, other->linear_params_, kTrans)
+      + VecVec(bias_params_, other->bias_params_);
+}
+
+void AffineSampleLogSoftmaxComponent::Init(int32 input_dim, int32 output_dim,
+                           BaseFloat param_stddev, BaseFloat bias_stddev) {
+  linear_params_.Resize(output_dim, input_dim);
+  bias_params_.Resize(output_dim);
+  KALDI_ASSERT(output_dim > 0 && input_dim > 0 && param_stddev >= 0.0);
+  linear_params_.SetRandn(); // sets to random normally distributed noise.
+  linear_params_.Scale(param_stddev);
+  bias_params_.SetRandn();
+  bias_params_.Scale(bias_stddev);
+}
+
+void AffineSampleLogSoftmaxComponent::Init(std::string matrix_filename) {
+  Matrix<BaseFloat> mat;
+  ReadKaldiObject(matrix_filename, &mat); // will abort on failure.
+  KALDI_ASSERT(mat.NumCols() >= 2);
+  int32 input_dim = mat.NumCols() - 1, output_dim = mat.NumRows();
+  linear_params_.Resize(output_dim, input_dim);
+  bias_params_.Resize(output_dim);
+  linear_params_.CopyFromMat(mat.Range(0, output_dim, 0, input_dim));
+  bias_params_.CopyColFromMat(mat, input_dim);
+}
+
+void AffineSampleLogSoftmaxComponent::InitFromConfig(ConfigLine *cfl) {
+  bool ok = true;
+  std::string matrix_filename;
+  int32 input_dim = -1, output_dim = -1;
+  InitLearningRatesFromConfig(cfl);
+  if (cfl->GetValue("matrix", &matrix_filename)) {
+    Init(matrix_filename);
+    if (cfl->GetValue("input-dim", &input_dim))
+      KALDI_ASSERT(input_dim == InputDim() &&
+                   "input-dim mismatch vs. matrix.");
+    if (cfl->GetValue("output-dim", &output_dim))
+      KALDI_ASSERT(output_dim == OutputDim() &&
+                   "output-dim mismatch vs. matrix.");
+  } else {
+    ok = ok && cfl->GetValue("input-dim", &input_dim);
+    ok = ok && cfl->GetValue("output-dim", &output_dim);
+    BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
+        bias_stddev = 1.0;
+    cfl->GetValue("param-stddev", &param_stddev);
+    cfl->GetValue("bias-stddev", &bias_stddev);
+    Init(input_dim, output_dim,
+         param_stddev, bias_stddev);
+  }
+  if (cfl->HasUnusedValues())
+    KALDI_ERR << "Could not process these elements in initializer: "
+              << cfl->UnusedValues();
+  if (!ok)
+    KALDI_ERR << "Bad initializer " << cfl->WholeLine();
+}
+
+// this function will most likely not be used
+void AffineSampleLogSoftmaxComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+                                const MatrixBase<BaseFloat> &in,
+                                 MatrixBase<BaseFloat> *out) const {
+  KALDI_ASSERT(false);
+
+  // No need for asserts as they'll happen within the matrix operations.
+  out->CopyRowsFromVec(bias_params_); // copies bias_params_ to each row
+  // of *out.
+  out->AddMatMat(1.0, in, kNoTrans, linear_params_, kTrans, 1.0);
+
+  for(MatrixIndexT r = 0; r < out->NumRows(); r++) {                           
+    out->Row(r).ApplyLogSoftMax();                                                
+  }    
+}
+
+void AffineSampleLogSoftmaxComponent::UpdateSimple(const MatrixBase<BaseFloat> &in_value,
+                                   const MatrixBase<BaseFloat> &out_deriv) {
+  KALDI_ASSERT(false);
+  bias_params_.AddRowSumMat(learning_rate_, out_deriv, 1.0);
+  linear_params_.AddMatMat(learning_rate_, out_deriv, kTrans,
+                           in_value, kNoTrans, 1.0);
+}
+
+void AffineSampleLogSoftmaxComponent::Backprop(const std::string &debug_info,
+                               const ComponentPrecomputedIndexes *indexes,
+                               const MatrixBase<BaseFloat> &in_value,
+                               const MatrixBase<BaseFloat> &, // out_value
+                               const MatrixBase<BaseFloat> &out_deriv,
+                               LmComponent *to_update_in,
+                               MatrixBase<BaseFloat> *in_deriv) const {
+  KALDI_ASSERT(false);
+  AffineSampleLogSoftmaxComponent *to_update = dynamic_cast<AffineSampleLogSoftmaxComponent*>(to_update_in);
+
+  // Propagate the derivative back to the input.
+  // add with coefficient 1.0 since property kBackpropAdds is true.
+  // If we wanted to add with coefficient 0.0 we'd need to zero the
+  // in_deriv, in case of infinities.
+  if (in_deriv)
+    in_deriv->AddMatMat(1.0, out_deriv, kNoTrans, linear_params_, kNoTrans,
+                        1.0);
+
+  if (to_update != NULL) {
+    // Next update the model (must do this 2nd so the derivatives we propagate
+    // are accurate, in case this == to_update_in.)
+    if (to_update->is_gradient_)
+      to_update->UpdateSimple(in_value, out_deriv);
+    else  // the call below is to a virtual function that may be re-implemented
+      to_update->Update(debug_info, in_value, out_deriv);  // by child classes.
+  }
+}
+
+void AffineSampleLogSoftmaxComponent::Read(std::istream &is, bool binary) {
+  ReadUpdatableCommon(is, binary);  // read opening tag and learning rate.
+  ExpectToken(is, binary, "<LinearParams>");
+  linear_params_.Read(is, binary);
+  ExpectToken(is, binary, "<BiasParams>");
+  bias_params_.Read(is, binary);
+  ExpectToken(is, binary, "<IsGradient>");
+  ReadBasicType(is, binary, &is_gradient_);
+  ExpectToken(is, binary, "</AffineSampleLogSoftmaxComponent>");
+}
+
+void AffineSampleLogSoftmaxComponent::Write(std::ostream &os, bool binary) const {
+  WriteUpdatableCommon(os, binary);  // Write opening tag and learning rate
+  WriteToken(os, binary, "<LinearParams>");
+  linear_params_.Write(os, binary);
+  WriteToken(os, binary, "<BiasParams>");
+  bias_params_.Write(os, binary);
+  WriteToken(os, binary, "<IsGradient>");
+  WriteBasicType(os, binary, is_gradient_);
+  WriteToken(os, binary, "</AffineSampleLogSoftmaxComponent>");
+}
+
+int32 AffineSampleLogSoftmaxComponent::NumParameters() const {
+  return (InputDim() + 1) * OutputDim();
+}
+void AffineSampleLogSoftmaxComponent::Vectorize(VectorBase<BaseFloat> *params) const {
+  KALDI_ASSERT(params->Dim() == this->NumParameters());
+  params->Range(0, InputDim() * OutputDim()).CopyRowsFromMat(linear_params_);
+  params->Range(InputDim() * OutputDim(),
+                OutputDim()).CopyFromVec(bias_params_);
+}
+void AffineSampleLogSoftmaxComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
+  KALDI_ASSERT(params.Dim() == this->NumParameters());
+  linear_params_.CopyRowsFromVec(params.Range(0, InputDim() * OutputDim()));
+  bias_params_.CopyFromVec(params.Range(InputDim() * OutputDim(),
+                                        OutputDim()));
+}
+
 void LmLinearComponent::Scale(BaseFloat scale) {
   linear_params_.Scale(scale);
 //  bias_params_.Scale(scale);
@@ -320,10 +544,10 @@ void LmLinearComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
 //}
 //
 //Component *LmLinearComponent::CollapseWithNext(
-//    const LmFixedAffineComponent &next_component) const {
+//    const LmFixedAffineSampleLogSoftmaxComponent &next_component) const {
 //  // If at least one was non-updatable, make the whole non-updatable.
-//  LmFixedAffineComponent *ans =
-//      dynamic_cast<LmFixedAffineComponent*>(next_component.Copy());
+//  LmFixedAffineSampleLogSoftmaxComponent *ans =
+//      dynamic_cast<LmFixedAffineSampleLogSoftmaxComponent*>(next_component.Copy());
 //  KALDI_ASSERT(ans != NULL);
 //  ans->linear_params_.Resize(next_component.OutputDim(), InputDim());
 //  ans->bias_params_ = next_component.bias_params_;
@@ -348,10 +572,10 @@ void LmLinearComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
 //}
 
 //Component *LmLinearComponent::CollapseWithPrevious(
-//    const LmFixedAffineComponent &prev_component) const {
+//    const LmFixedAffineSampleLogSoftmaxComponent &prev_component) const {
 //  // If at least one was non-updatable, make the whole non-updatable.
-//  LmFixedAffineComponent *ans =
-//      dynamic_cast<LmFixedAffineComponent*>(prev_component.Copy());
+//  LmFixedAffineSampleLogSoftmaxComponent *ans =
+//      dynamic_cast<LmFixedAffineSampleLogSoftmaxComponent*>(prev_component.Copy());
 //  KALDI_ASSERT(ans != NULL);
 //
 //  ans->linear_params_.Resize(this->OutputDim(), prev_component.InputDim());
@@ -688,7 +912,7 @@ void NaturalGradientLmLinearComponent::Add(BaseFloat alpha, const Component &oth
 }
 */
 
-std::string LmFixedAffineComponent::Info() const {
+std::string LmFixedAffineSampleLogSoftmaxComponent::Info() const {
   std::ostringstream stream;
   stream << LmComponent::Info();
   PrintParameterStats(stream, "linear-params", linear_params_);
@@ -696,14 +920,14 @@ std::string LmFixedAffineComponent::Info() const {
   return stream.str();
 }
 
-void LmFixedAffineComponent::Init(const MatrixBase<BaseFloat> &mat) {
+void LmFixedAffineSampleLogSoftmaxComponent::Init(const MatrixBase<BaseFloat> &mat) {
   KALDI_ASSERT(mat.NumCols() > 1);
   linear_params_ = mat.Range(0, mat.NumRows(), 0, mat.NumCols() - 1);
   bias_params_.Resize(mat.NumRows());
   bias_params_.CopyColFromMat(mat, mat.NumCols() - 1);
 }
 
-void LmFixedAffineComponent::InitFromConfig(ConfigLine *cfl) {
+void LmFixedAffineSampleLogSoftmaxComponent::InitFromConfig(ConfigLine *cfl) {
   std::string filename;
   // Two forms allowed: "matrix=<rxfilename>", or "input-dim=x output-dim=y"
   // (for testing purposes only).
@@ -732,14 +956,14 @@ void LmFixedAffineComponent::InitFromConfig(ConfigLine *cfl) {
 }
 
 
-void LmFixedAffineComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+void LmFixedAffineSampleLogSoftmaxComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                      const MatrixBase<BaseFloat> &in,
                                      MatrixBase<BaseFloat> *out) const  {
   out->CopyRowsFromVec(bias_params_); // Adds the bias term first.
   out->AddMatMat(1.0, in, kNoTrans, linear_params_, kTrans, 1.0);
 }
 
-void LmFixedAffineComponent::Backprop(const std::string &debug_info,
+void LmFixedAffineSampleLogSoftmaxComponent::Backprop(const std::string &debug_info,
                                     const ComponentPrecomputedIndexes *indexes,
                                     const MatrixBase<BaseFloat> &, //in_value
                                     const MatrixBase<BaseFloat> &, //out_value
@@ -753,28 +977,28 @@ void LmFixedAffineComponent::Backprop(const std::string &debug_info,
                         linear_params_, kNoTrans, 1.0);
 }
 
-LmComponent* LmFixedAffineComponent::Copy() const {
-  LmFixedAffineComponent *ans = new LmFixedAffineComponent();
+LmComponent* LmFixedAffineSampleLogSoftmaxComponent::Copy() const {
+  LmFixedAffineSampleLogSoftmaxComponent *ans = new LmFixedAffineSampleLogSoftmaxComponent();
   ans->linear_params_ = linear_params_;
   ans->bias_params_ = bias_params_;
   return ans;
 }
 
-void LmFixedAffineComponent::Write(std::ostream &os, bool binary) const {
-  WriteToken(os, binary, "<LmFixedAffineComponent>");
+void LmFixedAffineSampleLogSoftmaxComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<LmFixedAffineSampleLogSoftmaxComponent>");
   WriteToken(os, binary, "<LinearParams>");
   linear_params_.Write(os, binary);
   WriteToken(os, binary, "<BiasParams>");
   bias_params_.Write(os, binary);
-  WriteToken(os, binary, "</LmFixedAffineComponent>");
+  WriteToken(os, binary, "</LmFixedAffineSampleLogSoftmaxComponent>");
 }
 
-void LmFixedAffineComponent::Read(std::istream &is, bool binary) {
-  ExpectOneOrTwoTokens(is, binary, "<LmFixedAffineComponent>", "<LinearParams>");
+void LmFixedAffineSampleLogSoftmaxComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<LmFixedAffineSampleLogSoftmaxComponent>", "<LinearParams>");
   linear_params_.Read(is, binary);
   ExpectToken(is, binary, "<BiasParams>");
   bias_params_.Read(is, binary);
-  ExpectToken(is, binary, "</LmFixedAffineComponent>");
+  ExpectToken(is, binary, "</LmFixedAffineSampleLogSoftmaxComponent>");
 }
 
 void LmSoftmaxComponent::Propagate(const ComponentPrecomputedIndexes *indexes,

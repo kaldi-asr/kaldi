@@ -58,9 +58,6 @@ if [ $stage -le -4 ]; then
   echo Data Preparation
   cat $srcdir/lexicon.txt | awk '{print $1}' | grep -v -w '!SIL' > $outdir/wordlist.all
 
-#  cat $train_text | cut -d" " -f2- > $outdir/train.txt.0
-#  cat $dev_text | cut -d" " -f2- > $outdir/dev.txt.0
-
   cat $train_text | awk -v w=$outdir/wordlist.all \
       'BEGIN{while((getline<w)>0) v[$1]=1;}
       {for (i=2;i<=NF;i++) if ($i in v) printf $i" ";else printf "<unk> ";print ""}'|sed 's/ $//g' \
@@ -70,8 +67,6 @@ if [ $stage -le -4 ]; then
       'BEGIN{while((getline<w)>0) v[$1]=1;}
       {for (i=2;i<=NF;i++) if ($i in v) printf $i" ";else printf "<unk> ";print ""}'|sed 's/ $//g' \
         > $outdir/dev.txt.0
-#      | shuf --random-source=$dev_text > $outdir/dev.txt.0
-      
 
   cat $outdir/train.txt.0 $outdir/wordlist.all | sed "s= =\n=g" | grep . | sort | uniq -c | sort -k1 -n -r | awk '{print $2,$1}' > $outdir/unigramcounts.txt
 
@@ -123,13 +118,10 @@ if [ $stage -le -3 ]; then
      nnet3-subset-egs --n=$num_train_frames_combine ark:$outdir/train.egs \
      ark,t:$outdir/train.subset.egs &                           
 
-  cat $outdir/dev.txt | shuf | head -n $num_frames_diagnostic > $outdir/dev.diag.txt
-  cat $outdir/train.txt | shuf | head -n $num_frames_diagnostic > $outdir/train.diag.txt
+  cat $outdir/dev.txt | shuf --random-source=$outdir/dev.txt | head -n $num_frames_diagnostic > $outdir/dev.diag.txt
+  cat $outdir/train.txt | shuf --random-source=$outdir/train.txt | head -n $num_frames_diagnostic > $outdir/train.diag.txt
   rnnlm-get-egs $outdir/dev.diag.txt $outdir/wordlist.in $outdir/wordlist.out ark,t:"$outdir/dev.subset.egs"
   rnnlm-get-egs $outdir/train.diag.txt $outdir/wordlist.in $outdir/wordlist.out ark,t:"$outdir/train_diagnostic.egs"
-#  $cmd $outdir/log/create_train_subset_diagnostic.log \
-#     nnet3-subset-egs --n=$num_frames_diagnostic ark:$outdir/dev.egs \
-#     ark,t:$outdir/dev.subset.egs
   wait
 fi
 
@@ -241,6 +233,11 @@ if [ $stage -le $num_iters ]; then
         rnnlm-compute-prob $outdir/$n.mdl ark:$outdir/train.subset.egs &
       $decode_cmd $outdir/log/compute_prob_valid.rnnlm.$n.log \
         rnnlm-compute-prob $outdir/$n.mdl ark:$outdir/dev.subset.egs 
+
+      wait
+      ppl=`grep Overall $outdir/log/compute_prob_train.rnnlm.$n.log | grep like | awk '{print exp(-$8)}'`
+      ppl2=`echo $ppl $ppl_oos_penalty | awk '{print $1 * $2}'`
+      echo TRAIN PPL on model $n.mdl is $ppl w/o OOS penalty, $ppl2 w OOS penalty
 
       ppl=`grep Overall $outdir/log/compute_prob_valid.rnnlm.$n.log | grep like | awk '{print exp(-$8)}'`
       ppl2=`echo $ppl $ppl_oos_penalty | awk '{print $1 * $2}'`

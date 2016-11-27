@@ -43,14 +43,128 @@ namespace rnnlm {
 //using nnet3::kStoresStats;
 //using nnet3::ConfigLine;
 
-class LmFixedAffineComponent;
+class LmFixedAffineSampleLogSoftmaxComponent;
 class LmSoftmaxComponent;
 class LmLogSoftmaxComponent;
 
 // Affine means a linear function plus an offset.
 // Note: although this class can be instantiated, it also
 // functions as a base-class for more specialized versions of
-// AffineComponent.
+// AffineSampleLogSoftmaxComponent.
+class AffineSampleLogSoftmaxComponent: public LmUpdatableComponent {
+ public:
+
+  virtual int32 InputDim() const { return linear_params_.NumCols(); }
+  virtual int32 OutputDim() const { return linear_params_.NumRows(); }
+
+  virtual std::string Info() const;
+  virtual void InitFromConfig(ConfigLine *cfl);
+
+  AffineSampleLogSoftmaxComponent() { } // use Init to really initialize.
+  virtual std::string Type() const { return "AffineSampleLogSoftmaxComponent"; }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kUpdatableComponent|kLinearInParameters|
+        kBackpropNeedsInput|kBackpropAdds;
+  }
+
+
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const MatrixBase<BaseFloat> &in,
+                         MatrixBase<BaseFloat> *out) const;
+
+//  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+//                         const SparseMatrix<BaseFloat> &in,
+//                         CuMatrixBase<BaseFloat> *out) const;
+
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const MatrixBase<BaseFloat> &in_value,
+                        const MatrixBase<BaseFloat> &, // out_value
+                        const MatrixBase<BaseFloat> &out_deriv,
+                        LmComponent *to_update,
+                        MatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const SparseMatrix<BaseFloat> &in,
+                         MatrixBase<BaseFloat> *out) const {
+    KALDI_ASSERT(false);
+  }
+
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const SparseMatrix<BaseFloat> &in_value,
+                        const MatrixBase<BaseFloat> &, // out_value
+                        const MatrixBase<BaseFloat> &out_deriv,
+                        LmComponent *to_update,
+                        MatrixBase<BaseFloat> *in_deriv) const {
+    KALDI_ASSERT(false);
+  }
+
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual LmComponent* Copy() const;
+
+
+  // Some functions from base-class UpdatableComponent.
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const LmComponent &other);
+  virtual void SetZero(bool treat_as_gradient);
+  virtual void PerturbParams(BaseFloat stddev);
+  virtual BaseFloat DotProduct(const LmUpdatableComponent &other) const;
+  virtual int32 NumParameters() const;
+  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
+  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+
+  // Some functions that are specific to this class.
+
+  // This new function is used when mixing up:
+  virtual void SetParams(const VectorBase<BaseFloat> &bias,
+                         const MatrixBase<BaseFloat> &linear);
+  const Vector<BaseFloat> &BiasParams() { return bias_params_; }
+  const Matrix<BaseFloat> &LinearParams() { return linear_params_; }
+  explicit AffineSampleLogSoftmaxComponent(const AffineSampleLogSoftmaxComponent &other);
+  // The next constructor is used in converting from nnet1.
+  AffineSampleLogSoftmaxComponent(const MatrixBase<BaseFloat> &linear_params,
+                  const VectorBase<BaseFloat> &bias_params,
+                  BaseFloat learning_rate);
+  void Init(int32 input_dim, int32 output_dim,
+            BaseFloat param_stddev, BaseFloat bias_stddev);
+  void Init(std::string matrix_filename);
+
+  // This function resizes the dimensions of the component, setting the
+  // parameters to zero, while leaving any other configuration values the same.
+  virtual void Resize(int32 input_dim, int32 output_dim);
+
+  // The following functions are used for collapsing multiple layers
+  // together.  They return a pointer to a new Component equivalent to
+  // the sequence of two components.  We haven't implemented this for
+  // FixedLinearComponent yet.
+
+ protected:
+  // This function Update() is for extensibility; child classes may override
+  // this, e.g. for natural gradient update.
+  virtual void Update(
+      const std::string &debug_info,
+      const MatrixBase<BaseFloat> &in_value,
+      const MatrixBase<BaseFloat> &out_deriv) {
+    UpdateSimple(in_value, out_deriv);
+  }
+  // UpdateSimple is used when *this is a gradient.  Child classes may override
+  // this if needed, but typically won't need to.
+  virtual void UpdateSimple(
+      const MatrixBase<BaseFloat> &in_value,
+      const MatrixBase<BaseFloat> &out_deriv);
+
+  const AffineSampleLogSoftmaxComponent &operator = (const AffineSampleLogSoftmaxComponent &other); // Disallow.
+  Matrix<BaseFloat> linear_params_;
+  Vector<BaseFloat> bias_params_;
+};
+
+// Affine means a linear function plus an offset.
+// Note: although this class can be instantiated, it also
+// functions as a base-class for more specialized versions of
+// AffineSampleLogSoftmaxComponent.
 class LmLinearComponent: public LmUpdatableComponent {
   friend class LmSoftmaxComponent; // Friend declaration relates to mixing up.
  public:
@@ -73,10 +187,6 @@ class LmLinearComponent: public LmUpdatableComponent {
                          const MatrixBase<BaseFloat> &in,
                          MatrixBase<BaseFloat> *out) const;
 
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
-                         const SparseMatrix<BaseFloat> &in,
-                         MatrixBase<BaseFloat> *out) const;
-
   virtual void Backprop(const std::string &debug_info,
                         const ComponentPrecomputedIndexes *indexes,
                         const MatrixBase<BaseFloat> &in_value,
@@ -84,6 +194,10 @@ class LmLinearComponent: public LmUpdatableComponent {
                         const MatrixBase<BaseFloat> &out_deriv,
                         LmComponent *to_update,
                         MatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const SparseMatrix<BaseFloat> &in,
+                         MatrixBase<BaseFloat> *out) const;
 
   virtual void Backprop(const std::string &debug_info,
                         const ComponentPrecomputedIndexes *indexes,
@@ -134,12 +248,12 @@ class LmLinearComponent: public LmUpdatableComponent {
   // the sequence of two components.  We haven't implemented this for
   // FixedLinearComponent yet.
   LmComponent *CollapseWithNext(const LmLinearComponent &next) const ;
-//  Component *CollapseWithNext(const LmFixedAffineComponent &next) const;
+//  Component *CollapseWithNext(const LmFixedAffineSampleLogSoftmaxComponent &next) const;
 //  Component *CollapseWithNext(const FixedScaleComponent &next) const;
-//  Component *CollapseWithPrevious(const LmFixedAffineComponent &prev) const;
+//  Component *CollapseWithPrevious(const LmFixedAffineSampleLogSoftmaxComponent &prev) const;
 
  protected:
-//  friend class NaturalGradientAffineComponent;
+//  friend class NaturalGradientAffineSampleLogSoftmaxComponent;
   // This function Update() is for extensibility; child classes may override
   // this, e.g. for natural gradient update.
   virtual void Update(
@@ -253,15 +367,15 @@ class LmLogSoftmaxComponent: public LmNonlinearComponent {
 /// Keywords: natural gradient descent, NG-SGD, naturalgradient.  For
 /// the top-level of the natural gradient code look here, and also in
 /// nnet-precondition-online.h.
-/// NaturalGradientAffineComponent is
-/// a version of AffineComponent that has a non-(multiple of unit) learning-rate
+/// NaturalGradientAffineSampleLogSoftmaxComponent is
+/// a version of AffineSampleLogSoftmaxComponent that has a non-(multiple of unit) learning-rate
 /// matrix.  See nnet-precondition-online.h for a description of the technique.
 /// It is described, under the name Online NG-SGD, in the paper "Parallel
 /// training of DNNs with Natural Gradient and Parameter Averaging" (ICLR
 /// workshop, 2015) by Daniel Povey, Xiaohui Zhang and Sanjeev Khudanpur.
-class NaturalGradientAffineComponent: public AffineComponent {
+class NaturalGradientAffineSampleLogSoftmaxComponent: public AffineSampleLogSoftmaxComponent {
  public:
-  virtual std::string Type() const { return "NaturalGradientAffineComponent"; }
+  virtual std::string Type() const { return "NaturalGradientAffineSampleLogSoftmaxComponent"; }
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
   void Init(int32 input_dim, int32 output_dim,
@@ -274,7 +388,7 @@ class NaturalGradientAffineComponent: public AffineComponent {
             BaseFloat alpha, BaseFloat max_change_per_sample,
             std::string matrix_filename);
   // this constructor does not really initialize, use Init() or Read().
-  NaturalGradientAffineComponent();
+  NaturalGradientAffineSampleLogSoftmaxComponent();
   virtual void Resize(int32 input_dim, int32 output_dim);
   virtual void InitFromConfig(ConfigLine *cfl);
   virtual std::string Info() const;
@@ -282,14 +396,14 @@ class NaturalGradientAffineComponent: public AffineComponent {
   virtual void Scale(BaseFloat scale);
   virtual void Add(BaseFloat alpha, const Component &other);
   // copy constructor
-  explicit NaturalGradientAffineComponent(
-      const NaturalGradientAffineComponent &other);
+  explicit NaturalGradientAffineSampleLogSoftmaxComponent(
+      const NaturalGradientAffineSampleLogSoftmaxComponent &other);
   virtual void ZeroStats();
 
  private:
   // disallow assignment operator.
-  NaturalGradientAffineComponent &operator= (
-      const NaturalGradientAffineComponent&);
+  NaturalGradientAffineSampleLogSoftmaxComponent &operator= (
+      const NaturalGradientAffineSampleLogSoftmaxComponent&);
 
   // Configs for preconditioner.  The input side tends to be better conditioned ->
   // smaller rank needed, so make them separately configurable.
@@ -337,12 +451,12 @@ class NaturalGradientAffineComponent: public AffineComponent {
 };
 */
 
-/// FixedAffineComponent is an affine transform that is supplied
+/// FixedAffineSampleLogSoftmaxComponent is an affine transform that is supplied
 /// at network initialization time and is not trainable.
-class LmFixedAffineComponent: public LmComponent {
+class LmFixedAffineSampleLogSoftmaxComponent: public LmComponent {
  public:
-  LmFixedAffineComponent() { }
-  virtual std::string Type() const { return "LmFixedAffineComponent"; }
+  LmFixedAffineSampleLogSoftmaxComponent() { }
+  virtual std::string Type() const { return "LmFixedAffineSampleLogSoftmaxComponent"; }
   virtual std::string Info() const;
 
   /// matrix should be of size input-dim+1 to output-dim, last col is offset
@@ -390,11 +504,11 @@ class LmFixedAffineComponent: public LmComponent {
   // Function to provide access to linear_params_.
   const Matrix<BaseFloat> &LinearParams() const { return linear_params_; }
  protected:
-  friend class AffineComponent;
+  friend class AffineSampleLogSoftmaxComponent;
   Matrix<BaseFloat> linear_params_;
   Vector<BaseFloat> bias_params_;
 
-  KALDI_DISALLOW_COPY_AND_ASSIGN(LmFixedAffineComponent);
+  KALDI_DISALLOW_COPY_AND_ASSIGN(LmFixedAffineSampleLogSoftmaxComponent);
 };
 
 
