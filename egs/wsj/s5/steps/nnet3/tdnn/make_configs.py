@@ -103,6 +103,8 @@ def GetArgs():
                         help="output dimension of p-norm nonlinearities")
     parser.add_argument("--relu-dim", type=int,
                         help="dimension of ReLU nonlinearities")
+    parser.add_argument("--final-mixture-window-length", type=int, default = None,
+                        help="the frame window length for mixture of final softmaxes (or final layer outputs). The window will be symmetric around the center frame.")
 
     parser.add_argument("--self-repair-scale", type=float,
                         help="A non-zero value activates the self-repair mechanism in the sigmoid and tanh non-linearities of the LSTM", default=None)
@@ -180,41 +182,16 @@ def CheckArgs(args):
     if args.add_lda and args.cnn_layer is not None:
         args.add_lda = False
         warnings.warn("--add-lda is set to false as CNN layers are used.")
+    
+    if args.final_mixture_window_length is not None:
+      if args.final_mixture_window_length <= 0 or args.final_mixture_window_length % 2 == 0:
+          raise Exception("--final-mixture-window-length supports only positive odd values.")
 
     return args
 
-def AddPerDimAffineLayer(config_lines, name, input, input_window):
-    filter_context = int((input_window - 1) / 2)
-    filter_input_splice_indexes = range(-1 * filter_context, filter_context + 1)
-    list = [('Offset({0}, {1})'.format(input['descriptor'], n) if n != 0 else input['descriptor']) for n in filter_input_splice_indexes]
-    filter_input_descriptor = 'Append({0})'.format(' , '.join(list))
-    filter_input_descriptor = {'descriptor':filter_input_descriptor,
-                               'dimension':len(filter_input_splice_indexes) * input['dimension']}
-
-
-    # add permute component to shuffle the feature columns of the Append
-    # descriptor output so that columns corresponding to the same feature index
-    # are contiguous add a block-affine component to collapse all the feature
-    # indexes across time steps into a single value
-    num_feats = input['dimension']
-    num_times = len(filter_input_splice_indexes)
-    column_map = []
-    for i in range(num_feats):
-        for j in range(num_times):
-            column_map.append(j * num_feats + i)
-    permuted_output_descriptor = nodes.AddPermuteLayer(config_lines,
-            name, filter_input_descriptor, column_map)
-
-    # add a block-affine component
-    output_descriptor = nodes.AddBlockAffineLayer(config_lines, name,
-                                                  permuted_output_descriptor,
-                                                  num_feats, num_feats)
-
-    return [output_descriptor, filter_context, filter_context]
-
-def AddMultiDimAffineLayer(config_lines, name, input, input_window, block_input_dim, block_output_dim):
-    assert(block_input_dim % input_window== 0)
-    filter_context = int((input_window - 1) / 2)
+def AddMultiDimAffineLayer(config_lines, name, input, input_window_length, block_input_dim, block_output_dim):
+    assert(block_input_dim % input_window_length== 0)
+    filter_context = int((input_window_length - 1) / 2)
     filter_input_splice_indexes = range(-1 * filter_context, filter_context + 1)
     list = [('Offset({0}, {1})'.format(input['descriptor'], n) if n != 0 else input['descriptor']) for n in filter_input_splice_indexes]
     filter_input_descriptor = 'Append({0})'.format(' , '.join(list))
@@ -410,6 +387,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
                 add_final_sigmoid,
                 xent_regularize,
                 xent_separate_forward_affine,
+                final_mixture_window_length,
                 self_repair_scale,
                 objective_type):
 
@@ -480,10 +458,10 @@ def MakeConfigs(config_dir, splice_indexes_string,
                 # add permute component to shuffle the feature columns of the Append descriptor output so
                 # that columns corresponding to the same feature index are contiguous
                 # add a block-affine component to collapse all the feature indexes across time steps into a single value
-                [prev_layer_output, cur_left_context, cur_right_context] = AddPerDimAffineLayer(config_lines,
+                [prev_layer_output, cur_left_context, cur_right_context] = nodes.AddPerDimAffineLayer(config_lines,
                                                                                             'Tdnn_input_PDA_{0}'.format(i),
                                                                                             prev_layer_output,
-                                                                                            pool_window)
+                                                                                            input_window_length = pool_window)
 
                 left_context += cur_left_context
                 right_context += cur_right_context
@@ -539,7 +517,8 @@ def MakeConfigs(config_dir, splice_indexes_string,
             nodes.AddFinalLayer(config_lines, prev_layer_output_chain, num_targets,
                                use_presoftmax_prior_scale = use_presoftmax_prior_scale,
                                prior_scale_file = prior_scale_file,
-                               include_log_softmax = include_log_softmax)
+                               include_log_softmax = include_log_softmax,
+                               final_mixture_window_length = final_mixture_window_length)
 
 
             prev_layer_output_xent = nodes.AddAffRelNormLayer(config_lines, "Tdnn_pre_final_xent",
@@ -553,6 +532,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
                                 use_presoftmax_prior_scale = use_presoftmax_prior_scale,
                                 prior_scale_file = prior_scale_file,
                                 include_log_softmax = True,
+                                final_mixture_window_length = final_mixture_window_length,
                                 name_affix = 'xent')
         else:
             prev_layer_output = nodes.AddAffRelNormLayer(config_lines, "Tdnn_{0}".format(i),
@@ -574,6 +554,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
                                prior_scale_file = prior_scale_file,
                                include_log_softmax = include_log_softmax,
                                add_final_sigmoid = add_final_sigmoid,
+                               final_mixture_window_length = final_mixture_window_length,
                                objective_type = objective_type)
             if xent_regularize != 0.0:
                 nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
@@ -582,6 +563,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
                                     use_presoftmax_prior_scale = use_presoftmax_prior_scale,
                                     prior_scale_file = prior_scale_file,
                                     include_log_softmax = True,
+                                    final_mixture_window_length = final_mixture_window_length,
                                     name_affix = 'xent')
 
         config_files['{0}/layer{1}.config'.format(config_dir, i+1)] = config_lines
@@ -592,8 +574,8 @@ def MakeConfigs(config_dir, splice_indexes_string,
 
     # write the files used by other scripts like steps/nnet3/get_egs.sh
     f = open(config_dir + "/vars", "w")
-    print('model_left_context=' + str(left_context), file=f)
-    print('model_right_context=' + str(right_context), file=f)
+    print('model_left_context=' + str(left_context + (0 if final_mixture_window_length is None else (final_mixture_window_length - 1) / 2)), file=f)
+    print('model_right_context=' + str(right_context + (0 if final_mixture_window_length is None else (final_mixture_window_length - 1) / 2)), file=f)
     print('num_hidden_layers=' + str(num_hidden_layers), file=f)
     print('num_targets=' + str(num_targets), file=f)
     print('add_lda=' + ('true' if add_lda else 'false'), file=f)
@@ -628,6 +610,7 @@ def Main():
                 add_final_sigmoid = args.add_final_sigmoid,
                 xent_regularize = args.xent_regularize,
                 xent_separate_forward_affine = args.xent_separate_forward_affine,
+                final_mixture_window_length = args.final_mixture_window_length,
                 self_repair_scale = args.self_repair_scale,
                 objective_type = args.objective_type)
 

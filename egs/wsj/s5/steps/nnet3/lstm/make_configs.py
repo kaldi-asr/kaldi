@@ -50,6 +50,9 @@ def GetArgs():
                         default=0.0)
     parser.add_argument("--include-log-softmax", type=str, action=nnet3_train_lib.StrToBoolAction,
                         help="add the final softmax layer ", default=True, choices = ["false", "true"])
+    parser.add_argument("--final-mixture-window-length", type=int, default = None,
+                        help="the frame window length for mixture of final softmaxes (or final layer outputs). The window will be symmetric around the center frame.")
+      
 
     # LSTM options
     parser.add_argument("--num-lstm-layers", type=int,
@@ -133,6 +136,10 @@ def CheckArgs(args):
             sys.exit("--lstm-delay has incorrect format value. Provided value is '{0}'".format(args.lstm_delay))
         if len(args.lstm_delay) != args.num_lstm_layers:
             sys.exit("--lstm-delay: Number of delays provided has to match --num-lstm-layers")
+    
+    if args.final_mixture_window_length is not None:
+        if args.final_mixture_window_length <= 0 or args.final_mixture_window_length % 2 == 0:
+            raise Exception("--final-mixture-window-length supports only positive odd values.")
 
     return args
 
@@ -210,7 +217,8 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
                 num_lstm_layers, num_hidden_layers,
                 norm_based_clipping, clipping_threshold,
                 ng_per_element_scale_options, ng_affine_options,
-                label_delay, include_log_softmax, xent_regularize, self_repair_scale):
+                label_delay, include_log_softmax, xent_regularize,
+                final_mixture_window_length, self_repair_scale):
 
     config_lines = {'components':[], 'component-nodes':[]}
 
@@ -248,12 +256,14 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
 					    lstm_delay = lstm_delay[i][0], self_repair_scale = self_repair_scale)
         # make the intermediate config file for layerwise discriminative
         # training
-        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options, label_delay = label_delay, include_log_softmax = include_log_softmax)
+        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options, label_delay = label_delay,
+                            include_log_softmax = include_log_softmax, final_mixture_window_length = final_mixture_window_length)
 
 
         if xent_regularize != 0.0:
             nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
                                 include_log_softmax = True,
+                                final_mixture_window_length = final_mixture_window_length,
                                 name_affix = 'xent')
 
         config_files['{0}/layer{1}.config'.format(config_dir, i+1)] = config_lines
@@ -272,11 +282,13 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
                                                ng_affine_options, self_repair_scale = self_repair_scale)
         # make the intermediate config file for layerwise discriminative
         # training
-        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options, label_delay = label_delay, include_log_softmax = include_log_softmax)
+        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options, label_delay = label_delay,
+                            include_log_softmax = include_log_softmax, final_mixture_window_length = final_mixture_window_length)
 
         if xent_regularize != 0.0:
             nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
                                 include_log_softmax = True,
+                                final_mixture_window_length = final_mixture_window_length,
                                 name_affix = 'xent')
 
         config_files['{0}/layer{1}.config'.format(config_dir, i+1)] = config_lines
@@ -315,16 +327,26 @@ def Main():
     args = GetArgs()
     [left_context, right_context, num_hidden_layers, splice_indexes] = ProcessSpliceIndexes(args.config_dir, args.splice_indexes, args.label_delay, args.num_lstm_layers)
 
-    MakeConfigs(args.config_dir,
-                args.feat_dim, args.ivector_dim, args.num_targets,
-                splice_indexes, args.lstm_delay, args.cell_dim,
-                args.recurrent_projection_dim, args.non_recurrent_projection_dim,
-                args.num_lstm_layers, num_hidden_layers,
-                args.norm_based_clipping,
-                args.clipping_threshold,
-                args.ng_per_element_scale_options, args.ng_affine_options,
-                args.label_delay, args.include_log_softmax, args.xent_regularize,
-                args.self_repair_scale)
+    MakeConfigs(config_dir = args.config_dir,
+                feat_dim = args.feat_dim,
+                ivector_dim = args.ivector_dim,
+                num_targets = args.num_targets,
+                splice_indexes = splice_indexes,
+                lstm_delay = args.lstm_delay,
+                cell_dim = args.cell_dim,
+                recurrent_projection_dim = args.recurrent_projection_dim,
+                non_recurrent_projection_dim = args.non_recurrent_projection_dim,
+                num_lstm_layers = args.num_lstm_layers,
+                num_hidden_layers = num_hidden_layers,
+                norm_based_clipping = args.norm_based_clipping,
+                clipping_threshold = args.clipping_threshold,
+                ng_per_element_scale_options = args.ng_per_element_scale_options,
+                ng_affine_options = args.ng_affine_options,
+                label_delay = args.label_delay,
+                include_log_softmax = args.include_log_softmax,
+                xent_regularize = args.xent_regularize,
+                final_mixture_window_length = args.final_mixture_window_length,
+                self_repair_scale = args.self_repair_scale)
 
 if __name__ == "__main__":
     Main()

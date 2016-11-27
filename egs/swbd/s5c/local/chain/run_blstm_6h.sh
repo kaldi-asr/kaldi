@@ -24,6 +24,7 @@ chunk_width=150
 chunk_left_context=40
 chunk_right_context=40
 xent_regularize=0.025
+final_mixture_window_length=7
 
 label_delay=0
 # decode options
@@ -116,6 +117,7 @@ if [ $stage -le 12 ]; then
     --lstm-delay=" [-3,3] [-3,3] [-3,3] " \
     --xent-regularize $xent_regularize \
     --include-log-softmax false \
+    --final-mixture-window-length $final_mixture_window_length \
     --num-lstm-layers 3 \
     --cell-dim 1024 \
     --hidden-dim 1024 \
@@ -145,9 +147,9 @@ if [ $stage -le 13 ]; then
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
     --chain.left-deriv-truncate 0 \
-    --trainer.num-chunk-per-minibatch 64 \
+    --trainer.num-chunk-per-minibatch 32 \
     --trainer.frames-per-iter 1200000 \
-    --trainer.max-param-change 2.0 \
+    --trainer.max-param-change 1.414 \
     --trainer.num-epochs 4 \
     --trainer.optimization.shrink-value 0.99 \
     --trainer.optimization.num-jobs-initial 3 \
