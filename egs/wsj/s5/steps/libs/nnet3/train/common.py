@@ -51,7 +51,7 @@ def get_successful_models(num_models, log_file_pattern,
         model_num = i + 1
         logfile = re.sub('%', str(model_num), log_file_pattern)
         lines = open(logfile, 'r').readlines()
-        this_objf = -100000
+        this_objf = -100000.0
         for line_num in range(1, len(lines) + 1):
             # we search from the end as this would result in
             # lesser number of regex searches. Python regex is slow !
@@ -174,13 +174,13 @@ def verify_egs_dir(egs_dir, feat_dim, ivector_dim,
                    left_context, right_context):
     try:
         egs_feat_dim = int(open('{0}/info/feat_dim'.format(
-                                egs_dir)).readline())
+                                    egs_dir)).readline())
         egs_ivector_dim = int(open('{0}/info/ivector_dim'.format(
-                                egs_dir)).readline())
+                                    egs_dir)).readline())
         egs_left_context = int(open('{0}/info/left_context'.format(
-                                egs_dir)).readline())
+                                    egs_dir)).readline())
         egs_right_context = int(open('{0}/info/right_context'.format(
-                                egs_dir)).readline())
+                                    egs_dir)).readline())
         if (feat_dim != egs_feat_dim) or (ivector_dim != egs_ivector_dim):
             raise Exception("There is mismatch between featdim/ivector_dim of "
                             "the current experiment and the provided "
@@ -191,15 +191,15 @@ def verify_egs_dir(egs_dir, feat_dim, ivector_dim,
             raise Exception('The egs have insufficient context')
 
         frames_per_eg = int(open('{0}/info/frames_per_eg'.format(
-                                egs_dir)).readline())
+                                    egs_dir)).readline())
         num_archives = int(open('{0}/info/num_archives'.format(
-                                egs_dir)).readline())
+                                    egs_dir)).readline())
 
         return [egs_left_context, egs_right_context,
                 frames_per_eg, num_archives]
     except (IOError, ValueError) as e:
         raise Exception("The egs dir {0} has missing or "
-                        "malformed files: {1}".format(egs_dir, e.str()))
+                        "malformed files: {1}".format(egs_dir, e.strerr))
 
 
 def compute_presoftmax_prior_scale(dir, alidir, num_jobs, run_opts,
@@ -218,7 +218,7 @@ def compute_presoftmax_prior_scale(dir, alidir, num_jobs, run_opts,
     common_lib.run_job(
         """{command} {dir}/log/sum_pdf_counts.log \
                 vector-sum --binary=false {dir}/pdf_counts.* {dir}/pdf_counts \
-        """.format(command=run_opts.command,  dir=dir))
+        """.format(command=run_opts.command, dir=dir))
 
     for file in glob.glob('{0}/pdf_counts.*'.format(dir)):
         os.remove(file)
@@ -364,7 +364,7 @@ def do_shrinkage(iter, model_file, non_linearity, shrink_threshold,
     return False
 
 
-def remove_egs(egs_dir):
+def remove_nnet_egs(egs_dir):
     common_lib.run_job("steps/nnet2/remove_egs.sh {egs_dir}".format(
                             egs_dir=egs_dir))
 
@@ -375,7 +375,7 @@ def clean_nnet_dir(nnet_dir, num_iters, egs_dir,
                    get_raw_nnet_from_am=True):
     try:
         if remove_egs:
-            remove_egs(egs_dir)
+            remove_nnet_egs(egs_dir)
 
         for iter in range(num_iters):
             remove_model(nnet_dir, iter, num_iters, None,

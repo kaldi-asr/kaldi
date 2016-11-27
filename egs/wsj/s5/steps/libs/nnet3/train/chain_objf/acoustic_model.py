@@ -517,7 +517,7 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch,
     factors (max_models_combine) is moved into the nnet3-combine.
     """
     raw_model_strings = []
-    print len(models_to_combine)
+    logger.info("Combining {0} models.".format(models_to_combine))
 
     models_to_combine.add(num_iters)
 
