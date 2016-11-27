@@ -25,6 +25,7 @@
 #include <iomanip>
 #include "nnet3/nnet-simple-component.h"
 #include "nnet3/nnet-parse.h"
+#include "cudamatrix/cu-math.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -105,8 +106,8 @@ void DropoutComponent::InitFromConfig(ConfigLine *cfl) {
 
 std::string DropoutComponent::Info() const {
   std::ostringstream stream;
-  stream << Type() << ", dim = " << dim_
-         << ", dropout-proportion = " << dropout_proportion_;
+  stream << Type() << ", dim=" << dim_
+         << ", dropout-proportion=" << dropout_proportion_;
   return stream.str();
 }
 
@@ -4366,15 +4367,15 @@ void MaxpoolingComponent::Write(std::ostream &os, bool binary) const {
 std::string MaxpoolingComponent::Info() const {
   std::ostringstream stream;
   stream << Type()
-         << ", input-x-dim = " << input_x_dim_
-         << ", input-y-dim = " << input_y_dim_
-         << ", input-z-dim = " << input_z_dim_
-         << ", pool-x-size = " << pool_x_size_
-         << ", pool-y-size = " << pool_y_size_
-         << ", pool-z-size = " << pool_z_size_
-         << ", pool-x-step = " << pool_x_step_
-         << ", pool-y-step = " << pool_y_step_
-         << ", pool-z-step = " << pool_z_step_;
+         << ", input-x-dim=" << input_x_dim_
+         << ", input-y-dim=" << input_y_dim_
+         << ", input-z-dim=" << input_z_dim_
+         << ", pool-x-size=" << pool_x_size_
+         << ", pool-y-size=" << pool_y_size_
+         << ", pool-z-size=" << pool_z_size_
+         << ", pool-x-step=" << pool_x_step_
+         << ", pool-y-step=" << pool_y_step_
+         << ", pool-z-step=" << pool_z_step_;
   return stream.str();
 }
 
@@ -5000,6 +5001,339 @@ void CompositeComponent::SetComponent(int32 i, Component *component) {
   delete components_[i];
   components_[i] = component;
 }
+
+
+int32 LstmNonlinearityComponent::InputDim() const {
+  int32 cell_dim = value_sum_.NumCols();
+  return cell_dim * 5;
+}
+
+int32 LstmNonlinearityComponent::OutputDim() const {
+  int32 cell_dim = value_sum_.NumCols();
+  return cell_dim * 2;
+}
+
+
+void LstmNonlinearityComponent::Read(std::istream &is, bool binary) {
+  ReadUpdatableCommon(is, binary);  // Read opening tag and learning rate.
+  ExpectToken(is, binary, "<Params>");
+  params_.Read(is, binary);
+  ExpectToken(is, binary, "<ValueAvg>");
+  value_sum_.Read(is, binary);
+  ExpectToken(is, binary, "<DerivAvg>");
+  deriv_sum_.Read(is, binary);
+  ExpectToken(is, binary, "<SelfRepairConfig>");
+  self_repair_config_.Read(is, binary);
+  ExpectToken(is, binary, "<SelfRepairProb>");
+  self_repair_total_.Read(is, binary);
+
+  ExpectToken(is, binary, "<Count>");
+  ReadBasicType(is, binary, &count_);
+
+  // For the on-disk format, we normalze value_sum_, deriv_sum_ and
+  // self_repair_total_ by dividing by the count, but in memory they are scaled
+  // by the count.  [for self_repair_total_, the scaling factor is count_ *
+  // cell_dim].
+  value_sum_.Scale(count_);
+  deriv_sum_.Scale(count_);
+  int32 cell_dim = params_.NumCols();
+  self_repair_total_.Scale(count_ * cell_dim);
+
+  InitNaturalGradient();
+
+  ExpectToken(is, binary, "</LstmNonlinearityComponent>");
+
+}
+
+void LstmNonlinearityComponent::Write(std::ostream &os, bool binary) const {
+  WriteUpdatableCommon(os, binary);  // Read opening tag and learning rate.
+
+  WriteToken(os, binary, "<Params>");
+  params_.Write(os, binary);
+  WriteToken(os, binary, "<ValueAvg>");
+  {
+    Matrix<BaseFloat> value_avg(value_sum_);
+    if (count_ != 0.0)
+      value_avg.Scale(1.0 / count_);
+    value_avg.Write(os, binary);
+  }
+  WriteToken(os, binary, "<DerivAvg>");
+  {
+    Matrix<BaseFloat> deriv_avg(deriv_sum_);
+    if (count_ != 0.0)
+      deriv_avg.Scale(1.0 / count_);
+    deriv_avg.Write(os, binary);
+  }
+  WriteToken(os, binary, "<SelfRepairConfig>");
+  self_repair_config_.Write(os, binary);
+  WriteToken(os, binary, "<SelfRepairProb>");
+  {
+    int32 cell_dim = params_.NumCols();
+    Vector<BaseFloat> self_repair_prob(self_repair_total_);
+    if (count_ != 0.0)
+      self_repair_prob.Scale(1.0 / (count_ * cell_dim));
+    self_repair_prob.Write(os, binary);
+  }
+  WriteToken(os, binary, "<Count>");
+  WriteBasicType(os, binary, count_);
+  WriteToken(os, binary, "</LstmNonlinearityComponent>");
+}
+
+
+
+std::string LstmNonlinearityComponent::Info() const {
+  std::ostringstream stream;
+  int32 cell_dim = params_.NumCols();
+  stream << UpdatableComponent::Info() << ", cell-dim=" << cell_dim;
+  PrintParameterStats(stream, "w_ic", params_.Row(0));
+  PrintParameterStats(stream, "w_fc", params_.Row(1));
+  PrintParameterStats(stream, "w_oc", params_.Row(2));
+
+  // Note: some of the following code mirrors the code in
+  // UpdatableComponent::Info(), in nnet-component-itf.cc.
+  if (count_ > 0) {
+    stream << ", count=" << std::setprecision(3) << count_
+           << std::setprecision(6);
+  }
+  static const char *nonlin_names[] = { "i_t_sigmoid", "f_t_sigmoid", "c_t_tanh",
+                                        "o_t_sigmoid", "m_t_tanh" };
+  for (int32 i = 0; i < 5; i++) {
+    stream << ", " << nonlin_names[i] << "={";
+    stream << " self-repair-lower-threshold=" << self_repair_config_(i)
+           << ", self-repair-scale=" << self_repair_config_(i + 5);
+
+    if (count_ != 0) {
+      BaseFloat self_repaired_proportion =
+          self_repair_total_(i) / (count_ * cell_dim);
+      stream << ", self-repaired-proportion=" << self_repaired_proportion;
+      Vector<double> value_sum(value_sum_.Row(i)),
+          deriv_sum(deriv_sum_.Row(i));
+      Vector<BaseFloat> value_avg(value_sum), deriv_avg(deriv_sum);
+      value_avg.Scale(1.0 / count_);
+      deriv_avg.Scale(1.0 / count_);
+      stream << ", value-avg=" << SummarizeVector(value_avg)
+             << ", deriv-avg=" << SummarizeVector(deriv_avg);
+    }
+    stream << " }";
+  }
+  return stream.str();
+}
+
+
+Component* LstmNonlinearityComponent::Copy() const {
+  return new LstmNonlinearityComponent(*this);
+}
+
+void LstmNonlinearityComponent::Scale(BaseFloat scale) {
+  params_.Scale(scale);
+  value_sum_.Scale(scale);
+  deriv_sum_.Scale(scale);
+  self_repair_total_.Scale(scale);
+  count_ *= scale;
+}
+
+void LstmNonlinearityComponent::Add(BaseFloat alpha,
+                                    const Component &other_in) {
+  const LstmNonlinearityComponent *other =
+      dynamic_cast<const LstmNonlinearityComponent*>(&other_in);
+  KALDI_ASSERT(other != NULL);
+  params_.AddMat(alpha, other->params_);
+  value_sum_.AddMat(alpha, other->value_sum_);
+  deriv_sum_.AddMat(alpha, other->deriv_sum_);
+  self_repair_total_.AddVec(alpha, other->self_repair_total_);
+  count_ += alpha * other->count_;
+}
+
+void LstmNonlinearityComponent::SetZero(bool treat_as_gradient) {
+  if (treat_as_gradient) {
+    SetActualLearningRate(1.0);
+    is_gradient_ = true;
+  }
+  params_.SetZero();
+  value_sum_.SetZero();
+  deriv_sum_.SetZero();
+  self_repair_total_.SetZero();
+  count_ = 0.0;
+}
+
+void LstmNonlinearityComponent::PerturbParams(BaseFloat stddev) {
+  CuMatrix<BaseFloat> temp_params(params_.NumRows(), params_.NumCols());
+  temp_params.SetRandn();
+  params_.AddMat(stddev, temp_params);
+}
+
+BaseFloat LstmNonlinearityComponent::DotProduct(
+    const UpdatableComponent &other_in) const {
+  const LstmNonlinearityComponent *other =
+      dynamic_cast<const LstmNonlinearityComponent*>(&other_in);
+  KALDI_ASSERT(other != NULL);
+  return TraceMatMat(params_, other->params_, kTrans);
+}
+
+int32 LstmNonlinearityComponent::NumParameters() const {
+  return params_.NumRows() * params_.NumCols();
+}
+
+void LstmNonlinearityComponent::Vectorize(VectorBase<BaseFloat> *params) const {
+  KALDI_ASSERT(params->Dim() == NumParameters());
+  params->CopyRowsFromMat(params_);
+}
+
+
+void LstmNonlinearityComponent::UnVectorize(
+    const VectorBase<BaseFloat> &params)  {
+  KALDI_ASSERT(params.Dim() == NumParameters());
+  params_.CopyRowsFromVec(params);
+}
+
+
+void LstmNonlinearityComponent::Propagate(
+    const ComponentPrecomputedIndexes *, // indexes
+    const CuMatrixBase<BaseFloat> &in,
+    CuMatrixBase<BaseFloat> *out) const {
+  cu::ComputeLstmNonlinearity(in, params_, out);
+}
+
+
+void LstmNonlinearityComponent::Backprop(
+    const std::string &debug_info,
+    const ComponentPrecomputedIndexes *indexes,
+    const CuMatrixBase<BaseFloat> &in_value,
+    const CuMatrixBase<BaseFloat> &, // out_value,
+    const CuMatrixBase<BaseFloat> &out_deriv,
+    Component *to_update_in,
+    CuMatrixBase<BaseFloat> *in_deriv) const {
+
+  if (to_update_in == NULL) {
+    cu::BackpropLstmNonlinearity(in_value, params_, out_deriv,
+                                 deriv_sum_, self_repair_config_,
+                                 count_, in_deriv,
+                                 (CuMatrixBase<BaseFloat>*) NULL,
+                                 (CuMatrixBase<double>*) NULL,
+                                 (CuMatrixBase<double>*) NULL,
+                                 (CuMatrixBase<BaseFloat>*) NULL);
+  } else {
+    LstmNonlinearityComponent *to_update =
+        dynamic_cast<LstmNonlinearityComponent*>(to_update_in);
+    KALDI_ASSERT(to_update != NULL);
+
+    int32 cell_dim = params_.NumCols();
+    CuMatrix<BaseFloat> params_deriv(3, cell_dim, kUndefined);
+    CuMatrix<BaseFloat> self_repair_total(5, cell_dim, kUndefined);
+
+    cu::BackpropLstmNonlinearity(in_value, params_, out_deriv,
+                                 deriv_sum_, self_repair_config_,
+                                 count_, in_deriv, &params_deriv,
+                                 &(to_update->value_sum_),
+                                 &(to_update->deriv_sum_),
+                                 &self_repair_total);
+
+    CuVector<BaseFloat> self_repair_total_sum(5);
+    self_repair_total_sum.AddColSumMat(1.0, self_repair_total, 0.0);
+    to_update->self_repair_total_.AddVec(1.0, self_repair_total_sum);
+    to_update->count_ += static_cast<double>(in_value.NumRows());
+
+    BaseFloat scale = 1.0;
+    if (!to_update->is_gradient_) {
+      to_update->preconditioner_.PreconditionDirections(
+          &params_deriv, NULL, &scale);
+    }
+    to_update->params_.AddMat(to_update->learning_rate_ * scale,
+                              params_deriv);
+  }
+}
+
+LstmNonlinearityComponent::LstmNonlinearityComponent(
+    const LstmNonlinearityComponent &other):
+    UpdatableComponent(other),
+    params_(other.params_),
+    value_sum_(other.value_sum_),
+    deriv_sum_(other.deriv_sum_),
+    self_repair_config_(other.self_repair_config_),
+    self_repair_total_(other.self_repair_total_),
+    count_(other.count_),
+    preconditioner_(other.preconditioner_) { }
+
+void LstmNonlinearityComponent::Init(
+    int32 cell_dim, BaseFloat param_stddev,
+    BaseFloat tanh_self_repair_threshold,
+    BaseFloat sigmoid_self_repair_threshold,
+    BaseFloat self_repair_scale) {
+  KALDI_ASSERT(cell_dim > 0 && param_stddev >= 0.0 &&
+               tanh_self_repair_threshold >= 0.0 &&
+               tanh_self_repair_threshold <= 1.0 &&
+               sigmoid_self_repair_threshold >= 0.0 &&
+               sigmoid_self_repair_threshold <= 0.25 &&
+               self_repair_scale >= 0.0 && self_repair_scale <= 0.1);
+  params_.Resize(3, cell_dim);
+  params_.SetRandn();
+  params_.Scale(param_stddev);
+  value_sum_.Resize(5, cell_dim);
+  deriv_sum_.Resize(5, cell_dim);
+  self_repair_config_.Resize(10);
+  self_repair_config_.Range(0, 5).Set(sigmoid_self_repair_threshold);
+  self_repair_config_(2) = tanh_self_repair_threshold;
+  self_repair_config_(4) = tanh_self_repair_threshold;
+  self_repair_config_.Range(5, 5).Set(self_repair_scale);
+  self_repair_total_.Resize(5);
+  count_ = 0.0;
+  InitNaturalGradient();
+
+}
+
+void LstmNonlinearityComponent::InitNaturalGradient() {
+  // As regards the configuration for the natural-gradient preconditioner, we
+  // don't make it configurable from the command line-- it's unlikely that any
+  // differences from changing this would be substantial enough to effectively
+  // tune the configuration.  Because the preconditioning code doesn't 'see' the
+  // derivatives from individual frames, but only averages over the minibatch,
+  // there is a fairly small amount of data available to estimate the Fisher
+  // information matrix, so we set the rank, update period and
+  // num-samples-history to smaller values than normal.
+  preconditioner_.SetRank(20);
+  preconditioner_.SetUpdatePeriod(2);
+  preconditioner_.SetNumSamplesHistory(1000.0);
+}
+
+
+void LstmNonlinearityComponent::InitFromConfig(ConfigLine *cfl) {
+  InitLearningRatesFromConfig(cfl);
+  bool ok = true;
+  int32 cell_dim;
+  // these self-repair thresholds are the normal defaults for tanh and sigmoid
+  // respectively.  If, later on, we decide that we want to support different
+  // self-repair config values for the individual sigmoid and tanh
+  // nonlinearities, we can modify this code then.
+  BaseFloat tanh_self_repair_threshold = 0.2,
+      sigmoid_self_repair_threshold = 0.05,
+      self_repair_scale = 1.0e-05;
+  // param_stddev is the stddev of the parameters.  it may be better to
+  // use a smaller value but this was the default in the python scripts
+  // for a while.
+  BaseFloat param_stddev = 1.0;
+  ok = ok && cfl->GetValue("cell-dim", &cell_dim);
+  cfl->GetValue("param-stddev", &param_stddev);
+  cfl->GetValue("tanh-self-repair-threshold",
+                &tanh_self_repair_threshold);
+  cfl->GetValue("sigmoid-self-repair-threshold",
+                &sigmoid_self_repair_threshold);
+  cfl->GetValue("self-repair-scale", &self_repair_scale);
+
+  // We may later on want to make it possible to initialize the different
+  // parameters w_ic, w_fc and w_oc with different biases.  We'll implement
+  // that when and if it's needed.
+
+  if (cfl->HasUnusedValues())
+    KALDI_ERR << "Could not process these elements in initializer: "
+	      << cfl->UnusedValues();
+  if (!ok)
+    KALDI_ERR << "Invalid initializer for layer of type "
+              << Type() << ": \"" << cfl->WholeLine() << "\"";
+  Init(cell_dim, param_stddev, tanh_self_repair_threshold,
+       sigmoid_self_repair_threshold, self_repair_scale);
+}
+
+
 
 } // namespace nnet3
 } // namespace kaldi
