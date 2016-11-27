@@ -4,14 +4,14 @@
 #           2016    Vimal Manohar
 # Apache 2.0.
 
-""" This script is based on steps/nnet3/tdnn/train.sh
+""" This script is similar to steps/nnet3/train_dnn.py but trains a
+raw neural network instead of an acoustic model.
 """
 
 import argparse
 import logging
-import os
 import pprint
-import shutil
+import os
 import sys
 import traceback
 
@@ -30,13 +30,11 @@ formatter = logging.Formatter("%(asctime)s [%(filename)s:%(lineno)s - "
                               "%(funcName)s - %(levelname)s ] %(message)s")
 handler.setFormatter(formatter)
 logger.addHandler(handler)
-logger.info('Starting DNN trainer (train_dnn.py)')
+logger.info('Starting raw DNN trainer (train_raw_dnn.py)')
 
 
 def get_args():
     """ Get args from stdin.
-
-    We add compulsary arguments as named arguments for readability
 
     The common options are defined in the object
     libs.nnet3.train.common.CommonParser.parser.
@@ -44,8 +42,9 @@ def get_args():
     """
 
     parser = argparse.ArgumentParser(
-        description="""Trains a feed forward DNN acoustic model using the
-        cross-entropy objective.  DNNs include simple DNNs, TDNNs and CNNs.""",
+        description="""Trains a feed forward raw DNN (without transition model)
+        using frame-level objectives like cross-entropy and mean-squared-error.
+        DNNs include simple DNNs, TDNNs and CNNs.""",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         conflict_handler='resolve',
         parents=[common_train_lib.CommonParser().parser])
@@ -71,14 +70,17 @@ def get_args():
                         "gradient")
 
     # General options
+    parser.add_argument("--nj", type=int, default=4,
+                        help="Number of parallel jobs")
+    parser.add_argument("--use-dense-targets", type=str,
+                        action=common_lib.StrToBoolAction,
+                        default=True, choices=["true", "false"],
+                        help="Train neural network using dense targets")
     parser.add_argument("--feat-dir", type=str, required=True,
                         help="Directory with features used for training "
                         "the neural network.")
-    parser.add_argument("--lang", type=str, required=True,
-                        help="Language directory")
-    parser.add_argument("--ali-dir", type=str, required=True,
-                        help="Directory with alignments used for training "
-                        "the neural network.")
+    parser.add_argument("--targets-scp", type=str, required=True,
+                        help="Target for training neural network.")
     parser.add_argument("--dir", type=str, required=True,
                         help="Directory to store the models and "
                         "all other files.")
@@ -106,9 +108,6 @@ def process_args(args):
                         "directory which is the output of "
                         "make_configs.py script")
 
-    if args.transform_dir is None:
-        args.transform_dir = args.ali_dir
-
     # set the options corresponding to args.use_gpu
     run_opts = common_train_lib.RunOpts()
     if args.use_gpu:
@@ -124,6 +123,7 @@ def process_args(args):
         run_opts.combine_queue_opt = "--gpu 1"
         run_opts.prior_gpu_opt = "--use-gpu=yes"
         run_opts.prior_queue_opt = "--gpu 1"
+
     else:
         logger.warning("Without using a GPU this will be very slow. "
                        "nnet3 does not yet support multiple threads.")
@@ -156,18 +156,8 @@ def train(args, run_opts, background_process_handler):
     logger.info("Arguments for the experiment\n{0}".format(arg_string))
 
     # Set some variables.
-    # num_leaves = common_lib.get_number_of_leaves_from_tree(args.ali_dir)
-    num_jobs = common_lib.get_number_of_jobs(args.ali_dir)
     feat_dim = common_lib.get_feat_dim(args.feat_dir)
     ivector_dim = common_lib.get_ivector_dim(args.online_ivector_dir)
-
-    # split the training data into parts for individual jobs
-    # we will use the same number of jobs as that used for alignment
-    common_lib.split_data(args.feat_dir, num_jobs)
-    shutil.copy('{0}/tree'.format(args.ali_dir), args.dir)
-
-    with open('{0}/num_jobs'.format(args.dir), 'w') as f:
-        f.write(str(num_jobs))
 
     config_dir = '{0}/configs'.format(args.dir)
     var_file = '{0}/vars'.format(config_dir)
@@ -181,6 +171,9 @@ def train(args, run_opts, background_process_handler):
         # this is really the number of times we add layers to the network for
         # discriminative pretraining
         num_hidden_layers = variables['num_hidden_layers']
+        add_lda = common_lib.str_to_bool(variables['add_lda'])
+        include_log_softmax = common_lib.str_to_bool(
+            variables['include_log_softmax'])
     except KeyError as e:
         raise Exception("KeyError {0}: Variables need to be defined in "
                         "{1}".format(str(e), '{0}/configs'.format(args.dir)))
@@ -194,8 +187,7 @@ def train(args, run_opts, background_process_handler):
     # transform.
 
     if (args.stage <= -5):
-        logger.info("Initializing a basic network for estimating "
-                    "preconditioning matrix")
+        logger.info("Initializing a basic network")
         common_lib.run_job(
             """{command} {dir}/log/nnet_init.log \
                     nnet3-init --srand=-2 {dir}/configs/init.config \
@@ -206,8 +198,24 @@ def train(args, run_opts, background_process_handler):
     if (args.stage <= -4) and args.egs_dir is None:
         logger.info("Generating egs")
 
-        train_lib.acoustic_model.generate_egs(
-            data=args.feat_dir, alidir=args.ali_dir, egs_dir=default_egs_dir,
+        if args.use_dense_targets:
+            target_type = "dense"
+            try:
+                num_targets = int(variables['num_targets'])
+            except KeyError as e:
+                raise Exception("KeyError {0}: Variables need to be defined "
+                                "in {1}".format(
+                                    str(e), '{0}/configs'.format(args.dir)))
+            if (common_lib.get_feat_dim_from_scp(args.targets_scp)
+                    != num_targets):
+                raise Exception("Mismatch between num-targets provided to "
+                                "script vs configs")
+        else:
+            target_type = "sparse"
+
+        train_lib.raw_model.generate_egs_from_targets(
+            data=args.feat_dir, targets_scp=args.targets_scp,
+            egs_dir=default_egs_dir,
             left_context=left_context, right_context=right_context,
             valid_left_context=left_context, valid_right_context=right_context,
             run_opts=run_opts,
@@ -218,7 +226,9 @@ def train(args, run_opts, background_process_handler):
             online_ivector_dir=args.online_ivector_dir,
             samples_per_iter=args.samples_per_iter,
             transform_dir=args.transform_dir,
-            stage=args.egs_stage)
+            stage=args.egs_stage,
+            target_type=target_type,
+            num_targets=num_targets)
 
     if args.egs_dir is None:
         egs_dir = default_egs_dir
@@ -239,7 +249,7 @@ def train(args, run_opts, background_process_handler):
     # use during decoding
     common_train_lib.copy_egs_properties_to_exp_dir(egs_dir, args.dir)
 
-    if (args.stage <= -3):
+    if (add_lda and args.stage <= -3):
         logger.info('Computing the preconditioning matrix for input features')
 
         train_lib.common.compute_preconditioning_matrix(
@@ -247,20 +257,9 @@ def train(args, run_opts, background_process_handler):
             max_lda_jobs=args.max_lda_jobs,
             rand_prune=args.rand_prune)
 
-    if (args.stage <= -2):
-        logger.info("Computing initial vector for FixedScaleComponent before"
-                    " softmax, using priors^{prior_scale} and rescaling to"
-                    " average 1".format(
-                        prior_scale=args.presoftmax_prior_scale_power))
-
-        common_train_lib.compute_presoftmax_prior_scale(
-                args.dir, args.ali_dir, num_jobs, run_opts,
-                presoftmax_prior_scale_power=args.presoftmax_prior_scale_power)
-
     if (args.stage <= -1):
-        logger.info("Preparing the initial acoustic model.")
-        train_lib.acoustic_model.prepare_initial_acoustic_model(
-            args.dir, args.ali_dir, run_opts)
+        logger.info("Preparing the initial network.")
+        common_train_lib.prepare_initial_network(args.dir, run_opts)
 
     # set num_iters so that as close as possible, we process the data
     # $num_epochs times, i.e. $num_iters*$avg_num_jobs) ==
@@ -322,6 +321,7 @@ def train(args, run_opts, background_process_handler):
                 max_param_change=args.max_param_change,
                 shuffle_buffer_size=args.shuffle_buffer_size,
                 run_opts=run_opts,
+                get_raw_nnet_from_am=False,
                 background_process_handler=background_process_handler)
 
             if args.cleanup:
@@ -329,7 +329,8 @@ def train(args, run_opts, background_process_handler):
                 # conditions
                 common_train_lib.remove_model(
                     args.dir, iter-2, num_iters, models_to_combine,
-                    args.preserve_model_interval)
+                    args.preserve_model_interval,
+                    get_raw_nnet_from_am=False)
 
             if args.email is not None:
                 reporting_iter_interval = num_iters * args.reporting_interval
@@ -345,30 +346,24 @@ def train(args, run_opts, background_process_handler):
         num_archives_processed = num_archives_processed + current_num_jobs
 
     if args.stage <= num_iters:
-        logger.info("Doing final combination to produce final.mdl")
+        logger.info("Doing final combination to produce final.raw")
         train_lib.common.combine_models(
             dir=args.dir, num_iters=num_iters,
-            models_to_combine=models_to_combine,
-            egs_dir=egs_dir,
+            models_to_combine=models_to_combine, egs_dir=egs_dir,
             left_context=left_context, right_context=right_context,
             run_opts=run_opts,
-            background_process_handler=background_process_handler)
+            background_process_handler=background_process_handler,
+            get_raw_nnet_from_am=False)
 
-    if args.stage <= num_iters + 1:
+    if include_log_softmax and args.stage <= num_iters + 1:
         logger.info("Getting average posterior for purposes of "
                     "adjusting the priors.")
-        avg_post_vec_file = train_lib.common.compute_average_posterior(
-            dir=args.dir, iter='combined', egs_dir=egs_dir,
+        train_lib.common.compute_average_posterior(
+            dir=args.dir, iter='final', egs_dir=egs_dir,
             num_archives=num_archives,
             left_context=left_context, right_context=right_context,
-            prior_subset_size=args.prior_subset_size, run_opts=run_opts)
-
-        logger.info("Re-adjusting priors based on computed posteriors")
-        combined_model = "{dir}/combined.mdl".format(dir=args.dir)
-        final_model = "{dir}/final.mdl".format(dir=args.dir)
-        train_lib.common.adjust_am_priors(args.dir, combined_model,
-                                          avg_post_vec_file, final_model,
-                                          run_opts)
+            prior_subset_size=args.prior_subset_size, run_opts=run_opts,
+            get_raw_nnet_from_am=False)
 
     if args.cleanup:
         logger.info("Cleaning up the experiment directory "
@@ -382,7 +377,8 @@ def train(args, run_opts, background_process_handler):
         common_train_lib.clean_nnet_dir(
             nnet_dir=args.dir, num_iters=num_iters, egs_dir=egs_dir,
             preserve_model_interval=args.preserve_model_interval,
-            remove_egs=remove_egs)
+            remove_egs=remove_egs,
+            get_raw_nnet_from_am=False)
 
     # do some reporting
     [report, times, data] = nnet3_log_parse.generate_accuracy_report(args.dir)
