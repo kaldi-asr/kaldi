@@ -24,7 +24,6 @@ from libs.nnet3.xconfig.utils import XconfigParserError as xparser_error
 #   cell-dim=-1              [Dimension of the cell]
 #   delay=-1                 [Delay in the recurrent connections of the LSTM ]
 #   clipping-threshold=30    [nnet3 LSTMs use a gradient clipping component at the recurrent connections. This is the threshold used to decide if clipping has to be activated ]
-#   norm-based-clipping=True [specifies if the gradient clipping has to activated based on total norm or based on per-element magnitude]
 #   self_repair_scale_nonlinearity=1e-5      [It is a constant scaling the self-repair vector computed in derived classes of NonlinearComponent]
 #                                       i.e.,  SigmoidComponent, TanhComponent and RectifiedLinearComponent ]
 #   ng-per-element-scale-options=''     [Additional options used for the diagonal matrices in the LSTM ]
@@ -38,7 +37,6 @@ class XconfigLstmLayer(XconfigLayerBase):
         self.config = {'input':'[-1]',
                         'cell-dim' : -1, # this is a compulsory argument
                         'clipping-threshold' : 30.0,
-                        'norm-based-clipping' : True,
                         'delay' : -1,
                         'ng-per-element-scale-options' : ' max-change=0.75',
                         'ng-affine-options' : ' max-change=0.75 ',
@@ -220,7 +218,6 @@ class XconfigLstmLayer(XconfigLayerBase):
 #   non_recurrent_projection_dim        [Dimension of the projection in non-recurrent connections]
 #   delay=-1                 [Delay in the recurrent connections of the LSTM ]
 #   clipping-threshold=30    [nnet3 LSTMs use a gradient clipping component at the recurrent connections. This is the threshold used to decide if clipping has to be activated ]
-#   norm-based-clipping=True [specifies if the gradient clipping has to activated based on total norm or based on per-element magnitude]
 #   self_repair_scale_nonlinearity=1e-5      [It is a constant scaling the self-repair vector computed in derived classes of NonlinearComponent]
 #                                       i.e.,  SigmoidComponent, TanhComponent and RectifiedLinearComponent ]
 #   ng-per-element-scale-options=''   [Additional options used for the diagonal matrices in the LSTM ]
@@ -237,7 +234,6 @@ class XconfigLstmpLayer(XconfigLayerBase):
                         'recurrent-projection-dim' : -1,
                         'non-recurrent-projection-dim' : -1,
                         'clipping-threshold' : 30.0,
-                        'norm-based-clipping' : True,
                         'delay' : -1,
                         'ng-per-element-scale-options' : ' max-change=0.75 ',
                         'ng-affine-options' : ' max-change=0.75 ',
@@ -529,4 +525,143 @@ class XconfigLstmpcLayer(XconfigLstmpLayer):
         configs.append("dim-range-node name={0}.r_t_preclip input-node={0}.rp_t dim-offset=0 dim={1}".format(name, recurrent_projection_dim))
         configs.append("component-node name={0}.r_t component={0}.r input={0}.r_t_preclip".format(name))
 
+        return configs
+
+
+# This class is for lines like
+#   'fast-lstm-layer name=lstm1 input=[-1] delay=-3'
+# It generates an LSTM sub-graph without output projections.
+# Unlike 'lstm-layer', the core nonlinearities of the LSTM are done in a special-purpose
+# component (LstmNonlinearityComponent), and most of the affine parts of the LSTM are combined
+# into one.
+#
+# The output dimension of the layer may be specified via 'cell-dim=xxx', but if not specified,
+# the dimension defaults to the same as the input.
+# See other configuration values below.
+#
+# Parameters of the class, and their defaults:
+#   input='[-1]'             [Descriptor giving the input of the layer.]
+#   cell-dim=-1              [Dimension of the cell]
+#   delay=-1                 [Delay in the recurrent connections of the LSTM ]
+#   clipping-threshold=30    [nnet3 LSTMs use a gradient clipping component at the recurrent connections. This is the threshold used to decide if clipping has to be activated ]
+#   self_repair_scale_nonlinearity=1e-5      [It is a constant scaling the self-repair vector computed in derived classes of NonlinearComponent]
+#                                       i.e.,  SigmoidComponent, TanhComponent and RectifiedLinearComponent ]
+#   ng-per-element-scale-options=''     [Additional options used for the diagonal matrices in the LSTM ]
+#   ng-affine-options=''                [Additional options used for the full matrices in the LSTM, can be used to do things like set biases to initialize to 1]
+class XconfigFastLstmLayer(XconfigLayerBase):
+    def __init__(self, first_token, key_to_value, prev_names = None):
+        assert first_token == "fast-lstm-layer"
+        XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
+
+    def set_default_configs(self):
+        self.config = {'input':'[-1]',
+                        'cell-dim' : -1, # this is a compulsory argument
+                        'clipping-threshold' : 30.0,
+                        'delay' : -1,
+                        # if you want to set 'self-repair-scale' (c.f. the
+                        # self-repair-scale-nonlinearity config value in older LSTM layers), you can
+                        # add 'self-repair-scale=xxx' to
+                        # lstm-nonlinearity-options.
+                        'lstm-nonlinearity-options' : ' max-change=0.75',
+                        # the affine layer contains 4 of our old layers -> use a
+                        # larger max-change than the normal value of 0.75.
+                        'ng-affine-options' : ' max-change=1.5',
+                        'zeroing-interval' : 20,
+                        'zeroing-threshold' : 3.0
+                        }
+
+    def set_derived_configs(self):
+        if self.config['cell-dim'] <= 0:
+            self.config['cell-dim'] = self.InputDim()
+
+    def check_configs(self):
+        key = 'cell-dim'
+        if self.config['cell-dim'] <= 0:
+            raise xparser_error("cell-dim has invalid value {0}.".format(self.config[key]), self.str())
+
+        for key in ['self-repair-scale-nonlinearity']:
+            if self.config[key] < 0.0 or self.config[key] > 1.0:
+                raise xparser_error("{0} has invalid value {1}.".format(key, self.config[key]))
+
+    def auxiliary_outputs(self):
+        return ['c_t']
+
+    def output_name(self, auxiliary_output = None):
+        node_name = 'm'
+        if auxiliary_output is not None:
+            if auxiliary_output in self.auxiliary_outputs():
+                node_name = auxiliary_output
+            else:
+                raise xparser_error("Unknown auxiliary output name {0}".format(auxiliary_output), self.str())
+
+        return '{0}.{1}'.format(self.name, node_name)
+
+    def output_dim(self, auxiliary_output = None):
+        if auxiliary_output is not None:
+            if auxiliary_output in self.auxiliary_outputs():
+                if node_name == 'c_t':
+                    return self.config['cell-dim']
+                # add code for other auxiliary_outputs here when we decide to expose them
+            else:
+                raise xparser_error("Unknown auxiliary output name {0}".format(auxiliary_output), self.str())
+
+        return self.config['cell-dim']
+
+    def get_full_config(self):
+        ans = []
+        config_lines = self.generate_lstm_config()
+
+        for line in config_lines:
+            for config_name in ['ref', 'final']:
+                # we do not support user specified matrices in LSTM initialization
+                # so 'ref' and 'final' configs are the same.
+                ans.append((config_name, line))
+        return ans
+
+    # convenience function to generate the LSTM config
+    def generate_lstm_config(self):
+
+        # assign some variables to reduce verbosity
+        name = self.name
+        # in the below code we will just call descriptor_strings as descriptors for conciseness
+        input_dim = self.descriptors['input']['dim']
+        input_descriptor = self.descriptors['input']['final-string']
+        cell_dim = self.config['cell-dim']
+        delay = self.config['delay']
+        bptrunc_str = ("clipping-threshold={0}"
+                      " zeroing-threshold={1}"
+                      " zeroing-interval={2}"
+                      " recurrence-interval={3}"
+                      "".format(self.config['clipping-threshold'],
+                                self.config['zeroing-threshold'],
+                                self.config['zeroing-interval'],
+                                abs(delay)))
+        affine_str = self.config['ng-affine-options']
+        lstm_str = self.config['lstm-nonlinearity-options']
+
+
+        configs = []
+
+        # the equations implemented here are
+        # TODO: write these
+        # naming convention
+        # <layer-name>.W_<outputname>.<input_name> e.g. Lstm1.W_i.xr for matrix providing output to gate i and operating on an appended vector [x,r]
+        configs.append("###  Components for the LTSM layer named '{0}'".format(name))
+        configs.append("# Gate control: contains W_i, W_f, W_c and W_o matrices as blocks.")
+        configs.append("component name={0}.W_all type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + cell_dim, cell_dim * 4, affine_str))
+        configs.append("# The core LSTM nonlinearity, implemented as a single component.")
+        configs.append("Input = (i_part, f_part, c_part, o_part, c_{t-1}), output = (c_t, m_t)")
+        configs.append("# See cu-math.h:ComputeLstmNonlinearity() for details.")
+        configs.append("component name={0}.lstm_nonlin type=LstmNonlinearityComponent cell-dim={1} {2}".format(name, cell_dim, lstm_str))
+        configs.append("# Component for backprop truncation, to avoid gradient blowup in long training examples.")
+        configs.append("component name={0}.c_trunc type=BackpropTruncationComponent dim={1} {2}".format(name, cell_dim, bptrunc_str))
+
+        configs.append("###  Nodes for the components above.")
+        configs.append("component-node name={0}.four_parts component={0}.W_all input=Append({1}, "
+                       "IfDefined(Offset({0}.c_trunc, {2})))".format(name, input_descriptor, delay))
+        configs.append("component-node name={0}.lstm_nonlin component={0}.lstm_nonlin "
+                       "input=Append({0}.four_parts, IfDefined(Offset({0}.c_trunc, {1})))".format(name, delay))
+        configs.append("dim-range-node name={0}.c input={0}.lstm_nonlin dim-offset=0 dim={1}".format(name, cell_dim))
+        configs.append("dim-range-node name={0}.m input={0}.lstm_nonlin dim-offset={1} dim={1}".format(name, cell_dim))
+        configs.append("component-node name={0}.c_trunc input={0}.c".format(name))
         return configs
