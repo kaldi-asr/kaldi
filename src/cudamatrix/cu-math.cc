@@ -547,7 +547,7 @@ void CpuBackpropLstmNonlinearity(const MatrixBase<Real> &input,
       // need to update self_repair_sum_out before deriv_sum_out, because
       // deriv_sum_out and deriv_sum_in might point to the same memory.
       for (int32 i = 0; i < 5; i++)
-        (*self_repair_sum_out_mat)(i, c) +=
+        (*self_repair_sum_out_mat)(i, c) =
             (deriv_sum_in(i, c) / count < sr_config(i) ? num_rows : 0);
 
       (*deriv_sum_out_mat)(0, c) += i_t_deriv_sum;

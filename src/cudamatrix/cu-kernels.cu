@@ -3018,7 +3018,7 @@ static void _diff_lstm_nonlinearity(const int cell_dim, const int num_rows,
     // need to update self_repair_sum_out before deriv_sum_out, because
     // deriv_sum_out and deriv_sum_in might point to the same memory.
     if (i0 < 5 && j < cell_dim) {
-      self_repair_sum_out[i0 * self_repair_sum_out_stride + j] +=
+      self_repair_sum_out[i0 * self_repair_sum_out_stride + j] =
           update_sr[i0] ? num_rows : 0;
     }
 
@@ -4560,4 +4560,3 @@ void cudaF_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
       value_sum_out_stride, deriv_sum_out, deriv_sum_out_stride,
       self_repair_sum_out, self_repair_sum_out_stride);
 }
-
