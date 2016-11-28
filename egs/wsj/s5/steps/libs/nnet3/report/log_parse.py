@@ -6,10 +6,13 @@
 
 from __future__ import division
 import datetime
+import logging
 import re
-import sys
 
 import libs.common as common_lib
+
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
 
 
 def parse_progress_logs_for_nonlinearity_stats(exp_dir):
@@ -158,7 +161,7 @@ def parse_progress_logs_for_clipped_proportion(exp_dir):
             'cp_per_iter_per_component': cp_per_iter_per_component}
 
 
-def parse_progress_logs_for_param_diffP(exp_dir, pattern, logger=None):
+def parse_progress_logs_for_param_diff(exp_dir, pattern):
     """ Parse progress logs for per-component parameter differences.
 
     e.g. for a line that is parsed from progress.*.log:
@@ -256,7 +259,7 @@ def parse_train_logs(exp_dir):
     return train_times
 
 
-def parse_prob_logs(exp_dir, key='accuracy'):
+def parse_prob_logs(exp_dir, key='accuracy', output="output"):
     train_prob_files = "%s/log/compute_prob_train.*.log" % (exp_dir)
     valid_prob_files = "%s/log/compute_prob_valid.*.log" % (exp_dir)
     train_prob_strings = common_lib.run_kaldi_command(
@@ -278,7 +281,7 @@ def parse_prob_logs(exp_dir, key='accuracy'):
         ".*compute_prob_.*\.([0-9]+).log:LOG "
         ".nnet3.*compute-prob:PrintTotalStats..:"
         "nnet.*diagnostics.cc:[0-9]+. Overall ([a-zA-Z\-]+) for "
-        "'output'.*is ([0-9.\-e]+) .*per frame")
+        "'{output}'.*is ([0-9.\-e]+) .*per frame".format(output=output))
 
     train_loss = {}
     valid_loss = {}
@@ -301,9 +304,9 @@ def parse_prob_logs(exp_dir, key='accuracy'):
                           float(valid_loss[x])), iters)
 
 
-def generate_accuracy_report(exp_dir, key="accuracy"):
+def generate_accuracy_report(exp_dir, key="accuracy", output="output"):
     times = parse_train_logs(exp_dir)
-    data = parse_prob_logs(exp_dir, key)
+    data = parse_prob_logs(exp_dir, key, output)
     report = []
     report.append("%Iter\tduration\ttrain_loss\tvalid_loss\tdifference")
     for x in data:
