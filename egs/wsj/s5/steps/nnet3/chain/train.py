@@ -222,11 +222,12 @@ def GetArgs():
                         help="Number of sequences to be processed in parallel every minibatch" )
     parser.add_argument("--trainer.deriv-truncate-margin", type=int, dest='deriv_truncate_margin',
                         default = None,
-                        help="(Relevant only for recurrent models). If specified, gives the margin (in input frames) "
-                        "around the 'required' part of each chunk that the derivatives are backpropagated to. "
-                        "If unset, the derivatives are backpropagated all the way to the boundaries of the input data. "
-                        "E.g. 8 is a reasonable setting. Note: the 'required' part of the chunk is defined by the "
-                        "model's {left,right}-context.")
+                        help="(Relevant only for recurrent models). If specified, gives the margin "
+                        "(in input frames) around the 'required' part of each chunk that the "
+                        "derivatives are backpropagated to. If unset, the derivatives are "
+                        "backpropagated all the way to the boundaries of the input data. E.g. 8 is "
+                        "a reasonable setting. Note: the 'required' part of the chunk is defined by "
+                        "the model's {left,right}-context.")
 
     # General options
     parser.add_argument("--stage", type=int, default=-4,
