@@ -264,6 +264,10 @@ void cudaF_diff_log_softmax(dim3 Gr, dim3 Bl, const MatrixDim in_deriv_dim,
                             const float* out_value, const int out_value_stride,
                             const float* out_deriv, const int out_deriv_stride,
                             float* in_deriv);
+void cudaF_add_spatial_regularization_deriv(
+    dim3 Gr, dim3 Bl, const float* out_value, const MatrixDim out_value_dim,
+    float* out_deriv, const int out_deriv_stride, const float scale,
+    float* regularization_sqsum);
 void cudaF_one(int Gr, int Bl, float* x, int dim);
 void cudaF_copy(dim3 Gr, dim3 Bl, float *y, const float *x,
                 const int32_cuda *copy_from, MatrixDim d_out, MatrixDim d_in);
@@ -533,6 +537,10 @@ void cudaD_diff_log_softmax(dim3 Gr, dim3 Bl, const MatrixDim in_deriv_dim,
                             const double* out_value, const int out_value_stride,
                             const double* out_deriv, const int out_deriv_stride,
                             double* in_deriv);
+void cudaD_add_spatial_regularization_deriv(
+    dim3 Gr, dim3 Bl, const double* out_value, const MatrixDim out_value_dim,
+    double* out_deriv, const int out_deriv_stride, const double scale,
+    double* regularization_sqsum);
 void cudaD_one(int Gr, int Bl, double* x, int dim);
 void cudaD_copy(dim3 Gr, dim3 Bl, double *y, const double *x,
                 const int32_cuda *copy_from, MatrixDim d_out, MatrixDim d_in);
