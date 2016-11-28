@@ -225,7 +225,7 @@ def GetArgs():
                         help="(Relevant only for recurrent models). If specified, gives the margin (in input frames) "
                         "around the 'required' part of each chunk that the derivatives are backpropagated to. "
                         "If unset, the derivatives are backpropagated all the way to the boundaries of the input data. "
-                        "E.g. 10 is a reasonable setting. Note: the 'required' part of the chunk is defined by the "
+                        "E.g. 8 is a reasonable setting. Note: the 'required' part of the chunk is defined by the "
                         "model's {left,right}-context.")
 
     # General options
