@@ -159,6 +159,35 @@ void AffineSampleLogSoftmaxComponent::Propagate(const ComponentPrecomputedIndexe
   }    
 }
 
+void AffineSampleLogSoftmaxComponent::Propagate(const MatrixBase<BaseFloat> &in,
+                                                const vector<vector<int> > &indexes,
+                                                vector<vector<BaseFloat> > *out) const {
+  KALDI_ASSERT(in.NumRows() == indexes.size());
+  out->resize(indexes.size());
+
+  for (int i = 0; i < indexes.size(); i++) {
+    (*out)[i].resize(indexes[i].size());
+
+    for (int j = 0; j < indexes[i].size(); j++) {
+      int w = indexes[i][j];
+      BaseFloat res = VecVec(in.Row(i), linear_params_.Row(w));
+      (*out)[i][j] = res + bias_params_(w);
+    }
+  }
+}
+
+//void AffineSampleLogSoftmaxComponent::Train(const NnetExample &eg) {
+//  std::vector<NnetIo>::const_iterator iter = eg.io.begin(),
+//      end = eg.io.end();
+//  for (; iter != end; ++iter) {
+//    const NnetIo &io = *iter;
+//    if (io.name == "output") {
+//      SparseMatrix sp = io.features;
+//    }
+//
+//  }
+//}
+
 void AffineSampleLogSoftmaxComponent::UpdateSimple(const MatrixBase<BaseFloat> &in_value,
                                    const MatrixBase<BaseFloat> &out_deriv) {
   KALDI_ASSERT(false);

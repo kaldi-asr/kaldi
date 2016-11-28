@@ -158,6 +158,19 @@ struct LmObjectiveFunctionInfo {
  */
 class LmNnetTrainer {
  public:
+ static void ComputeObjectiveFunctionSample(
+                              const vector<BaseFloat> unigram,
+                              const GeneralMatrix &supervision,
+                              ObjectiveType objective_type,
+                              const std::string &output_name,
+                              bool supply_deriv,
+                              NnetComputer *computer,
+                              BaseFloat *tot_weight,
+                              BaseFloat *tot_objf,
+                              const AffineSampleLogSoftmaxComponent *output_projection,
+                              CuMatrix<BaseFloat> *new_output,
+                              LmNnet *delta_nnet = NULL);
+
  static void ComputeObjectiveFunction(const GeneralMatrix &supervision,
                               ObjectiveType objective_type,
                               const std::string &output_name,
@@ -210,6 +223,7 @@ class LmNnetTrainer {
   int32 num_minibatches_processed_;
 
   unordered_map<std::string, LmObjectiveFunctionInfo, StringHasher> objf_info_;
+  vector<BaseFloat> unigram_;
 };
 
 /**

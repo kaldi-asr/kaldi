@@ -47,6 +47,8 @@ class LmFixedAffineSampleLogSoftmaxComponent;
 class LmSoftmaxComponent;
 class LmLogSoftmaxComponent;
 
+using std::vector;
+
 // Affine means a linear function plus an offset.
 // Note: although this class can be instantiated, it also
 // functions as a base-class for more specialized versions of
@@ -67,11 +69,16 @@ class AffineSampleLogSoftmaxComponent: public LmUpdatableComponent {
         kBackpropNeedsInput|kBackpropAdds;
   }
 
+//  void Train(const NnetExample &eg);
 
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
                          const MatrixBase<BaseFloat> &in,
                          MatrixBase<BaseFloat> *out) const;
 
+
+  void Propagate(const MatrixBase<BaseFloat> &in,
+                 const vector<vector<int> > &indexes,
+                 vector<vector<BaseFloat> > *out) const;
 //  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
 //                         const SparseMatrix<BaseFloat> &in,
 //                         CuMatrixBase<BaseFloat> *out) const;

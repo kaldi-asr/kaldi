@@ -170,11 +170,19 @@ void LmNnetTrainer::ProcessOutputs(const NnetExample &eg,
       BaseFloat tot_weight, tot_objf;
       bool supply_deriv = true;
 
-      // the following function adds the computation of special layers
-      ComputeObjectiveFunction(io.features, obj_type, io.name,
+//      the following function adds the computation of special layers
+//      ComputeObjectiveFunction(io.features, obj_type, io.name,
+//                               supply_deriv, computer,
+//                               &tot_weight, &tot_objf, nnet_->O(), nnet_->N(),
+//                               &new_output_, delta_nnet_);
+
+      ComputeObjectiveFunctionSample(unigram_, io.features, obj_type, io.name,
                                supply_deriv, computer,
-                               &tot_weight, &tot_objf, nnet_->O(), nnet_->N(),
+                               &tot_weight, &tot_objf,
+                               NULL,
+//                               dynamic_cast<AffineSampleLogSoftmaxComponent*>(nnet_->O()),
                                &new_output_, delta_nnet_);
+
 
       objf_info_[io.name].UpdateStats(io.name, config_.print_interval,
                                       num_minibatches_processed_++,
@@ -284,6 +292,68 @@ CuMatrix<BaseFloat> ProcessOutput(const CuMatrixBase<BaseFloat> &output_0,
   return ans;
 }
 
+//CuMatrix<BaseFloat> ProcessOutput(const CuMatrixBase<BaseFloat> &output_0,
+//                                  const AffineSampleLogSoftmaxComponent *output_projection,
+//                                  const NnetExample &eg) {
+//  CuMatrix<BaseFloat> ans(output_0.NumRows(), output_projection_1->OutputDim());
+
+//  Matrix<BaseFloat> cpu_output(output_0);
+
+vector<int> NChooseK(const vector<BaseFloat> &unigram_probs, int k) {
+  vector<int> ans;
+
+
+  return ans;
+}
+
+//void AffineSampleLogSoftmaxComponent::Train(const NnetExample &eg) {
+void LmNnetTrainer::ComputeObjectiveFunctionSample(
+                              const vector<BaseFloat> unigram,
+                              const GeneralMatrix &supervision,
+                              ObjectiveType objective_type,
+                              const std::string &output_name,
+                              bool supply_deriv,
+                              NnetComputer *computer,
+                              BaseFloat *tot_weight,
+                              BaseFloat *tot_objf,
+                              const AffineSampleLogSoftmaxComponent *output_projection,
+                              CuMatrix<BaseFloat> *new_output,
+                              LmNnet *nnet) {
+  const CuMatrixBase<BaseFloat> &output_0_gpu = computer->GetOutput(output_name);
+  Matrix<BaseFloat> output_0(output_0_gpu.NumRows(), output_0_gpu.NumCols());
+  output_0_gpu.CopyToMat(&output_0);
+  int k = supervision.NumRows();
+
+  KALDI_ASSERT(supervision.Type() == kSparseMatrix);
+  const SparseMatrix<BaseFloat> &post = supervision.GetSparseMatrix();
+
+  vector<int> samples = NChooseK(unigram, k);
+  vector<vector<int> > indexes(k);
+  for (int i = 0; i < k; i++) {
+    indexes[i] = samples;
+
+    const SparseVector<BaseFloat> &sv = post.Row(i);                              
+    int non_zero_index = -1;                                                    
+    sv.Max(&non_zero_index); 
+    indexes[i].push_back(non_zero_index);
+  }
+
+  vector<vector<BaseFloat> > out;
+
+  output_projection->Propagate(output_0, indexes, &out);
+
+  *tot_weight = post.Sum();
+  *tot_objf = 0;
+  for (int i = 0; i < k; i++) {
+    *tot_objf += out[i][k];
+    for (int j = 0; j < k; j++) {
+      *tot_objf -= exp(out[i][k]);
+    }
+  }
+
+
+}
+
 void LmNnetTrainer::ComputeObjectiveFunction(const GeneralMatrix &supervision,
                               ObjectiveType objective_type,
                               const std::string &output_name,
@@ -299,7 +369,6 @@ void LmNnetTrainer::ComputeObjectiveFunction(const GeneralMatrix &supervision,
   const CuMatrixBase<BaseFloat> &output_0_gpu = computer->GetOutput(output_name);
 //  Matrix<BaseFloat> output_0(output_0_gpu);
 //  const MatrixBase<BaseFloat> output_1;
-  
 
   *new_output = ProcessOutput(output_0_gpu, output_projection_1, output_projection_2); 
 
