@@ -2630,6 +2630,467 @@ static void _diff_log_softmax(const MatrixDim in_deriv_dim,
 }
 
 
+/**
+ this function computes the core part of the LSTM nonlinearity.
+ @param [in] in      A matrix, of dimension num_rows by 5*cell_dim
+                     (i.e. its num-cols must be a multiple of 5).
+                     The column-space is interpreted as 5
+                     consecutive blocks, each of dimension cell_dim,
+                     which we name:
+                     (i_part, f_part, c_part, o_part, c_{t-1}).
+ @param [in] params  A matrix, of dimension 3 by cell_dim,
+                     with rows containing the 3 diagonal parameter matrices
+                     used in LSTMs, namely
+                     w_{ic}, w_{fc} and w_{oc}.
+ @param [out] out    A matrix, of dimension num_rows by 2*cell_dim.
+                     The quantities c_t and m_t respectively are put there
+                     (in two blocks of column-dimension cell_dim),
+                     according to the following equations:
+
+                     i_t = Sigmoid(i_part + w_{ic}*c_{t-1})
+                     f_t = Sigmoid(f_part + w_{fc}*c_{t-1})
+                     c_t = f_t*c_{t-1} + i_t * Tanh(c_part)
+                     o_t = Sigmoid(o_part + w_{oc}*c_t)
+                     m_t = o_t * Tanh(c_t)
+
+We use 1D thread block with CU1DBLOCK threads.
+It works best when cell_dim is a multiple of CU1DBLOCK.
+We use 1d Grid. Each block is working on one row of the in and out matrices.
+*/
+template<typename Real>
+__global__
+static void _lstm_nonlinearity(const Real* in, const int in_stride,
+                               const Real* params, const int params_stride,
+                               const int out_stride, const int cell_dim,
+                               const int num_rows, Real* out) {
+  const int tid = threadIdx.x;
+  const int i = blockIdx.x;
+  const Real* i_part = in + i * in_stride;
+  const Real* f_part = in + i * in_stride + cell_dim;
+  const Real* c_part = in + i * in_stride + cell_dim * 2;
+  const Real* o_part = in + i * in_stride + cell_dim * 3;
+  const Real* c_tm1 = in + i * in_stride + cell_dim * 4;
+  const Real* w_ic = params;
+  const Real* w_fc = params + params_stride;
+  const Real* w_oc = params + params_stride * 2;
+  Real* c_t = out + i * out_stride;
+  Real* m_t = out + i * out_stride + cell_dim;
+
+  for (int j = tid; j < cell_dim; j += CU1DBLOCK) {
+    Real c_tm1_j = c_tm1[j];
+    Real i_t_j = Real(1) / (Real(1) + exp(-i_part[j] - w_ic[j] * c_tm1_j));
+    Real f_t_j = Real(1) / (Real(1) + exp(-f_part[j] - w_fc[j] * c_tm1_j));
+    Real c_t_j = f_t_j * c_tm1_j + i_t_j * tanh(c_part[j]);
+    Real o_t_j = Real(1) / (Real(1) + exp(-o_part[j] - w_oc[j] * c_t_j));
+    c_t[j] = c_t_j;
+    m_t[j] = o_t_j * tanh(c_t_j);
+  }
+}
+
+
+/**
+   This function does the 'backward' pass corresponding to the function
+   ComputeLstmNonlinearity.  It's a little more complicated than you might
+   expect because of the 'self-repair' mechanism that we use to prevent the
+   sigmoid and tanh nonlinearities oversaturating,  and because of the
+   average-activation and average-derivative stats that we store for these
+   nonlinearites (these stats are used both to control the self-repair
+   mechanism, and for diagnostic purposes).
+
+   Because the forward pass computes various intermediate values that are not
+   output, this function actually has to do the same computations as the
+   forward pass before it actually does the backprop.
+
+   In the following description, `C` is for `cell_dim`, `N` is for `num_rows`.
+
+ @param [in]  input  The same as in ComputeLstmNonlinearity().
+                     A matrix, of dimension N by 5C (i.e. its num-cols must be
+                     a multiple of 5).  The column-space is interpreted as 5
+                     consecutive blocks, each of dimension C, which we name:
+                     (i_part, f_part, c_part, o_part, c_{t-1}).
+ @param [in] params  The same as in ComputeLstmNonlinearity().
+                     A matrix, of dimension 3 by C, with rows containing the
+                     three diagonal parameter matrices used in LSTMs, namely
+                     w_{ic}, w_{fc} and w_{oc}.
+ @param [in] output_deriv
+                     A matrix, of dimension N by 2C, containing the derivative
+                     of the objective function we're backpropagating,
+                     w.r.t. the quantities c_t and m_t (in two blocks of
+                     column-dimension C).
+ @param [in] deriv_sum_in
+                     This is used in the self-repair code to identify
+                     oversaturated nonlinearities.
+                     It is a matrix, of dimension 5 by C, corresponding to
+                     the totals of the derivatives of the 5 sigmoid and tanh
+                     nonlinearities, in they order they appear in the equations
+                     in the documentation of ComputeLstmNonlinearity()
+                     respectively,
+                     they appear in the equations for (i_t, f_t, c_t, o_t, m_t).
+                     This will be divided by 'count_in' to get the average
+                     derivative value so far, for each of the nonlinearities.
+ @param [in] self_repair_config
+                     A vector of dimension 10, containing the configuration of
+                     the self-repair to be used for the 5 nonlinearities.
+                     The first 5 elements are the self_repair_lower_threshold
+                     values (typically 0.05 for sigmoid and 0.2 for tanh),
+                     and the next 5 elements are the corresponding
+                     self-repair-scales (typically 10^-5).
+ @param [in] count_in  The data-count that corresponds to the stats in
+                     'deriv_sum_in' at entry to the function.
+                     This function should tolerate the count being zero
+                     (in that case, it is free to do the self-repair or not,
+                     as this should only happen on the 1st minibatch of each
+                     training job).
+ @param [out] input_deriv
+                     May be NULL; if not, this function writes, to this
+                     location, the backpropagated derivative of the objective
+                     function w.r.t. the 'input' matrix.  This matrix should
+                     have the same dimension as 'input' i.e.  N by 5C.  In
+                     addition to the regular backpropagated derivative, the
+                     output will include small values relating to 'self-repair'.
+ @param [out] params_deriv
+                     May be NULL; if not, this is where this function *writes*
+                     [not adds] the backpropagated derivative of the objective
+                     function w.r.t. 'params'; it should have the same dimension
+                     as 'params' (3 by C).  (This matrix will then be processed
+                     by the natural gradient code and added to the appropriate
+                     copy of the parameter matrix, outside this function).
+ @param [out] value_sum_out
+                     Must be NULL if params_deriv is NULL; if not, a matrix of
+                     dimension 5 by C.  This function *adds* to this location
+                     the total value of each of the sigmoid/tanh nonlinearities
+                     that it computes (this is for diagnostic purposes).
+ @param [out] deriv_sum_out
+                     Must be NULL if params_deriv is NULL; if not, a matrix of
+                     dimension 5 by C; this function *adds* to this location the
+                     total of the derivative of each of the sigmoid/tanh
+                     nonlinearities that it computes (this is for diagnostic
+                     purposes and to control the self-repair).  This function
+                     should tolerate the case when 'deriv_sum_out' points to the
+                     same data as 'deriv_sum_in'.
+ @param [out] self_repair_sum_out
+                     Must be NULL if params_deriv is NULL; if not, a matrix of
+                     dimension 5 by C; this function *writes* to this location
+                     the sum of the number of times the self-repair code was
+                     activated (integer values 0 <= k <= N).  This will be
+                     processed outside this function into self-repair stats for
+                     diagnostics.
+// Use 2D block (8x32 threads) as we need to compute column sum.
+// Use 1D grid to cover the data matrix `cell_dim`.
+*/
+template<typename Real>
+__global__
+static void _diff_lstm_nonlinearity(const int cell_dim, const int num_rows,
+                                    const Real* input, const int input_stride,
+                                    const Real* params, const int params_stride,
+                                    const Real* output_deriv,
+                                    const int output_deriv_stride,
+                                    const double* deriv_sum_in,
+                                    const int deriv_sum_in_stride,
+                                    const Real* self_repair_config,
+                                    double count, Real* input_deriv,
+                                    const int input_deriv_stride,
+                                    Real* params_deriv,
+                                    const int params_deriv_stride,
+                                    double* value_sum_out,
+                                    const int value_sum_out_stride,
+                                    double* deriv_sum_out,
+                                    const int deriv_sum_out_stride,
+                                    Real* self_repair_sum_out,
+                                    const int self_repair_sum_out_stride) {
+  __shared__ Real smem[CU1DBLOCK];
+
+  const int j = blockIdx.x * blockDim.x + threadIdx.x;
+  const int tid = threadIdx.y * blockDim.x + threadIdx.x;
+  const int grid_stride = gridDim.y * blockDim.y;
+  const int i0 = blockIdx.y * blockDim.y + threadIdx.y;
+
+  Real w_ic_deriv_sum = 0;
+  Real w_fc_deriv_sum = 0;
+  Real w_oc_deriv_sum = 0;
+
+  Real i_t_value_sum = 0, i_t_deriv_sum = 0;
+  Real f_t_value_sum = 0, f_t_deriv_sum = 0;
+  Real c_part_value_sum = 0, c_part_deriv_sum = 0;
+  Real o_t_value_sum = 0, o_t_deriv_sum = 0;
+  Real c_t_value_sum = 0, c_t_deriv_sum = 0;
+
+  bool update_sr[5];
+
+  if (j < cell_dim) {
+    const Real w_ic = params[j];
+    const Real w_fc = params[params_stride + j];
+    const Real w_oc = params[2 * params_stride + j];
+
+    const Real* sr_config = self_repair_config;
+#   pragma unroll
+    for (int i = 0; i < 5; i++) {
+      update_sr[i] = deriv_sum_in[i * deriv_sum_in_stride + j] / count
+          < sr_config[i];
+    }
+    const Real i_t_self_repair = (update_sr[0] ? sr_config[5] : 0);
+    const Real f_t_self_repair = (update_sr[1] ? sr_config[6] : 0);
+    const Real c_part_self_repair = (update_sr[2] ? sr_config[7] : 0);
+    const Real o_t_self_repair = (update_sr[3] ? sr_config[8] : 0);
+    const Real c_t_self_repair = (update_sr[4] ? sr_config[9] : 0);
+
+    for (int i = i0; i < num_rows; i += grid_stride) {
+      const Real i_part = input[i * input_stride + j];
+      const Real f_part = input[i * input_stride + j + cell_dim];
+      const Real c_part = input[i * input_stride + j + 2 * cell_dim];
+      const Real o_part = input[i * input_stride + j + 3 * cell_dim];
+      const Real c_prev = input[i * input_stride + j + 4 * cell_dim];
+
+      const Real i_t = 1 / (1 + exp(-i_part - w_ic * c_prev));
+      const Real f_t = 1 / (1 + exp(-f_part - w_fc * c_prev));
+      const Real tanh_c_part = tanh(c_part);
+      const Real c_t = f_t * c_prev + i_t * tanh_c_part;
+      const Real o_t = 1 / (1 + exp(-o_part - w_oc * c_t));
+      const Real tanh_c_t = tanh(c_t);
+
+      const Real i_t_deriv = i_t * (1 - i_t);
+      const Real f_t_deriv = f_t * (1 - f_t);
+      const Real c_part_deriv = 1 - tanh_c_part * tanh_c_part;
+      const Real o_t_deriv = o_t * (1 - o_t);
+      const Real c_t_deriv = 1 - tanh_c_t * tanh_c_t;
+
+      if (params_deriv) {
+        i_t_value_sum += i_t;
+        f_t_value_sum += f_t;
+        c_part_value_sum += tanh_c_part;
+        o_t_value_sum += o_t;
+        c_t_value_sum += tanh_c_t;
+
+        i_t_deriv_sum += i_t_deriv;
+        f_t_deriv_sum += f_t_deriv;
+        c_part_deriv_sum += c_part_deriv;
+        o_t_deriv_sum += o_t_deriv;
+        c_t_deriv_sum += c_t_deriv;
+      }
+
+      const Real dc_t_out = output_deriv[i * output_deriv_stride + j];
+      const Real dm_t = output_deriv[i * output_deriv_stride + j + cell_dim];
+
+      const Real dtanh_c_t = o_t * dm_t;
+      const Real do_t = tanh_c_t * dm_t;
+      const Real do_t_input = (o_t_deriv * do_t
+          - (2 * o_t - 1) * o_t_self_repair);
+
+      const Real dc_t = (c_t_deriv * dtanh_c_t + dc_t_out + do_t_input * w_oc)
+          - tanh_c_t * c_t_self_repair;
+      const Real dtanh_c_part = i_t * dc_t;
+      const Real df_t = dc_t * c_prev;
+      const Real df_t_input = (df_t * f_t_deriv
+          - (2 * f_t - 1) * f_t_self_repair);
+      const Real di_t = dc_t * tanh_c_part;
+      const Real di_t_input = (di_t * i_t_deriv
+          - (2 * i_t - 1) * i_t_self_repair);
+
+      if (params_deriv) {
+        w_ic_deriv_sum += c_prev * di_t_input;
+        w_fc_deriv_sum += c_prev * df_t_input;
+        w_oc_deriv_sum += c_t * do_t_input;
+      }
+
+      const Real dc_prev = w_ic * di_t_input + w_fc * df_t_input + f_t * dc_t;
+      const Real do_part = do_t_input;
+      const Real dc_part = (c_part_deriv * dtanh_c_part
+          - tanh_c_part * c_part_self_repair);
+      const Real df_part = df_t_input;
+      const Real di_part = di_t_input;
+
+      if (input_deriv) {
+        input_deriv[i * input_deriv_stride + j] = di_part;
+        input_deriv[i * input_deriv_stride + j + cell_dim] = df_part;
+        input_deriv[i * input_deriv_stride + j + cell_dim * 2] = dc_part;
+        input_deriv[i * input_deriv_stride + j + cell_dim * 3] = do_part;
+        input_deriv[i * input_deriv_stride + j + cell_dim * 4] = dc_prev;
+      }
+    }
+  }
+
+  if (params_deriv) {
+    // compute params_deriv
+    smem[tid] = w_ic_deriv_sum;
+#   pragma unroll
+    for (int shift = CU1DBLOCK / 2; shift >= warpSize; shift >>= 1) {
+      __syncthreads();
+      if (tid < shift) {
+        smem[tid] += smem[tid + shift];
+      }
+    }
+    if (tid < warpSize && j < cell_dim) {
+      params_deriv[j] = smem[tid];
+    }
+
+    __syncthreads();
+    smem[tid] = w_fc_deriv_sum;
+#   pragma unroll
+    for (int shift = CU1DBLOCK / 2; shift >= warpSize; shift >>= 1) {
+      __syncthreads();
+      if (tid < shift) {
+        smem[tid] += smem[tid + shift];
+      }
+    }
+    if (tid < warpSize && j < cell_dim) {
+      params_deriv[params_deriv_stride + j] = smem[tid];
+    }
+
+    __syncthreads();
+    smem[tid] = w_oc_deriv_sum;
+#   pragma unroll
+    for (int shift = CU1DBLOCK / 2; shift >= warpSize; shift >>= 1) {
+      __syncthreads();
+      if (tid < shift) {
+        smem[tid] += smem[tid + shift];
+      }
+    }
+    if (tid < warpSize && j < cell_dim) {
+      params_deriv[2 * params_deriv_stride + j] = smem[tid];
+    }
+
+    // compute value_sum_out
+    __syncthreads();
+    smem[tid] = i_t_value_sum;
+#   pragma unroll
+    for (int shift = CU1DBLOCK / 2; shift >= warpSize; shift >>= 1) {
+      __syncthreads();
+      if (tid < shift) {
+        smem[tid] += smem[tid + shift];
+      }
+    }
+    if (tid < warpSize && j < cell_dim) {
+      value_sum_out[j] += smem[tid];
+    }
+
+    __syncthreads();
+    smem[tid] = f_t_value_sum;
+#   pragma unroll
+    for (int shift = CU1DBLOCK / 2; shift >= warpSize; shift >>= 1) {
+      __syncthreads();
+      if (tid < shift) {
+        smem[tid] += smem[tid + shift];
+      }
+    }
+    if (tid < warpSize && j < cell_dim) {
+      value_sum_out[value_sum_out_stride + j] += smem[tid];
+    }
+
+    __syncthreads();
+    smem[tid] = c_part_value_sum;
+#   pragma unroll
+    for (int shift = CU1DBLOCK / 2; shift >= warpSize; shift >>= 1) {
+      __syncthreads();
+      if (tid < shift) {
+        smem[tid] += smem[tid + shift];
+      }
+    }
+    if (tid < warpSize && j < cell_dim) {
+      value_sum_out[2 * value_sum_out_stride + j] += smem[tid];
+    }
+
+    __syncthreads();
+    smem[tid] = o_t_value_sum;
+#   pragma unroll
+    for (int shift = CU1DBLOCK / 2; shift >= warpSize; shift >>= 1) {
+      __syncthreads();
+      if (tid < shift) {
+        smem[tid] += smem[tid + shift];
+      }
+    }
+    if (tid < warpSize && j < cell_dim) {
+      value_sum_out[3 * value_sum_out_stride + j] += smem[tid];
+    }
+
+    __syncthreads();
+    smem[tid] = c_t_value_sum;
+#   pragma unroll
+    for (int shift = CU1DBLOCK / 2; shift >= warpSize; shift >>= 1) {
+      __syncthreads();
+      if (tid < shift) {
+        smem[tid] += smem[tid + shift];
+      }
+    }
+    if (tid < warpSize && j < cell_dim) {
+      value_sum_out[4 * value_sum_out_stride + j] += smem[tid];
+    }
+
+    // need to update self_repair_sum_out before deriv_sum_out, because
+    // deriv_sum_out and deriv_sum_in might point to the same memory.
+    if (i0 < 5 && j < cell_dim) {
+      self_repair_sum_out[i0 * self_repair_sum_out_stride + j] +=
+          update_sr[i0] ? num_rows : 0;
+    }
+
+    // compute derive_sum_out
+    __syncthreads();
+    smem[tid] = i_t_deriv_sum;
+#   pragma unroll
+    for (int shift = CU1DBLOCK / 2; shift >= warpSize; shift >>= 1) {
+      __syncthreads();
+      if (tid < shift) {
+        smem[tid] += smem[tid + shift];
+      }
+    }
+    if (tid < warpSize && j < cell_dim) {
+      deriv_sum_out[j] += smem[tid];
+    }
+
+    __syncthreads();
+    smem[tid] = f_t_deriv_sum;
+#   pragma unroll
+    for (int shift = CU1DBLOCK / 2; shift >= warpSize; shift >>= 1) {
+      __syncthreads();
+      if (tid < shift) {
+        smem[tid] += smem[tid + shift];
+      }
+    }
+    if (tid < warpSize && j < cell_dim) {
+      deriv_sum_out[deriv_sum_out_stride + j] += smem[tid];
+    }
+
+    __syncthreads();
+    smem[tid] = c_part_deriv_sum;
+#   pragma unroll
+    for (int shift = CU1DBLOCK / 2; shift >= warpSize; shift >>= 1) {
+      __syncthreads();
+      if (tid < shift) {
+        smem[tid] += smem[tid + shift];
+      }
+    }
+    if (tid < warpSize && j < cell_dim) {
+      deriv_sum_out[2 * deriv_sum_out_stride + j] += smem[tid];
+    }
+
+    __syncthreads();
+    smem[tid] = o_t_deriv_sum;
+#   pragma unroll
+    for (int shift = CU1DBLOCK / 2; shift >= warpSize; shift >>= 1) {
+      __syncthreads();
+      if (tid < shift) {
+        smem[tid] += smem[tid + shift];
+      }
+    }
+    if (tid < warpSize && j < cell_dim) {
+      deriv_sum_out[3 * deriv_sum_out_stride + j] += smem[tid];
+    }
+
+    __syncthreads();
+    smem[tid] = c_t_deriv_sum;
+    __syncthreads();
+#   pragma unroll
+    for (int shift = CU1DBLOCK / 2; shift >= warpSize; shift >>= 1) {
+      __syncthreads();
+      if (tid < shift) {
+        smem[tid] += smem[tid + shift];
+      }
+    }
+    if (tid < warpSize && j < cell_dim) {
+      deriv_sum_out[4 * deriv_sum_out_stride + j] += smem[tid];
+    }
+  }
+}
+
 /***********************************************************************
  * ANSI-C wrappers of CUDA kernels
  */
@@ -4031,3 +4492,72 @@ void cudaD_trace_mat_smat_trans(dim3 Gr, dim3 Bl, const double* mat_in,
   _trace_mat_smat_trans<<<Gr,Bl>>>(mat_in, smat_in, mat_d_in, smat_d_in,
       trace_vec_out);
 }
+void cudaD_lstm_nonlinearity(dim3 Gr, dim3 Bl, const double* in,
+                             const int in_stride, const double* params,
+                             const int params_stride, const int out_stride,
+                             const int cell_dim, const int num_rows,
+                             double* out) {
+  _lstm_nonlinearity<<<Gr, Bl>>>(in, in_stride, params, params_stride,
+      out_stride, cell_dim, num_rows, out);
+}
+void cudaF_lstm_nonlinearity(dim3 Gr, dim3 Bl, const float* in,
+                             const int in_stride, const float* params,
+                             const int params_stride, const int out_stride,
+                             const int cell_dim, const int num_rows,
+                             float* out) {
+  _lstm_nonlinearity<<<Gr, Bl>>>(in, in_stride, params, params_stride,
+      out_stride, cell_dim, num_rows, out);
+}
+void cudaD_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
+                                  const int num_rows, const double* input,
+                                  const int input_stride, const double* params,
+                                  const int params_stride,
+                                  const double* output_deriv,
+                                  const int output_deriv_stride,
+                                  const double* deriv_sum_in,
+                                  const int deriv_sum_in_stride,
+                                  const double* self_repair_config,
+                                  double count, double* input_deriv,
+                                  const int input_deriv_stride,
+                                  double* params_deriv,
+                                  const int params_deriv_stride,
+                                  double* value_sum_out,
+                                  const int value_sum_out_stride,
+                                  double* deriv_sum_out,
+                                  const int deriv_sum_out_stride,
+                                  double* self_repair_sum_out,
+                                  const int self_repair_sum_out_stride) {
+  _diff_lstm_nonlinearity<<<Gr, Bl>>>(cell_dim, num_rows, input,
+      input_stride, params, params_stride, output_deriv, output_deriv_stride,
+      deriv_sum_in, deriv_sum_in_stride, self_repair_config, count, input_deriv,
+      input_deriv_stride, params_deriv, params_deriv_stride, value_sum_out,
+      value_sum_out_stride, deriv_sum_out, deriv_sum_out_stride,
+      self_repair_sum_out, self_repair_sum_out_stride);
+}
+void cudaF_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
+                                  const int num_rows, const float* input,
+                                  const int input_stride, const float* params,
+                                  const int params_stride,
+                                  const float* output_deriv,
+                                  const int output_deriv_stride,
+                                  const double* deriv_sum_in,
+                                  const int deriv_sum_in_stride,
+                                  const float* self_repair_config, double count,
+                                  float* input_deriv,
+                                  const int input_deriv_stride,
+                                  float* params_deriv,
+                                  const int params_deriv_stride,
+                                  double* value_sum_out,
+                                  const int value_sum_out_stride,
+                                  double* deriv_sum_out,
+                                  const int deriv_sum_out_stride,
+                                  float* self_repair_sum_out,
+                                  const int self_repair_sum_out_stride) {
+  _diff_lstm_nonlinearity<<<Gr, Bl>>>(cell_dim, num_rows, input,
+      input_stride, params, params_stride, output_deriv, output_deriv_stride,
+      deriv_sum_in, deriv_sum_in_stride, self_repair_config, count, input_deriv,
+      input_deriv_stride, params_deriv, params_deriv_stride, value_sum_out,
+      value_sum_out_stride, deriv_sum_out, deriv_sum_out_stride,
+      self_repair_sum_out, self_repair_sum_out_stride);
+}
+
