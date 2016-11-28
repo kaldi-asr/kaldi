@@ -42,7 +42,7 @@ utils/validate_data_dir.sh data/train_all
 utils/subset_data_dir.sh --first data/train_all 10000 data/dev_and_test
 utils/subset_data_dir.sh --first data/dev_and_test 5000 data/dev
 utils/subset_data_dir.sh --last data/dev_and_test 5000 data/test
-rm -r data/dev_and_test
+rm -rf data/dev_and_test
 
 steps/compute_cmvn_stats.sh data/dev exp/make_mfcc/dev $mfccdir
 steps/compute_cmvn_stats.sh data/test exp/make_mfcc/test $mfccdir
