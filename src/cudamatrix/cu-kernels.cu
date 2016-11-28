@@ -2217,6 +2217,78 @@ static void _softmax_reduce(Real*y, const Real*x, MatrixDim d, int src_stride) {
   }
 }
 
+// The output y_i = scale * x_i,
+// and we want to RMS value of the y_i to equal target_rms,
+// so y^t y = D * target_rms^2 (if y is one row of the input).
+// we need to have scale = 1.0 / sqrt(x^t x / (D * target_rms^2)).
+// there is also flooring involved, to avoid division-by-zero
+// problems.  It's important for the backprop, that the floor's
+// square root is exactly representable as float.
+// If add_log_stddev is true, log(max(epsi, sqrt(x^t x / D)))
+// is an extra dimension of the output.
+//
+// 1D grid is used. Each 256-thread block works on 1 row of the data matrix.
+// The block is also of 1D. Strided memory access is used if the length of the
+// row is longer than 256.
+template<typename Real>
+__global__
+static void _normalize_per_row(Real *y, int y_stride, const Real *x,
+                               MatrixDim x_d, Real target_rms,
+                               bool add_log_stddev) {
+  const int i = blockIdx.x;
+  const int tid = threadIdx.x;
+  const Real* x_row = x + i * x_d.stride;
+  __shared__ Real ssum[CU1DBLOCK];
+
+  // Reduce x_j^2 to CU1DBLOCK elements per row
+  Real tsum = Real(0);
+  for (int j = tid; j < x_d.cols; j += CU1DBLOCK) {
+    tsum += x_row[j] * x_row[j];
+  }
+  ssum[tid] = tsum;
+  __syncthreads();
+
+  // Tree reduce to 2x warpSize elements per row
+# pragma unroll
+  for (int shift = CU1DBLOCK / 2; shift > warpSize; shift >>= 1) {
+    if (tid < shift) {
+      ssum[tid] += ssum[tid + shift];
+      __syncthreads();
+    }
+  }
+
+  // Reduce last warp to 1 element per row.
+  // Threads implicitly synchronized within a warp.
+  if (tid < warpSize) {
+#   pragma unroll
+    for (int shift = warpSize; shift > 0; shift >>= 1) {
+      ssum[tid] += ssum[tid + shift];
+    }
+  }
+
+  const Real kSquaredNormFloor = 1.35525271560688e-20; // 2^-66
+  if (tid == 0) {
+    ssum[0] = sqrt(
+        max(ssum[0] / (target_rms * target_rms * x_d.cols), kSquaredNormFloor));
+  }
+
+  // Broadcast floored stddev to all threads.
+  __syncthreads();
+  const Real stddev_div_target_rms = ssum[0];
+  const Real scale = Real(1) / stddev_div_target_rms;
+
+  // Store normalized input to output
+  Real* y_row = y + i * y_stride;
+  for (int j = tid; j < x_d.cols; j += CU1DBLOCK) {
+    y_row[j] = x_row[j] * scale;
+  }
+
+  if (tid == 0 && add_log_stddev) {
+    y_row[x_d.cols] = log(stddev_div_target_rms * target_rms);
+  }
+}
+
+
 // Per-row log-softmax operation on 'x', with writing to 'y'.
 // note, x and y may point to the same memory.  This is equivalent to setting
 // matrix y to matrix x and then, for each row of y, subtracting the offset that
@@ -3643,6 +3715,12 @@ void cudaF_splice(dim3 Gr, dim3 Bl, float* y, const float* x,
   _splice<<<Gr,Bl>>>(y,x,off,d_out,d_in);
 }
 
+void cudaF_normalize_per_row(size_t Gr, size_t Bl, float *y, int y_stride,
+                             const float *x, MatrixDim x_d, float target_rms,
+                             bool add_log_stddev) {
+  _normalize_per_row<<<Gr, Bl>>>(y, y_stride, x, x_d, target_rms, add_log_stddev);
+}
+
 void cudaF_one(int Gr, int Bl, float* x, int dim) {
   _one<<<Gr,Bl>>>(x,dim);
 }
@@ -4270,6 +4348,12 @@ void cudaD_softmax_reduce(size_t Gr, size_t Bl, double* y, const double* x,
 void cudaD_log_softmax_reduce(size_t Gr, size_t Bl, double* y, const double* x,
                               MatrixDim y_dim, int x_stride) {
   _log_softmax_reduce<<<Gr,Bl>>>(y, x, y_dim, x_stride);
+}
+
+void cudaD_normalize_per_row(size_t Gr, size_t Bl, double *y, int y_stride,
+                             const double *x, MatrixDim x_d, double target_rms,
+                             bool add_log_stddev) {
+  _normalize_per_row<<<Gr, Bl>>>(y, y_stride, x, x_d, target_rms, add_log_stddev);
 }
 
 void cudaD_splice(dim3 Gr, dim3 Bl, double* y, const double* x,

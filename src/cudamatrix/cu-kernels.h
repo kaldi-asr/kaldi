@@ -590,6 +590,12 @@ inline void cuda_diff_xent(dim3 Gr, dim3 Bl, const int32_cuda *vec_tgt,
                            MatrixDim d) {
   cudaF_diff_xent(Gr, Bl, vec_tgt, mat_net_out, vec_log_post, d);
 }
+inline void cuda_normalize_per_row(size_t Gr, size_t Bl, float *y, int y_stride,
+                                   const float *x, MatrixDim x_d,
+                                   float target_rms, bool add_log_stddev) {
+  cudaF_normalize_per_row(Gr, Bl, y, y_stride, x, x_d, target_rms,
+                          add_log_stddev);
+}
 inline void cuda_diff_softmax(dim3 Gr, dim3 Bl, float* x, const MatrixDim dim,
                               const float* value, const int value_stride,
                               const float* diff, const int diff_stride) {
@@ -1109,6 +1115,12 @@ inline void cuda_log_softmax_reduce(size_t Gr, size_t Bl, double *y,
                                     const double *x, MatrixDim y_dim,
                                     int x_stride) {
   cudaD_log_softmax_reduce(Gr, Bl, y, x, y_dim, x_stride);
+}
+inline void cuda_normalize_per_row(size_t Gr, size_t Bl, double *y,
+                                   int y_stride, const double *x, MatrixDim x_d,
+                                   double target_rms, bool add_log_stddev) {
+  cudaD_normalize_per_row(Gr, Bl, y, y_stride, x, x_d, target_rms,
+                          add_log_stddev);
 }
 
 inline void cuda_regularize_l1(dim3 Gr, dim3 Bl, double *wei, double *grad,

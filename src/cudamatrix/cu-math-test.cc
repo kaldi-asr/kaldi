@@ -184,7 +184,7 @@ static void UnitTestCuMathComputeLstmNonlinearity() {
 }
 
 void UnitTestLstmNonlinearity() {
-  for (int32 loop = 0; loop < 100; loop++) {
+  for (int32 loop = 0; loop < 10; loop++) {
 
     // problem dimensions.
     int32 num_rows = RandInt(5, 20),
@@ -444,6 +444,74 @@ static void UnitTestBackpropLstmNonlinearity() {
   }
 }
 
+template<typename Real>
+static void UnitTestCuMathNormalizePerRow() {
+
+  for (int32 i = 0; i < 2; i++) {
+    int row = 10 + Rand() % 40;
+    int col = 10 + Rand() % 50;
+
+    Matrix<Real> Hi(row,col);
+    Matrix<Real> Ho(row,col+1);
+    Hi.SetRandn();
+    Hi.Scale(5.0);
+
+    CuMatrix<Real> Di(row, col);
+    CuMatrix<Real> Do(row, col+1);
+    Di.CopyFromMat(Hi);
+
+    Real target_rms = 0.3456;
+    bool add_log_stddev = true;
+    const Real kSquaredNormFloor = 1.35525271560688e-20; // 2^-66
+
+    //gpu
+    cu::NormalizePerRow(Di, target_rms, add_log_stddev, &Do);
+
+    //cpu
+    {
+      MatrixBase<Real>& in(Hi);
+      MatrixBase<Real>& out(Ho);
+      Real target_rms=0.3456;
+      SubMatrix<Real> out_no_log(out, 0, out.NumRows(), 0, in.NumCols());
+      if (in.Data() != out_no_log.Data())
+        out_no_log.CopyFromMat(in);
+      Vector<Real> in_norm(in.NumRows());
+      Real d_scaled = in.NumCols() * target_rms * target_rms;
+      in_norm.AddDiagMat2(1.0 / d_scaled, in, kNoTrans, 0.0);
+      in_norm.ApplyFloor(kSquaredNormFloor);
+      in_norm.ApplyPow(-0.5);
+      out_no_log.MulRowsVec(in_norm);
+      if (add_log_stddev) {
+        in_norm.ApplyLog();
+        in_norm.Scale(-1.0);
+        in_norm.Add(log(target_rms));
+        out.CopyColFromVec(in_norm, in.NumCols());
+      }
+    }
+
+    Matrix<Real> Ho2(Do);
+    AssertEqual(Ho,Ho2,0.00001);
+  }
+
+  for (int dim = 16; dim <= 1024; dim *= 2) {
+    BaseFloat time_in_secs = 0.025;
+    CuMatrix<Real> M(dim, dim), N(dim, dim + 1);
+    M.SetRandn();
+    N.SetRandn();
+    Timer tim;
+    int32 iter = 0;
+    for (; tim.Elapsed() < time_in_secs; iter++) {
+      cu::NormalizePerRow(M, Real(1), true, &N);
+    }
+
+    BaseFloat gflops = ((BaseFloat) dim * dim * iter)
+        / (tim.Elapsed() * 1.0e+09);
+    KALDI_LOG << "For CuMatrix::NormalizePerRow"
+              << (sizeof(Real)==8?"<double>":"<float>") << ", for dim = "
+              << dim << ", speed was " << gflops << " gigaflops.";
+  }
+}
+
 
 template<typename Real> void CudaMathUnitTest() {
 #if HAVE_CUDA == 1
@@ -456,6 +524,7 @@ template<typename Real> void CudaMathUnitTest() {
   UnitTestCuMathCopy<Real>();
   UnitTestLstmNonlinearity();
   UnitTestBackpropLstmNonlinearity<Real>();
+  UnitTestCuMathNormalizePerRow<Real>();
 }
 
 } // namespace kaldi

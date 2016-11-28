@@ -233,6 +233,57 @@ void Randomize(const CuMatrixBase<double> &src,
                const CuArray<int32> &copy_from_idx,
                CuMatrixBase<double> *tgt);
 
+// The output y_i = scale * x_i,
+// and we want to RMS value of the y_i to equal target_rms,
+// so y^t y = D * target_rms^2 (if y is one row of the input).
+// we need to have scale = 1.0 / sqrt(x^t x / (D * target_rms^2)).
+// there is also flooring involved, to avoid division-by-zero
+// problems.  It's important for the backprop, that the floor's
+// square root is exactly representable as float.
+// If add_log_stddev_ is true, log(max(epsi, sqrt(x^t x / D)))
+// is an extra dimension of the output.
+template<typename Real>
+void NormalizePerRow(const CuMatrixBase<Real>& in, const Real target_rms,
+                     const bool add_log_stddev, CuMatrixBase<Real>* out) {
+  const Real kSquaredNormFloor = 1.35525271560688e-20; // 2^-66
+
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    size_t dimBlock = CU1DBLOCK;
+    size_t dimGrid = out->NumRows();
+    cuda_normalize_per_row(dimGrid, dimBlock, out->Data(), out->Stride(),
+                           in.Data(), in.Dim(), target_rms, add_log_stddev);
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    CuSubMatrix<Real> out_no_log(*out, 0, out->NumRows(), 0, in.NumCols());
+    if (in.Data() != out_no_log.Data())
+      out_no_log.CopyFromMat(in);
+    CuVector<Real> in_norm(in.NumRows());
+    Real d_scaled = in.NumCols() * target_rms * target_rms;
+    in_norm.AddDiagMat2(1.0 / d_scaled, in, kNoTrans, 0.0);
+    in_norm.ApplyFloor(kSquaredNormFloor);
+    in_norm.ApplyPow(-0.5);
+    out_no_log.MulRowsVec(in_norm);
+    if (add_log_stddev) {
+      in_norm.ApplyLog();
+      in_norm.Scale(-1.0);
+      in_norm.Add(log(target_rms));
+      out->CopyColFromVec(in_norm, in.NumCols());
+    }
+  }
+}
+
+template
+void NormalizePerRow(const CuMatrixBase<float>& in, const float target_rms,
+                     const bool add_log_stddev, CuMatrixBase<float>* out);
+template
+void NormalizePerRow(const CuMatrixBase<double>& in, const double target_rms,
+                     const bool add_log_stddev, CuMatrixBase<double>* out);
+
 
 // not calling this Sigmoid to reduce the chance of future collisions.
 template<typename Real>
