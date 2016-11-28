@@ -127,23 +127,17 @@ def get_args():
                         dest='shrink_value', default=1.0,
                         help="""Scaling factor used for scaling the parameter
                         matrices when the derivative averages are below the
-                        shrink-threshold at the non-linearities""")
-    parser.add_argument("--trainer.optimization.shrink-threshold", type=float,
-                        dest='shrink_threshold', default=0.15,
-                        help="""If the derivative averages are below this
+                        shrink-threshold at the non-linearities.  E.g. 0.99.
+                        Only applicable when the neural net contains sigmoid or
+                        tanh units.""")
+    parser.add_argument("--trainer.optimization.shrink-saturation-threshold", type=float,
+                        dest='shrink_saturation_threshold', default=0.40,
+                        help="""Threshold that controls when we apply the 'shrinkage'
+                        (i.e. scaling by shrink-value).  If the saturation of the
+                        sigmoid and tanh nonlinearities in the neural net (as
+                        measured by steps/nnet3/get_saturation.pl) exceeds this
                         threshold we scale the parameter matrices with the
-                        shrink-value. It is less than 0.25 for sigmoid
-                        non-linearities.""")
-    parser.add_argument("--trainer.optimization.shrink-nonlinearity", type=str,
-                        dest='shrink_nonlinearity', default="SigmoidComponent",
-                        choices=["TanhComponent", "SigmoidComponent"],
-                        help="""The non-linear component from which the
-                        deriv-avg values are going to used to compute
-                        mean-deriv-avg. The mean-deriv-avg is going to be
-                        compared with shrink-threshold. Be careful to specify a
-                        shrink-threshold which is dependent on the
-                        shrink-nonlinearity type""")
-
+                        shrink-value.""")
     # RNN specific trainer options
     parser.add_argument("--trainer.num-chunk-per-minibatch",
                         "--trainer.rnn.num-chunk-per-minibatch",
@@ -424,8 +418,7 @@ def train(args, run_opts, background_process_handler):
                 shrinkage_value = (args.shrink_value
                                    if common_train_lib.do_shrinkage(
                                         iter, model_file,
-                                        args.shrink_nonlinearity,
-                                        args.shrink_threshold)
+                                        args.shrink_saturation_threshold)
                                    else 1
                                    )
             logger.info("On iteration {0}, learning rate is {1} and "

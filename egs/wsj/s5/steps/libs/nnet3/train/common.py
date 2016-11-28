@@ -318,53 +318,34 @@ def get_learning_rate(iter, num_jobs, num_iters, num_archives_processed,
     return num_jobs * effective_learning_rate
 
 
-def do_shrinkage(iter, model_file, non_linearity, shrink_threshold,
+def do_shrinkage(iter, model_file, shrink_saturation_threshold,
                  get_raw_nnet_from_am=True):
 
     if iter == 0:
         return True
 
+    if get_raw_nnet_from_am:
+        output, error = common_lib.run_kaldi_command(
+            "nnet3-am-info --print-args=false {0} | "
+            "steps/nnet3/get_saturation.pl".format(model_file))
+    else:
+        output, error = common_lib.run_kaldi_command(
+            "nnet3-info --print-args=false {0} | "
+            "steps/nnet3/get_saturation.pl".format(model_file))
+    output = output.strip().split("\n")
     try:
-        if get_raw_nnet_from_am:
-            output, error = common_lib.run_kaldi_command(
-                "nnet3-am-info --print-args=false {model_file} | "
-                "grep {non_linearity}".format(
-                    non_linearity=non_linearity, model_file=model_file))
-        else:
-            output, error = common_lib.run_kaldi_command(
-                "nnet3-info --print-args=false {model_file} | "
-                "grep {non_linearity}".format(
-                    non_linearity=non_linearity, model_file=model_file))
-        output = output.strip().split("\n")
-        # eg.
-        # component name=Lstm1_f type=SigmoidComponent, dim=1280,
-        # count=5.02e+05, value-avg=[percentiles(0,1,2,5 10,20,50,80,90
-        # 95,98,99,100)=(0.06,0.17,0.19,0.24 0.28,0.33,0.44,0.62,0.79
-        # 0.96,0.99,1.0,1.0), mean=0.482, stddev=0.198],
-        # deriv-avg=[percentiles(0,1,2,5 10,20,50,80,90
-        # 95,98,99,100)=(0.0001,0.003,0.004,0.03 0.12,0.18,0.22,0.24,0.25
-        # 0.25,0.25,0.25,0.25), mean=0.198, stddev=0.0591]
-
-        mean_pattern = re.compile(".*deriv-avg=.*mean=([0-9\.]+).*")
-        total_mean_deriv = 0
-        num_derivs = 0
-        for line in output:
-            mat_obj = mean_pattern.search(line)
-            if mat_obj is None:
-                raise Exception("Something went wrong, unable to find "
-                                "deriv-avg in the line \n{0}".format(line))
-            mean_deriv = float(mat_obj.groups()[0])
-            total_mean_deriv += mean_deriv
-            num_derivs += 1
-        if total_mean_deriv / num_derivs < shrink_threshold:
-            return True
-    except ValueError:
-        raise Exception("Error while parsing the model info output")
-
-    return False
+        assert len(output) == 1
+        saturation = float(output[0])
+        assert saturation >= 0 and saturation <= 1
+    except:
+        raise Exception("Something went wrong, could not get "
+                        "saturation from the output '{0}' of "
+                        "get_saturation.pl on the info of "
+                        "model {1}".format(output, model_file))
+    return (saturation > shrink_saturation_threshold)
 
 
-def remove_egs(egs_dir):
+def remove_nnet_egs(egs_dir):
     common_lib.run_job("steps/nnet2/remove_egs.sh {egs_dir}".format(
                             egs_dir=egs_dir))
 
@@ -375,7 +356,7 @@ def clean_nnet_dir(nnet_dir, num_iters, egs_dir,
                    get_raw_nnet_from_am=True):
     try:
         if remove_egs:
-            remove_egs(egs_dir)
+            remove_nnet_egs(egs_dir)
 
         for iter in range(num_iters):
             remove_model(nnet_dir, iter, num_iters, None,

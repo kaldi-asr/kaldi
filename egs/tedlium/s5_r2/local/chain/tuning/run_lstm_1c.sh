@@ -1,19 +1,20 @@
 #!/bin/bash
 
 
-## how you run this (note: this assumes that the run_tdnn.sh soft link points here;
+## how you run this (note: this assumes that the run_lstm.sh soft link points here;
 ## otherwise call it directly in its location).
 # by default, with cleanup:
 # local/chain/run_tdnn.sh
 
 # without cleanup:
-# local/chain/run_tdnn.sh  --train-set train --gmm tri3 --nnet3-affix "" &
+# local/chain/run_lstm.sh  --train-set train --gmm tri3 --nnet3-affix "" &
 
-# note, if you have already run the corresponding non-chain nnet3 system
-# (local/nnet3/run_tdnn.sh), you may want to run with --stage 14.
+# note, if you have already run one of the non-chain nnet3 systems
+# (e.g. local/nnet3/run_tdnn.sh), you may want to run with --stage 14.
 
-# This script is like run_tdnn_1a.sh except it uses an xconfig-based mechanism
-# to get the configuration.
+# run_lstm_1c.sh is like run_lstm1b.sh, but using 'fast-lstm-layer' instead of
+# 'lstm-layer'.
+
 
 set -e -o pipefail
 
@@ -23,17 +24,24 @@ stage=0
 nj=30
 decode_nj=30
 min_seg_len=1.55
+chunk_left_context=40
+chunk_right_context=0
+label_delay=5
 xent_regularize=0.1
 train_set=train_cleaned
 gmm=tri3_cleaned  # the gmm for the target data
 num_threads_ubm=32
 nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
+# decode options
+extra_left_context=50
+extra_right_context=0
+frames_per_chunk=150
 
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tdnn_affix=1b  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
+lstm_affix=1c  #affix for LSTM directory, e.g. "a" or "b", in case we change the configuration.
 common_egs_dir=  # you can set this to use previously dumped egs.
 
 # End configuration section.
@@ -65,7 +73,7 @@ gmm_dir=exp/$gmm
 ali_dir=exp/${gmm}_ali_${train_set}_sp_comb
 tree_dir=exp/chain${nnet3_affix}/tree_bi${tree_affix}
 lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_comb_lats
-dir=exp/chain${nnet3_affix}/tdnn${tdnn_affix}_sp_bi
+dir=exp/chain${nnet3_affix}/lstm${lstm_affix}_sp_bi
 train_data_dir=data/${train_set}_sp_hires_comb
 lores_train_data_dir=data/${train_set}_sp_comb
 train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
@@ -121,9 +129,9 @@ if [ $stage -le 16 ]; then
       --cmd "$train_cmd" 4000 ${lores_train_data_dir} data/lang_chain $ali_dir $tree_dir
 fi
 
+
 if [ $stage -le 17 ]; then
   mkdir -p $dir
-
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
@@ -137,19 +145,15 @@ if [ $stage -le 17 ]; then
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable
   # the use of short notation for the descriptor
-  fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+  fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
-  # the first splicing is moved before the lda layer, so no splicing here
-  relu-renorm-layer name=tdnn1 dim=450
-  relu-renorm-layer name=tdnn2 input=Append(-1,0,1) dim=450
-  relu-renorm-layer name=tdnn3 input=Append(-1,0,1,2) dim=450
-  relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=450
-  relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=450
-  relu-renorm-layer name=tdnn6 input=Append(-6,-3,0) dim=450
+  # check steps/libs/nnet3/xconfig/lstm.py for the other options and defaults
+  fast-lstm-layer name=lstm1 cell-dim=512 delay=-3
+  fast-lstm-layer name=lstm2 cell-dim=512 delay=-3
+  fast-lstm-layer name=lstm3 cell-dim=512 delay=-3
 
   ## adding the layers for chain branch
-  relu-renorm-layer name=prefinal-chain input=tdnn6 dim=450 target-rms=0.5
-  output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
+  output-layer name=output input=lstm3 output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
 
   # adding the layers for xent branch
   # This block prints the configs for a separate output that will be
@@ -160,13 +164,12 @@ if [ $stage -le 17 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  relu-renorm-layer name=prefinal-xent input=tdnn6 dim=450 target-rms=0.5
-  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+  output-layer name=output-xent input=lstm3 output-delay=$label_delay dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
-
 fi
+
 
 if [ $stage -le 18 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
@@ -185,15 +188,20 @@ if [ $stage -le 18 ]; then
     --chain.lm-opts="--num-extra-lm-states=2000" \
     --egs.dir "$common_egs_dir" \
     --egs.opts "--frames-overlap-per-eg 0" \
-    --egs.chunk-width 150 \
+    --egs.chunk-width "$frames_per_chunk" \
+    --egs.chunk-left-context "$chunk_left_context" \
+    --egs.chunk-right-context "$chunk_right_context" \
     --trainer.num-chunk-per-minibatch 128 \
     --trainer.frames-per-iter 1500000 \
+    --trainer.max-param-change 2.0 \
     --trainer.num-epochs 4 \
+    --trainer.deriv-truncate-margin 10 \
+    --trainer.optimization.shrink-value 0.99 \
     --trainer.optimization.num-jobs-initial 2 \
     --trainer.optimization.num-jobs-final 12 \
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
-    --trainer.max-param-change 2.0 \
+    --trainer.optimization.momentum 0.0 \
     --cleanup.remove-egs true \
     --feat-dir $train_data_dir \
     --tree-dir $tree_dir \
@@ -216,6 +224,9 @@ if [ $stage -le 20 ]; then
       (
       steps/nnet3/decode.sh --num-threads 4 --nj $decode_nj --cmd "$decode_cmd" \
           --acwt 1.0 --post-decode-acwt 10.0 \
+          --extra-left-context $extra_left_context  \
+          --extra-right-context $extra_right_context  \
+          --frames-per-chunk "$frames_per_chunk" \
           --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${dset}_hires \
           --scoring-opts "--min-lmwt 5 " \
          $dir/graph data/${dset}_hires $dir/decode_${dset} || exit 1;

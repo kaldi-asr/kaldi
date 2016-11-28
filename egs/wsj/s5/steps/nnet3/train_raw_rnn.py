@@ -98,13 +98,17 @@ def get_args():
                         dest='shrink_value', default=0.99,
                         help="""Scaling factor used for scaling the parameter
                         matrices when the derivative averages are below the
-                        shrink-threshold at the non-linearities""")
-    parser.add_argument("--trainer.optimization.shrink-threshold", type=float,
-                        dest='shrink_threshold', default=0.15,
-                        help="""If the derivative averages are below this
+                        shrink-threshold at the non-linearities.  E.g. 0.99.
+                        Only applicable when the neural net contains sigmoid or
+                        tanh units.""")
+    parser.add_argument("--trainer.optimization.shrink-saturation-threshold", type=float,
+                        dest='shrink_saturation_threshold', default=0.40,
+                        help="""Threshold that controls when we apply the 'shrinkage'
+                        (i.e. scaling by shrink-value).  If the saturation of the
+                        sigmoid and tanh nonlinearities in the neural net (as
+                        measured by steps/nnet3/get_saturation.pl) exceeds this
                         threshold we scale the parameter matrices with the
-                        shrink-value.  It is less than 0.25 for sigmoid
-                        non-linearities.""")
+                        shrink-value.""")
     parser.add_argument("--trainer.optimization.cv-minibatch-size", type=int,
                         dest='cv_minibatch_size', default=256,
                         help="""Size of the minibatch to be used in diagnostic
@@ -372,8 +376,8 @@ def train(args, run_opts, background_process_handler):
             if args.shrink_value != 1.0:
                 shrinkage_value = (args.shrink_value
                                    if common_train_lib.do_shrinkage(
-                                        iter, model_file, "SigmoidComponent",
-                                        args.shrink_threshold,
+                                        iter, model_file,
+                                        args.shrink_saturation_threshold,
                                         get_raw_nnet_from_am=False)
                                    else 1
                                    )
