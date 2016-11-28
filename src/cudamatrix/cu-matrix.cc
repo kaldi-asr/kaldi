@@ -1756,7 +1756,6 @@ void CuMatrixBase<Real>::DiffXent(const CuArray<int32> &tgt,
   }
 }
 
-
 template<typename Real>
 void CuMatrixBase<Real>::Cholesky(CuMatrixBase<Real> *inv_cholesky) {
   KALDI_ASSERT(this->NumRows() == this->NumCols());

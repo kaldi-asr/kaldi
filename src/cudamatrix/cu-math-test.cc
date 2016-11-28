@@ -139,6 +139,40 @@ static void UnitTestCuMathSplice() {
   }
 }
 
+template<typename Real>
+static void UnitTestCuMathAddSpatialRegularizationDeriv() {
+  for (int32 j = 17; j < 1030; j++) {
+    int32 row = 1 + Rand() % 50;
+    int32 col = j;
+
+    Real Hsumsq = Real(0);
+    Matrix<Real> Hoderiv(row, col);
+    Matrix<Real> Hovalue(row, col);
+    Hoderiv.SetRandn();
+    Hovalue.SetRandn();
+
+    Real Dsumsq = Real(0);
+    CuMatrix<Real> Doderiv(Hoderiv);
+    CuMatrix<Real> Dovalue(Hovalue);
+
+    Real scale = 0.12345;
+    bool compute_sumsq = (Rand() % 2 == 1);
+
+    cu::CpuAddSpatialRegularizationDeriv(Hovalue, scale, &Hoderiv,
+                                         compute_sumsq ? &Hsumsq : NULL);
+    cu::AddSpatialRegularizationDeriv(Dovalue, scale, &Doderiv,
+                                      compute_sumsq ? &Dsumsq : NULL);
+
+//    KALDI_LOG<< "row:" <<row << "  col:" << col;
+//    KALDI_LOG<< "Hsumsq:" <<Hsumsq << "  Dsumsq:" << Dsumsq;
+//    KALDI_LOG<< "ov:" << Hovalue << "Hod:" << Hoderiv << "Dod:" << Doderiv;
+
+    Matrix<Real> Hresult(Doderiv);
+    AssertEqual(Hsumsq, Dsumsq);
+    AssertEqual(Hoderiv, Hresult);
+  }
+}
+
 template<typename Real> void CudaMathUnitTest() {
   #if HAVE_CUDA == 1  
     if (CuDevice::Instantiate().DoublePrecisionSupported())
@@ -146,6 +180,7 @@ template<typename Real> void CudaMathUnitTest() {
   UnitTestCuMathRandomize<Real>();
   UnitTestCuMathSplice<Real>();
   UnitTestCuMathCopy<Real>();
+  UnitTestCuMathAddSpatialRegularizationDeriv<Real>();
 }
 
 

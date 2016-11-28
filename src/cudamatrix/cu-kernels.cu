@@ -2630,6 +2630,312 @@ static void _diff_log_softmax(const MatrixDim in_deriv_dim,
 }
 
 
+/// This CUDA kernel implements the idea 'spatial smoothing' as described in
+/// the paper https://arxiv.org/pdf/1610.05256v1.pdf
+///
+/// It adds spatial regularization derivative to `out_deriv`.
+/// The regularization term is calculated from `out_value`.
+/// Each row of `out_value` is first viewed as a n*16 2D image,
+/// high-pass filtered by a specific 3x3 Filter kernel with 1 at the center
+/// and -1/8 elsewhere for twice, scaled with `-scale` and then added to
+/// `out_deriv`.
+/// out_deriv = out_deriv - scale * Filter (X) (Filter (X) out_value),
+/// where (x) denotes convolution operation,
+/// and Filter is the 3x3 filter kernel.
+/// If regularization_sumsq is not NULL, the partial sum of the squared
+/// regularization term will be calculated and stored to the vector
+/// `regularization_sumsq` with the arrangement of one element per thread block.
+/// The sum can be computed later with CuVectorBase::Sum().
+/// `out_deriv` has the same dimension as `out_value`, but possibly a different
+/// stride.
+///
+/// This CUDA kernel uses 2D grid. Each row of the grid handles one row of
+/// data matrices including `out_value` and `out_deriv`.
+/// Each thread block contains 256 threads.
+/// For the first convolution, the thread block handles a data area of 16x16.
+/// For the second convolution, the thread block handles a data area of 14x16.
+/// Thus we need (NumCols()+255-16*2)/(256-16*2) blocks per grid row to cover
+/// the matrix row dim.
+/// The thread block also has 2D, with a row width of 16, matching the width
+/// of the image mentioned above.
+/// The min NumCols() can be 17, so that n>=2 for the n*16 image.
+///
+/// In the circular convolution stage, each thread block handles a 14x16 area
+/// out of the whole n*16 image. So we need to cache 18x16 pixels when
+/// the size of the filter kernel is 3x3, and filter is applied twice.
+/// The extra pixels are 2x16 heading apron, and 2x16 trailing apron,
+/// as suggested in https://www.evl.uic.edu/sjames/cs525/final.html
+/// When the row dim of `out_value` is not a multiple of 16, 0s will be padded.
+///
+/// Here is an example on how a 40-D hidden activation is cached.
+/// It demonstrates everything except the multi-thread-block configuration.
+/// The cache is of the size (2+3+2)x16 :
+/// Leading apron:  17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32
+///                 33 34 35 36 37 38 39 40  0  0  0  0  0  0  0  0
+/// active data:     1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16
+///                 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32
+///                 33 34 35 36 37 38 39 40  0  0  0  0  0  0  0  0
+/// Trailing apron:  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16
+///                 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32
+template<typename Real>
+__global__
+static void _add_spatial_regularization_deriv(const Real* out_value,
+                                              const MatrixDim out_value_dim,
+                                              Real* out_deriv,
+                                              const int out_deriv_stride,
+                                              const Real scale,
+                                              Real* regularization_sumsq) {
+  const int kBlockSize = 256;
+  const int kSectWidth = 16;
+  const int kActiveSize = kBlockSize - 2 * kSectWidth;
+  __shared__ union {
+    Real buf[kBlockSize / kSectWidth + 2][kSectWidth];
+    Real sum[kBlockSize];
+  } smem;
+
+  const int i = blockIdx.y;
+  const int tid = threadIdx.y * blockDim.x + threadIdx.x;
+  const int j = blockIdx.x * kActiveSize + tid;
+  int active_rows = kActiveSize / kSectWidth;
+
+  // Cache global mem data `out_value` to shared mem
+  if (gridDim.x == 1) {
+    // out_value_dim.cols <= kActiveSize
+    Real val = Real(0);
+    if (j < out_value_dim.cols) {
+      val = out_value[i * out_value_dim.stride + j];
+    }
+    const int image_rows = (out_value_dim.cols + (kSectWidth - 1)) / kSectWidth;
+    active_rows = image_rows;
+    if (threadIdx.y < image_rows) {
+      if (threadIdx.y >= image_rows - 2) {
+        // Cache leading apron
+        smem.buf[threadIdx.y - (image_rows - 2)][threadIdx.x] = val;
+      }
+      // Cache active data
+      smem.buf[threadIdx.y + 2][threadIdx.x] = val;
+    }
+    if (threadIdx.y < 2) {
+      // Cache trailing apron
+      smem.buf[threadIdx.y + 2 + image_rows][threadIdx.x] = val;
+    }
+  } else if (gridDim.x == 2) {
+    // out_value_dim.cols <= 2*kActiveSize
+    if (blockIdx.x == 0) {
+      // First block.
+      // Cache leading apron
+      if (threadIdx.y < 2) {
+        const int image_rows = (out_value_dim.cols + (kSectWidth - 1))
+            / kSectWidth;
+        const int active_tid = out_value_dim.cols
+            - (image_rows - 2) * kSectWidth;
+        Real val = Real(0);
+        if (tid < active_tid) {
+          val = out_value[i * out_value_dim.stride
+              + (image_rows - 2) * kSectWidth + tid];
+        }
+        smem.buf[threadIdx.y][threadIdx.x] = val;
+      }
+      // Cache active data
+      if (tid < kActiveSize) {
+        smem.buf[threadIdx.y + 2][threadIdx.x] = out_value[i
+            * out_value_dim.stride + j];
+      }
+      // Cache trailing apron
+      const int last_block_rows = ((out_value_dim.cols - 1) % kActiveSize)
+          / kSectWidth + 1;
+      if (last_block_rows == 1) {
+        // first row of the trailing apron
+        Real val = Real(0);
+        if (j + kActiveSize < out_value_dim.cols) {
+          val = out_value[i * out_value_dim.stride + kActiveSize + j];
+        }
+        if (threadIdx.y < 1) {
+          smem.buf[kBlockSize / kSectWidth][threadIdx.x] = val;
+        }
+        // second row of the trailing apron
+        if (threadIdx.y < 1) {
+          smem.buf[kBlockSize / kSectWidth + 1][threadIdx.x] = out_value[i
+              * out_value_dim.stride + tid];
+        }
+      } else {
+        if (threadIdx.y < 2) {
+          Real val = Real(0);
+          if (j + kActiveSize < out_value_dim.cols) {
+            val = out_value[i * out_value_dim.stride + kActiveSize + j];
+          }
+          smem.buf[kBlockSize / kSectWidth + threadIdx.y][threadIdx.x] = val;
+        }
+      }
+    } else {
+      // Last block.
+      // Cache leading apron and active data
+      const int last_block_rows = ((out_value_dim.cols - 1) % kActiveSize)
+          / kSectWidth + 1;
+      active_rows = last_block_rows;
+      Real val = Real(0);
+      if (j < out_value_dim.cols + 2 * kSectWidth) {
+        val = out_value[i * out_value_dim.stride + j - 2 * kSectWidth];
+      }
+      if (threadIdx.y < last_block_rows + 2) {
+        smem.buf[threadIdx.y][threadIdx.x] = val;
+      }
+      // Cache trailing apron
+      if (threadIdx.y < 2) {
+        smem.buf[last_block_rows + 2 + threadIdx.y][threadIdx.x] = out_value[i
+            * out_value_dim.stride + tid];
+      }
+    }
+  } else {
+    // out_value_dim.cols > 2*kActiveSize
+    if (blockIdx.x == 0) {
+      // First block.
+      // Cache leading apron
+      if (threadIdx.y < 2) {
+        const int image_rows = (out_value_dim.cols + (kSectWidth - 1))
+            / kSectWidth;
+        const int active_tid = out_value_dim.cols
+            - (image_rows - 2) * kSectWidth;
+        Real val = Real(0);
+        if (tid < active_tid) {
+          val = out_value[i * out_value_dim.stride
+              + (image_rows - 2) * kSectWidth + tid];
+        }
+        smem.buf[threadIdx.y][threadIdx.x] = val;
+      }
+      // Cache active data and trailing apron
+      smem.buf[threadIdx.y + 2][threadIdx.x] = out_value[i
+          * out_value_dim.stride + j];
+    } else if (blockIdx.x == gridDim.x - 1) {
+      // Last block.
+      // Cache leading apron and active data
+      const int last_block_rows = ((out_value_dim.cols - 1) % kActiveSize)
+          / kSectWidth + 1;
+      active_rows = last_block_rows;
+      Real val = Real(0);
+      if (j < out_value_dim.cols + 2 * kSectWidth) {
+        val = out_value[i * out_value_dim.stride + j - 2 * kSectWidth];
+      }
+      if (threadIdx.y < last_block_rows + 2) {
+        smem.buf[threadIdx.y][threadIdx.x] = val;
+      }
+      // Cache trailing apron
+      if (threadIdx.y < 2) {
+        smem.buf[last_block_rows + 2 + threadIdx.y][threadIdx.x] = out_value[i
+            * out_value_dim.stride + tid];
+      }
+    } else if (blockIdx.x == gridDim.x - 2) {
+      // Second to last block.
+      // Cache leading apron and active data
+      smem.buf[threadIdx.y][threadIdx.x] = out_value[i * out_value_dim.stride
+          + j - 2 * kSectWidth];
+      // Cache trailing apron
+      const int last_block_rows = ((out_value_dim.cols - 1) % kActiveSize)
+          / kSectWidth + 1;
+      if (last_block_rows == 1) {
+        // first row of the trailing apron
+        Real val = Real(0);
+        if (j + kActiveSize < out_value_dim.cols) {
+          val = out_value[i * out_value_dim.stride + kActiveSize + j];
+        }
+        if (threadIdx.y < 1) {
+          smem.buf[kBlockSize / kSectWidth][threadIdx.x] = val;
+        }
+        // second row of the trailing apron
+        if (threadIdx.y < 1) {
+          smem.buf[kBlockSize / kSectWidth + 1][threadIdx.x] = out_value[i
+              * out_value_dim.stride + tid];
+        }
+      } else {
+        if (threadIdx.y < 2) {
+          Real val = Real(0);
+          if (j + kActiveSize < out_value_dim.cols) {
+            val = out_value[i * out_value_dim.stride + kActiveSize + j];
+          }
+          smem.buf[kBlockSize / kSectWidth + threadIdx.y][threadIdx.x] = val;
+        }
+      }
+    } else {
+      // Middle blocks.
+      // Cache leading apron
+      if (threadIdx.y < 2) {
+        smem.buf[threadIdx.y][threadIdx.x] = out_value[i * out_value_dim.stride
+            + j - 2 * kSectWidth];
+      }
+      // Cache active data and trailing apron
+      smem.buf[threadIdx.y + 2][threadIdx.x] = out_value[i
+          * out_value_dim.stride + j];
+    }
+  }
+  __syncthreads();
+
+  // Fist circular convolution on 16x16 area
+  const int x = threadIdx.x;
+  const int x_left = (threadIdx.x + (kSectWidth - 1)) % kSectWidth;
+  const int x_right = (threadIdx.x + 1) % kSectWidth;
+  const int y = threadIdx.y + 1;
+  const int y_up = y - 1;
+  const int y_down = y + 1;
+  Real conv1 = Real(0);
+  if (threadIdx.y < active_rows + 2) {
+    conv1 = smem.buf[y][x]
+        - Real(0.125)
+            * (smem.buf[y_up][x_left] + smem.buf[y_up][x]
+                + smem.buf[y_up][x_right] + smem.buf[y][x_left]
+                + smem.buf[y][x_right] + smem.buf[y_down][x_left]
+                + smem.buf[y_down][x] + smem.buf[y_down][x_right]);
+  }
+
+  // Second circular convolution on 14x16 area
+  __syncthreads();
+  smem.buf[y_up][x] = conv1;
+  __syncthreads();
+
+  if (threadIdx.y < active_rows && j < out_value_dim.cols) {
+    Real conv2 = smem.buf[y][x]
+        - Real(0.125)
+            * (smem.buf[y_up][x_left] + smem.buf[y_up][x]
+                + smem.buf[y_up][x_right] + smem.buf[y][x_left]
+                + smem.buf[y][x_right] + smem.buf[y_down][x_left]
+                + smem.buf[y_down][x] + smem.buf[y_down][x_right]);
+    out_deriv[i * out_deriv_stride + j] -= scale * conv2;
+  }
+
+  // compute the regularization value
+  if (regularization_sumsq) {
+    Real squared_val = Real(0);
+    if (tid >= kSectWidth && tid < kActiveSize + kSectWidth
+        && j < out_value_dim.cols + kSectWidth) {
+      squared_val = conv1 * conv1;
+    }
+    __syncthreads();
+    smem.sum[tid] = squared_val;
+    __syncthreads();
+
+    // Tree reduce to 2x warpSize elements.
+#   pragma unroll
+    for (int shift = kBlockSize / 2; shift > warpSize; shift >>= 1) {
+      if (tid < shift) {
+        smem.sum[tid] += smem.sum[tid + shift];
+      }
+      __syncthreads();
+    }
+
+    // Warp reduce to 1 element. Threads implicitly synchronized within a warp.
+    if (tid < warpSize) {
+#     pragma unroll
+      for (int shift = warpSize; shift > 0; shift >>= 1) {
+        smem.sum[tid] += smem.sum[tid + shift];
+      }
+    }
+
+    if (tid == 0) {
+      regularization_sumsq[i * gridDim.x + blockIdx.x] = smem.sum[0];
+    }
+  }
+}
+
+
 /***********************************************************************
  * ANSI-C wrappers of CUDA kernels
  */
@@ -3249,6 +3555,14 @@ void cudaF_diff_log_softmax(dim3 Gr, dim3 Bl, const MatrixDim in_deriv_dim,
                             float* in_deriv) {
   _diff_log_softmax<<<Gr, Bl>>>(in_deriv_dim, out_value, out_value_stride,
       out_deriv, out_deriv_stride, in_deriv);
+}
+
+void cudaF_add_spatial_regularization_deriv(
+    dim3 Gr, dim3 Bl, const float* out_value, const MatrixDim out_value_dim,
+    float* out_deriv, const int out_deriv_stride, const float scale,
+    float* regularization_sumsq) {
+  _add_spatial_regularization_deriv<<<Gr, Bl>>>(out_value, out_value_dim,
+      out_deriv, out_deriv_stride, scale, regularization_sumsq);
 }
 
 void cudaF_copy_col_from_mat_df(int Gr, int Bl, double* v, int col,
@@ -3878,6 +4192,14 @@ void cudaD_diff_log_softmax(dim3 Gr, dim3 Bl, const MatrixDim in_deriv_dim,
                             double* in_deriv) {
   _diff_log_softmax<<<Gr, Bl>>>(in_deriv_dim, out_value, out_value_stride,
       out_deriv, out_deriv_stride, in_deriv);
+}
+
+void cudaD_add_spatial_regularization_deriv(
+    dim3 Gr, dim3 Bl, const double* out_value, const MatrixDim out_value_dim,
+    double* out_deriv, const int out_deriv_stride, const double scale,
+    double* regularization_sumsq) {
+  _add_spatial_regularization_deriv<<<Gr, Bl>>>(out_value, out_value_dim,
+      out_deriv, out_deriv_stride, scale, regularization_sumsq);
 }
 
 void cudaD_copy_rows_from_vec(dim3 Gr, dim3 Bl, double *mat_out,

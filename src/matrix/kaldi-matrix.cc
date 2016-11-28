@@ -2782,7 +2782,6 @@ void MatrixBase<Real>::DiffTanh(const MatrixBase<Real> &value,
   }
 }
 
-
 template<typename Real>
 template<typename OtherReal>
 void MatrixBase<Real>::AddVecToRows(const Real alpha, const VectorBase<OtherReal> &v) {
