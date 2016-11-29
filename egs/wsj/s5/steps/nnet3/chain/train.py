@@ -113,6 +113,10 @@ def get_args():
                         [input] frames per job.  This option is passed to
                         get_egs.sh.  Aim for about a minute of training
                         time""")
+    parser.add_argument("--trainer.num-chunk-per-minibatch", type=int,
+                        dest='num_chunk_per_minibatch', default=512,
+                        help="Number of sequences to be processed in parallel "
+                        "every minibatch")
 
     # Parameters for the optimization
     parser.add_argument("--trainer.optimization.initial-effective-lrate",
@@ -138,24 +142,23 @@ def get_args():
                         measured by steps/nnet3/get_saturation.pl) exceeds this
                         threshold we scale the parameter matrices with the
                         shrink-value.""")
-    # RNN specific trainer options
-    parser.add_argument("--trainer.num-chunk-per-minibatch", type=int,
-                        dest='num_chunk_per_minibatch', default=512,
-                        help="Number of sequences to be processed in "
-                        "parallel every minibatch")
-    parser.add_argument("--trainer.deriv-truncate-margin", type=int, dest='deriv_truncate_margin',
-                        default = None,
-                        help="(Relevant only for recurrent models). If specified, gives the margin "
-                        "(in input frames) around the 'required' part of each chunk that the "
-                        "derivatives are backpropagated to. If unset, the derivatives are "
-                        "backpropagated all the way to the boundaries of the input data. E.g. 8 is "
-                        "a reasonable setting. Note: the 'required' part of the chunk is defined by "
-                        "the model's {left,right}-context.")
+    # RNN-specific training options
+    parser.add_argument("--trainer.deriv-truncate-margin", type=int,
+                        dest='deriv_truncate_margin', default=None,
+                        help="""(Relevant only for recurrent models). If
+                        specified, gives the margin (in input frames) around
+                        the 'required' part of each chunk that the derivatives
+                        are backpropagated to. If unset, the derivatives are
+                        backpropagated all the way to the boundaries of the
+                        input data. E.g. 8 is a reasonable setting. Note: the
+                        'required' part of the chunk is defined by the model's
+                        {left,right}-context.""")
+
     # General options
     parser.add_argument("--feat-dir", type=str, required=True,
                         help="Directory with features used for training "
                         "the neural network.")
-    parser.add_argument("--tree-dir", type=str, required = True,
+    parser.add_argument("--tree-dir", type=str, required=True,
                         help="""Directory containing the tree to use for this
                         model (we also expect final.mdl and ali.*.gz in that
                         directory""")
@@ -189,7 +192,7 @@ def process_args(args):
     if args.chunk_right_context < 0:
         raise Exception("--egs.chunk-right-context should be non-negative")
 
-    if not args.left_deriv_truncate is None:
+    if args.left_deriv_truncate is not None:
         args.deriv_truncate_margin = -args.left_deriv_truncate
         logger.warning(
             "--chain.left-deriv-truncate (deprecated) is set by user, and "
@@ -391,9 +394,10 @@ def train(args, run_opts, background_process_handler):
 
     min_deriv_time = None
     max_deriv_time = None
-    if not args.deriv_truncate_margin is None:
+    if args.deriv_truncate_margin is not None:
         min_deriv_time = -args.deriv_truncate_margin - model_left_context
-        max_deriv_time = args.chunk_width - 1 + args.deriv_truncate_margin + model_right_context
+        max_deriv_time = (args.chunk_width - 1 + args.deriv_truncate_margin
+                          + model_right_context)
 
     logger.info("Training will run for {0} epochs = "
                 "{1} iterations".format(args.num_epochs, num_iters))
