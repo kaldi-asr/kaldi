@@ -154,7 +154,7 @@ if [ $stage -le 13 ]; then
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.optimization.momentum 0.0 \
-    --trainer.deriv-truncate-margin 10 \
+    --trainer.deriv-truncate-margin 8 \
     --egs.stage $get_egs_stage \
     --egs.opts "--frames-overlap-per-eg 0" \
     --egs.chunk-width $chunk_width \
