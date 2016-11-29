@@ -4,7 +4,7 @@
 ## how you run this (note: this assumes that the run_lstm.sh soft link points here;
 ## otherwise call it directly in its location).
 # by default, with cleanup:
-# local/chain/run_tdnn.sh
+# local/chain/run_lstm.sh
 
 # without cleanup:
 # local/chain/run_lstm.sh  --train-set train --gmm tri3 --nnet3-affix "" &

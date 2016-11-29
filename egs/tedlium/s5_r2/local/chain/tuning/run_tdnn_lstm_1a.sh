@@ -1,28 +1,21 @@
 #!/bin/bash
 
 
-## how you run this (note: this assumes that the run_lstm.sh soft link points here;
+## how you run this (note: this assumes that the run_tdnn_lstm.sh soft link points here;
 ## otherwise call it directly in its location).
 # by default, with cleanup:
-# local/chain/run_lstm.sh
+# local/chain/run_tdnn_lstm.sh
 
 # without cleanup:
-# local/chain/run_lstm.sh  --train-set train --gmm tri3 --nnet3-affix "" &
+# local/chain/run_tdnn_lstm.sh  --train-set train --gmm tri3 --nnet3-affix "" &
 
 # note, if you have already run one of the non-chain nnet3 systems
 # (e.g. local/nnet3/run_tdnn.sh), you may want to run with --stage 14.
 
-
-# run_lstm_1e.sh is like run_lstm_1d.sh, but reducing non-recurrent-projection-dim
-# from 256 to 128 (fixes an earlier mistake).
-
-# run_lstm_1d.sh is like run_lstm_1c.sh, but switching back to projected
-# LSTM (LSTMP)... the configuration is like 1a, which is a little broken
-# in that its non-recurrent-projection-dim is twice the recurrent-projection-dim,
-# but it's better for comparison purposes to have it the same.
-
-# run_lstm_1c.sh is like run_lstm1b.sh, but using 'fast-lstm-layer' instead of
-# 'lstm-layer'.
+# run_tdnn_lstm_1a.sh was modified from run_lstm_1e.sh, which is a fairly
+# standard, LSTM, except that some TDNN layers were added in between the
+# LSTM layers.  I was looking at egs/ami/s5b/local/chain/tuning/run_tdnn_lstm_1i.sh, but
+# this isn't exactly copied from there.
 
 
 set -e -o pipefail
@@ -50,7 +43,7 @@ frames_per_chunk=150
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-lstm_affix=1e  #affix for LSTM directory, e.g. "a" or "b", in case we change the configuration.
+tdnn_lstm_affix=1a  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
 common_egs_dir=  # you can set this to use previously dumped egs.
 
 # End configuration section.
@@ -75,14 +68,14 @@ local/nnet3/run_ivector_common.sh --stage $stage \
                                   --train-set $train_set \
                                   --gmm $gmm \
                                   --num-threads-ubm $num_threads_ubm \
-                                  --nnet3-affix "$nnet3_affix"
+                             --nnet3-affix "$nnet3_affix"
 
 
 gmm_dir=exp/$gmm
 ali_dir=exp/${gmm}_ali_${train_set}_sp_comb
 tree_dir=exp/chain${nnet3_affix}/tree_bi${tree_affix}
 lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_comb_lats
-dir=exp/chain${nnet3_affix}/lstm${lstm_affix}_sp_bi
+dir=exp/chain${nnet3_affix}/tdnn_lstm${tdnn_lstm_affix}_sp_bi
 train_data_dir=data/${train_set}_sp_hires_comb
 lores_train_data_dir=data/${train_set}_sp_comb
 train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
@@ -156,9 +149,15 @@ if [ $stage -le 17 ]; then
   # the use of short notation for the descriptor
   fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
-  # check steps/libs/nnet3/xconfig/lstm.py for the other options and defaults
+  # the first splicing is moved before the lda layer, so no splicing here
+  relu-renorm-layer name=tdnn1 dim=512
+  relu-renorm-layer name=tdnn2 dim=512 input=Append(-1,0,1)
   fast-lstmp-layer name=lstm1 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 delay=-3
+  relu-renorm-layer name=tdnn3 dim=512 input=Append(-3,0,3)
+  relu-renorm-layer name=tdnn4 dim=512 input=Append(-3,0,3)
   fast-lstmp-layer name=lstm2 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 delay=-3
+  relu-renorm-layer name=tdnn5 dim=512 input=Append(-3,0,3)
+  relu-renorm-layer name=tdnn6 dim=512 input=Append(-3,0,3)
   fast-lstmp-layer name=lstm3 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 delay=-3
 
   ## adding the layers for chain branch

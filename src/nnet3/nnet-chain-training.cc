@@ -41,7 +41,7 @@ NnetChainTrainer::NnetChainTrainer(const NnetChainTrainingOptions &opts,
                              // natural-gradient updates.
   SetZero(is_gradient, delta_nnet_);
   const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
-  num_max_change_per_component_applied_.resize(num_updatable, 0); 
+  num_max_change_per_component_applied_.resize(num_updatable, 0);
   num_max_change_global_applied_ = 0;
 
   if (opts.nnet_config.read_cache != "") {
@@ -49,12 +49,12 @@ NnetChainTrainer::NnetChainTrainer(const NnetChainTrainingOptions &opts,
     try {
       Input ki(opts.nnet_config.read_cache, &binary);
       compiler_.ReadCache(ki.Stream(), binary);
-      KALDI_LOG << "Read computation cache from " << opts.nnet_config.write_cache;
+      KALDI_LOG << "Read computation cache from " << opts.nnet_config.read_cache;
     } catch (...) {
       KALDI_WARN << "Could not open cached computation. "
                     "Probably this is the first training iteration.";
     }
-  } 
+  }
 }
 
 
@@ -186,7 +186,7 @@ void NnetChainTrainer::UpdateParamsWithMaxChange() {
         component_name_with_min_scale = delta_nnet_->GetComponentName(c);
         max_change_with_min_scale = max_param_change_per_comp;
       }
-      param_delta_squared += std::pow(scale_factors(i), 
+      param_delta_squared += std::pow(scale_factors(i),
                                       static_cast<BaseFloat>(2.0)) * dot_prod;
       i++;
     }
@@ -217,7 +217,7 @@ void NnetChainTrainer::UpdateParamsWithMaxChange() {
            << " / " << num_updatable << " Updatable Components."
            << "(smallest factor=" << min_scale << " on "
            << component_name_with_min_scale
-           << " with max-change=" << max_change_with_min_scale <<"). "; 
+           << " with max-change=" << max_change_with_min_scale <<"). ";
     if (param_delta > nnet_config.max_param_change)
       ostr << "Global max-change factor was "
            << nnet_config.max_param_change / param_delta
@@ -273,7 +273,7 @@ NnetChainTrainer::~NnetChainTrainer() {
     Output ko(opts_.nnet_config.write_cache, opts_.nnet_config.binary_write_cache);
     compiler_.WriteCache(ko.Stream(), opts_.nnet_config.binary_write_cache);
     KALDI_LOG << "Wrote computation cache to " << opts_.nnet_config.write_cache;
-  } 
+  }
   delete delta_nnet_;
 }
 
