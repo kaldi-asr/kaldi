@@ -163,8 +163,8 @@ def process_args(args):
         raise Exception("--egs.chunk-right-context should be non-negative")
 
     if args.num_bptt_steps is not None:
-        # -2 is used to compensate for the splicing of the input frame, assuming
-        # that splicing spans from -2 to 2
+        # -2 is used to compensate for the splicing of the input frame,
+        # assuming that splicing spans from -2 to 2
         args.deriv_truncate_margin = args.num_bptt_steps - args.chunk_width - 2
         logger.warning(
             "--trainer.rnn.num-bptt-steps (deprecated) is set by user, and "
