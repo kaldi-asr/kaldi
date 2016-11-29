@@ -139,9 +139,7 @@ def get_args():
                         threshold we scale the parameter matrices with the
                         shrink-value.""")
     # RNN specific trainer options
-    parser.add_argument("--trainer.num-chunk-per-minibatch",
-                        "--trainer.rnn.num-chunk-per-minibatch",
-                        type=int,
+    parser.add_argument("--trainer.num-chunk-per-minibatch", type=int,
                         dest='num_chunk_per_minibatch', default=512,
                         help="Number of sequences to be processed in "
                         "parallel every minibatch")
@@ -153,7 +151,6 @@ def get_args():
                         "backpropagated all the way to the boundaries of the input data. E.g. 8 is "
                         "a reasonable setting. Note: the 'required' part of the chunk is defined by "
                         "the model's {left,right}-context.")
-
     # General options
     parser.add_argument("--feat-dir", type=str, required=True,
                         help="Directory with features used for training "
