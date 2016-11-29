@@ -28,7 +28,7 @@ nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
 tdnn_affix=  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
-common_egs_dir=  # you can set this to use previously dumped egs.
+common_egs_dir= #exp/chain/tdnn_sp_bi/egs  # you can set this to use previously dumped egs.
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
