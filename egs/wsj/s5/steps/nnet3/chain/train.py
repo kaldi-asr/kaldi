@@ -222,10 +222,12 @@ def GetArgs():
                         help="Number of sequences to be processed in parallel every minibatch" )
     parser.add_argument("--trainer.deriv-truncate-margin", type=int, dest='deriv_truncate_margin',
                         default = None,
-                        help="If specified, it is the number of frames that the derivative will be backpropagated through the chunk boundaries, "
-                        "e.g., During BLSTM model training if the chunk-width=150 and deriv-truncate-margin=5, then the derivative will be "
-                        "backpropagated up to t=-5 and t=154 in the forward and backward LSTM sequence respectively; "
-                        "otherwise, the derivative will be backpropagated to the end of the sequence.")
+                        help="(Relevant only for recurrent models). If specified, gives the margin "
+                        "(in input frames) around the 'required' part of each chunk that the "
+                        "derivatives are backpropagated to. If unset, the derivatives are "
+                        "backpropagated all the way to the boundaries of the input data. E.g. 8 is "
+                        "a reasonable setting. Note: the 'required' part of the chunk is defined by "
+                        "the model's {left,right}-context.")
 
     # General options
     parser.add_argument("--stage", type=int, default=-4,
@@ -675,8 +677,8 @@ def Train(args, run_opts):
     min_deriv_time = None
     max_deriv_time = None
     if not args.deriv_truncate_margin is None:
-        min_deriv_time = -args.deriv_truncate_margin
-        max_deriv_time = args.chunk_width - 1 + args.deriv_truncate_margin
+        min_deriv_time = -args.deriv_truncate_margin - model_left_context
+        max_deriv_time = args.chunk_width - 1 + args.deriv_truncate_margin + model_right_context
 
     logger.info("Training will run for {0} epochs = {1} iterations".format(args.num_epochs, num_iters))
     for iter in range(num_iters):
