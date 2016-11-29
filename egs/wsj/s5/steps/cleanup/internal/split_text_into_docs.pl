@@ -1,0 +1,46 @@
+#! /usr/bin/perl
+
+use warnings;
+use strict;
+
+my $max_words = 1000;
+if (scalar @ARGV > 0 and $ARGV[0] eq "--max-words") {
+  shift @ARGV;
+  $max_words = shift @ARGV;
+}
+
+if (scalar @ARGV != 3) {
+  print STDERR "Usage: steps/cleanup/internal/split_text_into_docs.pl [--max-words <int>] text doc2text docs\n";
+  exit (1);
+}
+
+sub min ($$) { $_[$_[0] > $_[1]] }
+
+open TEXT, $ARGV[0] or die "$0: Could not open file $ARGV[0] for reading\n";
+open DOC2TEXT, ">", $ARGV[1] or die "$0: Could not open file $ARGV[1] for writing\n";
+open DOCS, ">", $ARGV[2] or die "$0: Could not open file $ARGV[2] for writing\n";
+
+while (<TEXT>) {
+  chomp;
+  my @F = split;
+  my $utt = shift @F;
+  my $num_words = scalar @F;
+
+  if ($num_words  <= $max_words) {
+    print DOCS "$_\n";
+    print DOC2TEXT "$utt $utt\n";
+    next;
+  }
+
+  my $num_docs = int($num_words / $max_words) + 1;
+  my $words_per_doc = int($num_words / $num_docs) + 1;
+
+  #print STDERR ("$utt num-words=$num_words num-docs=$num_docs words-per-doc=$words_per_doc\n");
+  
+  for (my $i = 0; $i < $num_docs; $i++) {
+    my $st = $i*$words_per_doc;
+    my $end = min(($i+1) * $words_per_doc, $num_words) - 1;
+    print DOCS ("$utt-$i " . join(" ", @F[$st..$end]) . "\n");
+    print DOC2TEXT "$utt-$i $utt\n";
+  }
+}
