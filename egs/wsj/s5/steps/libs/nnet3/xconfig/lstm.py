@@ -23,7 +23,10 @@ from libs.nnet3.xconfig.utils import XconfigParserError as xparser_error
 #   input='[-1]'             [Descriptor giving the input of the layer.]
 #   cell-dim=-1              [Dimension of the cell]
 #   delay=-1                 [Delay in the recurrent connections of the LSTM ]
-#   clipping-threshold=30    [nnet3 LSTMs use a gradient clipping component at the recurrent connections. This is the threshold used to decide if clipping has to be activated ]
+#   clipping-threshold=30    [nnet3 LSTMs use a gradient clipping component at the recurrent connections.
+#                             This is the threshold used to decide if clipping has to be activated ]
+#   zeroing-interval=20      [interval at which we (possibly) zero out the recurrent derivatives.]
+#   zeroing-threshold=20     [We only zero out the derivs every zeroing-interval, if derivs exceed this value.]
 #   self_repair_scale_nonlinearity=1e-5      [It is a constant scaling the self-repair vector computed in derived classes of NonlinearComponent]
 #                                       i.e.,  SigmoidComponent, TanhComponent and RectifiedLinearComponent ]
 #   ng-per-element-scale-options=''     [Additional options used for the diagonal matrices in the LSTM ]
@@ -216,10 +219,14 @@ class XconfigLstmLayer(XconfigLayerBase):
 # Parameters of the class, and their defaults:
 #   input='[-1]'             [Descriptor giving the input of the layer.]
 #   cell-dim=-1            [Dimension of the cell]
-#   recurrent_projection_dim [Dimension of the projection used in recurrent connections]
-#   non_recurrent_projection_dim        [Dimension of the projection in non-recurrent connections]
+#   recurrent-projection_dim [Dimension of the projection used in recurrent connections, e.g. cell-dim/4]
+#   non-recurrent-projection-dim   [Dimension of the projection in non-recurrent connections,
+#                                   in addition to recurrent-projection-dim, e.g. cell-dim/4]
 #   delay=-1                 [Delay in the recurrent connections of the LSTM ]
-#   clipping-threshold=30    [nnet3 LSTMs use a gradient clipping component at the recurrent connections. This is the threshold used to decide if clipping has to be activated ]
+#   clipping-threshold=30    [nnet3 LSTMs use a gradient clipping component at the recurrent connections.
+#                             This is the threshold used to decide if clipping has to be activated ]
+#   zeroing-interval=20      [interval at which we (possibly) zero out the recurrent derivatives.]
+#   zeroing-threshold=20     [We only zero out the derivs every zeroing-interval, if derivs exceed this value.]
 #   self_repair_scale_nonlinearity=1e-5      [It is a constant scaling the self-repair vector computed in derived classes of NonlinearComponent]
 #                                       i.e.,  SigmoidComponent, TanhComponent and RectifiedLinearComponent ]
 #   ng-per-element-scale-options=''   [Additional options used for the diagonal matrices in the LSTM ]
@@ -254,7 +261,7 @@ class XconfigLstmpLayer(XconfigLayerBase):
 
         if self.config['non-recurrent-projection-dim'] <= 0:
             self.config['non-recurrent-projection-dim'] = \
-               self.config['recurrent-projection-dim'])
+               self.config['recurrent-projection-dim']
 
     def check_configs(self):
         for key in ['cell-dim', 'recurrent-projection-dim',
@@ -558,11 +565,13 @@ class XconfigLstmpcLayer(XconfigLstmpLayer):
 #   input='[-1]'             [Descriptor giving the input of the layer.]
 #   cell-dim=-1              [Dimension of the cell]
 #   delay=-1                 [Delay in the recurrent connections of the LSTM ]
-#   clipping-threshold=30    [nnet3 LSTMs use a gradient clipping component at the recurrent connections. This is the threshold used to decide if clipping has to be activated ]
-#   self_repair_scale_nonlinearity=1e-5      [It is a constant scaling the self-repair vector computed in derived classes of NonlinearComponent]
-#                                       i.e.,  SigmoidComponent, TanhComponent and RectifiedLinearComponent ]
-#   ng-per-element-scale-options=''     [Additional options used for the diagonal matrices in the LSTM ]
-#   ng-affine-options=''                [Additional options used for the full matrices in the LSTM, can be used to do things like set biases to initialize to 1]
+#   clipping-threshold=30    [nnet3 LSTMs use a gradient clipping component at the recurrent connections.
+#                             This is the threshold used to decide if clipping has to be activated ]
+#   zeroing-interval=20      [interval at which we (possibly) zero out the recurrent derivatives.]
+#   zeroing-threshold=20     [We only zero out the derivs every zeroing-interval, if derivs exceed this value.]
+#   lstm-nonlinearity-options=' max-change=0.75 '  [Options string to pass into the LSTM nonlinearity component.]
+#   ng-affine-options=' max-change=1.5 '           [Additional options used for the full matrices in the LSTM, can be used to
+#                                      do things like set biases to initialize to 1]
 class XconfigFastLstmLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
         assert first_token == "fast-lstm-layer"
@@ -572,6 +581,8 @@ class XconfigFastLstmLayer(XconfigLayerBase):
         self.config = {'input':'[-1]',
                         'cell-dim' : -1, # this is a compulsory argument
                         'clipping-threshold' : 30.0,
+                        'zeroing-interval' : 20,
+                        'zeroing-threshold' : 3.0,
                         'delay' : -1,
                         # if you want to set 'self-repair-scale' (c.f. the
                         # self-repair-scale-nonlinearity config value in older LSTM layers), you can
@@ -580,9 +591,7 @@ class XconfigFastLstmLayer(XconfigLayerBase):
                         'lstm-nonlinearity-options' : ' max-change=0.75',
                         # the affine layer contains 4 of our old layers -> use a
                         # larger max-change than the normal value of 0.75.
-                        'ng-affine-options' : ' max-change=1.5',
-                        'zeroing-interval' : 20,
-                        'zeroing-threshold' : 3.0
+                        'ng-affine-options' : ' max-change=1.5'
                         }
         self.c_needed = False  # keep track of whether the 'c' output is needed.
 
@@ -703,15 +712,20 @@ class XconfigFastLstmLayer(XconfigLayerBase):
 # Parameters of the class, and their defaults:
 #   input='[-1]'             [Descriptor giving the input of the layer.]
 #   cell-dim=-1              [Dimension of the cell]
+#   recurrent-projection_dim [Dimension of the projection used in recurrent connections, e.g. cell-dim/4]
+#   non-recurrent-projection-dim   [Dimension of the projection in non-recurrent connections,
+#                                   in addition to recurrent-projection-dim, e.g. cell-dim/4]
 #   delay=-1                 [Delay in the recurrent connections of the LSTM ]
-#   clipping-threshold=30    [nnet3 LSTMs use a gradient clipping component at the recurrent connections. This is the threshold used to decide if clipping has to be activated ]
-#   self_repair_scale_nonlinearity=1e-5      [It is a constant scaling the self-repair vector computed in derived classes of NonlinearComponent]
-#                                       i.e.,  SigmoidComponent, TanhComponent and RectifiedLinearComponent ]
-#   ng-per-element-scale-options=''     [Additional options used for the diagonal matrices in the LSTM ]
-#   ng-affine-options=''                [Additional options used for the full matrices in the LSTM, can be used to do things like set biases to initialize to 1]
+#   clipping-threshold=30    [nnet3 LSTMs use a gradient clipping component at the recurrent connections.
+#                             This is the threshold used to decide if clipping has to be activated ]
+#   zeroing-interval=20      [interval at which we (possibly) zero out the recurrent derivatives.]
+#   zeroing-threshold=20     [We only zero out the derivs every zeroing-interval, if derivs exceed this value.]
+#   lstm-nonlinearity-options=' max-change=0.75 '  [Options string to pass into the LSTM nonlinearity component.]
+#   ng-affine-options=' max-change=1.5 '           [Additional options used for the full matrices in the LSTM, can be used to
+#                                      do things like set biases to initialize to 1]
 class XconfigFastLstmpLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
-        assert first_token == "fast-lstm-layer"
+        assert first_token == "fast-lstmp-layer"
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
@@ -742,7 +756,7 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
 
         if self.config['non-recurrent-projection-dim'] <= 0:
             self.config['non-recurrent-projection-dim'] = \
-               self.config['recurrent-projection-dim'])
+               self.config['recurrent-projection-dim']
 
     def check_configs(self):
         for key in ['cell-dim', 'recurrent-projection-dim',
@@ -762,7 +776,7 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
         return ['c_t']
 
     def output_name(self, auxiliary_output = None):
-        node_name = 'm'
+        node_name = 'rp'
         if auxiliary_output is not None:
             if auxiliary_output in self.auxiliary_outputs():
                 node_name = auxiliary_output
@@ -856,7 +870,7 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
         configs.append("# and r back together to truncate them but it probably");
         configs.append("# makes the deriv truncation more accurate .")
         configs.append("component-node name={0}.cr_trunc component={0}.cr_trunc "
-                       "input=Append({0}.c, {0}.r")
+                       "input=Append({0}.c, {0}.r)".format(name))
         configs.append("dim-range-node name={0}.c_trunc input-node={0}.cr_trunc "
                        "dim-offset=0 dim={1}".format(name, cell_dim))
         configs.append("dim-range-node name={0}.r_trunc input-node={0}.cr_trunc "
