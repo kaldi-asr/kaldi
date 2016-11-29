@@ -83,6 +83,14 @@ class AffineSampleLogSoftmaxComponent: public LmUpdatableComponent {
 //                         const SparseMatrix<BaseFloat> &in,
 //                         CuMatrixBase<BaseFloat> *out) const;
 
+void Backprop(int k,
+             const vector<vector<int> > &indexes,
+             const MatrixBase<BaseFloat> &in_value,
+             const MatrixBase<BaseFloat> &, // out_value
+             const vector<vector<BaseFloat> > &out_deriv,
+             AffineSampleLogSoftmaxComponent *to_update_in,
+             MatrixBase<BaseFloat> *in_deriv) const;
+
   virtual void Backprop(const std::string &debug_info,
                         const ComponentPrecomputedIndexes *indexes,
                         const MatrixBase<BaseFloat> &in_value,

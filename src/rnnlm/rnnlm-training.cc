@@ -179,7 +179,7 @@ void LmNnetTrainer::ProcessOutputs(const NnetExample &eg,
       ComputeObjectiveFunctionSample(unigram_, io.features, obj_type, io.name,
                                supply_deriv, computer,
                                &tot_weight, &tot_objf,
-                               NULL,
+                               NULL, // TODO(hxu)
 //                               dynamic_cast<AffineSampleLogSoftmaxComponent*>(nnet_->O()),
                                &new_output_, delta_nnet_);
 
@@ -347,8 +347,38 @@ void LmNnetTrainer::ComputeObjectiveFunctionSample(
   for (int i = 0; i < k; i++) {
     *tot_objf += out[i][k];
     for (int j = 0; j < k; j++) {
-      *tot_objf -= exp(out[i][k]);
+      *tot_objf -= exp(out[i][k]) / unigram[indexes[i][j]];
     }
+  }
+
+  if (supply_deriv && nnet != NULL) {
+    // the derivative on the real output
+    vector<vector<BaseFloat> > output_deriv(k);
+
+    for (int i = 0; i < k; i++) {
+      output_deriv[i].resize(k + 1);
+      for (int j = 0; j < k; j++) {
+        output_deriv[i][j] = -exp(out[i][j]);
+      }
+      output_deriv[i][k] = 1;
+    }
+
+    // the derivative after the affine layer (before the nonlin)
+
+    // the derivative of the 'nnet3' part
+    Matrix<BaseFloat> input_deriv(new_output->NumRows(),
+                                    output_0_gpu.NumCols(),
+                                    kSetZero);
+
+    Matrix<BaseFloat> place_holder;
+    output_projection->Backprop(k, indexes, output_0, place_holder,
+                                output_deriv, NULL, // TODO(hxu)  nnet->output_projection_,
+                                &input_deriv);
+
+
+    CuMatrix<BaseFloat> cu_input_deriv(input_deriv);
+
+    computer->AcceptOutputDeriv(output_name, &cu_input_deriv);
   }
 
 

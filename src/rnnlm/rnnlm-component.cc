@@ -143,22 +143,6 @@ void AffineSampleLogSoftmaxComponent::InitFromConfig(ConfigLine *cfl) {
     KALDI_ERR << "Bad initializer " << cfl->WholeLine();
 }
 
-// this function will most likely not be used
-void AffineSampleLogSoftmaxComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
-                                const MatrixBase<BaseFloat> &in,
-                                 MatrixBase<BaseFloat> *out) const {
-  KALDI_ASSERT(false);
-
-  // No need for asserts as they'll happen within the matrix operations.
-  out->CopyRowsFromVec(bias_params_); // copies bias_params_ to each row
-  // of *out.
-  out->AddMatMat(1.0, in, kNoTrans, linear_params_, kTrans, 1.0);
-
-  for(MatrixIndexT r = 0; r < out->NumRows(); r++) {                           
-    out->Row(r).ApplyLogSoftMax();                                                
-  }    
-}
-
 void AffineSampleLogSoftmaxComponent::Propagate(const MatrixBase<BaseFloat> &in,
                                                 const vector<vector<int> > &indexes,
                                                 vector<vector<BaseFloat> > *out) const {
@@ -187,6 +171,67 @@ void AffineSampleLogSoftmaxComponent::Propagate(const MatrixBase<BaseFloat> &in,
 //
 //  }
 //}
+
+// this function will most likely not be used
+void AffineSampleLogSoftmaxComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+                                const MatrixBase<BaseFloat> &in,
+                                 MatrixBase<BaseFloat> *out) const {
+  KALDI_ASSERT(false);
+
+  // No need for asserts as they'll happen within the matrix operations.
+  out->CopyRowsFromVec(bias_params_); // copies bias_params_ to each row
+  // of *out.
+  out->AddMatMat(1.0, in, kNoTrans, linear_params_, kTrans, 1.0);
+
+  for(MatrixIndexT r = 0; r < out->NumRows(); r++) {                           
+    out->Row(r).ApplyLogSoftMax();                                                
+  }    
+}
+
+void AffineSampleLogSoftmaxComponent::Backprop(int k,
+                               const vector<vector<int> > &indexes,
+                               const MatrixBase<BaseFloat> &in_value,
+                               const MatrixBase<BaseFloat> &, // out_value
+                               const vector<vector<BaseFloat> > &output_deriv,
+                               AffineSampleLogSoftmaxComponent *to_update,
+                               MatrixBase<BaseFloat> *input_deriv) const {
+
+  if (input_deriv != NULL) {
+    for (int i = 0; i < k; i++) {
+      for (int j = 0; j < k + 1; j++) {
+        int index = indexes[i][j];
+        // index'th row of linear_params
+        for (int m = 0; m < linear_params_.NumCols(); m++) {
+          (*input_deriv)(i, m) += output_deriv[i][j] * linear_params_(index, m);
+        }
+      }
+    }
+  }
+
+  if (to_update != NULL) {
+//    if (to_update->is_gradient_)
+//      to_update->UpdateSimple(in_value, out_deriv);
+//    else  // the call below is to a virtual function that may be re-implemented
+//      to_update->Update(debug_info, in_value, out_deriv);  // by child classes.
+    for (int i = 0; i < k; i++) {
+      for (int j = 0; j < k + 1; j++) {
+        int index = indexes[i][j];
+        // index'th row of linear_params
+        for (int m = 0; m < linear_params_.NumCols(); m++) {
+          to_update->bias_params_(index) += output_deriv[i][j] * learning_rate_;
+
+          to_update->linear_params_(index, m) += learning_rate_ * output_deriv[i][j] * in_value(i, index);
+
+//          (*input_deriv)(i, m) += output_deriv[i][j] * linear_params_(index, m);
+        }
+      }
+    }
+
+  }
+
+
+
+}
 
 void AffineSampleLogSoftmaxComponent::UpdateSimple(const MatrixBase<BaseFloat> &in_value,
                                    const MatrixBase<BaseFloat> &out_deriv) {
