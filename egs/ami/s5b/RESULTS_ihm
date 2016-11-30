@@ -76,3 +76,8 @@ for d in exp/ihm/chain/tdnn_sp_bi/decode_*; do grep Sum $d/*sc*/*ys | utils/best
 %WER 21.5 | 13098 94486 | 81.8 11.0 7.2 3.3 21.5 54.6 | 0.090 | exp/ihm/chain_cleaned_rvb/tdnn_sp_rvb_bi/decode_dev/ascore_10/dev_hires.ctm.filt.sys
 %WER 21.9 | 12643 89985 | 80.8 12.3 6.9 2.7 21.9 52.5 | 0.183 | exp/ihm/chain_cleaned_rvb/tdnn_sp_rvb_bi/decode_eval/ascore_10/eval_hires.ctm.filt.sys
 
+
+# local/chain/tuning/run_tdnn_lstm_1i.sh --mic ihm  --train-set train_cleaned  --gmm tri3_cleaned
+# cleanup + chain TDNN+LSTM model
+%WER 20.8 | 13098 94489 | 82.0 10.0 8.0 2.8 20.8 53.2 | -0.096 | exp/ihm/chain_cleaned/tdnn_lstm1i_sp_bi_ld5/decode_dev/ascore_11/dev_hires.ctm.filt.sys
+%WER 20.7 | 12643 89980 | 81.7 11.5 6.8 2.5 20.7 51.8 | 0.015 | exp/ihm/chain_cleaned/tdnn_lstm1i_sp_bi_ld5/decode_eval/ascore_11/eval_hires.ctm.filt.sys

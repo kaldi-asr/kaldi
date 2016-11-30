@@ -1,11 +1,23 @@
 #!/bin/bash
 
+
+#System                  tdnn_7h   tdnn_7j
+#WER on train_dev(tg)      13.84     14.15
+#WER on train_dev(fg)      12.84     12.96
+#WER on eval2000(tg)        16.5      16.8
+#WER on eval2000(fg)        14.8      15.1
+#Final train prob     -0.0889771-0.0910883
+#Final valid prob      -0.113102 -0.112464
+#Final train prob (xent)       -1.2533  -1.31768
+#Final valid prob (xent)      -1.36743  -1.41603
+
+
 set -e
 
 # configs for 'chain'
 affix=
-stage=13
-train_stage=4
+stage=12
+train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
 dir=exp/chain/tdnn_7j  # Note: _sp will get added to this if $speed_perturb == true.

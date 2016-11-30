@@ -88,4 +88,8 @@
 %WER 42.7 | 14070 89982 | 60.9 21.0 18.0 3.6 42.7 64.5 | 0.571 | exp/sdm1/chain_cleaned_rvb/tdnn_sp_rvb_bi_ihmali/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
 
 
-
+# local/chain/tuning/run_tdnn_lstm_1i.sh --mic sdm1 --use-ihm-ali true --train-set train_cleaned  --gmm tri3_cleaned
+# cleanup + chain TDNN model, SDM audio + alignments from ihm data.
+# *** best system ***
+%WER 37.6 | 15122 94495 | 66.1 18.7 15.1 3.7 37.6 63.2 | 0.646 | exp/sdm1/chain_cleaned/tdnn_lstm1i_sp_bi_ihmali_ld5/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys
+%WER 40.9 | 13807 89961 | 62.4 20.0 17.6 3.3 40.9 65.7 | 0.612 | exp/sdm1/chain_cleaned/tdnn_lstm1i_sp_bi_ihmali_ld5/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys
