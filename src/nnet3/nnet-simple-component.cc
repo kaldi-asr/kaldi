@@ -566,7 +566,7 @@ void SigmoidComponent::RepairGradients(
   sign_mat.Add(-1.0);
 
   repair_mat.ApplyPowAbs(1.0);
-  repair_mat.Add(-margin_threshold * 2.0); // as out_value was also scaled by 2
+  repair_mat.Add(-(1.0 - margin_threshold * 2.0)); // as out_value was also scaled by 2
   CuMatrix<BaseFloat> mask(out_value.NumRows(), out_value.NumCols());
   mask.Heaviside(repair_mat);
   to_update->num_dims_self_repaired_ += mask.Sum();
@@ -974,10 +974,10 @@ void TanhComponent::RepairGradients(
   sign_mat.Add(-1.0);
 
   // repair_mat =
-  // floor(abs(out_value) - margin_threshold, 0) .* sign(out_value)
+  // floor(abs(out_value) - (1 - margin_threshold), 0) .* sign(out_value)
   CuMatrix<BaseFloat> repair_mat(out_value);
   repair_mat.ApplyPowAbs(1.0);
-  repair_mat.Add(-margin_threshold);
+  repair_mat.Add(-(1.0 - margin_threshold));
   CuMatrix<BaseFloat> mask(out_value.NumRows(), out_value.NumCols());
   mask.Heaviside(repair_mat);
   to_update->num_dims_self_repaired_ += mask.Sum();
