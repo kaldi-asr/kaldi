@@ -1,5 +1,22 @@
 #!/bin/bash
 
+# run_lstm_1a.sh is a first attempt at an LSTM system, based on xconfigs-- it's
+# probably not very well configured, e.g. the num-params might be too small.
+# recurrent-projection-dim is less than non-recurrent-projection-dim due to an
+# oversight.
+
+# comparison with TDNN system (WER is worse):
+# local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn1b_sp_bi exp/chain_cleaned/lstm1a_sp_bi
+# System                tdnn1b_sp_bi lstm1a_sp_bi
+# WER on dev(orig)          10.2       10.8
+# WER on dev(rescored)       9.6       10.2
+# WER on test(orig)           9.7      10.0
+# WER on test(rescored)       9.2      9.6
+# Final train prob        -0.0928   -0.0848
+# Final valid prob        -0.1178   -0.1098
+# Final train prob (xent)   -1.4666   -1.1692
+# Final valid prob (xent)   -1.5473   -1.2520
+
 
 ## how you run this (note: this assumes that the run_lstm.sh soft link points here;
 ## otherwise call it directly in its location).

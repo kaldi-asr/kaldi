@@ -1,6 +1,26 @@
 #!/bin/bash
 
 
+# run_lstm_1c.sh is like run_lstm_1b.sh but changing from the old LSTM
+# implementation to our new 'fast' LSTM layer.  The xconfig changes from
+# 'lstm-layer' to 'fast-lstm-layer'.  It's as good as or maybe slightly better
+# than the old setup.
+
+# steps/info/chain_dir_info.pl exp/chain_cleaned/lstm1c_sp_bi
+# exp/chain_cleaned/lstm1c_sp_bi: num-iters=253 nj=2..12 num-params=9.6M dim=40+100->3607 combine=-0.09->-0.09 xent:train/valid[167,252,final]=(-1.26,-1.14,-1.14/-1.34,-1.27,-1.27) logprob:train/valid[167,252,final]=(-0.092,-0.078,-0.078/-0.116,-0.111,-0.111)
+
+
+# local/chain/compare_wer_general.sh exp/chain_cleaned/lstm1b_sp_bi exp/chain_cleaned/lstm1c_sp_bi
+# System                lstm1b_sp_bi lstm1c_sp_bi
+# WER on dev(orig)          11.3      11.2
+# WER on dev(rescored)      10.7      10.5
+# WER on test(orig)          10.6      10.6
+# WER on test(rescored)      10.0      10.1
+# Final train prob        -0.0787   -0.0777
+# Final valid prob        -0.1104   -0.1108
+# Final train prob (xent)   -1.1442   -1.1445
+# Final valid prob (xent)   -1.2782   -1.2692
+
 ## how you run this (note: this assumes that the run_lstm.sh soft link points here;
 ## otherwise call it directly in its location).
 # by default, with cleanup:
@@ -11,10 +31,6 @@
 
 # note, if you have already run one of the non-chain nnet3 systems
 # (e.g. local/nnet3/run_tdnn.sh), you may want to run with --stage 14.
-
-# run_lstm_1c.sh is like run_lstm1b.sh, but using 'fast-lstm-layer' instead of
-# 'lstm-layer'.
-
 
 set -e -o pipefail
 

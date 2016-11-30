@@ -1,6 +1,37 @@
 #!/bin/bash
 
 
+# run_lstm_1d.sh is like run_lstm_1c.sh, but switching back to projected
+# LSTM (LSTMP)... the configuration is the same 1a (but unlike 1a it uses
+# the fast lstm layer).  Note: 1a and 1d are a little broken
+# in that their non-recurrent-projection-dim are twice the recurrent-projection-dim,
+# but it's better for comparison purposes to have this the same as 1a.
+
+# As you can see, compared to 1a, 1d is 0.3% to 0.5% better absolute;
+# this comes with the upgrade to 'fast' LSTM.  There were differences to how
+# the gradient truncation is done, maybe that's it; also there are
+# other differences, like how the update of the diagonal matrices
+# are done, and the integration of 4 matrix multiplies into one which
+# will affect the natural gradient.  Anyway, we're not complaining.
+
+
+# steps/info/chain_dir_info.pl exp/chain_cleaned/lstm1d_sp_bi
+# exp/chain_cleaned/lstm1d_sp_bi: num-iters=253 nj=2..12 num-params=6.4M dim=40+100->3607 combine=-0.09->-0.09 xent:train/valid[167,252,final]=(-1.21,-1.13,-1.13/-1.29,-1.22,-1.23) logprob:train/valid[167,252,final]=(-0.092,-0.083,-0.081/-0.114,-0.105,-0.105)
+
+# local/chain/compare_wer_general.sh exp/chain_cleaned/lstm1a_sp_bi exp/chain_cleaned/lstm1c_sp_bi exp/chain_cleaned/lstm1d_sp_bi
+# System                lstm1a_sp_bi lstm1c_sp_bi lstm1d_sp_bi
+# WER on dev(orig)         10.8       11.2      10.3
+# WER on dev(rescored)     10.2       10.5       9.8
+# WER on test(orig)        10.0        10.6       9.7
+# WER on test(rescored)     9.6        10.1       9.2
+# Final train prob        -0.0848   -0.0777   -0.0812
+# Final valid prob        -0.1098   -0.1108   -0.1049
+# Final train prob (xent)   -1.1692   -1.1445   -1.1334
+# Final valid prob (xent)   -1.2520   -1.2692   -1.2263
+
+
+
+
 ## how you run this (note: this assumes that the run_lstm.sh soft link points here;
 ## otherwise call it directly in its location).
 # by default, with cleanup:
@@ -12,13 +43,6 @@
 # note, if you have already run one of the non-chain nnet3 systems
 # (e.g. local/nnet3/run_tdnn.sh), you may want to run with --stage 14.
 
-# run_lstm_1d.sh is like run_lstm_1c.sh, but switching back to projected
-# LSTM (LSTMP)... the configuration is like 1a, which is a little broken
-# in that its non-recurrent-projection-dim is twice the recurrent-projection-dim,
-# but it's better for comparison purposes to have it the same.
-
-# run_lstm_1c.sh is like run_lstm1b.sh, but using 'fast-lstm-layer' instead of
-# 'lstm-layer'.
 
 
 set -e -o pipefail

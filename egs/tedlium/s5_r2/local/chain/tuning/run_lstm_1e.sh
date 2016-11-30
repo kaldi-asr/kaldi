@@ -1,6 +1,27 @@
 #!/bin/bash
 
 
+# run_lstm_1e.sh is like run_lstm_1d.sh, but reducing non-recurrent-projection-dim
+# from 256 to 128 (fixes an earlier mistake).
+# However, this doesn't improve WER results-- see below.  Probably the system
+# has too few parameters.  Anyway we probably won't tune this further
+# as LSTMs by themselves aren't expected to perform that well:
+# see run_tdnn_lstm_1a.sh and others in that sequence.
+
+# steps/info/chain_dir_info.pl exp/chain_cleaned/lstm1e_sp_bi
+# exp/chain_cleaned/lstm1e_sp_bi: num-iters=253 nj=2..12 num-params=4.7M dim=40+100->3607 combine=-0.10->-0.10 xent:train/valid[167,252,final]=(-1.25,-1.16,-1.18/-1.29,-1.23,-1.24) logprob:train/valid[167,252,final]=(-0.097,-0.087,-0.086/-0.113,-0.105,-0.105)
+
+# local/chain/compare_wer_general.sh exp/chain_cleaned/lstm1d_sp_bi exp/chain_cleaned/lstm1e_sp_bi
+# System                lstm1d_sp_bi lstm1e_sp_bi
+# WER on dev(orig)          10.3      10.7
+# WER on dev(rescored)       9.8      10.1
+# WER on test(orig)           9.7       9.8
+# WER on test(rescored)       9.2       9.4
+# Final train prob        -0.0812   -0.0862
+# Final valid prob        -0.1049   -0.1047
+# Final train prob (xent)   -1.1334   -1.1763
+# Final valid prob (xent)   -1.2263   -1.2427
+
 ## how you run this (note: this assumes that the run_lstm.sh soft link points here;
 ## otherwise call it directly in its location).
 # by default, with cleanup:
@@ -12,17 +33,6 @@
 # note, if you have already run one of the non-chain nnet3 systems
 # (e.g. local/nnet3/run_tdnn.sh), you may want to run with --stage 14.
 
-
-# run_lstm_1e.sh is like run_lstm_1d.sh, but reducing non-recurrent-projection-dim
-# from 256 to 128 (fixes an earlier mistake).
-
-# run_lstm_1d.sh is like run_lstm_1c.sh, but switching back to projected
-# LSTM (LSTMP)... the configuration is like 1a, which is a little broken
-# in that its non-recurrent-projection-dim is twice the recurrent-projection-dim,
-# but it's better for comparison purposes to have it the same.
-
-# run_lstm_1c.sh is like run_lstm1b.sh, but using 'fast-lstm-layer' instead of
-# 'lstm-layer'.
 
 
 set -e -o pipefail

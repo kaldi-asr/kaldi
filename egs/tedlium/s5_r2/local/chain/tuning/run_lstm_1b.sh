@@ -1,5 +1,26 @@
 #!/bin/bash
 
+# run_lstm_1b.sh is as run_lstm_1a.sh but replacing the projected LSTM
+# with a regular LSTM.  This is done in order to have an LSTM-only baseline
+# for the 'fast lstm', where we need to test the regular as well as projected
+# LSTM layers.
+
+# It's worse than the LSTMP, as expected, due to more overtraining.
+
+# steps/info/chain_dir_info.pl exp/chain_cleaned/lstm1b_sp_bi
+# exp/chain_cleaned/lstm1b_sp_bi: num-iters=253 nj=2..12 num-params=9.6M dim=40+100->3607 combine=-0.09->-0.09 xent:train/valid[167,252,final]=(-1.24,-1.14,-1.14/-1.35,-1.28,-1.28) logprob:train/valid[167,252,final]=(-0.092,-0.079,-0.079/-0.119,-0.110,-0.110)
+
+# local/chain/compare_wer_general.sh exp/chain_cleaned/lstm1a_sp_bi exp/chain_cleaned/lstm1b_sp_bi
+# System                lstm1a_sp_bi lstm1b_sp_bi
+# WER on dev(orig)         10.8       11.3
+# WER on dev(rescored)     10.2       10.7
+# WER on test(orig)        10.0       10.6
+# WER on test(rescored)     9.6       10.0
+# Final train prob        -0.0848   -0.0787
+# Final valid prob        -0.1098   -0.1104
+# Final train prob (xent)   -1.1692   -1.1442
+# Final valid prob (xent)   -1.2520   -1.2782
+
 
 ## how you run this (note: this assumes that the run_lstm.sh soft link points here;
 ## otherwise call it directly in its location).
@@ -11,9 +32,6 @@
 
 # note, if you have already run one of the non-chain nnet3 systems
 # (e.g. local/nnet3/run_tdnn.sh), you may want to run with --stage 14.
-
-# run_lstm_1b.sh is like run_lstm_1a.sh, but using a regular LSTM, not LSTMP,
-# layer, as a closer baseline for the 'fast' LSTM layer.
 
 
 set -e -o pipefail

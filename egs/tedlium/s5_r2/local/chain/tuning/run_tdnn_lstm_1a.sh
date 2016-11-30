@@ -1,6 +1,25 @@
 #!/bin/bash
 
 
+# steps/info/chain_dir_info.pl exp/chain_cleaned/tdnn_lstm1a_sp_bi
+# exp/chain_cleaned/tdnn_lstm1a_sp_bi: num-iters=253 nj=2..12 num-params=9.5M dim=40+100->3607 combine=-0.07->-0.07 xent:train/valid[167,252,final]=(-0.960,-0.859,-0.852/-1.05,-0.999,-0.997) logprob:train/valid[167,252,final]=(-0.076,-0.064,-0.062/-0.099,-0.092,-0.091)
+
+# This is as run_lstm1e.sh except adding TDNN layers in between; also comparing below
+# with run_lstm1d.sh which had a larger non-recurrent-projection-dim and which had
+# better results.  Note: these results are not with the updated LM (the LM data-prep
+# for this setup was changed in Nov 2016 but this was with an older directory).
+#
+# local/chain/compare_wer_general.sh exp/chain_cleaned/lstm1d_sp_bi exp/chain_cleaned/lstm1e_sp_bi exp/chain_cleaned/tdnn_lstm1a_sp_bi
+# System                lstm1d_sp_bi lstm1e_sp_bi tdnn_lstm1a_sp_bi
+# WER on dev(orig)          10.3      10.7       9.7
+# WER on dev(rescored)       9.8      10.1       9.3
+# WER on test(orig)           9.7       9.8       9.1
+# WER on test(rescored)       9.2       9.4       8.7
+# Final train prob        -0.0812   -0.0862   -0.0625
+# Final valid prob        -0.1049   -0.1047   -0.0910
+# Final train prob (xent)   -1.1334   -1.1763   -0.8518
+# Final valid prob (xent)   -1.2263   -1.2427   -0.9972
+
 ## how you run this (note: this assumes that the run_tdnn_lstm.sh soft link points here;
 ## otherwise call it directly in its location).
 # by default, with cleanup:

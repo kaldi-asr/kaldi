@@ -1,5 +1,21 @@
 #!/bin/bash
 
+# run_tdnn_1b.sh is like run_tdnn_1a.sh but upgrading to xconfig-based
+# config generation.
+
+# Results (11/29/2016, note, this build is is before the upgrade of the LM
+#   done in Nov 2016):
+# local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn_sp_bi exp/chain_cleaned/tdnn1b_sp_bi
+# System                tdnn_sp_bi tdnn1b_sp_bi
+# WER on dev(orig)          10.3      10.2
+# WER on dev(rescored)       9.8       9.6
+# WER on test(orig)           9.8       9.7
+# WER on test(rescored)       9.3       9.2
+# Final train prob        -0.0918   -0.0928
+# Final valid prob        -0.1190   -0.1178
+# Final train prob (xent)   -1.3572   -1.4666
+# Final valid prob (xent)   -1.4415   -1.5473
+
 
 ## how you run this (note: this assumes that the run_tdnn.sh soft link points here;
 ## otherwise call it directly in its location).
