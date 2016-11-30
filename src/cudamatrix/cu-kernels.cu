@@ -30,14 +30,6 @@
 
 
 
-inline __device__ static float max_generic(float a, float b) {
-  return fmaxf(a, b);
-}
-
-inline __device__ static double max_generic(double a, double b) {
-  return fmax(a, b);
-}
-
 /***********************************************************************
  * Generic __device__ functions
  */
@@ -389,7 +381,7 @@ static void _max(Real* mat, const Real* A, MatrixDim dst_d, int src_stride) {
   int32_cuda dst_index = i + j * dst_d.stride, src_index = i + j * src_stride;
   if (i < dst_d.cols && j < dst_d.rows) {
     Real a = mat[dst_index], b = A[src_index];
-    mat[dst_index] = max_generic(a, b);
+    mat[dst_index] = fmax(a, b);
   }
 }
 
@@ -1257,7 +1249,7 @@ struct TransReduceOp<MAX, Real> {
   }
   __forceinline__
   __device__ Real Reduce(const Real& a, const Real& b) const {
-    return max_generic(a, b);
+    return fmax(a, b);
   }
   __forceinline__
   __device__ Real PostReduce(const Real& x, const Real& output) const {
@@ -1297,7 +1289,7 @@ struct TransReduceOp<LINFNORM, Real> {
   }
   __forceinline__
   __device__ Real Reduce(const Real& a, const Real& b) const {
-    return max_generic(a, b);
+    return fmax(a, b);
   }
   __forceinline__
   __device__ Real PostReduce(const Real& x, const Real& output) const {
@@ -2164,7 +2156,7 @@ static void _softmax_reduce(Real*y, const Real*x, MatrixDim d, int src_stride) {
   // reduce to CU1DBLOCK elements per row.
   Real tmax = sizeof(Real) == sizeof(float) ? -CUDART_INF_F : -CUDART_INF;
   for (int j = tid; j < d.cols; j += CU1DBLOCK) {
-    tmax = max_generic(tmax, x[x_start + j]);
+    tmax = fmax(tmax, x[x_start + j]);
   }
   smem[tid] = tmax;
   __syncthreads();
@@ -2173,7 +2165,7 @@ static void _softmax_reduce(Real*y, const Real*x, MatrixDim d, int src_stride) {
 # pragma unroll
   for (int shift = CU1DBLOCK / 2; shift > warpSize; shift >>= 1) {
     if (tid < shift) {
-      smem[tid] = max_generic(smem[tid], smem[tid + shift]);
+      smem[tid] = fmax(smem[tid], smem[tid + shift]);
     }
     __syncthreads();
   }
@@ -2182,7 +2174,7 @@ static void _softmax_reduce(Real*y, const Real*x, MatrixDim d, int src_stride) {
   if (tid < warpSize) {
 #   pragma unroll
     for (int shift = warpSize; shift > 0; shift >>= 1) {
-      smem[tid] = max_generic(smem[tid], smem[tid + shift]);
+      smem[tid] = fmax(smem[tid], smem[tid + shift]);
     }
   }
 
@@ -2277,7 +2269,7 @@ static void _normalize_per_row(Real *y, int y_stride, const Real *x,
   const Real kSquaredNormFloor = 1.35525271560688e-20; // 2^-66
   if (tid == 0) {
     ssum[0] = sqrt(
-        max_generic(ssum[0] / (target_rms * target_rms * x_d.cols), kSquaredNormFloor));
+        fmax(ssum[0] / (target_rms * target_rms * x_d.cols), kSquaredNormFloor));
   }
 
   // Broadcast floored stddev to all threads.
@@ -2320,7 +2312,7 @@ static void _log_softmax_reduce(Real* y, const Real* x, MatrixDim y_dim,
   // reduce to CU1DBLOCK elements per row.
   Real tmax = -1e20;
   for (int j = tid; j < y_dim.cols; j += CU1DBLOCK) {
-    tmax = max_generic(tmax, x[x_start + j]);
+    tmax = fmax(tmax, x[x_start + j]);
   }
   smem[tid] = tmax;
   __syncthreads();
@@ -2329,7 +2321,7 @@ static void _log_softmax_reduce(Real* y, const Real* x, MatrixDim y_dim,
 # pragma unroll
   for (int shift = CU1DBLOCK / 2; shift > warpSize; shift >>= 1) {
     if (tid < shift) {
-      smem[tid] = max_generic(smem[tid], smem[tid + shift]);
+      smem[tid] = fmax(smem[tid], smem[tid + shift]);
     }
     __syncthreads();
   }
@@ -2337,7 +2329,7 @@ static void _log_softmax_reduce(Real* y, const Real* x, MatrixDim y_dim,
   // reduce to 1 element per row
   if (tid < warpSize) {
     for (int shift = warpSize; shift > 0; shift >>= 1) {
-      smem[tid] = max_generic(smem[tid], smem[tid + shift]);
+      smem[tid] = fmax(smem[tid], smem[tid + shift]);
     }
   }
 

@@ -246,7 +246,12 @@ template<typename Real>
 void NormalizePerRow(const CuMatrixBase<Real>& in, const Real target_rms,
                      const bool add_log_stddev, CuMatrixBase<Real>* out) {
   const Real kSquaredNormFloor = 1.35525271560688e-20; // 2^-66
-  KALDI_ASSERT(SameDim(in, *out));
+  if (add_log_stddev) {
+    KALDI_ASSERT(in.NumRows() == out->NumRows());
+    KALDI_ASSERT(in.NumCols() + 1 == out->NumCols());
+  } else {
+    KALDI_ASSERT(SameDim(in, *out));
+  }
 
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
