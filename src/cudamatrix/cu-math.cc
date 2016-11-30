@@ -29,15 +29,15 @@ namespace kaldi {
 namespace cu {
 
 /*
- * templated functions wrapping the ANSI-C CUDA kernel functions 
+ * templated functions wrapping the ANSI-C CUDA kernel functions
  */
 
 
 template<typename Real>
 void RegularizeL1(CuMatrixBase<Real> *weight, CuMatrixBase<Real> *grad, Real l1, Real lr) {
   KALDI_ASSERT(SameDim(*weight, *grad));
-#if HAVE_CUDA == 1 
-  if (CuDevice::Instantiate().Enabled()) { 
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
 
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
@@ -46,7 +46,7 @@ void RegularizeL1(CuMatrixBase<Real> *weight, CuMatrixBase<Real> *grad, Real l1,
     cuda_regularize_l1(dimGrid, dimBlock, weight->Data(), grad->Data(), l1, lr,
                        weight->Dim(), grad->Stride());
     CU_SAFE_CALL(cudaGetLastError());
-    
+
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
   #endif
@@ -55,11 +55,11 @@ void RegularizeL1(CuMatrixBase<Real> *weight, CuMatrixBase<Real> *grad, Real l1,
     MatrixBase<Real> &grad2 = grad->Mat();
     for(MatrixIndexT r=0; r<weight2.NumRows(); r++) {
       for(MatrixIndexT c=0; c<weight2.NumCols(); c++) {
-        
+
         if(weight2(r,c)==0.0) continue; // skip L1 if zero weightght!
 
         Real l1_signed = l1;
-        if (weight2(r, c) < 0.0) 
+        if (weight2(r, c) < 0.0)
           l1_signed = -l1;
 
         Real before = weight2(r, c);
@@ -88,16 +88,16 @@ void Randomize(const CuMatrixBase<Real> &src,
   #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    
+
     /*
-    Note: default 16x16 block-size limits the --cachesize to matrix size 16*65535 x 16*65535 
+    Note: default 16x16 block-size limits the --cachesize to matrix size 16*65535 x 16*65535
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(tgt->NumCols(), CU2DBLOCK), n_blocks(copy_from_idx.Dim(), CU2DBLOCK));
     */
 
     /*
      * Let's use blocksize 4 x 128 (512 threads/block)
-     * and extend the randomizable matrices to: col 4*65535, row 128*65535 
+     * and extend the randomizable matrices to: col 4*65535, row 128*65535
      * (ie. max-cols:262140 (dim), max-rows:8388480 (datapoints))
      */
     dim3 dimBlock(4, 128);
@@ -111,7 +111,7 @@ void Randomize(const CuMatrixBase<Real> &src,
     cuda_randomize(dimGrid, dimBlock, tgt->Data(), src.Data(),
                    copy_from_idx.Data(), dimtgt, dimsrc);
     CU_SAFE_CALL(cudaGetLastError());
-    
+
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
   #endif
@@ -124,28 +124,28 @@ void Randomize(const CuMatrixBase<Real> &src,
       tgtmat.Row(i).CopyFromVec(srcmat.Row(copy_from_idxvec[i]));
     }
   }
-} 
+}
 
 
 
 template<typename Real>
 void Splice(const CuMatrixBase<Real> &src, const CuArray<int32> &frame_offsets,
             CuMatrixBase<Real> *tgt) {
-  
+
   KALDI_ASSERT(src.NumCols()*frame_offsets.Dim() == tgt->NumCols());
   KALDI_ASSERT(src.NumRows() == tgt->NumRows());
 
   #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    
+
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(tgt->NumCols(), CU2DBLOCK), n_blocks(tgt->NumRows(), CU2DBLOCK));
-    
+
     cuda_splice(dimGrid, dimBlock, tgt->Data(), src.Data(),
                 frame_offsets.Data(), tgt->Dim(), src.Dim());
     CU_SAFE_CALL(cudaGetLastError());
-    
+
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
   #endif
@@ -171,7 +171,7 @@ void Splice(const CuMatrixBase<Real> &src, const CuArray<int32> &frame_offsets,
 
 template<typename Real>
 void Copy(const CuMatrixBase<Real> &src, const CuArray<int32> &copy_from_indices,
-          CuMatrixBase<Real> *tgt) { 
+          CuMatrixBase<Real> *tgt) {
 
   KALDI_ASSERT(copy_from_indices.Dim() == tgt->NumCols());
   KALDI_ASSERT(src.NumRows() == tgt->NumRows());
@@ -179,14 +179,14 @@ void Copy(const CuMatrixBase<Real> &src, const CuArray<int32> &copy_from_indices
   #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    
+
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(tgt->NumCols(), CU2DBLOCK), n_blocks(tgt->NumRows(), CU2DBLOCK));
-    
+
     cuda_copy(dimGrid, dimBlock, tgt->Data(), src.Data(),
               copy_from_indices.Data(), tgt->Dim(), src.Dim());
     CU_SAFE_CALL(cudaGetLastError());
-    
+
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
   #endif
@@ -233,9 +233,65 @@ void Randomize(const CuMatrixBase<double> &src,
                const CuArray<int32> &copy_from_idx,
                CuMatrixBase<double> *tgt);
 
+// The output y_i = scale * x_i,
+// and we want to RMS value of the y_i to equal target_rms,
+// so y^t y = D * target_rms^2 (if y is one row of the input).
+// we need to have scale = 1.0 / sqrt(x^t x / (D * target_rms^2)).
+// there is also flooring involved, to avoid division-by-zero
+// problems.  It's important for the backprop, that the floor's
+// square root is exactly representable as float.
+// If add_log_stddev_ is true, log(max(epsi, sqrt(x^t x / D)))
+// is an extra dimension of the output.
+template<typename Real>
+void NormalizePerRow(const CuMatrixBase<Real>& in, const Real target_rms,
+                     const bool add_log_stddev, CuMatrixBase<Real>* out) {
+  const Real kSquaredNormFloor = 1.35525271560688e-20; // 2^-66
+  if (add_log_stddev) {
+    KALDI_ASSERT(in.NumRows() == out->NumRows());
+    KALDI_ASSERT(in.NumCols() + 1 == out->NumCols());
+  } else {
+    KALDI_ASSERT(SameDim(in, *out));
+  }
+
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    size_t dimBlock = CU1DBLOCK;
+    size_t dimGrid = out->NumRows();
+    cuda_normalize_per_row(dimGrid, dimBlock, out->Data(), out->Stride(),
+                           in.Data(), in.Dim(), target_rms, add_log_stddev);
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    CuSubMatrix<Real> out_no_log(*out, 0, out->NumRows(), 0, in.NumCols());
+    if (in.Data() != out_no_log.Data())
+      out_no_log.CopyFromMat(in);
+    CuVector<Real> in_norm(in.NumRows());
+    Real d_scaled = in.NumCols() * target_rms * target_rms;
+    in_norm.AddDiagMat2(1.0 / d_scaled, in, kNoTrans, 0.0);
+    in_norm.ApplyFloor(kSquaredNormFloor);
+    in_norm.ApplyPow(-0.5);
+    out_no_log.MulRowsVec(in_norm);
+    if (add_log_stddev) {
+      in_norm.ApplyLog();
+      in_norm.Scale(-1.0);
+      in_norm.Add(log(target_rms));
+      out->CopyColFromVec(in_norm, in.NumCols());
+    }
+  }
+}
+
+template
+void NormalizePerRow(const CuMatrixBase<float>& in, const float target_rms,
+                     const bool add_log_stddev, CuMatrixBase<float>* out);
+template
+void NormalizePerRow(const CuMatrixBase<double>& in, const double target_rms,
+                     const bool add_log_stddev, CuMatrixBase<double>* out);
+
 
 
 } //namespace cu
 
 } //namespace kaldi
-

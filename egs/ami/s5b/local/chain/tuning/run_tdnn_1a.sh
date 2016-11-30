@@ -1,25 +1,32 @@
 #!/bin/bash
 
+# This is a chain-training script with TDNN neural networks.
+# Please see RESULTS_* for examples of command lines invoking this script.
 
-# by default, with cleanup:
-# local/chain/run_tdnn.sh
 
-# without cleanup:
-# local/chain/run_tdnn.sh  --train-set train --gmm tri3 --nnet3-affix "" &
+# local/nnet3/run_tdnn.sh --stage 8 --use-ihm-ali true --mic sdm1 # rerunning with biphone
+# local/nnet3/run_tdnn.sh --stage 8 --use-ihm-ali false --mic sdm1
 
-# note, if you have already run the corresponding non-chain nnet3 system
-# (local/nnet3/run_tdnn.sh), you may want to run with --stage 14.
+# local/chain/run_tdnn.sh --use-ihm-ali true --mic sdm1 --train-set train --gmm tri3 --nnet3-affix "" --stage 12 &
+
+# local/chain/run_tdnn.sh --use-ihm-ali true --mic mdm8 --stage 12 &
+# local/chain/run_tdnn.sh --use-ihm-ali true --mic mdm8 --train-set train --gmm tri3 --nnet3-affix "" --stage 12 &
+
+# local/chain/run_tdnn.sh --mic sdm1 --use-ihm-ali true --train-set train_cleaned  --gmm tri3_cleaned&
+
 
 set -e -o pipefail
 
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).
 stage=0
+mic=ihm
 nj=30
-decode_nj=30
 min_seg_len=1.55
+use_ihm_ali=false
 train_set=train_cleaned
 gmm=tri3_cleaned  # the gmm for the target data
+ihm_gmm=tri3  # the gmm for the IHM system (if --use-ihm-ali true).
 num_threads_ubm=32
 nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
 
@@ -28,7 +35,7 @@ nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
 tdnn_affix=  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
-common_egs_dir= #exp/chain/tdnn_sp_bi/egs  # you can set this to use previously dumped egs.
+common_egs_dir=  # you can set this to use previously dumped egs.
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -47,6 +54,7 @@ EOF
 fi
 
 local/nnet3/run_ivector_common.sh --stage $stage \
+                                  --mic $mic \
                                   --nj $nj \
                                   --min-seg-len $min_seg_len \
                                   --train-set $train_set \
@@ -54,23 +62,58 @@ local/nnet3/run_ivector_common.sh --stage $stage \
                                   --num-threads-ubm $num_threads_ubm \
                                   --nnet3-affix "$nnet3_affix"
 
+# Note: the first stage of the following script is stage 8.
+local/nnet3/prepare_lores_feats.sh --stage $stage \
+                                   --mic $mic \
+                                   --nj $nj \
+                                   --min-seg-len $min_seg_len \
+                                   --use-ihm-ali $use_ihm_ali \
+                                   --train-set $train_set
 
-gmm_dir=exp/$gmm
-ali_dir=exp/${gmm}_ali_${train_set}_sp_comb
-tree_dir=exp/chain${nnet3_affix}/tree_bi${tree_affix}
-lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_comb_lats
-dir=exp/chain${nnet3_affix}/tdnn${tdnn_affix}_sp_bi
-train_data_dir=data/${train_set}_sp_hires_comb
-lores_train_data_dir=data/${train_set}_sp_comb
-train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
+if $use_ihm_ali; then
+  gmm_dir=exp/ihm/${ihm_gmm}
+  ali_dir=exp/${mic}/${ihm_gmm}_ali_${train_set}_sp_comb_ihmdata
+  lores_train_data_dir=data/$mic/${train_set}_ihmdata_sp_comb
+  tree_dir=exp/$mic/chain${nnet3_affix}/tree_bi${tree_affix}_ihmdata
+  lat_dir=exp/$mic/chain${nnet3_affix}/${gmm}_${train_set}_sp_comb_lats_ihmdata
+  dir=exp/$mic/chain${nnet3_affix}/tdnn${tdnn_affix}_sp_bi_ihmali
+  # note: the distinction between when we use the 'ihmdata' suffix versus
+  # 'ihmali' is pretty arbitrary.
+else
+  gmm_dir=exp/${mic}/$gmm
+  ali_dir=exp/${mic}/${gmm}_ali_${train_set}_sp_comb
+  lores_train_data_dir=data/$mic/${train_set}_sp_comb
+  tree_dir=exp/$mic/chain${nnet3_affix}/tree_bi${tree_affix}
+  lat_dir=exp/$mic/chain${nnet3_affix}/${gmm}_${train_set}_sp_comb_lats
+  dir=exp/$mic/chain${nnet3_affix}/tdnn${tdnn_affix}_sp_bi
+fi
+
+train_data_dir=data/$mic/${train_set}_sp_hires_comb
+train_ivector_dir=exp/$mic/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
+final_lm=`cat data/local/lm/final_lm`
+LM=$final_lm.pr1-7
 
 
-for f in $gmm_dir/final.mdl $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
-    $lores_train_data_dir/feats.scp $ali_dir/ali.1.gz $gmm_dir/final.mdl; do
+for f in $gmm_dir/final.mdl $lores_train_data_dir/feats.scp \
+   $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
 
-if [ $stage -le 14 ]; then
+
+if [ $stage -le 11 ]; then
+  if [ -f $ali_dir/ali.1.gz ]; then
+    echo "$0: alignments in $ali_dir appear to already exist.  Please either remove them "
+    echo " ... or use a later --stage option."
+    exit 1
+  fi
+  echo "$0: aligning perturbed, short-segment-combined ${maybe_ihm}data"
+  steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
+     ${lores_train_data_dir} data/lang $gmm_dir $ali_dir
+fi
+
+[ ! -f $ali_dir/ali.1.gz ] && echo  "$0: expected $ali_dir/ali.1.gz to exist" && exit 1
+
+if [ $stage -le 12 ]; then
   echo "$0: creating lang directory with one state per phone."
   # Create a version of the lang/ directory that has one state per phone in the
   # topo file. [note, it really has two states.. the first one is only repeated
@@ -93,7 +136,7 @@ if [ $stage -le 14 ]; then
   fi
 fi
 
-if [ $stage -le 15 ]; then
+if [ $stage -le 13 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
   steps/align_fmllr_lats.sh --nj 100 --cmd "$train_cmd" ${lores_train_data_dir} \
@@ -101,7 +144,7 @@ if [ $stage -le 15 ]; then
   rm $lat_dir/fsts.*.gz # save space
 fi
 
-if [ $stage -le 16 ]; then
+if [ $stage -le 14 ]; then
   # Build a tree using our new topology.  We know we have alignments for the
   # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
   # those.
@@ -112,17 +155,17 @@ if [ $stage -le 16 ]; then
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --context-opts "--context-width=2 --central-position=1" \
       --leftmost-questions-truncate -1 \
-      --cmd "$train_cmd" 4000 ${lores_train_data_dir} data/lang_chain $ali_dir $tree_dir
+      --cmd "$train_cmd" 4200 ${lores_train_data_dir} data/lang_chain $ali_dir $tree_dir
 fi
 
-if [ $stage -le 17 ]; then
+if [ $stage -le 15 ]; then
   mkdir -p $dir
 
   echo "$0: creating neural net configs";
 
   steps/nnet3/tdnn/make_configs.py \
     --self-repair-scale-nonlinearity 0.00001 \
-    --feat-dir data/${train_set}_sp_hires_comb \
+    --feat-dir data/$mic/${train_set}_sp_hires_comb \
     --ivector-dir $train_ivector_dir \
     --tree-dir $tree_dir \
     --relu-dim 450 \
@@ -135,11 +178,13 @@ if [ $stage -le 17 ]; then
    $dir/configs || exit 1;
 fi
 
-if [ $stage -le 18 ]; then
+if [ $stage -le 16 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/ami-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
+     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/ami-$(date +'%m_%d_%H_%M')/s5b/$dir/egs/storage $dir/egs/storage
   fi
+
+ touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train.py --stage $train_stage \
     --cmd "$decode_cmd" \
@@ -169,26 +214,24 @@ if [ $stage -le 18 ]; then
 fi
 
 
-
-if [ $stage -le 19 ]; then
+graph_dir=$dir/graph_${LM}
+if [ $stage -le 17 ]; then
   # Note: it might appear that this data/lang_chain directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --left-biphone --self-loop-scale 1.0 data/lang $dir $dir/graph
+  utils/mkgraph.sh --left-biphone --self-loop-scale 1.0 data/lang_${LM} $dir $graph_dir
 fi
 
-if [ $stage -le 20 ]; then
+if [ $stage -le 18 ]; then
   rm $dir/.error 2>/dev/null || true
-  for dset in dev test; do
+  for decode_set in dev eval; do
       (
-      steps/nnet3/decode.sh --num-threads 4 --nj $decode_nj --cmd "$decode_cmd" \
-          --acwt 1.0 --post-decode-acwt 10.0 \
-          --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${dset}_hires \
+      steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
+          --nj $nj --cmd "$decode_cmd" \
+          --online-ivector-dir exp/$mic/nnet3${nnet3_affix}/ivectors_${decode_set}_hires \
           --scoring-opts "--min-lmwt 5 " \
-         $dir/graph data/${dset}_hires $dir/decode_${dset} || exit 1;
-      steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" data/lang data/lang_rescore \
-        data/${dset}_hires ${dir}/decode_${dset} ${dir}/decode_${dset}_rescore || exit 1
-    ) || touch $dir/.error &
+         $graph_dir data/$mic/${decode_set}_hires $dir/decode_${decode_set} || exit 1;
+      ) || touch $dir/.error &
   done
   wait
   if [ -f $dir/.error ]; then
