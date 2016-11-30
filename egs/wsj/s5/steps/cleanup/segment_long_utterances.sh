@@ -15,7 +15,12 @@ set -u
 max_segment_duration=30
 overlap_duration=5
 
+graph_opts=
+nj=4
+lmwt=10
+
 # TF-IDF similarity search options
+max_words=1000
 num_neighbors_to_search=2
 neighbor_tfidf_threshold=0
 
@@ -47,7 +52,8 @@ data=$3
 out_data=$4
 dir=$5
 
-for f in $data/feats.scp; do
+for f in $data/feats.scp $data/cmvn.scp $srcdir/tree \
+  $srcdir/final.mdl $srcdir/cmvn_opts; do
   if [ ! -f $f ]; then
     echo "$0: Could not find file $f"
     exit 1
@@ -88,8 +94,23 @@ if [ $stage -le 1 ]; then
   #  utils/int2sym.pl -f 2 $data/utt2label > $dir/uniform_sub_segments
 
   awk '{print $1" "$2}' $dir/uniform_sub_segments > $dir/new2old_utts
+fi
 
+if [ $stage -le 2 ]; then
   utils/data/subsegment_data_dir.sh $data $dir/uniform_sub_segments $data_uniform_seg
+
+  utils/data/get_reco2num_frames.sh --frame-shift 0.01 --frame-overlap 0.015 \
+    $data
+
+  awk '{print $1" "$2}' $data_uniform_seg/segments | \
+    utils/apply_map.pl -f 2 $data/reco2num_frames > \
+    $data_uniform_seg/utt2max_frames
+
+  utils/data/get_subsegment_feats.sh $data/feats.scp 0.01 0.015 \
+    $dir/uniform_sub_segments | \
+    utils/data/fix_subsegmented_feats.pl $data_uniform_seg/utt2max_frames > \
+    $data_uniform_seg/feats.scp 
+
   # Map the original text file to the uniform segments,
   # even though the segments don't actually correspond to the whole text. 
   # This is ok because this text file is actually used to train the biased
@@ -98,18 +119,38 @@ if [ $stage -le 1 ]; then
     utils/apply_map.pl -f 2 $data/text > $data_uniform_seg/text
 fi
 
-if [ $stage -le 2 ]; then
+cp $data/cmvn.scp $data_uniform_seg/
+
+if [ $stage -le 3 ]; then
   echo "$0: Building biased-language-model decoding graphs..."
+
+  graph_dir=$dir/graphs
+  mkdir -p $graph_dir
+
+  cp $srcdir/final.mdl $graph_dir
+  cp $srcdir/tree $graph_dir
+  cp $srcdir/cmvn_opts $graph_dir
+  cp $srcdir/{splice_opts,delta_opts,final.mat,final.alimdl} $graph_dir 2>/dev/null || true
+
+  utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt
+  cp $lang/phones.txt $graph_dir
+
   steps/cleanup/make_biased_lm_graphs.sh $graph_opts \
     --nj $nj --cmd "$cmd" \
-     $data $lang $dir/graphs
+     $data $lang $graph_dir
+
   cat $dir/uniform_sub_segments | awk '{print $1" "$2}' | \
-    utils/apply_map.pl -f 2 $dir/graphs/HCLG.fsts.scp > $dir/HCLG.fsts.scp
+    utils/apply_map.pl -f 2 $graph_dir/HCLG.fsts.scp > $dir/HCLG.fsts.scp
+  cp $graph_dir/words.txt $dir
+  [ -f $graph_dir/num_pdfs ] && cp $graph_dir/num_pdfs $dir
 fi
 
 beam=15.0
 
-if [ $stage -le 3 ]; then
+decode_dir=$dir/lats
+mkdir -p $decode_dir
+
+if [ $stage -le 4 ]; then
   echo "$0: Decoding with biased language models..."
   transform_opt=
   if [ -f $srcdir/trans.1 ]; then
@@ -117,19 +158,29 @@ if [ $stage -le 3 ]; then
     # this data, and we use them.
     transform_opt="--transform-dir $srcdir"
   fi
+  
+  cp $srcdir/final.mdl $decode_dir
+  cp $srcdir/tree $decode_dir
+  cp $srcdir/cmvn_opts $decode_dir
+  cp $srcdir/{splice_opts,delta_opts,final.mat,final.alimdl} $decode_dir 2>/dev/null || true
+
+  utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt
+  cp $lang/phones.txt $decode_dir
+
   steps/cleanup/decode_segmentation.sh \
     --beam $beam --nj $nj --cmd "$cmd --mem 4G" $transform_opt \
     --skip-scoring true --allow-partial false \
-    $dir $data_uniform_seg $dir/lats
+    $dir $data_uniform_seg $decode_dir
 fi
 
-if [ $stage -le 4 ]; then
+if [ $stage -le 5 ]; then
   steps/cleanup/internal/get_ctm.sh \
     --lmwt $lmwt --cmd "$cmd --mem 4G" \
     $data_uniform_seg $lang $dir/lats
 fi
 
-if [ $stage -le 5 ]; then
+if [ $stage -le 6 ]; then
+  mkdir -p $dir/docs
   # Split the original text into documents, over which we can do 
   # searching reasonably efficiently.
   # Since the Smith-Waterman alignment is linear in the length of the 
@@ -137,8 +188,8 @@ if [ $stage -le 5 ]; then
   # relevant documents can be found using TF-IDF similarity and nearby 
   # documents can also be picked for the Smith-Waterman alignment stage.
   steps/cleanup/internal/split_text_into_docs.pl --max-words $max_words \
-    $data/text $dir/docs/docs.txt $dir/docs/doc2text
-  utis/utt2spk_to_spk2utt.pl $dir/docs/doc2text > $dir/docs/text2doc
+    $data/text $dir/docs/doc2text $dir/docs/docs.txt
+  utils/utt2spk_to_spk2utt.pl $dir/docs/doc2text > $dir/docs/text2doc
 
   steps/cleanup/internal/compute_tf_idf.py \
     --tf-weighting-scheme="raw" \
@@ -147,17 +198,12 @@ if [ $stage -le 5 ]; then
     $dir/docs/docs.txt $dir/docs/src_tf_idf.txt
 fi
 
-exit 0
-
-if [ $stage -le 5 ]; then
-  for n in `seq $nj`; do
-    awk 'print ($1" "$1" A")' $data_uniform_seg/split$nj/$n/text > \
-    $dir/lats/fake_reco2file_and_channel.$n
-  done
-
+if [ $stage -le 7 ]; then
   echo $nj > $dir/docs/num_jobs
-
+  
+  mkdir -p $dir/docs/split$nj/
   $cmd JOB=1:$nj $dir/docs/log/get_tfidf_for_texts.JOB.log \
+    mkdir -p $dir/docs/split$nj/JOB '&&' \
     utils/filter_scp.pl $data_uniform_seg/split$nj/JOB/utt2spk \
       $dir/new2old_utts '>' $dir/docs/split$nj/JOB/new2old_utts '&&' \
     cut -d ' ' -f 2 $dir/docs/split$nj/JOB/new2old_utts \| \
@@ -170,7 +216,14 @@ if [ $stage -le 5 ]; then
       --tf-weighting-scheme="raw" \
       --idf-weighting-scheme="log" \
       --input-idf-stats=$dir/docs/idf_stats.txt \
-      - $dir/docs/split$nj/JOB/src_tf_idf.txt 
+      $dir/docs/split$nj/JOB/docs.txt $dir/docs/split$nj/JOB/src_tf_idf.txt 
+fi
+
+if [ $stage -le 8 ]; then
+  for n in `seq $nj`; do
+    awk '{print ($1" "$1" 1")}' $data_uniform_seg/split$nj/$n/utt2spk > \
+      $dir/lats/fake_reco2file_and_channel.$n
+  done
 
   $cmd JOB=1:$nj $dir/lats/log/get_ctm_edits.JOB.log \
     steps/cleanup/internal/ctm_to_text.pl \
@@ -180,48 +233,26 @@ if [ $stage -le 5 ]; then
       --idf-weighting-scheme="log" \
       --input-idf-stats=$dir/docs/idf_stats.txt \
       --accumulate-over-docs=false \
-      - - \| \
+      - $dir/docs/split$nj/JOB/query_tf_idf.txt '&&' \
     steps/cleanup/internal/retrieve_similar_docs.py \
-      --query-tfidf=- \
+      --query-tfidf=$dir/docs/split$nj/JOB/query_tf_idf.txt \
       --source-tfidf=$dir/docs/split$nj/JOB/src_tf_idf.txt \
       --source-text2doc=$dir/docs/text2doc \
       --query-doc2source=$dir/new2old_utts \
-      --num-neighbors-to-search=$num_neighors_to_search \
+      --num-neighbors-to-search=$num_neighbors_to_search \
       --neighbor-tfidf-threshold=$neighbor_tfidf_threshold \
-      --output-docs=- \| \
+      --relevant-docs=$dir/docs/split$nj/JOB/relevant_docs.txt '&&' \
     steps/cleanup/internal/stitch_documents.py \
-      --query2docs=- \
+      --query2docs=$dir/docs/split$nj/JOB/relevant_docs.txt \
       --input-documents=$dir/docs/split$nj/JOB/docs.txt \
       --output-documents=- \| \
     steps/cleanup/internal/align_ctm_ref.py --eps-symbol="***" \
       --hyp-format=CTM \
       --reco2file-and-channel=$dir/lats/fake_reco2file_and_channel.JOB \
-      $dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm.JOB \
       - \
+      $dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm.JOB \
       $dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm_edits.JOB
 
-  cat $dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm_edits.* > $dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm_edits
-fi
-
-if [ $stage -le 6 ]; then
-  utils/copy_data_dir.sh $data_uniform_seg $out_data
-
-  cat $dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm_edits | \
-    python -c "
-import sys
-text = []
-prev_utt = ''
-for line in sys.stdin.readlines():
-  parts = line.strip().split()
-  utt = parts[0]
-
-  if prev_utt != '' and utt != prev_utt:
-    print ('{0} {1}'.format(prev_utt, ' '.join(text)))
-    text = []
-  word = parts[6] if (parts[6] != '$eps_symbol') else ''
-  text.append(word)
-  prev_utt = utt
-if prev_utt != '' and len(text) > 0:
-    print ('{0} {1}'.format(prev_utt, ' '.join(text)))" \
-      > $out_data/text
+  cat $dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm_edits.* > \
+    $dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm_edits
 fi
