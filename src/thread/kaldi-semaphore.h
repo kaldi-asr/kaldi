@@ -21,7 +21,11 @@
 #ifndef KALDI_THREAD_KALDI_SEMAPHORE_H_
 #define KALDI_THREAD_KALDI_SEMAPHORE_H_ 1
 
+#ifdef WIN32
+#include <windows.h>
+#else
 #include <pthread.h>
+#endif
 
 namespace kaldi {
   
@@ -33,20 +37,16 @@ class Semaphore {
   bool TryWait(); ///< Returns true if Wait() goes through
   void Wait(); ///< decrease the counter
   void Signal(); ///< increase the counter
-  
-  /**
-   * returns the counter value, 
-   * zero means no resources, the Wait() will block
-   */ 
-  int32 GetValue() {
-    return counter_; 
-  }
-
+ 
  private:
+ 
+#ifdef WIN32
+  HANDLE semaphore_;
+#else
   int32 counter_; ///< the semaphore counter, 0 means block on Wait() 
-  
   pthread_mutex_t mutex_;
   pthread_cond_t cond_;
+#endif
   KALDI_DISALLOW_COPY_AND_ASSIGN(Semaphore);
 };
 

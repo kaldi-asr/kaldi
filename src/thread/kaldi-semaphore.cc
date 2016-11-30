@@ -24,7 +24,55 @@
 
 namespace kaldi {
 
+#ifdef WIN32
   
+Semaphore::Semaphore(int32 initValue) {
+  if (!(semaphore_ = CreateSemaphore(NULL, initValue, initValue, NULL))) {
+    KALDI_ERR << "Cannot initialize semaphore";
+  }
+}
+
+
+
+Semaphore::~Semaphore() {
+  if (!CloseHandle(semaphore_)) {
+    KALDI_ERR << "Cannot close semaphore";
+  }
+}
+
+
+
+bool Semaphore::TryWait() {
+  DWORD ret =  WaitForSingleObject(semaphore_, 0);
+  bool lock_succeeded = false;
+  switch (ret) {
+    case WAIT_OBJECT_0: lock_succeeded = true; break;
+    case WAIT_TIMEOUT: lock_succeeded = false; break;
+    default: KALDI_ERR << "Error on try-locking semaphore, result is "
+                       << ret;
+  }
+  return lock_succeeded;
+}
+
+
+
+void Semaphore::Wait() {
+  DWORD ret;
+  if ((ret = WaitForSingleObject(semaphore_, INFINITE)) != WAIT_OBJECT_0) {
+    KALDI_ERR << "Error on semaphore " << ret;
+  }
+}
+
+
+
+void Semaphore::Signal() {
+  if (!ReleaseSemaphore(semaphore_, 1, NULL)) {
+    KALDI_ERR << "Error in pthreads";
+  }
+}
+
+#else
+
 Semaphore::Semaphore(int32 initValue) {
   counter_ = initValue;
   if (pthread_mutex_init(&mutex_, NULL) != 0) {
@@ -90,6 +138,6 @@ void Semaphore::Signal() {
     KALDI_ERR << "Error in pthreads";
   }
 }
-
+#endif
 
 } // namespace kaldi

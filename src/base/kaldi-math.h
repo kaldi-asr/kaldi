@@ -23,6 +23,7 @@
 
 #ifdef _MSC_VER
 #include <float.h>
+#include <math.h>
 #endif
 
 #include <cmath>
@@ -69,9 +70,9 @@
 #endif
 
 
-#define KALDI_ISNAN std::isnan
-#define KALDI_ISINF std::isinf
-#define KALDI_ISFINITE(x) std::isfinite(x)
+#define KALDI_ISNAN(x) _isnan(x)
+#define KALDI_ISINF(x) (!_finite(x))
+#define KALDI_ISFINITE(x) _finite(x)
 
 #if !defined(KALDI_SQR)
 # define KALDI_SQR(x) ((x) * (x))

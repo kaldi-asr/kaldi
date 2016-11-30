@@ -33,8 +33,10 @@ class NnetExampleBackgroundReader {
       finished_(false) {
     // When this class is created, it spawns a thread which calls ReadExamples()
     // in the background.
+#ifndef WIN32
     pthread_attr_t pthread_attr;
     pthread_attr_init(&pthread_attr);
+
     int32 ret;
     // below, Run is the static class-member function.
     if ((ret=pthread_create(&thread_, &pthread_attr,
@@ -43,15 +45,18 @@ class NnetExampleBackgroundReader {
       if (c == NULL) { c = "[NULL]"; }
       KALDI_ERR << "Error creating thread, errno was: " << c;
     }
+#endif
     // the following call is a signal that no-one is currently using the examples_ and
     // formatted_examples_ class members.
     consumer_semaphore_.Signal();
   }
   ~NnetExampleBackgroundReader() {
+#ifndef WIN32
     if (KALDI_PTHREAD_PTR(thread_) == 0)
       KALDI_ERR << "No thread to join.";
     if (pthread_join(thread_, NULL))
       KALDI_ERR << "Error rejoining thread.";
+#endif
   }
 
   // This will be called in a background thread.  It's responsible for
@@ -139,7 +144,9 @@ class NnetExampleBackgroundReader {
   int32 minibatch_size_;
   Nnet *nnet_;
   SequentialNnetExampleReader *reader_;
+#ifndef WIN32
   pthread_t thread_;
+#endif
   
   std::vector<NnetExample> examples_;
   Matrix<BaseFloat> formatted_examples_;

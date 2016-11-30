@@ -357,7 +357,7 @@ void WaveData::Write(std::ostream &os) const {
   int num_clipped = 0;
   for (int32 i = 0; i < num_samp; i++) {
     for (int32 j = 0; j < num_chan; j++) {
-      int32 elem = static_cast<int32>(trunc(data_ptr[j * stride + i]));
+      int32 elem = static_cast<int32>(floor(data_ptr[j * stride + i]));
       int16 elem_16 = static_cast<int16>(elem);
       if (elem < std::numeric_limits<int16>::min()) {
         elem_16 = std::numeric_limits<int16>::min();

@@ -1158,7 +1158,7 @@ void AffineComponent::InitFromString(std::string args) {
   } else {
     ok = ok && ParseFromString("input-dim", &args, &input_dim);
     ok = ok && ParseFromString("output-dim", &args, &output_dim);
-    BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
+    BaseFloat param_stddev = 1.0 / std::sqrt((BaseFloat)input_dim),
         bias_stddev = 1.0;
     ParseFromString("param-stddev", &args, &param_stddev);
     ParseFromString("bias-stddev", &args, &bias_stddev);
@@ -1430,7 +1430,7 @@ void AffineComponentPreconditioned::InitFromString(std::string args) {
     bool ok = true;
     ok = ok && ParseFromString("input-dim", &args, &input_dim);
     ok = ok && ParseFromString("output-dim", &args, &output_dim);
-    BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
+    BaseFloat param_stddev = 1.0 / std::sqrt((BaseFloat)input_dim),
         bias_stddev = 1.0;
     ParseFromString("param-stddev", &args, &param_stddev);
     ParseFromString("bias-stddev", &args, &bias_stddev);
@@ -1696,7 +1696,7 @@ void AffineComponentPreconditionedOnline::InitFromString(std::string args) {
   } else {
     ok = ok && ParseFromString("input-dim", &args, &input_dim);
     ok = ok && ParseFromString("output-dim", &args, &output_dim);
-    BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
+    BaseFloat param_stddev = 1.0 / std::sqrt((BaseFloat)input_dim),
         bias_stddev = 1.0;
     ParseFromString("param-stddev", &args, &param_stddev);
     ParseFromString("bias-stddev", &args, &bias_stddev);
@@ -2120,7 +2120,7 @@ void BlockAffineComponent::InitFromString(std::string args) {
   ok = ok && ParseFromString("input-dim", &args, &input_dim);
   ok = ok && ParseFromString("output-dim", &args, &output_dim);
   ok = ok && ParseFromString("num-blocks", &args, &num_blocks);
-  BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
+  BaseFloat param_stddev = 1.0 / std::sqrt((BaseFloat)input_dim),
       bias_stddev = 1.0;
   ParseFromString("param-stddev", &args, &param_stddev);
   ParseFromString("bias-stddev", &args, &bias_stddev);
@@ -2204,7 +2204,7 @@ void BlockAffineComponentPreconditioned::InitFromString(std::string args) {
   ok = ok && ParseFromString("output-dim", &args, &output_dim);
   ok = ok && ParseFromString("num-blocks", &args, &num_blocks);
 
-  BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
+  BaseFloat param_stddev = 1.0 / std::sqrt((BaseFloat)input_dim),
       bias_stddev = 1.0;
   ParseFromString("param-stddev", &args, &param_stddev);
   ParseFromString("bias-stddev", &args, &bias_stddev);
@@ -3805,7 +3805,7 @@ void Convolutional1dComponent::InitFromString(std::string args) {
     // initialize from configuration
     ok = ok && ParseFromString("input-dim", &args, &input_dim);
     ok = ok && ParseFromString("output-dim", &args, &output_dim);
-    BaseFloat param_stddev = 1.0 / std::sqrt(input_dim), bias_stddev = 1.0;
+    BaseFloat param_stddev = 1.0 / std::sqrt((BaseFloat)input_dim), bias_stddev = 1.0;
     ParseFromString("param-stddev", &args, &param_stddev);
     ParseFromString("bias-stddev", &args, &bias_stddev);
     Init(learning_rate, input_dim, output_dim, patch_dim,

@@ -18,7 +18,7 @@
 // limitations under the License.
 
 
-#include <pthread.h>
+
 #include "base/kaldi-error.h"
 #include "thread/kaldi-barrier.h"
 
@@ -26,7 +26,7 @@
 namespace kaldi {
 
 
-
+#ifndef WIN32
 Barrier::Barrier(int32 threshold)
  : threshold_(threshold), counter_(threshold), cycle_(0) {
 
@@ -134,6 +134,19 @@ int32 Barrier::Wait() {
 
   return ret; 
 }
+#else
+Barrier::Barrier(int32 threshold) {
+}
 
+Barrier::~Barrier() {
+}
+
+void Barrier::SetThreshold(int32 thr) {
+}
+
+int32 Barrier::Wait() {
+  return 0; 
+}
+#endif
 
 } // namespace kaldi

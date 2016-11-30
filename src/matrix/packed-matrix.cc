@@ -377,7 +377,7 @@ void PackedMatrix<Real>::Read(std::istream& is, bool binary, bool add) {
           // we got the data we needed, so just warn for this error.
         }
         //now process the data:
-        num_lines = int32(sqrt(data.size()*2));
+        num_lines = int32(sqrt((BaseFloat)data.size()*2));
         
         KALDI_ASSERT(data.size() == num_lines*(num_lines+1)/2);
 

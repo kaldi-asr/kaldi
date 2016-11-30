@@ -22,12 +22,13 @@
 #define KALDI_THREAD_KALDI_THREAD_H_ 1
 
 #if defined(_MSC_VER)
-# define KALDI_PTHREAD_PTR(thread) (thread.p)
+#include <Windows.h>
+# define KALDI_PTHREAD_PTR(thread) (thread)
 #else
+#include <pthread.h>
 # define KALDI_PTHREAD_PTR(thread) (thread)
 #endif
 
-#include <pthread.h>
 #include "thread/kaldi-barrier.h"
 // This header provides a convenient mechanism for parallelization.  The idea is
 // that you have some range of integers, e.g. A ... B-1 (with B > A), and some
@@ -126,7 +127,13 @@ class MultiThreader {
  public:
   MultiThreader(int32 num_threads,
                 const C &c_in):
-    threads_(new pthread_t[std::max<int32>(1, num_threads)]),
+    threads_(
+#ifndef WIN32
+		new pthread_t[std::max<int32>(1, num_threads)]
+#else
+		new HANDLE[std::max<int32>(1, num_threads)]
+#endif
+	),
     cvec_(std::max<int32>(1, num_threads), c_in) {
     if (num_threads == 0) {
       // This is a special case with num_threads == 0, which behaves like with
@@ -137,6 +144,7 @@ class MultiThreader {
       cvec_[0].num_threads_ = 1;
       (cvec_[0])();
     } else {
+#ifndef WIN32
       pthread_attr_t pthread_attr;
       pthread_attr_init(&pthread_attr);
       for (int32 thread = 0; thread < num_threads; thread++) {
@@ -150,17 +158,35 @@ class MultiThreader {
           KALDI_ERR << "Error creating thread, errno was: " << c;
         }
       }
+#else
+      for (int32 thread = 0; thread < num_threads; thread++) {
+		cvec_[thread].thread_id_ = thread;
+        cvec_[thread].num_threads_ = num_threads;
+        if ((threads_[thread] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) C::run,  &(cvec_[thread]), 0, NULL)) == NULL) {
+          KALDI_ERR << "Error creating thread, errno was: " << GetLastError();
+        }
+      }
+#endif
     }
   }
   ~MultiThreader() {
+#ifndef WIN32
     for (size_t thread = 0; thread < cvec_.size(); thread++)
       if (KALDI_PTHREAD_PTR(threads_[thread]) != 0)
         if (pthread_join(threads_[thread], NULL))
           KALDI_ERR << "Error rejoining thread.";
     delete [] threads_;
+#else
+	WaitForMultipleObjects(cvec_.size(), threads_, TRUE, INFINITE);
+	delete [] threads_;
+#endif
   }
  private:
+#ifndef WIN32
   pthread_t *threads_;
+#else
+  HANDLE *threads_;
+#endif
   std::vector<C> cvec_;
 };
 

@@ -17,8 +17,6 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-
-#include <pthread.h>
 #include <cerrno>
 #include <string.h>
 #include "base/kaldi-error.h"
@@ -26,6 +24,51 @@
 
 namespace kaldi {
   
+#ifdef WIN32
+
+Mutex::Mutex() {
+  if ((mutex_ = CreateMutex(NULL, FALSE, NULL)) == NULL)
+    KALDI_ERR << "Cannot initialize pthread mutex, error is "
+              << GetLastError();
+}
+
+
+Mutex::~Mutex() {
+  if (!CloseHandle(mutex_)) {
+      KALDI_WARN << "Error destroying mutex " << GetLastError();
+  }
+}
+
+
+void Mutex::Lock() {
+  DWORD ret;
+  if ((ret = WaitForSingleObject(mutex_, INFINITE)) != WAIT_OBJECT_0)
+    KALDI_ERR << "Error on locking mutex, result is "
+              << ret;
+}
+
+ 
+bool Mutex::TryLock() {
+  DWORD ret =  WaitForSingleObject(mutex_, 0);
+  bool lock_succeeded = false;
+  switch (ret) {
+    case WAIT_OBJECT_0: lock_succeeded = true; break;
+    case WAIT_TIMEOUT: lock_succeeded = false; break;
+    default: KALDI_ERR << "Error on try-locking mutex, result is "
+                       << ret;
+  }
+  return lock_succeeded;
+}
+
+
+void Mutex::Unlock() {
+  if (!ReleaseMutex(mutex_))
+    KALDI_ERR << "Error on unlocking mutex, result is "
+              << GetLastError();
+}
+
+
+#else
 
 Mutex::Mutex() {
   int ret;
@@ -81,7 +124,7 @@ void Mutex::Unlock() {
               << strerror(ret);
 }
 
-
+#endif
   
 } // namespace kaldi
 

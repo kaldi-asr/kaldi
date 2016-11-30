@@ -21,9 +21,11 @@
 #ifndef KALDI_THREAD_KALDI_BARRIER_H_
 #define KALDI_THREAD_KALDI_BARRIER_H_ 1
 
-
+#ifdef WIN32
+#include <Windows.h>
+#else
 #include <pthread.h>
-
+#endif
 
 namespace kaldi {
 
@@ -41,12 +43,15 @@ class Barrier {
   int32 Wait(); ///< last thread returns -1, the others 0
 
  private:
+
+#ifndef WIN32
   pthread_mutex_t     mutex_;     ///< Mutex which control access to barrier 
   pthread_cond_t      cv_;        ///< Conditional variable to make barrier wait
 
   int32                 threshold_; ///< size of thread-group
   int32                 counter_;   ///< number of threads we wait for
   int32                 cycle_;     ///< cycle flag to keep synchronized
+#endif
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(Barrier);
 };
