@@ -235,7 +235,6 @@ if [ $stage -le 16 ]; then
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
-    --chain.left-deriv-truncate 0 \
     --egs.dir "$common_egs_dir" \
     --egs.opts "--frames-overlap-per-eg 0" \
     --egs.chunk-width $chunk_width \
@@ -250,6 +249,7 @@ if [ $stage -le 16 ]; then
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.max-param-change 2.0 \
+    --trainer.deriv-truncate-margin 8 \
     --cleanup.remove-egs true \
     --feat-dir $train_data_dir \
     --tree-dir $tree_dir \
