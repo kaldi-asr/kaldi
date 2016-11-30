@@ -3,6 +3,9 @@
 # Copyright 2014  Guoguo Chen, 2015 GoVivace Inc. (Nagendra Goel)
 # Apache 2.0
 
+set -e 
+set -o pipefail
+
 # Begin configuration section.
 transform_dir=   # this option won't normally be used, but it can be used if you
                  # want to supply existing fMLLR transforms when decoding.
@@ -102,9 +105,9 @@ HCLG=scp:$dir/split_fsts/HCLG.fsts.JOB.scp
 if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 echo "$0: feature type is $feat_type";
 
-splice_opts=`cat $srcdir/splice_opts 2>/dev/null` # frame-splicing options.
-cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null`
-delta_opts=`cat $srcdir/delta_opts 2>/dev/null`
+splice_opts=`cat $srcdir/splice_opts 2>/dev/null` || true # frame-splicing options.
+cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null` || true
+delta_opts=`cat $srcdir/delta_opts 2>/dev/null` || true
 
 thread_string=
 [ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads"

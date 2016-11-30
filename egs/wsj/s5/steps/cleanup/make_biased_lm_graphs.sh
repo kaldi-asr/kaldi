@@ -113,6 +113,7 @@ sdata=$data/split${nj}utt
 
 
 mkdir -p $dir/log $dir/fsts
+dir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $dir ${PWD}`
 
 if [ $stage -le 1 ]; then
   echo "$0: creating utterance-group-specific decoding graphs with biased LMs"
