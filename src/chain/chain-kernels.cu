@@ -25,7 +25,14 @@
          configure with --use-cuda=no (this will disable the use of GPU).
 #endif
 
-#if __CUDA_ARCH__ < 600
+
+#ifdef __CUDACC__
+#if ( __CUDACC_VER_MAJOR__ >= 8 ) && ( !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 600 )
+// native implementation available
+#else
+#if __CUDA_ARCH__ >= 600
+#error using CAS implementation of double atomicAdd
+#endif
 __device__ double atomicAdd(double* address, double val) {
   unsigned long long int* address_as_ull = (unsigned long long int*) address;
   unsigned long long int old = *address_as_ull, assumed;
@@ -41,6 +48,8 @@ __device__ double atomicAdd(double* address, double val) {
   return __longlong_as_double(old);
 }
 #endif
+#endif
+
 
 template <typename Real>
 __device__ inline void atomic_add(Real* address, Real value) {
@@ -278,4 +287,3 @@ void cuda_chain_hmm_backward(dim3 Gr, dim3 Bl,
                                       this_beta, log_prob_deriv,
                                       log_prob_deriv_stride);
 }
-
