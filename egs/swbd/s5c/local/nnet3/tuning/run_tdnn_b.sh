@@ -24,6 +24,7 @@ speed_perturb=true
 common_egs_dir=
 reporting_email=
 remove_egs=true
+preserve_mdl_interval=100
 dir=exp/nnet3/tdnn_b
 
 . ./cmd.sh
@@ -88,7 +89,7 @@ if [ $stage -le 10 ]; then
     --trainer.optimization.final-effective-lrate 0.00017 \
     --egs.dir "$common_egs_dir" \
     --cleanup.remove-egs $remove_egs \
-    --cleanup.preserve-model-interval 100 \
+    --cleanup.preserve-model-interval $preserve_mdl_interval \
     --use-gpu true \
     --feat-dir=data/${train_set}_hires \
     --ali-dir $ali_dir \

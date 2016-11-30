@@ -43,7 +43,7 @@ minibatch_size=128
 relu_dim=625
 frames_per_eg=150
 remove_egs=false
-common_egs_dir=
+common_egs_dir=exp/chain/tdnn_7d_sp/egs 
 xent_regularize=0.1
 
 # End configuration section.
@@ -137,6 +137,7 @@ if [ $stage -le 12 ]; then
     --xent-separate-forward-affine true \
     --include-log-softmax false \
     --final-layer-normalize-target $final_layer_normalize_target \
+    --layerwise-pretrain false \
     $dir/configs || exit 1;
 fi
 

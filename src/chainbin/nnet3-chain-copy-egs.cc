@@ -37,6 +37,37 @@ int32 GetCount(double expected_count) {
   return ans;
 }
 
+// Duplicates outputs in egs w.r.t list of duplicate_output_str
+// e.g output/output1 output 
+void DuplicateOutput(std::string duplicate_output_str,
+                     NnetChainExample *eg_out) {
+  std::vector<std::string> separated_duplicate_list;
+  SplitStringToVector(duplicate_output_str, ",", true, &separated_duplicate_list);
+  int32 num_duplicates = separated_duplicate_list.size(),
+    num_outputs = eg_out->outputs.size();
+
+  // list of output names in egs.
+  std::vector<string> output_names(num_outputs);
+  for (int32 i = 0; i < num_outputs; i++) 
+    output_names[i] = eg_out->outputs[i].name;
+
+  for (int32 ind = 0; ind < num_duplicates; ind++) {
+    std::vector<std::string> orig_duplicate_names; // orig_name/duplicate_name
+    SplitStringToVector(separated_duplicate_list[ind], "/", true, &orig_duplicate_names);
+    KALDI_ASSERT(orig_duplicate_names.size() == 2); 
+    int32 duplicate_io_ind = std::find(output_names.begin(), output_names.end(),
+                                       orig_duplicate_names[0]) - output_names.begin();
+    if (duplicate_io_ind > num_outputs)
+      KALDI_ERR << "No output name with name " << orig_duplicate_names[0]
+                << " exists in eg.";
+      // If orig-output is equal to orig_name for one of outputs, 
+      // then copy it with new name duplicate_name
+      NnetChainSupervision duplicate_output = eg_out->outputs[duplicate_io_ind];
+      duplicate_output.name = orig_duplicate_names[1];
+      eg_out->outputs.push_back(duplicate_output);
+  }
+}
+
 void FilterExample(const NnetChainExample &eg,
                    int32 min_input_t,
                    int32 max_input_t,
@@ -256,6 +287,8 @@ int main(int argc, char *argv[]) {
     int32 frame_subsampling_factor = -1;
     BaseFloat keep_proportion = 1.0;
     int32 left_context = -1, right_context = -1;
+    std::string duplicate_output_str = "";
+
     ParseOptions po(usage);
     po.Register("random", &random, "If true, will write frames to output "
                 "archives randomly, not round-robin.");
@@ -276,6 +309,9 @@ int main(int argc, char *argv[]) {
                 "feature left-context that we output.");
     po.Register("right-context", &right_context, "Can be used to truncate the "
                 "feature right-context that we output.");
+    po.Register("duplicate-outputs", &duplicate_output_str, "Comma-separated list"
+                "of outputs needs to be copied to output with new name"
+                " e.g. ouput/output1,output/output2");
     po.Read(argc, argv);
 
     srand(srand_seed);
@@ -284,7 +320,7 @@ int main(int argc, char *argv[]) {
       po.PrintUsage();
       exit(1);
     }
-
+    
     std::string examples_rspecifier = po.GetArg(1);
 
     SequentialNnetChainExampleReader example_reader(examples_rspecifier);
@@ -299,7 +335,7 @@ int main(int argc, char *argv[]) {
     exclude_names.push_back(std::string("ivector"));
 
     int64 num_read = 0, num_written = 0;
-
+    
     for (; !example_reader.Done(); example_reader.Next(), num_read++) {
       if (frame_subsampling_factor == -1)
         CalculateFrameSubsamplingFactor(example_reader.Value(),
@@ -312,7 +348,14 @@ int main(int argc, char *argv[]) {
         const NnetChainExample &eg = example_reader.Value();
         for (int32 c = 0; c < count; c++) {
           int32 index = (random ? Rand() : num_written) % num_outputs;
-          example_writers[index]->Write(key, eg);
+          // process duplicated output list
+          if (!duplicate_output_str.empty()) {
+            NnetChainExample duplicated_eg = eg;
+            DuplicateOutput(duplicate_output_str, &duplicated_eg);
+            example_writers[index]->Write(key, duplicated_eg);
+          } else {
+            example_writers[index]->Write(key, eg);
+          }
           num_written++;
         }
       } else if (count > 0) {
@@ -329,6 +372,9 @@ int main(int argc, char *argv[]) {
           TruncateDerivWeights(truncate_deriv_weights, &eg_out);
         for (int32 c = 0; c < count; c++) {
           int32 index = (random ? Rand() : num_written) % num_outputs;
+          // process duplicated output list
+          if (!duplicate_output_str.empty()) 
+            DuplicateOutput(duplicate_output_str, &eg_out);
           example_writers[index]->Write(key, eg_out);
           num_written++;
         }

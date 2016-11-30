@@ -403,7 +403,7 @@ def TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archi
 def TrainOneIteration(dir, iter, srand, egs_dir,
                       num_jobs, num_archives_processed, num_archives,
                       learning_rate, shrinkage_value, num_chunk_per_minibatch,
-                      num_hidden_layers, add_layers_period,
+                      num_hidden_layers, num_layers_for_config, add_layers_period,
                       apply_deriv_weights, left_deriv_truncate, right_deriv_truncate,
                       l2_regularize, xent_regularize, leaky_hmm_coefficient,
                       momentum, max_param_change, shuffle_buffer_size,
@@ -433,7 +433,7 @@ def TrainOneIteration(dir, iter, srand, egs_dir,
     if iter > 0:
         chain_lib.ComputeProgress(dir, iter, run_opts)
 
-    if iter > 0 and (iter <= (num_hidden_layers-1) * add_layers_period) and (iter % add_layers_period == 0):
+    if iter > 0 and (iter <= (num_layers_for_config-1) * add_layers_period) and (iter % add_layers_period == 0):
 
         do_average = False # if we've just mixed up, don't do averaging but take the
                            # best.
@@ -544,7 +544,7 @@ def Train(args, run_opts):
     config_dir = '{0}/configs'.format(args.dir)
     var_file = '{0}/vars'.format(config_dir)
 
-    [model_left_context, model_right_context, num_hidden_layers] = train_lib.ParseModelConfigVarsFile(var_file)
+    [model_left_context, model_right_context, num_hidden_layers, num_layers_for_config, add_ephemeral_connection, use_dropout] = train_lib.ParseModelConfigVarsFile(var_file)
     # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
     # matrix.  This first config just does any initial splicing that we do;
     # we do this as it's a convenient way to get the stats for the 'lda-like'
@@ -628,7 +628,7 @@ def Train(args, run_opts):
     num_iters=(num_archives_to_process * 2) / (args.num_jobs_initial + args.num_jobs_final)
 
     num_iters_combine = train_lib.VerifyIterations(num_iters, args.num_epochs,
-                                                   num_hidden_layers, num_archives_expanded,
+                                                   num_layers_for_config, num_archives_expanded,
                                                    args.max_models_combine, args.add_layers_period,
                                                    args.num_jobs_final)
 
@@ -658,7 +658,7 @@ def Train(args, run_opts):
                               learning_rate(iter, current_num_jobs, num_archives_processed),
                               shrinkage_value,
                               args.num_chunk_per_minibatch,
-                              num_hidden_layers, args.add_layers_period,
+                              num_hidden_layers, num_layers_for_config, args.add_layers_period,
                               args.apply_deriv_weights, args.left_deriv_truncate, args.right_deriv_truncate,
                               args.l2_regularize, args.xent_regularize, args.leaky_hmm_coefficient,
                               args.momentum, args.max_param_change,

@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
-import os
+import os 
+import math
 import argparse
 import sys
 import warnings
@@ -129,12 +130,50 @@ def AddAffRelNormWithEphemeralLayer(config_lines, name, input, ephemeral_name, e
 
     components.append("component name={0}_ephemeral type=NaturalGradientAffineComponent input-dim={1} output-dim={2}".format(ephemeral_name, ephemeral_input['dimension'], output_dim))
     components.append("component name={0}_dropout_affine type=DropoutComponent dim={1} dropout-proportion=0.0".format(ephemeral_name, output_dim))
-    
+
     component_nodes.append("component-node name={0}_ephemeral component={0}_ephemeral input={1}".format(ephemeral_name, ephemeral_input['descriptor']))
     component_nodes.append("component-node name={0}_dropout_affine component={0}_dropout_affine input={0}_ephemeral".format(ephemeral_name))
+
     component_nodes.append("component-node name={0}_affine component={0}_affine input={1}".format(name, input['descriptor']))
     component_nodes.append("component-node name={0}_relu component={0}_relu input=Sum({0}_affine, {1}_dropout_affine)".format(name, ephemeral_name))
-    component_nodes.append("component-node name={0}_renorm component={0}_renorm input={0}_relu".format(name))
+    component_nodes.append("component-node name={0}_renorm component={0}_renorm input={0}_relu ".format(name))
+
+    return {'descriptor':  '{0}_renorm'.format(name),
+            'dimension': output_dim}
+
+# Layer with SVD layer type and ephemeral connection
+def AddAffRelNormSvdWithEphemeralLayer(config_lines, name, input, ephemeral_name, svd_dim, output_dim, ng_affine_options = " bias-stddev=0 ", norm_target_rms = 1.0, self_repair_scale = None):
+    components = config_lines['components']
+    component_nodes = config_lines['component-nodes']
+    param_stddev = 0.3/math.sqrt(svd_dim)
+    ng_affine_for_svd_options = " bias-stddev=0  param-stddev={0} ".format(param_stddev)
+    # self_repair_scale is a constant scaling the self-repair vector computed in RectifiedLinearComponent
+    self_repair_string = "self-repair-scale={0:.10f}".format(self_repair_scale) if self_repair_scale is not None else ''
+
+    # svd components
+    components.append("component name={0}_affine_svd type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input['dimension'], svd_dim, ng_affine_options))
+    components.append("component name={0}_relu_svd type=RectifiedLinearComponent dim={1} {2}".format(name, svd_dim, self_repair_string))
+    components.append("component name={0}_renorm_svd type=NormalizeComponent dim={1} target-rms={2}".format(name, svd_dim, norm_target_rms))
+
+    components.append("component name={0}_affine type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, svd_dim, output_dim, ng_affine_for_svd_options))
+    components.append("component name={0}_relu type=RectifiedLinearComponent dim={1} {2}".format(name, output_dim, self_repair_string))
+    components.append("component name={0}_renorm type=NormalizeComponent dim={1} target-rms={2}".format(name, output_dim, norm_target_rms))
+
+    # ephemeral components and component nodes
+    components.append("component name={0}_ephemeral type=NaturalGradientAffineComponent input-dim={1} output-dim={2}".format(ephemeral_name, input['dimension'], output_dim))
+    components.append("component name={0}_dropout_affine type=DropoutComponent dim={1} dropout-proportion=0.0".format(ephemeral_name, output_dim))
+    
+    component_nodes.append("component-node name={0}_ephemeral component={0}_ephemeral input={1}".format(ephemeral_name, input['descriptor']))
+    component_nodes.append("component-node name={0}_dropout_affine component={0}_dropout_affine input={0}_ephemeral".format(ephemeral_name))
+
+    # svd component node
+    component_nodes.append("component-node name={0}_affine_svd component={0}_affine_svd input={1}".format(name, input['descriptor']))
+    component_nodes.append("component-node name={0}_relu_svd component={0}_relu_svd input={0}_affine_svd".format(name, ephemeral_name))
+    component_nodes.append("component-node name={0}_renorm_svd component={0}_renorm_svd input={0}_relu_svd".format(name))
+
+    component_nodes.append("component-node name={0}_affine component={0}_affine input={0}_renorm_svd".format(name))
+    component_nodes.append("component-node name={0}_relu component={0}_relu input=Sum({0}_affine, {1}_dropout_affine)".format(name, ephemeral_name))
+    component_nodes.append("component-node name={0}_renorm component={0}_renorm input={0}_relu".format(name, ephemeral_name))
 
     return {'descriptor':  '{0}_renorm'.format(name),
             'dimension': output_dim}
@@ -155,6 +194,110 @@ def AddAffRelNormWithDirectEphemeralLayer(config_lines, name, input, ephemeral_n
     
     component_nodes.append("component-node name={0}_dropout component={0}_dropout input={1}".format(ephemeral_name, ephemeral_input['descriptor']))
     component_nodes.append("component-node name={0}_append component={0}_append input={1}".format(name, input['descriptor']))
+    component_nodes.append("component-node name={0}_affine component={0}_affine input={0}_append".format(name, ephemeral_name))
+    component_nodes.append("component-node name={0}_relu component={0}_relu input={0}_affine".format(name, ephemeral_name))
+    component_nodes.append("component-node name={0}_renorm component={0}_renorm input=Sum({0}_relu, {0}_dropout)".format(name))
+
+    return {'descriptor':  '{0}_renorm'.format(name),
+            'dimension': output_dim}
+# no affine before ephemeral connection
+def AddAffRelNormWithDirectEphemeralLayerV3(config_lines, name, input, ephemeral_name, ephemeral_input, output_dim, ng_affine_options = " bias-stddev=0 ", norm_target_rms = 1.0, self_repair_scale = None, block_affine_scale = 0.2):
+    components = config_lines['components']
+    component_nodes = config_lines['component-nodes']
+    dropout_affine_options = " param-stddev={0} bias-stddev=0".format(block_affine_scale)
+    # self_repair_scale is a constant scaling the self-repair vector computed in RectifiedLinearComponent
+    self_repair_string = "self-repair-scale={0:.10f}".format(self_repair_scale) if self_repair_scale is not None else ''
+    components.append("component name={0}_affine type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input['dimension'], output_dim, ng_affine_options))
+    components.append("component name={0}_relu type=RectifiedLinearComponent dim={1} {2}".format(name, output_dim, self_repair_string))
+    components.append("component name={0}_renorm type=NormalizeComponent dim={1} target-rms={2}".format(name, output_dim, norm_target_rms))
+
+    components.append("component name={0}_affine_ephemeral type=BlockAffineComponent input-dim={1} output-dim={1} num-blocks={1} {2}".format(ephemeral_name, ephemeral_input['dimension'], dropout_affine_options))
+    components.append("component name={0}_dropout type=DropoutComponent dim={1} dropout-proportion=0.0".format(ephemeral_name, ephemeral_input['dimension']))
+   
+    component_nodes.append("component-node name={0}_affine_ephemeral component={0}_affine_ephemeral input={1}".format(ephemeral_name, ephemeral_input['descriptor']))
+    component_nodes.append("component-node name={0}_dropout component={0}_dropout input={0}_affine_ephemeral".format(ephemeral_name))
+    component_nodes.append("component-node name={0}_affine component={0}_affine input={1}".format(name, input['descriptor']))
+    component_nodes.append("component-node name={0}_relu component={0}_relu input={0}_affine".format(name))
+    component_nodes.append("component-node name={0}_renorm component={0}_renorm input=Sum({0}_relu, {1}_dropout)".format(name, ephemeral_name))
+
+    return {'descriptor':  '{0}_renorm'.format(name),
+            'dimension': output_dim}
+# no affine before ephemeral connection
+def AddAffRelNormWithDirectEphemeralLayerV2(config_lines, name, input, ephemeral_name, ephemeral_input, output_dim, ng_affine_options = " bias-stddev=0 ", norm_target_rms = 1.0, self_repair_scale = None):
+    components = config_lines['components']
+    component_nodes = config_lines['component-nodes']
+
+    # self_repair_scale is a constant scaling the self-repair vector computed in RectifiedLinearComponent
+    self_repair_string = "self-repair-scale={0:.10f}".format(self_repair_scale) if self_repair_scale is not None else ''
+    components.append("component name={0}_affine type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input['dimension'], output_dim, ng_affine_options))
+    components.append("component name={0}_relu type=RectifiedLinearComponent dim={1} {2}".format(name, output_dim, self_repair_string))
+    components.append("component name={0}_renorm type=NormalizeComponent dim={1} target-rms={2}".format(name, output_dim, norm_target_rms))
+    
+    components.append("component name={0}_affine_ephemeral type=BlockAffineComponent input-dim={1} output-dim={1} num-blocks={1} {2}".format(ephemeral_name, ephemeral_input['dimension'], ng_affine_options))
+    components.append("component name={0}_dropout type=DropoutComponent dim={1} dropout-proportion=0.0".format(ephemeral_name, ephemeral_input['dimension']))
+    components.append("component name={0}_append type=NoOpComponent dim={1}".format(name, input['dimension']))
+   
+    component_nodes.append("component-node name={0}_affine_ephemeral component={0}_affine_ephemeral input={1}".format(ephemeral_name, ephemeral_input['descriptor']))
+    component_nodes.append("component-node name={0}_dropout component={0}_dropout input={0}_affine_ephemeral".format(ephemeral_name))
+    component_nodes.append("component-node name={0}_append component={0}_append input={1}".format(name, input['descriptor']))
+    component_nodes.append("component-node name={0}_affine component={0}_affine input=Sum({0}_append, {1}_dropout)".format(name, ephemeral_name))
+    component_nodes.append("component-node name={0}_relu component={0}_relu input={0}_affine".format(name, ephemeral_name))
+    component_nodes.append("component-node name={0}_renorm component={0}_renorm input={0}_relu".format(name))
+
+    return {'descriptor':  '{0}_renorm'.format(name),
+            'dimension': output_dim}
+# no affine before ephemeral connection
+# This layer is the same as V2 but it has separate ReLU gate for ephemeral connection
+def AddAffRelNormWithDirectEphemeralLayerV4(config_lines, name, input, ephemeral_name, ephemeral_input, output_dim, ng_affine_options = " bias-stddev=0 ", norm_target_rms = 1.0, self_repair_scale = None):
+    components = config_lines['components']
+    component_nodes = config_lines['component-nodes']
+
+    # self_repair_scale is a constant scaling the self-repair vector computed in RectifiedLinearComponent
+    self_repair_string = "self-repair-scale={0:.10f}".format(self_repair_scale) if self_repair_scale is not None else ''
+    components.append("component name={0}_affine type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input['dimension'], output_dim, ng_affine_options))
+    components.append("component name={0}_relu type=RectifiedLinearComponent dim={1} {2}".format(name, output_dim, self_repair_string))
+    components.append("component name={0}_renorm type=NormalizeComponent dim={1} target-rms={2}".format(name, output_dim, norm_target_rms))
+    
+    components.append("component name={0}_affine_ephemeral type=BlockAffineComponent input-dim={1} output-dim={1} num-blocks={1} {2}".format(ephemeral_name, ephemeral_input['dimension'], ng_affine_options))
+    components.append("component name={0}_relu_ephemeral type=RectifiedLinearComponent dim={1} {2}".format(ephemeral_name, ephemeral_input['dimension'], self_repair_string))
+    components.append("component name={0}_dropout type=DropoutComponent dim={1} dropout-proportion=0.0".format(ephemeral_name, ephemeral_input['dimension']))
+    components.append("component name={0}_append type=NoOpComponent dim={1}".format(name, input['dimension']))
+   
+    component_nodes.append("component-node name={0}_affine_ephemeral component={0}_affine_ephemeral input={1}".format(ephemeral_name, ephemeral_input['descriptor']))
+    component_nodes.append("component-node name={0}_relu_ephemeral component={0}_relu_ephemeral input={0}_affine_ephemeral".format(ephemeral_name))
+    component_nodes.append("component-node name={0}_dropout component={0}_dropout input={0}_relu_ephemeral".format(ephemeral_name))
+    component_nodes.append("component-node name={0}_append component={0}_append input={1}".format(name, input['descriptor']))
+    component_nodes.append("component-node name={0}_affine component={0}_affine input=Sum({0}_append, {1}_dropout)".format(name, ephemeral_name))
+    component_nodes.append("component-node name={0}_relu component={0}_relu input={0}_affine".format(name, ephemeral_name))
+    component_nodes.append("component-node name={0}_renorm component={0}_renorm input={0}_relu".format(name))
+
+    return {'descriptor':  '{0}_renorm'.format(name),
+            'dimension': output_dim}
+# no affine before ephemeral connection
+# This layer is the same as V4 but it has separate sigmoid gate for ephemeral connection
+def AddAffRelNormWithDirectEphemeralLayerV5(config_lines, name, input, ephemeral_name, ephemeral_input, output_dim, ng_affine_options = " bias-stddev=0 ", norm_target_rms = 1.0, self_repair_scale = None):
+    components = config_lines['components']
+    component_nodes = config_lines['component-nodes']
+
+    # self_repair_scale is a constant scaling the self-repair vector computed in RectifiedLinearComponent
+    self_repair_string = "self-repair-scale={0:.10f}".format(self_repair_scale) if self_repair_scale is not None else ''
+    components.append("component name={0}_affine type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input['dimension'], output_dim, ng_affine_options))
+    components.append("component name={0}_relu type=RectifiedLinearComponent dim={1} {2}".format(name, output_dim, self_repair_string))
+    components.append("component name={0}_renorm type=NormalizeComponent dim={1} target-rms={2}".format(name, output_dim, norm_target_rms))
+    
+    components.append("component name={0}_affine_ephemeral type=NaturalGradientAffineComponent input-dim={1} output-dim={1} {2}".format(ephemeral_name, ephemeral_input['dimension'], ng_affine_options))
+    components.append("component name={0}_sigmoid_ephemeral type=SigmoidComponent dim={1} {2}".format(ephemeral_name, ephemeral_input['dimension'], self_repair_string))
+    components.append("component name={0}_gate_ephemeral type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(ephemeral_name, 2*ephemeral_input['dimension'], ephemeral_input['dimension']))
+    components.append("component name={0}_dropout type=DropoutComponent dim={1} dropout-proportion=0.0".format(ephemeral_name, ephemeral_input['dimension']))
+    components.append("component name={0}_append type=NoOpComponent dim={1}".format(name, input['dimension']))
+    components.append("component name={0}_append_ephemeral type=NoOpComponent dim={1}".format(ephemeral_name, ephemeral_input['dimension']))
+   
+    component_nodes.append("component-node name={0}_affine_ephemeral component={0}_affine_ephemeral input={1}".format(ephemeral_name, ephemeral_input['descriptor']))
+    component_nodes.append("component-node name={0}_sigmoid_ephemeral component={0}_sigmoid_ephemeral input={0}_affine_ephemeral".format(ephemeral_name))
+    component_nodes.append("component-node name={0}_append_ephemeral component={0}_append_ephemeral input={1}".format(ephemeral_name, ephemeral_input['descriptor'])) 
+    component_nodes.append("component-node name={0}_gate_ephemeral component={0}_gate_ephemeral input=Append({0}_sigmoid_ephemeral, {0}_append_ephemeral)".format(ephemeral_name))
+    component_nodes.append("component-node name={0}_dropout component={0}_dropout input={0}_gate_ephemeral".format(ephemeral_name))
+    component_nodes.append("component-node name={0}_append component={0}_append input={1}".format(name, input['descriptor']))
     component_nodes.append("component-node name={0}_affine component={0}_affine input=Sum({0}_append, {1}_dropout)".format(name, ephemeral_name))
     component_nodes.append("component-node name={0}_relu component={0}_relu input={0}_affine".format(name, ephemeral_name))
     component_nodes.append("component-node name={0}_renorm component={0}_renorm input={0}_relu".format(name))
@@ -162,6 +305,39 @@ def AddAffRelNormWithDirectEphemeralLayer(config_lines, name, input, ephemeral_n
     return {'descriptor':  '{0}_renorm'.format(name),
             'dimension': output_dim}
 
+# no affine before ephemeral connection
+# This layer is the same as V5 but it has separate sigmoid gate with full transformation and diagonal matrix for scaling for ephemeral connection
+def AddAffRelNormWithDirectEphemeralLayerV6(config_lines, name, input, ephemeral_name, ephemeral_input, output_dim, ng_affine_options = " bias-stddev=0 ", norm_target_rms = 1.0, self_repair_scale = None):
+    components = config_lines['components']
+    component_nodes = config_lines['component-nodes']
+
+    # self_repair_scale is a constant scaling the self-repair vector computed in RectifiedLinearComponent
+    self_repair_string = "self-repair-scale={0:.10f}".format(self_repair_scale) if self_repair_scale is not None else ''
+    components.append("component name={0}_affine type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input['dimension'], output_dim, ng_affine_options))
+    components.append("component name={0}_relu type=RectifiedLinearComponent dim={1} {2}".format(name, output_dim, self_repair_string))
+    components.append("component name={0}_renorm type=NormalizeComponent dim={1} target-rms={2}".format(name, output_dim, norm_target_rms))
+    
+    components.append("component name={0}_affine_ephemeral type=NaturalGradientAffineComponent input-dim={1} output-dim={1} {2}".format(ephemeral_name, ephemeral_input['dimension'], ng_affine_options))
+    components.append("component name={0}_diag_ephemeral type=BlockAffineComponent input-dim={1} output-dim={1} num-blocks={1} {2}".format(ephemeral_name, ephemeral_input['dimension'], ng_affine_options))
+    components.append("component name={0}_sigmoid_ephemeral type=SigmoidComponent dim={1} {2}".format(ephemeral_name, ephemeral_input['dimension'], self_repair_string))
+    components.append("component name={0}_gate_ephemeral type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(ephemeral_name, 2*ephemeral_input['dimension'], ephemeral_input['dimension']))
+    components.append("component name={0}_dropout type=DropoutComponent dim={1} dropout-proportion=0.0".format(ephemeral_name, ephemeral_input['dimension']))
+    components.append("component name={0}_append_ephemeral type=NoOpComponent dim={1}".format(name, input['dimension']))
+    components.append("component name={0}_append type=NoOpComponent dim={1}".format(name, input['dimension']))
+
+    component_nodes.append("component-node name={0}_affine_ephemeral component={0}_affine_ephemeral input={1}".format(ephemeral_name, ephemeral_input['descriptor']))
+    component_nodes.append("component-node name={0}_sigmoid_ephemeral component={0}_sigmoid_ephemeral input={0}_affine_ephemeral".format(ephemeral_name))
+    component_nodes.append("component-node name={0}_diag_ephemeral component={0}_diag_ephemeral input={1}".format(ephemeral_name, ephemeral_input['descriptor'])) 
+    component_nodes.append("component-node name={0}_gate_ephemeral component={0}_gate_ephemeral input=Append({0}_sigmoid_ephemeral, {0}_diag_ephemeral)".format(ephemeral_name))
+    component_nodes.append("component-node name={0}_dropout component={0}_dropout input={0}_gate_ephemeral".format(ephemeral_name))
+
+    component_nodes.append("component-node name={0}_append component={0}_append input={1}".format(name, input['descriptor']))
+    component_nodes.append("component-node name={0}_affine component={0}_affine input=Sum({0}_append, {1}_dropout)".format(name, ephemeral_name))
+    component_nodes.append("component-node name={0}_relu component={0}_relu input={0}_affine".format(name, ephemeral_name))
+    component_nodes.append("component-node name={0}_renorm component={0}_renorm input={0}_relu".format(name))
+
+    return {'descriptor':  '{0}_renorm'.format(name),
+            'dimension': output_dim}
 def AddAffPnormLayer(config_lines, name, input, pnorm_input_dim, pnorm_output_dim, ng_affine_options = " bias-stddev=0 ", norm_target_rms = 1.0):
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
@@ -519,4 +695,78 @@ def AddBLstmLayer(config_lines,
             'descriptor': output_descriptor,
             'dimension':output_dim
             }
+
+def AddSigmoidGate(config_lines, name, input, dp_prop = 0.0, self_repair_scale_nonlinearity=None):
+    components = config_lines['components']
+    component_nodes = config_lines['component-nodes']
+    self_repair_nonlinearity_string = "self-repair-scale={0:.10f}".format(self_repair_scale_nonlinearity) if self_repair_scale_nonlinearity is not None else ''
+
+    components.append("component name={0}_gate_affine type=NaturalGradientAffineComponent input-dim={1} output-dim={1}".format(name, input['dimension']))
+    components.append("component name={0}_gate_sigmoid type=SigmoidComponent dim={1} {2}".format(name, input['dimension'], self_repair_nonlinearity_string))
+    components.append("component name={0}_gate type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * input['dimension'], input['dimension']))
+    components.append("component name={0}_gate_dropout type=DropoutComponent dim={1} dropout-proportion={2}".format(name, input['dimension'], dp_prop))
+
+    component_nodes.append("component-node name={0}_gate_affine component={0}_gate_affine input={1}".format(name, input['descriptor']))
+    component_nodes.append("component-node name={0}_gate_sigmoid component={0}_gate_sigmoid input={0}_gate_affine".format(name))
+    component_nodes.append("component-node name={0}_gate component={0}_gate input=Append({0}_gate_affine, {1})".format(name, input['descriptor']))
+    component_nodes.append("component-node name={0}_gate_dropout component={0}_gate_dropout input={0}_gate".format(name))
+
+    return { 
+            'descriptor' : '{0}_gate_dropout'.format(name),
+            'dimension' : input['dimension']
+           }   
+  
+def AddTwinBLstmLayer(config_lines,
+                  name, forward_input, backward_input, cell_dim,
+                  recurrent_projection_dim = 0,
+                  non_recurrent_projection_dim = 0,
+                  clipping_threshold = 1.0,
+                  norm_based_clipping = "false",
+                  ng_per_element_scale_options = "",
+                  ng_affine_options = "",
+                  lstm_delay = [-1,1],
+                  self_repair_scale_nonlinearity = None,
+                  self_repair_scale_clipgradient = None):
+    assert(len(lstm_delay) == 2 and lstm_delay[0] < 0 and lstm_delay[1] > 0)
+    output_forward = AddLstmLayer(config_lines, "{0}_forward".format(name), forward_input, cell_dim,
+                                  recurrent_projection_dim, non_recurrent_projection_dim,
+                                  clipping_threshold, norm_based_clipping,
+                                  ng_per_element_scale_options, ng_affine_options,
+                                  lstm_delay = lstm_delay[0],
+                                  self_repair_scale_nonlinearity = self_repair_scale_nonlinearity,
+                                  self_repair_scale_clipgradient = self_repair_scale_clipgradient)
+    output_backward = AddLstmLayer(config_lines, "{0}_backward".format(name), backward_input, cell_dim,
+                                   recurrent_projection_dim, non_recurrent_projection_dim,
+                                   clipping_threshold, norm_based_clipping,
+                                   ng_per_element_scale_options, ng_affine_options,
+                                   lstm_delay = lstm_delay[1],
+                                   self_repair_scale_nonlinearity = self_repair_scale_nonlinearity,
+                                   self_repair_scale_clipgradient = self_repair_scale_clipgradient)
+    # connect forward and backward using gate as Lstm_forward_rt + Dropout(g(Lstm_backward_rt) . Lstm_backward_rt)
+    # and Lstm_backward_rt + Dropout(g(Lstm_forward_rt) . Lstm_forward_rt)
+
+    assert(output_forward['dimension'] == output_backward['dimension'])
+
+    forward_output_gate = AddSigmoidGate(config_lines, "{0}_forward".format(name), output_forward, self_repair_scale_nonlinearity = self_repair_scale_nonlinearity)
+
+    backward_output_gate = AddSigmoidGate(config_lines, "{0}_backward".format(name), output_backward, self_repair_scale_nonlinearity = self_repair_scale_nonlinearity)
+
+    components = config_lines['components']
+    component_nodes = config_lines['component-nodes']
+
+    components.append("component name={0}_forward_append_backward_gate type=NoOpComponent dim={1}".format(name, output_forward['dimension']))
+    component_nodes.append("component-node name={0}_forward_append_backward_gate component={0}_forward_append_backward_gate input=Sum({1}, {2})".format(name, output_forward['descriptor'], backward_output_gate['descriptor']))
+    
+
+    components.append("component name={0}_backward_append_forward_gate type=NoOpComponent dim={1}".format(name, output_backward['dimension']))
+    component_nodes.append("component-node name={0}_backward_append_forward_gate component={0}_backward_append_forward_gate input=Sum({1}, {2})".format(name, output_backward['descriptor'], forward_output_gate['descriptor']))
+
+    return [{
+            'descriptor': '{0}_forward_append_backward_gate'.format(name),
+            'dimension': output_forward['dimension']
+            },
+            {'descriptor': '{0}_backward_append_forward_gate'.format(name),
+             'dimension': output_backward['dimension']
+            }
+            ]
  

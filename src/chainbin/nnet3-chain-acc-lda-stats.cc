@@ -38,7 +38,8 @@ class NnetChainLdaStatsAccumulator {
       rand_prune_(rand_prune), nnet_(nnet), compiler_(nnet) { }
 
 
-  void AccStats(const NnetChainExample &eg) {
+  void AccStats(const NnetChainExample &eg, 
+                std::string output_name= "output") {
     ComputationRequest request;
     bool need_backprop = false, store_stats = false,
         need_xent = false, need_xent_deriv = false;
@@ -55,7 +56,7 @@ class NnetChainLdaStatsAccumulator {
 
     computer.AcceptInputs(nnet_, eg.inputs);
     computer.Forward();
-    const CuMatrixBase<BaseFloat> &nnet_output = computer.GetOutput("output");
+    const CuMatrixBase<BaseFloat> &nnet_output = computer.GetOutput(output_name);
     AccStatsFromOutput(eg, nnet_output);
   }
 
@@ -74,8 +75,8 @@ class NnetChainLdaStatsAccumulator {
                           const CuMatrixBase<BaseFloat> &nnet_output) {
     BaseFloat rand_prune = rand_prune_;
 
-    if (eg.outputs.size() != 1 || eg.outputs[0].name != "output")
-      KALDI_ERR << "Expecting the example to have one output named 'output'.";
+    if (eg.outputs[0].name != "output")
+      KALDI_ERR << "Expecting the example to have at least one output named 'output'.";
 
 
     const chain::Supervision &supervision = eg.outputs[0].supervision;
@@ -162,12 +163,13 @@ int main(int argc, char *argv[]) {
 
     bool binary_write = true;
     BaseFloat rand_prune = 0.0;
-
+    std::string output_name = "output";
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("rand-prune", &rand_prune,
                 "Randomized pruning threshold for posteriors");
-
+    po.Register("output-name", &output_name,
+                "output-name used to compute lda.");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 3) {
@@ -190,7 +192,7 @@ int main(int argc, char *argv[]) {
 
     SequentialNnetChainExampleReader example_reader(examples_rspecifier);
     for (; !example_reader.Done(); example_reader.Next(), num_egs++)
-      accumulator.AccStats(example_reader.Value());
+      accumulator.AccStats(example_reader.Value(), output_name);
 
     KALDI_LOG << "Processed " << num_egs << " examples.";
     // the next command will die if we accumulated no stats.

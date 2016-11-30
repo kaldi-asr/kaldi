@@ -103,22 +103,32 @@ steps/nnet3/chain/get_egs.sh {egs_opts} \
 # except it uses egs files in place of cegs files
 def ComputePreconditioningMatrix(dir, egs_dir, num_lda_jobs, run_opts,
                                  max_lda_jobs = None, rand_prune = 4.0,
-                                 lda_opts = None):
+                                 lda_opts = None,
+                                 output_name = None,
+                                 lda_name = 'lda.mat'):
     if max_lda_jobs is not None:
         if num_lda_jobs > max_lda_jobs:
             num_lda_jobs = max_lda_jobs
 
 
   # Write stats with the same format as stats for LDA.
+    output_str=""
+    egs_str="ark:{egs_dir}/cegs.JOB.ark".format(egs_dir = egs_dir)
+    if output_name is not None:
+      output_str="--output-name={0}".format(output_name)
+      egs_str="ark:nnet3-chain-copy-egs --duplicate-outputs=output/{output_name} ark:{egs_dir}/cegs.JOB.ark ark:- |".format(egs_dir = egs_dir, output_name=output_name)
+
     train_lib.RunKaldiCommand("""
 {command} JOB=1:{num_lda_jobs} {dir}/log/get_lda_stats.JOB.log \
- nnet3-chain-acc-lda-stats --rand-prune={rand_prune} \
-    {dir}/init.raw "ark:{egs_dir}/cegs.JOB.ark" {dir}/JOB.lda_stats""".format(
+ nnet3-chain-acc-lda-stats {output_str} --rand-prune={rand_prune} \
+    {dir}/init.raw "{egs_str}" {dir}/JOB.lda_stats""".format(
         command = run_opts.command,
         num_lda_jobs = num_lda_jobs,
         dir = dir,
         egs_dir = egs_dir,
-        rand_prune = rand_prune))
+        rand_prune = rand_prune,
+        output_str = output_str,
+        egs_str = egs_str))
 
     # the above command would have generated dir/{1..num_lda_jobs}.lda_stats
     lda_stat_files = map(lambda x: '{0}/{1}.lda_stats'.format(dir, x),
@@ -141,11 +151,11 @@ def ComputePreconditioningMatrix(dir, egs_dir, num_lda_jobs, run_opts,
 
     train_lib.RunKaldiCommand("""
 {command} {dir}/log/get_transform.log \
- nnet-get-feature-transform {lda_opts} {dir}/lda.mat {dir}/lda_stats
-     """.format(command = run_opts.command,dir = dir,
+ nnet-get-feature-transform {lda_opts} {dir}/{lda_name} {dir}/lda_stats
+     """.format(command = run_opts.command,dir = dir, lda_name = lda_name,
                 lda_opts = lda_opts if lda_opts is not None else ""))
 
-    train_lib.ForceSymlink("../lda.mat", "{0}/configs/lda.mat".format(dir))
+    train_lib.ForceSymlink("../{0}".format(lda_name), "{0}/configs/{1}".format(dir, lda_name))
 
 def PrepareInitialAcousticModel(dir, run_opts):
     """ Adds the first layer; this will also add in the lda.mat and

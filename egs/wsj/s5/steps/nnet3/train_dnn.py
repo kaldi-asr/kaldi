@@ -158,7 +158,7 @@ def GetArgs():
     parser.add_argument("--start-dropout-iter", type=int,
                         help="Number of initial iteration with minimum dropout",
                         default=10)
-    parser.add_argument("--dropout-schedule", type=int,
+    parser.add_argument("--dropout-schedule", type=float,
                         help="The dropout schedule used to incease dropout with this rate at each iterations.",
                         default=0.05)
     parser.add_argument("--remove-dropout-iter", type=int,
@@ -555,7 +555,7 @@ def Train(args, run_opts):
 
         ComputePreconditioningMatrix(args.dir, egs_dir, num_archives, run_opts,
                                      max_lda_jobs = args.max_lda_jobs,
-                                     rand_prune = args.rand_prune)
+                                     rand_prune = args.rand_prune) 
 
     if (args.stage <= -2):
         logger.info("Computing initial vector for FixedScaleComponent before"
@@ -605,6 +605,10 @@ def Train(args, run_opts):
     if add_ephemeral_connection:
       if use_dropout:
         dp_prop = ComputeDropout(num_iters, args.start_dropout_iter, args.dropout_schedule)
+
+    dp_file= open('{0}/configs/dropout_schedule'.format(args.dir), 'w')
+    print(dp_prop, file=dp_file)
+    dp_file.close()
 
     logger.info("Training will run for {0} epochs = {1} iterations".format(args.num_epochs, num_iters))
     for iter in range(num_iters):

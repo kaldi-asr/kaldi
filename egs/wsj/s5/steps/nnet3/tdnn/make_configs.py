@@ -127,6 +127,9 @@ def GetArgs():
     parser.add_argument("--use-dropout", type=str, action=nnet3_train_lib.StrToBoolAction,
                         help="If true, the ephemeral connection removed during training, otherwise used during whole training.",
                         choices=['true', 'false'], default= True)
+    parser.add_argument("--svd-dim", type=int, 
+                        help="If nonzero, the svd layer type using ephemeral connection used.",
+                        default = 0)
 
     parser.add_argument("--layerwise-pretrain", type=str, action=nnet3_train_lib.StrToBoolAction,
                         help="if true, the layers written separately in configs, otherwise "
@@ -353,7 +356,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
                 add_ephemeral_connection,
                 num_layer_skip_for_ephemeral,
                 layerwise_pretrain,
-                use_dropout):
+                use_dropout, svd_dim):
 
     parsed_splice_output = ParseSpliceString(splice_indexes_string.strip())
 
@@ -463,13 +466,48 @@ def MakeConfigs(config_dir, splice_indexes_string,
                     if i == 1:
                       dropout_name = "Tdnn_init"
                     # If input and output dim for layer are equal, the information directly pass to output.
-                    if (nonlin_output_dim_final == nonlin_output_dim_init) and i > num_layer_skip_for_ephemeral:
-                        prev_layer_output = nodes.AddAffRelNormWithDirectEphemeralLayer(config_lines, 
+                    if (nonlin_output_dim_final == nonlin_output_dim_init) and i >= (num_layer_skip_for_ephemeral-1):
+                        type=5
+                        if type == 3:
+                            dropout_layer_input = {'descriptor' : ('L0_fixaffine' if i == 1 else 'Tdnn_{0}_renorm'.format(i-1)),
+                                                    'dimension' : nonlin_output_dims[i]}
+                            prev_layer_output = nodes.AddAffRelNormWithDirectEphemeralLayerV3(config_lines, 
+                                                                        "Tdnn_{0}".format(i), prev_layer_output,
+                                                                        ('Tdnn_init' if i == 1 else 'Tdnn_{0}'.format(i)), dropout_layer_input,
+                                                                        nonlin_output_dims[i],
+                                                                        self_repair_scale = self_repair_scale,
+                                                                        norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target,
+                                                                        block_affine_scale = 0.01)
+                        elif type == 4:
+                            prev_layer_output = nodes.AddAffRelNormWithDirectEphemeralLayerV4(config_lines, 
+                                                                        "Tdnn_{0}".format(i), prev_layer_output,
+                                                                        dropout_name, dropout_layer_input,
+                                                                        nonlin_output_dims[i],
+                                                                        self_repair_scale = self_repair_scale,
+                                                                        norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
+                        elif type == 5:
+                            prev_layer_output = nodes.AddAffRelNormWithDirectEphemeralLayerV5(config_lines, 
+                                                                        "Tdnn_{0}".format(i), prev_layer_output,
+                                                                        dropout_name, dropout_layer_input,
+                                                                        nonlin_output_dims[i],
+                                                                        self_repair_scale = self_repair_scale,
+                                                                        norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
+                        elif type == 6:
+                            prev_layer_output = nodes.AddAffRelNormWithDirectEphemeralLayerV6(config_lines, 
+                                                                        "Tdnn_{0}".format(i), prev_layer_output,
+                                                                        dropout_name, dropout_layer_input,
+                                                                        nonlin_output_dims[i],
+                                                                        self_repair_scale = self_repair_scale,
+                                                                        norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
+                    elif svd_dim > 0:
+                        #svd_dim = int(prev_layer_output['dimension'] * nonlin_output_dims[i] / (nonlin_output_dims[i] + prev_layer_output['dimension']))
+                        prev_layer_output = nodes.AddAffRelNormSvdWithEphemeralLayer(config_lines, 
                                                                     "Tdnn_{0}".format(i), prev_layer_output,
-                                                                    dropout_name, dropout_layer_input,
+                                                                    dropout_name, svd_dim, 
                                                                     nonlin_output_dims[i],
                                                                     self_repair_scale = self_repair_scale,
                                                                     norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
+                   
                     else:
                         prev_layer_output = nodes.AddAffRelNormWithEphemeralLayer(config_lines, 
                                                                     "Tdnn_{0}".format(i), prev_layer_output,
@@ -570,8 +608,8 @@ def Main():
                 add_ephemeral_connection = args.add_ephemeral_connection,
                 num_layer_skip_for_ephemeral = args.num_layer_skip_for_ephemeral,
                 layerwise_pretrain = args.layerwise_pretrain,
-                use_dropout = args.use_dropout)
+                use_dropout = args.use_dropout,
+                svd_dim = args.svd_dim)
 
 if __name__ == "__main__":
     Main()
-

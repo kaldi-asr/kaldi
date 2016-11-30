@@ -16,13 +16,16 @@
 # If you want to run without GPU you'd have to call train_tdnn.sh with --gpu false,
 # --num-threads 16 and --minibatch-size 128.
 
-stage=0
+stage=9
 affix=
 train_stage=-10
 preserve_model_interval=10
 has_fisher=true
 speed_perturb=true
 layerwise_pretrain=false
+start_dropout_iter=20
+dropout_schedule=0.05
+svd_dim=0
 num_layer_skip_for_ephemeral=2
 common_egs_dir=exp/nnet3/tdnn_b_dp_sp/egs
 reporting_email=
@@ -61,17 +64,19 @@ if [ $stage -le 9 ]; then
   # the dim for the last relu layer, and the dims of the layers in between increase
   # geometrically. The reason for this kind of parameters re-distribution is mainly
   # for time efficiency, since the lower layers are more computationally intensive.
+  # --splice-indexes "-2,-1,0,1,2 -1,1 -1,1 -1,1 -2,2 -2,2 -2,2 -4,4 0"
   steps/nnet3/tdnn/make_configs.py  \
     --feat-dir data/${train_set}_hires \
     --ivector-dir exp/nnet3/ivectors_${train_set} \
     --ali-dir $ali_dir \
-    --relu-dim-init 512 \
+    --relu-dim-init 256 \
     --relu-dim-final 1024 \
-    --splice-indexes "-2,-1,0,1,2 -1,1 -1,1 -1,1 -2,2 -2,2 -2,2 -4,4 0" \
+    --splice-indexes "-2,-1,0,1,2 -1,1 -1,1 -1,1 -1,1 -1,1 -1,1 -1,1 -1,1 -1,1 -1,1 -1,1 -2,2 0" \
     --use-presoftmax-prior-scale true \
     --add-ephemeral-connection true \
     --layerwise-pretrain $layerwise_pretrain \
     --num-layer-skip-for-ephemeral $num_layer_skip_for_ephemeral \
+    --svd-dim $svd_dim \
    $dir/configs || exit 1;
 fi
 
@@ -99,18 +104,20 @@ if [ $stage -le 10 ]; then
     --ali-dir $ali_dir \
     --lang data/lang \
     --reporting.email="$reporting_email" \
+    --start-dropout-iter $start_dropout_iter \
+    --dropout-schedule $dropout_schedule \
     --dir=$dir  || exit 1;
 
 fi
 
 graph_dir=exp/tri4/graph_sw1_tg
 if [ $stage -le 11 ]; then
-  #for decode_set in train_dev eval2000; do
-  for decode_set in train_dev; do
+  for decode_set in train_dev eval2000; do
+  #for decode_set in train_dev; do
     (
     num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
     steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" \
-        --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
+        --online-ivector-dir exp/nnet3/ivectors_${decode_set}_dan \
        $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_hires_sw1_tg || exit 1;
     if $has_fisher; then
 	steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \

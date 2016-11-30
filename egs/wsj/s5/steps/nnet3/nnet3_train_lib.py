@@ -514,10 +514,12 @@ def DoShrinkage(iter, model_file, non_linearity, shrink_threshold):
         for line in output:
             mat_obj = mean_pattern.search(line)
             if mat_obj is None:
-                raise Exception("Something went wrong, unable to find deriv-avg in the line \n{0}".format(line))
-            mean_deriv = float(mat_obj.groups()[0])
-            total_mean_deriv += mean_deriv
-            num_derivs += 1
+              mean_deriv = 0.5
+                #raise Exception("Something went wrong, unable to find deriv-avg in the line \n{0}".format(line))
+            else:    
+              mean_deriv = float(mat_obj.groups()[0])
+              total_mean_deriv += mean_deriv
+              num_derivs += 1
         if total_mean_deriv / num_derivs < shrink_threshold:
             return True
     except ValueError:
@@ -730,7 +732,39 @@ def ComputeDropout(num_iters, init_zero_dp_iter, dropout_schedule):
 
   # gradual increase in dropout 
   for iter in range(init_zero_dp_iter, num_iters):
-    dp_rate = min(1.0, format(float(iter) * dropout_schedule, '.2f'))
+    dp_rate = min('1.0', format(float(iter-init_zero_dp_iter) * dropout_schedule, '.3f'))
     dp_prop.append(dp_rate)
 
   return dp_prop
+
+# num_iters is the total number of iterations
+# The dropout schedule has 5 stage:
+# 1. In 1st stage, the dropout starts with max_dropout for iters[0] iteration.
+# 2. In 2nd stage, dropout decrease gradually to min_dropout value 
+# 3. In 3rd stage, dropout is constant and it is equal to min_dropout.
+# 4. In 4th stage, dropout starts increasing to max_dropout.
+# 5. In 5d stage, dropout is contant and equal to max_dropout.
+# iters is list of number of iterations for each stage.
+def ComputeTwinDropout(iter_per_stages, min_dropout = 0.0,
+                       max_dropout = 1.0):
+  dp_prop = []
+  # zero dropout in the begining of training
+  for iter in range(iter_per_stages[0]):
+    dp_prop.append(max_dropout)
+  
+  for iter in range(iter_per_stages[1]):
+    dp_prop.append(format(max_dropout - (max_dropout - min_dropout) * float(iter)/ (iter_per_stages[1]), '.2f'))
+
+  
+  for iter in range(iter_per_stages[2]):
+    dp_prop.append(min_dropout)
+
+  for iter in range(iter_per_stages[3]):
+    dp_prop.append(format(min_dropout + (max_dropout - min_dropout) * float(iter)/ (iter_per_stages[3]), '.2f'))
+
+  for iter in range(iter_per_stages[4]):
+    dp_prop.append(max_dropout)
+
+  return dp_prop
+
+
