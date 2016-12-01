@@ -38,12 +38,12 @@ bool CompareInterval(const Interval &i1,
 }
 
 bool ClusterLattice(CompactLattice *clat,
-                    const vector<int32> &state_times) {
+                    const std::vector<int32> &state_times) {
   using namespace fst;
   typedef CompactLattice::StateId StateId;
 
   // Hashmap to store the cluster heads.
-  unordered_map<StateId, vector<Interval> > head;
+  unordered_map<StateId, std::vector<Interval> > head;
 
   // Step 1: Iterate over the lattice to get the arcs
   StateId max_id = 0;
@@ -72,11 +72,11 @@ bool ClusterLattice(CompactLattice *clat,
   //   the cluster heads is to take the first one as a cluster head; then go
   //   till we find the next one that doesn't overlap in time with the current
   //   cluster head, and so on.
-  unordered_map<StateId, vector<Interval> >::iterator iter;
+  unordered_map<StateId, std::vector<Interval> >::iterator iter;
   for (iter = head.begin(); iter != head.end(); ++iter) {
     // For this ilabel, sort all the arcs on time, from first to last.
     sort(iter->second.begin(), iter->second.end(), CompareInterval);
-    vector<Interval> tmp;
+    std::vector<Interval> tmp;
     tmp.push_back(iter->second[0]);
     for (int32 i = 1; i < iter->second.size(); i++) {
       if (tmp.back().End() <= iter->second[i].Start())
@@ -158,7 +158,7 @@ class CompactLatticeToKwsProductFstMapper {
 
 
 bool CreateFactorTransducer(const CompactLattice &clat,
-                            const vector<int32> &state_times,
+                            const std::vector<int32> &state_times,
                             int32 utterance_id,
                             KwsProductFst *factor_transducer) {
   using namespace fst;
@@ -166,8 +166,8 @@ bool CreateFactorTransducer(const CompactLattice &clat,
 
   // We first compute the alphas and betas
   bool success = false;
-  vector<double> alpha;
-  vector<double> beta;
+  std::vector<double> alpha;
+  std::vector<double> beta;
   success = ComputeCompactLatticeAlphas(clat, &alpha);
   success = success && ComputeCompactLatticeBetas(clat, &beta);
   if (!success)
@@ -263,7 +263,7 @@ bool CreateFactorTransducer(const CompactLattice &clat,
 }
 
 void RemoveLongSilences(int32 max_silence_frames,
-                        const vector<int32> &state_times,
+                        const std::vector<int32> &state_times,
                         KwsProductFst *factor_transducer) {
   using namespace fst;
   typedef KwsProductArc::StateId StateId;
