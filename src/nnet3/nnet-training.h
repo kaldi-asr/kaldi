@@ -214,7 +214,17 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
                               NnetComputer *computer,
                               BaseFloat *tot_weight,
                               BaseFloat *tot_objf);
-
+/**
+  This function computes unsupervised objective function.
+  all defined params is the same as function decleration for
+  supervised case.
+*/ 
+void ComputeObjectiveFunction(ObjectiveType objective_type,
+                              const std::string &output_name,
+                              bool supply_deriv,
+                              NnetComputer *computer,
+                              BaseFloat *tot_weight,
+                              BaseFloat *tot_objf);
 
 
 } // namespace nnet3

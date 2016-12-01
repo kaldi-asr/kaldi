@@ -106,6 +106,8 @@ void NnetTrainer::ProcessOutputs(const NnetExample &eg,
     KALDI_ASSERT(node_index >= 0);
     if (nnet_->IsOutputNode(node_index)) {
       ObjectiveType obj_type = nnet_->GetNode(node_index).u.objective_type;
+      SupervisionType sup_type = nnet_->GetNode(node_index).u.sup_type;
+      KALDI_ASSERT(sup_type == kSupervised);
       BaseFloat tot_weight, tot_objf;
       bool supply_deriv = true;
       ComputeObjectiveFunction(io.features, obj_type, io.name,
@@ -116,6 +118,27 @@ void NnetTrainer::ProcessOutputs(const NnetExample &eg,
                                       tot_weight, tot_objf);
     }
   }
+  // compute objective for unsupervised output nodes.
+  std::vector<std::string> node_names = nnet_->GetNodeNames();
+  for (int32 ind = 0; ind < node_names.size(); ind++) {
+    int32 node_index = nnet_->GetNodeIndex(node_names[ind]);
+    std::string node_name = node_names[ind];
+    KALDI_ASSERT(node_index >= 0);
+    if (nnet_->IsOutputNode(node_index)) {
+      ObjectiveType obj_type = nnet_->GetNode(node_index).u.objective_type;
+      SupervisionType sup_type = nnet_->GetNode(node_index).u.sup_type;
+      KALDI_ASSERT(sup_type == kUnsupervised);
+      BaseFloat tot_weight, tot_objf;
+      bool supply_deriv = true;
+      ComputeObjectiveFunction(obj_type, node_name, 
+                               supply_deriv, computer,
+                               &tot_weight, &tot_objf);
+      objf_info_[node_name].UpdateStats(node_name, config_.print_interval,
+                                      num_minibatches_processed_++,
+                                      tot_weight, tot_objf);
+    }
+  }
+
 }
 
 bool NnetTrainer::PrintTotalStats() const {
@@ -205,7 +228,44 @@ NnetTrainer::~NnetTrainer() {
   } 
   delete delta_nnet_;
 }
+void ComputeObjectiveFunction(ObjectiveType objective_type,
+                              const std::string &output_name,
+                              bool supply_deriv,
+                              NnetComputer *computer,
+                              BaseFloat *tot_weight,
+                              BaseFloat *tot_objf) {
+  const CuMatrixBase<BaseFloat> &output = computer->GetOutput(output_name);
+  
+  CuMatrix<BaseFloat> output_deriv(output.NumRows(),
+                                   output.NumCols(),
+                                   kUndefined);
+  
+  switch (objective_type) {
+    case kLinear: {
+      // objective is x
+      *tot_weight = output.NumRows();
+      *tot_objf = output.Sum();
+      if (supply_deriv) {
+        output_deriv.Set(1.0);
+      }
+      break;
+    }
 
+    case kQuadratic: {
+      // objective is -0.5 x^2
+      *tot_weight = output.NumRows();
+      *tot_objf = 0.5 * TraceMatMat(output, output, kTrans);
+      if (supply_deriv) {
+        output_deriv.CopyFromMat(output);
+        output_deriv.Scale(-1.0);
+      }
+      break;
+    }
+    default:
+      KALDI_ERR << "Objective function type " << objective_type
+                << " not handled.";
+  }
+}
 void ComputeObjectiveFunction(const GeneralMatrix &supervision,
                               ObjectiveType objective_type,
                               const std::string &output_name,
