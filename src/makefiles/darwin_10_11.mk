@@ -33,7 +33,8 @@ COMPILER = $(shell $(CXX) -v 2>&1 )
 ifeq ($(findstring clang,$(COMPILER)),clang)
   CXXFLAGS += -Wno-mismatched-tags
   # Link with libstdc++ if we are building against OpenFst < 1.4
-  ifneq ("$(OPENFST_GE_10400)","1")
+	OPENFST_VER_NUM := $(shell echo $(OPENFST_VER) | sed 's/\./ /g' | xargs printf "%d%02d%02d")
+	ifeq ("$(shell expr $(OPENFST_VER_NUM) \< 10400)","1")
     CXXFLAGS += -stdlib=libstdc++
     LDFLAGS += -stdlib=libstdc++
   endif

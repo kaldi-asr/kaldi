@@ -960,20 +960,6 @@ if [ ! -f makefiles/common.mk ]; then
     failure makefiles/common.mk not found
 fi
 
-
-echo "Checking OpenFST library in $FSTROOT ..."
-if [ ! -f $FSTROOT/include/fst/fst.h  ]; then
-    failure "Could not find file $FSTROOT/include/fst/fst.h:
-    you may not have installed OpenFst.  See ../tools/INSTALL"
-fi
-echo Checking OpenFst library was patched.
-if ! grep "multiple repeated" $FSTROOT/include/fst/minimize.h >/dev/null; then
-    echo "**  ERROR  **"
-    echo "** $FSTROOT/include/fst/minimize.h seems not to be patched:"
-    echo "patch not applied?  FST tools will not work in our recipe."
-    exit 1;
-fi
-
 # back up the old one in case we modified it
 if [ -f kaldi.mk ]; then
   echo "Backing up kaldi.mk to kaldi.mk.bak"
@@ -990,15 +976,29 @@ fi
 echo "CONFIGURE_VERSION := $CONFIGURE_VERSION" >> kaldi.mk
 echo "FSTROOT = $FSTROOT" >> kaldi.mk
 
-# Check installed OpenFst version and add C++11 flags if OpenFst >= 1.4
+echo "Checking OpenFST library in $FSTROOT ..."
+if [ ! -f $FSTROOT/include/fst/fst.h  ]; then
+    failure "Could not find file $FSTROOT/include/fst/fst.h:
+    you may not have installed OpenFst.  See ../tools/INSTALL"
+fi
+
 OPENFST_VER="${OPENFST_VER:-`grep 'PACKAGE_VERSION' $FSTROOT/Makefile | sed -e 's:.*= ::'`}"
+echo "Adding flags necessary for compiling against OpenFst-$OPENFST_VER ..."
 echo "OPENFST_VER = $OPENFST_VER" >> kaldi.mk
 OPENFST_VER_NUM=`echo $OPENFST_VER | sed 's/\./ /g' | xargs printf "%d%02d%02d"`
+echo "EXTRA_CXXFLAGS += -DOPENFST_VER=$OPENFST_VER_NUM" >> kaldi.mk
 if [ $OPENFST_VER_NUM -ge 10400 ]; then
-  echo "OPENFST_GE_10400 = 1" >> kaldi.mk
-  echo "EXTRA_CXXFLAGS += -DHAVE_OPENFST_GE_10400 -std=c++0x" >> kaldi.mk
-else
-  echo "OPENFST_GE_10400 = 0" >> kaldi.mk
+  echo "EXTRA_CXXFLAGS += -std=c++0x" >> kaldi.mk
+fi
+
+if [ $OPENFST_VER_NUM -lt 10500 ]; then
+  echo "Checking if OpenFst library was patched ..."
+  if ! grep "multiple repeated" $FSTROOT/include/fst/minimize.h >/dev/null; then
+    echo "**  ERROR  **"
+    echo "** $FSTROOT/include/fst/minimize.h seems not to be patched:"
+    echo "patch not applied?  FST tools will not work in our recipe."
+    exit 1;
+  fi
 fi
 
 # Most of the OS-specific steps below will append to kaldi.mk
@@ -1044,7 +1044,6 @@ fi
 # which crashes on Darwin. Also the linear algebra libraries on Macs are
 # used differently (through the Accelerate framework) than on Linux.
 if [ "`uname`" == "Darwin"  ]; then
- $use_cuda && configure_cuda
   echo "On Darwin: checking for Accelerate framework ..."
   if [ ! -e /System/Library/Frameworks/Accelerate.framework ]; then
     failure "Need the Accelerate.framework to compile on Darwin."
@@ -1090,6 +1089,7 @@ if [ "`uname`" == "Darwin"  ]; then
   else
     failure "OS X version '$osx_ver' not supported"
   fi
+  $use_cuda && configure_cuda
   echo "Configuration succeeded for platform Darwin."
   exit_success;
 fi
