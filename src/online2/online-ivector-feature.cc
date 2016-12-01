@@ -387,7 +387,7 @@ OnlineSilenceWeighting::OnlineSilenceWeighting(
     const OnlineSilenceWeightingConfig &config):
     trans_model_(trans_model), config_(config),
     num_frames_output_and_correct_(0) {
-  vector<int32> silence_phones;
+  std::vector<int32> silence_phones;
   SplitStringToIntegers(config.silence_phones_str, ":,", false,
                         &silence_phones);
   for (size_t i = 0; i < silence_phones.size(); i++)
@@ -514,7 +514,7 @@ void OnlineSilenceWeighting::GetDeltaWeights(
       frames_out = static_cast<int32>(frame_info_.size()) - begin_frame;
   // frames_out is the number of frames we will output.
   KALDI_ASSERT(frames_out >= 0);
-  vector<BaseFloat> frame_weight(frames_out, 1.0);
+  std::vector<BaseFloat> frame_weight(frames_out, 1.0);
   // we will frame_weight to the value silence_weight for silence frames and for
   // transition-ids that repeat with duration > max_state_duration.  Frames newer
   // than the most recent traceback will get a weight equal to the weight for the

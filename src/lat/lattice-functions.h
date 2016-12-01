@@ -67,12 +67,12 @@ BaseFloat LatticeForwardBackward(const Lattice &lat,
 // the CompactLattice lattice format. Also we only need the alpha in the forward
 // path, not the posteriors.
 bool ComputeCompactLatticeAlphas(const CompactLattice &lat,
-                                 vector<double> *alpha);
+                                 std::vector<double> *alpha);
 
 // A sibling of the function CompactLatticeAlphas()... We compute the beta from
 // the backward path here.
 bool ComputeCompactLatticeBetas(const CompactLattice &lat,
-                                vector<double> *beta);
+                                std::vector<double> *beta);
 
 
 // Computes (normal or Viterbi) alphas and betas; returns (total-prob, or
@@ -82,8 +82,8 @@ bool ComputeCompactLatticeBetas(const CompactLattice &lat,
 template<typename LatticeType>
 double ComputeLatticeAlphasAndBetas(const LatticeType &lat,
                                     bool viterbi,
-                                    vector<double> *alpha,
-                                    vector<double> *beta);
+                                    std::vector<double> *alpha,
+                                    std::vector<double> *beta);
 
 
 /// Topologically sort the compact lattice if not already topologically sorted.
@@ -321,4 +321,3 @@ void ComposeCompactLatticeDeterministic(
 }  // namespace kaldi
 
 #endif  // KALDI_LAT_LATTICE_FUNCTIONS_H_
-
