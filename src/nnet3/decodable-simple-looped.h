@@ -148,6 +148,11 @@ class DecodableNnetSimpleLoopedInfo  {
   // to accept the iVectors
   bool has_ivectors_;
 
+  // The 3 computation requests that are used to create the looped
+  // computation are stored in the class, as we need them to work out
+  // exactly shich iVectors are needed.
+  ComputationRequest request1_, request2_, request3_;
+  
   // The compiled, 'looped' computation.
   NnetComputation computation_;
 };
