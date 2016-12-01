@@ -15,6 +15,7 @@ set -u
 max_segment_duration=30
 overlap_duration=5
 
+# Decode options
 graph_opts=
 nj=4
 lmwt=10
@@ -23,6 +24,18 @@ lmwt=10
 max_words=1000
 num_neighbors_to_search=2
 neighbor_tfidf_threshold=0
+
+# First-pass segmentation opts
+min_segment_length=0.5
+min_new_segment_length=1.0
+max_tained_length=0.05
+max_edge_silence_length=0.5
+max_edge_non_scored_length=0.5
+max_internal_silence_length=2.0
+max_internal_non_scored_length=2.0
+unk_padding=0.05
+max_junk_proportion=0.1
+max_deleted_words_kept_when_merging=1
 
 stage=-1
 
@@ -253,6 +266,73 @@ if [ $stage -le 8 ]; then
       $dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm.JOB \
       $dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm_edits.JOB
 
-  cat $dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm_edits.* > \
-    $dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm_edits
+  for n in `seq $nj`; do
+    cat $dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm_edits.$n 
+  done > $dir/lats/ctm_edits
 fi
+
+if [ $stage -le 9 ]; then
+  echo "$0: using default values of non-scored words..."
+
+  # At the level of this script we just hard-code it that non-scored words are
+  # those that map to silence phones (which is what get_non_scored_words.py
+  # gives us), although this could easily be made user-configurable.  This list
+  # of non-scored words affects the behavior of several of the data-cleanup
+  # scripts; essentially, we view the non-scored words as negotiable when it
+  # comes to the reference transcript, so we'll consider changing the reference
+  # to match the hyp when it comes to these words.
+  steps/cleanup/internal/get_non_scored_words.py $lang > $dir/non_scored_words.txt
+fi
+
+if [ $stage -le 10 ]; then
+  echo "$0: modifying ctm-edits file to allow repetitions [for dysfluencies] and "
+  echo "   ... to fix reference mismatches involving non-scored words. "
+
+  $cmd $dir/log/modify_ctm_edits.log \
+    steps/cleanup/internal/modify_ctm_edits.py --verbose=3 $dir/non_scored_words.txt \
+    $dir/lats/ctm_edits $dir/ctm_edits.modified
+
+  echo "   ... See $dir/log/modify_ctm_edits.log for details and stats, including"
+  echo " a list of commonly-repeated words."
+fi
+
+if [ $stage -le 11 ]; then
+  echo "$0: applying 'taint' markers to ctm-edits file to mark silences and"
+  echo "  ... non-scored words that are next to errors."
+  $cmd $dir/log/taint_ctm_edits.log \
+       steps/cleanup/internal/taint_ctm_edits.py $dir/ctm_edits.modified $dir/ctm_edits.tainted
+  echo "... Stats, including global cor/ins/del/sub stats, are in $dir/log/taint_ctm_edits.log."
+fi
+
+if [ $stage -le 12 ]; then
+  echo "$0: creating segmentation from ctm-edits file."
+
+  segmentation_opts=(
+  --min-segment-length=$min_segment_length
+  --min-new-segment-length=$min_new_segment_length
+  --max-taited-length=$max_tained_length
+  --max-edge-silence-length=$max_edge_silence_length
+  --max-edge-non-scored-length=$max_edge_non_scored_length
+  --max-internal-silence-length=$max_internal_silence_length
+  --max-internal-non-scored-length=$max_internal_non_scored_length
+  --unk-padding=$unk_padding
+  --max-junk-proportion=$max_junk_proportion
+  --max-deleted-words-kept-when-merging=$max_deleted_words_kept_when_merging
+  )
+
+  $cmd $dir/log/segment_ctm_edits.log \
+    steps/cleanup/internal/segment_ctm_edits.py \
+      ${segmentation_opts[@]} \
+      --oov-symbol-file=$lang/oov.txt \
+      --ctm-edits-out=$dir/ctm_edits.segmented \
+      --word-stats-out=$dir/word_stats.txt \
+      $dir/non_scored_words.txt \
+      $dir/ctm_edits.tainted $dir/text $dir/segments
+
+  echo "$0: contents of $dir/log/segment_ctm_edits.log are:"
+  cat $dir/log/segment_ctm_edits.log
+  echo "For word-level statistics on p(not-being-in-a-segment), with 'worst' words at the top,"
+  echo "see $dir/word_stats.txt"
+  echo "For detailed utterance-level debugging information, see $dir/ctm_edits.segmented"
+fi
+
