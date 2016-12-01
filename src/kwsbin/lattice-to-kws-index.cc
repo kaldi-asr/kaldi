@@ -110,10 +110,10 @@ int main(int argc, char *argv[]) {
           n_fail++;
           continue;
         }
-      } 
+      }
 
       // Get the alignments
-      vector<int32> state_times;
+      std::vector<int32> state_times;
       CompactLatticeStateTimes(clat, &state_times);
 
       // Cluster the arcs in the CompactLattice, write the cluster_id on the
@@ -145,9 +145,9 @@ int main(int argc, char *argv[]) {
         EnsureEpsilonProperty(&clat);
         fst::TopSort(&clat);
         // We have to recompute the state times because they will have changed.
-        CompactLatticeStateTimes(clat, &state_times);        
+        CompactLatticeStateTimes(clat, &state_times);
       }
-      
+
       // Generate factor transducer
       // CreateFactorTransducer() corresponds to the "Factor Generation" part of
       // Dogan and Murat's paper. But we also move the weight pushing step to
@@ -158,7 +158,7 @@ int main(int argc, char *argv[]) {
       success = CreateFactorTransducer(clat, state_times, utterance_id, &factor_transducer);
       if (!success) {
         KALDI_WARN << "Cannot generate factor transducer for lattice " << key;
-        n_fail++; 
+        n_fail++;
       }
 
       MaybeDoSanityCheck(factor_transducer);
@@ -178,7 +178,7 @@ int main(int argc, char *argv[]) {
       DoFactorMerging(&factor_transducer, &index_transducer);
 
       MaybeDoSanityCheck(index_transducer);
-      
+
       // Do factor disambiguation. It corresponds to the "Factor Disambiguation"
       // step in Dogan and Murat's paper.
       KALDI_VLOG(1) << "Doing factor disambiguation...";
@@ -191,10 +191,10 @@ int main(int argc, char *argv[]) {
       KALDI_VLOG(1) << "Optimizing factor transducer...";
       OptimizeFactorTransducer(&index_transducer, max_states, allow_partial);
 
-      MaybeDoSanityCheck(index_transducer);      
-      
+      MaybeDoSanityCheck(index_transducer);
+
       // Write result
-      index_writer.Write(key, index_transducer);  
+      index_writer.Write(key, index_transducer);
 
       n_done++;
     }
