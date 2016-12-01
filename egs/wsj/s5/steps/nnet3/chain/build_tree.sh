@@ -25,6 +25,7 @@ frame_subsampling_factor=1
 leftmost_questions_truncate=10
 tree_stats_opts=
 cluster_phones_opts=
+repeat_frames=false
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -171,7 +172,7 @@ if [ $stage -le -1 ]; then
   # for other purposes.
   echo "$0: Converting alignments from $alidir to use current tree"
   $cmd JOB=1:$nj $dir/log/convert.JOB.log \
-    convert-ali --frame-subsampling-factor=$frame_subsampling_factor \
+    convert-ali --repeat-frames=$repeat_frames --frame-subsampling-factor=$frame_subsampling_factor \
        $alidir/final.mdl $dir/1.mdl $dir/tree \
      "ark:gunzip -c $alidir/ali.JOB.gz|" "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
 fi
