@@ -80,8 +80,9 @@ int32 GetChunkSize(const Nnet &nnet,
 /// for negative a is not specified (except by relation with the division '/'
 /// operator), but in practice it would be <= 0 for almost all implementations.
 template<class I> I  Mod(I m, I n) {
-  if (m >= 0) return m % n;
-  else return -((-m) % n);
+  I ans = m % n;
+  if (ans < 0) ans += n;
+  return ans;
 }
 
 
@@ -171,15 +172,16 @@ void CreateLoopedComputationRequestSimple(const Nnet &nnet,
     }
     for (int32 t = chunk2_input_begin_t; t < chunk2_input_end_t; t++) {
       int32 ivector_t = t - Mod(t, ivector_period);
-      if (ivector_times1.count(ivector_t) == 0)
+      if (ivector_times2.count(ivector_t) == 0 &&
+	  ivector_times1.count(ivector_t) == 0)
         ivector_times2.insert(ivector_t);
     }
     for (int32 t = chunk3_input_begin_t; t < chunk3_input_end_t; t++) {
       int32 ivector_t = t - Mod(t, ivector_period);
-      if (ivector_times1.count(ivector_t) == 0 &&
-          ivector_times2.count(ivector_t) == 0) {
+      if (ivector_times3.count(ivector_t) == 0 &&
+          ivector_times2.count(ivector_t) == 0 &&
+	  ivector_times1.count(ivector_t) == 0)
         ivector_times3.insert(ivector_t);
-      }
     }
   }
 

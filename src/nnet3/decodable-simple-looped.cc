@@ -72,7 +72,6 @@ void DecodableNnetSimpleLoopedInfo::Init(
   if (has_ivectors_)
     ModifyNnetIvectorPeriod(ivector_period, nnet);
 
-  ComputationRequest request1, request2, request3;
   int32 num_sequences = 1;  // we're processing one utterance at a time.
   int32 extra_right_context = 0;
   CreateLoopedComputationRequestSimple(*nnet, frames_per_chunk_,
@@ -80,9 +79,9 @@ void DecodableNnetSimpleLoopedInfo::Init(
                                        ivector_period, opts.extra_left_context_initial,
                                        extra_right_context,
                                        num_sequences,
-                                       &request1, &request2, &request3);
+                                       &request1_, &request2_, &request3_);
 
-  CompileLooped(*nnet, opts_.optimize_config, request1, request2, request3,
+  CompileLooped(*nnet, opts_.optimize_config, request1_, request2_, request3_,
                 &computation_);
   computation_.ComputeCudaIndexes();
   if (GetVerboseLevel() >= 3) {
@@ -172,11 +171,25 @@ void DecodableNnetSimpleLooped::AdvanceChunk() {
   computer_.AcceptInput("input", &feats_chunk);
 
   if (info_.has_ivectors_) {
+    KALDI_ASSERT(info_.request1_.inputs.size() == 2);
+    // all but the 1st chunk should have 1 iVector, but no need
+    // to assume this.
+    int32 num_ivectors = (num_chunks_computed_ == 0 ?
+			  info_.request1_.inputs[1].indexes.size() :
+			  info_.request2_.inputs[1].indexes.size());
+    KALDI_ASSERT(num_ivectors > 0);
+
     Vector<BaseFloat> ivector;
+    // we just get the iVector from the last input frame we needed...
+    // we don't bother trying to be 'accurate' in getting the iVectors
+    // for their 'correct' frames, because in general using the
+    // iVector from as large 't' as possible will be better.
     GetCurrentIvector(end_input_frame, &ivector);
-    CuMatrix<BaseFloat> cu_ivector(1, ivector.Dim());
-    cu_ivector.Row(0).CopyFromVec(ivector);
-    computer_.AcceptInput("ivector", &cu_ivector);
+    Matrix<BaseFloat> ivectors(num_ivectors,
+			       ivector.Dim());
+    ivectors.CopyRowsFromVec(ivector);
+    CuMatrix<BaseFloat> cu_ivectors(ivectors);
+    computer_.AcceptInput("ivector", &cu_ivectors);
   }
   computer_.Run();
 
