@@ -86,7 +86,9 @@ class TableMatcherImpl : public MatcherBase<typename F::Arc> {
   virtual const FST &GetFst() const { return *fst_; }
 
   virtual ~TableMatcherImpl() {
+#ifndef HAVE_OPENFST_GE_10500
     assert(RefCount() == 0);
+#endif
     vector<ArcId> *const empty = ((vector<ArcId>*)(NULL)) + 1;  // special marker.
     for (size_t i = 0; i < tables_.size(); i++) {
       if (tables_[i] != NULL && tables_[i] != empty)
@@ -219,6 +221,7 @@ class TableMatcherImpl : public MatcherBase<typename F::Arc> {
   virtual uint64 Properties(uint64 props) const { return props; } // simple matcher that does
   // not change its FST, so properties are properties of FST it is applied to
 
+#ifndef HAVE_OPENFST_GE_10500
   int RefCount() const {
     return ref_count_.count();
   }
@@ -230,8 +233,11 @@ class TableMatcherImpl : public MatcherBase<typename F::Arc> {
   int DecrRefCount() {
     return ref_count_.Decr();
   }
+#endif
  private:
+#ifndef HAVE_OPENFST_GE_10500
   RefCounter ref_count_;        // Reference count
+#endif
 
   virtual void SetState_(StateId s) { SetState(s); }
   virtual bool Find_(Label label) { return Find(label); }
@@ -263,22 +269,26 @@ class TableMatcher : public MatcherBase<typename F::Arc> {
   typedef StateId ArcId;  // Use this type to store arc offsets [it's actually size_t
   // in the Seek function of ArcIterator, but StateId should be big enough].
   typedef typename Arc::Weight Weight;
+  typedef TableMatcherImpl<F, BackoffMatcher> I;
 
   TableMatcher(const FST &fst, MatchType match_type,
                const TableMatcherOptions &opts = TableMatcherOptions()):
-      impl_(new TableMatcherImpl<F, BackoffMatcher>(fst, match_type, opts)) { }
-
+      impl_(new I(fst, match_type, opts)) { }
 
   TableMatcher(const TableMatcher<FST, BackoffMatcher> &matcher, bool safe):
       impl_(matcher.impl_) {
-    impl_->IncrRefCount();
+#ifndef HAVE_OPENFST_GE_10500
+      impl_->IncrRefCount();
+#endif
   }
 
   virtual const FST &GetFst() const { return impl_->GetFst(); }
 
+#ifndef HAVE_OPENFST_GE_10500
   virtual ~TableMatcher() {
     if (!impl_->DecrRefCount())   delete impl_;
   }
+#endif
 
   virtual MatchType Type(bool test) const { return impl_->Type(test);  }
 
@@ -301,7 +311,11 @@ class TableMatcher : public MatcherBase<typename F::Arc> {
   virtual uint64 Properties(uint64 props) const { return impl_->Properties(props); } // simple matcher that does
   // not change its FST, so properties are properties of FST it is applied to
  private:
-  TableMatcherImpl<F, BackoffMatcher> *impl_;
+#ifdef HAVE_OPENFST_GE_10500
+  std::shared_ptr<I> impl_;
+#else
+  I *impl_;
+#endif
 
   virtual void SetState_(StateId s) { impl_->SetState(s); }
   virtual bool Find_(Label label) { return impl_->Find(label); }
@@ -339,7 +353,7 @@ void TableCompose(const Fst<Arc> &ifst1, const Fst<Arc> &ifst2,
     *ofst = ComposeFst<Arc>(ifst1, ifst2, impl_opts);
   } else {
     assert(opts.table_match_type == MATCH_INPUT) ;
-    // ComposeFstImplOptions templated on matcher for fst1, matcher for fst2.    
+    // ComposeFstImplOptions templated on matcher for fst1, matcher for fst2.
     ComposeFstImplOptions<SortedMatcher<F>, TableMatcher<F> > impl_opts(nopts);
     impl_opts.matcher2 = new TableMatcher<F>(ifst2, MATCH_INPUT, opts);
     *ofst = ComposeFst<Arc>(ifst1, ifst2, impl_opts);
@@ -388,5 +402,3 @@ void TableCompose(const Fst<Arc> &ifst1, const Fst<Arc> &ifst2,
 
 } // end namespace fst
 #endif
-
-
