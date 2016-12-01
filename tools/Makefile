@@ -4,10 +4,11 @@ CXX = g++
 # CXX = clang++  # Uncomment this line to build with Clang.
 CC = gcc    # used for sph2pipe
 
-
 OPENFST_VERSION = 1.3.4
 # Uncomment the next line to build with OpenFst-1.4.1.
 # OPENFST_VERSION = 1.4.1
+# Uncomment the next line to build with OpenFst-1.5.4.
+# OPENFST_VERSION = 1.5.4
 # Note: OpenFst >= 1.4 requires C++11 support, hence you will need to use a
 # relatively recent C++ compiler, e.g. gcc >= 4.6, clang >= 3.0.
 
@@ -20,11 +21,11 @@ ifeq ($(OPENFST_VERSION), 1.3.4)
     CXXFLAGS += -stdlib=libstdc++
     LDFLAGS += -stdlib=libstdc++
   endif
+else ifeq ($(OPENFST_VERSION), 1.4.1)
+else ifeq ($(OPENFST_VERSION), 1.5.4)
 else
-  ifneq ($(OPENFST_VERSION), 1.4.1)
     $(error OpenFst version $(OPENFST_VERSION) is not supported. \
-            Supported versions: 1.3.4, 1.4.1)
-  endif
+            Supported versions: 1.3.4, 1.4.1, 1.5.4)
 endif
 
 all: check_required_programs sph2pipe atlas sclite openfst
@@ -92,12 +93,14 @@ else
 	cd openfst-$(OPENFST_VERSION)/; ./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-ngram-fsts CXX=$(CXX) CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
 endif
 
-# patches for openfst. openfst_gcc41up.patch is a patch for openfst to \
-# support multi-threads when compile with g++ (gcc) version above 4.1
+# patches for openfst. openfst_gcc41up.patch is a patch for openfst to
+# support multi-threading when compiling with gcc >= 4.1.
 openfst-$(OPENFST_VERSION)/.patched: | openfst-$(OPENFST_VERSION)
+ifneq ($(OPENFST_VERSION), 1.5.4)
 	cd openfst-$(OPENFST_VERSION)/; \
 	patch -p1 -N < ../extras/openfst-$(OPENFST_VERSION).patch;
 	$(CXX) -dumpversion | awk '{if(NR==1 && $$1>"4.1") print "cd openfst-$(OPENFST_VERSION)/src/include/fst; patch -c -p0 -N < ../../../../extras/openfst_gcc41up.patch"}' | sh -
+endif
 	touch $@
 
 openfst-$(OPENFST_VERSION): openfst-$(OPENFST_VERSION).tar.gz
