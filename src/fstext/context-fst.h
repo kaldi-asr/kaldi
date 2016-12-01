@@ -244,7 +244,9 @@ class ContextFst : public Fst<Arc> {
 
   ContextFst(const ContextFst<Arc, LabelT> &fst, bool reset = false);
 
-  virtual ~ContextFst() { if (!impl_->DecrRefCount()) delete impl_;  }
+#ifndef HAVE_OPENFST_GE_10500
+  virtual ~ContextFst() { if (!impl_->DecrRefCount()) delete impl_; }
+#endif
 
   virtual StateId Start() const { return impl_->Start(); }
 
@@ -307,13 +309,19 @@ class ContextFst : public Fst<Arc> {
 
   friend class CacheStateIterator<ContextFst<Arc> >;  // so it can see impl_.
  private:
+#ifdef HAVE_OPENFST_GE_10500
+  std::shared_ptr<ContextFstImpl<Arc, LabelT> > impl_;  // protected so CacheStateIterator
+  ContextFstImpl<Arc, LabelT> *GetImpl() const { return impl_.get(); }
+#else
   ContextFstImpl<Arc, LabelT> *impl_;  // protected so CacheStateIterator
   // Makes visible to friends.
   ContextFstImpl<Arc, LabelT> *GetImpl() const { return impl_; }
- // would be: ImplToFst<ContextFstImpl<Arc, LabelT> >::GetImpl();
- // but need to convert to using the ImplToFst stuff.
+  // would be: ImplToFst<ContextFstImpl<Arc, LabelT> >::GetImpl();
+  // but need to convert to using the ImplToFst stuff.
 
   void operator = (const ContextFstImpl<Arc> &fst);  // disallow
+#endif
+
 };
 
 /// Useful utility function for writing these vectors to disk.

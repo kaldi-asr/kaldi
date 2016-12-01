@@ -353,10 +353,18 @@ class TrivialFactorWeightFst : public ImplToFst< TrivialFactorWeightFstImpl<A, F
   typedef TrivialFactorWeightFstImpl<A, F> Impl;
 
   TrivialFactorWeightFst(const Fst<A> &fst)
+#ifdef HAVE_OPENFST_GE_10500
+      : ImplToFst<Impl>(std::make_shared<Impl>(fst, TrivialFactorWeightOptions<A>())) {}
+#else
       : ImplToFst<Impl>(new Impl(fst, TrivialFactorWeightOptions<A>())) {}
+#endif
 
   TrivialFactorWeightFst(const Fst<A> &fst,  const TrivialFactorWeightOptions<A> &opts)
+#ifdef HAVE_OPENFST_GE_10500
+      : ImplToFst<Impl>(std::make_shared<Impl>(fst, opts)) {}
+#else
       : ImplToFst<Impl>(new Impl(fst, opts)) {}
+#endif
 
   // See Fst<>::Copy() for doc.
   TrivialFactorWeightFst(const TrivialFactorWeightFst<A, F> &fst, bool copy)
@@ -370,12 +378,18 @@ class TrivialFactorWeightFst : public ImplToFst< TrivialFactorWeightFstImpl<A, F
   virtual inline void InitStateIterator(StateIteratorData<A> *data) const;
 
   virtual void InitArcIterator(StateId s, ArcIteratorData<A> *data) const {
-    GetImpl()->InitArcIterator(s, data);
+    GetMutableImpl()->InitArcIterator(s, data);
   }
 
  private:
   // Makes visible to friends.
-  Impl *GetImpl() const { return ImplToFst<Impl>::GetImpl(); }
+#ifdef HAVE_OPENFST_GE_10500
+  using ImplToFst<Impl>::GetImpl;
+  using ImplToFst<Impl>::GetMutableImpl;
+#else
+  const Impl *GetImpl() const { return ImplToFst<Impl>::GetImpl(); }
+  Impl *GetMutableImpl() const { return ImplToFst<Impl>::GetImpl(); }
+#endif
 
   void operator=(const TrivialFactorWeightFst<A, F> &fst);  // Disallow
 };
@@ -387,7 +401,7 @@ class StateIterator< TrivialFactorWeightFst<A, F> >
     : public CacheStateIterator< TrivialFactorWeightFst<A, F> > {
  public:
   explicit StateIterator(const TrivialFactorWeightFst<A, F> &fst)
-      : CacheStateIterator< TrivialFactorWeightFst<A, F> >(fst, fst.GetImpl()) {}
+      : CacheStateIterator< TrivialFactorWeightFst<A, F> >(fst, fst.GetMutableImpl()) {}
 };
 
 
@@ -399,9 +413,9 @@ class ArcIterator< TrivialFactorWeightFst<A, F> >
   typedef typename A::StateId StateId;
 
   ArcIterator(const TrivialFactorWeightFst<A, F> &fst, StateId s)
-      : CacheArcIterator< TrivialFactorWeightFst<A, F> >(fst.GetImpl(), s) {
+      : CacheArcIterator< TrivialFactorWeightFst<A, F> >(fst.GetMutableImpl(), s) {
     if (!fst.GetImpl()->HasArcs(s))
-      fst.GetImpl()->Expand(s);
+      fst.GetMutableImpl()->Expand(s);
   }
 
  private:
@@ -420,4 +434,3 @@ void TrivialFactorWeightFst<A, F>::InitStateIterator(StateIteratorData<A> *data)
 }  // namespace fst
 
 #endif
-

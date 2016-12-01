@@ -360,14 +360,20 @@ void ContextFstImpl<Arc, LabelT>::Expand(StateId s) {  // expands arcs only [not
 template<class Arc, class LabelT>
 ContextFst<Arc, LabelT>::ContextFst(const ContextFst<Arc, LabelT> &fst, bool reset) {
   if (reset) {
+#ifdef HAVE_OPENFST_GE_10500
+    impl_ = std::make_shared<ContextFstImpl<Arc, LabelT> >(*(fst.impl_));
+#else
     impl_ = new ContextFstImpl<Arc, LabelT>(*(fst.impl_));
     // Copy constructor of ContextFstImpl.
     // Main use of calling with reset = true is to free up memory
     // (e.g. then you could delete original one).  Might be useful in transcription
     // expansion during training.
+#endif
   } else {
     impl_ = fst.impl_;
+#ifndef HAVE_OPENFST_GE_10500
     impl_->IncrRefCount();
+#endif
   }
 }
 
