@@ -26,7 +26,6 @@
 # half-learned lexicon using steps/dict/apply_lexicon_edits to produce the final
 # learned lexicon. See the last stage in this script for details.
 
-set -x
 
 stage=0
 # Begin configuration section.  

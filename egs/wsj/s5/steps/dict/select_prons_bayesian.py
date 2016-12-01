@@ -326,9 +326,9 @@ def WriteEditsAndSummary(args, learned_lexicon, ref_lexicon, phonetic_decoding_l
           ,file=args.ref_lexicon_edits_handle)
     print("# 1st Col: source of the candidate pron: G(2P) / P(hone-decoding) / R(eference)."
           ,file=args.ref_lexicon_edits_handle)
-    print("# 2nd Col: soft counts from lattice-alignment (not augmented by prior-counts)."
+    print("# 2nd Col: accepted or not in the learned lexicon (Y/N).", file=args.ref_lexicon_edits_handle)
+    print("# 3rd Col: soft counts from lattice-alignment (not augmented by prior-counts)."
           ,file=args.ref_lexicon_edits_handle)
-    print("# 3rd Col: accepted or not in the learned lexicon (Y/N).", file=args.ref_lexicon_edits_handle)
     print("# 4th Col: the pronunciation cadidate.", file=args.ref_lexicon_edits_handle)
     
     # words which are to be printed into the edits file.
