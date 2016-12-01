@@ -19,9 +19,9 @@ if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
 
-if [ $# != 2 ]; then
-  echo "Usage: $0 <ivector-dir> <output-dir>"
-  echo " e.g.: $0 exp/ivectors_callhome/ exp/ivectors_callhome/plda"
+if [ $# != 3 ]; then
+  echo "Usage: $0 <plda-dir> <ivector-dir> <output-dir>"
+  echo " e.g.: $0 exp/ivectors_callhome_heldout exp/ivectors_callhome_test exp/ivectors_callhome_test"
   echo "main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config containing options"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
@@ -33,12 +33,13 @@ if [ $# != 2 ]; then
   exit 1;
 fi
 
-ivecdir=$1
-dir=$2
+pldadir=$1
+ivecdir=$2
+dir=$3
 
 mkdir -p $dir/tmp
 
-for f in $ivecdir/ivector.scp $ivecdir/spk2utt $ivecdir/utt2spk $ivecdir/segments $ivecdir/plda $ivecdir/mean.vec $ivecdir/transform.mat; do
+for f in $ivecdir/ivector.scp $ivecdir/spk2utt $ivecdir/utt2spk $ivecdir/segments $pldadir/plda $pldadir/mean.vec $pldadir/transform.mat; do
   [ ! -f $f ] && echo "No such file $f" && exit 1;
 done
 cp $ivecdir/ivector.scp $dir/tmp/feats.scp
@@ -54,11 +55,11 @@ utils/split_data.sh $dir/tmp $nj || exit 1;
 # Set various variables.
 mkdir -p $dir/log
 
-feats="ark:ivector-subtract-global-mean $ivecdir/mean.vec scp:$sdata/JOB/feats.scp ark:- | transform-vec $ivecdir/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |"
+feats="ark:ivector-subtract-global-mean $pldadir/mean.vec scp:$sdata/JOB/feats.scp ark:- | transform-vec $pldadir/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |"
 if [ $stage -le 0 ]; then
   echo "$0: Computing calibration thresholds"
   $cmd JOB=1:$nj $dir/log/compute_calibration.JOB.log \
-    ivector-plda-scoring-dense --target-energy=$target_energy $ivecdir/plda \
+    ivector-plda-scoring-dense --target-energy=$target_energy $pldadir/plda \
       ark:$sdata/JOB/spk2utt "$feats" ark:- \
       \| compute-calibration ark:- $dir/threshold.JOB.txt || exit 1;
 fi
