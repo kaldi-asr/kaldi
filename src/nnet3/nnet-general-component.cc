@@ -991,8 +991,8 @@ void BackpropTruncationComponent::Init(int32 dim,
 void BackpropTruncationComponent::InitFromConfig(ConfigLine *cfl) {
   int32 dim = 0;
   bool ok = cfl->GetValue("dim", &dim);
-  BaseFloat clipping_threshold = 15.0;
-  BaseFloat zeroing_threshold = 2.0;
+  BaseFloat clipping_threshold = 30.0;
+  BaseFloat zeroing_threshold = 15.0;
   int32 zeroing_interval = 20, recurrence_interval = 1;
   cfl->GetValue("clipping-threshold", &clipping_threshold);
   cfl->GetValue("zeroing-threshold", &zeroing_threshold);

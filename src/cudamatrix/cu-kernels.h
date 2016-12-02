@@ -1254,6 +1254,83 @@ inline cublasStatus_t cuda_scal(cublasHandle_t handle, int n, double alpha,
   return cublasDscal_v2(handle, n, &alpha, x, incx);
 }
 
+inline void cuda_lstm_nonlinearity(dim3 Gr, dim3 Bl, const double* in,
+                                   const int in_stride, const double* params,
+                                   const int params_stride,
+                                   const int out_stride, const int cell_dim,
+                                   const int num_rows, double* out) {
+  cudaD_lstm_nonlinearity(Gr, Bl, in, in_stride, params, params_stride,
+                          out_stride, cell_dim, num_rows, out);
+}
+inline void cuda_lstm_nonlinearity(dim3 Gr, dim3 Bl, const float* in,
+                                   const int in_stride, const float* params,
+                                   const int params_stride,
+                                   const int out_stride, const int cell_dim,
+                                   const int num_rows, float* out) {
+  cudaF_lstm_nonlinearity(Gr, Bl, in, in_stride, params, params_stride,
+                          out_stride, cell_dim, num_rows, out);
+}
+inline void cuda_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
+                                        const int num_rows, const double* input,
+                                        const int input_stride,
+                                        const double* params,
+                                        const int params_stride,
+                                        const double* output_deriv,
+                                        const int output_deriv_stride,
+                                        const double* deriv_sum_in,
+                                        const int deriv_sum_in_stride,
+                                        const double* self_repair_config,
+                                        double count, double* input_deriv,
+                                        const int input_deriv_stride,
+                                        double* params_deriv,
+                                        const int params_deriv_stride,
+                                        double* value_sum_out,
+                                        const int value_sum_out_stride,
+                                        double* deriv_sum_out,
+                                        const int deriv_sum_out_stride,
+                                        double* self_repair_sum_out,
+                                        const int self_repair_sum_out_stride) {
+  cudaD_diff_lstm_nonlinearity(Gr, Bl, cell_dim, num_rows, input, input_stride,
+                               params, params_stride, output_deriv,
+                               output_deriv_stride, deriv_sum_in,
+                               deriv_sum_in_stride, self_repair_config, count,
+                               input_deriv, input_deriv_stride, params_deriv,
+                               params_deriv_stride, value_sum_out,
+                               value_sum_out_stride, deriv_sum_out,
+                               deriv_sum_out_stride, self_repair_sum_out,
+                               self_repair_sum_out_stride);
+}
+inline void cuda_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
+                                        const int num_rows, const float* input,
+                                        const int input_stride,
+                                        const float* params,
+                                        const int params_stride,
+                                        const float* output_deriv,
+                                        const int output_deriv_stride,
+                                        const double* deriv_sum_in,
+                                        const int deriv_sum_in_stride,
+                                        const float* self_repair_config,
+                                        double count, float* input_deriv,
+                                        const int input_deriv_stride,
+                                        float* params_deriv,
+                                        const int params_deriv_stride,
+                                        double* value_sum_out,
+                                        const int value_sum_out_stride,
+                                        double* deriv_sum_out,
+                                        const int deriv_sum_out_stride,
+                                        float* self_repair_sum_out,
+                                        const int self_repair_sum_out_stride) {
+  cudaF_diff_lstm_nonlinearity(Gr, Bl, cell_dim, num_rows, input, input_stride,
+                               params, params_stride, output_deriv,
+                               output_deriv_stride, deriv_sum_in,
+                               deriv_sum_in_stride, self_repair_config, count,
+                               input_deriv, input_deriv_stride, params_deriv,
+                               params_deriv_stride, value_sum_out,
+                               value_sum_out_stride, deriv_sum_out,
+                               deriv_sum_out_stride, self_repair_sum_out,
+                               self_repair_sum_out_stride);
+}
+
 } // namespace kaldi
 
 #endif // HAVE_CUDA
