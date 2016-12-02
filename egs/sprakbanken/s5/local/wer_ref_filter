@@ -1,0 +1,4 @@
+#!/bin/bash
+
+perl -C -pe 's:<NSN>::g; s:<SPN>::g; s:<UNK>::g' | \
+PERLIO=:utf8 perl -pe '$_=lc'
