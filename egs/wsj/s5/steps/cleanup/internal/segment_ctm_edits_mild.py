@@ -5,7 +5,8 @@
 # Apache 2.0
 
 from __future__ import print_function
-import sys, operator, argparse, os
+import argparse
+import sys
 from collections import defaultdict
 
 """
@@ -19,11 +20,11 @@ The ctm-edits file format that this script expects is as follows
 """
 
 parser = argparse.ArgumentParser(
-    description = "This program produces segmentation and text information "
+    description="This program produces segmentation and text information "
     "based on reading ctm-edits input format which is produced by "
     "steps/cleanup/internal/get_ctm_edits.py, steps/cleanup/internal/modify_ctm_edits.py and "
     "steps/cleanup/internal/taint_ctm_edits.py.",
- formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 parser.add_argument("--min-segment-length", type=float, default=0.5,
                     help="Minimum allowed segment length (in seconds) for any "
@@ -146,7 +147,7 @@ def ComputeSegmentCores(split_lines_of_utt):
 
     # extend each proto-segment forwards as far as we can:
     for i in range(1, num_lines):
-        if line_is_in_segment_core[i-1] and not line_is_in_segment_core[i]:
+        if line_is_in_segment_core[i - 1] and not line_is_in_segment_core[i]:
             edit_type = split_lines_of_utt[i][7]
             if (not IsTainted(split_lines_of_utt[i])
                     and (edit_type == 'cor' or edit_type == 'sil'
@@ -155,7 +156,7 @@ def ComputeSegmentCores(split_lines_of_utt):
 
     # extend each proto-segment backwards as far as we can:
     for i in reversed(range(0, num_lines - 1)):
-        if line_is_in_segment_core[i+1] and not line_is_in_segment_core[i]:
+        if line_is_in_segment_core[i + 1] and not line_is_in_segment_core[i]:
             edit_type = split_lines_of_utt[i][7]
             if (not IsTainted(split_lines_of_utt[i])
                 and (edit_type == 'cor' or edit_type == 'sil'
@@ -168,19 +169,20 @@ def ComputeSegmentCores(split_lines_of_utt):
     cur_segment_start = None
     for i in range(0, num_lines):
         if line_is_in_segment_core[i]:
-            if cur_segment_start == None:
+            if cur_segment_start is None:
                 cur_segment_start = i
         else:
-            if cur_segment_start != None:
-                segment_ranges.append( (cur_segment_start, i) )
+            if cur_segment_start is not None:
+                segment_ranges.append((cur_segment_start, i))
                 cur_segment_start = None
-    if cur_segment_start != None:
-        segment_ranges.append( (cur_segment_start, num_lines) )
+    if cur_segment_start is not None:
+        segment_ranges.append((cur_segment_start, num_lines))
 
     return segment_ranges
 
 
 class Segment:
+
     def __init__(self, split_lines_of_utt, start_index, end_index,
                  debug_str=None):
         self.split_lines_of_utt = split_lines_of_utt
@@ -196,7 +198,7 @@ class Segment:
         self.end_unk_padding = 0.0
 
         # debug_str keeps track of the 'core' of the segment.
-        if debug_str == None:
+        if debug_str is None:
             debug_str = 'core-start={0},core-end={1}'.format(start_index,
                                                              end_index)
         self.debug_str = debug_str
@@ -294,7 +296,7 @@ class Segment:
             this_ref_word = this_split_line[6]
             if ((this_edit_type == 'sil' and
                  this_duration > args.max_internal_silence_length)
-                or (this_ref_word in non_scored_words and
+                or (this_ref_word in non_scored_words
                     and this_duration > args.max_internal_non_scored_length)):
                 # We split this segment at this index, dividing the word in two
                 # [later on, in PossiblyTruncateBoundaries, it may be further
@@ -320,7 +322,6 @@ class Segment:
             new_segment.start_keep_proportion = 0.5
             segments.append(new_segment)
         return segments
-
 
     def PossiblyTruncateBoundaries(self):
         """
@@ -408,15 +409,15 @@ class Segment:
                   file=sys.stderr)
             return
         self.start_keep_proportion = (
-           a * orig_start_keep_proportion + (1-a) * self.start_keep_proportion)
+            a * orig_start_keep_proportion
+            + (1 - a) * self.start_keep_proportion)
         self.end_keep_proportion = (
-           a * orig_end_keep_proportion + (1-a) * self.end_keep_proportion)
+            a * orig_end_keep_proportion + (1 - a) * self.end_keep_proportion)
         if not abs(self.Length() - length_cutoff) < 0.01:
             print("segment_ctm_edits.py: possible problem relaxing boundary "
                   "truncation, length is {0} vs {1}".format(self.Length(),
                                                             length_cutoff),
                   file=sys.stderr)
-
 
     def PossiblyAddUnkPadding(self):
         """
@@ -437,7 +438,7 @@ class Segment:
             this_edit = this_split_line[7]
             if this_edit == 'cor' and this_ref_word not in non_scored_words:
                 # we can consider adding unk-padding.
-                if b: # start of utterance.
+                if b:   # start of utterance.
                     unk_padding = args.unk_padding
                     # close to beginning of file
                     if unk_padding > this_start_time:
@@ -450,7 +451,7 @@ class Segment:
                     if unk_padding < 0.5 * args.unk_padding:
                         unk_padding = 0.0
                     self.start_unk_padding = unk_padding
-                else: # end of utterance.
+                else:   # end of utterance.
                     this_end_time = this_start_time + float(this_split_line[3])
                     last_line = self.split_lines_of_utt[-1]
                     utterance_end_time = (float(last_line[2])
@@ -489,7 +490,7 @@ class Segment:
                 and self.split_lines_of_utt is other.split_lines_of_utt)
         orig_self_end_index = self.end_index
         self.debug_str = "({0}/merged-with/{1})".format(self.debug_str,
-            other.debug_str)
+                                                        other.debug_str)
         # everything that relates to the end of this segment gets copied
         # from 'other'.
         self.end_index = other.end_index
@@ -536,7 +537,7 @@ class Segment:
                 'keep-proportion=%.2f,%.2f,%s' % (
                     self.start_index, self.end_index, self.start_unk_padding,
                     self.end_unk_padding, self.start_keep_proportion,
-                    self.end_keep_proportion, self.debug_str)
+                    self.end_keep_proportion, self.debug_str))
 
     def EndTime(self):
         """Returns the start time of the utterance (within the enclosing
@@ -544,8 +545,9 @@ class Segment:
         last_line = self.split_lines_of_utt[self.end_index - 1]
         last_line_start = float(last_line[2])
         last_line_duration = float(last_line[3])
-        return last_line_start + (last_line_duration * self.end_keep_proportion) \
-             + self.end_unk_padding
+        return (last_line_start
+                + (last_line_duration * self.end_keep_proportion)
+                + self.end_unk_padding)
 
     def Length(self):
         """Returns the segment length in seconds."""
@@ -613,14 +615,15 @@ class Segment:
                 candidate_start_index = i
                 candidate_start_time = float(this_split_line[2])
                 break  # Consider only the first potential truncation.
-        if candidate_start_index == None:
+        if candidate_start_index is None:
             return  # Nothing to do as there is no place to split.
         candidate_removed_piece_duration = (candidate_start_time
                                             - self.StartTime())
         if (begin_junk_duration / candidate_removed_piece_duration
                 < args.max_junk_proportion):
-            return  # Nothing to do as the candidate piece to remove has too
-                    # little junk.
+            # Nothing to do as the candidate piece to remove has too little
+            # junk.
+            return
         # OK, remove the piece.
         self.start_index = candidate_start_index
         self.start_unk_padding = 0.0
@@ -658,19 +661,19 @@ class Segment:
                 candidate_end_time = (float(this_split_line[2])
                                       + float(this_split_line[3]))
                 break  # Consider only the latest potential truncation.
-        if candidate_end_index == None:
+        if candidate_end_index is None:
             return  # Nothing to do as there is no place to split.
         candidate_removed_piece_duration = self.EndTime() - candidate_end_time
         if (end_junk_duration / candidate_removed_piece_duration
                 < args.max_junk_proportion):
-            return  # Nothing to do as the candidate piece to remove has too
-                    # little junk.
+            # Nothing to do as the candidate piece to remove has too little
+            # junk.
+            return
         # OK, remove the piece.
         self.end_index = candidate_end_index
         self.end_unk_padding = 0.0
         self.end_keep_proportion = 1.0
         self.debug_str += ',truncated-end-for-junk'
-
 
     def ContainsAtLeastOneScoredNonOovWord(self):
         """
@@ -684,8 +687,8 @@ class Segment:
             this_hyp_word = this_split_line[4]
             this_ref_word = this_split_line[6]
             this_edit = this_split_line[7]
-            if this_edit == 'cor' and not this_ref_word in non_scored_words \
-               and this_ref_word == this_hyp_word:
+            if (this_edit == 'cor' and this_ref_word not in non_scored_words
+                    and this_ref_word == this_hyp_word):
                 return True
         return False
 
@@ -697,7 +700,6 @@ class Segment:
             text_array.append(oov_symbol)
         for i in range(self.start_index, self.end_index):
             this_split_line = self.split_lines_of_utt[i]
-            this_edit = this_split_line[7]
             this_ref_word = this_split_line[6]
             if (this_ref_word != '<eps>'
                     and this_split_line[-1] != 'do-not-include-in-text'):
@@ -717,10 +719,11 @@ def AccumulateSegmentStats(segment_list, text):
         num_segments[text] += 1
         segment_total_length[text] += segment.Length()
 
+
 def PrintSegmentStats():
     global segment_total_length, num_segments, \
-       num_utterances, num_utterances_without_segments, \
-       total_length_of_utterances
+        num_utterances, num_utterances_without_segments, \
+        total_length_of_utterances
 
     print('Number of utterances is %d, of which %.2f%% had no segments after '
           'all processing; total length of data in original utterances '
@@ -735,14 +738,16 @@ def PrintSegmentStats():
         key = keys[i]
         if i > 0:
             delta_percentage = '[%+.2f%%]' % (
-                (segment_total_length[key] - segment_total_length[keys[i-1]])
+                (segment_total_length[key] - segment_total_length[keys[i - 1]])
                 * 100.0 / total_length_of_utterances)
         print('At %s, num-segments is %d, total length %.2f%% of '
               'original total %s' % (
-                key, num_segments[key],
-                segment_total_length[key] * 100.0 / total_length_of_utterances,
-                delta_percentage if i > 0 else ''),
-              file = sys.stderr)
+                  key, num_segments[key],
+                  (segment_total_length[key]
+                   * 100.0 / total_length_of_utterances),
+                  delta_percentage if i > 0 else ''),
+              file=sys.stderr)
+
 
 def GetSegmentsForUtterance(split_lines_of_utt):
     """
@@ -753,7 +758,7 @@ def GetSegmentsForUtterance(split_lines_of_utt):
     Note: split_lines_of_utt is a list of lists, one per line, each containing
     the sequence of fields.
     """
-    global num_utterances, num_utterances_without_segments,
+    global num_utterances, num_utterances_without_segments
     global total_length_of_utterances
 
     num_utterances += 1
@@ -863,9 +868,9 @@ def GetSegmentsForUtterance(split_lines_of_utt):
         segments, 'stage 12 [merge overlapping or touching segments]')
 
     for i in range(len(segments) - 1):
-        if segments[i].EndTime() > segments[i+1].StartTime():
+        if segments[i].EndTime() > segments[i + 1].StartTime():
             # this just adds something to --ctm-edits-out output
-            segments[i+1].debug_str += ",overlaps-previous-segment"
+            segments[i + 1].debug_str += ",overlaps-previous-segment"
 
     if len(segments) == 0:
         num_utterances_without_segments += 1
@@ -877,7 +882,7 @@ def FloatToString(f):
     """ this prints a number with a certain number of digits after the point,
     while removing trailing zeros.
     """
-    num_digits = 6 # we want to print 6 digits after the zero
+    num_digits = 6  # we want to print 6 digits after the zero
     g = f
     while abs(g) > 1.0:
         g *= 0.1
@@ -910,7 +915,7 @@ def WriteSegmentsForUtterance(text_output_handle, segments_output_handle,
         # <new-utterance-id> <text>
         # like:
         # foo-bar-1 hello this is dan
-        print(new_utterance_name, segment.Text(), file = text_output_handle)
+        print(new_utterance_name, segment.Text(), file=text_output_handle)
         # print a line to the segments output of the form
         # <new-utterance-id> <old-utterance-id> <start-time> <end-time>
         # like:
@@ -918,7 +923,7 @@ def WriteSegmentsForUtterance(text_output_handle, segments_output_handle,
         print(new_utterance_name, old_utterance_name,
               TimeToString(segment.StartTime(), args.frame_length),
               TimeToString(segment.EndTime(), args.frame_length),
-              file = segments_output_handle)
+              file=segments_output_handle)
 
 
 # Note, this is destrutive of 'segments_for_utterance', but it won't matter.
@@ -933,25 +938,25 @@ def PrintDebugInfoForUtterance(ctm_edits_out_handle,
     for n in range(len(segments_for_utterance)):
         segment = segments_for_utterance[n]
         start_string = 'start-segment-' + str(n+1) + '[' + segment.DebugInfo() + ']'
-        info_to_print.append( (segment.StartTime(), start_string) )
-        end_string = 'end-segment-' + str(n+1)
-        info_to_print.append( (segment.EndTime(), end_string) )
+        info_to_print.append((segment.StartTime(), start_string))
+        end_string = 'end-segment-' + str(n + 1)
+        info_to_print.append((segment.EndTime(), end_string))
     # for segments that were deleted we print info like start-deleted-segment-1, and
     # otherwise similar info to segments that were retained.
     for n in range(len(deleted_segments_for_utterance)):
         segment = deleted_segments_for_utterance[n]
         start_string = 'start-deleted-segment-' + str(n+1) + '[' + segment.DebugInfo() + ']'
-        info_to_print.append( (segment.StartTime(), start_string) )
-        end_string = 'end-deleted-segment-' + str(n+1)
-        info_to_print.append( (segment.EndTime(), end_string) )
+        info_to_print.append((segment.StartTime(), start_string))
+        end_string = 'end-deleted-segment-' + str(n + 1)
+        info_to_print.append((segment.EndTime(), end_string))
 
     info_to_print = sorted(info_to_print)
 
     for i in range(len(split_lines_of_cur_utterance)):
-        split_line=split_lines_of_cur_utterance[i]
-        split_line[0] += '[' + str(i) + ']'  # add an index like [0], [1], to
-                                             # the utterance-id so we can easily
-                                             # look up segment indexes.
+        split_line = split_lines_of_cur_utterance[i]
+        # add an index like [0], [1], to the utterance-id so we can easily look
+        # up segment indexes.
+        split_line[0] += '[' + str(i) + ']'
         start_time = float(split_line[2])
         end_time = start_time + float(split_line[3])
         split_line_copy = list(split_line)
@@ -959,9 +964,11 @@ def PrintDebugInfoForUtterance(ctm_edits_out_handle,
             (segment_start, string) = info_to_print[0]
             # shift the first element off of info_to_print.
             info_to_print = info_to_print[1:]
-            # add a field like 'start-segment1[...]=3.21' to what we're about to print.
-            split_line_copy.append(string + "=" + TimeToString(segment_start, args.frame_length))
-        print(' '.join(split_line_copy), file = ctm_edits_out_handle)
+            # add a field like 'start-segment1[...]=3.21' to what we're about
+            # to print.
+            split_line_copy.append(
+                string + "=" + TimeToString(segment_start, args.frame_length))
+        print(' '.join(split_line_copy), file=ctm_edits_out_handle)
 
 
 def AccWordStatsForUtterance(split_lines_of_utt,
@@ -976,7 +983,7 @@ def AccWordStatsForUtterance(split_lines_of_utt,
     # word_count_pair is a map from a string (the word) to
     # a list [total-count, count-not-within-segments]
     global word_count_pair
-    line_is_in_segment = [ False ] * len(split_lines_of_utt)
+    line_is_in_segment = [False] * len(split_lines_of_utt)
     for segment in segments_for_utterance:
         for i in range(segment.start_index, segment.end_index):
             line_is_in_segment[i] = True
@@ -1000,12 +1007,13 @@ def PrintWordStats(word_stats_out):
     # words.  Define badness = pair[1] / pair[0], and total_count = pair[0],
     # where 'pair' is a value of word_count_pair.  We'll reverse sort on
     # badness^3 * total_count = pair[1]^3 / pair[0]^2.
-    for key, pair in sorted(word_count_pair.items(),
-                      key = lambda item: (item[1][1] ** 3) * 1.0 / (item[1][0] ** 2),
-                      reverse = True):
+    for key, pair in sorted(
+            word_count_pair.items(),
+            key=lambda item: (item[1][1] ** 3) * 1.0 / (item[1][0] ** 2),
+            reverse=True):
         badness = pair[1] * 1.0 / pair[0]
         total_count = pair[0]
-        print(key, badness, total_count, file = f)
+        print(key, badness, total_count, file=f)
     try:
         f.close()
     except:
@@ -1014,8 +1022,9 @@ def PrintWordStats(word_stats_out):
     print("segment_ctm_edits.py: please see the file {0} for word-level statistics "
           "saying how frequently each word was excluded for a segment; format is "
           "<word> <proportion-of-time-excluded> <total-count>.  Particularly "
-          "problematic words appear near the top of the file.".format(word_stats_out),
-          file = sys.stderr)
+          "problematic words appear near the top of the file.".format(
+              word_stats_out),
+          file=sys.stderr)
 
 
 def ProcessData():
@@ -1034,7 +1043,7 @@ def ProcessData():
     except:
         sys.exit("segment_ctm_edits.py: error opening segments output "
                  "file {0}".format(args.text_out))
-    if args.ctm_edits_out != None:
+    if args.ctm_edits_out is not None:
         try:
             ctm_edits_output_handle = open(args.ctm_edits_out, 'w')
         except:
@@ -1042,7 +1051,8 @@ def ProcessData():
                      "file {0}".format(args.ctm_edits_out))
 
     # Most of what we're doing in the lines below is splitting the input lines
-    # and grouping them per utterance, before giving them to ProcessUtterance()
+    # and grouping them per utterance, before giving them to
+    # GetSegmentsForUtterance()
     # and then printing the modified lines.
     first_line = f_in.readline()
     if first_line == '':
@@ -1065,7 +1075,7 @@ def ProcessData():
             WriteSegmentsForUtterance(text_output_handle,
                                       segments_output_handle,
                                       cur_utterance, segments_for_utterance)
-            if args.ctm_edits_out != None:
+            if args.ctm_edits_out is not None:
                 PrintDebugInfoForUtterance(ctm_edits_output_handle,
                                            split_lines_of_cur_utterance,
                                            segments_for_utterance,
@@ -1086,7 +1096,7 @@ def ProcessData():
     try:
         text_output_handle.close()
         segments_output_handle.close()
-        if args.ctm_edits_out != None:
+        if args.ctm_edits_out is not None:
             ctm_edits_output_handle.close()
     except:
         sys.exit("segment_ctm_edits.py: error closing one or more outputs "
@@ -1113,7 +1123,7 @@ non_scored_words = set()
 ReadNonScoredWords(args.non_scored_words_in)
 
 oov_symbol = None
-if args.oov_symbol_file != None:
+if args.oov_symbol_file is not None:
     try:
         with open(args.oov_symbol_file) as f:
             line = f.readline()
@@ -1141,9 +1151,8 @@ total_length_of_utterances = 0
 
 ProcessData()
 PrintSegmentStats()
-if args.word_stats_out != None:
+if args.word_stats_out is not None:
     PrintWordStats(args.word_stats_out)
-if args.ctm_edits_out != None:
+if args.ctm_edits_out is not None:
     print("segment_ctm_edits.py: detailed utterance-level debug information "
-          "is in " + args.ctm_edits_out, file = sys.stderr)
-
+          "is in " + args.ctm_edits_out, file=sys.stderr)
