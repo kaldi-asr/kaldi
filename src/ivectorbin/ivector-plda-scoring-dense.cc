@@ -25,25 +25,33 @@
 
 namespace kaldi {
 
-void EstPca(const Matrix<BaseFloat> &ivector_mat, BaseFloat target_energy,
+bool EstPca(const Matrix<BaseFloat> &ivector_mat, BaseFloat target_energy,
   Matrix<BaseFloat> *mat) {
-  int64 count = 0;
+  int32 num_rows = ivector_mat.NumRows(),
+    num_cols = ivector_mat.NumCols();
   Vector<BaseFloat> sum;
   SpMatrix<BaseFloat> sumsq;
-  sum.Resize(ivector_mat.NumCols());
-  sumsq.Resize(ivector_mat.NumCols());
+  sum.Resize(num_cols);
+  sumsq.Resize(num_cols);
   sum.AddRowSumMat(1.0, ivector_mat);
   sumsq.AddMat2(1.0, ivector_mat, kTrans, 1.0);
-  count += ivector_mat.NumRows();
-  sum.Scale(1.0 / count);
-  sumsq.Scale(1.0 / count);
+  sum.Scale(1.0 / num_rows);
+  sumsq.Scale(1.0 / num_rows);
   sumsq.AddVec2(-1.0, sum); // now sumsq is centered covariance.
   int32 full_dim = sum.Dim();
-
+ 
   Matrix<BaseFloat> P(full_dim, full_dim);
   Vector<BaseFloat> s(full_dim);
 
-  sumsq.Eig(&s, &P);
+  if (num_rows > num_cols) {
+    sumsq.Eig(&s, &P);
+  } else {
+    try {
+      Matrix<BaseFloat>(sumsq).Svd(&s, &P, NULL);
+    } catch(...) {
+      return false;
+    }
+  }
   SortSvd(&s, &P);
 
   Matrix<BaseFloat> transform(P, kTrans); // Transpose of P.  This is what
@@ -63,6 +71,7 @@ void EstPca(const Matrix<BaseFloat> &ivector_mat, BaseFloat target_energy,
   mat->Resize(transform.NumCols(), transform.NumRows());
   mat->CopyFromMat(transform);
   mat->Resize(dim, transform_float.NumCols(), kCopyData);
+  return true;
 }
 
 void TransformIvectors(const Matrix<BaseFloat> &ivectors_in,
@@ -141,7 +150,7 @@ int main(int argc, char *argv[]) {
     RandomAccessBaseFloatVectorReader ivector_reader(ivector_rspecifier);
     BaseFloatMatrixWriter scores_writer(scores_wspecifier);
     int32 num_spk_err = 0,
-          num_utt_done = 0;
+          num_spk_done = 0;
     for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {
       Plda this_plda(plda);
       std::string spk = spk2utt_reader.Key();
@@ -162,7 +171,6 @@ int main(int argc, char *argv[]) {
 
         Vector<BaseFloat> ivector = ivector_reader.Value(utt);
         ivectors.push_back(ivector);
-        num_utt_done++;
       }
       if (ivectors.size() == 0) {
         KALDI_WARN << "Not producing output for recording " << spk
@@ -178,17 +186,22 @@ int main(int argc, char *argv[]) {
         for (size_t i = 0; i < ivectors.size(); i++) {
           ivector_mat.Row(i).CopyFromVec(ivectors[i]);
         }
-        EstPca(ivector_mat, target_energy, &pca_transform);
+        if (EstPca(ivector_mat, target_energy, &pca_transform)) {
+          // Apply PCA transform to the raw i-vectors.
+          ApplyPca(ivector_mat, pca_transform, &ivector_mat_pca);
 
-        // Apply PCA transform to the raw i-vectors.
-        ApplyPca(ivector_mat, pca_transform, &ivector_mat_pca);
+          // Apply PCA transform to the parameters of the PLDA model.
+          this_plda.ApplyTransform(Matrix<double>(pca_transform));
 
-        // Apply PCA transform to the parameters of the PLDA model.
-        this_plda.ApplyTransform(Matrix<double>(pca_transform));
-
-        // Now transform the i-vectors using the reduced PLDA model.
-        TransformIvectors(ivector_mat_pca, plda_config, &this_plda,
-          &ivector_mat_plda);
+          // Now transform the i-vectors using the reduced PLDA model.
+          TransformIvectors(ivector_mat_pca, plda_config, &this_plda,
+            &ivector_mat_plda);
+        } else {
+          KALDI_WARN << "Unable to compute conversation dependent PCA for"
+            << " recording " << spk << ".";
+          ivector_mat_pca.Resize(ivector_mat.NumRows(), ivector_mat.NumCols());
+          ivector_mat_pca.CopyFromMat(ivector_mat);
+        }
         for (int32 i = 0; i < ivector_mat_plda.NumRows(); i++) {
           for (int32 j = 0; j < ivector_mat_plda.NumRows(); j++) {
             // Pass the raw PLDA scores through a logistic function
@@ -200,8 +213,12 @@ int main(int argc, char *argv[]) {
           }
         }
         scores_writer.Write(spk, scores);
+        num_spk_done++;
       }
     }
+    KALDI_LOG << "Processed " << num_spk_done << " recordings, "
+              << num_spk_err << " had errors.";
+    return (num_spk_done != 0 ? 0 : 1 );
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
