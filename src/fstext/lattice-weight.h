@@ -748,7 +748,7 @@ inline CompactLatticeWeightTpl<Weight, IntType> ScaleTupleWeight(
     const CompactLatticeWeightTpl<Weight, IntType> &w,
     const vector<vector<ScaleFloatType> > &scale) {
   return CompactLatticeWeightTpl<Weight, IntType>(
-      ScaleTupleWeight(w.Weight(), scale), w.String());
+      Weight(ScaleTupleWeight(w.Weight(), scale)), w.String());
 }
 
 /** Define some ConvertLatticeWeight functions that are used in various lattice
