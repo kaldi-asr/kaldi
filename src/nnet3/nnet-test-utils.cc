@@ -1104,7 +1104,7 @@ void ComputeExampleComputationRequestSimple(
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
 
-  int32 n = RandInt(0, 29);
+  int32 n = RandInt(0, 30);
   BaseFloat learning_rate = 0.001 * RandInt(1, 3);
 
   std::ostringstream os;
@@ -1401,6 +1401,13 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       *component_type = "DropoutComponent";
       os << "dim=" << RandInt(1, 200)
          << " dropout-proportion=" << RandUniform();
+      break;
+    }
+    case 30: {
+      *component_type = "LstmNonlinearityComponent";
+      // set self-repair scale to zero so the derivative tests will pass.
+      os << "cell-dim=" << RandInt(1, 200)
+         << " self-repair-scale=0.0";
       break;
     }
     default:

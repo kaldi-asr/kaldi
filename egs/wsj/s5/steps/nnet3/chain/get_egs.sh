@@ -233,7 +233,10 @@ if [ $stage -le 1 ]; then
   echo $num_frames > $dir/info/num_frames
   echo "$0: working out feature dim"
   feats_one="$(echo $feats | sed s/JOB/1/g)"
-  feat_dim=$(feat-to-dim "$feats_one" -) || exit 1;
+  if ! feat_dim=$(feat-to-dim "$feats_one" - 2>/dev/null); then
+    echo "Command failed (getting feature dim): feat-to-dim \"$feats_one\""
+    exit 1
+  fi
   echo $feat_dim > $dir/info/feat_dim
 else
   num_frames=$(cat $dir/info/num_frames) || exit 1;

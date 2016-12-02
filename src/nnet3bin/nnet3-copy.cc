@@ -44,6 +44,7 @@ int main(int argc, char *argv[]) {
     BaseFloat learning_rate = -1,
       dropout = 0.0;
     std::string nnet_config, edits_config, edits_str;
+    BaseFloat scale = 1.0;
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
@@ -64,6 +65,8 @@ int main(int argc, char *argv[]) {
                 "'--edits=remove-orphans'.");
     po.Register("set-dropout-proportion", &dropout, "Set dropout proportion "
                 "in all DropoutComponent to this value.");
+    po.Register("scale", &scale, "The parameter matrices are scaled"
+                " by the specified value.");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
@@ -84,6 +87,9 @@ int main(int argc, char *argv[]) {
 
     if (learning_rate >= 0)
       SetLearningRate(learning_rate, &nnet);
+    
+    if (scale != 1.0)
+      ScaleNnet(scale, &nnet);
     
     if (dropout > 0)
       SetDropoutProportion(dropout, &nnet);
