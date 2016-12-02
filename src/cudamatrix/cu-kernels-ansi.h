@@ -220,6 +220,9 @@ void cudaF_soft_hinge(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d,
                       int src_stride);
 void cudaF_group_pnorm(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d,
                        int src_stride, int group_size, float power);
+void cudaF_normalize_per_row(size_t Gr, size_t Bl, float *y, int y_stride,
+                             const float *x, MatrixDim x_d, float tartget_rms,
+                             bool add_log_stddev);
 void cudaF_group_spec_pnorm(dim3 Gr, dim3 Bl, float *y, const float *x,
                             MatrixDim d, int src_stride, int group_size,
                             float power);
@@ -489,6 +492,9 @@ void cudaD_soft_hinge(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d,
 void cudaD_group_pnorm(dim3 Gr, dim3 Bl, double *y, const double *x,
                        MatrixDim d, int src_stride, int group_size,
                        double power);
+void cudaD_normalize_per_row(size_t Gr, size_t Bl, double *y, int y_stride,
+                             const double *x, MatrixDim x_d, double tartget_rms,
+                             bool add_log_stddev);
 void cudaD_group_spec_pnorm(dim3 Gr, dim3 Bl, double *y, const double *x,
                             MatrixDim d, int src_stride, int group_size,
                             double power);

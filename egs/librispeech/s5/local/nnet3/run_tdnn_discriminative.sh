@@ -115,9 +115,6 @@ model_right_context=`nnet3-am-info $srcdir/final.mdl | grep "right-context:" | a
 left_context=$[model_left_context + extra_left_context]
 right_context=$[model_right_context + extra_right_context]
 
-valid_left_context=$[valid_left_context + frames_per_eg]
-valid_right_context=$[valid_right_context + frames_per_eg]
-
 frame_subsampling_opt=
 if [ -f $srcdir/frame_subsampling_factor ]; then
   frame_subsampling_opt="--frame-subsampling-factor $(cat $srcdir/frame_subsampling_factor)"
@@ -143,8 +140,7 @@ if [ -z "$degs_dir" ]; then
       --adjust-priors $adjust_priors \
       --online-ivector-dir $train_ivector_dir \
       --left-context $left_context --right-context $right_context \
-      --valid-left-context $valid_left_context --valid-right-context $valid_right_context \
-      --priors-left-context $valid_left_context --priors-right-context $valid_right_context $frame_subsampling_opt \
+      $frame_subsampling_opt \
       --frames-per-eg $frames_per_eg --frames-overlap-per-eg $frames_overlap_per_eg ${degs_opts} \
       $train_data_dir data/lang ${srcdir}_ali $lats_dir $srcdir/final.mdl $degs_dir ;
   fi

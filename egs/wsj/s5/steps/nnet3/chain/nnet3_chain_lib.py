@@ -169,7 +169,8 @@ def PrepareInitialAcousticModel(dir, run_opts):
                    command = run_opts.command, dir = dir))
 
 def CombineModels(dir, num_iters, num_iters_combine, num_chunk_per_minibatch,
-                  egs_dir, leaky_hmm_coefficient, l2_regularize,
+                  egs_dir, left_context, right_context,
+                  leaky_hmm_coefficient, l2_regularize,
                   xent_regularize, run_opts):
     # Now do combination.  In the nnet3 setup, the logic
     # for doing averaging of subsets of the models in the case where
@@ -188,10 +189,13 @@ def CombineModels(dir, num_iters, num_iters_combine, num_chunk_per_minibatch,
 nnet3-chain-combine --num-iters=40 \
    --l2-regularize={l2} --leaky-hmm-coefficient={leaky} \
    --enforce-sum-to-one=true --enforce-positive-weights=true \
-   --verbose=3 {dir}/den.fst {raw_models} "ark,bg:nnet3-chain-merge-egs --minibatch-size={num_chunk_per_minibatch} ark:{egs_dir}/combine.cegs ark:-|" \
+   --verbose=3 {dir}/den.fst {raw_models} \
+   "ark,bg:nnet3-chain-copy-egs --left-context={lc} --right-context={rc} ark:{egs_dir}/combine.cegs ark:- | \
+        nnet3-chain-merge-egs --minibatch-size={num_chunk_per_minibatch} ark:- ark:-|" \
 "|nnet3-am-copy --set-raw-nnet=- {dir}/{num_iters}.mdl {dir}/final.mdl"
     """.format(command = run_opts.command,
                combine_queue_opt = run_opts.combine_queue_opt,
+               lc = left_context, rc = right_context,
                l2 = l2_regularize, leaky = leaky_hmm_coefficient,
                dir = dir, raw_models = " ".join(raw_model_strings),
                num_chunk_per_minibatch = num_chunk_per_minibatch,
@@ -201,9 +205,20 @@ nnet3-chain-combine --num-iters=40 \
   # Compute the probability of the final, combined model with
   # the same subset we used for the previous compute_probs, as the
   # different subsets will lead to different probs.
-    ComputeTrainCvProbabilities(dir, 'final', egs_dir, l2_regularize, xent_regularize, leaky_hmm_coefficient, run_opts, wait = False)
+    ComputeTrainCvProbabilities(dir = dir,
+                                iter = 'final',
+                                egs_dir = egs_dir,
+                                left_context = left_context,
+                                right_context = right_context,
+                                l2_regularize = l2_regularize,
+                                xent_regularize = xent_regularize,
+                                leaky_hmm_coefficient = leaky_hmm_coefficient,
+                                run_opts = run_opts,
+                                wait = False)
 
-def ComputeTrainCvProbabilities(dir, iter, egs_dir, l2_regularize, xent_regularize,
+def ComputeTrainCvProbabilities(dir, iter,
+                                egs_dir, left_context, right_context,
+                                l2_regularize, xent_regularize,
                                 leaky_hmm_coefficient, run_opts, wait = False):
 
     model = '{0}/{1}.mdl'.format(dir, iter)
@@ -213,9 +228,10 @@ def ComputeTrainCvProbabilities(dir, iter, egs_dir, l2_regularize, xent_regulari
   nnet3-chain-compute-prob --l2-regularize={l2} --leaky-hmm-coefficient={leaky} \
   --xent-regularize={xent_reg} \
   "nnet3-am-copy --raw=true {model} - |" {dir}/den.fst \
-        "ark,bg:nnet3-chain-merge-egs ark:{egs_dir}/valid_diagnostic.cegs ark:- |"
+  "ark,bg:nnet3-chain-copy-egs --left-context={lc} --right-context={rc} ark:{egs_dir}/valid_diagnostic.cegs ark:-| nnet3-chain-merge-egs ark:- ark:- |"
     """.format(command = run_opts.command,
                dir = dir, iter = iter, model = model,
+               lc = left_context, rc = right_context,
                l2 = l2_regularize, leaky = leaky_hmm_coefficient,
                xent_reg = xent_regularize,
                egs_dir = egs_dir), wait = wait)
@@ -225,11 +241,12 @@ def ComputeTrainCvProbabilities(dir, iter, egs_dir, l2_regularize, xent_regulari
   nnet3-chain-compute-prob --l2-regularize={l2} --leaky-hmm-coefficient={leaky} \
   --xent-regularize={xent_reg} \
   "nnet3-am-copy --raw=true {model} - |" {dir}/den.fst \
-        "ark,bg:nnet3-chain-merge-egs ark:{egs_dir}/train_diagnostic.cegs ark:- |"
+  "ark,bg:nnet3-chain-copy-egs --left-context={lc} --right-context={rc} ark:{egs_dir}/train_diagnostic.cegs ark:- | nnet3-chain-merge-egs ark:- ark:- |"
     """.format(command = run_opts.command,
                dir = dir,
                iter = iter,
                model = model,
+               lc = left_context, rc = right_context,
                l2 = l2_regularize, leaky = leaky_hmm_coefficient,
                xent_reg = xent_regularize,
                egs_dir = egs_dir), wait = wait)

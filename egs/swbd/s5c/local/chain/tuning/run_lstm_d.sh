@@ -155,7 +155,6 @@ if [ $stage -le 13 ]; then
     --chain.xent-regularize $xent_regularize \
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
-    --chain.left-deriv-truncate 0 \
     --trainer.num-chunk-per-minibatch 64 \
     --trainer.max-param-change 2.0 \
     --trainer.num-epochs 4 \
@@ -165,6 +164,7 @@ if [ $stage -le 13 ]; then
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.optimization.momentum 0.0 \
+    --trainer.deriv-truncate-margin 8 \
     --egs.stage $get_egs_stage \
     --egs.opts="--frames-overlap-per-eg 0" \
     --egs.chunk-width $chunk_width \

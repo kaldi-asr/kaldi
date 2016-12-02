@@ -57,6 +57,17 @@ void UnitTestRoundUpToNearestPowerOfTwo() {
   KALDI_ASSERT(RoundUpToNearestPowerOfTwo(1073700000) == 1073741824);
 }
 
+void UnitTestDivideRoundingDown() {
+  for (int32 i = 0; i < 100; i++) {
+    int32 a = RandInt(-100, 100);
+    int32 b = 0;
+    while (b == 0)
+      b = RandInt(-100, 100);
+    KALDI_ASSERT(DivideRoundingDown(a, b) ==
+        std::floor(static_cast<double>(a) / static_cast<double>(b)));
+  }
+}
+
 void UnitTestGcdLcm() {
   UnitTestGcdLcmTpl<int>();
   UnitTestGcdLcmTpl<size_t>();
@@ -314,6 +325,7 @@ int main() {
   UnitTestRand();
   UnitTestAssertFunc();
   UnitTestRoundUpToNearestPowerOfTwo();
+  UnitTestDivideRoundingDown();
   UnitTestExpSpeed<float>();
   UnitTestExpSpeed<double>();
   UnitTestLogSpeed<float>();

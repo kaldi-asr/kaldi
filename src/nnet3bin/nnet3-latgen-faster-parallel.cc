@@ -228,8 +228,10 @@ int main(int argc, char *argv[]) {
           }
         }
 
+        // the following constructor takes ownership of the FST pointer so that
+        // it is deleted when 'decoder' is deleted.
         LatticeFasterDecoder *decoder =
-            new LatticeFasterDecoder(fst_reader.Value(), config);
+            new LatticeFasterDecoder(config, fst_reader.Value().Copy());
 
         DecodableInterface *nnet_decodable = new
             DecodableAmNnetSimpleParallel(

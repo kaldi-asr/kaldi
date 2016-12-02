@@ -316,15 +316,15 @@ int main(int argc, char *argv[]) {
           num_written++;
         }
       } else if (count > 0) {
-        const NnetChainExample &eg = example_reader.Value();
+        NnetChainExample eg = example_reader.Value();
+        if (frame_shift != 0)
+          ShiftChainExampleTimes(frame_shift, exclude_names, &eg);
         NnetChainExample eg_out;
         if (left_context != -1 || right_context != -1)
           ModifyChainExampleContext(eg, left_context, right_context,
                                     frame_subsampling_factor, &eg_out);
         else
-          eg_out = eg;
-        if (frame_shift != 0)
-          ShiftChainExampleTimes(frame_shift, exclude_names, &eg_out);
+          eg_out.Swap(&eg);
         if (truncate_deriv_weights != 0)
           TruncateDerivWeights(truncate_deriv_weights, &eg_out);
         for (int32 c = 0; c < count; c++) {
@@ -344,5 +344,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-
