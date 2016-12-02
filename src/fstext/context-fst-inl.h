@@ -42,7 +42,8 @@ typename ContextFstImpl<Arc, LabelT>::StateId
   if (iter == state_map_.end()) {  // Not already in map.
     StateId this_state_id = (StateId)state_seqs_.size();
     //This check is not needed with OpenFst >= 1.4
-#ifndef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
+#else
     StateId this_state_id_check = CacheImpl<Arc>::AddState();
     // goes back to VectorFstBaseImpl<Arc>, inherited via CacheFst<Arc>
     assert(this_state_id == this_state_id_check);
@@ -325,7 +326,7 @@ void ContextFstImpl<Arc, LabelT>::Expand(StateId s) {  // expands arcs only [not
   // We just try adding all possible symbols on the output side.
   Arc arc;
   if (this->CreateArc(s, subsequential_symbol_, &arc)) {
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
     this->PushArc(s, arc);
 #else
     this->AddArc(s, arc);
@@ -335,7 +336,7 @@ void ContextFstImpl<Arc, LabelT>::Expand(StateId s) {  // expands arcs only [not
        iter != phone_syms_.end(); ++iter) {
     Label phone = *iter;
     if (this->CreateArc(s, phone, &arc)) {
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
       this->PushArc(s, arc);
 #else
       this->AddArc(s, arc);
@@ -346,7 +347,7 @@ void ContextFstImpl<Arc, LabelT>::Expand(StateId s) {  // expands arcs only [not
        iter != disambig_syms_.end(); ++iter) {
     Label disambig_sym = *iter;
     if (this->CreateArc(s, disambig_sym, &arc)) {
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
       this->PushArc(s, arc);
 #else
       this->AddArc(s, arc);
@@ -359,22 +360,24 @@ void ContextFstImpl<Arc, LabelT>::Expand(StateId s) {  // expands arcs only [not
 
 template<class Arc, class LabelT>
 ContextFst<Arc, LabelT>::ContextFst(const ContextFst<Arc, LabelT> &fst, bool reset) {
+#if OPENFST_VER >= 10500
   if (reset) {
-#ifdef HAVE_OPENFST_GE_10500
     impl_ = std::make_shared<ContextFstImpl<Arc, LabelT> >(*(fst.impl_));
+  } else {
+    impl_ = fst.impl_;
+  }
 #else
+  if (reset) {
     impl_ = new ContextFstImpl<Arc, LabelT>(*(fst.impl_));
     // Copy constructor of ContextFstImpl.
     // Main use of calling with reset = true is to free up memory
     // (e.g. then you could delete original one).  Might be useful in transcription
     // expansion during training.
-#endif
   } else {
     impl_ = fst.impl_;
-#ifndef HAVE_OPENFST_GE_10500
     impl_->IncrRefCount();
-#endif
   }
+#endif
 }
 
 

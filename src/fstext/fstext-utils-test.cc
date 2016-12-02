@@ -146,7 +146,7 @@ template<class Arc>  void TestSafeDeterminizeWrapper() {  // also tests SafeDete
 
   std::cout <<" printing before trimming\n";
   {
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
 #else
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true);
@@ -158,7 +158,7 @@ template<class Arc>  void TestSafeDeterminizeWrapper() {  // also tests SafeDete
 
   std::cout <<" printing after trimming\n";
   {
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
 #else
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true);
@@ -376,7 +376,7 @@ void TestEqualAlign() {
 
 template<class Arc> void Print(const Fst<Arc> &fst, std::string message) {
   std::cout << message << "\n";
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
   FstPrinter<Arc> fstprinter(fst, NULL, NULL, NULL, false, true, "\t");
 #else
   FstPrinter<Arc> fstprinter(fst, NULL, NULL, NULL, false, true);

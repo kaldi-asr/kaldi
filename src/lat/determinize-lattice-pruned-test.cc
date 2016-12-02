@@ -62,7 +62,7 @@ template<class Arc> void TestDeterminizeLatticePruned() {
     
     std::cout << "FST before lattice-determinizing is:\n";
     {
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
       FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true, "\t");
 #else
       FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
@@ -79,7 +79,7 @@ template<class Arc> void TestDeterminizeLatticePruned() {
 
       std::cout << "FST after lattice-determinizing is:\n";
       {
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
         FstPrinter<Arc> fstprinter(det_fst, NULL, NULL, NULL, false, true, "\t");
 #else
         FstPrinter<Arc> fstprinter(det_fst, NULL, NULL, NULL, false, true);
@@ -100,7 +100,7 @@ template<class Arc> void TestDeterminizeLatticePruned() {
       ConvertLattice<Weight, Int>(pruned_fst, &compact_pruned_fst, false);
       std::cout << "Compact pruned FST is:\n";
       {
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
         FstPrinter<CompactArc> fstprinter(compact_pruned_fst, NULL, NULL, NULL, false, true, "\t");
 #else
         FstPrinter<CompactArc> fstprinter(compact_pruned_fst, NULL, NULL, NULL, false, true);
@@ -111,7 +111,7 @@ template<class Arc> void TestDeterminizeLatticePruned() {
       
       std::cout << "Compact version of determinized FST is:\n";
       {
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
         FstPrinter<CompactArc> fstprinter(compact_pruned_det_fst, NULL, NULL, NULL, false, true, "\t");
 #else
         FstPrinter<CompactArc> fstprinter(compact_pruned_det_fst, NULL, NULL, NULL, false, true);
@@ -138,7 +138,7 @@ template<class Arc> void TestDeterminizeLatticePruned2() {
     VectorFst<Arc> *fst = RandPairFst<Arc>(opts);
     std::cout << "FST before lattice-determinizing is:\n";
     {
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
       FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true, "\t");
 #else
       FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
@@ -149,7 +149,7 @@ template<class Arc> void TestDeterminizeLatticePruned2() {
     DeterminizeLatticePruned<Weight>(*fst, 10.0, &ofst);
     std::cout << "FST after lattice-determinizing is:\n";
     {
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
       FstPrinter<Arc> fstprinter(ofst, NULL, NULL, NULL, false, true, "\t");
 #else
       FstPrinter<Arc> fstprinter(ofst, NULL, NULL, NULL, false, true);
