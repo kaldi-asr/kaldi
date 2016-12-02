@@ -26,7 +26,7 @@ from libs.nnet3.xconfig.utils import XconfigParserError as xparser_error
 #   clipping-threshold=30    [nnet3 LSTMs use a gradient clipping component at the recurrent connections.
 #                             This is the threshold used to decide if clipping has to be activated ]
 #   zeroing-interval=20      [interval at which we (possibly) zero out the recurrent derivatives.]
-#   zeroing-threshold=20     [We only zero out the derivs every zeroing-interval, if derivs exceed this value.]
+#   zeroing-threshold=15     [We only zero out the derivs every zeroing-interval, if derivs exceed this value.]
 #   self_repair_scale_nonlinearity=1e-5      [It is a constant scaling the self-repair vector computed in derived classes of NonlinearComponent]
 #                                       i.e.,  SigmoidComponent, TanhComponent and RectifiedLinearComponent ]
 #   ng-per-element-scale-options=''     [Additional options used for the diagonal matrices in the LSTM ]
@@ -45,7 +45,7 @@ class XconfigLstmLayer(XconfigLayerBase):
                         'ng-affine-options' : ' max-change=0.75 ',
                         'self-repair-scale-nonlinearity' : 0.00001,
                         'zeroing-interval' : 20,
-                        'zeroing-threshold' : 3.0
+                        'zeroing-threshold' : 15.0
                         }
 
     def set_derived_configs(self):
@@ -226,7 +226,7 @@ class XconfigLstmLayer(XconfigLayerBase):
 #   clipping-threshold=30    [nnet3 LSTMs use a gradient clipping component at the recurrent connections.
 #                             This is the threshold used to decide if clipping has to be activated ]
 #   zeroing-interval=20      [interval at which we (possibly) zero out the recurrent derivatives.]
-#   zeroing-threshold=20     [We only zero out the derivs every zeroing-interval, if derivs exceed this value.]
+#   zeroing-threshold=15     [We only zero out the derivs every zeroing-interval, if derivs exceed this value.]
 #   self_repair_scale_nonlinearity=1e-5      [It is a constant scaling the self-repair vector computed in derived classes of NonlinearComponent]
 #                                       i.e.,  SigmoidComponent, TanhComponent and RectifiedLinearComponent ]
 #   ng-per-element-scale-options=''   [Additional options used for the diagonal matrices in the LSTM ]
@@ -249,7 +249,7 @@ class XconfigLstmpLayer(XconfigLayerBase):
                         'ng-affine-options' : ' max-change=0.75 ',
                         'self-repair-scale-nonlinearity' : 0.00001,
                         'zeroing-interval' : 20,
-                        'zeroing-threshold' : 3.0
+                        'zeroing-threshold' : 15.0
                        }
 
     def set_derived_configs(self):
@@ -568,7 +568,7 @@ class XconfigLstmpcLayer(XconfigLstmpLayer):
 #   clipping-threshold=30    [nnet3 LSTMs use a gradient clipping component at the recurrent connections.
 #                             This is the threshold used to decide if clipping has to be activated ]
 #   zeroing-interval=20      [interval at which we (possibly) zero out the recurrent derivatives.]
-#   zeroing-threshold=20     [We only zero out the derivs every zeroing-interval, if derivs exceed this value.]
+#   zeroing-threshold=15     [We only zero out the derivs every zeroing-interval, if derivs exceed this value.]
 #   lstm-nonlinearity-options=' max-change=0.75 '  [Options string to pass into the LSTM nonlinearity component.]
 #   ng-affine-options=' max-change=1.5 '           [Additional options used for the full matrices in the LSTM, can be used to
 #                                      do things like set biases to initialize to 1]
@@ -582,7 +582,7 @@ class XconfigFastLstmLayer(XconfigLayerBase):
                         'cell-dim' : -1, # this is a compulsory argument
                         'clipping-threshold' : 30.0,
                         'zeroing-interval' : 20,
-                        'zeroing-threshold' : 3.0,
+                        'zeroing-threshold' : 15.0,
                         'delay' : -1,
                         # if you want to set 'self-repair-scale' (c.f. the
                         # self-repair-scale-nonlinearity config value in older LSTM layers), you can
@@ -719,7 +719,7 @@ class XconfigFastLstmLayer(XconfigLayerBase):
 #   clipping-threshold=30    [nnet3 LSTMs use a gradient clipping component at the recurrent connections.
 #                             This is the threshold used to decide if clipping has to be activated ]
 #   zeroing-interval=20      [interval at which we (possibly) zero out the recurrent derivatives.]
-#   zeroing-threshold=20     [We only zero out the derivs every zeroing-interval, if derivs exceed this value.]
+#   zeroing-threshold=15     [We only zero out the derivs every zeroing-interval, if derivs exceed this value.]
 #   lstm-nonlinearity-options=' max-change=0.75 '  [Options string to pass into the LSTM nonlinearity component.]
 #   ng-affine-options=' max-change=1.5 '           [Additional options used for the full matrices in the LSTM, can be used to
 #                                      do things like set biases to initialize to 1]
@@ -744,7 +744,7 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
                         # larger max-change than the normal value of 0.75.
                         'ng-affine-options' : ' max-change=1.5',
                         'zeroing-interval' : 20,
-                        'zeroing-threshold' : 3.0
+                        'zeroing-threshold' : 15.0
                         }
 
     def set_derived_configs(self):

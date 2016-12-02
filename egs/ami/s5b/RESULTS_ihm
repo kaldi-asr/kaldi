@@ -51,9 +51,8 @@
 # local/nnet3/run_blstm.sh --mic ihm
 # nnet3 xent BLSTM with data cleaning
 # for d in exp/ihm/nnet3_cleaned/lstm_bidirectional_sp/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
-# Note: the results are with ClipGradientComponent, which may be different from with BackpropTruncationComponent
-%WER 22.3 | 13098 94494 | 80.9 11.7 7.4 3.2 22.3 55.7 | -0.618 | exp/ihm/nnet3_cleaned/lstm_bidirectional_sp/decode_dev/ascore_10/dev_hires.ctm.filt.sys
-%WER 22.5 | 12643 89962 | 80.2 12.7 7.1 2.7 22.5 53.4 | -0.476 | exp/ihm/nnet3_cleaned/lstm_bidirectional_sp/decode_eval/ascore_10/eval_hires.ctm.filt.sys
+%WER 22.4 | 13098 94483 | 80.8 11.6 7.6 3.2 22.4 55.4 | -0.620 | exp/ihm/nnet3_cleaned/lstm_bidirectional_sp/decode_dev/ascore_10/dev_hires.ctm.filt.sys
+%WER 22.4 | 12643 89977 | 80.3 12.5 7.2 2.7 22.4 53.6 | -0.503 | exp/ihm/nnet3_cleaned/lstm_bidirectional_sp/decode_eval/ascore_10/eval_hires.ctm.filt.sys
 
 ############################################
 
