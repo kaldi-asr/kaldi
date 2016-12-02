@@ -70,7 +70,7 @@ template<class Arc>  void TestFactor() {
 
   std::cout <<" printing before trimming\n";
   {
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
 #else
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true);
@@ -82,7 +82,7 @@ template<class Arc>  void TestFactor() {
 
   std::cout <<" printing after trimming\n";
   {
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
 #else
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true);
@@ -97,7 +97,7 @@ template<class Arc>  void TestFactor() {
 
   std::cout <<" printing after predeterminization\n";
   {
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
 #else
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true);
@@ -117,7 +117,7 @@ template<class Arc>  void TestFactor() {
 
   std::cout <<" printing after double-epsilon removal\n";
   {
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
 #else
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true);
@@ -140,7 +140,7 @@ template<class Arc>  void TestFactor() {
 
     {
       std::cout <<" printing gallic FST\n";
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
       FstPrinter<GallicArc<Arc> >  fstprinter(gallic_fst, sptr, sptr, NULL, false, true, "\t");
 #else
       FstPrinter<GallicArc<Arc> >  fstprinter(gallic_fst, sptr, sptr, NULL, false, true);
@@ -152,7 +152,7 @@ template<class Arc>  void TestFactor() {
     // Map(ofst_star, &gallic_fst, ToGallicMapper<Arc, STRING_LEFT>());
     
     printf("Converting gallic back to regular\n");
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
     TrivialFactorWeightFst< GallicArc<Arc, GALLIC_LEFT>, GallicFactor<typename Arc::Label,
         typename Arc::Weight, GALLIC_LEFT> > fwfst(gallic_fst);
 #else
@@ -161,7 +161,7 @@ template<class Arc>  void TestFactor() {
 #endif
     {
       std::cout <<" printing factor-weight FST\n";
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
       FstPrinter<GallicArc<Arc> >  fstprinter(fwfst, sptr, sptr, NULL, false, true, "\t");
 #else
       FstPrinter<GallicArc<Arc> >  fstprinter(fwfst, sptr, sptr, NULL, false, true);
@@ -169,7 +169,7 @@ template<class Arc>  void TestFactor() {
       fstprinter.Print(&std::cout, "standard output");
     }
 
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
     Map(fwfst, &ofst_star, FromGallicMapper<Arc, GALLIC_LEFT>());
 #else
     Map(fwfst, &ofst_star, FromGallicMapper<Arc, STRING_LEFT>());
@@ -177,7 +177,7 @@ template<class Arc>  void TestFactor() {
 
     {
       std::cout <<" printing after converting back to regular FST\n";
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
       FstPrinter<Arc> fstprinter(ofst_star, sptr, sptr, NULL, false, true, "\t");
 #else
       FstPrinter<Arc> fstprinter(ofst_star, sptr, sptr, NULL, false, true);
@@ -187,7 +187,7 @@ template<class Arc>  void TestFactor() {
 
 
     VectorFst<GallicArc<Arc> > new_gallic_fst;
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
     Map(ofst_star, &new_gallic_fst, ToGallicMapper<Arc, GALLIC_LEFT>());
 #else
     Map(ofst_star, &new_gallic_fst, ToGallicMapper<Arc, STRING_LEFT>());

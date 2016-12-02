@@ -170,7 +170,7 @@ int main(int argc, char *argv[]) {
                    << "not reach end-state, or mismatched lexicon.)";
         if (g_kaldi_verbose_level >= 2) {
           KALDI_LOG << "phn2word FST is below:";
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
           fst::FstPrinter<StdArc> fstprinter(phn2word, NULL, NULL, NULL, false, true, "\t");
 #else
           fst::FstPrinter<StdArc> fstprinter(phn2word, NULL, NULL, NULL, false, true);

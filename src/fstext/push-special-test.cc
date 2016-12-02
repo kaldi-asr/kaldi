@@ -37,7 +37,7 @@ static void TestPushSpecial() {
   VectorFst<Arc> *fst = RandFst<StdArc>();
 
   {
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
     FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true, "\t");
 #else
     FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
@@ -59,7 +59,7 @@ static void TestPushSpecial() {
 
 
   {
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
     FstPrinter<Arc> fstprinter(fst_copy, NULL, NULL, NULL, false, true, "\t");
 #else
     FstPrinter<Arc> fstprinter(fst_copy, NULL, NULL, NULL, false, true);

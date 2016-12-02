@@ -90,7 +90,7 @@ void TestPushCompactLatticeWeights() {
     }
     if (!ApproxEqual(sum, LatticeWeight::One())) {
       {
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
         fst::FstPrinter<CompactLatticeArc> printer(clat2, NULL, NULL,
                                                    NULL, true, true, "\t");
 #else
@@ -100,7 +100,7 @@ void TestPushCompactLatticeWeights() {
         printer.Print(&std::cerr, "<unknown>");
       }
       {
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
         fst::FstPrinter<CompactLatticeArc> printer(*clat, NULL, NULL,
                                                    NULL, true, true, "\t");
 #else

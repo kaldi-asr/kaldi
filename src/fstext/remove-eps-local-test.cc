@@ -82,7 +82,7 @@ template<class Arc> static void TestRemoveEpsLocal() {
 
   std::cout <<" printing after trimming\n";
   {
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
     FstPrinter<Arc> fstprinter(fst, sptr, sptr, NULL, false, true, "\t");
 #else
     FstPrinter<Arc> fstprinter(fst, sptr, sptr, NULL, false, true);
@@ -99,7 +99,7 @@ template<class Arc> static void TestRemoveEpsLocal() {
 
   {
     std::cout << "copy1 = \n";
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
     FstPrinter<Arc> fstprinter(fst_copy1, sptr, sptr, NULL, false, true, "\t");
 #else
     FstPrinter<Arc> fstprinter(fst_copy1, sptr, sptr, NULL, false, true);
@@ -148,7 +148,7 @@ static void TestRemoveEpsLocalSpecial() {
 #endif
   {
     std::cout << "logfst = \n";
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
     FstPrinter<LogArc> fstprinter(*logfst, NULL, NULL, NULL, false, true, "\t");
 #else
     FstPrinter<LogArc> fstprinter(*logfst, NULL, NULL, NULL, false, true);
@@ -167,7 +167,7 @@ static void TestRemoveEpsLocalSpecial() {
 
   {
     std::cout << "logfst2 = \n";
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
     FstPrinter<LogArc> fstprinter(logfst2, NULL, NULL, NULL, false, true, "\t");
 #else
     FstPrinter<LogArc> fstprinter(logfst2, NULL, NULL, NULL, false, true);
