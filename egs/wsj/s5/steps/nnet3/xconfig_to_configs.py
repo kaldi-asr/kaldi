@@ -2,14 +2,9 @@
 
 # we're using python 3.x style print but want it to work in python 2.x,
 from __future__ import print_function
-import os
 import argparse
-import shlex
+import os
 import sys
-import warnings
-import copy
-import imp
-import ast
 from collections import defaultdict
 
 sys.path.insert(0, 'steps/')
@@ -17,14 +12,15 @@ sys.path.insert(0, 'steps/')
 sys.path.insert(0, os.path.realpath(os.path.dirname(sys.argv[0])) + '/')
 
 import libs.nnet3.xconfig.parser as xparser
-# do the proper import when python scripts have been refactored
-nnet3_lib = imp.load_source('', 'steps/nnet3/nnet3_train_lib.py')
+import libs.common as common_lib
+
 
 def get_args():
     # we add compulsary arguments as named arguments for readability
-    parser = argparse.ArgumentParser(description='Reads an xconfig file and creates config files '
-                                     'for neural net creation and training',
-                                     epilog='Search egs/*/*/local/{nnet3,chain}/*sh for examples')
+    parser = argparse.ArgumentParser(
+        description="Reads an xconfig file and creates config files "
+                    "for neural net creation and training",
+        epilog='Search egs/*/*/local/{nnet3,chain}/*sh for examples')
     parser.add_argument('--xconfig-file', required=True,
                         help='Filename of input xconfig file')
     parser.add_argument('--config-dir', required=True,
@@ -37,26 +33,28 @@ def get_args():
 
     return args
 
+
 def check_args(args):
     if not os.path.exists(args.config_dir):
         os.makedirs(args.config_dir)
     return args
 
 
-
-
 def backup_xconfig_file(xconfig_file, config_dir):
-    # we write a copy of the xconfig file just to have a record of the original
-    # input.
+    """we write a copy of the xconfig file just to have a record of the
+    original input.
+    """
     try:
         xconfig_file_out = open(config_dir + '/xconfig', 'w')
     except:
-        sys.exit('{0}: error opening file {1}/xconfig for output'.format(
-            sys.argv[0], config_dir))
+        raise Exception('{0}: error opening file '
+                        '{1}/xconfig for output'.format(
+                            sys.argv[0], config_dir))
     try:
         xconfig_file_in = open(xconfig_file)
     except:
-        sys.exit('{0}: error opening file {1} for input'.format(sys.argv[0], config_dir))
+        raise Exception('{0}: error opening file {1} for input'.format(
+                            sys.argv[0], config_dir))
 
     print("# This file was created by the command:\n"
           "# {0}\n"
@@ -73,16 +71,17 @@ def backup_xconfig_file(xconfig_file, config_dir):
     xconfig_file_in.close()
 
 
-# This functions writes config_dir/xconfig.expanded.1 and
-# config_dir/xconfig.expanded.2, showing some of the internal stages of
-# processing the xconfig file before turning it into config files.
 def write_expanded_xconfig_files(config_dir, all_layers):
+    """ This functions writes config_dir/xconfig.expanded.1 and
+    config_dir/xconfig.expanded.2, showing some of the internal stages of
+    processing the xconfig file before turning it into config files.
+    """
     try:
         xconfig_file_out = open(config_dir + '/xconfig.expanded.1', 'w')
     except:
-        sys.exit('{0}: error opening file {1}/xconfig.expanded.1 for output'.format(
-            sys.argv[0], config_dir))
-
+        raise Exception('{0}: error opening file '
+                        '{1}/xconfig.expanded.1 for output'.format(
+                            sys.argv[0], config_dir))
 
     print('# This file was created by the command:\n'
           '# ' + ' '.join(sys.argv) + '\n'
@@ -97,13 +96,15 @@ def write_expanded_xconfig_files(config_dir, all_layers):
     try:
         xconfig_file_out = open(config_dir + '/xconfig.expanded.2', 'w')
     except:
-        sys.exit('{0}: error opening file {1}/xconfig.expanded.2 for output'.format(
-                sys.argv[0], config_dir))
+        raise Exception('{0}: error opening file '
+                        '{1}/xconfig.expanded.2 for output'.format(
+                            sys.argv[0], config_dir))
 
     print('# This file was created by the command:\n'
           '# ' + ' '.join(sys.argv) + '\n'
           '# It contains the same content as ./xconfig but it was parsed,\n'
-          '# default config values were set, and Descriptors (input=xxx) were normalized.\n'
+          '# default config values were set, \n'
+          '# and Descriptors (input=xxx) were normalized.\n'
           '# See also ./xconfig.expanded.1\n\n',
           file=xconfig_file_out)
 
@@ -112,33 +113,38 @@ def write_expanded_xconfig_files(config_dir, all_layers):
         print(str(layer), file=xconfig_file_out)
     xconfig_file_out.close()
 
-# This function returns a map from config-file basename
-# e.g. 'init', 'ref', 'layer1' to a documentation string that goes
-# at the top of the file.
+
 def get_config_headers():
-    ans = defaultdict(str)  # resulting dict will default to the empty string
-                            # for any config files not explicitly listed here.
-    ans['init'] = ('# This file was created by the command:\n'
-                   '# ' + ' '.join(sys.argv) + '\n'
-                   '# It contains the input of the network and is used in\n'
-                   '# accumulating stats for an LDA-like transform of the\n'
-                   '# input features.\n');
-    ans['ref'] = ('# This file was created by the command:\n'
-                  '# ' + ' '.join(sys.argv) + '\n'
-                  '# It contains the entire neural network, but with those\n'
-                  '# components that would normally require fixed vectors/matrices\n'
-                  '# read from disk, replaced with random initialization\n'
-                  '# (this applies to the LDA-like transform and the\n'
-                  '# presoftmax-prior-scale, if applicable).  This file\n'
-                  '# is used only to work out the left-context and right-context\n'
-                  '# of the network.\n');
-    ans['final'] = ('# This file was created by the command:\n'
-                    '# ' + ' '.join(sys.argv) + '\n'
-                    '# It contains the entire neural network.\n')
+    """ This function returns a map from config-file basename
+    e.g. 'init', 'ref', 'layer1' to a documentation string that goes
+    at the top of the file.
+    """
+    # resulting dict will default to the empty string for any config files not
+    # explicitly listed here.
+    ans = defaultdict(str)
 
-    return ans;
+    ans['init'] = (
+        '# This file was created by the command:\n'
+        '# ' + ' '.join(sys.argv) + '\n'
+        '# It contains the input of the network and is used in\n'
+        '# accumulating stats for an LDA-like transform of the\n'
+        '# input features.\n')
+    ans['ref'] = (
+        '# This file was created by the command:\n'
+        '# ' + ' '.join(sys.argv) + '\n'
+        '# It contains the entire neural network, but with those\n'
+        '# components that would normally require fixed vectors/matrices\n'
+        '# read from disk, replaced with random initialization\n'
+        '# (this applies to the LDA-like transform and the\n'
+        '# presoftmax-prior-scale, if applicable).  This file\n'
+        '# is used only to work out the left-context and right-context\n'
+        '# of the network.\n')
+    ans['final'] = (
+        '# This file was created by the command:\n'
+        '# ' + ' '.join(sys.argv) + '\n'
+        '# It contains the entire neural network.\n')
 
-
+    return ans
 
 
 # This is where most of the work of this program happens.
@@ -157,13 +163,14 @@ def write_config_files(config_dir, all_layers):
                 config_basename_to_lines[config_basename].append(line)
         except Exception as e:
             print("{0}: error producing config lines from xconfig "
-                    "line '{1}': error was: {2}".format(sys.argv[0], str(layer),
-                                                        repr(e)), file=sys.stderr)
+                  "line '{1}': error was: {2}".format(sys.argv[0],
+                                                      str(layer), repr(e)),
+                  file=sys.stderr)
             # we use raise rather than raise(e) as using a blank raise
             # preserves the backtrace
             raise
 
-    for basename,lines in config_basename_to_lines.items():
+    for basename, lines in config_basename_to_lines.items():
         header = config_basename_to_header[basename]
         filename = '{0}/{1}.config'.format(config_dir, basename)
         try:
@@ -179,12 +186,15 @@ def write_config_files(config_dir, all_layers):
             # preserves the backtrace
             raise
 
+
 def add_back_compatibility_info(config_dir):
     """This will be removed when python script refactoring is done."""
 
-    nnet3_lib.RunKaldiCommand("nnet3-init {0}/ref.config {0}/ref.raw".format(config_dir))
-    out, err = nnet3_lib.RunKaldiCommand("nnet3-info {0}/ref.raw | head -4".format(config_dir))
-    #out looks like this
+    common_lib.run_kaldi_command("nnet3-init {0}/ref.config "
+                                 "{0}/ref.raw".format(config_dir))
+    out, err = common_lib.run_kaldi_command("nnet3-info {0}/ref.raw | "
+                                            "head -4".format(config_dir))
+    # out looks like this
     # left-context: 7
     # right-context: 0
     # num-parameters: 90543902
@@ -206,8 +216,9 @@ def add_back_compatibility_info(config_dir):
     vf.write('num_hidden_layers=1\n')
     vf.close()
 
-    nnet3_lib.ForceSymlink("final.config".format(config_dir),
-                           "{0}/layer1.config".format(config_dir))
+    common_lib.force_symlink("final.config".format(config_dir),
+                             "{0}/layer1.config".format(config_dir))
+
 
 def main():
     args = get_args()
