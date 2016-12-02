@@ -27,7 +27,9 @@ config_to_layer = {
         'affine-layer' : xlayers.XconfigAffineLayer,
         'lstm-layer' : xlayers.XconfigLstmLayer,
         'lstmp-layer' : xlayers.XconfigLstmpLayer,
-        'lstmpc-layer' : xlayers.XconfigLstmpcLayer
+        'lstmpc-layer' : xlayers.XconfigLstmpcLayer,
+        'fast-lstm-layer' : xlayers.XconfigFastLstmLayer,
+        'fast-lstmp-layer' : xlayers.XconfigFastLstmpLayer
         }
 
 # Converts a line as parsed by ParseConfigLine() into a first
@@ -90,5 +92,3 @@ def read_xconfig_file(xconfig_filename):
             sys.argv[0], xconfig_filename))
     f.close()
     return all_layers
-
-
