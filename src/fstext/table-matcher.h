@@ -86,7 +86,8 @@ class TableMatcherImpl : public MatcherBase<typename F::Arc> {
   virtual const FST &GetFst() const { return *fst_; }
 
   virtual ~TableMatcherImpl() {
-#ifndef HAVE_OPENFST_GE_10500
+#if OPENFST_VER >= 10500
+#else
     assert(RefCount() == 0);
 #endif
     vector<ArcId> *const empty = ((vector<ArcId>*)(NULL)) + 1;  // special marker.
@@ -221,7 +222,8 @@ class TableMatcherImpl : public MatcherBase<typename F::Arc> {
   virtual uint64 Properties(uint64 props) const { return props; } // simple matcher that does
   // not change its FST, so properties are properties of FST it is applied to
 
-#ifndef HAVE_OPENFST_GE_10500
+#if OPENFST_VER >= 10500
+#else
   int RefCount() const {
     return ref_count_.count();
   }
@@ -235,7 +237,8 @@ class TableMatcherImpl : public MatcherBase<typename F::Arc> {
   }
 #endif
  private:
-#ifndef HAVE_OPENFST_GE_10500
+#if OPENFST_VER >= 10500
+#else
   RefCounter ref_count_;        // Reference count
 #endif
 
@@ -277,14 +280,16 @@ class TableMatcher : public MatcherBase<typename F::Arc> {
 
   TableMatcher(const TableMatcher<FST, BackoffMatcher> &matcher, bool safe):
       impl_(matcher.impl_) {
-#ifndef HAVE_OPENFST_GE_10500
+#if OPENFST_VER >= 10500
+#else
       impl_->IncrRefCount();
 #endif
   }
 
   virtual const FST &GetFst() const { return impl_->GetFst(); }
 
-#ifndef HAVE_OPENFST_GE_10500
+#if OPENFST_VER >= 10500
+#else
   virtual ~TableMatcher() {
     if (!impl_->DecrRefCount())   delete impl_;
   }
@@ -311,7 +316,7 @@ class TableMatcher : public MatcherBase<typename F::Arc> {
   virtual uint64 Properties(uint64 props) const { return impl_->Properties(props); } // simple matcher that does
   // not change its FST, so properties are properties of FST it is applied to
  private:
-#ifdef HAVE_OPENFST_GE_10500
+#if OPENFST_VER >= 10500
   std::shared_ptr<I> impl_;
 #else
   I *impl_;

@@ -117,7 +117,7 @@ class TrivialFactorWeightFstImpl
   typedef typename A::StateId StateId;
   typedef F FactorIterator;
 
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
   typedef DefaultCacheStore<A> Store;
   typedef typename Store::State State;
 #endif
@@ -344,7 +344,7 @@ class TrivialFactorWeightFst : public ImplToFst< TrivialFactorWeightFstImpl<A, F
   typedef A Arc;
   typedef typename A::Weight Weight;
   typedef typename A::StateId StateId;
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
   typedef DefaultCacheStore<Arc> Store;
   typedef typename Store::State State;
 #else
@@ -353,14 +353,14 @@ class TrivialFactorWeightFst : public ImplToFst< TrivialFactorWeightFstImpl<A, F
   typedef TrivialFactorWeightFstImpl<A, F> Impl;
 
   TrivialFactorWeightFst(const Fst<A> &fst)
-#ifdef HAVE_OPENFST_GE_10500
+#if OPENFST_VER >= 10500
       : ImplToFst<Impl>(std::make_shared<Impl>(fst, TrivialFactorWeightOptions<A>())) {}
 #else
       : ImplToFst<Impl>(new Impl(fst, TrivialFactorWeightOptions<A>())) {}
 #endif
 
   TrivialFactorWeightFst(const Fst<A> &fst,  const TrivialFactorWeightOptions<A> &opts)
-#ifdef HAVE_OPENFST_GE_10500
+#if OPENFST_VER >= 10500
       : ImplToFst<Impl>(std::make_shared<Impl>(fst, opts)) {}
 #else
       : ImplToFst<Impl>(new Impl(fst, opts)) {}
@@ -383,7 +383,7 @@ class TrivialFactorWeightFst : public ImplToFst< TrivialFactorWeightFstImpl<A, F
 
  private:
   // Makes visible to friends.
-#ifdef HAVE_OPENFST_GE_10500
+#if OPENFST_VER >= 10500
   using ImplToFst<Impl>::GetImpl;
   using ImplToFst<Impl>::GetMutableImpl;
 #else

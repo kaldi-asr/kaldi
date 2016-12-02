@@ -30,7 +30,7 @@ template<class Weight, class Int> void TestConvert(bool invert) {
     VectorFst<Arc> *fst = RandFst<Arc>();
     std::cout << "FST before converting to compact-arc is:\n";
     {
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
       FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true, "\t");
 #else
       FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
@@ -42,7 +42,7 @@ template<class Weight, class Int> void TestConvert(bool invert) {
 
     std::cout << "FST after converting is:\n";
     {
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
       FstPrinter<CompactArc> fstprinter(ofst, NULL, NULL, NULL, false, true, "\t");
 #else
       FstPrinter<CompactArc> fstprinter(ofst, NULL, NULL, NULL, false, true);
@@ -53,7 +53,7 @@ template<class Weight, class Int> void TestConvert(bool invert) {
     ConvertLattice<Weight, Int>(ofst, &origfst, invert);
     std::cout << "FST after back conversion is:\n";
     {
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
       FstPrinter<Arc> fstprinter(origfst, NULL, NULL, NULL, false, true, "\t");
 #else
       FstPrinter<Arc> fstprinter(origfst, NULL, NULL, NULL, false, true);
@@ -78,7 +78,7 @@ template<class Weight, class Int> void TestShortestPath() {
       std::cout << "Testing shortest path\n";
       std::cout << "FST before converting to compact-arc is:\n";
       {
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
         FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true, "\t");
 #else
         FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);

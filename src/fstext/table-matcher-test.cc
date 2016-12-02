@@ -63,7 +63,7 @@ template<class Arc>  void TestTableMatcher(bool connect, bool left) {
 
   std::cout <<"Table-Composed FST\n";
   {
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
     FstPrinter<Arc> fstprinter(composed, NULL, NULL, NULL, false, true, "\t");
 #else
     FstPrinter<Arc> fstprinter(composed, NULL, NULL, NULL, false, true);
@@ -73,7 +73,7 @@ template<class Arc>  void TestTableMatcher(bool connect, bool left) {
 
   std::cout <<" Baseline-Composed FST\n";
   {
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
     FstPrinter<Arc> fstprinter(composed_baseline, NULL, NULL, NULL, false, true, "\t");
 #else
     FstPrinter<Arc> fstprinter(composed_baseline, NULL, NULL, NULL, false, true);
@@ -86,7 +86,7 @@ template<class Arc>  void TestTableMatcher(bool connect, bool left) {
     Difference(composed, composed_baseline, &diff1);
     std::cout <<" Diff1 (composed - baseline) \n";
     {
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
     FstPrinter<Arc> fstprinter(diff1, NULL, NULL, NULL, false, true, "\t");
 #else
     FstPrinter<Arc> fstprinter(diff1, NULL, NULL, NULL, false, true);
@@ -99,7 +99,7 @@ template<class Arc>  void TestTableMatcher(bool connect, bool left) {
     Difference(composed_baseline, composed, &diff2);
     std::cout <<" Diff2 (baseline - composed) \n";
     {
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
     FstPrinter<Arc> fstprinter(diff2, NULL, NULL, NULL, false, true, "\t");
 #else
     FstPrinter<Arc> fstprinter(diff2, NULL, NULL, NULL, false, true);
@@ -164,7 +164,7 @@ template<class Arc>  void TestTableMatcherCacheLeft(bool connect) {
       Difference(composed, composed_baseline, &diff1);
       std::cout <<" Diff1 (composed - baseline) \n";
       {
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
         FstPrinter<Arc> fstprinter(diff1, NULL, NULL, NULL, false, true, "\t");
 #else
         FstPrinter<Arc> fstprinter(diff1, NULL, NULL, NULL, false, true);
@@ -177,7 +177,7 @@ template<class Arc>  void TestTableMatcherCacheLeft(bool connect) {
       Difference(composed_baseline, composed, &diff2);
       std::cout <<" Diff2 (baseline - composed) \n";
       {
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
         FstPrinter<Arc> fstprinter(diff2, NULL, NULL, NULL, false, true, "\t");
 #else
         FstPrinter<Arc> fstprinter(diff2, NULL, NULL, NULL, false, true);
@@ -242,7 +242,7 @@ template<class Arc>  void TestTableMatcherCacheRight(bool connect) {
       Difference(composed, composed_baseline, &diff1);
       std::cout <<" Diff1 (composed - baseline) \n";
       {
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
         FstPrinter<Arc> fstprinter(diff1, NULL, NULL, NULL, false, true, "\t");
 #else
         FstPrinter<Arc> fstprinter(diff1, NULL, NULL, NULL, false, true);
@@ -255,7 +255,7 @@ template<class Arc>  void TestTableMatcherCacheRight(bool connect) {
       Difference(composed_baseline, composed, &diff2);
       std::cout <<" Diff2 (baseline - composed) \n";
       {
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
         FstPrinter<Arc> fstprinter(diff2, NULL, NULL, NULL, false, true, "\t");
 #else
         FstPrinter<Arc> fstprinter(diff2, NULL, NULL, NULL, false, true);

@@ -75,7 +75,7 @@ bool WriteCompactLattice(std::ostream &os, bool binary,
     // on its own line.
     os << '\n';
     bool acceptor = true, write_one = false;
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
     fst::FstPrinter<CompactLatticeArc> printer(t, t.InputSymbols(),
                                                t.OutputSymbols(),
                                                NULL, acceptor, write_one, "\t");
@@ -406,7 +406,7 @@ bool WriteLattice(std::ostream &os, bool binary, const Lattice &t) {
     // on its own line.
     os << '\n';
     bool acceptor = false, write_one = false;
-#ifdef HAVE_OPENFST_GE_10400
+#if OPENFST_VER >= 10400
     fst::FstPrinter<LatticeArc> printer(t, t.InputSymbols(),
                                         t.OutputSymbols(),
                                         NULL, acceptor, write_one, "\t");
