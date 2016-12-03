@@ -491,7 +491,6 @@ def AddOutputLayer(config_lines, input, label_delay = None, suffix=None, objecti
         component_nodes.append('output-node name={0} input={1} objective={2}'.format(name, input['descriptor'], objective_type))
     else:
         component_nodes.append('output-node name={0} input=Offset({1},{2}) objective={3}'.format(name, input['descriptor'], label_delay, objective_type))
-
 def AddFinalLayer(config_lines, input, output_dim,
         ng_affine_options = " param-stddev=0 bias-stddev=0 ",
         label_delay=None,

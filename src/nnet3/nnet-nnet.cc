@@ -399,6 +399,18 @@ void Nnet::ProcessOutputNodeConfigLine(
       // last layer, in this case.
       nodes_[node_index].u.objective_type = kLinear;
     }
+    std::string supervision_type;
+    if (config->GetValue("supervision", &supervision_type)) {
+      if (supervision_type == "supervised") {
+        nodes_[node_index].u.supervision_type = kSupervised;
+      } else if (supervision_type == "unsupervised") {
+        nodes_[node_index].u.supervision_type = kUnsupervised;
+      } else {
+        KALDI_ERR << "Invalid supervision type: " << supervision_type;
+      }
+    } else {
+      nodes_[node_index].u.supervision_type = kSupervised;
+    }
     if (config->HasUnusedValues())
       KALDI_ERR << "Unused values '" << config->UnusedValues()
                 << " in config line: " << config->WholeLine();

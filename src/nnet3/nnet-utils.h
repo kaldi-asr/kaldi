@@ -178,6 +178,12 @@ std::string NnetInfo(const Nnet &nnet);
 /// dropout_proportion value.
 void SetDropoutProportion(BaseFloat dropout_proportion, Nnet *nnet);
 
+/// This function sets the dropout proprotion for component node with 
+/// dropout_names[i] name to specific dropout-proportion values 
+/// dropout_proportions[i].
+void SetDropoutProportions(const std::vector<std::string> &dropout_names, 
+                           const std::vector<BaseFloat> &dropout_proportions,
+                           Nnet *nnet);
 /// This function finds a list of components that are never used, and outputs
 /// the integer comopnent indexes (you can use these to index
 /// nnet.GetComponentNames() to get their names).

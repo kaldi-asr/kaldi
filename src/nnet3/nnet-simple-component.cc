@@ -86,27 +86,31 @@ void PnormComponent::Write(std::ostream &os, bool binary) const {
 }
 
 
-void DropoutComponent::Init(int32 dim, BaseFloat dropout_proportion) {
+void DropoutComponent::Init(int32 dim, BaseFloat dropout_proportion, BaseFloat max_scale) {
   dropout_proportion_ = dropout_proportion;
   dim_ = dim;
+  max_scale_ = max_scale;
 }
 
 void DropoutComponent::InitFromConfig(ConfigLine *cfl) {
   int32 dim = 0;
-  BaseFloat dropout_proportion = 0.0;
+  BaseFloat dropout_proportion = 0.0,
+    max_scale = 1.0;
   bool ok = cfl->GetValue("dim", &dim) &&
     cfl->GetValue("dropout-proportion", &dropout_proportion);
+    cfl->GetValue("max-scale", &max_scale);
   if (!ok || cfl->HasUnusedValues() || dim <= 0 || 
       dropout_proportion < 0.0 || dropout_proportion > 1.0)
     KALDI_ERR << "Invalid initializer for layer of type " 
               << Type() << ": \"" << cfl->WholeLine() << "\"";   
-  Init(dim, dropout_proportion);
+  Init(dim, dropout_proportion, max_scale);
 }
 
 std::string DropoutComponent::Info() const {
   std::ostringstream stream;
   stream << Type() << ", dim = " << dim_ 
-         << ", dropout-proportion = " << dropout_proportion_;
+         << ", dropout-proportion = " << dropout_proportion_
+         << ", max-scale = " << max_scale_;
   return stream.str();
 }
 
@@ -118,7 +122,8 @@ void DropoutComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
 
   BaseFloat dropout = dropout_proportion_;
   KALDI_ASSERT(dropout >= 0.0 && dropout <= 1.0);
-
+  KALDI_ASSERT(max_scale_ > 0.0);
+  BaseFloat scale = std::min(max_scale_, 1/(1 - dropout));
   // This const_cast is only safe assuming you don't attempt  
   // to use multi-threaded code with the GPU.
   const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(out); 
@@ -128,6 +133,7 @@ void DropoutComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                          // be zero and (1 - dropout) will be 1.0.
 
   out->MulElements(in);
+  out->Scale(scale);
 }
 
 
@@ -143,7 +149,9 @@ void DropoutComponent::Backprop(const std::string &debug_info,
 
   KALDI_ASSERT(in_value.NumRows() == out_deriv.NumRows() &&
                in_value.NumCols() == out_deriv.NumCols());
+
   in_deriv->SetMatMatDivMat(out_deriv, out_value, in_value);
+  
 }
 
 
@@ -153,7 +161,15 @@ void DropoutComponent::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &dim_);
   ExpectToken(is, binary, "<DropoutProportion>");
   ReadBasicType(is, binary, &dropout_proportion_);
-  ExpectToken(is, binary, "</DropoutComponent>");
+  std::string token;
+  ReadToken(is, binary, &token);
+  if (token == "<MaxScale>") {
+    ReadBasicType(is, binary, &max_scale_); 
+    ExpectToken(is, binary, "</DropoutComponent>");
+  } else {
+    KALDI_ASSERT(token == "</DropoutComponent>");
+  }
+
 }
 
 void DropoutComponent::Write(std::ostream &os, bool binary) const {
@@ -162,6 +178,8 @@ void DropoutComponent::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, dim_);
   WriteToken(os, binary, "<DropoutProportion>");
   WriteBasicType(os, binary, dropout_proportion_);
+  WriteToken(os, binary, "<MaxScale>");
+  WriteBasicType(os, binary, max_scale_);
   WriteToken(os, binary, "</DropoutComponent>");
 }
 
@@ -3204,12 +3222,18 @@ void FixedScaleComponent::InitFromConfig(ConfigLine *cfl) {
     Init(vec);
   } else {
     int32 dim;
+    BaseFloat scale = 1.0;
+    bool scale_ok = cfl->GetValue("scale", &scale);
+    
     if (!cfl->GetValue("dim", &dim) || cfl->HasUnusedValues())
       KALDI_ERR << "Invalid initializer for layer of type "
                 << Type() << ": \"" << cfl->WholeLine() << "\"";
     KALDI_ASSERT(dim > 0);
     CuVector<BaseFloat> vec(dim);
-    vec.SetRandn();
+    if (scale_ok) 
+      vec.Set(scale);
+    else 
+      vec.SetRandn();
     Init(vec);
   }
 }

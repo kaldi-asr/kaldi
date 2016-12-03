@@ -506,6 +506,22 @@ void SetDropoutProportion(BaseFloat dropout_proportion,
   }
 }
 
+void SetDropoutProportions(const std::vector<std::string> &dropout_names, 
+                           const std::vector<BaseFloat> &dropout_proportions,
+                           Nnet *nnet) {
+  KALDI_ASSERT(dropout_names.size() == dropout_proportions.size());
+  for (int32 ind = 0; ind < dropout_names.size(); ind++) {
+    int32 dp_node_index = nnet->GetComponentIndex(dropout_names[ind]);
+    if (dp_node_index == -1)
+      KALDI_ERR << "No component associated with name " << dropout_names[ind];
+    Component *comp = nnet->GetComponent(dp_node_index);
+    DropoutComponent *dc = dynamic_cast<DropoutComponent*>(comp);
+    if (dc != NULL)
+      dc->SetDropoutProportion(dropout_proportions[ind]);
+    else
+      KALDI_ERR << "Component " << dropout_names[ind] << " is not DropoutComponent.";
+  }
+}
 void FindOrphanComponents(const Nnet &nnet, std::vector<int32> *components) {
   int32 num_components = nnet.NumComponents(), num_nodes = nnet.NumNodes();
   std::vector<bool> is_used(num_components, false);

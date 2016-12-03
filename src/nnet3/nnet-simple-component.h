@@ -83,15 +83,16 @@ class PnormComponent: public Component {
 // This component randomly zeros dropout_proportion of the input 
 // and the derivatives are backpropagated through the nonzero inputs.
 // Typically this component used during training but not in test time.
+// The output scaled using min(max_scale, 1/(1-dp)).
 // The idea is described under the name Dropout, in the paper 
 // "Dropout: A Simple Way to Prevent Neural Networks from Overfitting".
 class DropoutComponent : public RandomComponent {
  public:
-  void Init(int32 dim, BaseFloat dropout_proportion = 0.0);
+  void Init(int32 dim, BaseFloat dropout_proportion = 0.0, BaseFloat max_scale = 1.0);
 
-  DropoutComponent(int32 dim, BaseFloat dropout = 0.0) { Init(dim, dropout); }
+  DropoutComponent(int32 dim, BaseFloat dropout = 0.0, BaseFloat max_scale = 1.0) { Init(dim, dropout, max_scale); }
 
-  DropoutComponent(): dim_(0), dropout_proportion_(0.0) { }
+  DropoutComponent(): dim_(0), dropout_proportion_(0.0), max_scale_(1.0) { }
 
   virtual int32 Properties() const {
     return kLinearInInput|kBackpropInPlace|kSimpleComponent|kBackpropNeedsInput|kBackpropNeedsOutput;
@@ -120,7 +121,7 @@ class DropoutComponent : public RandomComponent {
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
   virtual Component* Copy() const { return new DropoutComponent(dim_,
-                                                                dropout_proportion_); }
+                                                                dropout_proportion_, max_scale_); }
   virtual std::string Info() const;
   void SetDropoutProportion(BaseFloat dropout_proportion) { dropout_proportion_ = dropout_proportion; }
 
@@ -129,6 +130,10 @@ class DropoutComponent : public RandomComponent {
   /// dropout-proportion is the proportion that is dropped out,
   /// e.g. if 0.1, we set 10% to zero value.
   BaseFloat dropout_proportion_;
+  /// The output values scaled using scale = min(max_scale_, 1 /(1-dp)).
+  /// 0<= dp <= 1 => 1 / (1-dp) >= 1, => the output does not scale
+  /// using max_scale_ = 1.0
+  BaseFloat max_scale_;
 };
 
 class ElementwiseProductComponent: public Component {

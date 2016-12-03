@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
         raw = false;
     BaseFloat learning_rate = -1;
     BaseFloat learning_rate_scale = 1;
-    std::string set_raw_nnet = "";
+    std::string set_raw_nnet = "", dropouts;
     bool convert_repeated_to_block = false;
     BaseFloat scale = 1.0, dropout = 0.0;
     std::string nnet_config, edits_config, edits_str;
@@ -88,6 +88,9 @@ int main(int argc, char *argv[]) {
     po.Register("set-dropout-proportion", &dropout, "Set dropout proportion "
                 "in all DropoutComponent to this value.");
 
+    po.Register("set-dropout-proportions", &dropouts, "map of component name to dropout proportion value"
+                " to set dropout proportion"
+                "for Dropout Components. comp-node1:0.1,comp-node2:0.9");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
@@ -145,7 +148,22 @@ int main(int argc, char *argv[]) {
     if (scale != 1.0)
       ScaleNnet(scale, &(am_nnet.GetNnet()));
     
-    if (dropout > 0)
+    if (!dropouts.empty()) {
+      std::vector<std::string> dropout_names;
+      std::vector<BaseFloat> dropout_proportions;
+
+      std::vector<std::string> comp_names;
+      SplitStringToVector(dropouts, ",", false, &comp_names);
+      for (int32 i = 0; i < comp_names.size(); i++) {
+        std::vector<std::string> name_vs_dp;
+        SplitStringToVector(comp_names[i], ":", false, &name_vs_dp);
+        if (name_vs_dp.size() != 2) 
+          KALDI_ERR << "Malformed argument to option --dropouts, it should be component-name:dropout-proportion";
+        dropout_names.push_back(name_vs_dp[0]);
+        dropout_proportions.push_back(float(dropout_proportions[1]));
+      }
+      SetDropoutProportions(dropout_names, dropout_proportions, &(am_nnet.GetNnet()));
+    } else if (dropout > 0)
       SetDropoutProportion(dropout, &(am_nnet.GetNnet()));
 
     if (raw) {

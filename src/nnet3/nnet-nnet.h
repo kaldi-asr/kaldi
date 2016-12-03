@@ -105,7 +105,7 @@ struct NetworkNode {
     // for nodes of type kDescriptor that are output nodes, SupervisionType shows
     // if the objective needs supervision for computation or it is unsupervised
     // objective. The supervision for supervised output node defined in eg.io.
-    SupervisionType sup_type;
+    SupervisionType supervision_type;
 
   } u;
   // for kInput, the dimension of the input feature.  For kDimRange, the dimension
@@ -118,7 +118,7 @@ struct NetworkNode {
 
   NetworkNode(NodeType nt = kNone):
       node_type(nt), dim(-1), dim_offset(-1) { u.component_index = -1; 
-                                               u.sup_type = kSupervised; }
+                                               u.supervision_type = kSupervised; }
   NetworkNode(const NetworkNode &other);  // copy constructor.
   // use default assignment operator
 };

@@ -106,7 +106,7 @@ void NnetTrainer::ProcessOutputs(const NnetExample &eg,
     KALDI_ASSERT(node_index >= 0);
     if (nnet_->IsOutputNode(node_index)) {
       ObjectiveType obj_type = nnet_->GetNode(node_index).u.objective_type;
-      SupervisionType sup_type = nnet_->GetNode(node_index).u.sup_type;
+      SupervisionType sup_type = nnet_->GetNode(node_index).u.supervision_type;
       KALDI_ASSERT(sup_type == kSupervised);
       BaseFloat tot_weight, tot_objf;
       bool supply_deriv = true;
@@ -126,7 +126,7 @@ void NnetTrainer::ProcessOutputs(const NnetExample &eg,
     KALDI_ASSERT(node_index >= 0);
     if (nnet_->IsOutputNode(node_index)) {
       ObjectiveType obj_type = nnet_->GetNode(node_index).u.objective_type;
-      SupervisionType sup_type = nnet_->GetNode(node_index).u.sup_type;
+      SupervisionType sup_type = nnet_->GetNode(node_index).u.supervision_type;
       KALDI_ASSERT(sup_type == kUnsupervised);
       BaseFloat tot_weight, tot_objf;
       bool supply_deriv = true;
