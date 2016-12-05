@@ -50,5 +50,96 @@ NnetExample GetEgsFromSent(const vector<int>& word_ids_in, int input_dim,
   return eg;
 }
 
+vector<int> Select(const vector<BaseFloat> &u, int n) {
+  vector<int> ans(n);
+
+  BaseFloat tot_weight = 0;
+
+  for (int i = 0; i < n; i++) {
+    tot_weight += u[i];
+    ans[i] = i;
+  }
+//  PrintVec(ans);
+
+  for (int k = n; k < u.size(); k++) {
+    tot_weight += u[k];
+//    cout << "  tot-weight = " << tot_weight << endl;
+    BaseFloat pi_k1_k1 = u[k] / tot_weight * n;
+
+    if (pi_k1_k1 > 1) {
+      pi_k1_k1 = 1;
+    }
+
+    BaseFloat p = BaseFloat(rand()) / RAND_MAX;
+    if (p > pi_k1_k1) {
+//      cout << "  not replace" << endl;
+      continue;
+    }
+
+    vector<BaseFloat> R(n);
+    // fill up R
+    {
+      BaseFloat Lk = 0;
+      BaseFloat Tk = 0;
+      for (int i = 0; i < n; i++) {
+        BaseFloat pi_k_i = u[ans[i]] / (tot_weight - u[k]) * n;
+        BaseFloat pi_k1_i = u[ans[i]] / tot_weight * n;
+
+//        cout << "piki, pik1i are " << pi_k_i << " " << pi_k1_i << endl;
+
+        if (pi_k_i >= 1 && pi_k1_i >= 1) {
+          // case A
+          R[i] = 0;
+//          cout << "A: R[" << i << "] is " << R[i] << endl;
+          Lk++;
+        } else if (pi_k_i >= 1 && pi_k1_i < 1) {
+          // case B
+          R[i] = (1 - pi_k1_i) / pi_k1_k1;
+//          cout << "B: R[" << i << "] is " << R[i] << endl;
+          Tk += R[i];
+          Lk++;
+        } else if (pi_k_i < 1 && pi_k1_i < 1) { // case C we will handle in another loop
+        } else {
+          assert(false);
+        }
+      }
+
+      BaseFloat sum = 0;
+      for (int i = 0; i < n; i++) {
+        BaseFloat pi_k_i = u[ans[i]] / (tot_weight - u[k]) * n;
+        BaseFloat pi_k1_i = u[ans[i]] / tot_weight * n;
+
+        if (pi_k_i < 1 && pi_k1_i < 1) {
+          // case C
+          R[i] = (1 - Tk) / (n - Lk);
+//          cout << "C: R[" << i << "] is " << R[i] << endl;
+        }
+        sum += R[i];
+      }
+      assert(ApproxEqual(sum, 1.0));
+    }
+    p = BaseFloat(rand()) / RAND_MAX;
+
+  //    cout << "  rand is " << p; 
+
+    bool replaced = false;
+    for (int i = 0; i < n; i++) {
+      p -= R[i];
+      if (p <= 0) {
+        // i is the choice
+  //        cout << "  chosen " << i << endl;
+        ans[i] = k;
+        replaced = true;
+//        PrintVec(ans);
+        break;
+      }
+    }
+
+    assert(replaced);
+  }
+
+  return ans;
+}
+
 } // namespace nnet3
 } // namespace kaldi

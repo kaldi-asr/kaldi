@@ -90,7 +90,7 @@ void LmNnetComputeProb::ProcessOutputs(const NnetExample &eg,
     ObjectiveType obj_type = nnet_.Nnet().GetNode(node_index).u.objective_type;
     if (nnet_.Nnet().IsOutputNode(node_index)) {
 //      const CuMatrixBase<BaseFloat> &output = computer->GetOutput(io.name);
-      CuMatrix<BaseFloat> output(io.features.NumRows(), nnet_.N()->OutputDim());
+      CuMatrix<BaseFloat> output(io.features.NumRows(), nnet_.O()->OutputDim());
       // now they're not equal since we have an extra transform matrix
 //      if (output.NumCols() != io.features.NumCols()) {
 //        KALDI_ERR << "Nnet versus example output dimension (num-classes) "
@@ -102,7 +102,7 @@ void LmNnetComputeProb::ProcessOutputs(const NnetExample &eg,
         bool supply_deriv = config_.compute_deriv;
         LmNnetTrainer::ComputeObjectiveFunction(io.features, obj_type, io.name,
                                  supply_deriv, computer,
-                                 &tot_weight, &tot_objf, nnet_.O(), nnet_.N(), &output
+                                 &tot_weight, &tot_objf, nnet_.O(), &output
                                  );
         SimpleObjectiveInfo &totals = objf_info_[io.name];
         totals.tot_weight += tot_weight;

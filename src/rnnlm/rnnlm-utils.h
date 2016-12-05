@@ -31,6 +31,9 @@ unordered_map<string, int> ReadWordlist(string filename);
 
 NnetExample GetEgsFromSent(const vector<int>& word_ids_in, int input_dim,
                            const vector<int>& word_ids_out, int output_dim);
+
+vector<int> Select(const vector<BaseFloat> &u, int n);
+
 } // namespace nnet3
 } // namespace kaldi
 

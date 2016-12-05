@@ -7,9 +7,9 @@
 
 namespace kaldi {
 
-using nnet3::AffineComponent;
-using nnet3::NonlinearComponent;
-using nnet3::LogSoftmaxComponent;
+//using nnet3::AffineComponent;
+//using nnet3::NonlinearComponent;
+//using nnet3::LogSoftmaxComponent;
 
 namespace rnnlm {
 

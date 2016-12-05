@@ -72,7 +72,7 @@ int main(int argc, char *argv[]) {
     LmNnet nnet;
     ReadKaldiObject(nnet_rxfilename, &nnet);
 
-    LmNnetTrainer trainer(train_config, &nnet);
+    LmNnetSamplingTrainer trainer(train_config, &nnet);
 
     SequentialNnetExampleReader example_reader(examples_rspecifier);
 

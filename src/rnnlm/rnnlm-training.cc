@@ -23,15 +23,13 @@
 namespace kaldi {
 namespace rnnlm {
 
-LmNnetTrainer::LmNnetTrainer(const LmNnetTrainerOptions &config,
-                             LmNnet *nnet):
-    config_(config),
-    nnet_(nnet),
-    compiler_(*nnet->GetNnet(), config_.optimize_config),
-    num_minibatches_processed_(0)
-//    input_projection_(config_.input_dim, config_.nnet_input_dim),
-//    output_projection_(config_.output_dim, config_.nnet_output_dim)
-  {
+LmNnetSamplingTrainer::LmNnetSamplingTrainer(
+                          const LmNnetTrainerOptions &config,
+                          LmNnet *nnet):
+                          config_(config),
+                          nnet_(nnet),
+                          compiler_(*nnet->GetNnet(), config_.optimize_config),
+                          num_minibatches_processed_(0) {
   if (config.zero_component_stats)
     nnet->ZeroStats();
   if (config.momentum == 0.0 && config.max_param_change == 0.0) {
@@ -57,7 +55,7 @@ LmNnetTrainer::LmNnetTrainer(const LmNnetTrainerOptions &config,
   } 
 }
 
-NnetExample LmNnetTrainer::ProcessEgInputs(NnetExample eg,
+NnetExample LmNnetSamplingTrainer::ProcessEgInputs(NnetExample eg,
                                            const LmInputComponent& a,
                                            SparseMatrix<BaseFloat> *old_input,
                                            Matrix<BaseFloat> *new_input) {
@@ -71,7 +69,7 @@ NnetExample LmNnetTrainer::ProcessEgInputs(NnetExample eg,
                           kUndefined);
 
         *old_input = io.features.GetSparseMatrix();
-        a.Propagate(NULL, *old_input, new_input);
+        a.Propagate(*old_input, new_input);
         io.features = *new_input;
       } else {
         Matrix<BaseFloat> new_input;
@@ -80,7 +78,7 @@ NnetExample LmNnetTrainer::ProcessEgInputs(NnetExample eg,
                           kUndefined);
 
 //        *old_input = io.features.GetSparseMatrix();
-        a.Propagate(NULL, io.features.GetSparseMatrix(), &new_input);
+        a.Propagate(io.features.GetSparseMatrix(), &new_input);
         io.features = new_input;
       }
     }
@@ -88,7 +86,7 @@ NnetExample LmNnetTrainer::ProcessEgInputs(NnetExample eg,
   return eg;
 }
 
-void LmNnetTrainer::Train(const NnetExample &eg) {
+void LmNnetSamplingTrainer::Train(const NnetExample &eg) {
   bool need_model_derivative = true;
   ComputationRequest request;
   GetComputationRequest(*nnet_->GetNnet(), eg, need_model_derivative,
@@ -119,7 +117,7 @@ void LmNnetTrainer::Train(const NnetExample &eg) {
   {
     Matrix<BaseFloat> first_deriv(computer.GetInputDeriv("input"));
     Matrix<BaseFloat> place_holder;
-    nnet_->I()->Backprop("", NULL, old_input_, place_holder,
+    nnet_->I()->Backprop(old_input_, place_holder,
                      first_deriv, delta_nnet_->input_projection_, NULL);
   }
 
@@ -128,17 +126,11 @@ void LmNnetTrainer::Train(const NnetExample &eg) {
     if (config_.max_param_change != 0.0) {
       BaseFloat param_delta =
           DotProduct(delta_nnet_->Nnet(), delta_nnet_->Nnet());
-//      KALDI_LOG << "param_delta currently " << param_delta;
-      const LmInputComponent *p;
-      if ((p = dynamic_cast<const LmInputComponent*>(delta_nnet_->I())) != NULL) {
-        param_delta += p->DotProduct(*p);
-      }
-//      KALDI_LOG << "param_delta currently " << param_delta;
+
+      param_delta += delta_nnet_->I()->DotProduct(*delta_nnet_->I());
       param_delta += delta_nnet_->O()->DotProduct(*delta_nnet_->O());
-//      KALDI_LOG << "param_delta currently " << param_delta;
 
       param_delta = std::sqrt(param_delta) * scale;
-//          std::sqrt(DotProduct(*delta_nnet_->GetNnet(), *delta_nnet_->GetNnet())) * scale;
       if (param_delta > config_.max_param_change) {
         if (param_delta - param_delta != 0.0) {
           KALDI_WARN << "Infinite parameter change, will not apply.";
@@ -157,7 +149,7 @@ void LmNnetTrainer::Train(const NnetExample &eg) {
   }
 }
 
-void LmNnetTrainer::ProcessOutputs(const NnetExample &eg,
+void LmNnetSamplingTrainer::ProcessOutputs(const NnetExample &eg,
                                    NnetComputer *computer) {
   std::vector<NnetIo>::const_iterator iter = eg.io.begin(),
       end = eg.io.end();
@@ -179,10 +171,8 @@ void LmNnetTrainer::ProcessOutputs(const NnetExample &eg,
       ComputeObjectiveFunctionSample(unigram_, io.features, obj_type, io.name,
                                supply_deriv, computer,
                                &tot_weight, &tot_objf,
-                               NULL, // TODO(hxu)
-//                               dynamic_cast<AffineSampleLogSoftmaxComponent*>(nnet_->O()),
+                               nnet_->O(),
                                &new_output_, delta_nnet_);
-
 
       objf_info_[io.name].UpdateStats(io.name, config_.print_interval,
                                       num_minibatches_processed_++,
@@ -191,7 +181,7 @@ void LmNnetTrainer::ProcessOutputs(const NnetExample &eg,
   }
 }
 
-bool LmNnetTrainer::PrintTotalStats() const {
+bool LmNnetSamplingTrainer::PrintTotalStats() const {
   unordered_map<std::string, LmObjectiveFunctionInfo>::const_iterator
       iter = objf_info_.begin(),
       end = objf_info_.end();
@@ -270,7 +260,7 @@ bool LmObjectiveFunctionInfo::PrintTotalStats(const std::string &name) const {
   return (tot_weight != 0.0);
 }
 
-LmNnetTrainer::~LmNnetTrainer() {
+LmNnetSamplingTrainer::~LmNnetSamplingTrainer() {
   if (config_.write_cache != "") {
     Output ko(config_.write_cache, config_.binary_write_cache);
     compiler_.WriteCache(ko.Stream(), config_.binary_write_cache);
@@ -279,36 +269,8 @@ LmNnetTrainer::~LmNnetTrainer() {
   delete delta_nnet_;
 }
 
-CuMatrix<BaseFloat> ProcessOutput(const CuMatrixBase<BaseFloat> &output_0,
-                                  const Component *output_projection_1,
-                                  const Component *output_projection_2) {
-  CuMatrix<BaseFloat> ans(output_0.NumRows(), output_projection_1->OutputDim());
-
-//  Matrix<BaseFloat> cpu_output(output_0);
-
-  output_projection_1->Propagate(NULL, output_0, &ans);
-  output_projection_2->Propagate(NULL, ans, &ans);
-
-  return ans;
-}
-
-//CuMatrix<BaseFloat> ProcessOutput(const CuMatrixBase<BaseFloat> &output_0,
-//                                  const AffineSampleLogSoftmaxComponent *output_projection,
-//                                  const NnetExample &eg) {
-//  CuMatrix<BaseFloat> ans(output_0.NumRows(), output_projection_1->OutputDim());
-
-//  Matrix<BaseFloat> cpu_output(output_0);
-
-vector<int> NChooseK(const vector<BaseFloat> &unigram_probs, int k) {
-  vector<int> ans;
-
-
-  return ans;
-}
-
-//void AffineSampleLogSoftmaxComponent::Train(const NnetExample &eg) {
-void LmNnetTrainer::ComputeObjectiveFunctionSample(
-                              const vector<BaseFloat> unigram,
+void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
+                              const vector<BaseFloat> &unigram,
                               const GeneralMatrix &supervision,
                               ObjectiveType objective_type,
                               const std::string &output_name,
@@ -316,7 +278,7 @@ void LmNnetTrainer::ComputeObjectiveFunctionSample(
                               NnetComputer *computer,
                               BaseFloat *tot_weight,
                               BaseFloat *tot_objf,
-                              const AffineSampleLogSoftmaxComponent *output_projection,
+                              const LmOutputComponent *output_projection,
                               CuMatrix<BaseFloat> *new_output,
                               LmNnet *nnet) {
   const CuMatrixBase<BaseFloat> &output_0_gpu = computer->GetOutput(output_name);
@@ -327,7 +289,7 @@ void LmNnetTrainer::ComputeObjectiveFunctionSample(
   KALDI_ASSERT(supervision.Type() == kSparseMatrix);
   const SparseMatrix<BaseFloat> &post = supervision.GetSparseMatrix();
 
-  vector<int> samples = NChooseK(unigram, k);
+  vector<int> samples = Select(unigram, k);
   vector<vector<int> > indexes(k);
   for (int i = 0; i < k; i++) {
     indexes[i] = samples;
@@ -372,128 +334,14 @@ void LmNnetTrainer::ComputeObjectiveFunctionSample(
 
     Matrix<BaseFloat> place_holder;
     output_projection->Backprop(k, indexes, output_0, place_holder,
-                                output_deriv, NULL, // TODO(hxu)  nnet->output_projection_,
+                                output_deriv, nnet->output_projection_,
                                 &input_deriv);
-
 
     CuMatrix<BaseFloat> cu_input_deriv(input_deriv);
 
     computer->AcceptOutputDeriv(output_name, &cu_input_deriv);
   }
-
-
 }
-
-void LmNnetTrainer::ComputeObjectiveFunction(const GeneralMatrix &supervision,
-                              ObjectiveType objective_type,
-                              const std::string &output_name,
-                              bool supply_deriv,
-                              NnetComputer *computer,
-                              BaseFloat *tot_weight,
-                              BaseFloat *tot_objf,
-                              const Component *output_projection_1,
-                              const Component *output_projection_2,
-                              CuMatrix<BaseFloat> *new_output,
-                              LmNnet *nnet
-                              ) {
-  const CuMatrixBase<BaseFloat> &output_0_gpu = computer->GetOutput(output_name);
-//  Matrix<BaseFloat> output_0(output_0_gpu);
-//  const MatrixBase<BaseFloat> output_1;
-
-  *new_output = ProcessOutput(output_0_gpu, output_projection_1, output_projection_2); 
-
-  if (new_output->NumCols() != supervision.NumCols())
-    KALDI_ERR << "Nnet versus example output dimension (num-classes) "
-              << "mismatch for '" << output_name << "': " << new_output->NumCols()
-              << " (nnet) vs. " << supervision.NumCols() << " (egs)\n";
-
-  switch (objective_type) {
-    case kLinear: {
-      // objective is x * y.
-      switch (supervision.Type()) {
-        case kSparseMatrix: {
-          const SparseMatrix<BaseFloat> &post = supervision.GetSparseMatrix();
-          CuSparseMatrix<BaseFloat> cu_post(post);
-          // The cross-entropy objective is computed by a simple dot product,
-          // because after the LogSoftmaxLayer, the output is already in the form
-          // of log-likelihoods that are normalized to sum to one.
-          *tot_weight = cu_post.Sum();
-          *tot_objf = TraceMatSmat(*new_output, cu_post, kTrans);
-          if (supply_deriv && nnet != NULL) {
-            // the derivative on the real output
-            CuMatrix<BaseFloat> output_deriv(new_output->NumRows(),
-                                             new_output->NumCols(),
-                                             kSetZero);
-
-            // the derivative after the affine layer (before the nonlin)
-            CuMatrix<BaseFloat> between_deriv(new_output->NumRows(),
-                                              new_output->NumCols(),
-                                              kSetZero);
-
-            // the derivative of the 'nnet3' part
-            CuMatrix<BaseFloat> input_deriv(new_output->NumRows(),
-                                            output_0_gpu.NumCols(),
-                                            kSetZero);
-
-            cu_post.CopyToMat(&output_deriv);
-            CuMatrix<BaseFloat> place_holder;
-            output_projection_2->Backprop("", NULL, place_holder, *new_output,
-                             output_deriv, NULL, &between_deriv);
-
-            output_projection_1->Backprop("", NULL, output_0_gpu, place_holder,
-                                 between_deriv, nnet->output_projection_, &input_deriv);
-
-            computer->AcceptOutputDeriv(output_name, &input_deriv);
-          }
-          break;
-        }
-        default: {
-                   KALDI_ASSERT(false);
-                 }
-//        case kFullMatrix: {
-//          // there is a redundant matrix copy in here if we're not using a GPU
-//          // but we don't anticipate this code branch being used in many cases.
-//          CuMatrix<BaseFloat> cu_post(supervision.GetFullMatrix());
-//          *tot_weight = cu_post.Sum();
-//          *tot_objf = TraceMatMat(output, cu_post, kTrans);
-//          if (supply_deriv)
-//            computer->AcceptOutputDeriv(output_name, &cu_post);
-//          break;
-//        }
-//        case kCompressedMatrix: {
-//          Matrix<BaseFloat> post;
-//          supervision.GetMatrix(&post);
-//          CuMatrix<BaseFloat> cu_post;
-//          cu_post.Swap(&post);
-//          *tot_weight = cu_post.Sum();
-//          *tot_objf = TraceMatMat(output, cu_post, kTrans);
-//          if (supply_deriv)
-//            computer->AcceptOutputDeriv(output_name, &cu_post);
-//          break;
-//        }
-      }
-      break;
-    }
-//    case kQuadratic: {
-//      // objective is -0.5 (x - y)^2
-//      CuMatrix<BaseFloat> diff(supervision.NumRows(),
-//                               supervision.NumCols(),
-//                               kUndefined);
-//      diff.CopyFromGeneralMat(supervision);
-//      diff.AddMat(-1.0, output);
-//      *tot_weight = diff.NumRows();
-//      *tot_objf = -0.5 * TraceMatMat(diff, diff, kTrans);
-//      if (supply_deriv)
-//        computer->AcceptOutputDeriv(output_name, &diff);
-//      break;
-//    }
-    default:
-      KALDI_ERR << "Objective function type " << objective_type
-                << " not handled.";
-  }
-}
-
-
 
 } // namespace nnet3
 } // namespace kaldi

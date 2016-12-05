@@ -314,17 +314,17 @@ class LmInputComponent: public LmComponent {
 
   virtual ~LmInputComponent() { }
 
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
-                         const SparseMatrix<BaseFloat> &in,
-                         MatrixBase<BaseFloat> *out) const;
+  virtual void Propagate(const SparseMatrix<BaseFloat> &in,
+                         MatrixBase<BaseFloat> *out) const = 0;
 
-  virtual void Backprop(const std::string &debug_info,
-                        const ComponentPrecomputedIndexes *indexes,
+  virtual void Backprop(
                         const SparseMatrix<BaseFloat> &in_value,
                         const MatrixBase<BaseFloat> &, // out_value
                         const MatrixBase<BaseFloat> &out_deriv,
                         LmComponent *to_update,
-                        MatrixBase<BaseFloat> *in_deriv) const;
+                        MatrixBase<BaseFloat> *in_deriv) const = 0;
+
+  virtual string Info() const;
 
  protected:
   // to be called from child classes, extracts any learning rate information
@@ -360,18 +360,19 @@ class LmOutputComponent: public LmComponent {
 
   virtual ~LmOutputComponent() { }
 
-  void Propagate(const MatrixBase<BaseFloat> &in,
-                 const vector<vector<int> > &indexes,
-                 vector<vector<BaseFloat> > *out) const;
+  virtual void Propagate(const MatrixBase<BaseFloat> &in,
+                 const vector<vector<int> > &indexes, // objf is computed on the chosen indexes
+                 vector<vector<BaseFloat> > *out) const = 0;
 
-  void Backprop(int k,
+  virtual void Backprop(int k,
              const vector<vector<int> > &indexes,
              const MatrixBase<BaseFloat> &in_value,
              const MatrixBase<BaseFloat> &, // out_value
              const vector<vector<BaseFloat> > &out_deriv,
              LmOutputComponent *to_update_in,
-             MatrixBase<BaseFloat> *in_deriv) const;
+             MatrixBase<BaseFloat> *in_deriv) const = 0;
 
+  virtual string Info() const;
 
  protected:
   // to be called from child classes, extracts any learning rate information

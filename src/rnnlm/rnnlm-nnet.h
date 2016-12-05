@@ -40,23 +40,13 @@ namespace kaldi {
 
 namespace rnnlm {
 
-using nnet3::Component;
+//using nnet3::Component;
 //using nnet3::AffineComponent;
 //using nnet3::NonlinearComponent;
 
 class LmNnet {
  public:
-  friend class LmNnetTrainer;
-//  friend void ComputeObjectiveFunction(const GeneralMatrix &supervision,
-//                              nnet3::ObjectiveType objective_type,
-//                              const std::string &output_name,
-//                              bool supply_deriv,
-//                              nnet3::NnetComputer *computer,
-//                              BaseFloat *tot_weight,
-//                              BaseFloat *tot_objf,
-//                              const Component *output_projection_1,
-//                              const Component *output_projection_2,
-//                              LmNnet *nnet);
+  friend class LmNnetSamplingTrainer;
   LmNnet() {
     nnet_ = new nnet3::Nnet();
   }

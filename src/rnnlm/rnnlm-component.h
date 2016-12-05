@@ -34,6 +34,100 @@ class LmLogSoftmaxComponent;
 
 using std::vector;
 
+// Affine means a linear function plus an offset.
+// Note: although this class can be instantiated, it also
+// functions as a base-class for more specialized versions of
+// AffineSampleLogSoftmaxComponent.
+class LmLinearComponent: public LmInputComponent {
+  friend class LmSoftmaxComponent; // Friend declaration relates to mixing up.
+ public:
+
+  virtual int32 InputDim() const { return linear_params_.NumCols(); }
+  virtual int32 OutputDim() const { return linear_params_.NumRows(); }
+
+  virtual std::string Info() const;
+  virtual void InitFromConfig(ConfigLine *cfl);
+
+  LmLinearComponent() { } // use Init to really initialize.
+  virtual std::string Type() const { return "LmLinearComponent"; }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kUpdatableComponent|kLinearInParameters|
+        kBackpropNeedsInput|kBackpropAdds;
+  }
+
+
+  virtual void Backprop(
+                        const SparseMatrix<BaseFloat> &in_value,
+                        const MatrixBase<BaseFloat> &, // out_value
+                        const MatrixBase<BaseFloat> &out_deriv,
+                        LmComponent *to_update,
+                        MatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void Propagate(const SparseMatrix<BaseFloat> &in,
+                         MatrixBase<BaseFloat> *out) const;
+
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual LmComponent* Copy() const;
+
+  // Some functions from base-class LmUpdatableComponent.
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const LmComponent &other);
+  virtual void SetZero(bool treat_as_gradient);
+  virtual void PerturbParams(BaseFloat stddev);
+  virtual BaseFloat DotProduct(const LmComponent &other) const;
+  virtual int32 NumParameters() const;
+  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
+  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+
+  // Some functions that are specific to this class.
+
+  // This new function is used when mixing up:
+  virtual void SetParams(//const VectorBase<BaseFloat> &bias,
+                         const MatrixBase<BaseFloat> &linear);
+//  const Vector<BaseFloat> &BiasParams() { return bias_params_; }
+  const Matrix<BaseFloat> &LinearParams() { return linear_params_; }
+  explicit LmLinearComponent(const LmLinearComponent &other);
+  // The next constructor is used in converting from nnet1.
+  LmLinearComponent(const MatrixBase<BaseFloat> &linear_params,
+//                  const VectorBase<BaseFloat> &bias_params,
+                  BaseFloat learning_rate);
+  void Init(int32 input_dim, int32 output_dim,
+            BaseFloat param_stddev);//, BaseFloat bias_stddev);
+  void Init(std::string matrix_filename);
+
+  // This function resizes the dimensions of the component, setting the
+  // parameters to zero, while leaving any other configuration values the same.
+  virtual void Resize(int32 input_dim, int32 output_dim);
+
+  LmComponent *CollapseWithNext(const LmLinearComponent &next) const ;
+
+ protected:
+  virtual void Update(
+      const std::string &debug_info,
+      const MatrixBase<BaseFloat> &in_value,
+      const MatrixBase<BaseFloat> &out_deriv) {
+    UpdateSimple(in_value, out_deriv);
+  }
+
+  virtual void Update(
+      const SparseMatrix<BaseFloat> &in_value,
+      const MatrixBase<BaseFloat> &out_deriv) {
+    UpdateSimple(in_value, out_deriv);
+  }
+  virtual void UpdateSimple(
+      const MatrixBase<BaseFloat> &in_value,
+      const MatrixBase<BaseFloat> &out_deriv);
+
+  virtual void UpdateSimple(
+      const SparseMatrix<BaseFloat> &in_value,
+      const MatrixBase<BaseFloat> &out_deriv);
+
+  const LmLinearComponent &operator = (const LmLinearComponent &other); // Disallow.
+  Matrix<BaseFloat> linear_params_;
+};
+
 class AffineSampleLogSoftmaxComponent: public LmOutputComponent {
  public:
 
@@ -50,20 +144,16 @@ class AffineSampleLogSoftmaxComponent: public LmOutputComponent {
         kBackpropNeedsInput|kBackpropAdds;
   }
 
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
-                         const MatrixBase<BaseFloat> &in,
-                         MatrixBase<BaseFloat> *out) const;
-
-  void Propagate(const MatrixBase<BaseFloat> &in,
+  virtual void Propagate(const MatrixBase<BaseFloat> &in,
                  const vector<vector<int> > &indexes,
                  vector<vector<BaseFloat> > *out) const;
 
-  void Backprop(int k,
+  virtual void Backprop(int k,
              const vector<vector<int> > &indexes,
              const MatrixBase<BaseFloat> &in_value,
              const MatrixBase<BaseFloat> &, // out_value
              const vector<vector<BaseFloat> > &out_deriv,
-             AffineSampleLogSoftmaxComponent *to_update_in,
+             LmOutputComponent *to_update_in,
              MatrixBase<BaseFloat> *in_deriv) const;
 
   virtual void Read(std::istream &is, bool binary);
@@ -77,7 +167,7 @@ class AffineSampleLogSoftmaxComponent: public LmOutputComponent {
   virtual void Add(BaseFloat alpha, const LmComponent &other);
   virtual void SetZero(bool treat_as_gradient);
   virtual void PerturbParams(BaseFloat stddev);
-  virtual BaseFloat DotProduct(const LmOutputComponent &other) const;
+  virtual BaseFloat DotProduct(const LmComponent &other) const;
   virtual int32 NumParameters() const;
   virtual void Vectorize(VectorBase<BaseFloat> *params) const;
   virtual void UnVectorize(const VectorBase<BaseFloat> &params);
@@ -127,115 +217,6 @@ class AffineSampleLogSoftmaxComponent: public LmOutputComponent {
   Vector<BaseFloat> bias_params_;
 };
 
-// Affine means a linear function plus an offset.
-// Note: although this class can be instantiated, it also
-// functions as a base-class for more specialized versions of
-// AffineSampleLogSoftmaxComponent.
-class LmLinearComponent: public LmInputComponent {
-  friend class LmSoftmaxComponent; // Friend declaration relates to mixing up.
- public:
-
-  virtual int32 InputDim() const { return linear_params_.NumCols(); }
-  virtual int32 OutputDim() const { return linear_params_.NumRows(); }
-
-  virtual std::string Info() const;
-  virtual void InitFromConfig(ConfigLine *cfl);
-
-  LmLinearComponent() { } // use Init to really initialize.
-  virtual std::string Type() const { return "LmLinearComponent"; }
-  virtual int32 Properties() const {
-    return kSimpleComponent|kUpdatableComponent|kLinearInParameters|
-        kBackpropNeedsInput|kBackpropAdds;
-  }
-
-
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
-                         const MatrixBase<BaseFloat> &in,
-                         MatrixBase<BaseFloat> *out) const;
-
-  virtual void Backprop(const std::string &debug_info,
-                        const ComponentPrecomputedIndexes *indexes,
-                        const MatrixBase<BaseFloat> &in_value,
-                        const MatrixBase<BaseFloat> &, // out_value
-                        const MatrixBase<BaseFloat> &out_deriv,
-                        LmComponent *to_update,
-                        MatrixBase<BaseFloat> *in_deriv) const;
-
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
-                         const SparseMatrix<BaseFloat> &in,
-                         MatrixBase<BaseFloat> *out) const;
-
-  virtual void Backprop(const std::string &debug_info,
-                        const ComponentPrecomputedIndexes *indexes,
-                        const SparseMatrix<BaseFloat> &in_value,
-                        const MatrixBase<BaseFloat> &, // out_value
-                        const MatrixBase<BaseFloat> &out_deriv,
-                        LmComponent *to_update,
-                        MatrixBase<BaseFloat> *in_deriv) const;
-
-  virtual void Read(std::istream &is, bool binary);
-  virtual void Write(std::ostream &os, bool binary) const;
-
-  virtual LmComponent* Copy() const;
-
-
-  // Some functions from base-class LmUpdatableComponent.
-  virtual void Scale(BaseFloat scale);
-  virtual void Add(BaseFloat alpha, const LmComponent &other);
-  virtual void SetZero(bool treat_as_gradient);
-  virtual void PerturbParams(BaseFloat stddev);
-  virtual BaseFloat DotProduct(const LmInputComponent &other) const;
-  virtual int32 NumParameters() const;
-  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
-  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
-
-  // Some functions that are specific to this class.
-
-  // This new function is used when mixing up:
-  virtual void SetParams(//const VectorBase<BaseFloat> &bias,
-                         const MatrixBase<BaseFloat> &linear);
-//  const Vector<BaseFloat> &BiasParams() { return bias_params_; }
-  const Matrix<BaseFloat> &LinearParams() { return linear_params_; }
-  explicit LmLinearComponent(const LmLinearComponent &other);
-  // The next constructor is used in converting from nnet1.
-  LmLinearComponent(const MatrixBase<BaseFloat> &linear_params,
-//                  const VectorBase<BaseFloat> &bias_params,
-                  BaseFloat learning_rate);
-  void Init(int32 input_dim, int32 output_dim,
-            BaseFloat param_stddev);//, BaseFloat bias_stddev);
-  void Init(std::string matrix_filename);
-
-  // This function resizes the dimensions of the component, setting the
-  // parameters to zero, while leaving any other configuration values the same.
-  virtual void Resize(int32 input_dim, int32 output_dim);
-
-  LmComponent *CollapseWithNext(const LmLinearComponent &next) const ;
-
- protected:
-  virtual void Update(
-      const std::string &debug_info,
-      const MatrixBase<BaseFloat> &in_value,
-      const MatrixBase<BaseFloat> &out_deriv) {
-    UpdateSimple(in_value, out_deriv);
-  }
-
-  virtual void Update(
-      const std::string &debug_info,
-      const SparseMatrix<BaseFloat> &in_value,
-      const MatrixBase<BaseFloat> &out_deriv) {
-    UpdateSimple(in_value, out_deriv);
-  }
-  virtual void UpdateSimple(
-      const MatrixBase<BaseFloat> &in_value,
-      const MatrixBase<BaseFloat> &out_deriv);
-
-  virtual void UpdateSimple(
-      const SparseMatrix<BaseFloat> &in_value,
-      const MatrixBase<BaseFloat> &out_deriv);
-
-  const LmLinearComponent &operator = (const LmLinearComponent &other); // Disallow.
-  Matrix<BaseFloat> linear_params_;
-};
 
 } // namespace rnnlm
 } // namespace kaldi
