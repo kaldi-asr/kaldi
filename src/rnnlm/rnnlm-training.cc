@@ -58,7 +58,7 @@ LmNnetTrainer::LmNnetTrainer(const LmNnetTrainerOptions &config,
 }
 
 NnetExample LmNnetTrainer::ProcessEgInputs(NnetExample eg,
-                                           const LmComponent& a,
+                                           const LmInputComponent& a,
                                            SparseMatrix<BaseFloat> *old_input,
                                            Matrix<BaseFloat> *new_input) {
   for (size_t i = 0; i < eg.io.size(); i++) {
@@ -129,8 +129,8 @@ void LmNnetTrainer::Train(const NnetExample &eg) {
       BaseFloat param_delta =
           DotProduct(delta_nnet_->Nnet(), delta_nnet_->Nnet());
 //      KALDI_LOG << "param_delta currently " << param_delta;
-      const LmUpdatableComponent *p;
-      if ((p = dynamic_cast<const LmUpdatableComponent*>(delta_nnet_->I())) != NULL) {
+      const LmInputComponent *p;
+      if ((p = dynamic_cast<const LmInputComponent*>(delta_nnet_->I())) != NULL) {
         param_delta += p->DotProduct(*p);
       }
 //      KALDI_LOG << "param_delta currently " << param_delta;

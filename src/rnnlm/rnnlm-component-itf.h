@@ -42,6 +42,7 @@ namespace nnet3 {
 namespace rnnlm {
 
 
+using std::vector;
 using nnet3::MiscComputationInfo;
 using nnet3::Index;
 using nnet3::ConfigLine;
@@ -115,68 +116,12 @@ class ComponentPrecomputedIndexes {
 
 class LmComponent {
  public:
-  /// \brief Propagate function.
-  ///   \param [in] indexes  A pointer to some information output by this class's
-  ///      PrecomputeIndexes function (will be NULL for simple components,
-  ///      i.e. those that don't do things like splicing).
-  ///   \param [in] in   The input to this component.  Num-columns == InputDim().
-  ///   \param [out] out  The output of this component.  Num-columns == OutputDim().
-  ///      Note: output of this component will be added to the initial value of
-  ///      "out" if Properties()&kPropagateAdds != 0; otherwise the output will
-  ///      be set and the initial value ignored.  Each Component chooses whether
-  ///      it is more convenient implementation-wise to add or set, and the
-  ///      calling code has to deal with it.
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
-                         const MatrixBase<BaseFloat> &in,
-                         MatrixBase<BaseFloat> *out) const = 0;
-
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
-                         const SparseMatrix<BaseFloat> &in,
-                         MatrixBase<BaseFloat> *out) const = 0;
-
-  /// \brief Backprop function; depending on which of the arguments 'to_update'
-  ///     and 'in_deriv' are non-NULL, this can compute input-data derivatives
-  ///     and/or perform model update.
-  ///
-  ///   \param [in] debug_info  The component name, to be printed out in any
-  ///       warning messages.
-  ///   \param [in] indexes     A pointer to some information output by this
-  ///      class's PrecomputeIndexes function (will be NULL for simple
-  ///      components, i.e. those that don't do things like splicing).
-  ///   \param [in] in_value    The matrix that was given as input to the
-  ///      Propagate function.  Will be ignored (and may be empty) if
-  ///      Properties()&kBackpropNeedsInput == 0.
-  ///   \param [in] out_value   The matrix that was output from the Propagate
-  ///      function.  Will be ignored (and may be empty) if
-  ///      Properties()&kBackpropNeedsOutput == 0
-  ///   \param [in] out_deriv  The derivative at the output of this component.
-  ///   \param [out] to_update  If model update is desired, the Component
-  ///       to be updated, else NULL.  Does not have to be identical to this.
-  ///       If supplied, you can assume that
-  ///       to_update->Properties() & kLmUpdatableComponent is nonzero.
-  ///   \param [out] in_deriv   The derivative at the input of this component,
-  ///       if needed (else NULL).   If  Properties()&kBackpropInPlace, may be
-  ///       the same matrix as out_deriv.  If Properties()&kBackpropAdds, this
-  ///       is added to by the Backprop routine, else it is set.  The component
-  ///       code chooses which mode to work in, based on convenience.
-  virtual void Backprop(const std::string &debug_info,
-                        const ComponentPrecomputedIndexes *indexes,
-                        const MatrixBase<BaseFloat> &in_value,
-                        const MatrixBase<BaseFloat> &out_value,
-                        const MatrixBase<BaseFloat> &out_deriv,
-                        LmComponent *to_update, // may be NULL; may be identical
-                                              // to "this" or different.
-                        MatrixBase<BaseFloat> *in_deriv) const = 0;
-
-  virtual void Backprop(const std::string &debug_info,
-                        const ComponentPrecomputedIndexes *indexes,
-                        const SparseMatrix<BaseFloat> &in_value,
-                        const MatrixBase<BaseFloat> &out_value,
-                        const MatrixBase<BaseFloat> &out_deriv,
-                        LmComponent *to_update, // may be NULL; may be identical
-                                              // to "this" or different.
-                        MatrixBase<BaseFloat> *in_deriv) const = 0;
-
+  LmComponent(const LmComponent &other):
+      learning_rate_(other.learning_rate_),
+      learning_rate_factor_(other.learning_rate_factor_),
+      is_gradient_(other.is_gradient_) { }
+  LmComponent(): learning_rate_(0.001), learning_rate_factor_(1.0),
+                        is_gradient_(false) { }
 
   /// \brief This function may store stats on average activation values, and for
   ///        some component types, the average value of the derivative of the
@@ -244,57 +189,6 @@ class LmComponent {
   ///   SimpleComponent: it just returns true if output_index is in
   ///   input_index_set, and if so sets used_inputs to vector containing that
   ///   one Index.
-  virtual bool IsComputable(const MiscComputationInfo &misc_info,
-                            const Index &output_index,
-                            const nnet3::IndexSet &input_index_set,
-                            std::vector<Index> *used_inputs) const;
-
-  /// \brief This function only does something interesting for non-simple
-  ///  Components.  It provides an opportunity for a Component to reorder the
-  ///  indexes at its input and output.  This might be useful, for instance, if
-  ///  a component requires a particular ordering of the indexes that doesn't
-  ///  correspond to their natural ordering.  Components that might modify the
-  ///  indexes are brequired to return the kReordersIndexes flag in their
-  ///  Properties().
-  ///
-  ///  \param [in,out]  Indexes at the input of the Component.
-  ///  \param [in,out]  Indexes at the output of the Component
-  virtual void ReorderIndexes(std::vector<Index> *input_indexes,
-                              std::vector<Index> *output_indexes) const {}
-
-
-
-  /// \brief This function must return NULL for simple Components.  Returns a
-  ///     pointer to a class that may contain some precomputed
-  ///     component-specific and computation-specific indexes to be in used in
-  ///     the Propagate and Backprop functions.
-  ///
-  /// \param [in] misc_info  This argument is supplied to handle things that the
-  ///       framework can't very easily supply: information like which time
-  ///       indexes are needed for AggregateComponent, which time-indexes are
-  ///       available at the input of a recurrent network, and so on.  misc_info
-  ///       may not even ever be used here.  We will add members to misc_info as
-  ///       needed.
-  /// \param [in] input_indexes  A vector of indexes that explains
-  ///       what time-indexes (and other indexes) each row of the
-  ///       in/in_value/in_deriv matrices given to Propagate and Backprop will
-  ///       mean.
-  /// \param [in] output_indexes  A vector of indexes that explains
-  ///       what time-indexes (and other indexes) each row of the
-  ///       out/out_value/out_deriv matrices given to Propagate and Backprop will
-  ///       mean.
-  /// \param [in] need_backprop  True if we might need to do backprop
-  ///       with this component, so that if any different indexes are needed
-  ///       for backprop then those should be computed too.
-  /// \return  Returns a child-class of class ComponentPrecomputedIndexes, or
-  ///       NULL if this component for does not need to precompute any indexes
-  ///       (e.g. if it is a simple component and does not care about indexes).
-  virtual ComponentPrecomputedIndexes* PrecomputeIndexes(
-      const MiscComputationInfo &misc_info,
-      const std::vector<Index> &input_indexes,
-      const std::vector<Index> &output_indexes,
-      bool need_backprop) const { return NULL;  }
-
 
   /// \brief Returns a string such as "SigmoidComponent", describing
   ///        the type of the object.
@@ -354,37 +248,11 @@ class LmComponent {
   /// Otherwise it should do nothing.
   virtual void Add(BaseFloat alpha, const LmComponent &other) {};
 
-  LmComponent() { }
+//  LmComponent() { }
 
   virtual ~LmComponent() { }
 
- private:
-  KALDI_DISALLOW_COPY_AND_ASSIGN(LmComponent);
-};
-
-
-
-class LmUpdatableComponent: public LmComponent {
- public:
-  LmUpdatableComponent(const LmUpdatableComponent &other):
-      learning_rate_(other.learning_rate_),
-      learning_rate_factor_(other.learning_rate_factor_),
-      is_gradient_(other.is_gradient_) { }
-
-  /// \brief Sets parameters to zero, and if treat_as_gradient is true,
-  ///  sets is_gradient_ to true and sets learning_rate_ to 1, ignoring
-  ///  learning_rate_factor_.
-  virtual void SetZero(bool treat_as_gradient) = 0;
-
-  LmUpdatableComponent(): learning_rate_(0.001), learning_rate_factor_(1.0),
-                        is_gradient_(false) { }
-
-  virtual ~LmUpdatableComponent() { }
-
-  /// \brief Computes dot-product between parameters of two instances of a
-  ///  Component.  Can be used for computing parameter-norm of an
-  ///  LmUpdatableComponent.
-  virtual BaseFloat DotProduct(const LmUpdatableComponent &other) const = 0;
+  virtual BaseFloat DotProduct(const LmComponent &other) const = 0;
 
   /// This function is to be used in testing.  It adds unit noise times "stddev"
   /// to the parameters of the component.
@@ -404,8 +272,6 @@ class LmUpdatableComponent: public LmComponent {
   /// a different value than x will returned.
   BaseFloat LearningRate() const { return learning_rate_; }
 
-  virtual std::string Info() const;
-
   /// The following new virtual function returns the total dimension of
   /// the parameters in this class.
   virtual int32 NumParameters() const { KALDI_ASSERT(0); return 0; }
@@ -418,6 +284,47 @@ class LmUpdatableComponent: public LmComponent {
   virtual void UnVectorize(const VectorBase<BaseFloat> &params) {
     KALDI_ASSERT(0);
   }
+
+// private:
+//  KALDI_DISALLOW_COPY_AND_ASSIGN(LmComponent);
+
+ protected:
+  BaseFloat learning_rate_; ///< learning rate (typically 0.0..0.01)
+  BaseFloat learning_rate_factor_; ///< learning rate factor (normally 1.0, but
+                                   ///< can be set to another < value so that
+                                   ///when < you call SetLearningRate(), that
+                                   ///value will be scaled by this factor.
+  bool is_gradient_;  ///< True if this component is to be treated as a gradient rather
+                      ///< than as parameters.  Its main effect is that we disable
+                      ///< any natural-gradient update and just compute the standard
+                      ///< gradient.
+};
+
+class LmInputComponent: public LmComponent {
+ public:
+  LmInputComponent(const LmInputComponent &other):
+    LmComponent(other) {}
+
+  /// \brief Sets parameters to zero, and if treat_as_gradient is true,
+  ///  sets is_gradient_ to true and sets learning_rate_ to 1, ignoring
+  ///  learning_rate_factor_.
+  virtual void SetZero(bool treat_as_gradient) = 0;
+
+  LmInputComponent(): LmComponent() {}
+
+  virtual ~LmInputComponent() { }
+
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const SparseMatrix<BaseFloat> &in,
+                         MatrixBase<BaseFloat> *out) const;
+
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const SparseMatrix<BaseFloat> &in_value,
+                        const MatrixBase<BaseFloat> &, // out_value
+                        const MatrixBase<BaseFloat> &out_deriv,
+                        LmComponent *to_update,
+                        MatrixBase<BaseFloat> *in_deriv) const;
 
  protected:
   // to be called from child classes, extracts any learning rate information
@@ -433,107 +340,57 @@ class LmUpdatableComponent: public LmComponent {
   // learning rate;
   void WriteUpdatableCommon(std::ostream &is, bool binary) const;
 
-  BaseFloat learning_rate_; ///< learning rate (typically 0.0..0.01)
-  BaseFloat learning_rate_factor_; ///< learning rate factor (normally 1.0, but
-                                   ///< can be set to another < value so that
-                                   ///when < you call SetLearningRate(), that
-                                   ///value will be scaled by this factor.
-  bool is_gradient_;  ///< True if this component is to be treated as a gradient rather
-                      ///< than as parameters.  Its main effect is that we disable
-                      ///< any natural-gradient update and just compute the standard
-                      ///< gradient.
 
  private:
-  const LmUpdatableComponent &operator = (const LmUpdatableComponent &other); // Disallow.
+  const LmInputComponent &operator = (const LmInputComponent &other); // Disallow.
 };
 
-/// This kind of Component is a base-class for things like sigmoid, softmax and
-/// ReLU: nonlinearities that don't change the dimension.  It takes care of
-/// storing statistics on the average activations and derivatives encountered
-/// during training.
-class LmNonlinearComponent: public LmComponent {
+
+class LmOutputComponent: public LmComponent {
  public:
+  LmOutputComponent(const LmOutputComponent &other):
+    LmComponent(other) {}
 
-  LmNonlinearComponent();
-  explicit LmNonlinearComponent(const LmNonlinearComponent &other);
+  /// \brief Sets parameters to zero, and if treat_as_gradient is true,
+  ///  sets is_gradient_ to true and sets learning_rate_ to 1, ignoring
+  ///  learning_rate_factor_.
+  virtual void SetZero(bool treat_as_gradient) = 0;
 
-  virtual int32 InputDim() const { return dim_; }
-  virtual int32 OutputDim() const { return dim_; }
+  LmOutputComponent(): LmComponent() {}
 
-  // We implement InitFromConfig at this level.
-  // supported config parameters and their defaults:
-  //   dim=-1  self-repair-lower-threshold=-1000  self-repair-upper-threshold=-1000
-  //     self-repair-constant=0.0
-  // the 'self-repair' stuff is 'self-repairing' nonlinearities-- they add small
-  // quantities to the derivative to attempt to keep the average value (for
-  // bounded nonlinearities) or average derivative (for ReLU) for each
-  // dimension within a given range.  The default ranges (if you don't
-  // specify self-repair-lower-threshold or self-repair-upper-threshold) are
-  // dependent on the nonlinearity and are set in their Backprop functions.
-  // To activate this code you have to set self-repair-constant to a number >0 like
-  // 0.0001 when initializing the ReLU (this is a scaling factor on the 'fake
-  // derivative').  This code is only activated if derivative and value stats
-  // are present in the model, which will typically only be the case
-  // if the 'store-stats' code is activated
-  // (e.g. --optimization.store-stats=true) because it needs the stats.  To be
-  // activated this code also requires that is_gradient_ is false (i.e. you're
-  // not computing exact gradients).
+  virtual ~LmOutputComponent() { }
 
-  virtual void InitFromConfig(ConfigLine *cfl);
+  void Propagate(const MatrixBase<BaseFloat> &in,
+                 const vector<vector<int> > &indexes,
+                 vector<vector<BaseFloat> > *out) const;
 
-  /// We implement Read at this level as it just needs the Type().
-  virtual void Read(std::istream &is, bool binary);
+  void Backprop(int k,
+             const vector<vector<int> > &indexes,
+             const MatrixBase<BaseFloat> &in_value,
+             const MatrixBase<BaseFloat> &, // out_value
+             const vector<vector<BaseFloat> > &out_deriv,
+             LmOutputComponent *to_update_in,
+             MatrixBase<BaseFloat> *in_deriv) const;
 
-  virtual void ZeroStats();
-
-  virtual std::string Info() const;
-
-  /// Write component to stream.
-  virtual void Write(std::ostream &os, bool binary) const;
-
-  virtual void Scale(BaseFloat scale);
-  virtual void Add(BaseFloat alpha, const LmComponent &other);
-
-  // The following functions are unique to LmNonlinearComponent.
-  // They mostly relate to diagnostics.
-  const Vector<double> &ValueSum() const { return value_sum_; }
-  const Vector<double> &DerivSum() const { return deriv_sum_; }
-
-  double Count() const { return count_; }
 
  protected:
-  enum { kUnsetThreshold = -1000 };
+  // to be called from child classes, extracts any learning rate information
+  // from the config line and sets them appropriately.
+  void InitLearningRatesFromConfig(ConfigLine *cfl);
 
-  friend class SigmoidComponent;
-  friend class TanhComponent;
-  friend class SoftmaxComponent;
-  friend class LogSoftmaxComponent;
-  friend class RectifiedLinearComponent;
+  // To be used in child-class Read() functions, this function reads the opening
+  // tag <ThisComponentType> and the learning-rate factor and the learning-rate.
+  void ReadUpdatableCommon(std::istream &is, bool binary);
 
-  // This function updates the stats "value_sum_", "deriv_sum_", and
-  // count_. (If deriv == NULL, it won't update "deriv_sum_").
-  // It will be called from the Backprop function of child classes.
-  void StoreStatsInternal(const MatrixBase<BaseFloat> &out_value,
-                          const MatrixBase<BaseFloat> *deriv = NULL);
+  // To be used in child-class Write() functions, writes the opening
+  // <ThisComponentType> tag and the learning-rate factor (if not 1.0) and the
+  // learning rate;
+  void WriteUpdatableCommon(std::ostream &is, bool binary) const;
 
-
-  const LmNonlinearComponent &operator = (const LmNonlinearComponent &other); // Disallow.
-  int32 dim_;
-  Vector<double> value_sum_; // stats at the output.
-  Vector<double> deriv_sum_; // stats of the derivative of the nonlinearity
-                               // (only applicable to element-by-element
-                               // nonlinearities, not Softmax.
-  double count_;
-
-
-  // some configuration values relating to self-repairing nonlinearities.
-  BaseFloat self_repair_lower_threshold_;
-  BaseFloat self_repair_upper_threshold_;
-  BaseFloat self_repair_scale_;
-
-  // The mutex is used in UpdateStats, only for resizing vectors.
-  Mutex mutex_;
+ private:
+  const LmOutputComponent &operator = (const LmOutputComponent &other); // Disallow.
 };
+
 
 } // namespace nnet3
 } // namespace kaldi

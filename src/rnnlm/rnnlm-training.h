@@ -191,7 +191,7 @@ class LmNnetTrainer {
 
   // Prints out the final stats, and return true if there was a nonzero count.
   bool PrintTotalStats() const;
-  static NnetExample ProcessEgInputs(NnetExample eg, const LmComponent& a,
+  static NnetExample ProcessEgInputs(NnetExample eg, const LmInputComponent& a,
                                      SparseMatrix<BaseFloat> *old_input = NULL,
                                      Matrix<BaseFloat> *new_input = NULL);
 

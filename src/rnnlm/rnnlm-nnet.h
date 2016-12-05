@@ -64,7 +64,6 @@ class LmNnet {
   ~LmNnet() {
     delete input_projection_;
     delete output_projection_;
-    delete output_layer_;
     delete nnet_;
   }
 
@@ -86,9 +85,8 @@ class LmNnet {
 
   LmNnet* Copy() {
     LmNnet* other = new LmNnet();
-    other->input_projection_ = input_projection_->Copy();
-    other->output_projection_ = output_projection_->Copy();
-    other->output_layer_ = output_layer_->Copy();
+    other->input_projection_ = dynamic_cast<LmInputComponent*>(input_projection_->Copy());
+    other->output_projection_ = dynamic_cast<LmOutputComponent*>(output_projection_->Copy());
     other->nnet_ = nnet_->Copy();
 
     return other;
@@ -112,53 +110,44 @@ class LmNnet {
     nnet3::ZeroComponentStats(nnet_);
     input_projection_->ZeroStats();
     output_projection_->ZeroStats();
-    output_layer_->ZeroStats();
   }
 
   void SetZero(bool is_gradient) {
     nnet3::SetZero(is_gradient, nnet_);
-    LmUpdatableComponent* p;
-    if ((p = dynamic_cast<LmUpdatableComponent*>(input_projection_)) != NULL) {
+    LmInputComponent* p;
+    if ((p = dynamic_cast<LmInputComponent*>(input_projection_)) != NULL) {
       p->SetZero(is_gradient);
     }
 
-    nnet3::UpdatableComponent* p2;
-    if ((p2 = dynamic_cast<nnet3::UpdatableComponent*>(output_projection_)) != NULL) {
-      p2->SetZero(is_gradient);
-    }
-
-    if ((p2 = dynamic_cast<nnet3::UpdatableComponent*>(output_layer_)) != NULL) {
+    LmOutputComponent* p2;
+    if ((p2 = dynamic_cast<LmOutputComponent*>(output_projection_)) != NULL) {
       p2->SetZero(is_gradient);
     }
   }
 
   void SetLearningRate(BaseFloat learning_rate) {
     nnet3::SetLearningRate(learning_rate, nnet_);
-    LmUpdatableComponent *p;
-    if ((p = dynamic_cast<LmUpdatableComponent*>(input_projection_)) != NULL) {
+    LmInputComponent* p;
+    if ((p = dynamic_cast<LmInputComponent*>(input_projection_)) != NULL) {
       p->SetUnderlyingLearningRate(learning_rate);
     }
-    nnet3::UpdatableComponent *p2;
-    if ((p2 = dynamic_cast<nnet3::UpdatableComponent*>(output_projection_)) != NULL) {
+    LmOutputComponent* p2;
+    if ((p2 = dynamic_cast<LmOutputComponent*>(output_projection_)) != NULL) {
       p2->SetUnderlyingLearningRate(learning_rate);
     }
-
   }
 
-  const LmComponent* I() const {
-    return dynamic_cast<const LmComponent*>(input_projection_);
+  const LmInputComponent* I() const {
+    return input_projection_;
   }
-  const nnet3::AffineComponent* O() const {
-    return dynamic_cast<const nnet3::AffineComponent*>(output_projection_);
-  }
-  const nnet3::NonlinearComponent* N() const {
-    return dynamic_cast<const nnet3::NonlinearComponent*>(output_layer_);
+
+  const LmOutputComponent* O() const {
+    return output_projection_;
   }
 
  private:
-  LmComponent* input_projection_;      // Affine
-  nnet3::Component* output_projection_;    // Affine
-  nnet3::Component* output_layer_;         // Softmax 
+  LmInputComponent* input_projection_;      // Affine
+  LmOutputComponent* output_projection_;      // Affine
   nnet3::Nnet* nnet_;
 };
 

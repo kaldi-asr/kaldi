@@ -16,15 +16,12 @@ namespace rnnlm {
 std::string LmNnet::Info() const {
   std::ostringstream os;
   int num_params_this = 0;
-  LmUpdatableComponent *p;
-  if ((p = dynamic_cast<LmUpdatableComponent*>(input_projection_)) != NULL) {
+  LmInputComponent *p;
+  if ((p = dynamic_cast<LmInputComponent*>(input_projection_)) != NULL) {
     num_params_this += p->NumParameters();
   }
-  nnet3::UpdatableComponent *p2;
-  if ((p2 = dynamic_cast<nnet3::UpdatableComponent*>(output_projection_)) != NULL) {
-    num_params_this += p2->NumParameters();
-  }
-  if ((p2 = dynamic_cast<nnet3::UpdatableComponent*>(output_layer_)) != NULL) {
+  LmOutputComponent *p2;
+  if ((p2 = dynamic_cast<LmOutputComponent*>(output_projection_)) != NULL) {
     num_params_this += p2->NumParameters();
   }
   os << "num-parameters: " << NumParameters(*this->nnet_) + num_params_this << "\n";
@@ -45,9 +42,8 @@ std::string LmNnet::Info() const {
 
 void LmNnet::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<LmNnet>");
-  input_projection_ = LmLinearComponent::ReadNew(is, binary);
-  output_projection_ = AffineComponent::ReadNew(is, binary);
-  output_layer_ = NonlinearComponent::ReadNew(is, binary);
+  input_projection_ = dynamic_cast<LmInputComponent*>(LmComponent::ReadNew(is, binary));
+  output_projection_ = dynamic_cast<LmOutputComponent*>(LmComponent::ReadNew(is, binary));
 
   nnet_->Read(is, binary);
 
@@ -61,7 +57,6 @@ void LmNnet::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<LmNnet>");
   input_projection_->Write(os, binary);
   output_projection_->Write(os, binary);
-  output_layer_->Write(os, binary);
 
   nnet_->Write(os, binary);
   WriteToken(os, binary, "</LmNnet>");
@@ -89,14 +84,11 @@ void LmNnet::ReadConfig(std::istream &config_is) {
   }
 
   int i = 0; 
-  input_projection_ = LmComponent::NewComponentOfType(type[i]);
+  input_projection_ = dynamic_cast<LmInputComponent*>(LmComponent::NewComponentOfType(type[i]));
   input_projection_->InitFromConfig(&config_lines[i++]);
 
-  output_projection_ = Component::NewComponentOfType(type[i]);
+  output_projection_ = dynamic_cast<LmOutputComponent*>(LmComponent::NewComponentOfType(type[i]));
   output_projection_->InitFromConfig(&config_lines[i++]);
-
-  output_layer_ = Component::NewComponentOfType(type[i]);
-  output_layer_->InitFromConfig(&config_lines[i++]);
 
   nnet_->ReadConfig(config_is);
 
