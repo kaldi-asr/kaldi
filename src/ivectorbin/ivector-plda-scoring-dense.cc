@@ -39,19 +39,19 @@ bool EstPca(const Matrix<BaseFloat> &ivector_mat, BaseFloat target_energy,
   sumsq.Scale(1.0 / num_rows);
   sumsq.AddVec2(-1.0, sum); // now sumsq is centered covariance.
   int32 full_dim = sum.Dim();
- 
+
   Matrix<BaseFloat> P(full_dim, full_dim);
   Vector<BaseFloat> s(full_dim);
 
-  if (num_rows > num_cols) {
-    sumsq.Eig(&s, &P);
-  } else {
-    try {
+  try {
+    if (num_rows > num_cols)
+      sumsq.Eig(&s, &P);
+    else
       Matrix<BaseFloat>(sumsq).Svd(&s, &P, NULL);
-    } catch(...) {
-      return false;
-    }
+  } catch (...) {
+    return false;
   }
+
   SortSvd(&s, &P);
 
   Matrix<BaseFloat> transform(P, kTrans); // Transpose of P.  This is what
