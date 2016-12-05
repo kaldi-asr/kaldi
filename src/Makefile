@@ -97,8 +97,8 @@ endif
 # Note: OPENFST_VER is determined by configure and added to kaldi.mk
 OPENFST_VER_NUM := $(shell echo $(OPENFST_VER) | sed 's/\./ /g' | xargs printf "%d%02d%02d")
 test_dependencies:
-ifeq ("$(shell expr $(OPENFST_VER_NUM) \< 10302)","1")
-	$(error OpenFst $(OPENFST_VER) is not supported. You now need OpenFst >= 1.3.2.)
+ifeq ("$(shell expr $(OPENFST_VER_NUM) \< 10503)","1")
+	$(error OpenFst $(OPENFST_VER) is not supported. You now need OpenFst >= 1.5.3.)
 endif
 
 check_portaudio:
@@ -184,4 +184,3 @@ onlinebin: base matrix util feat tree gmm transform sgmm2 fstext hmm lm decoder 
 online: decoder gmm transform feat matrix util base lat hmm thread tree
 online2: decoder gmm transform feat matrix util base lat hmm thread tree ivector cudamatrix nnet2 nnet3 chain
 kws: base util thread hmm tree matrix lat
-
