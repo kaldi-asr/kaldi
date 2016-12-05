@@ -141,7 +141,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         run_opts,
                         cv_minibatch_size=256, frames_per_eg=-1,
                         min_deriv_time=None, max_deriv_time=None,
-                        shrinkage_value=1.0,
+                        shrinkage_value=1.0, dropout_proportions=None,
                         get_raw_nnet_from_am=True,
                         background_process_handler=None):
     """ Called from steps/nnet3/train_*.py scripts for one iteration of neural
@@ -264,6 +264,10 @@ def train_one_iteration(dir, iter, srand, egs_dir,
         os.remove("{0}/.error".format(dir))
     except OSError:
         pass
+
+    if dropout_proportions is not None:
+        raw_model_string = common_train_lib.apply_dropout(
+            dropout_proportions, raw_model_string)
 
     train_new_models(dir=dir, iter=iter, srand=srand, num_jobs=num_jobs,
                      num_archives_processed=num_archives_processed,

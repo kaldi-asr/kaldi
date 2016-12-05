@@ -223,7 +223,9 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         leaky_hmm_coefficient,
                         momentum, max_param_change, shuffle_buffer_size,
                         frame_subsampling_factor, truncate_deriv_weights,
-                        run_opts, background_process_handler=None):
+                        run_opts,
+                        dropout_proportions=None,
+                        background_process_handler=None):
     """ Called from steps/nnet3/chain/train.py for one iteration for
     neural network training with LF-MMI objective
 
@@ -301,6 +303,10 @@ def train_one_iteration(dir, iter, srand, egs_dir,
         # the smaller minibatch size will help to keep the update stable.
         cur_num_chunk_per_minibatch = num_chunk_per_minibatch / 2
         cur_max_param_change = float(max_param_change) / math.sqrt(2)
+
+    if dropout_proportions is not None:
+        raw_model_string = common_train_lib.apply_dropout(
+            dropout_proportions, raw_model_string)
 
     train_new_models(dir=dir, iter=iter, srand=srand, num_jobs=num_jobs,
                      num_archives_processed=num_archives_processed,

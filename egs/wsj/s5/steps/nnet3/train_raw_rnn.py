@@ -101,13 +101,15 @@ def get_args():
                         shrink-threshold at the non-linearities.  E.g. 0.99.
                         Only applicable when the neural net contains sigmoid or
                         tanh units.""")
-    parser.add_argument("--trainer.optimization.shrink-saturation-threshold", type=float,
+    parser.add_argument("--trainer.optimization.shrink-saturation-threshold",
+                        type=float,
                         dest='shrink_saturation_threshold', default=0.40,
-                        help="""Threshold that controls when we apply the 'shrinkage'
-                        (i.e. scaling by shrink-value).  If the saturation of the
-                        sigmoid and tanh nonlinearities in the neural net (as
-                        measured by steps/nnet3/get_saturation.pl) exceeds this
-                        threshold we scale the parameter matrices with the
+                        help="""Threshold that controls when we apply the
+                        'shrinkage' (i.e. scaling by shrink-value).  If the
+                        saturation of the sigmoid and tanh nonlinearities in
+                        the neural net (as measured by
+                        steps/nnet3/get_saturation.pl) exceeds this threshold
+                        we scale the parameter matrices with the
                         shrink-value.""")
     parser.add_argument("--trainer.optimization.cv-minibatch-size", type=int,
                         dest='cv_minibatch_size', default=256,
@@ -364,6 +366,10 @@ def train(args, run_opts, background_process_handler):
                                                   args.initial_effective_lrate,
                                                   args.final_effective_lrate)
 
+    if args.dropout_schedule is not None:
+        dropout_schedule = common_train_lib.parse_dropout_option(
+            num_archives_to_process, args.dropout_schedule)
+
     min_deriv_time = None
     max_deriv_time = None
     if args.deriv_truncate_margin is not None:
@@ -410,6 +416,10 @@ def train(args, run_opts, background_process_handler):
                 num_archives=num_archives,
                 learning_rate=learning_rate(iter, current_num_jobs,
                                             num_archives_processed),
+                dropout_proportions=(
+                    None if args.dropout_schedule is None
+                    else common_train_lib.get_dropout_proportions(
+                        dropout_schedule, num_archives_processed)),
                 shrinkage_value=shrinkage_value,
                 minibatch_size=args.num_chunk_per_minibatch,
                 num_hidden_layers=num_hidden_layers,
