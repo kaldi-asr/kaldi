@@ -223,9 +223,9 @@ function check_for_slow_expf {
   make -f Makefile.slow_expf 1>/dev/null
   ./exp-test
   if [ $? -eq 1 ]; then
-      echo "*** WARNING: expf() seems to be slower than exp() on your machine. This is a known bug in old versions of glibc. Please consider updating glibc. ***"
-      echo "*** Kaldi will be configured to use exp() instead of expf() in base/kaldi-math.h Exp() routine for single-precision floats. ***"
-      echo "CXXFLAGS += -DKALDI_NO_EXPF" >> ../kaldi.mk
+    echo "*** WARNING: expf() seems to be slower than exp() on your machine. This is a known bug in old versions of glibc. Please consider updating glibc. ***"
+    echo "*** Kaldi will be configured to use exp() instead of expf() in base/kaldi-math.h Exp() routine for single-precision floats. ***"
+    echo "CXXFLAGS += -DKALDI_NO_EXPF" >> ../kaldi.mk
   fi
   cd ..
 }
@@ -849,7 +849,7 @@ function linux_configure_dynamic {
 echo "Configuring ..."
 
 if [ ! -f makefiles/common.mk ]; then
-    failure makefiles/common.mk not found
+  failure makefiles/common.mk not found
 fi
 
 # back up the old one in case we modified it
@@ -861,37 +861,22 @@ fi
 printf "# This file was generated using the following command:\n# $cmd_line\n\n" > kaldi.mk
 cat makefiles/common.mk >> kaldi.mk
 if $dynamic_kaldi ; then
-KALDILIBDIR=`pwd`/lib
-echo "KALDI_FLAVOR := dynamic" >> kaldi.mk
-echo "KALDILIBDIR := $KALDILIBDIR" >> kaldi.mk
+  KALDILIBDIR=`pwd`/lib
+  echo "KALDI_FLAVOR := dynamic" >> kaldi.mk
+  echo "KALDILIBDIR := $KALDILIBDIR" >> kaldi.mk
 fi
 echo "CONFIGURE_VERSION := $CONFIGURE_VERSION" >> kaldi.mk
 echo "FSTROOT = $FSTROOT" >> kaldi.mk
 
 echo "Checking OpenFST library in $FSTROOT ..."
 if [ ! -f $FSTROOT/include/fst/fst.h  ]; then
-    failure "Could not find file $FSTROOT/include/fst/fst.h:
-    you may not have installed OpenFst.  See ../tools/INSTALL"
+  failure "Could not find file $FSTROOT/include/fst/fst.h:
+  you may not have installed OpenFst.  See ../tools/INSTALL"
 fi
 
 OPENFST_VER="${OPENFST_VER:-`grep 'PACKAGE_VERSION' $FSTROOT/Makefile | sed -e 's:.*= ::'`}"
-echo "Adding flags necessary for compiling against OpenFst-$OPENFST_VER ..."
 echo "OPENFST_VER = $OPENFST_VER" >> kaldi.mk
-OPENFST_VER_NUM=`echo $OPENFST_VER | sed 's/\./ /g' | xargs printf "%d%02d%02d"`
-echo "EXTRA_CXXFLAGS += -DOPENFST_VER=$OPENFST_VER_NUM" >> kaldi.mk
-if [ $OPENFST_VER_NUM -ge 10400 ]; then
-  echo "EXTRA_CXXFLAGS += -std=c++0x" >> kaldi.mk
-fi
-
-if [ $OPENFST_VER_NUM -lt 10500 ]; then
-  echo "Checking if OpenFst library was patched ..."
-  if ! grep "multiple repeated" $FSTROOT/include/fst/minimize.h >/dev/null; then
-    echo "**  ERROR  **"
-    echo "** $FSTROOT/include/fst/minimize.h seems not to be patched:"
-    echo "patch not applied?  FST tools will not work in our recipe."
-    exit 1;
-  fi
-fi
+echo "CXXFLAGS += -std=c++0x" >> kaldi.mk
 
 # Most of the OS-specific steps below will append to kaldi.mk
 echo "Doing OS specific configurations ..."
@@ -951,26 +936,26 @@ if [ "`uname`" == "Darwin"  ]; then
 fi
 
 if [ "`uname -o`" == "Cygwin"  ]; then
-    echo "On Cygwin: checking for linear algebra libraries ..."
-    if [ ! -f ../tools/CLAPACK/clapack.h ]; then
-        failure "could not find file ../tools/CLAPACK/clapack.h"
-    fi
-    if [ ! -f /usr/lib/lapack/cygblas-0.dll ]; then
-       failure "please first install package liblapack0"
-    fi
-    cat makefiles/cygwin.mk >> kaldi.mk
-    echo "Configuration succeeded for platform cygwin"
-    exit_success;
+  echo "On Cygwin: checking for linear algebra libraries ..."
+  if [ ! -f ../tools/CLAPACK/clapack.h ]; then
+      failure "could not find file ../tools/CLAPACK/clapack.h"
+  fi
+  if [ ! -f /usr/lib/lapack/cygblas-0.dll ]; then
+     failure "please first install package liblapack0"
+  fi
+  cat makefiles/cygwin.mk >> kaldi.mk
+  echo "Configuration succeeded for platform cygwin"
+  exit_success;
 fi
 
 if [ "`uname`" == "Linux" ]; then
   if  $static_fst ; then
-      OPENFSTLIBS="$FSTROOT/lib/libfst.a"
-      fst_type='a'
+    OPENFSTLIBS="$FSTROOT/lib/libfst.a"
+    fst_type='a'
   else
-      OPENFSTLIBS="-L${FSTROOT}/lib -lfst"
-      OPENFSTLDFLAGS="-Wl,-rpath=${FSTROOT}/lib"
-      fst_type='so'
+    OPENFSTLIBS="-L${FSTROOT}/lib -lfst"
+    OPENFSTLDFLAGS="-Wl,-rpath=${FSTROOT}/lib"
+    fst_type='so'
   fi
   if [ ! -f "$FSTROOT/lib/libfst.${fst_type}" ]; then
     failure "Static=[$static_fst] OpenFST library not found:  See ../tools/INSTALL"
