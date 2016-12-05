@@ -30,6 +30,11 @@ LmNnetSamplingTrainer::LmNnetSamplingTrainer(
                           nnet_(nnet),
                           compiler_(*nnet->GetNnet(), config_.optimize_config),
                           num_minibatches_processed_(0) {
+
+// TODO(hxu)
+  int s = nnet_->O()->OutputDim();
+  unigram_.resize(s, 1.0/ s);
+
   if (config.zero_component_stats)
     nnet->ZeroStats();
   if (config.momentum == 0.0 && config.max_param_change == 0.0) {
@@ -162,12 +167,6 @@ void LmNnetSamplingTrainer::ProcessOutputs(const NnetExample &eg,
       BaseFloat tot_weight, tot_objf;
       bool supply_deriv = true;
 
-//      the following function adds the computation of special layers
-//      ComputeObjectiveFunction(io.features, obj_type, io.name,
-//                               supply_deriv, computer,
-//                               &tot_weight, &tot_objf, nnet_->O(), nnet_->N(),
-//                               &new_output_, delta_nnet_);
-
       ComputeObjectiveFunctionSample(unigram_, io.features, obj_type, io.name,
                                supply_deriv, computer,
                                &tot_weight, &tot_objf,
@@ -279,11 +278,13 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
                               BaseFloat *tot_weight,
                               BaseFloat *tot_objf,
                               const LmOutputComponent *output_projection,
-                              CuMatrix<BaseFloat> *new_output,
+                              Matrix<BaseFloat> *new_output,
                               LmNnet *nnet) {
   const CuMatrixBase<BaseFloat> &output_0_gpu = computer->GetOutput(output_name);
-  Matrix<BaseFloat> output_0(output_0_gpu.NumRows(), output_0_gpu.NumCols());
-  output_0_gpu.CopyToMat(&output_0);
+//  Matrix<BaseFloat> output_0(output_0_gpu.NumRows(), output_0_gpu.NumCols());
+//  output_0_gpu.CopyToMat(&output_0);
+  new_output->Resize(output_0_gpu.NumRows(), output_0_gpu.NumCols());
+  output_0_gpu.CopyToMat(new_output);
   int k = supervision.NumRows();
 
   KALDI_ASSERT(supervision.Type() == kSparseMatrix);
@@ -302,7 +303,7 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
 
   vector<vector<BaseFloat> > out;
 
-  output_projection->Propagate(output_0, indexes, &out);
+  output_projection->Propagate(*new_output, indexes, &out);
 
   *tot_weight = post.Sum();
   *tot_objf = 0;
@@ -329,11 +330,11 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
 
     // the derivative of the 'nnet3' part
     Matrix<BaseFloat> input_deriv(new_output->NumRows(),
-                                    output_0_gpu.NumCols(),
+                                    new_output->NumCols(),
                                     kSetZero);
 
     Matrix<BaseFloat> place_holder;
-    output_projection->Backprop(k, indexes, output_0, place_holder,
+    output_projection->Backprop(k, indexes, *new_output, place_holder,
                                 output_deriv, nnet->output_projection_,
                                 &input_deriv);
 

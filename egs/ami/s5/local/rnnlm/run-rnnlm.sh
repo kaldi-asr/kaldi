@@ -47,7 +47,7 @@ id=
 . path.sh
 . parse_options.sh || exit 1;
 
-outdir=data/sdm1/new-rnnlm-$type-$initial_learning_rate-$final_learning_rate-$learning_rate_decline_factor-$minibatch_size-$hidden_dim-$num_archives-$id
+outdir=debug-rnnlm-$type-$initial_learning_rate-$final_learning_rate-$learning_rate_decline_factor-$minibatch_size-$hidden_dim-$num_archives-$id
 srcdir=data/local/dict
 
 set -e
@@ -139,7 +139,7 @@ if [ $stage -le -2 ]; then
   if [ "$type" == "rnn" ]; then
   cat > $outdir/config <<EOF
   LmLinearComponent input-dim=$num_words_in output-dim=$hidden_dim
-  AffineComponent input-dim=$hidden_dim output-dim=$num_words_out
+  AffineSampleLogSoftmaxComponent input-dim=$hidden_dim output-dim=$num_words_out
   LogSoftmaxComponent dim=$num_words_out
 
   input-node name=input dim=$hidden_dim

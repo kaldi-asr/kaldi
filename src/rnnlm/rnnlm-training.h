@@ -172,7 +172,7 @@ class LmNnetSamplingTrainer {
                               BaseFloat *tot_weight,
                               BaseFloat *tot_objf,
                               const LmOutputComponent *output_projection,
-                              CuMatrix<BaseFloat> *new_output,
+                              Matrix<BaseFloat> *new_output,
                               LmNnet *delta_nnet = NULL);
 
   LmNnetSamplingTrainer(const LmNnetTrainerOptions &config,
@@ -195,7 +195,7 @@ class LmNnetSamplingTrainer {
   const LmNnetTrainerOptions config_;
   Matrix<BaseFloat> new_input_;
   SparseMatrix<BaseFloat> old_input_;
-  CuMatrix<BaseFloat> new_output_;
+  Matrix<BaseFloat> new_output_;
 
   // this pointer is not owned
   LmNnet *nnet_;

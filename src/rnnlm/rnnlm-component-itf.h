@@ -158,9 +158,9 @@ class LmComponent {
   /// The default implementation of this function is suitable for any
   /// SimpleComponent; it just copies the output_index to a single identical
   /// element in input_indexes.
-  virtual void GetInputIndexes(const MiscComputationInfo &misc_info,
-                               const Index &output_index,
-                               std::vector<Index> *desired_indexes) const;
+//  virtual void GetInputIndexes(const MiscComputationInfo &misc_info,
+//                               const Index &output_index,
+//                               std::vector<Index> *desired_indexes) const;
 
   /// \brief This function only does something interesting for non-simple
   ///    Components, and it exists to make it possible to manage
