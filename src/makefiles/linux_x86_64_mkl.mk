@@ -1,9 +1,9 @@
 # You have to make sure MKLROOT and (optionally) MKLLIB is set
 
-# We have tested Kaldi with MKL version 10.2 on Linux/GCC and Intel(R) 64 
+# We have tested Kaldi with MKL version 10.2 on Linux/GCC and Intel(R) 64
 # architecture (also referred to as x86_64) with LP64 interface layer.
 
-# The linking flags for MKL will be very different depending on the OS, 
+# The linking flags for MKL will be very different depending on the OS,
 # architecture, compiler, etc. used. The correct flags can be obtained from
 # http://software.intel.com/en-us/articles/intel-mkl-link-line-advisor/
 # Use the options obtained from this website to manually configure for other
@@ -26,7 +26,7 @@ CXXFLAGS = -m64 -msse -msse2 -pthread -Wall -I.. \
       -DHAVE_EXECINFO_H=1 -rdynamic -DHAVE_CXXABI_H \
       -DHAVE_MKL -I$(MKLROOT)/include \
       -I$(FSTROOT)/include \
-      $(EXTRA_CXXFLAGS) \
+      -std=c++0x $(EXTRA_CXXFLAGS) \
       -g # -O0 -DKALDI_PARANOID
 
 ifeq ($(KALDI_FLAVOR), dynamic)

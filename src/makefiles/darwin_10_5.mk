@@ -1,22 +1,21 @@
 # makefiles/darwin_10_5.mk contains Darwin-specific rules for OS X 10.5.*
 
 ifndef FSTROOT
-$(error FSTROOT not defined.)
+  $(error FSTROOT not defined.)
 endif
 
 DOUBLE_PRECISION = 0
-CXXFLAGS += -msse -msse2 -Wall -I.. \
-	  -pthread \
+CXXFLAGS = -msse -msse2 -Wall -I.. -pthread \
       -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION)  \
       -Wno-sign-compare -Winit-self \
       -DHAVE_EXECINFO_H=1 -DHAVE_CXXABI_H \
       -DHAVE_CLAPACK \
       -I$(FSTROOT)/include \
-      $(EXTRA_CXXFLAGS) \
+      -std=c++0x $(EXTRA_CXXFLAGS) \
       -gdwarf-2 # -O0 -DKALDI_PARANOID
 
 ifeq ($(KALDI_FLAVOR), dynamic)
-CXXFLAGS += -fPIC
+  CXXFLAGS += -fPIC
 endif
 
 LDFLAGS = -gdwarf-2

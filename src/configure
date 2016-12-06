@@ -876,7 +876,6 @@ fi
 
 OPENFST_VER="${OPENFST_VER:-`grep 'PACKAGE_VERSION' $FSTROOT/Makefile | sed -e 's:.*= ::'`}"
 echo "OPENFST_VER = $OPENFST_VER" >> kaldi.mk
-echo "CXXFLAGS += -std=c++0x" >> kaldi.mk
 
 # Most of the OS-specific steps below will append to kaldi.mk
 echo "Doing OS specific configurations ..."
