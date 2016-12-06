@@ -267,12 +267,8 @@ void ConvertFstToLattice(
     const ExpandedFst<ArcTpl<TropicalWeight> > &ifst,
     MutableFst<ArcTpl<LatticeWeightTpl<Real> > > *ofst) {
   int32 num_states_cache = 50000;
-#if OPENFST_VER >= 10500
   fst::CacheOptions cache_opts(true, num_states_cache);
   fst::MapFstOptions mapfst_opts(cache_opts);
-#else
-  fst::CacheOptions mapfst_opts(true, num_states_cache);
-#endif
   StdToLatticeMapper<Real> mapper;
   MapFst<StdArc, ArcTpl<LatticeWeightTpl<Real> >,
          StdToLatticeMapper<Real> > map_fst(ifst, mapper, mapfst_opts);

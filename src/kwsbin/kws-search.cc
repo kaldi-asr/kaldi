@@ -199,11 +199,7 @@ int main(int argc, char *argv[]) {
       Map(keyword, &keyword_fst, VectorFstToKwsLexicographicFstMapper());
       Compose(keyword_fst, index, &result_fst);
       Project(&result_fst, PROJECT_OUTPUT);
-#if OPENFST_VER >= 10500
       Minimize(&result_fst, (KwsLexicographicFst *) nullptr, kDelta, true);
-#else
-      Minimize(&result_fst);
-#endif
       ShortestPath(result_fst, &result_fst, n_best);
       RmEpsilon(&result_fst);
 

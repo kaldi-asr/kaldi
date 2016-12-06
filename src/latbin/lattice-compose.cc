@@ -85,12 +85,8 @@ int main(int argc, char *argv[]) {
       if (phi_label > 0)
         PropagateFinal(phi_label, fst2);
 
-#if OPENFST_VER >= 10500
       fst::CacheOptions cache_opts(true, num_states_cache);
       fst::MapFstOptions mapfst_opts(cache_opts);
-#else
-      fst::CacheOptions mapfst_opts(true, num_states_cache);
-#endif
       fst::StdToLatticeMapper<BaseFloat> mapper;
       fst::MapFst<StdArc, LatticeArc, fst::StdToLatticeMapper<BaseFloat> >
           mapped_fst2(*fst2, mapper, mapfst_opts);
