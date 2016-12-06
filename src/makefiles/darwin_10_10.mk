@@ -1,7 +1,7 @@
 # makefiles/darwin_10_10.mk contains Darwin-specific rules for OS X 10.10.*
 
 ifndef FSTROOT
-$(error FSTROOT not defined.)
+  $(error FSTROOT not defined.)
 endif
 
 DOUBLE_PRECISION = 0
@@ -17,7 +17,7 @@ CXXFLAGS += -msse -msse2 -Wall -I.. \
 
 
 ifeq ($(KALDI_FLAVOR), dynamic)
-CXXFLAGS += -fPIC
+  CXXFLAGS += -fPIC
 endif
 
 LDFLAGS = -g
@@ -32,16 +32,10 @@ AR = ar
 COMPILER = $(shell $(CXX) -v 2>&1 )
 ifeq ($(findstring clang,$(COMPILER)),clang)
   CXXFLAGS += -Wno-mismatched-tags
-  # Link with libstdc++ if we are building against OpenFst < 1.4
-	OPENFST_VER_NUM := $(shell echo $(OPENFST_VER) | sed 's/\./ /g' | xargs printf "%d%02d%02d")
-	ifeq ("$(shell expr $(OPENFST_VER_NUM) \< 10400)","1")
-    CXXFLAGS += -stdlib=libstdc++
-    LDFLAGS += -stdlib=libstdc++
-  endif
 endif
 
 # We need to tell recent versions of g++ to allow vector conversions without
 # an explicit cast provided the vectors are of the same size.
 ifeq ($(findstring GCC,$(COMPILER)),GCC)
-	CXXFLAGS += -flax-vector-conversions -Wno-unused-local-typedefs
+  CXXFLAGS += -flax-vector-conversions -Wno-unused-local-typedefs
 endif
