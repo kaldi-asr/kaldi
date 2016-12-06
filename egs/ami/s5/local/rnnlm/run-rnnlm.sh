@@ -140,7 +140,6 @@ if [ $stage -le -2 ]; then
   cat > $outdir/config <<EOF
   LmLinearComponent input-dim=$num_words_in output-dim=$hidden_dim
   AffineSampleLogSoftmaxComponent input-dim=$hidden_dim output-dim=$num_words_out
-  LogSoftmaxComponent dim=$num_words_out
 
   input-node name=input dim=$hidden_dim
   component name=first_nonlin type=SigmoidComponent dim=$hidden_dim

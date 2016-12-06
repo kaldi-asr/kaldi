@@ -308,11 +308,16 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
   *tot_weight = post.Sum();
   *tot_objf = 0;
   for (int i = 0; i < k; i++) {
-    *tot_objf += out[i][k];
+    KALDI_LOG << "out-" << i << " is " << out[i][k];
+    *tot_objf += out[i][k]; // last one (k) is the correct lable
     for (int j = 0; j < k; j++) {
-      *tot_objf -= exp(out[i][k]) / unigram[indexes[i][j]];
+      KALDI_LOG << "out-" << i << " " << j << " is " << out[i][j];
+      *tot_objf -= exp(out[i][j]) / unigram[indexes[i][j]];
     }
+    KALDI_LOG << "tot-objf is " << *tot_objf << " at " << i;
   }
+
+  KALDI_LOG << "objf value is " << *tot_objf << endl;
 
   if (supply_deriv && nnet != NULL) {
     // the derivative on the real output

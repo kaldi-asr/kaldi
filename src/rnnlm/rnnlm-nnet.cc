@@ -73,11 +73,11 @@ void LmNnet::ReadConfig(std::istream &config_is) {
 //  output_projection_ = new AffineComponent();
 //  output_layer_ =  new LogSoftmaxComponent();
 
-  std::vector<string> type(3);
-  std::vector<string> lines(3);
-  std::vector<ConfigLine> config_lines(3);
+  std::vector<string> type(2);
+  std::vector<string> lines(2);
+  std::vector<ConfigLine> config_lines(2);
   
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 2; i++) {
     config_is >> type[i];
     getline(config_is, lines[i]);
     config_lines[i].ParseLine(lines[i]);
