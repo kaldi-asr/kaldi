@@ -8,6 +8,7 @@ and some basic layer definitions.
 
 from __future__ import print_function
 import sys
+import math
 import libs.nnet3.xconfig.utils as xutils
 from libs.nnet3.xconfig.utils import XconfigParserError as xparser_error
 
@@ -849,7 +850,7 @@ class XconfigAffineLayer(XconfigLayerBase):
     def set_derived_configs(self):
         super(XconfigAffineLayer, self).set_derived_configs()
         if self.config['param-stddev'] < 0:
-            self.config['param-stddev'] = 1.0 / self.descriptors['input']['dim']
+            self.config['param-stddev'] = 1.0 / math.sqrt(self.descriptors['input']['dim'])
 
     def check_configs(self):
         if self.config['dim'] <= 0:
