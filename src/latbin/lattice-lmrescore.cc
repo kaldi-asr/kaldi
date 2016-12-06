@@ -74,12 +74,8 @@ int main(int argc, char *argv[]) {
     // mapped_fst is the LM fst interpreted using the LatticeWeight semiring,
     // with all the cost on the first member of the pair (since it's a graph
     // weight).
-#if OPENFST_VER >= 10500
     fst::CacheOptions cache_opts(true, num_states_cache);
     fst::MapFstOptions mapfst_opts(cache_opts);
-#else
-    fst::CacheOptions mapfst_opts(true, num_states_cache);
-#endif
     fst::StdToLatticeMapper<BaseFloat> mapper;
     fst::MapFst<StdArc, LatticeArc, fst::StdToLatticeMapper<BaseFloat> >
         lm_fst(*std_lm_fst, mapper, mapfst_opts);

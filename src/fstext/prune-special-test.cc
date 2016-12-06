@@ -37,11 +37,7 @@ static void TestPruneSpecial() {
   float beam = 0.55;
 
   {
-#if OPENFST_VER >= 10400
     FstPrinter<Arc> fstprinter(*ifst, NULL, NULL, NULL, false, true, "\t");
-#else
-    FstPrinter<Arc> fstprinter(*ifst, NULL, NULL, NULL, false, true);
-#endif
     fstprinter.Print(&std::cout, "standard output");
     std::cout << endl;
   }
@@ -50,11 +46,7 @@ static void TestPruneSpecial() {
   VectorFst<Arc> ofst1;
   PruneSpecial<StdArc>(*ifst, &ofst1, beam);
   {
-#if OPENFST_VER >= 10400
     FstPrinter<Arc> fstprinter(ofst1, NULL, NULL, NULL, false, true, "\t");
-#else
-    FstPrinter<Arc> fstprinter(ofst1, NULL, NULL, NULL, false, true);
-#endif
     fstprinter.Print(&std::cout, "standard output");
     std::cout << endl;
   }
@@ -63,11 +55,7 @@ static void TestPruneSpecial() {
   VectorFst<Arc> ofst2;
   Prune(*ifst, &ofst2, beam);
   {
-#if OPENFST_VER >= 10400
     FstPrinter<Arc> fstprinter(ofst2, NULL, NULL, NULL, false, true, "\t");
-#else
-    FstPrinter<Arc> fstprinter(ofst2, NULL, NULL, NULL, false, true);
-#endif
     fstprinter.Print(&std::cout, "standard output");
     std::cout << endl;
   }

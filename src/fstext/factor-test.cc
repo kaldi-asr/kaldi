@@ -78,11 +78,7 @@ template<class Arc> static void TestFactor() {
 
   std::cout <<" printing before trimming\n";
   {
-#if OPENFST_VER >= 10400
     FstPrinter<Arc> fstprinter(fst, sptr, sptr, NULL, false, true, "\t");
-#else
-    FstPrinter<Arc> fstprinter(fst, sptr, sptr, NULL, false, true);
-#endif
     fstprinter.Print(&std::cout, "standard output");
   }
   // Trim resulting FST.
@@ -90,11 +86,7 @@ template<class Arc> static void TestFactor() {
 
   std::cout <<" printing after trimming\n";
   {
-#if OPENFST_VER >= 10400
     FstPrinter<Arc> fstprinter(fst, sptr, sptr, NULL, false, true, "\t");
-#else
-    FstPrinter<Arc> fstprinter(fst, sptr, sptr, NULL, false, true);
-#endif
     fstprinter.Print(&std::cout, "standard output");
   }
 
