@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
 
     bool binary_write = true;
     BaseFloat learning_rate = -1,
-      dropout = 0.0;
+      dropout = -1;
     std::string nnet_config, edits_config, edits_str;
     BaseFloat scale = 1.0;
 
@@ -64,7 +64,10 @@ int main(int argc, char *argv[]) {
                 "will be converted to newlines before parsing.  E.g. "
                 "'--edits=remove-orphans'.");
     po.Register("set-dropout-proportion", &dropout, "Set dropout proportion "
-                "in all DropoutComponent to this value.");
+                "in all DropoutComponent to this value. "
+                "This option is deprecated. Use set-dropout-proportion "
+                "option in edits-config. See comments in ReadEditConfig() "
+                "in nnet3/nnet-utils.h."); 
     po.Register("scale", &scale, "The parameter matrices are scaled"
                 " by the specified value.");
     po.Read(argc, argv);
@@ -92,7 +95,10 @@ int main(int argc, char *argv[]) {
       ScaleNnet(scale, &nnet);
     
     if (dropout > 0)
-      SetDropoutProportion(dropout, &nnet);
+      KALDI_ERR << "--dropout option is deprecated. "
+                << "Use set-dropout-proportion "
+                << "option in edits-config. See comments in ReadEditConfig() "
+                << "in nnet3/nnet-utils.h."; 
 
     if (!edits_config.empty()) {
       Input ki(edits_config);
