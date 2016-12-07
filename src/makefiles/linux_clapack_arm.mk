@@ -7,7 +7,7 @@ CXXFLAGS = -ftree-vectorize -mfloat-abi=hard -mfpu=neon -Wall -I.. -pthread \
       -DHAVE_EXECINFO_H=1 -rdynamic -DHAVE_CXXABI_H \
       -DHAVE_CLAPACK -I ../../tools/CLAPACK \
       -I ../../tools/openfst/include \
-      -std=c++0x $(EXTRA_CXXFLAGS) \
+      -std=c++11 $(EXTRA_CXXFLAGS) \
       -g # -O0 -DKALDI_PARANOID
 
 ifeq ($(KALDI_FLAVOR), dynamic)

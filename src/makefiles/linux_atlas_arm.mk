@@ -21,7 +21,7 @@ CXXFLAGS = -ftree-vectorize -mfloat-abi=hard -mfpu=neon -Wall -I.. \
       -DHAVE_EXECINFO_H=1 -rdynamic -DHAVE_CXXABI_H \
       -DHAVE_ATLAS -I$(ATLASINC) \
       -I$(FSTROOT)/include \
-      -std=c++0x $(EXTRA_CXXFLAGS) \
+      -std=c++11 $(EXTRA_CXXFLAGS) \
       -g # -O0 -DKALDI_PARANOID
 
 ifeq ($(KALDI_FLAVOR), dynamic)

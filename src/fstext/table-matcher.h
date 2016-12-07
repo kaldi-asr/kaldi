@@ -259,7 +259,7 @@ class TableMatcher : public MatcherBase<typename F::Arc> {
                bool safe = false)
       : impl_(matcher.impl_) {
     if (safe == true) {
-      KALDI_ERR << "TableMatcher: Safe copy not supported";
+      LOG(FATAL) << "TableMatcher: Safe copy not supported";
     }
   }
 

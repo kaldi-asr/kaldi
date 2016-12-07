@@ -10,7 +10,7 @@ CXXFLAGS = -msse -msse2 -Wall -I.. -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
     -Wno-sign-compare -Wno-unused-local-typedefs -Winit-self \
     -I ../../tools/CLAPACK/ \
     -I $(FSTROOT)/include \
-    -std=c++0x $(EXTRA_CXXFLAGS) \
+    -std=c++11 $(EXTRA_CXXFLAGS) \
     -g # -O0 -DKALDI_PARANOID
 
 ifeq ($(KALDI_FLAVOR), dynamic)
