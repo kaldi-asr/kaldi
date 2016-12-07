@@ -89,6 +89,10 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new SoftmaxComponent();
   } else if (component_type == "LogSoftmaxComponent") {
     ans = new LogSoftmaxComponent();
+  } else if (component_type == "LogComponent") {
+    ans = new LogComponent();
+  } else if (component_type == "ExpComponent") {
+    ans = new ExpComponent();
   } else if (component_type == "RectifiedLinearComponent") {
     ans = new RectifiedLinearComponent();
   } else if (component_type == "NormalizeComponent") {
@@ -310,11 +314,14 @@ std::string NonlinearComponent::Info() const {
   std::stringstream stream;
   if (InputDim() == OutputDim()) {
     stream << Type() << ", dim=" << InputDim();
-  } else {
+  } else if (OutputDim() - InputDim() == 1) {
     // Note: this is a very special case tailored for class NormalizeComponent.
     stream << Type() << ", input-dim=" << InputDim()
            << ", output-dim=" << OutputDim()
            << ", add-log-stddev=true";
+  } else {
+    stream << Type() << ", input-dim=" << InputDim()
+           << ", output-dim=" << OutputDim();
   }
 
   if (self_repair_lower_threshold_ != BaseFloat(kUnsetThreshold))
