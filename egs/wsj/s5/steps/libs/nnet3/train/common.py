@@ -369,7 +369,7 @@ def _parse_dropout_string(num_archives_to_process, dropout_str):
     except Exception as e:
         logger.error("Unable to parse dropout proportion string {0}. "
                      "See help for option "
-                     "--dropout-schedule.".format(dropout_str))
+                     "--trainer.dropout-schedule.".format(dropout_str))
         raise e
 
     # reverse sort so that its easy to retrieve the dropout proportion
@@ -647,7 +647,8 @@ class CommonParser:
                                  doesn't increase the effective learning
                                  rate.""")
         self.parser.add_argument("--trainer.dropout-schedule", type=str,
-                                 dest='dropout_schedule', default='',
+                                 action=common_lib.NullstrToNoneAction,
+                                 dest='dropout_schedule', default=None,
                                  help="""Use this to specify the dropout
                                  schedule.  You specify a piecewise linear
                                  function on the domain [0,1], where 0 is the
