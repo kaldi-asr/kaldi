@@ -364,7 +364,7 @@ class LmOutputComponent: public LmComponent {
                  const vector<vector<int> > &indexes, // objf is computed on the chosen indexes
                  vector<vector<BaseFloat> > *out) const = 0;
 
-  virtual void Backprop(int k,
+  virtual void Backprop(
              const vector<vector<int> > &indexes,
              const MatrixBase<BaseFloat> &in_value,
              const MatrixBase<BaseFloat> &, // out_value
