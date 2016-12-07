@@ -44,10 +44,11 @@ feat_suffix=_hires_mfcc # The feature suffix describing features used in multili
 # language list used for multilingual training
 # The map for lang-name to its abreviation can be find in
 # local/prepare_lang_conf.sh
-lang_list=(101-cantonese 102-assamese 103-bengali)
-
+# e.g lang_list=(101-cantonese 102-assamese 103-bengali)
+lang_list=
 # The language in this list decodes using Hybrid multilingual system.
-decode_lang_list=(101-cantonese)
+# e.g. decode_lang_list=(101-cantonese)
+decode_lang_list=
 
 dir=exp/nnet3/multi_bnf
 splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -7,2 0 0"
@@ -181,16 +182,18 @@ if [ $stage -le 10 ]; then
   #model_right_context=(something)
   #num_hidden_layers=(something)
   . $dir/configs/vars || exit 1;
-  if [ ! -z $multi_ivector_dirs ]; then
-    ivector_opts="--online-multi-ivector-dirs ${multi_ivector_dirs[@]}"
+  
+
+  ivec="${multi_ivector_dirs[@]}"
+  if $use_ivector; then
+    ivector_opts=(--online-multi-ivector-dirs "$ivec")
   fi
   local/nnet3/prepare_multilingual_egs.sh --cmd "$decode_cmd" \
-    $ivector_opts \
+    "${ivector_opts[@]}" \
     --left-context $model_left_context --right-context $model_right_context \
     --samples-per-iter 400000 \
     $num_langs ${multi_data_dirs[@]} ${multi_ali_dirs[@]} ${multi_egs_dirs[@]} || exit 1;
 fi
-
 
 if [ $stage -le 11 ]; then
   echo "$0: training mutilingual model."

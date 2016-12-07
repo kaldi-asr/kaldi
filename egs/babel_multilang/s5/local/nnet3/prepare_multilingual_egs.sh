@@ -11,7 +11,7 @@ set -e
 
 
 # Begin configuration section
-cmd=run.pl
+cmd=
 stage=0
 left_context=13
 right_context=9
@@ -72,14 +72,13 @@ for l in `seq 0 $[$num_lang-1]`; do
 done
 
 echo "$0: Generate separate egs directory per language for multilingual training."
-online_multi_ivector_dirs=($online_multi_ivector_dirs)
-
+online_multi_ivector_dirs=(${online_multi_ivector_dirs[@]})
 for lang_index in `seq 0 $[$num_lang-1]`; do
   data=${multi_data_dirs[$lang_index]} 
   ali_dir=${multi_ali_dirs[$lang_index]}
   egs_dir=${multi_egs_dirs[$lang_index]}
   online_ivector_dir=
-  if [ ! -z "$online_multi_ivector_dirs" ]; then
+  if [ ! -z "${online_multi_ivector_dirs[$lang_index]}" ]; then
     online_ivector_dir=${online_multi_ivector_dirs[$lang_index]}
   fi
   echo online_ivector_dir = $online_ivector_dir 
