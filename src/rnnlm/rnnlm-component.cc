@@ -259,13 +259,14 @@ void LinearNormalizedLogSoftmaxComponent::Normalize() {
     if (actual_params_.NumRows() != linear_params_.NumRows() ||
         actual_params_.NumCols() != linear_params_.NumCols()) {
       actual_params_.Resize(linear_params_.NumRows(), linear_params_.NumCols());
-      Matrix<BaseFloat> ht;
+      Matrix<BaseFloat> ht(linear_params_.NumCols(), linear_params_.NumRows());
 
       ht.CopyFromMat(linear_params_, kTrans);
       ht.AddVecToCols(-1.0, linear_params_.Row(0));
 
       linear_params_.CopyFromMat(ht, kTrans);
 
+      normalizer_.Resize(ht.NumRows());
       for (int i = 0; i < ht.NumRows(); i++) {
         normalizer_(i) = ht.Row(i).ApplyLogSoftMax();
       }

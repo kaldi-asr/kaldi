@@ -136,10 +136,27 @@ echo dev oos penalty is $ppl_oos_penalty
 if [ $stage -le -2 ]; then
   echo Create nnet configs
 
+#  if [ "$type" == "rnn" ]; then
+#  cat > $outdir/config <<EOF
+#  LmLinearComponent input-dim=$num_words_in output-dim=$hidden_dim
+#  AffineSampleLogSoftmaxComponent input-dim=$hidden_dim output-dim=$num_words_out
+#
+#  input-node name=input dim=$hidden_dim
+#  component name=first_nonlin type=SigmoidComponent dim=$hidden_dim
+#  component name=first_renorm type=NormalizeComponent dim=$hidden_dim target-rms=1.0
+#  component name=hidden_affine type=AffineComponent input-dim=$hidden_dim output-dim=$hidden_dim
+#
+##Component nodes
+#  component-node name=first_nonlin component=first_nonlin  input=Sum(input, hidden_affine)
+#  component-node name=first_renorm component=first_renorm  input=first_nonlin
+#  component-node name=hidden_affine component=hidden_affine  input=IfDefined(Offset(first_renorm, -1))
+#  output-node    name=output input=first_renorm objective=linear
+#EOF
+#
   if [ "$type" == "rnn" ]; then
   cat > $outdir/config <<EOF
   LmLinearComponent input-dim=$num_words_in output-dim=$hidden_dim
-  AffineSampleLogSoftmaxComponent input-dim=$hidden_dim output-dim=$num_words_out
+  LinearNormalizedLogSoftmaxComponent input-dim=$hidden_dim output-dim=$num_words_out
 
   input-node name=input dim=$hidden_dim
   component name=first_nonlin type=SigmoidComponent dim=$hidden_dim

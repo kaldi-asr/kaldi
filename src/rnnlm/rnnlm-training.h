@@ -175,6 +175,18 @@ class LmNnetSamplingTrainer {
                               Matrix<BaseFloat> *new_output,
                               LmNnet *delta_nnet = NULL);
 
+ static void ComputeObjectiveFunction(
+                              const GeneralMatrix &supervision,
+                              ObjectiveType objective_type,
+                              const std::string &output_name,
+                              bool supply_deriv,
+                              NnetComputer *computer,
+                              BaseFloat *tot_weight,
+                              BaseFloat *tot_objf,
+                              const LmOutputComponent *output_projection,
+                              Matrix<BaseFloat> *new_output,
+                              LmNnet *delta_nnet = NULL);
+
   LmNnetSamplingTrainer(const LmNnetTrainerOptions &config,
               LmNnet *nnet);
 
