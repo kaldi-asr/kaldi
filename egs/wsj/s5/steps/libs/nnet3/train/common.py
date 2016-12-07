@@ -351,10 +351,13 @@ def _parse_dropout_string(num_archives_to_process, dropout_str):
             raise Exception("dropout proportion string must specify "
                             "at least the start and end dropouts")
 
+        # Starting dropout proportion
         dropout_values.append((0, float(parts[0])))
-        for i in range(1, len(parts)):
+
+        for i in range(1, len(parts) - 1):
             value_x_pair = parts[i].split('@')
             if len(value_x_pair) == 1:
+                # Dropout proportion at half of training
                 dropout_proportion = float(parts[i])
                 dropout_values.append((0.5 * num_archives_to_process,
                                        dropout_proportion))
@@ -395,14 +398,26 @@ def get_dropout_proportions(dropout_schedule,
 
 
 def _get_component_dropout(dropout_schedule, num_archives_processed):
+    """Retrieve dropout proportion from schedule when num_archives_processed
+    amount of archives is processed. This value is obtained by using a
+    piecewise linear function on the dropout schedule.
+
+    Arguments:
+        dropout_schedule: A list of (num_archives, dropout_proportion) values
+            sorted in reverse order of num_archives
+    """
     if num_archives_processed == 0:
+        # Dropout at start of the iteration is in the last index of
+        # dropout_schedule
         assert dropout_schedule[-1][0] == 0
         return dropout_schedule[-1][1]
     try:
+        # Find lower bound of the num_archives_processed. This is the
+        # lower end of the piecewise linear function.
         (dropout_schedule_index, initial_num_archives,
          initial_dropout) = next((i, tup[0], tup[1])
                                  for i, tup in enumerate(dropout_schedule)
-                                 if tup[0] < num_archives_processed)
+                                 if tup[0] <= num_archives_processed)
     except StopIteration as e:
         logger.error("Could not find num_archives in dropout schedule "
                      "corresponding to num_archives_processed {0}.\n"
@@ -411,9 +426,11 @@ def _get_component_dropout(dropout_schedule, num_archives_processed):
                          num_archives_processed, dropout_schedule))
         raise e
 
+    # The upper bound of num_archives_processed is at the index before the
+    # lower bound.
     final_num_archives, final_dropout = dropout_schedule[
         dropout_schedule_index - 1]
-    assert (num_archives_processed > initial_num_archives
+    assert (num_archives_processed >= initial_num_archives
             and num_archives_processed < final_num_archives)
 
     return ((num_archives_processed - initial_num_archives)
