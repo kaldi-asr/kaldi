@@ -426,7 +426,7 @@ while (<AI>) {
     my $first_word = $col[$x * 3];
     my $second_word = $col[$x * 3 + 1];
     if ($x * 3 + 2 < @col) {
-      if ($col[$x*3 + 2] != $separator) {
+      if ($col[$x * 3 + 2] ne $separator) {
         die "Bad line in align-text output (expected separator '$separator'): $_";
       }
     }
