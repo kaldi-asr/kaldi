@@ -423,15 +423,19 @@ def _get_component_dropout(dropout_schedule, num_archives_processed):
 
 def apply_dropout(dropout_proportions, raw_model_string):
     edit_config_lines = []
+    dropout_info = []
 
     for component_name, dropout_proportion in dropout_proportions:
         edit_config_lines.append(
             "set-dropout-proportion name={0} proportion={1}".format(
                 component_name, dropout_proportion))
+        dropout_info.append("pattern/dropout-proportion={0}/{1}".format(
+            component_name, dropout_proportion))
 
     return ("""{raw_model_string} nnet3-copy --edits='{edits}' \
             - - |""".format(raw_model_string=raw_model_string,
-                        edits=";".join(edit_config_lines)))
+                            edits=";".join(edit_config_lines)),
+            dropout_info)
 
 
 def do_shrinkage(iter, model_file, shrink_saturation_threshold,

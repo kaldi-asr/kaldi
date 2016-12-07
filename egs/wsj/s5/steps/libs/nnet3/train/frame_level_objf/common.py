@@ -265,9 +265,19 @@ def train_one_iteration(dir, iter, srand, egs_dir,
     except OSError:
         pass
 
+    dropout_info_str = ''
     if dropout_proportions is not None:
-        raw_model_string = common_train_lib.apply_dropout(
+        raw_model_string, dropout_info = common_train_lib.apply_dropout(
             dropout_proportions, raw_model_string)
+        dropout_info_str = ', {0}'.format(", ".join(dropout_info))
+
+    shrink_info_str = ' and shrink value is {0}'.format(shrinkage_value)
+
+    logger.info("On iteration {0}, learning rate is {1}"
+                "{dropout_info}{shrink_info}.".format(
+                    iter, learning_rate,
+                    dropout_info=dropout_info_str,
+                    shrink_info=shrink_info_str))
 
     train_new_models(dir=dir, iter=iter, srand=srand, num_jobs=num_jobs,
                      num_archives_processed=num_archives_processed,

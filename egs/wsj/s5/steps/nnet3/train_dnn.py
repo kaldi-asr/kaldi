@@ -302,10 +302,6 @@ def train(args, run_opts, background_process_handler):
                                * float(iter) / num_iters)
 
         if args.stage <= iter:
-            logger.info("On iteration {0}, learning rate is {1}.".format(
-                iter, learning_rate(iter, current_num_jobs,
-                                    num_archives_processed)))
-
             train_lib.common.train_one_iteration(
                 dir=args.dir,
                 iter=iter,

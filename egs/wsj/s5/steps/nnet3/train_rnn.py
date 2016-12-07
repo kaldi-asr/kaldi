@@ -398,11 +398,6 @@ def train(args, run_opts, background_process_handler):
                                         args.shrink_saturation_threshold)
                                    else 1
                                    )
-            logger.info("On iteration {0}, learning rate is {1} and "
-                        "shrink value is {2}.".format(
-                            iter, learning_rate(iter, current_num_jobs,
-                                                num_archives_processed),
-                            shrinkage_value))
 
             train_lib.common.train_one_iteration(
                 dir=args.dir,
