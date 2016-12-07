@@ -11,7 +11,7 @@ CXXFLAGS = -msse -msse2 -Wall -I.. -pthread \
       -DHAVE_EXECINFO_H=1 -DHAVE_CXXABI_H \
       -DHAVE_CLAPACK \
       -I$(FSTROOT)/include \
-      -std=c++0x $(EXTRA_CXXFLAGS) \
+      -std=c++11 $(EXTRA_CXXFLAGS) \
       -g # -O0 -DKALDI_PARANOID
 
 

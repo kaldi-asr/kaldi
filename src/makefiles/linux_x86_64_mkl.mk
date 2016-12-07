@@ -26,7 +26,7 @@ CXXFLAGS = -m64 -msse -msse2 -pthread -Wall -I.. \
       -DHAVE_EXECINFO_H=1 -rdynamic -DHAVE_CXXABI_H \
       -DHAVE_MKL -I$(MKLROOT)/include \
       -I$(FSTROOT)/include \
-      -std=c++0x $(EXTRA_CXXFLAGS) \
+      -std=c++11 $(EXTRA_CXXFLAGS) \
       -g # -O0 -DKALDI_PARANOID
 
 ifeq ($(KALDI_FLAVOR), dynamic)

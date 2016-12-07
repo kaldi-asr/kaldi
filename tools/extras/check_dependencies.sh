@@ -21,7 +21,16 @@ fi
 
 if ! which g++ >&/dev/null; then
   echo "$0: g++ is not installed."
-  add_packages gcc-c++ g++ gcc-c++
+  echo " You need g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3."
+  # add_packages gcc-c++ g++ gcc-c++
+elif [[ $(g++ -v 2>&1) == *"GCC"* ]]; then
+  GCC_VER=$(g++ -dumpversion)
+  GCC_VER_NUM=$(echo $GCC_VER | sed 's/\./ /g' | xargs printf "%d%02d%02d")
+  if [ $GCC_VER_NUM -lt 40700 ]; then
+    echo "$0: System default g++ ($GCC_VER) does not support C++11."
+    echo " You need g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3."
+    # add_packages gcc-c++ g++ gcc-c++
+  fi
 fi
 
 if ! echo "#include <zlib.h>" | gcc -E - >&/dev/null; then

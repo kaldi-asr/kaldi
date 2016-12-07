@@ -1,11 +1,12 @@
 # SHELL += -x
 
 CXX = g++
-# CXX = clang++  # Uncomment this line to build with Clang.
-CC = gcc    # used for sph2pipe
+CC = gcc         # used for sph2pipe
+# CXX = clang++  # Uncomment these lines
+# CC = clang     # to build with Clang.
 
-# Note: OpenFst >= 1.5.3 requires C++11 support, hence you will need to use a
-# relatively recent C++ compiler, e.g. gcc >= 4.6, clang >= 3.0.
+# Note: OpenFst >= 1.5.3 and Kaldi require a relatively recent C++ compiler
+# with C++11 support, e.g. g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3.
 OPENFST_VERSION = 1.5.4
 
 OPENFST_VER_NUM := $(shell echo $(OPENFST_VERSION) | sed 's/\./ /g' | xargs printf "%d%02d%02d")
