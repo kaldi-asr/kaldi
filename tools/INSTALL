@@ -14,12 +14,16 @@ Then run
   make
 
 If you have multiple CPUs and want to speed things up, you can do a parallel
-build by supplying the "-j" option to make, e.g. to use 4 CPUs:
+build by supplying the "-j" option to make, e.g. to use 4 CPUs
 
   make -j 4
 
-Kaldi builds against OpenFst >= 1.5.3 which requires a relatively new compiler
-with C++11 support, e.g. gcc >= 4.6, clang >= 3.0.
+OpenFst requires a relatively recent C++ compiler with C++11 support,
+e.g. g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3. If your system
+default compiler does not support C++11, you can specify a C++11 compliant
+compiler by setting the CXX environment variable, e.g.
+
+  make CXX=g++-4.8
 
 In extras/, there are also various scripts to install extra bits and pieces that
 are used by individual example scripts.  If an example script needs you to run

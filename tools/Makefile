@@ -5,9 +5,9 @@ CC = gcc         # used for sph2pipe
 # CXX = clang++  # Uncomment these lines
 # CC = clang     # to build with Clang.
 
-# Note: OpenFst >= 1.5.3 and Kaldi require a relatively recent C++ compiler
-# with C++11 support, e.g. g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3.
-OPENFST_VERSION = 1.5.4
+# Note: OpenFst requires a relatively recent C++ compiler with C++11 support,
+# e.g. g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3.
+OPENFST_VERSION = 1.5.4  # Supported versions: >= 1.5.3
 
 OPENFST_VER_NUM := $(shell echo $(OPENFST_VERSION) | sed 's/\./ /g' | xargs printf "%d%02d%02d")
 ifeq ("$(shell expr $(OPENFST_VER_NUM) \< 10503)","1")
