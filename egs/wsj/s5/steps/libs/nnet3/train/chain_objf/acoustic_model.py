@@ -314,10 +314,9 @@ def train_one_iteration(dir, iter, srand, egs_dir,
 
     logger.info("On iteration {0}, learning rate is {1}"
                 "{dropout_info}{shrink_info}.".format(
-        iter, learning_rate(iter, num_jobs,
-                            num_archives_processed),
-        dropout_info=dropout_info_str,
-        shrink_info=shrink_info_str))
+                    iter, learning_rate,
+                    dropout_info=dropout_info_str,
+                    shrink_info=shrink_info_str))
 
     train_new_models(dir=dir, iter=iter, srand=srand, num_jobs=num_jobs,
                      num_archives_processed=num_archives_processed,
