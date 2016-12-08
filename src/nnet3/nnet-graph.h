@@ -55,8 +55,16 @@ void NnetToDirectedGraph(const Nnet &nnet,
 /// of destination-nodes of arcs coming from the current node),
 /// partition it into strongly connected components (i.e. within
 /// each SCC, all nodes are reachable from all other nodes).
+/// Each element of 'sccs' is a list of node indexes that are
+/// in that scc.
 void FindSccs(const std::vector<std::vector<int32> > &graph,
               std::vector<std::vector<int32> > *sccs);
+
+
+/// This function returns 'true' if the graph represented in 'graph'
+/// contains cycles (including cycles where a single node has an arc
+/// to itself).
+bool GraphHasCycles(const std::vector<std::vector<int32> > &graph);
 
 
 /// Given a list of sccs of a graph (e.g. as computed by FindSccs), compute a

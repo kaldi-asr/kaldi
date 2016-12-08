@@ -71,7 +71,7 @@ static bool UnitTestNnetOptimizeWithOptions(NnetOptimizeOptions opt_config) {
     NnetComputation computation_opt(computation);
 
     {
-      Optimize(opt_config, nnet, request, &computation_opt);
+      Optimize(opt_config, nnet, &computation_opt);
       std::ostringstream os;
       computation_opt.Print(os, nnet);
       KALDI_LOG << "Optimized computation is: " << os.str();
@@ -117,9 +117,9 @@ static bool UnitTestNnetOptimizeWithOptions(NnetOptimizeOptions opt_config) {
       computer_opt.AcceptInput(request.inputs[i].name, &temp2);
     }
     KALDI_LOG << "Running non-optimized forward computation";
-    computer.Forward();
+    computer.Run();
     KALDI_LOG << "Running optimized forward computation";
-    computer_opt.Forward();
+    computer_opt.Run();
 
     const CuMatrixBase<BaseFloat> &output(computer.GetOutput("output"));
     KALDI_LOG << "Output sum (not optimized) is " << output.Sum();
@@ -136,28 +136,28 @@ static bool UnitTestNnetOptimizeWithOptions(NnetOptimizeOptions opt_config) {
     CuMatrix<BaseFloat> output_deriv_opt(output_deriv);
 
     if (request.outputs[0].has_deriv) {
-      computer.AcceptOutputDeriv("output", &output_deriv);
-      computer_opt.AcceptOutputDeriv("output", &output_deriv_opt);
-    }
+      computer.AcceptInput("output", &output_deriv);
+      computer_opt.AcceptInput("output", &output_deriv_opt);
 
-    KALDI_LOG << "Running non-optimized backward computation";
-    computer.Backward();
-    KALDI_LOG << "Running optimized backward computation";
-    computer_opt.Backward();
-    for (size_t i = 0; i < request.inputs.size(); i++) {
-      if (request.inputs[i].has_deriv) {
-        const CuMatrixBase<BaseFloat> &in_deriv =
-            computer.GetInputDeriv(request.inputs[i].name);
-        const CuMatrixBase<BaseFloat> &in_deriv_opt =
-            computer_opt.GetInputDeriv(request.inputs[i].name);
-        KALDI_LOG << "Input-deriv sum for input '" << request.inputs[i].name
-                  << "' (non-optimized) is " << in_deriv.Sum();
-        KALDI_LOG << "Input-deriv sum for input '" << request.inputs[i].name
-                  << "' (optimized) is " << in_deriv_opt.Sum();
-        if (!ApproxEqual(in_deriv, in_deriv_opt)) {
-          KALDI_WARN << "Non-optimized and optimized versions of the "
-                     << "computation give different input-derivs.";
-          return false;
+      KALDI_LOG << "Running non-optimized backward computation";
+      computer.Run();
+      KALDI_LOG << "Running optimized backward computation";
+      computer_opt.Run();
+      for (size_t i = 0; i < request.inputs.size(); i++) {
+        if (request.inputs[i].has_deriv) {
+          const CuMatrixBase<BaseFloat> &in_deriv =
+              computer.GetOutput(request.inputs[i].name);
+          const CuMatrixBase<BaseFloat> &in_deriv_opt =
+              computer_opt.GetOutput(request.inputs[i].name);
+          KALDI_LOG << "Input-deriv sum for input '" << request.inputs[i].name
+                    << "' (non-optimized) is " << in_deriv.Sum();
+          KALDI_LOG << "Input-deriv sum for input '" << request.inputs[i].name
+                    << "' (optimized) is " << in_deriv_opt.Sum();
+          if (!ApproxEqual(in_deriv, in_deriv_opt)) {
+            KALDI_WARN << "Non-optimized and optimized versions of the "
+                       << "computation give different input-derivs.";
+            return false;
+          }
         }
       }
     }

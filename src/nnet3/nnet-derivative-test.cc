@@ -139,7 +139,7 @@ void UnitTestNnetModelDerivatives() {
       if (limit_deriv_times)
         SetDerivTimesOptions(request, &opt_config);
 
-      Optimize(opt_config, nnet, request, &computation);
+      Optimize(opt_config, nnet, &computation);
       std::ostringstream os;
       computation.Print(os, nnet);
       KALDI_LOG << "Optimized computation is: " << os.str();
@@ -198,7 +198,7 @@ void UnitTestNnetModelDerivatives() {
       }
 
       KALDI_LOG << "Running forward computation";
-      computer.Forward();
+      computer.Run();
 
       const CuMatrixBase<BaseFloat> &output(computer.GetOutput("output"));
       KALDI_LOG << "Output sum for pass " << pass << " is " << output.Sum();
@@ -208,9 +208,9 @@ void UnitTestNnetModelDerivatives() {
       if (pass == 0) {
         // we need to do the backward computation (to get the model derivative)
         CuMatrix<BaseFloat> temp(output_deriv);
-        computer.AcceptOutputDeriv("output", &temp);
+        computer.AcceptInput("output", &temp);
         KALDI_LOG << "Running backward computation";
-        computer.Backward();
+        computer.Run();
       } else {
         // work out the predicted objf-change as dot-product of deriv and
         // parameter-change.  The expression below can be interpreted as
@@ -303,7 +303,7 @@ void UnitTestNnetInputDerivatives() {
     if (RandInt(0, 3) != 0 && allow_optimization) {
       NnetOptimizeOptions opt_config;
       // opt_config.initialize_undefined = false;  // temp
-      Optimize(opt_config, nnet, request, &computation);
+      Optimize(opt_config, nnet, &computation);
       std::ostringstream os;
       computation.Print(os, nnet);
       KALDI_LOG << "Optimized computation is: " << os.str();
@@ -314,13 +314,6 @@ void UnitTestNnetInputDerivatives() {
       compute_opts.debug = true;
     computation.ComputeCudaIndexes();
 
-    // the only reason we might need to provide the &nnet parameter is if the
-    // StoreStats() operation had been requested.  We made sure no model update
-    // is being performed.
-    NnetComputer computer(compute_opts,
-                          computation,
-                          nnet,
-                          &nnet);
 
     int32 num_directions = 3;  // must be >= 1.  Best if it's >1, will reduce
                                // the probability of random failures.
@@ -349,8 +342,18 @@ void UnitTestNnetInputDerivatives() {
     // Other passes are with various differently-perturbed versions of
     // the features.
     for (int32 pass = 0; pass <= num_directions + 1; pass++) {
+      // the only reason we might need to provide the &nnet parameter is if the
+      // StoreStats() operation had been requested.  We made sure no model update
+      // is being performed.
+      NnetComputer computer(compute_opts,
+                            computation,
+                            nnet,
+                            &nnet);
+
+
       // provide the input to the computations.
       for (size_t i = 0; i < request.inputs.size(); i++) {
+
         CuMatrix<BaseFloat> temp(inputs[i]);
         if (pass > 0 && pass <= num_directions) {  // Perturb the input randomly.
           delta_inputs[i].Resize(inputs[i].NumRows(), inputs[i].NumCols());
@@ -369,7 +372,7 @@ void UnitTestNnetInputDerivatives() {
       }
 
       KALDI_LOG << "Running forward computation";
-      computer.Forward();
+      computer.Run();
 
       const CuMatrixBase<BaseFloat> &output(computer.GetOutput("output"));
       KALDI_LOG << "Output sum for pass " << pass << " is " << output.Sum();
@@ -379,11 +382,11 @@ void UnitTestNnetInputDerivatives() {
       if (pass == 0) {
         // We need to compute the input derivatives.
         CuMatrix<BaseFloat> temp(output_deriv);
-        computer.AcceptOutputDeriv("output", &temp);
+        computer.AcceptInput("output", &temp);
         KALDI_LOG << "Running backward computation";
-        computer.Backward();
+        computer.Run();
         for (size_t i = 0; i < request.inputs.size(); i++) {
-          input_derivs[i] = computer.GetInputDeriv(request.inputs[i].name);
+          input_derivs[i] = computer.GetOutput(request.inputs[i].name);
           KALDI_LOG << "Input-deriv norm for '" << request.inputs[i].name
                     << "' is " << input_derivs[i].FrobeniusNorm();
         }
@@ -425,7 +428,7 @@ void UnitTestNnetInputDerivatives() {
 int main() {
   using namespace kaldi;
   using namespace kaldi::nnet3;
-  //SetVerboseLevel(2);
+  // SetVerboseLevel(4);
 
 
   for (kaldi::int32 loop = 0; loop < 2; loop++) {
@@ -444,4 +447,3 @@ int main() {
 
   return 0;
 }
-

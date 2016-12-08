@@ -69,10 +69,10 @@ void NnetComputeProb::Compute(const NnetExample &eg) {
                         nnet_, deriv_nnet_);
   // give the inputs to the computer object.
   computer.AcceptInputs(nnet_, eg.io);
-  computer.Forward();
+  computer.Run();
   this->ProcessOutputs(eg, &computer);
   if (config_.compute_deriv)
-    computer.Backward();
+    computer.Run();
 }
 
 void NnetComputeProb::ProcessOutputs(const NnetExample &eg,
