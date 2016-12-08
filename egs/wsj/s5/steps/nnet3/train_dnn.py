@@ -289,9 +289,6 @@ def train(args, run_opts, background_process_handler):
     if args.dropout_schedule is not None:
         dropout_schedule = common_train_lib.parse_dropout_option(
             num_archives_to_process, args.dropout_schedule)
-        logger.info("Dropout schedules for component names is as follows:\n")
-        for name, schedule in dropout_schedule:
-            logger.info("{0}: {1}".format(name, schedule))
 
     logger.info("Training will run for {0} epochs = "
                 "{1} iterations".format(args.num_epochs, num_iters))
