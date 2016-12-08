@@ -74,6 +74,7 @@ echo "$0: writing rttm."
   echo "Not creating rttm because local/txt2rttm.pl does not exist or not executable." && exit 1;
 
 local/txt_to_rttm.pl --symtab=$lang/words.txt --segment=$data/segments $dir/align.txt $dir/rttm 2>$dir/log/rttm.log
+local/txt_to_rttm.pl --symtab=$lang/words.txt $dir/align.txt $dir/rttm.per-utt 2>$dir/log/rttm.per-utt.log
 echo "$0: done writing rttm."
 
 exit 0;

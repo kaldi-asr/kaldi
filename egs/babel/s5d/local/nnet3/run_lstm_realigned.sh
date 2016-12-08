@@ -1,26 +1,10 @@
 #!/bin/bash
 
-# Copyright 2015  Johns Hopkins University (Author: Daniel Povey).
-#           2015  Vijayaditya Peddinti
-#           2015  Xingyu Na
-#           2015  Pegah Ghahrmani
-#           2016  Xiaohui Zhang
-# Apache 2.0.
-
-
-# this is a basic lstm script
-# LSTM script runs for more epochs than the TDNN script
-# and each epoch takes twice the time
-
-# At this script level we don't support not running on GPU, as it would be painfully slow.
-# If you want to run without GPU you'd have to call lstm/train.sh with --gpu false
-
 stage=0
 train_stage=-10
-has_fisher=true
 affix=
 speed_perturb=true
-multicondition=true
+multicondition=false
 common_egs_dir=
 reporting_email=
 
@@ -49,6 +33,8 @@ num_chunk_per_minibatch=100
 samples_per_iter=20000
 remove_egs=true
 
+align_model_dir=exp/nnet3/tdnn_sp
+extra_align_opts=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -77,27 +63,34 @@ if [ "$speed_perturb" == "true" ]; then
   suffix=_sp
 fi
 
-dir=exp/nnet3/lstm
+dir=exp/nnet3/lstm_realigned
 if [ "$multicondition" == "true" ]; then
   suffix=${suffix}_mc
   dir=exp/nnet3${multicondition:+_multicondition}/lstm
 fi
 
+
+suffix=${suffix}
 dir=$dir${affix:+_$affix}$suffix
 train_set=train$suffix
-ali_dir=exp/tri5_ali$suffix
+
 
 if [ "$multicondition" == "true" ]; then
-  local/nnet3/run_ivector_multicondition_common.sh --stage $stage \
-    	--speed-perturb $speed_perturb || exit 1;
   ivector_dir=exp/nnet3_multicondition/ivectors_${train_set}
 else
-  local/nnet3/run_ivector_common.sh --stage $stage \
-    	--speed-perturb $speed_perturb || exit 1;
   ivector_dir=exp/nnet3/ivectors_${train_set}
 fi
 
-if [ $stage -le 12 ]; then
+# think of  a better way to determine ali_dir name
+ali_dir=${align_model_dir}_${train_set}_ali
+if [ $stage -le 1 ]; then
+  steps/nnet3/align.sh  --cmd "$decode_cmd" --use-gpu false \
+    $extra_align_opts --online-ivector-dir $ivector_dir \
+    --nj 400 data/${train_set}_hires data/lang \
+    $align_model_dir $ali_dir || exit 1;
+fi
+
+if [ $stage -le 2 ]; then
   echo "$0: creating neural net configs";
   config_extra_opts=()
   [ ! -z "$lstm_delay" ] && config_extra_opts+=(--lstm-delay "$lstm_delay")
@@ -118,7 +111,7 @@ if [ $stage -le 12 ]; then
 
 fi
 
-if [ $stage -le 13 ]; then
+if [ $stage -le 3 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/babel-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
