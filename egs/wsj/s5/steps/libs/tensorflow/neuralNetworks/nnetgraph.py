@@ -1,3 +1,4 @@
+# Copyright 2016    Vincent Renkens
 ##@package nnetgraph
 # contains the functionality to create neural network graphs and train/test it
 

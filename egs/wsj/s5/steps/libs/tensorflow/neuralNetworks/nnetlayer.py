@@ -1,3 +1,4 @@
+# Copyright 2016    Vincent Renkens
 ##@package nnetlayer
 # contains neural network layers 
 

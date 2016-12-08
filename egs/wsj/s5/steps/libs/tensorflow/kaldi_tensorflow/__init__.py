@@ -5,6 +5,6 @@
 
 import ark
 import batchdispenser
-import kaldi_interface
+import kaldiInterface
 
-__all__ = ["ark", "batchdispenser", "kaldi_interface"]
+__all__ = ["ark", "batchdispenser", "kaldiInterface"]

@@ -1,3 +1,4 @@
+# Copyright 2016    Vincent Renkens
 ##@package nnet
 # contains the functionality for a Kaldi style neural network
 
@@ -8,11 +9,12 @@ import tensorflow as tf
 import gzip
 import shutil
 import os
-
+import sys
+sys.path.append('steps/')
 import nnetgraph
 import nnetactivations
-import batchdispenser
-import ark
+import libs.tensorflow.kaldi_tensorflow.batchdispenser as batchdispenser
+import libs.tensorflow.kaldi_tensorflow.ark as ark
 
 ## a class for a neural network that can be used together with Kaldi
 class Nnet:
