@@ -29,7 +29,7 @@
 namespace kaldi {
 namespace nnet3 {
 
-// Options class for optimizing a NnetComputation The main projected use for
+// Options class for optimizing a NnetComputation.  The main projected use for
 // this is in debugging the optimization code itself, so that if an error is
 // detected, we can work out which optimization was responsible for the error.
 struct NnetOptimizeOptions {
@@ -46,20 +46,23 @@ struct NnetOptimizeOptions {
   bool allocate_from_other;
   int32 min_deriv_time;
   int32 max_deriv_time;
+  int32 max_deriv_time_relative;
 
-  NnetOptimizeOptions(): optimize(true),
-                         consolidate_model_update(true),
-                         propagate_in_place(true),
-                         backprop_in_place(true),
-                         convert_addition(true),
-                         remove_assignments(true),
-                         allow_left_merge(true),
-                         allow_right_merge(true),
-                         initialize_undefined(true),
-                         move_sizing_commands(true),
-                         allocate_from_other(true),
-                         min_deriv_time(std::numeric_limits<int32>::min()),
-                         max_deriv_time(std::numeric_limits<int32>::max()) { }
+  NnetOptimizeOptions():
+      optimize(true),
+      consolidate_model_update(true),
+      propagate_in_place(true),
+      backprop_in_place(true),
+      convert_addition(true),
+      remove_assignments(true),
+      allow_left_merge(true),
+      allow_right_merge(true),
+      initialize_undefined(true),
+      move_sizing_commands(true),
+      allocate_from_other(true),
+      min_deriv_time(std::numeric_limits<int32>::min()),
+      max_deriv_time(std::numeric_limits<int32>::max()),
+      max_deriv_time_relative(std::numeric_limits<int32>::max()) {}
 
   void Register(OptionsItf *opts) {
     opts->Register("optimize", &optimize, "Set this to false to turn off all "
@@ -99,6 +102,12 @@ struct NnetOptimizeOptions {
                    "the maximum t value that you want derivatives to be computed "
                    "at when updating the model.  This is an optimization that "
                    "saves time in the backprop phase for recurrent frameworks");
+    opts->Register("max-deriv-time-relative", &max_deriv_time_relative,
+                   "An alternative mechanism for setting the --max-deriv-time, "
+                   "suitable for situations where the length of the egs is "
+                   "variable.  If set, it is equivalent to setting the "
+                   "--max-deriv-time to this value plus the largest 't' value "
+                   "in any 'output' node of the computation request.");
   }
   void Read(std::istream &is, bool binary);
   void Write(std::ostream &os, bool binary) const;
@@ -130,20 +139,47 @@ struct ComputationRequestPtrEqual {
   }
 };
 
+
+
+struct CachingOptimizingCompilerOptions {
+  bool use_shortcut;
+  int32 write_cache;
+  int32 cache_capacity;
+
+
+
+  CachingOptimizingCompilerOptions():
+      use_shortcut(true),
+      cache_capacity(64) { }
+
+  void Register(OptionsItf *opts) {
+    opts->Register("use-shortcut", &use_shortcut,
+                   "If true, use the 'shortcut' in compilation whereby "
+                   "computation requests with regular structure are identified "
+                   "as such, a computation with a smaller number of distinct "
+                   "values of 'n' is compiled (e.g. 2), and the compiled "
+                   "computation is expanded to match the size of the real "
+                   "computation request.");
+    opts->Register("cache-capacity", &cache_capacity,
+                   "Determines how many computations the computation-cache will "
+                   "store (most-recently-used).");
+  }
+};
+
 /// This class enables you to do the compilation and optimization in one call,
 /// and also ensures that if the ComputationRequest is identical to the previous
 /// one, the compilation process is not repeated.
 class CachingOptimizingCompiler {
  public:
   CachingOptimizingCompiler(const Nnet &nnet,
-                           const int32 capacity = 20):
-      nnet_(nnet), cache_capacity_(capacity) { }
+                            const CachingOptimizingCompilerOptions &config):
+      nnet_(nnet), config_(config), cache_capacity_(capacity) { }
 
   /// Note: nnet is retained as a const reference but opt_config is copied.
   CachingOptimizingCompiler(const Nnet &nnet,
                             const NnetOptimizeOptions &opt_config,
-                            const int32 capacity = 20):
-      nnet_(nnet), opt_config_(opt_config), cache_capacity_(capacity) { }
+                            const CachingOptimizingCompilerOptions &config):
+      nnet_(nnet), config_(config), opt_config_(opt_config) { }
 
   ~CachingOptimizingCompiler();
   /// Does the compilation and returns a const pointer to
@@ -155,6 +191,7 @@ class CachingOptimizingCompiler {
   void WriteCache(std::ostream &os, bool binary) const;
  private:
   const Nnet &nnet_;
+  CachingOptimizingCompilerOptions config_;
   NnetOptimizeOptions opt_config_;
 
   // The access queue for keeping track of the freshness of computation.
