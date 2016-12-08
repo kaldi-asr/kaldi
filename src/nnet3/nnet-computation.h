@@ -91,9 +91,9 @@ struct IoSpecification {
   void Swap(IoSpecification *other);
 
   void Read(std::istream &istream, bool binary);
-  
+
   void Write(std::ostream &ostream, bool binary) const;
-  
+
   bool operator== (const IoSpecification &other) const;
 };
 
@@ -147,7 +147,7 @@ struct ComputationRequest {
   void Read(std::istream &istream, bool binary);
 
   void Write(std::ostream &ostream, bool binary) const;
-  
+
   bool operator== (const ComputationRequest &other) const;
 };
 

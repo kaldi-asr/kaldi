@@ -1829,6 +1829,23 @@ void DerivativeTimeLimiter::PruneMatrices() {
     LimitMatrices(will_limit);
 }
 
+
+int32 MaxOutputTimeInRequest(const ComputationRequest &request) {
+  int32 ans = std::numeric_limits<int32>::min();
+  for (size_t i = 0; i < request.outputs.size(); i++) {
+    std::vector<Index> indexes &indexes = request.outputs[i].indexes;
+    std::vector<Index> indexes::const_iterator iter = indexes.begin(),
+        end = indexes.end();
+    for (; iter != end; ++iter)
+      if (iter.t > ans)
+        ans = iter.t;
+  }
+  if (ans == std::numeric_limits<int32>::min()) {
+    KALDI_ERR << "Failed to find any output indexes in computation request.";
+  }
+  return ans;
+}
+
 void LimitDerivativeTimes(const Nnet &nnet,
                           int32 min_deriv_time,
                           int32 max_deriv_time,
