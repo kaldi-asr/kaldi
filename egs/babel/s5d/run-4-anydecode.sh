@@ -19,10 +19,12 @@ tri5_only=false
 wip=0.5
 
 nnet3_model=nnet3/tdnn_sp
+chain_model=
+parent_dir_suffix=_cleaned
 is_rnn=false
-extra_left_context=0
-extra_right_context=0
-frames_per_chunk=0
+extra_left_context=40
+extra_right_context=40
+frames_per_chunk=20
 
 echo "run-4-test.sh $@"
 
@@ -292,13 +294,14 @@ if ! $skip_kws ; then
   if  $vocab_kws ; then
     . ./local/datasets/vocab_kws.sh || exit 1
   fi
-
+if false ; then
   ./local/syllab/run_phones.sh ${dataset_dir}
   ./local/syllab/run_syllabs.sh ${dataset_dir}
 
   ./local/search/run_search.sh --dir ${dataset_dir##*/}
   ./local/search/run_phn_search.sh --dir ${dataset_dir##*/}
   ./local/search/run_syll_search.sh --dir ${dataset_dir##*/}
+fi
 fi
 
 if $data_only ; then
@@ -317,10 +320,10 @@ if [ ! -f data/langp_test/.done ]; then
   touch data/langp_test/.done
 fi
 
-if [ ! -d ./data/langp_test.syll ]; then
+if [ ! -L ./data/langp_test.syll ]; then
   ln -s lang.syll data/langp_test.syll
 fi
-if [ ! -d ./data/langp_test.phn ]; then
+if [ ! -L ./data/langp_test.phn ]; then
   ln -s lang.phn data/langp_test.phn
 fi
 
@@ -459,7 +462,7 @@ fi
 if [ -f exp/nnet3/lstm_bidirectional_sp/.done ]; then
   decode=exp/nnet3/lstm_bidirectional_sp/decode_${dataset_id}
   rnn_opts=" --extra-left-context 40 --extra-right-context 40  --frames-per-chunk 20 "
-  decode_script=steps/nnet3/lstm/decode.sh
+  decode_script=steps/nnet3/decode.sh
   if [ ! -f $decode/.done ]; then
     mkdir -p $decode
     $decode_script --nj $my_nj --cmd "$decode_cmd" $rnn_opts \
@@ -478,10 +481,31 @@ if [ -f exp/nnet3/lstm_bidirectional_sp/.done ]; then
     ${dataset_dir} data/langp_test $decode
 fi
 
+if [ -f exp/nnet3/lstm_realigned_bidirectional_sp//.done ]; then
+  decode=exp/nnet3/lstm_realigned_bidirectional_sp//decode_${dataset_id}
+  rnn_opts=" --extra-left-context 40 --extra-right-context 40  --frames-per-chunk 20 "
+  decode_script=steps/nnet3/decode.sh
+  if [ ! -f $decode/.done ]; then
+    mkdir -p $decode
+    $decode_script --nj $my_nj --cmd "$decode_cmd" $rnn_opts \
+          --beam $dnn_beam --lattice-beam $dnn_lat_beam \
+          --skip-scoring true  \
+          --online-ivector-dir exp/nnet3/ivectors_${dataset_id} \
+          exp/tri5/graph ${dataset_dir}_hires $decode | tee $decode/decode.log
+
+    touch $decode/.done
+  fi
+
+  local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
+    --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
+    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
+    "${lmwt_dnn_extra_opts[@]}" \
+    ${dataset_dir} data/langp_test $decode
+fi
 if [ -f exp/nnet3/lstm_sp/.done ]; then
   decode=exp/nnet3/lstm_sp/decode_${dataset_id}
   rnn_opts=" --extra-left-context 40 --extra-right-context 0  --frames-per-chunk 20 "
-  decode_script=steps/nnet3/lstm/decode.sh
+  decode_script=steps/nnet3/decode.sh
   if [ ! -f $decode/.done ]; then
     mkdir -p $decode
     $decode_script --nj $my_nj --cmd "$decode_cmd" $rnn_opts \
@@ -506,7 +530,6 @@ if [ -f exp/$nnet3_model/.done ]; then
   decode_script=steps/nnet3/decode.sh
   if [ "$is_rnn" == "true" ]; then
     rnn_opts=" --extra-left-context $extra_left_context --extra-right-context $extra_right_context  --frames-per-chunk $frames_per_chunk "
-    decode_script=steps/nnet3/lstm/decode.sh
   fi
   if [ ! -f $decode/.done ]; then
     mkdir -p $decode
@@ -526,6 +549,51 @@ if [ -f exp/$nnet3_model/.done ]; then
     ${dataset_dir} data/langp_test $decode
 fi
 
+####################################################################
+##
+## chain model decoding
+##
+####################################################################
+if [ -f exp/$chain_model/.done ]; then
+  dir=exp/$chain_model
+
+  decode=$dir/decode_${dataset_id}
+  decode_script=steps/nnet3/decode.sh
+
+  if [ ! -f exp/nnet3$parent_dir_suffix/ivectors_${dataset_id}/.done ] ; then
+    steps/online/nnet2/extract_ivectors_online.sh --cmd "$decode_cmd" --nj $my_nj \
+      ${dataset_dir}_hires exp/nnet3$parent_dir_suffix/extractor exp/nnet3$parent_dir_suffix/ivectors_${dataset_id}/ || exit 1;
+    touch exp/nnet3$parent_dir_suffix/ivectors_${dataset_id}/.done
+  fi
+
+  rnn_opts=
+  if [ "$is_rnn" == "true" ]; then
+    rnn_opts=" --extra-left-context $extra_left_context --extra-right-context $extra_right_context  --frames-per-chunk $frames_per_chunk "
+    echo "Modifying the number of jobs as this is an RNN and decoding can be extremely slow."
+    my_nj=`cat ${dataset_dir}_hires/spk2utt|wc -l`
+  fi
+  if [ ! -f $decode/.done ]; then
+    mkdir -p $decode
+    echo "Modifying the number of jobs as this is an RNN and decoding can be extremely slow."
+    my_nj=`cat ${dataset_dir}_hires/spk2utt|wc -l`
+    $decode_script --nj $my_nj --cmd "$decode_cmd" $rnn_opts \
+          --acwt 1.0 --post-decode-acwt 10.0 \
+          --beam $dnn_beam --lattice-beam $dnn_lat_beam \
+          --skip-scoring true  \
+          --online-ivector-dir exp/nnet3$parent_dir_suffix/ivectors_${dataset_id} \
+          $dir/graph ${dataset_dir}_hires $decode | tee $decode/decode.log
+
+    touch $decode/.done
+  fi
+
+  local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
+    --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
+    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
+    "${lmwt_chain_extra_opts[@]}" \
+    ${dataset_dir} data/langp_test $decode
+else
+  echo "no chain model exp/$chain_model"
+fi
 
 ####################################################################
 ##

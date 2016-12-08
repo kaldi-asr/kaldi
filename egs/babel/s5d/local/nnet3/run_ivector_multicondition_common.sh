@@ -3,8 +3,18 @@
 . ./cmd.sh
 set -e
 stage=1
+train_stage=-10
 generate_alignments=true # false if doing ctc training
 speed_perturb=true
+snrs="20:15:10"
+num_data_reps=3
+ali_dir=exp/
+db_string="'air' 'rwcp' 'rvb2014'" # RIR dbs to be used in the experiment
+                                      # only dbs used for ASpIRE submission system have been used here
+RIR_home=db/RIR_databases/ # parent directory of the RIR databases files
+download_rirs=true # download the RIR databases from the urls or assume they are present in the RIR_home directory
+
+
 
 [ ! -f ./lang.conf ] && echo 'Language configuration does not exist! Use the configurations in conf/lang/* as a startup' && exit 1
 [ ! -f ./conf/common_vars.sh ] && echo 'the file conf/common_vars.sh does not exist!' && exit 1
@@ -94,8 +104,69 @@ for line in sys.stdin.readlines():
 
 fi
 
-# ivector extractor training
+# check if the required tools are present
+$KALDI_ROOT/egs/aspire/s5/local/multi_condition/check_version.sh || exit 1;
+mkdir -p exp/nnet3_multicondition
+if [ $stage -le 4 ]; then
+  # prepare the impulse responses
+  local/multi_condition/prepare_impulses_noises.sh --log-dir exp/make_reverb/log \
+    --db-string "$db_string" \
+    --download-rirs $download_rirs \
+    --RIR-home $RIR_home \
+    data/impulses_noises || exit 1;
+fi
+
 if [ $stage -le 5 ]; then
+  # corrupt the training data to generate multi-condition data
+  for data_dir in train_sp; do
+    num_reps=$num_data_reps
+    reverb_data_dirs=
+    for i in `seq 1 $num_reps`; do
+      cur_dest_dir=" data/temp_${data_dir}_${i}"
+      $KALDI_ROOT/egs/aspire/s5/local/multi_condition/reverberate_data_dir.sh --random-seed $i \
+        --snrs "$snrs" --log-dir exp/make_corrupted_wav \
+        data/${data_dir}  data/impulses_noises $cur_dest_dir
+      reverb_data_dirs+=" $cur_dest_dir"
+    done
+    utils/combine_data.sh --extra-files utt2uniq data/${data_dir}_mc data/${data_dir} $reverb_data_dirs
+    rm -rf $reverb_data_dirs
+  done
+fi
+
+if [ $stage -le 6 ]; then
+  # copy the alignments for the newly created utterance ids
+  ali_dirs=
+  for i in `seq 1 $num_data_reps`; do
+    local/multi_condition/copy_ali_dir.sh --utt-prefix "rev${i}_" exp/tri5_ali_sp exp/tri5_ali_sp_temp_$i || exit 1;
+    ali_dirs+=" exp/tri5_ali_sp_temp_$i"
+  done
+    local/multi_condition/copy_ali_dir.sh exp/tri5_ali_sp exp/tri5_ali_sp_copy || exit 1;
+  ali_dirs+=" exp/tri5_ali_sp_copy"
+  utils/combine_ali_dirs.sh --num-jobs 32 \
+    data/train_sp_mc exp/tri5_ali_sp_mc $ali_dirs || exit 1;
+  rm -rf $ali_dirs
+fi
+
+train_set=train_sp_mc
+if [ $stage -le 7 ]; then
+  mfccdir=mfcc_reverb
+  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
+    date=$(date +'%m_%d_%H_%M')
+    utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/babel_reverb-$date/s5/$mfccdir/storage $mfccdir/storage
+  fi
+  for data_dir in $train_set; do
+    utils/copy_data_dir.sh data/$data_dir data/${data_dir}_hires
+    steps/make_mfcc.sh --nj 70 --mfcc-config conf/mfcc_hires.conf \
+        --cmd "$train_cmd" data/${data_dir}_hires \
+        exp/make_reverb_hires/${data_dir} $mfccdir || exit 1;
+    steps/compute_cmvn_stats.sh data/${data_dir}_hires exp/make_reverb_hires/${data_dir} $mfccdir || exit 1;
+    utils/fix_data_dir.sh data/${data_dir}_hires
+    utils/validate_data_dir.sh data/${data_dir}_hires
+  done
+fi
+
+# ivector extractor training
+if [ $stage -le 8 ]; then
   # We need to build a small system just because we need the LDA+MLLT transform
   # to train the diag-UBM on top of.  We use --num-iters 13 because after we get
   # the transform (12th iter is the last), any further training is pointless.
@@ -104,24 +175,24 @@ if [ $stage -le 5 ]; then
     --splice-opts "--left-context=3 --right-context=3" \
     --boost-silence $boost_sil \
     $numLeavesMLLT $numGaussMLLT data/${train_set}_hires \
-    data/langp/tri5_ali/ exp/tri5_ali_sp exp/nnet3/tri3b
+    data/langp/tri5_ali exp/tri5_ali_sp_mc exp/nnet3_multicondition/tri3b
 fi
 
-if [ $stage -le 6 ]; then
+if [ $stage -le 9 ]; then
   # To train a diagonal UBM we don't need very much data, so use the smallest subset.
-  steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 30 --num-threads 12 --num-frames 200000 \
-    data/${train_set}_hires 512 exp/nnet3/tri3b exp/nnet3/diag_ubm
+  steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 30 --num-frames 200000 \
+    data/${train_set}_hires 512 exp/nnet3_multicondition/tri3b exp/nnet3_multicondition/diag_ubm
 fi
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 10 ]; then
   # iVector extractors can be sensitive to the amount of data, but this one has a
   # fairly small dim (defaults to 100) so we don't use all of it, we use just the
   # 100k subset (just under half the data).
   steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 10 \
-    data/${train_set}_hires exp/nnet3/diag_ubm exp/nnet3/extractor || exit 1;
+    data/${train_set}_hires exp/nnet3_multicondition/diag_ubm exp/nnet3_multicondition/extractor || exit 1;
 fi
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 11 ]; then
   # We extract iVectors on all the train_nodup data, which will be what we
   # train the system on.
 
@@ -130,7 +201,7 @@ if [ $stage -le 8 ]; then
   steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/${train_set}_hires data/${train_set}_max2_hires
 
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
-    data/${train_set}_max2_hires exp/nnet3/extractor exp/nnet3/ivectors_$train_set || exit 1;
+    data/${train_set}_max2_hires exp/nnet3_multicondition/extractor exp/nnet3_multicondition/ivectors_$train_set || exit 1;
 
 fi
 

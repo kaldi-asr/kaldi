@@ -13,6 +13,10 @@ echo $0 "$@"
 set -e -o pipefail
 set -o nounset                              # Treat unset variables as an error
 
+if [ $# -ne 5 ] ; then
+  echo "Usage: <rttm-file> <kwlist-file> <ecf-file> <word-dir> <output-file>"
+  exit 1
+fi
 
 rttm=$1
 kwlist=$2
@@ -37,7 +41,7 @@ if [ -z "$kwseval" ] ; then
   exit 1
 fi
 
-$kwseval -c -r $rttm -e $ecf -t $kwlist -s $workdir/kwslist.xml -f $workdir/
+bash -x $kwseval -c -r $rttm -e $ecf -t $kwlist -s $workdir/kwslist.xml -f $workdir/
 grep -E ",,MISS" $workdir/alignment.csv | \
   perl -e '
       binmode STDIN, ":utf8";
