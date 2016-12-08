@@ -19,7 +19,7 @@ import sys
 sys.path.append('steps/')
 sys.path.insert(0, os.path.realpath(os.path.dirname(sys.argv[0])) + '/')
 
-import libs.tensorflow.neuralNetworks.nnet as nnet
+import libs.tensorflow.tensorflow_nnet.nnet as nnet
 import libs.tensorflow.kaldi_tensorflow.ark as ark
 import libs.tensorflow.kaldi_tensorflow.kaldiInterface as kaldiInterface
 import libs.tensorflow.kaldi_tensorflow.batchdispenser as batchdispenser

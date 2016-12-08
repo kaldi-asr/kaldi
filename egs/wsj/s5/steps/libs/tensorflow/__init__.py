@@ -4,5 +4,5 @@
 # This module has the python functions which facilitate the use of tensorflow toolkit under kaldi
 # It has two sub-modules
 # kaldi_tensorflow : including necessary interface module to run tensorflow under kaldi 
-# neuralNetworks :   including tensorflow neural network trining module, tensorflow neural network could be
+# tensorflow_nnet :   including tensorflow neural network trining module, tensorflow neural network could be
 #                    expanded under this directory
