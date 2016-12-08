@@ -28,6 +28,11 @@ def _get_args():
     parser.add_argument("--eps-symbol", type=str, default="-",
                         help="Symbol used to contain alignment "
                         "to empty symbol")
+    parser.add_argument("--oov-word", type=str, default=None,
+                        help="Symbol of OOV word in hypothesis")
+    parser.add_argument("--symbol-table", type=argparse.FileType('r'),
+                        help="Symbol table for words in vocabulary.")
+
     parser.add_argument("--verbose", type=int, default=0)
     parser.add_argument("--correct-score", type=int, default=1,
                         help="Score for correct matches")
@@ -65,14 +70,67 @@ def _get_args():
     return args
 
 
-def smith_waterman_alignment(ref, hyp, eps_symbol,
-                             similarity_score, del_score, ins_score,
-                             hyp_format="CTM", file_=None, channel="1"):
-    output = []
+def read_text(text_file):
+    for line in text_file:
+        parts = line.strip().split()
+        if len(parts) <= 2:
+            raise kaldi_exceptions.InputError(
+                "Did not get enough columns.",
+                line=line, input_file=text_file.name)
+        yield parts[0], parts[1:]
+    text_file.close()
 
-    if hyp_format == "CTM" and file_ is None:
-        raise kaldi_exceptions.ArgumentError(
-            "file_ is required if hyp_format is CTM")
+
+def read_ctm(ctm_file, file_and_channel2reco=None):
+    prev_reco = ""
+    ctm_lines = []
+    for line in ctm_file:
+        try:
+            parts = line.strip().split()
+            parts[2] = float(parts[2])
+            parts[3] = float(parts[3])
+
+            if len(parts) == 5:
+                parts.append(1.0)   # confidence defaults to 1.0.
+
+            if len(parts) != 6:
+                raise ValueError("CTM must have 6 fields.")
+
+            if file_and_channel2reco is None:
+                reco = parts[0]
+                if parts[1] != '1':
+                    raise ValueError("Channel should be 1, "
+                                     "got {0}".format(parts[1]))
+
+            reco = file_and_channel2reco[(parts[0], parts[1])]
+            if prev_reco != "" and reco != prev_reco:
+                # New recording
+                yield prev_reco, ctm_lines
+                ctm_lines = []
+            ctm_lines.append(parts[2:])
+            prev_reco = reco
+        except Exception:
+            logger.error("Error in processing CTM line {0}".format(line))
+            raise
+    if prev_reco != "" and len(ctm_lines) > 0:
+        yield prev_reco, ctm_lines
+    ctm_file.close()
+
+
+def smith_waterman_alignment(ref, hyp, similarity_score_function,
+                             del_score, ins_score,
+                             eps_symbol="<eps>"):
+    """Does Smith-Waterman alignment of reference sequence and hypothesis
+    sequence.
+    This is a special case of the Smith-Waterman alignment that assumes that
+    the deletion and insertion costs are linear with number of incorrect words.
+
+    Returns a list of tuples where each tuple has the format:
+        (ref_word, hyp_word, ref_word_from_index, hyp_word_from_index,
+         ref_word_to_index, hyp_word_to_index)
+    """
+
+    output = []
 
     M = len(ref)
     N = len(hyp)
@@ -84,16 +142,14 @@ def smith_waterman_alignment(ref, hyp, eps_symbol,
         H[m] = [0 for x in range(N+1)]
         bp[m] = [(0, 0) for x in range(N+1)]
 
-    global_max = 0
-    global_max_element = (0, 0)
+    max_score = 0
+    max_score_element = (0, 0)
 
     for m in range(1, M+1):
         for n in range(1, N+1):
-            sub_or_ok = (H[m-1][n-1] +
-                         similarity_score(ref[m-1],
-                                          hyp[n-1][4]
-                                          if hyp_format == "CTM"
-                                          else hyp[n-1]))
+            sub_or_ok = (H[m-1][n-1]
+                         + similarity_score_function(ref[m-1], hyp[n-1]))
+
             if sub_or_ok > 0:
                 H[m][n] = sub_or_ok
                 bp[m][n] = (m-1, n-1)
@@ -115,16 +171,12 @@ def smith_waterman_alignment(ref, hyp, eps_symbol,
                     "({0},{1}) -> ({2},{3}): {4}".format(m, n-1, m, n,
                                                          H[m][n]))
 
-            if H[m][n] > global_max:
-                global_max = H[m][n]
-                global_max_element = (m, n)
+            if H[m][n] > max_score:
+                max_score = H[m][n]
+                max_score_element = (m, n)
 
-    m, n = global_max_element
-    score = global_max
-
-    # output.append( (m, n,
-    #                 ref[m-1] if m > 0 else eps_symbol,
-    #                 hyp[n-1] if n > 0 else eps_symbol) )
+    m, n = max_score_element
+    score = max_score
 
     while score > 0:
         prev_m, prev_n = bp[m][n]
@@ -136,23 +188,13 @@ def smith_waterman_alignment(ref, hyp, eps_symbol,
                            prev_m, prev_n, m, n))
         elif (prev_n == n):
             # Deletion
-            fake_hyp = eps_symbol
-            if hyp_format == "CTM":
-                if n > 0:
-                    fake_hyp = []
-                    fake_hyp.extend(hyp[n-1])
-                    assert len(hyp[n-1]) in [5, 6]
-                    assert fake_hyp[0] == file_ and fake_hyp[1] == channel
-                    fake_hyp[2] += fake_hyp[3]
-                    fake_hyp[3] = 0.0
-                    fake_hyp[4] = eps_symbol
-                else:
-                    fake_hyp = (file_, channel, 0, 0, eps_symbol)
+            assert prev_m == m - 1
             output.append((ref[m-1] if m > 0 else eps_symbol,
-                           fake_hyp,
+                           eps_symbol,
                            prev_m, prev_n, m, n))
         elif (prev_m == m):
             # Insertion
+            assert prev_n == n - 1
             output.append((eps_symbol,
                            hyp[n-1] if n > 0 else eps_symbol,
                            prev_m, prev_n, m, n))
@@ -178,7 +220,166 @@ def smith_waterman_alignment(ref, hyp, eps_symbol,
     logger.debug("\t\t".join(str(x[1]) for x in output))
     logger.debug(str(score))
 
-    return (output, global_max)
+    return (output, max_score)
+
+
+def print_alignment(recording, alignment, eps_symbol, out_file_handle):
+    out_text = [recording]
+    for line in alignment:
+        try:
+            out_text.append(line[1])
+        except Exception:
+            logger.error("Something wrong with alignment. "
+                         "Invalid line {0}".format(line))
+            raise
+    print (" ".join(out_text), file=out_file_handle)
+
+
+def get_edit_type(hyp_word, ref_word, duration=-1, eps_symbol='<eps>',
+                  oov_word=None, symbol_table=None):
+    if hyp_word == ref_word and hyp_word != eps_symbol:
+        return 'cor'
+    if hyp_word != eps_symbol and ref_word == eps_symbol:
+        return 'ins'
+    if hyp_word == eps_symbol and ref_word != eps_symbol:
+        return 'del'
+    if (symbol_table is not None and hyp_word == oov_word
+            and ref_word not in symbol_table):
+        return 'cor'    # this special case is treated as correct
+    if hyp_word == eps_symbol and ref_word == eps_symbol:
+        return 'sil'
+    assert hyp_word != eps_symbol and ref_word != eps_symbol
+    return 'sub'
+
+
+def get_ctm_edits(alignment_output, ctm_array, eps_symbol="<eps>",
+                  oov_word=None, symbol_table=None):
+    """
+    This function takes two lists
+        alignment_output = The output of smith_waterman_alignment() which is a
+            list of tuples (ref_word, hyp_word, ref_word_from_index,
+            hyp_word_from_index, ref_word_to_index, hyp_word_to_index)
+        ctm_array = [ [ start1, duration1, hyp_word1, confidence1 ], ... ]
+    and pads them with new list elements so that the entries 'match up'.
+
+    Returns CTM edits lines, which are CTM lines appended with reference word
+    and edit type.
+
+    What we are aiming for is that for each i, ctm_array[i][2] ==
+    alignment_output[i][1].  The reasons why this is not automatically true
+    are:
+
+     (1) There may be insertions in the hypothesis sequence that are not
+         aligned with any reference words in the beginning of the
+         alignment_output.
+     (2) There may be deletions in the end of the alignment_output that
+         do not correspond to any additional hypothesis CTM lines.
+
+    We introduce suitable entries in to alignment_output and ctm_array as
+    necessary to make them 'match up'.
+    """
+    ctm_edits = []
+    ali_len = len(alignment_output)
+    ctm_len = len(ctm_array)
+    ali_pos = 0
+    ctm_pos = 0
+
+    # current_time is the end of the last ctm segment we processesed.
+    current_time = ctm_array[0][0] if ctm_len > 0 else 0.0
+
+    while ali_pos < ali_len or ctm_pos < ctm_len:
+        try:
+            if ali_pos < ali_len and ctm_pos < ctm_len:
+                [ref_word, hyp_word, ref_prev_i,
+                 hyp_prev_i, ref_i, hyp_i] = alignment_output[ali_pos]
+
+                assert hyp_prev_i <= ctm_len
+
+                while ctm_pos < hyp_prev_i:
+                    assert len(ctm_array[ctm_pos]) == 4
+                    assert ali_pos == 0
+                    # These CTM entries are insertions or silence. So we add
+                    # them without incrementing the alignment index position.
+                    ctm_line = list(ctm_array[ctm_pos])
+                    edit_type = get_edit_type(
+                        hyp_word=ctm_line[2], ref_word=eps_symbol,
+                        duration=ctm_line[1], eps_symbol=eps_symbol,
+                        oov_word=oov_word, symbol_table=symbol_table)
+                    ctm_line.extend([eps_symbol, edit_type])
+                    ctm_edits.append(ctm_line)
+                    current_time = (ctm_array[ctm_pos][0]
+                                    + ctm_array[ctm_pos][1])
+                    ctm_pos += 1
+
+                if ctm_pos < ctm_len:
+                    assert ctm_pos == hyp_prev_i
+                    assert hyp_word == ctm_array[ctm_pos][2]
+                    assert len(ctm_array[ctm_pos]) == 4
+                    # This is the normal case, where there are 2 entries where
+                    # they hyp-words match up.
+                    ctm_line = list(ctm_array[ctm_pos])
+                    edit_type = get_edit_type(
+                        hyp_word=hyp_word, ref_word=ref_word,
+                        duration=ctm_line[1], eps_symbol=eps_symbol,
+                        oov_word=oov_word, symbol_table=symbol_table)
+                    ctm_line.extend([ref_word, edit_type])
+                    ctm_edits.append(ctm_line)
+                    current_time = (ctm_array[ctm_pos][0]
+                                    + ctm_array[ctm_pos][1])
+                    ctm_pos += 1
+
+                ali_pos += 1
+            elif ctm_pos < ctm_len:
+                # This CTM entry is an insertion and there is no alignment
+                # corresponding to this.
+                # This means we've reached the end of the edits sequence.
+                assert ali_pos == ali_len
+                assert len(ctm_array[ctm_pos]) == 4
+                ctm_line = list(ctm_array[ctm_pos])
+                edit_type = get_edit_type(
+                    hyp_word=ctm_line[2], ref_word=eps_symbol,
+                    duration=ctm_line[1], eps_symbol=eps_symbol,
+                    oov_word=oov_word, symbol_table=symbol_table)
+                ctm_line.extend([eps_symbol, edit_type])
+                ctm_edits.append(ctm_line)
+                current_time = (ctm_array[ctm_pos][0]
+                                + ctm_array[ctm_pos][1])
+                ctm_pos += 1
+            else:
+                while ali_pos < ali_len:
+                    [ref_word, hyp_word, ref_prev_i,
+                     hyp_prev_i, ref_i, hyp_i] = alignment_output[ali_pos]
+
+                    assert hyp_prev_i == ctm_len and hyp_word == eps_symbol
+                    # These are deletions as there are no CTM entries
+                    # corresponding to these alignments.
+                    edit_type = get_edit_type(
+                        hyp_word=eps_symbol, ref_word=ref_word,
+                        duration=0.0, eps_symbol=eps_symbol,
+                        oov_word=oov_word, symbol_table=symbol_table)
+                    ctm_line = [current_time, 0.0, eps_symbol, 1.0,
+                                ref_word, edit_type]
+                    ctm_edits.append(ctm_line)
+                    ali_pos += 1
+        except Exception:
+            logger.error("Could not get ctm edits for "
+                         "edits@{edits_pos} = {0}, ctm@{ctm_pos} = {1}".format(
+                            ("NONE" if ali_pos >= ali_len
+                             else alignment_output[ali_pos]),
+                            ("NONE" if ctm_pos >= ctm_len
+                             else ctm_array[ctm_pos]),
+                            edits_pos=ali_pos, ctm_pos=ctm_pos))
+            logger.error("alignment = {0}".format(alignment_output))
+            raise
+    return ctm_edits
+
+
+def ctm_line_to_string(ctm_line):
+    if len(ctm_line) != 8:
+        raise RuntimeError("len(ctm_line) expected to be {0}. "
+                           "Invalid line {1}".format(8, ctm_line))
+
+    return " ".join([str(x) for x in ctm_line])
 
 
 def test_alignment():
@@ -186,105 +387,11 @@ def test_alignment():
     ref = "AGCACACA"
 
     output, score = smith_waterman_alignment(
-        ref, hyp, "-",
-        lambda x, y: 2 if (x == y) else -1,
-        -1, -1, hyp_format="Text")
+        ref, hyp, similarity_score_function=lambda x, y: 2 if (x == y) else -1,
+        del_score=-1, ins_score=-1, eps_symbol="-")
 
-    print_alignment("Alignment", dict(), output, "-", "Text",
-                    sys.stderr)
-
-
-def read_text(text_file):
-    for line in text_file:
-        parts = line.strip().split()
-        if len(parts) <= 2:
-            raise kaldi_exceptions.InputError(
-                "Did not get enough columns.",
-                line=line, input_file=text_file.name)
-        yield parts[0], parts[1:]
-    text_file.close()
-
-
-def read_ctm(ctm_file, file_and_channel2reco):
-    all_ctm = {}
-    prev_reco = ""
-    ctm_lines = []
-    for line in ctm_file:
-        try:
-            parts = line.strip().split()
-            parts[2] = float(parts[2])
-            parts[3] = float(parts[3])
-            reco = file_and_channel2reco[(parts[0], parts[1])]
-            if prev_reco != "" and reco != prev_reco:
-                # New recording
-                all_ctm[prev_reco] = ctm_lines
-                ctm_lines = []
-            ctm_lines.append(parts)
-            prev_reco = reco
-        except Exception as e:
-            logger.error(e, exc_info=True)
-            raise kaldi_exceptions.InputError(str(e), line=line)
-    if prev_reco != "" and len(ctm_lines) > 0:
-        all_ctm[prev_reco] = ctm_lines
-    ctm_file.close()
-    return all_ctm
-
-
-def print_alignment(recording, reco2file_and_channel,
-                    alignment, eps_symbol,
-                    hyp_format, out_file_handle):
-
-    out_text = [recording]
-    for line in alignment:
-        try:
-            ref_word = line[0]
-            if hyp_format == "CTM":
-                hyp_entry = line[1]
-
-                current_time = hyp_entry[2] + hyp_entry[3]
-
-                if hyp_entry == eps_symbol:
-                    file_, channel = reco2file_and_channel[recording]
-                    hyp_entry = (file_, channel, current_time, 0, eps_symbol,
-                                 1.0, ref_word, "del")
-                else:
-                    if len(hyp_entry) == 5:
-                        hyp_entry.append(1.0)
-                    if (ref_word == eps_symbol):
-                        error_type = "ins"
-                    elif (ref_word != hyp_entry[4]):
-                        error_type = "sub"
-                    else:
-                        error_type = "cor"
-                    hyp_entry.extend([ref_word, error_type])
-
-                hyp_entry = ctm_line_to_string(hyp_entry)
-                print (hyp_entry, file=out_file_handle)
-            else:
-                out_text.append(line[1])
-        except Exception as e:
-            logger.error(e, exc_info=True)
-            raise RuntimeError("Something wrong with alignment. "
-                               "Invalid line {0}".format(line))
-    if hyp_format != "CTM":
-        print (" ".join(out_text), file=out_file_handle)
-
-
-def ctm_line_to_string(ctm_line):
-    line = list(ctm_line[0:5])
-
-    if len(ctm_line) == 5:
-        line.append(1.0)
-    elif len(ctm_line) == 6:
-        line.append(ctm_line[5])
-    else:
-        if len(ctm_line) != 8:
-            raise RuntimeError("len(ctm_line) expected to be {0}. "
-                               "Invalid line {1}".format(8, ctm_line))
-        line.append(ctm_line[6])
-        line.append(ctm_line[7])
-
-    return " ".join([str(x) for x in line])
+    print_alignment("Alignment", output, eps_symbol="-",
+                    out_file_handle=sys.stderr)
 
 
 def _run(args):
@@ -292,9 +399,10 @@ def _run(args):
         test_alignment()
         raise SystemExit("Exiting since --debug-only was true")
 
-    similarity_score = (lambda x, y: args.correct_score
-                                     if x == y
-                                     else -args.substitution_penalty)
+    def similarity_score_function(x, y):
+        if x == y:
+            return args.correct_score
+        return -args.substitution_penalty
 
     del_score = -args.deletion_penalty
     ins_score = -args.insertion_penalty
@@ -310,36 +418,64 @@ def _run(args):
             file_and_channel2reco[(parts[1], parts[2])] = parts[0]
         args.reco2file_and_channel.close()
 
+    symbol_table = {}
+    if args.symbol_table is not None:
+        for line in args.symbol_table:
+            parts = line.strip().split()
+            symbol_table[parts[0]] = int(parts[1])
+        args.symbol_table.close()
+
     if args.hyp_format == "Text":
         hyp_lines = {key: value
                      for (key, value) in read_text(args.hyp_in_file)}
     else:
-        hyp_lines = read_ctm(args.hyp_in_file, file_and_channel2reco)
+        hyp_lines = {key: value
+                     for (key, value) in read_ctm(args.hyp_in_file,
+                                                  file_and_channel2reco)}
 
     num_err = 0
     for reco, ref_text in read_text(args.ref_in_file):
-        if reco not in hyp_lines:
-            num_err += 1
-            raise Warning("Could not find recording {0} "
-                          "in hypothesis {1}".format(reco,
-                                                     args.hyp_in_file.name))
-            continue
+        try:
+            if reco not in hyp_lines:
+                num_err += 1
+                raise Warning("Could not find recording {0} "
+                              "in hypothesis {1}".format(
+                                  reco, args.hyp_in_file.name))
+                continue
 
-        hyp = hyp_lines[reco]
+            if args.hyp_format == "CTM":
+                hyp_array = [x[2] for x in hyp_lines[reco]]
+            else:
+                hyp_array = hyp_lines[reco]
 
-        if args.reco2file_and_channel is not None:
-            file_, channel = reco2file_and_channel[reco]
-        else:
-            file_ = reco
-            channel = "1"
-        [output, score] = smith_waterman_alignment(
-            ref_text, hyp, args.eps_symbol,
-            similarity_score, del_score, ins_score,
-            hyp_format=args.hyp_format, file_=file_, channel=channel)
+            if args.reco2file_and_channel is None:
+                reco2file_and_channel[reco] = "1"
 
-        print_alignment(reco, reco2file_and_channel, output,
-                        args.eps_symbol, args.hyp_format,
-                        args.alignment_out_file)
+            output, score = smith_waterman_alignment(
+                ref_text, hyp_array, eps_symbol=args.eps_symbol,
+                similarity_score_function=similarity_score_function,
+                del_score=del_score, ins_score=ins_score)
+
+            if args.hyp_format == "CTM":
+                ctm_edits = get_ctm_edits(output, hyp_lines[reco],
+                                          eps_symbol=args.eps_symbol,
+                                          oov_word=args.oov_word,
+                                          symbol_table=symbol_table)
+                for line in ctm_edits:
+                    ctm_line = list(reco2file_and_channel[reco])
+                    ctm_line.extend(line)
+                    print(ctm_line_to_string(ctm_line),
+                          file=args.alignment_out_file)
+            else:
+                print_alignment(
+                    reco, output, eps_symbol=args.eps_symbol,
+                    out_file_handle=args.alignment_out_file)
+        except:
+            logger.error("Alignment failed for recording {0} "
+                         "with ref = {1} and hyp = {2}".format(
+                             reco, " ".join(ref_text),
+                             " ".join(hyp_array)))
+            raise
 
 
 def main():

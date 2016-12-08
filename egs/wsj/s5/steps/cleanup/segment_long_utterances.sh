@@ -28,7 +28,7 @@ neighbor_tfidf_threshold=0
 # First-pass segmentation opts
 min_segment_length=0.5
 min_new_segment_length=1.0
-max_tained_length=0.05
+max_tainted_length=0.05
 max_edge_silence_length=0.5
 max_edge_non_scored_length=0.5
 max_internal_silence_length=2.0
@@ -36,6 +36,11 @@ max_internal_non_scored_length=2.0
 unk_padding=0.05
 max_junk_proportion=0.1
 max_deleted_words_kept_when_merging=1
+silence_factor=1
+incorrect_words_factor=1
+tainted_or_incorrect_words_factor=1
+max_wer=10
+max_silence_length=10
 
 stage=-1
 
@@ -189,6 +194,7 @@ fi
 if [ $stage -le 5 ]; then
   steps/cleanup/internal/get_ctm.sh \
     --lmwt $lmwt --cmd "$cmd --mem 4G" \
+    --print-silence true \
     $data_uniform_seg $lang $dir/lats
 fi
 
@@ -259,7 +265,7 @@ if [ $stage -le 8 ]; then
       --query2docs=$dir/docs/split$nj/JOB/relevant_docs.txt \
       --input-documents=$dir/docs/split$nj/JOB/docs.txt \
       --output-documents=- \| \
-    steps/cleanup/internal/align_ctm_ref.py --eps-symbol="***" \
+    steps/cleanup/internal/align_ctm_ref.py --eps-symbol='"<eps>"' \
       --hyp-format=CTM \
       --reco2file-and-channel=$dir/lats/fake_reco2file_and_channel.JOB \
       - \
@@ -310,7 +316,7 @@ if [ $stage -le 12 ]; then
   segmentation_opts=(
   --min-segment-length=$min_segment_length
   --min-new-segment-length=$min_new_segment_length
-  --max-taited-length=$max_tained_length
+  --max-tainted-length=$max_tainted_length
   --max-edge-silence-length=$max_edge_silence_length
   --max-edge-non-scored-length=$max_edge_non_scored_length
   --max-internal-silence-length=$max_internal_silence_length
@@ -318,10 +324,15 @@ if [ $stage -le 12 ]; then
   --unk-padding=$unk_padding
   --max-junk-proportion=$max_junk_proportion
   --max-deleted-words-kept-when-merging=$max_deleted_words_kept_when_merging
+  --silence-factor=$silence_factor
+  --incorrect-words-factor=$incorrect_words_factor
+  --tainted-or-incorrect-words-factor=$tainted_or_incorrect_words_factor
+  --max-wer=$max_wer
+  --max-silence-length=$max_silence_length
   )
 
   $cmd $dir/log/segment_ctm_edits.log \
-    steps/cleanup/internal/segment_ctm_edits.py \
+    steps/cleanup/internal/segment_ctm_edits_mild.py \
       ${segmentation_opts[@]} \
       --oov-symbol-file=$lang/oov.txt \
       --ctm-edits-out=$dir/ctm_edits.segmented \
