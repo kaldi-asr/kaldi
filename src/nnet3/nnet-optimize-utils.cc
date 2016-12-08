@@ -1829,6 +1829,23 @@ void DerivativeTimeLimiter::PruneMatrices() {
     LimitMatrices(will_limit);
 }
 
+
+int32 MaxOutputTimeInRequest(const ComputationRequest &request) {
+  int32 ans = std::numeric_limits<int32>::min();
+  for (size_t i = 0; i < request.outputs.size(); i++) {
+    std::vector<Index> indexes &indexes = request.outputs[i].indexes;
+    std::vector<Index> indexes::const_iterator iter = indexes.begin(),
+        end = indexes.end();
+    for (; iter != end; ++iter)
+      if (iter.t > ans)
+        ans = iter.t;
+  }
+  if (ans == std::numeric_limits<int32>::min()) {
+    KALDI_ERR << "Failed to find any output indexes in computation request.";
+  }
+  return ans;
+}
+
 void LimitDerivativeTimes(const Nnet &nnet,
                           int32 min_deriv_time,
                           int32 max_deriv_time,
@@ -1837,6 +1854,34 @@ void LimitDerivativeTimes(const Nnet &nnet,
                                 computation);
   limiter.LimitDerivTimes();
 }
+
+// This class implements the internals of the ExpandComputation() function.
+class ComputationExpander {
+ public:
+  ComputationExpander(const Computation &computation,
+                      bool need_debug_info,
+                      int32 num_n_values,
+                      Computation *expanded_computation):
+      computation_(computation),
+      need_debug_info_(need_debug_info),
+      num_n_values_(num_n_values),
+      expanded_computation_(expanded_computation) { }
+
+  // This function call implements the functionality of the class,
+  // expanding the computation.
+  bool Expand();
+
+ private:
+
+  const Computation &computation_;
+  bool need_debug_info_;
+  int32 num_n_values_;
+  Computation *expanded_computation_;
+
+
+};
+
+
 
 } // namespace nnet3
 } // namespace kaldi

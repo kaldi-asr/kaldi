@@ -52,7 +52,15 @@ void NnetOptimizeOptions::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &min_deriv_time);
   ExpectToken(is, binary, "<MaxDerivTime>");
   ReadBasicType(is, binary, &max_deriv_time);
-  ExpectToken(is, binary, "</NnetOptimizeOptions>");
+  std::string tok;
+  ReadToken(is, binary, &tok);
+  if (tok == "<MaxDerivTimeRelative>") {
+    ReadBasicType(is, binary, &max_deriv_time_relative);
+    ReadToken(is, binary, &tok);
+  }
+
+
+  KALDI_ASSERT(tok == "</NnetOptimizeOptions>");
 }
 
 void NnetOptimizeOptions::Write(std::ostream &os, bool binary) const {
@@ -83,6 +91,8 @@ void NnetOptimizeOptions::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, min_deriv_time);
   WriteToken(os, binary, "<MaxDerivTime>");
   WriteBasicType(os, binary, max_deriv_time);
+  WriteToken(os, binary, "<MaxDerivTimeRelative>");
+  WriteBasicType(os, binary, max_deriv_time_relative);
   WriteToken(os, binary, "</NnetOptimizeOptions>");
 }
 
@@ -99,7 +109,8 @@ bool NnetOptimizeOptions::operator == (const NnetOptimizeOptions &other) const {
           other.move_sizing_commands == move_sizing_commands &&
           other.allocate_from_other == allocate_from_other &&
           other.min_deriv_time == min_deriv_time &&
-          other.max_deriv_time == max_deriv_time);
+          other.max_deriv_time == max_deriv_time &&
+          other.max_deriv_time_relative == max_deriv_time_relative);
 }
 
 // move commands that resize matrices to as late/early as possible.
@@ -413,10 +424,16 @@ void Optimize(const NnetOptimizeOptions &config,
   if (GetVerboseLevel() >= 4)
     CheckComputation(nnet, request, *computation, true);
 
-  // this will do nothing unless --min-deriv-time or --max-deriv-time was
-  // set.
-  LimitDerivativeTimes(nnet, config.min_deriv_time, config.max_deriv_time,
-                       computation);
+  { // Call LimitDerivativeTimes().
+    // this will do nothing unless --min-deriv-time or --max-deriv-time
+    // or --max-deriv-time-relative was set.
+    int32 max_deriv_time = config.max_deriv_time;
+    if (config.max_deriv_time_relative != std::numeric_limits<int32>::max())
+      max_deriv_time = config.max_deriv_time_relative +
+          MaxOutputTimeInRequest(request);
+    LimitDerivativeTimes(nnet, config.min_deriv_time,
+                         max_deriv_time, computation);
+  }
 
   if (GetVerboseLevel() >= 4)
     CheckComputation(nnet, request, *computation, true);
@@ -478,11 +495,26 @@ size_t ComputationRequestHasher::operator() (const ComputationRequest *cr) const
 
 size_t ComputationRequestHasher::IoSpecificationToInt(const IoSpecification& spec) const {
   size_t ans;
+  size_t n = 19;  // this value is used to extract only a subset of elements to hash;
+                  // it makes the hasher faster.
   StringHasher string_hasher;
   ans = string_hasher(spec.name);
   std::vector<Index>::const_iterator itr = spec.indexes.begin(),
-                                     end = spec.indexes.end();
-  for (; itr != end; ++itr) {
+      end = spec.indexes.end(),
+      med = end;
+  if (med > itr + n)
+    med = iter + n;
+
+  for (; itr != med; ++itr) {
+    ans += (*itr).n * 1619;
+    ans += (*itr).t * 15649;
+    ans += (*itr).x * 89809;
+  }
+  // after the first 'n' values, look only at every n'th value.  this makes the
+  // hashing much faster, and in the kinds of structures that we actually deal
+  // with, we shouldn't get unnecessary hash collisions as a result of this
+  // optimization.
+  for (; iter < end; itr += n) {
     ans += (*itr).n * 1619;
     ans += (*itr).t * 15649;
     ans += (*itr).x * 89809;
