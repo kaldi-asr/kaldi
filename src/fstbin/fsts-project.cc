@@ -1,6 +1,6 @@
-// fstbin/fsts-to-transcripts.cc
+// fstbin/fsts-project.cc
 
-// Copyright 2012-2013  Johns Hopkins University (Authors: Guoguo Chen, Daniel Povey)
+// Copyright 2016  Johns Hopkins University (Authors: Jan "Yenda" Trmal)
 
 // See ../../COPYING for clarification regarding multiple authors
 //

@@ -1,6 +1,6 @@
-// fstbin/fsts-to-transcripts.cc
+// fstbin/fsts-union.cc
 
-// Copyright 2012-2013  Johns Hopkins University (Authors: Guoguo Chen, Daniel Povey)
+// Copyright 2016  Johns Hopkins University (Authors: Jan "Yenda" Trmal)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -53,20 +53,20 @@ int main(int argc, char *argv[]) {
     SequentialTableReader<VectorFstHolder> fst_reader(fsts_rspecifier);
     TableWriter<VectorFstHolder> fst_writer(fsts_wspecifier);
 
-    int32 n_out_done = 0, 
+    int32 n_out_done = 0,
           n_in_done = 0;
     std::string res_key = "" ;
     VectorFst<StdArc> res_fst;
 
     for (; !fst_reader.Done(); fst_reader.Next()) {
-      std::string key = fst_reader.Key(); 
+      std::string key = fst_reader.Key();
       VectorFst<StdArc> fst(fst_reader.Value());
 
-      n_in_done++; 
+      n_in_done++;
       if (key == res_key) {
         fst::Union(&res_fst, fst);
       } else {
-        if (res_key != "") { 
+        if (res_key != "") {
           VectorFst<StdArc> out_fst;
           fst::Minimize(&res_fst);
           fst::RmEpsilon(&res_fst);
@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
         }
         res_fst = fst;
         res_key = key;
-      } 
+      }
 
     }
     if (res_key != "") {
@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
       n_out_done++;
     }
 
-    KALDI_LOG << "Applied fst union on " << n_in_done 
+    KALDI_LOG << "Applied fst union on " << n_in_done
               << " FSTs, produced " <<  n_out_done << " FSTs";
     return (n_out_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {

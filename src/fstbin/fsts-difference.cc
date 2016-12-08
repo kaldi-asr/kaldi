@@ -1,6 +1,6 @@
 // fstbin/fsts-difference.cc
 
-// Copyright 2012-2013  Johns Hopkins University (Authors: Guoguo Chen, Daniel Povey)
+// Copyright 2016  Johns Hopkins University (Authors: Jan "Yenda" Trmal)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -38,7 +38,7 @@ int main(int argc, char **argv) {
         "retained in the result.\n"
         "\n"
         "Usage: fsts-subtract [options] <fsts-rspecifier> "
-                                        "<fsts-rspecifier> " 
+                                        "<fsts-rspecifier> "
                                         "<fsts-wspecifier>\n"
         " e.g.: fsts-subtract ark:A.fsts ark:B.fsts ark,t:C.fsts\n";
 
@@ -69,7 +69,7 @@ int main(int argc, char **argv) {
     for (; !fst_reader1.Done(); fst_reader1.Next()) {
       std::string key = fst_reader1.Key();
       const VectorFst<StdArc> &A(fst_reader1.Value());
-      
+
       if (fst_reader2.HasKey(key)) {
         const VectorFst<StdArc> &B(fst_reader2.Value(key));
         VectorFst<StdArc> C;
@@ -84,7 +84,7 @@ int main(int argc, char **argv) {
       n_done++;
     }
 
-    KALDI_LOG << "Processed " << n_done 
+    KALDI_LOG << "Processed " << n_done
               << " FSTs, skipped " << n_skipped << "FSTs";
 
     return (n_done != 0 ? 0 : 1);
