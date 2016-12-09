@@ -336,6 +336,8 @@ class DerivativeTimeLimiter {
   std::vector<MatrixPruneInfo> prune_info_;
 };
 
+
+
 // This is the top-level interface to limit the times on which derivatives are
 // computed (e.g. for truncated BPTT); internally it uses class
 // DerivativeLimiter.  Will do nothing if min_deriv_time and max_deriv_time are
@@ -345,11 +347,80 @@ void LimitDerivativeTimes(const Nnet &nnet,
                           int32 max_deriv_time,
                           NnetComputation *computation);
 
-/// This function detects submatrices, matrices, and members of indexes_multi
-/// and indexes that are never used (e.g. due to changes made in other
-/// optimization code), and removes them from the computation by way of suitable
-/// renumbering.  It does not remove no-ops from computation->commands_; to do
-/// that, call RemoveNoOps(computation).
+/**  This function, used in 'shortcut' compilation where we first compile a
+     smaller computation with the same structure but only 2 distinct 'n'
+     values, works out whether a computation is 'decomposable'; if so,
+     it returns true and outputs the 'mini_request' with the same structure,
+     and the number of 'n' values.
+
+     A computation is decomposable if the following conditions hold:
+
+      - All of its inputs and outputs contain 'n' values for all 0 <= n < N,
+        for some N > 2.  [we output this 'N' as 'num_n_values'].
+      - All of its inputs and outputs have 'regular' structure.
+
+        What it means for an input or output (i.e. an IoSpecification) to have a
+        'regular' structure, is as follows:
+          - The 't' and 'x' values present are the same for each 'n',
+          - The order in which the indexes appear is EITHER of the following:
+             - The 'n' index varies 'fast', i.e. the order is:
+                 (t1,x1,0), (t1,x1,1) ... (t1,x1,N-1) \
+                 (t2,x2,0), (t2,x2,1) ... (t2,x2,N-1)  ...
+             - The 'n' index varies 'slowly', i.e. the order is:
+                 (t1,x1,0), (t2,x2,0) ...  \
+                 (t1,x1,1), (t2,x2,1) ...  \
+                 ...                       \
+                 (t1,x2,N-1), (t2,x2,N-1) ...
+            In either case, there does not have to be any particular rhyme or
+            reason to the order of the t and x values; the regularity on 'n' is
+            all that we care about.
+ */
+bool ComputationIsDecomposable(const ComputationRequest &request,
+                               ComputationRequest *mini_request,
+                               int32 *num_n_values);  // TODO: implement this.
+
+
+/**
+  This function is used in 'shortcut' compilation to expand a computation
+  that has been compiled for exactly 2 'n' values, to one that is suitable
+  for some num_n_values > 2.
+     @param [in] computation  The computation that was compiled for exactly
+                              2 'n' values (n=0 and n=1)
+     @param [in] need_debug_info True if we want to retain the 'debug_info'
+                              in the output 'expanded_computation'.  In any
+                              case, the 'debug_info' is required in the
+                              input computation.
+     @param [in] num_n_values The number of 'n' values we want in the output
+                              computation
+     @param [out] expanded_computation  The expanded computation.
+
+     @return  This function returns true if it succeeded, and false if it
+              could not expand the computation for some reason (e.g. there
+              was some non-simple component where the 'PrecomputedIndexes'
+              object could not be suitably expanded.  If it returns false,
+              the output 'expanded_computation' is undefined (may contain junk).
+ */
+bool ExpandComputation(const NnetComputation &computation,
+                       bool need_debug_info,
+                       int32 num_n_values,
+                       NnetComputation *expanded_computation);
+
+
+
+/// This function detects cases where commands of type kCopyRows, kAddRows or
+/// kAddToRows can be converted to commands of type kMatrixCopy or kMatrixAdd,
+/// and converts them (this may involve adding submatrices).  After doing this
+/// you should at some point do RenumberComputation(), which will remove any
+/// now-unused members of computation->indexes.
+/// This function returns true if it made any changes to the computation.
+bool ReplaceRowWithMatrixOps(NnetComputation *computation);
+
+/// This function detects submatrices and matrices that are never used (e.g. due
+/// to changes made in other optimization code), and members of indexes,
+/// indexes_multi and indexes_ranges that are unused or are duplicates, and
+/// removes them from the computation by way of suitable renumbering.  It does
+/// not remove no-ops from computation->commands_; to do that, call
+/// RemoveNoOps(computation).
 void RenumberComputation(NnetComputation *computation);
 
 /// Removes commands of type kNoOperation in the computation.

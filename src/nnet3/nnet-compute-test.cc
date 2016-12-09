@@ -172,7 +172,9 @@ void UnitTestNnetCompute() {
     if (RandInt(0, 1) == 0) {
       NnetOptimizeOptions opt_config;
 
-      Optimize(opt_config, nnet, &computation);
+      Optimize(opt_config, nnet,
+               MaxOutputTimeInRequest(request),
+               &computation);
       {
         std::ostringstream os;
         computation.Print(os, nnet);

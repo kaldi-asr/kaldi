@@ -691,8 +691,7 @@ bool VariableMergingOptimizer::MergeVariables() {
        command_index++) {
     // This loop looks for pairs of sub-matrix indexes s1,s2 that we could
     // potentially merge into a single variable.
-    const NnetComputation::Command &c =
-        computation_->commands[command_index];
+    const NnetComputation::Command &c = computation_->commands[command_index];
     int32 s1 = -1, s2 = -1;
     if (c.command_type == kMatrixCopy &&
         config_.remove_assignments) {
@@ -1843,6 +1842,7 @@ void DerivativeTimeLimiter::PruneMatrices() {
     LimitMatrices(will_limit);
 }
 
+
 void LimitDerivativeTimes(const Nnet &nnet,
                           int32 min_deriv_time,
                           int32 max_deriv_time,
@@ -1851,6 +1851,187 @@ void LimitDerivativeTimes(const Nnet &nnet,
                                 computation);
   limiter.LimitDerivTimes();
 }
+
+
+/*
+  This helper function, used in ReplaceRowWithMatrixOps, detects
+  when the vector 'indexes' has a 'special structure'.  The special structure
+  is:
+    zero or more -1's, then
+    a consecutive nonempty sequence of nonnegative numbers, e.g. 6 7 8 9 10, then
+    zero or more -1's.
+
+  Note: this function assumes that any negative elements of 'indexes' are -1.
+  If there are elements less than -1, then it is an error, but this function
+  does not thoroughly check for that.  'indexes' is required to be a nonempty
+  vector.
+
+  If 'indexes' has the special structure then this function returns true
+  and sets the following values, which will explain with the following
+  example in mind: 'indexes = [ -1, -1, 5 6 7 8, -1 ]'.
+     - '*first_nonnegative_pos' is set to the number of initial -1's (and also
+       the location of the first nonnegative element): 2 in this case.
+     - '*first_nonnegative_value' is set to the value of the first nonnegative
+       element (5 in this case)
+     - '*num_nonnegative_values' is set to the number of nonnegative values in
+       the sequence (4 in this case).
+  If 'indexes' does not have this special structure, then this function returns
+  false, and the values of '*first_nonnegative_pos',
+  '*first_nonnegative_value' and '*num_nonnegative_indexes' on exit are
+  undefined.
+*/
+static bool IndexesHaveSpecialStructure(const std::vector<int32> &indexes,
+                                        int32 *first_nonnegative_pos,
+                                        int32 *first_nonnegative_value,
+                                        int32 *num_nonnegative_indexes) {
+  KALDI_ASSERT(!indexes.empty());
+  const int32 *indexes_ptr = &(indexes[0]);
+  size_t pos = 0, size = indexes.size();
+
+  // Find the first nonnegative element of 'indexes'.
+  for (; pos < size; ++pos)
+    if (indexes_ptr[pos] >= 0)
+      break;
+  if (pos == size)
+    return false;  // all -1's... should not happen, but not our problem.
+  *first_nonnegative_pos = static_cast<int32>(pos);
+  int32 n = indexes_ptr[pos];
+  *first_nonnegative_value = n;
+  // Find the first element after '*first_nonnegative_index' that isn't
+  // consecutive.
+  for (; pos < size; ++pos,++n)
+    if (indexes_ptr[pos] != n)
+      break;
+
+  *num_nonnegative_indexes = n - *first_nonnegative_value;
+
+  // Check that the remaining values are all <0 (assumed equal to -1, but
+  // checking <0 may be faster as just one instruction).
+  for (; pos < size; ++pos)
+    if (indexes_ptr[pos] >= 0)
+      return false;  // does not have the special structure.
+
+  return true;
+}
+
+
+
+bool ReplaceRowWithMatrixOps(NnetComputation *computation) {
+  bool ans = false;
+  int32 num_commands = computation->commands.size(),
+      num_indexes = computation->indexes.size();
+  for (int32 command_index = 0; command_index < num_commands;
+       command_index++) {
+    // non-const because we'll be changing it.
+    NnetComputation::Command &c = computation->commands[command_index];
+
+    int32 first_nonnegative_pos,
+        first_nonnegative_value,
+        num_nonnegative_indexes;
+    switch (c.command_type) {
+      case kCopyRows: case kAddRows: {
+        int32 indexes_index = c.arg3;
+        KALDI_ASSERT(indexes_index < num_indexes);
+        const std::vector<int32> &indexes = computation->indexes[indexes_index];
+        if (IndexesHaveSpecialStructure(indexes,
+                                        &first_nonnegative_pos,
+                                        &first_nonnegative_value,
+                                        &num_nonnegative_indexes)) {
+          ans = true;
+          c.arg1 = computation->NewSubMatrix(c.arg1, first_nonnegative_pos,
+                                             num_nonnegative_indexes,
+                                             0, -1);
+          c.arg2 = computation->NewSubMatrix(c.arg2, first_nonnegative_value,
+                                             num_nonnegative_indexes,
+                                             0, -1);
+          c.command_type = (c.command_type == kCopyRows ? kMatrixCopy :
+                            kMatrixAdd);
+        }
+        break;
+      }
+      default:
+        continue;
+    }
+  }
+  return ans;
+}
+
+// This class implements the internals of the ExpandComputation() function (used
+// in shortcut compilation); see comment by the declaration of
+// ExpandComputation() in nnet-optimize-utils.h for overview.
+class ComputationExpander {
+ public:
+  ComputationExpander(const NnetComputation &computation,
+                      bool need_debug_info,
+                      int32 num_n_values,
+                      NnetComputation *expanded_computation):
+      computation_(computation),
+      need_debug_info_(need_debug_info),
+      num_n_values_(num_n_values),
+      expanded_computation_(expanded_computation) {
+    KALDI_ASSERT(num_n_values > 2);
+  }
+
+  // This function call implements the functionality of the class,
+  // expanding the computation.
+  bool Expand();
+
+ private:
+  // This function sets up and computes the 'n_fast' vector (see comment
+  // by it for what this is.
+  void InitFastInfo();
+
+  // This function sets up the 'matrices' vector in 'expanded_computation_'.
+  // It's quite simple: it just multiplies all the num-rows by num_n_values_ and
+  // divides by 2, and leaves the num-cols the same.
+  void ComputeMatrices();
+
+  // This function, only called if need_debug_info_ is true, sets up
+  // the 'matrix_debug_info' vector in 'expanded_computation_'.
+  void ComputeDebugInfo();
+
+  // This function sets up the 'submatrices' vector in 'expanded_computation_'.
+  // Column ranges always stay the same, but for row ranges it's a little
+  // more complicated.
+  void ComputeSubmatrixInfo();
+
+
+  // This function computes all the PrecomputedIndexes in the
+  // 'component_precomputed_indexes' member of 'expanded_computation_'.
+  // They are all generated from scratch, by using the Component::PrecomputedIndexes()
+  // member function.  The 'input_indexes' and 'output_indexes' arguments are worked
+  // out from the 'debug_info' [if we're not generating debug_info we specially generate
+  // it for the specific matrices in question], and the 'need_backprop'
+  // argument is worked out by seeing whether there is a call to Backprop() with
+  // the same precomputed-indexes element.
+  void ComputePrecomputedIndexes();
+
+  // Computes the 'commands' member of the output.  This function also adds as
+  // needed to 'indexes', 'indexes_multi' and 'indexes_ranges' in the output.
+  // Later on we can call RenumberComputation() to remove any duplicates that
+  // might result from this.
+  void ComputeCommands();
+
+
+  // This 'n_fast' vector is indexed by the matrix-index in the computation,
+  // i.e. the same index as indexes computation_.matrix_info and
+  // expanded_computation_->matrix_info.  For each matrix-index m > 0 it
+  // contains true if the 'n' varies 'fast', or false if the 'n' index varies
+  // 'slowly'.  By 'fast' and 'slow', we mean in the same sense as is desribed
+  // in the comment for ComputationIsDecomposable() in nnet-optimize-utils.h.
+  std::vector<bool> n_fast;
+
+
+
+
+
+
+  const NnetComputation &computation_;
+  bool need_debug_info_;
+  int32 num_n_values_;
+  NnetComputation *expanded_computation_;
+};
+
 
 
 class ComputationLoopedOptimizer {
@@ -2017,10 +2198,7 @@ class ComputationLoopedOptimizer {
   std::vector<std::pair<int32, int32> > matrix_to_pair_;
 
   std::vector<int32> segment_end_commands_;
-
-
 };
-
 
 // static
 int32 ComputationLoopedOptimizer::FindTimeShift(
@@ -2500,6 +2678,7 @@ void OptimizeLoopedComputation(const Nnet &nnet,
 }
 
 
+
 void FixGotoLabel(NnetComputation *computation) {
   int32 num_commands = computation->commands.size();
   if (num_commands == 0)
@@ -2529,7 +2708,6 @@ void FixGotoLabel(NnetComputation *computation) {
     }
   }
 }
-
 
 
 } // namespace nnet3

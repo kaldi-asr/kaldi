@@ -481,15 +481,15 @@ void CpuBackpropLstmNonlinearity(const MatrixBase<Real> &input,
     //  Sigmoid(i_t_input), Sigmoid(f_t_input),
     //  Tanh(c_part), Sigmoid(o_t_input),  Tanh(c_t)
     Real i_t_self_repair = (
-        deriv_sum_in(0, c) / count < sr_config(0) ? sr_config(5) : 0.0);
+        deriv_sum_in_mat(0, c) / count < sr_config(0) ? sr_config(5) : 0.0);
     Real f_t_self_repair = (
-        deriv_sum_in(1, c) / count < sr_config(1) ? sr_config(6) : 0.0);
+        deriv_sum_in_mat(1, c) / count < sr_config(1) ? sr_config(6) : 0.0);
     Real c_part_self_repair = (
-        deriv_sum_in(2, c) / count < sr_config(2) ? sr_config(7) : 0.0);
+        deriv_sum_in_mat(2, c) / count < sr_config(2) ? sr_config(7) : 0.0);
     Real o_t_self_repair = (
-        deriv_sum_in(3, c) / count < sr_config(3) ? sr_config(8) : 0.0);
+        deriv_sum_in_mat(3, c) / count < sr_config(3) ? sr_config(8) : 0.0);
     Real c_t_self_repair = (
-        deriv_sum_in(4, c) / count < sr_config(4) ? sr_config(9) : 0.0);
+        deriv_sum_in_mat(4, c) / count < sr_config(4) ? sr_config(9) : 0.0);
     // Note on how we add self-repair for sigmoids/tanh's.  If self-repair
     // is activated for this unit, then...
     // For sigmoids we'd add -self_repair_scale * (2 * sigmoid(x) - 1.0)
@@ -605,7 +605,7 @@ void CpuBackpropLstmNonlinearity(const MatrixBase<Real> &input,
       // deriv_sum_out and deriv_sum_in might point to the same memory.
       for (int32 i = 0; i < 5; i++)
         (*self_repair_sum_out_mat)(i, c) =
-            (deriv_sum_in(i, c) / count < sr_config(i) ? num_rows : 0);
+            (deriv_sum_in_mat(i, c) / count < sr_config(i) ? num_rows : 0);
 
       (*deriv_sum_out_mat)(0, c) += i_t_deriv_sum;
       (*deriv_sum_out_mat)(1, c) += f_t_deriv_sum;
