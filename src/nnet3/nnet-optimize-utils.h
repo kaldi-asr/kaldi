@@ -337,6 +337,10 @@ class DerivativeTimeLimiter {
 };
 
 
+// This utility function, used in code that calls LimitDerivativeTimes(), returns
+// the largest time 't' in any of the 'outputs' in the computation request,
+// or crashes if there are no outputs (or no cindexes in those outputs).
+int32 MaxOutputTimeInRequest(const ComputationRequest &request);
 
 // This is the top-level interface to limit the times on which derivatives are
 // computed (e.g. for truncated BPTT); internally it uses class

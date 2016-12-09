@@ -58,7 +58,6 @@ void NnetOptimizeOptions::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &min_deriv_time);
   ExpectToken(is, binary, "<MaxDerivTime>");
   ReadBasicType(is, binary, &max_deriv_time);
-
   ReadToken(is, binary, &tok);
   if (tok == "<MaxDerivTimeRelative>") {
     ReadBasicType(is, binary, &max_deriv_time_relative);
