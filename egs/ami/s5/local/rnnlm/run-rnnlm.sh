@@ -160,7 +160,7 @@ if [ $stage -le -2 ]; then
 
   input-node name=input dim=$hidden_dim
   component name=first_nonlin type=SigmoidComponent dim=$hidden_dim
-  component name=first_renorm type=NormalizeComponent dim=$hidden_dim target-rms=1.0
+  component name=first_renorm type=SoftmaxComponent dim=$hidden_dim
   component name=hidden_affine type=AffineComponent input-dim=$hidden_dim output-dim=$hidden_dim
 
 #Component nodes

@@ -149,7 +149,9 @@ void LmNnetSamplingTrainer::Train(const NnetExample &eg) {
       }
     }
 
+//    KALDI_LOG << "adding...";
     nnet_->Add(*delta_nnet_, scale);
+//    KALDI_LOG << "scaling...";
     delta_nnet_->Scale(config_.momentum);
   }
 }
@@ -273,6 +275,7 @@ LmNnetSamplingTrainer::~LmNnetSamplingTrainer() {
   delete delta_nnet_;
 }
 
+// GPU
 void LmNnetSamplingTrainer::ComputeObjectiveFunction(
                               const GeneralMatrix &supervision,
                               ObjectiveType objective_type,
@@ -281,14 +284,19 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunction(
                               NnetComputer *computer,
                               BaseFloat *tot_weight,
                               BaseFloat *tot_objf,
-                              const LmOutputComponent *output_projection,
+                              const LmOutputComponent *output_projection_0,
                               Matrix<BaseFloat> *new_output,
                               LmNnet *nnet) {
+
+  const LinearNormalizedLogSoftmaxComponent *output_projection = 
+    dynamic_cast<const LinearNormalizedLogSoftmaxComponent*>(output_projection_0);
+
+
   const CuMatrixBase<BaseFloat> &output_0_gpu = computer->GetOutput(output_name);
 //  Matrix<BaseFloat> output_0(output_0_gpu.NumRows(), output_0_gpu.NumCols());
 //  output_0_gpu.CopyToMat(&output_0);
-  new_output->Resize(output_0_gpu.NumRows(), output_0_gpu.NumCols());
-  output_0_gpu.CopyToMat(new_output);
+//  new_output->Resize(output_0_gpu.NumRows(), output_0_gpu.NumCols());
+//  output_0_gpu.CopyToMat(new_output);
   int k = supervision.NumRows();
 
   KALDI_ASSERT(supervision.Type() == kSparseMatrix);
@@ -304,19 +312,15 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunction(
 
   vector<vector<BaseFloat> > out;
 
-  output_projection->Propagate(*new_output, indexes, &out);
+  output_projection->Propagate(output_0_gpu, indexes, &out);
+//  output_projection->Propagate(*new_output, indexes, &out);
 
   *tot_weight = post.Sum();
   *tot_objf = 0;
   for (int i = 0; i < k; i++) {
     KALDI_ASSERT(out[i].size() == 1);
-    KALDI_LOG << "out-" << i << " is " << out[i][0];
     *tot_objf += log(out[i][0]); // last one (k) is the correct lable
-
-    KALDI_LOG << "tot-objf is " << *tot_objf << " at " << i;
   }
-
-  KALDI_LOG << "objf value is " << *tot_objf << endl;
 
   if (supply_deriv && nnet != NULL) {
     // the derivative on the real output
@@ -329,18 +333,18 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunction(
     // the derivative after the affine layer (before the nonlin)
 
     // the derivative of the 'nnet3' part
-    Matrix<BaseFloat> input_deriv(new_output->NumRows(),
+    CuMatrix<BaseFloat> input_deriv(new_output->NumRows(),
                                     new_output->NumCols(),
                                     kSetZero);
 
-    Matrix<BaseFloat> place_holder;
-    output_projection->Backprop(indexes, *new_output, place_holder,
+    CuMatrix<BaseFloat> place_holder;
+    output_projection->Backprop(indexes, output_0_gpu, place_holder,
                                 output_deriv, nnet->output_projection_,
                                 &input_deriv);
 
-    CuMatrix<BaseFloat> cu_input_deriv(input_deriv);
+//    CuMatrix<BaseFloat> cu_input_deriv(input_deriv);
 
-    computer->AcceptOutputDeriv(output_name, &cu_input_deriv);
+    computer->AcceptOutputDeriv(output_name, &input_deriv);
   }
 }
 

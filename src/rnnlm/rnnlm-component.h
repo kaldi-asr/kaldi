@@ -148,6 +148,10 @@ class LinearNormalizedLogSoftmaxComponent: public LmOutputComponent {
                  const vector<vector<int> > &indexes,
                  vector<vector<BaseFloat> > *out) const;
 
+  void Propagate(const CuMatrixBase<BaseFloat> &in,
+                 const vector<vector<int> > &indexes,
+                 vector<vector<BaseFloat> > *out) const;
+
   virtual void Backprop(
              const vector<vector<int> > &indexes,
              const MatrixBase<BaseFloat> &in_value,
@@ -155,6 +159,14 @@ class LinearNormalizedLogSoftmaxComponent: public LmOutputComponent {
              const vector<vector<BaseFloat> > &out_deriv,
              LmOutputComponent *to_update_in,
              MatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void Backprop(
+             const vector<vector<int> > &indexes,
+             const CuMatrixBase<BaseFloat> &in_value,
+             const CuMatrixBase<BaseFloat> &, // out_value
+             const vector<vector<BaseFloat> > &out_deriv,
+             LmOutputComponent *to_update_in,
+             CuMatrixBase<BaseFloat> *in_deriv) const;
 
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
@@ -175,11 +187,11 @@ class LinearNormalizedLogSoftmaxComponent: public LmOutputComponent {
   // Some functions that are specific to this class.
 
   // This new function is used when mixing up:
-  virtual void SetParams(const MatrixBase<BaseFloat> &linear);
-  const Matrix<BaseFloat> &LinearParams() { return linear_params_; }
+  virtual void SetParams(const CuMatrixBase<BaseFloat> &linear);
+  const CuMatrix<BaseFloat> &LinearParams() { return linear_params_; }
   explicit LinearNormalizedLogSoftmaxComponent(const LinearNormalizedLogSoftmaxComponent &other);
   // The next constructor is used in converting from nnet1.
-  LinearNormalizedLogSoftmaxComponent(const MatrixBase<BaseFloat> &linear_params,
+  LinearNormalizedLogSoftmaxComponent(const CuMatrixBase<BaseFloat> &linear_params,
                   BaseFloat learning_rate);
   void Init(int32 input_dim, int32 output_dim,
             BaseFloat param_stddev);
@@ -199,9 +211,9 @@ class LinearNormalizedLogSoftmaxComponent: public LmOutputComponent {
   void Normalize();
 
   const LinearNormalizedLogSoftmaxComponent &operator = (const LinearNormalizedLogSoftmaxComponent &other); // Disallow.
-  Matrix<BaseFloat> linear_params_;
-  Vector<BaseFloat> normalizer_;
-  Matrix<BaseFloat> actual_params_;
+  CuMatrix<BaseFloat> linear_params_;
+//  CuVector<BaseFloat> normalizer_;
+  CuMatrix<BaseFloat> actual_params_;
   bool normalized_;
 };
 
