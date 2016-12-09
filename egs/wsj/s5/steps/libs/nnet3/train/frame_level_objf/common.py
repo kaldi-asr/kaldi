@@ -271,7 +271,9 @@ def train_one_iteration(dir, iter, srand, egs_dir,
             dropout_proportions, raw_model_string)
         dropout_info_str = ', {0}'.format(", ".join(dropout_info))
 
-    shrink_info_str = ' and shrink value is {0}'.format(shrinkage_value)
+    shrink_info_str = ''
+    if shrinkage_value != 1.0:
+        shrink_info_str = ' and shrink value is {0}'.format(shrinkage_value)
 
     logger.info("On iteration {0}, learning rate is {1}"
                 "{dropout_info}{shrink_info}.".format(
