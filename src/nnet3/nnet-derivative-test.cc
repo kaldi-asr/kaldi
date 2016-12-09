@@ -139,7 +139,9 @@ void UnitTestNnetModelDerivatives() {
       if (limit_deriv_times)
         SetDerivTimesOptions(request, &opt_config);
 
-      Optimize(opt_config, nnet, &computation);
+      Optimize(opt_config, nnet,
+               MaxOutputTimeInRequest(request),
+               &computation);
       std::ostringstream os;
       computation.Print(os, nnet);
       KALDI_LOG << "Optimized computation is: " << os.str();
@@ -303,7 +305,9 @@ void UnitTestNnetInputDerivatives() {
     if (RandInt(0, 3) != 0 && allow_optimization) {
       NnetOptimizeOptions opt_config;
       // opt_config.initialize_undefined = false;  // temp
-      Optimize(opt_config, nnet, &computation);
+      Optimize(opt_config, nnet,
+               MaxOutputTimeInRequest(request),
+               &computation);
       std::ostringstream os;
       computation.Print(os, nnet);
       KALDI_LOG << "Optimized computation is: " << os.str();

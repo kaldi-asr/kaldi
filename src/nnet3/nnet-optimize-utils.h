@@ -337,10 +337,6 @@ class DerivativeTimeLimiter {
 };
 
 
-// This utility function, used in code that calls LimitDerivativeTimes(), returns
-// the largest time 't' in any of the 'outputs' in the computation request,
-// or crashes if there are no outputs (or no cindexes in those outputs).
-int32 MaxOutputTimeInRequest(const ComputationRequest &request);
 
 // This is the top-level interface to limit the times on which derivatives are
 // computed (e.g. for truncated BPTT); internally it uses class
@@ -367,16 +363,16 @@ void LimitDerivativeTimes(const Nnet &nnet,
         'regular' structure, is as follows:
           - The 't' and 'x' values present are the same for each 'n',
           - The order in which the indexes appear is EITHER of the following:
-             - The 'n' varies the most rapidly, i.e. the order is:
+             - The 'n' index varies 'fast', i.e. the order is:
                  (t1,x1,0), (t1,x1,1) ... (t1,x1,N-1) \
                  (t2,x2,0), (t2,x2,1) ... (t2,x2,N-1)  ...
-             - The 'n' varies the least rapidly, i.e. the order is:
+             - The 'n' index varies 'slowly', i.e. the order is:
                  (t1,x1,0), (t2,x2,0) ...  \
                  (t1,x1,1), (t2,x2,1) ...  \
                  ...                       \
                  (t1,x2,N-1), (t2,x2,N-1) ...
             In either case, there does not have to be any particular rhyme or
-            reason to the order of the t and x values, the regularity on 'n' is
+            reason to the order of the t and x values; the regularity on 'n' is
             all that we care about.
  */
 bool ComputationIsDecomposable(const ComputationRequest &request,
@@ -404,19 +400,27 @@ bool ComputationIsDecomposable(const ComputationRequest &request,
               object could not be suitably expanded.  If it returns false,
               the output 'expanded_computation' is undefined (may contain junk).
  */
-bool ExpandComputation(const Computation &computation,
+bool ExpandComputation(const NnetComputation &computation,
                        bool need_debug_info,
                        int32 num_n_values,
-                       Computation *expanded_computation);
+                       NnetComputation *expanded_computation);
 
 
 
+/// This function detects cases where commands of type kCopyRows, kAddRows or
+/// kAddToRows can be converted to commands of type kMatrixCopy or kMatrixAdd,
+/// and converts them (this may involve adding submatrices).  After doing this
+/// you should at some point do RenumberComputation(), which will remove any
+/// now-unused members of computation->indexes.
+/// This function returns true if it made any changes to the computation.
+bool ReplaceRowWithMatrixOps(NnetComputation *computation);
 
-/// This function detects submatrices, matrices, and members of indexes_multi
-/// and indexes that are never used (e.g. due to changes made in other
-/// optimization code), and removes them from the computation by way of suitable
-/// renumbering.  It does not remove no-ops from computation->commands_; to do
-/// that, call RemoveNoOps(computation).
+/// This function detects submatrices and matrices that are never used (e.g. due
+/// to changes made in other optimization code), and members of indexes,
+/// indexes_multi and indexes_ranges that are unused or are duplicates, and
+/// removes them from the computation by way of suitable renumbering.  It does
+/// not remove no-ops from computation->commands_; to do that, call
+/// RemoveNoOps(computation).
 void RenumberComputation(NnetComputation *computation);
 
 /// Removes commands of type kNoOperation in the computation.

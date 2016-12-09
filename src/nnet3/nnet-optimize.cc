@@ -34,7 +34,13 @@ void NnetOptimizeOptions::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &propagate_in_place);
   ExpectToken(is, binary, "<BackpropInPlace>");
   ReadBasicType(is, binary, &backprop_in_place);
-  ExpectToken(is, binary, "<ConvertAddition>");
+  std::string tok;
+  ReadToken(is, binary, &tok);
+  if (tok == "<ReplaceRowWithMatrixOps>") {
+    ReadBasicType(is, binary, &replace_row_with_matrix_ops);
+    ReadToken(is, binary, &tok);
+  }
+  KALDI_ASSERT(tok == "<ConvertAddition>");
   ReadBasicType(is, binary, &convert_addition);
   ExpectToken(is, binary, "<RemoveAssignments>");
   ReadBasicType(is, binary, &remove_assignments);
@@ -52,7 +58,7 @@ void NnetOptimizeOptions::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &min_deriv_time);
   ExpectToken(is, binary, "<MaxDerivTime>");
   ReadBasicType(is, binary, &max_deriv_time);
-  std::string tok;
+
   ReadToken(is, binary, &tok);
   if (tok == "<MaxDerivTimeRelative>") {
     ReadBasicType(is, binary, &max_deriv_time_relative);
@@ -73,6 +79,8 @@ void NnetOptimizeOptions::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, propagate_in_place);
   WriteToken(os, binary, "<BackpropInPlace>");
   WriteBasicType(os, binary, backprop_in_place);
+  WriteToken(os, binary, "<ReplaceRowWithMatrixOps>");
+  WriteBasicType(os, binary, replace_row_with_matrix_ops);
   WriteToken(os, binary, "<ConvertAddition>");
   WriteBasicType(os, binary, convert_addition);
   WriteToken(os, binary, "<RemoveAssignments>");
@@ -403,8 +411,27 @@ void ConvertAdditionToAssignment(const Nnet &nnet,
   }
 }
 
+
+int32 MaxOutputTimeInRequest(const ComputationRequest &request) {
+  int32 ans = std::numeric_limits<int32>::min();
+  for (size_t i = 0; i < request.outputs.size(); i++) {
+    const std::vector<Index> &indexes (request.outputs[i].indexes);
+    std::vector<Index>::const_iterator iter = indexes.begin(),
+        end = indexes.end();
+    for (; iter != end; ++iter)
+      if (iter->t > ans)
+        ans = iter->t;
+  }
+  if (ans == std::numeric_limits<int32>::min()) {
+    KALDI_ERR << "Failed to find any output indexes in computation request.";
+  }
+  return ans;
+}
+
+
 void Optimize(const NnetOptimizeOptions &config,
               const Nnet &nnet,
+              int32 max_output_time_in_request,
               NnetComputation *computation) {
   if (GetVerboseLevel() >= 4)
     CheckComputation(nnet, *computation, true);
@@ -415,7 +442,7 @@ void Optimize(const NnetOptimizeOptions &config,
     int32 max_deriv_time = config.max_deriv_time;
     if (config.max_deriv_time_relative != std::numeric_limits<int32>::max())
       max_deriv_time = config.max_deriv_time_relative +
-          MaxOutputTimeInRequest(request);
+          max_output_time_in_request;
     LimitDerivativeTimes(nnet, config.min_deriv_time,
                          max_deriv_time, computation);
   }
@@ -442,6 +469,21 @@ void Optimize(const NnetOptimizeOptions &config,
     if (GetVerboseLevel() >= 4)
       CheckComputation(nnet, *computation, false);
   }
+
+  if (config.optimize && config.replace_row_with_matrix_ops) {
+    if (ReplaceRowWithMatrixOps(computation)) {
+      // if anything was changed...
+
+      // We have to call RenumberComputation() to get rid of any removed
+      // indexes... actually this could be a little wasteful, but unfortunately
+      // it doesn't seem like we'd otherwise be doing any renumbering past this
+      // point.
+      RenumberComputation(computation);
+      if (GetVerboseLevel() >= 4)
+        CheckComputation(nnet, *computation, false);
+    }
+  }
+
 
   if (config.optimize && config.initialize_undefined) {
     RemoveUnnecessaryZeroing(nnet, computation);
@@ -510,32 +552,32 @@ size_t ComputationRequestHasher::IoSpecificationToInt(const IoSpecification& spe
                   // it makes the hasher faster.
   StringHasher string_hasher;
   ans = string_hasher(spec.name);
-  std::vector<Index>::const_iterator itr = spec.indexes.begin(),
+  std::vector<Index>::const_iterator iter = spec.indexes.begin(),
       end = spec.indexes.end(),
       med = end;
-  if (med > itr + n)
+  if (med > iter + n)
     med = iter + n;
 
-  for (; itr != med; ++itr) {
-    ans += (*itr).n * 1619;
-    ans += (*itr).t * 15649;
-    ans += (*itr).x * 89809;
+  for (; iter != med; ++iter) {
+    ans += iter->n * 1619;
+    ans += iter->t * 15649;
+    ans += iter->x * 89809;
   }
   // after the first 'n' values, look only at every n'th value.  this makes the
   // hashing much faster, and in the kinds of structures that we actually deal
   // with, we shouldn't get unnecessary hash collisions as a result of this
   // optimization.
-  for (; iter < end; itr += n) {
-    ans += (*itr).n * 1619;
-    ans += (*itr).t * 15649;
-    ans += (*itr).x * 89809;
+  for (; iter < end; iter += n) {
+    ans += iter->n * 1619;
+    ans += iter->t * 15649;
+    ans += iter->x * 89809;
   }
   return ans;
 }
 
 void CachingOptimizingCompiler::UpdateCache(const ComputationRequest *request,
                                             NnetComputation *computation) {
-  if (computation_cache_.size() == cache_capacity_) {
+  if (computation_cache_.size() == config_.cache_capacity) {
     // full, locate the least-recently-accessed request
     const CacheType::iterator it =
         computation_cache_.find(access_queue_.front());
@@ -635,7 +677,9 @@ const NnetComputation* CachingOptimizingCompiler::Compile(
       ComputationChecker checker(check_config, nnet_, *computation);
       checker.Check();
     }
-    Optimize(opt_config_, nnet_, computation);
+    Optimize(opt_config_, nnet_,
+             MaxOutputTimeInRequest(*request),
+             computation);
     if (GetVerboseLevel() >= verbose_cutoff) {
       std::ostringstream os;
       computation->Print(os, nnet_);

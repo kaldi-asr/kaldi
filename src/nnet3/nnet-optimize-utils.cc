@@ -691,8 +691,7 @@ bool VariableMergingOptimizer::MergeVariables() {
        command_index++) {
     // This loop looks for pairs of sub-matrix indexes s1,s2 that we could
     // potentially merge into a single variable.
-    const NnetComputation::Command &c =
-        computation_->commands[command_index];
+    const NnetComputation::Command &c = computation_->commands[command_index];
     int32 s1 = -1, s2 = -1;
     if (c.command_type == kMatrixCopy &&
         config_.remove_assignments) {
@@ -1844,22 +1843,6 @@ void DerivativeTimeLimiter::PruneMatrices() {
 }
 
 
-int32 MaxOutputTimeInRequest(const ComputationRequest &request) {
-  int32 ans = std::numeric_limits<int32>::min();
-  for (size_t i = 0; i < request.outputs.size(); i++) {
-    std::vector<Index> indexes &indexes = request.outputs[i].indexes;
-    std::vector<Index> indexes::const_iterator iter = indexes.begin(),
-        end = indexes.end();
-    for (; iter != end; ++iter)
-      if (iter.t > ans)
-        ans = iter.t;
-  }
-  if (ans == std::numeric_limits<int32>::min()) {
-    KALDI_ERR << "Failed to find any output indexes in computation request.";
-  }
-  return ans;
-}
-
 void LimitDerivativeTimes(const Nnet &nnet,
                           int32 min_deriv_time,
                           int32 max_deriv_time,
@@ -1869,30 +1852,353 @@ void LimitDerivativeTimes(const Nnet &nnet,
   limiter.LimitDerivTimes();
 }
 
-// This class implements the internals of the ExpandComputation() function.
+
+/*
+  This helper function, used in ReplaceRowWithMatrixOps, detects
+  when the vector 'indexes' has a 'special structure'.  The special structure
+  is:
+    zero or more -1's, then
+    a consecutive nonempty sequence of nonnegative numbers, e.g. 6 7 8 9 10, then
+    zero or more -1's.
+
+  Note: this function assumes that any negative elements of 'indexes' are -1.
+  If there are elements less than -1, then it is an error, but this function
+  does not thoroughly check for that.  'indexes' is required to be a nonempty
+  vector.
+
+  If 'indexes' has the special structure then this function returns true
+  and sets the following values, which will explain with the following
+  example in mind: 'indexes = [ -1, -1, 5 6 7 8, -1 ]'.
+     - '*first_nonnegative_pos' is set to the number of initial -1's (and also
+       the location of the first nonnegative element): 2 in this case.
+     - '*first_nonnegative_value' is set to the value of the first nonnegative
+       element (5 in this case)
+     - '*num_nonnegative_values' is set to the number of nonnegative values in
+       the sequence (4 in this case).
+  If 'indexes' does not have this special structure, then this function returns
+  false, and the values of '*first_nonnegative_pos',
+  '*first_nonnegative_value' and '*num_nonnegative_indexes' on exit are
+  undefined.
+*/
+static bool IndexesHaveSpecialStructure(const std::vector<int32> &indexes,
+                                        int32 *first_nonnegative_pos,
+                                        int32 *first_nonnegative_value,
+                                        int32 *num_nonnegative_indexes) {
+  KALDI_ASSERT(!indexes.empty());
+  const int32 *indexes_ptr = &(indexes[0]);
+  size_t pos = 0, size = indexes.size();
+
+  // Find the first nonnegative element of 'indexes'.
+  for (; pos < size; ++pos)
+    if (indexes_ptr[pos] >= 0)
+      break;
+  if (pos == size)
+    return false;  // all -1's... should not happen, but not our problem.
+  *first_nonnegative_pos = static_cast<int32>(pos);
+  int32 n = indexes_ptr[pos];
+  *first_nonnegative_value = n;
+  // Find the first element after '*first_nonnegative_index' that isn't
+  // consecutive.
+  for (; pos < size; ++pos,++n)
+    if (indexes_ptr[pos] != n)
+      break;
+
+  *num_nonnegative_indexes = n - *first_nonnegative_value;
+
+  // Check that the remaining values are all <0 (assumed equal to -1, but
+  // checking <0 may be faster as just one instruction).
+  for (; pos < size; ++pos)
+    if (indexes_ptr[pos] >= 0)
+      return false;  // does not have the special structure.
+
+  return true;
+}
+
+
+
+bool ReplaceRowWithMatrixOps(NnetComputation *computation) {
+  bool ans = false;
+  int32 num_commands = computation->commands.size(),
+      num_indexes = computation->indexes.size();
+  for (int32 command_index = 0; command_index < num_commands;
+       command_index++) {
+    // non-const because we'll be changing it.
+    NnetComputation::Command &c = computation->commands[command_index];
+
+    int32 first_nonnegative_pos,
+        first_nonnegative_value,
+        num_nonnegative_indexes;
+    switch (c.command_type) {
+      case kCopyRows: case kAddRows: {
+        int32 indexes_index = c.arg3;
+        KALDI_ASSERT(indexes_index < num_indexes);
+        const std::vector<int32> &indexes = computation->indexes[indexes_index];
+        if (IndexesHaveSpecialStructure(indexes,
+                                        &first_nonnegative_pos,
+                                        &first_nonnegative_value,
+                                        &num_nonnegative_indexes)) {
+          ans = true;
+          c.arg1 = computation->NewSubMatrix(c.arg1, first_nonnegative_pos,
+                                             num_nonnegative_indexes,
+                                             0, -1);
+          c.arg2 = computation->NewSubMatrix(c.arg2, first_nonnegative_value,
+                                             num_nonnegative_indexes,
+                                             0, -1);
+          c.command_type = (c.command_type == kCopyRows ? kMatrixCopy :
+                            kMatrixAdd);
+        }
+        break;
+      }
+      default:
+        continue;
+    }
+  }
+  return ans;
+}
+
+// This class implements the internals of the ExpandComputation() function (used
+// in shortcut compilation); see comment by the declaration of
+// ExpandComputation() in nnet-optimize-utils.h for overview.
 class ComputationExpander {
  public:
-  ComputationExpander(const Computation &computation,
+  ComputationExpander(const NnetComputation &computation,
                       bool need_debug_info,
                       int32 num_n_values,
-                      Computation *expanded_computation):
+                      NnetComputation *expanded_computation):
       computation_(computation),
       need_debug_info_(need_debug_info),
       num_n_values_(num_n_values),
-      expanded_computation_(expanded_computation) { }
+      expanded_computation_(expanded_computation) {
+    KALDI_ASSERT(num_n_values > 2);
+  }
 
   // This function call implements the functionality of the class,
   // expanding the computation.
   bool Expand();
 
  private:
+  // This function sets up and computes the 'n_fast' vector (see comment
+  // by it for what this is.
+  void InitFastInfo();
 
-  const Computation &computation_;
+  // This function sets up the 'matrices' vector in 'expanded_computation_'.
+  // It's quite simple: it just multiplies all the num-rows by num_n_values_ and
+  // divides by 2, and leaves the num-cols the same.
+  void ComputeMatrices();
+
+  // This function, only called if need_debug_info_ is true, sets up
+  // the 'matrix_debug_info' vector in 'expanded_computation_'.
+  void ComputeDebugInfo();
+
+  // This function sets up the 'submatrices' vector in 'expanded_computation_'.
+  // Column ranges always stay the same, but for row ranges it's a little
+  // more complicated.
+  void ComputeSubmatrixInfo();
+
+
+  // This function computes all the PrecomputedIndexes in the
+  // 'component_precomputed_indexes' member of 'expanded_computation_'.
+  // They are all generated from scratch, by using the Component::PrecomputedIndexes()
+  // member function.  The 'input_indexes' and 'output_indexes' arguments are worked
+  // out from the 'debug_info' [if we're not generating debug_info we specially generate
+  // it for the specific matrices in question], and the 'need_backprop'
+  // argument is worked out by seeing whether there is a call to Backprop() with
+  // the same precomputed-indexes element.
+  void ComputePrecomputedIndexes();
+
+  // Computes the 'commands' member of the output.  This function also adds as
+  // needed to 'indexes', 'indexes_multi' and 'indexes_ranges' in the output.
+  // Later on we can call RenumberComputation() to remove any duplicates that
+  // might result from this.
+  void ComputeCommands();
+
+
+  // This 'n_fast' vector is indexed by the matrix-index in the computation,
+  // i.e. the same index as indexes computation_.matrix_info and
+  // expanded_computation_->matrix_info.  For each matrix-index m > 0 it
+  // contains true if the 'n' varies 'fast', or false if the 'n' index varies
+  // 'slowly'.  By 'fast' and 'slow', we mean in the same sense as is desribed
+  // in the comment for ComputationIsDecomposable() in nnet-optimize-utils.h.
+  std::vector<bool> n_fast;
+
+
+
+
+
+
+  const NnetComputation &computation_;
   bool need_debug_info_;
   int32 num_n_values_;
-  Computation *expanded_computation_;
+  NnetComputation *expanded_computation_;
 };
 
+
+
+class ComputationLoopedOptimizer {
+ public:
+  ComputationLoopedOptimizer(const Nnet &nnet,
+                             NnetComputation *computation):
+      nnet_(nnet), computation_(computation) { }
+  bool Optimize();
+
+ private:
+
+  // Figures out the time shift between the successive computation requests.
+  static int32 FindTimeShift(const NnetComputation &computation,
+                             const std::vector<int32> &segment_ends);
+
+  // This function creates a mapping from a matrix-index > 0,
+  // to a pair (unique_id, time_offset) that represents the debug-info
+  // for that matrix-id in computation.debug_info.
+  // The output vector is indexed by the matrix-index in the computation (the
+  // zeroth member is not valid).  It requires that the
+  // The 'time_offset' is equal to the 't' value of the zeroth element of the
+  // cindexes vetor.  The 'unique_id' is an integer that uniquely identifies
+  // what we get from subtracting the 'time_offset' from each 't' value of
+  // that 'cindexes' vector, and then pairing it up with the 'is_deriv'
+  // value of the DebugInfo.  That is, if two 'cindexes' vectors differ only
+  // by a time offset, and the 'is_deriv' values are the same they will map to the same
+  // unique_id.
+  // The output 'matrix_to_pair' is indexed by matrix index (the zeroth element is
+  // not set).
+  static void CreateMatrixPairs(const NnetComputation &computation,
+                                std::vector<std::pair<int32, int32> > *matrix_to_pair);
+
+
+  // This very simple helper function reverses the map 'matrix_to_pair' so we can
+  // do the reverse lookup.  It outputs a map from pair to matrix index m, where
+  // 1 <= m < matrix_to_pair.size().
+  static void GetPairToMatrixMap(
+      std::vector<std::pair<int32, int32> > &matrix_to_pair,
+      unordered_map<std::pair<int32, int32>, int32, PairHasher<int32> > *pair_to_matrix);
+
+
+  // Given a vector of lists, one list for each segment, of the active matrices
+  // at the end of that segment, this function converts those lists into a
+  // different representation where each matrix is reprented as a pair instead
+  // of as a single int32.  'active_pairs' will have the same dimensions as
+  // 'active_matrices'.
+  static void ConvertListsToPairLists(
+      const std::vector<std::vector<int32> > &active_matrices,
+      const std::vector<std::pair<int32, int32> > &matrix_to_pair,
+      std::vector<std::vector<std::pair<int32, int32> > > *active_pairs);
+
+  // This function modifies the lists of active matrices per segment
+  // (represented as pairs) in 'active_pairs' by sorting them and
+  // then subtracting the time-offset of the first pair in each
+  // list ((*active_pair)[seg][0].second), from all elements in that list.
+  // It puts the subtracted offset in (*time_offsets)[seg].  This change
+  // of representation makes it easy to tell whether the sets of active
+  // matrices for different segments are identical up to a time-offset.
+  static void NormalizePairLists(
+      std::vector<std::vector<std::pair<int32, int32> > > *active_pairs,
+      std::vector<int32> *time_offsets);
+
+  // This function looks in the matrix 'active_pairs' for the first pair of
+  // identical values, i.e. it is looking for i < j for which
+  // normalized_active_pairs[i] == normalized_active_pairs[j].  (However, the
+  // pair i,j must satisfy an extra condition, see below).  If a pair
+  // i,j exists satisfying these conditions, this function outputs them to *seg1
+  // and *seg2, and returns true; otherwise it returns false.
+  //
+  // Extra condition:
+  // It turns out that under some circumstances, we can
+  // fine repeats that were not "really" repeats (the matrices were not time
+  // shifted) The situation was a bit obscure (it was a non-recurrent setup with
+  // a lot of extra-right-context, where some inputs were never used), but to
+  // prevent it happening again we are now checking in addition to the above,
+  // that the time-shift between the segments (i.e. time_offsets[j] -
+  // time_offsets[i]), has the "expected value" based on the assumption that
+  // each segment should be shifted relative to the previous segment, by
+  // 'time_shift_per_segment'.
+  static bool FindFirstRepeat(
+      const std::vector<std::vector<std::pair<int32, int32> > > &normalized_active_pairs,
+      const std::vector<int32> &time_offsets,
+      int32 time_shift_per_segment,
+      int32 *seg1, int32 *seg2);
+
+  // Converts a list of pairs (e.g. one of the elements of the output of
+  // 'ConvertListsToPairLists)', back into a list of matrix indexes, using the
+  // map 'pair_to_matrix'.
+  static void PairListToMatrixList(
+      const std::vector<std::pair<int32, int32> > &pair_list,
+      const unordered_map<std::pair<int32, int32>, int32, PairHasher<int32> > &pair_to_matrix,
+      std::vector<int32> *matrix_list);
+
+
+  // This function just does some checking (via asserts), that
+  // the lists of matrices 'list1' and 'list2' are of the same length,
+  // that time_difference > 0, that each matrix with index m = list2[i] is of the
+  // same dimension as the list1[i], with Cindexes that are the same except for
+  // the time index being greater by 'time_difference'
+  static void CheckIdentifiedMatrices(
+      const NnetComputation &computation,
+      const std::vector<int32> &list1,
+      const std::vector<int32> &list2,
+      int32 time_difference);
+
+
+  // Given two command indexes command1 < command2 pointing to commands of type
+  // kNoOperationMarker, this function modifies the computation by
+  // removing all commands after command2, replacing command2 with a kGotoLabel
+  // command pointing to command1  and then inserting just before command1
+  // a marker of type kNoOperationLabel.
+  static void FormInfiniteLoop(int32 command1, int32 command2,
+                               NnetComputation *computation);
+
+  // This is to be called after FormInfiniteLoop.  It inserts, just before
+  // the final kGotoLabel command, commands that initialize
+  // each of the matrices in list 'matrices1' from the corresponding
+  // matrix in 'matrices2', using the kAllocMatrixFromOther command.
+  // This effectively does, for example, matrices1[i] = matrices2[i],
+  // while initializing matrices1[i] and deallocating matrices2[i];
+  // it's implemented as a shallow swap.
+  // It does this in such an order that even if the two lists are
+  // not disjoint, the right thing happens.
+  static void AddMatrixSwapCommands(
+      const std::vector<int32> &matrices1,
+      const std::vector<int32> &matrices2,
+      NnetComputation *computation);
+
+
+  // Called from AddMatrixSwapCommands, this function figures out for us
+  // an acceptable order in which to execute the kAllocMatrixFromOther
+  // commands.  This is easy to do if matrices1 and matrices2 are disjoint
+  // sets, but has to be done more carefully if they overlap.
+  // The output is a list of pairs where each pair (a, b) comes from
+  // from matrices1 and matrices2 in the same position, i.e.
+  // a = matrices1[i] and b = matrices2[i].
+  static void GetMatrixSwapOrder(
+      const std::vector<int32> &matrices1,
+      const std::vector<int32> &matrices2,
+      std::vector<std::pair<int32, int32> > *swaps);
+
+
+
+  /// Given a list of command indexes ('segment_end_commands') which are
+  /// expected to be command indexes of the kNoOperationMarker at segment
+  /// boundaries, this function outputs for each of these command indexes a list
+  /// of matrices which are 'active' at that point in time.  By 'active' we mean
+  /// that the matrix has been written to before that time (note, we don't count
+  /// initialization with zeros as being written to); and will be read after
+  /// that time.  These is the list of matrices that 'need to be in scope'
+  /// at those points in time.  '*active_matrices' is indexed by the
+  /// same index as 'segment_end_commands', and is then a list of active
+  /// matrices, in numerical order of matrix index.
+  /// Note: for each i, (*active_matrices)[i] will be sorted and unique.
+  static void FindActiveMatrices(const NnetComputation &computation,
+                                 const Analyzer &analyzer,
+                                 const std::vector<int32> &segment_end_commands,
+                                 std::vector<std::vector<int32> > *active_matrices);
+
+
+  const Nnet &nnet_;
+  NnetComputation *computation_;
+  Analyzer analyzer_;
+  std::vector<std::pair<int32, int32> > matrix_to_pair_;
+
+  std::vector<int32> segment_end_commands_;
+};
 
 // static
 int32 ComputationLoopedOptimizer::FindTimeShift(
@@ -2370,173 +2676,6 @@ void OptimizeLoopedComputation(const Nnet &nnet,
   ComputationLoopedOptimizer optimizer(nnet, computation);
   optimizer.Optimize();
 }
-
-
-class ComputationLoopedOptimizer {
- public:
-  ComputationLoopedOptimizer(const Nnet &nnet,
-                             NnetComputation *computation):
-      nnet_(nnet), computation_(computation) { }
-  bool Optimize();
-
- private:
-
-  // Figures out the time shift between the successive computation requests.
-  static int32 FindTimeShift(const NnetComputation &computation,
-                             const std::vector<int32> &segment_ends);
-
-  // This function creates a mapping from a matrix-index > 0,
-  // to a pair (unique_id, time_offset) that represents the debug-info
-  // for that matrix-id in computation.debug_info.
-  // The output vector is indexed by the matrix-index in the computation (the
-  // zeroth member is not valid).  It requires that the
-  // The 'time_offset' is equal to the 't' value of the zeroth element of the
-  // cindexes vetor.  The 'unique_id' is an integer that uniquely identifies
-  // what we get from subtracting the 'time_offset' from each 't' value of
-  // that 'cindexes' vector, and then pairing it up with the 'is_deriv'
-  // value of the DebugInfo.  That is, if two 'cindexes' vectors differ only
-  // by a time offset, and the 'is_deriv' values are the same they will map to the same
-  // unique_id.
-  // The output 'matrix_to_pair' is indexed by matrix index (the zeroth element is
-  // not set).
-  static void CreateMatrixPairs(const NnetComputation &computation,
-                                std::vector<std::pair<int32, int32> > *matrix_to_pair);
-
-
-  // This very simple helper function reverses the map 'matrix_to_pair' so we can
-  // do the reverse lookup.  It outputs a map from pair to matrix index m, where
-  // 1 <= m < matrix_to_pair.size().
-  static void GetPairToMatrixMap(
-      std::vector<std::pair<int32, int32> > &matrix_to_pair,
-      unordered_map<std::pair<int32, int32>, int32, PairHasher<int32> > *pair_to_matrix);
-
-
-  // Given a vector of lists, one list for each segment, of the active matrices
-  // at the end of that segment, this function converts those lists into a
-  // different representation where each matrix is reprented as a pair instead
-  // of as a single int32.  'active_pairs' will have the same dimensions as
-  // 'active_matrices'.
-  static void ConvertListsToPairLists(
-      const std::vector<std::vector<int32> > &active_matrices,
-      const std::vector<std::pair<int32, int32> > &matrix_to_pair,
-      std::vector<std::vector<std::pair<int32, int32> > > *active_pairs);
-
-  // This function modifies the lists of active matrices per segment
-  // (represented as pairs) in 'active_pairs' by sorting them and
-  // then subtracting the time-offset of the first pair in each
-  // list ((*active_pair)[seg][0].second), from all elements in that list.
-  // It puts the subtracted offset in (*time_offsets)[seg].  This change
-  // of representation makes it easy to tell whether the sets of active
-  // matrices for different segments are identical up to a time-offset.
-  static void NormalizePairLists(
-      std::vector<std::vector<std::pair<int32, int32> > > *active_pairs,
-      std::vector<int32> *time_offsets);
-
-  // This function looks in the matrix 'active_pairs' for the first pair of
-  // identical values, i.e. it is looking for i < j for which
-  // normalized_active_pairs[i] == normalized_active_pairs[j].  (However, the
-  // pair i,j must satisfy an extra condition, see below).  If a pair
-  // i,j exists satisfying these conditions, this function outputs them to *seg1
-  // and *seg2, and returns true; otherwise it returns false.
-  //
-  // Extra condition:
-  // It turns out that under some circumstances, we can
-  // fine repeats that were not "really" repeats (the matrices were not time
-  // shifted) The situation was a bit obscure (it was a non-recurrent setup with
-  // a lot of extra-right-context, where some inputs were never used), but to
-  // prevent it happening again we are now checking in addition to the above,
-  // that the time-shift between the segments (i.e. time_offsets[j] -
-  // time_offsets[i]), has the "expected value" based on the assumption that
-  // each segment should be shifted relative to the previous segment, by
-  // 'time_shift_per_segment'.
-  static bool FindFirstRepeat(
-      const std::vector<std::vector<std::pair<int32, int32> > > &normalized_active_pairs,
-      const std::vector<int32> &time_offsets,
-      int32 time_shift_per_segment,
-      int32 *seg1, int32 *seg2);
-
-  // Converts a list of pairs (e.g. one of the elements of the output of
-  // 'ConvertListsToPairLists)', back into a list of matrix indexes, using the
-  // map 'pair_to_matrix'.
-  static void PairListToMatrixList(
-      const std::vector<std::pair<int32, int32> > &pair_list,
-      const unordered_map<std::pair<int32, int32>, int32, PairHasher<int32> > &pair_to_matrix,
-      std::vector<int32> *matrix_list);
-
-
-  // This function just does some checking (via asserts), that
-  // the lists of matrices 'list1' and 'list2' are of the same length,
-  // that time_difference > 0, that each matrix with index m = list2[i] is of the
-  // same dimension as the list1[i], with Cindexes that are the same except for
-  // the time index being greater by 'time_difference'
-  static void CheckIdentifiedMatrices(
-      const NnetComputation &computation,
-      const std::vector<int32> &list1,
-      const std::vector<int32> &list2,
-      int32 time_difference);
-
-
-  // Given two command indexes command1 < command2 pointing to commands of type
-  // kNoOperationMarker, this function modifies the computation by
-  // removing all commands after command2, replacing command2 with a kGotoLabel
-  // command pointing to command1  and then inserting just before command1
-  // a marker of type kNoOperationLabel.
-  static void FormInfiniteLoop(int32 command1, int32 command2,
-                               NnetComputation *computation);
-
-  // This is to be called after FormInfiniteLoop.  It inserts, just before
-  // the final kGotoLabel command, commands that initialize
-  // each of the matrices in list 'matrices1' from the corresponding
-  // matrix in 'matrices2', using the kAllocMatrixFromOther command.
-  // This effectively does, for example, matrices1[i] = matrices2[i],
-  // while initializing matrices1[i] and deallocating matrices2[i];
-  // it's implemented as a shallow swap.
-  // It does this in such an order that even if the two lists are
-  // not disjoint, the right thing happens.
-  static void AddMatrixSwapCommands(
-      const std::vector<int32> &matrices1,
-      const std::vector<int32> &matrices2,
-      NnetComputation *computation);
-
-
-  // Called from AddMatrixSwapCommands, this function figures out for us
-  // an acceptable order in which to execute the kAllocMatrixFromOther
-  // commands.  This is easy to do if matrices1 and matrices2 are disjoint
-  // sets, but has to be done more carefully if they overlap.
-  // The output is a list of pairs where each pair (a, b) comes from
-  // from matrices1 and matrices2 in the same position, i.e.
-  // a = matrices1[i] and b = matrices2[i].
-  static void GetMatrixSwapOrder(
-      const std::vector<int32> &matrices1,
-      const std::vector<int32> &matrices2,
-      std::vector<std::pair<int32, int32> > *swaps);
-
-
-
-  /// Given a list of command indexes ('segment_end_commands') which are
-  /// expected to be command indexes of the kNoOperationMarker at segment
-  /// boundaries, this function outputs for each of these command indexes a list
-  /// of matrices which are 'active' at that point in time.  By 'active' we mean
-  /// that the matrix has been written to before that time (note, we don't count
-  /// initialization with zeros as being written to); and will be read after
-  /// that time.  These is the list of matrices that 'need to be in scope'
-  /// at those points in time.  '*active_matrices' is indexed by the
-  /// same index as 'segment_end_commands', and is then a list of active
-  /// matrices, in numerical order of matrix index.
-  /// Note: for each i, (*active_matrices)[i] will be sorted and unique.
-  static void FindActiveMatrices(const NnetComputation &computation,
-                                 const Analyzer &analyzer,
-                                 const std::vector<int32> &segment_end_commands,
-                                 std::vector<std::vector<int32> > *active_matrices);
-
-
-  const Nnet &nnet_;
-  NnetComputation *computation_;
-  Analyzer analyzer_;
-  std::vector<std::pair<int32, int32> > matrix_to_pair_;
-
-  std::vector<int32> segment_end_commands_;
-};
 
 
 

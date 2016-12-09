@@ -5312,11 +5312,13 @@ void LstmNonlinearityComponent::InitFromConfig(ConfigLine *cfl) {
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
 	      << cfl->UnusedValues();
-  if (!ok)
+  if (ok) {
+    Init(cell_dim, param_stddev, tanh_self_repair_threshold,
+         sigmoid_self_repair_threshold, self_repair_scale);
+  } else {
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << cfl->WholeLine() << "\"";
-  Init(cell_dim, param_stddev, tanh_self_repair_threshold,
-       sigmoid_self_repair_threshold, self_repair_scale);
+  }
 }
 
 

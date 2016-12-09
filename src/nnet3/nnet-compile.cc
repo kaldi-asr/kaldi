@@ -543,10 +543,6 @@ void Compiler::DoForwardComputationFromIndexes(
   }
   // if we got to here, it's not just a case of matrix-copy or matrix-add,
   // but it's still from a single source matrix.
-  // TODO: detect the case where the indexes are contiguous, but possibly
-  // with -1's at the beginning or end (e.g. [ -1 2 3 4 5 6 7 8 ]) and make
-  // it a standard matrix-copy command with new sub-matrices added as needed,
-  // possibly with a subset of the rows in the original sub-matrices.
   int32 indexes_index = computation->indexes.size();
   computation->indexes.push_back(indexes);
   CommandType ctype =

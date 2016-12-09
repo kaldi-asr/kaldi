@@ -18,6 +18,7 @@
 // limitations under the License.
 
 #include "nnet3/nnet-compile-looped.h"
+#include "nnet3/nnet-optimize-utils.h"
 #include "nnet3/nnet-utils.h"
 
 namespace kaldi {
@@ -295,7 +296,8 @@ static bool CompileLoopedInternal(
   compiler.CreateComputation(compiler_opts, computation);
   optimize_opts.optimize_looped_computation = true;
 
-  Optimize(optimize_opts, nnet, computation);
+  Optimize(optimize_opts, nnet,
+           MaxOutputTimeInRequest(request3), computation);
 
   return computation->commands.size() != 0 &&
       computation->commands.back().command_type == kGotoLabel;

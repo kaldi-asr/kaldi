@@ -37,6 +37,7 @@ struct NnetOptimizeOptions {
   bool consolidate_model_update;
   bool propagate_in_place;
   bool backprop_in_place;
+  bool replace_row_with_matrix_ops;
   bool convert_addition;
   bool remove_assignments;
   bool allow_left_merge;
@@ -57,6 +58,7 @@ struct NnetOptimizeOptions {
       consolidate_model_update(true),
       propagate_in_place(true),
       backprop_in_place(true),
+      replace_row_with_matrix_ops(true),
       convert_addition(true),
       remove_assignments(true),
       allow_left_merge(true),
@@ -119,9 +121,39 @@ struct NnetOptimizeOptions {
   bool operator == (const NnetOptimizeOptions &other) const;
 };
 
-/// This is the top-level function for optimizing a computation.
+
+/* This utility function, used in code that calls LimitDerivativeTimes() (and
+   required in code that calls Optimize(), returns the largest time
+   't' in any of the 'outputs' in the computation request, or crashes if there
+   are no outputs (or no cindexes in those outputs). */
+int32 MaxOutputTimeInRequest(const ComputationRequest &request);
+
+
+/** This is the top-level function for optimizing a computation.  Note: it
+    should really be called OptimizeAndPostprocess(), because there is at least
+    one thing it does (reordering I/O commands) that is necessary for a
+    computation to be run.
+
+    @param [in] config   The options that control, among other things,
+                         which optimizations to apply.
+    @param [in] nnet     The neural net for which the computation is being built
+    @param [in] max_output_time_in_request  This value is only needed when the
+                         max-deriv-time-relative config value is set in
+                         'config'.  It should be set to the largest 't' value
+                         encountered in any of the indexes in the 'output'
+                         IoSpecifications in the ComputationRequests used to
+                         compile the computation.  However if there are multiple
+                         ComputationRequests (i.e. it was an online computation)
+                         you can just set it to any value you want, because
+                         backpropagation is not supported so the
+                         max-deriv-time-relative configuration value would not
+                         have any effect.
+    @param [in,out] computation  The computation to be optimized; this function
+                         modifies it in-place.
+ */
 void Optimize(const NnetOptimizeOptions &config,
               const Nnet &nnet,
+              int32 max_output_time_in_request,
               NnetComputation *computation);
 
 // Hash function for ComputationRequest. It converts
@@ -176,13 +208,15 @@ struct CachingOptimizingCompilerOptions {
 class CachingOptimizingCompiler {
  public:
   CachingOptimizingCompiler(const Nnet &nnet,
-                            const CachingOptimizingCompilerOptions &config):
-      nnet_(nnet), config_(config), cache_capacity_(capacity) { }
+                            const CachingOptimizingCompilerOptions config =
+                            CachingOptimizingCompilerOptions()):
+      nnet_(nnet), config_(config) { }
 
   /// Note: nnet is retained as a const reference but opt_config is copied.
   CachingOptimizingCompiler(const Nnet &nnet,
                             const NnetOptimizeOptions &opt_config,
-                            const CachingOptimizingCompilerOptions &config):
+                            const CachingOptimizingCompilerOptions config =
+                            CachingOptimizingCompilerOptions()):
       nnet_(nnet), config_(config), opt_config_(opt_config) { }
 
   ~CachingOptimizingCompiler();
@@ -223,9 +257,6 @@ class CachingOptimizingCompiler {
                    NnetComputation *computation);
   // This function updates the recently accessed queue.
   void UpdateAccessQueue(CacheType::iterator &cit);
-  // This configuration value determines how many unique Computations
-  // to cache in our most-recently-used cache.
-  int32 cache_capacity_;
 };
 
 
