@@ -113,6 +113,12 @@ def CheckArgs(args):
         if not os.path.exists(args.output_additive_noise_dir):
             os.makedirs(args.output_additive_noise_dir)
 
+    ## Check arguments.
+
+    if args.num_replicas > 1 and args.prefix is None:
+        args.prefix = "rvb"
+        warnings.warn("--prefix is set to 'rvb' as --num-replications is larger than 1.")
+
     if not args.num_replicas > 0:
         raise Exception("--num-replications cannot be non-positive")
 
