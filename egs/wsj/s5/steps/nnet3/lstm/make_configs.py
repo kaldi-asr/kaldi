@@ -319,7 +319,8 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets, add_lda,
     for i in range(num_lstm_layers, num_hidden_layers):
         prev_layer_output = nodes.AddAffRelNormLayer(config_lines, "L{0}".format(i+1),
                                                prev_layer_output, hidden_dim,
-                                               ng_affine_options, self_repair_scale = self_repair_scale_nonlinearity, max_change_per_component = max_change_per_component)
+                                               ng_affine_options, self_repair_scale = self_repair_scale_nonlinearity,
+                                               max_change_per_component = max_change_per_component)
         # make the intermediate config file for layerwise discriminative
         # training
         nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options, max_change_per_component = max_change_per_component_final, label_delay = label_delay, include_log_softmax = include_log_softmax, add_final_sigmoid = add_final_sigmoid, objective_type = objective_type)
