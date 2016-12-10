@@ -144,7 +144,7 @@ void ComputeSimpleNnetContext(const Nnet &nnet,
 
   // This will crash if the total context (left + right) is greater
   // than window_size.
-  int32 window_size = 100;
+  int32 window_size = 150;
   // by going "<= modulus" instead of "< modulus" we do one more computation
   // than we really need; it becomes a sanity check.
   for (int32 input_start = 0; input_start <= modulus; input_start++)
@@ -301,6 +301,25 @@ void SetLearningRates(const Vector<BaseFloat> &learning_rates,
   KALDI_ASSERT(i == learning_rates.Dim());
 }
 
+void SetLearningRateFactors(const Vector<BaseFloat> &learning_rate_factors,
+                            Nnet *nnet) {
+  int32 i = 0;
+  for (int32 c = 0; c < nnet->NumComponents(); c++) {
+    Component *comp = nnet->GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent) {
+      // For now all updatable components inherit from class UpdatableComponent.
+      // If that changes in future, we will change this code.
+      UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(comp);
+      if (uc == NULL)
+        KALDI_ERR << "Updatable component does not inherit from class "
+            "UpdatableComponent; change this code.";
+      KALDI_ASSERT(i < learning_rate_factors.Dim());
+      uc->SetLearningRateFactor(learning_rate_factors(i++));
+    }
+  }
+  KALDI_ASSERT(i == learning_rate_factors.Dim());
+}
+
 void GetLearningRates(const Nnet &nnet,
                       Vector<BaseFloat> *learning_rates) {
   learning_rates->Resize(NumUpdatableComponents(nnet));
@@ -318,6 +337,25 @@ void GetLearningRates(const Nnet &nnet,
     }
   }
   KALDI_ASSERT(i == learning_rates->Dim());
+}
+
+void GetLearningRateFactors(const Nnet &nnet, 
+                            Vector<BaseFloat> *learning_rate_factors) {
+  learning_rate_factors->Resize(NumUpdatableComponents(nnet));
+  int32 i = 0;
+  for (int32 c = 0; c < nnet.NumComponents(); c++) {
+    const Component *comp = nnet.GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent) {
+      // For now all updatable components inherit from class UpdatableComponent.
+      // If that changes in future, we will change this code.
+      const UpdatableComponent *uc = dynamic_cast<const UpdatableComponent*>(comp);
+      if (uc == NULL)
+        KALDI_ERR << "Updatable component does not inherit from class "
+            "UpdatableComponent; change this code.";
+      (*learning_rate_factors)(i++) = uc->LearningRateFactor();
+    }
+  }
+  KALDI_ASSERT(i == learning_rate_factors->Dim());
 }
 
 void ScaleNnetComponents(const Vector<BaseFloat> &scale_factors,
@@ -347,6 +385,25 @@ void ScaleNnet(BaseFloat scale, Nnet *nnet) {
     for (int32 c = 0; c < nnet->NumComponents(); c++) {
       Component *comp = nnet->GetComponent(c);
       comp->Scale(scale);
+    }
+  }
+}
+
+void ScaleSingleComponent(BaseFloat scale, Nnet *nnet, std::string component_name) {
+  if (scale == 1.0) return;
+  else if (scale == 0.0) {
+    SetZero(false, nnet);
+  } else {
+    for (int32 c = 0; c < nnet->NumComponents(); c++) {
+      Component *comp = nnet->GetComponent(c);
+      std::string this_component_type = nnet->GetComponent(c)->Type();
+      if (this_component_type == component_name) { 
+        if (comp->Properties() & kUpdatableComponent) 
+          comp->Scale(scale);
+        else
+          KALDI_ERR << "component " << component_name 
+                    << "is not an updatable component.";
+      }
     }
   }
 }
@@ -523,16 +580,6 @@ std::string NnetInfo(const Nnet &nnet) {
   return ostr.str();
 }
 
-void SetDropoutProportion(BaseFloat dropout_proportion,
-                          Nnet *nnet) {
-  for (int32 c = 0; c < nnet->NumComponents(); c++) {
-    Component *comp = nnet->GetComponent(c);
-    DropoutComponent *dc = dynamic_cast<DropoutComponent*>(comp);
-    if (dc != NULL)
-      dc->SetDropoutProportion(dropout_proportion);
-  }
-}
-
 void FindOrphanComponents(const Nnet &nnet, std::vector<int32> *components) {
   int32 num_components = nnet.NumComponents(), num_nodes = nnet.NumNodes();
   std::vector<bool> is_used(num_components, false);
@@ -688,6 +735,29 @@ void ReadEditConfig(std::istream &edit_config_is, Nnet *nnet) {
       if (outputs_remaining == 0)
         KALDI_ERR << "All outputs were removed.";
       nnet->RemoveSomeNodes(nodes_to_remove);
+    } else if (directive == "set-dropout-proportion") {
+      std::string name_pattern = "*";
+      // name_pattern defaults to '*' if none is given.  This pattern
+      // matches names of components, not nodes.
+      config_line.GetValue("name", &name_pattern);
+      BaseFloat proportion = -1;
+      if (!config_line.GetValue("proportion", &proportion)) {
+        KALDI_ERR << "In edits-config, expected proportion to be set in line: "
+                  << config_line.WholeLine();
+      }
+      DropoutComponent *component = NULL;
+      int32 num_dropout_proportions_set = 0;
+      for (int32 c = 0; c < nnet->NumComponents(); c++) {
+        if (NameMatchesPattern(nnet->GetComponentName(c).c_str(),
+                               name_pattern.c_str()) &&
+            (component =
+             dynamic_cast<DropoutComponent*>(nnet->GetComponent(c)))) {
+          component->SetDropoutProportion(proportion);
+          num_dropout_proportions_set++;
+        }
+      }
+      KALDI_LOG << "Set dropout proportions for "
+                << num_dropout_proportions_set << " nodes.";
     } else {
       KALDI_ERR << "Directive '" << directive << "' is not currently "
           "supported (reading edit-config).";

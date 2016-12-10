@@ -127,10 +127,21 @@ void ScaleLearningRate(BaseFloat learning_rate_scale,
 void SetLearningRates(const Vector<BaseFloat> &learning_rates,
                       Nnet *nnet);
 
+/// Sets the learning rate factors for all the updatable components in
+/// the neural net to the values in 'learning_rate_factors' vector
+/// (one for each updatable component).
+void SetLearningRateFactors(
+      const Vector<BaseFloat> &learning_rate_factors,
+      Nnet *nnet);
+
 /// Get the learning rates for all the updatable components in the neural net
 /// (the output must have dim equal to the number of updatable components).
 void GetLearningRates(const Nnet &nnet,
                       Vector<BaseFloat> *learning_rates);
+
+/// Get the learning rate factors for all the updatable components in the neural net 
+void GetLearningRateFactors(const Nnet &nnet,
+                            Vector<BaseFloat> *learning_rate_factors);
 
 /// Scales the nnet parameters and stats by this scale.
 void ScaleNnet(BaseFloat scale, Nnet *nnet);
@@ -233,6 +244,9 @@ void FindOrphanNodes(const Nnet &nnet, std::vector<int32> *nodes);
        remove internal nodes directly; instead you should use the command
        'remove-orphans'.
 
+    set-dropout-proportion [name=<name-pattern>] proportion=<dropout-proportion>
+       Sets the dropout rates for any components of type DropoutComponent whose
+       names match the given <name-pattern> (e.g. lstm*).  <name-pattern> defaults to "*".
    \endverbatim
 */
 void ReadEditConfig(std::istream &config_file, Nnet *nnet);
