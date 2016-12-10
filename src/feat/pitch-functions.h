@@ -231,6 +231,7 @@ struct ProcessPitchOptions {
   bool add_normalized_log_pitch;
   bool add_delta_pitch;
   bool add_raw_log_pitch;
+  bool add_raw_pov;
 
   ProcessPitchOptions() :
       pitch_scale(2.0),
@@ -245,7 +246,7 @@ struct ProcessPitchOptions {
       add_pov_feature(true),
       add_normalized_log_pitch(true),
       add_delta_pitch(true),
-      add_raw_log_pitch(false) { }
+      add_raw_log_pitch(false), add_raw_pov(false) { }
 
 
   void Register(ParseOptions *opts) {
@@ -286,6 +287,8 @@ struct ProcessPitchOptions {
                    "features");
     opts->Register("add-raw-log-pitch", &add_raw_log_pitch,
                    "If true, log(pitch) is added to output features");
+    opts->Register("add-raw-pov", &add_raw_pov,
+                   "If true, add NCCF converted to POV");
   }
 };
 
@@ -395,6 +398,10 @@ class OnlineProcessPitch: public OnlineFeatureInterface {
   /// Computes and returns the mean-subtracted log-pitch feature for this frame.
   /// Called from GetFrame().
   inline BaseFloat GetNormalizedLogPitchFeature(int32 frame);
+
+  /// Computes and retures the raw POV for this frames.
+  /// Called from GetFrames().
+  inline BaseFloat GetRawPov(int32 frame) const;
 
   /// Computes the normalization window sizes.
   inline void GetNormalizationWindow(int32 frame,

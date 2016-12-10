@@ -48,7 +48,7 @@ void SpectrogramComputer::Compute(BaseFloat signal_log_energy,
                                   BaseFloat vtln_warp,
                                   VectorBase<BaseFloat> *signal_frame,
                                   VectorBase<BaseFloat> *feature) {
-  KALDI_ASSERT(signal_frame->Dim() == opts_.frame_opts.PaddedWindowSize() &&
+  KALDI_ASSERT(signal_frame->Dim() == opts_.frame_opts.NumFftBins() &&
                feature->Dim() == this->Dim());
 
 

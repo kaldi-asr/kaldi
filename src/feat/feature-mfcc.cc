@@ -29,7 +29,7 @@ void MfccComputer::Compute(BaseFloat signal_log_energy,
                            BaseFloat vtln_warp,
                            VectorBase<BaseFloat> *signal_frame,
                            VectorBase<BaseFloat> *feature) {
-  KALDI_ASSERT(signal_frame->Dim() == opts_.frame_opts.PaddedWindowSize() &&
+  KALDI_ASSERT(signal_frame->Dim() == opts_.frame_opts.NumFftBins() &&
                feature->Dim() == this->Dim());
 
   const MelBanks &mel_banks = *(GetMelBanks(vtln_warp));
@@ -98,9 +98,9 @@ MfccComputer::MfccComputer(const MfccOptions &opts):
   if (opts.energy_floor > 0.0)
     log_energy_floor_ = Log(opts.energy_floor);
 
-  int32 padded_window_size = opts.frame_opts.PaddedWindowSize();
-  if ((padded_window_size & (padded_window_size-1)) == 0)  // Is a power of two...
-    srfft_ = new SplitRadixRealFft<BaseFloat>(padded_window_size);
+  int32 num_fft_bins = opts.frame_opts.NumFftBins();
+  if ((num_fft_bins & (num_fft_bins-1)) == 0)  // Is a power of two...
+    srfft_ = new SplitRadixRealFft<BaseFloat>(num_fft_bins);
 
   // We'll definitely need the filterbanks info for VTLN warping factor 1.0.
   // [note: this call caches it.]
