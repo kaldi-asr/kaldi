@@ -129,7 +129,6 @@ fi
 final_lm=`cat data/local/lm/final_lm`
 LM=$final_lm.pr1-7
 
-
 if [ $stage -le 5 ]; then
   graph_dir=exp/$mic/${gmm}_${cleanup_affix}/graph_$LM
   nj_dev=$(cat data/$mic/dev/spk2utt | wc -l)
@@ -137,9 +136,9 @@ if [ $stage -le 5 ]; then
 
   $decode_cmd $graph_dir/mkgraph.log \
     utils/mkgraph.sh data/lang_$LM exp/$mic/${gmm}_${cleanup_affix} $graph_dir
-  steps/decode_fmllr.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
+  steps/decode_fmllr.sh --nj $nj_dev --cmd "$decode_cmd" --config conf/decode.conf \
     $graph_dir data/$mic/dev exp/$mic/${gmm}_${cleanup_affix}/decode_dev_$LM
-  steps/decode_fmllr.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
+  steps/decode_fmllr.sh --nj $nj_eval --cmd "$decode_cmd" --config conf/decode.conf \
     $graph_dir data/$mic/eval exp/$mic/${gmm}_${cleanup_affix}/decode_eval_$LM
 fi
 
