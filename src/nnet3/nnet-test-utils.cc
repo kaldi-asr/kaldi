@@ -1401,6 +1401,7 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       *component_type = "DropoutComponent";
       os << "dim=" << RandInt(1, 200)
          << " dropout-proportion=" << RandUniform();
+      break;
     } 
     case 30: {
       *component_type = "LstmNonlinearityComponent";
