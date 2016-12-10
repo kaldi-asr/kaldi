@@ -13,6 +13,7 @@ import glob
 import logging
 import math
 import os
+import random
 import time
 
 import libs.common as common_lib
@@ -153,7 +154,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         cv_minibatch_size=256, frames_per_eg=-1,
                         min_deriv_time=None, max_deriv_time=None,
                         min_left_context=None, min_right_context=None,
-                        shrinkage_value=1.0,
+                        shrinkage_value=1.0, dropout_proportions=None,
                         get_raw_nnet_from_am=True,
                         background_process_handler=None,
                         extra_egs_copy_cmd=""):
@@ -280,11 +281,16 @@ def train_one_iteration(dir, iter, srand, egs_dir,
     except OSError:
         pass
 
+    if dropout_proportions is not None:
+        raw_model_string = common_train_lib.apply_dropout(
+            dropout_proportions, raw_model_string)
+
     train_new_models(dir=dir, iter=iter, srand=srand, num_jobs=num_jobs,
                      num_archives_processed=num_archives_processed,
                      num_archives=num_archives,
                      raw_model_string=raw_model_string, egs_dir=egs_dir,
-                     left_context=left_context, right_context=right_context,
+                     left_context=left_context,
+                     right_context=right_context,
                      momentum=momentum, max_param_change=cur_max_param_change,
                      shuffle_buffer_size=shuffle_buffer_size,
                      minibatch_size=cur_minibatch_size,

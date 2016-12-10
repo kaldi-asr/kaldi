@@ -65,13 +65,24 @@ def get_args():
                         used to train an LSTM.
                         Caution: if you double this you should halve
                         --trainer.samples-per-iter.""")
-    parser.add_argument("--egs.chunk-left-context", type=int,
-                        dest='chunk_left_context', default=40,
-                        help="""Number of left steps used in the estimation of
-                        LSTM state before prediction of the first label""")
-
-    parser.add_argument("--trainer.samples-per-iter", type=int,
-                        dest='samples_per_iter', default=20000,
+    parser.add_argument("--egs.chunk-left-context", type=int, dest='chunk_left_context',
+                        default = 40,
+                        help="""Number of left steps used in the estimation of LSTM
+                        state before prediction of the first label""")
+    parser.add_argument("--egs.chunk-right-context", type=int, dest='chunk_right_context',
+                        default = 0,
+                        help="""Number of right steps used in the estimation of BLSTM
+                        state before prediction of the first label""")
+    parser.add_argument("--trainer.min-extra-left-context", type=int, dest='min_extra_left_context',
+                        default = None,
+                        help="""Number of left steps used in the estimation of LSTM
+                        state before prediction of the first label""")
+    parser.add_argument("--trainer.min-extra-right-context", type=int, dest='min_extra_right_context',
+                        default = None,
+                        help="""Number of right steps used in the estimation of BLSTM
+                        state before prediction of the first label""")
+    parser.add_argument("--trainer.samples-per-iter", type=int, dest='samples_per_iter',
+                        default=20000,
                         help="""This is really the number of egs in each
                         archive.  Each eg has 'chunk_width' frames in it--
                         for chunk_width=20, this value (20k) is equivalent
@@ -100,13 +111,15 @@ def get_args():
                         shrink-threshold at the non-linearities.  E.g. 0.99.
                         Only applicable when the neural net contains sigmoid or
                         tanh units.""")
-    parser.add_argument("--trainer.optimization.shrink-saturation-threshold", type=float,
+    parser.add_argument("--trainer.optimization.shrink-saturation-threshold",
+                        type=float,
                         dest='shrink_saturation_threshold', default=0.40,
-                        help="""Threshold that controls when we apply the 'shrinkage'
-                        (i.e. scaling by shrink-value).  If the saturation of the
-                        sigmoid and tanh nonlinearities in the neural net (as
-                        measured by steps/nnet3/get_saturation.pl) exceeds this
-                        threshold we scale the parameter matrices with the
+                        help="""Threshold that controls when we apply the
+                        'shrinkage' (i.e. scaling by shrink-value).  If the
+                        saturation of the sigmoid and tanh nonlinearities in
+                        the neural net (as measured by
+                        steps/nnet3/get_saturation.pl) exceeds this threshold
+                        we scale the parameter matrices with the
                         shrink-value.""")
     parser.add_argument("--trainer.optimization.cv-minibatch-size", type=int,
                         dest='cv_minibatch_size', default=256,
@@ -177,11 +190,18 @@ def process_args(args):
             "--trainer.deriv-truncate-margin.".format(
                 args.deriv_truncate_margin))
 
+    if args.min_extra_left_context is None:
+        args.min_extra_left_context = args.chunk_left_context
+
+    if args.min_extra_right_context is None:
+        args.min_extra_right_context = args.chunk_right_context
+
     if (not os.path.exists(args.dir)
             or not os.path.exists(args.dir+"/configs")):
         raise Exception("This scripts expects {0} to exist and have a configs "
                         "directory which is the output of "
                         "make_configs.py script")
+
 
     if args.transform_dir is None:
         args.transform_dir = args.ali_dir
@@ -363,6 +383,10 @@ def train(args, run_opts, background_process_handler):
                                                   args.initial_effective_lrate,
                                                   args.final_effective_lrate)
 
+    if args.dropout_schedule is not None:
+        dropout_schedule = common_train_lib.parse_dropout_option(
+            num_archives_to_process, args.dropout_schedule)
+
     min_deriv_time = None
     max_deriv_time = None
     if args.deriv_truncate_margin is not None:
@@ -408,12 +432,18 @@ def train(args, run_opts, background_process_handler):
                 num_archives=num_archives,
                 learning_rate=learning_rate(iter, current_num_jobs,
                                             num_archives_processed),
+                dropout_proportions=(
+                    None if args.dropout_schedule is None
+                    else common_train_lib.get_dropout_proportions(
+                        dropout_schedule, num_archives_processed)),
                 shrinkage_value=shrinkage_value,
                 minibatch_size=args.num_chunk_per_minibatch,
                 num_hidden_layers=num_hidden_layers,
                 add_layers_period=args.add_layers_period,
-                left_context=left_context,
-                right_context=right_context,
+                min_left_context = model_left_context + args.min_extra_left_context,
+                min_right_context = model_right_context + args.min_extra_right_context,
+                max_left_context = left_context,
+                max_right_context = right_context,
                 min_deriv_time=min_deriv_time,
                 max_deriv_time=max_deriv_time,
                 momentum=args.momentum,
