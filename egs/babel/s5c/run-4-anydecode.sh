@@ -10,13 +10,13 @@ dir=dev10h.pem
 kind=
 data_only=false
 fast_path=true
-skip_kws=false
+skip_kws=true
 skip_stt=false
 skip_scoring=false
 max_states=150000
 extra_kws=true
 vocab_kws=false
-tri5_only=false
+tri5_only=true
 wip=0.5
 
 echo "run-4-test.sh $@"
@@ -196,7 +196,6 @@ if [ ! -f  $dataset_dir/.done ] ; then
     else
       echo "Unknown type of the dataset: \"$dataset_segments\"!";
       echo "Valid dataset types are: seg, uem, pem";
-      exit 1
     fi
   elif [ "$dataset_kind" == "unsupervised" ] ; then
     if [ "$dataset_segments" == "seg" ] ; then
@@ -215,12 +214,10 @@ if [ ! -f  $dataset_dir/.done ] ; then
     else
       echo "Unknown type of the dataset: \"$dataset_segments\"!";
       echo "Valid dataset types are: seg, uem, pem";
-      exit 1
     fi
   else
     echo "Unknown kind of the dataset: \"$dataset_kind\"!";
     echo "Valid dataset kinds are: supervised, unsupervised, shadow";
-    exit 1
   fi
 
   if [ ! -f ${dataset_dir}/.plp.done ]; then
@@ -284,11 +281,11 @@ if ! $fast_path ; then
     "${lmwt_plp_extra_opts[@]}" \
     ${dataset_dir} data/lang ${decode}
 
-  local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
-    --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
-    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
-    "${lmwt_plp_extra_opts[@]}" \
-    ${dataset_dir} data/lang ${decode}.si
+  #local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
+  #  --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
+  #  --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
+  #  "${lmwt_plp_extra_opts[@]}" \
+  #  ${dataset_dir} data/lang ${decode}.si
 fi
 
 if $tri5_only; then
