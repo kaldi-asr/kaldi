@@ -1,23 +1,35 @@
 #!/bin/bash
+
+# Copyright 2016  Vimal Manohar
+# Apache 2.0
+
 set -e
 set -u
 set -o pipefail
 
 . path.sh
-. cmd.sh
-
-num_data_reps=5
-data_dir=data/train_si284
-whole_data_dir=data/train_si284_whole
-
-nj=40
-reco_nj=40
 
 stage=0
 corruption_stage=-10
+corrupt_only=false
 
-pad_silence=false
+# Data options
+data_dir=data/train_si284   # Excpecting non-whole data directory
+speed_perturb=true
+num_data_reps=5   # Number of corrupted versions
+snrs="20:10:15:5:0:-5"
+foreground_snrs="20:10:15:5:0:-5"
+background_snrs="20:10:15:5:0:-5"
+base_rirs=simulated
+# Whole-data directory corresponding to data_dir
+whole_data_dir=data/train_si284_whole   
 
+# Parallel options
+reco_nj=40
+nj=40
+cmd=queue.pl
+
+# Options for feature extraction
 mfcc_config=conf/mfcc_hires_bp_vh.conf
 energy_config=conf/log_energy.conf
 
