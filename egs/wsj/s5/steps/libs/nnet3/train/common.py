@@ -647,7 +647,8 @@ class CommonParser:
                                  doesn't increase the effective learning
                                  rate.""")
         self.parser.add_argument("--trainer.dropout-schedule", type=str,
-                                 dest='dropout_schedule', default='',
+                                 dest='dropout_schedule', default=None,
+                                 action=common_lib.NullstrToNoneAction,
                                  help="""Use this to specify the dropout
                                  schedule.  You specify a piecewise linear
                                  function on the domain [0,1], where 0 is the
