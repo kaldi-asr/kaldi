@@ -26,7 +26,7 @@ logger = logging.getLogger('libs')
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
-formatter = logging.Formatter("%(asctime)s [%(filename)s:%(lineno)s - "
+formatter = logging.Formatter("%(asctime)s [%(pathname)s:%(lineno)s - "
                               "%(funcName)s - %(levelname)s ] %(message)s")
 handler.setFormatter(formatter)
 logger.addHandler(handler)
@@ -400,11 +400,6 @@ def train(args, run_opts, background_process_handler):
                                         get_raw_nnet_from_am=False)
                                    else 1
                                    )
-            logger.info("On iteration {0}, learning rate is {1} and "
-                        "shrink value is {2}.".format(
-                            iter, learning_rate(iter, current_num_jobs,
-                                                num_archives_processed),
-                            shrinkage_value))
 
             train_lib.common.train_one_iteration(
                 dir=args.dir,
