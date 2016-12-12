@@ -24,7 +24,7 @@ lmdir=data/local/transcript_lm
 dictsrc=data/local/dictsrc
 dictdir=data/local/dict
 espeakdir='espeak-1.48.04-source'
-mkdir -p $dictsrc $dictd  ir
+mkdir -p $dictsrc $dictdir
 
 
 # Dictionary preparation:
