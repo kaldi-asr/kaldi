@@ -46,7 +46,7 @@ steps/train_mono.sh --cmd "$train_cmd" --nj 10 \
 
 
 # Monophone decoding
-utils/mkgraph.sh --mono data/lang_test exp/mono0a exp/mono0a/graph || exit 1
+utils/mkgraph.sh data/lang_test exp/mono0a exp/mono0a/graph || exit 1
 # note: local/decode.sh calls the command line once for each
 # test, and afterwards averages the WERs into (in this case
 # exp/mono/decode/
