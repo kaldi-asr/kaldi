@@ -117,7 +117,8 @@ eval my_kwlists_keys="\${!${dataset_type}_kwlists[@]}"
 for key in $my_kwlists_keys  # make sure you include the quotes there
 do
   eval my_kwlists_val="\${${dataset_type}_kwlists[$key]}"
-  index=`echo $my_kwlists_val | sed 's/.*\.\([^.][^.]*\)\.xml/\1/g'`
+  #index=`echo $my_kwlists_val | sed 's/.*\.\([^.][^.]*\)\.xml/\1/g'`
+  index=$key
 
   my_kwlists["$index"]="${my_kwlists_val}"
 done
@@ -294,14 +295,21 @@ if ! $skip_kws ; then
   if  $vocab_kws ; then
     . ./local/datasets/vocab_kws.sh || exit 1
   fi
-if false ; then
-  ./local/syllab/run_phones.sh ${dataset_dir}
-  ./local/syllab/run_syllabs.sh ${dataset_dir}
+  if [ ! -f data/lang.phn/G.fst ] ; then
+    ./local/syllab/run_phones.sh --stage -2 ${dataset_dir}
+  else
+    ./local/syllab/run_phones.sh ${dataset_dir}
+  fi
+
+  if [ ! -f data/lang.syll/G.fst ] ; then
+    ./local/syllab/run_syllabs.sh --stage -2  ${dataset_dir}
+  else
+    ./local/syllab/run_syllabs.sh ${dataset_dir}
+  fi
 
   ./local/search/run_search.sh --dir ${dataset_dir##*/}
   ./local/search/run_phn_search.sh --dir ${dataset_dir##*/}
   ./local/search/run_syll_search.sh --dir ${dataset_dir##*/}
-fi
 fi
 
 if $data_only ; then
