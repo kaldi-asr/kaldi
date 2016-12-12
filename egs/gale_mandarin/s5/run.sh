@@ -10,20 +10,20 @@ nJobs=64
 nDecodeJobs=128
 
 AUDIO=(
-  /scratch/groups/skhudan1/corpora/LDC2013S08/
-  /scratch/groups/skhudan1/corpora/LDC2013S04/
-  /scratch/groups/skhudan1/corpora/LDC2014S09/
-  /scratch/groups/skhudan1/corpora/LDC2015S06/
-  /scratch/groups/skhudan1/corpora/LDC2015S13/
-  /scratch/groups/skhudan1/corpora/LDC2016S03/
+  /export/corpora/LDC/LDC2013S08/
+  /export/corpora/LDC/LDC2013S04/
+  /export/corpora/LDC/LDC2014S09/
+  /export/corpora/LDC/LDC2015S06/
+  /export/corpora/LDC/LDC2015S13/
+  /export/corpora/LDC/LDC2016S03/
 )
 TEXT=(
-  /scratch/groups/skhudan1/corpora/LDC2013T20/
-  /scratch/groups/skhudan1/corpora/LDC2013T08/
-  /scratch/groups/skhudan1/corpora/LDC2014T28/
-  /scratch/groups/skhudan1/corpora/LDC2015T09/
-  /scratch/groups/skhudan1/corpora/LDC2015T25/
-  /scratch/groups/skhudan1/corpora/LDC2016T12/
+  /export/corpora/LDC/LDC2013T20/
+  /export/corpora/LDC/LDC2013T08/
+  /export/corpora/LDC/LDC2014T28/
+  /export/corpora/LDC/LDC2015T09/
+  /export/corpora/LDC/LDC2015T25/
+  /export/corpora/LDC/LDC2016T12/
 )
 galeData=GALE/
 
@@ -51,6 +51,13 @@ local/gale_format_data.sh
 # mfccdir should be some place with a largish disk where you
 # want to store MFCC features.
 mfccdir=mfcc
+
+# spread the mfccs over various machines, as this data-set is quite large.
+if [[  $(hostname -f) ==  *.clsp.jhu.edu ]]; then
+  mfcc=$(basename mfccdir) # in case was absolute pathname (unlikely), get basename.
+  utils/create_split_dir.pl /export/b{05,06,07,08}/$USER/kaldi-data/egs/gale_mandarin/s5/$mfcc/storage \
+    $mfccdir/storage
+fi
 
 for x in train dev ; do
   utils/fix_data_dir.sh data/$x
@@ -95,9 +102,12 @@ utils/mkgraph.sh data/lang_test exp/tri2a exp/tri2a/graph || exit 1;
 steps/decode.sh --nj $nDecodeJobs --cmd "$decode_cmd" \
   exp/tri2a/graph data/dev exp/tri2a/decode &
 
+steps/align_si.sh --nj $nJobs --cmd "$train_cmd" \
+  data/train data/lang exp/tri2a exp/tri2a_ali || exit 1;
+
 # train and decode tri2b [LDA+MLLT]
 steps/train_lda_mllt.sh --cmd "$train_cmd" 4000 50000 \
-  data/train data/lang exp/tri1_ali exp/tri2b || exit 1;
+  data/train data/lang exp/tri2a_ali exp/tri2b || exit 1;
 utils/mkgraph.sh data/lang_test exp/tri2b exp/tri2b/graph || exit 1;
 steps/decode.sh --nj $nDecodeJobs --cmd "$decode_cmd" exp/tri2b/graph data/dev exp/tri2b/decode &
 
@@ -178,26 +188,20 @@ for n in 1 2 3 4; do
     data/dev exp/sgmm_5a_mmi_b0.1/decode exp/sgmm_5a_mmi_b0.1/decode$n
 done
 
-for n in 1 2 3 4; do
-  steps/decode_sgmm2_rescore.sh --cmd "$decode_cmd" --iter $n --transform-dir exp/tri3b/decode data/lang_test \
-    data/dev exp/sgmm_5a/decode exp/sgmm_5a_mmi_onlyRescoreb0.1/decode$n
-done
-
 wait
-local/nnet/run_dnn.sh
+#local/nnet/run_dnn.sh
 
-time=$(date +"%Y-%m-%d-%H-%M-%S")
-#get WER
-for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; \
-done | sort -n -r -k2 > RESULTS.$USER.$time # to make sure you keep the results timed and owned
+echo "# Get WER and CER" > RESULTS
+for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_[0-9]* | utils/best_wer.sh; \
+done | sort -n -r -k2 >> RESULTS
+echo "" >> RESULTS
+for x in exp/*/decode*; do [ -d $x ] && grep WER $x/cer_[0-9]* | utils/best_wer.sh; \
+done | sort -n -r -k2 >> RESULTS
 
-#get detailed WER; reports, conversational and combined
-local/split_wer.sh $galeData > RESULTS.details.$USER.$time
+echo -e "\n# Detailed WER on all corpus dev sets" >> RESULTS
+local/split_wer_per_corpus.sh $galeData >> RESULTS
 
 echo training succedded
 exit 0
-
-
-
 
 

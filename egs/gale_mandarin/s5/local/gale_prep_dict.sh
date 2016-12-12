@@ -77,6 +77,10 @@ if [ ! -f conf/g2p_model ]; then
 fi
 
 echo "--- Preparing pronunciations for OOV words ..."
+if [ ! -x g2p.py ]; then
+  echo "g2p.py is not found. Checkout tools/extra/install_sequitur.sh."
+  exit 1
+fi
 g2p.py --model=conf/g2p_model --apply $dict_dir/vocab-en-oov.txt > $dict_dir/lexicon-en-oov.txt
 
 cat $dict_dir/lexicon-en-oov.txt $dict_dir/lexicon-en-iv.txt |\
