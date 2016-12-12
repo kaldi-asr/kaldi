@@ -51,7 +51,7 @@ done
 steps/train_mono.sh --boost-silence 1.25 --nj 10  \
   data/train_si84_multi data/lang exp/mono0a_multi || exit 1;
 #(
-# utils/mkgraph.sh --mono data/lang_test_tgpr exp/mono0a exp/mono0a/graph_tgpr && \
+# utils/mkgraph.sh data/lang_test_tgpr exp/mono0a exp/mono0a/graph_tgpr && \
 # steps/decode.sh --nj 8  \
 #   exp/mono0a/graph_tgpr data/test_eval92 exp/mono0a/decode_tgpr_eval92 
 #) &

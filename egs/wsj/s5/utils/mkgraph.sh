@@ -20,10 +20,9 @@ loopscale=0.1
 
 remove_oov=false
 
-for x in `seq 6`; do
-  [ "$1" == "--mono" ] && context=mono && shift;
-  [ "$1" == "--left-biphone" ] && context=lbiphone && shift;
-  [ "$1" == "--quinphone" ] && context=quinphone && shift;
+for x in `seq 4`; do
+  [ "$1" == "--mono" -o "$1" == "left-biphone" -o "$1" == "--quinphone" ] && shift && \
+    echo "WARNING: the --mono, --left-biphone and --quinphone options are now deprecated and ignored."
   [ "$1" == "--remove-oov" ] && remove_oov=true && shift;
   [ "$1" == "--transition-scale" ] && tscale=$2 && shift 2;
   [ "$1" == "--self-loop-scale" ] && loopscale=$2 && shift 2;
@@ -33,10 +32,12 @@ if [ $# != 3 ]; then
    echo "Usage: utils/mkgraph.sh [options] <lang-dir> <model-dir> <graphdir>"
    echo "e.g.: utils/mkgraph.sh data/lang_test exp/tri1/ exp/tri1/graph"
    echo " Options:"
-   echo " --mono          #  For monophone models."
-   echo " --quinphone     #  For models with 5-phone context (3 is default)"
-   echo " --left-biphone  #  For left biphone models"
-   echo "For other accepted options, see top of script."
+   echo " --remove-oov       #  If true, any paths containing the OOV symbol (obtained from oov.int"
+   echo "                    #  in the lang directory) are removed from the G.fst during compilation."
+   echo " --transition-scale #  Scaling factor on transition probabilities."
+   echo " --self-loop-scale  #  Please see: http://kaldi-asr.org/doc/hmm.html#hmm_scale."
+   echo "Note: the --mono, --left-biphone and --quinphone options are now deprecated"
+   echo "and will be ignored."
    exit 1;
 fi
 
@@ -73,12 +74,6 @@ fi
 
 N=$(tree-info $tree | grep "context-width" | cut -d' ' -f2) || { echo "Error when getting context-width"; exit 1; }
 P=$(tree-info $tree | grep "central-position" | cut -d' ' -f2) || { echo "Error when getting central-position"; exit 1; }
-if [[ $context == mono && ($N != 1 || $P != 0) || \
-      $context == lbiphone && ($N != 2 || $P != 1) || \
-      $context == quinphone && ($N != 5 || $P != 2) ]]; then
-  echo "mkgraph.sh: mismatch between the specified context (--$context) and the one in the tree: N=$N, P=$P"
-  exit 1
-fi
 
 [[ -f $2/frame_subsampling_factor && $loopscale != 1.0 ]] && \
   echo "$0: WARNING: chain models need '--self-loop-scale 1.0'";

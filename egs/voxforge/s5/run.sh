@@ -85,7 +85,7 @@ utils/subset_data_dir.sh data/train 1000 data/train.1k  || exit 1;
 steps/train_mono.sh --nj $njobs --cmd "$train_cmd" data/train.1k data/lang exp/mono  || exit 1;
 
 # Monophone decoding
-utils/mkgraph.sh --mono data/lang_test exp/mono exp/mono/graph || exit 1
+utils/mkgraph.sh data/lang_test exp/mono exp/mono/graph || exit 1
 # note: local/decode.sh calls the command line once for each
 # test, and afterwards averages the WERs into (in this case
 # exp/mono/decode/
