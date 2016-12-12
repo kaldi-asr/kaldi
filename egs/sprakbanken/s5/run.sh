@@ -4,7 +4,7 @@
            ## This relates to the queue.
 . ./path.sh # so python3 is on the path if not on the system (we made a link to utils/).a
 
-nj=14
+nj=12
 
 stage=0
 . utils/parse_options.sh
@@ -57,7 +57,7 @@ if [ $stage -le 5 ]; then
   steps/train_mono.sh --nj $nj --cmd "$train_cmd" \
     data/train_120kshort data/lang exp/mono0a || exit 1;
   utils/mkgraph.sh --mono data/lang_test_tg exp/mono0a exp/mono0a/graph_tg || exit 1;
-  steps/decode.sh --nj $nj --cmd "$decode_cmd" \
+  steps/decode.sh --nj 12 --cmd "$decode_cmd" \
     exp/mono0a/graph_tg data/dev exp/mono0a/decode_tg_dev || exit 1;
 fi
 
@@ -71,9 +71,9 @@ if [ $stage -le 6 ]; then
   # Decode dev set with both LMs
   utils/mkgraph.sh data/lang_test_tg exp/tri1 exp/tri1/graph_tg || exit 1;
   utils/mkgraph.sh data/lang_test_fg exp/tri1 exp/tri1/graph_fg || exit 1; 
-  steps/decode.sh --nj $nj --cmd "$decode_cmd" \
+  steps/decode.sh --nj 12 --cmd "$decode_cmd" \
     exp/tri1/graph_fg data/dev exp/tri1/decode_fg_dev || exit 1;
-  steps/decode.sh --nj $nj --cmd "$decode_cmd" \
+  steps/decode.sh --nj 12 --cmd "$decode_cmd" \
     exp/tri1/graph_tg data/dev exp/tri1/decode_tg_dev || exit 1;
 fi
 
@@ -84,7 +84,7 @@ if [ $stage -le 7 ]; then
   steps/train_deltas.sh --cmd "$train_cmd" \
     5000 60000 data/train data/lang exp/tri1_ali exp/tri2a || exit 1;
   utils/mkgraph.sh data/lang_test_tg exp/tri2a exp/tri2a/graph_tg || exit 1;
-  steps/decode.sh --nj $nj --cmd "$decode_cmd" \
+  steps/decode.sh --nj 12 --cmd "$decode_cmd" \
     exp/tri2a/graph_tg data/dev exp/tri2a/decode_tg_dev || exit 1;
 fi
 
@@ -96,7 +96,7 @@ if [ $stage -le 8 ]; then
     --splice-opts "--left-context=5 --right-context=5" \
     6500 75000 data/train data/lang exp/tri2a_ali exp/tri2b || exit 1;
   utils/mkgraph.sh data/lang_test_tg exp/tri2b exp/tri2b/graph_tg || exit 1;
-  steps/decode.sh --nj $nj --cmd "$decode_cmd" \
+  steps/decode.sh --nj 12 --cmd "$decode_cmd" \
     exp/tri2b/graph_tg data/dev exp/tri2b/decode_tg_dev || exit 1;
 fi
 
@@ -109,10 +109,10 @@ if [ $stage -le 9 ]; then
 
   # Decode dev with 4gram and 3gram LMs
   utils/mkgraph.sh data/lang_test_tg exp/tri3b exp/tri3b/graph_tg || exit 1;
-  steps/decode_fmllr.sh --cmd "$decode_cmd" --nj $nj \
+  steps/decode_fmllr.sh --cmd "$decode_cmd" --nj 12 \
     exp/tri3b/graph_tg data/dev exp/tri3b/decode_tg_dev || exit 1;
   utils/mkgraph.sh data/lang_test_fg exp/tri3b exp/tri3b/graph_fg || exit 1;
-  steps/decode_fmllr.sh --cmd "$decode_cmd" --nj $nj \
+  steps/decode_fmllr.sh --cmd "$decode_cmd" --nj 12 \
     exp/tri3b/graph_fg data/dev exp/tri3b/decode_fg_dev || exit 1;
 
   # Decode test with 4gram and 3gram LMs
