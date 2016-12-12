@@ -45,11 +45,14 @@ def _get_args():
     parser.add_argument("--debug-only", type=str, default="false",
                         choices=["true", "false"],
                         help="Run test functions only")
-    parser.add_argument("ref_in_file", type=argparse.FileType('r'),
+    parser.add_argument("--ref", dest='ref_in_file',
+                        type=argparse.FileType('r'), required=True,
                         help="Reference text file")
-    parser.add_argument("hyp_in_file", type=argparse.FileType('r'),
+    parser.add_argument("--hyp", dest='hyp_in_file', required=True,
+                        type=argparse.FileType('r'),
                         help="Hypothesis text or CTM file")
-    parser.add_argument("alignment_out_file", type=argparse.FileType('w'),
+    parser.add_argument("--output", dest='alignment_out_file', required=True,
+                        type=argparse.FileType('w'),
                         help="File to write output alignment.")
 
     args = parser.parse_args()
@@ -171,7 +174,7 @@ def smith_waterman_alignment(ref, hyp, similarity_score_function,
                     "({0},{1}) -> ({2},{3}): {4}".format(m, n-1, m, n,
                                                          H[m][n]))
 
-            if H[m][n] > max_score:
+            if n == N and H[m][n] > max_score:
                 max_score = H[m][n]
                 max_score_element = (m, n)
 
@@ -241,13 +244,17 @@ def get_edit_type(hyp_word, ref_word, duration=-1, eps_symbol='<eps>',
         return 'cor'
     if hyp_word != eps_symbol and ref_word == eps_symbol:
         return 'ins'
-    if hyp_word == eps_symbol and ref_word != eps_symbol:
+    if hyp_word == eps_symbol and ref_word != eps_symbol and duration == 0.0:
         return 'del'
-    if (symbol_table is not None and hyp_word == oov_word
-            and ref_word not in symbol_table):
+    if (hyp_word == oov_word
+            and len(symbol_table) > 0 and ref_word not in symbol_table):
         return 'cor'    # this special case is treated as correct
-    if hyp_word == eps_symbol and ref_word == eps_symbol:
+    if hyp_word == eps_symbol and ref_word == eps_symbol and duration > 0.0:
+        # silence in hypothesis; we don't match this up with any reference
+        # word.
         return 'sil'
+    # The following assertion is because, based on how get_ctm_edits()
+    # works, we shouldn't hit this case.
     assert hyp_word != eps_symbol and ref_word != eps_symbol
     return 'sub'
 
@@ -287,80 +294,61 @@ def get_ctm_edits(alignment_output, ctm_array, eps_symbol="<eps>",
     # current_time is the end of the last ctm segment we processesed.
     current_time = ctm_array[0][0] if ctm_len > 0 else 0.0
 
-    while ali_pos < ali_len or ctm_pos < ctm_len:
+    for (ref_word, hyp_word, ref_prev_i, hyp_prev_i,
+         ref_i, hyp_i) in alignment_output:
         try:
-            if ali_pos < ali_len and ctm_pos < ctm_len:
-                [ref_word, hyp_word, ref_prev_i,
-                 hyp_prev_i, ref_i, hyp_i] = alignment_output[ali_pos]
+            ctm_pos = hyp_prev_i
+            # This is true because we cannot have errors at the end because
+            # that will decrease the smith-waterman alignment score.
+            assert ctm_pos < ctm_len
+            assert len(ctm_array[ctm_pos]) == 4
 
-                assert hyp_prev_i <= ctm_len
-
-                while ctm_pos < hyp_prev_i:
-                    assert len(ctm_array[ctm_pos]) == 4
-                    assert ali_pos == 0
-                    # These CTM entries are insertions or silence. So we add
-                    # them without incrementing the alignment index position.
-                    ctm_line = list(ctm_array[ctm_pos])
+            if hyp_prev_i == hyp_i:
+                assert hyp_word == eps_symbol
+                # These are deletions as there are no CTM entries
+                # corresponding to these alignments.
+                edit_type = get_edit_type(
+                    hyp_word=eps_symbol, ref_word=ref_word,
+                    duration=0.0, eps_symbol=eps_symbol,
+                    oov_word=oov_word, symbol_table=symbol_table)
+                ctm_line = [current_time, 0.0, eps_symbol, 1.0,
+                            ref_word, edit_type]
+                ctm_edits.append(ctm_line)
+            else:
+                assert hyp_i == hyp_prev_i + 1
+                assert hyp_word == ctm_array[ctm_pos][2]
+                # This is the normal case, where there are 2 entries where
+                # they hyp-words match up.
+                ctm_line = list(ctm_array[ctm_pos])
+                if hyp_word == eps_symbol and ref_word != eps_symbol:
+                    # This is a silence in hypothesis aligned with a reference
+                    # word. We split this into two ctm edit lines where the
+                    # first one is a deletion of duration 0 and the second
+                    # one is a silence of duration given by the ctm line.
                     edit_type = get_edit_type(
-                        hyp_word=ctm_line[2], ref_word=eps_symbol,
+                        hyp_word=eps_symbol, ref_word=ref_word,
+                        duration=0.0, eps_symbol=eps_symbol,
+                        oov_word=oov_word, symbol_table=symbol_table)
+                    assert edit_type == 'del'
+                    ctm_edits.append([current_time, 0.0, eps_symbol, 1.0,
+                                      ref_word, edit_type])
+
+                    edit_type = get_edit_type(
+                        hyp_word=eps_symbol, ref_word=eps_symbol,
                         duration=ctm_line[1], eps_symbol=eps_symbol,
                         oov_word=oov_word, symbol_table=symbol_table)
+                    assert edit_type == 'sil'
                     ctm_line.extend([eps_symbol, edit_type])
                     ctm_edits.append(ctm_line)
-                    current_time = (ctm_array[ctm_pos][0]
-                                    + ctm_array[ctm_pos][1])
-                    ctm_pos += 1
-
-                if ctm_pos < ctm_len:
-                    assert ctm_pos == hyp_prev_i
-                    assert hyp_word == ctm_array[ctm_pos][2]
-                    assert len(ctm_array[ctm_pos]) == 4
-                    # This is the normal case, where there are 2 entries where
-                    # they hyp-words match up.
-                    ctm_line = list(ctm_array[ctm_pos])
+                else:
                     edit_type = get_edit_type(
                         hyp_word=hyp_word, ref_word=ref_word,
                         duration=ctm_line[1], eps_symbol=eps_symbol,
                         oov_word=oov_word, symbol_table=symbol_table)
                     ctm_line.extend([ref_word, edit_type])
                     ctm_edits.append(ctm_line)
-                    current_time = (ctm_array[ctm_pos][0]
-                                    + ctm_array[ctm_pos][1])
-                    ctm_pos += 1
-
-                ali_pos += 1
-            elif ctm_pos < ctm_len:
-                # This CTM entry is an insertion and there is no alignment
-                # corresponding to this.
-                # This means we've reached the end of the edits sequence.
-                assert ali_pos == ali_len
-                assert len(ctm_array[ctm_pos]) == 4
-                ctm_line = list(ctm_array[ctm_pos])
-                edit_type = get_edit_type(
-                    hyp_word=ctm_line[2], ref_word=eps_symbol,
-                    duration=ctm_line[1], eps_symbol=eps_symbol,
-                    oov_word=oov_word, symbol_table=symbol_table)
-                ctm_line.extend([eps_symbol, edit_type])
-                ctm_edits.append(ctm_line)
                 current_time = (ctm_array[ctm_pos][0]
                                 + ctm_array[ctm_pos][1])
-                ctm_pos += 1
-            else:
-                while ali_pos < ali_len:
-                    [ref_word, hyp_word, ref_prev_i,
-                     hyp_prev_i, ref_i, hyp_i] = alignment_output[ali_pos]
-
-                    assert hyp_prev_i == ctm_len and hyp_word == eps_symbol
-                    # These are deletions as there are no CTM entries
-                    # corresponding to these alignments.
-                    edit_type = get_edit_type(
-                        hyp_word=eps_symbol, ref_word=ref_word,
-                        duration=0.0, eps_symbol=eps_symbol,
-                        oov_word=oov_word, symbol_table=symbol_table)
-                    ctm_line = [current_time, 0.0, eps_symbol, 1.0,
-                                ref_word, edit_type]
-                    ctm_edits.append(ctm_line)
-                    ali_pos += 1
         except Exception:
             logger.error("Could not get ctm edits for "
                          "edits@{edits_pos} = {0}, ctm@{ctm_pos} = {1}".format(

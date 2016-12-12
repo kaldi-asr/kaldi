@@ -35,12 +35,18 @@ max_internal_silence_length=2.0
 max_internal_non_scored_length=2.0
 unk_padding=0.05
 max_junk_proportion=0.1
+min_split_point_duration=0.1
 max_deleted_words_kept_when_merging=1
 silence_factor=1
 incorrect_words_factor=1
-tainted_or_incorrect_words_factor=1
-max_wer=10
-max_silence_length=10
+tainted_words_factor=1
+max_wer=50
+max_segment_length_for_merging=60
+max_bad_proportion=0.75
+max_segment_length_for_splitting=10
+hard_max_segment_length=15
+min_silence_length_to_split_at=0.3
+min_non_scored_length_to_split_at=0.3
 
 stage=-1
 
@@ -266,11 +272,11 @@ if [ $stage -le 8 ]; then
       --input-documents=$dir/docs/split$nj/JOB/docs.txt \
       --output-documents=- \| \
     steps/cleanup/internal/align_ctm_ref.py --eps-symbol='"<eps>"' \
+      --oov-word="'`cat $lang/oov.txt`'" --symbol-table=$lang/words.txt \
       --hyp-format=CTM \
       --reco2file-and-channel=$dir/lats/fake_reco2file_and_channel.JOB \
-      - \
-      $dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm.JOB \
-      $dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm_edits.JOB
+      --hyp=$dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm.JOB --ref=- \
+      --output=$dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm_edits.JOB
 
   for n in `seq $nj`; do
     cat $dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm_edits.$n 
@@ -323,14 +329,20 @@ if [ $stage -le 12 ]; then
   --max-internal-non-scored-length=$max_internal_non_scored_length
   --unk-padding=$unk_padding
   --max-junk-proportion=$max_junk_proportion
+  --min-split-point-duration=$min_split_point_duration
   --max-deleted-words-kept-when-merging=$max_deleted_words_kept_when_merging
-  --silence-factor=$silence_factor
-  --incorrect-words-factor=$incorrect_words_factor
-  --tainted-or-incorrect-words-factor=$tainted_or_incorrect_words_factor
-  --max-wer=$max_wer
-  --max-silence-length=$max_silence_length
+  --merging-score.silence-factor=$silence_factor
+  --merging-score.incorrect-words-factor=$incorrect_words_factor
+  --merging-score.tainted-words-factor=$tainted_words_factor
+  --merging.max-wer=$max_wer
+  --merging.max-segment-length=$max_segment_length_for_merging
+  --merging.max-bad-proportion=$max_bad_proportion
+  --splitting.max-segment-length=$max_segment_length_for_splitting
+  --splitting.hard-max-segment-length=$hard_max_segment_length
+  --splitting.min-silence-length=$min_silence_length_to_split_at
+  --splitting.min-non-scored-length=$min_non_scored_length_to_split_at
   )
-
+  
   $cmd $dir/log/segment_ctm_edits.log \
     steps/cleanup/internal/segment_ctm_edits_mild.py \
       ${segmentation_opts[@]} \
