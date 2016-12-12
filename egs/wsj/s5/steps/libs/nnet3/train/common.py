@@ -395,8 +395,8 @@ def _parse_dropout_string(num_archives_to_process, dropout_str):
                             "at least the start and end dropouts")
 
         # Starting dropout proportion
-        dropout_values.append((0, float(parts[0])))
-
+        dropout_values.append((0, float(parts[0]))) 
+        data_fraction_one_previous='' # used to control situations like: 0.2@0.75,0@0.75
         for i in range(1, len(parts) - 1):
             value_x_pair = parts[i].split('@')
             if len(value_x_pair) == 1:
@@ -407,9 +407,15 @@ def _parse_dropout_string(num_archives_to_process, dropout_str):
             else:
                 assert len(value_x_pair) == 2
                 dropout_proportion, data_fraction = value_x_pair
-                dropout_values.append(
-                    (float(data_fraction) * num_archives_to_process,
-                     float(dropout_proportion)))
+                if data_fraction == data_fraction_one_previous :
+                    dropout_values.append(
+                        (float(data_fraction) * num_archives_to_process + 1.0,
+                        float(dropout_proportion)))                    
+                else:
+                    dropout_values.append(
+                        (float(data_fraction) * num_archives_to_process,
+                        float(dropout_proportion)))
+            _, data_fraction_one_previous = value_x_pair
 
         dropout_values.append((num_archives_to_process, float(parts[-1])))
     except Exception:
