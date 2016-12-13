@@ -73,7 +73,6 @@ steps/train_sat.sh --cmd "$train_cmd" 4200 40000 \
    exp/tri4c_reseg/graph_nosp_tgpr data/test_eval92 \
    exp/tri4c_reseg/decode_nosp_tgpr_eval92 || exit 1;
 ) &
-fi
 
 steps/cleanup/clean_and_segment_data.sh --cmd "$train_cmd" \
   --nj 80 \
@@ -128,6 +127,7 @@ steps/train_sat.sh --cmd "$train_cmd" 4200 40000 \
    exp/tri4d_cleaned_b/decode_nosp_tgpr_eval92 || exit 1;
 ) &
 
+fi
 steps/cleanup/clean_and_segment_data.sh --cmd "$train_cmd" \
   --nj 80 \
   data/train_si284_reseg data/lang_nosp \
