@@ -77,7 +77,8 @@ if [ ! -f conf/g2p_model ]; then
 fi
 
 echo "--- Preparing pronunciations for OOV words ..."
-if [ ! -x g2p.py ]; then
+g2p=`which g2p.py`
+if [ ! -x $g2p ]; then
   echo "g2p.py is not found. Checkout tools/extra/install_sequitur.sh."
   exit 1
 fi
