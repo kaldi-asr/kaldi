@@ -125,10 +125,10 @@ class Nnet {
 
   int32 NumNodes() const { return nodes_.size(); }
 
-  /// return component indexed c.  not a copy; not owned by caller.
+  /// Return component indexed c.  Not a copy; not owned by caller.
   Component *GetComponent(int32 c);
 
-  /// return component indexed c (const version).  not a copy; not owned by
+  /// Return component indexed c (const version).  Not a copy; not owned by
   /// caller.
   const Component *GetComponent(int32 c) const;
 

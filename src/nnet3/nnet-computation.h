@@ -296,6 +296,25 @@ struct NnetComputation {
     void Read(std::istream &istream, bool binary);
     void Write(std::ostream &ostream, bool binary) const;
   };
+  struct PrecomputedIndexesInfo {
+    // For each step of the computation for which we might possibly need to store
+    // a ComponentPrecomputedIndexes object (and note that this is only applicable
+    // for non-simple Components), this struct stores some information.
+    // The primary data is in 'data', it's an object of type inheriting from
+    // ComponentPrecomputedIndexes.
+    // The 'input_indexes' and 'output_indexes' are the vectors that were provided
+    // to the function Component::PrecomputeIndexes() when generating these
+    // PrecomputedIndexes objects.  They currently only stored in cases where
+    // the 'n' values in the computation are numbered only zero and one, because
+    // these types of computations are compiled in 'shortcut' compilation, and
+    // in that case we'll need these indexes later in order to generate the
+    // 'expanded' computation (see the function ExpandComputation()).
+    ComponentPrecomputedIndexes *data;
+    std::vector<Index> input_indexes;
+    std::vector<Index> output_indexes;
+    PrecomputedIndexesInfo(): data(NULL) { }
+  };
+
 
   // "matrices" describes the sizes of the matrices that we use as variables in
   // the computation [note: index zero is reserved for an empty matrix].  Note:
@@ -323,7 +342,7 @@ struct NnetComputation {
   // the NULL pointer, which is used for "simple" components and others that do
   // not require precomputed indexes.
   // These are owned here.
-  std::vector<ComponentPrecomputedIndexes*> component_precomputed_indexes;
+  std::vector<PrecomputedIndexesInfo> component_precomputed_indexes;
 
   // used in kAddRows, kAddToRows, kCopyRows, kCopyToRows.  contains row-indexes.
   std::vector<std::vector<int32> > indexes;
