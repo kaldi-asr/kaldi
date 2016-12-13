@@ -29,7 +29,8 @@ config_to_layer = {
         'lstmp-layer' : xlayers.XconfigLstmpLayer,
         'lstmpc-layer' : xlayers.XconfigLstmpcLayer,
         'fast-lstm-layer' : xlayers.XconfigFastLstmLayer,
-        'fast-lstmp-layer' : xlayers.XconfigFastLstmpLayer
+        'fast-lstmp-layer' : xlayers.XconfigFastLstmpLayer,
+        'stats-layer': xlayers.XconfigStatsLayer
         }
 
 # Converts a line as parsed by ParseConfigLine() into a first
