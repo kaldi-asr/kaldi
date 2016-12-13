@@ -21,7 +21,7 @@ loopscale=0.1
 remove_oov=false
 
 for x in `seq 4`; do
-  [ "$1" == "--mono" -o "$1" == "left-biphone" -o "$1" == "--quinphone" ] && shift && \
+  [ "$1" == "--mono" -o "$1" == "--left-biphone" -o "$1" == "--quinphone" ] && shift && \
     echo "WARNING: the --mono, --left-biphone and --quinphone options are now deprecated and ignored."
   [ "$1" == "--remove-oov" ] && remove_oov=true && shift;
   [ "$1" == "--transition-scale" ] && tscale=$2 && shift 2;
