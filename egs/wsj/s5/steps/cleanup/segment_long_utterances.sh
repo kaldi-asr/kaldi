@@ -123,7 +123,10 @@ fi
 if [ $stage -le 2 ]; then
   utils/data/subsegment_data_dir.sh $data $dir/uniform_sub_segments $data_uniform_seg
 
-  utils/data/get_reco2num_frames.sh --frame-shift 0.01 --frame-overlap 0.015 \
+  # make frame-overlap slightly larger so that the number of frames decreases 
+  # by perhaps at most 1 to fix some round-off errors.
+  rm $data/reco2num_frames $data/reco2dur || true
+  utils/data/get_reco2num_frames.sh --frame-shift 0.01 --frame-overlap 0.0151 \
     $data
 
   awk '{print $1" "$2}' $data_uniform_seg/segments | \
@@ -276,11 +279,13 @@ if [ $stage -le 8 ]; then
       --hyp-format=CTM \
       --reco2file-and-channel=$dir/lats/fake_reco2file_and_channel.JOB \
       --hyp=$dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm.JOB --ref=- \
-      --output=$dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm_edits.JOB
+      --output=$dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm_edits.JOB 
 
   for n in `seq $nj`; do
     cat $dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm_edits.$n 
-  done > $dir/lats/ctm_edits
+  done | \
+    steps/resolve_ctm_overlaps.py ${data_uniform_seg}/segments \
+      - $dir/ctm_edits
 fi
 
 if [ $stage -le 9 ]; then
@@ -302,7 +307,7 @@ if [ $stage -le 10 ]; then
 
   $cmd $dir/log/modify_ctm_edits.log \
     steps/cleanup/internal/modify_ctm_edits.py --verbose=3 $dir/non_scored_words.txt \
-    $dir/lats/ctm_edits $dir/ctm_edits.modified
+    $dir/ctm_edits $dir/ctm_edits.modified
 
   echo "   ... See $dir/log/modify_ctm_edits.log for details and stats, including"
   echo " a list of commonly-repeated words."
@@ -359,3 +364,16 @@ if [ $stage -le 12 ]; then
   echo "For detailed utterance-level debugging information, see $dir/ctm_edits.segmented"
 fi
 
+mkdir -p $out_data
+if [ $stage -le 13 ]; then
+  utils/data/subsegment_data_dir.sh $data_uniform_seg $dir/segments $dir/text $out_data
+
+  awk '{print $1" "$2}' $out_data/segments | \
+    utils/apply_map.pl -f 2 $data/reco2num_frames > \
+    $out_data/utt2max_frames
+
+  utils/data/get_subsegment_feats.sh $data_uniform_seg/feats.scp 0.01 0.015 \
+    $dir/segments | \
+    utils/data/fix_subsegmented_feats.pl $out_data/utt2max_frames > \
+    $out_data/feats.scp 
+fi
