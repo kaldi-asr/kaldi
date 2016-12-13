@@ -66,12 +66,16 @@ def train_new_models(dir, iter, srand, num_jobs,
         deriv_time_opts.append("--optimization.max-deriv-time={0}".format(
                            max_deriv_time))
 
-    this_random = random.Random(srand)
+    this_random = random.Random(srand + iter)
+
     if min_left_context is not None:
         left_context = this_random.randint(min_left_context, left_context)
 
     if min_right_context is not None:
         right_context = this_random.randint(min_right_context, right_context)
+
+    logger.info("On iteration %d, left-context=%d and right-context=%s",
+                iter, left_context, right_context)
 
     context_opts = "--left-context={0} --right-context={1}".format(
         left_context, right_context)
