@@ -27,8 +27,8 @@ reco_nj=40
 cmd=queue.pl
 
 # Options for feature extraction
-mfcc_config=conf/mfcc_hires_bp_vh.conf
-feat_suffix=hires_bp_vh
+mfcc_config=conf/mfcc_hires_bp.conf
+feat_suffix=hires_bp
 
 reco_vad_dir=   # Output of prepare_unsad_data.sh. 
                 # If provided, the speech labels and deriv weights will be 
@@ -105,19 +105,15 @@ if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
 fi
 
 if [ $stage -le 4 ]; then
-  if [ ! -z $feat_suffix ]; then
-    utils/copy_data_dir.sh $corrupted_data_dir ${corrupted_data_dir}_$feat_suffix
-    corrupted_data_dir=${corrupted_data_dir}_$feat_suffix
-  fi
+  utils/copy_data_dir.sh $corrupted_data_dir ${corrupted_data_dir}_$feat_suffix
+  corrupted_data_dir=${corrupted_data_dir}_$feat_suffix
   steps/make_mfcc.sh --mfcc-config $mfcc_config \
     --cmd "$cmd" --nj $reco_nj \
-    $corrupted_data_dir exp/make_${mfccdir}/${corrupted_data_id} $mfccdir
+    $corrupted_data_dir exp/make_${feat_suffix}/${corrupted_data_id} $mfccdir
   steps/compute_cmvn_stats.sh --fake \
-    $corrupted_data_dir exp/make_${mfccdir}/${corrupted_data_id} $mfccdir
+    $corrupted_data_dir exp/make_${feat_suffix}/${corrupted_data_id} $mfccdir
 else
-  if [ ! -z $feat_suffix ]; then
-    corrupted_data_dir=${corrupted_data_dir}_$feat_suffix
-  fi
+  corrupted_data_dir=${corrupted_data_dir}_$feat_suffix
 fi 
 
 if [ $stage -le 8 ]; then
