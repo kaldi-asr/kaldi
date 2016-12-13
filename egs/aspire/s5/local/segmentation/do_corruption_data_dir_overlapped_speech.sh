@@ -1,4 +1,4 @@
-#!/bin/bash
+#! /bin/bash
 
 # Copyright 2016  Vimal Manohar
 # Apache 2.0
@@ -20,9 +20,10 @@ num_data_reps=5   # Number of corrupted versions
 snrs="20:10:15:5:0:-5"
 foreground_snrs="20:10:15:5:0:-5"
 background_snrs="20:10:15:5:0:-5"
-base_rirs=simulated
+overlap_snrs="5:2:1:0:-1:-2"
 # Whole-data directory corresponding to data_dir
 whole_data_dir=data/train_si284_whole   
+overlap_labels_dir=overlap_labels
 
 # Parallel options
 reco_nj=40
@@ -30,20 +31,14 @@ nj=40
 cmd=queue.pl
 
 # Options for feature extraction
-mfcc_config=conf/mfcc_hires_bp_vh.conf
+mfcc_config=conf/mfcc_hires_bp.conf
+feat_suffix=hires_bp
 energy_config=conf/log_energy.conf
 
-dry_run=false
-corrupt_only=false
-speed_perturb=true
-
-reco_vad_dir=
+reco_vad_dir=   # Output of prepare_unsad_data.sh. 
+                # If provided, the speech labels and deriv weights will be 
+                # copied into the output data directory.
 utt_vad_dir=
-
-max_jobs_run=20
-
-overlap_snrs="5:2:1:0:-1:-2"
-base_rirs=simulated
 
 . utils/parse_options.sh
 
@@ -64,7 +59,7 @@ corrupted_data_id=${whole_data_id}_ovlp_corrupted
 clean_data_id=${whole_data_id}_ovlp_clean
 noise_data_id=${whole_data_id}_ovlp_noise
 
-if [ $stage -le 2 ]; then
+if [ $stage -le 1 ]; then
   python steps/data/make_corrupted_data_dir.py \
     "${rvb_opts[@]}" \
     --prefix="ovlp" \
@@ -89,7 +84,7 @@ noise_data_dir=data/${noise_data_id}
 orig_corrupted_data_dir=$corrupted_data_dir
 
 if $speed_perturb; then
-  if [ $stage -le 3 ]; then
+  if [ $stage -le 2 ]; then
     ## Assuming whole data directories
     for x in $clean_data_dir $corrupted_data_dir $noise_data_dir; do
       cp $x/reco2dur $x/utt2dur
@@ -105,8 +100,8 @@ if $speed_perturb; then
   clean_data_id=${clean_data_id}_sp
   noise_data_id=${noise_data_id}_sp
 
-  if [ $stage -le 4 ]; then
-    utils/data/perturb_data_dir_volume.sh --force true ${corrupted_data_dir}
+  if [ $stage -le 3 ]; then
+    utils/data/perturb_data_dir_volume.sh --scale-low 0.03125 --scale-high 2 --force true ${corrupted_data_dir}
     utils/data/perturb_data_dir_volume.sh --force true --reco2vol ${corrupted_data_dir}/reco2vol ${clean_data_dir}
     utils/data/perturb_data_dir_volume.sh --force true --reco2vol ${corrupted_data_dir}/reco2vol ${noise_data_dir}
   fi
@@ -125,19 +120,21 @@ if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/aspire-$(date +'%m_%d_%H_%M')/s5/$mfccdir/storage $mfccdir/storage
 fi
 
-if [ $stage -le 5 ]; then
+if [ $stage -le 4 ]; then
+  utils/copy_data_dir.sh $corrupted_data_dir ${corrupted_data_dir}_$feat_suffix
+  corrupted_data_dir=${corrupted_data_dir}_$feat_suffix
   steps/make_mfcc.sh --mfcc-config $mfcc_config \
     --cmd "$train_cmd" --nj $reco_nj \
-    $corrupted_data_dir exp/make_hires_bp/${corrupted_data_id} $mfccdir
+    $corrupted_data_dir exp/make_${feat_suffix}/${corrupted_data_id} $mfccdir
 fi
 
-if [ $stage -le 6 ]; then
+if [ $stage -le 5 ]; then
   steps/make_mfcc.sh --mfcc-config $energy_config \
     --cmd "$train_cmd" --nj $reco_nj \
     $clean_data_dir exp/make_log_energy/${clean_data_id} log_energy_feats
 fi
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 6 ]; then
   steps/make_mfcc.sh --mfcc-config $energy_config \
     --cmd "$train_cmd" --nj $reco_nj \
     $noise_data_dir exp/make_log_energy/${noise_data_id} log_energy_feats
@@ -164,6 +161,11 @@ if [ $stage -le 8 ]; then
     exp/make_irm_targets/${corrupted_data_id} $targets_dir
 fi
 
+# Combine the VAD from the base recording and the VAD from the overlapping segments
+# to create per-frame labels of the number of overlapping speech segments
+# Unreliable segments are regions where no VAD labels were available for the
+# overlapping segments. These can be later removed by setting deriv weights to 0.
+
 # Data dirs without speed perturbation
 overlap_dir=exp/make_overlap_labels/${corrupted_data_id}
 unreliable_dir=exp/make_overlap_labels/unreliable_${corrupted_data_id}
@@ -179,10 +181,6 @@ if [ $stage -le 8 ]; then
   utils/data/get_utt2num_frames.sh $corrupted_data_dir
   utils/split_data.sh --per-reco ${orig_corrupted_data_dir} $reco_nj
 
-  # Combine the VAD from the base recording and the VAD from the overlapping segments
-  # to create per-frame labels of the number of overlapping speech segments
-  # Unreliable segments are regions where no VAD labels were available for the
-  # overlapping segments. These can be later removed by setting deriv weights to 0.
   $train_cmd JOB=1:$reco_nj $overlap_dir/log/get_overlap_seg.JOB.log \
     segmentation-init-from-overlap-info --lengths-rspecifier=ark,t:$corrupted_data_dir/utt2num_frames \
     "scp:utils/filter_scp.pl ${orig_corrupted_data_dir}/split${reco_nj}reco/JOB/utt2spk $corrupted_data_dir/sad_seg.scp |" \
@@ -200,6 +198,7 @@ if [ $stage -le 9 ]; then
   cp $orig_corrupted_data_dir/wav.scp $unreliable_data_dir
 
   # Create segments where there is definitely an overlap.
+  # Assume no more than 10 speakers overlap.
   $train_cmd JOB=1:$reco_nj $overlap_dir/log/process_to_segments.JOB.log \
     segmentation-post-process --remove-labels=0:1 \
     ark:$overlap_dir/overlap_seg_speed_unperturbed.JOB.ark ark:- \| \
@@ -230,6 +229,9 @@ if $speed_perturb; then
   unreliable_data_dir=${unreliable_data_dir}_sp
 fi
 
+# make $overlap_labels_dir an absolute pathname.
+overlap_labels_dir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $overlap_labels_dir ${PWD}`
+
 if [ $stage -le 10 ]; then
   utils/split_data.sh --per-reco ${overlap_data_dir} $reco_nj
 
@@ -240,11 +242,11 @@ if [ $stage -le 10 ]; then
     segmentation-combine-segments-to-recordings ark:- ark,t:${overlap_data_dir}/split${reco_nj}reco/JOB/reco2utt \
     ark:- \| \
     segmentation-to-ali --lengths-rspecifier=ark,t:${corrupted_data_dir}/utt2num_frames ark:- \
-    ark,scp:overlap_labels/overlapped_speech_${corrupted_data_id}.JOB.ark,overlap_labels/overlapped_speech_${corrupted_data_id}.JOB.scp
+    ark,scp:$overlap_labels_dir/overlapped_speech_${corrupted_data_id}.JOB.ark,$overlap_labels_dir/overlapped_speech_${corrupted_data_id}.JOB.scp
 fi
 
 for n in `seq $reco_nj`; do
-  cat overlap_labels/overlapped_speech_${corrupted_data_id}.$n.scp
+  cat $overlap_labels_dir/overlapped_speech_${corrupted_data_id}.$n.scp
 done > ${corrupted_data_dir}/overlapped_speech_labels.scp
 
 if [ $stage -le 11 ]; then
@@ -272,10 +274,10 @@ if [ $stage -le 11 ]; then
     segmentation-post-process --remove-labels=0 ark:- ark:- \| \
     segmentation-to-ali --lengths-rspecifier=ark,t:${corrupted_data_dir}/utt2num_frames ark:- ark,t:- \| \
     steps/segmentation/convert_ali_to_vec.pl \| copy-vector ark,t:- \
-    ark,scp:$unreliable_dir/deriv_weights_for_overlapped_speech.JOB.ark,$unreliable_dir/deriv_weights_for_overlapped_speech.JOB.scp
+    ark,scp:$overlap_labels_dir/deriv_weights_for_overlapped_speech.JOB.ark,$overlap_labels_dir/deriv_weights_for_overlapped_speech.JOB.scp
 
   for n in `seq $reco_nj`; do
-    cat $unreliable_dir/deriv_weights_for_overlapped_speech.${n}.scp
+    cat $overlap_labels_dir/deriv_weights_for_overlapped_speech.${n}.scp
   done > $corrupted_data_dir/deriv_weights_for_overlapped_speech.scp
 fi
 
