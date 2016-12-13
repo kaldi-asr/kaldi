@@ -37,7 +37,7 @@ struct NnetOptimizeOptions {
   bool consolidate_model_update;
   bool propagate_in_place;
   bool backprop_in_place;
-  bool replace_row_with_matrix_ops;
+  bool optimize_row_ops;
   bool convert_addition;
   bool remove_assignments;
   bool allow_left_merge;
@@ -58,7 +58,7 @@ struct NnetOptimizeOptions {
       consolidate_model_update(true),
       propagate_in_place(true),
       backprop_in_place(true),
-      replace_row_with_matrix_ops(true),
+      optimize_row_ops(true),
       convert_addition(true),
       remove_assignments(true),
       allow_left_merge(true),
@@ -82,6 +82,9 @@ struct NnetOptimizeOptions {
                    "disable optimization that allows in-place propagation");
     opts->Register("backprop-in-place", &backprop_in_place, "Set to false to "
                    "disable optimization that allows in-place backprop");
+    opts->Register("optimize-row-ops", &optimize_row_ops, "Set to false to "
+                   "disable certain optimizations that act on operations of "
+                   "type *Row*.");
     opts->Register("convert-addition", &convert_addition, "Set to false to "
                    "disable the optimization that converts Add commands into "
                    "Copy commands wherever possible.");
@@ -181,8 +184,6 @@ struct CachingOptimizingCompilerOptions {
   bool use_shortcut;
   int32 write_cache;
   int32 cache_capacity;
-
-
 
   CachingOptimizingCompilerOptions():
       use_shortcut(true),

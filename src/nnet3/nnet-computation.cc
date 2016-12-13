@@ -75,8 +75,9 @@ int32 ComputationRequest::IndexForOutput(
 }
 
 NnetComputation::~NnetComputation() {
-  for (size_t i = 0; i < component_precomputed_indexes.size(); i++)
-    delete component_precomputed_indexes[i];
+  // note: component_precomputed_indexes[0].data is the NULL pointer.
+  for (size_t i = 1; i < component_precomputed_indexes.size(); i++)
+    delete component_precomputed_indexes[i].data;
 }
 
 void NnetComputation::ComputeCudaIndexes() {
@@ -718,8 +719,9 @@ void NnetComputation::Read(std::istream &is, bool binary) {
 
 
   // delete any existing pointers in component_precomputed_indexes.
-  for (size_t i = 0; i < component_precomputed_indexes.size(); i++)
-    delete component_precomputed_indexes[i];
+  // note: component_precomputed_indexes[0] is the NULL pointer.
+  for (size_t i = 1; i < component_precomputed_indexes.size(); i++)
+    delete component_precomputed_indexes[i].data;
   component_precomputed_indexes.clear();
 
   size_t num_component_precomputed_indexes;
@@ -727,20 +729,33 @@ void NnetComputation::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &num_component_precomputed_indexes);
   KALDI_ASSERT(num_component_precomputed_indexes >= 0);
   component_precomputed_indexes.resize(num_component_precomputed_indexes);
-  ExpectToken(is, binary, "<ComponentPrecomputedIndexes>");
-  std::vector<ComponentPrecomputedIndexes*> component_precomputed_indexes_tmp;
-  for (size_t c = 0; c < num_component_precomputed_indexes; c++) {
-    bool is_null; // a boolean indicating whether the pointer should be NULL.
-    ReadBasicType(is, binary, &is_null);
-    if (!is_null) {
+
+  std::string tok;
+  ReadToken(is, binary, &tok);
+  if (tok == "<ComponentPrecomputedIndexes>") {
+    // Older on-disk format, before that code was extended for shortcut
+    // compilation.
+    component_precomputed_indexes.clear();
+    component_precomputed_indexes.resize(num_component_precomputed_indexes);
+    for (size_t c = 0; c < num_component_precomputed_indexes; c++) {
+      bool is_null; // a boolean indicating whether the pointer should be NULL.
+      ReadBasicType(is, binary, &is_null);
+      if (!is_null) {
+        ComponentPrecomputedIndexes* p = ComponentPrecomputedIndexes::ReadNew(is, binary);
+        component_precomputed_indexes[c].data = p;
+      }
+    }
+  } else {
+    KALDI_ASSERT(tok == "<PrecomputedIndexesInfo>");
+    for (size_t c = 1; c < num_component_precomputed_indexes; c++) {
       ComponentPrecomputedIndexes* p = ComponentPrecomputedIndexes::ReadNew(is, binary);
-      component_precomputed_indexes_tmp.push_back(p);
-    } else {
-      component_precomputed_indexes_tmp.push_back(NULL);
+      KALDI_ASSERT(p != NULL);
+      PrecomputedIndexesInfo &info = component_precomputed_indexes[c];
+      info.data = p;
+      ReadIndexVector(is, binary, &(info.input_indexes));
+      ReadIndexVector(is, binary, &(info.output_indexes));
     }
   }
-  component_precomputed_indexes = component_precomputed_indexes_tmp;
-
   size_t num_indexes;
   ExpectToken(is, binary, "<NumIndexes>");
   ReadBasicType(is, binary, &num_indexes);
@@ -819,14 +834,12 @@ void NnetComputation::Write(std::ostream &os, bool binary) const {
   if (!binary) os << std::endl;
   WriteToken(os, binary, "<NumComponentPrecomputedIndexes>");
   WriteBasicType(os, binary, component_precomputed_indexes.size());
-  WriteToken(os, binary, "<ComponentPrecomputedIndexes>");
-  for (size_t c = 0; c < component_precomputed_indexes.size(); c++) {
-    if (component_precomputed_indexes[c] != NULL) {
-      WriteBasicType(os, binary, false); // a boolean indicating whether the pointer is NULL.
-      component_precomputed_indexes[c]->Write(os, binary);
-    } else {
-      WriteBasicType(os, binary, true);
-    }
+  WriteToken(os, binary, "<PrecomputedIndexesInfo>");
+  for (size_t c = 1; c < component_precomputed_indexes.size(); c++) {
+    const PrecomputedIndexesInfo &info = component_precomputed_indexes[c];
+    info.data->Write(os, binary);
+    WriteIndexVector(os, binary, info.input_indexes);
+    WriteIndexVector(os, binary, info.output_indexes);
   }
 
   if (!binary) os << std::endl;
@@ -1062,6 +1075,7 @@ NnetComputation::NnetComputation(const NnetComputation &other):
     matrices(other.matrices),
     matrix_debug_info(other.matrix_debug_info),
     submatrices(other.submatrices),
+    component_precomputed_indexes(other.component_precomputed_indexes),
     indexes(other.indexes),
     indexes_multi(other.indexes_multi),
     indexes_ranges(other.indexes_ranges),
@@ -1069,33 +1083,30 @@ NnetComputation::NnetComputation(const NnetComputation &other):
     need_model_derivative(other.need_model_derivative),
     indexes_cuda(other.indexes_cuda),
     indexes_ranges_cuda(other.indexes_ranges_cuda) {
-  for (size_t i = 0; i < other.component_precomputed_indexes.size(); i++)
-      component_precomputed_indexes.push_back(
-          other.component_precomputed_indexes[i] == NULL ? NULL :
-          other.component_precomputed_indexes[i]->Copy());
+  for (size_t i = 1; i < component_precomputed_indexes.size(); i++)
+    component_precomputed_indexes[i].data =
+        component_precomputed_indexes[i].data->Copy();
 }
 
-
 NnetComputation& NnetComputation::operator = (const NnetComputation &other) {
-    matrices = other.matrices;
-    matrix_debug_info = other.matrix_debug_info;
-    submatrices = other.submatrices;
-    indexes = other.indexes;
-    indexes_multi = other.indexes_multi;
-    indexes_ranges = other.indexes_ranges;
-    commands = other.commands;
-    need_model_derivative = other.need_model_derivative;
-    indexes_cuda = other.indexes_cuda;
-    indexes_ranges_cuda = other.indexes_ranges_cuda;
+  matrices = other.matrices;
+  matrix_debug_info = other.matrix_debug_info;
+  submatrices = other.submatrices;
+  indexes = other.indexes;
+  indexes_multi = other.indexes_multi;
+  indexes_ranges = other.indexes_ranges;
+  commands = other.commands;
+  need_model_derivative = other.need_model_derivative;
+  indexes_cuda = other.indexes_cuda;
+  indexes_ranges_cuda = other.indexes_ranges_cuda;
 
-    for (size_t i = 0; i < component_precomputed_indexes.size(); i++)
-      delete component_precomputed_indexes[i];
-    component_precomputed_indexes.clear();
-    for (size_t i = 0; i < other.component_precomputed_indexes.size(); i++)
-      component_precomputed_indexes.push_back(
-          other.component_precomputed_indexes[i] == NULL ? NULL :
-          other.component_precomputed_indexes[i]->Copy());
-    return *this;
+  for (size_t i = 1; i < component_precomputed_indexes.size(); i++)
+    delete component_precomputed_indexes[i].data;
+  component_precomputed_indexes = other.component_precomputed_indexes;
+  for (size_t i = 1; i < component_precomputed_indexes.size(); i++)
+    component_precomputed_indexes[i].data =
+        component_precomputed_indexes[i].data->Copy();
+  return *this;
 }
 
 

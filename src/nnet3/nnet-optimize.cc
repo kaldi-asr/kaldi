@@ -36,8 +36,8 @@ void NnetOptimizeOptions::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &backprop_in_place);
   std::string tok;
   ReadToken(is, binary, &tok);
-  if (tok == "<ReplaceRowWithMatrixOps>") {
-    ReadBasicType(is, binary, &replace_row_with_matrix_ops);
+  if (tok == "<OptimizeRowOps>") {
+    ReadBasicType(is, binary, &optimize_row_ops);
     ReadToken(is, binary, &tok);
   }
   KALDI_ASSERT(tok == "<ConvertAddition>");
@@ -78,8 +78,8 @@ void NnetOptimizeOptions::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, propagate_in_place);
   WriteToken(os, binary, "<BackpropInPlace>");
   WriteBasicType(os, binary, backprop_in_place);
-  WriteToken(os, binary, "<ReplaceRowWithMatrixOps>");
-  WriteBasicType(os, binary, replace_row_with_matrix_ops);
+  WriteToken(os, binary, "<OptimizeRowOps>");
+  WriteBasicType(os, binary, optimize_row_ops);
   WriteToken(os, binary, "<ConvertAddition>");
   WriteBasicType(os, binary, convert_addition);
   WriteToken(os, binary, "<RemoveAssignments>");
@@ -469,7 +469,7 @@ void Optimize(const NnetOptimizeOptions &config,
       CheckComputation(nnet, *computation, false);
   }
 
-  if (config.optimize && config.replace_row_with_matrix_ops) {
+  if (config.optimize && config.optimize_row_ops) {
     if (ReplaceRowWithMatrixOps(computation)) {
       // if anything was changed...
 

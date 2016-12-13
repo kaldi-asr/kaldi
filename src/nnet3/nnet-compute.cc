@@ -182,7 +182,7 @@ void NnetComputer::ExecuteCommand() {
       case kPropagate: {
         const Component *component = nnet_.GetComponent(c.arg1);
         ComponentPrecomputedIndexes *indexes =
-            computation_.component_precomputed_indexes[c.arg2];
+            computation_.component_precomputed_indexes[c.arg2].data;
         const CuSubMatrix<BaseFloat> input(GetSubMatrix(c.arg3));
         CuSubMatrix<BaseFloat> output(GetSubMatrix(c.arg4));
         component->Propagate(indexes, input, &output);
@@ -208,7 +208,7 @@ void NnetComputer::ExecuteCommand() {
                                     nnet_to_update_->GetComponent(c.arg1) :
                                     NULL);
         ComponentPrecomputedIndexes *indexes =
-            computation_.component_precomputed_indexes[c.arg2];
+            computation_.component_precomputed_indexes[c.arg2].data;
         const CuSubMatrix<BaseFloat> in_value(GetSubMatrix(c.arg3));
         const CuSubMatrix<BaseFloat> out_value(GetSubMatrix(c.arg4));
         const CuSubMatrix<BaseFloat> out_deriv(GetSubMatrix(c.arg5));

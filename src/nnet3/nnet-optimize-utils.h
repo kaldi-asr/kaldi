@@ -388,6 +388,12 @@ bool ComputationIsDecomposable(const ComputationRequest &request,
   This function is used in 'shortcut' compilation to expand a computation
   that has been compiled for exactly 2 'n' values, to one that is suitable
   for some num_n_values > 2.
+     @param [in] nnet         The neural network for which this computation
+                              is being built.
+     @param [in] misc_info    The same MiscComputationInfo object that was
+                              present in the ComputationRequests that were
+                              originally used to generate the computation
+                              (required to generated the PrecomputedIndexes)
      @param [in] computation  The computation that was compiled for exactly
                               2 'n' values (n=0 and n=1)
      @param [in] need_debug_info True if we want to retain the 'debug_info'
@@ -398,13 +404,10 @@ bool ComputationIsDecomposable(const ComputationRequest &request,
                               computation
      @param [out] expanded_computation  The expanded computation.
 
-     @return  This function returns true if it succeeded, and false if it
-              could not expand the computation for some reason (e.g. there
-              was some non-simple component where the 'PrecomputedIndexes'
-              object could not be suitably expanded.  If it returns false,
-              the output 'expanded_computation' is undefined (may contain junk).
  */
-bool ExpandComputation(const NnetComputation &computation,
+void ExpandComputation(const Nnet &nnet,
+                       const MiscComputationInfo &misc_info,
+                       const NnetComputation &computation,
                        bool need_debug_info,
                        int32 num_n_values,
                        NnetComputation *expanded_computation);
@@ -413,11 +416,27 @@ bool ExpandComputation(const NnetComputation &computation,
 
 /// This function detects cases where commands of type kCopyRows, kAddRows or
 /// kAddToRows can be converted to commands of type kMatrixCopy or kMatrixAdd,
-/// and converts them (this may involve adding submatrices).  After doing this
-/// you should at some point do RenumberComputation(), which will remove any
-/// now-unused members of computation->indexes.
-/// This function returns true if it made any changes to the computation.
+/// and converts them (this may involve adding submatrices).
+///
+/// This function returns true if it made any changes to the computation; if it
+/// returns true, then after doing this you should at some point do
+/// RenumberComputation(), which will remove any now-unused members of
+/// computation->indexes.
 bool ReplaceRowWithMatrixOps(NnetComputation *computation);
+
+/// This function detects cases where commands of type kCopyRows, kAddRows,
+/// kAddRowsMulti, kAddToRowsMulti, kCopyRowsMulti, kCopyToRowsMulti or
+/// kAddRowRanges use indexes that start or end with -1's or equivalents,
+/// and replace them with similar commands that act on a sub-matrix of the
+/// matrices they are currently acting on.  This will help efficiency by
+/// avoiding launching unnecessary copies of the kernel (that don't really
+/// have to do anything).
+///
+/// This function returns true if it made any changes to the computation; if it
+/// returns true, then after doing this you should at some point do
+/// RenumberComputation(), which will remove any now-unused members of
+/// computation->indexes.
+bool SnipRowOps(NnetComputation *computation);
 
 /// This function detects submatrices and matrices that are never used (e.g. due
 /// to changes made in other optimization code), and members of indexes,

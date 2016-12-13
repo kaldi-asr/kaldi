@@ -975,7 +975,8 @@ void Compiler::SetUpPrecomputedIndexes(
     NnetComputation *computation) {
   int32 num_steps = steps_.size();
   KALDI_ASSERT(computation->component_precomputed_indexes.empty());
-  computation->component_precomputed_indexes.push_back(NULL);
+  // the zeroth commponent is special, contains a NULL pointer.
+  computation->component_precomputed_indexes.resize(1);
   for (int32 step = 0; step < num_steps; step++) {
     StepInfo &step_info = steps_[step];
     int32 node_index = step_info.node_index;
@@ -1005,7 +1006,20 @@ void Compiler::SetUpPrecomputedIndexes(
     } else {
       step_info.precomputed_indexes_index =
           computation->component_precomputed_indexes.size();
-      computation->component_precomputed_indexes.push_back(precomputed_indexes);
+
+      NnetComputation::PrecomputedIndexesInfo info;
+      info.data = precomputed_indexes;
+
+      if (!input_indexes.empty() && input_indexes.back().n == 1 &&
+          !output_indexes.empty() && output_indexes.back().n == 1) {
+        // If these conditions are true, it's *possible* that we are doing
+        // 'shortcut' compilation.  So just in case that's what's going on, we
+        // store 'input_indexes' and 'output_indexes, which are needed by
+        // the ExpandComputation() function that is used in that process.
+        info.input_indexes = input_indexes;
+        info.output_indexes = output_indexes;
+      }
+      computation->component_precomputed_indexes.push_back(info);
     }
   }
 }
