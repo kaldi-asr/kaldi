@@ -30,7 +30,27 @@ if [ ! -f $data/wav.scp ]; then
   exit 1
 fi
 
-if ! $force && grep -q "sox --vol" $data/wav.scp; then
+volume_perturb_done=`head -n100 $data/wav.scp | python -c "
+import sys, re
+for line in sys.stdin.readlines():
+  if len(line.strip()) == 0:
+    continue
+  # Handle three cases of rxfilenames appropriately; 'input piped command', 'file offset' and 'filename'
+  parts = line.strip().split()
+  if line.strip()[-1] == '|':
+    if re.search('sox --vol', ' '.join(parts[-11:])):
+      print 'true'
+      sys.exit(0)
+  elif re.search(':[0-9]+$', line.strip()) is not None:
+    continue
+  else:
+    if ' '.join(parts[1:3]) == 'sox --vol':
+      print 'true'
+      sys.exit(0)
+print 'false'
+"` || exit 1
+
+if $volume_perturb_done; then
   echo "$0: It looks like the data was already volume perturbed.  Not doing anything."
   exit 0
 fi
