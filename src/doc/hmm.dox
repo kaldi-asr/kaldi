@@ -92,7 +92,17 @@ great loss.
 The pdf-class is a concept that relates to the HmmTopology object.  The
 HmmTopology object specifies a prototype HMM for each phone.  Each
 numbered state of a
-"prototype HMM" has a variable "pdf_class".  If two states have the same
+"prototype HMM" has two variables "forward_pdf_class" and "self_loop_pdf_class".
+The "self_loop_pdf_class" is a kind of pdf-class that is associated
+with self-loop transition. It is by default identical to "forward_pdf_class",
+but it can be used to define less-convectional HMM topologies
+where the pdfs on the self-loop and forward transitions are different.
+The decision to allow the pdf-class on just the self-loop to be different,
+while not embracing a fully "arc-based" representation where the pdfs on
+all transitions in the HMM are potentially independent, was made as a compromise,
+to allow for compatibility with previous versions of Kaldi while supporting the topology
+used in our "chain models" AKA lattice-free MMI.
+If two states have the same
 pdf_class variable, then they will always share the same probability
 distribution function (p.d.f.) if they are in the same phonetic context.  This
 is because the decision-tree code does not get to "see" the HMM-state directly,
@@ -121,11 +131,14 @@ object to get the pdf-ids associated with particular phonetic contexts).
 
 The decision that underlies a lot of the transition-modeling code is as follows:
 we have decided to make the transition probability of a
-context dependent HMM state depend on the following four things (you could view
-them as a 4-tuple):
+context dependent HMM state depend on the following five things (you could view
+them as a 5-tuple):
   - The phone (whose HMM we are in)
   - The source HMM-state (as interpreted by the HmmTopology object, i.e.  normally 0, 1 or 2)
-  - The \ref pdf_id "pdf-id" (i.e. the index of the pdf associated with the state)
+  - The \ref pdf_id "forward-pdf-id"
+    (i.e. the index of the forward transition pdfs associated with the state)
+  - The \ref pdf_id "self-loop-pdf-id"
+    (i.e. the index of the self-loop pdfs associated with the state)
   - The index of the transition in the HmmTopology object.
 
 The last of these four items could be viewed as encoding the destination
@@ -198,7 +211,7 @@ prototype HMM (as given in the HmmTopology object).
       from (transition-state, transition-index) to transition-id, and vice versa.
 
   There are also in the transition-modeling code reference to the following concepts:
-    - A triple means a triple (phone, hmm-state, pdf) which is mappable to and from a transition-state.
+    - A tuple means a 4-tuple (phone, hmm-state, forward pdf, self-loop pdf) which is mappable to and from a transition-state.
     - A pair means a pair (transition-state, transition-index) which is mappable to and from a transition-id.
 
 \section hmm_transition_training Training the transition model

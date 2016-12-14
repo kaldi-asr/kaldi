@@ -173,7 +173,6 @@ if [ $stage -le 12 ]; then
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
-    --chain.left-deriv-truncate 0 \
     --trainer.num-chunk-per-minibatch 64 \
     --trainer.max-param-change 1.414 \
     --egs.stage $get_egs_stage \
@@ -188,6 +187,7 @@ if [ $stage -le 12 ]; then
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.optimization.shrink-value 0.99 \
     --trainer.optimization.momentum 0.0 \
+    --trainer.deriv-truncate-margin 8 \
     --cleanup.remove-egs $remove_egs \
     --feat-dir data/train_rvb_min${min_seg_len}_hires \
     --tree-dir $treedir \
