@@ -168,24 +168,24 @@ def CopyDataDirFiles(input_dir, output_dir, num_replicas, include_original, pref
     if not os.path.isfile(output_dir + "/wav.scp"):
         raise Exception("CopyDataDirFiles function expects output_dir to contain wav.scp already")
 
-    AddPrefixToFields(input_dir + "/utt2spk", output_dir + "/utt2spk", num_replicas, include_original, prefix, field = [0,1])
+    AddPrefixToFields(input_dir + "/utt2spk", output_dir + "/utt2spk", num_replicas, include_original=include_original, prefix=prefix, field = [0,1])
     RunKaldiCommand("utils/utt2spk_to_spk2utt.pl <{output_dir}/utt2spk >{output_dir}/spk2utt"
                     .format(output_dir = output_dir))
 
     if os.path.isfile(input_dir + "/utt2uniq"):
-        AddPrefixToFields(input_dir + "/utt2uniq", output_dir + "/utt2uniq", num_replicas, include_original, prefix, field =[0])
+        AddPrefixToFields(input_dir + "/utt2uniq", output_dir + "/utt2uniq", num_replicas, include_original=include_original, prefix=prefix, field =[0])
     else:
         # Create the utt2uniq file
         CreateCorruptedUtt2uniq(input_dir, output_dir, num_replicas, include_original, prefix)
 
     if os.path.isfile(input_dir + "/text"):
-        AddPrefixToFields(input_dir + "/text", output_dir + "/text", num_replicas, prefix, include_original, field =[0])
+        AddPrefixToFields(input_dir + "/text", output_dir + "/text", num_replicas, include_original=include_original, prefix=prefix, field =[0])
     if os.path.isfile(input_dir + "/segments"):
-        AddPrefixToFields(input_dir + "/segments", output_dir + "/segments", num_replicas, prefix, include_original, field = [0,1])
+        AddPrefixToFields(input_dir + "/segments", output_dir + "/segments", num_replicas, prefix=prefix, include_original=include_original, field = [0,1])
     if os.path.isfile(input_dir + "/reco2file_and_channel"):
-        AddPrefixToFields(input_dir + "/reco2file_and_channel", output_dir + "/reco2file_and_channel", num_replicas, include_original, prefix, field = [0,1])
+        AddPrefixToFields(input_dir + "/reco2file_and_channel", output_dir + "/reco2file_and_channel", num_replicas, include_original=include_original, prefix=prefix, field = [0,1])
 
-    AddPrefixToFields(input_dir + "/reco2dur", output_dir + "/reco2dur", num_replicas, include_original, prefix, field = [0])
+    AddPrefixToFields(input_dir + "/reco2dur", output_dir + "/reco2dur", num_replicas, include_original=include_original, prefix=prefix, field = [0])
 
     RunKaldiCommand("utils/validate_data_dir.sh --no-feats {output_dir}"
                     .format(output_dir = output_dir))
