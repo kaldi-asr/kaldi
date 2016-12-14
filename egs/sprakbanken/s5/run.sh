@@ -73,8 +73,8 @@ steps/train_mono.sh --nj 30 --cmd "$train_cmd" \
 # Ensure that LMs are created
 wait
 
-utils/mkgraph.sh --mono data/lang_test_3g exp/mono0a exp/mono0a/graph_3g &
-utils/mkgraph.sh --mono data/lang_test_4g exp/mono0a exp/mono0a/graph_4g &
+utils/mkgraph.sh data/lang_test_3g exp/mono0a exp/mono0a/graph_3g &
+utils/mkgraph.sh data/lang_test_4g exp/mono0a exp/mono0a/graph_4g &
 
 # Ensure that all graphs are constructed
 wait 

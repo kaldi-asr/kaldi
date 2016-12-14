@@ -51,3 +51,14 @@ Development pattern for contributors
    You can use the [Google's cpplint.py]
    (https://raw.githubusercontent.com/google/styleguide/gh-pages/cpplint/cpplint.py)
    to verify that your code is free of basic mistakes.
+
+Platform specific notes
+-----------------------
+
+PowerPC 64bits little-endian (ppc64le):
+- Kaldi is expected to work out of the box in RHEL >= 7 and Ubuntu >= 16.04 with
+  OpenBLAS, ATLAS, or CUDA.
+- CUDA drivers for ppc64le can be found at [https://developer.nvidia.com/cuda-downloads]
+  (https://developer.nvidia.com/cuda-downloads).
+- An [IBM Redbook] (https://www.redbooks.ibm.com/abstracts/redp5169.html) is
+  available as a guide to install and configure CUDA.

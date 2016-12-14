@@ -14,7 +14,7 @@ echo "$0 $@"  # Print the command line for logging
 . parse_options.sh || exit 1;
 
 if [ $# -ne 3 ]; then
-  echo "Usage: local/score_compare.sh [--cmd (run.pl|queue.pl...)] <score-dir1> <score-dir2> <score-compare-dir>"
+  echo "Usage: $0 [--cmd (run.pl|queue.pl...)] <score-dir1> <score-dir2> <score-compare-dir>"
   echo " Options:"
   echo "    --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes."
   echo "    --replications <int>            # number of bootstrap evaluation to compute confidence."
@@ -29,7 +29,7 @@ mkdir -p $dir_compare/log
 
 for d in $dir1 $dir2; do
   for f in test_filt.txt best_wer; do
-    [ ! -f $d/$f ] && echo "score_compare.sh: no such file $d/$f" && exit 1;
+    [ ! -f $d/$f ] && echo "$0: no such file $d/$f" && exit 1;
   done
 done
 

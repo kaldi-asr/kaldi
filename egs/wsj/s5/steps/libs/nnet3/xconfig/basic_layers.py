@@ -8,6 +8,7 @@ and some basic layer definitions.
 
 from __future__ import print_function
 import sys
+import math
 import libs.nnet3.xconfig.utils as xutils
 from libs.nnet3.xconfig.utils import XconfigParserError as xparser_error
 
@@ -37,6 +38,10 @@ class XconfigLayerBase(object):
         if not xutils.is_valid_line_name(self.name):
             raise xparser_error("Invalid value: name={0}".format(
                 key_to_value['name']), self.str())
+        for prev_layer in all_layers:
+            if self.name == prev_layer.name:
+                raise xparser_error("Name '{0}' is used for more than one "
+                                    "layer.".format(self.name))
 
         # the following, which should be overridden in the child class, sets
         # default config parameters in self.config.
@@ -845,7 +850,7 @@ class XconfigAffineLayer(XconfigLayerBase):
     def set_derived_configs(self):
         super(XconfigAffineLayer, self).set_derived_configs()
         if self.config['param-stddev'] < 0:
-            self.config['param-stddev'] = 1.0 / self.descriptors['input']['dim']
+            self.config['param-stddev'] = 1.0 / math.sqrt(self.descriptors['input']['dim'])
 
     def check_configs(self):
         if self.config['dim'] <= 0:

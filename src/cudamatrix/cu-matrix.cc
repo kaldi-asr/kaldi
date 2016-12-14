@@ -1542,8 +1542,7 @@ void CuMatrixBase<Real>::ApplyLogSoftMaxPerRow(const CuMatrixBase<Real> &src) {
   }
 }
 
-// DiffSigmoid(Ein, Y, Eout) -> Eout.DiffSigmoid(Y, Ein).
-template<typename Real> // Eout -> *this, Ein -> diff, Y -> value
+template<typename Real>
 void CuMatrixBase<Real>::DiffSigmoid(const CuMatrixBase<Real> &value,
                                      const CuMatrixBase<Real> &diff) {
   KALDI_ASSERT(SameDim(*this, value) && SameDim(*this, diff));
@@ -1588,7 +1587,7 @@ void CuMatrixBase<Real>::Tanh(const CuMatrixBase<Real> &src) {
 
 
 
-template<typename Real> // Ein -> diff, Y -> value
+template<typename Real>
 void CuMatrixBase<Real>::DiffTanh(const CuMatrixBase<Real> &value,
                                   const CuMatrixBase<Real> &diff) {
 #if HAVE_CUDA == 1
