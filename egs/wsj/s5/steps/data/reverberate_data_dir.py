@@ -7,7 +7,7 @@
 from __future__ import print_function
 import argparse, glob, math, os, random, sys, warnings, copy, imp, ast
 
-data_lib = imp.load_source('dml', 'steps/data/data_dir_manipulation_lib.py')
+import data_dir_manipulation_lib as data_lib
 
 def GetArgs():
     # we add required arguments as named arguments for readability
@@ -71,8 +71,12 @@ def GetArgs():
                         "the RIRs/noises will be resampled to the rate of the source data.")
     parser.add_argument("--include-original-data", type=str, help="If true, the output data includes one copy of the original data",
                          choices=['true', 'false'], default = "false")
-    parser.add_argument("--output-additive-noise-dir", type=str, help="Output directory corresponding to the additive noise part of the data corruption")
-    parser.add_argument("--output-reverb-dir", type=str, help="Output directory corresponding to the reverberated signal part of the data corruption")
+    parser.add_argument("--output-additive-noise-dir", type=str,
+                        action = common_lib.NullstrToNoneAction, default = None,
+                        help="Output directory corresponding to the additive noise part of the data corruption")
+    parser.add_argument("--output-reverb-dir", type=str,
+                        action = common_lib.NullstrToNoneAction, default = None,
+                        help="Output directory corresponding to the reverberated signal part of the data corruption")
 
     parser.add_argument("input_dir",
                         help="Input data directory")
@@ -98,16 +102,8 @@ def CheckArgs(args):
             warnings.warn("--prefix is set to 'rvb' as more than one copy of data is generated")
 
     if args.output_reverb_dir is not None:
-        if args.output_reverb_dir == "":
-            args.output_reverb_dir = None
-
-    if args.output_reverb_dir is not None:
         if not os.path.exists(args.output_reverb_dir):
             os.makedirs(args.output_reverb_dir)
-
-    if args.output_additive_noise_dir is not None:
-        if args.output_additive_noise_dir == "":
-            args.output_additive_noise_dir = None
 
     if args.output_additive_noise_dir is not None:
         if not os.path.exists(args.output_additive_noise_dir):
@@ -346,5 +342,3 @@ def Main():
 
 if __name__ == "__main__":
     Main()
-
-
