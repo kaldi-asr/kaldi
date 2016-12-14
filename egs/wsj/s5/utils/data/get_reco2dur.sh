@@ -11,6 +11,8 @@
 # files in entirely.)
 
 frame_shift=0.01
+cmd=run.pl
+nj=4
 
 . utils/parse_options.sh
 . ./path.sh
@@ -74,11 +76,17 @@ else
     echo "... perturb_data_dir_speed_3way.sh."
   fi
 
-  if ! wav-to-duration --read-entire-file=$read_entire_file scp:$data/wav.scp ark,t:$data/reco2dur 2>&1 | grep -v 'nonzero return status'; then
+  utils/split_data.sh $data $nj
+  if ! $cmd JOB=1:$nj $data/log/get_wav_duration.JOB.log wav-to-duration --read-entire-file=$read_entire_file scp:$data/split$nj/JOB/wav.scp ark,t:$data/split$nj/JOB/reco2dur 2>&1; then
     echo "$0: there was a problem getting the durations; moving $data/reco2dur to $data/.backup/"
     mkdir -p $data/.backup/
     mv $data/reco2dur $data/.backup/
+    exit 1
   fi
+  
+  for n in `seq $nj`; do
+    cat $data/split$nj/$n/reco2dur
+  done > $data/reco2dur
 fi
 
 echo "$0: computed $data/reco2dur"
