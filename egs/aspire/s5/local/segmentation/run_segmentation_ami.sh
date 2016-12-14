@@ -75,6 +75,7 @@ cat $src_dir/data/sdm1/dev/reco2file_and_channel | \
   utils/apply_map.pl -f 3 $dir/channel_map > $dir/reco2file_and_channel
 
 if [ $stage -le 5 ]; then
+  # Reference RTTM where SPEECH frames are obtainted by combining IHM VAD alignments
   $train_cmd $dir/log/get_ref_rttm.log \
     segmentation-combine-segments scp:$dir/sad_seg.scp \
     "ark:segmentation-init-from-segments --shift-to-zero=false $src_dir/data/sdm1/dev_ihmdata/segments ark:- |" \
@@ -87,6 +88,7 @@ if [ $stage -le 5 ]; then
 fi
   
 if [ $stage -le 6 ]; then
+  # Get an UEM which evaluates only on the manual segments.
   $train_cmd $dir/log/get_uem.log \
     segmentation-init-from-segments --shift-to-zero=false $src_dir/data/sdm1/dev/segments ark:- \| \
     segmentation-combine-segments-to-recordings ark:- ark,t:$src_dir/data/sdm1/dev/reco2utt ark:- \| \
