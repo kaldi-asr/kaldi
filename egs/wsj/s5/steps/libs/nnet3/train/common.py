@@ -389,6 +389,7 @@ def _parse_dropout_string(num_archives_to_process, dropout_str):
     """
     dropout_values = []
     parts = dropout_str.strip().split(',')
+
     try:
         if len(parts) < 2:
             raise Exception("dropout proportion string must specify "
@@ -401,26 +402,35 @@ def _parse_dropout_string(num_archives_to_process, dropout_str):
             value_x_pair = parts[i].split('@')
             if len(value_x_pair) == 1:
                 # Dropout proportion at half of training
-                dropout_proportion = float(parts[i])
-                dropout_values.append((0.5 * num_archives_to_process,
-                                       dropout_proportion))
+                dropout_proportion = float(value_x_pair)
+                num_archives = int(0.5 * num_archives_to_process)
             else:
                 assert len(value_x_pair) == 2
-                dropout_proportion, data_fraction = value_x_pair
-                dropout_values.append(
-                    (float(data_fraction) * num_archives_to_process,
-                     float(dropout_proportion)))
+                dropout_proportion = float(value_x_pair[0])
+                data_fraction = float(value_x_pair[1])
+                num_archives = round(float(data_fraction)
+                                     * num_archives_to_process)
+
+            if (num_archives <= dropout_values[-1][0]
+                    or num_archives >= num_archives_to_process):
+                logger.error(
+                    "Failed while parsing value %s in dropout-schedule. "
+                    "dropout-schedule must be in strictly incresing "
+                    "order of data fractions.", value_x_pair)
+                raise ValueError
+
+            dropout_values.append(num_archives, float(dropout_proportion))
 
         dropout_values.append((num_archives_to_process, float(parts[-1])))
     except Exception:
-        logger.error("Unable to parse dropout proportion string {0}. "
+        logger.error("Unable to parse dropout proportion string %s. "
                      "See help for option "
-                     "--trainer.dropout-schedule.".format(dropout_str))
+                     "--trainer.dropout-schedule.", dropout_str)
         raise
 
     # reverse sort so that its easy to retrieve the dropout proportion
     # for a particular data fraction
-    dropout_values.sort(key=lambda x: x[0], reverse=True)
+    dropout_values.reverse()
     for num_archives, proportion in dropout_values:
         assert num_archives <= num_archives_to_process and num_archives >= 0
         assert proportion <= 1 and proportion >= 0
