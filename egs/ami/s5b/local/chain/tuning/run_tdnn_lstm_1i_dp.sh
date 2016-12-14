@@ -1,15 +1,17 @@
 #!/bin/bash
+# Copyright 2016  University of Chinese Academy of Sciences (Author: Cheng Gaofeng)
+# Apache 2.0
 
-# same as 1g but with TDNN output dim 1024 instead of 512
+# same as 1i but with frame level dropout
 # (num-params 1g:21309812 1i: 43447156)
 # results on sdm1 using ihm ali
-#System               tdnn_lstm1g_sp_bi_ihmali_ld5 tdnn_lstm1i_sp_bi_ihmali_ld5
-#WER on dev        38.3      37.6
-#WER on eval        41.6      40.9
-#Final train prob      -0.138017 -0.114135
-#Final valid prob      -0.238659 -0.245208
-#Final train prob (xent)      -1.66834  -1.47648
-#Final valid prob (xent)      -2.17419  -2.16365
+#System            tdnn_lstm1i_sp_bi_ihmali_ld5
+#WER on dev        37.6            36.7
+#WER on eval       40.9            39.9
+#Final train prob      -0.114135   -0.118
+#Final valid prob      -0.245208   -0.246
+#Final train prob (xent)      -1.47648  -1.54
+#Final valid prob (xent)      -2.16365  -2.10
 
 
 set -e -o pipefail
@@ -26,7 +28,7 @@ gmm=tri3_cleaned  # the gmm for the target data
 ihm_gmm=tri3  # the gmm for the IHM system (if --use-ihm-ali true).
 num_threads_ubm=32
 nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
-dropout_schedule=
+dropout_schedule='0,0@0.20,0.5@0.50,0@0.50,0'
 chunk_width=150
 chunk_left_context=40
 chunk_right_context=0
