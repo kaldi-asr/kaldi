@@ -23,7 +23,7 @@ set -u
 stage=0
 cleanup_stage=0
 data=data/train
-cleanup_affix=xcleaned
+cleanup_affix=cleaned
 srcdir=exp/tri5
 langdir=data/langp/tri5
 nj=100

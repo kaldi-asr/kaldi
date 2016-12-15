@@ -97,7 +97,7 @@ if [ $stage -le 3 ]; then
   cp data/${train_set}_sp_hires/cmvn.scp data/${train_set}_sp_hires_comb/
   utils/fix_data_dir.sh data/${train_set}_sp_hires_comb/
 fi
-exit
+
 if [ $stage -le 4 ]; then
   echo "$0: selecting segments of hires training data that were also present in the"
   echo " ... original training data."
