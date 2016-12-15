@@ -26,8 +26,6 @@ frames_per_eg=25   # number of feature frames example (not counting added contex
 frames_overlap_per_eg=0  # number of supervised frames of overlap that we aim for per eg.
                   # can be useful to avoid wasted data if you're using --left-deriv-truncate
                   # and --right-deriv-truncate.
-cut_zero_frames=-1  # if activated, activates new-style derivative weights.. i'll reorganize
-                    # this if it works well.
 frame_subsampling_factor=3 # frames-per-second of features we train on divided
                            # by frames-per-second at output of chain model
 alignment_subsampling_factor=3 # frames-per-second of input alignments divided
@@ -294,7 +292,7 @@ if [ $stage -le 2 ]; then
 fi
 
 
-egs_opts="--left-context=$left_context --right-context=$right_context --num-frames=$frames_per_eg --num-frames-overlap=$frames_overlap_per_eg --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress --cut-zero-frames=$cut_zero_frames"
+egs_opts="--left-context=$left_context --right-context=$right_context --num-frames=$frames_per_eg --num-frames-overlap=$frames_overlap_per_eg --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress"
 
 
 [ -z $valid_left_context ] &&  valid_left_context=$left_context;
