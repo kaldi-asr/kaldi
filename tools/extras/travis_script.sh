@@ -45,23 +45,18 @@ then
   exit 0;
 fi
 
-# Prepare make command fragments.
+# Prepare environment variables
 CF="$CFLAGS -g $(addsw -I $INCDIRS)"
 LDF="$LDFLAGS $(addsw -L $LIBDIRS)"
-CCC="$(mtoken CC $CXX) $(mtoken CXX $CXX)"
+CCC="$(mtoken CXX $CXX)"
 
 runvx cd tools
 runvx make openfst $CCC CXXFLAGS="$CF" -j$MAXPAR
 cd ..
 runvx cd src
-runvx ./configure --shared --use-cuda=no  --mathlib=OPENBLAS --openblas-root=$XROOT/usr
+runvx $CCC CXXFLAGS="$CF" LDFLAGS="$LDF" ./configure --shared --use-cuda=no  --mathlib=OPENBLAS --openblas-root=$XROOT/usr
+runvx make all -j$MAXPAR
+runvx make test -k
 
-make_kaldi() {
-  runvx make "$@" $CCC EXTRA_CXXFLAGS="$CF" EXTRA_LDLIBS="$LDF"
-}
-
-#make_kaldi mklibdir base matrix -j$MAXPAR
-#make_kaldi matrix/test
-
-make_kaldi all -j$MAXPAR
-make_kaldi test -k
+#runvx make mklibdir base matrix -j$MAXPAR
+#runvx make matrix/test
