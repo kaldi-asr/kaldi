@@ -2293,9 +2293,9 @@ class ComputationExpander {
   // This function assumes that ComputeSubmatrixInfo() has already
   // been called.
   // Note: it returns true if the index 'old_row_index' into submatrix
-  // indexed 'old_submat_index' corresponds to an Index with n=0; otherwise
+  // indexed 'submat_index' corresponds to an Index with n=0; otherwise
   // it returns false and does not set the output values.
-  bool GetNewSubmatLocationInfo(int32 old_submat_index,
+  bool GetNewSubmatLocationInfo(int32 submat_index,
                                 int32 old_row_index,
                                 int32 *new_row_index,
                                 int32 *new_n_stride) const;
@@ -2395,24 +2395,26 @@ void ComputationExpander::ExpandRowsCommand(
   // 's1' and submat2 is the submatrix referred to in 's2'.
   // 'indexes' has the same size as the num-rows of submat1, and the values
   // in the vector are row-indexes into s2.
-  const std::vector<int32> &old_indexes = computation_.indexes[c_in.arg3];
+  int32 old_arg3 = c_out->arg3;
   c_out->arg3 = expanded_computation_->indexes.size();
   expanded_computation_->indexes.push_back(std::vector<int32>());
   std::vector<int32> &new_indexes = expanded_computation_->indexes.back();
+  const std::vector<int32> &old_indexes = computation_.indexes[old_arg3];
 
   int32 old_size = old_indexes.size(),
       num_n_values = num_n_values_,
-      new_size = expanded_computation_->submatrices[s1].num_rows;
+      new_s1_size = expanded_computation_->submatrices[s1].num_rows,
+      new_s2_size = expanded_computation_->submatrices[s2].num_rows;
   KALDI_ASSERT(old_size % 2 == 0 &&
                old_size == computation_.submatrices[s1].num_rows);
-  new_indexes.resize(new_size, -1);
+  new_indexes.resize(new_s1_size, -1);
 
   for (int32 i1 = 0; i1 < old_size; i1++) {
     int32 new_i1_n0, new_n_stride1;
     if (GetNewSubmatLocationInfo(s1, i1, &new_i1_n0, &new_n_stride1)) {
       // GetNewSubmatLocationInfo() returns true if this corresponds to
       // a Cindex with n == 0.
-      int32 i2 = old_indexes[i1];
+      int32 i2 = old_indexes[i1];  // note: i2 is the row index into submatrix s2.
       int32 new_i2_n0, new_n_stride2;
       if (i2 < 0) {  // if i2 is -1, we'll just fill any relevant positions in
                      // 'new_indexes' with -1's.
@@ -2422,9 +2424,11 @@ void ComputationExpander::ExpandRowsCommand(
         KALDI_ASSERT(ans);  // source should also be for n==0, because we don't
                             // (or at least shouldn't) create computations that
                             // mix up the 'n' values
-        for (int32 n = 0; n < num_n_values; n++) {
-          int32 new_i1 = new_i1_n0 + n * new_n_stride1,
-              new_i2 = new_i2_n0 + new_n_stride2;
+
+        int32 new_i1 = new_i1_n0, new_i2 = new_i2_n0;
+        for (int32 n = 0; n < num_n_values;
+             ++n, new_i1 += new_n_stride1, new_i2 += new_n_stride2) {
+          KALDI_ASSERT(new_i1 < new_s1_size && new_i2 < new_s2_size);
           new_indexes[new_i1] = new_i2;
         }
       }
@@ -2443,23 +2447,24 @@ void ComputationExpander::ExpandRowsMultiCommand(
       num_rows_old = computation_.submatrices[s1].num_rows,
       num_rows_new = expanded_computation_->submatrices[s1].num_rows;
 
+  KALDI_ASSERT(num_rows_old % 2 == 0);
+  int32 num_n_values = num_n_values_;
+
+  int32 old_arg2 = c_out->arg2;
+  c_out->arg2 = expanded_computation_->indexes_multi.size();
+  expanded_computation_->indexes_multi.push_back(
+      std::vector<std::pair<int32, int32> >());
+  std::vector<std::pair<int32, int32> > &new_indexes_multi =
+      expanded_computation_->indexes_multi.back();
   const std::vector<std::pair<int32, int32> > &old_indexes_multi =
-      computation_.indexes_multi[c_in.arg2];
+      computation_.indexes_multi[old_arg2];
   // old_indexes_multi is a vector that has the same size as the num-rows
   // of submatrix s1.  It contains pairs that are either (-1, -1), or
   // pairs (submatrix-index, row-index) referring to other submatrices
   // in the computation.
 
   KALDI_ASSERT(static_cast<int32>(old_indexes_multi.size()) == num_rows_old);
-  KALDI_ASSERT(num_rows_old % 2 == 0);
-  int32 num_n_values = num_n_values_;
 
-
-  c_out->arg2 = expanded_computation_->indexes_multi.size();
-  expanded_computation_->indexes_multi.push_back(
-      std::vector<std::pair<int32, int32> >());
-  std::vector<std::pair<int32, int32> > &new_indexes_multi =
-      expanded_computation_->indexes_multi.back();
 
   new_indexes_multi.resize(num_rows_new,
                            std::pair<int32,int32>(-1, -1));
@@ -2508,8 +2513,18 @@ void ComputationExpander::ExpandRowRangesCommand(
       num_rows_new = expanded_computation_->submatrices[s1].num_rows;
   KALDI_ASSERT(static_cast<size_t>(c_in.arg3) <
                computation_.indexes_ranges.size());
+  KALDI_ASSERT(num_rows_old % 2 == 0);
+  int32 num_n_values = num_n_values_;
+
+
+  int32 old_arg3 = c_out->arg3;
+  c_out->arg3 = expanded_computation_->indexes_ranges.size();
+  expanded_computation_->indexes_ranges.push_back(
+      std::vector<std::pair<int32, int32> >());
+  std::vector<std::pair<int32, int32> > &new_indexes_ranges =
+      expanded_computation_->indexes_ranges.back();
   const std::vector<std::pair<int32, int32> > &old_indexes_ranges =
-      computation_.indexes_ranges[c_in.arg3];
+      computation_.indexes_ranges[old_arg3];
   // old_indexes_ranges is a vector that has the same size as the num-rows of
   // submatrix s1.  It contains pairs that are either two copies of the same
   // value (in practice the pair (-1, -1)), or pairs (begin-row-index,
@@ -2517,14 +2532,6 @@ void ComputationExpander::ExpandRowRangesCommand(
   // Note: end-row-index is one past the end of the range, as for C++ iterators.
 
   KALDI_ASSERT(static_cast<int32>(old_indexes_ranges.size()) == num_rows_old);
-  KALDI_ASSERT(num_rows_old % 2 == 0);
-  int32 num_n_values = num_n_values_;
-
-  c_out->arg3 = expanded_computation_->indexes_ranges.size();
-  expanded_computation_->indexes_ranges.push_back(
-      std::vector<std::pair<int32, int32> >());
-  std::vector<std::pair<int32, int32> > &new_indexes_ranges =
-      expanded_computation_->indexes_ranges.back();
 
   new_indexes_ranges.resize(num_rows_new,
                            std::pair<int32,int32>(-1, -1));
@@ -2815,10 +2822,6 @@ void ComputationExpander::ComputePrecomputedIndexes() {
   int32 num_commands = computation_.commands.size(),
     num_precomputed_indexes = computation_.component_precomputed_indexes.size();
 
-  if (num_precomputed_indexes == 1)
-    return;  // Nothing to compute.  Note: element zero of
-             // component_precomputed_indexes is reserved for NULL.
-
   std::vector<bool> need_backprop(num_precomputed_indexes, false);
 
   std::vector<int32> component_index(num_precomputed_indexes, -1);
@@ -2860,8 +2863,8 @@ void ComputationExpander::ComputePrecomputedIndexes() {
     // the n indexes consist of the set (0, 1), and the computation we're
     // creating has more distinct n indexes than that.
     std::vector<Index> input_indexes, output_indexes;
-    ExpandIndexes(old_info.input_indexes, &new_info.input_indexes);
-    ExpandIndexes(old_info.output_indexes, &new_info.output_indexes);
+    ExpandIndexes(old_info.input_indexes, &input_indexes);
+    ExpandIndexes(old_info.output_indexes, &output_indexes);
     KALDI_ASSERT(component_index[p] >= 0);
     const Component *component = nnet_.GetComponent(component_index[p]);
     ComponentPrecomputedIndexes *expanded_precomputed_indexes =
@@ -2877,18 +2880,19 @@ void ComputationExpander::ComputePrecomputedIndexes() {
 
 
 bool ComputationExpander::GetNewSubmatLocationInfo(
-    int32 old_submat_index, int32 old_row_index,
+    int32 submat_index, int32 old_row_index,
     int32 *new_row_index, int32 *new_n_stride) const {
-  int32 matrix_index = computation_.submatrices[old_submat_index].matrix_index,
-      row_offset = computation_.submatrices[old_submat_index].row_offset;
+  int32 matrix_index = computation_.submatrices[submat_index].matrix_index,
+   old_row_offset = computation_.submatrices[submat_index].row_offset,
+   new_row_offset = expanded_computation_->submatrices[submat_index].row_offset;
 
   const NnetComputation::MatrixDebugInfo &debug_info_in =
       computation_.matrix_debug_info[matrix_index];
-  if (debug_info_in.cindexes[old_row_index + row_offset].second.n != 0)
+  if (debug_info_in.cindexes[old_row_index + old_row_offset].second.n != 0)
     return false;
-  GetNewMatrixLocationInfo(matrix_index, old_row_index + row_offset,
+  GetNewMatrixLocationInfo(matrix_index, old_row_index + old_row_offset,
                            new_row_index, new_n_stride);
-  *new_row_index -= row_offset;
+  *new_row_index -= new_row_offset;
   return true;
 }
 
@@ -2897,9 +2901,7 @@ void ComputationExpander::GetNewMatrixLocationInfo(
     int32 *new_row_index, int32 *new_n_stride) const {
   bool n_is_fast = n_fast_[old_matrix_index];
   int32 num_rows = computation_.matrices[old_matrix_index].num_rows;
-  int32 n_stride;
   if (n_is_fast) {
-    n_stride = 1;
     // If the n index varies fast for this matrix, then the old row-index
     // should be a multiple of 2 because:
     //  - we assume that the input computation was built for 2 n-values
@@ -2957,9 +2959,7 @@ void ComputationExpander::GetNewLocationInfo(
   int32 num_indexes = indexes.size();
   KALDI_ASSERT(num_indexes > 0 && num_indexes % 2 == 0 &&
                indexes.front().n == 0 && indexes.back().n == 1);
-  int32 n_stride;
   if (is_fast) {
-    n_stride = 1;
     // If the n index varies fast for this matrix, then the old row-index
     // should be a multiple of 2 because:
     //  - we assume that the input computation was built for 2 n-values

@@ -30,7 +30,8 @@ namespace nnet3 {
 // Run the test without optimizations and with optimizations specified by the
 // configs (the optimized version is done with class CachingOptimizingCompiler).
 // Only print warnings; we'll fail the whole test later.
-static bool UnitTestNnetOptimizeWithOptions(NnetOptimizeOptions opt_config,
+static bool UnitTestNnetOptimizeWithOptions(int32 srand_seed,
+                                            NnetOptimizeOptions opt_config,
                                             CachingOptimizingCompilerOptions compiler_config) {
 
   //opt_config.convert_addition = false;
@@ -38,149 +39,150 @@ static bool UnitTestNnetOptimizeWithOptions(NnetOptimizeOptions opt_config,
   //opt_config.move_sizing_commands = false;
   //opt_config.allocate_from_other = false;
 
-  srand(0);  // Every run must be deterministic.
-  for (int32 n = 0; n < 40; n++) {
-    struct NnetGenerationOptions gen_config;
+  srand(srand_seed);  // so that we can compare between differnt optimization types
+                      // with the randomly generated network staying the same.
 
-    std::vector<std::string> configs;
-    GenerateConfigSequence(gen_config, &configs);
-    Nnet nnet;
-    for (size_t j = 0; j < configs.size(); j++) {
-      KALDI_LOG << "Input config[" << j << "] is: " << configs[j];
-      std::istringstream is(configs[j]);
-      nnet.ReadConfig(is);
-    }
+  struct NnetGenerationOptions gen_config;
 
-    ComputationRequest request;
-    std::vector<Matrix<BaseFloat> > inputs;
-    ComputeExampleComputationRequestSimple(nnet, &request, &inputs);
+  std::vector<std::string> configs;
+  GenerateConfigSequence(gen_config, &configs);
+  Nnet nnet;
+  for (size_t j = 0; j < configs.size(); j++) {
+    KALDI_LOG << "Input config[" << j << "] is: " << configs[j];
+    std::istringstream is(configs[j]);
+    nnet.ReadConfig(is);
+  }
 
-    NnetComputation computation;
-    Compiler compiler(request, nnet);
+  ComputationRequest request;
+  std::vector<Matrix<BaseFloat> > inputs;
+  ComputeExampleComputationRequestSimple(nnet, &request, &inputs);
 
-    CompilerOptions opts;
-    compiler.CreateComputation(opts, &computation);
-    {
-      std::ostringstream os;
-      computation.Print(os, nnet);
-      KALDI_LOG << "Generated computation with no optimization or shortcut is: " << os.str();
-    }
-    CheckComputationOptions check_config;
-    // we can do the rewrite check since it's before optimization.
-    check_config.check_rewrite = true;
-    ComputationChecker checker(check_config, nnet, computation);
-    checker.Check();
+  NnetComputation computation;
+  Compiler compiler(request, nnet);
 
-    CachingOptimizingCompiler opt_compiler(nnet, opt_config, compiler_config);
+  CompilerOptions opts;
+  compiler.CreateComputation(opts, &computation);
+  {
+    std::ostringstream os;
+    computation.Print(os, nnet);
+    KALDI_LOG << "Generated computation with no optimization or shortcut is: " << os.str();
+  }
+  CheckComputationOptions check_config;
+  // we can do the rewrite check since it's before optimization.
+  check_config.check_rewrite = true;
+  ComputationChecker checker(check_config, nnet, computation);
+  checker.Check();
 
-    const NnetComputation &computation_opt = *opt_compiler.Compile(request);
+  CachingOptimizingCompiler opt_compiler(nnet, opt_config, compiler_config);
 
-    {
-      std::ostringstream os;
-      computation_opt.Print(os, nnet);
-      KALDI_LOG << "Optimized computation is: " << os.str();
-    }
+  const NnetComputation &computation_opt = *opt_compiler.Compile(request);
 
-    NnetComputeOptions compute_opts;
-    if (RandInt(0, 1) == 0)
-      compute_opts.debug = true;
+  {
+    std::ostringstream os;
+    computation_opt.Print(os, nnet);
+    KALDI_LOG << "Optimized computation is: " << os.str();
+  }
 
-    computation.ComputeCudaIndexes();
-    // computation_opt has already had this function called.
+  NnetComputeOptions compute_opts;
+  if (RandInt(0, 1) == 0)
+    compute_opts.debug = true;
 
-    Nnet nnet_to_update(nnet);  // copy of the nnet that we update...  needed to
-                                // test the consolidation of backprop commands,
-                                // otherwise the optimized and non-optimized
-                                // comptuations differ.
-    bool is_gradient = true;  // with natural gradient, the consolidation would
-                              // affect the final model params -> test just the
-                              // gradient.
-    SetZero(is_gradient, &nnet_to_update);
+  computation.ComputeCudaIndexes();
+  // computation_opt has already had this function called.
 
-    NnetComputer computer(compute_opts,
-                          computation,
-                          nnet,
-                          &nnet_to_update);
+  Nnet nnet_to_update(nnet);  // copy of the nnet that we update...  needed to
+  // test the consolidation of backprop commands,
+  // otherwise the optimized and non-optimized
+  // comptuations differ.
+  bool is_gradient = true;  // with natural gradient, the consolidation would
+  // affect the final model params -> test just the
+  // gradient.
+  SetZero(is_gradient, &nnet_to_update);
 
-    Nnet nnet_opt(nnet);  // copy of the nnet for the optimized computation.
-                          // necessary in case backprop changes parameters.
-    Nnet nnet_opt_to_update(nnet_opt);
-    SetZero(is_gradient, &nnet_opt_to_update);
+  NnetComputer computer(compute_opts,
+                        computation,
+                        nnet,
+                        &nnet_to_update);
 
-    // NnetComputer for the optimized version of the computation.
-    NnetComputer computer_opt(compute_opts,
-                              computation_opt,
-                              nnet_opt,
-                              &nnet_opt_to_update);
+  Nnet nnet_opt(nnet);  // copy of the nnet for the optimized computation.
+  // necessary in case backprop changes parameters.
+  Nnet nnet_opt_to_update(nnet_opt);
+  SetZero(is_gradient, &nnet_opt_to_update);
 
-    // provide the input to the computations.
-    for (size_t i = 0; i < request.inputs.size(); i++) {
-      CuMatrix<BaseFloat> temp(inputs[i]);
-      KALDI_LOG << "Input sum is " << temp.Sum();
-      computer.AcceptInput(request.inputs[i].name, &temp);
-      CuMatrix<BaseFloat> temp2(inputs[i]);
-      computer_opt.AcceptInput(request.inputs[i].name, &temp2);
-    }
-    KALDI_LOG << "Running non-optimized forward computation";
+  // NnetComputer for the optimized version of the computation.
+  NnetComputer computer_opt(compute_opts,
+                            computation_opt,
+                            nnet_opt,
+                            &nnet_opt_to_update);
+
+  // provide the input to the computations.
+  for (size_t i = 0; i < request.inputs.size(); i++) {
+    CuMatrix<BaseFloat> temp(inputs[i]);
+    KALDI_LOG << "Input sum is " << temp.Sum();
+    computer.AcceptInput(request.inputs[i].name, &temp);
+    CuMatrix<BaseFloat> temp2(inputs[i]);
+    computer_opt.AcceptInput(request.inputs[i].name, &temp2);
+  }
+  KALDI_LOG << "Running non-optimized forward computation";
+  computer.Run();
+  KALDI_LOG << "Running optimized forward computation";
+  computer_opt.Run();
+
+  const CuMatrixBase<BaseFloat> &output(computer.GetOutput("output"));
+  KALDI_LOG << "Output sum (not optimized) is " << output.Sum();
+  const CuMatrixBase<BaseFloat> &output_opt(computer_opt.GetOutput("output"));
+  KALDI_LOG << "Output sum (optimized) is " << output_opt.Sum();
+  if (!ApproxEqual(output, output_opt)) {
+    KALDI_WARN << "Non-optimized and optimized versions of the computation give "
+               << "different outputs.";
+    return false;
+  }
+
+  CuMatrix<BaseFloat> output_deriv(output.NumRows(), output.NumCols());
+  output_deriv.SetRandn();
+  CuMatrix<BaseFloat> output_deriv_opt(output_deriv);
+
+  if (request.outputs[0].has_deriv) {
+    computer.AcceptInput("output", &output_deriv);
+    computer_opt.AcceptInput("output", &output_deriv_opt);
+
+    KALDI_LOG << "Running non-optimized backward computation";
     computer.Run();
-    KALDI_LOG << "Running optimized forward computation";
+    KALDI_LOG << "Running optimized backward computation";
     computer_opt.Run();
-
-    const CuMatrixBase<BaseFloat> &output(computer.GetOutput("output"));
-    KALDI_LOG << "Output sum (not optimized) is " << output.Sum();
-    const CuMatrixBase<BaseFloat> &output_opt(computer_opt.GetOutput("output"));
-    KALDI_LOG << "Output sum (optimized) is " << output_opt.Sum();
-    if (!ApproxEqual(output, output_opt)) {
-      KALDI_WARN << "Non-optimized and optimized versions of the computation give "
-                 << "different outputs.";
-      return false;
-    }
-
-    CuMatrix<BaseFloat> output_deriv(output.NumRows(), output.NumCols());
-    output_deriv.SetRandn();
-    CuMatrix<BaseFloat> output_deriv_opt(output_deriv);
-
-    if (request.outputs[0].has_deriv) {
-      computer.AcceptInput("output", &output_deriv);
-      computer_opt.AcceptInput("output", &output_deriv_opt);
-
-      KALDI_LOG << "Running non-optimized backward computation";
-      computer.Run();
-      KALDI_LOG << "Running optimized backward computation";
-      computer_opt.Run();
-      for (size_t i = 0; i < request.inputs.size(); i++) {
-        if (request.inputs[i].has_deriv) {
-          const CuMatrixBase<BaseFloat> &in_deriv =
-              computer.GetOutput(request.inputs[i].name);
-          const CuMatrixBase<BaseFloat> &in_deriv_opt =
-              computer_opt.GetOutput(request.inputs[i].name);
-          KALDI_LOG << "Input-deriv sum for input '" << request.inputs[i].name
-                    << "' (non-optimized) is " << in_deriv.Sum();
-          KALDI_LOG << "Input-deriv sum for input '" << request.inputs[i].name
-                    << "' (optimized) is " << in_deriv_opt.Sum();
-          if (!ApproxEqual(in_deriv, in_deriv_opt)) {
-            KALDI_WARN << "Non-optimized and optimized versions of the "
-                       << "computation give different input-derivs.";
-            return false;
-          }
+    for (size_t i = 0; i < request.inputs.size(); i++) {
+      if (request.inputs[i].has_deriv) {
+        const CuMatrixBase<BaseFloat> &in_deriv =
+            computer.GetOutput(request.inputs[i].name);
+        const CuMatrixBase<BaseFloat> &in_deriv_opt =
+            computer_opt.GetOutput(request.inputs[i].name);
+        KALDI_LOG << "Input-deriv sum for input '" << request.inputs[i].name
+                  << "' (non-optimized) is " << in_deriv.Sum();
+        KALDI_LOG << "Input-deriv sum for input '" << request.inputs[i].name
+                  << "' (optimized) is " << in_deriv_opt.Sum();
+        if (!ApproxEqual(in_deriv, in_deriv_opt)) {
+          KALDI_WARN << "Non-optimized and optimized versions of the "
+                     << "computation give different input-derivs.";
+          return false;
         }
       }
     }
-
-    if (!NnetParametersAreIdentical(nnet_to_update,
-                                    nnet_opt_to_update, 1.0e-05)) {
-      KALDI_WARN << "Neural networks differ after training, between "
-                 << "optimized and non-optimized computation.";
-      return false;
-    }
   }
-  return true;
+
+  if (!NnetParametersAreIdentical(nnet_to_update,
+                                  nnet_opt_to_update, 1.0e-05)) {
+    KALDI_WARN << "Neural networks differ after training, between "
+               << "optimized and non-optimized computation.";
+    return false;
+  } else {
+    return true;
+  }
 }
 
 
 // This test runs the computation with and without optimization, and checks that
 // the outputs are the same.
-static void UnitTestNnetOptimize() {
+static void UnitTestNnetOptimizeInternal(int32 srand_seed) {
   NnetOptimizeOptions optimize_all;
   CachingOptimizingCompilerOptions compiler_all;
 
@@ -192,7 +194,7 @@ static void UnitTestNnetOptimize() {
 
   // this is useful for debugging as it removes nans:
   // optimize_all.initialize_undefined = false;
-  bool success = UnitTestNnetOptimizeWithOptions(optimize_all,
+  bool success = UnitTestNnetOptimizeWithOptions(srand_seed, optimize_all,
                                                  compiler_all);
   if (success)
     return;
@@ -204,48 +206,48 @@ static void UnitTestNnetOptimize() {
 
 
   compiler.use_shortcut = false;
-  bool succ_no_shortcut = UnitTestNnetOptimizeWithOptions(optimize,
+  bool succ_no_shortcut = UnitTestNnetOptimizeWithOptions(srand_seed, optimize,
                                                           compiler);
   compiler = compiler_all;
 
 
   optimize.propagate_in_place = false;
-  bool succ_no_propagate_in_place = UnitTestNnetOptimizeWithOptions(optimize,
+  bool succ_no_propagate_in_place = UnitTestNnetOptimizeWithOptions(srand_seed, optimize,
                                                                     compiler);
   optimize = optimize_all;
 
   optimize.backprop_in_place = false;
-  bool succ_no_backprop_in_place = UnitTestNnetOptimizeWithOptions(optimize,
+  bool succ_no_backprop_in_place = UnitTestNnetOptimizeWithOptions(srand_seed, optimize,
                                                                    compiler);
   optimize = optimize_all;
 
   optimize.optimize_row_ops = false;
-  bool succ_no_row_ops = UnitTestNnetOptimizeWithOptions(optimize,
+  bool succ_no_row_ops = UnitTestNnetOptimizeWithOptions(srand_seed, optimize,
                                                          compiler);
   optimize = optimize_all;
 
   optimize.convert_addition = false;
-  bool succ_no_convert_addition = UnitTestNnetOptimizeWithOptions(optimize,
+  bool succ_no_convert_addition = UnitTestNnetOptimizeWithOptions(srand_seed, optimize,
                                                                   compiler);
   optimize = optimize_all;
 
   optimize.remove_assignments = false;
-  bool succ_no_remove_assignments = UnitTestNnetOptimizeWithOptions(optimize,
+  bool succ_no_remove_assignments = UnitTestNnetOptimizeWithOptions(srand_seed, optimize,
                                                                     compiler);
   optimize = optimize_all;
 
   optimize.initialize_undefined = false;
-  bool succ_no_initialize_undefined = UnitTestNnetOptimizeWithOptions(optimize,
+  bool succ_no_initialize_undefined = UnitTestNnetOptimizeWithOptions(srand_seed, optimize,
                                                                       compiler);
   optimize = optimize_all;
 
   optimize.allocate_from_other = false;
-  bool succ_no_allocate_from_other = UnitTestNnetOptimizeWithOptions(optimize,
+  bool succ_no_allocate_from_other = UnitTestNnetOptimizeWithOptions(srand_seed, optimize,
                                                                      compiler);
   optimize = optimize_all;
 
   optimize.move_sizing_commands = false;
-  bool succ_no_move_sizing_commands = UnitTestNnetOptimizeWithOptions(optimize,
+  bool succ_no_move_sizing_commands = UnitTestNnetOptimizeWithOptions(srand_seed, optimize,
                                                                       compiler);
   optimize = optimize_all;
 
@@ -265,7 +267,13 @@ static void UnitTestNnetOptimize() {
 #undef KALDI_SUCCFAIL
 }
 
-
+static void UnitTestNnetOptimize() {
+  for (int32 srand_seed = 0; srand_seed < 40; srand_seed++) {
+    KALDI_LOG << "About to run UnitTestNnetOptimizeInternal with srand_seed = "
+              << srand_seed;
+    UnitTestNnetOptimizeInternal(srand_seed);
+  }
+}
 
 
 

@@ -745,6 +745,8 @@ const NnetComputation* CachingOptimizingCompiler::CompileViaShortcut(
   ExpandComputation(nnet_, request.misc_info, *mini_computation,
                     need_debug_info, num_n_values, ans);
 
+  ans->ComputeCudaIndexes();
+
   return ans;
 }
 
