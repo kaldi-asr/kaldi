@@ -1,8 +1,4 @@
-# You have to make sure FSTROOT,OPENBLASROOT,OPENBLASLIBS are set...
-
-ifndef FSTROOT
-$(error FSTROOT not defined.)
-endif
+# OpenBLAS specific Linux ARM settings
 
 ifndef OPENBLASLIBS
 $(error OPENBLASLIBS not defined.)
@@ -12,25 +8,9 @@ ifndef OPENBLASROOT
 $(error OPENBLASROOT not defined.)
 endif
 
+CXXFLAGS += -ftree-vectorize -mfloat-abi=hard -mfpu=neon -pthread -rdynamic \
+            -DHAVE_EXECINFO_H=1 -DHAVE_CXXABI_H \
+            -DHAVE_OPENBLAS -I $(OPENBLASROOT)/include
 
-DOUBLE_PRECISION = 0
-CXXFLAGS = -ftree-vectorize -mfloat-abi=hard -mfpu=neon -Wall -I.. -pthread \
-      -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
-      -Wno-sign-compare -Wno-unused-local-typedefs -Winit-self \
-      -DHAVE_EXECINFO_H=1 -rdynamic -DHAVE_CXXABI_H \
-      -DHAVE_OPENBLAS -I $(OPENBLASROOT)/include \
-      -I $(FSTROOT)/include \
-      -std=c++11 $(EXTRA_CXXFLAGS) \
-      -g # -O0 -DKALDI_PARANOID
-
-ifeq ($(KALDI_FLAVOR), dynamic)
-CXXFLAGS += -fPIC
-endif
-
-LDFLAGS = -rdynamic $(OPENFSTLDFLAGS)
-LDLIBS = $(EXTRA_LDLIBS) $(OPENFSTLIBS) $(OPENBLASLIBS) -lm -lpthread -ldl
-CC = g++
-CXX = g++
-AR = ar
-AS = as
-RANLIB = ranlib
+LDFLAGS += -rdynamic
+LDLIBS += $(OPENBLASLIBS)

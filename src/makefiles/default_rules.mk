@@ -3,28 +3,20 @@ SHELL := /bin/bash
 
 ifeq ($(KALDI_FLAVOR), dynamic)
   ifeq ($(shell uname), Darwin)
-    XLDLIBS := $(LDLIBS)
     ifdef LIBNAME
       LIBFILE = lib$(LIBNAME).dylib
-      #LDLIBS  += -l$(LIBNAME)
     endif
-    LDFLAGS += -L$(KALDILIBDIR) -Wl,-rpath -Wl,$(KALDILIBDIR)
-    XDEPENDS = $(foreach dep,$(ADDLIBS), $(dir $(dep))/lib$(notdir $(basename $(dep))).dylib )
-    XLDLIBS += $(foreach dep,$(ADDLIBS), -l$(notdir $(basename $(dep))) )
-  else
-    ifeq ($(shell uname), Linux)
-      ifdef LIBNAME
-        LIBFILE = lib$(LIBNAME).so
-        #LDLIBS  += -l$(LIBNAME)
-      endif
-      LDFLAGS += -Wl,-rpath=$(shell readlink -f $(KALDILIBDIR)) -L.
-      LDFLAGS += $(foreach dep,$(ADDLIBS), -L$(dir $(dep)) )
-      XDEPENDS = $(foreach dep,$(ADDLIBS), $(dir $(dep))/lib$(notdir $(basename $(dep))).so )
-    else  # Platform not supported
-      $(error Dynamic libraries not supported on this platform. Run configure with --static flag. )
+    LDFLAGS += -Wl,-rpath -Wl,$(KALDILIBDIR)
+    XDEPENDS = $(foreach dep,$(ADDLIBS), $(dir $(dep))lib$(notdir $(basename $(dep))).dylib)
+  else ifeq ($(shell uname), Linux)
+    ifdef LIBNAME
+      LIBFILE = lib$(LIBNAME).so
     endif
+    LDFLAGS += -Wl,-rpath=$(shell readlink -f $(KALDILIBDIR))
+    XDEPENDS = $(foreach dep,$(ADDLIBS), $(dir $(dep))lib$(notdir $(basename $(dep))).so)
+  else  # Platform not supported
+    $(error Dynamic libraries not supported on this platform. Run configure with --static flag.)
   endif
-  LDLIBS  += $(foreach dep,$(ADDLIBS), -l$(notdir $(basename $(dep))) )
 else
   ifdef LIBNAME
     LIBFILE = $(LIBNAME).a
@@ -39,23 +31,23 @@ $(LIBFILE): $(OBJFILES)
 	$(RANLIB) $(LIBNAME).a
 ifeq ($(KALDI_FLAVOR), dynamic)
 ifeq ($(shell uname), Darwin)
-	$(CXX) -dynamiclib -o $@ -install_name @rpath/$@ -framework Accelerate $(LDFLAGS) $(XLDLIBS) $(OBJFILES) $(LDLIBS)
+	$(CXX) -dynamiclib -o $@ -install_name @rpath/$@ $(LDFLAGS) $(OBJFILES) $(XDEPENDS) $(LDLIBS)
 	rm -f $(KALDILIBDIR)/$@; ln -s $(shell pwd)/$@ $(KALDILIBDIR)/$@
-else
-ifeq ($(shell uname), Linux)
+else ifeq ($(shell uname), Linux)
 	# Building shared library from static (static was compiled with -fPIC)
 	$(CXX) -shared -o $@ -Wl,--no-undefined -Wl,--as-needed  -Wl,-soname=$@,--whole-archive $(LIBNAME).a -Wl,--no-whole-archive  $(LDFLAGS) $(XDEPENDS) $(LDLIBS)
 	rm -f $(KALDILIBDIR)/$@; ln -s $(shell pwd)/$@ $(KALDILIBDIR)/$@
-	#cp $@ $(KALDILIBDIR)
 else  # Platform not supported
-	$(error Dynamic libraries not supported on this platform. Run configure with --static flag. )
-endif
+	$(error Dynamic libraries not supported on this platform. Run configure with --static flag.)
 endif
 endif
 
+# By default (GNU) make uses the C compiler $(CC) for linking object files even
+# if they were compiled from a C++ source. Below redefinition forces make to
+# use the C++ compiler $(CXX) instead.
+LINK.o = $(CXX) $(LDFLAGS) $(TARGET_ARCH)
 
 $(BINFILES): $(LIBFILE) $(XDEPENDS)
-
 
 # Rule below would expand to, e.g.:
 # ../base/kaldi-base.a:
@@ -100,8 +92,20 @@ test: test_compile
 	done;				\
 	exit $$result; }
 
-.valgrind: $(BINFILES) $(TESTFILES)
+# Rules that enable valgrind debugging ("make valgrind")
 
+valgrind: .valgrind
+
+.valgrind: $(TESTFILES)
+	echo -n > valgrind.out
+	for x in $(TESTFILES); do \
+		echo $$x >>valgrind.out; \
+		valgrind ./$$x >/dev/null 2>> valgrind.out; \
+	done
+	! ( grep 'ERROR SUMMARY' valgrind.out | grep -v '0 errors' )
+	! ( grep 'definitely lost' valgrind.out | grep -v -w 0 )
+	rm valgrind.out
+	touch .valgrind
 
 depend:
 	-$(CXX) -M $(CXXFLAGS) *.cc > .depend.mk

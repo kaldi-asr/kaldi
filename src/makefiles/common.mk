@@ -1,13 +1,30 @@
-# Rules that enable valgrind debugging ("make valgrind")
+# Platform independent settings
 
-valgrind: .valgrind
+ifndef FSTROOT
+$(error FSTROOT not defined.)
+endif
 
-.valgrind:
-	echo -n > valgrind.out
-	for x in $(TESTFILES); do echo $$x>>valgrind.out; valgrind ./$$x >/dev/null 2>> valgrind.out; done
-	! ( grep 'ERROR SUMMARY' valgrind.out | grep -v '0 errors' )
-	! ( grep 'definitely lost' valgrind.out | grep -v -w 0 )
-	rm valgrind.out
-	touch .valgrind
+ifndef DOUBLE_PRECISION
+$(error DOUBLE_PRECISION not defined.)
+endif
 
+ifndef OPENFSTLIBS
+$(error OPENFSTLIBS not defined.)
+endif
 
+CXXFLAGS = -std=c++11 -I.. -I$(FSTROOT)/include \
+           -Wall -Wno-sign-compare -Wno-unused-local-typedefs -Winit-self \
+           -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
+           $(EXTRA_CXXFLAGS) \
+           -g # -O0 -DKALDI_PARANOID
+
+ifeq ($(KALDI_FLAVOR), dynamic)
+CXXFLAGS += -fPIC
+endif
+
+LDFLAGS = $(OPENFSTLDFLAGS) $(EXTRA_LDFLAGS)
+LDLIBS = $(OPENFSTLIBS) -lm -lpthread -ldl $(EXTRA_LDLIBS)
+
+RANLIB = ranlib
+AR = ar
+AS = as
