@@ -27,9 +27,12 @@
 namespace kaldi {
 namespace nnet3 {
 
-// Run the test wothout optimizations and with optimizations specified by the
-// parameter. Only print warnings; we'll fail the whole test later.
-static bool UnitTestNnetOptimizeWithOptions(NnetOptimizeOptions opt_config) {
+// Run the test without optimizations and with optimizations specified by the
+// configs (the optimized version is done with class CachingOptimizingCompiler).
+// Only print warnings; we'll fail the whole test later.
+static bool UnitTestNnetOptimizeWithOptions(NnetOptimizeOptions opt_config,
+                                            CachingOptimizingCompilerOptions compiler_config) {
+
   //opt_config.convert_addition = false;
   //opt_config.remove_assignments = false;
   //opt_config.move_sizing_commands = false;
@@ -60,7 +63,7 @@ static bool UnitTestNnetOptimizeWithOptions(NnetOptimizeOptions opt_config) {
     {
       std::ostringstream os;
       computation.Print(os, nnet);
-      KALDI_LOG << "Generated computation is: " << os.str();
+      KALDI_LOG << "Generated computation with no optimization or shortcut is: " << os.str();
     }
     CheckComputationOptions check_config;
     // we can do the rewrite check since it's before optimization.
@@ -68,12 +71,11 @@ static bool UnitTestNnetOptimizeWithOptions(NnetOptimizeOptions opt_config) {
     ComputationChecker checker(check_config, nnet, computation);
     checker.Check();
 
-    NnetComputation computation_opt(computation);
+    CachingOptimizingCompiler opt_compiler(nnet, opt_config, compiler_config);
+
+    const NnetComputation &computation_opt = *opt_compiler.Compile(request);
 
     {
-      Optimize(opt_config, nnet,
-               MaxOutputTimeInRequest(request),
-               &computation_opt);
       std::ostringstream os;
       computation_opt.Print(os, nnet);
       KALDI_LOG << "Optimized computation is: " << os.str();
@@ -84,7 +86,8 @@ static bool UnitTestNnetOptimizeWithOptions(NnetOptimizeOptions opt_config) {
       compute_opts.debug = true;
 
     computation.ComputeCudaIndexes();
-    computation_opt.ComputeCudaIndexes();
+    // computation_opt has already had this function called.
+
     Nnet nnet_to_update(nnet);  // copy of the nnet that we update...  needed to
                                 // test the consolidation of backprop commands,
                                 // otherwise the optimized and non-optimized
@@ -179,6 +182,8 @@ static bool UnitTestNnetOptimizeWithOptions(NnetOptimizeOptions opt_config) {
 // the outputs are the same.
 static void UnitTestNnetOptimize() {
   NnetOptimizeOptions optimize_all;
+  CachingOptimizingCompilerOptions compiler_all;
+
   // randomly sometimes set min_deriv and max_deriv to small/large values,
   // which will cause some of the LimitDerivativeTimes() code to be called
   // (without really changing anything).
@@ -187,43 +192,82 @@ static void UnitTestNnetOptimize() {
 
   // this is useful for debugging as it removes nans:
   // optimize_all.initialize_undefined = false;
-  bool success = UnitTestNnetOptimizeWithOptions(optimize_all);
+  bool success = UnitTestNnetOptimizeWithOptions(optimize_all,
+                                                 compiler_all);
   if (success)
     return;
 
   // Test failed with full optimization. Slowly retry with various
   // optimizations switched off.
   NnetOptimizeOptions optimize = optimize_all;
+  CachingOptimizingCompilerOptions compiler = compiler_all;
+
+
+  compiler.use_shortcut = false;
+  bool succ_no_shortcut = UnitTestNnetOptimizeWithOptions(optimize,
+                                                          compiler);
+  compiler = compiler_all;
+
+
   optimize.propagate_in_place = false;
-  bool succ_no_propagate_in_place = UnitTestNnetOptimizeWithOptions(optimize);
-
+  bool succ_no_propagate_in_place = UnitTestNnetOptimizeWithOptions(optimize,
+                                                                    compiler);
   optimize = optimize_all;
+
   optimize.backprop_in_place = false;
-  bool succ_no_backprop_in_place = UnitTestNnetOptimizeWithOptions(optimize);
-
+  bool succ_no_backprop_in_place = UnitTestNnetOptimizeWithOptions(optimize,
+                                                                   compiler);
   optimize = optimize_all;
+
+  optimize.optimize_row_ops = false;
+  bool succ_no_row_ops = UnitTestNnetOptimizeWithOptions(optimize,
+                                                         compiler);
+  optimize = optimize_all;
+
+  optimize.convert_addition = false;
+  bool succ_no_convert_addition = UnitTestNnetOptimizeWithOptions(optimize,
+                                                                  compiler);
+  optimize = optimize_all;
+
   optimize.remove_assignments = false;
-  bool succ_no_remove_assignments = UnitTestNnetOptimizeWithOptions(optimize);
-
+  bool succ_no_remove_assignments = UnitTestNnetOptimizeWithOptions(optimize,
+                                                                    compiler);
   optimize = optimize_all;
+
   optimize.initialize_undefined = false;
-  bool succ_no_initialize_undefined = UnitTestNnetOptimizeWithOptions(optimize);
-
+  bool succ_no_initialize_undefined = UnitTestNnetOptimizeWithOptions(optimize,
+                                                                      compiler);
   optimize = optimize_all;
+
+  optimize.allocate_from_other = false;
+  bool succ_no_allocate_from_other = UnitTestNnetOptimizeWithOptions(optimize,
+                                                                     compiler);
+  optimize = optimize_all;
+
   optimize.move_sizing_commands = false;
-  bool succ_no_move_sizing_commands = UnitTestNnetOptimizeWithOptions(optimize);
+  bool succ_no_move_sizing_commands = UnitTestNnetOptimizeWithOptions(optimize,
+                                                                      compiler);
+  optimize = optimize_all;
 
 #define KALDI_SUCCFAIL(b) ((b) ? "SUCCESS" : "FAILURE")
   KALDI_ERR
     << "Test failed with all optimizations enabled. Retried test with the "
     << "following optimizations turned off:"
+    << "\n  use_shortcut         ... " << KALDI_SUCCFAIL(succ_no_shortcut)
     << "\n  propagate_in_place   ... " << KALDI_SUCCFAIL(succ_no_propagate_in_place)
     << "\n  backprop_in_place    ... " << KALDI_SUCCFAIL(succ_no_backprop_in_place)
+    << "\n  optimize_row_ops     ... " << KALDI_SUCCFAIL(succ_no_row_ops)
+    << "\n  convert_addition     ... " << KALDI_SUCCFAIL(succ_no_convert_addition)
     << "\n  remove_assignments   ... " << KALDI_SUCCFAIL(succ_no_remove_assignments)
     << "\n  initialize_undefined ... " << KALDI_SUCCFAIL(succ_no_initialize_undefined)
+    << "\n  allocate_from_other  ... " << KALDI_SUCCFAIL(succ_no_allocate_from_other)
     << "\n  move_sizing_commands ... " << KALDI_SUCCFAIL(succ_no_move_sizing_commands);
 #undef KALDI_SUCCFAIL
 }
+
+
+
+
 
 } // namespace nnet3
 } // namespace kaldi

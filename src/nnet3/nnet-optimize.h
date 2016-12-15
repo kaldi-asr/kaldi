@@ -182,7 +182,6 @@ struct ComputationRequestPtrEqual {
 
 struct CachingOptimizingCompilerOptions {
   bool use_shortcut;
-  int32 write_cache;
   int32 cache_capacity;
 
   CachingOptimizingCompilerOptions():
@@ -229,6 +228,32 @@ class CachingOptimizingCompiler {
   void ReadCache(std::istream &is, bool binary);
   void WriteCache(std::ostream &os, bool binary) const;
  private:
+  // This function, called from Compile(), is called when a ComputationRequest
+  // has been determined not to have already been cached.  It otherwise has the
+  // same interface as Compile(), but assumes that there is nothing cached for
+  // this computation as yet.  It compiles the computation and takes care of
+  // caching it.
+  const NnetComputation* CompileAndCache(const ComputationRequest &request);
+
+
+  // This function, called from CompileAndCache(), tries to compile the
+  // ComputationRequest 'request' via 'shortcut' compilation; if this is
+  // possible, it returns a pointer to a newly allocated computation that it has
+  // compiled this way (note: this computation will not yet have been placed in
+  // the computation cache).  If this is not possible for some reason
+  // (e.g. shortcut compilation is disabled in the config; or the computation
+  // request was not decomposable because of too few n values or irregular or
+  // unexpected structure), this function returns NULL and you should compile
+  // via CompileNoShortcut.
+  const NnetComputation* CompileViaShortcut(const ComputationRequest &request);
+
+  // This function, called from CompileAndCache(), tries to compile the
+  // ComputationRequest 'request' via the regular (not shortcut) compilation
+  // process; it returns a pointer to a newly allocated computation that it has
+  // compiled this way (note: this computation will not yet have been placed in
+  // the computation cache).
+  const NnetComputation* CompileNoShortcut(const ComputationRequest &request);
+
   const Nnet &nnet_;
   CachingOptimizingCompilerOptions config_;
   NnetOptimizeOptions opt_config_;
@@ -245,9 +270,10 @@ class CachingOptimizingCompiler {
   // Map from computation-request to pair of (computation, and position in
   // access_queue_). Used for fast lookup of previously compiled computations.
   // All pointers are owned here.
-  typedef unordered_map<const ComputationRequest*, std::pair<NnetComputation*,
-    AqType::iterator>, ComputationRequestHasher,
-    ComputationRequestPtrEqual> CacheType;
+  typedef unordered_map<const ComputationRequest*,
+                        std::pair<const NnetComputation*, AqType::iterator>,
+                        ComputationRequestHasher,
+                        ComputationRequestPtrEqual> CacheType;
   CacheType computation_cache_;
 
   // This function updates the computation cache. It is called within Compile().
@@ -255,7 +281,7 @@ class CachingOptimizingCompiler {
   // the queue, and purges the least-recently-accessed request from the queue and
   // the cache if the capacity is reached.
   void UpdateCache(const ComputationRequest *request,
-                   NnetComputation *computation);
+                   const NnetComputation *computation);
   // This function updates the recently accessed queue.
   void UpdateAccessQueue(CacheType::iterator &cit);
 };

@@ -575,7 +575,7 @@ size_t ComputationRequestHasher::IoSpecificationToInt(const IoSpecification& spe
 }
 
 void CachingOptimizingCompiler::UpdateCache(const ComputationRequest *request,
-                                            NnetComputation *computation) {
+                                            const NnetComputation *computation) {
   if (computation_cache_.size() == config_.cache_capacity) {
     // full, locate the least-recently-accessed request
     const CacheType::iterator it =
@@ -647,57 +647,108 @@ CachingOptimizingCompiler::~CachingOptimizingCompiler() {
 
 const NnetComputation* CachingOptimizingCompiler::Compile(
     const ComputationRequest  &in_request) {
-  NnetComputation *computation;
-  ComputationRequest *request;
   // find computation in the cache
   CacheType::iterator cit = computation_cache_.find(&in_request);
   if (cit == computation_cache_.end()) {
-    // if not found, compile and update cache
-    request = new ComputationRequest;
-    *request = in_request;
-    Compiler compiler(*request, nnet_);
-    CompilerOptions opts;
-    computation = new NnetComputation;
-    compiler.CreateComputation(opts, computation);
-
-    int32 verbose_cutoff = 4;
-    if (GetVerboseLevel() >= verbose_cutoff) {
-      std::ostringstream os1;
-      request->Print(os1);
-      KALDI_LOG << "Computation request is " << os1.str();
-      std::ostringstream os2;
-      computation->Print(os2, nnet_);
-      KALDI_LOG << "Generated computation is: " << os2.str();
-    }
-    { // some checking.
-      CheckComputationOptions check_config;
-      // we can do the rewrite check since it's before optimization.
-      check_config.check_rewrite = true;
-      ComputationChecker checker(check_config, nnet_, *computation);
-      checker.Check();
-    }
-    Optimize(opt_config_, nnet_,
-             MaxOutputTimeInRequest(*request),
-             computation);
-    if (GetVerboseLevel() >= verbose_cutoff) {
-      std::ostringstream os;
-      computation->Print(os, nnet_);
-      KALDI_LOG << "Optimized computation is: " << os.str();
-    }
-    {  // check the computation again.
-      CheckComputationOptions check_config;
-      ComputationChecker checker(check_config, nnet_, *computation);
-      checker.Check();
-    }
-    computation->ComputeCudaIndexes();
-    UpdateCache(request, computation);
+    return CompileAndCache(in_request);
   } else {
     // if found, update access queue
-    computation = cit->second.first;
+    const NnetComputation *computation = cit->second.first;
     UpdateAccessQueue(cit);
+    return computation;
   }
+}
+
+const NnetComputation* CachingOptimizingCompiler::CompileAndCache(
+    const ComputationRequest  &in_request) {
+  // we need to make a copy of ComputationRequest, because it's stored
+  // as the key in the cache, and we need to own the pointer.
+  ComputationRequest *request = new ComputationRequest(in_request);
+
+  const NnetComputation *computation = CompileViaShortcut(*request);
+  if (computation == NULL)
+    computation = CompileNoShortcut(*request);
+  UpdateCache(request, computation);
   return computation;
 }
+
+
+const NnetComputation* CachingOptimizingCompiler::CompileNoShortcut(
+    const ComputationRequest &request) {
+
+  Compiler compiler(request, nnet_);
+  // note: 'opts' only contains 'output_debug_info', which is true by default.
+  // There may be situations where we'd prefer not to keep it, for speed.
+  CompilerOptions opts;
+  NnetComputation *computation = new NnetComputation;
+  compiler.CreateComputation(opts, computation);
+
+  int32 verbose_cutoff = 4;
+  if (GetVerboseLevel() >= verbose_cutoff) {
+    std::ostringstream os1;
+    request.Print(os1);
+    KALDI_LOG << "Computation request is " << os1.str();
+    std::ostringstream os2;
+    computation->Print(os2, nnet_);
+    KALDI_LOG << "Generated computation is: " << os2.str();
+  }
+  { // some checking.  Note: there may be a time when we might
+    // prefer not do to this checking.
+    CheckComputationOptions check_config;
+    // we can do the rewrite check since it's before optimization.
+    check_config.check_rewrite = true;
+    ComputationChecker checker(check_config, nnet_, *computation);
+    checker.Check();
+  }
+  Optimize(opt_config_, nnet_,
+           MaxOutputTimeInRequest(request),
+           computation);
+  if (GetVerboseLevel() >= verbose_cutoff) {
+    std::ostringstream os;
+    computation->Print(os, nnet_);
+    KALDI_LOG << "Optimized computation is: " << os.str();
+  }
+  {  // check the computation again.
+    CheckComputationOptions check_config;
+    ComputationChecker checker(check_config, nnet_, *computation);
+    checker.Check();
+  }
+  computation->ComputeCudaIndexes();
+  return computation;
+}
+
+
+const NnetComputation* CachingOptimizingCompiler::CompileViaShortcut(
+    const ComputationRequest &request) {
+  if (!config_.use_shortcut)
+    return NULL;
+
+  int32 num_n_values;
+  ComputationRequest mini_request;
+  if (!RequestIsDecomposable(request, &mini_request, &num_n_values))
+    return NULL;
+
+  // by invoking Compile() on the mini request, we go through the same
+  // caching process as for any externally requested computation.
+  // note: this pointer is not being 'given to us'... it's owned in
+  // the cache.
+  const NnetComputation *mini_computation = Compile(mini_request);
+
+  // note: by default we always create debug_info, even in regular compilation.
+  // (e.g. it defaults to true in CompilerOptions).  If it really seems to be a
+  // significant overhead, we can revisit this at some point in future.
+  bool need_debug_info = true;
+
+
+  NnetComputation *ans = new NnetComputation();
+
+  ExpandComputation(nnet_, request.misc_info, *mini_computation,
+                    need_debug_info, num_n_values, ans);
+
+  return ans;
+}
+
+
 
 /// Split the computation up into segments bounded by kNoOperationMarker.  For
 /// each segment, a pair of command-indexes (start, end) is output to the vector

@@ -2635,6 +2635,7 @@ void ComputationExpander::InitFastInfo() {
     // 'n' value be zero.
     KALDI_ASSERT(debug_info.cindexes[0].second.n == 0);
     bool is_fast = (debug_info.cindexes[1].second.n == 1);
+    n_fast_[m] = is_fast;
 
     bool do_check = (RandInt(0, 2) == 0);
     if (do_check) {
@@ -2982,6 +2983,129 @@ void ComputationExpander::GetNewLocationInfo(
     *new_n_stride = (num_indexes / 2);
   }
 }
+
+
+void ExpandComputation(const Nnet &nnet,
+                       const MiscComputationInfo &misc_info,
+                       const NnetComputation &computation,
+                       bool need_debug_info,
+                       int32 num_n_values,
+                       NnetComputation *expanded_computation) {
+  ComputationExpander expander(nnet, misc_info, computation,
+                               need_debug_info, num_n_values,
+                               expanded_computation);
+  expander.Expand();
+}
+
+
+
+// This helper function is used in RequestIsDecomposable(); you can work out
+// what it does, and why, from the documentation of RequestIsDecomposable() in
+// the header.
+static bool IoSpecificationIsDecomposable(const IoSpecification &io_spec,
+                                          IoSpecification *mini_io_spec,
+                                          int32 *num_n_values_out) {
+  mini_io_spec->name = io_spec.name;
+  mini_io_spec->has_deriv = io_spec.has_deriv;
+  const std::vector<Index> &indexes = io_spec.indexes;
+  KALDI_ASSERT(!indexes.empty() && "Empty Indexes in computation request");
+  // For a computation to be decomposable, the 'n' values need to vary from 0 to
+  // N-1 for some N > 2, and they need to be in some kind of regular order with
+  // suitable repetition-- either with the 'n' values varying the 'fastest', or
+  // the 'slowest' of all the indexes.
+  if (indexes[0].n != 0 || indexes.back().n < 2) {
+    return false;
+  }
+  int32 num_n_values = indexes.back().n + 1,
+      size = indexes.size();
+  *num_n_values_out = num_n_values;
+  if (size % num_n_values != 0)
+    return false;
+  bool n_fast = (indexes[1].n == 1);
+  // if 'n_fast' is true, then the n index varies the fastest (stride == 1),
+  // otherwise it varies the slowest of any index.  We require that it be one of
+  // these two options, otherwise we declare the computation to be
+  // non-decomposable.
+
+  mini_io_spec->indexes.resize((size / num_n_values) * 2);
+  if (n_fast) {
+    // 'block_size' is the size of blocks with the same x,t values, which are
+    // expected to have n values 0, 1, ... num_n_values - 1.
+    // of course each block is of size num_n_values.
+    int32 num_blocks = size / num_n_values;
+    const Index *indexes_ptr = &(indexes[0]);
+    Index *indexes_out = &(mini_io_spec->indexes[0]);
+    for (int32 block = 0; block < num_blocks; block++) {
+      *(indexes_out++) = indexes_ptr[0];  // for n == 0
+      *(indexes_out++) = indexes_ptr[1];  // for n == 1.
+
+      // we expect all the indexes in this block to have the same x and t
+      // values, but n values increasing from 0 to num_n_values - 1.
+      int32 t = indexes_ptr->t, x = indexes_ptr->x;
+
+      for (int32 n = 0; n < num_n_values; n++, indexes_ptr++) {
+        if (indexes_ptr->n != n || indexes_ptr->t != t || indexes_ptr->x != x)
+          return false;
+      }
+    }
+  } else {
+    // 'n' varies the slowest.
+    int32 block_size = size / num_n_values;
+    mini_io_spec->indexes.clear();
+    mini_io_spec->indexes.insert(mini_io_spec->indexes.end(),
+                                 indexes.begin(),
+                                 indexes.begin() + 2 * block_size);
+
+    // now verify that it has the expected structure...
+    for (int32 i = 0; i < block_size; i++) {
+      const Index *indexes_ptr = &(indexes[i]);
+      int32 t = indexes_ptr->t, x = indexes_ptr->x;
+      for (int32 n = 0; n < num_n_values; n++, indexes_ptr += block_size) {
+        if (indexes_ptr->n != n || indexes_ptr->t != t || indexes_ptr->x != x)
+          return false;
+      }
+    }
+  }
+  return true;
+}
+
+bool RequestIsDecomposable(const ComputationRequest &request,
+                           ComputationRequest *mini_request,
+                           int32 *num_n_values) {
+  size_t num_inputs = request.inputs.size(),
+      num_outputs = request.outputs.size();
+  mini_request->inputs.resize(num_inputs);
+  mini_request->outputs.resize(num_outputs);
+  mini_request->need_model_derivative = request.need_model_derivative;
+  mini_request->store_component_stats = request.store_component_stats;
+  mini_request->misc_info = request.misc_info;
+
+  KALDI_ASSERT(num_inputs != 0 && num_outputs != 0);
+  for (size_t i = 0; i < num_inputs; i++) {
+    int32 this_num_n_values = 0;
+    if (!IoSpecificationIsDecomposable(request.inputs[i],
+                                       &(mini_request->inputs[i]),
+                                       &this_num_n_values))
+      return false;
+    if (i == 0) {
+      *num_n_values = this_num_n_values;
+    } else {
+      if (this_num_n_values != *num_n_values)
+        return false;  // .. which would be odd.
+    }
+  }
+  for (size_t i = 0; i < num_outputs; i++) {
+    int32 this_num_n_values = 0;
+    if (!IoSpecificationIsDecomposable(request.outputs[i],
+                                       &(mini_request->outputs[i]),
+                                       &this_num_n_values))
+      return false;
+    if (this_num_n_values != *num_n_values)
+      return false;  // .. which would be odd.
+  }
+  return true;
+}
+
 
 class ComputationLoopedOptimizer {
  public:

@@ -379,9 +379,9 @@ void LimitDerivativeTimes(const Nnet &nnet,
             reason to the order of the t and x values; the regularity on 'n' is
             all that we care about.
  */
-bool ComputationIsDecomposable(const ComputationRequest &request,
-                               ComputationRequest *mini_request,
-                               int32 *num_n_values);  // TODO: implement this.
+bool RequestIsDecomposable(const ComputationRequest &request,
+                           ComputationRequest *mini_request,
+                           int32 *num_n_values);
 
 
 /**
