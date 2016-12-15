@@ -95,7 +95,7 @@ void UnitTestNnetModelDerivatives() {
     //gen_config.allow_nonlinearity = false;
     //gen_config.allow_recursion = false;
     //gen_config.allow_final_nonlinearity = true;
-    bool allow_optimization = true;
+
     bool limit_deriv_times = (RandInt(0, 2) == 0);
 
     std::vector<std::string> configs;
@@ -118,43 +118,22 @@ void UnitTestNnetModelDerivatives() {
     // whether input-derivatives are required or not does not matter,
     // so leave it as it is in that regard.
 
-    NnetComputation computation;
-    Compiler compiler(request, nnet);
+    NnetOptimizeOptions optimize_opts;
+    CachingOptimizingCompilerOptions compiler_opts;
+    if (limit_deriv_times) {
+      SetDerivTimesOptions(request, &optimize_opts);
+    }
 
-    CompilerOptions opts;
-    compiler.CreateComputation(opts, &computation);
+    CachingOptimizingCompiler compiler(nnet, optimize_opts,
+                                       compiler_opts);
+
+    const NnetComputation &computation = *(compiler.Compile(request));
+
     {
       std::ostringstream os;
       computation.Print(os, nnet);
-      KALDI_LOG << "Generated computation is: " << os.str();
-    }
-    CheckComputationOptions check_config;
-    // we can do the rewrite check since it's before optimization.
-    check_config.check_rewrite = true;
-    ComputationChecker checker(check_config, nnet, computation);
-    checker.Check();
-
-    if (RandInt(0, 3) != 0 && allow_optimization) {
-      NnetOptimizeOptions opt_config;
-      if (limit_deriv_times)
-        SetDerivTimesOptions(request, &opt_config);
-
-      Optimize(opt_config, nnet,
-               MaxOutputTimeInRequest(request),
-               &computation);
-      std::ostringstream os;
-      computation.Print(os, nnet);
       KALDI_LOG << "Optimized computation is: " << os.str();
-      check_config.check_rewrite = false;
-      ComputationChecker checker_opt(check_config, nnet, computation);
-      checker_opt.Check();
     }
-
-    NnetComputeOptions compute_opts;
-    if (RandInt(0, 1) == 0)
-      compute_opts.debug = true;
-    computation.ComputeCudaIndexes();
-
 
     Nnet nnet_deriv(nnet);
     bool is_gradient = true;
@@ -178,6 +157,11 @@ void UnitTestNnetModelDerivatives() {
     output_deriv.Resize(request.outputs[0].indexes.size(),
                         nnet.OutputDim("output"));
     output_deriv.SetRandn();
+
+
+    NnetComputeOptions compute_opts;
+    if (RandInt(0, 1) == 0)
+      compute_opts.debug = true;
 
     // pass 0 is the forward pass with the un-perturbed model.
     // Other passes are with various differently-perturbed versions of
