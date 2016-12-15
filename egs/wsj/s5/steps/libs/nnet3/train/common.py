@@ -396,7 +396,7 @@ def _parse_dropout_string(num_archives_to_process, dropout_str):
                             "at least the start and end dropouts")
 
         # Starting dropout proportion
-        dropout_values.append((0, float(parts[0]))) 
+        dropout_values.append((0, float(parts[0])))
         for i in range(1, len(parts) - 1):
             value_x_pair = parts[i].split('@')
             if len(value_x_pair) == 1:
@@ -412,14 +412,12 @@ def _parse_dropout_string(num_archives_to_process, dropout_str):
                                      * num_archives_to_process)
 
             if (num_archives < dropout_values[-1][0]
-                    or num_archives >= num_archives_to_process):
+                    or num_archives > num_archives_to_process):
                 logger.error(
                     "Failed while parsing value %s in dropout-schedule. "
                     "dropout-schedule must be in incresing "
                     "order of data fractions.", value_x_pair)
                 raise ValueError
-             elif num_archives == dropout_values[-1][0]:
-                 num_archives += 1.0
 
             dropout_values.append(num_archives, float(dropout_proportion))
 
@@ -499,6 +497,11 @@ def _get_component_dropout(dropout_schedule, num_archives_processed):
     # lower bound.
     final_num_archives, final_dropout = dropout_schedule[
         dropout_schedule_index - 1]
+
+    if final_num_archives == initial_num_archives:
+        assert num_archives_processed == initial_num_archives
+        return initial_dropout
+
     assert (num_archives_processed >= initial_num_archives
             and num_archives_processed < final_num_archives)
 
