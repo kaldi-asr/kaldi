@@ -72,11 +72,11 @@ struct NnetSimpleComputationOptions {
                    "of the neural net's inherent right context (may be useful in "
                    "recurrent setups");
     opts->Register("extra-left-context-initial", &extra_left_context_initial,
-                   "If >0, overrides the --extra-left-context value at the start "
-                   "of an utterance.");
+                   "If >= 0, overrides the --extra-left-context value at the "
+                   "start of an utterance.");
     opts->Register("extra-right-context-final", &extra_right_context_final,
-                   "If >0, overrides the --extra-right-context value at the end "
-                   "of an utterance.");
+                   "If >= 0, overrides the --extra-right-context value at the "
+                   "end of an utterance.");
     opts->Register("frame-subsampling-factor", &frame_subsampling_factor,
                    "Required if the frame-rate of the output (e.g. in 'chain' "
                    "models) is less than the frame-rate of the original "
