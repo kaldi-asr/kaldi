@@ -49,7 +49,6 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
                         int32 frames_per_eg,
                         int32 frames_overlap_per_eg,
                         int32 frame_subsampling_factor,
-                        int32 cut_zero_frames,
                         int64 *num_frames_written,
                         int64 *num_egs_written,
                         NnetChainExampleWriter *example_writer) {
@@ -86,7 +85,7 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
     return ProcessFile(normalization_fst, feats_new, ivector_feats,
                        supervision, utt_id, compress, left_context, right_context,
                        frames_per_eg, frames_overlap_per_eg, frame_subsampling_factor,
-                       cut_zero_frames, num_frames_written, num_egs_written,
+                       num_frames_written, num_egs_written,
                        example_writer);
   }
 
@@ -116,15 +115,10 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
   // to the edge are not as accurate as they could be, because when we split we
   // don't know the correct alphas and betas).
   std::vector<Vector<BaseFloat> > deriv_weights;
-  if (cut_zero_frames >= 0)
-    chain::GetWeightsForRangesNew(frames_per_eg_subsampled,
-                                  cut_zero_frames / frame_subsampling_factor,
-                                  range_starts_subsampled,
-                                  &deriv_weights);
-  else
-    chain::GetWeightsForRanges(frames_per_eg_subsampled,
-                               range_starts_subsampled,
-                               &deriv_weights);
+
+  chain::GetWeightsForRanges(frames_per_eg_subsampled,
+                             range_starts_subsampled,
+                             &deriv_weights);
 
   if (range_starts_subsampled.empty()) {
     KALDI_WARN << "No output for utterance " << utt_id
@@ -250,10 +244,6 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     po.Register("compress", &compress, "If true, write egs in "
                 "compressed format (recommended)");
-    po.Register("cut-zero-frames", &cut_zero_frames, "Number of frames "
-                "(measured before subsampling) to zero the derivative on each "
-                "side of a cut point (if set, activates new-style derivative "
-                "weights)");
     po.Register("left-context", &left_context, "Number of frames of left "
                 "context the neural net requires.");
     po.Register("right-context", &right_context, "Number of frames of right "
@@ -276,7 +266,7 @@ int main(int argc, char *argv[]) {
                 "frame-rate of the input");
 
     po.Read(argc, argv);
-    
+
     srand(srand_seed);
 
     if (po.NumArgs() < 3 || po.NumArgs() > 4) {
@@ -355,7 +345,7 @@ int main(int argc, char *argv[]) {
                         key, compress,
                         left_context, right_context, num_frames,
                         num_frames_overlap, frame_subsampling_factor,
-                        cut_zero_frames, &num_frames_written, &num_egs_written,
+                        &num_frames_written, &num_egs_written,
                         &example_writer))
           num_done++;
         else
