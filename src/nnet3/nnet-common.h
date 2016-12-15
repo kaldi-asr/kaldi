@@ -55,9 +55,9 @@ struct Index {
   bool operator < (const Index &a) const {
     if (t < a.t) { return true; }
     else if (t > a.t) { return false; }
-    else if (n < a.n) { return true; }
-    else if (n > a.n) { return false; }
-    else return (x < a.x);
+    else if (x < a.x) { return true; }
+    else if (x > a.x) { return false; }
+    else return (n < a.n);
   }
   Index operator + (const Index &other) const {
     return Index(n+other.n, t+other.t, x+other.x);
