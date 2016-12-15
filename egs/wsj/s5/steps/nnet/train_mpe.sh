@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2013-2015  Brno University of Technology (author: Karel Vesely)  
+# Copyright 2013-2015  Brno University of Technology (author: Karel Vesely)
 # Apache 2.0.
 
 # Sequence-discriminative MPE/sMBR training of DNN.
@@ -26,6 +26,7 @@ one_silence_class=true # true : reduce insertions in sMBR/MPE FW/BW, more stable
                        # (all silphones are seen as a single class in the sMBR/MPE FW/BW)
 verbose=1
 ivector=
+nnet=  # For non-default location of nnet,
 
 seed=777    # seed value used for training data shuffling
 skip_cuda_check=false
@@ -49,7 +50,7 @@ if [ $# -ne 6 ]; then
   echo "  --lmwt <float>                                   # linguistic score scaling"
   echo "  --learn-rate <float>                             # learning rate for NN training"
   echo "  --do-smbr <bool>                                 # do sMBR training, otherwise MPE"
-  
+
   exit 1;
 fi
 
@@ -71,12 +72,16 @@ if ! $skip_cuda_check; then cuda-compiled || { echo "Error, CUDA not compiled-in
 
 mkdir -p $dir/log
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt
+cp $lang/phones.txt $dir
+
 cp $alidir/{final.mdl,tree} $dir
 
 silphonelist=`cat $lang/phones/silence.csl`
 
 #Get the files we will need
-nnet=$srcdir/$(readlink $srcdir/final.nnet || echo final.nnet);
+[ -z "$nnet" ] && nnet=$srcdir/$(readlink $srcdir/final.nnet || echo final.nnet);
 [ -z "$nnet" ] && echo "Error nnet '$nnet' does not exist!" && exit 1;
 cp $nnet $dir/0.nnet; nnet=$dir/0.nnet
 
@@ -131,7 +136,7 @@ feats="ark,o:copy-feats scp:$dir/train.scp ark:- |"
 # add-ivector (optional),
 if [ -e $D/ivector_dim ]; then
   [ -z $ivector ] && echo "Missing --ivector, they were used in training!" && exit 1
-  # Get the tool, 
+  # Get the tool,
   ivector_append_tool=append-vector-to-feats # default,
   [ -e $D/ivector_append_tool ] && ivector_append_tool=$(cat $D/ivector_append_tool)
   # Check dims,
@@ -155,7 +160,7 @@ fi
 
 ###
 ### Prepare the alignments
-### 
+###
 # Assuming all alignments will fit into memory
 ali="ark:gunzip -c $alidir/ali.*.gz |"
 
@@ -197,7 +202,7 @@ while [ $x -le $num_iters ]; do
 
   x=$((x+1))
   learn_rate=$(awk "BEGIN{print($learn_rate*$halving_factor)}")
-  
+
 done
 
 (cd $dir; [ -e final.nnet ] && unlink final.nnet; ln -s $((x-1)).nnet final.nnet)

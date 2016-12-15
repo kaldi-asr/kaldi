@@ -25,7 +25,7 @@
 #include "feat/feature-window.h"
 
 namespace kaldi {
-/// @addtogroup  feat FeatureCommon
+/// @addtogroup  feat FeatureExtraction
 /// @{
 
 

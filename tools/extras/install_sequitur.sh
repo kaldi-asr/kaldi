@@ -36,6 +36,11 @@ else
   fi
 fi
 
+command -v swig >/dev/null 2>&1 || {
+  echo >&2 "$0: Error: I require swig but it's not installed.";
+  echo >&2 "  Please install swig and run this script again. "
+  exit 1;
+}
 
 if [ -d ./g2p ] || [ -d sequitur ] ; then
   echo  >&2 "$0: Warning: old installation of Sequitur found. You should manually"
@@ -59,12 +64,12 @@ if [ ! -d ./sequitur-g2p ] ; then
   }
 fi
 #just to retain backward compatibility for a while. Can be removed
-#in a couple of months. 
+#in a couple of months.
 ln -sf sequitur-g2p sequitur
 
 
 cd sequitur-g2p
-make
+make CXX=g++ CC=gcc
 python setup.py install --prefix `pwd`
 
 cd ../
@@ -90,5 +95,4 @@ cd ../
 ) >> env.sh
 
 echo >&2 "Installation of SEQUITUR finished successfully"
-echo >&2 "Please source the tools/env.sh in your path.sh to enable it"
-
+echo >&2 "Please source tools/env.sh in your path.sh to enable it"

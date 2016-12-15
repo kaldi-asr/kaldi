@@ -162,7 +162,8 @@ mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 cp $alidir/tree $dir
 
-
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 # First work out the feature and iVector dimension, needed for tdnn config creation.
 case $feat_type in
   raw) feat_dim=$(feat-to-dim --print-args=false scp:$data/feats.scp -) || \
@@ -215,6 +216,9 @@ fi
 # right_context=(something)
 # num_hidden_layers=(something)
 . $dir/configs/vars || exit 1;
+
+left_context=$model_left_context
+right_context=$model_right_context
 
 context_opts="--left-context=$left_context --right-context=$right_context"
 
@@ -658,3 +662,7 @@ if $cleanup; then
     fi
   done
 fi
+
+steps/info/nnet3_dir_info.pl $dir
+
+exit 0

@@ -126,9 +126,22 @@ void OnlineNaturalGradient::Init(const CuMatrixBase<BaseFloat> &R0) {
   this_copy.InitDefault(D);
 
   CuMatrix<BaseFloat> R0_copy(R0.NumRows(), R0.NumCols(), kUndefined);
-  // number of iterations with the same data from a pseudorandom start.
-  // this is a faster way of starting than doing eigenvalue decomposition.
-  int32 num_init_iters = 3;
+  // 'num_iters' is number of iterations with the same data from a pseudorandom
+  // start.  this is a faster way of starting than doing eigenvalue
+  // decomposition.
+  //
+  // Note: we only do three iterations of initialization if we have enough data
+  // that it's reasonably possible to estimate the subspace of dimension
+  // this_copy.rank_.  If we don't have more than that many rows in our initial
+  // minibatch R0, we just do one iteration... this gives us almost exactly
+  // (barring small effects due to epsilon_ > 0) the row subspace of R0 after
+  // one iteration anyway.
+  int32 num_init_iters;
+  if (R0.NumRows() <= this_copy.rank_)
+    num_init_iters = 1;
+  else
+    num_init_iters = 3;
+
   for (int32 i = 0; i < num_init_iters; i++) {
     BaseFloat scale;
     R0_copy.CopyFromMat(R0);
@@ -214,17 +227,24 @@ void OnlineNaturalGradient::ReorthogonalizeXt1(
     return;
   }
   TpMatrix<BaseFloat> C(R);
+  bool cholesky_ok = true;
   try {
+    // one of the following two calls may throw an exception.
     C.Cholesky(O);
     C.Invert();  // Now it's C^{-1}.
-    if (!(C.Max() < 100.0))
-      KALDI_ERR << "Cholesky out of expected range, "
+    if (!(C.Max() < 100.0)) {
+      KALDI_WARN << "Cholesky out of expected range, "
                 << "reorthogonalizing with Gram-Schmidt";
+      cholesky_ok = false;
+    }
   } catch (...) {
     // We do a Gram-Schmidt orthogonalization, which is a bit less efficient but
     // more robust than the method using Cholesky.
     KALDI_WARN << "Cholesky or Invert() failed while re-orthogonalizing R_t. "
                << "Re-orthogonalizing on CPU.";
+    cholesky_ok = false;
+  }
+  if (!cholesky_ok) {
     Matrix<BaseFloat> cpu_W_t1(*W_t1);
     cpu_W_t1.OrthogonalizeRows();
     W_t1->CopyFromMat(cpu_W_t1);

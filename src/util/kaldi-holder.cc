@@ -72,8 +72,23 @@ bool ExtractObjectRange(const Matrix<Real> &input, const std::string &range,
 // template instantiation
 template bool ExtractObjectRange(const Matrix<double> &, const std::string &,
                                  Matrix<double> *);
-template bool ExtractObjectRange(const Matrix<BaseFloat> &, const std::string &,
-                                 Matrix<BaseFloat> *);
+template bool ExtractObjectRange(const Matrix<float> &, const std::string &,
+                                 Matrix<float> *);
 
+bool ExtractRangeSpecifier(const std::string &rxfilename_with_range,
+                           std::string *data_rxfilename,
+                           std::string *range) {
+  if (rxfilename_with_range.empty() ||
+      rxfilename_with_range[rxfilename_with_range.size()-1] != ']')
+    KALDI_ERR << "ExtractRangeRspecifier called wrongly.";
+  std::vector<std::string> splits;
+  SplitStringToVector(rxfilename_with_range, "[", false, &splits);
+  if (splits.size() == 2 && !splits[0].empty() && splits[1].size() > 1) {
+    *data_rxfilename = splits[0];
+    range->assign(splits[1], 0, splits[1].size()-1);
+    return true;
+  }
+  return false;
+}
 
 }  // end namespace kaldi

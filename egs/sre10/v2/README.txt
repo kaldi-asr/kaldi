@@ -1,7 +1,17 @@
- Data required for system development (on top of the data for testing described
- in ../README.txt).  We use SWBD and the older (prior to 2010) SREs to train the
- supervised-GMM and iVector extractor. To create an in-domain system, the SREs
- are needed to train the PLDA backend.  The TDNN is trained on Fisher English.
+ This recipe replaces the standard unsupervised GMM of the v1 recipe with a 
+ UBM that uses a time-delay deep neural network (TDNN).  Posteriors from the
+ TDNN are used in conjunction with features extracted using a standard approach
+ for speaker recognition, to create the sufficient statistics for i-vector
+ extraction.  The recipe also demonstrates a lightweight alternative in which
+ a supervised GMM is derived from the TDNN posteriors. The recipe is based on
+ http://www.danielpovey.com/files/2015_asru_tdnn_ubm.pdf. See run.sh for 
+ updated results.
+
+ The following describes data required for system development (on top of the 
+ data for testing described in ../README.txt).  We use SWBD and the older 
+ (prior to 2010) SREs to train the supervised-GMM and iVector extractor. To 
+ create an in-domain system, the SREs are needed to train the PLDA backend.
+ The TDNN is trained on Fisher English.
  
      Corpus              LDC Catalog No.
      SWBD2 Phase 2       LDC99S79

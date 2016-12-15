@@ -102,6 +102,7 @@ class DecodableNnet3SimpleOnline: public DecodableInterface {
   /// Indices are one-based!  This is for compatibility with OpenFst.
   virtual int32 NumIndices() const { return trans_model_.NumTransitionIds(); }
 
+  int32 FrameSubsamplingFactor() const { return opts_.frame_subsampling_factor; }
  private:
 
   /// If the neural-network outputs for this frame are not cached, it computes

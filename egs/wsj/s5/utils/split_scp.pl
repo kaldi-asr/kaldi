@@ -206,7 +206,7 @@ if ($utt2spk_file ne "") {  # We have the --utt2spk option...
         $error = 1;
     }
     $linesperscp = int( $numlines / $numscps); # the "whole part"..
-    $linesperscp >= 1 || die "You are splitting into too many pieces!";
+    $linesperscp >= 1 || die "You are splitting into too many pieces! [reduce \$nj]";
     $remainder = $numlines - ($linesperscp * $numscps);
     ($remainder >= 0 && $remainder < $numlines) || die "bad remainder $remainder";
     # [just doing int() rounds down].

@@ -54,7 +54,7 @@ if [ $stage -le 3 ]; then
 
   (
   echo "Decoding the dev set using monophone models."
-  utils/mkgraph.sh --mono data/lang_test exp/mono exp/mono/graph
+  utils/mkgraph.sh data/lang_test exp/mono exp/mono/graph
 
   steps/decode.sh --config conf/decode.config --nj $dev_nj --cmd "$decode_cmd" \
     exp/mono/graph data/dev exp/mono/decode_dev

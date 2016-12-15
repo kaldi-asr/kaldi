@@ -45,6 +45,7 @@
    - \subpage dependencies
    - \subpage legal
    - \subpage tutorial
+   - \subpage kaldi_for_dummies
    - \subpage examples
    - \subpage glossary
    - \subpage data_prep

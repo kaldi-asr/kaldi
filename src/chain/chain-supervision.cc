@@ -266,8 +266,6 @@ bool ProtoSupervisionToSupervision(
   // We don't want to add any transition probabilities as they will be added
   // when we compose with the denominator graph.
   h_cfg.transition_scale = 0.0;
-  h_cfg.push_weights = false;  // there's nothing to push.
-
 
   VectorFst<StdArc> *h_fst = GetHTransducer(cfst.ILabelInfo(),
                                             ctx_dep,

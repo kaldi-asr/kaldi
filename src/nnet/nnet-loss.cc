@@ -195,6 +195,7 @@ std::string Xent::ReportPerClass() {
   oss << "@@@ Frames per-class:" << frames_;
   // get inverted counts,
   CuVector<double> inv_frames(frames_);
+  inv_frames.Add(0.5);  // avoid 0-frames,
   inv_frames.ApplyPow(-1.0);
   // loss, kl = xentropy-entropy,
   CuVector<double> loss(xentropy_);

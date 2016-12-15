@@ -65,7 +65,7 @@ steps/compute_cmvn_stats.sh data/train exp/make_mfcc/train $mfccdir
 
 utils/subset_data_dir.sh --shortest data/train 100000 data/train_100kshort
 utils/subset_data_dir.sh  data/train_100kshort 10000 data/train_10k
-local/remove_dup_utts.sh 100 data/train_10k data/train_10k_nodup
+utils/data/remove_dup_utts.sh 100 data/train_10k data/train_10k_nodup
 utils/subset_data_dir.sh --speakers data/train 30000 data/train_30k
 utils/subset_data_dir.sh --speakers data/train 100000 data/train_100k
 

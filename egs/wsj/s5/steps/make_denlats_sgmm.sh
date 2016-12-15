@@ -54,6 +54,8 @@ mkdir -p $dir/log
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 echo $nj > $dir/num_jobs
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+
 oov=`cat $lang/oov.int` || exit 1;
 
 mkdir -p $dir
@@ -148,13 +150,11 @@ else
       echo "$0: Not processing subset $n as already done (delete $dir/.done.$n if not)";
       this_pid=
     else
-      sdata2=$data/split$nj/$n/split$sub_split;
-      if [ ! -d $sdata2 ] || [ $sdata2 -ot $sdata/$n/feats.scp ]; then
-        split_data.sh --per-utt $sdata/$n $sub_split || exit 1;
-      fi
+      sdata2=$data/split$nj/$n/split${sub_split}utt;
+      split_data.sh --per-utt $sdata/$n $sub_split || exit 1;
       mkdir -p $dir/log/$n
       mkdir -p $dir/part
-      feats_subset=`echo $feats | sed "s/trans.JOB/trans.$n/g" | sed s:JOB/:$n/split$sub_split/JOB/:g`
+      feats_subset=`echo $feats | sed "s/trans.JOB/trans.$n/g" | sed s:JOB/:$n/split${sub_split}utt/JOB/:g`
       spkvecs_opt_subset=`echo $spkvecs_opt | sed "s/JOB/$n/g"`
       gselect_opt_subset=`echo $gselect_opt | sed "s/JOB/$n/g"`
       $cmd JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \

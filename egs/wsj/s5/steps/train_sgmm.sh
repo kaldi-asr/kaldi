@@ -85,6 +85,9 @@ cmvn_opts=`cat $alidir/cmvn_opts 2>/dev/null`
 cp $alidir/splice_opts $dir 2>/dev/null
 cp $alidir/cmvn_opts $dir 2>/dev/null # cmn/cmvn option.
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
+
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 
 spkvecs_opt=  # Empty option for now, until we estimate the speaker vectors.
@@ -152,7 +155,7 @@ if [ $stage -le -2 ]; then
   echo "$0: compiling training graphs"
   text="ark:sym2int.pl --map-oov $oov -f 2- $lang/words.txt < $sdata/JOB/text|"
   $cmd JOB=1:$nj $dir/log/compile_graphs.JOB.log \
-    compile-train-graphs $dir/tree $dir/0.mdl  $lang/L.fst  \
+    compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $dir/tree $dir/0.mdl  $lang/L.fst  \
     "$text" "ark:|gzip -c >$dir/fsts.JOB.gz" || exit 1;
 fi
 

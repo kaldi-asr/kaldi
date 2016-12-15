@@ -101,15 +101,15 @@ utils/subset_data_dir.sh --last data/train_all $n data/train
 # more carefully hand-labeled alignments
 
 utils/subset_data_dir.sh --shortest data/train_swbd 100000 data/train_100kshort
-local/remove_dup_utts.sh 10 data/train_100kshort data/train_100kshort_nodup
+utils/data/remove_dup_utts.sh 10 data/train_100kshort data/train_100kshort_nodup
 utils/subset_data_dir.sh  data/train_100kshort_nodup 10000 data/train_10k_nodup
 
 utils/subset_data_dir.sh --speakers data/train_swbd 30000 data/train_30k
 utils/subset_data_dir.sh --speakers data/train_swbd 100000 data/train_100k
 
-local/remove_dup_utts.sh 200 data/train_30k data/train_30k_nodup
-local/remove_dup_utts.sh 200 data/train_100k data/train_100k_nodup
-local/remove_dup_utts.sh 300 data/train data/train_nodup
+utils/data/remove_dup_utts.sh 200 data/train_30k data/train_30k_nodup
+utils/data/remove_dup_utts.sh 200 data/train_100k data/train_100k_nodup
+utils/data/remove_dup_utts.sh 300 data/train data/train_nodup
 
 # The next commands are not necessary for the scripts to run, but increase 
 # efficiency of data access by putting the mfcc's of the subset 
@@ -147,7 +147,7 @@ steps/train_deltas.sh --cmd "$train_cmd" \
  graph_dir=exp/tri1a/graph_nosp_fsh_sw1_tg
  utils/mkgraph.sh data/lang_nosp_fsh_sw1_tg exp/tri1a $graph_dir
  steps/decode.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-   $graph_dir data/eval2000 exp/tri1a/decode_dev_nosp_fsh_sw1_tg
+   $graph_dir data/eval2000 exp/tri1a/decode_eval2000_nosp_fsh_sw1_tg
  steps/decode.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
    $graph_dir data/rt03 exp/tri1a/decode_rt03_nosp_fsh_sw1_tg
 )&
@@ -161,7 +161,7 @@ steps/train_deltas.sh --cmd "$train_cmd" \
  graph_dir=exp/tri1b/graph_nosp_fsh_sw1_tg
  utils/mkgraph.sh data/lang_nosp_fsh_sw1_tg exp/tri1b $graph_dir
  steps/decode.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-   $graph_dir data/eval2000 exp/tri1b/decode_dev_nosp_fsh_sw1_tg
+   $graph_dir data/eval2000 exp/tri1b/decode_eval2000_nosp_fsh_sw1_tg
  steps/decode.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
    $graph_dir data/rt03 exp/tri1b/decode_rt03_nosp_fsh_sw1_tg
 )&
@@ -175,7 +175,7 @@ steps/train_deltas.sh --cmd "$train_cmd" \
   graph_dir=exp/tri2/graph_nosp_fsh_sw1_tg 
   utils/mkgraph.sh data/lang_nosp_fsh_sw1_tg exp/tri2 $graph_dir || exit 1;
   steps/decode.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-   $graph_dir data/eval2000 exp/tri2/decode_dev_nosp_fsh_sw1_tg || exit 1;
+   $graph_dir data/eval2000 exp/tri2/decode_eval2000_nosp_fsh_sw1_tg || exit 1;
   steps/decode.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
    $graph_dir data/rt03 exp/tri2/decode_rt03_nosp_fsh_sw1_tg || exit 1;
 )&
@@ -193,7 +193,7 @@ steps/train_deltas.sh --cmd "$train_cmd" \
   graph_dir=exp/tri3a/graph_nosp_fsh_sw1_tg 
   utils/mkgraph.sh data/lang_nosp_fsh_sw1_tg exp/tri3a $graph_dir || exit 1;
   steps/decode.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-   $graph_dir data/eval2000 exp/tri3a/decode_dev_nosp_fsh_sw1_tg || exit 1;
+   $graph_dir data/eval2000 exp/tri3a/decode_eval2000_nosp_fsh_sw1_tg || exit 1;
   steps/decode.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
    $graph_dir data/rt03 exp/tri3a/decode_rt03_nosp_fsh_sw1_tg || exit 1;
 )&
@@ -209,7 +209,7 @@ steps/train_lda_mllt.sh --cmd "$train_cmd" \
   graph_dir=exp/tri3b/graph_nosp_fsh_sw1_tg 
   utils/mkgraph.sh data/lang_nosp_fsh_sw1_tg exp/tri3b $graph_dir || exit 1;
   steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-   $graph_dir data/eval2000 exp/tri3b/decode_dev_nosp_fsh_sw1_tg || exit 1;
+   $graph_dir data/eval2000 exp/tri3b/decode_eval2000_nosp_fsh_sw1_tg || exit 1;
   steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
    $graph_dir data/rt03 exp/tri3b/decode_rt03_nosp_fsh_sw1_tg || exit 1;
 )&
@@ -236,7 +236,7 @@ fi
   graph_dir=exp/tri3b/graph_fsh_sw1_tg
   utils/mkgraph.sh data/lang_fsh_sw1_tg exp/tri3b $graph_dir || exit 1;
   steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-   $graph_dir data/eval2000 exp/tri3b/decode_dev_fsh_sw1_tg || exit 1;
+   $graph_dir data/eval2000 exp/tri3b/decode_eval2000_fsh_sw1_tg || exit 1;
   steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
    $graph_dir data/rt03 exp/tri3b/decode_rt03_fsh_sw1_tg || exit 1;
 ) &
@@ -254,7 +254,7 @@ steps/train_sat.sh  --cmd "$train_cmd" \
   graph_dir=exp/tri4a/graph_fsh_sw1_tg
   utils/mkgraph.sh data/lang_fsh_sw1_tg exp/tri4a $graph_dir
   steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-   $graph_dir data/eval2000 exp/tri4a/decode_dev_fsh_sw1_tg || exit 1;
+   $graph_dir data/eval2000 exp/tri4a/decode_eval2000_fsh_sw1_tg || exit 1;
   steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
    $graph_dir data/rt03 exp/tri4a/decode_rt03_fsh_sw1_tg || exit 1;
 )&
@@ -263,7 +263,7 @@ wait
 if [ $rescore ]; then
   steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
     data/lang_fsh_sw1_{tg,fg} data/eval2000 \
-    exp/tri4a/decode_dev_fsh_sw1_{tg,fg}
+    exp/tri4a/decode_eval2000_fsh_sw1_{tg,fg}
   steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
     data/lang_fsh_sw1_{tg,fg} data/rt03 \
     exp/tri4a/decode_rt03_fsh_sw1_{tg,fg}
@@ -280,7 +280,7 @@ steps/train_sat.sh  --cmd "$train_cmd" \
   graph_dir=exp/tri5a/graph_fsh_sw1_tg
   utils/mkgraph.sh data/lang_fsh_sw1_tg exp/tri5a $graph_dir
   steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-   $graph_dir data/eval2000 exp/tri5a/decode_dev_fsh_sw1_tg || exit 1;
+   $graph_dir data/eval2000 exp/tri5a/decode_eval2000_fsh_sw1_tg || exit 1;
   steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
    $graph_dir data/rt03 exp/tri5a/decode_rt03_fsh_sw1_tg || exit 1;
 )&
@@ -289,7 +289,7 @@ wait
 if [ $rescore ]; then
   steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
     data/lang_fsh_sw1_{tg,fg} data/eval2000 \
-    exp/tri5a/decode_dev_fsh_sw1_{tg,fg}
+    exp/tri5a/decode_eval2000_fsh_sw1_{tg,fg}
   steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
     data/lang_fsh_sw1_{tg,fg} data/rt03 \
     exp/tri5a/decode_rt03_fsh_sw1_{tg,fg}
@@ -312,7 +312,7 @@ steps/train_sat.sh  --cmd "$train_cmd" \
   graph_dir=exp/tri6a/graph_fsh_sw1_tg
   utils/mkgraph.sh data/lang_fsh_sw1_tg exp/tri6a $graph_dir
   steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-   $graph_dir data/eval2000 exp/tri6a/decode_dev_fsh_sw1_tg || exit 1;
+   $graph_dir data/eval2000 exp/tri6a/decode_eval2000_fsh_sw1_tg || exit 1;
   steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
    $graph_dir data/rt03 exp/tri6a/decode_rt03_fsh_sw1_tg || exit 1;
 )&
@@ -320,7 +320,7 @@ wait
 if [ $rescore ]; then
   steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
     data/lang_fsh_sw1_{tg,fg} data/eval2000 \
-    exp/tri6a/decode_dev_fsh_sw1_{tg,fg}
+    exp/tri6a/decode_eval2000_fsh_sw1_{tg,fg}
   steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
     data/lang_fsh_sw1_{tg,fg} data/rt03 \
     exp/tri6a/decode_rt03_fsh_sw1_{tg,fg}

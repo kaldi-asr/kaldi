@@ -18,14 +18,11 @@ set -o pipefail
 tscale=1.0
 loopscale=0.1
 
-reverse=false
 remove_oov=false
 
-for x in `seq 6`; do
-  [ "$1" == "--mono" ] && context=mono && shift;
-  [ "$1" == "--left-biphone" ] && context=lbiphone && shift;
-  [ "$1" == "--quinphone" ] && context=quinphone && shift;
-  [ "$1" == "--reverse" ] && reverse=true && shift;
+for x in `seq 4`; do
+  [ "$1" == "--mono" -o "$1" == "--left-biphone" -o "$1" == "--quinphone" ] && shift && \
+    echo "WARNING: the --mono, --left-biphone and --quinphone options are now deprecated and ignored."
   [ "$1" == "--remove-oov" ] && remove_oov=true && shift;
   [ "$1" == "--transition-scale" ] && tscale=$2 && shift 2;
   [ "$1" == "--self-loop-scale" ] && loopscale=$2 && shift 2;
@@ -35,8 +32,12 @@ if [ $# != 3 ]; then
    echo "Usage: utils/mkgraph.sh [options] <lang-dir> <model-dir> <graphdir>"
    echo "e.g.: utils/mkgraph.sh data/lang_test exp/tri1/ exp/tri1/graph"
    echo " Options:"
-   echo " --mono          #  For monophone models."
-   echo " --quinphone     #  For models with 5-phone context (3 is default)"
+   echo " --remove-oov       #  If true, any paths containing the OOV symbol (obtained from oov.int"
+   echo "                    #  in the lang directory) are removed from the G.fst during compilation."
+   echo " --transition-scale #  Scaling factor on transition probabilities."
+   echo " --self-loop-scale  #  Please see: http://kaldi-asr.org/doc/hmm.html#hmm_scale."
+   echo "Note: the --mono, --left-biphone and --quinphone options are now deprecated"
+   echo "and will be ignored."
    exit 1;
 fi
 
@@ -58,14 +59,24 @@ for f in $required; do
   [ ! -f $f ] && echo "mkgraph.sh: expected $f to exist" && exit 1;
 done
 
+if [ -f $dir/HCLG.fst ]; then
+  # detect when the result already exists, and avoid overwriting it.
+  must_rebuild=false
+  for f in $required; do
+    [ $f -nt $dir/HCLG.fst ] && must_rebuild=true
+  done
+  if ! $must_rebuild; then
+    echo "$0: $dir/HCLG.fst is up to date."
+    exit 0
+  fi
+fi
+
+
 N=$(tree-info $tree | grep "context-width" | cut -d' ' -f2) || { echo "Error when getting context-width"; exit 1; }
 P=$(tree-info $tree | grep "central-position" | cut -d' ' -f2) || { echo "Error when getting central-position"; exit 1; }
-if [[ $context == mono && ($N != 1 || $P != 0) || \
-      $context == lbiphone && ($N != 2 || $P != 1) || \
-      $context == quinphone && ($N != 5 || $P != 2) ]]; then
-  echo "mkgraph.sh: mismatch between the specified context (--$context) and the one in the tree: N=$N, P=$P"
-  exit 1
-fi
+
+[[ -f $2/frame_subsampling_factor && $loopscale != 1.0 ]] && \
+  echo "$0: WARNING: chain models need '--self-loop-scale 1.0'";
 
 mkdir -p $lang/tmp
 # Note: [[ ]] is like [ ] but enables certain extra constructs, e.g. || in
@@ -92,16 +103,9 @@ fi
 
 if [[ ! -s $dir/Ha.fst || $dir/Ha.fst -ot $model  \
     || $dir/Ha.fst -ot $lang/tmp/ilabels_${N}_${P} ]]; then
-  if $reverse; then
-    make-h-transducer --reverse=true --push_weights=true \
-      --disambig-syms-out=$dir/disambig_tid.int \
-      --transition-scale=$tscale $lang/tmp/ilabels_${N}_${P} $tree $model \
-      > $dir/Ha.fst  || exit 1;
-  else
-    make-h-transducer --disambig-syms-out=$dir/disambig_tid.int \
-      --transition-scale=$tscale $lang/tmp/ilabels_${N}_${P} $tree $model \
-       > $dir/Ha.fst  || exit 1;
-  fi
+  make-h-transducer --disambig-syms-out=$dir/disambig_tid.int \
+    --transition-scale=$tscale $lang/tmp/ilabels_${N}_${P} $tree $model \
+     > $dir/Ha.fst  || exit 1;
 fi
 
 if [[ ! -s $dir/HCLGa.fst || $dir/HCLGa.fst -ot $dir/Ha.fst || \
@@ -134,6 +138,9 @@ if ! [ $(head -c 67 $dir/HCLG.fst | wc -c) -eq 67 ]; then
   exit 1
 fi
 
+# save space.
+rm $dir/HCLGa.fst $dir/Ha.fst 2>/dev/null || true
+
 # keep a copy of the lexicon and a list of silence phones with HCLG...
 # this means we can decode without reference to the $lang directory.
 
@@ -142,6 +149,7 @@ cp $lang/words.txt $dir/ || exit 1;
 mkdir -p $dir/phones
 cp $lang/phones/word_boundary.* $dir/phones/ 2>/dev/null # might be needed for ctm scoring,
 cp $lang/phones/align_lexicon.* $dir/phones/ 2>/dev/null # might be needed for ctm scoring,
+cp $lang/phones/optional_silence.* $dir/phones/ 2>/dev/null # might be needed for analyzing alignments.
   # but ignore the error if it's not there.
 
 cp $lang/phones/disambig.{txt,int} $dir/phones/ 2> /dev/null

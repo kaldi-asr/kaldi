@@ -520,6 +520,10 @@ Real VectorBase<Real>::Norm(Real p) const {
     for (MatrixIndexT i = 0; i < dim_; i++)
       sum += data_[i] * data_[i];
     return std::sqrt(sum);
+  } else if (p == std::numeric_limits<Real>::infinity()){
+    for (MatrixIndexT i = 0; i < dim_; i++)
+      sum = std::max(sum, std::abs(data_[i]));
+    return sum;
   } else {
     Real tmp;
     bool ok = true;
@@ -878,8 +882,8 @@ void VectorBase<Real>::Tanh(const VectorBase<Real> &src) {
       Real inv_expx = Exp(-x);
       x = -1.0 + 2.0 / (1.0 + inv_expx * inv_expx);
     } else {
-      Real inv_expx = Exp(x);
-      x = 1.0 - 2.0 / (1.0 + inv_expx * inv_expx);
+      Real expx = Exp(x);
+      x = 1.0 - 2.0 / (1.0 + expx * expx);
     }
     data_[i] = x;
   }
@@ -1320,4 +1324,3 @@ template class VectorBase<float>;
 template class VectorBase<double>;
 
 }  // namespace kaldi
-

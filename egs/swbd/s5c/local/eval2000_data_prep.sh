@@ -30,6 +30,8 @@ sdir=$1
 tdir=$2
 [ ! -d $sdir/english ] \
   && echo Expecting directory $sdir/english to be present && exit 1;
+[ -d $tdir/2000_hub5_eng_eval_tr ] \
+  && tdir=$tdir/2000_hub5_eng_eval_tr
 [ ! -d $tdir/reference ] \
   && echo Expecting directory $tdir/reference to be present && exit 1;
 

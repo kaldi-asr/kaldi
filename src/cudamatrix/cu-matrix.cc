@@ -33,7 +33,6 @@
 #include "cudamatrix/cu-vector.h"
 #include "cudamatrix/cu-device.h"
 #include "cudamatrix/cu-kernels.h"
-#include "cudamatrix/cu-randkernels.h"
 #include "cudamatrix/cu-array.h"
 #include "cudamatrix/cu-math.h"
 #include "cudamatrix/cu-sp-matrix.h"
@@ -796,28 +795,38 @@ void CuMatrixBase<Real>::MulRowsGroupMat(const CuMatrixBase<Real> &src) {
     Mat().MulRowsGroupMat(src.Mat());
   }
 }
+
+
 template<typename Real>
-void CuMatrixBase<Real>::GroupPnormDeriv(const CuMatrixBase<Real> &src1,
-                                         const CuMatrixBase<Real> &src2,
-                                         Real power) {
-  KALDI_ASSERT(src2.NumCols() > 0);
-  int group_size = this->NumCols() / src2.NumCols();
-  KALDI_ASSERT(this->NumCols() == src2.NumCols() * group_size);
+void CuMatrixBase<Real>::DiffGroupPnorm(const CuMatrixBase<Real> &in_value,
+                                        const CuMatrixBase<Real> &out_value,
+                                        const CuMatrixBase<Real> &out_deriv,
+                                        Real power) {
+  KALDI_ASSERT(out_value.NumCols() > 0);
+  KALDI_ASSERT(out_value.NumCols() == out_deriv.NumCols());
+  int group_size = this->NumCols() / out_value.NumCols();
+  KALDI_ASSERT(this->NumCols() == out_value.NumCols() * group_size);
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
-    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK),
-                 n_blocks(NumRows(), CU2DBLOCK));
-    cuda_calc_pnorm_deriv(dimGrid, dimBlock, this->data_, src1.Data(),
-                          src2.Data(), Dim(), src2.Stride(), group_size, power);
+    const int kWarpSize = 32;
+    dim3 dimBlock(kWarpSize, CU1DBLOCK / kWarpSize);
+    dim3 dimGrid(n_blocks(NumCols(), dimBlock.x),
+                 n_blocks(NumRows(), dimBlock.y));
+    if (dimGrid.x * dimGrid.y > 1024) {
+      dimGrid.y = std::max(1024 / dimGrid.x, unsigned(1));
+    }
+    cuda_diff_group_pnorm(dimGrid, dimBlock, this->data_, in_value.Data(),
+                          out_value.Data(), out_deriv.Data(), Dim(),
+                          in_value.Stride(), out_value.Stride(),
+                          out_deriv.Stride(), group_size, power);
     CU_SAFE_CALL(cudaGetLastError());
-
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
   {
-    Mat().GroupPnormDeriv(src1.Mat(), src2.Mat(), power);
+    Mat().GroupPnormDeriv(in_value.Mat(), out_value.Mat(), power);
+    MulRowsGroupMat(out_deriv);
   }
 }
 
@@ -829,13 +838,13 @@ void CuMatrixBase<Real>::GroupMaxDeriv(const CuMatrixBase<Real> &src1,
   KALDI_ASSERT(this->NumCols() == src2.NumCols() * group_size);
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-   Timer tim;
+    Timer tim;
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK),
                  n_blocks(NumRows(), CU2DBLOCK));
-    cuda_calc_group_max_deriv(dimGrid, dimBlock, this->data_,
-                              src1.Data(), src2.Data(), Dim(),
-                              src2.Stride(), group_size);
+    cuda_calc_group_max_deriv(dimGrid, dimBlock, this->data_, src1.Data(),
+                              src2.Data(), Dim(), src1.Stride(), src2.Stride(),
+                              group_size);
     CU_SAFE_CALL(cudaGetLastError());
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -977,8 +986,10 @@ void CuMatrixBase<Real>::AddMatBlocks(Real alpha, const CuMatrixBase<Real> &A,
   }
 }
 
+/// dst = a * b / c (by element; when c = 0, dst = a)
+/// dst can be an alias of a, b or c safely and get expected result.
 template<typename Real>
-void CuMatrixBase<Real>::AddMatMatDivMat(const CuMatrixBase<Real> &A,
+void CuMatrixBase<Real>::SetMatMatDivMat(const CuMatrixBase<Real> &A,
                     const CuMatrixBase<Real> &B, const CuMatrixBase<Real> &C) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
@@ -991,7 +1002,7 @@ void CuMatrixBase<Real>::AddMatMatDivMat(const CuMatrixBase<Real> &A,
     dim3 dimGrid, dimBlock;
     GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
                                           &dimGrid, &dimBlock);
-    cuda_add_mat_mat_div_mat(dimGrid, dimBlock, A.data_, B.data_, C.data_,
+    cuda_set_mat_mat_div_mat(dimGrid, dimBlock, A.data_, B.data_, C.data_,
                              data_, Dim(), A.Stride(), B.Stride(), C.Stride());
     CU_SAFE_CALL(cudaGetLastError());
 
@@ -999,7 +1010,7 @@ void CuMatrixBase<Real>::AddMatMatDivMat(const CuMatrixBase<Real> &A,
   } else
 #endif
   {
-    Mat().AddMatMatDivMat(A.Mat(), B.Mat(), C.Mat());
+    Mat().SetMatMatDivMat(A.Mat(), B.Mat(), C.Mat());
   }
 }
 
@@ -1222,6 +1233,7 @@ void CuMatrixBase<Real>::AddMatMatElements(Real alpha,
     const CuMatrixBase<Real> &A, const CuMatrixBase<Real> &B, Real beta) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    KALDI_ASSERT(SameDim(*this, A) && SameDim(A, B));
     Timer tim;
     dim3 dimGrid, dimBlock;
     GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
@@ -1236,6 +1248,72 @@ void CuMatrixBase<Real>::AddMatMatElements(Real alpha,
   }
 }
 
+template<typename Real>
+void CuMatrixBase<Real>::ParametricRelu(
+     const CuMatrixBase<Real> &src,
+     const CuVectorBase<Real> &alpha,
+     const CuVectorBase<Real> &beta) {
+  KALDI_ASSERT(src.NumRows() == this->NumRows());
+  KALDI_ASSERT(src.NumCols() == this->NumCols());
+  KALDI_ASSERT(alpha.Dim() == this->NumCols());
+  KALDI_ASSERT(beta.Dim() == this->NumCols());
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(src.NumCols(), CU2DBLOCK), n_blocks(src.NumRows(), CU2DBLOCK));
+
+    cuda_parametric_relu(dimGrid, dimBlock, this->data_, src.data_, this->Dim(),
+                         src.Stride(), alpha.data_, beta.data_);
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    // Do it on CPU,
+    for (MatrixIndexT r = 0; r < NumRows(); r++) {
+      for (MatrixIndexT c = 0; c < NumCols(); c++) {
+        Real src_elem = src.Mat()(r,c);
+        this->Mat()(r,c) = src_elem * (src_elem >= 0.0 ? alpha.Vec()(c) : beta.Vec()(c));
+      }
+    }
+  }
+}
+
+template<typename Real>
+void CuMatrixBase<Real>::DiffParametricRelu(
+     const CuMatrixBase<Real> &value,
+     const CuMatrixBase<Real> &diff,
+     const CuVectorBase<Real> &alpha,
+     const CuVectorBase<Real> &beta) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(num_cols_, CU2DBLOCK), n_blocks(num_rows_, CU2DBLOCK));
+
+    cuda_diff_parametric_relu(dimGrid, dimBlock, data_, diff.data_, value.data_,
+                              Dim(), diff.Stride(), value.Stride(),
+                              alpha.data_, beta.data_);
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    // Do it on CPU,
+    for (MatrixIndexT r = 0; r < NumRows(); r++) {
+      for (MatrixIndexT c = 0; c < NumCols(); c++) {
+        Real value_elem = value.Mat()(r,c);
+        this->Mat()(r,c) = diff.Mat()(r,c) *
+          (value_elem >= 0.0 ? alpha.Vec()(c) : beta.Vec()(c));
+      }
+    }
+  }
+}
 
 template<typename Real>
 void CuMatrixBase<Real>::Sigmoid(const CuMatrixBase<Real> &src) {
@@ -1287,15 +1365,34 @@ void CuMatrixBase<Real>::GroupPnorm(const CuMatrixBase<Real> &src, Real power) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
-    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK),
-                 n_blocks(NumRows(), CU2DBLOCK));
-    cuda_group_pnorm(dimGrid, dimBlock, this->data_, src.data_, this->Dim(),
-                     src.Stride(), group_size, power);
+    if (power == Real(0) || power == Real(1) || power == Real(2)
+        || power == std::numeric_limits<Real>::infinity()) {
+      // One thread block per row.
+      // Use 2D block for small group size to simplify the calculation
+      // Each group is reduced by threads_per_group threads.
+      // threads_per_group should be a power of 2 for fast tree reduction.
+      int threads_per_group = CU1DBLOCK;
+      while (threads_per_group * 3 / 2 >= group_size) {
+        threads_per_group >>= 1;
+      }
+      if (group_size == 1) {
+        threads_per_group = 1;
+      }
+      dim3 dimBlock(threads_per_group, CU1DBLOCK / threads_per_group);
+      dim3 dimGrid(NumRows());
+      cuda_group_spec_pnorm(dimGrid, dimBlock, this->data_, src.data_,
+                            this->Dim(), src.Stride(), group_size, power);
+    } else {
+      dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+      dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK),
+                   n_blocks(NumRows(), CU2DBLOCK));
+      cuda_group_pnorm(dimGrid, dimBlock, this->data_, src.data_, this->Dim(),
+                       src.Stride(), group_size, power);
+    }
     CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
-  #endif
+#endif
   {
     Mat().GroupPnorm(src.Mat(), power);
   }
@@ -1309,11 +1406,23 @@ void CuMatrixBase<Real>::GroupMax(const CuMatrixBase<Real> &src) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
-    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK),
-                 n_blocks(NumRows(), CU2DBLOCK));
-    cuda_group_max(dimGrid, dimBlock, this->data_, src.data_,
-                   this->Dim(), src.Stride(), group_size);
+    // One thread block per row.
+    // Use 2D block for small group size to simplify the calculation.
+    // Each group is reduced by threads_per_group threads.
+    // threads_per_group should be a power of 2 for fast tree reduction.
+    //        group size: 1 2 3 4 5 6 7 .. 12 13 .. 24 25 .. 48 ...
+    // threads_per_group: 1 1 1 2 2 2 4 ..  4  8 ..  8 16 .. 16 ...
+    int threads_per_group = CU1DBLOCK;
+    while (threads_per_group * 3 / 2 >= group_size) {
+      threads_per_group >>= 1;
+    }
+    if (group_size == 1) {
+      threads_per_group = 1;
+    }
+    dim3 dimBlock(threads_per_group, CU1DBLOCK / threads_per_group);
+    dim3 dimGrid(NumRows());
+    cuda_group_max(dimGrid, dimBlock, this->data_, src.data_, this->Dim(),
+        src.Stride(), group_size);
     CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
@@ -1392,7 +1501,7 @@ void CuMatrixBase<Real>::ApplySoftMaxPerRow(const CuMatrixBase<Real> &src) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    size_t dimBlock = src.num_cols_ > CU1DBLOCK ? CU1DBLOCK : src.num_cols_;
+    size_t dimBlock = CU1DBLOCK;
     size_t dimGrid = src.num_rows_;
     cuda_softmax_reduce(dimGrid, dimBlock, data_, src.data_, Dim(), src.Stride());
     CU_SAFE_CALL(cudaGetLastError());
@@ -1415,7 +1524,7 @@ void CuMatrixBase<Real>::ApplyLogSoftMaxPerRow(const CuMatrixBase<Real> &src) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    size_t dimBlock = src.num_cols_ > CU1DBLOCK ? CU1DBLOCK : src.num_cols_;
+    size_t dimBlock = CU1DBLOCK;
     size_t dimGrid = src.num_rows_;
     cuda_log_softmax_reduce(dimGrid, dimBlock,
                             data_, src.data_, Dim(), src.Stride());
@@ -1433,8 +1542,7 @@ void CuMatrixBase<Real>::ApplyLogSoftMaxPerRow(const CuMatrixBase<Real> &src) {
   }
 }
 
-// DiffSigmoid(Ein, Y, Eout) -> Eout.DiffSigmoid(Y, Ein).
-template<typename Real> // Eout -> *this, Ein -> diff, Y -> value
+template<typename Real>
 void CuMatrixBase<Real>::DiffSigmoid(const CuMatrixBase<Real> &value,
                                      const CuMatrixBase<Real> &diff) {
   KALDI_ASSERT(SameDim(*this, value) && SameDim(*this, diff));
@@ -1479,7 +1587,7 @@ void CuMatrixBase<Real>::Tanh(const CuMatrixBase<Real> &src) {
 
 
 
-template<typename Real> // Ein -> diff, Y -> value
+template<typename Real>
 void CuMatrixBase<Real>::DiffTanh(const CuMatrixBase<Real> &value,
                                   const CuMatrixBase<Real> &diff) {
 #if HAVE_CUDA == 1
@@ -1535,6 +1643,86 @@ void CuMatrixBase<Real>::FindRowMaxId(CuArray<int32> *id) const {
       }
       id->Data()[r] = max_id;
     }
+  }
+}
+
+template<typename Real>
+void CuMatrixBase<Real>::DiffSoftmaxPerRow(const CuMatrixBase<Real> &value,
+                                           const CuMatrixBase<Real> &diff) {
+
+  KALDI_ASSERT(SameDim(value, diff) && SameDim(value, *this));
+
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+
+    // CUDA thread layout: one thread block per matrix-row.
+    dim3 dimBlock(CU1DBLOCK);
+    dim3 dimGrid(num_rows_);
+    cuda_diff_softmax(dimGrid, dimBlock, data_, this->Dim(), value.Data(),
+        value.Stride(), diff.Data(), diff.Stride());
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    const CuMatrixBase<Real> &P(value), &E(diff);
+    CuMatrixBase<Real> &D(*this);
+
+    D.CopyFromMat(P);
+    D.MulElements(E);
+    // At this point, D = P .* E (in matlab notation)
+    CuVector<Real> pe_vec(D.NumRows()); // For each row i, the dot product (p_t . e_t).
+    pe_vec.AddDiagMatMat(1.0, P, kNoTrans, E, kTrans, 0.0);
+
+    D.AddDiagVecMat(-1.0, pe_vec, P, kNoTrans, 1.0); // does D -= diag(pe_vec) * P.
+  }
+}
+
+template<typename Real>
+void CuMatrixBase<Real>::DiffLogSoftmaxPerRow(
+    const CuMatrixBase<Real> &out_value, const CuMatrixBase<Real> &out_deriv) {
+
+  KALDI_ASSERT(SameDim(out_value, out_deriv) && SameDim(out_value, *this));
+
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+
+    // CUDA thread layout: one thread block per matrix-row.
+    dim3 dimBlock(CU1DBLOCK);
+    dim3 dimGrid(num_rows_);
+    cuda_diff_log_softmax(dimGrid, dimBlock, this->Dim(), out_value.Data(),
+                          out_value.Stride(), out_deriv.Data(),
+                          out_deriv.Stride(), data_);
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    /*
+     Let the output be y, then
+     y_i = x_i - log(sum_i exp(x_i))
+     where x_i is the input to the component. The Jacobian matrix of this
+     function is
+     J = I - 1 exp(y^T)
+     where 1 is a vector of ones. Let the derivative vector at the output be e,
+     and at the input be d, then we have
+     d = e - exp(y) Sum(e)
+     d_i = e_i - exp(y_i) Sum(e)
+     */
+    const CuMatrixBase<Real> &Y(out_value), &E(out_deriv);
+    CuMatrixBase<Real> &D(*this);
+
+    D.CopyFromMat(Y);
+    D.ApplyExp();                           // exp(y)
+    CuVector<Real> E_sum(D.NumRows()); // Initializes to zero
+    E_sum.AddColSumMat(1.0, E);             // Sum(e)
+    D.MulRowsVec(E_sum);                    // exp(y) Sum(e)
+    D.Scale(-1.0);                          // - exp(y) Sum(e)
+    D.AddMat(1.0, E, kNoTrans);             // e - exp(y_i) Sum(e)
   }
 }
 

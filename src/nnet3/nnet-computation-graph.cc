@@ -953,9 +953,15 @@ void AddInputToGraph(const ComputationRequest &request,
 }
 
 
-// This function outputs to dependencies_subset[c], for each cindex_id c,
-// the subset of elements d of graph.dependencies[c] such that
-// cindex_id_to_epoch[d] == cindex_id_to_epoch[c].
+/**
+   This function outputs to dependencies_subset[c], for each cindex_id c,
+   the subset of elements d of graph.dependencies[c] such that
+   cindex_id_to_epoch[d] == cindex_id_to_epoch[c].  That is, it's
+   the dependency graph of the entire computation, but removing
+   links that go from one epoch to another epoch.  Topologically,
+   'dependencies_subset' would therefor consist of a bunch of
+   disconnected graphs.
+*/
 static void ComputeDependenciesSubset(
     const ComputationGraph &graph,
     const std::vector<int32> &cindex_id_to_epoch,
@@ -977,11 +983,14 @@ static void ComputeDependenciesSubset(
 }
 
 /// This function computes certain information about "epochs" of cindex_ids.
-/// The function ComputeComputationGraphOrder() from nnet-graph.h gives us a map
+/// The function ComputeNnetComputationEpochs() from nnet-graph.h gives us a map
 /// from the NetworkNode index to an index we call the "epoch" index:
 /// basically, nodes that are computed first have a lower epoch index, and
 /// all nodes that are part of strongly connected components have the same
-/// epoch index.
+/// epoch index.  In an acyclic nnet graph each component will usually have
+/// its own epoch index, but in things like LSTMs, each LSTM layer (with multiple
+/// components) will have its own epoch index.
+///
 /// The overall computation order that we compute, will respect this ordering
 /// into epochs (except that outputs of nodes of type kComponent that are
 /// actually provided as inputs to the network, won't be subject to these
@@ -995,6 +1004,11 @@ static void ComputeDependenciesSubset(
 ///            epoch index, as obtained by adding one to the output of
 ///            ComputeNnetComputationOrder; however, input cindex_ids (those for
 ///            which is_input[cindex_id] is true) always map to 0.
+///            Note: the epoch-index only depends on the neural network's
+///            topology of nodes; a node in the network should always map to
+///            the same epoch-index regardless of the computation, and
+///            we assign cindexes to epochs just based on what node the
+///            cindexes are part of.
 ///  \param epochs [out] The same information as
 ///            cindex_id_to_epoch, but in a different format: for each
 ///            epoch, a list of cindex_ids with that epoch index.
@@ -1009,9 +1023,9 @@ static void ComputeEpochInfo(
     std::vector<std::vector<int32 > > *epochs,
     std::vector<bool> *epoch_is_trivial) {
 
-  // node_to_epoch maps each nnet node to an index >= 0that tells
-  // us what order to compute them in... but we may need to compute
-  // a finer ordering at the cindex_id level in cases like RNNs.
+  // node_to_epoch maps each nnet node to an index >= 0 that tells us coarsely
+  // what order to compute them in... but we may need to compute a finer
+  // ordering at the cindex_id level in cases like RNNs.
   std::vector<int32> node_to_epoch;
   ComputeNnetComputationEpochs(nnet, &node_to_epoch);
   {
@@ -1028,7 +1042,7 @@ static void ComputeEpochInfo(
   int32 num_nodes = nnet.NumNodes(),
       num_cindex_ids = graph.cindexes.size(),
       num_epoch_indexes = 1 + *std::max_element(node_to_epoch.begin(),
-                                                      node_to_epoch.end());
+                                                node_to_epoch.end());
   KALDI_ASSERT(node_to_epoch.size() == num_nodes);
 
   // epoch_to_num_nodes is only used so we know whether each epoch
@@ -1154,23 +1168,65 @@ static int32 SumVectorSizes(const std::vector<std::vector<int32> > &vec) {
   return ans;
 }
 
-// this function is called from ComputeComputationPhases; it handles the part of
-// the computation from one epoch (this code was broken out to avoid that
-// function being super-long)
-// dependencies_subset is the same as graph.dependencies, but only including
-// that subset of the dependencies that belong to this same epoch
-// (i.e. dependencies within the same strongly connected component of the
-// graph on nodes).  depend_on_subset is the tranpose of the graph
-// represented by dependencies_subset.
-// phase_index maps cindex_id to phase_index (or -1 if not assigned yet).
+/*
+  this function is called from ComputeComputationPhases; it handles the part of
+  the computation from one epoch (this code was broken out to avoid that
+  function being super-long).  Note: the phases are a numbered grouping of
+  cindexes that say in what order we compute things, i.e. we first compute
+  all the cindexes for phase 0, then for phase 1, and so on.
+
+   @param [in] nnet       The neural net this computation is for
+   @param [in] graph      The computation graph we're computing the phases for.
+
+   @param [in] this_epoch The sorted list of the cindex_ids for this epoch; note,
+                          cindex_ids are indexes into the array graph.cindexes.
+                          Roughly speaking, this is a list of the cindex_ids that
+                          correspond to one "layer" of the neural network, in
+                          things like LSTMs, or for one part of one layer (the
+                          affine component, the nonlinearity, or the splicing),
+                          in things like TDNNs.
+  @param [in] dependencies_subset  A subset of 'graph.dependencies' corresponding
+                          just to dependencies within the same epoch (not specifically
+                          this epoch; for all epochs).  E.g. for a cindex_id c
+                          dependencies[c] is a list of other cindex_ids d1, d2,
+                          such that in order to compute c we must first compute
+                          d1, d2 and so on.
+  @param [in] depends_on_subset  The graph-transpose of dependencies_subset;
+                          for cindex_id c, depends_on_subset[c] is the list
+                          of cindex_ids that directly depend on cindex_id c,
+                          so c must be computed before them.
+  @param [in] epoch_is_trivial  A bool that's true if this epoch is trivial
+                          (meaning it consists of just one component)... this
+                          enables a faster code path in this common case.
+  @param [in,out] phase_indexes  This vector, to some elements of which this function writes
+                          each time it is called, maps from cindex_id to the
+                          'phase index'.  A phase index is a number identifying
+                          the phases [like coarse steps] of the computation, with
+                          zero for the first phase, one for the second, etc.
+                          We work out how many phase indexes have been used already
+                          by previous epochs, from phases->size().  Actually,
+                          phase_indexes is really just a temporary variable used
+                          by this function, that we allocate outside this
+                          function for efficiency.  It is initialized to
+                          -1 outside this function; different invocations of
+                          this function work with different elements of the
+                          vector.
+  @param [in,out] phases  This is the output of this function.  Each time
+                          we add a new phase, we append a vector to *phases.
+                          E.g. (*phases)[0] is the sorted list of cindexes
+                          in the first phase of the computation... and so on.
+                          Note, this function is called multiple times, and
+                          each time we add one or more phases to this vector,
+                          so its size grows.
+*/
 static inline void ComputeComputationPhasesForEpoch(
     const Nnet &nnet,
     const ComputationGraph &graph,
+    const std::vector<int32> &this_epoch,
     const std::vector<std::vector<int32> > &dependencies_subset,
     const std::vector<std::vector<int32> > &depend_on_subset,
-    const std::vector<int32> &this_epoch,
     bool epoch_is_trivial,
-    std::vector<int32> *phase_index,
+    std::vector<int32> *phase_indexes,
     std::vector<std::vector<int32> > *phases) {
   std::vector<int32> this_phase, next_phase_candidates;
 
@@ -1180,8 +1236,9 @@ static inline void ComputeComputationPhasesForEpoch(
   if (epoch_is_trivial) { // an optimization
     this_phase = this_epoch;
   } else {
-    //  Start out with all elements of this epoch that have no
-    // dependencies within the same epoch
+    // Start out with all elements of this epoch that have no
+    // dependencies within the same epoch (i.e. those that
+    // can be computed first).
     std::vector<int32>::const_iterator iter = this_epoch.begin(),
         end = this_epoch.end();
     for (; iter != end; ++iter) {
@@ -1196,10 +1253,12 @@ static inline void ComputeComputationPhasesForEpoch(
                "Trying to process computation with cycles");
 
   while (!this_phase.empty()) {
-    phases->push_back(this_phase);
+    // The next two lines are a more efficient version of:
+    // phases->push_back(this_phase);
+    phases->resize(phases->size() + 1);
+    phases->back().swap(this_phase);
     // The next if-statement is an optimization: if for this epoch index
-    // there is just one node, there will be just one order-index for this
-    // epoch, so we can skip the rest of this loop.  Note: if
+    // there is just one node, we can skip the rest of this loop.  Note: if
     // epoch == 0, even if there is just one node, cindex_ids from
     // multiple nodes may be put here because of the rule that cindex_ids which
     // are inputs always get epoch 0.  But it's still true that they
@@ -1213,10 +1272,12 @@ static inline void ComputeComputationPhasesForEpoch(
     // whether they are computable now, because one of the things they depend
     // on just became computable.
     next_phase_candidates.clear();
-    int32 size = this_phase.size();
-    for (int32 i = 0; i < size; i++) {
-      int32 c = this_phase[i];  // c is a cindex_id with phase cur_phase_index.
-      (*phase_index)[c] = cur_phase_index;
+    std::vector<int32>::const_iterator this_phase_iter = phases->back().begin(),
+        this_phase_end = phases->back().end();
+
+    for (; this_phase_iter != this_phase_end; ++this_phase_iter) {
+      int32 c = *this_phase_iter;  // c is a cindex_id with phase cur_phase_index.
+      (*phase_indexes)[c] = cur_phase_index;
       std::vector<int32>::const_iterator iter = depend_on_subset[c].begin(),
           end = depend_on_subset[c].end();
       for (; iter != end; ++iter) {
@@ -1225,7 +1286,9 @@ static inline void ComputeComputationPhasesForEpoch(
       }
     }
     SortAndUniq(&next_phase_candidates);
-    this_phase.clear();
+    // note, at this point 'this_phase' will be the empty vector [see the 'swap'
+    // above].
+    this_phase.reserve(next_phase_candidates.size());
     // now check the candidates that might be in the next phase, and put any
     // members that we are currently able to compute into "this_phase".
     std::vector<int32>::const_iterator iter = next_phase_candidates.begin(),
@@ -1237,8 +1300,8 @@ static inline void ComputeComputationPhasesForEpoch(
           dep_end = dependencies_subset[c].end();
       for (; dep_iter != dep_end; ++dep_iter) {
         int32 d = *dep_iter;  // d is cindex_id that c depends on.
-        if ((*phase_index)[d] < 0)  // we can't compute c yet as something we depend
-          break;              // on is not yet computed.
+        if ((*phase_indexes)[d] < 0)  // we can't compute c yet because something we depend
+          break;                      // on has not yet been computed.
       }
       if (dep_iter == dep_end) {
         // we reached the end and did not break -> all dependencies satisfied
@@ -1248,7 +1311,9 @@ static inline void ComputeComputationPhasesForEpoch(
     if (!next_phase_candidates.empty() && this_phase.empty())  {
       // this should have been caught earlier so likely a code error rather than
       // a problem with user input.
-      KALDI_ERR << "Possibly some cindexes were not reachable (code error?)";
+      KALDI_ERR << "Your model has a type of recurrence that cannot be computed. "
+                << "E.g. if x[t] depends on both x[t+1] and x[t-1]... no order "
+                << "of computation will work.";
     }
   }
 }
@@ -1264,16 +1329,15 @@ void ComputeComputationPhases(
   std::vector<std::vector<int32 > > epochs;
   std::vector<bool> epoch_is_trivial;
   ComputeEpochInfo(nnet, graph, &cindex_id_to_epoch,
-                        &epochs, &epoch_is_trivial);
+                   &epochs, &epoch_is_trivial);
 
   KALDI_ASSERT(SumVectorSizes(epochs) == num_cindex_ids);
 
   // dependencies_subset contains just the subset of dependencies
   // of each cindex_id, that have the same epoch index as
   // cindex_id itself.  This will be used to correctly order
-  // cindexes that have a certain epoch index (i.e. they
-  // likely come from the same strongly connected component of
-  // the graph of nodes).
+  // cindexes within a certain epoch (relevant for things like
+  // LSTMs).
   std::vector<std::vector<int32> > dependencies_subset;
   ComputeDependenciesSubset(graph, cindex_id_to_epoch,
                             &dependencies_subset);
@@ -1286,8 +1350,8 @@ void ComputeComputationPhases(
 
   int32 num_epoch_indexes = epoch_is_trivial.size();
 
-  // "phase_index" is used inside ComputeComputationPhasesForEpoch.
-  std::vector<int32> phase_index(num_cindex_ids, -1);
+  // "phase_indexes" is used inside ComputeComputationPhasesForEpoch.
+  std::vector<int32> phase_indexes(num_cindex_ids, -1);
 
   if (phases) {
     phases->clear();
@@ -1299,11 +1363,11 @@ void ComputeComputationPhases(
        epoch < num_epoch_indexes;
        epoch++)
     ComputeComputationPhasesForEpoch(nnet, graph,
+                                     epochs[epoch],
                                      dependencies_subset,
                                      depend_on_subset,
-                                     epochs[epoch],
                                      epoch_is_trivial[epoch],
-                                     &phase_index, phases);
+                                     &phase_indexes, phases);
 
 
   // make sure everything was computable.  If the next assert fails it's likely
