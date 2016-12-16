@@ -43,7 +43,7 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
                         int64 *num_egs_written,
                         NnetExampleWriter *example_writer) {
   KALDI_ASSERT(feats.NumRows() == static_cast<int32>(pdf_post.size()));
-  
+
   for (int32 t = 0; t < feats.NumRows(); t += frames_per_eg) {
 
     // actual_frames_per_eg is the number of frames with nonzero
@@ -57,7 +57,7 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
     int32 tot_frames = left_context + frames_per_eg + right_context;
 
     Matrix<BaseFloat> input_frames(tot_frames, feats.NumCols(), kUndefined);
-    
+
     // Set up "input_frames".
     for (int32 j = -left_context; j < frames_per_eg + right_context; j++) {
       int32 t2 = j + t;
@@ -69,7 +69,7 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
     }
 
     NnetExample eg;
-    
+
     // call the regular input "input".
     eg.io.push_back(NnetIo("input", - left_context,
                            input_frames));
@@ -93,10 +93,10 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
       labels[i] = pdf_post[t + i];
     // remaining posteriors for frames are empty.
     eg.io.push_back(NnetIo("output", num_pdfs, 0, labels));
-    
+
     if (compress)
       eg.Compress();
-      
+
     std::ostringstream os;
     os << utt_id << "-" << t;
 
@@ -137,30 +137,32 @@ int main(int argc, char *argv[]) {
         "nnet3-get-egs --num-pdfs=2658 --left-context=12 --right-context=9 --num-frames=8 \"$feats\"\\\n"
         "\"ark:gunzip -c exp/nnet/ali.1.gz | ali-to-pdf exp/nnet/1.nnet ark:- ark:- | ali-to-post ark:- ark:- |\" \\\n"
         "   ark:- \n";
-        
+
 
     bool compress = true;
     int32 num_pdfs = -1, left_context = 0, right_context = 0,
         num_frames = 1, length_tolerance = 100;
-        
+
     std::string ivector_rspecifier;
-    
+
     ParseOptions po(usage);
     po.Register("compress", &compress, "If true, write egs in "
                 "compressed format.");
     po.Register("num-pdfs", &num_pdfs, "Number of pdfs in the acoustic "
                 "model");
     po.Register("left-context", &left_context, "Number of frames of left "
-                "context the neural net requires.");
+                "context of input features that are added to each "
+                "example");
     po.Register("right-context", &right_context, "Number of frames of right "
-                "context the neural net requires.");
+                "context of input features that are added to each "
+                "example");
     po.Register("num-frames", &num_frames, "Number of frames with labels "
                 "that each example contains.");
     po.Register("ivectors", &ivector_rspecifier, "Rspecifier of ivector "
                 "features, as a matrix.");
     po.Register("length-tolerance", &length_tolerance, "Tolerance for "
                 "difference in num-frames between feat and ivector matrices");
-    
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 3) {
@@ -170,7 +172,7 @@ int main(int argc, char *argv[]) {
 
     if (num_pdfs <= 0)
       KALDI_ERR << "--num-pdfs options is required.";
-    
+
 
     std::string feature_rspecifier = po.GetArg(1),
         pdf_post_rspecifier = po.GetArg(2),
@@ -181,10 +183,10 @@ int main(int argc, char *argv[]) {
     RandomAccessPosteriorReader pdf_post_reader(pdf_post_rspecifier);
     NnetExampleWriter example_writer(examples_wspecifier);
     RandomAccessBaseFloatMatrixReader ivector_reader(ivector_rspecifier);
-    
+
     int32 num_done = 0, num_err = 0;
     int64 num_frames_written = 0, num_egs_written = 0;
-    
+
     for (; !feat_reader.Done(); feat_reader.Next()) {
       std::string key = feat_reader.Key();
       const Matrix<BaseFloat> &feats = feat_reader.Value();
@@ -221,7 +223,7 @@ int main(int argc, char *argv[]) {
           num_err++;
           continue;
         }
-          
+
         ProcessFile(feats, ivector_feats, pdf_post, key, compress,
                     num_pdfs, left_context, right_context, num_frames,
                     &num_frames_written, &num_egs_written,
