@@ -42,15 +42,17 @@ echo $*
 
 . utils/parse_options.sh
 
-if [ $# -ne 3 ]; then
-  echo "Usage: $0 <src-data-dir> <data-dir> <sad-nnet-dir>"
-  echo " e.g.: $0 ~/workspace/egs/ami/s5b/data/sdm1/dev data/ami_sdm1_dev exp/nnet3_sad_snr/nnet_tdnn_j_n4"
+if [ $# -ne 4 ]; then
+  echo "Usage: $0 <src-data-dir> <sad-nnet-dir> <mfcc-dir> <data-dir>"
+  echo " e.g.: $0 ~/workspace/egs/ami/s5b/data/sdm1/dev exp/nnet3_sad_snr/nnet_tdnn_j_n4 mfcc_hires_bp data/ami_sdm1_dev"
   exit 1
 fi
 
-src_data_dir=$1
-data_dir=$2
-sad_nnet_dir=$3
+src_data_dir=$1   # The input data directory that needs to be segmented.
+                  # Any segments in that will be ignored.
+sad_nnet_dir=$2   # The SAD neural network
+mfcc_dir=$3       # The directory to store the features
+data_dir=$4       # The output data directory will be ${data_dir}_seg
 
 affix=${affix:+_$affix}
 feat_affix=${feat_affix:+_$feat_affix}
@@ -62,8 +64,10 @@ seg_dir=${sad_nnet_dir}/${segmentation_name}${affix}_${data_id}_whole${feat_affi
 export PATH="$KALDI_ROOT/tools/sph2pipe_v2.5/:$PATH"
 [ ! -z `which sph2pipe` ]
 
+whole_data_dir=${sad_dir}/${data_id}_whole
+
 if [ $stage -le 0 ]; then
-  utils/data/convert_data_dir_to_whole.sh $src_data_dir ${data_dir}_whole
+  utils/data/convert_data_dir_to_whole.sh $src_data_dir ${whole_data_dir}
   
   if $do_downsampling; then
     freq=`cat $mfcc_config | perl -pe 's/\s*#.*//g' | grep "sample-frequency=" | awk -F'=' '{if (NF == 0) print 16000; else print $2}'`
@@ -76,18 +80,19 @@ for line in sys.stdin.readlines():
     out_line = line.strip() + ' $sox -t wav - -r $freq -c 1 -b 16 -t wav - downsample |'
   else:
     out_line = 'cat {0} {1} | $sox -t wav - -r $freq -c 1 -b 16 -t wav - downsample |'.format(splits[0], ' '.join(splits[1:]))
-  print (out_line)" > ${data_dir}_whole/wav.scp
+  print (out_line)" > ${whole_data_dir}/wav.scp
   fi
 
-  utils/copy_data_dir.sh ${data_dir}_whole ${data_dir}_whole${feat_affix}_hires
+  utils/copy_data_dir.sh ${whole_data_dir} ${whole_data_dir}${feat_affix}_hires
 fi
 
-test_data_dir=${data_dir}_whole${feat_affix}_hires
+test_data_dir=${whole_data_dir}${feat_affix}_hires
 
 if [ $stage -le 1 ]; then
   steps/make_mfcc.sh --mfcc-config $mfcc_config --nj $reco_nj --cmd "$train_cmd" \
-    ${data_dir}_whole${feat_affix}_hires exp/make_hires/${data_id}_whole${feat_affix} mfcc_hires
-  steps/compute_cmvn_stats.sh ${data_dir}_whole${feat_affix}_hires exp/make_hires/${data_id}_whole${feat_affix} mfcc_hires
+    ${whole_data_dir}${feat_affix}_hires exp/make_hires/${data_id}_whole${feat_affix} $mfcc_dir
+  steps/compute_cmvn_stats.sh ${whole_data_dir}${feat_affix}_hires exp/make_hires/${data_id}_whole${feat_affix} $mfcc_dir
+  utils/fix_data_dir.sh ${whole_data_dir}${feat_affix}_hires
 fi
 
 post_vec=$sad_nnet_dir/post_${output_name}.vec
@@ -114,21 +119,23 @@ if [ $stage -le 3 ]; then
     --min-silence-duration $min_silence_duration \
     --min-speech-duration $min_speech_duration \
     --segmentation-config $segmentation_config --cmd "$train_cmd" \
-    ${test_data_dir} $sad_dir $seg_dir $seg_dir/${data_id}_seg
+    ${test_data_dir} $sad_dir $seg_dir ${data_dir}_seg
 fi
 
 # Subsegment data directory
 if [ $stage -le 4 ]; then
-  rm $seg_dir/${data_id}_seg/feats.scp || true
+  rm ${data_dir}_seg/feats.scp || true
   utils/data/get_reco2num_frames.sh ${test_data_dir} 
-  awk '{print $1" "$2}' ${seg_dir}/${data_id}_seg/segments | \
+  awk '{print $1" "$2}' ${data_dir}_seg/segments | \
     utils/apply_map.pl -f 2 ${test_data_dir}/reco2num_frames > \
-    $seg_dir/${data_id}_seg/utt2max_frames
+    ${data_dir}_seg/utt2max_frames
 
   frame_shift_info=`cat $mfcc_config | steps/segmentation/get_frame_shift_info_from_config.pl`
   utils/data/get_subsegment_feats.sh ${test_data_dir}/feats.scp \
-    $frame_shift_info $seg_dir/${data_id}_seg/segments | \
-    utils/data/fix_subsegmented_feats.pl ${seg_dir}/${data_id}_seg/utt2max_frames > \
-    $seg_dir/${data_id}_seg/feats.scp
-  steps/compute_cmvn_stats.sh --fake $seg_dir/${data_id}_seg
+    $frame_shift_info ${data_dir}_seg/segments | \
+    utils/data/fix_subsegmented_feats.pl ${data_dir}_seg/utt2max_frames > \
+    ${data_dir}_seg/feats.scp
+  steps/compute_cmvn_stats.sh --fake ${data_dir}_seg
+
+  utils/fix_data_dir.sh ${data_dir}_seg
 fi
