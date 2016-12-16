@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) {
     if (scale != 1.0)
       ScaleNnet(scale, &nnet);
     
-    if (dropout > 0)
+    if (dropout >= 0)
       KALDI_ERR << "--dropout option is deprecated. "
                 << "Use set-dropout-proportion "
                 << "option in edits-config. See comments in ReadEditConfig() "
