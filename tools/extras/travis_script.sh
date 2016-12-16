@@ -17,7 +17,7 @@ TESTABLE_DIRS="src/"
 # Run verbose (run and echo) and exit if failed.
 runvx() {
   echo "\$ $@"
-  eval "$@" || exit 1
+  "$@" || exit 1
 }
 
 # $(addsw -L foo bar) => "-Lfoo -Lbar".
@@ -54,7 +54,9 @@ runvx cd tools
 runvx make openfst $CCC CXXFLAGS="$CF" -j$MAXPAR
 cd ..
 runvx cd src
-runvx $CCC CXXFLAGS="$CF" LDFLAGS="$LDF" ./configure --shared --use-cuda=no  --mathlib=OPENBLAS --openblas-root=$XROOT/usr
+# runvx does not work when we have environment variables as prefix
+echo "$CCC CXXFLAGS=$CF LDFLAGS=$LDF ./configure --shared --use-cuda=no  --mathlib=OPENBLAS --openblas-root=$XROOT/usr"
+$CCC CXXFLAGS="$CF" LDFLAGS="$LDF" ./configure --shared --use-cuda=no  --mathlib=OPENBLAS --openblas-root="$XROOT/usr" || exit 1
 runvx make all -j$MAXPAR
 runvx make test -k
 
