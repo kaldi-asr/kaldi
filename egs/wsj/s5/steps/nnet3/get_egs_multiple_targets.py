@@ -14,6 +14,7 @@ import random
 import math
 import glob
 
+sys.path.insert(0, 'steps')
 import libs.data as data_lib
 import libs.common as common_lib
 
