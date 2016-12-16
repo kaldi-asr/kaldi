@@ -28,7 +28,7 @@ addsw() {
 }
 
 # $(mtoken CXX gcc) => "CXX=gcc"; # $(mtoken CXX ) => "".
-mtoken() { echo ${2+$1=$2}; }
+mtoken() { echo ${2+$1=\"$2\"}; }
 
 # Print machine info and environment.
 runvx uname -a
@@ -48,7 +48,7 @@ fi
 # Prepare environment variables
 CF="\"$CFLAGS -g $(addsw -I $INCDIRS)\""
 LDF="\"$LDFLAGS $(addsw -L $LIBDIRS)\""
-CCC="\"$(mtoken CXX $CXX)\""
+CCC="$(mtoken CXX "$CXX")"
 
 runvx cd tools
 runvx make openfst "$CCC" CXXFLAGS="$CF" -j$MAXPAR
