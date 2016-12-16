@@ -12,6 +12,8 @@ set -u
 
 stage=-1
 nnet_dir=exp/nnet3_sad_snr/nnet_tdnn_k_n4
+extra_left_context=100 
+extra_right_context=20
 
 . utils/parse_options.sh
 
@@ -99,23 +101,24 @@ if [ $stage -le 6 ]; then
     rttmSmooth.pl -s 0 \| awk '{ print $2" "$3" "$4" "$5+$4 }' '>' $dir/uem
 fi
 
-hyp_dir=$nnet_dir/segmentation_ami_sdm1_dev_whole_bp
+hyp_dir=${nnet_dir}/segmentation_ami_sdm1_dev_whole_bp/ami_sdm1_dev
 
 if [ $stage -le 7 ]; then
   steps/segmentation/do_segmentation_data_dir.sh --reco-nj 18 \
     --mfcc-config conf/mfcc_hires_bp.conf --feat-affix bp --do-downsampling true \
-    --extra-left-context 100 --extra-right-context 20 \
+    --extra-left-context $extra_left_context --extra-right-context $extra_right_context \
     --output-name output-speech --frame-subsampling-factor 6 \
-    $src_dir/data/sdm1/dev data/ami_sdm1_dev $nnet_dir
+    $src_dir/data/sdm1/dev $nnet_dir mfcc_hires_bp $hyp_dir
 fi
 
+hyp_dir=${hyp_dir}_seg
 
 if [ $stage -le 8 ]; then
   utils/data/get_reco2utt.sh $src_dir/data/sdm1/dev_ihmdata
   
   steps/segmentation/convert_utt2spk_and_segments_to_rttm.py \
-    $hyp_dir/ami_sdm1_dev_seg/utt2spk \
-    $hyp_dir/ami_sdm1_dev_seg/segments \
+    $hyp_dir/utt2spk \
+    $hyp_dir/segments \
     $dir/reco2file_and_channel \
     /dev/stdout | spkr2sad.pl > $hyp_dir/sys.rttm
 fi
