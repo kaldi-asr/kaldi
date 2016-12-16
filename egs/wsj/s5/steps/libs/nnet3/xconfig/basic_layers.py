@@ -458,7 +458,7 @@ class XconfigOutputLayer(XconfigLayerBase):
                                 "".format(self.config['dim']), self.str())
 
         if self.config['objective-type'] != 'linear' and \
-                self.config['objective_type'] != 'quadratic':
+                self.config['objective-type'] != 'quadratic':
             raise xparser_error("In output-layer, objective-type has"
                                 " invalid value {0}"
                                 "".format(self.config['objective-type']),
