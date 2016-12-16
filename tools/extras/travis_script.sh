@@ -17,7 +17,7 @@ TESTABLE_DIRS="src/"
 # Run verbose (run and echo) and exit if failed.
 runvx() {
   echo "\$ $@"
-  "$@" || exit 1
+  eval "$@" || exit 1
 }
 
 # $(addsw -L foo bar) => "-Lfoo -Lbar".
