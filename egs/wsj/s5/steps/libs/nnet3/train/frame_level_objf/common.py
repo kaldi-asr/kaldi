@@ -481,7 +481,7 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
 
     models_to_combine.add(num_iters)
 
-    for iter in models_to_combine:
+    for iter in sorted(models_to_combine):
         if get_raw_nnet_from_am:
             model_file = '{0}/{1}.mdl'.format(dir, iter)
             if not os.path.exists(model_file):

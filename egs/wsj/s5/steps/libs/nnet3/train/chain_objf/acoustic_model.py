@@ -539,7 +539,7 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch,
 
     models_to_combine.add(num_iters)
 
-    for iter in models_to_combine:
+    for iter in sorted(models_to_combine):
         model_file = '{0}/{1}.mdl'.format(dir, iter)
         if os.path.exists(model_file):
             raw_model_strings.append(
