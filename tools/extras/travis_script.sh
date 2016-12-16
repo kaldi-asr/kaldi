@@ -55,8 +55,8 @@ runvx make openfst $CCC CXXFLAGS="$CF" -j$MAXPAR
 cd ..
 runvx cd src
 # runvx does not work when we have environment variables as prefix
-echo "$CCC CXXFLAGS=$CF LDFLAGS=$LDF ./configure --shared --use-cuda=no  --mathlib=OPENBLAS --openblas-root=$XROOT/usr"
-$CCC CXXFLAGS="$CF" LDFLAGS="$LDF" ./configure --shared --use-cuda=no  --mathlib=OPENBLAS --openblas-root="$XROOT/usr" || exit 1
+echo "CXX=$CXX CXXFLAGS=$CF LDFLAGS=$LDF ./configure --shared --use-cuda=no  --mathlib=OPENBLAS --openblas-root=$XROOT/usr"
+CXX="$CXX" CXXFLAGS="$CF" LDFLAGS="$LDF" ./configure --shared --use-cuda=no  --mathlib=OPENBLAS --openblas-root="$XROOT/usr" || exit 1
 runvx make all -j$MAXPAR
 runvx make test -k
 
