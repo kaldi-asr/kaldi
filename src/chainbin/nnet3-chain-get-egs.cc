@@ -252,9 +252,7 @@ int main(int argc, char *argv[]) {
                 "that each example contains.  Will be rounded up to a multiple "
                 "of --frame-subsampling-factor.");
     po.Register("num-frames-overlap", &num_frames_overlap, "Number of frames of "
-                "overlap between each example (could be useful in conjunction "
-                "--min-deriv-time and --max-deriv-time, to avoid wasting data). "
-                "Each time we shift by --num-frames minus --num-frames-overlap.");
+                "overlap between each example.");
     po.Register("ivectors", &ivector_rspecifier, "Rspecifier of ivector "
                 "features, as a matrix.");
     po.Register("srand", &srand_seed, "Seed for random number generator "
