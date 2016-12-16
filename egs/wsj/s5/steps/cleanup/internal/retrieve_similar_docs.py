@@ -50,10 +50,10 @@ def _get_args():
                         help="""Number of neighboring documents to search
                         around the one retrieved based on maximum tf-idf
                         similarity.""")
-    parser.add_argument("--neighbor-tfidf-threshold", type=float, default=0,
+    parser.add_argument("--neighbor-tfidf-threshold", type=float, default=0.9,
                         help="""Ignore neighbors that have tf-idf similarity
                         with the query document less than this threshold
-                        lower than the best best score.""")
+                        factor lower than the best best score.""")
     parser.add_argument("--query-tfidf", type=argparse.FileType('r'),
                         required=True,
                         help="""Archive of TF-IDF for query documents
@@ -180,7 +180,7 @@ def _run(args):
 
             best_docs = [source_docs[i] for i in indexes
                          if (scores[(query_id, source_docs[i])]
-                             >= best_score - args.neighbor_tfidf_threshold)]
+                             >= args.neighbor_tfidf_threshold * best_score)]
 
             assert len(best_docs) > 0, (
                 "Did not get best docs for query {0}\n"

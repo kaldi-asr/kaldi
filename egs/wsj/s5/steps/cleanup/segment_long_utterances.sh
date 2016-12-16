@@ -22,8 +22,8 @@ lmwt=10
 
 # TF-IDF similarity search options
 max_words=1000
-num_neighbors_to_search=2
-neighbor_tfidf_threshold=0
+num_neighbors_to_search=1
+neighbor_tfidf_threshold=0.5
 
 # First-pass segmentation opts
 min_segment_length=0.5
@@ -43,6 +43,7 @@ tainted_words_factor=1
 max_wer=50
 max_segment_length_for_merging=60
 max_bad_proportion=0.75
+max_intersegment_incorrect_words_length=1
 max_segment_length_for_splitting=10
 hard_max_segment_length=15
 min_silence_length_to_split_at=0.3
@@ -87,14 +88,14 @@ done
 data_id=`basename $data`
 mkdir -p $dir
 
-utils/data/get_utt2dur.sh $data
-
 data_uniform_seg=$dir/${data_id}_uniform_seg
 
 # First we split the data into segments of around 30s long, on which 
 # it would be possible to do a decoding.
 if [ $stage -le 1 ]; then
   echo "$0: Splitting data directory $data into uniform segments..."
+
+  utils/data/get_utt2dur.sh $data
 
   # TODO: Write this script
   # utils/data/get_uniform_subsegments.py \
@@ -144,9 +145,9 @@ if [ $stage -le 2 ]; then
   # LM and not for any other task.
   cat $dir/new2old_utts | \
     utils/apply_map.pl -f 2 $data/text > $data_uniform_seg/text
-fi
 
-cp $data/cmvn.scp $data_uniform_seg/
+  cp $data/cmvn.scp $data_uniform_seg/
+fi
 
 if [ $stage -le 3 ]; then
   echo "$0: Building biased-language-model decoding graphs..."
@@ -280,15 +281,16 @@ if [ $stage -le 8 ]; then
       --reco2file-and-channel=$dir/lats/fake_reco2file_and_channel.JOB \
       --hyp=$dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm.JOB --ref=- \
       --output=$dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm_edits.JOB 
-
+  
   for n in `seq $nj`; do
     cat $dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm_edits.$n 
-  done | \
-    steps/resolve_ctm_overlaps.py ${data_uniform_seg}/segments \
-      - $dir/ctm_edits
+  done > $dir/lats/score_$lmwt/ctm_edits
+  
+  steps/resolve_ctm_overlaps.py ${data_uniform_seg}/segments \
+    $dir/lats/score_$lmwt/ctm_edits $dir/ctm_edits
 fi
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 10 ]; then
   echo "$0: using default values of non-scored words..."
 
   # At the level of this script we just hard-code it that non-scored words are
@@ -301,7 +303,7 @@ if [ $stage -le 9 ]; then
   steps/cleanup/internal/get_non_scored_words.py $lang > $dir/non_scored_words.txt
 fi
 
-if [ $stage -le 10 ]; then
+if [ $stage -le 11 ]; then
   echo "$0: modifying ctm-edits file to allow repetitions [for dysfluencies] and "
   echo "   ... to fix reference mismatches involving non-scored words. "
 
@@ -313,15 +315,16 @@ if [ $stage -le 10 ]; then
   echo " a list of commonly-repeated words."
 fi
 
-if [ $stage -le 11 ]; then
+if [ $stage -le 12 ]; then
   echo "$0: applying 'taint' markers to ctm-edits file to mark silences and"
   echo "  ... non-scored words that are next to errors."
   $cmd $dir/log/taint_ctm_edits.log \
-       steps/cleanup/internal/taint_ctm_edits.py $dir/ctm_edits.modified $dir/ctm_edits.tainted
+       steps/cleanup/internal/taint_ctm_edits.py --remove-deletions=false \
+       $dir/ctm_edits.modified $dir/ctm_edits.tainted
   echo "... Stats, including global cor/ins/del/sub stats, are in $dir/log/taint_ctm_edits.log."
 fi
 
-if [ $stage -le 12 ]; then
+if [ $stage -le 13 ]; then
   echo "$0: creating segmentation from ctm-edits file."
 
   segmentation_opts=(
@@ -342,6 +345,7 @@ if [ $stage -le 12 ]; then
   --merging.max-wer=$max_wer
   --merging.max-segment-length=$max_segment_length_for_merging
   --merging.max-bad-proportion=$max_bad_proportion
+  --merging.max-intersegment-incorrect-words-length=$max_intersegment_incorrect_words_length
   --splitting.max-segment-length=$max_segment_length_for_splitting
   --splitting.hard-max-segment-length=$hard_max_segment_length
   --splitting.min-silence-length=$min_silence_length_to_split_at
@@ -365,8 +369,11 @@ if [ $stage -le 12 ]; then
 fi
 
 mkdir -p $out_data
-if [ $stage -le 13 ]; then
+if [ $stage -le 14 ]; then
   utils/data/subsegment_data_dir.sh $data_uniform_seg $dir/segments $dir/text $out_data
+  
+  utils/data/get_reco2num_frames.sh --frame-shift 0.01 --frame-overlap 0.0151 \
+    $data
 
   awk '{print $1" "$2}' $out_data/segments | \
     utils/apply_map.pl -f 2 $data/reco2num_frames > \

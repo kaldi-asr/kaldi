@@ -172,6 +172,15 @@ def get_args():
                         type=float, default=10,
                         help="""Maximum segment length allowed for merged
                         segment""")
+    parser.add_argument("--merging.max-intersegment-incorrect-words-length",
+                        dest='max_intersegment_incorrect_words_length',
+                        type=float, default=0.2,
+                        help="""Maximum length of intersegment region that
+                        can be of incorrect word. This is to
+                        allow cases where there may be a lot of silence in the
+                        segment but the incorrect words are few, while
+                        preventing regions that have a lot of incorrect
+                        words.""")
 
     parser.add_argument("--oov-symbol-file", type=argparse.FileType('r'),
                         help="""Filename of file such as data/lang/oov.txt
@@ -320,7 +329,14 @@ class SegmentStats(object):
         assert self.total_length > 0
         proportion = float(self.silence_length + self.tainted_nonsilence_length
                            + self.incorrect_words_length) / self.total_length
-        if proportion > 1.0:
+        if proportion > 1.00005:
+            raise RuntimeError("Error in segment stats {0}".format(self))
+        return proportion
+
+    def incorrect_proportion(self):
+        assert self.total_length > 0
+        proportion = float(self.incorrect_words_length) / self.total_length
+        if proportion > 1.00005:
             raise RuntimeError("Error in segment stats {0}".format(self))
         return proportion
 
@@ -1064,7 +1080,7 @@ class Segment(object):
         large value to keep all the words.
         """
         try:
-            assert self.end_time() <= other.start_time()
+            assert self.end_time() >= other.start_time()
             assert self.start_time() < other.end_time()
             assert self.split_lines_of_utt is other.split_lines_of_utt
         except AssertionError:
@@ -1117,8 +1133,6 @@ class Segment(object):
             num_deleted_words = 0
             for i in range(first_index_of_overlap, last_index_of_overlap + 1):
                 edit_type = self.split_lines_of_utt[i][7]
-                assert (edit_type == "del"
-                        or float(self.split_lines_of_utt[i][3]) == 0)
                 if edit_type == 'del':
                     num_deleted_words += 1
             if num_deleted_words > max_deleted_words:
@@ -1214,7 +1228,8 @@ class SegmentsMerger(object):
                 self.split_lines_of_utt, segments[-1].end_index,
                 len(self.split_lines_of_utt), compute_segment_stats=True)
 
-    def _get_merged_cluster(self, cluster1, cluster2, rejected_clusters=None):
+    def _get_merged_cluster(self, cluster1, cluster2, rejected_clusters=None,
+                            max_intersegment_incorrect_words_length=1):
         try:
             assert cluster2[0] > cluster1[-1]
             new_cluster = cluster1 + cluster2
@@ -1222,8 +1237,7 @@ class SegmentsMerger(object):
 
             if (rejected_clusters is not None
                     and new_cluster_tup in rejected_clusters):
-                return (self.merged_segments[new_cluster_tup],
-                        new_cluster, True)
+                return (None, new_cluster, True)
 
             if new_cluster_tup in self.merged_segments:
                 return (self.merged_segments[new_cluster_tup],
@@ -1234,21 +1248,31 @@ class SegmentsMerger(object):
                 # Consider merging cluster2 with the region before the 0^th
                 # segment
                 if (self.between_segments[0] is None
-                        or self.between_segments[0].stats.total_length == 0):
-                    # Reject zero length start region
-                    return (self.merged_segments[tuple(cluster2)],
-                            new_cluster, True)
+                        or self.between_segments[0].stats.total_length == 0
+                        or (self.between_segments[0]
+                            .stats.incorrect_words_length
+                            > max_intersegment_incorrect_words_length)):
+                    # Reject zero length or bad start region
+                    return (None, new_cluster, True)
                 merged_segment = self.between_segments[0].copy()
             else:
                 merged_segment = self.merged_segments[tuple(cluster1)].copy()
 
                 if cluster2[0] == len(self.segments):
                     assert len(cluster2) == 1
-                    if (self.between_segments[-1] is None or
-                            self.between_segments[-1].stats.total_length == 0):
-                        # Reject zero length end region
-                        return (merged_segment, new_cluster, True)
+                    if (self.between_segments[-1] is None
+                            or (self.between_segments[-1]
+                                .stats.total_length == 0)
+                            or (self.between_segments[-1]
+                                .stats.incorrect_words_length
+                                > max_intersegment_incorrect_words_length)):
+                        # Reject zero length or bad end region
+                        return (None, new_cluster, True)
                 if self.between_segments[cluster2[0]] is not None:
+                    if (self.between_segments[cluster2[0]]
+                            .stats.incorrect_words_length
+                            > max_intersegment_incorrect_words_length):
+                        return (None, new_cluster, True)
                     merged_segment.merge_adjacent_segment(
                         self.between_segments[cluster2[0]])
 
@@ -1271,8 +1295,9 @@ class SegmentsMerger(object):
             raise
 
     def merge_clusters(self, scoring_function,
-                       max_wer=10, max_bad_proportion=0.5,
-                       max_segment_length=10):
+                       max_wer=10, max_bad_proportion=0.3,
+                       max_segment_length=10,
+                       max_intersegment_incorrect_words_length=1):
         for i, x in enumerate(self.segments):
             _global_logger.debug("before agglomerative clustering, segment %d"
                                  " = %s", i, x)
@@ -1291,8 +1316,11 @@ class SegmentsMerger(object):
                 for i in range(len(clusters) - 1):
                     merged_segment, new_cluster, reject = (
                         self._get_merged_cluster(
-                            clusters[i], clusters[i + 1], rejected_clusters))
+                            clusters[i], clusters[i + 1], rejected_clusters,
+                            max_intersegment_incorrect_words_length=(
+                                max_intersegment_incorrect_words_length)))
                     if reject:
+                        rejected_clusters.add(tuple(new_cluster))
                         continue
 
                     heapq.heappush(heap, (-scoring_function(merged_segment),
@@ -1383,7 +1411,9 @@ def merge_segments(segments, args):
     clusters = merger.merge_clusters(
         scoring_function, max_wer=args.max_wer,
         max_bad_proportion=args.max_bad_proportion,
-        max_segment_length=args.max_segment_length_for_merging)
+        max_segment_length=args.max_segment_length_for_merging,
+        max_intersegment_incorrect_words_length=(
+            args.max_intersegment_incorrect_words_length))
 
     _global_logger.debug("Clusters to be merged: %s", clusters)
 

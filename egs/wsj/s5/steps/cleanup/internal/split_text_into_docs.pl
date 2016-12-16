@@ -4,13 +4,21 @@ use warnings;
 use strict;
 
 my $max_words = 1000;
-if (scalar @ARGV > 0 and $ARGV[0] eq "--max-words") {
-  shift @ARGV;
-  $max_words = shift @ARGV;
+
+my $usage = "Usage: steps/cleanup/internal/split_text_into_docs.pl [--max-words <int>] text doc2text docs\n";
+
+while (@ARGV > 3) {
+    if ($ARGV[0] eq "--max-words") {
+        shift @ARGV;
+        $max_words = shift @ARGV;
+    } else {
+        print STDERR "$usage";
+        exit (1);
+    }
 }
 
 if (scalar @ARGV != 3) {
-  print STDERR "Usage: steps/cleanup/internal/split_text_into_docs.pl [--max-words <int>] text doc2text docs\n";
+  print STDERR "$usage";
   exit (1);
 }
 
@@ -33,13 +41,14 @@ while (<TEXT>) {
   }
 
   my $num_docs = int($num_words / $max_words) + 1;
-  my $words_per_doc = int($num_words / $num_docs) + 1;
+  my $num_words_shift = int($num_words / $num_docs) + 1;
+  my $words_per_doc = $num_words_shift;
 
   #print STDERR ("$utt num-words=$num_words num-docs=$num_docs words-per-doc=$words_per_doc\n");
   
   for (my $i = 0; $i < $num_docs; $i++) {
-    my $st = $i*$words_per_doc;
-    my $end = min(($i+1) * $words_per_doc, $num_words) - 1;
+    my $st = $i*$num_words_shift;
+    my $end = min($st + $words_per_doc, $num_words) - 1;
     print DOCS ("$utt-$i " . join(" ", @F[$st..$end]) . "\n");
     print DOC2TEXT "$utt-$i $utt\n";
   }
