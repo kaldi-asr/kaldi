@@ -58,10 +58,15 @@ def read_segments(segments_file):
     key is the utterance-id
     value is a tuple (recording_id, start_time, end_time)a
     """
+    num_lines = 0
     for line in segments_file.readlines():
+        num_lines += 1
         parts = line.strip().split()
         assert len(parts) in [4, 5]
         yield parts[0], (parts[1], float(parts[2]), float(parts[3]))
+
+    _global_logger.info("Read %d lines from segments file %s",
+                        num_lines, segments_file.name)
     segments_file.close()
 
 
@@ -96,7 +101,10 @@ def read_ctm(ctm_file, segments):
 
     ctm = []
     prev_utt = ""
+    num_lines = 0
+    num_utts = 0
     for line in ctm_file:
+        num_lines += 1
         try:
             parts = line.split()
             if prev_utt == parts[0]:
@@ -111,6 +119,7 @@ def read_ctm(ctm_file, segments):
                     reco = segments[prev_utt][0]
                     ctms[reco].append(ctm)
                     assert ctm[0][0] == prev_utt
+                    num_utts += 1
 
                 # Start a new CTM for the new utterance-id parts[0].
                 ctm = [[parts[0], parts[1], float(parts[2]),
@@ -125,6 +134,10 @@ def read_ctm(ctm_file, segments):
     reco = segments[prev_utt][0]
     ctms[reco].append(ctm)
 
+    _global_logger.info("Read %d lines from CTM %s; got %d recordings, "
+                        "%d utterances.",
+                        num_lines, ctm_file.name, len(ctms), num_utts)
+    ctm_file.close()
     return ctms
 
 
@@ -213,6 +226,13 @@ def resolve_overlaps(ctms, segments):
                 # It is possible for such a word to not exist, e.g the last
                 # word in the CTM is longer than overlap length and starts
                 # before the beginning of the overlap.
+                if (ctm_for_cur_utt[-1][3] < overlap
+                        or ctm_for_cur_utt[-1][2] > window_length):
+                    _global_logger.error(
+                        "Could not find break point at end of the "
+                        "utterance for CTM:\n")
+                    write_ctm(ctm_for_cur_utt, sys.stderr)
+                    raise RuntimeError("Invalid CTM")
                 index = len(ctm_for_cur_utt)
 
             # Ignore the hypotheses beyond this midpoint. They will be
@@ -271,7 +291,8 @@ def _run(args):
     # Read CTMs into a dictionary indexed by the recording
     ctms = read_ctm(args.ctm_in, segments)
 
-    for reco, ctms_for_reco in ctms.iteritems():
+    for reco in sorted(ctms.keys()):
+        ctms_for_reco = ctms[reco]
         try:
             # Process CTMs in the recordings
             ctms_for_reco = resolve_overlaps(ctms_for_reco, segments)
@@ -281,6 +302,7 @@ def _run(args):
                                  reco)
             raise
     args.ctm_out.close()
+    _global_logger.info("Wrote CTM for %d recordings.", len(ctms))
 
 
 def main():
