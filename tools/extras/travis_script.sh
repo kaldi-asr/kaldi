@@ -56,7 +56,7 @@ cd ..
 runvx cd src
 runvx "$CCC" CXXFLAGS="$CF" LDFLAGS="$LDF" ./configure --shared --use-cuda=no  --mathlib=OPENBLAS --openblas-root="$XROOT/usr"
 runvx make all -j$MAXPAR
-runvx make test -k
+runvx make test -k -j$MAXPAR
 
 #runvx make mklibdir base matrix -j$MAXPAR
 #runvx make matrix/test
