@@ -79,35 +79,45 @@ P=$(tree-info $tree | grep "central-position" | cut -d' ' -f2) || { echo "Error 
   echo "$0: WARNING: chain models need '--self-loop-scale 1.0'";
 
 mkdir -p $lang/tmp
+trap "rm -f $lang/tmp/LG.fst.$$" EXIT HUP INT PIPE TERM
 # Note: [[ ]] is like [ ] but enables certain extra constructs, e.g. || in
 # place of -o
 if [[ ! -s $lang/tmp/LG.fst || $lang/tmp/LG.fst -ot $lang/G.fst || \
       $lang/tmp/LG.fst -ot $lang/L_disambig.fst ]]; then
   fsttablecompose $lang/L_disambig.fst $lang/G.fst | fstdeterminizestar --use-log=true | \
     fstminimizeencoded | fstpushspecial | \
-    fstarcsort --sort_type=ilabel > $lang/tmp/LG.fst || exit 1;
+    fstarcsort --sort_type=ilabel > $lang/tmp/LG.fst.$$ || exit 1;
+  mv $lang/tmp/LG.fst.$$ $lang/tmp/LG.fst
   fstisstochastic $lang/tmp/LG.fst || echo "[info]: LG not stochastic."
 fi
 
-
 clg=$lang/tmp/CLG_${N}_${P}.fst
-
-if [[ ! -s $clg || $clg -ot $lang/tmp/LG.fst ]]; then
+clg_tmp=$clg.$$
+ilabels=$lang/tmp/ilabels_${N}_${P}
+ilabels_tmp=$ilabels.$$
+trap "rm -f $clg_tmp $ilabels_tmp" EXIT HUP INT PIPE TERM
+if [[ ! -s $clg || $clg -ot $lang/tmp/LG.fst \
+    || ! -s $ilabels || $ilabels -ot $lang/tmp/LG.fst ]]; then
   fstcomposecontext --context-size=$N --central-position=$P \
    --read-disambig-syms=$lang/phones/disambig.int \
    --write-disambig-syms=$lang/tmp/disambig_ilabels_${N}_${P}.int \
-    $lang/tmp/ilabels_${N}_${P} < $lang/tmp/LG.fst |\
-    fstarcsort --sort_type=ilabel > $clg
-  fstisstochastic $clg  || echo "[info]: CLG not stochastic."
+    $ilabels_tmp < $lang/tmp/LG.fst |\
+    fstarcsort --sort_type=ilabel > $clg_tmp
+  mv $clg_tmp $clg
+  mv $ilabels_tmp $ilabels
+  fstisstochastic $clg || echo "[info]: CLG not stochastic."
 fi
 
+trap "rm -f $dir/Ha.fst.$$" EXIT HUP INT PIPE TERM
 if [[ ! -s $dir/Ha.fst || $dir/Ha.fst -ot $model  \
     || $dir/Ha.fst -ot $lang/tmp/ilabels_${N}_${P} ]]; then
   make-h-transducer --disambig-syms-out=$dir/disambig_tid.int \
     --transition-scale=$tscale $lang/tmp/ilabels_${N}_${P} $tree $model \
-     > $dir/Ha.fst  || exit 1;
+     > $dir/Ha.fst.$$  || exit 1;
+  mv $dir/Ha.fst.$$ $dir/Ha.fst
 fi
 
+trap "rm -f $dir/HCLGa.fst.$$" EXIT HUP INT PIPE TERM
 if [[ ! -s $dir/HCLGa.fst || $dir/HCLGa.fst -ot $dir/Ha.fst || \
       $dir/HCLGa.fst -ot $clg ]]; then
   if $remove_oov; then
@@ -117,14 +127,16 @@ if [[ ! -s $dir/HCLGa.fst || $dir/HCLGa.fst -ot $dir/Ha.fst || \
   fi
   fsttablecompose $dir/Ha.fst "$clg" | fstdeterminizestar --use-log=true \
     | fstrmsymbols $dir/disambig_tid.int | fstrmepslocal | \
-     fstminimizeencoded > $dir/HCLGa.fst || exit 1;
+     fstminimizeencoded > $dir/HCLGa.fst.$$ || exit 1;
+  mv $dir/HCLGa.fst.$$ $dir/HCLGa.fst
   fstisstochastic $dir/HCLGa.fst || echo "HCLGa is not stochastic"
 fi
 
+trap "rm -f $dir/HCLG.fst.$$" EXIT HUP INT PIPE TERM
 if [[ ! -s $dir/HCLG.fst || $dir/HCLG.fst -ot $dir/HCLGa.fst ]]; then
   add-self-loops --self-loop-scale=$loopscale --reorder=true \
-    $model < $dir/HCLGa.fst > $dir/HCLG.fst || exit 1;
-
+    $model < $dir/HCLGa.fst > $dir/HCLG.fst.$$ || exit 1;
+  mv $dir/HCLG.fst.$$ $dir/HCLG.fst
   if [ $tscale == 1.0 -a $loopscale == 1.0 ]; then
     # No point doing this test if transition-scale not 1, as it is bound to fail.
     fstisstochastic $dir/HCLG.fst || echo "[info]: final HCLG is not stochastic."
