@@ -84,6 +84,12 @@ def train_new_models(dir, iter, srand, num_jobs,
             cache_write_opt = "--write-cache={dir}/cache.{iter}".format(
                 dir=dir, iter=iter+1)
 
+        minibatch_opts = "--minibatch-size={0}".format(minibatch_size)
+
+        if chunk_level_training:
+            minibatch_opts = "{0} --measure-output-frames=false".format(
+                minibatch_size)
+
         process_handle = common_lib.run_job(
             """{command} {train_queue_opt} {dir}/log/train.{iter}.{job}.log \
                     nnet3-train {parallel_train_opts} {cache_read_opt} \
@@ -95,8 +101,7 @@ def train_new_models(dir, iter, srand, num_jobs,
             """ark:{egs_dir}/egs.{archive_index}.ark ark:- |"""
             """nnet3-shuffle-egs --buffer-size={shuffle_buffer_size} """
             """--srand={srand} ark:- ark:- | """
-            """nnet3-merge-egs --minibatch-size={minibatch_size} """
-            """--measure-output-frames=false """
+            """nnet3-merge-egs {minibatch_opts} """
             """--discard-partial-minibatches=true ark:- ark:- |" \
                     {dir}/{next_iter}.{job}.raw""".format(
                         command=run_opts.command,
@@ -110,12 +115,12 @@ def train_new_models(dir, iter, srand, num_jobs,
                         frame_opts=(""
                                     if chunk_level_training
                                     else "--frame={0}".format(frame)),
+                        minibatch_opts=minibatch_opts,
                         momentum=momentum, max_param_change=max_param_change,
                         deriv_time_opts=" ".join(deriv_time_opts),
                         raw_model=raw_model_string, context_opts=context_opts,
                         egs_dir=egs_dir, archive_index=archive_index,
-                        shuffle_buffer_size=shuffle_buffer_size,
-                        minibatch_size=minibatch_size), wait=False)
+                        shuffle_buffer_size=shuffle_buffer_size), wait=False)
 
         processes.append(process_handle)
 
