@@ -169,16 +169,16 @@ void LmNnetSamplingTrainer::ProcessOutputs(const NnetExample &eg,
       BaseFloat tot_weight, tot_objf;
       bool supply_deriv = true;
 
-//      ComputeObjectiveFunctionSample(unigram_, io.features, obj_type, io.name,
-//                               supply_deriv, computer,
-//                               &tot_weight, &tot_objf,
-//                               nnet_->O(),
-//                               &new_output_, delta_nnet_);
-      ComputeObjectiveFunction(io.features, obj_type, io.name,
+      ComputeObjectiveFunctionSample(unigram_, io.features, obj_type, io.name,
                                supply_deriv, computer,
                                &tot_weight, &tot_objf,
                                nnet_->O(),
                                &new_output_, delta_nnet_);
+//      ComputeObjectiveFunction(io.features, obj_type, io.name,
+//                               supply_deriv, computer,
+//                               &tot_weight, &tot_objf,
+//                               nnet_->O(),
+//                               &new_output_, delta_nnet_);
 
       objf_info_[io.name].UpdateStats(io.name, config_.print_interval,
                                       num_minibatches_processed_++,
@@ -388,6 +388,7 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
   *tot_weight = post.Sum();
   *tot_objf = 0;
   for (int i = 0; i < k; i++) {
+    KALDI_ASSERT(out[i].size() == k + 1);
     KALDI_LOG << "out-" << i << " is " << out[i][k];
     *tot_objf += out[i][k]; // last one (k) is the correct lable
     for (int j = 0; j < k; j++) {

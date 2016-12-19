@@ -22,24 +22,26 @@ void AffineSampleLogSoftmaxComponent::Resize(int32 input_dim, int32 output_dim) 
 
 void AffineSampleLogSoftmaxComponent::Add(BaseFloat alpha, const LmComponent &other_in) {
   const AffineSampleLogSoftmaxComponent *other =
-      dynamic_cast<const AffineSampleLogSoftmaxComponent*>(&other_in);
+             dynamic_cast<const AffineSampleLogSoftmaxComponent*>(&other_in);
   KALDI_ASSERT(other != NULL);
   linear_params_.AddMat(alpha, other->linear_params_);
   bias_params_.AddVec(alpha, other->bias_params_);
 }
 
-AffineSampleLogSoftmaxComponent::AffineSampleLogSoftmaxComponent(const AffineSampleLogSoftmaxComponent &component):
+AffineSampleLogSoftmaxComponent::AffineSampleLogSoftmaxComponent(
+                            const AffineSampleLogSoftmaxComponent &component):
     LmOutputComponent(component),
     linear_params_(component.linear_params_),
     bias_params_(component.bias_params_) { }
 
-AffineSampleLogSoftmaxComponent::AffineSampleLogSoftmaxComponent(const MatrixBase<BaseFloat> &linear_params,
-                                 const VectorBase<BaseFloat> &bias_params,
-                                 BaseFloat learning_rate):
-    linear_params_(linear_params),
-    bias_params_(bias_params) {
+AffineSampleLogSoftmaxComponent::AffineSampleLogSoftmaxComponent(
+                                   const MatrixBase<BaseFloat> &linear_params,
+                                   const VectorBase<BaseFloat> &bias_params,
+                                   BaseFloat learning_rate):
+                                            linear_params_(linear_params),
+                                            bias_params_(bias_params) {
   SetUnderlyingLearningRate(learning_rate);
-  KALDI_ASSERT(linear_params.NumRows() == bias_params.Dim()&&
+  KALDI_ASSERT(linear_params.NumRows() == bias_params.Dim() &&
                bias_params.Dim() != 0);
 }
 
@@ -96,8 +98,11 @@ void AffineSampleLogSoftmaxComponent::Init(int32 input_dim, int32 output_dim,
   KALDI_ASSERT(output_dim > 0 && input_dim > 0 && param_stddev >= 0.0);
   linear_params_.SetRandn(); // sets to random normally distributed noise.
   linear_params_.Scale(param_stddev);
-  bias_params_.SetRandn();
-  bias_params_.Scale(bias_stddev);
+
+  bias_params_.Set(bias_stddev);
+
+//  bias_params_.SetRandn();
+//  bias_params_.Scale(bias_stddev);
 }
 
 void AffineSampleLogSoftmaxComponent::Init(std::string matrix_filename) {
@@ -127,12 +132,13 @@ void AffineSampleLogSoftmaxComponent::InitFromConfig(ConfigLine *cfl) {
   } else {
     ok = ok && cfl->GetValue("input-dim", &input_dim);
     ok = ok && cfl->GetValue("output-dim", &output_dim);
-    BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
-        bias_stddev = 1.0;
+//    BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
+//        bias_stddev = 1.0;
+    BaseFloat param_stddev = 0.0, /// log(1.0 / output_dim),
+        bias_stddev = log(1.0 / output_dim);
     cfl->GetValue("param-stddev", &param_stddev);
     cfl->GetValue("bias-stddev", &bias_stddev);
-    Init(input_dim, output_dim,
-         param_stddev, bias_stddev);
+    Init(input_dim, output_dim, param_stddev, bias_stddev);
   }
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
@@ -169,6 +175,9 @@ void AffineSampleLogSoftmaxComponent::Backprop(
 
   if (input_deriv != NULL) {
     for (int i = 0; i < k; i++) {
+      KALDI_ASSERT(indexes[i].size() == k + 1);
+
+      // it seems even if one of the samples is the correct label it shouldn't be a problem...?
       for (int j = 0; j < k + 1; j++) {
         int index = indexes[i][j];
         // index'th row of linear_params
@@ -190,12 +199,13 @@ void AffineSampleLogSoftmaxComponent::Backprop(
     for (int i = 0; i < k; i++) {
       for (int j = 0; j < k + 1; j++) {
         int index = indexes[i][j];
+
+        to_update->bias_params_(index) += output_deriv[i][index] * learning_rate_;
         // index'th row of linear_params
         for (int m = 0; m < linear_params_.NumCols(); m++) {
-          to_update->bias_params_(index) += output_deriv[i][j] * learning_rate_;
 
           to_update->linear_params_(index, m) +=
-                 learning_rate_ * output_deriv[i][j] * in_value(i, index);
+                 learning_rate_ * output_deriv[i][j] * in_value(i, m);
 
 //          (*input_deriv)(i, m) += output_deriv[i][j] * linear_params_(index, m);
         }
@@ -204,7 +214,8 @@ void AffineSampleLogSoftmaxComponent::Backprop(
   }
 }
 
-void AffineSampleLogSoftmaxComponent::UpdateSimple(const MatrixBase<BaseFloat> &in_value,
+void AffineSampleLogSoftmaxComponent::UpdateSimple(
+                                   const MatrixBase<BaseFloat> &in_value,
                                    const MatrixBase<BaseFloat> &out_deriv) {
   KALDI_ASSERT(false);
   bias_params_.AddRowSumMat(learning_rate_, out_deriv, 1.0);

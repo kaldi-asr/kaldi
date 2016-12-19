@@ -55,9 +55,7 @@ class LmLinearComponent: public LmInputComponent {
         kBackpropNeedsInput|kBackpropAdds;
   }
 
-
-  virtual void Backprop(
-                        const SparseMatrix<BaseFloat> &in_value,
+  virtual void Backprop(const SparseMatrix<BaseFloat> &in_value,
                         const MatrixBase<BaseFloat> &, // out_value
                         const MatrixBase<BaseFloat> &out_deriv,
                         LmComponent *to_update,
@@ -105,7 +103,6 @@ class LmLinearComponent: public LmInputComponent {
 
  protected:
   virtual void Update(
-      const std::string &debug_info,
       const MatrixBase<BaseFloat> &in_value,
       const MatrixBase<BaseFloat> &out_deriv) {
     UpdateSimple(in_value, out_deriv);
@@ -116,6 +113,7 @@ class LmLinearComponent: public LmInputComponent {
       const MatrixBase<BaseFloat> &out_deriv) {
     UpdateSimple(in_value, out_deriv);
   }
+
   virtual void UpdateSimple(
       const MatrixBase<BaseFloat> &in_value,
       const MatrixBase<BaseFloat> &out_deriv);
@@ -130,7 +128,6 @@ class LmLinearComponent: public LmInputComponent {
 
 class LinearNormalizedLogSoftmaxComponent: public LmOutputComponent {
  public:
-
   virtual int32 InputDim() const { return linear_params_.NumCols(); }
   virtual int32 OutputDim() const { return linear_params_.NumRows(); }
 
@@ -210,7 +207,8 @@ class LinearNormalizedLogSoftmaxComponent: public LmOutputComponent {
 
   void Normalize();
 
-  const LinearNormalizedLogSoftmaxComponent &operator = (const LinearNormalizedLogSoftmaxComponent &other); // Disallow.
+  const LinearNormalizedLogSoftmaxComponent &operator =
+     (const LinearNormalizedLogSoftmaxComponent &other); // Disallow.
   CuMatrix<BaseFloat> linear_params_;
 //  CuVector<BaseFloat> normalizer_;
   CuMatrix<BaseFloat> actual_params_;
@@ -219,7 +217,6 @@ class LinearNormalizedLogSoftmaxComponent: public LmOutputComponent {
 
 class AffineSampleLogSoftmaxComponent: public LmOutputComponent {
  public:
-
   virtual int32 InputDim() const { return linear_params_.NumCols(); }
   virtual int32 OutputDim() const { return linear_params_.NumRows(); }
 
@@ -234,22 +231,20 @@ class AffineSampleLogSoftmaxComponent: public LmOutputComponent {
   }
 
   virtual void Propagate(const MatrixBase<BaseFloat> &in,
-                 const vector<vector<int> > &indexes,
-                 vector<vector<BaseFloat> > *out) const;
+                         const vector<vector<int> > &indexes,
+                         vector<vector<BaseFloat> > *out) const;
 
-  virtual void Backprop(
-             const vector<vector<int> > &indexes,
-             const MatrixBase<BaseFloat> &in_value,
-             const MatrixBase<BaseFloat> &, // out_value
-             const vector<vector<BaseFloat> > &out_deriv,
-             LmOutputComponent *to_update_in,
-             MatrixBase<BaseFloat> *in_deriv) const;
+  virtual void Backprop(const vector<vector<int> > &indexes,
+                        const MatrixBase<BaseFloat> &in_value,
+                        const MatrixBase<BaseFloat> &, // out_value
+                        const vector<vector<BaseFloat> > &out_deriv,
+                        LmOutputComponent *to_update_in,
+                        MatrixBase<BaseFloat> *in_deriv) const;
 
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
 
   virtual LmComponent* Copy() const;
-
 
   // Some functions from base-class UpdatableComponent.
   virtual void Scale(BaseFloat scale);
@@ -290,7 +285,6 @@ class AffineSampleLogSoftmaxComponent: public LmOutputComponent {
   // This function Update() is for extensibility; child classes may override
   // this, e.g. for natural gradient update.
   virtual void Update(
-      const std::string &debug_info,
       const MatrixBase<BaseFloat> &in_value,
       const MatrixBase<BaseFloat> &out_deriv) {
     UpdateSimple(in_value, out_deriv);
