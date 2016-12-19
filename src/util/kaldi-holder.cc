@@ -72,8 +72,8 @@ bool ExtractObjectRange(const Matrix<Real> &input, const std::string &range,
 // template instantiation
 template bool ExtractObjectRange(const Matrix<double> &, const std::string &,
                                  Matrix<double> *);
-template bool ExtractObjectRange(const Matrix<float> &, const std::string &,
-                                 Matrix<float> *);
+template bool ExtractObjectRange(const Matrix<BaseFloat> &, const std::string &,
+                                 Matrix<BaseFloat> *);
 
 bool ExtractRangeSpecifier(const std::string &rxfilename_with_range,
                            std::string *data_rxfilename,

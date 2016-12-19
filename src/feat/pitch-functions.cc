@@ -136,7 +136,7 @@ void ComputeNccf(const VectorBase<BaseFloat> &inner_prod,
                inner_prod.Dim() == nccf_vec->Dim());
   for (int32 lag = 0; lag < inner_prod.Dim(); lag++) {
     BaseFloat numerator = inner_prod(lag),
-        denominator = pow(norm_prod(lag) + nccf_ballast, 0.5),
+        denominator = pow((BaseFloat)(norm_prod(lag) + nccf_ballast), (BaseFloat)0.5),
         nccf;
     if (denominator != 0.0) {
       nccf = numerator / denominator;

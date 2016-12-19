@@ -20,7 +20,9 @@
 #ifndef KALDI_THREAD_KALDI_TASK_SEQUENCE_H_
 #define KALDI_THREAD_KALDI_TASK_SEQUENCE_H_ 1
 
+#ifndef WIN32
 #include <pthread.h>
+#endif
 #include "thread/kaldi-thread.h"
 #include "itf/options-itf.h"
 #include "thread/kaldi-semaphore.h"
@@ -98,6 +100,7 @@ class TaskSequencer {
     // put the new RunTaskArgsList object at head of the singly
     // linked list thread_list_.
     thread_list_ = new RunTaskArgsList(this, c, thread_list_);
+#ifndef WIN32
     int32 ret;
     if ((ret=pthread_create(&(thread_list_->thread),
                             NULL, // default attributes
@@ -106,16 +109,19 @@ class TaskSequencer {
       const char *c = strerror(ret);
       KALDI_ERR << "Error creating thread, errno was: " << (c ? c : "[NULL]");
     }
+#endif
   }
 
   void Wait() { // You call this at the end if it's more convenient
     // than waiting for the destructor.  It waits for all tasks to finish.
     if (thread_list_ != NULL) {
+#ifndef WIN32
       int ret = pthread_join(thread_list_->thread, NULL);
       if (ret != 0) {
         const char *c = strerror(ret);
         KALDI_ERR << "Error joining thread, errno was: " << (c ? c : "[NULL]");
       }
+#endif
       KALDI_ASSERT(thread_list_->tail == NULL); // thread would not
       // have exited without setting tail to NULL.
       delete thread_list_;
@@ -131,7 +137,9 @@ class TaskSequencer {
   struct RunTaskArgsList {
     TaskSequencer *me; // Think of this as a "this" pointer.
     C *c; // Clist element of the task we're expected
+#ifndef WIN32
     pthread_t thread;
+#endif
     RunTaskArgsList *tail;
     RunTaskArgsList(TaskSequencer *me, C *c, RunTaskArgsList *tail):
         me(me), c(c), tail(tail) {}
@@ -152,11 +160,13 @@ class TaskSequencer {
     //     we first wait till the previous thread, whose details will be in "tail",
     //     is finished.
     if (args->tail != NULL) {
+#ifndef WIN32
       int ret = pthread_join(args->tail->thread, NULL);
       if (ret != 0) {
         const char *c = strerror(ret);
         KALDI_ERR << "Error joining thread, errno was: " << (c ? c : "[NULL]");
       }
+#endif
     }
 
     delete args->c; // delete the object "c".  This may cause some output,

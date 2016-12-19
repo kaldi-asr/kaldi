@@ -21,7 +21,11 @@
 #ifndef KALDI_THREAD_KALDI_MUTEX_H_
 #define KALDI_THREAD_KALDI_MUTEX_H_ 1
 
+#ifdef WIN32
+#include <Windows.h>
+#else
 #include <pthread.h>
+#endif
 
 namespace kaldi {
 
@@ -50,7 +54,11 @@ class Mutex {
   void Unlock();
 
  private:
+#ifdef WIN32
+  HANDLE mutex_;
+#else
   pthread_mutex_t mutex_;
+#endif
   KALDI_DISALLOW_COPY_AND_ASSIGN(Mutex);  
 };
 

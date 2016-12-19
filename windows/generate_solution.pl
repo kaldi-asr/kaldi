@@ -92,7 +92,8 @@ my %optionalProps = (
 my $globalGUID = "{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}";  # Windows (Visual C++)
 
 my $projguidListFileName = "$Bin/kaldiwin_projguids.txt";
-my $guidgen = "$Bin/NewGuidCmd.exe";  # it is C# application
+#my $guidgen = "$Bin/NewGuidCmd.exe";  # it is C# application
+my $guidgen = "uuidgen";
 
 my $osPathConversion = \&winPath;
 if ($^O !~ /MSWin32/i) {
@@ -236,7 +237,8 @@ sub parseMakefile {
   foreach my $line (@lines) {
     $line =~ s/(\n|\r\n)$//;
 
-    if (my ($type, $items) = $line =~ /^\s*(TESTFILES|LIBNAME|BINFILES)\s+=(.+?)$/) {
+    if (my ($type, $items) = $line =~ /^\s*(LIBNAME)\s+=(.+?)$/) {
+#    if (my ($type, $items) = $line =~ /^\s*(TESTFILES|LIBNAME|BINFILES)\s+=(.+?)$/) {
       #my @items = split /\s+/, $items;
       my @items = $items =~ /(\S+)/g;
       foreach my $item (@items) {
@@ -975,6 +977,12 @@ while(<M>) {
   }
 }
 ##foreach my $f (@makefiles) { print STDERR "Adding $f\n"; }
+
+@makefiles = ();
+my @folders = ("decoder", "lat", "hmm", "nnet2", "tree", "feat", "fstext", "cudamatrix", "matrix", "thread", "util", "base");
+foreach my $f (@folders) {
+    push @makefiles, "$srcDir/$f/Makefile";
+}
 
 # was @$makefiles in the line below.
 my $i = 0;

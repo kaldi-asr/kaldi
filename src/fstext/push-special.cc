@@ -94,7 +94,7 @@ class PushSpecialClass {
                    float delta): fst_(fst) {
     num_states_ = fst_->NumStates();
     initial_state_ = fst_->Start();
-    occ_.resize(num_states_, 1.0 / sqrt(num_states_)); // unit length
+    occ_.resize(num_states_, 1.0 / sqrt((double)num_states_)); // unit length
     
     pred_.resize(num_states_);
     for (StateId s = 0; s < num_states_; s++) {

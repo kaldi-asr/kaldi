@@ -540,7 +540,7 @@ template<class Holder>  class SequentialTableReaderArchiveImpl:
     }
     std::istream &is = input_.Stream();
     is.clear();  // Clear any fail bits that may have been set... just in case
-    // this happened in the Read function.
+    // this happened in the Repad function.
     is >> key_;  // This eats up any leading whitespace and gets the string.
     if (is.eof()) {
       state_ = kEof;
@@ -696,6 +696,7 @@ template<class Holder>  class SequentialTableReaderArchiveImpl:
   } state_;
 };
 
+#ifndef WIN32
 // this is for when someone adds the 'th' modifier; it wraps around the basic
 // implementation and allows it to do the reading in a background thread.
 template<class Holder>
@@ -868,6 +869,8 @@ class SequentialTableReaderBackgroundImpl:
   SequentialTableReaderImplBase<Holder> *base_reader_;
 
 };
+#endif
+
 
 template<class Holder>
 SequentialTableReader<Holder>::SequentialTableReader(const std::string
@@ -901,6 +904,7 @@ bool SequentialTableReader<Holder>::Open(const std::string &rspecifier) {
     impl_ = NULL;
     return false;  // sub-object will have printed warnings.
   }
+#ifndef WIN32
   if (opts.background) {
     impl_ = new SequentialTableReaderBackgroundImpl<Holder>(
         impl_);
@@ -910,6 +914,7 @@ bool SequentialTableReader<Holder>::Open(const std::string &rspecifier) {
       return false;
     }
   }
+#endif
   return true;
 }
 
