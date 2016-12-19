@@ -216,7 +216,7 @@ if [ $stage -le $num_iters ]; then
     echo for iter $n, training on archive $this_archive, learning rate = $learning_rate
     [ $n -ge $stage ] && (
 
-        $cuda_cmd $outdir/log/train.rnnlm.$n.log rnnlm-train \
+        $cuda_cmd $outdir/log/train.rnnlm.$n.log rnnlm-train --binary=false \
         --max-param-change=$max_param_change "rnnlm-copy --learning-rate=$learning_rate $outdir/$[$n-1].mdl -|" \
         "ark:nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$n ark:$outdir/egs/train.$this_archive.egs ark:- | nnet3-merge-egs --minibatch-size=$minibatch_size ark:- ark:- |" $outdir/$n.mdl
 

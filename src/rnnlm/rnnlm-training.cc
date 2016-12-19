@@ -333,8 +333,8 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunction(
     // the derivative after the affine layer (before the nonlin)
 
     // the derivative of the 'nnet3' part
-    CuMatrix<BaseFloat> input_deriv(new_output->NumRows(),
-                                    new_output->NumCols(),
+    CuMatrix<BaseFloat> input_deriv(output_0_gpu.NumRows(),
+                                    output_0_gpu.NumCols(),
                                     kSetZero);
 
     CuMatrix<BaseFloat> place_holder;

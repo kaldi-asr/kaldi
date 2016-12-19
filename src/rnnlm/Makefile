@@ -6,8 +6,11 @@ include ../kaldi.mk
 LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
 
+TESTFILES = rnnlm-component-test
+
 OBJFILES = rnnlm-component-itf.o rnnlm-utils.o  rnnlm-nnet.o  rnnlm-component.o nnet-parse.o \
            rnnlm-training.o \
+           rnnlm-test-utils.o
 #           rnnlm-diagnostics.o
 
 LIBNAME = kaldi-rnnlm

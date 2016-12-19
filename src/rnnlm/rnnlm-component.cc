@@ -462,16 +462,17 @@ void LinearNormalizedLogSoftmaxComponent::Backprop(
 
   if (to_update != NULL) {
     CuMatrix<BaseFloat> aT(actual_params_, kTrans);
-    CuMatrix<BaseFloat> idT(*input_deriv, kTrans);
+    CuMatrix<BaseFloat> dapT(actual_params_, kTrans);
 
     CuMatrix<BaseFloat> daT(actual_params_, kTrans);
     daT.SetZero();
+    dapT.SetZero();
     for (int i = 0; i < k; i++) {
       int index = indexes[i][0];
-      daT.ColRange(index, 1).AddVecToCols(1.0, in_value.Row(index), 1.0);
+      daT.ColRange(index, 1).AddVecToCols(1.0, in_value.Row(i), 1.0);
     }
-    idT.DiffSoftmaxPerRow(aT, daT);
-    input_deriv->AddMat(learning_rate_, idT, kTrans);
+    dapT.DiffSoftmaxPerRow(aT, daT);
+    to_update->linear_params_.AddMat(learning_rate_, dapT, kTrans);
   }
 
 //  if (to_update != NULL) {
