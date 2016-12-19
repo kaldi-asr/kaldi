@@ -36,6 +36,8 @@ struct NnetTrainerOptions {
   int32 print_interval;
   bool debug_computation;
   BaseFloat momentum;
+  BaseFloat scale_learning_rate;
+  BaseFloat scale_update_frequency;
   std::string read_cache;
   std::string write_cache;
   bool binary_write_cache;
@@ -48,6 +50,8 @@ struct NnetTrainerOptions {
       print_interval(100),
       debug_computation(false),
       momentum(0.0),
+      scale_learning_rate(0.0),
+      scale_update_frequency(0.33),
       binary_write_cache(true),
       max_param_change(2.0) { }
   void Register(OptionsItf *opts) {
@@ -69,6 +73,16 @@ struct NnetTrainerOptions {
                    "so that the 'effective' learning rate is the same as "
                    "before (because momentum would normally increase the "
                    "effective learning rate by 1/(1-momentum))");
+    opts->Register("scale-learning-rate", &scale_learning_rate, "Learning rate "
+                   "for a scaling factor on each parameter matrix. Note: this "
+                   "gets multiplied by the individual learning rates. "
+                   "E.g. --scale-learning-rate=0.1");
+    opts->Register("scale-update-frequency", &scale_update_frequency, "Frequency "
+                   "of scaling factor updates using '--scale-learning-rate'. "
+                   "Note: --scale-learning-rate will be divided by this value "
+                   "before being applied, to compensate for not being used on "
+                   "all minibatches. For efficiency we do this only for some "
+                   "minibatches.");
     opts->Register("read-cache", &read_cache, "the location where we can read "
                    "the cached computation from");
     opts->Register("write-cache", &write_cache, "the location where we want to "
@@ -155,11 +169,20 @@ class NnetTrainer {
   // per-component max-change and global max-change were enforced.
   void PrintMaxChangeStats() const;
 
+  // Prints out the scaling factor learning's stats: the exp's of the sum of
+  // scaling value of each updatable component
+  void PrintScalingFactorStats() const;
+
   ~NnetTrainer();
  private:
   void ProcessOutputs(const NnetExample &eg,
                       NnetComputer *computer);
 
+  // implicitly reparameterizes the parameter matrix for each updatable
+  // component as a (scalar times a matrix), and learns that scalar before
+  // calling UpdateParamsWithMaxChange()
+  void DoScalingFactorLearning();
+  
   // Applies per-component max-change and global max-change to all updatable
   // components in *delta_nnet_, and use *delta_nnet_ to update parameters
   // in *nnet_.
@@ -182,6 +205,9 @@ class NnetTrainer {
   // stats for max-change.
   std::vector<int32> num_max_change_per_component_applied_;
   int32 num_max_change_global_applied_;
+
+  // stats for scaling factor learning.
+  std::vector<BaseFloat> scaling_value_sum_;
 
   unordered_map<std::string, ObjectiveFunctionInfo, StringHasher> objf_info_;
 };
