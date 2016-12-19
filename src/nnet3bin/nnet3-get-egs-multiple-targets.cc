@@ -236,6 +236,7 @@ int main(int argc, char *argv[]) {
         
 
     bool compress_input = true;
+    bool add_fake_targets= true;
     int32 input_compress_format = 0; 
     int32 left_context = 0, right_context = 0,
           num_frames = 1, length_tolerance = 2;
@@ -247,6 +248,9 @@ int main(int argc, char *argv[]) {
     std::string output_names_str;
 
     ParseOptions po(usage);
+    po.Register("add-fake-targets", &add_fake_targets, 
+                "Add fake targets so that "
+                "all the egs contain the same number of outputs");
     po.Register("compress-input", &compress_input, "If true, write egs in "
                 "compressed format.");
     po.Register("input-compress-format", &input_compress_format, "Format for "
@@ -298,7 +302,6 @@ int main(int argc, char *argv[]) {
     std::vector<RandomAccessPosteriorReader*> sparse_targets_readers(num_outputs,
                                                                      static_cast<RandomAccessPosteriorReader*>(NULL));
 
-    
     std::vector<bool> compress_targets(1, true);
     std::vector<std::string> compress_targets_vector;
 
@@ -360,7 +363,11 @@ int main(int argc, char *argv[]) {
     
     std::vector<std::string> targets_rspecifiers(num_outputs);
     std::vector<std::string> deriv_weights_rspecifiers(num_outputs);
-
+    
+    std::vector<Matrix<BaseFloat> > fake_dense_targets(num_outputs);
+    std::vector<Vector<BaseFloat> > fake_deriv_weights(num_outputs);
+    std::vector<Posterior> fake_sparse_targets(num_outputs);
+    
     for (int32 n = 0; n < num_outputs; n++) {
       const std::string &targets_rspecifier = po.GetArg(2*n + 2);
       const std::string &deriv_weights_rspecifier = po.GetArg(2*n + 3);
@@ -428,6 +435,16 @@ int main(int argc, char *argv[]) {
             KALDI_WARN << "No dense targets matrix for key " << key << " in " 
                        << "rspecifier " << targets_rspecifiers[n] 
                        << " for output " << output_names[n];
+
+            if (add_fake_targets) {
+              fake_dense_targets[n].Resize(feats.NumRows(), -output_dims[n]);
+              dense_targets[n] = &(fake_dense_targets[n]);
+
+              fake_deriv_weights[n].Resize(feats.NumRows());
+              deriv_weights[n] = &(fake_deriv_weights[n]);
+              
+              num_outputs_found++;
+            }
             continue;
           } 
           const MatrixBase<BaseFloat> *target_matrix = &(dense_targets_readers[n]->Value(key));
@@ -446,6 +463,12 @@ int main(int argc, char *argv[]) {
             KALDI_WARN << "No sparse target matrix for key " << key << " in " 
                        << "rspecifier " << targets_rspecifiers[n]
                        << " for output " << output_names[n];
+
+            if (add_fake_targets) {
+              fake_sparse_targets[n].resize(feats.NumRows());
+              sparse_targets[n] = &(fake_sparse_targets[n]);
+              num_outputs_found++;
+            }
             continue;
           } 
           const Posterior *posterior = &(sparse_targets_readers[n]->Value(key));
@@ -495,6 +518,12 @@ int main(int argc, char *argv[]) {
 
       if (num_outputs_found == 0) {
         KALDI_WARN << "No output found for key " << key;
+        num_err++;
+        continue;
+      }
+
+      if (add_fake_targets && num_outputs_found != output_names.size()) {
+        KALDI_WARN << "Not all outputs found for key " << key;
         num_err++;
         continue;
       }
