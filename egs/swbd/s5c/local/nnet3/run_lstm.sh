@@ -125,6 +125,7 @@ if [ $stage -le 10 ]; then
     --trainer.optimization.shrink-value 0.99 \
     --trainer.rnn.num-chunk-per-minibatch=$num_chunk_per_minibatch \
     --trainer.optimization.momentum=$momentum \
+    --trainer.optimization.scale-learning-rate 0.1 \
     --egs.chunk-width=$chunk_width \
     --egs.chunk-left-context=$chunk_left_context \
     --egs.chunk-right-context=$chunk_right_context \

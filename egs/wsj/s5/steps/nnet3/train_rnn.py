@@ -418,6 +418,8 @@ def train(args, run_opts, background_process_handler):
                 max_deriv_time=max_deriv_time,
                 momentum=args.momentum,
                 max_param_change=args.max_param_change,
+                scale_learning_rate=args.scale_learning_rate,
+                scale_update_frequency=args.scale_update_frequency,
                 shuffle_buffer_size=args.shuffle_buffer_size,
                 cv_minibatch_size=args.cv_minibatch_size,
                 run_opts=run_opts,

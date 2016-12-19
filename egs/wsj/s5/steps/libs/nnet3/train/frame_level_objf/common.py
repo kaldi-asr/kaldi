@@ -90,6 +90,8 @@ def train_new_models(dir, iter, srand, num_jobs,
                     {cache_write_opt} --print-interval=10 \
                     --momentum={momentum} \
                     --max-param-change={max_param_change} \
+                    --scale-learning-rate={scale_learning_rate} \
+                    --scale-update-frequency={scale_update_frequency} \
                     {deriv_time_opts} "{raw_model}" \
                     "ark,bg:nnet3-copy-egs {frame_opts} {context_opts} """
             """ark:{egs_dir}/egs.{archive_index}.ark ark:- |"""
@@ -111,6 +113,8 @@ def train_new_models(dir, iter, srand, num_jobs,
                                     if chunk_level_training
                                     else "--frame={0}".format(frame)),
                         momentum=momentum, max_param_change=max_param_change,
+                        scale_learning_rate=scale_learning_rate,
+                        scale_update_frequency=scale_update_frequency,
                         deriv_time_opts=" ".join(deriv_time_opts),
                         raw_model=raw_model_string, context_opts=context_opts,
                         egs_dir=egs_dir, archive_index=archive_index,
@@ -137,7 +141,9 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         learning_rate, minibatch_size,
                         num_hidden_layers, add_layers_period,
                         left_context, right_context,
-                        momentum, max_param_change, shuffle_buffer_size,
+                        momentum, max_param_change,
+                        scale_learning_rate, scale_update_frequency,
+                        shuffle_buffer_size,
                         run_opts,
                         cv_minibatch_size=256, frames_per_eg=-1,
                         min_deriv_time=None, max_deriv_time=None,
@@ -271,6 +277,8 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      raw_model_string=raw_model_string, egs_dir=egs_dir,
                      left_context=left_context, right_context=right_context,
                      momentum=momentum, max_param_change=cur_max_param_change,
+                     scale_learning_rate=scale_learning_rate,
+                     scale_update_frequency=scale_update_frequency,
                      shuffle_buffer_size=shuffle_buffer_size,
                      minibatch_size=cur_minibatch_size,
                      cache_read_opt=cache_read_opt, run_opts=run_opts,

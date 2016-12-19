@@ -177,6 +177,7 @@ if [ $stage -le 13 ]; then
     --trainer.optimization.num-jobs-final $num_jobs_final \
     --trainer.optimization.initial-effective-lrate $initial_effective_lrate \
     --trainer.optimization.final-effective-lrate $final_effective_lrate \
+    --trainer.optimization.scale-learning-rate 0.1 \
     --trainer.max-param-change $max_param_change \
     --cleanup.remove-egs $remove_egs \
     --feat-dir data/${train_set}_hires \

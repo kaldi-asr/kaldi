@@ -450,6 +450,8 @@ def train(args, run_opts, background_process_handler):
                 leaky_hmm_coefficient=args.leaky_hmm_coefficient,
                 momentum=args.momentum,
                 max_param_change=args.max_param_change,
+                scale_learning_rate=args.scale_learning_rate,
+                scale_update_frequency=args.scale_update_frequency,
                 shuffle_buffer_size=args.shuffle_buffer_size,
                 frame_subsampling_factor=args.frame_subsampling_factor,
                 truncate_deriv_weights=args.truncate_deriv_weights,

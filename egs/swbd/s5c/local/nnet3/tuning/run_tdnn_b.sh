@@ -86,6 +86,7 @@ if [ $stage -le 10 ]; then
     --trainer.optimization.num-jobs-final 16 \
     --trainer.optimization.initial-effective-lrate 0.0017 \
     --trainer.optimization.final-effective-lrate 0.00017 \
+    --trainer.optimization.scale-learning-rate 0.1 \
     --egs.dir "$common_egs_dir" \
     --cleanup.remove-egs $remove_egs \
     --cleanup.preserve-model-interval 100 \
