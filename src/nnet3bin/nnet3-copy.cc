@@ -41,8 +41,11 @@ int main(int argc, char *argv[]) {
         " nnet3-copy --binary=false 0.raw text.raw\n";
 
     bool binary_write = true;
-    BaseFloat learning_rate = -1;
     std::string rename_node_names = "";
+    BaseFloat learning_rate = -1,
+      dropout = 0.0;
+    std::string nnet_config, edits_config, edits_str;
+    BaseFloat scale = 1.0;
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
@@ -51,8 +54,24 @@ int main(int argc, char *argv[]) {
                 "are set to this value.");
     po.Register("rename-node-names", &rename_node_names, "Comma-separated list of node names need to be modified"
                 " and their new name. e.g. 'affine0/affine0-lang1,affine1/affine1-lang1'");
-   
+    po.Register("nnet-config", &nnet_config,
+                "Name of nnet3 config file that can be used to add or replace "
+                "components or nodes of the neural network (the same as you "
+                "would give to nnet3-init).");
+    po.Register("edits-config", &edits_config,
+                "Name of edits-config file that can be used to modify the network "
+                "(applied after nnet-config).  See comments for ReadEditConfig()"
+                "in nnet3/nnet-utils.h to see currently supported commands.");
+    po.Register("edits", &edits_str,
+                "Can be used as an inline alternative to edits-config; semicolons "
+                "will be converted to newlines before parsing.  E.g. "
+                "'--edits=remove-orphans'.");
+    po.Register("set-dropout-proportion", &dropout, "Set dropout proportion "
+                "in all DropoutComponent to this value.");
+    po.Register("scale", &scale, "The parameter matrices are scaled"
+                " by the specified value.");
     po.Read(argc, argv);
+
     if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
@@ -60,12 +79,35 @@ int main(int argc, char *argv[]) {
 
     std::string raw_nnet_rxfilename = po.GetArg(1),
                 raw_nnet_wxfilename = po.GetArg(2);
-    
+
     Nnet nnet;
     ReadKaldiObject(raw_nnet_rxfilename, &nnet);
-     
+
+    if (!nnet_config.empty()) {
+      Input ki(nnet_config);
+      nnet.ReadConfig(ki.Stream());
+    }
+
     if (learning_rate >= 0)
       SetLearningRate(learning_rate, &nnet);
+    
+    if (scale != 1.0)
+      ScaleNnet(scale, &nnet);
+    
+    if (dropout > 0)
+      SetDropoutProportion(dropout, &nnet);
+
+    if (!edits_config.empty()) {
+      Input ki(edits_config);
+      ReadEditConfig(ki.Stream(), &nnet);
+    }
+    if (!edits_str.empty()) {
+      for (size_t i = 0; i < edits_str.size(); i++)
+        if (edits_str[i] == ';')
+          edits_str[i] = '\n';
+      std::istringstream is(edits_str);
+      ReadEditConfig(is, &nnet);
+    }
 
     if (!rename_node_names.empty()) 
       RenameNodes(rename_node_names, &nnet);

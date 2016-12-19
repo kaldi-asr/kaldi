@@ -140,7 +140,7 @@ void ProcessWindow(const FrameExtractionOptions &opts,
 
   if (log_energy_pre_window != NULL) {
     BaseFloat energy = std::max(VecVec(*window, *window),
-                                std::numeric_limits<float>::epsilon());
+                                std::numeric_limits<BaseFloat>::epsilon());
     *log_energy_pre_window = Log(energy);
   }
 

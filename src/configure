@@ -9,21 +9,23 @@
 
 
 #  Example command lines:
-# ./configure
 # ./configure --shared  ## shared libraries.
+# ./configure
 # ./configure --mkl-root=/opt/intel/mkl
 # ./configure --mkl-root=/opt/intel/mkl --threaded-math=yes
 # ./configure --mkl-root=/opt/intel/mkl --threaded-math=yes --mkl-threading=tbb
-#        This is for MKL 11.3 -- which does not seem  to provide Intel OMP libs
+#        # This is for MKL 11.3, which does not seem  to provide Intel OMP libs
 # ./configure  --openblas-root=../tools/OpenBLAS/install  # before doing
 #        # this, cd to ../tools and type "make openblas".  Note:
 #        # this is not working correctly on all platforms, do "make test"
 #        # and look out for segmentation faults.
 # ./configure --atlas-root=../tools/ATLAS/build
+# ./configure --use-cuda=no   # disable CUDA detection (will build cpu-only
+#                             # version of kaldi even on CUDA-enabled machine
 
 #This should be incremented after every significant change of the configure script
 #I.e. after each change that affects the kaldi.mk or the build system as whole
-CONFIGURE_VERSION=3
+CONFIGURE_VERSION=4
 
 function rel2abs {
   if [ ! -z "$1" ]; then
@@ -445,8 +447,8 @@ function configure_cuda {
     fi
 
     case $CUDA_VERSION in
-      5_5) CUDA_ARCH="-gencode arch=compute_13,code=sm_13 -gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35" ;;
-      6_*) CUDA_ARCH="-gencode arch=compute_13,code=sm_13 -gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50" ;;
+      5_5) CUDA_ARCH="-gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35" ;;
+      6_*) CUDA_ARCH="-gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50" ;;
       7_*) CUDA_ARCH="-gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53" ;;
       8_*) CUDA_ARCH="-gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_62,code=sm_62" ;;
       *) echo "Unsupported CUDA_VERSION (CUDA_VERSION=$CUDA_VERSION), please report it to Kaldi mailing list, together with 'nvcc -h' or 'ptxas -h' which lists allowed -gencode values..."; exit 1 ;;
@@ -460,6 +462,8 @@ function configure_cuda {
       else
         cat makefiles/cuda_64bit.mk >> kaldi.mk
       fi
+    elif [ "`uname -m`" == "ppc64le" ]; then
+      cat makefiles/cuda_ppc64le.mk >> kaldi.mk
     else
       cat makefiles/cuda_32bit.mk >> kaldi.mk
     fi
@@ -524,6 +528,8 @@ function linux_atlas_failure { # function we use when we couldn't find
    echo ATLASLIBS = [somewhere]/liblapack.a [somewhere]/libcblas.a [somewhere]/libatlas.a [somewhere]/libf77blas.a $ATLASLIBDIR >> kaldi.mk
    if [[ "`uname -m`" == arm* ]]; then
      cat makefiles/linux_atlas_arm.mk >> kaldi.mk
+   elif [[ "`uname -m`" == ppc64le ]]; then
+     cat makefiles/linux_atlas_ppc64le.mk >> kaldi.mk
    else
      cat makefiles/linux_atlas.mk >> kaldi.mk
    fi
@@ -579,6 +585,8 @@ function linux_configure_debian_ubuntu {
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
   if [[ "`uname -m`" == arm* ]]; then
     cat makefiles/linux_atlas_arm.mk >> kaldi.mk
+   elif [[ "`uname -m`" == ppc64le ]]; then
+    cat makefiles/linux_atlas_ppc64le.mk >> kaldi.mk
   else
     cat makefiles/linux_atlas.mk >> kaldi.mk
   fi
@@ -602,6 +610,8 @@ function linux_configure_debian_ubuntu3 {
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
   if [[ "`uname -m`" == arm* ]]; then
     cat makefiles/linux_atlas_arm.mk >> kaldi.mk
+  elif [[ "`uname -m`" == ppc64le ]]; then
+    cat makefiles/linux_atlas_ppc64le.mk >> kaldi.mk
   else
     cat makefiles/linux_atlas.mk >> kaldi.mk
   fi
@@ -628,6 +638,8 @@ function linux_configure_debian7 {
   echo
   if [[ "`uname -m`" == arm* ]]; then
     cat makefiles/linux_atlas_arm.mk >> kaldi.mk
+  elif [[ "`uname -m`" == ppc64le ]]; then
+    cat makefiles/linux_atlas_ppc64le.mk >> kaldi.mk
   else
     cat makefiles/linux_atlas.mk >> kaldi.mk
   fi
@@ -651,6 +663,8 @@ function linux_configure_redhat {
   echo
   if [[ "`uname -m`" == arm* ]]; then
     cat makefiles/linux_atlas_arm.mk >> kaldi.mk
+  elif [[ "`uname -m`" == ppc64le ]]; then
+    cat makefiles/linux_atlas_ppc64le.mk >> kaldi.mk
   else
     cat makefiles/linux_atlas.mk >> kaldi.mk
   fi
@@ -676,6 +690,8 @@ function linux_configure_redhat_fat {
   echo
   if [[ "`uname -m`" == arm* ]]; then
     cat makefiles/linux_atlas_arm.mk >> kaldi.mk
+  elif [[ "`uname -m`" == ppc64le ]]; then
+    cat makefiles/linux_atlas_ppc64le.mk >> kaldi.mk
   else
     cat makefiles/linux_atlas.mk >> kaldi.mk
   fi
@@ -733,6 +749,8 @@ function linux_configure_static {
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
   if [[ "`uname -m`" == arm* ]]; then
     cat makefiles/linux_atlas_arm.mk >> kaldi.mk
+  elif [[ "`uname -m`" == ppc64le ]]; then
+    cat makefiles/linux_atlas_ppc64le.mk >> kaldi.mk
   else
     cat makefiles/linux_atlas.mk >> kaldi.mk
   fi
@@ -816,6 +834,8 @@ function linux_configure_dynamic {
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
   if [[ "`uname -m`" == arm* ]]; then
     cat makefiles/linux_atlas_arm.mk >> kaldi.mk
+  elif [[ "`uname -m`" == ppc64le ]]; then
+    cat makefiles/linux_atlas_ppc64le.mk >> kaldi.mk
   else
     cat makefiles/linux_atlas.mk >> kaldi.mk
   fi
@@ -889,7 +909,7 @@ if [ "`uname`" == "Darwin"  ]; then
     failure "Static OpenFST library not found:  See ../tools/INSTALL"
   fi
   # posix_memalign and gcc -rdynamic options not present on OS X 10.5.*
-  osx_ver=`sw_vers | grep ProductVersion | awk '{print $2}' | awk '{split($0,a,"\."); print a[1] "." a[2]; }'`
+  osx_ver=`sw_vers | grep ProductVersion | awk '{print $2}' | awk '{split($0,a,"."); print a[1] "." a[2]; }'`
   echo "Configuring for OS X version $osx_ver ..."
   if [ "$osx_ver" == "10.5" ]; then
     check_exists makefiles/darwin_10_5.mk
@@ -920,6 +940,9 @@ if [ "`uname`" == "Darwin"  ]; then
     echo "**BAD WARNING**  Apple.  Unexplained crashes with reports of NaNs will"
     echo "**BAD WARNING**  be caused by this bug, but some recipes will (sometimes) work."
     sleep 1; echo -n .; sleep 1; echo -n .; sleep 1; echo .
+  elif [ "$osx_ver" == "10.12" ]; then
+    check_exists makefiles/darwin_10_12.mk
+    cat makefiles/darwin_10_12.mk >> kaldi.mk
   else
     failure "OS X version '$osx_ver' not supported"
   fi
@@ -1099,6 +1122,8 @@ if [ "`uname`" == "Linux" ]; then
     echo "OPENBLASROOT = $OPENBLASROOT" >> kaldi.mk
     if [[ "`uname -m`" == arm* ]]; then
       cat makefiles/linux_openblas_arm.mk >> kaldi.mk
+    elif [[ "`uname -m`" == ppc64le ]]; then
+      cat makefiles/linux_openblas_ppc64le.mk >> kaldi.mk
     else
       cat makefiles/linux_openblas.mk >> kaldi.mk
     fi

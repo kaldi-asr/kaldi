@@ -265,13 +265,13 @@ void Nnet::SetParams(const VectorBase<BaseFloat>& params) {
   KALDI_ASSERT(pos == NumParams());
 }
 
-void Nnet::SetDropoutRetention(BaseFloat r)  {
+void Nnet::SetDropoutRate(BaseFloat r)  {
   for (int32 c = 0; c < NumComponents(); c++) {
     if (GetComponent(c).GetType() == Component::kDropout) {
       Dropout& comp = dynamic_cast<Dropout&>(GetComponent(c));
-      BaseFloat r_old = comp.GetDropoutRetention();
-      comp.SetDropoutRetention(r);
-      KALDI_LOG << "Setting dropout-retention in component " << c
+      BaseFloat r_old = comp.GetDropoutRate();
+      comp.SetDropoutRate(r);
+      KALDI_LOG << "Setting dropout-rate in component " << c
                 << " from " << r_old << " to " << r;
     }
   }

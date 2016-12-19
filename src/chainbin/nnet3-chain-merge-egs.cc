@@ -43,12 +43,17 @@ int main(int argc, char *argv[]) {
 
     bool compress = false;
     int32 minibatch_size = 64;
+    bool discard_partial_minibatches = true;
 
     ParseOptions po(usage);
     po.Register("minibatch-size", &minibatch_size, "Target size of minibatches "
                 "when merging (see also --measure-output-frames)");
     po.Register("compress", &compress, "If true, compress the output examples "
                 "(not recommended unless you are writing to disk");
+    po.Register("discard-partial-minibatches", &discard_partial_minibatches,
+                "discard any partial minibatches of 'uneven' size that may be "
+                "encountered at the end; 'true' is recommended, to avoid "
+                "incurring compilation costs.");
 
     po.Read(argc, argv);
 
@@ -79,7 +84,8 @@ int main(int argc, char *argv[]) {
       example_reader.Next();
       num_read++;
 
-      if (minibatch_ready || (example_reader.Done() && !examples.empty())) {
+      if (minibatch_ready || (!discard_partial_minibatches &&
+			      (example_reader.Done() && !examples.empty()))) {
         NnetChainExample merged_eg;
         MergeChainExamples(compress, &examples, &merged_eg);
         std::ostringstream ostr;
@@ -97,5 +103,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-

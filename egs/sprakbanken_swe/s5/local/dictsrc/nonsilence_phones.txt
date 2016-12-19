@@ -1,0 +1,44 @@
+2:	"2:	%2:
+9	"9	%9
+A:	"A:	%A:
+E	"E	%E
+E*U	"E*U
+E:	"E:	%E:
+I	"I	%I
+N
+O	"O	%O 
+S	"S	%S
+U	"U	%U
+Y	"Y	%Y
+a	"a	%a
+a*	'a*
+a*U	"a*U	%a*U
+b	"b	%b
+d	"d	%d
+d`	"d`	%d`
+e	"e	%e
+e:	"e:	%e:
+f	"f	%f
+g	"g	%g
+h	"h	%h
+i:	"i:	%i:
+j	"j	%j	%"j
+k	"k	%k
+l	"l	%l
+l`	"l`	%l`
+m	"m	%m
+n	"n	%n	
+n`	"n`	%n`
+o:	"o:	%o:
+p	"p	%p
+r	"r	%r
+s	"s	%s
+s`	"s`	%s`
+s'	"s'	%s'
+t	"t	%t
+t`	"t`	%t`	
+u0	"u0	%u0
+u:	"u:	%u:
+v	"v	%v	
+y:	"y:	%y:
+}:	"}:	%}:

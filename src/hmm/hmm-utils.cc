@@ -93,11 +93,16 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFst(
   for (int32 hmm_state = 0;
        hmm_state < static_cast<int32>(entry.size());
        hmm_state++) {
-    int32 pdf_class = entry[hmm_state].pdf_class, pdf;
-    if (pdf_class == kNoPdf) pdf = kNoPdf;  // nonemitting state.
-    else {
-      KALDI_ASSERT(pdf_class < static_cast<int32>(pdfs.size()));
-      pdf = pdfs[pdf_class];
+    int32 forward_pdf_class = entry[hmm_state].forward_pdf_class, forward_pdf;
+    int32 self_loop_pdf_class = entry[hmm_state].self_loop_pdf_class, self_loop_pdf;
+    if (forward_pdf_class == kNoPdf) {  // nonemitting state.
+      forward_pdf = kNoPdf;
+      self_loop_pdf = kNoPdf;
+    } else {
+      KALDI_ASSERT(forward_pdf_class < static_cast<int32>(pdfs.size()));
+      KALDI_ASSERT(self_loop_pdf_class < static_cast<int32>(pdfs.size()));
+      forward_pdf = pdfs[forward_pdf_class];
+      self_loop_pdf = pdfs[self_loop_pdf_class];
     }
     int32 trans_idx;
     for (trans_idx = 0;
@@ -110,7 +115,7 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFst(
       if (is_self_loop)
         continue; // We will add self-loops in at a later stage of processing,
       // not in this function.
-      if (pdf_class == kNoPdf) {
+      if (forward_pdf_class == kNoPdf) {
         // no pdf, hence non-estimated probability.
         // [would not happen with normal topology] .  There is no transition-state
         // involved in this case.
@@ -118,7 +123,7 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFst(
         label = 0;
       } else {  // normal probability.
         int32 trans_state =
-            trans_model.TripleToTransitionState(phone, hmm_state, pdf);
+            trans_model.TupleToTransitionState(phone, hmm_state, forward_pdf, self_loop_pdf);
         int32 trans_id =
             trans_model.PairToTransitionId(trans_state, trans_idx);
         log_prob = trans_model.GetTransitionLogProbIgnoringSelfLoops(trans_id);
@@ -183,10 +188,15 @@ GetHmmAsFstSimple(std::vector<int32> phone_window,
   for (int32 hmm_state = 0;
        hmm_state < static_cast<int32>(entry.size());
        hmm_state++) {
-    int32 pdf_class = entry[hmm_state].pdf_class, pdf;
-    if (pdf_class == kNoPdf) pdf = kNoPdf;  // nonemitting state; not generally used.
-    else {
-      bool ans = ctx_dep.Compute(phone_window, pdf_class, &pdf);
+    int32 forward_pdf_class = entry[hmm_state].forward_pdf_class, forward_pdf;
+    int32 self_loop_pdf_class = entry[hmm_state].self_loop_pdf_class, self_loop_pdf;
+    if (forward_pdf_class == kNoPdf) {   // nonemitting state; not generally used.
+      forward_pdf = kNoPdf;
+      self_loop_pdf = kNoPdf;
+    } else {
+      bool ans = ctx_dep.Compute(phone_window, forward_pdf_class, &forward_pdf);
+      KALDI_ASSERT(ans && "Context-dependency computation failed.");
+      ans = ctx_dep.Compute(phone_window, self_loop_pdf_class, &self_loop_pdf);
       KALDI_ASSERT(ans && "Context-dependency computation failed.");
     }
     int32 trans_idx;
@@ -196,7 +206,7 @@ GetHmmAsFstSimple(std::vector<int32> phone_window,
       BaseFloat log_prob;
       Label label;
       int32 dest_state = entry[hmm_state].transitions[trans_idx].first;
-      if (pdf_class == kNoPdf) {
+      if (forward_pdf_class == kNoPdf) {
         // no pdf, hence non-estimated probability.  very unusual case.  [would
         // not happen with normal topology] .  There is no transition-state
         // involved in this case.
@@ -205,7 +215,7 @@ GetHmmAsFstSimple(std::vector<int32> phone_window,
         label = 0;
       } else {  // normal probability.
         int32 trans_state =
-            trans_model.TripleToTransitionState(phone, hmm_state, pdf);
+            trans_model.TupleToTransitionState(phone, hmm_state, forward_pdf, self_loop_pdf);
         int32 trans_id =
             trans_model.PairToTransitionId(trans_state, trans_idx);
         log_prob = prob_scale * trans_model.GetTransitionLogProb(trans_id);
@@ -652,8 +662,8 @@ static bool SplitToPhonesInternal(const TransitionModel &trans_model,
     int32 trans_state =
       trans_model.TransitionIdToTransitionState(alignment[cur_point]);
     int32 phone = trans_model.TransitionStateToPhone(trans_state);
-    int32 pdf_class = trans_model.GetTopo().TopologyForPhone(phone)[0].pdf_class;
-    if (pdf_class != kNoPdf)  // initial-state of the current phone is emitting
+    int32 forward_pdf_class = trans_model.GetTopo().TopologyForPhone(phone)[0].forward_pdf_class;
+    if (forward_pdf_class != kNoPdf)  // initial-state of the current phone is emitting
       if (trans_model.TransitionStateToHmmState(trans_state) != 0)
         was_ok = false;
     for (size_t j = cur_point; j < end_points[i]; j++)
@@ -739,14 +749,19 @@ static inline void ConvertAlignmentForPhone(
   // the topologies and lengths match -> we can directly transfer
   // the alignment.
   for (int32 j = 0; j < alignment_size; j++) {
-    int32 old_tid = old_phone_alignment[j];
-    int32 pdf_class = old_trans_model.TransitionIdToPdfClass(old_tid);
+    int32 old_tid = old_phone_alignment[j],
+        old_tstate = old_trans_model.TransitionIdToTransitionState(old_tid);
+    int32 forward_pdf_class =
+        old_trans_model.TransitionStateToForwardPdfClass(old_tstate),
+        self_loop_pdf_class =
+        old_trans_model.TransitionStateToSelfLoopPdfClass(old_tstate);
     int32 hmm_state = old_trans_model.TransitionIdToHmmState(old_tid);
     int32 trans_idx = old_trans_model.TransitionIdToTransitionIndex(old_tid);
-    int32 new_pdf = pdf_ids[pdf_class];
+    int32 new_forward_pdf = pdf_ids[forward_pdf_class];
+    int32 new_self_loop_pdf = pdf_ids[self_loop_pdf_class];
     int32 new_trans_state =
-        new_trans_model.TripleToTransitionState(new_central_phone, hmm_state,
-                                                new_pdf);
+        new_trans_model.TupleToTransitionState(new_central_phone, hmm_state,
+                                               new_forward_pdf, new_self_loop_pdf);
     int32 new_tid =
         new_trans_model.PairToTransitionId(new_trans_state, trans_idx);
     (*new_phone_alignment)[j] = new_tid;

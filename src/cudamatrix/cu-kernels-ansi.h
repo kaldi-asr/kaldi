@@ -111,9 +111,6 @@ void cudaF_mul_rows_vec(dim3 Gr, dim3 Bl, float *mat, const float *scale,
                         MatrixDim d);
 void cudaF_mul_rows_group_mat(dim3 Gr, dim3 Bl, float *y, const float *x,
                               MatrixDim d, int src_stride, int group_size);
-void cudaF_calc_pnorm_deriv(dim3 Gr, dim3 Bl, float *y, const float *x1,
-                            const float *x2, MatrixDim y_dim, int x1_stride,
-                            int x2_stride, int group_size, float power);
 void cudaF_diff_group_pnorm(dim3 Gr, dim3 Bl, float *id, const float *iv,
                             const float *ov, const float* od, MatrixDim id_dim,
                             int iv_stride, int ov_stride, int od_stride,
@@ -128,7 +125,7 @@ void cudaF_add_mat(dim3 Gr, dim3 Bl, float alpha, const float *src, float *dst,
 void cudaF_add_mat_blocks(dim3 Gr, dim3 Bl, float alpha, const float *src,
                           int32_cuda num_row_blocks, int32_cuda num_col_blocks,
                           float *dst, MatrixDim d, int src_stride, int A_trans);
-void cudaF_add_mat_mat_div_mat(dim3 Gr, dim3 Bl, const float *A, const float *B,
+void cudaF_set_mat_mat_div_mat(dim3 Gr, dim3 Bl, const float *A, const float *B,
                                const float *C, float *dst, MatrixDim d,
                                int stride_a, int stride_b, int stride_c);
 void cudaF_add_vec_to_cols(dim3 Gr, dim3 Bl, float alpha, const float *col,
@@ -223,6 +220,9 @@ void cudaF_soft_hinge(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d,
                       int src_stride);
 void cudaF_group_pnorm(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d,
                        int src_stride, int group_size, float power);
+void cudaF_normalize_per_row(size_t Gr, size_t Bl, float *y, int y_stride,
+                             const float *x, MatrixDim x_d, float tartget_rms,
+                             bool add_log_stddev);
 void cudaF_group_spec_pnorm(dim3 Gr, dim3 Bl, float *y, const float *x,
                             MatrixDim d, int src_stride, int group_size,
                             float power);
@@ -379,9 +379,6 @@ void cudaD_mul_rows_vec(dim3 Gr, dim3 Bl, double *mat, const double *scale,
                         MatrixDim d);
 void cudaD_mul_rows_group_mat(dim3 Gr, dim3 Bl, double *y, const double *x,
                               MatrixDim d, int src_stride, int group_size);
-void cudaD_calc_pnorm_deriv(dim3 Gr, dim3 Bl, double *y, const double *x1,
-                            const double *x2, MatrixDim y_dim, int x1_stride,
-                            int x2_stride, int group_size, double power);
 void cudaD_diff_group_pnorm(dim3 Gr, dim3 Bl, double *id, const double *iv,
                             const double *ov, const double* od,
                             MatrixDim id_dim, int iv_stride, int ov_stride,
@@ -397,7 +394,7 @@ void cudaD_add_mat_blocks(dim3 Gr, dim3 Bl, double alpha, const double *src,
                           int32_cuda num_row_blocks, int32_cuda num_col_blocks,
                           double *dst, MatrixDim d, int src_stride,
                           int A_trans);
-void cudaD_add_mat_mat_div_mat(dim3 Gr, dim3 Bl, const double *A,
+void cudaD_set_mat_mat_div_mat(dim3 Gr, dim3 Bl, const double *A,
                                const double *B, const double *C, double *dst,
                                MatrixDim d, int stride_a, int stride_b,
                                int stride_c);
@@ -495,6 +492,9 @@ void cudaD_soft_hinge(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d,
 void cudaD_group_pnorm(dim3 Gr, dim3 Bl, double *y, const double *x,
                        MatrixDim d, int src_stride, int group_size,
                        double power);
+void cudaD_normalize_per_row(size_t Gr, size_t Bl, double *y, int y_stride,
+                             const double *x, MatrixDim x_d, double tartget_rms,
+                             bool add_log_stddev);
 void cudaD_group_spec_pnorm(dim3 Gr, dim3 Bl, double *y, const double *x,
                             MatrixDim d, int src_stride, int group_size,
                             double power);
@@ -646,6 +646,57 @@ void cudaD_equal_element_mask(dim3 Gr, dim3 Bl, const double *mat1,
                               const double *mat2, double *mask,
                               MatrixDim mat1_dim, int mat2_stride,
                               int mask_stride);
+
+void cudaD_lstm_nonlinearity(dim3 Gr, dim3 Bl, const double* in,
+                             const int in_stride, const double* params,
+                             const int params_stride, const int out_stride,
+                             const int cell_dim, const int num_rows,
+                             double* out);
+void cudaF_lstm_nonlinearity(dim3 Gr, dim3 Bl, const float* in,
+                             const int in_stride, const float* params,
+                             const int params_stride, const int out_stride,
+                             const int cell_dim, const int num_rows,
+                             float* out);
+void cudaD_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
+                                  const int num_rows, const double* input,
+                                  const int in_stride, const double* params,
+                                  const int params_stride,
+                                  const double* output_deriv,
+                                  const int output_deriv_stride,
+                                  const double* deriv_sum_in,
+                                  const int deriv_sum_in_stride,
+                                  const double* self_repair_config,
+                                  double count, double* input_deriv,
+                                  const int input_deriv_stride,
+                                  double* params_deriv,
+                                  const int params_deriv_stride,
+                                  double* value_sum_out,
+                                  const int value_sum_out_stride,
+                                  double* deriv_sum_out,
+                                  const int deriv_sum_out_stride,
+                                  double* self_repair_sum_out,
+                                  const int self_repair_sum_out_stride);
+void cudaF_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
+                                  const int num_rows, const float* input,
+                                  const int in_stride, const float* params,
+                                  const int params_stride,
+                                  const float* output_deriv,
+                                  const int output_deriv_stride,
+                                  const double* deriv_sum_in,
+                                  const int deriv_sum_in_stride,
+                                  const float* self_repair_config, double count,
+                                  float* input_deriv,
+                                  const int input_deriv_stride,
+                                  float* params_deriv,
+                                  const int params_deriv_stride,
+                                  double* value_sum_out,
+                                  const int value_sum_out_stride,
+                                  double* deriv_sum_out,
+                                  const int deriv_sum_out_stride,
+                                  float* self_repair_sum_out,
+                                  const int self_repair_sum_out_stride);
+
+
 
 } // extern "C"
 

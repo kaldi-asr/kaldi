@@ -77,6 +77,7 @@ if [ $stage -le 0 ]; then
       set -o pipefail '&&' mkdir -p $dir/score_LMWT/ '&&' \
       lattice-1best --lm-scale=LMWT "ark:gunzip -c $lats|" ark:- \| \
       lattice-align-words-lexicon $lang/phones/align_lexicon.int $model ark:- ark:- \| \
+      lattice-1best ark:- ark:- \| \
       nbest-to-ctm --frame-shift=$frame_shift --print-silence=$print_silence ark:- - \| \
       utils/int2sym.pl -f 5 $lang/words.txt \| \
       $filter_cmd '>' $dir/score_LMWT/$name.ctm || exit 1;

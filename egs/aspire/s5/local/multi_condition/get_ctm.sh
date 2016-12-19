@@ -1,5 +1,7 @@
 # Copyright 2015  Johns Hopkins University (Authors: Vijayaditya Peddinti).  Apache 2.0.
 
+set -e
+
 beam=7
 decode_mbr=true
 filter_ctm_command=cp
@@ -9,6 +11,8 @@ window=10
 overlap=5
 [ -f ./path.sh ] && . ./path.sh
 . parse_options.sh || exit 1;
+
+echo $*
 
 if [ $# -ne 6 ]; then
   echo "Usage: $0 [options] <LMWT> <word-ins-penalty> <lang-dir> <data-dir> <model> <decode-dir>"

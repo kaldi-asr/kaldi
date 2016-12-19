@@ -78,17 +78,25 @@ openfst-$(OPENFST_VERSION)/lib: | openfst-$(OPENFST_VERSION)/Makefile
 # Add the -O flag to CXXFLAGS on cygwin as it can fix the compilation error
 # "file too big".
 openfst-$(OPENFST_VERSION)/Makefile: openfst-$(OPENFST_VERSION)/.patched | check_required_programs
+# Note: OSTYPE path is probably dead for latest cygwin64 (installed on 2016/11/11).
 ifeq ($(OSTYPE),cygwin)
-	cd openfst-$(OPENFST_VERSION)/; ./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-ngram-fsts CXX=$(CXX) CXXFLAGS="$(CXXFLAGS) -O" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
+	cd openfst-$(OPENFST_VERSION)/; ./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-ngram-fsts CXX=$(CXX) CXXFLAGS="$(CXXFLAGS) -O -Wa,-mbig-obj" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
+# This new OS path is confirmed working on Windows 10 / Cygwin64
+else ifeq ($(OS),Windows_NT)
+	cd openfst-$(OPENFST_VERSION)/; ./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-ngram-fsts CXX=$(CXX) CXXFLAGS="$(CXXFLAGS) -O -Wa,-mbig-obj" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
 else
+	# ppc64le needs the newsted config.guess to be correctly indentified
+	[ "$(shell uname -p)" == "ppc64le" ] && wget -O openfst-$(OPENFST_VERSION)/config.guess \
+		"http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=HEAD" || \
+		echo "config.guess unchanged"
 	cd openfst-$(OPENFST_VERSION)/; ./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-ngram-fsts CXX=$(CXX) CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
 endif
 
 # patches for openfst. openfst_gcc41up.patch is a patch for openfst to \
 # support multi-threads when compile with g++ (gcc) version above 4.1
 openfst-$(OPENFST_VERSION)/.patched: | openfst-$(OPENFST_VERSION)
-	-cd openfst-$(OPENFST_VERSION)/src/include/fst; \
-	patch -c -p0 -N < ../../../../extras/openfst-$(OPENFST_VERSION).patch;
+	cd openfst-$(OPENFST_VERSION)/; \
+	patch -p1 -N < ../extras/openfst-$(OPENFST_VERSION).patch;
 	$(CXX) -dumpversion | awk '{if(NR==1 && $$1>"4.1") print "cd openfst-$(OPENFST_VERSION)/src/include/fst; patch -c -p0 -N < ../../../../extras/openfst_gcc41up.patch"}' | sh -
 	touch $@
 
@@ -96,7 +104,7 @@ openfst-$(OPENFST_VERSION): openfst-$(OPENFST_VERSION).tar.gz
 	tar xozf openfst-$(OPENFST_VERSION).tar.gz
 
 openfst-$(OPENFST_VERSION).tar.gz:
-	wget http://openfst.cs.nyu.edu/twiki/pub/FST/FstDownload/openfst-$(OPENFST_VERSION).tar.gz || \
+	wget --tries=1 -T 5 http://openfst.cs.nyu.edu/twiki/pub/FST/FstDownload/openfst-$(OPENFST_VERSION).tar.gz || \
 	wget -T 10 -t 3 http://www.openslr.org/resources/2/openfst-$(OPENFST_VERSION).tar.gz
 
 sclite: sclite_compiled
@@ -104,7 +112,7 @@ sclite: sclite_compiled
 .PHONY: sclite_compiled
 sclite_compiled: sctk sctk_configured
 	cd sctk; \
-	$(MAKE) all && $(MAKE) install && $(MAKE) doc
+	$(MAKE) CC=$(CC) CXX=$(CXX) all && $(MAKE) install && $(MAKE) doc
 
 sctk_configured: sctk sctk/.configured
 
@@ -172,5 +180,3 @@ openblas_compiled:
 	cd OpenBLAS; sed 's:# FCOMMON_OPT = -frecursive:FCOMMON_OPT = -frecursive:' < Makefile.rule >tmp && mv tmp Makefile.rule
 	# $(MAKE) PREFIX=`pwd`/OpenBLAS/install FC=gfortran $(fortran_opt) DEBUG=1 USE_THREAD=1 NUM_THREADS=64 -C OpenBLAS all install
 	$(MAKE) PREFIX=`pwd`/OpenBLAS/install FC=gfortran $(fortran_opt) DEBUG=1 USE_THREAD=0 -C OpenBLAS all install
-
-
