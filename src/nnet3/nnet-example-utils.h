@@ -89,14 +89,17 @@ struct ExampleExtractionConfig {
 
   // The following parameters are derived parameters, computed by
   // ComputeDerived().
-  int32 num_frames;  // the 'principal' number of frames
-  std::vector<int32> num_frames_alternative;
+
+  // the first element of the 'num_frames' vector is the 'principal' number of
+  // frames; the remaining elements are alternatives to the principal number of
+  // frames, to be used at most once or twice per file.
+  std::vector<int32> num_frames;
 
   ExampleExtractionConfig():
       left_context(0), right_context(0),
       left_context_initial(-1), right_context_initial(-1),
       num_frames_overlap(0),
-      num_frames_str("1"), num_frames(-1) { }
+      num_frames_str("1") { }
 
   /// This function decodes 'num_frames_str' into 'num_frames' and 'num_frames_alternatives',
   /// and ensures that 'num_frames', and the members of num_frames_alternatives' are
@@ -111,13 +114,13 @@ struct ExampleExtractionConfig {
     po->Register("right-context", &right_context, "Number of frames of right "
                  "context of input features that are added to each "
                  "example");
-    po->Register("left-context-initial", &left_context, "Number of frames "
-                 "of left context of input features that are added to each "
-                 "example at the start of the utterance (if <0, this "
+    po->Register("left-context-initial", &left_context_initial, "Number of "
+                 "frames of left context of input features that are added to "
+                 "each example at the start of the utterance (if <0, this "
                  "defaults to the same as --left-context)");
-    po->Register("right-context-final", &right_context, "Number of frames "
-                 "of right context of input features that are added to each "
-                 "example at the end of the utterance (if <0, this "
+    po->Register("right-context-final", &right_context_final, "Number of "
+                 "frames of right context of input features that are added "
+                 "to each example at the end of the utterance (if <0, this "
                  "defaults to the same as --right-context)");
     po->Register("right-context", &right_context, "Number of frames of right "
                  "context of input features that are added to each "
@@ -143,6 +146,115 @@ struct ExampleExtractionConfig {
 
 
 
+/**
+   struct ChunkTimeInfo is used by class Utterane
+ */
+
+struct ChunkTimeInfo {
+  int32 first_frame;
+  int32 num_frames;
+  int32 left_context;
+  int32 right_context;
+};
+
+
+class UtteranceSplitter {
+
+  UtteranceSplitter(const ExampleExtractionConfig &config);
+
+
+  // Given an utterance length, this function creates for you a set of
+  // chunks into which to split the utterance.  Note: this is partly
+  // random (will call srand()).
+  void GetChunksForUtterance(int32 utterance_length,
+                             std::vector<ChunkTimeInfo> *chunk_info) const;
+
+
+ private:
+
+
+  void InitSplitForLength();
+
+
+  // Used in InitSplitForLength(), returns the maximum utterance-length considered
+  // separately in split_for_length_.  [above this, we'll assume that the additional
+  // length is consumed by multiples of the 'principal' chunk size.]  It returns
+  // the primary chunk-size (config_.num_frames[0]) plus twice the largest of
+  // any of the allowed chunk sizes (i.e. the max of config_.num_frames)
+  int32 MaxUtteranceLength() const;
+
+  // Used in InitSplitForLength(), this function outputs the set of allowed
+  // splits, represented as a sorted list of nonempty vectors (each split is a
+  // sorted list of chunk-sizes).
+  void InitSplits(std::vector<std::vector<int32> > *splits) const;
+
+
+  // Used in GetChunksForUtterance, this function selects the list of
+  // chunk-sizes for that utterance (later on, the positions and and left/right
+  // context information for the chunks will be added to this).  We don't call
+  // this a 'split', although it's also a list of chunk-sizes, because we
+  // randomize the order in which the chunk sizes appear, whereas for a 'split'
+  // we sort the chunk-sizes because a 'split' is conceptually an
+  // order-independent representation.
+  void GetChunkSizesForUtterance(int32 utterance_length,
+                                 std::vector<int32> *chunk_sizes) const;
+
+
+  // Used in GetChunksForUtterance, this function selects the 'gap sizes'
+  // before each of the chunks.  These 'gap sizes' may be positive (representing
+  // a gap between chunks, or a number of frames at the beginning of the file that
+  // don't correspond to a chunk), or may be negative, corresponding to overlaps
+  // between adjacent chunks.
+  //
+  // If config_.frame_subsampling_factor > 1 and enforce_subsampling_factor is
+  // true, this function will ensure that all elements of 'gap_sizes' are
+  // multiples of config_.frame_subsampling_factor.  (we always enforce this,
+  // but we set it to false inside a recursion when we recurse).  Note: if
+  // config_.frame_subsampling_factor > 1, it's possible for the last chunk to
+  // go over 'utterance_length' by up to config_.frame_subsampling_factor - 1
+  // frames (i.e. it would require that many frames past the utterance end).
+  // This will be dealt with when generating egs, by duplicating the last frame.
+  void GetGapSizes(int32 utterance_length,
+                   bool enforce_subsampling_factor,
+                   const std::vector<int32> &chunk_sizes,
+                   std::vector<int32> *gap_sizes) const;
+
+
+  // this static function, used in GetGapSizes(), writes values to
+  // a vector 'vec' such the sum of those values equals n.  It
+  // tries to make those values as similar as possible (they will
+  // differ by at most one), and the location of the larger versus
+  // smaller values is random.  n may be negative.  'vec' must be
+  // nonempty.
+  static void DistributeRandomly(int32 n,
+                                 std::vector<int32> *vec);
+
+
+  const ExampleExtractionConfig &config_;
+
+  // The vector 'split_for_length_' is indexed by the num-frames of a file, and
+  // gives us a list of alternative splits that we can use if the utternace has
+  // that many frames.  For example, if split_for_length[100] = ( (25, 40, 40),
+  // (40, 65) ), it means we could either split as chunks of size (25, 40, 40)
+  // or as (40, 65).  (we'll later randomize the order).  should use one chunk
+  // of size 25 and two chunks of size 40.  In general these won't add up to
+  // exactly the length of the utterance; we'll have them overlap (or have small
+  // gaps between them) to account for this, and the details of this will be
+  // randomly decided per file.  If splits_for_length_[u] is empty, it means the
+  // utterance was shorter than the smallest possible chunk size, so
+  // we will have to discard the utterance.
+
+  // If an utterance's num-frames is >= split_for_length.size(), the way to find
+  // the split to use is to keep subtracting the primary num-frames (==
+  // config_.num_frames[0]) from the utterance length until the resulting
+  // num-frames is < split_for_length_.size(), chunks, and then add the subtracted
+  // number of copies of the primary num-frames.
+  std::vector<std::vector<std::vector<int32> > > splits_for_length_;
+
+
+};
+
+
 void ComputeExampleTimeInfo(const ExampleExtractionConfig &config,
                             int32 num_frames_in_utt,
 
@@ -152,12 +264,6 @@ void ComputeExampleTimeInfo(const ExampleExtractionConfig &config,
 
 
 
-struct ExampleTimeInfo {
-  int32 first_frame;
-  int32 num_frames;
-  int32 left_context;
-  int32 right_context;
-};
 
 
 // This function rounds up the quantities 'num_frames' and 'num_frames_overlap'

@@ -286,5 +286,350 @@ void RoundUpNumFrames(int32 frame_subsampling_factor,
 }
 
 
+/*
+  This comment describes the idea behind what InitChunkSize() is supposed to do,
+  and how it relates to the purpose of class UtteranceSplitter.
+
+  Class UtteranceSplitter is supposed to tell us, for a given utterance length,
+  what chunk sizes to use.  The chunk sizes it may choose are:
+    - zero or more chunks of the 'principal' size (the first-listed value in
+      num-frames)
+    - at most two chunks of 'alternative' num-frames (any but the first-listed
+      num-frames).
+
+  (and an empty list of chunks is not allowed as a split).  A split is
+  effectively a multiset of chunk-sizes (the order will be randomized by the
+  caller).  We represent it in code as a list of chunk-sizes, represented as a
+  std::vector, which is sorted to get a unique representation without repeats of
+  different orderings.
+
+  The choice of spilt is determined by a cost-function that depends on the sum
+  of the chunk-sizes in the split and the length of the utterance: the idea is
+  that we want the sum of chunk-sizes in the split to be as close as possible to
+  the utterance length.  The cost-function penalizes the sum of chunk-sizes
+  being smaller than the utterance-length (leading to gaps) twice as much as
+  when the sum of chunk-sizes is larger than the utterance length.  I.e.
+    cost(chunk_size_sum, utt_length) = (chunk_size_sum > utt_length ?
+                                         chunk_size_sum - utt_length :
+                                         2 * (utt_length - chunk_size_sum))
+  [but as a special case, set c to infinity if the largest chunk size in the
+  split is longer than the utterance length; we couldn't, in that case, use
+  this split for this utterance].
+
+
+  We want to make sure a good variety of combinations of chunk sizes are chosen
+  in case there are ties from the cost function.  For each utterance length
+  we store the set of splits, whose costs are within 2
+  of the best cost available for that utterance length.  When asked to find
+  chunks for a particular utterance of that length, we will choose randomly
+  from that pool of splits.
+ */
+void UtteranceSplitter::InitChunkSize() {
+  int32 max_utterance_length = MaxUtteranceLength();
+
+  // The 'splits' vector is a list of possible splits (a split being
+  // a multiset of chunk-sizes, represented as a sorted vector).
+  // The vector 'splits' is itself sorted.
+  std::vector<std::vector<int32> > splits;
+  InitSplits(&splits);
+
+
+  // Define a split-index 0 <= s < splits.size() as index into the 'splits'
+  // vector, and let a cost c >= 0 represent the mismatch between an
+  // utterance length and the total length of the chunk sizes in a split:
+
+  //  c(chunk_size_sum, utt_length) = (chunk_size_sum > utt_length ?
+  //                                    chunk_size_sum - utt_length :
+  //                                    2 * (utt_length - chunk_size_sum))
+  // [but as a special case, set c to infinity if the largest chunk size in the
+  //  split is longer than the utterance length; we couldn't, in that case, use
+  //  this split for this utterance].
+
+  // 'costs_for_length[u][s]', indexed by utterance-length u and then split,
+  // contains the cost for utterance-length u and split s.
+
+  std::vector<std::vector<int32> > costs_for_length(
+      max_utterance_length + 1);
+  int32 num_splits = splits.size();
+
+
+  for (int32 u = 0; u <= max_utterance_length; u++)
+    pairs_for_length[u].reserve(num_splits);
+
+  for (int32 s = 0; s < num_splits; s++) {
+    const std::vector<int32> &split = splits[s];
+    int32 chunk_size_sum = std::accumulate(split.begin(), split.end(),
+                                           int32(0)),
+        max_chunk_size = *std::max_element(split.begin(), split.end());
+    for (int32 u = 0; u <= max_utterance_length; u++) {
+      // c is the cost for this utterance length and this split.  We penalize
+      // gaps twice as strongly as overlaps, based on the intuition that
+      // completely throwing out frames of data is worse than counting them
+      // twice.  It might be possible to come up with some kind of mathematical
+      // justification for this based on variance of the estimated gradient.
+      int32 c = (chunk_size_sum > u ? chunk_size_sum - u :
+                 2 * (u - chunk_size_sum));
+      if (max_chunk_size > u)
+        c = std::numeric_limits<int32>::max();
+      pairs_for_length[u].push_back(c);
+    }
+  }
+
+
+  splits_for_length_.resize(max_utterance_length + 1);
+
+
+  for (int32 u = 0; u <= max_utterance_length; u++) {
+    const std::vector<int32> &costs = costs_for_length[u];
+    int32 min_cost = std::min_element(costs.begin(), costs.end());
+    if (min_cost == std::numeric_limits<int32>::max()) {
+      // All costs were infinity, becaues this utterance-length u is shorter
+      // than the smallest chunk-size.  Leave splits_for_length_[u] as empty
+      // for this utterance-length, meaning we will not be able to choose any
+      // split, and such utterances will be discarded.
+      continue;
+    }
+    int32 cost_threshold = 2;  // We will choose pseudo-randomly from splits
+                               // that are within this distance from the best
+                               // cost.
+    std::vector<int32> possible_splits;
+    std::vector<int32>::const_iterator iter = costs.begin(), end = costs.end();
+    int32 s = 0;
+    for (; iter != end; ++iter,++s)
+      if (*iter < min_cost + cost_threshold)
+        splits_for_length_[u].push_back(splits[s]);
+  }
+
+  if (GetVerboseLevel() >= 3) {
+    std::ostringstream os;
+    for (int32 u = 0; u <= max_utterance_length; u++) {
+      if (!splits_for_length_[u].empty()) {
+        os << u << "=(";
+        std::vector<std::vector<int32 > >::const_iterator
+            iter1 = splits_for_length_[u].begin(),
+            end1 = splits_for_length_[u].end();
+
+        while (iter1 != end1) {
+          std::vector<int32>::const_iterator iter2 = iter1->begin(),
+              end2 = iter1->end();
+          while (iter2 != end2) {
+            os << *iter2;
+            ++iter2;
+            if (iter2 != end2) os << ",";
+          }
+          ++iter1;
+          if (iter1 != end1) os << "/";
+        }
+        os << ")";
+        if (u < max_utterance_length) os << ", ";
+      }
+    }
+    KALDI_VLOG(3) << "Utterance-length-to-splits map is: " << os.str();
+  }
+}
+
+
+void GetChunkSizesForUtterance(int32 utterance_length,
+                               std::vector<int32> *chunk_sizes) const {
+  KALDI_ASSERT(!splits_for_length.empty());
+  // 'primary_length' is the first-specified num-frames.
+  // It's the only chunk that may be repeated an arbitrary number
+  // of times.
+  int32 primary_length = config_.num_frames[0],
+      max_tabulated_length = splits_for_length_.size() - 1,
+      num_primary_length_repeats = 0;
+
+  KALDI_ASSERT(utterance_length >= 0);
+  while (utterance_length > max_tabulated_length) {
+    utterance_length -= primary_length;
+    num_primary_length_repeats++;
+  }
+  KALDI_ASSERT(utterance_length >= 0);
+  const std::vector<std::vector<int32> > &possible_splits =
+      splits_for_length_[utterance_length];
+  int32 num_possible_splits = possible_splits.size(),
+      randomly_chosen_split = RandInt(0, num_possible_splits - 1);
+  *chunk_sizes = possible_splits[randomly_chosen_split];
+  for (int32 i = 0; i < num_primary_length_repeats; i++)
+    chunk_sizes->push_back(primary_length);
+  // Randomize the order in which the chunks appear.
+  std::random_shuffle(chunk_sizes->begin(),
+                      chunk_sizes->end());
+}
+
+
+int32 UtteranceSplitter::MaxUtteranceLength() const {
+  int32 num_lengths = config_.num_frames.size();
+  KALDI_ASSERT(num_lengths > 0);
+  // 'primary_length' is the first-specified num-frames.
+  // It's the only chunk that may be repeated an arbitrary number
+  // of times.
+  int32 primary_length = config_.num_frames[0],
+      max_length = primary_length;
+  for (int32 i = 0; i < num_lengths; i++) {
+    KALDI_ASSERT(config_.num_frames[i] > 0);
+    max_length = std::max(config_.num_frames[i], max_length);
+  }
+  return 2 * max_length + primary_length;
+}
+
+void UtteranceSplitter::InitSplits(std::vector<std::vector<int32> > *splits) const {
+  // we consider splits whose total length is up to MaxUtteranceLength() +
+  // primary_length.  We can be confident without doing a lot of math, that
+  // multisets above this length will never be chosen for any utterance-length
+  // up to MaxUtteranceLength().
+  int32 primary_length = config_.num_frames[0],
+      length_ceiling = MaxUtteranceLength() + primary_length;
+
+  typedef std::unordered_set<std::vector<int32>, VectorHasher<int32> > SetType;
+
+  SetType splits_set;
+
+  int32 num_lengths = config_.num_frames.size();
+
+  // The splits we are allow are: zero to two 'alternate' lengths, plus
+  // an arbitrary number of repeats of the 'primary' length.  The repeats
+  // of the 'primary' length are handled by the inner loop over n.
+  // The zero two two 'alternate' lengths are handled by the loops over
+  // i and j.  i == 0 and j == 0 are special cases; they mean, no
+  // alternate is chosen.
+  for (int32 i = 0; i < num_lengths; i++) {
+    for (int32 j = 0; j < num_length; j++) {
+      std::vector<int32> vec;
+      if (i > 0)
+        vec.push_back(config_.num_frames[i]);
+      if (j > 0)
+        vec.push_back(config_.num_frames[j]);
+      for (int32 n = 0;
+           std::accumulate(vec.begin(), vec.end(), int32(0)) <= length_ceiling;
+           ++n, vec.push_back(primary_length)) {
+        std::sort(vec.begin(), vec.end());  // we don't want to treat different
+                                            // orderings of the same values as
+                                            // different, so sort them.
+        if (!vec.empty()) // Don't allow the empty vector as a split.
+          splits_set.insert(vec);
+      }
+    }
+  }
+  for (SetType::const_iterator iter = splits_set.begin();
+       iter != splits_set.end(); ++iter)
+    splits->push_back(*iter);
+  std::sort(splits->begin(), splits->end());  // make the order deterministic,
+                                              // for consistency of output
+                                              // between runs and C libraries.
+}
+
+
+// static
+void UtteranceSplitter::DistributeRandomly(int32 n, std::vector<int32> *vec) {
+  KALDI_ASSERT(!vec->empty());
+  int32 size = vec->size();
+  if (n < 0) {
+    DistributeRandomly(n, vec);
+    for (int32 i = 0; i < size; i++)
+      (*vec)[i] *= -1;
+    return;
+  }
+  // from this point we know n >= 0.
+  int32 common_part = n / size,
+      remainder = n % size, i;
+  for (i = 0; i < remainder; i++) {
+    (*vec)[i] = common_part + 1;
+  }
+  for (; i < size; i++) {
+    (*vec)[i] = common_part;
+  }
+  std::random_shuffle(vec->begin(), vec->end());
+  KALDI_ASSERT(std::accumulate(vec->begin(), vec->end(), int32(0)) == n);
+}
+
+
+void UtteranceSplitter::GetGapSizes(int32 utterance_length,
+                                    bool enforce_subsampling_factor,
+                                    const std::vector<int32> &chunk_sizes,
+                                    std::vector<int32> *gap_sizes) const {
+  if (chunk_sizes.empty()) {
+    gap_sizes->clear();
+    return;
+  }
+  if (enforce_subsamping_factor && config_.frame_subsampling_factor > 1) {
+    int32 sf = config_.frame_subsampling_factor, size = chunk_sizes.size();
+    int32 utterance_length_reduced = (utterance_length + (sf - 1)) / sf;
+    std::vector<int32> chunk_sizes_reduced(chunk_sizes);
+    for (int32 i = 0; i < size; i++) {
+      KALDI_ASSERT(chunk_sizes[i] % config_.frame_subsampling_factor == 0);
+      chunk_sizes_reduced[i] /= config_.frame_subsampling_factor;
+    }
+    GetGapSizes(utterance_length_reduced, false,
+                chunk_sizes_reduced, gap_sizes);
+    KALDI_ASSERT(gap_sizes->size() == static_cast<size_t>(size));
+    for (int32 i = 0; i < size; i++)
+      (*gap_sizes)[i] *= config_.frame_subsampling_factor;
+    return;
+  }
+  int32 num_chunks = chunk_sizes.size(),
+      total_of_chunk_sizes = std::accumulate(chunk_sizes.begin(),
+                                             chunk_sizes.end(),
+                                             int32(0)),
+      total_gap = utterance_length - total_of_chunk_sizes;
+  gap_sizes->resize(num_chunks);
+
+  if (total_gap < 0) {
+    // there is an overlap.  Overlaps can only go between chunks, not at the
+    // beginning or end of the utterance.
+    if (num_chunks == 1) {
+      // there needs to be an overlap, but there is only one chunk... this means
+      // the chunk-size exceeds the utterance length, which is not allowed.
+      KALDI_ERR << "Chunk size is " << chunk_sizes[0]
+                << " but utterance length is only "
+                << utterance_length;
+    }
+
+    // note the elements of 'overlaps' will be <= 0.
+    std::vector<int32> overlaps(num_chunks - 1);
+    DistributeRandomly(total_gap, &num_overlap_locations);
+    (*gap_sizes)[0] = 0;  // no gap before 1st chunk.
+    for (int32 i = 1; i < num_chunks; i++)
+      (*gap_sizes)[i] = overlaps[i-1];
+  } else {
+    // There may be a gap.  Gaps can go at the start or end of the utterance, or
+    // between segments.
+    std::vector<int32> gaps(num_chunks + 1);
+    DistributeRandomly(total_gap, &gaps);
+    // the last element of 'gaps', the one at the end of the utterance, is
+    // implicit and doesn't have to be written to the output.
+    for (int32 i = 0; i < num_chunks; i++)
+      (*gap_sizes)[i] = gaps[i];
+  }
+}
+
+
+void UtteranceSplitter::GetChunksForUtterance(
+    int32 utterance_length,
+    std::vector<ChunkTimeInfo> *chunk_info) const {
+  std::vector<int32> chunk_sizes;
+  GetChunkSizesForUtterance(utterance_length, &chunk_sizes);
+  std::vector<int32> gaps(chunk_sizes.size());
+  GetGapSizes(utterance_length, true, chunk_sizes, &gap_sizes);
+  int32 num_chunks = chunk_sizes.size();
+  chunk_info->resize(num_chunks);
+  int32 t = 0;
+  for (int32 i = 0; i < num_chunks; i++) {
+    t += gaps[i];
+    ChunkTimeInfo &info = (*chunk_info)[i];
+    info.first_frame = t;
+    info.num_frames = chunk_sizes[i];
+    info.left_context = (i == 0 && config_.left_context_initial >= 0 ?
+                         config_.left_context_initial : config_.left_context);
+    info.right_context = (i == 0 && config_.right_context_final >= 0 ?
+                         config_.right_context_final : config_.right_context);
+    t += chunk_sizes[i];
+  }
+  // check that the end of the last chunk doesn't go more than
+  // 'config_.frame_subsampling_factor - 1' frames past the end
+  // of the utterance.  That amount, we treat as rounding error.
+  KALDI_ASSERT(t - utterance_length < config_.frame_subsampling_factor);
+}
+
 } // namespace nnet3
 } // namespace kaldi
