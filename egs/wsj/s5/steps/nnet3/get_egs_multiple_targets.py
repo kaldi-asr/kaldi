@@ -22,7 +22,7 @@ logger = logging.getLogger('libs')
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
-formatter = logging.Formatter("%(asctime)s [%(filename)s:%(lineno)s - "
+formatter = logging.Formatter("%(asctime)s [%(pathname)s:%(lineno)s - "
                               "%(funcName)s - %(levelname)s ] %(message)s")
 handler.setFormatter(formatter)
 logger.addHandler(handler)
@@ -133,6 +133,9 @@ def get_args():
     parser.add_argument("--srand", type=int, default=0,
                         help="Rand seed for nnet3-copy-egs and "
                         "nnet3-shuffle-egs")
+    parser.add_argument("--generate-egs-scp", type=str,
+                        default=False, action=common_lib.StrToBoolAction,
+                        help="Generate scp files in addition to archives")
 
     parser.add_argument("--targets-parameters", type=str, action='append',
                         required=True, dest='targets_para_array',
@@ -186,9 +189,10 @@ def check_for_required_files(feat_dir, targets_scps, online_ivector_dir=None):
                       '{0}/cmvn.scp'.format(feat_dir)]
     if online_ivector_dir is not None:
         required_files.append('{0}/ivector_online.scp'.format(
-                                    online_ivector_dir))
+            online_ivector_dir))
         required_files.append('{0}/ivector_period'.format(
-                                    online_ivector_dir))
+            online_ivector_dir))
+    required_files.extend(targets_scps)
 
     for file in required_files:
         if not os.path.isfile(file):
@@ -229,9 +233,9 @@ def parse_targets_parameters_array(para_array):
         if not os.path.isfile(t.targets_scp):
             raise Exception("Expected {0} to exist.".format(t.targets_scp))
 
-        if (t.target_type == "dense"):
+        if t.target_type == "dense":
             dim = common_lib.get_feat_dim_from_scp(t.targets_scp)
-            if (t.dim != -1 and t.dim != dim):
+            if t.dim != -1 and t.dim != dim:
                 raise Exception('Mismatch in --dim provided and feat dim for '
                                 'file {0}; {1} vs {2}'.format(t.targets_scp,
                                                               t.dim, dim))
@@ -272,7 +276,10 @@ def sample_utts(feat_dir, num_utts_subset, min_duration, exclude_list=None):
                 for utt in utts2add:
                     sampled_utts.append(utt)
 
-            index = index + 1
+        else:
+            logger.info("Skipping utterance %s of length %f",
+                        utt2uniq[utt2durs[index][0]], utt2durs[index][1])
+        index = index + 1
         num_trials = num_trials + 1
     if exclude_list is not None:
         assert(len(set(exclude_list).intersection(sampled_utts)) == 0)
@@ -311,13 +318,13 @@ def get_feat_ivector_strings(dir, feat_dir, split_feat_dir,
                        "{dir}/valid_uttlist {sdir}/JOB/feats.scp | "
                        "apply-cmvn {cmvn} --utt2spk=ark:{sdir}/JOB/utt2spk "
                        "scp:{sdir}/JOB/cmvn.scp scp:- ark:- |".format(
-                            dir=dir, sdir=split_feat_dir,
-                            cmvn=cmvn_opt_string))
+                           dir=dir, sdir=split_feat_dir,
+                           cmvn=cmvn_opt_string))
         valid_feats = ("ark,s,cs:utils/filter_scp.pl {dir}/valid_uttlist "
                        "{fdir}/feats.scp | "
                        "apply-cmvn {cmvn} --utt2spk=ark:{fdir}/utt2spk "
                        "scp:{fdir}/cmvn.scp scp:- ark:- |".format(
-                            dir=dir, fdir=feat_dir, cmvn=cmvn_opt_string))
+                           dir=dir, fdir=feat_dir, cmvn=cmvn_opt_string))
         train_subset_feats = ("ark,s,cs:utils/filter_scp.pl "
                               "{dir}/train_subset_uttlist  {fdir}/feats.scp | "
                               "apply-cmvn {cmvn} --utt2spk=ark:{fdir}/utt2spk "
@@ -470,7 +477,24 @@ def generate_valid_train_subset_egs(dir, targets_parameters,
                                     num_train_egs_combine,
                                     num_valid_egs_combine,
                                     num_egs_diagnostic, cmd,
-                                    num_jobs=1):
+                                    num_jobs=1,
+                                    generate_egs_scp=False):
+
+    if generate_egs_scp:
+        valid_combine_output = ("ark,scp:{0}/valid_combine.egs,"
+                                "{0}/valid_combine.egs.scp".format(dir))
+        valid_diagnostic_output = ("ark,scp:{0}/valid_diagnostic.egs,"
+                                   "{0}/valid_diagnostic.egs.scp".format(dir))
+        train_combine_output = ("ark,scp:{0}/train_combine.egs,"
+                                "{0}/train_combine.egs.scp".format(dir))
+        train_diagnostic_output = ("ark,scp:{0}/train_diagnostic.egs,"
+                                   "{0}/train_diagnostic.egs.scp".format(dir))
+    else:
+        valid_combine_output = "ark:{0}/valid_combine.egs".format(dir)
+        valid_diagnostic_output = "ark:{0}/valid_diagnostic.egs".format(dir)
+        train_combine_output = "ark:{0}/train_combine.egs".format(dir)
+        train_diagnostic_output = "ark:{0}/train_diagnostic.egs".format(dir)
+
     wait_pids = []
 
     logger.info("Creating validation and train subset examples.")
@@ -481,7 +505,8 @@ def generate_valid_train_subset_egs(dir, targets_parameters,
     valid_pid = common_lib.run_kaldi_command(
         """{cmd} JOB=1:{nj} {dir}/log/create_valid_subset.JOB.log \
           nnet3-get-egs-multiple-targets {v_iv_opt} {v_egs_opt} "{v_feats}" \
-          {targets} ark:{dir}/valid_all.JOB.egs""".format(
+          {targets} ark,scp:{dir}/valid_all.JOB.egs,"""
+        """{dir}/valid_all.JOB.egs.scp""".format(
             cmd=cmd, nj=num_jobs, dir=dir,
             v_egs_opt=egs_opts['valid_egs_opts'],
             v_iv_opt=feat_ivector_strings['valid_ivector_opts'],
@@ -495,7 +520,8 @@ def generate_valid_train_subset_egs(dir, targets_parameters,
     train_pid = common_lib.run_kaldi_command(
         """{cmd} JOB=1:{nj} {dir}/log/create_train_subset.JOB.log \
           nnet3-get-egs-multiple-targets {t_iv_opt} {v_egs_opt} "{t_feats}" \
-          {targets} ark:{dir}/train_subset_all.JOB.egs""".format(
+          {targets} ark,scp:{dir}/train_subset_all.JOB.egs,"""
+        """{dir}/train_subset_all.JOB.egs.scp""".format(
             cmd=cmd, nj=num_jobs, dir=dir,
             v_egs_opt=egs_opts['valid_egs_opts'],
             t_iv_opt=feat_ivector_strings['train_subset_ivector_opts'],
@@ -514,50 +540,56 @@ def generate_valid_train_subset_egs(dir, targets_parameters,
         if pid.returncode != 0:
             raise Exception(stderr)
 
-    valid_egs_all = ' '.join(['{dir}/valid_all.{n}.egs'.format(dir=dir, n=n)
-                              for n in range(1, num_jobs + 1)])
-    train_subset_egs_all = ' '.join(['{dir}/train_subset_all.{n}.egs'.format(
-                                        dir=dir, n=n)
-                                     for n in range(1, num_jobs + 1)])
+    valid_egs_all = ' '.join(
+        ['{dir}/valid_all.{n}.egs.scp'.format(dir=dir, n=n)
+         for n in range(1, num_jobs + 1)])
+    train_subset_egs_all = ' '.join(
+        ['{dir}/train_subset_all.{n}.egs.scp'.format(dir=dir, n=n)
+         for n in range(1, num_jobs + 1)])
 
     wait_pids = []
     logger.info("... Getting subsets of validation examples for diagnostics "
                 " and combination.")
     pid = common_lib.run_kaldi_command(
         """{cmd} {dir}/log/create_valid_subset_combine.log \
-            cat {valid_egs_all} \| nnet3-subset-egs --n={nve_combine} ark:- \
-            ark:{dir}/valid_combine.egs""".format(
+            cat {valid_egs_all} \| nnet3-subset-egs --n={nve_combine} \
+            scp:- {valid_combine_output}""".format(
                 cmd=cmd, dir=dir, valid_egs_all=valid_egs_all,
-                nve_combine=num_valid_egs_combine),
+                nve_combine=num_valid_egs_combine,
+                valid_combine_output=valid_combine_output),
         wait=False)
     wait_pids.append(pid)
 
     pid = common_lib.run_kaldi_command(
         """{cmd} {dir}/log/create_valid_subset_diagnostic.log \
-            cat {valid_egs_all} \| nnet3-subset-egs --n={ne_diagnostic} ark:- \
-            ark:{dir}/valid_diagnostic.egs""".format(
+            cat {valid_egs_all} \| nnet3-subset-egs --n={ne_diagnostic} \
+            scp:- {valid_diagnostic_output}""".format(
                 cmd=cmd, dir=dir, valid_egs_all=valid_egs_all,
-                ne_diagnostic=num_egs_diagnostic),
+                ne_diagnostic=num_egs_diagnostic,
+                valid_diagnostic_output=valid_diagnostic_output),
         wait=False)
     wait_pids.append(pid)
 
     pid = common_lib.run_kaldi_command(
         """{cmd} {dir}/log/create_train_subset_combine.log \
             cat {train_subset_egs_all} \| \
-            nnet3-subset-egs --n={nte_combine} ark:- \
-            ark:{dir}/train_combine.egs""".format(
+            nnet3-subset-egs --n={nte_combine} \
+            scp:- {train_combine_output}""".format(
                 cmd=cmd, dir=dir, train_subset_egs_all=train_subset_egs_all,
-                nte_combine=num_train_egs_combine),
+                nte_combine=num_train_egs_combine,
+                train_combine_output=train_combine_output),
         wait=False)
     wait_pids.append(pid)
 
     pid = common_lib.run_kaldi_command(
         """{cmd} {dir}/log/create_train_subset_diagnostic.log \
             cat {train_subset_egs_all} \| \
-            nnet3-subset-egs --n={ne_diagnostic} ark:- \
-            ark:{dir}/train_diagnostic.egs""".format(
+            nnet3-subset-egs --n={ne_diagnostic} \
+            scp:- {train_diagnostic_output}""".format(
                 cmd=cmd, dir=dir, train_subset_egs_all=train_subset_egs_all,
-                ne_diagnostic=num_egs_diagnostic), wait=False)
+                ne_diagnostic=num_egs_diagnostic,
+                train_diagnostic_output=train_diagnostic_output),
+        wait=False)
     wait_pids.append(pid)
 
     for pid in wait_pids:
@@ -569,6 +601,14 @@ def generate_valid_train_subset_egs(dir, targets_parameters,
         """cat {dir}/valid_combine.egs {dir}/train_combine.egs > \
                 {dir}/combine.egs""".format(dir=dir))
 
+    if generate_egs_scp:
+        common_lib.run_kaldi_command(
+            """cat {dir}/valid_combine.egs.scp {dir}/train_combine.egs.scp > \
+                    {dir}/combine.egs.scp""".format(dir=dir))
+        common_lib.run_kaldi_command(
+            "rm {dir}/valid_combine.egs.scp {dir}/train_combine.egs.scp"
+            "".format(dir=dir))
+
     # perform checks
     for file_name in ('{0}/combine.egs {0}/train_diagnostic.egs '
                       '{0}/valid_diagnostic.egs'.format(dir).split()):
@@ -577,6 +617,7 @@ def generate_valid_train_subset_egs(dir, targets_parameters,
 
     # clean-up
     for x in ('{0}/valid_all.*.egs {0}/train_subset_all.*.egs '
+              '{0}/valid_all.*.egs.scp {0}/train_subset_all.*.egs.scp '
               '{0}/train_combine.egs '
               '{0}/valid_combine.egs'.format(dir).split()):
         for file_name in glob.glob(x):
@@ -591,7 +632,8 @@ def generate_training_examples_internal(dir, targets_parameters, feat_dir,
                                         samples_per_iter, cmd, srand=0,
                                         reduce_frames_per_eg=True,
                                         only_shuffle=False,
-                                        dry_run=False):
+                                        dry_run=False,
+                                        generate_egs_scp=False):
 
     # The examples will go round-robin to egs_list.  Note: we omit the
     # 'normalization.fst' argument while creating temporary egs: the phase of
@@ -605,8 +647,8 @@ def generate_training_examples_internal(dir, targets_parameters, feat_dir,
     num_archives = (num_frames) / (frames_per_eg * samples_per_iter) + 1
 
     reduced = False
-    while (reduce_frames_per_eg and frames_per_eg > 1 and
-            num_frames / ((frames_per_eg-1)*samples_per_iter) == 0):
+    while (reduce_frames_per_eg and frames_per_eg > 1
+           and num_frames / ((frames_per_eg-1)*samples_per_iter) == 0):
         frames_per_eg -= 1
         num_archives = 1
         reduced = True
@@ -652,9 +694,9 @@ def generate_training_examples_internal(dir, targets_parameters, feat_dir,
                  for y in range(1, num_jobs + 1)])
 
     split_feat_dir = "{0}/split{1}".format(feat_dir, num_jobs)
-    egs_list = ' '.join(['ark:{dir}/egs_orig.JOB.{ark_num}.ark'.format(
-                            dir=dir, ark_num=x)
-                         for x in range(1, num_archives_intermediate + 1)])
+    egs_list = ' '.join(
+        ['ark:{dir}/egs_orig.JOB.{ark_num}.ark'.format(dir=dir, ark_num=x)
+         for x in range(1, num_archives_intermediate + 1)])
 
     if not only_shuffle:
         common_lib.run_kaldi_command(
@@ -678,20 +720,43 @@ def generate_training_examples_internal(dir, targets_parameters, feat_dir,
     if archives_multiple == 1:
         # there are no intermediate archives so just shuffle egs across
         # jobs and dump them into a single output
+
+        if generate_egs_scp:
+            output_archive = ("ark,scp:{dir}/egs.JOB.ark,"
+                              "{dir}/egs.JOB.scp".format(dir=dir))
+        else:
+            output_archive = "ark:{dir}/egs.JOB.ark".format(dir=dir)
+
         common_lib.run_kaldi_command(
             """{cmd} --max-jobs-run {msjr} JOB=1:{nai} \
             {dir}/log/shuffle.JOB.log \
                 nnet3-shuffle-egs --srand=$[JOB+{srand}] \
-                "ark:cat {egs_list}|" ark:{dir}/egs.JOB.ark""".format(
+                "ark:cat {egs_list}|" {output_archive}""".format(
                     cmd=cmd, msjr=num_jobs,
                     nai=num_archives_intermediate, srand=srand,
-                    dir=dir, egs_list=egs_list))
+                    dir=dir, egs_list=egs_list,
+                    output_archive=output_archive))
+
+        if generate_egs_scp:
+            out_egs_handle = open("{0}/egs.scp".format(dir), 'w')
+            for i in range(1, num_archives_intermediate + 1):
+                for line in open("{0}/egs.{1}.scp".format(dir, i)):
+                    print (line, file=out_egs_handle)
+            out_egs_handle.close()
     else:
         # there are intermediate archives so we shuffle egs across jobs
         # and split them into archives_multiple output archives
-        output_archives = ' '.join(["ark:{dir}/egs.JOB.{ark_num}.ark".format(
-                                        dir=dir, ark_num=x)
-                                    for x in range(1, archives_multiple + 1)])
+        if generate_egs_scp:
+            output_archives = ' '.join(
+                ["ark,scp:{dir}/egs.JOB.{ark_num}.ark,"
+                 "{dir}/egs.JOB.{ark_num}.scp".format(
+                    dir=dir, ark_num=x)
+                 for x in range(1, archives_multiple + 1)])
+        else:
+            output_archives = ' '.join(
+                ["ark:{dir}/egs.JOB.{ark_num}.ark".format(
+                    dir=dir, ark_num=x)
+                 for x in range(1, archives_multiple + 1)])
         # archives were created as egs.x.y.ark
         # linking them to egs.i.ark format which is expected by the training
         # scripts
@@ -711,6 +776,14 @@ def generate_training_examples_internal(dir, targets_parameters, feat_dir,
                         cmd=cmd, msjr=num_jobs,
                         nai=num_archives_intermediate, srand=srand,
                         dir=dir, egs_list=egs_list, oarks=output_archives))
+
+        if generate_egs_scp:
+            out_egs_handle = open("{0}/egs.scp".format(dir), 'w')
+            for i in range(1, num_archives_intermediate + 1):
+                for j in range(1, archives_multiple + 1):
+                    for line in open("{0}/egs.{1}.{2}.scp".format(dir, i, j)):
+                        print (line, file=out_egs_handle)
+            out_egs_handle.close()
 
     cleanup(dir, archives_multiple)
     return {'num_frames': num_frames,
@@ -744,7 +817,8 @@ def generate_training_examples(dir, targets_parameters, feat_dir,
                                feat_ivector_strings, egs_opts,
                                frame_shift, frames_per_eg, samples_per_iter,
                                cmd, num_jobs, srand=0,
-                               only_shuffle=False, dry_run=False):
+                               only_shuffle=False, dry_run=False,
+                               generate_egs_scp=False):
 
     # generate the training options string with the given chunk_width
     train_egs_opts = egs_opts['train_egs_opts']
@@ -769,7 +843,8 @@ def generate_training_examples(dir, targets_parameters, feat_dir,
         samples_per_iter=samples_per_iter, cmd=cmd,
         srand=srand,
         only_shuffle=only_shuffle,
-        dry_run=dry_run)
+        dry_run=dry_run,
+        generate_egs_scp=generate_egs_scp)
 
     return info
 
@@ -792,13 +867,15 @@ def generate_egs(egs_dir, feat_dir, targets_para_array,
                  cmvn_opts=None, apply_cmvn_sliding=False,
                  compress_input=True,
                  input_compress_format=0,
-                 num_utts_subset=300,
+                 num_utts_subset_train=300,
+                 num_utts_subset_valid=300,
                  num_train_egs_combine=1000,
                  num_valid_egs_combine=0,
                  num_egs_diagnostic=4000,
                  samples_per_iter=400000,
                  num_jobs=6,
-                 srand=0):
+                 srand=0,
+                 generate_egs_scp=False):
 
     for directory in '{0}/log {0}/info'.format(egs_dir).split():
         create_directory(directory)
@@ -817,9 +894,9 @@ def generate_egs(egs_dir, feat_dir, targets_para_array,
 
     frame_shift = data_lib.get_frame_shift(feat_dir)
     min_duration = frames_per_eg * frame_shift
-    valid_utts = sample_utts(feat_dir, num_utts_subset, min_duration)[0]
-    train_subset_utts = sample_utts(feat_dir, num_utts_subset, min_duration,
-                                    exclude_list=valid_utts)[0]
+    valid_utts = sample_utts(feat_dir, num_utts_subset_valid, min_duration)[0]
+    train_subset_utts = sample_utts(feat_dir, num_utts_subset_train,
+                                    min_duration, exclude_list=valid_utts)[0]
     train_utts, train_utts_durs = sample_utts(feat_dir, None, -1,
                                               exclude_list=valid_utts)
 
@@ -857,7 +934,8 @@ def generate_egs(egs_dir, feat_dir, targets_para_array,
             num_valid_egs_combine=num_valid_egs_combine,
             num_egs_diagnostic=num_egs_diagnostic,
             cmd=cmd,
-            num_jobs=num_jobs)
+            num_jobs=num_jobs,
+            generate_egs_scp=generate_egs_scp)
 
     logger.info("Generating training examples on disk.")
     info = generate_training_examples(
@@ -873,7 +951,8 @@ def generate_egs(egs_dir, feat_dir, targets_para_array,
         num_jobs=num_jobs,
         srand=srand,
         only_shuffle=True if stage > 3 else False,
-        dry_run=True if stage > 4 else False)
+        dry_run=True if stage > 4 else False,
+        generate_egs_scp=generate_egs_scp)
 
     info['feat_dim'] = feat_ivector_strings['feat_dim']
     info['ivector_dim'] = feat_ivector_strings['ivector_dim']
@@ -898,13 +977,15 @@ def main():
                  apply_cmvn_sliding=args.apply_cmvn_sliding,
                  compress_input=args.compress_input,
                  input_compress_format=args.input_compress_format,
-                 num_utts_subset=args.num_utts_subset,
+                 num_utts_subset_train=args.num_utts_subset_train,
+                 num_utts_subset_valid=args.num_utts_subset_valid,
                  num_train_egs_combine=args.num_train_egs_combine,
                  num_valid_egs_combine=args.num_valid_egs_combine,
                  num_egs_diagnostic=args.num_egs_diagnostic,
                  samples_per_iter=args.samples_per_iter,
                  num_jobs=args.num_jobs,
-                 srand=args.srand)
+                 srand=args.srand,
+                 generate_egs_scp=args.generate_egs_scp)
 
 
 if __name__ == "__main__":
