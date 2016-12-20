@@ -8,4 +8,4 @@
 
 import common
 
-__all__ = ["common"]
+__all__ = ["common", "data"]
