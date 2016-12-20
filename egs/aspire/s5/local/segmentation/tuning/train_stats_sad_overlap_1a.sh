@@ -20,7 +20,7 @@ egs_opts=   # Directly passed to get_egs_multiple_targets.py
 
 # TDNN options
 relu_dim=256
-chunk_width=20  # We use chunk training for training TDNN
+chunk_width=40  # We use chunk training for training TDNN
 extra_left_context=100  # Maximum left context in egs apart from TDNN's left context 
 extra_right_context=20  # Maximum right context in egs apart from TDNN's right context 
 
@@ -41,28 +41,23 @@ max_param_change=0.2  # Small max-param change for small network
 extra_egs_copy_cmd=   # Used if you want to do some weird stuff to egs
                       # such as removing one of the targets
 
-num_utts_subset_valid=50    # "utts" is actually recording. So this is prettly small.
-num_utts_subset_train=50
-
 # target options
-train_data_dir=data/train_azteec_whole_sp_corrupted_hires
+train_data_dir=data/train_aztec_small_unsad_a
+speech_feat_scp=data/train_aztec_small_unsad_a/speech_feat.scp
+deriv_weights_scp=data/train_aztec_small_unsad_a/deriv_weights.scp
 
-snr_scp=
-speech_feat_scp=
-overlapped_speech_labels_scp=
+#train_data_dir=data/train_aztec_small_unsad_whole_sad_ovlp_corrupted_sp
+#speech_feat_scp=data/train_aztec_unsad_whole_corrupted_sp_hires_bp/speech_feat.scp 
+#deriv_weights_scp=data/train_aztec_unsad_whole_corrupted_sp_hires_bp_2400/deriv_weights.scp 
+#data/train_aztec_small_unsad_whole_all_corrupted_sp_hires_bp
 
-deriv_weights_scp=
-deriv_weights_for_overlapped_speech_scp=
-
-train_data_dir=data/train_aztec_small_unsad_whole_sad_ovlp_corrupted_sp
-speech_feat_scp=data/train_aztec_unsad_whole_corrupted_sp_hires_bp/speech_feat.scp 
-deriv_weights_scp=data/train_aztec_unsad_whole_corrupted_sp_hires_bp_2400/deriv_weights.scp 
-
+# Only for SAD
 snr_scp=data/train_aztec_unsad_whole_corrupted_sp_hires_bp/irm_targets.scp
 deriv_weights_for_irm_scp=data/train_aztec_unsad_whole_corrupted_sp_hires_bp/deriv_weights_manual_seg.scp 
 
-deriv_weights_for_overlapped_speech_scp=
-overlapped_speech_labels_scp=
+# Only for overlapped speech detection
+deriv_weights_for_overlapped_speech_scp=data/train_aztec_unsad_seg_ovlp_corrupted_hires_bp/deriv_weights_for_overlapped_speech.scp
+overlapped_speech_labels_scp=data/train_aztec_unsad_seg_ovlp_corrupted_hires_bp/overlapped_speech_labels.scp
 
 #extra_left_context=79 
 #extra_right_context=11
@@ -78,6 +73,10 @@ affix=a
 . cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
+
+num_utts=`cat $train_data_dir/utt2spk | wc -l`
+num_utts_subset_valid=`perl -e '$n=int($ARGV[0] * 0.005); print ($n > 4000 ? 4000 : $n)' $num_utts`
+num_utts_subset_train=`perl -e '$n=int($ARGV[0] * 0.005); print ($n > 4000 ? 4000 : $n)' $num_utts`
 
 if [ -z "$dir" ]; then
   dir=exp/nnet3_stats_sad_ovlp_snr/nnet_tdnn
@@ -109,11 +108,15 @@ if [ $stage -le 3 ]; then
   stats-layer name=tdnn2_stats config=mean+count(-99:3:9:99)
   relu-renorm-layer name=tdnn2 input=Append(tdnn1@-6, tdnn1, tdnn2_stats) dim=256
   relu-renorm-layer name=tdnn3 input=Append(-9,0,3) dim=256
-  relu-renorm-layer name=tdnn4 dim=256
 
-  output-layer name=output-speech include-log-softmax=true dim=2
-  output-layer name=output-snr include-log-softmax=false dim=$num_snr_bins objective=quadratic
-  output-layer name=output-overlapped_speech include-log-softmax=true dim=2
+  relu-renorm-layer name=pre-final-speech dim=256 input=tdnn3
+  output-layer name=output-speech include-log-softmax=true dim=2 objective-scale=`perl -e 'print (1.0/6)'`
+
+  relu-renorm-layer name=pre-final-snr dim=256 input=tdnn3
+  output-layer name=output-snr include-log-softmax=false dim=$num_snr_bins objective-type=quadratic objective-scale=`perl -e "print 1.0/$num_snr_bins"`
+
+  relu-renorm-layer name=pre-final-overlapped_speech dim=256 input=tdnn3
+  output-layer name=output-overlapped_speech include-log-softmax=true dim=2 
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig \
     --config-dir $dir/configs/ \
@@ -145,7 +148,7 @@ if [ -z "$egs_dir" ]; then
       --num-utts-subset-valid=$num_utts_subset_valid \
       --samples-per-iter=20000 \
       --stage=$get_egs_stage \
-      --targets-parameters="--output-name=output-snr --target-type=dense --targets-scp=$snr_scp --deriv-weights-scp=$deriv_weights_scp" \
+      --targets-parameters="--output-name=output-snr --target-type=dense --targets-scp=$snr_scp --deriv-weights-scp=$deriv_weights_for_irm_scp" \
       --targets-parameters="--output-name=output-speech --target-type=sparse --dim=2 --targets-scp=$speech_feat_scp --deriv-weights-scp=$deriv_weights_scp --scp2ark-cmd=\"extract-column --column-index=0 scp:- ark,t:- | steps/segmentation/quantize_vector.pl | ali-to-post ark,t:- ark:- |\"" \
       --targets-parameters="--output-name=output-overlapped_speech --target-type=sparse --dim=2 --targets-scp=$overlapped_speech_labels_scp --deriv-weights-scp=$deriv_weights_for_overlapped_speech_scp --scp2ark-cmd=\"ali-to-post scp:- ark:- |\"" \
       --dir=$dir/egs
@@ -155,7 +158,7 @@ fi
 if [ $stage -le 5 ]; then
   steps/nnet3/train_raw_rnn.py --stage=$train_stage \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
-    --egs.chunk-width=20 \
+    --egs.chunk-width=$chunk_width \
     --egs.dir="$egs_dir" --egs.stage=$get_egs_stage \
     --egs.chunk-left-context=$extra_left_context \
     --egs.chunk-right-context=$extra_right_context \
@@ -169,7 +172,7 @@ if [ $stage -le 5 ]; then
     --trainer.optimization.initial-effective-lrate=$initial_effective_lrate \
     --trainer.optimization.final-effective-lrate=$final_effective_lrate \
     --trainer.optimization.shrink-value=1.0 \
-    --trainer.rnn.num-chunk-per-minibatch=64 \
+    --trainer.rnn.num-chunk-per-minibatch=128 \
     --trainer.deriv-truncate-margin=8 \
     --trainer.max-param-change=$max_param_change \
     --cmd="$decode_cmd" --nj 40 \
