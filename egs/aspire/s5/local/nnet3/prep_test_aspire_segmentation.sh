@@ -16,6 +16,8 @@ decode_num_jobs=30
 num_jobs=30
 affix=
 
+sad_iter=final
+
 # ivector opts
 max_count=75 # parameter for extract_ivectors.sh
 sub_speaker_frames=6000
@@ -73,7 +75,7 @@ fi
 
 if [ $stage -le 1 ]; then
   steps/segmentation/do_segmentation_data_dir.sh --reco-nj $num_jobs \
-    --mfcc-config conf/mfcc_hires_bp.conf --feat-affix bp \
+    --mfcc-config conf/mfcc_hires_bp.conf --feat-affix bp --iter $sad_iter \
     --do-downsampling false --extra-left-context 100 --extra-right-context 20 \
     --output-name output-speech --frame-subsampling-factor 6 \
     data/${data_set} $sad_nnet_dir mfcc_hires_bp data/${data_set}
