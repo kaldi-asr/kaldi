@@ -53,7 +53,8 @@ class NumeratorGraph {
   int32 MaxNumStates() const { return max_num_hmm_states_; }
 //  NumeratorGraph();
 
-  NumeratorGraph(const Supervision &supervision, bool scale_first_transitions);
+  NumeratorGraph(const Supervision &supervision,
+    bool scale_first_transitions = true);
 
   const Int32Pair *ForwardTransitions() const;
 
