@@ -466,7 +466,9 @@ def train(args, run_opts, background_process_handler):
                 run_opts=run_opts,
                 get_raw_nnet_from_am=False,
                 background_process_handler=background_process_handler,
-                extra_egs_copy_cmd=args.extra_egs_copy_cmd)
+                extra_egs_copy_cmd=args.extra_egs_copy_cmd,
+                use_multitask_egs=args.use_multitask_egs,
+                rename_multitask_outputs=args.rename_multitask_outputs)
 
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain

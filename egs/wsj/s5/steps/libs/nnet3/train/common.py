@@ -559,6 +559,18 @@ class CommonParser:
                                  action=common_lib.NullstrToNoneAction,
                                  help="""String to provide options directly
                                  to steps/nnet3/get_egs.sh script""")
+        self.parser.add_argument("--egs.use-multitask-egs", type=str,
+                                 dest='use_multitask_egs',
+                                 default=True, choices=["true", "false"],
+                                 action=common_lib.StrToBoolAction,
+                                 help="""Use mutlitask egs created using
+                                 allocate_multilingual_egs.py.""")
+        self.parser.add_argument("--egs.rename-multitask-outputs", type=str,
+                                 dest='rename_multitask_outputs',
+                                 default=True, choices=["true", "false"],
+                                 action=common_lib.StrToBoolAction,
+                                 help="""Rename multitask outputs created using
+                                 allocate_multilingual_egs.py.""")
 
         # trainer options
         self.parser.add_argument("--trainer.srand", type=int, dest='srand',
