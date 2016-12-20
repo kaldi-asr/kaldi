@@ -159,21 +159,22 @@ static void MergeIo(const std::vector<NnetExample> &src,
     }
 
     Vector<BaseFloat> &this_deriv_weights = merged_eg->io[f].deriv_weights;
-    if (output_deriv_weights[f][0]->Dim() > 0) {
-      this_deriv_weights.Resize(
-          merged_eg->io[f].indexes.size(), kUndefined);
-      KALDI_ASSERT(this_deriv_weights.Dim() ==
-                   merged_eg->io[f].features.NumRows());
+    this_deriv_weights.Resize(
+        merged_eg->io[f].indexes.size(), kUndefined);
+    this_deriv_weights.Set(1.0);
+    KALDI_ASSERT(this_deriv_weights.Dim() ==
+                 merged_eg->io[f].features.NumRows());
 
-      std::vector<Vector<BaseFloat> const*>::const_iterator
-          it = output_deriv_weights[f].begin(),
-          end = output_deriv_weights[f].end();
+    std::vector<Vector<BaseFloat> const*>::const_iterator
+        it = output_deriv_weights[f].begin(),
+        end = output_deriv_weights[f].end();
 
-      for (int32 i = 0, cur_offset = 0; it != end; ++it, i++) {
+    for (int32 i = 0, cur_offset = 0; it != end; ++it, i++) {
+      if((*it)->Dim() > 0) {
         KALDI_ASSERT((*it)->Dim() == output_lists[f][i]->NumRows());
         this_deriv_weights.Range(cur_offset, (*it)->Dim()).CopyFromVec(**it);
-        cur_offset += (*it)->Dim();
       }
+      cur_offset += output_lists[f][i]->NumRows();
     }
   }
 }

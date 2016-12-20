@@ -44,26 +44,28 @@ bool ToBool(std::string str) {
   return false;  // never reached
 }
 
-static void ProcessFile(const MatrixBase<BaseFloat> &feats,
-                        const MatrixBase<BaseFloat> *ivector_feats,
-                        const std::vector<std::string> &output_names,
-                        const std::vector<int32> &output_dims,
-                        const std::vector<const MatrixBase<BaseFloat>* > &dense_target_matrices,
-                        const std::vector<const Posterior*> &posteriors,
-                        const std::vector<const VectorBase<BaseFloat>* > &deriv_weights,
-                        const std::string &utt_id,
-                        bool compress_input,
-                        int32 input_compress_format,
-                        const std::vector<bool> &compress_targets,
-                        const std::vector<int32> &targets_compress_formats,
-                        int32 left_context,
-                        int32 right_context,
-                        int32 frames_per_eg,
-                        std::vector<int64> *num_frames_written,
-                        std::vector<int64> *num_egs_written,
-                        NnetExampleWriter *example_writer) {
+static void ProcessFile(
+    const MatrixBase<BaseFloat> &feats,
+    const MatrixBase<BaseFloat> *ivector_feats,
+    const std::vector<std::string> &output_names,
+    const std::vector<int32> &output_dims,
+    const std::vector<const MatrixBase<BaseFloat>* > &dense_target_matrices,
+    const std::vector<const Posterior*> &posteriors,
+    const std::vector<const VectorBase<BaseFloat>* > &deriv_weights,
+    const std::string &utt_id,
+    bool compress_input,
+    int32 input_compress_format,
+    const std::vector<bool> &compress_targets,
+    const std::vector<int32> &targets_compress_formats,
+    int32 left_context,
+    int32 right_context,
+    int32 frames_per_eg,
+    std::vector<int64> *num_frames_written,
+    std::vector<int64> *num_egs_written,
+    NnetExampleWriter *example_writer) {
+  
   KALDI_ASSERT(output_names.size() > 0);
-  //KALDI_ASSERT(feats.NumRows() == static_cast<int32>(targets.NumRows()));
+
   for (int32 t = 0; t < feats.NumRows(); t += frames_per_eg) {
 
     int32 tot_frames = left_context + frames_per_eg + right_context;
@@ -113,16 +115,15 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
         // At the end of the file, we pad with the last frame repeated
         // so that all examples have the same structure (prevents the need
         // for recompilations).
-        int32 actual_frames_per_eg = std::min(std::min(frames_per_eg,
-                                              feats.NumRows() - t), deriv_weights[n]->Dim() - t);
+        int32 actual_frames_per_eg = std::min(
+            std::min(frames_per_eg, feats.NumRows() - t),
+            deriv_weights[n]->Dim() - t);
 
         this_deriv_weights.Resize(frames_per_eg);
         int32 frames_to_copy = std::min(t + actual_frames_per_eg, 
                                         deriv_weights[n]->Dim()) - t; 
-        this_deriv_weights.Range(0, frames_to_copy).CopyFromVec(deriv_weights[n]->Range(t, frames_to_copy));
-        if (this_deriv_weights.Sum() == 0) {
-          continue;   // Ignore frames that have frame weights 0
-        }
+        this_deriv_weights.Range(0, frames_to_copy).CopyFromVec(
+            deriv_weights[n]->Range(t, frames_to_copy));
       }
 
       if (dense_target_matrices[n]) {
@@ -133,8 +134,9 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
         // At the end of the file, we pad with the last frame repeated
         // so that all examples have the same structure (prevents the need
         // for recompilations).
-        int32 actual_frames_per_eg = std::min(std::min(frames_per_eg,
-                                              feats.NumRows() - t), targets.NumRows() - t);
+        int32 actual_frames_per_eg = std::min(
+            std::min(frames_per_eg, feats.NumRows() - t),
+            targets.NumRows() - t);
 
         for (int32 i = 0; i < actual_frames_per_eg; i++) {
           // Copy the i^th row of the target matrix from the (t+i)^th row of the
@@ -150,12 +152,14 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
           // input targets matrix
           KALDI_ASSERT(t + actual_frames_per_eg - 1 == targets.NumRows() - 1); 
           SubVector<BaseFloat> this_target_dest(targets_dest, i);
-          SubVector<BaseFloat> this_target_src(targets, t+actual_frames_per_eg-1);
+          SubVector<BaseFloat> this_target_src(targets, 
+                                               t + actual_frames_per_eg - 1);
           this_target_dest.CopyFromVec(this_target_src);
         }
 
         if (deriv_weights[n]) {
-          eg.io.push_back(NnetIo(output_names[n], this_deriv_weights, 0, targets_dest));
+          eg.io.push_back(NnetIo(output_names[n], this_deriv_weights, 
+                                 0, targets_dest));
         } else {
           eg.io.push_back(NnetIo(output_names[n], 0, targets_dest));
         }
@@ -166,8 +170,9 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
         // At the end of the file, we pad with the last frame repeated
         // so that all examples have the same structure (prevents the need
         // for recompilations).
-        int32 actual_frames_per_eg = std::min(std::min(frames_per_eg,
-                                              feats.NumRows() - t), static_cast<int32>(pdf_post.size()) - t);
+        int32 actual_frames_per_eg = std::min(
+            std::min(frames_per_eg, feats.NumRows() - t),
+            static_cast<int32>(pdf_post.size()) - t);
 
         Posterior labels(frames_per_eg);
         for (int32 i = 0; i < actual_frames_per_eg; i++)
@@ -175,7 +180,8 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
         // remaining posteriors for frames are empty.
 
         if (deriv_weights[n]) {
-          eg.io.push_back(NnetIo(output_names[n], this_deriv_weights, output_dims[n], 0, labels));
+          eg.io.push_back(NnetIo(output_names[n], this_deriv_weights,
+                                 output_dims[n], 0, labels));
         } else {
           eg.io.push_back(NnetIo(output_names[n], output_dims[n], 0, labels));
         }
@@ -185,11 +191,13 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
         eg.io.back().Compress(targets_compress_formats[n]);
 
       num_outputs_added++;
-      (*num_frames_written)[n] += frames_per_eg;   // Actually actual_frames_per_eg, but that depends on the different output. For simplification, frames_per_eg is used.
+      // Actually actual_frames_per_eg, but that depends on the different
+      // output. For simplification, frames_per_eg is used.
+      (*num_frames_written)[n] += frames_per_eg;   
       (*num_egs_written)[n] += 1;
     }
 
-    if (num_outputs_added == 0) continue;
+    if (num_outputs_added != output_names.size()) continue;
       
     std::ostringstream os;
     os << utt_id << "-" << t;
@@ -236,7 +244,6 @@ int main(int argc, char *argv[]) {
         
 
     bool compress_input = true;
-    bool add_fake_targets= true;
     int32 input_compress_format = 0; 
     int32 left_context = 0, right_context = 0,
           num_frames = 1, length_tolerance = 2;
@@ -248,17 +255,14 @@ int main(int argc, char *argv[]) {
     std::string output_names_str;
 
     ParseOptions po(usage);
-    po.Register("add-fake-targets", &add_fake_targets, 
-                "Add fake targets so that "
-                "all the egs contain the same number of outputs");
     po.Register("compress-input", &compress_input, "If true, write egs in "
                 "compressed format.");
     po.Register("input-compress-format", &input_compress_format, "Format for "
                 "compressing input feats e.g. Use 2 for compressing wave");
     po.Register("compress-targets", &compress_targets_str, "CSL of whether "
                 "targets must be compressed for each of the outputs");
-    po.Register("targets-compress-formats", &targets_compress_formats_str, "Format for "
-                "compressing all feats in general");
+    po.Register("targets-compress-formats", &targets_compress_formats_str,
+                "Format for compressing all feats in general");
     po.Register("left-context", &left_context, "Number of frames of left "
                 "context the neural net requires.");
     po.Register("right-context", &right_context, "Number of frames of right "
@@ -271,11 +275,6 @@ int main(int argc, char *argv[]) {
                 "difference in num-frames between feat and ivector matrices");
     po.Register("output-dims", &output_dims_str, "CSL of output node dims");
     po.Register("output-names", &output_names_str, "CSL of output node names");
-    //po.Register("deriv-weights-rspecifiers", &deriv_weights_rspecifiers_str,
-    //            "CSL of per-frame weights (only binary - 0 or 1) that specifies "
-    //            "whether a frame's gradient must be backpropagated or not. "
-    //            "Not specifying this is equivalent to specifying a vector of "
-    //            "all 1s.");
     
     po.Read(argc, argv);
 
@@ -295,12 +294,12 @@ int main(int argc, char *argv[]) {
     int32 num_outputs = (po.NumArgs() - 2) / 2;
     KALDI_ASSERT(num_outputs > 0);
     
-    std::vector<RandomAccessBaseFloatVectorReader*> deriv_weights_readers(num_outputs, 
-                                                                          static_cast<RandomAccessBaseFloatVectorReader*>(NULL));
-    std::vector<RandomAccessBaseFloatMatrixReader*> dense_targets_readers(num_outputs,
-                                                                          static_cast<RandomAccessBaseFloatMatrixReader*>(NULL));
-    std::vector<RandomAccessPosteriorReader*> sparse_targets_readers(num_outputs,
-                                                                     static_cast<RandomAccessPosteriorReader*>(NULL));
+    std::vector<RandomAccessBaseFloatVectorReader*> deriv_weights_readers(
+        num_outputs, static_cast<RandomAccessBaseFloatVectorReader*>(NULL));
+    std::vector<RandomAccessBaseFloatMatrixReader*> dense_targets_readers(
+        num_outputs, static_cast<RandomAccessBaseFloatMatrixReader*>(NULL));
+    std::vector<RandomAccessPosteriorReader*> sparse_targets_readers(
+        num_outputs, static_cast<RandomAccessPosteriorReader*>(NULL));
 
     std::vector<bool> compress_targets(1, true);
     std::vector<std::string> compress_targets_vector;
@@ -338,7 +337,8 @@ int main(int argc, char *argv[]) {
     }
 
     if (targets_compress_formats.size() != num_outputs) {
-      KALDI_ERR << "Mismatch in length of targets-compress-formats and num-outputs; "
+      KALDI_ERR << "Mismatch in length of targets-compress-formats "
+                << " and num-outputs; "
                 << targets_compress_formats.size() << " vs " << num_outputs;
     }
     
@@ -349,24 +349,8 @@ int main(int argc, char *argv[]) {
     std::vector<std::string> output_names(num_outputs);
     SplitStringToVector(output_names_str, ":,", true, &output_names);
     
-    //std::vector<std::string> deriv_weights_rspecifiers;
-    //if (!deriv_weights_rspecifiers_str.empty()) {
-    //  std::vector<std::string> parts;
-    //  SplitStringToVector(deriv_weights_rspecifiers_str, ":,", 
-    //                      false, &deriv_weights_rspecifiers);
-
-    //  if (deriv_weights_rspecifiers.size() != num_outputs) {
-    //    KALDI_ERR << "Expecting the number of deriv-weights-rspecifiers to "
-    //      << "be equal to the number of outputs";
-    //  }
-    //}
-    
     std::vector<std::string> targets_rspecifiers(num_outputs);
     std::vector<std::string> deriv_weights_rspecifiers(num_outputs);
-    
-    std::vector<Matrix<BaseFloat> > fake_dense_targets(num_outputs);
-    std::vector<Vector<BaseFloat> > fake_deriv_weights(num_outputs);
-    std::vector<Posterior> fake_sparse_targets(num_outputs);
     
     for (int32 n = 0; n < num_outputs; n++) {
       const std::string &targets_rspecifier = po.GetArg(2*n + 2);
@@ -376,19 +360,24 @@ int main(int argc, char *argv[]) {
       deriv_weights_rspecifiers[n] = deriv_weights_rspecifier;
 
       if (output_dims[n] >= 0) {
-        sparse_targets_readers[n] = new RandomAccessPosteriorReader(targets_rspecifier);
+        sparse_targets_readers[n] = new RandomAccessPosteriorReader(
+            targets_rspecifier);
       } else {
-        dense_targets_readers[n] = new RandomAccessBaseFloatMatrixReader(targets_rspecifier);
+        dense_targets_readers[n] = new RandomAccessBaseFloatMatrixReader(
+            targets_rspecifier);
       }
 
       if (!deriv_weights_rspecifier.empty())
-        deriv_weights_readers[n] = new RandomAccessBaseFloatVectorReader(deriv_weights_rspecifier);
+        deriv_weights_readers[n] = new RandomAccessBaseFloatVectorReader(
+            deriv_weights_rspecifier);
 
       KALDI_LOG << "output-name=" << output_names[n]
                 << " target-dim=" << output_dims[n]
                 << " targets-rspecifier=\"" << targets_rspecifiers[n] << "\""
-                << " deriv-weights-rspecifier=\"" << deriv_weights_rspecifiers[n] << "\""
-                << " compress-target=" << (compress_targets[n] ? "true" : "false")
+                << " deriv-weights-rspecifier=\"" 
+                << deriv_weights_rspecifiers[n] << "\""
+                << " compress-target=" 
+                << (compress_targets[n] ? "true" : "false")
                 << " target-compress-format=" << targets_compress_formats[n];
     }
 
@@ -405,7 +394,6 @@ int main(int argc, char *argv[]) {
       if (!ivector_rspecifier.empty()) {
         if (!ivector_reader.HasKey(key)) {
           KALDI_WARN << "No iVectors for utterance " << key;
-          num_err++;
           continue;
         } else {
           // this address will be valid until we call HasKey() or Value()
@@ -424,9 +412,12 @@ int main(int argc, char *argv[]) {
         continue;
       }
 
-      std::vector<const MatrixBase<BaseFloat>* > dense_targets(num_outputs, static_cast<const Matrix<BaseFloat>* >(NULL));
-      std::vector<const Posterior* > sparse_targets(num_outputs, static_cast<const Posterior* >(NULL));
-      std::vector<const VectorBase<BaseFloat>* > deriv_weights(num_outputs, static_cast<const Vector<BaseFloat>* >(NULL));
+      std::vector<const MatrixBase<BaseFloat>* > dense_targets(
+          num_outputs, static_cast<const Matrix<BaseFloat>* >(NULL));
+      std::vector<const Posterior* > sparse_targets(
+          num_outputs, static_cast<const Posterior* >(NULL));
+      std::vector<const VectorBase<BaseFloat>* > deriv_weights(
+          num_outputs, static_cast<const Vector<BaseFloat>* >(NULL));
 
       int32 num_outputs_found = 0;
       for (int32 n = 0; n < num_outputs; n++) {
@@ -435,26 +426,16 @@ int main(int argc, char *argv[]) {
             KALDI_WARN << "No dense targets matrix for key " << key << " in " 
                        << "rspecifier " << targets_rspecifiers[n] 
                        << " for output " << output_names[n];
-
-            if (add_fake_targets) {
-              fake_dense_targets[n].Resize(feats.NumRows(), -output_dims[n]);
-              dense_targets[n] = &(fake_dense_targets[n]);
-
-              fake_deriv_weights[n].Resize(feats.NumRows());
-              deriv_weights[n] = &(fake_deriv_weights[n]);
-              
-              num_outputs_found++;
-            }
-            continue;
+            break;
           } 
-          const MatrixBase<BaseFloat> *target_matrix = &(dense_targets_readers[n]->Value(key));
+          const MatrixBase<BaseFloat> *target_matrix = &(
+              dense_targets_readers[n]->Value(key));
           
           if ((target_matrix->NumRows() - feats.NumRows()) > length_tolerance) {
             KALDI_WARN << "Length difference between feats " << feats.NumRows()
                        << " and target matrix " << target_matrix->NumRows()
                        << "exceeds tolerance " << length_tolerance;
-            num_err++;
-            continue;
+            break;
           }
 
           dense_targets[n] = target_matrix;
@@ -463,22 +444,16 @@ int main(int argc, char *argv[]) {
             KALDI_WARN << "No sparse target matrix for key " << key << " in " 
                        << "rspecifier " << targets_rspecifiers[n]
                        << " for output " << output_names[n];
-
-            if (add_fake_targets) {
-              fake_sparse_targets[n].resize(feats.NumRows());
-              sparse_targets[n] = &(fake_sparse_targets[n]);
-              num_outputs_found++;
-            }
-            continue;
+            break;
           } 
           const Posterior *posterior = &(sparse_targets_readers[n]->Value(key));
 
-          if (abs(static_cast<int32>(posterior->size()) - feats.NumRows()) > length_tolerance
+          if (abs(static_cast<int32>(posterior->size()) - feats.NumRows()) 
+              > length_tolerance
               || posterior->size() < feats.NumRows()) {
             KALDI_WARN << "Posterior has wrong size " << posterior->size()
                        << " versus " << feats.NumRows();
-            num_err++;
-            continue;
+            break;
           }
         
           sparse_targets[n] = posterior;
@@ -489,10 +464,7 @@ int main(int argc, char *argv[]) {
             KALDI_WARN << "No deriv weights for key " << key << " in " 
                        << "rspecifier " << deriv_weights_rspecifiers[n]
                        << " for output " << output_names[n];
-            num_err++;
-            sparse_targets[n] = NULL;
-            dense_targets[n] = NULL;
-            continue;
+            break;
           } else {
             // this address will be valid until we call HasKey() or Value()
             // again.
@@ -500,29 +472,20 @@ int main(int argc, char *argv[]) {
           }
         }
         
-        if (deriv_weights[n] && 
-            (abs(feats.NumRows() - deriv_weights[n]->Dim()) > length_tolerance
-            || deriv_weights[n]->Dim() == 0)) {
+        if (deriv_weights[n] 
+            && (abs(feats.NumRows() - deriv_weights[n]->Dim())
+                > length_tolerance
+                || deriv_weights[n]->Dim() == 0)) {
           KALDI_WARN << "Length difference between feats " << feats.NumRows()
                      << " and deriv weights " << deriv_weights[n]->Dim()
                      << " exceeds tolerance " << length_tolerance;
-          num_err++;
-          sparse_targets[n] = NULL;
-          dense_targets[n] = NULL;
-          deriv_weights[n] = NULL;
-          continue;
+          break;
         }
         
         num_outputs_found++;
       }
 
-      if (num_outputs_found == 0) {
-        KALDI_WARN << "No output found for key " << key;
-        num_err++;
-        continue;
-      }
-
-      if (add_fake_targets && num_outputs_found != output_names.size()) {
+      if (num_outputs_found != num_outputs) {
         KALDI_WARN << "Not all outputs found for key " << key;
         num_err++;
         continue;
@@ -553,7 +516,8 @@ int main(int argc, char *argv[]) {
 
     KALDI_LOG << "Finished generating examples, "
               << "successfully processed " << num_done
-              << " feature files, wrote at most " << max_num_egs_written << " examples, "
+              << " feature files, wrote at most " << max_num_egs_written 
+              << " examples, "
               << " with at most " << max_num_frames_written << " egs in total; "
               << num_err << " files had errors.";
 
@@ -563,5 +527,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-
