@@ -14,6 +14,7 @@ stage=-1
 nnet_dir=exp/nnet3_sad_snr/nnet_tdnn_k_n4
 extra_left_context=100 
 extra_right_context=20
+iter=final
 
 . utils/parse_options.sh
 
@@ -107,7 +108,7 @@ if [ $stage -le 7 ]; then
   steps/segmentation/do_segmentation_data_dir.sh --reco-nj 18 \
     --mfcc-config conf/mfcc_hires_bp.conf --feat-affix bp --do-downsampling true \
     --extra-left-context $extra_left_context --extra-right-context $extra_right_context \
-    --output-name output-speech --frame-subsampling-factor 6 \
+    --output-name output-speech --frame-subsampling-factor 6 --iter $iter \
     $src_dir/data/sdm1/dev $nnet_dir mfcc_hires_bp $hyp_dir
 fi
 
