@@ -281,6 +281,14 @@ void SparseVector<Real>::Resize(MatrixIndexT dim,
   dim_ = dim;
 }
 
+template <typename Real> 
+void SparseVector<Real>::Scale(BaseFloat scale) {
+  typename std::vector<std::pair<MatrixIndexT, Real> >::iterator it = pairs_.begin();
+  for (; it != pairs_.end(); ++it) {
+    it->second *= scale;
+  }
+}
+
 template <typename Real>
 MatrixIndexT SparseMatrix<Real>::NumRows() const {
   return rows_.size();
@@ -572,6 +580,14 @@ void SparseMatrix<Real>::Resize(MatrixIndexT num_rows,
     if (num_cols != old_num_cols)
       for (int32 row = 0; row < old_num_rows; row++)
         rows_[row].Resize(num_cols, kCopyData);
+  }
+}
+ 
+template <typename Real>
+void SparseMatrix<Real>::Scale(BaseFloat scale) {
+  for (typename std::vector<SparseVector<Real> >::iterator it = rows_.begin();
+       it != rows_.end(); ++it) {
+    it->Scale(scale);
   }
 }
 
@@ -1052,6 +1068,18 @@ void GeneralMatrix::AddToMat(BaseFloat alpha, MatrixBase<BaseFloat> *mat,
       KALDI_ERR << "Invalid general-matrix type.";
   }
 }
+
+
+void GeneralMatrix::Scale(BaseFloat scale) {
+  if(Type() == kCompressedMatrix)
+    Uncompress();
+  if (Type() == kFullMatrix) {
+    mat_.Scale(scale);
+  } else if (Type() == kSparseMatrix) {
+    smat_.Scale(scale);
+  }
+}
+
 
 template <class Real>
 Real SparseVector<Real>::Max(int32 *index_out) const {

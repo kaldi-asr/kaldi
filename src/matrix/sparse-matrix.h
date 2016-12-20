@@ -98,6 +98,8 @@ class SparseVector {
   /// Resizes to this dimension.  resize_type == kUndefined
   /// behaves the same as kSetZero.
   void Resize(MatrixIndexT dim, MatrixResizeType resize_type = kSetZero);
+  
+  void Scale(BaseFloat scale);
 
   void Write(std::ostream &os, bool binary) const;
 
@@ -196,6 +198,8 @@ class SparseMatrix {
   void Resize(MatrixIndexT rows, MatrixIndexT cols,
               MatrixResizeType resize_type = kSetZero);
 
+  void Scale(BaseFloat scale);
+
   // Use the Matrix::CopyFromSmat() function to copy from this to Matrix.  Also
   // see Matrix::AddSmat().  There is not very extensive functionality for
   // SparseMat just yet (e.g. no matrix multiply); we will add things as needed
@@ -285,6 +289,8 @@ class GeneralMatrix {
   /// Implemented in ../cudamatrix/cu-sparse-matrix.cc
   void AddToMat(BaseFloat alpha, CuMatrixBase<BaseFloat> *cu_mat,
                 MatrixTransposeType trans = kNoTrans) const;
+
+  void Scale(BaseFloat alpha);
 
   /// Assignment from regular matrix.
   GeneralMatrix &operator= (const MatrixBase<BaseFloat> &mat);
