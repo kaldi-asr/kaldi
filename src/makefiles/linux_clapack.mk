@@ -1,4 +1,4 @@
-# CLAPACK specific Linux settings
+# CLAPACK specific Linux configuration
 
 ifndef DOUBLE_PRECISION
 $(error DOUBLE_PRECISION not defined.)

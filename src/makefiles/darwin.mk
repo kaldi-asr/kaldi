@@ -1,4 +1,4 @@
-# Darwin (macOS) settings
+# Darwin (macOS) configuration
 
 ifndef DOUBLE_PRECISION
 $(error DOUBLE_PRECISION not defined.)
