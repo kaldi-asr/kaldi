@@ -338,17 +338,6 @@ void ContextFstImpl<Arc, LabelT>::Expand(StateId s) {  // expands arcs only [not
   this->SetArcs(s);  // mark the arcs as "done". [so HasArcs returns true].
 }
 
-
-// template<class Arc, class LabelT>
-// ContextFst<Arc, LabelT>::ContextFst(const ContextFst<Arc, LabelT> &fst, bool reset) {
-//   if (reset) {
-//     impl_ = std::make_shared<ContextFstImpl<Arc, LabelT> >(*(fst.impl_));
-//   } else {
-//     impl_ = fst.impl_;
-//   }
-// }
-
-
 template<class Arc, class LabelT>
 bool ContextMatcher<Arc, LabelT>::Find(typename Arc::Label match_label) {
   assert(s_ != kNoStateId);

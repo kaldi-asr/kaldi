@@ -13,7 +13,7 @@ endif
 CXXFLAGS = -std=c++11 -I.. -I$(OPENFSTINC) $(EXTRA_CXXFLAGS) \
            -Wall -Wno-sign-compare -Wno-unused-local-typedefs -Winit-self \
            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
-           -DHAVE_CLAPACK -I ../../tools/CLAPACK/ \
+           -DHAVE_CLAPACK -I../../tools/CLAPACK/ \
            -msse -msse2 \
            -g # -O0 -DKALDI_PARANOID
 
@@ -26,6 +26,6 @@ LDFLAGS = $(EXTRA_LDFLAGS) $(OPENFSTLDFLAGS) -g \
 LDLIBS = $(EXTRA_LDLIBS) $(OPENFSTLIBS) -lcyglapack-0 -lcygblas-0 \
          -lm -lpthread -ldl
 
-RANLIB = ranlib
 AR = ar
 AS = as
+RANLIB = ranlib

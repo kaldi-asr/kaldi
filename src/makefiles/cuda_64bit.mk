@@ -1,8 +1,8 @@
-ifndef CUDATKDIR
-$(error CUDATKDIR not defined.)
-endif
 ifndef DOUBLE_PRECISION
 $(error DOUBLE_PRECISION not defined.)
+endif
+ifndef CUDATKDIR
+$(error CUDATKDIR not defined.)
 endif
 
 CUDA_INCLUDE= -I$(CUDATKDIR)/include
