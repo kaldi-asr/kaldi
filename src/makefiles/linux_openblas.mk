@@ -1,16 +1,35 @@
 # OpenBLAS specific Linux settings
 
+ifndef DOUBLE_PRECISION
+$(error DOUBLE_PRECISION not defined.)
+endif
+ifndef OPENFSTINC
+$(error OPENFSTINC not defined.)
+endif
+ifndef OPENFSTLIBS
+$(error OPENFSTLIBS not defined.)
+endif
+ifndef OPENBLASINC
+$(error OPENBLASROOT not defined.)
+endif
 ifndef OPENBLASLIBS
 $(error OPENBLASLIBS not defined.)
 endif
 
-ifndef OPENBLASROOT
-$(error OPENBLASROOT not defined.)
+CXXFLAGS = -std=c++11 -I.. -I$(OPENFSTINC) $(EXTRA_CXXFLAGS) \
+           -Wall -Wno-sign-compare -Wno-unused-local-typedefs -Winit-self \
+           -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
+           -DHAVE_EXECINFO_H=1 -DHAVE_CXXABI_H -DHAVE_OPENBLAS -I$(OPENBLASINC) \
+           -msse -msse2 -pthread -rdynamic \
+           -g # -O0 -DKALDI_PARANOID
+
+ifeq ($(KALDI_FLAVOR), dynamic)
+CXXFLAGS += -fPIC
 endif
 
-CXXFLAGS += -msse -msse2 -pthread -rdynamic \
-            -DHAVE_EXECINFO_H=1 -DHAVE_CXXABI_H \
-            -DHAVE_OPENBLAS -I $(OPENBLASROOT)/include
+LDFLAGS = $(EXTRA_LDFLAGS) $(OPENFSTLDFLAGS) -rdynamic
+LDLIBS = $(EXTRA_LDLIBS) $(OPENFSTLIBS) $(OPENBLASLIBS) -lm -lpthread -ldl
 
-LDFLAGS += -rdynamic
-LDLIBS += $(OPENBLASLIBS)
+RANLIB = ranlib
+AR = ar
+AS = as

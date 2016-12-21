@@ -1,7 +1,32 @@
 # Darwin (macOS) settings
 
-CXXFLAGS += -msse -msse2 -pthread \
-            -DHAVE_EXECINFO_H=1 -DHAVE_CXXABI_H -DHAVE_CLAPACK
+ifndef DOUBLE_PRECISION
+$(error DOUBLE_PRECISION not defined.)
+endif
+ifndef OPENFSTINC
+$(error OPENFSTINC not defined.)
+endif
+ifndef OPENFSTLIBS
+$(error OPENFSTLIBS not defined.)
+endif
+
+CXXFLAGS = -std=c++11 -I.. -I$(OPENFSTINC) $(EXTRA_CXXFLAGS) \
+           -Wall -Wno-sign-compare -Wno-unused-local-typedefs -Winit-self \
+           -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
+           -DHAVE_EXECINFO_H=1 -DHAVE_CXXABI_H -DHAVE_CLAPACK \
+           -msse -msse2 -pthread \
+           -g # -O0 -DKALDI_PARANOID
+
+ifeq ($(KALDI_FLAVOR), dynamic)
+CXXFLAGS += -fPIC
+endif
+
+LDFLAGS = $(EXTRA_LDFLAGS) $(OPENFSTLDFLAGS) -g
+LDLIBS = $(EXTRA_LDLIBS) $(OPENFSTLIBS) -framework Accelerate -lm -lpthread -ldl
+
+RANLIB = ranlib
+AR = ar
+AS = as
 
 # Compiler specific flags
 COMPILER = $(shell $(CXX) -v 2>&1)
@@ -12,6 +37,3 @@ else ifeq ($(findstring GCC,$(COMPILER)),GCC)
 # Allow implicit conversions between vectors.
 CXXFLAGS += -flax-vector-conversions
 endif
-
-LDFLAGS += -g
-LDLIBS += -framework Accelerate
