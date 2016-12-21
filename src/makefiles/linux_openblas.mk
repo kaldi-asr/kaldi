@@ -10,7 +10,7 @@ ifndef OPENFSTLIBS
 $(error OPENFSTLIBS not defined.)
 endif
 ifndef OPENBLASINC
-$(error OPENBLASROOT not defined.)
+$(error OPENBLASINC not defined.)
 endif
 ifndef OPENBLASLIBS
 $(error OPENBLASLIBS not defined.)
@@ -30,6 +30,6 @@ endif
 LDFLAGS = $(EXTRA_LDFLAGS) $(OPENFSTLDFLAGS) -rdynamic
 LDLIBS = $(EXTRA_LDLIBS) $(OPENFSTLIBS) $(OPENBLASLIBS) -lm -lpthread -ldl
 
-RANLIB = ranlib
 AR = ar
 AS = as
+RANLIB = ranlib

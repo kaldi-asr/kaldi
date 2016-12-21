@@ -58,6 +58,6 @@ MKL_DYN_MUL = -L$(MKLLIB) -lmkl_solver_lp64 -Wl,--start-group -lmkl_intel_lp64 \
 LDFLAGS = $(EXTRA_LDFLAGS) $(OPENFSTLDFLAGS) -rdynamic
 LDLIBS = $(EXTRA_LDLIBS) $(OPENFSTLIBS) $(MKLFLAGS) -lm -lpthread -ldl
 
-RANLIB = ranlib
 AR = ar
 AS = as
+RANLIB = ranlib
