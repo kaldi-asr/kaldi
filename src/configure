@@ -908,9 +908,12 @@ if [ ! -f $FSTROOT/include/fst/fst.h  ]; then
   failure "Could not find file $FSTROOT/include/fst/fst.h:
   you may not have installed OpenFst. See ../tools/INSTALL"
 fi
-echo "FSTROOT = $FSTROOT" >> kaldi.mk
-OPENFST_VER="${OPENFST_VER:-`grep 'PACKAGE_VERSION' $FSTROOT/Makefile | sed -e 's:.*= ::'`}"
-echo "OPENFST_VER = $OPENFST_VER" >> kaldi.mk
+OPENFST_VER=$(grep 'PACKAGE_VERSION' $FSTROOT/Makefile | sed -e 's:.*= ::')
+OPENFST_VER_NUM=$(echo $OPENFST_VER | sed 's/\./ /g' | xargs printf "%d%02d%02d")
+if [ $OPENFST_VER_NUM -lt 10503 ]; then
+  failure "OpenFst-$OPENFST_VER is not supported. You need OpenFst >= 1.5.3.)"
+fi
+echo "OPENFSTINC = $FSTROOT/include" >> kaldi.mk
 if  $static_fst ; then
   OPENFSTLIBS="$FSTROOT/lib/libfst.a"
 else
@@ -931,10 +934,6 @@ fi
 echo "OPENFSTLIBS = $OPENFSTLIBS" >> kaldi.mk
 echo "OPENFSTLDFLAGS = $OPENFSTLDFLAGS" >> kaldi.mk
 echo "CXX = $CXX" >> kaldi.mk
-echo >> kaldi.mk
-
-# Add platform independent settings
-cat makefiles/common.mk >> kaldi.mk
 echo >> kaldi.mk
 
 # Most of the OS-specific steps below will append to kaldi.mk
@@ -1118,8 +1117,8 @@ elif [ "`uname`" == "Linux" ]; then
       echo "Configuring dynamically loaded OpenBlas since --static-math=no (the default)"
       OPENBLASLIBS="-L$OPENBLASROOT/lib -lopenblas -lgfortran -Wl,-rpath=$OPENBLASROOT/lib"
     fi
+    echo "OPENBLASINC = $OPENBLASROOT/include" >> kaldi.mk
     echo "OPENBLASLIBS = $OPENBLASLIBS" >> kaldi.mk
-    echo "OPENBLASROOT = $OPENBLASROOT" >> kaldi.mk
     if [[ "`uname -m`" == arm* ]]; then
       cat makefiles/linux_openblas_arm.mk >> kaldi.mk
     elif [[ "`uname -m`" == ppc64le ]]; then
