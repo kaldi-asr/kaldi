@@ -1,4 +1,4 @@
-# MKL specific Linux settings
+# MKL specific Linux configuration
 
 # We have tested Kaldi with MKL version 10.2 on Linux/GCC and Intel(R) 64
 # architecture (also referred to as x86_64) with LP64 interface layer.

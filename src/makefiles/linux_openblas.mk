@@ -1,4 +1,4 @@
-# OpenBLAS specific Linux settings
+# OpenBLAS specific Linux configuration
 
 ifndef DOUBLE_PRECISION
 $(error DOUBLE_PRECISION not defined.)

@@ -1,4 +1,4 @@
-# ATLAS specific Linux ARM settings
+# ATLAS specific Linux ARM configuration
 
 ifndef DOUBLE_PRECISION
 $(error DOUBLE_PRECISION not defined.)

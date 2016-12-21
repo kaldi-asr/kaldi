@@ -510,6 +510,8 @@ function configure_cuda {
     fi
     echo "Using CUDA toolkit $CUDATKDIR (nvcc compiler and runtime libraries)"
     echo >> kaldi.mk
+    echo "# CUDA configuration" >> kaldi.mk
+    echo >> kaldi.mk
     echo CUDA = true >> kaldi.mk
     echo CUDATKDIR = $CUDATKDIR >> kaldi.mk
 
@@ -528,6 +530,7 @@ function configure_cuda {
       *) echo "Unsupported CUDA_VERSION (CUDA_VERSION=$CUDA_VERSION), please report it to Kaldi mailing list, together with 'nvcc -h' or 'ptxas -h' which lists allowed -gencode values..."; exit 1 ;;
     esac
     echo "CUDA_ARCH = $CUDA_ARCH" >> kaldi.mk
+    echo >> kaldi.mk
 
     # 64bit/32bit?
     if [ "`uname -m`" == "x86_64" ]; then
@@ -903,7 +906,7 @@ echo "Configuring ..."
 
 # Back up the old kaldi.mk in case we modified it
 if [ -f kaldi.mk ]; then
-  echo "Backing up kaldi.mk to kaldi.mk.bak"
+  echo "Backing up kaldi.mk to kaldi.mk.bak ..."
   cp kaldi.mk kaldi.mk.bak
 fi
 
@@ -914,7 +917,7 @@ printf "# This file was generated using the following command:\n# $cmd_line\n\n"
 echo "CONFIGURE_VERSION := $CONFIGURE_VERSION" >> kaldi.mk
 echo >> kaldi.mk
 
-echo "# Configuration" >> kaldi.mk
+echo "# Base configuration" >> kaldi.mk
 echo >> kaldi.mk
 if $dynamic_kaldi ; then
   KALDILIBDIR=`pwd`/lib
@@ -1167,7 +1170,7 @@ fi
 # Append the flags set by environment variables last so they can be used
 # to override the automatically generated configuration.
 echo >> kaldi.mk
-echo "# Environment settings" >> kaldi.mk
+echo "# Environment configuration" >> kaldi.mk
 echo >> kaldi.mk
 if [ -n "$ENV_CXXFLAGS" ]; then echo "CXXFLAGS += $ENV_CXXFLAGS" >> kaldi.mk; fi
 if [ -n "$ENV_LDFLAGS" ]; then echo "LDFLAGS += $ENV_LDFLAGS" >> kaldi.mk; fi

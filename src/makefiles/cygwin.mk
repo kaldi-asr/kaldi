@@ -1,4 +1,4 @@
-# Cygwin settings
+# Cygwin configuration
 
 ifndef DOUBLE_PRECISION
 $(error DOUBLE_PRECISION not defined.)
