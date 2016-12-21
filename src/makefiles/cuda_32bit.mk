@@ -1,3 +1,5 @@
+# 32bit CUDA settings
+
 ifndef DOUBLE_PRECISION
 $(error DOUBLE_PRECISION not defined.)
 endif

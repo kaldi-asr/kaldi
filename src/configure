@@ -510,7 +510,6 @@ function configure_cuda {
     fi
     echo "Using CUDA toolkit $CUDATKDIR (nvcc compiler and runtime libraries)"
     echo >> kaldi.mk
-    echo "#Next section enables CUDA for compilation" >> kaldi.mk
     echo CUDA = true >> kaldi.mk
     echo CUDATKDIR = $CUDATKDIR >> kaldi.mk
 
@@ -966,7 +965,7 @@ if [ "`uname`" == "Darwin"  ]; then
   if [ ! -e /System/Library/Frameworks/Accelerate.framework ]; then
     failure "Need the Accelerate framework to compile on Darwin."
   fi
-  OSX_VER=`sw_vers | grep ProductVersion | awk '{print $2}' | awk '{split($0,a,"."); print a[1] "." a[2]; }'`
+  OSX_VER=$(sw_vers | grep ProductVersion | awk '{print $2}' | awk '{split($0,a,"."); print a[1] "." a[2]; }')
   OSX_VER_NUM=$(echo $OSX_VER | sed 's/\./ /g' | xargs printf "%d%02d")
   echo "Configuring for OS X version $OSX_VER ..."
   if [ $OSX_VER_NUM -ge 1005 ]; then
@@ -1018,6 +1017,7 @@ elif [ "`uname`" == "Linux" ]; then
     # containing {liblapack.a,libblas.a}, and linking against just these two
     # libraries worked.
 
+    echo >> kaldi.mk
     if $static_math; then
       # Prefer static to dynamic math.
       linux_configure_static || \
@@ -1088,6 +1088,7 @@ elif [ "`uname`" == "Linux" ]; then
     if [ ! -z $MKLLIBDIR ]; then
       echo MKLLIB = $MKLLIBDIR >> kaldi.mk
     fi
+    echo >> kaldi.mk
     check_exists makefiles/linux_x86_64_mkl.mk
     cat makefiles/linux_x86_64_mkl.mk >> kaldi.mk
     echo "MKLFLAGS = ${MKL_LINK_LINE} ${THREADING_LINE} $EXTRA_LIBS " >> kaldi.mk
@@ -1138,6 +1139,7 @@ elif [ "`uname`" == "Linux" ]; then
     fi
     echo "OPENBLASINC = $OPENBLASROOT/include" >> kaldi.mk
     echo "OPENBLASLIBS = $OPENBLASLIBS" >> kaldi.mk
+    echo >> kaldi.mk
     if [[ "`uname -m`" == arm* ]]; then
       cat makefiles/linux_openblas_arm.mk >> kaldi.mk
     elif [[ "`uname -m`" == ppc64le ]]; then
