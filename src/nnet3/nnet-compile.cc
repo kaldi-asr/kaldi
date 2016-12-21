@@ -79,8 +79,20 @@ void Compiler::AddCommands(const std::vector<bool> &deriv_needed,
 
 void Compiler::ComputeStepDependencies(
     const std::vector<int32> &this_step,
+    int32 step_index,
     unordered_set<int32> *dep_steps) {
   dep_steps->clear();
+  if (this_step.empty())
+    return;
+  // steps always have a single node index, we can pick the first.
+  int32 node_index = graph_.cindexes[this_step[0]].first;
+  if (nnet_.IsComponentNode(node_index)) {
+    // there is only one step that a component step depends on, and it's the
+    // immediately preceding step (the component-input step).
+    KALDI_ASSERT(step_index > 0);
+    dep_steps->insert(step_index - 1);
+    return;
+  }
   std::vector<int32>::const_iterator step_iter = this_step.begin(),
       step_end = this_step.end();
   int32 prev_input_step = -1;  // this is an optimization for speed.
@@ -116,7 +128,7 @@ void Compiler::ComputeDerivNeeded(
 
     std::string node_name = nnet_.GetNodeNames()[node_index];
     unordered_set<int32> input_steps;
-    ComputeStepDependencies(this_step, &input_steps);
+    ComputeStepDependencies(this_step, step, &input_steps);
 
     unordered_set<int32>::iterator iter = input_steps.begin(),
         end = input_steps.end();
@@ -144,13 +156,18 @@ void Compiler::ComputeDerivNeeded(
       if (request_.outputs[output_index].has_deriv)
         (*deriv_needed)[step] = true;
     }
-    // If this is an updatable Component node and the user requested model
-    // derivatives (e.g. during training), we need this step's derivative.
+    // If this is an updatable Component node with a nonzero learning rate and
+    // the user requested model derivatives (e.g. during training), we need this
+    // step's derivative.
     if (nnet_.IsComponentNode(node_index) && request_.need_model_derivative) {
       const NetworkNode &node = nnet_.GetNode(node_index);
       const Component *c = nnet_.GetComponent(node.u.component_index);
-      if (c->Properties() & kUpdatableComponent)
-        (*deriv_needed)[step] = true;
+      if (c->Properties() & kUpdatableComponent) {
+        const UpdatableComponent *u = dynamic_cast<const UpdatableComponent*>(c);
+        KALDI_ASSERT(u != NULL);
+        if (u->LearningRate() != 0)
+          (*deriv_needed)[step] = true;
+      }
     }
   }
   if (GetVerboseLevel() >= 5) {
@@ -596,22 +613,16 @@ void Compiler::DoBackwardComputationFromSubmatLocations(
   // trickier to implement efficiently on the GPU, there may be cases
   // which we will refuse to implement backprop for if we get here.
 
-  int32 num_rows = submat_locations.size();
-  std::vector<std::pair<int32, int32> >::const_iterator
-      iter = submat_locations.begin(), end = submat_locations.end();
-  int32 first_submat = iter->first;
-  for (++iter; iter != end; ++iter)
-    if (iter->first != first_submat)
-      break;
-  bool all_same_submatrix = (iter == end);
-  if (all_same_submatrix) {
-    int32 input_deriv_submatrix_index = first_submat;
-    std::vector<int32> indexes(num_rows);
-    for (int32 i = 0; i < num_rows; i++)
-      indexes[i] = submat_locations[i].second;
+
+
+  int32 first_value;
+  std::vector<int32> second_values;
+  if (ConvertToIndexes(submat_locations, &first_value,
+                       &second_values)) {
+    int32 input_deriv_submatrix_index = first_value;
     DoBackwardComputationFromIndexes(deriv_submatrix_index,
                                      input_deriv_submatrix_index,
-                                     indexes,
+                                     second_values,
                                      computation);
     return;
   } else {

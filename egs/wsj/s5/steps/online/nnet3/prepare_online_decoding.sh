@@ -83,7 +83,7 @@ dir=$(readlink -f $dir) # Convert $dir to an absolute pathname, so that the
 mkdir -p $dir/conf
 
 utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
-cp $srcdir/phones.txt $dir || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 
 cp $srcdir/${iter}.mdl $dir/final.mdl || exit 1;
 cp $srcdir/tree $dir/ || exit 1;

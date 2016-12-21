@@ -35,7 +35,7 @@ steps/train_mono.sh --nj 1 --cmd "$train_cmd" \
   data/train_yesno data/lang exp/mono0a 
   
 # Graph compilation  
-utils/mkgraph.sh --mono data/lang_test_tg exp/mono0a exp/mono0a/graph_tgpr
+utils/mkgraph.sh data/lang_test_tg exp/mono0a exp/mono0a/graph_tgpr
 
 # Decoding
 steps/decode.sh --nj 1 --cmd "$decode_cmd" \

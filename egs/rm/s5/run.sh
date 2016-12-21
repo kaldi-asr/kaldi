@@ -47,7 +47,7 @@ steps/train_mono.sh --nj 4 --cmd "$train_cmd" data/train.1k data/lang exp/mono
 
 
 
-utils/mkgraph.sh --mono data/lang exp/mono exp/mono/graph
+utils/mkgraph.sh data/lang exp/mono exp/mono/graph
 
 
 steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \

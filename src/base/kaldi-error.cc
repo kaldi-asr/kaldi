@@ -135,7 +135,7 @@ static std::string KaldiGetStackTrace() {
 }
 
 
-/***** KALDI LOGIGNG *****/
+/***** KALDI LOGGING *****/
 
 MessageLogger::MessageLogger(LogMessageEnvelope::Severity severity,
                              const char *func, const char *file, int32 line) {

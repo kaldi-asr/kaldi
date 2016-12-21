@@ -23,15 +23,15 @@ local/nnet3/run_lstm.sh  --stage $stage --train-stage $train_stage --egs-stage "
 
 
 #ASpIRE decodes
-# final result
-  local/nnet3/prep_test_aspire.sh --stage 4 --decode-num-jobs 400 --affix "v7" \
+  local/nnet3/prep_test_aspire.sh --stage 1 --decode-num-jobs 30 --affix "v7" \
    --extra-left-context 40 --extra-right-context 40 --frames-per-chunk 20 \
    --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
-   --ivector-scale 0.75  --tune-hyper true dev_aspire data/lang exp/nnet3/lstm_bidirectional
-
-# %WER 29.4 | 2120 27210 | 77.0 14.7 8.3 6.4 29.4 77.9 | -1.227 | exp/nnet3/lstm_bidirectional/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iterfinal_pp_fg/score_13/penalty_0.25/ctm.filt.filt.sys
+   --ivector-scale 0.75  dev_aspire data/lang exp/tri5a/graph_pp exp/nnet3/lstm_bidirectional
 
 exit 0;
+
+# final result
+# %WER 29.4 | 2120 27210 | 77.0 14.7 8.3 6.4 29.4 77.9 | -1.227 | exp/nnet3/lstm_bidirectional/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iterfinal_pp_fg/score_13/penalty_0.25/ctm.filt.filt.sys
 
 #%WER 35.4 | 2120 27216 | 71.2 19.2 9.6 6.6 35.4 80.8 | -0.956 | exp/nnet3/lstm_bidirectional/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iter200_pp_fg/score_14/penalty_0.0/ctm.filt.filt.sys
 #%WER 33.6 | 2120 27215 | 72.7 18.1 9.2 6.3 33.6 79.1 | -1.018 | exp/nnet3/lstm_bidirectional/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iter300_pp_fg/score_12/penalty_0.0/ctm.filt.filt.sys
