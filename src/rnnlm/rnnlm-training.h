@@ -195,12 +195,15 @@ class LmNnetSamplingTrainer {
 
   // Prints out the final stats, and return true if there was a nonzero count.
   bool PrintTotalStats() const;
+  void PrintMaxChangeStats() const;
   static NnetExample ProcessEgInputs(NnetExample eg, const LmInputComponent& a,
                                      SparseMatrix<BaseFloat> *old_input = NULL,
                                      Matrix<BaseFloat> *new_input = NULL);
 
   ~LmNnetSamplingTrainer();
  private:
+  void UpdateParamsWithMaxChange();
+
   void ProcessOutputs(const NnetExample &eg,
                       NnetComputer *computer);
 
@@ -225,6 +228,10 @@ class LmNnetSamplingTrainer {
   // normal case there will be just one output layer named "output".
   // So we store the objective functions per output layer.
   int32 num_minibatches_processed_;
+
+  std::vector<int32> num_max_change_per_component_applied_;
+  std::vector<int32> num_max_change_per_component_applied_2_;
+  int32 num_max_change_global_applied_;
 
   unordered_map<std::string, LmObjectiveFunctionInfo, StringHasher> objf_info_;
   vector<BaseFloat> unigram_;

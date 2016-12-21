@@ -119,9 +119,10 @@ class LmComponent {
   LmComponent(const LmComponent &other):
       learning_rate_(other.learning_rate_),
       learning_rate_factor_(other.learning_rate_factor_),
-      is_gradient_(other.is_gradient_) { }
+      is_gradient_(other.is_gradient_),
+      max_change_(other.max_change_) { }
   LmComponent(): learning_rate_(0.001), learning_rate_factor_(1.0),
-                        is_gradient_(false) { }
+                        is_gradient_(false), max_change_(0.0) { }
 
   /// \brief This function may store stats on average activation values, and for
   ///        some component types, the average value of the derivative of the
@@ -272,6 +273,8 @@ class LmComponent {
   /// a different value than x will returned.
   BaseFloat LearningRate() const { return learning_rate_; }
 
+  BaseFloat MaxChange() const { return max_change_; }
+
   /// The following new virtual function returns the total dimension of
   /// the parameters in this class.
   virtual int32 NumParameters() const { KALDI_ASSERT(0); return 0; }
@@ -298,6 +301,8 @@ class LmComponent {
                       ///< than as parameters.  Its main effect is that we disable
                       ///< any natural-gradient update and just compute the standard
                       ///< gradient.
+
+  BaseFloat max_change_;
 };
 
 class LmInputComponent: public LmComponent {

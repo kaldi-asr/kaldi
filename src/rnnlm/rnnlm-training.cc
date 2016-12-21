@@ -46,6 +46,10 @@ LmNnetSamplingTrainer::LmNnetSamplingTrainer(
     bool is_gradient = false;  // setting this to true would disable the
                                // natural-gradient updates.
     delta_nnet_->SetZero(is_gradient);
+    const int32 num_updatable = NumUpdatableComponents(delta_nnet_->Nnet());
+    num_max_change_per_component_applied_.resize(num_updatable, 0); 
+    num_max_change_per_component_applied_2_.resize(2, 0); 
+    num_max_change_global_applied_ = 0;
   }
   if (config_.read_cache != "") {
     bool binary;
@@ -126,53 +130,181 @@ void LmNnetSamplingTrainer::Train(const NnetExample &eg) {
                      first_deriv, delta_nnet_->input_projection_, NULL);
   }
 
-  if (delta_nnet_ != NULL) {
-    KALDI_ASSERT(delta_nnet_->O()->DotProduct(*delta_nnet_->O()) == delta_nnet_->O()->DotProduct(*delta_nnet_->O()));
-    BaseFloat scale = (1.0 - config_.momentum);
-    if (config_.max_param_change != 0.0) {
-      BaseFloat param_delta =
-          DotProduct(delta_nnet_->Nnet(), delta_nnet_->Nnet());
+  UpdateParamsWithMaxChange();
 
-      param_delta += delta_nnet_->I()->DotProduct(*delta_nnet_->I());
-      param_delta += delta_nnet_->O()->DotProduct(*delta_nnet_->O());
+//  if (delta_nnet_ != NULL) {
+//    KALDI_ASSERT(delta_nnet_->O()->DotProduct(*delta_nnet_->O()) == delta_nnet_->O()->DotProduct(*delta_nnet_->O()));
+//    BaseFloat scale = (1.0 - config_.momentum);
+//    if (config_.max_param_change != 0.0) {
+//      BaseFloat param_delta =
+//          DotProduct(delta_nnet_->Nnet(), delta_nnet_->Nnet());
+//
+//      param_delta += delta_nnet_->I()->DotProduct(*delta_nnet_->I());
+//      param_delta += delta_nnet_->O()->DotProduct(*delta_nnet_->O());
+//
+//      param_delta = std::sqrt(param_delta) * scale;
+//      if (param_delta > config_.max_param_change || param_delta != param_delta) {
+//        if (param_delta - param_delta != 0.0) {
+//          KALDI_WARN << "Infinite parameter change, will not apply.";
+//          delta_nnet_->SetZero(false);
+//        } else {
+//          scale *= config_.max_param_change / param_delta;
+//          KALDI_LOG << "Parameter change too big: " << param_delta << " > "
+//                    << "--max-param-change=" << config_.max_param_change
+//                    << ", scaling by " << config_.max_param_change / param_delta;
+//        }
+//      }
+//    }
+//
+//    {
+//      BaseFloat param_delta =
+//          DotProduct(delta_nnet_->Nnet(), delta_nnet_->Nnet());
+//
+//      param_delta += delta_nnet_->I()->DotProduct(*delta_nnet_->I());
+//      param_delta += delta_nnet_->O()->DotProduct(*delta_nnet_->O());
+//      KALDI_ASSERT(param_delta == param_delta);
+////      KALDI_LOG << "dot-product of delta-nnet is " << param_delta;
+//    }
+//
+////    KALDI_LOG << "adding...";
+//    nnet_->Add(*delta_nnet_, scale);
+////    {
+////      BaseFloat param =
+////          DotProduct(nnet_->Nnet(), nnet_->Nnet());
+////
+////      param += nnet_->I()->DotProduct(*nnet_->I());
+////      param += nnet_->O()->DotProduct(*nnet_->O());
+////      KALDI_LOG << "dot-product of nnet " << param;
+////    }
+////    KALDI_LOG << "scaling...";
+//    delta_nnet_->Scale(config_.momentum);
+//  }
+}
 
-      param_delta = std::sqrt(param_delta) * scale;
-      if (param_delta > config_.max_param_change || param_delta != param_delta) {
-        if (param_delta - param_delta != 0.0) {
-          KALDI_WARN << "Infinite parameter change, will not apply.";
-          delta_nnet_->SetZero(false);
-        } else {
-          scale *= config_.max_param_change / param_delta;
-          KALDI_LOG << "Parameter change too big: " << param_delta << " > "
-                    << "--max-param-change=" << config_.max_param_change
-                    << ", scaling by " << config_.max_param_change / param_delta;
-        }
+void LmNnetSamplingTrainer::UpdateParamsWithMaxChange() {
+  KALDI_ASSERT(delta_nnet_ != NULL);
+  // computes scaling factors for per-component max-change
+  const int32 num_updatable = NumUpdatableComponents(delta_nnet_->Nnet());
+  Vector<BaseFloat> scale_factors = Vector<BaseFloat>(num_updatable);
+  BaseFloat param_delta_squared = 0.0;
+  int32 num_max_change_per_component_applied_per_minibatch = 0;
+  BaseFloat min_scale = 1.0;
+  std::string component_name_with_min_scale;
+  BaseFloat max_change_with_min_scale;
+  int32 i = 0;
+  for (int32 c = 0; c < delta_nnet_->Nnet().NumComponents(); c++) {
+    const Component *comp = delta_nnet_->Nnet().GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent) {
+      const UpdatableComponent *uc = dynamic_cast<const UpdatableComponent*>(comp);
+      if (uc == NULL)
+        KALDI_ERR << "Updatable component does not inherit from class "
+                  << "UpdatableComponent; change this code.";
+      BaseFloat max_param_change_per_comp = uc->MaxChange();
+      KALDI_ASSERT(max_param_change_per_comp >= 0.0);
+      BaseFloat dot_prod = uc->DotProduct(*uc);
+      if (max_param_change_per_comp != 0.0 &&
+          std::sqrt(dot_prod) > max_param_change_per_comp) {
+        scale_factors(i) = max_param_change_per_comp / std::sqrt(dot_prod);
+        num_max_change_per_component_applied_[i]++;
+        num_max_change_per_component_applied_per_minibatch++;
+        KALDI_VLOG(2) << "Parameters in " << delta_nnet_->Nnet().GetComponentName(c)
+                      << " change too big: " << std::sqrt(dot_prod) << " > "
+                      << "max-change=" << max_param_change_per_comp
+                      << ", scaling by " << scale_factors(i);
+      } else {
+        scale_factors(i) = 1.0;
+      }
+      if  (i == 0 || scale_factors(i) < min_scale) {
+        min_scale =  scale_factors(i);
+        component_name_with_min_scale = delta_nnet_->Nnet().GetComponentName(c);
+        max_change_with_min_scale = max_param_change_per_comp;
+      }
+      param_delta_squared += std::pow(scale_factors(i),
+                                      static_cast<BaseFloat>(2.0)) * dot_prod;
+      i++;
+    }
+  }
+
+  BaseFloat scale_f_in = 1.0;
+  BaseFloat scale_f_out = 1.0;
+
+  {
+    BaseFloat max_change_per = nnet_->input_projection_->MaxChange();
+    KALDI_ASSERT(max_change_per >= 0);
+    BaseFloat dot_prod = nnet_->input_projection_->DotProduct(*nnet_->input_projection_);
+
+    if (max_change_per != 0.0 &&
+        std::sqrt(dot_prod) > max_change_per) {
+      scale_f_in = max_change_per / std::sqrt(dot_prod);
+      num_max_change_per_component_applied_2_[0]++;
+      num_max_change_per_component_applied_per_minibatch++;
+      KALDI_VLOG(2) << "Parameters in Input Projection, "
+                    << " change too big: " << std::sqrt(dot_prod) << " > "
+                    << "max-change=" << max_change_per
+                    << ", scaling by " << scale_f_in;
+    }
+  }
+
+  {
+    BaseFloat max_change_per = nnet_->output_projection_->MaxChange();
+    KALDI_ASSERT(max_change_per >= 0);
+    BaseFloat dot_prod = nnet_->output_projection_->DotProduct(*nnet_->output_projection_);
+
+    if (max_change_per != 0.0 &&
+        std::sqrt(dot_prod) > max_change_per) {
+      scale_f_out = max_change_per / std::sqrt(dot_prod);
+      num_max_change_per_component_applied_2_[1]++;
+      num_max_change_per_component_applied_per_minibatch++;
+      KALDI_VLOG(2) << "Parameters in Input Projection, "
+                    << " change too big: " << std::sqrt(dot_prod) << " > "
+                    << "max-change=" << max_change_per
+                    << ", scaling by " << scale_f_out;
+    }
+  }
+
+
+  KALDI_ASSERT(i == scale_factors.Dim());
+  BaseFloat param_delta = std::sqrt(param_delta_squared);
+  // computes the scale for global max-change (with momentum)
+  BaseFloat scale = (1.0 - config_.momentum);
+  if (config_.max_param_change != 0.0) {
+    param_delta *= scale;
+    if (param_delta > config_.max_param_change) {
+      if (param_delta - param_delta != 0.0) {
+        KALDI_WARN << "Infinite parameter change, will not apply.";
+        delta_nnet_->SetZero(false);
+//        SetZero(false, delta_nnet_->Nnet());
+      } else {
+        scale *= config_.max_param_change / param_delta;
+        num_max_change_global_applied_++;
       }
     }
-
-    {
-      BaseFloat param_delta =
-          DotProduct(delta_nnet_->Nnet(), delta_nnet_->Nnet());
-
-      param_delta += delta_nnet_->I()->DotProduct(*delta_nnet_->I());
-      param_delta += delta_nnet_->O()->DotProduct(*delta_nnet_->O());
-      KALDI_ASSERT(param_delta == param_delta);
-//      KALDI_LOG << "dot-product of delta-nnet is " << param_delta;
-    }
-
-//    KALDI_LOG << "adding...";
-    nnet_->Add(*delta_nnet_, scale);
-//    {
-//      BaseFloat param =
-//          DotProduct(nnet_->Nnet(), nnet_->Nnet());
-//
-//      param += nnet_->I()->DotProduct(*nnet_->I());
-//      param += nnet_->O()->DotProduct(*nnet_->O());
-//      KALDI_LOG << "dot-product of nnet " << param;
-//    }
-//    KALDI_LOG << "scaling...";
-    delta_nnet_->Scale(config_.momentum);
   }
+  if ((config_.max_param_change != 0.0 &&
+      param_delta > config_.max_param_change &&
+      param_delta - param_delta == 0.0) || min_scale < 1.0) {
+    std::ostringstream ostr;
+    if (min_scale < 1.0)
+      ostr << "Per-component max-change active on "
+           << num_max_change_per_component_applied_per_minibatch
+           << " / " << num_updatable << " Updatable Components."
+           << "(smallest factor=" << min_scale << " on "
+           << component_name_with_min_scale
+           << " with max-change=" << max_change_with_min_scale <<"). "; 
+    if (param_delta > config_.max_param_change)
+      ostr << "Global max-change factor was "
+           << config_.max_param_change / param_delta
+           << " with max-change=" << config_.max_param_change << ".";
+    KALDI_LOG << ostr.str();
+  }
+  // applies both of the max-change scalings all at once, component by component
+  // and updates parameters
+  scale_factors.Scale(scale);
+  AddNnetComponents(delta_nnet_->Nnet(), scale_factors, scale, nnet_->nnet_);
+  nnet_->input_projection_->Add(1.0, *delta_nnet_->I());
+  nnet_->output_projection_->Add(1.0, *delta_nnet_->O());
+//  ScaleNnet(config_.momentum, delta_nnet_);
+  delta_nnet_->Scale(config_.momentum);
 }
 
 void LmNnetSamplingTrainer::ProcessOutputs(const NnetExample &eg,

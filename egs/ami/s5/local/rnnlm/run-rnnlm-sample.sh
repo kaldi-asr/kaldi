@@ -138,13 +138,13 @@ if [ $stage -le -2 ]; then
 
   if [ "$type" == "rnn" ]; then
   cat > $outdir/config <<EOF
-  LmLinearComponent input-dim=$num_words_in output-dim=$hidden_dim
-  AffineSampleLogSoftmaxComponent input-dim=$hidden_dim output-dim=$num_words_out
+  LmLinearComponent input-dim=$num_words_in output-dim=$hidden_dim max-change=10
+  AffineSampleLogSoftmaxComponent input-dim=$hidden_dim output-dim=$num_words_out max-change=10
 
   input-node name=input dim=$hidden_dim
   component name=first_nonlin type=SigmoidComponent dim=$hidden_dim
   component name=first_renorm type=NormalizeComponent dim=$hidden_dim target-rms=1.0
-  component name=hidden_affine type=AffineComponent input-dim=$hidden_dim output-dim=$hidden_dim
+  component name=hidden_affine type=AffineComponent input-dim=$hidden_dim output-dim=$hidden_dim max-change=10
 
 #Component nodes
   component-node name=first_nonlin component=first_nonlin  input=Sum(input, hidden_affine)

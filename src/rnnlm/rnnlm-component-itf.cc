@@ -82,7 +82,9 @@ std::string LmComponent::Info() const {
 void LmInputComponent::InitLearningRatesFromConfig(ConfigLine *cfl) {
   cfl->GetValue("learning-rate", &learning_rate_);
   cfl->GetValue("learning-rate-factor", &learning_rate_factor_);
-  if (learning_rate_ < 0.0 || learning_rate_factor_ < 0.0)
+  max_change_ = 0.0;
+  cfl->GetValue("max-change", &max_change_);
+  if (learning_rate_ < 0.0 || learning_rate_factor_ < 0.0 || max_change_ < 0.0)
     KALDI_ERR << "Bad initializer " << cfl->WholeLine();
 }
 
@@ -150,7 +152,9 @@ std::string LmInputComponent::Info() const {
 void LmOutputComponent::InitLearningRatesFromConfig(ConfigLine *cfl) {
   cfl->GetValue("learning-rate", &learning_rate_);
   cfl->GetValue("learning-rate-factor", &learning_rate_factor_);
-  if (learning_rate_ < 0.0 || learning_rate_factor_ < 0.0)
+  max_change_ = 0.0;
+  cfl->GetValue("max-change", &max_change_);
+  if (learning_rate_ < 0.0 || learning_rate_factor_ < 0.0 || max_change_ < 0.0)
     KALDI_ERR << "Bad initializer " << cfl->WholeLine();
 }
 
