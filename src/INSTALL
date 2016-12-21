@@ -23,8 +23,7 @@ e.g. g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3. If your system
 default compiler does not support C++11, you can specify a C++11 compliant
 compiler by setting the CXX environment variable, e.g.
 
-  make depend CXX=g++-4.8
-  make CXX=g++-4.8
+  CXX=g++-4.8 ./configure --shared
 
 For more information, see documentation at http://kaldi-asr.org/doc/
 and click on "The build process (how Kaldi is compiled)".
