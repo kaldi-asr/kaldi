@@ -219,6 +219,9 @@ do
     static_math=false;
     static_fst=false;
     shift ;;
+  --double-precision)
+    double_precision=true;
+    shift ;;
   --double-precision=yes)
     double_precision=true;
     shift ;;
@@ -228,11 +231,18 @@ do
   --atlas-root=*)
     ATLASROOT=`read_dirname $1`;
     shift ;;
+  --threaded-atlas)
+    threaded_atlas=true;
+    shift ;;
   --threaded-atlas=yes)
     threaded_atlas=true;
     shift ;;
   --threaded-atlas=no)
     threaded_atlas=false;
+    shift ;;
+  --threaded-math)
+    threaded_atlas=true;
+    mkl_threading=iomp
     shift ;;
   --threaded-math=yes)
     threaded_atlas=true;
@@ -242,17 +252,26 @@ do
     threaded_atlas=false;
     mkl_threading=sequential
     shift ;;
+  --use-cuda)
+    use_cuda=true;
+    shift ;;
   --use-cuda=yes)
     use_cuda=true;
     shift ;;
   --use-cuda=no)
     use_cuda=false;
     shift ;;
+  --static-math)
+    static_math=true;
+    shift ;;
   --static-math=yes)
     static_math=true;
     shift ;;
   --static-math=no)
     static_math=false;
+    shift ;;
+  --static-fst)
+    static_fst=true;
     shift ;;
   --static-fst=yes)
     static_fst=true;
