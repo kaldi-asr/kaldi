@@ -161,7 +161,7 @@ echo $nj > $dir/num_jobs
 cp $alidir/tree $dir
 
 utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
-cp $alidir/phones.txt $dir || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 
 # First work out the feature and iVector dimension, needed for tdnn config creation.
 case $feat_type in

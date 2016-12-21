@@ -70,8 +70,7 @@ mkdir -p $dir/log
 
 utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt
 utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt
-utils/lang/check_phones_compatible.sh $lang/phones.txt $denlatdir/phones.txt
-cp $alidir/phones.txt $dir
+cp $lang/phones.txt $dir
 
 cp $alidir/{final.mdl,tree} $dir
 

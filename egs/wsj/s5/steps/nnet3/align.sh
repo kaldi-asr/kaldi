@@ -70,7 +70,7 @@ done
 cp $srcdir/{tree,${iter}.mdl} $dir || exit 1;
 
 utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
-cp $srcdir/phones.txt $dir || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 ## Set up features.  Note: these are different from the normal features
 ## because we have one rspecifier that has the features for the entire
 ## training set, not separate ones for each batch.
@@ -140,7 +140,7 @@ if [ -f $srcdir/frame_subsampling_factor ]; then
 fi
 
 $cmd $queue_opt JOB=1:$nj $dir/log/align.JOB.log \
-  compile-train-graphs $dir/tree $srcdir/${iter}.mdl  $lang/L.fst "$tra" ark:- \| \
+  compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $dir/tree $srcdir/${iter}.mdl  $lang/L.fst "$tra" ark:- \| \
   nnet3-align-compiled $scale_opts $ivector_opts $frame_subsampling_opt \
   --frames-per-chunk=$frames_per_chunk \
   --extra-left-context=$extra_left_context \

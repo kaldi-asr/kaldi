@@ -65,8 +65,7 @@ set -e # exit on error status
 
 mkdir -p $dir/phone_graph
 
-utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
-cp $alidir/phones.txt $dir || exit 1;
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt
 
 if [ $stage -le 0 ]; then
   echo "$0: creating phone LM-training data"

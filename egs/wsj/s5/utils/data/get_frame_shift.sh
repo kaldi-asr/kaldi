@@ -45,7 +45,7 @@ fi
 
 temp=$(mktemp /tmp/tmp.XXXX)
 
-feat-to-len scp:$dir/feats.scp ark,t:- | head -n 10 > $temp
+feat-to-len "scp:head -n 10 $dir/feats.scp|" ark,t:- > $temp
 
 if [ -z $temp ]; then
   echo "$0: error running feat-to-len" 1>&2

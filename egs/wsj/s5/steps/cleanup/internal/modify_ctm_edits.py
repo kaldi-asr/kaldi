@@ -52,7 +52,7 @@ from collections import defaultdict
 
 parser = argparse.ArgumentParser(
     description = "This program modifies the reference in the ctm-edits which "
-    "is output by steps/cleanup/get_ctm_edits.py, to allow insertions, deletions and "
+    "is output by steps/cleanup/internal/get_ctm_edits.py, to allow insertions, deletions and "
     "substitutions of non-scored words, and [if --allow-repetitions=true], "
     "duplications of single words or pairs of scored words (to account for dysfluencies "
     "that were not transcribed).  Note: deletions and substitutions of non-scored words "

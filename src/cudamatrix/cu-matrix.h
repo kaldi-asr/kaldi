@@ -429,7 +429,7 @@ class CuMatrixBase {
   void AddVecVec(Real alpha, const CuVectorBase<Real> &x, const CuVectorBase<Real> &y);
   /// *this = a * b / c (by element; when c = 0, *this = a)
   /// *this can be an alias of a, b or c safely and get expected result.
-  void AddMatMatDivMat(const CuMatrixBase<Real> &A, const CuMatrixBase<Real> &B, const CuMatrixBase<Real> &C);
+  void SetMatMatDivMat(const CuMatrixBase<Real> &A, const CuMatrixBase<Real> &B, const CuMatrixBase<Real> &C);
 
   /// *this = beta * *this + alpha * M M^T, for symmetric matrices.  It only
   /// updates the lower triangle of *this.  It will leave the matrix asymmetric;

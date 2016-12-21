@@ -72,7 +72,7 @@ ciphonelist=`cat $lang/phones/context_indep.csl` || exit 1;
 mkdir -p $dir/log
 
 utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
-cp $alidir/phones.txt $dir || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 
 echo $nj >$dir/num_jobs
 echo "$splice_opts" >$dir/splice_opts # keep track of frame-splicing options
@@ -173,7 +173,7 @@ fi
 if [ $stage -le 0 ] && [ "$realign_iters" != "" ]; then
   echo "Compiling graphs of transcripts"
   $cmd JOB=1:$nj $dir/log/compile_graphs.JOB.log \
-    compile-train-graphs $dir/tree $dir/1.mdl  $lang/L.fst  \
+    compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $dir/tree $dir/1.mdl  $lang/L.fst  \
      "ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt < $data/split$nj/JOB/text |" \
       "ark:|gzip -c >$dir/fsts.JOB.gz" || exit 1;
 fi

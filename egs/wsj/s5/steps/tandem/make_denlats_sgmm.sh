@@ -53,7 +53,6 @@ normft2=`cat $srcdir/normft2 2>/dev/null`
 mkdir -p $dir/log
 
 utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
-cp $srcdir/phones.txt $dir || exit 1;
 
 sdata1=$data1/split$nj
 sdata2=$data2/split$nj

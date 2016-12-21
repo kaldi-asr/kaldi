@@ -572,14 +572,7 @@ void NormalizeComponent::Propagate(const ChunkInfo &in_info,
                                    const ChunkInfo &out_info,
                                    const CuMatrixBase<BaseFloat> &in,
                                    CuMatrixBase<BaseFloat> *out) const  {
-  out->CopyFromMat(in);
-
-  CuVector<BaseFloat> in_norm(in.NumRows());
-  in_norm.AddDiagMat2(1.0 / in.NumCols(),
-                      in, kNoTrans, 0.0);
-  in_norm.ApplyFloor(kNormFloor);
-  in_norm.ApplyPow(-0.5);
-  out->MulRowsVec(in_norm);
+  cu::NormalizePerRow(in, BaseFloat(1), false, out);
 }
 
 /*
@@ -3593,7 +3586,7 @@ void DropoutComponent::Backprop(const ChunkInfo &,  //in_info,
                                 CuMatrix<BaseFloat> *in_deriv) const  {
   KALDI_ASSERT(SameDim(in_value, out_value) && SameDim(in_value, out_deriv));
   in_deriv->Resize(out_deriv.NumRows(), out_deriv.NumCols());
-  in_deriv->AddMatMatDivMat(out_deriv, out_value, in_value);
+  in_deriv->SetMatMatDivMat(out_deriv, out_value, in_value);
 }
 
 Component* DropoutComponent::Copy() const {
