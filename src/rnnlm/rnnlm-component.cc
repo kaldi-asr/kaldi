@@ -150,7 +150,9 @@ void AffineSampleLogSoftmaxComponent::InitFromConfig(ConfigLine *cfl) {
 void AffineSampleLogSoftmaxComponent::Propagate(const MatrixBase<BaseFloat> &in,
                                                 const vector<vector<int> > &indexes,
                                                 vector<vector<BaseFloat> > *out) const {
-  KALDI_ASSERT(in.NumRows() == indexes.size());
+//  KALDI_LOG << "sum is " << bias_params_.Sum();
+//  KALDI_ASSERT(bias_params_.Sum() == bias_params_.Sum());
+//  KALDI_ASSERT(in.NumRows() == indexes.size());
   out->resize(indexes.size());
 
   for (int i = 0; i < indexes.size(); i++) {
@@ -160,6 +162,7 @@ void AffineSampleLogSoftmaxComponent::Propagate(const MatrixBase<BaseFloat> &in,
       int w = indexes[i][j];
       BaseFloat res = VecVec(in.Row(i), linear_params_.Row(w));
       (*out)[i][j] = res + bias_params_(w);
+      KALDI_ASSERT((*out)[i][j] == (*out)[i][j]);
     }
   }
 }
@@ -171,6 +174,7 @@ void AffineSampleLogSoftmaxComponent::Backprop(
                                const vector<vector<BaseFloat> > &output_deriv,
                                LmOutputComponent *to_update_0,
                                MatrixBase<BaseFloat> *input_deriv) const {
+//  KALDI_LOG << "before sum is " << bias_params_.Sum();
   int k = indexes.size();
 
   if (input_deriv != NULL) {
@@ -200,7 +204,12 @@ void AffineSampleLogSoftmaxComponent::Backprop(
       for (int j = 0; j < k + 1; j++) {
         int index = indexes[i][j];
 
-        to_update->bias_params_(index) += output_deriv[i][index] * learning_rate_;
+        to_update->bias_params_(index) += output_deriv[i][j] * learning_rate_;
+
+//        KALDI_ASSERT(output_deriv[i][j] == output_deriv[i][j]);
+//        KALDI_LOG << "value is " << output_deriv[i][index] << " and " << learning_rate_;
+//        KALDI_LOG << "here is " << to_update->bias_params_(index);
+
         // index'th row of linear_params
         for (int m = 0; m < linear_params_.NumCols(); m++) {
 
@@ -211,6 +220,7 @@ void AffineSampleLogSoftmaxComponent::Backprop(
         }
       }
     }
+//    KALDI_LOG << "after, sum is " << to_update->bias_params_.Sum();
   }
 }
 

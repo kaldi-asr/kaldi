@@ -127,6 +127,7 @@ void LmNnetSamplingTrainer::Train(const NnetExample &eg) {
   }
 
   if (delta_nnet_ != NULL) {
+    KALDI_ASSERT(delta_nnet_->O()->DotProduct(*delta_nnet_->O()) == delta_nnet_->O()->DotProduct(*delta_nnet_->O()));
     BaseFloat scale = (1.0 - config_.momentum);
     if (config_.max_param_change != 0.0) {
       BaseFloat param_delta =
@@ -136,7 +137,7 @@ void LmNnetSamplingTrainer::Train(const NnetExample &eg) {
       param_delta += delta_nnet_->O()->DotProduct(*delta_nnet_->O());
 
       param_delta = std::sqrt(param_delta) * scale;
-      if (param_delta > config_.max_param_change) {
+      if (param_delta > config_.max_param_change || param_delta != param_delta) {
         if (param_delta - param_delta != 0.0) {
           KALDI_WARN << "Infinite parameter change, will not apply.";
           delta_nnet_->SetZero(false);
@@ -149,15 +150,33 @@ void LmNnetSamplingTrainer::Train(const NnetExample &eg) {
       }
     }
 
+    {
+      BaseFloat param_delta =
+          DotProduct(delta_nnet_->Nnet(), delta_nnet_->Nnet());
+
+      param_delta += delta_nnet_->I()->DotProduct(*delta_nnet_->I());
+      param_delta += delta_nnet_->O()->DotProduct(*delta_nnet_->O());
+      KALDI_ASSERT(param_delta == param_delta);
+//      KALDI_LOG << "dot-product of delta-nnet is " << param_delta;
+    }
+
 //    KALDI_LOG << "adding...";
     nnet_->Add(*delta_nnet_, scale);
+//    {
+//      BaseFloat param =
+//          DotProduct(nnet_->Nnet(), nnet_->Nnet());
+//
+//      param += nnet_->I()->DotProduct(*nnet_->I());
+//      param += nnet_->O()->DotProduct(*nnet_->O());
+//      KALDI_LOG << "dot-product of nnet " << param;
+//    }
 //    KALDI_LOG << "scaling...";
     delta_nnet_->Scale(config_.momentum);
   }
 }
 
 void LmNnetSamplingTrainer::ProcessOutputs(const NnetExample &eg,
-                                   NnetComputer *computer) {
+                                           NnetComputer *computer) {
   std::vector<NnetIo>::const_iterator iter = eg.io.begin(),
       end = eg.io.end();
   for (; iter != end; ++iter) {
@@ -389,16 +408,17 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
   *tot_objf = 0;
   for (int i = 0; i < k; i++) {
     KALDI_ASSERT(out[i].size() == k + 1);
-    KALDI_LOG << "out-" << i << " is " << out[i][k];
+//    KALDI_LOG << "out-" << i << " is " << out[i][k];
     *tot_objf += out[i][k]; // last one (k) is the correct lable
     for (int j = 0; j < k; j++) {
-      KALDI_LOG << "out-" << i << " " << j << " is " << out[i][j];
+//      KALDI_ASSERT(out[i][j] == out[i][j]);
+//      KALDI_LOG << "out-" << i << " " << j << " is " << out[i][j];
       *tot_objf -= exp(out[i][j]) / unigram[indexes[i][j]];
     }
-    KALDI_LOG << "tot-objf is " << *tot_objf << " at " << i;
+//    KALDI_LOG << "tot-objf is " << *tot_objf << " at " << i;
   }
 
-  KALDI_LOG << "objf value is " << *tot_objf << endl;
+//  KALDI_LOG << "objf value is " << *tot_objf << endl;
 
   if (supply_deriv && nnet != NULL) {
     // the derivative on the real output
@@ -408,6 +428,7 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
       output_deriv[i].resize(k + 1);
       for (int j = 0; j < k; j++) {
         output_deriv[i][j] = -exp(out[i][j]);
+        KALDI_ASSERT(output_deriv[i][j] == output_deriv[i][j]);
       }
       output_deriv[i][k] = 1;
     }

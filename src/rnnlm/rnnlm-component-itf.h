@@ -238,7 +238,7 @@ class LmComponent {
   //    -- an LmUpdatableComponent scales the parameters
   ///      by "scale" when called by an LmUpdatableComponent.
   //    -- a Nonlinear component it relates to scaling activation stats, not parameters.
-  virtual void Scale(BaseFloat scale) {};
+  virtual void Scale(BaseFloat scale) = 0;
 
   /// This virtual function when called by
   ///    -- an LmUpdatableComponent adds the parameters of
@@ -246,7 +246,7 @@ class LmComponent {
   ///      parameters.
   ///    -- a LmNonlinearComponent it relates to adding stats
   /// Otherwise it should do nothing.
-  virtual void Add(BaseFloat alpha, const LmComponent &other) {};
+  virtual void Add(BaseFloat alpha, const LmComponent &other) = 0;
 
 //  LmComponent() { }
 
