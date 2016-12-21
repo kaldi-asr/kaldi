@@ -588,30 +588,31 @@ function linux_configure_speex {
 }
 
 function linux_atlas_failure {
-   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
-   echo ATLASLIBS = [somewhere]/liblapack.a [somewhere]/libcblas.a [somewhere]/libatlas.a [somewhere]/libf77blas.a $ATLASLIBDIR >> kaldi.mk
-   if [[ "`uname -m`" == arm* ]]; then
-     cat makefiles/linux_atlas_arm.mk >> kaldi.mk
-   elif [[ "`uname -m`" == ppc64le ]]; then
-     cat makefiles/linux_atlas_ppc64le.mk >> kaldi.mk
-   else
-     cat makefiles/linux_atlas.mk >> kaldi.mk
-   fi
-   echo "** $* ***"
-   echo "**  ERROR   **"
-   echo "** Configure cannot proceed automatically."
-   echo "**  If you know that you have ATLAS installed somewhere on your machine, you"
-   echo "** may be able to proceed by replacing [somewhere] in kaldi.mk with a directory."
-   echo "**  If you have sudo (root) access you could install the ATLAS package on your"
-   echo "** machine, e.g. 'sudo apt-get install libatlas-dev libatlas-base-dev' or"
-   echo "** 'sudo yum install atlas.x86_64' or 'sudo zypper install libatlas3-devel',"
-   echo "** or on cygwin, install atlas from the installer GUI; and then run ./configure"
-   echo "** again."
-   echo "**"
-   echo "**  Otherwise (or if you prefer OpenBLAS for speed), you could go the OpenBLAS"
-   echo "** route: cd to ../tools, type 'extras/install_openblas.sh', cd back to here,"
-   echo "** and type './configure  --openblas-root=../tools/OpenBLAS/install'"
-   exit 1;
+  echo ATLASINC = $ATLASROOT/include >> kaldi.mk
+  echo ATLASLIBS = [somewhere]/liblapack.a [somewhere]/libcblas.a [somewhere]/libatlas.a [somewhere]/libf77blas.a $ATLASLIBDIR >> kaldi.mk
+  echo >> kaldi.mk
+  if [[ "`uname -m`" == arm* ]]; then
+   cat makefiles/linux_atlas_arm.mk >> kaldi.mk
+  elif [[ "`uname -m`" == ppc64le ]]; then
+   cat makefiles/linux_atlas_ppc64le.mk >> kaldi.mk
+  else
+   cat makefiles/linux_atlas.mk >> kaldi.mk
+  fi
+  echo "** $* ***"
+  echo "**  ERROR   **"
+  echo "** Configure cannot proceed automatically."
+  echo "**  If you know that you have ATLAS installed somewhere on your machine, you"
+  echo "** may be able to proceed by replacing [somewhere] in kaldi.mk with a directory."
+  echo "**  If you have sudo (root) access you could install the ATLAS package on your"
+  echo "** machine, e.g. 'sudo apt-get install libatlas-dev libatlas-base-dev' or"
+  echo "** 'sudo yum install atlas.x86_64' or 'sudo zypper install libatlas3-devel',"
+  echo "** or on cygwin, install atlas from the installer GUI; and then run ./configure"
+  echo "** again."
+  echo "**"
+  echo "**  Otherwise (or if you prefer OpenBLAS for speed), you could go the OpenBLAS"
+  echo "** route: cd to ../tools, type 'extras/install_openblas.sh', cd back to here,"
+  echo "** and type './configure  --openblas-root=../tools/OpenBLAS/install'"
+  exit 1;
 }
 
 function linux_check_static {
@@ -646,6 +647,7 @@ function linux_configure_debian_ubuntu {
   fi
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
+  echo >> kaldi.mk
   if [[ "`uname -m`" == arm* ]]; then
     cat makefiles/linux_atlas_arm.mk >> kaldi.mk
    elif [[ "`uname -m`" == ppc64le ]]; then
@@ -669,6 +671,7 @@ function linux_configure_debian_ubuntu3 {
   fi
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
+  echo >> kaldi.mk
   if [[ "`uname -m`" == arm* ]]; then
     cat makefiles/linux_atlas_arm.mk >> kaldi.mk
   elif [[ "`uname -m`" == ppc64le ]]; then
@@ -694,7 +697,7 @@ function linux_configure_debian7 {
   [ -z "$libdir" ] && echo "Error getting libdir in linux_configure_debian7" && exit 1;
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS -Wl,-rpath=$libdir >> kaldi.mk
-  echo
+  echo >> kaldi.mk
   if [[ "`uname -m`" == arm* ]]; then
     cat makefiles/linux_atlas_arm.mk >> kaldi.mk
   elif [[ "`uname -m`" == ppc64le ]]; then
@@ -717,7 +720,7 @@ function linux_configure_redhat {
   [ -z "$libdir" ] && echo "Error getting libdir in linux_configure_redhat" && exit 1;
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS -Wl,-rpath=$libdir >> kaldi.mk
-  echo
+  echo >> kaldi.mk
   if [[ "`uname -m`" == arm* ]]; then
     cat makefiles/linux_atlas_arm.mk >> kaldi.mk
   elif [[ "`uname -m`" == ppc64le ]]; then
@@ -742,7 +745,7 @@ function linux_configure_redhat_fat {
   [ -z "$libdir" ] && echo "Error getting libdir in linux_configure_redhat_fat" && exit 1;
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS -Wl,-rpath=$libdir >> kaldi.mk
-  echo
+  echo >> kaldi.mk
   if [[ "`uname -m`" == arm* ]]; then
     cat makefiles/linux_atlas_arm.mk >> kaldi.mk
   elif [[ "`uname -m`" == ppc64le ]]; then
@@ -799,6 +802,7 @@ function linux_configure_static {
 
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
+  echo >> kaldi.mk
   if [[ "`uname -m`" == arm* ]]; then
     cat makefiles/linux_atlas_arm.mk >> kaldi.mk
   elif [[ "`uname -m`" == ppc64le ]]; then
@@ -882,6 +886,7 @@ function linux_configure_dynamic {
 
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
+  echo >> kaldi.mk
   if [[ "`uname -m`" == arm* ]]; then
     cat makefiles/linux_atlas_arm.mk >> kaldi.mk
   elif [[ "`uname -m`" == ppc64le ]]; then
@@ -1017,7 +1022,6 @@ elif [ "`uname`" == "Linux" ]; then
     # containing {liblapack.a,libblas.a}, and linking against just these two
     # libraries worked.
 
-    echo >> kaldi.mk
     if $static_math; then
       # Prefer static to dynamic math.
       linux_configure_static || \
