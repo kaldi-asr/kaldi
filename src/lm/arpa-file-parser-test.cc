@@ -149,7 +149,7 @@ void TestableArpaFileParser::Validate(
   //                           expect_ngrams.array, CompareNgrams);
   // if (mpos.first != ngrams_.end())
   //   KALDI_ERR << "Maismatch at index " << mpos.first - ngrams_.begin();
-  //TODO:auto above requres C++11, and I cannot spell out the type!!!
+  // TODO: auto above requres C++11, and I cannot spell out the type!!!
   KALDI_ASSERT(std::equal(ngrams_.begin(), ngrams_.end(),
                           expect_ngrams.array, CompareNgrams));
 }
@@ -160,9 +160,9 @@ void ReadIntegerLmLogconvExpectSuccess() {
 
   static std::string integer_lm = "\
 \\data\\\n\
-ngram 1=4\n\
-ngram 2=2\n\
-ngram 3=2\n\
+ngram 1 = 4\n\
+ngram 2 = 2\n\
+ngram 3 = 2\n\
 \n\
 \\1-grams:\n\
 -5.2      4 -3.3\n\
@@ -215,23 +215,23 @@ and should be ignored before the \\data\\ marker\n\
 is seen alone by itself on a line.\n\
 \n\
 \\data\\\n\
-ngram 1=4\n\
-ngram 2=2\n\
-ngram 3=2\n\
+ngram 1 = 4\n\
+ngram 2 = 2\n\
+ngram 3 = 2\n\
 \n\
 \\1-grams: \n\
--5.2	a -3.3\n\
--3.4	\xCE\xB2\n\
-0.0	<s> -2.5\n\
--4.3	</s>\n\
+-5.2 a -3.3\n\
+-3.4 \xCE\xB2\n\
+0.0 <s> -2.5\n\
+-4.3 </s>\n\
 \n\
 \\2-grams:\t\n\
--1.5	a \xCE\xB2 -3.2\n\
--1.3	<s> a -4.2\n\
+-1.5 a \xCE\xB2 -3.2\n\
+-1.3 <s> a -4.2\n\
 \n\
 \\3-grams:\n\
--0.3	<s> a \xCE\xB2\n\
--0.2	<s> a </s>\n\
+-0.3 <s> a \xCE\xB2\n\
+-0.2 <s> a </s>\n\
 \\end\\";
 
 // Symbol table that is created with predefined test symbols, "a" but no "b".
