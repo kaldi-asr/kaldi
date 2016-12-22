@@ -25,19 +25,19 @@ namespace kaldi {
  \page graph_recipe_test Decoding-graph creation recipe (test time)
 
  Here we explain our normal graph creation approach step by step, along
- with certain data-preparation stages that are related to it.  
+ with certain data-preparation stages that are related to it.
  Most of the details of this approach are not hardcoded into our tools; we are
  just explaining how it is currently being done.
  If this section is confusing, the best remedy is probably to read
- <a href=http://www.cs.nyu.edu/~mohri/pub/hbka.pdf> "Speech Recognition 
- with Weighted Finite-State Transducers" </a> by Mohri et al.  
- Be warned: that paper is quite long, and reading it will take at least a 
+ <a href=http://www.cs.nyu.edu/~mohri/pub/hbka.pdf> "Speech Recognition
+ with Weighted Finite-State Transducers" </a> by Mohri et al.
+ Be warned: that paper is quite long, and reading it will take at least a
  few hours for those not already familiar with FSTs.
  Another good resource is the <a href=http://www.openfst.org> OpenFst website </a>
  which will provide more context on things like symbol tables.
 
  \section graph_symtab Preparing the initial symbol tables
- 
+
 We need to prepare the OpenFst symbol tables words.txt and phones.txt.  These
 assign integer id's to all the words and phones in our system.  Note
 that OpenFst reserves symbol zero for epsilon.  An example of how the
@@ -56,7 +56,7 @@ symbol tables look for the WSJ task is:
 ## tail -2 words.txt
 }RIGHT-BRACE 123683
 #0 123684
-## head data/phones.txt 
+## head data/phones.txt
 <eps> 0
 SIL 1
 SPN 2
@@ -65,10 +65,10 @@ AA 4
 AA_B 5
 \endverbatim
 The words.txt file contains the single disambiguation symbol "#0" (used for epsilon
-on the input of G.fst).  This is the last-numbered word in our recipe.  Be careful 
-with this if your 
+on the input of G.fst).  This is the last-numbered word in our recipe.  Be careful
+with this if your
 lexicon contains a word "#0".  The phones.txt file does not contain disambiguation
-symbols but after creating L.fst we will create a file phones_disambig.txt that 
+symbols but after creating L.fst we will create a file phones_disambig.txt that
 has the disambiguation symbols in (this is just useful for debugging).
 
   \section graph_lexicon Preparing the lexicon L
@@ -77,7 +77,7 @@ has the disambiguation symbols in (this is just useful for debugging).
  Our C++ tools will never interact with this, it will just be used by a script that creates
  lexicon FST.  A small part of our WSJ lexicon is:
 \verbatim
-## head data/lexicon.txt 
+## head data/lexicon.txt
 !SIL SIL
 <s>
 </s>
@@ -93,7 +93,7 @@ they are treated as distinct phones (however, we do handle the tree-building
 specially for this setup; read about the roots file in \ref tree_building).
 
 Notice that we allow words with empty phonetic representations.
-This lexicon will be used to create the L.fst used in training (without 
+This lexicon will be used to create the L.fst used in training (without
 disambiguation symbols).  We also create a lexicon with disambiguation
 symbols, used in decoding-graph creation.  An extract of this file
 is here:
@@ -125,11 +125,11 @@ ZH_S 339
 #3  343
 \endverbatim
 The numbers are so high because in this (WSJ) recipe we added
-stress and position information to the phones.  
+stress and position information to the phones.
 Note that the disambiguation symbols used for the empty words
 (i.e. \<s\> and \</s\>) have to be distinct from those used for the normal
-words, so the "normal" disambiguation symbols in this 
-example start from \#3. 
+words, so the "normal" disambiguation symbols in this
+example start from \#3.
 
 The command to convert the lexicon without disambiguation symbols
 into an FST is:
@@ -143,7 +143,7 @@ Here, the script make_lexicon_fst.pl creates the text representation
 of the FST.  The 0.5 is the silence probability (i.e. at the
 beginning of sentence and after each word, we output silence with
 probability 0.5; the probability mass assigned to having no silence is
-1.0 - 0.5 = 0.5.  The rest of the commands in this example 
+1.0 - 0.5 = 0.5.  The rest of the commands in this example
 relate to converting the FST into compiled form; fstarcsort is
 necessary because we are going to compose later.
 
@@ -156,9 +156,9 @@ the input symbol is the first phone of that word.
 It is important both for the efficiency of composition and the
 effectiveness of minimization that the output symbol should be as early as
 possible (i.e. at the beginning not the end of the word).  At the end of each
-word, to handle optional silence, the transition corresponding to 
-the last phone is in two forms: one to the loop state and one to 
-the "silence state" which has a transition to the loop state.  
+word, to handle optional silence, the transition corresponding to
+the last phone is in two forms: one to the loop state and one to
+the "silence state" which has a transition to the loop state.
 We don't bother putting optional silence after silence words, which we define
 as words that have just one phone that is the silence phone.
 
@@ -203,7 +203,7 @@ gunzip -c data_prep/lm.arpa.gz | \
   arpa2fst --disambig-symbol=#0 \
              --read-symbol-table=data/words.txt - data/G.fst
 \endverbatim
-The last command (fstisstochastic) is a diagnostic step (see \ref fst_algo_stochastic).  
+The last command (fstisstochastic) is a diagnostic step (see \ref fst_algo_stochastic).
 In one typical example, it prints out the numbers:
 \verbatim
 9.14233e-05 -0.259833
@@ -211,7 +211,7 @@ In one typical example, it prints out the numbers:
 The first number is small, so it confirms that there is no state that has
 the probability mass of its arcs plus final-state significantly less than one.
 The second number is significant, and this means that there are states that
-have "too much" probability mass (the numeric values of the weights in the 
+have "too much" probability mass (the numeric values of the weights in the
 FSTs can generally be interpreted as negated log probabilities).  Having
 some states with "too much" probability mass is normal for the FST
 representations of language models with backoff.  During later graph creation steps we will
@@ -229,7 +229,8 @@ inside Kaldi processes, not at the script level.
 \verbatim
     fsttablecompose data/L_disambig.fst data/G.fst | \
         fstdeterminizestar --use-log=true | \
-        fstminimizeencoded  > somedir/LG.fst
+        fstminimizeencoded | fstpushspecial | \
+         fstarcsort --sort-type=ilabel > somedir/LG.fst
 \endverbatim
  There are some small differences from OpenFst's algorithms.
  We use a more efficient composition algorithm (see \ref fst_algo_composition)
@@ -238,16 +239,27 @@ inside Kaldi processes, not at the script level.
  program fstdeterminizestar.  The option --use-log=true asks the program to first
  cast the FST to the log semiring; this preserves stochasticity (in the log semiring);
  see \ref fst_algo_stochastic.
- 
- We do minimization with the program "fstminimizeencoded".  This is mostly the 
+
+ We do minimization with the program "fstminimizeencoded".  This is mostly the
  same as the version of OpenFst's minimization algorithm that applies to
  weighted acceptors; the only change relevant here is that
- it avoids pushing weights, hence preserving stochasticity (see \ref fst_algo_minimization 
+ it avoids pushing weights, hence preserving stochasticity (see \ref fst_algo_minimization
  for details).
+
+ The program "fstpushspecial" is similar to OpenFst's "fstpush" program, but if
+ the weights don't sum to one it ensures that all the states "sum to" the same
+ value (possibly different from one), rather than trying to push the "extra"
+ weight to the start or end of the graph.  This has the advantage that it
+ can never fail ("fstpush" can fail or loop for a very long time if the FST "sums to" infinity);
+ it is also much faster.   See push-special.cc for more detailed documentation.
+
+ The "fstarcsort" stage sorts the arcs in a way that will help later composition
+ operations to be fast.
+
 
  \section graph_clg Preparing CLG
 
- To get a transducer whose inputs are context-dependent phones, we need to prepare an FST 
+ To get a transducer whose inputs are context-dependent phones, we need to prepare an FST
  called CLG, which is equivalent to C o L o G, where L and G are the lexicon and grammar and C
  represents the phonetic context.  For a triphone system, the input symbols of C would
  be of the form a/b/c (i.e. triples of phones), and the output symbols would be single
@@ -255,7 +267,7 @@ inside Kaldi processes, not at the script level.
  windows, and how we generalize to different context sizes.  Firstly, we describe
  how we would create the context FST C if we were to make it by itself and compose
  normally (our scripts do not actually work this way, for efficiency and scalability
- reasons).  
+ reasons).
 
  \subsection graph_c Making the context transducer
 
@@ -274,7 +286,7 @@ inside Kaldi processes, not at the script level.
  this doesn't represent a phone since (assuming P = 1), the central element
  is \<eps\> which is not a phone.  In this case we let the input symbol of the
  arc be #-1 which is a special symbol we introduce for this purpose (we don't use
- epsilon here as the standard recipe does, as it can lead to nondeterminizability 
+ epsilon here as the standard recipe does, as it can lead to nondeterminizability
  when there are empty words).
 
  The end-of-utterance case is a little complicated.  The context FST has, on the
@@ -283,7 +295,7 @@ inside Kaldi processes, not at the script level.
  all symbols we need to flush out the last triphone (e.g. a/b/\<eps\>, where
  \<eps\> represents undefined context).  The natural way to do this would be to
  have a transition with a/b/\<eps\> on its input and \<eps\> on its output, from
- the state a/b to a final state (e.g. b/\<eps\> or a special final state).  But this is 
+ the state a/b to a final state (e.g. b/\<eps\> or a special final state).  But this is
  inefficient for composition, because if it was not the end of the utterance
  we would have to explore such transitions before finding them pruned away.
  Instead we use $ as the end-of-utterance symbol, and make sure it appears once
@@ -292,11 +304,11 @@ inside Kaldi processes, not at the script level.
  avoid the hassle having to work out how many subsequential symbols to add to LG, we just
  allow it to accept any number of such symbols at the end of utterance.  This
  is acheived by the function AddSubsequentialLoop() and the command-line program
- fstaddsubsequentialloop.  
+ fstaddsubsequentialloop.
 
 
-If we wanted C on its own, we would first need a list of 
-disambiguation symbols; and we would also need to work out an unused symbol id we could use 
+If we wanted C on its own, we would first need a list of
+disambiguation symbols; and we would also need to work out an unused symbol id we could use
 for the subsequential symbol, as follows:
 \verbatim
  grep '#' data/phones_disambig.txt | awk '{print $2}' > $dir/disambig_phones.list
@@ -313,17 +325,17 @@ The program fstmakecontextfst needs the list of phones, a list of disambiguation
 and the identity of the subsequential symbol.  In addition to C.fst, it writes
 out the file "ilabels" that interprets the symbols on the left of C.fst
 (see \ref tree_ilabel).  The composition with LG can be done as follows:
-\verbatim 
+\verbatim
 fstaddsubsequentialloop $subseq_sym $dir/LG.fst | \
  fsttablecompose $dir/C.fst - > $dir/CLG.fst
 \endverbatim
 For printing out C.fst and anything using the same symbols
-that index "ilabels", we can make a suitable symbol table using the following 
+that index "ilabels", we can make a suitable symbol table using the following
 command:
 \verbatim
  fstmakecontextsyms data/phones.txt $dir/ilabels > $dir/context_syms.txt
-\endverbatim     
-This command knows about the "ilabels" format (\ref tree_ilabel). 
+\endverbatim
+This command knows about the "ilabels" format (\ref tree_ilabel).
 An example random path through the CLG fst (for Resource Management), printed
 out with this symbol table, is as follows:
 \verbatim
@@ -338,7 +350,7 @@ out with this symbol table, is as follows:
 6   7   ay/z/sil    <eps>
 7   8   z/sil/<eps> <eps>
 8
-\endverbatim  
+\endverbatim
 
  \subsection graph_compose_c Composing with C dynamically
 
@@ -350,7 +362,7 @@ fstcomposecontext  --read-disambig-syms=$dir/disambig_phones.list \
                    --write-disambig-syms=$dir/disambig_ilabels.list \
                    $dir/ilabels < $dir/LG.fst >$dir/CLG.fst
 \endverbatim
- If we had different context parameters N and P than the defaults (3 and 1), we 
+ If we had different context parameters N and P than the defaults (3 and 1), we
  would supply extra options to this program.  This program writes
  the file "ilabels" (see \ref tree_ilabel) which interprets the input symbols
  of CLG.fst.  The first few lines of an ilabels file from the Resource
@@ -375,29 +387,29 @@ of epsilon, to ensure determinizability.
 
  \subsection graph_change_ilabel Reducing the number of context-dependent input symbols
 
- After creating CLG.fst, there is an optional graph creation stage 
+ After creating CLG.fst, there is an optional graph creation stage
  that can reduce its size.
  We use the program make-ilabel-transducer, which works out from the decision
  tree and the HMM topology information, which subsets of context-dependent phones would
- correspond to the same compiled graph and can therefore be merged (we pick 
+ correspond to the same compiled graph and can therefore be merged (we pick
  an arbitrary element of each subset and convert all context windows to that context
  window). This is a similar concept to HTK's logical-to-physical mapping.    The
  command is:
 \verbatim
  make-ilabel-transducer --write-disambig-syms=$dir/disambig_ilabels_remapped.list \
-  $dir/ilabels $tree $model $dir/ilabels.remapped > $dir/ilabel_map.fst 
+  $dir/ilabels $tree $model $dir/ilabels.remapped > $dir/ilabel_map.fst
 \endverbatim
  This program requires the tree and the model; it outputs a new ilabel_info
  object called "ilabels.remapped"; this is in the same format as the original
  "ilabels" file, but has fewer lines.  The FST "ilabel_map.fst" is composed
  with CLG.fst and remaps the labels.  After doing this we determinize
- and minimize so we can immediately realize any size reductions: 
+ and minimize so we can immediately realize any size reductions:
 \verbatim
  fstcompose $dir/ilabel_map.fst $dir/CLG.fst  | \
    fstdeterminizestar --use-log=true | \
    fstminimizeencoded > $dir/CLG2.fst
 \endverbatim
- For typical setups this stage does not actually reduce the graph size 
+ For typical setups this stage does not actually reduce the graph size
  by very much (5\% to 20\% reduction is typical), and in any case
  it is only the size of intermediate graph-creation stages that we
  are reducing by this mechanism.  But the savings could become significant
@@ -421,24 +433,24 @@ of epsilon, to ensure determinizability.
  sequences of three arcs.  H also has self-loops on the initial state for each of
  the disambiguation symbols (\#-1, \#0, \#1, \#2, \#3 and so on).
 
- The section of script that makes the H transducer (we call it Ha 
+ The section of script that makes the H transducer (we call it Ha
  because it lacks self-loops at this point), is:
-\verbatim 
+\verbatim
 make-h-transducer --disambig-syms-out=$dir/disambig_tstate.list \
    --transition-scale=1.0  $dir/ilabels.remapped \
    $tree $model  > $dir/Ha.fst
 \endverbatim
  There is an optional argument to set the transition scale; in our
- current training scripts, this scale is 1.0.  This scale only 
+ current training scripts, this scale is 1.0.  This scale only
  affects the parts of the transitions that do not relate to
  self-loop probabilities, and in the normal topology (Bakis model) it
  has no effect at all; see \ref hmm_scale for more explanation.
- In addition to the FST, the program also writes a list of 
+ In addition to the FST, the program also writes a list of
  disambiguation symbols which must be removed later.
- 
+
  \section graph_hclg Making HCLG
 
- The first step in making the final graph HCLG is to make the 
+ The first step in making the final graph HCLG is to make the
  HCLG that lacks self-loops.  The command in our current script is
  as follows:
 \verbatim
@@ -457,15 +469,15 @@ make-h-transducer --disambig-syms-out=$dir/disambig_tstate.list \
  \section graph_selfloops Adding self-loops to HCLG
 
  Adding self-loops to HCLG is done by the following command:
-\verbatim 
+\verbatim
   add-self-loops --self-loop-scale=0.1 \
     --reorder=true $model < $dir/HCLGa.fst > $dir/HCLG.fst
 \endverbatim
  See \ref hmm_scale for an explanation of how the self-loop-scale of 0.1
- is applied (note that it also affects the non-self-loop probabilities).  
+ is applied (note that it also affects the non-self-loop probabilities).
  For an explanation of the "reorder" option, see \ref hmm_reorder;
  the "reorder" option increases decoding speed but is not compatible with
- the \ref decoder_kaldi "kaldi decoder".  
+ the \ref decoder_kaldi "kaldi decoder".
  The add-self-loops program does not just add self-loops; it may also
  have to duplicate states and add epsilon transitions in order to
  ensure that the self-loops can be added in a consistent way.  This
@@ -476,7 +488,7 @@ make-h-transducer --disambig-syms-out=$dir/disambig_tstate.list \
  G.fst, LG.fst, CLG.fst and HCLGa.fst, but not for HCLG.fst.
  We do not determinize again after the add-self-loops stage; this would
  fail because we have already removed the disambiguation symbols.  Anyway,
- this would be slow and we believe that there is nothing further to be gained from 
+ this would be slow and we believe that there is nothing further to be gained from
  determinizing and minimizing at this point.
 
 
