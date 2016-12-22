@@ -35,8 +35,8 @@ AffineSampleLogSoftmaxComponent::AffineSampleLogSoftmaxComponent(
     bias_params_(component.bias_params_) { }
 
 AffineSampleLogSoftmaxComponent::AffineSampleLogSoftmaxComponent(
-                                   const MatrixBase<BaseFloat> &linear_params,
-                                   const VectorBase<BaseFloat> &bias_params,
+                                   const CuMatrixBase<BaseFloat> &linear_params,
+                                   const CuVectorBase<BaseFloat> &bias_params,
                                    BaseFloat learning_rate):
                                             linear_params_(linear_params),
                                             bias_params_(bias_params) {
@@ -54,19 +54,19 @@ void AffineSampleLogSoftmaxComponent::SetZero(bool treat_as_gradient) {
   bias_params_.SetZero();
 }
 
-void AffineSampleLogSoftmaxComponent::SetParams(const VectorBase<BaseFloat> &bias,
-                                const MatrixBase<BaseFloat> &linear) {
+void AffineSampleLogSoftmaxComponent::SetParams(const CuVectorBase<BaseFloat> &bias,
+                                const CuMatrixBase<BaseFloat> &linear) {
   bias_params_ = bias;
   linear_params_ = linear;
   KALDI_ASSERT(bias_params_.Dim() == linear_params_.NumRows());
 }
 
 void AffineSampleLogSoftmaxComponent::PerturbParams(BaseFloat stddev) {
-  Matrix<BaseFloat> temp_linear_params(linear_params_);
+  CuMatrix<BaseFloat> temp_linear_params(linear_params_);
   temp_linear_params.SetRandn();
   linear_params_.AddMat(stddev, temp_linear_params);
 
-  Vector<BaseFloat> temp_bias_params(bias_params_);
+  CuVector<BaseFloat> temp_bias_params(bias_params_);
   temp_bias_params.SetRandn();
   bias_params_.AddVec(stddev, temp_bias_params);
 }
@@ -74,8 +74,8 @@ void AffineSampleLogSoftmaxComponent::PerturbParams(BaseFloat stddev) {
 std::string AffineSampleLogSoftmaxComponent::Info() const {
   std::ostringstream stream;
   stream << LmComponent::Info();
-  PrintParameterStats(stream, "linear-params", linear_params_);
-  PrintParameterStats(stream, "bias", bias_params_, true);
+  nnet3::PrintParameterStats(stream, "linear-params", linear_params_);
+  nnet3::PrintParameterStats(stream, "bias", bias_params_, true);
   return stream.str();
 }
 
@@ -106,7 +106,7 @@ void AffineSampleLogSoftmaxComponent::Init(int32 input_dim, int32 output_dim,
 }
 
 void AffineSampleLogSoftmaxComponent::Init(std::string matrix_filename) {
-  Matrix<BaseFloat> mat;
+  CuMatrix<BaseFloat> mat;
   ReadKaldiObject(matrix_filename, &mat); // will abort on failure.
   KALDI_ASSERT(mat.NumCols() >= 2);
   int32 input_dim = mat.NumCols() - 1, output_dim = mat.NumRows();
@@ -147,91 +147,94 @@ void AffineSampleLogSoftmaxComponent::InitFromConfig(ConfigLine *cfl) {
     KALDI_ERR << "Bad initializer " << cfl->WholeLine();
 }
 
-void AffineSampleLogSoftmaxComponent::Propagate(const MatrixBase<BaseFloat> &in,
-                                                const vector<vector<int> > &indexes,
-                                                vector<vector<BaseFloat> > *out) const {
+void AffineSampleLogSoftmaxComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
+                                                const vector<int> &indexes,
+                                                CuMatrixBase<BaseFloat> *out) const {
 //  KALDI_LOG << "sum is " << bias_params_.Sum();
 //  KALDI_ASSERT(bias_params_.Sum() == bias_params_.Sum());
 //  KALDI_ASSERT(in.NumRows() == indexes.size());
-  out->resize(indexes.size());
+//  out->resize(indexes.size());
+  KALDI_ASSERT(out->NumRows() == in.NumRows());
 
-  for (int i = 0; i < indexes.size(); i++) {
-    (*out)[i].resize(indexes[i].size());
-
-    for (int j = 0; j < indexes[i].size(); j++) {
-      int w = indexes[i][j];
-      BaseFloat res = VecVec(in.Row(i), linear_params_.Row(w));
-      (*out)[i][j] = res + bias_params_(w);
-      KALDI_ASSERT((*out)[i][j] == (*out)[i][j]);
-    }
-  }
+//  TODO(hxu)
+//  for (int i = 0; i < indexes.size(); i++) {
+//    (*out)[i].resize(indexes[i].size());
+//
+//    for (int j = 0; j < indexes[i].size(); j++) {
+//      int w = indexes[i][j];
+//      BaseFloat res = VecVec(in.Row(i), linear_params_.Row(w));
+//      (*out)[i][j] = res + bias_params_(w);
+//      KALDI_ASSERT((*out)[i][j] == (*out)[i][j]);
+//    }
+//  }
 }
 
 void AffineSampleLogSoftmaxComponent::Backprop(
-                               const vector<vector<int> > &indexes,
-                               const MatrixBase<BaseFloat> &in_value,
-                               const MatrixBase<BaseFloat> &, // out_value
-                               const vector<vector<BaseFloat> > &output_deriv,
+                               const vector<int> &indexes,
+                               const CuMatrixBase<BaseFloat> &in_value,
+                               const CuMatrixBase<BaseFloat> &, // out_value
+                               const CuMatrixBase<BaseFloat> &output_deriv,
                                LmOutputComponent *to_update_0,
-                               MatrixBase<BaseFloat> *input_deriv) const {
-//  KALDI_LOG << "before sum is " << bias_params_.Sum();
-  int k = indexes.size();
-
-  if (input_deriv != NULL) {
-    for (int i = 0; i < k; i++) {
-      KALDI_ASSERT(indexes[i].size() == k + 1);
-
-      // it seems even if one of the samples is the correct label it shouldn't be a problem...?
-      for (int j = 0; j < k + 1; j++) {
-        int index = indexes[i][j];
-        // index'th row of linear_params
-        for (int m = 0; m < linear_params_.NumCols(); m++) {
-          (*input_deriv)(i, m) += output_deriv[i][j] * linear_params_(index, m);
-        }
-      }
-    }
-  }
-
-  AffineSampleLogSoftmaxComponent* to_update
-             = dynamic_cast<AffineSampleLogSoftmaxComponent*>(to_update_0);
-
-  if (to_update != NULL) {
-//    if (to_update->is_gradient_)
-//      to_update->UpdateSimple(in_value, out_deriv);
-//    else  // the call below is to a virtual function that may be re-implemented
-//      to_update->Update(debug_info, in_value, out_deriv);  // by child classes.
-    for (int i = 0; i < k; i++) {
-      for (int j = 0; j < k + 1; j++) {
-        int index = indexes[i][j];
-
-        to_update->bias_params_(index) += output_deriv[i][j] * learning_rate_;
-
-//        KALDI_ASSERT(output_deriv[i][j] == output_deriv[i][j]);
-//        KALDI_LOG << "value is " << output_deriv[i][index] << " and " << learning_rate_;
-//        KALDI_LOG << "here is " << to_update->bias_params_(index);
-
-        // index'th row of linear_params
-        for (int m = 0; m < linear_params_.NumCols(); m++) {
-
-          to_update->linear_params_(index, m) +=
-                 learning_rate_ * output_deriv[i][j] * in_value(i, m);
-
+                               CuMatrixBase<BaseFloat> *input_deriv) const {
+  // TODO(hxu)
+////  KALDI_LOG << "before sum is " << bias_params_.Sum();
+//  int k = indexes.size();
+//
+//  if (input_deriv != NULL) {
+//    for (int i = 0; i < k; i++) {
+//      KALDI_ASSERT(indexes[i].size() == k + 1);
+//
+//      // it seems even if one of the samples is the correct label it shouldn't be a problem...?
+//      for (int j = 0; j < k + 1; j++) {
+//        int index = indexes[i][j];
+//        // index'th row of linear_params
+//        for (int m = 0; m < linear_params_.NumCols(); m++) {
 //          (*input_deriv)(i, m) += output_deriv[i][j] * linear_params_(index, m);
-        }
-      }
-    }
-//    KALDI_LOG << "after, sum is " << to_update->bias_params_.Sum();
-  }
+//        }
+//      }
+//    }
+//  }
+//
+//  AffineSampleLogSoftmaxComponent* to_update
+//             = dynamic_cast<AffineSampleLogSoftmaxComponent*>(to_update_0);
+//
+//  if (to_update != NULL) {
+////    if (to_update->is_gradient_)
+////      to_update->UpdateSimple(in_value, out_deriv);
+////    else  // the call below is to a virtual function that may be re-implemented
+////      to_update->Update(debug_info, in_value, out_deriv);  // by child classes.
+//    for (int i = 0; i < k; i++) {
+//      for (int j = 0; j < k + 1; j++) {
+//        int index = indexes[i][j];
+//
+//        to_update->bias_params_(index) += output_deriv[i][j] * learning_rate_;
+//
+////        KALDI_ASSERT(output_deriv[i][j] == output_deriv[i][j]);
+////        KALDI_LOG << "value is " << output_deriv[i][index] << " and " << learning_rate_;
+////        KALDI_LOG << "here is " << to_update->bias_params_(index);
+//
+//        // index'th row of linear_params
+//        for (int m = 0; m < linear_params_.NumCols(); m++) {
+//
+//          to_update->linear_params_(index, m) +=
+//                 learning_rate_ * output_deriv[i][j] * in_value(i, m);
+//
+////          (*input_deriv)(i, m) += output_deriv[i][j] * linear_params_(index, m);
+//        }
+//      }
+//    }
+////    KALDI_LOG << "after, sum is " << to_update->bias_params_.Sum();
+//  }
 }
 
-void AffineSampleLogSoftmaxComponent::UpdateSimple(
-                                   const MatrixBase<BaseFloat> &in_value,
-                                   const MatrixBase<BaseFloat> &out_deriv) {
-  KALDI_ASSERT(false);
-  bias_params_.AddRowSumMat(learning_rate_, out_deriv, 1.0);
-  linear_params_.AddMatMat(learning_rate_, out_deriv, kTrans,
-                           in_value, kNoTrans, 1.0);
-}
+//void AffineSampleLogSoftmaxComponent::UpdateSimple(
+//                                   const MatrixBase<BaseFloat> &in_value,
+//                                   const MatrixBase<BaseFloat> &out_deriv) {
+//  KALDI_ASSERT(false);
+//  bias_params_.AddRowSumMat(learning_rate_, out_deriv, 1.0);
+//  linear_params_.AddMatMat(learning_rate_, out_deriv, kTrans,
+//                           in_value, kNoTrans, 1.0);
+//}
 
 void AffineSampleLogSoftmaxComponent::Read(std::istream &is, bool binary) {
   ReadUpdatableCommon(is, binary);  // read opening tag and learning rate.
@@ -425,108 +428,108 @@ void LinearNormalizedLogSoftmaxComponent::InitFromConfig(ConfigLine *cfl) {
     KALDI_ERR << "Bad initializer " << cfl->WholeLine();
 }
 
-void LinearNormalizedLogSoftmaxComponent::Propagate(const MatrixBase<BaseFloat> &in,
-                                                const vector<vector<int> > &indexes,
-                                                vector<vector<BaseFloat> > *out) const {
-  KALDI_ASSERT(false);
-}
-
-void LinearNormalizedLogSoftmaxComponent::Backprop(
-                               const vector<vector<int> > &indexes,
-                               const MatrixBase<BaseFloat> &in_value,
-                               const MatrixBase<BaseFloat> &, // out_value
-                               const vector<vector<BaseFloat> > &output_deriv,
-                               LmOutputComponent *to_update_0,
-                               MatrixBase<BaseFloat> *input_deriv) const {
-
-  KALDI_ASSERT(false);
-}
-
-
 void LinearNormalizedLogSoftmaxComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
-                                                const vector<vector<int> > &indexes,
-                                                vector<vector<BaseFloat> > *out) const {
-  KALDI_ASSERT(in.NumRows() == indexes.size());
-  KALDI_ASSERT(normalized_);
-  out->resize(indexes.size());
-
-  for (int i = 0; i < indexes.size(); i++) {
-    KALDI_ASSERT(indexes[i].size() == 1);
-    int w = indexes[i][0];
-    BaseFloat res = VecVec(in.Row(i), actual_params_.Row(w));
-//    KALDI_ASSERT(res >= 0 && res <= 1);
-    (*out)[i].push_back(res);
-  }
+                                                const vector<int> &indexes,
+                                                CuMatrixBase<BaseFloat> *out) const {
+  KALDI_ASSERT(false);
 }
 
 void LinearNormalizedLogSoftmaxComponent::Backprop(
-                               const vector<vector<int> > &indexes,
+                               const vector<int> &indexes,
                                const CuMatrixBase<BaseFloat> &in_value,
                                const CuMatrixBase<BaseFloat> &, // out_value
-                               const vector<vector<BaseFloat> > &output_deriv,
+                               const CuMatrixBase<BaseFloat> &output_deriv,
                                LmOutputComponent *to_update_0,
                                CuMatrixBase<BaseFloat> *input_deriv) const {
 
-  int k = indexes.size();
+  KALDI_ASSERT(false);
+}
 
-  if (input_deriv != NULL) {
-    for (int i = 0; i < k; i++) {
-      KALDI_ASSERT(indexes[i].size() == 1);
-      KALDI_ASSERT(output_deriv[i][0] == 1);
-      int index = indexes[i][0];
-      input_deriv->Row(i).AddVec(1.0, actual_params_.Row(index));
-    }
-  }
 
-  LinearNormalizedLogSoftmaxComponent* to_update
-             = dynamic_cast<LinearNormalizedLogSoftmaxComponent*>(to_update_0);
-
-  if (to_update != NULL) {
-    CuMatrix<BaseFloat> aT(actual_params_, kTrans);
-    CuMatrix<BaseFloat> dapT(actual_params_, kTrans);
-
-    CuMatrix<BaseFloat> daT(actual_params_, kTrans);
-    daT.SetZero();
-    dapT.SetZero();
-    for (int i = 0; i < k; i++) {
-      int index = indexes[i][0];
-      daT.ColRange(index, 1).AddVecToCols(1.0, in_value.Row(i), 1.0);
-    }
-    dapT.DiffSoftmaxPerRow(aT, daT);
-    to_update->linear_params_.AddMat(learning_rate_, dapT, kTrans);
-  }
-
-//  if (to_update != NULL) {
-//    for (int m = 0; m < k; m++) {
-//      // index'th row of linear_params
-//      for (int i = 1; i < linear_params_.NumRows(); i++) { // first row is all 0's by definition
-//        for (int k = 0; k < linear_params_.NumCols(); k++) {
-//          BaseFloat deriv = 0.0;
-//          if (k == indexes[m][0]) {
-//            // correct label
-//            for (int j = 0; j < linear_params_.NumCols(); j++) {
-//              deriv += in_value(m, j) +
-//                actual_params_(i, j) * (1 - actual_params_(i, j));
-//            }
-//          } else {
-//            int j = indexes[m][0];
-//            deriv = - in_value(m, k) * actual_params_(i, k) * actual_params_(j, k);
-//          }
+//void LinearNormalizedLogSoftmaxComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
+//                                                const vector<vector<int> > &indexes,
+//                                                vector<vector<BaseFloat> > *out) const {
+//  KALDI_ASSERT(in.NumRows() == indexes.size());
+//  KALDI_ASSERT(normalized_);
+//  out->resize(indexes.size());
 //
-//          to_update->linear_params_(i, k) +=
-//            learning_rate_ * deriv;
-//        
-////        to_update->linear_params_(i, ) +=
-////          learning_rate_ * output_deriv[i][j] * in_value(i, index) *
-////           (1 - actual_params_
-////         ;
+//  for (int i = 0; i < indexes.size(); i++) {
+//    KALDI_ASSERT(indexes[i].size() == 1);
+//    int w = indexes[i][0];
+//    BaseFloat res = VecVec(in.Row(i), actual_params_.Row(w));
+////    KALDI_ASSERT(res >= 0 && res <= 1);
+//    (*out)[i].push_back(res);
+//  }
+//}
 //
-////          (*input_deriv)(i, m) += output_deriv[i][j] * linear_params_(index, m);
-//        }
-//      }
+//void LinearNormalizedLogSoftmaxComponent::Backprop(
+//                               const vector<vector<int> > &indexes,
+//                               const CuMatrixBase<BaseFloat> &in_value,
+//                               const CuMatrixBase<BaseFloat> &, // out_value
+//                               const vector<vector<BaseFloat> > &output_deriv,
+//                               LmOutputComponent *to_update_0,
+//                               CuMatrixBase<BaseFloat> *input_deriv) const {
+//
+//  int k = indexes.size();
+//
+//  if (input_deriv != NULL) {
+//    for (int i = 0; i < k; i++) {
+//      KALDI_ASSERT(indexes[i].size() == 1);
+//      KALDI_ASSERT(output_deriv[i][0] == 1);
+//      int index = indexes[i][0];
+//      input_deriv->Row(i).AddVec(1.0, actual_params_.Row(index));
 //    }
 //  }
-}
+//
+//  LinearNormalizedLogSoftmaxComponent* to_update
+//             = dynamic_cast<LinearNormalizedLogSoftmaxComponent*>(to_update_0);
+//
+//  if (to_update != NULL) {
+//    CuMatrix<BaseFloat> aT(actual_params_, kTrans);
+//    CuMatrix<BaseFloat> dapT(actual_params_, kTrans);
+//
+//    CuMatrix<BaseFloat> daT(actual_params_, kTrans);
+//    daT.SetZero();
+//    dapT.SetZero();
+//    for (int i = 0; i < k; i++) {
+//      int index = indexes[i][0];
+//      daT.ColRange(index, 1).AddVecToCols(1.0, in_value.Row(i), 1.0);
+//    }
+//    dapT.DiffSoftmaxPerRow(aT, daT);
+//    to_update->linear_params_.AddMat(learning_rate_, dapT, kTrans);
+//  }
+//
+////  if (to_update != NULL) {
+////    for (int m = 0; m < k; m++) {
+////      // index'th row of linear_params
+////      for (int i = 1; i < linear_params_.NumRows(); i++) { // first row is all 0's by definition
+////        for (int k = 0; k < linear_params_.NumCols(); k++) {
+////          BaseFloat deriv = 0.0;
+////          if (k == indexes[m][0]) {
+////            // correct label
+////            for (int j = 0; j < linear_params_.NumCols(); j++) {
+////              deriv += in_value(m, j) +
+////                actual_params_(i, j) * (1 - actual_params_(i, j));
+////            }
+////          } else {
+////            int j = indexes[m][0];
+////            deriv = - in_value(m, k) * actual_params_(i, k) * actual_params_(j, k);
+////          }
+////
+////          to_update->linear_params_(i, k) +=
+////            learning_rate_ * deriv;
+////        
+//////        to_update->linear_params_(i, ) +=
+//////          learning_rate_ * output_deriv[i][j] * in_value(i, index) *
+//////           (1 - actual_params_
+//////         ;
+////
+//////          (*input_deriv)(i, m) += output_deriv[i][j] * linear_params_(index, m);
+////        }
+////      }
+////    }
+////  }
+//}
 
 void LinearNormalizedLogSoftmaxComponent::Read(std::istream &is, bool binary) {
   ReadUpdatableCommon(is, binary);  // read opening tag and learning rate.
@@ -606,7 +609,7 @@ void LmLinearComponent::SetParams(//const VectorBase<BaseFloat> &bias,
 }
 
 void LmLinearComponent::PerturbParams(BaseFloat stddev) {
-  Matrix<BaseFloat> temp_linear_params(linear_params_);
+  CuMatrix<BaseFloat> temp_linear_params(linear_params_);
   temp_linear_params.SetRandn();
   linear_params_.AddMat(stddev, temp_linear_params);
 }
@@ -614,7 +617,7 @@ void LmLinearComponent::PerturbParams(BaseFloat stddev) {
 std::string LmLinearComponent::Info() const {
   std::ostringstream stream;
   stream << LmInputComponent::Info();
-  PrintParameterStats(stream, "linear-params", linear_params_);
+  nnet3::PrintParameterStats(stream, "linear-params", linear_params_);
   return stream.str();
 }
 
@@ -677,11 +680,11 @@ void LmLinearComponent::InitFromConfig(ConfigLine *cfl) {
 }
 
 void LmLinearComponent::Propagate(const SparseMatrix<BaseFloat> &sp,
-                                MatrixBase<BaseFloat> *out) const {
+                                  CuMatrixBase<BaseFloat> *out) const {
 
   std::vector<MatrixIndexT> vis;
 
-  Matrix<BaseFloat> cpu_out_transpose(out->NumCols(), out->NumRows());
+  CuMatrix<BaseFloat> cpu_out_transpose(out->NumCols(), out->NumRows());
 
   for (size_t i = 0; i < sp.NumRows(); i++) {
     const SparseVector<BaseFloat> &sv = sp.Row(i);
@@ -690,12 +693,12 @@ void LmLinearComponent::Propagate(const SparseMatrix<BaseFloat> &sp,
     vis.push_back(non_zero_index);
   }
 
-  cpu_out_transpose.AddCols(linear_params_, vis.data());
+  cpu_out_transpose.AddCols(linear_params_, CuArray<int>(vis));
   out->CopyFromMat(cpu_out_transpose, kTrans);
 }
 
 void LmLinearComponent::UpdateSimple(const SparseMatrix<BaseFloat> &in_value,
-                                   const MatrixBase<BaseFloat> &out_deriv) {
+                                   const CuMatrixBase<BaseFloat> &out_deriv) {
   std::vector<MatrixIndexT> vis;
   const SparseMatrix<BaseFloat> &sp = in_value;
 
@@ -707,6 +710,7 @@ void LmLinearComponent::UpdateSimple(const SparseMatrix<BaseFloat> &in_value,
   }
   KALDI_ASSERT(vis.size() == sp.NumRows());
 
+  // TODO(hxu)
   for (int i = 0; i < vis.size(); i++) {
     MatrixIndexT j = vis[i];
     // i.e. in_value (i, j) = 1
@@ -718,18 +722,18 @@ void LmLinearComponent::UpdateSimple(const SparseMatrix<BaseFloat> &in_value,
   }
 }
 
-void LmLinearComponent::UpdateSimple(const MatrixBase<BaseFloat> &in_value,
-                                   const MatrixBase<BaseFloat> &out_deriv) {
+void LmLinearComponent::UpdateSimple(const CuMatrixBase<BaseFloat> &in_value,
+                                   const CuMatrixBase<BaseFloat> &out_deriv) {
   linear_params_.AddMatMat(learning_rate_, out_deriv, kTrans,
                            in_value, kNoTrans, 1.0);
 }
 
 void LmLinearComponent::Backprop(
                                const SparseMatrix<BaseFloat> &in_value,
-                               const MatrixBase<BaseFloat> &, // out_value
-                               const MatrixBase<BaseFloat> &out_deriv,
+                               const CuMatrixBase<BaseFloat> &, // out_value
+                               const CuMatrixBase<BaseFloat> &out_deriv,
                                LmComponent *to_update_in,
-                               MatrixBase<BaseFloat> *in_deriv) const {
+                               CuMatrixBase<BaseFloat> *in_deriv) const {
   LmLinearComponent *to_update = dynamic_cast<LmLinearComponent*>(to_update_in);
 
   // Propagate the derivative back to the input.

@@ -9,7 +9,7 @@ num_words_in=10000
 num_words_out=10000
 
 stage=-100
-sos="<s>"
+bos="<s>"
 eos="</s>"
 oos="<oos>"
 
@@ -48,6 +48,7 @@ id=
 . parse_options.sh || exit 1;
 
 outdir=debug-rnnlm-$type-$initial_learning_rate-$final_learning_rate-$learning_rate_decline_factor-$minibatch_size-$hidden_dim-$num_archives-$id-sample
+outdir=debug
 srcdir=data/local/dict
 
 set -e
@@ -70,7 +71,7 @@ if [ $stage -le -4 ]; then
 
   cat $outdir/train.txt.0 $outdir/wordlist.all | sed "s= =\n=g" | grep . | sort | uniq -c | sort -k1 -n -r | awk '{print $2,$1}' > $outdir/unigramcounts.txt
 
-  echo $sos 0 > $outdir/wordlist.in
+  echo $os 0 > $outdir/wordlist.in
   echo $oos 1 >> $outdir/wordlist.in
   cat $outdir/unigramcounts.txt | head -n $num_words_in | awk '{print $1,1+NR}' >> $outdir/wordlist.in
 
@@ -79,8 +80,8 @@ if [ $stage -le -4 ]; then
 
   cat $outdir/unigramcounts.txt | head -n $num_words_out | awk '{print $1,1+NR}' >> $outdir/wordlist.out
 
-  cat $outdir/train.txt.0 | awk -v sos="$sos" -v eos="$eos" '{print sos,$0,eos}' > $outdir/train.txt
-  cat $outdir/dev.txt.0   | awk -v sos="$sos" -v eos="$eos" '{print sos,$0,eos}' > $outdir/dev.txt
+  cat $outdir/train.txt.0 | awk -v bos="$bos" -v eos="$eos" '{print bos,$0,eos}' > $outdir/train.txt
+  cat $outdir/dev.txt.0   | awk -v bos="$bos" -v eos="$eos" '{print bos,$0,eos}' > $outdir/dev.txt
 fi
 
 num_words_in=`wc -l $outdir/wordlist.in | awk '{print $1}'`
@@ -136,21 +137,36 @@ echo dev oos penalty is $ppl_oos_penalty
 if [ $stage -le -2 ]; then
   echo Create nnet configs
 
+#  if [ "$type" == "rnn" ]; then
+#  cat > $outdir/config <<EOF
+#  LmLinearComponent input-dim=$num_words_in output-dim=$hidden_dim max-change=10
+#  AffineSampleLogSoftmaxComponent input-dim=$hidden_dim output-dim=$num_words_out max-change=10
+#
+#  input-node name=input dim=$hidden_dim
+#  component name=first_nonlin type=SigmoidComponent dim=$hidden_dim
+#  component name=first_renorm type=NormalizeComponent dim=$hidden_dim target-rms=1.0
+#  component name=hidden_affine type=AffineComponent input-dim=$hidden_dim output-dim=$hidden_dim max-change=10
+#
+##Component nodes
+#  component-node name=first_nonlin component=first_nonlin  input=Sum(input, hidden_affine)
+#  component-node name=first_renorm component=first_renorm  input=first_nonlin
+#  component-node name=hidden_affine component=hidden_affine  input=IfDefined(Offset(first_renorm, -1))
+#  output-node    name=output input=first_renorm objective=linear
+#EOF
+
   if [ "$type" == "rnn" ]; then
   cat > $outdir/config <<EOF
-  LmLinearComponent input-dim=$num_words_in output-dim=$hidden_dim max-change=10
-  AffineSampleLogSoftmaxComponent input-dim=$hidden_dim output-dim=$num_words_out max-change=10
+  LmLinearComponent input-dim=$num_words_in output-dim=$hidden_dim max-change=5
+  AffineSampleLogSoftmaxComponent input-dim=$hidden_dim output-dim=$num_words_out max-change=5
 
   input-node name=input dim=$hidden_dim
   component name=first_nonlin type=SigmoidComponent dim=$hidden_dim
-  component name=first_renorm type=NormalizeComponent dim=$hidden_dim target-rms=1.0
-  component name=hidden_affine type=AffineComponent input-dim=$hidden_dim output-dim=$hidden_dim max-change=10
+  component name=hidden_affine type=AffineComponent input-dim=$hidden_dim output-dim=$hidden_dim max-change=5
 
 #Component nodes
   component-node name=first_nonlin component=first_nonlin  input=Sum(input, hidden_affine)
-  component-node name=first_renorm component=first_renorm  input=first_nonlin
-  component-node name=hidden_affine component=hidden_affine  input=IfDefined(Offset(first_renorm, -1))
-  output-node    name=output input=first_renorm objective=linear
+  component-node name=hidden_affine component=hidden_affine  input=IfDefined(Offset(first_nonlin, -1))
+  output-node    name=output input=first_nonlin objective=linear
 EOF
 #  elif [ "$type" == "lstm" ]; then
 #    steps/rnnlm/make_lstm_configs.py \
@@ -221,12 +237,12 @@ if [ $stage -le $num_iters ]; then
 
     )
 
-    learning_rate=`echo $learning_rate | awk -v d=$learning_rate_decline_factor '{printf("%f", $1/d)}'`
-    if (( $(echo "$final_learning_rate > $learning_rate" |bc -l) )); then
-      learning_rate=$final_learning_rate
-    fi
 
-    true && [ $n -ge $stage ] && (
+    false && [ $n -ge $stage ] && (
+      learning_rate=`echo $learning_rate | awk -v d=$learning_rate_decline_factor '{printf("%f", $1/d)}'`
+      if (( $(echo "$final_learning_rate > $learning_rate" |bc -l) )); then
+        learning_rate=$final_learning_rate
+      fi
 
       $decode_cmd $outdir/log/compute_prob_train.rnnlm.$n.log \
         rnnlm-compute-prob $outdir/$n.mdl ark:$outdir/train.subset.egs &

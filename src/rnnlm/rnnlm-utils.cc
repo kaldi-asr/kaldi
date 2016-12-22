@@ -135,7 +135,12 @@ vector<int> Select(const vector<BaseFloat> &u, int n) {
       }
     }
 
-    assert(replaced);
+//    assert(replaced);
+    if (!replaced) {
+//      assert(p < 0.0000001);
+      KALDI_LOG << "p should be close to 0; it is " << p;
+      ans[n - 1] = k;
+    }
   }
 
   return ans;

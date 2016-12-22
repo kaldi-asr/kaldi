@@ -171,21 +171,21 @@ class LmNnetSamplingTrainer {
                               NnetComputer *computer,
                               BaseFloat *tot_weight,
                               BaseFloat *tot_objf,
-                              const LmOutputComponent *output_projection,
-                              Matrix<BaseFloat> *new_output,
+                              const LmOutputComponent &output_projection,
+                              CuMatrix<BaseFloat> *new_output,
                               LmNnet *delta_nnet = NULL);
 
- static void ComputeObjectiveFunction(
-                              const GeneralMatrix &supervision,
-                              ObjectiveType objective_type,
-                              const std::string &output_name,
-                              bool supply_deriv,
-                              NnetComputer *computer,
-                              BaseFloat *tot_weight,
-                              BaseFloat *tot_objf,
-                              const LmOutputComponent *output_projection,
-                              Matrix<BaseFloat> *new_output,
-                              LmNnet *delta_nnet = NULL);
+// static void ComputeObjectiveFunction(
+//                              const GeneralMatrix &supervision,
+//                              ObjectiveType objective_type,
+//                              const std::string &output_name,
+//                              bool supply_deriv,
+//                              NnetComputer *computer,
+//                              BaseFloat *tot_weight,
+//                              BaseFloat *tot_objf,
+//                              const LmOutputComponent &output_projection,
+//                              Matrix<BaseFloat> *new_output,
+//                              LmNnet *delta_nnet = NULL);
 
   LmNnetSamplingTrainer(const LmNnetTrainerOptions &config,
               LmNnet *nnet);
@@ -196,9 +196,9 @@ class LmNnetSamplingTrainer {
   // Prints out the final stats, and return true if there was a nonzero count.
   bool PrintTotalStats() const;
   void PrintMaxChangeStats() const;
-  static NnetExample ProcessEgInputs(NnetExample eg, const LmInputComponent& a,
-                                     SparseMatrix<BaseFloat> *old_input = NULL,
-                                     Matrix<BaseFloat> *new_input = NULL);
+  static void ProcessEgInputs(NnetExample eg, const LmInputComponent& a,
+                              SparseMatrix<BaseFloat> *old_input = NULL,
+                              CuMatrix<BaseFloat> *new_input = NULL);
 
   ~LmNnetSamplingTrainer();
  private:
@@ -208,9 +208,9 @@ class LmNnetSamplingTrainer {
                       NnetComputer *computer);
 
   const LmNnetTrainerOptions config_;
-  Matrix<BaseFloat> new_input_;
+  CuMatrix<BaseFloat> new_input_;
   SparseMatrix<BaseFloat> old_input_;
-  Matrix<BaseFloat> new_output_;
+  CuMatrix<BaseFloat> new_output_;
 
   // this pointer is not owned
   LmNnet *nnet_;

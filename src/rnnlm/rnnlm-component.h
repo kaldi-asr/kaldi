@@ -56,13 +56,13 @@ class LmLinearComponent: public LmInputComponent {
   }
 
   virtual void Backprop(const SparseMatrix<BaseFloat> &in_value,
-                        const MatrixBase<BaseFloat> &, // out_value
-                        const MatrixBase<BaseFloat> &out_deriv,
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
                         LmComponent *to_update,
-                        MatrixBase<BaseFloat> *in_deriv) const;
+                        CuMatrixBase<BaseFloat> *in_deriv = NULL) const;
 
   virtual void Propagate(const SparseMatrix<BaseFloat> &in,
-                         MatrixBase<BaseFloat> *out) const;
+                         CuMatrixBase<BaseFloat> *out) const;
 
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
@@ -85,7 +85,7 @@ class LmLinearComponent: public LmInputComponent {
   virtual void SetParams(//const VectorBase<BaseFloat> &bias,
                          const MatrixBase<BaseFloat> &linear);
 //  const Vector<BaseFloat> &BiasParams() { return bias_params_; }
-  const Matrix<BaseFloat> &LinearParams() { return linear_params_; }
+  const CuMatrix<BaseFloat> &LinearParams() { return linear_params_; }
   explicit LmLinearComponent(const LmLinearComponent &other);
   // The next constructor is used in converting from nnet1.
   LmLinearComponent(const MatrixBase<BaseFloat> &linear_params,
@@ -103,27 +103,27 @@ class LmLinearComponent: public LmInputComponent {
 
  protected:
   virtual void Update(
-      const MatrixBase<BaseFloat> &in_value,
-      const MatrixBase<BaseFloat> &out_deriv) {
+      const CuMatrixBase<BaseFloat> &in_value,
+      const CuMatrixBase<BaseFloat> &out_deriv) {
     UpdateSimple(in_value, out_deriv);
   }
 
   virtual void Update(
       const SparseMatrix<BaseFloat> &in_value,
-      const MatrixBase<BaseFloat> &out_deriv) {
+      const CuMatrixBase<BaseFloat> &out_deriv) {
     UpdateSimple(in_value, out_deriv);
   }
 
   virtual void UpdateSimple(
-      const MatrixBase<BaseFloat> &in_value,
-      const MatrixBase<BaseFloat> &out_deriv);
+      const CuMatrixBase<BaseFloat> &in_value,
+      const CuMatrixBase<BaseFloat> &out_deriv);
 
   virtual void UpdateSimple(
       const SparseMatrix<BaseFloat> &in_value,
-      const MatrixBase<BaseFloat> &out_deriv);
+      const CuMatrixBase<BaseFloat> &out_deriv);
 
   const LmLinearComponent &operator = (const LmLinearComponent &other); // Disallow.
-  Matrix<BaseFloat> linear_params_;
+  CuMatrix<BaseFloat> linear_params_;
 };
 
 class LinearNormalizedLogSoftmaxComponent: public LmOutputComponent {
@@ -141,27 +141,23 @@ class LinearNormalizedLogSoftmaxComponent: public LmOutputComponent {
         kBackpropNeedsInput|kBackpropAdds;
   }
 
-  virtual void Propagate(const MatrixBase<BaseFloat> &in,
-                 const vector<vector<int> > &indexes,
-                 vector<vector<BaseFloat> > *out) const;
+  virtual void Propagate(const CuMatrixBase<BaseFloat> &in,
+                 const vector<int> &indexes,
+                 CuMatrixBase<BaseFloat> *out) const;
 
-  void Propagate(const CuMatrixBase<BaseFloat> &in,
-                 const vector<vector<int> > &indexes,
-                 vector<vector<BaseFloat> > *out) const;
-
-  virtual void Backprop(
-             const vector<vector<int> > &indexes,
-             const MatrixBase<BaseFloat> &in_value,
-             const MatrixBase<BaseFloat> &, // out_value
-             const vector<vector<BaseFloat> > &out_deriv,
-             LmOutputComponent *to_update_in,
-             MatrixBase<BaseFloat> *in_deriv) const;
+//  virtual void Backprop(
+//             const vector<vector<int> > &indexes,
+//             const MatrixBase<BaseFloat> &in_value,
+//             const MatrixBase<BaseFloat> &, // out_value
+//             const vector<vector<BaseFloat> > &out_deriv,
+//             LmOutputComponent *to_update_in,
+//             MatrixBase<BaseFloat> *in_deriv) const;
 
   virtual void Backprop(
-             const vector<vector<int> > &indexes,
+             const vector<int> &indexes,
              const CuMatrixBase<BaseFloat> &in_value,
              const CuMatrixBase<BaseFloat> &, // out_value
-             const vector<vector<BaseFloat> > &out_deriv,
+             const CuMatrixBase<BaseFloat> &out_deriv,
              LmOutputComponent *to_update_in,
              CuMatrixBase<BaseFloat> *in_deriv) const;
 
@@ -230,16 +226,20 @@ class AffineSampleLogSoftmaxComponent: public LmOutputComponent {
         kBackpropNeedsInput|kBackpropAdds;
   }
 
-  virtual void Propagate(const MatrixBase<BaseFloat> &in,
-                         const vector<vector<int> > &indexes,
-                         vector<vector<BaseFloat> > *out) const;
+//  void Propagate(const MatrixBase<BaseFloat> &in,
+//                 const vector<int> &indexes,
+//                 vector<vector<BaseFloat> > *out) const;
 
-  virtual void Backprop(const vector<vector<int> > &indexes,
-                        const MatrixBase<BaseFloat> &in_value,
-                        const MatrixBase<BaseFloat> &, // out_value
-                        const vector<vector<BaseFloat> > &out_deriv,
+  virtual void Propagate(const CuMatrixBase<BaseFloat> &in,
+                         const vector<int> &indexes,
+                         CuMatrixBase<BaseFloat> *out) const;
+
+  virtual void Backprop(const vector<int> &indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
                         LmOutputComponent *to_update_in,
-                        MatrixBase<BaseFloat> *in_deriv) const;
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
 
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
@@ -259,14 +259,14 @@ class AffineSampleLogSoftmaxComponent: public LmOutputComponent {
   // Some functions that are specific to this class.
 
   // This new function is used when mixing up:
-  virtual void SetParams(const VectorBase<BaseFloat> &bias,
-                         const MatrixBase<BaseFloat> &linear);
-  const Vector<BaseFloat> &BiasParams() { return bias_params_; }
-  const Matrix<BaseFloat> &LinearParams() { return linear_params_; }
+  virtual void SetParams(const CuVectorBase<BaseFloat> &bias,
+                         const CuMatrixBase<BaseFloat> &linear);
+  const CuVector<BaseFloat> &BiasParams() { return bias_params_; }
+  const CuMatrix<BaseFloat> &LinearParams() { return linear_params_; }
   explicit AffineSampleLogSoftmaxComponent(const AffineSampleLogSoftmaxComponent &other);
   // The next constructor is used in converting from nnet1.
-  AffineSampleLogSoftmaxComponent(const MatrixBase<BaseFloat> &linear_params,
-                  const VectorBase<BaseFloat> &bias_params,
+  AffineSampleLogSoftmaxComponent(const CuMatrixBase<BaseFloat> &linear_params,
+                  const CuVectorBase<BaseFloat> &bias_params,
                   BaseFloat learning_rate);
   void Init(int32 input_dim, int32 output_dim,
             BaseFloat param_stddev, BaseFloat bias_stddev);
@@ -284,20 +284,20 @@ class AffineSampleLogSoftmaxComponent: public LmOutputComponent {
  protected:
   // This function Update() is for extensibility; child classes may override
   // this, e.g. for natural gradient update.
-  virtual void Update(
-      const MatrixBase<BaseFloat> &in_value,
-      const MatrixBase<BaseFloat> &out_deriv) {
-    UpdateSimple(in_value, out_deriv);
-  }
-  // UpdateSimple is used when *this is a gradient.  Child classes may override
-  // this if needed, but typically won't need to.
-  virtual void UpdateSimple(
-      const MatrixBase<BaseFloat> &in_value,
-      const MatrixBase<BaseFloat> &out_deriv);
+//  virtual void Update(
+//      const CuMatrixBase<BaseFloat> &in_value,
+//      const CuMatrixBase<BaseFloat> &out_deriv) {
+//    UpdateSimple(in_value, out_deriv);
+//  }
+//  // UpdateSimple is used when *this is a gradient.  Child classes may override
+//  // this if needed, but typically won't need to.
+//  virtual void UpdateSimple(
+//      const CuMatrixBase<BaseFloat> &in_value,
+//      const CuMatrixBase<BaseFloat> &out_deriv);
 
   const AffineSampleLogSoftmaxComponent &operator = (const AffineSampleLogSoftmaxComponent &other); // Disallow.
-  Matrix<BaseFloat> linear_params_;
-  Vector<BaseFloat> bias_params_;
+  CuMatrix<BaseFloat> linear_params_;
+  CuVector<BaseFloat> bias_params_;
 };
 
 

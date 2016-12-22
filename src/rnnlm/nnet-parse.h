@@ -45,7 +45,6 @@ void PrintParameterStats(std::ostringstream &os,
                          const Matrix<BaseFloat> &params,
                          bool include_mean = false);
 
-
 } // namespace nnet3
 } // namespace kaldi
 

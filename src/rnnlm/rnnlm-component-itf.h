@@ -320,14 +320,14 @@ class LmInputComponent: public LmComponent {
   virtual ~LmInputComponent() { }
 
   virtual void Propagate(const SparseMatrix<BaseFloat> &in,
-                         MatrixBase<BaseFloat> *out) const = 0;
+                         CuMatrixBase<BaseFloat> *out) const = 0;
 
   virtual void Backprop(
                         const SparseMatrix<BaseFloat> &in_value,
-                        const MatrixBase<BaseFloat> &, // out_value
-                        const MatrixBase<BaseFloat> &out_deriv,
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
                         LmComponent *to_update,
-                        MatrixBase<BaseFloat> *in_deriv) const = 0;
+                        CuMatrixBase<BaseFloat> *in_deriv = NULL) const = 0;
 
   virtual string Info() const;
 
@@ -365,17 +365,21 @@ class LmOutputComponent: public LmComponent {
 
   virtual ~LmOutputComponent() { }
 
-  virtual void Propagate(const MatrixBase<BaseFloat> &in,
-                 const vector<vector<int> > &indexes, // objf is computed on the chosen indexes
-                 vector<vector<BaseFloat> > *out) const = 0;
+  virtual void Propagate(const CuMatrixBase<BaseFloat> &in,
+                 const vector<int> &indexes, // objf is computed on the chosen indexes
+                 CuMatrixBase<BaseFloat> *out) const = 0;
+  
+//  virtual void Propagate(const MatrixBase<BaseFloat> &in,
+//                 const vector<int> &indexes, // objf is computed on the chosen indexes
+//                 vector<vector<BaseFloat> > *out) const = 0;
 
   virtual void Backprop(
-             const vector<vector<int> > &indexes,
-             const MatrixBase<BaseFloat> &in_value,
-             const MatrixBase<BaseFloat> &, // out_value
-             const vector<vector<BaseFloat> > &out_deriv,
+             const vector<int> &indexes,
+             const CuMatrixBase<BaseFloat> &in_value,
+             const CuMatrixBase<BaseFloat> &, // out_value
+             const CuMatrixBase<BaseFloat> &out_deriv,
              LmOutputComponent *to_update_in,
-             MatrixBase<BaseFloat> *in_deriv) const = 0;
+             CuMatrixBase<BaseFloat> *in_deriv) const = 0;
 
   virtual string Info() const;
 
