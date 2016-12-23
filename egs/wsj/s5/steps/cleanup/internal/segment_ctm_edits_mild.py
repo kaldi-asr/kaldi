@@ -102,7 +102,7 @@ def get_args():
                         that may consist of potentially bad data, in which we
                         include 'tainted' lines of the ctm-edits input and
                         unk-padding.""")
-    parser.add_argument("--min-split-point-duration", type=float, default=0.1,
+    parser.add_argument("--min-split-point-duration", type=float, default=0.0,
                         help="""Minimum duration of silence or non-scored word
                         to be considered a viable split point when
                         truncating based on junk proportion.""")
@@ -321,9 +321,10 @@ class SegmentStats(object):
 
     def wer(self):
         """Returns WER%"""
-        if self.num_words == 0:
+        try:
+            return float(self.num_incorrect_words) * 100.0 / self.num_words
+        except ZeroDivisionError:
             return float("inf")
-        return float(self.num_incorrect_words) * 100.0 / self.num_words
 
     def bad_proportion(self):
         assert self.total_length > 0
@@ -745,6 +746,7 @@ class Segment(object):
             cur_start_index = segment.start_index
             cur_start = segment.start_time()
 
+            index_to_split_at = None
             try:
                 while True:
                     index_to_split_at = next(
@@ -1398,11 +1400,14 @@ def merge_segments(segments, args):
 
     def scoring_function(segment):
         stats = segment.stats
-        return (-stats.wer() - args.silence_factor * stats.silence_length
-                - args.incorrect_words_factor * stats.incorrect_words_length
-                - args.tainted_words_factor
-                * stats.num_tainted_words * 100.0
-                / stats.num_words)
+        try:
+            return (-stats.wer() - args.silence_factor * stats.silence_length
+                    - args.incorrect_words_factor
+                    * stats.incorrect_words_length
+                    - args.tainted_words_factor
+                    * stats.num_tainted_words * 100.0 / stats.num_words)
+        except ZeroDivisionError:
+            return float("-inf")
 
     # Do agglomerative clustering on the initial segments with the score
     # for combining neighboring segments being the scoring_function on the
@@ -1688,6 +1693,29 @@ def get_segments_for_utterance(split_lines_of_utt, args, utterance_stats):
     if args.verbose > 4:
         print ("Stage 9 [remove segments under "
                "--min-segment-length]:", file=sys.stderr)
+        segments_copy = [x.copy() for x in segments]
+        print_debug_info_for_utterance(sys.stderr,
+                                       copy.deepcopy(split_lines_of_utt),
+                                       segments_copy, [])
+
+    new_segments = []
+    for s in segments:
+        if s.contains_at_least_one_scored_non_oov_word():
+            new_segments.append(s)
+        else:
+            s.debug_str += '[deleted-because-no-scored-non-oov-words]'
+            deleted_segments.append(s)
+    segments = new_segments
+    utterance_stats.accumulate_segment_stats(
+        segments, 'stage 10 [remove segments without scored,non-OOV words]')
+
+    for i, x in enumerate(segments):
+        _global_logger.debug(
+            "stage 10: segment %d = %s", i, x.debug_info(False))
+
+    if args.verbose > 4:
+        print ("Stage 10 [remove segments without scored, non-OOV words "
+               "", file=sys.stderr)
         segments_copy = [x.copy() for x in segments]
         print_debug_info_for_utterance(sys.stderr,
                                        copy.deepcopy(split_lines_of_utt),
