@@ -19,16 +19,17 @@ and the first 2.5s of the second utterance i.e. from 25s to 27.s is truncated.
 from __future__ import print_function
 import argparse
 import logging
+import sys
 
-_global_logger = logging.getLogger(__name__)
-_global_logger.setLevel(logging.INFO)
-_global_handler = logging.StreamHandler()
-_global_handler.setLevel(logging.INFO)
-_global_formatter = logging.Formatter(
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+handler.setLevel(logging.INFO)
+formatter = logging.Formatter(
     '%(asctime)s [%(pathname)s:%(lineno)s - '
     '%(funcName)s - %(levelname)s ] %(message)s')
-_global_handler.setFormatter(_global_formatter)
-_global_logger.addHandler(_global_handler)
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 
 def get_args():
@@ -47,8 +48,8 @@ def get_args():
     args = parser.parse_args()
 
     if args.verbose > 2:
-        _global_logger.setLevel(logging.DEBUG)
-        _global_handler.setLevel(logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
+        handler.setLevel(logging.DEBUG)
 
     return args
 
@@ -65,7 +66,7 @@ def read_segments(segments_file):
         assert len(parts) in [4, 5]
         yield parts[0], (parts[1], float(parts[2]), float(parts[3]))
 
-    _global_logger.info("Read %d lines from segments file %s",
+    logger.info("Read %d lines from segments file %s",
                         num_lines, segments_file.name)
     segments_file.close()
 
@@ -126,17 +127,17 @@ def read_ctm(ctm_file, segments):
                         float(parts[3])] + parts[4:]]
                 prev_utt = parts[0]
         except:
-            _global_logger.error("Error while reading line %s in CTM file %s",
-                                 line, ctm_file.name)
+            logger.error("Error while reading line %s in CTM file %s",
+                         line, ctm_file.name)
             raise
 
     # Append the last ctm.
     reco = segments[prev_utt][0]
     ctms[reco].append(ctm)
 
-    _global_logger.info("Read %d lines from CTM %s; got %d recordings, "
-                        "%d utterances.",
-                        num_lines, ctm_file.name, len(ctms), num_utts)
+    logger.info("Read %d lines from CTM %s; got %d recordings, "
+                "%d utterances.",
+                num_lines, ctm_file.name, len(ctms), num_utts)
     ctm_file.close()
     return ctms
 
@@ -179,7 +180,7 @@ def resolve_overlaps(ctms, segments):
 
         cur_utt = ctm_for_cur_utt[0][0]
         if cur_utt != next_utt:
-            _global_logger.error(
+            logger.error(
                 "Current utterance %s is not the same as the next "
                 "utterance %s in previous iteration.\n"
                 "CTM is not sorted by utterance-id?",
@@ -191,7 +192,7 @@ def resolve_overlaps(ctms, segments):
         ctm_for_next_utt = ctms[utt_index + 1]
         next_utt = ctm_for_next_utt[0][0]
         if next_utt <= cur_utt:
-            _global_logger.error(
+            logger.error(
                 "Next utterance %s <= Current utterance %s. "
                 "CTM is not sorted by utterance-id.",
                 next_utt, cur_utt)
@@ -208,8 +209,8 @@ def resolve_overlaps(ctms, segments):
             try:
                 overlap = segments[cur_utt][2] - segments[next_utt][1]
             except KeyError:
-                _global_logger("Could not find utterance %s in segments",
-                               next_utt)
+                logger("Could not find utterance %s in segments",
+                       next_utt)
                 raise
 
             # find a break point (a line in the CTM) for the current utterance
@@ -226,9 +227,9 @@ def resolve_overlaps(ctms, segments):
                 # It is possible for such a word to not exist, e.g the last
                 # word in the CTM is longer than overlap length and starts
                 # before the beginning of the overlap.
-                if (ctm_for_cur_utt[-1][3] < overlap
-                        or ctm_for_cur_utt[-1][2] > window_length):
-                    _global_logger.error(
+                if not (ctm_for_cur_utt[-1][2] < window_length - overlap
+                        and ctm_for_cur_utt[-1][3] > overlap):
+                    logger.error(
                         "Could not find break point at end of the "
                         "utterance for CTM:\n")
                     write_ctm(ctm_for_cur_utt, sys.stderr)
@@ -256,14 +257,14 @@ def resolve_overlaps(ctms, segments):
                 ctms[utt_index + 1] = ctm_for_next_utt[index:]
             # else leave the ctm as is.
         except:
-            _global_logger.error("Could not resolve overlaps between CTMs for "
-                                 "%s and %s", cur_utt, next_utt)
-            _global_logger.error("Current CTM:")
+            logger.error("Could not resolve overlaps between CTMs for "
+                         "%s and %s", cur_utt, next_utt)
+            logger.error("Current CTM:")
             for line in ctm_for_cur_utt:
-                _global_logger.error(ctm_line_to_string(line))
-            _global_logger.error("Next CTM:")
+                logger.error(ctm_line_to_string(line))
+            logger.error("Next CTM:")
             for line in ctm_for_next_utt:
-                _global_logger.error(ctm_line_to_string(line))
+                logger.error(ctm_line_to_string(line))
             raise
 
     # merge the last ctm entirely
@@ -298,11 +299,11 @@ def _run(args):
             ctms_for_reco = resolve_overlaps(ctms_for_reco, segments)
             write_ctm(ctms_for_reco, args.ctm_out)
         except Exception:
-            _global_logger.error("Failed to process CTM for recording %s",
-                                 reco)
+            logger.error("Failed to process CTM for recording %s",
+                         reco)
             raise
     args.ctm_out.close()
-    _global_logger.info("Wrote CTM for %d recordings.", len(ctms))
+    logger.info("Wrote CTM for %d recordings.", len(ctms))
 
 
 def main():
@@ -318,8 +319,8 @@ def main():
             args.ctm_in.close()
             args.segments.close()
         except IOError:
-            _global_logger.error("Could not close some files. "
-                                 "Disk error or broken pipes?")
+            logger.error("Could not close some files. "
+                         "Disk error or broken pipes?")
             raise
 
 
