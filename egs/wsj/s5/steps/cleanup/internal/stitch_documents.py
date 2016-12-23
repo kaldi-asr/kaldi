@@ -12,15 +12,11 @@ Here "document" is just a vector of words.
 from __future__ import print_function
 import argparse
 import logging
-import sys
-
-sys.path.insert(0, 'steps')
-import libs.exceptions as kaldi_exceptions
 
 logger = logging.getLogger(__name__)
 handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
-formatter = logging.Formatter("%(asctime)s [%(filename)s:%(lineno)s - "
+formatter = logging.Formatter("%(asctime)s [%(pathname)s:%(lineno)s - "
                               "%(funcName)s - %(levelname)s ] %(message)s")
 handler.setFormatter(formatter)
 
@@ -70,32 +66,52 @@ def _run(args):
     for line in args.input_documents:
         parts = line.strip().split()
         key = parts[0]
-        documents[key] = " ".join(parts[1:])
+        documents[key] = parts[1:]
     args.input_documents.close()
 
-    def is_sorted(x, key=lambda x, i: x[i] <= x[i+1]):
-        for i in range(len(x) - 1):
-            if not key(x, i):
-                return False
-        return True
-
     for line in args.query2docs:
-        parts = line.strip().split()
-        query = parts[0]
-        document_ids = parts[1:]
+        try:
+            parts = line.strip().split()
+            query = parts[0]
+            document_infos = parts[1:]
 
-        if args.check_sorted_docs_per_query:
-            if not is_sorted(document_ids):
-                raise kaldi_exceptions.InputError(
-                    "Documents is not sorted for key {0}".format(query),
-                    line=line.strip())
+            output_document = []
+            prev_doc_id = ''
+            for doc_info in document_infos:
+                try:
+                    doc_id, start_fraction, end_fraction = doc_info.split(',')
+                    start_fraction = float(start_fraction)
+                    end_fraction = float(end_fraction)
+                except ValueError:
+                    doc_id = doc_info
+                    start_fraction = 1.0
+                    end_fraction = 1.0
 
-        output_document = []
-        for doc_id in document_ids:
-            output_document.append(documents[doc_id])
+                if args.check_sorted_docs_per_query:
+                    if prev_doc_id != '':
+                        assert doc_id > prev_doc_id
+                    prev_doc_id = doc_id
 
-        print ("{0} {1}".format(query, " ".join(output_document)),
-               file=args.output_documents)
+                doc = documents[doc_id]
+                num_words = len(doc)
+
+                if start_fraction == 1.0 or end_fraction == 1.0:
+                    assert end_fraction == end_fraction
+                    output_document.extend(doc)
+                else:
+                    if start_fraction > 0:
+                        output_document.extend(
+                            doc[0:int(start_fraction * num_words)])
+                    if end_fraction > 0:
+                        output_document.extend(
+                            doc[int(end_fraction * num_words):])
+
+            print ("{0} {1}".format(query, " ".join(output_document)),
+                   file=args.output_documents)
+        except Exception:
+            logger.error("Error processing line %s in file %s", line,
+                         args.query2docs.name)
+            raise
 
 
 def main():
@@ -103,6 +119,8 @@ def main():
 
     try:
         _run(args)
+    except:
+        raise
     finally:
         args.query2docs.close()
         args.input_documents.close()

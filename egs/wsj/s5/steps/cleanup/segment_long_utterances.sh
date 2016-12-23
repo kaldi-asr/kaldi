@@ -266,8 +266,8 @@ if [ $stage -le 8 ]; then
     steps/cleanup/internal/retrieve_similar_docs.py \
       --query-tfidf=$dir/docs/split$nj/JOB/query_tf_idf.txt \
       --source-tfidf=$dir/docs/split$nj/JOB/src_tf_idf.txt \
-      --source-text2doc=$dir/docs/text2doc \
-      --query-doc2source=$dir/new2old_utts \
+      --source-text-id2doc-ids=$dir/docs/text2doc \
+      --query-id2source-text-id=$dir/new2old_utts \
       --num-neighbors-to-search=$num_neighbors_to_search \
       --neighbor-tfidf-threshold=$neighbor_tfidf_threshold \
       --relevant-docs=$dir/docs/split$nj/JOB/relevant_docs.txt '&&' \
@@ -286,8 +286,11 @@ if [ $stage -le 8 ]; then
     cat $dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm_edits.$n 
   done > $dir/lats/score_$lmwt/ctm_edits
   
-  steps/resolve_ctm_overlaps.py ${data_uniform_seg}/segments \
-    $dir/lats/score_$lmwt/ctm_edits $dir/ctm_edits
+fi
+
+if [ $stage -le 9 ]; then
+  steps/cleanup/internal/resolve_ctm_edits_overlaps.py \
+    ${data_uniform_seg}/segments $dir/lats/score_$lmwt/ctm_edits $dir/ctm_edits
 fi
 
 if [ $stage -le 10 ]; then
