@@ -23,24 +23,26 @@ set -e -o pipefail
 ## Training directly on segmented data directory train_si284_reseg
 # %WER 7.69 [ 434 / 5643, 105 ins, 27 del, 302 sub ] exp/tri3c_reseg_d/decode_nosp_tgpr_eval92/wer_15_0.5
 # %WER 7.78 [ 439 / 5643, 105 ins, 20 del, 314 sub ] exp/tri4c_reseg_d/decode_nosp_tgpr_eval92/wer_15_0.5
+# %WER 7.43 [ 419 / 5643, 95 ins, 29 del, 295 sub ] exp/tri4c_reseg_e/decode_nosp_tgpr_eval92/wer_16_1.0
 
 # %WER 12.04 [ 991 / 8234, 187 ins, 119 del, 685 sub ] exp/tri4c_reseg_d/decode_nosp_tgpr_dev93/wer_16_1.0
 # %WER 12.29 [ 1012 / 8234, 224 ins, 105 del, 683 sub ] exp/tri3c_reseg_d/decode_nosp_tgpr_dev93/wer_14_0.5
+# %WER 12.08 [ 995 / 8234, 199 ins, 113 del, 683 sub ] exp/tri4c_reseg_e/decode_nosp_tgpr_dev93/wer_16_0.5
 
 ## Using additional stage of cleanup.
-# %WER 7.69 [ 434 / 5643, 105 ins, 23 del, 306 sub ] exp/tri4d_d_cleaned_a/decode_nosp_tgpr_eval92/wer_16_0.5
-# %WER 7.97 [ 450 / 5643, 113 ins, 20 del, 317 sub ] exp/tri4d_d_cleaned_c/decode_nosp_tgpr_eval92/wer_13_1.0
-# %WER 8.03 [ 453 / 5643, 111 ins, 31 del, 311 sub ] exp/tri4d_d_cleaned_b/decode_nosp_tgpr_eval92/wer_16_1.0
+# %WER 7.71 [ 435 / 5643, 100 ins, 33 del, 302 sub ] exp/tri4d_e_cleaned_a/decode_nosp_tgpr_eval92/wer_16_1.0
+# %WER 7.78 [ 439 / 5643, 109 ins, 18 del, 312 sub ] exp/tri4d_e_cleaned_c/decode_nosp_tgpr_eval92/wer_15_0.5
+# %WER 7.73 [ 436 / 5643, 116 ins, 21 del, 299 sub ] exp/tri4d_e_cleaned_b/decode_nosp_tgpr_eval92/wer_15_0.5
 
-# %WER 11.84 [ 975 / 8234, 201 ins, 96 del, 678 sub ] exp/tri4d_d_cleaned_c/decode_nosp_tgpr_dev93/wer_14_0.5
-# %WER 11.96 [ 985 / 8234, 212 ins, 89 del, 684 sub ] exp/tri4d_d_cleaned_a/decode_nosp_tgpr_dev93/wer_16_0.0
-# %WER 12.47 [ 1027 / 8234, 228 ins, 105 del, 694 sub ] exp/tri4d_d_cleaned_b/decode_nosp_tgpr_dev93/wer_16_0.5
-
+# %WER 11.97 [ 986 / 8234, 190 ins, 110 del, 686 sub ] exp/tri4d_e_cleaned_c/decode_nosp_tgpr_dev93/wer_15_1.0
+# %WER 12.13 [ 999 / 8234, 211 ins, 102 del, 686 sub ] exp/tri4d_e_cleaned_a/decode_nosp_tgpr_dev93/wer_15_0.5
+# %WER 12.67 [ 1043 / 8234, 217 ins, 121 del, 705 sub ] exp/tri4d_e_cleaned_b/decode_nosp_tgpr_dev93/wer_15_1.0
 
 . ./cmd.sh
 . ./path.sh
 
-affix=_d
+segment_stage=-1
+affix=_e
 
 ###############################################################################
 ## Simulate unsegmented data directory.
@@ -61,7 +63,7 @@ steps/cleanup/segment_long_utterances.sh --cmd "$train_cmd" \
   --stage $segment_stage \
   --config conf/segment_long_utts.conf \
   --max-segment-duration 30 --overlap-duration 5 \
-  --num-neighbors-to-search 1 --nj 80 \
+  --num-neighbors-to-search 0 --nj 80 \
   exp/tri2b data/lang_nosp data/train_si284_long data/train_si284_reseg${affix} \
   exp/segment_long_utts${affix}_train_si284
 
