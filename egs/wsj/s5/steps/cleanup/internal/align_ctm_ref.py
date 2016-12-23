@@ -15,6 +15,7 @@ formatter = logging.Formatter("%(asctime)s [%(filename)s:%(lineno)s - "
 handler.setFormatter(formatter)
 logger.setLevel(logging.DEBUG)
 
+verbose_level = 0
 
 def _get_args():
     parser = argparse.ArgumentParser()
@@ -33,7 +34,9 @@ def _get_args():
     parser.add_argument("--symbol-table", type=argparse.FileType('r'),
                         help="Symbol table for words in vocabulary.")
 
-    parser.add_argument("--verbose", type=int, default=0)
+    parser.add_argument("--verbose", type=int, default=0,
+                        choices=[0, 1, 2, 3],
+                        help="Use larger value for more verbose logging.")
     parser.add_argument("--correct-score", type=int, default=1,
                         help="Score for correct matches")
     parser.add_argument("--substitution-penalty", type=int, default=1,
@@ -64,6 +67,8 @@ def _get_args():
 
     args.debug_only = bool(args.debug_only == "true")
 
+    global verbose_level
+    verbose_level = args.verbose
     if args.verbose > 2:
         handler.setLevel(logging.DEBUG)
     else:
@@ -148,8 +153,8 @@ def smith_waterman_alignment(ref, hyp, similarity_score_function,
     max_score = 0
     max_score_element = (0, 0)
 
-    for m in range(1, M+1):
-        for n in range(1, N+1):
+    for m in range(1, M+1):     # Reference
+        for n in range(1, N+1):     # Hypothesis
             sub_or_ok = (H[m-1][n-1]
                          + similarity_score_function(ref[m-1], hyp[n-1]))
 
@@ -174,54 +179,68 @@ def smith_waterman_alignment(ref, hyp, similarity_score_function,
                     "({0},{1}) -> ({2},{3}): {4}".format(m, n-1, m, n,
                                                          H[m][n]))
 
-            if n == N and H[m][n] > max_score:
+            #if n == N and H[m][n] >= max_score:
+            if H[m][n] >= max_score:
                 max_score = H[m][n]
                 max_score_element = (m, n)
 
     m, n = max_score_element
     score = max_score
+    logger.debug("Alignment score: %s for (%d, %d)", score, m, n)
 
-    while score > 0:
-        prev_m, prev_n = bp[m][n]
+    while score >= 0:
+        try:
+            prev_m, prev_n = bp[m][n]
 
-        if (m == prev_m + 1 and n == prev_n + 1):
-            # Substitution or correct
-            output.append((ref[m-1] if m > 0 else eps_symbol,
-                           hyp[n-1] if n > 0 else eps_symbol,
-                           prev_m, prev_n, m, n))
-        elif (prev_n == n):
-            # Deletion
-            assert prev_m == m - 1
-            output.append((ref[m-1] if m > 0 else eps_symbol,
-                           eps_symbol,
-                           prev_m, prev_n, m, n))
-        elif (prev_m == m):
-            # Insertion
-            assert prev_n == n - 1
-            output.append((eps_symbol,
-                           hyp[n-1] if n > 0 else eps_symbol,
-                           prev_m, prev_n, m, n))
-        else:
-            if (prev_m, prev_n) != 0:
-                raise Exception("Unexpected result: Bug in code!!")
+            if (prev_m, prev_n) == (m, n) or (prev_m, prev_n) == (0, 0):
+                m, n = (prev_m, prev_n)
+                score = H[m][n]
+                break
 
-        m, n = (prev_m, prev_n)
-        score = H[m][n]
+            if (m == prev_m + 1 and n == prev_n + 1):
+                # Substitution or correct
+                output.append((ref[m-1] if m > 0 else eps_symbol,
+                               hyp[n-1] if n > 0 else eps_symbol,
+                               prev_m, prev_n, m, n))
+            elif (prev_n == n):
+                # Deletion
+                assert prev_m == m - 1
+                output.append((ref[m-1] if m > 0 else eps_symbol,
+                               eps_symbol,
+                               prev_m, prev_n, m, n))
+            elif (prev_m == m):
+                # Insertion
+                assert prev_n == n - 1
+                output.append((eps_symbol,
+                               hyp[n-1] if n > 0 else eps_symbol,
+                               prev_m, prev_n, m, n))
+            else:
+                raise RuntimeError
+
+            m, n = (prev_m, prev_n)
+            score = H[m][n]
+        except Exception:
+            logger.error("Unexpected entry (%d,%d) -> (%d,%d), %s, %s",
+                         prev_m, prev_n, m, n, ref[prev_m], hyp[prev_n])
+            raise RuntimeError("Unexpected result: Bug in code!!")
 
     assert(score == 0)
 
     output.reverse()
 
-    for m in range(M+1):
-        for n in range(N+1):
-            logger.debug("{0} ".format(H[m][n]))
-        logger.debug("")
+    if verbose_level > 2:
+        for m in range(M+1):
+            for n in range(N+1):
+                print ("{0} ".format(H[m][n]), end='', file=sys.stderr)
+            print ("", file=sys.stderr)
 
-    logger.debug("\t-\t".join(["({0},{1})".format(x[4], x[5])
+    logger.debug("Aligned output:")
+    logger.debug("  -  ".join(["({0},{1})".format(x[4], x[5])
                                for x in output]))
-    logger.debug("\t\t".join(str(x[0]) for x in output))
-    logger.debug("\t\t".join(str(x[1]) for x in output))
-    logger.debug(str(score))
+    logger.debug("REF: ")
+    logger.debug("    ".join(str(x[0]) for x in output))
+    logger.debug("HYP:")
+    logger.debug("    ".join(str(x[1]) for x in output))
 
     return (output, max_score)
 
@@ -246,7 +265,7 @@ def get_edit_type(hyp_word, ref_word, duration=-1, eps_symbol='<eps>',
         return 'ins'
     if hyp_word == eps_symbol and ref_word != eps_symbol and duration == 0.0:
         return 'del'
-    if (hyp_word == oov_word
+    if (hyp_word == oov_word and symbol_table is not None
             and len(symbol_table) > 0 and ref_word not in symbol_table):
         return 'cor'    # this special case is treated as correct
     if hyp_word == eps_symbol and ref_word == eps_symbol and duration > 0.0:
@@ -439,6 +458,8 @@ def _run(args):
             if args.reco2file_and_channel is None:
                 reco2file_and_channel[reco] = "1"
 
+            logger.debug("Running Smith-Waterman alignment for %s", reco)
+
             output, score = smith_waterman_alignment(
                 ref_text, hyp_array, eps_symbol=args.eps_symbol,
                 similarity_score_function=similarity_score_function,
@@ -471,6 +492,8 @@ def main():
 
     try:
         _run(args)
+    except Exception:
+        raise
     finally:
         if args.reco2file_and_channel is not None:
             args.reco2file_and_channel.close()
