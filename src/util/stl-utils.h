@@ -20,22 +20,10 @@
 #ifndef KALDI_UTIL_STL_UTILS_H_
 #define KALDI_UTIL_STL_UTILS_H_
 
-#ifdef _MSC_VER
 #include <unordered_map>
 #include <unordered_set>
 using std::unordered_map;
 using std::unordered_set;
-#elif __cplusplus > 199711L || defined(__GXX_EXPERIMENTAL_CXX0X__)
-#include <unordered_map>
-#include <unordered_set>
-using std::unordered_map;
-using std::unordered_set;
-#else
-#include <tr1/unordered_map>
-#include <tr1/unordered_set>
-using std::tr1::unordered_map;
-using std::tr1::unordered_set;
-#endif
 
 #include <algorithm>
 #include <map>
@@ -329,4 +317,3 @@ inline void MergePairVectorSumming(std::vector<std::pair<I, F> > *vec) {
 }  // namespace kaldi
 
 #endif  // KALDI_UTIL_STL_UTILS_H_
-
