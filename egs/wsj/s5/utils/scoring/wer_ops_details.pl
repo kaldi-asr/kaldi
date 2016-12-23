@@ -70,7 +70,7 @@ while (<STDIN>) {
   next if  @entries < 2;
   next if  ($entries[1] ne "hyp") and ($entries[1] ne "ref") ;
   if (scalar @entries <= 2 ) {
-    print STDERR "Warning: skipping entry \"$_\", either an  empty phrase or incompatible format\n" ;
+    print STDERR "$0: Warning: skipping entry \"$_\", either an  empty phrase or incompatible format\n" ;
     next;
   }
 

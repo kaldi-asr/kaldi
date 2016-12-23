@@ -76,7 +76,7 @@ while (<>) {
         "if concat-feats was in the input data\n";
       exit(1);
     }
-    print STDERR "matched: $before_range $first_range $second_range\n";
+    # print STDERR "matched: $before_range $first_range $second_range\n";
     if ($first_range !~ m/^((\d*):(\d*)|)(,(\d*):(\d*)|)$/) {
       print STDERR "normalize_data_range.pl: could not make sense of input line $_";
       exit(1);
