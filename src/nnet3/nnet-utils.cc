@@ -523,16 +523,6 @@ std::string NnetInfo(const Nnet &nnet) {
   return ostr.str();
 }
 
-void SetDropoutProportion(BaseFloat dropout_proportion,
-                          Nnet *nnet) {
-  for (int32 c = 0; c < nnet->NumComponents(); c++) {
-    Component *comp = nnet->GetComponent(c);
-    DropoutComponent *dc = dynamic_cast<DropoutComponent*>(comp);
-    if (dc != NULL)
-      dc->SetDropoutProportion(dropout_proportion);
-  }
-}
-
 void FindOrphanComponents(const Nnet &nnet, std::vector<int32> *components) {
   int32 num_components = nnet.NumComponents(), num_nodes = nnet.NumNodes();
   std::vector<bool> is_used(num_components, false);
@@ -688,6 +678,29 @@ void ReadEditConfig(std::istream &edit_config_is, Nnet *nnet) {
       if (outputs_remaining == 0)
         KALDI_ERR << "All outputs were removed.";
       nnet->RemoveSomeNodes(nodes_to_remove);
+    } else if (directive == "set-dropout-proportion") {
+      std::string name_pattern = "*";
+      // name_pattern defaults to '*' if none is given.  This pattern
+      // matches names of components, not nodes.
+      config_line.GetValue("name", &name_pattern);
+      BaseFloat proportion = -1;
+      if (!config_line.GetValue("proportion", &proportion)) {
+        KALDI_ERR << "In edits-config, expected proportion to be set in line: "
+                  << config_line.WholeLine();
+      }
+      DropoutComponent *component = NULL;
+      int32 num_dropout_proportions_set = 0;
+      for (int32 c = 0; c < nnet->NumComponents(); c++) {
+        if (NameMatchesPattern(nnet->GetComponentName(c).c_str(),
+                               name_pattern.c_str()) &&
+            (component =
+             dynamic_cast<DropoutComponent*>(nnet->GetComponent(c)))) {
+          component->SetDropoutProportion(proportion);
+          num_dropout_proportions_set++;
+        }
+      }
+      KALDI_LOG << "Set dropout proportions for "
+                << num_dropout_proportions_set << " nodes.";
     } else {
       KALDI_ERR << "Directive '" << directive << "' is not currently "
           "supported (reading edit-config).";
