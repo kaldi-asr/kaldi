@@ -96,6 +96,9 @@ foreach $file (keys %file2utt) {
 
   if (defined $text_in) {
     $text_line = "";
+    foreach $utt (@utts) {
+      $text_line = "$text_line " . $text{$utt}  
+    }
     print TO "$file $text_line\n";
   }
 }
