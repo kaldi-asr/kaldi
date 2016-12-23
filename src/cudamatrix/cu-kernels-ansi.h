@@ -235,10 +235,18 @@ void cudaF_heaviside(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d,
 void cudaF_diff_sigmoid(dim3 Gr, dim3 Bl, float *eout, const float *e,
                         const float *y, MatrixDim d, int e_stride,
                         int y_stride);
+void cudaF_diff_sigmoid_self_repair(dim3 Gr, dim3 Bl, float *eout, float *count,
+                                    const float *e, const float *y, MatrixDim d,
+                                    int e_stride, int y_stride, float scale,
+                                    float margin);
 void cudaF_tanh(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d,
                 int src_stride);
 void cudaF_diff_tanh(dim3 Gr, dim3 Bl, float *eout, const float *e,
                      const float *y, MatrixDim d, int e_stride, int y_stride);
+void cudaF_diff_tanh_self_repair(dim3 Gr, dim3 Bl, float *eout, float *count,
+                                 const float *e, const float *y, MatrixDim d,
+                                 int e_stride, int y_stride, float scale,
+                                 float margin);
 void cudaF_parametric_relu(dim3 Gr, dim3 Bl, float *y, const float *x,
                            MatrixDim d, int src_stride, const float *a,
                            const float *b);
@@ -507,10 +515,19 @@ void cudaD_heaviside(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d,
 void cudaD_diff_sigmoid(dim3 Gr, dim3 Bl, double *eout, const double *e,
                         const double *y, MatrixDim d, int e_stride,
                         int y_stride);
+void cudaD_diff_sigmoid_self_repair(dim3 Gr, dim3 Bl, double *eout,
+                                    double *count, const double *e,
+                                    const double *y, MatrixDim d,
+                                    int e_stride, int y_stride, double scale,
+                                    double margin);
 void cudaD_tanh(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d,
                 int src_stride);
 void cudaD_diff_tanh(dim3 Gr, dim3 Bl, double *eout, const double *e,
                      const double *y, MatrixDim d, int e_stride, int y_stride);
+void cudaD_diff_tanh_self_repair(dim3 Gr, dim3 Bl, double *eout, double *count,
+                                 const double *e, const double *y, MatrixDim d,
+                                 int e_stride, int y_stride, double scale,
+                                 double margin);
 void cudaD_parametric_relu(dim3 Gr, dim3 Bl, double *y, const double *x,
                            MatrixDim d, int src_stride, const double *a,
                            const double *b);

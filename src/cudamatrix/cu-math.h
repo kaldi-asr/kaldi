@@ -241,6 +241,56 @@ void CpuBackpropLstmNonlinearity(const MatrixBase<Real> &input,
                                  MatrixBase<double> *deriv_sum_out,
                                  MatrixBase<Real> *self_repair_sum_out);
 
+/**
+ this is a special-purpose function used by class SigmoidComponent,
+ to differentiate backward through the sigmoid function. It returns the number
+ of self-repaired dimensions in the matrix *in_deriv.
+ Refer to class SigmoidComponent in ../nnet3/nnet-simple-component.h for more
+ context.
+
+ @param [in] out_value  A matrix representing out value of SigmoidComponent
+ @param [in] out_deriv  A matrix representing out_deriv of SigmoidComponent
+ @param [in] self_repair_scale
+                        A scalar representing self-repair-scale
+ @param [in] margin     A scalar representing the minimum margin between the
+                        actual output value and the asymptotic output value of
+                        sigmoid (1 and 0), below which we add a term to the
+                        derivative to encourage the inputs to the sigmoid to get
+                        closer to zero.
+ @param [out] in_deriv  A pointer the the matrix representing self-repaired
+                        in_deriv of SigmoidComponent
+ */
+template<typename Real>
+Real DiffSigmoidSelfRepair(const CuMatrixBase<Real> &out_value,
+                           const CuMatrixBase<Real> &out_deriv,
+                           Real self_repair_scale, Real margin,
+                           CuMatrixBase<Real> *in_deriv);
+
+/**
+ this is a special-purpose function used by class TanhComponent,
+ to differentiate backward through the tanh function. It returns the number
+ of self-repaired dimensions in the matrix *in_deriv.
+ Refer to class TanhComponent in ../nnet3/nnet-simple-component.h for more
+ context.
+
+ @param [in] out_value  A matrix representing out value of TanhComponent
+ @param [in] out_deriv  A matrix representing out_deriv of TanhComponent
+ @param [in] self_repair_scale
+                        A scalar representing self-repair-scale
+ @param [in] margin     A scalar representing the minimum margin between the
+                        actual output value and the asymptotic output value of
+                        tanh (1 and -1), below which we add a term to the
+                        derivative to encourage the inputs to the tanh to get
+                        closer to zero.
+ @param [out] in_deriv  A pointer the the matrix representing self-repaired
+                        in_deriv of TanhComponent
+ */
+template<typename Real>
+Real DiffTanhSelfRepair(const CuMatrixBase<Real> &out_value,
+                        const CuMatrixBase<Real> &out_deriv,
+                        Real self_repair_scale, Real margin,
+                        CuMatrixBase<Real> *in_deriv);
+
 } // namespace cu
 } // namespace kaldi
 

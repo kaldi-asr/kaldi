@@ -809,7 +809,121 @@ void BackpropLstmNonlinearity(const CuMatrixBase<double> &input,
                               CuMatrixBase<double> *deriv_sum_out,
                               CuMatrixBase<double> *self_repair_sum_out);
 
+template<typename Real>
+Real DiffSigmoidSelfRepair(const CuMatrixBase<Real> &out_value,
+                           const CuMatrixBase<Real> &out_deriv,
+                           Real self_repair_scale, Real margin,
+                           CuMatrixBase<Real> *in_deriv) {
+  KALDI_ASSERT(SameDim(*in_deriv, out_value) && SameDim(*in_deriv, out_deriv));
+  KALDI_ASSERT(self_repair_scale > 0.0 && margin > 0.0 && margin < 1.0);
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    CuVector<Real> count(1);
+    dim3 dimGrid, dimBlock;
+    GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
+                                          &dimGrid, &dimBlock);
+    cuda_diff_sigmoid_self_repair(dimGrid, dimBlock, in_deriv->Data(),
+        count.Data(), out_deiriv.Data(), out_value.Data(), in_deriv->Dim(),
+        out_deriv.Stride(), out_value.Stride(), self_repair_scale, margin);
+    CU_SAFE_CALL(cudaGetLastError());
 
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    return count(0);
+  } else
+#endif
+  {
+    in_deriv->Mat().DiffSigmoid(out_value.Mat(), out_deriv.Mat());
+
+    // repair_mat = out_value * 2 - 1
+    // sign_mat = sign(repair_mat), i.e., an element in sign_mat is 1
+    // if its corresponding element in repair_mat > 0, or -1 otherwise
+    Matrix<BaseFloat> repair_mat(out_value.Mat());
+    repair_mat.Scale(2.0);
+    repair_mat.Add(-1.0);
+    Matrix<BaseFloat> sign_mat(repair_mat);
+    sign_mat.ApplyHeaviside();
+    sign_mat.Scale(2.0);
+    sign_mat.Add(-1.0);
+
+    repair_mat.ApplyPowAbs(1.0);
+    repair_mat.Add(-(1.0 - margin_threshold * 2.0)); // as out_value was also
+                                                     // scaled by 2
+    Matrix<BaseFloat> mask(repair_mat.NumRows(), repair_mat.NumCols());
+    mask.Heaviside(repair_mat);
+    repair_mat.ApplyFloor(0.0);
+    repair_mat.MulElements(sign_mat);
+    // rescales repair_mat so that the absolute values of its elements is the
+    // range [0.0,1.0]
+    repair_mat.Scale(1.0 / (margin_threshold * 2.0));
+
+    // adds -self-repair-scale * repair_mat to the input derivative for each
+    // problematic dimension. The negative sign is so that for inputs <0, we
+    // push them up towards 0, and for inputs >0, we push them down towards 0.
+    // Our use of this sigmoid-type function  here is just a convenience since
+    // we have it available. We could use just about any function that is
+    // positive for inputs < 0 and negative for inputs > 0.
+    in_deriv->AddMat(-self_repair_scale_, repair_mat);
+  }
+}
+
+template<typename Real>
+Real DiffTanhSelfRepair(const CuMatrixBase<Real> &out_value,
+                        const CuMatrixBase<Real> &out_deriv,
+                        Real self_repair_scale, Real margin,
+                        CuMatrixBase<Real> *in_deriv) {
+  KALDI_ASSERT(SameDim(*in_deriv, out_value) && SameDim(*in_deriv, out_deriv));
+  KALDI_ASSERT(self_repair_scale > 0.0 && margin > 0.0 && margin < 1.0);
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    CuVector<Real> count(1);
+    dim3 dimGrid, dimBlock;
+    GetBlockSizesForSimpleMatrixOperation(in_deriv->NumRows(),
+                                          in_deriv->NumCols(),
+                                          &dimGrid, &dimBlock);
+    cuda_diff_tanh_self_repair(dimGrid, dimBlock, in_deriv->Data(),
+        count.Data(), out_deriv.Data(), out_value.Data(), in_deriv->Dim(),
+        out_deriv.Stride(), out_value.Stride(), self_repair_scale, margin);
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    return count(0);
+  } else
+#endif
+  {
+    in_deriv->Mat().DiffTanh(out_value.Mat(), out_deriv.Mat());
+
+    // sign_mat = sign(out_value), i.e., an element in sign_mat is 1 if its
+    // corresponding element in out_value > 0, or -1 otherwise
+    Matrix<Real> sign_mat(out_value.Mat());
+    sign_mat.ApplyHeaviside();
+    sign_mat.Scale(2.0);
+    sign_mat.Add(-1.0);
+
+    // repair_mat =
+    // floor(abs(out_value) - (1 - margin), 0) .* sign(out_value)
+    Matrix<Real> repair_mat(out_value.Mat());
+    repair_mat.ApplyPowAbs(1.0);
+    repair_mat.Add(-(1.0 - margin));
+    Matrix<Real> mask(repair_mat.NumRows(), repair_mat.NumCols());
+    mask.Heaviside(repair_mat);
+    repair_mat.ApplyFloor(0.0);
+    repair_mat.MulElements(sign_mat);
+    // rescales repair_mat so that the absolute values of its elements are in
+    // the range [0.0,1.0]
+    repair_mat.Scale(1.0 / margin);
+
+    // adds -self-repair-scale * repair_mat to the input derivative for each
+    // problematic dimension. The negative sign is so that for inputs <0, we
+    // push them up towards 0, and for inputs >0, we push them down towards 0.
+    // Our use of the tanh here is just a convenience since we have it
+    // available. We could use just about any function that is positive for
+    // inputs < 0 and negative for inputs > 0.
+    in_deriv.Mat().AddMat(-self_repair_scale_, repair_mat);
+    return mask.Sum();
+  }
+}
 
 } //namespace cu
 
