@@ -105,7 +105,7 @@ void NnetChainSupervision::Swap(NnetChainSupervision *other) {
 NnetChainSupervision::NnetChainSupervision(
     const std::string &name,
     const chain::Supervision &supervision,
-    const Vector<BaseFloat> &deriv_weights,
+    const VectorBase<BaseFloat> &deriv_weights,
     int32 first_frame,
     int32 frame_skip):
     name(name),

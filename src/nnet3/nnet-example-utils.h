@@ -78,12 +78,13 @@ void ReadVectorAsChar(std::istream &is,
 // Warning: after reading in the values from the command line
 // (Register() and then then po.Read()), you should then call ComputeDerived()
 // to set up the 'derived values' (parses 'num_frames_str').
-struct ExampleExtractionConfig {
+struct ExampleGenerationConfig {
   int32 left_context;
   int32 right_context;
   int32 left_context_initial;
   int32 right_context_final;
   int32 num_frames_overlap;
+  int32 frame_subsampling_factor;
   std::string num_frames_str;
 
 
@@ -95,16 +96,14 @@ struct ExampleExtractionConfig {
   // frames, to be used at most once or twice per file.
   std::vector<int32> num_frames;
 
-  ExampleExtractionConfig():
+  ExampleGenerationConfig():
       left_context(0), right_context(0),
-      left_context_initial(-1), right_context_initial(-1),
-      num_frames_overlap(0),
+      left_context_initial(-1), right_context_final(-1),
+      num_frames_overlap(0), frame_subsampling_factor(1),
       num_frames_str("1") { }
 
-  /// This function decodes 'num_frames_str' into 'num_frames' and 'num_frames_alternatives',
-  /// and ensures that 'num_frames', and the members of num_frames_alternatives' are
-  /// multiples of 'frame_subsampling_factor'.
-  ///
+  /// This function decodes 'num_frames_str' into 'num_frames', and ensures that
+  /// the members of 'num_frames' are multiples of 'frame_subsampling_factor'.
   void ComputeDerived();
 
   void Register(OptionsItf *po) {
@@ -135,19 +134,22 @@ struct ExampleExtractionConfig {
                 "deal with odd-sized inputs we may also generate egs with these "
                 "other sizes.  All these values will be rounded up to the "
                 "closest multiple of --frame-subsampling-factor.");
-    po.Register("num-frames-overlap", &num_frames_overlap, "Number of frames of "
-                "overlap between adjacent examples (advisory, will not be "
-                "exactly enforced)");
-    po.Register("frame-subsampling-factor", &frame_subsampling_factor, "Used "
-                "if the frame-rate of the output labels in the generated "
-                "examples will be less than the frame-rate at the input");
+    po->Register("num-frames-overlap", &num_frames_overlap, "Number of frames of "
+                 "overlap between adjacent eamples (applies to chunks of size "
+                 "equal to the primary [first-listed] --num-frames value... "
+                 "will be adjusted for different-sized chunks).  Advisory; "
+                 "will not be exactly enforced.");
+    po->Register("frame-subsampling-factor", &frame_subsampling_factor, "Used "
+                 "if the frame-rate of the output labels in the generated "
+                 "examples will be less than the frame-rate at the input");
   }
 };
 
 
 
 /**
-   struct ChunkTimeInfo is used by class Utterane
+   struct ChunkTimeInfo is used by class UtteranceSplitter to output
+   information about how we split an utterance into chunks.
  */
 
 struct ChunkTimeInfo {
@@ -155,25 +157,53 @@ struct ChunkTimeInfo {
   int32 num_frames;
   int32 left_context;
   int32 right_context;
+  // The 'output_weights' member is a vector of length equal to the
+  // num_frames divided by frame_subsampling_factor from the config.
+  // It contains values 0 < x <= 1 that represent weightings of
+  // output-frames.  The idea is that if (because of overlaps) a
+  // frame appears in multiple chunks, we want to downweight it
+  // so that the total weight remains 1.  (Of course, the calling
+  // code is free to ignore these weights if desired).
+  std::vector<float> output_weights;
 };
 
 
 class UtteranceSplitter {
+ public:
 
-  UtteranceSplitter(const ExampleExtractionConfig &config);
+  UtteranceSplitter(const ExampleGenerationConfig &config);
 
 
-  // Given an utterance length, this function creates for you a set of
-  // chunks into which to split the utterance.  Note: this is partly
-  // random (will call srand()).
+  const ExampleGenerationConfig& Config() const { return config_; }
+
+  // Given an utterance length, this function creates for you a list of chunks
+  // into which to split the utterance.  Note: this is partly random (will call
+  // srand()).
   void GetChunksForUtterance(int32 utterance_length,
                              std::vector<ChunkTimeInfo> *chunk_info) const;
+
+
+  // This function returns true if 'supervision_length' (e.g. the length of the
+  // posterior, lattice or alignment) is what we expect given
+  // config_.frame_subsampling_factor.  If not, it prints a warning (which is
+  // why the function needs 'utt', and returns false.  Note: we round up, so
+  // writing config_.frame_subsampling_factor as sf, we expect
+  // supervision_length = (utterance_length + sf - 1) / sf.
+  bool LengthsMatch(const std::string &utt,
+                    int32 utterance_length,
+                    int32 supervision_length) const;
 
 
  private:
 
 
   void InitSplitForLength();
+
+  // This function returns the 'default duration' in frames of a split, which if
+  // config_.num_frames_overlap is zero is just the sum of chunk sizes in the
+  // split (i.e. the sum of the vector's elements), but otherwise, we subtract
+  // the recommended overlap (see code for details).
+  float DefaultDurationOfSplit(const std::vector<int32> &split) const;
 
 
   // Used in InitSplitForLength(), returns the maximum utterance-length considered
@@ -220,17 +250,30 @@ class UtteranceSplitter {
                    std::vector<int32> *gap_sizes) const;
 
 
-  // this static function, used in GetGapSizes(), writes values to
-  // a vector 'vec' such the sum of those values equals n.  It
-  // tries to make those values as similar as possible (they will
-  // differ by at most one), and the location of the larger versus
-  // smaller values is random.  n may be negative.  'vec' must be
-  // nonempty.
+  // this static function, used in GetGapSizes(), writes random values to a
+  // vector 'vec' such the sum of those values equals n (n may be positive or
+  // negative).  It tries to make those values as similar as possible (they will
+  // differ by at most one), and the location of the larger versus smaller
+  // values is random. 'vec' must be nonempty.
+  static void DistributeRandomlyUniform(int32 n,
+                                        std::vector<int32> *vec);
+
+  // this static function, used in GetGapSizes(), writes values to a vector
+  // 'vec' such the sum of those values equals n (n may be positive or
+  // negative).  It tries to make those values, as exactly as it can,
+  // proportional to the values in 'magnitudes', which must be positive.  'vec'
+  // must be nonempty, and 'magnitudes' must be the same size as 'vec'.
   static void DistributeRandomly(int32 n,
+                                 const std::vector<int32> &magnitudes,
                                  std::vector<int32> *vec);
 
+  // This function is responsible for setting the 'output_weights'
+  // members of the chunks.
+  void SetOutputWeights(int32 utterance_lengths,
+                        std::vector<ChunkTimeInfo> *chunk_info) const;
 
-  const ExampleExtractionConfig &config_;
+
+  const ExampleGenerationConfig &config_;
 
   // The vector 'split_for_length_' is indexed by the num-frames of a file, and
   // gives us a list of alternative splits that we can use if the utternace has
@@ -246,32 +289,14 @@ class UtteranceSplitter {
 
   // If an utterance's num-frames is >= split_for_length.size(), the way to find
   // the split to use is to keep subtracting the primary num-frames (==
-  // config_.num_frames[0]) from the utterance length until the resulting
-  // num-frames is < split_for_length_.size(), chunks, and then add the subtracted
-  // number of copies of the primary num-frames.
+  // config_.num_frames[0]) minus the num-frames-overlap, from the utterance
+  // length, until the resulting num-frames is < split_for_length_.size(),
+  // chunks, and then add the subtracted number of copies of the primary
+  // num-frames to the split.
   std::vector<std::vector<std::vector<int32> > > splits_for_length_;
 
 
 };
-
-
-void ComputeExampleTimeInfo(const ExampleExtractionConfig &config,
-                            int32 num_frames_in_utt,
-
-                            SplitIntoRanges(int32 num_frames,
-                     int32 frames_per_range,
-                     std::vector<int32> *range_starts);
-
-
-
-
-
-// This function rounds up the quantities 'num_frames' and 'num_frames_overlap'
-// to the nearest multiple of the frame_subsampling_factor
-void RoundUpNumFrames(int32 frame_subsampling_factor,
-                      int32 *num_frames,
-                      int32 *num_frames_overlap);
-
 
 
 
