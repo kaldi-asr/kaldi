@@ -83,7 +83,7 @@ struct NnetChainSupervision {
   /// is slower than the input, so in this case it might be 2 or 3.
   NnetChainSupervision(const std::string &name,
                        const chain::Supervision &supervision,
-                       const Vector<BaseFloat> &deriv_weights,
+                       const VectorBase<BaseFloat> &deriv_weights,
                        int32 first_frame,
                        int32 frame_skip);
 

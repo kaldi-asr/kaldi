@@ -91,7 +91,7 @@ NnetDiscriminativeSupervision::NnetDiscriminativeSupervision(const NnetDiscrimin
 NnetDiscriminativeSupervision::NnetDiscriminativeSupervision(
     const std::string &name,
     const discriminative::DiscriminativeSupervision &supervision,
-    const Vector<BaseFloat> &deriv_weights,
+    const VectorBase<BaseFloat> &deriv_weights,
     int32 first_frame,
     int32 frame_skip):
     name(name),
@@ -347,7 +347,7 @@ void GetDiscriminativeComputationRequest(const Nnet &nnet,
     io_spec.name = name;
     io_spec.indexes = sup.indexes;
     io_spec.has_deriv = need_model_derivative;
-    
+
     if (use_xent_regularization) {
       size_t cur_size = request->outputs.size();
       request->outputs.resize(cur_size + 1);

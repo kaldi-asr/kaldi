@@ -42,7 +42,7 @@ struct NnetDiscriminativeSupervision {
   // the name of the output in the neural net; in simple setups it
   // will just be "output".
   std::string name;
-  
+
   // The indexes that the output corresponds to.  The size of this vector will
   // be equal to supervision.num_sequences * supervision.frames_per_sequence.
   // Be careful about the order of these indexes-- it is a little confusing.
@@ -52,7 +52,7 @@ struct NnetDiscriminativeSupervision {
   // This is done to make the code similar that for the 'chain' model.
   std::vector<Index> indexes;
 
-  // The supervision object, containing the numerator and denominator 
+  // The supervision object, containing the numerator and denominator
   // lattices.
   discriminative::DiscriminativeSupervision supervision;
 
@@ -68,19 +68,19 @@ struct NnetDiscriminativeSupervision {
   // so it's equivalent to a vector of all ones.  This vector is written
   // to disk compactly as unsigned char.
   Vector<BaseFloat> deriv_weights;
-  
+
   // Use default assignment operator
   NnetDiscriminativeSupervision() { }
 
   // Initialize the object from an object of type discriminative::Supervision,
-  // and some extra information.  
+  // and some extra information.
   // Note: you probably want to set 'name' to "output".
   // 'first_frame' will often be zero but you can choose (just make it
   // consistent with how you numbered your inputs), and 'frame_skip' would be 1
   // in a vanilla setup, but 3 in the case of 'chain' models
   NnetDiscriminativeSupervision(const std::string &name,
                                 const discriminative::DiscriminativeSupervision &supervision,
-                                const Vector<BaseFloat> &deriv_weights,
+                                const VectorBase<BaseFloat> &deriv_weights,
                                 int32 first_frame,
                                 int32 frame_skip);
 
@@ -89,15 +89,15 @@ struct NnetDiscriminativeSupervision {
   void Write(std::ostream &os, bool binary) const;
 
   void Read(std::istream &is, bool binary);
-  
+
   void Swap(NnetDiscriminativeSupervision *other);
 
   void CheckDim() const;
-  
+
   bool operator == (const NnetDiscriminativeSupervision &other) const;
 };
 
-/// NnetDiscriminativeExample is like NnetExample, but specialized for 
+/// NnetDiscriminativeExample is like NnetExample, but specialized for
 /// sequence training.
 struct NnetDiscriminativeExample {
 
@@ -111,7 +111,7 @@ struct NnetDiscriminativeExample {
   std::vector<NnetDiscriminativeSupervision> outputs;
 
   void Write(std::ostream &os, bool binary) const;
-  
+
   void Read(std::istream &is, bool binary);
 
   void Swap(NnetDiscriminativeExample *other);
@@ -128,10 +128,10 @@ struct NnetDiscriminativeExample {
   }
 };
 
-/** 
-  Appends the given vector of examples (which must be non-empty) into 
+/**
+  Appends the given vector of examples (which must be non-empty) into
   a single output example.
-  Intended to be used when forming minibatches for neural net training. If 
+  Intended to be used when forming minibatches for neural net training. If
   'compress' it compresses the output features (recommended to save disk
   space).
 
@@ -149,7 +149,7 @@ void MergeDiscriminativeExamples(
 
 void MergeSupervision(
     const std::vector<const NnetDiscriminativeSupervision*> &inputs,
-    NnetDiscriminativeSupervision *output); 
+    NnetDiscriminativeSupervision *output);
 
 
 /** Shifts the time-index t of everything in the input of "eg" by adding
@@ -179,7 +179,7 @@ void ShiftDiscriminativeExampleTimes(int32 frame_shift,
 void TruncateDerivWeights(int32 truncate,
                           NnetDiscriminativeExample *eg);
 
-/**  This function takes a NnetDiscriminativeExample and produces a 
+/**  This function takes a NnetDiscriminativeExample and produces a
      ComputationRequest.
      Assumes you don't want the derivatives w.r.t. the inputs; if you do, you
      can create the ComputationRequest manually.  Assumes that if
