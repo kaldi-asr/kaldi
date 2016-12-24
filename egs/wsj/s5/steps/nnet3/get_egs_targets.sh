@@ -59,6 +59,7 @@ stage=0
 nj=6         # This should be set to the maximum number of jobs you are
              # comfortable to run in parallel; you can increase it if your disk
              # speed is greater and you have more machines.
+srand=0
 online_ivector_dir=  # can be used if we are including speaker information as iVectors.
 cmvn_opts=  # can be used for specifying CMVN options, if feature type is not lda (if lda,
             # it doesn't make sense to use different options than were used as input to the
@@ -177,7 +178,7 @@ if [ -f $dir/trans.scp ]; then
 fi
 
 if [ ! -z "$online_ivector_dir" ]; then
-  ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
+  ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp - 2>/dev/null) || exit 1;
   echo $ivector_dim > $dir/info/ivector_dim
   ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
 
@@ -194,7 +195,7 @@ if [ $stage -le 1 ]; then
   echo $num_frames > $dir/info/num_frames
   echo "$0: working out feature dim"
   feats_one="$(echo $feats | sed s:JOB:1:g)"
-  feat_dim=$(feat-to-dim "$feats_one" -) || exit 1;
+  feat_dim=$(feat-to-dim "$feats_one" - 2>/dev/null) || exit 1;
   echo $feat_dim > $dir/info/feat_dim
 else
   num_frames=$(cat $dir/info/num_frames) || exit 1;
@@ -349,7 +350,7 @@ if [ $stage -le 4 ]; then
     $get_egs_program \
     $ivector_opt $egs_opts --num-frames=$frames_per_eg "$feats" "$targets" \
     ark:- \| \
-    nnet3-copy-egs --random=true --srand=JOB ark:- $egs_list || exit 1;
+    nnet3-copy-egs --random=true --srand=\$[JOB+$srand] ark:- $egs_list || exit 1;
 fi
 
 if [ $stage -le 5 ]; then
@@ -365,7 +366,7 @@ if [ $stage -le 5 ]; then
 
   if [ $archives_multiple == 1 ]; then # normal case.
     $cmd --max-jobs-run $nj JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
-      nnet3-shuffle-egs --srand=JOB "ark:cat $egs_list|" ark:$dir/egs.JOB.ark  || exit 1;
+      nnet3-shuffle-egs --srand=\$[JOB+$srand] "ark:cat $egs_list|" ark:$dir/egs.JOB.ark  || exit 1;
   else
     # we need to shuffle the 'intermediate archives' and then split into the
     # final archives.  we create soft links to manage this splitting, because
@@ -381,7 +382,7 @@ if [ $stage -le 5 ]; then
       done
     done
     $cmd --max-jobs-run $nj JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
-      nnet3-shuffle-egs --srand=JOB "ark:cat $egs_list|" ark:- \| \
+      nnet3-shuffle-egs --srand=\$[JOB+$srand] "ark:cat $egs_list|" ark:- \| \
       nnet3-copy-egs ark:- $output_archives || exit 1;
   fi
 

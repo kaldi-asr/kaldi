@@ -204,7 +204,7 @@ fi
 
 if [ ! -z $online_ivector_dir ]; then
   ivector_period=$(cat $online_ivector_dir/ivector_period)
-  ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
+  ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp - 2>/dev/null) || exit 1;
   echo $ivector_dim >$dir/info/ivector_dim
 
   ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $sdata/JOB/utt2spk $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |'"
@@ -219,7 +219,7 @@ if [ $stage -le 2 ]; then
   echo $num_frames > $dir/info/num_frames
   echo "$0: working out feature dim"
   feats_one="$(echo $feats | sed s/JOB/1/g)"
-  feat_dim=$(feat-to-dim "$feats_one" -) || exit 1;
+  feat_dim=$(feat-to-dim "$feats_one" - 2>/dev/null) || exit 1;
   echo $feat_dim > $dir/info/feat_dim
 else
   num_frames=$(cat $dir/info/num_frames) || exit 1;
