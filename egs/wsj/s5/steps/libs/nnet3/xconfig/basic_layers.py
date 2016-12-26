@@ -7,10 +7,10 @@ and some basic layer definitions.
 """
 
 from __future__ import print_function
-import sys
 import math
+import re
+import sys
 import libs.nnet3.xconfig.utils as xutils
-from libs.nnet3.xconfig.utils import XconfigParserError as xparser_error
 
 
 class XconfigLayerBase(object):
@@ -33,14 +33,14 @@ class XconfigLayerBase(object):
 
         self.layer_type = first_token
         if not 'name' in key_to_value:
-            raise xparser_error("Expected 'name' to be specified.", self.str())
+            raise RuntimeError("Expected 'name' to be specified.")
         self.name = key_to_value['name']
         if not xutils.is_valid_line_name(self.name):
-            raise xparser_error("Invalid value: name={0}".format(
-                key_to_value['name']), self.str())
+            raise RuntimeError("Invalid value: name={0}".format(
+                key_to_value['name']))
         for prev_layer in all_layers:
             if self.name == prev_layer.name:
-                raise xparser_error("Name '{0}' is used for more than one "
+                raise RuntimeError("Name '{0}' is used for more than one "
                                     "layer.".format(self.name))
 
         # the following, which should be overridden in the child class, sets
@@ -66,13 +66,23 @@ class XconfigLayerBase(object):
             in a more specific way.
         """
 
+        # First check that there are no keys that don't correspond to any config
+        # parameter of this layer, and if so, raise an exception with an
+        # informative message saying what configs are allowed.
         for key,value in key_to_value.items():
             if key != 'name':
                 if not key in self.config:
-                    raise xparser_error("Configuration value {0}={1} was not"
-                                        " expected in layer of type {2}"
-                                        "".format(key, value, self.layer_type),
-                                        self.str())
+                    configs = ' '.join([ ('{0}->"{1}"'.format(x,y) if isinstance(y, str)
+                                          else '{0}->{1}'.format(x,y))
+                                         for x,y in self.config.items() ])
+                    raise RuntimeError("Configuration value {0}={1} was not "
+                                        "expected in layer of type {2}; allowed "
+                                        "configs with their defaults: {3}"
+                                        .format(key, value, self.layer_type, configs))
+
+        for key,value in key_to_value.items():
+            if key != 'name':
+                assert key in self.config  # we checked above.
                 self.config[key] = xutils.convert_value_to_type(key,
                                                                 type(self.config[key]),
                                                                 value)
@@ -82,10 +92,10 @@ class XconfigLayerBase(object):
         # in self.descriptors[key]
         for key in self.get_input_descriptor_names():
             if not key in self.config:
-                raise xparser_error("{0}: object of type {1} needs to override"
+                raise RuntimeError("{0}: object of type {1} needs to override"
                                    " get_input_descriptor_names()."
-                                   "".format(sys.argv[0], str(type(self))),
-                                             self.str())
+                                   "".format(sys.argv[0], str(type(self))))
+
             descriptor_string = self.config[key]  # input string.
             assert isinstance(descriptor_string, str)
             desc = self.convert_to_descriptor(descriptor_string, all_layers)
@@ -112,9 +122,8 @@ class XconfigLayerBase(object):
             desc_norm_str2 = desc2.str()
             # if the following ever fails we'll have to do some debugging.
             if desc_norm_str != desc_norm_str2:
-                raise xparser_error("Likely code error: '{0}' != '{1}'"
-                                    "".format(desc_norm_str, desc_norm_str2),
-                                    self.str())
+                raise RuntimeError("Likely code error: '{0}' != '{1}'"
+                                    "".format(desc_norm_str, desc_norm_str2))
 
     def str(self):
         """Converts 'this' to a string which could be printed to
@@ -123,13 +132,24 @@ class XconfigLayerBase(object):
         (so users can see any defaults).
         """
 
-        ans = '{0} name={1}'.format(self.layer_type, self.name)
-        ans += ' ' + ' '.join([ '{0}={1}'.format(key, self.config[key])
-                                for key in sorted(self.config.keys())])
+        list_of_entries = [ '{0} name={1}'.format(self.layer_type, self.name) ]
+        for key, value in sorted(self.config.items()):
+            if isinstance(value, str) and re.search('=', value):
+                # the value is a string that contains an '=' sign, so we need to
+                # enclose it in double-quotes, otherwise we woudldn't be able to
+                # parse from that output.
+                if re.search('"', value):
+                    print("Warning: config '{0}={1}' contains both double-quotes "
+                          "and equals sign; it will not be possible to parse it "
+                          "from the file.".format(key, value), file=sys.stderr)
+                list_of_entries.append('{0}="{1}"'.format(key, value))
+            else:
+                list_of_entries.append('{0}={1}'.format(key, value))
+
+        return ' '.join(list_of_entries)
         return ans
 
     def __str__(self):
-
         return self.str()
 
 
@@ -161,8 +181,8 @@ class XconfigLayerBase(object):
         # note: 'pos' should point to the 'end of string' marker
         # that terminates 'tokens'.
         if pos != len(tokens) - 1:
-            raise xparser_error("Parsing Descriptor, saw junk at end: " +
-                            ' '.join(tokens[pos:-1]), self.str())
+            raise RuntimeError("Parsing Descriptor, saw junk at end: " +
+                            ' '.join(tokens[pos:-1]))
         return descriptor
 
     def get_dim_for_descriptor(self, descriptor, all_layers):
@@ -299,9 +319,8 @@ class XconfigInputLayer(XconfigLayerBase):
     def check_configs(self):
 
         if self.config['dim'] <= 0:
-            raise xparser_error("Dimension of input-layer '{0}'"
-                                "should be positive.".format(self.name),
-                                self.str())
+            raise RuntimeError("Dimension of input-layer '{0}'"
+                                "should be positive.".format(self.name))
 
     def get_input_descriptor_names(self):
 
@@ -453,21 +472,19 @@ class XconfigOutputLayer(XconfigLayerBase):
     def check_configs(self):
 
         if self.config['dim'] <= -1:
-            raise xparser_error("In output-layer, dim has invalid value {0}"
-                                "".format(self.config['dim']), self.str())
+            raise RuntimeError("In output-layer, dim has invalid value {0}"
+                                "".format(self.config['dim']))
 
         if self.config['objective-type'] != 'linear' and \
                 self.config['objective_type'] != 'quadratic':
-            raise xparser_error("In output-layer, objective-type has"
+            raise RuntimeError("In output-layer, objective-type has"
                                 " invalid value {0}"
-                                "".format(self.config['objective-type']),
-                                self.str())
+                                "".format(self.config['objective-type']))
 
         if self.config['learning-rate-factor'] <= 0.0:
-            raise xparser_error("In output-layer, learning-rate-factor has"
+            raise RuntimeError("In output-layer, learning-rate-factor has"
                                 " invalid value {0}"
-                                "".format(self.config['learning-rate-factor']),
-                                self.str())
+                                "".format(self.config['learning-rate-factor']))
 
 
     # you cannot access the output of this layer from other layers... see
@@ -484,14 +501,14 @@ class XconfigOutputLayer(XconfigLayerBase):
         # layer and/or the output of the affine layer available as inputs to
         # other layers, in some circumstances.
         # we'll implement that when it's needed.
-        raise xparser_error("Outputs of output-layer may not be used by other"
-                            " layers", self.str())
+        raise RuntimeError("Outputs of output-layer may not be used by other"
+                            " layers")
 
     def output_dim(self, auxiliary_output = None):
 
         # see comment in output_name().
-        raise xparser_error("Outputs of output-layer may not be used by other"
-                            " layers", self.str())
+        raise RuntimeError("Outputs of output-layer may not be used by other"
+                            " layers")
 
     def get_full_config(self):
 
@@ -614,11 +631,13 @@ class XconfigBasicLayer(XconfigLayerBase):
 
     def check_configs(self):
         if self.config['dim'] < 0:
-            raise xparser_error("dim has invalid value {0}".format(self.config['dim']), self.str())
+            raise RuntimeError("dim has invalid value {0}".format(self.config['dim']))
         if self.config['self-repair-scale'] < 0.0 or self.config['self-repair-scale'] > 1.0:
-            raise xparser_error("self-repair-scale has invalid value {0}".format(self.config['self-repair-scale']), self.str())
+            raise RuntimeError("self-repair-scale has invalid value {0}"
+                               .format(self.config['self-repair-scale']))
         if self.config['target-rms'] < 0.0:
-            raise xparser_error("target-rms has invalid value {0}".format(self.config['target-rms']), self.str())
+            raise RuntimeError("target-rms has invalid value {0}"
+                               .format(self.config['target-rms']))
 
     def output_name(self, auxiliary_output=None):
         # at a later stage we might want to expose even the pre-nonlinearity
@@ -721,8 +740,8 @@ class XconfigBasicLayer(XconfigLayerBase):
                             target_rms))
 
             else:
-                raise xparser_error("Unknown nonlinearity type:"
-                        "{0}".format(nonlinearity), self.str())
+                raise RuntimeError("Unknown nonlinearity type: {0}"
+                                   .format(nonlinearity))
 
             configs.append(line)
             line = ('component-node name={0}.{1}'
@@ -763,7 +782,7 @@ class XconfigFixedAffineLayer(XconfigLayerBase):
 
     def check_configs(self):
         if self.config['affine-transform-file'] is None:
-            raise xparser_error("affine-transform-file must be set.", self.str())
+            raise RuntimeError("affine-transform-file must be set.")
 
     def output_name(self, auxiliary_output = None):
         # Fixed affine layer computes only one vector, there are no intermediate
@@ -854,7 +873,7 @@ class XconfigAffineLayer(XconfigLayerBase):
 
     def check_configs(self):
         if self.config['dim'] <= 0:
-            raise xparser_error("dim specified is invalid".format(self.name, self.layer_type), self.str())
+            raise RuntimeError("dim specified is invalid")
 
     def output_name(self, auxiliary_output = None):
         # affine layer computes only one vector, there are no intermediate
