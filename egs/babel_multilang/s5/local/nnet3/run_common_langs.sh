@@ -60,9 +60,6 @@ if [ $stage -le 3 ] && [ ! -f data/$lang/${train_set}_hires/.done ]; then
     utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/$lang-$date/s5c/$mfccdir/storage $mfccdir/storage
   fi
 
-  # the 100k_nodup directory is copied seperately, as
-  # we want to use exp/tri2_ali_100k_nodup for lda_mllt training
-  # the main train directory might be speed_perturbed
   for dataset in $train_set ; do
     utils/copy_data_dir.sh data/$lang/$dataset data/$lang/${dataset}_hires
 
@@ -85,16 +82,16 @@ fi
 
 if [ $stage -le 4 ]; then
   if [[ "$use_pitch" == "true" ]]; then
-    echo use_pitch = $use_pitch
     pitchdir=pitch/$lang
     train_set=${train_set}_hires
     for dataset in $train_set; do
       if $use_pitch; then
         mkdir -p $pitchdir
         if [ ! -f data/$lang/${dataset}_pitch/feats.scp ]; then
-        utils/copy_data_dir.sh data/$lang/$dataset data/$lang/${dataset}_pitch
-        steps/make_pitch.sh --nj 70 --pitch-config $pitch_conf \
-          --cmd "$train_cmd" data/$lang/${dataset}_pitch exp/$lang/make_pitch/${dataset} $pitchdir;
+          echo "$0: Generating pitch features for data/$lang as use_pitch=$use_pitch"
+          utils/copy_data_dir.sh data/$lang/$dataset data/$lang/${dataset}_pitch
+          steps/make_pitch.sh --nj 70 --pitch-config $pitch_conf \
+            --cmd "$train_cmd" data/$lang/${dataset}_pitch exp/$lang/make_pitch/${dataset} $pitchdir;
         fi
         feat_suffix=_pitch
       fi

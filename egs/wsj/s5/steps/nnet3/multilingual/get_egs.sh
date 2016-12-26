@@ -12,7 +12,7 @@
 #
 # Begin configuration section.
 cmd=run.pl
-minibatch_size=512      # multiple of minibatch used during training.
+minibatch_size=512      # multiple of actual minibatch size used during training.
 num_jobs=10             # helps for better randomness across languages
                         # per archive.
 samples_per_iter=400000 # this is the target number of egs in each archive of egs
@@ -28,12 +28,13 @@ if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
 num_langs=$1
+
 shift 1
 args=("$@")
+echo num_args = ${#args[@]}
 megs_dir=${args[-1]} # multilingual directory
 mkdir -p $megs_dir
 mkdir -p $megs_dir/info
-
 if [ ${#args[@]} != $[$num_langs+1] ]; then
   echo "$0: num of input example dirs provided is not compatible with num_langs $num_langs."
   echo "Usage:$0 [opts] <num-input-langs,N> <lang1-egs-dir> ...<langN-egs-dir> <multilingual-egs-dir>"

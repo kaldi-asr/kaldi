@@ -460,14 +460,6 @@ int32 Nnet::GetNodeIndex(const std::string &node_name) const {
   return -1;
 }
 
-void Nnet::SetNodeName(int32 node_index, const std::string &set_node_name) {
-  if (!IsValidName(set_node_name)) 
-    KALDI_ERR << "Name '" << set_node_name << "' is not allowable.";
-
-  node_names_[node_index] = set_node_name;
-  Check();
-}
-
 int32 Nnet::GetComponentIndex(const std::string &component_name) const {
   size_t size = component_names_.size();
   for (size_t i = 0; i < size; i++)

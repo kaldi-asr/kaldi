@@ -41,7 +41,6 @@ int main(int argc, char *argv[]) {
         " nnet3-copy --binary=false 0.raw text.raw\n";
 
     bool binary_write = true;
-    std::string rename_node_names = "";
     BaseFloat learning_rate = -1,
       dropout = 0.0;
     std::string nnet_config, edits_config, edits_str;
@@ -52,8 +51,6 @@ int main(int argc, char *argv[]) {
     po.Register("learning-rate", &learning_rate,
                 "If supplied, all the learning rates of updatable components"
                 "are set to this value.");
-    po.Register("rename-node-names", &rename_node_names, "Comma-separated list of node names need to be modified"
-                " and their new name. e.g. 'affine0/affine0-lang1,affine1/affine1-lang1'");
     po.Register("nnet-config", &nnet_config,
                 "Name of nnet3 config file that can be used to add or replace "
                 "components or nodes of the neural network (the same as you "
@@ -108,10 +105,6 @@ int main(int argc, char *argv[]) {
       std::istringstream is(edits_str);
       ReadEditConfig(is, &nnet);
     }
-
-    if (!rename_node_names.empty()) 
-      RenameNodes(rename_node_names, &nnet);
-
     WriteKaldiObject(nnet, raw_nnet_wxfilename, binary_write);
     KALDI_LOG << "Copied raw neural net from " << raw_nnet_rxfilename
               << " to " << raw_nnet_wxfilename;

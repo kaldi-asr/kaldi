@@ -181,7 +181,7 @@ def Main():
   num_archives = max(1, min(args.max_archives, tot_num_egs / args.samples_per_iter))
   
 
-  num_arch_file = open(args.egs_dir + "/" + args.prefix + "num_archives", "w");
+  num_arch_file = open(args.egs_dir + "/info/" + args.prefix + "num_archives", "w");
   print("{0}".format(num_archives), file = num_arch_file)
   num_arch_file.close()
 

@@ -53,7 +53,12 @@ def get_args():
     parser.add_argument("--egs.frames-per-eg", type=int, dest='frames_per_eg',
                         default=8,
                         help="Number of output labels per example")
-
+    parser.add_argument("--egs.use-multitask-egs", type=str, 
+                        action=common_lib.StrToBoolAction,
+                        dest='use_multitask_egs',
+                        default=False, choices=["true", "false"],
+                        help='If true, it is assumed there are different examples '
+                          'correspond to multiple tasks in output layer.')
     # trainer options
     parser.add_argument("--trainer.prior-subset-size", type=int,
                         dest='prior_subset_size', default=20000,
@@ -322,6 +327,7 @@ def train(args, run_opts, background_process_handler):
                 shuffle_buffer_size=args.shuffle_buffer_size,
                 run_opts=run_opts,
                 get_raw_nnet_from_am=False,
+                use_multitask_egs=args.use_multitask_egs,
                 background_process_handler=background_process_handler)
 
             if args.cleanup:
@@ -353,17 +359,19 @@ def train(args, run_opts, background_process_handler):
             left_context=left_context, right_context=right_context,
             run_opts=run_opts,
             background_process_handler=background_process_handler,
-            get_raw_nnet_from_am=False)
+            get_raw_nnet_from_am=False,
+            use_multitask_egs=args.use_multitask_egs)
 
     if include_log_softmax and args.stage <= num_iters + 1:
-        logger.info("Getting average posterior for purposes of "
+        logger.info("Getting average posterior for output for purposes of "
                     "adjusting the priors.")
         train_lib.common.compute_average_posterior(
             dir=args.dir, iter='final', egs_dir=egs_dir,
             num_archives=num_archives,
             left_context=left_context, right_context=right_context,
             prior_subset_size=args.prior_subset_size, run_opts=run_opts,
-            get_raw_nnet_from_am=False)
+            get_raw_nnet_from_am=False,
+            use_multitask_egs=args.use_multitask_egs)
 
     if args.cleanup:
         logger.info("Cleaning up the experiment directory "

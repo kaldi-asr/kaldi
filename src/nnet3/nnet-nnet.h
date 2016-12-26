@@ -187,10 +187,6 @@ class Nnet {
   /// returns index associated with this node name, or -1 if no such index.
   int32 GetNodeIndex(const std::string &node_name) const;
   
-  /// Set the node name with specific node index to set_node_name.
-  /// can be used, for example, for renaming output nodes.
-  void SetNodeName(int32 node_index, const std::string &set_node_name);
-
   /// returns index associated with this component name, or -1 if no such index.
   int32 GetComponentIndex(const std::string &node_name) const;
 

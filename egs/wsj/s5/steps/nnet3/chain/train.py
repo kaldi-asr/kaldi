@@ -314,30 +314,49 @@ def train(args, run_opts, background_process_handler):
     default_egs_dir = '{0}/egs'.format(args.dir)
     if (args.stage <= -3) and args.egs_dir is None:
         logger.info("Generating egs")
+        # If num of egs dirs in args.egs_dir > 1,
+        # it is correspond to multilingual training and 
+        # it should generate egs dir for each languages.
+        # The last dir corresponds to multilingual egs directory,
+        # that is generated using this script, but 
+        # it requires single egs dirs to exist.
+        multi_egs_dir = args.egs_dir.split()
+        use_multitask_egs = False
+        if len(multi_egs_dir) == 1:
+          default_egs_dir = '{0}/egs'.format(args.dir)
         # this is where get_egs.sh is called.
-        chain_lib.generate_chain_egs(
-            dir=args.dir, data=args.feat_dir,
-            lat_dir=args.lat_dir, egs_dir=default_egs_dir,
-            left_context=egs_left_context,
-            right_context=egs_right_context,
-            run_opts=run_opts,
-            left_tolerance=args.left_tolerance,
-            right_tolerance=args.right_tolerance,
-            frame_subsampling_factor=args.frame_subsampling_factor,
-            alignment_subsampling_factor=args.alignment_subsampling_factor,
-            frames_per_eg=args.chunk_width,
-            srand=args.srand,
-            egs_opts=args.egs_opts,
-            cmvn_opts=args.cmvn_opts,
-            online_ivector_dir=args.online_ivector_dir,
-            frames_per_iter=args.frames_per_iter,
-            transform_dir=args.transform_dir,
-            stage=args.egs_stage)
+          chain_lib.generate_chain_egs(
+              dir=args.dir, data=args.feat_dir,
+              lat_dir=args.lat_dir, egs_dir=default_egs_dir,
+              left_context=egs_left_context,
+              right_context=egs_right_context,
+              run_opts=run_opts,
+              left_tolerance=args.left_tolerance,
+              right_tolerance=args.right_tolerance,
+              frame_subsampling_factor=args.frame_subsampling_factor,
+              alignment_subsampling_factor=args.alignment_subsampling_factor,
+              frames_per_eg=args.chunk_width,
+              srand=args.srand,
+              egs_opts=args.egs_opts,
+              cmvn_opts=args.cmvn_opts,
+              online_ivector_dir=args.online_ivector_dir,
+              frames_per_iter=args.frames_per_iter,
+              transform_dir=args.transform_dir,
+              stage=args.egs_stage)
+          if args.egs_dir is None:
+              egs_dir = default_egs_dir
+          else:
+              egs_dir = args.egs_dir
 
-    if args.egs_dir is None:
-        egs_dir = default_egs_dir
-    else:
-        egs_dir = args.egs_dir
+        else:
+          egs_dir = multi_egs_dir[-1]
+          use_multitask_egs = False
+          logger.info("Generating multilingual egs dir")
+          GenerateMultilingualEgs(args.egs_dir, run_opts,
+                                  stage = args.egs_stage,
+                                  samples_per_iter = args.samples_per_iter,
+                                  egs_opts = args.egs_opts)
+     
 
     [egs_left_context, egs_right_context,
      frames_per_eg, num_archives] = (
@@ -454,7 +473,8 @@ def train(args, run_opts, background_process_handler):
                 frame_subsampling_factor=args.frame_subsampling_factor,
                 truncate_deriv_weights=args.truncate_deriv_weights,
                 run_opts=run_opts,
-                background_process_handler=background_process_handler)
+                background_process_handler=background_process_handler,
+                use_multitask_egs=use_multitask_egs)
 
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain

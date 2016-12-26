@@ -11,12 +11,13 @@ set -e
 
 
 # Begin configuration section
-cmd=run.pl
+cmd=
 stage=0
 left_context=13
 right_context=9
-online_multi_ivector_dir=     # list of iVector dir for all languages
+online_multi_ivector_dirs=     # list of iVector dir for all languages
                               # can be used if we are including speaker information as iVectors.
+                              # e.g. "exp/lang1/train-ivector exp/lang2/train-ivector"
 samples_per_iter=400000 # this is the target number of egs in each archive of egs
                         # (prior to merging egs).  We probably should have called
                         # it egs_per_iter. This is just a guideline; it will pick
@@ -34,7 +35,7 @@ if [ -f path.sh ]; then . ./path.sh; fi
 if [ $# -lt 4 ]; then
   echo "Usage: $0 [opts] num-input-langs <data-dir-per-lang> <ali-dir-per-lang> <egs-dir-per-lang> <multilingual-egs-dir>"
   echo " e.g.: $0 2 data/lang1/train data/lang2/train "
-       " exp/lang1/tri5_ali exp/lang2/tri5_ali exp/lang1/nnet3/lang1 exp/lang2/nnet3/lang2 exp/multi/egs"
+       " exp/lang1/tri5_ali exp/lang2/tri5_ali exp/lang1/nnet3/egs exp/lang2/nnet3/egs exp/multi/egs"
   echo ""
   echo "Main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config file containing options"
@@ -54,7 +55,7 @@ if [ $# -lt 4 ]; then
 
   exit 1;
 fi
-cmd=run.pl
+
 num_lang=$1
 shift
 args=("$@")
@@ -71,21 +72,21 @@ for l in `seq 0 $[$num_lang-1]`; do
 done
 
 echo "$0: Generate separate egs directory per language for multilingual training."
-echo num_langs = $num_lang
-for lang in `seq 0 $[$num_lang-1]`; do
-  data=${multi_data_dirs[$lang]} 
-  ali_dir=${multi_ali_dirs[$lang]}
-  egs_dir=${multi_egs_dirs[$lang]}
+online_multi_ivector_dirs=(${online_multi_ivector_dirs[@]})
+for lang_index in `seq 0 $[$num_lang-1]`; do
+  data=${multi_data_dirs[$lang_index]} 
+  ali_dir=${multi_ali_dirs[$lang_index]}
+  egs_dir=${multi_egs_dirs[$lang_index]}
   online_ivector_dir=
-  if [ ! -z "$multi_ivector_dirs" ]; then
-    online_ivector_dir=${multi_ivector_dirs[$lang]}
+  if [ ! -z "${online_multi_ivector_dirs[$lang_index]}" ]; then
+    online_ivector_dir=${online_multi_ivector_dirs[$lang_index]}
   fi
-  
+  echo online_ivector_dir = $online_ivector_dir 
   if [ ! -d "$egs_dir" ]; then
-    echo "$0: Generate egs for ${lang_list[$lang]}"
+    echo "$0: Generate egs for ${lang_list[$lang_index]}"
     if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $egs_dir/storage ]; then
       utils/create_split_dir.pl \
-       /export/b0{3,4,5,6}/$USER/kaldi-data/egs/${lang_list[$lang]}-$(date +'%m_%d_%H_%M')/s5/$egs_dir/storage $egs_dir/storage
+       /export/b0{3,4,5,6}/$USER/kaldi-data/egs/${lang_list[$lang_index]}-$(date +'%m_%d_%H_%M')/s5/$egs_dir/storage $egs_dir/storage
     fi
 
     extra_opts=()

@@ -223,7 +223,9 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         leaky_hmm_coefficient,
                         momentum, max_param_change, shuffle_buffer_size,
                         frame_subsampling_factor, truncate_deriv_weights,
-                        run_opts, background_process_handler=None):
+                        run_opts, 
+                        use_multitask_egs=False,
+                        background_process_handler=None):
     """ Called from steps/nnet3/chain/train.py for one iteration for
     neural network training with LF-MMI objective
 
@@ -320,7 +322,8 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      num_chunk_per_minibatch=cur_num_chunk_per_minibatch,
                      frame_subsampling_factor=frame_subsampling_factor,
                      truncate_deriv_weights=truncate_deriv_weights,
-                     cache_io_opts=cache_io_opts, run_opts=run_opts)
+                     cache_io_opts=cache_io_opts, run_opts=run_opts,
+                     use_multitask_egs=use_multitask_egs)
 
     [models_to_average, best_model] = common_train_lib.get_successful_models(
          num_jobs, '{0}/log/train.{1}.%.log'.format(dir, iter))

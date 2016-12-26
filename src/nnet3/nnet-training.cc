@@ -87,7 +87,6 @@ void NnetTrainer::ProcessOutputs(const NnetExample &eg,
     int32 node_index = nnet_->GetNodeIndex(io.name);
     KALDI_ASSERT(node_index >= 0);
     if (nnet_->IsOutputNode(node_index)) {
-      BaseFloat weight = egs.weights[io_count];
       ObjectiveType obj_type = nnet_->GetNode(node_index).u.objective_type;
       BaseFloat tot_weight, tot_objf;
       bool supply_deriv = true;
@@ -95,10 +94,10 @@ void NnetTrainer::ProcessOutputs(const NnetExample &eg,
                                supply_deriv, computer,
                                &tot_weight, &tot_objf);
       objf_info_[io.name].UpdateStats(io.name, config_.print_interval,
-                                      num_minibatches_processed_++,
                                       tot_weight, tot_objf);
     }
   }
+  num_minibatches_processed_++;
 }
 
 void NnetTrainer::UpdateParamsWithMaxChange() {
@@ -225,11 +224,10 @@ void NnetTrainer::PrintMaxChangeStats() const {
 void ObjectiveFunctionInfo::UpdateStats(
     const std::string &output_name,
     int32 minibatches_per_phase,
-    int32 minibatch_counter,
     BaseFloat this_minibatch_weight,
     BaseFloat this_minibatch_tot_objf,
     BaseFloat this_minibatch_tot_aux_objf) {
-  int32 phase = minibatch_counter / minibatches_per_phase;
+  int32 phase = num_minibatch++ / minibatches_per_phase;
   if (phase != current_phase) {
     KALDI_ASSERT(phase == current_phase + 1); // or doesn't really make sense.
     PrintStatsForThisPhase(output_name, minibatches_per_phase);
