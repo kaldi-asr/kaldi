@@ -259,14 +259,14 @@ class AffineSampleLogSoftmaxComponent: public LmOutputComponent {
   // Some functions that are specific to this class.
 
   // This new function is used when mixing up:
-  virtual void SetParams(const CuVectorBase<BaseFloat> &bias,
+  virtual void SetParams(const CuMatrixBase<BaseFloat> &bias,
                          const CuMatrixBase<BaseFloat> &linear);
-  const CuVector<BaseFloat> &BiasParams() { return bias_params_; }
+  const CuMatrix<BaseFloat> &BiasParams() { return bias_params_; }
   const CuMatrix<BaseFloat> &LinearParams() { return linear_params_; }
   explicit AffineSampleLogSoftmaxComponent(const AffineSampleLogSoftmaxComponent &other);
   // The next constructor is used in converting from nnet1.
   AffineSampleLogSoftmaxComponent(const CuMatrixBase<BaseFloat> &linear_params,
-                  const CuVectorBase<BaseFloat> &bias_params,
+                  const CuMatrixBase<BaseFloat> &bias_params,
                   BaseFloat learning_rate);
   void Init(int32 input_dim, int32 output_dim,
             BaseFloat param_stddev, BaseFloat bias_stddev);
@@ -297,7 +297,7 @@ class AffineSampleLogSoftmaxComponent: public LmOutputComponent {
 
   const AffineSampleLogSoftmaxComponent &operator = (const AffineSampleLogSoftmaxComponent &other); // Disallow.
   CuMatrix<BaseFloat> linear_params_;
-  CuVector<BaseFloat> bias_params_;
+  CuMatrix<BaseFloat> bias_params_;  // a 1 * dim() matrix
 };
 
 

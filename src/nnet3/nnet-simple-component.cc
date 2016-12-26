@@ -1279,28 +1279,6 @@ void AffineComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
   out->AddMatMat(1.0, in, kNoTrans, linear_params_, kTrans, 1.0);
 }
 
-//void AffineComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
-//                                const SparseMatrix<BaseFloat> &sp,
-//                                CuMatrixBase<BaseFloat> *out) const {
-//
-//  std::vector<MatrixIndexT> vis;
-//
-//  Matrix<BaseFloat> cpu_out_transpose(out->NumCols(), out->NumRows());
-//
-//  for (size_t i = 0; i < sp.NumRows(); i++) {
-//    SparseVector<BaseFloat> sv = sp.Row(i);
-//    int non_zero_index = -1;
-//    sv.Max(&non_zero_index);
-//    vis.push_back(non_zero_index);
-//  }
-////  CuArray<MatrixIndexT> cu_indexes(vis);
-//
-//  cpu_out_transpose.AddCols(linear_params_.Mat(), vis.data());
-//  out->CopyFromMat(cpu_out_transpose, kTrans);
-//
-//  out->AddVecToRows(1.0, bias_params_, 1.0); // copies bias_params_ to each row
-//}
-
 void AffineComponent::UpdateSimple(const CuMatrixBase<BaseFloat> &in_value,
                                    const CuMatrixBase<BaseFloat> &out_deriv) {
   bias_params_.AddRowSumMat(learning_rate_, out_deriv, 1.0);

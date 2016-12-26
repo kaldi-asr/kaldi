@@ -16,7 +16,7 @@ void AffineSampleLogSoftmaxComponent::Scale(BaseFloat scale) {
 
 void AffineSampleLogSoftmaxComponent::Resize(int32 input_dim, int32 output_dim) {
   KALDI_ASSERT(input_dim > 0 && output_dim > 0);
-  bias_params_.Resize(output_dim);
+  bias_params_.Resize(1, output_dim);
   linear_params_.Resize(output_dim, input_dim);
 }
 
@@ -25,7 +25,7 @@ void AffineSampleLogSoftmaxComponent::Add(BaseFloat alpha, const LmComponent &ot
              dynamic_cast<const AffineSampleLogSoftmaxComponent*>(&other_in);
   KALDI_ASSERT(other != NULL);
   linear_params_.AddMat(alpha, other->linear_params_);
-  bias_params_.AddVec(alpha, other->bias_params_);
+  bias_params_.Row(0).AddVec(alpha, other->bias_params_.Row(0));
 }
 
 AffineSampleLogSoftmaxComponent::AffineSampleLogSoftmaxComponent(
@@ -36,13 +36,13 @@ AffineSampleLogSoftmaxComponent::AffineSampleLogSoftmaxComponent(
 
 AffineSampleLogSoftmaxComponent::AffineSampleLogSoftmaxComponent(
                                    const CuMatrixBase<BaseFloat> &linear_params,
-                                   const CuVectorBase<BaseFloat> &bias_params,
-                                   BaseFloat learning_rate):
+                                   const CuMatrixBase<BaseFloat> &bias_params,
+                                            BaseFloat learning_rate):
                                             linear_params_(linear_params),
                                             bias_params_(bias_params) {
   SetUnderlyingLearningRate(learning_rate);
-  KALDI_ASSERT(linear_params.NumRows() == bias_params.Dim() &&
-               bias_params.Dim() != 0);
+  KALDI_ASSERT(linear_params.NumRows() == bias_params.NumCols() &&
+               bias_params.NumCols() != 0);
 }
 
 void AffineSampleLogSoftmaxComponent::SetZero(bool treat_as_gradient) {
@@ -54,11 +54,11 @@ void AffineSampleLogSoftmaxComponent::SetZero(bool treat_as_gradient) {
   bias_params_.SetZero();
 }
 
-void AffineSampleLogSoftmaxComponent::SetParams(const CuVectorBase<BaseFloat> &bias,
+void AffineSampleLogSoftmaxComponent::SetParams(const CuMatrixBase<BaseFloat> &bias,
                                 const CuMatrixBase<BaseFloat> &linear) {
   bias_params_ = bias;
   linear_params_ = linear;
-  KALDI_ASSERT(bias_params_.Dim() == linear_params_.NumRows());
+  KALDI_ASSERT(bias_params_.NumCols() == linear_params_.NumRows());
 }
 
 void AffineSampleLogSoftmaxComponent::PerturbParams(BaseFloat stddev) {
@@ -66,9 +66,9 @@ void AffineSampleLogSoftmaxComponent::PerturbParams(BaseFloat stddev) {
   temp_linear_params.SetRandn();
   linear_params_.AddMat(stddev, temp_linear_params);
 
-  CuVector<BaseFloat> temp_bias_params(bias_params_);
+  CuMatrix<BaseFloat> temp_bias_params(bias_params_);
   temp_bias_params.SetRandn();
-  bias_params_.AddVec(stddev, temp_bias_params);
+  bias_params_.AddMat(stddev, temp_bias_params);
 }
 
 std::string AffineSampleLogSoftmaxComponent::Info() const {
@@ -88,13 +88,13 @@ BaseFloat AffineSampleLogSoftmaxComponent::DotProduct(const LmComponent &other_i
   const AffineSampleLogSoftmaxComponent *other =
       dynamic_cast<const AffineSampleLogSoftmaxComponent*>(&other_in);
   return TraceMatMat(linear_params_, other->linear_params_, kTrans)
-      + VecVec(bias_params_, other->bias_params_);
+      + VecVec(bias_params_.Row(0), other->bias_params_.Row(0));
 }
 
 void AffineSampleLogSoftmaxComponent::Init(int32 input_dim, int32 output_dim,
                            BaseFloat param_stddev, BaseFloat bias_stddev) {
   linear_params_.Resize(output_dim, input_dim);
-  bias_params_.Resize(output_dim);
+  bias_params_.Resize(1, output_dim);
   KALDI_ASSERT(output_dim > 0 && input_dim > 0 && param_stddev >= 0.0);
   linear_params_.SetRandn(); // sets to random normally distributed noise.
   linear_params_.Scale(param_stddev);
@@ -111,9 +111,9 @@ void AffineSampleLogSoftmaxComponent::Init(std::string matrix_filename) {
   KALDI_ASSERT(mat.NumCols() >= 2);
   int32 input_dim = mat.NumCols() - 1, output_dim = mat.NumRows();
   linear_params_.Resize(output_dim, input_dim);
-  bias_params_.Resize(output_dim);
+  bias_params_.Resize(1, output_dim);
   linear_params_.CopyFromMat(mat.Range(0, output_dim, 0, input_dim));
-  bias_params_.CopyColFromMat(mat, input_dim);
+  bias_params_.Row(0).CopyColFromMat(mat, input_dim);
 }
 
 void AffineSampleLogSoftmaxComponent::InitFromConfig(ConfigLine *cfl) {
@@ -150,23 +150,14 @@ void AffineSampleLogSoftmaxComponent::InitFromConfig(ConfigLine *cfl) {
 void AffineSampleLogSoftmaxComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
                                                 const vector<int> &indexes,
                                                 CuMatrixBase<BaseFloat> *out) const {
-//  KALDI_LOG << "sum is " << bias_params_.Sum();
-//  KALDI_ASSERT(bias_params_.Sum() == bias_params_.Sum());
-//  KALDI_ASSERT(in.NumRows() == indexes.size());
-//  out->resize(indexes.size());
   KALDI_ASSERT(out->NumRows() == in.NumRows());
+  CuMatrix<BaseFloat> new_linear;
+  CuArray<int> idx(indexes);
+  new_linear.CopyRows(linear_params_, idx);
 
-//  TODO(hxu)
-//  for (int i = 0; i < indexes.size(); i++) {
-//    (*out)[i].resize(indexes[i].size());
-//
-//    for (int j = 0; j < indexes[i].size(); j++) {
-//      int w = indexes[i][j];
-//      BaseFloat res = VecVec(in.Row(i), linear_params_.Row(w));
-//      (*out)[i][j] = res + bias_params_(w);
-//      KALDI_ASSERT((*out)[i][j] == (*out)[i][j]);
-//    }
-//  }
+  out->RowRange(0, 1).AddCols(bias_params_, idx);
+  out->CopyRowsFromVec(out->Row(0));
+  out->AddMatMat(1.0, in, kNoTrans, new_linear, kTrans, 1.0); 
 }
 
 void AffineSampleLogSoftmaxComponent::Backprop(
@@ -176,65 +167,34 @@ void AffineSampleLogSoftmaxComponent::Backprop(
                                const CuMatrixBase<BaseFloat> &output_deriv,
                                LmOutputComponent *to_update_0,
                                CuMatrixBase<BaseFloat> *input_deriv) const {
-  // TODO(hxu)
-////  KALDI_LOG << "before sum is " << bias_params_.Sum();
-//  int k = indexes.size();
-//
-//  if (input_deriv != NULL) {
-//    for (int i = 0; i < k; i++) {
-//      KALDI_ASSERT(indexes[i].size() == k + 1);
-//
-//      // it seems even if one of the samples is the correct label it shouldn't be a problem...?
-//      for (int j = 0; j < k + 1; j++) {
-//        int index = indexes[i][j];
-//        // index'th row of linear_params
-//        for (int m = 0; m < linear_params_.NumCols(); m++) {
-//          (*input_deriv)(i, m) += output_deriv[i][j] * linear_params_(index, m);
-//        }
-//      }
-//    }
-//  }
-//
-//  AffineSampleLogSoftmaxComponent* to_update
-//             = dynamic_cast<AffineSampleLogSoftmaxComponent*>(to_update_0);
-//
-//  if (to_update != NULL) {
-////    if (to_update->is_gradient_)
-////      to_update->UpdateSimple(in_value, out_deriv);
-////    else  // the call below is to a virtual function that may be re-implemented
-////      to_update->Update(debug_info, in_value, out_deriv);  // by child classes.
-//    for (int i = 0; i < k; i++) {
-//      for (int j = 0; j < k + 1; j++) {
-//        int index = indexes[i][j];
-//
-//        to_update->bias_params_(index) += output_deriv[i][j] * learning_rate_;
-//
-////        KALDI_ASSERT(output_deriv[i][j] == output_deriv[i][j]);
-////        KALDI_LOG << "value is " << output_deriv[i][index] << " and " << learning_rate_;
-////        KALDI_LOG << "here is " << to_update->bias_params_(index);
-//
-//        // index'th row of linear_params
-//        for (int m = 0; m < linear_params_.NumCols(); m++) {
-//
-//          to_update->linear_params_(index, m) +=
-//                 learning_rate_ * output_deriv[i][j] * in_value(i, m);
-//
-////          (*input_deriv)(i, m) += output_deriv[i][j] * linear_params_(index, m);
-//        }
-//      }
-//    }
-////    KALDI_LOG << "after, sum is " << to_update->bias_params_.Sum();
-//  }
-}
+  KALDI_ASSERT (input_deriv != NULL);
 
-//void AffineSampleLogSoftmaxComponent::UpdateSimple(
-//                                   const MatrixBase<BaseFloat> &in_value,
-//                                   const MatrixBase<BaseFloat> &out_deriv) {
-//  KALDI_ASSERT(false);
-//  bias_params_.AddRowSumMat(learning_rate_, out_deriv, 1.0);
-//  linear_params_.AddMatMat(learning_rate_, out_deriv, kTrans,
-//                           in_value, kNoTrans, 1.0);
-//}
+  CuMatrix<BaseFloat> new_linear;
+  CuArray<int> idx(indexes);
+  new_linear.CopyRows(linear_params_, idx);
+
+  input_deriv->AddMatMat(1.0, output_deriv, kNoTrans, new_linear, kNoTrans, 1.0);
+
+  AffineSampleLogSoftmaxComponent* to_update
+             = dynamic_cast<AffineSampleLogSoftmaxComponent*>(to_update_0);
+
+  if (to_update != NULL) {
+    new_linear.AddMatMat(learning_rate_, output_deriv, kTrans,
+                         in_value, kNoTrans, 1.0);
+    CuMatrix<BaseFloat> delta_bias(1, output_deriv.NumCols(), kSetZero);
+    delta_bias.Row(0).AddRowSumMat(learning_rate_, output_deriv, kTrans);
+
+
+    vector<int> indexes_2(bias_params_.NumCols(), -1);
+    for (int i = 0; i < indexes.size(); i++) {
+      indexes_2[indexes[i]] = i;
+    }
+
+    CuArray<int> idx2(indexes_2);
+    to_update->linear_params_.AddRows(1.0, new_linear, idx2);
+
+  }
+}
 
 void AffineSampleLogSoftmaxComponent::Read(std::istream &is, bool binary) {
   ReadUpdatableCommon(is, binary);  // read opening tag and learning rate.
@@ -261,16 +221,17 @@ void AffineSampleLogSoftmaxComponent::Write(std::ostream &os, bool binary) const
 int32 AffineSampleLogSoftmaxComponent::NumParameters() const {
   return (InputDim() + 1) * OutputDim();
 }
+
 void AffineSampleLogSoftmaxComponent::Vectorize(VectorBase<BaseFloat> *params) const {
   KALDI_ASSERT(params->Dim() == this->NumParameters());
   params->Range(0, InputDim() * OutputDim()).CopyRowsFromMat(linear_params_);
   params->Range(InputDim() * OutputDim(),
-                OutputDim()).CopyFromVec(bias_params_);
+                OutputDim()).CopyFromVec(bias_params_.Row(0));
 }
 void AffineSampleLogSoftmaxComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
   KALDI_ASSERT(params.Dim() == this->NumParameters());
   linear_params_.CopyRowsFromVec(params.Range(0, InputDim() * OutputDim()));
-  bias_params_.CopyFromVec(params.Range(InputDim() * OutputDim(),
+  bias_params_.Row(0).CopyFromVec(params.Range(InputDim() * OutputDim(),
                                         OutputDim()));
 }
 
