@@ -105,7 +105,7 @@ def write_expanded_xconfig_files(config_dir, all_layers):
           '# It contains the same content as ./xconfig but it was parsed,\n'
           '# default config values were set, \n'
           '# and Descriptors (input=xxx) were normalized.\n'
-          '# See also ./xconfig.expanded.1\n\n',
+          '# See also ./xconfig.expanded.1\n',
           file=xconfig_file_out)
 
     for layer in all_layers:
