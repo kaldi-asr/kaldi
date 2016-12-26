@@ -202,18 +202,22 @@ def train(args, run_opts, background_process_handler):
             target_type = "dense"
             try:
                 num_targets = int(variables['num_targets'])
+                if (common_lib.get_feat_dim_from_scp(args.targets_scp)
+                        != num_targets):
+                    raise Exception("Mismatch between num-targets provided to "
+                                    "script vs configs")
+            except KeyError as e:
+                num_targets = -1
+        else:
+            target_type = "sparse"
+            try:
+                num_targets = int(variables['num_targets'])
             except KeyError as e:
                 raise Exception("KeyError {0}: Variables need to be defined "
                                 "in {1}".format(
                                     str(e), '{0}/configs'.format(args.dir)))
-            if (common_lib.get_feat_dim_from_scp(args.targets_scp)
-                    != num_targets):
-                raise Exception("Mismatch between num-targets provided to "
-                                "script vs configs")
-        else:
-            target_type = "sparse"
 
-        train_lib.raw_model.generate_egs_from_targets(
+        train_lib.raw_model.generate_egs_using_targets(
             data=args.feat_dir, targets_scp=args.targets_scp,
             egs_dir=default_egs_dir,
             left_context=left_context, right_context=right_context,
