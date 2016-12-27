@@ -50,12 +50,6 @@ fi
 
 lang=$1
 
-if $use_flp; then
-. local/prepare_flp_langconf.sh $lang
-else
-. local/prepare_llp_langconf.sh $lang
-fi
-
 . local/prepare_flp_langconf.sh --use-flp $use_flp $lang || exit 1;
 
 langconf=langconf/$lang/lang.conf
