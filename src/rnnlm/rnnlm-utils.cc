@@ -50,8 +50,9 @@ NnetExample GetEgsFromSent(const vector<int>& word_ids_in, int input_dim,
   return eg;
 }
 
-vector<int> Select(const vector<BaseFloat> &u, int n) {
-  vector<int> ans(n);
+void SelectWoReplacement(const vector<BaseFloat> &u, int n, vector<int> *out) {
+  vector<int>& ans = *out;
+  ans.resize(n);
 
   BaseFloat tot_weight = 0;
 
@@ -142,8 +143,6 @@ vector<int> Select(const vector<BaseFloat> &u, int n) {
       ans[n - 1] = k;
     }
   }
-
-  return ans;
 }
 
 void NormalizeVec(int k, const set<int>& ones, vector<BaseFloat> *probs) {
@@ -155,7 +154,7 @@ void NormalizeVec(int k, const set<int>& ones, vector<BaseFloat> *probs) {
 //    KALDI_LOG << sum;
   }
   KALDI_LOG << "sum should be close to 1.0: " << sum;
-  KALDI_ASSERT(ApproxEqual(sum , 1.0));
+  KALDI_ASSERT(ApproxEqual(sum, 1.0));
   
   // set the 1s
 //  for (int i = 0; i < ones.size(); i++) {

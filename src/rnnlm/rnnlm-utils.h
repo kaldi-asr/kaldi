@@ -24,7 +24,7 @@ namespace rnnlm {
 
 using nnet3::NnetExample;
 
-const int OOS_ID = 1;
+const int kOosId = 1;
 
 vector<string> SplitByWhiteSpace(const string &line);
 
@@ -33,7 +33,7 @@ unordered_map<string, int> ReadWordlist(string filename);
 NnetExample GetEgsFromSent(const vector<int>& word_ids_in, int input_dim,
                            const vector<int>& word_ids_out, int output_dim);
 
-vector<int> Select(const vector<BaseFloat> &u, int n);
+void SelectWoReplacement(const vector<BaseFloat> &u, int n, vector<int> *out);
 
 void NormalizeVec(int k, const set<int> &ones, vector<BaseFloat> *probs);
 

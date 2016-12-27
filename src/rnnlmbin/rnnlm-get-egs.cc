@@ -54,8 +54,8 @@ void GenerateEgs(string text_file, const unordered_map<string, int>& wlist_in,
     vector<int> word_ids_out;
 
     for (int i = 0; i < words.size(); i++) {
-      int id_in = OOS_ID;
-      int id_out = OOS_ID;
+      int id_in = kOosId;
+      int id_out = kOosId;
       if (i != words.size() - 1) {
         unordered_map<string, int>::const_iterator iter = wlist_in.find(words[i]);
         if (iter != wlist_in.end()) {

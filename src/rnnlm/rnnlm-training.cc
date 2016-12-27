@@ -541,15 +541,35 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
   // this is not necessary for Select for useful for later
   NormalizeVec(2 * k, outputs_set, &selection_probs);
 
-  vector<int> samples = Select(selection_probs, 2 * k);
+//  cout << "1 probs: ";
+//  for (int i = 0; i < selection_probs.size(); i++) {
+//    if (selection_probs[i] == 1.0) {
+//      cout << i << ", ";
+//    }
+//  }
+//  cout << endl;
+//  cout << "selected: ";
+  vector<int> samples;
+  SelectWoReplacement(selection_probs, 2 * k, &samples);
+//
+//  std::sort(samples.begin(), samples.end());
+
+//  for (int i = 0; i < samples.size(); i++) {
+//    cout << samples[i] << ", ";
+//  }
+//  cout << endl;
+//
+//  cout << "outputs: ";
+//  for (int i = 0; i < outputs.size(); i++) {
+//    cout << outputs[i] << ", ";
+//  }
+//  cout << endl;
+
   vector<BaseFloat> selected_probs(samples.size());
   for (int i = 0; i < samples.size(); i++) {
     selected_probs[i] = selection_probs[samples[i]];
   }
 
-//  vector<vector<int> > indexes(k, samples); // an ugly fix fow now
-
-//  vector<vector<BaseFloat> > out;
   CuMatrix<BaseFloat> out(new_output->NumRows(), samples.size(), kSetZero);
 
   output_projection.Propagate(*new_output, samples, &out);
@@ -559,12 +579,12 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
   
   // add the deriv for correct label
   vector<int> correct_indexes(out.NumRows(), -1);
-  for (int i = 0; i < samples.size(); i++) {
-    for (int j = 0; j < outputs.size(); j++) {
+  for (int j = 0; j < outputs.size(); j++) {
+    for (int i = 0; i < samples.size(); i++) {
       if (samples[i] == outputs[j]) {
         correct_indexes[j] = i;
-        break;
       }
+      break;
     }
   }
 
@@ -573,19 +593,27 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
   }
 
 //  KALDI_ASSERT(*std::min_element(correct_indexes.begin(), correct_indexes.end()) >= 0);
+  Matrix<BaseFloat> t(out.NumRows(), out.NumCols(), kSetZero);
+  CuMatrix<BaseFloat> t2(out.NumRows(), out.NumCols(), kSetZero);
+  CuMatrix<BaseFloat> t3(out.NumRows(), out.NumCols(), kSetZero);
+  for (int i = 0; i < out.NumRows(); i++) {
+    t(i, correct_indexes[i]) = 1.0;
+  }
+  t2.CopyFromMat(t);
+  // t and t2 are sparsematrix where the position of the correct label is 1
+  // so the following would compute the sum of correct y's
+  *tot_objf += TraceMatMat(t2, out, kTrans);
 
   // take exp() and divided by probs
   out.ApplyExp();
-  CuMatrix<BaseFloat> c2(out.NumRows(), out.NumCols(), kSetZero);
   Vector<BaseFloat> v(out.NumCols(), kSetZero);
   for (int i = 0; i < out.NumCols(); i++) {
-    v(i) = selected_probs[i];
+    v(i) = -selected_probs[i];
   }
-  c2.CopyRowsFromVec(v);
-//  c2.AddRows(1.0, CuArray<BaseFloat>(selected_probs));
-  out.DivElements(c2);
+  t3.CopyRowsFromVec(v);
+  out.DivElements(t3);
 
-  *tot_objf -= out.Sum();
+  *tot_objf += out.Sum();
 
 //  BaseFloat sum = 0.0;
 //  for (int i = 0; i < selection_probs.size(); i++) {
@@ -605,40 +633,33 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
 ////      KALDI_LOG << "out-" << i << " " << j << " is " << out[i][j];
 //      *tot_objf -= exp(out[i][j]) * k / unigram[indexes[i][j]];
 //    }
-////    KALDI_LOG << "tot-objf is " << *tot_objf << " at " << i;
+//    KALDI_LOG << "tot-objf is " << *tot_objf << " at " << i;
 //  }
 //
-////  KALDI_LOG << "objf value is " << *tot_objf << endl;
+  KALDI_LOG << "objf value is " << *tot_objf << endl;
 //
-//  if (supply_deriv && nnet != NULL) {
-//    // the derivative on the real output
-//    vector<vector<BaseFloat> > output_deriv(k);
-//
-//    for (int i = 0; i < k; i++) {
-//      output_deriv[i].resize(k + 1);
-//      for (int j = 0; j < k; j++) {
-//        output_deriv[i][j] = -exp(out[i][j]);
-//        KALDI_ASSERT(output_deriv[i][j] == output_deriv[i][j]);
-//      }
-//      output_deriv[i][k] = 1;
-//    }
-//
-//    // the derivative after the affine layer (before the nonlin)
-//
-//    // the derivative of the 'nnet3' part
-//    Matrix<BaseFloat> input_deriv(new_output->NumRows(),
-//                                    new_output->NumCols(),
-//                                    kSetZero);
-//
-//    Matrix<BaseFloat> place_holder;
-//    output_projection.Backprop(indexes, *new_output, place_holder,
-//                                output_deriv, nnet->output_projection_,
-//                                &input_deriv);
-//
+  if (supply_deriv && nnet != NULL) {
+    // the derivative on the real output
+//    vector<vector<BaseFloat> > output_deriv(k);A
+//    CuMatrix<BaseFloat> output_deriv(out.NumRows(), out.NumCols(), kSetZero);
+    out.AddMat(1.0, t2); // this is the correct derivative
+
+    // the derivative after the affine layer (before the nonlin)
+
+    // the derivative of the 'nnet3' part
+    CuMatrix<BaseFloat> input_deriv(new_output->NumRows(),
+                                    new_output->NumCols(),
+                                    kSetZero);
+
+    CuMatrix<BaseFloat> place_holder;
+    output_projection.Backprop(samples, *new_output, place_holder,
+                                out, nnet->output_projection_,
+                                &input_deriv);
+
 //    CuMatrix<BaseFloat> cu_input_deriv(input_deriv);
-//
-//    computer->AcceptOutputDeriv(output_name, &cu_input_deriv);
-//  }
+
+    computer->AcceptOutputDeriv(output_name, &input_deriv);
+  }
 }
 
 } // namespace nnet3

@@ -51,8 +51,8 @@ void RnnlmEval(NnetComputeProb &computer, // can't make this const it seems
     int output_dim = wlist_out.size();
 
     for (int i = 0; i < words.size(); i++) {
-      int id_in = OOS_ID;
-      int id_out = OOS_ID;
+      int id_in = kOosId;
+      int id_out = kOosId;
      
       if (i != words.size() - 1) {
         unordered_map<string, int>::const_iterator iter = wlist_in.find(words[i]);
@@ -68,7 +68,7 @@ void RnnlmEval(NnetComputeProb &computer, // can't make this const it seems
           id_out = iter->second;
         }
         word_ids_out.push_back(id_out);
-        if (id_out == OOS_ID) {
+        if (id_out == kOosId) {
   //        obj_to_add += oos_cost;
           num_oovs ++;
 //          ofile << "# " << i << " " << words[i] << endl;
