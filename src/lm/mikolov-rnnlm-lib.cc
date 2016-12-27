@@ -49,12 +49,12 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 // EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "lm/mikolov-rnnlm-lib.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "lm/mikolov-rnnlm-lib.h"
 #include "util/table-types.h"
 
 namespace rnnlm {
