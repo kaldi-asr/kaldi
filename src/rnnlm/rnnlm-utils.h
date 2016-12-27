@@ -34,6 +34,8 @@ NnetExample GetEgsFromSent(const vector<int>& word_ids_in, int input_dim,
 
 vector<int> Select(const vector<BaseFloat> &u, int n);
 
+void NormalizeVec(int k, const vector<int> &ones, vector<BaseFloat> *probs);
+
 } // namespace nnet3
 } // namespace kaldi
 

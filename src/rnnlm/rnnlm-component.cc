@@ -151,7 +151,7 @@ void AffineSampleLogSoftmaxComponent::Propagate(const CuMatrixBase<BaseFloat> &i
                                                 const vector<int> &indexes,
                                                 CuMatrixBase<BaseFloat> *out) const {
   KALDI_ASSERT(out->NumRows() == in.NumRows());
-  CuMatrix<BaseFloat> new_linear;
+  CuMatrix<BaseFloat> new_linear(indexes.size(), linear_params_.NumCols());
   CuArray<int> idx(indexes);
   new_linear.CopyRows(linear_params_, idx);
 
@@ -179,11 +179,11 @@ void AffineSampleLogSoftmaxComponent::Backprop(
              = dynamic_cast<AffineSampleLogSoftmaxComponent*>(to_update_0);
 
   if (to_update != NULL) {
+    new_linear.SetZero();  // clear the contents
     new_linear.AddMatMat(learning_rate_, output_deriv, kTrans,
                          in_value, kNoTrans, 1.0);
     CuMatrix<BaseFloat> delta_bias(1, output_deriv.NumCols(), kSetZero);
     delta_bias.Row(0).AddRowSumMat(learning_rate_, output_deriv, kTrans);
-
 
     vector<int> indexes_2(bias_params_.NumCols(), -1);
     for (int i = 0; i < indexes.size(); i++) {
@@ -193,6 +193,7 @@ void AffineSampleLogSoftmaxComponent::Backprop(
     CuArray<int> idx2(indexes_2);
     to_update->linear_params_.AddRows(1.0, new_linear, idx2);
 
+    to_update->bias_params_.AddCols(delta_bias, idx2);
   }
 }
 

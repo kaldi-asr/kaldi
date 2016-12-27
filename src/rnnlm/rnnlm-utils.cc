@@ -146,5 +146,67 @@ vector<int> Select(const vector<BaseFloat> &u, int n) {
   return ans;
 }
 
+void NormalizeVec(int k, const vector<int>& ones, vector<BaseFloat> *probs) {
+
+  // first check the unigrams add up to 1
+  BaseFloat sum = 0;
+  for (int i = 0; i < probs->size(); i++) {
+    sum += (*probs)[i];
+  }
+  KALDI_ASSERT(ApproxEqual(sum , 1.0));
+  
+  // set the 1s
+  for (int i = 0; i < ones.size(); i++) {
+    (*probs)[ones[i]] = 1.0;
+  }
+
+  // distribute the remaining probs
+  sum = 0.0;
+  BaseFloat maxx = 0.0;
+  for (int i = 0; i < probs->size(); i++) {
+    BaseFloat t = (*probs)[i];
+    if (t < 1.0) {
+      sum += t;
+      maxx = std::max(maxx, t);
+    }
+  }
+
+  if (maxx * (k - ones.size()) * 1.0 / sum <= 1.0) {
+    for (int i = 0; i < probs->size(); i++) {
+      BaseFloat &t = (*probs)[i];
+      if (t == 1.0) {
+        continue;
+      }
+      t = t * (k - ones.size()) * 1.0 / sum <= 1.0;
+    }
+  } else {
+    // now we want to interpolate with a uniform prob of
+    // (k - ones.size()) / (probs->size() - ones.size()) s.t. max is 1
+    // w a + (1 - w) b = 1
+    // ===> w = (1 - b) / (a - b)
+    BaseFloat a = maxx * (k - ones.size()) * 1.0 / sum;
+    BaseFloat b = (k - ones.size()) / (probs->size() - ones.size());
+    KALDI_ASSERT(b < 1);
+    BaseFloat w = (1.0 - b) / (a - b);
+
+    for (int i = 0; i < probs->size(); i++) {
+      BaseFloat &t = (*probs)[i];
+      if (t == 1.0) {
+        continue;
+      }
+      t = w * t + (1.0 - w) * b;
+    }
+  }
+  
+  sum = 0.0;
+  for (int i = 0; i < probs->size(); i++) {
+    BaseFloat t = (*probs)[i];
+    sum += t;
+    if (t > 1 || t <= 0) sum += k;
+  }
+  KALDI_ASSERT(sum == k);
+
+}
+
 } // namespace nnet3
 } // namespace kaldi

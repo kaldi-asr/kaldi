@@ -524,14 +524,20 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
 
   vector<BaseFloat> selection_probs = unigram;
 
+  vector<int> outputs;
+
   for (int i = 0; i < k; i++) {
 //    indexes[i] = samples;
     const SparseVector<BaseFloat> &sv = post.Row(i);                              
     int non_zero_index = -1;                                                    
     sv.Max(&non_zero_index); 
+    outputs.push_back(non_zero_index);
 //    indexes[i].push_back(non_zero_index);
-    selection_probs[non_zero_index] = 1; // to make sure it is always selected
+//    selection_probs[non_zero_index] = 1; // to make sure it is always selected
   }
+
+  // this is not necessary for Select for useful for later
+  NormalizeVec(2 * k, outputs, &selection_probs);
 
   vector<int> samples = Select(selection_probs, 2 * k);
 
@@ -542,8 +548,20 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
 
   output_projection.Propagate(*new_output, samples, &out);
 
-//  *tot_weight = post.Sum();
-//  *tot_objf = 0;
+  *tot_weight = post.Sum();
+  *tot_objf = 0;
+  
+  out.ApplyExp();
+
+//  BaseFloat sum = 0.0;
+//  for (int i = 0; i < selection_probs.size(); i++) {
+//    if (selection_probs[i] < 1.0) {
+//      sum += election_probs[i];
+//    }
+//  }
+//  KALDI_ASSERT(sum
+
+  
 //  for (int i = 0; i < k; i++) {
 //    KALDI_ASSERT(out[i].size() == k + 1);
 ////    KALDI_LOG << "out-" << i << " is " << out[i][k];
