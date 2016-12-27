@@ -107,9 +107,14 @@ struct CindexHasher {
   size_t operator () (const Cindex &cindex) const;
 };
 
-
 struct CindexVectorHasher {
   size_t operator () (const std::vector<Cindex> &cindex_vector) const;
+};
+
+// Note: because IndexVectorHasher is used in some things where we really need
+// it to be fast, it doesn't look at all the indexes, just most of them.
+struct IndexVectorHasher {
+  size_t operator () (const std::vector<Index> &index_vector) const;
 };
 
 

@@ -74,9 +74,8 @@ int main(int argc, char *argv[]) {
     po.Register("compress", &compress, "If true, compress the output examples "
                 "(not recommended unless you are writing to disk)");
     po.Register("discard-partial-minibatches", &discard_partial_minibatches,
-                "discard any partial minibatches of 'uneven' size that may be "
-                "encountered at the end; 'true' is recommended, to avoid "
-                "incurring compilation costs.");
+		"discard any partial minibatches of 'uneven' size that may be "
+		"encountered at the end.");
 
     po.Read(argc, argv);
 
@@ -112,7 +111,7 @@ int main(int argc, char *argv[]) {
       num_read++;
 
       if (minibatch_ready || (!discard_partial_minibatches &&
-                              (example_reader.Done() && !examples.empty()))) {
+			      (example_reader.Done() && !examples.empty()))) {
         NnetExample merged_eg;
         MergeExamples(examples, compress, &merged_eg);
         std::ostringstream ostr;
@@ -131,3 +130,5 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
+
+

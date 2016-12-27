@@ -20,6 +20,7 @@
 
 #include "nnet3/nnet-optimize.h"
 #include "nnet3/nnet-optimize-utils.h"
+#include "base/timer.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -532,45 +533,16 @@ void Optimize(const NnetOptimizeOptions &config,
 // of inputs and outputs
 size_t ComputationRequestHasher::operator() (const ComputationRequest *cr) const {
   size_t ans = 0;
+  size_t p1 = 4111, p2 = 26951;
+  IoSpecificationHasher io_hasher;
   std::vector<IoSpecification>::const_iterator itr = cr->inputs.begin(),
                                                end = cr->inputs.end();
-  for (; itr != end; ++itr) {
-    ans += IoSpecificationToInt(*itr);
-  }
+  for (; itr != end; ++itr)
+    ans = ans * p1 + io_hasher(*itr);
   itr = cr->outputs.begin();
   end = cr->outputs.end();
-  for (; itr != end; ++itr) {
-    ans += IoSpecificationToInt(*itr);
-  }
-  return ans;
-}
-
-size_t ComputationRequestHasher::IoSpecificationToInt(const IoSpecification& spec) const {
-  size_t ans;
-  size_t n = 19;  // this value is used to extract only a subset of elements to hash;
-                  // it makes the hasher faster.
-  StringHasher string_hasher;
-  ans = string_hasher(spec.name);
-  std::vector<Index>::const_iterator iter = spec.indexes.begin(),
-      end = spec.indexes.end(),
-      med = end;
-  if (med > iter + n)
-    med = iter + n;
-
-  for (; iter != med; ++iter) {
-    ans += iter->n * 1619;
-    ans += iter->t * 15649;
-    ans += iter->x * 89809;
-  }
-  // after the first 'n' values, look only at every n'th value.  this makes the
-  // hashing much faster, and in the kinds of structures that we actually deal
-  // with, we shouldn't get unnecessary hash collisions as a result of this
-  // optimization.
-  for (; iter < end; iter += n) {
-    ans += iter->n * 1619;
-    ans += iter->t * 15649;
-    ans += iter->x * 89809;
-  }
+  for (; itr != end; ++itr)
+    ans = ans * p2 + io_hasher(*itr);
   return ans;
 }
 
@@ -643,20 +615,25 @@ CachingOptimizingCompiler::~CachingOptimizingCompiler() {
     delete itr->first;
     delete itr->second.first;
   }
+  KALDI_LOG << seconds_taken_ << " seconds taken in nnet3 compilation";
 }
 
 const NnetComputation* CachingOptimizingCompiler::Compile(
     const ComputationRequest  &in_request) {
+  Timer timer;
+  const NnetComputation *ans;
   // find computation in the cache
   CacheType::iterator cit = computation_cache_.find(&in_request);
   if (cit == computation_cache_.end()) {
-    return CompileAndCache(in_request);
+    ans = CompileAndCache(in_request);
   } else {
     // if found, update access queue
     const NnetComputation *computation = cit->second.first;
     UpdateAccessQueue(cit);
-    return computation;
+    ans = computation;
   }
+  seconds_taken_ += timer.Elapsed();
+  return ans;
 }
 
 const NnetComputation* CachingOptimizingCompiler::CompileAndCache(
