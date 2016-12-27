@@ -49,12 +49,12 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 // EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "lm/mikolov-rnnlm-lib.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "lm/mikolov-rnnlm-lib.h"
 #include "util/table-types.h"
 
 namespace rnnlm {
@@ -197,7 +197,7 @@ CRnnLM::~CRnnLM() {
 }
 
 real CRnnLM::random(real min, real max) {
-  return rand() / (real)RAND_MAX * (max-min) + min;
+  return rand() / (real)RAND_MAX * (max - min) + min;
 }
 
 void CRnnLM::setRnnLMFile(const std::string &str) {
@@ -501,7 +501,7 @@ void CRnnLM::initNet() {
       b += vocab[i].cn;
     }
     for (i = 0; i < vocab_size; i++) {
-      df+= vocab[i].cn / static_cast<double>(b);
+      df += vocab[i].cn / static_cast<double>(b);
       if (df > 1) df = 1;
       if (df > (a + 1) / static_cast<double>(class_size)) {
         vocab[i].class_index = a;
@@ -522,7 +522,7 @@ void CRnnLM::initNet() {
       if (df > 1) df = 1;
       if (df > (a + 1) / static_cast<double>(class_size)) {
         vocab[i].class_index = a;
-        if (a < class_size-1) a++;
+        if (a < class_size - 1) a++;
       } else {
         vocab[i].class_index = a;
       }
@@ -796,7 +796,7 @@ void CRnnLM::netReset() {  // cleans hidden layer activation + bptt history
     for (a = 1; a < bptt + bptt_block; a++) {
       bptt_history[a] = 0;
     }
-    for (a = bptt + bptt_block-1; a > 1; a--) {
+    for (a = bptt + bptt_block - 1; a > 1; a--) {
       for (b = 0; b < layer1_size; b++) {
         bptt_hidden[a * layer1_size + b].ac = 0;
         bptt_hidden[a * layer1_size + b].er = 0;
@@ -829,35 +829,35 @@ void CRnnLM::matrixXvector(struct neuron *dest, struct neuron *srcvec,
       val8 = 0;
 
       for (a = from2; a < to2; a++) {
-        val1 += srcvec[a].ac * srcmatrix[a+(b*8+from+0)*matrix_width].weight;
-        val2 += srcvec[a].ac * srcmatrix[a+(b*8+from+1)*matrix_width].weight;
-        val3 += srcvec[a].ac * srcmatrix[a+(b*8+from+2)*matrix_width].weight;
-        val4 += srcvec[a].ac * srcmatrix[a+(b*8+from+3)*matrix_width].weight;
+        val1 += srcvec[a].ac * srcmatrix[a + (b * 8 + from + 0) * matrix_width].weight;
+        val2 += srcvec[a].ac * srcmatrix[a + (b * 8 + from + 1) * matrix_width].weight;
+        val3 += srcvec[a].ac * srcmatrix[a + (b * 8 + from + 2) * matrix_width].weight;
+        val4 += srcvec[a].ac * srcmatrix[a + (b * 8 + from + 3) * matrix_width].weight;
 
-        val5 += srcvec[a].ac * srcmatrix[a+(b*8+from+4)*matrix_width].weight;
-        val6 += srcvec[a].ac * srcmatrix[a+(b*8+from+5)*matrix_width].weight;
-        val7 += srcvec[a].ac * srcmatrix[a+(b*8+from+6)*matrix_width].weight;
-        val8 += srcvec[a].ac * srcmatrix[a+(b*8+from+7)*matrix_width].weight;
+        val5 += srcvec[a].ac * srcmatrix[a + (b * 8 + from + 4) * matrix_width].weight;
+        val6 += srcvec[a].ac * srcmatrix[a + (b * 8 + from + 5) * matrix_width].weight;
+        val7 += srcvec[a].ac * srcmatrix[a + (b * 8 + from + 6) * matrix_width].weight;
+        val8 += srcvec[a].ac * srcmatrix[a + (b * 8 + from + 7) * matrix_width].weight;
       }
-      dest[b*8+from+0].ac += val1;
-      dest[b*8+from+1].ac += val2;
-      dest[b*8+from+2].ac += val3;
-      dest[b*8+from+3].ac += val4;
+      dest[b * 8 + from + 0].ac += val1;
+      dest[b * 8 + from + 1].ac += val2;
+      dest[b * 8 + from + 2].ac += val3;
+      dest[b * 8 + from + 3].ac += val4;
 
-      dest[b*8+from+4].ac += val5;
-      dest[b*8+from+5].ac += val6;
-      dest[b*8+from+6].ac += val7;
-      dest[b*8+from+7].ac += val8;
+      dest[b * 8 + from + 4].ac += val5;
+      dest[b * 8 + from + 5].ac += val6;
+      dest[b * 8 + from + 6].ac += val7;
+      dest[b * 8 + from + 7].ac += val8;
     }
 
-    for (b = b*8; b < to-from; b++) {
+    for (b = b * 8; b < to - from; b++) {
       for (a = from2; a < to2; a++) {
         dest[b+from].ac +=
-            srcvec[a].ac * srcmatrix[a+(b+from)*matrix_width].weight;
+            srcvec[a].ac * srcmatrix[a + (b + from) * matrix_width].weight;
       }
     }
   } else {    // er mod
-    for (a = 0; a < (to2-from2)/8; a++) {
+    for (a = 0; a < (to2 - from2) / 8; a++) {
       val1 = 0;
       val2 = 0;
       val3 = 0;
@@ -869,25 +869,25 @@ void CRnnLM::matrixXvector(struct neuron *dest, struct neuron *srcvec,
       val8 = 0;
 
       for (b = from; b < to; b++) {
-        val1 += srcvec[b].er * srcmatrix[a*8+from2+0+b*matrix_width].weight;
-        val2 += srcvec[b].er * srcmatrix[a*8+from2+1+b*matrix_width].weight;
-        val3 += srcvec[b].er * srcmatrix[a*8+from2+2+b*matrix_width].weight;
-        val4 += srcvec[b].er * srcmatrix[a*8+from2+3+b*matrix_width].weight;
+        val1 += srcvec[b].er * srcmatrix[a * 8 + from2 + 0 + b * matrix_width].weight;
+        val2 += srcvec[b].er * srcmatrix[a * 8 + from2 + 1 + b * matrix_width].weight;
+        val3 += srcvec[b].er * srcmatrix[a * 8 + from2 + 2 + b * matrix_width].weight;
+        val4 += srcvec[b].er * srcmatrix[a * 8 + from2 + 3 + b * matrix_width].weight;
 
-        val5 += srcvec[b].er * srcmatrix[a*8+from2+4+b*matrix_width].weight;
-        val6 += srcvec[b].er * srcmatrix[a*8+from2+5+b*matrix_width].weight;
-        val7 += srcvec[b].er * srcmatrix[a*8+from2+6+b*matrix_width].weight;
-        val8 += srcvec[b].er * srcmatrix[a*8+from2+7+b*matrix_width].weight;
+        val5 += srcvec[b].er * srcmatrix[a * 8 + from2 + 4 + b * matrix_width].weight;
+        val6 += srcvec[b].er * srcmatrix[a * 8 + from2 + 5 + b * matrix_width].weight;
+        val7 += srcvec[b].er * srcmatrix[a * 8 + from2 + 6 + b * matrix_width].weight;
+        val8 += srcvec[b].er * srcmatrix[a * 8 + from2 + 7 + b * matrix_width].weight;
       }
-      dest[a*8+from2+0].er += val1;
-      dest[a*8+from2+1].er += val2;
-      dest[a*8+from2+2].er += val3;
-      dest[a*8+from2+3].er += val4;
+      dest[a * 8 + from2 + 0].er += val1;
+      dest[a * 8 + from2 + 1].er += val2;
+      dest[a * 8 + from2 + 2].er += val3;
+      dest[a * 8 + from2 + 3].er += val4;
 
-      dest[a*8+from2+4].er += val5;
-      dest[a*8+from2+5].er += val6;
-      dest[a*8+from2+6].er += val7;
-      dest[a*8+from2+7].er += val8;
+      dest[a * 8 + from2 + 4].er += val5;
+      dest[a * 8 + from2 + 5].er += val6;
+      dest[a * 8 + from2 + 6].er += val7;
+      dest[a * 8 + from2 + 7].er += val8;
     }
 
     for (a = a * 8; a < to2 - from2; a++) {
@@ -940,11 +940,11 @@ void CRnnLM::computeNet(int last_word, int word) {
   }
 
   matrixXvector(neu1, neu0, syn0, layer0_size, 0, layer1_size,
-                layer0_size-layer1_size, layer0_size, 0);
+                layer0_size - layer1_size, layer0_size, 0);
 
   for (b = 0; b < layer1_size; b++) {
     a = last_word;
-    if (a != -1) neu1[b].ac += neu0[a].ac * syn0[a+b*layer0_size].weight;
+    if (a != -1) neu1[b].ac += neu0[a].ac * syn0[a + b * layer0_size].weight;
   }
 
   // activate 1      --sigmoid
@@ -991,9 +991,9 @@ void CRnnLM::computeNet(int last_word, int word) {
 
     for (a = 0; a < direct_order; a++) {
       b = 0;
-      if (a > 0) if (history[a-1] == -1) break;
+      if (a > 0) if (history[a - 1] == -1) break;
       // if OOV was in history, do not use this N-gram feature and higher orders
-      hash[a] = PRIMES[0]*PRIMES[1];
+      hash[a] = PRIMES[0] * PRIMES[1];
 
       for (b = 1; b <= a; b++) {
         hash[a] += PRIMES[(a * PRIMES[b] + b) % PRIMES_SIZE]
@@ -1069,10 +1069,10 @@ void CRnnLM::computeNet(int last_word, int word) {
 
     for (a = 0; a < direct_order; a++) {
       b = 0;
-      if (a > 0) if (history[a-1] == -1) break;
+      if (a > 0) if (history[a - 1] == -1) break;
       hash[a] =
           PRIMES[0] * PRIMES[1] *
-          static_cast<uint64>(vocab[word].class_index+1);
+          static_cast<uint64>(vocab[word].class_index + 1);
 
       for (b = 1; b <= a; b++) {
         hash[a] += PRIMES[(a * PRIMES[b] + b) % PRIMES_SIZE]
