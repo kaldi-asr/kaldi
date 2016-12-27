@@ -18,7 +18,7 @@ set -o pipefail  #Exit if any of the commands in the pipeline will
 . conf/common_vars.sh || exit 1;
 
 set -u           #Fail on an undefined variable
-bnf_train_stage=-100 # the stage variable used in multilingual bottleneck training.
+bnf_train_stage=-10 # the stage variable used in multilingual bottleneck training.
 stage=1
 num_archives=20
 speed_perturb=true
@@ -33,13 +33,8 @@ use_flp=true
 lang=$1
 . local/prepare_lang_conf.sh --fullLP $use_flp $lang || exit 1;
 
-if $use_flp; then
-. local/prepare_flp_langconf.sh $lang
-else
-. local/prepare_llp_langconf.sh $lang
-fi
-
 langconf=langconf/$lang/lang.conf
+
 [ ! -f $langconf ] && echo 'Language configuration does not exist! Use the configurations in conf/lang/* as a startup' && exit 1;
 . $langconf || exit 1;
 
@@ -62,15 +57,16 @@ ivector_dir=$exp_dir/nnet3/ivectors_train${suffix}_gb
 mkdir -p $multidir${suffix}
 
 if [ ! -f $multidir${suffix}/.done ]; then 
-  echo "$0: Train multilingual Bottleneck network using lang list = ${lang_list[@]}"
-  ./local/nnet3/run_tdnn_joint_babel_sp_bnf.sh --dir $multidir \
+  echo "$0: Train multilingual DNN using Bottleneck layer with lang list = ${lang_list[@]}"
+  . local/nnet3/run_tdnn_multilingual.sh --dir $multidir \
      --avg-num-archives $num_archives \
+     --bnf-dim 42 \
      --global-extractor $global_extractor \
      --train-stage $bnf_train_stage --stage $stage  || exit 1;
 
   touch $multidir${suffix}/.done
 else
-  echo "$0 Skip multilingual Bottleneck network training; you can force to run this step by deleting $multidir${suffix}/.done"
+  echo "$0 Skip multilingual DNN training; you can force to run this step by deleting $multidir${suffix}/.done"
 fi
 
 [ ! -d $dump_bnf_dir ] && mkdir -p $dump_bnf_dir

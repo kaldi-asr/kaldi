@@ -56,7 +56,7 @@ dir=exp/nnet3/multi_bnf
 ivector_suffix=_gb # if ivector_suffix = _gb, the iVector extracted using global iVector extractor
                    # trained on pooled data from all languages.
                    # Otherwise, it uses iVector extracted using local iVector extractor.
-
+bnf_dim=           # If non-empty, the bottleneck layer with this dimension is added at layer before softmax.
 . ./path.sh
 . ./cmd.sh
 . ./utils/parse_options.sh
@@ -147,9 +147,10 @@ feat_dim=`feat-to-dim scp:${multi_data_dirs[0]}/feats.scp -`
 
 if [ $stage -le 9 ]; then
   echo "$0: creating multilingual neural net configs using the xconfig parser";
-
-  #num_targets=$(tree-info exp/chain/tri5_7d_tree_sp/tree |grep num-pdfs|awk '{print $2}')
-  #learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  
+  if [ -z $bnf_dim ]; then
+    bnf_dim=625
+  fi
   input_layer_dim=$[3*$feat_dim+$ivector_dim]
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
@@ -167,10 +168,10 @@ if [ $stage -le 9 ]; then
   relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=625
   relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=625
   relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=625
-  relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=625
+  relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=$bnf_dim
   # adding the layers for diffrent language's output
 EOF
-
+  # added separate outptut layer and softmax for all languages.
   for lang_index in `seq 0 $[$num_langs-1]`;do
     num_targets=`tree-info exp/${lang_list[$lang_index]}/$alidir/tree 2>/dev/null | grep num-pdfs | awk '{print $2}'` || exit 1;
 
@@ -184,16 +185,15 @@ EOF
 
   cat <<EOF >> $dir/configs/vars
   add_lda=false
-  include_log_softmax=true
 EOF
+
   # removing the extra output node "output-tmp" added for back-compatiblity with 
   # xconfig to config conversion.
   nnet3-copy --edits="remove-output-nodes name=output-tmp" $dir/configs/ref.raw $dir/configs/ref.raw || exit 1;
 fi
 
-if false; then
 if [ $stage -le 10 ]; then
-  echo "$0: Generate separate egs dir per language for multilingual training."
+  echo "$0: Generates separate egs dir per language for multilingual training."
   # sourcing the "vars" below sets
   #model_left_context=(something)
   #model_right_context=(something)
@@ -221,7 +221,6 @@ if [ $stage -le 11 ] && [ -z $megs_dir ]; then
     $num_langs ${common_egs_dir[@]} || exit 1;
 fi
 
-fi #100
 if [ -z $megs_dir ];then
   megs_dir=$dir/egs
 fi
@@ -250,11 +249,14 @@ fi
 
 if [ $stage -le 13 ]; then
   for lang_index in `seq 0 $num_langs`;do
-    echo "$0: compute average posterior and readjust priors for language index $lang_index."
+    echo "$0: compute average posterior and readjust priors for language ${lang_list[$lang_index]}."
     echo "alidir = ${multi_ali_dirs[$lang_index]} "
     lang_dir=$dir/${lang_list[$lang_index]}
     mkdir -p  $lang_dir
-    nnet3-copy --edits="rename-node old-name=output-$lang_index new-name=output" $dir/final.raw $lang_dir/final.${lang_index}.raw || exit 1; 
+    # rename output name for each lang to 'output'.
+    nnet3-copy --edits="rename-node old-name=output-$lang_index new-name=output" \
+      $dir/final.raw $lang_dir/final.${lang_index}.raw || exit 1;
+
     steps/nnet3/compute_and_adjust_priors.py --cmd="$decode_cmd" \
       --egs.dir $megs_dir \
       --egs.use-multitask-egs true \
