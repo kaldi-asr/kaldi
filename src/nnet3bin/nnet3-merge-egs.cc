@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
         "e.g.\n"
         "nnet3-merge-egs --minibatch-size=512 ark:1.egs ark:- | nnet3-train-simple ... \n"
         "See also nnet3-copy-egs\n";
-        
+
     bool compress = false;
     int32 minibatch_size = 512;
     bool measure_output_frames = true;
@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
     po.Register("discard-partial-minibatches", &discard_partial_minibatches,
 		"discard any partial minibatches of 'uneven' size that may be "
 		"encountered at the end.");
-    
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
@@ -89,12 +89,12 @@ int main(int argc, char *argv[]) {
 
     SequentialNnetExampleReader example_reader(examples_rspecifier);
     NnetExampleWriter example_writer(examples_wspecifier);
-    
+
     std::vector<NnetExample> examples;
     examples.reserve(minibatch_size);
 
     int32 cur_num_output_frames = 0;
-    
+
     int64 num_read = 0, num_written = 0;
     while (!example_reader.Done()) {
       const NnetExample &cur_eg = example_reader.Value();

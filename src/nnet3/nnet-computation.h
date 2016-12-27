@@ -65,8 +65,10 @@ struct MiscComputationInfo {
 // produce.  For inputs, the name should correspond to an input or component
 // node name in the nnet (components are allowed so context can be provided in
 // recurrent setups); for outputs, the name should be an output node name in the
-// Nnet.  In the normal case there will just be one input and one output, and
-// the indexes will vary only in the t index, with the others all identical.
+// Nnet.
+// note: this structure is used to represent egs both before and after merging
+// into minibatches; if this merging has been done, the indexes will vary in
+// the 'n' dimension.
 struct IoSpecification {
   std::string name;
   std::vector<Index> indexes;
@@ -95,6 +97,10 @@ struct IoSpecification {
   void Write(std::ostream &ostream, bool binary) const;
 
   bool operator== (const IoSpecification &other) const;
+};
+
+struct IoSpecificationHasher {
+  size_t operator () (const IoSpecification &io_spec) const;
 };
 
 

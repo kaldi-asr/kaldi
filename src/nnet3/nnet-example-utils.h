@@ -23,6 +23,7 @@
 #include "nnet3/nnet-example.h"
 #include "nnet3/nnet-computation.h"
 #include "nnet3/nnet-compute.h"
+#include "util/kaldi-table.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -294,10 +295,202 @@ class UtteranceSplitter {
   // chunks, and then add the subtracted number of copies of the primary
   // num-frames to the split.
   std::vector<std::vector<std::vector<int32> > > splits_for_length_;
+};
 
+
+class ExampleMergingConfig {
+public:
+  // The following configuration values are registered on the command line.
+  bool compress;
+  std::string measure_output_frames;  // for back-compatibility, not used.
+  std::string minibatch_size;
+  std::string discard_partial_minibatches;   // for back-compatibility, not used.
+
+  ExampleMergingConfig(): compress(false),
+                          measure_output_frames("deprecated"),
+                          minibatch_size("256"),
+                          discard_partial_minibatches("deprecated") { }
+
+  void Register(OptionsItf *po) {
+    po->Register("compress", &compress, "If true, compress the output examples "
+                 "(not recommended unless you are writing to disk)");
+    po->Register("measure-output-frames", &measure_output_frames, "This "
+                 "value will be ignored (included for back-compatibility)");
+    po->Register("discard-partial-minibatches", &discard_partial_minibatches,
+                 "This value will be ignored (included for back-compatibility)");
+    po->Register("minibatch-size", &minibatch_size,
+                 "String controlling the minibatch size.  May be just an integer, "
+                 "meaning a fixed minibatch size (e.g. --minibatch-size=128). "
+                 "May be a list of ranges and values, e.g. --minibatch-size=32,64 "
+                 "or --minibatch-size=16-32,64,128.  All minibatches will be of "
+                 "the largest size until the end of the input is reached; "
+                 "then, increasingly smaller sizes will be allowed.  Only egs "
+                 "with the same structure (e.g num-frames) are merged.  You may "
+                 "specify different minibatch sizes for different sizes of eg "
+                 "(defined as the maximum number of Indexes on any input), in "
+                 "the format "
+                 "--minibatch-size='eg_size1=mb_sizes1/eg_size2=mb_sizes2', e.g. "
+                 "--minibatch-size=128=64-128,256/256=32-64,128.  Egs are given "
+                 "minibatch-sizes based on the specified eg-size closest to "
+                 "their actual size.");
+  }
+
+
+  // this function computes the derived (private) parameters; it must be called
+  // after the command-line parameters are read and before MinibatchSize() is
+  // called.
+  void ComputeDerived();
+
+  /// This function tells you what minibatch size should be used for this eg.
+
+  ///  @param [in] size_of_eg   The "size" of the eg, as obtained by
+  ///                           GetNnetExampleSize() or a similar function (up
+  ///                           to the caller).
+  ///  @param [in] num_available_egs   The number of egs of this size that are
+  ///                            currently available; should be >0.  The
+  ///                            value returned will be <= this value, possibly
+  ///                            zero.
+  ///  @param [in] input_ended   True if the input has ended, false otherwise.
+  ///                            This is important because before the input has
+  ///                            ended, we will only batch egs into the largest
+  ///                            possible minibatch size among the range allowed
+  ///                            for that size of eg.
+  ///  @return                   Returns the minibatch size to use in this
+  ///                            situation, as specified by the configuration.
+  int32 MinibatchSize(int32 size_of_eg,
+                      int32 num_available_egs,
+                      bool input_ended) const;
+
+
+ private:
+  // struct IntSet is a representation of something like 16-32,64, which is a
+  // nonempty list of either nonnegative integers or ranges of nonnegative
+  // integers.  Conceptually it represents a set of nonnegative integers.
+  struct IntSet {
+    // largest_size is the largest integer in any of the ranges (64 in this
+    // example).
+    int32 largest_size;
+    // e.g. would contain ((16,32), (64,64)) in this example.
+    std::vector<std::pair<int32, int32> > ranges;
+    // Returns the largest value in any range (i.e. in the set of
+    // integers that this struct represents), that is <= max_value,
+    // or 0 if there is no value in any range that is <= max_value.
+    // In this example, this function would return the following:
+    // 128->64, 64->64, 63->32, 31->31, 16->16, 15->0, 0->0
+    int32 LargestValueInRange(int32 max_value) const;
+  };
+  static bool ParseIntSet(const std::string &str, IntSet *int_set);
+
+  // 'rules' is derived from the configuration values above by ComputeDerived(),
+  // and are not set directly on the command line.  'rules' is a list of pairs
+  // (eg-size, int-set-of-minibatch-sizes); If no explicit eg-sizes were
+  // specified on the command line (i.e. there was no '=' sign in the
+  // --minibatch-size option), then we just set the int32 to 0.
+  std::vector<std::pair<int32, IntSet> > rules;
+};
+
+
+/// This function returns the 'size' of a nnet-example as defined for purposes
+/// of merging egs, which is defined as the largest number of Indexes in any of
+/// the inputs or outputs of the example.
+int32 GetNnetExampleSize(const NnetExample &a);
+
+
+
+
+
+/// This class is responsible for storing, and displaying in log messages,
+/// statistics about how examples of different sizes (c.f. GetNnetExampleSize())
+/// were merged into minibatches, and how many examples were left over and
+/// discarded.
+class ExampleSizeStats {
+ public:
+
+  /// Users call this function to inform this class that one minibatch has been
+  /// written aggregating 'minibatch_size' separate examples of original size
+  /// 'example_size' (e.g. as determined by GetNnetExampleSize(), but the caller
+  /// does that.
+  /// The 'structure_hash' is provided so that this class can distinguish
+  /// between egs that have the same size but different structure.  In the
+  /// extremely unlikely eventuality that there is a hash collision, it will
+  /// cause misleading stats to be printed out.
+  void WroteExample(int32 example_size, size_t structure_hash,
+                    int32 minibatch_size);
+
+  /// Users call this function to inform this class that after processing all
+  /// the data, for examples of original size 'example_size', 'num_discarded'
+  /// examples could not be put into a minibatch and were discarded.
+  void DiscardedExamples(int32 example_size, size_t structure_hash,
+                         int32 num_discarded);
+
+  /// Calling this will cause a log message with information about the
+  /// examples to be printed.
+  void PrintStats() const;
+
+ private:
+  // this struct stores the stats for examples of a particular size and
+  // structure.
+  struct StatsForExampleSize {
+    int32 num_discarded;
+    // maps from minibatch-size (i.e. number of egs that were
+    // aggregated into that minibatch), to the number of such
+    // minibatches written.
+    unordered_map<int32, int32> minibatch_to_num_written;
+    StatsForExampleSize(): num_discarded(0) { }
+  };
+
+
+  typedef unordered_map<std::pair<int32, size_t>, StatsForExampleSize,
+                        PairHasher<int32, size_t> > StatsType;
+
+  // this maps from a pair (example_size, structure_hash) to to the stats for
+  // examples with those characteristics.
+  StatsType stats_;
+
+  void PrintAggregateStats() const;
+  void PrintSpecificStats() const;
 
 };
 
+
+/// This class is responsible for arranging examples in groups
+/// that have the same strucure (i.e. the same input and output
+/// indexes), and outputting them in suitable minibatches
+/// as defined by ExampleMergingConfig.
+class ExampleMerger {
+  ExampleMerger(const ExampleMergingConfig &config,
+                NnetExampleWriter *writer);
+
+  // This function accepts an example, and if possible, writes a merged example
+  // out.  The ownership of the pointer 'a' is transferred to this class when
+  // you call this function.
+  void AcceptExample(NnetExample *a);
+
+  // This function announces to the class that the input has finished, so it
+  // should flush out any smaller-sizes minibatches, as dictated by the config.
+  // This will be called in the destructor, but you can call it explicitly when
+  // all the input is done if you want to.
+  // It also prints the stats.
+  void Finish();
+
+  ~ExampleMerger() { Finish(); };
+ private:
+  // called by Finish() and AcceptExample().  Merges, updates the
+  // stats, and writes.
+  void WriteMinibatch(const std::vector<NnetExample> &egs);
+
+  bool finished_;
+  int32 num_egs_written_;
+  const ExampleMergingConfig &config_;
+  NnetExampleWriter *writer_;
+  ExampleSizeStats stats_;
+
+  // Note: the "key" into the egs is the first element of the vector.
+  typedef unordered_map<NnetExample*, std::vector<NnetExample*>,
+                        NnetExampleStructureHasher,
+                        NnetExampleStructureCompare> MapType;
+   MapType eg_to_egs_;
+};
 
 
 

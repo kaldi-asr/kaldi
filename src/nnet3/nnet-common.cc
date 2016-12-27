@@ -364,6 +364,36 @@ size_t CindexVectorHasher::operator () (
   return ans;
 }
 
+size_t IndexVectorHasher::operator () (
+    const std::vector<Index> &index_vector) const {
+  size_t n1 = 15, n2 = 10;  // n1 and n2 are used to extract only a subset of
+                            // elements to hash; this makes the hasher faster by
+                            // skipping over more elements.  Setting n1 large or
+                            // n2 to 1 would make the hasher consider all
+                            // elements.
+  // all long-ish numbers appearing below are randomly chosen primes.
+  size_t ans = 1433 + 34949  * index_vector.size();
+  std::vector<Index>::const_iterator iter = index_vector.begin(),
+      end = index_vector.end(), med = end;
+  if (med > iter + n1)
+    med = iter + n1;
+
+  for (; iter != med; ++iter) {
+    ans += iter->n * 1619;
+    ans += iter->t * 15649;
+    ans += iter->x * 89809;
+  }
+  // after the first n1 values, look only at every n2'th value.  this makes the
+  // hashing much faster, and in the kinds of structures that we actually deal
+  // with, we shouldn't get unnecessary hash collisions as a result of this
+  // optimization.
+  for (; iter < end; iter += n2) {
+    ans += iter->n * 1619;
+    ans += iter->t * 15649;
+    ans += iter->x * 89809;
+  }
+  return ans;
+}
 
 std::ostream &operator << (std::ostream &ostream, const Index &index) {
   return ostream << '(' << index.n << ' ' << index.t << ' ' << index.x << ')';

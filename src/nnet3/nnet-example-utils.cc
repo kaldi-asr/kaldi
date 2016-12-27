@@ -23,6 +23,7 @@
 #include "hmm/posterior.h"
 #include "util/text-utils.h"
 #include <numeric>
+#include <iomanip>
 
 namespace kaldi {
 namespace nnet3 {
@@ -812,6 +813,362 @@ void UtteranceSplitter::SetOutputWeights(
          t++)
       chunk.output_weights[t - t_start] = 1.0 / count[t];
   }
+}
+
+// static
+bool ExampleMergingConfig::ParseIntSet(const std::string &str,
+                                       ExampleMergingConfig::IntSet *int_set) {
+  std::vector<std::string> split_str;
+  SplitStringToVector(str, ",", false, &split_str);
+  if (split_str.empty())
+    return false;
+  int_set->largest_size = 0;
+  int_set->ranges.resize(split_str.size());
+  for (size_t i = 0; i < split_str.size(); i++) {
+    std::vector<int32> split_range;
+    // note: because we split on '-', it't not possible to
+    // get negative values in 'split_range'.
+    SplitStringToIntegers(str, "-", false, &split_range);
+    if (split_range.size() < 1 || split_range.size() > 2 ||
+        split_range[0] > split_range[1])
+      return false;
+    int_set->ranges[i].first = split_range[0];
+    int_set->ranges[i].second = split_range.back();
+    int_set->largest_size = std::max<int32>(int_set->largest_size,
+                                            split_range.back());
+  }
+  return true;
+}
+
+void ExampleMergingConfig::ComputeDerived() {
+  if (measure_output_frames != "deprecated") {
+    KALDI_WARN << "The --measure-output-frames option is deprecated "
+        "and will be ignored.";
+  }
+  if (discard_partial_minibatches != "deprecated") {
+    KALDI_WARN << "The --discard-partial-minibatches option is deprecated "
+        "and will be ignored.";
+  }
+  std::vector<std::string> minibatch_size_split;
+  SplitStringToVector(minibatch_size, "/", false, &minibatch_size_split);
+  if (minibatch_size_split.empty()) {
+    KALDI_ERR << "Invalid option --minibatch-size=" << minibatch_size;
+  }
+
+  rules.resize(minibatch_size_split.size());
+  for (size_t i = 0; i < minibatch_size_split.size(); i++) {
+    int32 &minibatch_size = rules[i].first;
+    IntSet &int_set = rules[i].second;
+    // 'this_rule' will be either something like "256" or like "64-128,256"
+    // (but these two only if  minibatch_size_split.size() == 1, or something with
+    // an example-size specified, like "256=64-128,256"
+    std::string &this_rule = minibatch_size_split[i];
+    if (this_rule.find('=') != std::string::npos) {
+      std::vector<std::string> rule_split;  // split on '='
+      SplitStringToVector(this_rule, "=", false, &rule_split);
+      if (rule_split.size() != 2) {
+        KALDI_ERR << "Could not parse option --minibatch-size="
+                  << minibatch_size;
+      }
+      if (!ConvertStringToInteger(rule_split[0], &minibatch_size) ||
+          !ParseIntSet(rule_split[1], &int_set))
+        KALDI_ERR << "Could not parse option --minibatch-size="
+                  << minibatch_size;
+
+    } else {
+      if (minibatch_size_split.size() != 1) {
+        KALDI_ERR << "Could not parse option --minibatch-size="
+                  << minibatch_size << " (all rules must have "
+                  << "minibatch-size specified if >1 rule)";
+      }
+      minibatch_size = 0;
+      if (!ParseIntSet(this_rule, &int_set))
+        KALDI_ERR << "Could not parse option --minibatch-size="
+                  << minibatch_size;
+    }
+  }
+  {
+    // check that no size is repeated.
+    std::vector<int32> all_sizes(minibatch_size_split.size());
+    for (size_t i = 0; i < minibatch_size_split.size(); i++)
+      all_sizes[i] = rules[i].first;
+    std::sort(all_sizes.begin(), all_sizes.end());
+    if (!IsSortedAndUniq(all_sizes)) {
+      KALDI_ERR << "Invalid --minibatch-size=" << minibatch_size
+                << " (repeated example-sizes)";
+    }
+  }
+}
+
+int32 ExampleMergingConfig::MinibatchSize(int32 size_of_eg,
+                                          int32 num_available_egs,
+                                          bool input_ended) const {
+  KALDI_ASSERT(num_available_egs > 0 && size_of_eg > 0);
+  int32 num_rules = rules.size();
+  if (num_rules == 0)
+    KALDI_ERR << "You need to call ComputeDerived() before calling "
+        "MinibatchSize().";
+  int32 min_distance = std::numeric_limits<int32>::max(),
+      closest_rule_index = 0;
+  for (int32 i = 0; i < num_rules; i++) {
+    int32 distance = std::abs(size_of_eg - rules[i].first);
+    if (distance < min_distance) {
+      min_distance = distance;
+      closest_rule_index = i;
+    }
+  }
+  if (!input_ended) {
+    // until the input ends, we can only use the largest available
+    // minibatch-size (otherwise, we could expect more later).
+    int32 largest_size = rules[closest_rule_index].second.largest_size;
+    if (largest_size <= num_available_egs)
+      return largest_size;
+    else
+      return 0;
+  } else {
+    int32 s = rules[closest_rule_index].second.LargestValueInRange(
+        num_available_egs);
+    KALDI_ASSERT(s <= num_available_egs);
+    return s;
+  }
+}
+
+
+void ExampleSizeStats::WroteExample(int32 example_size,
+                                    size_t structure_hash,
+                                    int32 minibatch_size) {
+  std::pair<int32, size_t> p(example_size, structure_hash);
+
+
+  unordered_map<int32, int32> &h = stats_[p].minibatch_to_num_written;
+  unordered_map<int32, int32>::iterator iter = h.find(minibatch_size);
+  if (iter == h.end())
+    h[minibatch_size] = 1;
+  else
+    iter->second += 1;
+}
+
+void ExampleSizeStats::DiscardedExamples(int32 example_size,
+                                         size_t structure_hash,
+                                         int32 num_discarded) {
+  std::pair<int32, size_t> p(example_size, structure_hash);
+  stats_[p].num_discarded += num_discarded;
+}
+
+
+void ExampleSizeStats::PrintStats() const {
+  PrintAggregateStats();
+  PrintSpecificStats();
+}
+
+void ExampleSizeStats::PrintAggregateStats() const {
+  // First print some aggregate stats.
+  int64 num_distinct_egs_types = 0,  // number of distinct types of input egs
+                                     // (differing in size or structure).
+      total_discarded_egs = 0, // total number of discarded egs.
+      total_discarded_egs_size = 0, // total number of discarded egs each multiplied by size
+                                    // of that eg
+      total_non_discarded_egs = 0,  // total over all minibatches written, of
+                                    // minibatch-size, equals number of input egs
+                                    // that were not discarded.
+      total_non_discarded_egs_size = 0,  // total over all minibatches of size-of-eg
+                                     // * minibatch-size.
+      num_minibatches = 0,  // total number of minibatches
+      num_distinct_minibatch_types = 0;  // total number of combination of
+                                         // (type-of-eg, number of distinct
+                                         // minibatch-sizes for that eg-type)-
+                                         // reflects the number of time we have
+                                         // to compile.
+
+  StatsType::const_iterator eg_iter = stats_.begin(), eg_end = stats_.end();
+
+  for (; eg_iter != eg_end; ++eg_iter) {
+    int32 eg_size = eg_iter->first.first;
+    const StatsForExampleSize &stats = eg_iter->second;
+    num_distinct_egs_types++;
+    total_discarded_egs += stats.num_discarded;
+    total_discarded_egs_size += stats.num_discarded * eg_size;
+
+    unordered_map<int32, int32>::const_iterator
+        mb_iter = stats.minibatch_to_num_written.begin(),
+        mb_end = stats.minibatch_to_num_written.end();
+    for (; mb_iter != mb_end; ++mb_iter) {
+      int32 mb_size = mb_iter->first,
+          num_written = mb_iter->second;
+      num_distinct_minibatch_types++;
+      num_minibatches += num_written;
+      total_non_discarded_egs += num_written * mb_size;
+      total_non_discarded_egs_size += num_written * mb_size * eg_size;
+    }
+  }
+  // the averages are written as integers- we don't really need more precision
+  // than that.
+  int64 total_input_egs = total_discarded_egs + total_non_discarded_egs,
+      total_input_egs_size =
+      total_discarded_egs_size + total_non_discarded_egs_size;
+
+  float avg_input_egs_size = total_input_egs_size * 1.0 / total_input_egs;
+  float percent_discarded = total_discarded_egs * 100.0 / total_input_egs;
+  // note: by minibatch size we mean the number of egs per minibatch, it
+  // does not take note of the size of the input egs.
+  float avg_minibatch_size = total_non_discarded_egs * 1.0 / num_minibatches;
+
+  std::ostringstream os;
+  os << std::setprecision(4);
+  os << "Processed " << total_input_egs
+     << " egs of avg. size " << avg_input_egs_size
+     << " into " << num_minibatches << " minibatches, discarding "
+     << percent_discarded <<  "% of egs.  Avg minibatch size was "
+     << avg_minibatch_size << ", distinct types of egs/minibatches "
+     << "was " << num_distinct_egs_types << "/"
+     << num_distinct_minibatch_types;
+  KALDI_LOG << os.str();
+}
+
+void ExampleSizeStats::PrintSpecificStats() const {
+  KALDI_LOG << "Merged specific eg types as follows [format: <eg-size1>="
+      "{<mb-size1>-><num-minibatches1>,<mbsize2>-><num-minibatches2>.../d=<num-discarded>}"
+      ",<egs-size2>={...},... (note,egs-size == number of input "
+      "frames including context).";
+  std::ostringstream os;
+
+  // copy from unordered map to map to get sorting, for consistent output.
+  typedef std::map<std::pair<int32, size_t>, StatsForExampleSize> SortedMapType;
+
+  SortedMapType stats;
+  stats.insert(stats_.begin(), stats_.end());
+  SortedMapType::const_iterator eg_iter = stats.begin(), eg_end = stats.end();
+  for (; eg_iter != eg_end; ++eg_iter) {
+    int32 eg_size = eg_iter->first.first;
+    if (eg_iter != stats.begin())
+      os << ",";
+    os << eg_size << "={";
+    const StatsForExampleSize &stats = eg_iter->second;
+    unordered_map<int32, int32>::const_iterator
+        mb_iter = stats.minibatch_to_num_written.begin(),
+        mb_end =  stats.minibatch_to_num_written.end();
+    for (; mb_iter != mb_end; ++mb_iter) {
+      int32 mb_size = mb_iter->first,
+          num_written = mb_iter->second;
+      if (mb_iter != stats.minibatch_to_num_written.begin())
+        os << ",";
+      os << mb_size << "->" << num_written;
+    }
+    os << ",d=" << stats.num_discarded << "}";
+  }
+  KALDI_LOG << os.str();
+}
+
+
+
+int32 GetNnetExampleSize(const NnetExample &a) {
+  int32 ans = 0;
+  for (size_t i = 0; i < a.io.size(); i++) {
+    int32 s = a.io[i].indexes.size();
+    if (s > ans)
+      ans = s;
+  }
+  return ans;
+}
+
+ExampleMerger::ExampleMerger(const ExampleMergingConfig &config,
+                             NnetExampleWriter *writer):
+    finished_(false), num_egs_written_(0),
+    config_(config), writer_(writer) { }
+
+
+void ExampleMerger::AcceptExample(NnetExample *eg) {
+  KALDI_ASSERT(!finished_);
+  // If an eg with the same structure as 'eg' is already a key in the
+  // map, it won't be replaced, but if it's new it will be made
+  // the key.  Also we remove the key before making the vector empty.
+  // This way we ensure that the eg in the key is always the first
+  // element of the vector.
+  std::vector<NnetExample*> &vec = eg_to_egs_[eg];
+  vec.push_back(eg);
+  int32 eg_size = GetNnetExampleSize(*eg),
+      num_available = vec.size();
+  bool input_ended = false;
+  int32 minibatch_size = config_.MinibatchSize(eg_size, num_available,
+                                               input_ended);
+  if (minibatch_size != 0) {  // we need to write out a merged eg.
+    KALDI_ASSERT(minibatch_size == num_available);
+
+    std::vector<NnetExample*> vec_copy(vec);
+    eg_to_egs_.erase(eg);
+
+    // MergeExamples() expects a vector of NnetExample, not of pointers,
+    // so use swap to create that without doing any real work.
+    std::vector<NnetExample> egs_to_merge(minibatch_size);
+    for (int32 i = 0; i < minibatch_size; i++) {
+      egs_to_merge[i].Swap(vec[i]);
+      delete vec[i];  // we owned those pointers.
+    }
+    WriteMinibatch(egs_to_merge);
+  }
+}
+
+void ExampleMerger::WriteMinibatch(const std::vector<NnetExample> &egs) {
+  KALDI_ASSERT(!egs.empty());
+  int32 eg_size = GetNnetExampleSize(egs[0]);
+  NnetExampleStructureHasher eg_hasher;
+  size_t structure_hash = eg_hasher(egs[0]);
+  int32 minibatch_size = egs.size();
+  stats_.WroteExample(eg_size, structure_hash, minibatch_size);
+  NnetExample merged_eg;
+  MergeExamples(egs, config_.compress, &merged_eg);
+  std::ostringstream key;
+  key << "merged-" << (num_egs_written_++) << "-" << minibatch_size;
+  writer_->Write(key.str(), merged_eg);
+}
+
+void ExampleMerger::Finish() {
+  if (finished_) return;  // already finished.
+  finished_ = true;
+
+  // we'll convert the map eg_to_egs_ to a vector of vectors to avoid
+  // iterator invalidation problems.
+  std::vector<std::vector<NnetExample*> > all_egs;
+  all_egs.reserve(eg_to_egs_.size());
+
+  MapType::iterator iter = eg_to_egs_.begin(), end = eg_to_egs_.end();
+  for (; iter != end; ++iter)
+    all_egs.push_back(iter->second);
+  eg_to_egs_.clear();
+
+  for (size_t i = 0; i < all_egs.size(); i++) {
+    int32 minibatch_size;
+    std::vector<NnetExample*> &vec = all_egs[i];
+    KALDI_ASSERT(!vec.empty());
+    int32 eg_size = GetNnetExampleSize(*(vec[0]));
+    bool input_ended = true;
+    while (!vec.empty() &&
+           (minibatch_size = config_.MinibatchSize(eg_size, vec.size(),
+                                                   input_ended)) != 0) {
+      // MergeExamples() expects a vector of NnetExample, not of pointers,
+      // so use swap to create that without doing any real work.
+      std::vector<NnetExample> egs_to_merge(minibatch_size);
+      for (int32 i = 0; i < minibatch_size; i++) {
+        egs_to_merge[i].Swap(vec[i]);
+        delete vec[i];  // we owned those pointers.
+      }
+      vec.erase(vec.begin(), vec.begin() + minibatch_size);
+      WriteMinibatch(egs_to_merge);
+    }
+    if (!vec.empty()) {
+      int32 eg_size = GetNnetExampleSize(*(vec[0]));
+      NnetExampleStructureHasher eg_hasher;
+      size_t structure_hash = eg_hasher(*(vec[0]));
+      int32 num_discarded = vec.size();
+      stats_.DiscardedExamples(eg_size, structure_hash, num_discarded);
+      for (int32 i = 0; i < num_discarded; i++)
+        delete vec[i];
+      vec.clear();
+    }
+  }
+
+
+
 }
 
 

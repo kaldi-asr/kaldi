@@ -164,9 +164,6 @@ void Optimize(const NnetOptimizeOptions &config,
 // and output IoSpecifications vectors.
 struct ComputationRequestHasher {
   size_t operator()(const ComputationRequest *cr) const;
- private:
-  size_t IoSpecificationToInt(const IoSpecification& spec) const;
-  static const int kPrime = 7853;
 };
 
 // Equality function for ComputationRequest pointer
@@ -210,14 +207,15 @@ class CachingOptimizingCompiler {
   CachingOptimizingCompiler(const Nnet &nnet,
                             const CachingOptimizingCompilerOptions config =
                             CachingOptimizingCompilerOptions()):
-      nnet_(nnet), config_(config) { }
+      nnet_(nnet), config_(config), seconds_taken_(0.0) { }
 
   /// Note: nnet is retained as a const reference but opt_config is copied.
   CachingOptimizingCompiler(const Nnet &nnet,
                             const NnetOptimizeOptions &opt_config,
                             const CachingOptimizingCompilerOptions config =
                             CachingOptimizingCompilerOptions()):
-      nnet_(nnet), config_(config), opt_config_(opt_config) { }
+      nnet_(nnet), config_(config), opt_config_(opt_config),
+      seconds_taken_(0.0) { }
 
   ~CachingOptimizingCompiler();
   /// Does the compilation and returns a const pointer to
@@ -275,6 +273,9 @@ class CachingOptimizingCompiler {
                         ComputationRequestHasher,
                         ComputationRequestPtrEqual> CacheType;
   CacheType computation_cache_;
+
+  // time spent in compilation-- for diagnostic messages
+  double seconds_taken_;
 
   // This function updates the computation cache. It is called within Compile().
   // It takes ownership of the pointers.  It inserts the request at the end of

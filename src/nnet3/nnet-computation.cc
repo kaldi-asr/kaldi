@@ -1129,7 +1129,15 @@ void NnetComputation::GetWholeSubmatrices(
   }
 }
 
-
+size_t IoSpecificationHasher::operator () (
+    const IoSpecification &io_spec) const {
+  StringHasher string_hasher;
+  IndexVectorHasher indexes_hasher;
+  // 4261 was chosen at random from a list of primes.
+  return string_hasher(io_spec.name) +
+      indexes_hasher(io_spec.indexes) +
+      (io_spec.has_deriv ? 4261 : 0);
+}
 
 } // namespace nnet3
 } // namespace kaldi
