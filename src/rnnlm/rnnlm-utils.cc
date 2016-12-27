@@ -146,40 +146,51 @@ vector<int> Select(const vector<BaseFloat> &u, int n) {
   return ans;
 }
 
-void NormalizeVec(int k, const vector<int>& ones, vector<BaseFloat> *probs) {
-
+void NormalizeVec(int k, const set<int>& ones, vector<BaseFloat> *probs) {
+  KALDI_ASSERT(ones.size() < k);
   // first check the unigrams add up to 1
   BaseFloat sum = 0;
   for (int i = 0; i < probs->size(); i++) {
     sum += (*probs)[i];
+//    KALDI_LOG << sum;
   }
+  KALDI_LOG << "sum should be close to 1.0: " << sum;
   KALDI_ASSERT(ApproxEqual(sum , 1.0));
   
   // set the 1s
-  for (int i = 0; i < ones.size(); i++) {
-    (*probs)[ones[i]] = 1.0;
+//  for (int i = 0; i < ones.size(); i++) {
+//    sum -= (*probs)[ones[i]];
+//    (*probs)[ones[i]] = 10;  // make it way larger to avoid numerical issues
+//  }
+  for (set<int>::const_iterator iter = ones.begin(); iter != ones.end(); iter++) {
+    sum -= (*probs)[*iter];
+    (*probs)[*iter] = 10;
   }
 
   // distribute the remaining probs
-  sum = 0.0;
   BaseFloat maxx = 0.0;
   for (int i = 0; i < probs->size(); i++) {
     BaseFloat t = (*probs)[i];
     if (t < 1.0) {
-      sum += t;
       maxx = std::max(maxx, t);
     }
   }
 
+  KALDI_LOG << "sum should be smaller than 1.0: " << sum;
+  KALDI_LOG << "max is " << maxx;
+//  KALDI_ASSERT(false);
+
   if (maxx * (k - ones.size()) * 1.0 / sum <= 1.0) {
+    KALDI_LOG << "no need to interpolate";
     for (int i = 0; i < probs->size(); i++) {
       BaseFloat &t = (*probs)[i];
-      if (t == 1.0) {
+      if (t > 2.0) {
         continue;
       }
-      t = t * (k - ones.size()) * 1.0 / sum <= 1.0;
+      t = t * (k - ones.size()) * 1.0 / sum;
     }
   } else {
+    KALDI_LOG << "need to interpolate";
     // now we want to interpolate with a uniform prob of
     // (k - ones.size()) / (probs->size() - ones.size()) s.t. max is 1
     // w a + (1 - w) b = 1
@@ -191,20 +202,26 @@ void NormalizeVec(int k, const vector<int>& ones, vector<BaseFloat> *probs) {
 
     for (int i = 0; i < probs->size(); i++) {
       BaseFloat &t = (*probs)[i];
-      if (t == 1.0) {
+      if (t > 2.0) {
         continue;
       }
       t = w * t + (1.0 - w) * b;
     }
+  }
+
+  for (set<int>::const_iterator iter = ones.begin(); iter != ones.end(); iter++) {
+    (*probs)[*iter] = 1.0;
   }
   
   sum = 0.0;
   for (int i = 0; i < probs->size(); i++) {
     BaseFloat t = (*probs)[i];
     sum += t;
-    if (t > 1 || t <= 0) sum += k;
+    if (t > 1 || t <= 0) {
+      KALDI_ASSERT(false);
+    }
   }
-  KALDI_ASSERT(sum == k);
+  KALDI_ASSERT(ApproxEqual(sum, k, 0.001));
 
 }
 

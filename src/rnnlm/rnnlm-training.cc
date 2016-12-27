@@ -524,7 +524,8 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
 
   vector<BaseFloat> selection_probs = unigram;
 
-  vector<int> outputs;
+  std::vector<int> outputs;
+  std::set<int> outputs_set;
 
   for (int i = 0; i < k; i++) {
 //    indexes[i] = samples;
@@ -532,14 +533,19 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
     int non_zero_index = -1;                                                    
     sv.Max(&non_zero_index); 
     outputs.push_back(non_zero_index);
+    outputs_set.insert(non_zero_index);
 //    indexes[i].push_back(non_zero_index);
 //    selection_probs[non_zero_index] = 1; // to make sure it is always selected
   }
 
   // this is not necessary for Select for useful for later
-  NormalizeVec(2 * k, outputs, &selection_probs);
+  NormalizeVec(2 * k, outputs_set, &selection_probs);
 
   vector<int> samples = Select(selection_probs, 2 * k);
+  vector<BaseFloat> selected_probs(samples.size());
+  for (int i = 0; i < samples.size(); i++) {
+    selected_probs[i] = selection_probs[samples[i]];
+  }
 
 //  vector<vector<int> > indexes(k, samples); // an ugly fix fow now
 
@@ -551,7 +557,35 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
   *tot_weight = post.Sum();
   *tot_objf = 0;
   
+  // add the deriv for correct label
+  vector<int> correct_indexes(out.NumRows(), -1);
+  for (int i = 0; i < samples.size(); i++) {
+    for (int j = 0; j < outputs.size(); j++) {
+      if (samples[i] == outputs[j]) {
+        correct_indexes[j] = i;
+        break;
+      }
+    }
+  }
+
+  for (int i = 0; i < correct_indexes.size(); i++) {
+    KALDI_ASSERT(correct_indexes[i] >= 0);
+  }
+
+//  KALDI_ASSERT(*std::min_element(correct_indexes.begin(), correct_indexes.end()) >= 0);
+
+  // take exp() and divided by probs
   out.ApplyExp();
+  CuMatrix<BaseFloat> c2(out.NumRows(), out.NumCols(), kSetZero);
+  Vector<BaseFloat> v(out.NumCols(), kSetZero);
+  for (int i = 0; i < out.NumCols(); i++) {
+    v(i) = selected_probs[i];
+  }
+  c2.CopyRowsFromVec(v);
+//  c2.AddRows(1.0, CuArray<BaseFloat>(selected_probs));
+  out.DivElements(c2);
+
+  *tot_objf -= out.Sum();
 
 //  BaseFloat sum = 0.0;
 //  for (int i = 0; i < selection_probs.size(); i++) {
