@@ -542,7 +542,7 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
   NormalizeVec(2 * k, outputs_set, &selection_probs);
 
   vector<int> samples = outputs;
-  SelectWoReplacement(selection_probs, 2 * k, &samples);
+  SelectWithoutReplacement(selection_probs, 2 * k, &samples);
 
 //  cout << "1 probs: ";
 //  for (int i = 0; i < selection_probs.size(); i++) {

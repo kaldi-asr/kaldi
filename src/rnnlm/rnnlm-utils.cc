@@ -50,7 +50,7 @@ NnetExample GetEgsFromSent(const vector<int>& word_ids_in, int input_dim,
   return eg;
 }
 
-void SelectWoReplacement(const vector<BaseFloat> &u, int n, vector<int> *out) {
+void SelectWithoutReplacement(const vector<BaseFloat> &u, int n, vector<int> *out) {
   vector<int>& ans = *out;
   ans.resize(n);
 
@@ -70,7 +70,7 @@ void SelectWoReplacement(const vector<BaseFloat> &u, int n, vector<int> *out) {
     if (pi_k1_k1 > 1) {
       pi_k1_k1 = 1;  // must add
     } else {
-      BaseFloat p = BaseFloat(rand()) / RAND_MAX;
+      BaseFloat p = RandUniform();
       if (p > pi_k1_k1) {
   //      cout << "  not replace" << endl;
         continue;
@@ -124,7 +124,7 @@ void SelectWoReplacement(const vector<BaseFloat> &u, int n, vector<int> *out) {
       }
       assert(ApproxEqual(sum, 1.0));
     }
-    BaseFloat p = BaseFloat(rand()) / RAND_MAX;
+    BaseFloat p = RandUniform();
 
   //    cout << "  rand is " << p; 
 

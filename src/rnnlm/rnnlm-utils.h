@@ -33,7 +33,7 @@ unordered_map<string, int> ReadWordlist(string filename);
 NnetExample GetEgsFromSent(const vector<int>& word_ids_in, int input_dim,
                            const vector<int>& word_ids_out, int output_dim);
 
-void SelectWoReplacement(const vector<BaseFloat> &u, int n, vector<int> *out);
+void SelectWithoutReplacement(const vector<BaseFloat> &u, int n, vector<int> *out);
 
 void NormalizeVec(int k, const set<int> &ones, vector<BaseFloat> *probs);
 
