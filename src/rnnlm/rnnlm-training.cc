@@ -541,19 +541,20 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
   // this is not necessary for Select for useful for later
   NormalizeVec(2 * k, outputs_set, &selection_probs);
 
+  vector<int> samples = outputs;
+  SelectWoReplacement(selection_probs, 2 * k, &samples);
+
 //  cout << "1 probs: ";
 //  for (int i = 0; i < selection_probs.size(); i++) {
-//    if (selection_probs[i] == 1.0) {
+//    if (selection_probs[i] >= 1.0) {
 //      cout << i << ", ";
 //    }
 //  }
 //  cout << endl;
 //  cout << "selected: ";
-  vector<int> samples;
-  SelectWoReplacement(selection_probs, 2 * k, &samples);
 //
 //  std::sort(samples.begin(), samples.end());
-
+//
 //  for (int i = 0; i < samples.size(); i++) {
 //    cout << samples[i] << ", ";
 //  }
@@ -583,8 +584,8 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
     for (int i = 0; i < samples.size(); i++) {
       if (samples[i] == outputs[j]) {
         correct_indexes[j] = i;
+        break;
       }
-      break;
     }
   }
 
@@ -610,7 +611,8 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
   for (int i = 0; i < out.NumCols(); i++) {
     v(i) = -selected_probs[i];
   }
-  t3.CopyRowsFromVec(v);
+  t3.CopyRowsFromVec(CuVector<BaseFloat>(v));
+//  t3.Set(3);
   out.DivElements(t3);
 
   *tot_objf += out.Sum();
@@ -636,8 +638,9 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
 //    KALDI_LOG << "tot-objf is " << *tot_objf << " at " << i;
 //  }
 //
-  KALDI_LOG << "objf value is " << *tot_objf << endl;
-//
+
+//  KALDI_LOG << "objf value is " << *tot_objf << endl;
+
   if (supply_deriv && nnet != NULL) {
     // the derivative on the real output
 //    vector<vector<BaseFloat> > output_deriv(k);A

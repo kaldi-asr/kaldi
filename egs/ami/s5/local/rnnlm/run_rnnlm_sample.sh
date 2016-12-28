@@ -38,6 +38,7 @@ norm_based_clipping=true
 clipping_threshold=30
 label_delay=0  # 5
 splice_indexes=0
+use_gpu=yes
 
 type=rnn  # or lstm
 
@@ -71,7 +72,7 @@ if [ $stage -le -4 ]; then
 
   cat $outdir/train.txt.0 $outdir/wordlist.all | sed "s= =\n=g" | grep . | sort | uniq -c | sort -k1 -n -r | awk '{print $2,$1}' > $outdir/unigramcounts.txt
 
-  echo $os 0 > $outdir/wordlist.in
+  echo $bos 0 > $outdir/wordlist.in
   echo $oos 1 >> $outdir/wordlist.in
   cat $outdir/unigramcounts.txt | head -n $num_words_in | awk '{print $1,1+NR}' >> $outdir/wordlist.in
 
@@ -137,24 +138,25 @@ echo dev oos penalty is $ppl_oos_penalty
 if [ $stage -le -2 ]; then
   echo Create nnet configs
 
-#  if [ "$type" == "rnn" ]; then
-#  cat > $outdir/config <<EOF
-#  LmLinearComponent input-dim=$num_words_in output-dim=$hidden_dim max-change=10
-#  AffineSampleLogSoftmaxComponent input-dim=$hidden_dim output-dim=$num_words_out max-change=10
-#
-#  input-node name=input dim=$hidden_dim
-#  component name=first_nonlin type=SigmoidComponent dim=$hidden_dim
-#  component name=first_renorm type=NormalizeComponent dim=$hidden_dim target-rms=1.0
-#  component name=hidden_affine type=AffineComponent input-dim=$hidden_dim output-dim=$hidden_dim max-change=10
-#
-##Component nodes
-#  component-node name=first_nonlin component=first_nonlin  input=Sum(input, hidden_affine)
-#  component-node name=first_renorm component=first_renorm  input=first_nonlin
-#  component-node name=hidden_affine component=hidden_affine  input=IfDefined(Offset(first_renorm, -1))
-#  output-node    name=output input=first_renorm objective=linear
-#EOF
-
   if [ "$type" == "rnn" ]; then
+  cat > $outdir/config <<EOF
+  LmLinearComponent input-dim=$num_words_in output-dim=$hidden_dim max-change=10
+  AffineSampleLogSoftmaxComponent input-dim=$hidden_dim output-dim=$num_words_out max-change=10
+
+  input-node name=input dim=$hidden_dim
+  component name=first_nonlin type=SigmoidComponent dim=$hidden_dim
+  component name=first_renorm type=NormalizeComponent dim=$hidden_dim target-rms=1.0
+  component name=hidden_affine type=AffineComponent input-dim=$hidden_dim output-dim=$hidden_dim max-change=10
+
+#Component nodes
+  component-node name=first_nonlin component=first_nonlin  input=Sum(input, hidden_affine)
+  component-node name=first_renorm component=first_renorm  input=first_nonlin
+  component-node name=hidden_affine component=hidden_affine  input=IfDefined(Offset(first_renorm, -1))
+  output-node    name=output input=first_renorm objective=linear
+EOF
+  fi
+
+  if [ "$type" == "dnn" ]; then
   cat > $outdir/config <<EOF
   LmLinearComponent input-dim=$num_words_in output-dim=$hidden_dim max-change=5
   AffineSampleLogSoftmaxComponent input-dim=$hidden_dim output-dim=$num_words_out max-change=5
@@ -215,7 +217,7 @@ if [ $stage -le $num_iters ]; then
     echo for iter $n, training on archive $this_archive, learning rate = $learning_rate
     [ $n -ge $stage ] && (
 
-        $cuda_cmd $outdir/log/train.rnnlm.$n.log rnnlm-train --binary=false \
+        $cuda_cmd $outdir/log/train.rnnlm.$n.log rnnlm-train --use-gpu=$use_gpu --binary=false \
         --max-param-change=$max_param_change "rnnlm-copy --learning-rate=$learning_rate $outdir/$[$n-1].mdl -|" \
         "ark:nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$n ark:$outdir/egs/train.$this_archive.egs ark:- | nnet3-merge-egs --minibatch-size=$minibatch_size ark:- ark:- |" $outdir/$n.mdl
 

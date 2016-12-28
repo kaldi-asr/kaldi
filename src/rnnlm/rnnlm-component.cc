@@ -169,7 +169,7 @@ void AffineSampleLogSoftmaxComponent::Backprop(
                                CuMatrixBase<BaseFloat> *input_deriv) const {
   KALDI_ASSERT (input_deriv != NULL);
 
-  CuMatrix<BaseFloat> new_linear;
+  CuMatrix<BaseFloat> new_linear(indexes.size(), linear_params_.NumCols());
   CuArray<int> idx(indexes);
   new_linear.CopyRows(linear_params_, idx);
 
