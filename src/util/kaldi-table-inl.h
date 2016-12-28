@@ -1695,8 +1695,8 @@ class RandomAccessTableReaderScriptImpl:
   virtual const T&  Value(const std::string &key) {
     if (!HasKeyInternal(key, true)) // true == preload.
       KALDI_ERR << "Could not get item for key " << key
-                << ", rspecifier is " << rspecifier_ << "[to ignore this, "
-                << "add the p, (permissive) option to the rspecifier.";
+                << ", rspecifier is " << rspecifier_ << " [to ignore this, "
+                 << "add the p, (permissive) option to the rspecifier.";
     KALDI_ASSERT(key_ == key);
     if (state_ == kHaveObject) {
       return holder_.Value();

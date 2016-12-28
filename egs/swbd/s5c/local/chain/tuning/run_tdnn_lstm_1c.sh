@@ -1,9 +1,12 @@
 #!/bin/bash
 
-# Unlike 1a this setup interleaves the TDNN and LSTM layers.
+# run_tdnn_lstm_1c.sh is like run_tdnn_lstm_1b.sh but using the
+# new 'fast-lstm' layer.  Results are slightly improved, plus
+# it's faster.  See PR #1243 on github, and issue #1237.
+# This used to be called run_tdnn_fastlstm_1b.sh.
 
-#System               tdnn_lstm_1a_ld5 tdnn_lstm_1b_ld5 tdnn_fastlstm_1b_ld5
-#WER on train_dev(tg)      13.42           13.00             12.91    
+#System               tdnn_lstm_1a_ld5 tdnn_lstm_1b_ld5 tdnn_lstm_1c_ld5
+#WER on train_dev(tg)      13.42           13.00             12.91
 #WER on train_dev(fg)      12.42           12.03             11.98
 #WER on eval2000(tg)        15.7           15.3              15.2
 #WER on eval2000(fg)        14.2           13.9              13.8
@@ -19,7 +22,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_fastlstm_1b # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_lstm_1c # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
 decode_dir_affix=
 
@@ -202,7 +205,7 @@ if [ $stage -le 14 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --left-biphone --self-loop-scale 1.0 data/lang_sw1_tg $dir $dir/graph_sw1_tg
+  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_sw1_tg $dir $dir/graph_sw1_tg
 fi
 
 decode_suff=sw1_tg

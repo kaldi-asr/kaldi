@@ -5,9 +5,12 @@
 """ This module contains the top level xconfig parsing functions.
 """
 
+from __future__ import print_function
+
+import sys
 import libs.nnet3.xconfig.layers as xlayers
 import libs.nnet3.xconfig.utils as xutils
-from libs.nnet3.xconfig.utils import XconfigParserError as xparser_error
+
 
 
 # We have to modify this dictionary when adding new layers
@@ -32,35 +35,24 @@ config_to_layer = {
         'fast-lstmp-layer' : xlayers.XconfigFastLstmpLayer
         }
 
-# Converts a line as parsed by ParseConfigLine() into a first
-# token e.g. 'input-layer' and a key->value map, into
-# an objet inherited from XconfigLayerBase.
-# 'prev_names' is a list of previous layer names, it's needed
-# to parse things like '[-1]' (meaning: the previous layer)
-# when they appear in Desriptors.
-def parsed_line_to_xconfig_layer(first_token, key_to_value, prev_names):
-
-    conf_line = first_token + ' ' + ' '.join(['{0}={1}'.format(x,y) for x,y in key_to_value.items()])
-
-    if not config_to_layer.has_key(first_token):
-        raise xparser_error("No such layer type.", conf_line)
-
-    try:
-        return config_to_layer[first_token](first_token, key_to_value, prev_names)
-    except xparser_error as e:
-        if e.conf_line is None:
-            # we want to throw informative errors which point to the xconfig line
-            e.conf_line = conf_line
-        raise
-
-# Uses ParseConfigLine() to turn a config line that has been parsed into
-# a first token e.g. 'affine-layer' and a key->value map like { 'dim':'1024', 'name':'affine1' },
-# and then turns this into an object representing that line of the config file.
-# 'prev_names' is a list of the names of preceding lines of the
+# Turn a config line and a list of previous layers into
+# either an object representing that line of the config file; or None
+# if the line was empty after removing comments.
+# 'prev_layers' is a list of objects corresponding to preceding layers of the
 # config file.
-def config_line_to_object(config_line, prev_names = None):
-    (first_token, key_to_value) = xutils.parse_config_line(config_line)
-    return parsed_line_to_xconfig_layer(first_token, key_to_value, prev_names)
+def xconfig_line_to_object(config_line, prev_layers = None):
+    try:
+        x  = xutils.parse_config_line(config_line)
+        if x is None:
+            return None
+        (first_token, key_to_value) = x
+        if not config_to_layer.has_key(first_token):
+            raise RuntimeError("No such layer type '{0}'".format(first_token))
+        return config_to_layer[first_token](first_token, key_to_value, prev_layers)
+    except Exception as e:
+        print("***Exception caught while parsing the following xconfig line:\n"
+              "*** {0}".format(config_line), file=sys.stderr)
+        raise e
 
 # This function reads an xconfig file and returns it as a list of layers
 # (usually we use the variable name 'all_layers' elsewhere for this).
@@ -77,18 +69,14 @@ def read_xconfig_file(xconfig_filename):
         line = f.readline()
         if line == '':
             break
-        x = xutils.parse_config_line(line)
-        if x is None:
-            continue   # line was blank or only comments.
-        (first_token, key_to_value) = x
         # the next call will raise an easy-to-understand exception if
         # it fails.
-        this_layer = parsed_line_to_xconfig_layer(first_token,
-                                                  key_to_value,
-                                                  all_layers)
+        this_layer = xconfig_line_to_object(line, all_layers)
+        if this_layer is None:
+            continue  # line was blank after removing comments.
         all_layers.append(this_layer)
     if len(all_layers) == 0:
-        raise xparser_error("{0}: xconfig file '{1}' is empty".format(
+        raise RuntimeError("{0}: xconfig file '{1}' is empty".format(
             sys.argv[0], xconfig_filename))
     f.close()
     return all_layers

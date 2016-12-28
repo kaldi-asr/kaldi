@@ -49,7 +49,7 @@ steps/train_mono.sh --nj 4 --cmd "$train_cmd" data/train.1k data/lang exp/mono
 #show-transitions data/lang/phones.txt exp/tri2a/final.mdl  exp/tri2a/final.occs | perl -e 'while(<>) { if (m/ sil /) { $l = <>; $l =~ m/pdf = (\d+)/|| die "bad line $l";  $tot += $1; }} print "Total silence count $tot\n";'
 
 
-utils/mkgraph.sh --mono data/lang exp/mono exp/mono/graph
+utils/mkgraph.sh data/lang exp/mono exp/mono/graph
 
 
 
