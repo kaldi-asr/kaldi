@@ -147,7 +147,7 @@ class XconfigLayerBase(object):
                 list_of_entries.append('{0}={1}'.format(key, value))
 
         return ' '.join(list_of_entries)
-        return ans
+
 
     def __str__(self):
         return self.str()
