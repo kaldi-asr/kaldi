@@ -26,6 +26,7 @@
 #include "util/table-types.h"
 #include "nnet3/discriminative-supervision.h"
 #include "nnet3/nnet-example.h"
+#include "nnet3/nnet-example-utils.h"
 #include "hmm/posterior.h"
 #include "hmm/transition-model.h"
 
@@ -128,6 +129,32 @@ struct NnetDiscriminativeExample {
   }
 };
 
+
+/// This hashing object hashes just the structural aspects of the NnetExample
+/// without looking at the value of the features.  It will be used in combining
+/// egs into batches of all similar structure.
+struct NnetDiscriminativeExampleStructureHasher {
+  size_t operator () (const NnetDiscriminativeExample &eg) const;
+  // We also provide a version of this that works from pointers.
+  size_t operator () (const NnetDiscriminativeExample *eg) const {
+    return (*this)(*eg);
+  }
+};
+
+
+/// This comparator object compares just the structural aspects of the
+/// NnetDiscriminativeExample without looking at the value of the features.
+struct NnetDiscriminativeExampleStructureCompare {
+  bool operator () (const NnetDiscriminativeExample &a,
+                    const NnetDiscriminativeExample &b) const;
+  // We also provide a version of this that works from pointers.
+  bool operator () (const NnetDiscriminativeExample *a,
+                    const NnetDiscriminativeExample *b) const {
+    return (*this)(*a, *b);
+  }
+};
+
+
 /**
   Appends the given vector of examples (which must be non-empty) into
   a single output example.
@@ -140,13 +167,12 @@ struct NnetDiscriminativeExample {
   MergeExamples() routine while avoiding having to rewrite code.
 */
 void MergeDiscriminativeExamples(
-    bool compress,
     std::vector<NnetDiscriminativeExample> *input,
+    bool compress,
     NnetDiscriminativeExample *output);
 
 // called from MergeDiscriminativeExamples, this function merges the Supervision
 // objects into one.  Requires (and checks) that they all have the same name.
-
 void MergeSupervision(
     const std::vector<const NnetDiscriminativeSupervision*> &inputs,
     NnetDiscriminativeSupervision *output);
@@ -194,10 +220,62 @@ void GetDiscriminativeComputationRequest(const Nnet &nnet,
                                          bool use_xent_derivative,
                                          ComputationRequest *computation_request);
 
-
 typedef TableWriter<KaldiObjectHolder<NnetDiscriminativeExample > > NnetDiscriminativeExampleWriter;
 typedef SequentialTableReader<KaldiObjectHolder<NnetDiscriminativeExample > > SequentialNnetDiscriminativeExampleReader;
 typedef RandomAccessTableReader<KaldiObjectHolder<NnetDiscriminativeExample > > RandomAccessNnetDiscriminativeExampleReader;
+
+
+/// This function returns the 'size' of a discriminative example as defined for
+/// purposes of merging egs, which is defined as the largest number of Indexes
+/// in any of the inputs or outputs of the example.
+int32 GetDiscriminativeNnetExampleSize(const NnetDiscriminativeExample &a);
+
+
+/// This class is responsible for arranging examples in groups that have the
+/// same strucure (i.e. the same input and output indexes), and outputting them
+/// in suitable minibatches as defined by ExampleMergingConfig.
+class DiscriminativeExampleMerger {
+ public:
+  DiscriminativeExampleMerger(const ExampleMergingConfig &config,
+                              NnetDiscriminativeExampleWriter *writer);
+
+  // This function accepts an example, and if possible, writes a merged example
+  // out.  The ownership of the pointer 'a' is transferred to this class when
+  // you call this function.
+  void AcceptExample(NnetDiscriminativeExample *a);
+
+  // This function announces to the class that the input has finished, so it
+  // should flush out any smaller-sizes minibatches, as dictated by the config.
+  // This will be called in the destructor, but you can call it explicitly when
+  // all the input is done if you want to.
+  // It also prints the stats.
+  void Finish();
+
+  // returns a suitable exit status for a program.
+  bool ExitStatus() { return num_egs_written_ > 0; }
+
+  ~DiscriminativeExampleMerger() { Finish(); };
+ private:
+  // called by Finish() and AcceptExample().  Merges, updates the stats, and
+  // writes.  The 'egs' is non-const only because the egs are temporarily
+  // changed inside MergeDiscriminativeEgs.  The pointer 'egs' is still owned
+  // by the caller.
+  void WriteMinibatch(std::vector<NnetDiscriminativeExample> *egs);
+
+  bool finished_;
+  int32 num_egs_written_;
+  const ExampleMergingConfig &config_;
+  NnetDiscriminativeExampleWriter *writer_;
+  ExampleSizeStats stats_;
+
+  // Note: the "key" into the egs is the first element of the vector.
+  typedef unordered_map<NnetDiscriminativeExample*,
+                        std::vector<NnetDiscriminativeExample*>,
+                        NnetDiscriminativeExampleStructureHasher,
+                        NnetDiscriminativeExampleStructureCompare> MapType;
+   MapType eg_to_egs_;
+};
+
 
 } // namespace nnet3
 } // namespace kaldi

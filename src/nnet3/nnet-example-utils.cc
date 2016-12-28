@@ -815,6 +815,23 @@ void UtteranceSplitter::SetOutputWeights(
   }
 }
 
+int32 ExampleMergingConfig::IntSet::LargestValueInRange(int32 max_value) const {
+  KALDI_ASSERT(!ranges.empty());
+  int32 ans = 0, num_ranges = ranges.size();
+  for (int32 i = 0; i < num_ranges; i++) {
+    int32 possible_ans = 0;
+    if (max_value >= ranges[i].first) {
+      if (max_value >= ranges[i].second)
+        possible_ans = ranges[i].second;
+      else
+        possible_ans = max_value;
+    }
+    if (possible_ans > ans)
+      ans = possible_ans;
+  }
+  return ans;
+}
+
 // static
 bool ExampleMergingConfig::ParseIntSet(const std::string &str,
                                        ExampleMergingConfig::IntSet *int_set) {
@@ -1166,9 +1183,6 @@ void ExampleMerger::Finish() {
       vec.clear();
     }
   }
-
-
-
 }
 
 
