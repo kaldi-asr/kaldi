@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #coding:utf-8
-#!/usr/bin/env python
+
 import sys
 from mmseg import seg_txt
 for line in sys.stdin:
@@ -12,4 +12,4 @@ for line in sys.stdin:
       continue
     for j in seg_txt(blks[i]):
       out_line += " " + j
-  print out_line     
+  print out_line

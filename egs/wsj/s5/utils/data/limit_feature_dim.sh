@@ -7,13 +7,13 @@
 
 if [ $# != 3 ]; then
   echo "Usage: "
-  echo "  $0 <featdim> <srcdir> <destdir>"
+  echo "  $0 <feat-dim-range> <srcdir> <destdir>"
   echo "e.g.:"
   echo " $0 0:40 data/train_hires_pitch data/train_hires"
   exit 1;
 fi
 
-featdim=$1
+feat_dim_range=$1
 srcdir=$2
 destdir=$3
 
@@ -36,7 +36,7 @@ if [ -f $destdir/cmvn.scp ]; then
 fi
 
 rm $destdir/feats.scp
-sed 's/$/\[:,'${featdim}'\]/' $srcdir/feats.scp | \
+sed 's/$/\[:,'${feat_dim_range}'\]/' $srcdir/feats.scp | \
   utils/data/normalize_data_range.pl > $destdir/feats.scp
 
 [ ! -f $srcdir/text ] && validate_opts="$validate_opts --no-text"
