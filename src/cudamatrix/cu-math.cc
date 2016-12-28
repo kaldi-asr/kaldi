@@ -818,18 +818,42 @@ Real DiffSigmoidSelfRepair(const CuMatrixBase<Real> &out_value,
   KALDI_ASSERT(self_repair_scale > 0.0 && margin > 0.0 && margin < 1.0);
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    Real count;
     Timer tim;
-    CuVector<Real> count(1);
+    CuMatrix<Real> temp(in_deriv->NumRows(), in_deriv->NumCols(), kUndefined);
+    CuVector<Real> col_sum(temp->NumRows(), kUndefined);
     dim3 dimGrid, dimBlock;
     GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
                                           &dimGrid, &dimBlock);
     cuda_diff_sigmoid_self_repair(dimGrid, dimBlock, in_deriv->Data(),
-        count.Data(), out_deiriv.Data(), out_value.Data(), in_deriv->Dim(),
-        out_deriv.Stride(), out_value.Stride(), self_repair_scale, margin);
+        temp.Data(), out_deiriv.Data(), out_value.Data(), in_deriv->Dim(),
+        temp.Stride(), out_deriv.Stride(), out_value.Stride(),
+        self_repair_scale, margin);
     CU_SAFE_CALL(cudaGetLastError());
+    cuda_sum_mat_cols(temp->NumRows(), CU1DBLOCK, col_sum.Data(), temp.Data(),
+                      temp.Dim());
+    CU_SAFE_CALL(cudaGetLastError());
+    // Small vectors are copied to RAM and reduced on CPU.
+    // The length is chosen by cu-vector-speed-test
+    if (col_sum.Dim() < 4096) {
+      Vector<Real> ans_cpu(temp);
+      count = ans_cpu.Sum();
+    } else {
+      // Use no more than 256 blocks (still too many?)
+      dimBlock = CU1DBLOCK;
+      dimGrid = n_blocks(dim_, dimBlock);
+      if (dimGrid > 256) {
+        dimGrid = 256;
+      }
+      CuVector<Real> ans(dimGrid, kUndefined);
+      cuda_vec_sum(dimGrid, dimBlock, data_, ans.Data(), dim_, 1);
+      CU_SAFE_CALL(cudaGetLastError());
+      Vector<Real> ans_cpu(ans);
+      count = ans_cpu.Sum();
+    }
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
-    return count(0);
+    return count;
   } else
 #endif
   {
@@ -876,19 +900,42 @@ Real DiffTanhSelfRepair(const CuMatrixBase<Real> &out_value,
   KALDI_ASSERT(self_repair_scale > 0.0 && margin > 0.0 && margin < 1.0);
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    Real count;
     Timer tim;
-    CuVector<Real> count(1);
+    CuMatrix<Real> temp(in_deriv->NumRows(), in_deriv->NumCols(), kUndefined);
+    CuVector<Real> col_sum(temp->NumRows(), kUndefined);
     dim3 dimGrid, dimBlock;
     GetBlockSizesForSimpleMatrixOperation(in_deriv->NumRows(),
                                           in_deriv->NumCols(),
                                           &dimGrid, &dimBlock);
-    cuda_diff_tanh_self_repair(dimGrid, dimBlock, in_deriv->Data(),
-        count.Data(), out_deriv.Data(), out_value.Data(), in_deriv->Dim(),
+    cuda_diff_tanh_self_repair(dimGrid, dimBlock, in_deriv->Data(), temp.Data(),
+        out_deriv.Data(), out_value.Data(), in_deriv->Dim(), temp.Stride(),
         out_deriv.Stride(), out_value.Stride(), self_repair_scale, margin);
     CU_SAFE_CALL(cudaGetLastError());
+    cuda_sum_mat_cols(temp->NumRows(), CU1DBLOCK, col_sum.Data(), temp.Data(),
+                      temp.Dim());
+    CU_SAFE_CALL(cudaGetLastError());
+    // Small vectors are copied to RAM and reduced on CPU.
+    // The length is chosen by cu-vector-speed-test
+    if (col_sum.Dim() < 4096) {
+      Vector<Real> ans_cpu(temp);
+      count = ans_cpu.Sum();
+    } else {
+      // Use no more than 256 blocks (still too many?)
+      dimBlock = CU1DBLOCK;
+      dimGrid = n_blocks(dim_, dimBlock);
+      if (dimGrid > 256) {
+        dimGrid = 256;
+      }
+      CuVector<Real> ans(dimGrid, kUndefined);
+      cuda_vec_sum(dimGrid, dimBlock, data_, ans.Data(), dim_, 1);
+      CU_SAFE_CALL(cudaGetLastError());
+      Vector<Real> ans_cpu(ans);
+      count = ans_cpu.Sum();
+    }
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
-    return count(0);
+    return count;
   } else
 #endif
   {

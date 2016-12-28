@@ -2074,12 +2074,14 @@ static void _diff_sigmoid(Real*eout, const Real*e, const Real*y, MatrixDim d,
 
 template<typename Real>
 __global__
-static void _diff_sigmoid_self_repair(Real*eout, Real*count, const Real*e,
-                                      const Real*y, MatrixDim d, int e_stride,
-                                      int y_stride, Real scale, Real margin) {
+static void _diff_sigmoid_self_repair(Real*eout, Real*work, const Real*e,
+                                      const Real*y, MatrixDim d, int w_stride,
+                                      int e_stride, int y_stride, Real scale,
+                                      Real margin) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int j = blockIdx.y * blockDim.y + threadIdx.y;
   int dst_index = i + j * d.stride;
+  int w_index = i + j * w_stride;
   int e_index = i + j * e_stride;
   int y_index = i + j * y_stride;
   if (i < d.cols && j < d.rows) {
@@ -2092,7 +2094,9 @@ static void _diff_sigmoid_self_repair(Real*eout, Real*count, const Real*e,
     }
     if (val != 0.0) {
       eout[dst_index] -= scale / (2.0 * margin) * val;
-      atomicAdd(count, 1.0)
+      work[w_index] = 1.0;
+    } else {
+      work[w_index] = 0.0;
     }
   }
 }
@@ -2130,12 +2134,14 @@ static void _diff_tanh(Real*eout, const Real*e, const Real*y, MatrixDim d,
 
 template<typename Real>
 __global__
-static void _diff_tanh_self_repair(Real*eout, Real*count, const Real*e,
-                                   const Real*y, MatrixDim d, int e_stride,
-                                   int y_stride, Real scale, Real margin) {
+static void _diff_tanh_self_repair(Real*eout, Real*work, const Real*e,
+                                   const Real*y, MatrixDim d, int w_stride,
+                                   int e_stride, int y_stride, Real scale,
+                                   Real margin) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int j = blockIdx.y * blockDim.y + threadIdx.y;
   int dst_index = i + j * d.stride;
+  int w_index = i + j * w_stride;
   int e_index = i + j * e_stride;
   int y_index = i + j * y_stride;
   if (i < d.cols && j < d.rows) {
@@ -2148,7 +2154,9 @@ static void _diff_tanh_self_repair(Real*eout, Real*count, const Real*e,
     }
     if (val != 0.0) {
       eout[dst_index] -= scale / margin * val;
-      atomicAdd(count, 1.0);
+      work[w_index] = 1.0;
+    } else {
+      work[w_index] = 0.0;
     }
   }
 }
@@ -3723,12 +3731,12 @@ void cudaF_diff_sigmoid(dim3 Gr, dim3 Bl, float* eout, const float* e,
   _diff_sigmoid<<<Gr,Bl>>>(eout, e, y, d, e_stride, y_stride);
 }
 
-void cudaF_diff_sigmoid_self_repair(dim3 Gr, dim3 Bl, float* eout, float* count,
+void cudaF_diff_sigmoid_self_repair(dim3 Gr, dim3 Bl, float* eout, float* work,
                                     const float* e, const float* y, MatrixDim d,
-                                    int e_stride, int y_stride, float scale,
-                                    float margin) {
-  _diff_sigmoid_self_repair<<<Gr,Bl>>>(eout, count, e, y, d, e_stride, y_stride,
-                                       scale, margin);
+                                    int w_stride, int e_stride, int y_stride,
+                                    float scale, float margin) {
+  _diff_sigmoid_self_repair<<<Gr,Bl>>>(eout, work, e, y, d, w_stride, e_stride,
+                                       y_stride, scale, margin);
 }
 
 void cudaF_tanh(dim3 Gr, dim3 Bl, float* y, const float* x, MatrixDim d,
@@ -3741,12 +3749,12 @@ void cudaF_diff_tanh(dim3 Gr, dim3 Bl, float* eout, const float* e,
   _diff_tanh<<<Gr,Bl>>>(eout, e, y, d, e_stride, y_stride);
 }
 
-void cudaF_diff_tanh_self_repair(dim3 Gr, dim3 Bl, float* eout, float* count,
+void cudaF_diff_tanh_self_repair(dim3 Gr, dim3 Bl, float* eout, float* work,
                                  const float* e, const float* y, MatrixDim d,
-                                 int e_stride, int y_stride, float scale,
-                                 float margin) {
-  _diff_tanh_self_repair<<<Gr,Bl>>>(eout, count, e, y, d, e_stride, y_stride,
-                                    scale, margin);
+                                 int w_stride, int e_stride, int y_stride,
+                                 float scale, float margin) {
+  _diff_tanh_self_repair<<<Gr,Bl>>>(eout, work, e, y, d, w_stride, e_stride,
+                                    y_stride, scale, margin);
 }
 
 void cudaF_parametric_relu(dim3 Gr, dim3 Bl, float* y, const float* x,
@@ -4380,11 +4388,12 @@ void cudaD_diff_sigmoid(dim3 Gr, dim3 Bl, double* eout, const double* e,
 }
 
 void cudaD_diff_sigmoid_self_repair(dim3 Gr, dim3 Bl, double* eout,
-                                    double* count, const double* e,
-                                    const double* y, MatrixDim d, int e_stride,
-                                    int y_stride, double scale, double margin) {
-  _diff_sigmoid_self_repair<<<Gr,Bl>>>(eout, count, e, y, d, e_stride, y_stride,
-                                       scale, margin);
+                                    double* work, const double* e,
+                                    const double* y, MatrixDim d, int w_stride,
+                                    int e_stride, int y_stride, double scale,
+                                    double margin) {
+  _diff_sigmoid_self_repair<<<Gr,Bl>>>(eout, work, e, y, d, w_stride, e_stride,
+                                       y_stride, scale, margin);
 }
 
 void cudaD_tanh(dim3 Gr, dim3 Bl, double* y, const double* x, MatrixDim d,
@@ -4397,12 +4406,12 @@ void cudaD_diff_tanh(dim3 Gr, dim3 Bl, double* eout, const double* e,
   _diff_tanh<<<Gr,Bl>>>(eout, e, y, d, e_stride, y_stride);
 }
 
-void cudaD_diff_tanh_self_repair(dim3 Gr, dim3 Bl, double* eout, double* count,
+void cudaD_diff_tanh_self_repair(dim3 Gr, dim3 Bl, double* eout, double* work,
                                  const double* e, const double* y, MatrixDim d,
-                                 int e_stride, int y_stride, double scale,
-                                 double margin) {
-  _diff_tanh_self_repair<<<Gr,Bl>>>(eout, count, e, y, d, e_stride, y_stride,
-                                    scale, margin);
+                                 int w_stride, int e_stride, int y_stride,
+                                 double scale, double margin) {
+  _diff_tanh_self_repair<<<Gr,Bl>>>(eout, work, e, y, d, w_stride, e_stride,
+                                    y_stride, scale, margin);
 }
 
 void cudaD_parametric_relu(dim3 Gr, dim3 Bl, double* y, const double* x,
