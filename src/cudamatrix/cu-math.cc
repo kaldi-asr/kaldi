@@ -821,32 +821,34 @@ Real DiffSigmoidSelfRepair(const CuMatrixBase<Real> &out_value,
     Real count;
     Timer tim;
     CuMatrix<Real> temp(in_deriv->NumRows(), in_deriv->NumCols(), kUndefined);
-    CuVector<Real> col_sum(temp->NumRows(), kUndefined);
+    CuVector<Real> col_sum(temp.NumRows(), kUndefined);
     dim3 dimGrid, dimBlock;
-    GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
+    GetBlockSizesForSimpleMatrixOperation(in_deriv->NumRows(),
+                                          in_deriv->NumCols(),
                                           &dimGrid, &dimBlock);
     cuda_diff_sigmoid_self_repair(dimGrid, dimBlock, in_deriv->Data(),
-        temp.Data(), out_deiriv.Data(), out_value.Data(), in_deriv->Dim(),
+        temp.Data(), out_deriv.Data(), out_value.Data(), in_deriv->Dim(),
         temp.Stride(), out_deriv.Stride(), out_value.Stride(),
         self_repair_scale, margin);
     CU_SAFE_CALL(cudaGetLastError());
-    cuda_sum_mat_cols(temp->NumRows(), CU1DBLOCK, col_sum.Data(), temp.Data(),
+    cuda_sum_mat_cols(temp.NumRows(), CU1DBLOCK, col_sum.Data(), temp.Data(),
                       temp.Dim());
     CU_SAFE_CALL(cudaGetLastError());
     // Small vectors are copied to RAM and reduced on CPU.
     // The length is chosen by cu-vector-speed-test
     if (col_sum.Dim() < 4096) {
-      Vector<Real> ans_cpu(temp);
+      Vector<Real> ans_cpu(col_sum);
       count = ans_cpu.Sum();
     } else {
       // Use no more than 256 blocks (still too many?)
-      dimBlock = CU1DBLOCK;
-      dimGrid = n_blocks(dim_, dimBlock);
-      if (dimGrid > 256) {
-        dimGrid = 256;
+      int dimBlock_1d = CU1DBLOCK;
+      int dimGrid_1d = n_blocks(col_sum.Dim(), dimBlock_1d);
+      if (dimGrid_1d > 256) {
+        dimGrid_1d = 256;
       }
-      CuVector<Real> ans(dimGrid, kUndefined);
-      cuda_vec_sum(dimGrid, dimBlock, data_, ans.Data(), dim_, 1);
+      CuVector<Real> ans(dimGrid_1d, kUndefined);
+      cuda_vec_sum(dimGrid_1d, dimBlock_1d, col_sum.Data(), ans.Data(),
+                   col_sum.Dim(), 1);
       CU_SAFE_CALL(cudaGetLastError());
       Vector<Real> ans_cpu(ans);
       count = ans_cpu.Sum();
@@ -862,24 +864,24 @@ Real DiffSigmoidSelfRepair(const CuMatrixBase<Real> &out_value,
     // repair_mat = out_value * 2 - 1
     // sign_mat = sign(repair_mat), i.e., an element in sign_mat is 1
     // if its corresponding element in repair_mat > 0, or -1 otherwise
-    Matrix<BaseFloat> repair_mat(out_value.Mat());
+    Matrix<Real> repair_mat(out_value.Mat());
     repair_mat.Scale(2.0);
     repair_mat.Add(-1.0);
-    Matrix<BaseFloat> sign_mat(repair_mat);
+    Matrix<Real> sign_mat(repair_mat);
     sign_mat.ApplyHeaviside();
     sign_mat.Scale(2.0);
     sign_mat.Add(-1.0);
 
     repair_mat.ApplyPowAbs(1.0);
-    repair_mat.Add(-(1.0 - margin_threshold * 2.0)); // as out_value was also
-                                                     // scaled by 2
-    Matrix<BaseFloat> mask(repair_mat.NumRows(), repair_mat.NumCols());
+    repair_mat.Add(-(1.0 - margin * 2.0)); // as out_value was also
+                                           // scaled by 2
+    Matrix<Real> mask(repair_mat.NumRows(), repair_mat.NumCols());
     mask.Heaviside(repair_mat);
     repair_mat.ApplyFloor(0.0);
     repair_mat.MulElements(sign_mat);
     // rescales repair_mat so that the absolute values of its elements is the
     // range [0.0,1.0]
-    repair_mat.Scale(1.0 / (margin_threshold * 2.0));
+    repair_mat.Scale(1.0 / (margin * 2.0));
 
     // adds -self-repair-scale * repair_mat to the input derivative for each
     // problematic dimension. The negative sign is so that for inputs <0, we
@@ -887,7 +889,8 @@ Real DiffSigmoidSelfRepair(const CuMatrixBase<Real> &out_value,
     // Our use of this sigmoid-type function  here is just a convenience since
     // we have it available. We could use just about any function that is
     // positive for inputs < 0 and negative for inputs > 0.
-    in_deriv->AddMat(-self_repair_scale_, repair_mat);
+    in_deriv->Mat().AddMat(-self_repair_scale, repair_mat);
+    return mask.Sum();
   }
 }
 
@@ -903,7 +906,7 @@ Real DiffTanhSelfRepair(const CuMatrixBase<Real> &out_value,
     Real count;
     Timer tim;
     CuMatrix<Real> temp(in_deriv->NumRows(), in_deriv->NumCols(), kUndefined);
-    CuVector<Real> col_sum(temp->NumRows(), kUndefined);
+    CuVector<Real> col_sum(temp.NumRows(), kUndefined);
     dim3 dimGrid, dimBlock;
     GetBlockSizesForSimpleMatrixOperation(in_deriv->NumRows(),
                                           in_deriv->NumCols(),
@@ -912,23 +915,24 @@ Real DiffTanhSelfRepair(const CuMatrixBase<Real> &out_value,
         out_deriv.Data(), out_value.Data(), in_deriv->Dim(), temp.Stride(),
         out_deriv.Stride(), out_value.Stride(), self_repair_scale, margin);
     CU_SAFE_CALL(cudaGetLastError());
-    cuda_sum_mat_cols(temp->NumRows(), CU1DBLOCK, col_sum.Data(), temp.Data(),
+    cuda_sum_mat_cols(temp.NumRows(), CU1DBLOCK, col_sum.Data(), temp.Data(),
                       temp.Dim());
     CU_SAFE_CALL(cudaGetLastError());
     // Small vectors are copied to RAM and reduced on CPU.
     // The length is chosen by cu-vector-speed-test
     if (col_sum.Dim() < 4096) {
-      Vector<Real> ans_cpu(temp);
+      Vector<Real> ans_cpu(col_sum);
       count = ans_cpu.Sum();
     } else {
       // Use no more than 256 blocks (still too many?)
-      dimBlock = CU1DBLOCK;
-      dimGrid = n_blocks(dim_, dimBlock);
-      if (dimGrid > 256) {
-        dimGrid = 256;
+      int dimBlock_1d = CU1DBLOCK;
+      int dimGrid_1d = n_blocks(col_sum.Dim(), dimBlock_1d);
+      if (dimGrid_1d > 256) {
+        dimGrid_1d = 256;
       }
-      CuVector<Real> ans(dimGrid, kUndefined);
-      cuda_vec_sum(dimGrid, dimBlock, data_, ans.Data(), dim_, 1);
+      CuVector<Real> ans(dimGrid_1d, kUndefined);
+      cuda_vec_sum(dimGrid_1d, dimBlock_1d, col_sum.Data(), ans.Data(),
+                   col_sum.Dim(), 1);
       CU_SAFE_CALL(cudaGetLastError());
       Vector<Real> ans_cpu(ans);
       count = ans_cpu.Sum();
@@ -967,10 +971,34 @@ Real DiffTanhSelfRepair(const CuMatrixBase<Real> &out_value,
     // Our use of the tanh here is just a convenience since we have it
     // available. We could use just about any function that is positive for
     // inputs < 0 and negative for inputs > 0.
-    in_deriv.Mat().AddMat(-self_repair_scale_, repair_mat);
+    in_deriv->Mat().AddMat(-self_repair_scale, repair_mat);
     return mask.Sum();
   }
 }
+
+template
+float DiffSigmoidSelfRepair(const CuMatrixBase<float> &out_value,
+                            const CuMatrixBase<float> &out_deriv,
+                            float self_repair_scale, float margin,
+                            CuMatrixBase<float> *in_deriv);
+
+template
+double DiffSigmoidSelfRepair(const CuMatrixBase<double> &out_value,
+                             const CuMatrixBase<double> &out_deriv,
+                             double self_repair_scale, double margin,
+                             CuMatrixBase<double> *in_deriv);
+
+template
+float DiffTanhSelfRepair(const CuMatrixBase<float> &out_value,
+                         const CuMatrixBase<float> &out_deriv,
+                         float self_repair_scale, float margin,
+                         CuMatrixBase<float> *in_deriv);
+
+template
+double DiffTanhSelfRepair(const CuMatrixBase<double> &out_value,
+                          const CuMatrixBase<double> &out_deriv,
+                          double self_repair_scale, double margin,
+                          CuMatrixBase<double> *in_deriv);
 
 } //namespace cu
 

@@ -508,7 +508,7 @@ void SigmoidComponent::Backprop(const std::string &debug_info,
                                 CuMatrixBase<BaseFloat> *in_deriv) const {
   if (in_deriv != NULL) {
     SigmoidComponent *to_update = dynamic_cast<SigmoidComponent*>(to_update_in);
-    if (!to_update || to_update->is_gradient_ || self_repair_scale_ <= 0.0 ||
+    if (!to_update || self_repair_scale_ <= 0.0 ||
         (self_repair_lower_threshold_ == 0.0 &&
         self_repair_upper_threshold_ == 1.0)) {
       // simple derivative computation, no self-repair
@@ -521,8 +521,8 @@ void SigmoidComponent::Backprop(const std::string &debug_info,
       to_update->num_dims_processed_ +=
           out_value.NumRows() * out_value.NumCols();
       to_update->num_dims_self_repaired_ +=
-          DiffSigmoidSelfRepair(out_value, out_deriv, self_repair_scale_,
-                                margin, in_deriv);
+          cu::DiffSigmoidSelfRepair(out_value, out_deriv, self_repair_scale_,
+                                    margin, in_deriv);
     }
   }
 }
@@ -1022,7 +1022,7 @@ void TanhComponent::Backprop(const std::string &debug_info,
 
   if (in_deriv != NULL) {
     TanhComponent *to_update = dynamic_cast<TanhComponent*>(to_update_in);
-    if (!to_update || to_update->is_gradient_ || self_repair_scale_ <= 0.0 ||
+    if (!to_update || self_repair_scale_ <= 0.0 ||
         (self_repair_lower_threshold_ == 0.0 &&
         self_repair_upper_threshold_ == 1.0)) {
       // simple derivative computation, no self-repair
@@ -1035,8 +1035,8 @@ void TanhComponent::Backprop(const std::string &debug_info,
       to_update->num_dims_processed_ +=
           out_value.NumRows() * out_value.NumCols();
       to_update->num_dims_self_repaired_ +=
-          DiffTanhSelfRepair(out_value, out_deriv, self_repair_scale_,
-                             margin, in_deriv);
+          cu::DiffTanhSelfRepair(out_value, out_deriv, self_repair_scale_,
+                                 margin, in_deriv);
     }
   }
 }
