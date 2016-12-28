@@ -25,6 +25,7 @@
 #include "hmm/posterior.h"
 #include "util/table-types.h"
 #include "nnet3/nnet-example.h"
+#include "nnet3/nnet-example-utils.h"
 #include "chain/chain-supervision.h"
 
 namespace kaldi {
@@ -130,6 +131,31 @@ struct NnetChainExample {
   }
 };
 
+/// This hashing object hashes just the structural aspects of the NnetExample
+/// without looking at the value of the features.  It will be used in combining
+/// egs into batches of all similar structure.
+struct NnetChainExampleStructureHasher {
+  size_t operator () (const NnetChainExample &eg) const;
+  // We also provide a version of this that works from pointers.
+  size_t operator () (const NnetChainExample *eg) const {
+    return (*this)(*eg);
+  }
+};
+
+
+/// This comparator object compares just the structural aspects of the
+/// NnetChainExample without looking at the value of the features.
+struct NnetChainExampleStructureCompare {
+  bool operator () (const NnetChainExample &a,
+                    const NnetChainExample &b) const;
+  // We also provide a version of this that works from pointers.
+  bool operator () (const NnetChainExample *a,
+                    const NnetChainExample *b) const {
+    return (*this)(*a, *b);
+  }
+};
+
+
 
 /// This function merges a list of NnetChainExample objects into a single one--
 /// intended to be used when forming minibatches for neural net training.  If
@@ -199,6 +225,60 @@ void GetChainComputationRequest(const Nnet &nnet,
 typedef TableWriter<KaldiObjectHolder<NnetChainExample > > NnetChainExampleWriter;
 typedef SequentialTableReader<KaldiObjectHolder<NnetChainExample > > SequentialNnetChainExampleReader;
 typedef RandomAccessTableReader<KaldiObjectHolder<NnetChainExample > > RandomAccessNnetChainExampleReader;
+
+
+/// This function returns the 'size' of a chain example as defined for purposes
+/// of merging egs, which is defined as the largest number of Indexes in any of
+/// the inputs or outputs of the example.
+int32 GetChainNnetExampleSize(const NnetChainExample &a);
+
+
+/// This class is responsible for arranging examples in groups that have the
+/// same strucure (i.e. the same input and output indexes), and outputting them
+/// in suitable minibatches as defined by ExampleMergingConfig.
+class ChainExampleMerger {
+ public:
+  ChainExampleMerger(const ExampleMergingConfig &config,
+                     NnetChainExampleWriter *writer);
+
+  // This function accepts an example, and if possible, writes a merged example
+  // out.  The ownership of the pointer 'a' is transferred to this class when
+  // you call this function.
+  void AcceptExample(NnetChainExample *a);
+
+  // This function announces to the class that the input has finished, so it
+  // should flush out any smaller-sizes minibatches, as dictated by the config.
+  // This will be called in the destructor, but you can call it explicitly when
+  // all the input is done if you want to.
+  // It also prints the stats.
+  void Finish();
+
+  // returns a suitable exit status for a program.
+  bool ExitStatus() { return num_egs_written_ > 0; }
+
+  ~ChainExampleMerger() { Finish(); };
+ private:
+  // called by Finish() and AcceptExample().  Merges, updates the stats, and
+  // writes.  The 'egs' is non-const only because the egs are temporarily
+  // changed inside MergeChainEgs.  The pointer 'egs' is still owned
+  // by the caller.
+  void WriteMinibatch(std::vector<NnetChainExample> *egs);
+
+  bool finished_;
+  int32 num_egs_written_;
+  const ExampleMergingConfig &config_;
+  NnetChainExampleWriter *writer_;
+  ExampleSizeStats stats_;
+
+  // Note: the "key" into the egs is the first element of the vector.
+  typedef unordered_map<NnetChainExample*,
+                        std::vector<NnetChainExample*>,
+                        NnetChainExampleStructureHasher,
+                        NnetChainExampleStructureCompare> MapType;
+MapType eg_to_egs_;
+};
+
+
 
 } // namespace nnet3
 } // namespace kaldi

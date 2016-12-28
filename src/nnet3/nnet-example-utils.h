@@ -458,6 +458,7 @@ class ExampleSizeStats {
 /// indexes), and outputting them in suitable minibatches
 /// as defined by ExampleMergingConfig.
 class ExampleMerger {
+ public:
   ExampleMerger(const ExampleMergingConfig &config,
                 NnetExampleWriter *writer);
 
@@ -472,6 +473,9 @@ class ExampleMerger {
   // all the input is done if you want to.
   // It also prints the stats.
   void Finish();
+
+  // returns a suitable exit status for a program.
+  bool ExitStatus() { return num_egs_written_ > 0; }
 
   ~ExampleMerger() { Finish(); };
  private:
