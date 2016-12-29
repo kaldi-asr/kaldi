@@ -22,10 +22,6 @@ frames_per_eg=8   # number of frames of labels per example.  more->less disk spa
 left_context=4    # amount of left-context per eg (i.e. extra frames of input features
                   # not present in the output supervision).
 right_context=4   # amount of right-context per eg.
-valid_left_context=   # amount of left_context for validation egs, typically used in
-                      # recurrent architectures to ensure matched condition with
-                      # training egs
-valid_right_context=  # amount of right_context for validation egs
 compress=true   # set this to false to disable compression (e.g. if you want to see whether
                 # results are affected).
 
@@ -37,8 +33,8 @@ reduce_frames_per_eg=true  # If true, this script may reduce the frames_per_eg
 num_utts_subset=300     # number of utterances in validation and training
                         # subsets used for shrinkage and diagnostics.
 num_valid_frames_combine=0 # #valid frames for combination weights at the very end.
-num_train_frames_combine=10000 # # train frames for the above.
-num_frames_diagnostic=4000 # number of frames for "compute_prob" jobs
+num_train_frames_combine=60000 # # train frames for the above.
+num_frames_diagnostic=10000 # number of frames for "compute_prob" jobs
 samples_per_iter=400000 # this is the target number of egs in each archive of egs
                         # (prior to merging egs).  We probably should have called
                         # it egs_per_iter. This is just a guideline; it will pick
@@ -266,11 +262,7 @@ if [ $stage -le 2 ]; then
     copy-int-vector ark:- ark,scp:$dir/ali.ark,$dir/ali.scp || exit 1;
 fi
 
-egs_opts="--left-context=$left_context --right-context=$right_context --compress=$compress"
-
-[ -z $valid_left_context ] &&  valid_left_context=$left_context;
-[ -z $valid_right_context ] &&  valid_right_context=$right_context;
-valid_egs_opts="--left-context=$valid_left_context --right-context=$valid_right_context --compress=$compress"
+egs_opts="--left-context=$left_context --right-context=$right_context --compress=$compress --num-frames=$frames_per_eg"
 
 echo $left_context > $dir/info/left_context
 echo $right_context > $dir/info/right_context
@@ -284,28 +276,28 @@ if [ $stage -le 3 ]; then
     <$dir/ali.scp >$dir/ali_special.scp
 
   $cmd $dir/log/create_valid_subset.log \
-    nnet3-get-egs --num-pdfs=$num_pdfs $valid_ivector_opt $valid_egs_opts "$valid_feats" \
+    nnet3-get-egs --num-pdfs=$num_pdfs $valid_ivector_opt $egs_opts "$valid_feats" \
     "ark,s,cs:ali-to-pdf $alidir/final.mdl scp:$dir/ali_special.scp ark:- | ali-to-post ark:- ark:- |" \
     "ark:$dir/valid_all.egs" || touch $dir/.error &
   $cmd $dir/log/create_train_subset.log \
-    nnet3-get-egs --num-pdfs=$num_pdfs $train_subset_ivector_opt $valid_egs_opts "$train_subset_feats" \
+    nnet3-get-egs --num-pdfs=$num_pdfs $train_subset_ivector_opt $egs_opts "$train_subset_feats" \
      "ark,s,cs:ali-to-pdf $alidir/final.mdl scp:$dir/ali_special.scp ark:- | ali-to-post ark:- ark:- |" \
      "ark:$dir/train_subset_all.egs" || touch $dir/.error &
   wait;
   [ -f $dir/.error ] && echo "Error detected while creating train/valid egs" && exit 1
   echo "... Getting subsets of validation examples for diagnostics and combination."
   $cmd $dir/log/create_valid_subset_combine.log \
-    nnet3-subset-egs --n=$num_valid_frames_combine ark:$dir/valid_all.egs \
+    nnet3-subset-egs --n=$[$num_valid_frames_combine/$frames_per_eg] ark:$dir/valid_all.egs \
     ark:$dir/valid_combine.egs || touch $dir/.error &
   $cmd $dir/log/create_valid_subset_diagnostic.log \
-    nnet3-subset-egs --n=$num_frames_diagnostic ark:$dir/valid_all.egs \
+    nnet3-subset-egs --n=$[$num_frames_diagnostic/$frames_per_eg] ark:$dir/valid_all.egs \
     ark:$dir/valid_diagnostic.egs || touch $dir/.error &
 
   $cmd $dir/log/create_train_subset_combine.log \
-    nnet3-subset-egs --n=$num_train_frames_combine ark:$dir/train_subset_all.egs \
+    nnet3-subset-egs --n=$[$num_train_frames_combine/$frames_per_eg] ark:$dir/train_subset_all.egs \
     ark:$dir/train_combine.egs || touch $dir/.error &
   $cmd $dir/log/create_train_subset_diagnostic.log \
-    nnet3-subset-egs --n=$num_frames_diagnostic ark:$dir/train_subset_all.egs \
+    nnet3-subset-egs --n=$[$num_frames_diagnostic/$frames_per_eg] ark:$dir/train_subset_all.egs \
     ark:$dir/train_diagnostic.egs || touch $dir/.error &
   wait
   sleep 5  # wait for file system to sync.
@@ -328,7 +320,7 @@ if [ $stage -le 4 ]; then
   echo "$0: Generating training examples on disk"
   # The examples will go round-robin to egs_list.
   $cmd JOB=1:$nj $dir/log/get_egs.JOB.log \
-    nnet3-get-egs --num-pdfs=$num_pdfs $ivector_opt $egs_opts --num-frames=$frames_per_eg "$feats" \
+    nnet3-get-egs --num-pdfs=$num_pdfs $ivector_opt $egs_opts "$feats" \
     "ark,s,cs:filter_scp.pl $sdata/JOB/utt2spk $dir/ali.scp | ali-to-pdf $alidir/final.mdl scp:- ark:- | ali-to-post ark:- ark:- |" ark:- \| \
     nnet3-copy-egs --random=true --srand=\$[JOB+$srand] ark:- $egs_list || exit 1;
 fi

@@ -19,7 +19,6 @@ logger.addHandler(logging.NullHandler())
 
 def generate_egs_using_targets(data, targets_scp, egs_dir,
                                left_context, right_context,
-                               valid_left_context, valid_right_context,
                                run_opts, stage=0,
                                feat_type='raw', online_ivector_dir=None,
                                target_type='dense', num_targets=-1,
@@ -56,8 +55,6 @@ def generate_egs_using_targets(data, targets_scp, egs_dir,
                 --transform-dir "{transform_dir}" \
                 --online-ivector-dir "{ivector_dir}" \
                 --left-context {left_context} --right-context {right_context} \
-                --valid-left-context {valid_left_context} \
-                --valid-right-context {valid_right_context} \
                 --stage {stage} \
                 --samples-per-iter {samples_per_iter} \
                 --frames-per-eg {frames_per_eg} \
@@ -75,8 +72,6 @@ def generate_egs_using_targets(data, targets_scp, egs_dir,
                                 if online_ivector_dir is not None
                                 else ''),
                    left_context=left_context, right_context=right_context,
-                   valid_left_context=valid_left_context,
-                   valid_right_context=valid_right_context,
                    stage=stage, samples_per_iter=samples_per_iter,
                    frames_per_eg=frames_per_eg, srand=srand,
                    num_targets=num_targets,

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# THIS SCRIPT IS DEPRECATED, see ./train.py
+
 # note, TDNN is the same as what we used to call multisplice.
 # This version of the script, nnet3/chain/train_tdnn.sh, is for 'chain' systems.
 
@@ -102,6 +104,8 @@ right_deriv_truncate=  # number of time-steps to avoid using the deriv of, on th
 
 trap 'for pid in $(jobs -pr); do kill -TERM $pid; done' INT QUIT TERM
 
+
+echo "$0: THIS SCRIPT IS DEPRECATED"
 echo "$0 $@"  # Print the command line for logging
 
 if [ -f path.sh ]; then . ./path.sh; fi

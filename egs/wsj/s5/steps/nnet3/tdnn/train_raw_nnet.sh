@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# THIS SCRIPT IS DEPRECATED, see ../train_raw_dnn.py
+
 # note, TDNN is the same as what we used to call multisplice.
 
 # Copyright 2012-2015  Johns Hopkins University (Author: Daniel Povey).
@@ -69,6 +71,7 @@ dense_targets=true        # Use dense targets instead of sparse targets
 
 trap 'for pid in $(jobs -pr); do kill -KILL $pid; done' INT QUIT TERM
 
+echo "$0: THIS SCRIPT IS DEPRECATED"
 echo "$0 $@"  # Print the command line for logging
 
 if [ -f path.sh ]; then . ./path.sh; fi

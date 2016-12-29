@@ -21,13 +21,7 @@ frame_subsampling_factor=1 # ratio between input and output frame-rate of nnet.
 left_context=4    # amount of left-context per eg (i.e. extra frames of input features
                   # not present in the output supervision).
 right_context=4   # amount of right-context per eg.
-valid_left_context=   # amount of left_context for validation egs, typically used in
-                      # recurrent architectures to ensure matched condition with
-                      # training egs
-valid_right_context=  # amount of right_context for validation egs
 adjust_priors=true
-priors_left_context=   # amount of left_context for priors egs
-priors_right_context=   # amount of right_context for priors egs
 compress=true   # set this to false to disable compression (e.g. if you want to see whether
                 # results are affected).
 num_utts_subset=80     # number of utterances in validation and training
@@ -54,7 +48,9 @@ cmvn_opts=  # can be used for specifying CMVN options, if feature type is not ld
             # it doesn't make sense to use different options than were used as input to the
             # LDA transform).  This is used to turn off CMVN in the online-nnet experiments.
 
-num_priors_subset=100
+num_priors_subset=1000  #  number of utterances used to calibrate the per-state
+                        #  priors.  Note: these don't have to be held out from
+                        #  the training data.
 num_archives_priors=10
 
 # End configuration section.
@@ -279,36 +275,21 @@ fi
 
 splitter_opts="--supervision-splitter.determinize=$determinize --supervision-splitter.minimize=$minimize --supervision-splitter.remove_output_symbols=$remove_output_symbols --supervision-splitter.remove_epsilons=$remove_epsilons --supervision-splitter.collapse-transition-ids=$collapse_transition_ids --supervision-splitter.acoustic-scale=$acwt"
 
-[ -z $valid_left_context ] &&  valid_left_context=$left_context;
-[ -z $valid_right_context ] &&  valid_right_context=$right_context;
-
-[ -z $priors_left_context ] &&  priors_left_context=$left_context;
-[ -z $priors_right_context ] &&  priors_right_context=$right_context;
-
 left_context=$[left_context+frame_subsampling_factor/2]
 right_context=$[right_context+frame_subsampling_factor/2]
 
-egs_opts="--left-context=$left_context --right-context=$right_context --num-frames=$frames_per_eg --num-frames-overlap=$frames_overlap_per_eg --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress $splitter_opts"
+egs_opts="--left-context=$left_context --right-context=$right_context --num-frames=$frames_per_eg --compress=$compress --frame-subsampling-factor=$frame_subsampling_factor $splitter_opts"
 
-valid_left_context=$[valid_left_context+frame_subsampling_factor/2]
-valid_right_context=$[valid_right_context+frame_subsampling_factor/2]
-
-# don't do the overlap thing for the validation data.
-valid_egs_opts="--left-context=$valid_left_context --right-context=$valid_right_context --num-frames=$frames_per_eg --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress $splitter_opts"
-
-priors_left_context=$[priors_left_context+frame_subsampling_factor/2]
-priors_right_context=$[priors_right_context+frame_subsampling_factor/2]
-
-# don't do the overlap thing for the priors computation data.
-priors_egs_opts="--left-context=$priors_left_context --right-context=$priors_right_context --num-frames=1 --compress=$compress"
+# don't do the overlap thing for the priors computation data-- but do use the
+# same num-frames for the eg, which would be much more efficient in case it's a
+# recurrent model and has a lot of frames of context.  In any case we're not
+# doing SGD so there is no benefit in having short chunks.
+priors_egs_opts="--left-context=$left_context --right-context=$right_context --num-frames=$frames_per_eg --compress=$compress"
 
 supervision_all_opts="--frame-subsampling-factor=$frame_subsampling_factor"
 
 echo $left_context > $dir/info/left_context
 echo $right_context > $dir/info/right_context
-
-echo $priors_left_context > $dir/info/priors_left_context
-echo $priors_right_context > $dir/info/priors_right_context
 
 echo $frame_subsampling_factor > $dir/info/frame_subsampling_factor
 
@@ -368,7 +349,7 @@ if [ $stage -le 4 ]; then
   $cmd $dir/log/create_valid_subset.log \
     discriminative-get-supervision $supervision_all_opts \
     scp:$dir/ali_special.scp scp:$dir/lat_special.scp ark:- \| \
-    nnet3-discriminative-get-egs $valid_ivector_opt $valid_egs_opts \
+    nnet3-discriminative-get-egs $valid_ivector_opt $egs_opts \
     $dir/final.mdl "$valid_feats" ark,s,cs:- "ark:$dir/valid_diagnostic.degs" || touch $dir/.error &
 
   $cmd $dir/log/create_train_subset.log \
@@ -405,6 +386,7 @@ if [ $stage -le 5 ]; then
     "scp:utils/filter_scp.pl $sdata/JOB/utt2spk $dir/ali.scp |" \
     "ark,s,cs:gunzip -c $denlatdir/lat.JOB.gz |" ark:- \| \
     nnet3-discriminative-get-egs $ivector_opt $egs_opts \
+       --num-frames-overlap=$frames_overlap_per_eg \
     $dir/final.mdl "$feats" ark,s,cs:- ark:- \| \
     nnet3-discriminative-copy-egs --random=true --srand=JOB ark:- $degs_list || exit 1;
 fi
