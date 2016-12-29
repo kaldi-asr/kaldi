@@ -231,11 +231,9 @@ void UnitTestLstmNonlinearity() {
         input_deriv(num_rows, 5 * cell_dim),
         params_deriv(3, cell_dim);
 
-    double count_in = 0.0;
-
     // get derivative w.r.t. input and params, which we are testing.
-    cu::BackpropLstmNonlinearity(input, params, output_deriv, deriv_sum,
-                                 self_repair_config, count_in,
+    cu::BackpropLstmNonlinearity(input, params, output_deriv,
+                                 self_repair_config,
                                  &input_deriv, &params_deriv,
                                  &value_sum, &deriv_sum, &self_repair_sum);
 
@@ -300,9 +298,7 @@ static void UnitTestBackpropLstmNonlinearity() {
     Matrix<Real> hinput(num_rows, 5 * cell_dim);
     Matrix<Real> hparams(3, cell_dim);
     Matrix<Real> houtput_deriv(num_rows, 2 * cell_dim);
-    Matrix<double> hderiv_sum_in(5, cell_dim);
     Vector<Real> hself_repair_config(10);
-    double count_in;
     Matrix<Real> hinput_deriv(num_rows, 5 * cell_dim);
     Matrix<Real> hparams_deriv(3, cell_dim);
     Matrix<double> hvalue_sum_out(5, cell_dim);
@@ -312,9 +308,7 @@ static void UnitTestBackpropLstmNonlinearity() {
     hinput.SetRandn();
     hparams.SetRandn();
     houtput_deriv.SetRandn();
-    hderiv_sum_in.SetRandn();
     hself_repair_config.SetRandn();
-    count_in = Rand() % num_rows;
 
     hinput_deriv.SetRandn();
     hparams_deriv.SetRandn();
@@ -325,7 +319,6 @@ static void UnitTestBackpropLstmNonlinearity() {
     CuMatrix<Real> dinput(hinput);
     CuMatrix<Real> dparams(hparams);
     CuMatrix<Real> doutput_deriv(houtput_deriv);
-    CuMatrix<double> dderiv_sum_in(hderiv_sum_in);
     CuVector<Real> dself_repair_config(hself_repair_config);
 
     CuMatrix<Real> dinput_deriv(hinput_deriv);
@@ -335,14 +328,14 @@ static void UnitTestBackpropLstmNonlinearity() {
     CuMatrix<Real> dself_repair_sum_out(hself_repair_sum_out);
 
     cu::CpuBackpropLstmNonlinearity(hinput, hparams, houtput_deriv,
-                                    hderiv_sum_in, hself_repair_config,
-                                    count_in, (MatrixBase<Real>*) NULL,
+                                    hself_repair_config,
+                                    (MatrixBase<Real>*) NULL,
                                     (MatrixBase<Real>*) NULL,
                                     (MatrixBase<double>*) NULL,
                                     (MatrixBase<double>*) NULL,
                                     (MatrixBase<Real>*) NULL);
-    cu::BackpropLstmNonlinearity(dinput, dparams, doutput_deriv, dderiv_sum_in,
-                                 dself_repair_config, count_in,
+    cu::BackpropLstmNonlinearity(dinput, dparams, doutput_deriv,
+                                 dself_repair_config,
                                  (CuMatrixBase<Real>*) NULL,
                                  (CuMatrixBase<Real>*) NULL,
                                  (CuMatrixBase<double>*) NULL,
@@ -350,37 +343,37 @@ static void UnitTestBackpropLstmNonlinearity() {
                                  (CuMatrixBase<Real>*) NULL);
 
     cu::CpuBackpropLstmNonlinearity(hinput, hparams, houtput_deriv,
-                                    hderiv_sum_in, hself_repair_config,
-                                    count_in, (MatrixBase<Real>*) NULL,
+                                    hself_repair_config,
+                                    (MatrixBase<Real>*) NULL,
                                     &hparams_deriv, &hvalue_sum_out,
                                     &hderiv_sum_out, &hself_repair_sum_out);
-    cu::BackpropLstmNonlinearity(dinput, dparams, doutput_deriv, dderiv_sum_in,
-                                 dself_repair_config, count_in,
+    cu::BackpropLstmNonlinearity(dinput, dparams, doutput_deriv,
+                                 dself_repair_config,
                                  (CuMatrixBase<Real>*) NULL, &dparams_deriv,
                                  &dvalue_sum_out, &dderiv_sum_out,
                                  &dself_repair_sum_out);
 
     cu::CpuBackpropLstmNonlinearity(hinput, hparams, houtput_deriv,
-                                    hderiv_sum_in, hself_repair_config,
-                                    count_in, &hinput_deriv,
+                                    hself_repair_config,
+                                    &hinput_deriv,
                                     (MatrixBase<Real>*) NULL,
                                     (MatrixBase<double>*) NULL,
                                     (MatrixBase<double>*) NULL,
                                     (MatrixBase<Real>*) NULL);
-    cu::BackpropLstmNonlinearity(dinput, dparams, doutput_deriv, dderiv_sum_in,
-                                 dself_repair_config, count_in, &dinput_deriv,
+    cu::BackpropLstmNonlinearity(dinput, dparams, doutput_deriv,
+                                 dself_repair_config, &dinput_deriv,
                                  (CuMatrixBase<Real>*) NULL,
                                  (CuMatrixBase<double>*) NULL,
                                  (CuMatrixBase<double>*) NULL,
                                  (CuMatrixBase<Real>*) NULL);
 
     cu::CpuBackpropLstmNonlinearity(hinput, hparams, houtput_deriv,
-                                    hderiv_sum_in, hself_repair_config,
-                                    count_in, &hinput_deriv, &hparams_deriv,
+                                    hself_repair_config,
+                                    &hinput_deriv, &hparams_deriv,
                                     &hvalue_sum_out, &hderiv_sum_out,
                                     &hself_repair_sum_out);
-    cu::BackpropLstmNonlinearity(dinput, dparams, doutput_deriv, dderiv_sum_in,
-                                 dself_repair_config, count_in, &dinput_deriv,
+    cu::BackpropLstmNonlinearity(dinput, dparams, doutput_deriv,
+                                 dself_repair_config, &dinput_deriv,
                                  &dparams_deriv, &dvalue_sum_out,
                                  &dderiv_sum_out, &dself_repair_sum_out);
 
@@ -411,9 +404,7 @@ static void UnitTestBackpropLstmNonlinearity() {
     CuMatrix<Real> input(num_rows, 5 * cell_dim);
     CuMatrix<Real> params(3, cell_dim);
     CuMatrix<Real> output_deriv(num_rows, 2 * cell_dim);
-    CuMatrix<double> deriv_sum_in(5, cell_dim);
     CuVector<Real> self_repair_config(10);
-    double count_in;
 
     CuMatrix<Real> input_deriv(num_rows, 5 * cell_dim);
     CuMatrix<Real> params_deriv(3, cell_dim);
@@ -424,15 +415,13 @@ static void UnitTestBackpropLstmNonlinearity() {
     input.SetRandn();
     params.SetRandn();
     output_deriv.SetRandn();
-    deriv_sum_in.SetRandn();
     self_repair_config.SetRandn();
-    count_in = Rand() % num_rows;
 
     Timer tim;
     int32 iter = 0;
     for (; tim.Elapsed() < time_in_secs; iter++)
-      cu::BackpropLstmNonlinearity(input, params, output_deriv, deriv_sum_in,
-                                   self_repair_config, count_in, &input_deriv,
+      cu::BackpropLstmNonlinearity(input, params, output_deriv,
+                                   self_repair_config, &input_deriv,
                                    &params_deriv, &value_sum_out,
                                    &deriv_sum_out, &self_repair_sum_out);
 

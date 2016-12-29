@@ -2847,17 +2847,6 @@ static void _lstm_nonlinearity(const Real* in, const int in_stride,
                      of the objective function we're backpropagating,
                      w.r.t. the quantities c_t and m_t (in two blocks of
                      column-dimension C).
- @param [in] deriv_sum_in
-                     This is used in the self-repair code to identify
-                     oversaturated nonlinearities.
-                     It is a matrix, of dimension 5 by C, corresponding to
-                     the totals of the derivatives of the 5 sigmoid and tanh
-                     nonlinearities, in they order they appear in the equations
-                     in the documentation of ComputeLstmNonlinearity()
-                     respectively,
-                     they appear in the equations for (i_t, f_t, c_t, o_t, m_t).
-                     This will be divided by 'count_in' to get the average
-                     derivative value so far, for each of the nonlinearities.
  @param [in] self_repair_config
                      A vector of dimension 10, containing the configuration of
                      the self-repair to be used for the 5 nonlinearities.
@@ -2865,12 +2854,6 @@ static void _lstm_nonlinearity(const Real* in, const int in_stride,
                      values (typically 0.05 for sigmoid and 0.2 for tanh),
                      and the next 5 elements are the corresponding
                      self-repair-scales (typically 10^-5).
- @param [in] count_in  The data-count that corresponds to the stats in
-                     'deriv_sum_in' at entry to the function.
-                     This function should tolerate the count being zero
-                     (in that case, it is free to do the self-repair or not,
-                     as this should only happen on the 1st minibatch of each
-                     training job).
  @param [out] input_deriv
                      May be NULL; if not, this function writes, to this
                      location, the backpropagated derivative of the objective
@@ -2915,10 +2898,8 @@ static void _diff_lstm_nonlinearity(const int cell_dim, const int num_rows,
                                     const Real* params, const int params_stride,
                                     const Real* output_deriv,
                                     const int output_deriv_stride,
-                                    const double* deriv_sum_in,
-                                    const int deriv_sum_in_stride,
                                     const Real* self_repair_config,
-                                    double count, Real* input_deriv,
+                                    Real* input_deriv,
                                     const int input_deriv_stride,
                                     Real* params_deriv,
                                     const int params_deriv_stride,
@@ -2945,7 +2926,9 @@ static void _diff_lstm_nonlinearity(const int cell_dim, const int num_rows,
   Real o_t_value_sum = 0, o_t_deriv_sum = 0;
   Real c_t_value_sum = 0, c_t_deriv_sum = 0;
 
-  bool update_sr[5];
+  Real self_repair_count[5];
+  for (int i = 0; i < 5; i++)
+    self_repair_count[i] = 0.0;
 
   if (j < cell_dim) {
     const Real w_ic = params[j];
@@ -2953,16 +2936,6 @@ static void _diff_lstm_nonlinearity(const int cell_dim, const int num_rows,
     const Real w_oc = params[2 * params_stride + j];
 
     const Real* sr_config = self_repair_config;
-#   pragma unroll
-    for (int i = 0; i < 5; i++) {
-      update_sr[i] = deriv_sum_in[i * deriv_sum_in_stride + j] / count
-          < sr_config[i];
-    }
-    const Real i_t_self_repair = (update_sr[0] ? sr_config[5] : 0);
-    const Real f_t_self_repair = (update_sr[1] ? sr_config[6] : 0);
-    const Real c_part_self_repair = (update_sr[2] ? sr_config[7] : 0);
-    const Real o_t_self_repair = (update_sr[3] ? sr_config[8] : 0);
-    const Real c_t_self_repair = (update_sr[4] ? sr_config[9] : 0);
 
     for (int i = i0; i < num_rows; i += grid_stride) {
       const Real i_part = input[i * input_stride + j];
@@ -2977,6 +2950,39 @@ static void _diff_lstm_nonlinearity(const int cell_dim, const int num_rows,
       const Real c_t = f_t * c_prev + i_t * tanh_c_part;
       const Real o_t = 1 / (1 + exp(-o_part - w_oc * c_t));
       const Real tanh_c_t = tanh(c_t);
+
+      const Real i_t_self_repair = sr_config[5] / (2 * sr_config[0]) * (
+          2 * i_t - 1 >= 0.0 ?
+          max(2 * i_t - 1 - (1 - 2 * sr_config[0]), 0.0) :
+          min(2 * i_t - 1 + (1 - 2 * sr_config[0]), 0.0));
+      const Real f_t_self_repair = sr_config[6] / (2 * sr_config[1]) * (
+          2 * f_t - 1 >= 0.0 ?
+          max(2 * f_t - 1 - (1 - 2 * sr_config[1]), 0.0) :
+          min(2 * f_t - 1 + (1 - 2 * sr_config[1]), 0.0));
+      const Real c_part_self_repair = sr_config[7] / sr_config[2] * (
+          tanh_c_part >= 0.0 ?
+          max(tanh_c_part - (1 - sr_config[2]), 0.0) :
+          min(tanh_c_part + (1 - sr_config[2]), 0.0));
+      const Real o_t_self_repair = sr_config[8] / (2 * sr_config[3]) * (
+          2 * o_t - 1 >= 0.0 ?
+          max(2 * o_t - 1 - (1 - 2 * sr_config[3]), 0.0) :
+          min(2 * o_t - 1 + (1 - 2 * sr_config[3]), 0.0));
+      const Real c_t_self_repair = sr_config[9] / sr_config[4] * (
+          tanh_c_t >= 0.0 ?
+          max(tanh_c_t - (1 - sr_config[4]), 0.0) :
+          min(tanh_c_t + (1 - sr_config[4]), 0.0));
+
+      // accumulates self-repair stats over the "for" loop
+      if (i_t_self_repair != 0.0)
+        self_repair_count[0] += 1.0;
+      if (f_t_self_repair != 0.0)
+        self_repair_count[1] += 1.0;
+      if (c_part_self_repair != 0.0)
+        self_repair_count[2] += 1.0;
+      if (o_t_self_repair != 0.0)
+        self_repair_count[3] += 1.0;
+      if (c_t_self_repair != 0.0)
+        self_repair_count[4] += 1.0;
 
       const Real i_t_deriv = i_t * (1 - i_t);
       const Real f_t_deriv = f_t * (1 - f_t);
@@ -3003,18 +3009,15 @@ static void _diff_lstm_nonlinearity(const int cell_dim, const int num_rows,
 
       const Real dtanh_c_t = o_t * dm_t;
       const Real do_t = tanh_c_t * dm_t;
-      const Real do_t_input = (o_t_deriv * do_t
-          - (2 * o_t - 1) * o_t_self_repair);
+      const Real do_t_input = o_t_deriv * do_t - o_t_self_repair;
 
       const Real dc_t = (c_t_deriv * dtanh_c_t + dc_t_out + do_t_input * w_oc)
-          - tanh_c_t * c_t_self_repair;
+          - c_t_self_repair;
       const Real dtanh_c_part = i_t * dc_t;
       const Real df_t = dc_t * c_prev;
-      const Real df_t_input = (df_t * f_t_deriv
-          - (2 * f_t - 1) * f_t_self_repair);
+      const Real df_t_input = df_t * f_t_deriv - f_t_self_repair;
       const Real di_t = dc_t * tanh_c_part;
-      const Real di_t_input = (di_t * i_t_deriv
-          - (2 * i_t - 1) * i_t_self_repair);
+      const Real di_t_input = di_t * i_t_deriv - i_t_self_repair;
 
       if (params_deriv) {
         w_ic_deriv_sum += c_prev * di_t_input;
@@ -3024,8 +3027,7 @@ static void _diff_lstm_nonlinearity(const int cell_dim, const int num_rows,
 
       const Real dc_prev = w_ic * di_t_input + w_fc * df_t_input + f_t * dc_t;
       const Real do_part = do_t_input;
-      const Real dc_part = (c_part_deriv * dtanh_c_part
-          - tanh_c_part * c_part_self_repair);
+      const Real dc_part = c_part_deriv * dtanh_c_part - c_part_self_repair;
       const Real df_part = df_t_input;
       const Real di_part = di_t_input;
 
@@ -3039,8 +3041,24 @@ static void _diff_lstm_nonlinearity(const int cell_dim, const int num_rows,
     }
   }
 
+  // compute self-repair stats
+  if (i0 < 5) {
+    smem[tid] = self_repair_count[i0];
+#   pragma unroll
+    for (int shift = CU1DBLOCK / 2; shift >= warpSize; shift >>= 1) {
+      __syncthreads();
+      if (tid < shift) {
+        smem[tid] += smem[tid + shift];
+      }
+    }
+    if (tid < warpSize && j < cell_dim) {
+      self_repair_sum_out[i0 * self_repair_sum_out_stride + j] = smem[tid];
+    }
+  }
+
   if (params_deriv) {
     // compute params_deriv
+    __syncthreads();
     smem[tid] = w_ic_deriv_sum;
 #   pragma unroll
     for (int shift = CU1DBLOCK / 2; shift >= warpSize; shift >>= 1) {
@@ -3143,13 +3161,6 @@ static void _diff_lstm_nonlinearity(const int cell_dim, const int num_rows,
     }
     if (tid < warpSize && j < cell_dim) {
       value_sum_out[4 * value_sum_out_stride + j] += smem[tid];
-    }
-
-    // need to update self_repair_sum_out before deriv_sum_out, because
-    // deriv_sum_out and deriv_sum_in might point to the same memory.
-    if (i0 < 5 && j < cell_dim) {
-      self_repair_sum_out[i0 * self_repair_sum_out_stride + j] =
-          update_sr[i0] ? num_rows : 0;
     }
 
     // compute derive_sum_out
@@ -4689,10 +4700,8 @@ void cudaD_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
                                   const int params_stride,
                                   const double* output_deriv,
                                   const int output_deriv_stride,
-                                  const double* deriv_sum_in,
-                                  const int deriv_sum_in_stride,
                                   const double* self_repair_config,
-                                  double count, double* input_deriv,
+                                  double* input_deriv,
                                   const int input_deriv_stride,
                                   double* params_deriv,
                                   const int params_deriv_stride,
@@ -4704,10 +4713,9 @@ void cudaD_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
                                   const int self_repair_sum_out_stride) {
   _diff_lstm_nonlinearity<<<Gr, Bl>>>(cell_dim, num_rows, input,
       input_stride, params, params_stride, output_deriv, output_deriv_stride,
-      deriv_sum_in, deriv_sum_in_stride, self_repair_config, count, input_deriv,
-      input_deriv_stride, params_deriv, params_deriv_stride, value_sum_out,
-      value_sum_out_stride, deriv_sum_out, deriv_sum_out_stride,
-      self_repair_sum_out, self_repair_sum_out_stride);
+      self_repair_config, input_deriv, input_deriv_stride, params_deriv,
+      params_deriv_stride, value_sum_out, value_sum_out_stride, deriv_sum_out,
+      deriv_sum_out_stride, self_repair_sum_out, self_repair_sum_out_stride);
 }
 void cudaF_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
                                   const int num_rows, const float* input,
@@ -4715,9 +4723,7 @@ void cudaF_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
                                   const int params_stride,
                                   const float* output_deriv,
                                   const int output_deriv_stride,
-                                  const double* deriv_sum_in,
-                                  const int deriv_sum_in_stride,
-                                  const float* self_repair_config, double count,
+                                  const float* self_repair_config,
                                   float* input_deriv,
                                   const int input_deriv_stride,
                                   float* params_deriv,
@@ -4730,8 +4736,7 @@ void cudaF_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
                                   const int self_repair_sum_out_stride) {
   _diff_lstm_nonlinearity<<<Gr, Bl>>>(cell_dim, num_rows, input,
       input_stride, params, params_stride, output_deriv, output_deriv_stride,
-      deriv_sum_in, deriv_sum_in_stride, self_repair_config, count, input_deriv,
-      input_deriv_stride, params_deriv, params_deriv_stride, value_sum_out,
-      value_sum_out_stride, deriv_sum_out, deriv_sum_out_stride,
-      self_repair_sum_out, self_repair_sum_out_stride);
+      self_repair_config, input_deriv, input_deriv_stride, params_deriv,
+      params_deriv_stride, value_sum_out, value_sum_out_stride, deriv_sum_out,
+      deriv_sum_out_stride, self_repair_sum_out, self_repair_sum_out_stride);
 }

@@ -5037,6 +5037,8 @@ void LstmNonlinearityComponent::Read(std::istream &is, bool binary) {
   deriv_sum_.Read(is, binary);
   ExpectToken(is, binary, "<SelfRepairConfig>");
   self_repair_config_.Read(is, binary);
+  if (IsOldDefaultSelfRepairConfig(self_repair_config_))
+    GetDefaultSelfRepairConfig(&self_repair_config_);
   ExpectToken(is, binary, "<SelfRepairProb>");
   self_repair_total_.Read(is, binary);
 
@@ -5219,8 +5221,7 @@ void LstmNonlinearityComponent::Backprop(
 
   if (to_update_in == NULL) {
     cu::BackpropLstmNonlinearity(in_value, params_, out_deriv,
-                                 deriv_sum_, self_repair_config_,
-                                 count_, in_deriv,
+                                 self_repair_config_, in_deriv,
                                  (CuMatrixBase<BaseFloat>*) NULL,
                                  (CuMatrixBase<double>*) NULL,
                                  (CuMatrixBase<double>*) NULL,
@@ -5235,8 +5236,7 @@ void LstmNonlinearityComponent::Backprop(
     CuMatrix<BaseFloat> self_repair_total(5, cell_dim, kUndefined);
 
     cu::BackpropLstmNonlinearity(in_value, params_, out_deriv,
-                                 deriv_sum_, self_repair_config_,
-                                 count_, in_deriv, &params_deriv,
+                                 self_repair_config_, in_deriv, &params_deriv,
                                  &(to_update->value_sum_),
                                  &(to_update->deriv_sum_),
                                  &self_repair_total);
@@ -5308,6 +5308,28 @@ void LstmNonlinearityComponent::InitNaturalGradient() {
   preconditioner_.SetNumSamplesHistory(1000.0);
 }
 
+void LstmNonlinearityComponent::GetDefaultSelfRepairConfig(
+    CuVector<BaseFloat> *config) const {
+  // the following values have to be consistent with the default values in
+  // InitFromConfig()
+  BaseFloat tanh_self_repair_threshold = 0.1,
+      sigmoid_self_repair_threshold = 0.05,
+      self_repair_scale = 1.0e-05;
+  config->Resize(10);
+  config->Range(0, 5).Set(sigmoid_self_repair_threshold);
+  (*config)(2) = tanh_self_repair_threshold;
+  (*config)(4) = tanh_self_repair_threshold;
+  config->Range(5, 5).Set(self_repair_scale);
+}
+
+bool LstmNonlinearityComponent::IsOldDefaultSelfRepairConfig(
+    const CuVector<BaseFloat> &config) const {
+  KALDI_ASSERT(config.Dim() == 10);
+  return (config(0) == 0.05 && config(1) == 0.05 && config(2) == 0.2 &&
+    config(3) == 0.05 && config(4) == 0.2 && config(5) == 1.0e-05 &&
+    config(6) == 1.0e-05 && config(7) == 1.0e-05 && config(8) == 1.0e-05 &&
+    config(9) == 1.0e-05);
+}
 
 void LstmNonlinearityComponent::InitFromConfig(ConfigLine *cfl) {
   InitLearningRatesFromConfig(cfl);
@@ -5317,7 +5339,7 @@ void LstmNonlinearityComponent::InitFromConfig(ConfigLine *cfl) {
   // respectively.  If, later on, we decide that we want to support different
   // self-repair config values for the individual sigmoid and tanh
   // nonlinearities, we can modify this code then.
-  BaseFloat tanh_self_repair_threshold = 0.2,
+  BaseFloat tanh_self_repair_threshold = 0.1,
       sigmoid_self_repair_threshold = 0.05,
       self_repair_scale = 1.0e-05;
   // param_stddev is the stddev of the parameters.  it may be better to

@@ -1764,6 +1764,14 @@ class LstmNonlinearityComponent: public UpdatableComponent {
   // use for this object, which for now is hardcoded at the C++ level.
   void InitNaturalGradient();
 
+  // Gets the default self-repair config (note: this is for the new, 'stateless'
+  // version of self-repair code).
+  void GetDefaultSelfRepairConfig(CuVector<BaseFloat> *config) const;
+
+  // Returns true if the self-repair configurations equal the old defaults in
+  // the code (prior to upgrading to the new, stateless self-repair).
+  bool IsOldDefaultSelfRepairConfig(const CuVector<BaseFloat> &config) const;
+
 
   // Notation: C is the cell dimension; it equals params_.NumCols().
 
@@ -1785,7 +1793,7 @@ class LstmNonlinearityComponent: public UpdatableComponent {
   CuMatrix<double> deriv_sum_;
 
   // This matrix has dimension 10.  The contents are a block of 5 self-repair
-  // thresholds (typically "0.05 0.05 0.2 0.05 0.2"), then a block of 5
+  // margin thresholds (typically "0.05 0.05 0.1 0.05 0.1"), then a block of 5
   // self-repair scales (typically all 0.00001).  These are for each of the 5
   // nonlinearities in the LSTM component in turn (see comments in cu-math.h for
   // more info).
