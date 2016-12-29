@@ -130,6 +130,8 @@ void NumeratorGraph::PrintInfo(bool print_transitions) const {
             << "forward-transitions dim: " << forward_transitions_.Dim() << "\n"
             << "backward-transitions dim: " << backward_transitions_.Dim() << "\n"
             << "transitions dim: " << transitions_.Dim() << "\n"
+            << "MaxNumStates: " << MaxNumStates() << "\n"
+            << "AreFirstTransitionsScaled: " << AreFirstTransitionsScaled() << "\n"
             << "Approximate Mem Usage: " <<
             ((forward_transitions_.Dim() + backward_transitions_.Dim()) * 
             sizeof(Int32Pair) + transitions_.Dim() *
@@ -151,6 +153,25 @@ void NumeratorGraph::PrintInfo(bool print_transitions) const {
       }
     }
   }
+  std::cout << "Again ************************************************ ";
+  
+  for (int seq = 0; seq < NumSequences(); seq++) {
+    std::cout << "\n\n------ SEQUENCE " << seq << " ------\n"
+              << "num-states: " << NumStates()[seq] << "\n";
+    std::cout << "BackWARD TRANSITIONS:\n";
+    const DenominatorGraphTransition
+      *trans_iter = Transitions() +
+      BackwardTransitions()[seq*MaxNumStates()+0].first,
+      *trans_end = Transitions() +
+      BackwardTransitions()[seq*MaxNumStates()+NumStates()[seq]-1].second;
+    for (; trans_iter != trans_end; ++trans_iter) {
+      int from = trans_iter->hmm_state;
+      int to = -1;
+      BaseFloat weight = trans_iter->transition_prob;
+      std::cout << "(" << from << " -> " << to << "): " << weight << "\n";
+    }
+  }
+
 }
 
 

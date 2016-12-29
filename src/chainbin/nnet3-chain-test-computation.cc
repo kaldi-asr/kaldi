@@ -1,4 +1,4 @@
-// chainbin/nnet3-chain-check-egs.cc
+// chainbin/nnet3-chain-test-computation.cc
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
@@ -7,6 +7,7 @@
 #include "chain/chain-num-graph.h"
 #include "chain/chain-numerator.h"
 #include "chain/chain-cu-numerator.h"
+#include "chain/chain-cu-leakynum.h"
 #include "chain/chain-training.h"
 #include "chainbin/profiler2.h"
 
@@ -20,7 +21,7 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int64 int64;
 
     const char *usage =
-        "Usage:  nnet3-chain-check-egs [options] <egs-rspecifier>\n";
+        "Usage:  nnet3-chain-test-computation [options] <den-fst> <egs-rspecifier>\n";
 
 //    bool compress = false;
 //    int32 minibatch_size = 64;
@@ -36,7 +37,7 @@ int main(int argc, char *argv[]) {
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 1) {
+    if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
     }
@@ -45,9 +46,13 @@ int main(int argc, char *argv[]) {
     CuDevice::Instantiate().SelectGpuId(use_gpu);
 #endif
 
-    std::string examples_rspecifier = po.GetArg(1);
+    std::string examples_rspecifier = po.GetArg(2),
+        den_fst_rxfilename = po.GetArg(1);
 
     SequentialNnetChainExampleReader example_reader(examples_rspecifier);
+
+    fst::StdVectorFst den_fst;
+    ReadFstKaldi(den_fst_rxfilename, &den_fst);
 
     int64 num_read = 0, num_written = 0;
     for (; !example_reader.Done(); example_reader.Next(), num_read++) {
@@ -74,7 +79,7 @@ int main(int argc, char *argv[]) {
       
       pf.tic("numGraph");
       NumeratorGraph ng(eg.outputs[0].supervision, true);
-      ng.PrintInfo(true);
+      ng.PrintInfo(false);
       pf.tac();
 
       pf.tic("matPrep");
@@ -97,6 +102,7 @@ int main(int argc, char *argv[]) {
       pf.tac();
       // */
       
+      /*
       pf.tic("on-GPU-my");
       ChainTrainingOptions opts;
       CuNumeratorComputation cunum(opts, ng, random_nnet_output);
@@ -106,6 +112,22 @@ int main(int argc, char *argv[]) {
       ok = cunum.Backward(eg.outputs[0].supervision.weight, &nnet_output_deriv2);
       std::cout << "ok: " << ok << "\n";
       pf.tac();
+      */
+      
+      pf.tic("denGraph");
+      DenominatorGraph dg(den_fst, eg.outputs[0].supervision.label_dim);
+      pf.tac();
+
+      pf.tic("numleaky");
+      ChainTrainingOptions opts;
+      CuLeakyNumeratorComputation culeakynum(opts, ng, dg, random_nnet_output);
+      BaseFloat cu_leakynum_logprob_weighted = culeakynum.Forward();
+      std::cout << "cu leaky num logprob weighted: " << cu_leakynum_logprob_weighted << "\n";
+      bool ok = true;
+      ok = culeakynum.Backward(eg.outputs[0].supervision.weight, &nnet_output_deriv2);
+      std::cout << "ok: " << ok << "\n";
+      pf.tac();
+
       
       std::cout << "Profiling results:\n" << pf.toString() << "\n";
 

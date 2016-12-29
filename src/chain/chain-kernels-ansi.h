@@ -75,6 +75,27 @@ extern "C" {
                               const BaseFloat *prev_alpha,
                               BaseFloat *this_alpha);
 
+  void cuda_chain_leakynum_alpha_hat(dim3 Gr, dim3 Bl,
+                              const Int32Pair *backward_transitions,
+                              const DenominatorGraphTransition *transitions,
+                              int32_cuda num_sequences,
+                              const int32_cuda *num_states,
+                              int32_cuda max_num_hmm_states,
+                              const BaseFloat *probs,
+                              int32_cuda prob_stride,
+                              BaseFloat *prev_alpha);
+
+  void cuda_chain_leakynum_beta_hat(dim3 Gr, dim3 Bl,
+                              const Int32Pair *forward_transitions,
+                              const DenominatorGraphTransition *transitions,
+                              int32_cuda num_sequences,
+                              const int32_cuda *num_states,
+                              int32_cuda max_num_hmm_states,
+                              const BaseFloat *probs,
+                              int32_cuda prob_stride,
+                              const BaseFloat *this_alpha,
+                              BaseFloat *next_beta);
+
 } // extern "C"
 
 #endif  // HAVE_CUDA

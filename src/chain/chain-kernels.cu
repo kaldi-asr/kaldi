@@ -381,7 +381,74 @@ static void _cuda_chain_num_hmm_backward(const Int32Pair *forward_transitions,
 }
 
 
+__global__
+static void _cuda_chain_leakynum_alpha_hat(const Int32Pair *backward_transitions,
+                                 const DenominatorGraphTransition *transitions,
+                                 int32_cuda num_sequences,
+                                 const int32_cuda *num_states,
+                                 int32_cuda max_num_hmm_states,
+                                 const BaseFloat *probs, int32_cuda prob_stride,
+                                 BaseFloat *prev_alpha) {
 
+  int32_cuda s = threadIdx.x + blockIdx.x * blockDim.x;  // sequence number
+  if (s >= num_sequences)
+    return;
+
+  BaseFloat prev_alpha_hat = 0.0;
+  // iterate over all transitions of num graph
+  const DenominatorGraphTransition
+    *trans_iter = transitions +
+        backward_transitions[s*max_num_hmm_states+0].first,
+    *trans_end = transitions +
+        backward_transitions[s*max_num_hmm_states+num_states[s]-1].second;
+  for (; trans_iter != trans_end; ++trans_iter) {
+    BaseFloat transition_prob = trans_iter->transition_prob;
+    int32_cuda pdf_id = trans_iter->pdf_id,
+          prev_hmm_state = trans_iter->hmm_state;
+    BaseFloat prob = probs[pdf_id * prob_stride + s],
+      this_prev_alpha = prev_alpha[prev_hmm_state * num_sequences + s];
+    prev_alpha_hat += this_prev_alpha * transition_prob * prob;
+  }
+  BaseFloat arbitrary_scale =
+      1.0 / prev_alpha[max_num_hmm_states * num_sequences + s];
+  prev_alpha[(max_num_hmm_states + 1) * num_sequences + s] = 
+      prev_alpha_hat * arbitrary_scale;
+}
+
+
+__global__
+static void _cuda_chain_leakynum_beta_hat(const Int32Pair *forward_transitions,
+                                 const DenominatorGraphTransition *transitions,
+                                 int32_cuda num_sequences,
+                                 const int32_cuda *num_states,
+                                 int32_cuda max_num_hmm_states,
+                                 const BaseFloat *probs, int32_cuda prob_stride,
+                                 const BaseFloat *this_alpha,
+                                 BaseFloat *next_beta) {
+
+  int32_cuda s = threadIdx.x + blockIdx.x * blockDim.x;  // sequence number
+  if (s >= num_sequences)
+    return;
+  BaseFloat arbitrary_scale =
+      1.0 / this_alpha[max_num_hmm_states * num_sequences + s];
+  BaseFloat next_beta_hat = 0.0;
+
+  // iterate over all transitions of num graph
+  const DenominatorGraphTransition
+    *trans_iter = transitions +
+        forward_transitions[s*max_num_hmm_states+0].first,
+    *trans_end = transitions +
+        forward_transitions[s*max_num_hmm_states+num_states[s]-1].second;
+  for (; trans_iter != trans_end; ++trans_iter) {
+    BaseFloat transition_prob = trans_iter->transition_prob;
+    int32_cuda pdf_id = trans_iter->pdf_id,
+               to_hmm_state = trans_iter->hmm_state;
+    BaseFloat obs_prob = probs[pdf_id * prob_stride + s],
+              next_beta_s = next_beta[to_hmm_state * num_sequences + s];
+    next_beta_hat += next_beta_s * transition_prob * obs_prob * arbitrary_scale;
+  }
+  next_beta[max_num_hmm_states * num_sequences + s] = next_beta_hat;  
+}
 
 
 void cuda_chain_hmm_forward(dim3 Gr, dim3 Bl,
@@ -454,5 +521,36 @@ void cuda_chain_num_hmm_backward(dim3 Gr, dim3 Bl,
                                       log_prob_deriv_stride);
 }
 
+void cuda_chain_leakynum_alpha_hat(dim3 Gr, dim3 Bl,
+                            const Int32Pair *backward_transitions,
+                            const DenominatorGraphTransition *transitions,
+                            int32_cuda num_sequences,
+                            const int32_cuda *num_states,
+                            int32_cuda max_num_hmm_states,
+                            const BaseFloat *probs,
+                            int32_cuda prob_stride,
+                            BaseFloat *prev_alpha) {
+  _cuda_chain_leakynum_alpha_hat<<<Gr,Bl>>>(backward_transitions, transitions,
+                                      num_sequences, num_states,
+                                      max_num_hmm_states,
+                                      probs, prob_stride,
+                                      prev_alpha);
+}
 
+void cuda_chain_leakynum_beta_hat(dim3 Gr, dim3 Bl,
+                            const Int32Pair *forward_transitions,
+                            const DenominatorGraphTransition *transitions,
+                            int32_cuda num_sequences,
+                            const int32_cuda *num_states,
+                            int32_cuda max_num_hmm_states,
+                            const BaseFloat *probs,
+                            int32_cuda prob_stride,
+                            const BaseFloat *this_alpha,
+                            BaseFloat *next_beta) {
+  _cuda_chain_leakynum_beta_hat<<<Gr,Bl>>>(forward_transitions, transitions,
+                                      num_sequences, num_states,
+                                      max_num_hmm_states,
+                                      probs, prob_stride,
+                                      this_alpha, next_beta);
+}
 
