@@ -52,7 +52,6 @@ def create_denominator_fst(dir, tree_dir, run_opts):
 def generate_chain_egs(dir, data, lat_dir, egs_dir,
                        left_context, right_context,
                        run_opts, stage=0,
-                       valid_left_context=None, valid_right_context=None,
                        left_tolerance=None, right_tolerance=None,
                        frame_subsampling_factor=3,
                        alignment_subsampling_factor=3,
@@ -72,8 +71,6 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
                 --transform-dir "{transform_dir}" \
                 --online-ivector-dir "{ivector_dir}" \
                 --left-context {left_context} --right-context {right_context} \
-                --valid-left-context '{valid_left_context}' \
-                --valid-right-context '{valid_right_context}' \
                 --left-tolerance '{left_tolerance}' \
                 --right-tolerance '{right_tolerance}' \
                 --frame-subsampling-factor {frame_subsampling_factor} \
@@ -93,12 +90,6 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
                                  if online_ivector_dir is not None
                                  else ''),
                     left_context=left_context, right_context=right_context,
-                    valid_left_context=(valid_left_context
-                                        if valid_left_context is not None
-                                        else ''),
-                    valid_right_context=(valid_right_context
-                                         if valid_right_context is not None
-                                         else ''),
                     left_tolerance=(left_tolerance
                                     if left_tolerance is not None
                                     else ''),

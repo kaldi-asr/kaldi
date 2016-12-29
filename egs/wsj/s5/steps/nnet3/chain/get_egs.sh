@@ -33,10 +33,6 @@ alignment_subsampling_factor=3 # frames-per-second of input alignments divided
 left_context=4    # amount of left-context per eg (i.e. extra frames of input features
                   # not present in the output supervision).
 right_context=4   # amount of right-context per eg.
-valid_left_context=   # amount of left_context for validation egs, typically used in
-                      # recurrent architectures to ensure matched condition with
-                      # training egs
-valid_right_context=  # amount of right_context for validation egs
 compress=true   # set this to false to disable compression (e.g. if you want to see whether
                 # results are affected).
 
@@ -292,20 +288,14 @@ if [ $stage -le 2 ]; then
 fi
 
 
-egs_opts="--left-context=$left_context --right-context=$right_context --num-frames=$frames_per_eg --num-frames-overlap=$frames_overlap_per_eg --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress"
+egs_opts="--left-context=$left_context --right-context=$right_context --num-frames=$frames_per_eg --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress"
 
-
-[ -z $valid_left_context ] &&  valid_left_context=$left_context;
-[ -z $valid_right_context ] &&  valid_right_context=$right_context;
-# don't do the overlap thing for the validation data.
-valid_egs_opts="--left-context=$valid_left_context --right-context=$valid_right_context --num-frames=$frames_per_eg --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress"
-
-ctc_supervision_all_opts="--lattice-input=true --frame-subsampling-factor=$alignment_subsampling_factor"
+chain_supervision_all_opts="--lattice-input=true --frame-subsampling-factor=$alignment_subsampling_factor"
 [ ! -z $right_tolerance ] && \
-  ctc_supervision_all_opts="$ctc_supervision_all_opts --right-tolerance=$right_tolerance"
+  chain_supervision_all_opts="$chain_supervision_all_opts --right-tolerance=$right_tolerance"
 
 [ ! -z $left_tolerance ] && \
-  ctc_supervision_all_opts="$ctc_supervision_all_opts --left-tolerance=$left_tolerance"
+  chain_supervision_all_opts="$chain_supervision_all_opts --left-tolerance=$left_tolerance"
 
 echo $left_context > $dir/info/left_context
 echo $right_context > $dir/info/right_context
@@ -320,17 +310,17 @@ if [ $stage -le 3 ]; then
 
   $cmd $dir/log/create_valid_subset.log \
     lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:$dir/lat_special.scp ark:- \| \
-    chain-get-supervision $ctc_supervision_all_opts $chaindir/tree $chaindir/0.trans_mdl \
+    chain-get-supervision $chain_supervision_all_opts $chaindir/tree $chaindir/0.trans_mdl \
       ark:- ark:- \| \
     nnet3-chain-get-egs $valid_ivector_opt --srand=$srand \
-      $valid_egs_opts $chaindir/normalization.fst \
+      $egs_opts $chaindir/normalization.fst \
       "$valid_feats" ark,s,cs:- "ark:$dir/valid_all.cegs" || touch $dir/.error &
   $cmd $dir/log/create_train_subset.log \
     lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:$dir/lat_special.scp ark:- \| \
-    chain-get-supervision $ctc_supervision_all_opts \
+    chain-get-supervision $chain_supervision_all_opts \
       $chaindir/tree $chaindir/0.trans_mdl ark:- ark:- \| \
     nnet3-chain-get-egs $train_subset_ivector_opt --srand=$srand \
-      $valid_egs_opts $chaindir/normalization.fst \
+      $egs_opts $chaindir/normalization.fst \
       "$train_subset_feats" ark,s,cs:- "ark:$dir/train_subset_all.cegs" || touch $dir/.error &
   wait;
   [ -f $dir/.error ] && echo "Error detected while creating train/valid egs" && exit 1
@@ -379,9 +369,10 @@ if [ $stage -le 4 ]; then
   $cmd JOB=1:$nj $dir/log/get_egs.JOB.log \
     utils/filter_scp.pl $sdata/JOB/utt2spk $dir/lat.scp \| \
     lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:- ark:- \| \
-    chain-get-supervision $ctc_supervision_all_opts \
+    chain-get-supervision $chain_supervision_all_opts \
       $chaindir/tree $chaindir/0.trans_mdl ark:- ark:- \| \
     nnet3-chain-get-egs $ivector_opt --srand=\$[JOB+$srand] $egs_opts \
+      --num-frames-overlap=$frames_overlap_per_eg \
      "$feats" ark,s,cs:- ark:- \| \
     nnet3-chain-copy-egs --random=true --srand=\$[JOB+$srand] ark:- $egs_list || exit 1;
 fi
