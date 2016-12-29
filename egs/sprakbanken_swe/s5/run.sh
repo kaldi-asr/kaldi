@@ -60,7 +60,7 @@ steps/train_mono.sh --nj 10 --cmd "$train_cmd" data/train data/lang exp/mono || 
 
 # Ensure that LMs are created
 
-utils/mkgraph.sh --mono data/lang_test_4g exp/mono exp/mono/graph_4g || exit 1; 
+utils/mkgraph.sh data/lang_test_4g exp/mono exp/mono/graph_4g || exit 1; 
 
 # Ensure that all graphs are constructed
  

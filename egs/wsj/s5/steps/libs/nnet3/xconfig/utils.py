@@ -10,17 +10,6 @@ import re
 import sys
 
 
-class XconfigParserError(RuntimeError):
-    def __init__(self, error_msg, conf_line=None):
-        self.conf_line = conf_line
-        if conf_line is not None:
-            self.msg = 'While parsing "{c}" :{e}'.format(c=conf_line, e=error_msg)
-        else:
-            self.msg = error_msg
-
-    def __str__(self):
-        return self.msg
-
 # [utility function used in xconfig_layers.py]
 # Given a list of objects of type XconfigLayerBase ('all_layers'),
 # including at least the layers preceding 'current_layer' (and maybe
@@ -36,8 +25,8 @@ def get_prev_names(all_layers, current_layer):
     prev_names_set = set()
     for name in prev_names:
         if name in prev_names_set:
-            raise XconfigParserError("{0}: Layer name {1} is used more than once.".format(
-                    sys.argv[0], name), current_layer.str())
+            raise RuntimeError("{0}: Layer name {1} is used more than once.".format(
+                    sys.argv[0], name))
         prev_names_set.add(name)
     return prev_names
 
@@ -49,7 +38,7 @@ def split_layer_name(full_layer_name):
     assert isinstance(full_layer_name, str)
     split_name = full_layer_name.split('.')
     if len(split_name) == 0:
-        raise XconfigParserError("Bad layer name: " + full_layer_name)
+        raise RuntimeError("Bad layer name: " + full_layer_name)
     layer_name = split_name[0]
     if len(split_name) == 1:
         auxiliary_output = None
@@ -73,15 +62,15 @@ def get_dim_from_layer_name(all_layers, current_layer, full_layer_name):
             break
         if layer.get_name() == layer_name:
             if not auxiliary_output in layer.auxiliary_outputs() and auxiliary_output is not None:
-                raise XconfigParserError("Layer '{0}' has no such auxiliary output: '{1}' ({0}.{1})".format(layer_name, auxiliary_output), layer.str())
+                raise RuntimeError("Layer '{0}' has no such auxiliary output: '{1}' ({0}.{1})".format(layer_name, auxiliary_output))
             return layer.output_dim(auxiliary_output)
     # No such layer was found.
     if layer_name in [ layer.get_name() for layer in all_layers ]:
-        raise XconfigParserError("Layer '{0}' was requested before it appeared in "
+        raise RuntimeError("Layer '{0}' was requested before it appeared in "
                         "the xconfig file (circular dependencies or out-of-order "
                         "layers".format(layer_name))
     else:
-        raise XconfigParserError("No such layer: '{0}'".format(layer_name))
+        raise RuntimeError("No such layer: '{0}'".format(layer_name))
 
 
 # [utility function used in xconfig_layers.py]
@@ -98,16 +87,16 @@ def get_string_from_layer_name(all_layers, current_layer, full_layer_name):
             break
         if layer.get_name() == layer_name:
             if not auxiliary_output in layer.auxiliary_outputs() and auxiliary_output is not None:
-                raise XconfigParserError("Layer '{0}' has no such auxiliary output: '{1}' ({0}.{1})".format(
+                raise RuntimeError("Layer '{0}' has no such auxiliary output: '{1}' ({0}.{1})".format(
                     layer_name, auxiliary_output))
             return layer.output_name(auxiliary_output)
     # No such layer was found.
     if layer_name in [ layer.get_name() for layer in all_layers ]:
-        raise XconfigParserError("Layer '{0}' was requested before it appeared in "
+        raise RuntimeError("Layer '{0}' was requested before it appeared in "
                         "the xconfig file (circular dependencies or out-of-order "
                         "layers".format(layer_name))
     else:
-        raise XconfigParserError("No such layer: '{0}'".format(layer_name))
+        raise RuntimeError("No such layer: '{0}'".format(layer_name))
 
 
 # This function, used in converting string values in config lines to
@@ -121,19 +110,19 @@ def convert_value_to_type(key, dest_type, string_value):
         elif string_value == "False" or string_value == "false":
             return False
         else:
-            raise XconfigParserError("Invalid configuration value {0}={1} (expected bool)".format(
+            raise RuntimeError("Invalid configuration value {0}={1} (expected bool)".format(
                 key, string_value))
     elif dest_type == type(int()):
         try:
             return int(string_value)
         except:
-            raise XconfigParserError("Invalid configuration value {0}={1} (expected int)".format(
+            raise RuntimeError("Invalid configuration value {0}={1} (expected int)".format(
                 key, string_value))
     elif dest_type == type(float()):
         try:
             return float(string_value)
         except:
-            raise XconfigParserError("Invalid configuration value {0}={1} (expected int)".format(
+            raise RuntimeError("Invalid configuration value {0}={1} (expected int)".format(
                 key, string_value))
     elif dest_type == type(str()):
         return string_value
@@ -183,14 +172,14 @@ class Descriptor:
                 # note: 'pos' should point to the 'end of string' marker
                 # that terminates 'tokens'.
                 if pos != len(tokens) - 1:
-                    raise XconfigParserError("Parsing Descriptor, saw junk at end: " +
+                    raise RuntimeError("Parsing Descriptor, saw junk at end: " +
                                     ' '.join(tokens[pos:-1]))
                 # copy members from d.
                 self.operator = d.operator
                 self.items = d.items
-            except XconfigParserError as e:
+            except RuntimeError as e:
                 traceback.print_tb(sys.exc_info()[2])
-                raise XconfigParserError("Error parsing Descriptor '{0}', specific error was: {1}".format(
+                raise RuntimeError("Error parsing Descriptor '{0}', specific error was: {1}".format(
                     descriptor_string, repr(e)))
 
     # This is like the str() function, but it uses the layer_to_string function
@@ -239,8 +228,8 @@ class Descriptor:
             for desc in self.items[1:]:
                 next_dim = desc.dim(layer_to_dim)
                 if next_dim != dim:
-                    raise XparserError("In descriptor {0}, different fields have different "
-                                        "dimensions: {1} != {2}".format(self.str(), dim, next_dim))
+                    raise RuntimeError("In descriptor {0}, different fields have different "
+                                       "dimensions: {1} != {2}".format(self.str(), dim, next_dim))
             return dim
         elif self.operator in [  'Offset', 'Round', 'ReplaceIndex' ]:
             # for these operators, only the 1st arg is relevant.
@@ -248,7 +237,7 @@ class Descriptor:
         elif self.operator == 'Append':
             return sum([ x.dim(layer_to_dim) for x in self.items])
         else:
-            raise XconfigParserError("Unknown operator {0}".format(self.operator))
+            raise RuntimeError("Unknown operator {0}".format(self.operator))
 
 
 
@@ -256,7 +245,7 @@ class Descriptor:
 # exception if not.
 def expect_token(expected_item, seen_item, what_parsing):
     if seen_item != expected_item:
-        raise XconfigParserError("parsing {0}, expected '{1}' but got '{2}'".format(
+        raise RuntimeError("parsing {0}, expected '{1}' but got '{2}'".format(
             what_parsing, expected_item, seen_item))
 
 # returns true if 'name' is valid as the name of a line (input, layer or output);
@@ -298,18 +287,18 @@ def parse_new_descriptor(tokens, pos, prev_names):
                 pos += 1
                 d.items.append(t_offset)
             except:
-                raise XconfigParserError("Parsing Offset(), expected integer, got " + tokens[pos])
+                raise RuntimeError("Parsing Offset(), expected integer, got " + tokens[pos])
             if tokens[pos] == ')':
                 return (d, pos + 1)
             elif tokens[pos] != ',':
-                raise XconfigParserError("Parsing Offset(), expected ')' or ',', got " + tokens[pos])
+                raise RuntimeError("Parsing Offset(), expected ')' or ',', got " + tokens[pos])
             pos += 1
             try:
                 x_offset = int(tokens[pos])
                 pos += 1
                 d.items.append(x_offset)
             except:
-                raise XconfigParserError("Parsing Offset(), expected integer, got " + tokens[pos])
+                raise RuntimeError("Parsing Offset(), expected integer, got " + tokens[pos])
             expect_token(')', tokens[pos], 'Offset()')
             pos += 1
         elif first_token in [ 'Append', 'Sum', 'Switch', 'Failover', 'IfDefined' ]:
@@ -317,15 +306,15 @@ def parse_new_descriptor(tokens, pos, prev_names):
                 if tokens[pos] == ')':
                     # check num-items is correct for some special cases.
                     if first_token == 'Failover' and len(d.items) != 2:
-                        raise XconfigParserError("Parsing Failover(), expected 2 items but got {0}".format(len(d.items)))
+                        raise RuntimeError("Parsing Failover(), expected 2 items but got {0}".format(len(d.items)))
                     if first_token == 'IfDefined' and len(d.items) != 1:
-                        raise XconfigParserError("Parsing IfDefined(), expected 1 item but got {0}".format(len(d.items)))
+                        raise RuntimeError("Parsing IfDefined(), expected 1 item but got {0}".format(len(d.items)))
                     pos += 1
                     break
                 elif tokens[pos] == ',':
                     pos += 1  # consume the comma.
                 else:
-                    raise XconfigParserError("Parsing Append(), expected ')' or ',', got " + tokens[pos])
+                    raise RuntimeError("Parsing Append(), expected ')' or ',', got " + tokens[pos])
 
                 (desc, pos) = parse_new_descriptor(tokens, pos, prev_names)
                 d.items.append(desc)
@@ -338,7 +327,7 @@ def parse_new_descriptor(tokens, pos, prev_names):
                 pos += 1
                 d.items.append(t_modulus)
             except:
-                raise XconfigParserError("Parsing Offset(), expected integer, got " + tokens[pos])
+                raise RuntimeError("Parsing Offset(), expected integer, got " + tokens[pos])
             expect_token(')', tokens[pos], 'Round()')
             pos += 1
         elif first_token == 'ReplaceIndex':
@@ -348,7 +337,7 @@ def parse_new_descriptor(tokens, pos, prev_names):
                 d.items.append(tokens[pos])
                 pos += 1
             else:
-                raise XconfigParserError("Parsing ReplaceIndex(), expected 'x' or 't', got " +
+                raise RuntimeError("Parsing ReplaceIndex(), expected 'x' or 't', got " +
                                 tokens[pos])
             expect_token(',', tokens[pos], 'ReplaceIndex()')
             pos += 1
@@ -357,13 +346,13 @@ def parse_new_descriptor(tokens, pos, prev_names):
                 pos += 1
                 d.items.append(new_value)
             except:
-                raise XconfigParserError("Parsing Offset(), expected integer, got " + tokens[pos])
+                raise RuntimeError("Parsing Offset(), expected integer, got " + tokens[pos])
             expect_token(')', tokens[pos], 'ReplaceIndex()')
             pos += 1
         else:
-            raise XconfigParserError("code error")
+            raise RuntimeError("code error")
     elif first_token in [ 'end of string', '(', ')', ',', '@' ]:
-        raise XconfigParserError("Expected descriptor, got " + first_token)
+        raise RuntimeError("Expected descriptor, got " + first_token)
     elif is_valid_line_name(first_token) or first_token == '[':
         # This section parses a raw input/layer/output name, e.g. "affine2"
         # (which must start with an alphabetic character or underscore),
@@ -381,7 +370,7 @@ def parse_new_descriptor(tokens, pos, prev_names):
                 offset_t = int(tokens[pos])
                 pos += 1
             except:
-                raise XconfigParserError("Parse error parsing {0}@{1}".format(
+                raise RuntimeError("Parse error parsing {0}@{1}".format(
                     first_token, tokens[pos]))
             if offset_t != 0:
                 inner_d = d
@@ -398,11 +387,11 @@ def parse_new_descriptor(tokens, pos, prev_names):
         try:
             offset_t = int(first_token)
         except:
-            raise XconfigParserError("Parsing descriptor, expected descriptor but got " +
+            raise RuntimeError("Parsing descriptor, expected descriptor but got " +
                             first_token)
         assert isinstance(prev_names, list)
         if len(prev_names) < 1:
-            raise XconfigParserError("Parsing descriptor, could not interpret '{0}' because "
+            raise RuntimeError("Parsing descriptor, could not interpret '{0}' because "
                             "there is no previous layer".format(first_token))
         d.operator = None
         # the layer name is the name of the most recent layer.
@@ -433,10 +422,10 @@ def replace_bracket_expressions_in_descriptor(descriptor_string,
         f = fields[i]
         i += 1
         if f == ']':
-            raise XconfigParserError("Unmatched ']' in descriptor")
+            raise RuntimeError("Unmatched ']' in descriptor")
         elif f == '[':
             if i + 2 >= len(fields):
-                raise XconfigParserError("Error tokenizing string '{0}': '[' found too close "
+                raise RuntimeError("Error tokenizing string '{0}': '[' found too close "
                                 "to the end of the descriptor.".format(descriptor_string))
             assert isinstance(prev_names, list)
             try:
@@ -444,7 +433,7 @@ def replace_bracket_expressions_in_descriptor(descriptor_string,
                 assert offset < 0 and -offset <= len(prev_names)
                 i += 2  # consume the int and the ']'.
             except:
-                raise XconfigParserError("Error tokenizing string '{0}': expression [{1}] has an "
+                raise RuntimeError("Error tokenizing string '{0}': expression [{1}] has an "
                                 "invalid or out of range offset.".format(descriptor_string, fields[i]))
             this_field = prev_names[offset]
             out_fields.append(this_field)
@@ -484,7 +473,8 @@ def tokenize_descriptor(descriptor_string,
 # (first_token, fields), as (string, dict) e.g. in this case
 # ('affine-layer', {'name':'affine1', 'input':'Append(-3, 0, 3)"
 # Note: spaces are allowed in the field names but = signs are
-# disallowed, which is why it's possible to parse them.
+# disallowed, except when quoted with double quotes,
+# which is why it's possible to parse them.
 # This function also removes comments (anything after '#').
 # As a special case, this function will return None if the line
 # is empty after removing spaces.
@@ -493,8 +483,16 @@ def parse_config_line(orig_config_line):
     # note: splitting on '#' will always give at least one field...  python
     # treats splitting on space as a special case that may give zero fields.
     config_line = orig_config_line.split('#')[0]
-    if re.match('[^a-zA-Z0-9\.\-\(\)_\s"]', config_line) is not None:
-        raise XconfigParserError("Xconfig line has unknown characters.", config_line)
+    # Note: this set of allowed characters may have to be expanded in future.
+    x = re.search('[^a-zA-Z0-9\.\-\(\)_=,/\s"]', config_line)
+    if x is not None:
+        bad_char = x.group(0)
+        if bad_char == "'":
+            raise RuntimeError("Xconfig line has disallowed character ' (use "
+                               "double quotes for strings containing = signs)")
+        else:
+            raise RuntimeError("Xconfig line has disallowed character: {0}"
+                               .format(bad_char))
 
     # Now split on space; later we may splice things back together.
     fields=config_line.split()
@@ -503,8 +501,8 @@ def parse_config_line(orig_config_line):
     first_token = fields[0]
     # if first_token does not look like 'foo-bar' or 'foo-bar2', then die.
     if re.match('^[a-z][-a-z0-9]+$', first_token) is None:
-        raise XconfigParserError("Error parsing config line (first field doesn't look right): {0}".format(
-            orig_config_line))
+        raise RuntimeError("Error parsing config line (first field doesn't look right).")
+
     # get rid of the first field which we put in 'first_token'.
     fields = fields[1:]
 
@@ -512,7 +510,7 @@ def parse_config_line(orig_config_line):
     # rest of the line can be of the form 'a=1 b=" x=1 y=2 " c=Append( i1, i2)'
     positions = map(lambda x: x.start(), re.finditer('"', rest_of_line))
     if not len(positions) % 2 == 0:
-        raise XconfigParserError('"s should occur in pairs', config_line)
+        raise RuntimeError("Double-quotes should occur in pairs")
 
     # add the " enclosed strings and corresponding keys to the dict
     # and remove them from the rest_of_line
@@ -535,42 +533,21 @@ def parse_config_line(orig_config_line):
     ans_dict = dict()
     other_fields = re.split(r'\s*([-a-zA-Z0-9_]*)=', rest_of_line)
     if not (other_fields[0] == '' and len(other_fields) % 2 ==  1):
-        raise XconfigParserError("Could not parse config line: " + orig_config_line)
+        raise RuntimeError("Could not parse config line.");
     fields += other_fields[1:]
     num_variables = len(fields) / 2
     for i in range(num_variables):
         var_name = fields[i * 2]
         var_value = fields[i * 2 + 1]
         if re.match(r'[a-zA-Z_]', var_name) is None:
-            raise XconfigParserError("Expected variable name '{0}' to start with alphabetic character or _, "
+            raise RuntimeError("Expected variable name '{0}' to start with alphabetic character or _, "
                             "in config line {1}".format(var_name, orig_config_line))
         if var_name in ans_dict:
-            raise XconfigParserError("Config line has multiply defined variable {0}: {1}".format(
+            raise RuntimeError("Config line has multiply defined variable {0}: {1}".format(
                 var_name, orig_config_line))
         ans_dict[var_name] = var_value
     return (first_token, ans_dict)
 
-# Reads a config file and returns a list of objects, where each object
-# represents one line of the file.
-def read_config_file(filename):
-    try:
-        f = open(filename, "r")
-    except XconfigParserError as e:
-        raise XconfigParserError("Error reading config file {0}: {1}".format(
-            filename, repr(e)))
-    ans = []
-    prev_names = []
-    while True:
-        line = f.readline()
-        if line == '':
-            break
-        x = parse_config_line(line)
-        if x is None:
-            continue  # blank line
-        (first_token, key_to_value) = x
-        layer_object = config_line_to_object(first_token, key_to_value, prev_names)
-        ans.append(layer_object)
-        prev_names.append(layer_object.get_name())
 
 def test_library():
     tokenize_test = lambda x: tokenize_descriptor(x)[:-1]  # remove 'end of string'
