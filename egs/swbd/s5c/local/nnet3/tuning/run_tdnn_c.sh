@@ -1,18 +1,19 @@
 #!/bin/bash
 
-# 4c is as 3c, but with one extra layer.
+# c is as a, but uses xconfig.
 
 # At this script level we don't support not running on GPU, as it would be painfully slow.
 # If you want to run without GPU you'd have to call train_tdnn.sh with --gpu false,
 # --num-threads 16 and --minibatch-size 128.
 
-# System                  tdnn_3c   tdnn_4c
-# WER on train_dev(tg)      17.37     16.72
-# WER on train_dev(fg)      15.94     15.31
-# WER on eval2000(tg)        20.0      19.2
-# WER on eval2000(fg)        18.2      17.8
-# Final train prob       -1.43781  -1.22859
-# Final valid prob       -1.56895    -1.354
+# System                   tdnn_a   tdnn_c
+# WER on train_dev(tg)      17.41     17.37
+# WER on train_dev(fg)      16.03     15.94
+# WER on eval2000(tg)        19.7      20.0
+# WER on eval2000(fg)        17.9      18.2
+# Final train prob       -1.43675  -1.43781
+# Final valid prob       -1.57486  -1.56895
+
 
 stage=0
 affix=
@@ -40,7 +41,7 @@ suffix=
 if [ "$speed_perturb" == "true" ]; then
   suffix=_sp
 fi
-dir=exp/nnet3/tdnn_4c
+dir=exp/nnet3/tdnn_c
 dir=$dir${affix:+_$affix}
 dir=${dir}$suffix
 train_set=train_nodup$suffix
@@ -68,11 +69,10 @@ if [ $stage -le 9 ]; then
   relu-renorm-layer name=tdnn1 dim=1024
   relu-renorm-layer name=tdnn2 input=Append(-1,2) dim=1024
   relu-renorm-layer name=tdnn3 input=Append(-3,3) dim=1024
-  relu-renorm-layer name=tdnn4 input=Append(-3,3) dim=1024
-  relu-renorm-layer name=tdnn5 input=Append(-7,2) dim=1024
-  relu-renorm-layer name=tdnn6 dim=1024
-  
-  output-layer name=output input=tdnn6 dim=$num_targets max-change=1.5 presoftmax-scale-file=$dir/configs/presoftmax_prior_scale.vec
+  relu-renorm-layer name=tdnn4 input=Append(-7,2) dim=1024
+  relu-renorm-layer name=tdnn5 dim=1024
+
+  output-layer name=output input=tdnn5 dim=$num_targets max-change=1.5 presoftmax-scale-file=$dir/configs/presoftmax_prior_scale.vec
 EOF
 
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
