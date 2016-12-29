@@ -3,6 +3,11 @@
 namespace kaldi {
 namespace rnnlm {
 
+bool LargerThan(const std::pair<int, BaseFloat> &t1,
+                const std::pair<int, BaseFloat> &t2) {
+  return t1.first > t2.first;
+}
+
 vector<string> SplitByWhiteSpace(const string &line) {
   std::stringstream ss(line);
   vector<string> ans;
@@ -50,22 +55,25 @@ NnetExample GetEgsFromSent(const vector<int>& word_ids_in, int input_dim,
   return eg;
 }
 
-void SelectWithoutReplacement(const vector<BaseFloat> &u, int n, vector<int> *out) {
+void SampleWithoutReplacement(vector<std::pair<int, BaseFloat> > u, int n,
+                              vector<int> *out) {
+  sort(u.begin(), u.end(), LargerThan);
+
   vector<int>& ans = *out;
   ans.resize(n);
 
   BaseFloat tot_weight = 0;
 
   for (int i = 0; i < n; i++) {
-    tot_weight += u[i];
+    tot_weight += u[i].second;
     ans[i] = i;
   }
 //  PrintVec(ans);
 
   for (int k = n; k < u.size(); k++) {
-    tot_weight += u[k];
+    tot_weight += u[k].second;
 //    cout << "  tot-weight = " << tot_weight << endl;
-    BaseFloat pi_k1_k1 = u[k] / tot_weight * n;
+    BaseFloat pi_k1_k1 = u[k].second / tot_weight * n;
 
     if (pi_k1_k1 > 1) {
       pi_k1_k1 = 1;  // must add
@@ -83,11 +91,11 @@ void SelectWithoutReplacement(const vector<BaseFloat> &u, int n, vector<int> *ou
       BaseFloat Lk = 0;
       BaseFloat Tk = 0;
       for (int i = 0; i < n; i++) {
-        BaseFloat pi_k_i = u[ans[i]] / (tot_weight - u[k]) * n;
-        BaseFloat pi_k1_i = u[ans[i]] / tot_weight * n;
+        BaseFloat pi_k_i = u[ans[i]].second / (tot_weight - u[k].second) * n;
+        BaseFloat pi_k1_i = u[ans[i]].second / tot_weight * n;
 
         // TODO(hxU) very strict test which actually isn't really neccesary
-        if (u[ans[i]] >= 1) {
+        if (u[ans[i]].second >= 1) {
           KALDI_ASSERT(pi_k_i >= 1 && pi_k1_i >= 1);
         }
 
@@ -112,8 +120,8 @@ void SelectWithoutReplacement(const vector<BaseFloat> &u, int n, vector<int> *ou
 
       BaseFloat sum = 0;
       for (int i = 0; i < n; i++) {
-        BaseFloat pi_k_i = u[ans[i]] / (tot_weight - u[k]) * n;
-        BaseFloat pi_k1_i = u[ans[i]] / tot_weight * n;
+        BaseFloat pi_k_i = u[ans[i]].second / (tot_weight - u[k].second) * n;
+        BaseFloat pi_k1_i = u[ans[i]].second / tot_weight * n;
 
         if (pi_k_i < 1 && pi_k1_i < 1) {
           // case C
@@ -147,6 +155,11 @@ void SelectWithoutReplacement(const vector<BaseFloat> &u, int n, vector<int> *ou
       KALDI_LOG << "p should be close to 0; it is " << p;
       ans[n - 1] = k;
     }
+  }
+
+  //  change to the correct indexes
+  for (int i = 0; i < ans.size(); i++) {
+    ans[i] = u[ans[i]].first;
   }
 }
 

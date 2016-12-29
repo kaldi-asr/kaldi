@@ -541,8 +541,13 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
   // this is not necessary for Select for useful for later
   NormalizeVec(2 * k, outputs_set, &selection_probs);
 
-  vector<int> samples = outputs;
-  SelectWithoutReplacement(selection_probs, 2 * k, &samples);
+  vector<std::pair<int, BaseFloat> > u(selection_probs.size());
+  for (int i = 0; i < u.size(); i++) {
+    u[i].first = i;
+    u[i].second = selection_probs[i];
+  }
+  vector<int> samples; //= outputs;
+  SampleWithoutReplacement(u, 2 * k, &samples);
 
 //  cout << "1 probs: ";
 //  for (int i = 0; i < selection_probs.size(); i++) {

@@ -149,6 +149,10 @@ bool WithProb(BaseFloat prob, struct RandomState* state = NULL);
 
 /// Returns a random number strictly between 0 and 1.
 inline float RandUniform(struct RandomState* state = NULL) {
+  // a fix for Windows
+  if (RAND_MAX < 65536) {
+    return static_cast<float>((Rand(state) * (RAND_MAX + 1.0) + Rand(state) + 1.0) / ((RAND_MAX + 1.0) * (RAND_MAX + 1.0) + 1.0));
+  }
   return static_cast<float>((Rand(state) + 1.0) / (RAND_MAX+2.0));
 }
 
