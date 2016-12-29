@@ -1,11 +1,18 @@
 #!/bin/bash
 
-# c is as a, but with 1 more extra layer which gives 0.5-0.6% absolute 
-# improvement.
+# 4c is as 3c, but with one extra layer.
 
 # At this script level we don't support not running on GPU, as it would be painfully slow.
 # If you want to run without GPU you'd have to call train_tdnn.sh with --gpu false,
 # --num-threads 16 and --minibatch-size 128.
+
+# System                  tdnn_3c   tdnn_4c
+# WER on train_dev(tg)      17.37     16.72
+# WER on train_dev(fg)      15.94     15.31
+# WER on eval2000(tg)        20.0      19.2
+# WER on eval2000(fg)        18.2      17.8
+# Final train prob       -1.43781  -1.22859
+# Final valid prob       -1.56895    -1.354
 
 stage=0
 affix=
@@ -33,7 +40,7 @@ suffix=
 if [ "$speed_perturb" == "true" ]; then
   suffix=_sp
 fi
-dir=exp/nnet3/tdnn_a
+dir=exp/nnet3/tdnn_4c
 dir=$dir${affix:+_$affix}
 dir=${dir}$suffix
 train_set=train_nodup$suffix
@@ -43,17 +50,32 @@ local/nnet3/run_ivector_common.sh --stage $stage \
 	--speed-perturb $speed_perturb || exit 1;
 
 if [ $stage -le 9 ]; then
-  echo "$0: creating neural net configs";
+  echo "$0: creating neural net configs using the xconfig parser";
 
-  # create the config files for nnet initialization
-  steps/nnet3/tdnn/make_configs.py  \
-    --feat-dir data/${train_set}_hires \
-    --ivector-dir exp/nnet3/ivectors_${train_set} \
-    --ali-dir $ali_dir \
-    --relu-dim 1024 \
-    --splice-indexes "-2,-1,0,1,2 -1,2 -3,3 -3,3 -7,2 0"  \
-    --use-presoftmax-prior-scale true \
-   $dir/configs || exit 1;
+  num_targets=$(tree-info $ali_dir/tree | grep num-pdfs | awk '{print $2}')
+
+  mkdir -p $dir/configs
+  cat <<EOF > $dir/configs/network.xconfig
+  input dim=100 name=ivector
+  input dim=40 name=input
+
+  # please note that it is important to have input layer with the name=input
+  # as the layer immediately preceding the fixed-affine-layer to enable
+  # the use of short notation for the descriptor
+  fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+
+  # the first splicing is moved before the lda layer, so no splicing here
+  relu-renorm-layer name=tdnn1 dim=1024
+  relu-renorm-layer name=tdnn2 input=Append(-1,2) dim=1024
+  relu-renorm-layer name=tdnn3 input=Append(-3,3) dim=1024
+  relu-renorm-layer name=tdnn4 input=Append(-3,3) dim=1024
+  relu-renorm-layer name=tdnn5 input=Append(-7,2) dim=1024
+  relu-renorm-layer name=tdnn6 dim=1024
+  
+  output-layer name=output input=tdnn6 dim=$num_targets max-change=1.5 presoftmax-scale-file=$dir/configs/presoftmax_prior_scale.vec
+EOF
+
+  steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
 
 
@@ -61,7 +83,7 @@ fi
 if [ $stage -le 10 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
+     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
 
   steps/nnet3/train_dnn.py --stage=$train_stage \
