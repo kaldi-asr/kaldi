@@ -58,7 +58,7 @@ mkdir -p $outdir
 
 if [ $stage -le -4 ]; then
   echo Data Preparation
-  cat $srcdir/lexicon.txt | awk '{print $1}' | grep -v -w '!SIL' > $outdir/wordlist.all
+  cat $srcdir/lexicon.txt | awk '{print $1}' | grep -v -w '!SIL' | sort -u > $outdir/wordlist.all
 
   cat $train_text | awk -v w=$outdir/wordlist.all \
       'BEGIN{while((getline<w)>0) v[$1]=1;}
@@ -83,6 +83,18 @@ if [ $stage -le -4 ]; then
 
   cat $outdir/train.txt.0 | awk -v bos="$bos" -v eos="$eos" '{print bos,$0,eos}' > $outdir/train.txt
   cat $outdir/dev.txt.0   | awk -v bos="$bos" -v eos="$eos" '{print bos,$0,eos}' > $outdir/dev.txt
+
+  cat $outdir/wordlist.all $outdir/train.txt | awk '{for(i=1;i<=NF;i++) print $i}' | grep -v "<s>" \
+     | awk -v w=$outdir/wordlist.out \
+      'BEGIN{while((getline<w)>0) {v[$1]=$2;}}
+        {if(($1 in v) && (v[$1]!=1)){print(v[$1]);}else{printf("1\n");}}' | sort | uniq -c | awk '{print$2,$1}' | sort -k1 -n > $outdir/uni_counts.txt
+
+  cat $outdir/uni_counts.txt | awk '{print NR-1, 1}' > $outdir/uniform.txt
+
+#  cat $outdir/out.words $outdir/train.txt | awk '{for(i=1;i<=NF;i++) print $i}' | grep -v "<s>" \
+#     | awk -v w=$outdir/wordlist.out \
+#      'BEGIN{while((getline<w)>0) {v[$1]=$2;}}
+#        {if(($1 in v) && (v[$1]!=1)){print(v[$1]);}else{printf("1\n");}}' | sort | uniq -c | awk '{print$2,$1}' | sort -k1 -n > $outdir/uni_counts.txt
 fi
 
 num_words_in=`wc -l $outdir/wordlist.in | awk '{print $1}'`
@@ -200,6 +212,7 @@ cp $outdir/wordlist.all $outdir/wordlist.rnn
 touch $outdir/unk.probs
 #rm $outdir/wordlist.all.[12]
 
+
 mkdir -p $outdir/log/
 if [ $stage -le $num_iters ]; then
   start=1
@@ -217,9 +230,15 @@ if [ $stage -le $num_iters ]; then
     echo for iter $n, training on archive $this_archive, learning rate = $learning_rate
     [ $n -ge $stage ] && (
 
+        unigram=$outdir/uni_counts.txt
+
+        if [ $n -lt 10 ]; then
+          unigram=$outdir/uniform.txt
+        fi
+
         $cuda_cmd $outdir/log/train.rnnlm.$n.log rnnlm-train --use-gpu=$use_gpu --binary=false \
         --max-param-change=$max_param_change "rnnlm-copy --learning-rate=$learning_rate $outdir/$[$n-1].mdl -|" \
-        "ark:nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$n ark:$outdir/egs/train.$this_archive.egs ark:- | nnet3-merge-egs --minibatch-size=$minibatch_size ark:- ark:- |" $outdir/$n.mdl
+        "ark:nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$n ark:$outdir/egs/train.$this_archive.egs ark:- | nnet3-merge-egs --minibatch-size=$minibatch_size ark:- ark:- |" $outdir/$n.mdl $unigram
 
         false && (
         if [ $n -gt 0 ]; then
@@ -239,13 +258,12 @@ if [ $stage -le $num_iters ]; then
 
     )
 
+    learning_rate=`echo $learning_rate | awk -v d=$learning_rate_decline_factor '{printf("%f", $1/d)}'`
+    if (( $(echo "$final_learning_rate > $learning_rate" |bc -l) )); then
+      learning_rate=$final_learning_rate
+    fi
 
     false && [ $n -ge $stage ] && (
-      learning_rate=`echo $learning_rate | awk -v d=$learning_rate_decline_factor '{printf("%f", $1/d)}'`
-      if (( $(echo "$final_learning_rate > $learning_rate" |bc -l) )); then
-        learning_rate=$final_learning_rate
-      fi
-
       $decode_cmd $outdir/log/compute_prob_train.rnnlm.$n.log \
         rnnlm-compute-prob $outdir/$n.mdl ark:$outdir/train.subset.egs &
       $decode_cmd $outdir/log/compute_prob_valid.rnnlm.$n.log \

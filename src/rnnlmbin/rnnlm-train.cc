@@ -19,6 +19,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
+#include "rnnlm/rnnlm-utils.h"
 #include "rnnlm/rnnlm-training.h"
 
 #include <vector>
@@ -56,7 +57,7 @@ int main(int argc, char *argv[]) {
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 3) {
+    if (po.NumArgs() != 4) {
       po.PrintUsage();
       exit(1);
     }
@@ -67,12 +68,16 @@ int main(int argc, char *argv[]) {
 
     std::string nnet_rxfilename = po.GetArg(1),
         examples_rspecifier = po.GetArg(2),
-        nnet_wxfilename = po.GetArg(3);
+        nnet_wxfilename = po.GetArg(3),
+        unigram_file = po.GetArg(4);
 
     LmNnet nnet;
     ReadKaldiObject(nnet_rxfilename, &nnet);
 
-    LmNnetSamplingTrainer trainer(train_config, &nnet);
+    vector<BaseFloat> unigram;
+    ReadUnigram(unigram_file, &unigram);
+
+    LmNnetSamplingTrainer trainer(train_config, unigram, &nnet);
 
     SequentialNnetExampleReader example_reader(examples_rspecifier);
 

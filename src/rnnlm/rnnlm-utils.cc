@@ -30,6 +30,23 @@ unordered_map<string, int> ReadWordlist(string filename) {
   return ans;
 }
 
+void ReadUnigram(string f, vector<BaseFloat> *u) {
+  ifstream ifile(f.c_str());
+  int id;
+  BaseFloat prob;
+  BaseFloat sum = 0.0;
+  while (ifile >> id >> prob) {
+    KALDI_ASSERT(id == u->size());
+    (*u).push_back(prob);
+    sum += prob;
+  }
+
+  for (int i = 0; i < u->size(); i++) {
+    (*u)[i] /= sum;
+//    (*u)[i] = 1.0 / u->size();  // TODO(hxu)
+  }
+}
+
 NnetExample GetEgsFromSent(const vector<int>& word_ids_in, int input_dim,
                            const vector<int>& word_ids_out, int output_dim) {
   SparseMatrix<BaseFloat> input_frames(word_ids_in.size(), input_dim);
@@ -153,7 +170,12 @@ void SampleWithoutReplacement(vector<std::pair<int, BaseFloat> > u, int n,
     if (!replaced) {
 //      assert(p < 0.0000001);
       KALDI_LOG << "p should be close to 0; it is " << p;
-      ans[n - 1] = k;
+      for (int i = 1; ; i++) {
+        if (u[ans[n - i]].second < 1) {
+          ans[n - 1] = k;
+          break;
+        }
+      }
     }
   }
 

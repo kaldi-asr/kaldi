@@ -40,6 +40,8 @@ void NormalizeVec(int k, const set<int> &ones, vector<BaseFloat> *probs);
 bool LargerThan(const std::pair<int, BaseFloat> &t1,
                 const std::pair<int, BaseFloat> &t2);
 
+void ReadUnigram(string f, vector<BaseFloat> *u);
+
 } // namespace nnet3
 } // namespace kaldi
 

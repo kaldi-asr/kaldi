@@ -188,7 +188,8 @@ class LmNnetSamplingTrainer {
 //                              LmNnet *delta_nnet = NULL);
 
   LmNnetSamplingTrainer(const LmNnetTrainerOptions &config,
-              LmNnet *nnet);
+                        const vector<BaseFloat> &unigram,
+                        LmNnet *nnet);
 
   // train on one minibatch.
   void Train(const NnetExample &eg);
@@ -212,6 +213,7 @@ class LmNnetSamplingTrainer {
   SparseMatrix<BaseFloat> old_input_;
   CuMatrix<BaseFloat> new_output_;
 
+  vector<BaseFloat> unigram_;
   // this pointer is not owned
   LmNnet *nnet_;
 
@@ -234,7 +236,6 @@ class LmNnetSamplingTrainer {
   int32 num_max_change_global_applied_;
 
   unordered_map<std::string, LmObjectiveFunctionInfo, StringHasher> objf_info_;
-  vector<BaseFloat> unigram_;
 };
 
 } // namespace rnnlm

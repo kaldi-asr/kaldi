@@ -25,15 +25,18 @@ namespace rnnlm {
 
 LmNnetSamplingTrainer::LmNnetSamplingTrainer(
                           const LmNnetTrainerOptions &config,
+                          const vector<BaseFloat> &unigram,
                           LmNnet *nnet):
                           config_(config),
+                          unigram_(unigram),
                           nnet_(nnet),
                           compiler_(*nnet->GetNnet(), config_.optimize_config),
                           num_minibatches_processed_(0) {
 
 // TODO(hxu)
-  int s = nnet_->O()->OutputDim();
-  unigram_.resize(s, 1.0/ s);
+//  int s = nnet_->O()->OutputDim();
+//  unigram_.resize(s, 1.0/ s);
+  KALDI_ASSERT(unigram_.size() == nnet_->O()->OutputDim());
 
   if (config.zero_component_stats)
     nnet->ZeroStats();
@@ -602,9 +605,11 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
   Matrix<BaseFloat> t(out.NumRows(), out.NumCols(), kSetZero);
   CuMatrix<BaseFloat> t2(out.NumRows(), out.NumCols(), kSetZero);
   CuMatrix<BaseFloat> t3(out.NumRows(), out.NumCols(), kSetZero);
+
   for (int i = 0; i < out.NumRows(); i++) {
     t(i, correct_indexes[i]) = 1.0;
   }
+
   t2.CopyFromMat(t);
   // t and t2 are sparsematrix where the position of the correct label is 1
   // so the following would compute the sum of correct y's
