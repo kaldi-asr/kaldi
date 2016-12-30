@@ -30,7 +30,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                      shuffle_buffer_size, minibatch_size,
                      cache_read_opt, run_opts,
                      frames_per_eg=-1,
-                     min_deriv_time=None, max_deriv_time=None):
+                     min_deriv_time=None, max_deriv_time_relative=None):
     """ Called from train_one_iteration(), this model does one iteration of
     training with 'num_jobs' jobs, and writes files like
     exp/tdnn_a/24.{1,2,3,..<num_jobs>}.raw
@@ -59,9 +59,9 @@ def train_new_models(dir, iter, srand, num_jobs,
     if min_deriv_time is not None:
         deriv_time_opts.append("--optimization.min-deriv-time={0}".format(
                            min_deriv_time))
-    if max_deriv_time is not None:
-        deriv_time_opts.append("--optimization.max-deriv-time={0}".format(
-                           max_deriv_time))
+    if max_deriv_time_relative is not None:
+        deriv_time_opts.append("--optimization.max-deriv-time-relative={0}".format(
+                           max_deriv_time_relative))
 
     context_opts = "--left-context={0} --right-context={1}".format(
         left_context, right_context)
@@ -140,8 +140,8 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         momentum, max_param_change, shuffle_buffer_size,
                         run_opts,
                         cv_minibatch_size=256, frames_per_eg=-1,
-                        min_deriv_time=None, max_deriv_time=None,
-                        shrinkage_value=1.0, dropout_edit_string="",
+                        min_deriv_time=None, max_deriv_time_relative=None,
+                        shrinkage_value=1.0,
                         get_raw_nnet_from_am=True,
                         background_process_handler=None):
     """ Called from steps/nnet3/train_*.py scripts for one iteration of neural
@@ -172,10 +172,9 @@ def train_one_iteration(dir, iter, srand, egs_dir,
     if os.path.exists('{0}/srand'.format(dir)):
         try:
             saved_srand = int(open('{0}/srand'.format(dir)).readline().strip())
-        except (IOError, ValueError):
-            logger.error("Exception while reading the random seed "
-                         "for training")
-            raise
+        except (IOError, ValueError) as e:
+            raise Exception("Exception while reading the random seed "
+                            "for training: {0}".format(e.str()))
         if srand != saved_srand:
             logger.warning("The random seed provided to this iteration "
                            "(srand={0}) is different from the one saved last "
@@ -249,8 +248,6 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                                 "{dir}/{iter}.raw - |".format(
                                     lr=learning_rate, dir=dir, iter=iter))
 
-    raw_model_string = raw_model_string + dropout_edit_string
-
     if do_average:
         cur_minibatch_size = minibatch_size
         cur_max_param_change = max_param_change
@@ -268,15 +265,6 @@ def train_one_iteration(dir, iter, srand, egs_dir,
     except OSError:
         pass
 
-    shrink_info_str = ''
-    if shrinkage_value != 1.0:
-        shrink_info_str = ' and shrink value is {0}'.format(shrinkage_value)
-
-    logger.info("On iteration {0}, learning rate is {1}"
-                "{shrink_info}.".format(
-                    iter, learning_rate,
-                    shrink_info=shrink_info_str))
-
     train_new_models(dir=dir, iter=iter, srand=srand, num_jobs=num_jobs,
                      num_archives_processed=num_archives_processed,
                      num_archives=num_archives,
@@ -288,7 +276,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      cache_read_opt=cache_read_opt, run_opts=run_opts,
                      frames_per_eg=frames_per_eg,
                      min_deriv_time=min_deriv_time,
-                     max_deriv_time=max_deriv_time)
+                     max_deriv_time_relative=max_deriv_time_relative)
 
     [models_to_average, best_model] = common_train_lib.get_successful_models(
          num_jobs, '{0}/log/train.{1}.%.log'.format(dir, iter))
@@ -318,8 +306,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
         for i in range(1, num_jobs + 1):
             os.remove("{0}/{1}.{2}.raw".format(dir, iter + 1, i))
     except OSError:
-        logger.error("Error while trying to delete the raw models")
-        raise
+        raise Exception("Error while trying to delete the raw models")
 
     if get_raw_nnet_from_am:
         new_model = "{0}/{1}.mdl".format(dir, iter + 1)
@@ -369,9 +356,8 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
         try:
             os.remove(file)
         except OSError:
-            logger.error("There was error while trying to remove "
-                         "lda stat files.")
-            raise
+            raise Exception("There was error while trying to remove "
+                            "lda stat files.")
     # this computes a fixed affine transform computed in the way we described
     # in Appendix C.6 of http://arxiv.org/pdf/1410.7455v6.pdf; it's a scaled
     # variant of an LDA transform but without dimensionality reduction.
@@ -479,7 +465,7 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
 
     models_to_combine.add(num_iters)
 
-    for iter in sorted(models_to_combine):
+    for iter in models_to_combine:
         if get_raw_nnet_from_am:
             model_file = '{0}/{1}.mdl'.format(dir, iter)
             if not os.path.exists(model_file):
