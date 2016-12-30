@@ -66,9 +66,12 @@ def get_args():
 
     # Parameters for the optimization
     parser.add_argument("--trainer.optimization.minibatch-size",
-                        type=float, dest='minibatch_size', default=512,
-                        help="Size of the minibatch used to compute the "
-                        "gradient")
+                        type=str, dest='minibatch_size', default='512',
+                        help="""Size of the minibatch used in SGD training
+                        (argument to nnet3-merge-egs); may be a more general
+                        rule as accepted by the --minibatch-size option of
+                        nnet3-merge-egs; run that program without args to see
+                        the format.""")
 
     # General options
     parser.add_argument("--feat-dir", type=str, required=True,
@@ -99,6 +102,9 @@ def process_args(args):
 
     if args.frames_per_eg < 1:
         raise Exception("--egs.frames-per-eg should have a minimum value of 1")
+
+    if not common_train_lib.validate_minibatch_size_str(args.minibatch_size):
+        raise Exception("--trainer.rnn.num-chunk-per-minibatch has an invalid value");
 
     if (not os.path.exists(args.dir)
             or not os.path.exists(args.dir+"/configs")):
@@ -311,7 +317,7 @@ def train(args, run_opts, background_process_handler):
                 num_archives=num_archives,
                 learning_rate=learning_rate(iter, current_num_jobs,
                                             num_archives_processed),
-                minibatch_size=args.minibatch_size,
+                minibatch_size_str=args.minibatch_size,
                 frames_per_eg=args.frames_per_eg,
                 num_hidden_layers=num_hidden_layers,
                 add_layers_period=args.add_layers_period,
