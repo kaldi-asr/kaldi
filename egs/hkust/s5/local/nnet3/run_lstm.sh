@@ -42,6 +42,7 @@ shrink=0.98
 momentum=0.5
 adaptive_shrink=true
 num_chunk_per_minibatch=100
+num_bptt_steps=20
 samples_per_iter=20000
 remove_egs=true
 
@@ -59,8 +60,8 @@ frames_per_chunk=
 . ./utils/parse_options.sh
 
 if ! cuda-compiled; then
-  cat <<EOF && exit 1
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
+  cat <<EOF && exit 1 
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.
 EOF
@@ -125,6 +126,7 @@ if [ $stage -le 8 ]; then
     --non-recurrent-projection-dim $non_recurrent_projection_dim \
     --chunk-width $chunk_width \
     --chunk-left-context $chunk_left_context \
+    --num-bptt-steps $num_bptt_steps \
     --norm-based-clipping $norm_based_clipping \
     --ng-per-element-scale-options "$ng_per_element_scale_options" \
     --ng-affine-options "$ng_affine_options" \
