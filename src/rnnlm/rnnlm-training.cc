@@ -459,26 +459,26 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
   out.ApplyExp();
   Vector<BaseFloat> v(out.NumCols(), kSetZero);
   for (int i = 0; i < out.NumCols(); i++) {
-    v(i) = -selected_probs[i];
+    v(i) = -1.0 / selected_probs[i];
   }
   t3.CopyRowsFromVec(CuVector<BaseFloat>(v));
-  out.DivElements(t3);
+  t3.MulElements(out);
   // now each element is -exp(y)/selection-prob
 
-  *tot_objf += out.Sum();
+  *tot_objf += t3.Sum();
 
   if (supply_deriv && nnet != NULL) {
-    out.AddMat(1.0, t2); // this is the correct derivative
+    t3.AddMat(1.0, t2); // this is the correct derivative
     // -exp(y) / selection-prob(i) for non-correct labels
     // 1 - exp(y) for correct labels  (selection-prob of a correct label is 1)
 
+    out.ApplyLog();
     CuMatrix<BaseFloat> input_deriv(new_output->NumRows(),
                                     new_output->NumCols(),
                                     kSetZero);
 
-    CuMatrix<BaseFloat> place_holder;
-    output_projection.Backprop(samples, *new_output, place_holder,
-                               out, nnet->output_projection_,
+    output_projection.Backprop(samples, *new_output, out,
+                               t3, nnet->output_projection_,
                                &input_deriv);
 
     computer->AcceptOutputDeriv(output_name, &input_deriv);

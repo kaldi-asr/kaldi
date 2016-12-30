@@ -236,7 +236,9 @@ if [ $stage -le $num_iters ]; then
           unigram=$outdir/uniform.txt
         fi
 
-        $cuda_cmd $outdir/log/train.rnnlm.$n.log rnnlm-train --use-gpu=$use_gpu --binary=false \
+#        $cuda_cmd $outdir/log/train.rnnlm.$n.log rnnlm-train --use-gpu=$use_gpu --binary=false \
+
+        run.pl $outdir/log/train.rnnlm.$n.log rnnlm-train --use-gpu=$use_gpu --binary=false \
         --max-param-change=$max_param_change "rnnlm-copy --learning-rate=$learning_rate $outdir/$[$n-1].mdl -|" \
         "ark:nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$n ark:$outdir/egs/train.$this_archive.egs ark:- | nnet3-merge-egs --minibatch-size=$minibatch_size ark:- ark:- |" $outdir/$n.mdl $unigram
 

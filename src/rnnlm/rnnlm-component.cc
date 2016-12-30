@@ -67,7 +67,7 @@ void AffineSampleLogSoftmaxComponent::PerturbParams(BaseFloat stddev) {
   linear_params_.AddMat(stddev, temp_linear_params);
 
   CuMatrix<BaseFloat> temp_bias_params(bias_params_);
-  temp_bias_params.SetRandn();
+  temp_bias_params.SetRandn();  // TODO(hxu)
   bias_params_.AddMat(stddev, temp_bias_params);
 }
 
@@ -100,6 +100,7 @@ void AffineSampleLogSoftmaxComponent::Init(int32 input_dim, int32 output_dim,
   linear_params_.Scale(param_stddev);
 
   bias_params_.Set(bias_stddev);
+//  bias_params_.SetZero();  // TODO(hxu)
 
 //  bias_params_.SetRandn();
 //  bias_params_.Scale(bias_stddev);
@@ -136,6 +137,8 @@ void AffineSampleLogSoftmaxComponent::InitFromConfig(ConfigLine *cfl) {
 //        bias_stddev = 1.0;
     BaseFloat param_stddev = 0.0, /// log(1.0 / output_dim),
         bias_stddev = log(1.0 / output_dim);
+    // TODO(hxu)
+
     cfl->GetValue("param-stddev", &param_stddev);
     cfl->GetValue("bias-stddev", &bias_stddev);
     Init(input_dim, output_dim, param_stddev, bias_stddev);
@@ -157,17 +160,25 @@ void AffineSampleLogSoftmaxComponent::Propagate(const CuMatrixBase<BaseFloat> &i
 
   out->RowRange(0, 1).AddCols(bias_params_, idx);
   out->CopyRowsFromVec(out->Row(0));
-  out->AddMatMat(1.0, in, kNoTrans, new_linear, kTrans, 1.0); 
+  out->AddMatMat(1.0, in, kNoTrans, new_linear, kTrans, 1.0);
+
+  out->ApplyCeiling(0);  // TODO(hxu), neg-relu
 }
 
 void AffineSampleLogSoftmaxComponent::Backprop(
                                const vector<int> &indexes,
                                const CuMatrixBase<BaseFloat> &in_value,
-                               const CuMatrixBase<BaseFloat> &, // out_value
+                               const CuMatrixBase<BaseFloat> &out_value, // out_value
                                const CuMatrixBase<BaseFloat> &output_deriv,
                                LmOutputComponent *to_update_0,
                                CuMatrixBase<BaseFloat> *input_deriv) const {
   KALDI_ASSERT (input_deriv != NULL);
+
+  // TODO(hxu), neg-relu backprop
+  CuMatrix<BaseFloat> new_out_deriv(out_value);
+  new_out_deriv.Scale(-1.0);
+  new_out_deriv.Heaviside(new_out_deriv);
+  new_out_deriv.MulElements(output_deriv);
 
   CuMatrix<BaseFloat> new_linear(indexes.size(), linear_params_.NumCols());
   CuArray<int> idx(indexes);
@@ -193,7 +204,7 @@ void AffineSampleLogSoftmaxComponent::Backprop(
     CuArray<int> idx2(indexes_2);
     to_update->linear_params_.AddRows(1.0, new_linear, idx2);
 
-    to_update->bias_params_.AddCols(delta_bias, idx2);
+    to_update->bias_params_.AddCols(delta_bias, idx2);  // TODO(hxu)
   }
 }
 
