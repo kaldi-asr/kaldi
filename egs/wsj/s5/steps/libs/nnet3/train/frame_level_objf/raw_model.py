@@ -22,7 +22,7 @@ def generate_egs_using_targets(data, targets_scp, egs_dir,
                                run_opts, stage=0,
                                feat_type='raw', online_ivector_dir=None,
                                target_type='dense', num_targets=-1,
-                               samples_per_iter=20000, frames_per_eg=20,
+                               samples_per_iter=20000, frames_per_eg_str="20",
                                srand=0, egs_opts=None, cmvn_opts=None,
                                transform_dir=None):
     """ Wrapper for calling steps/nnet3/get_egs_targets.sh
@@ -57,7 +57,7 @@ def generate_egs_using_targets(data, targets_scp, egs_dir,
                 --left-context {left_context} --right-context {right_context} \
                 --stage {stage} \
                 --samples-per-iter {samples_per_iter} \
-                --frames-per-eg {frames_per_eg} \
+                --frames-per-eg {frames_per_eg_str} \
                 --srand {srand} \
                 --target-type {target_type} \
                 --num-targets {num_targets} \
@@ -73,7 +73,7 @@ def generate_egs_using_targets(data, targets_scp, egs_dir,
                                 else ''),
                    left_context=left_context, right_context=right_context,
                    stage=stage, samples_per_iter=samples_per_iter,
-                   frames_per_eg=frames_per_eg, srand=srand,
+                   frames_per_eg_str=frames_per_eg_str, srand=srand,
                    num_targets=num_targets,
                    data=data,
                    targets_scp=targets_scp, target_type=target_type,

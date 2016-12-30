@@ -59,12 +59,13 @@ def get_args():
         parents=[common_train_lib.CommonParser().parser])
 
     # egs extraction options
-    parser.add_argument("--egs.chunk-width", type=int, dest='chunk_width',
-                        default=20,
-                        help="""Number of output labels in the sequence
-                        used to train an LSTM.
-                        Caution: if you double this you should halve
-                        --trainer.samples-per-iter.""")
+    parser.add_argument("--egs.chunk-width", type=str, dest='chunk_width',
+                        default="20",
+                        help="""Number of frames per chunk in the examples
+                        used to train the RNN.   Caution: if you double this you
+                        should halve --trainer.samples-per-iter.  May be
+                        a comma-separated list of alternatives: first width
+                        is the 'principal' chunk-width, used preferentially""")
     parser.add_argument("--egs.chunk-left-context", type=int,
                         dest='chunk_left_context', default=40,
                         help="""Number of left steps used in the estimation of
@@ -119,9 +120,6 @@ def get_args():
                         dest='num_chunk_per_minibatch', default=100,
                         help="Number of sequences to be processed in "
                         "parallel every minibatch")
-    parser.add_argument("--trainer.rnn.num-bptt-steps", type=int,
-                        dest='num_bptt_steps', default=None,
-                        help="""Deprecated. Kept for back compatibility.""")
     parser.add_argument("--trainer.deriv-truncate-margin", type=int,
                         dest='deriv_truncate_margin', default=8,
                         help="""Margin (in input frames) around the 'required'
@@ -157,25 +155,14 @@ def process_args(args):
     """ Process the options got from get_args()
     """
 
-    if args.chunk_width < 1:
-        raise Exception("--egs.chunk-width should have a minimum value of 1")
+    if not common_train_lib.validate_chunk_width(args.chunk_width):
+        raise Exception("--egs.chunk-width has an invalid value");
 
     if args.chunk_left_context < 0:
         raise Exception("--egs.chunk-left-context should be non-negative")
 
     if args.chunk_right_context < 0:
         raise Exception("--egs.chunk-right-context should be non-negative")
-
-    if args.num_bptt_steps is not None:
-        # -2 is used to compensate for the splicing of the input frame,
-        # assuming that splicing spans from -2 to 2
-        args.deriv_truncate_margin = args.num_bptt_steps - args.chunk_width - 2
-        logger.warning(
-            "--trainer.rnn.num-bptt-steps (deprecated) is set by user, and "
-            "--trainer.deriv-truncate-margin is set to (num-bptt-steps - "
-            "chunk-width - 2) = {0}. We recommend using the option "
-            "--trainer.deriv-truncate-margin.".format(
-                args.deriv_truncate_margin))
 
     if (not os.path.exists(args.dir)
             or not os.path.exists(args.dir+"/configs")):
@@ -287,7 +274,7 @@ def train(args, run_opts, background_process_handler):
             data=args.feat_dir, alidir=args.ali_dir, egs_dir=default_egs_dir,
             left_context=left_context, right_context=right_context,
             run_opts=run_opts,
-            frames_per_eg=args.chunk_width,
+            frames_per_eg_str=args.chunk_width,
             srand=args.srand,
             egs_opts=args.egs_opts,
             cmvn_opts=args.cmvn_opts,
@@ -302,10 +289,12 @@ def train(args, run_opts, background_process_handler):
         egs_dir = args.egs_dir
 
     [egs_left_context, egs_right_context,
-     frames_per_eg, num_archives] = (
+     frames_per_eg_str, num_archives] = (
         common_train_lib.verify_egs_dir(egs_dir, feat_dim, ivector_dim,
                                         left_context, right_context))
-    assert(args.chunk_width == frames_per_eg)
+    if args.chunk_width != frames_per_eg_str:
+        raise Exception("mismatch between --egs.chunk-width and the frames_per_eg "
+                        "in the egs dir {0} vs {1}".(args.chunk_width, frames_per_eg_str))
 
     if (args.num_jobs_final > num_archives):
         raise Exception('num_jobs_final cannot exceed the number of archives '

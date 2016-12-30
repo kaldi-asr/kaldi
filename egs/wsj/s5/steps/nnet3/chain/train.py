@@ -51,11 +51,13 @@ def get_args():
         parents=[common_train_lib.CommonParser().parser])
 
     # egs extraction options
-    parser.add_argument("--egs.chunk-width", type=int, dest='chunk_width',
-                        default=150,
-                        help="""Number of output labels in each example.
-                        Caution: if you double this you should halve
-                        --trainer.samples-per-iter.""")
+    parser.add_argument("--egs.chunk-width", type=str, dest='chunk_width',
+                        default="20",
+                        help="""Number of frames per chunk in the examples
+                        used to train the RNN.   Caution: if you double this you
+                        should halve --trainer.samples-per-iter.  May be
+                        a comma-separated list of alternatives: first width
+                        is the 'principal' chunk-width, used preferentially""")
 
     # chain options
     parser.add_argument("--chain.lm-opts", type=str, dest='lm_opts',
@@ -183,8 +185,8 @@ def process_args(args):
     """ Process the options got from get_args()
     """
 
-    if args.chunk_width < 1:
-        raise Exception("--egs.chunk-width should have a minimum value of 1")
+    if not common_train_lib.validate_chunk_width(args.chunk_width):
+        raise Exception("--egs.chunk-width has an invalid value");
 
     if args.chunk_left_context < 0:
         raise Exception("--egs.chunk-left-context should be non-negative")
@@ -325,7 +327,7 @@ def train(args, run_opts, background_process_handler):
             right_tolerance=args.right_tolerance,
             frame_subsampling_factor=args.frame_subsampling_factor,
             alignment_subsampling_factor=args.alignment_subsampling_factor,
-            frames_per_eg=args.chunk_width,
+            frames_per_eg_str=args.chunk_width,
             srand=args.srand,
             egs_opts=args.egs_opts,
             cmvn_opts=args.cmvn_opts,
@@ -340,10 +342,10 @@ def train(args, run_opts, background_process_handler):
         egs_dir = args.egs_dir
 
     [egs_left_context, egs_right_context,
-     frames_per_eg, num_archives] = (
+     frames_per_eg_str, num_archives] = (
         common_train_lib.verify_egs_dir(egs_dir, feat_dim, ivector_dim,
                                         egs_left_context, egs_right_context))
-    assert(args.chunk_width == frames_per_eg)
+    assert(args.chunk_width == frames_per_eg_str)
     num_archives_expanded = num_archives * args.frame_subsampling_factor
 
     if (args.num_jobs_final > num_archives_expanded):

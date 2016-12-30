@@ -41,16 +41,12 @@ def train_new_models(dir, iter, srand, num_jobs,
     this is no longer true for RNNs as we use do not use the --frame option
     but we use the same script for consistency with FF-DNN code
 
-    Args:
+    Selected args:
         frames_per_eg: The default value -1 implies chunk_level_training, which
             is particularly applicable to RNN training. If it is > 0, then it
             implies frame-level training, which is applicable for DNN training.
             If it is > 0, then each parallel SGE job created, a different frame
             numbered 0..frames_per_eg-1 is used.
-        min_deriv_time: Applicable for RNN training. A default value of None
-            implies a min_deriv_time of 0 is used. During RNN training, its
-            value is set to chunk_width - num_bptt_steps in the training
-            script.
     """
 
     chunk_level_training = False if frames_per_eg > 0 else True
@@ -147,16 +143,12 @@ def train_one_iteration(dir, iter, srand, egs_dir,
     """ Called from steps/nnet3/train_*.py scripts for one iteration of neural
     network training
 
-    Args:
+    Selected args:
         frames_per_eg: The default value -1 implies chunk_level_training, which
             is particularly applicable to RNN training. If it is > 0, then it
             implies frame-level training, which is applicable for DNN training.
             If it is > 0, then each parallel SGE job created, a different frame
             numbered 0..frames_per_eg-1 is used.
-        min_deriv_time: Applicable for RNN training. A default value of None
-            implies a min_deriv_time of 0 is used. During RNN training, its
-            value is set to chunk_width - num_bptt_steps in the training
-            script.
         shrinkage_value: If value is 1.0, no shrinkage is done; otherwise
             parameter values are scaled by this value.
         get_raw_nnet_from_am: If True, then the network is read and stored as
@@ -480,7 +472,7 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
 
     if chunk_width is not None:
         # this is an RNN model
-        mbsize = int(1024.0/(chunk_width))
+        mbsize = int(1024.0/(common_train_lib.principal_chunk_width(chunk_width)))
     else:
         mbsize = 1024
 

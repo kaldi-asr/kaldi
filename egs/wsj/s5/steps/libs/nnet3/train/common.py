@@ -135,6 +135,32 @@ def get_best_nnet_model(dir, iter, best_model_index, run_opts,
                                       out_model=out_model, scale=scale))
 
 
+def validate_chunk_width(chunk_width):
+    """Validate a chunk-width string , returns boolean.
+    Expected to be a string representing either an integer, like '20',
+    or a comma-separated list of integers like '20,30,16'"""
+    if not isinstance(chunk_width, str):
+        return false
+    a = chunk_width.split(",");
+    if len(a) == 0:
+        return false
+    for elem in a:
+        try:
+            i = int(elem)
+            if i < 1:
+                return false
+        except:
+            return false
+    return true
+
+
+def principal_chunk_width(chunk_width):
+    """Given a chunk-width string like "20" or "50,70,40", returns the principal
+    chunk-width which is the first element, as an int.  E.g. 20, or 40."""
+    if not validate_chunk_width(chunk_width):
+        raise Exception("Invalid chunk-width {0}".format(chunk_width))
+    return int(chunk_width.split(",")[0])
+
 def copy_egs_properties_to_exp_dir(egs_dir, dir):
     try:
         for file in ['cmvn_opts', 'splice_opts', 'final.mat']:
@@ -190,13 +216,16 @@ def verify_egs_dir(egs_dir, feat_dim, ivector_dim,
                 egs_right_context < right_context):
             raise Exception('The egs have insufficient context')
 
-        frames_per_eg = int(open('{0}/info/frames_per_eg'.format(
-                                    egs_dir)).readline())
+        frames_per_eg_str = open('{0}/info/frames_per_eg'.format(
+                             egs_dir)).readline().rstrip()
+        if (!validate_chunk_width(frames_per_eg_str)):
+            raise Exception("Invalid frames_per_eg in directory {0}/info".format(
+                    egs_dir))
         num_archives = int(open('{0}/info/num_archives'.format(
                                     egs_dir)).readline())
 
         return [egs_left_context, egs_right_context,
-                frames_per_eg, num_archives]
+                frames_per_eg_str, num_archives]
     except (IOError, ValueError) as e:
         raise Exception("The egs dir {0} has missing or "
                         "malformed files: {1}".format(egs_dir, e.strerr))
