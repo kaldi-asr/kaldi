@@ -12,7 +12,6 @@ cmd=run.pl
 feat_type=raw     # set it to 'lda' to use LDA features.
 frames_per_eg=150 # number of frames of labels per example.  more->less disk space and
                   # less time preparing egs, but more I/O during training.
-                  # note: the script may reduce this if reduce_frames_per_eg is true.
 frames_overlap_per_eg=30 # number of supervised frames of overlap that we aim for per eg.
                   # can be useful to avoid wasted data if you're using --left-deriv-truncate
                   # and --right-deriv-truncate.
