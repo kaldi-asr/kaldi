@@ -35,6 +35,10 @@ NnetExample GetEgsFromSent(const vector<int>& word_ids_in, int input_dim,
 
 void SampleWithoutReplacement(vector<std::pair<int, BaseFloat> > u, int n, vector<int> *out);
 
+// normalize the prob vector such that
+// every prob satisfies 0 < p <= 1
+// sum of all probs equal k
+// in particular, probs[i] must be 1 if i is in the set "ones"
 void NormalizeVec(int k, const set<int> &ones, vector<BaseFloat> *probs);
 
 bool LargerThan(const std::pair<int, BaseFloat> &t1,

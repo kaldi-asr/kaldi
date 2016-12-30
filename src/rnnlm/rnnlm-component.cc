@@ -162,7 +162,17 @@ void AffineSampleLogSoftmaxComponent::Propagate(const CuMatrixBase<BaseFloat> &i
   out->CopyRowsFromVec(out->Row(0));
   out->AddMatMat(1.0, in, kNoTrans, new_linear, kTrans, 1.0);
 
-  out->ApplyCeiling(0);  // TODO(hxu), neg-relu
+  // map from (-inf, inf) to (-inf, 0)
+  // y = x - 1, when x <= 0
+  // y = x / (1 + x) - 1, otherwise
+
+  CuMatrix<BaseFloat> out2(*out);
+  out2.ApplyFloor(0);
+  out2.Add(1);
+  out->DivElements(out2);
+  out->Add(-1.0);
+
+//  out->ApplyCeiling(0);  // TODO(hxu), neg-relu
 }
 
 void AffineSampleLogSoftmaxComponent::Backprop(
@@ -176,9 +186,16 @@ void AffineSampleLogSoftmaxComponent::Backprop(
 
   // TODO(hxu), neg-relu backprop
   CuMatrix<BaseFloat> new_out_deriv(out_value);
-  new_out_deriv.Scale(-1.0);
-  new_out_deriv.Heaviside(new_out_deriv);
+  new_out_deriv.Add(1);
+  new_out_deriv.Heaviside(out_value);
+
+  new_out_deriv.MulElements(out_value);
+  new_out_deriv.MulElements(out_value);
+  new_out_deriv.Add(-1.0);
+
+  new_out_deriv.MulElements(new_out_deriv);
   new_out_deriv.MulElements(output_deriv);
+//  new_out_deriv.InvertElements();
 
   CuMatrix<BaseFloat> new_linear(indexes.size(), linear_params_.NumCols());
   CuArray<int> idx(indexes);
