@@ -195,6 +195,7 @@ if [ $stage -le 13 ]; then
     --trainer.optimization.shrink-value 0.99 \
     --trainer.rnn.num-chunk-per-minibatch=$num_chunk_per_minibatch \
     --trainer.optimization.momentum=$momentum \
+    --trainer.rnn.num-bptt-steps 30 \
     --egs.chunk-width=$chunk_width \
     --egs.chunk-left-context=$chunk_left_context \
     --egs.chunk-right-context=$chunk_right_context \
