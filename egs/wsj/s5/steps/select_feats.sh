@@ -2,6 +2,9 @@
 
 # Copyright 2014  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
+
+# This script is deprecated. Use utils/data/limit_feature_dim.sh.
+
 # This script selects some specified dimensions of the features in the
 # input data directory.
 

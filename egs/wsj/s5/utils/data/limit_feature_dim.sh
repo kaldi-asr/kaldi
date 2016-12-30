@@ -3,6 +3,9 @@
 # Copyright 2016  Alibaba Robotics Corp. (author: Xingyu Na)
 # Apache 2.0
 
+# This script allows you to create a data directory from limited
+# dim range of the source data dir.
+
 . utils/parse_options.sh
 
 if [ $# != 3 ]; then
