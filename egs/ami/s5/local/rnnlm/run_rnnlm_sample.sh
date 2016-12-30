@@ -232,7 +232,7 @@ if [ $stage -le $num_iters ]; then
 
         unigram=$outdir/uni_counts.txt
 
-        if [ $n -lt 10 ]; then
+        if [ $n -lt -1 ]; then
           unigram=$outdir/uniform.txt
         fi
 

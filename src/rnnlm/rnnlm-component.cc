@@ -150,6 +150,8 @@ void AffineSampleLogSoftmaxComponent::InitFromConfig(ConfigLine *cfl) {
     KALDI_ERR << "Bad initializer " << cfl->WholeLine();
 }
 
+const BaseFloat kCutoff = 10.0;
+
 void AffineSampleLogSoftmaxComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
                                                 const vector<int> &indexes,
                                                 CuMatrixBase<BaseFloat> *out) const {
@@ -168,9 +170,10 @@ void AffineSampleLogSoftmaxComponent::Propagate(const CuMatrixBase<BaseFloat> &i
 
   CuMatrix<BaseFloat> out2(*out);
   out2.ApplyFloor(0);
+  out2.Scale(1.0 / kCutoff);
   out2.Add(1);
   out->DivElements(out2);
-  out->Add(-1.0);
+  out->Add(-1.0 * kCutoff);
 
 //  out->ApplyCeiling(0);  // TODO(hxu), neg-relu
 }
@@ -186,32 +189,28 @@ void AffineSampleLogSoftmaxComponent::Backprop(
 
   // TODO(hxu), neg-relu backprop
   CuMatrix<BaseFloat> new_out_deriv(out_value);
-  new_out_deriv.Add(1);
-  new_out_deriv.Heaviside(out_value);
-
-  new_out_deriv.MulElements(out_value);
-  new_out_deriv.MulElements(out_value);
-  new_out_deriv.Add(-1.0);
-
+  new_out_deriv.ApplyFloor(-kCutoff);
+  new_out_deriv.Scale(1.0 / kCutoff);
   new_out_deriv.MulElements(new_out_deriv);
+  new_out_deriv.InvertElements();
   new_out_deriv.MulElements(output_deriv);
-//  new_out_deriv.InvertElements();
 
   CuMatrix<BaseFloat> new_linear(indexes.size(), linear_params_.NumCols());
   CuArray<int> idx(indexes);
   new_linear.CopyRows(linear_params_, idx);
 
-  input_deriv->AddMatMat(1.0, output_deriv, kNoTrans, new_linear, kNoTrans, 1.0);
+//  input_deriv->AddMatMat(1.0, output_deriv, kNoTrans, new_linear, kNoTrans, 1.0);
+  input_deriv->AddMatMat(1.0, new_out_deriv, kNoTrans, new_linear, kNoTrans, 1.0);
 
   AffineSampleLogSoftmaxComponent* to_update
              = dynamic_cast<AffineSampleLogSoftmaxComponent*>(to_update_0);
 
   if (to_update != NULL) {
     new_linear.SetZero();  // clear the contents
-    new_linear.AddMatMat(learning_rate_, output_deriv, kTrans,
+    new_linear.AddMatMat(learning_rate_, new_out_deriv, kTrans,
                          in_value, kNoTrans, 1.0);
     CuMatrix<BaseFloat> delta_bias(1, output_deriv.NumCols(), kSetZero);
-    delta_bias.Row(0).AddRowSumMat(learning_rate_, output_deriv, kTrans);
+    delta_bias.Row(0).AddRowSumMat(learning_rate_, new_out_deriv, kTrans);
 
     vector<int> indexes_2(bias_params_.NumCols(), -1);
     for (int i = 0; i < indexes.size(); i++) {

@@ -76,6 +76,8 @@ void SampleWithoutReplacement(vector<std::pair<int, BaseFloat> > u, int n,
                               vector<int> *out) {
   sort(u.begin(), u.end(), LargerThan);
 
+  KALDI_ASSERT(n != 0);
+
   vector<int>& ans = *out;
   ans.resize(n);
 
@@ -264,5 +266,5 @@ void NormalizeVec(int k, const set<int>& ones, vector<BaseFloat> *probs) {
 
 }
 
-} // namespace nnet3
+} // namespace rnnlm
 } // namespace kaldi

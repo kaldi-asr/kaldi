@@ -33,12 +33,16 @@ unordered_map<string, int> ReadWordlist(string filename);
 NnetExample GetEgsFromSent(const vector<int>& word_ids_in, int input_dim,
                            const vector<int>& word_ids_out, int output_dim);
 
+// u should be the result of calling NormalizeVec(), i.e.
+// it should add up to n
 void SampleWithoutReplacement(vector<std::pair<int, BaseFloat> > u, int n, vector<int> *out);
 
 // normalize the prob vector such that
 // every prob satisfies 0 < p <= 1
 // sum of all probs equal k
 // in particular, probs[i] must be 1 if i is in the set "ones"
+
+// probs should add up to 1 initually (a valid unigram distribution)
 void NormalizeVec(int k, const set<int> &ones, vector<BaseFloat> *probs);
 
 bool LargerThan(const std::pair<int, BaseFloat> &t1,
