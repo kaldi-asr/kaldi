@@ -108,7 +108,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                      num_archives_processed, num_archives,
                      raw_model_string, egs_dir, left_context, right_context,
                      apply_deriv_weights,
-                     min_deriv_time, max_deriv_time,
+                     min_deriv_time, max_deriv_time_relative,
                      l2_regularize, xent_regularize, leaky_hmm_coefficient,
                      momentum, max_param_change,
                      shuffle_buffer_size, num_chunk_per_minibatch,
@@ -130,9 +130,9 @@ def train_new_models(dir, iter, srand, num_jobs,
     if min_deriv_time is not None:
         deriv_time_opts.append("--optimization.min-deriv-time={0}".format(
                                     min_deriv_time))
-    if max_deriv_time is not None:
-        deriv_time_opts.append("--optimization.max-deriv-time={0}".format(
-                                    int(max_deriv_time)))
+    if max_deriv_time_relative is not None:
+        deriv_time_opts.append("--optimization.max-deriv-time-relative={0}".format(
+                                    int(max_deriv_time_relative)))
 
     processes = []
     for job in range(1, num_jobs+1):
@@ -209,7 +209,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         num_hidden_layers, add_layers_period,
                         left_context, right_context,
                         apply_deriv_weights, min_deriv_time,
-                        max_deriv_time,
+                        max_deriv_time_relative,
                         l2_regularize, xent_regularize,
                         leaky_hmm_coefficient,
                         momentum, max_param_change, shuffle_buffer_size,
@@ -301,7 +301,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      left_context=left_context, right_context=right_context,
                      apply_deriv_weights=apply_deriv_weights,
                      min_deriv_time=min_deriv_time,
-                     max_deriv_time=max_deriv_time,
+                     max_deriv_time_relative=max_deriv_time_relative,
                      l2_regularize=l2_regularize,
                      xent_regularize=xent_regularize,
                      leaky_hmm_coefficient=leaky_hmm_coefficient,

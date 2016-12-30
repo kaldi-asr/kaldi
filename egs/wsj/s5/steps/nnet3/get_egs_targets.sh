@@ -26,6 +26,9 @@ target_type=sparse  # dense to have dense targets,
 num_targets=        # required for target-type=sparse with raw nnet
 frames_per_eg=8   # number of frames of labels per example.  more->less disk space and
                   # less time preparing egs, but more I/O during training.
+                  # Note: may in general be a comma-separated string of alternative
+                  # durations (more useful when using large chunks, e.g. for BLSTMs);
+                  # the first one (the principal num-frames) is preferred.
 left_context=4    # amount of left-context per eg (i.e. extra frames of input features
                   # not present in the output supervision).
 right_context=4   # amount of right-context per eg.
@@ -73,6 +76,11 @@ if [ $# != 3 ]; then
   echo "  --feat-type <lda|raw>                            # (raw is the default).  The feature type you want"
   echo "                                                   # to use as input to the neural net."
   echo "  --frames-per-eg <frames;8>                       # number of frames per eg on disk"
+  echo "                                                   # May be either a single number or a comma-separated list"
+  echo "                                                   # of alternatives (useful when training LSTMs, where the"
+  echo "                                                   # frames-per-eg is the chunk size, to get variety of chunk"
+  echo "                                                   # sizes).  The first in the list is preferred and is used"
+  echo "                                                   # when working out the number of archives etc."
   echo "  --left-context <width;4>                         # Number of frames on left side to append for feature input"
   echo "  --right-context <width;4>                        # Number of frames on right side to append for feature input"
   echo "  --num-frames-diagnostic <#frames;4000>           # Number of frames used in computing (train,valid) diagnostics"
@@ -191,8 +199,14 @@ else
   feat_dim=$(cat $dir/info/feat_dim) || exit 1;
 fi
 
+
+# the first field in frames_per_eg (which is a comma-separated list of numbers)
+# is the 'principal' frames-per-eg, and for purposes of working out the number
+# of archives we assume that this will be the average number of frames per eg.
+frames_per_eg_principal=$(echo $frames_per_eg | cut -d, -f1)
+
 # the + 1 is to round up, not down... we assume it doesn't divide exactly.
-num_archives=$[$num_frames/($frames_per_eg*$samples_per_iter)+1]
+num_archives=$[$num_frames/($frames_per_eg_principal*$samples_per_iter)+1]
 if [ $num_archives -eq 1 ]; then
   echo "*** $0: warning: the --frames-per-eg is too large to generate one archive with"
   echo "*** as many as --samples-per-iter egs in it.  Consider reducing --frames-per-eg."
@@ -215,7 +229,7 @@ num_archives=$[$archives_multiple*$num_archives_intermediate]
 echo $num_archives >$dir/info/num_archives
 echo $frames_per_eg >$dir/info/frames_per_eg
 # Work out the number of egs per archive
-egs_per_archive=$[$num_frames/($frames_per_eg*$num_archives)]
+egs_per_archive=$[$num_frames/($frames_per_eg_principal*$num_archives)]
 ! [ $egs_per_archive -le $samples_per_iter ] && \
   echo "$0: script error: egs_per_archive=$egs_per_archive not <= samples_per_iter=$samples_per_iter" \
   && exit 1;
@@ -293,17 +307,17 @@ if [ $stage -le 3 ]; then
   [ -f $dir/.error ] && echo "Error detected while creating train/valid egs" && exit 1
   echo "... Getting subsets of validation examples for diagnostics and combination."
   $cmd $dir/log/create_valid_subset_combine.log \
-    nnet3-subset-egs --n=$[$num_valid_frames_combine/$frames_per_eg] ark:$dir/valid_all.egs \
+    nnet3-subset-egs --n=$[$num_valid_frames_combine/$frames_per_eg_principal] ark:$dir/valid_all.egs \
     ark:$dir/valid_combine.egs || touch $dir/.error &
   $cmd $dir/log/create_valid_subset_diagnostic.log \
-    nnet3-subset-egs --n=$[$num_frames_diagnostic/$frames_per_eg] ark:$dir/valid_all.egs \
+    nnet3-subset-egs --n=$[$num_frames_diagnostic/$frames_per_eg_principal] ark:$dir/valid_all.egs \
     ark:$dir/valid_diagnostic.egs || touch $dir/.error &
 
   $cmd $dir/log/create_train_subset_combine.log \
-    nnet3-subset-egs --n=$[$num_train_frames_combine/$frames_per_eg] ark:$dir/train_subset_all.egs \
+    nnet3-subset-egs --n=$[$num_train_frames_combine/$frames_per_eg_principal] ark:$dir/train_subset_all.egs \
     ark:$dir/train_combine.egs || touch $dir/.error &
   $cmd $dir/log/create_train_subset_diagnostic.log \
-    nnet3-subset-egs --n=$[$num_frames_diagnostic/$frames_per_eg] ark:$dir/train_subset_all.egs \
+    nnet3-subset-egs --n=$[$num_frames_diagnostic/$frames_per_eg_principal] ark:$dir/train_subset_all.egs \
     ark:$dir/train_diagnostic.egs || touch $dir/.error &
   wait
   sleep 5  # wait for file system to sync.

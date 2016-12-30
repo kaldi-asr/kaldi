@@ -393,11 +393,11 @@ def train(args, run_opts, background_process_handler):
                                                   args.final_effective_lrate)
 
     min_deriv_time = None
-    max_deriv_time = None
+    max_deriv_time_relative = None
     if args.deriv_truncate_margin is not None:
         min_deriv_time = -args.deriv_truncate_margin - model_left_context
-        max_deriv_time = (args.chunk_width - 1 + args.deriv_truncate_margin
-                          + model_right_context)
+        max_deriv_time_relative = \
+           args.deriv_truncate_margin + model_right_context
 
     logger.info("Training will run for {0} epochs = "
                 "{1} iterations".format(args.num_epochs, num_iters))
@@ -444,7 +444,7 @@ def train(args, run_opts, background_process_handler):
                 right_context=right_context,
                 apply_deriv_weights=args.apply_deriv_weights,
                 min_deriv_time=min_deriv_time,
-                max_deriv_time=max_deriv_time,
+                max_deriv_time_relative=max_deriv_time_relative,
                 l2_regularize=args.l2_regularize,
                 xent_regularize=args.xent_regularize,
                 leaky_hmm_coefficient=args.leaky_hmm_coefficient,
