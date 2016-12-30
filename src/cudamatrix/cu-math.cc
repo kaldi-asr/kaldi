@@ -513,7 +513,7 @@ void CpuBackpropLstmNonlinearity(const MatrixBase<Real> &input,
       c_t_value_sum += tanh_c_t;
       c_t_deriv_sum += 1.0F - tanh_c_t * tanh_c_t;
 
-      // activates self-repair based on the outouts of the nonlinearities.
+      // activates self-repair based on the outputs of the nonlinearities.
       // The 5 nonlinearities that are subject to self-repair are written as:
       // Sigmoid(i_t_input), Sigmoid(f_t_input),
       // Tanh(c_part), Sigmoid(o_t_input),  Tanh(c_t)
@@ -557,6 +557,7 @@ void CpuBackpropLstmNonlinearity(const MatrixBase<Real> &input,
       if (c_t_self_repair != 0.0)
         self_repair_count(4, c) += 1.0;
 
+      // the derivative of the objective function w.r.t. a particular quantity
       // will be written by prepending "d" to the name.
       // We compute these derivatives in the reverse of the order in which
       // we computed the original quantities.
@@ -803,7 +804,8 @@ Real DiffSigmoidSelfRepair(const CuMatrixBase<Real> &out_value,
                            Real self_repair_scale, Real margin,
                            CuMatrixBase<Real> *in_deriv) {
   KALDI_ASSERT(SameDim(*in_deriv, out_value) && SameDim(*in_deriv, out_deriv));
-  KALDI_ASSERT(self_repair_scale > 0.0 && margin > 0.0 && margin < 1.0);
+  KALDI_ASSERT(self_repair_scale > 0.0 && self_repair_scale < 0.1 &&
+               margin > 0.0 && margin < 1.0);
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Real count;
@@ -888,7 +890,8 @@ Real DiffTanhSelfRepair(const CuMatrixBase<Real> &out_value,
                         Real self_repair_scale, Real margin,
                         CuMatrixBase<Real> *in_deriv) {
   KALDI_ASSERT(SameDim(*in_deriv, out_value) && SameDim(*in_deriv, out_deriv));
-  KALDI_ASSERT(self_repair_scale > 0.0 && margin > 0.0 && margin < 1.0);
+  KALDI_ASSERT(self_repair_scale > 0.0 && self_repair_scale < 0.1 &&
+               margin > 0.0 && margin < 1.0);
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Real count;
