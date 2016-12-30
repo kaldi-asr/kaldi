@@ -115,10 +115,14 @@ def get_args():
                         [input] frames per job.  This option is passed to
                         get_egs.sh.  Aim for about a minute of training
                         time""")
-    parser.add_argument("--trainer.num-chunk-per-minibatch", type=int,
-                        dest='num_chunk_per_minibatch', default=512,
-                        help="Number of sequences to be processed in parallel "
-                        "every minibatch")
+
+    parser.add_argument("--trainer.num-chunk-per-minibatch", type=str,
+                        dest='num_chunk_per_minibatch', default='128',
+                        help="""Number of sequences to be processed in
+                        parallel every minibatch.  May be a more general
+                        rule as accepted by the --minibatch-size option of
+                        nnet3-merge-egs; run that program without args to see
+                        the format.""")
 
     # Parameters for the optimization
     parser.add_argument("--trainer.optimization.initial-effective-lrate",
@@ -189,6 +193,9 @@ def process_args(args):
 
     if not common_train_lib.validate_chunk_width(args.chunk_width):
         raise Exception("--egs.chunk-width has an invalid value");
+
+    if not common_train_lib.validate_minibatch_size_str(args.num_chunk_per_minibatch):
+        raise Exception("--trainer.num-chunk-per-minibatch has an invalid value");
 
     if args.chunk_left_context < 0:
         raise Exception("--egs.chunk-left-context should be non-negative")
@@ -440,7 +447,7 @@ def train(args, run_opts, background_process_handler):
                     float(num_archives_processed) / num_archives_to_process,
                     iter),
                 shrinkage_value=shrinkage_value,
-                num_chunk_per_minibatch=args.num_chunk_per_minibatch,
+                num_chunk_per_minibatch_str=args.num_chunk_per_minibatch,
                 num_hidden_layers=num_hidden_layers,
                 add_layers_period=args.add_layers_period,
                 left_context=left_context,
@@ -485,7 +492,7 @@ def train(args, run_opts, background_process_handler):
         chain_lib.combine_models(
             dir=args.dir, num_iters=num_iters,
             models_to_combine=models_to_combine,
-            num_chunk_per_minibatch=args.num_chunk_per_minibatch,
+            num_chunk_per_minibatch_str=args.num_chunk_per_minibatch,
             egs_dir=egs_dir,
             left_context=left_context, right_context=right_context,
             leaky_hmm_coefficient=args.leaky_hmm_coefficient,

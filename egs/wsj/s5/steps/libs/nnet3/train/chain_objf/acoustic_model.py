@@ -111,7 +111,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                      min_deriv_time, max_deriv_time_relative,
                      l2_regularize, xent_regularize, leaky_hmm_coefficient,
                      momentum, max_param_change,
-                     shuffle_buffer_size, num_chunk_per_minibatch,
+                     shuffle_buffer_size, num_chunk_per_minibatch_str,
                      frame_subsampling_factor, truncate_deriv_weights,
                      cache_io_opts, run_opts):
     """
@@ -184,7 +184,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                         egs_dir=egs_dir, archive_index=archive_index,
                         buf_size=shuffle_buffer_size,
                         cache_io_opts=cur_cache_io_opts,
-                        num_chunk_per_mb=num_chunk_per_minibatch),
+                        num_chunk_per_mb=num_chunk_per_minibatch_str),
             wait=False)
 
         processes.append(process_handle)
@@ -205,7 +205,7 @@ def train_new_models(dir, iter, srand, num_jobs,
 def train_one_iteration(dir, iter, srand, egs_dir,
                         num_jobs, num_archives_processed, num_archives,
                         learning_rate, shrinkage_value,
-                        num_chunk_per_minibatch,
+                        num_chunk_per_minibatch_str,
                         num_hidden_layers, add_layers_period,
                         left_context, right_context,
                         apply_deriv_weights, min_deriv_time,
@@ -285,7 +285,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                                                                  iter=iter)
 
     if do_average:
-        cur_num_chunk_per_minibatch = num_chunk_per_minibatch
+        cur_num_chunk_per_minibatch_str = num_chunk_per_minibatch_str
         cur_max_param_change = max_param_change
     else:
         # on iteration zero or when we just added a layer, use a smaller
@@ -293,7 +293,8 @@ def train_one_iteration(dir, iter, srand, egs_dir,
         # the jobs): the model-averaging isn't always helpful when the model is
         # changing too fast (i.e. it can worsen the objective function), and
         # the smaller minibatch size will help to keep the update stable.
-        cur_num_chunk_per_minibatch = num_chunk_per_minibatch / 2
+        cur_num_chunk_per_minibatch_str = common_train_lib.halve_minibatch_size_str(
+            cur_num_chunk_per_minibatch_str)
         cur_max_param_change = float(max_param_change) / math.sqrt(2)
 
     raw_model_string = raw_model_string + dropout_edit_string
@@ -322,7 +323,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      momentum=momentum,
                      max_param_change=cur_max_param_change,
                      shuffle_buffer_size=shuffle_buffer_size,
-                     num_chunk_per_minibatch=cur_num_chunk_per_minibatch,
+                     num_chunk_per_minibatch_str=cur_num_chunk_per_minibatch_str,
                      frame_subsampling_factor=frame_subsampling_factor,
                      truncate_deriv_weights=truncate_deriv_weights,
                      cache_io_opts=cache_io_opts, run_opts=run_opts)
@@ -510,7 +511,7 @@ def compute_progress(dir, iter, run_opts, wait=False,
         background_process_handler=background_process_handler)
 
 
-def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch,
+def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_str,
                    egs_dir, left_context, right_context,
                    leaky_hmm_coefficient, l2_regularize,
                    xent_regularize, run_opts, background_process_handler=None):
@@ -552,7 +553,7 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch,
                     lc=left_context, rc=right_context,
                     l2=l2_regularize, leaky=leaky_hmm_coefficient,
                     dir=dir, raw_models=" ".join(raw_model_strings),
-                    num_chunk_per_mb=num_chunk_per_minibatch,
+                    num_chunk_per_mb=num_chunk_per_minibatch_str,
                     num_iters=num_iters,
                     egs_dir=egs_dir))
 

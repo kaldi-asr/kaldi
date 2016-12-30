@@ -140,18 +140,17 @@ def validate_chunk_width(chunk_width):
     Expected to be a string representing either an integer, like '20',
     or a comma-separated list of integers like '20,30,16'"""
     if not isinstance(chunk_width, str):
-        return false
+        return False
     a = chunk_width.split(",");
-    if len(a) == 0:
-        return false
+    assert len(a) != 0  # would be code error
     for elem in a:
         try:
             i = int(elem)
             if i < 1:
-                return false
+                return False
         except:
-            return false
-    return true
+            return False
+    return True
 
 
 def principal_chunk_width(chunk_width):
@@ -160,6 +159,91 @@ def principal_chunk_width(chunk_width):
     if not validate_chunk_width(chunk_width):
         raise Exception("Invalid chunk-width {0}".format(chunk_width))
     return int(chunk_width.split(",")[0])
+
+
+def validate_minibatch_size_str(minibatch_size_str):
+    """Validate a minibatch-size string (returns bool).
+    A minibatch-size string might either be an integer, like '256'
+    or a rule like '128=64-128/256=32,64', whose format
+    is: eg-length1=size-range1/eg-length2=size-range2/....
+    where the size-range is a comma-separated list of either integers
+    or ranges.  An arbitrary eg will be mapped to the size-range
+    for the closest of the listed eg-lengths (the eg-length is defined
+    as the number of input frames, including context frames)."""
+    if not isinstance(minibatch_size_str, str):
+        return False
+    a = minibatch_size_str.split("/")
+    assert len(a) != 0  # would be code error
+
+    for elem in a:
+        b = elem.split('=')
+        # We expect b to have length 2 in the normal case.
+        if len(b) != 2:
+            # one-element 'b' is OK if len(a) is 1 (so there is only
+            # one choice)... this would mean somebody just gave "25"
+            # or something like that for the minibatch size.
+            if len(a) == 1 and len(b) == 1:
+                try:
+                    mb_size = int(b[0])
+                    return mb_size > 0
+                except:
+                    return False
+            else:
+                return False
+        # check that the thing before the '=' sign is a positive integer
+        try:
+            i = b[0]
+            if i <= 0:
+                return False
+        except:
+            return False  # not an integer at all.
+        # check the thing after the '=' sign is a comma-separated list of ranges
+        ranges = b[1].split(",")
+        assert len(ranges) > 0
+        for range in ranges:
+            # a range may be either e.g. '64', or '128-256'
+            try:
+                c = [ int(x) for x in range.split("-") ]
+            except:
+                return False
+            if len(c) == 1:
+                if c[0] <= 0:
+                    return False
+            elif len(c) == 2:
+                if c[0] <= 0 or c[1] < c[0]:
+                    return False
+            else:
+                return False
+    return True
+
+
+def halve_minibatch_size_str(minibatch_size_str):
+    """Halve a minibatch-size string, as would be validated by
+    validate_minibatch_size_str (see docs for that).  This halves
+    all the integer elements of minibatch_size_str that represent minibatch
+    sizes (as opposed to chunk-lengths) and that are >1."""
+
+    if not validate_minibatch_size_str(minibatch_size_str):
+        raise Exception("Invalid minibatch-size string '{0}'".format(minibatch_size_str))
+
+    a = minibatch_size_str.split("/")
+    ans = []
+    for elem in a:
+        b = elem.split('=')
+        # We expect b to have length 2 in the normal case.
+        if len(b) == 1:
+            mb_size = int(b[0])
+            ans.append(str(max(1, mb_size / 2)))
+        else:
+            assert len(b) == 2
+            ranges_out = []
+            ranges = b[1].split(',')
+            for range in ranges:
+                c = [ str(max(1, int(x)/2)) for x in range.split('-') ]
+                ranges_out.append('-'.join(c))
+            ans.append('{0}={1}'.format(b[0], ','.join(ranges_out)))
+    return '/'.join(ans)
+
 
 def copy_egs_properties_to_exp_dir(egs_dir, dir):
     try:
@@ -218,7 +302,7 @@ def verify_egs_dir(egs_dir, feat_dim, ivector_dim,
 
         frames_per_eg_str = open('{0}/info/frames_per_eg'.format(
                              egs_dir)).readline().rstrip()
-        if (!validate_chunk_width(frames_per_eg_str)):
+        if not validate_chunk_width(frames_per_eg_str):
             raise Exception("Invalid frames_per_eg in directory {0}/info".format(
                     egs_dir))
         num_archives = int(open('{0}/info/num_archives'.format(
@@ -411,6 +495,13 @@ def remove_model(nnet_dir, iter, num_iters, models_to_combine=None,
     if os.path.isfile(file_name):
         os.remove(file_name)
 
+
+def self_test():
+    assert halve_minibatch_size_str('64') == '32'
+    assert halve_minibatch_size_str('1') == '1'
+    assert halve_minibatch_size_str('128=64/256=40,80-100') == '128=32/256=20,40-50'
+    assert validate_chunk_width('64')
+    assert validate_chunk_width('64,25,128')
 
 class CommonParser:
     """Parser for parsing common options related to nnet3 training.
@@ -622,3 +713,7 @@ class CommonParser:
                                  help="""Polling frequency in seconds at which
                                  the background process handler checks for
                                  errors in the processes.""")
+
+
+if __name__ == '__main__':
+    self_test()
