@@ -241,4 +241,4 @@ class LmNnetSamplingTrainer {
 } // namespace rnnlm
 } // namespace kaldi
 
-#endif // KALDI_NNET3_NNET_TRAINING_H_
+#endif //
