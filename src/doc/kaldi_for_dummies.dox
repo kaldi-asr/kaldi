@@ -348,8 +348,8 @@ directories. You may find such links in, for example,
 This script will help you to get decoding results.
 
 <h2>Task</h2>
-From \c kaldi-trunk/egs/voxforge/local copy the script \c score.sh into
-exactly same location in your project (\c kaldi-trunk/egs/digits/local).
+From \c kaldi-trunk/egs/voxforge/s5/local copy the script \c score.sh into
+similar location in your project (\c kaldi-trunk/egs/digits/local).
 
 \subsection kaldi_for_dummies_srilm SRILM installation
 
@@ -418,8 +418,8 @@ export PATH=$PWD/utils/:$KALDI_ROOT/src/bin:$KALDI_ROOT/tools/openfst/bin:$KALDI
 # Defining audio data directory (modify it for your installation directory!)
 export DATA_ROOT="/home/{user}/kaldi-trunk/egs/digits/digits_audio"
 
-# Variable that stores path to MITLM library
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)/tools/mitlm-svn/lib
+# Enable SRILM
+source $KALDI_ROOT/tools/env.sh
 
 # Variable needed for proper data sorting
 export LC_ALL=C
