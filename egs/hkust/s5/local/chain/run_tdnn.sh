@@ -53,10 +53,8 @@ lang=data/lang_chain
 
 # if we are using the speed-perturbed data we need to generate
 # alignments for it.
-#local/nnet3/run_ivector_common.sh --stage $stage \
-#  --speed-perturb $speed_perturb \
-#  --generate-alignments $speed_perturb || exit 1;
-
+local/nnet3/run_ivector_common.sh --stage $stage \
+  --ivector-extractor exp/nnet2_online/extractor || exit 1;
 
 if [ $stage -le 9 ]; then
   # Get the alignments as lattices (gives the LF-MMI training more freedom).
@@ -184,4 +182,28 @@ if [ $stage -le 15 ]; then
       --nj 10 --cmd "$decode_cmd" $iter_opts \
       --online-ivector-dir exp/nnet3/ivectors_dev \
     $graph_dir data/dev_hires $dir/decode || exit 1;
+fi
+
+if [ $stage -le 16 ]; then
+  steps/online/nnet3/prepare_online_decoding.sh --mfcc-config conf/mfcc_hires.conf \
+    --add-pitch true \
+    data/lang exp/nnet2_online/extractor "$dir" ${dir}_online || exit 1;
+fi
+
+if [ $stage -le 17 ]; then
+  # do the actual online decoding with iVectors, carrying info forward from
+  # previous utterances of the same speaker.
+  steps/online/nnet3/decode.sh --config conf/decode.config \
+    --cmd "$decode_cmd" --nj 10 --acwt 1.0 --post-decode-acwt 10.0 \
+    "$graph_dir" data/dev_hires \
+    ${dir}_online/decode || exit 1;
+fi
+
+if [ $stage -le 18 ]; then
+  # this version of the decoding treats each utterance separately
+  # without carrying forward speaker information.
+  steps/online/nnet3/decode.sh --config conf/decode.config \
+    --cmd "$decode_cmd" --nj 10 --per-utt true --acwt 1.0 --post-decode-acwt 10.0 \
+    "$graph_dir" data/dev_hires \
+    ${dir}_online/decode_per_utt || exit 1;
 fi
