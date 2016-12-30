@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# This script is modified based on swbd/s5c/local/nnet3/run_ivector_common.sh
+
 # this script contains some common (shared) parts of the run_nnet*.sh scripts.
 
 . cmd.sh

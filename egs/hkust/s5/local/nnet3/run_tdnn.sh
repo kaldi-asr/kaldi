@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# This script is based on swbd/s5c/local/nnet3/run_tdnn.sh
+
 # this is the standard "tdnn" system, built in nnet3; it's what we use to
 # call multi-splice.
 

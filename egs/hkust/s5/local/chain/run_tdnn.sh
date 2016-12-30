@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# This script is based on tun_tdnn_7h.sh in swbd chain recipe.
+
 set -e
 
 # configs for 'chain'

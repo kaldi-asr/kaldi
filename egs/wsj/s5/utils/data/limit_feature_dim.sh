@@ -3,14 +3,16 @@
 # Copyright 2016  Alibaba Robotics Corp. (author: Xingyu Na)
 # Apache 2.0
 
-# This script allows you to create a data directory from limited
-# dim range of the source data dir.
+# The script creates a new data directory by selecting a specified
+# dimension range of the features in the source directory.
 
 . utils/parse_options.sh
 
 if [ $# != 3 ]; then
   echo "Usage: "
   echo "  $0 <feat-dim-range> <srcdir> <destdir>"
+  echo "The script creates a new data directory by selecting a specified"
+  echo "dimension range of the features in the source directory."
   echo "e.g.:"
   echo " $0 0:40 data/train_hires_pitch data/train_hires"
   exit 1;

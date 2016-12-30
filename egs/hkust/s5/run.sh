@@ -9,10 +9,10 @@
 # Caution: some of the graph creation steps use quite a bit of memory, so you
 # should run this on a machine that has sufficient memory.
 
-. ./cmd.sh
+. cmd.sh
 
 # Data Preparation,
-local/hkust_data_prep.sh /export/corpora/LDC/LDC2005S15/  /export/corpora/LDC/LDC2005T32/ || exit 1;
+local/hkust_data_prep.sh /export/corpora/LDC/LDC2005S15/  /export/corpora/LDC/LDC2005T32/
 
 # Lexicon Preparation,
 local/hkust_prepare_dict.sh || exit 1;
@@ -34,7 +34,6 @@ for x in train dev; do
   steps/make_mfcc_pitch_online.sh --cmd "$train_cmd" --nj 10 data/$x exp/make_mfcc/$x $mfccdir || exit 1;
   steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir || exit 1;
 done
-
 # after this, the next command will remove the small number of utterances
 # that couldn't be extracted for some reason (e.g. too short; no such file).
 utils/fix_data_dir.sh data/train || exit 1;
@@ -50,11 +49,11 @@ steps/decode.sh --cmd "$decode_cmd" --config conf/decode.config --nj 10 \
 
 # Get alignments from monophone system.
 steps/align_si.sh --cmd "$train_cmd" --nj 10 \
-  data/train data/lang exp/mono0a exp/mono0a_ali || exit 1;
+  data/train data/lang exp/mono0a exp/mono_ali || exit 1;
 
 # train tri1 [first triphone pass]
 steps/train_deltas.sh --cmd "$train_cmd" \
- 2500 20000 data/train data/lang exp/mono0a_ali exp/tri1 || exit 1;
+ 2500 20000 data/train data/lang exp/mono_ali exp/tri1 || exit 1;
 
 # decode tri1
 utils/mkgraph.sh data/lang_test exp/tri1 exp/tri1/graph || exit 1;
@@ -74,6 +73,8 @@ utils/mkgraph.sh data/lang_test exp/tri2 exp/tri2/graph
 steps/decode.sh --cmd "$decode_cmd" --config conf/decode.config --nj 10 \
   exp/tri2/graph data/dev exp/tri2/decode
 
+# train and decode tri2b [LDA+MLLT]
+
 steps/align_si.sh --cmd "$train_cmd" --nj 10 \
   data/train data/lang exp/tri2 exp/tri2_ali || exit 1;
 
@@ -87,7 +88,6 @@ steps/train_lda_mllt.sh --cmd "$train_cmd" \
 utils/mkgraph.sh data/lang_test exp/tri3a exp/tri3a/graph || exit 1;
 steps/decode.sh --cmd "$decode_cmd" --nj 10 --config conf/decode.config \
   exp/tri3a/graph data/dev exp/tri3a/decode
-
 # From now, we start building a more serious system (with SAT), and we'll
 # do the alignment with fMLLR.
 
@@ -130,6 +130,9 @@ local/online/run_nnet2_ms.sh
 
 # online nnet3
 local/nnet3/run_tdnn.sh
+
+# online chain
+local/chain/run_tdnn.sh
 
 # getting results (see RESULTS file)
 for x in exp/*/decode; do [ -d $x ] && grep WER $x/cer_* | utils/best_wer.sh; done 2>/dev/null

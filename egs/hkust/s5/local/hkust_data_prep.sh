@@ -19,7 +19,7 @@ mkdir -p $dev_dir
 
 #data directory check
 if [ ! -d $hkust_audio_dir ] || [ ! -d $hkust_text_dir ]; then
-  echo "Error: run.sh requires two directory arguments"
+  echo "Error: $0 requires two directory arguments"
   exit 1;
 fi
 
@@ -66,10 +66,8 @@ find $hkust_text_dir -iname "*.txt" | grep -i "trans/dev" | xargs cat |\
 
 #transcripts normalization and segmentation
 #(this needs external tools),
-if [ ! `echo $PYTHONPATH | grep mmseg` ]; then
-  echo "mmseg is not found. Checkout tools/extra/install_mmseg.sh"
-  exit 1
-fi
+python -c "import mmseg" 2>/dev/null || \
+  (echo "mmseg is not found. Checkout tools/extra/install_mmseg.sh" && exit 1;)
 
 cat $train_dir/transcripts.txt |\
   sed -e 's/<foreign language=\"[a-zA-Z]\+\">/ /g' |\
