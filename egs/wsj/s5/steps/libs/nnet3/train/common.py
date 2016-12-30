@@ -17,14 +17,12 @@ import re
 import shutil
 
 import libs.common as common_lib
-import libs.nnet3.train.dropout_schedule as dropout_schedule
-from dropout_schedule import *
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
 
-class RunOpts(object):
+class RunOpts:
     """A structure to store run options.
 
     Run options like queue.pl and run.pl, along with their memory
@@ -137,6 +135,32 @@ def get_best_nnet_model(dir, iter, best_model_index, run_opts,
                                       out_model=out_model, scale=scale))
 
 
+def validate_chunk_width(chunk_width):
+    """Validate a chunk-width string , returns boolean.
+    Expected to be a string representing either an integer, like '20',
+    or a comma-separated list of integers like '20,30,16'"""
+    if not isinstance(chunk_width, str):
+        return false
+    a = chunk_width.split(",");
+    if len(a) == 0:
+        return false
+    for elem in a:
+        try:
+            i = int(elem)
+            if i < 1:
+                return false
+        except:
+            return false
+    return true
+
+
+def principal_chunk_width(chunk_width):
+    """Given a chunk-width string like "20" or "50,70,40", returns the principal
+    chunk-width which is the first element, as an int.  E.g. 20, or 40."""
+    if not validate_chunk_width(chunk_width):
+        raise Exception("Invalid chunk-width {0}".format(chunk_width))
+    return int(chunk_width.split(",")[0])
+
 def copy_egs_properties_to_exp_dir(egs_dir, dir):
     try:
         for file in ['cmvn_opts', 'splice_opts', 'final.mat']:
@@ -144,9 +168,8 @@ def copy_egs_properties_to_exp_dir(egs_dir, dir):
             if os.path.isfile(file_name):
                 shutil.copy2(file_name, dir)
     except IOError:
-        logger.error("Error while trying to copy egs "
-                     "property files to {dir}".format(dir=dir))
-        raise
+        raise Exception("Error while trying to copy egs "
+                        "property files to {dir}".format(dir=dir))
 
 
 def parse_generic_config_vars_file(var_file):
@@ -193,17 +216,19 @@ def verify_egs_dir(egs_dir, feat_dim, ivector_dim,
                 egs_right_context < right_context):
             raise Exception('The egs have insufficient context')
 
-        frames_per_eg = int(open('{0}/info/frames_per_eg'.format(
-                                    egs_dir)).readline())
+        frames_per_eg_str = open('{0}/info/frames_per_eg'.format(
+                             egs_dir)).readline().rstrip()
+        if (!validate_chunk_width(frames_per_eg_str)):
+            raise Exception("Invalid frames_per_eg in directory {0}/info".format(
+                    egs_dir))
         num_archives = int(open('{0}/info/num_archives'.format(
                                     egs_dir)).readline())
 
         return [egs_left_context, egs_right_context,
-                frames_per_eg, num_archives]
-    except (IOError, ValueError):
-        logger.error("The egs dir {0} has missing or "
-                     "malformed files.".format(egs_dir))
-        raise
+                frames_per_eg_str, num_archives]
+    except (IOError, ValueError) as e:
+        raise Exception("The egs dir {0} has missing or "
+                        "malformed files: {1}".format(egs_dir, e.strerr))
 
 
 def compute_presoftmax_prior_scale(dir, alidir, num_jobs, run_opts,
@@ -366,9 +391,9 @@ def clean_nnet_dir(nnet_dir, num_iters, egs_dir,
             remove_model(nnet_dir, iter, num_iters, None,
                          preserve_model_interval,
                          get_raw_nnet_from_am=get_raw_nnet_from_am)
-    except (IOError, OSError):
-        logger.error("Error while cleaning up the nnet directory")
-        raise
+    except (IOError, OSError) as err:
+        logger.warning("Error while cleaning up the nnet directory")
+        raise err
 
 
 def remove_model(nnet_dir, iter, num_iters, models_to_combine=None,
@@ -534,31 +559,6 @@ class CommonParser:
                                  Note: we implemented it in such a way that it
                                  doesn't increase the effective learning
                                  rate.""")
-        self.parser.add_argument("--trainer.dropout-schedule", type=str,
-                                 action=common_lib.NullstrToNoneAction,
-                                 dest='dropout_schedule', default=None,
-                                 help="""Use this to specify the dropout
-                                 schedule.  You specify a piecewise linear
-                                 function on the domain [0,1], where 0 is the
-                                 start and 1 is the end of training; the
-                                 function-argument (x) rises linearly with the
-                                 amount of data you have seen, not iteration
-                                 number (this improves invariance to
-                                 num-jobs-{initial-final}).  E.g. '0,0.2,0'
-                                 means 0 at the start; 0.2 after seeing half
-                                 the data; and 0 at the end.  You may specify
-                                 the x-value of selected points, e.g.
-                                 '0,0.2@0.25,0' means that the 0.2
-                                 dropout-proportion is reached a quarter of the
-                                 way through the data.   The start/end x-values
-                                 are at x=0/x=1, and other unspecified x-values
-                                 are interpolated between known x-values.  You
-                                 may specify different rules for different
-                                 component-name patterns using 'pattern1=func1
-                                 pattern2=func2', e.g. 'relu*=0,0.1,0
-                                 lstm*=0,0.2,0'.  More general should precede
-                                 less general patterns, as they are applied
-                                 sequentially.""")
 
         # General options
         self.parser.add_argument("--stage", type=int, default=-4,

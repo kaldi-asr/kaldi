@@ -22,7 +22,7 @@ def generate_egs(data, alidir, egs_dir,
                  left_context, right_context,
                  run_opts, stage=0,
                  feat_type='raw', online_ivector_dir=None,
-                 samples_per_iter=20000, frames_per_eg=20, srand=0,
+                 samples_per_iter=20000, frames_per_eg_str="20", srand=0,
                  egs_opts=None, cmvn_opts=None, transform_dir=None):
 
     """ Wrapper for calling steps/nnet3/get_egs.sh
@@ -41,7 +41,7 @@ def generate_egs(data, alidir, egs_dir,
                 --left-context {left_context} --right-context {right_context} \
                 --stage {stage} \
                 --samples-per-iter {samples_per_iter} \
-                --frames-per-eg {frames_per_eg} \
+                --frames-per-eg {frames_per_eg_str} \
                 --srand {srand} \
                 {data} {alidir} {egs_dir}
         """.format(command=run_opts.command,
@@ -55,7 +55,7 @@ def generate_egs(data, alidir, egs_dir,
                                 else ''),
                    left_context=left_context, right_context=right_context,
                    stage=stage, samples_per_iter=samples_per_iter,
-                   frames_per_eg=frames_per_eg, srand=srand, data=data,
+                   frames_per_eg_str=frames_per_eg_str, srand=srand, data=data,
                    alidir=alidir, egs_dir=egs_dir,
                    egs_opts=egs_opts if egs_opts is not None else ''))
 

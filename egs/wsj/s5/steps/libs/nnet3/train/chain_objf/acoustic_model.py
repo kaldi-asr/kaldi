@@ -56,7 +56,7 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
                        frame_subsampling_factor=3,
                        alignment_subsampling_factor=3,
                        feat_type='raw', online_ivector_dir=None,
-                       frames_per_iter=20000, frames_per_eg=20, srand=0,
+                       frames_per_iter=20000, frames_per_eg_str="20", srand=0,
                        egs_opts=None, cmvn_opts=None, transform_dir=None):
     """Wrapper for steps/nnet3/chain/get_egs.sh
 
@@ -77,7 +77,7 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
                 --alignment-subsampling-factor {alignment_subsampling_factor} \
                 --stage {stage} \
                 --frames-per-iter {frames_per_iter} \
-                --frames-per-eg {frames_per_eg} \
+                --frames-per-eg {frames_per_eg_str} \
                 --srand {srand} \
                 {data} {dir} {lat_dir} {egs_dir}""".format(
                     command=run_opts.command,
@@ -99,7 +99,7 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
                     frame_subsampling_factor=frame_subsampling_factor,
                     alignment_subsampling_factor=alignment_subsampling_factor,
                     stage=stage, frames_per_iter=frames_per_iter,
-                    frames_per_eg=frames_per_eg, srand=srand,
+                    frames_per_eg_str=frames_per_eg_str, srand=srand,
                     data=data, lat_dir=lat_dir, dir=dir, egs_dir=egs_dir,
                     egs_opts=egs_opts if egs_opts is not None else ''))
 

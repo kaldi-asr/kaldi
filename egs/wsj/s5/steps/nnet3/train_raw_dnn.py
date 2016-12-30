@@ -222,7 +222,7 @@ def train(args, run_opts, background_process_handler):
             egs_dir=default_egs_dir,
             left_context=left_context, right_context=right_context,
             run_opts=run_opts,
-            frames_per_eg=args.frames_per_eg,
+            frames_per_eg_str=str(args.frames_per_eg),
             srand=args.srand,
             egs_opts=args.egs_opts,
             cmvn_opts=args.cmvn_opts,
@@ -239,10 +239,10 @@ def train(args, run_opts, background_process_handler):
         egs_dir = args.egs_dir
 
     [egs_left_context, egs_right_context,
-     frames_per_eg, num_archives] = (
+     frames_per_eg_str, num_archives] = (
         common_train_lib.verify_egs_dir(egs_dir, feat_dim, ivector_dim,
                                         left_context, right_context))
-    assert(args.frames_per_eg == frames_per_eg)
+    assert(str(args.frames_per_eg) == frames_per_eg_str)
 
     if (args.num_jobs_final > num_archives):
         raise Exception('num_jobs_final cannot exceed the number of archives '
