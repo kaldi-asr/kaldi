@@ -141,6 +141,7 @@ awk -v dir=$dir -v ff=$first_phone_field \
          { ok=1; for (n=ff; n<=NF; n++) { if ($n in sil) ok=0; }
            if (ok && NF>=ff) { for (n=ff;n<=NF;n++) printf("%s ",$n); print ""; } else {
             print("make_unk_lm.sh: info: not including dict line: ", $0) >"/dev/stderr" }}' <$src_dict >$dir/training.txt
+cat $dir/training.txt | awk '{for(n=1;n<=NF;n++) seen[$n]=1; } END{for (k in seen) print k;}' > $dir/all_nonsil_phones
 
 num_dict_lines=$(wc -l <$src_dict)
 num_train_lines=$(wc -l < $dir/training.txt)
@@ -180,7 +181,6 @@ if $use_pocolm; then
     cat $dir/training.txt | awk -v h=$heldout_ratio '{if(NR%h == 0) print; }' > $dir/pocolm/text/dev.txt
     cat $dir/training.txt | awk -v h=$heldout_ratio '{if(NR%h != 0) print; }' > $dir/pocolm/text/train.txt
 
-    cat $dir/training.txt | awk '{for(n=1;n<=NF;n++) seen[$n]=1; } END{for (k in seen) print k;}' > $dir/all_nonsil_phones
 
     # the following options are because we expect the amount of data to be small,
     # all the data subsampling isn't really needed and will increase the chance of
