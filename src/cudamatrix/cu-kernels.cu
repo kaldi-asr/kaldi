@@ -2927,6 +2927,7 @@ static void _diff_lstm_nonlinearity(const int cell_dim, const int num_rows,
   Real c_t_value_sum = 0, c_t_deriv_sum = 0;
 
   Real self_repair_count[5];
+# pragma unroll
   for (int i = 0; i < 5; i++)
     self_repair_count[i] = 0.0;
 
@@ -2951,26 +2952,34 @@ static void _diff_lstm_nonlinearity(const int cell_dim, const int num_rows,
       const Real o_t = 1 / (1 + exp(-o_part - w_oc * c_t));
       const Real tanh_c_t = tanh(c_t);
 
-      const Real i_t_self_repair = sr_config[5] / (2 * sr_config[0]) * (
-          2 * i_t - 1 >= 0.0 ?
-          max(2 * i_t - 1 - (1 - 2 * sr_config[0]), 0.0) :
-          min(2 * i_t - 1 + (1 - 2 * sr_config[0]), 0.0));
-      const Real f_t_self_repair = sr_config[6] / (2 * sr_config[1]) * (
-          2 * f_t - 1 >= 0.0 ?
-          max(2 * f_t - 1 - (1 - 2 * sr_config[1]), 0.0) :
-          min(2 * f_t - 1 + (1 - 2 * sr_config[1]), 0.0));
-      const Real c_part_self_repair = sr_config[7] / sr_config[2] * (
-          tanh_c_part >= 0.0 ?
-          max(tanh_c_part - (1 - sr_config[2]), 0.0) :
-          min(tanh_c_part + (1 - sr_config[2]), 0.0));
-      const Real o_t_self_repair = sr_config[8] / (2 * sr_config[3]) * (
-          2 * o_t - 1 >= 0.0 ?
-          max(2 * o_t - 1 - (1 - 2 * sr_config[3]), 0.0) :
-          min(2 * o_t - 1 + (1 - 2 * sr_config[3]), 0.0));
-      const Real c_t_self_repair = sr_config[9] / sr_config[4] * (
-          tanh_c_t >= 0.0 ?
-          max(tanh_c_t - (1 - sr_config[4]), 0.0) :
-          min(tanh_c_t + (1 - sr_config[4]), 0.0));
+      Real i_t_self_repair = 0.0, f_t_self_repair = 0.0,
+           c_part_self_repair = 0.0, o_t_self_repair = 0.0,
+           c_t_self_repair = 0.0;
+      if (sr_config[0] > 0.0 && sr_config[5] > 0.0)
+        i_t_self_repair = sr_config[5] / (2 * sr_config[0]) * (
+            2 * i_t - 1 >= 0.0 ?
+            max(2 * i_t - 1 - (1 - 2 * sr_config[0]), 0.0) :
+            min(2 * i_t - 1 + (1 - 2 * sr_config[0]), 0.0));
+      if (sr_config[1] > 0.0 && sr_config[6] > 0.0)
+        f_t_self_repair = sr_config[6] / (2 * sr_config[1]) * (
+            2 * f_t - 1 >= 0.0 ?
+            max(2 * f_t - 1 - (1 - 2 * sr_config[1]), 0.0) :
+            min(2 * f_t - 1 + (1 - 2 * sr_config[1]), 0.0));
+      if (sr_config[2] > 0.0 && sr_config[7] > 0.0)
+        c_part_self_repair = sr_config[7] / sr_config[2] * (
+            tanh_c_part >= 0.0 ?
+            max(tanh_c_part - (1 - sr_config[2]), 0.0) :
+            min(tanh_c_part + (1 - sr_config[2]), 0.0));
+      if (sr_config[3] > 0.0 && sr_config[8] > 0.0)
+        o_t_self_repair = sr_config[8] / (2 * sr_config[3]) * (
+            2 * o_t - 1 >= 0.0 ?
+            max(2 * o_t - 1 - (1 - 2 * sr_config[3]), 0.0) :
+            min(2 * o_t - 1 + (1 - 2 * sr_config[3]), 0.0));
+      if (sr_config[4] > 0.0 && sr_config[9] > 0.0)
+        c_t_self_repair = sr_config[9] / sr_config[4] * (
+            tanh_c_t >= 0.0 ?
+            max(tanh_c_t - (1 - sr_config[4]), 0.0) :
+            min(tanh_c_t + (1 - sr_config[4]), 0.0));
 
       // accumulates self-repair stats over the "for" loop
       if (i_t_self_repair != 0.0)
@@ -3041,24 +3050,8 @@ static void _diff_lstm_nonlinearity(const int cell_dim, const int num_rows,
     }
   }
 
-  // compute self-repair stats
-  for (int i = 0; i < 5; i++) {
-    smem[tid] = self_repair_count[i];
-#   pragma unroll
-    for (int shift = CU1DBLOCK / 2; shift >= warpSize; shift >>= 1) {
-      __syncthreads();
-      if (tid < shift) {
-        smem[tid] += smem[tid + shift];
-      }
-    }
-    if (tid < warpSize && j < cell_dim) {
-      self_repair_sum_out[i * self_repair_sum_out_stride + j] = smem[tid];
-    }
-  }
-
   if (params_deriv) {
     // compute params_deriv
-    __syncthreads();
     smem[tid] = w_ic_deriv_sum;
 #   pragma unroll
     for (int shift = CU1DBLOCK / 2; shift >= warpSize; shift >>= 1) {
@@ -3228,6 +3221,23 @@ static void _diff_lstm_nonlinearity(const int cell_dim, const int num_rows,
     }
     if (tid < warpSize && j < cell_dim) {
       deriv_sum_out[4 * deriv_sum_out_stride + j] += smem[tid];
+    }
+
+    // compute self-repair stats
+#   pragma unroll
+    for (int i = 0; i < 5; i++) {
+      __syncthreads();
+      smem[tid] = self_repair_count[i];
+#     pragma unroll
+      for (int shift = CU1DBLOCK / 2; shift >= warpSize; shift >>= 1) {
+        __syncthreads();
+        if (tid < shift) {
+          smem[tid] += smem[tid + shift];
+        }
+      }
+      if (tid < warpSize && j < cell_dim) {
+        self_repair_sum_out[i * self_repair_sum_out_stride + j] = smem[tid];
+      }
     }
   }
 }

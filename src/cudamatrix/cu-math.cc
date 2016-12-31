@@ -525,26 +525,34 @@ void CpuBackpropLstmNonlinearity(const MatrixBase<Real> &input,
       // For tanh's we'd add -self_repair_scale / margin * sign(tanh(x)) *
       // (abs(tanh(x)) - (1 - margin))
       // If self-repair is not activated, the variables below are set to zero.
-      Real i_t_self_repair = sr_config(5) / (2.0 * sr_config(0)) * (
-          2.0 * i_t - 1.0 >= 0.0 ?
-          std::max(2.0 * i_t - 1.0 - (1.0 - 2.0 * sr_config(0)), 0.0) :
-          std::min(2.0 * i_t - 1.0 + (1.0 - 2.0 * sr_config(0)), 0.0));
-      Real f_t_self_repair = sr_config(6) / (2.0 * sr_config(1)) * (
-          2.0 * f_t - 1.0 >= 0.0 ?
-          std::max(2.0 * f_t - 1.0 - (1.0 - 2.0 * sr_config(1)), 0.0) :
-          std::min(2.0 * f_t - 1.0 + (1.0 - 2.0 * sr_config(1)), 0.0));
-      Real c_part_self_repair = sr_config(7) / sr_config(2) * (
-          tanh_c_part >= 0.0 ?
-          std::max(tanh_c_part - (1.0 - sr_config(2)), 0.0) :
-          std::min(tanh_c_part + (1.0 - sr_config(2)), 0.0));
-      Real o_t_self_repair = sr_config(8) / (2.0 * sr_config(3)) * (
-          2.0 * o_t - 1.0 >= 0.0 ?
-          std::max(2.0 * o_t - 1.0 - (1.0 - 2.0 * sr_config(3)), 0.0) :
-          std::min(2.0 * o_t - 1.0 + (1.0 - 2.0 * sr_config(3)), 0.0));
-      Real c_t_self_repair = sr_config(9) / sr_config(4) * (
-          tanh_c_t >= 0.0 ?
-          std::max(tanh_c_t - (1.0 - sr_config(4)), 0.0) :
-          std::min(tanh_c_t + (1.0 - sr_config(4)), 0.0));
+      Real i_t_self_repair = 0.0, f_t_self_repair = 0.0,
+           c_part_self_repair = 0.0, o_t_self_repair = 0.0,
+           c_t_self_repair = 0.0;
+      if (sr_config(0) > 0.0 && sr_config(5) > 0.0)
+        i_t_self_repair = sr_config(5) / (2.0 * sr_config(0)) * (
+            2.0 * i_t - 1.0 >= 0.0 ?
+            std::max(2.0 * i_t - 1.0 - (1.0 - 2.0 * sr_config(0)), 0.0) :
+            std::min(2.0 * i_t - 1.0 + (1.0 - 2.0 * sr_config(0)), 0.0));
+      if (sr_config(1) > 0.0 && sr_config(6) > 0.0)
+        f_t_self_repair = sr_config(6) / (2.0 * sr_config(1)) * (
+            2.0 * f_t - 1.0 >= 0.0 ?
+            std::max(2.0 * f_t - 1.0 - (1.0 - 2.0 * sr_config(1)), 0.0) :
+            std::min(2.0 * f_t - 1.0 + (1.0 - 2.0 * sr_config(1)), 0.0));
+      if (sr_config(2) > 0.0 && sr_config(7) > 0.0)
+        c_part_self_repair = sr_config(7) / sr_config(2) * (
+            tanh_c_part >= 0.0 ?
+            std::max(tanh_c_part - (1.0 - sr_config(2)), 0.0) :
+            std::min(tanh_c_part + (1.0 - sr_config(2)), 0.0));
+      if (sr_config(3) > 0.0 && sr_config(8) > 0.0)
+        o_t_self_repair = sr_config(8) / (2.0 * sr_config(3)) * (
+            2.0 * o_t - 1.0 >= 0.0 ?
+            std::max(2.0 * o_t - 1.0 - (1.0 - 2.0 * sr_config(3)), 0.0) :
+            std::min(2.0 * o_t - 1.0 + (1.0 - 2.0 * sr_config(3)), 0.0));
+      if (sr_config(4) > 0.0 && sr_config(9) > 0.0) 
+        c_t_self_repair = sr_config(9) / sr_config(4) * (
+            tanh_c_t >= 0.0 ?
+            std::max(tanh_c_t - (1.0 - sr_config(4)), 0.0) :
+            std::min(tanh_c_t + (1.0 - sr_config(4)), 0.0));
 
       if (i_t_self_repair != 0.0)
         self_repair_count(0, c) += 1.0;
