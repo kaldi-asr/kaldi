@@ -30,23 +30,23 @@ namespace kaldi {
 namespace nnet3 {
 
 
-static void ProcessFile(const MatrixBase<BaseFloat> &feats,
+static bool ProcessFile(const MatrixBase<BaseFloat> &feats,
                         const MatrixBase<BaseFloat> *ivector_feats,
                         int32 ivector_period,
                         const Posterior &pdf_post,
                         const std::string &utt_id,
                         bool compress,
                         int32 num_pdfs,
-                        const UtteranceSplitter &utt_splitter,
-                        int64 *num_frames_written,
-                        int64 *num_egs_written,
+                        UtteranceSplitter *utt_splitter,
                         NnetExampleWriter *example_writer) {
   int32 num_input_frames = feats.NumRows();
-  if (!utt_splitter.LengthsMatch(utt_id, num_input_frames,
+  if (!utt_splitter->LengthsMatch(utt_id, num_input_frames,
                              static_cast<int32>(pdf_post.size())))
-    return;  // LengthsMatch() will have printed a warning.
+    return false;  // LengthsMatch() will have printed a warning.
 
   std::vector<ChunkTimeInfo> chunks;
+
+  utt_splitter->GetChunksForUtterance(num_input_frames, &chunks);
 
   if (chunks.empty()) {
     KALDI_WARN << "Not producing egs for utterance " << utt_id
@@ -58,9 +58,7 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
   // writing, this is being supported to unify the code with the 'chain' recipes
   // and in case we need it for some reason in future.
   int32 frame_subsampling_factor =
-      utt_splitter.Config().frame_subsampling_factor;
-
-  utt_splitter.GetChunksForUtterance(num_input_frames, &chunks);
+      utt_splitter->Config().frame_subsampling_factor;
 
   for (size_t c = 0; c < chunks.size(); c++) {
     const ChunkTimeInfo &chunk = chunks[c];
@@ -136,11 +134,9 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
 
     std::string key = os.str(); // key is <utt_id>-<frame_id>
 
-    *num_frames_written += chunk.num_frames;
-    *num_egs_written += 1;
-
     example_writer->Write(key, eg);
   }
+  return true;
 }
 
 } // namespace nnet3
@@ -222,8 +218,7 @@ int main(int argc, char *argv[]) {
     RandomAccessBaseFloatMatrixReader online_ivector_reader(
         online_ivector_rspecifier);
 
-    int32 num_done = 0, num_err = 0;
-    int64 num_frames_written = 0, num_egs_written = 0;
+    int32 num_err = 0;
 
     for (; !feat_reader.Done(); feat_reader.Next()) {
       std::string key = feat_reader.Key();
@@ -263,20 +258,17 @@ int main(int argc, char *argv[]) {
           continue;
         }
 
-        ProcessFile(feats, online_ivector_feats, online_ivector_period,
-                    pdf_post, key, compress, num_pdfs, utt_splitter,
-                    &num_frames_written, &num_egs_written,
-                    &example_writer);
-        num_done++;
+        if (!ProcessFile(feats, online_ivector_feats, online_ivector_period,
+                         pdf_post, key, compress, num_pdfs,
+                         &utt_splitter, &example_writer))
+            num_err++;
       }
     }
-
-    KALDI_LOG << "Finished generating examples, "
-              << "successfully processed " << num_done
-              << " feature files, wrote " << num_egs_written << " examples, "
-              << " with " << num_frames_written << " egs in total; "
-              << num_err << " files had errors.";
-    return (num_egs_written == 0 || num_err > num_done ? 1 : 0);
+    if (num_err > 0)
+      KALDI_WARN << num_err << " utterances had errors and could "
+          "not be processed.";
+    // utt_splitter prints stats in its destructor.
+    return utt_splitter.ExitStatus();
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
     return -1;
