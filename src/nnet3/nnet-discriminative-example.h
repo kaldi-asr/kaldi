@@ -266,7 +266,7 @@ class DiscriminativeExampleMerger {
   int32 num_egs_written_;
   const ExampleMergingConfig &config_;
   NnetDiscriminativeExampleWriter *writer_;
-  ExampleSizeStats stats_;
+  ExampleMergingStats stats_;
 
   // Note: the "key" into the egs is the first element of the vector.
   typedef unordered_map<NnetDiscriminativeExample*,

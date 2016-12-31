@@ -34,6 +34,8 @@ namespace nnet3 {
 
 // This function does all the processing for one utterance, and outputs the
 // examples to 'example_writer'.
+// returns true if we got as far as calling GetChunksForUtterance()
+// [in which case stats will be accumulated by class UtteranceSplitter]
 static bool ProcessFile(const discriminative::SplitDiscriminativeSupervisionOptions &config,
                         const TransitionModel &tmodel,
                         const MatrixBase<BaseFloat> &feats,
@@ -42,18 +44,18 @@ static bool ProcessFile(const discriminative::SplitDiscriminativeSupervisionOpti
                         const discriminative::DiscriminativeSupervision &supervision,
                         const std::string &utt_id,
                         bool compress,
-                        const UtteranceSplitter &utt_splitter,
-                        int64 *num_frames_written,
-                        int64 *num_egs_written,
+                        UtteranceSplitter *utt_splitter,
                         NnetDiscriminativeExampleWriter *example_writer) {
   KALDI_ASSERT(supervision.num_sequences == 1);
   int32 num_input_frames = feats.NumRows(),
       num_output_frames = supervision.frames_per_sequence;
 
-  if (!utt_splitter.LengthsMatch(utt_id, num_input_frames, num_output_frames))
+  if (!utt_splitter->LengthsMatch(utt_id, num_input_frames, num_output_frames))
     return false;  // LengthsMatch() will have printed a warning.
 
   std::vector<ChunkTimeInfo> chunks;
+
+  utt_splitter->GetChunksForUtterance(num_input_frames, &chunks);
 
   if (chunks.empty()) {
     KALDI_WARN << "Not producing egs for utterance " << utt_id
@@ -61,9 +63,7 @@ static bool ProcessFile(const discriminative::SplitDiscriminativeSupervisionOpti
                << num_input_frames << " frames.";
   }
 
-  int32 frame_subsampling_factor = utt_splitter.Config().frame_subsampling_factor;
-
-  utt_splitter.GetChunksForUtterance(num_input_frames, &chunks);
+  int32 frame_subsampling_factor = utt_splitter->Config().frame_subsampling_factor;
 
   discriminative::DiscriminativeSupervisionSplitter splitter(config, tmodel,
                                                              supervision);
@@ -143,9 +143,6 @@ static bool ProcessFile(const discriminative::SplitDiscriminativeSupervisionOpti
 
     std::string key = os.str(); // key is <utt_id>-<frame_id>
 
-    *num_frames_written += chunk.num_frames;
-    *num_egs_written += 1;
-
     example_writer->Write(key, nnet_discriminative_eg);
   }
   return true;
@@ -187,6 +184,8 @@ int main(int argc, char *argv[]) {
     discriminative::SplitDiscriminativeSupervisionOptions splitter_config;
 
     ParseOptions po(usage);
+
+    eg_config.Register(&po);
     po.Register("compress", &compress, "If true, write egs in "
                 "compressed format (recommended)");
     po.Register("ivectors", &online_ivector_rspecifier, "Alias for --online-ivectors "
@@ -198,7 +197,7 @@ int main(int argc, char *argv[]) {
                 "option");
     po.Register("length-tolerance", &length_tolerance, "Tolerance for "
                 "difference in num-frames between feat and ivector matrices");
-    eg_config.Register(&po);
+
 
     ParseOptions splitter_opts("supervision-splitter", &po);
     splitter_config.Register(&splitter_opts);
@@ -236,8 +235,7 @@ int main(int argc, char *argv[]) {
     RandomAccessBaseFloatMatrixReader online_ivector_reader(
         online_ivector_rspecifier);
 
-    int32 num_done = 0, num_err = 0;
-    int64 num_frames_written = 0, num_egs_written = 0;
+    int32 num_err = 0;
 
     for (; !feat_reader.Done(); feat_reader.Next()) {
       std::string key = feat_reader.Key();
@@ -269,22 +267,18 @@ int main(int argc, char *argv[]) {
           num_err++;
           continue;
         }
-
-        if (ProcessFile(splitter_config, tmodel,
-                        feats, online_ivector_feats, online_ivector_period,
-                        supervision, key, compress, utt_splitter,
-                        &num_frames_written, &num_egs_written,
-                        &example_writer)) num_done++;
-        else num_err++;
+        if (!ProcessFile(splitter_config, tmodel,
+                         feats, online_ivector_feats, online_ivector_period,
+                         supervision, key, compress,
+                         &utt_splitter, &example_writer))
+          num_err++;
       }
     }
-
-    KALDI_LOG << "Finished generating nnet3-discriminative examples, "
-              << "successfully processed " << num_done
-              << " feature files, wrote " << num_egs_written << " examples, "
-              << " with " << num_frames_written << " frames in total; "
-              << num_err << " files had errors.";
-    return (num_egs_written == 0 || num_err > num_done ? 1 : 0);
+    if (num_err > 0)
+      KALDI_WARN << num_err << " utterances had errors and could "
+          "not be processed.";
+    // utt_splitter prints diagnostics.
+    return utt_splitter.ExitStatus();
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
     return -1;

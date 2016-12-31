@@ -365,7 +365,7 @@ def train(args, run_opts, background_process_handler):
         common_train_lib.verify_egs_dir(egs_dir, feat_dim, ivector_dim,
                                         egs_left_context, egs_right_context,
                                         egs_left_context_initial,
-                                        egs_right_context_final)
+                                        egs_right_context_final))
     assert(args.chunk_width == frames_per_eg_str)
     num_archives_expanded = num_archives * args.frame_subsampling_factor
 

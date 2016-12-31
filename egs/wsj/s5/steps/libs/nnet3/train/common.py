@@ -543,10 +543,11 @@ class CommonParser:
     in steps/nnet3/train*.py and steps/nnet3/chain/train.py
     """
 
-    parser = argparse.ArgumentParser(add_help=False,
-                                     default_chunk_left_context=0)
+    parser = argparse.ArgumentParser(add_help=False)
 
-    def __init__(self, include_chunk_context = True):
+    def __init__(self,
+                 include_chunk_context = True,
+                 default_chunk_left_context=0):
         # feat options
         self.parser.add_argument("--feat.online-ivector-dir", type=str,
                                  dest='online_ivector_dir', default=None,

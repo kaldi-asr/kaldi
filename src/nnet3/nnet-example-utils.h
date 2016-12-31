@@ -180,8 +180,9 @@ class UtteranceSplitter {
   // Given an utterance length, this function creates for you a list of chunks
   // into which to split the utterance.  Note: this is partly random (will call
   // srand()).
+  // Accumulates some stats which will be printed out in the destructor.
   void GetChunksForUtterance(int32 utterance_length,
-                             std::vector<ChunkTimeInfo> *chunk_info) const;
+                             std::vector<ChunkTimeInfo> *chunk_info);
 
 
   // This function returns true if 'supervision_length' (e.g. the length of the
@@ -194,6 +195,9 @@ class UtteranceSplitter {
                     int32 utterance_length,
                     int32 supervision_length) const;
 
+  ~UtteranceSplitter();
+
+  int32 ExitStatus() { return (total_frames_in_chunks_ > 0); }
 
  private:
 
@@ -250,7 +254,6 @@ class UtteranceSplitter {
                    const std::vector<int32> &chunk_sizes,
                    std::vector<int32> *gap_sizes) const;
 
-
   // this static function, used in GetGapSizes(), writes random values to a
   // vector 'vec' such the sum of those values equals n (n may be positive or
   // negative).  It tries to make those values as similar as possible (they will
@@ -270,8 +273,12 @@ class UtteranceSplitter {
 
   // This function is responsible for setting the 'output_weights'
   // members of the chunks.
-  void SetOutputWeights(int32 utterance_lengths,
+  void SetOutputWeights(int32 utterance_length,
                         std::vector<ChunkTimeInfo> *chunk_info) const;
+
+  // Accumulate stats for diagnostics.
+  void AccStatsForUtterance(int32 utterance_length,
+                            const std::vector<ChunkTimeInfo> &chunk_info);
 
 
   const ExampleGenerationConfig &config_;
@@ -295,6 +302,21 @@ class UtteranceSplitter {
   // chunks, and then add the subtracted number of copies of the primary
   // num-frames to the split.
   std::vector<std::vector<std::vector<int32> > > splits_for_length_;
+
+  // Below are stats used for diagnostics.
+  int32 total_num_utterances_;  // total input utterances.
+  int64 total_input_frames_;  // total num-frames over all utterances (before
+                              // splitting)
+  int64 total_frames_overlap_;  // total number of frames that overlap between
+                                // adjacent egs.
+  int64 total_num_chunks_;
+  int64 total_frames_in_chunks_;  // total of chunk-size times count of that
+                                  // chunk.  equals the num-frames in all the
+                                  // output chunks, added up.
+  std::map<int32, int32> chunk_size_to_count_;  // for each chunk size, gives
+                                                // the number of chunks with
+                                                // that size.
+
 };
 
 
@@ -403,9 +425,8 @@ int32 GetNnetExampleSize(const NnetExample &a);
 /// statistics about how examples of different sizes (c.f. GetNnetExampleSize())
 /// were merged into minibatches, and how many examples were left over and
 /// discarded.
-class ExampleSizeStats {
+class ExampleMergingStats {
  public:
-
   /// Users call this function to inform this class that one minibatch has been
   /// written aggregating 'minibatch_size' separate examples of original size
   /// 'example_size' (e.g. as determined by GetNnetExampleSize(), but the caller
@@ -475,7 +496,7 @@ class ExampleMerger {
   void Finish();
 
   // returns a suitable exit status for a program.
-  bool ExitStatus() { return num_egs_written_ > 0; }
+  bool ExitStatus() { return num_egs_written_ > 0 ? 0 : 1; }
 
   ~ExampleMerger() { Finish(); };
  private:
@@ -487,7 +508,7 @@ class ExampleMerger {
   int32 num_egs_written_;
   const ExampleMergingConfig &config_;
   NnetExampleWriter *writer_;
-  ExampleSizeStats stats_;
+  ExampleMergingStats stats_;
 
   // Note: the "key" into the egs is the first element of the vector.
   typedef unordered_map<NnetExample*, std::vector<NnetExample*>,

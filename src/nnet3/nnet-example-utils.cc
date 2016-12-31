@@ -325,12 +325,46 @@ void ExampleGenerationConfig::ComputeDerived() {
 
 
 UtteranceSplitter::UtteranceSplitter(const ExampleGenerationConfig &config):
-    config_(config) {
+    config_(config),
+    total_num_utterances_(0), total_input_frames_(0),
+    total_frames_overlap_(0), total_num_chunks_(0),
+    total_frames_in_chunks_(0) {
   if (config.num_frames.empty()) {
     KALDI_ERR << "You need to call ComputeDerived() on the "
                  "ExampleGenerationConfig().";
   }
   InitSplitForLength();
+}
+
+UtteranceSplitter::~UtteranceSplitter() {
+  KALDI_LOG << "Split " << total_num_utterances_ << " utts, with "
+            << "total length " << total_input_frames_ << " frames ("
+            << (total_input_frames_ / 360000.0) << " hours assuming "
+            << "100 frames per second)";
+  float average_chunk_length = total_frames_in_chunks_ * 1.0 / total_num_chunks_,
+      overlap_percent = total_frames_overlap_ * 100.0 / total_input_frames_,
+      output_percent = total_frames_in_chunks_ * 100.0 / total_input_frames_,
+      output_percent_no_overlap = output_percent - overlap_percent;
+
+  KALDI_LOG << "Average chunk length was " << average_chunk_length
+            << " frames; overlap between adjacent chunks was "
+            << overlap_percent << "% of input length; length of output was "
+            << output_percent << "% of input length (minus overlap = "
+            << output_percent_no_overlap << "%).";
+  if (chunk_size_to_count_.size() > 1) {
+    std::ostringstream os;
+    os << std::setprecision(4);
+    for (std::map<int32, int32>::iterator iter = chunk_size_to_count_.begin();
+         iter != chunk_size_to_count_.end(); ++iter) {
+      int32 chunk_size = iter->first,
+          num_frames = chunk_size * iter->second;
+      float percent_of_total = num_frames * 100.0 / total_frames_in_chunks_;
+      if (iter != chunk_size_to_count_.begin()) os << ", ";
+      os << chunk_size << " = " << percent_of_total << "%";
+    }
+    KALDI_LOG << "Output frames are distributed among chunk-sizes as follows: "
+              << os.str();
+  }
 }
 
 float UtteranceSplitter::DefaultDurationOfSplit(
@@ -761,7 +795,7 @@ void UtteranceSplitter::GetGapSizes(int32 utterance_length,
 
 void UtteranceSplitter::GetChunksForUtterance(
     int32 utterance_length,
-    std::vector<ChunkTimeInfo> *chunk_info) const {
+    std::vector<ChunkTimeInfo> *chunk_info) {
   std::vector<int32> chunk_sizes;
   GetChunkSizesForUtterance(utterance_length, &chunk_sizes);
   std::vector<int32> gaps(chunk_sizes.size());
@@ -780,11 +814,38 @@ void UtteranceSplitter::GetChunksForUtterance(
                           config_.right_context_final : config_.right_context);
     t += chunk_sizes[i];
   }
+  AccStatsForUtterance(utterance_length, *chunk_info);
   // check that the end of the last chunk doesn't go more than
   // 'config_.frame_subsampling_factor - 1' frames past the end
   // of the utterance.  That amount, we treat as rounding error.
   KALDI_ASSERT(t - utterance_length < config_.frame_subsampling_factor);
 }
+
+void UtteranceSplitter::AccStatsForUtterance(
+    int32 utterance_length,
+    const std::vector<ChunkTimeInfo> &chunk_info) {
+  total_num_utterances_ += 1;
+  total_input_frames_ += utterance_length;
+
+  for (size_t c = 0; c < chunk_info.size(); c++) {
+    int32 chunk_size = chunk_info[c].num_frames;
+    if (c > 0) {
+      int32 last_chunk_end = chunk_info[c-1].first_frame +
+          chunk_info[c-1].num_frames;
+      if (last_chunk_end > chunk_info[c].first_frame)
+        total_frames_overlap_ += last_chunk_end - chunk_info[c].first_frame;
+    }
+    std::map<int32, int32>::iterator iter = chunk_size_to_count_.find(
+        chunk_size);
+    if (iter == chunk_size_to_count_.end())
+      chunk_size_to_count_[chunk_size] = 1;
+    else
+      iter->second++;
+    total_num_chunks_ += 1;
+    total_frames_in_chunks_ += chunk_size;
+  }
+}
+
 
 void UtteranceSplitter::SetOutputWeights(
     int32 utterance_length,
@@ -951,7 +1012,7 @@ int32 ExampleMergingConfig::MinibatchSize(int32 size_of_eg,
 }
 
 
-void ExampleSizeStats::WroteExample(int32 example_size,
+void ExampleMergingStats::WroteExample(int32 example_size,
                                     size_t structure_hash,
                                     int32 minibatch_size) {
   std::pair<int32, size_t> p(example_size, structure_hash);
@@ -965,7 +1026,7 @@ void ExampleSizeStats::WroteExample(int32 example_size,
     iter->second += 1;
 }
 
-void ExampleSizeStats::DiscardedExamples(int32 example_size,
+void ExampleMergingStats::DiscardedExamples(int32 example_size,
                                          size_t structure_hash,
                                          int32 num_discarded) {
   std::pair<int32, size_t> p(example_size, structure_hash);
@@ -973,12 +1034,12 @@ void ExampleSizeStats::DiscardedExamples(int32 example_size,
 }
 
 
-void ExampleSizeStats::PrintStats() const {
+void ExampleMergingStats::PrintStats() const {
   PrintAggregateStats();
   PrintSpecificStats();
 }
 
-void ExampleSizeStats::PrintAggregateStats() const {
+void ExampleMergingStats::PrintAggregateStats() const {
   // First print some aggregate stats.
   int64 num_distinct_egs_types = 0,  // number of distinct types of input egs
                                      // (differing in size or structure).
@@ -1042,7 +1103,7 @@ void ExampleSizeStats::PrintAggregateStats() const {
   KALDI_LOG << os.str();
 }
 
-void ExampleSizeStats::PrintSpecificStats() const {
+void ExampleMergingStats::PrintSpecificStats() const {
   KALDI_LOG << "Merged specific eg types as follows [format: <eg-size1>="
       "{<mb-size1>-><num-minibatches1>,<mbsize2>-><num-minibatches2>.../d=<num-discarded>}"
       ",<egs-size2>={...},... (note,egs-size == number of input "
