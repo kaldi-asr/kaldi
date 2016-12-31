@@ -36,19 +36,18 @@ logger.info('Starting DNN trainer (train_dnn.py)')
 def get_args():
     """ Get args from stdin.
 
-    We add compulsary arguments as named arguments for readability
+    We add compulsory arguments as named arguments for readability
 
     The common options are defined in the object
     libs.nnet3.train.common.CommonParser.parser.
     See steps/libs/nnet3/train/common.py
     """
-
     parser = argparse.ArgumentParser(
         description="""Trains a feed forward DNN acoustic model using the
         cross-entropy objective.  DNNs include simple DNNs, TDNNs and CNNs.""",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         conflict_handler='resolve',
-        parents=[common_train_lib.CommonParser().parser])
+        parents=[common_train_lib.CommonParser(include_chunk_context = False).parser])
 
     # egs extraction options
     parser.add_argument("--egs.frames-per-eg", type=int, dest='frames_per_eg',
@@ -191,8 +190,8 @@ def train(args, run_opts, background_process_handler):
         raise Exception("KeyError {0}: Variables need to be defined in "
                         "{1}".format(str(e), '{0}/configs'.format(args.dir)))
 
-    left_context = args.chunk_left_context + model_left_context
-    right_context = args.chunk_right_context + model_right_context
+    left_context = model_left_context
+    right_context = model_right_context
 
     # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
     # matrix.  This first config just does any initial splicing that we do;

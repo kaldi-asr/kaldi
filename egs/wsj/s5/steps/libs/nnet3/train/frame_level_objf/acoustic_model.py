@@ -21,6 +21,7 @@ logger.addHandler(logging.NullHandler())
 def generate_egs(data, alidir, egs_dir,
                  left_context, right_context,
                  run_opts, stage=0,
+                 left_context_initial=-1, right_context_final=-1,
                  feat_type='raw', online_ivector_dir=None,
                  samples_per_iter=20000, frames_per_eg_str="20", srand=0,
                  egs_opts=None, cmvn_opts=None, transform_dir=None):
@@ -38,7 +39,10 @@ def generate_egs(data, alidir, egs_dir,
                 --feat-type {feat_type} \
                 --transform-dir "{transform_dir}" \
                 --online-ivector-dir "{ivector_dir}" \
-                --left-context {left_context} --right-context {right_context} \
+                --left-context {left_context} \
+                --right-context {right_context} \
+                --left-context-initial {left_context_initial} \
+                --right-context-final {right_context_final} \
                 --stage {stage} \
                 --samples-per-iter {samples_per_iter} \
                 --frames-per-eg {frames_per_eg_str} \
@@ -53,7 +57,10 @@ def generate_egs(data, alidir, egs_dir,
                    ivector_dir=(online_ivector_dir
                                 if online_ivector_dir is not None
                                 else ''),
-                   left_context=left_context, right_context=right_context,
+                   left_context=left_context,
+                   right_context=right_context,
+                   left_context_initial=left_context_initial,
+                   right_context_final=right_context_final,
                    stage=stage, samples_per_iter=samples_per_iter,
                    frames_per_eg_str=frames_per_eg_str, srand=srand, data=data,
                    alidir=alidir, egs_dir=egs_dir,

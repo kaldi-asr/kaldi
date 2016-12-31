@@ -20,6 +20,8 @@ frame_subsampling_factor=1 # ratio between input and output frame-rate of nnet.
 left_context=4    # amount of left-context per eg (i.e. extra frames of input features
                   # not present in the output supervision).
 right_context=4   # amount of right-context per eg.
+left_context_initial=-1    # if >=0, left-context for first chunk of an utterance
+right_context_final=-1     # if >=0, right-context for last chunk of an utterance
 adjust_priors=true
 compress=true   # set this to false to disable compression (e.g. if you want to see whether
                 # results are affected).
@@ -75,6 +77,10 @@ if [ $# != 6 ]; then
   echo "                                                   # the middle."
   echo "  --online-ivector-dir <dir|"">                    # Directory for online-estimated iVectors, used in the"
   echo "                                                   # online-neural-net setup."
+  echo "  --left-context <int;4>                           # Number of frames on left side to append for feature input"
+  echo "  --right-context <int;4>                          # Number of frames on right side to append for feature input"
+  echo "  --left-context-initial <int;-1>                  # If >= 0, left-context for first chunk of an utterance"
+  echo "  --right-context-final <int;-1>                   # If >= 0, right-context for last chunk of an utterance"
   exit 1;
 fi
 
@@ -250,6 +256,9 @@ echo $egs_per_archive > $dir/info/egs_per_archive
 
 echo "$0: creating $num_archives archives, each with $egs_per_archive egs, with"
 echo "$0:   $frames_per_eg labels per example, and (left,right) context = ($left_context,$right_context)"
+if [ $left_context_initial -ge 0 ] || [ $right_context_final -ge 0 ]; then
+  echo "$0:   ... and (left-context-initial,right-context-final) = ($left_context_initial,$right_context_final)"
+fi
 
 
 if [ -e $dir/storage ]; then
@@ -274,21 +283,36 @@ fi
 
 splitter_opts="--supervision-splitter.determinize=$determinize --supervision-splitter.minimize=$minimize --supervision-splitter.remove_output_symbols=$remove_output_symbols --supervision-splitter.remove_epsilons=$remove_epsilons --supervision-splitter.collapse-transition-ids=$collapse_transition_ids --supervision-splitter.acoustic-scale=$acwt"
 
+
+# If frame_subsampling_factor > 0, we will later be shifting the egs slightly to
+# the left or right as part of training, so we see (e.g.) all shifts of the data
+# modulo 3... we need to extend the l/r context slightly to account for this, to
+# ensure we see the entire context that the model requires.
 left_context=$[left_context+frame_subsampling_factor/2]
 right_context=$[right_context+frame_subsampling_factor/2]
+[ $left_context_initial -ge 0 ] && left_context_initial=$[left_context_initial+frame_subsampling_factor/2]
+[ $right_context_final -ge 0 ] && right_context_final=$[right_context_final+frame_subsampling_factor/2]
 
 egs_opts="--left-context=$left_context --right-context=$right_context --num-frames=$frames_per_eg --compress=$compress --frame-subsampling-factor=$frame_subsampling_factor $splitter_opts"
+[ $left_context_initial -ge 0 ] && egs_opts="$egs_opts --left-context-initial=$left_context_initial"
+[ $right_context_final -ge 0 ] && egs_opts="$egs_opts --right-context-final=$right_context_final"
+
 
 # don't do the overlap thing for the priors computation data-- but do use the
 # same num-frames for the eg, which would be much more efficient in case it's a
 # recurrent model and has a lot of frames of context.  In any case we're not
 # doing SGD so there is no benefit in having short chunks.
 priors_egs_opts="--left-context=$left_context --right-context=$right_context --num-frames=$frames_per_eg --compress=$compress"
+[ $left_context_initial -ge 0 ] && priors_egs_opts="$priors_egs_opts --left-context-initial=$left_context_initial"
+[ $right_context_final -ge 0 ] && priors_egs_opts="$priors_egs_opts --right-context-final=$right_context_final"
+
 
 supervision_all_opts="--frame-subsampling-factor=$frame_subsampling_factor"
 
 echo $left_context > $dir/info/left_context
 echo $right_context > $dir/info/right_context
+echo $left_context_initial > $dir/info/left_context_initial
+echo $right_context_final > $dir/info/right_context_final
 
 echo $frame_subsampling_factor > $dir/info/frame_subsampling_factor
 

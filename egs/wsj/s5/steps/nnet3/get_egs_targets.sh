@@ -32,6 +32,8 @@ frames_per_eg=8   # number of frames of labels per example.  more->less disk spa
 left_context=4    # amount of left-context per eg (i.e. extra frames of input features
                   # not present in the output supervision).
 right_context=4   # amount of right-context per eg.
+left_context_initial=-1    # if >=0, left-context for first chunk of an utterance
+right_context_final=-1     # if >=0, right-context for last chunk of an utterance
 compress=true   # set this to false to disable compression (e.g. if you want to see whether
                 # results are affected).
 num_utts_subset=300     # number of utterances in validation and training
@@ -81,8 +83,10 @@ if [ $# != 3 ]; then
   echo "                                                   # frames-per-eg is the chunk size, to get variety of chunk"
   echo "                                                   # sizes).  The first in the list is preferred and is used"
   echo "                                                   # when working out the number of archives etc."
-  echo "  --left-context <width;4>                         # Number of frames on left side to append for feature input"
-  echo "  --right-context <width;4>                        # Number of frames on right side to append for feature input"
+  echo "  --left-context <int;4>                           # Number of frames on left side to append for feature input"
+  echo "  --right-context <int;4>                          # Number of frames on right side to append for feature input"
+  echo "  --left-context-initial <int;-1>                  # If >= 0, left-context for first chunk of an utterance"
+  echo "  --right-context-final <int;-1>                   # If >= 0, right-context for last chunk of an utterance"
   echo "  --num-frames-diagnostic <#frames;4000>           # Number of frames used in computing (train,valid) diagnostics"
   echo "  --num-valid-frames-combine <#frames;10000>       # Number of frames used in getting combination weights at the"
   echo "                                                   # very end."
@@ -238,6 +242,9 @@ echo $egs_per_archive > $dir/info/egs_per_archive
 
 echo "$0: creating $num_archives archives, each with $egs_per_archive egs, with"
 echo "$0:   $frames_per_eg labels per example, and (left,right) context = ($left_context,$right_context)"
+if [ $left_context_initial -ge 0 ] || [ $right_context_final -ge 0 ]; then
+  echo "$0:   ... and (left-context-initial,right-context-final) = ($left_context_initial,$right_context_final)"
+fi
 
 
 
@@ -252,9 +259,13 @@ if [ -e $dir/storage ]; then
 fi
 
 egs_opts="--left-context=$left_context --right-context=$right_context --compress=$compress --num-frames=$frames_per_eg"
+[ $left_context_initial -ge 0 ] && egs_opts="$egs_opts --left-context-initial=$left_context_initial"
+[ $right_context_final -ge 0 ] && egs_opts="$egs_opts --right-context-final=$right_context_final"
 
 echo $left_context > $dir/info/left_context
 echo $right_context > $dir/info/right_context
+echo $left_context_initial > $dir/info/left_context_initial
+echo $right_context_final > $dir/info/right_context_final
 
 for n in `seq $nj`; do
   utils/filter_scp.pl $sdata/$n/utt2spk $targets_scp > $dir/targets.$n.scp

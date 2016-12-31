@@ -53,6 +53,7 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
                        left_context, right_context,
                        run_opts, stage=0,
                        left_tolerance=None, right_tolerance=None,
+                       left_context_initial=-1, right_context_final=-1,
                        frame_subsampling_factor=3,
                        alignment_subsampling_factor=3,
                        feat_type='raw', online_ivector_dir=None,
@@ -70,7 +71,10 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
                 --feat-type {feat_type} \
                 --transform-dir "{transform_dir}" \
                 --online-ivector-dir "{ivector_dir}" \
-                --left-context {left_context} --right-context {right_context} \
+                --left-context {left_context} \
+                --right-context {right_context} \
+                --left-context-initial {left_context_initial} \
+                --right-context-final {right_context_final} \
                 --left-tolerance '{left_tolerance}' \
                 --right-tolerance '{right_tolerance}' \
                 --frame-subsampling-factor {frame_subsampling_factor} \
@@ -89,7 +93,10 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
                     ivector_dir=(online_ivector_dir
                                  if online_ivector_dir is not None
                                  else ''),
-                    left_context=left_context, right_context=right_context,
+                    left_context=left_context,
+                    right_context=right_context,
+                    left_context_initial=left_context_initial,
+                    right_context_final=right_context_final,
                     left_tolerance=(left_tolerance
                                     if left_tolerance is not None
                                     else ''),
