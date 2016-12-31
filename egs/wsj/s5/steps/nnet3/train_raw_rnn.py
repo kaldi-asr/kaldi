@@ -55,7 +55,7 @@ def get_args():
             3. RNNs can also be trained with state preservation training""",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         conflict_handler='resolve',
-        parents=[common_train_lib.CommonParser().parser])
+        parents=[common_train_lib.CommonParser(default_chunk_left_context=40).parser])
 
     # egs extraction options
     parser.add_argument("--egs.chunk-width", type=str, dest='chunk_width',
@@ -65,11 +65,6 @@ def get_args():
                         should halve --trainer.samples-per-iter.  May be
                         a comma-separated list of alternatives: first width
                         is the 'principal' chunk-width, used preferentially""")
-    parser.add_argument("--egs.chunk-left-context", type=int,
-                        dest='chunk_left_context', default=40,
-                        help="""Number of left steps used in the estimation of
-                        LSTM state before prediction of the first label.
-                        Overrides the default value in CommonParser""")
 
     # trainer options
     parser.add_argument("--trainer.samples-per-iter", type=int,
@@ -258,6 +253,10 @@ def train(args, run_opts, background_process_handler):
 
     left_context = args.chunk_left_context + model_left_context
     right_context = args.chunk_right_context + model_right_context
+    left_context_initial = (args.chunk_left_context_initial + model_left_context if
+                            args.chunk_left_context_initial >= 0 else -1)
+    right_context_final = (args.chunk_right_context_final + model_right_context if
+                           args.chunk_right_context_final >= 0 else -1)
 
     # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
     # matrix.  This first config just does any initial splicing that we do;
@@ -298,7 +297,10 @@ def train(args, run_opts, background_process_handler):
         train_lib.raw_model.generate_egs_using_targets(
             data=args.feat_dir, targets_scp=args.targets_scp,
             egs_dir=default_egs_dir,
-            left_context=left_context, right_context=right_context,
+            left_context=left_context,
+            right_context=right_context,
+            left_context_initial=left_context_initial,
+            right_context_final=right_context_final,
             run_opts=run_opts,
             frames_per_eg_str=args.chunk_width,
             srand=args.srand,

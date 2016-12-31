@@ -281,7 +281,8 @@ def parse_generic_config_vars_file(var_file):
 
 
 def verify_egs_dir(egs_dir, feat_dim, ivector_dim,
-                   left_context, right_context):
+                   left_context, right_context,
+                   left_context_initial=-1, right_context_final=-1):
     try:
         egs_feat_dim = int(open('{0}/info/feat_dim'.format(
                                     egs_dir)).readline())
@@ -291,6 +292,17 @@ def verify_egs_dir(egs_dir, feat_dim, ivector_dim,
                                     egs_dir)).readline())
         egs_right_context = int(open('{0}/info/right_context'.format(
                                     egs_dir)).readline())
+        try:
+            egs_left_context_initial = int(open('{0}/info/left_context_initial'.format(
+                        egs_dir)).readline())
+        except:  # older scripts didn't write this, treat it as -1 in that case.
+            egs_left_context_initial = -1
+        try:
+            egs_right_context_final = int(open('{0}/info/right_context_final'.format(
+                        egs_dir)).readline())
+        except:  # older scripts didn't write this, treat it as -1 in that case.
+            egs_right_context_final = -1
+
         if (feat_dim != egs_feat_dim) or (ivector_dim != egs_ivector_dim):
             raise Exception("There is mismatch between featdim/ivector_dim of "
                             "the current experiment and the provided "
@@ -298,7 +310,26 @@ def verify_egs_dir(egs_dir, feat_dim, ivector_dim,
 
         if (egs_left_context < left_context or
                 egs_right_context < right_context):
-            raise Exception('The egs have insufficient context')
+            raise Exception('The egs have insufficient (l,r) context ({0},{1}) '
+                            'versus expected ({2},{3})'.format(
+                    egs_left_context, egs_right_context,
+                    left_context, right_context))
+
+        # the condition on the initial/final context is an equality condition,
+        # not an inequality condition, as there is no mechanism to 'correct' the
+        # context (by subtracting context) while copying the egs, like there is
+        # for the regular left-right context.  If the user is determined to use
+        # previously dumped egs, they may be able to slightly adjust the
+        # --egs.chunk-left-context-initial and --egs.chunk-right-context-final
+        # options to make things matched up.  [note: the model l/r context gets
+        # added in, so you have to correct for changes in that.]
+        if (egs_left_context_initial != left_context_initial or
+            egs_right_context_final != right_context_final):
+            raise Exception('The egs have incorrect initial/final (l,r) context '
+                            '({0},{1}) versus expected ({2},{3}).  See code from '
+                            'where this exception was raised for more info'.format(
+                    egs_left_context_initial, egs_right_context_final,
+                    left_context_initial, right_context_final))
 
         frames_per_eg_str = open('{0}/info/frames_per_eg'.format(
                              egs_dir)).readline().rstrip()
@@ -512,9 +543,10 @@ class CommonParser:
     in steps/nnet3/train*.py and steps/nnet3/chain/train.py
     """
 
-    parser = argparse.ArgumentParser(add_help=False)
+    parser = argparse.ArgumentParser(add_help=False,
+                                     default_chunk_left_context=0)
 
-    def __init__(self):
+    def __init__(self, include_chunk_context = True):
         # feat options
         self.parser.add_argument("--feat.online-ivector-dir", type=str,
                                  dest='online_ivector_dir', default=None,
@@ -527,22 +559,39 @@ class CommonParser:
                                  help="A string specifying '--norm-means' "
                                  "and '--norm-vars' values")
 
-        # egs extraction options
-        self.parser.add_argument("--egs.chunk-left-context", type=int,
-                                 dest='chunk_left_context', default=0,
-                                 help="""Number of additional frames of input
+        # egs extraction options.  there is no point adding the chunk context
+        # option for non-RNNs (by which we mean basic TDNN-type topologies), as
+        # it wouldn't affect anything, so we disable them if we know in advance
+        # that we're not supporting RNN-type topologies (as in train_dnn.py).
+        if include_chunk_context:
+            self.parser.add_argument("--egs.chunk-left-context", type=int,
+                                     dest='chunk_left_context',
+                                     default=default_chunk_left_context,
+                                     help="""Number of additional frames of input
                                  to the left of the input chunk. This extra
                                  context will be used in the estimation of RNN
                                  state before prediction of the first label. In
                                  the case of FF-DNN this extra context will be
                                  used to allow for frame-shifts""")
-        self.parser.add_argument("--egs.chunk-right-context", type=int,
+            self.parser.add_argument("--egs.chunk-right-context", type=int,
                                  dest='chunk_right_context', default=0,
                                  help="""Number of additional frames of input
                                  to the right of the input chunk. This extra
                                  context will be used in the estimation of
                                  bidirectional RNN state before prediction of
                                  the first label.""")
+            self.parser.add_argument("--egs.chunk-left-context-initial", type=int,
+                                     dest='chunk_left_context_initial', default=-1,
+                                     help="""Number of additional frames of input
+                                 to the left of the *first* input chunk extracted
+                                 from an utterance.  If negative, defaults to
+                                 the same as --egs.chunk-left-context""")
+            self.parser.add_argument("--egs.chunk-right-context-final", type=int,
+                                     dest='chunk_right_context_final', default=-1,
+                                     help="""Number of additional frames of input
+                                 to the right of the *last* input chunk extracted
+                                 from an utterance.  If negative, defaults to the
+                                 same as --egs.chunk-right-context""")
         self.parser.add_argument("--egs.transform_dir", type=str,
                                  dest='transform_dir', default=None,
                                  action=common_lib.NullstrToNoneAction,

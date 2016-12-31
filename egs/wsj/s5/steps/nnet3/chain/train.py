@@ -296,6 +296,10 @@ def train(args, run_opts, background_process_handler):
 
     left_context = args.chunk_left_context + model_left_context
     right_context = args.chunk_right_context + model_right_context
+    left_context_initial = (args.chunk_left_context_initial + model_left_context if
+                            args.chunk_left_context_initial >= 0 else -1)
+    right_context_final = (args.chunk_right_context_final + model_right_context if
+                           args.chunk_right_context_final >= 0 else -1)
 
     # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
     # matrix.  This first config just does any initial splicing that we do;
@@ -319,8 +323,12 @@ def train(args, run_opts, background_process_handler):
                     {dir}/init.raw""".format(command=run_opts.command,
                                              dir=args.dir))
 
-    egs_left_context = left_context + args.frame_subsampling_factor/2
-    egs_right_context = right_context + args.frame_subsampling_factor/2
+    egs_left_context = left_context + args.frame_subsampling_factor / 2
+    egs_right_context = right_context + args.frame_subsampling_factor / 2
+    egs_left_context_initial = (left_context_initial + args.frame_subsampling_factor / 2 if
+                                left_context_initial >= 0 else -1)
+    egs_right_context_final = (right_context_final + args.frame_subsampling_factor / 2 if
+                               right_context_final >= 0 else -1)
 
     default_egs_dir = '{0}/egs'.format(args.dir)
     if (args.stage <= -3) and args.egs_dir is None:
@@ -331,6 +339,8 @@ def train(args, run_opts, background_process_handler):
             lat_dir=args.lat_dir, egs_dir=default_egs_dir,
             left_context=egs_left_context,
             right_context=egs_right_context,
+            left_context_initial=egs_left_context_initial,
+            right_context_final=egs_right_context_final,
             run_opts=run_opts,
             left_tolerance=args.left_tolerance,
             right_tolerance=args.right_tolerance,
@@ -353,7 +363,9 @@ def train(args, run_opts, background_process_handler):
     [egs_left_context, egs_right_context,
      frames_per_eg_str, num_archives] = (
         common_train_lib.verify_egs_dir(egs_dir, feat_dim, ivector_dim,
-                                        egs_left_context, egs_right_context))
+                                        egs_left_context, egs_right_context,
+                                        egs_left_context_initial,
+                                        egs_right_context_final)
     assert(args.chunk_width == frames_per_eg_str)
     num_archives_expanded = num_archives * args.frame_subsampling_factor
 
