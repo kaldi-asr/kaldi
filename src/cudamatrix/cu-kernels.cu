@@ -3042,8 +3042,8 @@ static void _diff_lstm_nonlinearity(const int cell_dim, const int num_rows,
   }
 
   // compute self-repair stats
-  if (i0 < 5) {
-    smem[tid] = self_repair_count[i0];
+  for (int i = 0; i < 5; i++) {
+    smem[tid] = self_repair_count[i];
 #   pragma unroll
     for (int shift = CU1DBLOCK / 2; shift >= warpSize; shift >>= 1) {
       __syncthreads();
@@ -3052,7 +3052,7 @@ static void _diff_lstm_nonlinearity(const int cell_dim, const int num_rows,
       }
     }
     if (tid < warpSize && j < cell_dim) {
-      self_repair_sum_out[i0 * self_repair_sum_out_stride + j] = smem[tid];
+      self_repair_sum_out[i * self_repair_sum_out_stride + j] = smem[tid];
     }
   }
 
