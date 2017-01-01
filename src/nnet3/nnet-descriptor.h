@@ -70,7 +70,7 @@ namespace nnet3 {
 ;; arguments
 <descriptor>  ::=   Switch(<descriptor>, <descriptor> [, <descriptor> ...])
 ;; For use in clockwork RNNs or similar, Round() rounds the time-index t of the
-;; requested Index to the next-lowest multiple of the integer <t-modulus>
+;; requested Index to the next-lowest multiple of the integer <t-modulus>,
 ;; and evaluates the input argument for the resulting Index.
 <descriptor>  ::=   Round(<descriptor>, <t-modulus>)  ;; <t-modulus> is an integer
 ;; ReplaceIndex replaces some <variable-name> (t or x) in the requested Index
