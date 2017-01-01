@@ -62,6 +62,12 @@ struct Index {
   Index operator + (const Index &other) const {
     return Index(n+other.n, t+other.t, x+other.x);
   }
+  Index &operator += (const Index &other) {
+    n += other.n;
+    t += other.t;
+    x += other.x;
+    return *this;
+  }
 
   void Write(std::ostream &os, bool binary) const;
 
