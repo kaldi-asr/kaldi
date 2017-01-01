@@ -6,7 +6,7 @@
 namespace kaldi {
 namespace rnnlm {
 
-void UnitTestSampleConvergence(int iters) {
+void UnitTestSampleConvergence() {
   // randomly generate unigrams
   int n = rand() % 10000 + 1000;
   vector<BaseFloat> selection_probs;
@@ -22,7 +22,6 @@ void UnitTestSampleConvergence(int iters) {
     selection_probs[i] /= prob_sum;
     // KALDI_LOG << selection_probs[i];
   }
-
   // generate a outputs_set with ones and with size < k
   int ones_size = rand() % (n / 2) + 1;
   // KALDI_LOG << "Size of ones_set is " << ones_size;
@@ -30,7 +29,6 @@ void UnitTestSampleConvergence(int iters) {
   for (int i = 0; i < ones_size; i++) {
     outputs_set.insert(rand() % n);
   }
-
   // generate a random number k from 1 to n
   int k = 2 * ones_size;
   // KALDI_LOG << "select " << k << " items from " << n << " unigrams";
@@ -44,27 +42,11 @@ void UnitTestSampleConvergence(int iters) {
   }
   KALDI_ASSERT(ApproxEqual(sum1, k));
   */
-
   vector<std::pair<int, BaseFloat> > u(selection_probs.size());
   for (int i = 0; i < u.size(); i++) {
     u[i].first = i;
     u[i].second = selection_probs[i];
   }
-  // get the counts of samples
-  int N = iters;
-  vector<BaseFloat> samples_probs(u.size(), 0);
-  for (int i = 0; i < N; i++) {
-    vector<int> samples;
-    SampleWithoutReplacement(u, k, &samples);
-    for (int j = 0; j < samples.size(); j++) {
-      samples_probs[samples[j]] += 1;
-    }
-  }
-  // compute the estimated pdf of unigrams
-  for (int i = 0; i < samples_probs.size(); i++) {
-    samples_probs[i] /= (N * k);
-  }
-
   // normalize the selection_probs
   BaseFloat sum = 0;
   for (int i = 0; i < u.size(); i++) {
@@ -73,18 +55,30 @@ void UnitTestSampleConvergence(int iters) {
   for (int i = 0; i < u.size(); i++) {
     selection_probs[i] /= sum;
   }
-  // compute Euclidean distances between the two pdfs
-  BaseFloat distance = 0;
-  for (int i = 0; i < u.size(); i++) {
-    distance += pow(samples_probs[i] - selection_probs[i], 2);
-  }
-  distance = sqrt(distance);
-  KALDI_LOG << "Euclidean distance between the two pdfs is " << distance;
-  // Decide whether the test fail
-  if (distance > 0.01) {
-    KALDI_ERR << "Failed to pass sample convergence test.";
-  } else {
-    KALDI_LOG << "Passed the Sampling convergence test.";
+
+  vector<BaseFloat> samples_probs(u.size(), 0);
+  int count = 0;
+  for (int i = 0; ; i++) {
+    count++;
+    vector<int> samples;
+    SampleWithoutReplacement(u, k, &samples);
+    for (int j = 0; j < samples.size(); j++) {
+      samples_probs[samples[j]] += 1;
+    }
+    for (int j = 0; j < samples_probs.size(); j++) {
+      samples_probs[j] /= (count * k);
+    }
+    // update Euclidean distance between the two pdfs
+    BaseFloat distance = 0;
+    for (int j = 0; j < u.size(); j++) {
+      distance += pow(samples_probs[j] - selection_probs[j], 2);
+    }
+    distance = sqrt(distance);
+    // if the Euclidean distance is small enough, break the loop
+    if (distance < 0.05) {
+      KALDI_LOG << "test of the sampling convergence is passed.";
+      break;
+    }
   }
 }
 
@@ -188,6 +182,6 @@ int main() {
   int N = 10000;
   UnitTestSampleWithProbOne(N);
   UnitTestSamplingTime(N);
-  UnitTestSampleConvergence(N);
+  UnitTestSampleConvergence();
 }
 
