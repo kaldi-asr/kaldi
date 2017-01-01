@@ -64,8 +64,7 @@ class CuLeakyNumeratorComputation {
   // Does the backward computation and (efficiently) adds the derivative of the
   // nnet output w.r.t. the (log-prob times supervision_.weight times
   // deriv_weight) to 'nnet_output_deriv'.
-  bool Backward(BaseFloat deriv_weight,
-                CuMatrixBase<BaseFloat> *nnet_output_deriv);
+  bool Backward(CuMatrixBase<BaseFloat> *nnet_output_deriv);
 
   inline int32 TotalNumStates() {return num_graph_.MaxNumStates()
                                         + den_graph_.NumStates(); }

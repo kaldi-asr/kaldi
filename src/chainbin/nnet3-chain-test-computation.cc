@@ -124,7 +124,7 @@ int main(int argc, char *argv[]) {
       BaseFloat cu_leakynum_logprob_weighted = culeakynum.Forward();
       std::cout << "cu leaky num logprob weighted: " << cu_leakynum_logprob_weighted << "\n";
       bool ok = true;
-      ok = culeakynum.Backward(eg.outputs[0].supervision.weight, &nnet_output_deriv2);
+      ok = culeakynum.Backward(&nnet_output_deriv2);
       std::cout << "ok: " << ok << "\n";
       pf.tac();
 

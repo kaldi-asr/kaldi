@@ -597,6 +597,9 @@ void Supervision::Read(std::istream &is, bool binary) {
       }
     }
     ExpectToken(is, binary, "</UnmergedFSTs>");
+  } else {
+    fsts.resize(1);
+    fsts[0] = fst;
   }
     // ReadFstKaldi will work even though we wrote using a compact format.
   ExpectToken(is, binary, "</Supervision>");
@@ -676,6 +679,8 @@ void AppendSupervision(const std::vector<const Supervision*> &input,
       output_was_merged.push_back(false);
     }
   }
+
+  (*output_supervision)[0].fsts.clear();
   for (int32 i = 0; i < input.size(); i++)
     (*output_supervision)[0].fsts.push_back(input[i]->fst);
 

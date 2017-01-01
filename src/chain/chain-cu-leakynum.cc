@@ -41,7 +41,7 @@ CuLeakyNumeratorComputation::CuLeakyNumeratorComputation(
                         static_cast<int32>(kMaxDerivTimeSteps) *
                         num_sequences_)),
     alpha_num_(frames_per_sequence_ + 1,
-           num_graph.MaxNumStates() * num_sequences_ + num_sequences_ * 2,
+           num_graph.MaxNumStates() * num_sequences_ + num_sequences_ * 3,
            kSetZero),
     alpha_den_(frames_per_sequence_ + 1,
            den_graph.NumStates() * num_sequences_ + num_sequences_,
@@ -102,22 +102,33 @@ void CuLeakyNumeratorComputation::AlphaSumAndPrime(int32 t) {
                                        * num_sequences_,
                                        num_sequences_);
 
+      CuSubVector<BaseFloat> alpha_prime(this_alpha_num + //HHH
+                                         (num_graph_.MaxNumStates() + 2)
+                                         * num_sequences_,
+                                         num_sequences_);
+
   CuSubVector<BaseFloat> alpha_sum_vec_loc2(this_alpha_den +
                                        den_graph_.NumStates()
                                        * num_sequences_,
                                        num_sequences_);
 
   alpha_sum_vec.AddRowSumMat(1.0, alpha_mat_den, 0.0);
-
+        alpha_prime.CopyFromVec(alpha_sum_vec); //HHH
   /// before adding alphas of num state, we should add this to alpha(t-1)
   /// note: alpha prime is the sum of alphas for all den states
   /// add alpha-prime(t-1) to alpha(t-1) so that they can be used in the
   /// *standard* way to compute next alpha (i.e. apha(t))
-  alpha_mat_num.AddVecToRows(1.0, alpha_sum_vec);
+        //HHH alpha_mat_num.AddVecToRows(1.0, alpha_sum_vec);
   
   /// now add num states too
   alpha_sum_vec.AddRowSumMat(1.0, alpha_mat_num, 1.0);
   alpha_sum_vec_loc2.CopyFromVec(alpha_sum_vec);
+  
+  
+  //Vector<BaseFloat> tmp(alpha_sum_vec.Dim());
+  //std::cout << "Alpha-sum for t = " << t << " is:\n";
+  //alpha_sum_vec.CopyToVec(&tmp);
+  //tmp.Write(std::cout, false);
 }
 
 // the alpha computation for some 0 < t <= num_time_steps_.
@@ -135,6 +146,11 @@ void CuLeakyNumeratorComputation::AlphaNumFrame(int32 t) {
   CuSubMatrix<BaseFloat> probs(exp_nnet_output_transposed_, 0, num_pdfs,
                                (t - 1) * num_sequences_, num_sequences_);
   const BaseFloat *prob_data = probs.Data();
+
+  CuSubVector<BaseFloat> alpha_prime(prev_alpha + //HHH
+                                     (num_graph_.MaxNumStates() + 2) //HHHHHHHHHHHHHHHHHHHHHHHHHH + 2 --> fix in kernel
+                                     * num_sequences_,
+                                     num_sequences_);
 
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
@@ -179,7 +195,7 @@ void CuLeakyNumeratorComputation::AlphaNumFrame(int32 t) {
                 prev_hmm_state = trans_iter->hmm_state;
           BaseFloat prob = prob_data[pdf_id * prob_stride + s],
               this_prev_alpha = prev_alpha[prev_hmm_state * num_sequences + s];
-          this_tot_alpha += this_prev_alpha / inv_arbitrary_scale * transition_prob * prob; //#SCC#
+          this_tot_alpha += (this_prev_alpha + alpha_prime(s)) / inv_arbitrary_scale * transition_prob * prob; //#HHH#
           
           if (this_tot_alpha - this_tot_alpha != 0) {
             KALDI_LOG << "t: " << t << ", seq: " << s << ", h: " << h
@@ -411,14 +427,13 @@ BaseFloat CuLeakyNumeratorComputation::ComputeTotLogLike() {
 
 
 bool CuLeakyNumeratorComputation::Backward(
-    BaseFloat deriv_weight,
     CuMatrixBase<BaseFloat> *nnet_output_deriv) {
   BetaLastFrame();
   for (int32 t = frames_per_sequence_ - 1; t >= 0; t--) {
-    BetaPrime(t + 1);
-    BetaNumFrame(t);
-    BetaDenFrame(t);
-    BetaHat(t);
+    BetaPrime(t + 1); // B^{num}_{t+1}(i) <-- B^{num}_{t+1}(i) + Bprime_{t+1} 
+    BetaNumFrame(t); // standard backward computation for denominator B_t
+    BetaDenFrame(t); // standard backward computation for numerator B_t
+    BetaHat(t);  // B^{den}_t(i) <-- B_t(i) + Bhat_{t+1}
     if (GetVerboseLevel() >= 1 || t == 0)
       BetaGeneralFrameDebug(t);
     if (t % kMaxDerivTimeSteps == 0) {
@@ -435,7 +450,7 @@ bool CuLeakyNumeratorComputation::Backward(
           *nnet_output_deriv,
           t * num_sequences_, chunk_frames * num_sequences_,
           0, num_pdfs);
-      output_deriv_part.AddMat(deriv_weight, transposed_deriv_part, kTrans);
+      output_deriv_part.AddMat(1.0, transposed_deriv_part, kTrans); // TODO(1.0 should be sup.weight!!!)
       if (t != 0)
         transposed_deriv_part.SetZero();
     }
@@ -486,16 +501,22 @@ void CuLeakyNumeratorComputation::BetaPrime(int32 t) {
                                        num_sequences_,
                                        num_sequences_);
 
-  CuVector<BaseFloat> beta_den_weighted_sum_vec(num_sequences_, kUndefined); //TODO(hh): no need for kSetZero? #CAOK#
-  beta_den_weighted_sum_vec.AddMatVec(opts_.num_leak_coefficient, beta_den_mat,
+     BaseFloat *this_beta_num = beta_num_.RowData(t % 2);
+//     CuSubMatrix<BaseFloat> beta_num_mat(this_beta_num,
+//                                       num_graph_.MaxNumStates(),
+//                                       num_sequences_,
+//                                       num_sequences_);
+
+  CuSubVector<BaseFloat> beta_prime(this_beta_num +
+                                   num_graph_.MaxNumStates() * num_sequences_,
+                                   num_sequences_);
+
+  //HHH CuVector<BaseFloat> beta_den_weighted_sum_vec(num_sequences_, kUndefined); //TODO(hh): no need for kSetZero? #CAOK#
+  beta_prime.AddMatVec(opts_.num_leak_coefficient, beta_den_mat,
                               kTrans, den_graph_.InitialProbs(), 0.0);
 
-  BaseFloat *this_beta_num = beta_num_.RowData(t % 2);
-  CuSubMatrix<BaseFloat> beta_num_mat(this_beta_num,
-                                       num_graph_.MaxNumStates(),
-                                       num_sequences_,
-                                       num_sequences_);
-  beta_num_mat.AddVecToRows(1.0, beta_den_weighted_sum_vec, 1.0);
+
+        //HHH beta_num_mat.AddVecToRows(1.0, beta_den_weighted_sum_vec, 1.0);
 
 //  std::cout << "Beta primes for time " << t << ":\n";
 //  beta_den_weighted_sum_vec.Write(std::cout, false);
@@ -524,6 +545,14 @@ void CuLeakyNumeratorComputation::BetaNumFrame(int32 t) {
   int32 max_num_hmm_states = num_graph_.MaxNumStates(),
         num_sequences = num_sequences_;
 
+  CuSubVector<BaseFloat> next_beta_prime(next_beta +  //HHH
+                                   num_graph_.MaxNumStates() * num_sequences_,
+                                   num_sequences_);
+                                   
+  CuSubVector<BaseFloat> alpha_prime(this_alpha +
+                                     (num_graph_.MaxNumStates() + 2) //HHHHHHHHHHHHHHHHHHHHHHHHHH + 2 --> fix in kernel
+                                     * num_sequences_,
+                                     num_sequences_);
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
@@ -568,20 +597,26 @@ void CuLeakyNumeratorComputation::BetaNumFrame(int32 t) {
             *trans_end = transitions +
               forward_transitions[s*max_num_hmm_states + h].second;
         for (; trans_iter != trans_end; ++trans_iter) {
-          BaseFloat transition_prob = trans_iter->transition_prob;
           int32 pdf_id = trans_iter->pdf_id,
               next_hmm_state = trans_iter->hmm_state;
-          BaseFloat variable_factor = transition_prob *
-              next_beta[next_hmm_state * num_sequences + s] *
-              prob_data[pdf_id * prob_stride + s] / inv_arbitrary_scale;  // #SCC#
-          tot_variable_factor += variable_factor;
-          BaseFloat occupation_prob = variable_factor * this_alpha_prob; //occupation_factor; #SCC#
+          BaseFloat transition_prob = trans_iter->transition_prob,
+                    next_beta_prob = next_beta[next_hmm_state * num_sequences + s];
+          BaseFloat shared_factor = transition_prob * prob_data[pdf_id * prob_stride + s] / inv_arbitrary_scale;
+          BaseFloat variable_factor1 = next_beta_prob * shared_factor;
+          BaseFloat variable_factor2 = (next_beta_prob + next_beta_prime(s)) *
+                                       shared_factor;
+          tot_variable_factor += variable_factor2;
+          BaseFloat occupation_prob = variable_factor1 * this_alpha_prob; //occupation_factor; #SCC#
           log_prob_deriv_data[pdf_id * deriv_stride + s] += occupation_prob;
 
 
+          /// handle Gamma Leaky Transitions:
+          log_prob_deriv_data[pdf_id * deriv_stride + s] += shared_factor * ( 
+             (this_alpha_prob * next_beta_prime(s))    +    (next_beta_prob * alpha_prime(s))   );
+
           if (tot_variable_factor - tot_variable_factor != 0) {
             KALDI_LOG << "t: " << t << ", seq: " << s << ", h: " << h << ", pdf_id: " << pdf_id
-            << ", var-factor: " << variable_factor 
+            << ", var-factor: " << variable_factor1 
             << ", ocup-prob: " << occupation_prob
             << ", next-beta: " << next_beta[next_hmm_state * num_sequences + s]
             << ", this_alpha_prob: " << this_alpha_prob
@@ -757,6 +792,20 @@ void CuLeakyNumeratorComputation::BetaHat(int32 t) {
                                       num_sequences_,
                                       num_sequences_);
   beta_den_mat.AddVecToRows(1.0, beta_hats, 1.0);
+
+
+
+  BaseFloat *this_beta_num = beta_num_.RowData(t % 2); 
+  CuSubMatrix<BaseFloat> beta_num_mat(this_beta_num,
+                                      num_graph_.MaxNumStates(),
+                                      num_sequences_,
+                                      num_sequences_);
+  if (t == 0) {
+    //std::cout << "Beta den at time 0:\n";
+    //beta_den_mat.Write(std::cout, false); 
+    //std::cout << "Beta num at time 0:\n";
+    //beta_num_mat.Write(std::cout, false); 
+  }
 }
 
 

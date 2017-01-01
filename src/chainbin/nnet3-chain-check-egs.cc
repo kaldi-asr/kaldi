@@ -74,7 +74,7 @@ int main(int argc, char *argv[]) {
       
       pf.tic("numGraph");
       NumeratorGraph ng(eg.outputs[0].supervision, true);
-      ng.PrintInfo(true);
+      ng.PrintInfo(false);
       pf.tac();
 
       pf.tic("matPrep");

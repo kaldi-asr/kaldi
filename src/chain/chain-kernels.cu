@@ -275,6 +275,8 @@ static void _cuda_chain_num_hmm_forward(const Int32Pair *backward_transitions,
   if (h >= num_states[s])
     return;
 
+  BaseFloat prev_alpha_prime = prev_alpha[(max_num_hmm_states + 2) * num_sequences + s];
+
   double this_tot_alpha = 0.0;
   const DenominatorGraphTransition
       *trans_iter = transitions + backward_transitions[s*max_num_hmm_states+h].first,
@@ -293,8 +295,8 @@ static void _cuda_chain_num_hmm_forward(const Int32Pair *backward_transitions,
               pseudo_loglike1 = probs[pdf_id1 * prob_stride + s],
              this_prev_alpha1 = prev_alpha[prev_hmm_state1 * num_sequences + s];
 
-    this_tot_alpha += this_prev_alpha0 * transition_prob0 * pseudo_loglike0 +
-                       this_prev_alpha1 * transition_prob1 * pseudo_loglike1;
+    this_tot_alpha += (this_prev_alpha0 + prev_alpha_prime) * transition_prob0 * pseudo_loglike0 +
+                       (this_prev_alpha1 + prev_alpha_prime) * transition_prob1 * pseudo_loglike1;
   }
   if (trans_iter != trans_end) {
     // mop up the odd transition.
@@ -303,7 +305,7 @@ static void _cuda_chain_num_hmm_forward(const Int32Pair *backward_transitions,
        prev_hmm_state0 = trans_iter[0].hmm_state;
     BaseFloat pseudo_loglike0 = probs[pdf_id0 * prob_stride + s],
              this_prev_alpha0 = prev_alpha[prev_hmm_state0 * num_sequences + s];
-    this_tot_alpha += this_prev_alpha0 * transition_prob0 * pseudo_loglike0;
+    this_tot_alpha += (this_prev_alpha0 + prev_alpha_prime) * transition_prob0 * pseudo_loglike0;
   }
 
   BaseFloat arbitrary_scale =
@@ -329,6 +331,10 @@ static void _cuda_chain_num_hmm_backward(const Int32Pair *forward_transitions,
   if (h >= num_states[s])
     return;
 
+  BaseFloat this_alpha_prime = this_alpha[(max_num_hmm_states + 2) * num_sequences + s];
+  BaseFloat next_beta_prime = next_beta[max_num_hmm_states * num_sequences + s];
+
+
   // See where arbitrary_scale is defined in the forward computation above, for
   // more explanation of inv_arbitrary_scale.
   BaseFloat this_alpha_prob = this_alpha[h * num_sequences + s],
@@ -350,18 +356,35 @@ static void _cuda_chain_num_hmm_backward(const Int32Pair *forward_transitions,
     int32_cuda pdf_id1 = trans_iter[1].pdf_id,
         next_hmm_state1 = trans_iter[1].hmm_state;
     BaseFloat variable_factor0 = transition_prob0 *
-        next_beta[next_hmm_state0 * num_sequences + s] *
+        (next_beta[next_hmm_state0 * num_sequences + s] + next_beta_prime)*
                     probs[pdf_id0 * prob_stride + s],
          variable_factor1 = transition_prob1 *
-        next_beta[next_hmm_state1 * num_sequences + s] *
+        (next_beta[next_hmm_state1 * num_sequences + s] + next_beta_prime) *
                     probs[pdf_id1 * prob_stride + s];
     tot_variable_factor += variable_factor0 + variable_factor1;
-    BaseFloat occupation_prob0 = variable_factor0 * occupation_factor;
+
+          /// handle Gamma Leaky Transitions:
+//          BaseFloat shared_factor = transition_prob * prob_data[pdf_id * prob_stride + s] / inv_arbitrary_scale;
+//          log_prob_deriv_data[pdf_id * deriv_stride + s] += shared_factor * ( 
+//             (this_alpha_prob * next_beta_prime(s))    +    (next_beta_prob * alpha_prime(s))   );
+    BaseFloat shared_factor0 = transition_prob0 *
+                    probs[pdf_id0 * prob_stride + s] / inv_arbitrary_scale,
+              shared_factor1 = transition_prob1 *
+                    probs[pdf_id1 * prob_stride + s] / inv_arbitrary_scale;
+    BaseFloat leakytransitions_cont0 = shared_factor0 * ( 
+             (this_alpha_prob * next_beta_prime)    +    (next_beta[next_hmm_state0 * num_sequences + s] * this_alpha_prime)   );
+    BaseFloat leakytransitions_cont1 = shared_factor1 * ( 
+             (this_alpha_prob * next_beta_prime)    +    (next_beta[next_hmm_state1 * num_sequences + s] * this_alpha_prime)   );
+
+    BaseFloat occupation_prob0 = shared_factor0 * next_beta[next_hmm_state0 * num_sequences + s] * this_alpha_prob;
+    BaseFloat occupation_prob1 = shared_factor1 * next_beta[next_hmm_state1 * num_sequences + s] * this_alpha_prob;
+
     atomic_add_thresholded(log_prob_deriv + (pdf_id0 * log_prob_deriv_stride + s),
-                           occupation_prob0);
-    BaseFloat occupation_prob1 = variable_factor1 * occupation_factor;
+                           occupation_prob0 + leakytransitions_cont0);
+
     atomic_add_thresholded(log_prob_deriv + (pdf_id1 * log_prob_deriv_stride + s),
-                           occupation_prob1);
+                           occupation_prob1 + leakytransitions_cont1);
+
   }
   if (trans_iter != trans_end) {
     // mop up the odd transition.
@@ -369,12 +392,20 @@ static void _cuda_chain_num_hmm_backward(const Int32Pair *forward_transitions,
     int32_cuda pdf_id0 = trans_iter[0].pdf_id,
         next_hmm_state0 = trans_iter[0].hmm_state;
     BaseFloat variable_factor0 = transition_prob0 *
-        next_beta[next_hmm_state0 * num_sequences + s] *
+        (next_beta[next_hmm_state0 * num_sequences + s] + next_beta_prime) *
                       probs[pdf_id0 * prob_stride + s];
     tot_variable_factor += variable_factor0;
-    BaseFloat occupation_prob0 = variable_factor0 * occupation_factor;
+
+    BaseFloat shared_factor0 = transition_prob0 *
+                    probs[pdf_id0 * prob_stride + s] / inv_arbitrary_scale;
+    BaseFloat leakytransitions_cont0 = shared_factor0 * ( 
+             (this_alpha_prob * next_beta_prime)    +    (next_beta[next_hmm_state0 * num_sequences + s] * this_alpha_prime)   );
+
+    BaseFloat occupation_prob0 = shared_factor0 * next_beta[next_hmm_state0 * num_sequences + s] * this_alpha_prob;
+
+
     atomic_add_thresholded(log_prob_deriv + (pdf_id0 * log_prob_deriv_stride + s),
-                           occupation_prob0);
+                           occupation_prob0 + leakytransitions_cont0);
   }
   BaseFloat beta = tot_variable_factor / inv_arbitrary_scale;
   this_beta[h * num_sequences + s] = beta;
