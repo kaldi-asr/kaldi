@@ -247,14 +247,14 @@ class ChainExampleMerger {
   void AcceptExample(NnetChainExample *a);
 
   // This function announces to the class that the input has finished, so it
-  // should flush out any smaller-sizes minibatches, as dictated by the config.
+  // should flush out any smaller-sized minibatches, as dictated by the config.
   // This will be called in the destructor, but you can call it explicitly when
-  // all the input is done if you want to.
-  // It also prints the stats.
+  // all the input is done if you want to; it won't repeat anything if called
+  // twice.  It also prints the stats.
   void Finish();
 
   // returns a suitable exit status for a program.
-  bool ExitStatus() { return num_egs_written_ > 0; }
+  int32 ExitStatus() { Finish(); return (num_egs_written_ > 0 ? 0 : 1); }
 
   ~ChainExampleMerger() { Finish(); };
  private:

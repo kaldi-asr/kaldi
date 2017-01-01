@@ -197,7 +197,7 @@ class UtteranceSplitter {
 
   ~UtteranceSplitter();
 
-  int32 ExitStatus() { return (total_frames_in_chunks_ > 0); }
+  int32 ExitStatus() { return (total_frames_in_chunks_ > 0 ? 0 : 1); }
 
  private:
 
@@ -283,7 +283,7 @@ class UtteranceSplitter {
 
   const ExampleGenerationConfig &config_;
 
-  // The vector 'split_for_length_' is indexed by the num-frames of a file, and
+  // The vector 'splits_for_length_' is indexed by the num-frames of a file, and
   // gives us a list of alternative splits that we can use if the utternace has
   // that many frames.  For example, if split_for_length[100] = ( (25, 40, 40),
   // (40, 65) ), it means we could either split as chunks of size (25, 40, 40)
@@ -328,10 +328,11 @@ public:
   std::string minibatch_size;
   std::string discard_partial_minibatches;   // for back-compatibility, not used.
 
-  ExampleMergingConfig(): compress(false),
-                          measure_output_frames("deprecated"),
-                          minibatch_size("256"),
-                          discard_partial_minibatches("deprecated") { }
+  ExampleMergingConfig(const char *default_minibatch_size = "256"):
+      compress(false),
+      measure_output_frames("deprecated"),
+      minibatch_size(default_minibatch_size),
+      discard_partial_minibatches("deprecated") { }
 
   void Register(OptionsItf *po) {
     po->Register("compress", &compress, "If true, compress the output examples "
@@ -344,7 +345,7 @@ public:
                  "String controlling the minibatch size.  May be just an integer, "
                  "meaning a fixed minibatch size (e.g. --minibatch-size=128). "
                  "May be a list of ranges and values, e.g. --minibatch-size=32,64 "
-                 "or --minibatch-size=16-32,64,128.  All minibatches will be of "
+                 "or --minibatch-size=16:32,64,128.  All minibatches will be of "
                  "the largest size until the end of the input is reached; "
                  "then, increasingly smaller sizes will be allowed.  Only egs "
                  "with the same structure (e.g num-frames) are merged.  You may "
@@ -352,7 +353,7 @@ public:
                  "(defined as the maximum number of Indexes on any input), in "
                  "the format "
                  "--minibatch-size='eg_size1=mb_sizes1/eg_size2=mb_sizes2', e.g. "
-                 "--minibatch-size=128=64-128,256/256=32-64,128.  Egs are given "
+                 "--minibatch-size=128=64:128,256/256=32:64,128.  Egs are given "
                  "minibatch-sizes based on the specified eg-size closest to "
                  "their actual size.");
   }
@@ -385,9 +386,9 @@ public:
 
 
  private:
-  // struct IntSet is a representation of something like 16-32,64, which is a
-  // nonempty list of either nonnegative integers or ranges of nonnegative
-  // integers.  Conceptually it represents a set of nonnegative integers.
+  // struct IntSet is a representation of something like 16:32,64, which is a
+  // nonempty list of either positive integers or ranges of positive integers.
+  // Conceptually it represents a set of positive integers.
   struct IntSet {
     // largest_size is the largest integer in any of the ranges (64 in this
     // example).
@@ -489,14 +490,14 @@ class ExampleMerger {
   void AcceptExample(NnetExample *a);
 
   // This function announces to the class that the input has finished, so it
-  // should flush out any smaller-sizes minibatches, as dictated by the config.
+  // should flush out any smaller-sized minibatches, as dictated by the config.
   // This will be called in the destructor, but you can call it explicitly when
-  // all the input is done if you want to.
-  // It also prints the stats.
+  // all the input is done if you want to; it won't repeat anything if called
+  // twice.  It also prints the stats.
   void Finish();
 
   // returns a suitable exit status for a program.
-  bool ExitStatus() { return num_egs_written_ > 0 ? 0 : 1; }
+  int32 ExitStatus() { Finish(); return (num_egs_written_ > 0 ? 0 : 1); }
 
   ~ExampleMerger() { Finish(); };
  private:

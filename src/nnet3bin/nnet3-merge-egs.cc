@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
 
     ExampleMerger merger(merging_config, &example_writer);
 
-    while (!example_reader.Done()) {
+    for (; !example_reader.Done(); example_reader.Next()) {
       const NnetExample &cur_eg = example_reader.Value();
       merger.AcceptExample(new NnetExample(cur_eg));
     }

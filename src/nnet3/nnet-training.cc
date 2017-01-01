@@ -28,7 +28,7 @@ NnetTrainer::NnetTrainer(const NnetTrainerOptions &config,
                          Nnet *nnet):
     config_(config),
     nnet_(nnet),
-    compiler_(*nnet, config_.optimize_config),
+    compiler_(*nnet, config_.optimize_config, config_.compiler_config),
     num_minibatches_processed_(0) {
   if (config.zero_component_stats)
     ZeroComponentStats(nnet);
@@ -39,7 +39,7 @@ NnetTrainer::NnetTrainer(const NnetTrainerOptions &config,
                              // natural-gradient updates.
   SetZero(is_gradient, delta_nnet_);
   const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
-  num_max_change_per_component_applied_.resize(num_updatable, 0); 
+  num_max_change_per_component_applied_.resize(num_updatable, 0);
   num_max_change_global_applied_ = 0;
 
   if (config_.read_cache != "") {
@@ -167,7 +167,7 @@ void NnetTrainer::UpdateParamsWithMaxChange() {
            << " / " << num_updatable << " Updatable Components."
            << "(smallest factor=" << min_scale << " on "
            << component_name_with_min_scale
-           << " with max-change=" << max_change_with_min_scale <<"). "; 
+           << " with max-change=" << max_change_with_min_scale <<"). ";
     if (param_delta > config_.max_param_change)
       ostr << "Global max-change factor was "
            << config_.max_param_change / param_delta
