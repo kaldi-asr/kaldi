@@ -41,10 +41,8 @@ int main(int argc, char *argv[]) {
         "nnet3-discriminative-merge-egs --minibatch-size=128 ark:1.degs ark:- | nnet3-discriminative-train ... \n"
         "See also nnet3-discriminative-copy-egs\n";
 
-    ExampleMergingConfig merging_config;
-    merging_config.minibatch_size = 64;  // change the default for this
-                                         // program.. anyway it will usually be
-                                         // set on the command line.
+    ExampleMergingConfig merging_config("64");  // 64 is default minibatch size.
+
     ParseOptions po(usage);
     merging_config.Register(&po);
 
@@ -61,8 +59,9 @@ int main(int argc, char *argv[]) {
     SequentialNnetDiscriminativeExampleReader example_reader(examples_rspecifier);
     NnetDiscriminativeExampleWriter example_writer(examples_wspecifier);
 
+    merging_config.ComputeDerived();
     DiscriminativeExampleMerger merger(merging_config, &example_writer);
-    while (!example_reader.Done()) {
+    for (; !example_reader.Done(); example_reader.Next()) {
       const NnetDiscriminativeExample &cur_eg = example_reader.Value();
       merger.AcceptExample(new NnetDiscriminativeExample(cur_eg));
     }
@@ -74,6 +73,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-
-

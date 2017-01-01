@@ -499,8 +499,8 @@ void DiscriminativeExampleMerger::AcceptExample(NnetDiscriminativeExample *eg) {
     // so use swap to create that without doing any real work.
     std::vector<NnetDiscriminativeExample> egs_to_merge(minibatch_size);
     for (int32 i = 0; i < minibatch_size; i++) {
-      egs_to_merge[i].Swap(vec[i]);
-      delete vec[i];  // we owned those pointers.
+      egs_to_merge[i].Swap(vec_copy[i]);
+      delete vec_copy[i];  // we owned those pointers.
     }
     WriteMinibatch(&egs_to_merge);
   }
@@ -566,10 +566,10 @@ void DiscriminativeExampleMerger::Finish() {
       vec.clear();
     }
   }
+  stats_.PrintStats();
 }
 
 
 
 } // namespace nnet3
 } // namespace kaldi
-

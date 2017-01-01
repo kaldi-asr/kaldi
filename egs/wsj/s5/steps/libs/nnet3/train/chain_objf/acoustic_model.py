@@ -301,7 +301,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
         # changing too fast (i.e. it can worsen the objective function), and
         # the smaller minibatch size will help to keep the update stable.
         cur_num_chunk_per_minibatch_str = common_train_lib.halve_minibatch_size_str(
-            cur_num_chunk_per_minibatch_str)
+            num_chunk_per_minibatch_str)
         cur_max_param_change = float(max_param_change) / math.sqrt(2)
 
     raw_model_string = raw_model_string + dropout_edit_string
@@ -474,7 +474,7 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
                 "nnet3-am-copy --raw=true {model} - |" {dir}/den.fst \
                 "ark,bg:nnet3-chain-copy-egs --left-context={lc} \
                     --right-context={rc} ark:{egs_dir}/valid_diagnostic.cegs \
-                    ark:- | nnet3-chain-merge-egs ark:- ark:- |" \
+                    ark:- | nnet3-chain-merge-egs --minibatch-size=1:64 ark:- ark:- |" \
         """.format(command=run_opts.command, dir=dir, iter=iter, model=model,
                    lc=left_context, rc=right_context,
                    l2=l2_regularize, leaky=leaky_hmm_coefficient,
@@ -489,7 +489,7 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
                 "nnet3-am-copy --raw=true {model} - |" {dir}/den.fst \
                 "ark,bg:nnet3-chain-copy-egs --left-context={lc} \
                     --right-context={rc} ark:{egs_dir}/train_diagnostic.cegs \
-                    ark:- | nnet3-chain-merge-egs ark:- ark:- |" \
+                    ark:- | nnet3-chain-merge-egs --minibatch-size=1:64 ark:- ark:- |" \
         """.format(command=run_opts.command, dir=dir, iter=iter, model=model,
                    lc=left_context, rc=right_context,
                    l2=l2_regularize, leaky=leaky_hmm_coefficient,

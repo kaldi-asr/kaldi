@@ -466,10 +466,12 @@ void UtteranceSplitter::InitSplitForLength() {
       // gaps twice as strongly as overlaps, based on the intuition that
       // completely throwing out frames of data is worse than counting them
       // twice.
-      int32 c = (default_duration > float(u) ? default_duration - u :
-                 2 * (u - default_duration));
-      if (u < max_chunk_size)
+      float c = (default_duration > float(u) ? default_duration - float(u) :
+                 2.0 * (u - default_duration));
+      if (u < max_chunk_size)  // can't fit the largest of the chunks in this
+                               // utterance
         c = std::numeric_limits<float>::max();
+      KALDI_ASSERT(c >= 0);
       costs_for_length[u].push_back(c);
     }
   }
@@ -574,6 +576,10 @@ void UtteranceSplitter::GetChunkSizesForUtterance(
   KALDI_ASSERT(utterance_length >= 0);
   const std::vector<std::vector<int32> > &possible_splits =
       splits_for_length_[utterance_length];
+  if (possible_splits.empty()) {
+    chunk_sizes->clear();
+    return;
+  }
   int32 num_possible_splits = possible_splits.size(),
       randomly_chosen_split = RandInt(0, num_possible_splits - 1);
   *chunk_sizes = possible_splits[randomly_chosen_split];
@@ -693,7 +699,7 @@ void UtteranceSplitter::DistributeRandomly(int32 n,
   std::vector<std::pair<float, int32> > partial_counts;
   int32 total_count = 0;
   for (int32 i = 0; i < size; i++) {
-    float this_count = float(n) / total_magnitude;
+    float this_count = n * float(magnitudes[i]) / total_magnitude;
     // note: cast of float to int32 rounds towards zero (down, in this
     // case, since this_count >= 0).
     int32 this_whole_count = static_cast<int32>(this_count),
@@ -904,11 +910,9 @@ bool ExampleMergingConfig::ParseIntSet(const std::string &str,
   int_set->ranges.resize(split_str.size());
   for (size_t i = 0; i < split_str.size(); i++) {
     std::vector<int32> split_range;
-    // note: because we split on '-', it't not possible to
-    // get negative values in 'split_range'.
-    SplitStringToIntegers(str, "-", false, &split_range);
+    SplitStringToIntegers(split_str[i], ":", false, &split_range);
     if (split_range.size() < 1 || split_range.size() > 2 ||
-        split_range[0] > split_range[1])
+        split_range[0] > split_range.back() || split_range[0] <= 0)
       return false;
     int_set->ranges[i].first = split_range[0];
     int_set->ranges[i].second = split_range.back();
@@ -935,7 +939,7 @@ void ExampleMergingConfig::ComputeDerived() {
 
   rules.resize(minibatch_size_split.size());
   for (size_t i = 0; i < minibatch_size_split.size(); i++) {
-    int32 &minibatch_size = rules[i].first;
+    int32 &eg_size = rules[i].first;
     IntSet &int_set = rules[i].second;
     // 'this_rule' will be either something like "256" or like "64-128,256"
     // (but these two only if  minibatch_size_split.size() == 1, or something with
@@ -948,7 +952,7 @@ void ExampleMergingConfig::ComputeDerived() {
         KALDI_ERR << "Could not parse option --minibatch-size="
                   << minibatch_size;
       }
-      if (!ConvertStringToInteger(rule_split[0], &minibatch_size) ||
+      if (!ConvertStringToInteger(rule_split[0], &eg_size) ||
           !ParseIntSet(rule_split[1], &int_set))
         KALDI_ERR << "Could not parse option --minibatch-size="
                   << minibatch_size;
@@ -957,9 +961,8 @@ void ExampleMergingConfig::ComputeDerived() {
       if (minibatch_size_split.size() != 1) {
         KALDI_ERR << "Could not parse option --minibatch-size="
                   << minibatch_size << " (all rules must have "
-                  << "minibatch-size specified if >1 rule)";
+                  << "eg-size specified if >1 rule)";
       }
-      minibatch_size = 0;
       if (!ParseIntSet(this_rule, &int_set))
         KALDI_ERR << "Could not parse option --minibatch-size="
                   << minibatch_size;
@@ -1035,8 +1038,8 @@ void ExampleMergingStats::DiscardedExamples(int32 example_size,
 
 
 void ExampleMergingStats::PrintStats() const {
-  PrintAggregateStats();
   PrintSpecificStats();
+  PrintAggregateStats();
 }
 
 void ExampleMergingStats::PrintAggregateStats() const {
@@ -1097,7 +1100,7 @@ void ExampleMergingStats::PrintAggregateStats() const {
      << " egs of avg. size " << avg_input_egs_size
      << " into " << num_minibatches << " minibatches, discarding "
      << percent_discarded <<  "% of egs.  Avg minibatch size was "
-     << avg_minibatch_size << ", distinct types of egs/minibatches "
+     << avg_minibatch_size << ", #distinct types of egs/minibatches "
      << "was " << num_distinct_egs_types << "/"
      << num_distinct_minibatch_types;
   KALDI_LOG << os.str();
@@ -1179,8 +1182,8 @@ void ExampleMerger::AcceptExample(NnetExample *eg) {
     // so use swap to create that without doing any real work.
     std::vector<NnetExample> egs_to_merge(minibatch_size);
     for (int32 i = 0; i < minibatch_size; i++) {
-      egs_to_merge[i].Swap(vec[i]);
-      delete vec[i];  // we owned those pointers.
+      egs_to_merge[i].Swap(vec_copy[i]);
+      delete vec_copy[i];  // we owned those pointers.
     }
     WriteMinibatch(egs_to_merge);
   }
@@ -1244,6 +1247,7 @@ void ExampleMerger::Finish() {
       vec.clear();
     }
   }
+  stats_.PrintStats();
 }
 
 

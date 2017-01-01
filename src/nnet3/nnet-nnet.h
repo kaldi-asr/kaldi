@@ -247,8 +247,8 @@ class Nnet {
   void RemoveSomeNodes(const std::vector<int32> &nodes_to_remove);
 
   void ResetGenerators(); // resets random-number generators for all
-  // random components.  You must also set srand() for this to be
-  // effective.
+  // random components.  You must call srand() prior to this call, for this to
+  // be effective.
 
 
   // This function outputs to "config_lines" the lines of a config file.  If you

@@ -365,7 +365,7 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
 
 
 def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
-                                   right_context, run_opts, minibatch_size_str='256',
+                                   right_context, run_opts, minibatch_size_str='1:256',
                                    wait=False, background_process_handler=None,
                                    get_raw_nnet_from_am=True):
     if get_raw_nnet_from_am:

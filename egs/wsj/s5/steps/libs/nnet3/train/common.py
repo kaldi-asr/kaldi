@@ -161,13 +161,42 @@ def principal_chunk_width(chunk_width):
     return int(chunk_width.split(",")[0])
 
 
+def validate_range_str(range_str):
+    """Helper function used inside validate_minibatch_size_str().
+    Returns true if range_str is a a comma-separated list of
+    positive integers and ranges of integers, like '128',
+    '128,256', or '64-128,256'."""
+    if not isinstance(range_str, str):
+        return False
+    ranges = range_str.split(",")
+    assert len(ranges) > 0
+    for r in ranges:
+        # a range may be either e.g. '64', or '128-256'
+        try:
+            c = [ int(x) for x in r.split(":") ]
+        except:
+            return False
+        # c should be either e.g. [ 128 ], or  [64,128].
+        if len(c) == 1:
+            if c[0] <= 0:
+                return False
+        elif len(c) == 2:
+            if c[0] <= 0 or c[1] < c[0]:
+                return False
+        else:
+            return False
+    return True
+
+
+
 def validate_minibatch_size_str(minibatch_size_str):
     """Validate a minibatch-size string (returns bool).
-    A minibatch-size string might either be an integer, like '256'
-    or a rule like '128=64-128/256=32,64', whose format
+    A minibatch-size string might either be an integer, like '256',
+    a comma-separated set of integers or ranges like '128,256' or
+    '64:128,256',  or a rule like '128=64:128/256=32,64', whose format
     is: eg-length1=size-range1/eg-length2=size-range2/....
-    where the size-range is a comma-separated list of either integers
-    or ranges.  An arbitrary eg will be mapped to the size-range
+    where a size-range is a comma-separated list of either integers like '16'
+    or ranges like '16:32'.  An arbitrary eg will be mapped to the size-range
     for the closest of the listed eg-lengths (the eg-length is defined
     as the number of input frames, including context frames)."""
     if not isinstance(minibatch_size_str, str):
@@ -183,11 +212,7 @@ def validate_minibatch_size_str(minibatch_size_str):
             # one choice)... this would mean somebody just gave "25"
             # or something like that for the minibatch size.
             if len(a) == 1 and len(b) == 1:
-                try:
-                    mb_size = int(b[0])
-                    return mb_size > 0
-                except:
-                    return False
+                return validate_range_str(elem)
             else:
                 return False
         # check that the thing before the '=' sign is a positive integer
@@ -197,24 +222,27 @@ def validate_minibatch_size_str(minibatch_size_str):
                 return False
         except:
             return False  # not an integer at all.
-        # check the thing after the '=' sign is a comma-separated list of ranges
-        ranges = b[1].split(",")
-        assert len(ranges) > 0
-        for range in ranges:
-            # a range may be either e.g. '64', or '128-256'
-            try:
-                c = [ int(x) for x in range.split("-") ]
-            except:
-                return False
-            if len(c) == 1:
-                if c[0] <= 0:
-                    return False
-            elif len(c) == 2:
-                if c[0] <= 0 or c[1] < c[0]:
-                    return False
-            else:
-                return False
+
+        if not validate_range_str(b[1]):
+            return False
     return True
+
+
+def halve_range_str(range_str):
+    """Helper function used inside halve_minibatch_size_str().
+    returns half of a range [but converting resulting zeros to
+    ones], e.g. '16'->'8', '16,32'->'8,16', '64:128'->'32:64'.
+    Returns true if range_str is a a comma-separated list of
+    positive integers and ranges of integers, like '128',
+    '128,256', or '64-128,256'."""
+
+    ranges = range_str.split(",")
+    halved_ranges = []
+    for r in ranges:
+        # a range may be either e.g. '64', or '128:256'
+        c = [ str(max(1, int(x)/2)) for x in r.split(":") ]
+        halved_ranges.append(":".join(c))
+    return ','.join(halved_ranges)
 
 
 def halve_minibatch_size_str(minibatch_size_str):
@@ -232,16 +260,10 @@ def halve_minibatch_size_str(minibatch_size_str):
         b = elem.split('=')
         # We expect b to have length 2 in the normal case.
         if len(b) == 1:
-            mb_size = int(b[0])
-            ans.append(str(max(1, mb_size / 2)))
+            return halve_range_str(elem)
         else:
             assert len(b) == 2
-            ranges_out = []
-            ranges = b[1].split(',')
-            for range in ranges:
-                c = [ str(max(1, int(x)/2)) for x in range.split('-') ]
-                ranges_out.append('-'.join(c))
-            ans.append('{0}={1}'.format(b[0], ','.join(ranges_out)))
+            ans.append('{0}={1}'.format(b[0], halve_range_str(b[1])))
     return '/'.join(ans)
 
 
@@ -529,8 +551,9 @@ def remove_model(nnet_dir, iter, num_iters, models_to_combine=None,
 
 def self_test():
     assert halve_minibatch_size_str('64') == '32'
+    assert halve_minibatch_size_str('64,16:32') == '32,8:16'
     assert halve_minibatch_size_str('1') == '1'
-    assert halve_minibatch_size_str('128=64/256=40,80-100') == '128=32/256=20,40-50'
+    assert halve_minibatch_size_str('128=64/256=40,80:100') == '128=32/256=20,40:50'
     assert validate_chunk_width('64')
     assert validate_chunk_width('64,25,128')
 

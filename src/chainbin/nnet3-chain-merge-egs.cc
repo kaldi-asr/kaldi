@@ -41,10 +41,9 @@ int main(int argc, char *argv[]) {
         "nnet3-chain-merge-egs --minibatch-size=128 ark:1.cegs ark:- | nnet3-chain-train-simple ... \n"
         "See also nnet3-chain-copy-egs\n";
 
-    ExampleMergingConfig merging_config;
-    merging_config.minibatch_size = 64;  // change the default for this
-                                         // program.. anyway it will usually be
-                                         // set on the command line.
+
+    ExampleMergingConfig merging_config("64");  // 64 is default minibatch size.
+
     ParseOptions po(usage);
     merging_config.Register(&po);
 
@@ -61,8 +60,9 @@ int main(int argc, char *argv[]) {
     SequentialNnetChainExampleReader example_reader(examples_rspecifier);
     NnetChainExampleWriter example_writer(examples_wspecifier);
 
+    merging_config.ComputeDerived();
     ChainExampleMerger merger(merging_config, &example_writer);
-    while (!example_reader.Done()) {
+    for (; !example_reader.Done(); example_reader.Next()) {
       const NnetChainExample &cur_eg = example_reader.Value();
       merger.AcceptExample(new NnetChainExample(cur_eg));
     }

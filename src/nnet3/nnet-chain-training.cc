@@ -30,7 +30,8 @@ NnetChainTrainer::NnetChainTrainer(const NnetChainTrainingOptions &opts,
     opts_(opts),
     den_graph_(den_fst, nnet->OutputDim("output")),
     nnet_(nnet),
-    compiler_(*nnet, opts_.nnet_config.optimize_config),
+    compiler_(*nnet, opts_.nnet_config.optimize_config,
+              opts_.nnet_config.compiler_config),
     num_minibatches_processed_(0) {
   if (opts.nnet_config.zero_component_stats)
     ZeroComponentStats(nnet);

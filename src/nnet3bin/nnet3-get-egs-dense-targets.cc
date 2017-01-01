@@ -208,9 +208,6 @@ int main(int argc, char *argv[]) {
     eg_config.ComputeDerived();
     UtteranceSplitter utt_splitter(eg_config);
 
-    if (num_targets <= 0)
-      KALDI_ERR << "--num-targets options is required.";
-
     std::string feature_rspecifier = po.GetArg(1),
         matrix_rspecifier = po.GetArg(2),
         examples_wspecifier = po.GetArg(3);
