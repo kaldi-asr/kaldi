@@ -134,12 +134,24 @@ class LinearNormalizedLogSoftmaxComponent: public LmOutputComponent {
   virtual std::string Info() const;
   virtual void InitFromConfig(ConfigLine *cfl);
 
-  LinearNormalizedLogSoftmaxComponent() {normalized_ = false;} // use Init to really initialize.
+  LinearNormalizedLogSoftmaxComponent() {} // use Init to really initialize.
   virtual std::string Type() const { return "LinearNormalizedLogSoftmaxComponent"; }
   virtual int32 Properties() const {
     return kSimpleComponent|kUpdatableComponent|kLinearInParameters|
         kBackpropNeedsInput|kBackpropAdds;
   }
+
+  void Propagate(const CuMatrixBase<BaseFloat> &in,
+                 const vector<int> &indexes,
+                 vector<BaseFloat> *out) const;
+
+  void Backprop(
+         const vector<int> &indexes,
+         const CuMatrixBase<BaseFloat> &in_value,
+         const CuMatrixBase<BaseFloat> &, // out_value
+         const vector<BaseFloat> &output_deriv,
+         LmOutputComponent *to_update_0,
+         CuMatrixBase<BaseFloat> *input_deriv) const;
 
   virtual void Propagate(const CuMatrixBase<BaseFloat> &in,
                  const vector<int> &indexes,
@@ -208,7 +220,7 @@ class LinearNormalizedLogSoftmaxComponent: public LmOutputComponent {
   CuMatrix<BaseFloat> linear_params_;
 //  CuVector<BaseFloat> normalizer_;
   CuMatrix<BaseFloat> actual_params_;
-  bool normalized_;
+//  bool normalized_;
 };
 
 class AffineSampleLogSoftmaxComponent: public LmOutputComponent {
@@ -226,9 +238,6 @@ class AffineSampleLogSoftmaxComponent: public LmOutputComponent {
         kBackpropNeedsInput|kBackpropAdds;
   }
 
-//  void Propagate(const MatrixBase<BaseFloat> &in,
-//                 const vector<int> &indexes,
-//                 vector<vector<BaseFloat> > *out) const;
 
   virtual void Propagate(const CuMatrixBase<BaseFloat> &in,
                          const vector<int> &indexes,

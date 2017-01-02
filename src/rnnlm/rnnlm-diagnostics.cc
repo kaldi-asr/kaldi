@@ -68,7 +68,7 @@ void LmNnetComputeProb::Compute(const NnetExample &eg) {
   NnetComputer computer(config_.compute_config, *computation,
                         nnet_.Nnet(), (deriv_nnet_ != NULL? deriv_nnet_->GetNnet(): NULL));
   // give the inputs to the computer object.
-  NnetExample new_eg = LmNnetTrainer::ProcessEgInputs(eg, *nnet_.I());
+  NnetExample new_eg = LmNnetSamplingTrainer::ProcessEgInputs(eg, *nnet_.I());
 
   computer.AcceptInputs(nnet_.Nnet(), new_eg.io);
   computer.Forward();
@@ -100,7 +100,7 @@ void LmNnetComputeProb::ProcessOutputs(const NnetExample &eg,
       {
         BaseFloat tot_weight, tot_objf;
         bool supply_deriv = config_.compute_deriv;
-        LmNnetTrainer::ComputeObjectiveFunction(io.features, obj_type, io.name,
+        LmNnetSamplingTrainer::ComputeObjectiveFunctionNormalized(io.features, obj_type, io.name,
                                  supply_deriv, computer,
                                  &tot_weight, &tot_objf, nnet_.O(), &output
                                  );

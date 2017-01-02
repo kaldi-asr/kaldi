@@ -269,16 +269,22 @@ void LmNnetSamplingTrainer::ProcessOutputs(const NnetExample &eg,
       BaseFloat tot_weight, tot_objf;
       bool supply_deriv = true;
 
-      ComputeObjectiveFunctionSample(unigram_, io.features, obj_type, io.name,
-                               supply_deriv, computer,
-                               &tot_weight, &tot_objf,
-                               *nnet_->O(),
-                               &new_output_, delta_nnet_);
-//      ComputeObjectiveFunction(io.features, obj_type, io.name,
-//                               supply_deriv, computer,
-//                               &tot_weight, &tot_objf,
-//                               nnet_->O(),
-//                               &new_output_, delta_nnet_);
+      if (dynamic_cast<const AffineSampleLogSoftmaxComponent*>(nnet_->O()) != NULL) {
+        ComputeObjectiveFunctionSample(unigram_, io.features, obj_type, io.name,
+                                 supply_deriv, computer,
+                                 &tot_weight, &tot_objf,
+                                 *nnet_->O(),
+                                 &new_output_, delta_nnet_);
+      } else if (dynamic_cast<const LinearNormalizedLogSoftmaxComponent*>(nnet_->O())
+                   != NULL) {
+        ComputeObjectiveFunctionNormalized(io.features, obj_type, io.name,
+                                           supply_deriv, computer,
+                                           &tot_weight, &tot_objf,
+                                           *nnet_->O(),
+                                           &new_output_, delta_nnet_);
+      } else {
+        KALDI_ASSERT(false);
+      }
 
       objf_info_[io.name].UpdateStats(io.name, config_.print_interval,
                                       num_minibatches_processed_++,
@@ -375,6 +381,90 @@ LmNnetSamplingTrainer::~LmNnetSamplingTrainer() {
   delete delta_nnet_;
 }
 
+void LmNnetSamplingTrainer::ComputeObjectiveFunctionNormalized(
+                              const GeneralMatrix &supervision,
+                              ObjectiveType objective_type,
+                              const std::string &output_name,
+                              bool supply_deriv,
+                              NnetComputer *computer,
+                              BaseFloat *tot_weight,
+                              BaseFloat *tot_objf,
+                              const LmOutputComponent &output_projection,
+                              CuMatrix<BaseFloat> *new_output,
+                              LmNnet *nnet) {
+  computer->GetOutputDestructive(output_name, new_output);
+  int k = supervision.NumRows();
+
+  KALDI_ASSERT(supervision.Type() == kSparseMatrix);
+  const SparseMatrix<BaseFloat> &post = supervision.GetSparseMatrix();
+
+  std::vector<int> indexes;
+
+  for (int i = 0; i < k; i++) {
+    const SparseVector<BaseFloat> &sv = post.Row(i);                              
+    int non_zero_index = -1;                                                    
+    sv.Max(&non_zero_index); 
+    indexes.push_back(non_zero_index);
+  }
+
+//  CuMatrix<BaseFloat> out(new_output->NumRows(), samples.size(), kSetZero);
+  vector<BaseFloat> out(indexes.size());
+
+  const LinearNormalizedLogSoftmaxComponent& output_project_norm =
+    dynamic_cast<const LinearNormalizedLogSoftmaxComponent&>(output_projection);
+  output_project_norm.Propagate(*new_output, indexes, &out);
+
+  *tot_weight = post.Sum();
+  *tot_objf = 0;
+  
+  for (int i = 0; i < k; i++) {
+    *tot_objf += log(out[i]);
+  }
+
+  if (supply_deriv && nnet != NULL) {
+  // the derivative on the real output
+    vector<BaseFloat> output_deriv(k);
+
+    for (int i = 0; i < k; i++) {
+      output_deriv[i] = exp(out[i]);
+    }
+
+    // the derivative after the affine layer (before the nonlin)
+
+    // the derivative of the 'nnet3' part
+    CuMatrix<BaseFloat> input_deriv(new_output->NumRows(),
+        new_output->NumCols(),
+        kSetZero);
+
+    CuMatrix<BaseFloat> place_holder;
+    output_project_norm.Backprop(indexes, *new_output, place_holder,
+        output_deriv, nnet->output_projection_,
+        &input_deriv);
+
+    //    CuMatrix<BaseFloat> cu_input_deriv(input_deriv);
+
+    computer->AcceptOutputDeriv(output_name, &input_deriv);
+  }
+}
+
+//  if (supply_deriv && nnet != NULL) {
+//    t3.AddMat(1.0, t2); // this is the correct derivative
+//    // -exp(y) / selection-prob(i) for non-correct labels
+//    // 1 - exp(y) for correct labels  (selection-prob of a correct label is 1)
+//
+//    out.ApplyLog();
+//    CuMatrix<BaseFloat> input_deriv(new_output->NumRows(),
+//                                    new_output->NumCols(),
+//                                    kSetZero);
+//
+//    output_projection.Backprop(samples, *new_output, out,
+//                               t3, nnet->output_projection_,
+//                               &input_deriv);
+//
+//    computer->AcceptOutputDeriv(output_name, &input_deriv);
+//  }
+//}
+//
 void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
                               const vector<BaseFloat> &unigram,
                               const GeneralMatrix &supervision,
@@ -465,7 +555,14 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
   t3.MulElements(out);
   // now each element is -exp(y)/selection-prob
 
-  *tot_objf += t3.Sum();
+//  CuMatrix<BaseFloat> ones(1, t3.NumCols());
+//  ones.Set(1.0);
+//  CuMatrix<BaseFloat> row_sum(1, t3.NumRows(), kSetZero);
+//  row_sum.AddMatMat(1.0, t3, kNoTrans, ones, kNoTrans, 0.0);
+
+  BaseFloat neg_term = t3.Sum();
+  *tot_objf += neg_term;
+  KALDI_LOG << "the average normalization term in this minibatch is " << -neg_term / t3.NumRows();
 
   if (supply_deriv && nnet != NULL) {
     t3.AddMat(1.0, t2); // this is the correct derivative

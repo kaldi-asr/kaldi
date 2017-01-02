@@ -150,7 +150,7 @@ void AffineSampleLogSoftmaxComponent::InitFromConfig(ConfigLine *cfl) {
     KALDI_ERR << "Bad initializer " << cfl->WholeLine();
 }
 
-const BaseFloat kCutoff = 10.0;
+const BaseFloat kCutoff = 1.0;
 
 void AffineSampleLogSoftmaxComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
                                                 const vector<int> &indexes,
@@ -168,12 +168,14 @@ void AffineSampleLogSoftmaxComponent::Propagate(const CuMatrixBase<BaseFloat> &i
   // y = x - 1, when x <= 0
   // y = x / (1 + x) - 1, otherwise
 
+//* The Hainan trick
   CuMatrix<BaseFloat> out2(*out);
   out2.ApplyFloor(0);
   out2.Scale(1.0 / kCutoff);
   out2.Add(1);
   out->DivElements(out2);
   out->Add(-1.0 * kCutoff);
+// */
 
 //  out->ApplyCeiling(0);  // TODO(hxu), neg-relu
 }
@@ -187,13 +189,16 @@ void AffineSampleLogSoftmaxComponent::Backprop(
                                CuMatrixBase<BaseFloat> *input_deriv) const {
   KALDI_ASSERT (input_deriv != NULL);
 
-  // TODO(hxu), neg-relu backprop
+//* The Hainan Trick
   CuMatrix<BaseFloat> new_out_deriv(out_value);
   new_out_deriv.ApplyFloor(-kCutoff);
   new_out_deriv.Scale(1.0 / kCutoff);
   new_out_deriv.MulElements(new_out_deriv);
   new_out_deriv.InvertElements();
   new_out_deriv.MulElements(output_deriv);
+// */
+
+//  const CuMatrixBase<BaseFloat> &new_out_deriv = output_deriv;
 
   CuMatrix<BaseFloat> new_linear(indexes.size(), linear_params_.NumCols());
   CuArray<int> idx(indexes);
@@ -264,7 +269,6 @@ void AffineSampleLogSoftmaxComponent::UnVectorize(const VectorBase<BaseFloat> &p
 }
 
 void LinearNormalizedLogSoftmaxComponent::Normalize() {
-  KALDI_ASSERT(!normalized_);
 
   if (actual_params_.NumRows() != linear_params_.NumRows() ||
       actual_params_.NumCols() != linear_params_.NumCols()) {
@@ -286,20 +290,19 @@ void LinearNormalizedLogSoftmaxComponent::Normalize() {
 
   actual_params_.CopyFromMat(ht, kTrans);
 //  KALDI_ASSERT(ApproxEqual(actual_params_.Sum(), actual_params_.NumCols()));
-  normalized_ = true;
 }
 
 void LinearNormalizedLogSoftmaxComponent::Scale(BaseFloat scale) {
 //  KALDI_ASSERT(is_gradient_);
   linear_params_.Scale(scale);
-  normalized_ = false;
+//  normalized_ = false;
   Normalize();
 }
 
 void LinearNormalizedLogSoftmaxComponent::Resize(int32 input_dim, int32 output_dim) {
   KALDI_ASSERT(input_dim > 0 && output_dim > 0);
   linear_params_.Resize(output_dim, input_dim);
-  normalized_ = false;
+//  normalized_ = false;
 }
 
 void LinearNormalizedLogSoftmaxComponent::Add(BaseFloat alpha, const LmComponent &other_in) {
@@ -307,7 +310,7 @@ void LinearNormalizedLogSoftmaxComponent::Add(BaseFloat alpha, const LmComponent
       dynamic_cast<const LinearNormalizedLogSoftmaxComponent*>(&other_in);
   KALDI_ASSERT(other != NULL);
   linear_params_.AddMat(alpha, other->linear_params_);
-  normalized_ = false;
+//  normalized_ = false;
   Normalize();
 }
 
@@ -315,14 +318,14 @@ LinearNormalizedLogSoftmaxComponent::LinearNormalizedLogSoftmaxComponent(const L
     LmOutputComponent(component),
     linear_params_(component.linear_params_),
 //    normalizer_(component.normalizer_),
-    actual_params_(component.actual_params_),
-    normalized_(component.normalized_) { }
+    actual_params_(component.actual_params_) {}
+//    normalized_(component.normalized_) { }
 
 LinearNormalizedLogSoftmaxComponent::LinearNormalizedLogSoftmaxComponent(const CuMatrixBase<BaseFloat> &linear_params,
                                  BaseFloat learning_rate):
     linear_params_(linear_params) {
   SetUnderlyingLearningRate(learning_rate);
-  normalized_ = false;
+//  normalized_ = false;
   Normalize();
 }
 
@@ -332,14 +335,14 @@ void LinearNormalizedLogSoftmaxComponent::SetZero(bool treat_as_gradient) {
     is_gradient_ = true;
   }
   linear_params_.SetZero();
-  normalized_ = false;
+//  normalized_ = false;
   Normalize();
 }
 
 void LinearNormalizedLogSoftmaxComponent::SetParams(
                                 const CuMatrixBase<BaseFloat> &linear) {
   linear_params_ = linear;
-  normalized_ = false;
+//  normalized_ = false;
   Normalize();
 }
 
@@ -349,7 +352,7 @@ void LinearNormalizedLogSoftmaxComponent::PerturbParams(BaseFloat stddev) {
   temp_linear_params.Row(0).SetZero();
 
   linear_params_.AddMat(stddev, temp_linear_params);
-  normalized_ = false;
+//  normalized_ = false;
   Normalize();
 }
 
@@ -380,13 +383,13 @@ void LinearNormalizedLogSoftmaxComponent::Init(int32 input_dim, int32 output_dim
   linear_params_.SetRandn(); // sets to random normally distributed noise.
   linear_params_.Row(0).SetZero();
   linear_params_.Scale(param_stddev);
-  normalized_ = false;
+//  normalized_ = false;
   Normalize();
 }
 
 void LinearNormalizedLogSoftmaxComponent::Init(std::string matrix_filename) {
   ReadKaldiObject(matrix_filename, &linear_params_); // will abort on failure.
-  normalized_ = false;
+//  normalized_ = false;
   Normalize();
 }
 
@@ -435,90 +438,55 @@ void LinearNormalizedLogSoftmaxComponent::Backprop(
 }
 
 
-//void LinearNormalizedLogSoftmaxComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
-//                                                const vector<vector<int> > &indexes,
-//                                                vector<vector<BaseFloat> > *out) const {
-//  KALDI_ASSERT(in.NumRows() == indexes.size());
-//  KALDI_ASSERT(normalized_);
-//  out->resize(indexes.size());
-//
-//  for (int i = 0; i < indexes.size(); i++) {
-//    KALDI_ASSERT(indexes[i].size() == 1);
-//    int w = indexes[i][0];
-//    BaseFloat res = VecVec(in.Row(i), actual_params_.Row(w));
-////    KALDI_ASSERT(res >= 0 && res <= 1);
-//    (*out)[i].push_back(res);
-//  }
-//}
-//
-//void LinearNormalizedLogSoftmaxComponent::Backprop(
-//                               const vector<vector<int> > &indexes,
-//                               const CuMatrixBase<BaseFloat> &in_value,
-//                               const CuMatrixBase<BaseFloat> &, // out_value
-//                               const vector<vector<BaseFloat> > &output_deriv,
-//                               LmOutputComponent *to_update_0,
-//                               CuMatrixBase<BaseFloat> *input_deriv) const {
-//
-//  int k = indexes.size();
-//
-//  if (input_deriv != NULL) {
-//    for (int i = 0; i < k; i++) {
-//      KALDI_ASSERT(indexes[i].size() == 1);
-//      KALDI_ASSERT(output_deriv[i][0] == 1);
-//      int index = indexes[i][0];
-//      input_deriv->Row(i).AddVec(1.0, actual_params_.Row(index));
-//    }
-//  }
-//
-//  LinearNormalizedLogSoftmaxComponent* to_update
-//             = dynamic_cast<LinearNormalizedLogSoftmaxComponent*>(to_update_0);
-//
-//  if (to_update != NULL) {
-//    CuMatrix<BaseFloat> aT(actual_params_, kTrans);
-//    CuMatrix<BaseFloat> dapT(actual_params_, kTrans);
-//
-//    CuMatrix<BaseFloat> daT(actual_params_, kTrans);
-//    daT.SetZero();
-//    dapT.SetZero();
-//    for (int i = 0; i < k; i++) {
-//      int index = indexes[i][0];
-//      daT.ColRange(index, 1).AddVecToCols(1.0, in_value.Row(i), 1.0);
-//    }
-//    dapT.DiffSoftmaxPerRow(aT, daT);
-//    to_update->linear_params_.AddMat(learning_rate_, dapT, kTrans);
-//  }
-//
-////  if (to_update != NULL) {
-////    for (int m = 0; m < k; m++) {
-////      // index'th row of linear_params
-////      for (int i = 1; i < linear_params_.NumRows(); i++) { // first row is all 0's by definition
-////        for (int k = 0; k < linear_params_.NumCols(); k++) {
-////          BaseFloat deriv = 0.0;
-////          if (k == indexes[m][0]) {
-////            // correct label
-////            for (int j = 0; j < linear_params_.NumCols(); j++) {
-////              deriv += in_value(m, j) +
-////                actual_params_(i, j) * (1 - actual_params_(i, j));
-////            }
-////          } else {
-////            int j = indexes[m][0];
-////            deriv = - in_value(m, k) * actual_params_(i, k) * actual_params_(j, k);
-////          }
-////
-////          to_update->linear_params_(i, k) +=
-////            learning_rate_ * deriv;
-////        
-//////        to_update->linear_params_(i, ) +=
-//////          learning_rate_ * output_deriv[i][j] * in_value(i, index) *
-//////           (1 - actual_params_
-//////         ;
-////
-//////          (*input_deriv)(i, m) += output_deriv[i][j] * linear_params_(index, m);
-////        }
-////      }
-////    }
-////  }
-//}
+void LinearNormalizedLogSoftmaxComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
+                                                const vector<int> &indexes,
+                                                vector<BaseFloat> *out) const {
+  KALDI_ASSERT(in.NumRows() == indexes.size());
+  out->resize(indexes.size());
+
+  for (int i = 0; i < indexes.size(); i++) {
+    int w = indexes[i];
+    BaseFloat res = VecVec(in.Row(i), actual_params_.Row(w));
+//    KALDI_ASSERT(res >= 0 && res <= 1);
+    (*out)[i] = res;
+  }
+}
+
+void LinearNormalizedLogSoftmaxComponent::Backprop(
+                               const vector<int> &indexes,
+                               const CuMatrixBase<BaseFloat> &in_value,
+                               const CuMatrixBase<BaseFloat> &, // out_value
+                               const vector<BaseFloat> &output_deriv,
+                               LmOutputComponent *to_update_0,
+                               CuMatrixBase<BaseFloat> *input_deriv) const {
+
+  int k = indexes.size();
+
+  if (input_deriv != NULL) {
+    for (int i = 0; i < k; i++) {
+      int index = indexes[i];
+      input_deriv->Row(i).AddVec(1.0, actual_params_.Row(index));
+    }
+  }
+
+  LinearNormalizedLogSoftmaxComponent* to_update
+             = dynamic_cast<LinearNormalizedLogSoftmaxComponent*>(to_update_0);
+
+  if (to_update != NULL) {
+    CuMatrix<BaseFloat> aT(actual_params_, kTrans);
+    CuMatrix<BaseFloat> dapT(actual_params_, kTrans);
+
+    CuMatrix<BaseFloat> daT(actual_params_, kTrans);
+    daT.SetZero();
+    dapT.SetZero();
+    for (int i = 0; i < k; i++) {
+      int index = indexes[i];
+      daT.ColRange(index, 1).AddVecToCols(1.0, in_value.Row(i), 1.0);
+    }
+    dapT.DiffSoftmaxPerRow(aT, daT);
+    to_update->linear_params_.AddMat(learning_rate_, dapT, kTrans);
+  }
+}
 
 void LinearNormalizedLogSoftmaxComponent::Read(std::istream &is, bool binary) {
   ReadUpdatableCommon(is, binary);  // read opening tag and learning rate.
@@ -527,7 +495,6 @@ void LinearNormalizedLogSoftmaxComponent::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<IsGradient>");
   ReadBasicType(is, binary, &is_gradient_);
   ExpectToken(is, binary, "</LinearNormalizedLogSoftmaxComponent>");
-  normalized_ = false;
   Normalize();
 }
 
@@ -552,7 +519,6 @@ void LinearNormalizedLogSoftmaxComponent::Vectorize(VectorBase<BaseFloat> *param
 void LinearNormalizedLogSoftmaxComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
   KALDI_ASSERT(params.Dim() == this->NumParameters());
   linear_params_.CopyRowsFromVec(params.Range(0, InputDim() * OutputDim()));
-  normalized_ = false;
   Normalize();
 }
 
