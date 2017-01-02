@@ -445,10 +445,13 @@ fi
 
 if [ $stage -le 7 ]; then
   echo "$0: removing temporary archives"
-  (
-    cd $dir
-    for f in $(ls -l . | grep 'degs_orig' | awk '{ X=NF-1; Y=NF-2; if ($X == "->")  print $Y, $NF; }'); do rm $f; done
-  )
+  for x in $(seq $nj); do
+    for y in $(seq $num_archives_intermediate); do
+      file=$dir/degs_orig.$x.$y.ark
+      [ -L $file ] && rm $(readlink -f $file)
+      rm $file
+    done
+  done
   if [ $archives_multiple -gt 1 ]; then
     # there are some extra soft links that we should delete.
     for f in $dir/degs.*.*.ark; do rm $f; done
