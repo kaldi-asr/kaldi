@@ -48,6 +48,12 @@ struct Segment {
   static size_t SizeInBytes() {
     return (sizeof(int32) + sizeof(int32) + sizeof(int32));
   }
+
+  void Reset() {
+      start_frame = -1;
+      end_frame = -1;
+      class_id = -1;
+  }
 };
 
 /** 

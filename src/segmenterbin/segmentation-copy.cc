@@ -31,9 +31,8 @@ int main(int argc, char *argv[]) {
         "Copy segmentation or archives of segmentation.\n"
         "If label-map is supplied, then apply the mapping to the labels \n"
         "when copying.\n"
-        "If utt2label-rspecifier is supplied, then ignore the \n"
-        "original labels, and map all the segments of an utterance using \n"
-        "the supplied utt2label map.\n"
+        "If utt2label-map-rspecifier is supplied, then an utterance-specific "
+        "mapping is applied on the original labels\n"
         "\n"
         "Usage: segmentation-copy [options] <segmentation-rspecifier> "
         "<segmentation-wspecifier>\n"
@@ -44,7 +43,7 @@ int main(int argc, char *argv[]) {
         " e.g.: segmentation-copy --binary=false foo -\n";
 
     bool binary = true;
-    std::string label_map_rxfilename, utt2label_rspecifier;
+    std::string label_map_rxfilename, utt2label_map_rspecifier;
     std::string include_rxfilename, exclude_rxfilename;
     int32 keep_label = -1;
     BaseFloat frame_subsampling_factor = 1;
@@ -58,8 +57,13 @@ int main(int argc, char *argv[]) {
                 "File with mapping from old to new labels");
     po.Register("frame-subsampling-factor", &frame_subsampling_factor,
                 "Change frame rate by this factor");
-    po.Register("utt2label-rspecifier", &utt2label_rspecifier,
-                "Mapping for each utterance to an integer label");
+    po.Register("utt2label-map-rspecifier", &utt2label_map_rspecifier,
+                "Utterance-specific mapping from old to new labels. "
+                "The first column is the utterance id. The next columns are "
+                "pairs <old-label>:<new-label>. If <old-label> is -1, then "
+                "that represents the default label map. i.e. Any old label "
+                "for which the mapping is not defined, will be mapped to the "
+                "label corresponding to old-label -1.");
     po.Register("keep-label", &keep_label,
                 "If supplied, only segments of this label are written out");
     po.Register("include", &include_rxfilename,
@@ -162,8 +166,8 @@ int main(int argc, char *argv[]) {
         ScaleFrameShift(frame_subsampling_factor, &segmentation);
       }
 
-      if (!utt2label_rspecifier.empty())
-        KALDI_ERR << "It makes no sense to specify utt2label-rspecifier "
+      if (!utt2label_map_rspecifier.empty())
+        KALDI_ERR << "It makes no sense to specify utt2label-map-rspecifier "
                   << "when not reading segmentation archives.";
 
       Output ko(segmentation_out_fn, binary);
@@ -172,7 +176,8 @@ int main(int argc, char *argv[]) {
       KALDI_LOG << "Copied segmentation to " << segmentation_out_fn;
       return 0;
     } else {
-      RandomAccessInt32Reader utt2label_reader(utt2label_rspecifier);
+      RandomAccessTokenVectorReader utt2label_map_reader(
+          utt2label_map_rspecifier);
 
       SegmentationWriter writer(segmentation_out_fn);
       SequentialSegmentationReader reader(segmentation_in_fn);
@@ -190,24 +195,43 @@ int main(int argc, char *argv[]) {
 
         if (label_map_rxfilename.empty() &&
             frame_subsampling_factor == 1.0 &&
-            utt2label_rspecifier.empty() &&
+            utt2label_map_rspecifier.empty() &&
             keep_label == -1) {
           writer.Write(key, reader.Value());
         } else {
           Segmentation segmentation = reader.Value();
           if (!label_map_rxfilename.empty())
             RelabelSegmentsUsingMap(label_map, &segmentation);
-          if (!utt2label_rspecifier.empty()) {
-            if (!utt2label_reader.HasKey(key)) {
+
+          if (!utt2label_map_rspecifier.empty()) {
+            if (!utt2label_map_reader.HasKey(key)) {
               KALDI_WARN << "Utterance " << key
-                         << " not found in utt2label map "
-                         << utt2label_rspecifier;
+                         << " not found in utt2label_map "
+                         << utt2label_map_rspecifier;
               num_err++;
               continue;
             }
 
-            RelabelAllSegments(utt2label_reader.Value(key), &segmentation);
+            unordered_map<int32, int32> utt_label_map;
+
+            const std::vector<std::string> &utt_label_map_vec =
+              utt2label_map_reader.Value(key);
+            std::vector<std::string>::const_iterator it =
+              utt_label_map_vec.begin();
+
+            for (; it != utt_label_map_vec.end(); ++it) {
+              std::vector<BaseFloat> vec;
+              SplitStringToFloats(*it, ":", false, &vec);
+              if (vec.size() != 2) {
+                KALDI_ERR << "Invalid utt-label-map " << *it;
+              }
+              utt_label_map[static_cast<int32>(vec[0])] =
+                static_cast<int32>(vec[1]);
+            }
+
+            RelabelSegmentsUsingMap(utt_label_map, &segmentation);
           }
+
           if (keep_label != -1)
             KeepSegments(keep_label, &segmentation);
 

@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
     int64 num_segments = 0;
     int64 num_err = 0;
 
-    std::vector<int64> frame_counts_per_class;
+    std::map<int32, int64> frame_counts_per_class;
 
     SequentialInt32VectorReader alignment_reader(ali_rspecifier);
 
@@ -80,7 +80,11 @@ int main(int argc, char *argv[]) {
               << "wrote " << num_segmentations << " segmentations "
               << "with a total of " << num_segments << " segments.";
     KALDI_LOG << "Number of frames for the different classes are : ";
-    WriteIntegerVector(KALDI_LOG, false, frame_counts_per_class);
+
+    std::map<int32, int64>::const_iterator it = frame_counts_per_class.begin(); 
+    for (; it != frame_counts_per_class.end(); ++it) {
+      KALDI_LOG << it->first << " " << it->second << " ; "; 
+    }
 
     return ((num_done > 0 && num_err < num_done) ? 0 : 1);
   } catch(const std::exception &e) {

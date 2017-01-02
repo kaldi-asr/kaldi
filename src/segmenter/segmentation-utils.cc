@@ -46,14 +46,26 @@ void MergeLabels(const std::vector<int32> &merge_labels,
 
 void RelabelSegmentsUsingMap(const unordered_map<int32, int32> &label_map,
                              Segmentation *segmentation) {
+  int32 default_label = -1;
+  unordered_map<int32, int32>::const_iterator it = label_map.find(-1);
+  if (it != label_map.end()) {
+    default_label = it->second;
+    KALDI_ASSERT(default_label != -1);
+  }
+
   for (SegmentList::iterator it = segmentation->Begin();
        it != segmentation->End(); ++it) {
     unordered_map<int32, int32>::const_iterator map_it = label_map.find(
         it->Label());
-    if (map_it == label_map.end())
-      KALDI_ERR << "Could not find label " << it->Label() << " in label map.";
-
-    it->SetLabel(map_it->second);
+    if (map_it == label_map.end()) {
+      if (default_label == -1)
+        KALDI_ERR << "Could not find label " << it->Label()
+                  << " in label map.";
+      else
+        it->SetLabel(default_label);
+    } else {
+      it->SetLabel(map_it->second);
+    }
   }
 }
 
@@ -294,7 +306,7 @@ void IntersectSegmentationAndAlignment(const Segmentation &in_segmentation,
         it != in_segmentation.End(); ++it) {
     Segmentation filter_segmentation;
     InsertFromAlignment(alignment, it->start_frame,
-                        std::min(it->end_frame + 1, 
+                        std::min(it->end_frame + 1,
                                  static_cast<int32>(alignment.size())),
                         0, &filter_segmentation, NULL);
 
@@ -444,7 +456,7 @@ void WidenSegments(int32 label, int32 length, Segmentation *segmentation) {
           // overlaps the current segment. So remove the current segment.
           it = segmentation->Erase(it);
           // So that we can increment in the for loop
-          --it;   // TODO(Vimal): This is buggy. 
+          --it;   // TODO(Vimal): This is buggy.
         } else if (prev_it->end_frame >= it->start_frame) {
           // The extended previous segment in Line (1) reduces the length of
           // this segment.
@@ -539,7 +551,7 @@ bool ConvertToAlignment(const Segmentation &segmentation,
   for (; it != segmentation.End(); ++it) {
     if (length != -1 && it->end_frame >= length + tolerance) {
       KALDI_WARN << "End frame (" << it->end_frame << ") "
-                 << ">= length (" << length 
+                 << ">= length (" << length
                  << ") + tolerance (" << tolerance << ")."
                  << "Conversion failed.";
       return false;
@@ -565,7 +577,7 @@ int32 InsertFromAlignment(const std::vector<int32> &alignment,
                           int32 start, int32 end,
                           int32 start_time_offset,
                           Segmentation *segmentation,
-                          std::vector<int64> *frame_counts_per_class) {
+                          std::map<int32, int64> *frame_counts_per_class) {
   KALDI_ASSERT(segmentation);
 
   if (end <= start) return 0;   // nothing to insert
@@ -593,12 +605,8 @@ int32 InsertFromAlignment(const std::vector<int32> &alignment,
                                   i-1 + start_time_offset, state);
         num_segments++;
 
-        if (frame_counts_per_class && state > 0) {
-          if (frame_counts_per_class->size() <= state) {
-            frame_counts_per_class->resize(state + 1, 0);
-          }
+        if (frame_counts_per_class)
           (*frame_counts_per_class)[state] += i - start_frame;
-        }
       }
       start_frame = i;
       state = alignment[i];
@@ -609,12 +617,8 @@ int32 InsertFromAlignment(const std::vector<int32> &alignment,
   segmentation->EmplaceBack(start_frame + start_time_offset,
                             end-1 + start_time_offset, state);
   num_segments++;
-  if (frame_counts_per_class && state > 0) {
-    if (frame_counts_per_class->size() <= state) {
-      frame_counts_per_class->resize(state + 1, 0);
-    }
+  if (frame_counts_per_class)
     (*frame_counts_per_class)[state] += end - start_frame;
-  }
 
 #ifdef KALDI_PARANOID
   segmentation->Check();
@@ -637,7 +641,7 @@ int32 InsertFromSegmentation(
   for (SegmentList::const_iterator it = in_segmentation.Begin();
         it != in_segmentation.End(); ++it) {
     out_segmentation->EmplaceBack(it->start_frame + start_time_offset,
-                                  it->end_frame + start_time_offset, 
+                                  it->end_frame + start_time_offset,
                                   it->Label());
     num_segments++;
     if (frame_counts_per_class) {

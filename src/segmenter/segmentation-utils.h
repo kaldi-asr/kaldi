@@ -265,7 +265,7 @@ int32 InsertFromAlignment(const std::vector<int32> &alignment,
                           int32 start, int32 end,
                           int32 start_time_offset,
                           Segmentation *segmentation,
-                          std::vector<int64> *frame_counts_per_class = NULL);
+                          std::map<int32, int64> *frame_counts_per_class = NULL);
 
 /**
  * Insert segments from in_segmentation, but shift them by
@@ -291,7 +291,7 @@ void ExtendSegmentation(const Segmentation &in_segmentation, bool sort,
 /**
  * This function is used to get per-frame count of number of classes.
  * The output is in the format of a vector of maps.
- * class_counts_per_frame: A pointer to a vector of maps use to get the output.
+ * class_counts_per_frame: A pointer to a vector of maps used to get the output.
  *                         The size of the vector is the number of frames.
  *                         For each frame, there is a map from the "class_id"
  *                         to the number of segments where the label the

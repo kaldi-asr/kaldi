@@ -17,7 +17,9 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#include <algorithm>
 #include "base/kaldi-common.h"
+#include "hmm/posterior.h"
 #include "util/common-utils.h"
 #include "segmenter/segmentation-utils.h"
 
@@ -33,9 +35,10 @@ int main(int argc, char *argv[]) {
         " num-classes: Number of distinct classes common to this frame\n"
         "\n"
         "Usage: segmentation-get-stats [options] <segmentation-rspecifier> "
-        "<num-overlaps-wspecifier> <num-classes-wspecifier>\n"
+        "<num-overlaps-wspecifier> <num-classes-wspecifier> "
+        "<class-counts-per-frame-wspecifier>\n"
         " e.g.: segmentation-get-stats ark:1.seg ark:/dev/null "
-        "ark:num_classes.ark\n";
+        "ark:num_classes.ark ark:/dev/null\n";
 
     ParseOptions po(usage);
 
@@ -51,20 +54,23 @@ int main(int argc, char *argv[]) {
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 3) {
+    if (po.NumArgs() != 4) {
       po.PrintUsage();
       exit(1);
     }
 
     std::string segmentation_rspecifier = po.GetArg(1),
       num_overlaps_wspecifier = po.GetArg(2),
-      num_classes_wspecifier = po.GetArg(3);
+      num_classes_wspecifier = po.GetArg(3),
+      class_counts_per_frame_wspecifier = po.GetArg(4);
 
     int64 num_done = 0, num_err = 0;
 
     SequentialSegmentationReader reader(segmentation_rspecifier);
     Int32VectorWriter num_overlaps_writer(num_overlaps_wspecifier);
     Int32VectorWriter num_classes_writer(num_classes_wspecifier);
+    PosteriorWriter class_counts_per_frame_writer(
+        class_counts_per_frame_wspecifier);
 
     RandomAccessInt32Reader lengths_reader(lengths_rspecifier);
 
@@ -82,34 +88,42 @@ int main(int argc, char *argv[]) {
         length = lengths_reader.Value(key);
       }
 
-      std::vector<std::map<int32, int32> > class_counts_per_frame;
+      std::vector<std::map<int32, int32> > class_counts_map_per_frame;
       if (!GetClassCountsPerFrame(segmentation, length,
                                   length_tolerance,
-                                  &class_counts_per_frame)) {
+                                  &class_counts_map_per_frame)) {
         KALDI_WARN << "Failed getting stats for key " << key;
         num_err++;
         continue;
       }
 
       if (length == -1)
-        length = class_counts_per_frame.size();
+        length = class_counts_map_per_frame.size();
 
       std::vector<int32> num_classes_per_frame(length, 0);
       std::vector<int32> num_overlaps_per_frame(length, 0);
+      Posterior class_counts_per_frame(length, 
+          std::vector<std::pair<int32, BaseFloat> >());
 
-      for (int32 i = 0; i < class_counts_per_frame.size(); i++) {
-        std::map<int32, int32> &class_counts = class_counts_per_frame[i];
+      for (int32 i = 0; i < class_counts_map_per_frame.size(); i++) {
+        std::map<int32, int32> &class_counts = class_counts_map_per_frame[i];
 
         for (std::map<int32, int32>::const_iterator it = class_counts.begin();
               it != class_counts.end(); ++it) {
-          if (it->second > 0)
+          if (it->second > 0) {
             num_classes_per_frame[i]++;
+            class_counts_per_frame[i].push_back(
+                std::make_pair(it->first, it->second));
+          }
           num_overlaps_per_frame[i] += it->second;
         }
+        std::sort(class_counts_per_frame[i].begin(), 
+                  class_counts_per_frame[i].end());
       }
 
       num_classes_writer.Write(key, num_classes_per_frame);
       num_overlaps_writer.Write(key, num_overlaps_per_frame);
+      class_counts_per_frame_writer.Write(key, class_counts_per_frame);
 
       num_done++;
     }

@@ -35,9 +35,9 @@ int main(int argc, char *argv[]) {
         "ark:reco_segmentation.ark ark,t:overlapped_segments_info.txt ark:-\n";
     
     BaseFloat frame_shift = 0.01;
+    int32 junk_label = -1;
     std::string lengths_rspecifier;
     std::string additive_signals_segmentation_rspecifier; 
-    std::string unreliable_segmentation_wspecifier;
 
     ParseOptions po(usage);
 
@@ -49,10 +49,9 @@ int main(int argc, char *argv[]) {
                 &additive_signals_segmentation_rspecifier,
                 "Archive of segmentation of the additive signal which will used "
                 "instead of an all 1 segmentation");
-    po.Register("unreliable-segmentation-wspecifier",
-                &unreliable_segmentation_wspecifier,
-                "Applicable when additive-signals-segmentation-rspecifier is "
-                "provided and some utterances in it are missing");
+    po.Register("junk-label", &junk_label,
+                "If specified, then unreliable regions are labeled with this "
+                "label");
                 
     po.Read(argc, argv);
 
@@ -70,7 +69,6 @@ int main(int argc, char *argv[]) {
     SegmentationWriter writer(segmentation_wspecifier);
     
     RandomAccessSegmentationReader additive_signals_segmentation_reader(additive_signals_segmentation_rspecifier);
-    SegmentationWriter unreliable_writer(unreliable_segmentation_wspecifier);
 
     RandomAccessInt32Reader lengths_reader(lengths_rspecifier);
 
@@ -84,18 +82,20 @@ int main(int argc, char *argv[]) {
         num_missing++;
         continue;
       }
-      const std::vector<std::string> &additive_signals_info = additive_signals_info_reader.Value(key);
+      const std::vector<std::string> &additive_signals_info = 
+        additive_signals_info_reader.Value(key);
 
       Segmentation segmentation(reco_segmentation_reader.Value());
-      Segmentation unreliable_segmentation;
 
       for (size_t i = 0; i < additive_signals_info.size(); i++) {
         std::vector<std::string> parts;
         SplitStringToVector(additive_signals_info[i], ",:", false, &parts);
 
         if (parts.size() != 3) {
-          KALDI_ERR << "Invalid format of overlap info " << additive_signals_info[i] 
-                    << "for key " << key << " in " << additive_signals_info_rspecifier;
+          KALDI_ERR << "Invalid format of overlap info " 
+                    << additive_signals_info[i] 
+                    << "for key " << key << " in " 
+                    << additive_signals_info_rspecifier;
         }
         const std::string &utt_id = parts[0];
         double start_time;
@@ -110,17 +110,22 @@ int main(int argc, char *argv[]) {
                      << "segmentation " << additive_signals_segmentation_rspecifier;
           if (duration < 0) {
             KALDI_ERR << "duration < 0 for utt_id " << utt_id << " in "
-                      << "additive_signals_info " << additive_signals_info_rspecifier
-                      << "; additive-signals-segmentation must be provided in such a case";
+                      << "additive_signals_info " 
+                      << additive_signals_info_rspecifier
+                      << "; additive-signals-segmentation must be provided "
+                      << "in such a case";
           }
           num_err++;
-          unreliable_segmentation.EmplaceBack(start_frame, start_frame + duration - 1, 0);
+          int32 length = round(duration / frame_shift);
+          segmentation.EmplaceBack(start_frame, start_frame + length - 1,
+                                   junk_label);
           continue;   // Treated as non-overlapping even though there 
                       // is overlap
         }
 
-        InsertFromSegmentation(additive_signals_segmentation_reader.Value(utt_id),
-                               start_frame, false, &segmentation);
+        InsertFromSegmentation(
+            additive_signals_segmentation_reader.Value(utt_id),
+            start_frame, false, &segmentation);
       }
 
       Sort(&segmentation);
@@ -133,19 +138,6 @@ int main(int argc, char *argv[]) {
         TruncateToLength(lengths_reader.Value(key), &segmentation);
       }
       writer.Write(key, segmentation);
-
-      if (!unreliable_segmentation_wspecifier.empty()) {
-        Sort(&unreliable_segmentation);
-        if (!lengths_rspecifier.empty()) {
-          if (!lengths_reader.HasKey(key)) {
-            KALDI_WARN << "Could not find length for the recording " << key
-              << "in " << lengths_rspecifier;
-            continue;
-          }
-          TruncateToLength(lengths_reader.Value(key), &unreliable_segmentation);
-        }
-        unreliable_writer.Write(key, unreliable_segmentation);
-      }
 
       num_done++;
     }

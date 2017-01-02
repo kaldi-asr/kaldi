@@ -85,22 +85,36 @@ void Segmentation::Read(std::istream &is, bool binary) {
     }
     dim_ = segmentssz;
   } else {
-    if (int c = is.peek() != static_cast<int>('[')) {
-      KALDI_ERR << "Segmentation::Read: expected to see [, saw "
-                << static_cast<char>(c) << ", at file position " << is.tellg();
+    Segment seg;
+    while (1) {
+      int i = is.peek();
+      if (i == -1) {
+        KALDI_ERR << "Unexpected EOF";
+      } else if (static_cast<char>(i) == '\n') {
+        if (seg.start_frame != -1) {
+          KALDI_ERR << "No semicolon before newline (wrong format)";
+        } else {
+          is.get();
+          break;
+        }
+      } else if (std::isspace(i)) {
+        is.get();
+      } else if (static_cast<char>(i) == ';') {
+        if (seg.start_frame != -1) {
+          segments_.push_back(seg);
+          dim_++;
+          seg.Reset();
+        } else {
+          is.get();
+          KALDI_ASSERT(static_cast<char>(is.peek()) == '\n');
+          is.get();
+          break;
+        }
+        is.get();
+      } else {
+        seg.Read(is, false);
+      }
     }
-    is.get();   // consume the '['
-    is >> std::ws;
-    while (is.peek() != static_cast<int>(']')) {
-      KALDI_ASSERT(!is.eof());
-      Segment seg;
-      seg.Read(is, binary);
-      segments_.push_back(seg);
-      dim_++;
-      is >> std::ws;
-    }
-    is.get();
-    KALDI_ASSERT(!is.eof());
   }
 #ifdef KALDI_PARANOID
   Check();
@@ -126,12 +140,14 @@ void Segmentation::Write(std::ostream &os, bool binary) const {
       it->Write(os, binary);
     }
   } else {
-    os << "[ ";
+    if (Dim() == 0) {
+      os << ";";
+    }
     for (; it != End(); ++it) {
       it->Write(os, binary);
-      os << std::endl;
+      os << "; ";
     }
-    os << "]" << std::endl;
+    os << std::endl;
   }
 }
 
@@ -175,8 +191,8 @@ void Segmentation::GenRandomSegmentation(int32 max_length,
   int32 st = 0;
   int32 end = 0;
 
-  while (st > max_length) {
-    int32 segment_length = RandInt(0, max_segment_length);
+  while (st < max_length) {
+    int32 segment_length = RandInt(1, max_segment_length);
 
     end = st + segment_length - 1;
 

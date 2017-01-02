@@ -92,7 +92,8 @@ int main(int argc, char *argv[]) {
               << "created overall " << num_segments << " segments; "
               << "failed to merge " << num_err << " old segmentations";
 
-    return (num_new_segmentations > 0 && num_err < num_old_segmentations / 2);
+    return (num_new_segmentations > 0 && num_err < num_old_segmentations / 2 ? 
+            0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

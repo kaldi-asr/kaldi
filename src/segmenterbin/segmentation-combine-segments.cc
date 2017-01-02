@@ -44,7 +44,15 @@ int main(int argc, char *argv[]) {
         "segmentation-merge, segmentatin-merge-recordings, "
         "segmentation-post-process --merge-adjacent-segments\n";
 
+    bool include_missing = false;
+
     ParseOptions po(usage);
+
+    po.Register("include-missing-utt-level-segmentations", &include_missing,
+                "If true, then the segmentations missing in "
+                "utt-level-segmentation-rspecifier is included in the "
+                "final output with the label taken from the "
+                "kaldi-segments-segmentation-rspecifier");
 
     po.Read(argc, argv);
 
@@ -96,12 +104,17 @@ int main(int argc, char *argv[]) {
         if (!utt_segmentation_reader.HasKey(*it)) {
           KALDI_WARN << "Could not find utterance " << *it << " in "
                      << "segmentation " << utt_segmentation_rspecifier;
-          num_err++;
+          if (!include_missing) {
+            num_err++;
+          } else {
+            out_segmentation.PushBack(segment);
+            num_segments++;
+          }
           continue;
         }
+
         const Segmentation &utt_segmentation
           = utt_segmentation_reader.Value(*it);
-
         num_segments += InsertFromSegmentation(utt_segmentation,
                                                segment.start_frame, false,
                                                &out_segmentation, NULL);
