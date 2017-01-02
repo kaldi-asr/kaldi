@@ -13,7 +13,7 @@ frame_subsampling_factor=1
 
 . parse_options.sh
 
-if [ $# -ne 4 ]; then
+if [ $# -ne 3 ]; then
   echo "This script converts the alignment in the alignment directory "
   echo "to speech activity segments based on the provided phone-map."
   echo "Usage: $0 exp/tri3_ali data/lang/phones/sad.map exp/tri3_ali_vad"

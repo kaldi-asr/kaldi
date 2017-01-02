@@ -88,10 +88,9 @@ if [ $stage -le 6 ]; then
 1 0
 2 1
 EOF
-  steps/segmentation/post_process_sad_to_segments.sh \
-    --phone2sad-map $lang/phone2sad_map \
-    --ali-suffix "" --segmentation-config $segmentation_config \
+  steps/segmentation/post_process_sad_to_subsegments.sh \
+    --segmentation-config $segmentation_config \
     --frame-subsampling-factor $frame_subsampling_factor \
-    $data $lang $dir $dir $out_data
+    $data $lang/phone2sad_map $dir $dir $out_data
 fi
 
