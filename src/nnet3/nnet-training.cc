@@ -113,6 +113,7 @@ void NnetTrainer::DoScalingFactorLearning() {
   BaseFloat scale_learning_rate = config_.scale_learning_rate *
       (1.0 - config_.momentum) * (1.0 / config_.scale_update_frequency);
 
+  int32 i = 0;
   for (int32 c = 0; c < delta_nnet_->NumComponents(); c++) {
     Component *comp = delta_nnet_->GetComponent(c);
     if (comp->Properties() & kUpdatableComponent) {
@@ -129,9 +130,11 @@ void NnetTrainer::DoScalingFactorLearning() {
       // to nnet_delta_.
       BaseFloat alpha = scale_learning_rate * dot_prod;
       uc_delta->Add(alpha, *uc_nnet);
-      scaling_value_sum_[c] += alpha;
+      scaling_value_sum_[i] += alpha;
+      i++;
     }
   }
+  KALDI_ASSERT(i == scaling_value_sum_.size());
 }
 
 void NnetTrainer::UpdateParamsWithMaxChange() {
@@ -259,6 +262,7 @@ void NnetTrainer::PrintScalingFactorStats() const {
   std::ostringstream ostr;
   ostr << "Approximate total parameter scaling factors for nnet components "
        << "[ignoring effects due to max-change] are:";
+  int32 i = 0;
   for (int32 c = 0; c < delta_nnet_->NumComponents(); c++) {
     Component *comp = delta_nnet_->GetComponent(c);
     if (comp->Properties() & kUpdatableComponent) {
@@ -269,8 +273,10 @@ void NnetTrainer::PrintScalingFactorStats() const {
       ostr << " " << delta_nnet_->GetComponentName(c) << "="
            << std::exp(scaling_value_sum_[c])
            << (c == (delta_nnet_->NumComponents() - 1) ? "." : ",");
+      i++;
     }
   }
+  KALDI_ASSERT(i == scaling_value_sum_.size());
   KALDI_LOG << ostr.str();
 }
 
