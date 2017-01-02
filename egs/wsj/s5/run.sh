@@ -81,7 +81,7 @@ steps/train_mono.sh --boost-silence 1.25 --nj 10 --cmd "$train_cmd" \
   data/train_si84_2kshort data/lang_nosp exp/mono0a || exit 1;
 
 (
- utils/mkgraph.sh --mono data/lang_nosp_test_tgpr \
+ utils/mkgraph.sh data/lang_nosp_test_tgpr \
    exp/mono0a exp/mono0a/graph_nosp_tgpr && \
  steps/decode.sh --nj 10 --cmd "$decode_cmd" exp/mono0a/graph_nosp_tgpr \
    data/test_dev93 exp/mono0a/decode_nosp_tgpr_dev93 && \

@@ -7,7 +7,6 @@
 """
 
 import libs.nnet3.xconfig.utils as xutils
-from libs.nnet3.xconfig.utils import XconfigParserError as xparser_error
 from libs.nnet3.xconfig.basic_layers import XconfigBasicLayer
 from libs.nnet3.xconfig.basic_layers import XconfigLayerBase
 
@@ -35,7 +34,7 @@ class XconfigTdnnLayer(XconfigBasicLayer):
     def check_configs(self):
 
         if self.config['splice-indexes'] == '':
-            raise xparser_error("splice-indexes has to be non-empty", self.str())
+            raise RuntimeError("splice-indexes must be non-empty")
         super(XconfigTdnnLayer, self).check_configs()
 
 
@@ -60,7 +59,7 @@ class XconfigTdnnLayer(XconfigBasicLayer):
         try:
             return map(lambda x: int(x), self.config['splice-indexes'].split(","))
         except ValueError:
-            raise xparser_error("Invalid value for splice-indexes.", str(self))
+            raise RuntimeError("Invalid value for splice-indexes.")
 
     @staticmethod
     def splice_input(input_desc, input_dim,
@@ -106,5 +105,3 @@ class XconfigTdnnLayer(XconfigBasicLayer):
         return ["Append({0})".format(", ".join(appended_descriptors)),
                 appended_dimension,
                 configs]
-
-

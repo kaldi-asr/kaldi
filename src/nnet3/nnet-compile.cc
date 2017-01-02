@@ -613,22 +613,16 @@ void Compiler::DoBackwardComputationFromSubmatLocations(
   // trickier to implement efficiently on the GPU, there may be cases
   // which we will refuse to implement backprop for if we get here.
 
-  int32 num_rows = submat_locations.size();
-  std::vector<std::pair<int32, int32> >::const_iterator
-      iter = submat_locations.begin(), end = submat_locations.end();
-  int32 first_submat = iter->first;
-  for (++iter; iter != end; ++iter)
-    if (iter->first != first_submat)
-      break;
-  bool all_same_submatrix = (iter == end);
-  if (all_same_submatrix) {
-    int32 input_deriv_submatrix_index = first_submat;
-    std::vector<int32> indexes(num_rows);
-    for (int32 i = 0; i < num_rows; i++)
-      indexes[i] = submat_locations[i].second;
+
+
+  int32 first_value;
+  std::vector<int32> second_values;
+  if (ConvertToIndexes(submat_locations, &first_value,
+                       &second_values)) {
+    int32 input_deriv_submatrix_index = first_value;
     DoBackwardComputationFromIndexes(deriv_submatrix_index,
                                      input_deriv_submatrix_index,
-                                     indexes,
+                                     second_values,
                                      computation);
     return;
   } else {
