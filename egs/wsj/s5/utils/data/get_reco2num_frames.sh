@@ -20,7 +20,7 @@ if [ -f $data/reco2num_frames ]; then
   exit 0;
 fi
 
-utils/data/get_reco2dur.sh $data
+utils/data/get_reco2dur.sh --cmd "$cmd" --nj $nj $data
 awk -v fs=$frame_shift -v fovlp=$frame_overlap \
   '{print $1" "int( ($2 - fovlp) / fs)}' $data/reco2dur > $data/reco2num_frames
 
