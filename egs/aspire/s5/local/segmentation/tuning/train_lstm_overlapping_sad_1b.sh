@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# This is a script to train a time-delay neural network for overlapped speech activity detection
-# using statistic pooling component for long-context information.
+# This is a script to train a LSTM for overlapped speech activity detection
+# and SAD. This uses a larger LSTM-TDNN architecture and trains on 
+# ternary overlapping SAD labels.
 
 set -o pipefail
 set -e
@@ -18,19 +19,11 @@ train_stage=-10
 get_egs_stage=-10
 egs_opts=   # Directly passed to get_egs_multiple_targets.py
 
-# TDNN options
-relu_dim=256
-chunk_width=40  # We use chunk training for training TDNN
+chunk_width=20  
 num_chunk_per_minibatch=64
 
-extra_left_context=100  # Maximum left context in egs apart from TDNN's left context
-extra_right_context=20  # Maximum right context in egs apart from TDNN's right context
-
-# We randomly select an extra {left,right} context for each job between
-# min_extra_*_context and extra_*_context so that the network can get used
-# to different contexts used to compute statistics.
-min_extra_left_context=20
-min_extra_right_context=0
+extra_left_context=80  # Maximum left context in egs apart from TDNN's left context
+extra_right_context=40  # Maximum right context in egs apart from TDNN's right context
 
 # training options
 num_epochs=2
@@ -44,10 +37,7 @@ extra_egs_copy_cmd=   # Used if you want to do some weird stuff to egs
                       # such as removing one of the targets
 
 sad_data_dir=data/train_aztec_unsad_whole_corrupted_sp_hires_bp_2400
-ovlp_data_dir=data/train_aztec_unsad_seg_ovlp_corrupted_hires_bp
-
-#extra_left_context=79
-#extra_right_context=11
+ovlp_sad_data_dir=data/train_aztec_unsad_seg_ovlp_corrupted_hires_bp
 
 egs_dir=
 nj=40
@@ -55,18 +45,18 @@ feat_type=raw
 config_dir=
 
 dir=
-affix=b
+affix=a
 
 . cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
-num_utts=`cat $sad_data_dir/utt2spk $ovlp_data_dir/utt2spk | wc -l`
+num_utts=`cat $sad_data_dir/utt2spk $ovlp_sad_data_dir/utt2spk | wc -l`
 num_utts_subset_valid=`perl -e '$n=int($ARGV[0] * 0.005); print ($n > 4000 ? 4000 : $n)' $num_utts`
 num_utts_subset_train=`perl -e '$n=int($ARGV[0] * 0.005); print ($n > 4000 ? 4000 : $n)' $num_utts`
 
 if [ -z "$dir" ]; then
-  dir=exp/nnet3_stats_sad_ovlp_snr/nnet_tdnn
+  dir=exp/nnet3_stats_sad_ovlp_snr/nnet_lstm
 fi
 
 dir=$dir${affix:+_$affix}
@@ -83,8 +73,8 @@ mkdir -p $dir
 
 if [ $stage -le 0 ]; then
   utils/combine_data.sh --extra-files "speech_feat.scp deriv_weights.scp" \
-    $dir/combined_data_dir $sad_data_dir $ovlp_data_dir
-  utils/split_data.sh $ovlp_data_dir 100
+    $dir/combined_data_dir $sad_data_dir $ovlp_sad_data_dir
+  utils/split_data.sh $ovlp_sad_data_dir 100
   utils/split_data.sh $dir/combined_data_dir 100
 
   $train_cmd JOB=1:100 $dir/log/compute_post_output-speech.JOB.log \
@@ -98,17 +88,50 @@ if [ $stage -le 0 ]; then
   eval vector-sum $dir/post_output-speech.vec.{`seq -s, 100`} $dir/post_output-speech.vec
   rm $dir/post_output-speech.vec.*
 
-  $train_cmd JOB=1:100 $dir/log/compute_post_output-overlapped_speech.JOB.log \
-    ali-to-post "scp:utils/filter_scp.pl $ovlp_data_dir/split100/JOB/utt2spk $ovlp_data_dir/overlapped_speech_labels.scp |" ark:- \| \
-    post-to-feats --post-dim=2 ark:- ark:- \| \
+  $train_cmd JOB=1:100 $dir/log/compute_post_output-overlapping_sad.JOB.log \
+    ali-to-post "scp:utils/filter_scp.pl $ovlp_sad_data_dir/split100/JOB/utt2spk $ovlp_sad_data_dir/overlapping_sad_labels_fixed.scp |" ark:- \| \
+    post-to-feats --post-dim=3 ark:- ark:- \| \
     matrix-sum-rows ark:- ark:- \| \
-    vector-sum ark:- $dir/post_output-overlapped_speech.vec.JOB
-  eval vector-sum $dir/post_output-overlapped_speech.vec.{`seq -s, 100`} $dir/post_output-overlapped_speech.vec
-  rm $dir/post_output-overlapped_speech.vec.*
+    vector-sum ark:- $dir/post_output-overlapping_sad.vec.JOB
+  eval vector-sum $dir/post_output-overlapping_sad.vec.{`seq -s, 100`} $dir/post_output-overlapping_sad.vec
+  rm $dir/post_output-overlapping_sad.vec.*
 fi
 
 num_frames_sad=`copy-vector --binary=false $dir/post_output-speech.vec - | awk '{print $2+$3}'`
-num_frames_ovlp=`copy-vector --binary=false $dir/post_output-overlapped_speech.vec - | awk '{print $2+$3}'`
+num_frames_ovlp=`copy-vector --binary=false $dir/post_output-overlapping_sad.vec - | awk '{print $2+$3}'`
+
+copy-vector --binary=false $dir/post_output-overlapping_sad.vec $dir/post_output-overlapping_sad.txt
+copy-vector --binary=false $dir/post_output-speech.vec $dir/post_output-speech.txt
+
+write_presoftmax_scale() {
+  python -c 'import sys
+sys.path.insert(0, "steps")
+import libs.nnet3.train.common as common_train_lib
+import libs.common as common_lib
+priors_file = sys.argv[1]
+output_file = sys.argv[2]
+
+pdf_counts = common_lib.read_kaldi_matrix(priors_file)[0]
+scaled_counts = common_train_lib.smooth_presoftmax_prior_scale_vector(
+  pdf_counts, -0.25, smooth=0.0)
+common_lib.write_kaldi_matrix(output_file, [scaled_counts])' $1 $2
+}
+
+write_presoftmax_scale $dir/post_output-overlapping_sad.txt \
+  $dir/presoftmax_prior_scale_output-overlapping_sad.txt 
+write_presoftmax_scale $dir/post_output-speech.txt \
+  $dir/presoftmax_prior_scale_output-speech.txt 
+
+scales=`perl -e '
+$num_frames_sad=$ARGV[0];
+$num_frames_ovlp=$ARGV[1];
+$speech_scale = ($num_frames_ovlp / $num_frames_sad);
+$ovlp_scale = 1; 
+$avg_scale = ($speech_scale + $ovlp_scale) / 2; 
+print ($speech_scale / $avg_scale .  " " . $ovlp_scale / $avg_scale)' $num_frames_sad $num_frames_ovlp`
+
+speech_scale=`echo $scales | awk '{print $1}'`
+ovlp_scale=`echo $scales | awk '{print $1}'`
 
 if [ $stage -le 1 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
@@ -118,19 +141,20 @@ if [ $stage -le 1 ]; then
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=`feat-to-dim scp:$sad_data_dir/feats.scp -` name=input
-  output name=output-temp input=Append(-3,-2,-1,0,1,2,3)
+  output name=output-temp input=Append(-2,-1,0,1,2)
 
-  relu-renorm-layer name=tdnn1 input=Append(input@-3, input@-2, input@-1, input, input@1, input@2, input@3) dim=256
-  stats-layer name=tdnn2_stats config=mean+count(-99:3:9:99)
-  relu-renorm-layer name=tdnn2 input=Append(tdnn1@-6, tdnn1, tdnn2_stats) dim=256
-  relu-renorm-layer name=tdnn3 input=Append(-9,0,3) dim=256
-  relu-renorm-layer name=tdnn4 dim=256
+  relu-renorm-layer name=tdnn1 input=Append(input@-2, input@-1, input, input@1, input@2) dim=256
+  relu-renorm-layer name=tdnn2 input=Append(-1,0,1,2) dim=256
+  relu-renorm-layer name=tdnn3 input=Append(-3,0,3,6) dim=256
+  fast-lstmp-layer name=lstm1 cell-dim=256 recurrent-projection-dim=128 non-recurrent-projection-dim=128 delay=-3
+  relu-renorm-layer name=tdnn4 input=Append(-6,0,6,12) dim=256
+  fast-lstmp-layer name=lstm2 cell-dim=256 recurrent-projection-dim=128 non-recurrent-projection-dim=128 delay=-6
 
-  output-layer name=output-speech include-log-softmax=true dim=2 objective-scale=`perl -e "print ($num_frames_ovlp / $num_frames_sad) ** 0.25"` input=tdnn4
+  output-layer name=output-speech include-log-softmax=true dim=2 objective-scale=$speech_scale input=lstm2 presoftmax-scale-file=$dir/presoftmax_prior_scale_output-speech.txt learning-rate-factor=0.05
 
-  output-layer name=output-snr include-log-softmax=false dim=$num_snr_bins objective-type=quadratic objective-scale=`perl -e "print (($num_frames_ovlp / $num_frames_sad) ** 0.25) / $num_snr_bins"` input=tdnn4
+  output-layer name=output-snr include-log-softmax=false dim=$num_snr_bins objective-type=quadratic objective-scale=`perl -e "print $speech_scale / $num_snr_bins"` input=lstm2 max-change=0.75 learning-rate-factor=0.5
 
-  output-layer name=output-overlapped_speech include-log-softmax=true dim=2 input=tdnn4
+  output-layer name=output-overlapping_sad include-log-softmax=true dim=3 objective-scale=$ovlp_scale input=lstm2 presoftmax-scale-file=$dir/presoftmax_prior_scale_output-overlapping_sad.txt max-change=0.75 learning-rate-factor=0.02
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig \
     --config-dir $dir/configs/ \
@@ -148,7 +172,7 @@ if [ -z "$egs_dir" ]; then
   if [ $stage -le 2 ]; then
     if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs_speech/storage ]; then
       utils/create_split_dir.pl \
-        /export/b{03,04,05,06}/$USER/kaldi-data/egs/aspire-$(date +'%m_%d_%H_%M')/s5/$dir/egs_speech/storage $dir/egs_speech/storage
+        /export/b{01,02,05,06}/$USER/kaldi-data/egs/aspire-$(date +'%m_%d_%H_%M')/s5/$dir/egs_speech/storage $dir/egs_speech/storage
     fi
 
     . $dir/configs/vars
@@ -173,14 +197,14 @@ if [ -z "$egs_dir" ]; then
   if [ $stage -le 3 ]; then
     if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs_ovlp/storage ]; then
       utils/create_split_dir.pl \
-        /export/b{03,04,05,06}/$USER/kaldi-data/egs/aspire-$(date +'%m_%d_%H_%M')/s5/$dir/egs_music/storage $dir/egs_music/storage
+        /export/b{01,02,05,06}/$USER/kaldi-data/egs/aspire-$(date +'%m_%d_%H_%M')/s5/$dir/egs_ovlp/storage $dir/egs_ovlp/storage
     fi
 
     . $dir/configs/vars
 
     steps/nnet3/get_egs_multiple_targets.py --cmd="$decode_cmd" \
       $egs_opts \
-      --feat.dir="$ovlp_data_dir" \
+      --feat.dir="$ovlp_sad_data_dir" \
       --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
       --frames-per-eg=$chunk_width \
       --left-context=$[model_left_context + extra_left_context] \
@@ -189,8 +213,8 @@ if [ -z "$egs_dir" ]; then
       --num-utts-subset-valid=$num_utts_subset_valid \
       --samples-per-iter=$samples_per_iter \
       --stage=$get_egs_stage \
-      --targets-parameters="--output-name=output-speech --target-type=sparse --dim=2 --targets-scp=$ovlp_data_dir/speech_feat.scp --deriv-weights-scp=$ovlp_data_dir/deriv_weights.scp  --scp2ark-cmd=\"extract-column --column-index=0 scp:- ark,t:- | steps/segmentation/quantize_vector.pl | ali-to-post ark,t:- ark:- |\"" \
-      --targets-parameters="--output-name=output-overlapped_speech --target-type=sparse --dim=2 --targets-scp=$ovlp_data_dir/overlapped_speech_labels.scp --deriv-weights-scp=$ovlp_data_dir/deriv_weights_for_overlapped_speech.scp --scp2ark-cmd=\"ali-to-post scp:- ark:- |\"" \
+      --targets-parameters="--output-name=output-speech --target-type=sparse --dim=2 --targets-scp=$ovlp_sad_data_dir/speech_feat.scp --deriv-weights-scp=$ovlp_sad_data_dir/deriv_weights.scp  --scp2ark-cmd=\"extract-column --column-index=0 scp:- ark,t:- | steps/segmentation/quantize_vector.pl | ali-to-post ark,t:- ark:- |\"" \
+      --targets-parameters="--output-name=output-overlapping_sad --target-type=sparse --dim=3 --targets-scp=$ovlp_sad_data_dir/overlapping_sad_labels_fixed.scp --deriv-weights-scp=$ovlp_sad_data_dir/deriv_weights.scp --scp2ark-cmd=\"ali-to-post scp:- ark:- |\"" \
       --generate-egs-scp=true \
       --dir=$dir/egs_ovlp
   fi
@@ -215,8 +239,6 @@ if [ $stage -le 5 ]; then
     --egs.chunk-right-context=$extra_right_context \
     --egs.use-multitask-egs=true --egs.rename-multitask-outputs=false \
     ${extra_egs_copy_cmd:+--egs.extra-copy-cmd="$extra_egs_copy_cmd"} \
-    --trainer.min-chunk-left-context=$min_extra_left_context \
-    --trainer.min-chunk-right-context=$min_extra_right_context \
     --trainer.num-epochs=$num_epochs \
     --trainer.samples-per-iter=20000 \
     --trainer.optimization.num-jobs-initial=$num_jobs_initial \
@@ -227,6 +249,7 @@ if [ $stage -le 5 ]; then
     --trainer.rnn.num-chunk-per-minibatch=$num_chunk_per_minibatch \
     --trainer.deriv-truncate-margin=8 \
     --trainer.max-param-change=$max_param_change \
+    --trainer.compute-per-dim-accuracy=true \
     --cmd="$decode_cmd" --nj 40 \
     --cleanup=true \
     --cleanup.remove-egs=$remove_egs \
@@ -237,4 +260,3 @@ if [ $stage -le 5 ]; then
     --targets-scp="$sad_data_dir/speech_feat.scp" \
     --dir=$dir || exit 1
 fi
-

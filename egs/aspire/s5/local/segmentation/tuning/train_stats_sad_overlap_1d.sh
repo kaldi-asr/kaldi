@@ -55,7 +55,7 @@ feat_type=raw
 config_dir=
 
 dir=
-affix=b
+affix=d
 
 . cmd.sh
 . ./path.sh
@@ -99,7 +99,7 @@ if [ $stage -le 0 ]; then
   rm $dir/post_output-speech.vec.*
 
   $train_cmd JOB=1:100 $dir/log/compute_post_output-overlapped_speech.JOB.log \
-    ali-to-post "scp:utils/filter_scp.pl $ovlp_data_dir/split100/JOB/utt2spk $ovlp_data_dir/overlapped_speech_labels.scp |" ark:- \| \
+    ali-to-post "scp:utils/filter_scp.pl $ovlp_data_dir/split100/JOB/utt2spk $ovlp_data_dir/overlapped_speech_labels_fixed.scp |" ark:- \| \
     post-to-feats --post-dim=2 ark:- ark:- \| \
     matrix-sum-rows ark:- ark:- \| \
     vector-sum ark:- $dir/post_output-overlapped_speech.vec.JOB
@@ -109,6 +109,28 @@ fi
 
 num_frames_sad=`copy-vector --binary=false $dir/post_output-speech.vec - | awk '{print $2+$3}'`
 num_frames_ovlp=`copy-vector --binary=false $dir/post_output-overlapped_speech.vec - | awk '{print $2+$3}'`
+
+copy-vector --binary=false $dir/post_output-overlapped_speech.vec $dir/post_output-overlapped_speech.txt
+copy-vector --binary=false $dir/post_output-speech.vec $dir/post_output-speech.txt
+
+write_presoftmax_scale() {
+  python -c 'import sys
+sys.path.insert(0, "steps")
+import libs.nnet3.train.common as common_train_lib
+import libs.common as common_lib
+priors_file = sys.argv[1]
+output_file = sys.argv[2]
+
+pdf_counts = common_lib.read_kaldi_matrix(priors_file)[0]
+scaled_counts = common_train_lib.smooth_presoftmax_prior_scale_vector(
+  pdf_counts, -1.00, smooth=0.0)
+common_lib.write_kaldi_matrix(output_file, [scaled_counts])' $1 $2
+}
+
+write_presoftmax_scale $dir/post_output-overlapped_speech.txt \
+  $dir/presoftmax_prior_scale_output-overlapped_speech.txt 
+write_presoftmax_scale $dir/post_output-speech.txt \
+  $dir/presoftmax_prior_scale_output-speech.txt 
 
 if [ $stage -le 1 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
@@ -126,11 +148,12 @@ if [ $stage -le 1 ]; then
   relu-renorm-layer name=tdnn3 input=Append(-9,0,3) dim=256
   relu-renorm-layer name=tdnn4 dim=256
 
-  output-layer name=output-speech include-log-softmax=true dim=2 objective-scale=`perl -e "print ($num_frames_ovlp / $num_frames_sad) ** 0.25"` input=tdnn4
+  output-layer name=output-speech include-log-softmax=true dim=2 objective-scale=`perl -e "print ($num_frames_ovlp / $num_frames_sad) ** 0.25"` input=tdnn4 presoftmax-scale-file=$dir/presoftmax_prior_scale_output-speech.txt
 
   output-layer name=output-snr include-log-softmax=false dim=$num_snr_bins objective-type=quadratic objective-scale=`perl -e "print (($num_frames_ovlp / $num_frames_sad) ** 0.25) / $num_snr_bins"` input=tdnn4
 
-  output-layer name=output-overlapped_speech include-log-softmax=true dim=2 input=tdnn4
+  output-layer name=output-overlapped_speech include-log-softmax=true dim=2 input=tdnn4 presoftmax-scale-file=$dir/presoftmax_prior_scale_output-overlapped_speech.txt
+
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig \
     --config-dir $dir/configs/ \
@@ -173,7 +196,7 @@ if [ -z "$egs_dir" ]; then
   if [ $stage -le 3 ]; then
     if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs_ovlp/storage ]; then
       utils/create_split_dir.pl \
-        /export/b{03,04,05,06}/$USER/kaldi-data/egs/aspire-$(date +'%m_%d_%H_%M')/s5/$dir/egs_music/storage $dir/egs_music/storage
+        /export/b{03,04,05,06}/$USER/kaldi-data/egs/aspire-$(date +'%m_%d_%H_%M')/s5/$dir/egs_ovlp/storage $dir/egs_ovlp/storage
     fi
 
     . $dir/configs/vars
@@ -190,7 +213,7 @@ if [ -z "$egs_dir" ]; then
       --samples-per-iter=$samples_per_iter \
       --stage=$get_egs_stage \
       --targets-parameters="--output-name=output-speech --target-type=sparse --dim=2 --targets-scp=$ovlp_data_dir/speech_feat.scp --deriv-weights-scp=$ovlp_data_dir/deriv_weights.scp  --scp2ark-cmd=\"extract-column --column-index=0 scp:- ark,t:- | steps/segmentation/quantize_vector.pl | ali-to-post ark,t:- ark:- |\"" \
-      --targets-parameters="--output-name=output-overlapped_speech --target-type=sparse --dim=2 --targets-scp=$ovlp_data_dir/overlapped_speech_labels.scp --deriv-weights-scp=$ovlp_data_dir/deriv_weights_for_overlapped_speech.scp --scp2ark-cmd=\"ali-to-post scp:- ark:- |\"" \
+      --targets-parameters="--output-name=output-overlapped_speech --target-type=sparse --dim=2 --targets-scp=$ovlp_data_dir/overlapped_speech_labels_fixed.scp --deriv-weights-scp=$ovlp_data_dir/deriv_weights_for_overlapped_speech.scp --scp2ark-cmd=\"ali-to-post scp:- ark:- |\"" \
       --generate-egs-scp=true \
       --dir=$dir/egs_ovlp
   fi
@@ -237,4 +260,3 @@ if [ $stage -le 5 ]; then
     --targets-scp="$sad_data_dir/speech_feat.scp" \
     --dir=$dir || exit 1
 fi
-
