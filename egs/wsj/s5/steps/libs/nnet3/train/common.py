@@ -197,9 +197,10 @@ def verify_egs_dir(egs_dir, feat_dim, ivector_dim,
 
         return [egs_left_context, egs_right_context,
                 frames_per_eg, num_archives]
-    except (IOError, ValueError) as e:
-        raise Exception("The egs dir {0} has missing or "
-                        "malformed files: {1}".format(egs_dir, e.strerr))
+    except (IOError, ValueError):
+        logger.error("The egs dir {0} has missing or "
+                     "malformed files.".format(egs_dir))
+        raise
 
 
 def compute_presoftmax_prior_scale(dir, alidir, num_jobs, run_opts,
@@ -561,7 +562,7 @@ class CommonParser:
                                  to steps/nnet3/get_egs.sh script""")
         self.parser.add_argument("--egs.use-multitask-egs", type=str,
                                  dest='use_multitask_egs',
-                                 default=True, choices=["true", "false"],
+                                 default=False, choices=["true", "false"],
                                  action=common_lib.StrToBoolAction,
                                  help="""Use mutlitask egs created using
                                  allocate_multilingual_egs.py.""")
@@ -683,6 +684,13 @@ class CommonParser:
                                  lstm*=0,0.2,0'.  More general should precede
                                  less general patterns, as they are applied
                                  sequentially.""")
+        self.parser.add_argument("--trainer.compute-per-dim-accuracy",
+                                 dest='compute_per_dim_accuracy',
+                                 type=str, choices=['true', 'false'],
+                                 default=False,
+                                 action=common_lib.StrToBoolAction,
+                                 help="Compute train and validation "
+                                 "accuracy per-dim")
 
         # General options
         self.parser.add_argument("--stage", type=int, default=-4,

@@ -108,22 +108,33 @@ void NnetComputeProb::ProcessOutputs(const NnetExample &eg,
       }
       if (config_.compute_accuracy) {
         BaseFloat tot_weight, tot_accuracy;
+        PerDimObjectiveInfo &totals = accuracy_info_[io.name];
+
+        if (config_.compute_per_dim_accuracy && 
+            totals.tot_objective_vec.Dim() == 0) {
+          totals.tot_objective_vec.Resize(output.NumCols());
+          totals.tot_weight_vec.Resize(output.NumCols());
+        }
+
         ComputeAccuracy(io.features, output,
-                        &tot_weight, &tot_accuracy, deriv_weights);
-        SimpleObjectiveInfo &totals = accuracy_info_[io.name];
+                        &tot_weight, &tot_accuracy, deriv_weights,
+                        config_.compute_per_dim_accuracy ? 
+                          &totals.tot_weight_vec : NULL,
+                        config_.compute_per_dim_accuracy ? 
+                          &totals.tot_objective_vec : NULL);
         totals.tot_weight += tot_weight;
         totals.tot_objective += tot_accuracy;
       }
-      num_minibatches_processed_++;
     }
   }
+  num_minibatches_processed_++;
 }
 
 bool NnetComputeProb::PrintTotalStats() const {
   bool ans = false;
-  unordered_map<std::string, SimpleObjectiveInfo, StringHasher>::const_iterator
-      iter, end;
   { // First print regular objectives
+    unordered_map<std::string, SimpleObjectiveInfo, 
+                  StringHasher>::const_iterator iter, end;
     iter = objf_info_.begin();
     end = objf_info_.end();
     for (; iter != end; ++iter) {
@@ -141,15 +152,34 @@ bool NnetComputeProb::PrintTotalStats() const {
         ans = true;
     }
   }
-  { // now print accuracies.
+  { 
+    unordered_map<std::string, PerDimObjectiveInfo, 
+                  StringHasher>::const_iterator iter, end;
+    // now print accuracies.
     iter = accuracy_info_.begin();
     end = accuracy_info_.end();
     for (; iter != end; ++iter) {
       const std::string &name = iter->first;
-      const SimpleObjectiveInfo &info = iter->second;
+      const PerDimObjectiveInfo &info = iter->second;
       KALDI_LOG << "Overall accuracy for '" << name << "' is "
                 << (info.tot_objective / info.tot_weight) << " per frame"
                 << ", over " << info.tot_weight << " frames.";
+
+      if (info.tot_weight_vec.Dim() > 0) {
+        Vector<BaseFloat> accuracy_vec(info.tot_weight_vec.Dim());
+        for (size_t j = 0; j < info.tot_weight_vec.Dim(); j++) {
+          if (info.tot_weight_vec(j) !=  0) {
+            accuracy_vec(j) = info.tot_objective_vec(j) 
+                              / info.tot_weight_vec(j);
+          } else {
+            accuracy_vec(j) = -1.0;
+          }
+        }
+
+        KALDI_LOG << "Overall per-dim accuracy vector for '" << name 
+                  << "' is " << accuracy_vec << " per frame"
+                  << ", over " << info.tot_weight << " frames.";
+      }
       // don't bother changing ans; the loop over the regular objective should
       // already have set it to true if we got any data.
     }
@@ -161,11 +191,18 @@ void ComputeAccuracy(const GeneralMatrix &supervision,
                      const CuMatrixBase<BaseFloat> &nnet_output,
                      BaseFloat *tot_weight_out,
                      BaseFloat *tot_accuracy_out,
-                     const Vector<BaseFloat> *deriv_weights) {
+                     const Vector<BaseFloat> *deriv_weights,
+                     Vector<BaseFloat> *tot_weight_vec,
+                     Vector<BaseFloat> *tot_accuracy_vec) {
   int32 num_rows = nnet_output.NumRows(),
       num_cols = nnet_output.NumCols();
   KALDI_ASSERT(supervision.NumRows() == num_rows &&
                supervision.NumCols() == num_cols);
+
+  if (tot_accuracy_vec || tot_weight_vec)
+    KALDI_ASSERT(tot_accuracy_vec && tot_weight_vec &&
+                 tot_accuracy_vec->Dim() == num_cols &&
+                 tot_weight_vec->Dim() == num_cols);
 
   CuArray<int32> best_index(num_rows);
   nnet_output.FindRowMaxId(&best_index);
@@ -192,8 +229,13 @@ void ComputeAccuracy(const GeneralMatrix &supervision,
         if (deriv_weights)
           row_sum  *= (*deriv_weights)(r);
         tot_weight += row_sum;
-        if (best_index == best_index_cpu[r])
+        if (tot_weight_vec)
+          (*tot_weight_vec)(best_index) += row_sum;
+        if (best_index == best_index_cpu[r]) {
           tot_accuracy += row_sum;
+          if (tot_accuracy_vec)
+            (*tot_accuracy_vec)(best_index) += row_sum;
+        }
       }
       break;
     }
@@ -208,8 +250,13 @@ void ComputeAccuracy(const GeneralMatrix &supervision,
         if (deriv_weights)
           row_sum  *= (*deriv_weights)(r);
         tot_weight += row_sum;
-        if (best_index == best_index_cpu[r])
+        if (tot_weight_vec)
+          (*tot_weight_vec)(best_index) += row_sum;
+        if (best_index == best_index_cpu[r]) {
           tot_accuracy += row_sum;
+          if (tot_accuracy_vec)
+            (*tot_accuracy_vec)(best_index) += row_sum;
+        }
       }
       break;
     }
@@ -224,8 +271,13 @@ void ComputeAccuracy(const GeneralMatrix &supervision,
           row_sum  *= (*deriv_weights)(r);
         KALDI_ASSERT(best_index < num_cols);
         tot_weight += row_sum;
-        if (best_index == best_index_cpu[r])
+        if (tot_weight_vec)
+          (*tot_weight_vec)(best_index) += row_sum;
+        if (best_index == best_index_cpu[r]) {
           tot_accuracy += row_sum;
+          if (tot_accuracy_vec)
+            (*tot_accuracy_vec)(best_index) += row_sum;
+        }
       }
       break;
     }
