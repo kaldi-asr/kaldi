@@ -250,6 +250,10 @@ bool SplitToPhones(const TransitionModel &trans_model,
                                 'subsample_factor' after alignment
                                 conversion, to keep the alignment the same
                                 length as the input alignment.
+                                [note: we actually do this by interpolating
+                                'subsample_factor' separately generated
+                                alignments, to keep the phone boundaries
+                                the same as the input where possible.]
    @param reorder [in]          True if you want the pdf-ids on the new alignment to
                                 be 'reordered'. (vs. the way they appear in
                                 the HmmTopology object)

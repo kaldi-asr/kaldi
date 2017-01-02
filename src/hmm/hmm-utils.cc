@@ -772,14 +772,33 @@ static inline void ConvertAlignmentForPhone(
 }
 
 
+
 /**
-   This function, called from ConvertAlignment(), works out suitable new lengths
-   of phones in the case where subsample_factor != 1.  The input vectors
+   This function, called from ConvertAlignmentInternal(), works out suitable new
+   lengths of phones in the case where subsample_factor != 1.  The input vectors
    'mapped_phones' and 'old_lengths' must be the same size-- the length of the
    phone sequence.  The 'topology' object and 'mapped_phones' are needed to
    work out the minimum length of each phone in the sequence.
    Returns true only if it could not assign lengths (because the topology was
    too long relative to the number of frames).
+
+   @param topology [in]         The new phone lengths are computed with
+                                regard to this topology
+   @param mapped_phones [in]    The phones for which this function computes
+                                new lengths
+   @param old_lengths     [in]  The old lengths
+   @param conversion_shift [in] This will normally equal subsample_factor - 1
+                                but may be less than that if the 'repeat_frames'
+                                option is true; it's used for generating
+                                'frame-shifted' versions of alignments that
+                                we will later interpolate. This helps us keep
+                                the phone boundaries of the subsampled and
+                                interpolated alignments the same as
+                                the original alignment.
+   @param subsample_factor [in] The frame subsampling factor... normally 1, but
+                                might be > 1 if we're converting to a
+                                reduced-frame-rate system.
+   @param new_lengths [out]     The vector for storing new lengths.
 */
 static bool ComputeNewPhoneLengths(const HmmTopology &topology,
                                    const std::vector<int32> &mapped_phones,
@@ -851,7 +870,14 @@ static bool ComputeNewPhoneLengths(const HmmTopology &topology,
   return true;
 }
 
-bool ConvertAlignmentInternal(const TransitionModel &old_trans_model,
+/**
+  This function is the same as 'ConvertAligment',
+  but instead of the 'repeat_frames' option it supports the 'conversion_shift'
+  option; see the documentation of ComputeNewPhoneLengths() for what
+  'conversion_shift' is for.
+*/
+
+static bool ConvertAlignmentInternal(const TransitionModel &old_trans_model,
                       const TransitionModel &new_trans_model,
                       const ContextDependencyInterface &new_ctx_dep,
                       const std::vector<int32> &old_alignment,
@@ -982,7 +1008,7 @@ bool ConvertAlignment(const TransitionModel &old_trans_model,
     for (int32 i = 0; i < max_shifted_ali_length; i++)
       for (int32 conversion_shift = subsample_factor - 1;
            conversion_shift >= 0; conversion_shift--)
-        if (i < shifted_alignments[conversion_shift].size())
+        if (i < static_cast<int32>(shifted_alignments[conversion_shift].size()))
           new_alignment->push_back(shifted_alignments[conversion_shift][i]);
   }
   KALDI_ASSERT(new_alignment->size() == old_alignment.size());
