@@ -32,7 +32,7 @@ NnetChainComputeProb::NnetChainComputeProb(
     chain_config_(chain_config),
     den_graph_(den_fst, nnet.OutputDim("output")),
     nnet_(nnet),
-    compiler_(nnet, nnet_config_.optimize_config),
+    compiler_(nnet, nnet_config_.optimize_config, nnet_config_.compiler_config),
     deriv_nnet_(NULL),
     num_minibatches_processed_(0) {
   if (nnet_config_.compute_deriv) {

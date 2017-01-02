@@ -28,7 +28,7 @@ NnetComputeProb::NnetComputeProb(const NnetComputeProbOptions &config,
     config_(config),
     nnet_(nnet),
     deriv_nnet_(NULL),
-    compiler_(nnet),
+    compiler_(nnet, config_.optimize_config, config_.compiler_config),
     num_minibatches_processed_(0) {
   if (config_.compute_deriv) {
     deriv_nnet_ = new Nnet(nnet_);
