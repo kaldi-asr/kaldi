@@ -741,7 +741,7 @@ def generate_training_examples_internal(dir, targets_parameters, feat_dir,
             out_egs_handle = open("{0}/egs.scp".format(dir), 'w')
             for i in range(1, num_archives_intermediate + 1):
                 for line in open("{0}/egs.{1}.scp".format(dir, i)):
-                    print (line, file=out_egs_handle)
+                    print (line.strip(), file=out_egs_handle)
             out_egs_handle.close()
     else:
         # there are intermediate archives so we shuffle egs across jobs
@@ -782,7 +782,7 @@ def generate_training_examples_internal(dir, targets_parameters, feat_dir,
             for i in range(1, num_archives_intermediate + 1):
                 for j in range(1, archives_multiple + 1):
                     for line in open("{0}/egs.{1}.{2}.scp".format(dir, i, j)):
-                        print (line, file=out_egs_handle)
+                        print (line.strip(), file=out_egs_handle)
             out_egs_handle.close()
 
     cleanup(dir, archives_multiple)
