@@ -582,7 +582,9 @@ class XconfigOutputLayer(XconfigLayerBase):
             if output_delay != 0:
                 cur_node = 'Offset({0}, {1})'.format(cur_node, output_delay)
 
-            line = ('output-node name={0} input={1}'.format(self.name, cur_node))
+            line = ('output-node name={0} input={1} '
+                    'objective={2}'.format(
+                self.name, cur_node, objective_type))
             ans.append((config_name, line))
         return ans
 
