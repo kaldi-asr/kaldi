@@ -126,8 +126,44 @@ else
   corrupted_data_dir=${corrupted_data_dir}_$feat_suffix
 fi
 
-exit 0
+if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d log_energy/storage ]; then
+  utils/create_split_dir.pl \
+    /export/b0{3,4,5,6}/$USER/kaldi-data/egs/aspire-$(date +'%m_%d_%H_%M')/s5/log_energy/storage log_energy/storage
+fi
 
+if [ $stage -le 5 ]; then
+  utils/copy_data_dir.sh $clean_data_dir ${clean_data_dir}_log_energy
+  steps/make_mfcc.sh --mfcc-config conf/log_energy.conf \
+    --cmd "$cmd" --nj $nj ${clean_data_dir}_log_energy \
+    exp/make_log_energy/${clean_data_id} log_energy
+fi
+
+if [ $stage -le 6 ]; then
+  utils/copy_data_dir.sh $noise_data_dir ${noise_data_dir}_log_energy
+  steps/make_mfcc.sh --mfcc-config conf/log_energy.conf \
+    --cmd "$cmd" --nj $nj ${noise_data_dir}_log_energy \
+    exp/make_log_energy/${noise_data_id} log_energy
+fi
+
+targets_dir=log_snr
+if [ $stage -le 7 ]; then
+  mkdir -p exp/make_log_snr/${corrupted_data_id}
+
+  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $targets_dir/storage ]; then
+    utils/create_split_dir.pl \
+      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/aspire-$(date +'%m_%d_%H_%M')/s5/$targets_dir/storage $targets_dir/storage
+  fi
+
+  # Get log-SNR targets 
+  steps/segmentation/make_snr_targets.sh \
+    --nj $nj --cmd "$cmd" \
+    --target-type Snr --compress false \
+    ${clean_data_dir}_log_energy ${noise_data_dir}_log_energy ${corrupted_data_dir} \
+    exp/make_log_snr/${corrupted_data_id} $targets_dir
+fi
+
+exit 0
+  
 if [ $stage -le 5 ]; then
   # clean here is the reverberated first-speaker signal
   utils/copy_data_dir.sh $clean_data_dir ${clean_data_dir}_$feat_suffix
