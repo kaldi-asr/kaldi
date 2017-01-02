@@ -206,16 +206,13 @@ class CachingOptimizingCompiler {
  public:
   CachingOptimizingCompiler(const Nnet &nnet,
                             const CachingOptimizingCompilerOptions config =
-                            CachingOptimizingCompilerOptions()):
-      nnet_(nnet), config_(config), seconds_taken_(0.0) { }
+                            CachingOptimizingCompilerOptions());
 
   /// Note: nnet is retained as a const reference but opt_config is copied.
   CachingOptimizingCompiler(const Nnet &nnet,
                             const NnetOptimizeOptions &opt_config,
                             const CachingOptimizingCompilerOptions config =
-                            CachingOptimizingCompilerOptions()):
-      nnet_(nnet), config_(config), opt_config_(opt_config),
-      seconds_taken_(0.0) { }
+                            CachingOptimizingCompilerOptions());
 
   ~CachingOptimizingCompiler();
   /// Does the compilation and returns a const pointer to
@@ -226,11 +223,17 @@ class CachingOptimizingCompiler {
   void ReadCache(std::istream &is, bool binary);
   void WriteCache(std::ostream &os, bool binary) const;
  private:
-  // This function, called from Compile(), is called when a ComputationRequest
-  // has been determined not to have already been cached.  It otherwise has the
-  // same interface as Compile(), but assumes that there is nothing cached for
-  // this computation as yet.  It compiles the computation and takes care of
-  // caching it.
+
+  // This function just implements the work of Compile(); it's made a separate
+  // function for the convenience of the timer code, to avoid it being called
+  // twice (we also call this function directly from inside the class).
+  const NnetComputation* CompileInternal(const ComputationRequest &request);
+
+  // This function, called from CompileInternal(), is called when a
+  // ComputationRequest has been determined not to have already been cached.  It
+  // otherwise has the same interface as CompileInternal(), but assumes that
+  // there is nothing cached for this computation as yet.  It compiles the
+  // computation and takes care of caching it.
   const NnetComputation* CompileAndCache(const ComputationRequest &request);
 
 
@@ -274,13 +277,18 @@ class CachingOptimizingCompiler {
                         ComputationRequestPtrEqual> CacheType;
   CacheType computation_cache_;
 
-  // time spent in compilation-- for diagnostic messages
-  double seconds_taken_;
+  // seconds spent in various phases of compilation-- for diagnostic messages
+  double seconds_taken_total_;
+  double seconds_taken_compile_;
+  double seconds_taken_optimize_;
+  double seconds_taken_expand_;
+  double seconds_taken_check_;
+  double seconds_taken_indexes_;
 
-  // This function updates the computation cache. It is called within Compile().
-  // It takes ownership of the pointers.  It inserts the request at the end of
-  // the queue, and purges the least-recently-accessed request from the queue and
-  // the cache if the capacity is reached.
+  // This function updates the computation cache. It is called within
+  // CompileInternal().  It takes ownership of the pointers.  It inserts the
+  // request at the end of the queue, and purges the least-recently-accessed
+  // request from the queue and the cache if the capacity is reached.
   void UpdateCache(const ComputationRequest *request,
                    const NnetComputation *computation);
   // This function updates the recently accessed queue.

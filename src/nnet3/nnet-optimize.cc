@@ -18,6 +18,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#include <iomanip>
 #include "nnet3/nnet-optimize.h"
 #include "nnet3/nnet-optimize-utils.h"
 #include "base/timer.h"
@@ -546,6 +547,24 @@ size_t ComputationRequestHasher::operator() (const ComputationRequest *cr) const
   return ans;
 }
 
+
+CachingOptimizingCompiler::CachingOptimizingCompiler(
+    const Nnet &nnet,
+    const CachingOptimizingCompilerOptions config):
+    nnet_(nnet), config_(config),
+    seconds_taken_total_(0.0), seconds_taken_compile_(0.0),
+    seconds_taken_optimize_(0.0), seconds_taken_expand_(0.0),
+    seconds_taken_check_(0.0), seconds_taken_indexes_(0.0) { }
+
+CachingOptimizingCompiler::CachingOptimizingCompiler(
+    const Nnet &nnet,
+    const NnetOptimizeOptions &opt_config,
+    const CachingOptimizingCompilerOptions config):
+    nnet_(nnet), config_(config), opt_config_(opt_config),
+    seconds_taken_total_(0.0), seconds_taken_compile_(0.0),
+    seconds_taken_optimize_(0.0), seconds_taken_expand_(0.0),
+    seconds_taken_check_(0.0), seconds_taken_indexes_(0.0) { }
+
 void CachingOptimizingCompiler::UpdateCache(const ComputationRequest *request,
                                             const NnetComputation *computation) {
   if (computation_cache_.size() == config_.cache_capacity) {
@@ -615,12 +634,33 @@ CachingOptimizingCompiler::~CachingOptimizingCompiler() {
     delete itr->first;
     delete itr->second.first;
   }
-  KALDI_LOG << seconds_taken_ << " seconds taken in nnet3 compilation";
+  std::ostringstream os;
+  double seconds_taken_misc = seconds_taken_total_ - seconds_taken_compile_
+      - seconds_taken_optimize_ - seconds_taken_expand_
+      - seconds_taken_check_ - seconds_taken_indexes_;
+  os << std::setprecision(3) << seconds_taken_total_
+     << " seconds taken in nnet3 compilation total (breakdown: "
+     << seconds_taken_compile_ << " compilation, "
+     << seconds_taken_optimize_ << " optimization, "
+     << seconds_taken_expand_ << " shortcut expansion, "
+     << seconds_taken_check_ << " checking, "
+     << seconds_taken_indexes_ << " computing indexes, "
+     << seconds_taken_misc << " misc.)";
+  KALDI_LOG << os.str();
+  // note: the leftover amount is misc things like hashing and == comparisons on
+  // computation-requests, and calling RequestIsDecomposable().
 }
 
 const NnetComputation* CachingOptimizingCompiler::Compile(
     const ComputationRequest  &in_request) {
   Timer timer;
+  const NnetComputation *ans = CompileInternal(in_request);
+  seconds_taken_total_ += timer.Elapsed();
+  return ans;
+}
+
+const NnetComputation* CachingOptimizingCompiler::CompileInternal(
+    const ComputationRequest  &in_request) {
   const NnetComputation *ans;
   // find computation in the cache
   CacheType::iterator cit = computation_cache_.find(&in_request);
@@ -632,7 +672,6 @@ const NnetComputation* CachingOptimizingCompiler::Compile(
     UpdateAccessQueue(cit);
     ans = computation;
   }
-  seconds_taken_ += timer.Elapsed();
   return ans;
 }
 
@@ -658,7 +697,12 @@ const NnetComputation* CachingOptimizingCompiler::CompileNoShortcut(
   // There may be situations where we'd prefer not to keep it, for speed.
   CompilerOptions opts;
   NnetComputation *computation = new NnetComputation;
-  compiler.CreateComputation(opts, computation);
+
+  {
+    Timer timer;
+    compiler.CreateComputation(opts, computation);
+    seconds_taken_compile_ += timer.Elapsed();
+  }
 
   int32 verbose_cutoff = 4;
   if (GetVerboseLevel() >= verbose_cutoff) {
@@ -669,28 +713,43 @@ const NnetComputation* CachingOptimizingCompiler::CompileNoShortcut(
     computation->Print(os2, nnet_);
     KALDI_LOG << "Generated computation is: " << os2.str();
   }
-  { // some checking.  Note: there may be a time when we might
-    // prefer not do to this checking.
+  { // some checking.  Note: there may come a time when we might
+    // prefer to disable this checking.
+    Timer timer;
     CheckComputationOptions check_config;
     // we can do the rewrite check since it's before optimization.
     check_config.check_rewrite = true;
     ComputationChecker checker(check_config, nnet_, *computation);
     checker.Check();
+    seconds_taken_check_ += timer.Elapsed();
   }
-  Optimize(opt_config_, nnet_,
-           MaxOutputTimeInRequest(request),
-           computation);
+
+  {
+    Timer timer;
+    Optimize(opt_config_, nnet_,
+             MaxOutputTimeInRequest(request),
+             computation);
+    seconds_taken_optimize_ += timer.Elapsed();
+  }
+
+
   if (GetVerboseLevel() >= verbose_cutoff) {
     std::ostringstream os;
     computation->Print(os, nnet_);
     KALDI_LOG << "Optimized computation is: " << os.str();
   }
   {  // check the computation again.
+    Timer timer;
     CheckComputationOptions check_config;
     ComputationChecker checker(check_config, nnet_, *computation);
     checker.Check();
+    seconds_taken_check_ += timer.Elapsed();
   }
-  computation->ComputeCudaIndexes();
+  {
+    Timer timer;
+    computation->ComputeCudaIndexes();
+    seconds_taken_indexes_ += timer.Elapsed();
+  }
   return computation;
 }
 
@@ -705,11 +764,12 @@ const NnetComputation* CachingOptimizingCompiler::CompileViaShortcut(
   if (!RequestIsDecomposable(request, &mini_request, &num_n_values))
     return NULL;
 
-  // by invoking Compile() on the mini request, we go through the same
-  // caching process as for any externally requested computation.
-  // note: this pointer is not being 'given to us'... it's owned in
-  // the cache.
-  const NnetComputation *mini_computation = Compile(mini_request);
+  // By invoking CompileInternal() on the mini request, we go through the same
+  // caching process as for any externally requested computation.  [the only
+  // difference from Compile() is that it doesn't call the timer code; this
+  // avoids double-counting the time taken.]  This pointer will not have to be
+  // deleted by this function; it's owned by the class, in the cache.
+  const NnetComputation *mini_computation = CompileInternal(mini_request);
 
   // note: by default we always create debug_info, even in regular compilation.
   // (e.g. it defaults to true in CompilerOptions).  If it really seems to be a
@@ -719,11 +779,17 @@ const NnetComputation* CachingOptimizingCompiler::CompileViaShortcut(
 
   NnetComputation *ans = new NnetComputation();
 
-  ExpandComputation(nnet_, request.misc_info, *mini_computation,
-                    need_debug_info, num_n_values, ans);
-
-  ans->ComputeCudaIndexes();
-
+  {
+    Timer timer;
+    ExpandComputation(nnet_, request.misc_info, *mini_computation,
+                      need_debug_info, num_n_values, ans);
+    seconds_taken_expand_ += timer.Elapsed();
+  }
+  {
+    Timer timer;
+    ans->ComputeCudaIndexes();
+    seconds_taken_indexes_ += timer.Elapsed();
+  }
   return ans;
 }
 
