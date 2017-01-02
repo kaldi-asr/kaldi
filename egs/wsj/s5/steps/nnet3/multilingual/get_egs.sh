@@ -18,6 +18,7 @@ set -u
 # Begin configuration section.
 cmd=run.pl
 minibatch_size=512      # multiple of minibatch used during training.
+minibatch_size=
 num_jobs=10             # This can be set to max number of jobs to run in parallel;
                         # Helps for better randomness across languages
                         # per archive.
@@ -84,6 +85,8 @@ for lang in $(seq 0 $[$num_langs-1]);do
     fi
   done
 done
+
+cp ${multi_egs_dir[$lang]}/cmvn_opts $megs_dir
 
 if [ $stage -le 0 ]; then
   echo "$0: allocating multilingual examples for training."

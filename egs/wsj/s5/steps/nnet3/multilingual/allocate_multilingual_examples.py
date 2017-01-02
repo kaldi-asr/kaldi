@@ -214,7 +214,13 @@ def Main():
           start_egs = lang2len[lang_id] - lang_len[lang_id]
           this_egs.append((lang_id, start_egs, args.minibatch_size))
           for scpline in range(args.minibatch_size):
-            print("{0} {1}".format(scp_files[lang_id].readline().splitlines()[0], lang_id), file = archfile)
+            lines = scp_files[lang_id].readline().splitlines()
+            try:
+              print("{0} {1}".format(lines[0], lang_id), file=archfile)
+            except Exception:
+              logger.error("Failure to read from file %s, got %s",
+                           scp_files[lang_id].name, lines)
+              raise
 
           lang_len[lang_id] = lang_len[lang_id] - args.minibatch_size
           num_egs = num_egs + args.minibatch_size;
