@@ -65,7 +65,6 @@ my %cli_options = ();
 my $jobname;
 my $jobstart;
 my $jobend;
-my $submit_flag = 0;
 my $array_job = 0;
 my $sge_job_id;
 
@@ -92,7 +91,7 @@ sub print_usage() {
 }
 
 sub caught_signal {
-	if ($submit_flag == 1) { # Signal trapped after submitting jobs
+	if ( defined $sge_job_id ) { # Signal trapped after submitting jobs
 		system ("qdel $sge_job_id");
 		die "Caught a signal: $! , deleting SGE task: $sge_job_id and exiting\n";
 	}
@@ -425,7 +424,6 @@ for (my $try = 1; $try < 5; $try++) {
       }
     }
   } else {
-    $submit_flag=1; #job is submitted
     last;  # break from the loop.
   }
 }
