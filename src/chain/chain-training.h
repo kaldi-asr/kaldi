@@ -66,12 +66,12 @@ struct ChainTrainingOptions {
   
   // This controls the boosting approach. If true, hard boosting
   // will be used: the boosting mask consists of 1's and 0's and is 
-  // independent of numerator compuatation (i.e. is a function of numerator
+  // independent of numerator computation (i.e. is a function of numerator
   // graph only).
   bool hard_boost;
 
   ChainTrainingOptions(): l2_regularize(0.0), leaky_hmm_coefficient(1.0e-05),
-                          xent_regularize(0.0), boost(0.1),
+                          xent_regularize(0.0), boost(0.0),
                           hard_boost(false) { }
   
   void Register(OptionsItf *opts) {

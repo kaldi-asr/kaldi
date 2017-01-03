@@ -72,6 +72,14 @@ def get_args():
                         dest='xent_regularize', default=0.0,
                         help="Weight of regularization function which is the "
                         "cross-entropy cost the outputs.")
+    parser.add_argument("--chain.boost", type=float,
+                        dest='boost', default=0.0,
+                        help="Boost coefficient (i.e. b in bMMI).")
+    parser.add_argument("--chain.hard-boost", type=str,
+                        action=common_lib.StrToBoolAction,
+                        choices=["true", "false"],    
+                        dest='hard_boost', default=False,
+                        help="If true, hard boosting will be enabled.")
     parser.add_argument("--chain.right-tolerance", type=int,
                         dest='right_tolerance', default=5, help="")
     parser.add_argument("--chain.left-tolerance", type=int,
@@ -447,6 +455,8 @@ def train(args, run_opts, background_process_handler):
                 max_deriv_time=max_deriv_time,
                 l2_regularize=args.l2_regularize,
                 xent_regularize=args.xent_regularize,
+                boost=args.boost,
+                hard_boost=args.hard_boost,
                 leaky_hmm_coefficient=args.leaky_hmm_coefficient,
                 momentum=args.momentum,
                 max_param_change=args.max_param_change,
@@ -488,6 +498,8 @@ def train(args, run_opts, background_process_handler):
             leaky_hmm_coefficient=args.leaky_hmm_coefficient,
             l2_regularize=args.l2_regularize,
             xent_regularize=args.xent_regularize,
+            boost=args.boost,
+            hard_boost=args.hard_boost,
             run_opts=run_opts,
             background_process_handler=background_process_handler)
 
