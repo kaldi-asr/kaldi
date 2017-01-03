@@ -71,7 +71,7 @@ my %hash_log = ();
 my $array_job = 0;
 my $submit_flag = 0;
 my $sge_job_id;
-my $early_exit = "false";
+my $early_exit = "true";
 
 sub print_usage() {
   print STDERR
@@ -87,7 +87,9 @@ sub print_usage() {
    "and change its behavior.  Otherwise it uses qstat to work out when the job finished\n" .
    "Options:\n" .
    "  --config <config-file> (default: $config)\n" .
-   "  --early-exit <true | false> (default: false). If true, if one of the jobs in the array fails, all the jobs submitted will be deleted and the script will exit\n" .
+   "  --early-exit <true | false> (default: true) \n" .
+   "                            If true, if one of the jobs in the array fails, \n" .
+   "                            all the jobs submitted will be deleted and the script will exit\n" .
    "  --mem <mem-requirement> (e.g. --mem 2G, --mem 500M, \n" .
    "                           also support K and numbers mean bytes)\n" .
    "  --num-threads <num-threads> (default: $num_threads)\n" .
