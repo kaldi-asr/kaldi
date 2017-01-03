@@ -78,8 +78,10 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
                                      boosting_mask);
   if (opts.boost != 0.0 && opts.hard_boost)
     delete boosting_mask;
-  if (is_output_deriv_temporary)
+  if (is_output_deriv_temporary) {
     delete nnet_output_deriv;
+    nnet_output_deriv = NULL;
+  }
 
   BaseFloat den_logprob = denominator.Forward();
   bool ok = true;
