@@ -30,6 +30,8 @@
 # If git history is not available, then the version number defaults to the
 # number specified in src/.version.
 
+set -e
+
 # Change working directory to the directory where this script is located.
 cd "$(dirname ${BASH_SOURCE[0]})"
 
