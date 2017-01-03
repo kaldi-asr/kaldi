@@ -37,8 +37,9 @@ EOF
 fi
 
 dir=$dir${affix:+_$affix}
+build_tree_train_set=train_nodup
 train_set=train_nodup_sp
-ali_dir=exp/tri5a_ali_nodup_sp
+build_tree_ali_dir=exp/tri5a_ali
 treedir=exp/chain/tri6_tree
 lang=data/lang_chain
 
@@ -52,7 +53,7 @@ local/nnet3/run_ivector_common.sh --stage $stage \
 if [ $stage -le 9 ]; then
   # Get the alignments as lattices (gives the CTC training more freedom).
   # use the same num-jobs as the alignments
-  nj=$(cat $ali_dir/num_jobs) || exit 1;
+  nj=$(cat $build_tree_ali_dir/num_jobs) || exit 1;
   steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" data/$train_set \
     data/lang exp/tri5a exp/tri5a_lats_nodup_sp || exit 1;
   rm exp/tri5a_lats_nodup_sp/fsts.*.gz # save space
@@ -75,7 +76,7 @@ if [ $stage -le 11 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --leftmost-questions-truncate -1 \
-      --cmd "$train_cmd" 11000 data/$train_set $lang $ali_dir $treedir || exit 1;
+      --cmd "$train_cmd" 11000 data/$build_tree_train_set $lang $build_tree_ali_dir $treedir || exit 1;
 fi
 
 if [ $stage -le 12 ]; then
