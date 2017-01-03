@@ -51,9 +51,11 @@ Real TraceMatMat(const CuMatrixBase<Real> &A, const CuMatrixBase<Real> &B,
 /// C[i] = alpha *  A[i](^T)*B[i](^T) + beta * C[i].
 template<typename Real>
 void AddMatMatBatched(const Real alpha, std::vector<CuSubMatrix<Real>* > &C,
-		const std::vector<CuSubMatrix<Real>* > &A, MatrixTransposeType transA,
-		const std::vector<CuSubMatrix<Real>* > &B, MatrixTransposeType transB,
-		const Real beta);
+                      const std::vector<CuSubMatrix<Real>* > &A,
+                      MatrixTransposeType transA,
+                      const std::vector<CuSubMatrix<Real>* > &B,
+                      MatrixTransposeType transB,
+                      const Real beta);
 
 /**
  * Matrix for CUDA computing.
@@ -182,10 +184,13 @@ class CuMatrixBase {
                                  const CuSparseMatrix<Real> &B,
                                  MatrixTransposeType trans);
 
-  friend void AddMatMatBatched<Real>(const Real alpha, std::vector<CuSubMatrix<Real>* > &C,
-		const std::vector<CuSubMatrix<Real>* > &A, MatrixTransposeType transA,
-		const std::vector<CuSubMatrix<Real>* > &B, MatrixTransposeType transB,
-		const Real beta);
+  friend void AddMatMatBatched<Real>(const Real alpha,
+                                     std::vector<CuSubMatrix<Real>* > &C,
+                                     const std::vector<CuSubMatrix<Real>* > &A,
+                                     MatrixTransposeType transA,
+                                     const std::vector<CuSubMatrix<Real>* > &B,
+                                     MatrixTransposeType transB,
+                                     const Real beta);
 
   /// Adds "value" to the diagonal elements of the matrix.  The matrix
   /// *this does not have to be square.
