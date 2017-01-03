@@ -33,14 +33,14 @@ if [ ! -d $dir/download ]; then
     mkdir -p $dir/download/0565-1 $dir/download/0565-2
 fi 
 
-echo "Downloading and unpacking sprakbanken to $dir/corpus_processed. This will take a while."
+echo "Downloading and unpacking sprakbanken to $dir/corpus_processed. This will take a while. The connection closes every 50-60 seconds and the repo maintainers do not have othersuggestions than increasing the number of retries."
 
 if [ ! -f $dir/download/da.16kHz.0565-1.tar.gz ]; then 
-    ( wget http://www.nb.no/sbfil/talegjenkjenning/16kHz/da.16kHz.0565-1.tar.gz --directory-prefix=$dir/download )
+    ( wget --tries 100 http://www.nb.no/sbfil/talegjenkjenning/16kHz/da.16kHz.0565-1.tar.gz --directory-prefix=$dir/download )
 fi
 
 if [ ! -f $dir/download/da.16kHz.0565-2.tar.gz ]; then 
-    ( wget http://www.nb.no/sbfil/talegjenkjenning/16kHz/da.16kHz.0565-2.tar.gz --directory-prefix=$dir/download )
+    ( wget --tries 100 http://www.nb.no/sbfil/talegjenkjenning/16kHz/da.16kHz.0565-2.tar.gz --directory-prefix=$dir/download )
 fi
 
 if [ ! -f $dir/download/da.16kHz.0611.tar.gz ]; then 

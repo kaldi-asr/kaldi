@@ -18,13 +18,13 @@ set -e -o pipefail -u
 # (some of which are also used in this script directly).
 stage=0
 nj=30
-decode_nj=30
+decode_nj=7
 min_seg_len=1.55
-train_set=train_cleaned
-gmm=tri3_cleaned  # this is the source gmm-dir for the data-type of interest; it
+train_set=train
+gmm=tri3b  # this is the source gmm-dir for the data-type of interest; it
                   # should have alignments for the specified training data.
 num_threads_ubm=32
-nnet3_affix=_cleaned  # cleanup affix for exp dirs, e.g. _cleaned
+nnet3_affix=  # cleanup affix for exp dirs, e.g. _cleaned
 
 # Options which are not passed through to run_ivector_common.sh
 affix=
@@ -86,7 +86,7 @@ local/nnet3/run_ivector_common.sh --stage $stage \
 
 
 gmm_dir=exp/${gmm}
-graph_dir=$gmm_dir/graph
+graph_dir=$gmm_dir/graph_tg
 ali_dir=exp/${gmm}_ali_${train_set}_sp_comb
 dir=exp/nnet3${nnet3_affix}/lstm${affix:+_$affix}
 if [ $label_delay -gt 0 ]; then dir=${dir}_ld$label_delay; fi
@@ -122,7 +122,7 @@ fi
 if [ $stage -le 13 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/tedlium-$(date +'%m_%d_%H_%M')/s5_r2/$dir/egs/storage $dir/egs/storage
+     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/sprakbanken-$(date +'%m_%d_%H_%M')/s5_r2/$dir/egs/storage $dir/egs/storage
   fi
 
   steps/nnet3/train_rnn.py --stage=$train_stage \
@@ -158,17 +158,13 @@ if [ $stage -le 14 ]; then
   [ -z $extra_right_context ] && extra_right_context=$chunk_right_context;
   [ -z $frames_per_chunk ] && frames_per_chunk=$chunk_width;
   rm $dir/.error 2>/dev/null || true
-  for dset in dev test; do
    (
-    steps/nnet3/decode.sh --nj $decode_nj --cmd "$decode_cmd"  --num-threads 4 \
+    steps/nnet3/decode.sh --nj 12 --cmd "$decode_cmd"  --num-threads 4 \
         --extra-left-context $extra_left_context \
         --extra-right-context $extra_right_context \
-        --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${dset}_hires \
-      ${graph_dir} data/${dset}_hires ${dir}/decode_${dset} || exit 1
-    steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" data/lang data/lang_rescore \
-       data/${dset}_hires ${dir}/decode_${dset} ${dir}/decode_${dset}_rescore || exit 1
+        --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_dev_hires \
+      ${graph_dir} data/dev_hires ${dir}/decode_dev || exit 1
     ) || touch $dir/.error &
-  done
   wait
   [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
 fi
