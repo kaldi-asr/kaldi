@@ -31,6 +31,7 @@
 
 #include "base/kaldi-common.h"
 #include "base/kaldi-error.h"
+#include "base/version.h"
 
 namespace kaldi {
 
@@ -39,12 +40,31 @@ namespace kaldi {
 int32 g_kaldi_verbose_level = 0;
 const char *g_program_name = NULL;
 static LogHandler g_log_handler = NULL;
+bool g_version_logged = false;
+char g_versioned_program_name[100];
 
 // If the program name was set (g_program_name != ""), the function
 // GetProgramName returns the program name (without the path) followed by a
 // colon, e.g. "gmm-align:".  Otherwise it returns the empty string "".
+// If the program version has not already been logged, then the program name
+// also includes the version string in brackets before the colon,
+// e.g. "gmm-align[5.0.1~2-ab54f29]:".
 const char *GetProgramName() {
-  return g_program_name == NULL ? "" : g_program_name;
+  if (g_program_name == NULL) {
+    return "";
+  } else if (g_version_logged == true) {
+    return g_program_name;
+  } else {
+    g_version_logged = true;
+    strncpy(g_versioned_program_name, g_program_name,
+            strlen(g_program_name) - 1);  // Don't copy the colon at the end.
+    strcat(g_versioned_program_name, "[" KALDI_VERSION_NUMBER);
+#ifdef KALDI_GIT_HEAD_SHORT
+    strcat(g_versioned_program_name, "-" KALDI_GIT_HEAD_SHORT);
+#endif
+    strcat(g_versioned_program_name, "]:");
+    return g_versioned_program_name;
+  }
 }
 
 

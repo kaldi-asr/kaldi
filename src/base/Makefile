@@ -1,3 +1,7 @@
+# Whenever make is run in this directory, call ./get_version.sh script.
+# ./get_version.sh script regenerates ./version.h if necessary, e.g. if it
+# does not already exist or if the version number has changed.
+$(shell ./get_version.sh)
 
 all:
 
@@ -9,7 +13,6 @@ OBJFILES = kaldi-math.o kaldi-error.o io-funcs.o kaldi-utils.o
 
 LIBNAME = kaldi-base
 
-ADDLIBS = 
+ADDLIBS =
 
 include ../makefiles/default_rules.mk
-
