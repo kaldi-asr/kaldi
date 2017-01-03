@@ -41,7 +41,7 @@ static Real _sum_reduce(Real buffer[]) {
   __syncthreads();
   // perform tree-based reduction (sum)
   while (nTotalThreads > 1) {
-    int32_cuda halfPoint = ((1 + nTotalThreads) >> 1);	// divide by two
+    int32_cuda halfPoint = ((1 + nTotalThreads) >> 1); // divide by two
     // only the first half of the threads will be active.
     if (threadIdx.x >= halfPoint) { // was <
       // Get the shared value stored by another thread
@@ -52,7 +52,7 @@ static Real _sum_reduce(Real buffer[]) {
       buffer[threadIdx.x - halfPoint] += temp;
     }
     __syncthreads();
-    nTotalThreads = ((1 + nTotalThreads) >> 1);	// divide by two.
+    nTotalThreads = ((1 + nTotalThreads) >> 1); // divide by two.
   }
   // the result
   return buffer[0];

@@ -1435,13 +1435,13 @@ static void UnitTestCuMatrixAddMatMatBatched() {
     Ha[i]->SetRandn();
     Hb[i]->SetRandn();
     HA.push_back(new SubMatrix<Real>(*(Ha[i]), 0, Ha[i]->NumRows(), 0,
-			    Ha[i]->NumCols()));
+                                     Ha[i]->NumCols()));
     HB.push_back(new SubMatrix<Real>(*(Hb[i]), 0, Hb[i]->NumRows(), 0,
-			    Hb[i]->NumCols()));
+                                     Hb[i]->NumCols()));
     HC1.push_back(new SubMatrix<Real>(*(Hc1[i]), 0, Hc1[i]->NumRows(), 0,
-			    Hc1[i]->NumCols()));
+                                      Hc1[i]->NumCols()));
     HC2.push_back(new SubMatrix<Real>(*(Hc2[i]), 0, Hc2[i]->NumRows(), 0,
-			    Hc2[i]->NumCols()));
+                                      Hc2[i]->NumCols()));
 
     // first create a CuMatrix intance and then creat a CuSubMatrix instance from that
     Da[i] = new CuMatrix<Real>(200, 100);
@@ -1451,19 +1451,19 @@ static void UnitTestCuMatrixAddMatMatBatched() {
     Da[i]->CopyFromMat(*(Ha[i]));
     Db[i]->CopyFromMat(*(Hb[i]));
     DA.push_back(new CuSubMatrix<Real>(*(Da[i]), 0, Da[i]->NumRows(), 0,
-			    Da[i]->NumCols()));
+                                       Da[i]->NumCols()));
     DB.push_back(new CuSubMatrix<Real>(*(Db[i]), 0, Db[i]->NumRows(), 0,
-			    Db[i]->NumCols()));
+                                       Db[i]->NumCols()));
     DC1.push_back(new CuSubMatrix<Real>(*(Dc1[i]), 0, Dc1[i]->NumRows(), 0,
-			    Dc1[i]->NumCols()));
+                                        Dc1[i]->NumCols()));
     DC2.push_back(new CuSubMatrix<Real>(*(Dc2[i]), 0, Dc2[i]->NumRows(), 0,
-			    Dc2[i]->NumCols()));
+                                        Dc2[i]->NumCols()));
   }
 
   AddMatMatBatched(static_cast<Real>(0.5f), DC1, DA, kNoTrans, DB, kNoTrans,
-		  static_cast<Real>(0.0f));
+                   static_cast<Real>(0.0f));
   AddMatMatBatched(static_cast<Real>(0.5f), DC2, DA, kTrans, DB, kTrans,
-		  static_cast<Real>(0.0f));
+                   static_cast<Real>(0.0f));
 
   // used to store results from DC1 and DC2 for equality check
   Matrix<Real> Hca1(200,200);
