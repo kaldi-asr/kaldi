@@ -82,7 +82,7 @@ struct DiscriminativeObjectiveFunctionInfo {
 
 
 /**
-   This class is for single-threaded discriminative training of neural nets 
+   This class is for single-threaded discriminative training of neural nets
 */
 class NnetDiscriminativeTrainer {
  public:
@@ -106,7 +106,7 @@ class NnetDiscriminativeTrainer {
 
   const TransitionModel &tmodel_;
   CuVector<BaseFloat> log_priors_;
-  
+
   Nnet *nnet_;
 
   Nnet *delta_nnet_;  // Only used if momentum != 0.0.  nnet representing

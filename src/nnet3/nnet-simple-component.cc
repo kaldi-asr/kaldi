@@ -2342,12 +2342,13 @@ std::string ConstantFunctionComponent::Info() const {
 }
 
 ConstantFunctionComponent::ConstantFunctionComponent():
-    input_dim_(-1), is_updatable_(true), use_natural_gradient_(true) { }
+    UpdatableComponent(), input_dim_(-1), is_updatable_(true),
+    use_natural_gradient_(true) { }
 
 ConstantFunctionComponent::ConstantFunctionComponent(
     const ConstantFunctionComponent &other):
-    input_dim_(other.input_dim_), output_(other.output_),
-    is_updatable_(other.is_updatable_),
+    UpdatableComponent(other), input_dim_(other.input_dim_),
+    output_(other.output_), is_updatable_(other.is_updatable_),
     use_natural_gradient_(other.use_natural_gradient_),
     preconditioner_(other.preconditioner_) { }
 

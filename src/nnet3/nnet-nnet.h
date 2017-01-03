@@ -249,7 +249,7 @@ class Nnet {
   void ResetGenerators(); // resets random-number generators for all
   // random components.  You must also set srand() for this to be
   // effective.
-  
+
  private:
 
   void Destroy();

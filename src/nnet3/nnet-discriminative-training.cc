@@ -55,7 +55,7 @@ NnetDiscriminativeTrainer::NnetDiscriminativeTrainer(
       KALDI_WARN << "Could not open cached computation. "
                     "Probably this is the first training iteration.";
     }
-  } 
+  }
   log_priors_.ApplyLog();
 }
 
@@ -124,7 +124,7 @@ void NnetDiscriminativeTrainer::ProcessOutputs(const NnetDiscriminativeExample &
     CuMatrix<BaseFloat> nnet_output_deriv(nnet_output.NumRows(),
                                           nnet_output.NumCols(),
                                           kUndefined);
-    
+
     bool use_xent = (opts_.discriminative_config.xent_regularize != 0.0);
     std::string xent_name = sup.name + "-xent";  // typically "output-xent".
     CuMatrix<BaseFloat> xent_deriv;
@@ -138,14 +138,14 @@ void NnetDiscriminativeTrainer::ProcessOutputs(const NnetDiscriminativeExample &
       objf_info_[sup.name].stats.Configure(opts_.discriminative_config);
       objf_info_[sup.name].stats.Reset();
     }
-    
-    ComputeDiscriminativeObjfAndDeriv(opts_.discriminative_config, 
+
+    ComputeDiscriminativeObjfAndDeriv(opts_.discriminative_config,
                                       tmodel_, log_priors_,
                                       sup.supervision, nnet_output,
-                                      &stats, 
+                                      &stats,
                                       &nnet_output_deriv,
                                       (use_xent ? &xent_deriv : NULL));
-    
+
     if (use_xent) {
       // this block computes the cross-entropy objective.
       const CuMatrixBase<BaseFloat> &xent_output = computer->GetOutput(xent_name);
@@ -179,7 +179,7 @@ void NnetDiscriminativeTrainer::ProcessOutputs(const NnetDiscriminativeExample &
                                      opts_.nnet_config.print_interval,
                                      num_minibatches_processed_++,
                                      stats);
-    
+
     if (use_xent) {
       xent_deriv.Scale(opts_.discriminative_config.xent_regularize);
       computer->AcceptOutputDeriv(xent_name, &xent_deriv);
@@ -249,11 +249,11 @@ bool DiscriminativeObjectiveFunctionInfo::PrintTotalStats(const std::string &nam
 
 NnetDiscriminativeTrainer::~NnetDiscriminativeTrainer() {
   delete delta_nnet_;
-  
+
   if (opts_.nnet_config.write_cache != "") {
     Output ko(opts_.nnet_config.write_cache, opts_.nnet_config.binary_write_cache);
     compiler_.WriteCache(ko.Stream(), opts_.nnet_config.binary_write_cache);
-  } 
+  }
 }
 
 
