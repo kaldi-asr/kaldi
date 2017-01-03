@@ -65,8 +65,13 @@ my %cli_options = ();
 my $jobname;
 my $jobstart;
 my $jobend;
-
+my $logfile;
+my @logfiles = ();
+my %hash_log = ();
 my $array_job = 0;
+my $submit_flag = 0;
+my $sge_job_id;
+my $early_exit = "false";
 
 sub print_usage() {
   print STDERR
@@ -82,12 +87,44 @@ sub print_usage() {
    "and change its behavior.  Otherwise it uses qstat to work out when the job finished\n" .
    "Options:\n" .
    "  --config <config-file> (default: $config)\n" .
+   "  --early-exit <true | false> (default: false). If true, if one of the jobs in the array fails, all the jobs submitted will be deleted and the script will exit\n" .
    "  --mem <mem-requirement> (e.g. --mem 2G, --mem 500M, \n" .
    "                           also support K and numbers mean bytes)\n" .
    "  --num-threads <num-threads> (default: $num_threads)\n" .
    "  --max-jobs-run <num-jobs>\n" .
    "  --gpu <0|1> (default: $gpu)\n";
   exit 1;
+}
+
+sub caught_signal {
+	if ($submit_flag ==1) { #captured signal after submitting jobs
+		system ("qdel $sge_job_id");
+		die "Caught a signal: $!, deleting SGE task: $sge_job_id and exiting\n";
+	}
+}
+
+sub check_status {
+    print "check log\n";
+    # my @check_log = keys %hash_log;
+   foreach my $each_log ( keys %hash_log) {
+		   print "log file is $each_log\n";
+	   if ( -f $each_log ) {
+		   my $tail_line = `tail -n 1 $each_log`;
+		   if ($tail_line =~ m/with status (\d+)/) { # This job is finished
+			   my $status = $1;
+			   if ( $status != 0 ) { # Error occurs
+				   if ( $early_exit eq "false" ) {
+					   print "Job failed, check log file: $each_log\n";
+				   }
+				   elsif ( $early_exit eq "true" ) {
+					   system ("qdel $sge_job_id");
+					   die "Job failed, check log file: $each_log, deleting SGE task: $sge_job_id\n";
+				   }
+			   }
+			   delete($hash_log{$each_log});
+		   }
+	   }
+   }
 }
 
 if (@ARGV < 2) {
@@ -179,6 +216,9 @@ EOF
 # A more detailed description of the ways the options would be handled is at
 # the top of this file.
 
+$SIG{INT} = \&caught_signal;
+$SIG{TERM} = \&caught_signal;
+
 my $opened_config_file = 1;
 
 open CONFIG, "<$config" or $opened_config_file = 0;
@@ -256,6 +296,7 @@ if ($read_command != 1) {
 for my $option (keys %cli_options) {
   if ($option eq "config") { next; }
   if ($option eq "max_jobs_run" && $array_job != 1) { next; }
+  if ($option eq "early_exit") { $early_exit = $cli_options{$option}; next; }
   my $value = $cli_options{$option};
 
   if (exists $cli_default_options{($option,$value)}) {
@@ -269,7 +310,7 @@ for my $option (keys %cli_options) {
 }
 
 my $cwd = getcwd();
-my $logfile = shift @ARGV;
+$logfile = shift @ARGV;
 
 if ($array_job == 1 && $logfile !~ m/$jobname/
     && $jobend > $jobstart) {
@@ -414,20 +455,26 @@ for (my $try = 1; $try < 5; $try++) {
       }
     }
   } else {
+    $submit_flag=1; #job is submitted
     last;  # break from the loop.
   }
 }
 
-my $sge_job_id;
 if (! $sync) { # We're not submitting with -sync y, so we
   # need to wait for the jobs to finish.  We wait for the
   # sync-files we "touched" in the script to exist.
   my @syncfiles = ();
   if (!defined $jobname) { # not an array job.
     push @syncfiles, $syncfile;
+    push @logfiles, $logfile;
+    $hash_log{$logfile} = "";
   } else {
     for (my $jobid = $jobstart; $jobid <= $jobend; $jobid++) {
       push @syncfiles, "$syncfile.$jobid";
+      my $log = $logfile;
+      $log =~ s/\$SGE_TASK_ID/$jobid/g;
+      push @logfiles, $log;
+      $hash_log{$log} = "";
     }
   }
   # We will need the sge_job_id, to check that job still exists
@@ -453,6 +500,7 @@ if (! $sync) { # We're not submitting with -sync y, so we
 
   my $wait = 0.1;
   my $counter = 0;
+
   foreach my $f (@syncfiles) {
     # wait for the jobs to finish one by one.
     while (! -f $f) {
@@ -488,11 +536,11 @@ if (! $sync) { # We're not submitting with -sync y, so we
         # Don't run qstat too often, avoid stress on SGE; the if-condition above
         # is designed to check every 10 waits at first, and eventually every 50
         # waits.
-        if ( -f $f ) { next; }  #syncfile appeared: OK.
+        if ( -f $f ) { check_status; next; }  #syncfile appeared: OK.
         my $output = `qstat -j $sge_job_id 2>&1`;
         my $ret = $?;
-        if ($ret >> 8 == 1 && $output !~ m/qmaster/ &&
-            $output !~ m/gdi request/) {
+        if (( $ret >> 8 == 1 && $output !~ m/qmaster/ &&
+            $output !~ m/gdi request/) || ($ret == 0) ) {
           # Don't consider immediately missing job as error, first wait some
           # time to make sure it is not just delayed creation of the syncfile.
 
@@ -502,24 +550,26 @@ if (! $sync) { # We're not submitting with -sync y, so we
           # directory will usually fix that.
           system("touch $qdir/sync/.kick");
           unlink("$qdir/sync/.kick");
-          if ( -f $f ) { next; }   #syncfile appeared, ok
+          if ( -f $f ) { check_status; next; }   #syncfile appeared, ok
           sleep(7);
           system("touch $qdir/sync/.kick");
           sleep(1);
           unlink("qdir/sync/.kick");
-          if ( -f $f ) {  next; }   #syncfile appeared, ok
+          if ( -f $f ) { check_status; next; }   #syncfile appeared, ok
           sleep(60);
           system("touch $qdir/sync/.kick");
           sleep(1);
           unlink("$qdir/sync/.kick");
-          if ( -f $f ) { next; }  #syncfile appeared, ok
+          if ( -f $f ) { check_status; next; }  #syncfile appeared, ok
           $f =~ m/\.(\d+)$/ || die "Bad sync-file name $f";
           my $job_id = $1;
           if (defined $jobname) {
             $logfile =~ s/\$SGE_TASK_ID/$job_id/g;
           }
           my $last_line = `tail -n 1 $logfile`;
-          if ($last_line =~ m/status 0$/ && (-M $logfile) < 0) {
+	  check_status;
+	  if ( $ret != 0 ) {
+          if ( $last_line =~ m/status 0$/ && (-M $logfile) < 0) {
             # if the last line of $logfile ended with "status 0" and
             # $logfile is newer than this program [(-M $logfile) gives the
             # time elapsed between file modification and the start of this
@@ -539,12 +589,16 @@ if (! $sync) { # We're not submitting with -sync y, so we
               "was: $output\n";
             exit(1);
           }
+         }
         } elsif ($ret != 0) {
+	  system ("qdel $sge_job_id");
           print STDERR "queue.pl: Warning: qstat command returned status $ret (qstat -j $sge_job_id,$!)\n";
           print STDERR "queue.pl: output was: $output";
+	  die "queue.pl: Task $sge_job_id deleted because one of the jobs failed\n";
         }
       }
     }
+    check_status;
   }
   unlink(@syncfiles);
 }
@@ -553,17 +607,6 @@ if (! $sync) { # We're not submitting with -sync y, so we
 # But we don't know about its exit status.  We'll look at $logfile for this.
 # First work out an array @logfiles of file-locations we need to
 # read (just one, unless it's an array job).
-my @logfiles = ();
-if (!defined $jobname) { # not an array job.
-  push @logfiles, $logfile;
-} else {
-  for (my $jobid = $jobstart; $jobid <= $jobend; $jobid++) {
-    my $l = $logfile;
-    $l =~ s/\$SGE_TASK_ID/$jobid/g;
-    push @logfiles, $l;
-  }
-}
-
 my $num_failed = 0;
 my $status = 1;
 foreach my $l (@logfiles) {
