@@ -426,7 +426,7 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionNormalized(
     vector<BaseFloat> output_deriv(k);
 
     for (int i = 0; i < k; i++) {
-      output_deriv[i] = exp(out[i]);
+      output_deriv[i] = 1.0 / out[i];
     }
 
     // the derivative after the affine layer (before the nonlin)

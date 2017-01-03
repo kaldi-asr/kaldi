@@ -24,9 +24,9 @@ shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of
 minibatch_size=128
 
 hidden_dim=200
-initial_learning_rate=0.001
-final_learning_rate=0.0001
-learning_rate_decline_factor=1.03
+initial_learning_rate=0.008
+final_learning_rate=0.0004
+learning_rate_decline_factor=1.01
 
 # LSTM parameters
 num_lstm_layers=1
@@ -153,11 +153,11 @@ if [ $stage -le -2 ]; then
   if [ "$type" == "rnn" ]; then
   cat > $outdir/config <<EOF
   LmLinearComponent input-dim=$num_words_in output-dim=$hidden_dim max-change=10
-  LinearNormalizedLogSoftmaxComponent input-dim=$hidden_dim output-dim=$num_words_out max-change=10
+  LinearNormalizedLogSoftmaxComponent input-dim=$hidden_dim output-dim=$num_words_out param-stddev=0.01 max-change=10
 
   input-node name=input dim=$hidden_dim
   component name=first_nonlin type=SigmoidComponent dim=$hidden_dim
-  component name=first_renorm type=NormalizeComponent dim=$hidden_dim target-rms=1.0
+  component name=first_renorm type=SoftmaxComponent dim=$hidden_dim # target-rms=0.05
   component name=hidden_affine type=AffineComponent input-dim=$hidden_dim output-dim=$hidden_dim max-change=10
 
 #Component nodes
@@ -167,6 +167,31 @@ if [ $stage -le -2 ]; then
   output-node    name=output input=first_renorm objective=linear
 EOF
   fi
+
+  if [ "$type" == "rnn2" ]; then
+  cat > $outdir/config <<EOF
+  LmLinearComponent input-dim=$num_words_in output-dim=$hidden_dim max-change=10
+  LinearNormalizedLogSoftmaxComponent input-dim=$hidden_dim output-dim=$num_words_out param-stddev=0.01 max-change=10
+
+  input-node name=input dim=$hidden_dim
+  component name=first_nonlin type=SigmoidComponent dim=$hidden_dim
+  component name=first_renorm type=NormalizeComponent dim=$hidden_dim
+  component name=hidden_affine type=AffineComponent input-dim=$hidden_dim output-dim=$hidden_dim max-change=10
+  component name=second_affine type=AffineComponent input-dim=$hidden_dim output-dim=$hidden_dim max-change=10
+  component name=second_nonlin type=SigmoidComponent dim=$hidden_dim
+  component name=second_renorm type=SoftmaxComponent dim=$hidden_dim # target-rms=0.05
+
+#Component nodes
+  component-node name=first_nonlin component=first_nonlin  input=Sum(input, hidden_affine)
+  component-node name=first_renorm component=first_renorm  input=first_nonlin
+  component-node name=hidden_affine component=hidden_affine  input=IfDefined(Offset(first_renorm, -1))
+  component-node name=second_affine component=second_affine  input=first_renorm
+  component-node name=second_nonlin component=second_nonlin  input=second_affine
+  component-node name=second_renorm component=second_renorm  input=second_nonlin
+  output-node    name=output input=second_renorm objective=linear
+EOF
+  fi
+
 
   if [ "$type" == "dnn" ]; then
   cat > $outdir/config <<EOF
@@ -181,26 +206,6 @@ EOF
   component-node name=first_nonlin component=first_nonlin  input=Sum(input, hidden_affine)
   component-node name=hidden_affine component=hidden_affine  input=IfDefined(Offset(first_nonlin, -1))
   output-node    name=output input=first_nonlin objective=linear
-EOF
-  fi
-
-  if [ "$type" == "rnn2" ]; then
-  cat > $outdir/config <<EOF
-  LmLinearComponent input-dim=$num_words_in output-dim=$hidden_dim max-change=5
-  LinearNormalizedLogSoftmaxComponent input-dim=$hidden_dim output-dim=$num_words_out max-change=5
-
-  input-node name=input dim=$hidden_dim
-  component name=first_nonlin type=SigmoidComponent dim=$hidden_dim
-  component name=hidden_affine type=AffineComponent input-dim=$hidden_dim output-dim=$hidden_dim max-change=5
-  component name=second_nonlin type=SigmoidComponent dim=$hidden_dim
-  component name=secondn_affine type=AffineComponent input-dim=$hidden_dim output-dim=$hidden_dim max-change=5
-
-#Component nodes
-  component-node name=first_nonlin component=first_nonlin  input=Sum(input, hidden_affine)
-  component-node name=hidden_affine component=hidden_affine  input=IfDefined(Offset(first_nonlin, -1))
-  component-node name=second_affine component=hidden_affine  input=first_nonlin
-  component-node name=second_nonlin component=second_nonlin  input=second_affine
-  output-node    name=output input=second_nonlin objective=linear
 EOF
   fi
 

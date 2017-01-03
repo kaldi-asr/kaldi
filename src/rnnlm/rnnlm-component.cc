@@ -309,7 +309,8 @@ void LinearNormalizedLogSoftmaxComponent::Add(BaseFloat alpha, const LmComponent
   const LinearNormalizedLogSoftmaxComponent *other =
       dynamic_cast<const LinearNormalizedLogSoftmaxComponent*>(&other_in);
   KALDI_ASSERT(other != NULL);
-  linear_params_.AddMat(alpha, other->linear_params_);
+  linear_params_.AddMat(alpha, other->linear_params_); //  TODO(hxu)
+//  KALDI_LOG << "sum is " << other->linear_params_.Sum();
 //  normalized_ = false;
   Normalize();
 }
@@ -446,6 +447,8 @@ void LinearNormalizedLogSoftmaxComponent::Propagate(const CuMatrixBase<BaseFloat
 
   for (int i = 0; i < indexes.size(); i++) {
     int w = indexes[i];
+//    KALDI_LOG << in.Row(i).Sum() << " should be clse to 1";
+    KALDI_ASSERT(ApproxEqual(in.Row(i).Sum(), 1.0));
     BaseFloat res = VecVec(in.Row(i), actual_params_.Row(w));
 //    KALDI_ASSERT(res >= 0 && res <= 1);
     (*out)[i] = res;
@@ -462,30 +465,31 @@ void LinearNormalizedLogSoftmaxComponent::Backprop(
 
   int k = indexes.size();
 
-  if (input_deriv != NULL) {
-    for (int i = 0; i < k; i++) {
-      int index = indexes[i];
-      input_deriv->Row(i).AddVec(1.0, actual_params_.Row(index));
-    }
+  KALDI_ASSERT(input_deriv != NULL);
+
+  for (int i = 0; i < k; i++) {
+    int index = indexes[i];
+    input_deriv->Row(i).AddVec(output_deriv[i], actual_params_.Row(index));
   }
 
   LinearNormalizedLogSoftmaxComponent* to_update
              = dynamic_cast<LinearNormalizedLogSoftmaxComponent*>(to_update_0);
 
-  if (to_update != NULL) {
-    CuMatrix<BaseFloat> aT(actual_params_, kTrans);
-    CuMatrix<BaseFloat> dapT(actual_params_, kTrans);
+  KALDI_ASSERT(to_update != NULL);
 
-    CuMatrix<BaseFloat> daT(actual_params_, kTrans);
-    daT.SetZero();
-    dapT.SetZero();
-    for (int i = 0; i < k; i++) {
-      int index = indexes[i];
-      daT.ColRange(index, 1).AddVecToCols(1.0, in_value.Row(i), 1.0);
-    }
-    dapT.DiffSoftmaxPerRow(aT, daT);
-    to_update->linear_params_.AddMat(learning_rate_, dapT, kTrans);
+  CuMatrix<BaseFloat> aT(actual_params_, kTrans);
+  CuMatrix<BaseFloat> dapT(actual_params_, kTrans);
+  CuMatrix<BaseFloat> daT(actual_params_, kTrans);
+//  aT.SetZero();
+  dapT.SetZero();
+  daT.SetZero();
+  for (int i = 0; i < k; i++) {
+    int index = indexes[i];
+    daT.ColRange(index, 1).AddVecToCols(output_deriv[i], in_value.Row(i), 1.0);
   }
+  dapT.DiffSoftmaxPerRow(aT, daT);
+//  KALDI_LOG << aT.Sum() << " and " << daT.Sum() << " and " <<dapT.Sum();
+  to_update->linear_params_.AddMat(learning_rate_, dapT, kTrans);
 }
 
 void LinearNormalizedLogSoftmaxComponent::Read(std::istream &is, bool binary) {
