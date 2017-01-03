@@ -34,6 +34,15 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
                               BaseFloat *weight,
                               CuMatrixBase<BaseFloat> *nnet_output_deriv,
                               CuMatrixBase<BaseFloat> *xent_output_deriv) {
+  
+  bool is_output_deriv_temporary = false;
+  if (!nnet_output_deriv && opts.boost != 0.0) {
+    // so boosting is enabled, and we need derivatives.
+    nnet_output_deriv = new CuMatrix<BaseFloat>(nnet_output.NumRows(),
+                                                nnet_output.NumCols());
+    is_output_deriv_temporary = true;
+  }
+
   BaseFloat num_logprob_weighted;
   if (nnet_output_deriv)
     nnet_output_deriv->SetZero();
@@ -54,9 +63,22 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
       numerator.Backward(xent_output_deriv);
     }
   }
+  
+  num_logprob_weighted += -opts.boost * supervision.num_sequences *
+                          supervision.frames_per_sequence;
+  CuMatrixBase<BaseFloat> *boosting_mask = nnet_output_deriv;
+  if (opts.boost != 0.0 && opts.hard_boost) {
+    boosting_mask = new CuMatrix<BaseFloat>(*nnet_output_deriv);
+    boosting_mask->ApplyHeaviside();
+  }
   DenominatorComputation denominator(opts, den_graph,
                                      supervision.num_sequences,
-                                     nnet_output);
+                                     nnet_output,
+                                     boosting_mask);
+  if (opts.boost != 0.0 && opts.hard_boost)
+    delete boosting_mask;
+  if (is_output_deriv_temporary)
+    delete nnet_output_deriv;
 
   BaseFloat den_logprob = denominator.Forward();
   bool ok = true;

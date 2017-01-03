@@ -28,7 +28,8 @@ DenominatorComputation::DenominatorComputation(
     const ChainTrainingOptions &opts,
     const DenominatorGraph &den_graph,
     int32 num_sequences,
-    const CuMatrixBase<BaseFloat> &nnet_output):
+    const CuMatrixBase<BaseFloat> &nnet_output,
+    const CuMatrixBase<BaseFloat> *boosting_mask):
     opts_(opts),
     den_graph_(den_graph),
     num_sequences_(num_sequences),
@@ -57,6 +58,9 @@ DenominatorComputation::DenominatorComputation(
                  num_sequences_).SetZero();
 
   KALDI_ASSERT(nnet_output.NumRows() % num_sequences == 0);
+  if (opts_.boost != 0.0 && boosting_mask != NULL) {
+    exp_nnet_output_transposed_.AddMat(-opts_.boost, *boosting_mask, kTrans);
+  }
   exp_nnet_output_transposed_.ApplyExp();
 }
 
