@@ -556,7 +556,7 @@ void StatisticsPoolingComponent::InitFromConfig(ConfigLine *cfl) {
 
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
-	      << cfl->UnusedValues();
+              << cfl->UnusedValues();
   // do some basic checks here but Check() will check more completely.
   if (!ok || input_dim_ <= 0 || left_context_ + right_context_ <= 0 ||
       num_log_count_features_ < 0)
@@ -1007,7 +1007,7 @@ void BackpropTruncationComponent::InitFromConfig(ConfigLine *cfl) {
       zeroing_interval, recurrence_interval);
 }
 
-// virtual 
+// virtual
 Component* BackpropTruncationComponent::Copy() const {
   BackpropTruncationComponent *ans = new BackpropTruncationComponent();
   ans->dim_ = dim_;
@@ -1130,7 +1130,7 @@ void BackpropTruncationComponent::Backprop(const std::string &debug_info,
   zeroing_scales_vec.Add(1.0);
   // now the element of zeroing_scales_vec is 0.0 if we want to zero its
   // corresponding sample's gradient, and 1.0 otherwise
-  
+
   // combines clipping_scales and zeroing_scales and applies combined_scales
   // to in_deriv all at once
   CuVector<BaseFloat> combined_scales(clipping_scales);
