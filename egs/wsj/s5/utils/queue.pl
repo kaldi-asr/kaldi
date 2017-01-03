@@ -67,6 +67,7 @@ my $jobstart;
 my $jobend;
 my $submit_flag = 0;
 my $array_job = 0;
+my $sge_job_id;
 
 sub print_usage() {
   print STDERR
@@ -429,7 +430,6 @@ for (my $try = 1; $try < 5; $try++) {
   }
 }
 
-my $sge_job_id;
 if (! $sync) { # We're not submitting with -sync y, so we
   # need to wait for the jobs to finish.  We wait for the
   # sync-files we "touched" in the script to exist.
