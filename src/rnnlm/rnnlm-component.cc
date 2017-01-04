@@ -447,7 +447,7 @@ void LinearNormalizedLogSoftmaxComponent::Propagate(const CuMatrixBase<BaseFloat
 
   for (int i = 0; i < indexes.size(); i++) {
     int w = indexes[i];
-//    KALDI_LOG << in.Row(i).Sum() << " should be clse to 1";
+//    KALDI_LOG << in.Row(i).Sum() << " should be close to 1";
     KALDI_ASSERT(ApproxEqual(in.Row(i).Sum(), 1.0));
     BaseFloat res = VecVec(in.Row(i), actual_params_.Row(w));
 //    KALDI_ASSERT(res >= 0 && res <= 1);
@@ -489,7 +489,8 @@ void LinearNormalizedLogSoftmaxComponent::Backprop(
   }
   dapT.DiffSoftmaxPerRow(aT, daT);
 //  KALDI_LOG << aT.Sum() << " and " << daT.Sum() << " and " <<dapT.Sum();
-  to_update->linear_params_.AddMat(learning_rate_, dapT, kTrans);
+  to_update->linear_params_.AddMat(learning_rate_, dapT, kTrans);  // TODO(hxu)
+  to_update->linear_params_.Row(0).SetZero();
 }
 
 void LinearNormalizedLogSoftmaxComponent::Read(std::istream &is, bool binary) {

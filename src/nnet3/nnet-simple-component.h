@@ -171,6 +171,49 @@ class ElementwiseProductComponent: public Component {
   int32 output_dim_;
 };
 
+class NormalizeOneComponent: public Component {
+ public:
+ void Init(int32 input_dim);
+  explicit NormalizeOneComponent(int32 input_dim) {
+    Init(input_dim);
+  }
+  explicit NormalizeOneComponent(const NormalizeOneComponent &other);
+  // note: there is some special code in NonlinerComponent::Info() that
+  // specifically caters to this class.
+  virtual int32 Properties() const {
+    return (
+            kSimpleComponent|kBackpropNeedsInput|kPropagateInPlace|
+            kBackpropAdds);
+  }
+  NormalizeOneComponent() { }
+  virtual std::string Type() const { return "NormalizeOneComponent"; }
+  virtual void InitFromConfig(ConfigLine *cfl);
+  virtual Component* Copy() const { return new NormalizeOneComponent(*this); }
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+  virtual int32 InputDim() const { return input_dim_; }
+  virtual int32 OutputDim() const {
+    return input_dim_;
+  }
+  virtual std::string Info() const;
+ private:
+  NormalizeOneComponent &operator = (const NormalizeOneComponent &other); // Disallow.
+  enum { kExpSquaredNormFloor = -66 };
+  static const BaseFloat kSquaredNormFloor;
+  int32 input_dim_;
+};
+
 class NormalizeComponent: public Component {
  public:
  void Init(int32 input_dim, BaseFloat target_rms, bool add_log_stddev);

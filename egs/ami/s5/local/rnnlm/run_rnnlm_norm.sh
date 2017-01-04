@@ -49,7 +49,7 @@ id=
 . parse_options.sh || exit 1;
 
 outdir=debug-rnnlm-$type-$initial_learning_rate-$final_learning_rate-$learning_rate_decline_factor-$minibatch_size-$hidden_dim-$num_archives-$id-sample
-outdir=debug_norm_$type
+outdir=debug_norm_${type}_$hidden_dim
 srcdir=data/local/dict
 
 set -e
@@ -157,7 +157,7 @@ if [ $stage -le -2 ]; then
 
   input-node name=input dim=$hidden_dim
   component name=first_nonlin type=SigmoidComponent dim=$hidden_dim
-  component name=first_renorm type=SoftmaxComponent dim=$hidden_dim # target-rms=0.05
+  component name=first_renorm type=NormalizeOneComponent dim=$hidden_dim # target-rms=0.05
   component name=hidden_affine type=AffineComponent input-dim=$hidden_dim output-dim=$hidden_dim max-change=10
 
 #Component nodes
