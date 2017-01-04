@@ -40,19 +40,26 @@ namespace kaldi {
 int32 g_kaldi_verbose_level = 0;
 const char *g_program_name = NULL;
 static LogHandler g_log_handler = NULL;
-bool g_version_logged = false;
 char g_version[64] = "";
 
-// If the program name was set (g_program_name != ""), the function
-// GetProgramName returns the program name (without the path) followed by a
-// colon, e.g. "gmm-align:".  Otherwise it returns the empty string "".
-// If the program version has not already been logged, then the program name
-// also includes the version string in brackets before the colon,
-// e.g. "gmm-align[5.0.1~2-ab54f29]:".
+// If the program name was set (g_program_name != ""), GetProgramName
+// returns the program name (without the path), e.g. "gmm-align".
+// Otherwise it returns the empty string "".
 const char *GetProgramName() {
   return g_program_name == NULL ? "" : g_program_name;
 }
 
+// GetVersion constructs the version string if it is empty and then returns it.
+const char *GetVersion() {
+  if (g_version[0] == 0) {
+    strcpy(g_version, "[" KALDI_VERSION_NUMBER);
+#ifdef KALDI_GIT_HEAD_SHORT
+    strcat(g_version, "-" KALDI_GIT_HEAD_SHORT);
+#endif
+    strcat(g_version, "]");
+  }
+  return g_version;
+}
 
 /***** HELPER FUNCTIONS *****/
 
@@ -150,15 +157,6 @@ MessageLogger::MessageLogger(LogMessageEnvelope::Severity severity,
   envelope_.func = func;
   envelope_.file = GetShortFileName(file);  // Pointer inside 'file'.
   envelope_.line = line;
-  if (g_version_logged == false) {
-#ifdef KALDI_VERSION_NUMBER
-    strcpy(g_version, "[" KALDI_VERSION_NUMBER);
-#ifdef KALDI_GIT_HEAD_SHORT
-    strcat(g_version, "-" KALDI_GIT_HEAD_SHORT);
-#endif
-    strcat(g_version, "]");
-#endif
-  }
 }
 
 
@@ -202,13 +200,8 @@ void MessageLogger::HandleMessage(const LogMessageEnvelope &envelope,
           abort();  // coding error (unknown 'severity'),
       }
     }
-    if (envelope.severity < LogMessageEnvelope::kWarning ||
-        g_version_logged == false) {
-      header << g_version;
-      g_version_logged = true;
-    }
     // fill the other info from the envelope,
-    header << GetProgramName() << envelope.func << "():"
+    header << GetProgramName() << GetVersion() << ':' << envelope.func << "():"
            << envelope.file << ':' << envelope.line << ")";
 
     // Printing the message,

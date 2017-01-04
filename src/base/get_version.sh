@@ -52,7 +52,7 @@ else
   # Figure out patch number and head commit SHA-1.
   version_commit=$(git log -1 --pretty=oneline ../.version | cut -f 1 -d ' ')
   head_commit=$(git log -1 --pretty=oneline | cut -f 1 -d ' ')
-  head_commit_short=$(git log -1 --oneline | cut -f 1 -d ' ')
+  head_commit_short=$(git log -1 --oneline --abbrev=4 | cut -f 1 -d ' ')
   patch_number=$(git rev-list ${version_commit}..HEAD | wc -l)
   version="$version.$patch_number"
 
