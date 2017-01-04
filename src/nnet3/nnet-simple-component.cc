@@ -493,6 +493,117 @@ void NormalizeComponent::Backprop(const std::string &debug_info,
   }
 }
 
+void NormalizeOneComponent::Init(int32 input_dim) {
+  KALDI_ASSERT(input_dim > 0);
+  input_dim_ = input_dim;
+}
+
+NormalizeOneComponent::NormalizeOneComponent(const NormalizeOneComponent &other):
+    input_dim_(other.input_dim_) {}
+
+void NormalizeOneComponent::InitFromConfig(ConfigLine *cfl) {
+  int32 input_dim = 0;
+  bool ok = cfl->GetValue("dim", &input_dim) ||
+      cfl->GetValue("input-dim", &input_dim);
+  if (!ok || cfl->HasUnusedValues() || input_dim <= 0)
+    KALDI_ERR << "Invalid initializer for layer of type "
+              << Type() << ": \"" << cfl->WholeLine() << "\"";
+  Init(input_dim);
+}
+
+void NormalizeOneComponent::Read(std::istream &is, bool binary) {
+  std::string token;
+  ReadToken(is, binary, &token);
+  if (token == "<NormalizeOneComponent>") {
+    ReadToken(is, binary, &token);
+  }
+  KALDI_ASSERT(token == "<Dim>" || token == "<InputDim>");
+  ReadBasicType(is, binary, &input_dim_); // Read dimension.
+  ReadToken(is, binary, &token);
+  KALDI_ASSERT(token == "</NormalizeOneComponent>");
+}
+
+void NormalizeOneComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<NormalizeOneComponent>");
+  WriteToken(os, binary, "<InputDim>");
+  WriteBasicType(os, binary, input_dim_);
+  WriteToken(os, binary, "</NormalizeOneComponent>");
+}
+
+std::string NormalizeOneComponent::Info() const {
+  std::ostringstream stream;
+  stream << Type() << ", input-dim=" << InputDim()
+         << ", output-dim=" << OutputDim();
+  return stream.str();
+}
+
+// The output y_i = scale * x_i,
+// and we want to RMS value of the y_i to equal target_rms,
+// so y^t y = D * target_rms^2 (if y is one row of the input).
+// we need to have scale = 1.0 / sqrt(x^t x / (D * target_rms^2)).
+// there is also flooring involved, to avoid division-by-zero
+// problems.  It's important for the backprop, that the floor's
+// square root is exactly representable as float.
+// If add_log_stddev_ is true, log(max(epsi, sqrt(x^t x / D)))
+// is an extra dimension of the output.
+void NormalizeOneComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+                                   const CuMatrixBase<BaseFloat> &in,
+                                   CuMatrixBase<BaseFloat> *out) const {
+  KALDI_ASSERT(out->NumCols() == in.NumCols());
+//  cu::NormalizePerRow(in, target_rms_, add_log_stddev_, out);
+  CuMatrix<BaseFloat> ones(in.NumCols(), 1);
+  CuMatrix<BaseFloat> row_sum(1, in.NumRows(), kSetZero);
+  ones.Set(1.0);
+  row_sum.AddMatMat(1.0, ones, kTrans, in, kTrans, 0.0);
+  out->CopyFromMat(in);
+  out->DivRowsVec(row_sum.Row(0));
+
+  KALDI_ASSERT(ApproxEqual(out->Sum(), out->NumRows()));  // TODO(hxu)
+}
+
+void NormalizeOneComponent::Backprop(const std::string &debug_info,
+                                  const ComponentPrecomputedIndexes *indexes,
+                                  const CuMatrixBase<BaseFloat> &in_value,
+                                  const CuMatrixBase<BaseFloat> &, // out_value
+                                  const CuMatrixBase<BaseFloat> &out_deriv,
+                                  Component *to_update,
+                                  CuMatrixBase<BaseFloat> *in_deriv) const {
+  if (!in_deriv)  return;
+
+  CuMatrix<BaseFloat> ones(in_value.NumCols(), 1);
+  ones.Set(1.0);
+
+  CuMatrix<BaseFloat> in_row_sum(1, in_value.NumRows(), kSetZero);
+  in_row_sum.AddMatMat(1.0, ones, kTrans, in_value, kTrans, 0.0);
+
+//  KALDI_ASSERT(ApproxEqual(in_row_sum.Sum(), in_value.Sum()));
+
+  CuMatrix<BaseFloat> t(out_deriv);
+  t.MulElements(in_value);
+  CuMatrix<BaseFloat> row_sum2(1, in_value.NumRows(), kSetZero);
+
+//  row_sum2.AddMatMat(1.0, in_value, kNoTrans, ones, kNoTrans, 0.0);
+  row_sum2.AddMatMat(1.0, ones, kTrans, t, kTrans, 0.0);
+
+  row_sum2.DivElements(in_row_sum);
+  row_sum2.DivElements(in_row_sum);
+  row_sum2.Scale(-1);
+
+  in_deriv->AddMatMat(1.0, row_sum2, kTrans, ones, kTrans, 1.0);
+
+//  KALDI_LOG << "d sum here is " << out_deriv.Sum();
+//  KALDI_LOG << "in sum here is " << in_value.Sum();
+//
+//
+//  KALDI_LOG << "a sum here is " << in_deriv->Sum();
+
+  t.CopyFromMat(out_deriv);
+  t.DivRowsVec(in_row_sum.Row(0));
+  in_deriv->AddMat(1.0, t);
+
+//  KALDI_LOG << "t sum here is " << t.Sum();
+}
+
 void SigmoidComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                  const CuMatrixBase<BaseFloat> &in,
                                  CuMatrixBase<BaseFloat> *out) const {
@@ -1268,9 +1379,6 @@ void AffineComponent::InitFromConfig(ConfigLine *cfl) {
   if (!ok)
     KALDI_ERR << "Bad initializer " << cfl->WholeLine();
 }
-
-
-
 
 void AffineComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                 const CuMatrixBase<BaseFloat> &in,

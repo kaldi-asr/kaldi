@@ -25,6 +25,7 @@
 #include "nnet3/nnet-computation.h"
 #include "nnet3/nnet-analyze.h"
 #include "nnet3/nnet-example.h"
+#include "nnet3/nnet-simple-component.h"
 
 #include <iostream>
 #include <sstream>

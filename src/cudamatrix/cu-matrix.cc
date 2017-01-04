@@ -2119,10 +2119,13 @@ void CuMatrixBase<Real>::CopyRowsFromVec(const VectorBase<Real> &v) {
         }
       }
     } else if (v.Dim() == num_cols_) {
+      const Real* v_data = v.Data();
+      cudaMemcpy(data_, v_data, sizeof(Real)*num_cols_, cudaMemcpyHostToDevice);
+
       dim3 dimGrid, dimBlock;
       GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
                                             &dimGrid, &dimBlock);
-      cuda_copy_rows_from_vec(dimGrid, dimBlock, this->data_, this->Dim(), v.Data());
+      cuda_copy_rows_from_vec(dimGrid, dimBlock, this->data_, this->Dim(), this->data_);
       CU_SAFE_CALL(cudaGetLastError());
     } else {
       KALDI_ERR << "Wrong sized arguments";
