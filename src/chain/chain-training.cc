@@ -38,8 +38,8 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
   bool is_output_deriv_temporary = false;
   if (!nnet_output_deriv && opts.boost != 0.0) {
     // so boosting is enabled, and we need derivatives.
-    nnet_output_deriv = new CuMatrix<BaseFloat>(nnet_output.NumCols(),
-                                                nnet_output.NumRows(),
+    nnet_output_deriv = new CuMatrix<BaseFloat>(nnet_output.NumRows(),
+                                                nnet_output.NumCols(),
                                                 kUndefined);
     is_output_deriv_temporary = true;
   }
