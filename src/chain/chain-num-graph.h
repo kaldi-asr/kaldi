@@ -51,7 +51,7 @@ class NumeratorGraph {
   // NumPdfs() - 1).
   int32 NumPdfs() const { return num_pdfs_; }
   int32 MaxNumStates() const { return max_num_hmm_states_; }
-//  NumeratorGraph();
+  inline BaseFloat GetSupervisionWeight() const { return supervision_weight_; }
 
   NumeratorGraph(const Supervision &supervision,
     bool scale_first_transitions = true);
@@ -67,7 +67,7 @@ class NumeratorGraph {
   void CopyNumStatesToCpu(int32* destination) const {
     num_hmm_states_.CopyToHost(destination);
   }
-//  const CuMatrix<BaseFloat> &FinalProbs() const;
+
   const CuVector<BaseFloat> &FirstTransitionOffsets() const { return first_transition_offsets_; }
   bool AreFirstTransitionsScaled() const { return scale_first_transitions_; }
   void PrintInfo(bool print_transitions = false) const;
@@ -102,6 +102,10 @@ class NumeratorGraph {
   // pushing which can cause problems in numerator computations.
   bool scale_first_transitions_;
   CuVector<BaseFloat> first_transition_offsets_;
+
+  // store superviosn.weight here so we don't need to pass 
+  // the supervision object to numerator computation
+  BaseFloat supervision_weight_;
 };
 
 }  // namespace chain

@@ -17,6 +17,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+/// *********** This will probably not work anymore *************
+/// ***because the forward kernel is changed for cu-leakynum*****
 
 #include "chain/chain-cu-numerator.h"
 #include "chain/chain-kernels-ansi.h"

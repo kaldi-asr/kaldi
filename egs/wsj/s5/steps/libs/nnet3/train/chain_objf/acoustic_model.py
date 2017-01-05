@@ -119,6 +119,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                      apply_deriv_weights,
                      min_deriv_time, max_deriv_time,
                      l2_regularize, xent_regularize, leaky_hmm_coefficient,
+                     num_leakage_coeff,
                      momentum, max_param_change,
                      shuffle_buffer_size, num_chunk_per_minibatch,
                      frame_subsampling_factor, truncate_deriv_weights,
@@ -163,6 +164,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                     nnet3-chain-train {parallel_train_opts} \
                     --apply-deriv-weights={app_deriv_wts} \
                     --l2-regularize={l2} --leaky-hmm-coefficient={leaky} \
+                    --num-leak-coefficient={numleak} \
                     {cache_io_opts}  --xent-regularize={xent_reg} \
                     {deriv_time_opts} \
                     --print-interval=10 --momentum={momentum} \
@@ -187,6 +189,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                         app_deriv_wts=apply_deriv_weights,
                         fr_shft=frame_shift, l2=l2_regularize,
                         xent_reg=xent_regularize, leaky=leaky_hmm_coefficient,
+                        numleak=num_leakage_coeff,
                         parallel_train_opts=run_opts.parallel_train_opts,
                         momentum=momentum, max_param_change=max_param_change,
                         raw_model=raw_model_string,
@@ -221,6 +224,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         max_deriv_time,
                         l2_regularize, xent_regularize,
                         leaky_hmm_coefficient,
+                        num_leakage_coeff,
                         momentum, max_param_change, shuffle_buffer_size,
                         frame_subsampling_factor, truncate_deriv_weights,
                         run_opts, background_process_handler=None):
@@ -256,6 +260,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
         left_context=left_context, right_context=right_context,
         l2_regularize=l2_regularize, xent_regularize=xent_regularize,
         leaky_hmm_coefficient=leaky_hmm_coefficient, run_opts=run_opts,
+        num_leakage_coeff=num_leakage_coeff,
         background_process_handler=background_process_handler)
 
     if iter > 0:
@@ -314,6 +319,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      l2_regularize=l2_regularize,
                      xent_regularize=xent_regularize,
                      leaky_hmm_coefficient=leaky_hmm_coefficient,
+                     num_leakage_coeff=num_leakage_coeff,
                      momentum=momentum,
                      max_param_change=cur_max_param_change,
                      shuffle_buffer_size=shuffle_buffer_size,
@@ -450,6 +456,7 @@ def prepare_initial_acoustic_model(dir, run_opts, srand=-1):
 def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
                                    right_context, l2_regularize,
                                    xent_regularize, leaky_hmm_coefficient,
+                                   num_leakage_coeff,
                                    run_opts, wait=False,
                                    background_process_handler=None):
     model = '{0}/{1}.mdl'.format(dir, iter)
@@ -458,6 +465,7 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
         """{command} {dir}/log/compute_prob_valid.{iter}.log \
                 nnet3-chain-compute-prob --l2-regularize={l2} \
                 --leaky-hmm-coefficient={leaky} --xent-regularize={xent_reg} \
+                --num-leak-coefficient={numleak} \
                 "nnet3-am-copy --raw=true {model} - |" {dir}/den.fst \
                 "ark,bg:nnet3-chain-copy-egs --left-context={lc} \
                     --right-context={rc} ark:{egs_dir}/valid_diagnostic.cegs \
@@ -465,6 +473,7 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
         """.format(command=run_opts.command, dir=dir, iter=iter, model=model,
                    lc=left_context, rc=right_context,
                    l2=l2_regularize, leaky=leaky_hmm_coefficient,
+                   numleak=num_leakage_coeff,
                    xent_reg=xent_regularize,
                    egs_dir=egs_dir), wait=wait,
         background_process_handler=background_process_handler)
@@ -473,6 +482,7 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
         """{command} {dir}/log/compute_prob_train.{iter}.log \
                 nnet3-chain-compute-prob --l2-regularize={l2} \
                 --leaky-hmm-coefficient={leaky} --xent-regularize={xent_reg} \
+                --num-leak-coefficient={numleak} \
                 "nnet3-am-copy --raw=true {model} - |" {dir}/den.fst \
                 "ark,bg:nnet3-chain-copy-egs --left-context={lc} \
                     --right-context={rc} ark:{egs_dir}/train_diagnostic.cegs \
@@ -480,6 +490,7 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
         """.format(command=run_opts.command, dir=dir, iter=iter, model=model,
                    lc=left_context, rc=right_context,
                    l2=l2_regularize, leaky=leaky_hmm_coefficient,
+                   numleak=num_leakage_coeff,
                    xent_reg=xent_regularize,
                    egs_dir=egs_dir), wait=wait,
         background_process_handler=background_process_handler)
@@ -534,6 +545,7 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch,
         """{command} {combine_queue_opt} {dir}/log/combine.log \
                 nnet3-chain-combine --num-iters=40 \
                 --l2-regularize={l2} --leaky-hmm-coefficient={leaky} \
+                --num-leak-coefficient={numleak} \
                 --enforce-sum-to-one=true --enforce-positive-weights=true \
                 --verbose=3 {dir}/den.fst {raw_models} \
                 "ark,bg:nnet3-chain-copy-egs --left-context={lc} \
@@ -546,6 +558,7 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch,
                     combine_queue_opt=run_opts.combine_queue_opt,
                     lc=left_context, rc=right_context,
                     l2=l2_regularize, leaky=leaky_hmm_coefficient,
+                    numleak=num_leakage_coeff,
                     dir=dir, raw_models=" ".join(raw_model_strings),
                     num_chunk_per_mb=num_chunk_per_minibatch,
                     num_iters=num_iters,
@@ -559,5 +572,6 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch,
         left_context=left_context, right_context=right_context,
         l2_regularize=l2_regularize, xent_regularize=xent_regularize,
         leaky_hmm_coefficient=leaky_hmm_coefficient,
+        num_leakage_coeff=num_leakage_coeff,
         run_opts=run_opts, wait=False,
         background_process_handler=background_process_handler)

@@ -43,7 +43,7 @@ NumeratorGraph::NumeratorGraph(const Supervision &supervision,
   }
   num_hmm_states_ = num_hmm_states;
   SetTransitions(supervision.fsts);
-  // SetFinalProbs();
+  supervision_weight_ = supervision.weight;
 }
 
 const Int32Pair* NumeratorGraph::BackwardTransitions() const {
@@ -75,8 +75,15 @@ void NumeratorGraph::SetTransitions(
   std::vector<Int32Pair> backward_transitions(transitions_dim);
   std::vector<DenominatorGraphTransition> transitions;
   Vector<BaseFloat> offsets(num_sequences_);
+
   for (int32 seq = 0; seq < num_sequences_; seq++) {
     for (int32 s = 0; s < fsts[seq].NumStates(); s++) {
+
+      if (s < fsts[seq].NumStates() - 1)
+        KALDI_ASSERT(fsts[seq].Final(s) == fst::TropicalWeight::Zero());
+      else
+        KALDI_ASSERT(fsts[seq].Final(s) == fst::TropicalWeight::One());
+
       BaseFloat offset = 0.0;
       if (s == 0 && scale_first_transitions_) {
         for (fst::ArcIterator<fst::StdVectorFst> aiter(fsts[seq], s);

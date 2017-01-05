@@ -64,7 +64,7 @@ struct ChainTrainingOptions {
   BaseFloat xent_regularize;
 
   ChainTrainingOptions(): l2_regularize(0.0), leaky_hmm_coefficient(1.0e-05),
-                          num_leak_coefficient(1.0e-02), xent_regularize(0.0) { }
+                          num_leak_coefficient(1.0e-04), xent_regularize(0.0) { }
   
   void Register(OptionsItf *opts) {
     opts->Register("l2-regularize", &l2_regularize, "l2 regularization "

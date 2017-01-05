@@ -76,6 +76,9 @@ def get_args():
                         dest='right_tolerance', default=5, help="")
     parser.add_argument("--chain.left-tolerance", type=int,
                         dest='left_tolerance', default=5, help="")
+    parser.add_argument("--chain.num-leakage-coeff", type=float,
+                        dest='num_leakage_coeff', default=0.0001,
+                        help="")
     parser.add_argument("--chain.leaky-hmm-coefficient", type=float,
                         dest='leaky_hmm_coefficient', default=0.00001,
                         help="")
@@ -448,6 +451,7 @@ def train(args, run_opts, background_process_handler):
                 l2_regularize=args.l2_regularize,
                 xent_regularize=args.xent_regularize,
                 leaky_hmm_coefficient=args.leaky_hmm_coefficient,
+                num_leakage_coeff=args.num_leakage_coeff,
                 momentum=args.momentum,
                 max_param_change=args.max_param_change,
                 shuffle_buffer_size=args.shuffle_buffer_size,
@@ -486,6 +490,7 @@ def train(args, run_opts, background_process_handler):
             egs_dir=egs_dir,
             left_context=left_context, right_context=right_context,
             leaky_hmm_coefficient=args.leaky_hmm_coefficient,
+            num_leakage_coeff=args.num_leakage_coeff,
             l2_regularize=args.l2_regularize,
             xent_regularize=args.xent_regularize,
             run_opts=run_opts,
