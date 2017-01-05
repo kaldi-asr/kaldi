@@ -416,8 +416,8 @@ void UnitTestNnetInputDerivatives() {
 int main() {
   using namespace kaldi;
   using namespace kaldi::nnet3;
-  // SetVerboseLevel(4);
 
+  // SetVerboseLevel(4);
 
   for (kaldi::int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1

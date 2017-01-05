@@ -1984,14 +1984,14 @@ static void FindNumLeadingAndTrailingNegatives(const std::vector<int32> &vec,
   // at least one nonnegative number.
   while (*ptr2 < 0)
     ptr2--;
-  KALDI_ASSERT(ptr2 != begin);  // would be code error.
+  KALDI_ASSERT(ptr2 >= begin);  // or would be code error.
   *num_trailing_negatives = end - 1 - ptr2;
 }
 
 // This function, called from SnipRowOps, is called when it encounters commands
-// of type kCopyRows or kAddRows; it modifies such commands when the indexes
-// have leading or trailing -1's,h, to make them operate on a smaller submatrix.
-// It returns true if it made a change, and false otherwise.
+// of type kAddRows; it modifies such commands when the indexes have leading or
+// trailing -1's,h, to make them operate on a smaller submatrix.  It returns
+// true if it made a change, and false otherwise.
 static bool SnipSingleRowOp(NnetComputation *computation,
                             int32 command_index) {
   NnetComputation::Command &c = computation->commands[command_index];
@@ -2010,12 +2010,16 @@ static bool SnipSingleRowOp(NnetComputation *computation,
   std::vector<int32> new_indexes(indexes.begin() + num_leading_negatives,
                                  indexes.begin() + num_leading_negatives +
                                  new_num_rows);
+  KALDI_ASSERT(new_indexes.back() >= 0);    // TEMP
   c.arg3 = computation->indexes.size();
   computation->indexes.push_back(std::vector<int32>());
   computation->indexes.back().swap(new_indexes);
   c.arg1 = computation->NewSubMatrix(c.arg1,
                                      num_leading_negatives, new_num_rows,
                                      0, -1);
+  if (new_num_rows == 15) {
+    KALDI_LOG << "HERE"; // TEMP
+  }
   return true;  // made a change.
 }
 
@@ -2059,9 +2063,9 @@ static void FindNumLeadingAndTrailingNegatives(
 
 
 // This function, called from SnipRowOps, is called when it encounters commands
-// of type kAddRowsMulti, kAddToRowsMulti, kCopyRowsMulti or kCopyToRowsMulti;
-// have leading or trailing (-1,-1) pairs, to make them operate on a smaller
-// submatrix.  It returns true if it made a change, and false otherwise.
+// of type kAddRowsMulti, kAddToRowsMulti, or kCopyToRowsMulti; have leading or
+// trailing (-1,-1) pairs, to make them operate on a smaller submatrix.  It
+// returns true if it made a change, and false otherwise.
 static bool SnipMultiRowOp(NnetComputation *computation,
                            int32 command_index) {
   NnetComputation::Command &c = computation->commands[command_index];
@@ -2093,7 +2097,7 @@ static bool SnipMultiRowOp(NnetComputation *computation,
 
 
 /*
-  This function, used in SnipRangeRowOp(), finds the number of leading, and
+  This function, used in SnipRangeRowOp(), finds the number of leading and
   trailing values in a vector of pairs of integers, that are the same (i.e.
   pairs of the form (x, x) for any x.  [This is how we represent an empty
   range, which is a kind of no-op, in commands of kCopyRowRanges or
@@ -2172,14 +2176,19 @@ bool SnipRowOps(NnetComputation *computation) {
     // non-const because we'll be changing it.
     NnetComputation::Command &c = computation->commands[command_index];
 
+    // note: we can't do the snipping for commands of type case kCopyRows and case
+    // kCopyRowsMulti, because the -1's aren't a pure no-op; they have the
+    // meaning of setting the destination value to zero, so we can't prune
+    // them away.
+
     switch (c.command_type) {
-      case kCopyRows: case kAddRows: {
+      case kAddRows: {
         if (SnipSingleRowOp(computation, command_index))
           ans = true;
         break;
       }
       case kAddRowsMulti: case kAddToRowsMulti:
-      case kCopyRowsMulti: case kCopyToRowsMulti: {
+      case kCopyToRowsMulti: {
         if (SnipMultiRowOp(computation, command_index))
           ans = true;
         break;
@@ -2405,8 +2414,9 @@ void ComputationExpander::ExpandRowsCommand(
       num_n_values = num_n_values_,
       new_s1_size = expanded_computation_->submatrices[s1].num_rows,
       new_s2_size = expanded_computation_->submatrices[s2].num_rows;
-  KALDI_ASSERT(old_size % 2 == 0 &&
-               old_size == computation_.submatrices[s1].num_rows);
+
+  KALDI_ASSERT(old_size == computation_.submatrices[s1].num_rows);
+
   new_indexes.resize(new_s1_size, -1);
 
   for (int32 i1 = 0; i1 < old_size; i1++) {
