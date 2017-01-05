@@ -256,7 +256,7 @@ if [ ! -f  $dataset_dir/.done ] ; then
   touch $dataset_dir/.done
 fi
 
-if [ -f exp/nnet3/extractor/final.ie ] && [ ! -f ${dataset_dir}_hires/.mfcc.done ]; then
+if  [ ! -f ${dataset_dir}_hires/.mfcc.done ]; then
   dataset=$(basename $dataset_dir)
   echo ---------------------------------------------------------------------
   echo "Preparing ${dataset_kind} MFCC features in  ${dataset_dir}_hires and corresponding iVectors in exp/nnet3/ivectors_$dataset on" `date`
@@ -272,10 +272,17 @@ if [ -f exp/nnet3/extractor/final.ie ] && [ ! -f ${dataset_dir}_hires/.mfcc.done
   utils/fix_data_dir.sh ${dataset_dir}_hires;
   touch ${dataset_dir}_hires/.mfcc.done
 
+  touch ${dataset_dir}_hires/.done
+fi
+
+if [ -f exp/nnet3/extractor/final.ie ] && \
+  [ ! -f exp/nnet3/ivectors_$(basename $dataset_dir)/.done ] ;  then
+  dataset=$(basename $dataset_dir)
+
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj $my_nj \
     ${dataset_dir}_hires exp/nnet3/extractor exp/nnet3/ivectors_$dataset || exit 1;
 
-  touch ${dataset_dir}_hires/.done
+  touch exp/nnet3/ivectors_$dataset/.done
 fi
 
 #####################################################################
@@ -562,7 +569,7 @@ fi
 ## chain model decoding
 ##
 ####################################################################
-if [ -f exp/$chain_model/.done ]; then
+if [ -f exp/$chain_model/final.mdl ]; then
   dir=exp/$chain_model
 
   decode=$dir/decode_${dataset_id}

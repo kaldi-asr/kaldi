@@ -121,7 +121,7 @@ if [ $stage -le 4 ]; then
   if [ -e exp/nnet3${nnet3_affix}/tri5/final.mdl ]; then
     # we don't want to overwrite old stuff, ask the user to delete it.
     echo "$0: exp/nnet3${nnet3_affix}/tri5/final.mdl already exists: "
-    echo " ... please delete and then rerun, or use a later --stage option."
+    echo " ... please delete and then rerun, or use a --stage > 4 option."
     exit 1;
   fi
   steps/train_lda_mllt.sh --cmd "$train_cmd" --num-iters 7 --mllt-iters "2 4 6" \
@@ -228,7 +228,7 @@ fi
 if [ $stage -le 11 ]; then
   if [ -f $ali_dir/ali.1.gz ]; then
     echo "$0: alignments in $ali_dir appear to already exist.  Please either remove them "
-    echo " ... or use a later --stage option."
+    echo " ... or use --stage > 11 option."
     exit 1
   fi
   echo "$0: aligning with the perturbed, short-segment-combined low-resolution data"
