@@ -6,10 +6,7 @@
 namespace kaldi {
 namespace rnnlm {
 
-void UnitTestSampleConvergence() {
-  // randomly generate unigrams
-  int n = rand() % 10000 + 1000;
-  vector<BaseFloat> selection_probs;
+void PrepareVector(int n, int ones_size, std::set<int> &outputs_set, vector<BaseFloat> &selection_probs) {
   BaseFloat prob = 0;
   BaseFloat prob_sum = 0;
   for (int i = 0; i < n; i++) {
@@ -17,31 +14,20 @@ void UnitTestSampleConvergence() {
     prob_sum += prob;
     selection_probs.push_back(prob);
   }
-  // KALDI_LOG << "Before Normalize, probs are:";
   for (int i = 0; i < n; i++) {
     selection_probs[i] /= prob_sum;
-    // KALDI_LOG << selection_probs[i];
   }
-  // generate a outputs_set with ones and with size < k
-  int ones_size = rand() % (n / 2) + 1;
-  // KALDI_LOG << "Size of ones_set is " << ones_size;
-  std::set<int> outputs_set;
   for (int i = 0; i < ones_size; i++) {
     outputs_set.insert(rand() % n);
   }
-  // generate a random number k from 1 to n
-  int k = 2 * ones_size;
-  // KALDI_LOG << "select " << k << " items from " << n << " unigrams";
+}
+
+void UnitTestNChooseKSamplingConvergence(int n, int k, int ones_size) {
+  std::set<int> outputs_set;
+  vector<BaseFloat> selection_probs;
+  PrepareVector(n, ones_size, outputs_set, selection_probs);
   NormalizeVec(k, outputs_set, &selection_probs);
-  /* 
-  // check that the sum of selection_probs equal to k (passed)
-  BaseFloat sum1 = 0;
-  for (int i = 0; i < selection_probs.size(); i++) {
-    sum1 += selection_probs[i];
-    KALDI_LOG << sum1;
-  }
-  KALDI_ASSERT(ApproxEqual(sum1, k));
-  */
+
   vector<std::pair<int, BaseFloat> > u(selection_probs.size());
   for (int i = 0; i < u.size(); i++) {
     u[i].first = i;
@@ -68,47 +54,60 @@ void UnitTestSampleConvergence() {
     for (int j = 0; j < samples_probs.size(); j++) {
       samples_probs[j] /= (count * k);
     }
-    // update Euclidean distance between the two pdfs
+    // update Euclidean distance between the two pdfs every 1000 iters
     BaseFloat distance = 0;
-    for (int j = 0; j < u.size(); j++) {
-      distance += pow(samples_probs[j] - selection_probs[j], 2);
+    if (count % 1000 == 0) {
+      for (int j = 0; j < u.size(); j++) {
+        distance += pow(samples_probs[j] - selection_probs[j], 2);
+      }
+      distance = sqrt(distance);
     }
-    distance = sqrt(distance);
     // if the Euclidean distance is small enough, break the loop
     if (distance < 0.05) {
-      KALDI_LOG << "test of the sampling convergence is passed.";
-      break;
+      KALDI_LOG << "Sampling convergence test: passed for sampling " << k <<\
+        " items from " << n << " unigrams";
+      break;;
     }
   }
 }
 
+void UnitTestSamplingConvergence() {
+  // number of unigrams 
+  int n = rand() % 10000 + 100;
+  // sample size
+  int k;
+  // number of ones
+  int ones_size;
+  ones_size = rand() % (n / 2);
+  k = rand() % (n - ones_size) + ones_size + 1;
+  UnitTestNChooseKSamplingConvergence(n, k, ones_size);
+  // test when k = 1
+  k = 1;
+  ones_size = 0;
+  UnitTestNChooseKSamplingConvergence(n, k, ones_size);
+  // test when k = 2
+  k = 2;
+  ones_size = rand() % (k - 1);
+  UnitTestNChooseKSamplingConvergence(n, k, ones_size);
+  // test when k = n 
+  ones_size = rand() % (n / 2);
+  k = n;
+  UnitTestNChooseKSamplingConvergence(n, k, ones_size);
+}
+
 // test that probabilities 1.0 are always sampled
 void UnitTestSampleWithProbOne(int iters) {
-  // generate unigrams
-  int n = rand() % 200 + 5;
-  vector<BaseFloat> selection_probs;
-  BaseFloat prob = 0;
-  BaseFloat prob_sum = 0;
-  for (int i = 0; i < n; i++) {
-    prob = RandUniform();
-    prob_sum += prob;
-    selection_probs.push_back(prob);
-  }
-  for (int i = 0; i < n; i++) {
-    selection_probs[i] /= prob_sum;
-  }
-
-  // generate a outputs_set with ones and with size < k
-  int ones_size = rand() % (n / 2) + 1;
-  // std::cout << "size of ones_set is " << ones_size << std::endl;
+  // number of unigrams 
+  int n = rand() % 1000 + 100;
+  // generate a outputs_set with ones
+  int ones_size = rand() % (n / 2);
   std::set<int> outputs_set;
-  for (int i = 0; i < ones_size; i++) {
-    outputs_set.insert(rand() % n);
-  }
+  vector<BaseFloat> selection_probs;
 
-  // generate a random number k from 1 to n
-  int k = 2 * ones_size;
-  // std::cout << "select " << k << " items" << std::endl;
+  PrepareVector(n, ones_size, outputs_set, selection_probs);
+
+  // generate a random number k from ones_size + 1 to n
+  int k = rand() % (n - ones_size) + ones_size + 1;
   NormalizeVec(k, outputs_set, &selection_probs);
 
   vector<std::pair<int, BaseFloat> > u(selection_probs.size());
@@ -121,38 +120,28 @@ void UnitTestSampleWithProbOne(int iters) {
   for (int i = 0; i < N; i++) {
     vector<int> samples;
     SampleWithoutReplacement(u, k, &samples);
-    // assert every item in outputs_set is sampled
-    for (set<int>::iterator it = outputs_set.begin(); it != outputs_set.end(); ++it) {
-      KALDI_ASSERT(std::find(samples.begin(), samples.end(), *it) != \
-          samples.end());
+    if (outputs_set.size() > 0) {
+      // assert every item in outputs_set is sampled
+      for (set<int>::iterator it = outputs_set.begin(); it != outputs_set.end(); ++it) {
+        KALDI_ASSERT(std::find(samples.begin(), samples.end(), *it) != \
+            samples.end());
+      }
     }
   }
 }
 
 void UnitTestSamplingTime(int iters) {
-  // generate unigrams
-  int n = rand() % 200 + 5;
-  vector<BaseFloat> selection_probs;
-  BaseFloat prob = 0;
-  BaseFloat prob_sum = 0;
-  for (int i = 0; i < n; i++) {
-    prob = RandUniform();
-    prob_sum += prob;
-    selection_probs.push_back(prob);
-  }
-  for (int i = 0; i < n; i++) {
-    selection_probs[i] /= prob_sum;
-  }
-
-  // generate a outputs_set with ones and with size < k
-  int ones_size = rand() % (n / 2) + 1;
+  // number of unigrams 
+  int n = rand() % 1000 + 100;
+  // generate a outputs_set with ones
+  int ones_size = rand() % (n / 2);
   std::set<int> outputs_set;
-  for (int i = 0; i < ones_size; i++) {
-    outputs_set.insert(rand() % n);
-  }
+  vector<BaseFloat> selection_probs;
 
-  // generate a random number k from 1 to n
-  int k = 2 * ones_size;
+  PrepareVector(n, ones_size, outputs_set, selection_probs);
+
+  // generate a random number k from ones_size + 1 to n
+  int k = rand() % (n - ones_size) + ones_size + 1;
   NormalizeVec(k, outputs_set, &selection_probs);
 
   vector<std::pair<int, BaseFloat> > u(selection_probs.size());
@@ -170,7 +159,8 @@ void UnitTestSamplingTime(int iters) {
     SampleWithoutReplacement(u, k, &samples);
   }
   total_time = t.Elapsed();
-  KALDI_LOG << "Total time of the samping code " << N << " times is " << total_time;
+  KALDI_LOG << "Time test: Sampling " << k << " items from " << n << " unigrams for " << N << \
+    " times takes " << total_time << " totally.";
 }
 
 }  // end namespace rnnlm
@@ -182,6 +172,6 @@ int main() {
   int N = 10000;
   UnitTestSampleWithProbOne(N);
   UnitTestSamplingTime(N);
-  UnitTestSampleConvergence();
+  UnitTestSamplingConvergence();
 }
 
