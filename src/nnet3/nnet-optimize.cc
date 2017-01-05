@@ -437,7 +437,9 @@ void Optimize(const NnetOptimizeOptions &config,
   if (GetVerboseLevel() >= 4)
     CheckComputation(nnet, *computation, true);
 
-  { // Call LimitDerivativeTimes().
+  { // Call LimitDerivativeTimes(); it's important that this
+    // should come before other optimizations (search for "insist" in
+    // nnet-optimize-utils.cc for the reasons).
     // this will do nothing unless --min-deriv-time or --max-deriv-time
     // or --max-deriv-time-relative was set.
     int32 max_deriv_time = config.max_deriv_time;
@@ -448,18 +450,18 @@ void Optimize(const NnetOptimizeOptions &config,
                          max_deriv_time, computation);
   }
 
-  if (GetVerboseLevel() >= 4)
+  if (GetVerboseLevel() >= 3)
     CheckComputation(nnet, *computation, true);
 
   if (config.optimize && config.consolidate_model_update)
     ConsolidateModelUpdate(nnet, computation);
 
-  if (GetVerboseLevel() >= 4)
+   if (GetVerboseLevel() >= 3)
     CheckComputation(nnet, *computation, true);
 
   if (config.optimize && config.convert_addition) {
     ConvertAdditionToAssignment(nnet, computation);
-    if (GetVerboseLevel() >= 4)
+    if (GetVerboseLevel() >= 3)
       CheckComputation(nnet, *computation, true);
   }
 
@@ -467,20 +469,19 @@ void Optimize(const NnetOptimizeOptions &config,
       (config.remove_assignments || config.backprop_in_place ||
        config.propagate_in_place)) {
     VariableMergingOptimization(config, nnet, computation);
-    if (GetVerboseLevel() >= 4)
+    if (GetVerboseLevel() >= 3)
       CheckComputation(nnet, *computation, false);
   }
 
-  if (config.optimize && config.optimize_row_ops) {
-    if (ReplaceRowWithMatrixOps(computation)) {
-      // if anything was changed...
-
-      // We have to call RenumberComputation() to get rid of any removed
-      // indexes... actually this could be a little wasteful, but unfortunately
-      // it doesn't seem like we'd otherwise be doing any renumbering past this
-      // point.
+  if (config.optimize && (config.snip_row_ops || config.optimize_row_ops)) {
+    bool must_renumber = false;
+    if (config.snip_row_ops && SnipRowOps(computation))
+      must_renumber = true;
+    if (config.optimize_row_ops && ReplaceRowWithMatrixOps(computation))
+      must_renumber = true;
+    if (must_renumber) {
       RenumberComputation(computation);
-      if (GetVerboseLevel() >= 4)
+      if (GetVerboseLevel() >= 3)
         CheckComputation(nnet, *computation, false);
     }
   }
@@ -488,13 +489,13 @@ void Optimize(const NnetOptimizeOptions &config,
 
   if (config.optimize && config.initialize_undefined) {
     RemoveUnnecessaryZeroing(nnet, computation);
-    if (GetVerboseLevel() >= 4)
-      CheckComputation(nnet, *computation, false);
+    if (GetVerboseLevel() >= 3)
+    CheckComputation(nnet, *computation, false);
   }
 
   if (config.optimize && config.move_sizing_commands) {
     MoveSizingCommands(nnet, computation);
-    if (GetVerboseLevel() >= 4)
+    if (GetVerboseLevel() >= 3)
       CheckComputation(nnet, *computation, false);
   }
 
@@ -503,7 +504,7 @@ void Optimize(const NnetOptimizeOptions &config,
   // because it's necessary for looped computation to run.
   if (config.optimize_looped_computation){
     OptimizeLoopedComputation(nnet, computation);
-    if (GetVerboseLevel() >= 4)
+    if (GetVerboseLevel() >= 3)
       CheckComputation(nnet, *computation, false);
   }
 
@@ -513,7 +514,7 @@ void Optimize(const NnetOptimizeOptions &config,
     // would be correct in that case, as written.  In any case the performance
     // benefit is tiny.
     RemoveUnnecessaryAllocation(nnet, computation);
-    if (GetVerboseLevel() >= 4)
+    if (GetVerboseLevel() >= 3)
       CheckComputation(nnet, *computation, false);
   }
 
@@ -526,7 +527,7 @@ void Optimize(const NnetOptimizeOptions &config,
   if (config.optimize_looped_computation)
     FixGotoLabel(computation);
 
-  if (GetVerboseLevel() >= 4)
+  if (GetVerboseLevel() >= 3)
     CheckComputation(nnet, *computation, false);
 }
 
@@ -634,21 +635,23 @@ CachingOptimizingCompiler::~CachingOptimizingCompiler() {
     delete itr->first;
     delete itr->second.first;
   }
-  std::ostringstream os;
-  double seconds_taken_misc = seconds_taken_total_ - seconds_taken_compile_
-      - seconds_taken_optimize_ - seconds_taken_expand_
-      - seconds_taken_check_ - seconds_taken_indexes_;
-  os << std::setprecision(3) << seconds_taken_total_
-     << " seconds taken in nnet3 compilation total (breakdown: "
-     << seconds_taken_compile_ << " compilation, "
-     << seconds_taken_optimize_ << " optimization, "
-     << seconds_taken_expand_ << " shortcut expansion, "
-     << seconds_taken_check_ << " checking, "
-     << seconds_taken_indexes_ << " computing indexes, "
-     << seconds_taken_misc << " misc.)";
-  KALDI_LOG << os.str();
-  // note: the leftover amount is misc things like hashing and == comparisons on
-  // computation-requests, and calling RequestIsDecomposable().
+  if (seconds_taken_total_ > 0.0) {
+    std::ostringstream os;
+    double seconds_taken_misc = seconds_taken_total_ - seconds_taken_compile_
+        - seconds_taken_optimize_ - seconds_taken_expand_
+        - seconds_taken_check_ - seconds_taken_indexes_;
+    os << std::setprecision(3) << seconds_taken_total_
+       << " seconds taken in nnet3 compilation total (breakdown: "
+       << seconds_taken_compile_ << " compilation, "
+       << seconds_taken_optimize_ << " optimization, "
+       << seconds_taken_expand_ << " shortcut expansion, "
+       << seconds_taken_check_ << " checking, "
+       << seconds_taken_indexes_ << " computing indexes, "
+       << seconds_taken_misc << " misc.)";
+    KALDI_LOG << os.str();
+    // note: the leftover amount is misc things like hashing and == comparisons on
+    // computation-requests, and calling RequestIsDecomposable().
+  }
 }
 
 const NnetComputation* CachingOptimizingCompiler::Compile(

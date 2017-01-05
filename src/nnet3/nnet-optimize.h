@@ -48,6 +48,7 @@ struct NnetOptimizeOptions {
   int32 min_deriv_time;
   int32 max_deriv_time;
   int32 max_deriv_time_relative;
+  bool snip_row_ops;
   // optimize_looped_computation is a 'hidden config' not available from
   // the command line; it's set to true to enable the optimization for
   // looped computation that turns a linear computation into a loop.
@@ -69,6 +70,7 @@ struct NnetOptimizeOptions {
       min_deriv_time(std::numeric_limits<int32>::min()),
       max_deriv_time(std::numeric_limits<int32>::max()),
       max_deriv_time_relative(std::numeric_limits<int32>::max()),
+      snip_row_ops(true),
       optimize_looped_computation(false) { }
 
   void Register(OptionsItf *opts) {
@@ -118,6 +120,9 @@ struct NnetOptimizeOptions {
                    "variable.  If set, it is equivalent to setting the "
                    "--max-deriv-time to this value plus the largest 't' value "
                    "in any 'output' node of the computation request.");
+    opts->Register("snip-row-ops", &snip_row_ops, "Set this to false to "
+                   "disable an optimization that reduces the size of certain "
+                   "per-row operations");
   }
   void Read(std::istream &is, bool binary);
   void Write(std::ostream &os, bool binary) const;
