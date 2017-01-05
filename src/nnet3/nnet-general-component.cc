@@ -19,7 +19,6 @@
 
 #include <iterator>
 #include <sstream>
-#include <iomanip>
 #include "nnet3/nnet-general-component.h"
 #include "nnet3/nnet-computation-graph.h"
 #include "nnet3/nnet-parse.h"
@@ -557,7 +556,7 @@ void StatisticsPoolingComponent::InitFromConfig(ConfigLine *cfl) {
 
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
-              << cfl->UnusedValues();
+	      << cfl->UnusedValues();
   // do some basic checks here but Check() will check more completely.
   if (!ok || input_dim_ <= 0 || left_context_ + right_context_ <= 0 ||
       num_log_count_features_ < 0)
@@ -888,7 +887,15 @@ void BackpropTruncationComponent::Read(std::istream &is, bool binary) {
   ExpectOneOrTwoTokens(is, binary, "<BackpropTruncationComponent>",
                        "<Dim>");
   ReadBasicType(is, binary, &dim_);
-  ExpectToken(is, binary, "<ClippingThreshold>");
+  std::string tok;
+  ReadToken(is, binary, &tok);
+  if (tok == "<Scale>") {
+    ReadBasicType(is, binary, &scale_);
+    ReadToken(is, binary, &tok);
+  } else {
+    scale_ = 1.0;
+  }
+  KALDI_ASSERT(tok == "<ClippingThreshold>");
   ReadBasicType(is, binary, &clipping_threshold_);
   ExpectToken(is, binary, "<ZeroingThreshold>");
   ReadBasicType(is, binary, &zeroing_threshold_);
@@ -912,6 +919,8 @@ void BackpropTruncationComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<BackpropTruncationComponent>");
   WriteToken(os, binary, "<Dim>");
   WriteBasicType(os, binary, dim_);
+  WriteToken(os, binary, "<Scale>");
+  WriteBasicType(os, binary, scale_);
   WriteToken(os, binary, "<ClippingThreshold>");
   WriteBasicType(os, binary, clipping_threshold_);
   WriteToken(os, binary, "<ZeroingThreshold>");
@@ -958,7 +967,7 @@ void BackpropTruncationComponentPrecomputedIndexes::Read(std::istream &istream,
 std::string BackpropTruncationComponent::Info() const {
   std::ostringstream stream;
   stream << Type() << ", dim=" << dim_
-         << ", count=" << std::setprecision(3) << count_ << std::setprecision(6)
+         << ", scale=" << scale_
          << ", clipping-threshold=" << clipping_threshold_
          << ", clipped-proportion="
          << (count_ > 0.0 ? num_clipped_ / count_ : 0)
@@ -971,14 +980,15 @@ std::string BackpropTruncationComponent::Info() const {
   return stream.str();
 }
 
-void BackpropTruncationComponent::Init(int32 dim,
-                                 BaseFloat clipping_threshold,
-                                 BaseFloat zeroing_threshold,
-                                 int32 zeroing_interval,
-                                 int32 recurrence_interval) {
+void BackpropTruncationComponent::Init(
+    int32 dim, BaseFloat scale, BaseFloat clipping_threshold,
+    BaseFloat zeroing_threshold, int32 zeroing_interval,
+    int32 recurrence_interval) {
   KALDI_ASSERT(clipping_threshold >= 0 && zeroing_threshold >= 0 &&
-      zeroing_interval > 0 && recurrence_interval > 0 && dim > 0);
+               scale > 0.0 && zeroing_interval > 0 &&
+               recurrence_interval > 0 && dim > 0);
   dim_ = dim;
+  scale_ = scale;
   clipping_threshold_ = clipping_threshold;
   zeroing_threshold_ = zeroing_threshold;
   zeroing_interval_ = zeroing_interval;
@@ -993,9 +1003,11 @@ void BackpropTruncationComponent::Init(int32 dim,
 void BackpropTruncationComponent::InitFromConfig(ConfigLine *cfl) {
   int32 dim = 0;
   bool ok = cfl->GetValue("dim", &dim);
-  BaseFloat clipping_threshold = 30.0;
-  BaseFloat zeroing_threshold = 15.0;
+  BaseFloat scale = 1.0,
+      clipping_threshold = 30.0,
+      zeroing_threshold = 15.0;
   int32 zeroing_interval = 20, recurrence_interval = 1;
+  cfl->GetValue("scale", &scale);
   cfl->GetValue("clipping-threshold", &clipping_threshold);
   cfl->GetValue("zeroing-threshold", &zeroing_threshold);
   cfl->GetValue("zeroing-interval", &zeroing_interval);
@@ -1005,7 +1017,7 @@ void BackpropTruncationComponent::InitFromConfig(ConfigLine *cfl) {
       recurrence_interval < 1 || dim <= 0)
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << cfl->WholeLine() << "\"";
-  Init(dim, clipping_threshold, zeroing_threshold,
+  Init(dim, scale, clipping_threshold, zeroing_threshold,
       zeroing_interval, recurrence_interval);
 }
 
@@ -1013,6 +1025,7 @@ void BackpropTruncationComponent::InitFromConfig(ConfigLine *cfl) {
 Component* BackpropTruncationComponent::Copy() const {
   BackpropTruncationComponent *ans = new BackpropTruncationComponent();
   ans->dim_ = dim_;
+  ans->scale_ = scale_;
   ans->clipping_threshold_ = clipping_threshold_;
   ans->zeroing_threshold_ = zeroing_threshold_;
   ans->zeroing_interval_ = zeroing_interval_;
@@ -1066,6 +1079,8 @@ void BackpropTruncationComponent::Propagate(
                                  const CuMatrixBase<BaseFloat> &in,
                                  CuMatrixBase<BaseFloat> *out) const {
   out->CopyFromMat(in);
+  if (scale_ != 1.0)
+    out->Scale(scale_);
 }
 
 // virtual
@@ -1084,6 +1099,8 @@ void BackpropTruncationComponent::Backprop(const std::string &debug_info,
   // the following statement will do nothing if in_deriv and out_deriv have same
   // memory.
   in_deriv->CopyFromMat(out_deriv);
+  if (scale_ != 1.0)
+    in_deriv->Scale(scale_);
 
   BackpropTruncationComponent *to_update =
       dynamic_cast<BackpropTruncationComponent*>(to_update_in);

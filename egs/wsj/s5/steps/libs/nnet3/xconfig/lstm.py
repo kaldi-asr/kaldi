@@ -56,6 +56,9 @@ class XconfigLstmLayer(XconfigLayerBase):
         if self.config['cell-dim'] <= 0:
             raise RuntimeError("cell-dim has invalid value {0}.".format(self.config[key]))
 
+        if self.config['delay'] == 0:
+            raise RuntimeError("delay cannot be zero")
+
         for key in ['self-repair-scale-nonlinearity']:
             if self.config[key] < 0.0 or self.config[key] > 1.0:
                 raise RuntimeError("{0} has invalid value {1}.".format(key, self.config[key]))
@@ -269,6 +272,9 @@ class XconfigLstmpLayer(XconfigLayerBase):
                 raise RuntimeError("{0} has invalid value {1}.".format(
                     key, self.config[key]))
 
+        if self.config['delay'] == 0:
+            raise RuntimeError("delay cannot be zero")
+
         if (self.config['recurrent-projection-dim'] +
             self.config['non-recurrent-projection-dim'] >
             self.config['cell-dim']):
@@ -444,127 +450,6 @@ class XconfigLstmpLayer(XconfigLayerBase):
 
         return configs
 
-# Same as the LSTMP layer except that the matrix multiplications are combined
-# we probably keep only version after experimentation. One year old experiments
-# show that this version is slightly worse and might require some tuning
-class XconfigLstmpcLayer(XconfigLstmpLayer):
-    def __init__(self, first_token, key_to_value, prev_names = None):
-        assert first_token == "lstmpc-layer"
-        XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
-
-    # convenience function to generate the LSTM config
-    def generate_lstm_config(self):
-        # assign some variables to reduce verbosity
-        name = self.name
-        # in the below code we will just call descriptor_strings as descriptors for conciseness
-        input_dim = self.descriptors['input']['dim']
-        input_descriptor = self.descriptors['input']['final-string']
-        cell_dim = self.config['cell-dim']
-        rec_proj_dim = self.config['recurrent-projection-dim']
-        nonrec_proj_dim = self.config['non-recurrent-projection-dim']
-        delay = self.config['delay']
-
-        repair_nonlin = self.config['self-repair-scale-nonlinearity']
-        repair_nonlin_str = "self-repair-scale={0:.10f}".format(repair_nonlin) if repair_nonlin is not None else ''
-        bptrunc_str = ("clipping-threshold={0}"
-                      " zeroing-threshold={1}"
-                      " zeroing-interval={2}"
-                      " recurrence-interval={3}"
-                      "".format(self.config['clipping-threshold'],
-                                self.config['zeroing-threshold'],
-                                self.config['zeroing-interval'],
-                                abs(delay)))
-        affine_str = self.config['ng-affine-options']
-        # Natural gradient per element scale parameters
-        # TODO: decide if we want to keep exposing these options
-        if re.search('param-mean', ng_per_element_scale_options) is None and \
-           re.search('param-stddev', ng_per_element_scale_options) is None:
-           ng_per_element_scale_options += " param-mean=0.0 param-stddev=1.0 "
-        pes_str = ng_per_element_scale_options
-
-        configs = []
-        # naming convention
-        # <layer-name>.W_<outputname>.<input_name> e.g. Lstm1.W_i.xr for matrix providing output to gate i and operating on an appended vector [x,r]
-        configs.append("### Begin LTSM layer '{0}'".format(name))
-        configs.append("# Full W_ifoc* matrix")
-        configs.append("component name={0}.W_ifoc.xr type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + rec_proj_dim, 4*cell_dim, affine_str))
-        configs.append("# note : the cell outputs pass through a diagonal matrix")
-
-        # we will not combine the diagonal matrix operations as one of these has a different delay
-        configs.append("# note : the cell outputs pass through a diagonal matrix")
-        configs.append("component name={0}.w_i.c type=NaturalGradientPerElementScaleComponent  dim={1} {2}".format(name, cell_dim, pes_str))
-        configs.append("component name={0}.w_f.c type=NaturalGradientPerElementScaleComponent  dim={1} {2}".format(name, cell_dim, pes_str))
-        configs.append("component name={0}.w_o.c type=NaturalGradientPerElementScaleComponent  dim={1} {2}".format(name, cell_dim, pes_str))
-
-        configs.append("# Defining the non-linearities")
-        configs.append("component name={0}.i type=SigmoidComponent dim={1} {2}".format(name, cell_dim, repair_nonlin_str))
-        configs.append("component name={0}.f type=SigmoidComponent dim={1} {2}".format(name, cell_dim, repair_nonlin_str))
-        configs.append("component name={0}.o type=SigmoidComponent dim={1} {2}".format(name, cell_dim, repair_nonlin_str))
-        configs.append("component name={0}.g type=TanhComponent dim={1} {2}".format(name, cell_dim, repair_nonlin_str))
-        configs.append("component name={0}.h type=TanhComponent dim={1} {2}".format(name, cell_dim, repair_nonlin_str))
-
-        configs.append("# Defining the components for other cell computations")
-        configs.append("component name={0}.c1 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
-        configs.append("component name={0}.c2 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
-        configs.append("component name={0}.m type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
-        configs.append("component name={0}.c type=BackpropTruncationComponent dim={1} {2}".format(name, cell_dim, bptrunc_str))
-
-        # c1_t and c2_t defined below
-        configs.append("component-node name={0}.c_t component={0}.c input=Sum({0}.c1_t, {0}.c2_t)".format(name))
-        delayed_c_t_descriptor = "IfDefined(Offset({0}.c_t, {1}))".format(name, delay)
-        rec_connection = '{0}.rp_t'.format(name)
-
-        component_nodes.append("component-node name={0}.ifoc_t component={0}.W_ifoc.xr input=Append({1}, IfDefined(Offset({0}_{2}, {3})))".format(name, input_descriptor, recurrent_connection, lstm_delay))
-
-
-        offset = 0
-        component_nodes.append("# i_t")
-        component_nodes.append("dim-range-node name={0}.i1_t input-node={0}.ifoc_t dim-offset={1} dim={2}".format(name, offset, cell_dim))
-        offset += cell_dim
-        component_nodes.append("component-node name={0}.i2_t component={0}.w_i.cinput={1}".format(name, delayed_c_t_descriptor))
-        component_nodes.append("component-node name={0}.i_t component={0}.i input=Sum({0}.i1_t, {0}.i2_t)".format(name))
-
-        component_nodes.append("# f_t")
-        component_nodes.append("dim-range-node name={0}.f1_t input-node={0}.ifoc_t dim-offset={1} dim={2}".format(name, offset, cell_dim))
-        offset += cell_dim
-        component_nodes.append("component-node name={0}.f2_t component={0}.w_f.c  input={1}".format(name, delayed_c_t_descriptor))
-        component_nodes.append("component-node name={0}.f_t component={0}.f input=Sum({0}.f1_t, {0}.f2_t)".format(name))
-
-        component_nodes.append("# o_t")
-        component_nodes.append("dim-range-node name={0}.o1_t input-node={0}.ifoc_t dim-offset={1} dim={2}".format(name, offset, cell_dim))
-        offset += cell_dim
-        component_nodes.append("component-node name={0}.o2_t component={0}.w_o.c input={0}.c_t".format(name))
-        component_nodes.append("component-node name={0}.o_t component={0}.o input=Sum({0}.o1_t, {0}.o2_t)".format(name))
-
-        component_nodes.append("# h_t")
-        component_nodes.append("component-node name={0}.h_t component={0}.h input={0}.c_t".format(name))
-
-        component_nodes.append("# g_t")
-        component_nodes.append("dim-range-node name={0}.g1_t input-node={0}.ifoc_t dim-offset={1} dim={2}".format(name, offset, cell_dim))
-        offset += cell_dim
-        component_nodes.append("component-node name={0}.g_t component={0}.g input={0}.g1_t".format(name))
-
-
-        configs.append("# parts of c_t")
-        configs.append("component-node name={0}.c1_t component={0}.c1  input=Append({0}.f_t, {1})".format(name, delayed_c_t_descriptor))
-        configs.append("component-node name={0}.c2_t component={0}.c2 input=Append({0}.i_t, {0}.g_t)".format(name))
-
-        configs.append("# m_t")
-        configs.append("component-node name={0}.m_t component={0}.m input=Append({0}.o_t, {0}.h_t)".format(name))
-
-        # add the recurrent connections
-        configs.append("# projection matrices : Wrm and Wpm")
-        configs.append("component name={0}.W_rp.m type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, cell_dim, rec_proj_dim + nonrec_proj_dim, affine_str))
-        configs.append("component name={0}.r type=BackpropTruncationComponent dim={1} {2}".format(name, rec_proj_dim, bptrunc_str))
-
-        configs.append("# r_t and p_t : rp_t will be the output")
-        configs.append("component-node name={0}.rp_t component={0}.W_rp.m input={0}.m_t".format(name))
-        configs.append("dim-range-node name={0}.r_t_preclip input-node={0}.rp_t dim-offset=0 dim={1}".format(name, rec_proj_dim))
-        configs.append("component-node name={0}.r_t component={0}.r input={0}.r_t_preclip".format(name))
-        configs.append("### End LTSM layer '{0}'".format(name))
-
-        return configs
-
 
 # This class is for lines like
 #   'fast-lstm-layer name=lstm1 input=[-1] delay=-3'
@@ -588,6 +473,12 @@ class XconfigLstmpcLayer(XconfigLstmpLayer):
 #   lstm-nonlinearity-options=' max-change=0.75 '  [Options string to pass into the LSTM nonlinearity component.]
 #   ng-affine-options=' max-change=1.5 '           [Additional options used for the full matrices in the LSTM, can be used to
 #                                      do things like set biases to initialize to 1]
+#   max-cell-value=-1        [If >0, an approximate maximum on the contents of the cell (c_t);
+#                             enforced by putting a scaling factor of
+#                             recurrence_scale = 1 - abs(delay)/max_cell_value
+#                             on the recurrence, i.e. the term c_{t-1} in the LSTM equations.
+#                             E.g. setting this to 50 means the activations can't get bigger
+#                             than about 50.]
 class XconfigFastLstmLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
         assert first_token == "fast-lstm-layer"
@@ -607,7 +498,8 @@ class XconfigFastLstmLayer(XconfigLayerBase):
                         'lstm-nonlinearity-options' : ' max-change=0.75',
                         # the affine layer contains 4 of our old layers -> use a
                         # larger max-change than the normal value of 0.75.
-                        'ng-affine-options' : ' max-change=1.5'
+                        'ng-affine-options' : ' max-change=1.5',
+                        'max-cell-value':  -1.0
                         }
         self.c_needed = False  # keep track of whether the 'c' output is needed.
 
@@ -619,6 +511,8 @@ class XconfigFastLstmLayer(XconfigLayerBase):
         key = 'cell-dim'
         if self.config['cell-dim'] <= 0:
             raise RuntimeError("cell-dim has invalid value {0}.".format(self.config[key]))
+        if self.config['delay'] == 0:
+            raise RuntimeError("delay cannot be zero")
 
 
 
@@ -666,17 +560,23 @@ class XconfigFastLstmLayer(XconfigLayerBase):
         input_descriptor = self.descriptors['input']['final-string']
         cell_dim = self.config['cell-dim']
         delay = self.config['delay']
+        affine_str = self.config['ng-affine-options']
+        max_cell_value = self.config['max-cell-value']
+        # we expect max_cell_value to be either -1, or large, like 10 or 50.
+        recurrence_scale = (1.0 if max_cell_value < 0 else
+                            1.0 - (abs(delay) / max_cell_value))
+        assert recurrence_scale > 0   # or user may have set max-cell-value much
+                                      # too small.
+        lstm_str = self.config['lstm-nonlinearity-options']
         bptrunc_str = ("clipping-threshold={0}"
                       " zeroing-threshold={1}"
                       " zeroing-interval={2}"
                       " recurrence-interval={3}"
+                      " scale={4}"
                       "".format(self.config['clipping-threshold'],
                                 self.config['zeroing-threshold'],
                                 self.config['zeroing-interval'],
-                                abs(delay)))
-        affine_str = self.config['ng-affine-options']
-        lstm_str = self.config['lstm-nonlinearity-options']
-
+                                abs(delay), recurrence_scale))
 
         configs = []
 
@@ -739,6 +639,12 @@ class XconfigFastLstmLayer(XconfigLayerBase):
 #   lstm-nonlinearity-options=' max-change=0.75 '  [Options string to pass into the LSTM nonlinearity component.]
 #   ng-affine-options=' max-change=1.5 '           [Additional options used for the full matrices in the LSTM, can be used to
 #                                      do things like set biases to initialize to 1]
+#   max-cell-value=-1        [If >0, an approximate maximum on the contents of the cell (c_t);
+#                             enforced by putting a scaling factor of
+#                             recurrence_scale = 1 - abs(delay)/max_cell_value
+#                             on the recurrence, i.e. the term c_{t-1} in the LSTM equations.
+#                             E.g. setting this to 50 means the activations can't get bigger
+#                             than about 50.]
 class XconfigFastLstmpLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
         assert first_token == "fast-lstmp-layer"
@@ -759,6 +665,7 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
                         # the affine layer contains 4 of our old layers -> use a
                         # larger max-change than the normal value of 0.75.
                         'ng-affine-options' : ' max-change=1.5',
+                        'max-cell-value':  -1.0,
                         'zeroing-interval' : 20,
                         'zeroing-threshold' : 15.0
 
@@ -781,7 +688,8 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
             if self.config[key] <= 0:
                 raise RuntimeError("{0} has invalid value {1}.".format(
                     key, self.config[key]))
-
+        if self.config['delay'] == 0:
+            raise RuntimeError("delay cannot be zero")
         if (self.config['recurrent-projection-dim'] +
             self.config['non-recurrent-projection-dim'] >
             self.config['cell-dim']):
@@ -833,20 +741,28 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
         input_dim = self.descriptors['input']['dim']
         input_descriptor = self.descriptors['input']['final-string']
         cell_dim = self.config['cell-dim']
+        delay = self.config['delay']
         rec_proj_dim = self.config['recurrent-projection-dim']
         nonrec_proj_dim = self.config['non-recurrent-projection-dim']
-        delay = self.config['delay']
+        affine_str = self.config['ng-affine-options']
+        max_cell_value = self.config['max-cell-value']
+        # we expect max_cell_value to be either -1, or large, like 10 or 50.
+        recurrence_scale = (1.0 if max_cell_value < 0 else
+                            1.0 - (abs(delay) / max_cell_value))
+        assert recurrence_scale > 0   # or user may have set max-cell-value much
+                                      # too small.
+
         bptrunc_str = ("clipping-threshold={0}"
                       " zeroing-threshold={1}"
                       " zeroing-interval={2}"
                       " recurrence-interval={3}"
+                      " scale={4}"
                       "".format(self.config['clipping-threshold'],
                                 self.config['zeroing-threshold'],
                                 self.config['zeroing-interval'],
-                                abs(delay)))
-        affine_str = self.config['ng-affine-options']
-        lstm_str = self.config['lstm-nonlinearity-options']
+                                abs(delay), recurrence_scale))
 
+        lstm_str = self.config['lstm-nonlinearity-options']
 
         configs = []
 

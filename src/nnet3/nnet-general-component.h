@@ -156,9 +156,9 @@ class DistributeComponentPrecomputedIndexes:
   StatisticsPoolingComponent to extract moving-average mean and
   standard-deviation statistics.
 
-  StatisticsExtractionComponent is designed to extract statistics-- 0th-order,
+  StatisticsExtractionExomponent designed to extract statistics-- 0th-order,
   1st-order and optionally diagonal 2nd-order stats-- from small groups of
-  frames, such as 10 frames.  The statistics will then be further processed by
+  frames, such as 10 frame.  The statistics will then be further processed by
   StatisticsPoolingComponent to compute moving-average means and (if configured)
   standard deviations.  The reason for the two-component way of doing this is
   efficiency, particularly in the graph-compilation phase.  (Otherwise there
@@ -185,7 +185,7 @@ class DistributeComponentPrecomputedIndexes:
   An output of this component will be 'computable' any time at least one of
   the corresponding inputs is computable.
 
-  In all cases the first dimension of the output will be a count (between 1 and
+   In all cases the first dimension of the output will be a count (between 1 and
   10 inclusive in this example).  If include-variance=false, then the output
   dimension will be input-dim + 1.  and the output dimensions >0 will be
   1st-order statistics (sums of the input).  If include-variance=true, then the
@@ -448,21 +448,22 @@ class StatisticsPoolingComponentPrecomputedIndexes:
 class BackpropTruncationComponent: public Component {
  public:
   BackpropTruncationComponent(int32 dim,
+                              BaseFloat scale,
                               BaseFloat clipping_threshold,
                               BaseFloat zeroing_threshold,
                               int32 zeroing_interval,
                               int32 recurrence_interval) {
-    Init(dim, clipping_threshold, zeroing_threshold,
+    Init(dim, scale, clipping_threshold, zeroing_threshold,
         zeroing_interval, recurrence_interval);}
 
-  BackpropTruncationComponent(): dim_(0), clipping_threshold_(-1),
+  BackpropTruncationComponent(): dim_(0), scale_(1.0), clipping_threshold_(-1),
     zeroing_threshold_(-1), zeroing_interval_(0), recurrence_interval_(0),
     num_clipped_(0), num_zeroed_(0), count_(0), count_zeroing_boundaries_(0) { }
 
   virtual int32 InputDim() const { return dim_; }
   virtual int32 OutputDim() const { return dim_; }
   virtual void InitFromConfig(ConfigLine *cfl);
-  void Init(int32 dim, BaseFloat clipping_threshold,
+  void Init(int32 dim, BaseFloat scale, BaseFloat clipping_threshold,
             BaseFloat zeroing_threshold, int32 zeroing_interval,
             int32 recurrence_interval);
 
@@ -505,6 +506,12 @@ class BackpropTruncationComponent: public Component {
  private:
   // input/output dimension
   int32 dim_;
+
+  // Scale that is applied in the forward propagation (and of course in the
+  // backprop to match.  Expected to normally be 1, but setting this to other
+  // values (e.g.  slightly less than 1) can be used to produce variants of
+  // LSTMs where the activations are bounded.
+  BaseFloat scale_;
 
   // threshold (e.g., 30) to be used for clipping corresponds to max-row-norm
   BaseFloat clipping_threshold_;
