@@ -543,6 +543,7 @@ void GenerateConfigSequenceLstmWithTruncation(
   int32 clipping_threshold = RandInt(6, 50),
       zeroing_threshold = RandInt(1,  5),
       zeroing_interval = RandInt(1, 5) * 10;
+  BaseFloat scale = 0.8 + 0.1*RandInt(0,3);
 
   os << "input-node name=input dim=" << input_dim << std::endl;
 
@@ -616,12 +617,14 @@ void GenerateConfigSequenceLstmWithTruncation(
      << " output-dim=" << cell_dim << std::endl;
   os << "component name=c type=BackpropTruncationComponent dim="
      << cell_dim
+     << " scale=" << scale
      << " clipping-threshold=" << clipping_threshold
      << " zeroing-threshold=" << zeroing_threshold
      << " zeroing-interval=" << zeroing_interval
      << " recurrence-interval=1" << std::endl;
   os << "component name=r type=BackpropTruncationComponent dim="
      << projection_dim
+     << " scale=" << scale
      << " clipping-threshold=" << clipping_threshold
      << " zeroing-threshold=" << zeroing_threshold
      << " zeroing-interval=" << zeroing_interval
