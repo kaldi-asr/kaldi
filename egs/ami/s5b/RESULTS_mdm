@@ -90,7 +90,7 @@
 %WER 37.1 | 14343 90002 | 66.3 18.8 14.9 3.4 37.1 62.3 | 0.659 | exp/mdm8/chain_cleaned/tdnn_lstm1i_sp_bi_ihmali_ld5/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
 
 
-# local/chain/multi_condition/run_tdnn_lstm.sh --mic mdm8 --use-ihm-ali true --train-set train_cleaned --gmm tri3_cleaned
+# local/chain/multi_condition/tuning/run_tdnn_lstm_1a.sh --mic mdm8 --use-ihm-ali true --train-set train_cleaned --gmm tri3_cleaned
 # cleanup + chain TDNN+LSTM model, MDM original + IHM reverberated data, alignments from IHM data
 # *** best system ***
 %WER 31.8 | 14488 94497 | 71.8 15.4 12.8 3.5 31.8 62.7 | 0.698 | exp/mdm8/chain_cleaned_rvb/tdnn_lstm1i_sp_rvb_bi_ihmali/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys

@@ -100,7 +100,7 @@ if [ $stage -le 9 ]; then
     data/train data/train_temp_for_lats
   utils/data/combine_short_segments.sh \
       data/train_temp_for_lats $min_seg_len data/train_min${min_seg_len}
-  steps/compute_cmvn_stats.sh data/train_min${min_seg_len} exp/make_mfcc/train_min${min_seg_len} mfcc || exit 1;
+  steps/compute_cmvn_stats.sh data/train_min${min_seg_len} || exit 1;
 fi
 
 if [ $stage -le 10 ]; then
