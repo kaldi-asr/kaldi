@@ -3,6 +3,24 @@
 # Copyright 2012-2015  Johns Hopkins University (Author: Daniel Povey).
 # Apache 2.0.
 
+
+# This is like decode.sh except it uses "looped" decoding.  This is an nnet3
+# mechanism for reusing previously computed activations when we evaluate the
+# neural net for successive chunks of data.  It is applicable to TDNNs and LSTMs
+# and similar forward-recurrent topologies, but not to backward-recurrent
+# topologies like BLSTMs.  Be careful because the script itself does not have a
+# way to figure out what kind of topology you are using.
+#
+# Also be aware that this decoding mechanism means that you have effectively
+# unlimited context within the utterance.  Unless your models were trained (at
+# least partly) on quite large chunk-sizes, e.g. 100 or more (although the
+# longer the BLSTM recurrence the larger chunk-size you'd need in training),
+# there is a possibility that this effectively infinite left-context will cause
+# a mismatch with the training condition.  Also, for recurrent topologies, you may want to make sure
+# that the --extra-left-context-initial matches the --egs.chunk-left-context-initial
+# that you trained with, .  [note: if not specified during training, it defaults to
+# the same as the regular --extra-left-context
+
 # This script does decoding with a neural-net.  If the neural net was built on
 # top of fMLLR transforms from a conventional system, you should provide the
 # --transform-dir option.
@@ -22,14 +40,10 @@ min_active=200
 ivector_scale=1.0
 lattice_beam=8.0 # Beam we use in lattice generation.
 iter=final
-num_threads=1 # if >1, will use gmm-latgen-faster-parallel
 scoring_opts=
 skip_diagnostics=false
 skip_scoring=false
-extra_left_context=0
-extra_right_context=0
-extra_left_context_initial=-1
-extra_right_context_final=-1
+extra_left_context_initial=0
 feat_type=
 online_ivector_dir=
 minimize=false
@@ -54,7 +68,6 @@ if [ $# -ne 3 ]; then
   echo "  --beam <beam>                            # Decoding beam; default 15.0"
   echo "  --iter <iter>                            # Iteration of model to decode; default is final."
   echo "  --scoring-opts <string>                  # options to local/score.sh"
-  echo "  --num-threads <n>                        # number of threads to use, default 1."
   exit 1;
 fi
 
@@ -74,8 +87,6 @@ done
 
 sdata=$data/split$nj;
 cmvn_opts=`cat $srcdir/cmvn_opts` || exit 1;
-thread_string=
-[ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads"
 
 mkdir -p $dir/log
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
@@ -147,13 +158,10 @@ if [ -f $srcdir/frame_subsampling_factor ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  $cmd --num-threads $num_threads JOB=1:$nj $dir/log/decode.JOB.log \
-    nnet3-latgen-faster$thread_string $ivector_opts $frame_subsampling_opt \
+  $cmd JOB=1:$nj $dir/log/decode.JOB.log \
+    nnet3-latgen-faster-looped $ivector_opts $frame_subsampling_opt \
      --frames-per-chunk=$frames_per_chunk \
-     --extra-left-context=$extra_left_context \
-     --extra-right-context=$extra_right_context \
      --extra-left-context-initial=$extra_left_context_initial \
-     --extra-right-context-final=$extra_right_context_final \
      --minimize=$minimize --max-active=$max_active --min-active=$min_active --beam=$beam \
      --lattice-beam=$lattice_beam --acoustic-scale=$acwt --allow-partial=true \
      --word-symbol-table=$graphdir/words.txt "$model" \
