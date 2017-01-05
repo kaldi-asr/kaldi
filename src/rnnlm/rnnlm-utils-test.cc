@@ -6,27 +6,28 @@
 namespace kaldi {
 namespace rnnlm {
 
-void PrepareVector(int n, int ones_size, std::set<int> &outputs_set, vector<BaseFloat> &selection_probs) {
+void PrepareVector(int n, int ones_size, std::set<int>* must_sample_set,
+                   vector<BaseFloat>* selection_probs) {
   BaseFloat prob = 0;
   BaseFloat prob_sum = 0;
   for (int i = 0; i < n; i++) {
     prob = RandUniform();
     prob_sum += prob;
-    selection_probs.push_back(prob);
+    (*selection_probs).push_back(prob);
   }
   for (int i = 0; i < n; i++) {
-    selection_probs[i] /= prob_sum;
+    (*selection_probs)[i] /= prob_sum;
   }
   for (int i = 0; i < ones_size; i++) {
-    outputs_set.insert(rand() % n);
+    (*must_sample_set).insert(rand() % n);
   }
 }
 
 void UnitTestNChooseKSamplingConvergence(int n, int k, int ones_size) {
-  std::set<int> outputs_set;
+  std::set<int> must_sample_set;
   vector<BaseFloat> selection_probs;
-  PrepareVector(n, ones_size, outputs_set, selection_probs);
-  NormalizeVec(k, outputs_set, &selection_probs);
+  PrepareVector(n, ones_size, &must_sample_set, &selection_probs);
+  NormalizeVec(k, must_sample_set, &selection_probs);
 
   vector<std::pair<int, BaseFloat> > u(selection_probs.size());
   for (int i = 0; i < u.size(); i++) {
@@ -51,12 +52,12 @@ void UnitTestNChooseKSamplingConvergence(int n, int k, int ones_size) {
     for (int j = 0; j < samples.size(); j++) {
       samples_probs[samples[j]] += 1;
     }
-    for (int j = 0; j < samples_probs.size(); j++) {
-      samples_probs[j] /= (count * k);
-    }
     // update Euclidean distance between the two pdfs every 1000 iters
     BaseFloat distance = 0;
     if (count % 1000 == 0) {
+      for (int j = 0; j < samples_probs.size(); j++) {
+        samples_probs[j] /= (count * k);
+      }
       for (int j = 0; j < u.size(); j++) {
         distance += pow(samples_probs[j] - selection_probs[j], 2);
       }
@@ -64,15 +65,15 @@ void UnitTestNChooseKSamplingConvergence(int n, int k, int ones_size) {
     }
     // if the Euclidean distance is small enough, break the loop
     if (distance < 0.05) {
-      KALDI_LOG << "Sampling convergence test: passed for sampling " << k <<\
+      KALDI_LOG << "Sampling convergence test: passed for sampling " << k <<
         " items from " << n << " unigrams";
-      break;;
+      break;
     }
   }
 }
 
 void UnitTestSamplingConvergence() {
-  // number of unigrams 
+  // number of unigrams
   int n = rand() % 10000 + 100;
   // sample size
   int k;
@@ -82,33 +83,28 @@ void UnitTestSamplingConvergence() {
   k = rand() % (n - ones_size) + ones_size + 1;
   UnitTestNChooseKSamplingConvergence(n, k, ones_size);
   // test when k = 1
-  k = 1;
-  ones_size = 0;
-  UnitTestNChooseKSamplingConvergence(n, k, ones_size);
+  UnitTestNChooseKSamplingConvergence(n, 1, 0);
   // test when k = 2
-  k = 2;
-  ones_size = rand() % (k - 1);
-  UnitTestNChooseKSamplingConvergence(n, k, ones_size);
-  // test when k = n 
+  UnitTestNChooseKSamplingConvergence(n, 2, rand() % 1);
+  // test when k = n
   ones_size = rand() % (n / 2);
-  k = n;
-  UnitTestNChooseKSamplingConvergence(n, k, ones_size);
+  UnitTestNChooseKSamplingConvergence(n, n, ones_size);
 }
 
 // test that probabilities 1.0 are always sampled
 void UnitTestSampleWithProbOne(int iters) {
-  // number of unigrams 
+  // number of unigrams
   int n = rand() % 1000 + 100;
-  // generate a outputs_set with ones
+  // generate a must_sample_set with ones
   int ones_size = rand() % (n / 2);
-  std::set<int> outputs_set;
+  std::set<int> must_sample_set;
   vector<BaseFloat> selection_probs;
 
-  PrepareVector(n, ones_size, outputs_set, selection_probs);
+  PrepareVector(n, ones_size, &must_sample_set, &selection_probs);
 
   // generate a random number k from ones_size + 1 to n
   int k = rand() % (n - ones_size) + ones_size + 1;
-  NormalizeVec(k, outputs_set, &selection_probs);
+  NormalizeVec(k, must_sample_set, &selection_probs);
 
   vector<std::pair<int, BaseFloat> > u(selection_probs.size());
   for (int i = 0; i < u.size(); i++) {
@@ -120,10 +116,10 @@ void UnitTestSampleWithProbOne(int iters) {
   for (int i = 0; i < N; i++) {
     vector<int> samples;
     SampleWithoutReplacement(u, k, &samples);
-    if (outputs_set.size() > 0) {
-      // assert every item in outputs_set is sampled
-      for (set<int>::iterator it = outputs_set.begin(); it != outputs_set.end(); ++it) {
-        KALDI_ASSERT(std::find(samples.begin(), samples.end(), *it) != \
+    if (must_sample_set.size() > 0) {
+      // assert every item in must_sample_set is sampled
+      for (set<int>::iterator it = must_sample_set.begin(); it != must_sample_set.end(); ++it) {
+        KALDI_ASSERT(std::find(samples.begin(), samples.end(), *it) !=
             samples.end());
       }
     }
@@ -131,18 +127,18 @@ void UnitTestSampleWithProbOne(int iters) {
 }
 
 void UnitTestSamplingTime(int iters) {
-  // number of unigrams 
+  // number of unigrams
   int n = rand() % 1000 + 100;
-  // generate a outputs_set with ones
+  // generate a must_sample_set with ones
   int ones_size = rand() % (n / 2);
-  std::set<int> outputs_set;
+  std::set<int> must_sample_set;
   vector<BaseFloat> selection_probs;
 
-  PrepareVector(n, ones_size, outputs_set, selection_probs);
+  PrepareVector(n, ones_size, &must_sample_set, &selection_probs);
 
   // generate a random number k from ones_size + 1 to n
   int k = rand() % (n - ones_size) + ones_size + 1;
-  NormalizeVec(k, outputs_set, &selection_probs);
+  NormalizeVec(k, must_sample_set, &selection_probs);
 
   vector<std::pair<int, BaseFloat> > u(selection_probs.size());
   for (int i = 0; i < u.size(); i++) {
@@ -159,8 +155,8 @@ void UnitTestSamplingTime(int iters) {
     SampleWithoutReplacement(u, k, &samples);
   }
   total_time = t.Elapsed();
-  KALDI_LOG << "Time test: Sampling " << k << " items from " << n << " unigrams for " << N << \
-    " times takes " << total_time << " totally.";
+  KALDI_LOG << "Time test: Sampling " << k << " items from " << n <<
+    " unigrams for " << N << " times takes " << total_time << " totally.";
 }
 
 }  // end namespace rnnlm
