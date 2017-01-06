@@ -216,11 +216,9 @@ if [ ! -z "$online_ivector_dir" ]; then
   ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
   echo $ivector_dim > $dir/info/ivector_dim
   ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
-
-  ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $sdata/JOB/utt2spk $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |'"
-  valid_ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |'"
-  train_subset_ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |'"
+  ivector_opts="--online-ivectors=$online_ivector_dir/ivector_online.scp --online-ivector-period=$ivector_period"
 else
+  ivector_opts=""
   echo 0 >$dir/info/ivector_dim
 fi
 
@@ -322,14 +320,14 @@ if [ $stage -le 3 ]; then
     lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:$dir/lat_special.scp ark:- \| \
     chain-get-supervision $chain_supervision_all_opts $chaindir/tree $chaindir/0.trans_mdl \
       ark:- ark:- \| \
-    nnet3-chain-get-egs $valid_ivector_opt --srand=$srand \
+    nnet3-chain-get-egs $ivector_opts --srand=$srand \
       $egs_opts $chaindir/normalization.fst \
       "$valid_feats" ark,s,cs:- "ark:$dir/valid_all.cegs" || touch $dir/.error &
   $cmd $dir/log/create_train_subset.log \
     lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:$dir/lat_special.scp ark:- \| \
     chain-get-supervision $chain_supervision_all_opts \
       $chaindir/tree $chaindir/0.trans_mdl ark:- ark:- \| \
-    nnet3-chain-get-egs $train_subset_ivector_opt --srand=$srand \
+    nnet3-chain-get-egs $ivector_opts --srand=$srand \
       $egs_opts $chaindir/normalization.fst \
       "$train_subset_feats" ark,s,cs:- "ark:$dir/train_subset_all.cegs" || touch $dir/.error &
   wait;
@@ -381,7 +379,7 @@ if [ $stage -le 4 ]; then
     lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:- ark:- \| \
     chain-get-supervision $chain_supervision_all_opts \
       $chaindir/tree $chaindir/0.trans_mdl ark:- ark:- \| \
-    nnet3-chain-get-egs $ivector_opt --srand=\$[JOB+$srand] $egs_opts \
+    nnet3-chain-get-egs $ivector_opts --srand=\$[JOB+$srand] $egs_opts \
       --num-frames-overlap=$frames_overlap_per_eg \
      "$feats" ark,s,cs:- ark:- \| \
     nnet3-chain-copy-egs --random=true --srand=\$[JOB+$srand] ark:- $egs_list || exit 1;

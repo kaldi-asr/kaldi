@@ -124,7 +124,6 @@ fi
 ivector_opts=
 if [ ! -z "$online_ivector_dir" ]; then
   ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
-  # note: subsample-feats, with negative n, will repeat each feature -n times.
   ivector_opts="--online-ivectors=scp:$online_ivector_dir/ivector_online.scp --online-ivector-period=$ivector_period"
 fi
 
@@ -153,4 +152,3 @@ $cmd $queue_opt JOB=1:$nj $dir/log/align.JOB.log \
 steps/diagnostic/analyze_alignments.sh --cmd "$cmd" $lang $dir
 
 echo "$0: done aligning data."
-
