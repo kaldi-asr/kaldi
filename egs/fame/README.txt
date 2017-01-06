@@ -6,7 +6,7 @@ The Corpus consists of short utterances extracted from 203 audio segments of app
 
 A full description of the FAME! Speech Corpus is provided in:
 
-Yilmaz, E., Heuvel, H. van den, Van de Velde, H., Kampstra, F., Algra, J., Leeuwen, D. van (2016):
+Yilmaz, E., Heuvel, H. van den, Van de Velde, H., Kampstra, F., Algra, J., Leeuwen, D. van:
 
 Open Source Speech and Language Resources for Frisian Language.
 
