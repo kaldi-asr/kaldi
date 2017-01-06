@@ -107,7 +107,9 @@ if [ $stage -le 13 ]; then
      /export/b0{5,6,7,8}/$USER/kaldi-data/egs/fisher_swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
 
-  touch $dir/egs/.nodelete # keep egs around when that run dies.
+  # keep egs around when that run dies.
+  mkdir $dir/egs
+  touch $dir/egs/.nodelete 
 
   steps/nnet3/chain/train.py --stage $train_stage \
     --cmd "$decode_cmd" \
