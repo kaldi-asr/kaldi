@@ -11,3 +11,5 @@ Yilmaz, E., Heuvel, H. van den, Van de Velde, H., Kampstra, F., Algra, J., Leeuw
 Open Source Speech and Language Resources for Frisian Language.
 
 In: Proceedings Interspeech 2016, pp. 1536--1540, 8-12 September 2016, San Francisco
+
+Please check http://www.ru.nl/clst/datasets/ to get the username and password
