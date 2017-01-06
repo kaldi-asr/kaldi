@@ -172,10 +172,17 @@ void SetZero(bool is_gradient,
              Nnet *nnet) {
   for (int32 c = 0; c < nnet->NumComponents(); c++) {
     Component *comp = nnet->GetComponent(c);
+    NonlinearComponent *nc = dynamic_cast<NonlinearComponent*>(comp);
     if (comp->Properties() & kUpdatableComponent) {
       UpdatableComponent *u_comp = dynamic_cast<UpdatableComponent*>(comp);
       KALDI_ASSERT(u_comp != NULL);
       u_comp->SetZero(is_gradient);
+    } else if (nc != NULL) {
+      nc->ZeroStats();
+    } else {
+      // Scale(0.0) is called as a backup; currently it should never
+      // do anything  useful for any component type.
+      comp->Scale(0.0);
     }
   }
 }
