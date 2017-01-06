@@ -38,7 +38,15 @@ cd "$(dirname ${BASH_SOURCE[0]})"
 # Read the partial version number specified in the first line of src/.version.
 version=$(head -1 ../.version)
 
-if [[ $version != +([0-9]).+([0-9]) ]]; then
+# Empty version number is not allowed.
+if [ -z "$version" ]; then
+  version="?"
+fi
+
+if [ -e ../.short_version ]; then
+  echo "$0: File src/.short_version exists."
+  echo "$0: Stopping the construction of full version number from git history."
+elif [[ $version != +([0-9]).+([0-9]) ]]; then
   echo "$0: The version number \"$version\" specified in src/.version is not" \
        "in MAJOR.MINOR format."
   echo "$0: Stopping the construction of full version number from git history."
@@ -49,10 +57,8 @@ elif [ "$(git rev-parse --is-inside-work-tree 2>/dev/null)" != true ]; then
   echo "$0: Git history is not available."
   echo "$0: Using the version number \"$version\" specified in src/.version."
 else
-  # Figure out patch number and head commit SHA-1.
+  # Figure out patch number.
   version_commit=$(git log -1 --pretty=oneline ../.version | cut -f 1 -d ' ')
-  head_commit=$(git log -1 --pretty=oneline | cut -f 1 -d ' ')
-  head_commit_short=$(git log -1 --oneline --abbrev=4 | cut -f 1 -d ' ')
   patch_number=$(git rev-list ${version_commit}..HEAD | wc -l)
   version="$version.$patch_number"
 
@@ -62,26 +68,24 @@ else
     # Add suffix ~N if there are N files in src/ with uncommitted changes
     version="$version~$uncommitted_changes"
   fi
+
+  # Figure out HEAD commit SHA-1.
+  head_commit=$(git log -1 --pretty=oneline | cut -f 1 -d ' ')
+  head_commit_short=$(git log -1 --oneline --abbrev=4 | cut -f 1 -d ' ')
+  version="$version-${head_commit_short}"
 fi
 
-# Empty version number is not allowed.
-if [ -z "$version" ]; then
-  version="?"
-fi
-
-# Write Kaldi version number info to ./version.h only if it is different from
-# what is already there.
+# Write version info to a temporary file.
 temp=$(mktemp)
 trap 'rm -f "$temp"' EXIT
 echo "// This file was automatically created by ./get_version.sh." > $temp
 echo "// It is only included by ./kaldi-error.cc." >> $temp
-echo "#define KALDI_VERSION_NUMBER \"$version\"" >> $temp
+echo "#define KALDI_VERSION \"$version\"" >> $temp
 if [ -n "$head_commit" ]; then
   echo "#define KALDI_GIT_HEAD \"$head_commit\"" >> $temp
 fi
-if [ -n "${head_commit_short}" ]; then
-  echo "#define KALDI_GIT_HEAD_SHORT \"${head_commit_short}\"" >> $temp
-fi
+
+# Overwrite ./version.h with the temporary file if they are different.
 if ! cmp -s $temp version.h; then
   cp $temp version.h
   chmod 644 version.h

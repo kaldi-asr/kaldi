@@ -40,25 +40,12 @@ namespace kaldi {
 int32 g_kaldi_verbose_level = 0;
 const char *g_program_name = NULL;
 static LogHandler g_log_handler = NULL;
-char g_version[64] = "";
 
 // If the program name was set (g_program_name != ""), GetProgramName
 // returns the program name (without the path), e.g. "gmm-align".
 // Otherwise it returns the empty string "".
 const char *GetProgramName() {
   return g_program_name == NULL ? "" : g_program_name;
-}
-
-// GetVersion constructs the version string if it is empty and then returns it.
-const char *GetVersion() {
-  if (g_version[0] == 0) {
-    strcpy(g_version, "[" KALDI_VERSION_NUMBER);
-#ifdef KALDI_GIT_HEAD_SHORT
-    strcat(g_version, "-" KALDI_GIT_HEAD_SHORT);
-#endif
-    strcat(g_version, "]");
-  }
-  return g_version;
 }
 
 /***** HELPER FUNCTIONS *****/
@@ -201,8 +188,9 @@ void MessageLogger::HandleMessage(const LogMessageEnvelope &envelope,
       }
     }
     // fill the other info from the envelope,
-    header << GetProgramName() << GetVersion() << ':' << envelope.func << "():"
-           << envelope.file << ':' << envelope.line << ")";
+    header << GetProgramName() << "[" KALDI_VERSION "]" << ':'
+           << envelope.func << "():" << envelope.file << ':' << envelope.line
+           << ")";
 
     // Printing the message,
     if (envelope.severity >= LogMessageEnvelope::kWarning) {
