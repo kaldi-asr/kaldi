@@ -19,16 +19,17 @@
 
 
 # Kaldi versioning is loosely based on the semantic versioning scheme. This
-# script tries to work out the version number from the partial version number
+# script tries to work out the version string from the partial version number
 # specified in src/.version along with the recent git history. By convention
 # src/.version specifies the first two components (MAJOR.MINOR) of the version
 # number. The third component (PATCH) is determined by counting how many
 # commits there are that are newer than than the last commit modifiying
 # src/.version. If there are uncommitted changes in the src/ directory, then
-# the version number is extended with a suffix (~N) specifiying the number of
-# files with uncommitted changes (including files that are not tracked by git).
-# If git history is not available, then the version number defaults to the
-# number specified in src/.version.
+# the version string is extended with a suffix (~N) specifiying the number of
+# files with uncommitted changes. The last component of the version string is
+# the abbreviated hash of the HEAD commit. If git history is not available or
+# if the file src/.short_version exists, then the version string defaults to
+# the number specified in src/.version.
 
 set -e
 

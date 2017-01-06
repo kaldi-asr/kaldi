@@ -1,5 +1,5 @@
-# Whenever make is run in this directory, call ./get_version.sh as the first
-# thing. This script regenereates ./version.h if necessary, e.g.
+# Whenever make is run in this directory, call ./get_version.sh as the
+# first thing. This script regenereates ./version.h if necessary, e.g.
 # if it does not already exist or if the version number has changed.
 LOG := $(shell ./get_version.sh; echo " $$?")
 ifneq ($(strip $(LOG)), 0)
