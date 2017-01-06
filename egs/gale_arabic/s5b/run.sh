@@ -50,8 +50,8 @@ local/gale_data_prep_txt.sh  "${text[@]}" $galeData
 # split the data to reports and conversational and for each class will have rain/dev and test
 local/gale_data_prep_split.sh $galeData 
 
-# get QCRI dictionary and add silence and UN
-local/gale_prep_dict.sh 
+# get all Arabic grapheme dictionaries and add silence and UNK
+local/gale_prep_grapheme_dict.sh 
 
 
 #prepare the langauge resources
@@ -138,26 +138,26 @@ steps/align_fmllr.sh --nj $nJobs --cmd "$train_cmd" \
   data/train data/lang exp/tri3b exp/tri3b_ali || exit 1;
   
 
-# train mmi mpe 
-local/run_mmi_mpe.sh &  # we keep it for completion but not getting the best results
+# nnet3 cross-entropy 
+local/nnet3/run_tdnn.sh #tdnn recipe:
+local/nnet3/run_lstm.sh #lstm recipe:
 
-# train sgmm 
-local/run_sgmm.sh &    # we keep it for completion but not getting the best results
-
-wait 
-local/nnet/run_dnn.sh
+# chain lattice-free 
+local/chain/run_tdnn.sh      #tdnn recipe:
+local/chain/run_tdnn_lstm.sh #tdnn-lstm recipe:
 
 time=$(date +"%Y-%m-%d-%H-%M-%S")
-#get WER
-for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; \
-done | sort -n -r -k2 > RESULTS.$USER.$time # to make sure you keep the results timed and owned
 
 #get detailed WER; reports, conversational and combined
-local/split_wer.sh $galeData > RESULTS.details.$USER.$time
- 
+local/split_wer.sh $galeData > RESULTS.details.$USER.$time # to make sure you keep the results timed and owned
 
 echo training succedded
 exit 0
+
+#TODO:
+#LM (4-gram and RNN) rescoring
+#combine lattices
+#dialect detection
 
 
 

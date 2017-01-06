@@ -15,11 +15,12 @@ fi
 
 galeFolder=$(readlink -f $1)
 symtab=./data/lang/words.txt
+find exp/ -maxdepth 3 -type d -name decode\* > list_decode$$
 
 min_lmwt=7
 max_lmwt=20
 
-for dir in exp/*/*decode*; do
+cat list_decode$$ | while read dir; do
  for type in $(ls -1 local/test_list local/test.* | xargs -n1 basename); do
  #echo "Processing: $dir $type"
   rm -fr $dir/scoring_$type
@@ -46,6 +47,5 @@ for type in $(ls -1 local/test_list local/test.* | xargs -n1 basename); do
  done | sort -n -k2
 done
 
-
-
+rm list_decode$$
 

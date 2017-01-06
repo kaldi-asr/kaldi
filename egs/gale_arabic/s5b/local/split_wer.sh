@@ -30,7 +30,7 @@ comm -1 -2 $galeFolder/test_id$$ $galeFolder/conversational_id$$ > $galeFolder/c
 
 rm -fr $galeFolder/test_id$$ $galeFolder/report_id$$ $galeFolder/conversational_id$$
 
-min_lmwt=9
+min_lmwt=7
 max_lmwt=20
 cat list_decode$$ | while read dir; do
  for type in report conversational; do
@@ -66,7 +66,7 @@ cat list_decode$$ | while read x; do [ -d $x ] && grep WER $x/wer_conversational
 echo "Combined Results for Reports and Conversational WER:"
 cat list_decode$$ | while read x; do [ -d $x ] && grep WER $x/wer_?? $x/wer_?| utils/best_wer.sh; done | sort -n -k2
 
-#rm list_decode$$
+rm list_decode$$
 
 
 
