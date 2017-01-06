@@ -473,12 +473,15 @@ class XconfigLstmpLayer(XconfigLayerBase):
 #   lstm-nonlinearity-options=' max-change=0.75 '  [Options string to pass into the LSTM nonlinearity component.]
 #   ng-affine-options=' max-change=1.5 '           [Additional options used for the full matrices in the LSTM, can be used to
 #                                      do things like set biases to initialize to 1]
-#   max-cell-value=-1        [If >0, an approximate maximum on the contents of the cell (c_t);
-#                             enforced by putting a scaling factor of
-#                             recurrence_scale = 1 - abs(delay)/max_cell_value
-#                             on the recurrence, i.e. the term c_{t-1} in the LSTM equations.
-#                             E.g. setting this to 50 means the activations can't get bigger
-#                             than about 50.]
+#   decay-time=-1            [If >0, an approximate maximum on how many frames
+#                            can be remembered via summation into the cell
+#                            contents c_t; enforced by putting a scaling factor
+#                            of recurrence_scale = 1 - abs(delay)/decay_time on
+#                            the recurrence, i.e. the term c_{t-1} in the LSTM
+#                            equations.  E.g. setting this to 20 means no more
+#                            than about 20 frames' worth of history,
+#                            i.e. history since about t = t-20, can be
+#                            accumulated in c_t.]
 class XconfigFastLstmLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
         assert first_token == "fast-lstm-layer"
@@ -499,7 +502,7 @@ class XconfigFastLstmLayer(XconfigLayerBase):
                         # the affine layer contains 4 of our old layers -> use a
                         # larger max-change than the normal value of 0.75.
                         'ng-affine-options' : ' max-change=1.5',
-                        'max-cell-value':  -1.0
+                        'decay-time':  -1.0
                         }
         self.c_needed = False  # keep track of whether the 'c' output is needed.
 
@@ -561,11 +564,11 @@ class XconfigFastLstmLayer(XconfigLayerBase):
         cell_dim = self.config['cell-dim']
         delay = self.config['delay']
         affine_str = self.config['ng-affine-options']
-        max_cell_value = self.config['max-cell-value']
-        # we expect max_cell_value to be either -1, or large, like 10 or 50.
-        recurrence_scale = (1.0 if max_cell_value < 0 else
-                            1.0 - (abs(delay) / max_cell_value))
-        assert recurrence_scale > 0   # or user may have set max-cell-value much
+        decay_time = self.config['decay-time']
+        # we expect decay_time to be either -1, or large, like 10 or 50.
+        recurrence_scale = (1.0 if decay_time < 0 else
+                            1.0 - (abs(delay) / decay_time))
+        assert recurrence_scale > 0   # or user may have set decay-time much
                                       # too small.
         lstm_str = self.config['lstm-nonlinearity-options']
         bptrunc_str = ("clipping-threshold={0}"
@@ -639,12 +642,15 @@ class XconfigFastLstmLayer(XconfigLayerBase):
 #   lstm-nonlinearity-options=' max-change=0.75 '  [Options string to pass into the LSTM nonlinearity component.]
 #   ng-affine-options=' max-change=1.5 '           [Additional options used for the full matrices in the LSTM, can be used to
 #                                      do things like set biases to initialize to 1]
-#   max-cell-value=-1        [If >0, an approximate maximum on the contents of the cell (c_t);
-#                             enforced by putting a scaling factor of
-#                             recurrence_scale = 1 - abs(delay)/max_cell_value
-#                             on the recurrence, i.e. the term c_{t-1} in the LSTM equations.
-#                             E.g. setting this to 50 means the activations can't get bigger
-#                             than about 50.]
+#   decay-time=-1            [If >0, an approximate maximum on how many frames
+#                            can be remembered via summation into the cell
+#                            contents c_t; enforced by putting a scaling factor
+#                            of recurrence_scale = 1 - abs(delay)/decay_time on
+#                            the recurrence, i.e. the term c_{t-1} in the LSTM
+#                            equations.  E.g. setting this to 20 means no more
+#                            than about 20 frames' worth of history,
+#                            i.e. history since about t = t-20, can be
+#                            accumulated in c_t.]
 class XconfigFastLstmpLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
         assert first_token == "fast-lstmp-layer"
@@ -665,7 +671,7 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
                         # the affine layer contains 4 of our old layers -> use a
                         # larger max-change than the normal value of 0.75.
                         'ng-affine-options' : ' max-change=1.5',
-                        'max-cell-value':  -1.0,
+                        'decay-time':  -1.0,
                         'zeroing-interval' : 20,
                         'zeroing-threshold' : 15.0
 
@@ -745,11 +751,11 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
         rec_proj_dim = self.config['recurrent-projection-dim']
         nonrec_proj_dim = self.config['non-recurrent-projection-dim']
         affine_str = self.config['ng-affine-options']
-        max_cell_value = self.config['max-cell-value']
-        # we expect max_cell_value to be either -1, or large, like 10 or 50.
-        recurrence_scale = (1.0 if max_cell_value < 0 else
-                            1.0 - (abs(delay) / max_cell_value))
-        assert recurrence_scale > 0   # or user may have set max-cell-value much
+        decay_time = self.config['decay-time']
+        # we expect decay_time to be either -1, or large, like 10 or 50.
+        recurrence_scale = (1.0 if decay_time < 0 else
+                            1.0 - (abs(delay) / decay_time))
+        assert recurrence_scale > 0   # or user may have set decay-time much
                                       # too small.
 
         bptrunc_str = ("clipping-threshold={0}"
