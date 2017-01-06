@@ -327,7 +327,7 @@ int ParseOptions::Read(int argc, const char *const argv[]) {
       c = argv[0];
     else
       c++;
-    char *program_name = new char[strlen(c)+2];
+    char *program_name = new char[strlen(c)+1];
     strcpy(program_name, c);
     delete [] g_program_name;
     g_program_name = program_name;
