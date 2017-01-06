@@ -1,0 +1,528 @@
+###############################################################################
+# This software is being provided to you, the LICENSEE, by the Massachusetts  #
+# Institute of Technology (M.I.T.) under the following license.  By           #
+# obtaining, using and/or copying this software, you agree that you have      #
+# read, understood, and will comply with these terms and conditions:          #
+#                                                                             #
+# Permission to use, copy, modify and distribute, including the right to      #
+# grant others the right to distribute at any tier, this software and its     #
+# documentation for any purpose and without fee or royalty is hereby granted, #
+# provided that you agree to comply with the following copyright notice and   #
+# statements, including the disclaimer, and that the same appear on ALL       #
+# copies of the software and documentation, including modifications that you  #
+# make for internal use or for distribution:                                  #
+#                                                                             #
+# Copyright 1991-4 by the Massachusetts Institute of Technology.  All rights  #
+# reserved.                                                                   #
+#                                                                             #
+# THIS SOFTWARE IS PROVIDED "AS IS", AND M.I.T. MAKES NO REPRESENTATIONS OR   #
+# WARRANTIES, EXPRESS OR IMPLIED.  By way of example, but not limitation,     #
+# M.I.T. MAKES NO REPRESENTATIONS OR WARRANTIES OF MERCHANTABILITY OR FITNESS #
+# FOR ANY PARTICULAR PURPOSE OR THAT THE USE OF THE LICENSED SOFTWARE OR      #
+# DOCUMENTATION WILL NOT INFRINGE ANY THIRD PARTY PATENTS, COPYRIGHTS,        #
+# TRADEMARKS OR OTHER RIGHTS.                                                 #
+#                                                                             #
+# The name of the Massachusetts Institute of Technology or M.I.T. may NOT be  #
+# used in advertising or publicity pertaining to distribution of the          #
+# software.  Title to copyright in this software and any associated           #
+# documentation shall at all times remain with M.I.T., and USER agrees to     #
+# preserve same.                                                              #
+###############################################################################
+
+# exceptions: list of numbers to be expanded in exceptional ways
+# derived by manual scan of early unigram file
+# executed BEFORE numproc
+#
+# comments indicated by "#" in the first column
+
+# years
+'20s	twenties
+'30s	thirties
+'40s	forties
+'50s	fifties
+'60s	sixties
+'70s	seventies
+'80s	eighties
+'90s	nineties
+
+# processors
+8086	eighty eighty-six
+186	one eighty-six
+286	two eighty-six
+386	three eighty-six
+486	four eight-six
+187	one eighty-seven
+287	two eighty-seven
+387	three eighty-seven
+80286	eighty two eighty-six
+80386	eighty three eighty-six
+80486	eighty four eighty-six
+3090	thirty ninety
+68020	sixty-eight oh twenty
+68030	sixty-eight oh thirty
+
+# aircraft
+707	seven oh seven
+707s	seven oh sevens
+707's	seven oh seven's
+727	seven twenty-seven
+727s	seven twenty-sevens
+727's	seven twenty-seven's
+737	seven thirty-seven
+737s	seven thirty-sevens
+737-100	seven thirty-seven -- one hundred
+737-100s	seven thirty-seven -- one hundreds
+737-200	seven thirty-seven -- two hundred
+737-200s	seven thirty-seven -- two hundreds
+737-205	seven thirty-seven -- two oh five
+737-300	seven thirty-seven -- three hundred
+737-300s	seven thirty-seven -- three hundreds
+737-400	seven thirty-seven -- four hundred
+737-400s	seven thirty-seven -- four hundreds
+737-500	seven thirty-seven -- five hundred
+737-500s	seven thirty-seven -- five hundreds
+737-500's	seven thirty-seven -- five hundred's
+747	seven forty-seven
+747s	seven forty-sevens
+747's	seven forty-seven's
+747F	seven forty-seven F.
+747-100	seven forty-seven -- one hundred
+747-100s	seven forty-seven -- one hundreds
+747-124SF	seven forty-seven -- one twenty four S. F.
+747-200	seven forty-seven -- two hundred
+747-200s	seven forty-seven -- two hundreds
+747-200's	seven forty-seven -- two hundred's
+747-200B	seven forty-seven -- two hundred B.
+747-200F	seven forty-seven -- two hundred F.
+747-273	seven forty-seven -- two seventy-three
+747-300	seven forty-seven -- three hundred
+747-341B	seven forty-seven -- three forty-one B.
+747-400	seven forty-seven -- four hundred
+747-400s	seven forty-seven -- four hundreds
+747-500	seven forty-seven -- five hundred
+747-500s	seven forty-seven -- five hundreds
+747-500's	seven forty-seven -- five hundred's
+757	seven fifty-seven
+757s	seven fifty-sevens
+757's	seven fifty-seven's
+757-200	seven fifty-seven -- two hundred
+757-200s	seven fifty-seven -- two hundreds
+757-225	seven fifty-seven -- two two five
+757-232s	seven fifty-seven -- two three twos
+757-767	seven fifty-seven - seven sixty-seven
+767	seven sixty-seven
+767s	seven sixty-sevens
+767-200	seven sixty-seven -- two hundred
+767-200s	seven sixty-seven -- two hundreds
+767-200ER	seven sixty-seven -- two hundred E R
+767-300	seven sixty-seven -- three hundred
+767-300s	seven sixty-seven -- three hundreds
+767-300ER	seven sixty-seven -- three hundred E R
+767-300-ER	seven sixty-seven -- three hundred E R
+
+A310	A. three ten
+A320	A. three twenty
+A330	A. three thirty
+A340	A. three forty
+A-310	A. three ten
+A-320	A. three twenty
+A-330	A. three thirty
+A-340	A. three forty
+A310s	A. three tens
+A320s	A. three twenties
+A330s	A. three thirties
+A340s	A. three forties
+A-310s	A. three tens
+A-320s	A. three twenties
+A-330s	A. three thirties
+A-340s	A. three forties
+
+1011	ten eleven
+1011s	ten elevens
+
+MD-80	M. D. eighty
+
+# misc
+#8mm	eight millimeter
+#35mm	35 millimeter
+gp120	g. p. one-twenty
+240SX	two forty S. X.
+RU486	R. U. four eighty-six
+RU-486	R. U. four eighty-six
+
+3Com	three Com
+3COM	three COM
+3Com's	three Com's
+3COM's	three COM's
+
+# serial number mode words
+# marked by initial * (stripped in numproc)
+
+*year
+*VAX
+*Up
+*mm
+*ish
+*point
+*May
+*Station
+*inch
+*ers
+*and
+*mark
+*sec
+*stock
+*mid
+*pre
+*dBase
+*Co
+
+# right contexts for dollar
+$accord
+$account
+$acquisition
+$ad
+$addition
+$additional
+$advance
+$agreement
+$aid
+$Air
+$airport
+$allowance
+$amount
+$annual
+$appropriation
+#	"apartment" and "apartments" should be fixed, but would alter v1.0
+#$apartment
+#$apartments
+$area
+$arms
+$Army
+$arrangement
+$asset
+$Atari
+$auction
+$average
+$award
+$backlog
+$bailout
+$balance
+$bank
+$bankroll
+$barrier
+$base
+$based
+$benchmark
+$bid
+$bill
+$bills
+$bond
+$bonds
+$bonus
+$book
+$bridge
+$budget
+$building
+$Burger
+$business
+$buyout
+$campaign
+$cap
+$capital
+$car
+$ceiling
+$charge
+$check
+$checks
+$claim
+$Clean
+$coffeepot
+$coffeepots
+$company
+$companies
+$compensation
+$complex
+$computer
+$consortium
+$construction
+$consulting
+$contract
+$contracts
+$contribution
+$contributions
+$convertible
+$cost
+$costs
+$court
+$credit
+$cumulative
+$cut
+$deal
+$debenture
+$debentures
+$debt
+$decline
+$decrease
+$deductible
+$default
+$Defense
+$defense
+$defensive
+$deficit
+$denominations
+$deposit
+$development
+$difference
+$disallowance
+$Distillers
+$dividend
+$domestic
+$donor
+$donors
+$drop
+$effort
+$emergency
+$endowment
+$energy
+$equity
+$estate
+$estimate
+$Eurobond
+$exemption
+$expansion
+$expense
+$face
+$facility
+$fare
+$federal
+$fee
+$fence
+$Fidelity
+$figure
+$financing
+$fine
+$fines
+$First
+$foreign
+$FSLIC
+$fund
+$funds
+$gain
+$gains
+$gap
+$goal
+$gold
+$grant
+$guarantee
+$hammer
+$hammers
+$highway
+$home
+$Hong
+$hostile
+$house
+$income
+$increase
+$industry
+$infusion
+$initial
+$installment
+$investment
+$issue
+$issues
+$judgment
+$junk
+$Kansai
+$laboratory
+$lawsuit
+$LBO
+$legal
+$letter
+$level
+$leveraged
+$liability
+$limit
+$line
+$litigation
+$loan
+$loans
+$loss
+$machine
+$mark
+$market
+$maximum
+$measure
+$merger
+$Midland
+$minimum
+$mortgage
+$Navy
+$net
+$note
+$notes
+$obligation
+$obligations
+$offer
+$offering
+$offerings
+$office
+$order
+$outlay
+$package
+$pact
+$payout
+$payment
+$payments
+$penalty
+$Pennzoil
+$pension
+$Pentagon
+$pipeline
+$plan
+$plant
+$portion
+$premium
+$price
+$principal
+$prize
+$proceeds
+$production
+$profit
+$program
+$project
+$proposal
+$provision
+$purchase
+$purse
+$Putnam
+$question
+$range
+$rate
+$reactor
+$reactors
+$rebate
+$rebates
+$recapitalization
+$record
+$redemption
+$reduction
+$refund
+$renovation
+$request
+$rescue
+$research
+$reserve
+$restructuring
+$retirement
+$revolving
+$rise
+$River
+$salary
+$sale
+$sales
+$Saturn
+$savings
+$series
+$settlement
+$share
+$shelf
+$shortage
+$shortfall
+$software
+$spacecraft
+$special
+$stake
+$station
+$stock
+$study
+$suit
+$suits
+$sum
+$surge
+$surplus
+$system
+$tab
+$takeover
+$takeover
+$target
+$tax
+$Templeton
+$tender
+$threshold
+$toilet
+$total
+$trade
+$transaction
+$trigger
+$trust
+$value
+$venture
+$verdict
+$vessel
+$Waterford
+$windfall
+$wine
+$Winsor
+$world
+$World
+
+# skip before right context for dollar
+$$advertising
+$$asking
+$$civil
+$$closing
+$$commercial
+$$common
+$$compensatory
+$$Contra
+$$corporate
+$$damage
+$$economic
+$$energy
+$$European
+$$first
+$$general
+$$global
+$$government
+$$housing
+$$insurance
+$$interest
+$$interim
+$$international
+$$junior
+$$libel
+$$marketing
+$$municipal
+$$nationwide
+$$new
+$$nuclear
+$$omnibus
+$$outstanding
+$$personal
+$$pretax
+$$private
+$$projected
+$$proposed
+$$public
+$$punitive
+$$real
+$$retail
+$$refunding
+$$refinancing
+$$retirement
+$$revenue
+$$second
+$$secured
+$$security
+$$semi-annual
+$$senior
+$$space
+$$state
+$$State
+$$stated
+$$taxable
+$$term
+$$testing
+$$thrift
+$$trading

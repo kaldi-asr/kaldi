@@ -1,0 +1,6 @@
+ The MUSAN corpus is required for system training. It is available at: 
+   http://www.openslr.org/17/
+
+ The test requires Broadcast News data. The LDC Catalog numbers are:
+   Speech      LDC97S44
+   Transcripts LDC97T22

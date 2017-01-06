@@ -1,0 +1,56 @@
+INVENTORY
+	This file, a short description of included tools.
+README
+	Introduction to the tools.
+abbrlist
+abbrproc.perl
+	Part of LM conditioning pipeline.
+	Spells out abbreviations and such.
+	"abbrlist" is an auxiliary data file for abbrproc.
+addressforms
+	auxiliary file used by "sentag.c"
+artfilter.perl
+	Selects articles based on content of SGML tags.
+bugproc.perl
+	Part of LM conditioning pipeline.
+	Corrects a few common typos and non-standard spellings.
+do-lm
+	Bourne shell script that executes language modeling conditioning
+	pipeline.
+eval-material.ptrns
+	Pattern file used to separate reserved "test" (evaluation) articles
+	from "train" articles (training material).  Used with "artfilter"
+	program along the following lines:
+	    foreach $file
+		artfilter.perl -t program -f eval-material.ptrns -v -r \
+		 $file.test $file > $file.train
+num_excp
+numhack.perl
+numproc.perl
+	Part of LM conditioning pipeline.
+	Spells out numberical expressions.
+	"num_excp" is an auxiliary data file for numproc.
+	"numhack.perl" is a new module for phone numbers and zip codes.
+pare-sgml.perl
+	Part of LM conditioning pipeline.
+	Removes extraneous SGML tagging and transcriber comments enclosed
+	in brackets.
+progsummary.perl
+	extracts program information from sgml-ized PSM texts
+puncproc.perl
+	Part of LM conditioning pipeline.
+	Verbalizes punctuation (or removes, with -np switch).
+sent-init.vocab
+sentag.c
+	Program used to tag sentences in "raw" version.
+	Revised since last CSR_LM95 to handle over-long
+	sentences/paragraphs and to pass material lacking any obvious
+	end-of-sentence markers or alphabetic characters, since the
+	transcriptions are more likely to contain such text.  Uses
+	auxiliary "sent-init.vocab" file.
+tr-bn-char.fast.perl
+tr-bn-char.slow.perl
+	Program used to translate 8-bit character encoding occasionally
+	found in the documents.  The two versions should be identical in
+	output; the "slow" version is more readable while the "fast"
+	version is more efficient.
