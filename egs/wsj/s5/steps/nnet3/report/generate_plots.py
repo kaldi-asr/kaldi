@@ -134,8 +134,7 @@ class LatexReport:
                 "-output-directory={0} {1}".format(dir_name, latex_file))
         except Exception as e:
             logger.warning("There was an error compiling the latex file {0}, "
-                           "please do it manually: {1}".format(latex_file,
-                                                               e.errstr))
+                           "please do it manually: {1}".format(latex_file, e))
             return False
         return True
 

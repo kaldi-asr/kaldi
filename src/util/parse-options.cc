@@ -314,9 +314,8 @@ int ParseOptions::Read(int argc, const char *const argv[]) {
   std::string key, value;
   int i;
   if (argc > 0) {
-    // set global "const char*" g_program_name
-    // name of the program (followed by ':')
-    // so it can print it out in error messages;
+    // set global "const char*" g_program_name (name of the program)
+    // so it can be printed out in error messages;
     // it's useful because often the stderr of different programs will
     // be mixed together in the same log file.
 #ifdef _MSC_VER
@@ -328,9 +327,8 @@ int ParseOptions::Read(int argc, const char *const argv[]) {
       c = argv[0];
     else
       c++;
-    char *program_name = new char[strlen(c)+2];
+    char *program_name = new char[strlen(c)+1];
     strcpy(program_name, c);
-    strcat(program_name, ":");
     delete [] g_program_name;
     g_program_name = program_name;
   }

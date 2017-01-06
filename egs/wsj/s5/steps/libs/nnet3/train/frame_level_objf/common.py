@@ -164,9 +164,10 @@ def train_one_iteration(dir, iter, srand, egs_dir,
     if os.path.exists('{0}/srand'.format(dir)):
         try:
             saved_srand = int(open('{0}/srand'.format(dir)).readline().strip())
-        except (IOError, ValueError) as e:
-            raise Exception("Exception while reading the random seed "
-                            "for training: {0}".format(e.str()))
+        except (IOError, ValueError):
+            logger.error("Exception while reading the random seed "
+                         "for training")
+            raise
         if srand != saved_srand:
             logger.warning("The random seed provided to this iteration "
                            "(srand={0}) is different from the one saved last "
@@ -298,7 +299,8 @@ def train_one_iteration(dir, iter, srand, egs_dir,
         for i in range(1, num_jobs + 1):
             os.remove("{0}/{1}.{2}.raw".format(dir, iter + 1, i))
     except OSError:
-        raise Exception("Error while trying to delete the raw models")
+        logger.error("Error while trying to delete the raw models")
+        raise
 
     if get_raw_nnet_from_am:
         new_model = "{0}/{1}.mdl".format(dir, iter + 1)
@@ -348,8 +350,9 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
         try:
             os.remove(file)
         except OSError:
-            raise Exception("There was error while trying to remove "
-                            "lda stat files.")
+            logger.error("There was error while trying to remove "
+                         "lda stat files.")
+            raise
     # this computes a fixed affine transform computed in the way we described
     # in Appendix C.6 of http://arxiv.org/pdf/1410.7455v6.pdf; it's a scaled
     # variant of an LDA transform but without dimensionality reduction.

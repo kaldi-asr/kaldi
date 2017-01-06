@@ -1120,7 +1120,7 @@ static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
 
   int32 n = RandInt(0, 30);
-  BaseFloat learning_rate = 0.001 * RandInt(1, 3);
+  BaseFloat learning_rate = 0.001 * RandInt(1, 100);
 
   std::ostringstream os;
   switch(n) {

@@ -556,7 +556,7 @@ void StatisticsPoolingComponent::InitFromConfig(ConfigLine *cfl) {
 
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
-	      << cfl->UnusedValues();
+              << cfl->UnusedValues();
   // do some basic checks here but Check() will check more completely.
   if (!ok || input_dim_ <= 0 || left_context_ + right_context_ <= 0 ||
       num_log_count_features_ < 0)

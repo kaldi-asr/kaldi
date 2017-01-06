@@ -1514,7 +1514,7 @@ void RepeatedAffineComponent::InitFromConfig(ConfigLine *cfl) {
        num_repeats, param_stddev, bias_mean, bias_stddev);
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
-	          << cfl->UnusedValues();
+              << cfl->UnusedValues();
   if (!ok)
     KALDI_ERR << "Bad initializer " << cfl->WholeLine();
 }
@@ -2342,12 +2342,13 @@ std::string ConstantFunctionComponent::Info() const {
 }
 
 ConstantFunctionComponent::ConstantFunctionComponent():
-    input_dim_(-1), is_updatable_(true), use_natural_gradient_(true) { }
+    UpdatableComponent(), input_dim_(-1), is_updatable_(true),
+    use_natural_gradient_(true) { }
 
 ConstantFunctionComponent::ConstantFunctionComponent(
     const ConstantFunctionComponent &other):
-    input_dim_(other.input_dim_), output_(other.output_),
-    is_updatable_(other.is_updatable_),
+    UpdatableComponent(other), input_dim_(other.input_dim_),
+    output_(other.output_), is_updatable_(other.is_updatable_),
     use_natural_gradient_(other.use_natural_gradient_),
     preconditioner_(other.preconditioner_) { }
 
@@ -3615,7 +3616,7 @@ void ConvolutionComponent::InitFromConfig(ConfigLine *cfl) {
   }
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
-	      << cfl->UnusedValues();
+              << cfl->UnusedValues();
   if (!ok)
     KALDI_ERR << "Bad initializer " << cfl->WholeLine();
 }
@@ -3704,8 +3705,7 @@ void ConvolutionComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                               kUndefined);
   InputToInputPatches(in, &patches);
   CuSubMatrix<BaseFloat>* filter_params_elem = new CuSubMatrix<BaseFloat>(
-		  filter_params_, 0, filter_params_.NumRows(), 0,
-		  filter_params_.NumCols());
+      filter_params_, 0, filter_params_.NumRows(), 0, filter_params_.NumCols());
   std::vector<CuSubMatrix<BaseFloat>* > tgt_batch, patch_batch,
       filter_params_batch;
 
@@ -3859,10 +3859,9 @@ void ConvolutionComponent::Backprop(const std::string &debug_info,
                                        kSetZero);
 
   std::vector<CuSubMatrix<BaseFloat>* > patch_deriv_batch, out_deriv_batch,
-	  filter_params_batch;
+      filter_params_batch;
   CuSubMatrix<BaseFloat>* filter_params_elem = new CuSubMatrix<BaseFloat>(
-		  filter_params_, 0, filter_params_.NumRows(), 0,
-		  filter_params_.NumCols());
+      filter_params_, 0, filter_params_.NumRows(), 0, filter_params_.NumCols());
 
   for (int32 x_step = 0; x_step < num_x_steps; x_step++)  {
     for (int32 y_step = 0; y_step < num_y_steps; y_step++)  {
@@ -3939,9 +3938,8 @@ void ConvolutionComponent::Update(const std::string &debug_info,
     for (int32 y_step = 0; y_step < num_y_steps; y_step++)  {
       int32 patch_number = x_step * num_y_steps + y_step;
       filters_grad_batch.push_back(new CuSubMatrix<BaseFloat>(
-              filters_grad_blocks_batch.RowRange(
-				      patch_number * filters_grad.NumRows(),
-				    filters_grad.NumRows())));
+          filters_grad_blocks_batch.RowRange(
+              patch_number * filters_grad.NumRows(), filters_grad.NumRows())));
 
       input_patch_batch.push_back(new CuSubMatrix<BaseFloat>(
               input_patches.ColRange(patch_number * filter_dim, filter_dim)));
@@ -4413,7 +4411,7 @@ void PermuteComponent::InitFromConfig(ConfigLine *cfl) {
               << column_map_str;
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
-	      << cfl->UnusedValues();
+              << cfl->UnusedValues();
   if (!ok)
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << cfl->WholeLine() << "\"";
@@ -5311,7 +5309,7 @@ void LstmNonlinearityComponent::InitFromConfig(ConfigLine *cfl) {
 
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
-	      << cfl->UnusedValues();
+              << cfl->UnusedValues();
   if (ok) {
     Init(cell_dim, param_stddev, tanh_self_repair_threshold,
          sigmoid_self_repair_threshold, self_repair_scale);
