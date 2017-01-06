@@ -268,6 +268,7 @@ static bool CompileLoopedInternal(
     const ComputationRequest &request3,
     int32 num_requests,
     NnetComputation *computation) {
+
   KALDI_ASSERT(num_requests >= 3);
   std::vector<ComputationRequest> extra_requests(num_requests - 3);
   const ComputationRequest *prev_request = &request2;
@@ -312,11 +313,15 @@ void CompileLooped(const Nnet &nnet,
   int32 num_requests1 = 5, factor = 2, max_requests = 100,
       num_requests;
 
+  Timer timer;
+
   for (num_requests = num_requests1; num_requests <= max_requests;
        num_requests *= factor) {
     if (CompileLoopedInternal(nnet, optimize_opts,
                              request1, request2, request3,
                              num_requests, computation)) {
+      KALDI_LOG << "Spent " << timer.Elapsed()
+                << " seconds in looped nnet3 compilation.";
       return;
     } else {
       KALDI_VLOG(2) << "Looped compilation failed with "
