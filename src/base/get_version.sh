@@ -57,9 +57,7 @@ else
   version="$version.$patch_number"
 
   # Check for uncommitted changes in src/.
-  tracked_changes=$(git diff-index HEAD .. | wc -l)
-  untracked_files=$(git ls-files --exclude-standard --others .. | wc -l)
-  uncommitted_changes=$((tracked_changes + untracked_files))
+  uncommitted_changes=$(git diff-index HEAD .. | wc -l)
   if [ $uncommitted_changes -gt 0 ]; then
     # Add suffix ~N if there are N files in src/ with uncommitted changes
     version="$version~$uncommitted_changes"
