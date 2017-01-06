@@ -50,7 +50,7 @@ Real VecVec(const CuVectorBase<Real> &a,
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
     CU_SAFE_CALL(cublas_dot(GetCublasHandle(), a.Dim(), a.Data(), 1, b.Data(),
-			    1, &result));
+                            1, &result));
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
 } else
 #endif
@@ -444,9 +444,9 @@ void CuVectorBase<Real>::AddMatVec(const Real alpha,
     // Everything is backwards in CuBlas.  We need to reverse rows, columns,
     // transpose-ness.
     CU_SAFE_CALL(cublas_gemv(GetCublasHandle(),
-			    (trans==kTrans? CUBLAS_OP_N:CUBLAS_OP_T),
-			    M.NumCols(), M.NumRows(), alpha, M.Data(),
-			    M.Stride(), v.Data(), 1, beta, data_, 1));
+                             (trans==kTrans? CUBLAS_OP_N:CUBLAS_OP_T),
+                             M.NumCols(), M.NumRows(), alpha, M.Data(),
+                             M.Stride(), v.Data(), 1, beta, data_, 1));
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
@@ -471,7 +471,7 @@ void CuVectorBase<Real>::AddSpVec(const Real alpha,
     // Note: in our opinion the CuSpMatrix represents a lower-triangular matrix, but
     // in CUBLAS, for some stupid reason, everything is reversed.
     CU_SAFE_CALL(cublas_spmv(GetCublasHandle(), CUBLAS_FILL_MODE_UPPER, Dim(),
-			    alpha, M.Data(), v.Data(), 1, beta, data_, 1));
+                             alpha, M.Data(), v.Data(), 1, beta, data_, 1));
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
@@ -636,7 +636,7 @@ void CuVectorBase<Real>::MulTp(const CuTpMatrix<Real> &M, const MatrixTransposeT
     if (dim_ == 0) return;
     Timer tim;
     cublas_tpmv(GetCublasHandle(), (trans==kTrans? CUBLAS_OP_N:CUBLAS_OP_T),
-		M.NumRows(), M.Data(), data_, 1);
+                M.NumRows(), M.Data(), data_, 1);
     CuDevice::Instantiate().AccuProfile("CuVectorBase::MulTp", tim.Elapsed());
   } else
 #endif
@@ -1081,7 +1081,7 @@ void CuVectorBase<Real>::CopyDiagFromMat(const CuMatrix<Real> &M) {
     KALDI_ASSERT(dim_ == std::min(M.NumRows(), M.NumCols()));
     Timer tim;
     CU_SAFE_CALL(cublas_copy(GetCublasHandle(), dim_, M.Data(), M.Stride() + 1,
-			    data_, 1));
+                             data_, 1));
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
