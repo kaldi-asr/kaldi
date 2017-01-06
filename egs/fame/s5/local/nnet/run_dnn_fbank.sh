@@ -110,7 +110,7 @@ if [ $stage -le 4 ]; then
   for ITER in 6 3 1; do
     steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config \
       --nnet $dir/${ITER}.nnet --acwt $acwt \
-      $gmm/graph $dev $dir/decode_test_it${ITER} || exit 1
+      $gmm/graph $dev $dir/decode_devel_it${ITER} || exit 1
     steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config \
       --nnet $dir/${ITER}.nnet --acwt $acwt \
       $gmm/graph $tst $dir/decode_test_it${ITER} || exit 1

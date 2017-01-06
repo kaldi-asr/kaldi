@@ -1,7 +1,8 @@
 #!/bin/bash
-# Adapted to the FAME! Speech database from the KALDI scripts of Iban corpus
 # Copyright 2015-2016  Sarah Flora Juan
-# Copyright 2016  Johns Hopkins University (Author: Yenda Trmal, Adapted by Emre Yilmaz)
+# Copyright 2016  Johns Hopkins University (Author: Yenda Trmal)
+# Copyright 2016  Radboud University (Author: Emre Yilmaz)
+
 # Apache 2.0
 
 corpus=$1
