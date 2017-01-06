@@ -207,11 +207,9 @@ if [ ! -z $online_ivector_dir ]; then
   ivector_period=$(cat $online_ivector_dir/ivector_period)
   ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
   echo $ivector_dim >$dir/info/ivector_dim
-
-  ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $sdata/JOB/utt2spk $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |'"
-  valid_ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |'"
-  train_subset_ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |'"
-  priors_ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $dir/priors_uttlist $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |'"
+  ivector_opts="--online-ivectors=$online_ivector_dir/ivector_online.scp --online-ivector-period=$ivector_period"
+else
+  ivector_opts=""
 fi
 
 if [ $stage -le 2 ]; then
@@ -345,7 +343,7 @@ fi
     num_pdfs=`am-info $alidir/final.mdl | grep pdfs | awk '{print $NF}' 2>/dev/null` || exit 1
 
     $cmd $dir/log/create_priors_subset.log \
-      nnet3-get-egs --num-pdfs=$num_pdfs $priors_ivector_opt $priors_egs_opts "$priors_feats" \
+      nnet3-get-egs --num-pdfs=$num_pdfs $ivector_opts $priors_egs_opts "$priors_feats" \
       "$prior_ali_rspecifier ali-to-post ark:- ark:- |" \
       ark:- \| nnet3-copy-egs ark:- $priors_egs_list || \
       { touch $dir/.error; echo "Error in creating priors subset. See $dir/log/create_priors_subset.log"; exit 1; }
@@ -372,13 +370,13 @@ if [ $stage -le 4 ]; then
   $cmd $dir/log/create_valid_subset.log \
     discriminative-get-supervision $supervision_all_opts \
     scp:$dir/ali_special.scp scp:$dir/lat_special.scp ark:- \| \
-    nnet3-discriminative-get-egs $valid_ivector_opt $egs_opts \
+    nnet3-discriminative-get-egs $ivector_opts $egs_opts \
     $dir/final.mdl "$valid_feats" ark,s,cs:- "ark:$dir/valid_diagnostic.degs" || touch $dir/.error &
 
   $cmd $dir/log/create_train_subset.log \
     discriminative-get-supervision $supervision_all_opts \
     scp:$dir/ali_special.scp scp:$dir/lat_special.scp ark:- \| \
-    nnet3-discriminative-get-egs $train_subset_ivector_opt $egs_opts \
+    nnet3-discriminative-get-egs $ivector_opts $egs_opts \
     $dir/final.mdl "$train_subset_feats" ark,s,cs:- "ark:$dir/train_diagnostic.degs" || touch $dir/.error &
   wait;
   [ -f $dir/.error ] && echo "Error detected while creating train/valid egs" && exit 1
@@ -408,7 +406,7 @@ if [ $stage -le 5 ]; then
     discriminative-get-supervision $supervision_all_opts \
     "scp:utils/filter_scp.pl $sdata/JOB/utt2spk $dir/ali.scp |" \
     "ark,s,cs:gunzip -c $denlatdir/lat.JOB.gz |" ark:- \| \
-    nnet3-discriminative-get-egs $ivector_opt $egs_opts \
+    nnet3-discriminative-get-egs $ivector_opts $egs_opts \
        --num-frames-overlap=$frames_overlap_per_eg \
     $dir/final.mdl "$feats" ark,s,cs:- ark:- \| \
     nnet3-discriminative-copy-egs --random=true --srand=JOB ark:- $degs_list || exit 1;
