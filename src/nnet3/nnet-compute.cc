@@ -453,24 +453,19 @@ void NnetComputer::CheckNoPendingIo() {
     pending_commands_.push_back(program_counter_);
     program_counter_++;
   }
-  while (!pending_commands_.empty()) {
+  for (size_t i = 0; i < pending_commands_.size(); i++) {
     // the order here doesn't really matter; we go from back to front
     // as it's more efficient, not that efficiency really matters here.
-    int32 last_command = pending_commands_.back();
-    if (c[last_command].command_type == kProvideOutput) {
-      // we can ignore that we didn't provide output to the user.
-      KALDI_VLOG(3) << "Output to node '" << nnet_.GetNodeName(c[last_command].arg2)
-                    << "' was available but not used.";
-      pending_commands_.pop_back();
-    } else {
+    int32 command = pending_commands_[i];
+    if (c[command].command_type == kAcceptInput) {
       // we can't ignore if we needed input from the user that hasn't been
       // provided.
-      KALDI_ASSERT(c[last_command].command_type == kAcceptInput);
-      int32 node = c[last_command].arg2;
-      KALDI_ERR << "Cannot run computation because we did not get input for node '"
+      int32 node = c[command].arg2;
+      KALDI_ERR << "Cannot run computation-- we did not get input for node '"
                 << nnet_.GetNodeName(node) << "'";
     }
   }
+  pending_commands_.clear();
 }
 
 int32 NnetComputer::GetIoMatrixIndex(const std::string &node_name, bool is_output) {
@@ -481,9 +476,9 @@ int32 NnetComputer::GetIoMatrixIndex(const std::string &node_name, bool is_outpu
   // first make sure all the I/O commands that we immediately expect, are listed
   // in 'pending_commands_'.
   while (program_counter_ < static_cast<int32>(computation_.commands.size()) &&
-         (c[program_counter_].command_type == kAcceptInput ||
-          c[program_counter_].command_type == kProvideOutput ||
-          c[program_counter_].command_type == kNoOperationMarker)) {
+         ((c[program_counter_].command_type == kAcceptInput ||
+           c[program_counter_].command_type == kProvideOutput ||
+           c[program_counter_].command_type == kNoOperationMarker))) {
     if (c[program_counter_].command_type != kNoOperationMarker)
       pending_commands_.push_back(program_counter_);
     program_counter_++;
@@ -495,7 +490,11 @@ int32 NnetComputer::GetIoMatrixIndex(const std::string &node_name, bool is_outpu
     int32 this_submatrix_index = c[command].arg1,
         this_node_index = c[command].arg2;
     if (this_command_is_output == is_output && node_index == this_node_index) {
-      pending_commands_.erase(pending_commands_.begin() + i);
+      if (!is_output) {
+        pending_commands_.erase(pending_commands_.begin() + i);
+        // don't erase the command for outputs, as that would prevent things
+        // from being output twice, which is an unnecessary restriction.
+      }
       if (!(computation_.IsWholeMatrix(this_submatrix_index)))
         KALDI_ERR << "Getting input or output that is not a whole matrix "
                   << "(probably some optimization code needs to be changed)";

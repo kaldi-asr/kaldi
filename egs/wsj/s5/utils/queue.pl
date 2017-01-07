@@ -91,10 +91,11 @@ sub print_usage() {
 }
 
 sub caught_signal {
-	if ( defined $sge_job_id ) { # Signal trapped after submitting jobs
-		system ("qdel $sge_job_id");
-		die "Caught a signal: $! , deleting SGE task: $sge_job_id and exiting\n";
-	}
+  if ( defined $sge_job_id ) { # Signal trapped after submitting jobs
+    my $signal = $!;
+    system ("qdel $sge_job_id");
+    die "Caught a signal: $signal , deleting SGE task: $sge_job_id and exiting\n";
+  }
 }
 
 if (@ARGV < 2) {

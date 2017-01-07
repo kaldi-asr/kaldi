@@ -134,8 +134,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         num_hidden_layers, add_layers_period,
                         left_context, right_context,
                         momentum, max_param_change, shuffle_buffer_size,
-                        run_opts,
-                        cv_minibatch_size_str='256', frames_per_eg=-1,
+                        run_opts, frames_per_eg=-1,
                         min_deriv_time=None, max_deriv_time_relative=None,
                         shrinkage_value=1.0,
                         get_raw_nnet_from_am=True,
@@ -182,7 +181,6 @@ def train_one_iteration(dir, iter, srand, egs_dir,
         dir=dir, iter=iter, egs_dir=egs_dir,
         left_context=left_context, right_context=right_context,
         run_opts=run_opts,
-        minibatch_size_str=cv_minibatch_size_str,
         get_raw_nnet_from_am=get_raw_nnet_from_am, wait=False,
         background_process_handler=background_process_handler)
 
@@ -192,7 +190,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                          left_context=left_context,
                          right_context=right_context,
                          run_opts=run_opts,
-                         minibatch_size_str=cv_minibatch_size_str, wait=False,
+                         wait=False,
                          get_raw_nnet_from_am=get_raw_nnet_from_am,
                          background_process_handler=background_process_handler)
 
@@ -365,7 +363,7 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
 
 
 def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
-                                   right_context, run_opts, minibatch_size_str='1:256',
+                                   right_context, run_opts,
                                    wait=False, background_process_handler=None,
                                    get_raw_nnet_from_am=True):
     if get_raw_nnet_from_am:
@@ -382,12 +380,11 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
                 nnet3-compute-prob "{model}" \
                 "ark,bg:nnet3-copy-egs {context_opts} \
                     ark:{egs_dir}/valid_diagnostic.egs ark:- | \
-                    nnet3-merge-egs --minibatch-size={minibatch_size_str} ark:- \
+                    nnet3-merge-egs --minibatch-size=1:64 ark:- \
                     ark:- |" """.format(command=run_opts.command,
                                         dir=dir,
                                         iter=iter,
                                         context_opts=context_opts,
-                                        minibatch_size_str=minibatch_size_str,
                                         model=model,
                                         egs_dir=egs_dir),
         wait=wait, background_process_handler=background_process_handler)
@@ -397,20 +394,18 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
                 nnet3-compute-prob "{model}" \
                 "ark,bg:nnet3-copy-egs {context_opts} \
                     ark:{egs_dir}/train_diagnostic.egs ark:- | \
-                    nnet3-merge-egs --minibatch-size={minibatch_size_str} ark:- \
+                    nnet3-merge-egs --minibatch-size=1:64 ark:- \
                     ark:- |" """.format(command=run_opts.command,
                                         dir=dir,
                                         iter=iter,
                                         context_opts=context_opts,
-                                        minibatch_size_str=minibatch_size_str,
                                         model=model,
                                         egs_dir=egs_dir),
         wait=wait, background_process_handler=background_process_handler)
 
 
 def compute_progress(dir, iter, egs_dir, left_context, right_context,
-                     run_opts, minibatch_size_str=256,
-                     background_process_handler=None, wait=False,
+                     run_opts, background_process_handler=None, wait=False,
                      get_raw_nnet_from_am=True):
     if get_raw_nnet_from_am:
         prev_model = "nnet3-am-copy --raw=true {0}/{1}.mdl - |".format(
@@ -429,13 +424,12 @@ def compute_progress(dir, iter, egs_dir, left_context, right_context,
                     nnet3-show-progress --use-gpu=no "{prev_model}" "{model}" \
                     "ark,bg:nnet3-copy-egs {context_opts} \
                         ark:{egs_dir}/train_diagnostic.egs ark:- | \
-                        nnet3-merge-egs --minibatch-size={minibatch_size_str} ark:- \
+                        nnet3-merge-egs --minibatch-size=1:64 ark:- \
                         ark:- |" """.format(command=run_opts.command,
                                             dir=dir,
                                             iter=iter,
                                             model=model,
                                             context_opts=context_opts,
-                                            minibatch_size_str=minibatch_size_str,
                                             prev_model=prev_model,
                                             egs_dir=egs_dir),
             wait=wait, background_process_handler=background_process_handler)

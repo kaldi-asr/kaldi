@@ -107,13 +107,6 @@ def get_args():
                         steps/nnet3/get_saturation.pl) exceeds this threshold
                         we scale the parameter matrices with the
                         shrink-value.""")
-    parser.add_argument("--trainer.optimization.cv-minibatch-size", type=str,
-                        dest='cv_minibatch_size', default='256',
-                        help="""Size of the minibatch to be used in diagnostic
-                        jobs (use smaller value for BLSTMs to control memory
-                        usage).  May be a more general rule as accepted by the
-                        --minibatch-size option of nnet3-merge-egs; run that
-                        program without args to see the format.""")
     # RNN specific trainer options
     parser.add_argument("--trainer.rnn.num-chunk-per-minibatch", type=str,
                         dest='num_chunk_per_minibatch', default='100',
@@ -165,9 +158,6 @@ def process_args(args):
 
     if not common_train_lib.validate_minibatch_size_str(args.num_chunk_per_minibatch):
         raise Exception("--trainer.rnn.num-chunk-per-minibatch has an invalid value");
-
-    if not common_train_lib.validate_minibatch_size_str(args.cv_minibatch_size):
-        raise Exception("--trainer.optimization.cv-minibatch-size has an invalid value");
 
     if args.chunk_left_context < 0:
         raise Exception("--egs.chunk-left-context should be non-negative")
@@ -426,7 +416,6 @@ def train(args, run_opts, background_process_handler):
                 momentum=args.momentum,
                 max_param_change=args.max_param_change,
                 shuffle_buffer_size=args.shuffle_buffer_size,
-                cv_minibatch_size_str=args.cv_minibatch_size,
                 run_opts=run_opts,
                 get_raw_nnet_from_am=False,
                 background_process_handler=background_process_handler)
