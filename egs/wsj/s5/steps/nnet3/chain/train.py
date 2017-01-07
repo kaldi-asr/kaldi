@@ -76,9 +76,14 @@ def get_args():
                         dest='right_tolerance', default=5, help="")
     parser.add_argument("--chain.left-tolerance", type=int,
                         dest='left_tolerance', default=5, help="")
+
     parser.add_argument("--chain.num-leakage-coeff", type=float,
-                        dest='num_leakage_coeff', default=0.0001,
+                        dest='num_leakage_coeff', default=0.0,
                         help="")
+    parser.add_argument("--chain.num-leakage-schedule", type=str,
+                        dest='num_leakage_schedule', default="",
+                        help="A string like '50%:0.0 20%:0.001 30%:1e-4'")
+
     parser.add_argument("--chain.leaky-hmm-coefficient", type=float,
                         dest='leaky_hmm_coefficient', default=0.00001,
                         help="")
@@ -381,6 +386,37 @@ def train(args, run_opts, background_process_handler):
     num_iters = ((num_archives_to_process * 2)
                  / (args.num_jobs_initial + args.num_jobs_final))
 
+
+
+
+    if args.num_leakage_schedule == "":
+      args.num_leakage_schedule = "100%:" + str(args.num_leakage_coeff)
+    interval_ends = []
+    coeffs = []
+    interval_start = 0
+    for interval_coeff in args.num_leakage_schedule.split(" "):
+      [interval, coeff] = interval_coeff.split(":")
+      if (interval.endswith("%")):
+        interval = int(interval[:-1]) * num_iters / 100
+      else:
+        interval = int(interval)
+      interval += interval_start
+      interval_start = interval
+      interval_ends += [interval]
+      coeff = float(coeff)
+      coeffs += [coeff]
+    logger.info("num_leakage interval ends: " + str(interval_ends))
+    logger.info("num_leakage coeffs: " + str(coeffs))
+    def determine_coeff(it):
+      idx = 0
+      for it_end in interval_ends:
+        if it <= it_end:
+          break;
+        idx += 1
+      if idx >= len(coeffs):
+        idx = len(coeffs) - 1
+      return coeffs[idx]
+
     models_to_combine = common_train_lib.verify_iterations(
         num_iters, args.num_epochs,
         num_hidden_layers, num_archives_expanded,
@@ -451,7 +487,7 @@ def train(args, run_opts, background_process_handler):
                 l2_regularize=args.l2_regularize,
                 xent_regularize=args.xent_regularize,
                 leaky_hmm_coefficient=args.leaky_hmm_coefficient,
-                num_leakage_coeff=args.num_leakage_coeff,
+                num_leakage_coeff=determine_coeff(iter),
                 momentum=args.momentum,
                 max_param_change=args.max_param_change,
                 shuffle_buffer_size=args.shuffle_buffer_size,
@@ -490,7 +526,7 @@ def train(args, run_opts, background_process_handler):
             egs_dir=egs_dir,
             left_context=left_context, right_context=right_context,
             leaky_hmm_coefficient=args.leaky_hmm_coefficient,
-            num_leakage_coeff=args.num_leakage_coeff,
+            num_leakage_coeff=determine_coeff(num_iters),
             l2_regularize=args.l2_regularize,
             xent_regularize=args.xent_regularize,
             run_opts=run_opts,

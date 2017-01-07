@@ -42,13 +42,8 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
     nnet_output_deriv->SetZero();
 
   
-  {
-    //NumeratorComputation numerator(supervision, nnet_output);
-
-    NumeratorGraph ng(supervision);
-    CuLeakyNumeratorComputation numerator(opts, ng, den_graph, nnet_output);
-    // TODO(hhadian): supervision.weight???
-
+  if (opts.num_leak_coefficient == 0.0) {
+    NumeratorComputation numerator(supervision, nnet_output);
     // note: supervision.weight is included as a factor in the derivative from
     // the numerator object, and the logprob too.
     num_logprob_weighted = numerator.Forward();
@@ -63,27 +58,19 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
       xent_output_deriv->SetZero();
       numerator.Backward(xent_output_deriv);
     }
+  } else {  // exactly the same as above but with leaky num computation
+    NumeratorGraph ng(supervision);
+    CuLeakyNumeratorComputation numerator(opts, ng, den_graph, nnet_output);
+    num_logprob_weighted = numerator.Forward();
+    if (nnet_output_deriv) {
+      numerator.Backward(nnet_output_deriv);
+      if (xent_output_deriv)
+        xent_output_deriv->CopyFromMat(*nnet_output_deriv);
+    } else if (xent_output_deriv) {
+      xent_output_deriv->SetZero();
+      numerator.Backward(xent_output_deriv);
+    }
   }
-
-
-
-///////////////////////////////////////////////////
-/*
-  std::cout << "num logprob weighted: " << num_logprob_weighted << "\n";
-  NumeratorGraph ng(supervision);
-  CuMatrix<BaseFloat> cuderiv(nnet_output_deriv->NumRows(),
-      nnet_output_deriv->NumCols(), kSetZero);
-  CuNumeratorComputation cunum(opts, ng, nnet_output);
-  BaseFloat cu_num_logprob_weighted = cunum.Forward();
-  std::cout << "cu num logprob weighted: " << cu_num_logprob_weighted << "\n";
-  bool nok = true;
-  nok = cunum.Backward(supervision.weight, &cuderiv);
-  std::cout << "ok: " << nok << "\n";
-  AssertEqual(*nnet_output_deriv, cuderiv, 0.001);
-*/
-///////////////////////////////////////////////////
-
-
 
   DenominatorComputation denominator(opts, den_graph,
                                      supervision.num_sequences,

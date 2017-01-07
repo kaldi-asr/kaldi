@@ -518,7 +518,7 @@ def compute_progress(dir, iter, run_opts, wait=False,
 
 def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch,
                    egs_dir, left_context, right_context,
-                   leaky_hmm_coefficient, l2_regularize,
+                   leaky_hmm_coefficient, num_leakage_coeff, l2_regularize,
                    xent_regularize, run_opts, background_process_handler=None):
     """ Function to do model combination
 
