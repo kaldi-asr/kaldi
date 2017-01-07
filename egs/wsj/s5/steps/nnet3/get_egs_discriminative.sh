@@ -207,7 +207,7 @@ if [ ! -z $online_ivector_dir ]; then
   ivector_period=$(cat $online_ivector_dir/ivector_period)
   ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
   echo $ivector_dim >$dir/info/ivector_dim
-  ivector_opts="--online-ivectors=$online_ivector_dir/ivector_online.scp --online-ivector-period=$ivector_period"
+  ivector_opts="--online-ivectors=scp:$online_ivector_dir/ivector_online.scp --online-ivector-period=$ivector_period"
 else
   ivector_opts=""
 fi
@@ -217,12 +217,12 @@ if [ $stage -le 2 ]; then
   num_frames=$(steps/nnet2/get_num_frames.sh $data)
   echo $num_frames > $dir/info/num_frames
   echo "$0: working out feature dim"
-  feats_one="$(echo $feats | sed s/JOB/1/g)"
-  feat_dim=$(feat-to-dim "$feats_one" -) || exit 1;
-  echo $feat_dim > $dir/info/feat_dim
-else
-  num_frames=$(cat $dir/info/num_frames) || exit 1;
-  feat_dim=$(cat $dir/info/feat_dim) || exit 1;
+  feats_one="$(echo $feats | sed s:JOB:1:g)"
+  if feat_dim=$(feat-to-dim "$feats_one" - 2>/dev/null); then
+    echo $feat_dim > $dir/info/feat_dim
+  else # run without stderr redirection to show the error.
+    feat-to-dim "$feats_one" -; exit 1
+  fi
 fi
 
 # Working out total number of archives. Add one on the assumption the

@@ -126,6 +126,8 @@ static bool ProcessFile(const MatrixBase<BaseFloat> &feats,
         iter->second *= chunk.output_weights[i];
     }
 
+    eg.io.push_back(NnetIo("output", num_pdfs, 0, labels));
+
     if (compress)
       eg.Compress();
 

@@ -820,6 +820,7 @@ void UtteranceSplitter::GetChunksForUtterance(
                           config_.right_context_final : config_.right_context);
     t += chunk_sizes[i];
   }
+  SetOutputWeights(utterance_length, chunk_info);
   AccStatsForUtterance(utterance_length, *chunk_info);
   // check that the end of the last chunk doesn't go more than
   // 'config_.frame_subsampling_factor - 1' frames past the end

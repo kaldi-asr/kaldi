@@ -216,7 +216,7 @@ if [ ! -z "$online_ivector_dir" ]; then
   ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
   echo $ivector_dim > $dir/info/ivector_dim
   ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
-  ivector_opts="--online-ivectors=$online_ivector_dir/ivector_online.scp --online-ivector-period=$ivector_period"
+  ivector_opts="--online-ivectors=scp:$online_ivector_dir/ivector_online.scp --online-ivector-period=$ivector_period"
 else
   ivector_opts=""
   echo 0 >$dir/info/ivector_dim

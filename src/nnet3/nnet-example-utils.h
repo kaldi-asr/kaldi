@@ -122,9 +122,6 @@ struct ExampleGenerationConfig {
                  "frames of right context of input features that are added "
                  "to each example at the end of the utterance (if <0, this "
                  "defaults to the same as --right-context)");
-    po->Register("right-context", &right_context, "Number of frames of right "
-                 "context of input features that are added to each "
-                 "example");
     po->Register("num-frames", &num_frames_str, "Number of frames with labels "
                 "that each example contains (i.e. the left and right context "
                 "are to be added to this).  May just be an integer (e.g. "

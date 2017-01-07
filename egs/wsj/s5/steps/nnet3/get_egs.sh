@@ -189,7 +189,7 @@ if [ ! -z "$online_ivector_dir" ]; then
   ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
   echo $ivector_dim > $dir/info/ivector_dim
   ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
-  ivector_opts="--online-ivectors=$online_ivector_dir/ivector_online.scp --online-ivector-period=$ivector_period"
+  ivector_opts="--online-ivectors=scp:$online_ivector_dir/ivector_online.scp --online-ivector-period=$ivector_period"
 else
   ivector_opts=""
   echo 0 >$dir/info/ivector_dim
@@ -201,8 +201,11 @@ if [ $stage -le 1 ]; then
   echo $num_frames > $dir/info/num_frames
   echo "$0: working out feature dim"
   feats_one="$(echo $feats | sed s/JOB/1/g)"
-  feat_dim=$(feat-to-dim "$feats_one" -) || exit 1;
-  echo $feat_dim > $dir/info/feat_dim
+  if feat_dim=$(feat-to-dim "$feats_one" - 2>/dev/null); then
+    echo $feat_dim > $dir/info/feat_dim
+  else # run without redirection to show the error.
+    feat-to-dim "$feats_one" -; exit 1
+  fi
 else
   num_frames=$(cat $dir/info/num_frames) || exit 1;
   feat_dim=$(cat $dir/info/feat_dim) || exit 1;
@@ -220,7 +223,7 @@ if [ $num_archives -eq 1 ]; then
   echo "*** $0: warning: the --frames-per-eg is too large to generate one archive with"
   echo "*** as many as --samples-per-iter egs in it.  Consider reducing --frames-per-eg."
   sleep 4
-done
+fi
 
 # We may have to first create a smaller number of larger archives, with number
 # $num_archives_intermediate, if $num_archives is more than the maximum number
