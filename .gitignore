@@ -57,6 +57,8 @@ GSYMS
 *.manifest
 
 # /src/
+/src/.short_version
+/src/base/version.h
 /src/doc/table/
 /src/doc/tools.dox
 /src/htdocs/

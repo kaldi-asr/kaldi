@@ -167,26 +167,26 @@ int main(int argc, char *argv[]) {
 
  ( echo "0 0 1 1"; echo " 0 0 3 2"; echo "0 0"; ) | fstcompile | fstrmsymbols "echo 3; echo  4|" | fstprint
  # should produce:
- # 0	0	1	1
- # 0	0	0	2
+ # 0   0   1   1
+ # 0   0   0   2
  # 0
 
  ( echo "0 0 1 1"; echo " 0 0 3 2"; echo "0 0"; ) | fstcompile | fstrmsymbols --apply-to-output=true "echo 2; echo 3|" | fstprint
  # should produce:
- # 0	0	1	1
- # 0	0	3	0
+ # 0   0   1   1
+ # 0   0   3   0
  # 0
 
 
  ( echo "0 0 1 1"; echo " 0 0 3 2"; echo "0 0"; ) | fstcompile | fstrmsymbols --remove-arcs=true  "echo 3; echo  4|" | fstprint
  # should produce:
- # 0	0	1	1
+ # 0   0   1   1
  # 0
 
  ( echo "0 0 1 1"; echo " 0 0 3 2"; echo "0 0"; ) | fstcompile | fstrmsymbols --penalty=2 "echo 3; echo 4; echo 5|" | fstprint
 # should produce:
- # 0	0	1	1
- # 0	0	3	2	2
+ # 0   0   1   1
+ # 0   0   3   2   2
  # 0
 
 */

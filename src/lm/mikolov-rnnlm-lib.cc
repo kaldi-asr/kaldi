@@ -1165,6 +1165,8 @@ float CRnnLM::getUnkPenalty(const std::string &word) {
 }
 
 void CRnnLM::setUnkPenalty(const std::string &filename) {
+  if (filename.empty())
+    return;
   kaldi::SequentialBaseFloatReader unk_reader(filename);
   for (; !unk_reader.Done(); unk_reader.Next()) {
     std::string key = unk_reader.Key();

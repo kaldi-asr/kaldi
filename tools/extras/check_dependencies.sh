@@ -12,6 +12,8 @@ function add_packages {
   opensuse_packages="$opensuse_packages $3";
 }
 
+status=0
+
 if ! which which >&/dev/null; then
   echo "$0: which is not installed."
   add_packages which debianutils which
@@ -55,18 +57,24 @@ if which python >&/dev/null ; then
     if which python2.7 >&/dev/null  || which python2 >&/dev/null ; then
       echo "$0: python 2.7 is not the default python. You should either make it"
       echo "$0: default or create an bash alias for kaldi scripts to run correctly"
+      status=1
     else
       echo "$0: python 2.7 is not installed"
-      add_packages python2.7 python2.7 python2.7
+      add_packages python2.7 python python2.7
     fi
   fi
 else
-  echo "$0: python 2.7 is not installed"
-  add_packages python2.7 python2.7 python2.7
+  if which python2.7 >&/dev/null  || which python2 >&/dev/null ; then
+    echo "$0: python 2.7 is not the default python. You should either make it"
+    echo "$0: default or create an bash alias for kaldi scripts to run correctly"
+    status=1
+  else
+    echo "$0: python is not installed (we need python 2.7)"
+    add_packages python2.7 python python2.7
+  fi
 fi
 
 printed=false
-status=0
 
 if which apt-get >&/dev/null && ! which zypper >/dev/null; then
   # if we're using apt-get [but we're not OpenSuse, which uses zypper as the

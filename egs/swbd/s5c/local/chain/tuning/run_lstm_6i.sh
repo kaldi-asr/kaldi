@@ -149,7 +149,6 @@ if [ $stage -le 13 ]; then
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
-    --chain.left-deriv-truncate 0 \
     --trainer.num-chunk-per-minibatch 64 \
     --trainer.frames-per-iter 1200000 \
     --trainer.max-param-change 2.0 \
@@ -160,6 +159,7 @@ if [ $stage -le 13 ]; then
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.optimization.momentum 0.0 \
+    --trainer.deriv-truncate-margin 8 \
     --egs.stage $get_egs_stage \
     --egs.opts "--frames-overlap-per-eg 0" \
     --egs.chunk-width $chunk_width \
@@ -177,7 +177,7 @@ if [ $stage -le 14 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --left-biphone --self-loop-scale 1.0 data/lang_sw1_tg $dir $dir/graph_sw1_tg
+  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_sw1_tg $dir $dir/graph_sw1_tg
 fi
 
 decode_suff=sw1_tg
