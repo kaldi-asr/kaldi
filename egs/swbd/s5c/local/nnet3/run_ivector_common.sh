@@ -98,7 +98,7 @@ for line in sys.stdin.readlines():
 fi
 
 # ivector extractor training
-if [ $stage -le 5 ]; then
+if [ $stage -le 4 ]; then
   # We need to build a small system just because we need the LDA+MLLT transform
   # to train the diag-UBM on top of.  We use --num-iters 13 because after we get
   # the transform (12th iter is the last), any further training is pointless.
@@ -109,13 +109,13 @@ if [ $stage -le 5 ]; then
     data/lang_nosp exp/tri2_ali_100k_nodup exp/nnet3/tri3b
 fi
 
-if [ $stage -le 6 ]; then
+if [ $stage -le 5 ]; then
   # To train a diagonal UBM we don't need very much data, so use the smallest subset.
   steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 30 --num-frames 200000 \
     data/${train_set}_30k_nodup_hires 512 exp/nnet3/tri3b exp/nnet3/diag_ubm
 fi
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 6 ]; then
   # iVector extractors can be sensitive to the amount of data, but this one has a
   # fairly small dim (defaults to 100) so we don't use all of it, we use just the
   # 100k subset (just under half the data).
@@ -123,7 +123,7 @@ if [ $stage -le 7 ]; then
     data/train_100k_nodup_hires exp/nnet3/diag_ubm exp/nnet3/extractor || exit 1;
 fi
 
-if [ $stage -le 8 ]; then 
+if [ $stage -le 7 ]; then 
   # Generates random offsets for training data
   mfccdir=mfcc_hires
   for dataset in $train_set; do
@@ -134,7 +134,7 @@ if [ $stage -le 8 ]; then
   done
 fi
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 8 ]; then
   # We extract iVectors on all the train_nodup data, which will be what we
   # train the system on.
 

@@ -81,7 +81,7 @@ void RoundUpNumFrames(int32 frame_subsampling_factor,
                       int32 *num_frames_overlap);
 
 
-// This function operate on single egs (egs with a single 'n' index).
+// This function operates on single eg (eg with a single 'n' index).
 // It will select row 'feature_offset' from NnetIo with name "offset" and
 // adds this row to input.features.
 // The NnetIo ivector contains ivector for all offsets in offset and 

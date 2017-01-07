@@ -201,7 +201,7 @@ int main(int argc, char *argv[]) {
 
     // Generate random cmn offset for each speaker, and copy same cmn offsets
     // for all spk's utterances.
-    for (std::map<std::string, Vector<double>>::const_iterator 
+    for (std::map<std::string, Vector<double> >::const_iterator 
          iter = spk_means.begin(); iter != spk_means.end(); ++iter) {
       Matrix<double> spk_offsets(num_cmn_offsets, feat_dim); // the 1st row of offset is 0.
       std::string spk_name = iter->first;

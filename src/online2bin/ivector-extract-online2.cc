@@ -49,10 +49,8 @@ int main(int argc, char *argv[]) {
         "    ark:data/train/spk2utt scp:data/train/feats.scp ark,t:ivectors.1.ark\n";
     
     ParseOptions po(usage);
-     
     OnlineIvectorExtractionConfig ivector_config;
     ivector_config.Register(&po);
-    
     std::string spk2cmn_offset;
     g_num_threads = 8;
     bool repeat = false;
@@ -88,9 +86,9 @@ int main(int argc, char *argv[]) {
     SequentialTokenVectorReader spk2utt_reader(spk2utt_rspecifier);
     RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
     BaseFloatMatrixWriter ivector_writer(ivectors_wspecifier);
-    
-    RandomAccessBaseFloatMatrixReader spk2cmn_offset_reader(spk2cmn_offset);
+   
 
+    RandomAccessBaseFloatMatrixReader spk2cmn_offset_reader(spk2cmn_offset);
     for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {
       std::string spk = spk2utt_reader.Key();
       const std::vector<std::string> &uttlist = spk2utt_reader.Value();

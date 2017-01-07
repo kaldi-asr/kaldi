@@ -76,6 +76,11 @@ local/nnet3/run_ivector_common.sh --stage $stage \
   --use-random-offsets $use_random_offsets \
   --generate-alignments $speed_perturb || exit 1;
 
+if $use_random_offsets; then
+  num_epochs=`grep num-cmn-offset conf/offsets.conf | cut -d"=" -f2`
+  echo "$0: num of epochs changed to $num_epochs to use all random offsets."
+fi
+
 
 if [ $stage -le 9 ]; then
   # Get the alignments as lattices (gives the LF-MMI training more freedom).

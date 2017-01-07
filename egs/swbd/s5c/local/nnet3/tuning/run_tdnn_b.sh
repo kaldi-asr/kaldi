@@ -16,18 +16,15 @@
 # If you want to run without GPU you'd have to call train_tdnn.sh with --gpu false,
 # --num-threads 16 and --minibatch-size 128.
 
-stage=8
-egs_stage=-1
+stage=0
 affix=
 train_stage=-10
 has_fisher=true
 speed_perturb=true
 common_egs_dir=
 reporting_email=
-remove_egs=false
-use_random_offsets=false
-num_epochs=2
-dir=exp/nnet3/tdnn_b
+remove_egs=true
+
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
@@ -45,19 +42,16 @@ suffix=
 if [ "$speed_perturb" == "true" ]; then
   suffix=_sp
 fi
+dir=exp/nnet3/tdnn_b
 dir=$dir${affix:+_$affix}
 dir=${dir}$suffix
 train_set=train_nodup$suffix
 ali_dir=exp/tri4_ali_nodup$suffix
 
 local/nnet3/run_ivector_common.sh --stage $stage \
-	--speed-perturb $speed_perturb --use-random-offsets $use_random_offsets || exit 1;
+	--speed-perturb $speed_perturb || exit 1;
 
-if $use_random_offsets; then
-  num_epochs=`grep num-cmn-offset conf/offsets.conf | cut -d"=" -f2`
-fi
-
-if [ $stage -le 10 ]; then
+if [ $stage -le 9 ]; then
   echo "$0: creating neural net configs";
 
   # create the config files for nnet initialization.
@@ -77,24 +71,24 @@ if [ $stage -le 10 ]; then
 fi
 
 
-if [ $stage -le 11 ]; then
+if [ $stage -le 10 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
 
-  steps/nnet3/train_dnn.py --stage=$train_stage --egs.stage $egs_stage \
+  steps/nnet3/train_dnn.py --stage=$train_stage \
     --cmd="$decode_cmd" \
     --feat.online-ivector-dir exp/nnet3/ivectors_${train_set} \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
-    --trainer.num-epochs $num_epochs \
+    --trainer.num-epochs 2 \
     --trainer.optimization.num-jobs-initial 3 \
     --trainer.optimization.num-jobs-final 16 \
     --trainer.optimization.initial-effective-lrate 0.0017 \
     --trainer.optimization.final-effective-lrate 0.00017 \
     --egs.dir "$common_egs_dir" \
     --cleanup.remove-egs $remove_egs \
-    --cleanup.preserve-model-interval 10 \
+    --cleanup.preserve-model-interval 100 \
     --use-gpu true \
     --feat-dir=data/${train_set}_hires \
     --ali-dir $ali_dir \
@@ -105,7 +99,7 @@ if [ $stage -le 11 ]; then
 fi
 
 graph_dir=exp/tri4/graph_sw1_tg
-if [ $stage -le 12 ]; then
+if [ $stage -le 11 ]; then
   for decode_set in train_dev eval2000; do
     (
     num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`

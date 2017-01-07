@@ -375,10 +375,8 @@ if [ $stage -le 4 ]; then
   done
   # if $data/offsets.scp is defined, it will be used in generating egs.
   offsets=
-  offset_opts=
   if [ -f $data/offsets.scp ]; then
     offsets="--utt2cmn-offsets=scp:$sdata/JOB/offsets.scp"
-    offset_opts="--offset-type=$offset_type" 
   fi
 
   echo "$0: Generating training examples on disk"
@@ -397,7 +395,7 @@ if [ $stage -le 4 ]; then
     lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:- ark:- \| \
     chain-get-supervision $ctc_supervision_all_opts \
       $chaindir/tree $chaindir/0.trans_mdl ark:- ark:- \| \
-    nnet3-chain-get-egs $ivector_opt $offset_opts --srand=\$[JOB+$srand] $egs_opts \
+    nnet3-chain-get-egs $ivector_opt --srand=\$[JOB+$srand] $egs_opts \
      $offsets "$feats" ark,s,cs:- ark:- \| \
     nnet3-chain-copy-egs --random=true --srand=\$[JOB+$srand] ark:- $egs_list || exit 1;
 fi

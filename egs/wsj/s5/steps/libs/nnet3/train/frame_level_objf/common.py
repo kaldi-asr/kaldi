@@ -339,7 +339,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
 def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
                                    max_lda_jobs=None, rand_prune=4.0,
                                    lda_opts=None,
-                                   select_feature_offset = -1):
+                                   select_feature_offset=-1):
     if max_lda_jobs is not None:
         if num_lda_jobs > max_lda_jobs:
             num_lda_jobs = max_lda_jobs

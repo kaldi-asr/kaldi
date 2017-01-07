@@ -47,7 +47,8 @@ for f in $required_files; do
   fi
 done
 
-$cmd $logdir/compute_rand_offset.log \ 
-  generate-random-cmn-offsets --config=$offsets_config ark:$data/spk2utt scp:$data/feats.scp ark:- | copy-feats --compress=$compress ark:- ark,scp:$offsetdir/offsets.ark,$data/offsets.scp || exit 1;
+$cmd $logdir/compute_rand_offset.log \
+  generate-random-cmn-offsets --config=$offsets_config ark:$data/spk2utt scp:$data/feats.scp ark:- \| \
+  copy-feats --compress=$compress ark:- ark,scp:$offsetdir/offsets.ark,$data/offsets.scp || exit 1;
 
 echo "Succeeded creating random offsets for $name"

@@ -22,6 +22,7 @@ speed_perturb=true
 common_egs_dir=
 reporting_email=
 remove_egs=true
+num_epochs=2
 # config for random offset
 use_random_offsets=false
 . ./cmd.sh
@@ -50,6 +51,11 @@ ali_dir=exp/tri4_ali_nodup$suffix
 local/nnet3/run_ivector_common.sh --stage $stage \
   --use-random-offsets $use_random_offsets \
 	--speed-perturb $speed_perturb || exit 1;
+
+if $use_random_offsets; then
+  num_epochs=`grep num-cmn-offset conf/offsets.conf | cut -d"=" -f2`
+  echo "$0: num of epochs changed to $num_epochs to use all random offsets."
+fi
 
 if [ $stage -le 9 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
@@ -92,7 +98,7 @@ if [ $stage -le 10 ]; then
     --cmd="$decode_cmd" \
     --feat.online-ivector-dir exp/nnet3/ivectors_${train_set} \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
-    --trainer.num-epochs 2 \
+    --trainer.num-epochs $num_epochs \
     --trainer.optimization.num-jobs-initial 3 \
     --trainer.optimization.num-jobs-final 16 \
     --trainer.optimization.initial-effective-lrate 0.0017 \
