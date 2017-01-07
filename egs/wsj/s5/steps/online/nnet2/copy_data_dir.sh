@@ -76,7 +76,7 @@ else
 fi
 
 
-for f in feats.scp segments wav.scp reco2file_and_channel text stm glm ctm offsets.scp; do
+for f in feats.scp segments wav.scp reco2file_and_channel text stm glm ctm offsets.scp offset_type; do
   [ -f $srcdir/$f ] && cp $srcdir/$f $destdir/
 done
 

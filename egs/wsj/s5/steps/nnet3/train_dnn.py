@@ -301,7 +301,7 @@ def TrainNewModels(dir, iter, srand, num_jobs, num_archives_processed, num_archi
         frame = (k / num_archives) % frames_per_eg
         offset_num = -1
         if num_cmn_offsets > 0:
-          offset_num = (archive_index - 1) % num_cmn_offsets
+          offset_num = ((k / num_archives) + (k % num_archives)) % num_cmn_offsets
 
         process_handle = RunKaldiCommand("""
 {command} {train_queue_opt} {dir}/log/train.{iter}.{job}.log \

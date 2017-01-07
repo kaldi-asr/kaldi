@@ -67,7 +67,6 @@ def GenerateChainEgs(dir, data, lat_dir, egs_dir,
 steps/nnet3/chain/get_egs.sh {egs_opts} \
   --cmd "{command}" \
   --cmvn-opts "{cmvn_opts}" \
-  --feat-type {feat_type} \
   --transform-dir "{transform_dir}" \
   --online-ivector-dir "{ivector_dir}" \
   --left-context {left_context} --right-context {right_context} \
@@ -103,22 +102,30 @@ steps/nnet3/chain/get_egs.sh {egs_opts} \
 # except it uses egs files in place of cegs files
 def ComputePreconditioningMatrix(dir, egs_dir, num_lda_jobs, run_opts,
                                  max_lda_jobs = None, rand_prune = 4.0,
-                                 lda_opts = None):
+                                 lda_opts = None,
+                                 select_feature_offset = -1):
     if max_lda_jobs is not None:
         if num_lda_jobs > max_lda_jobs:
             num_lda_jobs = max_lda_jobs
+
+    egs_str=""
+    if select_feature_offset > -1:
+      egs_str="ark:nnet3-chain-copy-egs --select-feature-offset={0} ark:{1}/cegs.JOB.ark ark:- |".format(select_feature_offset, egs_dir)
+    else:
+      egs_str="ark:{0}/cegs.JOB.ark".format(egs_dir)
 
 
   # Write stats with the same format as stats for LDA.
     train_lib.RunKaldiCommand("""
 {command} JOB=1:{num_lda_jobs} {dir}/log/get_lda_stats.JOB.log \
  nnet3-chain-acc-lda-stats --rand-prune={rand_prune} \
-    {dir}/init.raw "ark:{egs_dir}/cegs.JOB.ark" {dir}/JOB.lda_stats""".format(
+    {dir}/init.raw "{egs_str}" {dir}/JOB.lda_stats""".format(
         command = run_opts.command,
         num_lda_jobs = num_lda_jobs,
         dir = dir,
         egs_dir = egs_dir,
-        rand_prune = rand_prune))
+        rand_prune = rand_prune,
+        egs_str = egs_str))
 
     # the above command would have generated dir/{1..num_lda_jobs}.lda_stats
     lda_stat_files = map(lambda x: '{0}/{1}.lda_stats'.format(dir, x),

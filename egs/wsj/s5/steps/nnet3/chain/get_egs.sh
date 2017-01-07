@@ -69,7 +69,6 @@ online_ivector_dir=  # can be used if we are including speaker information as iV
 cmvn_opts=  # can be used for specifying CMVN options, if feature type is not lda (if lda,
             # it doesn't make sense to use different options than were used as input to the
             # LDA transform).  This is used to turn off CMVN in the online-nnet experiments.
-
 echo "$0 $@"  # Print the command line for logging
 
 if [ -f path.sh ]; then . ./path.sh; fi
@@ -215,14 +214,20 @@ if [ -f $dir/trans.scp ]; then
   train_subset_feats="$train_subset_feats transform-feats --utt2spk=ark:$data/utt2spk scp:$dir/trans.scp ark:- ark:- |"
 fi
 
+num_offsets=1
+if [ -f $data/offsets.scp ]; then
+  num_offsets=`feat-to-len --print-args=false scp:"head -n 1 $data/offsets.scp |"`
+fi
+
 if [ ! -z "$online_ivector_dir" ]; then
   ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
+  ivector_dim=$[$ivector_dim/$num_offsets]
   echo $ivector_dim > $dir/info/ivector_dim
   ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
 
-  ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $sdata/JOB/utt2spk $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |'"
-  valid_ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |'"
-  train_subset_ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |'"
+  ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $sdata/JOB/utt2spk $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp,p:- ark:- |'"
+  valid_ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp,p:- ark:- | select-feats 0-$[$ivector_dim-1] ark:- ark:- |'"
+  train_subset_ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp,p:- ark:- | select-feats 0-$[$ivector_dim-1] ark:- ark:- |'"
 else
   echo 0 >$dir/info/ivector_dim
 fi
@@ -365,6 +370,14 @@ if [ $stage -le 4 ]; then
   for n in $(seq $num_archives_intermediate); do
     egs_list="$egs_list ark:$dir/cegs_orig.JOB.$n.ark"
   done
+  # if $data/offsets.scp is defined, it will be used in generating egs.
+  offsets=
+  offset_opts=
+  if [ -f $data/offsets.scp ]; then
+    offsets="--utt2cmn-offsets=scp:$sdata/JOB/offsets.scp"
+    offset_opts="--offset-type=$offset_type" 
+  fi
+
   echo "$0: Generating training examples on disk"
 
   # The examples will go round-robin to egs_list.  Note: we omit the
@@ -375,13 +388,14 @@ if [ $stage -le 4 ]; then
   # there can be too many small files to deal with, because the total number of
   # files is the product of 'nj' by 'num_archives_intermediate', which might be
   # quite large.
+
   $cmd JOB=1:$nj $dir/log/get_egs.JOB.log \
     utils/filter_scp.pl $sdata/JOB/utt2spk $dir/lat.scp \| \
     lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:- ark:- \| \
     chain-get-supervision $ctc_supervision_all_opts \
       $chaindir/tree $chaindir/0.trans_mdl ark:- ark:- \| \
-    nnet3-chain-get-egs $ivector_opt --srand=\$[JOB+$srand] $egs_opts \
-     "$feats" ark,s,cs:- ark:- \| \
+    nnet3-chain-get-egs $ivector_opt $offset_opts --srand=\$[JOB+$srand] $egs_opts \
+     $offsets "$feats" ark,s,cs:- ark:- \| \
     nnet3-chain-copy-egs --random=true --srand=\$[JOB+$srand] ark:- $egs_list || exit 1;
 fi
 

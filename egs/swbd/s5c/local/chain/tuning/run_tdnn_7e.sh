@@ -16,15 +16,17 @@
 
 set -e
 
+# configs for random offset
+use_random_offsets=false
+stage=12
+
 # configs for 'chain'
 affix=
-stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
 dir=exp/chain/tdnn_7e  # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
-
 # TDNN options
 # this script uses the new tdnn config generator so it needs a final 0 to reflect that the final layer input has no splicing
 # smoothing options
@@ -80,10 +82,10 @@ lang=data/lang_chain_2y
 # alignments for it.
 local/nnet3/run_ivector_common.sh --stage $stage \
   --speed-perturb $speed_perturb \
+  --use-random-offsets $use_random_offsets \
   --generate-alignments $speed_perturb || exit 1;
 
-
-if [ $stage -le 9 ]; then
+if [ $stage -le 10 ]; then
   # Get the alignments as lattices (gives the CTC training more freedom).
   # use the same num-jobs as the alignments
   nj=$(cat exp/tri4_ali_nodup$suffix/num_jobs) || exit 1;
@@ -93,7 +95,7 @@ if [ $stage -le 9 ]; then
 fi
 
 
-if [ $stage -le 10 ]; then
+if [ $stage -le 11 ]; then
   # Create a version of the lang/ directory that has one state per phone in the
   # topo file. [note, it really has two states.. the first one is only repeated
   # once, the second one has zero or more repeats.]
@@ -106,7 +108,7 @@ if [ $stage -le 10 ]; then
   steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >$lang/topo
 fi
 
-if [ $stage -le 11 ]; then
+if [ $stage -le 12 ]; then
   # Build a tree using our new topology. This is the critically different
   # step compared with other recipes.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
@@ -115,7 +117,7 @@ if [ $stage -le 11 ]; then
       --cmd "$train_cmd" 7000 data/$train_set $lang $ali_dir $treedir
 fi
 
-if [ $stage -le 12 ]; then
+if [ $stage -le 13 ]; then
   echo "$0: creating neural net configs";
   if [ ! -z "$relu_dim" ]; then
     dim_opts="--relu-dim $relu_dim"
@@ -143,7 +145,7 @@ fi
 
 
 
-if [ $stage -le 13 ]; then
+if [ $stage -le 14 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
      /export/b0{5,6,7,8}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
@@ -178,7 +180,7 @@ if [ $stage -le 13 ]; then
 
 fi
 
-if [ $stage -le 14 ]; then
+if [ $stage -le 15 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.

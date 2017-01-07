@@ -108,7 +108,7 @@ if [ -f $destdir/cmvn.scp ]; then
 fi
 
 # these things won't be affected by the change of speaker mapping.
-for f in feats.scp segments wav.scp reco2file_and_channel text stm glm ctm; do
+for f in feats.scp segments wav.scp reco2file_and_channel text stm glm ctm offsets.scp; do
   [ -f $srcdir/$f ] && cp $srcdir/$f $destdir/
 done
 

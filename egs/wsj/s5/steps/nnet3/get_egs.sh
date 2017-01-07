@@ -182,6 +182,7 @@ if [ -f $dir/trans.scp ]; then
   valid_feats="$valid_feats transform-feats --utt2spk=ark:$data/utt2spk scp:$dir/trans.scp ark:- ark:- |"
   train_subset_feats="$train_subset_feats transform-feats --utt2spk=ark:$data/utt2spk scp:$dir/trans.scp ark:- ark:- |"
 fi
+
 num_offsets=1
 if [ -f $data/offsets.scp ]; then
   num_offsets=`feat-to-len --print-args=false scp:"head -n 1 $data/offsets.scp |"`
