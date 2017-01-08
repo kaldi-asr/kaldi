@@ -275,7 +275,14 @@ void LmNnetSamplingTrainer::ProcessOutputs(const NnetExample &eg,
                                  &tot_weight, &tot_objf,
                                  *nnet_->O(),
                                  &new_output_, delta_nnet_);
-      } else if (dynamic_cast<const LinearNormalizedLogSoftmaxComponent*>(nnet_->O())
+      } else if (dynamic_cast<const LinearSoftmaxNormalizedComponent*>(nnet_->O())
+                   != NULL) {
+        ComputeObjectiveFunctionNormalized(io.features, obj_type, io.name,
+                                           supply_deriv, computer,
+                                           &tot_weight, &tot_objf,
+                                           *nnet_->O(),
+                                           &new_output_, delta_nnet_);
+      } else if (dynamic_cast<const LinearSigmoidNormalizedComponent*>(nnet_->O())
                    != NULL) {
         ComputeObjectiveFunctionNormalized(io.features, obj_type, io.name,
                                            supply_deriv, computer,
@@ -410,9 +417,20 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionNormalized(
 //  CuMatrix<BaseFloat> out(new_output->NumRows(), samples.size(), kSetZero);
   vector<BaseFloat> out(indexes.size());
 
-  const LinearNormalizedLogSoftmaxComponent& output_project_norm =
-    dynamic_cast<const LinearNormalizedLogSoftmaxComponent&>(output_projection);
-  output_project_norm.Propagate(*new_output, indexes, &out);
+  {
+    const LinearSoftmaxNormalizedComponent* output_project_norm =
+      dynamic_cast<const LinearSoftmaxNormalizedComponent*>(&output_projection);
+    if (output_project_norm != NULL) {
+      output_project_norm->Propagate(*new_output, indexes, &out);
+    }
+  }
+  {
+    const LinearSigmoidNormalizedComponent* output_project_norm =
+      dynamic_cast<const LinearSigmoidNormalizedComponent*>(&output_projection);
+    if (output_project_norm != NULL) {
+      output_project_norm->Propagate(*new_output, indexes, &out);
+    }
+  }
 
   *tot_weight = post.Sum();
   *tot_objf = 0;
@@ -437,9 +455,25 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionNormalized(
         kSetZero);
 
     CuMatrix<BaseFloat> place_holder;
-    output_project_norm.Backprop(indexes, *new_output, place_holder,
-        output_deriv, nnet->output_projection_,
-        &input_deriv);
+
+  {
+    const LinearSoftmaxNormalizedComponent* output_project_norm =
+      dynamic_cast<const LinearSoftmaxNormalizedComponent*>(&output_projection);
+    if (output_project_norm != NULL) {
+      output_project_norm->Backprop(indexes, *new_output, place_holder,
+          output_deriv, nnet->output_projection_,
+          &input_deriv);
+    }
+  }
+  {
+    const LinearSigmoidNormalizedComponent* output_project_norm =
+      dynamic_cast<const LinearSigmoidNormalizedComponent*>(&output_projection);
+    if (output_project_norm != NULL) {
+      output_project_norm->Backprop(indexes, *new_output, place_holder,
+          output_deriv, nnet->output_projection_,
+          &input_deriv);
+    }
+  }
 
     //    CuMatrix<BaseFloat> cu_input_deriv(input_deriv);
 
