@@ -69,7 +69,7 @@ for d in exp/ihm/chain/tdnn_sp_bi/decode_*; do grep Sum $d/*sc*/*ys | utils/best
 %WER 22.4 | 13098 94476 | 80.4 10.4 9.2 2.8 22.4 54.6 | 0.069 | exp/ihm/chain/tdnn_sp_bi/decode_dev/ascore_10/dev_hires.ctm.filt.sys
 %WER 22.5 | 12643 89974 | 80.0 12.1 7.9 2.6 22.5 52.8 | 0.157 | exp/ihm/chain/tdnn_sp_bi/decode_eval/ascore_10/eval_hires.ctm.filt.sys
 
-# local/chain/multi_condition/run_tdnn.sh --mic ihm &
+# local/chain/multi_condition/run_tdnn.sh --mic ihm
 # cleanup + chain TDNN model + IHM reverberated data
 # for d in exp/ihm/chain_cleaned_rvb/tdnn_sp_bi/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
 %WER 21.5 | 13098 94486 | 81.8 11.0 7.2 3.3 21.5 54.6 | 0.090 | exp/ihm/chain_cleaned_rvb/tdnn_sp_rvb_bi/decode_dev/ascore_10/dev_hires.ctm.filt.sys
@@ -80,3 +80,10 @@ for d in exp/ihm/chain/tdnn_sp_bi/decode_*; do grep Sum $d/*sc*/*ys | utils/best
 # cleanup + chain TDNN+LSTM model
 %WER 20.8 | 13098 94489 | 82.0 10.0 8.0 2.8 20.8 53.2 | -0.096 | exp/ihm/chain_cleaned/tdnn_lstm1i_sp_bi_ld5/decode_dev/ascore_11/dev_hires.ctm.filt.sys
 %WER 20.7 | 12643 89980 | 81.7 11.5 6.8 2.5 20.7 51.8 | 0.015 | exp/ihm/chain_cleaned/tdnn_lstm1i_sp_bi_ld5/decode_eval/ascore_11/eval_hires.ctm.filt.sys
+
+
+# local/chain/multi_condition/tuning/run_tdnn_lstm_1a.sh --mic ihm
+# cleanup + chain TDNN+LSTM model + IHM reverberated data
+%WER 19.4 | 13098 94479 | 83.8 10.0 6.1 3.2 19.4 51.8 | -0.168 | exp/ihm/chain_cleaned_rvb/tdnn_lstm1i_sp_rvb_bi/decode_dev/ascore_10/dev_hires.ctm.filt.sys
+%WER 19.3 | 12643 89977 | 83.3 11.0 5.7 2.6 19.3 49.6 | -0.046 | exp/ihm/chain_cleaned_rvb/tdnn_lstm1i_sp_rvb_bi/decode_eval/ascore_10/eval_hires.ctm.filt.sys
+
