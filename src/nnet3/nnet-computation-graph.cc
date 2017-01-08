@@ -1596,6 +1596,12 @@ void ComputationStepsComputer::ProcessInputOrOutputStep(
 
 int32 ComputationStepsComputer::AddStep(const std::vector<Cindex> &cindexes,
                                         bool add_if_absent) {
+  // note: we can't assert that cindexes is nonempty, because it's possible for
+  // input steps for GeneralComponents to be empty if they require no input
+  // indexes; and because the compiler code expects component steps to be
+  // preceded by component-input steps, we can't just omit these empty steps.
+  // [note: a component-input step is about preparing the input for a component's
+  // propagation.]
   int32 step_index = steps_->size();
   steps_->push_back(std::vector<int32>());
   std::vector<int32> &step = steps_->back();  // vector of cindex_id.
@@ -1639,7 +1645,6 @@ int32 ComputationStepsComputer::AddStep(const std::vector<Cindex> &cindexes,
 
 int32 ComputationStepsComputer::AddStep(std::vector<int32> *cindex_ids) {
   int32 step_index = steps_->size();
-  KALDI_ASSERT(!cindex_ids->empty());
   steps_->push_back(std::vector<int32>());
   steps_->back().swap(*cindex_ids);
   std::vector<int32>::const_iterator iter = steps_->back().begin(),
@@ -1769,6 +1774,7 @@ void ComputationStepsComputer::ProcessComponentStep(
       int32 c = *set_iter;
       input_step.push_back(graph_->cindexes[c]);
     }
+
     // sort the input cindexes.
     std::sort(input_step.begin(), input_step.end());
 

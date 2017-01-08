@@ -1332,8 +1332,9 @@ class PerElementOffsetComponent: public UpdatableComponent {
 // i.e. its output does not depend on its input.  It is the same as
 // an affine component with the linear term fixed at zero.
 // It is optionally trainable, and optionally you can use natural
-// gradient.  The input is required only because the framework
-// requires components to have an input.
+// gradient.  The input is required only because it's more convenient
+// to make SimpleComponents [but see ConstantComponent, which requires
+// no inputs].
 class ConstantFunctionComponent: public UpdatableComponent {
  public:
   virtual int32 InputDim() const { return input_dim_; }

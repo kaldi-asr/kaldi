@@ -725,10 +725,10 @@ void ComputationChecker::CheckComputationIndexes() const {
         // note: input may be the empty matrix (in unusual circumstances, for non-simple
         // components).
         if (c.arg3 < 0 || c.arg3 >= num_submatrices ||
-            (c.arg3 == 0 && !(properties & kSimpleComponent)) ||
+            (c.arg3 == 0 && (properties & kSimpleComponent)) ||
             c.arg4 < 1 || c.arg4 >= num_submatrices)
-          KALDI_ERR << "Sub-matrix indexes out of range.";
-        if (submatrices[c.arg3].num_cols != component->InputDim())
+            KALDI_ERR << "Sub-matrix indexes out of range.";
+        if (c.arg3 > 0 && submatrices[c.arg3].num_cols != component->InputDim())
           KALDI_ERR << "Input-dim mismatch.";
         if (submatrices[c.arg4].num_cols != component->OutputDim())
           KALDI_ERR << "Input-dim mismatch.";

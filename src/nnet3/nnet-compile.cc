@@ -51,6 +51,7 @@ void Compiler::CreateComputation(const CompilerOptions &opts,
                                  NnetComputation *computation) {
   computation->Clear();
   ComputationGraphBuilder builder(nnet_, &graph_);
+  // note: there are only >1 segments in a 'looped' computation.
   for (size_t segment = 0; segment < requests_.size(); segment++) {
     builder.Compute(*(requests_[segment]));
     if (!builder.AllOutputsAreComputable()) {
@@ -59,18 +60,23 @@ void Compiler::CreateComputation(const CompilerOptions &opts,
     }
     builder.Prune();
   }
-  // see function declaration's comment for meaning of "phases".
+  // see function declaration's comment for more on the meaning of "phases" (a
+  // phase will later be decomposed into one or more steps).  for each segment
+  // s, phases_per_segment[s] is a list of phases; each phase is a list of
+  // cindex_ids.
   std::vector<std::vector<std::vector<int32> > > phases_per_segment;
   ComputeComputationPhases(nnet_, graph_, &phases_per_segment);
   std::vector<std::vector<int32> > steps;
   steps.reserve(1000);
 
   // maps each step to the segment in which it appears.  in the normal case
-  // (non-online computation), a vector of all zeros.
+  // (non-looped computation), a vector of all zeros.
   std::vector<int32> step_to_segment;
 
 
   {
+    // note: this class will output to 'steps' and to 'cindex_id_to_location_'.
+    // it may incidentally change 'graph_' by adding a few cindexes.
     ComputationStepsComputer steps_computer(nnet_, &graph_, &steps,
                                             &cindex_id_to_location_);
 
@@ -80,7 +86,8 @@ void Compiler::CreateComputation(const CompilerOptions &opts,
       while (step_to_segment.size() < steps.size())
         step_to_segment.push_back(segment);
 
-      // save memory, by deleting the phases we just consumed.
+      // save memory, by deleting the phases we just consumed.  the
+      // following two lines just exist to save memory.
       std::vector<std::vector<int32> > temp;
       phases_per_segment[segment].swap(temp);
     }
@@ -280,10 +287,23 @@ void Compiler::CreateStepInfo(
     for (int32 row_index = 0; row_index < num_ids; row_index++)
       this_info.output_indexes[row_index] =
           graph_.cindexes[this_info.output_cindex_ids[row_index]].second;
-    KALDI_ASSERT(num_ids > 0);
-    // node id's of all Cindexes are the same, so just use first one.
-    this_info.node_index =
-        graph_.cindexes[this_info.output_cindex_ids.front()].first;
+    if (num_ids > 0) {
+      // node id's of all Cindexes are the same, so just use first one.
+      this_info.node_index =
+          graph_.cindexes[this_info.output_cindex_ids.front()].first;
+    } else {
+      // it's possible to have an empty step if it's the component-input step of
+      // a GeneralComponent that does not always have dependencies, such as the
+      // ConstantFunctionComponent.  This is just a kind of placeholder; it will
+      // generate no commands.  The next command works because the next
+      // step will be the propagate for that Component, whose node-index is one
+      // more than the component-input node.
+      KALDI_ASSERT((step+1) < by_step->size() && !(*by_step)[step+1].empty());
+      this_info.node_index =
+          graph_.cindexes[(*by_step)[step+1][0]].first - 1;
+      KALDI_ASSERT(this_info.node_index >= 0);
+      continue;  // we don't need to do anything else for this step.
+    }
     const NetworkNode &node = nnet_.GetNode(this_info.node_index);
     int32 num_rows = num_ids, num_cols = node.Dim(nnet_);
 
@@ -1077,7 +1097,8 @@ void Compiler::OutputDebugInfo(NnetComputation *computation) const {
   computation->matrix_debug_info.resize(num_matrices);
   for (int32 step = 0; step < num_steps; step++) {
     const StepInfo &step_info = steps_[step];
-    KALDI_ASSERT(step_info.value != 0);
+    if (step_info.value == 0)
+      continue;  // e.g. input step for ConstantComponent.
     if (!computation->IsWholeMatrix(step_info.value))
       continue;
     int32 value_matrix = computation->submatrices[step_info.value].matrix_index;
