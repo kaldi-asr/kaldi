@@ -388,6 +388,11 @@ void GenerateConfigSequenceLstm(
 
   os << "input-node name=input dim=" << input_dim << std::endl;
 
+  // trainable cell value for start/end of file.
+  os << "component name=c0 type=ConstantComponent"
+     << " output-dim=" << cell_dim << std::endl;
+
+
   // Parameter Definitions W*(* replaced by - to have valid names)
   // Input gate control : Wi* matrices
   os << "component name=Wi-xr type=NaturalGradientAffineComponent"
@@ -467,7 +472,13 @@ void GenerateConfigSequenceLstm(
   }
   std::string spliced_input = temp_string_stream.str();
 
-  std::string c_tminus1 = "Sum(IfDefined(Offset(c1_t, -1)), IfDefined(Offset( c2_t, -1)))";
+  std::string c_tminus1 = "Sum(Failover(Offset(c1_t, -1), c0), IfDefined(Offset( c2_t, -1)))";
+
+
+  // c0.  note: the input is never used as the component requires
+  // no input indexes; we just write itself as input to keep the
+  // structures happy.
+  os << "component-node name=c0 component=c0 input=c0\n";
 
   // i_t
   os << "component-node name=i1 component=Wi-xr input=Append("

@@ -1185,5 +1185,195 @@ void BackpropTruncationComponent::Add(BaseFloat alpha,
   num_zeroed_ += alpha * other->num_zeroed_;
 }
 
+
+std::string ConstantComponent::Info() const {
+  std::ostringstream stream;
+  stream << UpdatableComponent::Info()
+         << ", " << Type()
+         << ", output-dim=" << OutputDim()
+         << ", is-updatable=" << std::boolalpha << is_updatable_
+         << ", use-natural-gradient=" << std::boolalpha
+         << use_natural_gradient_;
+  PrintParameterStats(stream, "output", output_, true);
+  return stream.str();
+}
+
+ConstantComponent::ConstantComponent():
+    UpdatableComponent(), is_updatable_(true),
+    use_natural_gradient_(true) { }
+
+ConstantComponent::ConstantComponent(
+    const ConstantComponent &other):
+    UpdatableComponent(other), output_(other.output_),
+    is_updatable_(other.is_updatable_),
+    use_natural_gradient_(other.use_natural_gradient_),
+    preconditioner_(other.preconditioner_) { }
+
+void ConstantComponent::Propagate(
+    const ComponentPrecomputedIndexes *indexes,
+    const CuMatrixBase<BaseFloat> &in,
+    CuMatrixBase<BaseFloat> *out) const {
+  out->CopyRowsFromVec(output_);
+}
+
+void ConstantComponent::Backprop(
+    const std::string &debug_info,
+    const ComponentPrecomputedIndexes *indexes,
+    const CuMatrixBase<BaseFloat> &, // in_value
+    const CuMatrixBase<BaseFloat> &, // out_value
+    const CuMatrixBase<BaseFloat> &out_deriv,
+    Component *to_update_in,
+    CuMatrixBase<BaseFloat> *in_deriv) const {
+  // we don't update in_deriv, since we set the flag
+  // kBackpropAdds, and the output doesn't depend on the
+  // input, so the input-derivative is zero.
+  if (to_update_in) {
+    ConstantComponent *to_update =
+      dynamic_cast<ConstantComponent*>(to_update_in);
+    if (to_update->is_updatable_) {
+      // only do the update if the is_updatable_ flag is set.
+      KALDI_ASSERT(to_update && to_update->is_updatable_);
+      if (to_update->use_natural_gradient_ && !to_update->is_gradient_) {
+        CuMatrix<BaseFloat> out_deriv_copy(out_deriv);
+        BaseFloat scale = 1.0;
+        to_update->preconditioner_.PreconditionDirections(&out_deriv_copy,
+                                                          NULL, &scale);
+        to_update->output_.AddRowSumMat(scale * to_update->learning_rate_,
+                                        out_deriv_copy);
+      } else {
+        to_update->output_.AddRowSumMat(to_update->learning_rate_,
+                                        out_deriv);
+      }
+    }
+  }
+}
+
+void ConstantComponent::Read(std::istream &is, bool binary) {
+  std::string token;
+  ReadToken(is, binary, &token);
+  if (token == "<ConstantComponent>") {
+    ReadToken(is, binary, &token);
+  }
+  if (token == "<LearningRateFactor>") {
+    ReadBasicType(is, binary, &learning_rate_factor_);
+    ReadToken(is, binary, &token);
+  } else {
+    learning_rate_factor_ = 1.0;
+  }
+  if (token == "<IsGradient>") {
+    ReadBasicType(is, binary, &is_gradient_);
+    ReadToken(is, binary, &token);
+  } else {
+    is_gradient_ = false;
+  }
+  if (token == "<MaxChange>") {
+    ReadBasicType(is, binary, &max_change_);
+    ReadToken(is, binary, &token);
+  } else {
+    max_change_ = 0.0;
+  }
+  if (token == "<LearningRate>") {
+    ReadBasicType(is, binary, &learning_rate_);
+    ReadToken(is, binary, &token);
+  } else {
+    learning_rate_ = 0.001;
+  }
+  if (token != "<Output>") {
+    KALDI_ERR << "Expected token <Output>, got " << token;
+  }
+  output_.Read(is, binary);
+  ExpectToken(is, binary, "<IsUpdatable>");
+  ReadBasicType(is, binary, &is_updatable_);
+  ExpectToken(is, binary, "<UseNaturalGradient>");
+  ReadBasicType(is, binary, &use_natural_gradient_);
+  ExpectToken(is, binary, "</ConstantComponent>");
+}
+
+void ConstantComponent::Write(std::ostream &os, bool binary) const {
+  WriteUpdatableCommon(os, binary);  // Write the opening tag and learning rate
+  WriteToken(os, binary, "<Output>");
+  output_.Write(os, binary);
+  WriteToken(os, binary, "<IsUpdatable>");
+  WriteBasicType(os, binary, is_updatable_);
+  WriteToken(os, binary, "<UseNaturalGradient>");
+  WriteBasicType(os, binary, use_natural_gradient_);
+  WriteToken(os, binary, "</ConstantComponent>");
+}
+
+Component* ConstantComponent::Copy() const {
+  return new ConstantComponent(*this);
+}
+
+void ConstantComponent::Scale(BaseFloat scale) {
+  if (is_updatable_)
+    output_.Scale(scale);
+}
+
+void ConstantComponent::Add(BaseFloat alpha, const Component &other_in) {
+  if (is_updatable_) {
+    const ConstantComponent *other =
+        dynamic_cast<const ConstantComponent*>(&other_in);
+    KALDI_ASSERT(other != NULL);
+    output_.AddVec(alpha, other->output_);
+  }
+}
+
+void ConstantComponent::SetZero(bool treat_as_gradient) {
+  if (treat_as_gradient) {
+    SetActualLearningRate(1.0);
+    is_gradient_ = true;
+  }
+  output_.SetZero();
+}
+
+void ConstantComponent::PerturbParams(BaseFloat stddev) {
+  CuVector<BaseFloat> temp_output(output_.Dim(), kUndefined);
+  temp_output.SetRandn();
+  output_.AddVec(stddev, temp_output);
+}
+
+BaseFloat ConstantComponent::DotProduct(
+    const UpdatableComponent &other_in) const {
+  KALDI_ASSERT(is_updatable_);
+  const ConstantComponent *other =
+      dynamic_cast<const ConstantComponent*>(&other_in);
+  KALDI_ASSERT(other != NULL);
+  return VecVec(output_, other->output_);
+}
+
+void ConstantComponent::InitFromConfig(ConfigLine *cfl) {
+  int32 output_dim = 0;
+  InitLearningRatesFromConfig(cfl);
+  bool ok = cfl->GetValue("output-dim", &output_dim);
+  cfl->GetValue("is-updatable", &is_updatable_);
+  cfl->GetValue("use-natural-gradient", &use_natural_gradient_);
+  BaseFloat output_mean = 0.0, output_stddev = 0.0;
+  cfl->GetValue("output-mean", &output_mean);
+  cfl->GetValue("output-stddev", &output_stddev);
+  if (!ok || cfl->HasUnusedValues() || output_dim <= 0) {
+    KALDI_ERR << "Bad initializer " << cfl->WholeLine();
+  }
+  Vector<BaseFloat> output(output_dim);
+  output.SetRandn();
+  output.Scale(output_stddev);
+  output.Add(output_mean);
+  output_ = output;
+}
+
+int32 ConstantComponent::NumParameters() const {
+  KALDI_ASSERT(is_updatable_);
+  return output_.Dim();
+}
+
+void ConstantComponent::Vectorize(VectorBase<BaseFloat> *params) const {
+  params->CopyFromVec(output_);
+}
+
+void ConstantComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
+  output_.CopyFromVec(params);
+}
+
+
+
 } // namespace nnet3
 } // namespace kaldi
