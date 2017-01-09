@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Copyright 2012-2014  Brno University of Technology (Author: Karel Vesely)
+# Copyright 2016  Radboud University (Author: Emre Yilmaz)
 # Apache 2.0
 
 # This example script trains a DNN on top of fMLLR features. 

@@ -5,15 +5,10 @@
 . ./utils/parse_options.sh
 
 stage=0
-feat_nj=60
-train_nj=60
-decode_nj=20
-corpus=./corpus
-
-# Please check http://www.ru.nl/clst/datasets/ to get the username and password
-
-USERNAME=******
-PASSWORD=******
+feat_nj=10
+train_nj=10
+decode_nj=10
+famecorpus=./corpus # Please check http://www.ru.nl/clst/datasets/ to get the data and modify this line if necessary
 
 numLeavesTri1=5000
 numGaussTri1=25000
@@ -25,15 +20,9 @@ numGaussUBM=800
 numLeavesSGMM=10000
 numGaussSGMM=20000
 
-if [ $stage -le 0 ] && [ ! -f ./fame.tar.gz ]; then
-    wget --user=$USERNAME --password="$PASSWORD" http://applejack.science.ru.nl/fame/fame.tar.gz
-    tar xzf fame.tar.gz
-fi
-
-
 if [ $stage -le 1 ]; then
-  local/fame_data_prep.sh $corpus || exit 1;
-  local/fame_dict_prep.sh $corpus || exit 1;
+  local/fame_data_prep.sh $famecorpus || exit 1;
+  local/fame_dict_prep.sh $famecorpus || exit 1;
   utils/prepare_lang.sh data/local/dict "<UNK>" data/local/lang data/lang || exit 1;
   cp -R data/lang data/lang_test || exit 1;
   local/arpa2G.sh data/local/LM data/lang_test data/lang_test || exit 1;
@@ -125,6 +114,5 @@ if [ $stage -le 8 ]; then
   local/nnet/run_dnn_fbank.sh || exit 1;
 fi
 
-wait;
 #score
 for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
