@@ -7,13 +7,13 @@ ifeq ($(KALDI_FLAVOR), dynamic)
       LIBFILE = lib$(LIBNAME).dylib
     endif
     LDFLAGS += -Wl,-rpath -Wl,$(KALDILIBDIR)
-    XDEPENDS = $(foreach dep,$(ADDLIBS), $(dir $(dep))lib$(notdir $(basename $(dep))).dylib)
+    EXTRA_LDLIBS += $(foreach dep,$(ADDLIBS), $(dir $(dep))lib$(notdir $(basename $(dep))).dylib)
   else ifeq ($(shell uname), Linux)
     ifdef LIBNAME
       LIBFILE = lib$(LIBNAME).so
     endif
     LDFLAGS += -Wl,-rpath=$(shell readlink -f $(KALDILIBDIR))
-    XDEPENDS = $(foreach dep,$(ADDLIBS), $(dir $(dep))lib$(notdir $(basename $(dep))).so)
+    EXTRA_LDLIBS += $(foreach dep,$(ADDLIBS), $(dir $(dep))lib$(notdir $(basename $(dep))).so)
   else  # Platform not supported
     $(error Dynamic libraries not supported on this platform. Run configure with --static flag.)
   endif
@@ -31,11 +31,11 @@ $(LIBFILE): $(OBJFILES)
 	$(RANLIB) $(LIBNAME).a
 ifeq ($(KALDI_FLAVOR), dynamic)
 ifeq ($(shell uname), Darwin)
-	$(CXX) -dynamiclib -o $@ -install_name @rpath/$@ $(LDFLAGS) $(OBJFILES) $(XDEPENDS) $(LDLIBS)
+	$(CXX) -dynamiclib -o $@ -install_name @rpath/$@ $(LDFLAGS) $(OBJFILES) $(LDLIBS)
 	rm -f $(KALDILIBDIR)/$@; ln -s $(shell pwd)/$@ $(KALDILIBDIR)/$@
 else ifeq ($(shell uname), Linux)
 	# Building shared library from static (static was compiled with -fPIC)
-	$(CXX) -shared -o $@ -Wl,--no-undefined -Wl,--as-needed  -Wl,-soname=$@,--whole-archive $(LIBNAME).a -Wl,--no-whole-archive  $(LDFLAGS) $(XDEPENDS) $(LDLIBS)
+	$(CXX) -shared -o $@ -Wl,--no-undefined -Wl,--as-needed  -Wl,-soname=$@,--whole-archive $(LIBNAME).a -Wl,--no-whole-archive $(LDFLAGS) $(LDLIBS)
 	rm -f $(KALDILIBDIR)/$@; ln -s $(shell pwd)/$@ $(KALDILIBDIR)/$@
 else  # Platform not supported
 	$(error Dynamic libraries not supported on this platform. Run configure with --static flag.)
@@ -47,7 +47,11 @@ endif
 # use the C++ compiler $(CXX) instead.
 LINK.o = $(CXX) $(LDFLAGS) $(TARGET_ARCH)
 
+ifeq ($(KALDI_FLAVOR), dynamic)
+$(BINFILES): $(LIBFILE)
+else
 $(BINFILES): $(LIBFILE) $(XDEPENDS)
+endif
 
 # Rule below would expand to, e.g.:
 # ../base/kaldi-base.a:
@@ -65,7 +69,11 @@ clean:
 distclean: clean
 	-rm -f .depend.mk
 
+ifeq ($(KALDI_FLAVOR), dynamic)
+$(TESTFILES): $(LIBFILE)
+else
 $(TESTFILES): $(LIBFILE) $(XDEPENDS)
+endif
 
 test_compile: $(TESTFILES)
 
