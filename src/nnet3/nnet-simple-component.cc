@@ -119,15 +119,21 @@ void DropoutComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
 
   BaseFloat dropout = dropout_proportion_;
   KALDI_ASSERT(dropout >= 0.0 && dropout <= 1.0);
-
+  // randomize the dropout matrix by row,
+  // i.e. [[1,1,1,1],[0,0,0,0],[0,0,0,0],[1,1,1,1],[0,0,0,0]]
   // This const_cast is only safe assuming you don't attempt
   // to use multi-threaded code with the GPU.
   const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(out);
-
-  out->Add(-dropout); // now, a proportion "dropout" will be <0.0
-  out->ApplyHeaviside(); // apply the function (x>0?1:0).  Now, a proportion "dropout" will
-                         // be zero and (1 - dropout) will be 1.0.
-
+  // now, a proportion "dropout" will be <0.0
+  out->Add(-dropout);
+  // apply the function (x>0?1:0).  Now, a proportion "dropout" will
+  // be zero and (1 - dropout) will be 1.0.
+  out->ApplyHeaviside();
+  CuVector<BaseFloat> *random_drop_vector = new CuVector<BaseFloat>(in.NumRows(), kSetZero);
+  MatrixIndexT i = 0;
+  random_drop_vector->CopyColFromMat(*out, i);
+  out->SetZero();
+  out->AddVecToCols(1.0 , *random_drop_vector, 1.0);
   out->MulElements(in);
 }
 
