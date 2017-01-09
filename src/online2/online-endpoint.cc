@@ -28,7 +28,7 @@ static bool RuleActivated(const OnlineEndpointRule &rule,
                           BaseFloat relative_cost,
                           BaseFloat utterance_length) {
   bool contains_nonsilence = (utterance_length > trailing_silence);
-  
+
   bool ans = (contains_nonsilence || !rule.must_contain_nonsilence) &&
       trailing_silence >= rule.min_trailing_silence &&
       relative_cost <= rule.max_relative_cost &&
@@ -47,12 +47,11 @@ bool EndpointDetected(const OnlineEndpointConfig &config,
                       int32 trailing_silence_frames,
                       BaseFloat frame_shift_in_seconds,
                       BaseFloat final_relative_cost) {
-  KALDI_ASSERT(final_relative_cost >= 0.0 &&
-               num_frames_decoded >= trailing_silence_frames);
+  KALDI_ASSERT(num_frames_decoded >= trailing_silence_frames);
 
   BaseFloat utterance_length = num_frames_decoded * frame_shift_in_seconds,
       trailing_silence = trailing_silence_frames * frame_shift_in_seconds;
-  
+
   if (RuleActivated(config.rule1, "rule1",
                     trailing_silence, final_relative_cost, utterance_length))
     return true;
@@ -107,7 +106,7 @@ int32 TrailingSilenceLength(const TransitionModel &tmodel,
 
 bool EndpointDetected(
     const OnlineEndpointConfig &config,
-    const TransitionModel &tmodel,    
+    const TransitionModel &tmodel,
     BaseFloat frame_shift_in_seconds,
     const LatticeFasterOnlineDecoder &decoder) {
   if (decoder.NumFramesDecoded() == 0) return false;
@@ -120,7 +119,7 @@ bool EndpointDetected(
                                                       decoder);
 
   return EndpointDetected(config, num_frames_decoded, trailing_silence_frames,
-                          frame_shift_in_seconds, final_relative_cost);  
+                          frame_shift_in_seconds, final_relative_cost);
 }
 
 

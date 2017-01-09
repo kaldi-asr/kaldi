@@ -67,6 +67,9 @@ $(BINFILES): $(LIBFILE) $(XDEPENDS)
 clean:
 	-rm -f *.o *.a *.so $(TESTFILES) $(BINFILES) $(TESTOUTPUTS) tmp* *.tmp *.testlog
 
+distclean: clean
+	-rm -f .depend.mk
+
 $(TESTFILES): $(LIBFILE) $(XDEPENDS)
 
 test_compile: $(TESTFILES)
@@ -75,16 +78,20 @@ test: test_compile
 	@{ result=0;			\
 	for x in $(TESTFILES); do	\
 	  printf "Running $$x ...";	\
+      timestamp1=$$(date +"%s"); \
 	  ./$$x >$$x.testlog 2>&1;	\
-	  if [ $$? -ne 0 ]; then	\
-	    echo "... FAIL $$x";	\
+      ret=$$? \
+      timestamp2=$$(date +"%s"); \
+      time_taken=$$[timestamp2-timestamp1]; \
+	  if [ $$ret -ne 0 ]; then \
+	    echo " $${time_taken}s... FAIL $$x"; \
 	    result=1;			\
 	    if [ -n "$TRAVIS" ] && [ -f core ] && command -v gdb >/dev/null 2>&1; then	\
 	      gdb $$x core -ex "thread apply all bt" -batch >>$$x.testlog 2>&1;		\
 	      rm -rf core;		\
 	    fi;				\
 	  else				\
-	    echo "... SUCCESS";		\
+	    echo " $${time_taken}s... SUCCESS";		\
 	    rm -f $$x.testlog;		\
 	  fi;				\
 	done;				\

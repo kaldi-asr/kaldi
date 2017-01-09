@@ -310,13 +310,7 @@ inline void cuda_mul_rows_group_mat(dim3 Gr, dim3 Bl, float *y, const float *x,
                                     int group_size) {
   cudaF_mul_rows_group_mat(Gr, Bl, y, x, d, src_stride, group_size);
 }
-inline void cuda_calc_pnorm_deriv(dim3 Gr, dim3 Bl, float *y, const float *x1,
-                                  const float *x2, MatrixDim y_dim,
-                                  int x1_stride, int x2_stride, int group_size,
-                                  float power) {
-  cudaF_calc_pnorm_deriv(Gr, Bl, y, x1, x2, y_dim, x1_stride, x2_stride,
-                         group_size, power);
-}
+
 inline void cuda_diff_group_pnorm(dim3 Gr, dim3 Bl, float *id, const float *iv,
                                   const float *ov, const float* od,
                                   MatrixDim id_dim, int iv_stride,
@@ -343,11 +337,11 @@ inline void cuda_add_mat_blocks(dim3 Gr, dim3 Bl, float alpha, const float *src,
   cudaF_add_mat_blocks(Gr, Bl, alpha, src, num_row_blocks, num_col_blocks, dst,
                        d, src_stride, A_trans);
 }
-inline void cuda_add_mat_mat_div_mat(dim3 Gr, dim3 Bl, const float *A,
+inline void cuda_set_mat_mat_div_mat(dim3 Gr, dim3 Bl, const float *A,
                                      const float *B, const float *C, float *dst,
                                      MatrixDim d, int stride_a, int stride_b,
                                      int stride_c) {
-  cudaF_add_mat_mat_div_mat(Gr, Bl, A, B, C, dst, d, stride_a, stride_b,
+  cudaF_set_mat_mat_div_mat(Gr, Bl, A, B, C, dst, d, stride_a, stride_b,
                             stride_c);
 }
 inline void cuda_add_vec_to_cols(dim3 Gr, dim3 Bl, float alpha,
@@ -553,6 +547,17 @@ inline void cuda_diff_tanh(dim3 Gr, dim3 Bl, float *eout, const float *e,
                            int y_stride) {
   cudaF_diff_tanh(Gr, Bl, eout, e, y, d, e_stride, y_stride);
 }
+inline void cuda_parametric_relu(dim3 Gr, dim3 Bl, float *y, const float *x,
+                                 MatrixDim d, int src_stride,
+                                 const float *a, const float *b) {
+  cudaF_parametric_relu(Gr,Bl,y,x,d,src_stride,a,b);
+}
+inline void cuda_diff_parametric_relu(dim3 Gr, dim3 Bl, float *eout,
+                                      const float *e, const float *y,
+                                      MatrixDim d, int e_stride, int y_stride,
+                                      const float *a, const float *b) {
+  cudaF_diff_parametric_relu(Gr,Bl,eout,e,y,d,e_stride,y_stride,a,b);
+}
 inline void cuda_heaviside(dim3 Gr, dim3 Bl, float *y, const float *x,
                            MatrixDim d, int src_stride) {
   cudaF_heaviside(Gr, Bl, y, x, d, src_stride);
@@ -585,10 +590,25 @@ inline void cuda_diff_xent(dim3 Gr, dim3 Bl, const int32_cuda *vec_tgt,
                            MatrixDim d) {
   cudaF_diff_xent(Gr, Bl, vec_tgt, mat_net_out, vec_log_post, d);
 }
+inline void cuda_normalize_per_row(size_t Gr, size_t Bl, float *y, int y_stride,
+                                   const float *x, MatrixDim x_d,
+                                   float target_rms, bool add_log_stddev) {
+  cudaF_normalize_per_row(Gr, Bl, y, y_stride, x, x_d, target_rms,
+                          add_log_stddev);
+}
 inline void cuda_diff_softmax(dim3 Gr, dim3 Bl, float* x, const MatrixDim dim,
                               const float* value, const int value_stride,
                               const float* diff, const int diff_stride) {
   cudaF_diff_softmax(Gr, Bl, x, dim, value, value_stride, diff, diff_stride);
+}
+inline void cuda_diff_log_softmax(dim3 Gr, dim3 Bl,
+                                  const MatrixDim in_deriv_dim,
+                                  const float* out_value,
+                                  const int out_value_stride,
+                                  const float* out_deriv,
+                                  const int out_deriv_stride, float* in_deriv) {
+  cudaF_diff_log_softmax(Gr, Bl, in_deriv_dim, out_value, out_value_stride,
+                         out_deriv, out_deriv_stride, in_deriv);
 }
 inline void cuda_copy_rows_from_vec(dim3 Gr, dim3 Bl, float *mat_out,
                                     MatrixDim d_out, const float *v_in) {
@@ -830,13 +850,7 @@ inline void cuda_mul_rows_group_mat(dim3 Gr, dim3 Bl, double *y,
                                     int src_stride, int group_size) {
   cudaD_mul_rows_group_mat(Gr, Bl, y, x, d, src_stride, group_size);
 }
-inline void cuda_calc_pnorm_deriv(dim3 Gr, dim3 Bl, double *y, const double *x1,
-                                  const double *x2, MatrixDim y_dim,
-                                  int x1_stride, int x2_stride, int group_size,
-                                  double power) {
-  cudaD_calc_pnorm_deriv(Gr, Bl, y, x1, x2, y_dim, x1_stride, x2_stride,
-                         group_size, power);
-}
+
 inline void cuda_diff_group_pnorm(dim3 Gr, dim3 Bl, double *id,
                                   const double *iv, const double *ov,
                                   const double* od, MatrixDim id_dim,
@@ -864,11 +878,11 @@ inline void cuda_add_mat_blocks(dim3 Gr, dim3 Bl, double alpha,
   cudaD_add_mat_blocks(Gr, Bl, alpha, src, num_row_blocks, num_col_blocks, dst,
                        d, src_stride, A_trans);
 }
-inline void cuda_add_mat_mat_div_mat(dim3 Gr, dim3 Bl, const double *A,
+inline void cuda_set_mat_mat_div_mat(dim3 Gr, dim3 Bl, const double *A,
                                      const double *B, const double *C,
                                      double *dst, MatrixDim d, int stride_a,
                                      int stride_b, int stride_c) {
-  cudaD_add_mat_mat_div_mat(Gr, Bl, A, B, C, dst, d, stride_a, stride_b,
+  cudaD_set_mat_mat_div_mat(Gr, Bl, A, B, C, dst, d, stride_a, stride_b,
                             stride_c);
 }
 inline void cuda_add_vec_to_cols(dim3 Gr, dim3 Bl, double alpha,
@@ -1078,6 +1092,17 @@ inline void cuda_diff_tanh(dim3 Gr, dim3 Bl, double *eout, const double *e,
                            int y_stride) {
   cudaD_diff_tanh(Gr, Bl, eout, e, y, d, e_stride, y_stride);
 }
+inline void cuda_parametric_relu(dim3 Gr, dim3 Bl, double *y, const double *x,
+                                 MatrixDim d, int src_stride,
+                                 const double *a, const double *b) {
+  cudaD_parametric_relu(Gr,Bl,y,x,d,src_stride,a,b);
+}
+inline void cuda_diff_parametric_relu(dim3 Gr, dim3 Bl, double *eout,
+                                      const double *e, const double *y,
+                                      MatrixDim d, int e_stride, int y_stride,
+                                      const double *a, const double *b) {
+  cudaD_diff_parametric_relu(Gr,Bl,eout,e,y,d,e_stride,y_stride,a,b);
+}
 inline void cuda_heaviside(dim3 Gr, dim3 Bl, double *y, const double *x,
                            MatrixDim d, int src_stride) {
   cudaD_heaviside(Gr, Bl, y, x, d, src_stride);
@@ -1090,6 +1115,12 @@ inline void cuda_log_softmax_reduce(size_t Gr, size_t Bl, double *y,
                                     const double *x, MatrixDim y_dim,
                                     int x_stride) {
   cudaD_log_softmax_reduce(Gr, Bl, y, x, y_dim, x_stride);
+}
+inline void cuda_normalize_per_row(size_t Gr, size_t Bl, double *y,
+                                   int y_stride, const double *x, MatrixDim x_d,
+                                   double target_rms, bool add_log_stddev) {
+  cudaD_normalize_per_row(Gr, Bl, y, y_stride, x, x_d, target_rms,
+                          add_log_stddev);
 }
 
 inline void cuda_regularize_l1(dim3 Gr, dim3 Bl, double *wei, double *grad,
@@ -1111,6 +1142,16 @@ inline void cuda_diff_softmax(dim3 Gr, dim3 Bl, double* x, const MatrixDim dim,
                               const double* value, const int value_stride,
                               const double* diff, const int diff_stride) {
   cudaD_diff_softmax(Gr, Bl, x, dim, value, value_stride, diff, diff_stride);
+}
+inline void cuda_diff_log_softmax(dim3 Gr, dim3 Bl,
+                                  const MatrixDim in_deriv_dim,
+                                  const double* out_value,
+                                  const int out_value_stride,
+                                  const double* out_deriv,
+                                  const int out_deriv_stride,
+                                  double* in_deriv) {
+  cudaD_diff_log_softmax(Gr, Bl, in_deriv_dim, out_value, out_value_stride,
+                         out_deriv, out_deriv_stride, in_deriv);
 }
 inline void cuda_copy_rows_from_vec(dim3 Gr, dim3 Bl, double *mat_out,
                                     MatrixDim d_out, const double *v_in) {
@@ -1211,6 +1252,83 @@ inline cublasStatus_t cuda_scal(cublasHandle_t handle, int n, float alpha,
 inline cublasStatus_t cuda_scal(cublasHandle_t handle, int n, double alpha,
                                 double *x, int incx) {
   return cublasDscal_v2(handle, n, &alpha, x, incx);
+}
+
+inline void cuda_lstm_nonlinearity(dim3 Gr, dim3 Bl, const double* in,
+                                   const int in_stride, const double* params,
+                                   const int params_stride,
+                                   const int out_stride, const int cell_dim,
+                                   const int num_rows, double* out) {
+  cudaD_lstm_nonlinearity(Gr, Bl, in, in_stride, params, params_stride,
+                          out_stride, cell_dim, num_rows, out);
+}
+inline void cuda_lstm_nonlinearity(dim3 Gr, dim3 Bl, const float* in,
+                                   const int in_stride, const float* params,
+                                   const int params_stride,
+                                   const int out_stride, const int cell_dim,
+                                   const int num_rows, float* out) {
+  cudaF_lstm_nonlinearity(Gr, Bl, in, in_stride, params, params_stride,
+                          out_stride, cell_dim, num_rows, out);
+}
+inline void cuda_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
+                                        const int num_rows, const double* input,
+                                        const int input_stride,
+                                        const double* params,
+                                        const int params_stride,
+                                        const double* output_deriv,
+                                        const int output_deriv_stride,
+                                        const double* deriv_sum_in,
+                                        const int deriv_sum_in_stride,
+                                        const double* self_repair_config,
+                                        double count, double* input_deriv,
+                                        const int input_deriv_stride,
+                                        double* params_deriv,
+                                        const int params_deriv_stride,
+                                        double* value_sum_out,
+                                        const int value_sum_out_stride,
+                                        double* deriv_sum_out,
+                                        const int deriv_sum_out_stride,
+                                        double* self_repair_sum_out,
+                                        const int self_repair_sum_out_stride) {
+  cudaD_diff_lstm_nonlinearity(Gr, Bl, cell_dim, num_rows, input, input_stride,
+                               params, params_stride, output_deriv,
+                               output_deriv_stride, deriv_sum_in,
+                               deriv_sum_in_stride, self_repair_config, count,
+                               input_deriv, input_deriv_stride, params_deriv,
+                               params_deriv_stride, value_sum_out,
+                               value_sum_out_stride, deriv_sum_out,
+                               deriv_sum_out_stride, self_repair_sum_out,
+                               self_repair_sum_out_stride);
+}
+inline void cuda_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
+                                        const int num_rows, const float* input,
+                                        const int input_stride,
+                                        const float* params,
+                                        const int params_stride,
+                                        const float* output_deriv,
+                                        const int output_deriv_stride,
+                                        const double* deriv_sum_in,
+                                        const int deriv_sum_in_stride,
+                                        const float* self_repair_config,
+                                        double count, float* input_deriv,
+                                        const int input_deriv_stride,
+                                        float* params_deriv,
+                                        const int params_deriv_stride,
+                                        double* value_sum_out,
+                                        const int value_sum_out_stride,
+                                        double* deriv_sum_out,
+                                        const int deriv_sum_out_stride,
+                                        float* self_repair_sum_out,
+                                        const int self_repair_sum_out_stride) {
+  cudaF_diff_lstm_nonlinearity(Gr, Bl, cell_dim, num_rows, input, input_stride,
+                               params, params_stride, output_deriv,
+                               output_deriv_stride, deriv_sum_in,
+                               deriv_sum_in_stride, self_repair_config, count,
+                               input_deriv, input_deriv_stride, params_deriv,
+                               params_deriv_stride, value_sum_out,
+                               value_sum_out_stride, deriv_sum_out,
+                               deriv_sum_out_stride, self_repair_sum_out,
+                               self_repair_sum_out_stride);
 }
 
 } // namespace kaldi

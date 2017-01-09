@@ -81,7 +81,7 @@ steps/train_mono.sh --boost-silence 1.25 --nj 10 --cmd "$train_cmd" \
   data/train_si84_2kshort data/lang_nosp exp/mono0a || exit 1;
 
 (
- utils/mkgraph.sh --mono data/lang_nosp_test_tgpr \
+ utils/mkgraph.sh data/lang_nosp_test_tgpr \
    exp/mono0a exp/mono0a/graph_nosp_tgpr && \
  steps/decode.sh --nj 10 --cmd "$decode_cmd" exp/mono0a/graph_nosp_tgpr \
    data/test_dev93 exp/mono0a/decode_nosp_tgpr_dev93 && \
@@ -413,10 +413,6 @@ local/nnet/run_dnn.sh
 #  --normalize=true --map-utter=data/kws/utter_map \
 #  - exp/tri4b/decode_bd_tgpr_eval92/kws/kwslist.xml
 
-# # forward-backward decoding example [way to speed up decoding by decoding forward
-# # and backward in time]
-# local/run_fwdbwd.sh
-
 # # A couple of nnet3 recipes:
 # local/nnet3/run_tdnn_baseline.sh  # designed for exact comparison with nnet2 recipe
 # local/nnet3/run_tdnn.sh  # better absolute results
@@ -430,4 +426,3 @@ local/nnet/run_dnn.sh
 #                         --non-recurrent-projection-dim 128 \
 #                         --chunk-left-context 40 \
 #                         --chunk-right-context 40
-

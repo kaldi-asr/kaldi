@@ -168,6 +168,10 @@ if [ $stage -le 15 ]; then
   done
 fi
 
+# the following shows you how to insert a phone language model in place of <unk>
+# and decode with that.
+# local/run_unk_model.sh
+
 if [ $stage -le 16 ]; then
   # this does some data-cleaning.  It actually degrades the GMM-level results
   # slightly, but the cleaned data should be useful when we add the neural net and chain
@@ -181,7 +185,7 @@ fi
 if [ $stage -le 17 ]; then
   # This will only work if you have GPUs on your system (and note that it requires
   # you to have the queue set up the right way... see kaldi-asr.org/doc/queue.html)
-  local/chain/run_tdnn.sh
+  local/chain/run_tdnn.sh --train-set train --gmm tri3 --nnet3-affix ""
 fi
 
 # The nnet3 TDNN recipe:
@@ -190,16 +194,6 @@ fi
 
 # We removed the GMM+MMI stage that used to exist in the release-1 scripts,
 # since the neural net training is more of interest.
-
-
-
-
-
-
-
-
-
-
 
 echo "$0: success."
 exit 0

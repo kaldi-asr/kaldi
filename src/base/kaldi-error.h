@@ -96,14 +96,14 @@ struct LogMessageEnvelope {
 // throws an std::runtime_exception, in case of failed KALDI_ASSERT calls abort().
 //
 // Note: we avoid using std::cerr for thread safety issues.
-// fprintf(stderr,...) is guaranteed thread-safe, and outputs 
+// fprintf(stderr,...) is guaranteed thread-safe, and outputs
 // its formatted string atomically.
 class MessageLogger {
 public:
   /// Constructor stores the info,
-  MessageLogger(LogMessageEnvelope::Severity severity, 
+  MessageLogger(LogMessageEnvelope::Severity severity,
                 const char *func,
-                const char *file, 
+                const char *file,
                 int32 line);
 
   /// Destructor, calls 'HandleMessage' which prints the message,

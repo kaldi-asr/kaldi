@@ -182,6 +182,9 @@ mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 cp $alidir/tree $dir
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
+
 # process the splice_inds string, to get a layer-wise context string
 # to be processed by the nnet-components
 # this would be mainly used by SpliceComponent|SpliceMaxComponent

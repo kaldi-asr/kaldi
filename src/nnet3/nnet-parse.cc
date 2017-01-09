@@ -29,14 +29,38 @@ namespace nnet3 {
 
 
 bool ConfigLine::ParseLine(const std::string &line) {
+  data_.clear();
+  whole_line_ = line;
   if (line.size() == 0) return false;   // Empty line
-
   size_t pos = 0, size = line.size();
+  while (isspace(line[pos]) && pos < size) pos++;
+  if (pos == size)
+    return false;  // whitespace-only line
+  size_t first_token_start_pos = pos;
+  // first get first_token_.
+  while (!isspace(line[pos]) && pos < size) {
+    if (line[pos] == '=') {
+      // If the first block of non-whitespace looks like "foo-bar=...",
+      // then we ignore it: there is no initial token, and FirstToken()
+      // is empty.
+      pos = first_token_start_pos;
+      break;
+    }
+    pos++;
+  }
+  first_token_ = std::string(line, first_token_start_pos, pos - first_token_start_pos);
+  // first_token_ is expected to be either empty or something like
+  // "component-node", which actually is a slightly more restrictive set of
+  // strings than IsValidName() checks for this is a convenient way to check it.
+  if (!first_token_.empty() && !IsValidName(first_token_))
+    return false;
+
   while (pos < size) {
     if (isspace(line[pos])) {
       pos++;
       continue;
     }
+
     // OK, at this point we know that we are pointing at nonspace.
     size_t next_equals_sign = line.find_first_of("=", pos);
     if (next_equals_sign == pos || next_equals_sign == std::string::npos) {
@@ -69,7 +93,7 @@ bool ConfigLine::ParseLine(const std::string &line) {
 
       size_t next_next_equals_sign = line.find_first_of("=", next_equals_sign + 1),
           terminating_space = size;
-      
+
       if (next_next_equals_sign != std::string::npos) {  // found a later equals sign.
         size_t preceding_space = line.find_last_of(" \t", next_next_equals_sign);
         if (preceding_space != std::string::npos &&
@@ -78,20 +102,18 @@ bool ConfigLine::ParseLine(const std::string &line) {
       }
       while (isspace(line[terminating_space - 1]) && terminating_space > 0)
         terminating_space--;
-      
+
       std::string value(line, next_equals_sign + 1,
                         terminating_space - (next_equals_sign + 1));
       data_.insert(std::make_pair(key, std::make_pair(value, false)));
       pos = terminating_space;
     }
   }
-  whole_line_ = line;
-  return !data_.empty();
+  return true;
 }
 
 bool ConfigLine::GetValue(const std::string &key, std::string *value) {
   KALDI_ASSERT(value != NULL);
-  value->clear();
   std::map<std::string, std::pair<std::string, bool> >::iterator it = data_.begin();
   for (; it != data_.end(); ++it) {
     if (it->first == key) {
@@ -405,13 +427,13 @@ bool IsValidName(const std::string &name) {
   for (size_t i = 0; i < name.size(); i++) {
     if (i == 0 && !isalpha(name[i]) && name[i] != '_')
       return false;
-    if (!isalnum(name[i]) && name[i] != '_' && name[i] != '-')
+    if (!isalnum(name[i]) && name[i] != '_' && name[i] != '-' && name[i] != '.')
       return false;
   }
   return true;
 }
 
-void ReadConfigFile(std::istream &is,
+void ReadConfigLines(std::istream &is,
                     std::vector<std::string> *lines) {
   KALDI_ASSERT(lines != NULL);
   std::string line;
@@ -497,7 +519,7 @@ std::string SummarizeVector(const Vector<BaseFloat> &vec) {
 
 void PrintParameterStats(std::ostringstream &os,
                          const std::string &name,
-                         const CuVector<BaseFloat> &params,
+                         const CuVectorBase<BaseFloat> &params,
                          bool include_mean) {
   os << std::setprecision(4);
   os << ", " << name << '-';
@@ -530,6 +552,30 @@ void PrintParameterStats(std::ostringstream &os,
   }
   os << std::setprecision(6);  // restore the default precision.
 }
+
+
+void ParseConfigLines(const std::vector<std::string> &lines,
+                      std::vector<ConfigLine> *config_lines) {
+  config_lines->resize(lines.size());
+  for (size_t i = 0; i < lines.size(); i++) {
+    bool ret = (*config_lines)[i].ParseLine(lines[i]);
+    if (!ret) {
+      KALDI_ERR << "Error parsing config line: " << lines[i];
+    }
+  }
+}
+
+bool NameMatchesPattern(const char *name, const char *pattern) {
+  if (*pattern == '*') {
+    return NameMatchesPattern(name, pattern + 1) ||
+        (*name != '\0' && NameMatchesPattern(name + 1, pattern));
+  } else if (*name == *pattern) {
+    return (*name == '\0' || NameMatchesPattern(name + 1, pattern + 1));
+  } else {
+    return false;
+  }
+}
+
 
 
 } // namespace nnet3
