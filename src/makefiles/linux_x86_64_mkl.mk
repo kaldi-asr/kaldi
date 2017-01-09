@@ -25,7 +25,8 @@ endif
 MKLLIB ?= $(MKLROOT)/lib/em64t
 
 CXXFLAGS = -std=c++11 -I.. -I$(OPENFSTINC) $(EXTRA_CXXFLAGS) \
-           -Wall -Wno-sign-compare -Wno-unused-local-typedefs -Winit-self \
+           -Wall -Wno-sign-compare -Wno-unused-local-typedefs \
+           -Wno-deprecated-declarations -Winit-self \
            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
            -DHAVE_EXECINFO_H=1 -DHAVE_CXXABI_H -DHAVE_MKL -I$(MKLROOT)/include \
            -m64 -msse -msse2 -pthread -rdynamic \
