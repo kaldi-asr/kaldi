@@ -4,7 +4,7 @@
 # Set this to somewhere where you want to put your data, or where
 # someone else has already put it.  You'll want to change this
 # if you're not on the CLSP grid.
-data=/export/a15/vpanayotov/data
+data=/amd/dist/share2/asr_models/librispeech/raw_data/
 
 # base url for downloads.
 data_url=www.openslr.org/resources/12
@@ -184,7 +184,7 @@ steps/train_sat.sh  --cmd "$train_cmd" 4200 40000 \
   utils/mkgraph.sh data/lang_nosp_test_tgsmall \
     exp/tri4b exp/tri4b/graph_nosp_tgsmall
   for test in test_clean test_other dev_clean dev_other; do
-    steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" \
+    steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
       exp/tri4b/graph_nosp_tgsmall data/$test \
       exp/tri4b/decode_nosp_tgsmall_$test
     steps/lmrescore.sh --cmd "$decode_cmd" data/lang_nosp_test_{tgsmall,tgmed} \
@@ -221,7 +221,7 @@ utils/build_const_arpa_lm.sh \
   utils/mkgraph.sh \
     data/lang_test_tgsmall exp/tri4b exp/tri4b/graph_tgsmall
   for test in test_clean test_other dev_clean dev_other; do
-    steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" \
+    steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
       exp/tri4b/graph_tgsmall data/$test \
       exp/tri4b/decode_tgsmall_$test
     steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
@@ -270,7 +270,7 @@ steps/train_sat.sh  --cmd "$train_cmd" 5000 100000 \
   utils/mkgraph.sh data/lang_test_tgsmall \
     exp/tri5b exp/tri5b/graph_tgsmall
   for test in test_clean test_other dev_clean dev_other; do
-    steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" \
+    steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
       exp/tri5b/graph_tgsmall data/$test \
       exp/tri5b/decode_tgsmall_$test
     steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
@@ -301,7 +301,7 @@ steps/compute_cmvn_stats.sh \
 utils/combine_data.sh \
   data/train_960 data/train_clean_460 data/train_other_500
 
-steps/align_fmllr.sh --nj 40 --cmd "$train_cmd" \
+steps/align_fmllr.sh --nj 10 --cmd "$train_cmd" \
   data/train_960 data/lang exp/tri5b exp/tri5b_ali_960
 
 # train a SAT model on the 960 hour mixed data.  Use the train_quick.sh script
@@ -314,7 +314,7 @@ steps/train_quick.sh --cmd "$train_cmd" \
   utils/mkgraph.sh data/lang_test_tgsmall \
     exp/tri6b exp/tri6b/graph_tgsmall
   for test in test_clean test_other dev_clean dev_other; do
-    steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" \
+    steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
       exp/tri6b/graph_tgsmall data/$test exp/tri6b/decode_tgsmall_$test
     steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
       data/$test exp/tri6b/decode_{tgsmall,tgmed}_$test
