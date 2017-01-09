@@ -64,10 +64,11 @@ namespace fst {
 /// \addtogroup context_fst_group "Classes and functions related to context expansion"
 /// @{
 
+namespace internal {
+
 /*
    ContextFstImpl inherits from CacheImpl, which handles caching of states.
 */
-
 
 template <class Arc,
           class LabelT = int32> // make the vector<Label> things actually vector<int32> for
@@ -182,6 +183,7 @@ class ContextFstImpl : public CacheImpl<Arc> {
   std::string separator_;
 };
 
+}  // namespace internal
 
 /*
    Actual FST for ContextFst.  Most of the work gets done in ContextFstImpl.
@@ -202,7 +204,7 @@ class ContextFstImpl : public CacheImpl<Arc> {
 template <class Arc,
           class LabelT = int32> // make the vector<LabelT> things actually vector<int32> for
                                 // easier compatibility with Kaldi code.
-class ContextFst : public ImplToFst<ContextFstImpl<Arc, LabelT>> {
+class ContextFst : public ImplToFst<internal::ContextFstImpl<Arc, LabelT>> {
  public:
   friend class ArcIterator<ContextFst<Arc>>;
   friend class StateIterator<ContextFst<Arc>>;
@@ -212,7 +214,7 @@ class ContextFst : public ImplToFst<ContextFstImpl<Arc, LabelT>> {
   typedef typename Arc::StateId StateId;
   typedef DefaultCacheStore<Arc> Store;
   typedef typename Store::State State;
-  typedef ContextFstImpl<Arc, LabelT> Impl;
+  typedef internal::ContextFstImpl<Arc, LabelT> Impl;
 
   /// See \ref graph_context for more details.
   ContextFst(Label subsequential_symbol,  // epsilon not allowed.

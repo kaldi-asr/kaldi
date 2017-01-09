@@ -31,6 +31,7 @@ namespace fst {
 /// \addtogroup context_fst_group
 /// @{
 
+namespace internal {
 
 template<class Arc, class LabelT>
 typename ContextFstImpl<Arc, LabelT>::StateId
@@ -337,6 +338,8 @@ void ContextFstImpl<Arc, LabelT>::Expand(StateId s) {  // expands arcs only [not
   }
   this->SetArcs(s);  // mark the arcs as "done". [so HasArcs returns true].
 }
+
+}  // namespace internal
 
 template<class Arc, class LabelT>
 bool ContextMatcher<Arc, LabelT>::Find(typename Arc::Label match_label) {

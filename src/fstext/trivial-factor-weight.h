@@ -85,6 +85,7 @@ struct TrivialFactorWeightOptions : CacheOptions {
 
 };
 
+namespace internal {
 
 // Implementation class for TrivialFactorWeight
 template <class A, class F>
@@ -302,6 +303,7 @@ class TrivialFactorWeightFstImpl
 
 };
 
+}  // namespace internal
 
 /// TrivialFactorWeightFst takes as template parameter a FactorIterator as
 /// defined above. The result of weight factoring is a transducer
@@ -320,7 +322,8 @@ class TrivialFactorWeightFstImpl
 
 
 template <class A, class F>
-class TrivialFactorWeightFst : public ImplToFst< TrivialFactorWeightFstImpl<A, F> > {
+class TrivialFactorWeightFst :
+    public ImplToFst<internal::TrivialFactorWeightFstImpl<A, F>> {
  public:
   friend class ArcIterator< TrivialFactorWeightFst<A, F> >;
   friend class StateIterator< TrivialFactorWeightFst<A, F> >;
@@ -330,7 +333,7 @@ class TrivialFactorWeightFst : public ImplToFst< TrivialFactorWeightFstImpl<A, F
   typedef typename A::StateId StateId;
   typedef DefaultCacheStore<Arc> Store;
   typedef typename Store::State State;
-  typedef TrivialFactorWeightFstImpl<A, F> Impl;
+  typedef internal::TrivialFactorWeightFstImpl<A, F> Impl;
 
   explicit TrivialFactorWeightFst(const Fst<A> &fst)
       : ImplToFst<Impl>(std::make_shared<Impl>(fst, TrivialFactorWeightOptions<A>())) {}
