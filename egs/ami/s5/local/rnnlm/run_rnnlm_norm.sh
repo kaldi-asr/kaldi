@@ -49,7 +49,7 @@ id=
 . parse_options.sh || exit 1;
 
 outdir=debug-rnnlm-$type-$initial_learning_rate-$final_learning_rate-$learning_rate_decline_factor-$minibatch_size-$hidden_dim-$num_archives-$id-sample
-outdir=debug_sigmoid_norm_${type}_$hidden_dim
+outdir=sigmoid_norm_$hidden_dim
 srcdir=data/local/dict
 
 set -e
@@ -153,15 +153,13 @@ if [ $stage -le -2 ]; then
   if [ "$type" == "rnn" ]; then
   cat > $outdir/config <<EOF
   LmLinearComponent input-dim=$num_words_in output-dim=$hidden_dim max-change=10
-  LinearSigmoidNormalizedComponent input-dim=$hidden_dim output-dim=$num_words_out param-stddev=0.01 max-change=10
+  LinearSoftmaxNormalizedComponent input-dim=$hidden_dim output-dim=$num_words_out param-stddev=0.01 max-change=10
 #  LinearNormalizedLogSoftmaxComponent input-dim=$hidden_dim output-dim=$num_words_out param-stddev=0.01 max-change=10
 
   input-node name=input dim=$hidden_dim
   component name=first_nonlin type=SigmoidComponent dim=$hidden_dim
-#  component name=first_nonlin type=RectifiedLinearComponent dim=$hidden_dim
   component name=first_renorm type=NormalizeOneComponent dim=$hidden_dim # target-rms=0.05
   component name=hidden_affine type=AffineComponent input-dim=$hidden_dim output-dim=$hidden_dim max-change=10
-#  component name=hidden_affine type=AffineComponent input-dim=$hidden_dim output-dim=$hidden_dim max-change=10
 
 #Component nodes
   component-node name=first_nonlin component=first_nonlin  input=Sum(input, hidden_affine)

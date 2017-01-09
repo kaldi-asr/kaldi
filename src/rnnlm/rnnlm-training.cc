@@ -511,6 +511,7 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
                               const LmOutputComponent &output_projection,
                               CuMatrix<BaseFloat> *new_output,
                               LmNnet *nnet) {
+//  *new_output = computer->GetOutput(output_name);
   computer->GetOutputDestructive(output_name, new_output);
   int k = supervision.NumRows();
 

@@ -23,7 +23,7 @@ num_archives=8
 shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of the samples
 minibatch_size=128
 
-hidden_dim=240
+hidden_dim=200
 initial_learning_rate=0.001
 final_learning_rate=0.0001
 learning_rate_decline_factor=1.01

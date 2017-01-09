@@ -1024,7 +1024,7 @@ class NoOpComponent: public NonlinearComponent {
   NoOpComponent() { }
   virtual std::string Type() const { return "NoOpComponent"; }
   virtual int32 Properties() const {
-    return kSimpleComponent|kLinearInInput|kPropagateInPlace;
+    return kSimpleComponent|kLinearInInput;
   }
   virtual Component* Copy() const { return new NoOpComponent(*this); }
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
