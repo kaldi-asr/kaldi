@@ -50,13 +50,20 @@ CF="\"$CFLAGS -g $(addsw -I $INCDIRS)\""
 LDF="\"$LDFLAGS $(addsw -L $LIBDIRS)\""
 CCC="$(mtoken CXX "$CXX")"
 
+echo "Building tools..." [Time: $(date)]
 runvx cd tools
 runvx make openfst "$CCC" CXXFLAGS="$CF" -j$MAXPAR
 cd ..
+
+echo "Building src..." [Time: $(date)]
 runvx cd src
 runvx "$CCC" CXXFLAGS="$CF" LDFLAGS="$LDF" ./configure --shared --use-cuda=no  --mathlib=OPENBLAS --openblas-root="$XROOT/usr"
 runvx make all -j$MAXPAR
+
+echo "Running tests..." [Time: $(date)]
 runvx make test -k -j$MAXPAR
+
+echo "Done." [Time: $(date)]
 
 #runvx make mklibdir base matrix -j$MAXPAR
 #runvx make matrix/test
