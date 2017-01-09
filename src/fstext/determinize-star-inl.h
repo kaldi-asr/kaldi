@@ -129,7 +129,7 @@ template<class Label, class StringId> class StringRepository {
   }
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(StringRepository);
+  KALDI_DISALLOW_COPY_AND_ASSIGN(StringRepository);
 
   StringId IdOfSeqInternal(const vector<Label> &v) {
     typename MapType::iterator iter = map_.find(&v);
@@ -601,7 +601,7 @@ template<class F> class DeterminizerStar {
 
   void Debug();
 
-  DISALLOW_COPY_AND_ASSIGN(DeterminizerStar);
+  KALDI_DISALLOW_COPY_AND_ASSIGN(DeterminizerStar);
   deque<pair<vector<Element>*, OutputStateId> > Q_;  // queue of subsets to be processed.
 
   vector<vector<TempArc> > output_arcs_;  // essentially an FST in our format.

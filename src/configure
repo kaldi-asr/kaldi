@@ -936,8 +936,8 @@ if [ ! -f $FSTROOT/include/fst/fst.h  ]; then
 fi
 OPENFST_VER=$(grep 'PACKAGE_VERSION' $FSTROOT/Makefile | sed -e 's:.*= ::')
 OPENFST_VER_NUM=$(echo $OPENFST_VER | sed 's/\./ /g' | xargs printf "%d%02d%02d")
-if [ $OPENFST_VER_NUM -lt 10503 ]; then
-  failure "OpenFst-$OPENFST_VER is not supported. You need OpenFst >= 1.5.3.)"
+if [ $OPENFST_VER_NUM -lt 10600 ]; then
+  failure "OpenFst-$OPENFST_VER is not supported. You need OpenFst >= 1.6.0.)"
 fi
 echo "OPENFSTINC = $FSTROOT/include" >> kaldi.mk
 if  $static_fst ; then
