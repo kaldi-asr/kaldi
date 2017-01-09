@@ -213,7 +213,7 @@ template<class Arc>  void TestAcceptorMinimize() {
   RemoveWeights(fst);
 
   VectorFst<Arc> fst2(*fst);
-  AcceptorMinimize(&fst2);
+  internal::AcceptorMinimize(&fst2);
 
   assert(RandEquivalent(*fst, fst2, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
 
