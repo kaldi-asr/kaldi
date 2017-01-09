@@ -12,4 +12,4 @@ Open Source Speech and Language Resources for Frisian Language.
 
 In: Proceedings Interspeech 2016, pp. 1536--1540, 8-12 September 2016, San Francisco
 
-Please check http://www.ru.nl/clst/datasets/ to get the username and password
+Please check http://www.ru.nl/clst/datasets/ to get the FAME! Speech Corpus

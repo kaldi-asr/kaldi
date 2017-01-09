@@ -8,7 +8,17 @@ stage=0
 feat_nj=10
 train_nj=10
 decode_nj=10
-famecorpus=./corpus # Please check http://www.ru.nl/clst/datasets/ to get the data and modify this line if necessary
+famecorpus=./corpus
+
+if [ -d $famecorpus ] ; then
+  echo "Fame corpus present. OK."
+elif [ -f ./fame.tar.gz ] ; then
+  echo "Unpacking..."
+  tar xzf fame.tar.gz
+elif [ ! -d $famecorpus ] && [ ! -f ./fame.tar.gz ] ; then
+  echo "The Fame! corpus is not present. Please register here: http://www.ru.nl/clst/datasets/ "
+  echo " and download the corpus and put it at $famecorpus" && exit 1
+fi
 
 numLeavesTri1=5000
 numGaussTri1=25000
