@@ -50,9 +50,12 @@ CF="$CFLAGS -g $(addsw -I $INCDIRS)"
 LDF="$LDFLAGS $(addsw -L $LIBDIRS)"
 CCC="$(mtoken CC $CXX) $(mtoken CXX $CXX)"
 
+echo "Building tools..." [Time: $(date)]
 runvx cd tools
 runvx make openfst $CCC CXXFLAGS="$CF" -j$MAXPAR
 cd ..
+
+echo "Building src..." [Time: $(date)]
 runvx cd src
 runvx ./configure --shared --use-cuda=no  --mathlib=OPENBLAS --openblas-root=$XROOT/usr
 
@@ -64,4 +67,8 @@ make_kaldi() {
 #make_kaldi matrix/test
 
 make_kaldi all -j$MAXPAR
+
+echo "Running tests..." [Time: $(date)]
 make_kaldi test -k
+
+echo "Done." [Time: $(date)]
