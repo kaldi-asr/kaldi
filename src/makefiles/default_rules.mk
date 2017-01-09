@@ -1,3 +1,6 @@
+
+SHELL := /bin/bash
+
 ifeq ($(KALDI_FLAVOR), dynamic)
   ifeq ($(shell uname), Darwin)
     XLDLIBS := $(LDLIBS)
