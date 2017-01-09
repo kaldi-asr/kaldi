@@ -17,7 +17,8 @@ $(error OPENBLASLIBS not defined.)
 endif
 
 CXXFLAGS = -std=c++11 -I.. -I$(OPENFSTINC) $(EXTRA_CXXFLAGS) \
-           -Wall -Wno-sign-compare -Wno-unused-local-typedefs -Winit-self \
+           -Wall -Wno-sign-compare -Wno-unused-local-typedefs \
+           -Wno-deprecated-declarations -Winit-self \
            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
            -DHAVE_EXECINFO_H=1 -DHAVE_CXXABI_H -DHAVE_OPENBLAS -I$(OPENBLASINC) \
            -ftree-vectorize -mfloat-abi=hard -mfpu=neon -pthread -rdynamic \
