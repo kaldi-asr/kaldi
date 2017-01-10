@@ -28,6 +28,14 @@
 #        # built for the target install to /opt/cross/armv8hf and that the
 #        # armv8-rpi3-linux-gnueabihf toolchain is available in your path
 # ./configure --static --fst-root=/opt/cross/armv8hf --atlas-root=/opt/cross/armv8hf --host=armv8-rpi3-linux-gnueabihf
+#        # Cross compile for Android on arm
+#        # The only difference here is the addtion of the the --android-includes
+#        # flag because the toolchains produced by the Android NDK don't always
+#        # include the C++ stdlib headers in the normal cross compile include
+#        # path
+# ./configure --static --openblas-root=/opt/cross/arm-linux-androideabi \
+# --fst-root=/opt/cross/arm-linux-androideabi --host=arm-linux-androideabi \
+# --fst-version=1.4.1 --android-includes=/opt/cross/arm-linux-androideabi/sysroot/usr/include
 
 #This should be incremented after every significant change of the configure script
 #I.e. after each change that affects the kaldi.mk or the build system as whole
@@ -82,7 +90,7 @@ function usage {
   [--openblas-root=OPENBLASROOOT] [--clapack-root=CLAPACKROOT] [--mkl-root=MKLROOT] [--mkl-libdir=MKLLIBDIR]
   [--omp-libdir=OMPDIR] [--static-fst={yes|no}] [--static-math={yes|no}] [--threaded-math={yes|no}] [--mathlib=ATLAS|MKL|CLAPACK|OPENBLAS]
   [--use-cuda={yes|no}] [--cudatk-dir=CUDATKDIR][--mkl-threading=sequential|iomp|tbb|gomp] [--fst-version=VERSION]
-  [--host=HOST]';
+  [--host=HOST] [--android-includes=ANDROID_INC_DIR]';
 }
 
 threaded_atlas=false #  By default, use the un-threaded version of ATLAS.
@@ -96,6 +104,7 @@ mkl_threading=sequential
 # switch.  TARGET_ARCH will be the first value in HOST if set, and `uname -m` otherwise
 HOST=""
 TARGET_ARCH=""
+android=false
 
 cmd_line="$0 $@"  # Save the command line to include in kaldi.mk
 
@@ -204,6 +213,15 @@ do
     # this script will infer the target architecture from the specified triple.
     HOST=`expr "X$1" : '[^=]*=\(.*\)'`;
     shift ;;
+  --android-includes=*)
+    threaded_math=false;
+    static_math=true;
+    static_fst=true;
+    dynamic_kaldi=false;
+    MATHLIB='OPENBLAS';
+    android=true;
+    ANDROIDINC=`read_dirname $1`;
+    shift;;
   *)  echo "Unknown argument: $1, exiting"; usage; exit 1 ;;
   esac
 done
@@ -985,6 +1003,42 @@ fi
 
 # Most of the OS-specific steps below will append to kaldi.mk
 echo "Doing OS specific configurations ..."
+
+if $android ; then
+  OPENFSTLIBS="$FSTROOT/lib/libfst.a"
+  echo "OPENFSTLIBS = $OPENFSTLIBS" >> kaldi.mk
+
+  if [ -z $ANDROIDINC ] ;  then
+    failure "--android-includes must be specified for android builds"
+  fi
+
+  if [ -z $HOST ] ; then
+    failure "HOST must be specified for android builds"
+  fi
+
+  OPENBLASROOT=`rel2abs "$OPENBLASROOT"`
+  if [ -z "$OPENBLASROOT" ]; then
+    failure "Must specify the location of OPENBLAS with --openblas-root option (and it must exist)"
+  fi
+  if [ ! -f $OPENBLASROOT/lib/libopenblas.a ]; then
+    failure "Expected to find the file $OPENBLASROOT/lib/libopenblas.a"
+  fi
+  echo "Your math library seems to be OpenBLAS.  Configuring appropriately."
+
+  OPENBLASLIBS="$OPENBLASROOT/lib/libopenblas.a $OPENBLASROOT/lib/libclapack.a $OPENBLASROOT/lib/liblapack.a $OPENBLASROOT/lib/libblas.a $OPENBLASROOT/lib/libf2c.a"
+  echo "OPENBLASROOT = $OPENBLASROOT" >> kaldi.mk
+  echo "OPENBLASLIBS = $OPENBLASLIBS" >> kaldi.mk
+  echo "ANDROIDINC = $ANDROIDINC" >> kaldi.mk
+
+  cat makefiles/android_openblas.mk >> kaldi.mk
+
+  add_cross_tools
+
+  echo "Successfully configured OpenBLAS from $OPENBLASROOT."
+  echo "Configuration succeeded for platform Android"
+  exit_success
+fi
+
 
 # Check for Darwin at first, because we later call uname -o (for Cygwin)
 # which crashes on Darwin. Also the linear algebra libraries on Macs are
