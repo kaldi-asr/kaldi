@@ -4,11 +4,10 @@
 Idlak Speech Synthesis Toolkit
 ================================
 
-This is the official Idlak readme. Note that this is supposed to be a mirror
-of a relatively recent kaldi repository, with various tools and examples added.
+This is the official Idlak readme. This is a fork of [the ASR toolkit Kaldi] (https://github.com/kaldi-asr/kaldi), with various tools and examples added to make it suitable for Text-to-Speech.
 
 Idlak is a project to build an end-to-end parametric TTS
-system within Kaldi, to be distributed with the same licence.
+system within Kaldi, to be distributed with the same Apache 2 licence.
 
 It contains a robust front-end, voice building tools, speech analysis
 utilities, and DNN tools suitable for parametric synthesis. It also contains
