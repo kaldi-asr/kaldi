@@ -42,6 +42,7 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
                                                 nnet_output.NumCols(),
                                                 kUndefined);
     is_output_deriv_temporary = true;
+    KALDI_LOG << "***** Temporary nnet-out-deriv allocation.";
   }
 
   BaseFloat num_logprob_weighted;
@@ -67,20 +68,16 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
   
   num_logprob_weighted += -opts.boost * supervision.num_sequences *
                           supervision.frames_per_sequence;
-  CuMatrixBase<BaseFloat> *boosting_mask = nnet_output_deriv;
-  if (opts.boost != 0.0 && opts.hard_boost) {
-    boosting_mask = new CuMatrix<BaseFloat>(*nnet_output_deriv);
-    boosting_mask->ApplyHeaviside();
-  }
+
   DenominatorComputation denominator(opts, den_graph,
                                      supervision.num_sequences,
                                      nnet_output,
-                                     boosting_mask);
-  if (opts.boost != 0.0 && opts.hard_boost)
-    delete boosting_mask;
+                                     nnet_output_deriv);
+
   if (is_output_deriv_temporary) {
     delete nnet_output_deriv;
     nnet_output_deriv = NULL;
+    KALDI_LOG << " ***** Temporary de-allocation.";
   }
 
   BaseFloat den_logprob = denominator.Forward();

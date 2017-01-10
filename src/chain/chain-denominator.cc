@@ -58,8 +58,15 @@ DenominatorComputation::DenominatorComputation(
                  num_sequences_).SetZero();
 
   KALDI_ASSERT(nnet_output.NumRows() % num_sequences == 0);
-  if (opts_.boost != 0.0 && boosting_mask != NULL) {
-    exp_nnet_output_transposed_.AddMat(-opts_.boost, *boosting_mask, kTrans);
+
+  if (opts_.boost != 0.0 && boosting_mask) {
+    exp_nnet_output_transposed_.CopyFromMat(*boosting_mask, kTrans);
+    if (opts_.hard_boost)
+      exp_nnet_output_transposed_.ApplyHeaviside();
+    exp_nnet_output_transposed_.Scale(-opts_.boost);
+    exp_nnet_output_transposed_.AddMat(1.0, nnet_output, kTrans);
+  } else {
+    exp_nnet_output_transposed_.CopyFromMat(nnet_output, kTrans);
   }
   exp_nnet_output_transposed_.ApplyExp();
 }
