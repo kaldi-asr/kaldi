@@ -1,5 +1,5 @@
 #!/bin/bash
-
+#
 # This configure script is hand-generated, not auto-generated.
 # It creates the file kaldi.mk, which is %included by the Makefiles
 # in the subdirectories.
