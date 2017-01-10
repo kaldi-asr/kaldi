@@ -46,7 +46,7 @@ then
 fi
 
 # Prepare environment variables
-CXX=clang++-3.4
+CXX=clang++
 CF="\"$CFLAGS -g $(addsw -I $INCDIRS)\""
 LDF="\"$LDFLAGS $(addsw -L $LIBDIRS)\""
 CCC="$(mtoken CXX "$CXX")"
