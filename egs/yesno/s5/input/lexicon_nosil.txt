@@ -1,2 +1,0 @@
-YES Y
-NO N
