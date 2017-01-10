@@ -9,7 +9,7 @@
 #   LDFLAGS="-llapack"
 
 # Maximum make parallelism. Simply -j runs out of memory on Travis VM.
-MAXPAR=3
+MAXPAR=4
 
 # Directories with code that can be tested with Travis (space-separated)
 TESTABLE_DIRS="src/"
@@ -46,6 +46,7 @@ then
 fi
 
 # Prepare environment variables
+CXX=clang++-3.4
 CF="\"$CFLAGS -g $(addsw -I $INCDIRS)\""
 LDF="\"$LDFLAGS $(addsw -L $LIBDIRS)\""
 CCC="$(mtoken CXX "$CXX")"
