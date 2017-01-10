@@ -8,7 +8,6 @@ This is the official Idlak readme. This is a fork of [the ASR toolkit Kaldi] (ht
 
 Idlak is a project to build an end-to-end parametric TTS
 system within Kaldi, to be distributed with the same Apache 2 licence.
-
 It contains a robust front-end, voice building tools, speech analysis
 utilities, and DNN tools suitable for parametric synthesis. It also contains
 an example of using Idlak as an end-to-end TTS system, in egs/tts_dnn_arctic/s1
