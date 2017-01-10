@@ -69,6 +69,6 @@ make_kaldi() {
 make_kaldi all -j$MAXPAR
 
 echo "Running tests..." [Time: $(date)]
-make_kaldi test -k
+make_kaldi test -k -j$MAXPAR
 
 echo "Done." [Time: $(date)]
