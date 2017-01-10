@@ -74,7 +74,7 @@ function usage {
   echo 'Usage: ./configure [--static|--shared] [--threaded-atlas={yes|no}] [--atlas-root=ATLASROOT] [--fst-root=FSTROOT]
   [--openblas-root=OPENBLASROOOT] [--clapack-root=CLAPACKROOT] [--mkl-root=MKLROOT] [--mkl-libdir=MKLLIBDIR]
   [--omp-libdir=OMPDIR] [--static-fst={yes|no}] [--static-math={yes|no}] [--threaded-math={yes|no}] [--mathlib=ATLAS|MKL|CLAPACK|OPENBLAS]
-  [--use-cuda={yes|no}] [--cudatk-dir=CUDATKDIR][--mkl-threading=sequential|iomp|tbb|gomp]';
+  [--use-cuda={yes|no}] [--cudatk-dir=CUDATKDIR][--mkl-threading=sequential|iomp|tbb|gomp] [--fst-version=VERSION]';
 }
 
 threaded_atlas=false #  By default, use the un-threaded version of ATLAS.
@@ -184,6 +184,9 @@ do
   --cudatk-dir=*)
     CUDATKDIR=`read_dirname $1`;
     shift ;; #CUDA is used in src/cudamatrix and src/nnet{,bin} only
+  --fst-version=*)
+    OPENFST_VER=`expr "X$1" : '[^=]*=\(.*\)'`;
+    shift;;
   *)  echo "Unknown argument: $1, exiting"; usage; exit 1 ;;
   esac
 done
