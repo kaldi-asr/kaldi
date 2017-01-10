@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 
 # Copyright 2012-2013  Johns Hopkins University (Author: Daniel Povey)
 #                      Bagher BabaAli
@@ -50,7 +50,7 @@ mkdir -p $expdir/log || exit 1;
 
 scp=$data/wav.scp
 
-[ ! -s $KALDI_ROOT ] && KALDI_ROOT=../../.. 
+[ ! -s $KALDI_ROOT ] && KALDI_ROOT=../../..
 
 ( # this is for back compatiblity:
  cd $KALDI_ROOT/tools
@@ -92,7 +92,7 @@ done
 basename=`basename $data`
 wavdir=$pitchdir/temp_wav_$basename
 mkdir -p $wavdir
-  
+
 if [ -f $data/segments ] || grep '|' $data/wav.scp >/dev/null; then
   wav_scp=$expdir/wav.scp
   cat $data/segments | awk -v dir=$wavdir '{key=$1; printf("%s %s/%s.wav\n", key, dir, key);}' \
@@ -104,7 +104,7 @@ if [ -f $data/segments ] || grep '|' $data/wav.scp >/dev/null; then
   else
     # create a fake segments file that takes the whole file; this is an easy way
     # to copy to static wav files.  Note: probably this has not been tested.
-    cat $data/wav.scp | awk '{print $1, $1, 0.0, -1.0}' > $expdir/fake_segments 
+    cat $data/wav.scp | awk '{print $1, $1, 0.0, -1.0}' > $expdir/fake_segments
     segments=$expdir/fake_segments
   fi
   if [ $stage -le 0 ]; then
@@ -155,11 +155,11 @@ if [ $stage -le 1 ]; then
 fi
 
 # I don't want to put a separate script in svn just for this, so creating a temporary
-# script file in the experimental directory.  Quotes around 'EOF' disable any 
+# script file in the experimental directory.  Quotes around 'EOF' disable any
 # interpretation in the here-doc.
 cat <<'EOF' > $expdir/convert.sh
 #!/bin/bash
-sacc_flist=$1 
+sacc_flist=$1
 scpfile=$2
 [ $# -ne 2 ] && echo "Usage: convert.sh <sacc-flist-in> <scpfile-out>" && exit 1;
 
@@ -247,7 +247,7 @@ exit 0;
 #   rm $expdir/.error 2>/dev/null
 
 # #  for ((n=1; n<=nj; n++)); do
-# #     mkdir -p "$expdir/$n" 
+# #     mkdir -p "$expdir/$n"
 # #  done
 
 # #  $cmd JOB=1:$nj $expdir/make_pitch.JOB.log \
@@ -297,8 +297,8 @@ exit 0;
 
 # rm $expdir/wav.*.scp  $expdir/segments.* 2>/dev/null
 
-# nf=`cat $data/pitchs.scp | wc -l` 
-# nu=`cat $data/utt2spk | wc -l` 
+# nf=`cat $data/pitchs.scp | wc -l`
+# nu=`cat $data/utt2spk | wc -l`
 # if [ $nf -ne $nu ]; then
 #   echo "It seems not all of the feature files were successfully ($nf != $nu);"
 #   echo "consider using utils/fix_data_dir.sh $data"

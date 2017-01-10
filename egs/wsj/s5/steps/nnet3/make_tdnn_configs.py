@@ -90,7 +90,7 @@ try:
         right_context += int_list[-1]
         splice_array.append(int_list)
 except ValueError as e:
-    sys.exit("invalid --splice-indexes argument " + args.splice_indexes + e)
+    sys.exit("invalid --splice-indexes argument " + args.splice_indexes + str(e))
 left_context = max(0, left_context)
 right_context = max(0, right_context)
 num_hidden_layers = len(splice_array)
