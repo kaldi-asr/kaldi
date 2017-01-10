@@ -1,5 +1,5 @@
-[![Build Status](https://travis-ci.org/idlak/idlak.svg?branch=master)]
-(https://travis-ci.org/idlak/idlak)
+[![Build Status](https://travis-ci.org/Idlak/idlak.svg?branch=master)]
+(https://travis-ci.org/Idlak/idlak)
 
 Idlak Speech Synthesis Toolkit
 ================================
