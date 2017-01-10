@@ -46,7 +46,7 @@ then
 fi
 
 # Prepare environment variables
-CF="\"$CFLAGS -pipe -g $(addsw -I $INCDIRS)\""
+CF="\"$CFLAGS -g $(addsw -I $INCDIRS)\""
 LDF="\"$LDFLAGS $(addsw -L $LIBDIRS)\""
 CCC="$(mtoken CXX "$CXX")"
 
