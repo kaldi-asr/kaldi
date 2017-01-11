@@ -21,6 +21,8 @@ nDecodeJobs=40
 #This is CLSP configuration. We add the 2014 GALE data. We got around 2 % 
 #improvement just by including it. The gain might be large if someone would tweak
 # the number of leaves and states and so on.
+
+#Make sure you edit this section to reflect whers you keep the LDC data on your cluster
 audio=(
   /data/sls/scratch/amali/data/GALE/LDC2013S02
   /data/sls/scratch/amali/data/GALE/LDC2013S07 

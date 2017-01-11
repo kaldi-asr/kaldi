@@ -35,3 +35,5 @@ cat $galeData/wav.scp | awk -v seg=$dir/train/segments 'BEGIN{while((getline<seg
  {if (seen[$1]) { print $0}}' > $dir/train/wav.scp
  
 echo data prep split succeeded
+
+exit 0

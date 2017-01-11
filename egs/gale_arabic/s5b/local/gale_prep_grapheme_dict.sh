@@ -37,3 +37,5 @@ echo Dictionary preparation succeeded
 
 # The script is still missing dates and numbers 
 
+exit 0 
+
