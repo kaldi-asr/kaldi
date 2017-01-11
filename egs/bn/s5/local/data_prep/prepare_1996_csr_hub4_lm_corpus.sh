@@ -3,6 +3,9 @@
 # Copyright 2016  Vimal Manohar
 # Apache 2.0.
 
+# This script prepares the 1996 CSR HUB4 Language Model corpus
+# https://catalog.ldc.upenn.edu/LDC98T31
+
 set -e
 set -o pipefail
 set -u
@@ -16,7 +19,7 @@ stage=0
 
 if [ $# -ne 2 ]; then
   echo "Usage: $0 <SOURCE-DIR> <dir>"
-  echo " e.g.: $0 /export/corpora/LDC/LDC98T31/ data/local/data/csr96_hub4"
+  echo " e.g.: $0 /export/corpora/LDC/LDC98T31/1996_csr_hub4_model data/local/data/csr96_hub4"
   exit 1
 fi
 
@@ -25,9 +28,13 @@ dir=$2
 
 mkdir -p $dir
 
-ls $SOURCE_DIR/1996_csr_hub4_model/st_train/*.stZ \
-  $SOURCE_DIR/1996_csr_hub4_model/st_test/*.stZ | sort > \
-  $dir/filelist
+for d in $SOURCE_DIR/st_train/ $SOURCE_DIR/st_test/; do
+  if [ ! -d $d ]; then
+    echo "$0: Invalid SOURCE-DIR $SOURCE_DIR for LDC98T31 corpus"
+    exit 1
+  fi
+  ls $d/*.stZ 
+done | sort > $dir/filelist
 
 mkdir -p $dir/split$nj/
 
@@ -38,13 +45,13 @@ if [ $stage -le 1 ]; then
     $dir/split$nj/filelist.JOB $dir
 fi
 
-for x in `ls $SOURCE_DIR/1996_csr_hub4_model/st_train/*.stZ`; do
+for x in `ls $SOURCE_DIR/st_train/*.stZ`; do
   y=`basename $x`
   name=${y%.stZ}
   echo $dir/${name}.txt.gz
 done > $dir/train.filelist
 
-for x in `ls $SOURCE_DIR/1996_csr_hub4_model/st_test/*.stZ`; do
+for x in `ls $SOURCE_DIR/st_test/*.stZ`; do
   y=`basename $x`
   name=${y%.stZ}
   echo $dir/${name}.txt.gz

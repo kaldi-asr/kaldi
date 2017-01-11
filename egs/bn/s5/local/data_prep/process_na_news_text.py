@@ -41,17 +41,21 @@ def normalize_text(text):
     return text2
 
 
-def process_file(file_handle, out_file_handle):
-    doc = ' '.join(file_handle.readlines())
+def process_file_lines(lines, out_file_handle):
+    doc = ''
+    for line in lines:
+        line = re.sub(r"<artID>([^</])+</DOCID>", "", line)
+        line = re.sub(r"<p>", "<p></p>", line)
+        doc += line
     soup = BeautifulSoup(doc, 'lxml')
 
     num_written = 0
 
-    for doc in soup.html.body.children:
+    for art in soup.html.body.children:
         try:
-            if doc.name != "doc":
+            if art.name != "art":
                 continue
-            for para in doc.find_all('p'):
+            for para in art.find_all('p'):
                 assert para.name == 'p'
                 text = ' '.join([unicode(x).strip() for x in para.contents])
                 normalized_text = normalize_text(text)
@@ -69,8 +73,27 @@ def _run(args):
         for line in args.file_list.readlines():
             try:
                 file_ = line.strip()
-                with gzip.open(file_, 'r') as f:
-                    process_file(f, args.out_file)
+                p = run_command(
+                    "gunzip -c {0} | "
+                    "local/data_prep/csr_hub4_utils/pare-sgml.perl | "
+                    "perl local/data_prep/csr_hub4_utils/bugproc.perl | "
+                    "perl local/data_prep/csr_hub4_utils/numhack.perl | "
+                    "perl local/data_prep/csr_hub4_utils/numproc.perl "
+                    "  -xlocal/data_prep/csr_hub4_utils/num_excp | "
+                    "perl local/data_prep/csr_hub4_utils/abbrproc.perl "
+                    "  local/data_prep/csr_hub4_utils/abbrlist | "
+                    "perl local/data_prep/csr_hub4_utils/puncproc.perl -np"
+                    "".format(file_),
+                    stdout=subprocess.PIPE, shell=True)
+
+                stdout = p[0].communicate()[0]
+                if p[0].returncode is not 0:
+                    logger.error(
+                        "Command '%s' failed with return status %d",
+                        p[1], p[0].returncode)
+                    raise RuntimeError
+
+                process_file_lines(stdout, args.out_file)
             except Exception:
                 logger.error("Failed processing file %s", file_)
                 raise

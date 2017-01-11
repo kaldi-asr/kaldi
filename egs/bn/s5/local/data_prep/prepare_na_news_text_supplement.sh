@@ -3,8 +3,8 @@
 # Copyright 2016  Vimal Manohar
 # Apache 2.0.
 
-# This script prepares the North American News Text Corpus
-# https://catalog.ldc.upenn.edu/LDC95T21
+# This script prepares the North American News Text Supplement Corpus
+# https://catalog.ldc.upenn.edu/LDC98T30
 
 . cmd.sh
 . path.sh
@@ -20,17 +20,24 @@ cmd=run.pl
 
 if [ $# -ne 2 ]; then
   echo "Usage: $0 <SOURCE-DIR> <DIR>"
-  echo " e.g.: $0 /export/corpora/LDC/LDC95T21 data/local/data/na_news"
+  echo " e.g.: $0 /export/corpora/LDC/LDC98T30/northam_news_txt_sup data/local/data/na_news_supp"
   exit 1
 fi
 
 SOURCE_DIR=$1
 dir=$2
 
-for x in $SOURCE_DIR/*/*/*; do
+for x in $SOURCE_DIR/nyt/*/ $SOURCE_DIR/latwp/ $SOURCE_DIR/apws/*/; do
   year=`basename $x`
   newspaper=`basename $(dirname $x)`
+
   d=$dir/${newspaper}_${year}
+
+  if [ $year == latwp ]; then
+    d=$dir/latwp_1997
+  elif [ $year == english ]; then
+    d=$dir/apws
+  fi
 
   mkdir -p $d
 
