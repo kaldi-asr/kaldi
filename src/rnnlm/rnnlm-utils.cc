@@ -84,13 +84,13 @@ void SampleWithoutReplacement(vector<std::pair<int, BaseFloat> > u, int n,
   BaseFloat tot_weight = 0;
 
   for (int i = 0; i < n; i++) {
-    tot_weight += u[i].second;
+    tot_weight += std::min(BaseFloat(1.0), u[i].second);
     ans[i] = i;
   }
 //  PrintVec(ans);
 
   for (int k = n; k < u.size(); k++) {
-    tot_weight += u[k].second;
+    tot_weight += std::min(BaseFloat(1.0), u[k].second);
 //    cout << "  tot-weight = " << tot_weight << endl;
     BaseFloat pi_k1_k1 = u[k].second / tot_weight * n;
 
@@ -110,12 +110,14 @@ void SampleWithoutReplacement(vector<std::pair<int, BaseFloat> > u, int n,
       BaseFloat Lk = 0;
       BaseFloat Tk = 0;
       for (int i = 0; i < n; i++) {
-        BaseFloat pi_k_i = u[ans[i]].second / (tot_weight - u[k].second) * n;
+        BaseFloat pi_k_i = u[ans[i]].second / (tot_weight - std::min(BaseFloat(1.0), u[k].second)) * n;
         BaseFloat pi_k1_i = u[ans[i]].second / tot_weight * n;
 
-        // TODO(hxU) very strict test which actually isn't really neccesary
         if (u[ans[i]].second >= 1) {
-          KALDI_ASSERT(pi_k_i >= 1 && pi_k1_i >= 1);
+          // TODO(hxU) very strict test which actually isn't really neccesary
+          // true cuz of numerical issues...
+          // KALDI_ASSERT(pi_k_i >= 1 && pi_k1_i >= 1);
+          pi_k_i = pi_k1_i = 1;
         }
 
 //        cout << "piki, pik1i are " << pi_k_i << " " << pi_k1_i << endl;
@@ -139,7 +141,7 @@ void SampleWithoutReplacement(vector<std::pair<int, BaseFloat> > u, int n,
 
       BaseFloat sum = 0;
       for (int i = 0; i < n; i++) {
-        BaseFloat pi_k_i = u[ans[i]].second / (tot_weight - u[k].second) * n;
+        BaseFloat pi_k_i = u[ans[i]].second / (tot_weight - std::min(BaseFloat(1.0), u[k].second)) * n;
         BaseFloat pi_k1_i = u[ans[i]].second / tot_weight * n;
 
         if (pi_k_i < 1 && pi_k1_i < 1) {
@@ -215,7 +217,7 @@ void NormalizeVec(int k, const set<int>& ones, vector<BaseFloat> *probs) {
 //  KALDI_LOG << "max is " << maxx;
 //  KALDI_ASSERT(false);
 
-  if (maxx * (k - ones.size()) * 1.0 / sum <= 1.0) {
+  if (maxx / sum * (k - ones.size()) <= 1.0) {
 //    KALDI_LOG << "no need to interpolate";
     for (int i = 0; i < probs->size(); i++) {
       BaseFloat &t = (*probs)[i];
@@ -227,14 +229,13 @@ void NormalizeVec(int k, const set<int>& ones, vector<BaseFloat> *probs) {
   } else {
 //    KALDI_LOG << "need to interpolate";
     // now we want to interpolate with a uniform prob of
-    // (k - ones.size()) / (probs->size() - ones.size()) s.t. max is 1
+    // 1.0 / (probs->size() - ones.size()) * (k - ones.size()) s.t. max is 1
+    // (total prob = k - one.size() and we have probs->size() - ones.size() words)
     // w a + (1 - w) b = 1
     // ===> w = (1 - b) / (a - b)
-    BaseFloat a = maxx * (k - ones.size()) * 1.0 / sum;
+    BaseFloat a = maxx / sum * (k - ones.size());
 //    BaseFloat b = (k - ones.size()) / (probs->size() - ones.size());
-    BaseFloat b = sum / (probs->size() - ones.size()) * (k - ones.size());
-    KALDI_ASSERT(b <= 1);  // b == 1 usually happens when n = k
-                           // in which case we must use a uniform distribution
+    BaseFloat b = 1.0 / (probs->size() - ones.size()) * (k - ones.size());
     BaseFloat w = (1.0 - b) / (a - b);
     KALDI_ASSERT(w >= 0.0 && w <= 1.0);
 
@@ -243,7 +244,7 @@ void NormalizeVec(int k, const set<int>& ones, vector<BaseFloat> *probs) {
       if (t > 5.0) {
         continue;
       }
-      t = w * t + (1.0 - w) * b;
+      t = w * t / sum * (k - ones.size()) + (1.0 - w) * b;
     }
   }
 
@@ -255,10 +256,6 @@ void NormalizeVec(int k, const set<int>& ones, vector<BaseFloat> *probs) {
   sum = 0.0;
   for (int i = 0; i < probs->size(); i++) {
     BaseFloat t = (*probs)[i];
-    if (t > 10.0 || t <= 0) {
-      KALDI_ASSERT(false);
-    } 
-
     sum += std::min(BaseFloat(1.0), t);
 //    KALDI_LOG << "sum is " << sum;
   }
