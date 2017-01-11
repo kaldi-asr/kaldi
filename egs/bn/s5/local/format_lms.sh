@@ -8,12 +8,13 @@ if [ -f path.sh ]; then . path.sh; fi
 set -e -o pipefail -u
 
 lang_suffix=_test
+local_lm_dir=data/local/local_lm
 
 . utils/parse_options.sh
 
-#arpa_lm=data/local/local_lm/data/arpa/4gram.arpa.gz
-small_arpa_lm=data/local/local_lm/data/arpa/4gram_small.arpa.gz
-big_arpa_lm=data/local/local_lm/data/arpa/4gram_big.arpa.gz
+#arpa_lm=$local_lm_dir/data/arpa/4gram.arpa.gz
+small_arpa_lm=$local_lm_dir/data/arpa/4gram_small.arpa.gz
+big_arpa_lm=$local_lm_dir/data/arpa/4gram_big.arpa.gz
 
 for f in $small_arpa_lm $big_arpa_lm data/lang_nosp/words.txt; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1

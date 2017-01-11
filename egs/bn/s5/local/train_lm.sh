@@ -14,11 +14,13 @@ set -o pipefail
 set -u
 
 stage=0
+dir=data/local/local_lm
+cmd=run.pl
+vocab_size=   # Preferred vocabulary size
 
 echo "$0 $@"  # Print the command line for logging
 . utils/parse_options.sh || exit 1;
 
-dir=data/local/local_lm
 lm_dir=${dir}/data
 
 mkdir -p $dir
@@ -46,23 +48,43 @@ if [ $stage -le 0 ]; then
 
   rm ${dir}/data/text/* 2>/dev/null || true
 
-  cat data/train/text | shuf > ${dir}/train_text
-  head -n $num_dev_sentences < ${dir}/train_text | cut -d ' ' -f 2- > ${dir}/data/text/dev.txt 
-  tail -n +$[num_dev_sentences+1] < ${dir}/train_text | cut -d ' ' -f 2- > ${dir}/data/text/bn.txt
+  cat data/train_bn96/text | shuf > ${dir}/train_bn96_text
+  head -n $num_dev_sentences < ${dir}/train_bn96_text | cut -d ' ' -f 2- > \
+    ${dir}/data/text/dev.txt 
+  tail -n +$[num_dev_sentences+1] < ${dir}/train_text | cut -d ' ' -f 2- > \
+    ${dir}/data/text/train_bn96.txt
 
+  # Get text from NA News corpus 
   for x in data/local/data/na_news/*; do
     y=`basename $x`
     [ -f $x/corpus.gz ] && ln -sf `readlink -f $x/corpus.gz` ${dir}/data/text/${y}.txt.gz
   done
 
+  # Get text from 1996 CSR HUB4 LM corpus
+  for x in `cat data/local/data/csr96_hub4/{train,test}.filelist`; do
+    gunzip -c $x
+  done | gzip -c > ${dir}/data/text/csr96_hub4.txt.gz
+  
+  # Get text from 1995 CSR-IV HUB4 corpus
+  cat data/local/data/csr95_hub4/dev95_text \
+    data/local/data/csr95_hub4/eval95_text \
+    data/local/data/csr95_hub4/train95_text | cut -d ' ' -f 2- > \
+    ${dir}/data/text/csr95_hub4.txt
+
+  # # Get text from NA News supplement corpus 
+  # for x in data/local/data/na_news/*; do
+  #   y=`basename $x`
+  #   [ -f $x/corpus.gz ] && ln -sf `readlink -f $x/corpus.gz` ${dir}/data/text/${y}.txt.gz
+  # done
+
   # for reporting perplexities, we'll use the "real" dev set.
-  # (a subset of the training data is used as ${dir}/data/text/ted.txt to work
-  # out interpolation weights.
   # note, we can't put it in ${dir}/data/text/, because then pocolm would use
   # it as one of the data sources.
-  cat data/eval98/stm | awk '!/^;;/ {if (NF > 6) print $0}' | cut -d ' ' -f 1,7- | \
-    local/normalize_transcripts.pl "<NOISE>" "<SPOKEN_NOISE>" | \
-    cut -d ' ' -f 2- > ${dir}/data/real_dev_set.txt
+  for x in dev96pe dev96ue eval96 eval97 eval98 eval99_1 eval99_2; do
+    cat data/$x/stm | awk '!/^;;/ {if (NF > 6) print $0}' | cut -d ' ' -f 1,7- | \
+      local/normalize_transcripts.pl "<NOISE>" "<SPOKEN_NOISE>" | \
+      cut -d ' ' -f 2- > ${dir}/data/${x}.txt
+  done
 fi
 
 if [ $stage -le 1 ]; then
@@ -74,59 +96,97 @@ if [ $stage -le 1 ]; then
 fi
 
 if [ $stage -le 2 ]; then
-  for x in data/local/data/na_news/*; do
-    y=$dir/data/work/word_counts/`basename $x`.counts
-    [ -f $y ] && cat $y 
-  done | local/lm/merge_word_counts.py 15 > $dir/data/work/na_news.wordlist_counts
+  # decide on the vocabulary.
 
-  cat $dir/data/work/word_counts/{bn,dev}.counts | \
-    local/lm/merge_word_counts.py 2 > $dir/data/work/bn.wordlist_counts
+  # NA news corpus is not clean. So better not to get vocabulary from there.
+  # for x in data/local/data/na_news/*; do
+  #   y=$dir/data/work/word_counts/`basename $x`.counts
+  #   [ -f $y ] && cat $y 
+  # done | local/lm/merge_word_counts.py 15 > $dir/data/work/na_news.wordlist_counts
 
-  cat $dir/data/work/na_news.wordlist_counts $dir/data/work/bn.wordlist_counts | \
-    perl -ane 'if ($F[1] =~ m/[A-Za-z]/) { print "$F[1]\n"; }' | \
-    sort -u > $dir/data/work/wordlist
+  cat $dir/data/work/word_counts/{train_bn96,dev}.counts | \
+    local/lm/merge_word_counts.py 2 > $dir/data/work/train_bn96.wordlist_counts
+
+  cat $dir/data/work/word_counts/csr96_hub4_{tr,ts}.counts | \
+    local/lm/merge_word_counts.py 5 > $dir/data/work/csr96_hub4.wordlist_counts
+
+  cat $dir/data/work/word_counts/csr95_hub4.counts | \
+    local/lm/merge_word_counts.py 5 > $dir/data/work/csr95_hub4.wordlist_counts
+
+  cat $dir/data/work/{train_bn96,csr96_hub4,csr95_hub4}.wordlist_counts | \
+    perl -ane 'if ($F[1] =~ m/[A-Za-z]/) { print "$F[0] $F[1]\n"; }' | \
+    local/lm/merge_word_counts.py 1 | sort -k 1,1nr > $dir/data/work/final.wordlist_counts
+
+  if [ ! -z "$vocab_size" ]; then
+    awk -v sz=$vocab_size 'BEGIN{count=-1;} 
+    { i+=1; 
+      if (i == int(sz)) { 
+        count = $1; 
+      };
+      if (count > 0 && count != $1) { 
+        exit(0); 
+      } 
+      print $0;
+    }' $dir/data/work/final.wordlist_counts
+  else 
+    cat $dir/data/work/final.wordlist_counts
+  fi | awk '{print $2}' > $dir/data/work/wordlist
 fi
 
 order=4
 wordlist=$dir/data/work/wordlist
 
-min_counts='default=5 bn=1'
+min_counts='default=5 train_bn96=1 csr96_hub4=2,3 csr95_hub4=2,3'
 
 lm_name="`basename ${wordlist}`_${order}"
 if [ -n "${min_counts}" ]; then
-  lm_name+="_`echo ${min_counts} | tr -s "[:blank:]" "_" | tr "=" "-"`"
+  lm_name+="_`echo ${min_counts} | tr -s "[:blank:]" "_" | tr "," "." | tr "=" "-"`"
 fi
 unpruned_lm_dir=${lm_dir}/${lm_name}.pocolm
 
-if [ $stage -le 3 ]; then
-  # decide on the vocabulary.
-  # Note: if you have more than one order, use a certain amount of words as the
-  # vocab and want to restrict max memory for 'sort',
-  echo "$0: training the unpruned LM"
-  train_lm.py  --wordlist=$wordlist --num-splits=10 --warm-start-ratio=20  \
-               --limit-unk-history=true \
-               --fold-dev-into=bn \
-               --min-counts="${min_counts}" \
-               ${dir}/data/text ${order} ${lm_dir}/work ${unpruned_lm_dir}
+export PATH=$KALDI_ROOT/tools/pocolm/scripts:$PATH
 
-  get_data_prob.py ${dir}/data/real_dev_set.txt ${unpruned_lm_dir} 2>&1 | grep -F '[perplexity'
-  #[perplexity = 157.87] over 18290.0 words
+if [ $stage -le 3 ]; then
+  echo "$0: training the unpruned LM"
+
+  $cmd ${unpruned_lm_dir}/log/train.log \
+    train_lm.py  --wordlist=$wordlist --num-splits=10 --warm-start-ratio=20  \
+                 --limit-unk-history=true \
+                 --fold-dev-into=train_bn96 \
+                 --min-counts="${min_counts}" \
+                 ${dir}/data/text ${order} ${lm_dir}/work ${unpruned_lm_dir}
+
+  for x in dev96ue dev96pe eval96 eval97 eval98 eval99_1 eval99_2; do
+    $cmd ${unpruned_lm_dir}/log/compute_data_prob_${x}_set.log \
+      get_data_prob.py ${dir}/data/${x}_set.txt ${unpruned_lm_dir} 
+
+    cat ${unpruned_lm_dir}/log/compute_data_prob_${x}_set.log | grep -F '[perplexity'
+  done
   
-  mkdir -p ${dir}/data/arpa
-  format_arpa_lm.py ${unpruned_lm_dir} | gzip -c > ${dir}/data/arpa/${order}gram.arpa.gz
+  # train_lm.py: Ngram counts: 190742 + 31139856 + 14766071 + 13851899 = 59948568
+  # train_lm.py: You can set --bypass-metaparameter-optimization='1.000,0.007,0.000,0.002,0.000,0.006,0.003,0.000,0.000,0.000,0.001,0.002,0.002,0.000,0.000,0.000,0.003,0.000,0.000,0.604,0.187,0.044,0.012,1.000,0.490,0.026,0.001,0.732,0.328,0.281,0.218' to get equivalent results
+  # get_data_prob.py: log-prob of data/local/local_lm_bn_nanews_csr96/data/real_dev_set.txt given model data/local/local_lm_bn_nanews_csr96/data/wordlist_4_default-5_bn-1.pocolm was -4.9927348506 per word [perplexity = 147.338822662] over 33180.0 words.
 fi
 
 if [ $stage -le 4 ]; then
   echo "$0: pruning the LM (to larger size)"
   # Using 10 million n-grams for a big LM for rescoring purposes.
   size=10000000
-  prune_lm_dir.py --target-num-ngrams=$size --initial-threshold=0.02 ${unpruned_lm_dir} ${dir}/data/lm_${order}_prune_big
+  $cmd ${dir}/data/lm_${order}_prune_big/log/prune_lm.log \
+    prune_lm_dir.py --target-num-ngrams=$size --initial-threshold=0.02 \
+    ${unpruned_lm_dir} ${dir}/data/lm_${order}_prune_big
 
-  get_data_prob.py ${dir}/data/real_dev_set.txt ${dir}/data/lm_${order}_prune_big 2>&1 | grep -F '[perplexity'
+  for x in dev96ue dev96pe eval96 eval97 eval98 eval99_1 eval99_2; do
+    $cmd ${dir}/data/lm_${order}_prune_big/log/compute_data_prob_${x}_set.log \
+      get_data_prob.py ${dir}/data/${x}_set.txt ${dir}/data/lm_${order}_prune_big
 
-  # current results, after adding --limit-unk-history=true:
-  # get_data_prob.py: log-prob of data/local/local_lm/data/real_dev_set.txt given model data/local/local_lm/data/lm_4_prune_big was -5.16562818753 per word [perplexity = 175.147449465] over 18290.0 words.
+    cat ${dir}/data/lm_${order}_prune_big/log/compute_data_prob_${x}_set.log | grep -F '[perplexity'
+  done
 
+  # get_data_prob.py data/local/local_lm_bn_nanews_csr96/data/real_dev_set.txt data/local/local_lm_bn_nanews_csr96/data/lm_4_prune_big
+  # grep -F '[perplexity'
+  # get_data_prob.py: log-prob of data/local/local_lm_bn_nanews_csr96/data/real_dev_set.txt given model data/local/local_lm_bn_nanews_csr96/data/lm_4_prune_big was -5.05700399638 per word [perplexity = 157.11908113]
+  # over 33180.0 words.
 
   mkdir -p ${dir}/data/arpa
   format_arpa_lm.py ${dir}/data/lm_${order}_prune_big | gzip -c > ${dir}/data/arpa/${order}gram_big.arpa.gz
@@ -137,12 +197,22 @@ if [ $stage -le 5 ]; then
   # Using 2 million n-grams for a smaller LM for graph building.  Prune from the
   # bigger-pruned LM, it'll be faster.
   size=2000000
-  prune_lm_dir.py --target-num-ngrams=$size ${dir}/data/lm_${order}_prune_big ${dir}/data/lm_${order}_prune_small
+  
+  $cmd ${dir}/data/lm_${order}_prune_small/log/prune_lm.log \
+    prune_lm_dir.py --target-num-ngrams=$size ${dir}/data/lm_${order}_prune_big \
+    ${dir}/data/lm_${order}_prune_small
 
-  get_data_prob.py ${dir}/data/real_dev_set.txt ${dir}/data/lm_${order}_prune_small 2>&1 | grep -F '[perplexity'
+  for x in dev96ue dev96pe eval96 eval97 eval98 eval99_1 eval99_2; do
+    $cmd ${dir}/data/lm_${order}_prune_small/log/compute_data_prob_${x}_set.log \
+      get_data_prob.py ${dir}/data/${x}_set.txt ${dir}/data/lm_${order}_prune_big
 
-  # current results, after adding --limit-unk-history=true (needed for modeling OOVs and not blowing up LG.fst):
-  # get_data_prob.py: log-prob of data/local/local_lm/data/real_dev_set.txt given model data/local/local_lm/data/lm_4_prune_small was -5.29432352378 per word [perplexity = 199.202824404 over 18290.0 words.
+    cat ${dir}/data/lm_${order}_prune_small/log/compute_data_prob_${x}_set.log | grep -F '[perplexity'
+  done
+
+  # get_data_prob.py data/local/local_lm_bn_nanews_csr96/data/real_dev_set.txt data/local/local_lm_bn_nanews_csr96/data/lm_4_prune_small
+  # grep -F '[perplexity'
+  # get_data_prob.py: log-prob of data/local/local_lm_bn_nanews_csr96/data/real_dev_set.txt given model data/local/local_lm_bn_nanews_csr96/data/lm_4_prune_small was -5.27172473478 per word [perplexity = 194.751567749] over 33180.0 words.
+  # float-counts-to-pre-arpa: output [ 190743 673670 802551 351512 ] n-grams
 
   format_arpa_lm.py ${dir}/data/lm_${order}_prune_small | gzip -c > ${dir}/data/arpa/${order}gram_small.arpa.gz
 fi
