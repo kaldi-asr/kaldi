@@ -168,7 +168,7 @@ void AffineSampleLogSoftmaxComponent::Propagate(const CuMatrixBase<BaseFloat> &i
   // y = x - 1, when x <= 0
   // y = x / (1 + x) - 1, otherwise
 
-//* The Hainan trick
+/* The Hainan trick
   CuMatrix<BaseFloat> out2(*out);
   out2.ApplyFloor(0);
   out2.Scale(1.0 / kCutoff);
@@ -176,6 +176,18 @@ void AffineSampleLogSoftmaxComponent::Propagate(const CuMatrixBase<BaseFloat> &i
   out->DivElements(out2);
   out->Add(-1.0 * kCutoff);
 // */
+
+//* Dan trick: if x<=0 then y = x; 
+//             if x >0 then y = log(1 + x)
+  CuMatrix<BaseFloat> out2(*out);
+  out2.ApplyFloor(0.0);
+  out2.Add(1);
+  out2.ApplyLog();
+  out->ApplyCeiling(0.0);
+  out->AddMat(1.0, out2);
+// */
+
+
 
 //  out->ApplyCeiling(0);  // TODO(hxu), neg-relu
 }
@@ -189,11 +201,19 @@ void AffineSampleLogSoftmaxComponent::Backprop(
                                CuMatrixBase<BaseFloat> *input_deriv) const {
   KALDI_ASSERT (input_deriv != NULL);
 
-//* The Hainan Trick
+/* The Hainan Trick
   CuMatrix<BaseFloat> new_out_deriv(out_value);
   new_out_deriv.ApplyFloor(-kCutoff);
   new_out_deriv.Scale(1.0 / kCutoff);
   new_out_deriv.MulElements(new_out_deriv);
+  new_out_deriv.InvertElements();
+  new_out_deriv.MulElements(output_deriv);
+// */
+
+//* The dan Trick
+  CuMatrix<BaseFloat> new_out_deriv(out_value);
+  new_out_deriv.ApplyExp();
+  new_out_deriv.ApplyFloor(1);
   new_out_deriv.InvertElements();
   new_out_deriv.MulElements(output_deriv);
 // */

@@ -37,10 +37,11 @@ void UnitTestNChooseKSamplingConvergence(int n, int k, int ones_size) {
   // normalize the selection_probs
   BaseFloat sum = 0;
   for (int i = 0; i < u.size(); i++) {
-    sum += selection_probs[i];
+    sum += std::min(BaseFloat(1.0), selection_probs[i]);
   }
+  KALDI_ASSERT(ApproxEqual(sum, k));
   for (int i = 0; i < u.size(); i++) {
-    selection_probs[i] /= sum;
+    selection_probs[i] = std::min(BaseFloat(1.0), selection_probs[i]) / sum;
   }
 
   vector<BaseFloat> samples_counts(u.size(), 0);
