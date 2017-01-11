@@ -1744,6 +1744,7 @@ class LstmNonlinearityComponent: public UpdatableComponent {
   virtual int32 NumParameters() const;
   virtual void Vectorize(VectorBase<BaseFloat> *params) const;
   virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+  virtual void ZeroStats();
 
   // Some functions that are specific to this class:
   explicit LstmNonlinearityComponent(
