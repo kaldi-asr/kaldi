@@ -28,7 +28,7 @@ NnetComputeProb::NnetComputeProb(const NnetComputeProbOptions &config,
     config_(config),
     nnet_(nnet),
     deriv_nnet_(NULL),
-    compiler_(nnet),
+    compiler_(nnet, config_.optimize_config, config_.compiler_config),
     num_minibatches_processed_(0) {
   if (config_.compute_deriv) {
     deriv_nnet_ = new Nnet(nnet_);
@@ -69,10 +69,10 @@ void NnetComputeProb::Compute(const NnetExample &eg) {
                         nnet_, deriv_nnet_);
   // give the inputs to the computer object.
   computer.AcceptInputs(nnet_, eg.io);
-  computer.Forward();
+  computer.Run();
   this->ProcessOutputs(eg, &computer);
   if (config_.compute_deriv)
-    computer.Backward();
+    computer.Run();
 }
 
 void NnetComputeProb::ProcessOutputs(const NnetExample &eg,

@@ -12,7 +12,6 @@ cmd=run.pl
 feat_type=raw     # set it to 'lda' to use LDA features.
 frames_per_eg=150 # number of frames of labels per example.  more->less disk space and
                   # less time preparing egs, but more I/O during training.
-                  # note: the script may reduce this if reduce_frames_per_eg is true.
 frames_overlap_per_eg=30 # number of supervised frames of overlap that we aim for per eg.
                   # can be useful to avoid wasted data if you're using --left-deriv-truncate
                   # and --right-deriv-truncate.
@@ -21,13 +20,9 @@ frame_subsampling_factor=1 # ratio between input and output frame-rate of nnet.
 left_context=4    # amount of left-context per eg (i.e. extra frames of input features
                   # not present in the output supervision).
 right_context=4   # amount of right-context per eg.
-valid_left_context=   # amount of left_context for validation egs, typically used in
-                      # recurrent architectures to ensure matched condition with
-                      # training egs
-valid_right_context=  # amount of right_context for validation egs
+left_context_initial=-1    # if >=0, left-context for first chunk of an utterance
+right_context_final=-1     # if >=0, right-context for last chunk of an utterance
 adjust_priors=true
-priors_left_context=   # amount of left_context for priors egs
-priors_right_context=   # amount of right_context for priors egs
 compress=true   # set this to false to disable compression (e.g. if you want to see whether
                 # results are affected).
 num_utts_subset=80     # number of utterances in validation and training
@@ -54,7 +49,9 @@ cmvn_opts=  # can be used for specifying CMVN options, if feature type is not ld
             # it doesn't make sense to use different options than were used as input to the
             # LDA transform).  This is used to turn off CMVN in the online-nnet experiments.
 
-num_priors_subset=100
+num_priors_subset=1000  #  number of utterances used to calibrate the per-state
+                        #  priors.  Note: these don't have to be held out from
+                        #  the training data.
 num_archives_priors=10
 
 # End configuration section.
@@ -80,6 +77,10 @@ if [ $# != 6 ]; then
   echo "                                                   # the middle."
   echo "  --online-ivector-dir <dir|"">                    # Directory for online-estimated iVectors, used in the"
   echo "                                                   # online-neural-net setup."
+  echo "  --left-context <int;4>                           # Number of frames on left side to append for feature input"
+  echo "  --right-context <int;4>                          # Number of frames on right side to append for feature input"
+  echo "  --left-context-initial <int;-1>                  # If >= 0, left-context for first chunk of an utterance"
+  echo "  --right-context-final <int;-1>                   # If >= 0, right-context for last chunk of an utterance"
   exit 1;
 fi
 
@@ -206,11 +207,9 @@ if [ ! -z $online_ivector_dir ]; then
   ivector_period=$(cat $online_ivector_dir/ivector_period)
   ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
   echo $ivector_dim >$dir/info/ivector_dim
-
-  ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $sdata/JOB/utt2spk $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |'"
-  valid_ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |'"
-  train_subset_ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |'"
-  priors_ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $dir/priors_uttlist $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |'"
+  ivector_opts="--online-ivectors=scp:$online_ivector_dir/ivector_online.scp --online-ivector-period=$ivector_period"
+else
+  ivector_opts=""
 fi
 
 if [ $stage -le 2 ]; then
@@ -218,12 +217,12 @@ if [ $stage -le 2 ]; then
   num_frames=$(steps/nnet2/get_num_frames.sh $data)
   echo $num_frames > $dir/info/num_frames
   echo "$0: working out feature dim"
-  feats_one="$(echo $feats | sed s/JOB/1/g)"
-  feat_dim=$(feat-to-dim "$feats_one" -) || exit 1;
-  echo $feat_dim > $dir/info/feat_dim
-else
-  num_frames=$(cat $dir/info/num_frames) || exit 1;
-  feat_dim=$(cat $dir/info/feat_dim) || exit 1;
+  feats_one="$(echo $feats | sed s:JOB:1:g)"
+  if feat_dim=$(feat-to-dim "$feats_one" - 2>/dev/null); then
+    echo $feat_dim > $dir/info/feat_dim
+  else # run without stderr redirection to show the error.
+    feat-to-dim "$feats_one" -; exit 1
+  fi
 fi
 
 # Working out total number of archives. Add one on the assumption the
@@ -255,6 +254,9 @@ echo $egs_per_archive > $dir/info/egs_per_archive
 
 echo "$0: creating $num_archives archives, each with $egs_per_archive egs, with"
 echo "$0:   $frames_per_eg labels per example, and (left,right) context = ($left_context,$right_context)"
+if [ $left_context_initial -ge 0 ] || [ $right_context_final -ge 0 ]; then
+  echo "$0:   ... and (left-context-initial,right-context-final) = ($left_context_initial,$right_context_final)"
+fi
 
 
 if [ -e $dir/storage ]; then
@@ -279,36 +281,36 @@ fi
 
 splitter_opts="--supervision-splitter.determinize=$determinize --supervision-splitter.minimize=$minimize --supervision-splitter.remove_output_symbols=$remove_output_symbols --supervision-splitter.remove_epsilons=$remove_epsilons --supervision-splitter.collapse-transition-ids=$collapse_transition_ids --supervision-splitter.acoustic-scale=$acwt"
 
-[ -z $valid_left_context ] &&  valid_left_context=$left_context;
-[ -z $valid_right_context ] &&  valid_right_context=$right_context;
 
-[ -z $priors_left_context ] &&  priors_left_context=$left_context;
-[ -z $priors_right_context ] &&  priors_right_context=$right_context;
-
+# If frame_subsampling_factor > 0, we will later be shifting the egs slightly to
+# the left or right as part of training, so we see (e.g.) all shifts of the data
+# modulo 3... we need to extend the l/r context slightly to account for this, to
+# ensure we see the entire context that the model requires.
 left_context=$[left_context+frame_subsampling_factor/2]
 right_context=$[right_context+frame_subsampling_factor/2]
+[ $left_context_initial -ge 0 ] && left_context_initial=$[left_context_initial+frame_subsampling_factor/2]
+[ $right_context_final -ge 0 ] && right_context_final=$[right_context_final+frame_subsampling_factor/2]
 
-egs_opts="--left-context=$left_context --right-context=$right_context --num-frames=$frames_per_eg --num-frames-overlap=$frames_overlap_per_eg --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress $splitter_opts"
+egs_opts="--left-context=$left_context --right-context=$right_context --num-frames=$frames_per_eg --compress=$compress --frame-subsampling-factor=$frame_subsampling_factor $splitter_opts"
+[ $left_context_initial -ge 0 ] && egs_opts="$egs_opts --left-context-initial=$left_context_initial"
+[ $right_context_final -ge 0 ] && egs_opts="$egs_opts --right-context-final=$right_context_final"
 
-valid_left_context=$[valid_left_context+frame_subsampling_factor/2]
-valid_right_context=$[valid_right_context+frame_subsampling_factor/2]
 
-# don't do the overlap thing for the validation data.
-valid_egs_opts="--left-context=$valid_left_context --right-context=$valid_right_context --num-frames=$frames_per_eg --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress $splitter_opts"
+# don't do the overlap thing for the priors computation data-- but do use the
+# same num-frames for the eg, which would be much more efficient in case it's a
+# recurrent model and has a lot of frames of context.  In any case we're not
+# doing SGD so there is no benefit in having short chunks.
+priors_egs_opts="--left-context=$left_context --right-context=$right_context --num-frames=$frames_per_eg --compress=$compress"
+[ $left_context_initial -ge 0 ] && priors_egs_opts="$priors_egs_opts --left-context-initial=$left_context_initial"
+[ $right_context_final -ge 0 ] && priors_egs_opts="$priors_egs_opts --right-context-final=$right_context_final"
 
-priors_left_context=$[priors_left_context+frame_subsampling_factor/2]
-priors_right_context=$[priors_right_context+frame_subsampling_factor/2]
-
-# don't do the overlap thing for the priors computation data.
-priors_egs_opts="--left-context=$priors_left_context --right-context=$priors_right_context --num-frames=1 --compress=$compress"
 
 supervision_all_opts="--frame-subsampling-factor=$frame_subsampling_factor"
 
 echo $left_context > $dir/info/left_context
 echo $right_context > $dir/info/right_context
-
-echo $priors_left_context > $dir/info/priors_left_context
-echo $priors_right_context > $dir/info/priors_right_context
+echo $left_context_initial > $dir/info/left_context_initial
+echo $right_context_final > $dir/info/right_context_final
 
 echo $frame_subsampling_factor > $dir/info/frame_subsampling_factor
 
@@ -341,7 +343,7 @@ fi
     num_pdfs=`am-info $alidir/final.mdl | grep pdfs | awk '{print $NF}' 2>/dev/null` || exit 1
 
     $cmd $dir/log/create_priors_subset.log \
-      nnet3-get-egs --num-pdfs=$num_pdfs $priors_ivector_opt $priors_egs_opts "$priors_feats" \
+      nnet3-get-egs --num-pdfs=$num_pdfs $ivector_opts $priors_egs_opts "$priors_feats" \
       "$prior_ali_rspecifier ali-to-post ark:- ark:- |" \
       ark:- \| nnet3-copy-egs ark:- $priors_egs_list || \
       { touch $dir/.error; echo "Error in creating priors subset. See $dir/log/create_priors_subset.log"; exit 1; }
@@ -368,13 +370,13 @@ if [ $stage -le 4 ]; then
   $cmd $dir/log/create_valid_subset.log \
     discriminative-get-supervision $supervision_all_opts \
     scp:$dir/ali_special.scp scp:$dir/lat_special.scp ark:- \| \
-    nnet3-discriminative-get-egs $valid_ivector_opt $valid_egs_opts \
+    nnet3-discriminative-get-egs $ivector_opts $egs_opts \
     $dir/final.mdl "$valid_feats" ark,s,cs:- "ark:$dir/valid_diagnostic.degs" || touch $dir/.error &
 
   $cmd $dir/log/create_train_subset.log \
     discriminative-get-supervision $supervision_all_opts \
     scp:$dir/ali_special.scp scp:$dir/lat_special.scp ark:- \| \
-    nnet3-discriminative-get-egs $train_subset_ivector_opt $egs_opts \
+    nnet3-discriminative-get-egs $ivector_opts $egs_opts \
     $dir/final.mdl "$train_subset_feats" ark,s,cs:- "ark:$dir/train_diagnostic.degs" || touch $dir/.error &
   wait;
   [ -f $dir/.error ] && echo "Error detected while creating train/valid egs" && exit 1
@@ -404,7 +406,8 @@ if [ $stage -le 5 ]; then
     discriminative-get-supervision $supervision_all_opts \
     "scp:utils/filter_scp.pl $sdata/JOB/utt2spk $dir/ali.scp |" \
     "ark,s,cs:gunzip -c $denlatdir/lat.JOB.gz |" ark:- \| \
-    nnet3-discriminative-get-egs $ivector_opt $egs_opts \
+    nnet3-discriminative-get-egs $ivector_opts $egs_opts \
+       --num-frames-overlap=$frames_overlap_per_eg \
     $dir/final.mdl "$feats" ark,s,cs:- ark:- \| \
     nnet3-discriminative-copy-egs --random=true --srand=JOB ark:- $degs_list || exit 1;
 fi

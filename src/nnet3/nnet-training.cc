@@ -28,7 +28,7 @@ NnetTrainer::NnetTrainer(const NnetTrainerOptions &config,
                          Nnet *nnet):
     config_(config),
     nnet_(nnet),
-    compiler_(*nnet, config_.optimize_config),
+    compiler_(*nnet, config_.optimize_config, config_.compiler_config),
     num_minibatches_processed_(0) {
   if (config.zero_component_stats)
     ZeroComponentStats(nnet);
@@ -39,7 +39,7 @@ NnetTrainer::NnetTrainer(const NnetTrainerOptions &config,
                              // natural-gradient updates.
   SetZero(is_gradient, delta_nnet_);
   const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
-  num_max_change_per_component_applied_.resize(num_updatable, 0); 
+  num_max_change_per_component_applied_.resize(num_updatable, 0);
   num_max_change_global_applied_ = 0;
 
   if (config_.read_cache != "") {
@@ -52,7 +52,7 @@ NnetTrainer::NnetTrainer(const NnetTrainerOptions &config,
       KALDI_WARN << "Could not open cached computation. "
                     "Probably this is the first training iteration.";
     }
-  } 
+  }
 }
 
 
@@ -68,10 +68,10 @@ void NnetTrainer::Train(const NnetExample &eg) {
                         *nnet_, delta_nnet_);
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, eg.io);
-  computer.Forward();
+  computer.Run();
 
   this->ProcessOutputs(eg, &computer);
-  computer.Backward();
+  computer.Run();
 
   UpdateParamsWithMaxChange();
 }
@@ -167,7 +167,7 @@ void NnetTrainer::UpdateParamsWithMaxChange() {
            << " / " << num_updatable << " Updatable Components."
            << "(smallest factor=" << min_scale << " on "
            << component_name_with_min_scale
-           << " with max-change=" << max_change_with_min_scale <<"). "; 
+           << " with max-change=" << max_change_with_min_scale <<"). ";
     if (param_delta > config_.max_param_change)
       ostr << "Global max-change factor was "
            << config_.max_param_change / param_delta
@@ -276,7 +276,7 @@ bool ObjectiveFunctionInfo::PrintTotalStats(const std::string &name) const {
               << (tot_objf / tot_weight) << " over " << tot_weight << " frames.";
   } else {
     KALDI_LOG << "Overall average objective function for '" << name << "' is "
-              << objf << " + " << aux_objf << " = " << sum_objf        
+              << objf << " + " << aux_objf << " = " << sum_objf
               << " over " << tot_weight << " frames.";
   }
   KALDI_LOG << "[this line is to be parsed by a script:] "
@@ -290,7 +290,7 @@ NnetTrainer::~NnetTrainer() {
     Output ko(config_.write_cache, config_.binary_write_cache);
     compiler_.WriteCache(ko.Stream(), config_.binary_write_cache);
     KALDI_LOG << "Wrote computation cache to " << config_.write_cache;
-  } 
+  }
   delete delta_nnet_;
 }
 
@@ -324,7 +324,7 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
             CuMatrix<BaseFloat> output_deriv(output.NumRows(), output.NumCols(),
                                              kUndefined);
             cu_post.CopyToMat(&output_deriv);
-            computer->AcceptOutputDeriv(output_name, &output_deriv);
+            computer->AcceptInput(output_name, &output_deriv);
           }
           break;
         }
@@ -335,7 +335,7 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
           *tot_weight = cu_post.Sum();
           *tot_objf = TraceMatMat(output, cu_post, kTrans);
           if (supply_deriv)
-            computer->AcceptOutputDeriv(output_name, &cu_post);
+            computer->AcceptInput(output_name, &cu_post);
           break;
         }
         case kCompressedMatrix: {
@@ -346,7 +346,7 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
           *tot_weight = cu_post.Sum();
           *tot_objf = TraceMatMat(output, cu_post, kTrans);
           if (supply_deriv)
-            computer->AcceptOutputDeriv(output_name, &cu_post);
+            computer->AcceptInput(output_name, &cu_post);
           break;
         }
       }
@@ -362,7 +362,7 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
       *tot_weight = diff.NumRows();
       *tot_objf = -0.5 * TraceMatMat(diff, diff, kTrans);
       if (supply_deriv)
-        computer->AcceptOutputDeriv(output_name, &diff);
+        computer->AcceptInput(output_name, &diff);
       break;
     }
     default:
