@@ -37,8 +37,8 @@ while(<STDIN>) {
     $trans =~ s:\*\*([^*]+)\*\*:$1 :g;       # Remove invented word markings
     $trans =~ s:\[[^]]+\]:$noise_word :g; 
     $trans =~ s:\{[^}]+\}:$spoken_noise_word :g;
+    $trans =~ s:^[+]([^+]+)[+]$:$1:;   # Remove mispronunciation brackets
     foreach $w (split (" ",$trans)) {
-        $w =~ s:^[+](.+)[+]$:$1:;   # Remove mispronunciation brackets
         $w =~ s:^@(.*)$:$1:;  # Remove best guesses for proper nouns
         print " $w";
     }
