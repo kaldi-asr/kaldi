@@ -340,7 +340,7 @@ done
 
 # TODO(arnab): add SGMM and hybrid
 
-# local/run_sgmm.sh
+# local/run_sgmm2.sh
 
 # # Recipe with DNN system on top of fMLLR features
 # local/run_hybrid.sh

@@ -7,7 +7,7 @@ KALDIROOT=/exports/home/aghoshal/kaldi/trunk
 KALDISRC=$KALDIROOT/src
 KALDIBIN=$KALDISRC/bin:$KALDISRC/featbin:$KALDISRC/fgmmbin:$KALDISRC/fstbin  
 KALDIBIN=$KALDIBIN:$KALDISRC/gmmbin:$KALDISRC/latbin:$KALDISRC/nnetbin
-KALDIBIN=$KALDIBIN:$KALDISRC/sgmmbin:$KALDISRC/lm
+KALDIBIN=$KALDIBIN:$KALDISRC/sgmm2bin:$KALDISRC/lm
 
 FSTBIN=$KALDIROOT/tools/openfst/bin
 LMBIN=$KALDIROOT/tools/irstlm/bin
