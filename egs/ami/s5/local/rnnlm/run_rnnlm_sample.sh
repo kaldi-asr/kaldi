@@ -3,7 +3,7 @@
 train_text=data/sdm1/train/text
 dev_text=data/sdm1/dev/text
 
-cmd=run.pl
+cmd=queue.pl
 
 num_words_in=10000
 num_words_out=10000
@@ -21,11 +21,11 @@ num_frames_diagnostic=2000 # number of frames for "compute_prob" jobs
 num_archives=8
 
 shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of the samples
-minibatch_size=128
+minibatch_size=64
 
 hidden_dim=200
-initial_learning_rate=0.001
-final_learning_rate=0.0001
+initial_learning_rate=0.01
+final_learning_rate=0.001
 learning_rate_decline_factor=1.03
 
 # LSTM parameters
@@ -38,7 +38,7 @@ norm_based_clipping=true
 clipping_threshold=30
 label_delay=0  # 5
 splice_indexes=0
-use_gpu=yes
+use_gpu=no
 
 type=rnn  # or lstm
 
@@ -48,8 +48,8 @@ id=
 . path.sh
 . parse_options.sh || exit 1;
 
-outdir=debug-rnnlm-$type-$initial_learning_rate-$final_learning_rate-$learning_rate_decline_factor-$minibatch_size-$hidden_dim-$num_archives-$id-sample
-outdir=debug
+outdir=sampling-rnnlm-$type-$initial_learning_rate-$final_learning_rate-$learning_rate_decline_factor-$minibatch_size-$hidden_dim-$num_archives
+#outdir=sample
 srcdir=data/local/dict
 
 set -e
@@ -157,14 +157,14 @@ if [ $stage -le -2 ]; then
 
   input-node name=input dim=$hidden_dim
   component name=first_nonlin type=SigmoidComponent dim=$hidden_dim
-  component name=first_renorm type=NormalizeComponent dim=$hidden_dim target-rms=1.0
+#  component name=first_renorm type=NormalizeComponent dim=$hidden_dim target-rms=1.0
   component name=hidden_affine type=AffineComponent input-dim=$hidden_dim output-dim=$hidden_dim max-change=10
 
 #Component nodes
   component-node name=first_nonlin component=first_nonlin  input=Sum(input, hidden_affine)
-  component-node name=first_renorm component=first_renorm  input=first_nonlin
-  component-node name=hidden_affine component=hidden_affine  input=IfDefined(Offset(first_renorm, -1))
-  output-node    name=output input=first_renorm objective=linear
+#  component-node name=first_renorm component=first_renorm  input=first_nonlin
+  component-node name=hidden_affine component=hidden_affine  input=IfDefined(Offset(first_nonlin, -1))
+  output-node    name=output input=first_nonlin objective=linear
 EOF
   fi
 
@@ -238,7 +238,7 @@ if [ $stage -le $num_iters ]; then
 
 #        $cuda_cmd $outdir/log/train.rnnlm.$n.log rnnlm-train --use-gpu=$use_gpu --binary=false \
 
-        run.pl $outdir/log/train.rnnlm.$n.log rnnlm-train --use-gpu=$use_gpu --binary=false \
+        $cmd $outdir/log/train.rnnlm.$n.log rnnlm-train --use-gpu=$use_gpu --binary=false \
         --max-param-change=$max_param_change "rnnlm-copy --learning-rate=$learning_rate $outdir/$[$n-1].mdl -|" \
         "ark:nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$n ark:$outdir/egs/train.$this_archive.egs ark:- | nnet3-merge-egs --minibatch-size=$minibatch_size ark:- ark:- |" $outdir/$n.mdl $unigram
 

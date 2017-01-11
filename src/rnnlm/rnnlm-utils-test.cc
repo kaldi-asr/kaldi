@@ -43,32 +43,36 @@ void UnitTestNChooseKSamplingConvergence(int n, int k, int ones_size) {
     selection_probs[i] /= sum;
   }
 
-  vector<BaseFloat> samples_probs(u.size(), 0);
+  vector<BaseFloat> samples_counts(u.size(), 0);
   int count = 0;
   for (int i = 0; ; i++) {
     count++;
     vector<int> samples;
     SampleWithoutReplacement(u, k, &samples);
     for (int j = 0; j < samples.size(); j++) {
-      samples_probs[samples[j]] += 1;
+      samples_counts[samples[j]] += 1;
     }
     // update Euclidean distance between the two pdfs every 1000 iters
-    BaseFloat distance = 0;
     if (count % 1000 == 0) {
+      BaseFloat distance = 0;
+      vector<BaseFloat> samples_probs(u.size());
       for (int j = 0; j < samples_probs.size(); j++) {
-        samples_probs[j] /= (count * k);
+        samples_probs[j] = samples_counts[j] / (count * k);
       }
       for (int j = 0; j < u.size(); j++) {
         distance += pow(samples_probs[j] - selection_probs[j], 2);
       }
       distance = sqrt(distance);
+
+      KALDI_LOG << "distance after " << count << " runs is " << distance;
+
+      if (distance < 0.001) {
+        KALDI_LOG << "Sampling convergence test: passed for sampling " << k <<
+          " items from " << n << " unigrams";
+        break;
+      }
     }
     // if the Euclidean distance is small enough, break the loop
-    if (distance < 0.05) {
-      KALDI_LOG << "Sampling convergence test: passed for sampling " << k <<
-        " items from " << n << " unigrams";
-      break;
-    }
   }
 }
 

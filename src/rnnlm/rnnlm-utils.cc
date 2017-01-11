@@ -205,14 +205,14 @@ void NormalizeVec(int k, const set<int>& ones, vector<BaseFloat> *probs) {
 //  }
   for (set<int>::const_iterator iter = ones.begin(); iter != ones.end(); iter++) {
     sum -= (*probs)[*iter];
-    (*probs)[*iter] = 10;
+    (*probs)[*iter] = 10;  // mark the ones
   }
 
   // distribute the remaining probs
   BaseFloat maxx = 0.0;
   for (int i = 0; i < probs->size(); i++) {
     BaseFloat t = (*probs)[i];
-    if (t < 1.0) {
+    if (t < 2.0) {
       maxx = std::max(maxx, t);
     }
   }
@@ -238,8 +238,10 @@ void NormalizeVec(int k, const set<int>& ones, vector<BaseFloat> *probs) {
     // ===> w = (1 - b) / (a - b)
     BaseFloat a = maxx * (k - ones.size()) * 1.0 / sum;
     BaseFloat b = (k - ones.size()) / (probs->size() - ones.size());
-    KALDI_ASSERT(b < 1);
+    KALDI_ASSERT(b <= 1);  // b == 1 usually happens when n = k
+                           // in which case we must use a uniform distribution
     BaseFloat w = (1.0 - b) / (a - b);
+    KALDI_ASSERT(w >= 0.0 && w <= 1.0);
 
     for (int i = 0; i < probs->size(); i++) {
       BaseFloat &t = (*probs)[i];
@@ -251,18 +253,21 @@ void NormalizeVec(int k, const set<int>& ones, vector<BaseFloat> *probs) {
   }
 
   for (set<int>::const_iterator iter = ones.begin(); iter != ones.end(); iter++) {
-    (*probs)[*iter] = 1.001;  // to avoid numerical issues
+    KALDI_ASSERT((*probs)[*iter] > 2.0);
+    (*probs)[*iter] = 2.0;  // to avoid numerical issues
   }
   
   sum = 0.0;
   for (int i = 0; i < probs->size(); i++) {
     BaseFloat t = (*probs)[i];
-    sum += t;
-    if (t > 1.0011 || t <= 0) {
+    if (t > 2.0 || t <= 0) {
       KALDI_ASSERT(false);
-    }
+    } 
+
+    sum += std::min(BaseFloat(1.0), t);
+    KALDI_LOG << "sum is " << sum;
   }
-//  KALDI_ASSERT(ApproxEqual(sum, k, 0.001));
+  KALDI_ASSERT(ApproxEqual(sum, k));
 
 }
 
