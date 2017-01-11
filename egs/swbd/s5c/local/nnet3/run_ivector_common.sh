@@ -7,6 +7,8 @@ train_stage=-10
 generate_alignments=true # false if doing ctc training
 speed_perturb=true
 use_random_offsets=false
+cmn_offset_scale=0.5 # offset scale used to scale the covariance matrix
+num_cmn_offsets=4    # for chain model:4 , for xent model:3
 
 . ./path.sh
 . ./utils/parse_options.sh
@@ -123,12 +125,13 @@ if [ $stage -le 6 ]; then
     data/train_100k_nodup_hires exp/nnet3/diag_ubm exp/nnet3/extractor || exit 1;
 fi
 
-if [ $stage -le 7 ]; then 
+if [ $stage -le 7 ]; then
   # Generates random offsets for training data
   mfccdir=mfcc_hires
   for dataset in $train_set; do
     if $use_random_offsets; then
-      steps/compute_offsets.sh --offsets-config conf/offsets.conf  --cmd "$train_cmd" \
+      steps/compute_offsets.sh --cmd "$train_cmd" \
+      --cmn-offset-scale $cmn_offset_scale --num-cmn-offsets $num_cmn_offsets \
         data/${dataset}_hires exp/make_offsets/${dataset} $mfccdir || exit 1;
     fi
   done
@@ -142,10 +145,10 @@ if [ $stage -le 8 ]; then
   # handle per-utterance decoding well (iVector starts at zero).
   steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/${train_set}_hires data/${train_set}_max2_hires
 
-  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
+  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 120 \
     data/${train_set}_max2_hires exp/nnet3/extractor exp/nnet3/ivectors_${train_set} || exit 1;
 
-  for data_set in eval2000 train_dev; do
+  for data_set in eval2000 train_dev rt03; do
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
       data/${data_set}_hires exp/nnet3/extractor exp/nnet3/ivectors_${data_set} || exit 1;
   done

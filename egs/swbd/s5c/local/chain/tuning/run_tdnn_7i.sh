@@ -1,24 +1,25 @@
 #!/bin/bash
-
-# Same as 7h but double the number of parameters (27983950 vs 15551509)
-
-set -e
-
-
-#System                  tdnn_7h   tdnn_7i
-#WER on train_dev(tg)      13.84     13.48
-#WER on train_dev(fg)      12.84     12.47
-#WER on eval2000(tg)        16.5      16.4
-#WER on eval2000(fg)        14.8      14.9
-#Final train prob     -0.0889771-0.0785415
-#Final valid prob      -0.113102 -0.105757
-#Final train prob (xent)       -1.2533  -1.15785
-#Final valid prob (xent)      -1.36743  -1.28397
+# _7i is as _7h but it uses random CMN offsets generated using between-speaker covariance
+# to perturb data during training.
 #
+#System                  tdnn_7g   tdnn_7h
+#WER on train_dev(tg)      13.98     13.84
+#WER on train_dev(fg)      12.78     12.84
+#WER on eval2000(tg)        16.7      16.5
+#WER on eval2000(fg)        14.9      14.8
+#Final train prob     -0.0817467-0.0889771
+#Final valid prob      -0.110475 -0.113102
+#Final train prob (xent)      -1.20065   -1.2533
+#Final valid prob (xent)       -1.3313  -1.36743
+#
+set -e
+# configs for random offset
+use_random_offsets=true
+
 # configs for 'chain'
 affix=
-stage=12
-train_stage=0
+stage=7
+train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
 dir=exp/chain/tdnn_7i  # Note: _sp will get added to this if $speed_perturb == true.
@@ -36,7 +37,7 @@ num_jobs_final=16
 minibatch_size=128
 frames_per_eg=150
 remove_egs=false
-common_egs_dir=exp/chain/tdnn_7g_sp/egs
+common_egs_dir=
 xent_regularize=0.1
 
 # End configuration section.
@@ -73,9 +74,11 @@ lang=data/lang_chain_2y
 # if we are using the speed-perturbed data we need to generate
 # alignments for it.
 local/nnet3/run_ivector_common.sh --stage $stage \
+  --cmn-offset-scale $cmn_offset_scale \
+  --num-cmn-offsets $num_cmn_offsets \
   --speed-perturb $speed_perturb \
+  --use-random-offsets $use_random_offsets \
   --generate-alignments $speed_perturb || exit 1;
-
 
 if [ $stage -le 9 ]; then
   # Get the alignments as lattices (gives the LF-MMI training more freedom).
@@ -126,13 +129,13 @@ if [ $stage -le 12 ]; then
   fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-renorm-layer name=tdnn1 dim=1024
-  relu-renorm-layer name=tdnn2 input=Append(-1,0,1) dim=1024
-  relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
-  relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
-  relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
-  relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
-  relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
+  relu-renorm-layer name=tdnn1 dim=625
+  relu-renorm-layer name=tdnn2 input=Append(-1,0,1) dim=625
+  relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=625
+  relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=625
+  relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=625
+  relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=625
+  relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=625
 
   ## adding the layers for chain branch
   relu-renorm-layer name=prefinal-chain input=tdnn7 dim=625 target-rms=0.5

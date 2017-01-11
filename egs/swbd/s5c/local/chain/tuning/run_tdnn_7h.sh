@@ -11,8 +11,6 @@
 #Final valid prob (xent)       -1.3313  -1.36743
 #
 set -e
-# configs for random offset
-use_random_offsets=false
 
 # configs for 'chain'
 affix=
@@ -73,13 +71,7 @@ lang=data/lang_chain_2y
 # alignments for it.
 local/nnet3/run_ivector_common.sh --stage $stage \
   --speed-perturb $speed_perturb \
-  --use-random-offsets $use_random_offsets \
   --generate-alignments $speed_perturb || exit 1;
-
-if $use_random_offsets; then
-  num_epochs=`grep num-cmn-offset conf/offsets.conf | cut -d"=" -f2`
-  echo "$0: num of epochs changed to $num_epochs to use all random offsets."
-fi
 
 
 if [ $stage -le 9 ]; then

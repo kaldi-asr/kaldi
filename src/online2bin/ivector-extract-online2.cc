@@ -47,52 +47,52 @@ int main(int argc, char *argv[]) {
         "e.g.: \n"
         "  ivector-extract-online2 --config=exp/nnet2_online/nnet_online/conf/ivector_extractor.conf \\\n"
         "    ark:data/train/spk2utt scp:data/train/feats.scp ark,t:ivectors.1.ark\n";
-    
+
     ParseOptions po(usage);
     OnlineIvectorExtractionConfig ivector_config;
     ivector_config.Register(&po);
     std::string spk2cmn_offset;
     g_num_threads = 8;
     bool repeat = false;
-    
+
     po.Register("num-threads", &g_num_threads,
                 "Number of threads to use for computing derived variables "
                 "of iVector extractor, at process start-up.");
     po.Register("repeat", &repeat,
                 "If true, output the same number of iVectors as input frames "
                 "(including repeated data).");
-    po.Register("spk2cmn-offset", &spk2cmn_offset, 
+    po.Register("spk2cmn-offset", &spk2cmn_offset,
                 "Map from speaker to matrix of offsets. If provided, the ivector "
                 "extracted for all offsets of input features for each speaker "
                 "and they are appended together in output.");
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
     }
-    
+
     std::string spk2utt_rspecifier = po.GetArg(1),
         feature_rspecifier = po.GetArg(2),
         ivectors_wspecifier = po.GetArg(3);
-    
+
     double tot_ubm_loglike = 0.0, tot_objf_impr = 0.0, tot_t = 0.0,
         tot_length = 0.0, tot_length_utt_end = 0.0;
     int32 num_done = 0, num_err = 0;
-    
+
     ivector_config.use_most_recent_ivector = false;
     OnlineIvectorExtractionInfo ivector_info(ivector_config);
-    
+
     SequentialTokenVectorReader spk2utt_reader(spk2utt_rspecifier);
     RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
     BaseFloatMatrixWriter ivector_writer(ivectors_wspecifier);
-   
+
 
     RandomAccessBaseFloatMatrixReader spk2cmn_offset_reader(spk2cmn_offset);
     for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {
       std::string spk = spk2utt_reader.Key();
       const std::vector<std::string> &uttlist = spk2utt_reader.Value();
-      int32 num_cmn_offset = 1;
+      int32 num_cmn_offsets = 1;
       const Matrix<BaseFloat> *cmn_offset = NULL;
       if (!spk2cmn_offset.empty()) {
         if (!spk2cmn_offset_reader.HasKey(spk)) {
@@ -101,14 +101,18 @@ int main(int argc, char *argv[]) {
           continue;
         } else {
           cmn_offset = &(spk2cmn_offset_reader.Value(spk));
-          num_cmn_offset = cmn_offset->NumRows();
+          num_cmn_offsets = cmn_offset->NumRows();
         }
       }
-      std::vector<OnlineIvectorExtractorAdaptationState*> adaptation_states(num_cmn_offset);
-      for (size_t offset_ind = 0; offset_ind < num_cmn_offset; offset_ind++)
-        adaptation_states[offset_ind] = new OnlineIvectorExtractorAdaptationState(ivector_info);
+      std::vector<OnlineIvectorExtractorAdaptationState*>
+        adaptation_states(num_cmn_offsets);
+      // Note: in the case when the --spk2cmn-offset option is not set,
+      // this will only loop once.
+      for (int32 offset = 0; offset < num_cmn_offsets; offset++)
+        adaptation_states[offset] =
+          new OnlineIvectorExtractorAdaptationState(ivector_info);
 
-      int32 ivec_dim = ivector_info.extractor.IvectorDim();
+      int32 ivector_dim = ivector_info.extractor.IvectorDim();
       for (size_t i = 0; i < uttlist.size(); i++) {
         std::string utt = uttlist[i];
         if (!feature_reader.HasKey(utt)) {
@@ -116,30 +120,34 @@ int main(int argc, char *argv[]) {
           num_err++;
           continue;
         }
-        const Matrix<BaseFloat> &feats = feature_reader.Value(utt);
+        const Matrix<BaseFloat> &feats_orig = feature_reader.Value(utt);
 
-        int32 T = feats.NumRows(),
+        int32 T = feats_orig.NumRows(),
             n = (repeat ? 1 : ivector_config.ivector_period),
             num_ivectors = (T + n - 1) / n;
 
          Matrix<BaseFloat> ivectors(num_ivectors,
-                                   num_cmn_offset * ivec_dim);
+                                   num_cmn_offsets * ivector_dim);
 
-        for (size_t offset_ind = 0; offset_ind < num_cmn_offset; offset_ind++) { 
-          Matrix<BaseFloat> shifted_feats(feats);
-          if (cmn_offset != NULL)
-            shifted_feats.AddVecToRows(1.0, cmn_offset->Row(offset_ind));
-
-          OnlineMatrixFeature matrix_feature(shifted_feats);
+        for (int32 offset = 0; offset < num_cmn_offsets; offset++) {
+          Matrix<BaseFloat> shifted_feats;
+          const Matrix<BaseFloat> &feats = (cmn_offset != NULL ? shifted_feats
+            : feats_orig);
+          if (cmn_offset) {
+            shifted_feats = feats_orig;
+            shifted_feats.AddVecToRows(1.0, cmn_offset->Row(offset));
+          }
+          OnlineMatrixFeature matrix_feature(feats);
 
           OnlineIvectorFeature ivector_feature(ivector_info,
                                                &matrix_feature);
-          
-          ivector_feature.SetAdaptationState(*(adaptation_states[offset_ind]));
+
+          ivector_feature.SetAdaptationState(*(adaptation_states[offset]));
 
           for (int32 i = 0; i < num_ivectors; i++) {
             int32 t = i * n;
-            SubVector<BaseFloat> ivector = ivectors.Row(i).Range(offset_ind * ivec_dim, ivec_dim);
+            SubVector<BaseFloat> ivector = ivectors.Row(i).Range(
+              offset * ivector_dim, ivector_dim);
             ivector_feature.GetFrame(t, &ivector);
           }
           // Update diagnostics.
@@ -158,7 +166,7 @@ int main(int argc, char *argv[]) {
                         << ", objf improvement/frame from iVector estimation was "
                         << ivector_feature.ObjfImprPerFrame();
 
-          ivector_feature.GetAdaptationState(adaptation_states[offset_ind]);
+          ivector_feature.GetAdaptationState(adaptation_states[offset]);
         }
         ivector_writer.Write(utt, ivectors);
         num_done++;

@@ -1,5 +1,6 @@
 #!/bin/bash
-
+# _e is as _d but it uses random offsets generated using within-speaker covariance
+# to perturb data during training.
 # d is as c, but with one extra layer.
 
 # At this script level we don't support not running on GPU, as it would be painfully slow.
@@ -22,7 +23,9 @@ speed_perturb=true
 common_egs_dir=
 reporting_email=
 remove_egs=true
-
+num_epochs=3
+# config for random offset
+use_random_offsets=true
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
@@ -47,6 +50,9 @@ train_set=train_nodup$suffix
 ali_dir=exp/tri4_ali_nodup$suffix
 
 local/nnet3/run_ivector_common.sh --stage $stage \
+  --num-cmn-offsets $num_epochs \
+  --cmn-offset-scale $cmn_offset_scale \
+  --use-random-offsets $use_random_offsets \
 	--speed-perturb $speed_perturb || exit 1;
 
 if [ $stage -le 9 ]; then
@@ -90,7 +96,7 @@ if [ $stage -le 10 ]; then
     --cmd="$decode_cmd" \
     --feat.online-ivector-dir exp/nnet3/ivectors_${train_set} \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
-    --trainer.num-epochs 2 \
+    --trainer.num-epochs $num_epochs \
     --trainer.optimization.num-jobs-initial 3 \
     --trainer.optimization.num-jobs-final 16 \
     --trainer.optimization.initial-effective-lrate 0.0017 \

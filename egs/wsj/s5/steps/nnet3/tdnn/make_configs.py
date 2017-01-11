@@ -28,9 +28,6 @@ def GetArgs():
                             help="Raw feature dimension, e.g. 13")
     feat_group.add_argument("--feat-dir", type=str,
                             help="Feature directory, from which we derive the feat-dim")
-    parser.add_argument("--num-cmn-offsets", type=int, 
-                        help="Number of offsets used to perturb features during training.",
-                        default=-1)
 
     # only one of these arguments can be specified
     ivector_group = parser.add_mutually_exclusive_group(required = False)
@@ -46,6 +43,7 @@ def GetArgs():
                                   help="alignment directory, from which we derive the num-targets")
     num_target_group.add_argument("--tree-dir", type=str,
                                   help="directory with final.mdl, from which we derive the num-targets")
+
     # CNN options
     parser.add_argument('--cnn.layer', type=str, action='append', dest = "cnn_layer",
                         help="CNN parameters at each CNN layer, e.g. --filt-x-dim=3 --filt-y-dim=8 "
@@ -149,8 +147,6 @@ def CheckArgs(args):
 
     if args.ivector_dir is not None:
         args.ivector_dim = common_lib.get_ivector_dim(args.ivector_dir)
-        if args.num_cmn_offsets > 0:
-          args.ivector_dim = args.ivector_dim / args.num_cmn_offsets
 
     if not args.feat_dim > 0:
         raise Exception("feat-dim has to be postive")
@@ -347,7 +343,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
                 xent_separate_forward_affine,
                 self_repair_scale,
                 max_change_per_component, max_change_per_component_final,
-                objective_type, num_cmn_offsets):
+                objective_type):
 
     parsed_splice_output = ParseSpliceString(splice_indexes_string.strip())
 
@@ -366,7 +362,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
     config_lines = {'components':[], 'component-nodes':[]}
 
     config_files={}
-    prev_layer_output = nodes.AddInputLayer(config_lines, feat_dim, splice_indexes[0], ivector_dim, offset_dim=(feat_dim if num_cmn_offsets > 0 else 0))
+    prev_layer_output = nodes.AddInputLayer(config_lines, feat_dim, splice_indexes[0], ivector_dim)
 
     # Add the init config lines for estimating the preconditioning matrices
     init_config_lines = copy.deepcopy(config_lines)
@@ -537,7 +533,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
 
 def Main():
     args = GetArgs()
-    
+
     MakeConfigs(config_dir = args.config_dir,
                 splice_indexes_string = args.splice_indexes,
                 feat_dim = args.feat_dim, ivector_dim = args.ivector_dim,
@@ -561,8 +557,7 @@ def Main():
                 self_repair_scale = args.self_repair_scale_nonlinearity,
                 max_change_per_component = args.max_change_per_component,
                 max_change_per_component_final = args.max_change_per_component_final,
-                objective_type = args.objective_type,
-                num_cmn_offsets = args.num_cmn_offsets)
+                objective_type = args.objective_type)
 
 if __name__ == "__main__":
     Main()

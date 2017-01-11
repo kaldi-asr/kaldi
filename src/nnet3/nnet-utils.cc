@@ -56,22 +56,11 @@ bool IsSimpleNnet(const Nnet &nnet) {
   // "input" and everything checks out.
   if (NumInputNodes(nnet) == 1)
     return true;
-  // if there is 2 inputs, one
-  // should be called "ivector" or "offset".
-  if (NumInputNodes(nnet) == 2 &&
-      ((nnet.GetNodeIndex("ivector") != -1 && 
-      nnet.IsInputNode(nnet.GetNodeIndex("ivector"))) ||
-      ((nnet.GetNodeIndex("offset") != -1) && 
-      nnet.IsInputNode(nnet.GetNodeIndex("offset")))))
-    return true;
-  // if there is 3 inputs, one 
-  // there should be called "ivector" and "offset".
-  return ((NumInputNodes(nnet) == 3) &&
-         (nnet.GetNodeIndex("ivector") != -1 &&
-         nnet.IsInputNode(nnet.GetNodeIndex("ivector"))) &&
-         (nnet.GetNodeIndex("offset") != -1 &&
-         nnet.IsInputNode(nnet.GetNodeIndex("offset"))));
- 
+  // Otherwise, there should be 2 inputs and one
+  // should be called "ivector".
+  return NumInputNodes(nnet) == 2 &&
+      nnet.GetNodeIndex("ivector") != -1 &&
+      nnet.IsInputNode(nnet.GetNodeIndex("ivector"));
 }
 
 void EvaluateComputationRequest(

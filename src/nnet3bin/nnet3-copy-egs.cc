@@ -329,20 +329,22 @@ int main(int argc, char *argv[]) {
       // count is normally 1; could be 0, or possibly >1.
       int32 count = GetCount(keep_proportion);
       std::string key = example_reader.Key();
-      const NnetExample &eg = example_reader.Value();
-      NnetExample offseted_eg = eg;
-      if (select_feature_offset != -1) 
-        SelectFeatureOffset(select_feature_offset, &offseted_eg);
-
+      NnetExample eg_with_offset;
+      const NnetExample &eg_orig = example_reader.Value(),
+        &eg = (select_feature_offset != -1 ? eg_with_offset : eg_orig);
+      if (select_feature_offset != -1) {
+        eg_with_offset = eg_orig;
+        SelectFeatureOffset(select_feature_offset, &eg_with_offset);
+      }
       for (int32 c = 0; c < count; c++) {
         int32 index = (random ? Rand() : num_written) % num_outputs;
         if (frame_str == "" && left_context == -1 && right_context == -1 &&
             frame_shift == 0) {
-          example_writers[index]->Write(key, offseted_eg);
+          example_writers[index]->Write(key, eg);
           num_written++;
         } else { // the --frame option or context options were set.
           NnetExample eg_modified;
-          if (SelectFromExample(offseted_eg, frame_str, left_context, right_context,
+          if (SelectFromExample(eg, frame_str, left_context, right_context,
                                 frame_shift, &eg_modified)) {
             // this branch of the if statement will almost always be taken (should only
             // not be taken for shorter-than-normal egs from the end of a file.

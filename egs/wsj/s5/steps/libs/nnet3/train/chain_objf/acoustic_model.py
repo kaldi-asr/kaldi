@@ -123,7 +123,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                      shuffle_buffer_size, num_chunk_per_minibatch,
                      frame_subsampling_factor, truncate_deriv_weights,
                      cache_io_opts, run_opts,
-                     num_cmn_offsets=0):
+                     num_cmn_offsets=-1):
     """
     Called from train_one_iteration(), this method trains new models
     with 'num_jobs' jobs, and
@@ -154,7 +154,7 @@ def train_new_models(dir, iter, srand, num_jobs,
         frame_shift = ((archive_index + k/num_archives)
                        % frame_subsampling_factor)
 
-        # k = num_frame_shifts * num_archives * epoch_index + num_archives * frame_shift + archive_index 
+        # k = num_frame_shifts * num_archives * epoch_index + num_archives * frame_shift + archive_index
         # offset_num = (num_frame_shifts * epoch_index + frame_shift + archive_index) % num_cmn_offsets
         # if gcd(num_frame_shifts, num_cmn_offsets) = 1
         # offfset_num for fixed (frame_shift, archive_index) = (f1,a1) in different epochs
@@ -162,8 +162,8 @@ def train_new_models(dir, iter, srand, num_jobs,
         # Also two different consequent shifts in same archive have different offsets.
         offset_num = -1
         if num_cmn_offsets > 0:
-          epoch_index = k / (num_archives * frame_subsampling_factor) 
-          offset_num = (epoch_index + archive_index + frame_shift) % num_cmn_offsets
+            epoch_index = k / (num_archives * frame_subsampling_factor)
+            offset_num = (epoch_index + archive_index + frame_shift) % num_cmn_offsets
 
         if job == 1:
             cur_cache_io_opts = "{0} --write-cache={1}/cache.{2}".format(
@@ -240,7 +240,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         momentum, max_param_change, shuffle_buffer_size,
                         frame_subsampling_factor, truncate_deriv_weights,
                         run_opts, background_process_handler=None,
-                        num_cmn_offsets=0):
+                        num_cmn_offsets=-1):
     """ Called from steps/nnet3/chain/train.py for one iteration for
     neural network training with LF-MMI objective
 
@@ -392,7 +392,8 @@ def check_for_required_files(feat_dir, tree_dir, lat_dir):
 
 def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
                                    max_lda_jobs=None, rand_prune=4.0,
-                                   lda_opts=None):
+                                   lda_opts=None,
+                                   select_feature_offset=-1):
     """ Function to estimate and write LDA matrix from cegs
 
     This function is exactly similar to the version in module
@@ -402,17 +403,24 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
     if max_lda_jobs is not None:
         if num_lda_jobs > max_lda_jobs:
             num_lda_jobs = max_lda_jobs
+    egs_string = ""
+    if select_feature_offset > -1:
+        egs_string = ("ark:nnet3-chain-copy-egs --select-feature-offset={0} "
+                      "ark:{1}/cegs.JOB.ark ark:- |".format(
+                      select_feature_offset,egs_dir))
+    else:
+        egs_string = ('ark:{0}/cegs.JOB.ark'.format(egs_dir))
 
     # Write stats with the same format as stats for LDA.
     common_lib.run_job(
         """{command} JOB=1:{num_lda_jobs} {dir}/log/get_lda_stats.JOB.log \
                 nnet3-chain-acc-lda-stats --rand-prune={rand_prune} \
-                {dir}/init.raw "ark:{egs_dir}/cegs.JOB.ark" \
+                {dir}/init.raw "{egs_string}" \
                 {dir}/JOB.lda_stats""".format(
                     command=run_opts.command,
                     num_lda_jobs=num_lda_jobs,
                     dir=dir,
-                    egs_dir=egs_dir,
+                    egs_string=egs_string,
                     rand_prune=rand_prune))
 
     # the above command would have generated dir/{1..num_lda_jobs}.lda_stats

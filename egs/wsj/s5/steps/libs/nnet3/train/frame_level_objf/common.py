@@ -74,13 +74,13 @@ def train_new_models(dir, iter, srand, num_jobs,
 
         # work out the 1-based archive index.
         archive_index = (k % num_archives) + 1
-        
+
         if not chunk_level_training:
             frame = (k / num_archives) % frames_per_eg
-        
+
         offset_num = -1
         if num_cmn_offsets > 0:
-          # previous offset_num formula was 
+          # previous offset_num formula was
           # offset_num = ((k / num_archives) + (k % num_archives)) % num_cmn_offsets
           epoch_index = k / (num_archives * frames_per_eg)
           offset_num = (epoch_index + archive_index + frame) % num_cmn_offsets
@@ -153,7 +153,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         shrinkage_value=1.0,
                         get_raw_nnet_from_am=True,
                         background_process_handler=None,
-                        num_cmn_offsets=0):
+                        num_cmn_offsets=-1):
     """ Called from steps/nnet3/train_*.py scripts for one iteration of neural
     network training
 
@@ -344,22 +344,24 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
         if num_lda_jobs > max_lda_jobs:
             num_lda_jobs = max_lda_jobs
 
-    egs_str=""
+    egs_string = ""
     if select_feature_offset > -1:
-      egs_str="ark:nnet3-copy-egs --select-feature-offset={0} ark:{1}/egs.JOB.ark ark:- |".format(select_feature_offset, egs_dir)
+      egs_string = ("ark:nnet3-copy-egs --select-feature-offset={0} "
+                 "ark:{1}/egs.JOB.ark ark:- |".format(
+                 select_feature_offset, egs_dir))
     else:
-      egs_str="ark:{0}/egs.JOB.ark".format(egs_dir)
+      egs_string = ("ark:{0}/egs.JOB.ark".format(egs_dir))
 
     # Write stats with the same format as stats for LDA.
     common_lib.run_job(
         """{command} JOB=1:{num_lda_jobs} {dir}/log/get_lda_stats.JOB.log \
                 nnet3-acc-lda-stats --rand-prune={rand_prune} \
-                {dir}/init.raw "{egs_str}" \
+                {dir}/init.raw "{egs_string}" \
                 {dir}/JOB.lda_stats""".format(
                     command=run_opts.command,
                     num_lda_jobs=num_lda_jobs,
                     dir=dir,
-                    egs_str=egs_str,
+                    egs_string=egs_string,
                     rand_prune=rand_prune))
 
     # the above command would have generated dir/{1..num_lda_jobs}.lda_stats
@@ -661,7 +663,8 @@ def adjust_am_priors(dir, input_model, avg_posterior_vector, output_model,
 
 def compute_average_posterior(dir, iter, egs_dir, num_archives,
                               prior_subset_size, left_context, right_context,
-                              run_opts, get_raw_nnet_from_am=True):
+                              run_opts, get_raw_nnet_from_am=True,
+                              select_feature_offset=-1):
     """ Computes the average posterior of the network
     Note: this just uses CPUs, using a smallish subset of data.
     """
@@ -672,13 +675,6 @@ def compute_average_posterior(dir, iter, egs_dir, num_archives,
         egs_part = 1
     else:
         egs_part = 'JOB'
-
-    if select_feature_offset > -1:
-      egs_str="ark:nnet3-copy-egs --select-feature-offset={0}"
-              " ark:{1}/egs.{2}.ark ark:- |".format(select_feature_offset, egs_dir, egs_part)
-    else:
-      egs_str="ark:{0}/egs.{1}.ark".format(egs_dir, egs_part)
-
     if get_raw_nnet_from_am:
         model = "nnet3-am-copy --raw=true {0}/combined.mdl -|".format(dir)
     else:
@@ -690,8 +686,8 @@ def compute_average_posterior(dir, iter, egs_dir, num_archives,
     common_lib.run_job(
         """{command} JOB=1:{num_jobs_compute_prior} {prior_queue_opt} \
                 {dir}/log/get_post.{iter}.JOB.log \
-                nnet3-copy-egs {context_opts} \
-                {egs_str} ark:- \| \
+                nnet3-copy-egs {context_opts} {select_feat_offset_opts} \
+                ark:{egs_dir}/egs.{egs_part}.ark ark:- \| \
                 nnet3-subset-egs --srand=JOB --n={prior_subset_size} \
                 ark:- ark:- \| \
                 nnet3-merge-egs --measure-output-frames=true \
@@ -705,7 +701,10 @@ def compute_average_posterior(dir, iter, egs_dir, num_archives,
                     num_jobs_compute_prior=run_opts.num_jobs_compute_prior,
                     prior_queue_opt=run_opts.prior_queue_opt,
                     iter=iter, prior_subset_size=prior_subset_size,
-                    egs_str=egs_str,
+                    egs_dir=egs_dir, egs_part=egs_part,
+                    select_feat_offset_opts=("" if num_cmn_offsets < 1
+                                             else "--select-feature-offset={0}".
+                                             format(select_feature_offset)),
                     context_opts=context_opts,
                     prior_gpu_opt=run_opts.prior_gpu_opt))
 

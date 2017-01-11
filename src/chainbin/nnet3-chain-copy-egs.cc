@@ -255,9 +255,8 @@ int main(int argc, char *argv[]) {
     int32 truncate_deriv_weights = 0;
     int32 frame_subsampling_factor = -1;
     BaseFloat keep_proportion = 1.0;
-    int32 left_context = -1, right_context = -1;
-    int32 select_feature_offset = -1;
-
+    int32 left_context = -1, right_context = -1,
+      select_feature_offset = -1;
     ParseOptions po(usage);
     po.Register("random", &random, "If true, will write frames to output "
                 "archives randomly, not round-robin.");
@@ -313,29 +312,26 @@ int main(int argc, char *argv[]) {
       int32 count = GetCount(keep_proportion);
       std::string key = example_reader.Key();
       if (frame_shift == 0 && truncate_deriv_weights == 0 &&
-          left_context == -1 && right_context == -1) {
+          left_context == -1 && right_context == -1 &&
+          select_feature_offset == -1) {
         const NnetChainExample &eg = example_reader.Value();
-        NnetChainExample offseted_eg = eg;
-        if (select_feature_offset != -1)
-          SelectFeatureOffset(select_feature_offset, &offseted_eg);
-
         for (int32 c = 0; c < count; c++) {
           int32 index = (random ? Rand() : num_written) % num_outputs;
-          example_writers[index]->Write(key, offseted_eg);
+          example_writers[index]->Write(key, eg);
           num_written++;
         }
       } else if (count > 0) {
         NnetChainExample eg = example_reader.Value();
-        NnetChainExample offseted_eg = eg, eg_out;
-        if (select_feature_offset != -1) 
-          SelectFeatureOffset(select_feature_offset, &offseted_eg);
+        if (select_feature_offset != -1)
+          SelectFeatureOffset(select_feature_offset, &eg);
         if (frame_shift != 0)
-          ShiftChainExampleTimes(frame_shift, exclude_names, &offseted_eg);
+          ShiftChainExampleTimes(frame_shift, exclude_names, &eg);
+        NnetChainExample eg_out;
         if (left_context != -1 || right_context != -1)
-          ModifyChainExampleContext(eg_out, left_context, right_context,
-                                    frame_subsampling_factor, &offseted_eg);
+          ModifyChainExampleContext(eg, left_context, right_context,
+                                    frame_subsampling_factor, &eg_out);
         else
-          eg_out.Swap(&offseted_eg);
+          eg_out.Swap(&eg);
         if (truncate_deriv_weights != 0)
           TruncateDerivWeights(truncate_deriv_weights, &eg_out);
         for (int32 c = 0; c < count; c++) {

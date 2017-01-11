@@ -86,8 +86,8 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
       feats_new.Row(i).CopyFromVec(feats.Row(num_feature_frames - 1));
 
 
-    return ProcessFile(normalization_fst, feats_new, ivector_feats, 
-                       cmn_offsets, 
+    return ProcessFile(normalization_fst, feats_new, ivector_feats,
+                       cmn_offsets,
                        supervision, utt_id, compress, left_context, right_context,
                        frames_per_eg, frames_overlap_per_eg, frame_subsampling_factor,
                        cut_zero_frames, num_frames_written, num_egs_written,
@@ -174,7 +174,7 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
       offset_frames;
     if (cmn_offsets)
       offset_frames.Resize(tot_frames, cmn_offsets->NumCols(), kUndefined);
-    
+
     // Set up "input_frames".
     for (int32 j = -left_context; j < frames_per_eg + right_context; j++) {
       int32 t = range_start + j;
@@ -193,7 +193,7 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
     int32 num_cmn_offsets = 1;
     if (cmn_offsets) {
       num_cmn_offsets = cmn_offsets->NumRows();
-      NnetIo offset_io("offset", *cmn_offsets);
+      NnetIo offset_io("offset", 0, *cmn_offsets);
       nnet_chain_eg.inputs[1].Swap(&offset_io);
     }
 
@@ -208,8 +208,8 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
       ivector.Row(0).CopyFromVec(ivector_feats->Row(ivector_frame));
       KALDI_ASSERT(ivector_feats->NumCols() % num_cmn_offsets == 0);
       NnetIo ivector_io("ivector", 0, ivector);
-      int32 ivec_ind = (cmn_offsets ? 2 : 1);
-      nnet_chain_eg.inputs[ivec_ind].Swap(&ivector_io);
+      int32 ivec_index = (cmn_offsets ? 2 : 1);
+      nnet_chain_eg.inputs[ivec_index].Swap(&ivector_io);
     }
 
     if (compress)
@@ -262,7 +262,7 @@ int main(int argc, char *argv[]) {
         cut_zero_frames = -1,
         frame_subsampling_factor = 1;
 
-    int32 srand_seed = 0; 
+    int32 srand_seed = 0;
     std::string ivector_rspecifier,
       utt2cmn_offsets_rspecifier;
 
@@ -294,9 +294,13 @@ int main(int argc, char *argv[]) {
                 "if the frame-rate at the output will be less than the "
                 "frame-rate of the input");
     po.Register("utt2cmn-offsets", &utt2cmn_offsets_rspecifier,
-                "It maps utt to the matrix of offsets, one offset per row.");
+                "Map from utterance-id to matrix of random feature offsets, "
+                "as a matrix with dimension of num-cmn-offsets by [feature-dim]. "
+                "E.g. --utt2cmn-offsets=data/train/offsets.scp"
+                "If specified, CMN offset correspond to example's utterance is added "
+                "to example.");
     po.Read(argc, argv);
-    
+
     srand(srand_seed);
 
     if (po.NumArgs() < 3 || po.NumArgs() > 4) {
@@ -382,8 +386,8 @@ int main(int argc, char *argv[]) {
           num_err++;
           continue;
         }
-        if (ProcessFile(normalization_fst, feats, ivector_feats, 
-                        cmn_offsets, 
+        if (ProcessFile(normalization_fst, feats, ivector_feats,
+                        cmn_offsets,
                         supervision,
                         key, compress,
                         left_context, right_context, num_frames,

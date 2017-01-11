@@ -303,11 +303,19 @@ def get_feat_dim(feat_dir):
     return feat_dim
 
 def get_num_cmn_offsets(feat_dir):
-  num_offsets = -1;
-  if os.path.exists("{feat_dir}/offsets.scp".format(feat_dir = feat_dir)):
-    [stdout_val, stderr_val] = RunKaldiCommand("feat-to-len --print-args=false scp:'head -n 1 {data}/offsets.scp |' ".format(data = feat_dir))
-    num_offsets = int(stdout_val)
-  return num_offsets
+    """ Outputs number of cmn offsets used to
+        perturb features during training as
+        number of rows in offset matrix
+        in offsets.scp  if offsets.scp exists,
+        otherwise it outputs -1.
+    """
+    num_offsets = -1;
+    if os.path.exists("{feat_dir}/offsets.scp".format(feat_dir=feat_dir)):
+      [stdout_val, stderr_val] = run_kaldi_command(
+        "feat-to-len --print-args=false "
+        "scp:'head -n 1 {data}/offsets.scp |' ".format(data=feat_dir))
+      num_offsets = int(stdout_val)
+    return num_offsets
 
 
 def get_feat_dim_from_scp(feat_scp):
