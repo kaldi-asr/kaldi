@@ -1,5 +1,3 @@
-
-
 # Copyright 2016    Vimal Manohar
 # Apache 2.0.
 
@@ -15,7 +13,6 @@ import sys
 
 sys.path.insert(0, 'steps')
 import libs.kaldi_io as kaldi_io
-import libs.exceptions as kaldi_exceptions
 
 logger = logging.getLogger('__name__')
 logger.addHandler(logging.NullHandler())
@@ -64,7 +61,7 @@ class IDFStats(object):
         for term, num in self.num_docs_for_term.iteritems():
             if num == 0:
                 continue
-            assert type(term) == tuple
+            assert isinstance(term) == tuple
             print ("{term} {n}".format(term=" ".join(term), n=num),
                    file=file_handle)
 
@@ -78,8 +75,7 @@ class IDFStats(object):
                 self.num_docs += 1
 
         if len(self.num_docs_for_term) == 0:
-            raise kaldi_exceptions.EmptyObjectError(
-                "Read no IDF stats.", file_=file_handle.name)
+            raise RuntimeError("Read no IDF stats.")
 
 
 class TFStats(object):
@@ -110,11 +106,12 @@ class TFStats(object):
                 return 1 + math.log(self.raw_counts[(term, doc)])
             return 0
         if weighting_scheme == "normalized":
-            return (normalization_factor + (1 - normalization_factor) *
-                    self.raw_counts.get((term, doc), 0) /
-                    (1.0 + self.max_counts_for_term.get(term, 0)))
+            return (normalization_factor
+                    + (1 - normalization_factor)
+                    * self.raw_counts.get((term, doc), 0)
+                    / (1.0 + self.max_counts_for_term.get(term, 0)))
         raise KeyError("Unknown tf-weighting-scheme {0}".format(
-                            weighting_scheme))
+            weighting_scheme))
 
     def accumulate(self, doc, text, ngram_order):
         """Accumulate raw stats from a document for upto the specified
@@ -129,8 +126,7 @@ class TFStats(object):
         """Compute the maximum counts for each term over all the documents
         based on the stored raw counts."""
         if len(self.raw_counts) == 0:
-            raise kaldi_exceptions.EmptyObjectError(
-                "No (term, doc) found in tf-stats.")
+            raise RuntimeError("No (term, doc) found in tf-stats.")
         for tup, counts in self.raw_counts.iteritems():
             term = tup[0]
 
@@ -148,8 +144,8 @@ class TFStats(object):
         for tup, counts in self.raw_counts.iteritems():
             term, doc = tup
             lines.append("{order} {term} {doc} {counts}".format(
-                            order=len(term), term=" ".join(term),
-                            doc=doc, counts=counts))
+                order=len(term), term=" ".join(term),
+                doc=doc, counts=counts))
         return "\n".join(lines)
 
     def read(self, file_handle, ngram_order=None, idf_stats=None):
@@ -161,7 +157,7 @@ class TFStats(object):
         for line in file_handle:
             parts = line.strip().split()
             order = parts[0]
-            assert(len(parts) - 3 == order)
+            assert len(parts) - 3 == order
             if ngram_order is not None and order > ngram_order:
                 continue
             term = tuple(parts[1:(order+1)])
@@ -177,8 +173,7 @@ class TFStats(object):
                 idf_stats.accumulate(term)
 
         if len(self.raw_counts) == 0:
-            raise kaldi_exceptions.EmptyObjectError(
-                "Read no TF stats.", file_=file_handle.name)
+            raise RuntimeError("Read no TF stats.")
 
 
 class TFIDF(object):
@@ -245,7 +240,6 @@ class TFIDF(object):
                             "Choosing a tf-idf value of 0.".format(
                                 term=term, src=src_doc))
                         src_value = 0
-                        pass
 
                     similarity_scores[(doc, src_doc)] = (
                         similarity_scores.get((doc, src_doc), 0)
@@ -270,15 +264,17 @@ class TFIDF(object):
         return similarity_scores
 
     def read(self, tf_idf_file):
+        """Loads TFIDF object from file."""
+
         if len(self.tf_idf) != 0:
             raise RuntimeError("TD-IDF object is not empty.")
         seen_footer = False
         line = tf_idf_file.readline()
         parts = line.strip().split()
         if re.search('^<TFIDF>', line) is None:
-            raise kaldi_exceptions.InputError(
+            raise TypeError(
                 "Invalid format of TD-IDF object. "
-                "Missing header <TFIDF>. ", line=line)
+                "Missing header <TFIDF>; got {0}".format(line))
         assert parts[0] == "<TFIDF>"
         if len(parts) > 1:
             # Read header; go to the rest of line
@@ -290,14 +286,15 @@ class TFIDF(object):
             parts = line.strip().split()
             if re.search('</TFIDF>', line):
                 if len(parts) > 1:
-                    raise kaldi_exceptions.InputError(
+                    raise TypeError(
                         "Expecting footer </TFIDF> "
-                        "to be on a separate line. ", line=line)
+                        "to be on a separate line; got {0}".format(line))
                 assert parts[0] == "</TFIDF>"
                 seen_footer = True
                 break
             if re.search('<TFIDF>', line):
-                raise
+                raise TypeError("Got unexpected header <TFIDF> in line "
+                                "{0}".format(line))
 
             order = int(parts[0])
             term = tuple(parts[1:(order + 1)])
@@ -306,25 +303,29 @@ class TFIDF(object):
 
             entry = (term, doc)
             if entry in self.tf_idf:
-                raise kaldi_exceptions.KeyNotUniqueError(entry, "tf_idf")
+                raise RuntimeError("Duplicate entry {0} found while reading "
+                                   "TFIDF object.".format(entry))
             self.tf_idf[entry] = tfidf
 
             line = tf_idf_file.readline()
         if not seen_footer:
-            raise kaldi_exceptions.InputError(
-                "Did not see footer </TFIDF> in object.")
+            raise TypeError(
+                "Did not see footer </TFIDF> "
+                "in TFIDF object; got {0}".format(line))
 
         if len(self.tf_idf) == 0:
-            raise kaldi_exceptions.EmptyObjectError(
-                "Read no TF-IDF values.", file_=tf_idf_file.name)
+            raise RuntimeError(
+                "Read no TF-IDF values from file {0}".format(tf_idf_file.name))
 
     def write(self, tf_idf_file):
+        """Writes TFIDF object to file."""
+
         print ("<TFIDF>", file=tf_idf_file)
         for tup, value in self.tf_idf.iteritems():
             term, doc = tup
             print("{order} {term} {doc} {tfidf}".format(
-                    order=len(term), term=" ".join(term),
-                    doc=doc, tfidf=value),
+                order=len(term), term=" ".join(term),
+                doc=doc, tfidf=value),
                   file=tf_idf_file)
         print ("</TFIDF>", file=tf_idf_file)
 
@@ -350,12 +351,10 @@ def write_tfidf_from_stats(
                       stats only for this document_id.
     """
     if len(tf_stats.raw_counts) == 0:
-        raise kaldi_exceptions.EmptyObjectError(
-            "tf-stats is empty.")
+        raise RuntimeError("Supplied tf-stats object is empty.")
 
     if idf_stats.num_docs == 0:
-        raise kaldi_exceptions.EmptyObjectError(
-            "idf-stats is empty.")
+        raise RuntimeError("Supplied idf-stats object is empty.")
 
     print ("<TFIDF>", file=tf_idf_file)
     for tup in tf_stats.raw_counts:
@@ -369,21 +368,26 @@ def write_tfidf_from_stats(
                                                       expected_document_id))
 
         tf_value = tf_stats.get_term_frequency(
-                term, doc,
-                weighting_scheme=tf_weighting_scheme,
-                normalization_factor=tf_normalization_factor)
+            term, doc,
+            weighting_scheme=tf_weighting_scheme,
+            normalization_factor=tf_normalization_factor)
 
         idf_value = idf_stats.get_inverse_document_frequency(
-                doc, weighting_scheme=idf_weighting_scheme)
+            doc, weighting_scheme=idf_weighting_scheme)
 
         print("{order} {term} {doc} {tfidf}".format(
-                order=len(term), term=" ".join(term),
-                doc=doc, tfidf=tf_value * idf_value),
+            order=len(term), term=" ".join(term),
+            doc=doc, tfidf=tf_value * idf_value),
               file=tf_idf_file)
     print ("</TFIDF>", file=tf_idf_file)
 
 
 def read_tfidf_ark(file_handle):
+    """Read a kaldi archive of TFIDF objects indexed by a key (document-id).
+    <document-id1> <tf-idf-object1>
+    <document-id2> <tf-idf-object2>
+    ...
+    """
     try:
         key = kaldi_io.read_key(file_handle)
         while key:

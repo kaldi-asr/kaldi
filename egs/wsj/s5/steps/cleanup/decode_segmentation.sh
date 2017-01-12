@@ -90,6 +90,8 @@ for f in $sdata/1/feats.scp $sdata/1/cmvn.scp $model $graphdir/HCLG.fsts.scp; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
+utils/lang/check_phones_compatible.sh $graph_dir/phones.txt $srcdir/phones.txt
+
 # Split HCLG.fsts.scp by input utterance
 n1=$(cat $graphdir/HCLG.fsts.scp | wc -l)
 n2=$(cat $data/feats.scp | wc -l)
