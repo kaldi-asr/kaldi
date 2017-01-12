@@ -16,7 +16,7 @@ bzcat ar-ar_grapheme_lexicon_2016-02-09.bz2  | sed '1,3d' | awk '{print $1}'  > 
 bzcat ar-ar_lexicon_2014-03-17.txt.bz2 | sed '1,3d' | awk '{print $1}' >>  tmp$$
 # (2) Now we add all the words appeared in the training data
 cat data/local/train/text | cut -d ' ' -f 2- | tr -s " " "\n" | sort -u >> tmp$$
-grep -v [0-9] tmp$$ |  sort -u > tmp1.$$
+grep -v [0-9] tmp$$ |  sed -e 's:[FNKaui\~o\`]::g' -e 's:{:}:g' | sort -u > tmp1.$$ # remove vowels and  rare alef wasla
 cat tmp1.$$ | sed 's:\(\):\1 :g' | sed -e 's:  : :g' -e 's:  : :g' -e 's:\s*: :g' -e  's:\*:V:g' > tmp2.$$
 paste -d ' ' tmp1.$$ tmp2.$$ > $dir/lexicon.txt 
 
