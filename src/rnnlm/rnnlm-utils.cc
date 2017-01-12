@@ -5,7 +5,7 @@ namespace rnnlm {
 
 bool LargerThan(const std::pair<int, BaseFloat> &t1,
                 const std::pair<int, BaseFloat> &t2) {
-  return t1.first > t2.first;
+  return t1.second > t2.second;
 }
 
 vector<string> SplitByWhiteSpace(const string &line) {
@@ -95,6 +95,7 @@ void SampleWithoutReplacement(vector<std::pair<int, BaseFloat> > u, int n,
     BaseFloat pi_k1_k1 = u[k].second / tot_weight * n;
 
     if (pi_k1_k1 > 1) {
+      KALDI_ASSERT(false); // never gonna happen in our setup since sorted
       pi_k1_k1 = 1;  // must add
     } else {
       BaseFloat p = RandUniform();
@@ -110,10 +111,11 @@ void SampleWithoutReplacement(vector<std::pair<int, BaseFloat> > u, int n,
       BaseFloat Lk = 0;
       BaseFloat Tk = 0;
       for (int i = 0; i < n; i++) {
-        BaseFloat pi_k_i = u[ans[i]].second / (tot_weight - std::min(BaseFloat(1.0), u[k].second)) * n;
+        BaseFloat pi_k_i = u[ans[i]].second /
+                   (tot_weight - std::min(BaseFloat(1.0), u[k].second)) * n;
         BaseFloat pi_k1_i = u[ans[i]].second / tot_weight * n;
 
-        if (u[ans[i]].second >= 1) {
+        if (u[ans[i]].second >= 5.0) {
           // TODO(hxU) very strict test which actually isn't really neccesary
           // true cuz of numerical issues...
           // KALDI_ASSERT(pi_k_i >= 1 && pi_k1_i >= 1);
@@ -141,7 +143,8 @@ void SampleWithoutReplacement(vector<std::pair<int, BaseFloat> > u, int n,
 
       BaseFloat sum = 0;
       for (int i = 0; i < n; i++) {
-        BaseFloat pi_k_i = u[ans[i]].second / (tot_weight - std::min(BaseFloat(1.0), u[k].second)) * n;
+        BaseFloat pi_k_i = u[ans[i]].second /
+            (tot_weight - std::min(BaseFloat(1.0), u[k].second)) * n;
         BaseFloat pi_k1_i = u[ans[i]].second / tot_weight * n;
 
         if (pi_k_i < 1 && pi_k1_i < 1) {

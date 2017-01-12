@@ -543,7 +543,7 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
 
   vector<BaseFloat> selected_probs(samples.size());
   for (int i = 0; i < samples.size(); i++) {
-    selected_probs[i] = selection_probs[samples[i]];
+    selected_probs[i] = std::min(BaseFloat(1.0), selection_probs[samples[i]]);
   }
 
   CuMatrix<BaseFloat> out(new_output->NumRows(), samples.size(), kSetZero);

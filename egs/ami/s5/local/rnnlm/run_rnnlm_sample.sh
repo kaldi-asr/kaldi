@@ -25,7 +25,7 @@ minibatch_size=64
 
 hidden_dim=200
 initial_learning_rate=0.01
-final_learning_rate=0.001
+final_learning_rate=0.0001
 learning_rate_decline_factor=1.03
 
 # LSTM parameters

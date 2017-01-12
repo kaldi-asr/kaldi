@@ -67,7 +67,7 @@ void UnitTestNChooseKSamplingConvergence(int n, int k, int ones_size) {
 
       KALDI_LOG << "distance after " << count << " runs is " << distance;
 
-      if (distance < 0.001) {
+      if (distance < 0.005) {
         KALDI_LOG << "Sampling convergence test: passed for sampling " << k <<
           " items from " << n << " unigrams";
         break;
@@ -129,6 +129,7 @@ void UnitTestSampleWithProbOne(int iters) {
       }
     }
   }
+  KALDI_LOG << "Test sampling with prob = 1.0 successful";
 }
 
 void UnitTestSamplingTime(int iters) {
