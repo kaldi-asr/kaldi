@@ -7,6 +7,8 @@ set -e -o pipefail
 # be called by more scripts).  It contains the common feature preparation and iVector-related parts
 # of the script.  See those scripts for examples of usage.
 use_random_offsets=false
+cmn_offset_scale=0.5 # offset scale used to scale the covariance matrix
+num_cmn_offsets=4    # for chain model:4 , for xent model:3
 stage=0
 mic=ihm
 nj=30
@@ -157,12 +159,13 @@ if [ $stage -le 6 ]; then
     data/$mic/${train_set}_sp_hires exp/$mic/nnet3${nnet3_affix}/diag_ubm exp/$mic/nnet3${nnet3_affix}/extractor || exit 1;
 fi
 
-if [ $stage -le 7 ]; then 
+if [ $stage -le 7 ]; then
   # Generates random offsets for training data
   for dataset in $train_set; do
     mfccdir=data/$mic/${train_set}_sp_hires_comb/offsets
     if $use_random_offsets; then
-      steps/compute_offsets.sh  --offsets-config conf/offsets.conf  --cmd "$train_cmd" \
+      steps/compute_offsets.sh  --cmd "$train_cmd" \
+        --cmn-offset-scale $cmn_offset_scale --num-cmn-offsets $num_cmn_offsets \
         data/$mic/${dataset}_sp_hires_comb exp/make_offsets/${dataset} $mfccdir || exit 1;
     fi
   done
@@ -188,8 +191,8 @@ if [ $stage -le 8 ]; then
   temp_data_root=${ivectordir}
   utils/data/modify_speaker_info.sh --utts-per-spk-max 2 \
     data/${mic}/${train_set}_sp_hires_comb ${temp_data_root}/${train_set}_sp_hires_comb_max2
-  
-  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj $nj \
+
+  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 120 \
     ${temp_data_root}/${train_set}_sp_hires_comb_max2 \
     exp/$mic/nnet3${nnet3_affix}/extractor $ivectordir
 
