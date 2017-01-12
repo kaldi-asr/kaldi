@@ -52,11 +52,11 @@ export LC_ALL=C
 srcdir=$1
 subsegments=$2
 
-no_text=true
+add_subsegment_text=false
 if [ $# -eq 4 ]; then
   new_text=$3
   dir=$4
-  no_text=false
+  add_subsegment_text=true
 
   if [ ! -f "$new_text" ]; then
     echo "$0: no such file $new_text"
@@ -78,7 +78,7 @@ if ! mkdir -p $dir; then
   echo "$0: failed to create directory $dir"
 fi
 
-if ! $no_text; then
+if $add_subsegment_text; then
   if ! cmp <(awk '{print $1}' <$subsegments)  <(awk '{print $1}' <$new_text); then
     echo "$0: expected the first fields of the files $subsegments and $new_text to be identical"
     exit 1
@@ -102,7 +102,7 @@ utils/apply_map.pl -f 2 $srcdir/utt2spk < $dir/new2old_utt >$dir/utt2spk
 # .. and the new spk2utt file.
 utils/utt2spk_to_spk2utt.pl  <$dir/utt2spk >$dir/spk2utt
 
-if ! $no_text; then
+if $add_subsegment_text; then
   # the new text file is just what the user provides.
   cp $new_text $dir/text
 fi
@@ -202,7 +202,7 @@ utils/data/fix_data_dir.sh $dir
 validate_opts=
 [ ! -f $srcdir/feats.scp ] && validate_opts="$validate_opts --no-feats"
 [ ! -f $srcdir/wav.scp ] && validate_opts="$validate_opts --no-wav"
-$no_text && validate_opts="$validate_opts --no-text"
+! $add_subsegment_text && validate_opts="$validate_opts --no-text"
 
 utils/data/validate_data_dir.sh $validate_opts $dir
 
