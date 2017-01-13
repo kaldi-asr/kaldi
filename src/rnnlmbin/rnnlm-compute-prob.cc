@@ -65,8 +65,9 @@ int main(int argc, char *argv[]) {
     
     SequentialNnetExampleReader example_reader(examples_rspecifier);
 
-    for (; !example_reader.Done(); example_reader.Next())
+    for (; !example_reader.Done(); example_reader.Next()) {
       prob_computer.Compute(example_reader.Value());
+    }
 
     bool ok = prob_computer.PrintTotalStats();
     

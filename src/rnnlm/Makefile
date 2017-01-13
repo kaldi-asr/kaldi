@@ -10,8 +10,8 @@ TESTFILES = rnnlm-utils-test
 
 OBJFILES = rnnlm-component-itf.o rnnlm-utils.o  rnnlm-nnet.o  rnnlm-component.o nnet-parse.o \
            rnnlm-training.o \
+           rnnlm-diagnostics.o
 #           rnnlm-utils-test.o
-#           rnnlm-diagnostics.o
 #           rnnlm-test-utils.o
 
 LIBNAME = kaldi-rnnlm

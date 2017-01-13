@@ -18,7 +18,7 @@ num_iters=40
 
 num_train_frames_combine=10000 # # train frames for the above.                  
 num_frames_diagnostic=2000 # number of frames for "compute_prob" jobs  
-num_archives=8
+num_archives=16
 
 shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of the samples
 minibatch_size=64
@@ -265,18 +265,33 @@ if [ $stage -le $num_iters ]; then
       learning_rate=$final_learning_rate
     fi
 
-    false && [ $n -ge $stage ] && (
-      $decode_cmd $outdir/log/compute_prob_train.rnnlm.$n.log \
-        rnnlm-compute-prob $outdir/$n.mdl ark:$outdir/train.subset.egs &
-      $decode_cmd $outdir/log/compute_prob_valid.rnnlm.$n.log \
-        rnnlm-compute-prob $outdir/$n.mdl ark:$outdir/dev.subset.egs 
+    [ $n -ge $stage ] && (
+      $decode_cmd $outdir/log/compute_prob_train.rnnlm.norm.$n.log \
+        rnnlm-compute-prob --normalize-probs=true $outdir/$n.mdl ark:$outdir/train.subset.egs &
+      $decode_cmd $outdir/log/compute_prob_valid.rnnlm.norm.$n.log \
+        rnnlm-compute-prob --normalize-probs=true $outdir/$n.mdl ark:$outdir/dev.subset.egs &
+
+      $decode_cmd $outdir/log/compute_prob_train.rnnlm.unnorm.$n.log \
+        rnnlm-compute-prob --normalize-probs=false $outdir/$n.mdl ark:$outdir/train.subset.egs &
+      $decode_cmd $outdir/log/compute_prob_valid.rnnlm.unnorm.$n.log \
+        rnnlm-compute-prob --normalize-probs=false $outdir/$n.mdl ark:$outdir/dev.subset.egs 
 
       wait
-      ppl=`grep Overall $outdir/log/compute_prob_train.rnnlm.$n.log | grep like | awk '{print exp(-$8)}'`
+      echo Normalized...
+      ppl=`grep Overall $outdir/log/compute_prob_train.rnnlm.norm.$n.log | grep like | awk '{print exp(-$8)}'`
       ppl2=`echo $ppl $ppl_oos_penalty | awk '{print $1 * $2}'`
       echo TRAIN PPL on model $n.mdl is $ppl w/o OOS penalty, $ppl2 w OOS penalty
 
-      ppl=`grep Overall $outdir/log/compute_prob_valid.rnnlm.$n.log | grep like | awk '{print exp(-$8)}'`
+      ppl=`grep Overall $outdir/log/compute_prob_valid.rnnlm.norm.$n.log | grep like | awk '{print exp(-$8)}'`
+      ppl2=`echo $ppl $ppl_oos_penalty | awk '{print $1 * $2}'`
+      echo DEV PPL on model $n.mdl is $ppl w/o OOS penalty, $ppl2 w OOS penalty
+
+      echo Unnormalized...
+      ppl=`grep Overall $outdir/log/compute_prob_train.rnnlm.unnorm.$n.log | grep like | awk '{print exp(-$8)}'`
+      ppl2=`echo $ppl $ppl_oos_penalty | awk '{print $1 * $2}'`
+      echo TRAIN PPL on model $n.mdl is $ppl w/o OOS penalty, $ppl2 w OOS penalty
+
+      ppl=`grep Overall $outdir/log/compute_prob_valid.rnnlm.unnorm.$n.log | grep like | awk '{print exp(-$8)}'`
       ppl2=`echo $ppl $ppl_oos_penalty | awk '{print $1 * $2}'`
       echo DEV PPL on model $n.mdl is $ppl w/o OOS penalty, $ppl2 w OOS penalty
     ) &

@@ -68,9 +68,11 @@ void LmNnetComputeProb::Compute(const NnetExample &eg) {
   NnetComputer computer(config_.compute_config, *computation,
                         nnet_.Nnet(), (deriv_nnet_ != NULL? deriv_nnet_->GetNnet(): NULL));
   // give the inputs to the computer object.
-  NnetExample new_eg = LmNnetSamplingTrainer::ProcessEgInputs(eg, *nnet_.I());
+  SparseMatrix<BaseFloat> old_in;
+  CuMatrix<BaseFloat> new_in;
+  LmNnetSamplingTrainer::ProcessEgInputs(eg, *nnet_.I(), &old_in, &new_in);
 
-  computer.AcceptInputs(nnet_.Nnet(), new_eg.io);
+  computer.AcceptInput("input", &new_in);
   computer.Forward();
 
   this->ProcessOutputs(eg, &computer);
@@ -90,7 +92,7 @@ void LmNnetComputeProb::ProcessOutputs(const NnetExample &eg,
     ObjectiveType obj_type = nnet_.Nnet().GetNode(node_index).u.objective_type;
     if (nnet_.Nnet().IsOutputNode(node_index)) {
 //      const CuMatrixBase<BaseFloat> &output = computer->GetOutput(io.name);
-      CuMatrix<BaseFloat> output(io.features.NumRows(), nnet_.O()->OutputDim());
+      CuMatrix<BaseFloat> output(io.features.NumRows(), nnet_.O()->OutputDim(), kSetZero);
       // now they're not equal since we have an extra transform matrix
 //      if (output.NumCols() != io.features.NumCols()) {
 //        KALDI_ERR << "Nnet versus example output dimension (num-classes) "
@@ -98,11 +100,13 @@ void LmNnetComputeProb::ProcessOutputs(const NnetExample &eg,
 //                  << " (nnet) vs. " << io.features.NumCols() << " (egs)\n";
 //      }
       {
-        BaseFloat tot_weight, tot_objf;
+        BaseFloat tot_weight = 0, tot_objf = 0;
         bool supply_deriv = config_.compute_deriv;
-        LmNnetSamplingTrainer::ComputeObjectiveFunctionNormalized(io.features, obj_type, io.name,
+        LmNnetSamplingTrainer::ComputeObjectiveFunctionExact(
+                                 config_.normalize_probs,
+                                 io.features, obj_type, io.name,
                                  supply_deriv, computer,
-                                 &tot_weight, &tot_objf, nnet_.O(), &output
+                                 &tot_weight, &tot_objf, *nnet_.O(), &output
                                  );
         SimpleObjectiveInfo &totals = objf_info_[io.name];
         totals.tot_weight += tot_weight;
@@ -110,8 +114,7 @@ void LmNnetComputeProb::ProcessOutputs(const NnetExample &eg,
       }
       if (obj_type == kLinear && config_.compute_accuracy) {
         BaseFloat tot_weight, tot_accuracy;
-        ComputeAccuracy(io.features, output,
-                        &tot_weight, &tot_accuracy);
+        ComputeAccuracy(io.features, output, &tot_weight, &tot_accuracy);
         SimpleObjectiveInfo &totals = accuracy_info_[io.name];
         totals.tot_weight += tot_weight;
         totals.tot_objective += tot_accuracy;

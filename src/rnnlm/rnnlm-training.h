@@ -175,6 +175,19 @@ class LmNnetSamplingTrainer {
                               CuMatrix<BaseFloat> *new_output,
                               LmNnet *delta_nnet = NULL);
 
+ static void ComputeObjectiveFunctionExact(
+                              bool normalize,
+                              const GeneralMatrix &supervision,
+                              ObjectiveType objective_type,
+                              const std::string &output_name,
+                              bool supply_deriv,
+                              NnetComputer *computer,
+                              BaseFloat *tot_weight,
+                              BaseFloat *tot_objf,
+                              const LmOutputComponent &output_projection,
+                              CuMatrix<BaseFloat> *new_output,
+                              LmNnet *delta_nnet = NULL);
+
  static void ComputeObjectiveFunctionNormalized(
                               const GeneralMatrix &supervision,
                               ObjectiveType objective_type,

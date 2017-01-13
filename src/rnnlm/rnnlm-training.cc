@@ -617,5 +617,38 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
   }
 }
 
+void LmNnetSamplingTrainer::ComputeObjectiveFunctionExact(
+                              bool normalize,
+                              const GeneralMatrix &supervision,
+                              ObjectiveType objective_type,
+                              const std::string &output_name,
+                              bool supply_deriv,
+                              NnetComputer *computer,
+                              BaseFloat *tot_weight,
+                              BaseFloat *tot_objf,
+                              const LmOutputComponent &output_projection,
+                              CuMatrix<BaseFloat> *new_output,
+                              LmNnet *nnet) {
+//  *new_output = computer->GetOutput(output_name);
+  CuMatrix<BaseFloat> old_output;
+  computer->GetOutputDestructive(output_name, &old_output);
+
+  KALDI_ASSERT(supervision.Type() == kSparseMatrix);
+  const SparseMatrix<BaseFloat> &post = supervision.GetSparseMatrix();
+  CuSparseMatrix<BaseFloat> cu_post(post);
+
+  {
+    const AffineSampleLogSoftmaxComponent* output_project =
+      dynamic_cast<const AffineSampleLogSoftmaxComponent*>(&output_projection);
+    if (output_project != NULL) {
+      output_project->Propagate(old_output, normalize, new_output);
+    }
+  }
+
+  *tot_weight = post.Sum();
+  *tot_objf = TraceMatSmat(*new_output, cu_post, kTrans);
+
+}
+
 } // namespace nnet3
 } // namespace kaldi

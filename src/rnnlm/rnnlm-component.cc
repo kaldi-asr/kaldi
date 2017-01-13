@@ -32,14 +32,16 @@ AffineSampleLogSoftmaxComponent::AffineSampleLogSoftmaxComponent(
                             const AffineSampleLogSoftmaxComponent &component):
     LmOutputComponent(component),
     linear_params_(component.linear_params_),
-    bias_params_(component.bias_params_) { }
+    bias_params_(component.bias_params_)
+    { }
 
 AffineSampleLogSoftmaxComponent::AffineSampleLogSoftmaxComponent(
                                    const CuMatrixBase<BaseFloat> &linear_params,
                                    const CuMatrixBase<BaseFloat> &bias_params,
                                             BaseFloat learning_rate):
                                             linear_params_(linear_params),
-                                            bias_params_(bias_params) {
+                                            bias_params_(bias_params)
+                                             {
   SetUnderlyingLearningRate(learning_rate);
   KALDI_ASSERT(linear_params.NumRows() == bias_params.NumCols() &&
                bias_params.NumCols() != 0);
@@ -188,8 +190,17 @@ void AffineSampleLogSoftmaxComponent::Propagate(const CuMatrixBase<BaseFloat> &i
 // */
 
 
-
 //  out->ApplyCeiling(0);  // TODO(hxu), neg-relu
+}
+
+void AffineSampleLogSoftmaxComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
+                                                bool normalize,
+                                                CuMatrixBase<BaseFloat> *out) const {
+  out->CopyRowsFromVec(bias_params_.Row(0));
+  out->AddMatMat(1.0, in, kNoTrans, linear_params_, kTrans, 1.0);
+  if (normalize) {
+    out->ApplyLogSoftMaxPerRow(*out);
+  }
 }
 
 void AffineSampleLogSoftmaxComponent::Backprop(
@@ -199,7 +210,6 @@ void AffineSampleLogSoftmaxComponent::Backprop(
                                const CuMatrixBase<BaseFloat> &output_deriv,
                                LmOutputComponent *to_update_0,
                                CuMatrixBase<BaseFloat> *input_deriv) const {
-  KALDI_ASSERT (input_deriv != NULL);
 
 /* The Hainan Trick
   CuMatrix<BaseFloat> new_out_deriv(out_value);

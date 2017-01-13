@@ -46,12 +46,14 @@ struct LmNnetComputeProbOptions {
   bool debug_computation;
   bool compute_deriv;
   bool compute_accuracy;
+  bool normalize_probs;
   NnetOptimizeOptions optimize_config;
   NnetComputeOptions compute_config;
   LmNnetComputeProbOptions():
       debug_computation(false),
       compute_deriv(false),
-      compute_accuracy(true) { }
+      compute_accuracy(true),
+      normalize_probs(true) { }
   void Register(OptionsItf *opts) {
     // compute_deriv is not included in the command line options
     // because it's not relevant for nnet3-compute-prob.
@@ -59,6 +61,7 @@ struct LmNnetComputeProbOptions {
                    "debug for the actual computation (very verbose!)");
     opts->Register("compute-accuracy", &compute_accuracy, "If true, compute "
                    "accuracy values as well as objective functions");
+    opts->Register("normalize_probs", &normalize_probs, "normalize");
     // register the optimization options with the prefix "optimization".
     ParseOptions optimization_opts("optimization", opts);
     optimize_config.Register(&optimization_opts);

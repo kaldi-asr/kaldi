@@ -340,6 +340,10 @@ class AffineSampleLogSoftmaxComponent: public LmOutputComponent {
                          const vector<int> &indexes,
                          CuMatrixBase<BaseFloat> *out) const;
 
+  void Propagate(const CuMatrixBase<BaseFloat> &in,
+                 bool normalize,
+                 CuMatrixBase<BaseFloat> *out) const;
+
   virtual void Backprop(const vector<int> &indexes,
                         const CuMatrixBase<BaseFloat> &in_value,
                         const CuMatrixBase<BaseFloat> &, // out_value
