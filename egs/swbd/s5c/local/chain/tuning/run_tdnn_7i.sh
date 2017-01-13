@@ -1,24 +1,28 @@
 #!/bin/bash
+# _7i is as _7h but it uses sibling network and multi-stage training
+# to transfer information from larger network to smaller network.
+# It uses multi-stage training to train sibling network with smaller parameter.
+# The 1st stage of training is as as basleline tdnn_7d and it trains primary network.
+# The second stage of training is to use regularizers in all layers as objectives
+# to train sibling network and in the 3rd stage, we train a sibling network using
+# chain objective for 1 epoch.
 
-# Same as 7h but double the number of parameters (27983950 vs 15551509)
-
+#System                  tdnn_7g   tdnn_7h
+#WER on train_dev(tg)      13.98     13.84
+#WER on train_dev(fg)      12.78     12.84
+#WER on eval2000(tg)        16.7      16.5
+#WER on eval2000(fg)        14.9      14.8
+#Final train prob     -0.0817467-0.0889771
+#Final valid prob      -0.110475 -0.113102
+#Final train prob (xent)      -1.20065   -1.2533
+#Final valid prob (xent)       -1.3313  -1.36743
+#
 set -e
 
-
-#System                  tdnn_7h   tdnn_7i
-#WER on train_dev(tg)      13.84     13.48
-#WER on train_dev(fg)      12.84     12.47
-#WER on eval2000(tg)        16.5      16.4
-#WER on eval2000(fg)        14.8      14.9
-#Final train prob     -0.0889771-0.0785415
-#Final valid prob      -0.113102 -0.105757
-#Final train prob (xent)       -1.2533  -1.15785
-#Final valid prob (xent)      -1.36743  -1.28397
-#
 # configs for 'chain'
 affix=
 stage=12
-train_stage=0
+train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
 dir=exp/chain/tdnn_7i  # Note: _sp will get added to this if $speed_perturb == true.
@@ -36,7 +40,7 @@ num_jobs_final=16
 minibatch_size=128
 frames_per_eg=150
 remove_egs=false
-common_egs_dir=exp/chain/tdnn_7g_sp/egs
+common_egs_dir=
 xent_regularize=0.1
 
 # End configuration section.
@@ -110,29 +114,29 @@ if [ $stage -le 11 ]; then
 fi
 
 if [ $stage -le 12 ]; then
-  echo "$0: creating neural net configs using the xconfig parser";
+  echo "$0: creating neural net configs using the xconfig parser for primary network";
 
   num_targets=$(tree-info exp/chain/tri5_7d_tree_sp/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
 
-  mkdir -p $dir/configs
-  cat <<EOF > $dir/configs/network.xconfig
+  mkdir -p $dir/stage1/configs
+  cat <<EOF > $dir/stage1/configs/network.xconfig
   input dim=100 name=ivector
   input dim=40 name=input
 
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable
   # the use of short notation for the descriptor
-  fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+  fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/stage1/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-renorm-layer name=tdnn1 dim=1024
-  relu-renorm-layer name=tdnn2 input=Append(-1,0,1) dim=1024
-  relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
-  relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
-  relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
-  relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
-  relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
+  relu-renorm-layer name=tdnn1 dim=625
+  relu-renorm-layer name=tdnn2 input=Append(-1,0,1) dim=625
+  relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=625
+  relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=625
+  relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=625
+  relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=625
+  relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=625
 
   ## adding the layers for chain branch
   relu-renorm-layer name=prefinal-chain input=tdnn7 dim=625 target-rms=0.5
@@ -151,7 +155,37 @@ if [ $stage -le 12 ]; then
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 
 EOF
-  steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
+  steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/stage1/configs/network.xconfig --config-dir $dir/stage1/configs/
+
+  echo "$0: creating neural net configs using the xconfig parser for sibling network";
+  sibling_dim=200
+  mkdir -p $dir/stage2/configs
+  cat <<EOF > $dir/stage2/configs/network.xconfig
+  input dim=100 name=ivector
+  input dim=40 name=input
+  fixed-affine-layer name=lda-sibling input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/stage2/configs/lda.mat
+
+  # the first splicing is moved before the lda layer, so no splicing here
+  relu-renorm-layer name=tdnn1-sibling dim=$sibling_dim
+  relu-renorm-layer name=tdnn2-sibling input=Append(-1,0,1) dim=$sibling_dim
+  relu-renorm-layer name=tdnn3-sibling input=Append(-1,0,1) dim=$sibling_dim
+  relu-renorm-layer name=tdnn4-sibling input=Append(-3,0,3) dim=$sibling_dim
+  relu-renorm-layer name=tdnn5-sibling input=Append(-3,0,3) dim=$sibling_dim
+  relu-renorm-layer name=tdnn6-sibling input=Append(-3,0,3) dim=$sibling_dim
+  relu-renorm-layer name=tdnn7-sibling input=Append(-3,0,3) dim=$sibling_dim
+
+  ## adding the layers for chain branch
+  relu-renorm-layer name=prefinal-chain-sibling input=tdnn7-sibling dim=$sibling_dim target-rms=0.5
+  output-layer name=output_sibling include-log-softmax=false dim=$num_targets max-change=1.5
+
+  relu-renorm-layer name=prefinal-xent-sibling input=tdnn7-sibling dim=$sibling_dim target-rms=0.5
+  output-layer name=output-xent-sibling dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+
+  ## adding regularizer outputs to sibling network configs.
+  regressor-layer name=regressor-1 input1=tdnn1 input2=tdnn1-sibling add-regressor=true learning-rate-factor=$regressor_learning_rate_factor max-change=1.5
+EOF
+  steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/stage2/configs/network.xconfig --config-dir $dir/stage2/configs/
+
 fi
 
 if [ $stage -le 13 ]; then
@@ -159,34 +193,115 @@ if [ $stage -le 13 ]; then
     utils/create_split_dir.pl \
      /export/b0{5,6,7,8}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
+  if [ $multi_stage -le 0 ] && [ ! -f $dir/stage1/final.mdl ]; then
+    echo "$0: Training primary network"
+    steps/nnet3/chain/train.py --stage $train_stage \
+      --cmd "$decode_cmd" \
+      --feat.online-ivector-dir exp/nnet3/ivectors_${train_set} \
+      --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
+      --chain.xent-regularize $xent_regularize \
+      --chain.leaky-hmm-coefficient 0.1 \
+      --chain.l2-regularize 0.00005 \
+      --chain.apply-deriv-weights false \
+      --chain.lm-opts="--num-extra-lm-states=2000" \
+      --egs.dir "$common_egs_dir" \
+      --egs.stage $get_egs_stage \
+      --egs.opts "--frames-overlap-per-eg 0" \
+      --egs.chunk-width $frames_per_eg \
+      --trainer.num-chunk-per-minibatch $minibatch_size \
+      --trainer.frames-per-iter 1500000 \
+      --trainer.num-epochs $num_epochs \
+      --trainer.optimization.num-jobs-initial $num_jobs_initial \
+      --trainer.optimization.num-jobs-final $num_jobs_final \
+      --trainer.optimization.initial-effective-lrate $initial_effective_lrate \
+      --trainer.optimization.final-effective-lrate $final_effective_lrate \
+      --trainer.max-param-change $max_param_change \
+      --cleanup.remove-egs $remove_egs \
+      --feat-dir data/${train_set}_hires \
+      --tree-dir $treedir \
+      --lat-dir exp/tri4_lats_nodup$suffix \
+      --dir $dir/stage1  || exit 1;
+  fi
 
-  steps/nnet3/chain/train.py --stage $train_stage \
-    --cmd "$decode_cmd" \
-    --feat.online-ivector-dir exp/nnet3/ivectors_${train_set} \
-    --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
-    --chain.xent-regularize $xent_regularize \
-    --chain.leaky-hmm-coefficient 0.1 \
-    --chain.l2-regularize 0.00005 \
-    --chain.apply-deriv-weights false \
-    --chain.lm-opts="--num-extra-lm-states=2000" \
-    --egs.dir "$common_egs_dir" \
-    --egs.stage $get_egs_stage \
-    --egs.opts "--frames-overlap-per-eg 0" \
-    --egs.chunk-width $frames_per_eg \
-    --trainer.num-chunk-per-minibatch $minibatch_size \
-    --trainer.frames-per-iter 1500000 \
-    --trainer.num-epochs $num_epochs \
-    --trainer.optimization.num-jobs-initial $num_jobs_initial \
-    --trainer.optimization.num-jobs-final $num_jobs_final \
-    --trainer.optimization.initial-effective-lrate $initial_effective_lrate \
-    --trainer.optimization.final-effective-lrate $final_effective_lrate \
-    --trainer.max-param-change $max_param_change \
-    --cleanup.remove-egs $remove_egs \
-    --feat-dir data/${train_set}_hires \
-    --tree-dir $treedir \
-    --lat-dir exp/tri4_lats_nodup$suffix \
-    --dir $dir  || exit 1;
+  if [ $multi_stage -le 1 ]; then
+      mkdir -p $dir/stage2
+      echo "$0: copy final primary network to $dir/stage2/init.raw"
+      echo " as initial network for sibling network."
+      nnet3-am-copy --raw=true \
+        --edits='set-learning-rate-factor name=* learning-rate-factor=0.0;' \
+        'rename-nodes old-name=output  new-name=output-stage1; ' \
+        'rename-nodes old-name=output-xent new-name=output-xent-stage1' \
+        --edit-configs=$dir/stage1/edit1.config \
+        $dir/stage1/final.mdl $dir/stage2/init.raw || exit 1;
 
+      echo "$0: Training sibling network using regularizer objectives."
+      steps/nnet3/chain/train.py --stage $train_stage \
+      --cmd "$decode_cmd" \
+      --init-raw-model $dir/stage2/init.raw \
+      --feat.online-ivector-dir exp/nnet3/ivectors_${train_set} \
+      --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
+      --chain.xent-regularize $xent_regularize \
+      --chain.leaky-hmm-coefficient 0.1 \
+      --chain.l2-regularize 0.00005 \
+      --chain.apply-deriv-weights false \
+      --chain.lm-opts="--num-extra-lm-states=2000" \
+      --egs.dir "$common_egs_dir" \
+      --egs.stage $get_egs_stage \
+      --egs.opts "--frames-overlap-per-eg 0" \
+      --egs.chunk-width $frames_per_eg \
+      --trainer.num-chunk-per-minibatch $minibatch_size \
+      --trainer.frames-per-iter 1500000 \
+      --trainer.num-epochs 1 \
+      --trainer.optimization.num-jobs-initial $num_jobs_initial \
+      --trainer.optimization.num-jobs-final $num_jobs_final \
+      --trainer.optimization.initial-effective-lrate $initial_effective_lrate \
+      --trainer.optimization.final-effective-lrate $final_effective_lrate \
+      --trainer.max-param-change $max_param_change \
+      --cleanup.remove-egs $remove_egs \
+      --feat-dir data/${train_set}_hires \
+      --tree-dir $treedir \
+      --lat-dir exp/tri4_lats_nodup$suffix \
+      --dir $dir/stage1  || exit 1;
+  fi
+  if [ $multi_stage -le 2 ]; then
+      echo "$0:remove sibling network regularizer outputs "
+      echo "and raname chain-objective for sibling to train "
+      echo "with chain objective output for sibling network. \n"
+      echo "Teacher-student objective can be added in future."
+      nnet3-am-copy --edits='raname-output-nodes old-name=output-sibling new-name=output; ' \
+                'rename-output-nodes old-name=output-xent-sibling new-name=output-xent; ' \
+                'remove-output-nodes name=regressor-1'\
+        $dir/stage2/final.mdl $dir/stage3/0.mdl || exit 1;
+      mkdir -p $dir/stage3/configs
+      cp -r $dir/stage2/configs $dir/stage3/configs || exit 1;
+      steps/nnet3/chain/train.py --stage 0 \
+      --cmd "$decode_cmd" \
+      --feat.online-ivector-dir exp/nnet3/ivectors_${train_set} \
+      --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
+      --chain.xent-regularize $xent_regularize \
+      --chain.leaky-hmm-coefficient 0.1 \
+      --chain.l2-regularize 0.00005 \
+      --chain.apply-deriv-weights false \
+      --chain.lm-opts="--num-extra-lm-states=2000" \
+      --egs.dir "$common_egs_dir" \
+      --egs.stage $get_egs_stage \
+      --egs.opts "--frames-overlap-per-eg 0" \
+      --egs.chunk-width $frames_per_eg \
+      --trainer.num-chunk-per-minibatch $minibatch_size \
+      --trainer.frames-per-iter 1500000 \
+      --trainer.num-epochs 1 \
+      --trainer.optimization.num-jobs-initial $num_jobs_initial \
+      --trainer.optimization.num-jobs-final $num_jobs_final \
+      --trainer.optimization.initial-effective-lrate $initial_effective_lrate \
+      --trainer.optimization.final-effective-lrate $final_effective_lrate \
+      --trainer.max-param-change $max_param_change \
+      --cleanup.remove-egs $remove_egs \
+      --feat-dir data/${train_set}_hires \
+      --tree-dir $treedir \
+      --lat-dir exp/tri4_lats_nodup$suffix \
+      --dir $dir/stage1  || exit 1;
+
+  fi
 fi
 
 if [ $stage -le 14 ]; then

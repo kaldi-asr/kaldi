@@ -300,13 +300,13 @@ def train(args, run_opts, background_process_handler):
         chain_lib.create_denominator_fst(args.dir, args.tree_dir, run_opts)
 
     if (args.stage <= -4):
-        logger.info("Initializing a basic network for estimating "
-                    "preconditioning matrix")
-        common_lib.run_kaldi_command(
-            """{command} {dir}/log/nnet_init.log \
-                    nnet3-init --srand=-2 {dir}/configs/init.config \
-                    {dir}/init.raw""".format(command=run_opts.command,
-                                             dir=args.dir))
+      logger.info("Initializing a basic network for estimating "
+                  "epreconditioning matrix")
+      common_lib.run_kaldi_command(
+          """{command} {dir}/log/nnet_init.log \
+                  nnet3-init --srand=-2 {dir}/configs/init.config \
+                  {dir}/init.raw""".format(command=run_opts.command,
+                                           dir=args.dir))
 
     egs_left_context = left_context + args.frame_subsampling_factor/2
     egs_right_context = right_context + args.frame_subsampling_factor/2
@@ -361,6 +361,17 @@ def train(args, run_opts, background_process_handler):
             args.dir, egs_dir, num_archives, run_opts,
             max_lda_jobs=args.max_lda_jobs,
             rand_prune=args.rand_prune)
+        # the init.raw updated to specified init_raw_model
+        # after lda computation.
+        if args.init_raw_model is not None:
+            logger.info("Initialize the init.raw to be {0}".format(
+                        args.init_raw_model))
+            common_lib.run_kaldi_command(
+                """{command} {dir}/log/nnet_init.log \
+                   nnet3-copy {raw_init} \
+                   {dir}/init.raw""".format(command=run_opts.command,
+                                            raw_init=args.raw_init_model,
+                                            dir=args.dir))
 
     if (args.stage <= -1):
         logger.info("Preparing the initial acoustic model.")

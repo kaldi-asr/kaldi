@@ -922,6 +922,53 @@ class XconfigAffineLayer(XconfigLayerBase):
                 ans.append((conf_name, line))
         return ans
 
+class XconfigRegressorLayer(XconfigLayerBase):
+    """This class is for lines like
+    'regressor-layer name=regularize-output dim=1000 input1=tdnn1 input2=tdnn1-sibling'
+    By default this includes regressor affine transform and output layer and the
+    parameters are initialized to 1/sqrt(dim).
+    Parameters of the class, and their defaults:
+        input1='[-1]'   :   Descriptor giving the 1st input of the layer.
+        input2='[-1]'   :   Descriptor giving the 2nd input of the layer.
+        dim=None    :   Output dimension of layer.
+        scale=1.0/dim   :   scale factor used to scale regressor in FixedScaleComponent.
+        objective-type=linear   :   the only other choice currently is
+            'quadratic', for use in regression problems
+        supervision-type=unsupervised   :   the only other choice is supervised,
+            where supervision is defined  in examples.
+    """
+    def __init__(self, first_token, key_to_value, prev_names = None):
+
+      assert first_token == 'regressor-layer'
+      XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
+
+    def set_default_configs(self):
+        # note: self.config['input1'] is a descriptor, '[-1]' means output
+        # the most recent layer.
+        self.config = {'input1' : '[-1]',
+                       'input2' : '[-1]',
+                       'dim'  : -1,
+                       'learning-rate-factor' : 1.0,
+                       'max-change' : 1.5,
+                       'param-stddev' : 0.0,
+                       'bias-stddev'  : 0.0,
+                       'scale' : 1.0,
+                       'objective-type' : 'linear',
+                       'supervision-type' : 'unsupervised'
+                      }
+
+    def check_configs(self):
+
+    def auxiliary_outputs(self):
+
+      return []
+
+    def output_name(self, auxiliary_outputs = None):
+
+
+    def output_dim(self, auxiliary_output = None):
+
+    def get_full_config(self):
 
 def test_layers():
     # for some config lines that should be printed the same way as they

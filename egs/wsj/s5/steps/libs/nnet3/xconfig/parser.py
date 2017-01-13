@@ -32,7 +32,8 @@ config_to_layer = {
         'lstmp-layer' : xlayers.XconfigLstmpLayer,
         'lstmpc-layer' : xlayers.XconfigLstmpcLayer,
         'fast-lstm-layer' : xlayers.XconfigFastLstmLayer,
-        'fast-lstmp-layer' : xlayers.XconfigFastLstmpLayer
+        'fast-lstmp-layer' : xlayers.XconfigFastLstmpLayer,
+        'regressor-layer' : xlayers.XconfigRegressorLayer
         }
 
 # Turn a config line and a list of previous layers into
