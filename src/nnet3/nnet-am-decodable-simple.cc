@@ -64,7 +64,7 @@ DecodableAmNnetSimple::DecodableAmNnetSimple(
     const MatrixBase<BaseFloat> *online_ivectors,
     int32 online_ivector_period,
     CachingOptimizingCompiler *compiler):
-    compiler_(am_nnet.GetNnet(), opts.optimize_config),
+    compiler_(am_nnet.GetNnet(), opts.optimize_config, opts.compiler_config),
     decodable_nnet_(opts, am_nnet.GetNnet(), am_nnet.Priors(),
                     feats, compiler != NULL ? compiler : &compiler_,
                     ivector, online_ivectors,
@@ -318,7 +318,7 @@ DecodableAmNnetSimpleParallel::DecodableAmNnetSimpleParallel(
     const VectorBase<BaseFloat> *ivector,
     const MatrixBase<BaseFloat> *online_ivectors,
     int32 online_ivector_period):
-    compiler_(am_nnet.GetNnet(), opts.optimize_config),
+    compiler_(am_nnet.GetNnet(), opts.optimize_config, opts.compiler_config),
     trans_model_(trans_model),
     feats_copy_(NULL),
     ivector_copy_(NULL),

@@ -36,14 +36,14 @@ done
 
 echo -n "Final train prob     "
 for x in $*; do
-  prob=$(grep Overall $x/log/compute_prob_train.final.log | awk '{printf("%.4f", $8)}')
+  prob=$(grep Overall $x/log/compute_prob_train.combined.log | awk '{printf("%.4f", $8)}')
   printf "% 10s" $prob
 done
 echo
 
 echo -n "Final valid prob     "
 for x in $*; do
-  prob=$(grep Overall $x/log/compute_prob_valid.final.log | awk '{printf("%.4f", $8)}')
+  prob=$(grep Overall $x/log/compute_prob_valid.combined.log | awk '{printf("%.4f", $8)}')
   printf "% 10s" $prob
 done
 echo

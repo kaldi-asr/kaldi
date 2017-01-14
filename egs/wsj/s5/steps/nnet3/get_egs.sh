@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2012-2015 Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
+# Copyright 2012-2016 Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 #
 # This script, which will generally be called from other neural-net training
 # scripts, extracts the training examples used to train the neural net (and also

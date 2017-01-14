@@ -161,18 +161,15 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Get frame-by-frame examples of data for nnet3+sequence neural network\n"
-        "training.  This involves breaking up utterances into pieces of a\n"
-        "fixed size.  Input will come from discriminative-get-supervision.\n"
+        "training.  This involves breaking up utterances into pieces of sizes\n"
+        "determined by the --num-frames option.\n"
         "\n"
         "Usage:  nnet3-discriminative-get-egs [options] <model> <features-rspecifier> "
-        "<discriminative-supervision-rspecifier> <egs-wspecifier>\n"
+        "<denominator-lattice-rspecifier> <numerator-alignment-rspecifier> <egs-wspecifier>\n"
         "\n"
         "An example [where $feats expands to the actual features]:\n"
-        "discriminative-get-supervision [args] | \\\n"
-        "  nnet3-discriminative-get-egs --left-context=25 --right-context=9 --num-frames=20 \\\n"
-        "  \"$feats\" ark,s,cs:- ark:degs.1.ark\n"
-        "Note: the --frame-subsampling-factor option must be the same as given to\n"
-        "discriminative-get-supervision.\n";
+        "  nnet3-discriminative-get-egs --left-context=25 --right-context=9 --num-frames=150,100,90 \\\n"
+        "  \"$feats\" \"ark,s,cs:gunzip -c lat.1.gz\" scp:ali.scp ark:degs.1.ark\n";
 
     bool compress = true;
     int32 length_tolerance = 100, online_ivector_period = 1;
@@ -198,13 +195,11 @@ int main(int argc, char *argv[]) {
     po.Register("length-tolerance", &length_tolerance, "Tolerance for "
                 "difference in num-frames between feat and ivector matrices");
 
-
-    ParseOptions splitter_opts("supervision-splitter", &po);
-    splitter_config.Register(&splitter_opts);
+    splitter_config.Register(&po);
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 4) {
+    if (po.NumArgs() != 5) {
       po.PrintUsage();
       exit(1);
     }
@@ -212,14 +207,12 @@ int main(int argc, char *argv[]) {
     eg_config.ComputeDerived();
     UtteranceSplitter utt_splitter(eg_config);
 
-    std::string model_wxfilename, feature_rspecifier,
-                supervision_rspecifier,
-                examples_wspecifier;
+    std::string model_wxfilename = po.GetArg(1),
+        feature_rspecifier = po.GetArg(2),
+        den_lat_rspecifier = po.GetArg(3),
+        num_ali_rspecifier = po.GetArg(4),
+        examples_wspecifier = po.GetArg(5);
 
-    model_wxfilename = po.GetArg(1);
-    feature_rspecifier = po.GetArg(2);
-    supervision_rspecifier = po.GetArg(3);
-    examples_wspecifier = po.GetArg(4);
 
     TransitionModel tmodel;
     {
@@ -229,8 +222,8 @@ int main(int argc, char *argv[]) {
     }
 
     SequentialBaseFloatMatrixReader feat_reader(feature_rspecifier);
-    discriminative::RandomAccessDiscriminativeSupervisionReader supervision_reader(
-        supervision_rspecifier);
+    RandomAccessLatticeReader den_lat_reader(den_lat_rspecifier);
+    RandomAccessInt32VectorReader ali_reader(num_ali_rspecifier);
     NnetDiscriminativeExampleWriter example_writer(examples_wspecifier);
     RandomAccessBaseFloatMatrixReader online_ivector_reader(
         online_ivector_rspecifier);
@@ -240,11 +233,23 @@ int main(int argc, char *argv[]) {
     for (; !feat_reader.Done(); feat_reader.Next()) {
       std::string key = feat_reader.Key();
       const Matrix<BaseFloat> &feats = feat_reader.Value();
-      if (!supervision_reader.HasKey(key)) {
-        KALDI_WARN << "No supervision for key " << key;
+      if (!den_lat_reader.HasKey(key)) {
+        KALDI_WARN << "No denominator lattice for key " << key;
+        num_err++;
+      } else if (!ali_reader.HasKey(key)) {
+        KALDI_WARN << "No numerator alignment for key " << key;
         num_err++;
       } else {
-        const discriminative::DiscriminativeSupervision &supervision = supervision_reader.Value(key);
+        discriminative::DiscriminativeSupervision supervision;
+        if (!supervision.Initialize(ali_reader.Value(key),
+                                    den_lat_reader.Value(key),
+                                    1.0)) {
+          KALDI_WARN << "Failed to convert lattice to supervision "
+                     << "for utterance " << key;
+          num_err++;
+          continue;
+        }
+
         const Matrix<BaseFloat> *online_ivector_feats = NULL;
         if (!online_ivector_rspecifier.empty()) {
           if (!online_ivector_reader.HasKey(key)) {
