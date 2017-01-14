@@ -86,11 +86,6 @@ def get_args():
                         action=common_lib.StrToBoolAction,
                         choices=["true", "false"],
                         help="")
-    parser.add_argument("--chain.truncate-deriv-weights", type=float,
-                        dest='truncate_deriv_weights', default=0,
-                        help="""Can be used to set to zero the weights of
-                        derivs from frames near the edges.  (counts subsampled
-                        frames)""")
     parser.add_argument("--chain.frame-subsampling-factor", type=int,
                         dest='frame_subsampling_factor', default=3,
                         help="ratio of frames-per-second of features we "

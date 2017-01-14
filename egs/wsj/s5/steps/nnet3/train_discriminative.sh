@@ -17,8 +17,6 @@ num_epochs=4       # Number of epochs of training;
                    # num-epochs * frame-subsampling-factor times, due to
                    # using different data-shifts.
 use_gpu=true
-truncate_deriv_weights=0  # can be used to set to zero the weights of derivs from frames
-                          # near the edges.  (counts subsampled frames).
 apply_deriv_weights=true
 use_frame_shift=false
 run_diagnostics=true
@@ -50,7 +48,8 @@ shuffle_buffer_size=1000 # This "buffer_size" variable controls randomization of
 
 stage=-3
 
-adjust_priors=true
+adjust_priors=true   # If true then it will
+
 num_threads=16  # this is the default but you may want to change it, e.g. to 1 if
                 # using GPUs.
 
@@ -59,8 +58,9 @@ keep_model_iters=1
 remove_egs=false
 src_model=  # will default to $degs_dir/final.mdl
 
-left_deriv_truncate=   # number of time-steps to avoid using the deriv of, on the left.
-right_deriv_truncate=  # number of time-steps to avoid using the deriv of, on the right.
+
+min_deriv_time=0
+max_deriv_time_relative=0
 # End configuration section.
 
 
@@ -71,7 +71,7 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 
 if [ $# != 2 ]; then
-  echo "Usage: $0 [opts] <degs-dir> <exp-dir>"
+  echo "Usage: $0 [opts] <degs-dir> <src-model> <exp-dir>"
   echo " e.g.: $0 exp/nnet3/tdnn_sp_degs exp/nnet3/tdnn_sp_smbr"
   echo ""
   echo "Main options (for others, see top of script file)"
@@ -109,11 +109,17 @@ dir=$2
 [ -z "$src_model" ] && src_model=$degs_dir/final.mdl
 
 # Check some files.
-for f in $degs_dir/degs.1.ark $degs_dir/info/{num_archives,silence.csl,frames_per_eg,egs_per_archive} $src_model; do
+for f in $degs_dir/degs.1.ark $degs_dir/info/{num_archives,silence.csl,frame_subsampling_factor} $src_model; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
 mkdir -p $dir/log || exit 1;
+
+
+model_left_context=$(nnet3-am-info $src_model | grep "^left-context:" | awk '{print $2}')
+model_right_context=$(nnet3-am-info $src_model | grep "^right-context:" | awk '{print $2}')
+
+
 
 # copy some things
 for f in splice_opts cmvn_opts tree final.mat; do
@@ -129,7 +135,6 @@ if $adjust_priors; then
   num_archives_priors=`cat $degs_dir/info/num_archives_priors` || exit 1
 fi
 
-frames_per_eg=$(cat $degs_dir/info/frames_per_eg) || { echo "error: no such file $degs_dir/info/frames_per_eg"; exit 1; }
 num_archives=$(cat $degs_dir/info/num_archives) || exit 1;
 frame_subsampling_factor=$(cat $degs_dir/info/frame_subsampling_factor)
 
@@ -201,12 +206,7 @@ fi
 
 rm $dir/.error 2>/dev/null
 
-x=0   
-
-deriv_time_opts=
-[ ! -z "$left_deriv_truncate" ] && deriv_time_opts="--optimization.min-deriv-time=$left_deriv_truncate"
-[ ! -z "$right_deriv_truncate" ] && \
-  deriv_time_opts="$deriv_time_opts --optimization.max-deriv-time=$((frames_per_eg - right_deriv_truncate))"
+x=0
 
 while [ $x -lt $num_iters ]; do
   if [ $stage -le $x ]; then
@@ -229,7 +229,7 @@ while [ $x -lt $num_iters ]; do
         $dir/$x.mdl \
         ark:$degs_dir/train_diagnostic.degs &
     fi
-    
+
     if [ $x -gt 0 ]; then
       $cmd $dir/log/progress.$x.log \
         nnet3-show-progress --use-gpu=no "nnet3-am-copy --raw=true $dir/$[$x-1].mdl - |" "nnet3-am-copy --raw=true $dir/$x.mdl - |" \
@@ -239,9 +239,9 @@ while [ $x -lt $num_iters ]; do
 
 
     echo "Training neural net (pass $x)"
-      
+
     cache_read_opt="--read-cache=$dir/cache.$x"
-    
+
     ( # this sub-shell is so that when we "wait" below,
       # we only wait for the training jobs that we just spawned,
       # not the diagnostic jobs that we spawned above.
@@ -253,7 +253,7 @@ while [ $x -lt $num_iters ]; do
         k=$[$num_archives_processed + $n - 1]; # k is a zero-based index that we'll derive
                                                # the other indexes from.
         archive=$[($k%$num_archives)+1]; # work out the 1-based archive index.
-        
+
         if [ $n -eq 1 ]; then
           # an option for writing cache (storing pairs of nnet-computations and
           # computation-requests) during training.
@@ -282,14 +282,16 @@ while [ $x -lt $num_iters ]; do
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
           nnet3-discriminative-train $cache_read_opt $cache_write_opt \
           --apply-deriv-weights=$apply_deriv_weights \
-          $parallel_train_opts $deriv_time_opts \
+          --optimization.min-deriv-time=-$model_left_context \
+          --optimization.max-deriv-time-relative=$model_right_context \
+            $parallel_train_opts \
           --max-param-change=$this_max_param_change \
           --silence-phones=$silphonelist \
           --criterion=$criterion --drop-frames=$drop_frames \
           --one-silence-class=$one_silence_class \
           --boost=$boost --acoustic-scale=$acoustic_scale $regularization_opts \
           $dir/$x.mdl \
-          "ark:nnet3-discriminative-copy-egs --frame-shift=$frame_shift --truncate-deriv-weights=$truncate_deriv_weights ark:$degs_dir/degs.$archive.ark ark:- | nnet3-discriminative-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:- | nnet3-discriminative-merge-egs --minibatch-size=$minibatch_size ark:- ark:- |" \
+          "ark:nnet3-discriminative-copy-egs --frame-shift=$frame_shift ark:$degs_dir/degs.$archive.ark ark:- | nnet3-discriminative-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:- | nnet3-discriminative-merge-egs --minibatch-size=$minibatch_size ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
       done
       wait
@@ -378,4 +380,3 @@ if $cleanup; then
     fi
   done
 fi
-

@@ -1,7 +1,10 @@
 #!/bin/bash
 
-# Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
+# Copyright 2012-2016   Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 # Copyright 2014-2015   Vimal Manohar
+
+# Note: you may find it more convenient to use the newer script get_degs.sh, which
+# combines decoding and example-creation in one step without writing lattices.
 
 # This script dumps examples MPE or MMI or state-level minimum bayes risk (sMBR)
 # training of neural nets.
@@ -12,6 +15,8 @@ cmd=run.pl
 feat_type=raw     # set it to 'lda' to use LDA features.
 frames_per_eg=150 # number of frames of labels per example.  more->less disk space and
                   # less time preparing egs, but more I/O during training.
+                  # Note: may in general be a comma-separated string of alternative
+                  # durations; the first one (the principal num-frames) is preferred.
 frames_overlap_per_eg=30 # number of supervised frames of overlap that we aim for per eg.
                   # can be useful to avoid wasted data if you're using --left-deriv-truncate
                   # and --right-deriv-truncate.
@@ -32,11 +37,6 @@ frames_per_iter=400000 # each iteration of training, see this many frames
                        # per job.  This is just a guideline; it will pick a number
                        # that divides the number of samples in the entire data.
 
-determinize=true
-minimize=true
-remove_output_symbols=true
-remove_epsilons=true
-collapse_transition_ids=true
 acwt=0.1
 
 stage=0
@@ -225,7 +225,7 @@ if [ $stage -le 2 ]; then
   fi
 fi
 
-# Working out total number of archives. Add one on the assumption the
+# Work out total number of archives. Add one on the assumption the
 # num-frames won't divide exactly, and we want to round up.
 num_archives=$[$num_frames/$frames_per_iter+1]
 
@@ -244,8 +244,14 @@ num_archives=$[$archives_multiple*$num_archives_intermediate] || exit 1;
 
 echo $num_archives >$dir/info/num_archives
 echo $frames_per_eg >$dir/info/frames_per_eg
+
+# the first field in frames_per_eg (which is a comma-separated list of numbers)
+# is the 'principal' frames-per-eg, and for purposes of working out the number
+# of archives we assume that this will be the average number of frames per eg.
+frames_per_eg_principal=$(echo $frames_per_eg | cut -d, -f1)
+
 # Work out the number of egs per archive
-egs_per_archive=$[$num_frames/($frames_per_eg*$num_archives)] || exit 1;
+egs_per_archive=$[$num_frames/($frames_per_eg_principal*$num_archives)] || exit 1;
 ! [ $egs_per_archive -le $frames_per_iter ] && \
   echo "$0: script error: egs_per_archive=$egs_per_archive not <= frames_per_iter=$frames_per_iter" \
   && exit 1;
@@ -279,7 +285,6 @@ if [ $stage -le 3 ]; then
   for id in $(seq $nj); do cat $dir/lat_special.$id.scp; done > $dir/lat_special.scp
 fi
 
-splitter_opts="--supervision-splitter.determinize=$determinize --supervision-splitter.minimize=$minimize --supervision-splitter.remove_output_symbols=$remove_output_symbols --supervision-splitter.remove_epsilons=$remove_epsilons --supervision-splitter.collapse-transition-ids=$collapse_transition_ids --supervision-splitter.acoustic-scale=$acwt"
 
 
 # If frame_subsampling_factor > 0, we will later be shifting the egs slightly to
@@ -291,7 +296,7 @@ right_context=$[right_context+frame_subsampling_factor/2]
 [ $left_context_initial -ge 0 ] && left_context_initial=$[left_context_initial+frame_subsampling_factor/2]
 [ $right_context_final -ge 0 ] && right_context_final=$[right_context_final+frame_subsampling_factor/2]
 
-egs_opts="--left-context=$left_context --right-context=$right_context --num-frames=$frames_per_eg --compress=$compress --frame-subsampling-factor=$frame_subsampling_factor $splitter_opts"
+egs_opts="--left-context=$left_context --right-context=$right_context --num-frames=$frames_per_eg --compress=$compress --frame-subsampling-factor=$frame_subsampling_factor --acoustic-scale=$acwt"
 [ $left_context_initial -ge 0 ] && egs_opts="$egs_opts --left-context-initial=$left_context_initial"
 [ $right_context_final -ge 0 ] && egs_opts="$egs_opts --right-context-final=$right_context_final"
 
@@ -304,8 +309,6 @@ priors_egs_opts="--left-context=$left_context --right-context=$right_context --n
 [ $left_context_initial -ge 0 ] && priors_egs_opts="$priors_egs_opts --left-context-initial=$left_context_initial"
 [ $right_context_final -ge 0 ] && priors_egs_opts="$priors_egs_opts --right-context-final=$right_context_final"
 
-
-supervision_all_opts="--frame-subsampling-factor=$frame_subsampling_factor"
 
 echo $left_context > $dir/info/left_context
 echo $right_context > $dir/info/right_context
@@ -368,16 +371,14 @@ if [ $stage -le 4 ]; then
     <$dir/ali.scp >$dir/ali_special.scp
 
   $cmd $dir/log/create_valid_subset.log \
-    discriminative-get-supervision $supervision_all_opts \
-    scp:$dir/ali_special.scp scp:$dir/lat_special.scp ark:- \| \
     nnet3-discriminative-get-egs $ivector_opts $egs_opts \
-    $dir/final.mdl "$valid_feats" ark,s,cs:- "ark:$dir/valid_diagnostic.degs" || touch $dir/.error &
+    $dir/final.mdl "$valid_feats" scp:$dir/lat_special.scp \
+    scp:$dir/ali_special.scp "ark:$dir/valid_diagnostic.degs" || touch $dir/.error &
 
   $cmd $dir/log/create_train_subset.log \
-    discriminative-get-supervision $supervision_all_opts \
-    scp:$dir/ali_special.scp scp:$dir/lat_special.scp ark:- \| \
     nnet3-discriminative-get-egs $ivector_opts $egs_opts \
-    $dir/final.mdl "$train_subset_feats" ark,s,cs:- "ark:$dir/train_diagnostic.degs" || touch $dir/.error &
+    $dir/final.mdl "$train_subset_feats" scp:$dir/lat_special.scp \
+    scp:$dir/ali_special.scp  "ark:$dir/train_diagnostic.degs" || touch $dir/.error &
   wait;
   [ -f $dir/.error ] && echo "Error detected while creating train/valid egs" && exit 1
   echo "... Getting subsets of validation examples for diagnostics and combination."
@@ -403,12 +404,10 @@ if [ $stage -le 5 ]; then
   # files is the product of 'nj' by 'num_archives_intermediate', which might be
   # quite large.
   $cmd --max-jobs-run $max_jobs_run JOB=1:$nj $dir/log/get_egs.JOB.log \
-    discriminative-get-supervision $supervision_all_opts \
-    "scp:utils/filter_scp.pl $sdata/JOB/utt2spk $dir/ali.scp |" \
-    "ark,s,cs:gunzip -c $denlatdir/lat.JOB.gz |" ark:- \| \
     nnet3-discriminative-get-egs $ivector_opts $egs_opts \
-       --num-frames-overlap=$frames_overlap_per_eg \
-    $dir/final.mdl "$feats" ark,s,cs:- ark:- \| \
+      --num-frames-overlap=$frames_overlap_per_eg \
+      $dir/final.mdl "$feats" "ark,s,cs:gunzip -c $denlatdir/lat.JOB.gz |" \
+      "scp:utils/filter_scp.pl $sdata/JOB/utt2spk $dir/ali.scp |" ark:- \| \
     nnet3-discriminative-copy-egs --random=true --srand=JOB ark:- $degs_list || exit 1;
 fi
 

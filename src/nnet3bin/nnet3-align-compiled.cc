@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
     int32 online_ivector_period = 0;
     align_config.Register(&po);
     decodable_opts.Register(&po);
-    
+
     po.Register("use-gpu", &use_gpu,
                 "yes|no|optional|wait, only has effect if compiled with CUDA");
     po.Register("transition-scale", &transition_scale,
@@ -101,6 +101,7 @@ int main(int argc, char *argv[]) {
     double tot_like = 0.0;
     kaldi::int64 frame_count = 0;
 
+
     {
       TransitionModel trans_model;
       AmNnetSimple am_nnet;
@@ -110,6 +111,10 @@ int main(int argc, char *argv[]) {
         trans_model.Read(ki.Stream(), binary);
         am_nnet.Read(ki.Stream(), binary);
       }
+      // this compiler object allows caching of computations across
+      // different utterances.
+      CachingOptimizingCompiler compiler(am_nnet.GetNnet(),
+                                         decodable_opts.optimize_config);
 
       RandomAccessBaseFloatMatrixReader online_ivector_reader(
           online_ivector_rspecifier);
@@ -173,7 +178,7 @@ int main(int argc, char *argv[]) {
         DecodableAmNnetSimple nnet_decodable(
             decodable_opts, trans_model, am_nnet,
             features, ivector, online_ivectors,
-            online_ivector_period);
+            online_ivector_period, &compiler);
 
         AlignUtteranceWrapper(align_config, utt,
                               decodable_opts.acoustic_scale,
@@ -199,5 +204,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-

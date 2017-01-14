@@ -196,15 +196,6 @@ void ShiftDiscriminativeExampleTimes(int32 frame_shift,
                                     const std::vector<std::string> &exclude_names,
                                     NnetDiscriminativeExample *eg);
 
-/**
-   This sets to zero any elements of 'egs->outputs[*].deriv_weights' that correspond
-   to frames within the first or last 'truncate' frames of the sequence (e.g. you could
-   set 'truncate=5' to set zero deriv-weight for the first and last 5 frames of the
-   sequence).
- */
-void TruncateDerivWeights(int32 truncate,
-                          NnetDiscriminativeExample *eg);
-
 /**  This function takes a NnetDiscriminativeExample and produces a
      ComputationRequest.
      Assumes you don't want the derivatives w.r.t. the inputs; if you do, you

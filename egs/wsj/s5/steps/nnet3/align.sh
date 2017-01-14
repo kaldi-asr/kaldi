@@ -49,8 +49,9 @@ dir=$4
 oov=`cat $lang/oov.int` || exit 1;
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
-sdata=$data/split$nj
-[[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
+sdata=$data/split${nj}utt
+[[ -d $sdata && $data/feats.scp -ot $sdata ]] || \
+   split_data.sh --per-utt $data $nj || exit 1;
 
 if $use_gpu; then
   queue_opt="--gpu 1"

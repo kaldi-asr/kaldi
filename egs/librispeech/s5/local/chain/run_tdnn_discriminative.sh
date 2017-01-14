@@ -44,7 +44,6 @@ dir=${srcdir}_${criterion}
 ## Egs options
 frames_per_eg=150
 frames_overlap_per_eg=30
-truncate_deriv_weights=10
 
 ## Nnet training options
 effective_learning_rate=0.000001
@@ -166,15 +165,13 @@ if [ -z "$degs_dir" ]; then
     # have a higher maximum num-jobs if
     if [ -d ${srcdir}_degs/storage ]; then max_jobs=10; else max_jobs=5; fi
 
-    degs_opts="--determinize true --minimize true --remove-output-symbols true --remove-epsilons true --collapse-transition-ids true"
-
     steps/nnet3/get_egs_discriminative.sh \
       --cmd "$decode_cmd --max-jobs-run $max_jobs --mem 20G" --stage $get_egs_stage --cmvn-opts "$cmvn_opts" \
       --adjust-priors false --acwt 1.0 \
       --online-ivector-dir $train_ivector_dir \
       --left-context $left_context --right-context $right_context \
       $frame_subsampling_opt \
-      --frames-per-eg $frames_per_eg --frames-overlap-per-eg $frames_overlap_per_eg ${degs_opts} \
+      --frames-per-eg $frames_per_eg --frames-overlap-per-eg $frames_overlap_per_eg \
       $train_data_dir $lang ${srcdir}_ali${affix} $lats_dir $srcdir/final.mdl $degs_dir ;
   fi
 fi
@@ -187,7 +184,7 @@ if [ $stage -le 4 ]; then
     --num-epochs $num_epochs --one-silence-class $one_silence_class --minibatch-size $minibatch_size \
     --num-jobs-nnet $num_jobs_nnet --num-threads $num_threads \
     --regularization-opts "$regularization_opts" --use-frame-shift false \
-    --truncate-deriv-weights $truncate_deriv_weights --adjust-priors false \
+    --adjust-priors false \
       ${degs_dir} $dir ;
 fi
 
@@ -227,4 +224,3 @@ fi
 
 
 exit 0;
-

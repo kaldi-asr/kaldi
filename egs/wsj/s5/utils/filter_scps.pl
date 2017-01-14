@@ -165,6 +165,5 @@ if ($warn_uncovered && $print_warnings) {
   print STDERR "filter_scps.pl: warning: some input lines did not get output\n";
 }
 if ($warn_multiply_covered && $print_warnings) {
-  print STDERR "filter_scps.pl: warning: some input lines were output to multiple files\n";
+  print STDERR "filter_scps.pl: warning: some input lines were output to multiple files [OK if splitting per utt]\n";
 }
-

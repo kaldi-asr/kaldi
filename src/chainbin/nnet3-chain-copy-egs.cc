@@ -265,7 +265,6 @@ int main(int argc, char *argv[]) {
     bool random = false;
     int32 srand_seed = 0;
     int32 frame_shift = 0;
-    int32 truncate_deriv_weights = 0;
     int32 frame_subsampling_factor = -1;
     BaseFloat keep_proportion = 1.0;
     int32 left_context = -1, right_context = -1;
@@ -282,9 +281,6 @@ int main(int argc, char *argv[]) {
                 "in the supervision data (excluding iVector data) - useful in "
                 "augmenting data.  Note, the outputs will remain at the closest "
                 "exact multiples of the frame subsampling factor");
-    po.Register("truncate-deriv-weights", &truncate_deriv_weights,
-                "If nonzero, the number of initial/final subsample frames that "
-                "will have their derivatives' weights set to zero.");
     po.Register("left-context", &left_context, "Can be used to truncate the "
                 "feature left-context that we output.");
     po.Register("right-context", &right_context, "Can be used to truncate the "
@@ -320,7 +316,7 @@ int main(int argc, char *argv[]) {
       // count is normally 1; could be 0, or possibly >1.
       int32 count = GetCount(keep_proportion);
       std::string key = example_reader.Key();
-      if (frame_shift == 0 && truncate_deriv_weights == 0 &&
+      if (frame_shift == 0 &&
           left_context == -1 && right_context == -1) {
         const NnetChainExample &eg = example_reader.Value();
         for (int32 c = 0; c < count; c++) {
@@ -338,8 +334,6 @@ int main(int argc, char *argv[]) {
                                     frame_subsampling_factor, &eg_out);
         else
           eg_out.Swap(&eg);
-        if (truncate_deriv_weights != 0)
-          TruncateDerivWeights(truncate_deriv_weights, &eg_out);
         for (int32 c = 0; c < count; c++) {
           int32 index = (random ? Rand() : num_written) % num_outputs;
           example_writers[index]->Write(key, eg_out);

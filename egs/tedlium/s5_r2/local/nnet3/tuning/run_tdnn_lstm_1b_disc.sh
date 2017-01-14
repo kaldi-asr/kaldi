@@ -1,55 +1,83 @@
 #!/bin/bash
 
-set -o pipefail
-
-# this is run_tdnn_discriminative.sh
-
-# This script does discriminative training on top of CE nnet3 system.
+# This script does discriminative training on top of CE nnet3 system.  To
+# simplify things, this assumes you are using the "cleaned" data (since this is
+# generally better), i.e. it won't work if you used options to run_tdnn_lstm_1b.sh
+# to use the non-cleaned data.
+#
 # note: this relies on having a cluster that has plenty of CPUs as well as GPUs,
 # since the lattice generation runs in about real-time, so takes of the order of
 # 1000 hours of CPU time.
-#
-. ./cmd.sh
+
+# how to run this (where $0 is the name of this script)
+# by default, with the "cleaned" data:
+# $0
+
+# without the "cleaned" data:
+# $0 --train-set train --gmm tri3 --nnet3-affix "" &
 
 
-stage=0
+
+set -uo pipefail
+
+stage=1
 train_stage=-10 # can be used to start training in the middle.
-get_egs_stage=-10
+get_egs_stage=0
 use_gpu=true  # for training
 cleanup=false  # run with --cleanup true --stage 6 to clean up (remove large things like denlats,
                # alignments and degs).
+degs_dir=  # set this to use preexisting degs.
+# nj=400 # have a high number of jobs because this could take a while, and we might
+#         # have some stragglers.
+nj=30
 
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
-srcdir=exp/nnet3/tdnn
-train_data_dir=data/train_nodup_sp_hires
-online_ivector_dir=exp/nnet3/ivectors_train_nodup_sp
-degs_dir=                     # If provided, will skip the degs directory creation
-lats_dir=                     # If provided, will skip denlats creation
+srcdir=exp/nnet3_cleaned/tdnn_lstm1b_sp
+#train_data_dir=data/train_cleaned_sp_hires_comb
+#online_ivector_dir=exp/nnet3_cleaned/ivectors_train_cleaned_sp_hires_comb
+
+train_data_dir=data/dev_hires
+online_ivector_dir=exp/nnet3_cleaned/ivectors_dev_hires
 
 ## Objective options
 criterion=smbr
 one_silence_class=true
 
-dir=${srcdir}_${criterion}
+# you can set --disc-affix if you run different configurations, e.g. --disc-affix "_b"
+disc_affix=
 
-## Egs options
-frames_per_eg=150
-frames_overlap_per_eg=30
+dir=${srcdir}_${criterion}${disc_affix}
+
+## Egs options.  Give quite a few choices of chunk length,
+## so it can split utterances without much gap or overlap.
+frames_per_eg=300,280,150,120,100
+frames_overlap_per_eg=0
+frames_per_chunk_decoding=200
+## these context options should match the training condition. (chunk_left_context,
+## chunk_right_context)
+## We set --extra-left-context-initial 0 and --extra-right-context-final 0
+## directly in the script below, but this should also match the training condition.
+extra_left_context=40
+extra_right_context=0
+looped=true # affects alignments; because it's an LSTM, would be false for pure TDNNs or BLSTMs.
+
+
 
 ## Nnet training options
-effective_learning_rate=0.00000125
+effective_learning_rate=0.0000125
 max_param_change=1
 num_jobs_nnet=4
-num_epochs=2
+num_epochs=4
 regularization_opts=          # Applicable for providing --xent-regularize and --l2-regularize options
-minibatch_size=64
+minibatch_size=64             # we may have to reduce this.
 adjust_priors=true            # May need to be set to false
                               # because it does not help in some setups
 modify_learning_rates=true
-last_layer_factor=0.1
+last_layer_factor=0.1         # prevent the final layer from learning too fast;
+                              # this can be a problem.
 
 ## Decode options
 decode_start_epoch=1 # can be used to avoid decoding all epochs, e.g. if we decided to run more.
@@ -70,73 +98,50 @@ else
 fi
 
 if [ ! -f ${srcdir}/final.mdl ]; then
-  echo "$0: expected ${srcdir}/final.mdl to exist; first run run_tdnn.sh or run_lstm.sh"
+  echo "$0: expected ${srcdir}/final.mdl to exist"
   exit 1;
 fi
 
 if [ $stage -le 1 ]; then
   # hardcode no-GPU for alignment, although you could use GPU [you wouldn't
   # get excellent GPU utilization though.]
-  nj=100 # have a high number of jobs because this could take a while, and we might
-         # have some stragglers.
   steps/nnet3/align.sh  --cmd "$decode_cmd" --use-gpu false \
+    --frames-per-chunk $frames_per_chunk_decoding \
+    --extra-left-context $extra_left_context --extra-right-context $extra_right_context \
+    --looped $looped \
+    --extra-left-context-initial 0 --extra-right-context-final 0 \
     --online-ivector-dir $online_ivector_dir \
-     --nj $nj $train_data_dir data/lang $srcdir ${srcdir}_ali ;
-
+    --nj $nj $train_data_dir data/lang $srcdir ${srcdir}_ali ;
 fi
 
-if [ -z "$lats_dir" ]; then
-  lats_dir=${srcdir}_denlats
-  if [ $stage -le 2 ]; then
-    nj=100
-    # this doesn't really affect anything strongly, except the num-jobs for one of
-    # the phases of get_egs_discriminative.sh below.
-    num_threads_denlats=6
-    subsplit=40 # number of jobs that run per job (but 2 run at a time, so total jobs is 80, giving
-    # total slots = 80 * 6 = 480.
-    steps/nnet3/make_denlats.sh --cmd "$decode_cmd" --determinize true \
-      --online-ivector-dir $online_ivector_dir \
-      --nj $nj --sub-split $subsplit --num-threads "$num_threads_denlats" --config conf/decode.config \
-      $train_data_dir data/lang $srcdir ${lats_dir} ;
-  fi
-fi
-
-model_left_context=$(nnet3-am-info $srcdir/final.mdl | grep "^left-context:" | awk '{print $2}')
-model_right_context=$(nnet3-am-info $srcdir/final.mdl | grep "^right-context:" | awk '{print $2}')
-
-left_context=$[model_left_context + extra_left_context]
-right_context=$[model_right_context + extra_right_context]
-
-frame_subsampling_opt=
-if [ -f $srcdir/frame_subsampling_factor ]; then
-  frame_subsampling_opt="--frame-subsampling-factor $(cat $srcdir/frame_subsampling_factor)"
-fi
-
-cmvn_opts=`cat $srcdir/cmvn_opts`
 
 if [ -z "$degs_dir" ]; then
-  degs_dir=${srcdir}_degs
 
-  if [ $stage -le 3 ]; then
+  if [ $stage -le 2 ]; then
     if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d ${srcdir}_degs/storage ]; then
       utils/create_split_dir.pl \
-        /export/b0{1,2,12,13}/$USER/kaldi-data/egs/fisher_swbd-$(date +'%m_%d_%H_%M')/s5/${srcdir}_degs/storage ${srcdir}_degs/storage
+        /export/b{09,10,11,12}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5/${srcdir}_degs/storage ${srcdir}_degs/storage
     fi
-    # have a higher maximum num-jobs if
-    if [ -d ${srcdir}_degs/storage ]; then max_jobs=10; else max_jobs=5; fi
+    if [ -d ${srcdir}_degs/storage ]; then max_copy_jobs=10; else max_copy_jobs=5; fi
 
-    steps/nnet3/get_egs_discriminative.sh \
-      --cmd "$decode_cmd --max-jobs-run $max_jobs --mem 20G" --stage $get_egs_stage --cmvn-opts "$cmvn_opts" \
+    steps/nnet3/get_degs.sh \
+      --cmd "$decode_cmd --mem 10G" --num-threads 3 \
+      --max-copy-jobs $max_copy_jobs \
+      --extra-left-context $extra_left_context \
+      --extra-right-context $extra_right_context \
+      --extra-left-context-initial 0 --extra-right-context-final 0 \
+      --frames-per-chunk-decoding "$frames_per_chunk_decoding" \
+      --stage $get_egs_stage \
       --adjust-priors $adjust_priors \
       --online-ivector-dir $online_ivector_dir \
-      --left-context $left_context --right-context $right_context \
-      $frame_subsampling_opt \
       --frames-per-eg $frames_per_eg --frames-overlap-per-eg $frames_overlap_per_eg \
-      $train_data_dir data/lang ${srcdir}_ali $lats_dir $srcdir/final.mdl $degs_dir ;
+      $train_data_dir data/lang ${srcdir} ${srcdir}_ali ${srcdir}_degs || exit 1
   fi
 fi
 
-if [ $stage -le 4 ]; then
+exit 0 # TODO: remove this
+
+if [ $stage -le 3 ]; then
   steps/nnet3/train_discriminative.sh --cmd "$decode_cmd" \
     --stage $train_stage \
     --effective-lrate $effective_learning_rate --max-param-change $max_param_change \
@@ -149,20 +154,22 @@ if [ $stage -le 4 ]; then
     ${degs_dir} $dir
 fi
 
-graph_dir=exp/tri5a/graph_fsh_sw1_tg
+graph_dir=exp/tri3/graph
 if [ $stage -le 5 ]; then
   for x in `seq $decode_start_epoch $num_epochs`; do
-    for decode_set in eval2000 rt03; do
+    for decode_set in dev test; do
       (
       num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
       iter=epoch$x.adj
 
       steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" --iter $iter \
         --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
-        $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_fsh_sw1_tg_$iter ;
+        $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}${iter:+_$iter} || exit 1;
+
       steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-        data/lang_fsh_sw1_{tg,fg} data/${decode_set}_hires \
-        $dir/decode_${decode_set}_fsh_sw1_{tg,fg}_$iter ;
+        data/lang_test data/lang_rescore data/${decode_set}_hires \
+        $dir/decode_${decode_set}${iter:+_$iter} \
+        $dir/decode_${decode_set}${iter:+_$iter}_rescore || exit 1;
       ) &
     done
   done
