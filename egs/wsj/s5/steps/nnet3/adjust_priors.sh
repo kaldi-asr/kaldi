@@ -91,7 +91,7 @@ $cmd $dir/log/vector_sum.$iter.log \
 
 if ! $use_raw_nnet; then
   run.pl $dir/log/adjust_priors.$iter.log \
-    nnet3-am-adjust-priors $dir/$iter.mdl $dir/post.$iter.vec $dir/$iter.adj.mdl
+    nnet3-am-adjust-priors $dir/$iter.mdl $dir/post.$iter.vec $dir/${iter}_adj.mdl
 fi
 
 rm -f $dir/post.$iter.*.vec;
