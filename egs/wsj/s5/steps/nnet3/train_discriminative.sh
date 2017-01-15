@@ -37,7 +37,6 @@ num_jobs_nnet=4    # Number of neural net jobs to run in parallel.  Note: this
                    # versa).
 regularization_opts=
 minibatch_size=64  # This is the number of examples rather than the number of output frames.
-modify_learning_rates=false   # [deprecated]
 last_layer_factor=1.0  # relates to modify-learning-rates [deprecated]
 shuffle_buffer_size=1000 # This "buffer_size" variable controls randomization of the samples
                 # on each iter.  You could set it to 0 or to a large value for complete
