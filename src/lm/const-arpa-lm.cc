@@ -176,7 +176,7 @@ class LmState {
 // auxiliary class LmState above.
 class ConstArpaLmBuilder : public ArpaFileParser {
  public:
-  ConstArpaLmBuilder(ArpaParseOptions options)
+  explicit ConstArpaLmBuilder(ArpaParseOptions options)
       : ArpaFileParser(options, NULL) {
     ngram_order_ = 0;
     num_words_ = 0;

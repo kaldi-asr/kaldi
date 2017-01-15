@@ -1,22 +1,22 @@
 #!/bin/bash
 
-# This is a chain-training script with TDNN neural networks.
-# This script is based on local/chain/tuning/run_tdnn_1a.sh, but adding
+# This is a chain-training script with TDNN+LSTM neural networks.
+# This script is based on local/chain/tuning/run_tdnn_lstm_1i.sh, but adding
 # the reverberated IHM data into the train set.
 # This script obtains better results on IHM, SDM and MDM tasks.
 
 # Please see RESULTS_* for examples of command lines invoking this script.
 
-# local/chain/multi_condition/run_tdnn.sh --mic ihm --train-set train_cleaned --gmm tri3_cleaned &
-# local/chain/multi_condition/run_tdnn.sh --mic sdm1 --use-ihm-ali true --train-set train_cleaned --gmm tri3_cleaned &
-# local/chain/multi_condition/run_tdnn.sh --mic mdm8 --use-ihm-ali true --train-set train_cleaned --gmm tri3_cleaned &
+# local/chain/multi_condition/run_tdnn_lstm.sh --mic ihm --train-set train_cleaned --gmm tri3_cleaned &
+# local/chain/multi_condition/run_tdnn_lstm.sh --mic sdm1 --use-ihm-ali true --train-set train_cleaned --gmm tri3_cleaned &
+# local/chain/multi_condition/run_tdnn_lstm.sh --mic mdm8 --use-ihm-ali true --train-set train_cleaned --gmm tri3_cleaned &
 
 
 set -e -o pipefail
 
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).
-stage=1
+stage=0
 mic=ihm
 nj=30
 min_seg_len=1.55
@@ -27,17 +27,27 @@ ihm_gmm=tri3_cleaned  # the gmm for the IHM system (if --use-ihm-ali true).
 num_threads_ubm=32
 num_data_reps=1
 
+chunk_width=150
+chunk_left_context=40
+chunk_right_context=0
+label_delay=5
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tdnn_affix=  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
+tlstm_affix=1i  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
 common_egs_dir=  # you can set this to use previously dumped egs.
+
+
+# decode options
+extra_left_context=50
+frames_per_chunk=
+
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -70,7 +80,7 @@ if $use_ihm_ali; then
   tree_dir=exp/$mic/chain${nnet3_affix}/tree_bi${tree_affix}_ihmdata
   original_lat_dir=exp/$mic/chain${nnet3_affix}/${ihm_gmm}_${train_set}_sp_comb_lats_ihmdata
   lat_dir=exp/$mic/chain${nnet3_affix}${rvb_affix}/${ihm_gmm}_${train_set}_sp${rvb_affix}_comb_lats_ihmdata
-  dir=exp/$mic/chain${nnet3_affix}${rvb_affix}/tdnn${tdnn_affix}_sp${rvb_affix}_bi_ihmali
+  dir=exp/$mic/chain${nnet3_affix}${rvb_affix}/tdnn_lstm${tlstm_affix}_sp${rvb_affix}_bi_ihmali
   # note: the distinction between when we use the 'ihmdata' suffix versus
   # 'ihmali' is pretty arbitrary.
 else
@@ -80,7 +90,7 @@ else
   tree_dir=exp/$mic/chain${nnet3_affix}/tree_bi${tree_affix}
   original_lat_dir=exp/$mic/chain${nnet3_affix}/${gmm}_${train_set}_sp_comb_lats
   lat_dir=exp/$mic/chain${nnet3_affix}${rvb_affix}/${gmm}_${train_set}_sp${rvb_affix}_comb_lats
-  dir=exp/$mic/chain${nnet3_affix}${rvb_affix}/tdnn${tdnn_affix}_sp${rvb_affix}_bi
+  dir=exp/$mic/chain${nnet3_affix}${rvb_affix}/tdnn_lstm${tlstm_affix}_sp${rvb_affix}_bi
 fi
 
 
@@ -199,54 +209,89 @@ if [ $stage -le 14 ]; then
       --cmd "$train_cmd" 4200 ${lores_train_data_dir} data/lang_chain $ali_dir $tree_dir
 fi
 
+xent_regularize=0.1
+
 if [ $stage -le 15 ]; then
-  mkdir -p $dir
+  echo "$0: creating neural net configs using the xconfig parser";
 
-  echo "$0: creating neural net configs";
+  num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
+  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
 
-  steps/nnet3/tdnn/make_configs.py \
-    --self-repair-scale-nonlinearity 0.00001 \
-    --feat-dir data/$mic/${train_set}_sp_hires_comb \
-    --ivector-dir $train_ivector_dir \
-    --tree-dir $tree_dir \
-    --relu-dim 450 \
-    --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -3,0,3 -3,0,3 -6,-3,0 0" \
-    --use-presoftmax-prior-scale false \
-    --xent-regularize 0.1 \
-    --xent-separate-forward-affine true \
-    --include-log-softmax false \
-    --final-layer-normalize-target 1.0 \
-   $dir/configs || exit 1;
+  mkdir -p $dir/configs
+  cat <<EOF > $dir/configs/network.xconfig
+  input dim=100 name=ivector
+  input dim=40 name=input
+
+  # please note that it is important to have input layer with the name=input
+  # as the layer immediately preceding the fixed-affine-layer to enable
+  # the use of short notation for the descriptor
+  fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+
+  # the first splicing is moved before the lda layer, so no splicing here
+  relu-renorm-layer name=tdnn1 dim=1024
+  relu-renorm-layer name=tdnn2 input=Append(-1,0,1) dim=1024
+  relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
+
+  # check steps/libs/nnet3/xconfig/lstm.py for the other options and defaults
+  lstmp-layer name=lstm1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
+  relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
+  relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
+  relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
+  lstmp-layer name=lstm2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
+  relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
+  relu-renorm-layer name=tdnn8 input=Append(-3,0,3) dim=1024
+  relu-renorm-layer name=tdnn9 input=Append(-3,0,3) dim=1024
+  lstmp-layer name=lstm3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
+
+  ## adding the layers for chain branch
+  output-layer name=output input=lstm3 output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
+
+  # adding the layers for xent branch
+  # This block prints the configs for a separate output that will be
+  # trained with a cross-entropy objective in the 'chain' models... this
+  # has the effect of regularizing the hidden parts of the model.  we use
+  # 0.5 / args.xent_regularize as the learning rate factor- the factor of
+  # 0.5 / args.xent_regularize is suitable as it means the xent
+  # final-layer learns at a rate independent of the regularization
+  # constant; and the 0.5 was tuned so as to make the relative progress
+  # similar in the xent and regular final layers.
+  output-layer name=output-xent input=lstm3 output-delay=$label_delay dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+
+EOF
+
+  steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
 
 if [ $stage -le 16 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/ami-rvb$(date +'%m_%d_%H_%M')/s5b/$dir/egs/storage $dir/egs/storage
+     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/ami-$(date +'%m_%d_%H_%M')/s5b/$dir/egs/storage $dir/egs/storage
   fi
-
- touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train.py --stage $train_stage \
     --cmd "$decode_cmd" \
     --feat.online-ivector-dir $train_ivector_dir \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
-    --chain.xent-regularize 0.1 \
+    --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
     --egs.dir "$common_egs_dir" \
     --egs.opts "--frames-overlap-per-eg 0" \
-    --egs.chunk-width 150 \
-    --trainer.num-chunk-per-minibatch 128 \
+    --egs.chunk-width $chunk_width \
+    --egs.chunk-left-context $chunk_left_context \
+    --egs.chunk-right-context $chunk_right_context \
+    --trainer.num-chunk-per-minibatch 64 \
     --trainer.frames-per-iter 1500000 \
     --trainer.num-epochs 4 \
+    --trainer.optimization.shrink-value 0.99 \
     --trainer.optimization.num-jobs-initial 2 \
     --trainer.optimization.num-jobs-final 12 \
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.max-param-change 2.0 \
+    --trainer.deriv-truncate-margin 8 \
     --cleanup.remove-egs true \
     --feat-dir $train_data_dir \
     --tree-dir $tree_dir \
@@ -265,10 +310,16 @@ fi
 
 if [ $stage -le 18 ]; then
   rm $dir/.error 2>/dev/null || true
+
+  [ -z $extra_left_context ] && extra_left_context=$chunk_left_context;
+  [ -z $frames_per_chunk ] && frames_per_chunk=$chunk_width;
+
   for decode_set in dev eval; do
       (
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
           --nj $nj --cmd "$decode_cmd" \
+          --extra-left-context $extra_left_context  \
+          --frames-per-chunk "$frames_per_chunk" \
           --online-ivector-dir exp/$mic/nnet3${nnet3_affix}${rvb_affix}/ivectors_${decode_set}_hires \
           --scoring-opts "--min-lmwt 5 " \
          $graph_dir data/$mic/${decode_set}_hires $dir/decode_${decode_set} || exit 1;

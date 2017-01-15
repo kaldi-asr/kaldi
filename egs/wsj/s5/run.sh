@@ -361,9 +361,6 @@ local/run_mmi_tri4b.sh
 
 #local/run_nnet2.sh
 
-## Segregated some SGMM builds into a separate file.
-#local/run_sgmm.sh
-
 # You probably want to run the sgmm2 recipe as it's generally a bit better:
 local/run_sgmm2.sh
 

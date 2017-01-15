@@ -5108,6 +5108,13 @@ Component* LstmNonlinearityComponent::Copy() const {
   return new LstmNonlinearityComponent(*this);
 }
 
+void LstmNonlinearityComponent::ZeroStats() {
+  value_sum_.SetZero();
+  deriv_sum_.SetZero();
+  self_repair_total_.SetZero();
+  count_ = 0.0;
+}
+
 void LstmNonlinearityComponent::Scale(BaseFloat scale) {
   params_.Scale(scale);
   value_sum_.Scale(scale);
