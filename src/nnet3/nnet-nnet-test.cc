@@ -27,7 +27,7 @@ namespace nnet3 {
 void UnitTestNnetIo() {
   for (int32 n = 0; n < 100; n++) {
     struct NnetGenerationOptions gen_config;
-    
+
     bool binary = (Rand() % 2 == 0);
     std::vector<std::string> configs;
     GenerateConfigSequence(gen_config, &configs);
@@ -43,10 +43,10 @@ void UnitTestNnetIo() {
     std::istringstream nnet_is2(original_output);
     Nnet nnet2;
     nnet2.Read(nnet_is2, binary);
-      
+
     std::ostringstream os2, os3;
     nnet.Write(os2, binary);
-    
+
     nnet2.Write(os3, binary);
     if (binary) {
       KALDI_ASSERT(os2.str() == original_output);

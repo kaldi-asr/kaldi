@@ -40,7 +40,7 @@ void UnitTestIndexIo() {
       indexes[i].x = indexes[i-1].x;
     }
   }
-  
+
   std::ostringstream os;
   bool binary = (RandInt(0, 1) == 0);
   WriteIndexVector(os, binary, indexes);
@@ -79,7 +79,7 @@ void UnitTestCindexIo() {
       cindexes[i].second.x = cindexes[i-1].second.x;
     }
   }
-  
+
   std::ostringstream os;
   bool binary = (RandInt(0, 1) == 0);
   WriteCindexVector(os, binary, cindexes);

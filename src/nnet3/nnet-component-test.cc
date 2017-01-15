@@ -25,9 +25,9 @@ namespace kaldi {
 namespace nnet3 {
 // Reset seeds for test time for RandomComponent
 static void ResetSeed(int32 rand_seed, const Component &c) {
-  RandomComponent *rand_component = 
+  RandomComponent *rand_component =
     const_cast<RandomComponent*>(dynamic_cast<const RandomComponent*>(&c));
-  
+
   if (rand_component != NULL) {
     srand(rand_seed);
     rand_component->ResetGenerator();
@@ -198,7 +198,7 @@ void TestSimpleComponentPropagateProperties(const Component &c) {
   int32 properties = c.Properties();
   Component *c_copy = NULL, *c_copy_scaled = NULL;
   int32 rand_seed = Rand();
- 
+
   if (RandInt(0, 1) == 0)
     c_copy = c.Copy();  // This will test backprop with an updatable component.
   if (RandInt(0, 1) == 0 &&
@@ -234,7 +234,7 @@ void TestSimpleComponentPropagateProperties(const Component &c) {
   if ((properties & kPropagateAdds) && (properties & kPropagateInPlace)) {
     KALDI_ERR << "kPropagateAdds and kPropagateInPlace flags are incompatible.";
   }
-  
+
   ResetSeed(rand_seed, c);
   c.Propagate(NULL, input_data, &output_data1);
 
@@ -327,7 +327,7 @@ bool TestSimpleComponentDataDerivative(const Component &c,
       output_deriv(num_rows, output_dim, kSetZero, output_stride_type);
   input_data.SetRandn();
   output_deriv.SetRandn();
- 
+
   ResetSeed(rand_seed, c);
   c.Propagate(NULL, input_data, &output_data);
 
