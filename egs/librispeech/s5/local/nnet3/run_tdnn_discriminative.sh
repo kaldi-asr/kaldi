@@ -55,7 +55,6 @@ regularization_opts=          # Applicable for providing --xent-regularize and -
 minibatch_size=64
 adjust_priors=true            # May need to be set to false
                               # because it does not help in some setups
-modify_learning_rates=true
 last_layer_factor=0.1
 
 ## Decode options
@@ -152,7 +151,7 @@ if [ $stage -le 4 ]; then
     --num-jobs-nnet $num_jobs_nnet --num-threads $num_threads \
     --regularization-opts "$regularization_opts" \
     --adjust-priors $adjust_priors \
-    --modify-learning-rates $modify_learning_rates --last-layer-factor $last_layer_factor \
+    --last-layer-factor $last_layer_factor \
     ${degs_dir} $dir
 fi
 
