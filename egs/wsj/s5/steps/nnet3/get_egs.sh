@@ -288,17 +288,23 @@ if [ $stage -le 3 ]; then
   rm $dir/.error 2>/dev/null
   echo "$0: ... extracting validation and training-subset alignments."
 
+
+  # do the filtering just once, as ali.scp may be long.
   utils/filter_scp.pl <(cat $dir/valid_uttlist $dir/train_subset_uttlist) \
     <$dir/ali.scp >$dir/ali_special.scp
 
   $cmd $dir/log/create_valid_subset.log \
+    utils/filter_scp.pl $dir/valid_uttlist $dir/ali_special.scp \| \
+    ali-to-pdf $alidir/final.mdl scp:- ark:- \| \
+    ali-to-post ark:- ark:- \| \
     nnet3-get-egs --num-pdfs=$num_pdfs $ivector_opts $egs_opts "$valid_feats" \
-    "ark,s,cs:ali-to-pdf $alidir/final.mdl scp:$dir/ali_special.scp ark:- | ali-to-post ark:- ark:- |" \
-    "ark:$dir/valid_all.egs" || touch $dir/.error &
+      ark,s,cs:- "ark:$dir/valid_all.egs" || touch $dir/.error &
   $cmd $dir/log/create_train_subset.log \
+    utils/filter_scp.pl $dir/train_subset_uttlist $dir/ali_special.scp \| \
+    ali-to-pdf $alidir/final.mdl scp:- ark:- \| \
+    ali-to-post ark:- ark:- \| \
     nnet3-get-egs --num-pdfs=$num_pdfs $ivector_opts $egs_opts "$train_subset_feats" \
-     "ark,s,cs:ali-to-pdf $alidir/final.mdl scp:$dir/ali_special.scp ark:- | ali-to-post ark:- ark:- |" \
-     "ark:$dir/train_subset_all.egs" || touch $dir/.error &
+      ark,s,cs:- "ark:$dir/train_subset_all.egs" || touch $dir/.error &
   wait;
   [ -f $dir/.error ] && echo "Error detected while creating train/valid egs" && exit 1
   echo "... Getting subsets of validation examples for diagnostics and combination."

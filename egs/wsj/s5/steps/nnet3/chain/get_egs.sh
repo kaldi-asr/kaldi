@@ -313,18 +313,21 @@ if [ $stage -le 3 ]; then
   rm $dir/.error 2>/dev/null
   echo "$0: ... extracting validation and training-subset alignments."
 
+  # do the filtering just once, as lat.scp may be long.
   utils/filter_scp.pl <(cat $dir/valid_uttlist $dir/train_subset_uttlist) \
     <$dir/lat.scp >$dir/lat_special.scp
 
   $cmd $dir/log/create_valid_subset.log \
-    lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:$dir/lat_special.scp ark:- \| \
+    utils/filter_scp.pl $dir/valid_uttlist $dir/lat_special.scp \| \
+    lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:- ark:- \| \
     chain-get-supervision $chain_supervision_all_opts $chaindir/tree $chaindir/0.trans_mdl \
       ark:- ark:- \| \
     nnet3-chain-get-egs $ivector_opts --srand=$srand \
       $egs_opts $chaindir/normalization.fst \
       "$valid_feats" ark,s,cs:- "ark:$dir/valid_all.cegs" || touch $dir/.error &
   $cmd $dir/log/create_train_subset.log \
-    lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:$dir/lat_special.scp ark:- \| \
+    utils/filter_scp.pl $dir/train_subset_uttlist $dir/lat_special.scp \| \
+    lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:- ark:- \| \
     chain-get-supervision $chain_supervision_all_opts \
       $chaindir/tree $chaindir/0.trans_mdl ark:- ark:- \| \
     nnet3-chain-get-egs $ivector_opts --srand=$srand \
