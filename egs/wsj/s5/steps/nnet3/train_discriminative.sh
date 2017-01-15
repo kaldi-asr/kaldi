@@ -47,8 +47,6 @@ shuffle_buffer_size=1000 # This "buffer_size" variable controls randomization of
 
 stage=-3
 
-adjust_priors=true   # If true then it will
-
 num_threads=16  # this is the default but you may want to change it, e.g. to 1 if
                 # using GPUs.
 
@@ -57,6 +55,7 @@ keep_model_iters=1
 remove_egs=false
 src_model=  # will default to $degs_dir/final.mdl
 
+num_jobs_compute_prior=10
 
 min_deriv_time=0
 max_deriv_time_relative=0
@@ -128,11 +127,6 @@ for f in splice_opts cmvn_opts tree final.mat; do
 done
 
 silphonelist=`cat $degs_dir/info/silence.csl` || exit 1;
-
-num_archives_priors=0
-if $adjust_priors; then
-  num_archives_priors=`cat $degs_dir/info/num_archives_priors` || exit 1
-fi
 
 num_archives=$(cat $degs_dir/info/num_archives) || exit 1;
 frame_subsampling_factor=$(cat $degs_dir/info/frame_subsampling_factor)
@@ -313,18 +307,13 @@ while [ $x -lt $num_iters ]; do
       ln -sf $x.mdl $dir/epoch$e.mdl
     fi
 
-    if $adjust_priors && [ ! -z "${iter_to_epoch[$x]}" ]; then
-      if [ ! -f $degs_dir/priors_egs.1.ark ]; then
-        echo "$0: Expecting $degs_dir/priors_egs.1.ark to exist since --adjust-priors was true."
-        echo "$0: Run this script with --adjust-priors false to not adjust priors"
-        exit 1
-      fi
+    if [ ! -z "${iter_to_epoch[$x]}" ]; then
       (
         e=${iter_to_epoch[$x]}
         rm $dir/.error 2> /dev/null
 
-        steps/nnet3/adjust_priors.sh --egs-type priors_egs \
-          --num-jobs-compute-prior $num_archives_priors \
+        steps/nnet3/adjust_priors.sh --egs-type degs \
+          --num-jobs-compute-prior $num_jobs_compute_prior \
           --cmd "$cmd" --use-gpu false \
           --use-raw-nnet false --iter epoch$e $dir $degs_dir \
           || { touch $dir/.error; echo "Error in adjusting priors. See $dir/log/adjust_priors.epoch$e.log"; exit 1; }
@@ -343,16 +332,11 @@ rm $dir/final.mdl 2>/dev/null
 cp $dir/$x.mdl $dir/final.mdl
 ln -sf final.mdl $dir/epoch$num_epochs_expanded.mdl
 
-if $adjust_priors && [ $stage -le $num_iters ]; then
-  if [ ! -f $degs_dir/priors_egs.1.ark ]; then
-    echo "$0: Expecting $degs_dir/priors_egs.1.ark to exist since --adjust-priors was true."
-    echo "$0: Run this script with --adjust-priors false to not adjust priors"
-    exit 1
-  fi
-
-  steps/nnet3/adjust_priors.sh --egs-type priors_egs \
-    --num-jobs-compute-prior $num_archives_priors \
-    --cmd "$cmd $prior_queue_opt" --use-gpu false \
+if [ $stage -le $num_iters ]; then
+  steps/nnet3/adjust_priors.sh --egs-type degs \
+    --num-jobs-compute-prior $num_jobs_compute_prior \
+    --cmd "$cmd $prior_queue_opt" --use-gpu $use_gpu \
+    --minibatch-size $minibatch_size \
     --use-raw-nnet false --iter epoch$num_epochs_expanded \
     $dir $degs_dir || exit 1
 fi
