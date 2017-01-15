@@ -160,9 +160,9 @@ void ReadIntegerLmLogconvExpectSuccess() {
 
   static std::string integer_lm = "\
 \\data\\\n\
-ngram 1 = 4\n\
-ngram 2 = 2\n\
-ngram 3 = 2\n\
+ngram 1=4\n\
+ngram 2=2\n\
+ngram 3=2\n\
 \n\
 \\1-grams:\n\
 -5.2      4 -3.3\n\
@@ -215,9 +215,9 @@ and should be ignored before the \\data\\ marker\n\
 is seen alone by itself on a line.\n\
 \n\
 \\data\\\n\
-ngram 1 = 4\n\
-ngram 2 = 2\n\
-ngram 3 = 2\n\
+ngram 1=4\n\
+ngram 2=2\n\
+ngram 3=2\n\
 \n\
 \\1-grams: \n\
 -5.2	a -3.3\n\
