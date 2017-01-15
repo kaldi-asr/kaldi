@@ -17,7 +17,7 @@
 # $0 --train-set train --gmm tri3 --nnet3-affix "" &
 
 
-
+set -e
 set -uo pipefail
 
 stage=1
@@ -27,20 +27,16 @@ use_gpu=true  # for training
 cleanup=false  # run with --cleanup true --stage 6 to clean up (remove large things like denlats,
                # alignments and degs).
 degs_dir=  # set this to use preexisting degs.
-# nj=400 # have a high number of jobs because this could take a while, and we might
-#         # have some stragglers.
-nj=30
+nj=400 # have a high number of jobs because this could take a while, and we might
+       # have some stragglers.
 
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
 srcdir=exp/nnet3_cleaned/tdnn_lstm1b_sp
-#train_data_dir=data/train_cleaned_sp_hires_comb
-#online_ivector_dir=exp/nnet3_cleaned/ivectors_train_cleaned_sp_hires_comb
-
-train_data_dir=data/dev_hires
-online_ivector_dir=exp/nnet3_cleaned/ivectors_dev_hires
+train_data_dir=data/train_cleaned_sp_hires_comb
+online_ivector_dir=exp/nnet3_cleaned/ivectors_train_cleaned_sp_hires_comb
 
 ## Objective options
 criterion=smbr
@@ -109,7 +105,6 @@ if [ $stage -le 1 ]; then
   steps/nnet3/align.sh  --cmd "$decode_cmd" --use-gpu false \
     --frames-per-chunk $frames_per_chunk_decoding \
     --extra-left-context $extra_left_context --extra-right-context $extra_right_context \
-    --looped $looped \
     --extra-left-context-initial 0 --extra-right-context-final 0 \
     --online-ivector-dir $online_ivector_dir \
     --nj $nj $train_data_dir data/lang $srcdir ${srcdir}_ali ;
@@ -133,7 +128,6 @@ if [ -z "$degs_dir" ]; then
       --extra-left-context-initial 0 --extra-right-context-final 0 \
       --frames-per-chunk-decoding "$frames_per_chunk_decoding" \
       --stage $get_egs_stage \
-      --adjust-priors $adjust_priors \
       --online-ivector-dir $online_ivector_dir \
       --frames-per-eg $frames_per_eg --frames-overlap-per-eg $frames_overlap_per_eg \
       $train_data_dir data/lang ${srcdir} ${srcdir}_ali ${srcdir}_degs || exit 1
