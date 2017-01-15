@@ -40,7 +40,6 @@ struct SplitDiscriminativeSupervisionOptions {
   BaseFloat acoustic_scale;
 
   SplitDiscriminativeSupervisionOptions() :
-      frame_subsampling_factor(1),
       remove_output_symbols(true), collapse_transition_ids(true),
       remove_epsilons(true), determinize(true),
       minimize(true), acoustic_scale(0.1) { }
@@ -63,9 +62,6 @@ struct SplitDiscriminativeSupervisionOptions {
     opts->Register("acoustic-scale", &acoustic_scale,
                    "Scaling factor for acoustic likelihoods (should match the "
                    "value used in discriminative-get-supervision)");
-    opts->Register("frame-subsampling-factor", &frame_subsampling_factor, "Used "
-                   "if the frame-rate for the model will be less than the "
-                   "frame-rate of the original alignment.");
   }
 };
 
