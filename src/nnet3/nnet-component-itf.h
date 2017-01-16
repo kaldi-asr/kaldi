@@ -375,11 +375,6 @@ class UpdatableComponent: public Component {
       learning_rate_factor_(other.learning_rate_factor_),
       is_gradient_(other.is_gradient_), max_change_(other.max_change_) { }
 
-  /// \brief Sets parameters to zero, and if treat_as_gradient is true,
-  ///  sets is_gradient_ to true and sets learning_rate_ to 1, ignoring
-  ///  learning_rate_factor_.
-  virtual void SetZero(bool treat_as_gradient) = 0;
-
   UpdatableComponent(): learning_rate_(0.001), learning_rate_factor_(1.0),
                         is_gradient_(false), max_change_(0.0) { }
 
@@ -407,6 +402,10 @@ class UpdatableComponent: public Component {
   /// SetLearningRate(x), and learning_rate_factor_ != 1.0,
   /// a different value than x will returned.
   BaseFloat LearningRate() const { return learning_rate_; }
+
+  /// \brief Sets is_gradient_ to true and sets learning_rate_ to 1, ignoring
+  /// learning_rate_factor_.
+  void SetAsGradient() { SetActualLearningRate(1.0); is_gradient_ = true; }
 
   /// Gets per-component max-change value. Note: the components themselves do
   /// not enforce the per-component max-change; it's enforced in class
