@@ -68,7 +68,8 @@ max_param_change=1
 num_jobs_nnet=4
 num_epochs=4
 regularization_opts=          # Applicable for providing --xent-regularize and --l2-regularize options
-minibatch_size=64             # we may have to reduce this.
+minibatch_size="300=32,16/150=64,32"  # rule says: if chunk size is closer to 300, use minibatch size 32 (or 16 for mop-up);
+                                      # if chunk size is closer to 150, use mini atch size of 64 (or 32 for mop-up).
 adjust_priors=false           # Note: this option will eventually be removed and
                               # the script will do it automatically but write to
                               # a different filename
@@ -135,11 +136,12 @@ if [ -z "$degs_dir" ]; then
 fi
 
 if [ $stage -le 3 ]; then
+  [ -z "$degs_dir" ] && degs_dir=${srcdir}_degs
   steps/nnet3/train_discriminative.sh --cmd "$decode_cmd" \
     --stage $train_stage \
     --effective-lrate $effective_learning_rate --max-param-change $max_param_change \
     --criterion $criterion --drop-frames true \
-    --num-epochs $num_epochs --one-silence-class $one_silence_class --minibatch-size $minibatch_size \
+    --num-epochs $num_epochs --one-silence-class $one_silence_class --minibatch-size "$minibatch_size" \
     --num-jobs-nnet $num_jobs_nnet --num-threads $num_threads \
     --regularization-opts "$regularization_opts" \
     --adjust-priors $adjust_priors \
