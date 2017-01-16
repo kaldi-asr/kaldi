@@ -147,7 +147,15 @@ void NnetComputation::MatrixInfo::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &num_rows);
   ExpectToken(is, binary, "<NumCols>");
   ReadBasicType(is, binary, &num_cols);
-  ExpectToken(is, binary, "</MatrixInfo>");
+  std::string tok;
+  ReadToken(is, binary, &tok);
+  if (tok == "</MatrixInfo>") {
+    stride_type = kDefaultStride;
+  } else {
+    KALDI_ASSERT(tok == "<kStrideEqualNumCols>");
+    stride_type = kStrideEqualNumCols;
+    ExpectToken(is, binary, "</MatrixInfo>");
+  }
 }
 
 void NnetComputation::MatrixInfo::Write(std::ostream &os, bool binary) const {
@@ -157,6 +165,8 @@ void NnetComputation::MatrixInfo::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, num_rows);
   WriteToken(os, binary, "<NumCols>");
   WriteBasicType(os, binary, num_cols);
+  if (stride_type != kDefaultStride)
+    WriteToken(os, binary, "<StrideEqualNumCols>");
   if (!binary) os << std::endl;
   WriteToken(os, binary, "</MatrixInfo>");
   if (!binary) os << std::endl;
