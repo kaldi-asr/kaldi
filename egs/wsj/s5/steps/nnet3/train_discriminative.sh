@@ -194,6 +194,8 @@ if [ $stage -le -1 ]; then
 
   $cmd $dir/log/convert.log \
     nnet3-am-copy --learning-rate=$learning_rate "$src_model" $dir/0.mdl || exit 1;
+    
+  ln -sf 0.mdl $dir/epoch0.mdl
 fi
 
 
@@ -301,12 +303,18 @@ while [ $x -lt $num_iters ]; do
       nnet3-am-copy --set-raw-nnet=- $dir/$x.mdl $dir/$[$x+1].mdl || exit 1;
 
     rm $nnets_list
+    [ ! -f $dir/$[$x+1].mdl ] && echo "$0: Did not create $dir/$[$x+1].mdl" && exit 1;
+    if [ -f $dir/$[$x-1].mdl ] && $cleanup && \
+       [ $[($x-1)%$keep_model_iters] -ne 0  ] && \
+       [ -z "${iter_to_epoch[$[$x-1]]}" ]; then
+      rm $dir/$[$x-1].mdl
+    fi
 
     if [ ! -z "${iter_to_epoch[$x]}" ]; then
       e=${iter_to_epoch[$x]}
       ln -sf $x.mdl $dir/epoch$e.mdl
     fi
-
+      
     if [ ! -z "${iter_to_epoch[$x]}" ]; then
       (
         e=${iter_to_epoch[$x]}
