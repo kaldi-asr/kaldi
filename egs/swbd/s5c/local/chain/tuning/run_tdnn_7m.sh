@@ -1,27 +1,30 @@
 #!/bin/bash
-
-# Same as 7h but double the number of parameters (27983950 vs 15551509)
-
+# _7m is as _7l but it uses random CMN offsets generated using between-speaker covariance
+# to perturb data during training.
+# 7l is based on 7h, but adding a 64 dim lowrank module in the xent branch
+#System                   tdnn_7h    tdnn_7l
+#WER on train_dev(tg)     13.84      13.83
+#WER on train_dev(fg)     12.84      12.88
+#WER on eval2000(tg)      16.5       16.4
+#WER on eval2000(fg)      14.8       14.7
+#Final train prob         -0.089     -0.090
+#Final valid prob         -0.113     -0.116
+#Final train prob (xent)  -1.25      -1.38
+#Final valid prob (xent)  -1.36      -1.48
+#Time consuming one iter  53.56s     48.18s
+#Time reduction percent   10.1%
 set -e
+# configs for random offset
+use_random_offsets=true
+cmn_offset_scale=0.5
 
-
-#System                  tdnn_7h   tdnn_7i
-#WER on train_dev(tg)      13.84     13.48
-#WER on train_dev(fg)      12.84     12.47
-#WER on eval2000(tg)        16.5      16.4
-#WER on eval2000(fg)        14.8      14.9
-#Final train prob     -0.0889771-0.0785415
-#Final valid prob      -0.113102 -0.105757
-#Final train prob (xent)       -1.2533  -1.15785
-#Final valid prob (xent)      -1.36743  -1.28397
-#
 # configs for 'chain'
 affix=
 stage=12
-train_stage=0
+train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_7i  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_7m  # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
 
 # training options
@@ -36,7 +39,7 @@ num_jobs_final=16
 minibatch_size=128
 frames_per_eg=150
 remove_egs=false
-common_egs_dir=exp/chain/tdnn_7g_sp/egs
+common_egs_dir=
 xent_regularize=0.1
 
 # End configuration section.
@@ -73,6 +76,9 @@ lang=data/lang_chain_2y
 # if we are using the speed-perturbed data we need to generate
 # alignments for it.
 local/nnet3/run_ivector_common.sh --stage $stage \
+  --cmn-offset-scale $cmn_offset_scale \
+  --num-cmn-offsets $num_epochs \
+  --use-random-offsets $use_random_offsets \
   --speed-perturb $speed_perturb \
   --generate-alignments $speed_perturb || exit 1;
 
@@ -119,25 +125,21 @@ if [ $stage -le 12 ]; then
   cat <<EOF > $dir/configs/network.xconfig
   input dim=100 name=ivector
   input dim=40 name=input
-
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable
   # the use of short notation for the descriptor
   fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
-
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-renorm-layer name=tdnn1 dim=1024
-  relu-renorm-layer name=tdnn2 input=Append(-1,0,1) dim=1024
-  relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
-  relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
-  relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
-  relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
-  relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
-
+  relu-renorm-layer name=tdnn1 dim=625
+  relu-renorm-layer name=tdnn2 input=Append(-1,0,1) dim=625
+  relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=625
+  relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=625
+  relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=625
+  relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=625
+  relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=625
   ## adding the layers for chain branch
   relu-renorm-layer name=prefinal-chain input=tdnn7 dim=625 target-rms=0.5
   output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
-
   # adding the layers for xent branch
   # This block prints the configs for a separate output that will be
   # trained with a cross-entropy objective in the 'chain' models... this
@@ -148,8 +150,8 @@ if [ $stage -le 12 ]; then
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
   relu-renorm-layer name=prefinal-xent input=tdnn7 dim=625 target-rms=0.5
+  relu-renorm-layer name=prefinal-lowrank-xent input=prefinal-xent dim=64 target-rms=0.5
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
-
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi

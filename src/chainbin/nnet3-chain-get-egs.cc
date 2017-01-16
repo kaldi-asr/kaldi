@@ -167,7 +167,7 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
     NnetChainExample nnet_chain_eg;
     nnet_chain_eg.outputs.resize(1);
     nnet_chain_eg.outputs[0].Swap(&nnet_supervision);
-    nnet_chain_eg.inputs.resize(1 + (cmn_offsets != NULL ? 1 : 0) + (ivector_feats != NULL ? 1 : 0));
+    nnet_chain_eg.inputs.resize(1 + (cmn_offsets ? 1 : 0) + (ivector_feats ? 1 : 0));
 
     int32 tot_frames = left_context + frames_per_eg + right_context;
     Matrix<BaseFloat> input_frames(tot_frames, feats.NumCols(), kUndefined),

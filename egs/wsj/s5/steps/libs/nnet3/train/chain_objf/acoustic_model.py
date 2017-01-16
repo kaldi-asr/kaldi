@@ -185,7 +185,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                         --left-context={lc} --right-context={rc} \
                         --truncate-deriv-weights={trunc_deriv} \
                         --frame-shift={fr_shft} \
-                        {offset_opts} \
+                        {select_feat_offset_opts} \
                         ark:{egs_dir}/cegs.{archive_index}.ark ark:- | \
                         nnet3-chain-shuffle-egs --buffer-size={buf_size} \
                         --srand={srand} ark:- ark:- | nnet3-chain-merge-egs \
@@ -208,7 +208,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                         buf_size=shuffle_buffer_size,
                         cache_io_opts=cur_cache_io_opts,
                         num_chunk_per_mb=num_chunk_per_minibatch,
-                        offset_opts=("" if num_cmn_offsets < 1
+                        select_feat_offset_opts=("" if num_cmn_offsets < 1
                                      else "--select-feature-offset={0}".format(offset_num))),
             wait=False)
 
@@ -407,7 +407,7 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
     if select_feature_offset > -1:
         egs_string = ("ark:nnet3-chain-copy-egs --select-feature-offset={0} "
                       "ark:{1}/cegs.JOB.ark ark:- |".format(
-                      select_feature_offset,egs_dir))
+            select_feature_offset, egs_dir))
     else:
         egs_string = ('ark:{0}/cegs.JOB.ark'.format(egs_dir))
 

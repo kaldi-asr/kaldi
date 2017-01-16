@@ -24,7 +24,6 @@
 
 #include "base/kaldi-common.h"
 #include "matrix/matrix-lib.h"
-#include "util/common-utils.h"
 
 namespace kaldi {
 
@@ -69,10 +68,8 @@ void ApplyCmvnReverse(const MatrixBase<double> &stats,
 void FakeStatsForSomeDims(const std::vector<int32> &dims,
                           MatrixBase<double> *stats);
                           
-bool AccCmvnStatsWrapper(std::string utt,
-                         const MatrixBase<BaseFloat> &feats,
-                         RandomAccessBaseFloatVectorReader *weights_reader,
-                         Matrix<double> *cmvn_stats); 
+
+
 }  // namespace kaldi
 
 #endif  // KALDI_TRANSFORM_CMVN_H_

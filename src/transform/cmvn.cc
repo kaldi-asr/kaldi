@@ -176,27 +176,6 @@ void FakeStatsForSomeDims(const std::vector<int32> &dims,
   }
 }
 
-bool AccCmvnStatsWrapper(std::string utt,
-                         const MatrixBase<BaseFloat> &feats,
-                         RandomAccessBaseFloatVectorReader *weights_reader,
-                         Matrix<double> *cmvn_stats) {
-  if (!weights_reader->IsOpen()) {
-    AccCmvnStats(feats, NULL, cmvn_stats);
-    return true;
-  } else {
-    if (!weights_reader->HasKey(utt)) {
-      KALDI_WARN << "No weights available for utterance " << utt;
-      return false;
-    }
-    const Vector<BaseFloat> &weights = weights_reader->Value(utt);
-    if (weights.Dim() != feats.NumRows()) {
-      KALDI_WARN << "Weights for utterance " << utt << " have wrong dimension "
-                 << weights.Dim() << " vs. " << feats.NumRows();
-      return false;
-    }
-    AccCmvnStats(feats, &weights, cmvn_stats);
-    return true;
-  }
-}
- 
+
+
 }  // namespace kaldi

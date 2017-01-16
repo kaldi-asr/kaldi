@@ -346,9 +346,9 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
 
     egs_string = ""
     if select_feature_offset > -1:
-      egs_string = ("ark:nnet3-copy-egs --select-feature-offset={0} "
-                 "ark:{1}/egs.JOB.ark ark:- |".format(
-                 select_feature_offset, egs_dir))
+      egs_string = ("ark:nnet3-copy-egs --select-feature-offset={0}"
+                    "ark:{1}/egs.JOB.ark ark:- |".format(select_feature_offset,
+                                                         egs_dir))
     else:
       egs_string = ("ark:{0}/egs.JOB.ark".format(egs_dir))
 
