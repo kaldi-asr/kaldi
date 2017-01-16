@@ -123,7 +123,7 @@ extra_files=
   extra_files="$extra_files $transform_dir/trans.1 $transform_dir/num_jobs"
 
 # Check some files.
-for f in $data/feats.scp $lang/L.fst $srcdir/${iter}.mdl $srcdir/tree \
+for f in $data/feats.scp $lang/L.fst $lang/phones/silence.csl $srcdir/${iter}.mdl $srcdir/tree \
       $srcdir/cmvn_opts $alidir/ali.1.gz $alidir/num_jobs $extra_files; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
@@ -243,6 +243,11 @@ if [ $stage -le 2 ]; then
   else # run without stderr redirection to show the error.
     feat-to-dim "$feats_one" -; exit 1
   fi
+else
+  num_frames=$(cat $dir/info/num_frames)
+fi
+if ! [ "$num_frames" -gt 0 ]; then
+  echo "$0: bad num-frames=$num_frames"; exit 1
 fi
 
 # copy the model to the degs directory.
@@ -256,6 +261,7 @@ num_archives=$[num_frames/frames_per_iter+1]
 
 echo $num_archives >$dir/info/num_archives
 echo $frame_subsampling_factor >$dir/info/frame_subsampling_factor
+cp $lang/phones/silence.csl $dir/info/
 
 # the first field in frames_per_eg (which is a comma-separated list of numbers)
 # is the 'principal' frames-per-eg, and for purposes of working out the number
@@ -409,7 +415,7 @@ function shuffle {
        $bufsz=1000; @A = (); while(<STDIN>) { push @A, $_; if (@A == $bufsz) {
        $n=int(rand()*$bufsz); print $A[$n]; $A[$n] = $A[$bufsz-1]; pop @A; }}
        @A = shuffle(@A); print @A; '
-  }
+}
 # funtion/pseudo-command to put input lines round robin to command line args.
 function round_robin {
   perl -e '@F=(); foreach $a (@ARGV) { my $f; open($f, ">$a") || die "opening file $a"; push @F, $f; }
@@ -469,11 +475,11 @@ if [ $stage -le 7 ]; then
 
   run.pl $dir/log/copy_train_subset.log \
       nnet3-discriminative-copy-egs scp:$dir/train_diagnostic.scp \
-         ark:$dir/train_diagnostic.ark  || exit 1
+         ark:$dir/train_diagnostic.degs  || exit 1
 
   run.pl $dir/log/copy_valid_subset.log \
       nnet3-discriminative-copy-egs scp:$dir/valid_diagnostic.scp \
-         ark:$dir/valid_diagnostic.ark  || exit 1
+         ark:$dir/valid_diagnostic.degs  || exit 1
 fi
 
 if [ $stage -le 10 ] && $cleanup; then

@@ -70,7 +70,7 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 
 if [ $# != 2 ]; then
-  echo "Usage: $0 [opts] <degs-dir> <src-model> <exp-dir>"
+  echo "Usage: $0 [opts] <degs-dir> <exp-dir>"
   echo " e.g.: $0 exp/nnet3/tdnn_sp_degs exp/nnet3/tdnn_sp_smbr"
   echo ""
   echo "Main options (for others, see top of script file)"
@@ -290,7 +290,7 @@ while [ $x -lt $num_iters ]; do
           --one-silence-class=$one_silence_class \
           --boost=$boost --acoustic-scale=$acoustic_scale $regularization_opts \
           $dir/$x.mdl \
-          "ark:nnet3-discriminative-copy-egs --frame-shift=$frame_shift ark:$degs_dir/degs.$archive.ark ark:- | nnet3-discriminative-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:- | nnet3-discriminative-merge-egs --minibatch-size=$minibatch_size ark:- ark:- |" \
+          "ark,bg:nnet3-discriminative-copy-egs --frame-shift=$frame_shift ark:$degs_dir/degs.$archive.ark ark:- | nnet3-discriminative-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:- | nnet3-discriminative-merge-egs --minibatch-size=$minibatch_size ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
       done
       wait
