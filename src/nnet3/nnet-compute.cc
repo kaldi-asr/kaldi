@@ -153,16 +153,16 @@ void NnetComputer::ExecuteCommand() {
       case kAllocMatrixZeroed:
         m1 = computation_.submatrices[c.arg1].matrix_index;
         matrices_[m1].Resize(computation_.matrices[m1].num_rows,
-                                 computation_.matrices[m1].num_cols,
-                                 kSetZero,
-                                 computation_.matrices[m1].stride_type);
+                             computation_.matrices[m1].num_cols,
+                             kSetZero,
+                             computation_.matrices[m1].stride_type);
         break;
       case kAllocMatrixUndefined:
         m1 = computation_.submatrices[c.arg1].matrix_index;
         matrices_[m1].Resize(computation_.matrices[m1].num_rows,
-                                 computation_.matrices[m1].num_cols,
-                                 kUndefined,
-                                 computation_.matrices[m1].stride_type);
+                             computation_.matrices[m1].num_cols,
+                             kUndefined,
+                             computation_.matrices[m1].stride_type);
         break;
       case kDeallocMatrix:
         m1 = computation_.submatrices[c.arg1].matrix_index;

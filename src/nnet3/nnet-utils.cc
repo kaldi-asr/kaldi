@@ -71,10 +71,10 @@ void EvaluateComputationRequest(
   ComputationGraphBuilder builder(nnet, &graph);
   builder.Compute(request);
   builder.GetComputableInfo(is_computable);
-  if (GetVerboseLevel() >= 2) {
+  if (GetVerboseLevel() >= 4) {
     std::ostringstream graph_pretty;
     graph.Print(graph_pretty, nnet.GetNodeNames());
-    KALDI_VLOG(3) << "Graph is " << graph_pretty.str();
+    KALDI_VLOG(4) << "Graph is " << graph_pretty.str();
   }
 }
 
