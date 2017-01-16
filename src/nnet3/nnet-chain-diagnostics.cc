@@ -38,7 +38,7 @@ NnetChainComputeProb::NnetChainComputeProb(
   if (nnet_config_.compute_deriv) {
     deriv_nnet_ = new Nnet(nnet_);
     ScaleNnet(0.0, deriv_nnet_);
-    SetAsGradientNnet(deriv_nnet_); // force simple update
+    SetNnetAsGradient(deriv_nnet_); // force simple update
   }
 }
 
@@ -57,7 +57,7 @@ void NnetChainComputeProb::Reset() {
   objf_info_.clear();
   if (deriv_nnet_) {
     ScaleNnet(0.0, deriv_nnet_);
-    SetAsGradientNnet(deriv_nnet_);
+    SetNnetAsGradient(deriv_nnet_);
   }
 }
 

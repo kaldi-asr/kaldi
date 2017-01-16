@@ -1137,6 +1137,7 @@ void RectifiedLinearComponent::StoreStats(
 
 void AffineComponent::Scale(BaseFloat scale) {
   if (scale == 0.0) {
+    // If scale == 0.0 we call SetZero() which will get rid of NaN's and inf's.
     linear_params_.SetZero();
     bias_params_.SetZero();
   } else {
@@ -4751,19 +4752,8 @@ std::string CompositeComponent::Info() const {
 
 // virtual
 void CompositeComponent::Scale(BaseFloat scale) {
-  if (scale == 0.0) {
-    KALDI_ASSERT(this->IsUpdatable());  // or should not be called.
-    for (size_t i = 0; i < components_.size(); i++) {
-      if (components_[i]->Properties() & kUpdatableComponent) {
-        UpdatableComponent *uc =
-            dynamic_cast<UpdatableComponent*>(components_[i]);
-        uc->Scale(0.0);
-      }
-    }
-  } else {
-    for (size_t i = 0; i < components_.size(); i++)
-      components_[i]->Scale(scale);
-  }
+  for (size_t i = 0; i < components_.size(); i++)
+    components_[i]->Scale(scale);
 }
 
 // virtual
@@ -4812,6 +4802,19 @@ void CompositeComponent::SetActualLearningRate(BaseFloat lrate) {
       UpdatableComponent *uc =
           dynamic_cast<UpdatableComponent*>(components_[i]);
       uc->SetActualLearningRate(lrate);
+    }
+  }
+}
+
+// virtual
+void CompositeComponent::SetAsGradient() {
+  KALDI_ASSERT(this->IsUpdatable());  // or should not be called.
+  UpdatableComponent::SetAsGradient();
+  for (size_t i = 0; i < components_.size(); i++) {
+    if (components_[i]->Properties() & kUpdatableComponent) {
+      UpdatableComponent *uc =
+          dynamic_cast<UpdatableComponent*>(components_[i]);
+      uc->SetAsGradient();
     }
   }
 }

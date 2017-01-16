@@ -127,7 +127,7 @@ void ScaleNnet(BaseFloat scale, Nnet *nnet);
 
 /// Sets nnet as gradient by Setting is_gradient_ to true and
 /// learning_rate_ to 1 for each UpdatableComponent in nnet
-void SetAsGradientNnet(Nnet *nnet);
+void SetNnetAsGradient(Nnet *nnet);
 
 /// Does *dest += alpha * src (affects nnet parameters and
 /// stored stats).

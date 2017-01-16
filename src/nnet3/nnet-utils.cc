@@ -261,7 +261,7 @@ void SetLearningRate(BaseFloat learning_rate,
   }
 }
 
-void SetAsGradientNnet(Nnet *nnet) {
+void SetNnetAsGradient(Nnet *nnet) {
   for (int32 c = 0; c < nnet->NumComponents(); c++) {
     Component *comp = nnet->GetComponent(c);
     if (comp->Properties() & kUpdatableComponent) {
@@ -274,19 +274,7 @@ void SetAsGradientNnet(Nnet *nnet) {
 
 void ScaleNnet(BaseFloat scale, Nnet *nnet) {
   if (scale == 1.0) return;
-  else if (scale == 0.0) {
-    for (int32 c = 0; c < nnet->NumComponents(); c++) {
-      Component *comp = nnet->GetComponent(c);
-      if (comp->Properties() & kUpdatableComponent) {
-        UpdatableComponent *u_comp = dynamic_cast<UpdatableComponent*>(comp);
-        KALDI_ASSERT(u_comp != NULL);
-        u_comp->Scale(0.0);
-      } else {
-        // include NonlinearComponent or others like BackpropTruncationComponent
-        comp->ZeroStats();
-      }
-    }
-  } else {
+  else {
     for (int32 c = 0; c < nnet->NumComponents(); c++) {
       Component *comp = nnet->GetComponent(c);
       comp->Scale(scale);

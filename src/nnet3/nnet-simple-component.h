@@ -1987,6 +1987,7 @@ class CompositeComponent: public UpdatableComponent {
   // Some functions from base-class UpdatableComponent.
   virtual void SetUnderlyingLearningRate(BaseFloat lrate);
   virtual void SetActualLearningRate(BaseFloat lrate);
+  virtual void SetAsGradient();
   virtual void Scale(BaseFloat scale);
   virtual void Add(BaseFloat alpha, const Component &other);
   virtual void PerturbParams(BaseFloat stddev);

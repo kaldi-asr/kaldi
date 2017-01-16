@@ -33,7 +33,7 @@ NnetComputeProb::NnetComputeProb(const NnetComputeProbOptions &config,
   if (config_.compute_deriv) {
     deriv_nnet_ = new Nnet(nnet_);
     ScaleNnet(0.0, deriv_nnet_);
-    SetAsGradientNnet(deriv_nnet_); // force simple update
+    SetNnetAsGradient(deriv_nnet_); // force simple update
   }
 }
 
@@ -53,7 +53,7 @@ void NnetComputeProb::Reset() {
   accuracy_info_.clear();
   if (deriv_nnet_) {
     ScaleNnet(0.0, deriv_nnet_);
-    SetAsGradientNnet(deriv_nnet_);
+    SetNnetAsGradient(deriv_nnet_);
   }
 }
 
