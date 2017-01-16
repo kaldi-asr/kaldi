@@ -151,7 +151,7 @@ void NnetComputation::MatrixInfo::Read(std::istream &is, bool binary) {
   if (tok == "</MatrixInfo>") {
     stride_type = kDefaultStride;
   } else {
-    KALDI_ASSERT(tok == "<StrideEqualNumCols>");
+    KALDI_ASSERT(tok == "<kStrideEqualNumCols>");
     stride_type = kStrideEqualNumCols;
     ExpectToken(is, binary, "</MatrixInfo>");
   }
