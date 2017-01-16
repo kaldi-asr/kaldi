@@ -101,7 +101,7 @@ void NnetTrainer::ProcessOutputs(const NnetExample &eg,
 }
 
 void NnetTrainer::DoScalingFactorLearning() {
-  if (config_.scale_learning_rate <= 0.0 &&
+  if (config_.scale_learning_rate <= 0.0 ||
       RandUniform() > config_.scale_update_frequency)
     return;
   // Note: if we are using momentum, the magnitude of the parameter changes in
@@ -111,7 +111,7 @@ void NnetTrainer::DoScalingFactorLearning() {
   // 1.0 / config_.scale_update_frequency compensates for the fact that we
   // don't do this on all minibatches.
   BaseFloat scale_learning_rate = config_.scale_learning_rate *
-      (1.0 - config_.momentum) * (1.0 / config_.scale_update_frequency);
+    (1.0 / config_.scale_update_frequency);
 
   int32 i = 0;
   for (int32 c = 0; c < delta_nnet_->NumComponents(); c++) {

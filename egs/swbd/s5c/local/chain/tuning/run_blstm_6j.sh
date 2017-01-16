@@ -44,6 +44,7 @@ frames_per_chunk=
 remove_egs=false
 common_egs_dir=
 
+scale_learning_rate=0.1
 affix=
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -185,7 +186,7 @@ if [ $stage -le 13 ]; then
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.optimization.momentum 0.0 \
-    --trainer.optimization.scale-learning-rate 0.1 \
+    --trainer.optimization.scale-learning-rate $scale_learning_rate \
     --trainer.deriv-truncate-margin 8 \
     --egs.stage $get_egs_stage \
     --egs.opts "--frames-overlap-per-eg 0" \
