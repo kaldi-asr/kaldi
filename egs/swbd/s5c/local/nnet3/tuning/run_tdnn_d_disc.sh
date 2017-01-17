@@ -1,9 +1,8 @@
 #!/bin/bash
 
-# This script does discriminative training on top of CE nnet3 system.  To
-# simplify things, this assumes you are using the "cleaned" data (since this is
-# generally better), i.e. it won't work if you used options to run_tdnn_lstm_1b.sh
-# to use the non-cleaned data.
+# This script does discriminative training on top of the CE nnet3 system
+# from run_tdnn_d.  To simplify things, this assumes you are using the "speed-perturbed" data
+# (--speed_perturb true, which is the default) in the baseline run_tdnn_d.sh script.
 #
 # note: this relies on having a cluster that has plenty of CPUs as well as GPUs,
 # since the lattice generation runs in about real-time, so takes of the order of
@@ -27,10 +26,11 @@ nj=400 # have a high number of jobs because this could take a while, and we migh
 . ./path.sh
 . ./utils/parse_options.sh
 
-graph_dir=exp/tri3_cleaned/graph
-srcdir=exp/nnet3_cleaned/tdnn_lstm1b_sp
-train_data_dir=data/train_cleaned_sp_hires_comb
-online_ivector_dir=exp/nnet3_cleaned/ivectors_train_cleaned_sp_hires_comb
+graph_dir=exp/tri4/graph_sw1_tg
+srcdir=exp/nnet3/tdnn_d_sp
+train_data_dir=data/train_nodup_sp_hires
+online_ivector_dir=exp/nnet3/ivectors_train_nodup_sp_hires
+
 
 ## Objective options
 criterion=smbr
@@ -50,16 +50,17 @@ frames_per_chunk_decoding=200
 ## chunk_right_context)
 ## We set --extra-left-context-initial 0 and --extra-right-context-final 0
 ## directly in the script below, but this should also match the training condition.
-extra_left_context=40
+## Note: extra-left-context and extra-right-context are 0 because this is a TDNN,
+## it's not a recurrent model like an LSTM or BLSTM.
+extra_left_context=0
 extra_right_context=0
-
 
 
 ## Nnet training options
 effective_learning_rate=0.0000125
 max_param_change=1
 num_jobs_nnet=4
-num_epochs=4
+num_epochs=3
 regularization_opts=          # Applicable for providing --xent-regularize and --l2-regularize options,
                               # in chain models.
 minibatch_size="300=32,16/150=64,32"  # rule says: if chunk size is closer to 300, use minibatch size 32 (or 16 for mop-up);
@@ -108,7 +109,7 @@ if [ -z "$degs_dir" ]; then
   if [ $stage -le 2 ]; then
     if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d ${srcdir}_degs/storage ]; then
       utils/create_split_dir.pl \
-        /export/b{09,10,11,12}/$USER/kaldi-data/egs/tedlium-$(date +'%m_%d_%H_%M')/s5_r2/${srcdir}_degs/storage ${srcdir}_degs/storage
+        /export/b{09,10,11,12}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5/${srcdir}_degs/storage ${srcdir}_degs/storage
     fi
     if [ -d ${srcdir}_degs/storage ]; then max_copy_jobs=10; else max_copy_jobs=5; fi
 
@@ -141,18 +142,17 @@ fi
 
 if [ $stage -le 4 ]; then
   for x in `seq $decode_start_epoch $num_epochs`; do
-    for decode_set in dev test; do
+    for decode_set in train_dev eval2000; do
       num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
       for iter in epoch$x epoch${x}_adj; do
 
         steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" --iter $iter \
           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
-          $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_${iter} || exit 1;
+          $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_sw1_tg_${iter} || exit 1;
 
         steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-          data/lang_test data/lang_rescore data/${decode_set}_hires \
-          $dir/decode_${decode_set}_${iter} \
-          $dir/decode_${decode_set}_${iter}_rescore || exit 1;
+          data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
+          $dir/decode_${decode_set}_${iter}_sw1_{tg,fsh_fg} || exit 1;
       ) &
     done
   done
@@ -168,5 +168,5 @@ if [ $stage -le 5 ] && $cleanup; then
   steps/nnet2/remove_egs.sh ${srcdir}_degs || true
 fi
 
-
+wait;
 exit 0;
