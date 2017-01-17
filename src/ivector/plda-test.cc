@@ -109,7 +109,7 @@ int main() {
     UnitTestPldaEstimation(i + 1);
 
   // UnitTestPldaEstimation(400);
-  UnitTestPldaEstimation(80);
+  UnitTestPldaEstimation(40);
   std::cout << "Test OK.\n";
   return 0;
 }
