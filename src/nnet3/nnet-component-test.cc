@@ -108,7 +108,7 @@ void TestNnetComponentVectorizeUnVectorize(Component *c) {
   UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(c);
   KALDI_ASSERT(uc != NULL);
   UpdatableComponent *uc2 = dynamic_cast<UpdatableComponent*>(uc->Copy());
-  uc2->SetZero(false);
+  uc2->Scale(0.0);
   Vector<BaseFloat> params(uc2->NumParameters());
   uc2->Vectorize(&params);
   KALDI_ASSERT(params.Min()==0.0 && params.Sum()==0.0);
@@ -146,14 +146,14 @@ void TestNnetComponentUpdatable(Component *c) {
   }
   if(!(uc->Properties() & kUpdatableComponent)){
     // testing that if it declares itself as non-updatable,
-    // Scale() and Add() and SetZero() have no effect.
+    // Scale() and Add() have no effect.
     KALDI_ASSERT(uc->NumParameters() == 0);
     KALDI_ASSERT(uc->DotProduct(*uc) == 0);
     UpdatableComponent *uc2 = dynamic_cast<UpdatableComponent*>(uc->Copy());
     uc2->Scale(7.0);
     uc2->Add(3.0, *uc);
     KALDI_ASSERT(StringsApproxEqual(uc2->Info(), uc->Info()));
-    uc->SetZero(false);
+    uc->Scale(0.0);
     KALDI_ASSERT(StringsApproxEqual(uc2->Info(), uc->Info()));
     delete uc2;
   } else {
@@ -179,13 +179,13 @@ void TestNnetComponentUpdatable(Component *c) {
     uc3->Scale(0.5);
     KALDI_ASSERT(uc2->Info() == uc3->Info());
 
-    // testing that SetZero() works the same whether done on the vectorized
+    // testing that Scale(0.0) works the same whether done on the vectorized
     // paramters or via SetZero(), and that unvectorizing something that's been
     // zeroed gives us zero parameters.
     uc2->Vectorize(&vec2);
     vec2.SetZero();
     uc2->UnVectorize(vec2);
-    uc3->SetZero(false);
+    uc3->Scale(0.0);
     uc3->Vectorize(&vec2);
     KALDI_ASSERT(uc2->Info() == uc3->Info() && VecVec(vec2, vec2) == 0.0);
 
@@ -422,8 +422,8 @@ bool TestSimpleComponentModelDerivative(const Component &c,
   UpdatableComponent *uc_copy = dynamic_cast<UpdatableComponent*>(c_copy);
   KALDI_ASSERT(uc != NULL && uc_copy != NULL);
   if (test_derivative) {
-    bool is_gradient = true;
-    uc_copy->SetZero(is_gradient);
+    uc_copy->Scale(0.0);
+    uc_copy->SetAsGradient();
   }
 
   CuMatrix<BaseFloat> input_deriv(num_rows, input_dim,

@@ -1305,8 +1305,13 @@ Component* ConstantComponent::Copy() const {
 }
 
 void ConstantComponent::Scale(BaseFloat scale) {
-  if (is_updatable_)
-    output_.Scale(scale);
+  if (is_updatable_) {
+    if (scale == 0.0) {
+      output_.SetZero();
+    } else {
+      output_.Scale(scale);
+    }
+  }
 }
 
 void ConstantComponent::Add(BaseFloat alpha, const Component &other_in) {
@@ -1316,14 +1321,6 @@ void ConstantComponent::Add(BaseFloat alpha, const Component &other_in) {
     KALDI_ASSERT(other != NULL);
     output_.AddVec(alpha, other->output_);
   }
-}
-
-void ConstantComponent::SetZero(bool treat_as_gradient) {
-  if (treat_as_gradient) {
-    SetActualLearningRate(1.0);
-    is_gradient_ = true;
-  }
-  output_.SetZero();
 }
 
 void ConstantComponent::PerturbParams(BaseFloat stddev) {

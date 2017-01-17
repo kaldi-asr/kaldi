@@ -136,8 +136,8 @@ void UnitTestNnetModelDerivatives() {
     }
 
     Nnet nnet_deriv(nnet);
-    bool is_gradient = true;
-    SetZero(is_gradient, &nnet_deriv);  // forces "simple" update and unit
+    ScaleNnet(0.0, &nnet_deriv);
+    SetNnetAsGradient(&nnet_deriv);     // forces "simple" update and unit
                                         // learning rate.
 
     int32 num_directions = 4;  // must be >= 1.  Best if it's >1, will reduce

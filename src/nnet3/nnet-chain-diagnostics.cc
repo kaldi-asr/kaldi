@@ -37,8 +37,8 @@ NnetChainComputeProb::NnetChainComputeProb(
     num_minibatches_processed_(0) {
   if (nnet_config_.compute_deriv) {
     deriv_nnet_ = new Nnet(nnet_);
-    bool is_gradient = true;  // force simple update
-    SetZero(is_gradient, deriv_nnet_);
+    ScaleNnet(0.0, deriv_nnet_);
+    SetNnetAsGradient(deriv_nnet_); // force simple update
   }
 }
 
@@ -56,8 +56,8 @@ void NnetChainComputeProb::Reset() {
   num_minibatches_processed_ = 0;
   objf_info_.clear();
   if (deriv_nnet_) {
-    bool is_gradient = true;
-    SetZero(is_gradient, deriv_nnet_);
+    ScaleNnet(0.0, deriv_nnet_);
+    SetNnetAsGradient(deriv_nnet_);
   }
 }
 

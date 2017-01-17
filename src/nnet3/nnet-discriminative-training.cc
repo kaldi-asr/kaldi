@@ -42,9 +42,7 @@ NnetDiscriminativeTrainer::NnetDiscriminativeTrainer(
     KALDI_ASSERT(opts.nnet_config.momentum >= 0.0 &&
                  opts.nnet_config.max_param_change >= 0.0);
     delta_nnet_ = nnet_->Copy();
-    bool is_gradient = false;  // setting this to true would disable the
-                               // natural-gradient updates.
-    SetZero(is_gradient, delta_nnet_);
+    ScaleNnet(0.0, delta_nnet_);
   }
   if (opts.nnet_config.read_cache != "") {
     bool binary;
@@ -92,7 +90,7 @@ void NnetDiscriminativeTrainer::Train(const NnetDiscriminativeExample &eg) {
       if (param_delta > nnet_config.max_param_change) {
         if (param_delta - param_delta != 0.0) {
           KALDI_WARN << "Infinite parameter change, will not apply.";
-          SetZero(false, delta_nnet_);
+          ScaleNnet(0.0, delta_nnet_);
         } else {
           scale *= nnet_config.max_param_change / param_delta;
           KALDI_LOG << "Parameter change too big: " << param_delta << " > "
