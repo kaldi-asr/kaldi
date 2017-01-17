@@ -107,6 +107,7 @@ void LmNnetComputeProb::ProcessOutputs(const NnetExample &eg,
                                  io.features, obj_type, io.name,
                                  supply_deriv, computer,
                                  &tot_weight, &tot_objf, *nnet_.O(), &output
+                                 , deriv_nnet_
                                  );
         SimpleObjectiveInfo &totals = objf_info_[io.name];
         totals.tot_weight += tot_weight;

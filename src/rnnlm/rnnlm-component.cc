@@ -205,6 +205,26 @@ void AffineSampleLogSoftmaxComponent::Propagate(const CuMatrixBase<BaseFloat> &i
 }
 
 void AffineSampleLogSoftmaxComponent::Backprop(
+                               const CuMatrixBase<BaseFloat> &in_value,
+                               const CuMatrixBase<BaseFloat> &out_value, // out_value
+                               const CuMatrixBase<BaseFloat> &output_deriv,
+                               LmOutputComponent *to_update_0,
+                               CuMatrixBase<BaseFloat> *input_deriv) const {
+  if (input_deriv != NULL)
+    input_deriv->AddMatMat(1.0, output_deriv, kNoTrans, linear_params_, kNoTrans,
+                           1.0);
+
+  AffineSampleLogSoftmaxComponent* to_update
+             = dynamic_cast<AffineSampleLogSoftmaxComponent*>(to_update_0);
+
+  if (to_update != NULL) {
+    to_update->bias_params_.Row(0).AddRowSumMat(learning_rate_, output_deriv, 1.0);
+    to_update->linear_params_.AddMatMat(learning_rate_, output_deriv, kTrans,
+                             in_value, kNoTrans, 1.0);
+  }
+}
+
+void AffineSampleLogSoftmaxComponent::Backprop(
                                const vector<int> &indexes,
                                const CuMatrixBase<BaseFloat> &in_value,
                                const CuMatrixBase<BaseFloat> &out_value, // out_value
@@ -465,7 +485,6 @@ void LinearSigmoidNormalizedComponent::Backprop(
                                const CuMatrixBase<BaseFloat> &output_deriv,
                                LmOutputComponent *to_update_0,
                                CuMatrixBase<BaseFloat> *input_deriv) const {
-
   KALDI_ASSERT(false);
 }
 

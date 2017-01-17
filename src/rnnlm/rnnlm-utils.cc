@@ -270,7 +270,9 @@ void ComponentDotProducts(const LmNnet &nnet1,
                           const LmNnet &nnet2,
                           VectorBase<BaseFloat> *dot_prod) {
 
-  nnet3::ComponentDotProducts(nnet1.Nnet(), nnet2.Nnet(), dot_prod);
+  Vector<BaseFloat> v1(dot_prod->Dim() - 2);
+  nnet3::ComponentDotProducts(nnet1.Nnet(), nnet2.Nnet(), &v1);
+  dot_prod->Range(0, dot_prod->Dim() - 2).CopyFromVec(v1);
 
 //  KALDI_ASSERT(nnet1.NumComponents() == nnet2.NumComponents());
 //  int32 updatable_c = 0;

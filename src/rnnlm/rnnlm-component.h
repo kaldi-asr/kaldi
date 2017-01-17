@@ -378,7 +378,7 @@ class AffineSampleLogSoftmaxComponent: public LmOutputComponent {
                         const CuMatrixBase<BaseFloat> &, // out_value
                         const CuMatrixBase<BaseFloat> &out_deriv,
                         LmOutputComponent *to_update_in,
-                        CuMatrixBase<BaseFloat> *in_deriv) const {};
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
 
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;

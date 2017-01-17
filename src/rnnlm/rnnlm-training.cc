@@ -663,10 +663,10 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionExact(
     cu_post.CopyToMat(&output_deriv);
 
     CuMatrix<BaseFloat> input_deriv(new_output->NumRows(),
-                                    new_output->NumCols(),
+                                    output_projection.InputDim(),
                                     kSetZero);
 
-    output_projection.Backprop(samples, *new_output, *new_output,
+    output_projection.Backprop(old_output, *new_output,
                                output_deriv, nnet->output_projection_,
                                &input_deriv);
 

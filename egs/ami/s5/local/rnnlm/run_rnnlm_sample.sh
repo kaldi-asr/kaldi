@@ -242,14 +242,12 @@ if [ $stage -le $num_iters ]; then
         --max-param-change=$max_param_change "rnnlm-copy --learning-rate=$learning_rate $outdir/$[$n-1].mdl -|" \
         "ark:nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$n ark:$outdir/egs/train.$this_archive.egs ark:- | nnet3-merge-egs --minibatch-size=$minibatch_size ark:- ark:- |" $outdir/$n.mdl $unigram
 
-        false && (
         if [ $n -gt 0 ]; then
           $cmd $outdir/log/progress.$n.log \
             rnnlm-show-progress --use-gpu=no $outdir/$[$n-1].mdl $outdir/$n.mdl \
             "ark:nnet3-merge-egs ark:$outdir/train_diagnostic.egs ark:-|" '&&' \
             rnnlm-info $outdir/$n.mdl &
         fi
-        )
 
       t=`grep "^# Accounting" $outdir/log/train.rnnlm.$n.log | sed "s/=/ /g" | awk '{print $4}'`
       w=`wc -w $outdir/splitted-text/train.$this_archive.txt | awk '{print $1}'`
