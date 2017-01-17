@@ -152,7 +152,7 @@ void NnetComputation::MatrixInfo::Read(std::istream &is, bool binary) {
   if (tok == "</MatrixInfo>") {
     stride_type = kDefaultStride;
   } else {
-    KALDI_ASSERT(tok == "<kStrideEqualNumCols>");
+    KALDI_ASSERT(tok == "<StrideEqualNumCols>");
     stride_type = kStrideEqualNumCols;
     ExpectToken(is, binary, "</MatrixInfo>");
   }
@@ -242,7 +242,7 @@ void NnetComputation::Command::Read(std::istream &is, bool binary) {
     command_type = static_cast<CommandType>(command_type_int);
   } else {
     std::string command_type_str;
-    getline(is, command_type_str); 
+    getline(is, command_type_str);
     if (command_type_str == "kAllocMatrixZeroed") {
       command_type = kAllocMatrixZeroed;
     } else if (command_type_str == "kAllocMatrixUndefined") {
@@ -700,7 +700,7 @@ void NnetComputation::Read(std::istream &is, bool binary) {
   std::vector<ComponentPrecomputedIndexes*> component_precomputed_indexes_tmp;
   for (size_t c = 0; c < num_component_precomputed_indexes; c++) {
     bool is_null; // a boolean indicating whether the pointer should be NULL.
-    ReadBasicType(is, binary, &is_null); 
+    ReadBasicType(is, binary, &is_null);
     if (!is_null) {
       ComponentPrecomputedIndexes* p = ComponentPrecomputedIndexes::ReadNew(is, binary);
       component_precomputed_indexes_tmp.push_back(p);
@@ -796,7 +796,7 @@ void NnetComputation::Write(std::ostream &os, bool binary) const {
   for (size_t c = 0; c < submatrices.size(); c++) {
     submatrices[c].Write(os, binary);
   }
-  
+
   if (!binary) os << std::endl;
   WriteToken(os, binary, "<NumComponentPrecomputedIndexes>");
   WriteBasicType(os, binary, component_precomputed_indexes.size());
