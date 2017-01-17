@@ -375,11 +375,6 @@ class UpdatableComponent: public Component {
       learning_rate_factor_(other.learning_rate_factor_),
       is_gradient_(other.is_gradient_), max_change_(other.max_change_) { }
 
-  /// \brief Sets parameters to zero, and if treat_as_gradient is true,
-  ///  sets is_gradient_ to true and sets learning_rate_ to 1, ignoring
-  ///  learning_rate_factor_.
-  virtual void SetZero(bool treat_as_gradient) = 0;
-
   UpdatableComponent(): learning_rate_(0.001), learning_rate_factor_(1.0),
                         is_gradient_(false), max_change_(0.0) { }
 
@@ -402,6 +397,10 @@ class UpdatableComponent: public Component {
 
   /// Sets the learning rate directly, bypassing learning_rate_factor_.
   virtual void SetActualLearningRate(BaseFloat lrate) { learning_rate_ = lrate; }
+
+  /// \brief Sets is_gradient_ to true and sets learning_rate_ to 1, ignoring
+  /// learning_rate_factor_.
+  virtual void SetAsGradient() { learning_rate_ = 1.0; is_gradient_ = true; }
 
   /// Gets the learning rate of gradient descent.  Note: if you call
   /// SetLearningRate(x), and learning_rate_factor_ != 1.0,

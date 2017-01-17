@@ -94,10 +94,10 @@ static bool UnitTestNnetOptimizeWithOptions(int32 srand_seed,
   // test the consolidation of backprop commands,
   // otherwise the optimized and non-optimized
   // comptuations differ.
-  bool is_gradient = true;  // with natural gradient, the consolidation would
-  // affect the final model params -> test just the
-  // gradient.
-  SetZero(is_gradient, &nnet_to_update);
+  ScaleNnet(0.0, &nnet_to_update);
+  // with natural gradient, the consolidation would affect the final model
+  // params -> test just the gradient.
+  SetNnetAsGradient(&nnet_to_update);
 
   NnetComputer computer(compute_opts,
                         computation,
@@ -107,7 +107,8 @@ static bool UnitTestNnetOptimizeWithOptions(int32 srand_seed,
   Nnet nnet_opt(nnet);  // copy of the nnet for the optimized computation.
   // necessary in case backprop changes parameters.
   Nnet nnet_opt_to_update(nnet_opt);
-  SetZero(is_gradient, &nnet_opt_to_update);
+  ScaleNnet(0.0, &nnet_opt_to_update);
+  SetNnetAsGradient(&nnet_opt_to_update);
 
   // NnetComputer for the optimized version of the computation.
   NnetComputer computer_opt(compute_opts,

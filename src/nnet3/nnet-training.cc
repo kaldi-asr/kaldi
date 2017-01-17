@@ -35,9 +35,7 @@ NnetTrainer::NnetTrainer(const NnetTrainerOptions &config,
   KALDI_ASSERT(config.momentum >= 0.0 &&
                config.max_param_change >= 0.0);
   delta_nnet_ = nnet_->Copy();
-  bool is_gradient = false;  // setting this to true would disable the
-                             // natural-gradient updates.
-  SetZero(is_gradient, delta_nnet_);
+  ScaleNnet(0.0, delta_nnet_);
   const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
   num_max_change_per_component_applied_.resize(num_updatable, 0);
   num_max_change_global_applied_ = 0;
@@ -150,7 +148,7 @@ void NnetTrainer::UpdateParamsWithMaxChange() {
     if (param_delta > config_.max_param_change) {
       if (param_delta - param_delta != 0.0) {
         KALDI_WARN << "Infinite parameter change, will not apply.";
-        SetZero(false, delta_nnet_);
+        ScaleNnet(0.0, delta_nnet_);
       } else {
         scale *= config_.max_param_change / param_delta;
         num_max_change_global_applied_++;

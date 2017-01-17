@@ -168,25 +168,6 @@ void ComputeSimpleNnetContext(const Nnet &nnet,
       *std::max_element(right_contexts.begin(), right_contexts.end());
 }
 
-void SetZero(bool is_gradient,
-             Nnet *nnet) {
-  for (int32 c = 0; c < nnet->NumComponents(); c++) {
-    Component *comp = nnet->GetComponent(c);
-    NonlinearComponent *nc = dynamic_cast<NonlinearComponent*>(comp);
-    if (comp->Properties() & kUpdatableComponent) {
-      UpdatableComponent *u_comp = dynamic_cast<UpdatableComponent*>(comp);
-      KALDI_ASSERT(u_comp != NULL);
-      u_comp->SetZero(is_gradient);
-    } else if (nc != NULL) {
-      nc->ZeroStats();
-    } else {
-      // Scale(0.0) is called as a backup; currently it should never
-      // do anything  useful for any component type.
-      comp->Scale(0.0);
-    }
-  }
-}
-
 void PerturbParams(BaseFloat stddev,
                    Nnet *nnet) {
   for (int32 c = 0; c < nnet->NumComponents(); c++) {
@@ -280,11 +261,20 @@ void SetLearningRate(BaseFloat learning_rate,
   }
 }
 
+void SetNnetAsGradient(Nnet *nnet) {
+  for (int32 c = 0; c < nnet->NumComponents(); c++) {
+    Component *comp = nnet->GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent) {
+      UpdatableComponent *u_comp = dynamic_cast<UpdatableComponent*>(comp);
+      KALDI_ASSERT(u_comp != NULL);
+      u_comp->SetAsGradient();
+    }
+  }
+}
+
 void ScaleNnet(BaseFloat scale, Nnet *nnet) {
   if (scale == 1.0) return;
-  else if (scale == 0.0) {
-    SetZero(false, nnet);
-  } else {
+  else {
     for (int32 c = 0; c < nnet->NumComponents(); c++) {
       Component *comp = nnet->GetComponent(c);
       comp->Scale(scale);
