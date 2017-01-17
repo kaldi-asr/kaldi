@@ -18,7 +18,7 @@ num_iters=40
 
 num_train_frames_combine=10000 # # train frames for the above.                  
 num_frames_diagnostic=2000 # number of frames for "compute_prob" jobs  
-num_archives=16
+num_archives=8
 
 shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of the samples
 minibatch_size=64
@@ -245,9 +245,9 @@ if [ $stage -le $num_iters ]; then
         false && (
         if [ $n -gt 0 ]; then
           $cmd $outdir/log/progress.$n.log \
-            nnet3-show-progress --use-gpu=no $outdir/$[$n-1].mdl $outdir/$n.mdl \
+            rnnlm-show-progress --use-gpu=no $outdir/$[$n-1].mdl $outdir/$n.mdl \
             "ark:nnet3-merge-egs ark:$outdir/train_diagnostic.egs ark:-|" '&&' \
-            nnet3-info $outdir/$n.mdl &
+            rnnlm-info $outdir/$n.mdl &
         fi
         )
 
@@ -277,23 +277,21 @@ if [ $stage -le $num_iters ]; then
         rnnlm-compute-prob --normalize-probs=false $outdir/$n.mdl ark:$outdir/dev.subset.egs 
 
       wait
-      echo Normalized...
       ppl=`grep Overall $outdir/log/compute_prob_train.rnnlm.norm.$n.log | grep like | awk '{print exp(-$8)}'`
       ppl2=`echo $ppl $ppl_oos_penalty | awk '{print $1 * $2}'`
-      echo TRAIN PPL on model $n.mdl is $ppl w/o OOS penalty, $ppl2 w OOS penalty
+      echo NORMALIZED TRAIN PPL on model $n.mdl is $ppl w/o OOS penalty, $ppl2 w OOS penalty
 
       ppl=`grep Overall $outdir/log/compute_prob_valid.rnnlm.norm.$n.log | grep like | awk '{print exp(-$8)}'`
       ppl2=`echo $ppl $ppl_oos_penalty | awk '{print $1 * $2}'`
-      echo DEV PPL on model $n.mdl is $ppl w/o OOS penalty, $ppl2 w OOS penalty
+      echo NORMALIZED DEV PPL on model $n.mdl is $ppl w/o OOS penalty, $ppl2 w OOS penalty
 
-      echo Unnormalized...
       ppl=`grep Overall $outdir/log/compute_prob_train.rnnlm.unnorm.$n.log | grep like | awk '{print exp(-$8)}'`
       ppl2=`echo $ppl $ppl_oos_penalty | awk '{print $1 * $2}'`
-      echo TRAIN PPL on model $n.mdl is $ppl w/o OOS penalty, $ppl2 w OOS penalty
+      echo UNNORMALIZED TRAIN PPL on model $n.mdl is $ppl w/o OOS penalty, $ppl2 w OOS penalty
 
       ppl=`grep Overall $outdir/log/compute_prob_valid.rnnlm.unnorm.$n.log | grep like | awk '{print exp(-$8)}'`
       ppl2=`echo $ppl $ppl_oos_penalty | awk '{print $1 * $2}'`
-      echo DEV PPL on model $n.mdl is $ppl w/o OOS penalty, $ppl2 w OOS penalty
+      echo UNNORMALIZED DEV PPL on model $n.mdl is $ppl w/o OOS penalty, $ppl2 w OOS penalty
     ) &
   done
   cp $outdir/$num_iters.mdl $outdir/rnnlm

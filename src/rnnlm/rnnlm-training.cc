@@ -399,7 +399,8 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionNormalized(
                               const LmOutputComponent &output_projection,
                               CuMatrix<BaseFloat> *new_output,
                               LmNnet *nnet) {
-  computer->GetOutputDestructive(output_name, new_output);
+//  computer->GetOutputDestructive(output_name, new_output);
+  *new_output = computer->GetOutput(output_name);
   int k = supervision.NumRows();
 
   KALDI_ASSERT(supervision.Type() == kSparseMatrix);
@@ -644,9 +645,33 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionExact(
       output_project->Propagate(old_output, normalize, new_output);
     }
   }
+  {
+    const LinearSoftmaxNormalizedComponent* output_project =
+      dynamic_cast<const LinearSoftmaxNormalizedComponent*>(&output_projection);
+    if (output_project != NULL) {
+      output_project->Propagate(old_output, normalize, new_output);
+    }
+  }
 
   *tot_weight = post.Sum();
   *tot_objf = TraceMatSmat(*new_output, cu_post, kTrans);
+
+  if (supply_deriv && nnet != NULL) {
+
+    CuMatrix<BaseFloat> output_deriv(new_output->NumRows(), new_output->NumCols(),
+                                     kUndefined);
+    cu_post.CopyToMat(&output_deriv);
+
+    CuMatrix<BaseFloat> input_deriv(new_output->NumRows(),
+                                    new_output->NumCols(),
+                                    kSetZero);
+
+    output_projection.Backprop(samples, *new_output, *new_output,
+                               output_deriv, nnet->output_projection_,
+                               &input_deriv);
+
+    computer->AcceptOutputDeriv(output_name, &input_deriv);
+  }
 
 }
 

@@ -145,6 +145,17 @@ class LinearSigmoidNormalizedComponent: public LmOutputComponent {
                  const vector<int> &indexes,
                  vector<BaseFloat> *out) const;
 
+  void Propagate(const CuMatrixBase<BaseFloat> &in,
+                 bool normalize,
+                 CuMatrixBase<BaseFloat> *out) const;
+
+  void Backprop(
+         const CuMatrixBase<BaseFloat> &in_value,
+         const CuMatrixBase<BaseFloat> &, // out_value
+         const CuMatrixBase<BaseFloat> &output_deriv,
+         LmOutputComponent *to_update_0,
+         CuMatrixBase<BaseFloat> *input_deriv) const;
+
   void Backprop(
          const vector<int> &indexes,
          const CuMatrixBase<BaseFloat> &in_value,
@@ -242,6 +253,10 @@ class LinearSoftmaxNormalizedComponent: public LmOutputComponent {
                  const vector<int> &indexes,
                  vector<BaseFloat> *out) const;
 
+  void Propagate(const CuMatrixBase<BaseFloat> &in,
+                 bool normalize,
+                 CuMatrixBase<BaseFloat> *out) const;
+
   void Backprop(
          const vector<int> &indexes,
          const CuMatrixBase<BaseFloat> &in_value,
@@ -261,6 +276,13 @@ class LinearSoftmaxNormalizedComponent: public LmOutputComponent {
 //             const vector<vector<BaseFloat> > &out_deriv,
 //             LmOutputComponent *to_update_in,
 //             MatrixBase<BaseFloat> *in_deriv) const;
+
+  void Backprop(
+         const CuMatrixBase<BaseFloat> &in_value,
+         const CuMatrixBase<BaseFloat> &, // out_value
+         const CuMatrixBase<BaseFloat> &output_deriv,
+         LmOutputComponent *to_update_0,
+         CuMatrixBase<BaseFloat> *input_deriv) const;
 
   virtual void Backprop(
              const vector<int> &indexes,
@@ -350,6 +372,13 @@ class AffineSampleLogSoftmaxComponent: public LmOutputComponent {
                         const CuMatrixBase<BaseFloat> &out_deriv,
                         LmOutputComponent *to_update_in,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void Backprop(
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        LmOutputComponent *to_update_in,
+                        CuMatrixBase<BaseFloat> *in_deriv) const {};
 
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;

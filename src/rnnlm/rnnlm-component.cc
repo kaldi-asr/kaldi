@@ -154,6 +154,7 @@ void AffineSampleLogSoftmaxComponent::InitFromConfig(ConfigLine *cfl) {
 
 const BaseFloat kCutoff = 1.0;
 
+
 void AffineSampleLogSoftmaxComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
                                                 const vector<int> &indexes,
                                                 CuMatrixBase<BaseFloat> *out) const {
@@ -468,10 +469,27 @@ void LinearSigmoidNormalizedComponent::Backprop(
   KALDI_ASSERT(false);
 }
 
+void LinearSigmoidNormalizedComponent::Backprop(
+                               const CuMatrixBase<BaseFloat> &in_value,
+                               const CuMatrixBase<BaseFloat> &, // out_value
+                               const CuMatrixBase<BaseFloat> &output_deriv,
+                               LmOutputComponent *to_update_0,
+                               CuMatrixBase<BaseFloat> *input_deriv) const {
+
+  KALDI_ASSERT(false);
+}
 
 void LinearSigmoidNormalizedComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
-                                                const vector<int> &indexes,
-                                                vector<BaseFloat> *out) const {
+                                                bool normalize,
+                                                CuMatrixBase<BaseFloat> *out) const {
+  out->AddMatMat(1.0, in, kNoTrans, actual_params_, kTrans, 1.0);
+  KALDI_ASSERT(ApproxEqual(out->Sum(), out->NumRows()));
+  out->ApplyLog();
+}
+
+void LinearSigmoidNormalizedComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
+                                                 const vector<int> &indexes,
+                                                 vector<BaseFloat> *out) const {
   KALDI_ASSERT(in.NumRows() == indexes.size());
   out->resize(indexes.size());
 
@@ -762,6 +780,24 @@ void LinearSoftmaxNormalizedComponent::InitFromConfig(ConfigLine *cfl) {
 void LinearSoftmaxNormalizedComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
                                                 const vector<int> &indexes,
                                                 CuMatrixBase<BaseFloat> *out) const {
+  KALDI_ASSERT(false);
+}
+
+void LinearSoftmaxNormalizedComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
+                                                bool normalize,
+                                                CuMatrixBase<BaseFloat> *out) const {
+  out->AddMatMat(1.0, in, kNoTrans, actual_params_, kTrans, 1.0);
+  KALDI_ASSERT(ApproxEqual(out->Sum(), out->NumRows()));
+  out->ApplyLog();
+}
+
+void LinearSoftmaxNormalizedComponent::Backprop(
+                               const CuMatrixBase<BaseFloat> &in_value,
+                               const CuMatrixBase<BaseFloat> &, // out_value
+                               const CuMatrixBase<BaseFloat> &output_deriv,
+                               LmOutputComponent *to_update_0,
+                               CuMatrixBase<BaseFloat> *input_deriv) const {
+
   KALDI_ASSERT(false);
 }
 

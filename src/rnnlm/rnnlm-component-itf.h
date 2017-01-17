@@ -374,6 +374,13 @@ class LmOutputComponent: public LmComponent {
 //                 vector<vector<BaseFloat> > *out) const = 0;
 
   virtual void Backprop(
+             const CuMatrixBase<BaseFloat> &in_value,
+             const CuMatrixBase<BaseFloat> &, // out_value
+             const CuMatrixBase<BaseFloat> &out_deriv,
+             LmOutputComponent *to_update_in,
+             CuMatrixBase<BaseFloat> *in_deriv) const = 0;
+
+  virtual void Backprop(
              const vector<int> &indexes,
              const CuMatrixBase<BaseFloat> &in_value,
              const CuMatrixBase<BaseFloat> &, // out_value

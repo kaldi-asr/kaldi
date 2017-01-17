@@ -7,6 +7,8 @@
 #include "nnet3/nnet-example.h"
 #include "nnet3/nnet-diagnostics.h"
 
+#include "rnnlm/rnnlm-nnet.h"
+
 #include <fstream>
 #include <sstream>
 #include <vector>
@@ -49,6 +51,13 @@ bool LargerThan(const std::pair<int, BaseFloat> &t1,
                 const std::pair<int, BaseFloat> &t2);
 
 void ReadUnigram(string f, vector<BaseFloat> *u);
+
+void ComponentDotProducts(const LmNnet &nnet1,
+                          const LmNnet &nnet2,
+                          VectorBase<BaseFloat> *dot_prod);
+
+std::string PrintVectorPerUpdatableComponent(const LmNnet &nnet,
+                                             const VectorBase<BaseFloat> &vec);
 
 } // namespace nnet3
 } // namespace kaldi

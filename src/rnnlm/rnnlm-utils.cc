@@ -266,5 +266,54 @@ void NormalizeVec(int k, const set<int>& ones, vector<BaseFloat> *probs) {
 
 }
 
+void ComponentDotProducts(const LmNnet &nnet1,
+                          const LmNnet &nnet2,
+                          VectorBase<BaseFloat> *dot_prod) {
+
+  nnet3::ComponentDotProducts(nnet1.Nnet(), nnet2.Nnet(), dot_prod);
+
+//  KALDI_ASSERT(nnet1.NumComponents() == nnet2.NumComponents());
+//  int32 updatable_c = 0;
+//  for (int32 c = 0; c < nnet1.NumComponents(); c++) {
+//    const Component *comp1 = nnet1.GetComponent(c),
+//                    *comp2 = nnet2.GetComponent(c);
+//    if (comp1->Properties() & kUpdatableComponent) {
+//      const UpdatableComponent
+//          *u_comp1 = dynamic_cast<const UpdatableComponent*>(comp1),
+//          *u_comp2 = dynamic_cast<const UpdatableComponent*>(comp2);
+//      KALDI_ASSERT(u_comp1 != NULL && u_comp2 != NULL);
+//      dot_prod->Data()[updatable_c] = u_comp1->DotProduct(*u_comp2);
+//      updatable_c++;
+//    }
+//  }
+//  KALDI_ASSERT(updatable_c == dot_prod->Dim());
+
+  int32 dim = dot_prod->Dim();
+  dot_prod->Data()[dim - 2] = nnet1.I()->DotProduct(*nnet2.I());
+  dot_prod->Data()[dim - 1] = nnet1.O()->DotProduct(*nnet2.O());
+}
+
+std::string PrintVectorPerUpdatableComponent(const LmNnet &lm_nnet,
+                                             const VectorBase<BaseFloat> &vec) {
+  const nnet3::Nnet &nnet = lm_nnet.Nnet();
+  std::ostringstream os;
+  os << "[ ";
+  KALDI_ASSERT(NumUpdatableComponents(nnet) == vec.Dim() - 2);
+  int32 updatable_c = 0;
+  for (int32 c = 0; c < nnet.NumComponents(); c++) {
+    const nnet3::Component *comp = nnet.GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent) {
+      const std::string &component_name = nnet.GetComponentName(c);
+      os << component_name << ':' << vec(updatable_c) << ' ';
+      updatable_c++;
+    }
+  }
+  os << "rnnlm input: "  << vec(updatable_c) << " ";
+  os << "rnnlm output: " << vec(updatable_c + 1) << " ";
+  KALDI_ASSERT(updatable_c == vec.Dim());
+  os << ']';
+  return os.str();
+}
+
 } // namespace rnnlm
 } // namespace kaldi
