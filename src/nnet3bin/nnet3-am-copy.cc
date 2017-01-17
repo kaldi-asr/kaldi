@@ -47,7 +47,6 @@ int main(int argc, char *argv[]) {
     bool binary_write = true,
         raw = false;
     BaseFloat learning_rate = -1;
-    BaseFloat learning_rate_scale = 1;
     std::string set_raw_nnet = "";
     bool convert_repeated_to_block = false;
     BaseFloat scale = 1.0;
