@@ -21,6 +21,7 @@ egs_type=egs              # Compute from $egs_type.*.ark in $egs_dir
 use_raw_nnet=false        # If raw nnet, the averaged posterior is computed 
                           # and stored in post.$iter.vec; but there is no
                           # adjusting of priors
+minibatch_size=256
 iter=final
 
 . utils/parse_options.sh
@@ -59,20 +60,16 @@ fi
 
 rm -f $dir/post.$iter.*.vec 2>/dev/null
 
-left_context=`cat $egs_dir/info/left_context` || exit 1
-right_context=`cat $egs_dir/info/right_context` || exit 1
-
-context_opts="--left-context=$left_context --right-context=$right_context"
-
 num_archives=$(cat $egs_dir/info/num_archives) || { echo "error: no such file $egs_dir/info/frames_per_eg"; exit 1; }
-if [ $num_jobs_compute_prior -gt $num_archives ]; then egs_part=1;
-else egs_part=JOB; fi
+if [ $num_jobs_compute_prior -gt $num_archives ]; then 
+  num_jobs_compute_prior=$num_archives
+fi
 
 if [ $egs_type != "degs" ]; then
   $cmd JOB=1:$num_jobs_compute_prior $prior_queue_opt $dir/log/get_post.$iter.JOB.log \
     nnet3-copy-egs ark:$egs_dir/$egs_type.$egs_part.ark ark:- \| \
     nnet3-subset-egs --srand=JOB --n=$prior_subset_size ark:- ark:- \| \
-    nnet3-merge-egs ark:- ark:- \| \
+    nnet3-merge-egs --minibatch-size=$minibatch_size ark:- ark:- \| \
     nnet3-compute-from-egs $prior_gpu_opt --apply-exp=true \
     "$model" ark:- ark:- \| \
     matrix-sum-rows ark:- ark:- \| vector-sum ark:- $dir/post.$iter.JOB.vec || exit 1;
@@ -80,7 +77,7 @@ else
   $cmd JOB=1:$num_jobs_compute_prior $prior_queue_opt $dir/log/get_post.$iter.JOB.log \
     nnet3-discriminative-copy-egs ark:$egs_dir/$egs_type.$egs_part.ark ark:- \| \
     nnet3-discriminative-subset-egs --srand=JOB --n=$prior_subset_size ark:- ark:- \| \
-    nnet3-discriminative-merge-egs ark:- ark:- \| \
+    nnet3-discriminative-merge-egs --minibatch-size=$minibatch_size ark:- ark:- \| \
     nnet3-compute-from-degs $prior_gpu_opt --apply-exp=true \
     "$model" ark:- ark:- \| \
     matrix-sum-rows ark:- ark:- \| vector-sum ark:- $dir/post.$iter.JOB.vec || exit 1;
@@ -94,7 +91,7 @@ $cmd $dir/log/vector_sum.$iter.log \
 
 if ! $use_raw_nnet; then
   run.pl $dir/log/adjust_priors.$iter.log \
-    nnet3-am-adjust-priors $dir/$iter.mdl $dir/post.$iter.vec $dir/$iter.adj.mdl
+    nnet3-am-adjust-priors $dir/$iter.mdl $dir/post.$iter.vec $dir/${iter}_adj.mdl
 fi
 
 rm -f $dir/post.$iter.*.vec;
