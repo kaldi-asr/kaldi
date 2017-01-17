@@ -527,11 +527,6 @@ void CachingOptimizingCompiler::ReadCache(std::istream &is, bool binary) {
       request->Read(is, binary);
       NnetComputation *computation = new NnetComputation();
       computation->Read(is, binary);
-      if (GetVerboseLevel() >= 3) {
-        CheckComputationOptions check_config;
-        ComputationChecker checker(check_config, nnet_, *computation);
-        checker.Check();
-      }
       UpdateCache(request, computation);
     }
   }
