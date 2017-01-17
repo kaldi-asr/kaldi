@@ -47,16 +47,15 @@ shuffle_buffer_size=1000 # This "buffer_size" variable controls randomization of
 
 stage=-3
 
-adjust_priors=true   # If true then it will
-
 num_threads=16  # this is the default but you may want to change it, e.g. to 1 if
                 # using GPUs.
 
 cleanup=true
-keep_model_iters=1
+keep_model_iters=100
 remove_egs=false
 src_model=  # will default to $degs_dir/final.mdl
 
+num_jobs_compute_prior=10
 
 min_deriv_time=0
 max_deriv_time_relative=0
@@ -129,11 +128,6 @@ done
 
 silphonelist=`cat $degs_dir/info/silence.csl` || exit 1;
 
-num_archives_priors=0
-if $adjust_priors; then
-  num_archives_priors=`cat $degs_dir/info/num_archives_priors` || exit 1
-fi
-
 num_archives=$(cat $degs_dir/info/num_archives) || exit 1;
 frame_subsampling_factor=$(cat $degs_dir/info/frame_subsampling_factor)
 
@@ -200,6 +194,8 @@ if [ $stage -le -1 ]; then
 
   $cmd $dir/log/convert.log \
     nnet3-am-copy --learning-rate=$learning_rate "$src_model" $dir/0.mdl || exit 1;
+
+  ln -sf 0.mdl $dir/epoch0.mdl
 fi
 
 
@@ -307,28 +303,11 @@ while [ $x -lt $num_iters ]; do
       nnet3-am-copy --set-raw-nnet=- $dir/$x.mdl $dir/$[$x+1].mdl || exit 1;
 
     rm $nnets_list
-
-    if [ ! -z "${iter_to_epoch[$x]}" ]; then
-      e=${iter_to_epoch[$x]}
-      ln -sf $x.mdl $dir/epoch$e.mdl
-    fi
-
-    if $adjust_priors && [ ! -z "${iter_to_epoch[$x]}" ]; then
-      if [ ! -f $degs_dir/priors_egs.1.ark ]; then
-        echo "$0: Expecting $degs_dir/priors_egs.1.ark to exist since --adjust-priors was true."
-        echo "$0: Run this script with --adjust-priors false to not adjust priors"
-        exit 1
-      fi
-      (
-        e=${iter_to_epoch[$x]}
-        rm $dir/.error 2> /dev/null
-
-        steps/nnet3/adjust_priors.sh --egs-type priors_egs \
-          --num-jobs-compute-prior $num_archives_priors \
-          --cmd "$cmd" --use-gpu false \
-          --use-raw-nnet false --iter epoch$e $dir $degs_dir \
-          || { touch $dir/.error; echo "Error in adjusting priors. See $dir/log/adjust_priors.epoch$e.log"; exit 1; }
-      ) &
+    [ ! -f $dir/$[$x+1].mdl ] && echo "$0: Did not create $dir/$[$x+1].mdl" && exit 1;
+    if [ -f $dir/$[$x-1].mdl ] && $cleanup && \
+       [ $[($x-1)%$keep_model_iters] -ne 0  ] && \
+       [ -z "${iter_to_epoch[$[$x-1]]}" ]; then
+      rm $dir/$[$x-1].mdl
     fi
 
     [ -f $dir/.error ] && { echo "Found $dir/.error. Error on iteration $x"; exit 1; }
@@ -337,28 +316,27 @@ while [ $x -lt $num_iters ]; do
   rm $dir/cache.$x 2>/dev/null || true
   x=$[$x+1]
   num_archives_processed=$[num_archives_processed+num_jobs_nnet]
+
+  if [ $stage -le $x ] && [ ! -z "${iter_to_epoch[$x]}" ]; then
+    e=${iter_to_epoch[$x]}
+    ln -sf $x.mdl $dir/epoch$e.mdl
+
+    (
+      rm $dir/.error 2> /dev/null
+
+      steps/nnet3/adjust_priors.sh --egs-type degs \
+        --num-jobs-compute-prior $num_jobs_compute_prior \
+        --cmd "$cmd" --use-gpu false \
+        --minibatch-size $minibatch_size \
+        --use-raw-nnet false --iter epoch$e $dir $degs_dir \
+        || { touch $dir/.error; echo "Error in adjusting priors. See $dir/log/adjust_priors.epoch$e.log"; exit 1; }
+    ) &
+  fi
+
 done
 
 rm $dir/final.mdl 2>/dev/null
 cp $dir/$x.mdl $dir/final.mdl
-ln -sf final.mdl $dir/epoch$num_epochs_expanded.mdl
-
-if $adjust_priors && [ $stage -le $num_iters ]; then
-  if [ ! -f $degs_dir/priors_egs.1.ark ]; then
-    echo "$0: Expecting $degs_dir/priors_egs.1.ark to exist since --adjust-priors was true."
-    echo "$0: Run this script with --adjust-priors false to not adjust priors"
-    exit 1
-  fi
-
-  steps/nnet3/adjust_priors.sh --egs-type priors_egs \
-    --num-jobs-compute-prior $num_archives_priors \
-    --cmd "$cmd $prior_queue_opt" --use-gpu false \
-    --use-raw-nnet false --iter epoch$num_epochs_expanded \
-    $dir $degs_dir || exit 1
-fi
-
-echo Done
-
 
 # function to remove egs that might be soft links.
 remove () { for x in $*; do [ -L $x ] && rm $(readlink -f $x); rm $x; done }
@@ -379,3 +357,8 @@ if $cleanup; then
     fi
   done
 fi
+
+wait
+[ -f $dir/.error ] && { echo "Found $dir/.error."; exit 1; }
+
+echo Done && exit 0
