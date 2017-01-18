@@ -119,7 +119,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                      l2_regularize, xent_regularize, leaky_hmm_coefficient,
                      momentum, max_param_change,
                      shuffle_buffer_size, num_chunk_per_minibatch_str,
-                     frame_subsampling_factor, truncate_deriv_weights,
+                     frame_subsampling_factor,
                      cache_io_opts, run_opts):
     """
     Called from train_one_iteration(), this method trains new models
@@ -168,7 +168,6 @@ def train_new_models(dir, iter, srand, num_jobs,
                     "{raw_model}" {dir}/den.fst \
                     "ark,bg:nnet3-chain-copy-egs \
                         --left-context={lc} --right-context={rc} \
-                        --truncate-deriv-weights={trunc_deriv} \
                         --frame-shift={fr_shft} \
                         ark:{egs_dir}/cegs.{archive_index}.ark ark:- | \
                         nnet3-chain-shuffle-egs --buffer-size={buf_size} \
@@ -181,7 +180,6 @@ def train_new_models(dir, iter, srand, num_jobs,
                         next_iter=iter + 1, job=job,
                         deriv_time_opts=" ".join(deriv_time_opts),
                         lc=left_context, rc=right_context,
-                        trunc_deriv=truncate_deriv_weights,
                         app_deriv_wts=apply_deriv_weights,
                         fr_shft=frame_shift, l2=l2_regularize,
                         xent_reg=xent_regularize, leaky=leaky_hmm_coefficient,
@@ -220,7 +218,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         l2_regularize, xent_regularize,
                         leaky_hmm_coefficient,
                         momentum, max_param_change, shuffle_buffer_size,
-                        frame_subsampling_factor, truncate_deriv_weights,
+                        frame_subsampling_factor,
                         run_opts, background_process_handler=None):
     """ Called from steps/nnet3/chain/train.py for one iteration for
     neural network training with LF-MMI objective
@@ -318,7 +316,6 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      shuffle_buffer_size=shuffle_buffer_size,
                      num_chunk_per_minibatch_str=cur_num_chunk_per_minibatch_str,
                      frame_subsampling_factor=frame_subsampling_factor,
-                     truncate_deriv_weights=truncate_deriv_weights,
                      cache_io_opts=cache_io_opts, run_opts=run_opts)
 
     [models_to_average, best_model] = common_train_lib.get_successful_models(
