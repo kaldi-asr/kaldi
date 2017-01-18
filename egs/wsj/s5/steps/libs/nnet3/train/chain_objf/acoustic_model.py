@@ -26,15 +26,26 @@ def create_phone_lm(dir, tree_dir, run_opts, lm_opts=None):
     This method trains a phone LM for chain training using the alignments
     in "tree_dir"
     """
+    try:
+        f = open(tree_dir + "/num_jobs", 'r')
+        num_ali_jobs = int(f.readline())
+        assert num_ali_jobs > 0
+    except:
+        raise Exception("""There was an error getting the number of alignment
+                        jobs from {0}/num_jobs""".format(tree_dir))
+
+    alignments=' '.join(['{0}/ali.{1}.gz'.format(tree_dir, job)
+                         for job in range(1, num_ali_jobs + 1)])
+
     common_lib.run_job(
         """{command} {dir}/log/make_phone_lm.log \
-                chain-est-phone-lm {lm_opts} \
-                "ark:gunzip -c {tree_dir}/ali.*.gz | \
-                    ali-to-phones {tree_dir}/final.mdl ark:- ark:- |" \
-                {dir}/phone_lm.fst""".format(
-                    command=run_opts.command, dir=dir,
-                    lm_opts=lm_opts if lm_opts is not None else '',
-                    tree_dir=tree_dir))
+    gunzip -c {alignments} \| \
+    ali-to-phones {tree_dir}/final.mdl ark:- ark:- \| \
+    chain-est-phone-lm {lm_opts} ark:- {dir}/phone_lm.fst""".format(
+        command=run_opts.command, dir=dir,
+        alignments=alignments,
+        lm_opts=lm_opts if lm_opts is not None else '',
+        tree_dir=tree_dir))
 
 
 def create_denominator_fst(dir, tree_dir, run_opts):
@@ -119,7 +130,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                      l2_regularize, xent_regularize, leaky_hmm_coefficient,
                      momentum, max_param_change,
                      shuffle_buffer_size, num_chunk_per_minibatch_str,
-                     frame_subsampling_factor, truncate_deriv_weights,
+                     frame_subsampling_factor,
                      cache_io_opts, run_opts):
     """
     Called from train_one_iteration(), this method trains new models
@@ -168,7 +179,6 @@ def train_new_models(dir, iter, srand, num_jobs,
                     "{raw_model}" {dir}/den.fst \
                     "ark,bg:nnet3-chain-copy-egs \
                         --left-context={lc} --right-context={rc} \
-                        --truncate-deriv-weights={trunc_deriv} \
                         --frame-shift={fr_shft} \
                         ark:{egs_dir}/cegs.{archive_index}.ark ark:- | \
                         nnet3-chain-shuffle-egs --buffer-size={buf_size} \
@@ -181,7 +191,6 @@ def train_new_models(dir, iter, srand, num_jobs,
                         next_iter=iter + 1, job=job,
                         deriv_time_opts=" ".join(deriv_time_opts),
                         lc=left_context, rc=right_context,
-                        trunc_deriv=truncate_deriv_weights,
                         app_deriv_wts=apply_deriv_weights,
                         fr_shft=frame_shift, l2=l2_regularize,
                         xent_reg=xent_regularize, leaky=leaky_hmm_coefficient,
@@ -220,10 +229,8 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         l2_regularize, xent_regularize,
                         leaky_hmm_coefficient,
                         momentum, max_param_change, shuffle_buffer_size,
-                        frame_subsampling_factor, truncate_deriv_weights,
-                        run_opts,
-                        dropout_edit_string="",
-                        background_process_handler=None):
+                        frame_subsampling_factor,
+                        run_opts, background_process_handler=None):
     """ Called from steps/nnet3/chain/train.py for one iteration for
     neural network training with LF-MMI objective
 
@@ -237,10 +244,9 @@ def train_one_iteration(dir, iter, srand, egs_dir,
     if os.path.exists('{0}/srand'.format(dir)):
         try:
             saved_srand = int(open('{0}/srand'.format(dir)).readline().strip())
-        except (IOError, ValueError):
-            logger.error("Exception while reading the random seed "
-                         "for training")
-            raise
+        except (IOError, ValueError) as e:
+            raise Exception("Exception while reading the random seed "
+                            "for training: {0}".format(e.str()))
         if srand != saved_srand:
             logger.warning("The random seed provided to this iteration "
                            "(srand={0}) is different from the one saved last "
@@ -304,17 +310,6 @@ def train_one_iteration(dir, iter, srand, egs_dir,
             num_chunk_per_minibatch_str)
         cur_max_param_change = float(max_param_change) / math.sqrt(2)
 
-    raw_model_string = raw_model_string + dropout_edit_string
-
-    shrink_info_str = ''
-    if shrinkage_value != 1.0:
-        shrink_info_str = ' and shrink value is {0}'.format(shrinkage_value)
-
-    logger.info("On iteration {0}, learning rate is {1}"
-                "{shrink_info}.".format(
-                    iter, learning_rate,
-                    shrink_info=shrink_info_str))
-
     train_new_models(dir=dir, iter=iter, srand=srand, num_jobs=num_jobs,
                      num_archives_processed=num_archives_processed,
                      num_archives=num_archives,
@@ -332,7 +327,6 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      shuffle_buffer_size=shuffle_buffer_size,
                      num_chunk_per_minibatch_str=cur_num_chunk_per_minibatch_str,
                      frame_subsampling_factor=frame_subsampling_factor,
-                     truncate_deriv_weights=truncate_deriv_weights,
                      cache_io_opts=cache_io_opts, run_opts=run_opts)
 
     [models_to_average, best_model] = common_train_lib.get_successful_models(
@@ -534,7 +528,7 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_st
 
     models_to_combine.add(num_iters)
 
-    for iter in sorted(models_to_combine):
+    for iter in models_to_combine:
         model_file = '{0}/{1}.mdl'.format(dir, iter)
         if os.path.exists(model_file):
             raw_model_strings.append(

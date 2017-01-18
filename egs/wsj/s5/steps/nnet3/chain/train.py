@@ -469,7 +469,6 @@ def train(args, run_opts, background_process_handler):
                 max_param_change=args.max_param_change,
                 shuffle_buffer_size=args.shuffle_buffer_size,
                 frame_subsampling_factor=args.frame_subsampling_factor,
-                truncate_deriv_weights=args.truncate_deriv_weights,
                 run_opts=run_opts,
                 background_process_handler=background_process_handler)
 

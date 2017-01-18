@@ -2,7 +2,20 @@
 
 # run_tdnn_1c.sh is like run_tdnn_1b.sh but changing chunk-width from 150 to
 # '140,110,160', and
-# and --trainer.num-chunk-per-minibatch from 128 to 128,64
+# and --trainer.num-chunk-per-minibatch from 128 to 128,64.
+# Not better; if anything a little worse.  But could possibly be noise.
+
+# local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn1b_sp_bi exp/chain_cleaned/tdnn1c_sp_bi
+# System                tdnn1b_sp_bi tdnn1c_sp_bi
+# WER on dev(orig)            9.4       9.8
+# WER on dev(rescored)        8.8       9.0
+# WER on test(orig)           9.6       9.7
+# WER on test(rescored)       9.0       9.2
+# Final train prob        -0.0870   -0.0942
+# Final valid prob        -0.1147   -0.1108
+# Final train prob (xent)   -1.4014   -1.4227
+# Final valid prob (xent)   -1.5634   -1.4884
+
 
 # run_tdnn_1b.sh is like run_tdnn_1a.sh but upgrading to xconfig-based
 # config generation.

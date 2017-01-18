@@ -329,7 +329,7 @@ while [ $x -lt $num_iters ]; do
         --cmd "$cmd" --use-gpu false \
         --minibatch-size $minibatch_size \
         --use-raw-nnet false --iter epoch$e $dir $degs_dir \
-        || { touch $dir/.error; echo "Error in adjusting priors. See $dir/log/adjust_priors.epoch$e.log"; exit 1; }
+        || { touch $dir/.error; echo "Error in adjusting priors. See errors above."; exit 1; }
     ) &
   fi
 
