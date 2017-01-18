@@ -5,9 +5,9 @@ KALDIROOT=/exports/home/aghoshal/kaldi/trunk
 [ -f $KALDI_ROOT/tools/env.sh ] && . $KALDI_ROOT/tools/env.sh
 
 KALDISRC=$KALDIROOT/src
-KALDIBIN=$KALDISRC/bin:$KALDISRC/featbin:$KALDISRC/fgmmbin:$KALDISRC/fstbin  
+KALDIBIN=$KALDISRC/bin:$KALDISRC/featbin:$KALDISRC/fgmmbin:$KALDISRC/fstbin
 KALDIBIN=$KALDIBIN:$KALDISRC/gmmbin:$KALDISRC/latbin:$KALDISRC/nnetbin
-KALDIBIN=$KALDIBIN:$KALDISRC/sgmmbin:$KALDISRC/lm
+KALDIBIN=$KALDIBIN:$KALDISRC/sgmm2bin:$KALDISRC/lmbin
 
 FSTBIN=$KALDIROOT/tools/openfst/bin
 LMBIN=$KALDIROOT/tools/irstlm/bin
@@ -34,4 +34,3 @@ export LC_ALL=C
 
 # Site-specific configs:
 [ `hostname -y` == ecdf ] && { . path_ed.sh; }
-

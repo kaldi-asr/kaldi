@@ -208,7 +208,6 @@ done
 # local/run_raw_fmllr.sh
 
 # You don't have to run all 3 of the below, e.g. you can just run the run_sgmm2.sh
-#local/run_sgmm.sh
 local/run_sgmm2.sh
 #local/run_sgmm2x.sh
 
