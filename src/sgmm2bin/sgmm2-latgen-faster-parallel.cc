@@ -29,7 +29,7 @@ using std::string;
 #include "fstext/fstext-lib.h"
 #include "decoder/decoder-wrappers.h"
 #include "sgmm2/decodable-am-sgmm2.h"
-#include "thread/kaldi-task-sequence.h"
+#include "util/kaldi-thread.h"
 #include "base/timer.h"
 
 namespace kaldi {
