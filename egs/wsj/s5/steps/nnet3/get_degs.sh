@@ -159,6 +159,8 @@ case $feat_type in
   *) echo "Invalid feature type $feat_type" && exit 1;
 esac
 
+cp $srcdir/{splice_opts,cmvn_opts} $dir 2>/dev/null || true
+
 if [ ! -z "$transform_dir" ]; then
   echo "$0: using transforms from $transform_dir"
   [ ! -s $transform_dir/num_jobs ] && \

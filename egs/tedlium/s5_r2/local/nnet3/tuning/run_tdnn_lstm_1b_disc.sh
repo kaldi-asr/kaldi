@@ -144,9 +144,9 @@ if [ $stage -le 4 ]; then
     for decode_set in dev test; do
       num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
       for iter in epoch$x epoch${x}_adj; do
-
+      (
         steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" --iter $iter \
-          --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
+          --online-ivector-dir exp/nnet3_cleaned/ivectors_${decode_set}_hires \
           $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_${iter} || exit 1;
 
         steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
@@ -154,6 +154,7 @@ if [ $stage -le 4 ]; then
           $dir/decode_${decode_set}_${iter} \
           $dir/decode_${decode_set}_${iter}_rescore || exit 1;
       ) &
+      done
     done
   done
 fi

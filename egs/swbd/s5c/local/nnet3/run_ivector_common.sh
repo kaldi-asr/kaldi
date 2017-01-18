@@ -13,6 +13,9 @@ speed_perturb=true
 mkdir -p nnet3
 # perturbed data preparation
 train_set=train_nodup
+
+if [ -e data/rt03 ]; then maybe_rt03=rt03; else maybe_rt03= ; fi
+
 if [ "$speed_perturb" == "true" ]; then
   if [ $stage -le 1 ]; then
     #Although the nnet will be trained by high resolution data, we still have to perturbe the normal data to get the alignment
@@ -81,7 +84,7 @@ for line in sys.stdin.readlines():
     utils/fix_data_dir.sh data/${dataset}_hires;
   done
 
-  for dataset in eval2000 train_dev rt03; do
+  for dataset in eval2000 train_dev $maybe_rt03; do
     # Create MFCCs for the eval set
     utils/copy_data_dir.sh data/$dataset data/${dataset}_hires
     steps/make_mfcc.sh --cmd "$train_cmd" --nj 10 --mfcc-config conf/mfcc_hires.conf \
@@ -133,7 +136,7 @@ if [ $stage -le 8 ]; then
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
     data/${train_set}_max2_hires exp/nnet3/extractor exp/nnet3/ivectors_$train_set || exit 1;
 
-  for data_set in eval2000 train_dev rt03; do
+  for data_set in eval2000 train_dev $maybe_rt03; do
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
       data/${data_set}_hires exp/nnet3/extractor exp/nnet3/ivectors_$data_set || exit 1;
   done
