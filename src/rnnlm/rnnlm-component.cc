@@ -210,6 +210,16 @@ void AffineSampleLogSoftmaxComponent::Backprop(
                                const CuMatrixBase<BaseFloat> &output_deriv,
                                LmOutputComponent *to_update_0,
                                CuMatrixBase<BaseFloat> *input_deriv) const {
+
+  CuMatrix<BaseFloat> tmp(out_value);
+  tmp.Set(0.0);
+  tmp.CopyRowsFromVec(bias_params_.Row(0));
+  tmp.AddMatMat(1.0, in_value, kNoTrans, linear_params_, kTrans, 1.0);
+
+  // now tmp is the in_value for log-softmax
+
+  tmp.DiffLogSoftmaxPerRow(tmp, output_deriv);
+
   if (input_deriv != NULL)
     input_deriv->AddMatMat(1.0, output_deriv, kNoTrans, linear_params_, kNoTrans,
                            1.0);

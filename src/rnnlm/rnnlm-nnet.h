@@ -47,8 +47,15 @@ namespace rnnlm {
 class LmNnet {
  public:
   friend class LmNnetSamplingTrainer;
+  friend class LmNnetComputeProb;
   LmNnet() {
     nnet_ = new nnet3::Nnet();
+  }
+
+  LmNnet(const LmNnet &other) {
+    input_projection_ = dynamic_cast<kaldi::rnnlm::LmInputComponent*>(other.input_projection_->Copy());
+    output_projection_ = dynamic_cast<kaldi::rnnlm::LmOutputComponent*>(other.output_projection_->Copy());
+    nnet_ = other.nnet_->Copy();
   }
 
   ~LmNnet() {

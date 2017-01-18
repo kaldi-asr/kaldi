@@ -29,6 +29,7 @@ int main(int argc, char *argv[]) {
     std::string use_gpu = "no";
     LmNnetComputeProbOptions compute_prob_opts;
     compute_prob_opts.compute_deriv = true;
+    compute_prob_opts.normalize_probs = true;
 
     po.Register("num-segments", &num_segments,
                 "Number of line segments used for computing derivatives");
@@ -91,9 +92,10 @@ int main(int argc, char *argv[]) {
           prob_computer.Compute(*eg_iter);
         const rnnlm::SimpleObjectiveInfo *objf_info = prob_computer.GetObjective("output");
         double objf_per_frame = objf_info->tot_objective / objf_info->tot_weight;
-        const LmNnet &nnet_gradient = prob_computer.GetDeriv();
         KALDI_LOG << "At position " << middle
                   << ", objf per frame is " << objf_per_frame;
+
+        const LmNnet &nnet_gradient = prob_computer.GetDeriv();
 
         Vector<BaseFloat> old_dotprod(num_updatable), new_dotprod(num_updatable);
         ComponentDotProducts(nnet_gradient, nnet1, &old_dotprod);

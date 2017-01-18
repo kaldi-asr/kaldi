@@ -312,7 +312,7 @@ std::string PrintVectorPerUpdatableComponent(const LmNnet &lm_nnet,
   }
   os << "rnnlm input: "  << vec(updatable_c) << " ";
   os << "rnnlm output: " << vec(updatable_c + 1) << " ";
-  KALDI_ASSERT(updatable_c == vec.Dim());
+  KALDI_ASSERT(updatable_c + 2 == vec.Dim());
   os << ']';
   return os.str();
 }

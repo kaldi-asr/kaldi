@@ -64,6 +64,11 @@ void LmNnetComputeProb::Compute(const NnetExample &eg) {
   GetComputationRequest(nnet_.Nnet(), eg, need_model_derivative,
                         store_component_stats,
                         &request);
+
+  KALDI_ASSERT(request.inputs.size() == 1);
+  request.inputs[0].has_deriv = true;
+
+
   const NnetComputation *computation = compiler_.Compile(request);
   NnetComputer computer(config_.compute_config, *computation,
                         nnet_.Nnet(), (deriv_nnet_ != NULL? deriv_nnet_->GetNnet(): NULL));
@@ -76,14 +81,20 @@ void LmNnetComputeProb::Compute(const NnetExample &eg) {
   computer.Forward();
 
   this->ProcessOutputs(eg, &computer);
-  if (config_.compute_deriv)
+  if (config_.compute_deriv) {
     computer.Backward();
+
+    CuMatrix<BaseFloat> first_deriv(computer.GetInputDeriv("input"));
+    CuMatrix<BaseFloat> place_holder;
+    nnet_.I()->Backprop(old_in, place_holder,
+                     first_deriv, deriv_nnet_->input_projection_, NULL);
+  }
 }
 
 void LmNnetComputeProb::ProcessOutputs(const NnetExample &eg,
                                      NnetComputer *computer) {
   std::vector<NnetIo>::const_iterator iter = eg.io.begin(),
-      end = eg.io.end();
+                                       end = eg.io.end();
   for (; iter != end; ++iter) {
     const NnetIo &io = *iter;
     int32 node_index = nnet_.Nnet().GetNodeIndex(io.name);
@@ -107,7 +118,7 @@ void LmNnetComputeProb::ProcessOutputs(const NnetExample &eg,
                                  io.features, obj_type, io.name,
                                  supply_deriv, computer,
                                  &tot_weight, &tot_objf, *nnet_.O(), &output
-                                 , deriv_nnet_
+                                 , supply_deriv? deriv_nnet_:NULL
                                  );
         SimpleObjectiveInfo &totals = objf_info_[io.name];
         totals.tot_weight += tot_weight;

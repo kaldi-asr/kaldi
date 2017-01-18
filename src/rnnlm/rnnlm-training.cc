@@ -631,8 +631,8 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionExact(
                               CuMatrix<BaseFloat> *new_output,
                               LmNnet *nnet) {
 //  *new_output = computer->GetOutput(output_name);
-  CuMatrix<BaseFloat> old_output;
-  computer->GetOutputDestructive(output_name, &old_output);
+  const CuMatrixBase<BaseFloat> &old_output = computer->GetOutput(output_name);
+//  computer->GetOutputDestructive(output_name, &old_output);
 
   KALDI_ASSERT(supervision.Type() == kSparseMatrix);
   const SparseMatrix<BaseFloat> &post = supervision.GetSparseMatrix();

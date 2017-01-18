@@ -53,7 +53,7 @@ struct LmNnetComputeProbOptions {
       debug_computation(false),
       compute_deriv(false),
       compute_accuracy(true),
-      normalize_probs(true) { }
+      normalize_probs(false) { }
   void Register(OptionsItf *opts) {
     // compute_deriv is not included in the command line options
     // because it's not relevant for nnet3-compute-prob.
