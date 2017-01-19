@@ -319,7 +319,7 @@ void ExampleGenerationConfig::ComputeDerived() {
     }
     KALDI_LOG << "Rounding up --num-frames=" << num_frames_str
               << " to multiples of --frame-subsampling-factor=" << m
-              << ", to: " << rounded_num_frames_str;
+              << ", to: " << rounded_num_frames_str.str();
   }
 }
 
