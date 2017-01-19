@@ -15,7 +15,7 @@ fi
 
 data=$1
 
-if [ -f $data/reco2num_frames ]; then
+if [ -s $data/reco2num_frames ]; then
   echo "$0: $data/reco2num_frames already present!"
   exit 0;
 fi
