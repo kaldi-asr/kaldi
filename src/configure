@@ -1180,4 +1180,6 @@ if [ -n "$ENV_LDLIBS" ]; then echo "LDLIBS += $ENV_LDLIBS" >> kaldi.mk; fi
 # and possibly modifies the kaldi.mk file that we just generated.
 check_for_slow_expf;
 echo "SUCCESS"
+echo "To compile: make clean -j; make depend -j; make -j"
+echo " ... or e.g. -j 10, instead of -j, to use a specified number of CPUs"
 exit 0;
