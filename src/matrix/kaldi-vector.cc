@@ -307,6 +307,14 @@ void VectorBase<Real>::SetRandn() {
 }
 
 template<typename Real>
+void VectorBase<Real>::SetRandUniform() {
+  kaldi::RandomState rstate;
+  for (MatrixIndexT i = 0; i < Dim(); i++) {
+    *(data_+i) = RandUniform(&rstate);
+  }
+}
+
+template<typename Real>
 MatrixIndexT VectorBase<Real>::RandCategorical() const {
   kaldi::RandomState rstate;
   Real sum = this->Sum();
