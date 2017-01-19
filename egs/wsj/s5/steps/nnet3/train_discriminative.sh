@@ -258,11 +258,7 @@ while [ $x -lt $num_iters ]; do
         fi
 
         if $use_frame_shift; then
-          if [ $[num_archives % frame_subsampling_factor] -ne 0 ]; then
-            frame_shift=$[k % frame_subsampling_factor]
-          else
-            frame_shift=$[(k + k/num_archives) % frame_subsampling_factor]
-          fi
+          frame_shift=$[(k%num_archives + k/num_archives) % frame_subsampling_factor]
         else
           frame_shift=0
         fi

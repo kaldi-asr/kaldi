@@ -37,7 +37,7 @@ criterion=smbr
 one_silence_class=true
 
 # you can set --disc-affix if you run different configurations, e.g. --disc-affix "_b"
-disc_affix=
+disc_affix=slow
 
 dir=${srcdir}_${criterion}${disc_affix}
 
@@ -56,10 +56,10 @@ extra_right_context=0
 
 
 ## Nnet training options
-effective_learning_rate=0.0000125
+effective_learning_rate=0.000005
 max_param_change=1
 num_jobs_nnet=4
-num_epochs=4
+num_epochs=2
 regularization_opts=          # Applicable for providing --xent-regularize and --l2-regularize options,
                               # in chain models.
 minibatch_size="300=32,16/150=64,32"  # rule says: if chunk size is closer to 300, use minibatch size 32 (or 16 for mop-up);
@@ -146,11 +146,14 @@ if [ $stage -le 4 ]; then
       for iter in epoch$x epoch${x}_adj; do
       (
         steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" --iter $iter \
-          --online-ivector-dir exp/nnet3_cleaned/ivectors_${decode_set}_hires \
-          $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_${iter} || exit 1;
+        --extra-left-context $extra_left_context \
+        --extra-right-context $extra_right_context \
+        --extra-left-context-initial 0 --extra-right-context-final 0 \
+        --online-ivector-dir exp/nnet3_cleaned/ivectors_${decode_set}_hires \
+         $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_${iter} || exit 1;
 
         steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-          data/lang_test data/lang_rescore data/${decode_set}_hires \
+          data/lang data/lang_rescore data/${decode_set}_hires \
           $dir/decode_${decode_set}_${iter} \
           $dir/decode_${decode_set}_${iter}_rescore || exit 1;
       ) &

@@ -62,18 +62,7 @@ if [ $stage -le 3 ]; then
   for dataset in $train_set train_100k_nodup; do
     utils/copy_data_dir.sh data/$dataset data/${dataset}_hires
 
-    # scale the waveforms, this is useful as we don't use CMVN
-    data_dir=data/${dataset}_hires
-    cat $data_dir/wav.scp | python -c "
-import sys, os, subprocess, re, random
-scale_low = 1.0/8
-scale_high = 2.0
-for line in sys.stdin.readlines():
-  if len(line.strip()) == 0:
-    continue
-  print '{0} sox --vol {1} -t wav - -t wav - |'.format(line.strip(), random.uniform(scale_low, scale_high))
-"| sort -k1,1 -u  > $data_dir/wav.scp_scaled || exit 1;
-    mv $data_dir/wav.scp_scaled $data_dir/wav.scp
+    utils/data/perturb_data_dir_volume.sh adata/${dataset}_hires
 
     steps/make_mfcc.sh --nj 70 --mfcc-config conf/mfcc_hires.conf \
         --cmd "$train_cmd" data/${dataset}_hires exp/make_hires/$dataset $mfccdir;
@@ -131,7 +120,7 @@ if [ $stage -le 8 ]; then
 
   # having a larger number of speakers is helpful for generalization, and to
   # handle per-utterance decoding well (iVector starts at zero).
-  steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/${train_set}_hires data/${train_set}_max2_hires
+  utils/data/modify_speaker_info.sh --utts-per-spk-max 2 data/${train_set}_hires data/${train_set}_max2_hires
 
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
     data/${train_set}_max2_hires exp/nnet3/extractor exp/nnet3/ivectors_$train_set || exit 1;
