@@ -50,6 +50,9 @@ class VectorBase {
   /// Set vector to random normally-distributed noise.
   void SetRandn();
 
+  /// Sets to numbers uniformly distributed on (0,1)
+  void SetRandUniform();
+
   /// This function returns a random index into this vector,
   /// chosen with probability proportional to the corresponding
   /// element.  Requires that this->Min() >= 0 and this->Sum() > 0.
