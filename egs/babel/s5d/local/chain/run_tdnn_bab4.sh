@@ -5,7 +5,6 @@
 # local/chain/run_tdnn.sh
 # %WER 47.3 | 19252 60586 | 57.5 29.1 13.4 4.8 47.3 31.7 | -0.595 | exp/chain_cleaned/tdnnbab4_sp_bi/decode_dev10h.pem/score_8/penalty_0.25/dev10h.pem.ctm.sys
 
-
 set -e -o pipefail
 
 # First the options that are passed through to run_ivector_common.sh
@@ -136,8 +135,8 @@ if [ $stage -le 18 ]; then
     utils/create_split_dir.pl \
      /export/b0{5,6,7,8}/$USER/kaldi-data/egs/ami-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
-
- touch $dir/egs/.nodelete # keep egs around when that run dies.
+  [ ! -d $dir/egs ] && mkdir -p $dir/egs/
+  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train.py --stage $train_stage \
     --cmd "$decode_cmd" \

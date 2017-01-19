@@ -175,7 +175,12 @@ cat $workdir/keywords.txt |\
   local/kwords2indices.pl --map-oov 0 $workdir/words.normalized.txt > $workdir/keywords.int
 
 
-cat $workdir/L1.lex $workdir/lexicon/lexicon.lex | sed 's/\t/ /g' |  sort -u > $workdir/L2.lex
+cat $workdir/L1.lex $workdir/lexicon/lexicon.lex | sed 's/\t/ /g' | \
+  perl -ne 'chomp;
+             ($word, $pron) = split / /, $_, 2;
+             $pron =~ s/_[^ ]*//g;
+             print "$word $pron\n";' | \
+  sort -u > $workdir/L2.lex
 
 cat $workdir/L1.revdup.fst.txt |\
   fstcompile --isymbols=$workdir/words.txt --osymbols=$workdir/words.txt - |\

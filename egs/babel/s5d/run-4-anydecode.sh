@@ -417,7 +417,7 @@ if [ -f exp/sgmm5/.done ]; then
   for iter in 1 2 3 4; do
       # Decode SGMM+MMI (via rescoring).
     decode=exp/sgmm5_mmi_b0.1/decode_fmllr_${dataset_id}_it$iter
-    if [ ! -f $decode/.done ]; then
+    if [ -x exp/sgmm5_mmi_b0.1 ] && [ ! -f $decode/.done ]; then
 
       mkdir -p $decode
       steps/decode_sgmm2_rescore.sh  --skip-scoring true \
@@ -434,11 +434,13 @@ if [ -f exp/sgmm5/.done ]; then
   for iter in 1 2 3 4; do
     # Decode SGMM+MMI (via rescoring).
     decode=exp/sgmm5_mmi_b0.1/decode_fmllr_${dataset_id}_it$iter
+    if [ -f $decode/.done ]; then
       local/run_kws_stt_task2.sh --cer $cer --max-states $max_states \
         --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
         --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
       "${lmwt_plp_extra_opts[@]}" \
       ${dataset_dir} data/langp_test $decode
+    fi
   done
 fi
 

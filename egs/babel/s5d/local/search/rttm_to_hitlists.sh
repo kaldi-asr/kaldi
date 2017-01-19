@@ -8,7 +8,7 @@ segments=
 utt_table=
 # End configuration section
 echo $0 "$@"
-. parse_options.sh || exit 1;
+. ./utils/parse_options.sh || exit 1;
 
 set -e -o pipefail
 set -o nounset                              # Treat unset variables as an error

@@ -3,6 +3,7 @@
 # This is not necessarily the top-level run.sh as it is in other directories.   see README.txt first.
 tri5_only=false
 sgmm5_only=false
+denlats_only=false
 data_only=false
 
 [ ! -f ./lang.conf ] && echo 'Language configuration does not exist! Use the configurations in conf/lang/* as a startup' && exit 1
@@ -328,6 +329,14 @@ if [ ! -f exp/sgmm5_denlats/.done ]; then
     data/train data/langp/sgmm5 exp/sgmm5_ali exp/sgmm5_denlats
   touch exp/sgmm5_denlats/.done
 fi
+
+
+if $denlats_only ; then
+  echo "Exiting after generating denlats, as requested. "
+  echo "Everything went fine. Done"
+  exit 0;
+fi
+
 
 if [ ! -f exp/sgmm5_mmi_b0.1/.done ]; then
   echo ---------------------------------------------------------------------

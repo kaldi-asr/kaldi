@@ -12,11 +12,11 @@ set -e -o pipefail
 stage=-2
 nj=30
 min_seg_len=1.55
-train_set=train_xcleaned
-gmm=tri5_xcleaned  # the gmm for the target data
+train_set=train_cleaned
+gmm=tri5_cleaned  # the gmm for the target data
 langdir=data/langp/tri5_ali
 num_threads_ubm=12
-nnet3_affix=_xcleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
+nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
 
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
@@ -138,8 +138,8 @@ if [ $stage -le 18 ]; then
     utils/create_split_dir.pl \
      /export/b0{5,6,7,8}/$USER/kaldi-data/egs/ami-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
-
- touch $dir/egs/.nodelete # keep egs around when that run dies.
+  [ ! -d $dir/egs ] && mkdir -p $dir/egs/
+  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train.py --stage $train_stage \
     --cmd "$decode_cmd" \
