@@ -147,7 +147,7 @@ if [ $stage -le 4 ]; then
       for iter in epoch$x epoch${x}_adj; do
 
         steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" --iter $iter \
-          --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
+          --online-ivector-dir exp/nnet3/ivectors_${decode_set}_hires \
           $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_sw1_tg_${iter} || exit 1;
 
         steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \

@@ -240,6 +240,7 @@ bool NnetChainTrainer::PrintTotalStats() const {
     const ObjectiveFunctionInfo &info = iter->second;
     ans = info.PrintTotalStats(name) || ans;
   }
+  PrintMaxChangeStats();
   return ans;
 }
 
