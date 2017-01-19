@@ -341,6 +341,12 @@ if [ ! -f exp/tri5_ali/.done ]; then
   touch exp/tri5_ali/.done
 fi
 
+if [ ! -f data/langp_test/.done ]; then
+  cp -R data/langp/tri5_ali/ data/langp_test
+  cp data/lang/G.fst data/langp_test
+  touch data/langp_test/.done
+fi
+
 if $tri5_only ; then
   echo "Exiting after stage TRI5, as requested. "
   echo "Everything went fine. Done"
