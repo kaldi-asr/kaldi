@@ -65,8 +65,10 @@ void LmNnetComputeProb::Compute(const NnetExample &eg) {
                         store_component_stats,
                         &request);
 
-  KALDI_ASSERT(request.inputs.size() == 1);
-  request.inputs[0].has_deriv = true;
+  if (need_model_derivative) {
+    KALDI_ASSERT(request.inputs.size() == 1);
+    request.inputs[0].has_deriv = true;
+  }
 
 
   const NnetComputation *computation = compiler_.Compile(request);

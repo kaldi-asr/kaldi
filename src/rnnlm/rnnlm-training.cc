@@ -270,11 +270,12 @@ void LmNnetSamplingTrainer::ProcessOutputs(const NnetExample &eg,
       bool supply_deriv = true;
 
       if (dynamic_cast<const AffineSampleLogSoftmaxComponent*>(nnet_->O()) != NULL) {
-        ComputeObjectiveFunctionSample(unigram_, io.features, obj_type, io.name,
-                                 supply_deriv, computer,
-                                 &tot_weight, &tot_objf,
-                                 *nnet_->O(),
-                                 &new_output_, delta_nnet_);
+        ComputeObjectiveFunctionSample(config_.sample_size, unigram_, io.features,
+                                       obj_type, io.name,
+                                       supply_deriv, computer,
+                                       &tot_weight, &tot_objf,
+                                       *nnet_->O(),
+                                       &new_output_, delta_nnet_);
       } else if (dynamic_cast<const LinearSoftmaxNormalizedComponent*>(nnet_->O())
                    != NULL) {
         ComputeObjectiveFunctionNormalized(io.features, obj_type, io.name,
@@ -501,6 +502,7 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionNormalized(
 //}
 //
 void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
+                              int num_samples,
                               const vector<BaseFloat> &unigram,
                               const GeneralMatrix &supervision,
                               ObjectiveType objective_type,
@@ -532,19 +534,30 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
     outputs_set.insert(non_zero_index);
   }
 
-  NormalizeVec(2 * k, outputs_set, &selection_probs);
-
-  vector<std::pair<int, BaseFloat> > u(selection_probs.size());
-  for (int i = 0; i < u.size(); i++) {
-    u[i].first = i;
-    u[i].second = selection_probs[i];
+  if (num_samples == -1) {
+    num_samples = unigram.size();
   }
-  vector<int> samples;
-  SampleWithoutReplacement(u, 2 * k, &samples);
 
-  vector<BaseFloat> selected_probs(samples.size());
-  for (int i = 0; i < samples.size(); i++) {
-    selected_probs[i] = std::min(BaseFloat(1.0), selection_probs[samples[i]]);
+  KALDI_ASSERT(num_samples > k);
+
+  vector<BaseFloat> selected_probs(num_samples);
+  vector<int> samples(num_samples);
+  if (num_samples > k) {
+    NormalizeVec(num_samples, outputs_set, &selection_probs);
+    vector<std::pair<int, BaseFloat> > u(selection_probs.size());
+    for (int i = 0; i < u.size(); i++) {
+      u[i].first = i;
+      u[i].second = selection_probs[i];
+    }
+    SampleWithoutReplacement(u, num_samples, &samples);
+    for (int i = 0; i < samples.size(); i++) {
+      selected_probs[i] = std::min(BaseFloat(1.0), selection_probs[samples[i]]);
+    }
+  } else {
+    for (int i = 0; i < num_samples; i++) {
+      samples[i] = i;
+      selected_probs[i] = 1.0;
+    }
   }
 
   CuMatrix<BaseFloat> out(new_output->NumRows(), samples.size(), kSetZero);
@@ -556,10 +569,15 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
   
   vector<int> correct_indexes(out.NumRows(), -1);
   for (int j = 0; j < outputs.size(); j++) {
-    for (int i = 0; i < samples.size(); i++) {
-      if (samples[i] == outputs[j]) {
-        correct_indexes[j] = i;
-        break;
+    if (num_samples == -1) {
+      correct_indexes[j] = outputs[j];
+      KALDI_ASSERT(samples[correct_indexes[j]] == outputs[j]);
+    } else {
+      for (int i = 0; i < samples.size(); i++) {
+        if (samples[i] == outputs[j]) {
+          correct_indexes[j] = i;
+          break;
+        }
       }
     }
   }
@@ -596,9 +614,9 @@ void LmNnetSamplingTrainer::ComputeObjectiveFunctionSample(
 //  CuMatrix<BaseFloat> row_sum(1, t3.NumRows(), kSetZero);
 //  row_sum.AddMatMat(1.0, t3, kNoTrans, ones, kNoTrans, 0.0);
 
-  BaseFloat neg_term = t3.Sum();
+  BaseFloat neg_term = t3.Sum() + t3.NumRows();  // +1 per row for -log x <= 1 - x
   *tot_objf += neg_term;
-  KALDI_LOG << "the average normalization term in this minibatch is " << -neg_term / t3.NumRows();
+//  KALDI_LOG << "the average normalization term in this minibatch is " << -neg_term / t3.NumRows();
 
   if (supply_deriv && nnet != NULL) {
     t3.AddMat(1.0, t2); // this is the correct derivative

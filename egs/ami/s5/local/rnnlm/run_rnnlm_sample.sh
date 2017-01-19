@@ -39,6 +39,7 @@ clipping_threshold=30
 label_delay=0  # 5
 splice_indexes=0
 use_gpu=no
+num_samples=512
 
 type=rnn  # or lstm
 
@@ -48,7 +49,7 @@ id=
 . path.sh
 . parse_options.sh || exit 1;
 
-outdir=sampling-rnnlm-$type-$initial_learning_rate-$final_learning_rate-$learning_rate_decline_factor-$minibatch_size-$hidden_dim-$num_archives
+outdir=sampling-rnnlm-$type-$initial_learning_rate-$final_learning_rate-$learning_rate_decline_factor-$minibatch_size-$hidden_dim-$num_archives-$num_samples
 #outdir=sample
 srcdir=data/local/dict
 
@@ -238,7 +239,7 @@ if [ $stage -le $num_iters ]; then
 
 #        $cuda_cmd $outdir/log/train.rnnlm.$n.log rnnlm-train --use-gpu=$use_gpu --binary=false \
 
-        $cmd $outdir/log/train.rnnlm.$n.log rnnlm-train --use-gpu=$use_gpu --binary=false \
+        $cmd $outdir/log/train.rnnlm.$n.log rnnlm-train --sample-size=$num_samples --use-gpu=$use_gpu --binary=false \
         --max-param-change=$max_param_change "rnnlm-copy --learning-rate=$learning_rate $outdir/$[$n-1].mdl -|" \
         "ark:nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$n ark:$outdir/egs/train.$this_archive.egs ark:- | nnet3-merge-egs --minibatch-size=$minibatch_size ark:- ark:- |" $outdir/$n.mdl $unigram
 

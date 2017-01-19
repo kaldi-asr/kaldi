@@ -20,6 +20,15 @@ std::string LmNnet::Info() const {
     num_params_this += p2->NumParameters();
   }
   os << "num-parameters: " << NumParameters(*this->nnet_) + num_params_this << "\n";
+
+  if ((p = dynamic_cast<LmInputComponent*>(input_projection_)) != NULL) {
+    os << "input: " << p->Info() << "\n";
+  }
+  if ((p2 = dynamic_cast<LmOutputComponent*>(output_projection_)) != NULL) {
+    os << "output: " << p2->Info() << "\n";
+  }
+
+
   os << "internal nnet info: \n" 
      << nnet_->Info();
   return os.str();
