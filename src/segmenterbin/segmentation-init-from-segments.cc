@@ -27,15 +27,15 @@
 // Beta-001 Beta 0.50 2.66
 // Beta-002 Beta 3.50 5.20
 // the output segmentation will contain
-// Alpha-001 [ 0 16 1 ]
-// Alpha-002 [ 0 360 1 ]
-// Beta-001 [ 0 216 1 ]
-// Beta-002 [ 0 170 1 ]
+// Alpha-001 [ 0 15 1 ]
+// Alpha-002 [ 0 359 1 ]
+// Beta-001 [ 0 215 1 ]
+// Beta-002 [ 0 169 1 ]
 // If --shift-to-zero=false is provided, then the output will contain
-// Alpha-001 [ 0 16 1 ]
-// Alpha-002 [ 150 410 1 ]
-// Beta-001 [ 50 266 1 ]
-// Beta-002 [ 350 520 1 ]
+// Alpha-001 [ 0 15 1 ]
+// Alpha-002 [ 150 409 1 ]
+// Beta-001 [ 50 265 1 ]
+// Beta-002 [ 350 519 1 ]
 //
 // If the following utt2label-rspecifier was provided:
 // Alpha-001 2
@@ -43,10 +43,10 @@
 // Beta-001 4
 // Beta-002 4
 // then the output segmentation will contain
-// Alpha-001 [ 0 16 2 ]
-// Alpha-002 [ 0 360 2 ]
-// Beta-001 [ 0 216 4 ]
-// Beta-002 [ 0 170 4 ]
+// Alpha-001 [ 0 15 2 ]
+// Alpha-002 [ 0 359 2 ]
+// Beta-001 [ 0 215 4 ]
+// Beta-002 [ 0 169 4 ]
 
 int main(int argc, char *argv[]) {
   try {
@@ -153,15 +153,16 @@ int main(int argc, char *argv[]) {
         segment_label = utt2label_reader.Value(utt);
       }
 
-      int32 length = round((end - frame_overlap)/ frame_shift)
-                     - round(start / frame_shift);
-
-      if (shift_to_zero)
-        segmentation.EmplaceBack(0, length, segment_label);
-      else
-        segmentation.EmplaceBack(round(start / frame_shift),
-                                 round((end-frame_overlap) / frame_shift) - 1,
-                                 segment_label);
+      if (shift_to_zero) {
+        int32 last_frame = (end-frame_overlap) / frame_shift 
+                           - start / frame_shift - 1;
+        segmentation.EmplaceBack(0, last_frame, segment_label);
+      } else {
+        segmentation.EmplaceBack(
+            static_cast<int32>(start / frame_shift + 0.5),
+            static_cast<int32>((end-frame_overlap) / frame_shift - 0.5),
+            segment_label);
+      }
 
       writer.Write(utt, segmentation);
       num_done++;

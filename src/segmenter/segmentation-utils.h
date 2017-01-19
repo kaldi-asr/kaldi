@@ -56,11 +56,18 @@ void ScaleFrameShift(BaseFloat factor, Segmentation *segmentation);
 void RemoveSegments(int32 label, Segmentation *segmentation);
 
 /**
- * This is very straight forward. It removes any segment whose label is
- * contained in the vector "labels"
+ * This removes any segment whose label is
+ * contained in the vector "labels" and has a length smaller than
+ * max_remove_length. max_remove_length can be provided -1 to 
+ * specify a value of +infinity i.e. to remove segments 
+ * based on only the labels and irrespective of their lengths.
 **/
 void RemoveSegments(const std::vector<int32> &labels,
+                    int32 max_remove_length,
                     Segmentation *segmentation);
+
+void RemoveShortSegments(int32 label, int32 min_length,
+                         Segmentation *segmentation);
 
 // Keep only segments of label "label"
 void KeepSegments(int32 label, Segmentation *segmentation);

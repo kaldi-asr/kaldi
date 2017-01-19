@@ -54,18 +54,27 @@ void RelabelSegmentsUsingMap(const unordered_map<int32, int32> &label_map,
   }
 
   for (SegmentList::iterator it = segmentation->Begin();
-       it != segmentation->End(); ++it) {
+       it != segmentation->End(); ) {
     unordered_map<int32, int32>::const_iterator map_it = label_map.find(
         it->Label());
+    int32 dest_label = -100;
     if (map_it == label_map.end()) {
       if (default_label == -1)
         KALDI_ERR << "Could not find label " << it->Label()
                   << " in label map.";
       else
-        it->SetLabel(default_label);
+        dest_label = default_label;
     } else {
-      it->SetLabel(map_it->second);
+      dest_label = map_it->second;
     }
+
+    if (dest_label == -1) {
+      // Remove segments that will be mapped to label -1.
+      it = segmentation->Erase(it);  
+      continue;
+    } 
+    it->SetLabel(dest_label);
+    ++it;
   }
 }
 
@@ -98,6 +107,7 @@ void RemoveSegments(int32 label, Segmentation *segmentation) {
 }
 
 void RemoveSegments(const std::vector<int32> &labels,
+                    int32 max_remove_length, 
                     Segmentation *segmentation) {
   // Check if sorted and unique
   KALDI_ASSERT(std::adjacent_find(labels.begin(),
@@ -105,7 +115,10 @@ void RemoveSegments(const std::vector<int32> &labels,
 
   for (SegmentList::iterator it = segmentation->Begin();
         it != segmentation->End(); ) {
-    if (std::binary_search(labels.begin(), labels.end(), it->Label())) {
+    if ((max_remove_length == -1 || 
+         it->Length() < max_remove_length) && 
+        std::binary_search(labels.begin(), labels.end(), 
+                           it->Label())) {
       it = segmentation->Erase(it);
     } else {
       ++it;

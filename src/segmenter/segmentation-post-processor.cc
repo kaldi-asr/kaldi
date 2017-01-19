@@ -177,7 +177,8 @@ void SegmentationPostProcessor::DoBlendingShortSegments(
 
 void SegmentationPostProcessor::DoRemovingSegments(Segmentation *seg) const {
   if (!IsRemovingSegmentsToBeDone(opts_)) return;
-  RemoveSegments(remove_labels_, seg);
+  RemoveSegments(remove_labels_, opts_.max_remove_length, 
+                 seg);
 }
 
 void SegmentationPostProcessor::DoMergingAdjacentSegments(

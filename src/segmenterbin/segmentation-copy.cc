@@ -54,7 +54,8 @@ int main(int argc, char *argv[]) {
                 "Write in binary mode "
                 "(only relevant if output is a wxfilename)");
     po.Register("label-map", &label_map_rxfilename,
-                "File with mapping from old to new labels");
+                "File with mapping from old to new labels. "
+                "If new label is -1, then that segment is removed.");
     po.Register("frame-subsampling-factor", &frame_subsampling_factor,
                 "Change frame rate by this factor");
     po.Register("utt2label-map-rspecifier", &utt2label_map_rspecifier,

@@ -2,14 +2,16 @@ all:
 
 include ../kaldi.mk
 
-TESTFILES = segmentation-io-test
+TESTFILES = segmentation-io-test information-bottleneck-clusterable-test
 
 OBJFILES = segment.o segmentation.o segmentation-utils.o \
-					 segmentation-post-processor.o
+					 segmentation-post-processor.o \
+					 information-bottleneck-clusterable.o \
+					 information-bottleneck-cluster-utils.o
 
 LIBNAME = kaldi-segmenter
 
-ADDLIBS = ../gmm/kaldi-gmm.a  \
+ADDLIBS = ../tree/kaldi-tree.a ../gmm/kaldi-gmm.a  \
 	../util/kaldi-util.a ../matrix/kaldi-matrix.a ../base/kaldi-base.a ../thread/kaldi-thread.a
 
 include ../makefiles/default_rules.mk

@@ -47,6 +47,7 @@ struct SegmentationPostProcessingOptions {
   int32 max_blend_length;
 
   std::string remove_labels_csl;
+  int32 max_remove_length;
 
   bool merge_adjacent_segments;
   int32 max_intersegment_length;
@@ -63,7 +64,7 @@ struct SegmentationPostProcessingOptions {
     blend_short_segments_class(-1), max_blend_length(-1),
     merge_adjacent_segments(false), max_intersegment_length(0),
     max_segment_length(-1), overlap_length(0),
-    post_process_label(-1) { }
+    max_remove_length(-1), post_process_label(-1) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("merge-labels", &merge_labels_csl, "Merge labels into a "
@@ -109,6 +110,9 @@ struct SegmentationPostProcessingOptions {
                    "Remove any segment whose label is contained in "
                    "remove_labels_csl. "
                    "Refer to the RemoveLabels() code for details.");
+    opts->Register("max-remove-length", &max_remove_length,
+                   "If provided, specifies the maximum length of segments "
+                   "that will be removed by --remove-labels option");
     opts->Register("merge-adjacent-segments", &merge_adjacent_segments,
                    "Merge adjacent segments of the same label if they are "
                    "within max-intersegment-length distance. "

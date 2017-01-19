@@ -29,13 +29,13 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Convert overlapping segments information into segmentation\n"
         "\n"
-        "Usage: segmentation-init-from-additive-signals-info [options] <reco-segmentation-rspecifier> "
+        "Usage: segmentation-init-from-additive-signals-info [options] "
         "<additive-signals-info-rspecifier> <segmentation-wspecifier>\n"
         " e.g.: segmentation-init-from-additive-signals-info --additive-signals-segmentation-rspecifier=ark:utt_segmentation.ark "
-        "ark:reco_segmentation.ark ark,t:overlapped_segments_info.txt ark:-\n";
+        "ark,t:overlapped_segments_info.txt ark:-\n";
     
     BaseFloat frame_shift = 0.01;
-    int32 junk_label = -1;
+    int32 junk_label = -2;
     std::string lengths_rspecifier;
     std::string additive_signals_segmentation_rspecifier; 
 
@@ -50,42 +50,35 @@ int main(int argc, char *argv[]) {
                 "Archive of segmentation of the additive signal which will used "
                 "instead of an all 1 segmentation");
     po.Register("junk-label", &junk_label,
-                "If specified, then unreliable regions are labeled with this "
-                "label");
+                "The unreliable regions are labeled with this label");
                 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 3) {
+    if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
     }
 
-    std::string reco_segmentation_rspecifier = po.GetArg(1),
-                additive_signals_info_rspecifier = po.GetArg(2),
-                segmentation_wspecifier = po.GetArg(3);
+    std::string additive_signals_info_rspecifier = po.GetArg(1),
+      segmentation_wspecifier = po.GetArg(2);
 
-    SequentialSegmentationReader reco_segmentation_reader(reco_segmentation_rspecifier);
-    RandomAccessTokenVectorReader additive_signals_info_reader(additive_signals_info_rspecifier);
+    SequentialTokenVectorReader additive_signals_info_reader(
+        additive_signals_info_rspecifier);
     SegmentationWriter writer(segmentation_wspecifier);
     
-    RandomAccessSegmentationReader additive_signals_segmentation_reader(additive_signals_segmentation_rspecifier);
-
+    RandomAccessSegmentationReader additive_signals_segmentation_reader(
+        additive_signals_segmentation_rspecifier);
     RandomAccessInt32Reader lengths_reader(lengths_rspecifier);
 
-    int32 num_done = 0, num_err = 0, num_missing = 0;
+    int32 num_done = 0, num_err = 0;
   
-    for (; !reco_segmentation_reader.Done(); reco_segmentation_reader.Next()) {
-      const std::string &key = reco_segmentation_reader.Key();
-        
-      if (!additive_signals_info_reader.HasKey(key)) {
-        KALDI_WARN << "Could not find additive_signals_info for key " << key;
-        num_missing++;
-        continue;
-      }
+    for (; !additive_signals_info_reader.Done(); 
+         additive_signals_info_reader.Next()) {
+      const std::string &key = additive_signals_info_reader.Key();
       const std::vector<std::string> &additive_signals_info = 
-        additive_signals_info_reader.Value(key);
+        additive_signals_info_reader.Value();
 
-      Segmentation segmentation(reco_segmentation_reader.Value());
+      Segmentation segmentation;
 
       for (size_t i = 0; i < additive_signals_info.size(); i++) {
         std::vector<std::string> parts;
@@ -107,7 +100,9 @@ int main(int argc, char *argv[]) {
 
         if (!additive_signals_segmentation_reader.HasKey(utt_id)) {
           KALDI_WARN << "Could not find utterance " << utt_id << " in "
-                     << "segmentation " << additive_signals_segmentation_rspecifier;
+                     << "segmentation " 
+                     << additive_signals_segmentation_rspecifier
+                     << ". Assiginng the segment --junk-label.";
           if (duration < 0) {
             KALDI_ERR << "duration < 0 for utt_id " << utt_id << " in "
                       << "additive_signals_info " 
@@ -143,14 +138,14 @@ int main(int argc, char *argv[]) {
     }
                      
     KALDI_LOG << "Successfully processed " << num_done << " recordings "
-              << " in additive signals info; failed for " << num_missing
-              << "; could not get segmentation for " << num_err;
+              << " in additive signals info"
+              << "; could not get segmentation for " << num_err
+              << "additive signals.";
 
-    return (num_done > (num_missing/ 2) ? 0 : 1);
+    return (num_done > num_err / 2 ? 0 : 1);
 
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }
 }
-

@@ -17,7 +17,9 @@ BINFILES = segmentation-copy segmentation-get-stats \
 					 segmentation-create-overlapped-subsegments \
 					 segmentation-intersect-segments \
 					 segmentation-init-from-additive-signals-info \
-					 class-counts-per-frame-to-labels#\
+					 class-counts-per-frame-to-labels \
+					 agglomerative-cluster-ib \
+					 intersect-int-vectors #\
 					 gmm-acc-pdf-stats-segmentation \
 					 gmm-est-segmentation gmm-update-segmentation \
 					 segmentation-init-from-diarization \

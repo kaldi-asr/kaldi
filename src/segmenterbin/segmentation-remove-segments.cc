@@ -45,6 +45,7 @@ int main(int argc, char *argv[]) {
     bool binary = true;
 
     int32 remove_label = -1;
+    int32 max_remove_length = -1;
     std::string remove_labels_rspecifier = "";
 
     ParseOptions po(usage);
@@ -55,6 +56,11 @@ int main(int argc, char *argv[]) {
     po.Register("remove-label", &remove_label, "Remove segments of this label");
     po.Register("remove-labels-rspecifier", &remove_labels_rspecifier,
                 "Specify colon separated list of labels for each key");
+    po.Register("max-remove-length", &max_remove_length,
+                "If supplied, this specifies the maximum length of segments "
+                "will be removed. A value of -1 specifies a length of "
+                "+infinity i.e. segments will be removed based "
+                "on only their labels and irrespective of their lengths.");
 
     po.Read(argc, argv);
 
@@ -135,7 +141,7 @@ int main(int argc, char *argv[]) {
 
           remove_label = remove_labels[0];
 
-          RemoveSegments(remove_labels, &segmentation);
+          RemoveSegments(remove_labels, max_remove_length, &segmentation);
         } else {
           RemoveSegments(remove_label, &segmentation);
         }
