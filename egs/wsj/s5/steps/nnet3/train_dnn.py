@@ -286,10 +286,6 @@ def train(args, run_opts, background_process_handler):
                                                   args.initial_effective_lrate,
                                                   args.final_effective_lrate)
 
-    if args.dropout_schedule is not None:
-        dropout_schedule = common_train_lib.parse_dropout_option(
-            num_archives_to_process, args.dropout_schedule)
-
     logger.info("Training will run for {0} epochs = "
                 "{1} iterations".format(args.num_epochs, num_iters))
 
@@ -312,10 +308,9 @@ def train(args, run_opts, background_process_handler):
                 num_archives=num_archives,
                 learning_rate=learning_rate(iter, current_num_jobs,
                                             num_archives_processed),
-                dropout_proportions=(
-                    None if args.dropout_schedule is None
-                    else common_train_lib.get_dropout_proportions(
-                        dropout_schedule, num_archives_processed)),
+                dropout_proportions=common_lib.get_dropout_proportions(
+                    args.dropout_schedule,
+                    float(num_archives_processed) / num_archives_to_process),
                 minibatch_size=args.minibatch_size,
                 frames_per_eg=args.frames_per_eg,
                 num_hidden_layers=num_hidden_layers,

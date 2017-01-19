@@ -318,23 +318,22 @@ def get_learning_rate(iter, num_jobs, num_iters, num_archives_processed,
     return num_jobs * effective_learning_rate
 
 
-def parse_dropout_option(num_archives_to_process, dropout_option):
+def parse_dropout_option(dropout_option):
     """Parses the string option to --trainer.dropout-schedule and
     returns a list of dropout schedules for different component name patterns.
     Calls _parse_dropout_string() function for each component name pattern
     in the option.
 
     Arguments:
-        dropout_option: may have different rules for different component-name
-            patterns using 'pattern1=func1 pattern2=func2',
-            e.g. 'relu*=0,0.1,0 lstm*=0,0.2,0'.
-            More general should precede less general patterns, as they are
-            applied sequentially.
+        dropout_option: The string option passed to --trainer.dropout-schedule.
+            See its help for details.
         num_archive_to_process: See _parse_dropout_string() for details.
 
     Returns a list of (component_name, dropout_schedule) tuples,
     where dropout_schedule is itself a list of
-    (num_archives_processed, dropout_proportion) tuples.
+    (data_fraction, dropout_proportion) tuples.
+    A data fraction of 0 corresponds to beginning of training
+    and 1 corresponds to all data.
     """
     components = dropout_option.strip().split(' ')
     dropout_schedule = []
@@ -354,8 +353,7 @@ def parse_dropout_option(num_archives_to_process, dropout_option):
                             "for all components.\n"
                             "Got {0} in {1}".format(component, dropout_option))
 
-        this_dropout_values = _parse_dropout_string(
-            num_archives_to_process, this_dropout_str)
+        this_dropout_values = _parse_dropout_string(this_dropout_str)
         dropout_schedule.append((component_name, this_dropout_values))
 
     logger.info("Dropout schedules for component names is as follows:")
@@ -367,25 +365,19 @@ def parse_dropout_option(num_archives_to_process, dropout_option):
     return dropout_schedule
 
 
-def _parse_dropout_string(num_archives_to_process, dropout_str):
+def _parse_dropout_string(dropout_str):
     """Parses the dropout schedule from the string corresponding to a
     single component in --trainer.dropout-schedule.
+    This is a module-internal function called by parse_dropout_function().
 
     Arguments:
-        num_archives_to_process: the number of archives that will
-            be processed over the entire duration.
-            For frame-level training, this is typically the number of archives
-            in disk multiplied by (frames_per_eg * num_epochs).
-            For chunk training, this is typically the number of archives in
-            disk multiplied by num_epochs.
         dropout_str: Specifies dropout schedule for a particular component
             name pattern.
             See help for the option --trainer.dropout-schedule.
 
-    Returns a list of (num_archives_processed, dropout_proportion) tuples
+    Returns a list of (data_fraction_processed, dropout_proportion) tuples
     sorted in descending order of num_archives_processed.
-    The data fraction in dropout_str is converted into num_archives_processed.
-    A data fraction of 1 corresponds to num_archives_to_process i.e. all data.
+    A data fraction of 1 corresponds to all data.
     """
     dropout_values = []
     parts = dropout_str.strip().split(',')
@@ -402,26 +394,24 @@ def _parse_dropout_string(num_archives_to_process, dropout_str):
             if len(value_x_pair) == 1:
                 # Dropout proportion at half of training
                 dropout_proportion = float(value_x_pair[0])
-                num_archives = int(0.5 * num_archives_to_process)
+                data_fraction = 0.5
             else:
                 assert len(value_x_pair) == 2
 
                 dropout_proportion = float(value_x_pair[0])
                 data_fraction = float(value_x_pair[1])
-                num_archives = round(float(data_fraction)
-                                     * num_archives_to_process)
 
-            if (num_archives < dropout_values[-1][0]
-                    or num_archives > num_archives_to_process):
+            if (data_fraction < dropout_values[-1][0]
+                    or data_fraction > 1.0):
                 logger.error(
                     "Failed while parsing value %s in dropout-schedule. "
                     "dropout-schedule must be in incresing "
                     "order of data fractions.", value_x_pair)
                 raise ValueError
 
-            dropout_values.append((num_archives, float(dropout_proportion)))
+            dropout_values.append((data_fraction, float(dropout_proportion)))
 
-        dropout_values.append((num_archives_to_process, float(parts[-1])))
+        dropout_values.append((1.0, float(parts[-1])))
     except Exception:
         logger.error("Unable to parse dropout proportion string %s. "
                      "See help for option "
@@ -431,92 +421,106 @@ def _parse_dropout_string(num_archives_to_process, dropout_str):
     # reverse sort so that its easy to retrieve the dropout proportion
     # for a particular data fraction
     dropout_values.reverse()
-    for num_archives, proportion in dropout_values:
-        assert num_archives <= num_archives_to_process and num_archives >= 0
-        assert proportion <= 1 and proportion >= 0
+    for data_fraction, proportion in dropout_values:
+        assert data_fraction <= 1.0 and data_fraction >= 0.0
+        assert proportion <= 1.0 and proportion >= 0.0
 
     return dropout_values
 
 
-def get_dropout_proportions(dropout_schedule,
-                            num_archives_processed):
-    """Returns dropout proportions for the amount of data seen at this stage of
-    training (num_archives_processed).
+def get_dropout_proportions(dropout_schedule, data_fraction):
+    """Returns dropout proportions based on the dropout_schedule for the
+    fraction of data seen at this stage of training.
+    Returns None if dropout_schedule is None.
 
     Calls _get_component_dropout() for the different component name patterns
     in dropout_schedule.
 
     Arguments:
-        dropout_schedule: The output of parse_dropout_option()
+        dropout_schedule: Value for the --trainer.dropout-schedule option.
+            See help for --trainer.dropout-schedule.
     """
+    if dropout_schedule is None:
+        return None
+    dropout_schedule = parse_dropout_option(args.dropout_schedule)
     dropout_proportions = []
     for component_name, component_dropout_schedule in dropout_schedule:
         dropout_proportions.append(
             (component_name,
-             _get_component_dropout(component_dropout_schedule,
-                                    num_archives_processed)))
+             _get_component_dropout(component_dropout_schedule)))
     return dropout_proportions
 
 
-def _get_component_dropout(dropout_schedule, num_archives_processed):
-    """Retrieve dropout proportion from schedule when num_archives_processed
-    amount of archives is processed. This value is obtained by using a
+def _get_component_dropout(dropout_schedule, data_fraction):
+    """Retrieve dropout proportion from schedule when data_fraction
+    proportion of data is seen. This value is obtained by using a
     piecewise linear function on the dropout schedule.
+    This is a module-internal function called by get_dropout_proportions().
+
+    See help for --trainer.dropout-schedule for how the dropout value
+    is obtained from the options.
 
     Arguments:
-        dropout_schedule: A list of (num_archives, dropout_proportion) values
-            sorted in descending order of num_archives
-        num_archives_processed: The number of archives seen until this stage of
-            training.
+        dropout_schedule: A list of (data_fraction, dropout_proportion) values
+            sorted in descending order of data_fraction.
+        data_fraction: The fraction of data seen until this stage of training.
     """
-    if num_archives_processed == 0:
+    if data_fraction_processed == 0:
         # Dropout at start of the iteration is in the last index of
         # dropout_schedule
         assert dropout_schedule[-1][0] == 0
         return dropout_schedule[-1][1]
     try:
-        # Find lower bound of the num_archives_processed. This is the
+        # Find lower bound of the data_fraction_processed. This is the
         # lower end of the piecewise linear function.
-        (dropout_schedule_index, initial_num_archives,
+        (dropout_schedule_index, initial_data_fraction,
          initial_dropout) = next((i, tup[0], tup[1])
                                  for i, tup in enumerate(dropout_schedule)
-                                 if tup[0] <= num_archives_processed)
+                                 if tup[0] <= data_fraction_processed)
     except StopIteration:
-        logger.error("Could not find num_archives in dropout schedule "
-                     "corresponding to num_archives_processed {0}.\n"
+        logger.error("Could not find data_fraction in dropout schedule "
+                     "corresponding to data_fraction_processed {0}.\n"
                      "Maybe something wrong with the parsed "
                      "dropout schedule {1}.".format(
-                         num_archives_processed, dropout_schedule))
+                         data_fraction_processed, dropout_schedule))
         raise
 
     if dropout_schedule_index == 0:
-        assert num_archives_processed == dropout_schedule[0][0]
+        assert dropout_schedule[0][0] == 1 and data_fraction_processed = 1
         return dropout_schedule[0][1]
 
-    # The upper bound of num_archives_processed is at the index before the
+    # The upper bound of data_fraction_processed is at the index before the
     # lower bound.
-    final_num_archives, final_dropout = dropout_schedule[
+    final_data_fraction, final_dropout = dropout_schedule[
         dropout_schedule_index - 1]
 
-    if final_num_archives == initial_num_archives:
-        assert num_archives_processed == initial_num_archives
+    if final_data_fraction == initial_data_fraction:
+        assert data_fraction_processed == initial_data_fraction
         return initial_dropout
 
-    assert (num_archives_processed >= initial_num_archives
-            and num_archives_processed < final_num_archives)
+    assert (data_fraction_processed >= initial_data_fraction
+            and data_fraction_processed < final_data_fraction)
 
-    return ((num_archives_processed - initial_num_archives)
+    return ((data_fraction_processed - initial_data_fraction)
             * (final_dropout - initial_dropout)
-            / (final_num_archives - initial_num_archives)
+            / (final_data_fraction - initial_data_fraction)
             + initial_dropout)
 
 
-def apply_dropout(dropout_proportions, raw_model_string):
-    """Adds an nnet3-copy --edits line to modify raw_model_string to
+def get_dropout_edit_string(dropout_proportions):
+    """Return an nnet3-copy --edits line to modify raw_model_string to
     set dropout proportions according to dropout_proportions.
 
-    Adds an inline edit config with set-dropout-proportion option. See
-    ReadEditConfig() in nnet3/nnet-utils.h.
+    Arguments:
+        dropout_proportions -
+            The dropout proportions for the different components in the network
+            to be used in this stage of training.
+            This value is obtained from the function get_dropout_proportions().
+            See help for --trainer.dropout-schedule for how the dropout value
+            is obtained from the options.
+
+    See ReadEditConfig() in nnet3/nnet-utils.h to see how
+    set-dropout-proportion directive works.
     """
     edit_config_lines = []
     dropout_info = []
@@ -528,9 +532,8 @@ def apply_dropout(dropout_proportions, raw_model_string):
         dropout_info.append("pattern/dropout-proportion={0}/{1}".format(
             component_name, dropout_proportion))
 
-    return ("""{raw_model_string} nnet3-copy --edits='{edits}' \
-            - - |""".format(raw_model_string=raw_model_string,
-                            edits=";".join(edit_config_lines)),
+    return ("""nnet3-copy --edits='{edits}' - - |""".format(
+                edits=";".join(edit_config_lines)),
             dropout_info)
 
 

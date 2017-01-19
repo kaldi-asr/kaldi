@@ -267,9 +267,10 @@ def train_one_iteration(dir, iter, srand, egs_dir,
 
     dropout_info_str = ''
     if dropout_proportions is not None:
-        raw_model_string, dropout_info = common_train_lib.apply_dropout(
+        edit_string, dropout_info = common_train_lib.get_dropout_edit_string(
             dropout_proportions, raw_model_string)
         dropout_info_str = ', {0}'.format(", ".join(dropout_info))
+        raw_model_string = '{0} {1}'.format(raw_model_string, edit_string)
 
     shrink_info_str = ''
     if shrinkage_value != 1.0:
