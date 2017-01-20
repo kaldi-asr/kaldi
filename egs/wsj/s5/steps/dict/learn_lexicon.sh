@@ -27,21 +27,24 @@
 # learned lexicon. See the last stage in this script for details.
 
 
-stage=0
 # Begin configuration section.  
 cmd=run.pl
-nj=
-stage=6
-oov_symbol=
+nj=4
+stage=0
+
+oov_symbol='<UNK>'
 lexicon_g2p=
+
 min_prob=0.3
 variants_prob_mass=0.7
 variants_prob_mass_ref=0.9
+
 prior_counts_tot=15
 prior_mean="0.7,0.2,0.1"
 num_gauss=
 num_leaves=
 retrain_src_mdl=true
+
 cleanup=true
 # End configuration section.  
 
@@ -50,7 +53,7 @@ cleanup=true
 
 if [ $# -ne 7 ]; then
   echo "Usage: $0 [options] <ref-dict> <target-vocab> <data> <src-mdl-dir> \\"
-  echo "          <ref-lang> <dest-dict>."
+  echo "          <ref-lang> <dest-dict> <tmp-dir>."
   echo "  This script does lexicon expansion using a combination of acoustic"
   echo "  evidence and G2P to produce a lexicon that covers words of a target vocab:"
   echo ""               
@@ -68,7 +71,8 @@ if [ $# -ne 7 ]; then
   echo " <ref-lang>     the reference lang dir which we use to get non-scored-words"
   echo "                like <UNK> for building new dict dirs"
   echo " <dest-dict>    the dict dir where we put the final learned lexicon, whose vocab"
-  echo "                matches <target-vocab>."
+  echo "                matches <target-vocab>"
+  echo " <tmp-dir>      the temporary dir where most of the intermediate outputs are stored"
   echo ""
   echo "Note: <target-vocab> and the vocab of <data> don't have to match. For words"
   echo "     who are in <target-vocab> but not seen in <data>, their pronunciations" 
@@ -117,9 +121,10 @@ data=$3
 src_mdl_dir=$4
 ref_lang=$5
 dest_dict=$6
-dir=$7 # Most intermediate outputs will be put here. 
+dir=$7 
 
 mkdir -p $dir
+
 if [ $stage -le 0 ]; then
   echo "$0: Some preparatory work."
   # Get the word counts of training data.
