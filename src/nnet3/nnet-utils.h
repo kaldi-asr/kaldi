@@ -53,17 +53,6 @@ int32 NumOutputNodes(const Nnet &nnet);
 /// returns the number of input nodes of this nnet.
 int32 NumInputNodes(const Nnet &nnet);
 
-/// Calls SetZero (with the given is_gradient parameter) on all updatable
-/// components of the nnet; calls ZeroComponentStats on all other components
-/// that inherit from NonlinearComponent; and (just in case) calls Scale(0.0) on
-/// all other components.
-/// It's the same as ScaleNnet(0.0, nnet) except that if is_gradient is true it
-/// can set the is_gradient_ flag on updatable components [to force simple
-/// update]; and unlike ScaleNnet(0.0, nnet) it will get rid of NaNs that have
-/// crept into the parameters or stats.
-void SetZero(bool is_gradient,
-             Nnet *nnet);
-
 /// Calls PerturbParams (with the given stddev) on all updatable components of
 /// the nnet.
 void PerturbParams(BaseFloat stddev,
