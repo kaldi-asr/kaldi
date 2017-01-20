@@ -149,7 +149,7 @@ void TestableArpaFileParser::Validate(
   //                           expect_ngrams.array, CompareNgrams);
   // if (mpos.first != ngrams_.end())
   //   KALDI_ERR << "Maismatch at index " << mpos.first - ngrams_.begin();
-  //TODO:auto above requres C++11, and I cannot spell out the type!!!
+  // TODO: auto above requres C++11, and I cannot spell out the type!!!
   KALDI_ASSERT(std::equal(ngrams_.begin(), ngrams_.end(),
                           expect_ngrams.array, CompareNgrams));
 }
