@@ -100,23 +100,11 @@ void DropoutComponent::InitFromConfig(ConfigLine *cfl) {
   bool dropout_per_frame = true;
   bool ok = cfl->GetValue("dim", &dim) &&
     cfl->GetValue("dropout-proportion", &dropout_proportion);
-  bool ok2 = cfl->GetValue("dropout-per-frame", &dropout_per_frame);
-  // make the config reading back compatible:
-  // previous configs do not have dropout_per_frame option
-  if (ok2) {
-    if (!ok || cfl->HasUnusedValues() || dim <= 0 ||
-        dropout_proportion < 0.0 || dropout_proportion > 1.0 ||
-        (dropout_per_frame != false and dropout_per_frame != true))
-      KALDI_ERR << "Invalid initializer for layer of type "
-                << Type() << ": \"" << cfl->WholeLine() << "\"";
-  } else {
-    // if not declare dropout_per_frame in config, set it to true
-    if (!ok || cfl->HasUnusedValues() || dim <= 0 ||
-        dropout_proportion < 0.0 || dropout_proportion > 1.0)
-      KALDI_ERR << "Invalid initializer for layer of type "
-                << Type() << ": \"" << cfl->WholeLine() << "\"";
-    dropout_per_frame = true;
-  }
+    // for this stage, dropout is hard coded in by-frame mode
+  if (!ok || cfl->HasUnusedValues() || dim <= 0 ||
+      dropout_proportion < 0.0 || dropout_proportion > 1.0)
+       KALDI_ERR << "Invalid initializer for layer of type "
+                 << Type() << ": \"" << cfl->WholeLine() << "\"";
   Init(dim, dropout_proportion, dropout_per_frame);
 }
 
