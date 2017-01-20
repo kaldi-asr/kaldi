@@ -124,7 +124,7 @@ std::string DropoutComponent::Info() const {
   std::ostringstream stream;
   stream << Type() << ", dim=" << dim_
          << ", dropout-proportion=" << dropout_proportion_
-         << ", dropout-per-frame=" <<dropout_per_frame_;
+         << ", dropout-per-frame=" << dropout_per_frame_;
   return stream.str();
 }
 
@@ -136,34 +136,27 @@ void DropoutComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
 
   BaseFloat dropout = dropout_proportion_;
   KALDI_ASSERT(dropout >= 0.0 && dropout <= 1.0);
-  if(!dropout_per_frame_)
-  {
+  if (!dropout_per_frame_) {
     // This const_cast is only safe assuming you don't attempt
     // to use multi-threaded code with the GPU.
     const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(out);
 
-    out->Add(-dropout); // now, a proportion "dropout" will be <0.0
-    out->ApplyHeaviside(); // apply the function (x>0?1:0).  Now, a proportion "dropout" will
-                          // be zero and (1 - dropout) will be 1.0.
+    out->Add(-dropout);  // now, a proportion "dropout" will be <0.0
+    out->ApplyHeaviside();  // apply the function (x>0?1:0).  Now, a proportion
+                           // "dropout" will be zero and (1 - dropout) will be 1.0.
     out->MulElements(in);
   } else {
     // randomize the dropout matrix by row,
     // i.e. [[1,1,1,1],[0,0,0,0],[0,0,0,0],[1,1,1,1],[0,0,0,0]]
+    CuMatrix<BaseFloat> tmp(1, out->NumRows(), kUndefined);
     // This const_cast is only safe assuming you don't attempt
     // to use multi-threaded code with the GPU.
-    CuSubMatrix<BaseFloat> out_col_submatrix = out->ColRange(0, 1);
-    const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(&out_col_submatrix); 
-    // now, a proportion "dropout" will be <0.0
-    out_col_submatrix.Add(-dropout);
-    // apply the function (x>0?1:0).  Now, a proportion "dropout" will
-    // be zero and (1 - dropout) will be 1.0.
-    out_col_submatrix.ApplyHeaviside();
-    CuVector<BaseFloat> *random_drop_vector = new CuVector<BaseFloat>(in.NumRows(), kSetZero);
-    random_drop_vector->CopyColFromMat(out_col_submatrix, 0);
+    const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(&tmp);
+    tmp.Add(-dropout);
+    tmp.ApplyHeaviside();
     out->SetZero();
-    out->AddVecToCols(1.0 , *random_drop_vector, 1.0);
+    out->AddVecToCols(1.0, tmp.Row(0), 0.0);
     out->MulElements(in);
-    delete random_drop_vector;
   }
 }
 
@@ -186,26 +179,26 @@ void DropoutComponent::Backprop(const std::string &debug_info,
 
 
 void DropoutComponent::Read(std::istream &is, bool binary) {
-  //back-compatibility code.
+  // back-compatibility code.
   std::string token;
   ReadToken(is, binary, &token);
-  if(token == "<DropoutComponent>"){
+  if (token == "<DropoutComponent>") {
     ReadToken(is, binary, &token);
   }
   KALDI_ASSERT(token == "<Dim>");
-  ReadBasicType(is, binary, &dim_); // read dimension.
+  ReadBasicType(is, binary, &dim_);  // read dimension.
   ReadToken(is, binary, &token);
   KALDI_ASSERT(token == "<DropoutProportion>");
-  ReadBasicType(is, binary, &dropout_proportion_); // read dropout rate
+  ReadBasicType(is, binary, &dropout_proportion_);  // read dropout rate
   ReadToken(is, binary, &token);
-  if(token == "<DropoutPerFrame>"){
-    ReadBasicType(is, binary, &dropout_per_frame_); // read dropout mode
+  if (token == "<DropoutPerFrame>") {
+    ReadBasicType(is, binary, &dropout_per_frame_);  // read dropout mode
     ReadToken(is, binary, &token);
     KALDI_ASSERT(token == "</DropoutComponent>");
   } else {
     dropout_per_frame_ = true;
     KALDI_ASSERT(token == "</DropoutComponent>");
-  }  
+  }
 }
 
 void DropoutComponent::Write(std::ostream &os, bool binary) const {
