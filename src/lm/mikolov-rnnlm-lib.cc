@@ -376,13 +376,13 @@ void CRnnLM::initNet() {
     }
 
   syn_d =
-    reinterpret_cast<direct_t *>(calloc(static_cast<int64>(direct_size),
+    reinterpret_cast<direct_t *>(calloc(static_cast<long long>(direct_size),
                                          sizeof(direct_t)));
 
   if (syn_d == NULL) {
     printf("Memory allocation for direct"
-     " connections failed (requested %ld bytes)\n",
-     static_cast<int64>(direct_size) * static_cast<int64>(sizeof(direct_t)));
+     " connections failed (requested %lld bytes)\n",
+     static_cast<long long>(direct_size) * static_cast<long long>(sizeof(direct_t)));
     exit(1);
   }
 
@@ -461,7 +461,7 @@ void CRnnLM::initNet() {
     }
   }
 
-  int64 aa;
+  long long aa;
   for (aa = 0; aa < direct_size; aa++) {
     syn_d[aa] = 0;
   }
@@ -621,7 +621,7 @@ void CRnnLM::restoreNet() {   // will read whole network structure
   fscanf(fi, "%d", &layer2_size);
   if (ver > 5) {
     goToDelimiter(':', fi);
-    fscanf(fi, "%ld", &direct_size);
+    fscanf(fi, "%lld", &direct_size);
   }
   if (ver > 6) {
     goToDelimiter(':', fi);
@@ -760,14 +760,14 @@ void CRnnLM::restoreNet() {   // will read whole network structure
   }
   if (filetype == TEXT) {
     goToDelimiter(':', fi);    // direct conenctions
-    int64 aa;
+    long long aa;
     for (aa = 0; aa < direct_size; aa++) {
       fscanf(fi, "%lf", &d);
       syn_d[aa] = d;
     }
   }
   if (filetype == BINARY) {
-    int64 aa;
+    long long aa;
     for (aa = 0; aa < direct_size; aa++) {
       fread(&fl, 4, 1, fi);
       syn_d[aa] = fl;
@@ -982,7 +982,7 @@ void CRnnLM::computeNet(int last_word, int word) {
 
   // apply direct connections to classes
   if (direct_size > 0) {
-    uint64 hash[MAX_NGRAM_ORDER];
+    unsigned long long hash[MAX_NGRAM_ORDER];
     // this will hold pointers to syn_d that contains hash parameters
 
     for (a = 0; a < direct_order; a++) {
@@ -997,7 +997,7 @@ void CRnnLM::computeNet(int last_word, int word) {
 
       for (b = 1; b <= a; b++) {
         hash[a] += PRIMES[(a * PRIMES[b] + b) % PRIMES_SIZE]
-            * static_cast<uint64>(history[b - 1] + 1);
+            * static_cast<unsigned long long>(history[b - 1] + 1);
       }
       // update hash value based on words from the history
 
@@ -1061,7 +1061,7 @@ void CRnnLM::computeNet(int last_word, int word) {
 
   // apply direct connections to words
   if (word != -1) if (direct_size > 0) {
-    uint64  hash[MAX_NGRAM_ORDER];
+    unsigned long long  hash[MAX_NGRAM_ORDER];
 
     for (a = 0; a < direct_order; a++) {
       hash[a] = 0;
@@ -1072,11 +1072,11 @@ void CRnnLM::computeNet(int last_word, int word) {
       if (a > 0) if (history[a - 1] == -1) break;
       hash[a] =
           PRIMES[0] * PRIMES[1] *
-          static_cast<uint64>(vocab[word].class_index + 1);
+          static_cast<unsigned long long>(vocab[word].class_index + 1);
 
       for (b = 1; b <= a; b++) {
         hash[a] += PRIMES[(a * PRIMES[b] + b) % PRIMES_SIZE]
-            * static_cast<uint64>(history[b - 1] + 1);
+            * static_cast<unsigned long long>(history[b - 1] + 1);
       }
       hash[a] = (hash[a] % (direct_size / 2)) + (direct_size) / 2;
     }
