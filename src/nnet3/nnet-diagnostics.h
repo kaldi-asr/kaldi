@@ -46,6 +46,7 @@ struct NnetComputeProbOptions {
   bool compute_accuracy;
   NnetOptimizeOptions optimize_config;
   NnetComputeOptions compute_config;
+  CachingOptimizingCompilerOptions compiler_config;
   NnetComputeProbOptions():
       debug_computation(false),
       compute_deriv(false),
@@ -60,7 +61,9 @@ struct NnetComputeProbOptions {
     // register the optimization options with the prefix "optimization".
     ParseOptions optimization_opts("optimization", opts);
     optimize_config.Register(&optimization_opts);
-
+    // register the compiler options with the prefix "compiler".
+    ParseOptions compiler_opts("compiler", opts);
+    compiler_config.Register(&compiler_opts);
     // register the compute options with the prefix "computation".
     ParseOptions compute_opts("computation", opts);
     compute_config.Register(&compute_opts);

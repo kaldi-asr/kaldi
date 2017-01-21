@@ -235,7 +235,7 @@ template<class IntType> class LatticeStringRepository {
     }
   }
 
-  DISALLOW_COPY_AND_ASSIGN(LatticeStringRepository);
+  KALDI_DISALLOW_COPY_AND_ASSIGN(LatticeStringRepository);
   Entry *new_entry_; // We always have a pre-allocated Entry ready to use,
                      // to avoid unnecessary news and deletes.
   SetType set_;
@@ -1210,7 +1210,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     }
   }
 
-  DISALLOW_COPY_AND_ASSIGN(LatticeDeterminizer);
+  KALDI_DISALLOW_COPY_AND_ASSIGN(LatticeDeterminizer);
 
 
   vector<vector<Element>* > output_states_; // maps from output state to

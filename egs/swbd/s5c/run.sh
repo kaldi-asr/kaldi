@@ -72,11 +72,16 @@ fi
 # local/eval2000_data_prep.sh /home/dpovey/data/LDC2002S09/hub5e_00 /home/dpovey/data/LDC2002T43
 local/eval2000_data_prep.sh /export/corpora2/LDC/LDC2002S09/hub5e_00 /export/corpora2/LDC/LDC2002T43
 
+# prepare the rt03 data.  Note: this isn't 100% necessary for this
+# recipe, not all parts actually test using rt03.
+local/rt03_data_prep.sh /export/corpora/LDC/LDC2007S10
+
 # Now make MFCC features.
 # mfccdir should be some place with a largish disk where you
 # want to store MFCC features.
+if [ -e data/rt03 ]; then maybe_rt03=rt03; else maybe_rt03= ; fi
 mfccdir=mfcc
-for x in train eval2000; do
+for x in train eval2000 $maybe_rt03; do
   steps/make_mfcc.sh --nj 50 --cmd "$train_cmd" \
     data/$x exp/make_mfcc/$x $mfccdir
   steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir

@@ -23,7 +23,6 @@ ivector_scale=1.0
 lattice_beam=8.0 # Beam we use in lattice generation.
 iter=final
 num_threads=1 # if >1, will use gmm-latgen-faster-parallel
-parallel_opts=  # ignored now.
 scoring_opts=
 skip_diagnostics=false
 skip_scoring=false
@@ -56,7 +55,6 @@ if [ $# -ne 3 ]; then
   echo "  --iter <iter>                            # Iteration of model to decode; default is final."
   echo "  --scoring-opts <string>                  # options to local/score.sh"
   echo "  --num-threads <n>                        # number of threads to use, default 1."
-  echo "  --parallel-opts <opts>                   # e.g. '--num-threads 4' if you supply --num-threads 4"
   exit 1;
 fi
 

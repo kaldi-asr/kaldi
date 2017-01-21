@@ -54,7 +54,13 @@ int32 NumOutputNodes(const Nnet &nnet);
 int32 NumInputNodes(const Nnet &nnet);
 
 /// Calls SetZero (with the given is_gradient parameter) on all updatable
-/// components of the nnet.
+/// components of the nnet; calls ZeroComponentStats on all other components
+/// that inherit from NonlinearComponent; and (just in case) calls Scale(0.0) on
+/// all other components.
+/// It's the same as ScaleNnet(0.0, nnet) except that if is_gradient is true it
+/// can set the is_gradient_ flag on updatable components [to force simple
+/// update]; and unlike ScaleNnet(0.0, nnet) it will get rid of NaNs that have
+/// crept into the parameters or stats.
 void SetZero(bool is_gradient,
              Nnet *nnet);
 
@@ -97,7 +103,7 @@ bool IsSimpleNnet(const Nnet &nnet);
 void ZeroComponentStats(Nnet *nnet);
 
 
-/// ComputeNnetContext computes the left-context and right-context of a nnet.
+/// ComputeSimpleNnetContext computes the left-context and right-context of a nnet.
 /// The nnet must satisfy IsSimpleNnet(nnet).
 ///
 /// It does this by constructing a ComputationRequest with a certain number of inputs
@@ -119,6 +125,10 @@ void SetLearningRate(BaseFloat learning_rate,
 /// Scales the nnet parameters and stats by this scale.
 void ScaleNnet(BaseFloat scale, Nnet *nnet);
 
+/// Sets nnet as gradient by Setting is_gradient_ to true and
+/// learning_rate_ to 1 for each UpdatableComponent in nnet
+void SetNnetAsGradient(Nnet *nnet);
+
 /// Does *dest += alpha * src (affects nnet parameters and
 /// stored stats).
 void AddNnet(const Nnet &src, BaseFloat alpha, Nnet *dest);
@@ -128,6 +138,9 @@ void AddNnet(const Nnet &src, BaseFloat alpha, Nnet *dest);
 /// Here, alphas is a vector of size equal to the number of updatable components
 void AddNnetComponents(const Nnet &src, const Vector<BaseFloat> &alphas,
                        BaseFloat scale, Nnet *dest);
+
+/// Returns true if 'nnet' has some kind of recurrency.
+bool NnetIsRecurrent(const Nnet &nnet);
 
 /// Returns the total of the number of parameters in the updatable components of
 /// the nnet.
@@ -158,7 +171,7 @@ void ConvertRepeatedToBlockAffine(Nnet *nnet);
 /// Info() function (we need this in the CTC code).
 std::string NnetInfo(const Nnet &nnet);
 
-/// This function sets the dropout proportion in all dropout component to 
+/// This function sets the dropout proportion in all dropout component to
 /// dropout_proportion value.
 void SetDropoutProportion(BaseFloat dropout_proportion, Nnet *nnet);
 

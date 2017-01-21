@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
+# This script is deprecated, please use ../xconfig_to_configs.py
+
 # we're using python 3.x style print but want it to work in python 2.x,
 from __future__ import print_function
 import re, os, argparse, sys, math, warnings
-
 
 
 parser = argparse.ArgumentParser(description="Writes config files and variables "

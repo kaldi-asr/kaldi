@@ -62,7 +62,7 @@ bool CompareInterval(const Interval &i1,
 // It puts disambiguating symbols in the olabels, leaving the words on the
 // ilabels.
 bool ClusterLattice(CompactLattice *clat,
-                    const vector<int32> &state_times);
+                    const std::vector<int32> &state_times);
 
 // This function contains two steps: weight pushing and factor generation. The
 // original ShortestDistance() is not very efficient, so we do the weight
@@ -70,7 +70,7 @@ bool ClusterLattice(CompactLattice *clat,
 // factor generation step expand the lattice to the LXTXT' semiring, with
 // additional start state and end state (and corresponding arcs) added.
 bool CreateFactorTransducer(const CompactLattice &clat,
-                            const vector<int32> &state_times,
+                            const std::vector<int32> &state_times,
                             int32 utterance_id,
                             KwsProductFst *factor_transducer);
 
@@ -81,7 +81,7 @@ bool CreateFactorTransducer(const CompactLattice &clat,
 // step, so the "search area" is limited to the original arcs before factor
 // generation.
 void RemoveLongSilences(int32 max_silence_frames,
-                        const vector<int32> &state_times,
+                        const std::vector<int32> &state_times,
                         KwsProductFst *factor_transducer);
 
 // Do the factor merging part: encode input and output, and apply weighted
