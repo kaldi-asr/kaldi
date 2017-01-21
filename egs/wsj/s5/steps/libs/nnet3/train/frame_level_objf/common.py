@@ -172,9 +172,10 @@ def train_one_iteration(dir, iter, srand, egs_dir,
     if os.path.exists('{0}/srand'.format(dir)):
         try:
             saved_srand = int(open('{0}/srand'.format(dir)).readline().strip())
-        except (IOError, ValueError) as e:
-            raise Exception("Exception while reading the random seed "
-                            "for training: {0}".format(e.str()))
+        except (IOError, ValueError):
+            logger.error("Exception while reading the random seed "
+                         "for training")
+            raise
         if srand != saved_srand:
             logger.warning("The random seed provided to this iteration "
                            "(srand={0}) is different from the one saved last "
