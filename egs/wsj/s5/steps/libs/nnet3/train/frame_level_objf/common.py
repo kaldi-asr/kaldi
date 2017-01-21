@@ -141,7 +141,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         run_opts,
                         cv_minibatch_size=256, frames_per_eg=-1,
                         min_deriv_time=None, max_deriv_time=None,
-                        shrinkage_value=1.0, dropout_proportions=None,
+                        shrinkage_value=1.0, dropout_edit_string="",
                         get_raw_nnet_from_am=True,
                         background_process_handler=None):
     """ Called from steps/nnet3/train_*.py scripts for one iteration of neural
@@ -248,6 +248,8 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                                 "{dir}/{iter}.raw - |".format(
                                     lr=learning_rate, dir=dir, iter=iter))
 
+    raw_model_string = '{0} {1}'.format(raw_model_string, dropout_edit_string)
+
     if do_average:
         cur_minibatch_size = minibatch_size
         cur_max_param_change = max_param_change
@@ -265,21 +267,13 @@ def train_one_iteration(dir, iter, srand, egs_dir,
     except OSError:
         pass
 
-    dropout_info_str = ''
-    if dropout_proportions is not None:
-        edit_string, dropout_info = common_train_lib.get_dropout_edit_string(
-            dropout_proportions, raw_model_string)
-        dropout_info_str = ', {0}'.format(", ".join(dropout_info))
-        raw_model_string = '{0} {1}'.format(raw_model_string, edit_string)
-
     shrink_info_str = ''
     if shrinkage_value != 1.0:
         shrink_info_str = ' and shrink value is {0}'.format(shrinkage_value)
 
     logger.info("On iteration {0}, learning rate is {1}"
-                "{dropout_info}{shrink_info}.".format(
+                "{shrink_info}.".format(
                     iter, learning_rate,
-                    dropout_info=dropout_info_str,
                     shrink_info=shrink_info_str))
 
     train_new_models(dir=dir, iter=iter, srand=srand, num_jobs=num_jobs,

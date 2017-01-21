@@ -224,7 +224,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         momentum, max_param_change, shuffle_buffer_size,
                         frame_subsampling_factor, truncate_deriv_weights,
                         run_opts,
-                        dropout_proportions=None,
+                        dropout_edit_string="",
                         background_process_handler=None):
     """ Called from steps/nnet3/chain/train.py for one iteration for
     neural network training with LF-MMI objective
@@ -304,21 +304,15 @@ def train_one_iteration(dir, iter, srand, egs_dir,
         cur_num_chunk_per_minibatch = num_chunk_per_minibatch / 2
         cur_max_param_change = float(max_param_change) / math.sqrt(2)
 
-    dropout_info_str = ''
-    if dropout_proportions is not None:
-        edit_string, dropout_info = common_train_lib.get_dropout_edit_string(
-            dropout_proportions, raw_model_string)
-        dropout_info_str = ', {0}'.format(", ".join(dropout_info))
-        raw_model_string = '{0} {1}'.format(raw_model_string, edit_string)
+    raw_model_string = '{0} {1}'.format(raw_model_string, dropout_edit_string)
 
     shrink_info_str = ''
     if shrinkage_value != 1.0:
         shrink_info_str = ' and shrink value is {0}'.format(shrinkage_value)
 
     logger.info("On iteration {0}, learning rate is {1}"
-                "{dropout_info}{shrink_info}.".format(
+                "{shrink_info}.".format(
                     iter, learning_rate,
-                    dropout_info=dropout_info_str,
                     shrink_info=shrink_info_str))
 
     train_new_models(dir=dir, iter=iter, srand=srand, num_jobs=num_jobs,

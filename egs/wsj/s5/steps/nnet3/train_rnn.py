@@ -405,9 +405,10 @@ def train(args, run_opts, background_process_handler):
                 num_archives=num_archives,
                 learning_rate=learning_rate(iter, current_num_jobs,
                                             num_archives_processed),
-                dropout_proportions=common_lib.get_dropout_proportions(
+                dropout_edit_string=common_lib.get_dropout_edit_string(
                     args.dropout_schedule,
-                    float(num_archives_processed) / num_archives_to_process),
+                    float(num_archives_processed) / num_archives_to_process,
+                    iter),
                 shrinkage_value=shrinkage_value,
                 minibatch_size=args.num_chunk_per_minibatch,
                 num_hidden_layers=num_hidden_layers,
