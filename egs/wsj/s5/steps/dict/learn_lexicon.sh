@@ -51,9 +51,9 @@ cleanup=true
 . ./path.sh
 . utils/parse_options.sh
 
-if [ $# -ne 7 ]; then
+if [ $# -lt 6 ] || [ $# -gt 7 ]; then
   echo "Usage: $0 [options] <ref-dict> <target-vocab> <data> <src-mdl-dir> \\"
-  echo "          <ref-lang> <dest-dict> <tmp-dir>."
+  echo "          <ref-lang> <dest-dict> [ <tmp-dir> ]"
   echo "  This script does lexicon expansion using a combination of acoustic"
   echo "  evidence and G2P to produce a lexicon that covers words of a target vocab:"
   echo ""               
@@ -72,7 +72,8 @@ if [ $# -ne 7 ]; then
   echo "                like <UNK> for building new dict dirs"
   echo " <dest-dict>    the dict dir where we put the final learned lexicon, whose vocab"
   echo "                matches <target-vocab>"
-  echo " <tmp-dir>      the temporary dir where most of the intermediate outputs are stored"
+  echo " [ <tmp-dir> ]  the temporary dir where most of the intermediate outputs are stored"
+  echo "                (default: \${src-mdl-dir}_lex_learn_work)"
   echo ""
   echo "Note: <target-vocab> and the vocab of <data> don't have to match. For words"
   echo "     who are in <target-vocab> but not seen in <data>, their pronunciations" 
@@ -121,7 +122,12 @@ data=$3
 src_mdl_dir=$4
 ref_lang=$5
 dest_dict=$6
-dir=$7 
+
+if [ $# -gt 6 ]; then
+  dir=$7 
+else
+  dir=${src_mdl_dir}_lex_learn_work
+fi
 
 mkdir -p $dir
 
