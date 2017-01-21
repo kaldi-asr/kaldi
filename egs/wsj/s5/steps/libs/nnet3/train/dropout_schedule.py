@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
 
-def parse_dropout_option(dropout_option):
+def _parse_dropout_option(dropout_option):
     """Parses the string option to --trainer.dropout-schedule and
     returns a list of dropout schedules for different component name patterns.
     Calls _parse_dropout_string() function for each component name pattern
@@ -126,7 +126,7 @@ def _get_component_dropout(dropout_schedule, data_fraction):
     """Retrieve dropout proportion from schedule when data_fraction
     proportion of data is seen. This value is obtained by using a
     piecewise linear function on the dropout schedule.
-    This is a module-internal function called by get_dropout_proportions().
+    This is a module-internal function called by _get_dropout_proportions().
 
     See help for --trainer.dropout-schedule for how the dropout value
     is obtained from the options.
@@ -178,7 +178,7 @@ def _get_component_dropout(dropout_schedule, data_fraction):
             + initial_dropout)
 
 
-def get_dropout_proportions(dropout_schedule, data_fraction):
+def _get_dropout_proportions(dropout_schedule, data_fraction):
     """Returns dropout proportions based on the dropout_schedule for the
     fraction of data seen at this stage of training.
     Returns None if dropout_schedule is None.
@@ -194,7 +194,7 @@ def get_dropout_proportions(dropout_schedule, data_fraction):
     """
     if dropout_schedule is None:
         return None
-    dropout_schedule = parse_dropout_option(dropout_schedule)
+    dropout_schedule = _parse_dropout_option(dropout_schedule)
     dropout_proportions = []
     for component_name, component_dropout_schedule in dropout_schedule:
         dropout_proportions.append(
@@ -218,7 +218,7 @@ def get_dropout_edit_string(dropout_schedule, data_fraction, iter_):
     if dropout_schedule is None:
         return ""
 
-    dropout_proportions = get_dropout_proportions(
+    dropout_proportions = _get_dropout_proportions(
         dropout_schedule, data_fraction)
 
     edit_config_lines = []
