@@ -68,10 +68,19 @@ class NnetChainTrainer {
   // per-component max-change and global max-change were enforced.
   void PrintMaxChangeStats() const;
 
+  // Prints out the scaling factor learning's stats: the exp's of the sum of
+  // scaling value of each updatable component
+  void PrintScalingFactorStats() const;
+
   ~NnetChainTrainer();
  private:
   void ProcessOutputs(const NnetChainExample &eg,
                       NnetComputer *computer);
+
+  // implicitly reparameterizes the parameter matrix for each updatable
+  // component as a (scalar times a matrix), and learns that scalar before
+  // calling UpdateParamsWithMaxChange()
+  void DoScalingFactorLearning();
 
   // Applies per-component max-change and global max-change to all updatable
   // components in *delta_nnet_, and use *delta_nnet_ to update parameters
@@ -97,6 +106,9 @@ class NnetChainTrainer {
   // stats for max-change.
   std::vector<int32> num_max_change_per_component_applied_;
   int32 num_max_change_global_applied_;
+
+  // stats for scaling factor learning.
+  std::vector<BaseFloat> scaling_value_sum_;
 
   unordered_map<std::string, ObjectiveFunctionInfo, StringHasher> objf_info_;
 };

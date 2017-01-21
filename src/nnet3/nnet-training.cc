@@ -41,6 +41,7 @@ NnetTrainer::NnetTrainer(const NnetTrainerOptions &config,
   const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
   num_max_change_per_component_applied_.resize(num_updatable, 0);
   num_max_change_global_applied_ = 0;
+  scaling_value_sum_.resize(num_updatable, 0.0);
 
   if (config_.read_cache != "") {
     bool binary;
@@ -73,6 +74,7 @@ void NnetTrainer::Train(const NnetExample &eg) {
   this->ProcessOutputs(eg, &computer);
   computer.Backward();
 
+  DoScalingFactorLearning();
   UpdateParamsWithMaxChange();
 }
 
@@ -96,6 +98,43 @@ void NnetTrainer::ProcessOutputs(const NnetExample &eg,
                                       tot_weight, tot_objf);
     }
   }
+}
+
+void NnetTrainer::DoScalingFactorLearning() {
+  if (config_.scale_learning_rate <= 0.0 ||
+      RandUniform() > config_.scale_update_frequency)
+    return;
+  // Note: if we are using momentum, the magnitude of the parameter changes in
+  // delta_nnet_ will be larger by a factor of 1.0 / (1.0 - config_.momentum),
+  // which comes from the sum of 1, momentum, momentum^2,...; the factor of
+  // (1.0 - config_.momentum) is to compensate for this. The factor of
+  // 1.0 / config_.scale_update_frequency compensates for the fact that we
+  // don't do this on all minibatches.
+  BaseFloat scale_learning_rate = config_.scale_learning_rate *
+    (1.0 / config_.scale_update_frequency);
+
+  int32 i = 0;
+  for (int32 c = 0; c < delta_nnet_->NumComponents(); c++) {
+    Component *comp = delta_nnet_->GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent) {
+      UpdatableComponent *uc_delta = dynamic_cast<UpdatableComponent*>(comp);
+      UpdatableComponent *uc_nnet =
+        dynamic_cast<UpdatableComponent*>(nnet_->GetComponent(c));
+      if (uc_delta == NULL || uc_nnet == NULL)
+        KALDI_ERR << "Updatable component does not inherit from class "
+                  << "UpdatableComponent; change this code.";
+      // computes the dot product of the parameter in nnet_ with the parameter
+      // in delta_nnet_, which is the derivatives w.r.t. the scaling factor 
+      BaseFloat dot_prod =uc_delta->DotProduct(*uc_nnet);
+      // adds the param changes due to the change of parameter's scaling factor,
+      // to nnet_delta_.
+      BaseFloat alpha = scale_learning_rate * dot_prod;
+      uc_delta->Add(alpha, *uc_nnet);
+      scaling_value_sum_[i] += alpha;
+      i++;
+    }
+  }
+  KALDI_ASSERT(i == scaling_value_sum_.size());
 }
 
 void NnetTrainer::UpdateParamsWithMaxChange() {
@@ -219,6 +258,28 @@ void NnetTrainer::PrintMaxChangeStats() const {
                  num_minibatches_processed_ << " \% of the time.";
 }
 
+void NnetTrainer::PrintScalingFactorStats() const {
+  std::ostringstream ostr;
+  ostr << "Approximate total parameter scaling factors for nnet components "
+       << "[ignoring effects due to max-change] are:";
+  int32 i = 0;
+  for (int32 c = 0; c < delta_nnet_->NumComponents(); c++) {
+    Component *comp = delta_nnet_->GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent) {
+      UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(comp);
+      if (uc == NULL)
+        KALDI_ERR << "Updatable component does not inherit from class "
+                  << "UpdatableComponent; change this code.";
+      ostr << " " << delta_nnet_->GetComponentName(c) << "="
+           << std::exp(scaling_value_sum_[c])
+           << (c == (delta_nnet_->NumComponents() - 1) ? "." : ",");
+      i++;
+    }
+  }
+  KALDI_ASSERT(i == scaling_value_sum_.size());
+  KALDI_LOG << ostr.str();
+}
+
 void ObjectiveFunctionInfo::UpdateStats(
     const std::string &output_name,
     int32 minibatches_per_phase,
@@ -286,6 +347,8 @@ bool ObjectiveFunctionInfo::PrintTotalStats(const std::string &name) const {
 }
 
 NnetTrainer::~NnetTrainer() {
+  if (config_.scale_learning_rate > 0.0)
+    PrintScalingFactorStats();
   if (config_.write_cache != "") {
     Output ko(config_.write_cache, config_.binary_write_cache);
     compiler_.WriteCache(ko.Stream(), config_.binary_write_cache);

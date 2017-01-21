@@ -532,6 +532,23 @@ class CommonParser:
                                  Note: we implemented it in such a way that it
                                  doesn't increase the effective learning
                                  rate.""")
+        self.parser.add_argument("--trainer.optimization.scale-learning-rate",
+                                 type=float, dest='scale_learning_rate',
+                                 default=0.0,
+                                 help="""Learning rate for a scaling factor on
+                                 each parameter matrix. Note: this gets
+                                 multiplied by the individual learning rates.
+                                 E.g. --scale-learning-rate=0.1.""")
+        self.parser.add_argument("--trainer.optimization.scale-update-frequency",
+                                 type=float, dest='scale_update_frequency',
+                                 default=0.33,
+                                 help="""Frequency of scaling factor updates
+                                 using '--scale-learning-rate'. Note:
+                                 --scale-learning-rate will be divided by this
+                                 value before being applied, to compensate for
+                                 not being used on all minibatches. For
+                                 efficiency we do this only for some
+                                 minibatches.""")
 
         # General options
         self.parser.add_argument("--stage", type=int, default=-4,

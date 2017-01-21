@@ -320,6 +320,8 @@ def train(args, run_opts, background_process_handler):
                 right_context=right_context,
                 momentum=args.momentum,
                 max_param_change=args.max_param_change,
+                scale_learning_rate=args.scale_learning_rate,
+                scale_update_frequency=args.scale_update_frequency,
                 shuffle_buffer_size=args.shuffle_buffer_size,
                 run_opts=run_opts,
                 background_process_handler=background_process_handler)
