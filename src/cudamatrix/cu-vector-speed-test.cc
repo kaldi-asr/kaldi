@@ -319,6 +319,6 @@ int main() {
 #else
   kaldi::CudaVectorSpeedTest<double>();
 #endif
-  std::cout << "Tests succeeded.\n";
+  KALDI_LOG << "Tests succeeded.";
 }
 
