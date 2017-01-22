@@ -49,8 +49,9 @@ dir=$4
 oov=`cat $lang/oov.int` || exit 1;
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
-sdata=$data/split$nj
-[[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
+sdata=$data/split${nj}utt
+[[ -d $sdata && $data/feats.scp -ot $sdata ]] || \
+   split_data.sh --per-utt $data $nj || exit 1;
 
 if $use_gpu; then
   queue_opt="--gpu 1"
@@ -124,7 +125,6 @@ fi
 ivector_opts=
 if [ ! -z "$online_ivector_dir" ]; then
   ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
-  # note: subsample-feats, with negative n, will repeat each feature -n times.
   ivector_opts="--online-ivectors=scp:$online_ivector_dir/ivector_online.scp --online-ivector-period=$ivector_period"
 fi
 
@@ -153,4 +153,3 @@ $cmd $queue_opt JOB=1:$nj $dir/log/align.JOB.log \
 steps/diagnostic/analyze_alignments.sh --cmd "$cmd" $lang $dir
 
 echo "$0: done aligning data."
-

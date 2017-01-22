@@ -38,6 +38,9 @@ struct NnetGenerationOptions {
   bool allow_multiple_inputs;
   bool allow_multiple_outputs;
   bool allow_final_nonlinearity;
+  bool allow_use_of_x_dim;
+  bool allow_ivector;
+  bool allow_statistics_pooling;
   // if set to a value >0, the output-dim of the network
   // will be set to this value.
   int32 output_dim;
@@ -50,6 +53,9 @@ struct NnetGenerationOptions {
       allow_multiple_inputs(true),
       allow_multiple_outputs(false),
       allow_final_nonlinearity(true),
+      allow_use_of_x_dim(true),
+      allow_ivector(false),
+      allow_statistics_pooling(true),
       output_dim(-1) { }
 };
 

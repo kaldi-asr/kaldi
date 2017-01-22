@@ -104,11 +104,15 @@ void GenerateConfigSequenceSimple(
     splice_context.push_back(0);
 
   int32 input_dim = 10 + Rand() % 20,
-      spliced_dim = input_dim * splice_context.size(),
       output_dim = (opts.output_dim > 0 ?
                     opts.output_dim :
                     100 + Rand() % 200),
       hidden_dim = 40 + Rand() % 50;
+  int32 ivector_dim = 10 + Rand() % 20;
+  if (RandInt(0, 1) == 0 || !opts.allow_ivector)
+    ivector_dim = 0;
+  int32 spliced_dim = input_dim * splice_context.size() + ivector_dim;
+
   bool use_final_nonlinearity = (opts.allow_final_nonlinearity &&
                                  RandInt(0, 1) == 0);
   os << "component name=affine1 type=NaturalGradientAffineComponent input-dim="
@@ -127,8 +131,12 @@ void GenerateConfigSequenceSimple(
     }
   }
   os << "input-node name=input dim=" << input_dim << std::endl;
+  if (ivector_dim != 0)
+    os << "input-node name=ivector dim=" << ivector_dim << std::endl;
 
   os << "component-node name=affine1_node component=affine1 input=Append(";
+  if (ivector_dim != 0)
+    os << "ReplaceIndex(ivector, t, 0), ";
   for (size_t i = 0; i < splice_context.size(); i++) {
     int32 offset = splice_context[i];
     os << "Offset(input, " << offset << ")";
@@ -380,6 +388,11 @@ void GenerateConfigSequenceLstm(
 
   os << "input-node name=input dim=" << input_dim << std::endl;
 
+  // trainable cell value for start/end of file.
+  os << "component name=c0 type=ConstantComponent"
+     << " output-dim=" << cell_dim << std::endl;
+
+
   // Parameter Definitions W*(* replaced by - to have valid names)
   // Input gate control : Wi* matrices
   os << "component name=Wi-xr type=NaturalGradientAffineComponent"
@@ -459,7 +472,13 @@ void GenerateConfigSequenceLstm(
   }
   std::string spliced_input = temp_string_stream.str();
 
-  std::string c_tminus1 = "Sum(IfDefined(Offset(c1_t, -1)), IfDefined(Offset( c2_t, -1)))";
+  std::string c_tminus1 = "Sum(Failover(Offset(c1_t, -1), c0), IfDefined(Offset( c2_t, -1)))";
+
+
+  // c0.  note: the input is never used as the component requires
+  // no input indexes; we just write itself as input to keep the
+  // structures happy.
+  os << "component-node name=c0 component=c0 input=c0\n";
 
   // i_t
   os << "component-node name=i1 component=Wi-xr input=Append("
@@ -535,6 +554,7 @@ void GenerateConfigSequenceLstmWithTruncation(
   int32 clipping_threshold = RandInt(6, 50),
       zeroing_threshold = RandInt(1,  5),
       zeroing_interval = RandInt(1, 5) * 10;
+  BaseFloat scale = 0.8 + 0.1*RandInt(0,3);
 
   os << "input-node name=input dim=" << input_dim << std::endl;
 
@@ -608,12 +628,14 @@ void GenerateConfigSequenceLstmWithTruncation(
      << " output-dim=" << cell_dim << std::endl;
   os << "component name=c type=BackpropTruncationComponent dim="
      << cell_dim
+     << " scale=" << scale
      << " clipping-threshold=" << clipping_threshold
      << " zeroing-threshold=" << zeroing_threshold
      << " zeroing-interval=" << zeroing_interval
      << " recurrence-interval=1" << std::endl;
   os << "component name=r type=BackpropTruncationComponent dim="
      << projection_dim
+     << " scale=" << scale
      << " clipping-threshold=" << clipping_threshold
      << " zeroing-threshold=" << zeroing_threshold
      << " zeroing-interval=" << zeroing_interval
@@ -1019,12 +1041,16 @@ start:
       GenerateConfigSequenceCnn(opts, configs);
       break;
     case 8:
+      if (!opts.allow_use_of_x_dim)
+        goto start;
       GenerateConfigSequenceDistribute(opts, configs);
       break;
     case 9:
       GenerateConfigSequenceCompositeBlock(opts, configs);
       break;
     case 10:
+      if (!opts.allow_statistics_pooling)
+        goto start;
       GenerateConfigSequenceStatistics(opts, configs);
       break;
     case 11:

@@ -56,20 +56,16 @@ def get_args():
             3. RNNs can also be trained with state preservation training""",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         conflict_handler='resolve',
-        parents=[common_train_lib.CommonParser().parser])
+        parents=[common_train_lib.CommonParser(default_chunk_left_context = 40).parser])
 
     # egs extraction options
-    parser.add_argument("--egs.chunk-width", type=int, dest='chunk_width',
-                        default=20,
-                        help="""Number of output labels in the sequence
-                        used to train an LSTM.
-                        Caution: if you double this you should halve
-                        --trainer.samples-per-iter.""")
-    parser.add_argument("--egs.chunk-left-context", type=int,
-                        dest='chunk_left_context', default=40,
-                        help="""Number of left steps used in the estimation of
-                        LSTM state before prediction of the first label""")
-
+    parser.add_argument("--egs.chunk-width", type=str, dest='chunk_width',
+                        default="20",
+                        help="""Number of frames per chunk in the examples
+                        used to train the RNN.   Caution: if you double this you
+                        should halve --trainer.samples-per-iter.  May be
+                        a comma-separated list of alternatives: first width
+                        is the 'principal' chunk-width, used preferentially""")
     parser.add_argument("--trainer.samples-per-iter", type=int,
                         dest='samples_per_iter', default=20000,
                         help="""This is really the number of egs in each
@@ -108,20 +104,14 @@ def get_args():
                         measured by steps/nnet3/get_saturation.pl) exceeds this
                         threshold we scale the parameter matrices with the
                         shrink-value.""")
-    parser.add_argument("--trainer.optimization.cv-minibatch-size", type=int,
-                        dest='cv_minibatch_size', default=256,
-                        help="""Size of the minibatch to be used in diagnostic
-                        jobs (use smaller value for BLSTMs to control memory
-                        usage)""")
-
     # RNN specific trainer options
-    parser.add_argument("--trainer.rnn.num-chunk-per-minibatch", type=int,
-                        dest='num_chunk_per_minibatch', default=100,
-                        help="Number of sequences to be processed in "
-                        "parallel every minibatch")
-    parser.add_argument("--trainer.rnn.num-bptt-steps", type=int,
-                        dest='num_bptt_steps', default=None,
-                        help="""Deprecated. Kept for back compatibility.""")
+    parser.add_argument("--trainer.rnn.num-chunk-per-minibatch", type=str,
+                        dest='num_chunk_per_minibatch', default='100',
+                        help="""Number of sequences to be processed in
+                        parallel every minibatch.  May be a more general
+                        rule as accepted by the --minibatch-size option of
+                        nnet3-merge-egs; run that program without args to see
+                        the format.""")
     parser.add_argument("--trainer.deriv-truncate-margin", type=int,
                         dest='deriv_truncate_margin', default=8,
                         help="""Margin (in input frames) around the 'required'
@@ -157,25 +147,17 @@ def process_args(args):
     """ Process the options got from get_args()
     """
 
-    if args.chunk_width < 1:
-        raise Exception("--egs.chunk-width should have a minimum value of 1")
+    if not common_train_lib.validate_chunk_width(args.chunk_width):
+        raise Exception("--egs.chunk-width has an invalid value");
+
+    if not common_train_lib.validate_minibatch_size_str(args.num_chunk_per_minibatch):
+        raise Exception("--trainer.rnn.num-chunk-per-minibatch has an invalid value");
 
     if args.chunk_left_context < 0:
         raise Exception("--egs.chunk-left-context should be non-negative")
 
     if args.chunk_right_context < 0:
         raise Exception("--egs.chunk-right-context should be non-negative")
-
-    if args.num_bptt_steps is not None:
-        # -2 is used to compensate for the splicing of the input frame,
-        # assuming that splicing spans from -2 to 2
-        args.deriv_truncate_margin = args.num_bptt_steps - args.chunk_width - 2
-        logger.warning(
-            "--trainer.rnn.num-bptt-steps (deprecated) is set by user, and "
-            "--trainer.deriv-truncate-margin is set to (num-bptt-steps - "
-            "chunk-width - 2) = {0}. We recommend using the option "
-            "--trainer.deriv-truncate-margin.".format(
-                args.deriv_truncate_margin))
 
     if (not os.path.exists(args.dir)
             or not os.path.exists(args.dir+"/configs")):
@@ -264,6 +246,10 @@ def train(args, run_opts, background_process_handler):
 
     left_context = args.chunk_left_context + model_left_context
     right_context = args.chunk_right_context + model_right_context
+    left_context_initial = (args.chunk_left_context_initial + model_left_context if
+                            args.chunk_left_context_initial >= 0 else -1)
+    right_context_final = (args.chunk_right_context_final + model_right_context if
+                           args.chunk_right_context_final >= 0 else -1)
 
     # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
     # matrix.  This first config just does any initial splicing that we do;
@@ -284,12 +270,14 @@ def train(args, run_opts, background_process_handler):
         logger.info("Generating egs")
 
         train_lib.acoustic_model.generate_egs(
-            data=args.feat_dir, alidir=args.ali_dir, egs_dir=default_egs_dir,
-            left_context=left_context, right_context=right_context,
-            valid_left_context=left_context + args.chunk_width,
-            valid_right_context=right_context + args.chunk_width,
+            data=args.feat_dir, alidir=args.ali_dir,
+            egs_dir=default_egs_dir,
+            left_context=left_context,
+            right_context=right_context,
+            left_context_initial=left_context_initial,
+            right_context_final=right_context_final,
             run_opts=run_opts,
-            frames_per_eg=args.chunk_width,
+            frames_per_eg_str=args.chunk_width,
             srand=args.srand,
             egs_opts=args.egs_opts,
             cmvn_opts=args.cmvn_opts,
@@ -304,10 +292,14 @@ def train(args, run_opts, background_process_handler):
         egs_dir = args.egs_dir
 
     [egs_left_context, egs_right_context,
-     frames_per_eg, num_archives] = (
+     frames_per_eg_str, num_archives] = (
         common_train_lib.verify_egs_dir(egs_dir, feat_dim, ivector_dim,
-                                        left_context, right_context))
-    assert(args.chunk_width == frames_per_eg)
+                                        left_context, right_context,
+                                        left_context_initial, right_context_final))
+    if args.chunk_width != frames_per_eg_str:
+        raise Exception("mismatch between --egs.chunk-width and the frames_per_eg "
+                        "in the egs dir {0} vs {1}".format(args.chunk_width,
+                                                           frames_per_eg_str))
 
     if (args.num_jobs_final > num_archives):
         raise Exception('num_jobs_final cannot exceed the number of archives '
@@ -364,11 +356,11 @@ def train(args, run_opts, background_process_handler):
                                                   args.final_effective_lrate)
 
     min_deriv_time = None
-    max_deriv_time = None
+    max_deriv_time_relative = None
     if args.deriv_truncate_margin is not None:
         min_deriv_time = -args.deriv_truncate_margin - model_left_context
-        max_deriv_time = (args.chunk_width - 1 + args.deriv_truncate_margin
-                          + model_right_context)
+        max_deriv_time_relative = \
+           args.deriv_truncate_margin + model_right_context
 
     logger.info("Training will run for {0} epochs = "
                 "{1} iterations".format(args.num_epochs, num_iters))
@@ -409,17 +401,16 @@ def train(args, run_opts, background_process_handler):
                 learning_rate=learning_rate(iter, current_num_jobs,
                                             num_archives_processed),
                 shrinkage_value=shrinkage_value,
-                minibatch_size=args.num_chunk_per_minibatch,
+                minibatch_size_str=args.num_chunk_per_minibatch,
                 num_hidden_layers=num_hidden_layers,
                 add_layers_period=args.add_layers_period,
                 left_context=left_context,
                 right_context=right_context,
                 min_deriv_time=min_deriv_time,
-                max_deriv_time=max_deriv_time,
+                max_deriv_time_relative=max_deriv_time_relative,
                 momentum=args.momentum,
                 max_param_change=args.max_param_change,
                 shuffle_buffer_size=args.shuffle_buffer_size,
-                cv_minibatch_size=args.cv_minibatch_size,
                 run_opts=run_opts,
                 background_process_handler=background_process_handler)
 

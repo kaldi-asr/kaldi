@@ -52,14 +52,11 @@ struct NnetOptimizeOptions;  // Forward declaration.
    may be sub-matrices of larger matrices.
 
    Note: the following
-     - Define last-access(submatrix) as:
-       If matrix-of(submatrix) is an output, then num-commands, otherwise the
+     - Define last-access(submatrix) as the
        last command that accesses that submatrix for either read or write.  [note:
        deallocation does not count as a read or write operation].
-     - Define first-access(submatrix) as:
-       If matrix-of(submatrix) is an input, then -1, otherwise the first command
-       that is *not* an allocation command that accessed that submatrix for either
-       read or write.
+     - Define first-access(submatrix) as the first command not of type kAlloc*
+       that accessed that submatrix for either read or write.
      - Define last-write-access(submatrix) as the last command-index that accessed
        the submatrix in a write operation, or -1 if there is no such command (this
        could happen for inputs).
@@ -99,53 +96,41 @@ struct NnetOptimizeOptions;  // Forward declaration.
    Otherwise (cases (b) and (c), in-place propagate or backprop), we insist that:
      - first-access(s2) == C
      - last-access(s1) == C
-   Note: in either case, these conditions imply that s2 is not an input and s1 is
-   not an output.
+   Note: in either case, these conditions imply that m2/s2 is not an input and m1/s1 is
+   not an output.  [i.e. s1 *may* be an input and s2 *may* be an output].
 
-   The sequence of things we have to do for a right-merge (in which we delete
-   s1,m1) is as follows:
+   We can explain the procedure for both left-merge and right-merge in one, because
+   it's the same.  Define s_to_keep and m_to_keep as s1 and m1 if we're left-merging
+   and s2 and m2 if we're right-merging, and s_to_discard and m_to_discard the opposite
+   way.
+
+   The procedure to merge in general is as follows:
+
      - All submatrices that reference m1, make them reference m2 instead.
-       [later we'll renumber so that there are no duplicates.]
-     - If m1 was an input, replace it as an input with m2 and remove the
-       command that allocated m2.
-     - If it was an assignment [case (a)], replace the assignment command with a
-       no-op.
-     - If both m1 and m2 have commands that allocate them, keep only the
-       allocation command for m2, and make sure that it zeroes the data (we can
-       later change to undefined if allowed) and that it's before the first
-       non-allocation access of m1.  Otherwise remove any allocation commands
-       (the merged variable is an input).
-     - If both m1 and m2 have commands that deallocate them, keep only the
-       deallocation command for m2, and make sure that it's after the last
-       access of m1 (otherwise delete any deallocation command, because m2 must
-       be an output).  [note: previously we kept the later of the 2 commands,
-       but this had the effect of making inaccurate the Analyzer info for
-       a matrix (m2) that might later be used.
-     - If m1 had stride_type == kStrideEqualNumCols, set m2's stride_type
-       to kStrideEqualNuMCols.
-
-
-   The sequence of things we have to do for a right-merge (in which we delete
-   s1,m1) is as follows:
-     - All submatrices that reference m2, make them reference m1 instead.
-       [later we'll renumber so that there are no duplicates.]
-     - If m2 was an output, replace it as an output with m1 and remove the
-       command that deallocated m1.
-     ... the last four bullet-points, regarding removing the assignment command,
-        and allocation and deallocation, and stride-type, are the same as for a
-        left-merge, except swap m1 and m2.
+       [later we'll renumber so that there are no duplicates.]  This automatically
+       takes care of making the input and output and allocation/deallocation
+       commands refer to the right matrix, in most cases.
+     - We need to get rid of duplicate or unnecessary allocation commands:
+       If m_to_discard is an input then get rid of the allocation command for
+       m_to_keep; otherwise get rid of the allocation command of m_to_discard.
+     - We need to get rid of duplicate or unnecessary deallocation commands:
+       If m_to_discard is an output then get rid of the deallocation command
+       for m_to_keep; otherwise get rid of the deallocation command for
+       m_to_discard.
 
    At the end when we call RemoveOrphanMatrices(), the renumbering code will
    automatically detect that there are duplicate submatrices, and will merge
    them, as well as removing the now-unused matrix indexes.  After merging, we
    will mark the variables (i.e. row-ranges) underlying s1 and s2 as being
-   "dirty" so they can no longer be merged during the lifetime of this class.
+   "dirty" so they can no longer be merged during the lifetime of this class--
+   this is so we don't have to think to hard; we apply this optimization
+   multiple times until it makes no change (see
+   nnet-optimize.cc:VariableMerginOptimization()).
  */
 class VariableMergingOptimizer {
  public:
   VariableMergingOptimizer(const NnetOptimizeOptions &config,
                            const Nnet &nnet,
-                           const ComputationRequest &request,
                            NnetComputation *computation);
   // Note: you can call this only once.  If it returns true, it means it has
   // merged variables.  In this case, you have the option to instantiate another
@@ -170,20 +155,10 @@ class VariableMergingOptimizer {
   ///  @param s2   [in]     A submatrix-index s2 > 0
   std::pair<bool,bool> MayBeMerged(int32 command, int32 s1, int32 s2) const;
 
-  // performs the left merge.  Search for left-merge in the comment
-  // above the class declaration for details.
-  void DoLeftMerge(int32 command_index, int32 s1, int32 s2);
-
-  // performs the right merge.  Search for right-merge in the comment
-  // above the class declaration for details.
-  void DoRightMerge(int32 command_index, int32 s1, int32 s2);
-
-  // Performs the actions common to both left and right merges, regarding
-  // removing the assignment command, and allocation and deallocation (called
-  // from DoLeftMerge and DoRightMerge).  The m_to_keep and m_to_discard
-  // are the matrix-indexes we will keep and discard respectively.
-  void DoMergeCommon(int32 command_index, int32 m_to_keep,
-                     int32 m_to_discard);
+  // Merges to matrices, whether left merge or right merge.  s_to_keep and
+  // s_to_discard are the submatrix-indexes we will keep and discard
+  // respectively (these are s1 and s2 in some order.
+  void DoMerge(int32 command_index, int32 s_to_keep, int32 m_to_discard);
 
   /// Marks the variables underlying submatrix 's' as dirty
   void MarkAsDirty(int32 s);
@@ -192,7 +167,6 @@ class VariableMergingOptimizer {
 
   const NnetOptimizeOptions &config_;
   const Nnet &nnet_;
-  const ComputationRequest &request_;
   NnetComputation *computation_;
 
   Analyzer analyzer_;
@@ -208,184 +182,29 @@ class VariableMergingOptimizer {
 };
 
 
-/** This class is responsible for consolidating the model-update part of
-    backprop commands, for components in (e.g.) recurrent networks that need to
-    have many separate backprop commands, into more efficient single commands
-    operating on consolidated data in larger matrices.  This is useful for
-    recurrent networks.  */
-class ModelUpdateConsolidator {
- public:
-  ModelUpdateConsolidator(const Nnet &nnet,
-                          NnetComputation *computation);
-  void ConsolidateModelUpdate();
- private:
-  void ConsolidateUpdateForComponent(
-      int32 component,
-      const std::vector<int32> &backprop_commands);
 
-  /// This function, called at the end of ConsolidateModelUpdate(), takes the
-  /// commands that we have put in extra_commands_, final_commands_ and
-  /// final_deallocate_commands_, and puts them in the appropriate place in
-  /// computation->commands_.
-  void AddCommandsToComputation();
-
-  /// You call this function when you want to consolidate the values of a list
-  /// of submatrices taken just prior to particular commands.  The input
-  /// 'commands' and 'submatrices' lists must be the same size, and size must be
-  /// > 1.  This function will create a new matrix that is the row-wise
-  /// concatentation of all these submatrices, with values taken just prior to
-  /// the respective command indexes.  This function will will add to
-  /// extra_commands_ the commands to do the copying at the appropriate places
-  /// (at the supplied command indexes; they will be inserted just before).  The
-  /// return value is the submatrix index of a submatrix that represents the
-  /// whole of the consolidated matrix.  This command will insert, at the
-  /// beginning of the computation (in extra_commands_[0]), a command to
-  /// initialize the matrix; and will append to final_deallocate_commands_ the
-  /// commands to deallocate the matrix.  If computation_->matrix_debug_info is
-  /// nonempty, this function will also update computation_->matrix_debug_info
-  /// with suitable values for the newly added matrix
-  int32 ConsolidateSubmatrices(
-      const std::vector<int32> &commands,
-      const std::vector<int32> &submatrices);
-
-  /// This function, called from ConsolidateSubmatrices, will
-  /// update 'debug_info' by appending the corresponding 'indexes' from
-  /// the existing debug info for this submatrix.  It will also set
-  /// the 'is_deriv' of '*debug_info' to the same value as the
-  /// debug info for 'submatrix_index', and set the 'node_index' to the
-  /// 'node_index' in the debug info for that submatrix-index.
-  /// It requires that computation_->matrix_debug_info be nonempty.
-  void AppendDebugInfoForSubmatrix(
-      int32 submatrix_index,
-      NnetComputation::MatrixDebugInfo *debug_info) const;
-
-  const Nnet &nnet_;
-  NnetComputation *computation_;
-
-  // Indexed by the original command index in *computation_ (and sized to the
-  // original number of commands in *computation_ before we added anything),
-  // extra_commands_[c] contains a list of commands that need to be inserted
-  // just before command c in the previously existing computation.
-  std::vector<std::vector<NnetComputation::Command> > extra_commands_;
-
-  // This is as list of kBackprop commands that will be placed after the
-  // commands in 'computation_->commands' and 'extra_commands_', but before
-  // the 'final_deallocate_commands_'.
-  std::vector<NnetComputation::Command> final_commands_;
-  // This is a list of commands to deallocate our 'consolidated' matrices; the
-  // commands will be placed after the commands in 'final_commands_'.
-  std::vector<NnetComputation::Command> final_deallocate_commands_;
-};
+/**
+   This optimization consolidates
+   the model-update part of
+   backprop commands, for components in (e.g.) recurrent networks that need to
+   have many separate backprop commands, into more efficient single commands
+   operating on consolidated data in larger matrices.  This is useful for
+   recurrent networks.  The resulting computation separates the backprop for
+   data-derivatives from the model-update part of backprop.
+ */
+void ConsolidateModelUpdate(const Nnet &nnet,
+                            NnetComputation *computation);
 
 
-// We declare this class in the .cc file, we don't need to export it.
-// It's used inside RenumberComputation.
-class ComputationRenumberer {
- public:
-  ComputationRenumberer(NnetComputation *computation):
-      computation_(computation) { }
-
-  void Renumber();
- private:
-  // this function removes unused vectors within the indexes_multi_ array, i.e.
-  // ones that are not referenced in the computation.
-  void RemoveUnusedIndexesMulti();
-  // this function computes the submatrix_is_used_ vector, saying whether each
-  // of the original submatrices is referenced somewhere.
-  void ComputeSubmatrixIsUsed();
-  // this function computes the matrix_is_used_ vector (from the
-  // submatrix_is_used_ vector, from computation_->input_output_info, and from
-  // computation_->commands, saying whether each of the original matrices is
-  // referenced somewhere, directly or indirectly.
-  void ComputeMatrixIsUsed();
-  // This function sets up mappings from old to new matrix and submatrix indexes,
-  // writing to num_{,sub}matrices_new_ and old_to_new_{,sub}matrix_.
-  void SetUpMappings();
-  // This function renumbers submatrix indexes appearing within commands and
-  // indexes_multi_, and then removes unused submatrices from the list of
-  // submatrices while leaving the matrix-indexes at their old values (they will
-  // be mapped by RenumberMatrices()).
-  void RenumberSubmatrices();
-  // renumber matrix indexes appearing within 'commmands', within 'submatrices'
-  // and 'input_output_info'; renumber 'matrices' and if applicable
-  // 'debug_info'.
-  void RenumberMatrices();
-  // removes duplicates within the indexes_multi array itself.
-  void RemoveIndexesMultiDuplicates();
-  // removes unused elements and duplicates within 'computation->indexes'
-  void RenumberIndexes();
-  // removes unused elements and duplicates within 'computation->indexes_ranges'
-  void RenumberIndexesRanges();
-
-  struct SubMatrixHasher {
-    SubMatrixHasher() { }
-    size_t operator () (const NnetComputation::SubMatrixInfo &submat) const {
-      // these numbers are arbitrarily chosen primes.
-      return submat.matrix_index +
-          19553 * submat.row_offset +
-          29297 * submat.num_rows +
-          42209 * submat.col_offset +
-          56527 * submat.num_cols;
-    }
-  };
 
 
-  // Here, T will be int32 or std::pair<int32,int32>
-  template <class T>
-  struct PointerCompare {
-    // This provides an operator < on two vectors of ints or pairs of ints.  It
-    // is designed to provide a total order on the vectors while accessing as
-    // small a portion of the vectors' data as possible.  It's used in removing
-    // duplicates from computation_->indexes_multi and computation_->indexes.
-    // First it compares the length, then it does lexicographical compare.
-    bool operator ()(const std::vector<T> *ptr1,
-                     const std::vector<T> *ptr2) const {
-      size_t size1 = ptr1->size(), size2 = ptr2->size();
-      if (size1 < size2) return true;
-      else if (size1 > size2) return false;
-      else return (*ptr1 < *ptr2);  // use the std::vector operator <, which is
-                                    // lexicographical comparison.
-    }
-  };
-
-  /// creates a renumbering that removes the elements in "to_remove",
-  /// e.g. if old_num_elements = 3 and to_remove = [1], would output
-  /// the vector [ 0, -1, 1 ].
-  static void CreateRenumbering(int32 old_num_elements,
-                                const std::vector<int32> &to_remove,
-                                std::vector<int32> *renumbering);
-
-  /// creates a renumbering from old to new index that removes the unused
-  /// elements, e.g. if used == [ true, false, true, true], would output the
-  /// vector [ 0, -1, 1, 2 ].  Returns number of new elements, i.e. the
-  /// number of elements of 'used' that were true.
-  static int32 CreateRenumbering(const std::vector<bool> &used,
-                                 std::vector<int32> *renumbering);
-
-  // vector of bool indexed by original submatrix-index, that is true if a
-  // submatrix-index is used somewhere in the computation (always true for
-  // the zeroth element).
-  std::vector<bool> submatrix_is_used_;
-  // vector of bool indexed by original submatrix-index, that is true if a
-  // submatrix-index will be kept; this is like submatrix_is_used_; but for
-  // duplicate submatrices, all but the first duplicate will be marked false).
-  std::vector<bool> submatrix_is_kept_;
-  // vector of bool indexed by original-matrix-index > 0, that is true if a
-  // matrix-index is used somewhere in the computation, directly or indirectly.
-  // always true for the zeroth element.
-  std::vector<bool> matrix_is_used_;
-  NnetComputation *computation_;
-  int32 num_matrices_new_;
-  int32 num_submatrices_new_;
-  std::vector<int32> old_to_new_matrix_; // numbered by orig-matrix-index, gives
-                                         // new-matrix-index.  -1 for removed
-                                         // ones.
-  std::vector<int32> old_to_new_submatrix_; // numbered by orig-submatrix-index,
-                                            // gives new-submatrix-index.  -1
-                                            // for removed ones.
-};
-
-
+// Class DerivativeTimeLimiter is used inside LimitDerivativeTimes().
+// Its function is to modify the computation so that we don't work
+// with derivatives outside of a specified range of t values; this is
+// useful, for instance, in BLSTMs where you might have a fair amount of
+// left and right context in the training examples but don't want to
+// propagate the derivatives to there.
+//
 // We require that the computation have debug info set up
 // (!matrix_debug_info.empty()) and that this be the first
 // optimization you perform.  This means that the debug_info will
@@ -401,11 +220,6 @@ class DerivativeTimeLimiter {
   void LimitDerivTimes();
 
  private:
-
-  // This command ensures that for each matrix m there is a corresponding
-  // submatrix that spans the entire matrix, and stores its index in
-  // entire_submatrix_[m].
-  void EnsureMatricesHaveEntireSubmatrices();
 
   // sets up matrix_prune_info_.
   void ComputeMatrixPruneInfo();
@@ -502,7 +316,7 @@ class DerivativeTimeLimiter {
 
   // for each matrix index > 0, the index of a submatrix that consists of
   // the entirety of that matrix.
-  std::vector<int32> entire_submatrix_;
+  std::vector<int32> whole_submatrices_;
 
   std::vector<MatrixPruneInfo> matrix_prune_info_;
 
@@ -522,6 +336,12 @@ class DerivativeTimeLimiter {
   std::vector<MatrixPruneInfo> prune_info_;
 };
 
+
+// This utility function, used in code that calls LimitDerivativeTimes(), returns
+// the largest time 't' in any of the 'outputs' in the computation request,
+// or crashes if there are no outputs (or no cindexes in those outputs).
+int32 MaxOutputTimeInRequest(const ComputationRequest &request);
+
 // This is the top-level interface to limit the times on which derivatives are
 // computed (e.g. for truncated BPTT); internally it uses class
 // DerivativeLimiter.  Will do nothing if min_deriv_time and max_deriv_time are
@@ -531,31 +351,103 @@ void LimitDerivativeTimes(const Nnet &nnet,
                           int32 max_deriv_time,
                           NnetComputation *computation);
 
+/**  This function, used in 'shortcut' compilation where we first compile a
+     smaller computation with the same structure but only 2 distinct 'n'
+     values, works out whether a computation is 'decomposable'; if so,
+     it returns true and outputs the 'mini_request' with the same structure,
+     and the number of 'n' values.
 
-/// This function detects submatrices, matrices, and members of indexes_multi
-/// and indexes that are never used (e.g. due to changes made in other
-/// optimization code), and removes them from the computation by way of suitable
-/// renumbering.  It does not remove no-ops from computation->commands_; to do
-/// that, call RemoveNoOps(computation).
+     A computation is decomposable if the following conditions hold:
+
+      - All of its inputs and outputs contain 'n' values for all 0 <= n < N,
+        for some N > 2.  [we output this 'N' as 'num_n_values'].
+      - All of its inputs and outputs have 'regular' structure.
+
+        What it means for an input or output (i.e. an IoSpecification) to have a
+        'regular' structure, is as follows:
+          - The 't' and 'x' values present are the same for each 'n',
+          - The order in which the indexes appear is EITHER of the following:
+             - The 'n' index varies 'fast', i.e. the order is:
+                 (t1,x1,0), (t1,x1,1) ... (t1,x1,N-1) \
+                 (t2,x2,0), (t2,x2,1) ... (t2,x2,N-1)  ...
+             - The 'n' index varies 'slowly', i.e. the order is:
+                 (t1,x1,0), (t2,x2,0) ...  \
+                 (t1,x1,1), (t2,x2,1) ...  \
+                 ...                       \
+                 (t1,x2,N-1), (t2,x2,N-1) ...
+            In either case, there does not have to be any particular rhyme or
+            reason to the order of the t and x values; the regularity on 'n' is
+            all that we care about.
+ */
+bool RequestIsDecomposable(const ComputationRequest &request,
+                           ComputationRequest *mini_request,
+                           int32 *num_n_values);
+
+
+/**
+  This function is used in 'shortcut' compilation to expand a computation
+  that has been compiled for exactly 2 'n' values, to one that is suitable
+  for some num_n_values > 2.
+     @param [in] nnet         The neural network for which this computation
+                              is being built.
+     @param [in] misc_info    The same MiscComputationInfo object that was
+                              present in the ComputationRequests that were
+                              originally used to generate the computation
+                              (required to generated the PrecomputedIndexes)
+     @param [in] computation  The computation that was compiled for exactly
+                              2 'n' values (n=0 and n=1)
+     @param [in] need_debug_info True if we want to retain the 'debug_info'
+                              in the output 'expanded_computation'.  In any
+                              case, the 'debug_info' is required in the
+                              input computation.
+     @param [in] num_n_values The number of 'n' values we want in the output
+                              computation
+     @param [out] expanded_computation  The expanded computation.
+
+ */
+void ExpandComputation(const Nnet &nnet,
+                       const MiscComputationInfo &misc_info,
+                       const NnetComputation &computation,
+                       bool need_debug_info,
+                       int32 num_n_values,
+                       NnetComputation *expanded_computation);
+
+
+
+/// This function detects cases where commands of type kCopyRows, kAddRows or
+/// kAddToRows can be converted to commands of type kMatrixCopy or kMatrixAdd,
+/// and converts them (this may involve adding submatrices).
+///
+/// This function returns true if it made any changes to the computation; if it
+/// returns true, then after doing this you should at some point do
+/// RenumberComputation(), which will remove any now-unused members of
+/// computation->indexes.
+bool ReplaceRowWithMatrixOps(NnetComputation *computation);
+
+/// This function detects cases where commands of type kCopyRows, kAddRows,
+/// kAddRowsMulti, kAddToRowsMulti, kCopyRowsMulti, kCopyToRowsMulti or
+/// kAddRowRanges use indexes that start or end with -1's or equivalents,
+/// and replace them with similar commands that act on a sub-matrix of the
+/// matrices they are currently acting on.  This will help efficiency by
+/// avoiding launching unnecessary copies of the kernel (that don't really
+/// have to do anything).
+///
+/// This function returns true if it made any changes to the computation; if it
+/// returns true, then after doing this you should at some point do
+/// RenumberComputation(), which will remove any now-unused members of
+/// computation->indexes.
+bool SnipRowOps(NnetComputation *computation);
+
+/// This function detects submatrices and matrices that are never used (e.g. due
+/// to changes made in other optimization code), and members of indexes,
+/// indexes_multi and indexes_ranges that are unused or are duplicates, and
+/// removes them from the computation by way of suitable renumbering.  It does
+/// not remove no-ops from computation->commands_; to do that, call
+/// RemoveNoOps(computation).
 void RenumberComputation(NnetComputation *computation);
 
 /// Removes commands of type kNoOperation in the computation.
 void RemoveNoOps(NnetComputation *computation);
-
-/// Wherever matrix orig_matrix_index appears in the input of the network
-/// (i.e. in computation->input_output_info), replaces it with new_matrix_index.
-/// Returns true if it did replace it.
-bool ReplaceInInput(
-    const Nnet &nnet, int32 orig_matrix_index, int32 new_matrix_index,
-    NnetComputation *computation);
-
-/// A helper function used in some optimization functions.
-/// Wherever matrix orig_matrix_index appears in the output of the network
-/// (i.e. in computation->input_output_info), replaces it with new_matrix_index.
-/// Returns true if it did replace it.
-bool ReplaceInOutput(
-    const Nnet &nnet, int32 orig_matrix_index, int32 new_matrix_index,
-    NnetComputation *computation);
 
 /// This function outputs to "submatrix_args" the addresses of a subset of
 /// arguments arg1 through arg6 in "command", that correspond to the indexes of
@@ -572,7 +464,6 @@ void IdentifySubmatrixArgs(NnetComputation::Command *command,
 void IdentifySubmatrixArgs(std::vector<NnetComputation::Command> *commands,
                            std::vector<int32*> *submatrix_args);
 
-
 /// This function outputs to "submatrix_args" the addresses of integers in
 /// 'computation' that correspond to submatrices.  These may be present in
 /// 'commands', and in 'indexes_multi'.  This is useful in renumbering code.
@@ -581,32 +472,6 @@ void IdentifySubmatrixArgs(std::vector<NnetComputation::Command> *commands,
 /// in 'indexes_multi'.
 void IdentifySubmatrixArgsInComputation(NnetComputation *computation,
                                         std::vector<int32*> *submatrix_args);
-
-
-/// This function outputs to "matrix_args" the addresses of a subset of the
-/// arguments arg1 through arg6 in "command", that correspond to the indexes of
-/// matrices.  This is useful in renumbering code.  (Note: only a few types of
-/// command use matrix indexes).
-void IdentifyMatrixArgs(NnetComputation::Command *command,
-                        std::vector<int32*> *matrix_args);
-
-/// This function outputs to "matrix_args" the addresses of a subset of the
-/// arguments arg1 through arg6 in commands in "commands", that correspond to
-/// the indexes of matrices.  This is useful in renumbering code.  (Note: only a
-/// few types of command use matrix indexes).
-void IdentifyMatrixArgs(std::vector<NnetComputation::Command> *command,
-                        std::vector<int32*> *matrix_args);
-
-/// This function outputs to "matrix_args" the addresses of indexes inside
-/// 'computation' that correspond to matrices.  These live inside
-/// computation->commands and computation->input_output_info; and if
-/// 'include_from_submatrices' is true, then the matrix-indexes present in
-/// computation->submatrices[*].matrix_index will be included too.  Zeros may be
-/// present if there were optional arguments; we do include pointers to them,
-/// but you can just ignore them.
-void IdentifyMatrixArgsInComputation(bool include_from_submatrices,
-                                     NnetComputation *computation,
-                                     std::vector<int32*> *matrix_args);
 
 
 /// Identifies in the vector of commands, arguments that correspond to indexes
@@ -633,7 +498,26 @@ void IdentifyIndexesArgs(std::vector<NnetComputation::Command> *commands,
 void IdentifyIndexesRangesArgs(std::vector<NnetComputation::Command> *commands,
                                std::vector<int32*> *indexes_ranges_args);
 
+/// This function tries to optimize computation 'computation' for an 'looped'
+/// computation.  It expects as input a computation with no backprop but with
+/// multiple 'segments' separated by command kNoOperation, where each segment
+/// corresponds to a new chunk of input and output.  It tries to locate a pair
+/// of segment boundaries, with command indexes c1 and c2, where the active
+/// matrices have the same debug-info other than a time offset and can be
+/// identified with each other, and the no-op command at c2 can be replaced with
+/// 'got c1', creating a computation that 'goes on forever'.
+/// If it can't do this, it does nothing.  You can figure out that this is the
+/// case by checking whether kGotoLabel is the last command in the computation.
+/// [If this optimization fails, the whole computation may have to be
+/// regenerated with more segments.]
+void OptimizeLoopedComputation(const Nnet &nnet,
+                               NnetComputation *computation);
 
+
+/// This function ensures that the arg1 of a final command of type kGotoLabel is
+/// the same as the command with type kNoOperationLabel.  This is necessary
+/// if you do any other type of optimization after 'OptimizeLoopedComputation()'.
+void FixGotoLabel(NnetComputation *computation);
 
 
 /*
@@ -655,4 +539,3 @@ void IdentifyIndexesRangesArgs(std::vector<NnetComputation::Command> *commands,
 
 
 #endif
-

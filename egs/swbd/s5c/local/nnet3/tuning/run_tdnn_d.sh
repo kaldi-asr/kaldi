@@ -71,7 +71,7 @@ if [ $stage -le 9 ]; then
   relu-renorm-layer name=tdnn4 input=Append(-3,3) dim=1024
   relu-renorm-layer name=tdnn5 input=Append(-7,2) dim=1024
   relu-renorm-layer name=tdnn6 dim=1024
-  
+
   output-layer name=output input=tdnn6 dim=$num_targets max-change=1.5 presoftmax-scale-file=$dir/configs/presoftmax_prior_scale.vec
 EOF
 
@@ -125,4 +125,3 @@ if [ $stage -le 11 ]; then
 fi
 wait;
 exit 0;
-

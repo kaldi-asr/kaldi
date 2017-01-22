@@ -42,6 +42,7 @@ struct NnetTrainerOptions {
   BaseFloat max_param_change;
   NnetOptimizeOptions optimize_config;
   NnetComputeOptions compute_config;
+  CachingOptimizingCompilerOptions compiler_config;
   NnetTrainerOptions():
       zero_component_stats(true),
       store_component_stats(true),
@@ -79,8 +80,8 @@ struct NnetTrainerOptions {
     // register the optimization options with the prefix "optimization".
     ParseOptions optimization_opts("optimization", opts);
     optimize_config.Register(&optimization_opts);
-
-
+    ParseOptions compiler_opts("compiler", opts);
+    compiler_config.Register(&compiler_opts);
     // register the compute options with the prefix "computation".
     ParseOptions compute_opts("computation", opts);
     compute_config.Register(&compute_opts);

@@ -177,7 +177,7 @@ int main(int argc, char *argv[]) {
                   &lattice_writer,
                   &like)) {
             tot_like += like;
-            frame_count += features.NumRows();
+            frame_count += nnet_decodable.NumFramesReady();
             num_success++;
           } else num_fail++;
         }
@@ -236,20 +236,24 @@ int main(int argc, char *argv[]) {
                 &alignment_writer, &words_writer, &compact_lattice_writer,
                 &lattice_writer, &like)) {
           tot_like += like;
-          frame_count += features.NumRows();
+          frame_count += nnet_decodable.NumFramesReady();
           num_success++;
         } else num_fail++;
       }
     }
 
+    kaldi::int64 input_frame_count =
+        frame_count * decodable_opts.frame_subsampling_factor;
+
     double elapsed = timer.Elapsed();
     KALDI_LOG << "Time taken "<< elapsed
               << "s: real-time factor assuming 100 frames/sec is "
-              << (elapsed*100.0/frame_count);
+              << (elapsed * 100.0 / input_frame_count);
     KALDI_LOG << "Done " << num_success << " utterances, failed for "
               << num_fail;
-    KALDI_LOG << "Overall log-likelihood per frame is " << (tot_like/frame_count) << " over "
-              << frame_count<<" frames.";
+    KALDI_LOG << "Overall log-likelihood per frame is "
+              << (tot_like / frame_count) << " over "
+              << frame_count << " frames.";
 
     delete word_syms;
     if (num_success != 0) return 0;

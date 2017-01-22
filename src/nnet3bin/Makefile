@@ -16,8 +16,8 @@ BINFILES = nnet3-init nnet3-info nnet3-get-egs nnet3-copy-egs nnet3-subset-egs \
    nnet3-discriminative-get-egs nnet3-discriminative-copy-egs \
    nnet3-discriminative-merge-egs nnet3-discriminative-shuffle-egs \
    nnet3-discriminative-compute-objf nnet3-discriminative-train \
-   discriminative-get-supervision nnet3-discriminative-subset-egs \
-   nnet3-discriminative-compute-from-egs
+   nnet3-discriminative-subset-egs \
+   nnet3-discriminative-compute-from-egs nnet3-latgen-faster-looped
 
 OBJFILES =
 
