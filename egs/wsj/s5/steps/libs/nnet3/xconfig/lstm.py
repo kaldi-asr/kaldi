@@ -374,7 +374,9 @@ class XconfigLstmpLayer(XconfigLayerBase):
         configs.append("component name={0}.o type=SigmoidComponent dim={1} {2}".format(name, cell_dim, repair_nonlin_str))
         configs.append("component name={0}.g type=TanhComponent dim={1} {2}".format(name, cell_dim, repair_nonlin_str))
         configs.append("component name={0}.h type=TanhComponent dim={1} {2}".format(name, cell_dim, repair_nonlin_str))
-
+        if lstm_dropout_value != -1.0:
+            configs.append("component name={0}.dropout type=DropoutComponent dim={1} {2} {3}".format(name, cell_dim, lstm_dropout_str, lstm_dropout_per_frame_str))
+        
         configs.append("# Defining the components for other cell computations")
         configs.append("component name={0}.c1 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
         configs.append("component name={0}.c2 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
@@ -389,17 +391,20 @@ class XconfigLstmpLayer(XconfigLayerBase):
         configs.append("# i_t")
         configs.append("component-node name={0}.i1_t component={0}.W_i.xr input=Append({1}, IfDefined(Offset({2}, {3})))".format(name, input_descriptor, recurrent_connection, delay))
         configs.append("component-node name={0}.i2_t component={0}.w_i.c  input={1}".format(name, delayed_c_t_descriptor))
-        configs.append("component-node name={0}.i_t component={0}.i input=Sum({0}.i1_t, {0}.i2_t)".format(name))
+        configs.append("component-node name={0}.i_t_predrop component={0}.i input=Sum({0}.i1_t, {0}.i2_t)".format(name))
+        configs.append("component-node name={0}.i_t component={0}.dropout input={0}.i_t_predrop".format(name))
 
         configs.append("# f_t")
         configs.append("component-node name={0}.f1_t component={0}.W_f.xr input=Append({1}, IfDefined(Offset({2}, {3})))".format(name, input_descriptor, recurrent_connection, delay))
         configs.append("component-node name={0}.f2_t component={0}.w_f.c  input={1}".format(name, delayed_c_t_descriptor))
-        configs.append("component-node name={0}.f_t component={0}.f input=Sum({0}.f1_t, {0}.f2_t)".format(name))
+        configs.append("component-node name={0}.f_t_predrop component={0}.f input=Sum({0}.f1_t, {0}.f2_t)".format(name))
+        configs.append("component-node name={0}.f_t component={0}.dropout input={0}.f_t_predrop".format(name))
 
         configs.append("# o_t")
         configs.append("component-node name={0}.o1_t component={0}.W_o.xr input=Append({1}, IfDefined(Offset({2}, {3})))".format(name, input_descriptor, recurrent_connection, delay))
         configs.append("component-node name={0}.o2_t component={0}.w_o.c input={0}.c_t".format(name))
-        configs.append("component-node name={0}.o_t component={0}.o input=Sum({0}.o1_t, {0}.o2_t)".format(name))
+        configs.append("component-node name={0}.o_t_predrop component={0}.o input=Sum({0}.o1_t, {0}.o2_t)".format(name))
+        configs.append("component-node name={0}.o_t component={0}.dropout input={0}.o_t_predrop".format(name))
 
         configs.append("# h_t")
         configs.append("component-node name={0}.h_t component={0}.h input={0}.c_t".format(name))
@@ -847,6 +852,8 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
         configs.append("# Component for backprop truncation, to avoid gradient blowup in long training examples.")
         configs.append("component name={0}.cr_trunc type=BackpropTruncationComponent "
                        "dim={1} {2}".format(name, cell_dim + rec_proj_dim, bptrunc_str))
+        if lstm_dropout_value != -1.0:
+            configs.append("component name={0}.cr_trunc.dropout type=DropoutComponent dim={1} {2} {3}".format(name, cell_dim + rec_proj_dim, lstm_dropout_str, lstm_dropout_per_frame_str))
         configs.append("# Component specific to 'projected' LSTM (LSTMP), contains both recurrent");
         configs.append("# and non-recurrent projections")
         configs.append("component name={0}.W_rp type=NaturalGradientAffineComponent input-dim={1} "
@@ -869,10 +876,11 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
         configs.append("# and r back together to truncate them but it probably");
         configs.append("# makes the deriv truncation more accurate .")
         configs.append("component-node name={0}.cr_trunc component={0}.cr_trunc "
-                       "input=Append({0}.c, {0}.r)".format(name))
-        configs.append("dim-range-node name={0}.c_trunc input-node={0}.cr_trunc "
-                       "dim-offset=0 dim={1}".format(name, cell_dim))
-        configs.append("dim-range-node name={0}.r_trunc input-node={0}.cr_trunc "
-                       "dim-offset={1} dim={2}".format(name, cell_dim, rec_proj_dim))
+                        "input=Append({0}.c, {0}.r)".format(name))
+        configs.append("component-node name={0}.cr_trunc.dropout component={0}.cr_trunc.dropout input={0}.cr_trunc".format(name))
+        configs.append("dim-range-node name={0}.c_trunc input-node={0}.cr_trunc.dropout "
+                        "dim-offset=0 dim={1}".format(name, cell_dim))
+        configs.append("dim-range-node name={0}.r_trunc input-node={0}.cr_trunc.dropout "
+                        "dim-offset={1} dim={2}".format(name, cell_dim, rec_proj_dim))
         configs.append("### End LSTM Layer '{0}'".format(name))
         return configs
