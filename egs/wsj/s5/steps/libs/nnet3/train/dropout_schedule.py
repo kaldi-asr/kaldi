@@ -1,4 +1,4 @@
-
+#! /usr/bin/env python
 
 # Copyright 2016    Vimal Manohar
 # Apache 2.0
@@ -243,7 +243,7 @@ def get_dropout_edit_string(dropout_schedule, data_fraction, iter_):
 
 def _self_test():
     """Run self-test.
-    This method is called everytime the module is imported or run.
+    This method is called if the module is run as a standalone script.
     """
 
     def assert_approx_equal(list1, list2):
@@ -301,8 +301,9 @@ def _self_test():
                         [ ('lstm.*', 0.6) ])
 
 
-try:
-    _self_test()
-except Exception:
-    logger.error("Failed self test")
-    raise
+if __name__ == '__main__':
+    try:
+        _self_test()
+    except Exception:
+        logger.error("Failed self test")
+        raise
