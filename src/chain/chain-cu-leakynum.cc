@@ -66,7 +66,7 @@ CuLeakyNumeratorComputation::CuLeakyNumeratorComputation(
     tot_prob_(num_sequences_, kUndefined),
     tot_log_prob_(num_sequences_, kUndefined),
     ok_(true) {
-  KALDI_ASSERT(opts_.num_leak_coefficient > 0.0 &&
+  KALDI_ASSERT(opts_.num_leak_coefficient >= 0.0 &&
                opts_.num_leak_coefficient < 1.0);
 
   KALDI_ASSERT(nnet_output.NumRows() % num_sequences_ == 0);
@@ -124,14 +124,14 @@ void CuLeakyNumeratorComputation::AlphaSumAndPrime(int32 t) {
   /// first sum up den states
   alpha_sum_vec.AddRowSumMat(1.0, alpha_mat_den, 0.0);
   alpha_prime.CopyFromVec(alpha_sum_vec);
-  
+
   /// now sum num states too
   alpha_sum_vec.AddRowSumMat(1.0, alpha_mat_num, 1.0);
   alpha_sum_vec_loc2.CopyFromVec(alpha_sum_vec);
 }
 
 // the alpha computation for some 0 < t <= num_time_steps_ for numerator states
-// the only difference from normal formulas is that alpha(t-1) is first 
+// the only difference from normal formulas is that alpha(t-1) is first
 // added with alpha-prime
 void CuLeakyNumeratorComputation::AlphaNumFrame(int32 t) {
   KALDI_ASSERT(t > 0 && t <= frames_per_sequence_);
@@ -196,7 +196,6 @@ void CuLeakyNumeratorComputation::AlphaNumFrame(int32 t) {
           BaseFloat prob = prob_data[pdf_id * prob_stride + s],
               this_prev_alpha_num = prev_alpha_num[prev_hmm_state * num_sequences_ + s];
           this_tot_alpha += (this_prev_alpha_num + prev_alpha_prime(s)) / inv_arbitrary_scale * transition_prob * prob;
-          
           if (this_tot_alpha - this_tot_alpha != 0) {
             KALDI_LOG << "t: " << t << ", seq: " << s << ", h: " << h
             << ", prev-alpha: " << this_prev_alpha_num
@@ -204,7 +203,6 @@ void CuLeakyNumeratorComputation::AlphaNumFrame(int32 t) {
             << ", inv_arbitrary_scale: " << inv_arbitrary_scale;
             KALDI_ERR << "Alpha-num failure.";
           }
-          
         }
         KALDI_ASSERT(this_tot_alpha - this_tot_alpha == 0);
         this_alpha_num[h * num_sequences_ + s] = this_tot_alpha ;//* arbitrary_scale; //#SCC#
@@ -214,7 +212,7 @@ void CuLeakyNumeratorComputation::AlphaNumFrame(int32 t) {
 
 }
 
-// the alpha computation for some 0 < t <= num_time_steps_ for 
+// the alpha computation for some 0 < t <= num_time_steps_ for
 // denominator states. This code is exactly like the one in chain-denominator.cc
 void CuLeakyNumeratorComputation::AlphaDenFrame(int32 t) {
   KALDI_ASSERT(t > 0 && t <= frames_per_sequence_);
@@ -287,7 +285,7 @@ void CuLeakyNumeratorComputation::AlphaDenFrame(int32 t) {
 }
 
 // alpha-hat is a sum over all transitions of the num graph -- check the formulas
-// after computing alpha-hat 
+// after computing alpha-hat
 // (which is stored at location num_graph_.MaxNumStates() + 1), the alpha hats
 // are added to alphas for den states.
 
@@ -354,9 +352,13 @@ void CuLeakyNumeratorComputation::AlphaHat(int32 t) {
                                        den_graph_.NumStates(),
                                        num_sequences_,
                                        num_sequences_);
-  alpha_mat_den.AddVecVec(opts_.num_leak_coefficient,
-                          den_graph_.InitialProbs(),
-                          prev_alpha_hats);
+  if (opts_.use_initial_probs == 1)
+    alpha_mat_den.AddVecVec(opts_.num_leak_coefficient,
+                            den_graph_.InitialProbs(),
+                            prev_alpha_hats);
+  else
+    alpha_mat_den.AddVecToRows(opts_.num_leak_coefficient,
+                               prev_alpha_hats, 1.0);
 }
 
 BaseFloat CuLeakyNumeratorComputation::Forward() {
@@ -383,7 +385,7 @@ BaseFloat CuLeakyNumeratorComputation::ComputeTotLogLike() {
   int32 num_states_cpu[num_sequences_];
   num_graph_.CopyNumStatesToCpu(num_states_cpu);
   /// tot_prob_(seq) for each seq is the num-alpha(T) for the final state of that graph
-  /// that's because the only valid paths are the ones that end up in the final 
+  /// that's because the only valid paths are the ones that end up in the final
   /// state of the numerator graph.
 
   // void Lookup(const std::vector<Int32Pair> &indexes, Real *output) const
@@ -470,7 +472,7 @@ void CuLeakyNumeratorComputation::BetaLastFrame() {
     int32 final_state = num_states_cpu[seq] - 1;
     beta_mat_num(final_state, seq) = 1.0 / tot_prob_(seq);
   }
-  delete num_states_cpu; 
+  delete num_states_cpu;
 }
 
 /// Computes beta-prime for time t
@@ -486,9 +488,11 @@ void CuLeakyNumeratorComputation::BetaPrime(int32 t) {
   CuSubVector<BaseFloat> beta_prime(this_beta_num +
                                    num_graph_.MaxNumStates() * num_sequences_,
                                    num_sequences_);
-
-  beta_prime.AddMatVec(opts_.num_leak_coefficient, beta_den_mat,
-                       kTrans, den_graph_.InitialProbs(), 0.0);
+  if (opts_.use_initial_probs == 1)
+    beta_prime.AddMatVec(opts_.num_leak_coefficient, beta_den_mat,  // IxB --> trans: BxI
+                         kTrans, den_graph_.InitialProbs(), 0.0);
+  else
+    beta_prime.AddRowSumMat(opts_.num_leak_coefficient, beta_den_mat, 0.0);
 }
 
 /// Computes beta for numerator states.
@@ -512,7 +516,7 @@ void CuLeakyNumeratorComputation::BetaNumFrame(int32 t) {
   int32 max_num_hmm_states = num_graph_.MaxNumStates(),
         num_sequences = num_sequences_;
 
-  CuSubVector<BaseFloat> next_beta_prime(next_beta_num + 
+  CuSubVector<BaseFloat> next_beta_prime(next_beta_num +
                                          num_graph_.MaxNumStates() * num_sequences_,
                                          num_sequences_);
 
@@ -574,14 +578,13 @@ void CuLeakyNumeratorComputation::BetaNumFrame(int32 t) {
           BaseFloat occupation_prob = variable_factor1 * this_alpha_prob; //occupation_factor; #SCC#
           log_prob_deriv_data[pdf_id * deriv_stride + s] += occupation_prob;
 
-
           /// handle Gamma Leaky Transitions:
-          log_prob_deriv_data[pdf_id * deriv_stride + s] += shared_factor * ( 
-             (this_alpha_prob * next_beta_prime(s))    +    (next_beta_prob * alpha_prime(s))   );
+          log_prob_deriv_data[pdf_id * deriv_stride + s] += shared_factor * (
+             (this_alpha_prob * next_beta_prime(s))    +    (next_beta_prob * alpha_prime(s))  );
 
           if (tot_variable_factor - tot_variable_factor != 0) {
             KALDI_LOG << "t: " << t << ", seq: " << s << ", h: " << h << ", pdf_id: " << pdf_id
-            << ", var-factor: " << variable_factor1 
+            << ", var-factor: " << variable_factor1
             << ", ocup-prob: " << occupation_prob
             << ", next-beta: " << next_beta_num[next_hmm_state * num_sequences + s]
             << ", this_alpha_prob: " << this_alpha_prob
@@ -747,7 +750,7 @@ void CuLeakyNumeratorComputation::BetaHat(int32 t) {
     }
   }
 
-  BaseFloat *this_beta_den = beta_den_.RowData(t % 2); 
+  BaseFloat *this_beta_den = beta_den_.RowData(t % 2);
   CuSubMatrix<BaseFloat> beta_den_mat(this_beta_den,
                                       den_graph_.NumStates(),
                                       num_sequences_,
@@ -770,18 +773,20 @@ void CuLeakyNumeratorComputation::BetaGeneralFrameDebug(int32 t) {
   BaseFloat alpha_beta_product_num = VecVec(this_alpha_num, this_beta_num);
   BaseFloat alpha_beta_product_den = VecVec(this_alpha_den, this_beta_den);
   BaseFloat alpha_beta_product = alpha_beta_product_num + alpha_beta_product_den;
-  
+
   int32 t_wrapped = t % static_cast<int32>(kMaxDerivTimeSteps),
         num_pdfs = exp_nnet_output_transposed_.NumRows();
   CuSubMatrix<BaseFloat> this_log_prob_deriv(
       nnet_output_deriv_transposed_, 0, num_pdfs,
       t_wrapped * num_sequences_, num_sequences_);
   BaseFloat this_log_prob_deriv_sum = this_log_prob_deriv.Sum();
-  
+
   if (!ApproxEqual(alpha_beta_product, num_sequences_)) {
     KALDI_WARN << "On time " << t << ", alpha-beta product "
                << alpha_beta_product << " != " << num_sequences_
                << " alpha-sum-num = " << this_alpha_num.Sum()
+               << ", alpha_beta_product_num = " << alpha_beta_product_num
+               << ", alpha_beta_product_den = " << alpha_beta_product_den
                << ", beta-sum-num = " << this_beta_num.Sum();
     if (fabs(alpha_beta_product - num_sequences_) > 2.0) {
       KALDI_WARN << "Excessive error detected, will abandon this minibatch";

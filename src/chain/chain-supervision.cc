@@ -695,6 +695,33 @@ void AppendSupervision(const std::vector<const Supervision*> &input,
   }
 }
 
+static void FixFinals(fst::StdVectorFst *fst) {
+  int32 num_states = fst->NumStates(), finalstate = 0;
+  for (int32 state = 0; state < num_states; state++)
+    if (fst->Final(state) != fst::TropicalWeight::Zero()) {
+      finalstate = state;
+      break;
+    }
+
+  for (int32 state = 0; state < num_states; state++) {
+    for (fst::MutableArcIterator<fst::StdVectorFst> aiter(fst, state);
+         !aiter.Done(); aiter.Next()) {
+      const fst::StdArc &arc = aiter.Value();
+      if (arc.nextstate > finalstate) {
+        KALDI_ASSERT(fst->Final(arc.nextstate) == fst::TropicalWeight::One());
+        fst::StdArc arc2(arc);
+        arc2.nextstate = finalstate;
+        aiter.SetValue(arc2);
+      }
+    }
+  }
+  std::vector<int32> del;
+  for (int32 state = finalstate + 1; state < num_states; state++) {
+    del.push_back(state);
+  }
+  fst->DeleteStates(del);
+}
+
 bool AddWeightToSupervisionFst(const fst::StdVectorFst &normalization_fst,
                                Supervision *supervision) {
   // remove epsilons before composing.  'normalization_fst' has noepsilons so
@@ -715,15 +742,17 @@ bool AddWeightToSupervisionFst(const fst::StdVectorFst &normalization_fst,
   // projection should not be necessary, as both FSTs are acceptors.
   // determinize and minimize to make it as compact as possible.
 
-  if (!TryDeterminizeMinimize(kSupervisionMaxStates,
-                              &composed_fst))
-    return false;
+//// HHHH
+//  if (!TryDeterminizeMinimize(kSupervisionMaxStates,
+//                              &composed_fst))
+//    return false;
   supervision->fst = composed_fst;
 
   // Make sure the states are numbered in increasing order of time.
   SortBreadthFirstSearch(&(supervision->fst));
   KALDI_ASSERT(supervision->fst.Properties(fst::kAcceptor, true) == fst::kAcceptor);
   KALDI_ASSERT(supervision->fst.Properties(fst::kIEpsilons, true) == 0);
+  FixFinals(&(supervision->fst));
   return true;
 }
 

@@ -55,8 +55,8 @@ struct ChainTrainingOptions {
   // epsilon loops.
   BaseFloat leaky_hmm_coefficient;
 
+  int32 use_initial_probs;
   BaseFloat num_leak_coefficient;
-
 
   // Cross-entropy regularization constant.  (e.g. try 0.1).  If nonzero,
   // the network is expected to have an output named 'output-xent', which
@@ -64,6 +64,7 @@ struct ChainTrainingOptions {
   BaseFloat xent_regularize;
 
   ChainTrainingOptions(): l2_regularize(0.0), leaky_hmm_coefficient(1.0e-05),
+                          use_initial_probs(1),
                           num_leak_coefficient(1.0e-04), xent_regularize(0.0) { }
   
   void Register(OptionsItf *opts) {
@@ -75,7 +76,10 @@ struct ChainTrainingOptions {
                    "HMM state, to ensure gradual forgetting of context (can "
                    "improve generalization).  For numerical reasons, may not be "
                    "exactly zero.");
+
+    opts->Register("use-initial-probs", &use_initial_probs, "");
     opts->Register("num-leak-coefficient", &num_leak_coefficient, "");
+
     opts->Register("xent-regularize", &xent_regularize, "Cross-entropy "
                    "regularization constant for 'chain' training.  If "
                    "nonzero, the network is expected to have an output "
