@@ -48,10 +48,16 @@ def get_args():
     parser = argparse.ArgumentParser(
         description="""Parses the training logs and generates a variety of
         plots.
-        e.g.: steps/nnet3/report/generate_plots.py \\
+        e.g. (deprecated): steps/nnet3/report/generate_plots.py \\
         --comparison-dir exp/nnet3/tdnn1 --comparison-dir exp/nnet3/tdnn2 \\
-        exp/nnet3/tdnn exp/nnet3/tdnn/report""")
+        exp/nnet3/tdnn exp/nnet3/tdnn/report
+        e.g. (current): steps/nnet3/report/generate_plots.py \\
+        exp/nnet3/tdnn exp/nnet3/tdnn1 exp/nnet3/tdnn2 exp/nnet3/tdnn/report""")
 
+    parser.add_argument("--comparison-dir", type=str, action='append',
+                        help="other experiment directories for comparison. "
+                        "These will only be used for plots, not tables"
+                        "Note: this option is deprecated.")
     parser.add_argument("--start-iter", type=int,
                         help="Iteration from which plotting will start",
                         default=1)
@@ -72,7 +78,8 @@ def get_args():
                         "e.g. exp/nnet3/tdnn/report")
 
     args = parser.parse_args()
-    if args.exp_dir is not None and len(args.exp_dir) > 7:
+    if (args.comparison_dir is not None and len(args.comparison_dir) > 6) or \
+    (args.exp_dir is not None and len(args.exp_dir) > 7):
         raise Exception(
             """max 6 comparison directories can be specified.
             If you want to compare with more comparison_dir, you would have to
@@ -652,14 +659,19 @@ def main():
         output_nodes.append(('output', 'chain'))
     else:
         output_nodes.append(('output', 'linear'))
-
-    if len(args.exp_dir) == 1: 
+    
+    if args.comparison_dir is not None:
       generate_plots(args.exp_dir[0], args.output_dir, output_nodes,
+                     comparison_dir=args.comparison_dir,
                      start_iter=args.start_iter)
-    if len(args.exp_dir) > 1:
-      generate_plots(args.exp_dir[0], args.output_dir, output_nodes,
-                     comparison_dir=args.exp_dir[1:],
-                     start_iter=args.start_iter)
+    else: 
+      if len(args.exp_dir) == 1: 
+        generate_plots(args.exp_dir[0], args.output_dir, output_nodes,
+                       start_iter=args.start_iter)
+      if len(args.exp_dir) > 1:
+        generate_plots(args.exp_dir[0], args.output_dir, output_nodes,
+                       comparison_dir=args.exp_dir[1:],
+                       start_iter=args.start_iter)
 
 
 if __name__ == "__main__":
