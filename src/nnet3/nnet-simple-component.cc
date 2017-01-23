@@ -101,6 +101,7 @@ void DropoutComponent::InitFromConfig(ConfigLine *cfl) {
   bool ok = cfl->GetValue("dim", &dim) &&
     cfl->GetValue("dropout-proportion", &dropout_proportion);
   cfl->GetValue("dropout-per-frame", &dropout_per_frame);
+    // for this stage, dropout is hard coded in
     // normal mode if not declared in config
   if (!ok || cfl->HasUnusedValues() || dim <= 0 ||
       dropout_proportion < 0.0 || dropout_proportion > 1.0)
