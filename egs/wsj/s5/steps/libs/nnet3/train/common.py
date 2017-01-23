@@ -17,12 +17,14 @@ import re
 import shutil
 
 import libs.common as common_lib
+import libs.nnet3.train.dropout_schedule as dropout_schedule
+from dropout_schedule import *
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
 
-class RunOpts:
+class RunOpts(object):
     """A structure to store run options.
 
     Run options like queue.pl and run.pl, along with their memory
@@ -532,6 +534,31 @@ class CommonParser:
                                  Note: we implemented it in such a way that it
                                  doesn't increase the effective learning
                                  rate.""")
+        self.parser.add_argument("--trainer.dropout-schedule", type=str,
+                                 action=common_lib.NullstrToNoneAction,
+                                 dest='dropout_schedule', default=None,
+                                 help="""Use this to specify the dropout
+                                 schedule.  You specify a piecewise linear
+                                 function on the domain [0,1], where 0 is the
+                                 start and 1 is the end of training; the
+                                 function-argument (x) rises linearly with the
+                                 amount of data you have seen, not iteration
+                                 number (this improves invariance to
+                                 num-jobs-{initial-final}).  E.g. '0,0.2,0'
+                                 means 0 at the start; 0.2 after seeing half
+                                 the data; and 0 at the end.  You may specify
+                                 the x-value of selected points, e.g.
+                                 '0,0.2@0.25,0' means that the 0.2
+                                 dropout-proportion is reached a quarter of the
+                                 way through the data.   The start/end x-values
+                                 are at x=0/x=1, and other unspecified x-values
+                                 are interpolated between known x-values.  You
+                                 may specify different rules for different
+                                 component-name patterns using 'pattern1=func1
+                                 pattern2=func2', e.g. 'relu*=0,0.1,0
+                                 lstm*=0,0.2,0'.  More general should precede
+                                 less general patterns, as they are applied
+                                 sequentially.""")
 
         # General options
         self.parser.add_argument("--stage", type=int, default=-4,

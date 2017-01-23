@@ -141,7 +141,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         run_opts,
                         cv_minibatch_size=256, frames_per_eg=-1,
                         min_deriv_time=None, max_deriv_time=None,
-                        shrinkage_value=1.0,
+                        shrinkage_value=1.0, dropout_edit_string="",
                         get_raw_nnet_from_am=True,
                         background_process_handler=None):
     """ Called from steps/nnet3/train_*.py scripts for one iteration of neural
@@ -249,6 +249,8 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                                 "{dir}/{iter}.raw - |".format(
                                     lr=learning_rate, dir=dir, iter=iter))
 
+    raw_model_string = '{0} {1}'.format(raw_model_string, dropout_edit_string)
+
     if do_average:
         cur_minibatch_size = minibatch_size
         cur_max_param_change = max_param_change
@@ -265,6 +267,15 @@ def train_one_iteration(dir, iter, srand, egs_dir,
         os.remove("{0}/.error".format(dir))
     except OSError:
         pass
+
+    shrink_info_str = ''
+    if shrinkage_value != 1.0:
+        shrink_info_str = ' and shrink value is {0}'.format(shrinkage_value)
+
+    logger.info("On iteration {0}, learning rate is {1}"
+                "{shrink_info}.".format(
+                    iter, learning_rate,
+                    shrink_info=shrink_info_str))
 
     train_new_models(dir=dir, iter=iter, srand=srand, num_jobs=num_jobs,
                      num_archives_processed=num_archives_processed,
@@ -468,7 +479,7 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
 
     models_to_combine.add(num_iters)
 
-    for iter in models_to_combine:
+    for iter in sorted(models_to_combine):
         if get_raw_nnet_from_am:
             model_file = '{0}/{1}.mdl'.format(dir, iter)
             if not os.path.exists(model_file):

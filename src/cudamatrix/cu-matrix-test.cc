@@ -377,6 +377,31 @@ static void UnitTestCuMatrixCopyRowsFromVec() {
 
 
 template<typename Real>
+static void UnitTestCuMatrixCopyColsFromVec() {
+  for (int32 p = 0; p < 2; p++) {
+    int32 num_rows = 100 + Rand() % 255;
+    int32 num_cols = 100 + Rand() % 200;
+
+    int32 vec_dim;
+    if (p % 2 == 0) vec_dim = num_rows;
+    else vec_dim = num_cols * num_rows;
+
+    CuVector<Real> cu_vec(vec_dim);
+    cu_vec.SetRandn();
+    Vector<Real> vec(cu_vec);
+
+    CuMatrix<Real> cu_mat(num_rows, num_cols);
+    cu_mat.CopyColsFromVec(cu_vec);
+    Matrix<Real> mat(num_rows, num_cols);
+    mat.CopyColsFromVec(vec);
+
+    Matrix<Real> mat2(cu_mat);
+    AssertEqual(mat, mat2);
+  }
+}
+
+
+template<typename Real>
 static void UnitTestCuMatrixCopyRows() {
   for (int32 p = 0; p < 2; p++) {
     MatrixIndexT num_rows1 = 10 + Rand() % 10,
@@ -1574,7 +1599,7 @@ static void UnitTestCuMatrixAddMatTp() {
 
 template<typename Real>
 static void UnitTestCuMatrixTranspose() {
-  for (int32 i = 1; i < 10; i++) {
+  for (int32 i = 1; i < 2; i++) {
     MatrixIndexT dimM = 5 * i + Rand() % 10,
         dimN = dimM;
     if (i % 2 == 0) dimN += 5;
@@ -1582,8 +1607,11 @@ static void UnitTestCuMatrixTranspose() {
     CuMatrix<Real> A(dimM, dimN);
     A.SetRandn();
     CuMatrix<Real> B(A, kTrans);
-    A.Transpose();
-    AssertEqual(A, B);
+
+    Matrix<Real> hA(A);
+    Matrix<Real> hB(B);
+    hB.Transpose();
+    AssertEqual(hA, hB);
   }
 }
 
@@ -2615,6 +2643,7 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixSumColumnRanges<Real>();
   UnitTestCuMatrixCopyRows<Real>();
   UnitTestCuMatrixCopyRowsFromVec<Real>();
+  UnitTestCuMatrixCopyColsFromVec<Real>();
   UnitTestCuMatrixCopyToRows<Real>();
   UnitTestCuMatrixAddRows<Real>();
   UnitTestCuMatrixAddToRows<Real>();
