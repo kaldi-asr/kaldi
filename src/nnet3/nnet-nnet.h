@@ -233,6 +233,8 @@ class Nnet {
 
   Nnet *Copy() const { return new Nnet(*this); }
 
+  void Swap(Nnet *other);
+
   // Assignment operator
   Nnet& operator =(const Nnet &nnet);
 

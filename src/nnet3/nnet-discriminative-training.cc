@@ -238,6 +238,19 @@ void DiscriminativeObjectiveFunctionInfo::PrintStatsForThisPhase(
 bool DiscriminativeObjectiveFunctionInfo::PrintTotalStats(const std::string &name,
                 const std::string &criterion) const {
   BaseFloat objf = stats.TotalObjf(criterion) /stats.tot_t_weighted;
+
+  double avg_gradients = (stats.tot_num_count + stats.tot_den_count) /
+                         stats.tot_t_weighted;
+  KALDI_LOG << "Average num+den count of stats is " << avg_gradients
+              << " per frame, over "
+              << stats.tot_t_weighted << " frames.";
+  if (stats.tot_l2_term != 0.0) {
+    KALDI_LOG << "Average l2 norm of output per frame is "
+              << (stats.tot_l2_term / stats.tot_t_weighted) << " over "
+              << stats.tot_t_weighted << " frames.";
+  }
+
+
   KALDI_LOG << "Overall average objective function for '" << name << "' is "
             << objf << " over " << stats.tot_t_weighted << " frames.";
   KALDI_LOG << "[this line is to be parsed by a script:] "

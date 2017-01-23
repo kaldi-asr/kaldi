@@ -23,6 +23,8 @@
 #include "nnet3/nnet-parse.h"
 #include "nnet3/nnet-utils.h"
 #include "nnet3/nnet-simple-component.h"
+#include "nnet3/am-nnet-simple.h"
+#include "hmm/transition-model.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -565,8 +567,28 @@ void Nnet::GetSomeNodeNames(
   }
 }
 
+void Nnet::Swap(Nnet *other) {
+  component_names_.swap(other->component_names_);
+  components_.swap(other->components_);
+  node_names_.swap(other->node_names_);
+  nodes_.swap(other->nodes_);
+}
+
 void Nnet::Read(std::istream &is, bool binary) {
   Destroy();
+  int first_char = PeekToken(is, binary);
+  if (first_char == 'T') {
+    // This branch is to allow '.mdl' files (containing a TransitionModel
+    // and then an AmNnetSimple) to be read where .raw files (containing
+    // just an Nnet) would be expected.  This is often convenient.
+    TransitionModel temp_trans_model;
+    temp_trans_model.Read(is, binary);
+    AmNnetSimple temp_am_nnet;
+    temp_am_nnet.Read(is, binary);
+    temp_am_nnet.GetNnet().Swap(this);
+    return;
+  }
+
   ExpectToken(is, binary, "<Nnet3>");
   std::ostringstream config_file_out;
   std::string cur_line;
