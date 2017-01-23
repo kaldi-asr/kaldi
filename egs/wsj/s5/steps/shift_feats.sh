@@ -5,9 +5,10 @@
 
 # This script shifts the feats in the input data directory and creates a
 # new directory <input-data>_fs<num-frames-shift> with shifted feats.
-# If the shift is negative, the initial frames get truncated.
-# If the shift is positive, the first frame is repeated.
-# Usually applicable for sequence training
+# If the shift is negative, the initial frames get truncated and the
+# last frame repeated; if positive, vice versa.
+# Used to prepare data for sequence training of models with
+# frame_subsampling_factor != 1 (e.g. chain models).
 
 # To be run from .. (one directory up from here)
 # see ../run.sh for example
@@ -82,4 +83,3 @@ if [ $nf -ne $nu ]; then
 fi
 
 echo "Succeeded shifting features for $name into $data"
-

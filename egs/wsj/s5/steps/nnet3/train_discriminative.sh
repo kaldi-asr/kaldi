@@ -192,8 +192,18 @@ if [ $stage -le -1 ]; then
     echo "$0: setting learning rate to $learning_rate = --num-jobs-nnet * --effective-lrate."
   fi
 
+
+  # set the learning rate to $learning_rate, and
+  # set the output-layer's learning rate to
+  # $learning_rate times $last_layer_factor.
+  edits_str="set-learning-rate learning-rate=$learning_rate"
+  if [ "$last_layer_factor" != "1.0" ]; then
+    last_layer_lrate=$(perl -e "print ($learning_rate*$last_layer_factor);") || exit 1
+    edits_str="$edits_str; set-learning-rate name=output.affine learning-rate=$last_layer_lrate"
+  fi
+
   $cmd $dir/log/convert.log \
-    nnet3-am-copy --learning-rate=$learning_rate "$src_model" $dir/0.mdl || exit 1;
+    nnet3-am-copy --edits="$edits_str" "$src_model" $dir/0.mdl || exit 1;
 
   ln -sf 0.mdl $dir/epoch0.mdl
 fi

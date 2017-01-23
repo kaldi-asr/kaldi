@@ -135,9 +135,18 @@ tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text|"
 frame_subsampling_opt=
 if [ -f $srcdir/frame_subsampling_factor ]; then
   # e.g. for 'chain' systems
-  frame_subsampling_opt="--frame-subsampling-factor=$(cat $srcdir/frame_subsampling_factor)"
+  frame_subsampling_factor=$(cat $srcdir/frame_subsampling_factor)
+  frame_subsampling_opt="--frame-subsampling-factor=$frame_subsampling_factor"
   cp $srcdir/frame_subsampling_factor $dir
+  if [ "$frame_subsampling_factor" -gt 1 ] && \
+     [ "$scale_opts" == "--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1" ]; then
+    echo "$0: frame-subsampling-factor is not 1 (so likely a chain system),"
+    echo "...  but the scale opts are the defaults.  You probably want"
+    echo "--scale-opts '--transition-scale=1.0 --acoustic-scale=1.0 --self-loop-scale=1.0'"
+    sleep 1
+  fi
 fi
+
 
 $cmd $queue_opt JOB=1:$nj $dir/log/align.JOB.log \
   compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $dir/tree $srcdir/${iter}.mdl  $lang/L.fst "$tra" ark:- \| \
