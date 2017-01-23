@@ -179,7 +179,9 @@ void FindOrphanNodes(const Nnet &nnet, std::vector<int32> *nodes);
    ReadEditConfig() reads a file with a similar-looking format to the config file
    read by Nnet::ReadConfig(), but this consists of a sequence of operations to
    perform on an existing network, mostly modifying components.  It's one
-   "directive" (i.e. command) per line.
+   "directive" (i.e. command) per line, but if supplying the options via
+   the --edits option to programs like nnet3-am-copy, you can use a semicolon
+   in place of the newline to separate commands.
 
    The following describes the allowed commands.  Note: all patterns are like
    UNIX globbing patterns where the only metacharacter is '*', representing zero
