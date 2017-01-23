@@ -755,16 +755,16 @@ int main(int argc, char *argv[]) {
     po.PrintUsage();
     exit(1);
   }
-
-  for (int32 loop = 0; loop < 2; loop++) {
+  
+  int32 loop = 0;
 #if HAVE_CUDA == 1
+  for (; loop < 2; loop++) {
     CuDevice::Instantiate().SetDebugStrideMode(true);
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no"); // -1 means no GPU
     else
       CuDevice::Instantiate().SelectGpuId(use_gpu);
 #endif
-
 
     kaldi::CuVectorUnitTest<float>();
 #if HAVE_CUDA == 1
@@ -781,8 +781,8 @@ int main(int argc, char *argv[]) {
       KALDI_LOG << "Tests without GPU use succeeded.";
     else
       KALDI_LOG << "Tests with GPU use (if available) succeeded.";
-  }
 #if HAVE_CUDA == 1
+  }
   CuDevice::Instantiate().PrintProfile();
 #endif
   return 0;

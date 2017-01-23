@@ -363,9 +363,9 @@ template<typename Real, typename OtherReal> void CudaSpMatrixUnitTest() {
 
 int main() {
   using namespace kaldi;
-
-  for (int32 loop = 0; loop < 2; loop++) {
+  int32 loop = 0;
 #if HAVE_CUDA == 1
+  for (; loop < 2; loop++) {
     CuDevice::Instantiate().SetDebugStrideMode(true);
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no"); // -1 means no GPU
@@ -394,8 +394,8 @@ int main() {
       KALDI_LOG << "Tests without GPU use succeeded.";
     else
       KALDI_LOG << "Tests with GPU use (if available) succeeded.";
-  }
 #if HAVE_CUDA == 1
+  }
   CuDevice::Instantiate().PrintProfile();
 #endif
   return 0;
