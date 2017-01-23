@@ -79,7 +79,7 @@ struct NnetCombineConfig {
                  "on the squared difference between sum(weights) for one component,"
                  " and 1.0. This is like --enforce-sum-to-one, but done in a 'soft' "
                  "way (e.g. maybe useful with dropout).  We suggest small values "
-                 "like 10e-2 (for regular nnets) or 1.0e-03 (for chain models).");
+                 "like 10e-3 (for regular nnets) or 1.0e-04 (for chain models).");
     po->Register("separate-weights-per-component", &separate_weights_per_component,
                  "If true, have a separate weight for each updatable component in "
                  "the nnet.");
@@ -202,21 +202,6 @@ class NnetCombiner {
   // no-op).
   double GetSumToOnePenalty(const VectorBase<double> &weights,
                             VectorBase<double> *weights_penalty_deriv,
-                            bool print_weights = false) const;
-
-
-  // if config_.sum_to_one_penalty is 0.0, returns 0.0 and sets
-  // weights_penalty_deriv to 0.0; else it computes, for each
-  // updatable component u the total weight w_u, returns the value
-  // -0.5 * config_.sum_to_one_penalty * sum_u (w_u - 1.0)^2;
-  // and sets 'weights_penalty_deriv' to the derivative w.r.t.
-  // the result.
-  // Note: config_.sum_to_one_penalty is exclusive with
-  // config_.enforce_sum_to_one, so there is really no distinction between
-  // normalized and unnormalized weights here (since normalization would be a
-  // no-op).
-  double GetSumToOnePenalty(const VectorBase<BaseFloat> &weights,
-                            VectorBase<BaseFloat> *weights_penalty_deriv,
                             bool print_weights = false) const;
 
 

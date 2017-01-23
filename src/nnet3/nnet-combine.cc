@@ -155,10 +155,10 @@ void NnetCombiner::Combine() {
     KALDI_LOG << "Combining nnets, objective function changed from "
               << initial_objf << " to " << objf;
   } else {
-    Vector<BaseFloat> weights(WeightDim());
+    Vector<double> weights(WeightDim());
     GetWeights(params, &weights);
     bool print_weights = true;
-    BaseFloat penalty = GetSumToOnePenalty(weights, NULL, print_weights);
+    double penalty = GetSumToOnePenalty(weights, NULL, print_weights);
     // note: initial_objf has no penalty term because it summed exactly
     // to one.
     KALDI_LOG << "Combining nnets, objective function changed from "
@@ -380,12 +380,12 @@ void NnetCombiner::GetParamsDeriv(const VectorBase<double> &weights,
 
 
 double NnetCombiner::GetSumToOnePenalty(
-    const VectorBase<BaseFloat> &weights,
-    VectorBase<BaseFloat> *weights_penalty_deriv,
+    const VectorBase<double> &weights,
+    VectorBase<double> *weights_penalty_deriv,
     bool print_weights) const {
 
   KALDI_ASSERT(config_.sum_to_one_penalty >= 0.0);
-  BaseFloat penalty = config_.sum_to_one_penalty;
+  double penalty = config_.sum_to_one_penalty;
   if (penalty == 0.0) {
     weights_penalty_deriv->SetZero();
     return 0.0;
@@ -393,13 +393,13 @@ double NnetCombiner::GetSumToOnePenalty(
   double ans = 0.0;
   int32 num_uc = NumUpdatableComponents(),
     num_models = nnet_params_.NumRows();
-  Vector<BaseFloat> tot_weights(num_uc);
+  Vector<double> tot_weights(num_uc);
   std::ostringstream tot_weight_info;
   for (int32 c = 0; c < num_uc; c++) {
     double this_total_weight = 0.0;
     for (int32 m = 0; m < num_models; m++) {
       int32 index = m * num_uc + c;
-      BaseFloat this_weight = weights(index);
+      double this_weight = weights(index);
       this_total_weight += this_weight;
     }
     tot_weights(c) = this_total_weight;
@@ -409,7 +409,7 @@ double NnetCombiner::GetSumToOnePenalty(
       KALDI_ASSERT(weights.Dim() == weights_penalty_deriv->Dim());
       // this_total_weight_deriv is the derivative of the penalty
       // term w.r.t. this component's total weight.
-      BaseFloat this_total_weight_deriv =
+      double this_total_weight_deriv =
           penalty * (1.0 - this_total_weight);
       for (int32 m = 0; m < num_models; m++) {
         int32 index = m * num_uc + c;
@@ -418,15 +418,16 @@ double NnetCombiner::GetSumToOnePenalty(
     }
   }
   if (print_weights) {
+    Vector<BaseFloat> tot_weights_float(tot_weights);
     KALDI_LOG << "Total weights per component: "
               << PrintVectorPerUpdatableComponent(nnet_,
-                                                  tot_weights);
+                                                  tot_weights_float);
   }
   return ans;
 }
 
 
-void NnetCombiner::GetNnetParameters(const Vector<BaseFloat> &weights,
+void NnetCombiner::GetNnetParameters(const Vector<double> &weights,
                                      VectorBase<BaseFloat> *nnet_params) const {
   KALDI_ASSERT(nnet_params->Dim() == nnet_params_.NumCols());
   nnet_params->SetZero();
@@ -503,11 +504,9 @@ double NnetCombiner::ComputeObjfAndDerivFromNnet(
 
 
 double NnetCombiner::ComputeObjfAndDerivFromParameters(
-    VectorBase<BaseFloat> &params,
-    VectorBase<BaseFloat> *params_deriv) {
-  Vector<BaseFloat> weights(WeightDim()), normalized_weights(WeightDim()),
-      nnet_params(NnetParameterDim(), kUndefined),
-      nnet_params_deriv(NnetParameterDim(), kUndefined),
+    VectorBase<double> &params,
+    VectorBase<double> *params_deriv) {
+  Vector<double> weights(WeightDim()), normalized_weights(WeightDim()),
       weights_sum_to_one_penalty_deriv(WeightDim()),
       normalized_weights_deriv(WeightDim()), weights_deriv(WeightDim());
   Vector<BaseFloat>
