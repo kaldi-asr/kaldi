@@ -80,10 +80,8 @@ def train_new_models(dir, iter, srand, num_jobs,
 
         offset_num = -1
         if num_cmn_offsets > 0:
-          # previous offset_num formula was
-          # offset_num = ((k / num_archives) + (k % num_archives)) % num_cmn_offsets
-          epoch_index = k / (num_archives * frames_per_eg)
-          offset_num = (epoch_index + archive_index + frame) % num_cmn_offsets
+          offset_num = ((k / num_archives) + (k % num_archives)) % num_cmn_offsets
+
         cache_write_opt = ""
         if job == 1:
             # an option for writing cache (storing pairs of nnet-computations

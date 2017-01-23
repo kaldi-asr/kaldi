@@ -62,6 +62,7 @@ local/nnet3/run_ivector_common.sh --sage $stage \
                                   --num-threads-ubm $num_threads_ubm \
                                   --num-cmn-offsets 4 \
                                   --cmn-offset-scale 0.5 \
+                                  --use-random-offsets true \
                                   --nnet3-affix "$nnet3_affix"
 
 # Note: the first stage of the following script is stage 8.

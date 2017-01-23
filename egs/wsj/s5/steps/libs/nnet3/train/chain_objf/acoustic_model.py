@@ -154,16 +154,9 @@ def train_new_models(dir, iter, srand, num_jobs,
         frame_shift = ((archive_index + k/num_archives)
                        % frame_subsampling_factor)
 
-        # k = num_frame_shifts * num_archives * epoch_index + num_archives * frame_shift + archive_index
-        # offset_num = (num_frame_shifts * epoch_index + frame_shift + archive_index) % num_cmn_offsets
-        # if gcd(num_frame_shifts, num_cmn_offsets) = 1
-        # offfset_num for fixed (frame_shift, archive_index) = (f1,a1) in different epochs
-        # are different.
-        # Also two different consequent shifts in same archive have different offsets.
         offset_num = -1
         if num_cmn_offsets > 0:
-            epoch_index = k / (num_archives * frame_subsampling_factor)
-            offset_num = (epoch_index + archive_index + frame_shift) % num_cmn_offsets
+            offset_num = ((k / num_archives) + (k % num_archives)) % num_cmn_offsets
 
         if job == 1:
             cur_cache_io_opts = "{0} --write-cache={1}/cache.{2}".format(
