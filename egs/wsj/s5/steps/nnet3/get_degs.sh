@@ -49,9 +49,9 @@ num_utts_subset=80     # number of utterances in validation and training
                        # subsets used for diagnostics.
 num_egs_subset=800     # number of egs (maximum) for the validation and training
                        # subsets used for diagnostics.
-frames_per_iter=400000 # each iteration of training, see this many frames
-                       # per job.  This is just a guideline; it will pick a number
-                       # that divides the number of samples in the entire data.
+frames_per_iter=1000000 # each iteration of training, see this many frames
+                        # per job.  This is just a guideline; it will pick a number
+                        # that divides the number of samples in the entire data.
 cleanup=true
 
 stage=0
@@ -201,10 +201,20 @@ if [ -f $srcdir/frame_subsampling_factor ]; then
   # e.g. for 'chain' systems
   frame_subsampling_opt="--frame-subsampling-factor=$frame_subsampling_factor"
   cp $srcdir/frame_subsampling_factor $dir
+  if [ $frame_subsampling_factor -ne 1 ] && [ "$self_loop_scale" == "0.1" ]; then
+    echo "$0: warning: frame_subsampling_factor is not 1 (so likely a chain system),"
+    echo "...  but self-loop-scale is 0.1.  Make sure this is not a mistake."
+    sleep 1
+  fi
 else
   frame_subsampling_factor=1
 fi
 
+if [ "$self_loop_scale" == "1.0" ] && [ "$acwt" == 0.1 ]; then
+  echo "$0: warning: you set --self-loop-scale=1.0 (so likely a chain system)",
+  echo " ... but the acwt is still 0.1 (you probably want --acwt 1.0)"
+  sleep 1
+fi
 
 ## Make the decoding graph.
 if [ $stage -le 0 ]; then
@@ -269,6 +279,30 @@ cp $lang/phones/silence.csl $dir/info/
 # is the 'principal' frames-per-eg, and for purposes of working out the number
 # of archives we assume that this will be the average number of frames per eg.
 frames_per_eg_principal=$(echo $frames_per_eg | cut -d, -f1)
+
+
+# read 'mof' as max_open_filehandles.
+# When splitting up the scp files, we don't want to have to hold too many
+# files open at once.  If the number of archives we have to write exceeds
+# 256 (or less if unlimit -n is smaller), we split in two stages.
+mof=$(ulimit -n) || exit 1
+# the next step helps work around inconsistency between different machines on a
+# cluster.  It's unlikely that the allowed number of open filehandles would ever
+# be less than 256.
+if [ $mof -gt 256 ]; then mof=256; fi
+# allocate mof minus 3 for the max allowed outputs, because of
+# stdin,stderr,stdout.  this will normally come to 253.  We'll do a two-stage
+# splitting if the needed number of scp files is larger than this.
+num_groups=$[(num_archives+(mof-3)-1)/(mof-3)]
+group_size=$[(num_archives+num_groups-1)/num_groups]
+if [ $num_groups -gt 1 ]; then
+  new_num_archives=$[group_size*num_groups]
+  [ $new_num_archives -ne $num_archives ] && \
+    echo "$0: rounding up num-archives from $num_archives to $new_num_archives for easier splitting"
+  num_archives=$new_num_archives
+  echo $new_num_archives >$dir/info/num_archives
+fi
+
 
 if [ -e $dir/storage ]; then
   # Make soft links to storage directories, if distributing this way..  See
@@ -336,7 +370,8 @@ if [ $stage -le 3 ]; then
     $dir/dengraph/HCLG.fst "$feats" ark:- \| \
     $lattice_determinize_cmd  \| \
     nnet3-discriminative-get-egs --acoustic-scale=$acwt --compress=$compress \
-      --num-frames=$frames_per_eg --num-frames-overlap=$frames_overlap_per_eg \
+      $frame_subsampling_opt --num-frames=$frames_per_eg \
+      --num-frames-overlap=$frames_overlap_per_eg \
       $ivector_opts $context_opts \
       $dir/final.mdl "$feats"  "ark,s,cs:-" \
       "scp:utils/filter_scp.pl $sdata/JOB/utt2spk $dir/ali.scp |" \
@@ -389,26 +424,6 @@ if [ $stage -le 4 ]; then
   [ -s $dir/valid_diagnostic.scp ] || { echo "$0: error getting validation egs"; exit 1; }
 fi
 
-
-# read 'mof' as max_open_filehandles.
-# When splitting up the scp files, we don't want to have to hold too many
-# files open at once.
-mof=$(ulimit -n) || exit 1
-# the next step helps work around inconsistency between different machines on a
-# cluster.  It's unlikely that the allowed number of open filehandles would ever
-# be less than 256.
-if [ $mof -gt 256 ]; then mof=256; fi
-# allocate mof minus 3 for the max allowed outputs, because of
-# stdin,stderr,stdout.  this will normally come to 253.  We'll do a two-stage
-# splitting if the needed number of scp files is larger than this.
-num_groups=$[(num_archives+(mof-3)-1)/(mof-3)]
-group_size=$[(num_archives+num_groups-1)/num_groups]
-if [ $num_groups -gt 1 ]; then
-  new_num_archives=$[group_size*num_groups]
-  [ $new_num_archives -ne $num_archives ] && \
-    echo "$0: rounding up num-archives from $num_archives to $new_num_archives for easier splitting"
-  echo $new_num_archives >$dir/info/num_archives
-fi
 
 
 # function/pseudo-command to randomly shuffle input lines using a small buffer size

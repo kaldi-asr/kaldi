@@ -29,7 +29,7 @@ nj=400 # have a high number of jobs because this could take a while, and we migh
 graph_dir=exp/tri4/graph_sw1_tg
 srcdir=exp/nnet3/tdnn_d_sp
 train_data_dir=data/train_nodup_sp_hires
-online_ivector_dir=exp/nnet3/ivectors_train_nodup_sp_hires
+online_ivector_dir=exp/nnet3/ivectors_train_nodup_sp
 
 
 ## Objective options
@@ -37,7 +37,12 @@ criterion=smbr
 one_silence_class=true
 
 # you can set --disc-affix if you run different configurations, e.g. --disc-affix "_b"
-disc_affix=
+# originally ran with no affix, with effective_learning_rate=0.0000125;
+# reran by mistake with no affix with effective_learning_rate=0.000005 [was a bit
+# better, see NOTES, but still best after 1st epoch].
+# reran again with affix=slow and effective_learning_rate=0.0000025
+
+disc_affix=slow
 
 dir=${srcdir}_${criterion}${disc_affix}
 
@@ -57,7 +62,7 @@ extra_right_context=0
 
 
 ## Nnet training options
-effective_learning_rate=0.0000125
+effective_learning_rate=0.0000025
 max_param_change=1
 num_jobs_nnet=4
 num_epochs=3
@@ -66,8 +71,6 @@ regularization_opts=          # Applicable for providing --xent-regularize and -
 minibatch_size="300=32,16/150=64,32"  # rule says: if chunk size is closer to 300, use minibatch size 32 (or 16 for mop-up);
                                       # if chunk size is closer to 150, use mini atch size of 64 (or 32 for mop-up).
 
-last_layer_factor=0.1         # prevent the final layer from learning too fast;
-                              # this can be a problem.
 
 ## Decode options
 decode_start_epoch=1 # can be used to avoid decoding all epochs, e.g. if we decided to run more.
@@ -136,7 +139,6 @@ if [ $stage -le 3 ]; then
     --num-epochs $num_epochs --one-silence-class $one_silence_class --minibatch-size "$minibatch_size" \
     --num-jobs-nnet $num_jobs_nnet --num-threads $num_threads \
     --regularization-opts "$regularization_opts" \
-    --last-layer-factor $last_layer_factor \
     ${degs_dir} $dir
 fi
 
@@ -145,15 +147,16 @@ if [ $stage -le 4 ]; then
     for decode_set in train_dev eval2000; do
       num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
       for iter in epoch$x epoch${x}_adj; do
+        (
+          steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" --iter $iter \
+            --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
+            $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_sw1_tg_${iter} || exit 1;
 
-        steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" --iter $iter \
-          --online-ivector-dir exp/nnet3/ivectors_${decode_set}_hires \
-          $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_sw1_tg_${iter} || exit 1;
-
-        steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-          data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
-          $dir/decode_${decode_set}_${iter}_sw1_{tg,fsh_fg} || exit 1;
-      ) &
+          steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+            data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
+            $dir/decode_${decode_set}_sw1_{tg,fsh_fg}_${iter} || exit 1;
+        ) &
+      done
     done
   done
 fi

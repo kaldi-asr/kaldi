@@ -6,8 +6,8 @@
 # to use the non-cleaned data.
 #
 # note: this relies on having a cluster that has plenty of CPUs as well as GPUs,
-# since the lattice generation runs in about real-time, so takes of the order of
-# 1000 hours of CPU time.
+# since the alignment and the lattice generation/egs-dumping takes quite a bit
+# of CPU time.
 
 
 set -e
@@ -37,7 +37,11 @@ criterion=smbr
 one_silence_class=true
 
 # you can set --disc-affix if you run different configurations, e.g. --disc-affix "_b"
-disc_affix=slow
+# note, I ran without affix with learning rate 0.0000125, with disc_affic=slow
+# with learning rate 0.000005, and with disc_affix=slow2 with learning rate 0.0000025.
+# disc_affix=slow3 is with effective_learning_rate=0.000005 and last_layer_factor=0.1
+
+disc_affix=slow3
 
 dir=${srcdir}_${criterion}${disc_affix}
 
@@ -45,11 +49,17 @@ dir=${srcdir}_${criterion}${disc_affix}
 ## so it can split utterances without much gap or overlap.
 frames_per_eg=300,280,150,120,100
 frames_overlap_per_eg=0
-frames_per_chunk_decoding=200
+frames_per_chunk_egs=200  # for alignments and denlat creation.
+frames_per_chunk_decoding=50  # for decoding; should be the same as the value
+                              # used in the script that trained the nnet.
+                              # We didn't set the frames_per_chunk in
+                              # run_tdnn_lstm_1b.sh, so it defaults to 50.
 ## these context options should match the training condition. (chunk_left_context,
 ## chunk_right_context)
 ## We set --extra-left-context-initial 0 and --extra-right-context-final 0
 ## directly in the script below, but this should also match the training condition.
+## note: --extra-left-context should be the same as the chunk_left_context (or in
+## general, the argument of --egs.chunk-left-context) in the baseline script.
 extra_left_context=40
 extra_right_context=0
 
@@ -57,6 +67,7 @@ extra_right_context=0
 
 ## Nnet training options
 effective_learning_rate=0.000005
+last_layer_factor=0.1
 max_param_change=1
 num_jobs_nnet=4
 num_epochs=2
@@ -65,8 +76,6 @@ regularization_opts=          # Applicable for providing --xent-regularize and -
 minibatch_size="300=32,16/150=64,32"  # rule says: if chunk size is closer to 300, use minibatch size 32 (or 16 for mop-up);
                                       # if chunk size is closer to 150, use mini atch size of 64 (or 32 for mop-up).
 
-last_layer_factor=0.1         # prevent the final layer from learning too fast;
-                              # this can be a problem.
 
 ## Decode options
 decode_start_epoch=1 # can be used to avoid decoding all epochs, e.g. if we decided to run more.
@@ -95,7 +104,7 @@ if [ $stage -le 1 ]; then
   # hardcode no-GPU for alignment, although you could use GPU [you wouldn't
   # get excellent GPU utilization though.]
   steps/nnet3/align.sh  --cmd "$decode_cmd" --use-gpu false \
-    --frames-per-chunk $frames_per_chunk_decoding \
+    --frames-per-chunk $frames_per_chunk_egs \
     --extra-left-context $extra_left_context --extra-right-context $extra_right_context \
     --extra-left-context-initial 0 --extra-right-context-final 0 \
     --online-ivector-dir $online_ivector_dir \
@@ -118,7 +127,7 @@ if [ -z "$degs_dir" ]; then
       --extra-left-context $extra_left_context \
       --extra-right-context $extra_right_context \
       --extra-left-context-initial 0 --extra-right-context-final 0 \
-      --frames-per-chunk-decoding "$frames_per_chunk_decoding" \
+      --frames-per-chunk-decoding "$frames_per_chunk_egs" \
       --stage $get_egs_stage \
       --online-ivector-dir $online_ivector_dir \
       --frames-per-eg $frames_per_eg --frames-overlap-per-eg $frames_overlap_per_eg \
@@ -131,11 +140,11 @@ if [ $stage -le 3 ]; then
   steps/nnet3/train_discriminative.sh --cmd "$decode_cmd" \
     --stage $train_stage \
     --effective-lrate $effective_learning_rate --max-param-change $max_param_change \
+    --last-layer-factor $last_layer_factor \
     --criterion $criterion --drop-frames true \
     --num-epochs $num_epochs --one-silence-class $one_silence_class --minibatch-size "$minibatch_size" \
     --num-jobs-nnet $num_jobs_nnet --num-threads $num_threads \
     --regularization-opts "$regularization_opts" \
-    --last-layer-factor $last_layer_factor \
     ${degs_dir} $dir
 fi
 
@@ -149,6 +158,7 @@ if [ $stage -le 4 ]; then
         --extra-left-context $extra_left_context \
         --extra-right-context $extra_right_context \
         --extra-left-context-initial 0 --extra-right-context-final 0 \
+        --frames-per-chunk "$frames_per_chunk_decoding" \
         --online-ivector-dir exp/nnet3_cleaned/ivectors_${decode_set}_hires \
          $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_${iter} || exit 1;
 
@@ -171,6 +181,5 @@ if [ $stage -le 5 ] && $cleanup; then
 
   steps/nnet2/remove_egs.sh ${srcdir}_degs || true
 fi
-
 
 exit 0;
