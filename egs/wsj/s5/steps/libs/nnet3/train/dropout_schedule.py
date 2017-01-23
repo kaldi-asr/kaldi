@@ -1,4 +1,4 @@
-
+#! /usr/bin/env python
 
 # Copyright 2016    Vimal Manohar
 # Apache 2.0
@@ -21,11 +21,13 @@ def _parse_dropout_option(dropout_option):
     Arguments:
         dropout_option: The string option passed to --trainer.dropout-schedule.
             See its help for details.
+            See _self_test() for examples.
         num_archive_to_process: See _parse_dropout_string() for details.
 
     Returns a list of (component_name, dropout_schedule) tuples,
     where dropout_schedule is itself a list of
-    (data_fraction, dropout_proportion) tuples.
+    (data_fraction, dropout_proportion) tuples sorted in reverse order of
+    data_fraction.
     A data fraction of 0 corresponds to beginning of training
     and 1 corresponds to all data.
     """
@@ -189,6 +191,7 @@ def _get_dropout_proportions(dropout_schedule, data_fraction):
     Arguments:
         dropout_schedule: Value for the --trainer.dropout-schedule option.
             See help for --trainer.dropout-schedule.
+            See _self_test() for examples.
         data_fraction: The fraction of data seen until this stage of
             training.
     """
@@ -210,6 +213,7 @@ def get_dropout_edit_string(dropout_schedule, data_fraction, iter_):
     Arguments:
         dropout_schedule: Value for the --trainer.dropout-schedule option.
             See help for --trainer.dropout-schedule.
+            See _self_test() for examples.
 
     See ReadEditConfig() in nnet3/nnet-utils.h to see how
     set-dropout-proportion directive works.
@@ -234,3 +238,53 @@ def get_dropout_edit_string(dropout_schedule, data_fraction, iter_):
     logger.info("On iteration %d, %s", iter_, ', '.join(dropout_info))
     return ("""nnet3-copy --edits='{edits}' - - |""".format(
         edits=";".join(edit_config_lines)))
+
+
+def _self_test():
+    def assert_approx_equal(list1, list2):
+        assert len(list1) == len(list2)
+        for i in range(0, len(list1)):
+            assert len(list1[i]) == 2
+            assert len(list2[i]) == 2
+            assert list1[i][0] == list2[i][0]
+            assert abs(list1[i][1] - list2[i][1]) < 1e-8
+
+    assert (_parse_dropout_option('*=0.0,0.5,0.0 lstm.*=0.0,0.3@0.75,0.0')
+            == [ ('*', [ (1.0, 0.0), (0.5, 0.5), (0.0, 0.0) ]),
+                 ('lstm.*', [ (1.0, 0.0), (0.75, 0.3), (0.0, 0.0) ]) ])
+    assert_approx_equal(_get_dropout_proportions(
+                           '*=0.0,0.5,0.0 lstm.*=0.0,0.3@0.75,0.0', 0.75),
+                        [ ('*', 0.25), ('lstm.*', 0.3) ])
+    assert_approx_equal(_get_dropout_proportions(
+                            '*=0.0,0.5,0.0 lstm.*=0.0,0.3@0.75,0.0', 0.5),
+                        [ ('*', 0.5), ('lstm.*', 0.2) ])
+    assert_approx_equal(_get_dropout_proportions(
+                            '*=0.0,0.5,0.0 lstm.*=0.0,0.3@0.75,0.0', 0.25),
+                        [ ('*', 0.25), ('lstm.*', 0.1) ])
+
+    assert (_parse_dropout_option('0.0,0.3,0.0')
+            == [ ('*', [ (1.0, 0.0), (0.5, 0.3), (0.0, 0.0) ]) ])
+    assert_approx_equal(_get_dropout_proportions('0.0,0.3,0.0', 0.5),
+                        [ ('*', 0.3) ])
+    assert_approx_equal(_get_dropout_proportions('0.0,0.3,0.0', 0.0),
+                        [ ('*', 0.0) ])
+    assert_approx_equal(_get_dropout_proportions('0.0,0.3,0.0', 1.0),
+                        [ ('*', 0.0) ])
+    assert_approx_equal(_get_dropout_proportions('0.0,0.3,0.0', 0.25),
+                        [ ('*', 0.15) ])
+
+    assert (_parse_dropout_option('0.0,0.5@0.25,0.0,0.6@0.75,0.0')
+            == [ ('*', [ (1.0, 0.0), (0.75, 0.6), (0.5, 0.0), (0.25, 0.5), (0.0, 0.0) ]) ])
+    assert_approx_equal(_get_dropout_proportions(
+                            '0.0,0.5@0.25,0.0,0.6@0.75,0.0', 0.25),
+                        [ ('*', 0.5) ])
+    assert_approx_equal(_get_dropout_proportions(
+                            '0.0,0.5@0.25,0.0,0.6@0.75,0.0', 0.1),
+                        [ ('*', 0.2) ])
+
+
+try:
+    _self_test()
+except Exception:
+    logger.error("Failed self test")
+    raise
