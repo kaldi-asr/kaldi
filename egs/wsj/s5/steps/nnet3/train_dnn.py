@@ -26,7 +26,7 @@ logger = logging.getLogger('libs')
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
-formatter = logging.Formatter("%(asctime)s [%(filename)s:%(lineno)s - "
+formatter = logging.Formatter("%(asctime)s [%(pathname)s:%(lineno)s - "
                               "%(funcName)s - %(levelname)s ] %(message)s")
 handler.setFormatter(formatter)
 logger.addHandler(handler)
@@ -298,10 +298,6 @@ def train(args, run_opts, background_process_handler):
                                * float(iter) / num_iters)
 
         if args.stage <= iter:
-            logger.info("On iteration {0}, learning rate is {1}.".format(
-                iter, learning_rate(iter, current_num_jobs,
-                                    num_archives_processed)))
-
             train_lib.common.train_one_iteration(
                 dir=args.dir,
                 iter=iter,
@@ -312,6 +308,10 @@ def train(args, run_opts, background_process_handler):
                 num_archives=num_archives,
                 learning_rate=learning_rate(iter, current_num_jobs,
                                             num_archives_processed),
+                dropout_edit_string=common_lib.get_dropout_edit_string(
+                    args.dropout_schedule,
+                    float(num_archives_processed) / num_archives_to_process,
+                    iter),
                 minibatch_size=args.minibatch_size,
                 frames_per_eg=args.frames_per_eg,
                 num_hidden_layers=num_hidden_layers,

@@ -22,11 +22,11 @@ import libs.nnet3.train.chain_objf.acoustic_model as chain_lib
 import libs.nnet3.report.log_parse as nnet3_log_parse
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('libs')
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
-formatter = logging.Formatter("%(asctime)s [%(filename)s:%(lineno)s - "
+formatter = logging.Formatter("%(asctime)s [%(pathname)s:%(lineno)s - "
                               "%(funcName)s - %(levelname)s ] %(message)s")
 handler.setFormatter(formatter)
 logger.addHandler(handler)
@@ -134,13 +134,15 @@ def get_args():
                         shrink-threshold at the non-linearities.  E.g. 0.99.
                         Only applicable when the neural net contains sigmoid or
                         tanh units.""")
-    parser.add_argument("--trainer.optimization.shrink-saturation-threshold", type=float,
+    parser.add_argument("--trainer.optimization.shrink-saturation-threshold",
+                        type=float,
                         dest='shrink_saturation_threshold', default=0.40,
-                        help="""Threshold that controls when we apply the 'shrinkage'
-                        (i.e. scaling by shrink-value).  If the saturation of the
-                        sigmoid and tanh nonlinearities in the neural net (as
-                        measured by steps/nnet3/get_saturation.pl) exceeds this
-                        threshold we scale the parameter matrices with the
+                        help="""Threshold that controls when we apply the
+                        'shrinkage' (i.e. scaling by shrink-value).  If the
+                        saturation of the sigmoid and tanh nonlinearities in
+                        the neural net (as measured by
+                        steps/nnet3/get_saturation.pl) exceeds this threshold
+                        we scale the parameter matrices with the
                         shrink-value.""")
     # RNN-specific training options
     parser.add_argument("--trainer.deriv-truncate-margin", type=int,
@@ -420,11 +422,6 @@ def train(args, run_opts, background_process_handler):
                                         args.shrink_saturation_threshold)
                                    else 1
                                    )
-            logger.info("On iteration {0}, learning rate is {1} and "
-                        "shrink value is {2}.".format(
-                            iter, learning_rate(iter, current_num_jobs,
-                                                num_archives_processed),
-                            shrinkage_value))
 
             chain_lib.train_one_iteration(
                 dir=args.dir,
@@ -436,6 +433,10 @@ def train(args, run_opts, background_process_handler):
                 num_archives=num_archives,
                 learning_rate=learning_rate(iter, current_num_jobs,
                                             num_archives_processed),
+                dropout_edit_string=common_lib.get_dropout_edit_string(
+                    args.dropout_schedule,
+                    float(num_archives_processed) / num_archives_to_process,
+                    iter),
                 shrinkage_value=shrinkage_value,
                 num_chunk_per_minibatch=args.num_chunk_per_minibatch,
                 num_hidden_layers=num_hidden_layers,
