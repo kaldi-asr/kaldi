@@ -5,7 +5,7 @@
 
 if [ -f path.sh ]; then
   . path.sh; else
-   echo "missing path.sh"; exit 1;
+   echo "$0: missing path.sh"; exit 1;
 fi
 
 for dir in test train; do
@@ -26,15 +26,15 @@ gunzip -c "$arpa_lm" | \
            --read-symbol-table=data/lang_test/words.txt - data/lang_test/G.fst
 
 
-echo  "Checking how stochastic G is (the first of these numbers should be small):"
+echo  "$0: Checking how stochastic G is (the first of these numbers should be small):"
 fstisstochastic data/lang_test/G.fst
 
 ## Check lexicon.
 ## just have a look and make sure it seems sane.
-echo "First few lines of lexicon FST:"
+echo "$0: First few lines of lexicon FST:"
 fstprint   --isymbols=data/lang/phones.txt --osymbols=data/lang/words.txt data/lang/L.fst  | head
 
-echo Performing further checks
+echo "$0: Performing further checks"
 
 # Checking that G.fst is determinizable.
 fstdeterminize data/lang_test/G.fst /dev/null || echo Error determinizing G.
@@ -55,6 +55,6 @@ fsttablecompose data/lang/L_disambig.fst data/lang_test/G.fst | \
    fstisstochastic || echo LG is not stochastic
 
 
-echo gale_format_data  succeeded.
+echo gale_format_data succeeded.
 
 exit 0

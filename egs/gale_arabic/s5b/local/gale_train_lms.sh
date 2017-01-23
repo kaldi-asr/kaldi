@@ -11,7 +11,7 @@ lexicon=data/local/dict/lexicon.txt
 sri_installed=false
 which ngram-count  &>/dev/null
 if [[ $? == 0 ]]; then 
-sri_installed=true
+  sri_installed=true
 fi
 
 # This script takes no arguments.  It assumes you have already run

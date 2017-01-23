@@ -1,4 +1,4 @@
-bin/bash
+#!/bin/bash
 
 
 # To be run from one directory above this script.

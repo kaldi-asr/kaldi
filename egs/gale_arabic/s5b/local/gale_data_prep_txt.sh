@@ -22,8 +22,8 @@ for cdx in $txt_dvds; do
   fi
 done
 
-find -L . -type f -name *.tdf | while read file; do 
-sed '1,3d' $file 
+find -L . -type f -name "*.tdf" | while read file; do 
+sed '1,3d' $file  # delete the first 3 lines
 done >  all.tmp$$
 
 perl -e '

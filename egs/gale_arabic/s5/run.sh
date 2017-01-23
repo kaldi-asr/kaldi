@@ -1,4 +1,6 @@
-#!/bin/bash -e
+#!/bin/bash
+
+set -e 
 
 # Copyright 2014 QCRI (author: Ahmed Ali)
 # Apache 2.0
