@@ -1,9 +1,10 @@
-#! /usr/bin/env python
+
 
 # Copyright 2016    Vimal Manohar
 # Apache 2.0
 
 """This module contains methods related to scheduling dropout.
+See _self_test() for examples of how the functions work.
 """
 
 import logging
@@ -241,7 +242,12 @@ def get_dropout_edit_string(dropout_schedule, data_fraction, iter_):
 
 
 def _self_test():
+    """Run self-test.
+    This method is called everytime the module is imported or run.
+    """
+
     def assert_approx_equal(list1, list2):
+        """Checks that the two dropout proportions lists are equal."""
         assert len(list1) == len(list2)
         for i in range(0, len(list1)):
             assert len(list1[i]) == 2
@@ -281,6 +287,18 @@ def _self_test():
     assert_approx_equal(_get_dropout_proportions(
                             '0.0,0.5@0.25,0.0,0.6@0.75,0.0', 0.1),
                         [ ('*', 0.2) ])
+
+    assert (_parse_dropout_option('lstm.*=0.0,0.3,0.0@0.75,1.0')
+            == [ ('lstm.*', [ (1.0, 1.0), (0.75, 0.0), (0.5, 0.3), (0.0, 0.0) ]) ])
+    assert_approx_equal(_get_dropout_proportions(
+                            'lstm.*=0.0,0.3,0.0@0.75,1.0', 0.25),
+                        [ ('lstm.*', 0.15) ])
+    assert_approx_equal(_get_dropout_proportions(
+                            'lstm.*=0.0,0.3,0.0@0.75,1.0', 0.5),
+                        [ ('lstm.*', 0.3) ])
+    assert_approx_equal(_get_dropout_proportions(
+                            'lstm.*=0.0,0.3,0.0@0.75,1.0', 0.9),
+                        [ ('lstm.*', 0.6) ])
 
 
 try:
