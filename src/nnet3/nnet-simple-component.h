@@ -88,14 +88,15 @@ class PnormComponent: public Component {
 class DropoutComponent : public RandomComponent {
  public:
   void Init(int32 dim, BaseFloat dropout_proportion = 0.0,
-            bool dropout_per_frame = true);
+            bool dropout_per_frame = false);
 
   DropoutComponent(int32 dim, BaseFloat dropout = 0.0,
-                   bool dropout_per_frame = true) {
-                     Init(dim, dropout, dropout_per_frame);
-                   }
+                   bool dropout_per_frame = false) {
+    Init(dim, dropout, dropout_per_frame);
+  }
 
-  DropoutComponent(): dim_(0), dropout_proportion_(0.0), dropout_per_frame_(true) { }
+  DropoutComponent(): dim_(0), dropout_proportion_(0.0),
+                      dropout_per_frame_(false) { }
 
   virtual int32 Properties() const {
     return kLinearInInput|kBackpropInPlace|kSimpleComponent|kBackpropNeedsInput|kBackpropNeedsOutput;
@@ -124,8 +125,8 @@ class DropoutComponent : public RandomComponent {
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
   virtual Component* Copy() const { return new DropoutComponent(dim_,
-                                                                dropout_proportion_,
-                                                                dropout_per_frame_); }
+                                               dropout_proportion_,
+                                               dropout_per_frame_); }
   virtual std::string Info() const;
 
   void SetDropoutProportion(BaseFloat dropout_proportion) {

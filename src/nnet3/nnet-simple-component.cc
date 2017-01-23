@@ -97,10 +97,11 @@ void DropoutComponent::Init(int32 dim, BaseFloat dropout_proportion,
 void DropoutComponent::InitFromConfig(ConfigLine *cfl) {
   int32 dim = 0;
   BaseFloat dropout_proportion = 0.0;
-  bool dropout_per_frame = true;
+  bool dropout_per_frame = false;
   bool ok = cfl->GetValue("dim", &dim) &&
     cfl->GetValue("dropout-proportion", &dropout_proportion);
-    // for this stage, dropout is hard coded in by-frame mode
+  cfl->GetValue("dropout-per-frame", &dropout_per_frame);
+    // normal mode if not declared in config
   if (!ok || cfl->HasUnusedValues() || dim <= 0 ||
       dropout_proportion < 0.0 || dropout_proportion > 1.0)
        KALDI_ERR << "Invalid initializer for layer of type "
@@ -130,8 +131,10 @@ void DropoutComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
     const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(out);
 
     out->Add(-dropout);  // now, a proportion "dropout" will be <0.0
-    out->ApplyHeaviside();  // apply the function (x>0?1:0).  Now, a proportion
-                           // "dropout" will be zero and (1 - dropout) will be 1.0.
+    // apply the function (x>0?1:0).  Now, a proportion
+    // "dropout" will be zero and (1 - dropout) will be 1.0.
+    out->ApplyHeaviside();
+
     out->MulElements(in);
   } else {
     // randomize the dropout matrix by row,
@@ -142,8 +145,7 @@ void DropoutComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
     const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(&tmp);
     tmp.Add(-dropout);
     tmp.ApplyHeaviside();
-    out->SetZero();
-    out->AddVecToCols(1.0, tmp.Row(0), 0.0);
+    out->CopyColsFromVec(tmp.Row(0));
     out->MulElements(in);
   }
 }
@@ -184,7 +186,7 @@ void DropoutComponent::Read(std::istream &is, bool binary) {
     ReadToken(is, binary, &token);
     KALDI_ASSERT(token == "</DropoutComponent>");
   } else {
-    dropout_per_frame_ = true;
+    dropout_per_frame_ = false;
     KALDI_ASSERT(token == "</DropoutComponent>");
   }
 }
