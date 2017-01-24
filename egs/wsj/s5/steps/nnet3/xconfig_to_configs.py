@@ -21,6 +21,12 @@ def get_args():
         description="Reads an xconfig file and creates config files "
                     "for neural net creation and training",
         epilog='Search egs/*/*/local/{nnet3,chain}/*sh for examples')
+    parser.add_argument('--aux-xconfig-file',
+                        help='auxilary Filename of input xconfig file,'
+                        'where its layers can be used as auxilary information'
+                        'used to generated new config file.'
+                        'e.g. generating another newtork using nodes from'
+                        'old network.')
     parser.add_argument('--xconfig-file', required=True,
                         help='Filename of input xconfig file')
     parser.add_argument('--config-dir', required=True,
@@ -223,10 +229,22 @@ def add_back_compatibility_info(config_dir):
 def main():
     args = get_args()
     backup_xconfig_file(args.xconfig_file, args.config_dir)
-    all_layers = xparser.read_xconfig_file(args.xconfig_file)
+    all_layers_aux = []
+    if args.aux_xconfig_file is not None:
+        all_layers_aux = xparser.read_xconfig_file(args.aux_xconfig_file)
+    all_layers = xparser.read_xconfig_file(args.xconfig_file, aux_layers=all_layers_aux)
     write_expanded_xconfig_files(args.config_dir, all_layers)
     write_config_files(args.config_dir, all_layers)
-    add_back_compatibility_info(args.config_dir)
+
+    # TODO: aux_xconfig_file is useful for multi-stage training and
+    # Transfer learning, when the layers are added gradually.
+    # If layers from auxillary layers uses in defining new config,
+    # Then nnet3-init is not working at this stage without aux_xconfig_file.
+    if args.aux_xconfig_file is not None:
+        common_lib.force_symlink("final.config".format(args.config_dir),
+                                 "{0}/layer1.config".format(args.config_dir))
+    else:
+        add_back_compatibility_info(args.config_dir)
 
 
 if __name__ == '__main__':

@@ -279,7 +279,7 @@ def parse_prob_logs(exp_dir, key='accuracy', output="output"):
 
     parse_regex = re.compile(
         ".*compute_prob_.*\.([0-9]+).log:LOG "
-        ".nnet3.*compute-prob:PrintTotalStats..:"
+        ".nnet3.*compute-prob.*:PrintTotalStats..:"
         "nnet.*diagnostics.cc:[0-9]+. Overall ([a-zA-Z\-]+) for "
         "'{output}'.*is ([0-9.\-e]+) .*per frame".format(output=output))
 
