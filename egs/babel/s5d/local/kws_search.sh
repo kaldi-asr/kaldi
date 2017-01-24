@@ -103,6 +103,11 @@ else
     model_flags=
 fi
 
+frame_subsampling_factor=1
+if [ -f $decodedir/../frame_subsampling_factor ] ; then
+  frame_subsampling_factor=$($decodedir/../frame_subsampling_factor)
+  echo "Frame subsampling factor autodetected: $frame_subsampling_factor"
+fi
 
 if [ $stage -le 0 ] ; then
   if [ ! -f $indices_dir/.done.index ] ; then
@@ -116,6 +121,7 @@ if [ $stage -le 0 ] ; then
         steps/make_index.sh $silence_opt --cmd "$cmd" --acwt $acwt $model_flags\
           --skip-optimization $skip_optimization --max-states $max_states \
           --word-ins-penalty $word_ins_penalty --max-silence-frames $max_silence_frames\
+          --frame-subsampling-factor ${frame_subsampling_factor}
           $kwsdatadir $langdir $decodedir $indices  || exit 1
     done
     touch $indices_dir/.done.index
@@ -131,7 +137,8 @@ if [ $stage -le 1 ]; then
       kwsoutput=${kwsoutdir}_$lmwt
       indices=${indices_dir}_$lmwt
       mkdir -p $kwsoutdir
-      local/search_index.sh --cmd "$cmd" --indices-dir $indices --strict false\
+      local/search_index.sh --cmd "$cmd" --indices-dir $indices \
+        --strict false --frame-subsampling-factor ${frame_subsampling_factor}\
         $kwsdatadir $kwsoutput  || exit 1
 
       nj=`cat $indices/num_jobs`

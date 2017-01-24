@@ -162,7 +162,7 @@ int main(int argc, char *argv[]) {
         "a script to combine the final search results. Note that the index\n"
         "archive has a only key \"global\".\n\n"
         "Search has one or two outputs. The first one, is mandatory and will\n"
-        "contain the seach output, i.e. list of all found keyword instances\n" 
+        "contain the seach output, i.e. list of all found keyword instances\n"
         "The file is in the following format:\n"
         "kw utterance_id beg_frame end_frame negated_log_probs\n"
         " e.g.: \n"
@@ -186,7 +186,10 @@ int main(int argc, char *argv[]) {
     bool strict = true;
     double negative_tolerance = -0.1;
     double keyword_beam = -1;
+    int32 frame_subsampling_factor = 1;
 
+    po.Register("frame-subsampling-factor", &frame_subsampling_factor,
+                "Frame subsampling factor. (Default value 1)");
     po.Register("nbest", &n_best, "Return the best n hypotheses.");
     po.Register("keyword-nbest", &keyword_nbest,
                 "Pick the best n keywords if the FST contains "
@@ -297,9 +300,9 @@ int main(int argc, char *argv[]) {
         //match_writer.Write(key, result_fst);
 
         KwsLexicographicFst matched_seq(result_fst);
-        OutputDetailedStatistics(key, 
-                                 matched_seq, 
-                                 label_decoder, 
+        OutputDetailedStatistics(key,
+                                 matched_seq,
+                                 label_decoder,
                                  &stats_writer);
       }
 
@@ -341,8 +344,8 @@ int main(int argc, char *argv[]) {
         }
         vector<double> result;
         result.push_back(uid);
-        result.push_back(tbeg);
-        result.push_back(tend);
+        result.push_back(tbeg * frame_subsampling_factor);
+        result.push_back(tend * frame_subsampling_factor);
         result.push_back(score);
         result_writer.Write(key, result);
       }

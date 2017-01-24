@@ -45,12 +45,16 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
 
+    int32 frame_subsampling_factor = 1;
     int32 max_silence_frames = 50;
     bool strict = true;
     bool allow_partial = true;
     BaseFloat max_states_scale = 4;
+    po.Register("frame-subsampling-factor", &frame_subsampling_factor,
+                "Frame subsampling factor. (Default value 1)");
     po.Register("max-silence-frames", &max_silence_frames, "Maximum #frames for"
-                " silence arc.");
+                " silence arc. The actuall number of frames will be computed as"
+                " round(max-silence-frames/frame-subsampling-factor).");
     po.Register("strict", &strict, "Setting --strict=false will cause successful "
                 "termination even if we processed no lattices.");
     po.Register("max-states-scale", &max_states_scale, "Number of states in the"
@@ -67,6 +71,7 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
+    max_silence_frames = 0.5 + max_silence_frames / static_cast<float>(frame_subsampling_factor);
     std::string usymtab_rspecifier = po.GetOptArg(1),
         lats_rspecifier = po.GetArg(2),
         index_wspecifier = po.GetOptArg(3);
@@ -110,7 +115,7 @@ int main(int argc, char *argv[]) {
           n_fail++;
           continue;
         }
-      } 
+      }
 
       // Get the alignments
       vector<int32> state_times;
@@ -145,9 +150,9 @@ int main(int argc, char *argv[]) {
         EnsureEpsilonProperty(&clat);
         fst::TopSort(&clat);
         // We have to recompute the state times because they will have changed.
-        CompactLatticeStateTimes(clat, &state_times);        
+        CompactLatticeStateTimes(clat, &state_times);
       }
-      
+
       // Generate factor transducer
       // CreateFactorTransducer() corresponds to the "Factor Generation" part of
       // Dogan and Murat's paper. But we also move the weight pushing step to
@@ -158,7 +163,7 @@ int main(int argc, char *argv[]) {
       success = CreateFactorTransducer(clat, state_times, utterance_id, &factor_transducer);
       if (!success) {
         KALDI_WARN << "Cannot generate factor transducer for lattice " << key;
-        n_fail++; 
+        n_fail++;
       }
 
       MaybeDoSanityCheck(factor_transducer);
@@ -178,7 +183,7 @@ int main(int argc, char *argv[]) {
       DoFactorMerging(&factor_transducer, &index_transducer);
 
       MaybeDoSanityCheck(index_transducer);
-      
+
       // Do factor disambiguation. It corresponds to the "Factor Disambiguation"
       // step in Dogan and Murat's paper.
       KALDI_VLOG(1) << "Doing factor disambiguation...";
@@ -191,10 +196,10 @@ int main(int argc, char *argv[]) {
       KALDI_VLOG(1) << "Optimizing factor transducer...";
       OptimizeFactorTransducer(&index_transducer, max_states, allow_partial);
 
-      MaybeDoSanityCheck(index_transducer);      
-      
+      MaybeDoSanityCheck(index_transducer);
+
       // Write result
-      index_writer.Write(key, index_transducer);  
+      index_writer.Write(key, index_transducer);
 
       n_done++;
     }

@@ -88,6 +88,12 @@ duration=$(cat $kwsdatadir/trials)
 echo "$0: Duration: $duration"
 
 
+frame_subsampling_factor=1
+if [ -f $decodedir/../frame_subsampling_factor ] ; then
+  frame_subsampling_factor=$(cat $decodedir/../frame_subsampling_factor)
+  echo "$0: Frame subsampling factor autodetected: $frame_subsampling_factor"
+fi
+
 if [ $stage -le 0 ] ; then
   if [ ! -f $indices_dir/.done.index ] ; then
     [ ! -d $indices_dir ] && mkdir  $indices_dir
@@ -100,6 +106,7 @@ if [ $stage -le 0 ] ; then
       steps/make_index.sh $silence_opt --cmd "$cmd" --acwt $acwt $model_flags\
         --skip-optimization $skip_optimization --max-states $max_states \
         --word-ins-penalty $word_ins_penalty --max-silence-frames $max_silence_frames\
+        --frame-subsampling-factor ${frame_subsampling_factor} \
         $kwsdatadir $langdir $decodedir $indices  || exit 1
     done
     touch $indices_dir/.done.index
@@ -136,6 +143,7 @@ if [ $stage -le 1 ]; then
     $cmd JOB=1:$nj $kwsoutput/log/search.JOB.log \
       set -e  -o pipefail '&&' \
       kws-search --strict=$strict --negative-tolerance=-1 \
+      --frame-subsampling-factor=${frame_subsampling_factor} \
       "ark:gzip -cdf $indices/index.JOB.gz|" "$keywords" \
       "ark,t:| sort -u | gzip -c > $kwsoutput/result.JOB.gz" \
       "ark,t:| sort -u | gzip -c > $kwsoutput/stats.JOB.gz" || exit 1;

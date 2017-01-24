@@ -19,6 +19,7 @@ skip_optimization=false     # If you only search for few thousands of keywords, 
                             # can skip the optimization; but if you're going to search for
                             # millions of keywords, you'd better do set this optimization to
                             # false and do the optimization on the final index.
+frame_subsampling_factor=1
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -84,6 +85,7 @@ if [ -f $word_boundary ] ; then
       lattice-align-words $silence_opt --max-expand=$max_expand $word_boundary $model  ark:- ark:- \| \
       lattice-scale --acoustic-scale=$acwt --lm-scale=$lmwt ark:- ark:- \| \
       lattice-to-kws-index --max-states-scale=$max_states_scale --allow-partial=true \
+      --frame-subsampling-factor=$frame_subsampling_factor \
       --max-silence-frames=$max_silence_frames --strict=$strict ark:$utter_id ark:- ark:- \| \
       kws-index-union --skip-optimization=$skip_optimization --strict=$strict --max-states=$max_states \
       ark:- "ark:|gzip -c > $kwsdir/index.JOB.gz" || exit 1
@@ -93,6 +95,7 @@ elif [ -f $align_lexicon ]; then
       lattice-align-words-lexicon $silence_opt --max-expand=$max_expand $align_lexicon $model  ark:- ark:- \| \
       lattice-scale --acoustic-scale=$acwt --lm-scale=$lmwt ark:- ark:- \| \
       lattice-to-kws-index --max-states-scale=$max_states_scale --allow-partial=true \
+      --frame-subsampling-factor=$frame_subsampling_factor \
       --max-silence-frames=$max_silence_frames --strict=$strict ark:$utter_id ark:- ark:- \| \
       kws-index-union --skip-optimization=$skip_optimization --strict=$strict --max-states=$max_states \
       ark:- "ark:|gzip -c > $kwsdir/index.JOB.gz" || exit 1

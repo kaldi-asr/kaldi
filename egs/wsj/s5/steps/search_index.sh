@@ -8,6 +8,7 @@ cmd=run.pl
 nbest=-1
 strict=true
 indices_dir=
+frame_subsampling_factor=1
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -50,6 +51,7 @@ done
 
 $cmd JOB=1:$nj $kwsdir/log/search.JOB.log \
   kws-search --strict=$strict --negative-tolerance=-1 \
+  --frame-subsampling-factor=${frame_subsampling_factor} \
   "ark:gzip -cdf $indices_dir/index.JOB.gz|" ark:$keywords \
   "ark,t:|gzip -c > $kwsdir/result.JOB.gz" \
   "ark,t:|gzip -c > $kwsdir/stats.JOB.gz" || exit 1;
