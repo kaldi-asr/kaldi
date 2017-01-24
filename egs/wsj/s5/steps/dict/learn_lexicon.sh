@@ -32,7 +32,7 @@ cmd=run.pl
 nj=4
 stage=0
 
-oov_symbol='<UNK>'
+oov_symbol=
 lexicon_g2p=
 
 min_prob=0.3
@@ -52,8 +52,11 @@ cleanup=true
 . utils/parse_options.sh
 
 if [ $# -lt 6 ] || [ $# -gt 7 ]; then
-  echo "Usage: $0 [options] <ref-dict> <target-vocab> <data> <src-mdl-dir> \\"
-  echo "          <ref-lang> <dest-dict> [ <tmp-dir> ]"
+  echo "Usage: $0 [options] <ref-dict> <target-vocab> <data> \\"
+  echo "                    <src-mdl-dir> <ref-lang> <dest-dict> [ <tmp-dir> ]"
+  echo "e.g.: $0 --oov-symbol \"<UNK>\" data/local/dict data/local/lm/librispeech-vocab.txt data/train \\"
+  echo "                               exp/tri3 data/lang data/local/dict_learned"
+  echo "" 
   echo "  This script does lexicon expansion using a combination of acoustic"
   echo "  evidence and G2P to produce a lexicon that covers words of a target vocab:"
   echo ""               
@@ -79,14 +82,12 @@ if [ $# -lt 6 ] || [ $# -gt 7 ]; then
   echo "     who are in <target-vocab> but not seen in <data>, their pronunciations" 
   echo "     will be given by G2P at the end."
   echo ""
-  echo "e.g. $0 data/local/dict data/local/lm/librispeech-vocab.txt data/train \\"
-  echo "          exp/tri3 data/lang data/local/dict_learned"
   echo "Options:"
   echo "  --stage <n>                  # stage to run from, to enable resuming from partially"
   echo "                               # completed run (default: 0)"
   echo "  --cmd '$cmd'                 # command to submit jobs with (e.g. run.pl, queue.pl)"
   echo "  --nj <nj>                    # number of parallel jobs"
-  echo "  --oov-symbol '$oov_symbol'   # oov symbol, like <UNK>."
+  echo "  --oov-symbol <unk_symbol>    # (required option) oov symbol, like <UNK>."
   echo "  --g2p-pron-candidates        # A lexicon file containing g2p generated pronunciations, for words in acoustic training "
   echo "                               # data / target vocabulary. It's optional."
   echo "  --min-prob <float>           # The cut-off parameter used to select pronunciation candidates from phonetic"
@@ -122,6 +123,11 @@ data=$3
 src_mdl_dir=$4
 ref_lang=$5
 dest_dict=$6
+
+if [ -z "$oov_symbol" ]; then
+   echo "$0: the --oov-symbol option is required."
+   exit 1
+fi
 
 if [ $# -gt 6 ]; then
   dir=$7 
@@ -187,19 +193,21 @@ if [ $stage -le 1 ] && $retrain_src_mdl; then
     awk 'NR==FNR{a[$1] = 1; next} ($1 in a)' $dir/target_vocab.txt - | \
     cat $dir/non_scored_entries - | 
     sort | uniq > $dir/dict_expanded_target_vocab/lexicon.txt
-  
+   
   utils/prepare_lang.sh --phone-symbol-table $ref_lang/phones.txt $dir/dict_expanded_target_vocab \
-    $oov_symbol $dir/lang_expanded_target_vocab_tmp $dir/lang_expanded_target_vocab || exit 1;
+    "$oov_symbol" $dir/lang_expanded_target_vocab_tmp $dir/lang_expanded_target_vocab || exit 1;
   
   # Align the acoustic training data using the given src_mdl_dir.
   alidir=${src_mdl_dir}_ali_$(basename $data) 
   steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
     $data $dir/lang_expanded_target_vocab $src_mdl_dir $alidir || exit 1;
-  
+
   # Train another SAT system on the given data and put it in $dir/${src_mdl_dir}_retrained
   # this model will be used for phonetic decoding and lattice alignment later on.
   if [ -z $num_leaves ] || [ -z $num_gauss ] ; then
-    echo "num_leaves and num_gauss need to be specified." && exit 1;
+    # infer the model parameters using the inital GMM
+    num_leaves=`gmm-info ${src_mdl_dir}/final.mdl  | grep 'pdfs' | awk '{print $NF-1}'`
+    num_gauss=`gmm-info ${src_mdl_dir}/final.mdl  | grep 'gaussians' | awk '{print $NF-1}'`
   fi
   steps/train_sat.sh --cmd "$train_cmd" $num_leaves $num_gauss \
     $data $dir/lang_expanded_target_vocab $alidir $dir/${src_mdl_dir}_retrained || exit 1;
@@ -242,7 +250,7 @@ if [ $stage -le 2 ]; then
     cat - $dir/non_scored_entries | \
     sort | uniq > $dir/dict_expanded_train/lexicon.txt || exit 1;
   
-  utils/prepare_lang.sh $dir/dict_expanded_train $oov_symbol \
+  utils/prepare_lang.sh $dir/dict_expanded_train "$oov_symbol" \
     $dir/lang_expanded_train_tmp $dir/lang_expanded_train || exit 1;
 fi
 
@@ -281,7 +289,7 @@ if [ $stage -le 4 ]; then
     sort | uniq > $dir/dict_combined_iter1/lexicon.txt
   
   utils/prepare_lang.sh --phone-symbol-table $ref_lang/phones.txt \
-    $dir/dict_combined_iter1 $oov_symbol \
+    $dir/dict_combined_iter1 "$oov_symbol" \
     $dir/lang_combined_iter1_tmp $dir/lang_combined_iter1 || exit 1;
   
   # Generate lattices for the acoustic training data with the combined lexicon.
@@ -328,7 +336,7 @@ if [ $stage -le 5 ]; then
     sort | uniq > $dir/dict_combined_iter2/lexicon.txt
 
   utils/prepare_lang.sh --phone-symbol-table $ref_lang/phones.txt \
-    $dir/dict_combined_iter2 $oov_symbol \
+    $dir/dict_combined_iter2 "$oov_symbol" \
     $dir/lang_combined_iter2_tmp $dir/lang_combined_iter2 || exit 1;
   
   if $retrain_src_mdl; then mdl_dir=$dir/${src_mdl_dir}_retrained; else mdl_dir=$src_mdl_dir; fi
