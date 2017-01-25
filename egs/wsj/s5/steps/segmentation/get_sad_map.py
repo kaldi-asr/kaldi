@@ -20,34 +20,10 @@ the above default mapping of phones. This is useful to say map
 """
 
 import argparse
+import sys
 
-
-class StrToBoolAction(argparse.Action):
-    """ A custom action to convert bools from shell format i.e., true/false
-        to python format i.e., True/False """
-    def __call__(self, parser, namespace, values, option_string=None):
-        try:
-            if values == "true":
-                setattr(namespace, self.dest, True)
-            elif values == "true":
-                setattr(namespace, self.dest, False)
-            else:
-                raise ValueError
-        except ValueError:
-            raise Exception("Unknown value {0} for --{1}".format(values,
-                                                                 self.dest))
-
-
-class NullstrToNoneAction(argparse.Action):
-    """ A custom action to convert empty strings passed by shell
-        to None in python. This is necessary as shell scripts print null
-        strings when a variable is not specified. We could use the more apt
-        None in python. """
-    def __call__(self, parser, namespace, values, option_string=None):
-        if values.strip() == "":
-            setattr(namespace, self.dest, None)
-        else:
-            setattr(namespace, self.dest, values)
+sys.path.insert(0, 'steps')
+import libs.common as common_lib
 
 
 def get_args():
@@ -71,7 +47,7 @@ def get_args():
         <UNK> or noise phones <NSN> to separate SAD labels.
         """)
 
-    parser.add_argument("--init-sad-map", type=str, action=NullstrToNoneAction,
+    parser.add_argument("--init-sad-map", type=str, action=common_lib.NullstrToNoneAction,
                         help="""Initial SAD map that will be used to override
                         the default mapping using phones/silence.txt and
                         phones/nonsilence.txt. Does not need to specify labels
@@ -82,24 +58,24 @@ def get_args():
 
     noise_group = parser.add_mutually_exclusive_group()
     noise_group.add_argument("--noise-phones-file", type=str,
-                             action=NullstrToNoneAction,
+                             action=common_lib.NullstrToNoneAction,
                              help="Map noise phones from file to label 2")
     noise_group.add_argument("--noise-phones-list", type=str,
-                             action=NullstrToNoneAction,
+                             action=common_lib.NullstrToNoneAction,
                              help="A colon-separated list of noise phones to "
                              "map to label 2")
-    parser.add_argument("--unk", type=str, action=NullstrToNoneAction,
+    parser.add_argument("--unk", type=str, action=common_lib.NullstrToNoneAction,
                         help="""UNK phone, if provided will be mapped to
                         label 3""")
 
     parser.add_argument("--map-noise-to-sil", type=str,
-                        action=StrToBoolAction,
+                        action=common_lib.StrToBoolAction,
                         choices=["true", "false"], default=False,
                         help="""Map noise phones to silence before writing the
                         map. i.e. anything with label 2 is mapped to
                         label 0.""")
     parser.add_argument("--map-unk-to-speech", type=str,
-                        action=StrToBoolAction,
+                        action=common_lib.StrToBoolAction,
                         choices=["true", "false"], default=False,
                         help="""Map UNK phone to speech before writing the map
                         i.e. anything with label 3 is mapped to label 1.""")
