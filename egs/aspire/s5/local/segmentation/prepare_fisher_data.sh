@@ -9,6 +9,8 @@
 . path.sh
 . cmd.sh
 
+set -e -o pipefail
+
 if [ $# -ne 0 ]; then
   echo "Usage: $0"
   echo "This script is to serve as an example recipe."
@@ -17,7 +19,7 @@ if [ $# -ne 0 ]; then
 fi
 
 dir=exp/unsad/make_unsad_fisher_train_100k  # Work dir
-subset=150
+subset=900
 
 # All the paths below can be modified to any absolute path.
 
@@ -54,21 +56,23 @@ oov_I 3
 oov_S 3
 EOF
 
+false && {
 # Expecting the user to have done run.sh to have $model_dir,
 # $sat_model_dir, $lang, $lang_test, $train_data_dir
 local/segmentation/prepare_unsad_data.sh \
   --sad-map $dir/fisher_sad.map \
   --config-dir conf \
   --reco-nj 40 --nj 100 --cmd "$train_cmd" \
-  --sat-model $sat_model_dir \
+  --sat-model-dir $sat_model_dir \
   --lang-test $lang_test \
   $train_data_dir $lang $model_dir $dir
+}
 
 data_dir=${train_data_dir}_whole
 
 if [ ! -z $subset ]; then
   # Work on a subset
-  utils/subset_data_dir.sh ${data_dir} $subset \
+  false && utils/subset_data_dir.sh ${data_dir} $subset \
     ${data_dir}_$subset
   data_dir=${data_dir}_$subset
 fi
@@ -76,13 +80,13 @@ fi
 reco_vad_dir=$dir/`basename $model_dir`_reco_vad_`basename $train_data_dir`_sp
 
 # Add noise from MUSAN corpus to data directory and create a new data directory
-local/segmentation/do_corruption_data_dir.sh
+false && local/segmentation/do_corruption_data_dir.sh \
   --data-dir $data_dir \
-  --reco-vad-dir $reco_vad_dir
+  --reco-vad-dir $reco_vad_dir \
   --feat-suffix hires_bp --mfcc-config conf/mfcc_hires_bp.conf 
 
 # Add music from MUSAN corpus to data directory and create a new data directory
-local/segmentation/do_corruption_data_dir_music.sh
+local/segmentation/do_corruption_data_dir_music.sh --stage 10 \
   --data-dir $data_dir \
-  --reco-vad-dir $reco_vad_dir
+  --reco-vad-dir $reco_vad_dir \
   --feat-suffix hires_bp --mfcc-config conf/mfcc_hires_bp.conf

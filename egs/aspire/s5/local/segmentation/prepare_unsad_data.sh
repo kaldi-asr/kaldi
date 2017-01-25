@@ -40,7 +40,7 @@ lang_test=  # Language directory used to build graph.
 
 . utils/parse_options.sh
 
-if [ $# -ne 5 ]; then
+if [ $# -ne 4 ]; then
   echo "This script takes a data directory and creates a new data directory "
   echo "and speech activity labels"
   echo "for the purpose of training a Universal Speech Activity Detector."
@@ -241,12 +241,12 @@ fi
 utils/data/get_reco2utt.sh $data_dir
 
 if [ $stage -le 0 ]; then
-  steps/segmentation/get_utt2num_frames.sh \
+  utils/data/get_utt2num_frames.sh \
     --frame-shift $frame_shift --frame-overlap $frame_overlap \
     --cmd "$cmd" --nj $reco_nj $whole_data_dir 
 
   awk '{print $1" "$2}' ${data_dir}/segments | utils/apply_map.pl -f 2 ${whole_data_dir}/utt2num_frames > $data_dir/utt2max_frames
-  utils/data/subsegment_feats.sh ${whole_data_dir}/feats.scp \
+  utils/data/get_subsegmented_feats.sh ${whole_data_dir}/feats.scp \
     $frame_shift $frame_overlap ${data_dir}/segments | \
     utils/data/fix_subsegmented_feats.pl $data_dir/utt2max_frames \
     > ${data_dir}/feats.scp
@@ -289,8 +289,7 @@ utils/split_data.sh $data_dir $nj
 vad_dir=$dir/`basename ${ali_dir}`_vad_${data_id}
 if [ $stage -le 3 ]; then
   steps/segmentation/internal/convert_ali_to_vad.sh --cmd "$cmd" \
-    $data_dir $ali_dir \
-    $dir/sad_map $vad_dir
+    $ali_dir $dir/sad_map $vad_dir
 fi
 
 [ ! -s $vad_dir/sad_seg.scp ] && echo "$0: $vad_dir/vad.scp is empty" && exit 1
@@ -381,9 +380,9 @@ if [ $stage -le 6 ]; then
   utils/data/get_reco2utt.sh $outside_data_dir
   awk '{print $1" "$2}' $outside_data_dir/segments | utils/apply_map.pl -f 2 $whole_data_dir/utt2num_frames > $outside_data_dir/utt2max_frames
 
-  utils/data/subsegment_feats.sh ${whole_data_dir}/feats.scp \
+  utils/data/get_subsegmented_feats.sh ${whole_data_dir}/feats.scp \
     $frame_shift $frame_overlap ${outside_data_dir}/segments | \
-    utils/data/fix_subsegmented_feats.pl $outside_data_dir/utt2max_framres \
+    utils/data/fix_subsegmented_feats.pl $outside_data_dir/utt2max_frames \
     > ${outside_data_dir}/feats.scp
 
 fi
@@ -432,8 +431,7 @@ model_id=`basename $model_dir`
 decode_vad_dir=$dir/${model_id}_decode_vad_${data_id}
 if [ $stage -le 9 ]; then
   steps/segmentation/internal/convert_ali_to_vad.sh --cmd "$cmd" \
-    $extended_data_dir ${model_dir}/decode_${data_id}_extended \
-    $dir/sad_map $decode_vad_dir
+    ${model_dir}/decode_${data_id}_extended $dir/sad_map $decode_vad_dir
 fi
 
 [ ! -s $decode_vad_dir/sad_seg.scp ] && echo "$0: $decode_vad_dir/vad.scp is empty" && exit 1
@@ -477,7 +475,7 @@ set +e
 for n in `seq $reco_nj`; do
   utils/create_data_link.pl $reco_vad_dir/deriv_weights.$n.ark
   utils/create_data_link.pl $reco_vad_dir/deriv_weights_for_uncorrupted.$n.ark
-  utils/create_data_link.pl $reco_vad_dir/speech_feat.$n.ark
+  utils/create_data_link.pl $reco_vad_dir/speech_labels.$n.ark
 done
 set -e
 
@@ -508,14 +506,12 @@ fi
 
 if [ $stage -le 14 ]; then
   $cmd JOB=1:$reco_nj $reco_vad_dir/log/get_speech_labels.JOB.log \
-    segmentation-post-process --keep-label=1 scp:$reco_vad_dir/sad_seg.JOB.scp ark:- \| \
+    segmentation-copy --keep-label=1 scp:$reco_vad_dir/sad_seg.JOB.scp ark:- \| \
     segmentation-to-ali --lengths-rspecifier=ark,t:${whole_data_dir}/utt2num_frames \
-    ark:- ark,t:- \| \
-    steps/segmentation/convert_ali_to_vec.pl \| vector-to-feat ark:- ark:- \| copy-feats --compress \
-    ark:- ark,scp:$reco_vad_dir/speech_feat.JOB.ark,$reco_vad_dir/speech_feat.JOB.scp
+    ark:- ark,scp:$reco_vad_dir/speech_labels.JOB.ark,$reco_vad_dir/speech_labels.JOB.scp
   for n in `seq $reco_nj`; do
-    cat $reco_vad_dir/speech_feat.$n.scp
-  done > $reco_vad_dir/speech_feat.scp
+    cat $reco_vad_dir/speech_labels.$n.scp
+  done > $reco_vad_dir/speech_labels.scp
 fi
 
 if [ $stage -le 15 ]; then
