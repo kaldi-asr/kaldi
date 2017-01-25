@@ -128,9 +128,12 @@ class TransitionModel {
   TransitionModel(const ContextDependencyInterface &ctx_dep,
                   const HmmTopology &hmm_topo);
 
-
   /// Constructor that takes no arguments: typically used prior to calling Read.
   TransitionModel() { }
+
+  /// Does the same things as the constructor.
+  void Init(const ContextDependencyInterface &ctx_dep,
+            const HmmTopology &hmm_topo);
 
   void Read(std::istream &is, bool binary);  // note, no symbol table: topo object always read/written w/o symbols.
   void Write(std::ostream &os, bool binary) const;

@@ -231,8 +231,6 @@ GetHmmAsFstSimple(std::vector<int32> phone_window,
 
 
 
-
-
 // The H transducer has a separate outgoing arc for each of the symbols in ilabel_info.
 
 fst::VectorFst<fst::StdArc> *GetHTransducer (const std::vector<std::vector<int32> > &ilabel_info,
