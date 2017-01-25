@@ -675,7 +675,14 @@ def generate_training_examples_internal(dir, targets_parameters, feat_dir,
                                       fpi=samples_per_iter))
 
     if dry_run:
-        cleanup(dir, archives_multiple)
+        if generate_egs_scp:
+            for i in range(1, num_archives_intermediate + 1):
+                for j in range(1, archives_multiple + 1):
+                    archive_index = (i-1) * archives_multiple + j
+                    common_lib.force_symlink(
+                        "egs.{0}.ark".format(archive_index),
+                        "{dir}/egs.{i}.{j}.ark".format(dir=dir, i=i, j=j))
+        cleanup(dir, archives_multiple, generate_egs_scp)
         return {'num_frames': num_frames,
                 'num_archives': num_archives,
                 'egs_per_archive': egs_per_archive}
@@ -763,7 +770,7 @@ def generate_training_examples_internal(dir, targets_parameters, feat_dir,
         for i in range(1, num_archives_intermediate + 1):
             for j in range(1, archives_multiple + 1):
                 archive_index = (i-1) * archives_multiple + j
-                common_lib.force_sym_link(
+                common_lib.force_symlink(
                     "egs.{0}.ark".format(archive_index),
                     "{dir}/egs.{i}.{j}.ark".format(dir=dir, i=i, j=j))
 
@@ -785,20 +792,20 @@ def generate_training_examples_internal(dir, targets_parameters, feat_dir,
                         print (line.strip(), file=out_egs_handle)
             out_egs_handle.close()
 
-    cleanup(dir, archives_multiple)
+    cleanup(dir, archives_multiple, generate_egs_scp)
     return {'num_frames': num_frames,
             'num_archives': num_archives,
             'egs_per_archive': egs_per_archive}
 
 
-def cleanup(dir, archives_multiple):
+def cleanup(dir, archives_multiple, generate_egs_scp=False):
     logger.info("Removing temporary archives in {0}.".format(dir))
     for file_name in glob.glob("{0}/egs_orig*".format(dir)):
         real_path = os.path.realpath(file_name)
         data_lib.try_to_delete(real_path)
         data_lib.try_to_delete(file_name)
 
-    if archives_multiple > 1:
+    if archives_multiple > 1 and not generate_egs_scp:
         # there will be some extra soft links we want to delete
         for file_name in glob.glob('{0}/egs.*.*.ark'.format(dir)):
             os.remove(file_name)
