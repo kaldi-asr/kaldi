@@ -1,6 +1,7 @@
 // gmmbin/gmm-global-init-models-from-feats.cc
 
 // Copyright 2013   Johns Hopkins University (author: Daniel Povey)
+//           2016   Vimal Manohar
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -58,10 +59,145 @@ void InitGmmFromRandomFrames(const MatrixBase<BaseFloat> &feats, DiagGmm *gmm) {
   gmm->ComputeGconsts();
 }
 
+void MleDiagGmmSharedVarsUpdate(const MleDiagGmmOptions &config,
+                                const AccumDiagGmm &diag_gmm_acc,
+                                GmmFlagsType flags,
+                                DiagGmm *gmm,
+                                BaseFloat *obj_change_out,
+                                BaseFloat *count_out,
+                                int32 *floored_elements_out,
+                                int32 *floored_gaussians_out,
+                                int32 *removed_gaussians_out) {
+  KALDI_ASSERT(gmm != NULL);
+
+  if (flags & ~diag_gmm_acc.Flags())
+    KALDI_ERR << "Flags in argument do not match the active accumulators";
+
+  KALDI_ASSERT(diag_gmm_acc.NumGauss() == gmm->NumGauss() &&
+               diag_gmm_acc.Dim() == gmm->Dim());
+
+  int32 num_gauss = gmm->NumGauss();
+  double occ_sum = diag_gmm_acc.occupancy().Sum();
+
+  int32 elements_floored = 0, gauss_floored = 0;
+  
+  // remember old objective value
+  gmm->ComputeGconsts();
+  BaseFloat obj_old = MlObjective(*gmm, diag_gmm_acc);
+
+  // First get the gmm in "normal" representation (not the exponential-model
+  // form).
+  DiagGmmNormal ngmm(*gmm);
+
+  Vector<double> shared_var(gmm->Dim());
+
+  std::vector<int32> to_remove;
+  for (int32 i = 0; i < num_gauss; i++) {
+    double occ = diag_gmm_acc.occupancy()(i);
+    double prob;
+    if (occ_sum > 0.0)
+      prob = occ / occ_sum;
+    else
+      prob = 1.0 / num_gauss;
+
+    if (occ > static_cast<double>(config.min_gaussian_occupancy)
+        && prob > static_cast<double>(config.min_gaussian_weight)) {
+      
+      ngmm.weights_(i) = prob;
+      
+      // copy old mean for later normalizations
+      Vector<double> old_mean(ngmm.means_.Row(i));
+      
+      // update mean, then variance, as far as there are accumulators 
+      if (diag_gmm_acc.Flags() & (kGmmMeans|kGmmVariances)) {
+        Vector<double> mean(diag_gmm_acc.mean_accumulator().Row(i));
+        mean.Scale(1.0 / occ);
+        // transfer to estimate
+        ngmm.means_.CopyRowFromVec(mean, i);
+      }
+      
+      if (diag_gmm_acc.Flags() & kGmmVariances) {
+        KALDI_ASSERT(diag_gmm_acc.Flags() & kGmmMeans);
+        Vector<double> var(diag_gmm_acc.variance_accumulator().Row(i));
+        var.Scale(1.0 / occ);
+        var.AddVec2(-1.0, ngmm.means_.Row(i));  // subtract squared means.
+        
+        // if we intend to only update the variances, we need to compensate by 
+        // adding the difference between the new and old mean
+        if (!(flags & kGmmMeans)) {
+          old_mean.AddVec(-1.0, ngmm.means_.Row(i));
+          var.AddVec2(1.0, old_mean);
+        }
+        shared_var.AddVec(occ, var);
+      }
+    } else {  // Insufficient occupancy.
+      if (config.remove_low_count_gaussians &&
+          static_cast<int32>(to_remove.size()) < num_gauss-1) {
+        // remove the component, unless it is the last one.
+        KALDI_WARN << "Too little data - removing Gaussian (weight "
+                   << std::fixed << prob
+                   << ", occupation count " << std::fixed << diag_gmm_acc.occupancy()(i)
+                   << ", vector size " << gmm->Dim() << ")";
+        to_remove.push_back(i);
+      } else {
+        KALDI_WARN << "Gaussian has too little data but not removing it because"
+                   << (config.remove_low_count_gaussians ?
+                       " it is the last Gaussian: i = "
+                       : " remove-low-count-gaussians == false: g = ") << i
+                   << ", occ = " << diag_gmm_acc.occupancy()(i) << ", weight = " << prob;
+        ngmm.weights_(i) =
+            std::max(prob, static_cast<double>(config.min_gaussian_weight));
+      }
+    }
+  }
+        
+  if (diag_gmm_acc.Flags() & kGmmVariances) {
+    int32 floored;
+    if (config.variance_floor_vector.Dim() != 0) {
+      floored = shared_var.ApplyFloor(config.variance_floor_vector);
+    } else {
+      floored = shared_var.ApplyFloor(config.min_variance);
+    }
+    if (floored != 0) {
+      elements_floored += floored;
+      gauss_floored++;
+    }
+
+    shared_var.Scale(1.0 / occ_sum);
+    for (int32 i = 0; i < num_gauss; i++) {
+      ngmm.vars_.CopyRowFromVec(shared_var, i);
+    }
+  }
+  
+  // copy to natural representation according to flags
+  ngmm.CopyToDiagGmm(gmm, flags);
+
+  gmm->ComputeGconsts();  // or MlObjective will fail.
+  BaseFloat obj_new = MlObjective(*gmm, diag_gmm_acc);
+  
+  if (obj_change_out) 
+    *obj_change_out = (obj_new - obj_old);
+  if (count_out) *count_out = occ_sum;
+  if (floored_elements_out) *floored_elements_out = elements_floored;
+  if (floored_gaussians_out) *floored_gaussians_out = gauss_floored;
+  
+  if (to_remove.size() > 0) {
+    gmm->RemoveComponents(to_remove, true /*renormalize weights*/);
+    gmm->ComputeGconsts();
+  }
+  if (removed_gaussians_out != NULL) *removed_gaussians_out = to_remove.size();
+
+  if (gauss_floored > 0)
+    KALDI_VLOG(2) << gauss_floored << " variances floored in " << gauss_floored
+                  << " Gaussians.";
+}
+
+
 void TrainOneIter(const MatrixBase<BaseFloat> &feats,
                   const MleDiagGmmOptions &gmm_opts,
                   int32 iter,
                   int32 num_threads,
+                  bool share_covars,
                   DiagGmm *gmm) {
   AccumDiagGmm gmm_acc(*gmm, kGmmAll);
 
@@ -86,7 +222,7 @@ void TrainOneIter(const MatrixBase<BaseFloat> &feats,
 void TrainGmm(const MatrixBase<BaseFloat> &feats, 
               const MleDiagGmmOptions &gmm_opts,
               int32 num_gauss, int32 num_gauss_init, int32 num_iters,
-              int32 num_threads, DiagGmm *gmm) {
+              int32 num_threads, bool share_covars, DiagGmm *gmm) {
   KALDI_LOG << "Initializing GMM means from random frames to "
             << num_gauss_init << " Gaussians.";
   InitGmmFromRandomFrames(feats, gmm);
@@ -97,7 +233,7 @@ void TrainGmm(const MatrixBase<BaseFloat> &feats,
       gauss_inc = (num_gauss - num_gauss_init) / (num_iters / 2);
       
   for (int32 iter = 0; iter < num_iters; iter++) {
-    TrainOneIter(feats, gmm_opts, iter, num_threads, gmm);
+    TrainOneIter(feats, gmm_opts, iter, num_threads, share_covars, gmm);
 
     int32 next_num_gauss = std::min(num_gauss, cur_num_gauss + gauss_inc);
     if (next_num_gauss > gmm->NumGauss()) {
@@ -126,10 +262,14 @@ int main(int argc, char *argv[]) {
     bool binary = true;
     int32 num_gauss = 100;
     int32 num_gauss_init = 0;
+    int32 max_gauss = 0;
+    int32 min_gauss = 0;
     int32 num_iters = 50;
     int32 num_frames = 200000;
     int32 srand_seed = 0;
     int32 num_threads = 4;
+    BaseFloat num_gauss_fraction = -1;
+    bool share_covars = false;
     std::string spk2utt_rspecifier;
     
     po.Register("binary", &binary, "Write output in binary mode");
@@ -145,6 +285,16 @@ int main(int argc, char *argv[]) {
                 "statistics accumulation");
     po.Register("spk2utt-rspecifier", &spk2utt_rspecifier, 
                 "If specified, estimates models per-speaker");
+    po.Register("num-gauss-fraction", &num_gauss_fraction, 
+                "If specified, chooses the number of gaussians to be "
+                "num-gauss-fraction * min(num-frames-available, num-frames). "
+                "This number is expected to be in the range(0, 0.1).");
+    po.Register("max-gauss", &max_gauss, "Maximum number of Gaussians allowed "
+                "in the model. Applicable when num_gauss_fraction is specified.");
+    po.Register("min-gauss", &min_gauss, "Minimum number of Gaussians allowed "
+                "in the model. Applicable when num_gauss_fraction is specified.");
+    po.Register("share-covars", &share_covars, "If true, then the variances "
+                "of the Gaussian components are tied.");
                 
     gmm_opts.Register(&po);
 
@@ -157,25 +307,33 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
     
-    if (num_gauss_init <= 0 || num_gauss_init > num_gauss)
-      num_gauss_init = num_gauss;
-      
+    if (num_gauss_fraction != -1) {
+      KALDI_ASSERT(num_gauss_fraction > 0 && num_gauss_fraction < 0.1);
+    }
+
+    KALDI_ASSERT(max_gauss >= 0 && min_gauss >= 0 && max_gauss >= min_gauss);
+
     std::string feature_rspecifier = po.GetArg(1),
         model_wspecifier = po.GetArg(2);
     
     DiagGmmWriter gmm_writer(model_wspecifier);
 
     KALDI_ASSERT(num_frames > 0);
-    
-    KALDI_LOG << "Reading features (will keep " << num_frames << " frames "
-              << "per utterance.)";
+  
+    if (spk2utt_rspecifier.empty()) {
+      KALDI_LOG << "Reading features (will keep " << num_frames << " frames "
+                << "per utterance.)";
+    } else {
+      KALDI_LOG << "Reading features (will keep " << num_frames << " frames "
+                << "per speaker.)";
+    }
     
     int32 dim = 0;
 
-    if (!spk2utt_rspecifier.empty()) {
+    if (spk2utt_rspecifier.empty()) {
       SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
       for (; !feature_reader.Done(); feature_reader.Next()) {
-        const Matrix<BaseFloat>  &this_feats = feature_reader.Value();
+        const Matrix<BaseFloat> &this_feats = feature_reader.Value();
         if (dim == 0) {
           dim = this_feats.NumCols();
         } else if (this_feats.NumCols() != dim) {
@@ -198,6 +356,8 @@ int main(int argc, char *argv[]) {
             }
           }
         }
+
+        KALDI_ASSERT(num_read > 0);
         
         if (num_read < num_frames) {
           KALDI_WARN << "For utterance " << feature_reader.Key() << ", "
@@ -211,9 +371,23 @@ int main(int argc, char *argv[]) {
                     << " input frames = " << percent << "%.";
         }
 
-        DiagGmm gmm(num_gauss_init, dim);
-        TrainGmm(feats, gmm_opts, num_gauss, num_gauss_init, num_iters, 
-                 num_threads, &gmm);
+        int32 this_num_gauss_init = num_gauss_init;
+        int32 this_num_gauss = num_gauss;
+
+        if (num_gauss_fraction != -1) {
+          this_num_gauss = feats.NumRows() * num_gauss_fraction;
+          if (this_num_gauss > max_gauss)
+            this_num_gauss = max_gauss;
+          if (this_num_gauss < min_gauss)
+            this_num_gauss = min_gauss;
+        }
+        
+        if (this_num_gauss_init <= 0 || this_num_gauss_init > this_num_gauss)
+          this_num_gauss_init = this_num_gauss;
+
+        DiagGmm gmm(this_num_gauss_init, dim);
+        TrainGmm(feats, gmm_opts, this_num_gauss, this_num_gauss_init, 
+                 num_iters, num_threads, share_covars, &gmm);
 
         gmm_writer.Write(feature_reader.Key(), gmm);
       }
@@ -224,10 +398,10 @@ int main(int argc, char *argv[]) {
 
       int32 num_err = 0;
       for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {
+        const std::vector<std::string> &uttlist = spk2utt_reader.Value();
+
         Matrix<BaseFloat> feats;
         int64 num_read = 0; 
-
-        const std::vector<std::string> &uttlist = spk2utt_reader.Value();
 
         for (std::vector<std::string>::const_iterator it = uttlist.begin();
              it != uttlist.end(); ++it) {
@@ -237,7 +411,7 @@ int main(int argc, char *argv[]) {
           }
           
           const Matrix<BaseFloat> &this_feats = feature_reader.Value(*it);
-          if (dim == 0) {
+          if (feats.NumCols() == 0) {
             dim = this_feats.NumCols();
             feats.Resize(num_frames, dim);
           } else if (this_feats.NumCols() != dim) {
@@ -258,6 +432,8 @@ int main(int argc, char *argv[]) {
             }
           }
         }
+        
+        KALDI_ASSERT(num_read > 0);
 
         if (num_read < num_frames) {
           KALDI_WARN << "For speaker " << spk2utt_reader.Key() << ", "
@@ -271,9 +447,23 @@ int main(int argc, char *argv[]) {
                     << " input frames = " << percent << "%.";
         }
       
-        DiagGmm gmm(num_gauss_init, dim);
-        TrainGmm(feats, gmm_opts, num_gauss, num_gauss_init, num_iters, 
-                 num_threads, &gmm);
+        int32 this_num_gauss_init = num_gauss_init;
+        int32 this_num_gauss = num_gauss;
+
+        if (num_gauss_fraction != -1) {
+          this_num_gauss = feats.NumRows() * num_gauss_fraction;
+          if (this_num_gauss > max_gauss)
+            this_num_gauss = max_gauss;
+          if (this_num_gauss < min_gauss)
+            this_num_gauss = min_gauss;
+        }
+        
+        if (this_num_gauss_init <= 0 || this_num_gauss_init > this_num_gauss)
+          this_num_gauss_init = this_num_gauss;
+
+        DiagGmm gmm(this_num_gauss_init, dim);
+        TrainGmm(feats, gmm_opts, this_num_gauss, this_num_gauss_init, 
+                 num_iters, num_threads, share_covars, &gmm);
 
         gmm_writer.Write(spk2utt_reader.Key(), gmm);
       }
@@ -288,4 +478,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-

@@ -49,7 +49,8 @@ int main(int argc, char *argv[]) {
     po.Register("min-post", &min_post, "Minimum posterior we will output "
                 "before pruning and renormalizing (e.g. 0.01)");
     po.Register("utt2spk", &utt2spk_rspecifier,
-                "rspecifier for utterance to speaker map");
+                "rspecifier for utterance to speaker map for reading "
+                "per-speaker GMM models");
     po.Read(argc, argv);
 
     if (po.NumArgs() < 3 || po.NumArgs() > 4) {
@@ -63,7 +64,7 @@ int main(int argc, char *argv[]) {
         frame_loglikes_wspecifier = po.GetOptArg(4);
 
     RandomAccessDiagGmmReaderMapped *gmm_reader = NULL;
-    DiagGmm *gmm = NULL;
+    DiagGmm diag_gmm;
       
     KALDI_ASSERT(num_post > 0);
     KALDI_ASSERT(min_post < 1.0);
@@ -73,9 +74,8 @@ int main(int argc, char *argv[]) {
       gmm_reader = new RandomAccessDiagGmmReaderMapped(model_in_filename,
                                                        utt2spk_rspecifier);
     } else {
-      gmm = new DiagGmm();
-      ReadKaldiObject(model_in_filename, gmm);
-      int32 num_gauss = gmm->NumGauss();
+      ReadKaldiObject(model_in_filename, &diag_gmm);
+      int32 num_gauss = diag_gmm.NumGauss();
       if (num_post > num_gauss) {
         KALDI_WARN << "You asked for " << num_post << " Gaussians but GMM "
                    << "only has " << num_gauss << ", returning this many. ";
@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
     
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
     PosteriorWriter post_writer(post_wspecifier);
-    BaseFloatVectorWriter likes_writer(frame_loglikes_wspecifier);
+    BaseFloatVectorWriter frame_loglikes_writer(frame_loglikes_wspecifier);
     
     int32 num_done = 0, num_err = 0;
     for (; !feature_reader.Done(); feature_reader.Next()) {
@@ -101,14 +101,19 @@ int main(int argc, char *argv[]) {
         continue;
       }
 
+      const DiagGmm *gmm;
       if (gmm_reader) {
-        if (!gmm_reader.HasKey(utt)) {
+        if (!gmm_reader->HasKey(utt)) {
           KALDI_WARN << "Could not find GMM for utterance " << utt;
           num_err++;
           continue;
         } 
-        gmm = gmm_reader.Value(utt);
+        gmm = &(gmm_reader->Value(utt));
+      } else {
+        gmm = &diag_gmm;
       }
+      int32 num_gauss_to_compute =
+        num_post > gmm->NumGauss() ?  gmm->NumGauss() : num_post;
 
       if (feats.NumCols() != gmm->Dim()) {
         KALDI_WARN << "Dimension mismatch for utterance " << utt
@@ -117,8 +122,6 @@ int main(int argc, char *argv[]) {
         num_err++;
         continue;
       }
-      vector<vector<int32> > gselect(T);
-      
       Matrix<BaseFloat> loglikes;
       
       gmm->LogLikelihoods(feats, &loglikes);
@@ -132,7 +135,7 @@ int main(int argc, char *argv[]) {
       for (int32 t = 0; t < T; t++) {
         double log_like_this_frame = 
             VectorToPosteriorEntry(loglikes.Row(t), 
-                                   num_post > num_gauss ? num_gauss : num_post,
+                                   num_gauss_to_compute,
                                    min_post, &(post[t]));
         if (!frame_loglikes_wspecifier.empty()) 
           frame_loglikes(t) = log_like_this_frame;
@@ -145,13 +148,12 @@ int main(int argc, char *argv[]) {
 
       post_writer.Write(utt, post);
       if (!frame_loglikes_wspecifier.empty()) 
-        frame_loglikes.Write(utt, frame_loglikes);
+        frame_loglikes_writer.Write(utt, frame_loglikes);
 
       num_done++;
     }
     
     delete gmm_reader;
-    delete gmm;
 
     KALDI_LOG << "Done " << num_done << " files, " << num_err
               << " with errors, average UBM log-likelihood is "
