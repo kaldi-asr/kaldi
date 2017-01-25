@@ -1,4 +1,4 @@
-# we assume KALDI_ROOT is already defined 
+# we assume KALDI_ROOT is already defined
 [ -z "$KALDI_ROOT" ] && echo "The variable KALDI_ROOT must be already defined" && exit 1
 # The formatting of the path export command is intentionally weird, because
 # this allows for easy diff'ing
@@ -21,4 +21,5 @@ ${KALDI_ROOT}/src/onlinebin:\
 ${KALDI_ROOT}/src/sgmm2bin:\
 ${KALDI_ROOT}/src/sgmmbin:\
 ${KALDI_ROOT}/src/segmenterbin:\
+${KALDI_ROOT}/src/simplehmmbin:\
 $PATH
