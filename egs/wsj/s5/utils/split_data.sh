@@ -27,14 +27,17 @@ elif [ "$1" == "--per-reco" ]; then
 fi
 
 if [ $# != 2 ]; then
-  echo "Usage: $0 [--per-utt] <data-dir> <num-to-split>"
+  echo "Usage: $0 [--per-utt|--per-reco] <data-dir> <num-to-split>"
   echo "E.g.: $0 data/train 50"
   echo "It creates its output in e.g. data/train/split50/{1,2,3,...50}, or if the "
   echo "--per-utt option was given, in e.g. data/train/split50utt/{1,2,3,...50}."
+  echo "If the --per-reco option was given, in e.g. data/train/split50reco/{1,2,3,...50}."
   echo ""
   echo "This script will not split the data-dir if it detects that the output is newer than the input."
   echo "By default it splits per speaker (so each speaker is in only one split dir),"
   echo "but with the --per-utt option it will ignore the speaker information while splitting."
+  echo "But if --per-reco option is given, it splits per recording "
+  echo "(so each recording is in only one split dir)"
   exit 1
 fi
 
@@ -133,7 +136,7 @@ if [ ! -f $data/segments ]; then
 fi
 
 # split some things that are indexed by utterance.
-for f in feats.scp text vad.scp utt2lang $maybe_wav_scp; do
+for f in feats.scp text vad.scp utt2lang $maybe_wav_scp utt2dur utt2num_frames; do
   if [ -f $data/$f ]; then
     utils/filter_scps.pl JOB=1:$numsplit \
       $data/split${numsplit}${utt}/JOB/utt2spk $data/$f $data/split${numsplit}${utt}/JOB/$f || exit 1;
@@ -168,6 +171,12 @@ if [ -f $data/segments ]; then
       $data/split${numsplit}${utt}/JOB/tmp.reco $data/wav.scp \
       $data/split${numsplit}${utt}/JOB/wav.scp || exit 1
   fi
+  if [ -f $data/reco2utt ]; then
+    utils/filter_scps.pl JOB=1:$numsplit \
+      $data/split${numsplit}${utt}/JOB/tmp.reco $data/reco2utt \
+      $data/split${numsplit}${utt}/JOB/reco2utt || exit 1
+  fi
+
   for f in $data/split${numsplit}${utt}/*/tmp.reco; do rm $f; done
 fi
 
