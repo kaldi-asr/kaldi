@@ -202,6 +202,7 @@ utils/data/fix_data_dir.sh $dir
 validate_opts=
 [ ! -f $srcdir/feats.scp ] && validate_opts="$validate_opts --no-feats"
 [ ! -f $srcdir/wav.scp ] && validate_opts="$validate_opts --no-wav"
+$no_text && validate_opts="$validate_opts --no-text"
 
 utils/data/validate_data_dir.sh $validate_opts $dir
 

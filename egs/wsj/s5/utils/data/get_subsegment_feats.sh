@@ -1,1 +1,0 @@
-get_subsegmented_feats.sh

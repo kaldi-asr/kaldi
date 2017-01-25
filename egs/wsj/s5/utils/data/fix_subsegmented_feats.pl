@@ -49,7 +49,7 @@ while (<STDIN>) {
 
   my @F = split(/ /, $before_range);
   my $utt = shift @F;
-  defined $utt2max_frames{$utt} or die "fix_subsegmented_feats.pl: Could not find key $utt in $utt2num_frames_file.\nError with line $line";
+  defined $utt2max_frames{$utt} or die "fix_subsegmented_feats.pl: Could not find key $utt in $utt2max_frames_file.\nError with line $line";
 
   if ($range !~ m/^(\d*):(\d*)([,]?.*)$/) {
     print STDERR "fix_subsegmented_feats.pl: could not make sense of input line $_";
