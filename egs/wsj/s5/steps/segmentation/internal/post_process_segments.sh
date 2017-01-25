@@ -26,8 +26,10 @@ max_segment_length=1000   # Segments that are longer than this are split into
 overlap_length=100        # Overlapping frames when segments are split.
                           # See the above option.
 min_silence_length=30     # Min silence length at which to split very long segments
+min_segment_length=20
 
 frame_shift=0.01
+frame_overlap=0.016
 
 . utils/parse_options.sh
 
@@ -44,7 +46,7 @@ data_dir=$1
 dir=$2
 segmented_data_dir=$3
 
-for f in $dir/orig_segmentation.1.gz $data_dir/segments; do
+for f in $dir/orig_segmentation.1.gz; do 
   if [ ! -f $f ]; then
     echo "$0: Could not find $f"
     exit 1
@@ -80,9 +82,11 @@ if [ $stage -le 2 ]; then
     segmentation-post-process ${post_pad_length:+--pad-label=1 --pad-length=$post_pad_length} ark:- ark:- \| \
     segmentation-split-segments --alignments="ark,s,cs:gunzip -c $dir/orig_segmentation.JOB.gz | segmentation-to-ali ark:- ark:- |" \
     --max-segment-length=$max_segment_length --min-alignment-chunk-length=$min_silence_length --ali-label=0 ark:- ark:- \| \
+    segmentation-post-process --remove-labels=1 --max-remove-length=$min_segment_length ark:- ark:- \| \
     segmentation-split-segments \
     --max-segment-length=$max_segment_length --overlap-length=$overlap_length ark:- ark:- \| \
-    segmentation-to-segments --frame-shift=$frame_shift ark:- \
+    segmentation-to-segments --frame-shift=$frame_shift \
+    --frame-overlap=$frame_overlap ark:- \
     ark,t:$dir/utt2spk.JOB $dir/segments.JOB || exit 1
 fi
 
