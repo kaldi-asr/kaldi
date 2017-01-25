@@ -56,7 +56,7 @@ num_utts_subset_valid=`perl -e '$n=int($ARGV[0] * 0.005); print ($n > 4000 ? 400
 num_utts_subset_train=`perl -e '$n=int($ARGV[0] * 0.005); print ($n > 4000 ? 4000 : $n)' $num_utts`
 
 if [ -z "$dir" ]; then
-  dir=exp/nnet3_stats_sad_ovlp_snr/nnet_lstm
+  dir=exp/nnet3_lstm_sad_ovlp_snr/nnet_lstm
 fi
 
 dir=$dir${affix:+_$affix}
