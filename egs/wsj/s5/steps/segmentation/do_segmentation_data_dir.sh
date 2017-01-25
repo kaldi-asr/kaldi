@@ -107,11 +107,12 @@ if [ $stage -le 2 ]; then
     --frames-per-chunk 150 \
     --stage $sad_stage --output-name $output_name \
     --frame-subsampling-factor $frame_subsampling_factor \
-    --get-raw-nnet-from-am false ${test_data_dir} $sad_nnet_dir $sad_dir
+    --use-raw-nnet true ${test_data_dir} $sad_nnet_dir $sad_dir
 fi
 
 if [ $stage -le 3 ]; then
   steps/segmentation/decode_sad_to_segments.sh \
+    --use-unigram-lm false \
     --frame-subsampling-factor $frame_subsampling_factor \
     --min-silence-duration $min_silence_duration \
     --min-speech-duration $min_speech_duration \
