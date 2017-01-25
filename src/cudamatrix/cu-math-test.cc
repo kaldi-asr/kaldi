@@ -161,7 +161,7 @@ static void UnitTestCuMathComputeLstmNonlinearity() {
     AssertEqual(Houtput, HDoutput);
   }
 
-  for (int i = 16; i <= 2048; i *= 2) {
+  for (int i = 16; i <= 1024; i *= 2) {
     BaseFloat time_in_secs = 0.025;
     int32 num_rows = i;
     int32 cell_dim = i;
@@ -180,6 +180,8 @@ static void UnitTestCuMathComputeLstmNonlinearity() {
     KALDI_LOG << "For ComputeLstmNonlinearity"
               << (sizeof(Real)==8 ? "<double>" : "<float>") << ", for dim = "
               << i << ", speed was " << gflops << " gigaflops";
+    if (tim.Elapsed() > 0.05)
+      break;
   }
 }
 
@@ -441,6 +443,8 @@ static void UnitTestBackpropLstmNonlinearity() {
     KALDI_LOG << "For BackpropLstmNonlinearity"
               << (sizeof(Real) == 8 ? "<double>" : "<float>") << ", for dim = "
               << i << ", speed was " << gflops << " gigaflops";
+    if (tim.Elapsed() > 0.05)
+      break;
   }
 }
 
@@ -509,6 +513,8 @@ static void UnitTestCuMathNormalizePerRow() {
     KALDI_LOG << "For CuMatrix::NormalizePerRow"
               << (sizeof(Real)==8?"<double>":"<float>") << ", for dim = "
               << dim << ", speed was " << gflops << " gigaflops.";
+    if (tim.Elapsed() > 0.05)
+      break;
   }
 }
 

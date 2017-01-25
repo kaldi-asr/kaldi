@@ -215,6 +215,9 @@ void FindOrphanNodes(const Nnet &nnet, std::vector<int32> *nodes);
        remove internal nodes directly; instead you should use the command
        'remove-orphans'.
 
+    set-dropout-proportion [name=<name-pattern>] proportion=<dropout-proportion>
+       Sets the dropout rates for any components of type DropoutComponent whose
+       names match the given <name-pattern> (e.g. lstm*).  <name-pattern> defaults to "*".
    \endverbatim
 */
 void ReadEditConfig(std::istream &config_file, Nnet *nnet);
