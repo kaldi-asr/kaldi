@@ -31,5 +31,12 @@ void Segment::Read(std::istream &is, bool binary) {
   KALDI_ASSERT(end_frame >= start_frame && start_frame >= 0);
 }
 
+std::ostream& operator<<(std::ostream& os, const Segment &seg) {
+  os << "[ ";
+  seg.Write(os, false);
+  os << "]";
+  return os;
+}  
+
 } // end namespace segmenter 
 } // end namespace kaldi

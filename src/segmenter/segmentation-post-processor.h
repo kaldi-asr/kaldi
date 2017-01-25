@@ -62,9 +62,11 @@ struct SegmentationPostProcessingOptions {
     pad_label(-1), pad_length(-1),
     shrink_label(-1), shrink_length(-1),
     blend_short_segments_class(-1), max_blend_length(-1),
-    merge_adjacent_segments(false), max_intersegment_length(0),
+    max_remove_length(-1), 
+    merge_adjacent_segments(false), 
+    max_intersegment_length(0),
     max_segment_length(-1), overlap_length(0),
-    max_remove_length(-1), post_process_label(-1) { }
+    post_process_label(-1) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("merge-labels", &merge_labels_csl, "Merge labels into a "

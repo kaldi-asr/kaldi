@@ -96,6 +96,8 @@ class SegmentLengthComparator {
       return lhs.Length() < rhs.Length();
     }
 };
+  
+std::ostream& operator<<(std::ostream& os, const Segment &seg);
 
 } // end namespace segmenter 
 } // end namespace kaldi
