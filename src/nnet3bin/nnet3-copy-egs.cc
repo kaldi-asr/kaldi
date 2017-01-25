@@ -429,6 +429,7 @@ int main(int argc, char *argv[]) {
       // count is normally 1; could be 0, or possibly >1.
       int32 count = GetCount(keep_proportion);
       std::string key = example_reader.Key();
+      KALDI_VLOG(2) << "Copying eg " << key;
       NnetExample eg(example_reader.Value());
       
       if (!keep_outputs_str.empty()) {
