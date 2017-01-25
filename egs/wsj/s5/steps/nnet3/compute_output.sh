@@ -27,7 +27,7 @@ compress=false
 online_ivector_dir=
 post_vec=
 output_name=
-get_raw_nnet_from_am=true
+use_raw_nnet=true
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -54,11 +54,13 @@ data=$1
 srcdir=$2
 dir=$3
 
-if $get_raw_nnet_from_am; then
+if ! $use_raw_nnet; then
   [ ! -f $srcdir/$iter.mdl ] && echo "$0: no such file $srcdir/$iter.mdl" && exit 1
-  model="nnet3-am-copy --raw=true $srcdir/$iter.mdl - |"
+  prog=nnet3-am-compute
+  model="$srcdir/$iter.mdl"
 else 
   [ ! -f $srcdir/$iter.raw ] && echo "$0: no such file $srcdir/$iter.raw" && exit 1
+  prog=nnet3-compute
   model="nnet3-copy $srcdir/$iter.raw - |"
 fi
 
@@ -142,18 +144,22 @@ if [ $frame_subsampling_factor -ne 1 ]; then
   frame_subsampling_opt="--frame-subsampling-factor=$frame_subsampling_factor"
 fi
 
-output_wspecifier="ark:| copy-feats --compress=$compress ark:- ark:- | gzip -c > $dir/nnet_output.JOB.gz"
+if ! $use_raw_nnet; then
+  output_wspecifier="ark:| copy-feats --compress=$compress ark:- ark:- | gzip -c > $dir/log_likes.JOB.gz"
+else 
+  output_wspecifier="ark:| copy-feats --compress=$compress ark:- ark:- | gzip -c > $dir/nnet_output.JOB.gz"
 
-if [ ! -z $post_vec ]; then
-  if [ $stage -le 1 ]; then
-    copy-vector --binary=false $post_vec - | \
-      awk '{for (i = 2; i < NF; i++) { sum += i; };
-    printf ("[");
-    for (i = 2; i < NF; i++) { printf " "log(i/sum); };
-    print (" ]");}' > $dir/log_priors.vec
+  if [ ! -z $post_vec ]; then
+    if [ $stage -le 1 ]; then
+      copy-vector --binary=false $post_vec - | \
+        awk '{for (i = 2; i < NF; i++) { sum += i; };
+      printf ("[");
+      for (i = 2; i < NF; i++) { printf " "log(i/sum); };
+      print (" ]");}' > $dir/log_priors.vec
+    fi
+
+    output_wspecifier="ark:| matrix-add-offset ark:- 'vector-scale --scale=-1.0 $dir/log_priors.vec - |' ark:- | copy-feats --compress=$compress ark:- ark:- | gzip -c > $dir/log_likes.JOB.gz"
   fi
-
-  output_wspecifier="ark:| matrix-add-offset ark:- 'vector-scale --scale=-1.0 $dir/log_priors.vec - |' ark:- | copy-feats --compress=$compress ark:- ark:- | gzip -c > $dir/log_likes.JOB.gz"
 fi
 
 gpu_opt="--use-gpu=no"
@@ -166,7 +172,7 @@ fi
 
 if [ $stage -le 2 ]; then
   $cmd $gpu_queue_opt JOB=1:$nj $dir/log/compute_output.JOB.log \
-    nnet3-compute $gpu_opt $ivector_opts $frame_subsampling_opt \
+    $prog $gpu_opt $ivector_opts $frame_subsampling_opt \
      --frames-per-chunk=$frames_per_chunk \
      --extra-left-context=$extra_left_context \
      --extra-right-context=$extra_right_context \
