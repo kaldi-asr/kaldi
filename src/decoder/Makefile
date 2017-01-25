@@ -7,11 +7,12 @@ TESTFILES =
 
 OBJFILES = training-graph-compiler.o lattice-simple-decoder.o lattice-faster-decoder.o \
    lattice-faster-online-decoder.o simple-decoder.o faster-decoder.o \
-   decoder-wrappers.o
+   decoder-wrappers.o simple-hmm-graph-compiler.o
 
 LIBNAME = kaldi-decoder
 
 ADDLIBS = ../lat/kaldi-lat.a ../sgmm/kaldi-sgmm.a ../hmm/kaldi-hmm.a \
+					../simplehmm/kaldi-simplehmm.a \
           ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
           ../tree/kaldi-tree.a ../util/kaldi-util.a ../thread/kaldi-thread.a \
           ../matrix/kaldi-matrix.a ../base/kaldi-base.a
