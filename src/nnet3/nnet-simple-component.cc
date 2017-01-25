@@ -114,7 +114,7 @@ std::string DropoutComponent::Info() const {
   std::ostringstream stream;
   stream << Type() << ", dim=" << dim_
          << ", dropout-proportion=" << dropout_proportion_
-         << ", dropout-per-frame=" << dropout_per_frame_;
+         << ", dropout-per-frame=" << (dropout_per_frame_ ? "true" : "false");
   return stream.str();
 }
 
@@ -170,7 +170,6 @@ void DropoutComponent::Backprop(const std::string &debug_info,
 
 
 void DropoutComponent::Read(std::istream &is, bool binary) {
-  // back-compatibility code.
   std::string token;
   ReadToken(is, binary, &token);
   if (token == "<DropoutComponent>") {
