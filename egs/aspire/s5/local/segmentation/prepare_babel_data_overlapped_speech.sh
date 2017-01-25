@@ -14,7 +14,7 @@ set -o pipefail
 set -u
 
 lang_id=assamese
-subset=25   # Number of recordings to keep before speed perturbation and corruption
+subset=150   # Number of recordings to keep before speed perturbation and corruption
 utt_subset=30000  # Number of utterances to keep after speed perturbation for adding overlapped-speech
 
 # All the paths below can be modified to any absolute path.
@@ -88,15 +88,15 @@ fi
 reco_vad_dir=$dir/`basename $model_dir`_reco_vad_`basename $train_data_dir`_sp
 
 # Add noise from MUSAN corpus to data directory and create a new data directory
-local/segmentation/do_corruption_data_dir.sh
+local/segmentation/do_corruption_data_dir.sh \
   --data-dir $data_dir \
-  --reco-vad-dir $reco_vad_dir
+  --reco-vad-dir $reco_vad_dir \
   --feat-suffix hires_bp --mfcc-config conf/mfcc_hires_bp.conf 
 
 # Add music from MUSAN corpus to data directory and create a new data directory
-local/segmentation/do_corruption_data_dir_music.sh
+local/segmentation/do_corruption_data_dir_music.sh \
   --data-dir $data_dir \
-  --reco-vad-dir $reco_vad_dir
+  --reco-vad-dir $reco_vad_dir \
   --feat-suffix hires_bp --mfcc-config conf/mfcc_hires_bp.conf
 
 if [ ! -z $utt_subset ]; then

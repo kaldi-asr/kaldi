@@ -112,87 +112,97 @@ if [ $stage -le 6 ]; then
     --cmd queue.pl --nj $nj \
     $src_dir/data/sdm1/${dataset}
 
-  # Get a filter that selects only regions within the manual segments.
-  $train_cmd $dir/log/get_manual_segments_regions.log \
-    segmentation-init-from-segments --shift-to-zero=false $src_dir/data/sdm1/${dataset}/segments ark:- \| \
-    segmentation-combine-segments-to-recordings ark:- ark,t:$src_dir/data/sdm1/${dataset}/reco2utt ark:- \| \
-    segmentation-create-subsegments --filter-label=1 --subsegment-label=1 \
-    "ark:segmentation-init-from-lengths --label=0 ark,t:$src_dir/data/sdm1/${dataset}/reco2num_frames ark:- |" ark:- ark,t:- \| \
-    perl -ane '$F[3] = 10000; $F[$#F-1] = 10000; print join(" ", @F) . "\n";' \| \
-    segmentation-create-subsegments --filter-label=10000 --subsegment-label=10000 \
-    ark,t:- "ark:gunzip -c $dir/ref_spk_seg.gz |" ark:- \| \
-    segmentation-post-process --merge-labels=0:1 --merge-dst-label=1 ark:- ark:- \| \
-    segmentation-post-process --merge-labels=10000 --merge-dst-label=0 --merge-adjacent-segments \
-    --max-intersegment-length=10000 ark,t:- \
-    "ark:| gzip -c > $dir/manual_segments_regions.seg.gz" 
+  ## Get a filter that selects only regions within the manual segments.
+  #$train_cmd $dir/log/get_manual_segments_regions.log \
+  #  segmentation-init-from-segments --shift-to-zero=false $src_dir/data/sdm1/${dataset}/segments ark:- \| \
+  #  segmentation-combine-segments-to-recordings ark:- ark,t:$src_dir/data/sdm1/${dataset}/reco2utt ark:- \| \
+  #  segmentation-create-subsegments --filter-label=1 --subsegment-label=1 \
+  #  "ark:segmentation-init-from-lengths --label=0 ark,t:$src_dir/data/sdm1/${dataset}/reco2num_frames ark:- |" ark:- ark,t:- \| \
+  #  perl -ane '$F[3] = 10000; $F[$#F-1] = 10000; print join(" ", @F) . "\n";' \| \
+  #  segmentation-create-subsegments --filter-label=10000 --subsegment-label=10000 \
+  #  ark,t:- "ark:gunzip -c $dir/ref_spk_seg.gz |" ark:- \| \
+  #  segmentation-post-process --merge-labels=0:1 --merge-dst-label=1 ark:- ark:- \| \
+  #  segmentation-post-process --merge-labels=10000 --merge-dst-label=0 --merge-adjacent-segments \
+  #  --max-intersegment-length=10000 ark,t:- \
+  #  "ark:| gzip -c > $dir/manual_segments_regions.seg.gz" 
 fi
 
 if [ $stage -le 7 ]; then
-  # To get the actual RTTM, we need to add no-score
-  $train_cmd $dir/log/get_ref_rttm.log \
+  $train_cmd $dir/log/get_overlap_sad_seg.log \
     segmentation-get-stats --lengths-rspecifier=ark,t:$src_dir/data/sdm1/${dataset}/reco2num_frames \
-    "ark:gunzip -c $dir/ref_spk_seg.gz | segmentation-post-process --remove-labels=0:10000 ark:- ark:- |" \
-    ark:/dev/null ark:- \| \
-    segmentation-init-from-ali ark:- ark:- \| \
-    segmentation-post-process --merge-labels=1:2:3:4:5:6:7:8:9:10 --merge-dst-label=1 \
-    --merge-adjacent-segments --max-intersegment-length=10000 ark:- ark:- \| \
-    segmentation-create-subsegments --filter-label=0 --subsegment-label=10000 \
-    ark:- "ark:gunzip -c $dir/manual_segments_regions.seg.gz |" ark:- \| \
-    segmentation-post-process --merge-adjacent-segments --max-intersegment-length=10000 ark:- ark:- \| \
-    segmentation-to-rttm --reco2file-and-channel=$dir/reco2file_and_channel \
-    --no-score-label=10000 ark:- $dir/ref.rttm
+    "ark:gunzip -c $dir/ref_spk_seg.gz |" \
+    ark:/dev/null ark:/dev/null ark:- \| \
+    classes-per-frame-to-labels --junk-label=10000 ark:- ark:- \| \
+    segmentation-init-from-ali ark:- \
+    "ark:| gzip -c > $dir/overlap_sad_seg.gz"
 fi
-
 
 if [ $stage -le 8 ]; then
+  # To get the actual RTTM, we need to add no-score
+  $train_cmd $dir/log/get_ref_rttm.log \
+    gunzip -c $dir/overlap_sad_seg.gz \| \
+    segmentation-post-process --merge-labels=1:2 --merge-dst-label=1 \
+    ark:- ark:- \| \
+    segmentation-to-rttm --reco2file-and-channel=$dir/reco2file_and_channel \
+    --no-score-label=10000 ark:- $dir/ref.rttm
+  
   # Get RTTM for overlapped speech detection with 3 classes
   # 0 -> SILENCE, 1 -> SINGLE_SPEAKER, 2 -> OVERLAP
-  $train_cmd $dir/log/get_overlapping_rttm.log \
-    segmentation-get-stats --lengths-rspecifier=ark,t:$src_dir/data/sdm1/${dataset}/reco2num_frames \
-    "ark:gunzip -c $dir/ref_spk_seg.gz | segmentation-post-process --remove-labels=0:10000 ark:- ark:- |" \
-    ark:/dev/null ark:- \| \
-    segmentation-init-from-ali ark:- ark:- \| \
-    segmentation-post-process --merge-labels=2:3:4:5:6:7:8:9:10 --merge-dst-label=2 \
-    --merge-adjacent-segments --max-intersegment-length=10000 ark:- ark:- \| \
-    segmentation-create-subsegments --filter-label=0 --subsegment-label=10000 \
-    ark:- "ark:gunzip -c $dir/manual_segments_regions.seg.gz |" ark:- \| \
-    segmentation-post-process --merge-adjacent-segments --max-intersegment-length=10000 ark:- ark:- \| \
-    segmentation-to-rttm --map-to-speech-and-sil=false --reco2file-and-channel=$dir/reco2file_and_channel \
-    --no-score-label=10000 ark:- $dir/overlapping_speech_ref.rttm
+  $train_cmd $dir/log/get_ref_rttm.log \
+    gunzip -c $dir/overlap_sad_seg.gz \| \
+    segmentation-to-rttm --reco2file-and-channel=$dir/reco2file_and_channel \
+    --no-score-label=10000 --map-to-speech-and-sil=false ark:- $dir/overlapping_speech_ref.rttm
 fi
 
-if [ $stage -le 9 ]; then
-  # Get a filter that selects only regions of speech 
-  $train_cmd $dir/log/get_speech_filter.log \
-    segmentation-get-stats --lengths-rspecifier=ark,t:$src_dir/data/sdm1/${dataset}/reco2num_frames \
-    "ark:gunzip -c $dir/ref_spk_seg.gz | segmentation-post-process --remove-labels=0:10000 ark:- ark:- |" \
-    ark:/dev/null ark:- \| \
-    segmentation-init-from-ali ark:- ark:- \| \
-    segmentation-post-process --merge-labels=1:2:3:4:5:6:7:8:9:10 --merge-dst-label=1 ark:- ark:- \| \
-    segmentation-create-subsegments --filter-label=0 --subsegment-label=0 \
-    ark:- "ark:gunzip -c $dir/manual_segments_regions.seg.gz |" ark:- \| \
-    segmentation-post-process --merge-adjacent-segments --max-intersegment-length=10000 \
-    ark:- "ark:| gzip -c > $dir/manual_segments_speech_regions.seg.gz"
-fi
+
+#if [ $stage -le 8 ]; then
+#  # Get RTTM for overlapped speech detection with 3 classes
+#  # 0 -> SILENCE, 1 -> SINGLE_SPEAKER, 2 -> OVERLAP
+#  $train_cmd $dir/log/get_overlapping_rttm.log \
+#    segmentation-get-stats --lengths-rspecifier=ark,t:$src_dir/data/sdm1/${dataset}/reco2num_frames \
+#    "ark:gunzip -c $dir/ref_spk_seg.gz | segmentation-post-process --remove-labels=0:10000 ark:- ark:- |" \
+#    ark:/dev/null ark:- \| \
+#    segmentation-init-from-ali ark:- ark:- \| \
+#    segmentation-post-process --merge-labels=2:3:4:5:6:7:8:9:10 --merge-dst-label=2 \
+#    --merge-adjacent-segments --max-intersegment-length=10000 ark:- ark:- \| \
+#    segmentation-create-subsegments --filter-label=0 --subsegment-label=10000 \
+#    ark:- "ark:gunzip -c $dir/manual_segments_regions.seg.gz |" ark:- \| \
+#    segmentation-post-process --merge-adjacent-segments --max-intersegment-length=10000 ark:- ark:- \| \
+#    segmentation-to-rttm --map-to-speech-and-sil=false --reco2file-and-channel=$dir/reco2file_and_channel \
+#    --no-score-label=10000 ark:- $dir/overlapping_speech_ref.rttm
+#fi
 
 # make $dir an absolute pathname.
 dir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $dir ${PWD}`
 
+if [ $stage -le 9 ]; then
+  # Get a filter that selects only regions of speech 
+  $train_cmd $dir/log/get_speech_filter.log \
+    gunzip -c $dir/overlap_sad_seg.gz \| \
+    segmentation-post-process --merge-labels=1:2 --merge-dst-label=1 ark:- ark:- \| \
+    segmentation-post-process --remove-labels=10000 ark:- ark:- \| \
+    segmentation-to-ali --lengths-rspecifier=ark,t:$src_dir/data/sdm1/${dataset}/reco2num_frames \
+    ark:- ark,t:- \| \
+    steps/segmentation/convert_ali_to_vec.pl \| \
+    copy-vector ark,t: ark,scp:$dir/deriv_weights_for_overlapping_sad.ark,$dir/deriv_weights_for_overlapping_sad.scp
+  
+  # Get deriv weights
+  $train_cmd $dir/log/get_speech_filter.log \
+    gunzip -c $dir/overlap_sad_seg.gz \| \
+    segmentation-post-process --merge-labels=0:1:2 --merge-dst-label=1 ark:- ark:- \| \
+    segmentation-post-process --remove-labels=10000 ark:- ark:- \| \
+    segmentation-to-ali --lengths-rspecifier=ark,t:$src_dir/data/sdm1/${dataset}/reco2num_frames \
+    ark:- ark,t:- \| \
+    steps/segmentation/convert_ali_to_vec.pl \| \
+    copy-vector ark,t: ark,scp:$dir/deriv_weights.ark,$dir/deriv_weights.scp
+fi
+
 if [ $stage -le 10 ]; then
   $train_cmd $dir/log/get_overlapping_sad.log \
-    segmentation-get-stats --lengths-rspecifier=ark,t:$src_dir/data/sdm1/${dataset}/reco2num_frames \
-    "ark:gunzip -c $dir/ref_spk_seg.gz | segmentation-post-process --remove-labels=0:10000 ark:- ark:- |" \
-    ark:/dev/null ark:- \| \
-    segmentation-init-from-ali ark:- ark:- \| \
-    segmentation-post-process --merge-labels=2:3:4:5:6:7:8:9:10 --merge-dst-label=2 \
-    --merge-adjacent-segments --max-intersegment-length=10000 ark:- ark:- \| \
-    segmentation-post-process --merge-adjacent-segments --max-intersegment-length=10000 ark:- ark:- \| \
-    segmentation-to-ali ark:- ark,scp:$dir/overlapping_sad_labels.ark,$dir/overlapping_sad_labels.scp
-
-    $train_cmd $dir/log/get_deriv_weights_for_overlapping_sad.log \
-      segmentation-to-ali "ark:gunzip -c $dir/manual_segments_regions.seg.gz |" ark,t:- \| \
-      steps/segmentation/convert_ali_to_vec.pl \| \
-      copy-vector ark,t: ark,scp:$dir/deriv_weights_for_overlapping_sad.ark,$dir/deriv_weights_for_overlapping_sad.scp
+    gunzip -c $dir/overlap_sad_seg.gz \| \
+    segmentation-post-process --remove-labels=10000 ark:- ark:- \| \
+    segmentation-to-ali --lengths-rspecifier=ark,t:$src_dir/data/sdm1/${dataset}/reco2num_frames \
+    ark:- ark,scp:$dir/overlapping_sad_labels.ark,$dir/overlapping_sad_labels.scp
 fi
 
 if false && [ $stage -le 11 ]; then

@@ -68,8 +68,9 @@ if [ $stage -le 1 ]; then
     segmentation-init-from-additive-signals-info --lengths-rspecifier=ark,t:$corrupted_data_dir/utt2num_frames \
     --junk-label=10000 \
     --additive-signals-segmentation-rspecifier=scp:$utt_vad_dir/sad_seg.scp \
-    "scp:utils/filter_scp.pl ${corrupted_data_dir}/split${nj}/JOB/utt2spk $corrupted_data_dir/sad_seg.scp |" \
-    ark,t:$orig_corrupted_data_dir/overlapped_segments_info.txt ark:- \| \
+    "ark,t:utils/filter_scp.pl ${orig_corrupted_data_dir}/split${reco_nj}reco/JOB/reco2utt $orig_corrupted_data_dir/overlapped_segments_info.txt |" \
+    ark:- \| \
+    segmentation-merge "scp:utils/filter_scp.pl ${corrupted_data_dir}/split${nj}/JOB/utt2spk $corrupted_data_dir/sad_seg.scp |" ark:- ark:- \| \
     segmentation-get-stats --lengths-rspecifier=ark,t:$corrupted_data_dir/utt2num_frames \
     ark:- ark:/dev/null ark:/dev/null ark:- \| \
     classes-per-frame-to-labels --junk-label=10000 ark:- ark:- \| \
