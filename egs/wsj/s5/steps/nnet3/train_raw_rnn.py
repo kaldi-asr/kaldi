@@ -468,7 +468,8 @@ def train(args, run_opts, background_process_handler):
                 background_process_handler=background_process_handler,
                 extra_egs_copy_cmd=args.extra_egs_copy_cmd,
                 use_multitask_egs=args.use_multitask_egs,
-                rename_multitask_outputs=args.rename_multitask_outputs)
+                rename_multitask_outputs=args.rename_multitask_outputs,
+                compute_per_dim_accuracy=args.compute_per_dim_accuracy)
 
             if args.cleanup:
                 # do a clean up everythin but the last 2 models, under certain
@@ -493,6 +494,9 @@ def train(args, run_opts, background_process_handler):
 
     if args.stage <= num_iters:
         logger.info("Doing final combination to produce final.raw")
+        common_lib.run_kaldi_command(
+            "cp {dir}/{num_iters}.raw {dir}/pre_combine.raw"
+            "".format(dir=args.dir, num_iters=num_iters))
         train_lib.common.combine_models(
             dir=args.dir, num_iters=num_iters,
             models_to_combine=models_to_combine, egs_dir=egs_dir,
@@ -500,7 +504,8 @@ def train(args, run_opts, background_process_handler):
             run_opts=run_opts, chunk_width=args.chunk_width,
             background_process_handler=background_process_handler,
             get_raw_nnet_from_am=False,
-            extra_egs_copy_cmd=args.extra_egs_copy_cmd)
+            extra_egs_copy_cmd=args.extra_egs_copy_cmd,
+            compute_per_dim_accuracy=args.compute_per_dim_accuracy)
 
     if include_log_softmax and args.stage <= num_iters + 1:
         logger.info("Getting average posterior for purposes of "
