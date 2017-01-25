@@ -78,13 +78,13 @@ if [ $stage -le 1 ]; then
     --mfcc-config conf/mfcc_hires_bp.conf --feat-affix bp --iter $sad_iter \
     --do-downsampling false --extra-left-context 100 --extra-right-context 20 \
     --output-name output-speech --frame-subsampling-factor 6 \
-    data/${data_set} $sad_nnet_dir mfcc_hires_bp data/${data_set}
+    data/${data_set} $sad_nnet_dir mfcc_hires_bp data/${data_set}${affix}
   # Output will be in data/${data_set}_seg
 fi
 
 # uniform segmentation script would have created this dataset
 # so update that script if you plan to change this variable
-segmented_data_set=${data_set}_seg
+segmented_data_set=${data_set}${affix}_seg
 
 if [ $stage -le 2 ]; then
   mfccdir=mfcc_reverb
@@ -103,79 +103,7 @@ if [ $stage -le 2 ]; then
   utils/validate_data_dir.sh --no-text data/${segmented_data_set}_hires
 fi
 
-decode_dir=$dir/decode_${segmented_data_set}${affix}_pp
-false && {
-if [ $stage -le 2 ]; then
-  echo "Extracting i-vectors, stage 1"
-  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 20 \
-    --max-count $max_count \
-    data/${segmented_data_set}_hires $ivector_dir/extractor \
-    $ivector_dir/ivectors_${segmented_data_set}${ivector_affix}_stage1;
-  # float comparisons are hard in bash
-  if [ `bc <<< "$ivector_scale != 1"` -eq 1 ]; then
-    ivector_scale_affix=_scale$ivector_scale
-  else
-    ivector_scale_affix=
-  fi
-
-  if [ ! -z "$ivector_scale_affix" ]; then
-    echo "$0: Scaling iVectors, stage 1"
-    srcdir=$ivector_dir/ivectors_${segmented_data_set}${ivector_affix}_stage1
-    outdir=$ivector_dir/ivectors_${segmented_data_set}${ivector_affix}${ivector_scale_affix}_stage1
-    mkdir -p $outdir
-    copy-matrix --scale=$ivector_scale scp:$srcdir/ivector_online.scp ark:- | \
-      copy-feats --compress=true ark:-  ark,scp:$outdir/ivector_online.ark,$outdir/ivector_online.scp;
-    cp $srcdir/ivector_period $outdir/ivector_period
-  fi
-fi
-
-# generate the lattices
-if [ $stage -le 3 ]; then
-  echo "Generating lattices, stage 1"
-  steps/nnet3/decode.sh --nj $decode_num_jobs --cmd "$decode_cmd" --config conf/decode.config \
-    --acwt $acwt --post-decode-acwt $post_decode_acwt \
-    --extra-left-context $extra_left_context  \
-    --extra-right-context $extra_right_context  \
-    --frames-per-chunk "$frames_per_chunk" \
-    --online-ivector-dir $ivector_dir/ivectors_${segmented_data_set}${ivector_affix}${ivector_scale_affix}_stage1 \
-    --skip-scoring true --iter $iter \
-    $graph data/${segmented_data_set}_hires ${decode_dir}_stage1;
-fi
-
-if [ $stage -le 4 ]; then
-  if $filter_ctm; then
-    if [ ! -z $weights_file ]; then
-      echo "$0: Using provided vad weights file $weights_file"
-      ivector_extractor_input=$weights_file
-    else
-      echo "$0 : Generating vad weights file"
-      ivector_extractor_input=${decode_dir}_stage1/weights${affix}.gz
-      local/extract_vad_weights.sh --cmd "$decode_cmd" --iter $iter \
-        data/${segmented_data_set}_hires $lang \
-        ${decode_dir}_stage1 $ivector_extractor_input
-    fi
-  else
-    # just use all the frames
-    ivector_extractor_input=${decode_dir}_stage1
-  fi
-fi
-
-if [ $stage -le 5 ]; then
-  echo "Extracting i-vectors, stage 2 with input $ivector_extractor_input"
-  # this does offline decoding, except we estimate the iVectors per
-  # speaker, excluding silence (based on alignments from a DNN decoding), with a
-  # different script.  This is just to demonstrate that script.
-  # the --sub-speaker-frames is optional; if provided, it will divide each speaker
-  # up into "sub-speakers" of at least that many frames... can be useful if
-  # acoustic conditions drift over time within the speaker's data.
-  steps/online/nnet2/extract_ivectors.sh --cmd "$train_cmd" --nj 20 \
-    --silence-weight $silence_weight \
-    --sub-speaker-frames $sub_speaker_frames --max-count $max_count \
-    data/${segmented_data_set}_hires $lang $ivector_dir/extractor \
-    $ivector_extractor_input $ivector_dir/ivectors_${segmented_data_set}${ivector_affix};
-fi
-}
-
+decode_dir=$dir/decode_${segmented_data_set}_pp
 if [ $stage -le 5 ]; then
   echo "Extracting i-vectors, stage 2"
   # this does offline decoding, except we estimate the iVectors per
