@@ -8,6 +8,8 @@ from __future__ import print_function
 import argparse, glob, math, os, random, sys, warnings, copy, imp, ast
 
 import data_dir_manipulation_lib as data_lib
+sys.path.insert(0, 'steps')
+import libs.common as common_lib
 
 def GetArgs():
     # we add required arguments as named arguments for readability
