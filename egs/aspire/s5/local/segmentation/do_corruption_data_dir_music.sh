@@ -71,19 +71,20 @@ if $dry_run; then
 fi
 
 corrupted_data_dir=data/${corrupted_data_id}
-orig_corrupted_data_dir=$corrupted_data_dir
+# Data dir without speed perturbation
+orig_corrupted_data_dir=$corrupted_data_dir   
 
 if $speed_perturb; then
   if [ $stage -le 2 ]; then
     ## Assuming whole data directories
     for x in $corrupted_data_dir; do
       cp $x/reco2dur $x/utt2dur
-      utils/data/perturb_data_dir_speed_3way.sh $x ${x}_sp
+      utils/data/perturb_data_dir_speed_random.sh $x ${x}_spr
     done
   fi
 
-  corrupted_data_dir=${corrupted_data_dir}_sp
-  corrupted_data_id=${corrupted_data_id}_sp
+  corrupted_data_dir=${corrupted_data_dir}_spr
+  corrupted_data_id=${corrupted_data_id}_spr
 
   if [ $stage -le 3 ]; then
     utils/data/perturb_data_dir_volume.sh --scale-low 0.03125 --scale-high 2 \
@@ -122,14 +123,14 @@ fi
 
 if [ $stage -le 8 ]; then
   if [ ! -z "$reco_vad_dir" ]; then
-    if [ ! -f $reco_vad_dir/speech_feat.scp ]; then
-      echo "$0: Could not find file $reco_vad_dir/speech_feat.scp"
+    if [ ! -f $reco_vad_dir/speech_labels.scp ]; then
+      echo "$0: Could not find file $reco_vad_dir/speech_labels.scp"
       exit 1
     fi
     
-    cat $reco_vad_dir/speech_feat.scp | \
+    cat $reco_vad_dir/speech_labels.scp | \
       steps/segmentation/get_reverb_scp.pl -f 1 $num_data_reps "music" | \
-      sort -k1,1 > ${corrupted_data_dir}/speech_feat.scp
+      sort -k1,1 > ${corrupted_data_dir}/speech_labels.scp
     
     cat $reco_vad_dir/deriv_weights.scp | \
       steps/segmentation/get_reverb_scp.pl -f 1 $num_data_reps "music" | \
@@ -144,38 +145,41 @@ music_data_dir=$music_dir/music_data
 mkdir -p $music_data_dir
 
 if [ $stage -le 10 ]; then
-  utils/data/get_utt2num_frames.sh $corrupted_data_dir
+  utils/data/get_reco2num_frames.sh --nj $reco_nj $orig_corrupted_data_dir
   utils/split_data.sh --per-reco ${orig_corrupted_data_dir} $reco_nj
 
   cp $orig_corrupted_data_dir/wav.scp $music_data_dir
-
-  # Combine the VAD from the base recording and the VAD from the overlapping segments
-  # to create per-frame labels of the number of overlapping speech segments
-  # Unreliable segments are regions where no VAD labels were available for the
-  # overlapping segments. These can be later removed by setting deriv weights to 0.
+  
+  # The first rspecifier is a dummy required to get the recording-id as key.
+  # It has no segments in it as they are all removed by --remove-labels.
   $train_cmd JOB=1:$reco_nj $music_dir/log/get_music_seg.JOB.log \
-    segmentation-init-from-additive-signals-info --lengths-rspecifier=ark,t:$corrupted_data_dir/utt2num_frames \
+    segmentation-init-from-additive-signals-info --lengths-rspecifier=ark,t:${orig_corrupted_data_dir}/reco2num_frames \
     --additive-signals-segmentation-rspecifier="ark:segmentation-init-from-lengths ark:$music_utt2num_frames ark:- |" \
-    "ark:utils/filter_scp.pl ${orig_corrupted_data_dir}/split${reco_nj}reco/JOB/utt2spk $corrupted_data_dir/utt2num_frames | segmentation-init-from-lengths --label=1 ark:- ark:- | segmentation-post-process --remove-labels=1 ark:- ark:- |" \
-    ark,t:$orig_corrupted_data_dir/additive_signals_info.txt \
+    "ark,t:utils/filter_scp.pl ${orig_corrupted_data_dir}/split${reco_nj}reco/JOB/reco2utt $orig_corrupted_data_dir/additive_signals_info.txt |" \
     ark:- \| \
     segmentation-post-process --merge-adjacent-segments ark:- \
     ark:- \| \
     segmentation-to-segments ark:- ark:$music_data_dir/utt2spk.JOB \
     $music_data_dir/segments.JOB
 
+  utils/data/get_reco2utt.sh $corrupted_data_dir
   for n in `seq $reco_nj`; do cat $music_data_dir/utt2spk.$n; done > $music_data_dir/utt2spk
   for n in `seq $reco_nj`; do cat $music_data_dir/segments.$n; done > $music_data_dir/segments
   
   utils/fix_data_dir.sh $music_data_dir
 
   if $speed_perturb; then
-    utils/data/perturb_data_dir_speed_3way.sh $music_data_dir ${music_data_dir}_sp
+    utils/data/perturb_data_dir_speed_3way.sh $music_data_dir ${music_data_dir}_spr
+    mv ${music_data_dir}_spr/segments{,.temp}
+    cat ${music_data_dir}_spr/segments.temp | \
+      utils/filter_scp.pl -f 2 ${corrupted_data_dir}/reco2utt > ${music_data_dir}_spr/segments
+    utils/fix_data_dir.sh ${music_data_dir}_spr
+    rm ${music_data_dir}_spr/segments.temp
   fi
 fi
 
 if $speed_perturb; then
-  music_data_dir=${music_data_dir}_sp
+  music_data_dir=${music_data_dir}_spr
 fi
 
 label_dir=music_labels
@@ -184,13 +188,20 @@ mkdir -p $label_dir
 label_dir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $label_dir ${PWD}`
 
 if [ $stage -le 11 ]; then
-  utils/split_data.sh --per-reco ${music_data_dir} $reco_nj
+  utils/split_data.sh --per-reco ${corrupted_data_dir} $reco_nj
+  # TODO: Don't assume that its whole data directory.
+  nj=$reco_nj
+  if [ $nj -gt 4 ]; then
+    nj=4
+  fi
+  utils/data/get_utt2num_frames.sh --cmd "$train_cmd" --nj $nj ${corrupted_data_dir} 
+  utils/data/get_reco2utt.sh $music_data_dir/
 
   $train_cmd JOB=1:$reco_nj $music_dir/log/get_music_labels.JOB.log \
-    utils/data/get_reco2utt.sh ${music_data_dir}/split${reco_nj}reco/JOB '&&' \
     segmentation-init-from-segments --shift-to-zero=false \
-    ${music_data_dir}/split${reco_nj}reco/JOB/segments ark:- \| \
-    segmentation-combine-segments-to-recordings ark:- ark,t:${music_data_dir}/split${reco_nj}reco/JOB/reco2utt \
+    "utils/filter_scp.pl -f 2 ${corrupted_data_dir}/split${reco_nj}reco/JOB/reco2utt ${music_data_dir}/segments |" ark:- \| \
+    segmentation-combine-segments-to-recordings ark:- \
+    "ark,t:utils/filter_scp.pl ${corrupted_data_dir}/split${reco_nj}reco/JOB/reco2utt ${music_data_dir}/reco2utt |" \
     ark:- \| \
     segmentation-to-ali --lengths-rspecifier=ark,t:${corrupted_data_dir}/utt2num_frames ark:- \
     ark,scp:$label_dir/music_labels_${corrupted_data_id}.JOB.ark,$label_dir/music_labels_${corrupted_data_id}.JOB.scp
@@ -198,6 +209,27 @@ fi
 
 for n in `seq $reco_nj`; do
   cat $label_dir/music_labels_${corrupted_data_id}.$n.scp
-done > ${corrupted_data_dir}/music_labels.scp
+done | utils/filter_scp.pl ${corrupted_data_dir}/utt2spk > ${corrupted_data_dir}/music_labels.scp
+
+if [ $stage -le 12 ]; then
+  utils/split_data.sh --per-reco ${corrupted_data_dir} $reco_nj
+  
+  cat <<EOF > $music_dir/speech_music_map
+0 0 0
+0 1 3
+1 0 1
+1 1 2
+EOF
+
+  $train_cmd JOB=1:$reco_nj $music_dir/log/get_speech_music_labels.JOB.log \
+    intersect-int-vectors --mapping-in=$music_dir/speech_music_map \
+    "scp:utils/filter_scp.pl ${corrupted_data_dir}/split${reco_nj}reco/JOB/reco2utt ${corrupted_data_dir}/speech_labels.scp |" \
+    "scp:utils/filter_scp.pl ${corrupted_data_dir}/split${reco_nj}reco/JOB/reco2utt ${corrupted_data_dir}/music_labels.scp |" \
+    ark,scp:$label_dir/speech_music_labels_${corrupted_data_id}.JOB.ark,$label_dir/speech_music_labels_${corrupted_data_id}.JOB.scp
+
+  for n in `seq $reco_nj`; do 
+    cat $label_dir/speech_music_labels_${corrupted_data_id}.$n.scp
+  done > $corrupted_data_dir/speech_music_labels.scp
+fi
 
 exit 0

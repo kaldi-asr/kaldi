@@ -76,14 +76,14 @@ corrupted_data_dir=data/${corrupted_data_id}
 if $speed_perturb; then
   if [ $stage -le 2 ]; then
     ## Assuming whole data directories
-    for x in $clean_data_dir $corrupted_data_dir $noise_data_dir; do
+    for x in $corrupted_data_dir; do
       cp $x/reco2dur $x/utt2dur
-      utils/data/perturb_data_dir_speed_3way.sh $x ${x}_sp
+      utils/data/perturb_data_dir_speed_random.sh $x ${x}_spr
     done
   fi
 
-  corrupted_data_dir=${corrupted_data_dir}_sp
-  corrupted_data_id=${corrupted_data_id}_sp
+  corrupted_data_dir=${corrupted_data_dir}_spr
+  corrupted_data_id=${corrupted_data_id}_spr
 
   if [ $stage -le 3 ]; then
     utils/data/perturb_data_dir_volume.sh --scale-low 0.03125 --scale-high 2 \
@@ -118,14 +118,14 @@ fi
 
 if [ $stage -le 8 ]; then
   if [ ! -z "$reco_vad_dir" ]; then
-    if [ ! -f $reco_vad_dir/speech_feat.scp ]; then
-      echo "$0: Could not find file $reco_vad_dir/speech_feat.scp"
+    if [ ! -f $reco_vad_dir/speech_labels.scp ]; then
+      echo "$0: Could not find file $reco_vad_dir/speech_labels.scp"
       exit 1
     fi
     
-    cat $reco_vad_dir/speech_feat.scp | \
+    cat $reco_vad_dir/speech_labels.scp | \
       steps/segmentation/get_reverb_scp.pl -f 1 $num_data_reps | \
-      sort -k1,1 > ${corrupted_data_dir}/speech_feat.scp
+      sort -k1,1 > ${corrupted_data_dir}/speech_labels.scp
   
     cat $reco_vad_dir/deriv_weights.scp | \
       steps/segmentation/get_reverb_scp.pl -f 1 $num_data_reps | \
