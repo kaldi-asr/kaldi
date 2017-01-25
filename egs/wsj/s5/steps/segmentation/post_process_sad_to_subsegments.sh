@@ -14,6 +14,7 @@ nj=18
 
 frame_subsampling_factor=1
 frame_shift=0.01
+frame_overlap=0.015
 
 . utils/parse_options.sh
 
@@ -56,21 +57,32 @@ if [ $stage -le 1 ]; then
 fi
 
 if [ $stage -le 2 ]; then
+  # --frame-overlap is set to 0 to not do any additional padding when writing
+  # segments. This padding will be done later by the option
+  # --segment-end-padding to utils/data/subsegment_data_dir.sh.
   steps/segmentation/internal/post_process_segments.sh \
     --stage $stage --cmd "$cmd" \
     --config $segmentation_config --frame-shift $frame_shift \
+    --frame-overlap 0 \
     $data_dir $dir $segmented_data_dir
 fi
 
 mv $segmented_data_dir/segments $segmented_data_dir/sub_segments
-utils/data/subsegment_data_dir.sh $data_dir $segmented_data_dir/sub_segments $segmented_data_dir
+utils/data/subsegment_data_dir.sh --segment-end-padding `perl -e "print $frame_overlap"` \
+  $data_dir $segmented_data_dir/sub_segments $segmented_data_dir
+utils/fix_data_dir.sh $segmented_data_dir
 
-utils/data/get_reco2num_frames.sh ${data_dir} 
+utils/data/get_reco2num_frames.sh --nj $nj --cmd "$cmd" ${data_dir} 
 mv $segmented_data_dir/feats.scp $segmented_data_dir/feats.scp.tmp
-cat $segmented_data_dir/segments | utils/apply_map.pl -f 2 $data_dir/reco2num_frames > $segmetned_data_dir/utt2max_frames
-cat $segmented_data_dir/feats.scp.tmp | utils/data/fix_subsegmented_feats.pl $dsegmented_data_dir/utt2max_frames > $segmented_data_dir/feats.scp
+cat $segmented_data_dir/segments | awk '{print $1" "$2}' | \
+  utils/apply_map.pl -f 2 $data_dir/reco2num_frames > \
+  $segmented_data_dir/utt2max_frames
+cat $segmented_data_dir/feats.scp.tmp | \
+  utils/data/fix_subsegmented_feats.pl $segmented_data_dir/utt2max_frames > \
+  $segmented_data_dir/feats.scp
 
-utils/utt2spk_to_spk2utt.pl $segmented_data_dir/utt2spk > $segmented_data_dir/spk2utt || exit 1
+utils/utt2spk_to_spk2utt.pl $segmented_data_dir/utt2spk > \
+  $segmented_data_dir/spk2utt || exit 1
 utils/fix_data_dir.sh $segmented_data_dir
 
 if [ ! -s $segmented_data_dir/utt2spk ] || [ ! -s $segmented_data_dir/segments ]; then
