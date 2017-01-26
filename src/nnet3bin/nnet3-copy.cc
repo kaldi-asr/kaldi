@@ -84,10 +84,10 @@ int main(int argc, char *argv[]) {
 
     if (learning_rate >= 0)
       SetLearningRate(learning_rate, &nnet);
-    
+
     if (scale != 1.0)
       ScaleNnet(scale, &nnet);
-    
+
     if (!edits_config.empty()) {
       Input ki(edits_config);
       ReadEditConfig(ki.Stream(), &nnet);

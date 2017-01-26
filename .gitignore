@@ -61,6 +61,7 @@ GSYMS
 /src/base/version.h
 /src/doc/table/
 /src/doc/tools.dox
+/src/doc/*.html
 /src/htdocs/
 /src/html.tar.gz
 /src/kaldi.mk

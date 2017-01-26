@@ -629,19 +629,21 @@ void ReadEditConfig(std::istream &edit_config_is, Nnet *nnet) {
         KALDI_ERR << "In edits-config, expected proportion to be set in line: "
                   << config_line.WholeLine();
       }
-      DropoutComponent *component = NULL;
+      DropoutComponent *dropout_component = NULL;
       int32 num_dropout_proportions_set = 0;
       for (int32 c = 0; c < nnet->NumComponents(); c++) {
         if (NameMatchesPattern(nnet->GetComponentName(c).c_str(),
                                name_pattern.c_str()) &&
-            (component =
+            (dropout_component =
              dynamic_cast<DropoutComponent*>(nnet->GetComponent(c)))) {
-          component->SetDropoutProportion(proportion);
-          num_dropout_proportions_set++;
+          if (dropout_component != NULL) {
+            dropout_component->SetDropoutProportion(proportion);
+            num_dropout_proportions_set++;
+          }
         }
       }
       KALDI_LOG << "Set dropout proportions for "
-                << num_dropout_proportions_set << " nodes.";
+                << num_dropout_proportions_set << " components.";
     } else {
       KALDI_ERR << "Directive '" << directive << "' is not currently "
           "supported (reading edit-config).";
