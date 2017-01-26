@@ -9,6 +9,52 @@
 # 1000 hours of CPU time.
 
 
+
+# Below is with the current effective_learning_rate=0.00000125.  This was run
+# with 4 epochs, but the script is currently set to run for 3 epochs, and the
+# 'slow2' affix is removed.
+
+# steps/info/nnet3_disc_dir_info.pl exp/nnet3/tdnn_d_sp_smbrslow2
+# exp/nnet3/tdnn_d_sp_smbrslow2:num-jobs=4;effective-lrate=1.25e-06;iters-per-epoch=194;epoch[0,1,2,3,4]:train-objf=[0.87,0.91,0.91,0.91,0.92],valid-objf=[0.85,0.86,0.87,0.87,0.87],train-counts=[1.27,0.92,0.79,0.72,0.68],valid-counts=[1.11,0.80,0.74,0.67,0.65]
+#
+# local/nnet3/compare_wer_general.sh tdnn_d_sp tdnn_d_sp_smbrslow2:{1,2,3,4}_adj
+# System                tdnn_d_sp tdnn_d_sp_smbrslow2:1_adj tdnn_d_sp_smbrslow2:2_adj tdnn_d_sp_smbrslow2:3_adj tdnn_d_sp_smbrslow2:4_adj
+# WER on train_dev(tg)      16.51     15.12     15.02     14.89     14.87
+# WER on train_dev(fg)      15.34     13.80     13.64     13.61     13.62
+# WER on eval2000(tg)        19.2      17.8      17.7      17.6      17.8
+# WER on eval2000(fg)        17.7      16.3      16.1      16.2      16.4
+
+# Below is when it was run with learning-rate 0.0000025.  It was best after 2 epochs.
+
+# exp/nnet3/tdnn_d_sp_smbrslow:num-jobs=4;effective-lrate=2.5e-06;iters-per-epoch=194;epoch[0,1,2,3]:train-objf=[0.87,0.91,0.91,0.92],valid-objf=[0.85,0.87,0.87,0.87],train-counts=[1.27,0.80,0.73,0.65],valid-counts=[1.11,0.72,0.65,0.63]
+# local/nnet3/compare_wer_general.sh tdnn_d_sp tdnn_d_sp_smbrslow:{1,2,3}_adj
+# System                tdnn_d_sp tdnn_d_sp_smbrslow:1_adj tdnn_d_sp_smbrslow:2_adj tdnn_d_sp_smbrslow:3_adj
+# WER on train_dev(tg)      16.51     15.01     14.89     14.84
+# WER on train_dev(fg)      15.34     13.69     13.61     13.58
+# WER on eval2000(tg)        19.2      17.7      17.8      17.8
+# WER on eval2000(fg)        17.7      16.2      16.4      16.5
+
+# Below is when it was run with learning-rate 0.000005.  It was best after 1st epoch.
+
+# steps/info/nnet3_disc_dir_info.pl exp/nnet3/tdnn_d_sp_smbr
+# exp/nnet3/tdnn_d_sp_smbr:num-jobs=4;effective-lrate=5e-06;iters-per-epoch=194;epoch[0,1,2,3]:train-objf=[0.87,0.91,0.92,0.93],valid-objf=[0.85,0.87,0.87,0.88],train-counts=[1.27,0.67,0.67,0.50],valid-counts=[1.11,0.64,0.61,0.58]
+
+# local/nnet3/compare_wer_general.sh tdnn_d_sp tdnn_d_sp_smbr:{1,2,3}_adj
+# System                tdnn_d_sp tdnn_d_sp_smbr:1_adj tdnn_d_sp_smbr:2_adj tdnn_d_sp_smbr:3_adj
+# WER on train_dev(tg)      16.51     14.94     14.85     14.91
+# WER on train_dev(fg)      15.34     13.66     13.76     13.77
+# WER on eval2000(tg)        19.2      17.7      17.9      18.1
+# WER on eval2000(fg)        17.7      16.2      16.5      16.6
+
+# below is with learning-rate 0.000005, showing results without prior-adjustment (the prior-adjustment
+# helps).
+# local/nnet3/compare_wer_general.sh tdnn_d_sp tdnn_d_sp_smbr:{1,2,3}
+# System                tdnn_d_sp tdnn_d_sp_smbr:1 tdnn_d_sp_smbr:2 tdnn_d_sp_smbr:3
+# WER on train_dev(tg)      16.51     15.06     15.05     15.04
+# WER on train_dev(fg)      15.34     13.88     13.92     13.85
+# WER on eval2000(tg)        19.2      17.9      18.1      18.2
+# WER on eval2000(fg)        17.7      16.4      16.7      16.9
+
 set -e
 set -uo pipefail
 
@@ -41,8 +87,11 @@ one_silence_class=true
 # reran by mistake with no affix with effective_learning_rate=0.000005 [was a bit
 # better, see NOTES, but still best after 1st epoch].
 # reran again with affix=slow and effective_learning_rate=0.0000025
-
-disc_affix=slow
+# reran again with affix=slow2 and effective_learning_rate=0.00000125 (this was
+# about the best).
+# before checking in the script, removed the slow2 affix but left with
+# the lowest learning rate.
+disc_affix=
 
 dir=${srcdir}_${criterion}${disc_affix}
 
@@ -62,7 +111,7 @@ extra_right_context=0
 
 
 ## Nnet training options
-effective_learning_rate=0.0000025
+effective_learning_rate=0.00000125
 max_param_change=1
 num_jobs_nnet=4
 num_epochs=3

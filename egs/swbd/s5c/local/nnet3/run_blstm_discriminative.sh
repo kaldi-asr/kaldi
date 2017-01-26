@@ -2,7 +2,9 @@
 
 set -o pipefail
 set -e
-# this is run_discriminative.sh
+
+# Caution: this script is out of date, it does not use the
+# refactored discriminative training script with get_degs.sh.
 
 # This script does discriminative training on top of CE BLSTM system.
 # note: this relies on having a cluster that has plenty of CPUs as well as GPUs,
