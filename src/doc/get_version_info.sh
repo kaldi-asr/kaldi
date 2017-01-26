@@ -35,7 +35,7 @@ for tuple in "5.0 master c160a9883"; do
 
 
 
-  tempfile=$(mktemp /tmp.XXXX)
+  tempfile=$(mktemp /tmp/temp.XXXXXX)
   echo "$0: for version=$major_minor_number, writing git output to $tempfile"
 
   patch_number=0
