@@ -92,6 +92,9 @@ frame_subsampling_factor=1
 if [ -f $decodedir/../frame_subsampling_factor ] ; then
   frame_subsampling_factor=$(cat $decodedir/../frame_subsampling_factor)
   echo "$0: Frame subsampling factor autodetected: $frame_subsampling_factor"
+elif [ -f $decodedir/../../frame_subsampling_factor ] ; then
+  frame_subsampling_factor=$(cat $decodedir/../../frame_subsampling_factor)
+  echo "$0: Frame subsampling factor autodetected: $frame_subsampling_factor"
 fi
 
 if [ $stage -le 0 ] ; then

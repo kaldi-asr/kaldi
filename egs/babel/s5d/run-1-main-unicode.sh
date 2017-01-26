@@ -1,14 +1,12 @@
 #!/bin/bash
 
 # This is not necessarily the top-level run.sh as it is in other directories.   see README.txt first.
-unicode_lexicon=false
-unicode_method="blind_tags_counts"
-mispronunciations=
-word_list=false
-morfessor=false
 tri5_only=false
 sgmm5_only=false
+denlats_only=false
 data_only=false
+morfessor=true
+tag_percentage=0.1
 
 [ ! -f ./lang.conf ] && echo 'Language configuration does not exist! Use the configurations in conf/lang/* as a startup' && exit 1
 [ ! -f ./conf/common_vars.sh ] && echo 'the file conf/common_vars.sh does not exist!' && exit 1
@@ -24,6 +22,13 @@ set -e           #Exit on non-zero return code from any command
 set -o pipefail  #Exit if any of the commands in the pipeline will
                  #return non-zero return code
 #set -u           #Fail on an undefined variable
+
+lexicon=data/local/lexicon.txt
+if $extend_lexicon; then
+  lexicon=data/local/lexiconp.txt
+fi
+
+./local/check_tools.sh || exit 1
 
 #Preparing dev2h and train directories
 if [ ! -f data/raw_train_data/.done ]; then
@@ -43,13 +48,6 @@ if [[ "$nj_max" -lt "$train_nj" ]] ; then
 fi
 train_data_dir=`readlink -f ./data/raw_train_data`
 
-if [ ! -d data/raw_dev2h_data ]; then
-  echo ---------------------------------------------------------------------
-  echo "Subsetting the DEV2H set"
-  echo ---------------------------------------------------------------------
-  local/make_corpus_subset.sh "$dev2h_data_dir" "$dev2h_data_list" ./data/raw_dev2h_data || exit 1
-fi
-
 if [ ! -d data/raw_dev10h_data ]; then
   echo ---------------------------------------------------------------------
   echo "Subsetting the DEV10H set"
@@ -57,65 +55,38 @@ if [ ! -d data/raw_dev10h_data ]; then
   local/make_corpus_subset.sh "$dev10h_data_dir" "$dev10h_data_list" ./data/raw_dev10h_data || exit 1
 fi
 
-nj_max=`cat $dev2h_data_list | wc -l`
-if [[ "$nj_max" -lt "$decode_nj" ]] ; then
-  echo "The maximum reasonable number of jobs is $nj_max -- you have $decode_nj! (The training and decoding process has file-granularity)"
-  exit 1
-  decode_nj=$nj_max
-fi
-
 
 mkdir -p data/local
-if [[ ! -f data/local/lexicon.txt || data/local/lexicon.txt -ot "$lexicon_file" ]]; then
+if [[ ! -f $lexicon || $lexicon -ot "$lexicon_file" ]]; then
   echo ---------------------------------------------------------------------
   echo "Preparing lexicon in data/local on" `date`
   echo ---------------------------------------------------------------------
-  if $word_list ; then
-    echo "Making word list." 
-    local/lexicon/make_word_list.py $train_data_dir/transcription data/local/filtered_lexicon.txt $mispronunciations
-  else
-    echo "Using standard lexicon."
-    local/make_lexicon_subset.sh $train_data_dir/transcription $lexicon_file data/local/filtered_lexicon.txt
+
+  local/lexicon/make_word_list.py $train_data_dir/filelist.list $train_data_dir/transcription data/local/word_list.txt
+  echo -e "<silence> SIL\n<unk> <oov>\n<noise> <sss>\n<v-noise> <vns>" > data/local/nonspeech.txt
+  echo -e "<hes> <hes>" > data/local/extraspeech.txt
+
+  fmt="word_list"
+  if $morfessor; then
+    fmt="morfessor"
+    morfessor-train --encoding=utf_8 --traindata-list -f"-_" -s data/local/morfessor.bin \
+      data/local/word_list.txt
+    morfessor-segment --encoding=utf_8 --output-format-separator '.' --viterbi-maxlen 3 \
+      -l data/local/morfessor.bin <(cut -d' ' -f2 data/local/word_list.txt) \
+      | sed 's/\.[\_\-]\././g' > data/local/segments
+    cut -d' ' data/local/word_list.txt -f2 | paste -d' ' - data/local/segments > data/local/word_list_tmp.txt
+    mv data/local/word_list_tmp.txt data/local/word_list.txt
   fi
 
-  if $unicode_lexicon; then
-    if $morfessor ; then
-      echo "Training Morfessor"
-      local/lexicon/phone2morph_lexicon.py --transcripts $train_data_dir/transcription \
-        --max-length 3 --calc-stats data/local/filtered_lexicon.txt ./data/local/morfessor_lexicon.txt
-      echo "Generating unicode lexicon"
-      if $word_list ; then
-        echo "Using filtered_lexicon.txt from word list"
-        local/lexicon/make_unicode_lexicon.py --morfessor data/local/morfessor_lexicon.txt data/local/lexicon.txt \
-          local/lexicon/methods $unicode_method 
-      else
-        echo "Using filtered_lexicon.txt"
-        local/lexicon/make_unicode_lexicon.py --lexicon --morfessor data/local/morfessor_lexicon.txt data/local/lexicon.txt \
-          local/lexicon/methods $unicode_method 
-      fi
-    else
-      echo "Generating unicode lexicon"
-      if $word_list ; then
-        echo "Using filtered_lexicon.txt from word list"
-        local/lexicon/make_unicode_lexicon.py data/local/filtered_lexicon.txt data/local/lexicon.txt \
-          local/lexicon/methods $unicode_method
-      else
-        echo "Using filtered_lexicon.txt"
-        local/lexicon/make_unicode_lexicon.py --lexicon data/local/filtered_lexicon.txt data/local/lexicon.txt \
-          local/lexicon/methods $unicode_method
-      fi
-    fi
-    local/prepare_unicode_lexicon.py data/local/lexicon_table.txt
-  
-  else
-    local/make_lexicon_subset.sh $train_data_dir/transcription $lexicon_file data/local/filtered_lexicon.txt
-    local/prepare_lexicon.pl  --phonemap "$phoneme_mapping" \
-      $lexiconFlags data/local/filtered_lexicon.txt data/local
-  fi
+  local/lexicon/make_unicode_lexicon.py --tag_percentage $tag_percentage --fmt $fmt \
+    --nonspeech data/local/nonspeech.txt --extraspeech data/local/extraspeech.txt \
+    --verbose data/local/word_list.txt data/local/lexicon.txt
+  local/prepare_unicode_lexicon.py --nonspeech data/local/nonspeech.txt \
+    --extraspeech data/local/extraspeech.txt data/local/lexicon_table.txt data/local
 fi
 
 mkdir -p data/lang
-if [[ ! -f data/lang/L.fst || data/lang/L.fst -ot data/local/lexicon.txt ]]; then
+if [[ ! -f data/lang/L.fst || data/lang/L.fst -ot $lexicon ]]; then
   echo ---------------------------------------------------------------------
   echo "Creating L.fst etc in data/lang on" `date`
   echo ---------------------------------------------------------------------
@@ -130,41 +101,15 @@ if [[ ! -f data/train/wav.scp || data/train/wav.scp -ot "$train_data_dir" ]]; th
   echo ---------------------------------------------------------------------
   mkdir -p data/train
   local/prepare_acoustic_training_data.pl \
-    --vocab data/local/lexicon.txt --fragmentMarkers \-\*\~ \
+    --vocab $lexicon --fragmentMarkers \-\*\~ \
     $train_data_dir data/train > data/train/skipped_utts.log
 fi
 
-if [[ ! -f data/dev2h/wav.scp || data/dev2h/wav.scp -ot ./data/raw_dev2h_data/audio ]]; then
-  echo ---------------------------------------------------------------------
-  echo "Preparing dev2h data lists in data/dev2h on" `date`
-  echo ---------------------------------------------------------------------
-  mkdir -p data/dev2h
-  local/prepare_acoustic_training_data.pl \
-    --fragmentMarkers \-\*\~ \
-    `pwd`/data/raw_dev2h_data data/dev2h > data/dev2h/skipped_utts.log || exit 1
-fi
-
-if [[ ! -f data/dev2h/glm || data/dev2h/glm -ot "$glmFile" ]]; then
-  echo ---------------------------------------------------------------------
-  echo "Preparing dev2h stm files in data/dev2h on" `date`
-  echo ---------------------------------------------------------------------
-  if [ -z $dev2h_stm_file ]; then
-    echo "WARNING: You should define the variable stm_file pointing to the IndusDB stm"
-    echo "WARNING: Doing that, it will give you scoring close to the NIST scoring.    "
-    local/prepare_stm.pl --fragmentMarkers \-\*\~ data/dev2h || exit 1
-  else
-    local/augment_original_stm.pl $dev2h_stm_file data/dev2h || exit 1
-  fi
-  [ ! -z $glmFile ] && cp $glmFile data/dev2h/glm
-
-fi
-
-# We will simply override the default G.fst by the G.fst generated using SRILM
 if [[ ! -f data/srilm/lm.gz || data/srilm/lm.gz -ot data/train/text ]]; then
   echo ---------------------------------------------------------------------
   echo "Training SRILM language models on" `date`
   echo ---------------------------------------------------------------------
-  local/train_lms_srilm.sh --oov-symbol $oovSymbol --dev-text data/dev2h/text \
+  local/train_lms_srilm.sh  --oov-symbol "$oovSymbol"\
     --train-text data/train/text data data/srilm
 fi
 
@@ -174,7 +119,7 @@ if [[ ! -f data/lang/G.fst || data/lang/G.fst -ot data/srilm/lm.gz ]]; then
   echo ---------------------------------------------------------------------
   local/arpa2G.sh data/srilm/lm.gz data/lang data/lang
 fi
-decode_nj=$dev2h_nj
+
 echo ---------------------------------------------------------------------
 echo "Starting plp feature extraction for data/train in plp on" `date`
 echo ---------------------------------------------------------------------
@@ -216,11 +161,6 @@ fi
 if $data_only; then
   echo "--data-only is true" && exit 0
 fi
-
-# =================== NOTE FOR SELF ============================================
-# This is where the experiment directory is first created and named. I will
-# change it so that a new experiment directory can be created for a new exp.
-# ==============================================================================
 
 if [ ! -f exp/mono/.done ]; then
   echo ---------------------------------------------------------------------
@@ -363,7 +303,7 @@ if [ ! -f exp/ubm5/.done ]; then
   echo ---------------------------------------------------------------------
   steps/train_ubm.sh \
     --cmd "$train_cmd" $numGaussUBM \
-    data/train data/lang exp/tri5_ali exp/ubm5
+    data/train data/langp/tri5_ali exp/tri5_ali exp/ubm5
   touch exp/ubm5/.done
 fi
 
@@ -373,7 +313,7 @@ if [ ! -f exp/sgmm5/.done ]; then
   echo ---------------------------------------------------------------------
   steps/train_sgmm2.sh \
     --cmd "$train_cmd" $numLeavesSGMM $numGaussSGMM \
-    data/train data/lang exp/tri5_ali exp/ubm5/final.ubm exp/sgmm5
+    data/train data/langp/tri5_ali exp/tri5_ali exp/ubm5/final.ubm exp/sgmm5
   #steps/train_sgmm2_group.sh \
   #  --cmd "$train_cmd" "${sgmm_group_extra_opts[@]-}" $numLeavesSGMM $numGaussSGMM \
   #  data/train data/lang exp/tri5_ali exp/ubm5/final.ubm exp/sgmm5
@@ -406,10 +346,6 @@ if [ ! -f exp/sgmm5_ali/.done ]; then
 fi
 
 
-  local/reestimate_langp.sh --cmd "$train_cmd" --unk "$oovSymbol" \
-    data/train data/lang data/local \
-    exp/sgmm5_ali data/local/dictp/sgmm5 data/local/langp/sgmm5 data/langp/sgmm5
-
 if [ ! -f exp/sgmm5_denlats/.done ]; then
   echo ---------------------------------------------------------------------
   echo "Starting exp/sgmm5_denlats on" `date`
@@ -420,6 +356,14 @@ if [ ! -f exp/sgmm5_denlats/.done ]; then
     data/train data/langp/sgmm5 exp/sgmm5_ali exp/sgmm5_denlats
   touch exp/sgmm5_denlats/.done
 fi
+
+
+if $denlats_only ; then
+  echo "Exiting after generating denlats, as requested. "
+  echo "Everything went fine. Done"
+  exit 0;
+fi
+
 
 if [ ! -f exp/sgmm5_mmi_b0.1/.done ]; then
   echo ---------------------------------------------------------------------

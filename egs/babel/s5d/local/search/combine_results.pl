@@ -166,7 +166,7 @@ sub MergeCombPwrSum {
   while (@results) {
     my @mergelist = ();
     push @mergelist, shift @results;
-    while ((@results) && (KwslistTimeCompare(@mergelist[0], @results[0]) == 0)) {
+    while ((@results) && (KwslistTimeCompare($mergelist[0], $results[0]) == 0)) {
       push @mergelist, shift @results;
     }
 
@@ -187,8 +187,8 @@ sub MergeCombPwrSum {
     }
     $out_score = $out_score**(1.0/$pwr);
     #print "$out_score \n\n\n";
-    my $KWID = @mergelist[0]->[0];
-    my $UTT = @mergelist[0]->[1];
+    my $KWID = $mergelist[0]->[0];
+    my $UTT = $mergelist[0]->[1];
     push @output, [$KWID, $UTT, $tbegin, $tend, $out_score, ""];
   }
 
@@ -209,7 +209,7 @@ sub MergeCombPwrMNZ {
   while (@results) {
     my @mergelist = ();
     push @mergelist, shift @results;
-    while ((@results) && (KwslistTimeCompare(@mergelist[0], @results[0]) == 0)) {
+    while ((@results) && (KwslistTimeCompare($mergelist[0], $results[0]) == 0)) {
       push @mergelist, shift @results;
     }
 
@@ -230,8 +230,8 @@ sub MergeCombPwrMNZ {
     }
     $out_score = (@mergelist ** $gamma) * $out_score**(1.0/$pwr);
     #print "$out_score \n\n\n";
-    my $KWID = @mergelist[0]->[0];
-    my $UTT = @mergelist[0]->[1];
+    my $KWID = $mergelist[0]->[0];
+    my $UTT = $mergelist[0]->[1];
     push @output, [$KWID, $UTT, $tbegin, $tend, $out_score, "out"];
   }
 
