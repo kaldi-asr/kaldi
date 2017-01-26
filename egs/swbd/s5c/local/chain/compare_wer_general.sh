@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# this script is used for comparing decoding results between systems.
+# e.g. local/chain/compare_wer_general.sh tdnn_7h_sp tdnn_7i_sp
+
+echo "$0 $*";  # print command line.
+
 echo -n "System               "
 for x in $*; do   printf "% 10s" $x;   done
 echo
