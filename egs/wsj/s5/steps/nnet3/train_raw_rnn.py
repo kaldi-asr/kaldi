@@ -444,7 +444,7 @@ def train(args, run_opts, background_process_handler):
                 if iter % reporting_iter_interval == 0:
                     # lets do some reporting
                     [report, times, data] = (
-                        nnet3_log_parse.generate_accuracy_report(args.dir))
+                        nnet3_log_parse.generate_acc_logprob_report(args.dir))
                     message = report
                     subject = ("Update : Expt {dir} : "
                                "Iter {iter}".format(dir=args.dir, iter=iter))
@@ -488,7 +488,7 @@ def train(args, run_opts, background_process_handler):
             get_raw_nnet_from_am=False)
 
     # do some reporting
-    [report, times, data] = nnet3_log_parse.generate_accuracy_report(args.dir)
+    [report, times, data] = nnet3_log_parse.generate_acc_logprob_report(args.dir)
     if args.email is not None:
         common_lib.send_mail(report, "Update : Expt {0} : "
                                      "complete".format(args.dir), args.email)

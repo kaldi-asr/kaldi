@@ -469,7 +469,7 @@ def train(args, run_opts, background_process_handler):
                 if iter % reporting_iter_interval == 0:
                     # lets do some reporting
                     [report, times, data] = (
-                        nnet3_log_parse.generate_accuracy_report(
+                        nnet3_log_parse.generate_acc_logprob_report(
                             args.dir, "log-probability"))
                     message = report
                     subject = ("Update : Expt {dir} : "
@@ -507,7 +507,7 @@ def train(args, run_opts, background_process_handler):
             remove_egs=remove_egs)
 
     # do some reporting
-    [report, times, data] = nnet3_log_parse.generate_accuracy_report(
+    [report, times, data] = nnet3_log_parse.generate_acc_logprob_report(
         args.dir, "log-probability")
     if args.email is not None:
         common_lib.send_mail(report, "Update : Expt {0} : "
