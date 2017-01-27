@@ -168,8 +168,8 @@ if [ $stage -le 0 ]; then
     # create an empty list of g2p generated prons, if it's not given.
     touch $dir/lexicon_g2p.txt
   else
-    cat $lexicon_g2p | awk '{if (NF<2) {print "There is an empty pronunciation in lexicon_g2p.txt." \
-      > "/dev/stderr"; exit 1} print NF}' > $dir/lexicon_g2p.txt || exit 1;
+    cat $lexicon_g2p | awk '{if (NF<2) {print "There is an empty pronunciation in lexicon_g2p.txt. Exit." \
+      > "/dev/stderr"; exit 1} print $0}' - > $dir/lexicon_g2p.txt || exit 1;
   fi
 fi
 
