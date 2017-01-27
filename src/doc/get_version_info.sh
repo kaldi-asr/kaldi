@@ -35,7 +35,7 @@ for tuple in "5.0 master c160a9883"; do
 
 
 
-  tempfile=$(mktemp)
+  tempfile=$(mktemp /tmp/temp.XXXXXX)
   echo "$0: for version=$major_minor_number, writing git output to $tempfile"
 
   patch_number=0
@@ -68,14 +68,14 @@ for tuple in "5.0 master c160a9883"; do
            $pull_request_number = $1;
            $pre_match = $`;  # part before what was matched.
            $pre_match =~ s/</&lt;/g;
-           $pre_match =~ s/>/&rt;/g;
+           $pre_match =~ s/>/&gt;/g;
            # if commit subject line ends with e.g. (#1302), which will
            # be a pull request; create a href to github for that.
            $commit_subject = $pre_match .
             "<a href=\"https://github.com/kaldi-asr/kaldi/pull/$pull_request_number\" target=\"_blank\">(#$pull_request_number)</a>";
          } else {
            $commit_subject =~ s/</&lt;/g;
-           $commit_subject =~ s/>/&rt;/g;
+           $commit_subject =~ s/>/&gt;/g;
          }
          $commit_href =
           "<a href=\"https://github.com/kaldi-asr/kaldi/commit/$long_commit\" target=\"_blank\">$short_commit</a>";
@@ -85,4 +85,6 @@ for tuple in "5.0 master c160a9883"; do
       print "<p>\n";
     } ' "$major_minor_number" >$htmlfile || exit 1
   echo "$0: generated file $htmlfile with $(wc -l <$htmlfile) lines"
+  # you might want to comment the command below if you are debugging the script.
+  rm $tempfile
 done
