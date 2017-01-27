@@ -169,7 +169,7 @@ if [ $stage -le 0 ]; then
     touch $dir/lexicon_g2p.txt
   else
     cat $lexicon_g2p | awk '{if (NF<2) {print "There is an empty pronunciation in lexicon_g2p.txt." \
-      > "/dev/stderr"; exit 1} print NF}' > $dir/lexicon_g2p.txt 2>/dev/null
+      > "/dev/stderr"; exit 1} print NF}' > $dir/lexicon_g2p.txt || exit 1;
   fi
 fi
 
