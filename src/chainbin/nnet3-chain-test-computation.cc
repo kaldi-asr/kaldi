@@ -199,9 +199,32 @@ void FixFinals(fst::StdVectorFst *fst) {
 }
 
 
+void NormalizeFst(fst::StdVectorFst *fst) {
+  int32 num_states = fst->NumStates();
+  for (int32 state = 0; state < num_states - 1; state++) {
+    double outgoing_prob_sum = 0.0;
+    for (fst::MutableArcIterator<fst::StdVectorFst> aiter(fst, state);
+         !aiter.Done(); aiter.Next()) {
+      const fst::StdArc &arc = aiter.Value();
+      outgoing_prob_sum += Exp(-arc.weight.Value());
+    }
+//    KALDI_LOG << "sum for state " << state << " is " << outgoing_prob_sum;
+    for (fst::MutableArcIterator<fst::StdVectorFst> aiter(fst, state);
+         !aiter.Done(); aiter.Next()) {
+      const fst::StdArc &arc = aiter.Value();
+//      KALDI_LOG << "for state " << state << " weight before: " << arc.weight.Value();
+      fst::StdArc arc2(arc);
+      arc2.weight = StdArc::Weight(arc.weight.Value() + Log(outgoing_prob_sum));
+//      KALDI_LOG << "for state " << state << " weight after: " << arc2.weight.Value();
+      aiter.SetValue(arc2);
+    }
+  }
+}
+
 int main(int argc, char *argv[]) {
   try {
 
+{
     StdVectorFst num3;
     ReadFstKaldi("num3.fst", &num3);
     StdVectorFst den;
@@ -227,12 +250,14 @@ int main(int argc, char *argv[]) {
     std::cout << "cpu num log prob: " << cpu_num_logprob << "\n";
     
     ChainTrainingOptions copts;
-    copts.num_leak_coefficient = 0.05;
-    copts.use_initial_probs = 0.0;
+    copts.leakynum_leak_prob = 0.05;
+    copts.leakynum_use_priors = 0.0;
     CuLeakyNumeratorComputation leakyc(copts, numg, deng, obs_mat);
     BaseFloat leaky_num_logprob = leakyc.Forward();
     std::cout << "leaky num log prob: " << leaky_num_logprob << "\n";
-    return 0;
+}
+
+//    return 0;
 
 /* The result should be
 cpu num log prob: -2.16679
@@ -294,7 +319,10 @@ This has been calculated and verified by
     ReadFstKaldi(den_fst_rxfilename, &den_fst);
     
     DenominatorGraph den_graph(den_fst, nnet.OutputDim("output"));
-          
+    KALDI_LOG << "initital probs sum: " << den_graph.InitialProbs().Sum();
+    KALDI_LOG << "initital probs dim: " << den_graph.InitialProbs().Dim();
+    //return 0;
+
     Vector<BaseFloat> diff_per_time_base(50, kSetZero); /// Assuming framespereg = 50
     Vector<BaseFloat> diff_per_time_leaky(50, kSetZero); /// Assuming framespereg = 50
     Vector<BaseFloat> diff_per_time_rel(50, kSetZero); /// Assuming framespereg = 50
@@ -324,8 +352,9 @@ This has been calculated and verified by
       //  std::cout << "fsts[i].NumStates: " << eg.outputs[0].supervision.fsts[i].NumStates() << "\n";
 
 
-      //for (int32 i = 0; i < eg.outputs[0].supervision.fsts.size(); i++)
-      //  FixFinals(&eg.outputs[0].supervision.fsts[i]);
+      for (int32 i = 0; i < eg.outputs[0].supervision.fsts.size(); i++)
+        NormalizeFst(&eg.outputs[0].supervision.fsts[i]);
+      NormalizeFst(&eg.outputs[0].supervision.fst);
       //std::ofstream os("eg.txt");
       //eg.Write(os, false);
 
@@ -349,8 +378,17 @@ This has been calculated and verified by
       eg.outputs[0].supervision.frames_per_sequence;
       Profiler pf;
       
-
-
+//KALDI_LOG << "First trans: " << den_graph.Transitions()[0].transition_prob;
+//DenominatorGraph dg_copy(den_graph);
+//pf.tic("iterateOverAllDenTransitions");
+  //den_graph.ScaleTransitions(0.9);
+  //DenominatorGraph dg_copy(den_graph);
+//pf.tac();
+//KALDI_LOG << "First trans modified: " << dg_copy.Transitions()[0].transition_prob;
+//KALDI_LOG << "First trans again: " << den_graph.Transitions()[0].transition_prob;
+//std::cout << "Profiling results:\n" << pf.toString() << "\n";
+//break;
+      
       pf.tic("matPrep");
       int32 T = eg.outputs[0].supervision.frames_per_sequence,
             B = eg.outputs[0].supervision.num_sequences,
@@ -487,9 +525,9 @@ This has been calculated and verified by
       SaveVectorSparselyMatlab(diff_per_time_rel, "fdiff_rel.m", "diff_rel");
     }
 
-#if HAVE_CUDA==1
+//#if HAVE_CUDA==1
     //CuDevice::Instantiate().PrintProfile();
-#endif
+//#endif
     
     KALDI_LOG << "Checked " << num_read << " egs.";
     return (num_written != 0 ? 0 : 1);

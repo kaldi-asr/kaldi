@@ -47,6 +47,15 @@ class NumeratorGraph {
 
   int32 NumSequences() const { return num_sequences_; }
 
+  void ScaleTransitions(BaseFloat scale) {
+    std::vector<DenominatorGraphTransition> cpu;
+    transitions_.CopyToVec(&cpu);
+    for (int32 tr = 0; tr < transitions_.Dim(); tr++) {
+        cpu[tr].transition_prob *= scale;
+    }
+    transitions_.CopyFromVec(cpu);
+  }
+
   // the number of PDFs (the labels on the transitions are numbered from 0 to
   // NumPdfs() - 1).
   int32 NumPdfs() const { return num_pdfs_; }

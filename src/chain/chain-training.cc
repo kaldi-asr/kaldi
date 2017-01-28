@@ -42,7 +42,7 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
     nnet_output_deriv->SetZero();
 
   
-  if (opts.num_leak_coefficient == 0.0) {
+  if (opts.leakynum_leak_prob == 0.0) {
     NumeratorComputation numerator(supervision, nnet_output);
     // note: supervision.weight is included as a factor in the derivative from
     // the numerator object, and the logprob too.
@@ -64,11 +64,17 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
     num_logprob_weighted = numerator.Forward();
     if (nnet_output_deriv) {
       numerator.Backward(nnet_output_deriv);
-      if (xent_output_deriv)
+      if (!opts.leakynum_regular_xent && xent_output_deriv)
         xent_output_deriv->CopyFromMat(*nnet_output_deriv);
-    } else if (xent_output_deriv) {
+    } else if (!opts.leakynum_regular_xent && xent_output_deriv) {
       xent_output_deriv->SetZero();
       numerator.Backward(xent_output_deriv);
+    }
+    if (opts.leakynum_regular_xent && xent_output_deriv) {
+      NumeratorComputation orignum(supervision, nnet_output);
+      xent_output_deriv->SetZero();
+      orignum.Forward();
+      orignum.Backward(xent_output_deriv);
     }
   }
 

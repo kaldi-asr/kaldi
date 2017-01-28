@@ -115,8 +115,8 @@ class CuLeakyNumeratorComputation {
 
 
   const ChainTrainingOptions &opts_;
-  const NumeratorGraph &num_graph_;
-  const DenominatorGraph &den_graph_;
+  NumeratorGraph num_graph_;
+  DenominatorGraph den_graph_;
 
   // number of separate frame sequences
   int32 num_sequences_;
@@ -140,6 +140,11 @@ class CuLeakyNumeratorComputation {
   CuMatrix<BaseFloat> beta_den_;
 
   CuVector<BaseFloat> tot_prob_;
+
+  BaseFloat leak_eta_;
+  CuVector<BaseFloat> unleak_etas_;
+  BaseFloat num_transitions_scale_; // scale applied to all num to num transitions (except when we are computing hats or primes) 
+  BaseFloat den_transitions_scale_;
 
   // the log of tot_prob_.
   CuVector<BaseFloat> tot_log_prob_;

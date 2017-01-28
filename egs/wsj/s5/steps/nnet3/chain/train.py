@@ -77,15 +77,20 @@ def get_args():
     parser.add_argument("--chain.left-tolerance", type=int,
                         dest='left_tolerance', default=5, help="")
 
-    parser.add_argument("--chain.leakynum-use-initials", type=int,
-                        dest='leakynum_use_initials', default=1,
+    parser.add_argument("--chain.leakynum-use-priors", type=int,
+                        dest='leakynum_use_priors', default=1,
                         help="")
-    parser.add_argument("--chain.num-leakage-coeff", type=float,
-                        dest='num_leakage_coeff', default=0.0,
+    parser.add_argument("--chain.leakynum-regular-xent", type=str,
+                        dest='leakynum_regular_xent', default=True,
+                        action=common_lib.StrToBoolAction,
+                        choices=["true", "false"],
                         help="")
-    parser.add_argument("--chain.num-leakage-schedule", type=str,
-                        dest='num_leakage_schedule', default="",
-                        help="A string like '50%:0.0 20%:0.001 30%:1e-4'")
+    parser.add_argument("--chain.leakynum-leak-prob", type=str,
+                        dest='leakynum_leak_prob', default="0.0",
+                        help="")
+    parser.add_argument("--chain.leakynum-unleak-prob", type=float,
+                        dest='leakynum_unleak_prob', default=0.1,
+                        help="")
 
     parser.add_argument("--chain.leaky-hmm-coefficient", type=float,
                         dest='leaky_hmm_coefficient', default=0.00001,
@@ -392,33 +397,22 @@ def train(args, run_opts, background_process_handler):
 
 
 
-    if args.num_leakage_schedule == "":
-      args.num_leakage_schedule = "100%:" + str(args.num_leakage_coeff)
-    interval_ends = []
-    coeffs = []
-    interval_start = 0
-    for interval_coeff in args.num_leakage_schedule.split(" "):
-      [interval, coeff] = interval_coeff.split(":")
-      if (interval.endswith("%")):
-        interval = int(interval[:-1]) * num_iters / 100
-      else:
-        interval = int(interval)
-      interval += interval_start
-      interval_start = interval
-      interval_ends += [interval]
-      coeff = float(coeff)
-      coeffs += [coeff]
-    logger.info("num_leakage interval ends: " + str(interval_ends))
-    logger.info("num_leakage coeffs: " + str(coeffs))
-    def determine_coeff(it):
-      idx = 0
-      for it_end in interval_ends:
-        if it <= it_end:
-          break;
-        idx += 1
-      if idx >= len(coeffs):
-        idx = len(coeffs) - 1
-      return coeffs[idx]
+    def get_leakynum_leak_prob(num_archives_processed):
+      if (args.leakynum_leak_prob.find(",") == -1):
+        return float(args.leakynum_leak_prob)
+      y_values = list(map(float, args.leakynum_leak_prob.split(",")))
+      num_pieces = len(y_values) - 1
+      x_scaled = ((float(num_archives_processed) / num_archives_to_process)
+                 * num_pieces)
+      piece_start_index = int(x_scaled)
+      if (piece_start_index == num_pieces):
+        piece_start_index = num_pieces - 1
+      piece_end_index = piece_start_index + 1
+      return ((x_scaled - piece_start_index)
+             * (y_values[piece_end_index] - y_values[piece_start_index])
+             + y_values[piece_start_index])
+
+
 
     models_to_combine = common_train_lib.verify_iterations(
         num_iters, args.num_epochs,
@@ -490,8 +484,10 @@ def train(args, run_opts, background_process_handler):
                 l2_regularize=args.l2_regularize,
                 xent_regularize=args.xent_regularize,
                 leaky_hmm_coefficient=args.leaky_hmm_coefficient,
-                num_leakage_coeff=determine_coeff(iter),
-                leakynum_use_initials=args.leakynum_use_initials,
+                leakynum_leak_prob=get_leakynum_leak_prob(iter),
+                leakynum_unleak_prob=args.leakynum_unleak_prob,
+                leakynum_regular_xent=args.leakynum_regular_xent,
+                leakynum_use_priors=args.leakynum_use_priors,
                 momentum=args.momentum,
                 max_param_change=args.max_param_change,
                 shuffle_buffer_size=args.shuffle_buffer_size,
@@ -530,8 +526,10 @@ def train(args, run_opts, background_process_handler):
             egs_dir=egs_dir,
             left_context=left_context, right_context=right_context,
             leaky_hmm_coefficient=args.leaky_hmm_coefficient,
-            num_leakage_coeff=determine_coeff(num_iters),
-            leakynum_use_initials=args.leakynum_use_initials,
+            leakynum_leak_prob=get_leakynum_leak_prob(num_iters),
+            leakynum_unleak_prob=args.leakynum_unleak_prob,
+            leakynum_regular_xent=args.leakynum_regular_xent,
+            leakynum_use_priors=args.leakynum_use_priors,
             l2_regularize=args.l2_regularize,
             xent_regularize=args.xent_regularize,
             run_opts=run_opts,

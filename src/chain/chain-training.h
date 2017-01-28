@@ -55,8 +55,10 @@ struct ChainTrainingOptions {
   // epsilon loops.
   BaseFloat leaky_hmm_coefficient;
 
-  int32 use_initial_probs;
-  BaseFloat num_leak_coefficient;
+  int32 leakynum_use_priors;
+  BaseFloat leakynum_leak_prob;
+  BaseFloat leakynum_unleak_prob;
+  bool leakynum_regular_xent;
 
   // Cross-entropy regularization constant.  (e.g. try 0.1).  If nonzero,
   // the network is expected to have an output named 'output-xent', which
@@ -64,8 +66,11 @@ struct ChainTrainingOptions {
   BaseFloat xent_regularize;
 
   ChainTrainingOptions(): l2_regularize(0.0), leaky_hmm_coefficient(1.0e-05),
-                          use_initial_probs(1),
-                          num_leak_coefficient(1.0e-04), xent_regularize(0.0) { }
+                          leakynum_use_priors(1),
+                          leakynum_leak_prob(1.0e-04),
+                          leakynum_unleak_prob(0.1),
+                          leakynum_regular_xent(true),
+                          xent_regularize(0.0) { }
   
   void Register(OptionsItf *opts) {
     opts->Register("l2-regularize", &l2_regularize, "l2 regularization "
@@ -77,8 +82,10 @@ struct ChainTrainingOptions {
                    "improve generalization).  For numerical reasons, may not be "
                    "exactly zero.");
 
-    opts->Register("use-initial-probs", &use_initial_probs, "");
-    opts->Register("num-leak-coefficient", &num_leak_coefficient, "");
+    opts->Register("leakynum-use-priors", &leakynum_use_priors, "");
+    opts->Register("leakynum-leak-prob", &leakynum_leak_prob, "");
+    opts->Register("leakynum-unleak-prob", &leakynum_unleak_prob, "");
+    opts->Register("leakynum-regular-xent", &leakynum_regular_xent, "");
 
     opts->Register("xent-regularize", &xent_regularize, "Cross-entropy "
                    "regularization constant for 'chain' training.  If "

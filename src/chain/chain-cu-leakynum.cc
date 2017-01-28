@@ -66,11 +66,36 @@ CuLeakyNumeratorComputation::CuLeakyNumeratorComputation(
     tot_prob_(num_sequences_, kUndefined),
     tot_log_prob_(num_sequences_, kUndefined),
     ok_(true) {
-  KALDI_ASSERT(opts_.num_leak_coefficient >= 0.0 &&
-               opts_.num_leak_coefficient < 1.0);
+  KALDI_ASSERT(opts_.leakynum_leak_prob >= 0.0 &&
+               opts_.leakynum_leak_prob < 1.0);
+  KALDI_ASSERT(opts_.leakynum_unleak_prob >= 0.0 &&
+               opts_.leakynum_unleak_prob < 1.0);
 
   KALDI_ASSERT(nnet_output.NumRows() % num_sequences_ == 0);
   exp_nnet_output_transposed_.ApplyExp();
+
+
+
+  BaseFloat tot_leak_den = 0.0;
+  if (opts_.leakynum_use_priors)
+    tot_leak_den = den_graph_.InitialProbs().Sum(); // must be 1.0
+  else
+    tot_leak_den = den_graph_.InitialProbs().Dim();
+  leak_eta_ = opts_.leakynum_leak_prob / tot_leak_den / (1.0 - opts_.leakynum_leak_prob);
+
+  int32 *num_states_cpu = new int32[num_sequences_];
+  num_graph_.CopyNumStatesToCpu(num_states_cpu);  //TODO(hhadian) this might be really slow -- check it
+  Vector<BaseFloat> unleak_etas(num_sequences_);
+  for (int32 seq = 0; seq < num_sequences_; seq++)
+    unleak_etas(seq) = opts_.leakynum_unleak_prob / num_states_cpu[seq] / (1.0 - opts_.leakynum_unleak_prob);
+  delete num_states_cpu;
+  unleak_etas_ = unleak_etas;
+
+  num_transitions_scale_ = 1.0 - opts_.leakynum_leak_prob;
+  den_transitions_scale_ = 1.0 - opts_.leakynum_unleak_prob;
+
+  num_graph_.ScaleTransitions(num_transitions_scale_);
+  den_graph_.ScaleTransitions(den_transitions_scale_);
 }
 
 
@@ -124,6 +149,7 @@ void CuLeakyNumeratorComputation::AlphaSumAndPrime(int32 t) {
   /// first sum up den states
   alpha_sum_vec.AddRowSumMat(1.0, alpha_mat_den, 0.0);
   alpha_prime.CopyFromVec(alpha_sum_vec);
+  alpha_prime.MulElements(unleak_etas_);
 
   /// now sum num states too
   alpha_sum_vec.AddRowSumMat(1.0, alpha_mat_num, 1.0);
@@ -195,7 +221,7 @@ void CuLeakyNumeratorComputation::AlphaNumFrame(int32 t) {
                 prev_hmm_state = trans_iter->hmm_state;
           BaseFloat prob = prob_data[pdf_id * prob_stride + s],
               this_prev_alpha_num = prev_alpha_num[prev_hmm_state * num_sequences_ + s];
-          this_tot_alpha += (this_prev_alpha_num + prev_alpha_prime(s)) / inv_arbitrary_scale * transition_prob * prob;
+          this_tot_alpha += (this_prev_alpha_num + prev_alpha_prime(s)) / inv_arbitrary_scale * transition_prob * prob; //* unleak_etas_(s)
           if (this_tot_alpha - this_tot_alpha != 0) {
             KALDI_LOG << "t: " << t << ", seq: " << s << ", h: " << h
             << ", prev-alpha: " << this_prev_alpha_num
@@ -352,12 +378,12 @@ void CuLeakyNumeratorComputation::AlphaHat(int32 t) {
                                        den_graph_.NumStates(),
                                        num_sequences_,
                                        num_sequences_);
-  if (opts_.use_initial_probs == 1)
-    alpha_mat_den.AddVecVec(opts_.num_leak_coefficient,
+  if (opts_.leakynum_use_priors == 1)
+    alpha_mat_den.AddVecVec(leak_eta_,
                             den_graph_.InitialProbs(),
                             prev_alpha_hats);
   else
-    alpha_mat_den.AddVecToRows(opts_.num_leak_coefficient,
+    alpha_mat_den.AddVecToRows(leak_eta_,
                                prev_alpha_hats, 1.0);
 }
 
@@ -488,11 +514,11 @@ void CuLeakyNumeratorComputation::BetaPrime(int32 t) {
   CuSubVector<BaseFloat> beta_prime(this_beta_num +
                                    num_graph_.MaxNumStates() * num_sequences_,
                                    num_sequences_);
-  if (opts_.use_initial_probs == 1)
-    beta_prime.AddMatVec(opts_.num_leak_coefficient, beta_den_mat,  // IxB --> trans: BxI
+  if (opts_.leakynum_use_priors == 1)
+    beta_prime.AddMatVec(leak_eta_, beta_den_mat,  // IxB --> trans: BxI
                          kTrans, den_graph_.InitialProbs(), 0.0);
   else
-    beta_prime.AddRowSumMat(opts_.num_leak_coefficient, beta_den_mat, 0.0);
+    beta_prime.AddRowSumMat(leak_eta_, beta_den_mat, 0.0);
 }
 
 /// Computes beta for numerator states.
@@ -580,7 +606,7 @@ void CuLeakyNumeratorComputation::BetaNumFrame(int32 t) {
 
           /// handle Gamma Leaky Transitions:
           log_prob_deriv_data[pdf_id * deriv_stride + s] += shared_factor * (
-             (this_alpha_prob * next_beta_prime(s))    +    (next_beta_prob * alpha_prime(s))  );
+             (this_alpha_prob * next_beta_prime(s))    +    (next_beta_prob * alpha_prime(s))  ); //* unleak_etas_(s)
 
           if (tot_variable_factor - tot_variable_factor != 0) {
             KALDI_LOG << "t: " << t << ", seq: " << s << ", h: " << h << ", pdf_id: " << pdf_id
@@ -746,7 +772,7 @@ void CuLeakyNumeratorComputation::BetaHat(int32 t) {
         next_beta_hat += next_beta_s * transition_prob * obs_prob * arbitrary_scale;
       }
       KALDI_ASSERT(next_beta_hat - next_beta_hat == 0);
-      beta_hats(s) = next_beta_hat;
+      beta_hats(s) = next_beta_hat; //* unleak_etas_(s);
     }
   }
 
@@ -755,6 +781,7 @@ void CuLeakyNumeratorComputation::BetaHat(int32 t) {
                                       den_graph_.NumStates(),
                                       num_sequences_,
                                       num_sequences_);
+  beta_hats.MulElements(unleak_etas_);
   beta_den_mat.AddVecToRows(1.0, beta_hats, 1.0);
 }
 

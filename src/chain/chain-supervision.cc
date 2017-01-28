@@ -722,6 +722,25 @@ static void FixFinals(fst::StdVectorFst *fst) {
   fst->DeleteStates(del);
 }
 
+static void NormalizeFst(fst::StdVectorFst *fst) {
+  int32 num_states = fst->NumStates();
+  for (int32 state = 0; state < num_states - 1; state++) {
+    double outgoing_prob_sum = 0.0;
+    for (fst::MutableArcIterator<fst::StdVectorFst> aiter(fst, state);
+         !aiter.Done(); aiter.Next()) {
+      const fst::StdArc &arc = aiter.Value();
+      outgoing_prob_sum += Exp(-arc.weight.Value());
+    }
+    for (fst::MutableArcIterator<fst::StdVectorFst> aiter(fst, state);
+         !aiter.Done(); aiter.Next()) {
+      const fst::StdArc &arc = aiter.Value();
+      fst::StdArc arc2(arc);
+      arc2.weight = fst::StdArc::Weight(arc.weight.Value() + Log(outgoing_prob_sum));
+      aiter.SetValue(arc2);
+    }
+  }
+}
+
 bool AddWeightToSupervisionFst(const fst::StdVectorFst &normalization_fst,
                                Supervision *supervision) {
   // remove epsilons before composing.  'normalization_fst' has noepsilons so
@@ -753,6 +772,7 @@ bool AddWeightToSupervisionFst(const fst::StdVectorFst &normalization_fst,
   KALDI_ASSERT(supervision->fst.Properties(fst::kAcceptor, true) == fst::kAcceptor);
   KALDI_ASSERT(supervision->fst.Properties(fst::kIEpsilons, true) == 0);
   FixFinals(&(supervision->fst));
+  NormalizeFst(&(supervision->fst));
   return true;
 }
 
