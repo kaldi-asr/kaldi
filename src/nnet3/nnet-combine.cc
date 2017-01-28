@@ -403,14 +403,27 @@ double NnetCombiner::GetSumToOnePenalty(
       this_total_weight += this_weight;
     }
     tot_weights(c) = this_total_weight;
-    ans += -0.5 * penalty *
-           (this_total_weight - 1.0) * (this_total_weight - 1.0);
+    // this_total_weight_deriv is the derivative of the penalty
+    // term w.r.t. this component's total weight.
+    double this_total_weight_deriv;
+    if (config_.enforce_positive_weights) {
+      // if config_.enforce_positive_weights is true, then we choose to
+      // formulate the penalty in a slightly different way.. this solves the
+      // problem that with the formulation in the 'else' below, if for some
+      // reason the total weight is << 1.0, the deriv w.r.t. the actual
+      // parameters gets tiny [because weight = exp(params)].
+      double log_total = log(this_total_weight);
+      ans += -0.5 * penalty * log_total * log_total;
+      double log_total_deriv = -1.0 * penalty * log_total;
+      this_total_weight_deriv = log_total_deriv / this_total_weight;
+    } else {
+      ans += -0.5 * penalty *
+             (this_total_weight - 1.0) * (this_total_weight - 1.0);
+      this_total_weight_deriv = penalty * (1.0 - this_total_weight);
+
+    }
     if (weights_penalty_deriv != NULL) {
       KALDI_ASSERT(weights.Dim() == weights_penalty_deriv->Dim());
-      // this_total_weight_deriv is the derivative of the penalty
-      // term w.r.t. this component's total weight.
-      double this_total_weight_deriv =
-          penalty * (1.0 - this_total_weight);
       for (int32 m = 0; m < num_models; m++) {
         int32 index = m * num_uc + c;
         (*weights_penalty_deriv)(index) = this_total_weight_deriv;

@@ -437,8 +437,10 @@ def compute_progress(dir, iter, egs_dir, left_context, right_context,
 
 def combine_models(dir, num_iters, models_to_combine, egs_dir,
                    left_context, right_context,
+                   minibatch_size_str,
                    run_opts, background_process_handler=None,
-                   chunk_width=None, get_raw_nnet_from_am=True):
+                   chunk_width=None, get_raw_nnet_from_am=True,
+                   sum_to_one_penalty=0.0):
     """ Function to do model combination
 
     In the nnet3 setup, the logic
@@ -464,12 +466,6 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
                 raise Exception('Model file {0} missing'.format(model_file))
             raw_model_strings.append(model_file)
 
-    if chunk_width is not None:
-        # this is an RNN model
-        mbsize = int(1024.0/(common_train_lib.principal_chunk_width(chunk_width)))
-    else:
-        mbsize = 1024
-
     if get_raw_nnet_from_am:
         out_model = ("| nnet3-am-copy --set-raw-nnet=- {dir}/{num_iters}.mdl "
                      "{dir}/combined.mdl".format(dir=dir, num_iters=num_iters))
@@ -481,8 +477,10 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
 
     common_lib.run_job(
         """{command} {combine_queue_opt} {dir}/log/combine.log \
-                nnet3-combine --num-iters=40 \
-                --enforce-sum-to-one=true --enforce-positive-weights=true \
+                nnet3-combine --num-iters=80 \
+                --enforce-sum-to-one={hard_enforce} \
+                --sum-to-one-penalty={penalty} \
+                --enforce-positive-weights=true \
                 --verbose=3 {raw_models} \
                 "ark,bg:nnet3-copy-egs {context_opts} \
                     ark:{egs_dir}/combine.egs ark:- | \
@@ -492,8 +490,10 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
         """.format(command=run_opts.command,
                    combine_queue_opt=run_opts.combine_queue_opt,
                    dir=dir, raw_models=" ".join(raw_model_strings),
+                   hard_enforce=(sum_to_one_penalty <= 0),
+                   penalty=sum_to_one_penalty,
                    context_opts=context_opts,
-                   mbsize=mbsize,
+                   mbsize=minibatch_size_str,
                    out_model=out_model,
                    egs_dir=egs_dir))
 

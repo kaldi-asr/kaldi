@@ -515,7 +515,9 @@ def compute_progress(dir, iter, run_opts, wait=False,
 def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_str,
                    egs_dir, left_context, right_context,
                    leaky_hmm_coefficient, l2_regularize,
-                   xent_regularize, run_opts, background_process_handler=None):
+                   xent_regularize, run_opts,
+                   background_process_handler=None,
+                   sum_to_one_penalty=0.0):
     """ Function to do model combination
 
     In the nnet3 setup, the logic
@@ -539,9 +541,11 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_st
 
     common_lib.run_job(
         """{command} {combine_queue_opt} {dir}/log/combine.log \
-                nnet3-chain-combine --num-iters=40 \
+                nnet3-chain-combine --num-iters=80 \
                 --l2-regularize={l2} --leaky-hmm-coefficient={leaky} \
-                --enforce-sum-to-one=true --enforce-positive-weights=true \
+                --enforce-sum-to-one={hard_enforce} \
+                --sum-to-one-penalty={penalty} \
+                --enforce-positive-weights=true \
                 --verbose=3 {dir}/den.fst {raw_models} \
                 "ark,bg:nnet3-chain-copy-egs --left-context={lc} \
                     --right-context={rc} ark:{egs_dir}/combine.cegs ark:- | \
@@ -554,6 +558,8 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_st
                     lc=left_context, rc=right_context,
                     l2=l2_regularize, leaky=leaky_hmm_coefficient,
                     dir=dir, raw_models=" ".join(raw_model_strings),
+                    hard_enforce=(sum_to_one_penalty <= 0),
+                    penalty=sum_to_one_penalty,
                     num_chunk_per_mb=num_chunk_per_minibatch_str,
                     num_iters=num_iters,
                     egs_dir=egs_dir))

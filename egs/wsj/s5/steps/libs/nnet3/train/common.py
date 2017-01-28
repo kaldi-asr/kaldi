@@ -717,6 +717,11 @@ class CommonParser:
                                  the final model combination stage.  These
                                  models will themselves be averages of
                                  iteration-number ranges""")
+        self.parser.add_argument("--trainer.optimization.combine-sum-to-one-penalty",
+                                 type=float, dest='combine_sum_to_one_penalty', default=0.0,
+                                 help="""If > 0, activates 'soft' enforcement of the
+                                 sum-to-one penalty in combination (may be helpful
+                                 if using dropout).  E.g. 1.0e-03.""")
         self.parser.add_argument("--trainer.optimization.momentum", type=float,
                                  dest='momentum', default=0.0,
                                  help="""Momentum used in update computation.

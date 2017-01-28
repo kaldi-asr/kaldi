@@ -505,7 +505,9 @@ def train(args, run_opts, background_process_handler):
             l2_regularize=args.l2_regularize,
             xent_regularize=args.xent_regularize,
             run_opts=run_opts,
-            background_process_handler=background_process_handler)
+            background_process_handler=background_process_handler,
+            sum_to_one_penalty=args.combine_sum_to_one_penalty)
+
 
     if args.cleanup:
         logger.info("Cleaning up the experiment directory "
