@@ -1,5 +1,23 @@
 #!/bin/bash
 
+# 1k is as 1e, but introducing a dropout schedule.
+
+# local/chain/compare_wer_general.sh --looped exp/chain_cleaned/tdnn_lstm1{e,k,l,m}_sp_bi
+# System                tdnn_lstm1e_sp_bi tdnn_lstm1k_sp_bi tdnn_lstm1l_sp_bi tdnn_lstm1m_sp_bi
+# WER on dev(orig)            9.0       8.7       8.9       9.0
+#         [looped:]           9.0       8.6       8.9       8.9
+# WER on dev(rescored)        8.4       7.9       8.2       8.2
+#         [looped:]           8.4       7.8       8.2       8.3
+# WER on test(orig)           8.8       8.8       8.9       8.9
+#         [looped:]           8.8       8.7       8.8       8.8
+# WER on test(rescored)       8.4       8.3       8.2       8.5
+#         [looped:]           8.3       8.3       8.3       8.4
+# Final train prob        -0.0648   -0.0693   -0.0768   -0.0807
+# Final valid prob        -0.0827   -0.0854   -0.0943   -0.0931
+# Final train prob (xent)   -0.8372   -0.8848   -0.9371   -0.9807
+# Final valid prob (xent)   -0.9497   -0.9895   -1.0546   -1.0629
+
+
 # 1e is as 1b, but reducing decay-time from 40 to 20.
 
 # 1d is as 1b, but adding decay-time=40 to the fast-lstmp-layers.  note: it
@@ -72,8 +90,8 @@ frames_per_chunk_primary=140
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tdnn_lstm_affix=1e  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
-common_egs_dir=    # you can set this to use previously dumped egs.
+tdnn_lstm_affix=1k  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
+common_egs_dir=exp/chain_cleaned/tdnn_lstm1b_sp_bi/egs  # you can set this to use previously dumped egs.
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -168,6 +186,10 @@ if [ $stage -le 17 ]; then
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
 
+  # note: the value of the dropout-proportion is not important, as it's
+  # controlled by the dropout schedule; what's important is that we set it.
+  lstmp_opts="decay-time=20 dropout-proportion=0.0 dropout-per-frame=true"
+
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=100 name=ivector
@@ -181,13 +203,13 @@ if [ $stage -le 17 ]; then
   # the first splicing is moved before the lda layer, so no splicing here
   relu-renorm-layer name=tdnn1 dim=512
   relu-renorm-layer name=tdnn2 dim=512 input=Append(-1,0,1)
-  fast-lstmp-layer name=lstm1 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 decay-time=20 delay=-3
+  fast-lstmp-layer name=lstm1 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 delay=-3 $lstmp_opts
   relu-renorm-layer name=tdnn3 dim=512 input=Append(-3,0,3)
   relu-renorm-layer name=tdnn4 dim=512 input=Append(-3,0,3)
-  fast-lstmp-layer name=lstm2 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 decay-time=20 delay=-3
+  fast-lstmp-layer name=lstm2 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 delay=-3 $lstmp_opts
   relu-renorm-layer name=tdnn5 dim=512 input=Append(-3,0,3)
   relu-renorm-layer name=tdnn6 dim=512 input=Append(-3,0,3)
-  fast-lstmp-layer name=lstm3 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 decay-time=20 delay=-3
+  fast-lstmp-layer name=lstm3 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 delay=-3 $lstmp_opts
 
   ## adding the layers for chain branch
   output-layer name=output input=lstm3 output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
@@ -218,6 +240,7 @@ if [ $stage -le 18 ]; then
     --cmd "$decode_cmd" \
     --feat.online-ivector-dir $train_ivector_dir \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
+    --trainer.dropout-schedule='0,0@0.20,0.7@0.5,0@0.75,0' \
     --chain.xent-regularize 0.1 \
     --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize 0.00005 \
@@ -245,7 +268,9 @@ if [ $stage -le 18 ]; then
     --feat-dir $train_data_dir \
     --tree-dir $tree_dir \
     --lat-dir $lat_dir \
-    --dir $dir
+    --dir $dir \
+    --cleanup=false
+ # --cleanup=false is temporary while debugging.
 fi
 
 

@@ -842,6 +842,6 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
                            "dim-offset=0 dim={1}".format(name, cell_dim))
             configs.append("dim-range-node name={0}.r_trunc input-node={0}.cr_trunc "
                            "dim-offset={1} dim={2}".format(name, cell_dim, rec_proj_dim))
-                configs.append("### End LSTM Layer '{0}'".format(name))
+        configs.append("### End LSTM Layer '{0}'".format(name))
 
         return configs

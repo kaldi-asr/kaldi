@@ -1,5 +1,13 @@
 #!/bin/bash
 
+
+# 1l is as 1k, but having the dropout end at the end of training, not @0.75.
+
+# see run_tdnn_lstm_1k.sh for results.
+
+
+# 1k is as 1e, but introducing a dropout schedule.
+
 # 1e is as 1b, but reducing decay-time from 40 to 20.
 
 # 1d is as 1b, but adding decay-time=40 to the fast-lstmp-layers.  note: it
@@ -72,8 +80,8 @@ frames_per_chunk_primary=140
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tdnn_lstm_affix=1e  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
-common_egs_dir=    # you can set this to use previously dumped egs.
+tdnn_lstm_affix=1l  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
+common_egs_dir=exp/chain_cleaned/tdnn_lstm1b_sp_bi/egs  # you can set this to use previously dumped egs.
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -168,6 +176,10 @@ if [ $stage -le 17 ]; then
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
 
+  # note: the value of the dropout-proportion is not important, as it's
+  # controlled by the dropout schedule; what's important is that we set it.
+  lstmp_opts="decay-time=20 dropout-proportion=0.0 dropout-per-frame=true"
+
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=100 name=ivector
@@ -181,13 +193,13 @@ if [ $stage -le 17 ]; then
   # the first splicing is moved before the lda layer, so no splicing here
   relu-renorm-layer name=tdnn1 dim=512
   relu-renorm-layer name=tdnn2 dim=512 input=Append(-1,0,1)
-  fast-lstmp-layer name=lstm1 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 decay-time=20 delay=-3
+  fast-lstmp-layer name=lstm1 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 delay=-3 $lstmp_opts
   relu-renorm-layer name=tdnn3 dim=512 input=Append(-3,0,3)
   relu-renorm-layer name=tdnn4 dim=512 input=Append(-3,0,3)
-  fast-lstmp-layer name=lstm2 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 decay-time=20 delay=-3
+  fast-lstmp-layer name=lstm2 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 delay=-3 $lstmp_opts
   relu-renorm-layer name=tdnn5 dim=512 input=Append(-3,0,3)
   relu-renorm-layer name=tdnn6 dim=512 input=Append(-3,0,3)
-  fast-lstmp-layer name=lstm3 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 decay-time=20 delay=-3
+  fast-lstmp-layer name=lstm3 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 delay=-3 $lstmp_opts
 
   ## adding the layers for chain branch
   output-layer name=output input=lstm3 output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
@@ -218,6 +230,8 @@ if [ $stage -le 18 ]; then
     --cmd "$decode_cmd" \
     --feat.online-ivector-dir $train_ivector_dir \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
+    --trainer.dropout-schedule='0,0@0.20,0.7@0.5,0' \
+    --trainer.optimization.combine-sum-to-one-penalty=0.001 \
     --chain.xent-regularize 0.1 \
     --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize 0.00005 \
@@ -245,7 +259,9 @@ if [ $stage -le 18 ]; then
     --feat-dir $train_data_dir \
     --tree-dir $tree_dir \
     --lat-dir $lat_dir \
-    --dir $dir
+    --dir $dir \
+    --cleanup=false
+ # --cleanup=false is temporary while debugging.
 fi
 
 

@@ -360,9 +360,10 @@ def train(args, run_opts, background_process_handler):
             dir=args.dir, num_iters=num_iters,
             models_to_combine=models_to_combine, egs_dir=egs_dir,
             left_context=left_context, right_context=right_context,
-            run_opts=run_opts,
+            minibatch_size_str=args.minibatch_size, run_opts=run_opts,
             background_process_handler=background_process_handler,
-            get_raw_nnet_from_am=False)
+            get_raw_nnet_from_am=False,
+            sum_to_one_penalty=args.combine_sum_to_one_penalty)
 
     if include_log_softmax and args.stage <= num_iters + 1:
         logger.info("Getting average posterior for purposes of "
