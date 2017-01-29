@@ -72,7 +72,7 @@ if [ $stage -le 0 ]; then
     $data/train_vocab.txt | sort > $data/oov_train.txt || exit 1;
   steps/dict/apply_g2p.sh --var-counts 4 $data/oov_train.txt \
     $g2p_mdl_dir exp/g2p/oov_lex_train || exit 1;
-  cat exp/g2p/oov_lex_train/lexicon.lex | cut -f1,3 | \
+  cat exp/g2p/oov_lex_train/lexicon.lex | awk '{if (NF>=3) print $0}' | cut -f1,3 | \
     tr -s '\t' ' ' | sort | uniq > $data/lexicon_oov_g2p.txt || exit 1;
 fi
 
