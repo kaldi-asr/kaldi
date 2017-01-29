@@ -230,7 +230,8 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         leaky_hmm_coefficient,
                         momentum, max_param_change, shuffle_buffer_size,
                         frame_subsampling_factor,
-                        run_opts, background_process_handler=None):
+                        run_opts, dropout_edit_string="",
+                        background_process_handler=None):
     """ Called from steps/nnet3/chain/train.py for one iteration for
     neural network training with LF-MMI objective
 
@@ -244,9 +245,10 @@ def train_one_iteration(dir, iter, srand, egs_dir,
     if os.path.exists('{0}/srand'.format(dir)):
         try:
             saved_srand = int(open('{0}/srand'.format(dir)).readline().strip())
-        except (IOError, ValueError) as e:
-            raise Exception("Exception while reading the random seed "
-                            "for training: {0}".format(e.str()))
+        except (IOError, ValueError):
+            logger.error("Exception while reading the random seed "
+                         "for training")
+            raise
         if srand != saved_srand:
             logger.warning("The random seed provided to this iteration "
                            "(srand={0}) is different from the one saved last "
@@ -309,6 +311,17 @@ def train_one_iteration(dir, iter, srand, egs_dir,
         cur_num_chunk_per_minibatch_str = common_train_lib.halve_minibatch_size_str(
             num_chunk_per_minibatch_str)
         cur_max_param_change = float(max_param_change) / math.sqrt(2)
+
+    raw_model_string = raw_model_string + dropout_edit_string
+
+    shrink_info_str = ''
+    if shrinkage_value != 1.0:
+        shrink_info_str = ' and shrink value is {0}'.format(shrinkage_value)
+
+    logger.info("On iteration {0}, learning rate is {1}"
+                "{shrink_info}.".format(
+                    iter, learning_rate,
+                    shrink_info=shrink_info_str))
 
     train_new_models(dir=dir, iter=iter, srand=srand, num_jobs=num_jobs,
                      num_archives_processed=num_archives_processed,
@@ -530,7 +543,7 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_st
 
     models_to_combine.add(num_iters)
 
-    for iter in models_to_combine:
+    for iter in sorted(models_to_combine):
         model_file = '{0}/{1}.mdl'.format(dir, iter)
         if os.path.exists(model_file):
             raw_model_strings.append(
