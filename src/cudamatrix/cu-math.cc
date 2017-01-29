@@ -316,11 +316,12 @@ static inline Real ScalarTanh(Real a) {
 template<typename Real>
 void CpuComputeLstmNonlinearity(const MatrixBase<Real> &input_mat,
                                 const MatrixBase<Real> &params_mat,
+                                const bool use_dropout,
                                 MatrixBase<Real> *output) {
   int32 num_rows = input_mat.NumRows();
-  int32 cell_dim = input_mat.NumCols() / 5;
+  int32 cell_dim = params_mat.NumCols();
   KALDI_ASSERT(output->NumRows() == num_rows);
-  KALDI_ASSERT(input_mat.NumCols() % 5 == 0);
+  KALDI_ASSERT(input_mat.NumCols() == 5 * cell_dim + (use_dropout ? 2 : 0));
   KALDI_ASSERT(params_mat.NumRows() == 3);
   KALDI_ASSERT(params_mat.NumCols() == cell_dim);
   KALDI_ASSERT(output->NumCols() == 2 * cell_dim);
@@ -330,6 +331,8 @@ void CpuComputeLstmNonlinearity(const MatrixBase<Real> &input_mat,
   int32 params_stride = params_mat.Stride();
   for (int32 r = 0; r < num_rows; r++) {
     const Real *input_row = input_mat.RowData(r);
+    const Real i_mask = input_row[5 * cell_dim];
+    const Real f_mask = input_row[5 * cell_dim + 1];
     Real *output_row = output_mat.RowData(r);
     for (int32 c = 0; c < cell_dim; c++) {
       Real i_part = input_row[c];
@@ -337,11 +340,16 @@ void CpuComputeLstmNonlinearity(const MatrixBase<Real> &input_mat,
       Real c_part = input_row[c + 2 * cell_dim];
       Real o_part = input_row[c + 3 * cell_dim];
       Real c_prev = input_row[c + 4 * cell_dim];
+
       Real w_ic = params_data[c];
       Real w_fc = params_data[c + params_stride];
       Real w_oc = params_data[c + params_stride * 2];
       Real i_t = ScalarSigmoid(i_part + w_ic * c_prev);
       Real f_t = ScalarSigmoid(f_part + w_fc * c_prev);
+      if (use_dropout) {
+        i_t *= i_mask;
+        f_t *= f_mask;
+      }
       Real c_t = f_t * c_prev + i_t * ScalarTanh(c_part);
       Real o_t = ScalarSigmoid(o_part + w_oc * c_t);
       Real m_t = o_t * ScalarTanh(c_t);
@@ -354,11 +362,12 @@ void CpuComputeLstmNonlinearity(const MatrixBase<Real> &input_mat,
 template<typename Real>
 void ComputeLstmNonlinearity(const CuMatrixBase<Real> &input,
                              const CuMatrixBase<Real> &params,
+                             const bool use_dropout,
                              CuMatrixBase<Real> *output) {
   int32 num_rows = input.NumRows();
-  int32 cell_dim = input.NumCols() / 5;
+  int32 cell_dim = params.NumCols();
   KALDI_ASSERT(output->NumRows() == num_rows);
-  KALDI_ASSERT(input.NumCols() % 5 == 0);
+  KALDI_ASSERT(input.NumCols() == 5 * cell_dim + (use_dropout ? 2 : 0));
   KALDI_ASSERT(params.NumRows() == 3);
   KALDI_ASSERT(params.NumCols() == cell_dim);
   KALDI_ASSERT(output->NumCols() == 2 * cell_dim);
@@ -374,32 +383,37 @@ void ComputeLstmNonlinearity(const CuMatrixBase<Real> &input,
 
     cuda_lstm_nonlinearity(dimGrid, dimBlock, input.Data(), input.Stride(),
                            params.Data(), params.Stride(), output->Stride(),
-                           cell_dim, num_rows, output->Data());
+                           cell_dim, num_rows, use_dropout, output->Data());
     CU_SAFE_CALL(cudaGetLastError());
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
   {
-    CpuComputeLstmNonlinearity(input.Mat(), params.Mat(), &output->Mat());
+    CpuComputeLstmNonlinearity(input.Mat(), params.Mat(), use_dropout,
+                               &output->Mat());
   }
 }
 
 template
 void CpuComputeLstmNonlinearity(const MatrixBase<float> &input_mat,
                                 const MatrixBase<float> &params_mat,
+                                const bool use_dropout,
                                 MatrixBase<float> *output);
 template
 void CpuComputeLstmNonlinearity(const MatrixBase<double> &input_mat,
                                 const MatrixBase<double> &params_mat,
+                                const bool use_dropout,
                                 MatrixBase<double> *output);
 template
 void ComputeLstmNonlinearity(const CuMatrixBase<float> &input,
                              const CuMatrixBase<float> &params,
+                             const bool use_dropout,
                              CuMatrixBase<float> *output);
 template
 void ComputeLstmNonlinearity(const CuMatrixBase<double> &input,
                              const CuMatrixBase<double> &params,
+                             const bool use_dropout,
                              CuMatrixBase<double> *output);
 
 template<typename Real>

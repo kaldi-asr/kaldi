@@ -5187,7 +5187,8 @@ void LstmNonlinearityComponent::Propagate(
     const ComponentPrecomputedIndexes *, // indexes
     const CuMatrixBase<BaseFloat> &in,
     CuMatrixBase<BaseFloat> *out) const {
-  cu::ComputeLstmNonlinearity(in, params_, out);
+  bool use_dropout = false;
+  cu::ComputeLstmNonlinearity(in, params_, use_dropout, out);
 }
 
 

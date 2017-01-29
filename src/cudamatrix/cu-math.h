@@ -80,7 +80,8 @@ void Group2norm(const CuMatrixBase<Real> &src,
 
 /**
  this is a special-purpose function used by class LstmNonlinearityComponent,
- to do its forward propagation.  It computes the core part of the LSTM nonlinearity.
+ to do its forward propagation.  It computes the core part of the LSTM
+ nonlinearity.
  Refer to class LstmNonlinearityComponent in ../nnet3/nnet-simple-component.h
  for more context.
 
@@ -88,11 +89,17 @@ void Group2norm(const CuMatrixBase<Real> &src,
                      a multiple of 5).  The column-space is interpreted as 5
                      consecutive blocks, each of dimension C, which we name:
                      (i_part, f_part, c_part, o_part, c_{t-1}).
- @param [in] params  A matrix, of dimension 3 by C, with rows containing the three
+                     if use_dropout, 2 additional columns will be appended,
+                     namely i_mask and f_mask, thus the #columns is 5C+2.
+ @param [in] params  A matrix, of dimension 3 by C, with rows containing the 3
                      diagonal parameter matrices used in LSTMs, namely
                      w_{ic}, w_{fc} and w_{oc}.
+ @param [in] use_dropout
+                     A bool, indicating whether dropout will be applied to i_t
+                     and f_t, with the optional masks at the last 2 columns of
+                     intput.
  @param [out] output A matrix, of dimension N by 2C.  The quantities c_t and m_t
-                     respectively are put there (in two blocks of column-dimension C),
+                     respectively are put there (in two blocks of column-dim C),
                      according to the following equations:
 
                      i_t = Sigmoid(i_part + w_{ic}*c_{t-1})
@@ -106,12 +113,14 @@ void Group2norm(const CuMatrixBase<Real> &src,
 template<typename Real>
 void ComputeLstmNonlinearity(const CuMatrixBase<Real> &input,
                              const CuMatrixBase<Real> &params,
+                             const bool use_dropout,
                              CuMatrixBase<Real> *output);
 // This is a version of ComputeLstmNonlinearity that only uses the CPU
 // even if a GPU is available. It's made available for testing purposes.
 template<typename Real>
 void CpuComputeLstmNonlinearity(const MatrixBase<Real> &input,
                                 const MatrixBase<Real> &params,
+                                const bool use_dropout,
                                 MatrixBase<Real> *output);
 
 
@@ -127,7 +136,6 @@ void CpuComputeLstmNonlinearity(const MatrixBase<Real> &input,
    Because the forward pass computes various intermediate values that are not
    output, this function actually has to do the same computations as the
    forward pass before it actually does the backprop.
-
 
  @param [in]  input  The same as in ComputeLstmNonlinearity().
                      A matrix, of dimension N by 5C (i.e. its num-cols must be
@@ -196,24 +204,6 @@ void CpuComputeLstmNonlinearity(const MatrixBase<Real> &input,
                      processed outside this function into self-repair stats for
                      diagnostics.
 */
-/// Normalize nonlinearity modifies the vector of activations
-/// by scaling it so that the root-mean-square equals 1.0.
-///
-/// The output y_i = scale * x_i,
-/// and we want to RMS value of the y_i to equal target_rms,
-/// so y^t y = D * target_rms^2 (if y is one row of the input).
-/// we need to have scale = 1.0 / sqrt(x^t x / (D * target_rms^2)).
-/// there is also flooring involved, to avoid division-by-zero
-/// problems.  It's important for the backprop, that the floor's
-/// square root is exactly representable as float.
-/// If add_log_stddev_ is true, log(max(epsi, sqrt(x^t x / D)))
-/// is an extra dimension of the output.
-template<typename Real>
-void NormalizePerRow(const CuMatrixBase<Real>& in, const Real target_rms,
-                     const bool add_log_stddev, CuMatrixBase<Real>* out);
-
-
-
 template<typename Real>
 void BackpropLstmNonlinearity(const CuMatrixBase<Real> &input,
                               const CuMatrixBase<Real> &params,
@@ -240,6 +230,22 @@ void CpuBackpropLstmNonlinearity(const MatrixBase<Real> &input,
                                  MatrixBase<double> *value_sum_out,
                                  MatrixBase<double> *deriv_sum_out,
                                  MatrixBase<Real> *self_repair_sum_out);
+
+/// Normalize nonlinearity modifies the vector of activations
+/// by scaling it so that the root-mean-square equals 1.0.
+///
+/// The output y_i = scale * x_i,
+/// and we want to RMS value of the y_i to equal target_rms,
+/// so y^t y = D * target_rms^2 (if y is one row of the input).
+/// we need to have scale = 1.0 / sqrt(x^t x / (D * target_rms^2)).
+/// there is also flooring involved, to avoid division-by-zero
+/// problems.  It's important for the backprop, that the floor's
+/// square root is exactly representable as float.
+/// If add_log_stddev_ is true, log(max(epsi, sqrt(x^t x / D)))
+/// is an extra dimension of the output.
+template<typename Real>
+void NormalizePerRow(const CuMatrixBase<Real>& in, const Real target_rms,
+                     const bool add_log_stddev, CuMatrixBase<Real>* out);
 
 } // namespace cu
 } // namespace kaldi

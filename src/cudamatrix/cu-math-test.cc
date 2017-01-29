@@ -144,7 +144,8 @@ static void UnitTestCuMathComputeLstmNonlinearity() {
   for (int i = 0; i < 3; i++) {
     int32 num_rows = 1 + Rand() % 100;
     int32 cell_dim = 1 + Rand() % 2000;
-    Matrix<Real> Hinput(num_rows, 5 * cell_dim);
+    bool use_dropout = i % 2 == 0;
+    Matrix<Real> Hinput(num_rows, 5 * cell_dim + (use_dropout ? 2 : 0));
     Matrix<Real> Hparams(3, cell_dim);
     Matrix<Real> Houtput(num_rows, 2 * cell_dim);
     Hinput.SetRandn();
@@ -154,8 +155,8 @@ static void UnitTestCuMathComputeLstmNonlinearity() {
     CuMatrix<Real> Dparams(Hparams);
     CuMatrix<Real> Doutput(Houtput);
 
-    cu::CpuComputeLstmNonlinearity(Hinput, Hparams, &Houtput);
-    cu::ComputeLstmNonlinearity(Dinput, Dparams, &Doutput);
+    cu::CpuComputeLstmNonlinearity(Hinput, Hparams, use_dropout, &Houtput);
+    cu::ComputeLstmNonlinearity(Dinput, Dparams, use_dropout, &Doutput);
 
     Matrix<Real> HDoutput(Doutput);
     AssertEqual(Houtput, HDoutput);
@@ -165,7 +166,8 @@ static void UnitTestCuMathComputeLstmNonlinearity() {
     BaseFloat time_in_secs = 0.025;
     int32 num_rows = i;
     int32 cell_dim = i;
-    CuMatrix<Real> input(num_rows, 5 * cell_dim);
+    bool use_dropout = false;
+    CuMatrix<Real> input(num_rows, 5 * cell_dim + (use_dropout ? 2 : 0));
     CuMatrix<Real> params(3, cell_dim);
     CuMatrix<Real> output(num_rows, 2 * cell_dim);
     input.SetRandn();
@@ -174,7 +176,7 @@ static void UnitTestCuMathComputeLstmNonlinearity() {
     Timer tim;
     int32 iter = 0;
     for (; tim.Elapsed() < time_in_secs; iter++)
-      cu::ComputeLstmNonlinearity(input, params, &output);
+      cu::ComputeLstmNonlinearity(input, params, use_dropout, &output);
 
     BaseFloat gflops = ((BaseFloat) i * i * iter) / (tim.Elapsed() * 1.0e+09);
     KALDI_LOG << "For ComputeLstmNonlinearity"
@@ -206,8 +208,8 @@ void UnitTestLstmNonlinearity() {
     else
       test_params = -1;
 
-
-    CuMatrix<BaseFloat> input(num_rows, cell_dim * 5),
+    bool use_dropout = false;
+    CuMatrix<BaseFloat> input(num_rows, cell_dim * 5 + (use_dropout ? 2 : 0)),
         params(3, cell_dim),
         output_deriv(num_rows, cell_dim * 2);
     input.SetRandn();
@@ -219,7 +221,7 @@ void UnitTestLstmNonlinearity() {
 
     CuMatrix<BaseFloat> output(num_rows, cell_dim * 2);
 
-    cu::ComputeLstmNonlinearity(input, params, &output);
+    cu::ComputeLstmNonlinearity(input, params, use_dropout, &output);
 
     BaseFloat baseline_objf = TraceMatMat(output, output_deriv, kTrans);
 
@@ -261,7 +263,6 @@ void UnitTestLstmNonlinearity() {
       }
 
 
-
       predicted_objf_change(i) = TraceMatMat(delta_input, input_deriv, kTrans) +
           TraceMatMat(delta_params, params_deriv, kTrans);
 
@@ -274,7 +275,7 @@ void UnitTestLstmNonlinearity() {
 
       CuMatrix<BaseFloat> perturbed_output(num_rows, 2 * cell_dim);
       cu::ComputeLstmNonlinearity(perturbed_input, perturbed_params,
-                                  &perturbed_output);
+                                  use_dropout, &perturbed_output);
       BaseFloat new_objf = TraceMatMat(perturbed_output, output_deriv, kTrans),
           objf_change = new_objf - baseline_objf;
       measured_objf_change(i) = objf_change;
