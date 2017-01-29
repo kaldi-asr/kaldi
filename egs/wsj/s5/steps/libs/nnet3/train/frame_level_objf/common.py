@@ -249,7 +249,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                                 "{dir}/{iter}.raw - |".format(
                                     lr=learning_rate, dir=dir, iter=iter))
 
-    raw_model_string = '{0} {1}'.format(raw_model_string, dropout_edit_string)
+    raw_model_string = raw_model_string + dropout_edit_string
 
     if do_average:
         cur_minibatch_size = minibatch_size
