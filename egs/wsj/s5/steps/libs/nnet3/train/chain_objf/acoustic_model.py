@@ -312,7 +312,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
             num_chunk_per_minibatch_str)
         cur_max_param_change = float(max_param_change) / math.sqrt(2)
 
-    raw_model_string = '{0} {1}'.format(raw_model_string, dropout_edit_string)
+    raw_model_string = raw_model_string + dropout_edit_string
 
     shrink_info_str = ''
     if shrinkage_value != 1.0:

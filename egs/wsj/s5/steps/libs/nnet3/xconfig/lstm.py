@@ -683,6 +683,7 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
                         'zeroing-interval' : 20,
                         'zeroing-threshold' : 15.0,
                         'dropout-proportion' : -1.0, # If -1.0, no dropout components will be added
+                        'dropout-place' : 1,   # controls where dropout goes.  1->on (c,r) in recurrence; 2->on (c,m) from LstmNonlinearity.
                         'dropout-per-frame' : False  # If false, regular dropout, not per frame.
                         }
 
@@ -715,6 +716,8 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
              self.config['dropout-proportion'] < 0.0) and
              self.config['dropout-proportion'] != -1.0 ):
             raise RuntimeError("dropout-proportion has invalid value {0}.".format(self.config['dropout-proportion']))
+        if (self.config['dropout-place'] < 1 or self.config['dropout-place'] > 2):
+            raise RuntimeError("dropout-place has invalid value {0}.".format(self.config['dropout-place']))
 
 
 
@@ -785,6 +788,7 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
 
         lstm_str = self.config['lstm-nonlinearity-options']
         dropout_proportion = self.config['dropout-proportion']
+        dropout_place = self.config['dropout-place']
         dropout_per_frame = 'true' if self.config['dropout-per-frame'] else 'false'
 
         configs = []
@@ -805,9 +809,10 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
         configs.append("component name={0}.cr_trunc type=BackpropTruncationComponent "
                        "dim={1} {2}".format(name, cell_dim + rec_proj_dim, bptrunc_str))
         if dropout_proportion != -1.0:
-            configs.append("component name={0}.cr_trunc.dropout type=DropoutComponent dim={1} "
+            dropout_dim = cell_dim + rec_proj_dim if dropout_place == 1 else 2 * cell_dim
+            configs.append("component name={0}.dropout type=DropoutComponent dim={1} "
                            "dropout-proportion={2} dropout-per-frame={3}"
-                           .format(name, cell_dim + rec_proj_dim, dropout_proportion, dropout_per_frame))
+                           .format(name, dropout_dim, dropout_proportion, dropout_per_frame))
         configs.append("# Component specific to 'projected' LSTM (LSTMP), contains both recurrent");
         configs.append("# and non-recurrent projections")
         configs.append("component name={0}.W_rp type=NaturalGradientAffineComponent input-dim={1} "
@@ -816,8 +821,13 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
         configs.append("###  Nodes for the components above.")
         configs.append("component-node name={0}.four_parts component={0}.W_all input=Append({1}, "
                        "IfDefined(Offset({0}.r_trunc, {2})))".format(name, input_descriptor, delay))
-        configs.append("component-node name={0}.lstm_nonlin component={0}.lstm_nonlin "
-                       "input=Append({0}.four_parts, IfDefined(Offset({0}.c_trunc, {1})))".format(name, delay))
+        if dropout_proportion != -1.0 and dropout_place == 2:
+            configs.append("component-node name={0}.lstm_nonlin_predrop component={0}.lstm_nonlin "
+                           "input=Append({0}.four_parts, IfDefined(Offset({0}.c_trunc, {1})))".format(name, delay))
+            configs.append("component-node name={0}.lstm_nonlin component={0}.dropout input={0}.lstm_nonlin_predrop".format(name))
+        else:
+            configs.append("component-node name={0}.lstm_nonlin component={0}.lstm_nonlin "
+                           "input=Append({0}.four_parts, IfDefined(Offset({0}.c_trunc, {1})))".format(name, delay))
         configs.append("dim-range-node name={0}.c input-node={0}.lstm_nonlin "
                        "dim-offset=0 dim={1}".format(name, cell_dim))
         configs.append("dim-range-node name={0}.m input-node={0}.lstm_nonlin "
@@ -831,8 +841,8 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
         configs.append("# makes the deriv truncation more accurate .")
         configs.append("component-node name={0}.cr_trunc component={0}.cr_trunc "
                        "input=Append({0}.c, {0}.r)".format(name))
-        if dropout_proportion != -1.0:
-            configs.append("component-node name={0}.cr_trunc.dropout component={0}.cr_trunc.dropout input={0}.cr_trunc".format(name))
+        if dropout_proportion != -1.0 and dropout_place == 1:
+            configs.append("component-node name={0}.cr_trunc.dropout component={0}.dropout input={0}.cr_trunc".format(name))
             configs.append("dim-range-node name={0}.c_trunc input-node={0}.cr_trunc.dropout "
                            "dim-offset=0 dim={1}".format(name, cell_dim))
             configs.append("dim-range-node name={0}.r_trunc input-node={0}.cr_trunc.dropout "
