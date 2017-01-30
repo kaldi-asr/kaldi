@@ -1,18 +1,15 @@
 #!/bin/bash
 # _7m is as _7l but it uses random CMN offsets generated using between-speaker covariance
 # to perturb data during training.
-# 7l is based on 7h, but adding a 64 dim lowrank module in the xent branch
-#System                   tdnn_7h    tdnn_7l
-#WER on train_dev(tg)     13.84      13.83
-#WER on train_dev(fg)     12.84      12.88
-#WER on eval2000(tg)      16.5       16.4
-#WER on eval2000(fg)      14.8       14.7
-#Final train prob         -0.089     -0.090
-#Final valid prob         -0.113     -0.116
-#Final train prob (xent)  -1.25      -1.38
-#Final valid prob (xent)  -1.36      -1.48
-#Time consuming one iter  53.56s     48.18s
-#Time reduction percent   10.1%
+#System                   tdnn_7l tdnn_7m                                       
+#WER on train_dev(tg)       14.11   14.17                                       
+#WER on train_dev(fg)       12.98   13.04                                       
+#WER on eval2000(tg)        16.8    16.6                                        
+#WER on eval2000(fg)        15.1    14.9                                        
+#Final train prob          -0.908  0.089                                        
+#Final valid prob          -0.109   -0.116                                       
+#Final train prob (xent)      -1.47 -1.48                                       
+#Final valid prob (xent)     -1.506 -1.509 
 set -e
 # configs for random offset
 use_random_offsets=true
