@@ -45,7 +45,10 @@ if grep --quiet "'" $srcdir/feats.scp; then
   exit 1;
 fi
 
-awk -v shift=$frame_shift 'NF == 2 {uttid=$1; feat=$2; qt="";} NF > 2 {idx=index($0, " "); uttid=$1; feat=substr($0, idx + 1); qt="\x27";} NF {print uttid " shift-feats --print-args=false --shift=" shift, qt feat qt " - |";}' $destdir/feats.scp >$destdir/feats_shifted.scp
+awk -v shift=$frame_shift 'NF == 2 {uttid=$1; feat=$2; qt="";} \
+NF > 2 {idx=index($0, " "); uttid=$1; feat=substr($0, idx + 1); qt="\x27";} \
+NF {print uttid " shift-feats --print-args=false --shift=" shift, qt feat qt " - |";}' \
+  $destdir/feats.scp >$destdir/feats_shifted.scp
 mv -f $destdir/feats_shifted.scp $destdir/feats.scp
 
 echo "$0: Done"
