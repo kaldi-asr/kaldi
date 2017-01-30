@@ -15,7 +15,6 @@ if [ "$1" == "--looped" ]; then
   shift
 fi
 
-
 used_epochs=false
 
 # this function set_names is used to separate the epoch-related parts of the name
