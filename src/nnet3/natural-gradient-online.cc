@@ -142,6 +142,8 @@ void OnlineNaturalGradient::Init(const CuMatrixBase<BaseFloat> &R0) {
   else
     num_init_iters = 3;
 
+  this_copy.frozen_ = false;   // un-freeze if it was frozen, so we can
+                               // initialize.
   for (int32 i = 0; i < num_init_iters; i++) {
     BaseFloat scale;
     R0_copy.CopyFromMat(R0);
