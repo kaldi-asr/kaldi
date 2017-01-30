@@ -998,7 +998,7 @@ template<typename Real> void CudaMatrixSpeedTest() {
     TestCuMatrixAddMatBlocks<Real>(sizes[s], 3, 3);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixMatMat<Real>(sizes[s]);
-  for (int32 s = 0; s < ns; s++)
+  for (int32 s = 0; s + 1 < ns; s++)
     TestCuMatrixMatMatBatched<Real>(sizes[s], 10);
   for (int32 s = 0; s < ns; s++) {
     TestCuMatrixAddDiagVecMat<Real>(sizes[s], kNoTrans);
@@ -1050,7 +1050,7 @@ template<typename Real> void CudaMatrixSpeedTest() {
     TestCuMatrixCopyUpperToLower<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixSetZeroAboveDiag<Real>(sizes[s]);
-  for (int32 s = 0; s < ns; s++)
+  for (int32 s = 0; s + 2 < ns; s++)
     TestCuMatrixLookup<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixCopyRows1<Real>(sizes[s]);

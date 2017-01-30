@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # note, TDNN is the same as what we used to call multisplice.
+# THIS SCRIPT IS DEPRECATED, see ../train_raw_dnn.py
 
 # Copyright 2012-2015  Johns Hopkins University (Author: Daniel Povey).
 #           2013  Xiaohui Zhang
@@ -75,6 +76,7 @@ if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
 if [ $# != 3 ]; then
+  echo "$0: THIS SCRIPT IS DEPRECATED, see ../train_raw_dnn.py"
   echo "Usage: $0 [opts] <data> <targets-scp> <exp-dir>"
   echo " e.g.: $0 data/train scp:snr_targets/targets.scp exp/nnet3_snr_predictor"
   echo ""
@@ -544,4 +546,3 @@ if $cleanup; then
     fi
   done
 fi
-

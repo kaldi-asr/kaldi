@@ -79,16 +79,22 @@
 %WER 40.7 | 14549 94520 | 63.6 21.4 15.0 4.3 40.7 66.2 | 0.617 | exp/sdm1/chain/tdnn_sp_bi_ihmali/decode_dev/ascore_8/dev_hires_o4.ctm.filt.sys
 %WER 45.1 | 13296 89971 | 59.1 23.4 17.6 4.2 45.1 69.5 | 0.591 | exp/sdm1/chain/tdnn_sp_bi_ihmali/decode_eval/ascore_8/eval_hires_o4.ctm.filt.sys
 
-# local/chain/multi_condition/run_tdnn.sh --mic sdm1 --use-ihm-ali true --train-set train_cleaned --gmm tri3_cleaned &
+# local/chain/multi_condition/run_tdnn.sh --mic sdm1 --use-ihm-ali true --train-set train_cleaned --gmm tri3_cleaned 
 # cleanup + chain TDNN model, SDM original + IHM reverberated data, alignments from ihm data.
-# *** best system ***
 # for d in exp/sdm1/chain_cleaned_rvb/tdnn_sp_rvb_bi_ihmali/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
 %WER 38.6 | 14760 94502 | 65.3 19.3 15.4 3.9 38.6 64.9 | 0.599 | exp/sdm1/chain_cleaned_rvb/tdnn_sp_rvb_bi_ihmali/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
 %WER 42.7 | 14070 89982 | 60.9 21.0 18.0 3.6 42.7 64.5 | 0.571 | exp/sdm1/chain_cleaned_rvb/tdnn_sp_rvb_bi_ihmali/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
 
 
 # local/chain/tuning/run_tdnn_lstm_1i.sh --mic sdm1 --use-ihm-ali true --train-set train_cleaned  --gmm tri3_cleaned
-# cleanup + chain TDNN model, SDM audio + alignments from ihm data.
-# *** best system ***
+# cleanup + chain TDNN+LSTM model, SDM audio + alignments from ihm data.
 %WER 37.6 | 15122 94495 | 66.1 18.7 15.1 3.7 37.6 63.2 | 0.646 | exp/sdm1/chain_cleaned/tdnn_lstm1i_sp_bi_ihmali_ld5/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys
 %WER 40.9 | 13807 89961 | 62.4 20.0 17.6 3.3 40.9 65.7 | 0.612 | exp/sdm1/chain_cleaned/tdnn_lstm1i_sp_bi_ihmali_ld5/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys
+
+
+# local/chain/multi_condition/tuning/run_tdnn_lstm_1a.sh --mic sdm1 --use-ihm-ali true --train-set train_cleaned --gmm tri3_cleaned 
+# cleanup + chain TDNN+LSTM model, SDM original + IHM reverberated data, alignments from ihm data.
+# *** best system ***
+%WER 34.0 | 14455 94497 | 69.8 17.7 12.5 3.8 34.0 63.9 | 0.675 | exp/sdm1/chain_cleaned_rvb/tdnn_lstm1i_sp_rvb_bi_ihmali/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys
+%WER 37.5 | 13261 89982 | 65.9 19.3 14.7 3.5 37.5 66.2 | 0.642 | exp/sdm1/chain_cleaned_rvb/tdnn_lstm1i_sp_rvb_bi_ihmali/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys
+

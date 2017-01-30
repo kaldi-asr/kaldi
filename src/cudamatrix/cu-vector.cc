@@ -255,6 +255,14 @@ void CuVectorBase<Real>::SetRandn() {
   tmp.RandGaussian(this);
 }
 
+template<typename Real>
+void CuVectorBase<Real>::SetRandUniform() {
+  if (dim_ == 0) return;
+  CuRand<Real> tmp;
+  tmp.RandUniform(this);
+}
+
+
 
 template<typename Real>
 Real CuVectorBase<Real>::Sum() const {

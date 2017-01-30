@@ -68,8 +68,11 @@ class CuRand {
 
   /// Fill with uniform [0..1] floats,
   void RandUniform(CuMatrixBase<Real> *tgt);
+  void RandUniform(CuMatrix<Real> *tgt);
+  void RandUniform(CuVectorBase<Real> *tgt);
   /// Fill with Normal random numbers,
   void RandGaussian(CuMatrixBase<Real> *tgt);
+  void RandGaussian(CuMatrix<Real> *tgt);
   void RandGaussian(CuVectorBase<Real> *tgt);
 
   /// align probabilities to discrete 0/1 states (use uniform sampling),

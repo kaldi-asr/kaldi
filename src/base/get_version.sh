@@ -39,15 +39,10 @@ cd "$(dirname ${BASH_SOURCE[0]})"
 # Read the partial version number specified in the first line of src/.version.
 version=$(head -1 ../.version)
 
-# Empty version number is not allowed.
-if [ -z "$version" ]; then
-  version="?"
-fi
-
 if [ -e ../.short_version ]; then
   echo "$0: File src/.short_version exists."
   echo "$0: Stopping the construction of full version number from git history."
-elif [[ $version != +([0-9]).+([0-9]) ]]; then
+elif ! [[ $version =~ ^[0-9][0-9]*.[0-9][0-9]*$ ]]; then
   echo "$0: The version number \"$version\" specified in src/.version is not" \
        "in MAJOR.MINOR format."
   echo "$0: Stopping the construction of full version number from git history."
@@ -76,8 +71,13 @@ else
   version="$version-${head_commit_short}"
 fi
 
+# Empty version number is not allowed.
+if [ -z "$version" ]; then
+  version="?"
+fi
+
 # Write version info to a temporary file.
-temp=$(mktemp)
+temp=$(mktemp /tmp/temp.XXXXXX)
 trap 'rm -f "$temp"' EXIT
 echo "// This file was automatically created by ./get_version.sh." > $temp
 echo "// It is only included by ./kaldi-error.cc." >> $temp

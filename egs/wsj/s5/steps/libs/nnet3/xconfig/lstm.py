@@ -247,7 +247,8 @@ class XconfigLstmpLayer(XconfigLayerBase):
                         'ng-affine-options' : ' max-change=0.75 ',
                         'self-repair-scale-nonlinearity' : 0.00001,
                         'zeroing-interval' : 20,
-                        'zeroing-threshold' : 15.0
+                        'zeroing-threshold' : 15.0,
+                        'dropout-proportion' : -1.0 # -1.0 stands for no dropout will be added
                        }
 
     def set_derived_configs(self):
@@ -278,6 +279,12 @@ class XconfigLstmpLayer(XconfigLayerBase):
                 raise RuntimeError("{0} has invalid value {2}."
                                    .format(self.layer_type, key,
                                            self.config[key]))
+
+        if ((self.config['dropout-proportion'] > 1.0 or
+             self.config['dropout-proportion'] < 0.0) and
+             self.config['dropout-proportion'] != -1.0 ):
+             raise RuntimeError("dropout-proportion has invalid value {0}."
+                                "".format(self.config['dropout-proportion']))
 
     def auxiliary_outputs(self):
         return ['c_t']
@@ -338,6 +345,8 @@ class XconfigLstmpLayer(XconfigLayerBase):
                                 abs(delay)))
         affine_str = self.config['ng-affine-options']
         pes_str = self.config['ng-per-element-scale-options']
+        lstm_dropout_value = self.config['dropout-proportion']
+        lstm_dropout_str = 'dropout-proportion='+str(self.config['dropout-proportion'])
 
         # Natural gradient per element scale parameters
         # TODO: decide if we want to keep exposing these options
@@ -417,13 +426,21 @@ class XconfigLstmpLayer(XconfigLayerBase):
 
         # add the recurrent connections
         configs.append("# projection matrices : Wrm and Wpm")
+        if lstm_dropout_value != -1.0:
+            configs.append("component name={0}.W_rp.m.dropout type=DropoutComponent dim={1} {2}".format(name, cell_dim, lstm_dropout_str))
         configs.append("component name={0}.W_rp.m type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, cell_dim, rec_proj_dim + nonrec_proj_dim, affine_str))
         configs.append("component name={0}.r type=BackpropTruncationComponent dim={1} {2}".format(name, rec_proj_dim, bptrunc_str))
 
         configs.append("# r_t and p_t : rp_t will be the output")
-        configs.append("component-node name={0}.rp_t component={0}.W_rp.m input={0}.m_t".format(name))
-        configs.append("dim-range-node name={0}.r_t_preclip input-node={0}.rp_t dim-offset=0 dim={1}".format(name, rec_proj_dim))
-        configs.append("component-node name={0}.r_t component={0}.r input={0}.r_t_preclip".format(name))
+        if lstm_dropout_value != -1.0:
+            configs.append("component-node name={0}.rp_t.dropout component={0}.W_rp.m.dropout input={0}.m_t".format(name))
+            configs.append("component-node name={0}.rp_t component={0}.W_rp.m input={0}.rp_t.dropout".format(name))
+            configs.append("dim-range-node name={0}.r_t_preclip input-node={0}.rp_t dim-offset=0 dim={1}".format(name, rec_proj_dim))
+            configs.append("component-node name={0}.r_t component={0}.r input={0}.r_t_preclip".format(name))
+        else:
+            configs.append("component-node name={0}.rp_t component={0}.W_rp.m input={0}.m_t".format(name))
+            configs.append("dim-range-node name={0}.r_t_preclip input-node={0}.rp_t dim-offset=0 dim={1}".format(name, rec_proj_dim))
+            configs.append("component-node name={0}.r_t component={0}.r input={0}.r_t_preclip".format(name))
 
         return configs
 
@@ -744,6 +761,7 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
                         'ng-affine-options' : ' max-change=1.5',
                         'zeroing-interval' : 20,
                         'zeroing-threshold' : 15.0
+
                         }
 
     def set_derived_configs(self):
