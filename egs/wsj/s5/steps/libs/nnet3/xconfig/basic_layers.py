@@ -441,6 +441,12 @@ class XconfigOutputLayer(XconfigLayerBase):
             -0.25 is referred to as presoftmax_prior_scale_power in scripts. In
             the scripts this would normally be set to
             config_dir/presoftmax_prior_scale.vec
+        output-delay=0    :  Can be used to shift the frames on the output, equivalent
+             to delaying labels by this many frames (positive value increases latency
+             in online decoding but may help if you're using unidirectional LSTMs.
+        ng-affine-options=''  :   Can be used supply non-default options to the affine
+             layer (intended for the natural gradient but can be an arbitrary string
+             to be added to the config line.  e.g. 'update-period=2'.).
     """
 
     def __init__(self, first_token, key_to_value, prev_names = None):
@@ -466,7 +472,8 @@ class XconfigOutputLayer(XconfigLayerBase):
                        'max-change' : 1.5,
                        'param-stddev' : 0.0,
                        'bias-stddev' : 0.0,
-                       'output-delay' : 0
+                       'output-delay' : 0,
+                       'ng-affine-options' : ''
                       }
 
     def check_configs(self):
@@ -529,6 +536,7 @@ class XconfigOutputLayer(XconfigLayerBase):
         bias_stddev = self.config['bias-stddev']
         output_delay = self.config['output-delay']
         max_change = self.config['max-change']
+        ng_affine_options = self.config['ng-affine-options']
 
         # note: ref.config is used only for getting the left-context and
         # right-context of the network;
@@ -541,9 +549,9 @@ class XconfigOutputLayer(XconfigLayerBase):
                     ' output-dim={2}'
                     ' param-stddev={3}'
                     ' bias-stddev={4}'
-                    ' max-change={5} '
+                    ' max-change={5} {6} '
                     ''.format(self.name, input_dim, output_dim,
-                        param_stddev, bias_stddev, max_change) +
+                              param_stddev, bias_stddev, max_change, ng_affine_options) +
                     ('learning-rate-factor={0} '.format(learning_rate_factor)
                      if learning_rate_factor != 1.0 else ''))
             ans.append((config_name, line))
@@ -690,7 +698,7 @@ class XconfigBasicLayer(XconfigLayerBase):
         self_repair_scale = self.config['self-repair-scale']
         target_rms = self.config['target-rms']
         max_change = self.config['max-change']
-        ng_opt_str = self.config['ng-affine-options']
+        ng_affine_options = self.config['ng-affine-options']
 
         configs = []
         # First the affine node.
@@ -701,7 +709,7 @@ class XconfigBasicLayer(XconfigLayerBase):
                 ' max-change={3}'
                 ' {4}'
                 ''.format(self.name, input_dim, output_dim,
-                    max_change, ng_opt_str))
+                    max_change, ng_affine_options))
         configs.append(line)
 
         line = ('component-node name={0}.affine'
