@@ -83,6 +83,7 @@ if [[ ! -f $lexicon || $lexicon -ot "$lexicon_file" ]]; then
     --verbose data/local/word_list.txt data/local/lexicon.txt
   local/prepare_unicode_lexicon.py --nonspeech data/local/nonspeech.txt \
     --extraspeech data/local/extraspeech.txt data/local/lexicon_table.txt data/local
+  cp data/local/lexicon.txt data/local/filtered_lexicon.txt
 fi
 
 mkdir -p data/lang
