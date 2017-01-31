@@ -1,48 +1,43 @@
 #!/bin/bash
 
-# run_tdnn_lstm_1c.sh is like run_tdnn_lstm_1b.sh but using the
-# new 'fast-lstm' layer.  Results are slightly improved, plus
-# it's faster.  See PR #1243 on github, and issue #1237.
-# This used to be called run_tdnn_fastlstm_1b.sh.
+# run_tdnn_lstm_1e.sh is like run_tdnn_lstm_1d.sh but
+# trying the change of xent_regularize from 0.025 (which was an
+# unusual value) to the more usual 0.01.
 
-#System               tdnn_lstm_1a_ld5 tdnn_lstm_1b_ld5 tdnn_lstm_1c_ld5
-#WER on train_dev(tg)      13.42           13.00             12.91
-#WER on train_dev(fg)      12.42           12.03             11.98
-#WER on eval2000(tg)        15.7           15.3              15.2
-#WER on eval2000(fg)        14.2           13.9              13.8
-#Final train prob     -0.0538088      -0.056294            -0.050
-#Final valid prob     -0.0800484      -0.0813322           -0.092
-#Final train prob (xent)   -0.7603    -0.777787            -0.756
-#Final valid prob (xent)   -0.949909  -0.939146            -0.983
+
 
 set -e
 
 # configs for 'chain'
-stage=12
+stage=0
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_lstm_1c # Note: _sp will get added to this if $speed_perturb == true.
-decode_iter=
-decode_dir_affix=
+dir=exp/chain/tdnn_lstm_1e # Note: _sp will get added to this if $speed_perturb == true.
+decode_iter=final
 
 # training options
-leftmost_questions_truncate=-1
-chunk_width=150
-chunk_left_context=40
-chunk_right_context=0
-xent_regularize=0.025
+xent_regularize=0.01
 self_repair_scale=0.00001
 label_delay=5
-# decode options
+
+chunk_left_context=40
+chunk_right_context=0
+# we'll put chunk-left-context-initial=0 and chunk-right-context-final=0
+# directly without variables.
+frames_per_chunk=140,100,160
+
+# (non-looped) decoding options
+frames_per_chunk_primary=$(echo $frames_per_chunk | cut -d, -f1)
 extra_left_context=50
 extra_right_context=0
-frames_per_chunk=
+# we'll put extra-left-context-initial=0 and extra-right-context-final=0
+# directly without variables.
+
 
 remove_egs=false
-common_egs_dir=
+common_egs_dir=exp/chain/tdnn_lstm_1d_sp/egs
 
-affix=
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -67,8 +62,6 @@ if [ "$speed_perturb" == "true" ]; then
   suffix=_sp
 fi
 
-dir=$dir${affix:+_$affix}
-if [ $label_delay -gt 0 ]; then dir=${dir}_ld$label_delay; fi
 dir=${dir}$suffix
 train_set=train_nodup$suffix
 ali_dir=exp/tri4_ali_nodup$suffix
@@ -109,7 +102,6 @@ fi
 if [ $stage -le 11 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
-      --leftmost-questions-truncate $leftmost_questions_truncate \
       --context-opts "--context-width=2 --central-position=1" \
       --cmd "$train_cmd" 7000 data/$train_set $lang $ali_dir $treedir
 fi
@@ -118,7 +110,10 @@ if [ $stage -le 12 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
+  [ -z $num_targets ] && { echo "$0: error getting num-targets"; exit 1; }
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+
+  lstm_opts="decay-time=20"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
@@ -136,13 +131,13 @@ if [ $stage -le 12 ]; then
   relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
 
   # check steps/libs/nnet3/xconfig/lstm.py for the other options and defaults
-  fast-lstmp-layer name=fastlstm1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
+  fast-lstmp-layer name=fastlstm1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
   relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
   relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
-  fast-lstmp-layer name=fastlstm2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
+  fast-lstmp-layer name=fastlstm2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
   relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
   relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
-  fast-lstmp-layer name=fastlstm3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
+  fast-lstmp-layer name=fastlstm3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
 
   ## adding the layers for chain branch
   output-layer name=output input=fastlstm3 output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
@@ -177,8 +172,8 @@ if [ $stage -le 13 ]; then
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
-    --trainer.num-chunk-per-minibatch 64 \
-    --trainer.frames-per-iter 1200000 \
+    --trainer.num-chunk-per-minibatch 64,32 \
+    --trainer.frames-per-iter 1500000 \
     --trainer.max-param-change 2.0 \
     --trainer.num-epochs 4 \
     --trainer.optimization.shrink-value 0.99 \
@@ -190,9 +185,11 @@ if [ $stage -le 13 ]; then
     --trainer.deriv-truncate-margin 8 \
     --egs.stage $get_egs_stage \
     --egs.opts "--frames-overlap-per-eg 0" \
-    --egs.chunk-width $chunk_width \
+    --egs.chunk-width $frames_per_chunk \
     --egs.chunk-left-context $chunk_left_context \
     --egs.chunk-right-context $chunk_right_context \
+    --egs.chunk-left-context-initial 0 \
+    --egs.chunk-right-context-final 0 \
     --egs.dir "$common_egs_dir" \
     --cleanup.remove-egs $remove_egs \
     --feat-dir data/${train_set}_hires \
@@ -208,33 +205,54 @@ if [ $stage -le 14 ]; then
   utils/mkgraph.sh --self-loop-scale 1.0 data/lang_sw1_tg $dir $dir/graph_sw1_tg
 fi
 
-decode_suff=sw1_tg
+
 graph_dir=$dir/graph_sw1_tg
 if [ $stage -le 15 ]; then
-  [ -z $extra_left_context ] && extra_left_context=$chunk_left_context;
-  [ -z $extra_right_context ] && extra_right_context=$chunk_right_context;
-  [ -z $frames_per_chunk ] && frames_per_chunk=$chunk_width;
-  iter_opts=
-  if [ ! -z $decode_iter ]; then
-    iter_opts=" --iter $decode_iter "
-  fi
   for decode_set in train_dev eval2000; do
       (
-       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-          --nj 50 --cmd "$decode_cmd" $iter_opts \
+        steps/nnet3/decode.sh --num-threads 4 \
+          --acwt 1.0 --post-decode-acwt 10.0 \
+          --nj 25 --cmd "$decode_cmd" --iter $decode_iter \
           --extra-left-context $extra_left_context  \
           --extra-right-context $extra_right_context  \
-          --frames-per-chunk "$frames_per_chunk" \
+          --extra-left-context-initial 0 \
+          --extra-right-context-final 0 \
+          --frames-per-chunk "$frames_per_chunk_primary" \
           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
          $graph_dir data/${decode_set}_hires \
-         $dir/decode_${decode_set}${decode_dir_affix:+_$decode_dir_affix}_${decode_suff} || exit 1;
+         $dir/decode_${decode_set}_sw1_tg || exit 1;
       if $has_fisher; then
           steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
             data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
-            $dir/decode_${decode_set}${decode_dir_affix:+_$decode_dir_affix}_sw1_{tg,fsh_fg} || exit 1;
+            $dir/decode_${decode_set}_sw1_{tg,fsh_fg} || exit 1;
       fi
       ) &
   done
 fi
 wait;
+
+if [ $stage -le 16 ]; then
+  # looped decoding.  Note: this does not make sense for BLSTMs or other
+  # backward-recurrent setups, and for TDNNs and other non-recurrent there is no
+  # point doing it because it would give identical results to regular decoding.
+  for decode_set in train_dev eval2000; do
+    (
+      steps/nnet3/decode_looped.sh \
+         --acwt 1.0 --post-decode-acwt 10.0 \
+         --nj 50 --cmd "$decode_cmd" --iter $decode_iter \
+         --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
+         $graph_dir data/${decode_set}_hires \
+         $dir/decode_${decode_set}_sw1_tg || exit 1;
+      if $has_fisher; then
+          steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+            data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
+            $dir/decode_${decode_set}_sw1_{tg,fsh_fg} || exit 1;
+      fi
+      ) &
+  done
+fi
+wait;
+
+
+
 exit 0;

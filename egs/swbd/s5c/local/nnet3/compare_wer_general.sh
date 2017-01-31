@@ -86,7 +86,7 @@ echo -n "# Final train prob     "
 for x in $*; do
   set_names $x
   prob=$(grep log-likelihood $dirname/log/compute_prob_train.combined.log | awk '{print $8}')
-  printf "% 10s" $prob
+  printf "% 10.3f" $prob
 done
 echo
 
@@ -94,6 +94,6 @@ echo -n "# Final valid prob     "
 for x in $*; do
   set_names $x
   prob=$(grep log-likelihood $dirname/log/compute_prob_valid.combined.log | awk '{print $8}')
-  printf "% 10s" $prob
+  printf "% 10.3f" $prob
 done
 echo
