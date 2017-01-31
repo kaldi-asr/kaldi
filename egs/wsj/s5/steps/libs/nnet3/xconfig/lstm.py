@@ -809,9 +809,9 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
         configs.append("component name={0}.cr_trunc type=BackpropTruncationComponent "
                        "dim={1} {2}".format(name, cell_dim + rec_proj_dim, bptrunc_str))
         if dropout_proportion != -1.0:
-            configs.append("component name={0}.dropout_mask type=DropoutMaskComponent output-dim=2 "
-                           "dropout-proportion={1} exclusive={2}"
-                           .format(name, dropout_proportion, dropout_exclusive))
+            configs.append("component name={0}.dropout_mask type=DropoutMaskComponent output-dim=3 "
+                           "dropout-proportion={1} "
+                           .format(name, dropout_proportion))
         configs.append("# Component specific to 'projected' LSTM (LSTMP), contains both recurrent");
         configs.append("# and non-recurrent projections")
         configs.append("component name={0}.W_rp type=NaturalGradientAffineComponent input-dim={1} "

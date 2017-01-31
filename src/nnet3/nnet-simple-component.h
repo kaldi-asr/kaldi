@@ -1698,10 +1698,10 @@ class ConvolutionComponent: public UpdatableComponent {
 //    m_t = o_t * Tanh(c_t)                    (5)
 //   # note: the outputs are just c_t and m_t.
 //
-// [Note regarding dropout: optionally the input-dimension may be 5C + 2 instead
+// [Note regarding dropout: optionally the input-dimension may be 5C + 3 instead
 // of 5C in this case, the last two input dimensions will be interpreted as
-// per-frame dropout masks on i_t and f_t respectively, so that in (3), i_t is
-// replaced by i_t * i_t_scale, and likewise for f_t.
+// per-frame dropout masks on i_t, f_t and o_t respectively, so that in (3), i_t is
+// replaced by i_t * i_t_scale, and likewise for f_t and o_t.
 //
 //
 // The backprop is as you would think, but for the "self-repair" we need to pass

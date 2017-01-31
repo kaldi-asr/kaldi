@@ -2723,8 +2723,8 @@ static void _diff_log_softmax(const MatrixDim in_deriv_dim,
                      which we name:
                      (i_part, f_part, c_part, o_part, c_{t-1}).
                      If 'have_dropout_mask' is nonzero, each row of
-                     'in' will have two extra elements, interpreted
-                     as dropout masks/scales for i_t and f_t.
+                     'in' will have 3 extra elements, interpreted
+                     as dropout masks/scales for i_t, f_t and o_t.
  @param [in] params  A matrix, of dimension 3 by cell_dim,
                      with rows containing the 3 diagonal parameter matrices
                      used in LSTMs, namely
@@ -2764,7 +2764,8 @@ static void _lstm_nonlinearity(const Real* in, const int in_stride,
   Real* c_t = out + i * out_stride;
   Real* m_t = out + i * out_stride + cell_dim;
   Real i_scale = (have_dropout_mask ? in[i * in_stride + cell_dim * 5] : 1),
-       f_scale = (have_dropout_mask ? in[i * in_stride + cell_dim * 5 + 1] : 1);
+       f_scale = (have_dropout_mask ? in[i * in_stride + cell_dim * 5 + 1] : 1),
+       o_scale = (have_dropout_mask ? in[i * in_stride + cell_dim * 5 + 2] : 1);
 
   for (int j = tid; j < cell_dim; j += CU1DBLOCK) {
     Real c_tm1_j = c_tm1[j];
@@ -2773,7 +2774,7 @@ static void _lstm_nonlinearity(const Real* in, const int in_stride,
     Real c_t_j = f_t_j * f_scale * c_tm1_j + i_t_j * i_scale * tanh(c_part[j]);
     Real o_t_j = Real(1) / (Real(1) + exp(-o_part[j] - w_oc[j] * c_t_j));
     c_t[j] = c_t_j;
-    m_t[j] = o_t_j * tanh(c_t_j);
+    m_t[j] = o_t_j * o_scale * tanh(c_t_j);
   }
 }
 
@@ -2799,8 +2800,8 @@ static void _lstm_nonlinearity(const Real* in, const int in_stride,
                      consecutive blocks, each of dimension C, which we name:
                      (i_part, f_part, c_part, o_part, c_{t-1}).
                      If 'have_dropout_mask' is nonzero, each row of
-                     'in' will have two extra elements, interpreted
-                     as dropout masks/scales for i_t and f_t.
+                     'in' will have 3 extra elements, interpreted
+                     as dropout masks/scales for i_t, f_t and o_t.
  @param [in] params  The same as in ComputeLstmNonlinearity().
                      A matrix, of dimension 3 by C, with rows containing the
                      three diagonal parameter matrices used in LSTMs, namely
@@ -2940,7 +2941,11 @@ static void _diff_lstm_nonlinearity(const int cell_dim, const int have_dropout_m
       const Real i_scale = (have_dropout_mask ?
                             input[i * input_stride + cell_dim * 5] : 1),
                  f_scale = (have_dropout_mask ?
-                            input[i * input_stride + cell_dim * 5 + 1] :1);
+                            input[i * input_stride + cell_dim * 5 + 1] :1),
+                 o_scale = (have_dropout_mask ?
+                            input[i * input_stride + cell_dim * 5 + 2] :1);
+
+
       const Real i_t = Real(1) / (1 + exp(-i_part - w_ic * c_prev));
       const Real f_t = Real(1) / (1 + exp(-f_part - w_fc * c_prev));
       const Real tanh_c_part = tanh(c_part);
@@ -2971,8 +2976,8 @@ static void _diff_lstm_nonlinearity(const int cell_dim, const int have_dropout_m
       const Real dc_t_out = output_deriv[i * output_deriv_stride + j];
       const Real dm_t = output_deriv[i * output_deriv_stride + j + cell_dim];
 
-      const Real dtanh_c_t = o_t * dm_t;
-      const Real do_t = tanh_c_t * dm_t;
+      const Real dtanh_c_t = o_t * o_scale * dm_t;
+      const Real do_t = o_scale * tanh_c_t * dm_t;
       const Real do_t_input = (o_t_deriv * do_t
           - (2 * o_t - 1) * o_t_self_repair);
 

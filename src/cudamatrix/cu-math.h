@@ -88,9 +88,9 @@ void Group2norm(const CuMatrixBase<Real> &src,
                      a multiple of 5).  The column-space is interpreted as 5
                      consecutive blocks, each of dimension C, which we name:
                      (i_part, f_part, c_part, o_part, c_{t-1}).
-                     This function will also accept input of dimension N by 5C+2,
-                     and the two final elements will be used as scaling factors
-                     on i_t and f_t (useful as per-frame dropout masks).
+                     This function will also accept input of dimension N by 5C + 3,
+                     and the three final elements will be used as scaling factors
+                     on i_t, f_t and o_t (useful as per-frame dropout masks).
  @param [in] params  A matrix, of dimension 3 by C, with rows containing the three
                      diagonal parameter matrices used in LSTMs, namely
                      w_{ic}, w_{fc} and w_{oc}.
@@ -136,9 +136,9 @@ void CpuComputeLstmNonlinearity(const MatrixBase<Real> &input,
                      a multiple of 5).  The column-space is interpreted as 5
                      consecutive blocks, each of dimension C, which we name:
                      (i_part, f_part, c_part, o_part, c_{t-1}).
-                     This function will also accept input of dimension N by 5C+2,
-                     and the two final elements will be interpreted as scaling factors
-                     on i_t and f_t (useful as per-frame dropout masks).
+                     This function will also accept input of dimension N by 5C + 3,
+                     and the three final elements will be interpreted as scaling factors
+                     on i_t, f_t and o_t (useful as per-frame dropout masks).
  @param [in] params  The same as in ComputeLstmNonlinearity().
                      A matrix, of dimension 3 by C, with rows containing the three
                      diagonal parameter matrices used in LSTMs, namely
@@ -173,7 +173,7 @@ void CpuComputeLstmNonlinearity(const MatrixBase<Real> &input,
                      have the same dimension as 'input'.  In addition to the
                      regular backpropagated derivative, the output will include
                      small values relating to 'self-repair'.  If the input
-                     is of column-dimension  5C + 2 (i.e. we are using dropout
+                     is of column-dimension  5C + 3 (i.e. we are using dropout
                      masks), the derivatives w.r.t. the dropout masks will not
                      be set; they will retain their value prior to this
                      function call.

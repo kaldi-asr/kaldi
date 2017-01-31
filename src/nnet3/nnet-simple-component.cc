@@ -5004,7 +5004,7 @@ void CompositeComponent::SetComponent(int32 i, Component *component) {
 
 int32 LstmNonlinearityComponent::InputDim() const {
   int32 cell_dim = value_sum_.NumCols();
-  return cell_dim * 5 + (use_dropout_ ? 2 : 0);
+  return cell_dim * 5 + (use_dropout_ ? 3 : 0);
 }
 
 int32 LstmNonlinearityComponent::OutputDim() const {
@@ -5081,8 +5081,12 @@ void LstmNonlinearityComponent::Write(std::ostream &os, bool binary) const {
       self_repair_prob.Scale(1.0 / (count_ * cell_dim));
     self_repair_prob.Write(os, binary);
   }
-  WriteToken(os, binary, "<UseDropout>");
-  WriteBasicType(os, binary, use_dropout_);
+  if (use_dropout_) {
+    // only write this if true; we have back-compat code in reading anyway.
+    // this makes the models without dropout easier to read with older code.
+    WriteToken(os, binary, "<UseDropout>");
+    WriteBasicType(os, binary, use_dropout_);
+  }
   WriteToken(os, binary, "<Count>");
   WriteBasicType(os, binary, count_);
   WriteToken(os, binary, "</LstmNonlinearityComponent>");

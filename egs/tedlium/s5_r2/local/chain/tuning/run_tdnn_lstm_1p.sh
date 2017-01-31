@@ -4,6 +4,25 @@
 # did it in the non-fast LSTMs, with separate per-frame masks on
 # the i and f component.  Using dropout schedule that maxes out at
 # 0.3, which he found worked best for that type of dropout.
+
+# [See about 20 lines below for the original comparison with the baseline,
+#  done when "p" was dropping out 2 gates [the i and f gates].
+#  The comparison directly below is between the version that dropped out
+#  2 gates (p) with the one that dropped out 3 gates (p2).  No consistent
+#  difference there.]
+# local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn_lstm1{p,p2}_sp_bi
+#_sp_bi
+# local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn_lstm1p_sp_bi exp/chain_cleaned/tdnn_lstm1p2_sp_bi
+# System                tdnn_lstm1p_sp_bi tdnn_lstm1p2_sp_bi
+# WER on dev(orig)            8.9       8.7
+# WER on dev(rescored)        8.4       8.2
+# WER on test(orig)           8.7       8.8
+# WER on test(rescored)       8.1       8.3
+# Final train prob        -0.0712   -0.0717
+# Final valid prob        -0.0848   -0.0834
+# Final train prob (xent)   -0.8903   -0.9147
+# Final valid prob (xent)   -0.9719   -0.9977
+
 #
 #
 # local/chain/compare_wer_general.sh --looped exp/chain_cleaned/tdnn_lstm1{e,k,p,q}_sp_bi
@@ -95,7 +114,7 @@ frames_per_chunk_primary=140
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tdnn_lstm_affix=1p  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
+tdnn_lstm_affix=1p2  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
 common_egs_dir=exp/chain_cleaned/tdnn_lstm1b_sp_bi/egs  # you can set this to use previously dumped egs.
 
 # End configuration section.
