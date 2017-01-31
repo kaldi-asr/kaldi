@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# 1g is like 1e, but reducing decay-time from 20 to 15, to see if
+# it reduces the difference between regular and looped decoding.
+#
 # run_tdnn_lstm_1e.sh is like run_tdnn_lstm_1d.sh but
 # trying the change of xent_regularize from 0.025 (which was an
 # unusual value) to the more usual 0.01.
@@ -13,7 +16,7 @@ stage=0
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_lstm_1e # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_lstm_1g # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=final
 
 # training options
@@ -113,7 +116,7 @@ if [ $stage -le 12 ]; then
   [ -z $num_targets ] && { echo "$0: error getting num-targets"; exit 1; }
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
 
-  lstm_opts="decay-time=20"
+  lstm_opts="decay-time=15"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
