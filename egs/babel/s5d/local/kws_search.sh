@@ -105,7 +105,7 @@ fi
 
 frame_subsampling_factor=1
 if [ -f $decodedir/../frame_subsampling_factor ] ; then
-  frame_subsampling_factor=$($decodedir/../frame_subsampling_factor)
+  frame_subsampling_factor=$(cat $decodedir/../frame_subsampling_factor)
   echo "Frame subsampling factor autodetected: $frame_subsampling_factor"
 fi
 
@@ -121,7 +121,7 @@ if [ $stage -le 0 ] ; then
         steps/make_index.sh $silence_opt --cmd "$cmd" --acwt $acwt $model_flags\
           --skip-optimization $skip_optimization --max-states $max_states \
           --word-ins-penalty $word_ins_penalty --max-silence-frames $max_silence_frames\
-          --frame-subsampling-factor ${frame_subsampling_factor}
+          --frame-subsampling-factor ${frame_subsampling_factor} \
           $kwsdatadir $langdir $decodedir $indices  || exit 1
     done
     touch $indices_dir/.done.index
