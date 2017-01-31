@@ -1,5 +1,24 @@
 #!/bin/bash
 
+# 1r is as 1e, but changing update-period of natural gradient from 4 to 1,
+# Not helpful.
+
+# local/chain/compare_wer_general.sh --looped exp/chain_cleaned/tdnn_lstm1{e,r}_sp_bi
+# local/chain/compare_wer_general.sh --looped exp/chain_cleaned/tdnn_lstm1e_sp_bi exp/chain_cleaned/tdnn_lstm1r_sp_bi
+# System                tdnn_lstm1e_sp_bi tdnn_lstm1r_sp_bi
+# WER on dev(orig)            9.0       9.0
+#         [looped:]           9.0       9.1
+# WER on dev(rescored)        8.4       8.5
+#         [looped:]           8.4       8.6
+# WER on test(orig)           8.8       9.1
+#         [looped:]           8.8       9.0
+# WER on test(rescored)       8.4       8.4
+#         [looped:]           8.3       8.5
+# Final train prob        -0.0648   -0.0642
+# Final valid prob        -0.0827   -0.0838
+# Final train prob (xent)   -0.8372   -0.8319
+# Final valid prob (xent)   -0.9497   -0.9635
+
 # 1e is as 1b, but reducing decay-time from 40 to 20.
 
 # 1d is as 1b, but adding decay-time=40 to the fast-lstmp-layers.  note: it
@@ -73,8 +92,8 @@ extra_right_context_final=0
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tdnn_lstm_affix=1e  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
-common_egs_dir=    # you can set this to use previously dumped egs.
+tdnn_lstm_affix=1r  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
+common_egs_dir=exp/chain_cleaned/tdnn_lstm1b_sp_bi/egs  # you can set this to use previously dumped egs.
 remove_egs=true
 
 # End configuration section.
@@ -170,6 +189,10 @@ if [ $stage -le 17 ]; then
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
 
+  tdnn_opts='ng-affine-options="update-period=1"'
+  lstmp_opts='ng-affine-options="update-period=1" decay-time=20'
+  output_opts='max-change=1.5 ng-affine-options="update-period=1"'
+
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=100 name=ivector
@@ -181,18 +204,18 @@ if [ $stage -le 17 ]; then
   fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-renorm-layer name=tdnn1 dim=512
-  relu-renorm-layer name=tdnn2 dim=512 input=Append(-1,0,1)
-  fast-lstmp-layer name=lstm1 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 decay-time=20 delay=-3
-  relu-renorm-layer name=tdnn3 dim=512 input=Append(-3,0,3)
-  relu-renorm-layer name=tdnn4 dim=512 input=Append(-3,0,3)
-  fast-lstmp-layer name=lstm2 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 decay-time=20 delay=-3
-  relu-renorm-layer name=tdnn5 dim=512 input=Append(-3,0,3)
-  relu-renorm-layer name=tdnn6 dim=512 input=Append(-3,0,3)
-  fast-lstmp-layer name=lstm3 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 decay-time=20 delay=-3
+  relu-renorm-layer name=tdnn1 dim=512 $tdnn_opts
+  relu-renorm-layer name=tdnn2 dim=512 input=Append(-1,0,1) $tdnn_opts
+  fast-lstmp-layer name=lstm1 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 delay=-3 $lstmp_opts
+  relu-renorm-layer name=tdnn3 dim=512 input=Append(-3,0,3) $tdnn_opts
+  relu-renorm-layer name=tdnn4 dim=512 input=Append(-3,0,3) $tdnn_opts
+  fast-lstmp-layer name=lstm2 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 delay=-3 $lstmp_opts
+  relu-renorm-layer name=tdnn5 dim=512 input=Append(-3,0,3) $tdnn_opts
+  relu-renorm-layer name=tdnn6 dim=512 input=Append(-3,0,3) $tdnn_opts
+  fast-lstmp-layer name=lstm3 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 delay=-3 $lstmp_opts
 
   ## adding the layers for chain branch
-  output-layer name=output input=lstm3 output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
+  output-layer name=output input=lstm3 output-delay=$label_delay include-log-softmax=false dim=$num_targets $output_opts
 
   # adding the layers for xent branch
   # This block prints the configs for a separate output that will be
@@ -203,7 +226,7 @@ if [ $stage -le 17 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  output-layer name=output-xent input=lstm3 output-delay=$label_delay dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+  output-layer name=output-xent input=lstm3 output-delay=$label_delay dim=$num_targets learning-rate-factor=$learning_rate_factor $output_opts
 
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
