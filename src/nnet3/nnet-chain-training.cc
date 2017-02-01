@@ -75,6 +75,7 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
   if (nnet_config.alpha > 0.0 && num_minibatches_processed_ > 0) {
     // adversarial training is incompatible with momentum > 0
     KALDI_ASSERT(nnet_config.momentum == 0.0);
+    // creates a new NnetComputer object
     NnetComputer computer_adv(nnet_config.compute_config, *computation,
                               *nnet_, delta_nnet_);
     // give the inputs to the computer object.
