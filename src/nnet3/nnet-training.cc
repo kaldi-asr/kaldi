@@ -64,18 +64,34 @@ void NnetTrainer::Train(const NnetExample &eg) {
 
   NnetComputer computer(config_.compute_config, *computation,
                         *nnet_, delta_nnet_);
+  // no adversarial training on the first minibatch to avoid some stats to be
+  // negative due to the scaling with the negative learning rate
+  if (config_.alpha > 0.0 && num_minibatches_processed_ > 0) {
+    // adversarial training is incompatible with momentum > 0
+    KALDI_ASSERT(config_.momentum == 0.0);
+    // give the inputs to the computer object.
+    computer.AcceptInputs(*nnet_, eg.io);
+    computer.Run();
+
+    this->ProcessOutputs(true, eg, &computer);
+    computer.Run();
+    UpdateParamsWithMaxChange(true);
+  }
+
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, eg.io);
   computer.Run();
 
-  this->ProcessOutputs(eg, &computer);
+  this->ProcessOutputs(false, eg, &computer);
   computer.Run();
 
-  UpdateParamsWithMaxChange();
+  UpdateParamsWithMaxChange(false);
 }
 
-void NnetTrainer::ProcessOutputs(const NnetExample &eg,
+void NnetTrainer::ProcessOutputs(bool is_adversarial_step,
+                                 const NnetExample &eg,
                                  NnetComputer *computer) {
+  const std::string suffix = (is_adversarial_step ? "_adv" : "");
   std::vector<NnetIo>::const_iterator iter = eg.io.begin(),
       end = eg.io.end();
   for (; iter != end; ++iter) {
@@ -89,14 +105,17 @@ void NnetTrainer::ProcessOutputs(const NnetExample &eg,
       ComputeObjectiveFunction(io.features, obj_type, io.name,
                                supply_deriv, computer,
                                &tot_weight, &tot_objf);
-      objf_info_[io.name].UpdateStats(io.name, config_.print_interval,
-                                      num_minibatches_processed_++,
+      objf_info_[io.name + suffix].UpdateStats(io.name + suffix,
+                                      config_.print_interval,
+                                      (is_adversarial_step ?
+                                      num_minibatches_processed_ :
+                                      num_minibatches_processed_++),
                                       tot_weight, tot_objf);
     }
   }
 }
 
-void NnetTrainer::UpdateParamsWithMaxChange() {
+void NnetTrainer::UpdateParamsWithMaxChange(bool is_adversarial_step) {
   KALDI_ASSERT(delta_nnet_ != NULL);
   // computes scaling factors for per-component max-change
   const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
@@ -174,9 +193,18 @@ void NnetTrainer::UpdateParamsWithMaxChange() {
   }
   // applies both of the max-change scalings all at once, component by component
   // and updates parameters
-  scale_factors.Scale(scale);
-  AddNnetComponents(*delta_nnet_, scale_factors, scale, nnet_);
-  ScaleNnet(config_.momentum, delta_nnet_);
+  if (config_.alpha > 0.0) {
+    KALDI_ASSERT(config_.momentum == 0.0);
+    BaseFloat scale_alpha =
+        (is_adversarial_step ? -config_.alpha : (1 + config_.alpha));
+    scale_factors.Scale(scale * scale_alpha);
+    AddNnetComponents(*delta_nnet_, scale_factors, scale * scale_alpha, nnet_);
+    ScaleNnet(0.0, delta_nnet_);
+  } else {
+    scale_factors.Scale(scale);
+    AddNnetComponents(*delta_nnet_, scale_factors, scale, nnet_);
+    ScaleNnet(config_.momentum, delta_nnet_);
+  }
 }
 
 bool NnetTrainer::PrintTotalStats() const {

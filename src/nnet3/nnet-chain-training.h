@@ -70,13 +70,17 @@ class NnetChainTrainer {
 
   ~NnetChainTrainer();
  private:
-  void ProcessOutputs(const NnetChainExample &eg,
+  void ProcessOutputs(bool is_adversarial_step, const NnetChainExample &eg,
                       NnetComputer *computer);
 
   // Applies per-component max-change and global max-change to all updatable
   // components in *delta_nnet_, and use *delta_nnet_ to update parameters
-  // in *nnet_.
-  void UpdateParamsWithMaxChange();
+  // in *nnet_. If is_adversairal_step && opts_.alpha > 0, the update is
+  // an adversairal_step where the params are scaled by -opts_.alpha;
+  // if !is_adversairal_step && opts_.alpha > 0 the update is a normal step
+  // where the params are scaled by 1+opts_.alpha; otherwise
+  // !is_adversairal_step && opts_.alpha == 0, and it is a normal step
+  void UpdateParamsWithMaxChange(bool is_adversairal_step = false);
 
   const NnetChainTrainingOptions opts_;
 
