@@ -4,8 +4,6 @@
 
 # Begin configuration section.
 # End configuration section
-set -e -o pipefail
-set -o nounset                              # Treat unset variables as an error
 
 #echo >&2 "$0 $@"  # Print the command line for logging
 if [ $# != 2 ] ; then
@@ -25,18 +23,18 @@ if [ ! -z "$id_a" ] && [ ! -z "${id_b}" ] ; then
   if [ "${id_a}" == "${id_b}" ]; then
     exit 0
   else
-    echo >&2 "IVector id in ${id_a} and the iVector id in ${id_a} do not match"
-    echo >&2 "that means that the systems are not compatible."
+    echo >&2 "$0: ERROR: iVector id in ${id_a} and the iVector id in ${id_a} do not match"
+    echo >&2 "$0: ERROR: that means that the systems are not compatible."
     exit 1
   fi
 elif [ -z "$id_a" ] && [ -z "${id_b}" ] ; then
-    echo >&2 "WARNING: The directories do not contain iVector ID."
-    echo >&2 "WARNING: That means it's you who's reponsible for keeping "
-    echo >&2 "WARNING: the directories compatible"
+    echo >&2 "$0: WARNING: The directories do not contain iVector ID."
+    echo >&2 "$0: WARNING: That means it's you who's reponsible for keeping "
+    echo >&2 "$0: WARNING: the directories compatible"
     exit 0
 else
-    echo >&2 "WARNING: One of the directories do not contain iVector ID."
-    echo >&2 "WARNING: That means it's you who's reponsible for keeping "
-    echo >&2 "WARNING: the directories compatible"
+    echo >&2 "$0: WARNING: One of the directories do not contain iVector ID."
+    echo >&2 "$0: WARNING: That means it's you who's reponsible for keeping "
+    echo >&2 "$0: WARNING: the directories compatible"
     exit 0
 fi

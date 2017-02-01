@@ -128,7 +128,7 @@ if [ $stage -le 1 ]; then
   for j in $(seq $nj); do cat $dir/ivector_online.$j.scp; done >$dir/ivector_online.scp || exit 1;
 fi
 
-steps/online/nnet2/get_ivector_id.sh $srcdir > $dir/final.ie.id || exit 1
+steps/nnet2/get_ivector_id.sh $srcdir > $dir/final.ie.id || exit 1
 
 echo "$0: done extracting (online) iVectors to $dir using the extractor in $srcdir."
 

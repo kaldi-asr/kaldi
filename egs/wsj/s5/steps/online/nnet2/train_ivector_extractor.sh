@@ -187,5 +187,5 @@ ln -s $x.ie $dir/final.ie
 
 # assign a unique id to this extractor
 # we are not interested in the id itself, just pre-caching ...
-steps/online/nnet2/get_ivector_id.sh $dir > /dev/null || exit 1
+steps/nnet2/get_ivector_id.sh $dir > /dev/null || exit 1
 
