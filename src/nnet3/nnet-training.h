@@ -36,6 +36,7 @@ struct NnetTrainerOptions {
   int32 print_interval;
   bool debug_computation;
   BaseFloat momentum;
+  BaseFloat alpha;
   std::string read_cache;
   std::string write_cache;
   bool binary_write_cache;
@@ -49,6 +50,7 @@ struct NnetTrainerOptions {
       print_interval(100),
       debug_computation(false),
       momentum(0.0),
+      alpha(0.0),
       binary_write_cache(true),
       max_param_change(2.0) { }
   void Register(OptionsItf *opts) {
@@ -70,6 +72,8 @@ struct NnetTrainerOptions {
                    "so that the 'effective' learning rate is the same as "
                    "before (because momentum would normally increase the "
                    "effective learning rate by 1/(1-momentum))");
+    opts->Register("alpha", &alpha, "adversarial traning factor. "
+                   "if 0 then in the normal training mode.");
     opts->Register("read-cache", &read_cache, "the location where we can read "
                    "the cached computation from");
     opts->Register("write-cache", &write_cache, "the location where we want to "
@@ -158,13 +162,17 @@ class NnetTrainer {
 
   ~NnetTrainer();
  private:
-  void ProcessOutputs(const NnetExample &eg,
+  void ProcessOutputs(bool is_adversarial_step, const NnetExample &eg,
                       NnetComputer *computer);
 
   // Applies per-component max-change and global max-change to all updatable
   // components in *delta_nnet_, and use *delta_nnet_ to update parameters
-  // in *nnet_.
-  void UpdateParamsWithMaxChange();
+  // in *nnet_. If is_adversairal_step && config_.alpha > 0, the update is
+  // an adversairal_step where the params are scaled by -config_.alpha;
+  // if !is_adversairal_step && config_.alpha > 0 the update is a normal step
+  // where the params are scaled by 1+opts_.alpha; otherwise
+  // !is_adversairal_step && config_.alpha == 0, and it is a normal step
+  void UpdateParamsWithMaxChange(bool is_adversairal_step = false);
 
   const NnetTrainerOptions config_;
   Nnet *nnet_;

@@ -70,21 +70,37 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
 
   NnetComputer computer(nnet_config.compute_config, *computation,
                         *nnet_, delta_nnet_);
+  // no adversarial training on the first minibatch to avoid some stats to be
+  // negative due to the scaling with the negative learning rate
+  if (nnet_config.alpha > 0.0 && num_minibatches_processed_ > 0) {
+    // adversarial training is incompatible with momentum > 0
+    KALDI_ASSERT(nnet_config.momentum == 0.0);
+    // give the inputs to the computer object.
+    computer.AcceptInputs(*nnet_, chain_eg.inputs);
+    computer.Run();
+
+    this->ProcessOutputs(true, chain_eg, &computer);
+    computer.Run();
+    UpdateParamsWithMaxChange(true);
+  }
+
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, chain_eg.inputs);
   computer.Run();
 
-  this->ProcessOutputs(chain_eg, &computer);
+  this->ProcessOutputs(false, chain_eg, &computer);
   computer.Run();
 
-  UpdateParamsWithMaxChange();
+  UpdateParamsWithMaxChange(false);
 }
 
 
-void NnetChainTrainer::ProcessOutputs(const NnetChainExample &eg,
+void NnetChainTrainer::ProcessOutputs(bool is_adversarial_step,
+                                      const NnetChainExample &eg,
                                       NnetComputer *computer) {
   // normally the eg will have just one output named 'output', but
   // we don't assume this.
+  const std::string suffix = (is_adversarial_step ? "_adv" : "");
   std::vector<NnetChainSupervision>::const_iterator iter = eg.outputs.begin(),
       end = eg.outputs.end();
   for (; iter != end; ++iter) {
@@ -121,7 +137,8 @@ void NnetChainTrainer::ProcessOutputs(const NnetChainExample &eg,
       // at this point, xent_deriv is posteriors derived from the numerator
       // computation.  note, xent_objf has a factor of '.supervision.weight'
       BaseFloat xent_objf = TraceMatMat(xent_output, xent_deriv, kTrans);
-      objf_info_[xent_name].UpdateStats(xent_name, opts_.nnet_config.print_interval,
+      objf_info_[xent_name + suffix].UpdateStats(xent_name + suffix,
+                                        opts_.nnet_config.print_interval,
                                         num_minibatches_processed_,
                                         tot_weight, xent_objf);
     }
@@ -135,8 +152,11 @@ void NnetChainTrainer::ProcessOutputs(const NnetChainExample &eg,
 
     computer->AcceptInput(sup.name, &nnet_output_deriv);
 
-    objf_info_[sup.name].UpdateStats(sup.name, opts_.nnet_config.print_interval,
-                                     num_minibatches_processed_++,
+    objf_info_[sup.name + suffix].UpdateStats(sup.name + suffix,
+                                     opts_.nnet_config.print_interval,
+                                     (is_adversarial_step ?
+                                     num_minibatches_processed_ :
+                                     num_minibatches_processed_++),
                                      tot_weight, tot_objf, tot_l2_term);
 
     if (use_xent) {
@@ -146,7 +166,7 @@ void NnetChainTrainer::ProcessOutputs(const NnetChainExample &eg,
   }
 }
 
-void NnetChainTrainer::UpdateParamsWithMaxChange() {
+void NnetChainTrainer::UpdateParamsWithMaxChange(bool is_adversarial_step) {
   KALDI_ASSERT(delta_nnet_ != NULL);
   const NnetTrainerOptions &nnet_config = opts_.nnet_config;
   // computes scaling factors for per-component max-change
@@ -180,7 +200,7 @@ void NnetChainTrainer::UpdateParamsWithMaxChange() {
       } else {
         scale_factors(i) = 1.0;
       }
-      if  (i == 0 || scale_factors(i) < min_scale) {
+      if (i == 0 || scale_factors(i) < min_scale) {
         min_scale =  scale_factors(i);
         component_name_with_min_scale = delta_nnet_->GetComponentName(c);
         max_change_with_min_scale = max_param_change_per_comp;
@@ -225,9 +245,18 @@ void NnetChainTrainer::UpdateParamsWithMaxChange() {
   }
   // applies both of the max-change scalings all at once, component by component
   // and updates parameters
-  scale_factors.Scale(scale);
-  AddNnetComponents(*delta_nnet_, scale_factors, scale, nnet_);
-  ScaleNnet(nnet_config.momentum, delta_nnet_);
+  if (nnet_config.alpha > 0.0) {
+    KALDI_ASSERT(nnet_config.momentum == 0.0);
+    BaseFloat scale_alpha =
+        (is_adversarial_step ? -nnet_config.alpha : (1 + nnet_config.alpha));
+    scale_factors.Scale(scale * scale_alpha);
+    AddNnetComponents(*delta_nnet_, scale_factors, scale, nnet_);
+    ScaleNnet(0.0, delta_nnet_);
+  } else {
+    scale_factors.Scale(scale);
+    AddNnetComponents(*delta_nnet_, scale_factors, scale, nnet_);
+    ScaleNnet(nnet_config.momentum, delta_nnet_);
+  }
 }
 
 bool NnetChainTrainer::PrintTotalStats() const {
