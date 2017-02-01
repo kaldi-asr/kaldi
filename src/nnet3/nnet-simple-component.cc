@@ -87,27 +87,34 @@ void PnormComponent::Write(std::ostream &os, bool binary) const {
 }
 
 
-void DropoutComponent::Init(int32 dim, BaseFloat dropout_proportion) {
+void DropoutComponent::Init(int32 dim, BaseFloat dropout_proportion,
+                            bool dropout_per_frame) {
   dropout_proportion_ = dropout_proportion;
+  dropout_per_frame_ = dropout_per_frame;
   dim_ = dim;
 }
 
 void DropoutComponent::InitFromConfig(ConfigLine *cfl) {
   int32 dim = 0;
   BaseFloat dropout_proportion = 0.0;
+  bool dropout_per_frame = false;
   bool ok = cfl->GetValue("dim", &dim) &&
     cfl->GetValue("dropout-proportion", &dropout_proportion);
+  cfl->GetValue("dropout-per-frame", &dropout_per_frame);
+    // for this stage, dropout is hard coded in
+    // normal mode if not declared in config
   if (!ok || cfl->HasUnusedValues() || dim <= 0 ||
       dropout_proportion < 0.0 || dropout_proportion > 1.0)
-    KALDI_ERR << "Invalid initializer for layer of type "
-              << Type() << ": \"" << cfl->WholeLine() << "\"";
-  Init(dim, dropout_proportion);
+       KALDI_ERR << "Invalid initializer for layer of type "
+                 << Type() << ": \"" << cfl->WholeLine() << "\"";
+  Init(dim, dropout_proportion, dropout_per_frame);
 }
 
 std::string DropoutComponent::Info() const {
   std::ostringstream stream;
   stream << Type() << ", dim=" << dim_
-         << ", dropout-proportion=" << dropout_proportion_;
+         << ", dropout-proportion=" << dropout_proportion_
+         << ", dropout-per-frame=" << (dropout_per_frame_ ? "true" : "false");
   return stream.str();
 }
 
@@ -119,16 +126,29 @@ void DropoutComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
 
   BaseFloat dropout = dropout_proportion_;
   KALDI_ASSERT(dropout >= 0.0 && dropout <= 1.0);
+  if (!dropout_per_frame_) {
+    // This const_cast is only safe assuming you don't attempt
+    // to use multi-threaded code with the GPU.
+    const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(out);
 
-  // This const_cast is only safe assuming you don't attempt
-  // to use multi-threaded code with the GPU.
-  const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(out);
+    out->Add(-dropout);  // now, a proportion "dropout" will be <0.0
+    // apply the function (x>0?1:0).  Now, a proportion
+    // "dropout" will be zero and (1 - dropout) will be 1.0.
+    out->ApplyHeaviside();
 
-  out->Add(-dropout); // now, a proportion "dropout" will be <0.0
-  out->ApplyHeaviside(); // apply the function (x>0?1:0).  Now, a proportion "dropout" will
-                         // be zero and (1 - dropout) will be 1.0.
-
-  out->MulElements(in);
+    out->MulElements(in);
+  } else {
+    // randomize the dropout matrix by row,
+    // i.e. [[1,1,1,1],[0,0,0,0],[0,0,0,0],[1,1,1,1],[0,0,0,0]]
+    CuMatrix<BaseFloat> tmp(1, out->NumRows(), kUndefined);
+    // This const_cast is only safe assuming you don't attempt
+    // to use multi-threaded code with the GPU.
+    const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(&tmp);
+    tmp.Add(-dropout);
+    tmp.ApplyHeaviside();
+    out->CopyColsFromVec(tmp.Row(0));
+    out->MulElements(in);
+  }
 }
 
 
@@ -150,11 +170,25 @@ void DropoutComponent::Backprop(const std::string &debug_info,
 
 
 void DropoutComponent::Read(std::istream &is, bool binary) {
-  ExpectOneOrTwoTokens(is, binary, "<DropoutComponent>", "<Dim>");
-  ReadBasicType(is, binary, &dim_);
-  ExpectToken(is, binary, "<DropoutProportion>");
-  ReadBasicType(is, binary, &dropout_proportion_);
-  ExpectToken(is, binary, "</DropoutComponent>");
+  std::string token;
+  ReadToken(is, binary, &token);
+  if (token == "<DropoutComponent>") {
+    ReadToken(is, binary, &token);
+  }
+  KALDI_ASSERT(token == "<Dim>");
+  ReadBasicType(is, binary, &dim_);  // read dimension.
+  ReadToken(is, binary, &token);
+  KALDI_ASSERT(token == "<DropoutProportion>");
+  ReadBasicType(is, binary, &dropout_proportion_);  // read dropout rate
+  ReadToken(is, binary, &token);
+  if (token == "<DropoutPerFrame>") {
+    ReadBasicType(is, binary, &dropout_per_frame_);  // read dropout mode
+    ReadToken(is, binary, &token);
+    KALDI_ASSERT(token == "</DropoutComponent>");
+  } else {
+    dropout_per_frame_ = false;
+    KALDI_ASSERT(token == "</DropoutComponent>");
+  }
 }
 
 void DropoutComponent::Write(std::ostream &os, bool binary) const {
@@ -163,6 +197,8 @@ void DropoutComponent::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, dim_);
   WriteToken(os, binary, "<DropoutProportion>");
   WriteBasicType(os, binary, dropout_proportion_);
+  WriteToken(os, binary, "<DropoutPerFrame>");
+  WriteBasicType(os, binary, dropout_per_frame_);
   WriteToken(os, binary, "</DropoutComponent>");
 }
 
@@ -1514,7 +1550,7 @@ void RepeatedAffineComponent::InitFromConfig(ConfigLine *cfl) {
        num_repeats, param_stddev, bias_mean, bias_stddev);
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
-	          << cfl->UnusedValues();
+              << cfl->UnusedValues();
   if (!ok)
     KALDI_ERR << "Bad initializer " << cfl->WholeLine();
 }
@@ -2342,12 +2378,13 @@ std::string ConstantFunctionComponent::Info() const {
 }
 
 ConstantFunctionComponent::ConstantFunctionComponent():
-    input_dim_(-1), is_updatable_(true), use_natural_gradient_(true) { }
+    UpdatableComponent(), input_dim_(-1), is_updatable_(true),
+    use_natural_gradient_(true) { }
 
 ConstantFunctionComponent::ConstantFunctionComponent(
     const ConstantFunctionComponent &other):
-    input_dim_(other.input_dim_), output_(other.output_),
-    is_updatable_(other.is_updatable_),
+    UpdatableComponent(other), input_dim_(other.input_dim_),
+    output_(other.output_), is_updatable_(other.is_updatable_),
     use_natural_gradient_(other.use_natural_gradient_),
     preconditioner_(other.preconditioner_) { }
 
@@ -3615,7 +3652,7 @@ void ConvolutionComponent::InitFromConfig(ConfigLine *cfl) {
   }
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
-	      << cfl->UnusedValues();
+              << cfl->UnusedValues();
   if (!ok)
     KALDI_ERR << "Bad initializer " << cfl->WholeLine();
 }
@@ -3704,8 +3741,7 @@ void ConvolutionComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                               kUndefined);
   InputToInputPatches(in, &patches);
   CuSubMatrix<BaseFloat>* filter_params_elem = new CuSubMatrix<BaseFloat>(
-		  filter_params_, 0, filter_params_.NumRows(), 0,
-		  filter_params_.NumCols());
+      filter_params_, 0, filter_params_.NumRows(), 0, filter_params_.NumCols());
   std::vector<CuSubMatrix<BaseFloat>* > tgt_batch, patch_batch,
       filter_params_batch;
 
@@ -3859,10 +3895,9 @@ void ConvolutionComponent::Backprop(const std::string &debug_info,
                                        kSetZero);
 
   std::vector<CuSubMatrix<BaseFloat>* > patch_deriv_batch, out_deriv_batch,
-	  filter_params_batch;
+      filter_params_batch;
   CuSubMatrix<BaseFloat>* filter_params_elem = new CuSubMatrix<BaseFloat>(
-		  filter_params_, 0, filter_params_.NumRows(), 0,
-		  filter_params_.NumCols());
+      filter_params_, 0, filter_params_.NumRows(), 0, filter_params_.NumCols());
 
   for (int32 x_step = 0; x_step < num_x_steps; x_step++)  {
     for (int32 y_step = 0; y_step < num_y_steps; y_step++)  {
@@ -3939,9 +3974,8 @@ void ConvolutionComponent::Update(const std::string &debug_info,
     for (int32 y_step = 0; y_step < num_y_steps; y_step++)  {
       int32 patch_number = x_step * num_y_steps + y_step;
       filters_grad_batch.push_back(new CuSubMatrix<BaseFloat>(
-              filters_grad_blocks_batch.RowRange(
-				      patch_number * filters_grad.NumRows(),
-				    filters_grad.NumRows())));
+          filters_grad_blocks_batch.RowRange(
+              patch_number * filters_grad.NumRows(), filters_grad.NumRows())));
 
       input_patch_batch.push_back(new CuSubMatrix<BaseFloat>(
               input_patches.ColRange(patch_number * filter_dim, filter_dim)));
@@ -4413,7 +4447,7 @@ void PermuteComponent::InitFromConfig(ConfigLine *cfl) {
               << column_map_str;
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
-	      << cfl->UnusedValues();
+              << cfl->UnusedValues();
   if (!ok)
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << cfl->WholeLine() << "\"";
@@ -5110,6 +5144,13 @@ Component* LstmNonlinearityComponent::Copy() const {
   return new LstmNonlinearityComponent(*this);
 }
 
+void LstmNonlinearityComponent::ZeroStats() {
+  value_sum_.SetZero();
+  deriv_sum_.SetZero();
+  self_repair_total_.SetZero();
+  count_ = 0.0;
+}
+
 void LstmNonlinearityComponent::Scale(BaseFloat scale) {
   params_.Scale(scale);
   value_sum_.Scale(scale);
@@ -5311,7 +5352,7 @@ void LstmNonlinearityComponent::InitFromConfig(ConfigLine *cfl) {
 
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
-	      << cfl->UnusedValues();
+              << cfl->UnusedValues();
   if (!ok)
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << cfl->WholeLine() << "\"";

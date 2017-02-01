@@ -14,6 +14,18 @@ import libs.common as common_lib
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
+class KaldiLogParseException(Exception):
+    """ An Exception class that throws an error when there is an issue in
+    parsing the log files. Extend this class if more granularity is needed.
+    """
+    def __init__(self, message = None):
+        if message is not None and message.strip() == "":
+            message = None
+
+        Exception.__init__(self,
+                           "There was an error while trying to parse the logs."
+                           " Details : \n{0}\n".format(message))
+
 
 def parse_progress_logs_for_nonlinearity_stats(exp_dir):
     """ Parse progress logs for mean and std stats for non-linearities.
@@ -279,7 +291,7 @@ def parse_prob_logs(exp_dir, key='accuracy', output="output"):
 
     parse_regex = re.compile(
         ".*compute_prob_.*\.([0-9]+).log:LOG "
-        ".nnet3.*compute-prob:PrintTotalStats..:"
+        ".nnet3.*compute-prob.*:PrintTotalStats..:"
         "nnet.*diagnostics.cc:[0-9]+. Overall ([a-zA-Z\-]+) for "
         "'{output}'.*is ([0-9.\-e]+) .*per frame".format(output=output))
 
@@ -292,19 +304,33 @@ def parse_prob_logs(exp_dir, key='accuracy', output="output"):
             groups = mat_obj.groups()
             if groups[1] == key:
                 train_loss[int(groups[0])] = groups[2]
+    if not train_loss:
+        raise KaldiLogParseException("Could not find any lines with {k} in "
+                " {l}".format(k=key, l=train_prob_files))
+
     for line in valid_prob_strings.split('\n'):
         mat_obj = parse_regex.search(line)
         if mat_obj is not None:
             groups = mat_obj.groups()
             if groups[1] == key:
                 valid_loss[int(groups[0])] = groups[2]
+
+    if not valid_loss:
+        raise KaldiLogParseException("Could not find any lines with {k} in "
+                " {l}".format(k=key, l=valid_prob_files))
+
     iters = list(set(valid_loss.keys()).intersection(train_loss.keys()))
+    if not iters:
+        raise KaldiLogParseException("Could not any common iterations with"
+                " key {k} in both {tl} and {vl}".format(
+                    k=key, tl=train_prob_files, vl=valid_prob_files))
     iters.sort()
     return map(lambda x: (int(x), float(train_loss[x]),
                           float(valid_loss[x])), iters)
 
 
-def generate_accuracy_report(exp_dir, key="accuracy", output="output"):
+
+def generate_acc_logprob_report(exp_dir, key="accuracy", output="output"):
     times = parse_train_logs(exp_dir)
     data = parse_prob_logs(exp_dir, key, output)
     report = []
@@ -315,6 +341,11 @@ def generate_accuracy_report(exp_dir, key="accuracy", output="output"):
                                                   x[1], x[2], x[2]-x[1]))
         except KeyError:
             continue
+    if len(report) - 1 == 0:
+        raise KaldiLogParseException("Could not find any lines with {k} in "
+                " {e}/log/compute_prob_train.*.log or "
+                " {e}/log/compute_prob_valid.*.log or both".format(
+                    k=key, e=exp_dir))
 
     total_time = 0
     for iter in times.keys():

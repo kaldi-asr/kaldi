@@ -119,7 +119,7 @@ if [ $stage -le -2 ]; then
      $dir/final.ubm $dir/0.ie || exit 1;
 fi 
 
-# Do Gaussian selection and posterior extracion
+# Do Gaussian selection and posterior extraction
 
 if [ $stage -le -1 ]; then
   echo $nj_full > $dir/num_jobs

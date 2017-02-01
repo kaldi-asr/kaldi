@@ -34,6 +34,7 @@ NnetCombiner::NnetCombiner(const NnetCombineConfig &config,
     nnet_params_(std::min(num_nnets, config_.max_effective_inputs),
                  NumParameters(first_nnet)),
     tot_input_weighting_(nnet_params_.NumRows()) {
+  SetDropoutProportion(0, &nnet_);
   SubVector<BaseFloat> first_params(nnet_params_, 0);
   VectorizeNnet(nnet_, &first_params);
   tot_input_weighting_(0) += 1.0;

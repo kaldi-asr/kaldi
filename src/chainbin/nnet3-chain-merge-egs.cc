@@ -85,7 +85,7 @@ int main(int argc, char *argv[]) {
       num_read++;
 
       if (minibatch_ready || (!discard_partial_minibatches &&
-			      (example_reader.Done() && !examples.empty()))) {
+          (example_reader.Done() && !examples.empty()))) {
         NnetChainExample merged_eg;
         MergeChainExamples(compress, &examples, &merged_eg);
         std::ostringstream ostr;

@@ -54,7 +54,7 @@ mfccdir=mfcc
 
 # spread the mfccs over various machines, as this data-set is quite large.
 if [[  $(hostname -f) ==  *.clsp.jhu.edu ]]; then
-  mfcc=$(basename mfccdir) # in case was absolute pathname (unlikely), get basename.
+  mfcc=$(basename $mfccdir) # in case was absolute pathname (unlikely), get basename.
   utils/create_split_dir.pl /export/b{05,06,07,08}/$USER/kaldi-data/egs/gale_mandarin/s5/$mfcc/storage \
     $mfccdir/storage
 fi
@@ -203,5 +203,3 @@ local/split_wer_per_corpus.sh $galeData >> RESULTS
 
 echo training succedded
 exit 0
-
-

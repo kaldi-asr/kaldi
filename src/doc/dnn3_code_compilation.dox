@@ -917,6 +917,21 @@ as an optimization.  In this case the associated \ref NnetComputation::debug_inf
 will correspond to the debug information of one of the matrices that we merged.
 
 
+\subsection dnn3_compile_compiler_shortcut Shortcut compilation
+
+A feature available from Kaldi version 5.1 is 'shortcut' compilation (enabled
+by default).  This is done only when the ComputationRequest has a suitably
+regular structure; this basically means that there are more than two different
+"n" indexes in the computation, they are numbered consecutively from zero,
+nd for each "n" index, the requested set of "t" and "x" indexes is the same
+and in a regular order.  What the shortcut compilation does is reduce the
+computation request down to just two distinct "n" indexes (zero and one),
+compile the mini-request, and then expand the resulting compilation-- basically,
+it extrapolates the compiled computation to what it would have been if
+the entire original computation request had been supplied.  Shortcut
+compilation significantly cuts down compilation time.
+
+
  - Up: \ref dnn3
  - Previous: \ref dnn3_code_data_types
  - Next: \ref dnn3_code_optimization

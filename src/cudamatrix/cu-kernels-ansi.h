@@ -697,6 +697,10 @@ void cudaF_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
                                   const int self_repair_sum_out_stride);
 
 
+void cudaD_copy_cols_from_vec(dim3 Gr, dim3 Bl, double *mat_out,
+                              MatrixDim d_out, const double *v_in);
+void cudaF_copy_cols_from_vec(dim3 Gr, dim3 Bl, float *mat_out, MatrixDim d_out,
+                              const float *v_in);
 
 } // extern "C"
 

@@ -125,7 +125,9 @@ class CuVectorBase {
   MatrixIndexT ApplyCeiling(Real ceiling_val);
   void ApplyPow(Real power);
   Real Sum() const;
+
   void SetRandn();
+  void SetRandUniform();
 
   CuSubVector<Real> Range(const MatrixIndexT o, const MatrixIndexT l) {
     return CuSubVector<Real>(*this, o, l);

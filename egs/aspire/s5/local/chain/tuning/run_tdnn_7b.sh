@@ -100,6 +100,7 @@ if [ $stage -le 9 ]; then
     data/train data/train_temp_for_lats
   utils/data/combine_short_segments.sh \
       data/train_temp_for_lats $min_seg_len data/train_min${min_seg_len}
+  steps/compute_cmvn_stats.sh data/train_min${min_seg_len} || exit 1;
 fi
 
 if [ $stage -le 10 ]; then
@@ -112,8 +113,8 @@ if [ $stage -le 10 ]; then
   rm -f $lat_dir/fsts.*.gz # save space
 
   rvb_lat_dir=exp/tri5a_rvb_min${min_seg_len}_lats
-  #mkdir -p $rvb_lat_dir/temp/
-  #lattice-copy "ark:gunzip -c $lat_dir/lat.*.gz |" ark,scp:$rvb_lat_dir/temp/lats.ark,$rvb_lat_dir/temp/lats.scp
+  mkdir -p $rvb_lat_dir/temp/
+  lattice-copy "ark:gunzip -c $lat_dir/lat.*.gz |" ark,scp:$rvb_lat_dir/temp/lats.ark,$rvb_lat_dir/temp/lats.scp
 
   # copy the lattices for the reverberated data
   rm -f $rvb_lat_dir/temp/combined_lats.scp

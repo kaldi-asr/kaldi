@@ -367,12 +367,12 @@ class OnlineIvectorEstimationStats {
 
   // Override the default assignment operator
   inline OnlineIvectorEstimationStats &operator=(const OnlineIvectorEstimationStats &other) {
-	  this->prior_offset_ = other.prior_offset_;
-	  this->max_count_ = other.max_count_;
-	  this->num_frames_ = other.num_frames_;
-	  this->quadratic_term_=other.quadratic_term_;
-	  this->linear_term_=other.linear_term_;
-	  return *this;
+    this->prior_offset_ = other.prior_offset_;
+    this->max_count_ = other.max_count_;
+    this->num_frames_ = other.num_frames_;
+    this->quadratic_term_=other.quadratic_term_;
+    this->linear_term_=other.linear_term_;
+    return *this;
   }
 
  protected:
@@ -689,4 +689,3 @@ class IvectorExtractorStats {
 
 
 #endif
-

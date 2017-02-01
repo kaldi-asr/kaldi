@@ -9,7 +9,6 @@
 import re
 
 from libs.nnet3.xconfig.basic_layers import XconfigLayerBase
-from libs.nnet3.xconfig.utils import XconfigParserError as xparser_error
 
 
 # This class is for lines like
@@ -55,11 +54,11 @@ class XconfigLstmLayer(XconfigLayerBase):
     def check_configs(self):
         key = 'cell-dim'
         if self.config['cell-dim'] <= 0:
-            raise xparser_error("cell-dim has invalid value {0}.".format(self.config[key]), self.str())
+            raise RuntimeError("cell-dim has invalid value {0}.".format(self.config[key]))
 
         for key in ['self-repair-scale-nonlinearity']:
             if self.config[key] < 0.0 or self.config[key] > 1.0:
-                raise xparser_error("{0} has invalid value {1}.".format(key, self.config[key]))
+                raise RuntimeError("{0} has invalid value {1}.".format(key, self.config[key]))
 
     def auxiliary_outputs(self):
         return ['c_t']
@@ -70,7 +69,7 @@ class XconfigLstmLayer(XconfigLayerBase):
             if auxiliary_output in self.auxiliary_outputs():
                 node_name = auxiliary_output
             else:
-                raise xparser_error("Unknown auxiliary output name {0}".format(auxiliary_output), self.str())
+                raise RuntimeError("Unknown auxiliary output name {0}".format(auxiliary_output))
 
         return '{0}.{1}'.format(self.name, node_name)
 
@@ -81,7 +80,7 @@ class XconfigLstmLayer(XconfigLayerBase):
                     return self.config['cell-dim']
                 # add code for other auxiliary_outputs here when we decide to expose them
             else:
-                raise xparser_error("Unknown auxiliary output name {0}".format(auxiliary_output), self.str())
+                raise RuntimeError("Unknown auxiliary output name {0}".format(auxiliary_output))
 
         return self.config['cell-dim']
 
@@ -233,7 +232,6 @@ class XconfigLstmLayer(XconfigLayerBase):
 #   ng-affine-options=''              [Additional options used for the full matrices in the LSTM, can be used to do things like set biases to initialize to 1]
 class XconfigLstmpLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
-        print first_token
         assert first_token == "lstmp-layer"
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
@@ -249,7 +247,8 @@ class XconfigLstmpLayer(XconfigLayerBase):
                         'ng-affine-options' : ' max-change=0.75 ',
                         'self-repair-scale-nonlinearity' : 0.00001,
                         'zeroing-interval' : 20,
-                        'zeroing-threshold' : 15.0
+                        'zeroing-threshold' : 15.0,
+                        'dropout-proportion' : -1.0 # -1.0 stands for no dropout will be added
                        }
 
     def set_derived_configs(self):
@@ -267,19 +266,26 @@ class XconfigLstmpLayer(XconfigLayerBase):
         for key in ['cell-dim', 'recurrent-projection-dim',
                     'non-recurrent-projection-dim']:
             if self.config[key] <= 0:
-                raise xparser_error("{0} has invalid value {1}.".format(
-                    key, self.config[key]), self.str())
+                raise RuntimeError("{0} has invalid value {1}.".format(
+                    key, self.config[key]))
 
         if (self.config['recurrent-projection-dim'] +
             self.config['non-recurrent-projection-dim'] >
             self.config['cell-dim']):
-            raise xparser_error("recurrent+non-recurrent projection dim exceeds "
-                                "cell dim: {0}".format(self.str()))
+            raise RuntimeError("recurrent+non-recurrent projection dim exceeds "
+                                "cell dim.")
         for key in ['self-repair-scale-nonlinearity']:
             if self.config[key] < 0.0 or self.config[key] > 1.0:
-                raise xparser_error("{0} has invalid value {2}.".format(self.layer_type,
-                                                                               key,
-                                                                               self.config[key]))
+                raise RuntimeError("{0} has invalid value {2}."
+                                   .format(self.layer_type, key,
+                                           self.config[key]))
+
+        if ((self.config['dropout-proportion'] > 1.0 or
+             self.config['dropout-proportion'] < 0.0) and
+             self.config['dropout-proportion'] != -1.0 ):
+             raise RuntimeError("dropout-proportion has invalid value {0}."
+                                "".format(self.config['dropout-proportion']))
+
     def auxiliary_outputs(self):
         return ['c_t']
 
@@ -339,6 +345,8 @@ class XconfigLstmpLayer(XconfigLayerBase):
                                 abs(delay)))
         affine_str = self.config['ng-affine-options']
         pes_str = self.config['ng-per-element-scale-options']
+        lstm_dropout_value = self.config['dropout-proportion']
+        lstm_dropout_str = 'dropout-proportion='+str(self.config['dropout-proportion'])
 
         # Natural gradient per element scale parameters
         # TODO: decide if we want to keep exposing these options
@@ -418,13 +426,21 @@ class XconfigLstmpLayer(XconfigLayerBase):
 
         # add the recurrent connections
         configs.append("# projection matrices : Wrm and Wpm")
+        if lstm_dropout_value != -1.0:
+            configs.append("component name={0}.W_rp.m.dropout type=DropoutComponent dim={1} {2}".format(name, cell_dim, lstm_dropout_str))
         configs.append("component name={0}.W_rp.m type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, cell_dim, rec_proj_dim + nonrec_proj_dim, affine_str))
         configs.append("component name={0}.r type=BackpropTruncationComponent dim={1} {2}".format(name, rec_proj_dim, bptrunc_str))
 
         configs.append("# r_t and p_t : rp_t will be the output")
-        configs.append("component-node name={0}.rp_t component={0}.W_rp.m input={0}.m_t".format(name))
-        configs.append("dim-range-node name={0}.r_t_preclip input-node={0}.rp_t dim-offset=0 dim={1}".format(name, rec_proj_dim))
-        configs.append("component-node name={0}.r_t component={0}.r input={0}.r_t_preclip".format(name))
+        if lstm_dropout_value != -1.0:
+            configs.append("component-node name={0}.rp_t.dropout component={0}.W_rp.m.dropout input={0}.m_t".format(name))
+            configs.append("component-node name={0}.rp_t component={0}.W_rp.m input={0}.rp_t.dropout".format(name))
+            configs.append("dim-range-node name={0}.r_t_preclip input-node={0}.rp_t dim-offset=0 dim={1}".format(name, rec_proj_dim))
+            configs.append("component-node name={0}.r_t component={0}.r input={0}.r_t_preclip".format(name))
+        else:
+            configs.append("component-node name={0}.rp_t component={0}.W_rp.m input={0}.m_t".format(name))
+            configs.append("dim-range-node name={0}.r_t_preclip input-node={0}.rp_t dim-offset=0 dim={1}".format(name, rec_proj_dim))
+            configs.append("component-node name={0}.r_t component={0}.r input={0}.r_t_preclip".format(name))
 
         return configs
 
@@ -602,7 +618,7 @@ class XconfigFastLstmLayer(XconfigLayerBase):
     def check_configs(self):
         key = 'cell-dim'
         if self.config['cell-dim'] <= 0:
-            raise xparser_error("cell-dim has invalid value {0}.".format(self.config[key]), self.str())
+            raise RuntimeError("cell-dim has invalid value {0}.".format(self.config[key]))
 
 
 
@@ -616,7 +632,7 @@ class XconfigFastLstmLayer(XconfigLayerBase):
                 node_name = 'c'
                 self.c_needed = True
             else:
-                raise xparser_error("Unknown auxiliary output name {0}".format(auxiliary_output), self.str())
+                raise RuntimeError("Unknown auxiliary output name {0}".format(auxiliary_output))
         return '{0}.{1}'.format(self.name, node_name)
 
     def output_dim(self, auxiliary_output = None):
@@ -626,7 +642,7 @@ class XconfigFastLstmLayer(XconfigLayerBase):
                 return self.config['cell-dim']
                 # add code for other auxiliary_outputs here when we decide to expose them
             else:
-                raise xparser_error("Unknown auxiliary output name {0}".format(auxiliary_output), self.str())
+                raise RuntimeError("Unknown auxiliary output name {0}".format(auxiliary_output))
         return self.config['cell-dim']
 
     def get_full_config(self):
@@ -745,6 +761,7 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
                         'ng-affine-options' : ' max-change=1.5',
                         'zeroing-interval' : 20,
                         'zeroing-threshold' : 15.0
+
                         }
 
     def set_derived_configs(self):
@@ -762,14 +779,14 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
         for key in ['cell-dim', 'recurrent-projection-dim',
                     'non-recurrent-projection-dim']:
             if self.config[key] <= 0:
-                raise xparser_error("{0} has invalid value {1}.".format(
-                    key, self.config[key]), self.str())
+                raise RuntimeError("{0} has invalid value {1}.".format(
+                    key, self.config[key]))
 
         if (self.config['recurrent-projection-dim'] +
             self.config['non-recurrent-projection-dim'] >
             self.config['cell-dim']):
-            raise xparser_error("recurrent+non-recurrent projection dim exceeds "
-                                "cell dim: {0}".format(self.str()))
+            raise RuntimeError("recurrent+non-recurrent projection dim exceeds "
+                                "cell dim")
 
 
     def auxiliary_outputs(self):
@@ -781,7 +798,7 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
             if auxiliary_output in self.auxiliary_outputs():
                 node_name = auxiliary_output
             else:
-                raise xparser_error("Unknown auxiliary output name {0}".format(auxiliary_output), self.str())
+                raise RuntimeError("Unknown auxiliary output name {0}".format(auxiliary_output))
 
         return '{0}.{1}'.format(self.name, node_name)
 
@@ -792,7 +809,7 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
                     return self.config['cell-dim']
                 # add code for other auxiliary_outputs here when we decide to expose them
             else:
-                raise xparser_error("Unknown auxiliary output name {0}".format(auxiliary_output), self.str())
+                raise RuntimeError("Unknown auxiliary output name {0}".format(auxiliary_output))
         return self.config['recurrent-projection-dim'] + \
                self.config['non-recurrent-projection-dim']
 
