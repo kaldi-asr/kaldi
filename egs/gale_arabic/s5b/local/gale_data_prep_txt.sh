@@ -3,18 +3,15 @@
 # Copyright 2014 QCRI (author: Ahmed Ali)
 # Apache 2.0
 
-echo $0 "$@"
+galeData=$(readlink -f "${@: -1}" );  # last argumnet; the local folder
+txt_dvds=${@:1:${#}-1} # all the txt cds correspoding to the audio corpus; check text=( in ../run.sh
 
-galeData=$(readlink -f "${@: -1}" ); 
-
-length=$(($#-1))
-args=${@:1:$length}
 
 top_pwd=`pwd`
 txtdir=$galeData/txt 
 mkdir -p $txtdir; cd $txtdir
 
-for cdx in ${args[@]}; do
+for cdx in $txt_dvds; do
   echo "Preparing $cdx"
   if [[ $cdx  == *.tgz ]] ; then
      tar -xvf $cdx
@@ -25,8 +22,8 @@ for cdx in ${args[@]}; do
   fi
 done
 
-find -L . -type f -name *.tdf | while read file; do 
-sed '1,3d' $file 
+find -L . -type f -name "*.tdf" | while read file; do 
+sed '1,3d' $file  # delete the first 3 lines
 done >  all.tmp$$
 
 perl -e '
@@ -55,9 +52,9 @@ awk '{$1="";print $0}' all_1.tmp$$ | sed 's:^ ::' > $galeData/all
 awk '{if ($1 == "report") {$1="";print $0}}' all_1.tmp$$ | sed 's:^ ::' >  $galeData/report
 awk '{if ($1 == "conversational") {$1="";print $0}}' all_1.tmp$$ | sed 's:^ ::' > $galeData/conversational
 
-#cd ..;
-#rm -fr $txtdir
+cd ..;
+rm -fr $txtdir
 cd $top_pwd
 echo data prep text succeeded
 
-exit 0
+exit 0 
