@@ -181,8 +181,7 @@ void NnetCombiner::Combine() {
 
 
 void NnetCombiner::PrintParams(const VectorBase<double> &params) const {
-
-  Vector<double> weights(params.Dim()), normalized_weights(params.Dim());
+  Vector<double> weights(WeightDim()), normalized_weights(WeightDim());
   GetWeights(params, &weights);
   GetNormalizedWeights(weights, &normalized_weights);
   int32 num_models = nnet_params_.NumRows(),

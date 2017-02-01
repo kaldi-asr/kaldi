@@ -101,8 +101,8 @@ def get_args():
                         help="Deprecated. Kept for back compatibility")
 
     # trainer options
-    parser.add_argument("--trainer.num-epochs", type=int, dest='num_epochs',
-                        default=10,
+    parser.add_argument("--trainer.num-epochs", type=float, dest='num_epochs',
+                        default=10.0,
                         help="Number of epochs to train the model")
     parser.add_argument("--trainer.frames-per-iter", type=int,
                         dest='frames_per_iter', default=800000,
@@ -391,7 +391,7 @@ def train(args, run_opts, background_process_handler):
     # $num_epochs times, i.e. $num_iters*$avg_num_jobs) ==
     # $num_epochs*$num_archives, where
     # avg_num_jobs=(num_jobs_initial+num_jobs_final)/2.
-    num_archives_to_process = args.num_epochs * num_archives_expanded
+    num_archives_to_process = int(args.num_epochs * num_archives_expanded)
     num_archives_processed = 0
     num_iters = ((num_archives_to_process * 2)
                  / (args.num_jobs_initial + args.num_jobs_final))

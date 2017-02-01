@@ -438,16 +438,24 @@ def verify_iterations(num_iters, num_epochs, num_hidden_layers,
                         "layer-wise discriminatory training.")
 
     approx_iters_per_epoch_final = num_archives/num_jobs_final
+    # Note: it used to be that we would combine over an entire epoch,
+    # but in practice we very rarely would use any weights from towards
+    # the end of that range, so we are changing it to use not
+    # approx_iters_per_epoch_final, but instead:
+    # approx_iters_per_epoch_final/2 + 1,
+    # dividing by 2 to use half an epoch, and adding 1 just to make sure
+    # it's not zero.
+
     # First work out how many iterations we want to combine over in the final
     # nnet3-combine-fast invocation.
     # The number we use is:
-    # min(max(max_models_combine, approx_iters_per_epoch_final),
+    # min(max(max_models_combine, approx_iters_per_epoch_final/2+1),
     #     1/2 * iters_after_last_layer_added)
     # But if this value is > max_models_combine, then the models
     # are subsampled to get these many models to combine.
     half_iters_after_add_layers = (num_iters - finish_add_layers_iter)/2
 
-    num_iters_combine_initial = min(approx_iters_per_epoch_final,
+    num_iters_combine_initial = min(approx_iters_per_epoch_final/2 + 1,
                                     half_iters_after_add_layers)
 
     if num_iters_combine_initial > max_models_combine:
@@ -647,8 +655,8 @@ class CommonParser:
                                  other random seeds used in other stages of the
                                  experiment like data preparation (e.g. volume
                                  perturbation).""")
-        self.parser.add_argument("--trainer.num-epochs", type=int,
-                                 dest='num_epochs', default=8,
+        self.parser.add_argument("--trainer.num-epochs", type=float,
+                                 dest='num_epochs', default=8.0,
                                  help="Number of epochs to train the model")
         self.parser.add_argument("--trainer.shuffle-buffer-size", type=int,
                                  dest='shuffle_buffer_size', default=5000,
