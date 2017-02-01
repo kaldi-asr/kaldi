@@ -10,8 +10,8 @@ if [ $# -ne 1 ]; then
   exit 1
 fi
 
-L=$1
-echo L = $L and fullLP = $fullLP
+lang=$1
+echo lang = $lang and fullLP = $fullLP
 if $fullLP; then
   lang_type=-fullLP
   lang_type2=.FLP
@@ -20,7 +20,7 @@ else
   lang_type2=.LLP
 fi
 
-case "$L" in
+case "$lang" in
 		101-cantonese)
 			langconf=conf/lang/101-cantonese${lang_type}.official.conf
 			;;
@@ -97,10 +97,10 @@ case "$L" in
       langconf=conf/lang/404-georgian.FLP.official.conf 
       ;;
 		*)
-			echo "Unknown language code $L." && exit 1
+			echo "Unknown language code $lang." && exit 1
 esac
 
-mkdir -p langconf/$L
-rm -rf langconf/$L/*
-cp $langconf langconf/$L/lang.conf
+mkdir -p langconf/$lang
+rm -rf langconf/$lang/*
+cp $langconf langconf/$lang/lang.conf
 

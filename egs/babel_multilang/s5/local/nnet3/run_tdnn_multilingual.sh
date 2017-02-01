@@ -145,11 +145,12 @@ else
 fi
 feat_dim=`feat-to-dim scp:${multi_data_dirs[0]}/feats.scp -`
 
+
 if [ $stage -le 9 ]; then
   echo "$0: creating multilingual neural net configs using the xconfig parser";
   
   if [ -z $bnf_dim ]; then
-    bnf_dim=625
+    bnf_dim=1024
   fi
   input_layer_dim=$[3*$feat_dim+$ivector_dim]
   mkdir -p $dir/configs
@@ -162,20 +163,21 @@ if [ $stage -le 9 ]; then
   # as the layer immediately preceding the fixed-affine-layer to enable
   # the use of short notation for the descriptor
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-renorm-layer name=tdnn1 input=Append(input@-1,input,input@1,ReplaceIndex(ivector, t, 0)) dim=$input_layer_dim
-  relu-renorm-layer name=tdnn2 input=Append(-1,0,1) dim=625
-  relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=625
-  relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=625
-  relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=625
-  relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=625
-  relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=$bnf_dim
+  relu-renorm-layer name=tdnn1 input=Append(input@-2,input@-1,input,input@1,input@2,ReplaceIndex(ivector, t, 0)) dim=$input_layer_dim
+  relu-renorm-layer name=tdnn2 input=Append(-1,1) dim=512
+  relu-renorm-layer name=tdnn3 input=Append(-1,1) dim=565
+  relu-renorm-layer name=tdnn4 input=Append(-1,1) dim=625
+  relu-renorm-layer name=tdnn5 input=Append(-2,2) dim=690
+  relu-renorm-layer name=tdnn6 input=Append(-2,2) dim=760
+  relu-renorm-layer name=tdnn7 input=Append(-2,2) dim=850
+  relu-renorm-layer name=tdnn7 input=Append(-4,4) dim=930
   # adding the layers for diffrent language's output
 EOF
   # added separate outptut layer and softmax for all languages.
   for lang_index in `seq 0 $[$num_langs-1]`;do
     num_targets=`tree-info exp/${lang_list[$lang_index]}/$alidir/tree 2>/dev/null | grep num-pdfs | awk '{print $2}'` || exit 1;
 
-    echo " relu-renorm-layer name=prefinal-affine-lang-${lang_index} input=tdnn7 dim=625"
+    echo " relu-renorm-layer name=prefinal-affine-lang-${lang_index} input=tdnn7 dim=$bnf_dim"
     echo " output-layer name=output-${lang_index} dim=$num_targets" 
   done >> $dir/configs/network.xconfig 
 

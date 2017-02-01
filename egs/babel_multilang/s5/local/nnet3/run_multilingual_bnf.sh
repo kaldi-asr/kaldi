@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# This script trains a multilingual model using 6 layer TDNN + Xent 
+# This script trains a multilingual model using 6 layer TDNN + Xent
 # with 42 dim bottleneck layer in fifth layer for Georgian.
 # The lang_list contains 10 closest fullLP langs to Georgian + fullLP Georgian.
-# Then it extracts bottleneck features for input language "lang" and 
+# Then it extracts bottleneck features for input language "lang" and
 # train SAT model using these feautures.
 
 # Copyright 2016  Pegah Ghahremani
@@ -24,6 +24,7 @@ num_archives=20
 speed_perturb=true
 multidir=exp/nnet3/multi_bnf_10_close_lang_plus_grg
 global_extractor=exp/multi/nnet3/extractor
+#lang_list=(ASM BNG CNT HAI LAO PSH TAM TGL TUR VTN ZUL GRG)
 lang_list=(404-georgian 403-dholuo 402-javanese 401-mongolian 307-amharic)
 use_flp=true
 
@@ -56,7 +57,7 @@ ivector_dir=$exp_dir/nnet3/ivectors_train${suffix}_gb
 ###############################################################################
 mkdir -p $multidir${suffix}
 
-if [ ! -f $multidir${suffix}/.done ]; then 
+if [ ! -f $multidir${suffix}/.done ]; then
   echo "$0: Train multilingual DNN using Bottleneck layer with lang list = ${lang_list[@]}"
   . local/nnet3/run_tdnn_multilingual.sh --dir $multidir \
      --avg-num-archives $num_archives \
@@ -78,16 +79,16 @@ if [ ! -f $data_bnf_dir/.done ]; then
     --ivector-dir $ivector_dir \
     --bnf-name Tdnn_Bottleneck_renorm \
     $datadir $data_bnf_dir \
-    $multidir $dump_bnf_dir $exp_dir/make_train_bnf || exit 1; 
+    $multidir $dump_bnf_dir $exp_dir/make_train_bnf || exit 1;
   touch $data_bnf_dir/.done
 else
   echo "$0 Skip Bottleneck feature extraction; You can force to run this step deleting $data_bnf_dir/.done."
-fi 
+fi
 
 if [ ! -d $appended_dir/.done ]; then
   steps/append_feats.sh --cmd "$train_cmd" --nj 4 \
     $data_bnf_dir $datadir $appended_dir \
-    $exp_dir/append_hires_mfcc_bnf $dump_bnf_dir || exit 1; 
+    $exp_dir/append_hires_mfcc_bnf $dump_bnf_dir || exit 1;
   steps/compute_cmvn_stats.sh $appended_dir \
     $exp_dir/make_cmvn_mfcc_bnf $dump_bnf_dir || exit 1;
   touch $appended_dir/.done

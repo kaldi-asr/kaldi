@@ -38,20 +38,20 @@ void RenameIoNames(const std::string &io_names,
   std::vector<std::string> orig_io_list;
   for (int32 io_ind = 0; io_ind < io_size; io_ind++)
     orig_io_list.push_back(eg_modified->io[io_ind].name);
-  
+
   for (int32 ind = 0; ind < num_modified_io; ind++) {
     std::vector<std::string> rename_io_name;
     SplitStringToVector(separated_io_names[ind], "/", true, &rename_io_name);
     // find the io in eg with specific name and rename it to new name.
 
-    int32 rename_io_ind = 
-       std::find(orig_io_list.begin(), orig_io_list.end(), rename_io_name[0]) - 
+    int32 rename_io_ind =
+       std::find(orig_io_list.begin(), orig_io_list.end(), rename_io_name[0]) -
         orig_io_list.begin();
 
     if (rename_io_ind >= io_size)
       KALDI_ERR << "No io-node with name " << rename_io_name[0]
                 << "exists in eg.";
-    eg_modified->io[rename_io_ind].name = rename_io_name[1];            
+    eg_modified->io[rename_io_ind].name = rename_io_name[1];
   }
 }
 
@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
     po.Register("right-context", &right_context, "Can be used to truncate the "
                 "feature right-context that we output.");
     po.Register("weights", &weight_str,
-                "Rspecifier maps the output posterior to each example" 
+                "Rspecifier maps the output posterior to each example"
                 "If provided, the supervision weight for output is scaled."
                 " Scaling supervision weight is the same as scaling to the derivative during training "
                 " in case of linear objective."
@@ -148,7 +148,7 @@ int main(int argc, char *argv[]) {
     std::string examples_rspecifier = po.GetArg(1);
 
     SequentialNnetExampleReader example_reader(examples_rspecifier);
-    
+
     RandomAccessTokenReader output_reader(output_str);
     RandomAccessBaseFloatReader egs_weight_reader(weight_str);
 
@@ -157,7 +157,7 @@ int main(int argc, char *argv[]) {
     for (int32 i = 0; i < num_outputs; i++)
       example_writers[i] = new NnetExampleWriter(po.GetArg(i+2));
 
-    
+
     int64 num_read = 0, num_written = 0, num_err = 0;
     for (; !example_reader.Done(); example_reader.Next(), num_read++) {
       // count is normally 1; could be 0, or possibly >1.
@@ -177,8 +177,8 @@ int main(int argc, char *argv[]) {
               continue;
             }
             BaseFloat weight = egs_weight_reader.Value(key);
-            for (int32 i = 0; i < eg_modified.io.size(); i++) 
-              if (eg_modified.io[i].name == "output") 
+            for (int32 i = 0; i < eg_modified.io.size(); i++)
+              if (eg_modified.io[i].name == "output")
                 eg_modified.io[i].features.Scale(weight);
           }
           if (!output_str.empty()) {
@@ -208,8 +208,8 @@ int main(int argc, char *argv[]) {
                 continue;
               }
               int32 weight = egs_weight_reader.Value(key);
-              for (int32 i = 0; i < eg_modified.io.size(); i++) 
-                if (eg_modified.io[i].name == "output") 
+              for (int32 i = 0; i < eg_modified.io.size(); i++)
+                if (eg_modified.io[i].name == "output")
                   eg_modified.io[i].features.Scale(weight);
             }
             if (!output_str.empty()) {

@@ -7,7 +7,7 @@
 # Begin configuration section.
 stage=1
 nj=4
-cmd=run.pl
+cmd=queue.pl
 use_gpu=false
 bnf_name=Tdnn_Bottleneck_renorm
 ivector_dir=
@@ -70,7 +70,7 @@ echo $nj > $nnetdir/num_jobs
 splice_opts=`cat $nnetdir/splice_opts 2>/dev/null`
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 
-if [ "$ivector_dir" != "" ];then 
+if [ "$ivector_dir" != "" ];then
   use_ivector=true
 fi
 
@@ -93,10 +93,10 @@ fi
 if [ $stage -le 1 ]; then
   echo "$0: Generating bottle-neck features"
   echo output-node name=output input=$bnf_name > output.config
-  modified_bnf_nnet="nnet3-copy --rename-node-names=output/output-bkp $bnf_nnet -  | nnet3-init - output.config - |"
+  modified_bnf_nnet="nnet3-copy --edits='remove-output-nodes name=output' $bnf_nnet - | nnet3-copy --nnet-config=output.config - - |"
   ivector_opts=
   if $use_ivector; then
-    ivec_period=`grep ivector-period $ivector_dir/conf/ivector_extractor.conf  | cut -d"=" -f2` 
+    ivec_period=`grep ivector-period $ivector_dir/conf/ivector_extractor.conf  | cut -d"=" -f2`
     ivector_opts="--online-ivector-period=$ivec_period --online-ivectors='$ivec_feats'"
   fi
   $cmd $compute_queue_opt JOB=1:$nj $dir/log/make_bnf_$name.JOB.log \
