@@ -75,12 +75,14 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
   if (nnet_config.alpha > 0.0 && num_minibatches_processed_ > 0) {
     // adversarial training is incompatible with momentum > 0
     KALDI_ASSERT(nnet_config.momentum == 0.0);
+    NnetComputer computer_adv(nnet_config.compute_config, *computation,
+                              *nnet_, delta_nnet_);
     // give the inputs to the computer object.
-    computer.AcceptInputs(*nnet_, chain_eg.inputs);
-    computer.Run();
+    computer_adv.AcceptInputs(*nnet_, chain_eg.inputs);
+    computer_adv.Run();
 
-    this->ProcessOutputs(true, chain_eg, &computer);
-    computer.Run();
+    this->ProcessOutputs(true, chain_eg, &computer_adv);
+    computer_adv.Run();
     UpdateParamsWithMaxChange(true);
   }
 

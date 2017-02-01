@@ -69,12 +69,14 @@ void NnetTrainer::Train(const NnetExample &eg) {
   if (config_.alpha > 0.0 && num_minibatches_processed_ > 0) {
     // adversarial training is incompatible with momentum > 0
     KALDI_ASSERT(config_.momentum == 0.0);
+    NnetComputer computer_adv(config_.compute_config, *computation,
+                              *nnet_, delta_nnet_);
     // give the inputs to the computer object.
-    computer.AcceptInputs(*nnet_, eg.io);
-    computer.Run();
+    computer_adv.AcceptInputs(*nnet_, eg.io);
+    computer_adv.Run();
 
-    this->ProcessOutputs(true, eg, &computer);
-    computer.Run();
+    this->ProcessOutputs(true, eg, &computer_adv);
+    computer_adv.Run();
     UpdateParamsWithMaxChange(true);
   }
 
