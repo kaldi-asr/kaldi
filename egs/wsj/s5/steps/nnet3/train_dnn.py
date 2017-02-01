@@ -271,7 +271,7 @@ def train(args, run_opts, background_process_handler):
     # $num_epochs*$num_archives, where
     # avg_num_jobs=(num_jobs_initial+num_jobs_final)/2.
     num_archives_expanded = num_archives * args.frames_per_eg
-    num_archives_to_process = args.num_epochs * num_archives_expanded
+    num_archives_to_process = int(args.num_epochs * num_archives_expanded)
     num_archives_processed = 0
     num_iters = ((num_archives_to_process * 2)
                  / (args.num_jobs_initial + args.num_jobs_final))

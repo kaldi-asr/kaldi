@@ -30,6 +30,15 @@ from libs.nnet3.xconfig.basic_layers import XconfigLayerBase
 #                                       i.e.,  SigmoidComponent, TanhComponent and RectifiedLinearComponent ]
 #   ng-per-element-scale-options=''     [Additional options used for the diagonal matrices in the LSTM ]
 #   ng-affine-options=''                [Additional options used for the full matrices in the LSTM, can be used to do things like set biases to initialize to 1]
+#   decay-time=-1            [If >0, an approximate maximum on how many frames
+#                            can be remembered via summation into the cell
+#                            contents c_t; enforced by putting a scaling factor
+#                            of recurrence_scale = 1 - abs(delay)/decay_time on
+#                            the recurrence, i.e. the term c_{t-1} in the LSTM
+#                            equations.  E.g. setting this to 20 means no more
+#                            than about 20 frames' worth of history,
+#                            i.e. history since about t = t-20, can be
+#                            accumulated in c_t.]
 class XconfigLstmLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
         assert first_token == "lstm-layer"
@@ -44,7 +53,8 @@ class XconfigLstmLayer(XconfigLayerBase):
                         'ng-affine-options' : ' max-change=0.75 ',
                         'self-repair-scale-nonlinearity' : 0.00001,
                         'zeroing-interval' : 20,
-                        'zeroing-threshold' : 15.0
+                        'zeroing-threshold' : 15.0,
+                        'decay-time':  -1.0
                         }
 
     def set_derived_configs(self):
@@ -108,17 +118,23 @@ class XconfigLstmLayer(XconfigLayerBase):
         input_descriptor = self.descriptors['input']['final-string']
         cell_dim = self.config['cell-dim']
         delay = self.config['delay']
-
-        repair_nonlin = self.config['self-repair-scale-nonlinearity']
-        repair_nonlin_str = "self-repair-scale={0:.10f}".format(repair_nonlin) if repair_nonlin is not None else ''
+        decay_time = self.config['decay-time']
+        # we expect decay_time to be either -1, or large, like 10 or 50.
+        recurrence_scale = (1.0 if decay_time < 0 else
+                            1.0 - (abs(delay) / decay_time))
+        assert recurrence_scale > 0   # or user may have set decay-time much
+                                      # too small.
         bptrunc_str = ("clipping-threshold={0}"
                       " zeroing-threshold={1}"
                       " zeroing-interval={2}"
                       " recurrence-interval={3}"
+                      " scale={4}"
                       "".format(self.config['clipping-threshold'],
                                 self.config['zeroing-threshold'],
                                 self.config['zeroing-interval'],
-                                abs(delay)))
+                                abs(delay), recurrence_scale))
+        repair_nonlin = self.config['self-repair-scale-nonlinearity']
+        repair_nonlin_str = "self-repair-scale={0:.10f}".format(repair_nonlin) if repair_nonlin is not None else ''
         affine_str = self.config['ng-affine-options']
         # Natural gradient per element scale parameters
         # TODO: decide if we want to keep exposing these options
@@ -233,6 +249,15 @@ class XconfigLstmLayer(XconfigLayerBase):
 #                                       i.e.,  SigmoidComponent, TanhComponent and RectifiedLinearComponent ]
 #   ng-per-element-scale-options=''   [Additional options used for the diagonal matrices in the LSTM ]
 #   ng-affine-options=''              [Additional options used for the full matrices in the LSTM, can be used to do things like set biases to initialize to 1]
+#   decay-time=-1            [If >0, an approximate maximum on how many frames
+#                            can be remembered via summation into the cell
+#                            contents c_t; enforced by putting a scaling factor
+#                            of recurrence_scale = 1 - abs(delay)/decay_time on
+#                            the recurrence, i.e. the term c_{t-1} in the LSTM
+#                            equations.  E.g. setting this to 20 means no more
+#                            than about 20 frames' worth of history,
+#                            i.e. history since about t = t-20, can be
+#                            accumulated in c_t.]
 class XconfigLstmpLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
         assert first_token == "lstmp-layer"
@@ -252,7 +277,8 @@ class XconfigLstmpLayer(XconfigLayerBase):
                         'zeroing-interval' : 20,
                         'zeroing-threshold' : 15.0,
                         'dropout-proportion' : -1.0, # If -1.0, no dropout components will be added
-                        'dropout-per-frame' : False  # If false, regular dropout, not per frame.
+                        'dropout-per-frame' : False,  # If false, regular dropout, not per frame.
+                        'decay-time':  -1.0
                        }
 
     def set_derived_configs(self):
@@ -342,14 +368,21 @@ class XconfigLstmpLayer(XconfigLayerBase):
         delay = self.config['delay']
         repair_nonlin = self.config['self-repair-scale-nonlinearity']
         repair_nonlin_str = "self-repair-scale={0:.10f}".format(repair_nonlin) if repair_nonlin is not None else ''
+        decay_time = self.config['decay-time']
+        # we expect decay_time to be either -1, or large, like 10 or 50.
+        recurrence_scale = (1.0 if decay_time < 0 else
+                            1.0 - (abs(delay) / decay_time))
+        assert recurrence_scale > 0   # or user may have set decay-time much
+                                      # too small.
         bptrunc_str = ("clipping-threshold={0}"
                       " zeroing-threshold={1}"
                       " zeroing-interval={2}"
                       " recurrence-interval={3}"
+                      " scale={4}"
                       "".format(self.config['clipping-threshold'],
                                 self.config['zeroing-threshold'],
                                 self.config['zeroing-interval'],
-                                abs(delay)))
+                                abs(delay), recurrence_scale))
         affine_str = self.config['ng-affine-options']
         pes_str = self.config['ng-per-element-scale-options']
         dropout_proportion = self.config['dropout-proportion']
@@ -578,7 +611,6 @@ class XconfigFastLstmLayer(XconfigLayerBase):
                             1.0 - (abs(delay) / decay_time))
         assert recurrence_scale > 0   # or user may have set decay-time much
                                       # too small.
-        lstm_str = self.config['lstm-nonlinearity-options']
         bptrunc_str = ("clipping-threshold={0}"
                       " zeroing-threshold={1}"
                       " zeroing-interval={2}"
@@ -588,6 +620,8 @@ class XconfigFastLstmLayer(XconfigLayerBase):
                                 self.config['zeroing-threshold'],
                                 self.config['zeroing-interval'],
                                 abs(delay), recurrence_scale))
+        lstm_str = self.config['lstm-nonlinearity-options']
+
 
         configs = []
 
@@ -772,7 +806,6 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
                             1.0 - (abs(delay) / decay_time))
         assert recurrence_scale > 0   # or user may have set decay-time much
                                       # too small.
-
         bptrunc_str = ("clipping-threshold={0}"
                       " zeroing-threshold={1}"
                       " zeroing-interval={2}"
