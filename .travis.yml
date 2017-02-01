@@ -20,6 +20,7 @@ addons:
 branches:
   only:
     - master
+    - shortcut
 
 before_install:
   - cat /proc/sys/kernel/core_pattern

@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Copyright 2012-2015 Johns Hopkins University (Author: Daniel Povey).  
+# Copyright 2012-2015 Johns Hopkins University (Author: Daniel Povey).
 #           2015-2016 Vimal Manohar
 # Apache 2.0.
 
 # This script is similar to steps/nnet3/get_egs.sh but used
-# when getting general targets (not from alignment directory) for raw nnet 
+# when getting general targets (not from alignment directory) for raw nnet
 #
 # This script, which will generally be called from other neural-net training
 # scripts, extracts the training examples used to train the neural net (and also
@@ -21,39 +21,33 @@
 # Begin configuration section.
 cmd=run.pl
 feat_type=raw       # set it to 'lda' to use LDA features.
-target_type=sparse  # dense to have dense targets, 
+target_type=sparse  # dense to have dense targets,
                     # sparse to have posteriors targets
 num_targets=        # required for target-type=sparse with raw nnet
 frames_per_eg=8   # number of frames of labels per example.  more->less disk space and
                   # less time preparing egs, but more I/O during training.
-                  # note: the script may reduce this if reduce_frames_per_eg is true.
+                  # Note: may in general be a comma-separated string of alternative
+                  # durations (more useful when using large chunks, e.g. for BLSTMs);
+                  # the first one (the principal num-frames) is preferred.
 left_context=4    # amount of left-context per eg (i.e. extra frames of input features
                   # not present in the output supervision).
 right_context=4   # amount of right-context per eg.
-valid_left_context=   # amount of left_context for validation egs, typically used in
-                      # recurrent architectures to ensure matched condition with
-                      # training egs
-valid_right_context=  # amount of right_context for validation egs
+left_context_initial=-1    # if >=0, left-context for first chunk of an utterance
+right_context_final=-1     # if >=0, right-context for last chunk of an utterance
 compress=true   # set this to false to disable compression (e.g. if you want to see whether
                 # results are affected).
-
-reduce_frames_per_eg=true  # If true, this script may reduce the frames_per_eg
-                           # if there is only one archive and even with the
-                           # reduced frames_per_eg, the number of
-                           # samples_per_iter that would result is less than or
-                           # equal to the user-specified value.
 num_utts_subset=300     # number of utterances in validation and training
                         # subsets used for shrinkage and diagnostics.
 num_valid_frames_combine=0 # #valid frames for combination weights at the very end.
-num_train_frames_combine=10000 # # train frames for the above.
-num_frames_diagnostic=4000 # number of frames for "compute_prob" jobs
+num_train_frames_combine=60000 # # train frames for the above.
+num_frames_diagnostic=10000 # number of frames for "compute_prob" jobs
 samples_per_iter=400000 # this is the target number of egs in each archive of egs
                         # (prior to merging egs).  We probably should have called
                         # it egs_per_iter. This is just a guideline; it will pick
                         # a number that divides the number of samples in the
                         # entire data.
 
-transform_dir=     
+transform_dir=
 
 stage=0
 nj=6         # This should be set to the maximum number of jobs you are
@@ -84,8 +78,15 @@ if [ $# != 3 ]; then
   echo "  --feat-type <lda|raw>                            # (raw is the default).  The feature type you want"
   echo "                                                   # to use as input to the neural net."
   echo "  --frames-per-eg <frames;8>                       # number of frames per eg on disk"
-  echo "  --left-context <width;4>                         # Number of frames on left side to append for feature input"
-  echo "  --right-context <width;4>                        # Number of frames on right side to append for feature input"
+  echo "                                                   # May be either a single number or a comma-separated list"
+  echo "                                                   # of alternatives (useful when training LSTMs, where the"
+  echo "                                                   # frames-per-eg is the chunk size, to get variety of chunk"
+  echo "                                                   # sizes).  The first in the list is preferred and is used"
+  echo "                                                   # when working out the number of archives etc."
+  echo "  --left-context <int;4>                           # Number of frames on left side to append for feature input"
+  echo "  --right-context <int;4>                          # Number of frames on right side to append for feature input"
+  echo "  --left-context-initial <int;-1>                  # If >= 0, left-context for first chunk of an utterance"
+  echo "  --right-context-final <int;-1>                   # If >= 0, right-context for last chunk of an utterance"
   echo "  --num-frames-diagnostic <#frames;4000>           # Number of frames used in computing (train,valid) diagnostics"
   echo "  --num-valid-frames-combine <#frames;10000>       # Number of frames used in getting combination weights at the"
   echo "                                                   # very end."
@@ -178,14 +179,13 @@ if [ -f $dir/trans.scp ]; then
 fi
 
 if [ ! -z "$online_ivector_dir" ]; then
-  ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
+  steps/nnet2/get_ivector_id.sh $online_ivector_dir > $dir/info/final.ie.id || exit 1
+  ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1
   echo $ivector_dim > $dir/info/ivector_dim
   ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
-
-  ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $sdata/JOB/utt2spk $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |'"
-  valid_ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |'"
-  train_subset_ivector_opt="--ivectors='ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |'"
+  ivector_opts="--online-ivectors=scp:$online_ivector_dir/ivector_online.scp --online-ivector-period=$ivector_period"
 else
+  ivector_opts=""
   echo 0 >$dir/info/ivector_dim
 fi
 
@@ -195,26 +195,29 @@ if [ $stage -le 1 ]; then
   echo $num_frames > $dir/info/num_frames
   echo "$0: working out feature dim"
   feats_one="$(echo $feats | sed s:JOB:1:g)"
-  feat_dim=$(feat-to-dim "$feats_one" -) || exit 1;
-  echo $feat_dim > $dir/info/feat_dim
+  if feat_dim=$(feat-to-dim "$feats_one" - 2>/dev/null); then
+    echo $feat_dim > $dir/info/feat_dim
+  else # run without stderr redirection to show the error.
+    feat-to-dim "$feats_one" -; exit 1
+  fi
 else
   num_frames=$(cat $dir/info/num_frames) || exit 1;
   feat_dim=$(cat $dir/info/feat_dim) || exit 1;
 fi
 
+
+# the first field in frames_per_eg (which is a comma-separated list of numbers)
+# is the 'principal' frames-per-eg, and for purposes of working out the number
+# of archives we assume that this will be the average number of frames per eg.
+frames_per_eg_principal=$(echo $frames_per_eg | cut -d, -f1)
+
 # the + 1 is to round up, not down... we assume it doesn't divide exactly.
-num_archives=$[$num_frames/($frames_per_eg*$samples_per_iter)+1]
-# (for small data)- while reduce_frames_per_eg == true and the number of
-# archives is 1 and would still be 1 if we reduced frames_per_eg by 1, reduce it
-# by 1.
-reduced=false
-while $reduce_frames_per_eg && [ $frames_per_eg -gt 1 ] && \
-  [ $[$num_frames/(($frames_per_eg-1)*$samples_per_iter)] -eq 0 ]; do
-  frames_per_eg=$[$frames_per_eg-1]
-  num_archives=1
-  reduced=true
+num_archives=$[$num_frames/($frames_per_eg_principal*$samples_per_iter)+1]
+if [ $num_archives -eq 1 ]; then
+  echo "*** $0: warning: the --frames-per-eg is too large to generate one archive with"
+  echo "*** as many as --samples-per-iter egs in it.  Consider reducing --frames-per-eg."
+  sleep 4
 done
-$reduced && echo "$0: reduced frames_per_eg to $frames_per_eg because amount of data is small."
 
 # We may have to first create a smaller number of larger archives, with number
 # $num_archives_intermediate, if $num_archives is more than the maximum number
@@ -232,7 +235,7 @@ num_archives=$[$archives_multiple*$num_archives_intermediate]
 echo $num_archives >$dir/info/num_archives
 echo $frames_per_eg >$dir/info/frames_per_eg
 # Work out the number of egs per archive
-egs_per_archive=$[$num_frames/($frames_per_eg*$num_archives)]
+egs_per_archive=$[$num_frames/($frames_per_eg_principal*$num_archives)]
 ! [ $egs_per_archive -le $samples_per_iter ] && \
   echo "$0: script error: egs_per_archive=$egs_per_archive not <= samples_per_iter=$samples_per_iter" \
   && exit 1;
@@ -241,6 +244,9 @@ echo $egs_per_archive > $dir/info/egs_per_archive
 
 echo "$0: creating $num_archives archives, each with $egs_per_archive egs, with"
 echo "$0:   $frames_per_eg labels per example, and (left,right) context = ($left_context,$right_context)"
+if [ $left_context_initial -ge 0 ] || [ $right_context_final -ge 0 ]; then
+  echo "$0:   ... and (left-context-initial,right-context-final) = ($left_context_initial,$right_context_final)"
+fi
 
 
 
@@ -254,14 +260,14 @@ if [ -e $dir/storage ]; then
   done
 fi
 
-egs_opts="--left-context=$left_context --right-context=$right_context --compress=$compress"
-
-[ -z $valid_left_context ] &&  valid_left_context=$left_context;
-[ -z $valid_right_context ] &&  valid_right_context=$right_context;
-valid_egs_opts="--left-context=$valid_left_context --right-context=$valid_right_context --compress=$compress"
+egs_opts="--left-context=$left_context --right-context=$right_context --compress=$compress --num-frames=$frames_per_eg"
+[ $left_context_initial -ge 0 ] && egs_opts="$egs_opts --left-context-initial=$left_context_initial"
+[ $right_context_final -ge 0 ] && egs_opts="$egs_opts --right-context-final=$right_context_final"
 
 echo $left_context > $dir/info/left_context
 echo $right_context > $dir/info/right_context
+echo $left_context_initial > $dir/info/left_context_initial
+echo $right_context_final > $dir/info/right_context_final
 
 for n in `seq $nj`; do
   utils/filter_scp.pl $sdata/$n/utt2spk $targets_scp > $dir/targets.$n.scp
@@ -274,12 +280,12 @@ if [ $target_type == "dense" ]; then
 fi
 
 if [ -z "$num_targets" ]; then
-  echo "$0: num-targets is not set" 
+  echo "$0: num-targets is not set"
   exit 1
 fi
 
 case $target_type in
-  "dense") 
+  "dense")
     get_egs_program="nnet3-get-egs-dense-targets --num-targets=$num_targets"
 
     targets="ark:utils/filter_scp.pl --exclude $dir/valid_uttlist $targets_scp_split | copy-feats scp:- ark:- |"
@@ -289,7 +295,7 @@ case $target_type in
   "sparse")
     get_egs_program="nnet3-get-egs --num-pdfs=$num_targets"
     targets="ark:utils/filter_scp.pl --exclude $dir/valid_uttlist $targets_scp_split | ali-to-post scp:- ark:- |"
-    valid_targets="ark:utils/filter_scp.pl $dir/valid_uttlist $targets_scp | ali-to-post scp:- ark:- |" 
+    valid_targets="ark:utils/filter_scp.pl $dir/valid_uttlist $targets_scp | ali-to-post scp:- ark:- |"
     train_subset_targets="ark:utils/filter_scp.pl $dir/train_subset_uttlist $targets_scp | ali-to-post scp:- ark:- |"
     ;;
   default)
@@ -302,29 +308,29 @@ if [ $stage -le 3 ]; then
   rm -f $dir/.error 2>/dev/null
   $cmd $dir/log/create_valid_subset.log \
     $get_egs_program \
-    $valid_ivector_opt $valid_egs_opts "$valid_feats" \
+    $ivector_opts $egs_opts "$valid_feats" \
     "$valid_targets" \
     "ark:$dir/valid_all.egs" || touch $dir/.error &
   $cmd $dir/log/create_train_subset.log \
     $get_egs_program \
-    $train_subset_ivector_opt $valid_egs_opts "$train_subset_feats" \
+    $ivector_opts $egs_opts "$train_subset_feats" \
     "$train_subset_targets" \
     "ark:$dir/train_subset_all.egs" || touch $dir/.error &
   wait;
   [ -f $dir/.error ] && echo "Error detected while creating train/valid egs" && exit 1
   echo "... Getting subsets of validation examples for diagnostics and combination."
   $cmd $dir/log/create_valid_subset_combine.log \
-    nnet3-subset-egs --n=$num_valid_frames_combine ark:$dir/valid_all.egs \
+    nnet3-subset-egs --n=$[$num_valid_frames_combine/$frames_per_eg_principal] ark:$dir/valid_all.egs \
     ark:$dir/valid_combine.egs || touch $dir/.error &
   $cmd $dir/log/create_valid_subset_diagnostic.log \
-    nnet3-subset-egs --n=$num_frames_diagnostic ark:$dir/valid_all.egs \
+    nnet3-subset-egs --n=$[$num_frames_diagnostic/$frames_per_eg_principal] ark:$dir/valid_all.egs \
     ark:$dir/valid_diagnostic.egs || touch $dir/.error &
 
   $cmd $dir/log/create_train_subset_combine.log \
-    nnet3-subset-egs --n=$num_train_frames_combine ark:$dir/train_subset_all.egs \
+    nnet3-subset-egs --n=$[$num_train_frames_combine/$frames_per_eg_principal] ark:$dir/train_subset_all.egs \
     ark:$dir/train_combine.egs || touch $dir/.error &
   $cmd $dir/log/create_train_subset_diagnostic.log \
-    nnet3-subset-egs --n=$num_frames_diagnostic ark:$dir/train_subset_all.egs \
+    nnet3-subset-egs --n=$[$num_frames_diagnostic/$frames_per_eg_principal] ark:$dir/train_subset_all.egs \
     ark:$dir/train_diagnostic.egs || touch $dir/.error &
   wait
   sleep 5  # wait for file system to sync.
@@ -348,7 +354,7 @@ if [ $stage -le 4 ]; then
   # The examples will go round-robin to egs_list.
   $cmd JOB=1:$nj $dir/log/get_egs.JOB.log \
     $get_egs_program \
-    $ivector_opt $egs_opts --num-frames=$frames_per_eg "$feats" "$targets" \
+    $ivector_opts $egs_opts "$feats" "$targets" \
     ark:- \| \
     nnet3-copy-egs --random=true --srand=\$[JOB+$srand] ark:- $egs_list || exit 1;
 fi
@@ -407,4 +413,3 @@ if [ $stage -le 6 ]; then
 fi
 
 echo "$0: Finished preparing training examples"
-

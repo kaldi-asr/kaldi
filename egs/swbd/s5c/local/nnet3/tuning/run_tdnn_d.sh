@@ -6,13 +6,15 @@
 # If you want to run without GPU you'd have to call train_tdnn.sh with --gpu false,
 # --num-threads 16 and --minibatch-size 128.
 
-# System                  tdnn_c   tdnn_d
-# WER on train_dev(tg)      17.37     16.72
-# WER on train_dev(fg)      15.94     15.31
-# WER on eval2000(tg)        20.0      19.2
-# WER on eval2000(fg)        18.2      17.8
-# Final train prob       -1.43781  -1.22859
-# Final valid prob       -1.56895    -1.354
+# note: the last column is a version of tdnn_d that was done after the
+# changes for the 5.1 version of Kaldi (variable minibatch-sizes, etc.)
+# System                  tdnn_c   tdnn_d       tdnn_d[repeat]
+# WER on train_dev(tg)      17.37     16.72      16.51
+# WER on train_dev(fg)      15.94     15.31      15.34
+# WER on eval2000(tg)        20.0      19.2        19.2
+# WER on eval2000(fg)        18.2      17.8       17.7
+# Final train prob       -1.43781  -1.22859      -1.22215
+# Final valid prob       -1.56895    -1.354     -1.31647
 
 stage=0
 affix=
@@ -71,7 +73,7 @@ if [ $stage -le 9 ]; then
   relu-renorm-layer name=tdnn4 input=Append(-3,3) dim=1024
   relu-renorm-layer name=tdnn5 input=Append(-7,2) dim=1024
   relu-renorm-layer name=tdnn6 dim=1024
-  
+
   output-layer name=output input=tdnn6 dim=$num_targets max-change=1.5 presoftmax-scale-file=$dir/configs/presoftmax_prior_scale.vec
 EOF
 
@@ -125,4 +127,3 @@ if [ $stage -le 11 ]; then
 fi
 wait;
 exit 0;
-

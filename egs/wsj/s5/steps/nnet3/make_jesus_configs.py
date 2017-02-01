@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+# This script is deprecated, please use ./xconfig_to_configs.py
+
 # tdnn or RNN with 'jesus layer'
 
 #  inputs to jesus layer:
