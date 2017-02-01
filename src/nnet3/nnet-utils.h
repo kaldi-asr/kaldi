@@ -149,6 +149,9 @@ void UnVectorizeNnet(const VectorBase<BaseFloat> &params,
 /// Returns the number of updatable components in the nnet.
 int32 NumUpdatableComponents(const Nnet &dest);
 
+/// Controls if natural gradient will be updated
+void FreezeNaturalGradient(bool freeze, Nnet *nnet);
+
 /// Convert all components of type RepeatedAffineComponent or
 /// NaturalGradientRepeatedAffineComponent to BlockAffineComponent in nnet.
 void ConvertRepeatedToBlockAffine(Nnet *nnet);
@@ -193,6 +196,15 @@ void RecomputeStats(const std::vector<NnetExample> &egs, Nnet *nnet);
 /// "test mode" means that having a mask containing (1-dropout_prob) in all
 /// elements.
 void SetDropoutTestMode(bool test_mode, Nnet *nnet);
+
+/**
+  \brief  This function calls 'ResetGenerator()' on all components in 'nnet'
+     that inherit from class RandomComponent.  It's used when you need
+     to ensure consistency in things like dropout masks, across subsequent
+     neural net evaluations.  You will likely want to call srand() before calling
+     this.
+*/
+void ResetGenerators(Nnet *nnet);
 
 /// This function finds a list of components that are never used, and outputs
 /// the integer comopnent indexes (you can use these to index
@@ -253,6 +265,61 @@ void FindOrphanNodes(const Nnet &nnet, std::vector<int32> *nodes);
    \endverbatim
 */
 void ReadEditConfig(std::istream &config_file, Nnet *nnet);
+
+/**
+   This function does the operation '*nnet += scale * delta_nnet', while
+   respecting any max-parameter-change (max-param-change) specified in the
+   updatable components, plus the global max-param-change specified as
+   'max_param_change'.
+
+   With max-changes taken into account, the operation of this function is
+   equivalent to the following, although it's done more efficiently:
+
+   \code
+     Nnet temp_nnet(delta_nnet);
+     ScaleNnet(1.0 / max_change_scale, &temp_nnet);
+     [ Scale down parameters for each component of temp_nnet as needed so
+     their Euclidean norms do not exceed their per-component max-changes ]
+     [ Scale down temp_nnet as needed so its Euclidean norm does not exceed
+       the global max-change ]
+     ScaleNnet(max_change_scale, &temp_nnet);  // undo the previous scaling.
+     AddNnet(temp_nnet, scale, nnet);
+   \endcode
+
+   @param [in] delta_nnet  The copy of '*nnet' neural network that contains
+               the proposed change in parameters. Normally this will previously
+               have been set to: (delta_nnet =
+               parameter-derivative-on-current-minibatch *
+               learning-rate per parameter), with any natural gradient applied
+               as specified in the components; but this may be different if
+               momentum or backstitch are used.
+   @param [in] max_param_change  The global max-param-change specified on the
+               command line (e.g. 2.0), which specifies the largest change
+               allowed to '*nnet' in Euclidean norm.  If <= 0, no global
+               max-param-change will be enforced, but any max-change values
+               specified in the components will still be enforced; see
+               UpdatableComponent::MaxChange(), and search for 'max-change' in
+               the configs or nnet3-info output).
+   @param [in] max_change_scale  This value, which will normally be 1.0, is used
+               to scale all per-component max-change values and the global
+               'max_param_change', before applying them (so we use
+               'max_change_scale * uc->MaxChange()' as the per-component
+               max-change, and 'max_change_scale * max_param_change' as the
+               global max-change).
+   @param [in] scale  This value, which will normally be 1.0, is a scaling
+               factor used when adding to 'nnet', applied after any max-changes.
+   @param [in,out] nnet  The nnet which we add to.
+   @param [in,out] num_max_change_per_component_applied  Stats for per-component
+                   max-change.
+   @param [in,out] num_max_change_global_applied  Stats for global max-change.
+*/
+bool UpdateNnetWithMaxChange(const Nnet &delta_nnet,
+                             BaseFloat max_param_change,
+                             BaseFloat max_change_scale,
+                             BaseFloat scale, Nnet *nnet,
+                             std::vector<int32> *
+                             num_max_change_per_component_applied,
+                             int32 *num_max_change_global_applied);
 
 
 } // namespace nnet3

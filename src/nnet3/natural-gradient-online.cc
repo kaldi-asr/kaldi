@@ -25,7 +25,7 @@ namespace nnet3 {
 
 OnlineNaturalGradient::OnlineNaturalGradient():
     rank_(40), update_period_(1), num_samples_history_(2000.0), alpha_(4.0),
-    epsilon_(1.0e-10), delta_(5.0e-04), t_(-1),
+    epsilon_(1.0e-10), delta_(5.0e-04), frozen_(false), t_(-1),
     num_updates_skipped_(0), self_debug_(false) { }
 
 
@@ -137,6 +137,8 @@ void OnlineNaturalGradient::Init(const CuMatrixBase<BaseFloat> &R0) {
   else
     num_init_iters = 3;
 
+  this_copy.frozen_ = false;   // un-freeze if it was frozen, so we can
+                               // initialize.
   for (int32 i = 0; i < num_init_iters; i++) {
     BaseFloat scale;
     R0_copy.CopyFromMat(R0);
@@ -339,10 +341,23 @@ void OnlineNaturalGradient::PreconditionDirectionsInternal(
 
   bool locked = update_mutex_.try_lock();
   if (locked) {
-    // Just hard-code it here that we do 10 updates before skipping any.
+    // We'll release the lock if we don't plan to update the parameters.
+    
+    // Explanation of the conditions below:
+    // if (frozen_) because we don't do the update is the user called Freeze().
+    // I forget why the (t_ > t) is here; probably some race condition encountered
+    //   a long time ago.  Not important; nnet3 doesn't use multiple threads anyway.
+    // The condition:
+    // (num_updates_skipped_ < update_period_ - 1 && t_ >= num_initial_updates)
+    // means we can update if either we're in the first 10 updates (e.g. first
+    // 10 minibatches), or if we've skipped 'update_period_ - 1' batches of data
+    // without updating the parameters (this allows us to update only, say,
+    // every 4 times, for speed, after updating the first 10 times).
+
+    // Just hard-code it here that we do 10 initial updates before skipping any.
     const int num_initial_updates = 10;
-    if (t_ > t || (num_updates_skipped_ < update_period_ - 1 &&
-                   t_ >= num_initial_updates)) {
+    if (frozen_ || t_ > t || (num_updates_skipped_ < update_period_ - 1 &&
+                              t_ >= num_initial_updates)) {
       update_mutex_.unlock();
       // We got the lock but we were already beaten to it by another thread, or
       // we don't want to update yet due to update_period_ > 1 (this saves
@@ -357,11 +372,12 @@ void OnlineNaturalGradient::PreconditionDirectionsInternal(
     // the same or later starting point (making our update stale), or because
     // update_period_ > 1.  We just apply the preconditioning and return.
 
-    // note: we don't bother with any locks before incrementing
+    // note: we don't bother with any locks before checking frozen_ or incrementing
     // num_updates_skipped_ below, because the worst that could happen is that,
     // on very rare occasions, we could skip one or two more updates than we
     // intended.
-    num_updates_skipped_++;
+    if (!frozen_)
+      num_updates_skipped_++;
 
     BaseFloat tr_Xt_XtT = TraceMatMat(*X_t, *X_t, kTrans);
     // X_hat_t = X_t - H_t W_t
@@ -609,6 +625,7 @@ OnlineNaturalGradient::OnlineNaturalGradient(const OnlineNaturalGradient &other)
     rank_(other.rank_), update_period_(other.update_period_),
     num_samples_history_(other.num_samples_history_),
     alpha_(other.alpha_), epsilon_(other.epsilon_), delta_(other.delta_),
+    frozen_(other.frozen_),
     t_(other.t_), num_updates_skipped_(other.num_updates_skipped_),
     self_debug_(other.self_debug_), W_t_(other.W_t_),
     rho_t_(other.rho_t_), d_t_(other.d_t_) {
@@ -622,6 +639,7 @@ OnlineNaturalGradient& OnlineNaturalGradient::operator = (
   num_samples_history_ = other.num_samples_history_;
   alpha_ = other.alpha_;
   epsilon_ = other.epsilon_;
+  delta_ = other.delta_;
   t_ = other.t_;
   self_debug_ = other.self_debug_;
   W_t_ = other.W_t_;
