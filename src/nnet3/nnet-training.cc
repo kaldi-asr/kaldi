@@ -62,8 +62,6 @@ void NnetTrainer::Train(const NnetExample &eg) {
                         &request);
   const NnetComputation *computation = compiler_.Compile(request);
 
-  NnetComputer computer(config_.compute_config, *computation,
-                        *nnet_, delta_nnet_);
   // no adversarial training on the first minibatch to avoid some stats to be
   // negative due to the scaling with the negative learning rate
   if (config_.alpha > 0.0 && num_minibatches_processed_ > 0) {
@@ -76,19 +74,23 @@ void NnetTrainer::Train(const NnetExample &eg) {
     computer_adv.AcceptInputs(*nnet_, eg.io);
     computer_adv.Run();
 
-    this->ProcessOutputs(true, eg, &computer_adv);
+    bool is_adversarial_step = true;
+    this->ProcessOutputs(is_adversarial_step, eg, &computer_adv);
     computer_adv.Run();
-    UpdateParamsWithMaxChange(true);
+    UpdateParamsWithMaxChange(is_adversarial_step);
   }
 
+  NnetComputer computer(config_.compute_config, *computation,
+                        *nnet_, delta_nnet_);
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, eg.io);
   computer.Run();
 
-  this->ProcessOutputs(false, eg, &computer);
+  bool is_adversarial_step = false;
+  this->ProcessOutputs(is_adversarial_step, eg, &computer);
   computer.Run();
 
-  UpdateParamsWithMaxChange(false);
+  UpdateParamsWithMaxChange(is_adversarial_step);
 }
 
 void NnetTrainer::ProcessOutputs(bool is_adversarial_step,
@@ -110,10 +112,10 @@ void NnetTrainer::ProcessOutputs(bool is_adversarial_step,
                                &tot_weight, &tot_objf);
       objf_info_[io.name + suffix].UpdateStats(io.name + suffix,
                                       config_.print_interval,
-                                      (is_adversarial_step ?
-                                      num_minibatches_processed_ :
-                                      num_minibatches_processed_++),
+                                      num_minibatches_processed_,
                                       tot_weight, tot_objf);
+      if (!is_adversarial_step)
+        num_minibatches_processed_++;
     }
   }
 }
