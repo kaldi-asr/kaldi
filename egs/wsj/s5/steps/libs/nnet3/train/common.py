@@ -798,10 +798,10 @@ class CommonParser:
                                  lstm*=0,0.2,0'.  More general should precede
                                  less general patterns, as they are applied
                                  sequentially.""")
-        self.parser.add_argument("--trainer.optimization.alpha", type=float,
-                                dest='alpha', default=0.0,
-                                help="""Paramter used in adversarial training.
-                                """)
+        self.parser.add_argument("--trainer.optimization.adversarial-training-scale",
+                                 type=float, dest='adversarial-training-scale',
+                                 default=0.0, help="""scale of parameters changes
+                                 used in adversarial training step.""")
 
         # General options
         self.parser.add_argument("--stage", type=int, default=-4,

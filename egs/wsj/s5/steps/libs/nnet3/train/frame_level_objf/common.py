@@ -26,7 +26,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                      num_archives_processed, num_archives,
                      raw_model_string, egs_dir,
                      left_context, right_context,
-                     momentum, alpha, max_param_change,
+                     momentum, adversarial_training_scale, max_param_change,
                      shuffle_buffer_size, minibatch_size_str,
                      cache_read_opt, run_opts,
                      frames_per_eg=-1,
@@ -85,7 +85,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                     nnet3-train {parallel_train_opts} {cache_read_opt} \
                     {cache_write_opt} --print-interval=10 \
                     --momentum={momentum} \
-                    --alpha={alpha} \
+                    --adversarial-training-scale={adversarial_training_scale} \
                     --max-param-change={max_param_change} \
                     {deriv_time_opts} "{raw_model}" \
                     "ark,bg:nnet3-copy-egs {frame_opts} {context_opts} """
@@ -107,7 +107,8 @@ def train_new_models(dir, iter, srand, num_jobs,
                         frame_opts=(""
                                     if chunk_level_training
                                     else "--frame={0}".format(frame)),
-                        momentum=momentum, alpha=alpha,
+                        momentum=momentum,
+                        adversarial_training_scale=adversarial_training_scale,
                         max_param_change=max_param_change,
                         deriv_time_opts=" ".join(deriv_time_opts),
                         raw_model=raw_model_string, context_opts=context_opts,
@@ -135,7 +136,8 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         learning_rate, minibatch_size_str,
                         num_hidden_layers, add_layers_period,
                         left_context, right_context,
-                        momentum, alpha, max_param_change, shuffle_buffer_size,
+                        momentum, adversarial_training_scale,
+                        max_param_change, shuffle_buffer_size,
                         run_opts, frames_per_eg=-1,
                         min_deriv_time=None, max_deriv_time_relative=None,
                         shrinkage_value=1.0, dropout_edit_string="",
@@ -274,7 +276,8 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      num_archives=num_archives,
                      raw_model_string=raw_model_string, egs_dir=egs_dir,
                      left_context=left_context, right_context=right_context,
-                     momentum=momentum, alpha=alpha,
+                     momentum=momentum,
+                     adversarial_training_scale=adversarial_training_scale,
                      max_param_change=cur_max_param_change,
                      shuffle_buffer_size=shuffle_buffer_size,
                      minibatch_size_str=cur_minibatch_size_str,
