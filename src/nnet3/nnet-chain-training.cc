@@ -68,8 +68,6 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
                              &request);
   const NnetComputation *computation = compiler_.Compile(request);
 
-  NnetComputer computer(nnet_config.compute_config, *computation,
-                        *nnet_, delta_nnet_);
   // no adversarial training on the first minibatch to avoid some stats to be
   // negative due to the scaling with the negative learning rate
   if (nnet_config.alpha > 0.0 && num_minibatches_processed_ > 0) {
@@ -82,19 +80,23 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
     computer_adv.AcceptInputs(*nnet_, chain_eg.inputs);
     computer_adv.Run();
 
-    this->ProcessOutputs(true, chain_eg, &computer_adv);
+    bool is_adversarial_step = true;
+    this->ProcessOutputs(is_adversarial_step, chain_eg, &computer_adv);
     computer_adv.Run();
-    UpdateParamsWithMaxChange(true);
+    UpdateParamsWithMaxChange(is_adversarial_step);
   }
 
+  NnetComputer computer(nnet_config.compute_config, *computation,
+                        *nnet_, delta_nnet_);
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, chain_eg.inputs);
   computer.Run();
 
-  this->ProcessOutputs(false, chain_eg, &computer);
+  bool is_adversarial_step = false;
+  this->ProcessOutputs(is_adversarial_step, chain_eg, &computer);
   computer.Run();
 
-  UpdateParamsWithMaxChange(false);
+  UpdateParamsWithMaxChange(is_adversarial_step);
 }
 
 
@@ -157,10 +159,10 @@ void NnetChainTrainer::ProcessOutputs(bool is_adversarial_step,
 
     objf_info_[sup.name + suffix].UpdateStats(sup.name + suffix,
                                      opts_.nnet_config.print_interval,
-                                     (is_adversarial_step ?
-                                     num_minibatches_processed_ :
-                                     num_minibatches_processed_++),
+                                     num_minibatches_processed_,
                                      tot_weight, tot_objf, tot_l2_term);
+    if (!is_adversarial_step)
+      num_minibatches_processed_++;
 
     if (use_xent) {
       xent_deriv.Scale(opts_.chain_config.xent_regularize);

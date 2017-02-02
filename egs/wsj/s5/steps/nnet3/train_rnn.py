@@ -412,7 +412,7 @@ def train(args, run_opts, background_process_handler):
                 min_deriv_time=min_deriv_time,
                 max_deriv_time_relative=max_deriv_time_relative,
                 momentum=args.momentum,
-                alpha=args.alpha,
+                adversarial_training_scale=args.adversarial_training_scale,
                 max_param_change=args.max_param_change,
                 shuffle_buffer_size=args.shuffle_buffer_size,
                 run_opts=run_opts,
