@@ -70,7 +70,8 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
 
   // no adversarial training on the first minibatch to avoid some stats to be
   // negative due to the scaling with the negative learning rate
-  if (nnet_config.alpha > 0.0 && num_minibatches_processed_ > 0) {
+  if (nnet_config.adversarial_training_scale > 0.0 &&
+      num_minibatches_processed_ > 0) {
     // adversarial training is incompatible with momentum > 0
     KALDI_ASSERT(nnet_config.momentum == 0.0);
     // creates a new NnetComputer object
@@ -250,12 +251,14 @@ void NnetChainTrainer::UpdateParamsWithMaxChange(bool is_adversarial_step) {
   }
   // applies both of the max-change scalings all at once, component by component
   // and updates parameters
-  if (nnet_config.alpha > 0.0) {
+  if (nnet_config.adversarial_training_scale > 0.0) {
     KALDI_ASSERT(nnet_config.momentum == 0.0);
-    BaseFloat scale_alpha =
-        (is_adversarial_step ? -nnet_config.alpha : (1 + nnet_config.alpha));
-    scale_factors.Scale(scale * scale_alpha);
-    AddNnetComponents(*delta_nnet_, scale_factors, scale, nnet_);
+    BaseFloat scale_adversarial =
+        (is_adversarial_step ? -nnet_config.adversarial_training_scale :
+        (1 + nnet_config.adversarial_training_scale));
+    scale_factors.Scale(scale * scale_adversarial);
+    AddNnetComponents(*delta_nnet_, scale_factors, scale * scale_adversarial,
+                      nnet_);
     ScaleNnet(0.0, delta_nnet_);
   } else {
     scale_factors.Scale(scale);
