@@ -4240,7 +4240,7 @@ template<typename Real> static void UnitTestCompressedMatrix() {
         scaled_mat.Scale(alpha);
         cmat.Scale(alpha);
         cmat.CopyToMat(&scaled_comp_mat);
-        scaled_comp_mat.ApproxEqual(scaled_mat, 1.0e-04);
+        AssertEqual(scaled_comp_mat, scaled_mat);
       }
     }
     if (n < 5) {  // test I/O.

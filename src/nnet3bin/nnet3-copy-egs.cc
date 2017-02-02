@@ -126,15 +126,15 @@ int main(int argc, char *argv[]) {
     po.Register("right-context", &right_context, "Can be used to truncate the "
                 "feature right-context that we output.");
     po.Register("weights", &weight_str,
-                "Rspecifier maps the output posterior to each example"
+                "Rspecifier of the output supervision weights,"
                 "If provided, the supervision weight for output is scaled."
-                " Scaling supervision weight is the same as scaling to the derivative during training "
-                " in case of linear objective."
+                " Scaling supervision weight is the same as scaling the "
+                "derivative during training for linear objective."
                 "The default is one, which means we are not applying per-example weights.");
     po.Register("outputs", &output_str,
-                "Rspecifier maps example to new output in nnet."
-                " If provided, the NnetIo with name 'output' in each example "
-                " is renamed to new output name.");
+                "Rspecifier of output name, "
+                "If provided, the NnetIo with name 'output' in each example "
+                "is renamed to new output name.");
 
     po.Read(argc, argv);
 
@@ -163,36 +163,42 @@ int main(int argc, char *argv[]) {
       // count is normally 1; could be 0, or possibly >1.
       int32 count = GetCount(keep_proportion);
       std::string key = example_reader.Key();
-      const NnetExample &eg = example_reader.Value();
+      bool modify_eg_output = (!output_str.empty() || weight_str.empty());
+      NnetExample modified_eg_output;
+      const NnetExample &eg_orig = example_reader.Value(),
+        &eg = (modify_eg_output ? modified_eg_output : eg_orig);
+      // rename io name 'output' to output-name and scale supervision using weight.
+      if (modify_eg_output) {
+        modified_eg_output = eg_orig;
+        if (!weight_str.empty()) {
+          // scale the supervision weight for egs
+          if (!egs_weight_reader.HasKey(key)) {
+            KALDI_WARN << "No weight for example key " << key;
+            num_err++;
+            continue;
+          }
+          BaseFloat weight = egs_weight_reader.Value(key);
+          for (int32 i = 0; i < modified_eg_output.io.size(); i++)
+            if (modified_eg_output.io[i].name == "output")
+              modified_eg_output.io[i].features.Scale(weight);
+        }
+        if (!output_str.empty()) {
+          if (!output_reader.HasKey(key)) {
+            KALDI_WARN << "No new output-name for example key " << key;
+            num_err++;
+            continue;
+          }
+          std::string new_output_name = output_reader.Value(key);
+          // rename output io name to $new_output_name.
+          std::string rename_io_names = "output/" + new_output_name;
+          RenameIoNames(rename_io_names, &modified_eg_output);
+        }
+      }
       for (int32 c = 0; c < count; c++) {
         int32 index = (random ? Rand() : num_written) % num_outputs;
         if (frame_str == "" && left_context == -1 && right_context == -1 &&
             frame_shift == 0) {
-          NnetExample eg_modified = eg;
-          if (!weight_str.empty()) {
-            // scale the supervision weight for egs
-            if (!egs_weight_reader.HasKey(key)) {
-              KALDI_WARN << "No weight for example key " << key;
-              num_err++;
-              continue;
-            }
-            BaseFloat weight = egs_weight_reader.Value(key);
-            for (int32 i = 0; i < eg_modified.io.size(); i++)
-              if (eg_modified.io[i].name == "output")
-                eg_modified.io[i].features.Scale(weight);
-          }
-          if (!output_str.empty()) {
-            if (!output_reader.HasKey(key)) {
-              KALDI_WARN << "No new output-name for example key " << key;
-              num_err++;
-              continue;
-            }
-            std::string new_output_name = output_reader.Value(key);
-            // rename output io name to $new_output_name.
-            std::string rename_io_names = "output/" + new_output_name;
-            RenameIoNames(rename_io_names, &eg_modified);
-          }
-          example_writers[index]->Write(key, eg_modified);
+          example_writers[index]->Write(key, eg);
           num_written++;
         } else { // the --frame option or context options were set.
           NnetExample eg_modified;
@@ -200,29 +206,6 @@ int main(int argc, char *argv[]) {
                                 frame_shift, &eg_modified)) {
             // this branch of the if statement will almost always be taken (should only
             // not be taken for shorter-than-normal egs from the end of a file.
-            if (!weight_str.empty()) {
-              // scale the supervision weight for egs
-              if (!egs_weight_reader.HasKey(key)) {
-                KALDI_WARN << "No weight for example key " << key;
-                num_err++;
-                continue;
-              }
-              int32 weight = egs_weight_reader.Value(key);
-              for (int32 i = 0; i < eg_modified.io.size(); i++)
-                if (eg_modified.io[i].name == "output")
-                  eg_modified.io[i].features.Scale(weight);
-            }
-            if (!output_str.empty()) {
-              if (!output_reader.HasKey(key)) {
-                KALDI_WARN << "No new output-name for example key " << key;
-                num_err++;
-                continue;
-              }
-              std::string new_output_name = output_reader.Value(key);
-              // rename output io name to $new_output_name.
-              std::string rename_io_names = "output/" + new_output_name;
-              RenameIoNames(rename_io_names, &eg_modified);
-            }
             example_writers[index]->Write(key, eg_modified);
             num_written++;
           }
@@ -240,5 +223,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-

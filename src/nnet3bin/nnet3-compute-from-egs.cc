@@ -36,7 +36,7 @@ class NnetComputerFromEg {
 
   // Compute the output (which will have the same number of rows as the number
   // of Indexes in the output of the eg), and put it in "output".
-  void Compute(const NnetExample &eg, 
+  void Compute(const NnetExample &eg,
                const std::string output_name,
                Matrix<BaseFloat> *output) {
     ComputationRequest request;
@@ -56,7 +56,7 @@ class NnetComputerFromEg {
  private:
   const Nnet &nnet_;
   CachingOptimizingCompiler compiler_;
-  
+
 };
 
 }
@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
         "e.g.:\n"
         "nnet3-compute-from-egs --apply-exp=true 0.raw ark:1.egs ark:- | matrix-sum-rows ark:- ... \n"
         "See also: nnet3-compute\n";
-    
+
     bool binary_write = true,
         apply_exp = false;
     std::string use_gpu = "yes",
@@ -91,10 +91,9 @@ int main(int argc, char *argv[]) {
     po.Register("use-gpu", &use_gpu,
                 "yes|no|optional|wait, only has effect if compiled with CUDA");
     po.Register("output-name", &output_name,
-                "The output from egs computed for output with output-name."); 
-
+                "The name of the output node of the neural net that is to be computed");
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
@@ -103,7 +102,7 @@ int main(int argc, char *argv[]) {
 #if HAVE_CUDA==1
     CuDevice::Instantiate().SelectGpuId(use_gpu);
 #endif
-    
+
     std::string nnet_rxfilename = po.GetArg(1),
         examples_rspecifier = po.GetArg(2),
         matrix_wspecifier = po.GetArg(3);
@@ -114,10 +113,9 @@ int main(int argc, char *argv[]) {
     NnetComputerFromEg computer(nnet);
 
     int64 num_egs = 0;
-    
+
     SequentialNnetExampleReader example_reader(examples_rspecifier);
     BaseFloatMatrixWriter matrix_writer(matrix_wspecifier);
-     
     for (; !example_reader.Done(); example_reader.Next(), num_egs++) {
       Matrix<BaseFloat> output;
       computer.Compute(example_reader.Value(), output_name, &output);
