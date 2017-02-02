@@ -17,7 +17,7 @@
 
 wsj0=/export/corpora5/LDC/LDC93S6B
 wsj1=/export/corpora5/LDC/LDC94S13B
-
+if false; then
 local/wsj_data_prep.sh $wsj0/??-{?,??}.? $wsj1/??-{?,??}.?  || exit 1;
 
 # Sometimes, we have seen WSJ distributions that do not have subdirectories
@@ -37,7 +37,7 @@ utils/prepare_lang.sh data/local/dict_nosp \
   "<SPOKEN_NOISE>" data/local/lang_tmp_nosp data/lang_nosp || exit 1;
 
 local/wsj_format_data.sh --lang-suffix "_nosp" || exit 1;
-
+fi #100
  # We suggest to run the next three commands in the background,
  # as they are not a precondition for the system building and
  # most of the tests: these commands build a dictionary
@@ -59,7 +59,7 @@ local/wsj_format_data.sh --lang-suffix "_nosp" || exit 1;
 # Now make MFCC features.
 # mfccdir should be some place with a largish disk where you
 # want to store MFCC features.
-
+exit 1;
 for x in test_eval92 test_eval93 test_dev93 train_si284; do
   steps/make_mfcc.sh --cmd "$train_cmd" --nj 20 data/$x || exit 1;
   steps/compute_cmvn_stats.sh data/$x || exit 1;

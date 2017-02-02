@@ -456,7 +456,7 @@ class CommonParser:
                                  other random seeds used in other stages of the
                                  experiment like data preparation (e.g. volume
                                  perturbation).""")
-        self.parser.add_argument("--trainer.num-epochs", type=int,
+        self.parser.add_argument("--trainer.num-epochs", type=float,
                                  dest='num_epochs', default=8,
                                  help="Number of epochs to train the model")
         self.parser.add_argument("--trainer.shuffle-buffer-size", type=int,

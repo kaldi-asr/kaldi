@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2010-2012 Microsoft Corporation  
+# Copyright 2010-2012 Microsoft Corporation
 #           2012-2014 Johns Hopkins University (Author: Daniel Povey)
 #                2015 Guoguo Chen
 
@@ -59,7 +59,7 @@ echo SIL > $dir/optional_silence.txt
 # really to the same base phone.
 cat $dir/cmudict/cmudict.0.7a.symbols | perl -ane 's:\r::; print;' | \
  perl -e 'while(<>){
-  chop; m:^([^\d]+)(\d*)$: || die "Bad phone $_"; 
+  chop; m:^([^\d]+)(\d*)$: || die "Bad phone $_";
   $phones_of{$1} .= "$_ "; }
   foreach $list (values %phones_of) {print $list . "\n"; } ' \
   > $dir/nonsilence_phones.txt || exit 1;

@@ -104,8 +104,8 @@ def get_args():
                         help="Deprecated. Kept for back compatibility")
 
     # trainer options
-    parser.add_argument("--trainer.num-epochs", type=int, dest='num_epochs',
-                        default=10,
+    parser.add_argument("--trainer.num-epochs", type=float, dest='num_epochs',
+                        default=10.0,
                         help="Number of epochs to train the model")
     parser.add_argument("--trainer.frames-per-iter", type=int,
                         dest='frames_per_iter', default=800000,
@@ -155,6 +155,11 @@ def get_args():
                         {left,right}-context.""")
 
     # General options
+    parser.add_argument("--init-raw-model", type=str, dest='init_raw_model',
+                        default=None, action=common_lib.NullstrToNoneAction,
+                        help="If specified, this model used as init.raw "
+                        "instead of generating init.raw using init.config.")
+
     parser.add_argument("--feat-dir", type=str, required=True,
                         help="Directory with features used for training "
                         "the neural network.")
@@ -300,13 +305,23 @@ def train(args, run_opts, background_process_handler):
         chain_lib.create_denominator_fst(args.dir, args.tree_dir, run_opts)
 
     if (args.stage <= -4):
-      logger.info("Initializing a basic network for estimating "
-                  "epreconditioning matrix")
-      common_lib.run_kaldi_command(
-          """{command} {dir}/log/nnet_init.log \
-                  nnet3-init --srand=-2 {dir}/configs/init.config \
-                  {dir}/init.raw""".format(command=run_opts.command,
-                                           dir=args.dir))
+        if args.init_raw_model is None:
+            logger.info("Initializing a basic network for estimating "
+                      "epreconditioning matrix")
+            common_lib.run_kaldi_command(
+              """{command} {dir}/log/nnet_init.log \
+                      nnet3-init --srand=-2 {dir}/configs/init.config \
+                      {dir}/init.raw""".format(command=run_opts.command,
+                                               dir=args.dir))
+        else:
+            logger.info("Initialize the init.raw to be equal to {0}".format(
+                        args.init_raw_model))
+            common_lib.run_kaldi_command(
+                """{command} {dir}/log/nnet_init.log \
+                   nnet3-copy {raw_init} \
+                   {dir}/init.raw""".format(command=run_opts.command,
+                                            raw_init=args.init_raw_model,
+                                            dir=args.dir))
 
     egs_left_context = left_context + args.frame_subsampling_factor/2
     egs_right_context = right_context + args.frame_subsampling_factor/2
@@ -355,23 +370,13 @@ def train(args, run_opts, background_process_handler):
     common_train_lib.copy_egs_properties_to_exp_dir(egs_dir, args.dir)
 
     if (args.stage <= -2):
-        logger.info('Computing the preconditioning matrix for input features')
+        if args.init_raw_model is None:
+            logger.info('Computing the preconditioning matrix for input features')
 
-        chain_lib.compute_preconditioning_matrix(
-            args.dir, egs_dir, num_archives, run_opts,
-            max_lda_jobs=args.max_lda_jobs,
-            rand_prune=args.rand_prune)
-        # the init.raw updated to specified init_raw_model
-        # after lda computation.
-        if args.init_raw_model is not None:
-            logger.info("Initialize the init.raw to be {0}".format(
-                        args.init_raw_model))
-            common_lib.run_kaldi_command(
-                """{command} {dir}/log/nnet_init.log \
-                   nnet3-copy {raw_init} \
-                   {dir}/init.raw""".format(command=run_opts.command,
-                                            raw_init=args.raw_init_model,
-                                            dir=args.dir))
+            chain_lib.compute_preconditioning_matrix(
+                args.dir, egs_dir, num_archives, run_opts,
+                max_lda_jobs=args.max_lda_jobs,
+                rand_prune=args.rand_prune)
 
     if (args.stage <= -1):
         logger.info("Preparing the initial acoustic model.")
@@ -384,7 +389,7 @@ def train(args, run_opts, background_process_handler):
     # $num_epochs times, i.e. $num_iters*$avg_num_jobs) ==
     # $num_epochs*$num_archives, where
     # avg_num_jobs=(num_jobs_initial+num_jobs_final)/2.
-    num_archives_to_process = args.num_epochs * num_archives_expanded
+    num_archives_to_process = int(args.num_epochs * num_archives_expanded)
     num_archives_processed = 0
     num_iters = ((num_archives_to_process * 2)
                  / (args.num_jobs_initial + args.num_jobs_final))
