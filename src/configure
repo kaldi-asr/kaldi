@@ -22,10 +22,24 @@
 # ./configure --atlas-root=../tools/ATLAS/build
 # ./configure --use-cuda=no   # disable CUDA detection (will build cpu-only
 #                             # version of kaldi even on CUDA-enabled machine
+#        # Cross compile for armv8hf, this assumes that you have openfst built
+#        # with the armv8-rpi3-linux-gnueabihf toolchain and installed to
+#        # /opt/cross/armv8hf.  It also assumes that you have an ATLAS library
+#        # built for the target install to /opt/cross/armv8hf and that the
+#        # armv8-rpi3-linux-gnueabihf toolchain is available in your path
+# ./configure --static --fst-root=/opt/cross/armv8hf --atlas-root=/opt/cross/armv8hf --host=armv8-rpi3-linux-gnueabihf
+#        # Cross compile for Android on arm
+#        # The only difference here is the addtion of the the --android-includes
+#        # flag because the toolchains produced by the Android NDK don't always
+#        # include the C++ stdlib headers in the normal cross compile include
+#        # path
+# ./configure --static --openblas-root=/opt/cross/arm-linux-androideabi \
+# --fst-root=/opt/cross/arm-linux-androideabi --host=arm-linux-androideabi \
+# --fst-version=1.4.1 --android-includes=/opt/cross/arm-linux-androideabi/sysroot/usr/include
 
 #This should be incremented after every significant change of the configure script
 #I.e. after each change that affects the kaldi.mk or the build system as whole
-CONFIGURE_VERSION=4
+CONFIGURE_VERSION=5
 
 function rel2abs {
   if [ ! -z "$1" ]; then
@@ -69,12 +83,14 @@ unset MKLROOT
 unset CLAPACKROOT
 unset OPENBLASROOT
 unset MKLLIBDIR
+unset HOST
 
 function usage {
   echo 'Usage: ./configure [--static|--shared] [--threaded-atlas={yes|no}] [--atlas-root=ATLASROOT] [--fst-root=FSTROOT]
   [--openblas-root=OPENBLASROOOT] [--clapack-root=CLAPACKROOT] [--mkl-root=MKLROOT] [--mkl-libdir=MKLLIBDIR]
   [--omp-libdir=OMPDIR] [--static-fst={yes|no}] [--static-math={yes|no}] [--threaded-math={yes|no}] [--mathlib=ATLAS|MKL|CLAPACK|OPENBLAS]
-  [--use-cuda={yes|no}] [--cudatk-dir=CUDATKDIR][--mkl-threading=sequential|iomp|tbb|gomp]';
+  [--use-cuda={yes|no}] [--cudatk-dir=CUDATKDIR][--mkl-threading=sequential|iomp|tbb|gomp] [--fst-version=VERSION]
+  [--host=HOST] [--android-includes=ANDROID_INC_DIR]';
 }
 
 threaded_atlas=false #  By default, use the un-threaded version of ATLAS.
@@ -84,6 +100,11 @@ static_fst=false
 use_cuda=true
 dynamic_kaldi=false
 mkl_threading=sequential
+# HOST and TARGET_ARCH are used when cross compiling, the user will specify HOST via the --host
+# switch.  TARGET_ARCH will be the first value in HOST if set, and `uname -m` otherwise
+HOST=""
+TARGET_ARCH=""
+android=false
 
 cmd_line="$0 $@"  # Save the command line to include in kaldi.mk
 
@@ -184,14 +205,46 @@ do
   --cudatk-dir=*)
     CUDATKDIR=`read_dirname $1`;
     shift ;; #CUDA is used in src/cudamatrix and src/nnet{,bin} only
+  --fst-version=*)
+    OPENFST_VER=`expr "X$1" : '[^=]*=\(.*\)'`;
+    shift;;
+  --host=*)
+    # This expects the same format of host "triple" as autotools based projects
+    # this script will infer the target architecture from the specified triple.
+    HOST=`expr "X$1" : '[^=]*=\(.*\)'`;
+    shift ;;
+  --android-includes=*)
+    threaded_math=false;
+    static_math=true;
+    static_fst=true;
+    dynamic_kaldi=false;
+    MATHLIB='OPENBLAS';
+    android=true;
+    ANDROIDINC=`read_dirname $1`;
+    shift;;
   *)  echo "Unknown argument: $1, exiting"; usage; exit 1 ;;
   esac
 done
+
 
 # the idea here is that if you change the configuration options from using
 # CUDA to not using it, or vice versa, we want to recompile all parts of the
 # code that may use a GPU.  Touching this file is a way to force this.
 touch cudamatrix/cu-common.h 2>/dev/null
+
+
+function add_cross_tools {
+  # If the $HOST variable is set, we need to tell make to use the specified tools
+  if [ ! -z "$HOST" ]; then
+    echo '# A host triple was specified, we need to prepend all the tools with it' >> kaldi.mk
+    echo "HOST = $HOST" >> kaldi.mk
+    echo 'CC := $(HOST)-$(CC)' >> kaldi.mk
+    echo 'CXX := $(HOST)-$(CXX)' >> kaldi.mk
+    echo 'AR := $(HOST)-$(AR)' >> kaldi.mk
+    echo 'AS := $(HOST)-$(AS)' >> kaldi.mk
+    echo 'RANLIB := $(HOST)-$(RANLIB)' >> kaldi.mk
+  fi
+}
 
 function failure {
   echo "***configure failed: $* ***" >&2
@@ -204,8 +257,13 @@ function check_exists {
 }
 
 function check_for_bad_gcc {
-  if which gcc >&/dev/null; then  # gcc is on the path
-    gcc_version=$(gcc -dumpspecs 2>&1 | grep -A1 -F '*version:' | grep -v version)
+  if [ -z "$HOST" ] ; then
+    compiler="gcc"
+  else
+    compiler="$HOST-gcc"
+  fi
+  if which $compiler >&/dev/null; then  # gcc is on the path
+    gcc_version=$($compiler -dumpspecs 2>&1 | grep -A1 -F '*version:' | grep -v version)
     if [ "$gcc_version" == "4.8.2" ] || [ "$gcc_version" == "4.8.1" ]; then
       echo "*** WARNING: your version of gcc seems to be 4.8.1 or 4.8.2. ***"
       echo "*** These versions of gcc has a bug in nth_element ***"
@@ -218,16 +276,19 @@ function check_for_bad_gcc {
 }
 
 function check_for_slow_expf {
-  cd probe
-  rm -f exp-test
-  make -f Makefile.slow_expf 1>/dev/null
-  ./exp-test
-  if [ $? -eq 1 ]; then
-      echo "*** WARNING: expf() seems to be slower than exp() on your machine. This is a known bug in old versions of glibc. Please consider updating glibc. ***"
-      echo "*** Kaldi will be configured to use exp() instead of expf() in base/kaldi-math.h Exp() routine for single-precision floats. ***"
-      echo "CXXFLAGS += -DKALDI_NO_EXPF" >> ../kaldi.mk
+  # We cannot run this test if we are cross compiling.
+  if [[ "$TARGET_ARCH" == "`uname -m`" ]] ; then
+    cd probe
+    rm -f exp-test
+    make -f Makefile.slow_expf 1>/dev/null
+    ./exp-test
+    if [ $? -eq 1 ]; then
+        echo "*** WARNING: expf() seems to be slower than exp() on your machine. This is a known bug in old versions of glibc. Please consider updating glibc. ***"
+        echo "*** Kaldi will be configured to use exp() instead of expf() in base/kaldi-math.h Exp() routine for single-precision floats. ***"
+        echo "CXXFLAGS += -DKALDI_NO_EXPF" >> ../kaldi.mk
+    fi
+    cd ..
   fi
-  cd ..
 }
 
 
@@ -251,13 +312,38 @@ function check_library {
 }
 
 
-
 #Check if at least one of these variables is set
 #If yes, we want to switch to using the MKL
 is_set $MKLLIBDIR && echo "Force-configuring KALDI to use MKL" && export MATHLIB="MKL"
 is_set $MKLROOT && echo "Force-configuring KALDI to use MKL"&& export MATHLIB="MKL"
 is_set $CLAPACKROOT && echo "Force-configuring KALDI to use CLAPACK"&& export MATHLIB="CLAPACK"
 is_set $OPENBLASROOT && echo "Force-configuring KALDI to use OPENBLAS"&& export MATHLIB="OPENBLAS"
+
+
+# If HOST is specified, parse the TARGET_ARCH, otherwise use uname -m
+if [[ "$HOST" == "" ]] ; then
+  TARGET_ARCH="`uname -m`"
+else
+  # The HOST value will be something like "armv8-rpi3-linux-gnueabihf" and we need the first value
+  # as delimited by '-' to be used as the TARGET_ARCH for this build.  The read command is the
+  # bash equivalent of split() found in other scripting languages.  read uses the value in
+  # environment variable IFS as the field delimiter.  The following command will take the
+  # host string "armv8-rpi3-linux-gnueabihf" as streamed in from the HOST variable
+  # and return ["armv8", "rpi3", "linux", "gnueabihf"] in PARTS
+  #
+  # Note that by changing the value of IFS (which is an environment variable) on the same
+  # line as the read invocation, it is only changed for that invocation and not for the shell
+  # executing this script.  So we do not need to cache and reset the value.
+  IFS='-' read -ra PARTS <<< "$HOST"
+  # We only want the first entry from the list as the architecture
+  TARGET_ARCH="$PARTS"
+  if [[ "$TARGET_ARCH" != arm* && "$TARGET_ARCH" != ppc64le && "$TARGET_ARCH" != x86* ]] ; then
+    # We currently only support building for x86[_64], arm*, and ppc64le, if the
+    # TARGET_ARCH was read from the HOST variable, it must be one of these
+    failure "$TARGET_ARCH is an unsupported architecture, kaldi currently supports x86[_64], arm*, and ppc64le"
+  fi
+fi
+
 
 #MKL functions
 function linux_configure_mkllibdir {
@@ -433,6 +519,11 @@ function configure_cuda {
     if [ ! -f $CUDATKDIR/bin/nvcc ]; then
       failure "Cannnot find nvcc in CUDATKDIR=$CUDATKDIR"
     fi
+
+    if [[ "$TARGET_ARCH" != "`uname -m`" ]] ; then
+      failure "Cannot cross compile with CUDA support"
+    fi
+
     echo "Using CUDA toolkit $CUDATKDIR (nvcc compiler and runtime libraries)"
     echo >> kaldi.mk
     echo "#Next section enables CUDA for compilation" >> kaldi.mk
@@ -455,7 +546,7 @@ function configure_cuda {
     esac
     echo "CUDA_ARCH = $CUDA_ARCH" >> kaldi.mk
 
-    # 64bit/32bit?
+    # 64bit/32bit? We do not support cross compilation with CUDA so, use direct calls to uname -m here
     if [ "`uname -m`" == "x86_64" ]; then
       if [ "`uname`" == "Darwin" ]; then
         sed 's/lib64/lib/g' < makefiles/cuda_64bit.mk >> kaldi.mk
@@ -514,8 +605,13 @@ function linux_configure_speex {
 }
 
 function fix_cxx_flag {
-  CXXCOMPILER=`grep "CXX = " kaldi.mk | awk '{print $3}'`
-  if [ $CXXCOMPILER=="g++" ]; then
+  USINGGXX=`grep -c "CXX = g++" kaldi.mk`
+  if [ $USINGGXX -ge 1 ]; then
+    if [ -z "$HOST" ] ; then
+      CXXCOMPILER="g++"
+    else
+      CXXCOMPILER="$HOST-g++"
+    fi
     $CXXCOMPILER -dumpversion | \
     awk '{if(NR==1 && $1<"4.4") print "sed \"s/-Wno-unused-local-typedefs//g\" \
     kaldi.mk > tmpf; mv tmpf kaldi.mk; "}' | sh -
@@ -526,9 +622,9 @@ function linux_atlas_failure { # function we use when we couldn't find
    # ATLAS libs.
    echo ATLASINC = $ATLASROOT/include >> kaldi.mk
    echo ATLASLIBS = [somewhere]/liblapack.a [somewhere]/libcblas.a [somewhere]/libatlas.a [somewhere]/libf77blas.a $ATLASLIBDIR >> kaldi.mk
-   if [[ "`uname -m`" == arm* ]]; then
+   if [[ "$TARGET_ARCH" == arm* ]]; then
      cat makefiles/linux_atlas_arm.mk >> kaldi.mk
-   elif [[ "`uname -m`" == ppc64le ]]; then
+   elif [[ "$TARGET_ARCH" == ppc64le ]]; then
      cat makefiles/linux_atlas_ppc64le.mk >> kaldi.mk
    else
      cat makefiles/linux_atlas.mk >> kaldi.mk
@@ -558,7 +654,12 @@ function linux_check_static {
   if [ -f $dir/libatlas.a ]; then # candidate...
     # Note: on the next line, the variable assignment
     # LANG=en_US should apply just to the program called on that line.
-    if LANG=en_US gcc -o test_linking test_linking.cc -u ATL_flushcache $dir/libatlas.a 2>&1 | grep -i "incompatible" >/dev/null; then
+    if [ -z "$HOST" ] ; then
+      compiler="gcc"
+    else
+      compiler="$HOST-gcc"
+    fi
+    if LANG=en_US $compiler -o test_linking test_linking.cc -u ATL_flushcache $dir/libatlas.a 2>&1 | grep -i "incompatible" >/dev/null; then
       echo "Directory $dir may contain ATLAS libraries but seems to be wrong architecture";
       rm test_linking test_linking.cc 2>/dev/null
       return 1;
@@ -583,14 +684,15 @@ function linux_configure_debian_ubuntu {
   fi
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
-  if [[ "`uname -m`" == arm* ]]; then
+  if [[ "$TARGET_ARCH" == arm* ]]; then
     cat makefiles/linux_atlas_arm.mk >> kaldi.mk
-   elif [[ "`uname -m`" == ppc64le ]]; then
+   elif [[ "$TARGET_ARCH" == ppc64le ]]; then
     cat makefiles/linux_atlas_ppc64le.mk >> kaldi.mk
   else
     cat makefiles/linux_atlas.mk >> kaldi.mk
   fi
   fix_cxx_flag
+  add_cross_tools
   echo "Successfully configured for Debian/Ubuntu Linux [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
   $use_cuda && configure_cuda
   linux_configure_speex
@@ -608,14 +710,15 @@ function linux_configure_debian_ubuntu3 {
   fi
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
-  if [[ "`uname -m`" == arm* ]]; then
+  if [[ "$TARGET_ARCH" == arm* ]]; then
     cat makefiles/linux_atlas_arm.mk >> kaldi.mk
-  elif [[ "`uname -m`" == ppc64le ]]; then
+  elif [[ "$TARGET_ARCH" == ppc64le ]]; then
     cat makefiles/linux_atlas_ppc64le.mk >> kaldi.mk
   else
     cat makefiles/linux_atlas.mk >> kaldi.mk
   fi
   fix_cxx_flag
+  add_cross_tools
   echo "Successfully configured for Debian/Ubuntu Linux [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
   $use_cuda && configure_cuda
   linux_configure_speex
@@ -636,14 +739,15 @@ function linux_configure_debian7 {
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS -Wl,-rpath=$libdir >> kaldi.mk
   echo
-  if [[ "`uname -m`" == arm* ]]; then
+  if [[ "$TARGET_ARCH" == arm* ]]; then
     cat makefiles/linux_atlas_arm.mk >> kaldi.mk
-  elif [[ "`uname -m`" == ppc64le ]]; then
+  elif [[ "$TARGET_ARCH" == ppc64le ]]; then
     cat makefiles/linux_atlas_ppc64le.mk >> kaldi.mk
   else
     cat makefiles/linux_atlas.mk >> kaldi.mk
   fi
   fix_cxx_flag
+  add_cross_tools
   echo "Successfully configured for Debian 7 [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
   $use_cuda && configure_cuda
   linux_configure_speex
@@ -661,14 +765,15 @@ function linux_configure_redhat {
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS -Wl,-rpath=$libdir >> kaldi.mk
   echo
-  if [[ "`uname -m`" == arm* ]]; then
+  if [[ "$TARGET_ARCH" == arm* ]]; then
     cat makefiles/linux_atlas_arm.mk >> kaldi.mk
-  elif [[ "`uname -m`" == ppc64le ]]; then
+  elif [[ "$TARGET_ARCH" == ppc64le ]]; then
     cat makefiles/linux_atlas_ppc64le.mk >> kaldi.mk
   else
     cat makefiles/linux_atlas.mk >> kaldi.mk
   fi
   fix_cxx_flag
+  add_cross_tools
   echo "Successfully configured for red hat [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
   $use_cuda && configure_cuda
   exit_success;
@@ -688,14 +793,15 @@ function linux_configure_redhat_fat {
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS -Wl,-rpath=$libdir >> kaldi.mk
   echo
-  if [[ "`uname -m`" == arm* ]]; then
+  if [[ "$TARGET_ARCH" == arm* ]]; then
     cat makefiles/linux_atlas_arm.mk >> kaldi.mk
-  elif [[ "`uname -m`" == ppc64le ]]; then
+  elif [[ "$TARGET_ARCH" == ppc64le ]]; then
     cat makefiles/linux_atlas_ppc64le.mk >> kaldi.mk
   else
     cat makefiles/linux_atlas.mk >> kaldi.mk
   fi
   fix_cxx_flag
+  add_cross_tools
   echo "Successfully configured for red hat [dynamic libraries, fat] with ATLASLIBS =$ATLASLIBS"
   $use_cuda && configure_cuda
   exit_success;
@@ -747,14 +853,15 @@ function linux_configure_static {
 
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
-  if [[ "`uname -m`" == arm* ]]; then
+  if [[ "$TARGET_ARCH" == arm* ]]; then
     cat makefiles/linux_atlas_arm.mk >> kaldi.mk
-  elif [[ "`uname -m`" == ppc64le ]]; then
+  elif [[ "$TARGET_ARCH" == ppc64le ]]; then
     cat makefiles/linux_atlas_ppc64le.mk >> kaldi.mk
   else
     cat makefiles/linux_atlas.mk >> kaldi.mk
   fi
   fix_cxx_flag
+  add_cross_tools
   $use_cuda && configure_cuda
   linux_configure_speex
   echo "Successfully configured for Linux [static libraries] with ATLASLIBS =$ATLASLIBS"
@@ -832,14 +939,15 @@ function linux_configure_dynamic {
 
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
-  if [[ "`uname -m`" == arm* ]]; then
+  if [[ "$TARGET_ARCH" == arm* ]]; then
     cat makefiles/linux_atlas_arm.mk >> kaldi.mk
-  elif [[ "`uname -m`" == ppc64le ]]; then
+  elif [[ "$TARGET_ARCH" == ppc64le ]]; then
     cat makefiles/linux_atlas_ppc64le.mk >> kaldi.mk
   else
     cat makefiles/linux_atlas.mk >> kaldi.mk
   fi
   fix_cxx_flag
+  add_cross_tools
   $use_cuda && configure_cuda
   linux_configure_speex
   echo "Successfully configured for Linux [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
@@ -895,6 +1003,42 @@ fi
 
 # Most of the OS-specific steps below will append to kaldi.mk
 echo "Doing OS specific configurations ..."
+
+if $android ; then
+  OPENFSTLIBS="$FSTROOT/lib/libfst.a"
+  echo "OPENFSTLIBS = $OPENFSTLIBS" >> kaldi.mk
+
+  if [ -z $ANDROIDINC ] ;  then
+    failure "--android-includes must be specified for android builds"
+  fi
+
+  if [ -z $HOST ] ; then
+    failure "HOST must be specified for android builds"
+  fi
+
+  OPENBLASROOT=`rel2abs "$OPENBLASROOT"`
+  if [ -z "$OPENBLASROOT" ]; then
+    failure "Must specify the location of OPENBLAS with --openblas-root option (and it must exist)"
+  fi
+  if [ ! -f $OPENBLASROOT/lib/libopenblas.a ]; then
+    failure "Expected to find the file $OPENBLASROOT/lib/libopenblas.a"
+  fi
+  echo "Your math library seems to be OpenBLAS.  Configuring appropriately."
+
+  OPENBLASLIBS="$OPENBLASROOT/lib/libopenblas.a $OPENBLASROOT/lib/libclapack.a $OPENBLASROOT/lib/liblapack.a $OPENBLASROOT/lib/libblas.a $OPENBLASROOT/lib/libf2c.a"
+  echo "OPENBLASROOT = $OPENBLASROOT" >> kaldi.mk
+  echo "OPENBLASLIBS = $OPENBLASLIBS" >> kaldi.mk
+  echo "ANDROIDINC = $ANDROIDINC" >> kaldi.mk
+
+  cat makefiles/android_openblas.mk >> kaldi.mk
+
+  add_cross_tools
+
+  echo "Successfully configured OpenBLAS from $OPENBLASROOT."
+  echo "Configuration succeeded for platform Android"
+  exit_success
+fi
+
 
 # Check for Darwin at first, because we later call uname -o (for Cygwin)
 # which crashes on Darwin. Also the linear algebra libraries on Macs are
@@ -1025,7 +1169,7 @@ if [ "`uname`" == "Linux" ]; then
     fi
 
   elif [ "$MATHLIB" == "MKL" ]; then
-    if [ "`uname -m`" != "x86_64" ]; then
+    if [ "$TARGET_ARCH" != "x86_64" ]; then
       failure "MKL on Linux only supported for Intel(R) 64 architecture (x86_64).
       See makefiles/linux_64_mkl.mk to manually configure for other platforms."
     fi
@@ -1091,12 +1235,13 @@ if [ "`uname`" == "Linux" ]; then
     if [ ! -f makefiles/linux_clapack.mk ]; then
       failure "makefiles/linux_clapack.mk not found."
     fi
-    if [[ "`uname -m`" == arm* ]]; then
+    if [[ "$TARGET_ARCH" == arm* ]]; then
       cat makefiles/linux_clapack_arm.mk >> kaldi.mk
     else
       cat makefiles/linux_clapack.mk >> kaldi.mk
     fi
     fix_cxx_flag
+    add_cross_tools
     echo "Warning (CLAPACK): this part of the configure process is not properly tested and will not work."
     $use_cuda && configure_cuda
     linux_configure_speex
@@ -1120,14 +1265,15 @@ if [ "`uname`" == "Linux" ]; then
     fi
     echo "OPENBLASLIBS = $OPENBLASLIBS" >> kaldi.mk
     echo "OPENBLASROOT = $OPENBLASROOT" >> kaldi.mk
-    if [[ "`uname -m`" == arm* ]]; then
+    if [[ "$TARGET_ARCH" == arm* ]]; then
       cat makefiles/linux_openblas_arm.mk >> kaldi.mk
-    elif [[ "`uname -m`" == ppc64le ]]; then
+    elif [[ "$TARGET_ARCH" == ppc64le ]]; then
       cat makefiles/linux_openblas_ppc64le.mk >> kaldi.mk
     else
       cat makefiles/linux_openblas.mk >> kaldi.mk
     fi
     fix_cxx_flag
+    add_cross_tools
     $use_cuda && configure_cuda
     linux_configure_speex
     echo "Successfully configured OpenBLAS from $OPENBLASROOT."
