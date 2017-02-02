@@ -314,7 +314,7 @@ def verify_egs_dir(egs_dir, feat_dim, ivector_dim, ivector_extractor_id,
         egs_ivector_id = None
         try:
             egs_ivector_id = open('{0}/info/final.ie.id'.format(
-                                        egs_dir)).readline()
+                                        egs_dir)).readline().strip()
         except:
             # it could actually happen that the file is not there
             # for example in cases where the egs were dumped by

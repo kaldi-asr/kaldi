@@ -299,7 +299,7 @@ def get_ivector_extractor_id(ivector_dir=None):
         return None
     [stdout_val, stderr_val] = run_kaldi_command(
         "steps/nnet2/get_ivector_id.sh {dir}".format(dir=ivector_dir))
-    return stdout_val
+    return stdout_val.strip()
 
 def get_feat_dim(feat_dir):
     [stdout_val, stderr_val] = run_kaldi_command(
