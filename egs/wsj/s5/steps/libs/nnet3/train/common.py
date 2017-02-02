@@ -799,7 +799,7 @@ class CommonParser:
                                  less general patterns, as they are applied
                                  sequentially.""")
         self.parser.add_argument("--trainer.optimization.adversarial-training-scale",
-                                 type=float, dest='adversarial-training-scale',
+                                 type=float, dest='adversarial_training_scale',
                                  default=0.0, help="""scale of parameters changes
                                  used in adversarial training step.""")
 
