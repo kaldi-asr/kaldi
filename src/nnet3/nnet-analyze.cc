@@ -969,6 +969,14 @@ void ComputationChecker::CheckComputationDebugInfo() const {
         static_cast<size_t>(computation_.matrices[i].num_rows))
       KALDI_ERR << "Debug info for matrix m" << i
                 << " has wrong num-rows.";
+    std::vector<Cindex>::const_iterator
+        iter = computation_.matrix_debug_info[i].cindexes.begin(),
+        end = computation_.matrix_debug_info[i].cindexes.end();
+    for (; iter != end; ++iter) {
+      if (iter->second.n < 0) {
+        KALDI_ERR << "Negative n index in debug info";
+      }
+    }
   }
 }
 

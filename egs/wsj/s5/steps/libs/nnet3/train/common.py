@@ -17,12 +17,14 @@ import re
 import shutil
 
 import libs.common as common_lib
+import libs.nnet3.train.dropout_schedule as dropout_schedule
+from dropout_schedule import *
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
 
-class RunOpts:
+class RunOpts(object):
     """A structure to store run options.
 
     Run options like queue.pl and run.pl, along with their memory
@@ -192,8 +194,9 @@ def copy_egs_properties_to_exp_dir(egs_dir, dir):
             if os.path.isfile(file_name):
                 shutil.copy2(file_name, dir)
     except IOError:
-        raise Exception("Error while trying to copy egs "
-                        "property files to {dir}".format(dir=dir))
+        logger.error("Error while trying to copy egs "
+                     "property files to {dir}".format(dir=dir))
+        raise
 
 
 def parse_generic_config_vars_file(var_file):
@@ -247,9 +250,10 @@ def verify_egs_dir(egs_dir, feat_dim, ivector_dim,
 
         return [egs_left_context, egs_right_context,
                 frames_per_eg, num_archives]
-    except (IOError, ValueError) as e:
-        raise Exception("The egs dir {0} has missing or "
-                        "malformed files: {1}".format(egs_dir, e.strerr))
+    except (IOError, ValueError):
+        logger.error("The egs dir {0} has missing or "
+                     "malformed files.".format(egs_dir))
+        raise
 
 
 def compute_presoftmax_prior_scale(dir, alidir, num_jobs, run_opts,
@@ -412,9 +416,9 @@ def clean_nnet_dir(nnet_dir, num_iters, egs_dir,
             remove_model(nnet_dir, iter, num_iters, None,
                          preserve_model_interval,
                          get_raw_nnet_from_am=get_raw_nnet_from_am)
-    except (IOError, OSError) as err:
-        logger.warning("Error while cleaning up the nnet directory")
-        raise err
+    except (IOError, OSError):
+        logger.error("Error while cleaning up the nnet directory")
+        raise
 
 
 def remove_model(nnet_dir, iter, num_iters, models_to_combine=None,
@@ -580,6 +584,31 @@ class CommonParser:
                                  Note: we implemented it in such a way that it
                                  doesn't increase the effective learning
                                  rate.""")
+        self.parser.add_argument("--trainer.dropout-schedule", type=str,
+                                 action=common_lib.NullstrToNoneAction,
+                                 dest='dropout_schedule', default=None,
+                                 help="""Use this to specify the dropout
+                                 schedule.  You specify a piecewise linear
+                                 function on the domain [0,1], where 0 is the
+                                 start and 1 is the end of training; the
+                                 function-argument (x) rises linearly with the
+                                 amount of data you have seen, not iteration
+                                 number (this improves invariance to
+                                 num-jobs-{initial-final}).  E.g. '0,0.2,0'
+                                 means 0 at the start; 0.2 after seeing half
+                                 the data; and 0 at the end.  You may specify
+                                 the x-value of selected points, e.g.
+                                 '0,0.2@0.25,0' means that the 0.2
+                                 dropout-proportion is reached a quarter of the
+                                 way through the data.   The start/end x-values
+                                 are at x=0/x=1, and other unspecified x-values
+                                 are interpolated between known x-values.  You
+                                 may specify different rules for different
+                                 component-name patterns using 'pattern1=func1
+                                 pattern2=func2', e.g. 'relu*=0,0.1,0
+                                 lstm*=0,0.2,0'.  More general should precede
+                                 less general patterns, as they are applied
+                                 sequentially.""")
 
         # General options
         self.parser.add_argument("--stage", type=int, default=-4,

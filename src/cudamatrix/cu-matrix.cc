@@ -942,7 +942,7 @@ void CuMatrixBase<Real>::AddMat(Real alpha, const CuMatrixBase<Real>& A,
 
 template<typename Real>
 void CuMatrixBase<Real>::AddMatBlocks(Real alpha, const CuMatrixBase<Real> &A,
-		MatrixTransposeType transA) {
+                                      MatrixTransposeType transA) {
   if (num_rows_ == 0 || num_cols_ == 0) return;
   int32 num_row_blocks, num_col_blocks;
   if (transA == kNoTrans) {
@@ -961,8 +961,8 @@ void CuMatrixBase<Real>::AddMatBlocks(Real alpha, const CuMatrixBase<Real> &A,
     GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
                                           &dimGrid, &dimBlock);
     cuda_add_mat_blocks(dimGrid, dimBlock, alpha, A.data_, num_row_blocks,
-		    num_col_blocks, data_, Dim(), A.Stride(),
-		    (transA == kTrans ? 1 : 0));
+                        num_col_blocks, data_, Dim(), A.Stride(),
+                        (transA == kTrans ? 1 : 0));
     CU_SAFE_CALL(cudaGetLastError());
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -980,7 +980,7 @@ void CuMatrixBase<Real>::AddMatBlocks(Real alpha, const CuMatrixBase<Real> &A,
     for (int32 i = 0; i < num_row_blocks; i++) {
       for (int32 j = 0; j < num_col_blocks; j++) {
         Mat().AddMat(alpha, SubMatrix<Real>(A.Mat(), i * nr, nr, j * nc, nc),
-			transA);
+                     transA);
       }
     }
   }
@@ -1097,10 +1097,10 @@ void CuMatrixBase<Real>::AddMatMat(
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
     CU_SAFE_CALL(cublas_gemm(GetCublasHandle(),
-			    (transB==kTrans? CUBLAS_OP_T:CUBLAS_OP_N),
-			    (transA==kTrans? CUBLAS_OP_T:CUBLAS_OP_N),
-			    m, n, k, alpha, B.data_, B.Stride(),
-			    A.data_, A.Stride(), beta, data_, Stride()));
+                             (transB==kTrans? CUBLAS_OP_T:CUBLAS_OP_N),
+                             (transA==kTrans? CUBLAS_OP_T:CUBLAS_OP_N),
+                             m, n, k, alpha, B.data_, B.Stride(),
+                             A.data_, A.Stride(), beta, data_, Stride()));
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
@@ -1151,8 +1151,8 @@ void CuMatrixBase<Real>::SymAddMat2(
     cublasOperation_t trans = (transA == kTrans ? CUBLAS_OP_N : CUBLAS_OP_T);
     MatrixIndexT A_other_dim = (transA == kNoTrans ? A.num_cols_ : A.num_rows_);
     CU_SAFE_CALL(cublas_syrk(GetCublasHandle(), CUBLAS_FILL_MODE_UPPER, trans,
-			    num_rows_, A_other_dim, alpha, A.Data(),
-			    A.Stride(), beta, this->data_, this->stride_));
+                             num_rows_, A_other_dim, alpha, A.Data(), A.Stride(),
+                             beta, this->data_, this->stride_));
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
@@ -1977,9 +1977,10 @@ double TraceMatMat(const CuMatrixBase<double> &A,
 
 template<typename Real>
 void AddMatMatBatched(const Real alpha, std::vector<CuSubMatrix<Real>* > &C,
-		const std::vector<CuSubMatrix<Real>* > &A, MatrixTransposeType transA,
-		const std::vector<CuSubMatrix<Real>* > &B, MatrixTransposeType transB,
-		const Real beta) {
+                      const std::vector<CuSubMatrix<Real>* > &A,
+                      MatrixTransposeType transA,
+                      const std::vector<CuSubMatrix<Real>* > &B,
+                      MatrixTransposeType transB, const Real beta) {
   KALDI_ASSERT(A.size() == B.size() && B.size() == C.size());
   int32 size = A.size();
 
@@ -2032,11 +2033,12 @@ void AddMatMatBatched(const Real alpha, std::vector<CuSubMatrix<Real>* > &C,
     CU_SAFE_CALL(cudaMemcpy(device_abc_array, host_abc_array, 3*size*sizeof(Real*), cudaMemcpyHostToDevice));
 
     CU_SAFE_CALL(cublas_gemmBatched(GetCublasHandle(),
-			    (transB==kTrans? CUBLAS_OP_T:CUBLAS_OP_N),
-			    (transA==kTrans? CUBLAS_OP_T:CUBLAS_OP_N),
-			    m, n, k, alpha, device_b_array, B[0]->Stride(),
-			    device_a_array, A[0]->Stride(), beta,
-			    device_c_array, C[0]->Stride(), size));
+                                    (transB==kTrans? CUBLAS_OP_T:CUBLAS_OP_N),
+                                    (transA==kTrans? CUBLAS_OP_T:CUBLAS_OP_N),
+                                    m, n, k, alpha, device_b_array,
+                                    B[0]->Stride(), device_a_array,
+                                    A[0]->Stride(), beta, device_c_array,
+                                    C[0]->Stride(), size));
 
     CuDevice::Instantiate().Free(device_abc_array);
     delete[] host_abc_array;
@@ -2053,15 +2055,17 @@ void AddMatMatBatched(const Real alpha, std::vector<CuSubMatrix<Real>* > &C,
 
 template
 void AddMatMatBatched(const float alpha, std::vector<CuSubMatrix<float>* > &C,
-		const std::vector<CuSubMatrix<float>* > &A, MatrixTransposeType transA,
-		const std::vector<CuSubMatrix<float>* > &B, MatrixTransposeType transB,
-		const float beta);
+                      const std::vector<CuSubMatrix<float>* > &A,
+                      MatrixTransposeType transA,
+                      const std::vector<CuSubMatrix<float>* > &B,
+                      MatrixTransposeType transB, const float beta);
 
 template
 void AddMatMatBatched(const double alpha, std::vector<CuSubMatrix<double>* > &C,
-		const std::vector<CuSubMatrix<double>* > &A, MatrixTransposeType transA,
-		const std::vector<CuSubMatrix<double>* > &B, MatrixTransposeType transB,
-		const double beta);
+                      const std::vector<CuSubMatrix<double>* > &A,
+                      MatrixTransposeType transA,
+                      const std::vector<CuSubMatrix<double>* > &B,
+                      MatrixTransposeType transB, const double beta);
 
 template<typename Real>
 void CuMatrixBase<Real>::CopyRowsFromVec(const CuVectorBase<Real> &v) {
@@ -2128,6 +2132,43 @@ void CuMatrixBase<Real>::CopyRowsFromVec(const VectorBase<Real> &v) {
 #endif
   {
     Mat().CopyRowsFromVec(v);
+  }
+}
+
+template<typename Real>
+void CuMatrixBase<Real>::CopyColsFromVec(const CuVectorBase<Real> &rv) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    if (rv.Dim() == num_rows_ * num_cols_) {
+      // treat rv as a matrix of the size (num_cols x num_rows_)
+      // and use transposed copy to fill *this
+      // see CuMatrixBase<Real>::CopyFromMat() for more detail of the impl
+      MatrixDim rv_dim = { num_cols_, num_rows_, num_rows_ };
+      const int32 warpSize = 32;
+      dim3 dimBlock(warpSize, CU1DBLOCK / warpSize);
+      dim3 dimGrid(n_blocks(rv_dim.cols, warpSize),
+                   n_blocks(rv_dim.rows, warpSize));
+      cuda_copy_from_mat_trans(dimGrid, dimBlock, data_, rv.Data(), Dim(),
+                               rv_dim);
+      CU_SAFE_CALL(cudaGetLastError());
+    } else if (rv.Dim() == num_rows_) {
+      // use 2D block (8x32) and large enough grid to cover matrix *this
+      // dimBlock.x need to be at least warpSize for coalesced memory access.
+      const int32 warpSize = 32;
+      dim3 dimBlock(warpSize, CU1DBLOCK / warpSize);
+      dim3 dimGrid(n_blocks(num_cols_, dimBlock.x),
+                   n_blocks(num_rows_, dimBlock.y));
+      cuda_copy_cols_from_vec(dimGrid, dimBlock, Data(), Dim(), rv.Data());
+      CU_SAFE_CALL(cudaGetLastError());
+    } else {
+      KALDI_ERR<< "Wrong sized arguments";
+    }
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Mat().CopyColsFromVec(rv.Vec());
   }
 }
 
@@ -2797,7 +2838,7 @@ void CuMatrix<Real>::Transpose() {
     return;
   // Copy and swap for all cases.
   // No need for a separate kernel of squared matrix in-place transpose.
-  // It has the same posible peak performance as copy transpose,
+  // It has the same possible peak performance as copy_transpose,
   // if allocate/deallocate overhead can be ignored.
   CuMatrix<Real> tmp(*this, kTrans);
   this->Swap(&tmp);

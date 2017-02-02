@@ -116,30 +116,8 @@ void ComputeSimpleNnetContext(const Nnet &nnet,
 void SetLearningRate(BaseFloat learning_rate,
                      Nnet *nnet);
 
-/// Scales the actual learning rate for all the components in the nnet
-/// by this factor
-void ScaleLearningRate(BaseFloat learning_rate_scale,
-                       Nnet *nnet);
-
-/// Sets the actual learning rates for all the updatable components in the
-/// neural net to the values in 'learning_rates' vector
-/// (one for each updatable component).
-void SetLearningRates(const Vector<BaseFloat> &learning_rates,
-                      Nnet *nnet);
-
-/// Get the learning rates for all the updatable components in the neural net
-/// (the output must have dim equal to the number of updatable components).
-void GetLearningRates(const Nnet &nnet,
-                      Vector<BaseFloat> *learning_rates);
-
 /// Scales the nnet parameters and stats by this scale.
 void ScaleNnet(BaseFloat scale, Nnet *nnet);
-
-/// Scales the parameters of each of the updatable components.
-/// Here, scales is a vector of size equal to the number of updatable
-/// components
-void ScaleNnetComponents(const Vector<BaseFloat> &scales,
-                         Nnet *nnet);
 
 /// Does *dest += alpha * src (affects nnet parameters and
 /// stored stats).
@@ -233,6 +211,9 @@ void FindOrphanNodes(const Nnet &nnet, std::vector<int32> *nodes);
        remove internal nodes directly; instead you should use the command
        'remove-orphans'.
 
+    set-dropout-proportion [name=<name-pattern>] proportion=<dropout-proportion>
+       Sets the dropout rates for any components of type DropoutComponent whose
+       names match the given <name-pattern> (e.g. lstm*).  <name-pattern> defaults to "*".
    \endverbatim
 */
 void ReadEditConfig(std::istream &config_file, Nnet *nnet);

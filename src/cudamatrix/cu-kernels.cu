@@ -41,7 +41,7 @@ static Real _sum_reduce(Real buffer[]) {
   __syncthreads();
   // perform tree-based reduction (sum)
   while (nTotalThreads > 1) {
-    int32_cuda halfPoint = ((1 + nTotalThreads) >> 1);	// divide by two
+    int32_cuda halfPoint = ((1 + nTotalThreads) >> 1); // divide by two
     // only the first half of the threads will be active.
     if (threadIdx.x >= halfPoint) { // was <
       // Get the shared value stored by another thread
@@ -52,7 +52,7 @@ static Real _sum_reduce(Real buffer[]) {
       buffer[threadIdx.x - halfPoint] += temp;
     }
     __syncthreads();
-    nTotalThreads = ((1 + nTotalThreads) >> 1);	// divide by two.
+    nTotalThreads = ((1 + nTotalThreads) >> 1); // divide by two.
   }
   // the result
   return buffer[0];
@@ -742,6 +742,18 @@ static void _copy_rows_from_vec(Real* m_out, MatrixDim d, const Real* v_in) {
   if (i < d.cols && j < d.rows) {
     int index = i + j * d.stride;
     m_out[index] = v_in[i];
+  }
+}
+
+// This kernel writes a copy of the vector "v_in" to each col of the matrix
+// "m_out".  the dimension of v_in should be equal to the #row of m_out.
+template<typename Real>
+__global__
+static void _copy_cols_from_vec(Real* m_out, MatrixDim d, const Real* v_in) {
+  int i = blockIdx.y * blockDim.y + threadIdx.y; // row id
+  int j = blockIdx.x * blockDim.x + threadIdx.x; // col id
+  if (i < d.rows && j < d.cols) {
+    m_out[i * d.stride + j] = v_in[i];
   }
 }
 
@@ -4643,4 +4655,14 @@ void cudaF_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
       input_deriv_stride, params_deriv, params_deriv_stride, value_sum_out,
       value_sum_out_stride, deriv_sum_out, deriv_sum_out_stride,
       self_repair_sum_out, self_repair_sum_out_stride);
+}
+
+
+void cudaD_copy_cols_from_vec(dim3 Gr, dim3 Bl, double *mat_out,
+                              MatrixDim d_out, const double *v_in) {
+  _copy_cols_from_vec<<<Gr, Bl>>>(mat_out, d_out, v_in);
+}
+void cudaF_copy_cols_from_vec(dim3 Gr, dim3 Bl, float *mat_out, MatrixDim d_out,
+                              const float *v_in) {
+  _copy_cols_from_vec<<<Gr, Bl>>>(mat_out, d_out, v_in);
 }

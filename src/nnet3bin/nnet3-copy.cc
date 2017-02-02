@@ -41,8 +41,7 @@ int main(int argc, char *argv[]) {
         " nnet3-copy --binary=false 0.raw text.raw\n";
 
     bool binary_write = true;
-    BaseFloat learning_rate = -1,
-      dropout = 0.0;
+    BaseFloat learning_rate = -1;
     std::string nnet_config, edits_config, edits_str;
     BaseFloat scale = 1.0;
 
@@ -63,8 +62,6 @@ int main(int argc, char *argv[]) {
                 "Can be used as an inline alternative to edits-config; semicolons "
                 "will be converted to newlines before parsing.  E.g. "
                 "'--edits=remove-orphans'.");
-    po.Register("set-dropout-proportion", &dropout, "Set dropout proportion "
-                "in all DropoutComponent to this value.");
     po.Register("scale", &scale, "The parameter matrices are scaled"
                 " by the specified value.");
     po.Read(argc, argv);
@@ -87,12 +84,9 @@ int main(int argc, char *argv[]) {
 
     if (learning_rate >= 0)
       SetLearningRate(learning_rate, &nnet);
-    
+
     if (scale != 1.0)
       ScaleNnet(scale, &nnet);
-    
-    if (dropout > 0)
-      SetDropoutProportion(dropout, &nnet);
 
     if (!edits_config.empty()) {
       Input ki(edits_config);

@@ -48,10 +48,12 @@ NnetDiscriminativeTrainer::NnetDiscriminativeTrainer(
   }
   if (opts.nnet_config.read_cache != "") {
     bool binary;
-    try {
-      Input ki(opts.nnet_config.read_cache, &binary);
+    Input ki;
+    if (ki.Open(opts.nnet_config.read_cache, &binary)) {
       compiler_.ReadCache(ki.Stream(), binary);
-    } catch (...) {
+      KALDI_LOG << "Read computation cache from "
+                << opts.nnet_config.read_cache;
+    } else {
       KALDI_WARN << "Could not open cached computation. "
                     "Probably this is the first training iteration.";
     }
@@ -259,4 +261,3 @@ NnetDiscriminativeTrainer::~NnetDiscriminativeTrainer() {
 
 } // namespace nnet3
 } // namespace kaldi
-

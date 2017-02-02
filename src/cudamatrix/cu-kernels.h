@@ -1331,6 +1331,15 @@ inline void cuda_diff_lstm_nonlinearity(dim3 Gr, dim3 Bl, const int cell_dim,
                                self_repair_sum_out_stride);
 }
 
+inline void cuda_copy_cols_from_vec(dim3 Gr, dim3 Bl, double *mat_out,
+                                    MatrixDim d_out, const double *v_in) {
+  cudaD_copy_cols_from_vec(Gr, Bl, mat_out, d_out, v_in);
+}
+inline void cuda_copy_cols_from_vec(dim3 Gr, dim3 Bl, float *mat_out,
+                                    MatrixDim d_out, const float *v_in) {
+  cudaF_copy_cols_from_vec(Gr, Bl, mat_out, d_out, v_in);
+}
+
 } // namespace kaldi
 
 #endif // HAVE_CUDA

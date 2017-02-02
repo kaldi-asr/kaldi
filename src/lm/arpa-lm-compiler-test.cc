@@ -33,7 +33,7 @@ namespace kaldi {
 enum {
   kEps = 0,
   kDisambig,
-  kBos,kEos,
+  kBos, kEos,
 };
 
 // Number of random sentences for coverage test.
@@ -227,8 +227,7 @@ int main(int argc, char *argv[]) {
   if (ok) {
     KALDI_LOG << "All tests passed";
     return 0;
-  }
-  else {
+  } else {
     KALDI_WARN << "Test FAILED";
     return 1;
   }

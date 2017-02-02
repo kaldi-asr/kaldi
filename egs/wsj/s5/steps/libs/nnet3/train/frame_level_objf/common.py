@@ -191,8 +191,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         run_opts,
                         cv_minibatch_size=256, frames_per_eg=-1,
                         min_deriv_time=None, max_deriv_time=None,
-                        min_left_context=None, min_right_context=None,
-                        shrinkage_value=1.0, dropout_proportions=None,
+                        shrinkage_value=1.0, dropout_edit_string="",
                         get_raw_nnet_from_am=True,
                         background_process_handler=None,
                         extra_egs_copy_cmd="",
@@ -225,9 +224,10 @@ def train_one_iteration(dir, iter, srand, egs_dir,
     if os.path.exists('{0}/srand'.format(dir)):
         try:
             saved_srand = int(open('{0}/srand'.format(dir)).readline().strip())
-        except (IOError, ValueError) as e:
-            raise Exception("Exception while reading the random seed "
-                            "for training: {0}".format(e.str()))
+        except (IOError, ValueError):
+            logger.error("Exception while reading the random seed "
+                         "for training")
+            raise
         if srand != saved_srand:
             logger.warning("The random seed provided to this iteration "
                            "(srand={0}) is different from the one saved last "
@@ -305,6 +305,8 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                                 "{dir}/{iter}.raw - |".format(
                                     lr=learning_rate, dir=dir, iter=iter))
 
+    raw_model_string = raw_model_string + dropout_edit_string
+
     if do_average:
         cur_minibatch_size = minibatch_size
         cur_max_param_change = max_param_change
@@ -321,10 +323,15 @@ def train_one_iteration(dir, iter, srand, egs_dir,
         os.remove("{0}/.error".format(dir))
     except OSError:
         pass
+      
+    shrink_info_str = ''
+    if shrinkage_value != 1.0:
+        shrink_info_str = ' and shrink value is {0}'.format(shrinkage_value)
 
-    if dropout_proportions is not None:
-        raw_model_string = common_train_lib.apply_dropout(
-            dropout_proportions, raw_model_string)
+    logger.info("On iteration {0}, learning rate is {1}"
+                "{shrink_info}.".format(
+                    iter, learning_rate,
+                    shrink_info=shrink_info_str))
 
     train_new_models(dir=dir, iter=iter, srand=srand, num_jobs=num_jobs,
                      num_archives_processed=num_archives_processed,
@@ -372,7 +379,8 @@ def train_one_iteration(dir, iter, srand, egs_dir,
         for i in range(1, num_jobs + 1):
             os.remove("{0}/{1}.{2}.raw".format(dir, iter + 1, i))
     except OSError:
-        raise Exception("Error while trying to delete the raw models")
+        logger.error("Error while trying to delete the raw models")
+        raise
 
     if get_raw_nnet_from_am:
         new_model = "{0}/{1}.mdl".format(dir, iter + 1)
@@ -422,8 +430,9 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
         try:
             os.remove(file)
         except OSError:
-            raise Exception("There was error while trying to remove "
-                            "lda stat files.")
+            logger.error("There was error while trying to remove "
+                         "lda stat files.")
+            raise
     # this computes a fixed affine transform computed in the way we described
     # in Appendix C.6 of http://arxiv.org/pdf/1410.7455v6.pdf; it's a scaled
     # variant of an LDA transform but without dimensionality reduction.
@@ -572,7 +581,7 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
 
     models_to_combine.add(num_iters)
 
-    for iter in models_to_combine:
+    for iter in sorted(models_to_combine):
         if get_raw_nnet_from_am:
             model_file = '{0}/{1}.mdl'.format(dir, iter)
             if not os.path.exists(model_file):

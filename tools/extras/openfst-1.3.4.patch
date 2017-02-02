@@ -381,3 +381,15 @@
    if (strm != &cout)
      delete strm;
    return ret;
+
+--- a/src/include/fst/extensions/ngram/ngram-fst.h
++++ b/src/include/fst/extensions/ngram/ngram-fst.h
+@@ -130,7 +130,7 @@
+     hdr.SetNumStates(num_states_);
+     WriteHeader(strm, opts, kFileVersion, &hdr);
+     strm.write(data_, Storage(num_states_, num_futures_, num_final_));
++    return !strm.fail();
+-    return strm;
+   }
+
+   StateId Start() const {
