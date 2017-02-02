@@ -43,7 +43,7 @@ prior_counts_tot=15
 prior_mean="0.7,0.2,0.1"
 num_gauss=
 num_leaves=
-retrain_src_mdl=true
+retrain_src_mdl=false
 
 cleanup=true
 # End configuration section.  
@@ -251,7 +251,7 @@ if [ $stage -le 2 ]; then
     cat - $dir/non_scored_entries | \
     sort | uniq > $dir/dict_expanded_train/lexicon.txt || exit 1;
   
-  utils/prepare_lang.sh $dir/dict_expanded_train "$oov_symbol" \
+  utils/prepare_lang.sh --phone-symbol-table $ref_lang/phones.txt $dir/dict_expanded_train "$oov_symbol" \
     $dir/lang_expanded_train_tmp $dir/lang_expanded_train || exit 1;
 fi
 

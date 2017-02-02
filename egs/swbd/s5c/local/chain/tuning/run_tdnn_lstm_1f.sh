@@ -8,6 +8,23 @@
 # trying the change of xent_regularize from 0.025 (which was an
 # unusual value) to the more usual 0.01.
 
+# WER is worse but this seems to be due to more complete optimization
+# (train better, valid worse).  Looks like we may be overtraining.
+#
+# local/chain/compare_wer_general.sh --looped tdnn_lstm_1e_sp tdnn_lstm_1f_sp
+# System                tdnn_lstm_1e_sp tdnn_lstm_1f_sp
+# WER on train_dev(tg)      12.74     13.23
+#           [looped:]       12.93     13.27
+# WER on train_dev(fg)      11.70     12.17
+#           [looped:]       12.09     12.42
+# WER on eval2000(tg)        15.7      16.1
+#           [looped:]        15.9      16.2
+# WER on eval2000(fg)        14.3      14.6
+#           [looped:]        14.6      14.7
+# Final train prob         -0.066    -0.065
+# Final valid prob         -0.087    -0.090
+# Final train prob (xent)        -0.931    -0.916
+# Final valid prob (xent)       -1.0279   -1.0359
 
 
 set -e
