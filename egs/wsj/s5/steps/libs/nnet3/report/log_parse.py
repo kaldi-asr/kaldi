@@ -113,12 +113,11 @@ def parse_progress_logs_for_clipped_proportion(exp_dir):
     progress_log_files = "%s/log/progress.*.log" % (exp_dir)
     component_names = set([])
     progress_log_lines = common_lib.run_kaldi_command(
-        'grep -e "{0}" {1}'.format(
+        'grep -H -e "{0}" {1}'.format(
             "clipped-proportion", progress_log_files))[0]
     parse_regex = re.compile(".*progress\.([0-9]+)\.log:component "
                              "name=(.*) type=.* "
                              "clipped-proportion=([0-9\.e\-]+)")
-
     cp_per_component_per_iter = {}
 
     max_iteration = 0
