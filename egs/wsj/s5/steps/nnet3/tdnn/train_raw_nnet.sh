@@ -215,7 +215,7 @@ fi
 [ -z $egs_dir ] && egs_dir=$dir/egs
 
 if [ ! -z "$online_ivector_dir" ] ; then
-  steps/nnet2/check_ivectors_compatible.sh $inline_ivector_dir $egs_dir/info || exit 1
+  steps/nnet2/check_ivectors_compatible.sh $online_ivector_dir $egs_dir/info || exit 1
 fi
 
 
