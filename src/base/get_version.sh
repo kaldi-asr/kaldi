@@ -77,7 +77,7 @@ if [ -z "$version" ]; then
 fi
 
 # Write version info to a temporary file.
-temp=$(mktemp)
+temp=$(mktemp /tmp/temp.XXXXXX)
 trap 'rm -f "$temp"' EXIT
 echo "// This file was automatically created by ./get_version.sh." > $temp
 echo "// It is only included by ./kaldi-error.cc." >> $temp

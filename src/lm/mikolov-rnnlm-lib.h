@@ -143,7 +143,7 @@ class CRnnLM {
   int layerc_size;
   int layer2_size;
 
-  int64 direct_size;
+  long long direct_size;
   int direct_order;
   int history[MAX_NGRAM_ORDER];
 
