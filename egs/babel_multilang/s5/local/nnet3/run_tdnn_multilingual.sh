@@ -2,18 +2,18 @@
 
 # This script can be used for training multilingual setup using different
 # languages (specifically babel languages) with no shared phones.
-# It will generates separate egs directory for each dataset and combine them 
+# It will generates separate egs directory for each dataset and combine them
 # during training.
-# In the new multilingual training setup, mini-batches of data corresponding to 
+# In the new multilingual training setup, mini-batches of data corresponding to
 # different languages are randomly sampled egs.scp file, which are generated
-# based on probability distribution that reflects the relative 
+# based on probability distribution that reflects the relative
 # frequency of the data from each language.
 
 # For all languages, we share all the hidden layers and there is separate final
 # layer per language.
 # The bottleneck layer can be added to network structure.
 
-# The script requires you to have baseline PLP features for all languages. 
+# The script requires you to have baseline PLP features for all languages.
 # It generates 40dim MFCC + pitch features for all languages.
 
 # The global iVector extractor is trained using all languages and the iVector
@@ -90,7 +90,7 @@ if $use_pitch; then feat_suffix=${feat_suffix}_pitch ; fi
 dir=${dir}${suffix}
 
 # extract high resolution MFCC features for speed-perturbed data
-# and extract alignment 
+# and extract alignment
 for lang_index in `seq 0 $[$num_langs-1]`; do
   echo "$0: extract 40dim MFCC + pitch for speed-perturbed data"
   local/nnet3/run_common_langs.sh --stage $stage \
@@ -116,7 +116,7 @@ if $use_ivector && [ ! -f $global_extractor/.done ]; then
   fi
   echo "$0: Generate global i-vector extractor using data/multi"
   local/nnet3/run_shared_ivector_extractor.sh --global-extractor $global_extractor \
-    --stage $stage ${lang_list[0]} || exit 1; 
+    --stage $stage ${lang_list[0]} || exit 1;
   touch $global_extractor/.done
 
   echo "$0: Extract ivector for all languages."
@@ -133,7 +133,7 @@ for lang_index in `seq 0 $[$num_langs-1]`; do
   multi_data_dirs[$lang_index]=data/${lang_list[$lang_index]}/train${suffix}${feat_suffix}
   multi_egs_dirs[$lang_index]=exp/${lang_list[$lang_index]}/nnet3/egs${ivector_suffix}
   multi_ali_dirs[$lang_index]=exp/${lang_list[$lang_index]}/tri5_ali${suffix}
-  multi_ivector_dirs[$lang_index]=exp/${lang_list[$lang_index]}/nnet3/ivectors_train${suffix}${ivector_suffix} 
+  multi_ivector_dirs[$lang_index]=exp/${lang_list[$lang_index]}/nnet3/ivectors_train${suffix}${ivector_suffix}
 done
 
 if $use_ivector; then
@@ -148,7 +148,7 @@ feat_dim=`feat-to-dim scp:${multi_data_dirs[0]}/feats.scp -`
 
 if [ $stage -le 9 ]; then
   echo "$0: creating multilingual neural net configs using the xconfig parser";
-  
+
   if [ -z $bnf_dim ]; then
     bnf_dim=1024
   fi
@@ -178,8 +178,8 @@ EOF
     num_targets=`tree-info exp/${lang_list[$lang_index]}/$alidir/tree 2>/dev/null | grep num-pdfs | awk '{print $2}'` || exit 1;
 
     echo " relu-renorm-layer name=prefinal-affine-lang-${lang_index} input=tdnn7 dim=$bnf_dim"
-    echo " output-layer name=output-${lang_index} dim=$num_targets" 
-  done >> $dir/configs/network.xconfig 
+    echo " output-layer name=output-${lang_index} dim=$num_targets"
+  done >> $dir/configs/network.xconfig
 
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig \
     --config-dir $dir/configs/ \
@@ -189,7 +189,7 @@ EOF
   add_lda=false
 EOF
 
-  # removing the extra output node "output-tmp" added for back-compatiblity with 
+  # removing the extra output node "output-tmp" added for back-compatiblity with
   # xconfig to config conversion.
   nnet3-copy --edits="remove-output-nodes name=output-tmp" $dir/configs/ref.raw $dir/configs/ref.raw || exit 1;
 fi
@@ -210,7 +210,11 @@ if [ $stage -le 10 ]; then
     --left-context $model_left_context --right-context $model_right_context \
     --samples-per-iter 400000 \
     $num_langs ${multi_data_dirs[@]} ${multi_ali_dirs[@]} ${multi_egs_dirs[@]} || exit 1;
-  
+
+fi
+
+if [ -z $megs_dir ];then
+  megs_dir=$dir/egs
 fi
 
 if [ $stage -le 11 ] && [ -z $megs_dir ]; then
@@ -221,10 +225,6 @@ if [ $stage -le 11 ] && [ -z $megs_dir ]; then
     --cmd "$decode_cmd" \
     --samples-per-iter 400000 \
     $num_langs ${common_egs_dir[@]} || exit 1;
-fi
-
-if [ -z $megs_dir ];then
-  megs_dir=$dir/egs
 fi
 
 if [ $stage -le 12 ]; then
@@ -239,7 +239,6 @@ if [ $stage -le 12 ]; then
     --feat-dir ${multi_data_dirs[0]} \
     --feat.online-ivector-dir ${multi_ivector_dirs[0]} \
     --egs.dir $megs_dir \
-    --egs.use-multitask-egs true \
     --use-dense-targets false \
     --targets-scp ${multi_ali_dirs[0]} \
     --cleanup.remove-egs $remove_egs \
@@ -278,7 +277,7 @@ if [ $stage -le 13 ]; then
   num_decode_lang=${#decode_lang_list[@]}
   (
   for lang_index in `seq 0 $[$num_decode_lang-1]`; do
-    if [ ! -f $dir/${decode_lang_list[$lang]}/decode_dev10h.pem/.done ]; then 
+    if [ ! -f $dir/${decode_lang_list[$lang]}/decode_dev10h.pem/.done ]; then
       cp $dir/cmvn_opts $dir/${decode_lang_list[$lang]}/.
       echo "Decoding lang ${decode_lang_list[$lang]} using multilingual hybrid model $dir"
       run-4-anydecode-langs.sh --use-ivector $use_ivector --nnet3-dir $dir ${decode_lang_list[$lang]} || exit 1;

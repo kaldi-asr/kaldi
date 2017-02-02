@@ -70,23 +70,16 @@ def get_args():
                        default=None,
                        help='The model name in dir used to compute average posteriors'
                             ' w.r.t its output node.')
-    parser.add_argument("--post-process.readjust-model", type=str, 
+    parser.add_argument("--post-process.readjust-model", type=str,
                         dest='readjusted_model',
                         default="final",
                         help="the model name used to store readjusted model.")
-    parser.add_argument("--post-process.readjust-priors", type=str, 
+    parser.add_argument("--post-process.readjust-priors", type=str,
                         action=common_lib.StrToBoolAction,
                         dest='readjust_priors',
                         default=True, choices=["true", "false"],
                         help='If true, the prior re-adjusted using computed '
                              'averarage posterior.')
-    # extra egs option
-    parser.add_argument("--egs.use-multitask-egs", type=str, 
-                        action=common_lib.StrToBoolAction,
-                        dest='use_multitask_egs',
-                        default=False, choices=["true", "false"],
-                        help='If true, it is assumed there are different examples '
-                          'correspond to multiple tasks in output layer.')
     # General options
     parser.add_argument("--reporting.email", dest="email",
                          type=str, default=None,
@@ -103,7 +96,7 @@ def get_args():
                          type=float, default=60,
                          help="""Polling frequency in seconds at which
                          the background process handler checks for
-                         errors in the processes.""")    
+                         errors in the processes.""")
     parser.add_argument("--use-gpu", type=str,
                         action=common_lib.StrToBoolAction,
                         choices=["true", "false"],
@@ -179,22 +172,32 @@ def process_args(args):
 
 
 def compute_and_adjust_priors(args, run_opts, background_process_handler):
-    """ compute the average posteriors using example and model and 
+    """ compute the average posteriors using example and model and
         re-adjusting the prior in the model for target output.
     """
     if args.egs_dir is None:
       egs_dir = '{0}/egs'.format(args.dir)
     else:
       egs_dir = args.egs_dir
-    
+
     left_context = int(open('{0}/info/left_context'.format(
                             egs_dir)).readline())
     right_context = int(open('{0}/info/right_context'.format(
-                            egs_dir)).readline()) 
+                            egs_dir)).readline())
     num_archives = int(open('{0}/info/num_archives'.format(
                             egs_dir)).readline())
     logger.info("Getting average posterior for purposes of "
                 "adjusting the priors for output {output}.".format(output=args.output_name))
+
+    num_tasks_to_process = 1
+    # If True, it is assumed different examples used to train multiple
+    # tasks in the output layer.
+    use_multitask_egs = False
+    if (os.path.exists('{0}/info/num_tasks'.format(egs_dir))):
+        num_tasks_to_process = int(open('{0}/info/num_tasks'.format(
+                                        egs_dir)).readline())
+    if num_tasks_to_process > 1:
+        use_multitask_egs = True
 
     avg_post_vec_file = train_lib.common.compute_average_posterior(
         dir=args.dir, iter=args.output_name, egs_dir=egs_dir, model=args.model,
@@ -202,9 +205,9 @@ def compute_and_adjust_priors(args, run_opts, background_process_handler):
         left_context=left_context, right_context=right_context,
         prior_subset_size=args.prior_subset_size, run_opts=run_opts,
         output_name=args.output_name,
-        use_multitask_egs=args.use_multitask_egs)
+        use_multitask_egs=use_multitask_egs)
 
-    if args.readjust_priors: 
+    if args.readjust_priors:
         logger.info("Re-adjusting priors based on computed posteriors")
         if args.model is not None:
             if args.ali_dir is None:

@@ -53,12 +53,6 @@ def get_args():
     parser.add_argument("--egs.frames-per-eg", type=int, dest='frames_per_eg',
                         default=8,
                         help="Number of output labels per example")
-    parser.add_argument("--egs.use-multitask-egs", type=str, 
-                        action=common_lib.StrToBoolAction,
-                        dest='use_multitask_egs',
-                        default=False, choices=["true", "false"],
-                        help='If true, it is assumed there are different examples '
-                          'correspond to multiple tasks in output layer.')
     # trainer options
     parser.add_argument("--trainer.prior-subset-size", type=int,
                         dest='prior_subset_size', default=20000,
@@ -286,6 +280,16 @@ def train(args, run_opts, background_process_handler):
         args.max_models_combine, args.add_layers_period,
         args.num_jobs_final)
 
+    num_tasks_to_process = 1
+    # If True, it is assumed different examples used to train multiple
+    # tasks in the output layer.
+    use_multitask_egs = False
+    if (os.path.exists('{0}/info/num_tasks'.format(egs_dir))):
+        num_tasks_to_process = int(open('{0}/info/num_tasks'.format(
+                                        egs_dir)).readline())
+    if num_tasks_to_process > 1:
+        use_multitask_egs = True
+
     def learning_rate(iter, current_num_jobs, num_archives_processed):
         return common_train_lib.get_learning_rate(iter, current_num_jobs,
                                                   num_iters,
@@ -331,7 +335,7 @@ def train(args, run_opts, background_process_handler):
                 shuffle_buffer_size=args.shuffle_buffer_size,
                 run_opts=run_opts,
                 get_raw_nnet_from_am=False,
-                use_multitask_egs=args.use_multitask_egs,
+                use_multitask_egs=use_multitask_egs,
                 background_process_handler=background_process_handler)
 
             if args.cleanup:
@@ -364,7 +368,7 @@ def train(args, run_opts, background_process_handler):
             run_opts=run_opts,
             background_process_handler=background_process_handler,
             get_raw_nnet_from_am=False,
-            use_multitask_egs=args.use_multitask_egs)
+            use_multitask_egs=use_multitask_egs)
 
     if include_log_softmax and args.stage <= num_iters + 1:
         logger.info("Getting average posterior for output for purposes of "
@@ -375,7 +379,7 @@ def train(args, run_opts, background_process_handler):
             left_context=left_context, right_context=right_context,
             prior_subset_size=args.prior_subset_size, run_opts=run_opts,
             get_raw_nnet_from_am=False,
-            use_multitask_egs=args.use_multitask_egs)
+            use_multitask_egs=use_multitask_egs)
 
     if args.cleanup:
         logger.info("Cleaning up the experiment directory "

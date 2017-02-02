@@ -92,7 +92,7 @@ struct NnetTrainerOptions {
 // Also see struct AccuracyInfo, in nnet-diagnostics.h.
 struct ObjectiveFunctionInfo {
   int32 current_phase;
-  int32 num_minibatch;
+  int32 num_minibatches;
 
   double tot_weight;
   double tot_objf;
@@ -106,7 +106,7 @@ struct ObjectiveFunctionInfo {
 
   ObjectiveFunctionInfo():
       current_phase(0),
-      num_minibatch(0),
+      num_minibatches(0),
       tot_weight(0.0), tot_objf(0.0), tot_aux_objf(0.0),
       tot_weight_this_phase(0.0), tot_objf_this_phase(0.0),
       tot_aux_objf_this_phase(0.0) { }
@@ -117,6 +117,7 @@ struct ObjectiveFunctionInfo {
   // control how frequently we print logging messages.
   void UpdateStats(const std::string &output_name,
                    int32 minibatches_per_phase,
+                   int32 minibatch_counter,
                    BaseFloat this_minibatch_weight,
                    BaseFloat this_minibatch_tot_objf,
                    BaseFloat this_minibatch_tot_aux_objf = 0.0);

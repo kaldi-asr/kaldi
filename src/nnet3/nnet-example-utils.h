@@ -81,56 +81,6 @@ void RoundUpNumFrames(int32 frame_subsampling_factor,
                       int32 *num_frames_overlap);
 
 
-/** Returns true if the "eg" contains just a single example, meaning
-    that all the "n" values in the indexes are zero, and the example
-    has NnetIo members named both "input" and "output"
-
-    Also computes the minimum and maximum "t" values in the "input" and
-    "output" NnetIo members.
-**/
-bool ContainsSingleExample(const NnetExample &eg,
-                           int32 *min_input_t,
-                           int32 *max_input_t,
-                           int32 *min_output_t,
-                           int32 *max_output_t);
-
-/*
-   This function filters the indexes (and associated feature rows) in a
-   NnetExample, removing any index/row in an NnetIo named "input" with t <
-   min_input_t or t > max_input_t and any index/row in an NnetIo named "output" with t <
-   min_output_t or t > max_output_t.
-   Will crash if filtering removes all Indexes of "input" or "output".
- */
-void FilterExample(const NnetExample &eg,
-                   int32 min_input_t,
-                   int32 max_input_t,
-                   int32 min_output_t,
-                   int32 max_output_t,
-                   NnetExample *eg_out);
-
-/*
-   This function is responsible for possibly selecting one frame from multiple
-   supervised frames, and reducing the left and right context as specified.  If
-   frame == "" it does not reduce the supervised frames; if frame == "random" it
-   selects one random frame; otherwise it expects frame to be an integer, and
-   will select only the output with that frame index (or return false if there was
-   no such output).
-
-   If left_context != -1 it removes any inputs with t < (smallest output - left_context).
-      If left_context != -1 it removes any inputs with t < (smallest output - left_context).
-
-   It returns true if it was able to select a frame.  We only anticipate it ever
-   returning false in situations where frame is an integer, and the eg came from
-   the end of a file and has a smaller than normal number of supervised frames.
-
-*/
-bool SelectFromExample(const NnetExample &eg,
-                       std::string frame_str,
-                       int32 left_context,
-                       int32 right_context,
-                       int32 frame_shift,
-                       NnetExample *eg_out);
-
 } // namespace nnet3
 } // namespace kaldi
 

@@ -1,4 +1,4 @@
-
+#! /usr/bin/env python
 
 # Copyright 2016    Vijayaditya Peddinti.
 #           2016    Vimal Manohar
@@ -41,26 +41,27 @@ class RunOpts(object):
         self.parallel_train_opts = None
 
 def get_outputs_list(model_file, get_raw_nnet_from_am=True):
-    """ Generates list of output node names used in nnet3 model configuration.
+    """ Generates list of output-node-name used in nnet3 model configuration.
     """
     outputs_list=""
     if get_raw_nnet_from_am:
       outputs_list, error = common_lib.run_kaldi_command(
           "nnet3-am-info --print-args=false {0} | "
           "grep -e 'output-node' | cut -f2 -d' ' | cut -f2 -d'=' ".format(model_file))
-    else:  
+    else:
       outputs_list, error = common_lib.run_kaldi_command(
           "nnet3-info --print-args=false {0} | "
           "grep -e 'output-node' | cut -f2 -d' ' | cut -f2 -d'=' ".format(model_file))
-     
+
     return outputs_list
 
-def get_multitask_egs_opts(egs_dir, egs_prefix="", 
+def get_multitask_egs_opts(egs_dir, egs_prefix="",
                            archive_index=1,
                            use_multitask_egs=False):
-    """ Generates egs option for multi-task(multilingual) setup, where
-        there is target ouput and weight correspond to each
-        eg in egs.scp w.r.t the task or language the eg belongs to.
+    """ Generates egs option for multitask(or multilingual) training setup,
+        if ouput.scp or weight.scp files exists in egs_dir.
+        Each eg in egs.scp has corresponding task or language in output.scp and
+        weights in weight.scp for scaling supervision for this egs.
         i.e. egs_prefix is "" for train and
         "valid_diagnostic." for validation.
     """
@@ -70,11 +71,11 @@ def get_multitask_egs_opts(egs_dir, egs_prefix="",
         output_file_name="{egs_dir}/{egs_prefix}output.{archive_index}".format(
                          egs_dir=egs_dir,
                          egs_prefix=egs_prefix,
-                         archive_index=archive_index) 
+                         archive_index=archive_index)
 
         #if os.path.isfile(output_file_name):
         output_rename_opt = ("--outputs=ark:{output_file_name}".format(output_file_name=output_file_name))
-        
+
         weight_file_name = ("{egs_dir}/{egs_prefix}weight.{archive_index}".format(
                            egs_dir=egs_dir,
                            egs_prefix=egs_prefix,
@@ -136,7 +137,7 @@ def get_average_nnet_model(dir, iter, nnets_list, run_opts,
     next_iter = iter + 1
     if get_raw_nnet_from_am:
         out_model = ("""- \| nnet3-am-copy --set-raw-nnet=- --scale={scale} \
-                        {dir}/{iter}.mdl {dir}/{next_iter}.mdl""".format( 
+                        {dir}/{iter}.mdl {dir}/{next_iter}.mdl""".format(
                             dir=dir, iter=iter,
                             next_iter=next_iter,
                             scale=scale))

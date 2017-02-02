@@ -1,13 +1,13 @@
 #!/bin/bash
 #
-# This script uses separate input egs directory for each language as input, 
+# This script uses separate input egs directory for each language as input,
 # to generate egs.*.scp files in multilingual egs directory
 # where the scp line points to the original archive for each egs directory.
 # $megs/egs.*.scp is randomized w.r.t language id.
 #
 # Also this script generates egs.JOB.scp, output.JOB.scp and weight.JOB.scp,
 # where output file contains language-id for each example
-# and weight file contains weights for scaling output posterior 
+# and weight file contains weights for scaling output posterior
 # for each example w.r.t input language.
 #
 # Begin configuration section.
@@ -74,7 +74,7 @@ for lang in $(seq 0 $[$num_langs-1]);do
     f1=`cat $megs_dir/info/$param`;
     f2=`cat ${multi_egs_dir[$lang]}/info/$f`;
     if [ $f1 != $f1 ]; then
-      echo "$0: mismatch in dimension for $f parameter in ${multi_egs_dir[$lang]}." 
+      echo "$0: mismatch in dimension for $f parameter in ${multi_egs_dir[$lang]}."
       exit 1;
     fi
   done
@@ -92,7 +92,7 @@ fi
 
 if [ $stage -le 1 ]; then
   echo "$0: combine combine.egs.scp examples from all langs in $megs_dir/combine.egs.scp."
-  # Generate combine.egs.scp for multilingual setup. 
+  # Generate combine.egs.scp for multilingual setup.
   $cmd $megs_dir/log/allocate_multilingual_examples_combine.log \
   python steps/nnet3/multilingual/allocate_multilingual_examples.py \
       --random-lang false \
@@ -100,9 +100,9 @@ if [ $stage -le 1 ]; then
       --minibatch-size $minibatch_size \
       --prefix "combine." \
       $num_langs "$combine_scp_list" $megs_dir || exit 1;
-  
+
   echo "$0: combine train_diagnostic.egs.scp examples from all langs in $megs_dir/train_diagnostic.egs.scp."
-  # Generate train_diagnostic.egs.scp for multilingual setup. 
+  # Generate train_diagnostic.egs.scp for multilingual setup.
   $cmd $megs_dir/log/allocate_multilingual_examples_train_diagnostic.log \
   python steps/nnet3/multilingual/allocate_multilingual_examples.py \
       --random-lang false \
@@ -111,15 +111,15 @@ if [ $stage -le 1 ]; then
       --prefix "train_diagnostic." \
       $num_langs "$train_diagnostic_scp_list" $megs_dir || exit 1;
 
-      
+
   echo "$0: combine valid_diagnostic.egs.scp examples from all langs in $megs_dir/valid_diagnostic.egs.scp."
-  # Generate valid_diagnostic.egs.scp for multilingual setup. 
+  # Generate valid_diagnostic.egs.scp for multilingual setup.
   $cmd $megs_dir/log/allocate_multilingual_examples_valid_diagnostic.log \
   python steps/nnet3/multilingual/allocate_multilingual_examples.py \
       --random-lang false --max-archives 1 --num-jobs 1\
       --minibatch-size $minibatch_size \
       --prefix "valid_diagnostic." \
       $num_langs "$valid_diagnostic_scp_list" $megs_dir || exit 1;
-   
+
 fi
 
