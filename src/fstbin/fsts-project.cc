@@ -48,13 +48,13 @@ int main(int argc, char *argv[]) {
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() < 2 || po.NumArgs() > 3) {
+    if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
     }
 
     std::string fsts_rspecifier = po.GetArg(1),
-        fsts_wspecifier = po.GetOptArg(2);
+        fsts_wspecifier = po.GetArg(2);
 
 
     SequentialTableReader<VectorFstHolder> fst_reader(fsts_rspecifier);

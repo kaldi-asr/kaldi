@@ -31,15 +31,22 @@ typedef KwsLexicographicArc Arc;
 typedef Arc::Weight Weight;
 typedef Arc::StateId StateId;
 
+// encode ilabel, olabel pair as a single 64bit (output) symbol
 uint64 EncodeLabel(StateId ilabel, StateId olabel) {
   return (static_cast<int64>(olabel) << 32) + static_cast<int64>(ilabel);
 }
 
+// extract the osymbol from the 64bit symbol. That represents the utterance id
+// in this setup -- we throw away the isymbol which is typically 0 or an
+// disambiguation symbol
 StateId DecodeLabelUid(uint64 osymbol) {
-  // We only need the utterance id
   return static_cast<StateId>(osymbol >> 32);
 }
 
+// this is a mapper adapter that helps converting
+// between the StdArc FST (i.e. tropical semiring FST)
+// to the KwsLexicographic FST. Structure will be kept,
+// the weights converted/recomputed
 class VectorFstToKwsLexicographicFstMapper {
  public:
   typedef fst::StdArc FromArc;
@@ -75,15 +82,15 @@ class VectorFstToKwsLexicographicFstMapper {
 };
 
 struct ActivePath {
-  vector<KwsLexicographicArc::Label> path;
+  std::vector<KwsLexicographicArc::Label> path;
   KwsLexicographicArc::Weight weight;
   KwsLexicographicArc::Label last;
 };
 
 bool GenerateActivePaths(const KwsLexicographicFst &proxy,
-                       vector<ActivePath> *paths,
+                       std::vector<ActivePath> *paths,
                        KwsLexicographicFst::StateId cur_state,
-                       vector<KwsLexicographicArc::Label> cur_path,
+                       std::vector<KwsLexicographicArc::Label> cur_path,
                        KwsLexicographicArc::Weight cur_weight) {
   for (fst::ArcIterator<KwsLexicographicFst> aiter(proxy, cur_state);
        !aiter.Done(); aiter.Next()) {
@@ -109,21 +116,23 @@ bool GenerateActivePaths(const KwsLexicographicFst &proxy,
 }
 }  // namespace kaldi
 
+typedef kaldi::TableWriter< kaldi::BasicVectorHolder<double> >
+                                                        VectorOfDoublesWriter;
 void OutputDetailedStatistics(const std::string &kwid,
                         const kaldi::KwsLexicographicFst &keyword,
                         const unordered_map<uint32, uint64> &label_decoder,
-                        kaldi::TableWriter< kaldi::BasicVectorHolder<double> > *output ) {
-  vector<kaldi::ActivePath> paths;
+                        VectorOfDoublesWriter *output ) {
+  std::vector<kaldi::ActivePath> paths;
 
   if (keyword.Start() == fst::kNoStateId)
     return;
 
   kaldi::GenerateActivePaths(keyword, &paths, keyword.Start(),
-                  vector<kaldi::KwsLexicographicArc::Label>(),
+                  std::vector<kaldi::KwsLexicographicArc::Label>(),
                   kaldi::KwsLexicographicArc::Weight::One());
 
   for (int i = 0; i < paths.size(); ++i) {
-    vector<double> out;
+    std::vector<double> out;
     double score;
     int32 tbeg, tend, uid;
 
@@ -138,8 +147,6 @@ void OutputDetailedStatistics(const std::string &kwid,
     out.push_back(tend);
     out.push_back(score);
 
-    //KALDI_ASSERT(paths[i].path[0] == 0);
-    //KALDI_ASSERT(paths[i].path[paths[i].path.size() - 1] == 0);
     for (int j = 0; j < paths[i].path.size(); ++j) {
       out.push_back(paths[i].path[j]);
     }
@@ -158,24 +165,28 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Search the keywords over the index. This program can be executed\n"
-        "parallely, either on the index side or the keywords side; we use\n"
+        "in parallel, either on the index side or the keywords side; we use\n"
         "a script to combine the final search results. Note that the index\n"
-        "archive has a only key \"global\".\n\n"
-        "Search has one or two outputs. The first one, is mandatory and will\n"
+        "archive has a single key \"global\".\n\n"
+        "Search has one or two outputs. The first one is mandatory and will\n"
         "contain the seach output, i.e. list of all found keyword instances\n"
         "The file is in the following format:\n"
-        "kw utterance_id beg_frame end_frame negated_log_probs\n"
+        "kw_id utt_id beg_frame end_frame neg_logprob\n"
         " e.g.: \n"
-        "KW1 1 23 67 0.6074219\n\n"
-        "The second parameter is voluntary and allows the user to gather more\n"
+        "KW105-0198 7 335 376 1.91254\n\n"
+        "The second parameter is optional and allows the user to gather more\n"
         "statistics about the individual instances from the posting list.\n"
+        "Remember \"keyword\" is an FST and as such, there can be multiple\n"
+        "paths matching in the keyword and in the lattice index in that given\n"
+        "time period. The stats output will provide all matching paths\n"
+        "each with the appropriate score. \n"
         "The format is as follows:\n"
         "kw_id utt_id beg_frame end_frame neg_logprob 0 w_id1 w_id2 ... 0\n"
         " e.g.: \n"
-        "KW105-0198 32236_B_038741 335 376 16.01254 0 5766 5659 0\n"
+        "KW105-0198 7 335 376 16.01254 0 5766 5659 0\n"
         "\n"
-        "Usage: kws-search [options]  index-rspecifier keywords-rspecifier "
-        "results-wspecifier\n"
+        "Usage: kws-search [options] <index-rspecifier> <keywords-rspecifier> "
+        "<results-wspecifier> [<stats_wspecifier>]\n"
         " e.g.: kws-search ark:index.idx ark:keywords.fsts "
                            "ark:results ark:stats\n";
 
@@ -217,21 +228,21 @@ int main(int argc, char *argv[]) {
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() < 3 || po.NumArgs() > 5) {
+    if (po.NumArgs() < 3 || po.NumArgs() > 4) {
       po.PrintUsage();
       exit(1);
     }
 
     std::string index_rspecifier = po.GetArg(1),
-        keyword_rspecifier = po.GetOptArg(2),
-        result_wspecifier = po.GetOptArg(3),
+        keyword_rspecifier = po.GetArg(2),
+        result_wspecifier = po.GetArg(3),
         stats_wspecifier = po.GetOptArg(4);
 
     RandomAccessTableReader< VectorFstTplHolder<KwsLexicographicArc> >
                                                 index_reader(index_rspecifier);
     SequentialTableReader<VectorFstHolder> keyword_reader(keyword_rspecifier);
-    TableWriter< BasicVectorHolder<double> > result_writer(result_wspecifier);
-    TableWriter< BasicVectorHolder<double> > stats_writer(stats_wspecifier);
+    VectorOfDoublesWriter result_writer(result_wspecifier);
+    VectorOfDoublesWriter stats_writer(stats_wspecifier);
 
 
     // Index has key "global"
@@ -297,8 +308,6 @@ int main(int argc, char *argv[]) {
       Compose(keyword_fst, index, &result_fst);
 
       if (stats_wspecifier != "") {
-        //match_writer.Write(key, result_fst);
-
         KwsLexicographicFst matched_seq(result_fst);
         OutputDetailedStatistics(key,
                                  matched_seq,

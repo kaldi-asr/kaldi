@@ -59,17 +59,23 @@ int main(int argc, char *argv[]) {
       "where alpha and beta can be set as command line parameters. Typically\n"
       "one would set beta!=0 and alpha=0 for logarithmic weights (tropical\n"
       "semiring, for example) and alpha!=0 and beta=0 for probabilistic\n"
-      "weightsa\n"
+      "weights. If you call the fsts-scale without specifying beta or alpha,\n"
+      "it will behave as a no-op operation\n"
       "\n"
-      "Usage: fsts-scale --alpha=1 --beta=0 (fst-rxfilename|fst-rspecifier) "
-      " [(out-rxfilename|out-rspecifier)]";
+      "Usage:\n"
+      " fsts-scale [options] <fst-rxfilename|fst-rspecifier>"
+      " <out-rxfilename|out-rspecifier>\n"
+      "e.g.:\n"
+      " fsts-scale --alpha=2.0 ark:input.fsts ark,t:output.fsts\n";
+      "or:\n"
+      " fsts-scale --alpha=2.0 input.fst scaled.fst\n";
 
     ParseOptions po(usage);
     po.Register("alpha", &alpha, "The alpha (multiplikative) coefficient");
     po.Register("beta", &beta, "The beta (additive) coefficient");
 
     po.Read(argc, argv);
-    if (po.NumArgs() < 2 || po.NumArgs() > 3) {
+    if (po.NumArgs() != 2) {
       KALDI_WARN << po.NumArgs();
       po.PrintUsage();
       exit(1);

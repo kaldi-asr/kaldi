@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() < 2 || po.NumArgs() > 3) {
+    if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
     }
@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
 
     int32 n_out_done = 0,
           n_in_done = 0;
-    std::string res_key = "" ;
+    std::string res_key = "";
     VectorFst<StdArc> res_fst;
 
     for (; !fst_reader.Done(); fst_reader.Next()) {
@@ -70,28 +70,17 @@ int main(int argc, char *argv[]) {
           VectorFst<StdArc> out_fst;
           fst::Minimize(&res_fst);
           fst::RmEpsilon(&res_fst);
-          // fst::Determinize(res_fst, &out_fst);
-          // fst::Minimize(&out_fst);
-          // fst::RmEpsilon(&out_fst);
-          // fst::Minimize(&out_fst);
-          // fst_writer.Write(res_key, out_fst);
           fst_writer.Write(res_key, res_fst);
           n_out_done++;
         }
         res_fst = fst;
         res_key = key;
       }
-
     }
     if (res_key != "") {
       VectorFst<StdArc> out_fst;
       fst::Minimize(&res_fst);
       fst::RmEpsilon(&res_fst);
-      // fst::Determinize(res_fst, &out_fst);
-      // fst::Minimize(&out_fst);
-      // fst::RmEpsilon(&out_fst);
-      // fst::Minimize(&out_fst);
-      // fst_writer.Write(res_key, out_fst);
       fst_writer.Write(res_key, res_fst);
       n_out_done++;
     }
