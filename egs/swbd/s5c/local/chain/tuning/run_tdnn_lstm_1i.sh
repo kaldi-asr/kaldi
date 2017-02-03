@@ -1,39 +1,51 @@
 #!/bin/bash
 
+# run_tdnn_lstm_1i.sh is like run_tdnn_lstm_1{e,f}.sh but
+# with a different frames-per-iter: 2 million, vs. 1.5 million
+# (1e) and 1 million (1f)
 
-# run_tdnn_lstm_1d.sh is like run_tdnn_lstm_1c.sh but making
-# various kaldi-5.1-related upgrades to the script:
-#  change chunk-width to be variable, add extra_left_context_initial=0
-# and extra_right_context_final=0; add looped decoding.
-# Also changed frames-per-iter from 1.2 million to 1.5 million... this
-# might have been a mistake, trying 1 million in 1f to see if this matters.
+# Results are inconclusive regarding comparison with 1e: it's [0.3 worse, 0.1
+# better, 0.2 worse, same, 0.2 better, 0.2 better, 0.3 better, 0.3 better] on
+# the different conditions.  There is less train/valid difference and worse
+# train prob [the trends of valid and train probs are consistent as we change
+# the frames-per-iter].
 
-# The comparison below is with a version of the 1c system that was run at about
-# the same time.  The degradation in log-likelihood and xent prob is likely because
-# now on average the chunk-size is slightly smaller than before (150 -> 136);
-# possibly the change in extra-(left,right) context has a similar effect
-# (or maybe it's just because the validation and train-subset examples have changed).
+# local/chain/compare_wer_general.sh --looped tdnn_lstm_1{e,f,i}_sp 2>/dev/null
+# System                tdnn_lstm_1e_sp tdnn_lstm_1f_sp tdnn_lstm_1i_sp
+# WER on train_dev(tg)      12.74     13.23     13.08
+#           [looped:]       12.93     13.27     13.00
+# WER on train_dev(fg)      11.70     12.17     11.97
+#           [looped:]       12.09     12.42     12.08
+# WER on eval2000(tg)        15.7      16.1      15.5
+#           [looped:]        15.9      16.2      15.7
+# WER on eval2000(fg)        14.3      14.6      14.0
+#           [looped:]        14.6      14.7      14.3
+# Final train prob         -0.066    -0.065    -0.069
+# Final valid prob         -0.087    -0.090    -0.088
+# Final train prob (xent)        -0.931    -0.916    -0.947
+# Final valid prob (xent)       -1.0279   -1.0359   -1.0419
 
+# run_tdnn_lstm_1e.sh is like run_tdnn_lstm_1d.sh but
+# trying the change of xent_regularize from 0.025 (which was an
+# unusual value) to the more usual 0.01.
 
-# local/chain/compare_wer_general.sh --looped tdnn_lstm_1c_ld5_sp tdnn_lstm_1d_sp
-# System                tdnn_lstm_1c_ld5_sp tdnn_lstm_1d_sp
-# WER on train_dev(tg)      13.17     12.90
-#           [looped:]                 13.01
-# WER on train_dev(fg)      12.25     11.90
-#           [looped:]                 12.13
-# WER on eval2000(tg)        15.4      15.7
-#           [looped:]                  15.7
-# WER on eval2000(fg)        14.1      14.2
-#           [looped:]                  14.4
-# Final train prob         -0.046    -0.064
-# Final valid prob         -0.073    -0.088
-# Final train prob (xent)        -0.749    -0.836
-# Final valid prob (xent)       -0.9084   -0.9631
-
-# run_tdnn_lstm_1c.sh is like run_tdnn_lstm_1b.sh but using the
-# new 'fast-lstm' layer.  Results are slightly improved, plus
-# it's faster.  See PR #1243 on github, and issue #1237.
-# This used to be called run_tdnn_fastlstm_1b.sh.
+# WER is worse but this seems to be due to more complete optimization
+# (train better, valid worse).  Looks like we may be overtraining.
+#
+# local/chain/compare_wer_general.sh --looped tdnn_lstm_1e_sp tdnn_lstm_1f_sp
+# System                tdnn_lstm_1e_sp tdnn_lstm_1f_sp
+# WER on train_dev(tg)      12.74     13.23
+#           [looped:]       12.93     13.27
+# WER on train_dev(fg)      11.70     12.17
+#           [looped:]       12.09     12.42
+# WER on eval2000(tg)        15.7      16.1
+#           [looped:]        15.9      16.2
+# WER on eval2000(fg)        14.3      14.6
+#           [looped:]        14.6      14.7
+# Final train prob         -0.066    -0.065
+# Final valid prob         -0.087    -0.090
+# Final train prob (xent)        -0.931    -0.916
+# Final valid prob (xent)       -1.0279   -1.0359
 
 
 set -e
@@ -43,11 +55,11 @@ stage=0
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_lstm_1d # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_lstm_1i # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=final
 
 # training options
-xent_regularize=0.025
+xent_regularize=0.01
 self_repair_scale=0.00001
 label_delay=5
 
@@ -190,7 +202,7 @@ fi
 if [ $stage -le 13 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
+     /export/b1{1,2,3,4}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
 
   steps/nnet3/chain/train.py --stage $train_stage \
@@ -203,7 +215,7 @@ if [ $stage -le 13 ]; then
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
     --trainer.num-chunk-per-minibatch 64,32 \
-    --trainer.frames-per-iter 1500000 \
+    --trainer.frames-per-iter 2000000 \
     --trainer.max-param-change 2.0 \
     --trainer.num-epochs 4 \
     --trainer.optimization.shrink-value 0.99 \
