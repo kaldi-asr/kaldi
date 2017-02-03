@@ -165,7 +165,6 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         momentum, max_param_change, shuffle_buffer_size,
                         run_opts,
                         cv_minibatch_size=256, frames_per_eg=-1,
-                        min_deriv_time=None, max_deriv_time=None,
                         shrinkage_value=1.0, dropout_edit_string="",
                         get_raw_nnet_from_am=True,
                         background_process_handler=None,
@@ -180,10 +179,6 @@ def train_one_iteration(dir, iter, srand, egs_dir,
             implies frame-level training, which is applicable for DNN training.
             If it is > 0, then each parallel SGE job created, a different frame
             numbered 0..frames_per_eg-1 is used.
-        min_deriv_time: Applicable for RNN training. A default value of None
-            implies a min_deriv_time of 0 is used. During RNN training, its
-            value is set to chunk_width - num_bptt_steps in the training
-            script.
         shrinkage_value: If value is 1.0, no shrinkage is done; otherwise
             parameter values are scaled by this value.
         get_raw_nnet_from_am: If True, then the network is read and stored as

@@ -255,17 +255,17 @@ if [ $stage -le 13 ]; then
     mkdir -p  $lang_dir
     # rename output name for each lang to 'output'.
     nnet3-copy --edits="rename-node old-name=output-$lang_index new-name=output" \
-      $dir/final.raw $lang_dir/final.${lang_index}.raw || exit 1;
+      $dir/final.raw $lang_dir/final.raw || exit 1;
 
     steps/nnet3/compute_and_adjust_priors.py --cmd="$decode_cmd" \
       --egs.dir $megs_dir \
       --egs.use-multitask-egs true \
       --use-gpu true \
       --reporting.email="$reporting_email" \
-      --post-process.model final.${lang_index} \
-      --post-process.readjust-model final.${lang_index} \
-      --post-process.readjust-priors true \
-      --post-process.output-name output-${lang_index} \
+      --init-model final \
+      --readjust-model final.${lang_index} \
+      --readjust-priors true \
+      --output-name output-${lang_index} \
       --ali-dir ${multi_ali_dirs[$lang_index]} \
       --dir=$lang_dir  || exit 1;
   done
