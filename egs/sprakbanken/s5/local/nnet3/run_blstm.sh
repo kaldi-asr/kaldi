@@ -1,11 +1,12 @@
 stage=0
 train_stage=-10
 affix=bidirectional
+nnet3_affix=
 common_egs_dir=
 remove_egs=true
-train_set=train_cleaned
-gmm=tri3_cleaned
-nnet3_affix=_cleaned
+train_set=train
+gmm=tri3b
+
 
 # BLSTM params
 cell_dim=1024
@@ -31,7 +32,6 @@ local/nnet3/run_lstm.sh --affix $affix \
                          --train-stage $train_stage \
                          --train-set $train_set \
                          --gmm $gmm \
-                         --nnet3-affix $nnet3_affix \
                          --lstm-delay " [-1,1] [-2,2] [-3,3] " \
                          --label-delay 0 \
                          --cell-dim $cell_dim \

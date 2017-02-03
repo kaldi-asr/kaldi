@@ -75,15 +75,16 @@ where "nvcc" is installed.
 EOF
 fi
 
-local/nnet3/run_ivector_common.sh --stage $stage \
-                                  --nj $nj \
-                                  --min-seg-len $min_seg_len \
-                                  --train-set $train_set \
-                                  --gmm $gmm \
-                                  --num-threads-ubm $num_threads_ubm \
-                                  --nnet3-affix "$nnet3_affix"
+if [ $stage -le 11 ]; then
 
-
+    local/nnet3/run_ivector_common.sh --stage $stage \
+                                      --nj $nj \
+                                      --min-seg-len $min_seg_len \
+                                      --train-set $train_set \
+                                      --gmm $gmm \
+                                      --num-threads-ubm $num_threads_ubm \
+                                      --nnet3-affix "$nnet3_affix"
+fi
 
 gmm_dir=exp/${gmm}
 graph_dir=$gmm_dir/graph_tg
@@ -149,7 +150,6 @@ if [ $stage -le 13 ]; then
     --feat-dir=$train_data_dir \
     --ali-dir=$ali_dir \
     --lang=data/lang \
-    --reporting.email="$reporting_email" \
     --dir=$dir  || exit 1;
 fi
 
@@ -164,6 +164,11 @@ if [ $stage -le 14 ]; then
         --extra-right-context $extra_right_context \
         --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_dev_hires \
       ${graph_dir} data/dev_hires ${dir}/decode_dev || exit 1
+    steps/nnet3/decode.sh --nj 7 --cmd "$decode_cmd"  --num-threads 4 \
+        --extra-left-context $extra_left_context \
+        --extra-right-context $extra_right_context \
+        --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_test_hires \
+      ${graph_dir} data/test_hires ${dir}/decode_test || exit 1
     ) || touch $dir/.error &
   wait
   [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1

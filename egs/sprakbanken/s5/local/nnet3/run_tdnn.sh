@@ -92,12 +92,10 @@ fi
 
 if [ $stage -le 13 ]; then
   rm $dir/.error || true 2>/dev/null
-#   (
-#    steps/nnet3/decode.sh --nj 7 --cmd "$decode_cmd"  --num-threads 4 \
-#        --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_test_hires \
-#        ${graph_dir} data/test_hires ${dir}/decode_test || exit 1
-#   ) || touch $dir/.error &
    (
+    steps/nnet3/decode.sh --nj 7 --cmd "$decode_cmd"  --num-threads 4 \
+        --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_test_hires \
+        ${graph_dir} data/test_hires ${dir}/decode_test || exit 1
     steps/nnet3/decode.sh --nj 12 --cmd "$decode_cmd"  --num-threads 4 \
         --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_dev_hires \
       ${graph_dir} data/dev_hires ${dir}/decode_dev || exit 1
