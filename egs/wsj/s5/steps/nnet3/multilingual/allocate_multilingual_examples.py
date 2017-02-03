@@ -1,12 +1,16 @@
 #!/usr/bin/env python
 
-# This script generates egs.Archive.scp and ranges.* used for generating egs.Archive.scp
-# for multilingual setup.
+# This script generates egs.archive.scp and ranges.* used for multilingual setup.
 # Also this script generates outputs.*.scp and weight.*.scp, where each line
 # corresponds to language-id and weight for the same example in egs.*.scp.
-# weight.*.scp used to scale the output's posterior during training.
-# ranges.*.scp is generated w.r.t frequency distribution of remaining examples
-# in each language.
+# weight.*.scp is rscpecifier of table indexed by the key of input example
+# used to scale the eg's output supervision during training.
+# Scaling output supervision is the same as scaling the derivative during training
+# for linear objectives.
+# output.*.scp is rscpecifier of table indexed by the key of input example and
+# value of output-name as target language for eg.
+# ranges.*.scp is randomly generated list of examples from input languages generated
+# using frequency distribution of remaining examples in each language.
 #
 # You call this script as (e.g.)
 #
@@ -20,22 +24,26 @@
 # that will enable you to creat egs.*.scp files for multilingual training.
 # exp/multi/egs/temp/ranges.* contains something like the following:
 # e.g.
-# lang1 0 0 256
-# lang2 1 256 256
+# lang1 0 256
+# lang2 256 256
 #
 # where each line can be interpreted as follows:
 # <source-language> <local-scp-line> <num-examples>
 #
 # note that <local-scp-line> is the zero-based line number in egs.scp for
 # that language.
-# num-examples is multiple of actual minibatch-size.
+# num-examples should be multiple of actual minibatch-size.
 #
 #
 # egs.1.scp is generated using ranges.1.scp as following:
 # "num_examples" consecutive examples starting from line "local-scp-line" from
 # egs.scp file for language "source-lang" is copied to egs.1.scp.
 #
-#
+# To avoid loading whole files in memory, egs.scp for is processed using readline()
+# for different langs and to have more randomization across different archives,
+# num_jobs * num_archives temporary scp.job_index.archive_index files created in
+# egs/temp dir and all num_jobs scp.*.archive_index combined
+# into egs.archiv_index.scp.
 
 from __future__ import print_function
 import re, os, argparse, sys, math, warnings, random, io, imp
@@ -131,12 +139,6 @@ def ReadLang2weight(lang2w_file):
   f.close()
   return lang2w
 
-# struct to keep archives correspond to each job
-class ArchiveToJob():
-  def __init__(self, job_id, archives_for_job):
-    self.job_id = job_id
-    self.archives = archives_for_job
-
 def Main():
   args = GetArgs()
   random.seed(args.seed)
@@ -156,8 +158,7 @@ def Main():
     lang2len[lang] = sum(1 for line in open(scp_lists[lang]))
     print("Number of examples for language {0} is {1}".format(lang, lang2len[lang]))
 
-  # If weights are not provided, the scaling weights
-  # are one.
+  # If weights are not provided, the scaling weights are 1.0.
   if args.lang2weight is None:
     lang2weight = [ 1.0 ] * num_langs
   else:

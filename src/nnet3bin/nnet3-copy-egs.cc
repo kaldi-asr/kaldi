@@ -329,15 +329,17 @@ int main(int argc, char *argv[]) {
     po.Register("right-context", &right_context, "Can be used to truncate the "
                 "feature right-context that we output.");
     po.Register("weights", &weight_str,
-                "Rspecifier of the output supervision weights,"
-                "If provided, the supervision weight for output is scaled."
+                "Rspecifier of a table indexed by the key of input examples"
+                "and value of scalar weights."
+                "If provided, the supervision output in eg is scaled using weight."
                 " Scaling supervision weight is the same as scaling the "
                 "derivative during training for linear objective."
                 "The default is one, which means we are not applying per-example weights.");
     po.Register("outputs", &output_str,
-                "Rspecifier of output name, "
-                "If provided, the NnetIo with name 'output' in each example "
-                "is renamed to new output name.");
+                "Rspecifier of a table indexed by the key of input examples"
+                "and value of string output-name."
+                "If provided, the NnetIo with name 'output' in eg"
+                "is renamed to string output-name.");
 
     po.Read(argc, argv);
 
