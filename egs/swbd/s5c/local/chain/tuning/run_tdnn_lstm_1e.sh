@@ -4,6 +4,23 @@
 # trying the change of xent_regularize from 0.025 (which was an
 # unusual value) to the more usual 0.01.
 
+# There seems to be no consistent difference in WER.  Inconclusive.
+# However I may keep 0.01 just for consistency with other setups.
+# local/chain/compare_wer_general.sh --looped tdnn_lstm_1d_sp tdnn_lstm_1e_sp
+# System                tdnn_lstm_1d_sp tdnn_lstm_1e_sp
+# WER on train_dev(tg)      12.90     12.74
+#           [looped:]       13.01     12.93
+# WER on train_dev(fg)      11.90     11.70
+#           [looped:]       12.13     12.09
+# WER on eval2000(tg)        15.7      15.7
+#           [looped:]        15.7      15.9
+# WER on eval2000(fg)        14.2      14.3
+#           [looped:]        14.4      14.6
+# Final train prob         -0.064    -0.066
+# Final valid prob         -0.088    -0.087
+# Final train prob (xent)        -0.836    -0.931
+# Final valid prob (xent)       -0.9631   -1.0279
+
 
 
 set -e

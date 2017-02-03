@@ -543,19 +543,24 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_st
 
     models_to_combine.add(num_iters)
 
+    # TODO: if it turns out the sum-to-one-penalty code is not useful,
+    # remove support for it.
+
     for iter in sorted(models_to_combine):
         model_file = '{0}/{1}.mdl'.format(dir, iter)
         if os.path.exists(model_file):
-            raw_model_strings.append(
-                '"nnet3-am-copy --raw=true {0} -|"'.format(model_file))
+            # we used to copy them with nnet3-am-copy --raw=true, but now
+            # the raw-model-reading code discards the other stuff itself.
+            raw_model_strings.append(model_file)
         else:
             print("{0}: warning: model file {1} does not exist "
                   "(final combination)".format(sys.argv[0], model_file))
 
     common_lib.run_job(
         """{command} {combine_queue_opt} {dir}/log/combine.log \
-                nnet3-chain-combine --num-iters=80 \
+                nnet3-chain-combine --num-iters={opt_iters} \
                 --l2-regularize={l2} --leaky-hmm-coefficient={leaky} \
+                --separate-weights-per-component={separate_weights} \
                 --enforce-sum-to-one={hard_enforce} \
                 --sum-to-one-penalty={penalty} \
                 --enforce-positive-weights=true \
@@ -568,6 +573,8 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_st
                 {dir}/final.mdl""".format(
                     command=run_opts.command,
                     combine_queue_opt=run_opts.combine_queue_opt,
+                    opt_iters=(20 if sum_to_one_penalty <= 0 else 80),
+                    separate_weights=(sum_to_one_penalty > 0),
                     lc=left_context, rc=right_context,
                     l2=l2_regularize, leaky=leaky_hmm_coefficient,
                     dir=dir, raw_models=" ".join(raw_model_strings),

@@ -136,7 +136,7 @@ sub get_combine_info {
     while (<F>) {
       if (m/Combining nnets, objective function changed from (\S+) to (\S+)/) {
         close(F);
-        return sprintf(" combine=%.2f->%.2f", $1, $2);
+        return sprintf(" combine=%.3f->%.3f", $1, $2);
       }
     }
   }
