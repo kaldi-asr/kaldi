@@ -1,8 +1,24 @@
 #!/bin/bash
 
-# [note: this was later run as 1p2, with code and script changes that
-#  meant it was using dropout on 3 gates, as Gaofeng was really doing,
-# not 2 as I thought he was doing.]
+# 1t is as 1s but without dropout; it could be compared to 1e.
+# 1s is as 1p, but reverting to the non-fast LSTM code (still with dropout);
+# will do 1t as the baseline without dropout.  Seems a bit worse than
+# the fast-LSTM code.
+
+# local/chain/compare_wer_general.sh --looped exp/chain_cleaned/tdnn_lstm1e_sp_bi exp/chain_cleaned/tdnn_lstm1t_sp_bi
+# System                tdnn_lstm1e_sp_bi tdnn_lstm1t_sp_bi
+# WER on dev(orig)            9.0       9.2
+#         [looped:]           9.0       9.2
+# WER on dev(rescored)        8.4       8.6
+#         [looped:]           8.4       8.6
+# WER on test(orig)           8.8       9.1
+#         [looped:]           8.8       9.0
+# WER on test(rescored)       8.4       8.6
+#         [looped:]           8.3       8.7
+# Final train prob        -0.0648   -0.0618
+# Final valid prob        -0.0827   -0.0794
+# Final train prob (xent)   -0.8372   -0.8120
+# Final valid prob (xent)   -0.9497   -0.9396
 
 # 1p is as 1k, but [via script changes] doing the dropout as Gaofeng
 # did it in the non-fast LSTMs, with separate per-frame masks on
@@ -118,7 +134,7 @@ frames_per_chunk_primary=140
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tdnn_lstm_affix=1p2  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
+tdnn_lstm_affix=1t  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
 common_egs_dir=exp/chain_cleaned/tdnn_lstm1b_sp_bi/egs  # you can set this to use previously dumped egs.
 
 # End configuration section.
@@ -216,7 +232,7 @@ if [ $stage -le 17 ]; then
 
   # note: the value of the dropout-proportion is not important, as it's
   # controlled by the dropout schedule; what's important is that we set it.
-  lstmp_opts="decay-time=20 dropout-proportion=0.0"
+  lstmp_opts="decay-time=20"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
@@ -231,13 +247,13 @@ if [ $stage -le 17 ]; then
   # the first splicing is moved before the lda layer, so no splicing here
   relu-renorm-layer name=tdnn1 dim=512
   relu-renorm-layer name=tdnn2 dim=512 input=Append(-1,0,1)
-  fast-lstmp-layer name=lstm1 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 delay=-3 $lstmp_opts
+  lstmp-layer name=lstm1 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 delay=-3 $lstmp_opts
   relu-renorm-layer name=tdnn3 dim=512 input=Append(-3,0,3)
   relu-renorm-layer name=tdnn4 dim=512 input=Append(-3,0,3)
-  fast-lstmp-layer name=lstm2 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 delay=-3 $lstmp_opts
+  lstmp-layer name=lstm2 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 delay=-3 $lstmp_opts
   relu-renorm-layer name=tdnn5 dim=512 input=Append(-3,0,3)
   relu-renorm-layer name=tdnn6 dim=512 input=Append(-3,0,3)
-  fast-lstmp-layer name=lstm3 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 delay=-3 $lstmp_opts
+  lstmp-layer name=lstm3 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 delay=-3 $lstmp_opts
 
   ## adding the layers for chain branch
   output-layer name=output input=lstm3 output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
@@ -268,7 +284,6 @@ if [ $stage -le 18 ]; then
     --cmd "$decode_cmd" \
     --feat.online-ivector-dir $train_ivector_dir \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
-    --trainer.dropout-schedule='0,0@0.20,0.3@0.5,0@0.75,0' \
     --chain.xent-regularize 0.1 \
     --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize 0.00005 \
