@@ -9,10 +9,9 @@ stage=1
 nj=4
 cmd=queue.pl
 use_gpu=false
-bnf_name=Tdnn_Bottleneck_renorm
+bnf_name=tdnn_bn_renorm # the component-node name in nnet3 model used for
+                        # bottleneck feature extraction
 ivector_dir=
-# Begin configuration.
-transform_dir=
 # End configuration options.
 
 echo "$0 $@"  # Print the command line for logging
@@ -20,9 +19,11 @@ echo "$0 $@"  # Print the command line for logging
 [ -f path.sh ] && . ./path.sh # source the path.
 . parse_options.sh || exit 1;
 
-if [ $# != 5 ]; then
-   echo "usage: steps/nnet3/dump_bottleneck_features.sh <input-data-dir> <output-data-dir> <bnf-nnet-dir> <archive-dir> <log-dir>"
-   echo "e.g.:  steps/nnet3/dump_bottleneck_features.sh data/train data/train_bnf exp/nnet3/tdnn_bnf bnf exp_bnf/dump_bnf"
+if [ $# -lt 3 ]; then
+   echo "usage: steps/nnet3/dump_bottleneck_features.sh <input-data-dir> <bnf-data-dir> <nnet-dir> [<log-dir> [<bnfdir>] ]"
+   echo "e.g.:  steps/nnet3/dump_bottleneck_features.sh data/train data/train_bnf exp/nnet3/tdnn_bnf exp_bnf/dump_bnf bnf"
+   echo "Note: <log-dir> dafaults to <bnf-data-dir>/log and <bnfdir> defaults to"
+   echo " <bnf-data-dir>/data"
    echo "main options (for others, see top of script file)"
    echo "  --config <config-file>                           # config containing options"
    echo "  --nj <nj>                                        # number of parallel jobs"
@@ -34,8 +35,16 @@ fi
 data=$1
 bnf_data=$2
 nnetdir=$3
-archivedir=$4
-dir=$5
+if [ $# -ge 4 ]; then
+  logdir=$4
+else
+  logdir=$bnf_data/log
+fi
+if [ $# -ge 5]; then
+  bnfdir=$4
+else
+  bnfdir=$bnf_data/data
+fi
 
 # Assume that final.nnet is in nnetdir
 cmvn_opts=`cat $nnetdir/cmvn_opts`;
@@ -64,7 +73,7 @@ fi
 name=`basename $data`
 sdata=$data/split$nj
 
-mkdir -p $dir/log
+mkdir -p $logdir
 mkdir -p $bnf_data
 echo $nj > $nnetdir/num_jobs
 splice_opts=`cat $nnetdir/splice_opts 2>/dev/null`
@@ -77,21 +86,9 @@ fi
 feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
 ivec_feats="scp:utils/filter_scp.pl $sdata/JOB/utt2spk $ivector_dir/ivector_online.scp |"
 
-if [ ! -z "$transform_dir" ]; then
-  echo "Using transforms from $transform_dir"
-  [ ! -f $transform_dir/trans.1 ] && echo "No such file $transform_dir/trans.1" && exit 1;
-  transform_nj=`cat $transform_dir/num_jobs` || exit 1;
-  if [ "$nj" != "$transform_nj" ]; then
-    for n in $(seq $transform_nj); do cat $transform_dir/trans.$n; done >$dir/trans.ark
-    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$dir/trans.ark ark:- ark:- |"
-  else
-    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$transform_dir/trans.JOB ark:- ark:- |"
-  fi
-fi
-
-
 if [ $stage -le 1 ]; then
-  echo "$0: Generating bottle-neck features"
+  echo "$0: Generating bottleneck features using $bnf_nnet model as output of "
+  echo "component-node with name $bnf_name."
   echo output-node name=output input=$bnf_name > output.config
   modified_bnf_nnet="nnet3-copy --edits='remove-output-nodes name=output' $bnf_nnet - | nnet3-copy --nnet-config=output.config - - |"
   ivector_opts=
@@ -99,29 +96,28 @@ if [ $stage -le 1 ]; then
     ivec_period=`grep ivector-period $ivector_dir/conf/ivector_extractor.conf  | cut -d"=" -f2`
     ivector_opts="--online-ivector-period=$ivec_period --online-ivectors='$ivec_feats'"
   fi
-  $cmd $compute_queue_opt JOB=1:$nj $dir/log/make_bnf_$name.JOB.log \
+  $cmd $compute_queue_opt JOB=1:$nj $logdir/make_bnf_$name.JOB.log \
     nnet3-compute $compute_gpu_opt $ivector_opts "$modified_bnf_nnet" "$feats" ark:- \| \
-    copy-feats ark:- ark,scp:$archivedir/raw_bnfeat_$name.JOB.ark,$archivedir/raw_bnfeat_$name.JOB.scp || exit 1;
+    copy-feats ark:- ark,scp:$bnfdir/raw_bnfeat_$name.JOB.ark,$bnfdir/raw_bnfeat_$name.JOB.scp || exit 1;
 fi
 
-rm $dir/trans.ark 2>/dev/null
 
 N0=$(cat $data/feats.scp | wc -l)
-N1=$(cat $archivedir/raw_bnfeat_$name.*.scp | wc -l)
+N1=$(cat $bnfdir/raw_bnfeat_$name.*.scp | wc -l)
 if [[ "$N0" != "$N1" ]]; then
   echo "Error happens when generating BNF for $name (Original:$N0  BNF:$N1)"
   exit 1;
 fi
 
 # Concatenate feats.scp into bnf_data
-for n in $(seq $nj); do  cat $archivedir/raw_bnfeat_$name.$n.scp; done > $bnf_data/feats.scp
+for n in $(seq $nj); do  cat $bnfdir/raw_bnfeat_$name.$n.scp; done > $bnf_data/feats.scp
 
 for f in segments spk2utt text utt2spk wav.scp char.stm glm kws reco2file_and_channel stm; do
   [ -e $data/$f ] && cp -r $data/$f $bnf_data/$f
 done
 
 echo "$0: computing CMVN stats."
-steps/compute_cmvn_stats.sh $bnf_data $dir $archivedir
+steps/compute_cmvn_stats.sh $bnf_data
 
 echo "$0: done making BNF feats.scp."
 

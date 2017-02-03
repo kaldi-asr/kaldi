@@ -297,15 +297,14 @@ int main(int argc, char *argv[]) {
     int32 srand_seed = 0;
     int32 frame_shift = 0;
     BaseFloat keep_proportion = 1.0;
-
     // The following config variables, if set, can be used to extract a single
     // frame of labels from a multi-frame example, and/or to reduce the amount
     // of context.
     int32 left_context = -1, right_context = -1;
-
     // you can set frame to a number to select a single frame with a particular
     // offset, or to 'random' to select a random single frame.
-    std::string frame_str;
+    std::string frame_str,
+      weight_str, output_str;
 
     ParseOptions po(usage);
     po.Register("random", &random, "If true, will write frames to output "
@@ -332,7 +331,7 @@ int main(int argc, char *argv[]) {
                 "Rspecifier of a table indexed by the key of input examples"
                 "and value of scalar weights."
                 "If provided, the supervision output in eg is scaled using weight."
-                " Scaling supervision weight is the same as scaling the "
+                " Scaling output supervision is the same as scaling the "
                 "derivative during training for linear objective."
                 "The default is one, which means we are not applying per-example weights.");
     po.Register("outputs", &output_str,
@@ -362,12 +361,11 @@ int main(int argc, char *argv[]) {
       example_writers[i] = new NnetExampleWriter(po.GetArg(i+2));
 
 
-    int64 num_read = 0, num_written = 0;
+    int64 num_read = 0, num_written = 0, num_err = 0;
     for (; !example_reader.Done(); example_reader.Next(), num_read++) {
       // count is normally 1; could be 0, or possibly >1.
       int32 count = GetCount(keep_proportion);
       std::string key = example_reader.Key();
-      const NnetExample &eg = example_reader.Value();
       bool modify_eg_output = (!output_str.empty() || weight_str.empty());
       NnetExample modified_eg_output;
       const NnetExample &eg_orig = example_reader.Value(),
@@ -421,7 +419,8 @@ int main(int argc, char *argv[]) {
     for (int32 i = 0; i < num_outputs; i++)
       delete example_writers[i];
     KALDI_LOG << "Read " << num_read << " neural-network training examples, wrote "
-              << num_written;
+              << num_written << ", "
+              << num_err <<  " examples had errors.";
     return (num_written == 0 ? 1 : 0);
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';

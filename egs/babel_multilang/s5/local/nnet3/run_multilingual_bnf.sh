@@ -61,7 +61,7 @@ if [ ! -f $multidir${suffix}/.done ]; then
   echo "$0: Train multilingual DNN using Bottleneck layer with lang list = ${lang_list[@]}"
   . local/nnet3/run_tdnn_multilingual.sh --dir $multidir \
      --avg-num-archives $num_archives \
-     --bnf-dim 42 \
+     --bnf-dim 128 \
      --global-extractor $global_extractor \
      --train-stage $bnf_train_stage --stage $stage  || exit 1;
 
