@@ -393,6 +393,21 @@ int32 NumUpdatableComponents(const Nnet &dest) {
   return ans;
 }
 
+void FreezeNaturalGradient(bool freeze, Nnet *nnet) {
+  for (int32 c = 0; c < nnet->NumComponents(); c++) {
+    Component *comp = nnet->GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent) {
+      // For now all updatable components inherit from class UpdatableComponent.
+      // If that changes in future, we will change this code.
+      UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(comp);
+      if (uc == NULL)
+        KALDI_ERR << "Updatable component does not inherit from class "
+            "UpdatableComponent; change this code.";
+      uc->FreezeNaturalGradient(freeze);
+    }
+  }
+}
+
 void ConvertRepeatedToBlockAffine(CompositeComponent *c_component) {
   for(int32 i = 0; i < c_component->NumComponents(); i++) {
     const Component *c = c_component->GetComponent(i);
