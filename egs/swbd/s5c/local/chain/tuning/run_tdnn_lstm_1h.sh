@@ -1,39 +1,30 @@
 #!/bin/bash
 
+# 1h is like 1e, but reducing the hidden-dims from 1024 to 880.
 
-# run_tdnn_lstm_1d.sh is like run_tdnn_lstm_1c.sh but making
-# various kaldi-5.1-related upgrades to the script:
-#  change chunk-width to be variable, add extra_left_context_initial=0
-# and extra_right_context_final=0; add looped decoding.
-# Also changed frames-per-iter from 1.2 million to 1.5 million... this
-# might have been a mistake, trying 1 million in 1f to see if this matters.
+# Does not seem to help; both train and valid probs get worse by about
+# the same amount, and WER is overall just slightly worse.  Maybe 1024
+# was approximately optimal.
 
-# The comparison below is with a version of the 1c system that was run at about
-# the same time.  The degradation in log-likelihood and xent prob is likely because
-# now on average the chunk-size is slightly smaller than before (150 -> 136);
-# possibly the change in extra-(left,right) context has a similar effect
-# (or maybe it's just because the validation and train-subset examples have changed).
+# local/chain/compare_wer_general.sh --looped tdnn_lstm_1e_sp tdnn_lstm_1h_sp
+# System                tdnn_lstm_1e_sp tdnn_lstm_1h_sp
+# WER on train_dev(tg)      12.74     13.06
+#           [looped:]       12.93     13.17
+# WER on train_dev(fg)      11.70     12.13
+#           [looped:]       12.09     12.27
+# WER on eval2000(tg)        15.7      15.7
+#           [looped:]        15.9      15.9
+# WER on eval2000(fg)        14.3      14.4
+#           [looped:]        14.6      14.5
+# Final train prob         -0.066    -0.069
+# Final valid prob         -0.087    -0.091
+# Final train prob (xent)        -0.931    -0.967
+# Final valid prob (xent)       -1.0279   -1.0631
 
+# run_tdnn_lstm_1e.sh is like run_tdnn_lstm_1d.sh but
+# trying the change of xent_regularize from 0.025 (which was an
+# unusual value) to the more usual 0.01.
 
-# local/chain/compare_wer_general.sh --looped tdnn_lstm_1c_ld5_sp tdnn_lstm_1d_sp
-# System                tdnn_lstm_1c_ld5_sp tdnn_lstm_1d_sp
-# WER on train_dev(tg)      13.17     12.90
-#           [looped:]                 13.01
-# WER on train_dev(fg)      12.25     11.90
-#           [looped:]                 12.13
-# WER on eval2000(tg)        15.4      15.7
-#           [looped:]                  15.7
-# WER on eval2000(fg)        14.1      14.2
-#           [looped:]                  14.4
-# Final train prob         -0.046    -0.064
-# Final valid prob         -0.073    -0.088
-# Final train prob (xent)        -0.749    -0.836
-# Final valid prob (xent)       -0.9084   -0.9631
-
-# run_tdnn_lstm_1c.sh is like run_tdnn_lstm_1b.sh but using the
-# new 'fast-lstm' layer.  Results are slightly improved, plus
-# it's faster.  See PR #1243 on github, and issue #1237.
-# This used to be called run_tdnn_fastlstm_1b.sh.
 
 
 set -e
@@ -43,11 +34,11 @@ stage=0
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_lstm_1d # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_lstm_1h # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=final
 
 # training options
-xent_regularize=0.025
+xent_regularize=0.01
 self_repair_scale=0.00001
 label_delay=5
 
@@ -66,7 +57,7 @@ extra_right_context=0
 
 
 remove_egs=false
-common_egs_dir=
+common_egs_dir=exp/chain/tdnn_lstm_1d_sp/egs
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -156,18 +147,18 @@ if [ $stage -le 12 ]; then
   fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-renorm-layer name=tdnn1 dim=1024
-  relu-renorm-layer name=tdnn2 input=Append(-1,0,1) dim=1024
-  relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
+  relu-renorm-layer name=tdnn1 dim=880
+  relu-renorm-layer name=tdnn2 input=Append(-1,0,1) dim=880
+  relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=880
 
   # check steps/libs/nnet3/xconfig/lstm.py for the other options and defaults
-  fast-lstmp-layer name=fastlstm1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
-  relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
-  relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
-  fast-lstmp-layer name=fastlstm2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
-  relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
-  relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
-  fast-lstmp-layer name=fastlstm3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
+  fast-lstmp-layer name=fastlstm1 cell-dim=880 recurrent-projection-dim=220 non-recurrent-projection-dim=220 delay=-3 $lstm_opts
+  relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=880
+  relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=880
+  fast-lstmp-layer name=fastlstm2 cell-dim=880 recurrent-projection-dim=220 non-recurrent-projection-dim=220 delay=-3 $lstm_opts
+  relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=880
+  relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=880
+  fast-lstmp-layer name=fastlstm3 cell-dim=880 recurrent-projection-dim=220 non-recurrent-projection-dim=220 delay=-3 $lstm_opts
 
   ## adding the layers for chain branch
   output-layer name=output input=fastlstm3 output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
