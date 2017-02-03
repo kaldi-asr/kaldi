@@ -608,6 +608,7 @@ OnlinePreconditioner& OnlinePreconditioner::operator = (
   num_samples_history_ = other.num_samples_history_;
   alpha_ = other.alpha_;
   epsilon_ = other.epsilon_;
+  delta_ = other.delta_;
   t_ = other.t_;
   self_debug_ = other.self_debug_;
   W_t_ = other.W_t_;

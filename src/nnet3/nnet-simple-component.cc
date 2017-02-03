@@ -2854,6 +2854,12 @@ void NaturalGradientAffineComponent::Add(BaseFloat alpha, const Component &other
   bias_params_.AddVec(alpha, other->bias_params_);
 }
 
+/// virtual
+void NaturalGradientAffineComponent::FreezeNaturalGradient(bool freeze) {
+  preconditioner_in_.Freeze(freeze);
+  preconditioner_out_.Freeze(freeze);
+}
+
 std::string FixedAffineComponent::Info() const {
   std::ostringstream stream;
   stream << Component::Info();
@@ -3438,6 +3444,11 @@ void NaturalGradientPerElementScaleComponent::Update(
   CuVector<BaseFloat> delta_scales(scales_.Dim());
   delta_scales.AddRowSumMat(scale * learning_rate_, derivs_per_frame);
   scales_.AddVec(1.0, delta_scales);
+}
+
+/// virtual
+void NaturalGradientPerElementScaleComponent::FreezeNaturalGradient(bool freeze) {
+  preconditioner_.Freeze(freeze);
 }
 
 // Constructors for the convolution component
@@ -4924,6 +4935,18 @@ BaseFloat CompositeComponent::DotProduct(
   return ans;
 }
 
+/// virtual
+void CompositeComponent::FreezeNaturalGradient(bool freeze) {
+  for (size_t i = 0; i < components_.size(); i++) {
+    if (components_[i]->Properties() & kUpdatableComponent) {
+      UpdatableComponent *uc =
+          dynamic_cast<UpdatableComponent*>(components_[i]);
+      KALDI_ASSERT(uc != NULL);
+      uc->FreezeNaturalGradient(freeze);
+    }
+  }
+}
+
 // virtual
 Component* CompositeComponent::Copy() const {
   std::vector<Component*> components(components_.size());
@@ -5291,6 +5314,10 @@ void LstmNonlinearityComponent::InitNaturalGradient() {
   preconditioner_.SetNumSamplesHistory(1000.0);
 }
 
+/// virtual
+void LstmNonlinearityComponent::FreezeNaturalGradient(bool freeze) {
+  preconditioner_.Freeze(freeze);
+}
 
 void LstmNonlinearityComponent::InitFromConfig(ConfigLine *cfl) {
   InitLearningRatesFromConfig(cfl);

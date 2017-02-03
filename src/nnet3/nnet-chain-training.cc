@@ -74,6 +74,8 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
       num_minibatches_processed_ > 0) {
     // adversarial training is incompatible with momentum > 0
     KALDI_ASSERT(nnet_config.momentum == 0.0);
+    bool freeze = true;
+    FreezeNaturalGradient(freeze, delta_nnet_);
     // creates a new NnetComputer object
     NnetComputer computer_adv(nnet_config.compute_config, *computation,
                               *nnet_, delta_nnet_);
@@ -85,6 +87,8 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
     this->ProcessOutputs(is_adversarial_step, chain_eg, &computer_adv);
     computer_adv.Run();
     UpdateParamsWithMaxChange(is_adversarial_step);
+    freeze = false;
+    FreezeNaturalGradient(freeze, delta_nnet_);
   }
 
   NnetComputer computer(nnet_config.compute_config, *computation,
