@@ -62,36 +62,30 @@ void NnetTrainer::Train(const NnetExample &eg) {
                         &request);
   const NnetComputation *computation = compiler_.Compile(request);
 
-  // no adversarial training on the first minibatch to avoid some stats to be
-  // negative due to the scaling with the negative learning rate
-  if (config_.adversarial_training_scale > 0.0 &&
-      num_minibatches_processed_ > 0) {
+  if (config_.adversarial_training_scale > 0.0) {
     // adversarial training is incompatible with momentum > 0
     KALDI_ASSERT(config_.momentum == 0.0);
     bool freeze = true;
     FreezeNaturalGradient(freeze, delta_nnet_);
-    // creates a new NnetComputer object
-    NnetComputer computer_adv(config_.compute_config, *computation,
-                              *nnet_, delta_nnet_);
-    // give the inputs to the computer object.
-    computer_adv.AcceptInputs(*nnet_, eg.io);
-    computer_adv.Run();
-
     bool is_adversarial_step = true;
-    this->ProcessOutputs(is_adversarial_step, eg, &computer_adv);
-    computer_adv.Run();
-    UpdateParamsWithMaxChange(is_adversarial_step);
+    TrainInternal(eg, *computation, is_adversarial_step);
     freeze = false;
     FreezeNaturalGradient(freeze, delta_nnet_);
   }
 
-  NnetComputer computer(config_.compute_config, *computation,
+  bool is_adversarial_step = false;
+  TrainInternal(eg, *computation, is_adversarial_step);
+}
+
+void NnetTrainer::TrainInternal(const NnetExample &eg,
+                                const NnetComputation &computation,
+                                bool is_adversarial_step) {
+  NnetComputer computer(config_.compute_config, computation,
                         *nnet_, delta_nnet_);
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, eg.io);
   computer.Run();
 
-  bool is_adversarial_step = false;
   this->ProcessOutputs(is_adversarial_step, eg, &computer);
   computer.Run();
 
