@@ -163,17 +163,24 @@ class NnetTrainer {
 
   ~NnetTrainer();
  private:
+  void TrainInternal(const NnetExample &eg,
+                     const NnetComputation &computation,
+                     bool is_adversarial_step);
+
   void ProcessOutputs(bool is_adversarial_step, const NnetExample &eg,
                       NnetComputer *computer);
 
   // Applies per-component max-change and global max-change to all updatable
   // components in *delta_nnet_, and use *delta_nnet_ to update parameters
-  // in *nnet_. If is_adversairal_step && config_.alpha > 0, the update is
-  // an adversairal_step where the params are scaled by -config_.alpha;
-  // if !is_adversairal_step && config_.alpha > 0 the update is a normal step
-  // where the params are scaled by 1+opts_.alpha; otherwise
-  // !is_adversairal_step && config_.alpha == 0, and it is a normal step
-  void UpdateParamsWithMaxChange(bool is_adversairal_step = false);
+  // in *nnet_. If is_adversarial_step && config_.adversarial_training_scale > 0,
+  // the update is an adversarial step where the params are scaled by
+  // -config_.adversarial_training_scale;
+  // if !is_adversarial_step && config_.adversarial_training_scale > 0 the
+  // update is a normal step where the params are scaled by
+  // 1+opts_.adversarial_training_scale; otherwise
+  // !is_adversarial_step && config_.adversarial_training_scale == 0, and it is
+  // a normal step
+  void UpdateParamsWithMaxChange(bool is_adversarial_step = false);
 
   const NnetTrainerOptions config_;
   Nnet *nnet_;
