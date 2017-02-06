@@ -65,9 +65,9 @@ void MleDiagGmmSharedVarsUpdate(const MleDiagGmmOptions &config,
                                 DiagGmm *gmm,
                                 BaseFloat *obj_change_out,
                                 BaseFloat *count_out,
-                                int32 *floored_elements_out,
-                                int32 *floored_gaussians_out,
-                                int32 *removed_gaussians_out) {
+                                int32 *floored_elements_out = NULL,
+                                int32 *floored_gaussians_out = NULL,
+                                int32 *removed_gaussians_out = NULL) {
   KALDI_ASSERT(gmm != NULL);
 
   if (flags & ~diag_gmm_acc.Flags())
@@ -213,7 +213,12 @@ void TrainOneIter(const MatrixBase<BaseFloat> &feats,
             << feats.NumRows() << " frames.";
   
   BaseFloat objf_change, count;
-  MleDiagGmmUpdate(gmm_opts, gmm_acc, kGmmAll, gmm, &objf_change, &count);
+  if (share_covars) {
+    MleDiagGmmSharedVarsUpdate(gmm_opts, gmm_acc, kGmmAll, gmm, 
+                               &objf_change, &count);
+  } else {
+    MleDiagGmmUpdate(gmm_opts, gmm_acc, kGmmAll, gmm, &objf_change, &count);
+  }
 
   KALDI_LOG << "Objective-function change on iteration " << iter << " was "
             << (objf_change / count) << " over " << count << " frames.";

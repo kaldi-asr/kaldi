@@ -21,7 +21,8 @@ BINFILES = segmentation-copy segmentation-get-stats \
 					 agglomerative-cluster-ib \
 					 intersect-int-vectors \
 					 gmm-global-init-models-from-feats \
-					 segmentation-cluster-adjacent-segments #\
+					 segmentation-cluster-adjacent-segments \
+					 ib-scoring-dense #\
 					 gmm-acc-pdf-stats-segmentation \
 					 gmm-est-segmentation gmm-update-segmentation \
 					 segmentation-init-from-diarization \
