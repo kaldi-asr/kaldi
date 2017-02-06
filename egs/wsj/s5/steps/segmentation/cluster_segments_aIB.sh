@@ -8,7 +8,7 @@ reco_nj=4
 frame_shift=0.01
 utt_nj=18
 min_clusters=10
-stopping_threshold=0.5
+clustering_opts="--stopping-threshold=0.5 --max-merge-thresh=0.25 --normalize-by-entropy"
 
 . path.sh
 . utils/parse_options.sh
@@ -29,7 +29,7 @@ out_data=$3
 num_frames=`perl -e "print int($window / $frame_shift + 0.5)"`
 num_frames_overlap=`perl -e "print int($overlap/ $frame_shift + 0.5)"`
 
-data_uniform_seg=${data}_uniform_seg_window${window}_ovlp${overlap}
+data_uniform_seg=$dir/`basename ${data}`_uniform_seg_window${window}_ovlp${overlap}
 
 mkdir -p ${data_uniform_seg}
 
@@ -41,8 +41,6 @@ if [ $stage -le 0 ]; then
   $cmd $dir/log/get_subsegments.log \
     segmentation-init-from-segments --frame-overlap=0.015 $data/segments ark:- \| \
     segmentation-split-segments --max-segment-length=$num_frames --overlap-length=$num_frames_overlap ark:- ark:- \| \
-    segmentation-cluster-adjacent-segments --verbose=3 ark:- "scp:$data/feats.scp" ark:- \| \
-    segmentation-post-process --merge-adjacent-segments ark:- ark:- \| \
     segmentation-to-segments --frame-overlap=0.0 ark:- ark:/dev/null \
     ${data_uniform_seg}/sub_segments
 
@@ -98,16 +96,34 @@ fi
 seg_dir=$dir/segmentation_`basename $data_uniform_seg`
 
 if [ $stage -le 4 ]; then
+  $cmd JOB=1:$reco_nj $seg_dir/log/compute_scores.JOB.log \
+    ib-scoring-dense --input-factor=0.0 $clustering_opts \
+    --counts-rspecifier="ark,t:utils/filter_scp.pl $data_uniform_seg/split${reco_nj}reco/JOB/utt2spk $data_uniform_seg/utt2num_frames |" \
+    "ark,t:${data_uniform_seg}/split${reco_nj}reco/JOB/reco2utt" \
+    "ark:gunzip -c $post_dir/avg_post.JOB.gz |" \
+    ark,t:$seg_dir/scores.JOB.txt ark:/dev/null
+fi
+
+if [ $stage -le 5 ]; then
+  threshold=$(for n in `seq $reco_nj`; do
+    /export/a12/vmanoha1/kaldi-diarization-v2/src/ivectorbin/compute-calibration \
+      ark,t:$seg_dir/scores.$n.txt -; done | \
+      awk '{i += $1; j++;} END{print i / j}')
+  echo $threshold > $seg_dir/threshold 
+fi
+
+threshold=$(cat $seg_dir/threshold)
+if [ $stage -le 6 ]; then
   $cmd JOB=1:$reco_nj $seg_dir/log/cluster_segments.JOB.log \
-    agglomerative-cluster-ib --min-clusters=$min_clusters \
-    --verbose=3 --stopping-threshold=$stopping_threshold --input-factor=0 \
+    agglomerative-cluster-ib --input-factor=0.0 --min-clusters=$min_clusters $clustering_opts \
+    --max-merge-thresh=$threshold --verbose=3 \
     --counts-rspecifier="ark,t:utils/filter_scp.pl $data_uniform_seg/split${reco_nj}reco/JOB/utt2spk $data_uniform_seg/utt2num_frames |" \
     "ark:gunzip -c $post_dir/avg_post.JOB.gz |" \
     "ark,t:${data_uniform_seg}/split${reco_nj}reco/JOB/reco2utt" \
     ark,t:$seg_dir/utt2cluster_id.JOB
 fi
 
-if [ $stage -le 5 ]; then
+if [ $stage -le 7 ]; then
   $cmd JOB=1:$reco_nj $seg_dir/log/init_segmentation.JOB.log \
     segmentation-init-from-segments --frame-overlap=0.0 --shift-to-zero=false \
     --utt2label-rspecifier=ark,t:${seg_dir}/utt2cluster_id.JOB \
@@ -120,7 +136,7 @@ if [ $stage -le 5 ]; then
     segmentation-to-segments ark:- ark,t:$seg_dir/utt2spk.JOB $seg_dir/segments.JOB
 fi
 
-if [ $stage -le 6 ]; then
+if [ $stage -le 8 ]; then
   rm -r $out_data || true
   utils/data/convert_data_dir_to_whole.sh $data $out_data
   rm $out_data/{text,cmvn.scp} || true
