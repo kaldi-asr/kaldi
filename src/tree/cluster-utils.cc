@@ -273,7 +273,7 @@ void BottomUpClusterer::SetInitialDistances() {
   for (int32 i = 0; i < npoints_; i++) {
     for (int32 j = 0; j < i; j++) {
       BaseFloat dist = ComputeDistance(i, j);
-      if (dist <= max_merge_thresh_)
+      if (dist <= MergeThreshold(i, j))
         queue_.push(std::make_pair(dist, std::make_pair(static_cast<uint_smaller>(i),
             static_cast<uint_smaller>(j))));
       if (j == i - 1) 
@@ -325,7 +325,7 @@ void BottomUpClusterer::ReconstructQueue() {
       for (int32 j = 0; j < i; j++) {
         if ((*clusters_)[j] != NULL) {
           BaseFloat dist = dist_vec_[(i * (i - 1)) / 2 + j];
-          if (dist <= max_merge_thresh_) {
+          if (dist <= MergeThreshold(i, j)) {
             queue_.push(std::make_pair(dist, std::make_pair(
                 static_cast<uint_smaller>(i), static_cast<uint_smaller>(j))));
           }
@@ -339,7 +339,7 @@ void BottomUpClusterer::SetDistance(int32 i, int32 j) {
   KALDI_ASSERT(i < npoints_ && j < i && (*clusters_)[i] != NULL
          && (*clusters_)[j] != NULL);
   BaseFloat dist = ComputeDistance(i, j);
-  if (dist < max_merge_thresh_) {
+  if (dist < MergeThreshold(i, j)) {
     queue_.push(std::make_pair(dist, std::make_pair(static_cast<uint_smaller>(i),
         static_cast<uint_smaller>(j))));
   }

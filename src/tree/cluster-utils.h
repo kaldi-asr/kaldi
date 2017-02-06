@@ -119,9 +119,10 @@ class BottomUpClusterer {
                     int32 min_clust,
                     std::vector<Clusterable*> *clusters_out,
                     std::vector<int32> *assignments_out)
-      : ans_(0.0), points_(points), max_merge_thresh_(max_merge_thresh),
+      : points_(points), max_merge_thresh_(max_merge_thresh),
         min_clust_(min_clust), clusters_(clusters_out != NULL? clusters_out
-            : &tmp_clusters_), assignments_(assignments_out != NULL ?
+            : &tmp_clusters_), ans_(0.0), 
+        assignments_(assignments_out != NULL ?
                 assignments_out : &tmp_assignments_) {
     nclusters_ = npoints_ = points.size();
     dist_vec_.resize((npoints_ * (npoints_ - 1)) / 2);
@@ -131,7 +132,6 @@ class BottomUpClusterer {
   ~BottomUpClusterer() { DeletePointers(&tmp_clusters_); }
 
   /// Public accessors
-  const Clusterable* GetCluster(int32 i) const { return (*clusters_)[i]; }
   BaseFloat& Distance(int32 i, int32 j) {
     KALDI_ASSERT(i < npoints_ && j < i);
     return dist_vec_[(i * (i - 1)) / 2 + j];
@@ -143,10 +143,27 @@ class BottomUpClusterer {
   /// Merge j into i and delete j.
   virtual void MergeClusters(int32 i, int32 j);
 
+  typedef std::pair<BaseFloat, std::pair<uint_smaller, uint_smaller> > 
+    QueueElement;
+  // Priority queue using greater (lowest distances are highest priority).
+  typedef std::priority_queue<QueueElement, std::vector<QueueElement>,
+      std::greater<QueueElement>  > QueueType;
+
   int32 NumClusters() const { return nclusters_; }
   int32 NumPoints() const { return npoints_; }
   int32 MinClusters() const { return min_clust_; }
   bool IsQueueEmpty() const { return queue_.empty(); }
+ 
+ protected:
+  const std::vector<Clusterable*> &points_;
+  BaseFloat max_merge_thresh_;
+  int32 min_clust_;
+  std::vector<Clusterable*> *clusters_;
+
+  std::vector<BaseFloat> dist_vec_;
+  int32 nclusters_;
+  int32 npoints_;
+  QueueType queue_;
 
  private:
   void Renumber();
@@ -162,6 +179,10 @@ class BottomUpClusterer {
     return nclusters_ <= min_clust_ || queue_.empty(); 
   }
 
+  virtual BaseFloat MergeThreshold(int32 i, int32 j) {
+    return max_merge_thresh_;
+  }
+
   void SetDistance(int32 i, int32 j);
   virtual BaseFloat ComputeDistance(int32 i, int32 j) {
     BaseFloat dist = (*clusters_)[i]->Distance(*((*clusters_)[j]));
@@ -170,23 +191,10 @@ class BottomUpClusterer {
   }
   
   BaseFloat ans_;
-  const std::vector<Clusterable*> &points_;
-  BaseFloat max_merge_thresh_;
-  int32 min_clust_;
-  std::vector<Clusterable*> *clusters_;
   std::vector<int32> *assignments_;
 
   std::vector<Clusterable*> tmp_clusters_;
   std::vector<int32> tmp_assignments_;
-
-  std::vector<BaseFloat> dist_vec_;
-  int32 nclusters_;
-  int32 npoints_;
-  typedef std::pair<BaseFloat, std::pair<uint_smaller, uint_smaller> > QueueElement;
-  // Priority queue using greater (lowest distances are highest priority).
-  typedef std::priority_queue<QueueElement, std::vector<QueueElement>,
-      std::greater<QueueElement>  > QueueType;
-  QueueType queue_;
 };
 
 /** This is a wrapper function to the BottomUpClusterer class.
