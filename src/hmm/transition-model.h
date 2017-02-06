@@ -130,12 +130,15 @@ class TransitionModel {
 
   /// Constructor that takes no arguments: typically used prior to calling Read.
   TransitionModel() { }
+  
+  virtual ~TransitionModel() { }
 
   /// Does the same things as the constructor.
   void Init(const ContextDependencyInterface &ctx_dep,
             const HmmTopology &hmm_topo);
 
-  void Read(std::istream &is, bool binary);  // note, no symbol table: topo object always read/written w/o symbols.
+  // note, no symbol table: topo object always read/written w/o symbols.
+  virtual void Read(std::istream &is, bool binary);  
   void Write(std::ostream &os, bool binary) const;
 
 
@@ -318,7 +321,6 @@ class TransitionModel {
   /// tree (but the tree numbers pdfs contiguously from zero so this is the number
   /// of pdfs).
   int32 num_pdfs_;
-
 
   DISALLOW_COPY_AND_ASSIGN(TransitionModel);
 
