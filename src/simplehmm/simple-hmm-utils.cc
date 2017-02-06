@@ -20,7 +20,7 @@
 
 #include <vector>
 
-#include "hmm/simple-hmm-utils.h"
+#include "simplehmm/simple-hmm-utils.h"
 #include "fst/fstlib.h"
 #include "fstext/fstext-lib.h"
 

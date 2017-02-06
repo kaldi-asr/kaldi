@@ -17,7 +17,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "hmm/simple-hmm.h"
+#include "simplehmm/simple-hmm.h"
 
 namespace kaldi {
 

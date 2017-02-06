@@ -22,7 +22,7 @@
 #define KALDI_HMM_SIMPLE_HMM_UTILS_H_
 
 #include "hmm/hmm-utils.h"
-#include "hmm/simple-hmm.h"
+#include "simplehmm/simple-hmm.h"
 #include "fst/fstlib.h"
 
 namespace kaldi {
