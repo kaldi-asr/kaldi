@@ -19,7 +19,9 @@ skip_optimization=false     # If you only search for few thousands of keywords, 
                             # can skip the optimization; but if you're going to search for
                             # millions of keywords, you'd better do set this optimization to
                             # false and do the optimization on the final index.
-frame_subsampling_factor=1
+frame_subsampling_factor=   # We will try to autodetect this. You should specify
+                            # the right value if your directory structure is
+                            # non-standard
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -65,16 +67,25 @@ if [ -z "$model" ]; then # if --model <mdl> was not specified on the command lin
 fi
 
 for f in $model $decodedir/lat.1.gz $utter_id; do
-  [ ! -f $f ] && echo "make_index.sh: no such file $f" && exit 1;
+  [ ! -f $f ] && echo "$0: Error: no such file $f" && exit 1;
 done
 
-echo "Using model: $model"
+echo "$0: Using model: $model"
 
 if [ ! -z $silence_word ]; then
   silence_int=`grep -w $silence_word $langdir/words.txt | awk '{print $2}'`
   [ -z $silence_int ] && \
-    echo "Error: could not find integer representation of silence word $silence_word" && exit 1;
+    echo "$0: Error: could not find integer representation of silence word $silence_word" && exit 1;
   silence_opt="--silence-label=$silence_int"
+fi
+
+if [ -z "$frame_subsampling_factor" ]; then
+  if [ -f $decodedir/../frame_subsampling_factor ] ; then
+    frame_subsampling_factor=$(cat $decodedir/../frame_subsampling_factor)
+  else 
+    frame_subsampling_factor=1
+  fi
+  echo "$0: Frame subsampling factor autodetected: $frame_subsampling_factor"
 fi
 
 word_boundary=$langdir/phones/word_boundary.int
@@ -100,7 +111,7 @@ elif [ -f $align_lexicon ]; then
       kws-index-union --skip-optimization=$skip_optimization --strict=$strict --max-states=$max_states \
       ark:- "ark:|gzip -c > $kwsdir/index.JOB.gz" || exit 1
 else
-  echo "$0: cannot find either word-boundary file $word_boundary or alignment lexicon $align_lexicon"
+  echo "$0: Error: cannot find either word-boundary file $word_boundary or alignment lexicon $align_lexicon"
   exit 1
 fi
 
