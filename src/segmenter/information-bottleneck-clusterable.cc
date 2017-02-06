@@ -68,7 +68,9 @@ void InformationBottleneckClusterable::Add(const Clusterable &other_in) {
        it != other->counts_.end(); ++it) {
     std::map<int32, BaseFloat>::iterator hint_it = counts_.lower_bound(
         it->first);
-    KALDI_ASSERT (hint_it == counts_.end() || hint_it->first != it->first);
+    if (hint_it != counts_.end() && hint_it->first == it->first) {
+      KALDI_ERR << "Duplicate segment id " << it->first;
+    }
     counts_.insert(hint_it, *it);
   }
 
@@ -205,8 +207,11 @@ BaseFloat InformationBottleneckClusterable::Distance(
 
   KALDI_ASSERT(relevance_divergence > -1e-4);
   KALDI_ASSERT(input_divergence > -1e-4);
-  return (normalizer * (relevance_factor * relevance_divergence 
-                        - input_factor * input_divergence));
+  
+  double ans = (normalizer * (relevance_factor * relevance_divergence 
+                              - input_factor * input_divergence));
+  KALDI_ASSERT(input_factor != 0.0 || ans > -1e-4);
+  return ans;
 }
 
 BaseFloat KLDivergence(const VectorBase<BaseFloat> &p1, 

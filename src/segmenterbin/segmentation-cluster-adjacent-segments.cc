@@ -78,21 +78,59 @@ int32 ClusterAdjacentSegments(const MatrixBase<BaseFloat> &feats,
                               BaseFloat var_floor,
                               int32 length_tolerance,
                               Segmentation *segmentation) {
-  if (segmentation->Dim() == 1) {
-    segmentation->Begin()->SetLabel(1);
+  if (segmentation->Dim() <= 3) {
+    // Very unusual case. 
+    // TODO: Do something more reasonable.
     return 1;
   }
 
+  
   SegmentList::iterator it = segmentation->Begin(), 
     next_it = segmentation->Begin();
   ++next_it;
+  
+  // Vector storing for each segment, whether there is a change point at the 
+  // beginning of the segment.
+  std::vector<bool> is_change_point(segmentation->Dim(), false);
+  is_change_point[0] = true;
 
+  Vector<BaseFloat> distances(segmentation->Dim() - 1);
+  int32 i = 0;
+
+  for (; next_it != segmentation->End(); ++it, ++next_it, i++) {
+    // Distance between segment i and i + 1
+    distances(i) = Distance(*it, *next_it, feats, 
+                            var_floor, length_tolerance);
+
+    if (i > 2) {
+      if (distances(i-1) - distances(i-2) > delta_distance_threshold &&
+          distances(i) - distances(i-1) < -delta_distance_threshold) {
+        is_change_point[i-1] = true;
+      }
+    } else {
+      if (distances(i) - distances(i-1) > absolute_distance_threshold)
+        is_change_point[i] = true;
+    }
+  }
+    
+  int32 num_classes = 0;
+  for (i = 0, it = segmentation->Begin(); 
+       it != segmentation->End(); ++it, i++) {
+    if (is_change_point[i]) {
+      num_classes++;
+    }
+    it->SetLabel(num_classes);
+  }
+
+  return num_classes;
+  /*
   BaseFloat prev_dist = Distance(*it, *next_it, feats,
                                  var_floor, length_tolerance);
 
   if (segmentation->Dim() == 2) {
     it->SetLabel(1);
-    if (prev_dist < absolute_distance_threshold * feats.NumCols()) {
+    if (prev_dist < absolute_distance_threshold * feats.NumCols()
+        && next_it->start_frame <= it->end_frame) {
       // Similar segments merged.
       next_it->SetLabel(it->Label());
     } else {
@@ -103,6 +141,10 @@ int32 ClusterAdjacentSegments(const MatrixBase<BaseFloat> &feats,
     return next_it->Label();;
   }
 
+  // The algorithm is a simple peak detection.
+  // Consider three segments that are pointed by the iterators 
+  // prev_it, it, next_it.
+  // If Distance(prev_it, it) > Consider 
   ++it;
   ++next_it;
   bool next_segment_is_new_cluster = false;
@@ -162,6 +204,7 @@ int32 ClusterAdjacentSegments(const MatrixBase<BaseFloat> &feats,
   }
 
   return it->Label();
+  */
 }
 
 }  // end segmenter
@@ -186,7 +229,7 @@ int main(int argc, char *argv[]) {
     int32 length_tolerance = 2;
     BaseFloat var_floor = 0.01;
     BaseFloat absolute_distance_threshold = 3.0;
-    BaseFloat delta_distance_threshold = 0.2;
+    BaseFloat delta_distance_threshold = 0.0002;
 
     ParseOptions po(usage);
 
@@ -203,8 +246,8 @@ int main(int argc, char *argv[]) {
                 "Maximum per-dim distance below which segments will not be "
                 "be merged.");
     po.Register("delta-distance-threshold", &delta_distance_threshold,
-                "If the delta-distance is below this value, then the "
-                "adjacent segments will not be merged.");
+                "If the delta-distance is below this value, then it will "
+                "be treated as 0.");
 
     po.Read(argc, argv);
 

@@ -37,24 +37,27 @@ class InformationBottleneckBottomUpClusterer : public BottomUpClusterer {
       std::vector<int32> *assignments_out);
   
  private:
+  virtual void SetInitialDistances();
   virtual BaseFloat ComputeDistance(int32 i, int32 j);
   virtual bool StoppingCriterion() const;
   virtual void UpdateClustererStats(int32 i, int32 j);
+
+  virtual BaseFloat MergeThreshold(int32 i, int32 j) {
+    if (opts_.normalize_by_count)
+      return max_merge_thresh_
+        * ((*clusters_)[i]->Normalizer() + (*clusters_)[j]->Normalizer());
+    else if (opts_.normalize_by_entropy) 
+      return -max_merge_thresh_ * (*clusters_)[i]->ObjfPlus(*(*clusters_)[j]);
+    else
+      return max_merge_thresh_;
+  }
 
   BaseFloat NormalizedMutualInformation() const {
     return ((merged_entropy_ - current_entropy_) 
             / (merged_entropy_ - initial_entropy_));
   }
 
-  /// Stop merging when the stopping criterion, e.g. NMI, reaches this 
-  /// threshold.
-  BaseFloat stopping_threshold_;
-
-  /// Weight of the relevant variables entropy towards the objective.
-  BaseFloat relevance_factor_;
-  
-  /// Weight of the input variables entropy towards the objective.
-  BaseFloat input_factor_;
+  const InformationBottleneckClustererOptions &opts_;
 
   /// Running entropy of the clusters.
   BaseFloat current_entropy_;
@@ -75,9 +78,7 @@ InformationBottleneckBottomUpClusterer::InformationBottleneckBottomUpClusterer(
     std::vector<int32> *assignments_out) :
       BottomUpClusterer(points, max_merge_thresh, min_clusters,
                         clusters_out, assignments_out),
-      stopping_threshold_(opts.stopping_threshold), 
-      relevance_factor_(opts.relevance_factor), 
-      input_factor_(opts.input_factor),
+      opts_(opts),
       current_entropy_(0.0), initial_entropy_(0.0), merged_entropy_(0.0) {
   if (points.size() == 0) return;
   
@@ -96,34 +97,50 @@ InformationBottleneckBottomUpClusterer::InformationBottleneckBottomUpClusterer(
   current_entropy_ = initial_entropy_;
 }
 
+void InformationBottleneckBottomUpClusterer::SetInitialDistances() {
+  for (int32 i = 0; i < npoints_; i++) {
+    for (int32 j = 0; j < i; j++) {
+      BaseFloat dist = ComputeDistance(i, j);
+      if (dist <= MergeThreshold(i, j)) {
+        queue_.push(std::make_pair(
+            dist, std::make_pair(static_cast<uint_smaller>(i),
+                                 static_cast<uint_smaller>(j))));
+      }
+      if (j == i - 1) 
+        KALDI_VLOG(2) << "Distance(" << i << ", " << j << ") = " << dist;
+    }
+  }
+}
+
 BaseFloat InformationBottleneckBottomUpClusterer::ComputeDistance(
     int32 i, int32 j) {
   const InformationBottleneckClusterable* cluster_i
-    = static_cast<const InformationBottleneckClusterable*>(GetCluster(i));
+    = static_cast<const InformationBottleneckClusterable*>((*clusters_)[i]);
   const InformationBottleneckClusterable* cluster_j
-    = static_cast<const InformationBottleneckClusterable*>(GetCluster(j));
+    = static_cast<const InformationBottleneckClusterable*>((*clusters_)[j]);
 
-  BaseFloat dist = (cluster_i->Distance(*cluster_j, relevance_factor_, 
-                                        input_factor_));
+  BaseFloat dist = (cluster_i->Distance(*cluster_j, opts_.relevance_factor, 
+                                        opts_.input_factor));
                     // / (cluster_i->Normalizer() + cluster_j->Normalizer()));
   Distance(i, j) = dist;  // set the distance in the array.
   return dist;
 }
 
 bool InformationBottleneckBottomUpClusterer::StoppingCriterion() const { 
-  bool flag = (NumClusters() <= MinClusters() || IsQueueEmpty() || 
-               NormalizedMutualInformation() < stopping_threshold_);
+  bool flag = (nclusters_ <= min_clust_ || queue_.empty() ||
+               NormalizedMutualInformation() < opts_.stopping_threshold);
   if (GetVerboseLevel() < 2 || !flag) return flag;
 
-  if (NormalizedMutualInformation() < stopping_threshold_) {
-    KALDI_VLOG(2) << "Stopping at " << NumClusters() << " clusters "
+  if (NormalizedMutualInformation() < opts_.stopping_threshold) {
+    KALDI_VLOG(2) << "Stopping at " << nclusters_ << " clusters "
                   << "because NMI = " << NormalizedMutualInformation()
-                  << " < stopping_threshold (" << stopping_threshold_ << ")";
-  } else if (NumClusters() < MinClusters()) {
-    KALDI_VLOG(2) << "Stopping at " << NumClusters() << " clusters "
-                  << "<= min-clusters (" << MinClusters() << ")";
-  } else if (IsQueueEmpty()) {
-    KALDI_VLOG(2) << "Stopping at " << NumClusters() << " clusters "
+                  << " < stopping_threshold (" 
+                  << opts_.stopping_threshold << ")";
+  } else if (nclusters_ < min_clust_) {
+    KALDI_VLOG(2) << "Stopping at " << nclusters_ << " clusters "
+                  << "<= min-clusters (" << min_clust_ << ")";
+  } else if (queue_.empty()) {
+    KALDI_VLOG(2) << "Stopping at " << nclusters_ << " clusters "
                   << "because queue is empty.";
   }
 
@@ -133,12 +150,12 @@ bool InformationBottleneckBottomUpClusterer::StoppingCriterion() const {
 void InformationBottleneckBottomUpClusterer::UpdateClustererStats(
     int32 i, int32 j) {
   const InformationBottleneckClusterable* cluster_i
-    = static_cast<const InformationBottleneckClusterable*>(GetCluster(i));
-  current_entropy_ += cluster_i->Distance(*GetCluster(j), 1.0, 0.0);
+    = static_cast<const InformationBottleneckClusterable*>((*clusters_)[i]);
+  current_entropy_ += cluster_i->Distance(*(*clusters_)[j], 1.0, 0.0);
 
   if (GetVerboseLevel() > 2) {
     const InformationBottleneckClusterable* cluster_j
-      = static_cast<const InformationBottleneckClusterable*>(GetCluster(j));
+      = static_cast<const InformationBottleneckClusterable*>((*clusters_)[j]);
     std::vector<int32> cluster_i_points;
     {
       std::map<int32, BaseFloat>::const_iterator it 
@@ -158,7 +175,7 @@ void InformationBottleneckBottomUpClusterer::UpdateClustererStats(
                   << "(" << cluster_i_points
                   << ", " << cluster_j_points
                   << ").. distance=" << Distance(i, j)
-                  << ", num-clusters-after-merge= " << NumClusters() - 1
+                  << ", num-clusters-after-merge= " << nclusters_ - 1
                   << ", NMI= " << NormalizedMutualInformation();
   }
 }

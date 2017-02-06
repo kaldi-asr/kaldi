@@ -33,10 +33,13 @@ struct InformationBottleneckClustererOptions {
   BaseFloat stopping_threshold;
   BaseFloat relevance_factor;
   BaseFloat input_factor;
+  bool normalize_by_count;
+  bool normalize_by_entropy;
 
   InformationBottleneckClustererOptions() :
     distance_threshold(std::numeric_limits<BaseFloat>::max()), num_clusters(1),
-    stopping_threshold(0.3), relevance_factor(1.0), input_factor(0.1) { }
+    stopping_threshold(0.3), relevance_factor(1.0), input_factor(0.1),
+    normalize_by_count(false), normalize_by_entropy(false) { }
 
 
   void Register(OptionsItf *opts) {
@@ -49,6 +52,12 @@ struct InformationBottleneckClustererOptions {
     opts->Register("input-factor", &input_factor,
                    "Weight factor of the entropy of input variables "
                    "in the objective function");
+    opts->Register("normalize-by-count", &normalize_by_count,
+                   "If provided, normalizes the score (distance) by "
+                   "the count post-merge.");
+    opts->Register("normalize-by-entropy", &normalize_by_entropy,
+                   "If provided, normalizes the score (distance) by "
+                   "the entropy post-merge.");
   }
 };
 
