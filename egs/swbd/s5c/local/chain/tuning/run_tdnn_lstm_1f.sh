@@ -2,7 +2,28 @@
 
 # run_tdnn_lstm_1f.sh is like run_tdnn_lstm_1e.sh but
 # reducing the frames-per-iter from 1.5 million to 1 million,
-# since the time per iter was too much (about 5 minutes).
+# since the time per iter was more than usual (about 5 minutes).
+
+# Below, the WER seems to get a little worse, although the optimization
+# is improved slightly.  There seems to be more train/valid difference.
+# see also 1i.
+
+# exp/chain/tdnn_lstm_1f_sp: num-iters=392 nj=3..16 num-params=39.6M dim=40+100->6042 combine=-0.080->-0.073 xent:train/valid[260,391,final]=(-1.06,-0.903,-0.916/-1.13,-1.03,-1.04) logprob:train/valid[260,391,final]=(-0.084,-0.064,-0.065/-0.100,-0.091,-0.090)
+
+# local/chain/compare_wer_general.sh --looped tdnn_lstm_1e_sp tdnn_lstm_1f_sp
+# System                tdnn_lstm_1e_sp tdnn_lstm_1f_sp
+# WER on train_dev(tg)      12.74     13.23
+#           [looped:]       12.93     13.27
+# WER on train_dev(fg)      11.70     12.17
+#           [looped:]       12.09     12.42
+# WER on eval2000(tg)        15.7      16.1
+#           [looped:]        15.9      16.2
+# WER on eval2000(fg)        14.3      14.6
+#           [looped:]        14.6      14.7
+# Final train prob         -0.066    -0.065
+# Final valid prob         -0.087    -0.090
+# Final train prob (xent)        -0.931    -0.916
+# Final valid prob (xent)       -1.0279   -1.0359
 
 # run_tdnn_lstm_1e.sh is like run_tdnn_lstm_1d.sh but
 # trying the change of xent_regularize from 0.025 (which was an

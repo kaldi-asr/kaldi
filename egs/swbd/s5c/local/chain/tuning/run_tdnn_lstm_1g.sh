@@ -3,6 +3,27 @@
 # 1g is like 1e, but reducing decay-time from 20 to 15, to see if
 # it reduces the difference between regular and looped decoding.
 #
+# There doesn't seem to be a very consistent difference betwen 1e and 1g.
+
+
+# exp/chain/tdnn_lstm_1g_sp: num-iters=262 nj=3..16 num-params=39.6M dim=40+100->6042 combine=-0.083->-0.076 xent:train/valid[173,261,final]=(-1.09,-0.929,-0.938/-1.15,-1.04,-1.05) logprob:train/valid[173,261,final]=(-0.089,-0.066,-0.067/-0.102,-0.089,-0.090)
+
+# local/chain/compare_wer_general.sh --looped tdnn_lstm_1e_sp tdnn_lstm_1g_sp
+# System                tdnn_lstm_1e_sp tdnn_lstm_1g_sp
+# WER on train_dev(tg)      12.74     13.03
+#           [looped:]       12.93     12.98
+# WER on train_dev(fg)      11.70     12.02
+#           [looped:]       12.09     12.13
+# WER on eval2000(tg)        15.7      15.6
+#           [looped:]        15.9      15.9
+# WER on eval2000(fg)        14.3      14.1
+#           [looped:]        14.6      14.4
+# Final train prob         -0.066    -0.067
+# Final valid prob         -0.087    -0.090
+# Final train prob (xent)        -0.931    -0.938
+# Final valid prob (xent)       -1.0279   -1.0473
+
+
 # run_tdnn_lstm_1e.sh is like run_tdnn_lstm_1d.sh but
 # trying the change of xent_regularize from 0.025 (which was an
 # unusual value) to the more usual 0.01.
