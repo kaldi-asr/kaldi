@@ -964,8 +964,9 @@ done
 touch cudamatrix/cu-common.h 2>/dev/null
 
 if $android && [[ "$CXX" != *clang++*  ]] ; then
-  failure "Android build requires clang++. You need to override the default
-  compiler by setting CXX, e.g. 'CXX=clang++ ./configure ...'"
+  failure "Android build requires clang++. Make sure you have clang++ installed
+  on your system and then override the default compiler by setting CXX, e.g.
+  CXX=clang++ ./configure"
 fi
 
 # If HOST is set
