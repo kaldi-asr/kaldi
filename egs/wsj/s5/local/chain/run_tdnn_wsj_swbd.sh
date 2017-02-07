@@ -1,7 +1,6 @@
 #!/bin/bash
-# This script used for transfer learning to transfer information from swbd to wsj.
-# it uses chain training to train primary and secondary models.
-# it connects 4th layer in the primary network to twp independent + final layer for 2nd network
+# This script used for transfer learning to transfer information from swbd model to wsj.
+# it uses chain training to train primary swbd and secondary wsj models.
 # it is based on adding a 64 dim lowrank module in the xent branch.
 #System                   tdnn_7h    tdnn_7l
 #WER on train_dev(tg)     13.84      13.83
@@ -190,7 +189,6 @@ cp -r $dir/stage1/configs/vars $dir/stage2/configs/.
 
 mkdir -p $dir/stage3
 cp -r $dir/stage2/configs $dir/stage3/.
-cp $dir/stage2/den.fst $dir/stage3/.
 fi
 
 if [ $stage -le 13 ] && [ ! -f $src_mdl ]; then
@@ -275,6 +273,7 @@ if [ $stage -le 15 ]; then
   if [ $train_stage -gt $train_stage_s3 ]; then
     stage=$train_stage_s3
   fi
+  cp $dir/stage2/den.fst $dir/stage3/.
   steps/nnet3/chain/train.py --stage $train_stage_s3 \
     --cmd "$decode_cmd" \
     --feat.online-ivector-dir exp/nnet3/ivectors_${train_set} \
