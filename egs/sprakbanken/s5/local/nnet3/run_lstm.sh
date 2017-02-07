@@ -5,12 +5,8 @@
 # support parallel alignments.
 
 
-# by default, with cleanup:
+# by default:
 # local/nnet3/run_lstm.sh
-
-# without cleanup:
-# local/nnet3/run_lstm.sh  --train-set train --gmm tri3 --nnet3-affix "" &
-
 
 set -e -o pipefail -u
 

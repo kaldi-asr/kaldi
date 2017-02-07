@@ -18,17 +18,6 @@ utils=`pwd`/utils
 
 . ./path.sh
 
-# Checks if python3 is available on the system and install python3 in userspace if not
-# This recipe currently relies on version 3 because python3 uses utf8 as internal 
-# string representation
-
-#if ! which python3 >&/dev/null; then
-#  echo "Installing python3 since not on your path."
-#  pushd $KALDI_ROOT/tools || exit 1;
-#  extras/install_python3.sh || exit 1;
-#  popd
-#fi
-
 if [ ! -d $dir/download ]; then
     mkdir -p $dir/download/0565-1 $dir/download/0565-2
 fi 

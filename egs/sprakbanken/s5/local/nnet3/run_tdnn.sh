@@ -1,16 +1,9 @@
 #!/bin/bash
 
-#    This is the standard "tdnn" system, built in nnet3; this script
-# is the version that's meant to run with data-cleanup, that doesn't
-# support parallel alignments.
+#    This is the standard "tdnn" system, built in nnet3
 
-
-# by default, with cleanup:
+# by default:
 # local/nnet3/run_tdnn.sh
-
-# without cleanup:
-# local/nnet3/run_tdnn.sh  --train-set train --gmm tri3 --nnet3-affix "" &
-
 
 set -e -o pipefail -u
 
