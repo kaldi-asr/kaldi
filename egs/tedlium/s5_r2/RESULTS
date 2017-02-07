@@ -142,8 +142,7 @@ for x in exp/nnet3_cleaned/tdnn_sp/decode_*; do grep Sum $x/*ore*/*ys | utils/be
   # local/chain/run_tdnn.sh --train-set train --gmm tri3 --nnet3-affix ""
   # for d in exp/chain/tdnn_sp_bi/decode_*; do grep Sum $d/*/*ys | utils/best_wer.sh; done
   # This is about 0.6% worse than the corresponding results with cleanup.
-
-  %WER 11.0 | 507 17783 | 90.9 6.5 2.6 1.9 11.0 80.5 | 0.004 | exp/chain/tdnn_sp_bi/decode_dev/score_8_0.0/ctm.filt.filt.sys
-  %WER 10.1 | 1155 27500 | 91.2 6.0 2.8 1.3 10.1 75.5 | -0.004 | exp/chain/tdnn_sp_bi/decode_test/score_8_0.0/ctm.filt.filt.sys
-  %WER 10.6 | 507 17783 | 90.7 5.5 3.8 1.3 10.6 79.3 | 0.070 | exp/chain/tdnn_sp_bi/decode_dev_rescore/score_10_0.0/ctm.filt.filt.sys
-  %WER 9.8 | 1155 27500 | 91.2 5.2 3.7 1.0 9.8 73.2 | 0.055 | exp/chain/tdnn_sp_bi/decode_test_rescore/score_10_0.0/ctm.filt.filt.sys
+  %WER 10.6 | 507 17783 | 91.2 6.4 2.4 1.7 10.6 82.4 | 0.068 | exp/chain_cleaned/tdnn_sp_bi/decode_dev/score_10_0.0/ctm.filt.filt.sys
+  %WER 9.9 | 507 17783 | 91.5 5.8 2.6 1.4 9.9 79.3 | 0.031 | exp/chain_cleaned/tdnn_sp_bi/decode_dev_rescore/score_10_0.5/ctm.filt.filt.sys
+  %WER 9.9 | 1155 27500 | 91.3 6.1 2.7 1.2 9.9 74.4 | 0.083 | exp/chain_cleaned/tdnn_sp_bi/decode_test/score_10_0.0/ctm.filt.filt.sys
+  %WER 9.4 | 1155 27500 | 91.7 5.7 2.6 1.2 9.4 71.9 | 0.062 | exp/chain_cleaned/tdnn_sp_bi/decode_test_rescore/score_10_0.0/ctm.filt.filt.sys

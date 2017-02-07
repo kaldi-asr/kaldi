@@ -10,15 +10,15 @@
 
 # This script was modified from ../../sre08/v1/sid/train_diag_ubm.sh.  It trains
 # a diagonal UBM on top of features processed with apply-cmvn-online and then
-# transformed with an LDA+MLLT matrix (obtained from the source directory).
-# This script does not use the trained model from the source directory to
-# initialize the diagonal GMM; instead, we initialize the GMM using
+# transformed with an LDA+MLLT or PCA matrix (obtained from the source
+# directory).  This script does not use the trained model from the source
+# directory to initialize the diagonal GMM; instead, we initialize the GMM using
 # gmm-global-init-from-feats, which sets the means to random data points and
 # then does some iterations of E-M in memory.  After the in-memory
-# initialization we train for a few iterations in parallel.
-# Note that there is a slight mismatch in that the source LDA+MLLT matrix
-# (final.mat) will have been estimated using standard CMVN, and we're using
-# online CMVN.  We don't think this will have much effect.
+# initialization we train for a few iterations in parallel.  Note that if an
+# LDA+MLLT transform matrix is used, there will be a slight mismatch in that the
+# source LDA+MLLT matrix (final.mat) will have been estimated using standard
+# CMVN, and we're using online CMVN.  We don't think this will have much effect.
 
 
 # Begin configuration section.
@@ -58,7 +58,7 @@ if [ $# != 4 ]; then
   echo "  --stage <stage|-2>                               # stage to do partial re-run from."
   echo "  --num-gselect <n|30>                             # Number of Gaussians per frame to"
   echo "                                                   # limit computation to, for speed"
-  echo " --subsample <n|5>                                 # In main E-M phase, use every n" 
+  echo " --subsample <n|5>                                 # In main E-M phase, use every n"
   echo "                                                   # frames (a speedup)"
   echo "  --num-frames <n|500000>                          # Maximum num-frames to keep in memory"
   echo "                                                   # for model initialization"

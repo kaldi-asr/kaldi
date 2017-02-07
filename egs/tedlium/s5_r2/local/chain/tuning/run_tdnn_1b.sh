@@ -43,6 +43,7 @@ xent_regularize=0.1
 train_set=train_cleaned
 gmm=tri3_cleaned  # the gmm for the target data
 num_threads_ubm=32
+ivector_feat_type=pca
 nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
 
 # The rest are configs specific to this script.  Most of the parameters
@@ -74,6 +75,7 @@ local/nnet3/run_ivector_common.sh --stage $stage \
                                   --train-set $train_set \
                                   --gmm $gmm \
                                   --num-threads-ubm $num_threads_ubm \
+                                  --feat-type "$ivector_feat_type" \
                                   --nnet3-affix "$nnet3_affix"
 
 
@@ -88,7 +90,7 @@ train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
 
 
 for f in $gmm_dir/final.mdl $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
-    $lores_train_data_dir/feats.scp $ali_dir/ali.1.gz $gmm_dir/final.mdl; do
+    $lores_train_data_dir/feats.scp $ali_dir/ali.1.gz ; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
 

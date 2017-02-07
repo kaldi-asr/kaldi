@@ -21,7 +21,7 @@
 #  - Set num_threads to the minimum of (4, or how many virtual cores your machine has).
 #    (because of needing to lock various global quantities, the program can't
 #    use many more than 4 threads with good CPU utilization).
-#  - Set num_processes to the number of virtual cores on each machine you have, divided by 
+#  - Set num_processes to the number of virtual cores on each machine you have, divided by
 #    num_threads.  E.g. 4, if you have 16 virtual cores.   If you're on a shared queue
 #    that's busy with other people's jobs, it may be wise to set it to rather less
 #    than this maximum though, or your jobs won't get scheduled.  And if memory is
@@ -32,8 +32,8 @@
 #    may want more jobs, though.
 
 # Begin configuration section.
-nj=10   # this is the number of separate queue jobs we run, but each one 
-        # contains num_processes sub-jobs.. the real number of threads we 
+nj=10   # this is the number of separate queue jobs we run, but each one
+        # contains num_processes sub-jobs.. the real number of threads we
         # run is nj * num_processes * num_threads, and the number of
         # separate pieces of data is nj * num_processes.
 num_threads=4
@@ -115,7 +115,7 @@ if [ $stage -le -2 ]; then
   $cmd $dir/log/init.log \
     ivector-extractor-init --ivector-dim=$ivector_dim --use-weights=false \
      "gmm-global-to-fgmm $dir/final.dubm -|" $dir/0.ie || exit 1
-fi 
+fi
 
 # Do Gaussian selection and posterior extracion
 
@@ -168,7 +168,7 @@ while [ $x -lt $num_iters ]; do
                                       # each accumulation process uses, since we
                                       # can be sure the queue will support this many.
                                       #
-                                      # The parallel-opts was either specified by 
+                                      # The parallel-opts was either specified by
                                       # the user or we computed it correctly in
                                       # tge previous stages
 	$cmd --num-threads $[$num_threads*$num_processes] $dir/log/update.$x.log \
