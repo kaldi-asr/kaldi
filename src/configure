@@ -83,14 +83,17 @@ Configuration options:
   --speex-root=DIR      SPEEX root directory
   --speex-libdir=DIR    SPEEX library directory
   --speex-incdir=DIR    SPEEX include directory
-  --host=HOST           Host 'triple' for cross compilation
+  --host=HOST           Host triple in the format 'cpu-vendor-os'
+                        If provided, it is prepended to all toolchain programs.
   --android-incdir=DIR  Andraid include directory
 
-Following environment variables can be used to override the default toolchain
+Following environment variables can be used to override the default toolchain.
   CXX         C++ compiler [default=g++]
   AR          Archive maintenance utility [default=ar]
   AS          Assembler [default=as]
   RANLIB      Archive indexing utility [default=ranlib]
+
+If a host triple is provided, it is prepended to CXX, AR, AS and RANLIB.
 
 Following environment variables can be used to provide additional flags to the
 compiler/linker.
@@ -773,8 +776,6 @@ function linux_configure_dynamic {
 
 #############################    CONFIGURATION    #############################
 
-echo "Configuring ..."
-
 # If configuration sets any of these variables, we will switch the external
 # math library. Here we unset them so that we can check later.
 unset MKLROOT
@@ -940,7 +941,7 @@ do
     shift;;
   --host=*)
     # The type of system where built programs and libraries will run.
-    # It should be in the format machine-vendor-operatingsystem. This script
+    # It should be in the format cpu-vendor-os. If specified, this script
     # will infer the target architecture from the specified host triple.
     HOST=`expr "X$1" : '[^=]*=\(.*\)'`;
     shift ;;
@@ -999,6 +1000,8 @@ is_set $MKLLIBDIR && echo "Configuring KALDI to use MKL" && export MATHLIB="MKL"
 is_set $MKLROOT && echo "Configuring KALDI to use MKL"&& export MATHLIB="MKL"
 is_set $CLAPACKROOT && echo "Configuring KALDI to use CLAPACK"&& export MATHLIB="CLAPACK"
 is_set $OPENBLASROOT && echo "Configuring KALDI to use OPENBLAS"&& export MATHLIB="OPENBLAS"
+
+echo "Configuring ..."
 
 # Back up the old kaldi.mk in case we modified it
 if [ -f kaldi.mk ]; then
