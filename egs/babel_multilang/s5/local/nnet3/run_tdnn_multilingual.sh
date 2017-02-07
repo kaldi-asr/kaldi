@@ -246,7 +246,7 @@ if [ $stage -le 12 ]; then
 fi
 
 if [ $stage -le 13 ]; then
-  for lang_index in `seq 0 $num_langs`;do
+  for lang_index in `seq 0 $[$num_langs-1]`;do
     echo "$0: compute average posterior and readjust priors for language ${lang_list[$lang_index]}."
     echo "alidir = ${multi_ali_dirs[$lang_index]} "
     lang_dir=$dir/${lang_list[$lang_index]}
@@ -256,26 +256,22 @@ if [ $stage -le 13 ]; then
       $dir/final.raw $lang_dir/final.raw || exit 1;
 
     steps/nnet3/compute_and_adjust_priors.py --cmd="$decode_cmd" \
-      --egs.dir $megs_dir \
-      --egs.use-multitask-egs true \
-      --use-gpu true \
+      --egs.dir ${multi_egs_dirs[$lang_index]} \
       --reporting.email="$reporting_email" \
       --init-model final \
       --readjust-model final.${lang_index} \
       --readjust-priors true \
-      --output-name output-${lang_index} \
       --ali-dir ${multi_ali_dirs[$lang_index]} \
       --dir=$lang_dir  || exit 1;
   done
 fi
 
 # decoding different languages
-if [ $stage -le 13 ]; then
+if [ $stage -le 14 ]; then
   num_decode_lang=${#decode_lang_list[@]}
   (
   for lang_index in `seq 0 $[$num_decode_lang-1]`; do
     if [ ! -f $dir/${decode_lang_list[$lang]}/decode_dev10h.pem/.done ]; then
-      cp $dir/cmvn_opts $dir/${decode_lang_list[$lang]}/.
       echo "Decoding lang ${decode_lang_list[$lang]} using multilingual hybrid model $dir"
       run-4-anydecode-langs.sh --use-ivector $use_ivector --nnet3-dir $dir ${decode_lang_list[$lang]} || exit 1;
       touch $dir/${decode_lang_list[$lang]}/decode_dev10h.pem/.done

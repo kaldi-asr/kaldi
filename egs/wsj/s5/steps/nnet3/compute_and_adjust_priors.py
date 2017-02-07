@@ -49,11 +49,6 @@ def get_args():
                         dest='num_jobs_compute_prior', default=10,
                         help="The prior computation jobs are single "
                         "threaded and run on the CPU")
-    parser.add_argument("--output-name", type=str,
-                        dest='output_name',
-                        default='output',
-                        help='The average posteriors computed and adjusted '
-                             'for this output node in nnet3 model.')
     parser.add_argument("--init-model", type=str,
                         action=common_lib.NullstrToNoneAction,
                         dest='model',
@@ -177,7 +172,7 @@ def compute_and_adjust_priors(args, run_opts):
     num_archives = int(open('{0}/info/num_archives'.format(
                             egs_dir)).readline())
     logger.info("Getting average posterior for purposes of "
-                "adjusting the priors for output {output}.".format(output=args.output_name))
+                "adjusting the priors for output.")
 
     num_tasks_to_process = 1
     # If True, it is assumed different examples used to train multiple
@@ -189,37 +184,49 @@ def compute_and_adjust_priors(args, run_opts):
     if num_tasks_to_process > 1:
         use_multitask_egs = True
 
+    model = None
+    get_raw_nnet_from_am = False
+    if args.model is not None:
+
+        if args.ali_dir is None:
+            # the model is acoustic model
+            common_lib.run_job(
+                """{command} {dir}/log/get_raw_mdl.log \
+                        nnet3-am-copy --raw=true {dir}/{model}.mdl \
+                        {dir}/{model}.raw
+                """.format(command=run_opts.command,
+                           dir=dir, model=args.model))
+            model = "{0}.raw".format(args.model)
+        else:
+            train_lib.acoustic_model.prepare_acoustic_model(dir=args.dir,
+                                                            alidir=args.ali_dir,
+                                                            run_opts=run_opts,
+                                                            model=args.model)
+            model = "{0}.raw".format(args.model)
+        init_model = "{dir}/{model}.mdl".format(dir=args.dir, model=args.model)
+    else:
+      if args.ali_dir is None:
+          # If ali_dir is not specified, it assumes the model contains transition model.
+          init_model = "{dir}/combined.mdl".format(dir=args.dir)
+          get_raw_nnet_from_am = True
+      else:
+          train_lib.acoustic_model.prepare_acoustic_model(dir=args.dir,
+                                                          alidir=args.ali_dir,
+                                                          run_opts=run_opts,
+                                                          model="final")
+          init_model = "{dir}/final.mdl".format(dir=args.dir)
+          get_raw_nnet_from_am = False
+
     avg_post_vec_file = train_lib.common.compute_average_posterior(
-        dir=args.dir, iter=args.output_name, egs_dir=egs_dir, model=args.model,
+        dir=args.dir, iter='combined', egs_dir=egs_dir,
+        model=model,
+        get_raw_nnet_from_am = get_raw_nnet_from_am,
         num_archives=num_archives,
         left_context=left_context, right_context=right_context,
         prior_subset_size=args.prior_subset_size, run_opts=run_opts,
-        output_name=args.output_name,
         use_multitask_egs=use_multitask_egs)
-
     if args.readjust_priors:
         logger.info("Re-adjusting priors based on computed posteriors")
-        if args.model is not None:
-            if args.ali_dir is None:
-                init_model = "{dir}/{init_mdl}.mdl".format(dir=args.dir, init_mdl=args.model)
-            else:
-                train_lib.acoustic_model.prepare_acoustic_model(dir=args.dir,
-                                                                alidir=args.ali_dir,
-                                                                run_opts=run_opts,
-                                                                model=args.model)
-                init_model = "{dir}/{model}.mdl".format(dir=args.dir, model=args.model)
-
-        else:
-          if args.ali_dir is None:
-              # If ali_dir is not specified, it assumes the model contains transition model.
-              init_model = "{dir}/combined.mdl".format(dir=args.dir)
-          else:
-              train_lib.acoustic_model.prepare_acoustic_model(dir=args.dir,
-                                                              alidir=args.ali_dir,
-                                                              run_opts=run_opts,
-                                                              model="final")
-              init_model = "{dir}/final.mdl".format(dir=args.dir)
-
         final_model = "{dir}/{target_mdl}.mdl".format(dir=args.dir, target_mdl=args.readjusted_model)
         train_lib.common.adjust_am_priors(args.dir, init_model,
                                           avg_post_vec_file, final_model,
@@ -227,7 +234,7 @@ def compute_and_adjust_priors(args, run_opts):
 def main():
     [args, run_opts] = get_args()
     try:
-        train(args, run_opts)
+        compute_and_adjust_priors(args, run_opts)
     except Exception as e:
         if args.email is not None:
             message = ("Post-procssing session for compute and adjusting prior for "

@@ -737,7 +737,6 @@ def compute_average_posterior(dir, iter, egs_dir, num_archives,
                               prior_subset_size, left_context, right_context,
                               run_opts, get_raw_nnet_from_am=True,
                               extra_egs_copy_cmd="",
-                              output_name="output",
                               model=None,
                               use_multitask_egs=False):
     """ Computes the average posterior of the network
@@ -785,7 +784,6 @@ def compute_average_posterior(dir, iter, egs_dir, num_archives,
                 nnet3-merge-egs --measure-output-frames=true \
                 --minibatch-size=128 ark:- ark:- \| \
                 nnet3-compute-from-egs {prior_gpu_opt} --apply-exp=true \
-                --output-name={output_name} \
                 "{model}" ark:- ark:- \| \
                 matrix-sum-rows ark:- ark:- \| vector-sum ark:- \
                 {dir}/post.{iter}.JOB.vec""".format(
@@ -798,7 +796,6 @@ def compute_average_posterior(dir, iter, egs_dir, num_archives,
                     prior_gpu_opt=run_opts.prior_gpu_opt,
                     extra_egs_copy_cmd=extra_egs_copy_cmd,
                     compute_prior_egs=compute_prior_egs,
-                    output_name=output_name,
                     multitask_egs_opt=multitask_egs_opt))
 
     # make sure there is time for $dir/post.{iter}.*.vec to appear.

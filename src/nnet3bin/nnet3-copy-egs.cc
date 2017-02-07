@@ -379,7 +379,7 @@ int main(int argc, char *argv[]) {
       // count is normally 1; could be 0, or possibly >1.
       int32 count = GetCount(keep_proportion);
       std::string key = example_reader.Key();
-      bool modify_eg_output = (!output_str.empty() || weight_str.empty());
+      bool modify_eg_output = !(output_str.empty() && weight_str.empty());
       NnetExample eg_modified_output;
       const NnetExample &eg_orig = example_reader.Value(),
         &eg = (modify_eg_output ? eg_modified_output : eg_orig);
