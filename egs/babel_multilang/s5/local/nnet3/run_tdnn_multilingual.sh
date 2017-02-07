@@ -74,8 +74,6 @@ where "nvcc" is installed.
 EOF
 fi
 
-echo "$0: lang_list = ${lang_list[@]}"
-
 for lang_index in `seq 0 $[$num_langs-1]`; do
   for f in data/${lang_list[$lang_index]}/train/{feats.scp,text} exp/${lang_list[$lang_index]}/$alidir/ali.1.gz exp/${lang_list[$lang_index]}/$alidir/tree; do
     [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
@@ -138,7 +136,6 @@ done
 
 if $use_ivector; then
   ivector_dim=$(feat-to-dim scp:${multi_ivector_dirs[0]}/ivector_online.scp -) || exit 1;
-  echo ivector-dim = $ivector_dim
 else
   echo "$0: Not using iVectors in multilingual training."
   ivector_dim=0
@@ -147,8 +144,40 @@ feat_dim=`feat-to-dim scp:${multi_data_dirs[0]}/feats.scp -`
 
 
 if [ $stage -le 9 ]; then
-  echo "$0: creating multilingual neural net configs using the xconfig parser";
+  echo "$0: Generates separate egs dir per language for multilingual training."
+  # sourcing the "vars" below sets
+  #model_left_context=(something)
+  #model_right_context=(something)
+  #num_hidden_layers=(something)
+  . $dir/configs/vars || exit 1;
+  ivec="${multi_ivector_dirs[@]}"
+  if $use_ivector; then
+    ivector_opts=(--online-multi-ivector-dirs "$ivec")
+  fi
+  local/nnet3/prepare_multilingual_egs.sh --cmd "$decode_cmd" \
+    "${ivector_opts[@]}" \
+    --left-context $model_left_context --right-context $model_right_context \
+    --samples-per-iter 400000 \
+    $num_langs ${multi_data_dirs[@]} ${multi_ali_dirs[@]} ${multi_egs_dirs[@]} || exit 1;
 
+fi
+
+if [ -z $megs_dir ];then
+  megs_dir=$dir/egs
+fi
+
+if [ $stage -le 10 ]; then
+  echo "$0: Generate multilingual egs dir using "
+  echo "separate egs dirs for multilingual training."
+  common_egs_dir="${multi_egs_dirs[@]} $megs_dir"
+  steps/nnet3/multilingual/get_egs.sh $egs_opts \
+    --cmd "$decode_cmd" \
+    --samples-per-iter 400000 \
+    $num_langs ${common_egs_dir[@]} || exit 1;
+fi
+
+if [ $stage -le 11 ]; then
+  echo "$0: creating multilingual neural net configs using the xconfig parser";
   if [ -z $bnf_dim ]; then
     bnf_dim=1024
   fi
@@ -174,9 +203,9 @@ if [ $stage -le 9 ]; then
 EOF
   # added separate outptut layer and softmax for all languages.
   for lang_index in `seq 0 $[$num_langs-1]`;do
-    num_targets=`tree-info exp/${lang_list[$lang_index]}/$alidir/tree 2>/dev/null | grep num-pdfs | awk '{print $2}'` || exit 1;
+    num_targets=`tree-info ${multi_ali_dirs[$lang_index]}/tree 2>/dev/null | grep num-pdfs | awk '{print $2}'` || exit 1;
 
-    echo " relu-renorm-layer name=prefinal-affine-lang-${lang_index} input=tdnn7 dim=1024"
+    echo " relu-renorm-layer name=prefinal-affine-lang-${lang_index} input=tdnn_bn dim=1024"
     echo " output-layer name=output-${lang_index} dim=$num_targets"
   done >> $dir/configs/network.xconfig
 
@@ -185,7 +214,8 @@ EOF
     --nnet-edits="rename-node old-name=output-0 new-name=output"
 
   cat <<EOF >> $dir/configs/vars
-  add_lda=false
+add_lda=false
+include_log_softmax=true
 EOF
 
   # removing the extra output node "output-tmp" added for back-compatiblity with
@@ -193,38 +223,6 @@ EOF
   nnet3-copy --edits="remove-output-nodes name=output-tmp" $dir/configs/ref.raw $dir/configs/ref.raw || exit 1;
 fi
 
-if [ $stage -le 10 ]; then
-  echo "$0: Generates separate egs dir per language for multilingual training."
-  # sourcing the "vars" below sets
-  #model_left_context=(something)
-  #model_right_context=(something)
-  #num_hidden_layers=(something)
-  . $dir/configs/vars || exit 1;
-  ivec="${multi_ivector_dirs[@]}"
-  if $use_ivector; then
-    ivector_opts=(--online-multi-ivector-dirs "$ivec")
-  fi
-  local/nnet3/prepare_multilingual_egs.sh --cmd "$decode_cmd" \
-    "${ivector_opts[@]}" \
-    --left-context $model_left_context --right-context $model_right_context \
-    --samples-per-iter 400000 \
-    $num_langs ${multi_data_dirs[@]} ${multi_ali_dirs[@]} ${multi_egs_dirs[@]} || exit 1;
-
-fi
-
-if [ -z $megs_dir ];then
-  megs_dir=$dir/egs
-fi
-
-if [ $stage -le 11 ] && [ -z $megs_dir ]; then
-  echo "$0: Generate multilingual egs dir using "
-       "separate egs dirs for multilingual training."
-  common_egs_dir="${multi_egs_dirs[@]} $megs_dir"
-  steps/nnet3/multilingual/get_egs.sh $egs_opts \
-    --cmd "$decode_cmd" \
-    --samples-per-iter 400000 \
-    $num_langs ${common_egs_dir[@]} || exit 1;
-fi
 
 if [ $stage -le 12 ]; then
   steps/nnet3/train_raw_dnn.py --stage=$train_stage \

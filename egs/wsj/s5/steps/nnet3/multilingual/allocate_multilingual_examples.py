@@ -3,8 +3,9 @@
 # Copyright 2017 Pegah Ghahremani
 #
 from __future__ import print_function
-import re, os, argparse, sys, math, warnings, random, io, imp
-#common_lib = imp.load_source('ntl', 'steps/nnet3/common_lib.py')
+import re, os, argparse, sys, random
+import logging
+import traceback
 
 sys.path.insert(0, 'steps')
 import libs.common as common_lib
@@ -54,6 +55,16 @@ def get_args():
                         help="lang2weight file contains the weight per language to "
                            "scale output posterior for that language.(format is: "
                            "<lang-id> <weight>)")
+    parser.add_argument("--reporting.email", dest="email",
+                        type=str, default=None,
+                        action=common_lib.NullstrToNoneAction,
+                        help=""" Email-id to report about the progress
+                        of the experiment.  NOTE: It assumes the
+                        machine on which the script is being run can
+                        send emails from command line via. mail
+                        program. The Kaldi mailing list will not
+                        support this feature.  It might require local
+                        expertise to setup. """)
 # now the positional arguments
     parser.add_argument("num_langs", type=int,
                         help="num of languages used in multilingual training setup.")
@@ -74,45 +85,45 @@ def get_args():
 
 
 def select_random_lang(lang_len, tot_egs, random_selection):
-  """ Returns a random language number w.r.t
-      amount of examples in each language.
-      It works based on sampling from a
-      discrete distribution, where it returns i
-      with prob(i) as (num_egs in lang(i)/ tot_egs).
-      tot_egs is sum of lang_len.
-  """
-  assert(tot_egs > 0)
-  rand_int = random.randint(0, tot_egs - 1)
-  count = 0
-  for l in range(len(lang_len)):
-    if random_selection:
-      if rand_int > count and rand_int <= (count + lang_len[l]):
-        rand_lang = l
-        break
-      else:
-        count += lang_len[l]
-    else:
-      if (lang_len[l] > 0):
-        rand_lang = l
-        break
-  assert(rand_lang >= 0 and rand_lang < len(lang_len))
-  return rand_lang
+    """ Returns a random language index w.r.t
+        amount of examples in each language.
+        It works based on sampling from a
+        discrete distribution, where it returns i
+        with prob(i) = (num_egs in lang(i)/ tot_egs).
+        tot_egs is sum of lang_len.
+    """
+    assert(tot_egs > 0)
+    rand_int = random.randint(0, tot_egs - 1)
+    count = 0
+    for l in range(len(lang_len)):
+        if random_selection:
+            if rand_int > count and rand_int <= (count + lang_len[l]):
+                rand_lang = l
+                break
+            else:
+                count += lang_len[l]
+        else:
+            if (lang_len[l] > 0):
+                rand_lang = l
+                break
+    assert(rand_lang >= 0 and rand_lang < len(lang_len))
+    return rand_lang
 
 def ReadLang2weight(lang2w_file):
     """ Read lang2weight file and return lang2weight array
         where lang2weight[i] is weight for language i.
     """
-  f = open(lang2w_file, "r")
-  if f is None:
-    raise Exception("Error opening lang2weight file " + str(lang2w_file))
-  lang2w = []
-  for line in f:
-    a = line.split()
-    if len(a) != 2:
-      raise Exception("bad line in lang2weight file " + line)
-    lang2w.append(int(a[1]))
-  f.close()
-  return lang2w
+    f = open(lang2w_file, "r")
+    if f is None:
+        raise Exception("Error opening lang2weight file " + str(lang2w_file))
+    lang2w = []
+    for line in f:
+        a = line.split()
+        if len(a) != 2:
+            raise Exception("bad line in lang2weight file " + line)
+        lang2w.append(int(a[1]))
+    f.close()
+    return lang2w
 
 def  process_multilingual_egs(args):
     """ This script generates egs.archive.scp and ranges.* used for multilingual setup.
@@ -230,8 +241,8 @@ def  process_multilingual_egs(args):
                     # If num of remaining egs in each lang is less than minibatch_size,
                     # they are discarded.
                     if lang_len[lang_id] < args.minibatch_size:
-                    lang_len[lang_id] = 0
-                    print("Run out of data for language {0}".format(lang_id))
+                        lang_len[lang_id] = 0
+                        print("Run out of data for language {0}".format(lang_id))
                 else:
                     print("Run out of data for all languages.")
                     break
@@ -243,10 +254,12 @@ def  process_multilingual_egs(args):
         logger.info("Combine egs.job.{0}.scp across all jobs into "
                     "egs.{0}.scp.".format(archive))
         this_ranges = []
-        f = "{0}/temp/{1}ranges.{2}".format(args.egs_dir, args.prefix, archive + 1)
-        o = "{0}/{1}outputs.{2}".format(args.egs_dir, args.prefix, archive + 1))
-        w = "{0}/{1}weights.{2}".format(args.egs_dir, args.prefix, archive + 1))
-        scp_per_archive_file = "{0}/{1}egs.{2}".format(args.egs_dir, args.prefix, archive + 1))
+        f = open("{0}/temp/{1}ranges.{2}".format(args.egs_dir, args.prefix, archive + 1), 'w')
+        o = open("{0}/{1}output.{2}".format(args.egs_dir, args.prefix, archive + 1), 'w')
+        w = open("{0}/{1}weight.{2}".format(args.egs_dir, args.prefix, archive + 1), 'w')
+        scp_per_archive_file = open("{0}/{1}egs.{2}.scp"
+                                    "".format(args.egs_dir,
+                                              args.prefix, archive + 1), 'w')
 
         # check files before writing.
         if f is None:
@@ -259,7 +272,8 @@ def  process_multilingual_egs(args):
             raise Exception("Error opening file {0}".format(scp_per_archive_file))
 
         for job in range(args.num_jobs):
-            scp = args.egs_dir + "/temp/" + args.prefix + "scp." + str(job + 1) + "." + str(archive + 1)
+            scp = ("{0}/temp/{1}scp.{2}.{3}".format(args.egs_dir, args.prefix,
+                                                    job + 1, archive + 1))
             with open(scp,"r") as scpfile:
                 for line in scpfile:
                     scp_line = line.splitlines()[0].split()
@@ -284,6 +298,7 @@ def  process_multilingual_egs(args):
                 "and {0}weights.* files".format(args.prefix))
 def main():
     try:
+        args = get_args()
         process_multilingual_egs(args)
     except Exception as e:
         if args.email is not None:
@@ -291,7 +306,7 @@ def main():
                        "died due to an error.".format(dir=args.egs_dir))
             common_lib.send_mail(message, message, args.email)
         traceback.print_exc()
-        raise e
+        #raise e
 
 if __name__ == "__main__":
   main()

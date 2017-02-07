@@ -195,7 +195,7 @@ def add_back_compatibility_info(config_dir, nnet_edits=None):
 
     common_lib.run_kaldi_command("nnet3-init {0}/ref.config "
                                  "{0}/ref.raw".format(config_dir))
-    
+
     model = "{0}/ref.raw".format(config_dir)
     if nnet_edits is not None:
         model = """nnet3-copy --edits='{0}' {1} - |""".format(nnet_edits,

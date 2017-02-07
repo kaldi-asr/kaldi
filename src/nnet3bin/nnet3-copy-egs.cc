@@ -54,6 +54,19 @@ void RenameIoNames(const std::string &io_names,
   }
 }
 
+// ranames NnetIo name with name 'output' to new_output_name
+// and scales the supervision for 'output' using weight.
+void ScaleAndRenameOutput(BaseFloat weight, std::string new_output_name,
+                          NnetExample *eg) {
+  // scale the supervision weight for egs
+  for (int32 i = 0; i < eg->io.size(); i++)
+    if (eg->io[i].name == "output")
+      eg->io[i].features.Scale(weight);
+  // rename output io name to $new_output_name.
+  std::string rename_io_names = "output/" + new_output_name;
+  RenameIoNames(rename_io_names, eg);
+}
+
 // returns an integer randomly drawn with expected value "expected_count"
 // (will be either floor(expected_count) or ceil(expected_count)).
 int32 GetCount(double expected_count) {
@@ -367,23 +380,21 @@ int main(int argc, char *argv[]) {
       int32 count = GetCount(keep_proportion);
       std::string key = example_reader.Key();
       bool modify_eg_output = (!output_str.empty() || weight_str.empty());
-      NnetExample modified_eg_output;
+      NnetExample eg_modified_output;
       const NnetExample &eg_orig = example_reader.Value(),
-        &eg = (modify_eg_output ? modified_eg_output : eg_orig);
+        &eg = (modify_eg_output ? eg_modified_output : eg_orig);
       // rename io name 'output' to output-name and scale supervision using weight.
+      BaseFloat weight = 1.0;
+      std::string new_output_name;
       if (modify_eg_output) {
-        modified_eg_output = eg_orig;
+        eg_modified_output = eg_orig;
         if (!weight_str.empty()) {
-          // scale the supervision weight for egs
           if (!egs_weight_reader.HasKey(key)) {
             KALDI_WARN << "No weight for example key " << key;
             num_err++;
             continue;
           }
-          BaseFloat weight = egs_weight_reader.Value(key);
-          for (int32 i = 0; i < modified_eg_output.io.size(); i++)
-            if (modified_eg_output.io[i].name == "output")
-              modified_eg_output.io[i].features.Scale(weight);
+          weight = egs_weight_reader.Value(key);
         }
         if (!output_str.empty()) {
           if (!output_reader.HasKey(key)) {
@@ -391,22 +402,23 @@ int main(int argc, char *argv[]) {
             num_err++;
             continue;
           }
-          std::string new_output_name = output_reader.Value(key);
-          // rename output io name to $new_output_name.
-          std::string rename_io_names = "output/" + new_output_name;
-          RenameIoNames(rename_io_names, &modified_eg_output);
+          new_output_name = output_reader.Value(key);
         }
       }
       for (int32 c = 0; c < count; c++) {
         int32 index = (random ? Rand() : num_written) % num_outputs;
         if (frame_str == "" && left_context == -1 && right_context == -1 &&
             frame_shift == 0) {
+          if (modify_eg_output)
+            ScaleAndRenameOutput(weight, new_output_name, &eg_modified_output);
           example_writers[index]->Write(key, eg);
           num_written++;
         } else { // the --frame option or context options were set.
           NnetExample eg_modified;
           if (SelectFromExample(eg, frame_str, left_context, right_context,
                                 frame_shift, &eg_modified)) {
+            if (modify_eg_output)
+              ScaleAndRenameOutput(weight, new_output_name, &eg_modified);
             // this branch of the if statement will almost always be taken (should only
             // not be taken for shorter-than-normal egs from the end of a file.
             example_writers[index]->Write(key, eg_modified);

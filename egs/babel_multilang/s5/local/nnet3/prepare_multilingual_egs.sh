@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# This script generates separate egs directory for each input 
+# This script generates separate egs directory for each input
 # language in multilingual setup, which contains both egs.*.ark and egs.*.scp.
 #
 # This script will generally be called from nnet training script.
@@ -39,7 +39,7 @@ if [ $# -lt 4 ]; then
   echo ""
   echo "Main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config file containing options"
-  echo "  --num-jobs <nj>                                        # The maximum number of jobs you want to run in"
+  echo "  --num-jobs <nj>                                  # The maximum number of jobs you want to run in"
   echo "                                                   # parallel (increase this only if you have good disk and"
   echo "                                                   # network speed).  default=6"
   echo "  --cmd (utils/run.pl;utils/queue.pl <queue opts>) # how to run jobs."
@@ -74,14 +74,14 @@ done
 echo "$0: Generate separate egs directory per language for multilingual training."
 online_multi_ivector_dirs=(${online_multi_ivector_dirs[@]})
 for lang_index in `seq 0 $[$num_lang-1]`; do
-  data=${multi_data_dirs[$lang_index]} 
+  data=${multi_data_dirs[$lang_index]}
   ali_dir=${multi_ali_dirs[$lang_index]}
   egs_dir=${multi_egs_dirs[$lang_index]}
   online_ivector_dir=
   if [ ! -z "${online_multi_ivector_dirs[$lang_index]}" ]; then
     online_ivector_dir=${online_multi_ivector_dirs[$lang_index]}
   fi
-  echo online_ivector_dir = $online_ivector_dir 
+  echo online_ivector_dir = $online_ivector_dir
   if [ ! -d "$egs_dir" ]; then
     echo "$0: Generate egs for ${lang_list[$lang_index]}"
     if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $egs_dir/storage ]; then
@@ -100,7 +100,7 @@ for lang_index in `seq 0 $[$num_lang-1]`; do
         --cmd "$cmd" $egs_opts \
         --generate-egs-scp true \
         $data $ali_dir $egs_dir || exit 1;
-    
+
   fi
 done
 
