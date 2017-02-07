@@ -60,20 +60,22 @@ chunk_left_context=40
 chunk_right_context=0
 chunk_left_context_initial=0
 chunk_right_context_final=0
+frames_per_chunk=140,100,160
 # decode options
+frames_per_chunk_primary=$(echo $frames_per_chunk | cut -d, -f1)
 extra_left_context=50
 extra_right_context=0
 extra_left_context_initial=0
 extra_right_context_final=0
-frames_per_chunk=140,100,160
-frames_per_chunk_primary=140
+
 
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
 tdnn_lstm_affix=1e  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
-common_egs_dir=exp/chain_cleaned/tdnn_lstm1b_sp_bi/egs  # you can set this to use previously dumped egs.
+common_egs_dir=    # you can set this to use previously dumped egs.
+remove_egs=true
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -241,7 +243,7 @@ if [ $stage -le 18 ]; then
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.optimization.momentum 0.0 \
-    --cleanup.remove-egs true \
+    --cleanup.remove-egs "$remove_egs" \
     --feat-dir $train_data_dir \
     --tree-dir $tree_dir \
     --lat-dir $lat_dir \

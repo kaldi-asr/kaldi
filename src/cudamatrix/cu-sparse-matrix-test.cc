@@ -25,6 +25,8 @@
 #include "util/common-utils.h"
 #include "cudamatrix/cu-matrix-lib.h"
 
+using namespace kaldi;
+
 namespace kaldi {
 
 template <typename Real>
@@ -185,19 +187,20 @@ void CudaSparseMatrixUnitTest() {
 
 
 int main() {
-  for (kaldi::int32 loop = 0; loop < 2; loop++) {
+  int32 loop = 0;
 #if HAVE_CUDA == 1
-    kaldi::CuDevice::Instantiate().SetDebugStrideMode(true);
+  for (; loop < 2; loop++) {
+    CuDevice::Instantiate().SetDebugStrideMode(true);
     if (loop == 0)
-      kaldi::CuDevice::Instantiate().SelectGpuId("no");
+      CuDevice::Instantiate().SelectGpuId("no");
     else
-      kaldi::CuDevice::Instantiate().SelectGpuId("yes");
+      CuDevice::Instantiate().SelectGpuId("yes");
 #endif
 
     kaldi::CudaSparseMatrixUnitTest<float>();
 
 #if HAVE_CUDA == 1
-    if (kaldi::CuDevice::Instantiate().DoublePrecisionSupported()) {
+    if (CuDevice::Instantiate().DoublePrecisionSupported()) {
       kaldi::CudaSparseMatrixUnitTest<double>();
     } else {
       KALDI_WARN << "Double precision not supported";
@@ -210,10 +213,10 @@ int main() {
       KALDI_LOG << "Tests without GPU use succeeded.";
     else
       KALDI_LOG << "Tests with GPU use (if available) succeeded.";
-  }
-  kaldi::SetVerboseLevel(4);
+    SetVerboseLevel(4);
 #if HAVE_CUDA == 1
-  kaldi::CuDevice::Instantiate().PrintProfile();
+  }
+  CuDevice::Instantiate().PrintProfile();
 #endif
   return 0;
 }

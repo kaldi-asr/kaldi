@@ -271,7 +271,7 @@ def train(args, run_opts, background_process_handler):
     # $num_epochs*$num_archives, where
     # avg_num_jobs=(num_jobs_initial+num_jobs_final)/2.
     num_archives_expanded = num_archives * args.frames_per_eg
-    num_archives_to_process = args.num_epochs * num_archives_expanded
+    num_archives_to_process = int(args.num_epochs * num_archives_expanded)
     num_archives_processed = 0
     num_iters = ((num_archives_to_process * 2)
                  / (args.num_jobs_initial + args.num_jobs_final))
@@ -316,7 +316,7 @@ def train(args, run_opts, background_process_handler):
                     args.dropout_schedule,
                     float(num_archives_processed) / num_archives_to_process,
                     iter),
-                minibatch_size=args.minibatch_size,
+                minibatch_size_str=args.minibatch_size,
                 frames_per_eg=args.frames_per_eg,
                 num_hidden_layers=num_hidden_layers,
                 add_layers_period=args.add_layers_period,
@@ -355,8 +355,9 @@ def train(args, run_opts, background_process_handler):
             models_to_combine=models_to_combine,
             egs_dir=egs_dir,
             left_context=left_context, right_context=right_context,
-            run_opts=run_opts,
-            background_process_handler=background_process_handler)
+            minibatch_size_str=args.minibatch_size, run_opts=run_opts,
+            background_process_handler=background_process_handler,
+            sum_to_one_penalty=args.combine_sum_to_one_penalty)
 
     if args.stage <= num_iters + 1:
         logger.info("Getting average posterior for purposes of "

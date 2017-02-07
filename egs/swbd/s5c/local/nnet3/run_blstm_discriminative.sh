@@ -2,7 +2,9 @@
 
 set -o pipefail
 set -e
-# this is run_discriminative.sh
+
+# Caution: this script is out of date, it does not use the
+# refactored discriminative training script with get_degs.sh.
 
 # This script does discriminative training on top of CE BLSTM system.
 # note: this relies on having a cluster that has plenty of CPUs as well as GPUs,
@@ -52,9 +54,6 @@ num_jobs_nnet=4
 num_epochs=4
 regularization_opts=          # Applicable for providing --xent-regularize and --l2-regularize options
 minibatch_size=64
-adjust_priors=true            # May need to be set to false
-                              # because it does not help in some setups
-last_layer_factor=0.1
 
 ## Decode options
 decode_start_epoch=1 # can be used to avoid decoding all epochs, e.g. if we decided to run more.
@@ -138,7 +137,6 @@ if [ -z "$degs_dir" ]; then
 
     steps/nnet3/get_egs_discriminative.sh \
       --cmd "$decode_cmd --max-jobs-run $max_jobs --mem 20G" --stage $get_egs_stage --cmvn-opts "$cmvn_opts" \
-      --adjust-priors $adjust_priors \
       --online-ivector-dir $online_ivector_dir \
       --left-context $left_context --right-context $right_context \
       $frame_subsampling_opt \
@@ -155,8 +153,6 @@ if [ $stage -le 4 ]; then
     --num-epochs $num_epochs --one-silence-class $one_silence_class --minibatch-size $minibatch_size \
     --num-jobs-nnet $num_jobs_nnet --num-threads $num_threads \
     --regularization-opts "$regularization_opts" \
-    --adjust-priors $adjust_priors \
-    --last-layer-factor $last_layer_factor \
     ${degs_dir} $dir
 fi
 
