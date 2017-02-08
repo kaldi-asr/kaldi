@@ -4969,13 +4969,20 @@ void CompositeComponent::InitFromConfig(ConfigLine *cfl) {
     if(this_component->Type() == "CompositeComponent") {
       DeletePointers(&components);
       delete this_component;
+      // This is not allowed.  If memory is too much with just one
+      // CompositeComponent, try decreasing max-rows-process instead.
       KALDI_ERR << "Found CompositeComponent nested within CompositeComponent."
-                << "Try decreasing max-rows-process instead."
                 << "Nested line: '" << nested_line.WholeLine() << "'\n"
                 << "Toplevel CompositeComponent line '" << cfl->WholeLine()
                 << "'";
     }
     this_component->InitFromConfig(&nested_line);
+    int32 props = this_component->Properties();
+    if ((props & kRandomComponent) != 0 ||
+        (props & kSimpleComponent) == 0) {
+      KALDI_ERR << "CompositeComponent contains disallowed component type: "
+                << nested_line.WholeLine();
+    }
     components.push_back(this_component);
   }
   if (cfl->HasUnusedValues())

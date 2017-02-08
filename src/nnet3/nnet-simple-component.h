@@ -99,7 +99,8 @@ class DropoutComponent : public RandomComponent {
                       dropout_per_frame_(false) { }
 
   virtual int32 Properties() const {
-    return kLinearInInput|kBackpropInPlace|kSimpleComponent|kBackpropNeedsInput|kBackpropNeedsOutput;
+    return kLinearInInput|kBackpropInPlace|kSimpleComponent|kBackpropNeedsInput|
+        kBackpropNeedsOutput|kRandomComponent;
   }
   virtual std::string Type() const { return "DropoutComponent"; }
 
