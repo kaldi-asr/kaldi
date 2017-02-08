@@ -55,7 +55,7 @@ last_layer_factor=0.1 # relates to modify_learning_rates.
 first_layer_factor=1.0 # relates to modify_learning_rates.
 stage=-5
 
-io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
+io_opts="--max-jobs-run 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
 splice_width=4 # meaning +- 4 frames on each side for second LDA
 randprune=4.0 # speeds up LDA.
 alpha=4.0
@@ -65,6 +65,7 @@ mix_up=0 # Number of components to mix up to (should be > #tree leaves, if
 num_threads=16
 parallel_opts="--num-threads 16 --mem 1G" # by default we use 16 threads; this lets the queue know.
   # note: parallel_opts doesn't automatically get adjusted if you adjust num-threads.
+combine_opts="--mem 12G"
 cleanup=true
 egs_dir=
 lda_opts=
@@ -371,7 +372,7 @@ if [ $stage -le $num_iters ]; then
   num_egs=`nnet-copy-egs ark:$egs_dir/combine.egs ark:/dev/null 2>&1 | tail -n 1 | awk '{print $NF}'`
   mb=$[($num_egs+$this_num_threads-1)/$this_num_threads]
   [ $mb -gt 512 ] && mb=512
-  $cmd $parallel_opts $dir/log/combine.log \
+  $cmd $parallel_opts $combine_opts $dir/log/combine.log \
     nnet-combine-fast --use-gpu=no --num-threads=$this_num_threads \
       --verbose=3 --minibatch-size=$mb "${nnets_list[@]}" ark:$egs_dir/combine.egs \
       $dir/final.mdl || exit 1;
