@@ -25,10 +25,6 @@ endif
 LDFLAGS = $(EXTRA_LDFLAGS) $(OPENFSTLDFLAGS) -g
 LDLIBS = $(EXTRA_LDLIBS) $(OPENFSTLIBS) -framework Accelerate -lm -lpthread -ldl
 
-AR = ar
-AS = as
-RANLIB = ranlib
-
 # Compiler specific flags
 COMPILER = $(shell $(CXX) -v 2>&1)
 ifeq ($(findstring clang,$(COMPILER)),clang)

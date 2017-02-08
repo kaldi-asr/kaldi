@@ -1,6 +1,4 @@
-#!/bin/bash
-
-set -e 
+#!/bin/bash -e
 
 # Copyright 2014 QCRI (author: Ahmed Ali)
 # Apache 2.0
@@ -8,8 +6,8 @@ set -e
 . path.sh
 . cmd.sh   ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
-nJobs=120
-nDecodeJobs=40
+num_jobs=120
+num_decode_jobs=40
 
 #NB: You can add whatever number of copora you like. The supported extensions 
 #NB: (formats) are wav and flac. Flac will be converted using sox and in contrast
@@ -54,8 +52,8 @@ local/gale_data_prep_txt.sh  "${text[@]}" $galeData || exit 1;
 # split the data to reports and conversational and for each class will have rain/dev and test
 local/gale_data_prep_split.sh $galeData  || exit 1;
 
-# get QCRI dictionary and add silence and UN
-local/gale_prep_dict.sh || exit 1;
+# get all Arabic grapheme dictionaries and add silence and UNK
+local/gale_prep_grapheme_dict.sh  || exit 1;
 
 
 #prepare the langauge resources
@@ -73,7 +71,7 @@ local/gale_format_data.sh  || exit 1;
 mfccdir=mfcc
 
 for x in train test ; do
-  steps/make_mfcc.sh --cmd "$train_cmd" --nj $nJobs \
+  steps/make_mfcc.sh --cmd "$train_cmd" --nj $num_jobs \
     data/$x exp/make_mfcc/$x $mfccdir
   utils/fix_data_dir.sh data/$x # some files fail to get mfcc for many reasons
   steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir
@@ -92,7 +90,7 @@ steps/train_mono.sh --nj 40 --cmd "$train_cmd" \
 
 
 # Get alignments from monophone system.
-steps/align_si.sh --nj $nJobs --cmd "$train_cmd" \
+steps/align_si.sh --nj $num_jobs --cmd "$train_cmd" \
   data/train data/lang exp/mono exp/mono_ali || exit 1;
 
 # train tri1 [first triphone pass]
@@ -101,10 +99,10 @@ steps/train_deltas.sh --cmd "$train_cmd" \
 
 # First triphone decoding
 utils/mkgraph.sh data/lang_test exp/tri1 exp/tri1/graph
-steps/decode.sh  --nj $nDecodeJobs --cmd "$decode_cmd" \
+steps/decode.sh  --nj $num_decode_jobs --cmd "$decode_cmd" \
   exp/tri1/graph data/test exp/tri1/decode
   
-steps/align_si.sh --nj $nJobs --cmd "$train_cmd" \
+steps/align_si.sh --nj $num_jobs --cmd "$train_cmd" \
   data/train data/lang exp/tri1 exp/tri1_ali || exit 1;
 
 # Train tri2a, which is deltas+delta+deltas
@@ -113,7 +111,7 @@ steps/train_deltas.sh --cmd "$train_cmd" \
 
 # tri2a decoding
 utils/mkgraph.sh data/lang_test exp/tri2a exp/tri2a/graph
-steps/decode.sh --nj $nDecodeJobs --cmd "$decode_cmd" \
+steps/decode.sh --nj $num_decode_jobs --cmd "$decode_cmd" \
   exp/tri2a/graph data/test exp/tri2a/decode
 
 # train and decode tri2b [LDA+MLLT]
@@ -121,11 +119,11 @@ steps/train_lda_mllt.sh --cmd "$train_cmd" 4000 50000 \
   data/train data/lang exp/tri1_ali exp/tri2b || exit 1;
 
 utils/mkgraph.sh data/lang_test exp/tri2b exp/tri2b/graph
-steps/decode.sh --nj $nDecodeJobs --cmd "$decode_cmd" \
+steps/decode.sh --nj $num_decode_jobs --cmd "$decode_cmd" \
   exp/tri2b/graph data/test exp/tri2b/decode
 
 # Align all data with LDA+MLLT system (tri2b)
-steps/align_si.sh --nj $nJobs --cmd "$train_cmd" \
+steps/align_si.sh --nj $num_jobs --cmd "$train_cmd" \
   --use-graphs true data/train data/lang exp/tri2b exp/tri2b_ali  || exit 1;
 
 
@@ -134,34 +132,34 @@ steps/train_sat.sh --cmd "$train_cmd" \
   5000 100000 data/train data/lang exp/tri2b_ali exp/tri3b || exit 1;
 
 utils/mkgraph.sh data/lang_test exp/tri3b exp/tri3b/graph
-steps/decode_fmllr.sh --nj $nDecodeJobs --cmd \
+steps/decode_fmllr.sh --nj $num_decode_jobs --cmd \
   "$decode_cmd" exp/tri3b/graph data/test exp/tri3b/decode
 
 # From 3b system, align all data.
-steps/align_fmllr.sh --nj $nJobs --cmd "$train_cmd" \
+steps/align_fmllr.sh --nj $num_jobs --cmd "$train_cmd" \
   data/train data/lang exp/tri3b exp/tri3b_ali || exit 1;
   
 
-# train mmi mpe 
-local/run_mmi_mpe.sh &  # we keep it for completion but not getting the best results
+# nnet3 cross-entropy 
+local/nnet3/run_tdnn.sh #tdnn recipe:
+local/nnet3/run_lstm.sh #lstm recipe:
 
-# train sgmm 
-local/run_sgmm.sh &    # we keep it for completion but not getting the best results
-
-wait 
-local/nnet/run_dnn.sh
+# chain lattice-free 
+local/chain/run_tdnn.sh      #tdnn recipe:
+local/chain/run_tdnn_lstm.sh #tdnn-lstm recipe:
 
 time=$(date +"%Y-%m-%d-%H-%M-%S")
-#get WER
-for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; \
-done | sort -n -r -k2 > RESULTS.$USER.$time # to make sure you keep the results timed and owned
 
 #get detailed WER; reports, conversational and combined
-local/split_wer.sh $galeData > RESULTS.details.$USER.$time
- 
+local/split_wer.sh $galeData > RESULTS.details.$USER.$time # to make sure you keep the results timed and owned
 
 echo training succedded
 exit 0
+
+#TODO:
+#LM (4-gram and RNN) rescoring
+#combine lattices
+#dialect detection
 
 
 

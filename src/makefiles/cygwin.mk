@@ -26,7 +26,3 @@ LDFLAGS = $(EXTRA_LDFLAGS) $(OPENFSTLDFLAGS) -g \
           --enable-auto-import -L/usr/lib/lapack
 LDLIBS = $(EXTRA_LDLIBS) $(OPENFSTLIBS) -lcyglapack-0 -lcygblas-0 \
          -lm -lpthread -ldl
-
-AR = ar
-AS = as
-RANLIB = ranlib
