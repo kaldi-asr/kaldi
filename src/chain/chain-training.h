@@ -59,6 +59,8 @@ struct ChainTrainingOptions {
   BaseFloat leakynum_leak_prob;
   BaseFloat leakynum_unleak_prob;
   bool leakynum_regular_xent;
+  bool leakynum_scale_first_transitions;
+  BaseFloat leakynum_extra_den_scale;
 
   // Cross-entropy regularization constant.  (e.g. try 0.1).  If nonzero,
   // the network is expected to have an output named 'output-xent', which
@@ -70,6 +72,8 @@ struct ChainTrainingOptions {
                           leakynum_leak_prob(1.0e-04),
                           leakynum_unleak_prob(0.1),
                           leakynum_regular_xent(true),
+                          leakynum_scale_first_transitions(true),
+                          leakynum_extra_den_scale(1.0),
                           xent_regularize(0.0) { }
   
   void Register(OptionsItf *opts) {
@@ -86,6 +90,8 @@ struct ChainTrainingOptions {
     opts->Register("leakynum-leak-prob", &leakynum_leak_prob, "");
     opts->Register("leakynum-unleak-prob", &leakynum_unleak_prob, "");
     opts->Register("leakynum-regular-xent", &leakynum_regular_xent, "");
+    opts->Register("leakynum-scale-first-transitions", &leakynum_scale_first_transitions, "");
+    opts->Register("leakynum-extra-den-scale", &leakynum_extra_den_scale, "");
 
     opts->Register("xent-regularize", &xent_regularize, "Cross-entropy "
                    "regularization constant for 'chain' training.  If "

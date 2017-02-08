@@ -55,6 +55,7 @@ class NumeratorGraph {
     }
     transitions_.CopyFromVec(cpu);
   }
+  inline BaseFloat GetTotWeightSum(int32 seq) { return tot_weight_sum_[seq]; }
 
   // the number of PDFs (the labels on the transitions are numbered from 0 to
   // NumPdfs() - 1).
@@ -103,6 +104,8 @@ class NumeratorGraph {
   int32 num_sequences_;
   int32 max_num_hmm_states_;
   CuArray<int32> num_hmm_states_;
+  
+  std::vector<BaseFloat> tot_weight_sum_;
 
   // if scale_first_transitions_ is set to true, we subtract the largest of 
   // transition probabilities on arcs out of state 0, and store the offsets 

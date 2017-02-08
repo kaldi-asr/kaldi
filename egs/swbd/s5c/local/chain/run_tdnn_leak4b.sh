@@ -5,6 +5,7 @@
 # each state is now 1.0, this will increase the base of the objf so the objf
 # values are not comparable to previous exps. 
 
+# 4b is as 4a, but the scheduling starts from near-0
 
 set -e
 

@@ -236,6 +236,11 @@ int main(int argc, char *argv[]) {
     sup.fsts.push_back(num3);
     NumeratorGraph numg(sup, false);
     //num3g.PrintInfo(true);
+    CuMatrix<BaseFloat>
+            deriv1(3, 10, kSetZero),
+            deriv2(3, 10, kSetZero);
+    std::cout << "fst:\n";
+//    sup.Write(std::cout, false); std::cout << "\n";
     
     DenominatorGraph deng(den, sup.label_dim);
     CuMatrix<BaseFloat> obs_mat(sup.frames_per_sequence, sup.label_dim);
@@ -244,11 +249,22 @@ int main(int argc, char *argv[]) {
         int pdfid = j + 1;
         obs_mat(t, j) = Log((float)((t+1)*(pdfid+1) % 4 + 1));
       }
-    obs_mat.Write(std::cout, false);
+//    obs_mat.Write(std::cout, false);
     NumeratorComputation numc(sup, obs_mat);
     BaseFloat cpu_num_logprob = numc.Forward();
+    numc.Backward(&deriv1);
     std::cout << "cpu num log prob: " << cpu_num_logprob << "\n";
-    
+//    deriv1.Write(std::cout, false);
+{
+    NormalizeFst(&sup.fst);
+    std::cout << "Normed fst:\n";
+//    sup.Write(std::cout, false);  std::cout << "\n";
+    NumeratorComputation numc(sup, obs_mat);
+    BaseFloat cpu_num_logprob = numc.Forward();
+    std::cout << "cpu num log prob normed: " << cpu_num_logprob << "\n";
+    numc.Backward(&deriv2);
+//    deriv2.Write(std::cout, false);
+}
     ChainTrainingOptions copts;
     copts.leakynum_leak_prob = 0.05;
     copts.leakynum_use_priors = 0.0;
@@ -348,18 +364,24 @@ This has been calculated and verified by
                 << "out[0].supervision.fst.NumStates: " << eg.outputs[0].supervision.fst.NumStates() << "\n"
                 //<< "out[0].supervision.fsts.size: " << eg.outputs[0].supervision.fsts.size() << "\n"                
                 ;
+      Profiler pf;
       //for (int i = 0; i < eg.outputs[0].supervision.fsts.size(); i++)
       //  std::cout << "fsts[i].NumStates: " << eg.outputs[0].supervision.fsts[i].NumStates() << "\n";
 
 
+      //for (int32 i = 0; i < eg.outputs[0].supervision.fsts.size(); i++)
+      //  NormalizeFst(&eg.outputs[0].supervision.fsts[i]);
+      //NormalizeFst(&eg.outputs[0].supervision.fst);
+//      std::ofstream os("eg-unnormed.txt");
+//      eg.Write(os, false);
+
+      pf.tic("normalizing");
       for (int32 i = 0; i < eg.outputs[0].supervision.fsts.size(); i++)
-        NormalizeFst(&eg.outputs[0].supervision.fsts[i]);
-      NormalizeFst(&eg.outputs[0].supervision.fst);
-      //std::ofstream os("eg.txt");
+        PushInLog<REWEIGHT_TO_INITIAL>(&eg.outputs[0].supervision.fsts[i], kPushLabels|kPushWeights);
+      PushInLog<REWEIGHT_TO_INITIAL>(&eg.outputs[0].supervision.fst, kPushLabels|kPushWeights);
+      //std::ofstream os("eg-pushed.txt");
       //eg.Write(os, false);
-
-
-
+      pf.tac();
       /*BaseFloat numlogprob;
       std::vector<int32> path = SelectAPath(eg.outputs[0].supervision.fst, &numlogprob);
       std::cout << "the path is: ";
@@ -371,12 +393,13 @@ This has been calculated and verified by
       return 0;*/
       
 
+
       
       
       
       BaseFloat weight = eg.outputs[0].supervision.weight * eg.outputs[0].supervision.num_sequences *
       eg.outputs[0].supervision.frames_per_sequence;
-      Profiler pf;
+
       
 //KALDI_LOG << "First trans: " << den_graph.Transitions()[0].transition_prob;
 //DenominatorGraph dg_copy(den_graph);
@@ -394,8 +417,8 @@ This has been calculated and verified by
             B = eg.outputs[0].supervision.num_sequences,
             N = eg.outputs[0].supervision.label_dim; //num pdfs
       CuMatrix<BaseFloat> //random_nnet_output(T*B, N),
-                          nnet_output_deriv1(T*B, N),
-                          nnet_output_deriv2(T*B, N),
+                          nnet_output_deriv1(T*B, N, kSetZero),
+                          nnet_output_deriv2(T*B, N, kSetZero),
                           den_derivs(T*B, N, kSetZero);
       /*random_nnet_output.SetRandUniform();
       random_nnet_output.ApplyLogSoftMaxPerRow(random_nnet_output);*/
@@ -433,10 +456,10 @@ This has been calculated and verified by
       numerator.Backward(&nnet_output_deriv1);
       pf.tac();
       // 
-      
+
       pf.tic("numGraph");
-      NumeratorGraph ng(eg.outputs[0].supervision, false);
-      //ng.PrintInfo(false);
+      NumeratorGraph ng(eg.outputs[0].supervision, opts.leakynum_scale_first_transitions);
+      //ng.PrintInfo(true);
       pf.tac();
 
       /*
@@ -493,7 +516,7 @@ This has been calculated and verified by
         SaveMatrixSparselyMatlab(nnet_output_deriv2, "f_deriv_leaky.m", "deriv_leaky");
       }
       
-      //std::cout << "Profiling results:\n" << pf.toString() << "\n";
+      std::cout << "Profiling results:\n" << pf.toString() << "\n";
 
       //WriteKaldiObject(nnet_output_deriv1, "deriv1.txt", false);
       //WriteKaldiObject(nnet_output_deriv2, "deriv2.txt", false);

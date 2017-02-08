@@ -211,15 +211,15 @@ if [ $stage -le 15 ]; then
   fi
   for decode_set in train_dev eval2000; do
       (
-      steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
+      steps/nnet3/decode.sh --acwt 0.1 --post-decode-acwt 1.0 \
           --nj 50 --cmd "$decode_cmd" $iter_opts \
           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
           $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_${decode_suff} || exit 1;
-      if $has_fisher; then
-          steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-            data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
-            $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_sw1_{tg,fsh_fg} || exit 1;
-      fi
+      #if $has_fisher; then
+      #    steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+      #      data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
+      #      $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_sw1_{tg,fsh_fg} || exit 1;
+      #fi
       ) &
   done
 fi

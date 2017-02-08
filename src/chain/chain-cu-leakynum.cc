@@ -83,19 +83,17 @@ CuLeakyNumeratorComputation::CuLeakyNumeratorComputation(
     tot_leak_den = den_graph_.InitialProbs().Dim();
   leak_eta_ = opts_.leakynum_leak_prob / tot_leak_den / (1.0 - opts_.leakynum_leak_prob);
 
-  int32 *num_states_cpu = new int32[num_sequences_];
-  num_graph_.CopyNumStatesToCpu(num_states_cpu);  //TODO(hhadian) this might be really slow -- check it
+
   Vector<BaseFloat> unleak_etas(num_sequences_);
   for (int32 seq = 0; seq < num_sequences_; seq++)
-    unleak_etas(seq) = opts_.leakynum_unleak_prob / num_states_cpu[seq] / (1.0 - opts_.leakynum_unleak_prob);
-  delete num_states_cpu;
+    unleak_etas(seq) = opts_.leakynum_unleak_prob / num_graph_.GetTotWeightSum(seq) / (1.0 - opts_.leakynum_leak_prob);
   unleak_etas_ = unleak_etas;
 
   num_transitions_scale_ = 1.0 - opts_.leakynum_leak_prob;
   den_transitions_scale_ = 1.0 - opts_.leakynum_unleak_prob;
 
   num_graph_.ScaleTransitions(num_transitions_scale_);
-  den_graph_.ScaleTransitions(den_transitions_scale_);
+  den_graph_.ScaleTransitions(den_transitions_scale_ * opts_.leakynum_extra_den_scale);
 }
 
 
@@ -425,7 +423,7 @@ BaseFloat CuLeakyNumeratorComputation::ComputeTotLogLike() {
   tot_log_prob_ = tot_prob_;
   tot_log_prob_.ApplyLog();
   if (num_graph_.AreFirstTransitionsScaled())
-    tot_log_prob_.AddVec(1.0, num_graph_.FirstTransitionOffsets());
+    tot_log_prob_.AddVec(-1.0, num_graph_.FirstTransitionOffsets());
   BaseFloat tot_log_prob = tot_log_prob_.Sum();
 
   int32 max_num_hmm_states = num_graph_.MaxNumStates();

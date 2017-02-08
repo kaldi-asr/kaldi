@@ -85,11 +85,19 @@ def get_args():
                         action=common_lib.StrToBoolAction,
                         choices=["true", "false"],
                         help="")
+    parser.add_argument("--chain.leakynum-scale-first-transitions", type=str,
+                        dest='leakynum_scale_first_transitions', default=False,
+                        action=common_lib.StrToBoolAction,
+                        choices=["true", "false"],
+                        help="")
     parser.add_argument("--chain.leakynum-leak-prob", type=str,
                         dest='leakynum_leak_prob', default="0.0",
                         help="")
     parser.add_argument("--chain.leakynum-unleak-prob", type=float,
                         dest='leakynum_unleak_prob', default=0.1,
+                        help="")
+    parser.add_argument("--chain.leakynum-extra-den-scale", type=float,
+                        dest='leakynum_extra_den_scale', default=1.0,
                         help="")
 
     parser.add_argument("--chain.leaky-hmm-coefficient", type=float,
@@ -399,6 +407,7 @@ def train(args, run_opts, background_process_handler):
 
     def get_leakynum_leak_prob(num_archives_processed):
       if (args.leakynum_leak_prob.find(",") == -1):
+        logger.info("leak-prob = " + args.leakynum_leak_prob)
         return float(args.leakynum_leak_prob)
       y_values = list(map(float, args.leakynum_leak_prob.split(",")))
       num_pieces = len(y_values) - 1
@@ -408,9 +417,11 @@ def train(args, run_opts, background_process_handler):
       if (piece_start_index == num_pieces):
         piece_start_index = num_pieces - 1
       piece_end_index = piece_start_index + 1
-      return ((x_scaled - piece_start_index)
+      leak_pr = ((x_scaled - piece_start_index)
              * (y_values[piece_end_index] - y_values[piece_start_index])
              + y_values[piece_start_index])
+      logger.info("x: {0}, num_pieces: {1}, leak_prob: {2}".format(x_scaled, num_pieces, leak_pr))
+      return leak_pr
 
 
 
@@ -484,10 +495,18 @@ def train(args, run_opts, background_process_handler):
                 l2_regularize=args.l2_regularize,
                 xent_regularize=args.xent_regularize,
                 leaky_hmm_coefficient=args.leaky_hmm_coefficient,
-                leakynum_leak_prob=get_leakynum_leak_prob(iter),
-                leakynum_unleak_prob=args.leakynum_unleak_prob,
-                leakynum_regular_xent=args.leakynum_regular_xent,
-                leakynum_use_priors=args.leakynum_use_priors,
+                leakynum_args="--leakynum-leak-prob={0} \
+                    --leakynum-unleak-prob={1} \
+                    --leakynum-regular-xent={2} \
+                    --leakynum-use-priors={3} \
+                    --leakynum-scale-first-transitions={4} \
+                    --leakynum-extra-den-scale={5}".format(
+                        get_leakynum_leak_prob(num_archives_processed),
+                        args.leakynum_unleak_prob,
+                        args.leakynum_regular_xent,
+                        args.leakynum_use_priors,
+                        args.leakynum_scale_first_transitions,
+                        args.leakynum_extra_den_scale),
                 momentum=args.momentum,
                 max_param_change=args.max_param_change,
                 shuffle_buffer_size=args.shuffle_buffer_size,
@@ -526,10 +545,18 @@ def train(args, run_opts, background_process_handler):
             egs_dir=egs_dir,
             left_context=left_context, right_context=right_context,
             leaky_hmm_coefficient=args.leaky_hmm_coefficient,
-            leakynum_leak_prob=get_leakynum_leak_prob(num_iters),
-            leakynum_unleak_prob=args.leakynum_unleak_prob,
-            leakynum_regular_xent=args.leakynum_regular_xent,
-            leakynum_use_priors=args.leakynum_use_priors,
+            leakynum_args="--leakynum-leak-prob={0} \
+                    --leakynum-unleak-prob={1} \
+                    --leakynum-regular-xent={2} \
+                    --leakynum-use-priors={3} \                                                                                                                                                            
+                    --leakynum-scale-first-transitions={4} \                                                                                                                                               
+                    --leakynum-extra-den-scale={5}".format(
+                        get_leakynum_leak_prob(num_archives_to_process),
+                        args.leakynum_unleak_prob,
+                        args.leakynum_regular_xent,
+                        args.leakynum_use_priors,
+                        args.leakynum_scale_first_transitions,
+                        args.leakynum_extra_den_scale),
             l2_regularize=args.l2_regularize,
             xent_regularize=args.xent_regularize,
             run_opts=run_opts,

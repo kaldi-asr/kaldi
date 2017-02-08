@@ -772,7 +772,8 @@ bool AddWeightToSupervisionFst(const fst::StdVectorFst &normalization_fst,
   KALDI_ASSERT(supervision->fst.Properties(fst::kAcceptor, true) == fst::kAcceptor);
   KALDI_ASSERT(supervision->fst.Properties(fst::kIEpsilons, true) == 0);
   FixFinals(&(supervision->fst));
-  NormalizeFst(&(supervision->fst));
+  //NormalizeFst(&(supervision->fst));
+  fst::PushInLog<fst::REWEIGHT_TO_INITIAL>(&(supervision->fst), fst::kPushLabels|fst::kPushWeights);
   return true;
 }
 

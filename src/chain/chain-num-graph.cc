@@ -67,6 +67,7 @@ void NumeratorGraph::SetTransitions(
 
   // TODO(hhadian): shouldn't we memory-align the stride?
   int32 transitions_dim = num_sequences_ * max_num_hmm_states_;
+  tot_weight_sum_.resize(num_sequences_, 0.0);
 
   std::vector<std::vector<DenominatorGraphTransition> >
       transitions_out(transitions_dim),
@@ -84,21 +85,21 @@ void NumeratorGraph::SetTransitions(
       else
         KALDI_ASSERT(fsts[seq].Final(s) == fst::TropicalWeight::One());
 
-      BaseFloat offset = 0.0;
+      BaseFloat offset = 0.0;  // we define the offset as the sum of weights (not in log) of outgoing transitions of state 0
       if (s == 0 && scale_first_transitions_) {
         for (fst::ArcIterator<fst::StdVectorFst> aiter(fsts[seq], s);
-             !aiter.Done();
-             aiter.Next())
-          if (aiter.Value().weight.Value() > offset)
-            offset = aiter.Value().weight.Value();
-        offsets(seq) = -offset;
+             !aiter.Done(); aiter.Next())
+          offset += exp(-aiter.Value().weight.Value());
+        offset = -Log(offset);
+        offsets(seq) = offset;
       }
       for (fst::ArcIterator<fst::StdVectorFst> aiter(fsts[seq], s);
            !aiter.Done();
            aiter.Next()) {
         const fst::StdArc &arc = aiter.Value();
+        tot_weight_sum_[seq] += exp(-(arc.weight.Value() - offset));
         DenominatorGraphTransition transition;
-        transition.transition_prob = exp(-(arc.weight.Value() - offset));
+        transition.transition_prob = exp(-(arc.weight.Value() - offset)); //  offset is non-zero only for state 0
         transition.pdf_id = arc.ilabel - 1;
         transition.hmm_state = arc.nextstate;  // it is local (i.e. within
                                                // the corresponding hmm)
@@ -160,23 +161,10 @@ void NumeratorGraph::PrintInfo(bool print_transitions) const {
       }
     }
   }
-  std::cout << "Again ************************************************ ";
+  std::cout << "****** TotWeights: ******";
   
   for (int seq = 0; seq < NumSequences(); seq++) {
-    std::cout << "\n\n------ SEQUENCE " << seq << " ------\n"
-              << "num-states: " << NumStates()[seq] << "\n";
-    std::cout << "BackWARD TRANSITIONS:\n";
-    const DenominatorGraphTransition
-      *trans_iter = Transitions() +
-      BackwardTransitions()[seq*MaxNumStates()+0].first,
-      *trans_end = Transitions() +
-      BackwardTransitions()[seq*MaxNumStates()+NumStates()[seq]-1].second;
-    for (; trans_iter != trans_end; ++trans_iter) {
-      int from = trans_iter->hmm_state;
-      int to = -1;
-      BaseFloat weight = trans_iter->transition_prob;
-      std::cout << "(" << from << " -> " << to << "): " << weight << "\n";
-    }
+    std::cout << "tot weight for seq " << seq << " is " << tot_weight_sum_[seq] << "\n";
   }
 
 }
