@@ -31,11 +31,14 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
     typedef kaldi::uint64 uint64;
 
-    const char *usage = "Reads a archive of FSTs. Performs FST operation union"
-        "on all fsts having the same key. Assumes the archive is sorted by key"
+    const char *usage =
+        "Reads a kaldi archive of FSTs. Performs the FST operation union on\n"
+        "all fsts sharing the same key. Assumes the archive is sorted by key.\n"
         "\n"
         "Usage: fsts-union [options] <fsts-rspecifier> <fsts-wspecifier>\n"
-        " e.g.: fsts-union ark:keywords_tmp.fsts ark,t:keywords.fsts\n";
+        " e.g.: fsts-union ark:keywords_tmp.fsts ark,t:keywords.fsts\n"
+        "\n"
+        "see also: fstunion (from the OpenFst toolkit)\n";
 
     ParseOptions po(usage);
 

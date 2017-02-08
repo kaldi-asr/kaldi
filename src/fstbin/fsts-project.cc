@@ -32,12 +32,14 @@ int main(int argc, char *argv[]) {
     typedef kaldi::uint64 uint64;
 
     const char *usage =
-        "Reads a table of FSTs; for each element, performs the fst project\n"
+        "Reads kaldi archive of FSTs; for each element, performs the project\n"
         "operation either on input (default) or on the output (if the option\n"
         "--project-output is true).\n"
         "\n"
         "Usage: fsts-project [options] <fsts-rspecifier> <fsts-wspecifier>\n"
-        " e.g.: fsts-project ark:train.fsts ark,t:train.fsts\n";
+        " e.g.: fsts-project ark:train.fsts ark,t:train.fsts\n"
+        "\n"
+        "see also: fstproject (from the OpenFst toolkit)\n";
 
     ParseOptions po(usage);
 
