@@ -39,6 +39,6 @@ open(my $H, ">", "../src/base/version.h") or do {
 };
 
 my $kaldi_ver=<$F>; chomp $kaldi_ver;
-print $H  "#define KALDI_VERSION \"${kaldi_ver}-win\"\n";
+print $H  "KALDI_VERSION=${kaldi_ver}-win\n";
 close($F);
 close($H);

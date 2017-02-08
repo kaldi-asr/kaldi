@@ -31,7 +31,3 @@ endif
 
 LDFLAGS = $(EXTRA_LDFLAGS) $(OPENFSTLDFLAGS) -rdynamic
 LDLIBS = $(EXTRA_LDLIBS) $(OPENFSTLIBS) $(ATLASLIBS) -lm -lpthread -ldl
-
-AR = ar
-AS = as
-RANLIB = ranlib
