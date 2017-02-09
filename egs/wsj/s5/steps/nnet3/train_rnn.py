@@ -221,6 +221,7 @@ def train(args, run_opts, background_process_handler):
     num_jobs = common_lib.get_number_of_jobs(args.ali_dir)
     feat_dim = common_lib.get_feat_dim(args.feat_dir)
     ivector_dim = common_lib.get_ivector_dim(args.online_ivector_dir)
+    ivector_id = common_lib.get_ivector_extractor_id(args.online_ivector_dir)
 
     # split the training data into parts for individual jobs
     # we will use the same number of jobs as that used for alignment
@@ -295,7 +296,8 @@ def train(args, run_opts, background_process_handler):
 
     [egs_left_context, egs_right_context,
      frames_per_eg_str, num_archives] = (
-        common_train_lib.verify_egs_dir(egs_dir, feat_dim, ivector_dim,
+        common_train_lib.verify_egs_dir(egs_dir, feat_dim, 
+                                        ivector_dim, ivector_id,
                                         left_context, right_context,
                                         left_context_initial, right_context_final))
     if args.chunk_width != frames_per_eg_str:

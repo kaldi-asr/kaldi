@@ -221,6 +221,8 @@ def train(args, run_opts, background_process_handler):
     # Set some variables.
     feat_dim = common_lib.get_feat_dim(args.feat_dir)
     ivector_dim = common_lib.get_ivector_dim(args.online_ivector_dir)
+    ivector_id = common_lib.get_ivector_extractor_id(args.online_ivector_dir)
+
 
     config_dir = '{0}/configs'.format(args.dir)
     var_file = '{0}/vars'.format(config_dir)
@@ -310,11 +312,12 @@ def train(args, run_opts, background_process_handler):
 
     [egs_left_context, egs_right_context,
      frames_per_eg_str, num_archives] = (
-        common_train_lib.verify_egs_dir(egs_dir, feat_dim, ivector_dim,
+        common_train_lib.verify_egs_dir(egs_dir, feat_dim,
+                                        ivector_dim, ivector_id,
                                         left_context, right_context))
     if args.chunk_width != frames_per_eg_str:
         raise Exception("mismatch between --egs.chunk-width and the frames_per_eg "
-                        "in the egs dir {0} vs {1}".(args.chunk_width,
+                        "in the egs dir {0} vs {1}".format(args.chunk_width,
                                                      frames_per_eg_str))
 
     if (args.num_jobs_final > num_archives):

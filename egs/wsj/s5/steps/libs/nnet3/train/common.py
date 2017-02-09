@@ -55,7 +55,7 @@ def get_successful_models(num_models, log_file_pattern,
         for line_num in range(1, len(lines) + 1):
             # we search from the end as this would result in
             # lesser number of regex searches. Python regex is slow !
-            mat_obj = parse_regex.search(lines[-1*line_num])
+            mat_obj = parse_regex.search(lines[-1 * line_num])
             if mat_obj is not None:
                 this_objf = float(mat_obj.groups()[0])
                 break
@@ -64,7 +64,7 @@ def get_successful_models(num_models, log_file_pattern,
     accepted_models = []
     for i in range(num_models):
         if (objf[max_index] - objf[i]) <= difference_threshold:
-            accepted_models.append(i+1)
+            accepted_models.append(i + 1)
 
     if len(accepted_models) != num_models:
         logger.warn("Only {0}/{1} of the models have been accepted "
@@ -72,7 +72,7 @@ def get_successful_models(num_models, log_file_pattern,
                         len(accepted_models),
                         num_models, log_file_pattern))
 
-    return [accepted_models, max_index+1]
+    return [accepted_models, max_index + 1]
 
 
 def get_average_nnet_model(dir, iter, nnets_list, run_opts,
@@ -141,7 +141,7 @@ def validate_chunk_width(chunk_width):
     or a comma-separated list of integers like '20,30,16'"""
     if not isinstance(chunk_width, str):
         return False
-    a = chunk_width.split(",");
+    a = chunk_width.split(",")
     assert len(a) != 0  # would be code error
     for elem in a:
         try:
@@ -173,7 +173,7 @@ def validate_range_str(range_str):
     for r in ranges:
         # a range may be either e.g. '64', or '128-256'
         try:
-            c = [ int(x) for x in r.split(":") ]
+            c = [int(x) for x in r.split(":")]
         except:
             return False
         # c should be either e.g. [ 128 ], or  [64,128].
@@ -186,7 +186,6 @@ def validate_range_str(range_str):
         else:
             return False
     return True
-
 
 
 def validate_minibatch_size_str(minibatch_size_str):
@@ -240,7 +239,7 @@ def halve_range_str(range_str):
     halved_ranges = []
     for r in ranges:
         # a range may be either e.g. '64', or '128:256'
-        c = [ str(max(1, int(x)/2)) for x in r.split(":") ]
+        c = [str(max(1, int(x)/2)) for x in r.split(":")]
         halved_ranges.append(":".join(c))
     return ','.join(halved_ranges)
 
@@ -269,7 +268,7 @@ def halve_minibatch_size_str(minibatch_size_str):
 
 def copy_egs_properties_to_exp_dir(egs_dir, dir):
     try:
-        for file in ['cmvn_opts', 'splice_opts', 'final.mat']:
+        for file in ['cmvn_opts', 'splice_opts', 'info/final.ie.id', 'final.mat']:
             file_name = '{dir}/{file}'.format(dir=egs_dir, file=file)
             if os.path.isfile(file_name):
                 shutil.copy2(file_name, dir)
@@ -302,12 +301,23 @@ def parse_generic_config_vars_file(var_file):
     raise Exception('Error while parsing the file {0}'.format(var_file))
 
 
-def verify_egs_dir(egs_dir, feat_dim, ivector_dim,
+def verify_egs_dir(egs_dir, feat_dim, ivector_dim, ivector_extractor_id,
                    left_context, right_context,
                    left_context_initial=-1, right_context_final=-1):
     try:
         egs_feat_dim = int(open('{0}/info/feat_dim'.format(
                                     egs_dir)).readline())
+
+        egs_ivector_id = None
+        try:
+            egs_ivector_id = open('{0}/info/final.ie.id'.format(
+                                        egs_dir)).readline().strip()
+        except:
+            # it could actually happen that the file is not there
+            # for example in cases where the egs were dumped by
+            # an older version of the script
+            pass
+
         egs_ivector_dim = int(open('{0}/info/ivector_dim'.format(
                                     egs_dir)).readline())
         egs_left_context = int(open('{0}/info/left_context'.format(
@@ -330,12 +340,26 @@ def verify_egs_dir(egs_dir, feat_dim, ivector_dim,
                             "the current experiment and the provided "
                             "egs directory")
 
+        if (((egs_ivector_id is None) and (ivector_extractor_id is not None)) or
+            ((egs_ivector_id is not None) and (ivector_extractor_id is None))):
+            logger.warning("The ivector ids are inconsistently used. It's your "
+                          "responsibility to make sure the ivector extractor "
+                          "has been used consistently")
+        elif (((egs_ivector_id is None) and (ivector_extractor_id is None))):
+            logger.warning("The ivector ids are not used. It's your "
+                          "responsibility to make sure the ivector extractor "
+                          "has been used consistently")
+        elif (ivector_extractor_id != egs_ivector_id):
+            raise Exception("The egs were generated using a different ivector "
+                            "extractor. id1 = {0}, id2={1}".format(
+                                ivector_extractor_id, egs_ivector_id));
+
         if (egs_left_context < left_context or
                 egs_right_context < right_context):
             raise Exception('The egs have insufficient (l,r) context ({0},{1}) '
                             'versus expected ({2},{3})'.format(
-                    egs_left_context, egs_right_context,
-                    left_context, right_context))
+                            egs_left_context, egs_right_context,
+                            left_context, right_context))
 
         # the condition on the initial/final context is an equality condition,
         # not an inequality condition, as there is no mechanism to 'correct' the
@@ -564,6 +588,7 @@ def self_test():
     assert halve_minibatch_size_str('128=64/256=40,80:100') == '128=32/256=20,40:50'
     assert validate_chunk_width('64')
     assert validate_chunk_width('64,25,128')
+
 
 class CommonParser:
     """Parser for parsing common options related to nnet3 training.

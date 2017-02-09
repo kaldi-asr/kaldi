@@ -65,8 +65,11 @@ srcdir=`dirname $dir`; # Assume model directory one level up from decoding direc
 model=$srcdir/$iter.mdl
 
 
-[ ! -z "$online_ivector_dir" ] && \
-  extra_files="$online_ivector_dir/ivector_online.scp $online_ivector_dir/ivector_period"
+extra_files=
+if [ ! -z "$online_ivector_dir" ]; then
+  steps/nnet2/check_ivectors_compatible.sh $srcdir $online_ivector_dir || exit 1
+  extra_files="$srcdir/final.ie.id $online_ivector_dir/ivector_online.scp $online_ivector_dir/ivector_period"
+fi
 
 for f in $graphdir/HCLG.fst $data/feats.scp $model $extra_files; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
