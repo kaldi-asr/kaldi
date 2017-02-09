@@ -8,6 +8,8 @@
 stage=0
 nj=4
 cmd=run.pl
+frames_per_chunk=20
+extra_left_context_initial=0
 min_active=200
 max_active=7000
 beam=15.0
@@ -114,11 +116,6 @@ else
 fi
 
 
-decoder=online2-wav-nnet3-latgen-faster
-parallel_opts=
-opts="--online=$online"
-
-
 if [ "$post_decode_acwt" == 1.0 ]; then
   lat_wspecifier="ark:|gzip -c >$dir/lat.JOB.gz"
 else
@@ -132,8 +129,12 @@ if [ -f $srcdir/frame_subsampling_factor ]; then
 fi
 
 if [ $stage -le 0 ]; then
-  $cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
-    $decoder $opts $silence_weighting_opts --do-endpointing=$do_endpointing $frame_subsampling_opt \
+  $cmd JOB=1:$nj $dir/log/decode.JOB.log \
+    online2-wav-nnet3-latgen-faster $silence_weighting_opts --do-endpointing=$do_endpointing \
+    --frames-per-chunk=$frames_per_chunk \
+    --extra-left-context-initial=$extra_left_context_initial \
+    --online=$online \
+       $frame_subsampling_opt \
      --config=$online_config \
      --min-active=$min_active --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
      --acoustic-scale=$acwt --word-symbol-table=$graphdir/words.txt \
