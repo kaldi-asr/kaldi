@@ -51,7 +51,6 @@ struct NnetSimpleLoopedComputationOptions {
   bool debug_computation;
   NnetOptimizeOptions optimize_config;
   NnetComputeOptions compute_config;
-
   NnetSimpleLoopedComputationOptions():
       extra_left_context_initial(0),
       frame_subsampling_factor(1),
@@ -95,9 +94,6 @@ struct NnetSimpleLoopedComputationOptions {
   }
 };
 
-// forward declaration.
-class DecodableNnetSimpleLooped;
-
 
 /**
    When you instantiate class DecodableNnetSimpleLooped, you should give it
@@ -110,6 +106,8 @@ class DecodableNnetSimpleLoopedInfo  {
   DecodableNnetSimpleLoopedInfo(const NnetSimpleLoopedComputationOptions &opts,
                                 Nnet *nnet);
 
+  // This constructor takes the priors from class AmNnetSimple (so it can divide by
+  // them).
   DecodableNnetSimpleLoopedInfo(const NnetSimpleLoopedComputationOptions &opts,
                                 AmNnetSimple *nnet);
 
@@ -118,43 +116,41 @@ class DecodableNnetSimpleLoopedInfo  {
                                 const Vector<BaseFloat> &priors,
                                 Nnet *nnet);
 
- protected:
   void Init(const NnetSimpleLoopedComputationOptions &opts,
             Nnet *nnet);
 
-  friend class DecodableNnetSimpleLooped;
+  const NnetSimpleLoopedComputationOptions &opts;
 
-
-  const NnetSimpleLoopedComputationOptions &opts_;
-  const Nnet &nnet_;
+  const Nnet &nnet;
 
   // the log priors (or the empty vector if the priors are not set in the model)
-  CuVector<BaseFloat> log_priors_;
+  CuVector<BaseFloat> log_priors;
 
 
-  // frames_left_context equals the model left context plus any extra left context.
-  int32 frames_left_context_;
+  // frames_left_context equals the model left context plus the value of the
+  // --extra-left-context-initial option.
+  int32 frames_left_context;
   // frames_right_context is the same as the right-context of the model.
-  int32 frames_right_context_;
+  int32 frames_right_context;
   // The frames_per_chunk_ equals the number of input frames we need for each
   // chunk (except for the first chunk).  This divided by
   // opts_.frame_subsampling_factor gives the number of output frames.
-  int32 frames_per_chunk_;
+  int32 frames_per_chunk;
 
   // The output dimension of the neural network.
-  int32 output_dim_;
+  int32 output_dim;
 
   // True if the neural net accepts iVectors.  If so, the neural net will have been modified
   // to accept the iVectors
-  bool has_ivectors_;
+  bool has_ivectors;
 
   // The 3 computation requests that are used to create the looped
   // computation are stored in the class, as we need them to work out
   // exactly shich iVectors are needed.
-  ComputationRequest request1_, request2_, request3_;
-  
+  ComputationRequest request1, request2, request3;
+
   // The compiled, 'looped' computation.
-  NnetComputation computation_;
+  NnetComputation computation;
 };
 
 /*
@@ -197,7 +193,7 @@ class DecodableNnetSimpleLooped {
   // 1).
   inline int32 NumFrames() const { return num_subsampled_frames_; }
 
-  inline int32 OutputDim() const { return info_.output_dim_; }
+  inline int32 OutputDim() const { return info_.output_dim; }
 
   // Gets the output for a particular frame, with 0 <= frame < NumFrames().
   // 'output' must be correctly sized (with dimension OutputDim()).  Note:

@@ -28,7 +28,7 @@ namespace nnet3 {
 DecodableNnetSimpleLoopedInfo::DecodableNnetSimpleLoopedInfo(
     const NnetSimpleLoopedComputationOptions &opts,
     Nnet *nnet):
-    opts_(opts), nnet_(*nnet) {
+    opts(opts), nnet(*nnet) {
   Init(opts, nnet);
 }
 
@@ -36,9 +36,9 @@ DecodableNnetSimpleLoopedInfo::DecodableNnetSimpleLoopedInfo(
     const NnetSimpleLoopedComputationOptions &opts,
     const Vector<BaseFloat> &priors,
     Nnet *nnet):
-    opts_(opts), nnet_(*nnet), log_priors_(priors) {
-  if (log_priors_.Dim() != 0)
-    log_priors_.ApplyLog();
+    opts(opts), nnet(*nnet), log_priors(priors) {
+  if (log_priors.Dim() != 0)
+    log_priors.ApplyLog();
   Init(opts, nnet);
 }
 
@@ -46,9 +46,9 @@ DecodableNnetSimpleLoopedInfo::DecodableNnetSimpleLoopedInfo(
 DecodableNnetSimpleLoopedInfo::DecodableNnetSimpleLoopedInfo(
     const NnetSimpleLoopedComputationOptions &opts,
     AmNnetSimple *am_nnet):
-    opts_(opts), nnet_(am_nnet->GetNnet()), log_priors_(am_nnet->Priors()) {
-  if (log_priors_.Dim() != 0)
-    log_priors_.ApplyLog();
+    opts(opts), nnet(am_nnet->GetNnet()), log_priors(am_nnet->Priors()) {
+  if (log_priors.Dim() != 0)
+    log_priors.ApplyLog();
   Init(opts, &(am_nnet->GetNnet()));
 }
 
@@ -58,35 +58,36 @@ void DecodableNnetSimpleLoopedInfo::Init(
     Nnet *nnet) {
   opts.Check();
   KALDI_ASSERT(IsSimpleNnet(*nnet));
-  has_ivectors_ = (nnet->InputDim("ivector") > 0);
+  has_ivectors = (nnet->InputDim("ivector") > 0);
   int32 left_context, right_context;
   ComputeSimpleNnetContext(*nnet, &left_context, &right_context);
-  frames_left_context_ = left_context + opts.extra_left_context_initial;
-  frames_right_context_ = right_context;
-  frames_per_chunk_ = GetChunkSize(*nnet, opts_.frame_subsampling_factor,
-                                   opts.frames_per_chunk);
-  output_dim_ = nnet->OutputDim("output");
-  KALDI_ASSERT(output_dim_ > 0);
+  frames_left_context = left_context + opts.extra_left_context_initial;
+  frames_right_context = right_context;
+  frames_per_chunk = GetChunkSize(*nnet, opts.frame_subsampling_factor,
+                                  opts.frames_per_chunk);
+  output_dim = nnet->OutputDim("output");
+  KALDI_ASSERT(output_dim > 0);
   // note, ivector_period is hardcoded to the same as frames_per_chunk_.
-  int32 ivector_period = frames_per_chunk_;
-  if (has_ivectors_)
+  int32 ivector_period = frames_per_chunk;
+  if (has_ivectors)
     ModifyNnetIvectorPeriod(ivector_period, nnet);
 
   int32 num_sequences = 1;  // we're processing one utterance at a time.
   int32 extra_right_context = 0;
-  CreateLoopedComputationRequestSimple(*nnet, frames_per_chunk_,
-                                       opts_.frame_subsampling_factor,
-                                       ivector_period, opts.extra_left_context_initial,
+  CreateLoopedComputationRequestSimple(*nnet, frames_per_chunk,
+                                       opts.frame_subsampling_factor,
+                                       ivector_period,
+                                       opts.extra_left_context_initial,
                                        extra_right_context,
                                        num_sequences,
-                                       &request1_, &request2_, &request3_);
+                                       &request1, &request2, &request3);
 
-  CompileLooped(*nnet, opts_.optimize_config, request1_, request2_, request3_,
-                &computation_);
-  computation_.ComputeCudaIndexes();
+  CompileLooped(*nnet, opts.optimize_config, request1, request2, request3,
+                &computation);
+  computation.ComputeCudaIndexes();
   if (GetVerboseLevel() >= 3) {
     KALDI_VLOG(3) << "Computation is:";
-    computation_.Print(std::cerr, *nnet);
+    computation.Print(std::cerr, *nnet);
   }
 }
 
@@ -98,16 +99,16 @@ DecodableNnetSimpleLooped::DecodableNnetSimpleLooped(
     const MatrixBase<BaseFloat> *online_ivectors,
     int32 online_ivector_period):
     info_(info),
-    computer_(info_.opts_.compute_config, info_.computation_,
-              info_.nnet_, NULL),
+    computer_(info_.opts.compute_config, info_.computation,
+              info_.nnet, NULL),  // NULL is 'nnet_to_update'
     feats_(feats),
     ivector_(ivector), online_ivector_feats_(online_ivectors),
     online_ivector_period_(online_ivector_period),
     num_chunks_computed_(0),
     current_log_post_subsampled_offset_(-1) {
   num_subsampled_frames_ =
-      (feats_.NumRows() + info_.opts_.frame_subsampling_factor - 1) /
-      info_.opts_.frame_subsampling_factor;
+      (feats_.NumRows() + info_.opts.frame_subsampling_factor - 1) /
+      info_.opts.frame_subsampling_factor;
   KALDI_ASSERT(!(ivector != NULL && online_ivectors != NULL));
   KALDI_ASSERT(!(online_ivectors != NULL && online_ivector_period <= 0 &&
                  "You need to set the --online-ivector-period option!"));
@@ -138,13 +139,13 @@ int32 DecodableNnetSimpleLooped::GetIvectorDim() const {
 void DecodableNnetSimpleLooped::AdvanceChunk() {
   int32 begin_input_frame, end_input_frame;
   if (num_chunks_computed_ == 0) {
-    begin_input_frame = -info_.frames_left_context_;
+    begin_input_frame = -info_.frames_left_context;
     // note: end is last plus one.
-    end_input_frame = info_.frames_per_chunk_ + info_.frames_right_context_;
+    end_input_frame = info_.frames_per_chunk + info_.frames_right_context;
   } else {
-    begin_input_frame = num_chunks_computed_ * info_.frames_per_chunk_ +
-        info_.frames_right_context_;
-    end_input_frame = begin_input_frame + info_.frames_per_chunk_;
+    begin_input_frame = num_chunks_computed_ * info_.frames_per_chunk +
+        info_.frames_right_context;
+    end_input_frame = begin_input_frame + info_.frames_per_chunk;
   }
   CuMatrix<BaseFloat> feats_chunk(end_input_frame - begin_input_frame,
                                   feats_.NumCols(), kUndefined);
@@ -170,13 +171,13 @@ void DecodableNnetSimpleLooped::AdvanceChunk() {
   }
   computer_.AcceptInput("input", &feats_chunk);
 
-  if (info_.has_ivectors_) {
-    KALDI_ASSERT(info_.request1_.inputs.size() == 2);
+  if (info_.has_ivectors) {
+    KALDI_ASSERT(info_.request1.inputs.size() == 2);
     // all but the 1st chunk should have 1 iVector, but no need
     // to assume this.
     int32 num_ivectors = (num_chunks_computed_ == 0 ?
-			  info_.request1_.inputs[1].indexes.size() :
-			  info_.request2_.inputs[1].indexes.size());
+			  info_.request1.inputs[1].indexes.size() :
+			  info_.request2.inputs[1].indexes.size());
     KALDI_ASSERT(num_ivectors > 0);
 
     Vector<BaseFloat> ivector;
@@ -194,40 +195,38 @@ void DecodableNnetSimpleLooped::AdvanceChunk() {
   computer_.Run();
 
   {
-    // on GPU if we're using one, while avoiding unnecessary copies if we're not
-    // using the GPU.
-
     // Note: it's possible in theory that if you had weird recurrence that went
     // directly from the output, the call to GetOutputDestructive() would cause
-    // a crash on the next chunk.  But we don't anticipate this will happen in
-    // practice.
+    // a crash on the next chunk.  If that happens, GetOutput() should be used
+    // instead of GetOutputDestructive().  But we don't anticipate this will
+    // happen in practice.
     CuMatrix<BaseFloat> output;
     computer_.GetOutputDestructive("output", &output);
 
-    if (info_.log_priors_.Dim() != 0) {
+    if (info_.log_priors.Dim() != 0) {
       // subtract log-prior (divide by prior)
-      output.AddVecToRows(-1.0, info_.log_priors_);
+      output.AddVecToRows(-1.0, info_.log_priors);
     }
     // apply the acoustic scale
-    output.Scale(info_.opts_.acoustic_scale);
+    output.Scale(info_.opts.acoustic_scale);
     current_log_post_.Resize(0, 0);
     current_log_post_.Swap(&output);
   }
-  KALDI_ASSERT(current_log_post_.NumRows() == info_.frames_per_chunk_ /
-               info_.opts_.frame_subsampling_factor &&
-               current_log_post_.NumCols() == info_.output_dim_);
+  KALDI_ASSERT(current_log_post_.NumRows() == info_.frames_per_chunk /
+               info_.opts.frame_subsampling_factor &&
+               current_log_post_.NumCols() == info_.output_dim);
 
   num_chunks_computed_++;
 
   current_log_post_subsampled_offset_ =
       (num_chunks_computed_ - 1) *
-      (info_.frames_per_chunk_ / info_.opts_.frame_subsampling_factor);
+      (info_.frames_per_chunk / info_.opts.frame_subsampling_factor);
 }
 
 
 void DecodableNnetSimpleLooped::GetCurrentIvector(int32 input_frame,
                                                   Vector<BaseFloat> *ivector) {
-  if (!info_.has_ivectors_)
+  if (!info_.has_ivectors)
     return;
   if (ivector_ != NULL) {
     *ivector = *ivector_;

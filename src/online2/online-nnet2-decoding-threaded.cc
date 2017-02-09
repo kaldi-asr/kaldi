@@ -26,7 +26,7 @@
 namespace kaldi {
 
 ThreadSynchronizer::ThreadSynchronizer():
-    abort_(false), 
+    abort_(false),
     producer_waiting_(false),
     consumer_waiting_(false),
     num_errors_(0) {
@@ -67,8 +67,8 @@ bool ThreadSynchronizer::UnlockSuccess(ThreadType t) {
       producer_semaphore_.Signal();
       producer_waiting_ = false;
     }
-    
-  }  
+
+  }
   mutex_.Unlock();
   return !abort_;
 }
@@ -192,7 +192,7 @@ void SingleUtteranceNnet2DecoderThreaded::AcceptWaveform(
     KALDI_ASSERT(sampling_rate == sampling_rate_);
   }
   num_samples_received_ += wave_part.Dim();
-  
+
   if (wave_part.Dim() == 0) return;
   if (!waveform_synchronizer_.Lock(ThreadSynchronizer::kProducer)) {
     KALDI_ERR << "Failure locking mutex: decoding aborted.";
@@ -310,9 +310,9 @@ void SingleUtteranceNnet2DecoderThreaded::GetAdaptationState(
     OnlineIvectorExtractorAdaptationState *adaptation_state) {
   feature_pipeline_mutex_.Lock();  // If this blocks, it shouldn't be for very long.
   feature_pipeline_.GetAdaptationState(adaptation_state);
-  feature_pipeline_mutex_.Unlock();  // If this blocks, it won't be for very long.  
+  feature_pipeline_mutex_.Unlock();  // If this blocks, it won't be for very long.
 }
-  
+
 void SingleUtteranceNnet2DecoderThreaded::GetLattice(
     bool end_of_utterance,
     CompactLattice *clat,
@@ -324,7 +324,7 @@ void SingleUtteranceNnet2DecoderThreaded::GetLattice(
   if (final_relative_cost != NULL)
     *final_relative_cost = decoder_.FinalRelativeCost();
   if (decoder_.NumFramesDecoded() == 0) {
-    const_cast<Mutex&>(decoder_mutex_).Unlock();    
+    const_cast<Mutex&>(decoder_mutex_).Unlock();
     clat->SetFinal(clat->AddState(),
                    CompactLatticeWeight::One());
     return;
@@ -332,7 +332,7 @@ void SingleUtteranceNnet2DecoderThreaded::GetLattice(
   Lattice raw_lat;
   decoder_.GetRawLattice(&raw_lat, end_of_utterance);
   const_cast<Mutex&>(decoder_mutex_).Unlock();
-  
+
   if (!config_.decoder_opts.determinize_lattice)
     KALDI_ERR << "--determinize-lattice=false option is not supported at the moment";
 
@@ -354,7 +354,7 @@ void SingleUtteranceNnet2DecoderThreaded::GetBestPath(
     best_path->DeleteStates();
     best_path->SetFinal(best_path->AddState(),
                         LatticeWeight::One());
-    if (final_relative_cost != NULL)    
+    if (final_relative_cost != NULL)
       *final_relative_cost = std::numeric_limits<BaseFloat>::infinity();
   } else {
     decoder_.GetBestPath(best_path,
@@ -447,7 +447,7 @@ void SingleUtteranceNnet2DecoderThreaded::ProcessLoglikes(
 // locked feature_pipeline_mutex_.
 bool SingleUtteranceNnet2DecoderThreaded::FeatureComputation(
     int32 num_frames_consumed) {
-  
+
   int32 num_frames_ready = feature_pipeline_.NumFramesReady(),
       num_frames_usable = num_frames_ready - num_frames_consumed;
   bool features_done = feature_pipeline_.IsLastFrame(num_frames_ready - 1);
@@ -457,7 +457,7 @@ bool SingleUtteranceNnet2DecoderThreaded::FeatureComputation(
   } else {
     if (num_frames_usable >= config_.nnet_batch_size)
       return true;  // We don't need more data yet.
-    
+
     // Now try to get more data, if we can.
     if (!waveform_synchronizer_.Lock(ThreadSynchronizer::kConsumer)) {
       return false;
@@ -506,12 +506,12 @@ bool SingleUtteranceNnet2DecoderThreaded::FeatureComputation(
 bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
   // if any of the Lock/Unlock functions return false, it's because AbortAllThreads()
   // was called.
-  
+
   // This object is responsible for keeping track of the context, and avoiding
   // re-computing things we've already computed.
   bool pad_input = true;
   nnet2::NnetOnlineComputer computer(am_nnet_.GetNnet(), pad_input);
-  
+
   // we declare the following as CuVector just to enable GPU support, but
   // we expect this code to be run on CPU in the normal case.
   CuVector<BaseFloat> log_inv_prior(am_nnet_.Priors());
@@ -525,7 +525,7 @@ bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
   // has produced, which may be less than num_frames_consumed due to the
   // right-context of the network.
   int32 num_frames_consumed = 0, num_frames_output = 0;
-  
+
   while (true) {
     bool last_time = false;
 
@@ -536,19 +536,21 @@ bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
       return false;
     }
     // take care of silence weighting.
-    if (silence_weighting_.Active()) {
+    if (silence_weighting_.Active() &&
+        feature_pipeline_.IvectorFeature() != NULL) {
       silence_weighting_mutex_.Lock();
       std::vector<std::pair<int32, BaseFloat> > delta_weights;
-      silence_weighting_.GetDeltaWeights(feature_pipeline_.NumFramesReady(),
-                                         &delta_weights);
+      silence_weighting_.GetDeltaWeights(
+          feature_pipeline_.IvectorFeature()->NumFramesReady(),
+          &delta_weights);
       silence_weighting_mutex_.Unlock();
-      feature_pipeline_.UpdateFrameWeights(delta_weights);
+      feature_pipeline_.IvectorFeature()->UpdateFrameWeights(delta_weights);
     }
-    
+
     int32 num_frames_ready = feature_pipeline_.NumFramesReady(),
         num_frames_usable = num_frames_ready - num_frames_consumed;
     bool features_done = feature_pipeline_.IsLastFrame(num_frames_ready - 1);
-      
+
     int32 num_frames_evaluate = std::min<int32>(num_frames_usable,
                                                 config_.nnet_batch_size);
 
@@ -563,10 +565,10 @@ bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
       }
     }
     /****** End locking of feature pipeline mutex. ******/
-    feature_pipeline_mutex_.Unlock();  
+    feature_pipeline_mutex_.Unlock();
 
     CuMatrix<BaseFloat> cu_loglikes;
-    
+
     if (feats.NumRows() == 0) {
       if (features_done) {
         // flush out the last few frames.  Note: this is the only place from
@@ -587,7 +589,7 @@ bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
       num_frames_consumed += cu_feats.NumRows();
       ProcessLoglikes(log_inv_prior, &cu_loglikes);
     }
-    
+
     Matrix<BaseFloat> loglikes;
     loglikes.Swap(&cu_loglikes);  // If we don't have a GPU (and not having a
                                   // GPU is the normal expected use-case for
@@ -596,8 +598,8 @@ bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
 
 
     // OK, at this point we may have some newly created log-likes and we want to
-    // give them to the decoding thread.  
-    
+    // give them to the decoding thread.
+
     int32 num_loglike_frames = loglikes.NumRows();
 
     if (num_loglike_frames != 0) {  // if we need to output some loglikes...
@@ -644,7 +646,7 @@ bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
     }
   }
 }
-  
+
 
 bool SingleUtteranceNnet2DecoderThreaded::RunDecoderSearchInternal() {
   int32 num_frames_decoded = 0;  // this is just a copy of decoder_->NumFramesDecoded();

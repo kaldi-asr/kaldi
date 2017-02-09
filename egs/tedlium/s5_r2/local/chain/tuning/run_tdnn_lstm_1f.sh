@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# 1f is as 1b, but increasing decay-time from 40 to 80.  [see also 1e, at 20.]
+# 1f is as 1d, but increasing decay-time from 40 to 80.  [see also 1e, at 20.]
+# see 1e for summary of results.
 
 # 1d is as 1b, but adding decay-time=40 to the fast-lstmp-layers.  note: it
 # uses egs from 1b, remember to remove that before I commit.

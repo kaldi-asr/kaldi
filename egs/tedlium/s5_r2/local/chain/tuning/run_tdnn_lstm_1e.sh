@@ -1,6 +1,50 @@
 #!/bin/bash
 
-# 1e is as 1b, but reducing decay-time from 40 to 20.
+# 1e is as 1d, but reducing decay-time from 40 to 20.
+
+# The following table shows comparison of various decay-time values,
+# namely: [b:unset=infinity, f:80, d:40, e:20, g:10, g2:5].
+# note: the g2 script is not checked in.
+# There is no clear trend on the non-looped decoding, but looped decoding seems
+# to improve as decay-time is decreased.  We end up recommending decay-time=20,
+# as by then we get all the improvement on looped decoding, and it's the
+# most conservative setting with which we can get this improvement (although
+# actually it seems fine to use an even smaller decay-time).
+
+# local/chain/compare_wer_general.sh --looped exp/chain_cleaned/tdnn_lstm1{b,f,d,e,g,g2}_sp_bi
+
+# local/chain/compare_wer_general.sh --looped exp/chain_cleaned/tdnn_lstm1b_sp_bi exp/chain_cleaned/tdnn_lstm1f_sp_bi exp/chain_cleaned/tdnn_lstm1d_sp_bi exp/chain_cleaned/tdnn_lstm1e_sp_bi exp/chain_cleaned/tdnn_lstm1g_sp_bi exp/chain_cleaned/tdnn_lstm1g2_sp_bi
+# System                tdnn_lstm1b_sp_bi tdnn_lstm1f_sp_bi tdnn_lstm1d_sp_bi tdnn_lstm1e_sp_bi tdnn_lstm1g_sp_bi tdnn_lstm1g2_sp_bi
+# WER on dev(orig)            9.1       8.8       9.0       9.0       9.0       9.4
+#         [looped:]           9.4       9.3       9.2       9.0       8.9       9.4
+# WER on dev(rescored)        8.4       8.2       8.4       8.4       8.4       8.7
+#         [looped:]           8.8       8.7       8.6       8.4       8.3       8.7
+# WER on test(orig)           8.9       9.0       8.9       8.8       8.8       9.3
+#         [looped:]           9.3       9.3       9.0       8.8       8.8       9.2
+# WER on test(rescored)       8.4       8.6       8.3       8.4       8.4       8.9
+#         [looped:]           8.7       8.9       8.5       8.3       8.4       8.8
+# Final train prob        -0.0621   -0.0631   -0.0595   -0.0648   -0.0689   -0.0739
+# Final valid prob        -0.0799   -0.0802   -0.0823   -0.0827   -0.0890   -0.0963
+# Final train prob (xent)   -0.8300   -0.8295   -0.8129   -0.8372   -0.8610   -0.8792
+# Final valid prob (xent)   -0.9500   -0.9662   -0.9589   -0.9497   -0.9982   -1.0256
+
+
+# the following table compares the 'online' decoding with regular and looped
+# decoding.  online decoding is a little better than either (possibly due to
+# using slightly later iVectors).
+#
+# local/chain/compare_wer_general.sh --looped exp/chain_cleaned/tdnn_lstm1e_sp_bi{,_online} 2>/dev/null
+# local/chain/compare_wer_general.sh --looped exp/chain_cleaned/tdnn_lstm1e_sp_bi exp/chain_cleaned/tdnn_lstm1e_sp_bi_online
+# System                tdnn_lstm1e_sp_bi tdnn_lstm1e_sp_bi_online
+# WER on dev(orig)            9.0       8.8
+#         [looped:]           9.0
+# WER on dev(rescored)        8.4       8.4
+#         [looped:]           8.4
+# WER on test(orig)           8.8       8.8
+#         [looped:]           8.8
+# WER on test(rescored)       8.4       8.4
+#         [looped:]           8.3
+
 
 # 1d is as 1b, but adding decay-time=40 to the fast-lstmp-layers.  note: it
 # uses egs from 1b, remember to remove that before I commit.
@@ -76,6 +120,8 @@ tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the 
 tdnn_lstm_affix=1e  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
 common_egs_dir=    # you can set this to use previously dumped egs.
 remove_egs=true
+
+test_online_decoding=false  # if true, it will run the last decoding stage.
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -289,8 +335,10 @@ if [ $stage -le 21 ]; then
   # 'looped' decoding.  we didn't write a -parallel version of this program yet,
   # so it will take a bit longer as the --num-threads option is not supported.
   # we just hardcode the --frames-per-chunk option as it doesn't have to
-  # match any value used in training, and it won't affect the results (unlike
-  # regular decoding).
+  # match any value used in training, and it won't affect the results very much (unlike
+  # regular decoding)... [it will affect them slightly due to differences in the
+  # iVector extraction; probably smaller will be worse as it sees less of the future,
+  # but in a real scenario, long chunks will introduce excessive latency].
   rm $dir/.error 2>/dev/null || true
   for dset in dev test; do
       (
@@ -311,6 +359,37 @@ if [ $stage -le 21 ]; then
     exit 1
   fi
 fi
+
+
+if $test_online_decoding && [ $stage -le 22 ]; then
+  # note: if the features change (e.g. you add pitch features), you will have to
+  # change the options of the following command line.
+  steps/online/nnet3/prepare_online_decoding.sh \
+       --mfcc-config conf/mfcc_hires.conf \
+       data/lang_chain exp/nnet3${nnet3_affix}/extractor ${dir} ${dir}_online
+
+  rm $dir/.error 2>/dev/null || true
+  for dset in dev test; do
+    (
+      # note: we just give it "$dset" as it only uses the wav.scp, the
+      # feature type does not matter.
+
+      steps/online/nnet3/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
+          --extra-left-context-initial $extra_left_context_initial \
+          --acwt 1.0 --post-decode-acwt 10.0 \
+          --scoring-opts "--min-lmwt 5 " \
+         $dir/graph data/${dset} ${dir}_online/decode_${dset} || exit 1;
+      steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" data/lang data/lang_rescore \
+        data/${dset}_hires ${dir}_online/decode_${dset} ${dir}_online/decode_${dset}_rescore || exit 1
+    ) || touch $dir/.error &
+  done
+  wait
+  if [ -f $dir/.error ]; then
+    echo "$0: something went wrong in decoding"
+    exit 1
+  fi
+fi
+
 
 
 exit 0
