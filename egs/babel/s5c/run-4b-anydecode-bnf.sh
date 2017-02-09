@@ -45,7 +45,7 @@ if [ -z "$unsup_string" ] ; then
   fi
 fi
 
-if ! echo {dev10h,dev2h,eval,unsup,shadow}{,.uem,.seg} | grep -w "$type" >/dev/null; then
+if ! echo {dev10h,dev2h,eval,unsup,shadow}{,.pem,.uem,.seg} | grep -w "$type" >/dev/null; then
   # note: echo dev10.uem | grep -w dev10h will produce a match, but this
   # doesn't matter because dev10h is also a valid value.
   echo "Invalid variable type=${type}, valid values are " {dev10h,dev2h,eval,unsup}{,.uem,.seg}
@@ -247,11 +247,13 @@ if [ -f $exp_dir/tri7_nnet/.done ] &&
     touch $decode/.done
   fi
 
-  local/run_kws_stt_task.sh --cer $cer --max-states $max_states --skip-scoring $skip_scoring\
-    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --extra-kws $extra_kws --wip $wip \
-    "${shadow_set_extra_opts[@]}" "${lmwt_bnf_extra_opts[@]}" \
-    ${datadir} data/lang $decode
 fi
 
-echo "$0: Everything looking good...." 
+decode=$exp_dir/tri7_nnet/decode_${dirid}
+local/run_kws_stt_task.sh --cer $cer --max-states $max_states --skip-scoring $skip_scoring\
+  --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --extra-kws $extra_kws --wip $wip \
+  "${shadow_set_extra_opts[@]}" "${lmwt_bnf_extra_opts[@]}" \
+  ${datadir} data/lang $decode
+
+echo "$0: Everything looking good...."
 exit 0

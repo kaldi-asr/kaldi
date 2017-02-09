@@ -3,7 +3,7 @@
 #Simple script to create compound set info that will allow for more automatized
 #work with the shadow set.
 #
-#The notion of shadow data set came from the need to be able to verify 
+#The notion of shadow data set came from the need to be able to verify
 #the output of the recognizer during decoding the evaluation data.
 #The idea is simple -- instead of decoding just the eval data, decode both
 #eval data plus the dev data (or at least some portion of it) interleved

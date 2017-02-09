@@ -1,1 +1,1 @@
-../../../babel/s5c/local/lattice_to_ctm.sh
+../../../babel/s5d/local/lattice_to_ctm.sh

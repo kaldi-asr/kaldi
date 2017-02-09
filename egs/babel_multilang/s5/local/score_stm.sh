@@ -1,1 +1,1 @@
-../../../babel/s5c/local/score_stm.sh
+../../../babel/s5d/local/score_stm.sh
