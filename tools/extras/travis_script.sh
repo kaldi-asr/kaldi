@@ -63,7 +63,7 @@ runvx make openfst "$CCC" CXXFLAGS="$CF" -j$MAXPAR
 cd ..
 
 echo "Building src..." [Time: $(date)]
-runvx cd src()
+runvx cd src
 runvx "$CCC" CXXFLAGS="$CF" LDFLAGS="$LDF" ./configure --shared --use-cuda=no "$DPF" --mathlib=OPENBLAS --openblas-root="$XROOT/usr"
 runvx make all -j$MAXPAR
 runvx make ext -j$MAXPAR
