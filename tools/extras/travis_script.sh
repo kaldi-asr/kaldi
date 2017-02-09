@@ -50,14 +50,21 @@ CF="\"$CFLAGS -g $(addsw -I $INCDIRS)\""
 LDF="\"$LDFLAGS $(addsw -L $LIBDIRS)\""
 CCC="$(mtoken CXX "$CXX")"
 
+# Randomly choose between single and double precision
+if [[ $(( RANDOM % 2 )) == 1 ]] ; then
+  DPF="--double-precision=yes"
+else
+  DPF="--double-precision=no"
+fi
+
 echo "Building tools..." [Time: $(date)]
 runvx cd tools
 runvx make openfst "$CCC" CXXFLAGS="$CF" -j$MAXPAR
 cd ..
 
 echo "Building src..." [Time: $(date)]
-runvx cd src
-runvx "$CCC" CXXFLAGS="$CF" LDFLAGS="$LDF" ./configure --shared --use-cuda=no  --mathlib=OPENBLAS --openblas-root="$XROOT/usr"
+runvx cd src()
+runvx "$CCC" CXXFLAGS="$CF" LDFLAGS="$LDF" ./configure --shared --use-cuda=no "$DPF" --mathlib=OPENBLAS --openblas-root="$XROOT/usr"
 runvx make all -j$MAXPAR
 runvx make ext -j$MAXPAR
 
