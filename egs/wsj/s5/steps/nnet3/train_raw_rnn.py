@@ -460,8 +460,7 @@ def train(args, run_opts, background_process_handler):
             left_context=left_context, right_context=right_context,
             run_opts=run_opts, chunk_width=args.chunk_width,
             background_process_handler=background_process_handler,
-            get_raw_nnet_from_am=False,
-            use_multitask_egs=)
+            get_raw_nnet_from_am=False)
 
     if include_log_softmax and args.stage <= num_iters + 1:
         logger.info("Getting average posterior for purposes of "

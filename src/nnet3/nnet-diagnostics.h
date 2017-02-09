@@ -98,21 +98,7 @@ class NnetComputeProb {
   const SimpleObjectiveInfo *GetObjective(const std::string &output_name) const;
 
   // return string of info which summarized the objectives for different outputs.
-  std::string GetAllObjectiveInfo(double* tot_weight) const {
-    std::ostringstream ostr;
-    std::string obj_info_str = ostr.str();
-    unordered_map<std::string, SimpleObjectiveInfo,
-      StringHasher>::const_iterator objf_it = objf_info_.begin(),
-      objf_end = objf_info_.end();
-    for(; objf_it != objf_end; ++objf_it) {
-      double objf_per_frame = objf_it->second.tot_objective / objf_it->second.tot_weight;
-      ostr << " Objf per frame for '" << objf_it->first
-           << "' is " << objf_per_frame;
-      (*tot_weight) += objf_it->second.tot_weight;
-    }
-    ostr << " sum of weights for all objective is " << tot_weight;
-    return obj_info_str;
-  }
+  std::string GetAllObjectiveInfo(double* tot_weight) const;
 
   // if config.compute_deriv == true, returns a reference to the
   // computed derivative.  Otherwise crashes.

@@ -56,13 +56,15 @@ void RenameIoNames(const std::string &io_names,
 
 // ranames NnetIo name with name 'output' to new_output_name
 // and scales the supervision for 'output' using weight.
-void ScaleAndRenameOutput(BaseFloat weight, std::string new_output_name,
+void ScaleAndRenameOutput(BaseFloat weight,
+                          const std::string &new_output_name,
                           NnetExample *eg) {
   // scale the supervision weight for egs
   for (int32 i = 0; i < eg->io.size(); i++)
     if (eg->io[i].name == "output")
-      eg->io[i].features.Scale(weight);
-  // rename output io name to $new_output_name.
+      if (weight != 0.0 && weight != 1.0)
+        eg->io[i].features.Scale(weight);
+  // rename output io name to 'new_output_name'.
   std::string rename_io_names = "output/" + new_output_name;
   RenameIoNames(rename_io_names, eg);
 }
@@ -317,7 +319,7 @@ int main(int argc, char *argv[]) {
     // you can set frame to a number to select a single frame with a particular
     // offset, or to 'random' to select a random single frame.
     std::string frame_str,
-      weight_str, output_str;
+      eg_weight_rspecifier, eg_output_rspecifier;
 
     ParseOptions po(usage);
     po.Register("random", &random, "If true, will write frames to output "
@@ -340,18 +342,22 @@ int main(int argc, char *argv[]) {
                 "feature left-context that we output.");
     po.Register("right-context", &right_context, "Can be used to truncate the "
                 "feature right-context that we output.");
-    po.Register("weights", &weight_str,
+    po.Register("weights", &eg_weight_rspecifier,
                 "Rspecifier of a table indexed by the key of input examples"
-                "and value of scalar weights."
-                "If provided, the supervision output in eg is scaled using weight."
-                " Scaling output supervision is the same as scaling the "
-                "derivative during training for linear objective."
-                "The default is one, which means we are not applying per-example weights.");
-    po.Register("outputs", &output_str,
+                "and value of scalar weights. "
+                "If provided, the supervision output in eg is scaled using weight. "
+                "Scaling output supervision is the same as scaling the "
+                "derivative during training for linear objective. "
+                "This can be created using "
+                "steps/nnet3/multilingual/allocate_multilingual_egs.py"
+                "If not provided, the default is one, which means we are "
+                "not applying per-example weights.");
+    po.Register("outputs", &eg_output_rspecifier,
                 "Rspecifier of a table indexed by the key of input examples"
                 "and value of string output-name."
                 "If provided, the NnetIo with name 'output' in eg"
-                "is renamed to string output-name.");
+                "is renamed to string output-name. This can be created using "
+                "steps/nnet3/multilingual/allocate_multilingual_egs.py");
 
     po.Read(argc, argv);
 
@@ -366,8 +372,8 @@ int main(int argc, char *argv[]) {
 
     SequentialNnetExampleReader example_reader(examples_rspecifier);
 
-    RandomAccessTokenReader output_reader(output_str);
-    RandomAccessBaseFloatReader egs_weight_reader(weight_str);
+    RandomAccessTokenReader output_reader(eg_output_rspecifier);
+    RandomAccessBaseFloatReader egs_weight_reader(eg_weight_rspecifier);
     int32 num_outputs = po.NumArgs() - 1;
     std::vector<NnetExampleWriter*> example_writers(num_outputs);
     for (int32 i = 0; i < num_outputs; i++)
@@ -379,7 +385,8 @@ int main(int argc, char *argv[]) {
       // count is normally 1; could be 0, or possibly >1.
       int32 count = GetCount(keep_proportion);
       std::string key = example_reader.Key();
-      bool modify_eg_output = !(output_str.empty() && weight_str.empty());
+      bool modify_eg_output = !(eg_output_rspecifier.empty() &&
+                                eg_weight_rspecifier.empty());
       NnetExample eg_modified_output;
       const NnetExample &eg_orig = example_reader.Value(),
         &eg = (modify_eg_output ? eg_modified_output : eg_orig);
@@ -388,7 +395,7 @@ int main(int argc, char *argv[]) {
       std::string new_output_name;
       if (modify_eg_output) {
         eg_modified_output = eg_orig;
-        if (!weight_str.empty()) {
+        if (!eg_weight_rspecifier.empty()) {
           if (!egs_weight_reader.HasKey(key)) {
             KALDI_WARN << "No weight for example key " << key;
             num_err++;
@@ -396,7 +403,7 @@ int main(int argc, char *argv[]) {
           }
           weight = egs_weight_reader.Value(key);
         }
-        if (!output_str.empty()) {
+        if (!eg_output_rspecifier.empty()) {
           if (!output_reader.HasKey(key)) {
             KALDI_WARN << "No new output-name for example key " << key;
             num_err++;

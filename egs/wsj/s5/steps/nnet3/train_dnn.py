@@ -83,7 +83,7 @@ def get_args():
                         help="Directory to store the models and "
                         "all other files.")
 
-    print(' '.join(sys.argv))
+    print(' '.join(sys.argv), file=sys.stderr)
     print(sys.argv)
 
     args = parser.parse_args()

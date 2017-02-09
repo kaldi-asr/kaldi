@@ -6,14 +6,11 @@ set -o pipefail
 dir=dev10h.pem
 kind=
 data_only=false
-fast_path=true
 skip_kws=false
-skip_stt=false
 skip_scoring=
 extra_kws=true
 vocab_kws=false
 tri5_only=false
-use_sep_init_layer=false
 use_plp_pitch=true
 use_pitch=true
 use_ivector=false
@@ -27,9 +24,6 @@ extra_right_context=0
 frames_per_chunk=0
 aux_suffix=
 ivector_suffix=
-score_scp=local/score_babel.sh
-scoring_opts="--min-lmwt 12 --max-lmwt 18"
-decode_graph=tri5
 # params for extracting bn features
 use_bnf=false
 multidir=exp/nnet3/multi_bnf_sp
@@ -62,10 +56,8 @@ echo using "Language = $lang, config = $langconf"
 mfcc=mfcc/$lang
 plp=plp/$lang
 data=data/$lang
+vector_suffix=_gb
 
-if ! $use_sep_init_layer; then
-  ivector_suffix=_gb
-fi
 #This seems to be the only functioning way how to ensure the comple
 #set of scripts will exit when sourcing several of them together
 #Otherwise, the CTRL-C just terminates the deepest sourced script ?
@@ -276,7 +268,7 @@ if [ ! -f  $dataset_dir/.done ] ; then
     touch ${dataset_dir}/.plp.done
   fi
 
- 
+
   if [ ! -f ${dataset_dir}_hires/.mfcc.done ]; then
     dataset=$(basename $dataset_dir)
     echo ---------------------------------------------------------------------
@@ -292,23 +284,20 @@ if [ ! -f  $dataset_dir/.done ] ; then
     steps/compute_cmvn_stats.sh ${dataset_dir}_hires exp/$lang/make_hires/${dataset} $mfccdir;
     utils/fix_data_dir.sh ${dataset_dir}_hires;
     touch ${dataset_dir}_hires/.mfcc.done
-    
-  
+
+
     touch ${dataset_dir}_hires/.done
   fi
   touch $dataset_dir/.done
 fi
-# extract ivector 
+# extract ivector
 dataset=$(basename $dataset_dir)
 ivector_dir=exp/$lang/nnet3/ivectors_${dataset}${ivector_suffix}
 if $use_ivector && [ ! -f $ivector_dir/.ivector.done ];then
-  extractor=exp/$lang/nnet3/extractor
-  if ! $use_sep_init_layer; then
-    extractor=exp/multi/nnet3/extractor
-  fi
+  extractor=exp/multi/nnet3/extractor
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj $my_nj \
     ${dataset_dir}_hires $extractor $ivector_dir || exit 1;
-  touch $ivector_dir/.ivector.done 
+  touch $ivector_dir/.ivector.done
 fi
 
 if [[ "$use_pitch" == "true" ]]; then
@@ -324,12 +313,12 @@ if [[ "$use_pitch" == "true" ]]; then
     fi
     aux_suffix=${aux_suffix}_pitch
   fi
- 
+
   if [ ! -f ${dataset_dir}_hires_mfcc${aux_suffix}/.done ]; then
     steps/append_feats.sh --nj 16 --cmd "$train_cmd" ${dataset_dir}_hires \
       ${dataset_dir}${aux_suffix} ${dataset_dir}_hires_mfcc${aux_suffix} \
       exp/$lang/append_mfcc${aux_suffix}/${dataset} mfcc_hires${aux_suffix}/$lang
- 
+
     steps/compute_cmvn_stats.sh ${dataset_dir}_hires_mfcc${aux_suffix} \
       exp/$lang/make_cmvn_mfcc${aux_suffix}/${dataset} mfcc_hires${aux_suffix}/$lang
 
@@ -348,7 +337,7 @@ if $use_bnf; then
     --ivector-dir $multi_ivector_dir \
     --bnf-name renorm${bnf_layer} --feat-type raw \
     ${dataset_dir}_hires_mfcc${aux_suffix} $bnf_data_dir \
-    $multidir $dump_bnf_dir/$lang exp/$lang/make_${dataset}_bnf || exit 1; 
+    $multidir $dump_bnf_dir/$lang exp/$lang/make_${dataset}_bnf || exit 1;
   touch $bnf_data_dir/.done
   fi
   appended_bnf=${dataset_dir}_hires_mfcc${aux_suffix}_bnf
@@ -431,8 +420,8 @@ if [ -f $nnet3_dir/$lang/final.mdl ]; then
   rnn_opts=
   decode_script=steps/nnet3/decode.sh
   aux_suffix=
- 
-  # suffix for using other features such as pitch 
+
+  # suffix for using other features such as pitch
   if $use_pitch; then
     aux_suffix=${aux_suffix}_mfcc
     if $use_pitch; then
@@ -447,17 +436,17 @@ if [ -f $nnet3_dir/$lang/final.mdl ]; then
     ivector_opts="--online-ivector-dir exp/$lang/nnet3/ivectors_${dataset_id}${ivector_suffix}"
   fi
   if [ "$is_rnn" == "true" ]; then
-    rnn_opts=" --extra-left-context $extra_left_context --extra-right-context $extra_right_context  --frames-per-chunk $frames_per_chunk " 
-    decode_script=steps/nnet3/lstm/decode.sh
+    rnn_opts=" --extra-left-context $extra_left_context --extra-right-context $extra_right_context  --frames-per-chunk $frames_per_chunk "
+    decode_script=steps/nnet3/decode.sh
   fi
   if [ ! -f $decode/.done ]; then
     mkdir -p $decode
-    score_opts="--score-scp local/score_babel.sh --skip-scoring false"
+    score_opts="--skip-scoring false"
     $decode_script --nj $my_nj --cmd "$decode_cmd" $rnn_opts --stage $decode_stage \
           --beam $dnn_beam --lattice-beam $dnn_lat_beam \
           $score_opts $ivector_opts \
           exp/$lang/tri5/graph ${dataset_dir}_hires${aux_suffix} $decode | tee $decode/decode.log
-    
+
     touch $decode/.done
   fi
 fi

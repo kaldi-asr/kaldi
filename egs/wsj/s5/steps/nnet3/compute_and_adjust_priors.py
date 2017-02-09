@@ -35,9 +35,9 @@ def get_args():
     """
 
     parser = argparse.ArgumentParser(
-        description="""Compute the posteriors using model posteriors computed
-            on example data. It re-adjusts the prior using computed average
-            posterior.
+        description="""Compute the average posteriors using model posteriors
+            computed on example data. It re-adjusts the prior using computed
+            average posterior.
         """,
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
@@ -52,13 +52,16 @@ def get_args():
     parser.add_argument("--init-model", type=str,
                         action=common_lib.NullstrToNoneAction,
                         dest='model',
-                        default=None,
-                        help='The model name in dir used to compute average posteriors'
-                             ' w.r.t its output node.')
+                        default='combined',
+                        help='The model used to compute average posteriors '
+                             'without suffix(suffix as .raw or .mdl suffix) '
+                             'e.g. final, combined.')
     parser.add_argument("--readjust-model", type=str,
                         dest='readjusted_model',
-                        default="final",
-                        help="the model name used to store readjusted model.")
+                        default='final',
+                        help='The final prior-adjusted model name without '
+                             'suffix(suffix as .raw or .mdl suffix) e.g. '
+                             'final, combined.')
     parser.add_argument("--readjust-priors", type=str,
                         action=common_lib.StrToBoolAction,
                         dest='readjust_priors',
@@ -92,12 +95,6 @@ def get_args():
                         help="""Directory with egs. If specified this
                         directory will be used rather than extracting
                         egs""")
-    parser.add_argument("--ali-dir", type=str, dest='ali_dir',
-                        default=None,
-                        action=common_lib.NullstrToNoneAction,
-                        help="""Directory with alignment. If specified the
-                        transition model in this
-                        directory will be used to create acoustic model.""")
     parser.add_argument("--dir", type=str, required=True,
                         help="Directory to store the models and "
                         "all other files.")
@@ -142,23 +139,12 @@ def process_args(args):
 
 
 def compute_and_adjust_priors(args, run_opts):
-    """ The main function to compute the posteriors using model posteriors
+    """ The main function to compute the average posteriors using model posteriors
         computed on example data. It re-adjusts the prior using computed average
         posterior.
         The script can be called in different ways.
         steps/nnet3/compute_and_adjust_priors.py --init-model final
         --readjust-model final.prior-adjusted --dir train_dir
-        Args:
-            ali-dir: If specified, the initial model before prior-adjustment
-                     acted as raw model(e.g. final.raw) and the acoustic model with
-                     transition model is computed using raw model and
-                     ali-dir.
-            init-model: The initial model name without suffix(suffix as .raw
-                     or .mdl suffix).
-                     The default name for final combined acoustic model
-                     generated using train.py is combined.mdl, so the
-                     dafault name "combined" used for pre-adjusted acoustic
-                     model(combined.mdl), if --init-model is not specified.
     """
     if args.egs_dir is None:
       egs_dir = '{0}/egs'.format(args.dir)
@@ -174,60 +160,21 @@ def compute_and_adjust_priors(args, run_opts):
     logger.info("Getting average posterior for purposes of "
                 "adjusting the priors for output.")
 
-    num_tasks_to_process = 1
-    # If True, it is assumed different examples used to train multiple
-    # tasks in the output layer.
-    use_multitask_egs = False
-    if (os.path.exists('{0}/info/num_tasks'.format(egs_dir))):
-        num_tasks_to_process = int(open('{0}/info/num_tasks'.format(
-                                        egs_dir)).readline())
-    if num_tasks_to_process > 1:
-        use_multitask_egs = True
-
-    model = None
-    get_raw_nnet_from_am = False
-    if args.model is not None:
-
-        if args.ali_dir is None:
-            # the model is acoustic model
-            common_lib.run_job(
-                """{command} {dir}/log/get_raw_mdl.log \
-                        nnet3-am-copy --raw=true {dir}/{model}.mdl \
-                        {dir}/{model}.raw
-                """.format(command=run_opts.command,
-                           dir=dir, model=args.model))
-            model = "{0}.raw".format(args.model)
-        else:
-            train_lib.acoustic_model.prepare_acoustic_model(dir=args.dir,
-                                                            alidir=args.ali_dir,
-                                                            run_opts=run_opts,
-                                                            model=args.model)
-            model = "{0}.raw".format(args.model)
-        init_model = "{dir}/{model}.mdl".format(dir=args.dir, model=args.model)
-    else:
-      if args.ali_dir is None:
-          # If ali_dir is not specified, it assumes the model contains transition model.
-          init_model = "{dir}/combined.mdl".format(dir=args.dir)
-          get_raw_nnet_from_am = True
-      else:
-          train_lib.acoustic_model.prepare_acoustic_model(dir=args.dir,
-                                                          alidir=args.ali_dir,
-                                                          run_opts=run_opts,
-                                                          model="final")
-          init_model = "{dir}/final.mdl".format(dir=args.dir)
-          get_raw_nnet_from_am = False
-
     avg_post_vec_file = train_lib.common.compute_average_posterior(
-        dir=args.dir, iter='combined', egs_dir=egs_dir,
-        model=model,
-        get_raw_nnet_from_am = get_raw_nnet_from_am,
+        dir=args.dir, iter=args.model, egs_dir=egs_dir,
+        get_raw_nnet_from_am = True,
         num_archives=num_archives,
         left_context=left_context, right_context=right_context,
-        prior_subset_size=args.prior_subset_size, run_opts=run_opts,
-        use_multitask_egs=use_multitask_egs)
+        prior_subset_size=args.prior_subset_size, run_opts=run_opts)
+
     if args.readjust_priors:
         logger.info("Re-adjusting priors based on computed posteriors")
-        final_model = "{dir}/{target_mdl}.mdl".format(dir=args.dir, target_mdl=args.readjusted_model)
+        init_model = "{dir}/{init_mdl}.mdl".format(
+            dir=args.dir,
+            init_mdl=args.model)
+        final_model = "{dir}/{target_mdl}.mdl".format(
+            dir=args.dir,
+            target_mdl=args.readjusted_model)
         train_lib.common.adjust_am_priors(args.dir, init_model,
                                           avg_post_vec_file, final_model,
                                           run_opts)

@@ -24,7 +24,7 @@ case "$lang" in
 		101-cantonese)
 			langconf=conf/lang/101-cantonese${lang_type}.official.conf
 			;;
-		102-assamese)			
+		102-assamese)
 			langconf=conf/lang/102-assamese${lang_type}.official.conf
 			;;
 		103-bengali)
@@ -34,7 +34,7 @@ case "$lang" in
 			langconf=conf/lang/104-pashto${lang_type}.official.conf
 			;;
 		105-turkish)
-			langconf=conf/lang/105-turkish${lang_type}.official.conf	
+			langconf=conf/lang/105-turkish${lang_type}.official.conf
 			;;
 		106-tagalog)
 			langconf=conf/lang/106-tagalog${lang_type}.official.conf
@@ -58,7 +58,7 @@ case "$lang" in
       langconf=conf/lang/205-kurmanji${lang_type2}.official.conf
       ;;
 		206-zulu)
-			langconf=conf/lang/206-zulu-${lang_type}.official.conf	
+			langconf=conf/lang/206-zulu-${lang_type}.official.conf
 			;;
     207-tokpisin)
       langconf=conf/lang/207-tokpisin${lang_type2}.official.conf
@@ -94,7 +94,7 @@ case "$lang" in
       langconf=conf/lang/403-dholuo${lang_type2}.official.conf
       ;;
     404-georgian)
-      langconf=conf/lang/404-georgian.FLP.official.conf 
+      langconf=conf/lang/404-georgian.FLP.official.conf
       ;;
 		*)
 			echo "Unknown language code $lang." && exit 1

@@ -27,7 +27,8 @@ def get_args():
                         help='Directory to write config files and variables')
     parser.add_argument('--nnet-edits', type=str, default=None,
                         action=common_lib.NullstrToNoneAction,
-                        help="Edit network before getting nnet3-info")
+                        help="Edit network before getting nnet3-info "
+                             "for adding backcompatibility info.")
 
     print(' '.join(sys.argv))
 

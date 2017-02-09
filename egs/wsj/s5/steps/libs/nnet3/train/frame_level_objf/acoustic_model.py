@@ -84,7 +84,9 @@ def prepare_initial_acoustic_model(dir, alidir, run_opts,
                    dir=dir, alidir=alidir))
 
 def prepare_acoustic_model(dir, alidir, run_opts, model="final"):
-    """ It will prepare the acoustic model with the transition model."""
+    """ It takes a raw nnet model.raw and adds a transition model and
+        writes an output acoustic model as model.mdl.
+    """
 
     # Convert to .mdl, train the transitions, set the priors.
     common_lib.run_job(

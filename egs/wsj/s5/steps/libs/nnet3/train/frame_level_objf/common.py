@@ -29,6 +29,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                      shuffle_buffer_size, minibatch_size,
                      cache_read_opt, run_opts,
                      frames_per_eg=-1,
+                     min_deriv_time=None, max_deriv_time=None,
                      extra_egs_copy_cmd="", use_multitask_egs=False):
     """ Called from train_one_iteration(), this model does one iteration of
     training with 'num_jobs' jobs, and writes files like
@@ -46,11 +47,22 @@ def train_new_models(dir, iter, srand, num_jobs,
             implies frame-level training, which is applicable for DNN training.
             If it is > 0, then each parallel SGE job created, a different frame
             numbered 0..frames_per_eg-1 is used.
+        min_deriv_time: Applicable for RNN training. A default value of None
+            implies a min_deriv_time of 0 is used. During RNN training, its
+            value is set to chunk_width - num_bptt_steps in the training
+            script.
     """
 
     chunk_level_training = False if frames_per_eg > 0 else True
 
     deriv_time_opts = []
+    if min_deriv_time is not None:
+        deriv_time_opts.append("--optimization.min-deriv-time={0}".format(
+                           min_deriv_time))
+    if max_deriv_time is not None:
+        deriv_time_opts.append("--optimization.max-deriv-time={0}".format(
+                           max_deriv_time))
+
     context_opts = "--left-context={0} --right-context={1}".format(
         left_context, right_context)
 
@@ -76,19 +88,10 @@ def train_new_models(dir, iter, srand, num_jobs,
             use_multitask_egs=use_multitask_egs)
 
         if use_multitask_egs:
-          train_egs = "scp:{egs_dir}/egs.{archive_index}.scp".format(
-            egs_dir=egs_dir,
-            archive_index=archive_index)
-        else:
-          train_egs = "scp:{egs_dir}/egs.{archive_index}".format(
-            egs_dir=egs_dir,
-            archive_index=archive_index)
-
-        if use_multitask_egs:
             egs_rspecifier = (
                 "ark,bg:nnet3-copy-egs {frame_opts} {context_opts} "
                 "{multitask_egs_opt} "
-                "{train_egs} ark:- | "
+                "scp:{egs_dir}/egs.{archive_index}.scp ark:- | "
                 "{extra_egs_copy_cmd}"
                 "nnet3-merge-egs --minibatch-size={minibatch_size} "
                 "--measure-output-frames=false "
@@ -97,10 +100,11 @@ def train_new_models(dir, iter, srand, num_jobs,
                 "ark:- ark:- |".format(
                     frame_opts=("" if chunk_level_training
                                 else "--frame={0}".format(frame)),
-                    context_opts=context_opts, train_egs=train_egs,
+                    context_opts=context_opts,
                     shuffle_buffer_size=shuffle_buffer_size,
                     extra_egs_copy_cmd=extra_egs_copy_cmd,
                     minibatch_size=minibatch_size,
+                    egs_dir=egs_dir, archive_index=archive_index,
                     multitask_egs_opt=multitask_egs_opt))
         else:
             egs_rspecifier = (
@@ -179,6 +183,10 @@ def train_one_iteration(dir, iter, srand, egs_dir,
             implies frame-level training, which is applicable for DNN training.
             If it is > 0, then each parallel SGE job created, a different frame
             numbered 0..frames_per_eg-1 is used.
+        min_deriv_time: Applicable for RNN training. A default value of None
+            implies a min_deriv_time of 0 is used. During RNN training, its
+            value is set to chunk_width - num_bptt_steps in the training
+            script.
         shrinkage_value: If value is 1.0, no shrinkage is done; otherwise
             parameter values are scaled by this value.
         get_raw_nnet_from_am: If True, then the network is read and stored as
@@ -314,6 +322,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      minibatch_size=cur_minibatch_size,
                      cache_read_opt=cache_read_opt, run_opts=run_opts,
                      frames_per_eg=frames_per_eg,
+                     min_deriv_time=min_deriv_time,
                      extra_egs_copy_cmd=extra_egs_copy_cmd,
                      use_multitask_egs=use_multitask_egs)
 
@@ -434,9 +443,10 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
     else:
         valid_diagnostic_egs = "ark:{0}/valid_diagnostic.egs".format(egs_dir)
 
-    multitask_egs_opts = common_train_lib.get_multitask_egs_opts(egs_dir,
-                                                egs_prefix="valid_diagnostic.",
-                                                use_multitask_egs=use_multitask_egs)
+    multitask_egs_opts = common_train_lib.get_multitask_egs_opts(
+                             egs_dir,
+                             egs_prefix="valid_diagnostic.",
+                             use_multitask_egs=use_multitask_egs)
     common_lib.run_job(
         """ {command} {dir}/log/compute_prob_valid.{iter}.log \
                 nnet3-compute-prob "{model}" \
@@ -456,13 +466,15 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, left_context,
         wait=wait, background_process_handler=background_process_handler)
 
     if use_multitask_egs:
-        train_diagnostic_egs = "scp:{0}/train_diagnostic.egs.1.scp".format(egs_dir)
+        train_diagnostic_egs = "scp:{0}/train_diagnostic.egs.1.scp".format(
+                                    egs_dir)
     else:
         train_diagnostic_egs = "ark:{0}/train_diagnostic.egs".format(egs_dir)
 
-    multitask_egs_opts = common_train_lib.get_multitask_egs_opts(egs_dir,
-                                                egs_prefix="train_diagnostic.",
-                                                use_multitask_egs=use_multitask_egs)
+    multitask_egs_opts = common_train_lib.get_multitask_egs_opts(
+                             egs_dir,
+                             egs_prefix="train_diagnostic.",
+                             use_multitask_egs=use_multitask_egs)
     common_lib.run_job(
         """{command} {dir}/log/compute_prob_train.{iter}.log \
                 nnet3-compute-prob "{model}" \
@@ -505,9 +517,10 @@ def compute_progress(dir, iter, egs_dir, left_context, right_context,
     else:
         train_diagnostic_egs = "ark:{0}/train_diagnostic.egs".format(egs_dir)
 
-    multitask_egs_opts = common_train_lib.get_multitask_egs_opts(egs_dir,
-                                                egs_prefix="train_diagnostic.",
-                                                use_multitask_egs=use_multitask_egs)
+    multitask_egs_opts = common_train_lib.get_multitask_egs_opts(
+                             egs_dir,
+                             egs_prefix="train_diagnostic.",
+                             use_multitask_egs=use_multitask_egs)
     common_lib.run_job(
             """{command} {dir}/log/progress.{iter}.log \
                     nnet3-info "{model}" '&&' \
@@ -580,9 +593,10 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
     else:
         combine_egs = "ark:{0}/combine.egs".format(egs_dir)
 
-    multitask_egs_opts = common_train_lib.get_multitask_egs_opts(egs_dir,
-                                                egs_prefix="combine.",
-                                                use_multitask_egs=use_multitask_egs)
+    multitask_egs_opts = common_train_lib.get_multitask_egs_opts(
+                             egs_dir,
+                             egs_prefix="combine.",
+                             use_multitask_egs=use_multitask_egs)
     common_lib.run_job(
         """{command} {combine_queue_opt} {dir}/log/combine.log \
                 nnet3-combine --num-iters=40 \
@@ -737,7 +751,6 @@ def compute_average_posterior(dir, iter, egs_dir, num_archives,
                               prior_subset_size, left_context, right_context,
                               run_opts, get_raw_nnet_from_am=True,
                               extra_egs_copy_cmd="",
-                              model=None,
                               use_multitask_egs=False):
     """ Computes the average posterior of the network
     Note: this just uses CPUs, using a smallish subset of data.
@@ -750,29 +763,27 @@ def compute_average_posterior(dir, iter, egs_dir, num_archives,
     else:
         egs_part = 'JOB'
 
-    if model is None:
-        if get_raw_nnet_from_am:
-            model = "nnet3-am-copy --raw=true {0}/combined.mdl -|".format(dir)
-        else:
-            model = "{dir}/final.raw".format(dir=dir)
+    if get_raw_nnet_from_am:
+        model = "nnet3-am-copy --raw=true {0}/{1}.mdl -|".format(dir, iter)
     else:
-        model="{dir}/{model}".format(dir=dir,model=model)
+        model = "{dir}/{iter}.raw".format(dir=dir, iter=iter)
 
     context_opts = "--left-context={lc} --right-context={rc}".format(
         lc=left_context, rc=right_context)
 
-    multitask_egs_opt = common_train_lib.get_multitask_egs_opts(egs_dir, egs_prefix="",
-      archive_index=egs_part,
-      use_multitask_egs=use_multitask_egs)
+    multitask_egs_opt = common_train_lib.get_multitask_egs_opts(
+        egs_dir, egs_prefix="",
+        archive_index=egs_part,
+        use_multitask_egs=use_multitask_egs)
 
     if use_multitask_egs:
-      compute_prior_egs = "scp:{egs_dir}/egs.{egs_part}.scp".format(
-        egs_dir=egs_dir,
-        egs_part=egs_part)
+        compute_prior_egs = "scp:{egs_dir}/egs.{egs_part}.scp".format(
+            egs_dir=egs_dir,
+            egs_part=egs_part)
     else:
-      compute_prior_egs = "ark:{egs_dir}/egs.{egs_part}.ark".format(
-        egs_dir=egs_dir,
-        egs_part=egs_part)
+        compute_prior_egs = "ark:{egs_dir}/egs.{egs_part}.ark".format(
+            egs_dir=egs_dir,
+            egs_part=egs_part)
 
     common_lib.run_job(
         """{command} JOB=1:{num_jobs_compute_prior} {prior_queue_opt} \

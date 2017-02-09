@@ -247,22 +247,19 @@ fi
 
 if [ $stage -le 13 ]; then
   for lang_index in `seq 0 $[$num_langs-1]`;do
-    echo "$0: compute average posterior and readjust priors for language ${lang_list[$lang_index]}."
-    echo "alidir = ${multi_ali_dirs[$lang_index]} "
-    lang_dir=$dir/${lang_list[$lang_index]}
+    lang_dir=$dir/${lang_list[$lang_id]}
     mkdir -p  $lang_dir
-    # rename output name for each lang to 'output'.
+    echo "$0: rename output name for each lang to 'output' and "
+    echo "add transition model."
     nnet3-copy --edits="rename-node old-name=output-$lang_index new-name=output" \
-      $dir/final.raw $lang_dir/final.raw || exit 1;
+      $dir/final.raw - | \
+      nnet3-am-init ${multi_ali_dirs[$lang_index]}/final.mdl - \
+      $lang_dir/final.mdl || exit 1;
 
-    steps/nnet3/compute_and_adjust_priors.py --cmd="$decode_cmd" \
-      --egs.dir ${multi_egs_dirs[$lang_index]} \
-      --reporting.email="$reporting_email" \
-      --init-model final \
-      --readjust-model final.${lang_index} \
-      --readjust-priors true \
-      --ali-dir ${multi_ali_dirs[$lang_index]} \
-      --dir=$lang_dir  || exit 1;
+    echo "$0: compute average posterior and readjust priors for language ${lang_list[$lang_index]}."
+    steps/nnet3/adjust_priors.sh --cmd "$decode_cmd" \
+      --iter final --use-raw-nnet false --use-gpu true \
+      $lang_dir ${multi_egs_dirs[$lang_index]} || exit 1;
   done
 fi
 

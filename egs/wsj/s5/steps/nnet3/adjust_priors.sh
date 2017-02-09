@@ -2,12 +2,12 @@
 
 . path.sh
 
-# This script computes the DNN output averaged over a small subset of 
+# This script computes the DNN output averaged over a small subset of
 # training egs and stores it in post.$iter.vec.
-# This is used for the purpose of adjusting the nnet priors. 
-# When --use-raw-nnet is false, then the computed priors is added into the 
-# nnet model; hence the term adjust priors. 
-# When --use-raw-nnet is true, the computed priors is not added into the 
+# This is used for the purpose of adjusting the nnet priors.
+# When --use-raw-nnet is false, then the computed priors is added into the
+# nnet model; hence the term adjust priors.
+# When --use-raw-nnet is true, the computed priors is not added into the
 # nnet model and left in the file post.$iter.vec.
 
 cmd=run.pl
@@ -16,9 +16,9 @@ num_jobs_compute_prior=10 # these are single-threaded, run on CPU.
 use_gpu=false             # if true, we run on GPU.
 egs_type=egs              # Compute from $egs_type.*.ark in $egs_dir
                           # If --egs-type is degs, then the program
-                          # nnet3-discriminative-compute-from-egs is used 
+                          # nnet3-discriminative-compute-from-egs is used
                           # instead of nnet3-compute-from-egs.
-use_raw_nnet=false        # If raw nnet, the averaged posterior is computed 
+use_raw_nnet=false        # If raw nnet, the averaged posterior is computed
                           # and stored in post.$iter.vec; but there is no
                           # adjusting of priors
 iter=final
@@ -44,16 +44,16 @@ else
   prior_queue_opt=""
 fi
 
-for f in $egs_dir/$egs_type.1.ark $egs_dir/info/num_archives; do 
+for f in $egs_dir/$egs_type.1.ark $egs_dir/info/num_archives; do
   if [ ! -f $f ]; then
-    echo "$f not found" 
-    exit 1 
+    echo "$f not found"
+    exit 1
   fi
 done
 
 if $use_raw_nnet; then
   model=$dir/$iter.raw
-else 
+else
   model="nnet3-am-copy --raw=true $dir/$iter.mdl - |"
 fi
 
@@ -76,7 +76,7 @@ if [ $egs_type != "degs" ]; then
     nnet3-compute-from-egs $prior_gpu_opt --apply-exp=true \
     "$model" ark:- ark:- \| \
     matrix-sum-rows ark:- ark:- \| vector-sum ark:- $dir/post.$iter.JOB.vec || exit 1;
-else 
+else
   $cmd JOB=1:$num_jobs_compute_prior $prior_queue_opt $dir/log/get_post.$iter.JOB.log \
     nnet3-discriminative-copy-egs ark:$egs_dir/$egs_type.$egs_part.ark ark:- \| \
     nnet3-discriminative-subset-egs --srand=JOB --n=$prior_subset_size ark:- ark:- \| \

@@ -54,7 +54,7 @@ Real SparseVector<Real>::Sum() const {
 
 template<typename Real>
 void SparseVector<Real>::Scale(Real alpha) {
-  for (int32 i = 0; i < pairs_.size(); ++i) 
+  for (int32 i = 0; i < pairs_.size(); ++i)
     pairs_[i].second *= alpha;
 }
 
@@ -615,7 +615,7 @@ void SparseMatrix<Real>::AppendSparseMatrixRows(
 template<typename Real>
 void SparseMatrix<Real>::Scale(Real alpha) {
   MatrixIndexT num_rows = rows_.size();
-  for (MatrixIndexT row = 0; row < num_rows; row++)   
+  for (MatrixIndexT row = 0; row < num_rows; row++)
     rows_[row].Scale(alpha);
 }
 
@@ -760,14 +760,14 @@ void GeneralMatrix::CopyToMat(MatrixBase<BaseFloat> *mat,
 }
 
 void GeneralMatrix::Scale(BaseFloat alpha) {
-  if (mat_.NumRows() !=0) {
+  if (mat_.NumRows() != 0) {
     mat_.Scale(alpha);
   } else if (cmat_.NumRows() != 0) {
     cmat_.Scale(alpha);
   } else if (smat_.NumRows() != 0) {
     smat_.Scale(alpha);
   }
- 
+
 }
 const SparseMatrix<BaseFloat>& GeneralMatrix::GetSparseMatrix() const {
   if (mat_.NumRows() != 0 || cmat_.NumRows() != 0)

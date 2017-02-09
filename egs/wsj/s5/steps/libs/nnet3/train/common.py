@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+
 
 # Copyright 2016    Vijayaditya Peddinti.
 #           2016    Vimal Manohar
@@ -55,6 +55,7 @@ def get_outputs_list(model_file, get_raw_nnet_from_am=True):
 
     return outputs_list
 
+
 def get_multitask_egs_opts(egs_dir, egs_prefix="",
                            archive_index=1,
                            use_multitask_egs=False):
@@ -65,15 +66,14 @@ def get_multitask_egs_opts(egs_dir, egs_prefix="",
         i.e. egs_prefix is "" for train and
         "valid_diagnostic." for validation.
     """
-    multitask_egs_opts=""
+    multitask_egs_opts = ""
     if use_multitask_egs:
         output_rename_opt = ""
-        output_file_name="{egs_dir}/{egs_prefix}output.{archive_index}".format(
-                         egs_dir=egs_dir,
-                         egs_prefix=egs_prefix,
-                         archive_index=archive_index)
+        output_file_name = "{egs_dir}/{egs_prefix}output.{archive_index}".format(
+                            egs_dir=egs_dir,
+                            egs_prefix=egs_prefix,
+                            archive_index=archive_index)
 
-        #if os.path.isfile(output_file_name):
         output_rename_opt = ("--outputs=ark:{output_file_name}".format(output_file_name=output_file_name))
 
         weight_file_name = ("{egs_dir}/{egs_prefix}weight.{archive_index}".format(
@@ -81,9 +81,8 @@ def get_multitask_egs_opts(egs_dir, egs_prefix="",
                            egs_prefix=egs_prefix,
                            archive_index=archive_index))
         weight_opt = ""
-        #if os.path.isfile(weight_file_name):
-        weight_opt = ("--weights=ark:{weight_file_name}".format(
-                         weight_file_name=weight_file_name))
+        weight_opt = ("--weights=ark:{weight_file_name}"
+                      "".format(weight_file_name=weight_file_name))
 
         multitask_egs_opts = (
             "{output_rename_opt} {weight_opt}".format(
@@ -91,6 +90,7 @@ def get_multitask_egs_opts(egs_dir, egs_prefix="",
                 weight_opt=weight_opt))
 
     return multitask_egs_opts
+
 
 def get_successful_models(num_models, log_file_pattern,
                           difference_threshold=1.0):
