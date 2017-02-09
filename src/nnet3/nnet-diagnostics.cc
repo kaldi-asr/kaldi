@@ -235,7 +235,7 @@ const SimpleObjectiveInfo* NnetComputeProb::GetObjective(
     return NULL;
 }
 
-std::string GetAllObjectiveInfo(double* tot_weight) const {
+std::string NnetComputeProb::GetAllObjectiveInfo(double* tot_weight) const {
   std::ostringstream ostr;
   unordered_map<std::string, SimpleObjectiveInfo,
     StringHasher>::const_iterator objf_it = objf_info_.begin(),

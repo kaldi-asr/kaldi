@@ -185,7 +185,7 @@ def  process_multilingual_egs(args):
         logger.info("Number of examples for language {0} "
                     "is {1}.".format(lang, lang2len[lang]))
 
-    # If weights are not provided, the scaling weights are 1.0.
+    # If weights are not provided, the weights are 1.0.
     if args.lang2weight is None:
         lang2weight = [ 1.0 ] * num_langs
     else:
@@ -253,9 +253,9 @@ def  process_multilingual_egs(args):
         this_ranges = []
         f = open("{0}/temp/{1}ranges.{2}".format(
                  args.egs_dir, args.prefix, archive + 1), 'w')
-        o = open("{0}/{1}output.{2}".format(
+        o = open("{0}/{1}output.{2}.ark".format(
                 args.egs_dir, args.prefix, archive + 1), 'w')
-        w = open("{0}/{1}weight.{2}".format(
+        w = open("{0}/{1}weight.{2}.ark".format(
                 args.egs_dir, args.prefix, archive + 1), 'w')
         scp_per_archive_file = open("{0}/{1}egs.{2}.scp"
                                     "".format(args.egs_dir,
@@ -298,8 +298,8 @@ def  process_multilingual_egs(args):
         w.close()
         scp_per_archive_file.close()
     logger.info("allocate_multilingual_examples.py finished generating "
-                "{0}egs.*.scp, {0}.ranges.*, {0}output.* "
-                "and {0}weights.* files".format(args.prefix))
+                "{0}egs.*.scp, {0}.ranges.*, {0}output.*.ark "
+                "and {0}weights.*.ark files".format(args.prefix))
 def main():
     try:
         args = get_args()
