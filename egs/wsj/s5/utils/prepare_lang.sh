@@ -64,6 +64,9 @@ unk_fst=        # if you want to model the unknown-word (<oov-dict-entry>)
 phone_symbol_table=              # if set, use a specified phones.txt file.
 extra_word_disambig_syms=        # if set, add disambiguation symbols from this file (one per line)
                                  # to phones/disambig.txt, phones/wdisambig.txt and words.txt
+num_extra_phone_disambig_syms=1 # Standard one phone disambiguation symbol is used for optional silence.
+                                # Increasing this number does not harm, but is only useful if you later
+                                # want to introduce this labels to L_disambig.fst
 # end configuration sections
 
 echo "$0 $@"  # Print the command line for logging
@@ -284,7 +287,7 @@ if "$silprob"; then
 else
   ndisambig=$(utils/add_lex_disambig.pl $unk_opt --pron-probs $tmpdir/lexiconp.txt $tmpdir/lexiconp_disambig.txt)
 fi
-ndisambig=$[$ndisambig+1]; # add one disambig symbol for silence in lexicon FST.
+ndisambig=$[$ndisambig+$num_extra_phone_disambig_syms]; # add (at least) one disambig symbol for silence in lexicon FST.
 echo $ndisambig > $tmpdir/lex_ndisambig
 
 # Format of lexiconp_disambig.txt:
