@@ -59,6 +59,7 @@ echo "Building src..." [Time: $(date)]
 runvx cd src
 runvx "$CCC" CXXFLAGS="$CF" LDFLAGS="$LDF" ./configure --shared --use-cuda=no  --mathlib=OPENBLAS --openblas-root="$XROOT/usr"
 runvx make all -j$MAXPAR
+runvx make ext -j$MAXPAR
 
 echo "Running tests..." [Time: $(date)]
 runvx make test -k -j$MAXPAR
