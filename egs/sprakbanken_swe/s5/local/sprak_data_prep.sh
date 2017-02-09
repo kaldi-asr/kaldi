@@ -22,10 +22,10 @@ utils=`pwd`/utils
 # This recipe currently relies on version 3 because python3 uses utf8 as internal 
 # string representation
 
-if ! which python3 >&/dev/null; then
-  echo "Python3 is not installed, to install it you should probably do:"
-  echo "sudo apt-get install python3" || exit 1;
-fi
+#if ! which python3 >&/dev/null; then
+#  echo "Python3 is not installed, to install it you should probably do:"
+#  echo "sudo apt-get install python3" || exit 1;
+#fi
 
 if [ ! -d $dir/download ]; then
     mkdir -p $dir/download/0467-1 $dir/download/0467-2 $dir/download/0467-3
@@ -34,19 +34,19 @@ fi
 echo "Downloading and unpacking sprakbanken to $dir/corpus_processed. This will take a while."
 
 if [ ! -f $dir/download/sve.16khz.0467-1.tar.gz ]; then 
-    ( wget http://www.nb.no/sbfil/talegjenkjenning/16kHz/sve.16khz.0467-1.tar.gz --directory-prefix=$dir/download )
+    ( wget --tries 100 http://www.nb.no/sbfil/talegjenkjenning/16kHz/sve.16khz.0467-1.tar.gz --directory-prefix=$dir/download )
 fi
 
 if [ ! -f $dir/download/sve.16khz.0467-2.tar.gz ]; then 
-    ( wget http://www.nb.no/sbfil/talegjenkjenning/16kHz/sve.16khz.0467-2.tar.gz --directory-prefix=$dir/download )
+    ( wget --tries 100 http://www.nb.no/sbfil/talegjenkjenning/16kHz/sve.16khz.0467-2.tar.gz --directory-prefix=$dir/download )
 fi
 
 if [ ! -f $dir/download/sve.16khz.0467-3.tar.gz ]; then 
-    ( wget http://www.nb.no/sbfil/talegjenkjenning/16kHz/sve.16khz.0467-3.tar.gz --directory-prefix=$dir/download )
+    ( wget --tries 100 http://www.nb.no/sbfil/talegjenkjenning/16kHz/sve.16khz.0467-3.tar.gz --directory-prefix=$dir/download )
 fi
 
 if [ ! -f $dir/download/sve.16khz.0467-1.tar.gz ]; then 
-    ( wget http://www.nb.no/sbfil/talegjenkjenning/16kHz/sve.16khz.0468.tar.gz --directory-prefix=$dir/download )
+    ( wget --tries 100 http://www.nb.no/sbfil/talegjenkjenning/16kHz/sve.16khz.0468.tar.gz --directory-prefix=$dir/download )
 fi    
 
 echo "Corpus files downloaded."
@@ -78,31 +78,31 @@ mkdir -p $dir/corpus_processed/training/0467-1 $dir/corpus_processed/training/04
 # Create parallel file lists and text files, but keep sound files in the same location to save disk space
 # Writes the lists to data/local/data (~ 310h)
 echo "Creating parallel data for training data."
-python3 $local/sprak2kaldi.py $dir/download/0467-1 $dir/corpus_processed/training/0467-1  # ~140h
-python3 $local/sprak2kaldi.py $dir/download/0467-2 $dir/corpus_processed/training/0467-2  # ~125h
-python3 $local/sprak2kaldi.py $dir/download/0467-3 $dir/corpus_processed/training/0467-3  # ~128h
+python $local/sprak2kaldi.py $dir/download/0467-1 $dir/corpus_processed/training/0467-1  # ~140h
+python $local/sprak2kaldi.py $dir/download/0467-2 $dir/corpus_processed/training/0467-2  # ~125h
+python $local/sprak2kaldi.py $dir/download/0467-3 $dir/corpus_processed/training/0467-3  # ~128h
 
 mv $dir/corpus_processed/training/0467-1/'r4670118.791213 8232' $dir/corpus_processed/training/0467-1/'r4670118.791213_8232'
-for f in $dir/corpus_processed/training/0467-1/r4670118.791213_8232/*.txt; do mv "$f" "${f// /_}"; done
+for f in $dir/corpus_processed/training/0467-1/r4670118.791213_8232/*.txt; do
+    mv "$f" "${f// /_}";
+done
 
 (
 # Ditto test set (~ 93h)
     echo "Creating parallel data for test data."
     rm -rf $dir/corpus_processed/test/0468 
     mkdir -p $dir/corpus_processed/test/0468 
-    python3 $local/sprak2kaldi.py $dir/download/0468 $dir/corpus_processed/test/0468
+    python $local/sprak2kaldi.py $dir/download/0468 $dir/corpus_processed/test/0468
 ) 
-
-
 
 
 # Create the LM training data 
 (
     echo "Writing the LM text to file and normalising."
     cat $dir/corpus_processed/training/0467-1/txtlist $dir/corpus_processed/training/0467-2/txtlist $dir/corpus_processed/training/0467-3/txtlist | while read l; do cat $l; done > $lmdir/lmsents
-    python3 local/normalize_transcript.py $lmdir/lmsents $lmdir/lmsents.norm
+    python local/normalize_transcript.py $lmdir/lmsents $lmdir/lmsents.norm
     sort -u $lmdir/lmsents.norm > $lmdir/transcripts.uniq
-) &
+)
 
 # Combine training file lists
 echo "Combine file lists."
