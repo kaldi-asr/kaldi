@@ -44,6 +44,9 @@ GRTAGS
 GPATH
 GSYMS
 
+# python compiled sources
+*.pyc
+
 # Make dependencies
 .depend.mk
 
@@ -116,5 +119,13 @@ GSYMS
 /tools/pthreads*.zip
 /tools/sequitur
 /tools/srilm.tgz
+/tools/liblbfgs-1.10.tar.gz
+/tools/liblbfgs-1.10/
+/tools/openfst-1.5.0.tar.gz
+/tools/openfst-1.5.0/
+/tools/srilm-1.7.2-beta.tar.gz
+/tools/liblbfgs/
+/tools/sequitur-g2p/
 
 /kaldiwin_vs*
+

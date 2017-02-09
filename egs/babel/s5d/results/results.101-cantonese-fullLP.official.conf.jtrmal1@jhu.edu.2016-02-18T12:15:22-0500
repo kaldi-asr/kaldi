@@ -1,0 +1,28 @@
+#Created on 2016-02-18T12:15:22-0500 by local/best_scores.sh
+#
+#
+# STT Task performance (WER), evaluated on 2016-02-18T12:20:23-0500
+%WER 50.4 | 10001 82932 | 57.3 32.0 10.7 7.6 50.4 79.0 | -1.280 | exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it4/score_11/dev10h.pem.ctm.sys
+%WER 59.2 | 10001 82932 | 50.9 37.9 11.1 10.1 59.2 81.7 | -1.687 | exp/tri5/decode_dev10h.pem/score_12/dev10h.pem.ctm.sys
+%WER 51.0 | 10001 82932 | 55.5 30.2 14.3 6.5 51.0 80.0 | -0.722 | exp/tri6b_nnet/decode_dev10h.pem/score_13/dev10h.pem.ctm.sys
+%WER 47.3 | 10001 82932 | 59.7 30.6 9.8 7.0 47.3 77.1 | -1.079 | exp_bnf/sgmm7_mmi_b0.1/decode_fmllr_dev10h.pem_it4/score_16/dev10h.pem.ctm.sys
+#
+# STT Task performance (CER), evaluated on 2016-02-18T12:20:24-0500
+%WER 43.5 | 10001 104181 | 62.5 29.8 7.6 6.1 43.5 78.6 | -1.082 | exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it4/score_10/dev10h.pem.char.ctm.sys
+%WER 52.3 | 10001 104181 | 55.5 35.9 8.6 7.8 52.3 81.5 | -1.384 | exp/tri5/decode_dev10h.pem/score_12/dev10h.pem.char.ctm.sys
+%WER 43.9 | 10001 104181 | 62.2 28.5 9.3 6.0 43.9 80.1 | -0.627 | exp/tri6b_nnet/decode_dev10h.pem/score_11/dev10h.pem.char.ctm.sys
+%WER 40.5 | 10001 104181 | 64.3 28.2 7.5 4.8 40.5 76.7 | -0.854 | exp_bnf/sgmm7_mmi_b0.1/decode_fmllr_dev10h.pem_it4/score_16/dev10h.pem.char.ctm.sys
+#
+# STT Task performance (WER), evaluated on 2016-02-19T22:47:05-0500
+%WER 50.4 | 10001 82932 | 57.3 32.0 10.7 7.6 50.4 79.0 | -1.280 | exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it4/score_11/dev10h.pem.ctm.sys
+%WER 59.2 | 10001 82932 | 50.9 37.9 11.1 10.1 59.2 81.7 | -1.687 | exp/tri5/decode_dev10h.pem/score_12/dev10h.pem.ctm.sys
+%WER 51.0 | 10001 82932 | 55.5 30.2 14.3 6.5 51.0 80.0 | -0.722 | exp/tri6b_nnet/decode_dev10h.pem/score_13/dev10h.pem.ctm.sys
+%WER 43.6 | 10001 82932 | 60.4 27.7 11.9 4.0 43.6 73.1 | -0.439 | exp/tri6_nnet_mpe/decode_dev10h.pem_epoch4/score_10/dev10h.pem.ctm.sys
+%WER 47.3 | 10001 82932 | 59.7 30.6 9.8 7.0 47.3 77.1 | -1.079 | exp_bnf/sgmm7_mmi_b0.1/decode_fmllr_dev10h.pem_it4/score_16/dev10h.pem.ctm.sys
+#
+# STT Task performance (CER), evaluated on 2016-02-19T22:47:09-0500
+%WER 43.5 | 10001 104181 | 62.5 29.8 7.6 6.1 43.5 78.6 | -1.082 | exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it4/score_10/dev10h.pem.char.ctm.sys
+%WER 52.3 | 10001 104181 | 55.5 35.9 8.6 7.8 52.3 81.5 | -1.384 | exp/tri5/decode_dev10h.pem/score_12/dev10h.pem.char.ctm.sys
+%WER 43.9 | 10001 104181 | 62.2 28.5 9.3 6.0 43.9 80.1 | -0.627 | exp/tri6b_nnet/decode_dev10h.pem/score_11/dev10h.pem.char.ctm.sys
+%WER 37.0 | 10001 104181 | 65.6 25.3 9.1 2.6 37.0 72.6 | -0.301 | exp/tri6_nnet_mpe/decode_dev10h.pem_epoch4/score_10/dev10h.pem.char.ctm.sys
+%WER 40.5 | 10001 104181 | 64.3 28.2 7.5 4.8 40.5 76.7 | -0.854 | exp_bnf/sgmm7_mmi_b0.1/decode_fmllr_dev10h.pem_it4/score_16/dev10h.pem.char.ctm.sys

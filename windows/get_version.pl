@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 #===============================================================================
 # Copyright 2017  (Author: Yenda Trmal <jtrmal@gmail.com>)
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -39,6 +39,6 @@ open(my $H, ">", "../src/base/version.h") or do {
 };
 
 my $kaldi_ver=<$F>; chomp $kaldi_ver;
-print $H  "KALDI_VERSION=${kaldi_ver}-win\n";
+print $H  "#define KALDI_VERSION \"${kaldi_ver}-win\"\n";
 close($F);
 close($H);
