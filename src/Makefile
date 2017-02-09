@@ -31,8 +31,14 @@ include kaldi.mk
 
 # Reset the default goal, so that the all target will become default
 .DEFAULT_GOAL :=
-all: checkversion kaldi.mk mklibdir $(SUBDIRS)
+all: 
+	$(MAKE) checkversion 
+	$(MAKE) kaldi.mk 
+	$(MAKE) mklibdir
+	$(MAKE) subdirs
 	-echo Done
+
+subdirs: $(SUBDIRS)
 
 mklibdir:
 	test -d $(KALDILIBDIR) || mkdir $(KALDILIBDIR)
@@ -51,8 +57,10 @@ checkversion:
 ifeq ($(shell ./configure --version),$(CONFIGURE_VERSION))
 	@echo "The version of configure script matches kaldi.mk version. Good."
 else
+	@echo ""
 	@echo "The kaldi.mk file was generated using a different version of configure script. Please rerun the configure again"
 	@test -f ./kaldi.mk && echo  "Hint: Previous configure command line: " && head -n 2 ./kaldi.mk | grep configure | sed 's/^# *//g'
+	@echo ""
 	@false
 endif
 
