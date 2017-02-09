@@ -145,6 +145,7 @@ class ComputationVariables {
       int32 matrix_index,
       std::vector<int32> *variable_indexes) const;
 
+
   // Appends to variable_indexes the sorted list of variables corresponding to a
   // submatrix index.
   void AppendVariablesForSubmatrix(
@@ -311,23 +312,20 @@ class ComputationAnalysis {
                       const Analyzer &analyzer): computation_(computation),
                                                  analyzer_(analyzer) { }
 
-  /// If the matrix underlying submatrix 's' is an input then this returns -1;
-  /// otherwise it returns the first command (read or write) that is not an
-  /// allocation command, that accesses any part of 's' [note: deallocation does
-  /// not count as a read or write operation].  If there is no such command, it
-  /// returns num_commands.
+  /// Returns the first command (read or write) that is not a kAlloc* command,
+  /// that accesses any part of 's' [note: deallocation does not count as a read
+  /// or write operation].  If there is no such command, it returns
+  /// num_commands.
   /// s must be >0 (i.e. not the empty submatrix).
   int32 FirstAccess(int32 s) const;
 
-  /// If the matrix underlying submatrix 's' is an output then this returns
-  /// num-commands; otherwise it returns the last non-deallocation command
-  /// that accesses any part of submatrix 's'; if there is no such command it
-  /// returns -1.
+  /// Returns the last non-deallocation command that accesses any part of
+  /// submatrix 's'; if there is no such command it returns -1.
   /// s must be >0 (i.e. not the empty submatrix).
   int32 LastAccess(int32 s) const;
 
   /// Returns the last command-index that accesses any part of submatrix 's' as
-  /// a write operation, or -1 if there is no such operation.  Not: deallocation
+  /// a write operation, or -1 if there is no such operation.  Note: deallocation
   /// does not count as a write operation.
   /// s must be >0 (i.e. not the empty submatrix).
   int32 LastWriteAccess(int32 s) const;
@@ -339,16 +337,13 @@ class ComputationAnalysis {
   /// s must be >0 (i.e. not the empty submatrix).
   int32 DataInvalidatedCommand(int32 c, int32 s) const;
 
-  /// If matrix 'm' is an input then this returns -1; otherwise it returns the
-  /// first command (read or write) that is not an allocation command, that
-  /// accesses any part of 'm' [note: deallocation does not count as a read or
-  /// write operation].  If there is no such command, it returns num_commands.
-  /// m must be >0 (i.e. not the empty matrix).
+  /// Returns the first command (read or write or accept-input) that is not an
+  /// kAllocate* command, that accesses any part of 'm' [note: deallocation does
+  /// not count as a read or write operation].  If there is no such command, it
+  /// returns num_commands.  m must be >0 (i.e. not the empty matrix).
   int32 FirstMatrixAccess(int32 m) const;
 
-
-  /// If matrix 'm' is an output then this returns num-commands; otherwise it
-  /// returns the last non-deallocation command that accesses any part of
+  /// Returns the last non-deallocation command that accesses any part of
   /// matrix 'm'; if there is no such command it returns -1.  m must be >0
   /// (i.e. not the empty matrix).
   int32 LastMatrixAccess(int32 m) const;
@@ -386,11 +381,22 @@ struct CheckComputationOptions {
   // do the check_rewrite check only for a non-optimized computation, it may
   // legitimately fail after optimization.  see code for details.
   bool check_rewrite;
+  // If 'check_unused_variables' is true, it checks for unused variables
+  // (e.g. unused partsof matrices).  We only set it false for online
+  // computations, where there can be instances where a part of a matrix is
+  // apparently never accessed (until we consider that the matrix is swapped
+  // with another).
+  bool check_unused_variables;
 
-  CheckComputationOptions(): check_rewrite(false) { }
+  CheckComputationOptions():
+      check_rewrite(false), check_unused_variables(true) { }
 };
 
 
+// Note: this checker class does not work for online computations (that have a
+// kGoto statement), but the function CheckComputation() is able to detect such
+// computations and modify them in such a way that they can be checked by this
+// class (and then do extra checks).
 class ComputationChecker {
  public:
   ComputationChecker(const CheckComputationOptions &config,
@@ -400,10 +406,6 @@ class ComputationChecker {
  private:
   // various dimension consistency checks and checks on properties.
   void CheckComputationIndexes() const;
-  // make sure Propagate comes before kNoOpMarker and Backprop comes after it,
-  // and that the value of forward_computation_end matches the position of
-  // kNoOpMarker.
-  void CheckComputationOrder() const;
   // checks for a situation where an undefined variable is read.
   void CheckComputationUndefined() const;
   // checks that all writes are done before reads.  details with implementation.
@@ -421,10 +423,19 @@ class ComputationChecker {
 };
 
 
+/// This utility function works out from a computation, the locations of the
+/// 'segment ends'.  This is useful for online compilation, where the
+/// computation has multiple segments corresponding to new pieces of input data
+/// to process.  The implementation of the function is extremely simple; it
+/// just gives you the locations of commands of type 'kNoOperationMarker'.
+void GetSegmentEnds(const NnetComputation &computation,
+                    std::vector<int32> *command_indexes);
+
 /// This is a convenience interface for class ComputationChecker.  Call it with
-/// check_rewrite = true only if the optimization is pre-optimization.
+/// check_rewrite = true only if the computation is pre-optimization.
+/// If the computation is an 'online' computation, this function treats
+/// it specially.
 void CheckComputation(const Nnet &nnet,
-                      const ComputationRequest &request,
                       const NnetComputation &computation,
                       bool check_rewrite = false);
 

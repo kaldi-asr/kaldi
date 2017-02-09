@@ -63,7 +63,7 @@ def get_args():
                         default=1)
     parser.add_argument("--is-chain", type=str, default=False,
                         action=common_lib.StrToBoolAction,
-                        help="Iteration from which plotting will start")
+                        help="True if directory contains chain models")
     parser.add_argument("--output-nodes", type=str, default=None,
                         action=common_lib.NullstrToNoneAction,
                         help="""List of space separated
@@ -182,8 +182,9 @@ def generate_acc_logprob_plots(exp_dir, output_dir, plot, key='accuracy',
             color_val = g_plot_colors[index]
             data = np.array(data)
             if data.shape[0] == 0:
-                raise Exception("Couldn't find any rows for the"
-                        "accuracy/log-probability plot")
+                logger.warning("Couldn't find any rows for the"
+                               "accuracy/log-probability plot, not generating it")
+                return
             data = data[data[:, 0] >= start_iter, :]
             plot_handle, = plt.plot(data[:, 0], data[:, 1], color=color_val,
                                     linestyle="--",

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# THIS SCRIPT IS DEPRECATED, see ./train_dnn.py
+
 # note, TDNN is the same as what we used to call multisplice.
 
 # Copyright 2012-2015  Johns Hopkins University (Author: Daniel Povey).
@@ -81,6 +83,7 @@ frames_per_eg=8 # to be passed on to get_egs.sh
 
 trap 'for pid in $(jobs -pr); do kill -KILL $pid; done' INT QUIT TERM
 
+echo "$0: THIS SCRIPT IS DEPRECATED"
 echo "$0 $@"  # Print the command line for logging
 
 if [ -f path.sh ]; then . ./path.sh; fi

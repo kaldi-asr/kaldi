@@ -5,6 +5,18 @@
 # support parallel alignments.
 
 
+# local/nnet3/compare_wer.sh exp/nnet3_cleaned/tdnn1a_sp exp/nnet3_cleaned/tdnn1b_sp
+# System                tdnn1a_sp tdnn1b_sp
+# WER on dev(orig)           11.9      11.7
+# WER on dev(rescored)       11.2      10.9
+# WER on test(orig)          11.6      11.7
+# WER on test(rescored)      11.0      11.0
+# Final train prob        -0.9255   -0.9416
+# Final valid prob        -1.1842   -1.1496
+# Final train acc          0.7245    0.7241
+# Final valid acc          0.6771    0.6788
+
+
 # by default, with cleanup:
 # local/nnet3/run_tdnn.sh
 
@@ -25,7 +37,7 @@ gmm=tri3_cleaned  # this is the source gmm-dir for the data-type of interest; it
                   # should have alignments for the specified training data.
 num_threads_ubm=32
 nnet3_affix=_cleaned  # cleanup affix for exp dirs, e.g. _cleaned
-tdnn_affix=  #affix for TDNN directory e.g. "a" or "b", in case we change the configuration.
+tdnn_affix=1a  #affix for TDNN directory e.g. "a" or "b", in case we change the configuration.
 
 # Options which are not passed through to run_ivector_common.sh
 train_stage=-10

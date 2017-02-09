@@ -116,7 +116,7 @@ void MinimizeEncoded(VectorFst<Arc> *fst, float delta = kDelta) {
   Map(fst, QuantizeMapper<Arc>(delta));
   EncodeMapper<Arc> encoder(kEncodeLabels | kEncodeWeights, ENCODE);
   Encode(fst, &encoder);
-  AcceptorMinimize(fst);
+  internal::AcceptorMinimize(fst);
   Decode(fst, encoder);
 }
 
