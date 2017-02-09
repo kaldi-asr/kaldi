@@ -162,7 +162,7 @@ struct ChunkTimeInfo {
   // frame appears in multiple chunks, we want to downweight it
   // so that the total weight remains 1.  (Of course, the calling
   // code is free to ignore these weights if desired).
-  std::vector<float> output_weights;
+  std::vector<BaseFloat> output_weights;
 };
 
 

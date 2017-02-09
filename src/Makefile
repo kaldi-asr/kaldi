@@ -142,7 +142,7 @@ $(SUBDIRS) : mklibdir
 	$(MAKE) -C $@
 
 .PHONY: $(EXT_SUBDIRS)
-$(EXT_SUBDIRS) : mklibdir
+$(EXT_SUBDIRS) : mklibdir ext_depend
 	$(MAKE) -C $@
 
 
