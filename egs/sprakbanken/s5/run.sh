@@ -136,30 +136,30 @@ fi
 ## Works
 #local/sprak_run_sgmm2.sh dev
 
+
 # Run neural network setups based in the TEDLIUM recipe
-if [ $stage -le 11 ]; then
 
-  # Running the nnet3-tdnn setup will train an ivector extractor that
-  # is used by the subsequent nnet3 and chain systems (why --stage is
-  # specified)
-  local/nnet3/run_tdnn.sh --tdnn-affix "0" --nnet3-affix ""
+# Running the nnet3-tdnn setup will train an ivector extractor that
+# is used by the subsequent nnet3 and chain systems (why --stage is
+# specified)
+#local/nnet3/run_tdnn.sh --tdnn-affix "0" --nnet3-affix ""
 
-  # nnet3 LSTM
-  local/nnet3/run_lstm.sh --stage 13 --affix "0"
+# nnet3 LSTM
+#local/nnet3/run_lstm.sh --stage 13 --affix "0"
 
-  # nnet3 bLSTM
-  local/nnet3/run_blstm.sh --stage 12
-fi
+# nnet3 bLSTM
+#local/nnet3/run_blstm.sh --stage 12
 
-if [ $stage -le 12 ]; then
-  # chain TDNN
-  # This setup creates a new lang directory that is also used by the
-  # TDNN-LSTM system
-  local/chain/run_tdnn.sh --stage 14
 
-  # chain TDNN-LSTM
-  local/chain/run_tdnn_lstm.sh --stage 17
-fi
+
+# chain TDNN
+# This setup creates a new lang directory that is also used by the
+# TDNN-LSTM system
+#local/chain/run_tdnn.sh --stage 14
+
+# chain TDNN-LSTM
+local/chain/run_tdnn_lstm.sh --stage 17
+
 
 # Getting results [see RESULTS file]
 local/generate_results_file.sh 2> /dev/null > RESULTS

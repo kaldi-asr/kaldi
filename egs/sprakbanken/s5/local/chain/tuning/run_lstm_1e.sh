@@ -1,37 +1,36 @@
 #!/bin/bash
 
-
+# (From the original script:
 # run_lstm_1e.sh is like run_lstm_1d.sh, but reducing non-recurrent-projection-dim
 # from 256 to 128 (fixes an earlier mistake).
 # However, this doesn't improve WER results-- see below.  Probably the system
 # has too few parameters.  Anyway we probably won't tune this further
 # as LSTMs by themselves aren't expected to perform that well:
-# see run_tdnn_lstm_1a.sh and others in that sequence.
+# see run_tdnn_lstm_1a.sh and others in that sequence.)
 
-# steps/info/chain_dir_info.pl exp/chain_cleaned/lstm1e_sp_bi
-# exp/chain_cleaned/lstm1e_sp_bi: num-iters=253 nj=2..12 num-params=4.7M dim=40+100->3607 combine=-0.10->-0.10 xent:train/valid[167,252,final]=(-1.25,-1.16,-1.18/-1.29,-1.23,-1.24) logprob:train/valid[167,252,final]=(-0.097,-0.087,-0.086/-0.113,-0.105,-0.105)
+# steps/info/chain_dir_info.pl exp/chain/lstm1e_sp_bi
+# exp/chain/lstm1e_sp_bi: num-iters=384 nj=2..12 num-params=4.7M dim=40+100->3557 combine=-0.07->-0.07 xent:train/valid[255,383,final]=(-0.755,-0.703,-0.712/-0.793,-0.755,-0.761) logprob:train/valid[255,383,final]=(-0.060,-0.053,-0.053/-0.071,-0.066,-0.065)
 
-# local/chain/compare_wer_general.sh exp/chain_cleaned/lstm1d_sp_bi exp/chain_cleaned/lstm1e_sp_bi
-# System                lstm1d_sp_bi lstm1e_sp_bi
-# WER on dev(orig)          10.3      10.7
-# WER on dev(rescored)       9.8      10.1
-# WER on test(orig)           9.7       9.8
-# WER on test(rescored)       9.2       9.4
-# Final train prob        -0.0812   -0.0862
-# Final valid prob        -0.1049   -0.1047
-# Final train prob (xent)   -1.1334   -1.1763
-# Final valid prob (xent)   -1.2263   -1.2427
+# local/chain/compare_wer_general.sh exp/chain/tdnn_sp_bi/ exp/chain/lstm1e_sp_bi/
+# System               exp/chain/tdnn_sp_bi/exp/chain/lstm1e_sp_bi/
+# WER on dev(tg)         10.00      9.39
+# WER on test(tg)         8.58      7.72
+# Final train prob        -0.0642   -0.0528
+# Final valid prob        -0.0788   -0.0651
+# Final train prob (xent)   -0.9113   -0.7117
+# Final valid prob (xent)   -0.9525   -0.7607
 
 ## how you run this (note: this assumes that the run_lstm.sh soft link points here;
 ## otherwise call it directly in its location).
-# by default, with cleanup:
+# by default:
 # local/chain/run_lstm.sh
 
-# without cleanup:
-# local/chain/run_lstm.sh  --train-set train --gmm tri3 --nnet3-affix "" &
-
-# note, if you have already run one of the non-chain nnet3 systems
+# note, that you should probably adjust parallelisation to your setup
+# if you have already run one of the non-chain nnet3 systems
 # (e.g. local/nnet3/run_tdnn.sh), you may want to run with --stage 14.
+
+# note, if you have already run one of the chain nnet3 systems,
+# you may want to run with --stage 17.
 
 
 
@@ -41,16 +40,16 @@ set -e -o pipefail
 # (some of which are also used in this script directly).
 stage=0
 nj=30
-decode_nj=30
+decode_nj=7
 min_seg_len=1.55
 chunk_left_context=40
 chunk_right_context=0
 label_delay=5
 xent_regularize=0.1
-train_set=train_cleaned
-gmm=tri3_cleaned  # the gmm for the target data
+train_set=train
+gmm=tri3b  # the gmm for the target data
 num_threads_ubm=32
-nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
+nnet3_affix=  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
 # decode options
 extra_left_context=50
 extra_right_context=0
@@ -234,7 +233,7 @@ if [ $stage -le 19 ]; then
   # Note: it might appear that this data/lang_chain directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --self-loop-scale 1.0 data/lang $dir $dir/graph
+  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_test_tg $dir $dir/graph
 fi
 
 if [ $stage -le 20 ]; then
@@ -249,8 +248,6 @@ if [ $stage -le 20 ]; then
           --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${dset}_hires \
           --scoring-opts "--min-lmwt 5 " \
          $dir/graph data/${dset}_hires $dir/decode_${dset} || exit 1;
-      steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" data/lang data/lang_rescore \
-        data/${dset}_hires ${dir}/decode_${dset} ${dir}/decode_${dset}_rescore || exit 1
     ) || touch $dir/.error &
   done
   wait

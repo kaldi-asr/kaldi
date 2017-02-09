@@ -3,11 +3,19 @@
 # steps/info/chain_dir_info.pl exp/chain/tdnn_lstm1a_sp_bi/
 # exp/chain/tdnn_lstm1a_sp_bi/: num-iters=384 nj=2..12 num-params=9.5M dim=40+100->3557 combine=-0.05->-0.05 xent:train/valid[255,383,final]=(-0.579,-0.518,-0.523/-0.651,-0.616,-0.619) logprob:train/valid[255,383,final]=(-0.046,-0.038,-0.038/-0.063,-0.060,-0.059)
 
-# This is as run_lstm1e.sh except adding TDNN layers in between; also comparing below
-# with run_lstm1d.sh which had a larger non-recurrent-projection-dim and which had
-# better results.  Note: these results are not with the updated LM (the LM data-prep
-# for this setup was changed in Nov 2016 but this was with an older directory).
-#
+# local/chain/compare_wer_general.sh exp/chain/tdnn_sp_bi/ exp/chain/lstm1e_sp_bi/ exp/chain/tdnn_lstm1a_sp_bi/
+# System               exp/chain/tdnn_sp_bi/exp/chain/lstm1e_sp_bi/exp/chain/tdnn_lstm1a_sp_bi/
+# WER on dev(tg)      10.00      9.39      8.48
+# WER on test(tg)        8.58      7.72      7.20
+# Final train prob        -0.0642   -0.0528   -0.0378
+# Final valid prob        -0.0788   -0.0651   -0.0595
+# Final train prob (xent)       -0.9113   -0.7117   -0.5228
+# Final valid prob (xent)       -0.9525   -0.7607   -0.6185
+
+# run_tdnn_lstm_1a.sh was modified from run_lstm_1e.sh, which is a fairly
+# standard, LSTM, except that some TDNN layers were added in between the
+# LSTM layers.  
+
 ## how you run this (note: this assumes that the run_tdnn_lstm.sh soft link points here;
 ## otherwise call it directly in its location).
 # by default:
@@ -16,11 +24,6 @@
 # note, that you may want to adjust parallelisation to your setup
 # if you have already run one of the non-chain nnet3 systems
 # (e.g. local/nnet3/run_tdnn.sh), you may want to run with --stage 14.
-
-# run_tdnn_lstm_1a.sh was modified from run_lstm_1e.sh, which is a fairly
-# standard, LSTM, except that some TDNN layers were added in between the
-# LSTM layers.  I was looking at egs/ami/s5b/local/chain/tuning/run_tdnn_lstm_1i.sh, but
-# this isn't exactly copied from there.
 
 
 set -e -o pipefail

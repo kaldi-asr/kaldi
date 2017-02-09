@@ -1,5 +1,17 @@
 #!/bin/bash
 
+# steps/info/chain_dir_info.pl exp/chain/tdnn_sp_bi/
+# exp/chain/tdnn_sp_bi/: num-iters=384 nj=2..12 num-params=7.0M dim=40+100->3557 combine=-0.08->-0.08 xent:train/valid[255,383,final]=(-0.954,-0.911,-0.911/-0.979,-0.953,-0.952) logprob:train/valid[255,383,final]=(-0.071,-0.064,-0.064/-0.084,-0.079,-0.079)
+
+# local/chain/compare_wer_general.sh exp/nnet3/tdnn0_sp exp/chain/tdnn_sp_bi
+# System               exp/nnet3/tdnn0_spexp/chain/tdnn_sp_bi
+# WER on dev(tg)      11.57     10.00
+# WER on test(tg)        9.89      8.58
+# Final train prob     -0.79890.7538   -0.0642
+# Final valid prob     -0.77280.7590   -0.0788
+# Final train prob (xent)                 -0.9113
+# Final valid prob (xent)                 -0.9525
+
 ## how you run this (note: this assumes that the run_tdnn.sh soft link points here;
 ## otherwise call it directly in its location).
 # by default:
