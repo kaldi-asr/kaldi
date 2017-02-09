@@ -164,6 +164,7 @@ def train(args, run_opts, background_process_handler):
     # Set some variables.
     feat_dim = common_lib.get_feat_dim(args.feat_dir)
     ivector_dim = common_lib.get_ivector_dim(args.online_ivector_dir)
+    ivector_id = common_lib.get_ivector_extractor_id(args.online_ivector_dir)
 
     config_dir = '{0}/configs'.format(args.dir)
     var_file = '{0}/vars'.format(config_dir)
@@ -246,7 +247,8 @@ def train(args, run_opts, background_process_handler):
 
     [egs_left_context, egs_right_context,
      frames_per_eg_str, num_archives] = (
-        common_train_lib.verify_egs_dir(egs_dir, feat_dim, ivector_dim,
+        common_train_lib.verify_egs_dir(egs_dir, feat_dim, 
+                                        ivector_dim, ivector_id,
                                         left_context, right_context))
     assert(str(args.frames_per_eg) == frames_per_eg_str)
 

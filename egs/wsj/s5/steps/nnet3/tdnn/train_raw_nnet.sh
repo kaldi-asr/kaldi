@@ -141,6 +141,7 @@ if [ -z "$online_ivector_dir" ]; then
   ivector_dim=0
 else
   ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
+  steps/nnet2/get_ivector_id.sh $online_ivector_dir > $dir/final.ie.id || exit 1
 fi
 
 if [ ! -z "$configs_dir" ]; then
@@ -212,6 +213,11 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
 fi
 
 [ -z $egs_dir ] && egs_dir=$dir/egs
+
+if [ ! -z "$online_ivector_dir" ] ; then
+  steps/nnet2/check_ivectors_compatible.sh $online_ivector_dir $egs_dir/info || exit 1
+fi
+
 
 if [ "$feat_dim" != "$(cat $egs_dir/info/feat_dim)" ]; then
   echo "$0: feature dimension mismatch with egs, $feat_dim vs $(cat $egs_dir/info/feat_dim)";

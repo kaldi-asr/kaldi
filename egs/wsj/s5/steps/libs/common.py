@@ -294,6 +294,12 @@ def get_ivector_dim(ivector_dir=None):
     ivector_dim = int(stdout_val)
     return ivector_dim
 
+def get_ivector_extractor_id(ivector_dir=None):
+    if ivector_dir is None:
+        return None
+    [stdout_val, stderr_val] = run_kaldi_command(
+        "steps/nnet2/get_ivector_id.sh {dir}".format(dir=ivector_dir))
+    return stdout_val.strip()
 
 def get_feat_dim(feat_dir):
     [stdout_val, stderr_val] = run_kaldi_command(
