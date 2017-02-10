@@ -99,6 +99,7 @@ int main(int argc, char *argv[]) {
       std::istringstream is(edits_str);
       ReadEditConfig(is, &nnet);
     }
+
     WriteKaldiObject(nnet, raw_nnet_wxfilename, binary_write);
     KALDI_LOG << "Copied raw neural net from " << raw_nnet_rxfilename
               << " to " << raw_nnet_wxfilename;

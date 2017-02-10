@@ -226,15 +226,18 @@ void ObjectiveFunctionInfo::UpdateStats(
     BaseFloat this_minibatch_weight,
     BaseFloat this_minibatch_tot_objf,
     BaseFloat this_minibatch_tot_aux_objf) {
-  int32 phase = num_minibatches++ / minibatches_per_phase;
+  int32 phase = minibatch_counter / minibatches_per_phase;
   if (phase != current_phase) {
-    KALDI_ASSERT(phase == current_phase + 1); // or doesn't really make sense.
-    PrintStatsForThisPhase(output_name, minibatches_per_phase);
+    KALDI_ASSERT(phase > current_phase);
+    PrintStatsForThisPhase(output_name, minibatches_per_phase,
+                           phase);
     current_phase = phase;
     tot_weight_this_phase = 0.0;
     tot_objf_this_phase = 0.0;
     tot_aux_objf_this_phase = 0.0;
+    num_minibatches = 0;
   }
+  num_minibatches++;
   tot_weight_this_phase += this_minibatch_weight;
   tot_objf_this_phase += this_minibatch_tot_objf;
   tot_aux_objf_this_phase += this_minibatch_tot_aux_objf;
@@ -245,25 +248,44 @@ void ObjectiveFunctionInfo::UpdateStats(
 
 void ObjectiveFunctionInfo::PrintStatsForThisPhase(
     const std::string &output_name,
-    int32 minibatches_per_phase) const {
+    int32 minibatches_per_phase,
+    int32 phase) const {
   int32 start_minibatch = current_phase * minibatches_per_phase,
-      end_minibatch = start_minibatch + minibatches_per_phase - 1;
+      end_minibatch = phase * minibatches_per_phase - 1;
 
   if (tot_aux_objf_this_phase == 0.0) {
-    KALDI_LOG << "Average objective function for '" << output_name
-              << "' for minibatches " << start_minibatch
-              << '-' << end_minibatch << " is "
-              << (tot_objf_this_phase / tot_weight_this_phase) << " over "
-              << tot_weight_this_phase << " frames.";
+    if (minibatches_per_phase != num_minibatches) {
+      KALDI_LOG << "Average objective function for '" << output_name
+                << "' for minibatches " << start_minibatch
+                << '-' << end_minibatch << " is "
+                << (tot_objf_this_phase / tot_weight_this_phase) << " over "
+                << tot_weight_this_phase << " frames.";
+    } else {
+      KALDI_LOG << "Average objective function for '" << output_name
+                << " using " << num_minibatches
+                << " minibatches in minibatch range " << start_minibatch
+                << '-' << end_minibatch << " is "
+                << (tot_objf_this_phase / tot_weight_this_phase) << " over "
+                << tot_weight_this_phase << " frames.";
+    }
   } else {
     BaseFloat objf = (tot_objf_this_phase / tot_weight_this_phase),
         aux_objf = (tot_aux_objf_this_phase / tot_weight_this_phase),
         sum_objf = objf + aux_objf;
-    KALDI_LOG << "Average objective function for '" << output_name
-              << "' for minibatches " << start_minibatch
-              << '-' << end_minibatch << " is "
-              << objf << " + " << aux_objf << " = " << sum_objf
-              << " over " << tot_weight_this_phase << " frames.";
+    if (minibatches_per_phase != num_minibatches) {
+      KALDI_LOG << "Average objective function for '" << output_name
+                << "' for minibatches " << start_minibatch
+                << '-' << end_minibatch << " is "
+                << objf << " + " << aux_objf << " = " << sum_objf
+                << " over " << tot_weight_this_phase << " frames.";
+    } else {
+      KALDI_LOG << "Average objective function for '" << output_name
+                << "' using " << num_minibatches
+                << " minibatches in  minibatch range " << start_minibatch
+                << '-' << end_minibatch << " is "
+                << objf << " + " << aux_objf << " = " << sum_objf
+                << " over " << tot_weight_this_phase << " frames.";
+    }
   }
 }
 

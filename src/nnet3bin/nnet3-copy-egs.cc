@@ -312,10 +312,12 @@ int main(int argc, char *argv[]) {
     int32 srand_seed = 0;
     int32 frame_shift = 0;
     BaseFloat keep_proportion = 1.0;
+
     // The following config variables, if set, can be used to extract a single
     // frame of labels from a multi-frame example, and/or to reduce the amount
     // of context.
     int32 left_context = -1, right_context = -1;
+
     // you can set frame to a number to select a single frame with a particular
     // offset, or to 'random' to select a random single frame.
     std::string frame_str,

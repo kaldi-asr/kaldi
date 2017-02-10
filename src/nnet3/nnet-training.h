@@ -92,7 +92,8 @@ struct NnetTrainerOptions {
 // Also see struct AccuracyInfo, in nnet-diagnostics.h.
 struct ObjectiveFunctionInfo {
   int32 current_phase;
-  int32 num_minibatches;
+  int32 num_minibatches; // number of minibatches used to print stats using
+                         // PrintStatsForThisPhase for this output.
 
   double tot_weight;
   double tot_objf;
@@ -124,7 +125,8 @@ struct ObjectiveFunctionInfo {
 
   // Prints stats for the current phase.
   void PrintStatsForThisPhase(const std::string &output_name,
-                              int32 minibatches_per_phase) const;
+                              int32 minibatches_per_phase,
+                              int32 phase) const;
   // Prints total stats, and returns true if total stats' weight was nonzero.
   bool PrintTotalStats(const std::string &output_name) const;
 };

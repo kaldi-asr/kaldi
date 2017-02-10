@@ -137,6 +137,7 @@ void NnetChainTrainer::ProcessOutputs(const NnetChainExample &eg,
     computer->AcceptOutputDeriv(sup.name, &nnet_output_deriv);
 
     objf_info_[sup.name].UpdateStats(sup.name, opts_.nnet_config.print_interval,
+                                     num_minibatches_processed_++,
                                      tot_weight, tot_objf, tot_l2_term);
 
     if (use_xent) {
@@ -144,7 +145,6 @@ void NnetChainTrainer::ProcessOutputs(const NnetChainExample &eg,
       computer->AcceptOutputDeriv(xent_name, &xent_deriv);
     }
   }
-  num_minibatches_processed_++;
 }
 
 void NnetChainTrainer::UpdateParamsWithMaxChange() {

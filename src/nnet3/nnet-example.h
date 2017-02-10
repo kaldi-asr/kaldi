@@ -101,7 +101,6 @@ struct NnetExample {
   /// Caution: this operator == is not very efficient.  It's only used in
   /// testing code.
   bool operator == (const NnetExample &other) const { return io == other.io; }
-
 };
 
 

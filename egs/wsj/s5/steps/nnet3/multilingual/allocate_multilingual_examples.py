@@ -116,8 +116,7 @@ def get_args():
                         help="Name of egs directory e.g. exp/multilingual_a/egs")
 
 
-    print(' '.join(sys.argv))
-    print(sys.argv)
+    print(sys.argv, file=sys.stderr)
 
     args = parser.parse_args()
 
