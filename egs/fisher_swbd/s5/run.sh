@@ -334,6 +334,6 @@ fi
 
 # # The following is the current online-nnet2 recipe, with "multi-splice".
 # local/online/run_nnet2_ms.sh
-local/online/run_nnet2_ms.sh
+local/online/run_nnet2_ms.sh --stage 0
 
 
