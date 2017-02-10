@@ -299,6 +299,10 @@ def get_ivector_extractor_id(ivector_dir=None):
         return None
     [stdout_val, stderr_val] = run_kaldi_command(
         "steps/nnet2/get_ivector_id.sh {dir}".format(dir=ivector_dir))
+
+    if (stdout_val.strip() == "") or (stdout_val is None):
+        return None
+
     return stdout_val.strip()
 
 def get_feat_dim(feat_dir):
@@ -409,3 +413,4 @@ def write_idct_matrix(feat_dim, cepstral_lifter, file_path):
     for k in range(0, feat_dim):
         idct_matrix[k].append(0)
     write_kaldi_matrix(file_path, idct_matrix)
+

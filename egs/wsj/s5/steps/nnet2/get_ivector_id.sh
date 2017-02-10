@@ -33,7 +33,7 @@ elif [ -f $ivecdir/final.ie ] ; then
   echo "$id" > $ivecdir/final.ie.id || exit 1
   cat $ivecdir/final.ie.id
 else
-  exit 1
+  exit 0
 fi
 
 exit 0
