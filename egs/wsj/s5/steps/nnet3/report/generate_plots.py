@@ -220,6 +220,10 @@ def generate_nonlin_stats_plots(exp_dir, output_dir, plot, comparison_dir=None,
     for dir in dirs:
         stats_per_component_per_iter = (
             log_parse.parse_progress_logs_for_nonlinearity_stats(dir))
+        for key in stats_per_component_per_iter:
+            if len(stats_per_component_per_iter[key]['stats']) == 0:
+                logger.warning("Couldn't find any rows for the"
+                               "nonlin stats plot, not generating it")
         stats_per_dir[dir] = stats_per_component_per_iter
 
     # convert the nonlin stats into tables
@@ -350,6 +354,9 @@ def generate_clipped_proportion_plots(exp_dir, output_dir, plot,
                           " this might be because there are no "
                           "ClipGradientComponents.".format(dir))
             continue
+        if len(stats_per_dir[dir]) == 0: 
+            logger.warning("Couldn't find any rows for the"
+                           "clipped proportion plot, not generating it")
     try:
         main_cp_stats = stats_per_dir[exp_dir]['table']
     except KeyError:
