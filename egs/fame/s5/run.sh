@@ -34,8 +34,7 @@ if [ $stage -le 1 ]; then
   local/fame_data_prep.sh $famecorpus || exit 1;
   local/fame_dict_prep.sh $famecorpus || exit 1;
   utils/prepare_lang.sh data/local/dict "<UNK>" data/local/lang data/lang || exit 1;
-  cp -R data/lang data/lang_test || exit 1;
-  local/arpa2G.sh data/local/LM data/lang_test data/lang_test || exit 1;
+  utils/format_lm.sh data/lang data/local/LM.gz data/local/dict/lexicon.txt data/lang_test || exit 1;
 fi
 
 if [ $stage -le 2 ]; then

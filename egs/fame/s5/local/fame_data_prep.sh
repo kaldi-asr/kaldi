@@ -46,7 +46,7 @@ done
 
 echo "Copying language model"
 if [ -f $corpus/lm/LM_FR_IKN3G ] ; then
-    cp $corpus/lm/LM_FR_IKN3G data/local/LM
+    gzip -c $corpus/lm/LM_FR_IKN3G > data/local/LM.gz
 fi
 
 echo "Data preparation completed."
