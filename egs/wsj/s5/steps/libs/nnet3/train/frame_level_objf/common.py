@@ -71,7 +71,7 @@ def train_new_models(dir, iter, srand, num_jobs,
         archive_index = (k % num_archives) + 1
 
         if not chunk_level_training:
-            frame = (k / num_archives) % frames_per_eg
+            frame = (k / num_archives + archive_index) % frames_per_eg
 
         cache_write_opt = ""
         if job == 1:
