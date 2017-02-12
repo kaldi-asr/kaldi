@@ -85,6 +85,8 @@
        in nnet3; this allows faster and more-easily-online decoding for
        recurrent setups (but only unidirectionally-recurrent ones, like LSTMs
        but not BLSTMs).
+     - \ref online_decoding_nnet3 is now rewritten; it's faster and it supports
+       models like LSTMs.
      - The sequence-training scripts in nnet3 are refactored and are now simpler
        and use less disk space.
 
