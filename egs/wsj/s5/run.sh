@@ -347,29 +347,29 @@ done
 steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
   data/train_si284 data/lang exp/tri4b exp/tri4b_ali_si284 || exit 1;
 
-# These demonstrate how to build a sytem usable for online-decoding with the nnet2 setup.
+# These demonstrate how to build a system usable for online-decoding with the nnet2 setup.
 # (see local/run_nnet2.sh for other, non-online nnet2 setups).
-local/online/run_nnet2.sh
-local/online/run_nnet2_baseline.sh
-local/online/run_nnet2_discriminative.sh
+#local/online/run_nnet2.sh
+#local/online/run_nnet2_baseline.sh
+#local/online/run_nnet2_discriminative.sh
 
 # Demonstration of RNNLM rescoring on TDNN models. We comment this out by
 # default.
 # local/run_rnnlms.sh
 
-local/run_mmi_tri4b.sh
+#local/run_mmi_tri4b.sh
 
 #local/run_nnet2.sh
 
 # You probably want to run the sgmm2 recipe as it's generally a bit better:
-local/run_sgmm2.sh
+#local/run_sgmm2.sh
 
 # We demonstrate MAP adaptation of GMMs to gender-dependent systems here.  This also serves
 # as a generic way to demonstrate MAP adaptation to different domains.
 # local/run_gender_dep.sh
 
 # You probably want to run the hybrid recipe as it is complementary:
-local/nnet/run_dnn.sh
+#local/nnet/run_dnn.sh
 
 # The following demonstrate how to re-segment long audios.
 # local/run_segmentation.sh

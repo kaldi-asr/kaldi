@@ -284,10 +284,10 @@ for x in exp/nnet2_online/nnet_ms_a_online/decode_*rnnlm-hs.nce20.h400.voc40k; d
 
 # TDNN results:
 for x in exp/nnet3/nnet_tdnn_a/decode_*; do grep WER $x/wer_* | utils/best_wer.sh ; done
-%WER 7.19 [ 592 / 8234, 51 ins, 109 del, 432 sub ] exp/nnet3/nnet_tdnn_a/decode_bd_tgpr_dev93/wer_13_0.5
-%WER 3.93 [ 222 / 5643, 23 ins, 20 del, 179 sub ] exp/nnet3/nnet_tdnn_a/decode_bd_tgpr_eval92/wer_10_1.0
-%WER 9.78 [ 805 / 8234, 167 ins, 72 del, 566 sub ] exp/nnet3/nnet_tdnn_a/decode_tgpr_dev93/wer_10_0.0
-%WER 6.40 [ 361 / 5643, 87 ins, 16 del, 258 sub ] exp/nnet3/nnet_tdnn_a/decode_tgpr_eval92/wer_10_1.0
+%WER 6.95 [ 572 / 8234, 68 ins, 83 del, 421 sub ] exp/nnet3/nnet_tdnn_a/decode_bd_tgpr_dev93/wer_13_0.0
+%WER 4.00 [ 226 / 5643, 32 ins, 14 del, 180 sub ] exp/nnet3/nnet_tdnn_a/decode_bd_tgpr_eval92/wer_12_0.0
+%WER 9.64 [ 794 / 8234, 173 ins, 68 del, 553 sub ] exp/nnet3/nnet_tdnn_a/decode_tgpr_dev93/wer_11_0.0
+%WER 6.40 [ 361 / 5643, 82 ins, 23 del, 256 sub ] exp/nnet3/nnet_tdnn_a/decode_tgpr_eval92/wer_12_1.0
 
 # local/nnet3/run_lstm.sh
 # LSTM results: cell_dim=1024, recurrent_projection_dim=non_recurrent_projection_dim=256,lstm_delay=-1 -2 -3, label_delay=5, num_params=11894059

@@ -131,7 +131,7 @@ if [ $stage -le 4 ]; then
         exp/nnet3${nnet3_affix}/tri5
       ;;
     *) echo "$0: invalid feature type $feature_type" && exit 1;
-esac
+  esac
 fi
 
 if [ $stage -le 5 ]; then

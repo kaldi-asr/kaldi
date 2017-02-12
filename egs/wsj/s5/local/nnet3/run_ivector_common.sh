@@ -9,6 +9,7 @@
 mfccdir=mfcc
 
 stage=1
+feat_type=lda
 
 . cmd.sh
 . ./path.sh
@@ -25,23 +26,35 @@ if [ $stage -le 1 ]; then
   utils/subset_data_dir.sh --first data/train_si284_hires 7138 data/train_si84_hires || exit 1
 fi
 
-if [ $stage -le 2 ]; then
+if [ $stage -le 2 ] && [ "$feat_type" == "lda" ]; then
   # We need to build a small system just because we need the LDA+MLLT transform
   # to train the diag-UBM on top of.  We align the si84 data for this purpose.
-
   steps/align_fmllr.sh --nj 40 --cmd "$train_cmd" \
     data/train_si84 data/lang exp/tri4b exp/nnet3/tri4b_ali_si84
 fi
 
 if [ $stage -le 3 ]; then
-  # Train a small system just for its LDA+MLLT transform.  We use --num-iters 13
-  # because after we get the transform (12th iter is the last), any further
-  # training is pointless.
-  steps/train_lda_mllt.sh --cmd "$train_cmd" --num-iters 13 \
-    --realign-iters "" \
-    --splice-opts "--left-context=3 --right-context=3" \
-    5000 10000 data/train_si84_hires data/lang \
-     exp/nnet3/tri4b_ali_si84 exp/nnet3/tri5b
+  case $feat_type in
+    lda)
+      # Train a small system just for its LDA+MLLT transform.  We use --num-iters 13
+      # because after we get the transform (12th iter is the last), any further
+      # training is pointless.
+      echo "$0: training a system on the hires data for its LDA+MLLT transform, in order to produce the diagonal GMM."
+      steps/train_lda_mllt.sh --cmd "$train_cmd" --num-iters 13 \
+        --realign-iters "" \
+        --splice-opts "--left-context=3 --right-context=3" \
+        5000 10000 data/train_si84_hires data/lang \
+        exp/nnet3/tri4b_ali_si84 exp/nnet3/tri5b
+      ;;
+    pca)
+      echo "$0: computing a PCA transform from the hires data, in order to produce the diagonal GMM."
+      steps/online/nnet2/get_pca_transform.sh --cmd "$train_cmd" \
+        --splice-opts "--left-context=3 --right-context=3" \
+        --max-utts 10000 --subsample 2 \
+        data/train_si84_hires exp/nnet3/tri5b
+      ;;
+    *) echo "$0: invalid feature type $feature_type" && exit 1;
+  esac
 fi
 
 if [ $stage -le 4 ]; then

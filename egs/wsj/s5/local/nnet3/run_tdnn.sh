@@ -12,6 +12,7 @@
 
 stage=0
 train_stage=-10
+ivector_feat_type=pca
 dir=exp/nnet3/nnet_tdnn_a
 . cmd.sh
 . ./path.sh
@@ -26,7 +27,8 @@ where "nvcc" is installed.
 EOF
 fi
 
-local/nnet3/run_ivector_common.sh --stage $stage || exit 1;
+local/nnet3/run_ivector_common.sh --stage $stage \
+  --feat-type "$ivector_feat_type" || exit 1;
 
 if [ $stage -le 8 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
