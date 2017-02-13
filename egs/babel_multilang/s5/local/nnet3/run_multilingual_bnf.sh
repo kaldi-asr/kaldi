@@ -20,11 +20,9 @@ set -o pipefail  #Exit if any of the commands in the pipeline will
 set -u           #Fail on an undefined variable
 bnf_train_stage=-10 # the stage variable used in multilingual bottleneck training.
 stage=1
-num_archives=20
 speed_perturb=true
 multidir=exp/nnet3/multi_bnf_10_close_lang_plus_grg
 global_extractor=exp/multi/nnet3/extractor
-#lang_list=(ASM BNG CNT HAI LAO PSH TAM TGL TUR VTN ZUL GRG)
 lang_list=(404-georgian 403-dholuo 402-javanese 401-mongolian 307-amharic)
 use_flp=true
 
@@ -60,7 +58,6 @@ mkdir -p $multidir${suffix}
 if [ ! -f $multidir${suffix}/.done ]; then
   echo "$0: Train multilingual DNN using Bottleneck layer with lang list = ${lang_list[@]}"
   . local/nnet3/run_tdnn_multilingual.sh --dir $multidir \
-     --avg-num-archives $num_archives \
      --bnf-dim 128 \
      --global-extractor $global_extractor \
      --train-stage $bnf_train_stage --stage $stage  || exit 1;
@@ -77,7 +74,6 @@ if [ ! -f $data_bnf_dir/.done ]; then
   # put the archives in ${dump_bnf_dir}/.
   steps/nnet3/make_bottleneck_features.sh --use-gpu true --nj 70 --cmd "$train_cmd" \
     --ivector-dir $ivector_dir \
-    --bnf-name Tdnn_Bottleneck_renorm \
     $datadir $data_bnf_dir \
     $multidir $dump_bnf_dir $exp_dir/make_train_bnf || exit 1;
   touch $data_bnf_dir/.done

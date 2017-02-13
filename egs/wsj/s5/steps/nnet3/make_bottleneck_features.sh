@@ -9,7 +9,7 @@ stage=1
 nj=4
 cmd=queue.pl
 use_gpu=false
-bnf_name=tdnn_bn_renorm # the component-node name in nnet3 model used for
+bnf_name=tdnn_bn.renorm # the component-node name in nnet3 model used for
                         # bottleneck feature extraction
 ivector_dir=
 # End configuration options.
@@ -84,7 +84,7 @@ if [ "$ivector_dir" != "" ];then
 fi
 
 feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
-ivec_feats="scp:utils/filter_scp.pl $sdata/JOB/utt2spk $ivector_dir/ivector_online.scp |"
+ivector_feats="scp:utils/filter_scp.pl $sdata/JOB/utt2spk $ivector_dir/ivector_online.scp |"
 
 if [ $stage -le 1 ]; then
   echo "$0: Generating bottleneck features using $bnf_nnet model as output of "
@@ -93,8 +93,8 @@ if [ $stage -le 1 ]; then
   modified_bnf_nnet="nnet3-copy --edits='remove-output-nodes name=output' $bnf_nnet - | nnet3-copy --nnet-config=output.config - - |"
   ivector_opts=
   if $use_ivector; then
-    ivec_period=`grep ivector-period $ivector_dir/conf/ivector_extractor.conf  | cut -d"=" -f2`
-    ivector_opts="--online-ivector-period=$ivec_period --online-ivectors='$ivec_feats'"
+    ivector_period=`grep ivector-period $ivector_dir/conf/ivector_extractor.conf  | cut -d"=" -f2`
+    ivector_opts="--online-ivector-period=$ivector_period --online-ivectors='$ivector_feats'"
   fi
   $cmd $compute_queue_opt JOB=1:$nj $logdir/make_bnf_$name.JOB.log \
     nnet3-compute $compute_gpu_opt $ivector_opts "$modified_bnf_nnet" "$feats" ark:- \| \

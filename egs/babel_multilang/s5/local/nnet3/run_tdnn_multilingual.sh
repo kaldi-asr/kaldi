@@ -56,7 +56,7 @@ dir=exp/nnet3/multi_bnf
 ivector_suffix=_gb # if ivector_suffix = _gb, the iVector extracted using global iVector extractor
                    # trained on pooled data from all languages.
                    # Otherwise, it uses iVector extracted using local iVector extractor.
-bnf_dim=256        # If non-empty, the bottleneck layer with this dimension is added at two layers before softmax.
+bnf_dim=           # If non-empty, the bottleneck layer with this dimension is added at two layers before softmax.
 . ./path.sh
 . ./cmd.sh
 . ./utils/parse_options.sh
@@ -87,23 +87,25 @@ fi
 if $use_pitch; then feat_suffix=${feat_suffix}_pitch ; fi
 dir=${dir}${suffix}
 
-# extract high resolution MFCC features for speed-perturbed data
-# and extract alignment
 for lang_index in `seq 0 $[$num_langs-1]`; do
-  echo "$0: extract 40dim MFCC + pitch for speed-perturbed data"
+  echo "$0: extract high resolution 40dim MFCC + pitch for speed-perturbed data "
+  echo "and extract alignment."
   local/nnet3/run_common_langs.sh --stage $stage \
     --speed-perturb $speed_perturb ${lang_list[$lang_index]} || exit;
 done
-# we use ivector extractor trained on pooled data from all languages
-# using an LDA+MLLT transform arbitrarily chosen from single language.
-if $use_ivector && [ ! -f $global_extractor/.done ]; then
+
+if $use_ivector; then
+  mkdir -p data/multi
+  mkdir -p exp/multi/nnet3
+  global_extractor=exp/multi/nnet3/extractor
+  multi_dir_data=data/multi/train${suffix}_hires
+
   echo "$0: combine training data using all langs for training global i-vector extractor."
-  if [ ! -f data/multi/train${suffix}_hires/.done ]; then
+  if [ ! -f $multi_dir_data/.done ]; then
     echo ---------------------------------------------------------------------
-    echo "Pooling training data in data/multi${suffix}_hires on" `date`
+    echo "Pooling training data in $multi_dir_data on" `date`
     echo ---------------------------------------------------------------------
-    mkdir -p data/multi
-    mkdir -p data/multi/train${suffix}_hires
+    mkdir -p $multi_dir_data
     combine_lang_list=""
     for lang_index in `seq 0 $[$num_langs-1]`;do
       combine_lang_list="$combine_lang_list data/${lang_list[$lang_index]}/train${suffix}_hires"
@@ -112,25 +114,30 @@ if $use_ivector && [ ! -f $global_extractor/.done ]; then
     utils/validate_data_dir.sh --no-feats data/multi/train${suffix}_hires
     touch data/multi/train${suffix}_hires/.done
   fi
-  echo "$0: Generate global i-vector extractor using data/multi"
-  local/nnet3/run_shared_ivector_extractor.sh --global-extractor $global_extractor \
-    --stage $stage ${lang_list[0]} || exit 1;
-  touch $global_extractor/.done
 
-  echo "$0: Extract ivector for all languages."
+  if [ ! -f $global_extractor/.done ]; then
+    echo "$0: Generate global i-vector extractor on pooled data from all "
+    echo "languages in $multi_data_dir, using an LDA+MLLT transform trained "
+    echo "on ${lang_list[0]}."
+    local/nnet3/run_shared_ivector_extractor.sh --global-extractor $global_extractor \
+      --suffix $suffix \
+      --stage $stage ${lang_list[0]} || exit 1;
+    touch $global_extractor/.done
+  fi
+  echo "$0: Extracts ivector for all languages usin $global_extractor/extractor."
   for lang_index in `seq 0 $[$num_langs-1]`; do
     local/nnet3/extract_ivector_lang.sh --stage $stage \
-      --global-extractor $global_extractor \
-      --train-set train$suffix ${lang_list[$lang_index]} || exit;
+      --train-set train$suffix ${lang_list[$lang_index]} \
+      --ivector-suffix $ivector_suffix \
+      data/multi/train${suffix}_hires \
+      $global_extractor || exit;
   done
 fi
 
-
-# set num_leaves for all languages
 for lang_index in `seq 0 $[$num_langs-1]`; do
   multi_data_dirs[$lang_index]=data/${lang_list[$lang_index]}/train${suffix}${feat_suffix}
   multi_egs_dirs[$lang_index]=exp/${lang_list[$lang_index]}/nnet3/egs${ivector_suffix}
-  multi_ali_dirs[$lang_index]=exp/${lang_list[$lang_index]}/tri5_ali${suffix}
+  multi_ali_dirs[$lang_index]=exp/${lang_list[$lang_index]}/${alidir}${suffix}
   multi_ivector_dirs[$lang_index]=exp/${lang_list[$lang_index]}/nnet3/ivectors_train${suffix}${ivector_suffix}
 done
 
@@ -157,7 +164,6 @@ if [ $stage -le 9 ]; then
   local/nnet3/prepare_multilingual_egs.sh --cmd "$decode_cmd" \
     "${ivector_opts[@]}" \
     --left-context $model_left_context --right-context $model_right_context \
-    --samples-per-iter 400000 \
     $num_langs ${multi_data_dirs[@]} ${multi_ali_dirs[@]} ${multi_egs_dirs[@]} || exit 1;
 
 fi

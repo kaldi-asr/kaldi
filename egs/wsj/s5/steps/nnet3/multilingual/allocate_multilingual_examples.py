@@ -7,11 +7,11 @@
 """ This script generates egs.archive.scp and ranges.* used for multilingual setup.
     Also this script generates outputs.*.ark and weight.*.ark, where each line
     corresponds to language-id and weight for the same example in egs.*.scp.
-    weight.*.ark is rscpecifier of table indexed by the key of input example
+    weight.*.ark is archive of table indexed by the key of input example
     used to scale the eg's output supervision during training.
     Scaling output supervision is the same as scaling the derivative during
     training for linear objectives.
-    output.*.ark is rscpecifier of table indexed by the key of input example and
+    output.*.ark is archive of table indexed by the key of input example and
     value of output-name as target language for eg.
     ranges.*.scp is randomly generated list of examples from input languages
     generated using frequency distribution of remaining examples in each language.
@@ -149,10 +149,9 @@ def select_random_lang(lang_len, tot_egs, random_selection):
     return rand_lang
 
 def read_lang2weight(lang2w_file):
-    """ Read lang2weight file where each line 2-tuple of
-        (lang-num lang-weight)
-        and return array of lang-weight as lang2w
-        where lang2w[i] is the weight for language i.
+    """ Read lang2weight file where each line is a 2-tuple of
+        (lang-num lang-weight) and return array of lang-weight
+        as lang2w where lang2w[i] is the weight for language i.
     """
     f = open(lang2w_file, "r")
     if f is None:
@@ -217,7 +216,7 @@ def  process_multilingual_egs(args):
         for archive_index in range(num_archives):
             archfile = open("{0}/temp/{1}scp.{2}.{3}"
                             "".format(args.egs_dir, args.prefix,
-                                      job + 1, archive_index + 1),"w")
+                                      job + 1, archive_index + 1), "w")
             this_egs = [] # this will be array of 2-tuples (lang-id start-frame num-frames)
 
             num_egs = 0

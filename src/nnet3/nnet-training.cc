@@ -80,6 +80,7 @@ void NnetTrainer::ProcessOutputs(const NnetExample &eg,
                                  NnetComputer *computer) {
   std::vector<NnetIo>::const_iterator iter = eg.io.begin(),
       end = eg.io.end();
+  num_minibatches_processed_++;
   for (; iter != end; ++iter) {
     const NnetIo &io = *iter;
     int32 node_index = nnet_->GetNodeIndex(io.name);
@@ -92,7 +93,7 @@ void NnetTrainer::ProcessOutputs(const NnetExample &eg,
                                supply_deriv, computer,
                                &tot_weight, &tot_objf);
       objf_info_[io.name].UpdateStats(io.name, config_.print_interval,
-                                      num_minibatches_processed_++,
+                                      num_minibatches_processed_,
                                       tot_weight, tot_objf);
     }
   }
@@ -254,7 +255,7 @@ void ObjectiveFunctionInfo::PrintStatsForThisPhase(
       end_minibatch = phase * minibatches_per_phase - 1;
 
   if (tot_aux_objf_this_phase == 0.0) {
-    if (minibatches_per_phase != num_minibatches) {
+    if (minibatches_per_phase == num_minibatches) {
       KALDI_LOG << "Average objective function for '" << output_name
                 << "' for minibatches " << start_minibatch
                 << '-' << end_minibatch << " is "
@@ -272,7 +273,7 @@ void ObjectiveFunctionInfo::PrintStatsForThisPhase(
     BaseFloat objf = (tot_objf_this_phase / tot_weight_this_phase),
         aux_objf = (tot_aux_objf_this_phase / tot_weight_this_phase),
         sum_objf = objf + aux_objf;
-    if (minibatches_per_phase != num_minibatches) {
+    if (minibatches_per_phase == num_minibatches) {
       KALDI_LOG << "Average objective function for '" << output_name
                 << "' for minibatches " << start_minibatch
                 << '-' << end_minibatch << " is "

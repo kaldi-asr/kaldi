@@ -321,7 +321,7 @@ int main(int argc, char *argv[]) {
     // you can set frame to a number to select a single frame with a particular
     // offset, or to 'random' to select a random single frame.
     std::string frame_str,
-      eg_weight_rspecifier, eg_output_rspecifier;
+      eg_weight_rxfilename, eg_output_rxfilename;
 
     ParseOptions po(usage);
     po.Register("random", &random, "If true, will write frames to output "
@@ -344,21 +344,16 @@ int main(int argc, char *argv[]) {
                 "feature left-context that we output.");
     po.Register("right-context", &right_context, "Can be used to truncate the "
                 "feature right-context that we output.");
-    po.Register("weights", &eg_weight_rspecifier,
-                "Rspecifier of a table indexed by the key of input examples"
-                "and value of scalar weights. "
-                "If provided, the supervision output in eg is scaled using weight. "
-                "Scaling output supervision is the same as scaling the "
-                "derivative during training for linear objective. "
-                "This can be created using "
+    po.Register("weights", &eg_weight_rxfilename,
+                "Rspecifier indexed by the example-id and value of scalar "
+                "weights. If provided, the supervision in eg is scaled "
+                "using weight. This can be created using "
                 "steps/nnet3/multilingual/allocate_multilingual_egs.py"
-                "If not provided, the default is one, which means we are "
-                "not applying per-example weights.");
-    po.Register("outputs", &eg_output_rspecifier,
-                "Rspecifier of a table indexed by the key of input examples"
-                "and value of string output-name."
+                "If not provided, the default weight is taken to be one.");
+    po.Register("outputs", &eg_output_rxfilename,
+                "Rspecifiers indexed by the example-id and value of output-name."
                 "If provided, the NnetIo with name 'output' in eg"
-                "is renamed to string output-name. This can be created using "
+                "is renamed to new output-name. This can be created using "
                 "steps/nnet3/multilingual/allocate_multilingual_egs.py");
 
     po.Read(argc, argv);
@@ -374,8 +369,8 @@ int main(int argc, char *argv[]) {
 
     SequentialNnetExampleReader example_reader(examples_rspecifier);
 
-    RandomAccessTokenReader output_reader(eg_output_rspecifier);
-    RandomAccessBaseFloatReader egs_weight_reader(eg_weight_rspecifier);
+    RandomAccessTokenReader output_reader(eg_output_rxfilename);
+    RandomAccessBaseFloatReader egs_weight_reader(eg_weight_rxfilename);
     int32 num_outputs = po.NumArgs() - 1;
     std::vector<NnetExampleWriter*> example_writers(num_outputs);
     for (int32 i = 0; i < num_outputs; i++)
@@ -387,8 +382,8 @@ int main(int argc, char *argv[]) {
       // count is normally 1; could be 0, or possibly >1.
       int32 count = GetCount(keep_proportion);
       std::string key = example_reader.Key();
-      bool modify_eg_output = !(eg_output_rspecifier.empty() &&
-                                eg_weight_rspecifier.empty());
+      bool modify_eg_output = !(eg_output_rxfilename.empty() &&
+                                eg_weight_rxfilename.empty());
       NnetExample eg_modified_output;
       const NnetExample &eg_orig = example_reader.Value(),
         &eg = (modify_eg_output ? eg_modified_output : eg_orig);
@@ -397,7 +392,7 @@ int main(int argc, char *argv[]) {
       std::string new_output_name;
       if (modify_eg_output) {
         eg_modified_output = eg_orig;
-        if (!eg_weight_rspecifier.empty()) {
+        if (!eg_weight_rxfilename.empty()) {
           if (!egs_weight_reader.HasKey(key)) {
             KALDI_WARN << "No weight for example key " << key;
             num_err++;
@@ -405,7 +400,7 @@ int main(int argc, char *argv[]) {
           }
           weight = egs_weight_reader.Value(key);
         }
-        if (!eg_output_rspecifier.empty()) {
+        if (!eg_output_rxfilename.empty()) {
           if (!output_reader.HasKey(key)) {
             KALDI_WARN << "No new output-name for example key " << key;
             num_err++;

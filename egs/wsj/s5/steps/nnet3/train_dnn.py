@@ -84,7 +84,7 @@ def get_args():
                         "all other files.")
 
     print(' '.join(sys.argv), file=sys.stderr)
-    print(sys.argv)
+    print(sys.argv, file=sys.stderr)
 
     args = parser.parse_args()
 

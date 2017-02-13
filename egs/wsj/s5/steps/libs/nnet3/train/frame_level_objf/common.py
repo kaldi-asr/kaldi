@@ -51,6 +51,10 @@ def train_new_models(dir, iter, srand, num_jobs,
             implies a min_deriv_time of 0 is used. During RNN training, its
             value is set to chunk_width - num_bptt_steps in the training
             script.
+        use_multitask_egs : True, if different examples used to train multiple
+                            tasks or outputs, e.g.multilingual training.
+                            multilingual egs can be generated using
+                            steps/nnet3/multilingual/allocate_multilingual_examples.py
     """
 
     chunk_level_training = False if frames_per_eg > 0 else True

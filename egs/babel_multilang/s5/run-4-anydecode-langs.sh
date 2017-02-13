@@ -418,7 +418,6 @@ if [ -f $nnet3_dir/$lang/final.mdl ]; then
   echo "nnet3 decoding"
   decode=$nnet3_dir/$lang/decode_${dataset_id}
   rnn_opts=
-  decode_script=steps/nnet3/decode.sh
   aux_suffix=
 
   # suffix for using other features such as pitch
@@ -437,12 +436,11 @@ if [ -f $nnet3_dir/$lang/final.mdl ]; then
   fi
   if [ "$is_rnn" == "true" ]; then
     rnn_opts=" --extra-left-context $extra_left_context --extra-right-context $extra_right_context  --frames-per-chunk $frames_per_chunk "
-    decode_script=steps/nnet3/decode.sh
   fi
   if [ ! -f $decode/.done ]; then
     mkdir -p $decode
     score_opts="--skip-scoring false"
-    $decode_script --nj $my_nj --cmd "$decode_cmd" $rnn_opts --stage $decode_stage \
+    steps/nnet3/decode.sh --nj $my_nj --cmd "$decode_cmd" $rnn_opts --stage $decode_stage \
           --beam $dnn_beam --lattice-beam $dnn_lat_beam \
           $score_opts $ivector_opts \
           exp/$lang/tri5/graph ${dataset_dir}_hires${aux_suffix} $decode | tee $decode/decode.log

@@ -98,4 +98,3 @@ def prepare_acoustic_model(dir, alidir, run_opts, model="final"):
                    dir=dir, alidir=alidir,
                    model=model))
 
-
