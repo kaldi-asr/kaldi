@@ -55,12 +55,18 @@ struct Index {
   bool operator < (const Index &a) const {
     if (t < a.t) { return true; }
     else if (t > a.t) { return false; }
-    else if (n < a.n) { return true; }
-    else if (n > a.n) { return false; }
-    else return (x < a.x);
+    else if (x < a.x) { return true; }
+    else if (x > a.x) { return false; }
+    else return (n < a.n);
   }
   Index operator + (const Index &other) const {
     return Index(n+other.n, t+other.t, x+other.x);
+  }
+  Index &operator += (const Index &other) {
+    n += other.n;
+    t += other.t;
+    x += other.x;
+    return *this;
   }
 
   void Write(std::ostream &os, bool binary) const;
@@ -105,6 +111,16 @@ struct IndexHasher {
 
 struct CindexHasher {
   size_t operator () (const Cindex &cindex) const;
+};
+
+struct CindexVectorHasher {
+  size_t operator () (const std::vector<Cindex> &cindex_vector) const;
+};
+
+// Note: because IndexVectorHasher is used in some things where we really need
+// it to be fast, it doesn't look at all the indexes, just most of them.
+struct IndexVectorHasher {
+  size_t operator () (const std::vector<Index> &index_vector) const;
 };
 
 

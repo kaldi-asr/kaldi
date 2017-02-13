@@ -402,27 +402,6 @@ void GetWeightsForRanges(int32 range_length,
                          std::vector<Vector<BaseFloat> > *weights);
 
 
-/// This is a newer version of GetWeightsForRanges with a simpler behavior
-/// than GetWeightsForRanges and a different purpose.  Instead of aiming to
-/// create weights that sum to one over the whole file, the purpose is to
-/// zero out the derivative weights for a certain number of frames to each
-/// side of every 'cut point' in the numerator lattice [by numerator lattice,
-/// what I mean is the FST that we automatically generate from the numerator
-/// alignment or lattice].  So we don't zero out the weights for the very
-/// beginning or very end of each original utterance, just those where
-/// we split the utterance into pieces.  We believe there is an incentive
-/// for the network to produce deletions near the edges, and this aims to fix
-/// this problem.
-/// range_length is the length of each range of times (so range_starts[0]
-/// represents the start of a range of t values of length 'range_length'
-/// and so range_starts[1] etc.), and num_frames_zeroed is the number of frames
-/// on each side of the cut point on which we are supposed to zero out the
-/// derivative.
-void GetWeightsForRangesNew(int32 range_length,
-                            int32 num_frames_zeroed,
-                            const std::vector<int32> &range_starts,
-                            std::vector<Vector<BaseFloat> > *weights);
-
 
 typedef TableWriter<KaldiObjectHolder<Supervision> > SupervisionWriter;
 typedef SequentialTableReader<KaldiObjectHolder<Supervision> > SequentialSupervisionReader;

@@ -316,7 +316,7 @@ int main(int argc, char *argv[]) {
       }
 
       Project(&result_fst, PROJECT_OUTPUT);
-      Minimize(&result_fst);
+      Minimize(&result_fst, (KwsLexicographicFst *) nullptr, kDelta, true);
       ShortestPath(result_fst, &result_fst, n_best);
       RmEpsilon(&result_fst);
 

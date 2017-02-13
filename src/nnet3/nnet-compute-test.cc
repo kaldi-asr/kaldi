@@ -24,6 +24,8 @@
 #include "nnet3/nnet-test-utils.h"
 #include "nnet3/nnet-optimize.h"
 #include "nnet3/nnet-compute.h"
+#include "nnet3/nnet-am-decodable-simple.h"
+#include "nnet3/decodable-simple-looped.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -71,13 +73,64 @@ void UnitTestComputationRequestIo(ComputationRequest *request) {
   }
 }
 
-void TestNnetDecodable(const ComputationRequest &request,
-                       const std::vector<Matrix<BaseFloat> > &inputs,
-                       const Nnet &nnet,
-                       const CuMatrixBase<BaseFloat> &reference_output) {
-  // DecodableAmNnetSimpleOptions opts;
-  // This is a placeholder for where we'll eventually test either the decodable
-  // object or something similar to it (e.g. a base class)
+// this checks that a couple of different decodable objects give the same
+// answer.
+void TestNnetDecodable(Nnet *nnet) {
+  int32 num_frames = 5 + RandInt(1, 100),
+      input_dim = nnet->InputDim("input"),
+      output_dim = nnet->OutputDim("output"),
+      ivector_dim = std::max<int32>(0, nnet->InputDim("ivector"));
+  Matrix<BaseFloat> input(num_frames, input_dim);
+
+
+  input.SetRandn();
+  Vector<BaseFloat> ivector(ivector_dim);
+  ivector.SetRandn();
+
+  Vector<BaseFloat> priors(RandInt(0, 1) == 0 ? output_dim : 0);
+  if (priors.Dim() != 0) {
+    priors.SetRandn();
+    priors.ApplyExp();
+  }
+
+  Matrix<BaseFloat> output1(num_frames, output_dim),
+      output2(num_frames, output_dim);
+
+  {
+    NnetSimpleComputationOptions opts;
+    opts.frames_per_chunk = RandInt(5, 25);
+    CachingOptimizingCompiler compiler(*nnet);
+    DecodableNnetSimple decodable(opts, *nnet, priors, input, &compiler,
+                                  (ivector_dim != 0 ? &ivector : NULL));
+    for (int32 t = 0; t < num_frames; t++) {
+      SubVector<BaseFloat> row(output1, t);
+      decodable.GetOutputForFrame(t, &row);
+    }
+  }
+
+  {
+    NnetSimpleLoopedComputationOptions opts;
+    // caution: this may modify nnet, by changing how it consumes iVectors.
+    DecodableNnetSimpleLoopedInfo info(opts, priors, nnet);
+    DecodableNnetSimpleLooped decodable(info, input,
+                                        (ivector_dim != 0 ? &ivector : NULL));
+    for (int32 t = 0; t < num_frames; t++) {
+      SubVector<BaseFloat> row(output2, t);
+      decodable.GetOutputForFrame(t, &row);
+    }
+  }
+
+
+  if (!NnetIsRecurrent(*nnet) &&
+      nnet->Info().find("statistics-extraction") == std::string::npos) {
+    // this equivalence will not hold for recurrent nnets or those that
+    // have the statistics-extraction/statistics-pooling layers.
+    for (int32 t = 0; t < num_frames; t++) {
+      SubVector<BaseFloat> row1(output1, t),
+          row2(output2, t);
+      KALDI_ASSERT(row1.ApproxEqual(row2));
+    }
+  }
 }
 
 void UnitTestNnetCompute() {
@@ -119,7 +172,9 @@ void UnitTestNnetCompute() {
     if (RandInt(0, 1) == 0) {
       NnetOptimizeOptions opt_config;
 
-      Optimize(opt_config, nnet, request, &computation);
+      Optimize(opt_config, nnet,
+               MaxOutputTimeInRequest(request),
+               &computation);
       {
         std::ostringstream os;
         computation.Print(os, nnet);
@@ -142,26 +197,26 @@ void UnitTestNnetCompute() {
       KALDI_LOG << "Input sum is " << temp.Sum();
       computer.AcceptInput(request.inputs[i].name, &temp);
     }
-    computer.Forward();
+    computer.Run();
     const CuMatrixBase<BaseFloat> &output(computer.GetOutput("output"));
-
-    TestNnetDecodable(request, inputs, nnet, output);
 
     KALDI_LOG << "Output sum is " << output.Sum();
     CuMatrix<BaseFloat> output_deriv(output.NumRows(), output.NumCols());
     output_deriv.SetRandn();
     // output_deriv sum won't be informative so don't print it.
-    if (request.outputs[0].has_deriv)
-      computer.AcceptOutputDeriv("output", &output_deriv);
-    computer.Backward();
-    for (size_t i = 0; i < request.inputs.size(); i++) {
-      if (request.inputs[i].has_deriv) {
-        const CuMatrixBase<BaseFloat> &in_deriv =
-            computer.GetInputDeriv(request.inputs[i].name);
-        KALDI_LOG << "Input-deriv sum for input '"
-                  << request.inputs[i].name << "' is " << in_deriv.Sum();
+    if (request.outputs[0].has_deriv) {
+      computer.AcceptInput("output", &output_deriv);
+      computer.Run();
+      for (size_t i = 0; i < request.inputs.size(); i++) {
+        if (request.inputs[i].has_deriv) {
+          const CuMatrixBase<BaseFloat> &in_deriv =
+              computer.GetOutput(request.inputs[i].name);
+          KALDI_LOG << "Input-deriv sum for input '"
+                    << request.inputs[i].name << "' is " << in_deriv.Sum();
+        }
       }
     }
+    TestNnetDecodable(&nnet);
   }
 }
 
@@ -171,7 +226,7 @@ void UnitTestNnetCompute() {
 int main() {
   using namespace kaldi;
   using namespace kaldi::nnet3;
-  //SetVerboseLevel(2);
+  // SetVerboseLevel(4);
 
 
   for (kaldi::int32 loop = 0; loop < 2; loop++) {
@@ -189,4 +244,3 @@ int main() {
 
   return 0;
 }
-

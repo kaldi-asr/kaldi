@@ -9,7 +9,7 @@
 #   LDFLAGS="-llapack"
 
 # Maximum make parallelism. Simply -j runs out of memory on Travis VM.
-MAXPAR=3
+MAXPAR=4
 
 # Directories with code that can be tested with Travis (space-separated)
 TESTABLE_DIRS="src/"
@@ -17,7 +17,7 @@ TESTABLE_DIRS="src/"
 # Run verbose (run and echo) and exit if failed.
 runvx() {
   echo "\$ $@"
-  "$@" || exit 1
+  eval "$@" || exit 1
 }
 
 # $(addsw -L foo bar) => "-Lfoo -Lbar".
@@ -28,7 +28,7 @@ addsw() {
 }
 
 # $(mtoken CXX gcc) => "CXX=gcc"; # $(mtoken CXX ) => "".
-mtoken() { echo ${2+$1=$2}; }
+mtoken() { echo ${2+$1=\"$2\"}; }
 
 # Print machine info and environment.
 runvx uname -a
@@ -45,23 +45,33 @@ then
   exit 0;
 fi
 
-# Prepare make command fragments.
-CF="$CFLAGS -g $(addsw -I $INCDIRS)"
-LDF="$LDFLAGS $(addsw -L $LIBDIRS)"
-CCC="$(mtoken CC $CXX) $(mtoken CXX $CXX)"
+# Prepare environment variables
+CF="\"$CFLAGS -g $(addsw -I $INCDIRS)\""
+LDF="\"$LDFLAGS $(addsw -L $LIBDIRS)\""
+CCC="$(mtoken CXX "$CXX")"
 
+# Randomly choose between single and double precision
+if [[ $(( RANDOM % 2 )) == 1 ]] ; then
+  DPF="--double-precision=yes"
+else
+  DPF="--double-precision=no"
+fi
+
+echo "Building tools..." [Time: $(date)]
 runvx cd tools
-runvx make openfst $CCC CXXFLAGS="$CF" -j$MAXPAR
+runvx make openfst "$CCC" CXXFLAGS="$CF" -j$MAXPAR
 cd ..
+
+echo "Building src..." [Time: $(date)]
 runvx cd src
-runvx ./configure --shared --use-cuda=no  --mathlib=OPENBLAS --openblas-root=$XROOT/usr
+runvx "$CCC" CXXFLAGS="$CF" LDFLAGS="$LDF" ./configure --shared --use-cuda=no "$DPF" --mathlib=OPENBLAS --openblas-root="$XROOT/usr"
+runvx make all -j$MAXPAR
+runvx make ext -j$MAXPAR
 
-make_kaldi() {
-  runvx make "$@" $CCC EXTRA_CXXFLAGS="$CF" EXTRA_LDLIBS="$LDF"
-}
+echo "Running tests..." [Time: $(date)]
+runvx make test -k -j$MAXPAR
 
-#make_kaldi mklibdir base matrix -j$MAXPAR
-#make_kaldi matrix/test
+echo "Done." [Time: $(date)]
 
-make_kaldi all -j$MAXPAR
-make_kaldi test -k
+#runvx make mklibdir base matrix -j$MAXPAR
+#runvx make matrix/test

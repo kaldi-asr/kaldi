@@ -13,6 +13,8 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
 
+_debug_dropout = False
+
 def _parse_dropout_option(dropout_option):
     """Parses the string option to --trainer.dropout-schedule and
     returns a list of dropout schedules for different component name patterns.
@@ -53,11 +55,12 @@ def _parse_dropout_option(dropout_option):
         this_dropout_values = _parse_dropout_string(this_dropout_str)
         dropout_schedule.append((component_name, this_dropout_values))
 
-    logger.info("Dropout schedules for component names is as follows:")
-    logger.info("<component-name-pattern>: [(num_archives_processed), "
-                "(dropout_proportion) ...]")
-    for name, schedule in dropout_schedule:
-        logger.info("{0}: {1}".format(name, schedule))
+    if _debug_dropout:
+        logger.info("Dropout schedules for component names is as follows:")
+        logger.info("<component-name-pattern>: [(num_archives_processed), "
+                    "(dropout_proportion) ...]")
+        for name, schedule in dropout_schedule:
+            logger.info("{0}: {1}".format(name, schedule))
 
     return dropout_schedule
 
@@ -236,7 +239,8 @@ def get_dropout_edit_string(dropout_schedule, data_fraction, iter_):
         dropout_info.append("pattern/dropout-proportion={0}/{1}".format(
             component_name, dropout_proportion))
 
-    logger.info("On iteration %d, %s", iter_, ', '.join(dropout_info))
+    if _debug_dropout:
+        logger.info("On iteration %d, %s", iter_, ', '.join(dropout_info))
     return ("""nnet3-copy --edits='{edits}' - - |""".format(
         edits=";".join(edit_config_lines)))
 

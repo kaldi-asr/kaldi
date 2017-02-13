@@ -192,11 +192,7 @@ template<class Arc> static void TestContextFst(bool verbose, bool use_matcher) {
   }
 
   if (verbose) {  // Try to print the fst.
-#ifdef HAVE_OPENFST_GE_10400
     FstPrinter<Arc> fstprinter(cfst, cfst.InputSymbols(), cfst.OutputSymbols(), NULL, false, true, "\t");
-#else
-    FstPrinter<Arc> fstprinter(cfst, cfst.InputSymbols(), cfst.OutputSymbols(), NULL, false, true);
-#endif
     fstprinter.Print(&std::cout, "standard output");
   }
 
@@ -211,11 +207,7 @@ template<class Arc> static void TestContextFst(bool verbose, bool use_matcher) {
     if (verbose) {
       std::cout << "Sequence FST is:\n";
       {  // Try to print the fst.
-#ifdef HAVE_OPENFST_GE_10400
         FstPrinter<Arc> fstprinter(*f, f->InputSymbols(), f->OutputSymbols(), NULL, false, true, "\t");
-#else
-        FstPrinter<Arc> fstprinter(*f, f->InputSymbols(), f->OutputSymbols(), NULL, false, true);
-#endif
         fstprinter.Print(&std::cout, "standard output");
       }
     }
@@ -257,13 +249,8 @@ template<class Arc> static void TestContextFst(bool verbose, bool use_matcher) {
     if (verbose) {
       std::cout << "Composed FST is:\n";
       {  // Try to print the fst.
-#ifdef HAVE_OPENFST_GE_10400
         FstPrinter<Arc> fstprinter(fst_composed, fst_composed.InputSymbols(),
                                    fst_composed.OutputSymbols(), NULL, false, true, "\t");
-#else
-        FstPrinter<Arc> fstprinter(fst_composed, fst_composed.InputSymbols(),
-                                   fst_composed.OutputSymbols(), NULL, false, true);
-#endif
         fstprinter.Print(&std::cout, "standard output");
       }
     }
