@@ -79,10 +79,13 @@ class KaldiCommandException(Exception):
     kaldi command that caused the error and the error string captured.
     """
     def __init__(self, command, err=None):
+        import re
         Exception.__init__(self,
                            "There was an error while running the command "
-                           "{0}\n{1}\n{2}".format(command, "-"*10,
-                                                  "" if err is None else err))
+                           "{0}\n{1}\n{2}".format(
+                               re.sub('\s+', ' ', command).strip(),
+                               "-"*10,
+                               "" if err is None else err))
 
 
 class BackgroundProcessHandler():
@@ -165,17 +168,20 @@ class BackgroundProcessHandler():
         self.start()
 
     def is_process_done(self, t):
-        p, command = t
+        p, command, exit_on_failure = t
         if p.poll() is None:
             return False
         return True
 
     def ensure_process_is_done(self, t):
-        p, command = t
+        p, command, exit_on_failure = t
         logger.debug("Waiting for process '{0}' to end".format(command))
         [stdout, stderr] = p.communicate()
         if p.returncode is not 0:
-            raise KaldiCommandException(command, stderr)
+            print("There was an error while running the command "
+                  "{0}\n{1}\n{2}".format(command, "-"*10, stderr))
+            if exit_on_failure:
+                os._exit(1)
 
     def ensure_processes_are_done(self):
         self.__process_queue.reverse()
@@ -192,7 +198,8 @@ class BackgroundProcessHandler():
             logger.info("Process '{0}' is running".format(command))
 
 
-def run_job(command, wait=True, background_process_handler=None):
+def run_job(command, wait=True, background_process_handler=None,
+            exit_on_failure=False):
     """ Runs a kaldi job, usually using a script such as queue.pl and
         run.pl, and redirects the stdout and stderr to the parent
         process's streams.
@@ -206,12 +213,14 @@ def run_job(command, wait=True, background_process_handler=None):
         wait: If True, wait until the process is completed. However, if the
             background_process_handler is provided, this option will be
             ignored and the process will be run in the background.
+        exit_on_failure: If True, will exit from the script on failure.
+            Only applicable when background_process_handler is specified.
     """
     p = subprocess.Popen(command, shell=True)
 
     if background_process_handler is not None:
         wait = False
-        background_process_handler.add_process((p, command))
+        background_process_handler.add_process((p, command, exit_on_failure))
 
     if wait:
         p.communicate()
@@ -222,7 +231,8 @@ def run_job(command, wait=True, background_process_handler=None):
         return p
 
 
-def run_kaldi_command(command, wait=True, background_process_handler=None):
+def run_kaldi_command(command, wait=True, background_process_handler=None,
+                      exit_on_failure=False):
     """ Runs commands frequently seen in Kaldi scripts and
         captures the stdout and stderr.
         These are usually a sequence of commands connected by pipes, so we use
@@ -235,6 +245,8 @@ def run_kaldi_command(command, wait=True, background_process_handler=None):
         wait: If True, wait until the process is completed. However, if the
             background_process_handler is provided, this option will be
             ignored and the process will be run in the background.
+        exit_on_failure: If True, will exit from the script on failure.
+            Only applicable when background_process_handler is specified.
     """
     p = subprocess.Popen(command, shell=True,
                          stdout=subprocess.PIPE,
@@ -242,7 +254,7 @@ def run_kaldi_command(command, wait=True, background_process_handler=None):
 
     if background_process_handler is not None:
         wait = False
-        background_process_handler.add_process((p, command))
+        background_process_handler.add_process((p, command, exit_on_failure))
 
     if wait:
         [stdout, stderr] = p.communicate()
@@ -281,7 +293,7 @@ def get_number_of_jobs(alidir):
         num_jobs = int(open('{0}/num_jobs'.format(alidir)).readline().strip())
     except (IOError, ValueError) as e:
         raise Exception("Exception while reading the "
-                        "number of alignment jobs: {0}".format(e.errstr))
+                        "number of alignment jobs: {0}".format(e))
     return num_jobs
 
 
